@@ -260,7 +260,7 @@ global_KGB::global_KGB(ComplexReductiveGroup& G_C,
     InvolutionNbr inv = i_tab.nr(a.tw());
     first_of_tau.push_back(0); // start of fundamental fiber
     KGB_elt_entry::Pooltype elt_pool;
-    hashtable::HashTable<KGB_elt_entry,unsigned long> elt_hash(elt_pool);
+    HashTable<KGB_elt_entry,unsigned long> elt_hash(elt_pool);
 
     elt_hash.match(i_tab.x_pack(a));
 
@@ -353,7 +353,7 @@ void global_KGB::generate(size_t predicted_size)
   const TwistedWeylGroup& W = Tg; // for when |GlobalTitsGroup| is not used
 
   KGB_elt_entry::Pooltype elt_pool; elt_pool.reserve(predicted_size);
-  hashtable::HashTable<KGB_elt_entry,KGBElt> elt_hash(elt_pool);
+  HashTable<KGB_elt_entry,KGBElt> elt_hash(elt_pool);
 
   KGBElt end_length=0; // end of the length-interval under construction
 
@@ -487,7 +487,7 @@ KGB::KGB(RealReductiveGroup& GR,
   i_tab.add(G_C,Cartan_classes);
 
   tits::TE_Entry::Pooltype elt_pool; // of size |size()|
-  hashtable::HashTable<tits::TE_Entry,KGBElt> elt_hash(elt_pool);
+  HashTable<tits::TE_Entry,KGBElt> elt_hash(elt_pool);
 
   size_t size = G_C.KGB_size(GR.realForm(),Cartan_classes);
 
@@ -730,7 +730,7 @@ class FiberData
 {
   const TitsGroup& Tits;
   weyl::TI_Entry::Pooltype pool;
-  hashtable::HashTable<weyl::TI_Entry,unsigned int> hash_table;
+  HashTable<weyl::TI_Entry,unsigned int> hash_table;
   std::vector<BinaryMap> refl; // transposed simple reflections mod 2
 
   // the following three vectors are indexed by |hash_table| sequence numbers
@@ -823,7 +823,7 @@ subsys_KGB::subsys_KGB
   }
 
   tits::TE_Entry::Pooltype elt_pool(1,tits::TE_Entry(cur_x));
-  hashtable::HashTable<tits::TE_Entry,KGBElt> elt_hash(elt_pool);
+  HashTable<tits::TE_Entry,KGBElt> elt_hash(elt_pool);
 
   FiberData fd(Tg);
 
@@ -966,7 +966,7 @@ std::ostream& subsys_KGB::print(std::ostream& strm, KGBElt x) const
 // data: Cartan class, projector of torus parts and $\check\rho_{im}$
 GlobalFiberData::GlobalFiberData
   (ComplexReductiveGroup& G,
-   hashtable::HashTable<weyl::TI_Entry,unsigned int>& h)
+   HashTable<weyl::TI_Entry,unsigned int>& h)
   : hash_table(h)
   , info(h.size())
   , refl(G.semisimpleRank())
@@ -1031,7 +1031,7 @@ GlobalFiberData::GlobalFiberData
 
 GlobalFiberData::GlobalFiberData
   (const GlobalTitsGroup& Tg,
-   hashtable::HashTable<weyl::TI_Entry,unsigned int>& h)
+   HashTable<weyl::TI_Entry,unsigned int>& h)
   : hash_table(h)
   , info()
   , refl(Tg.semisimple_rank())
@@ -1049,7 +1049,7 @@ GlobalFiberData::GlobalFiberData
 
 GlobalFiberData::GlobalFiberData
   (const SubSystem& sub,
-   hashtable::HashTable<weyl::TI_Entry,unsigned int>& h)
+   HashTable<weyl::TI_Entry,unsigned int>& h)
   : hash_table(h)
   , info()
   , refl(sub.rank())
@@ -1070,7 +1070,7 @@ GlobalFiberData::GlobalFiberData
 }
 
 InvInfo::InvInfo(const SubSystem& subsys,
-		 hashtable::HashTable<weyl::TI_Entry,unsigned int>& h)
+		 HashTable<weyl::TI_Entry,unsigned int>& h)
   : GlobalFiberData(subsys,h), sub(subsys), n_Cartans(0)
 {}
 

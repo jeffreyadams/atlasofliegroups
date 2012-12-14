@@ -43,6 +43,7 @@ namespace matrix {
 template<typename C>
 Vector<C>& Vector<C>::operator+= (const Vector<C>& v)
 {
+  assert(base::size()==v.size());
   for (size_t i=0; i<base::size(); ++i)
     (*this)[i] += v[i]; // one may write |base::operator[](i)| for |(*this)[i]|
   return *this;
@@ -52,6 +53,7 @@ Vector<C>& Vector<C>::operator+= (const Vector<C>& v)
 template<typename C>
 Vector<C>& Vector<C>::operator-= (const Vector<C>& v)
 {
+  assert(base::size()==v.size());
   for (size_t i=0; i<base::size(); ++i)
     (*this)[i] -= v[i];
   return *this;
@@ -199,6 +201,7 @@ void Matrix_base<C>::swap(Matrix_base<C>& m)
 template<typename C>
 void Matrix_base<C>::get_row(Vector<C>& v, size_t i) const
 {
+  assert(i<d_rows);
   v.resize(d_columns);
 
   for (size_t j = 0; j<d_columns; ++j)
@@ -210,6 +213,7 @@ void Matrix_base<C>::get_row(Vector<C>& v, size_t i) const
 template<typename C>
 void Matrix_base<C>::get_column(Vector<C>& v, size_t j) const
 {
+  assert(j<d_columns);
   v.resize(d_rows);
 
   for (size_t i = 0; i<d_rows; ++i)
@@ -222,8 +226,8 @@ void Matrix_base<C>::get_column(Vector<C>& v, size_t j) const
 template<typename C>
   std::vector<Vector<C> > Matrix_base<C>::rows() const
 {
-  std::vector<Vector<C> > result(numRows());
-  for (size_t i=0; i<numRows(); ++i)
+  std::vector<Vector<C> > result(d_rows);
+  for (size_t i=0; i<d_rows; ++i)
     get_row(result[i],i);
   return result;
 }
@@ -234,9 +238,9 @@ template<typename C>
 template<typename C>
   std::vector<Vector<C> > Matrix_base<C>::columns() const
 {
-  std::vector<Vector<C> > result(numColumns());
+  std::vector<Vector<C> > result(d_columns);
 
-  for (size_t j = 0; j<result.size(); ++j)
+  for (size_t j = 0; j<d_columns; ++j)
     get_column(result[j],j);
 
   return result;
@@ -255,12 +259,13 @@ the size of w is the number of columns; result size is the number of rows.
 template<typename C>
 Vector<C> Matrix<C>::operator *(const Vector<C>& w) const
 {
+  assert(base::numColumns()==w.size());
   Vector<C> result(base::numRows());
 
-  for (size_t i = 0; i<base::numRows(); ++i)
+  for (size_t i=0; i<base::numRows(); ++i)
   {
     C c(0);
-    for (size_t j = 0; j<base::numColumns(); ++j)
+    for (size_t j=0; j<base::numColumns(); ++j)
       c += (*this)(i,j) * w[j];
     result[i] = c;
   }
@@ -276,12 +281,13 @@ number of columns. This is the proper sense of application for dual space.
 template<typename C>
 Vector<C> Matrix<C>::right_mult(const Vector<C>& w) const
 {
+  assert(base::numRows()==w.size());
   Vector<C> result(base::numColumns());
 
-    for (size_t j = 0; j<base::numColumns(); ++j)
+    for (size_t j=0; j<base::numColumns(); ++j)
   {
     C c(0);
-    for (size_t i = 0; i<base::numRows(); ++i)
+    for (size_t i=0; i<base::numRows(); ++i)
       c += w[i] * (*this)(i,j);
     result[j] = c;
   }
@@ -295,11 +301,11 @@ Matrix<C> Matrix<C>::operator* (const Matrix<C>&  m) const
   assert(base::numColumns()==m.numRows());
   Matrix<C> result(base::numRows(),m.numColumns());
 
-  for (size_t i = 0; i<base::numRows(); ++i)
-    for (size_t k = 0; k<m.base::numColumns(); ++k)
+  for (size_t i=0; i<base::numRows(); ++i)
+    for (size_t k=0; k<m.base::numColumns(); ++k)
     {
       C c(0);
-      for (size_t j = 0; j<base::numColumns(); ++j)
+      for (size_t j=0; j<base::numColumns(); ++j)
 	c += (*this)(i,j) * m(j,k);
 
       result(i,k)=c;
@@ -332,7 +338,7 @@ template<typename C>
 {
   assert(v.size()==d_columns);
 
-  for (size_t j = 0; j<d_columns; ++j)
+  for (size_t j=0; j<d_columns; ++j)
     (*this)(i,j)=v[j];
 }
 
@@ -342,7 +348,7 @@ template<typename C>
 {
   assert(v.size()==d_rows);
 
-  for (size_t i = 0; i<d_rows; ++i)
+  for (size_t i=0; i<d_rows; ++i)
     (*this)(i,j)=v[i];
 }
 
@@ -425,7 +431,7 @@ template<typename C> void Matrix<C>::transpose()
 {
   if (base::numRows() == base::numColumns()) // matrix is square
   {
-    for (size_t j = 0; j<base::numColumns(); ++j)
+    for (size_t j=0; j<base::numColumns(); ++j)
       for (size_t i = j+1; i<base::numRows(); ++i)
 	std::swap((*this)(i,j),(*this)(j,i));
   }
@@ -434,8 +440,8 @@ template<typename C> void Matrix<C>::transpose()
     // now matrix is not square; create a transposed copy
     Matrix_base<C> result(base::numColumns(),base::numRows());
 
-    for (size_t i = 0; i<base::numRows(); ++i)
-      for (size_t j = 0; j<base::numColumns(); ++j)
+    for (size_t i=0; i<base::numRows(); ++i)
+      for (size_t j=0; j<base::numColumns(); ++j)
 	result(j,i) = (*this)(i,j);
 
     this->swap(result);
@@ -502,7 +508,7 @@ void Matrix<C>::invert(C& d)
 template<typename C>
 bool Matrix<C>::divisible(C c) const
 {
-  for (size_t j = 0; j<base::d_data.size(); ++j)
+  for (size_t j=0; j<base::d_data.size(); ++j)
     if (base::d_data[j]%c!=0)
       return false;
 
@@ -511,12 +517,15 @@ bool Matrix<C>::divisible(C c) const
 
 
 /*!
-  Synopsis: constructs the matrix corresponding to the block [r_first,r_last[
-  x [c_first,c_last[ of source. This uses that storage is by rows.
+  Synopsis: constructs the matrix corresponding to the block [i0,i1[ x [j0,j1[
+  of source. This implementation uses that storage is by rows.
 */
 template<typename C>
   Matrix<C> Matrix<C>::block(size_t i0, size_t j0, size_t i1, size_t j1) const
 {
+  assert(i0<=i1 and i1<=base::numRows());
+  assert(j0<=j1 and j1<=base::numColumns());
+
   Matrix<C> result(i1-i0,j1-j0);
   C* p = &result.d_data[0]; // writing pointer
   for (size_t i=i0; i<i1; ++i)
@@ -534,10 +543,11 @@ template<typename C>
   to row i.
 */
 template<typename C>
-void Matrix<C>::rowOperation(size_t i, size_t j, const C& c)
+void Matrix<C>::rowOperation(size_t i0, size_t i1, const C& c)
 {
-  for (size_t k = 0; k<base::numColumns(); ++k)
-    (*this)(i,k) += c*(*this)(j,k);
+  assert(i0<base::numRows() and i1<base::numRows());
+  for (size_t j=0; j<base::numColumns(); ++j)
+    (*this)(i0,j) += c*(*this)(i1,j);
 }
 
 
@@ -546,10 +556,11 @@ void Matrix<C>::rowOperation(size_t i, size_t j, const C& c)
   to column j.
 */
 template<typename C>
-void Matrix<C>::columnOperation(size_t j, size_t k, const C& c)
+void Matrix<C>::columnOperation(size_t j0, size_t j1, const C& c)
 {
-  for (size_t i = 0; i<base::numRows(); ++i)
-    (*this)(i,j) += c*(*this)(i,k);
+  assert(j0<base::numColumns() and j1<base::numColumns());
+  for (size_t i=0; i<base::numRows(); ++i)
+    (*this)(i,j0) += c*(*this)(i,j1);
 }
 
 
@@ -560,6 +571,7 @@ void Matrix<C>::columnOperation(size_t j, size_t k, const C& c)
 template<typename C>
 void Matrix<C>::rowMultiply(size_t i, C f)
 {
+  assert(i<base::numRows());
   for (size_t j=0; j<base::numColumns(); ++j)
     (*this)(i,j) *= f;
 }
@@ -570,25 +582,28 @@ void Matrix<C>::rowMultiply(size_t i, C f)
 template<typename C>
 void Matrix<C>::columnMultiply(size_t j, C f)
 {
-  for (size_t i = 0; i<base::numRows(); ++i)
+  assert(j<base::numColumns());
+  for (size_t i=0; i<base::numRows(); ++i)
     (*this)(i,j) *= f;
 }
 
 
-//! Interchanges rows i and j
+//! Interchanges rows
 template<typename C>
-void Matrix<C>::swapRows(size_t i, size_t j)
+void Matrix<C>::swapRows(size_t i0, size_t i1)
 {
-  for (size_t k = 0; k<base::numColumns(); ++k)
-    std::swap((*this)(i,k),(*this)(j,k));
+  assert(i0<base::numRows() and i1<base::numRows());
+  for (size_t k=0; k<base::numColumns(); ++k)
+    std::swap((*this)(i0,k),(*this)(i1,k));
 }
 
-//! Interchange columns i and j
+//! Interchange columns
 template<typename C>
-void Matrix<C>::swapColumns(size_t i, size_t j)
+void Matrix<C>::swapColumns(size_t j0, size_t j1)
 {
-  for (size_t k = 0; k<base::numRows(); ++k)
-    std::swap((*this)(k,i),(*this)(k,j));
+  assert(j0<base::numColumns() and j1<base::numColumns());
+  for (size_t k=0; k<base::numRows(); ++k)
+    std::swap((*this)(k,j0),(*this)(k,j1));
 }
 
 /*!
@@ -597,6 +612,7 @@ void Matrix<C>::swapColumns(size_t i, size_t j)
 template<typename C>
 void Matrix_base<C>::eraseRow(size_t i)
 {
+  assert(i<d_rows);
   typename Vector<C>::iterator first = d_data.begin() + i*d_columns;
   d_data.erase(first,first+d_columns);
   --d_rows;
@@ -608,13 +624,14 @@ void Matrix_base<C>::eraseRow(size_t i)
 template<typename C>
 void Matrix_base<C>::eraseColumn(size_t j)
 {
-  typename Vector<C>::iterator pos =
-     d_data.begin() + j; // position of entry |M(0,j)|
+  assert(j<d_columns);
+  typename Vector<C>::iterator
+    pos = d_data.begin() + j; // position of entry |M(0,j)|
   --d_columns; // already adjust number of columns
 
   // kill individual entries from left to right, with shifts of new |d_colums|
-  // (this is clever but not particularly efficient)
-  for (size_t k = 0; k<d_rows; ++k, pos += d_columns)
+  // (this is easily seen to be correct but not particularly efficient)
+  for (size_t k=0; k<d_rows; ++k, pos += d_columns)
     d_data.erase(pos);
 }
 
@@ -640,7 +657,7 @@ template<typename C>
 {
   std::vector<Vector<C> > result(r,Vector<C>(r,C(0)));
 
-  for (size_t i = 0; i<r; ++i)
+  for (size_t i=0; i<r; ++i)
     result[i][i] = C(1);
 
   return result;

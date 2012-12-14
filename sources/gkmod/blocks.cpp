@@ -47,7 +47,7 @@
 #include "kgb.h"
 #include "weyl.h"
 #include "kl.h"		// destruction
-#include "repr.h"       // used in |non_integral_block::deformation_terms|
+#include "repr.h" // use of |StandardRepr| in |non_integral_block| constructor
 
 /*
   Our task in the traditional setup (the constructor for |Block|) is fairly
@@ -133,8 +133,8 @@ namespace blocks {
 
 struct block_elt_entry; // detailed below
 
-typedef hashtable::HashTable<y_entry,KGBElt> y_part_hash;
-typedef hashtable::HashTable<block_elt_entry,BlockElt> block_hash;
+typedef HashTable<y_entry,KGBElt> y_part_hash;
+typedef HashTable<block_elt_entry,BlockElt> block_hash;
 
 namespace {
   // some auxiliary functions used by methods, but defined near end of file

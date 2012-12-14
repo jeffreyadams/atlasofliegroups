@@ -14,7 +14,7 @@
     number of deformations
 }
 
-set new_test=false
+set new_test=true
 
 set test([(Param,bool)] parameters)= bool:
   let rf = let (p,)=parameters[0] in real_form(p)

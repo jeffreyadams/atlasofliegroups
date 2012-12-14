@@ -180,7 +180,7 @@ public:
 
 // manipulators: none (done by friend class KhatContext)
 
-// special members required by hashtable::HashTable
+// special members required by HashTable
 
   typedef std::vector<StandardRepK> Pooltype;
   bool operator!=(const StandardRepK& another) const
@@ -256,7 +256,7 @@ class SRK_context
 
 // we cache a number of |proj_info| values, indexed by sets of generators
   bitset_entry::Pooltype proj_pool;
-  hashtable::HashTable<bitset_entry,unsigned int> proj_sets;
+  HashTable<bitset_entry,unsigned int> proj_sets;
   std::vector<proj_info> proj_data;
 
  public:
@@ -427,7 +427,7 @@ public:
 // necessary to interpret the d_lambda field in StandardRepK are stored here
 class KhatContext : public SRK_context
 {
-  typedef hashtable::HashTable<StandardRepK,seq_no> Hash;
+  typedef HashTable<StandardRepK,seq_no> Hash;
 
   StandardRepK::Pooltype nonfinal_pool,final_pool;
   Hash nonfinals,finals;
@@ -496,7 +496,7 @@ class KhatContext : public SRK_context
 // necessary to interpret the d_lambda field in StandardRepK are stored here
 class qKhatContext : public SRK_context
 {
-  typedef hashtable::HashTable<StandardRepK,seq_no> Hash;
+  typedef HashTable<StandardRepK,seq_no> Hash;
 
   StandardRepK::Pooltype nonfinal_pool,final_pool;
   Hash nonfinals,finals;

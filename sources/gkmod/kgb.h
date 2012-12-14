@@ -80,7 +80,7 @@ class KGB_base
 
   //!\brief tables to map twisted involutions to their sequence number
   weyl::TI_Entry::Pooltype inv_pool;
-  hashtable::HashTable<weyl::TI_Entry,unsigned int> inv_hash;
+  HashTable<weyl::TI_Entry,unsigned int> inv_hash;
 
   //!\brief to help find range of elements with fixed twisted involution
   std::vector<KGBElt> first_of_tau; // size: |numInvolutions()+1|
@@ -233,7 +233,7 @@ which will be employed from the dual side.
 class GlobalFiberData
 {
  protected: // data will also be maintained by derived class |InvInfo|
-  hashtable::HashTable<weyl::TI_Entry,unsigned int>& hash_table;
+  HashTable<weyl::TI_Entry,unsigned int>& hash_table;
 
   struct inv_info
   {
@@ -258,15 +258,15 @@ class GlobalFiberData
 
 public:
   GlobalFiberData(ComplexReductiveGroup& G,
-		  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
+		  HashTable<weyl::TI_Entry,unsigned int>& h);
 
   // contructor that does not install eny Cartan classes yet
   GlobalFiberData(const GlobalTitsGroup& Tg,
-		  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
+		  HashTable<weyl::TI_Entry,unsigned int>& h);
 
  protected: // this one is for use by |InvInfo||
   GlobalFiberData(const SubSystem& sub,
-		  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
+		  HashTable<weyl::TI_Entry,unsigned int>& h);
  public:
 
   GlobalFiberData(const GlobalFiberData& org) // copy contructor, handle ref
@@ -315,7 +315,7 @@ struct InvInfo : public GlobalFiberData
   CartanNbr n_Cartans; // number of Cartan classes generated
 
   InvInfo(const SubSystem& subsys,
-	  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
+	  HashTable<weyl::TI_Entry,unsigned int>& h);
 
 //manipulators
   // add involution |tw| with |Tg.involution_matrix(tw)|; report whether new

@@ -486,11 +486,12 @@ SR_poly Rep_table::KL_column_at_s(non_integral_block& block,BlockElt entry_elem)
   return KL_list[hash_index];
 }
 
-std::vector<deformation_term_tp>
-Rep_table::deformation_terms (non_integral_block& block,BlockElt entry_elem)
+SR_poly Rep_table::deformation_terms
+  (non_integral_block& block,BlockElt entry_elem)
 {
+  SR_poly result(repr_less());
   if (not block.survives(entry_elem) or block.length(entry_elem)==0)
-    return std::vector<deformation_term_tp>(); // easy cases, null result
+    return result; // easy cases, null result
 
   ++deformations;
 
@@ -505,18 +506,10 @@ Rep_table::deformation_terms (non_integral_block& block,BlockElt entry_elem)
       survivors.push_back(x);
   }
 
-  BlockElt ee = std::lower_bound // look up |entry_elem| in |survivors|
-    (survivors.begin(),survivors.end(),entry_elem)-survivors.begin();
-  assert(survivors[ee]==entry_elem); // must be found
-
-  unsigned long hash_index=hash.find(sr(block,entry_elem));
-
-  if (hash_index==hash.empty) // previously unknown parameter
-  {
+  if (hash.find(sr(block,entry_elem))==hash.empty) // previously unknown
     add_block(block,survivors);
-    hash_index=hash.find(sr(block,entry_elem));
-    assert(hash_index!=hash.empty);
-  }
+
+  assert(hash.find(sr(block,entry_elem))!=hash.empty); // should be known now
 
   // map indices of |survivors| to corresponding number in |hash|
   std::vector<unsigned long> remap(survivors.size());
@@ -527,49 +520,38 @@ Rep_table::deformation_terms (non_integral_block& block,BlockElt entry_elem)
     remap[i]=h;
   }
 
-  SR_poly Q(sr(block,entry_elem),repr_less()); // remainder, initially (1,ee)
+  SR_poly Q(sr(block,entry_elem),repr_less()); // remainder, init (1,entry_elem)
   std::vector<Split_integer> acc(survivors.size(),Split_integer(0));
 
   for (unsigned long i=survivors.size(); i-->0; )
   {
     StandardRepr p_y=sr(block,survivors[i]);
     Split_integer c_y = Q[p_y];
-    if (c_y==Split_integer(0))
-      continue;
     const SR_poly& KL_y = KL_list[remap[i]];
     Q.add_multiple(KL_y,-c_y);
     assert(Q[p_y]==Split_integer(0)); // check relation of being inverse
+
+    c_y.times_1_s(); // deformation terms are all multiplied by $1-s$
     acc[i]=c_y; // store coefficient at index of survivor
   }
   assert(Q.empty()); // since all terms in |KL_y| should be at most $y$
 
   // $\sum_{x\leq y<ee}y[l(ee)-l(y) odd] (-1)^{l(x)-l(y)}P_{x,y}*Q(y,ee)$
-  SR_poly coefs(repr_less());
   unsigned int ll=block.length(entry_elem)-1; // last length of contributing |y|
 
   for (unsigned int l=ll%2; l<=ll; l+=2) // length of parity opposite |ee|
     for (BlockElt yy=n_surv_length_less[l]; yy<n_surv_length_less[l+1]; ++yy)
-      coefs.add_multiple(KL_list[remap[yy]],acc[yy]);
+      result.add_multiple(KL_list[remap[yy]],acc[yy]);
 
-  std::vector<deformation_term_tp> result;
-  result.reserve(ee); // might be quite pessimistic, but not huge anyway
-
+  // correct signs in terms of result according to orientation numbers
   unsigned int orient_ee = orientation_number(sr(block,entry_elem));
-
-  for (SR_poly::const_reverse_iterator
-	 it=coefs.rbegin(); it!=coefs.rend(); ++it)
+  for (SR_poly::iterator it=result.begin(); it!=result.end(); ++it)
   {
-    int coef = it->second.e()-it->second.s();
-    if (coef==0)
-      continue;
-    unsigned long h = hash.find(it->first);
-    assert(h!=hash.empty);
-    size_t i = permutations::find_index(remap,h);
-    assert(i!=remap.size());
-    int orient_express = (orient_ee-orientation_number(it->first))/2;
+    unsigned int orient_x=orientation_number(it->first);
+    assert((orient_ee-orient_x)%2==0);
+    int orient_express = (orient_ee-orient_x)/2;
     if (orient_express%2!=0)
-      coef = -coef;
-    result.push_back(deformation_term_tp(coef,survivors[i]));
+      it->second.times_s();
   }
 
   return result;
@@ -606,13 +588,9 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
     Rational r=rp[i];
     const StandardRepr zi = sr(z.x(),lam_rho,nu_z*r);
     non_integral_block b(*this,zi);
-    std::vector<deformation_term_tp> def_term = deformation_terms(b,b.size()-1);
-    for (unsigned j=0; j<def_term.size(); ++j)
-    {
-      StandardRepr zij = sr(b,def_term[j].elt);
-      Split_integer coef(def_term[j].coef,-def_term[j].coef);
-      result.add_multiple(deformation(zij),coef);
-    }
+    const SR_poly terms = deformation_terms(b,b.size()-1);
+    for (SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
+      result.add_multiple(deformation(it->first),it->second);
   }
 
   // now store result for future lookup

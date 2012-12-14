@@ -69,7 +69,7 @@ class StandardRepr
 
   bool operator== (const StandardRepr&) const;
 
-// special members required by hashtable::HashTable
+// special members required by HashTable
 
   typedef std::vector<StandardRepr> Pooltype;
   bool operator!=(const StandardRepr& another) const
@@ -156,13 +156,6 @@ class Rep_context
 
 typedef Rep_context::poly SR_poly;
 
-
-struct deformation_term_tp
-{ int coef;     // coefficient (an additional factor $1-s$ is implicit)
-  BlockElt elt; // element in block
-  deformation_term_tp(int c, BlockElt b) : coef(c),elt(b) {}
-};
-
 class Rep_table : public Rep_context
 {
   std::vector<StandardRepr> pool;
@@ -182,8 +175,7 @@ class Rep_table : public Rep_context
 
   SR_poly KL_column_at_s(non_integral_block& block,BlockElt entry_elem);
 
-  std::vector<deformation_term_tp>
-    deformation_terms (non_integral_block& block,BlockElt entry_elem);
+  SR_poly deformation_terms (non_integral_block& block,BlockElt entry_elem);
   SR_poly deformation(const StandardRepr& z);
 
  private:

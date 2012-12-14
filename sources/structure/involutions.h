@@ -92,7 +92,7 @@ class InvolutionTable
 
  private:
   weyl::TI_Entry::Pooltype pool;
-  hashtable::HashTable<weyl::TI_Entry, InvolutionNbr> hash;
+  HashTable<weyl::TI_Entry, InvolutionNbr> hash;
 
   struct record
   {

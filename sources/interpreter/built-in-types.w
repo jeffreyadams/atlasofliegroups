@@ -3609,17 +3609,14 @@ void deform_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {
     non_integral_block block(p->rc(),p->val); // partial block construction
-    std::vector<repr::deformation_term_tp> terms
+    repr::SR_poly terms
        = p->rt().deformation_terms(block,block.size()-1);
 
     virtual_module_ptr acc
       (new virtual_module_value(p->rf, repr::SR_poly(p->rc().repr_less())));
-    for (unsigned i=0; i<terms.size(); ++i)
-    { StandardRepr param_z = p->rc().sr(block,terms[i].elt);
-      Split_integer coef(terms[i].coef,-terms[i].coef);
-        // multiply integer |coef| by $1-s$
-      acc->val.add_multiple(p->rc().expand_final(param_z),coef);
-    }
+    for (repr::SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
+      acc->val.add_multiple(p->rc().expand_final(it->first),it->second);
+
     push_value(acc);
   }
 }
