@@ -163,17 +163,12 @@ class Rep_table : public Rep_context
   std::vector<SR_poly> KL_list;
   std::vector<SR_poly> def_formula;
 
-  unsigned long blocks,deformations,calls,hits;
-
  public:
   Rep_table(RealReductiveGroup &G)
     : Rep_context(G), pool(), hash(pool), KL_list(), def_formula()
-    , blocks(0), deformations(0),calls(0),hits(0)
   {}
 
-  ~Rep_table();
-
-  SR_poly KL_column_at_s(non_integral_block& block,BlockElt entry_elem);
+  SR_poly KL_column_at_s(StandardRepr z); // by value
 
   SR_poly deformation_terms (non_integral_block& block,BlockElt entry_elem);
   SR_poly deformation(const StandardRepr& z);

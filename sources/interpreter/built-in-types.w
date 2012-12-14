@@ -3653,8 +3653,7 @@ void KL_sum_at_s_wrapper(expression_base::level l)
   test_standard(*p);
   if (l!=expression_base::no_value)
   {
-    non_integral_block block(p->rc(),p->val); // partial block construction
-    repr::SR_poly result = p->rt().KL_column_at_s(block,block.size()-1);
+    repr::SR_poly result = p->rt().KL_column_at_s(p->val);
     push_value (new virtual_module_value(p->rf,result));
   }
 }

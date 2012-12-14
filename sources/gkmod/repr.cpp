@@ -429,7 +429,6 @@ void Rep_table::add_block
 
   // start with computing KL polynomials for the entire block
   const kl::KLContext& klc = block.klc(block.size()-1,false); // silently
-  ++blocks;
 
   /* get $P(x,z)$ for |x<=z| with |z| among new |survivors|, and contribute
    parameters from |block.survivors_below(x)| with coefficient $P(x,z)[q:=s]$
@@ -467,19 +466,20 @@ void Rep_table::add_block
   } // |for(x)|
 } // |Rep_table::add_block|
 
-SR_poly Rep_table::KL_column_at_s(non_integral_block& block,BlockElt entry_elem)
+SR_poly Rep_table::KL_column_at_s(StandardRepr z)
 {
-
-  unsigned long hash_index=hash.find(sr(block,entry_elem));
+  make_dominant(z); // so that |z| it will appear at the top of its own block
+  unsigned long hash_index=hash.find(z);
   if (hash_index==hash.empty) // previously unknown parameter
   {
+    non_integral_block block(*this,z);
     BlockEltList survivors; survivors.reserve(block.size());
     for (BlockElt x=0; x<block.size(); ++x)
       if (block.survives(x))
 	survivors.push_back(x);
     add_block(block,survivors);
 
-    hash_index=hash.find(sr(block,entry_elem));
+    hash_index=hash.find(z);
     assert(hash_index!=hash.empty);
   }
 
@@ -492,8 +492,6 @@ SR_poly Rep_table::deformation_terms
   SR_poly result(repr_less());
   if (not block.survives(entry_elem) or block.length(entry_elem)==0)
     return result; // easy cases, null result
-
-  ++deformations;
 
   // count number of survivors of length strictly less than any occurring length
   std::vector<unsigned int> n_surv_length_less(block.length(0),0);
@@ -523,7 +521,7 @@ SR_poly Rep_table::deformation_terms
   SR_poly Q(sr(block,entry_elem),repr_less()); // remainder, init (1,entry_elem)
   std::vector<Split_integer> acc(survivors.size(),Split_integer(0));
 
-  for (unsigned long i=survivors.size(); i-->0; )
+  for (unsigned long i=survivors.size(); i-->0; ) // decreasing essential here
   {
     StandardRepr p_y=sr(block,survivors[i]);
     Split_integer c_y = Q[p_y];
@@ -568,8 +566,6 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   if (rp.size()==0) // without deformation terms
     return result; // don't even bother to store the result
 
-  ++calls; // only count calls that come to this point
-
   StandardRepr z_near = sr(z.x(),lam_rho,nu_z*rp.back());
   make_dominant(z_near);
 
@@ -577,10 +573,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   { // look up if closest reducibility point to |z| is already known
     unsigned long h=hash.find(z_near);
     if (h!=hash.empty and not def_formula[h].empty())
-    {
-      ++ hits;
       return def_formula[h];
-    }
   }
 
   for (unsigned i=rp.size(); i-->0; )
@@ -590,7 +583,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
     non_integral_block b(*this,zi);
     const SR_poly terms = deformation_terms(b,b.size()-1);
     for (SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
-      result.add_multiple(deformation(it->first),it->second);
+      result.add_multiple(deformation(it->first),it->second); // recursion
   }
 
   // now store result for future lookup

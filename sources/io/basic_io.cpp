@@ -179,14 +179,6 @@ namespace repr {
     return str;
   }
 
-  Rep_table::~Rep_table()
-  {
-    std::cerr << "\nKL computations: " << blocks
-	      << ", deformations: "<< deformations
-	      << ", full deformation calls: "<< calls
-	      << ", hits: " << hits << std::endl;
-  }
-
 } // |namespace repr|
 
 
