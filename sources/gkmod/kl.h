@@ -115,7 +115,7 @@ class KLContext
 
   // private methods used during construction
  private:
-  typedef hashtable::HashTable<KLPolEntry,KLIndex> KLHash;
+  typedef HashTable<KLPolEntry,KLIndex> KLHash;
 
   //accessors
     weyl::Generator firstDirectRecursion(BlockElt y) const;

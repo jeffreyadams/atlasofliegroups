@@ -1202,14 +1202,17 @@ void deform_f()
 
   block.print_to(f,false);
 
-  std::vector<repr::deformation_term_tp> terms
-    = rt.deformation_terms(block,entry_elem);
+  repr::SR_poly terms = rt.deformation_terms(block,entry_elem);
+
+  std::vector<StandardRepr> pool;
+  HashTable<StandardRepr,unsigned long> hash(pool);
 
   f << "Orientation numbers:\n";
   bool first=true;
   for (BlockElt x=0; x<=entry_elem; ++x)
     if (block.survives(x))
     {
+      hash.match(rt.sr(block,x));
       if (first) first=false;
       else f<< ", ";
       StandardRepr r = rt.sr(block,x);
@@ -1221,15 +1224,15 @@ void deform_f()
   {
     f << "Deformation terms for I(" << entry_elem << ")_c: (1-s) times\n";
     std::ostringstream os;
-    for (size_t i=0; i<terms.size(); ++i )
+    for (repr::SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
     {
-      int eval=terms[i].coef;
+      int eval=it->second.e();
       os << ' ';
       if (eval==1 or eval==-1)
 	os << (eval==1 ? '+' : '-'); // sign of evaluation
       else
 	os << std::setiosflags(std::ios_base::showpos) << eval;
-      os <<"I(" << terms[i].elt << ")_c";
+      os <<"I(" << hash.find(it->first) << ")_c";
     }
     ioutils::foldLine(f,os.str()) << std::endl;
 
@@ -1343,7 +1346,7 @@ void embedding_f()
   f << "Twisted involution in subsystem: " << ww << ".\n";
 
   weyl::TI_Entry::Pooltype pool;
-  hashtable::HashTable<weyl::TI_Entry,unsigned int> hash_table(pool);
+  HashTable<weyl::TI_Entry,unsigned int> hash_table(pool);
   std::vector<unsigned int> stops;
   {
     std::vector<TwistedInvolution> queue(1,TwistedInvolution());

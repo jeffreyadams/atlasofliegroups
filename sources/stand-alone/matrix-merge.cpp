@@ -21,7 +21,7 @@ template<unsigned int n>
     { for (unsigned int i=0; i<n; ++i) comp[i]=comps[i]; }
     tuple_entry(const tuple_entry& other) // copy constructor
     { for (unsigned int i=0; i<n; ++i) comp[i]=other.comp[i]; }
-  
+
     typedef std::vector<tuple_entry> Pooltype;
     size_t hashCode(size_t modulus) const;
     bool operator!= (const tuple_entry& other) const
@@ -29,7 +29,7 @@ template<unsigned int n>
         if (comp[i]!=other.comp[i]) return true;
       return false;
     }
-  
+
     unsigned int operator[] (unsigned int i) const { return comp[i]; }
   };
 
@@ -70,30 +70,30 @@ void write_int(unsigned int n, std::ostream& out)
 template<unsigned int n>
   void combine_rows
     (unsigned int y,
-     atlas::hashtable::HashTable<tuple_entry<n>,unsigned int>& hash,
+     atlas::HashTable<tuple_entry<n>,unsigned int>& hash,
      std::vector<std::istream*>in, std::ostream& out,
      std::vector<unsigned int>& lim,
      coord_vector* first_use)
   { for (unsigned int i=0; i<n; ++i)
-      if (read_int(*in[i])!=y) 
+      if (read_int(*in[i])!=y)
                             { std::cerr << "y=" << y << ", i=" << i << ":\n";
                               throw std::runtime_error("Wrong alignment in source file");
                             }
     unsigned int nr_prim=read_int(*in[0]);
     for (unsigned int i=1; i<n; ++i)
       if (read_int(*in[i])!=nr_prim)
-        
+
         { std::cerr << "y=" << y << ", i=" << i << ":\n";
           throw std::runtime_error("Primitive count mismatch in source files");
         }
     write_int(y,out); write_int(nr_prim,out); // reproduce info in output
 
-    
+
     typedef atlas::bitmap::BitMap bit_map;
-    
+
     std::vector<bit_map> in_map(n,bit_map(nr_prim));
     bit_map out_map(nr_prim);
-    
+
     for (size_t i=0; i<nr_prim; i+=32)
     { unsigned int b=0;
       for (unsigned int j=0; j<n; ++j)
@@ -102,7 +102,7 @@ template<unsigned int n>
       }
       out_map.setRange(i,32,b); write_int(b,out);
     }
-    
+
     for (bit_map::iterator it=out_map.begin(); it(); ++it)
     { std::vector<unsigned int> tuple(n,0);
       for (unsigned int j=0; j<n; ++j)
@@ -126,7 +126,7 @@ void do_work
   (std::string name_base,
    std::vector<unsigned int>& modulus,
    coord_vector* first_use)
-{ 
+{
   std::vector<std::ifstream*>in_file(n,NULL);
     std::vector<std::istream*>in_stream(n,NULL);
     for (unsigned int i=0; i<n; ++i)
@@ -140,15 +140,15 @@ void do_work
         std::exit(1);
       }
     }
-  
+
     unsigned long out_modulus=modulus[0];
     for (unsigned int i=1; i<n; ++i)
-      
+
       out_modulus= atlas::arithmetic::lcm(out_modulus, modulus[i]);
-  
+
     std::ostringstream name;
     name << name_base << "-mod" << out_modulus;
-    
+
     { bool write_protect=false;
       for (ulong i=0; i<n ; ++i)
         if (out_modulus==modulus[i]) write_protect=true;
@@ -163,7 +163,7 @@ void do_work
       }
 
   std::vector<tuple_entry<n> > pool;
-  atlas::hashtable::HashTable<tuple_entry<n>,unsigned int> hash(pool);
+  atlas::HashTable<tuple_entry<n>,unsigned int> hash(pool);
   hash.match(tuple_entry<n>()); // insert index of Zero, it does not occur!
 
   std::vector<unsigned int> limits(n,1); // limit of modular sequence numbers
@@ -181,7 +181,7 @@ void do_work
   std::cerr << "\ndone!\n";
   for (unsigned int i=0; i<n; ++i) delete in_file[i]; // close files
 
-  
+
   { std::cout << "Numbers of different polynomials found:\n";
     for (unsigned int i=0; i<n; ++i)
       std::cout << "Mod " << std::setw(10) << modulus[i]
@@ -189,7 +189,7 @@ void do_work
     std::cout << "Mod " << std::setw(10) << out_modulus
               << ": " << hash.size() << ".\n";
   }
-  
+
   { static const unsigned int magic=0x06ABdCF0;
     write_int(1,out_file); // offset in $4$-byte words of first bitmap is 1
     for (unsigned int y=0; y<n_rows-1; ++y)
@@ -198,7 +198,7 @@ void do_work
     write_int(magic,out_file); // record new format
     out_file.close();
   }
-  
+
   for (unsigned int i=0; i<n; ++i)
   { std::ostringstream name;
     name << name_base << "-renumbering-mod" << modulus[i];
@@ -209,7 +209,7 @@ void do_work
       { std::cerr << "Could not open file '" << name.str() << "'.\n";
         std::exit(1);
       }
-  
+
     for (unsigned int k=0; k<pool.size(); ++k)
       write_int(pool[k][i],out_file);
   }
@@ -281,5 +281,3 @@ int main(int argc,char** argv)
   std::cerr << "done.\n";
 
 }
-
-

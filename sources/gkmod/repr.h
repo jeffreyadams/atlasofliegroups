@@ -69,7 +69,7 @@ class StandardRepr
 
   bool operator== (const StandardRepr&) const;
 
-// special members required by hashtable::HashTable
+// special members required by HashTable
 
   typedef std::vector<StandardRepr> Pooltype;
   bool operator!=(const StandardRepr& another) const
@@ -156,38 +156,25 @@ class Rep_context
 
 typedef Rep_context::poly SR_poly;
 
-
-struct deformation_term_tp
-{ int coef;     // coefficient (an additional factor $1-s$ is implicit)
-  BlockElt elt; // element in block
-  deformation_term_tp(int c, BlockElt b) : coef(c),elt(b) {}
-};
-
 class Rep_table : public Rep_context
 {
-  struct location { unsigned block; BlockElt elt; };
-  typedef std::vector<location> loc_list;
-  typedef std::vector<std::vector<Split_integer> > KL_table;
-
   std::vector<StandardRepr> pool;
   HashTable<StandardRepr,unsigned long> hash;
-  std::vector<loc_list> loc;
-  std::vector<KL_table> block_list;
+  std::vector<SR_poly> KL_list;
   std::vector<SR_poly> def_formula;
-
-  unsigned long deformations,calls,hits,doublures;
 
  public:
   Rep_table(RealReductiveGroup &G)
-    : Rep_context(G), pool(), hash(pool), loc(), block_list(), def_formula()
-    , deformations(0),calls(0),hits(0),doublures(0)
+    : Rep_context(G), pool(), hash(pool), KL_list(), def_formula()
   {}
 
-  ~Rep_table();
+  SR_poly KL_column_at_s(StandardRepr z); // by value
 
-  std::vector<deformation_term_tp>
-    deformation_terms (non_integral_block& block,BlockElt entry_elem);
+  SR_poly deformation_terms (non_integral_block& block,BlockElt entry_elem);
   SR_poly deformation(const StandardRepr& z);
+
+ private:
+  void add_block(non_integral_block& block, const BlockEltList& survivors);
 
 }; // |Rep_table|
 

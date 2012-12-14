@@ -409,13 +409,89 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
   else return SR_poly(z,repr_less());
 } // |Rep_context::expand_final|
 
-std::vector<deformation_term_tp>
-Rep_table::deformation_terms (non_integral_block& block,BlockElt entry_elem)
+void Rep_table::add_block
+  (non_integral_block& block, const BlockEltList& survivors)
 {
-  if (not block.survives(entry_elem) or block.length(entry_elem)==0)
-    return std::vector<deformation_term_tp>(); // easy cases, null result
+  size_t old_size = hash.size();
+  BlockEltList new_survivors;
 
-  ++deformations;
+  // fill the |hash| table for new surviving parameters in this block
+  for (BlockElt i=0; i<survivors.size(); ++i)
+    if (hash.match(sr(block,survivors[i]))>=old_size)
+      new_survivors.push_back(survivors[i]);
+
+  assert(new_survivors.size()>0); // at least top element should be new
+
+  KL_list.resize(hash.size(),SR_poly(repr_less())); // new slots, init empty
+  def_formula.resize(hash.size(),SR_poly(repr_less())); // allocate new slots
+
+  // compute cumulated KL polynomimals $P_{x,y}$ with $x\leq y$ survivors
+
+  // start with computing KL polynomials for the entire block
+  const kl::KLContext& klc = block.klc(block.size()-1,false); // silently
+
+  /* get $P(x,z)$ for |x<=z| with |z| among new |survivors|, and contribute
+   parameters from |block.survivors_below(x)| with coefficient $P(x,z)[q:=s]$
+   to the |SR_poly| at |KL_list[old_size+i], where |z=new_survivors[i]| */
+
+  BlockEltList::const_iterator z_start=new_survivors.begin();
+  for (BlockElt x=0; x<=new_survivors.back(); ++x)
+  {
+    BlockEltList xs=block.survivors_below(x);
+    if (xs.empty())
+      continue; // no point doing work for |x|'s that don't contribute anywhere
+
+    const unsigned int parity = block.length(x)%2;
+
+    if (*z_start<x)
+      ++z_start; // advance so |z| only runs over values with |x<=z|
+    assert(z_start!=new_survivors.end() and *z_start>=x);
+
+    for (BlockEltList::const_iterator it=z_start; it!=new_survivors.end(); ++it)
+    {
+      const BlockElt z = *it; // element of |new_survivors| and |x<=z|
+      const kl::KLPol& pol = klc.klPol(x,z); // regular KL polynomial
+      Split_integer eval(0);
+      for (polynomials::Degree d=pol.size(); d-->0; )
+	eval = eval.times_s()+Split_integer(static_cast<int>(pol[d]));
+      if (eval!=Split_integer(0))
+      {
+	SR_poly& dest = KL_list[old_size+(it-new_survivors.begin())];
+	if (block.length(z)%2!=parity)
+	  eval.negate(); // incorporate sign for length difference
+	for (unsigned int i=0; i<xs.size(); ++i)
+	  dest.add_term(sr(block,xs[i]),eval);
+      }
+    } // |for(it)|
+  } // |for(x)|
+} // |Rep_table::add_block|
+
+SR_poly Rep_table::KL_column_at_s(StandardRepr z)
+{
+  make_dominant(z); // so that |z| it will appear at the top of its own block
+  unsigned long hash_index=hash.find(z);
+  if (hash_index==hash.empty) // previously unknown parameter
+  {
+    non_integral_block block(*this,z);
+    BlockEltList survivors; survivors.reserve(block.size());
+    for (BlockElt x=0; x<block.size(); ++x)
+      if (block.survives(x))
+	survivors.push_back(x);
+    add_block(block,survivors);
+
+    hash_index=hash.find(z);
+    assert(hash_index!=hash.empty);
+  }
+
+  return KL_list[hash_index];
+}
+
+SR_poly Rep_table::deformation_terms
+  (non_integral_block& block,BlockElt entry_elem)
+{
+  SR_poly result(repr_less());
+  if (not block.survives(entry_elem) or block.length(entry_elem)==0)
+    return result; // easy cases, null result
 
   // count number of survivors of length strictly less than any occurring length
   std::vector<unsigned int> n_surv_length_less(block.length(0),0);
@@ -428,158 +504,56 @@ Rep_table::deformation_terms (non_integral_block& block,BlockElt entry_elem)
       survivors.push_back(x);
   }
 
-  BlockElt ee = std::lower_bound // look up |entry_elem| in |survivors|
-    (survivors.begin(),survivors.end(),entry_elem)-survivors.begin();
-  assert(survivors[ee]==entry_elem); // must be found
+  if (hash.find(sr(block,entry_elem))==hash.empty) // previously unknown
+    add_block(block,survivors);
 
-  unsigned long hash_index=hash.find(sr(block,entry_elem));
-  unsigned long cur_block; // set separately in both branches below
+  assert(hash.find(sr(block,entry_elem))!=hash.empty); // should be known now
 
-  if (hash_index==hash.empty) // previously unknown parameter
+  // map indices of |survivors| to corresponding number in |hash|
+  std::vector<unsigned long> remap(survivors.size());
+  for (unsigned long i=0; i<survivors.size(); ++i)
   {
-    // first add an empty block to the table
-    cur_block = block_list.size();
-    block_list.push_back(KL_table());
-    KL_table& KL=block_list.back();
-
-    // fill the |location| table for new surviving parameters in this block
-    for (BlockElt i=0; i<survivors.size(); ++i)
-    {
-      location here = { cur_block,i };
-      assert(hash.size()==loc.size());
-      unsigned long h=hash.match(sr(block,survivors[i]));
-      if (h==loc.size())
-	loc.push_back(loc_list(1,here));
-      else
-      {
-	loc[h].push_back(here);
-	++doublures;
-      }
-    }
-    hash_index=hash.find(sr(block,entry_elem));
-    assert(hash_index!=hash.empty);
-    def_formula.resize(hash.size(),SR_poly(repr_less())); // allocate new slots
-
-    // compute cumulated KL polynomimals $P_{x,y}$ with $x\leq y$ survivors
-    // start with computing KL polynomials for the entire block
-    const kl::KLContext& klc = block.klc(block.size()-1,false); // silently
-
-    BlockElt n_surv = survivors.size(); // |BlockElt| now indexes |survivors|
-    KL.reserve(n_surv);
-
-    // get $P(x,z)$ for |xx<=zz<=entry_element| with |zz| among |survivors|
-    // and contribute to |P(x,z)| where |zz=survivors[z]|, $xx\to survivors[x]$
-    for (BlockElt zz=0; zz<n_surv; ++zz)
-    {
-      KL.push_back(std::vector<Split_integer>(zz+1,Split_integer(0)));
-      std::vector<Split_integer>& KL_zz=KL.back();
-
-      const BlockElt z = survivors[zz];
-      const unsigned int parity = block.length(z)%2;
-      for (BlockElt x=0; x <= z; ++x)
-      {
-	const kl::KLPol& pol = klc.klPol(x,z); // regular KL polynomial
-	// evaluate |pol| at $X:=s$ since that is will be stored
-	Split_integer eval(0);
-	for (polynomials::Degree d=pol.size(); d-->0; )
-	  eval = eval.times_s()+Split_integer(static_cast<int>(pol[d]));
-	if (eval!=Split_integer(0))
-	{
-	  if (block.length(x)%2!=parity)
-	    eval.negate(); // incorporate sign for length difference
-
-	  // contribute |eval| to all |P(x,z)| for which |x| descends to
-	  // |survivors[x]| (expressing the singular $I(x)$ as a survivor sum)
-	  const BlockEltList nb=block.survivors_below(x);
-	  for (BlockEltList::const_iterator it=nb.begin(); it!=nb.end(); ++it)
-	  {
-	    BlockElt xx = std::lower_bound // look up |*it| in |survivors|
-	      (survivors.begin(),survivors.end(),*it)-survivors.begin();
-	    assert(xx<n_surv and survivors[xx]==*it); // must be found
-	    KL_zz[xx]+= eval;
-	  } // |for (i)| in |nb|
-	} // |if(pol!=0)|
-      } // |for (x<=z)|
-    } // |for(z)|
-  } // |if(hash_index==hash.empty)|
-  else
-    cur_block=loc[hash_index][0].block;
-
-  const KL_table& KL = block_list[cur_block];
-
-  // now extract evaluations at $-1$ from previously filled table
-  int_Matrix P(ee+1,ee+1,0);
-
-  { // we must renumber |survivors| to point into block |cur_block|
-    BlockEltList remap(ee+1);
-
-    for (BlockElt xx=0; xx<=ee; ++xx)
-    {
-      unsigned long h=hash.find(sr(block,survivors[xx]));
-      assert(h!=hash.empty); // certainly the parameter must be known now
-      const loc_list& l=loc[h]; loc_list::const_reverse_iterator it;
-      for (it=l.rbegin(); it!=l.rend(); ++it) // lookup, last is most probable
-	if (it->block==cur_block)
-	{ remap[xx]=it->elt; break; }
-      assert(it!=l.rend()); // we should have found it
-    }
-
-    for (BlockElt zz=ee+1; zz-->0; )
-      for (BlockElt xx=0; xx <= zz; ++xx)
-	if (remap[xx]<=remap[zz]) // since only trangular part is stored
-	{
-	  const Split_integer val = KL[remap[zz]][remap[xx]];
-	  P(xx,zz) = val.e()-val.s(); // evaluate stored value at $s:=-1$
-	} // |for(xx)|, |for(zz)|
-  }
-  assert(P(ee,ee)==1); // since there can be no cumulation to the diagonal
-
-  // now compute evaluated polynomials $Q_{xx,zz}$, for |xx <= zz==ee|
-  // this is done by inverting the upper unitriangular matrix of the |P(xx,zz)|
-  // only the final column of the inverse is needed
-
-  int_Vector Q_ee(ee+1); // $Q$ only needs |ee| as second index
-
-  // we solve column $z$ of $Q$ from bottom to top, using the equation $PQ=1$
-  Q_ee[ee]=1; // easy initial case, since $P(ee,ee)=1$
-  for (BlockElt xx=ee; xx-->0; )
-  {
-    int sum=0;
-    for (BlockElt yy=xx+1; yy<=ee; ++yy) // skip term $Q(xx,ee)$ (for $yy=xx$)
-      sum -= P(xx,yy)*Q_ee[yy];  // set it to minus the sum of other terms
-    Q_ee[xx]=sum;
+    unsigned long h=hash.find(sr(block,survivors[i]));
+    assert(h!=hash.empty);
+    remap[i]=h;
   }
 
+  SR_poly Q(sr(block,entry_elem),repr_less()); // remainder, init (1,entry_elem)
+  std::vector<Split_integer> acc(survivors.size(),Split_integer(0));
+
+  for (unsigned long i=survivors.size(); i-->0; ) // decreasing essential here
+  {
+    StandardRepr p_y=sr(block,survivors[i]);
+    Split_integer c_y = Q[p_y];
+    const SR_poly& KL_y = KL_list[remap[i]];
+    Q.add_multiple(KL_y,-c_y);
+    assert(Q[p_y]==Split_integer(0)); // check relation of being inverse
+
+    c_y.times_1_s(); // deformation terms are all multiplied by $1-s$
+    acc[i]=c_y; // store coefficient at index of survivor
+  }
+  assert(Q.empty()); // since all terms in |KL_y| should be at most $y$
 
   // $\sum_{x\leq y<ee}y[l(ee)-l(y) odd] (-1)^{l(x)-l(y)}P_{x,y}*Q(y,ee)$
-  int_Vector coef(ee,0);
   unsigned int ll=block.length(entry_elem)-1; // last length of contributing |y|
 
   for (unsigned int l=ll%2; l<=ll; l+=2) // length of parity opposite |ee|
     for (BlockElt yy=n_surv_length_less[l]; yy<n_surv_length_less[l+1]; ++yy)
-      for (BlockElt xx=0; xx<=yy; ++xx)
-	coef[xx] += P(xx,yy)*Q_ee[yy]; // only contribute those terms
+      result.add_multiple(KL_list[remap[yy]],acc[yy]);
 
-  std::vector<deformation_term_tp> result;
-  result.reserve(ee); // might be quite pessimistic, but not huge anyway
-
+  // correct signs in terms of result according to orientation numbers
   unsigned int orient_ee = orientation_number(sr(block,entry_elem));
-  for (BlockElt xx=ee; xx-->0; )
-    if (coef[xx]!=0)
-    {
-      int orient_express =
-	(orient_ee-orientation_number(sr(block,survivors[xx])))/2;
-      // if |orient_express| odd, we must multiply |coef| by $1-s$; however
-      // since only real part of $(1-s)coef$ is stored, this amounts to negation
-      if (orient_express%2!=0)
-      coef[xx] = -coef[xx]; // factor $(1-s)$ will remain implicit in result
-
-      result.push_back(deformation_term_tp(coef[xx],survivors[xx]));
-    }
+  for (SR_poly::iterator it=result.begin(); it!=result.end(); ++it)
+  {
+    unsigned int orient_x=orientation_number(it->first);
+    assert((orient_ee-orient_x)%2==0);
+    int orient_express = (orient_ee-orient_x)/2;
+    if (orient_express%2!=0)
+      it->second.times_s();
+  }
 
   return result;
 } // |deformation_terms|
-
 
 SR_poly Rep_table::deformation(const StandardRepr& z)
 {
@@ -592,8 +566,6 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   if (rp.size()==0) // without deformation terms
     return result; // don't even bother to store the result
 
-  ++calls; // only count calls that come to this point
-
   StandardRepr z_near = sr(z.x(),lam_rho,nu_z*rp.back());
   make_dominant(z_near);
 
@@ -601,10 +573,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   { // look up if closest reducibility point to |z| is already known
     unsigned long h=hash.find(z_near);
     if (h!=hash.empty and not def_formula[h].empty())
-    {
-      ++ hits;
       return def_formula[h];
-    }
   }
 
   for (unsigned i=rp.size(); i-->0; )
@@ -612,13 +581,9 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
     Rational r=rp[i];
     const StandardRepr zi = sr(z.x(),lam_rho,nu_z*r);
     non_integral_block b(*this,zi);
-    std::vector<deformation_term_tp> def_term = deformation_terms(b,b.size()-1);
-    for (unsigned j=0; j<def_term.size(); ++j)
-    {
-      StandardRepr zij = sr(b,def_term[j].elt);
-      Split_integer coef(def_term[j].coef,-def_term[j].coef);
-      result.add_multiple(deformation(zij),coef);
-    }
+    const SR_poly terms = deformation_terms(b,b.size()-1);
+    for (SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
+      result.add_multiple(deformation(it->first),it->second); // recursion
   }
 
   // now store result for future lookup

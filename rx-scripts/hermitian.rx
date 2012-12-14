@@ -17,13 +17,14 @@ set make_no0 (Param p) = p*0
 set make_nu0 (ParamPol P)= ParamPol:
   null_module(real_form(P)) + for w@p in P do (w,p*0) od
 
-{ orientation_number_term(p,q) = s^{[\ell_0(p)-\ell_0(q)]/2}= 1 or s }
-set orientation_number_term (Param p,Param q) = Split:
-  let on_p=orientation_nr(p), on_q=orientation_nr(q) in
-  if is_even(on_p-on_q)
-  then s^((on_p-on_q)\2)
-  else error("computing orientation number for odd difference of lengths")
-  fi
+{ orientation_number_term(orientation_nr(p),q) =
+  s^{[\ell_0(p)-\ell_0(q)]/2} which should be defined and gives 1 or s
+}
+set orientation_nr_term = (int,Param->Split):
+  let err()=
+    error("computing orientation number for odd difference of lengths")
+  then act=[(->Split)]: [()Split:1,err,():s,err]
+  in (int on_p,Param q) Split: act[(on_p-orientation_nr(q))%4]()
 
 { c_form_std:
   write c-invariant form on standard module in terms of standardrepks,
@@ -44,7 +45,7 @@ set c_form_std (Param p) = (ParamPol):
     P(x,y) is a cumulated KL polyomial
     (-1)^{ell(x)-ell(y)}P(x,y) is given by signedKL(y)[i] with indices[i]=x
        (note sign is taken care of already)
-    on(x,y)=orientation number given by orientation_number_term()
+    on(x,y)=orientation number given by orientation_nr_term()
     I(x)_c given as combination of standards x' with nu(x')=0 by c_form_std(x)
   algorithm: just compute the sum for J(y)_c, using signedKL and c_form_std
 }
@@ -53,7 +54,7 @@ set c_form_std (Param p) = (ParamPol):
 set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)]):
 ( let (block,kl,polys,stops,indices,cumulation)=partial_block (p)
   then klpolys=signedKL(#block-1,kl,polys,stops,indices,cumulation)
-  , P=null_module(real_form(p))
+  , P=null_module(real_form(p)), on_p=orientation_nr(p)
   , standards=[(Param,Split,ParamPol)]: []
   in
   for i:#indices downto 0 do
@@ -61,7 +62,7 @@ set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)]):
     if ev!=0 { this saves considerable time }
     then
       let form_on_standard=c_form_std(q)
-      , factor=ev*orientation_number_term(q,p)
+      , factor=ev*orientation_nr_term(on_p,q)
       in P +:= factor*form_on_standard
       ; standards #:= (q,factor,form_on_standard)
     fi
@@ -69,8 +70,18 @@ set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)]):
 ; (P,standards)
 )
 
+set KL_col(Param p)= ParamPol: { this is what built-in |KL_sum_at_s| does }
+  let (block,kl,polys,stops,indices,cumulation)=partial_block (p)
+  then klpolys=signedKL(#block-1,kl,polys,stops,indices,cumulation)
+  in null_module(real_form(p)) +
+     for i:#indices do (at_s(klpolys[i]),block[indices[i]]) od
+
 set c_form_irreducible (Param p)= ParamPol:
-  let (rv,)=c_form_irreducible_long(p) in rv
+( let on_p=orientation_nr(p), P = null_module(real_form(p))
+  in for ev@q in KL_sum_at_s(p)
+     do P+:= ev*orientation_nr_term(on_p,q)*full_deform(q) od
+  ; P
+)
 
 set print_c_form_irreducible_long (Param p) = void:
   let (f,b)=c_form_irreducible_long(p) in
@@ -153,7 +164,7 @@ set print_hermitian_form_irreducible([Param] P) = void:
    \sum a_i I_i[nu=0]=\sum_j w_j[s=1]I_j
 }
 { set test_form (ParamPol P,Param p)=
-  if P#1 = make_nu0(character_formula(p)) then
+  if eval(P,1) = make_nu0(character_formula(p)) then
     prints("Passed") else prints("Failed")
   fi
 }
