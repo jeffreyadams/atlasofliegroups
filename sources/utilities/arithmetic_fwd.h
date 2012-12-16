@@ -20,6 +20,8 @@ namespace atlas {
 
 namespace arithmetic {
 
+  typedef long long int Numer_t;
+  typedef unsigned long long int Denom_t;
   class Rational;
   typedef std::vector<Rational> RationalList;
   class Split_integer;

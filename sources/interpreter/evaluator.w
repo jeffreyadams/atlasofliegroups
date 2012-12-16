@@ -4562,7 +4562,8 @@ void vector_div_wrapper(expression_base::level l)
 void ratvec_unfraction_wrapper(expression_base::level l)
 { shared_rational_vector v = get<rational_vector_value>();
   if (l!=expression_base::no_value)
-  { push_value(new vector_value(v->val.numerator()));
+  { Weight num(v->val.numerator().begin(),v->val.numerator().end()); // convert
+    push_value(new vector_value(num));
     push_value(new int_value(v->val.denominator()));
     if (l==expression_base::single_value)
       wrap_tuple(2);

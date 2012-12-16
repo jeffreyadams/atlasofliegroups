@@ -372,7 +372,7 @@ matrix::Matrix<C> Smith_basis(const matrix::Matrix<C>& M,
     for (size_t i=start; i<stop; ++i)
       if (diagonal[i+1]%diagonal[i]!=0) // failure of divisibility condition
       {
-	unsigned long d, pa;
+	arithmetic::Denom_t d, pa;
         diagonal[i+1]=arithmetic::lcm(diagonal[i],diagonal[i+1],d,pa);
 	diagonal[i]=d;
 

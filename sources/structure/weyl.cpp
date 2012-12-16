@@ -583,7 +583,9 @@ void WeylGroup::act(const RootDatum& rd, const WeylElt& w, RootNbr& alpha) const
 }
 
 // Let |w| act on |v| according to reflection action in root datum |rd|
-void WeylGroup::act(const RootDatum& rd, const WeylElt& w, Weight& v) const
+template<typename C>
+  void WeylGroup::act
+    (const RootDatum& rd, const WeylElt& w,  matrix::Vector<C>& v) const
 {
   for (size_t i = d_rank; i-->0; )
   {
@@ -608,7 +610,9 @@ void WeylGroup::act(const RootDatum& rd, const WeylElt& w, LatticeMatrix& M)
 }
 
 
-void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, Weight& v) const
+template<typename C>
+  void WeylGroup::act
+  (const PreRootDatum& prd, const WeylElt& w, matrix::Vector<C>& v) const
 {
   for (size_t i = d_rank; i-->0; )
   {
@@ -1201,6 +1205,18 @@ void fillCoxMatrix(int_Matrix& cox,
   a.inv_conjugate(cox);
 }
 
+
+//				Template instantiation
+
 } // namespace
+
+namespace weyl {
+
+template
+void WeylGroup::act
+  (const RootDatum& rd, const WeylElt& w, matrix::Vector<int>& v) const;
+
+
+}
 
 } // namespace atlas

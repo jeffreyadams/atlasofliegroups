@@ -835,7 +835,7 @@ SubSystem get_parameter(RealReductiveGroup& GR,
       for (i=0; i<i_tab.imaginary_rank(i_x); ++i)
       {
 	RootNbr alpha = i_tab.imaginary_basis(i_x,i);
-	int v = l.scalarProduct(rd.coroot(alpha));
+	int v = l.dot(rd.coroot(alpha));
 	bool compact =
 	  kgb::status(kgb,x,rd,alpha)==gradings::Status::ImaginaryCompact;
 	if (v<0 or (v==0 and compact))
@@ -861,7 +861,7 @@ SubSystem get_parameter(RealReductiveGroup& GR,
   }
 
 
-  Weight& numer = gamma.numerator(); // we change |gamma| using it
+  Ratvec_Numer_t& numer = gamma.numerator(); // we change |gamma| using it
   bool changed = false;
 
   // although our goal is to make gamma dominant for the integral system only

@@ -63,8 +63,7 @@ public:
   Vector<C>& operator/= (C) throw (std::runtime_error);
   Vector<C>& negate (); // negates argument in place
 
-  C scalarProduct (const Vector<C>&) const;
-  C dot(const Vector<C>& v) const { return scalarProduct(v); } // alias
+  template<typename C1> C1 dot (const Vector<C1>& v) const;
   bool isZero() const;
 
   Vector<C> operator+ (const Vector<C>& v) const
@@ -77,6 +76,10 @@ public:
     { Vector<C> result(*this); return result /=c; }
   Vector<C> operator- () const
     { Vector<C> result(*this); return result.negate(); }
+
+  template<typename C1>
+    Vector<C1> scaled (C1 c) const // like operator*, but forces tye to C1
+  { Vector<C1> result(base::begin(),base::end()); return result *=c; }
 
 
   Matrix<C> row_matrix() const;    // vector as 1-row matrix
@@ -171,6 +174,8 @@ template<typename C> class Matrix : public Matrix_base<C>
       return result; }
 
   Vector<C> operator* (const Vector<C>&) const;
+  template<typename C1> Vector<C1> operator* (const Vector<C1>&) const;
+
   Vector<C> right_mult(const Vector<C>&) const;
   void apply_to(Vector<C>& v) const { v= operator*(v); }
 

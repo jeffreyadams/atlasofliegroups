@@ -24,7 +24,7 @@ namespace atlas {
 
 namespace abelian {
 
-typedef unsigned long GrpNbr;  //!< element of Abelian group, compact repr.
+typedef unsigned long long GrpNbr;  //!< element of Abelian group, compact repr.
 typedef std::vector<GrpNbr> GrpNbrList;
 typedef std::vector<unsigned long> GrpArr; //!< group element, array repr.
 typedef std::vector<GrpArr> GrpArrList;

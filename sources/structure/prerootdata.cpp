@@ -92,11 +92,10 @@ int_Matrix PreRootDatum::Cartan_matrix() const
   return Cartan;
 }
 
-void PreRootDatum::simpleReflect(Weight& v, weyl::Generator s)
+template<typename C>
+  void PreRootDatum::simpleReflect(matrix::Vector<C>& v, weyl::Generator s)
   const
-{
-  v -= d_roots[s]*v.dot(d_coroots[s]);
-}
+{ v -= d_roots[s].scaled(d_coroots[s].dot(v)); }
 
 void PreRootDatum::simple_reflect(weyl::Generator s, LatticeMatrix& M) const
 {
@@ -225,5 +224,12 @@ CoweightList corootBasis(const LieType& lt,
 
 
 } // namsepace
+
+namespace prerootdata {
+
+template void PreRootDatum::simpleReflect
+  (matrix::Vector<arithmetic::Numer_t>& v, weyl::Generator s) const;
+
+} // |namespace prerootdata|
 
 } // namespace atlas

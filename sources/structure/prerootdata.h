@@ -102,7 +102,8 @@ in the dual of the basis specified by argument b of the constructor.
 
   int_Matrix Cartan_matrix() const;
 
-  void simpleReflect(Weight& v, weyl::Generator i) const;
+  template<typename C>
+    void simpleReflect(matrix::Vector<C>& v, weyl::Generator i) const;
   void simple_reflect(weyl::Generator i, LatticeMatrix& M) const;
   void simple_reflect(LatticeMatrix& M,weyl::Generator i) const;
 

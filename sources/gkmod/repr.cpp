@@ -31,7 +31,7 @@ bool StandardRepr::operator== (const StandardRepr& z) const
 size_t StandardRepr::hashCode(size_t modulus) const
 { size_t hash=
     x_part + 375*y_bits.data().to_ulong()+83*infinitesimal_char.denominator();
-  const Weight& num=infinitesimal_char.numerator();
+  const Ratvec_Numer_t& num=infinitesimal_char.numerator();
   for (unsigned i=0; i<num.size(); ++i)
     hash= 11*(hash&(modulus-1))+num[i];
   return hash &(modulus-1);
@@ -95,9 +95,10 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
   const RatWeight gamma_rho = z.gamma() - RatWeight(rootDatum().twoRho(),2);
-  Weight im_part2 = gamma_rho.numerator()+theta*gamma_rho.numerator();
+  Ratvec_Numer_t im_part2 = gamma_rho.numerator()+theta*gamma_rho.numerator();
   im_part2 /= gamma_rho.denominator(); // exact: $(1+\theta)(\lambda-\rho)$
-  return (im_part2 + i_tab.unpack(i_x,z.y()))/=2; // division exact again
+  Weight i2(im_part2.begin(),im_part2.end()); // convert to |Weight|
+  return (i2 + i_tab.unpack(i_x,z.y()))/=2; // division exact again
 }
 
 // return $\lambda \in \rho+X^*$ as half-integer rational vector
@@ -111,7 +112,7 @@ RatWeight Rep_context::nu(const StandardRepr& z) const
 {
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const WeightInvolution& theta = complexGroup().involution_table().matrix(i_x);
-  const Weight num = z.gamma().numerator()-theta*z.gamma().numerator();
+  const Ratvec_Numer_t num = z.gamma().numerator()-theta*z.gamma().numerator();
   return RatWeight(num,2*z.gamma().denominator()).normalize();
 }
 
@@ -121,12 +122,12 @@ bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
   const RootDatum& rd = rootDatum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const InvolutionTable& i_tab = complexGroup().involution_table();
-  const Weight& numer = z.gamma().numerator();
+  const Ratvec_Numer_t& numer = z.gamma().numerator();
 
   for (unsigned i=0; i<i_tab.imaginary_rank(i_x); ++i)
   {
     const RootNbr alpha = i_tab.imaginary_basis(i_x,i);
-    if (numer.dot(rd.coroot(alpha))<0)
+    if (rd.coroot(alpha).dot(numer)<0)
       return witness=alpha,false;
   }
   return true;
@@ -139,12 +140,12 @@ bool Rep_context::is_zero(const StandardRepr& z, RootNbr& witness) const
   const RootDatum& rd = rootDatum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const InvolutionTable& i_tab = complexGroup().involution_table();
-  const Weight& numer = z.gamma().numerator();
+  const Ratvec_Numer_t& numer = z.gamma().numerator();
 
   for (unsigned i=0; i<i_tab.imaginary_rank(i_x); ++i)
   {
     const RootNbr alpha = i_tab.imaginary_basis(i_x,i);
-    if (numer.dot(rd.coroot(alpha))==0 and // simple-imaginary, singular
+    if (rd.coroot(alpha).dot(numer)==0 and // simple-imaginary, singular
 	not kgb().simple_imaginary_grading(z.x(),alpha)) // and compact
       return witness=alpha,true;
   }
@@ -181,7 +182,7 @@ void Rep_context::make_dominant(StandardRepr& z) const
   // the following are non-|const|, and modified in the loop below
   Weight lr = lambda_rho(z);
   KGBElt& x = z.x_part;
-  Weight& numer = z.infinitesimal_char.numerator();
+  Ratvec_Numer_t& numer = z.infinitesimal_char.numerator();
   InvolutionNbr i_x = kgb().inv_nr(x);
 
   { weyl::Generator s;
@@ -218,8 +219,8 @@ RationalList Rep_context::reducibility_points(const StandardRepr& z) const
   const Permutation& theta = i_tab.root_involution(i_x);
 
   const RatWeight& gamma = z.gamma();
-  const Weight& numer = gamma.numerator();
-  const long d = gamma.denominator();
+  const Ratvec_Numer_t& numer = gamma.numerator();
+  const arithmetic::Numer_t d = gamma.denominator();
   const Weight lam_rho = lambda_rho(z);
 
   const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
@@ -232,7 +233,8 @@ RationalList Rep_context::reducibility_points(const StandardRepr& z) const
 
   for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
   {
-    long num = numer.dot(rd.coroot(*it)); // numerator of $\<\nu,\alpha^v>$
+    arithmetic::Numer_t num =
+      rd.coroot(*it).dot(numer); // numerator of $\<\nu,\alpha^v>$
     if (num!=0)
     {
       long lam_alpha = lam_rho.dot(rd.coroot(*it))+rd.colevel(*it);
@@ -245,9 +247,9 @@ RationalList Rep_context::reducibility_points(const StandardRepr& z) const
   for (RootNbrSet::iterator it=pos_complex.begin(); it(); ++it)
   {
     RootNbr alpha=*it, beta=theta[alpha];
-    long vala = numer.dot(rd.coroot(alpha));
-    long valb = numer.dot(rd.coroot(beta));
-    long num = vala - valb;   // numerator of $2\<\nu,\alpha^v>$
+    arithmetic::Numer_t vala = rd.coroot(alpha).dot(numer);
+    arithmetic::Numer_t valb = rd.coroot(beta).dot(numer);
+    arithmetic::Numer_t num = vala - valb; // numerator of $2\<\nu,\alpha^v>$
     if (num!=0)
     {
       assert((vala+valb)%d==0); // since |\<\gamma,a+b>=\<\lambda,a+b>|
@@ -299,8 +301,8 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const RootNbrSet real = i_tab.real_roots(i_x);
   const Permutation& root_inv = i_tab.root_involution(i_x);
-  const Weight& numer = z.gamma().numerator();
-  const int denom = z.gamma().denominator();
+  const Ratvec_Numer_t& numer = z.gamma().numerator();
+  const arithmetic::Numer_t denom = z.gamma().denominator();
   const Weight test_wt = i_tab.unpack(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
 
   unsigned count = 0;
@@ -309,7 +311,7 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   {
     const RootNbr alpha = rd.numPosRoots()+i;
     const Weight& av = rootDatum().coroot(alpha);
-    const int num = av.dot(numer);
+    const arithmetic::Numer_t num = av.dot(numer);
     if (num%denom!=0) // skip integral roots
     { if (real.isMember(alpha))
       {
@@ -373,7 +375,7 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
 
   RankFlags singular_real_parity;
   for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
-    if (gamma.numerator().dot(rd.simpleCoroot(s))==0)
+    if (rd.simpleCoroot(s).dot(gamma.numerator())==0)
     { if (i_tab.is_real_simple(i_x,s))
 	singular_real_parity.set // record whether |s| is a real parity root
 	  // |unpack| gives $(1-\theta)(\lambda-\rho)$

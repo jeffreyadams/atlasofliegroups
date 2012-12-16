@@ -37,7 +37,7 @@ namespace abelian {
 
 /******** constructors and destructors ***************************************/
 
-FiniteAbelianGroup::FiniteAbelianGroup(const std::vector<unsigned long>& t)
+FiniteAbelianGroup::FiniteAbelianGroup(const GroupType& t)
   : d_size(1)
   , d_type(t)
   , d_cotype(t.size())
@@ -180,17 +180,14 @@ GrpNbr FiniteAbelianGroup::leftApply(GrpNbr x, const Endomorphism& q) const
 */
 GrpArr& FiniteAbelianGroup::leftApply(GrpArr& a, const Endomorphism& q) const
 {
-  GrpArr tmp = a;
+  GrpArr tmp = a; // need a copy, because reading/writing are not in step
 
   for (size_t i=0; i<q.numRows(); ++i)
   {
     unsigned long r = 0;
     for (size_t j=0; j<q.numColumns(); ++j)
-    {
-      unsigned long s = tmp[j];
-      arithmetic::modProd(s,q(i,j),d_type[i]);
-      arithmetic::modAdd(r,s,d_type[i]);
-    }
+      r = arithmetic::modAdd(r,arithmetic::modProd(tmp[j],q(i,j),d_type[i]),
+			     d_type[i]);
     a[i] = r; // $\sum_j q_{i,j}a_j$
   }
 
@@ -216,13 +213,13 @@ unsigned long FiniteAbelianGroup::order(GrpNbr x) const
 
 /*!
 
-  \brief Computes the order of x modulo B, where |B| is a subgroup
+  \brief Computes the order of |x| modulo |B|, where |B| is a subgroup
   represented by flagging the |GrpNbr| values of its elements in a bitmap
 
   We just keep adding |x| until we end up at an element flagged in |B|
 */
 unsigned long FiniteAbelianGroup::order(const bitmap::BitMap& B,
-					GrpNbr x) const
+					      GrpNbr x) const
 {
   if (B.isMember(x))
     return 1;
@@ -248,10 +245,9 @@ unsigned long FiniteAbelianGroup::pairing(const GrpArr& a, const GrpArr& b)
 {
   unsigned long m = 0;
   unsigned long n = annihilator();
-  unsigned long p; // temporary needed to beat destructive character |modProd|
 
   for (size_t i=0; i<rank(); ++i)
-    arithmetic::modAdd(m,arithmetic::modProd(p=a[i],b[i]*d_cotype[i],n),n);
+    m = arithmetic::modAdd(m,arithmetic::modProd(a[i],b[i]*d_cotype[i],n),n);
 
   return m;
 }
@@ -290,7 +286,7 @@ GrpNbr FiniteAbelianGroup::prod(GrpNbr x, unsigned long n) const
 {
   GrpArr a = toArray(x);
   for (size_t i=0; i<rank(); ++i)
-    arithmetic::modProd(a[i],n,d_type[i]);
+    a[i]=arithmetic::modProd(a[i],n,d_type[i]);
 
   return toGrpNbr(a);
 }
@@ -375,11 +371,11 @@ GrpArr Homomorphism::operator*(const GrpArr& a) const
   for (size_t i=0; i<dest.size(); ++i)
   {
     for (size_t j=0; j<a.size(); ++j)
-    {
-      unsigned long p=d_matrix(i,j);
-      arithmetic::modProd(p,d_cosource[j]*a[j],d_annihilator);
-      arithmetic::modAdd(dest[i],p,d_annihilator);
-    }
+      dest[i] =
+	arithmetic::modAdd(dest[i],
+			   arithmetic::modProd(d_matrix(i,j),d_cosource[j]*a[j],
+					       d_annihilator),
+			   d_annihilator);
 
     assert(dest[i]%d_codest[i] == 0);
     dest[i] /= d_codest[i];

@@ -162,9 +162,9 @@ TorusElement GlobalTitsGroup::twisted(const TorusElement& x) const
 TorusElement GlobalTitsGroup::theta_tr_times_torus(const GlobalTitsElement& a)
   const
 { RatWeight rw = a.torus_part().log_pi(false);
-  matrix::Vector<int> num = delta_tr*rw.numerator();
-  weylGroup().act(simple,a.tw(),num);
-  return y_values::exp_pi(RatWeight(num,rw.denominator()));
+  RatWeight delta_rw(delta_tr*rw.numerator(),rw.denominator());
+  weylGroup().act(simple,a.tw(),delta_rw);
+  return y_values::exp_pi(delta_rw);
 }
 
 // this is currently only used by |has_central_square| (with |do_twist==true|)

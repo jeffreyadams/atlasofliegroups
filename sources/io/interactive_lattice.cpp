@@ -328,14 +328,17 @@ LatticeMatrix makeOrthogonal
   (const RatWeightList& rwl, size_t r)
 {
   // find common denominator
-  unsigned long d = 1;
+  arithmetic::Denom_t d = 1;
   for (size_t i=0; i<rwl.size(); ++i)
     d = arithmetic::lcm(d,rwl[i].denominator());
 
   LatticeMatrix m(r,rwl.size()); // matrix of numerators
 
   for (size_t j=0; j<m.numColumns(); ++j)
-    m.set_column(j,rwl[j].numerator()*(d/rwl[j].denominator()));
+  {
+    Weight num(rwl[j].numerator().begin(),rwl[j].numerator().end()); // convert
+    m.set_column(j,num*LatticeCoeff(d/rwl[j].denominator()));
+  }
 
   // find "orthogonal" basis
   int_Matrix row,col;

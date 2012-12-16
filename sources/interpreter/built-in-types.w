@@ -860,7 +860,8 @@ the new denominator~|d|.
 @.Length mismatch...@>
         +str(gen.size()) + ':' + str(v->val.size()));
 
-    M.set_column(j,gen.numerator());
+    Weight col(gen.numerator().begin(),gen.numerator().end()); // convert
+    M.set_column(j,col);
     for (size_t i=0; i<v->val.size(); ++i)
       if (v->val[i]*M(i,j)%long(denom[j])!=0) // must use signed arithmetic!!
 	throw std::runtime_error("Improper generator entry: "

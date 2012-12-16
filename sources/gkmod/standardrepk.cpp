@@ -295,9 +295,9 @@ SRK_context::height(const StandardRepK& sr) const
   level sum=0;
   for (rootdata::WRootIterator
 	 it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
-    sum +=arithmetic::abs(mu.scalarProduct(*it));
+    sum +=arithmetic::abs(mu.dot(*it));
 
-  return sum/2; // each |scalarProduct| above is even
+  return sum/2; // each |dot| above is even
 } // |SRK_context::height|
 
 
@@ -326,13 +326,13 @@ level SRK_context::height_bound(const Weight& lambda)
     new_negatives.reset();
     mu=get_projection(negatives).projection*lambda;
     for (size_t i=0; i<rd.semisimpleRank(); ++i)
-      if (not negatives[i] and mu.scalarProduct(rd.simpleCoroot(i))<0)
+      if (not negatives[i] and mu.dot(rd.simpleCoroot(i))<0)
 	new_negatives.set(i);
     negatives |= new_negatives;
   }
   while (new_negatives.any());
 
-  level sp=mu.scalarProduct(rd.dual_twoRho());
+  level sp=mu.dot(rd.dual_twoRho());
   level d=2*get_projection(negatives).denom; // double to match |sum/2| above
   return (sp+d-1)/d; // round upwards, since height is always integer
 } // |SRK_context::height_bound|
@@ -345,7 +345,7 @@ bool SRK_context::isStandard(const StandardRepK& sr, size_t& witness) const
   const Fiber& f=fiber(sr);
 
   for (size_t i=0; i<f.imaginaryRank(); ++i)
-    if (lambda.scalarProduct(rd.coroot(f.simpleImaginary(i)))<0)
+    if (lambda.dot(rd.coroot(f.simpleImaginary(i)))<0)
     {
       witness=i; return false;
     }
@@ -376,7 +376,7 @@ bool SRK_context::isZero(const StandardRepK& sr, size_t& witness) const
 
   for (size_t i=0; i<f.imaginaryRank(); ++i)
     if (not basedTitsGroup().grading(a,f.simpleImaginary(i)) // i.e., compact
-	and lambda.scalarProduct(rd.coroot(f.simpleImaginary(i)))==0)
+	and lambda.dot(rd.coroot(f.simpleImaginary(i)))==0)
     {
       witness=i; return true;
     }
@@ -392,7 +392,7 @@ bool SRK_context::isFinal(const StandardRepK& sr, size_t& witness) const
 
   // since coordinates are doubled, the scalar product below is always even
   for (size_t i=0; i<f.realRank(); ++i)
-    if (lambda.scalarProduct(rd.coroot(f.simpleReal(i)))%4 == 0)
+    if (lambda.dot(rd.coroot(f.simpleReal(i)))%4 == 0)
     {
       witness=i; return false;
     }
@@ -630,9 +630,9 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
 	size_t k=sub_inv[kgb().cayley(*it,x)];
 	assert(k!=~0ul); // we ought to land in the subset
 	Weight nu=mu[k]; // $\rho-\lambda$ at split side
-	assert(nu.scalarProduct(rd.simpleCoroot(*it))%2 == 0); // finality
+	assert(nu.dot(rd.simpleCoroot(*it))%2 == 0); // finality
 	Weight alpha=rd.simpleRoot(*it);
-	nu -= (alpha *= nu.scalarProduct(rd.simpleCoroot(*it))/2); // project
+	nu -= (alpha *= nu.dot(rd.simpleCoroot(*it))/2); // project
 	mu.push_back(nu); // use projected weight at compact side of transform
 	break;
       }
@@ -775,9 +775,9 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
 	size_t k=sub_inv[kgb().cayley(*it,x)];
 	assert(k!=~0ul); // we ought to land in the subset
 	Weight nu=mu[k]; // $\rho-\lambda$ at split side
-	assert(nu.scalarProduct(rd.simpleCoroot(*it))%2 == 0); // finality
+	assert(nu.dot(rd.simpleCoroot(*it))%2 == 0); // finality
 	Weight alpha=rd.simpleRoot(*it);
-	nu -= (alpha *= nu.scalarProduct(rd.simpleCoroot(*it))/2); // project
+	nu -= (alpha *= nu.dot(rd.simpleCoroot(*it))/2); // project
 	mu.push_back(nu); // use projected weight at compact side of transform
 	break;
       }

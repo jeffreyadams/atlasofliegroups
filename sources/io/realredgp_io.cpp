@@ -192,7 +192,7 @@ std::ostream& printStrongReal(std::ostream& strm,
       for (Grading::iterator it=base_grading.begin(); it(); ++it)
 	z += G_C.rootDatum().fundamental_coweight(*it);
 
-      Weight& zn = z.numerator();
+      Ratvec_Numer_t& zn = z.numerator();
       for (size_t i=0; i<z.size(); ++i)
         zn[i]=arithmetic::remainder(zn[i],z.denominator());
       strm << "class #" << f_csc
