@@ -1141,11 +1141,11 @@ WeightInvolution refl_prod(const RootNbrSet& rset, const RootDatum& rd)
 
 RootDatum integrality_datum(const RootDatum& rd, const RatWeight& nu)
 {
-  int n=nu.denominator();
-  const Weight& v=nu.numerator();
+  arithmetic::Numer_t n=nu.denominator(); // signed type!
+  const Ratvec_Numer_t& v=nu.numerator();
   RootNbrSet int_roots(rd.numRoots());
   for (size_t i=0; i<rd.numPosRoots(); ++i)
-    if (v.dot(rd.posCoroot(i))%n == 0)
+    if (rd.posCoroot(i).dot(v)%n == 0)
       int_roots.insert(rd.posRootNbr(i));
 
   return rd.sub_datum(rd.simpleBasis(int_roots));
@@ -1153,11 +1153,11 @@ RootDatum integrality_datum(const RootDatum& rd, const RatWeight& nu)
 
 unsigned int integrality_rank(const RootDatum& rd, const RatWeight& nu)
 {
-  int n=nu.denominator();
-  const Weight& v=nu.numerator();
+  arithmetic::Numer_t n=nu.denominator(); // signed type!
+  const Ratvec_Numer_t& v=nu.numerator();
   RootNbrSet int_roots(rd.numRoots());
   for (size_t i=0; i<rd.numPosRoots(); ++i)
-    if (v.dot(rd.posCoroot(i))%n == 0)
+    if (rd.posCoroot(i).dot(v)%n == 0)
       int_roots.insert(rd.posRootNbr(i));
 
   return rd.simpleBasis(int_roots).size();
@@ -1166,19 +1166,20 @@ unsigned int integrality_rank(const RootDatum& rd, const RatWeight& nu)
 RationalList integrality_points(const RootDatum& rd, RatWeight& nu)
 {
   nu.normalize();
-  unsigned long d = nu.denominator();
+  arithmetic::Denom_t d = nu.denominator(); // unsigned type is safe here
 
-  std::set<long> products;
+  std::set<arithmetic::Denom_t> products;
   for (size_t i=0; i<rd.numPosRoots(); ++i)
   {
-    long p = abs(nu.numerator().dot(rd.posCoroot(i)));
+    arithmetic::Denom_t p = abs(rd.posCoroot(i).dot(nu.numerator()));
     if (p!=0)
       products.insert(p);
   }
 
   std::set<Rational> fracs;
-  for (std::set<long>::iterator it= products.begin(); it!=products.end(); ++it)
-    for (long s=d; s<=*it; s+=d)
+  for (std::set<arithmetic::Denom_t>::iterator
+	 it= products.begin(); it!=products.end(); ++it)
+    for (arithmetic::Denom_t s=d; s<=*it; s+=d)
       fracs.insert(Rational(s,*it));
 
   return RationalList(fracs.begin(),fracs.end());

@@ -35,7 +35,7 @@ namespace arithmetic {
 /*!
   The classical Euclidian algorithm. It is assumed that b > 0;
 */
-unsigned long unsigned_gcd(unsigned long a, unsigned long b)
+Denom_t unsigned_gcd(Denom_t a, Denom_t b)
 {
   do
     if ((a %= b)==0)
@@ -45,35 +45,34 @@ unsigned long unsigned_gcd(unsigned long a, unsigned long b)
 }
 
 
-unsigned long dummy_gcd, dummy_Bezout; // for default arguments to |lcm|
+Denom_t dummy_gcd, dummy_mult; // for default arguments to |lcm|
 
-/*!
-  \brief Returns the least common multiple of |a| and |b|, storing their
-   greatest common divisor in |gcd| and making |Bezout%a==0|, |Bezout%b==gcd|
+/* |lcm(a,b,gcd,mult_a)| returns the least common multiple of |a| and |b|,
+   sets |gcd| to their greatest common divisor and |mult_a| to a multiple of
+   |a| with |gcd==mult_a%b|. A Bezout coefficient for |a| is |mult_a/gcd|.
 
   Precondition: a > 0;
 */
-unsigned long lcm (unsigned long a, unsigned long b,
-		   unsigned long& gcd, unsigned long& Bezout)
+Denom_t lcm (Denom_t a, Denom_t b, Denom_t& gcd, Denom_t& mult_a)
 {
-  unsigned long c=a, d=b; // local variables for the sake of readability
-  unsigned long m_c=a, m_d=0; // multiples of |a|, cong. to  |c|,|-d| mod |b|
+  Denom_t c=a, d=b; // local variables for the sake of readability
+  Denom_t m_c=a, m_d=0; // multiples of |a|, cong. to  |c|,|-d| mod |b|
 
   do // invariants: |c*m_d+d*m_c==ab|; $m_c\cong c$, $m_d\cong-d$ modulo $b$
   {
     m_d += (d/c)*m_c; d%=c;
     if (d==0)
-    { gcd = c; Bezout=m_c; return m_d; }
+    { gcd = c; mult_a=m_c; return m_d; }
     m_c += (c/d)*m_d; c%=d;
   } while (c>0);
 
-  gcd = d; Bezout= m_d==0 ? 0 : m_c-m_d; // |m_d<m_c| as we just had |c/d>=1|
+  gcd = d; mult_a= m_d==0 ? 0 : m_c-m_d; // |m_d<m_c| as we just had |c/d>=1|
   return m_c;
 }
 
 
 /*!
-  Synopsis: a *= b mod n.
+  Synopsis: return a * b mod n.
 
   Precondition: a < n; b < n.
 
@@ -81,24 +80,21 @@ unsigned long lcm (unsigned long a, unsigned long b,
   i.e., mudular numbers fit in a half-long
   Exit brutally if this is not fulfilled.
 */
-unsigned long& modProd(unsigned long& a, unsigned long b, unsigned long n)
+Denom_t modProd(Denom_t a, Denom_t b, Denom_t n)
 {
   if (n > (1UL << (constants::longBits >> 1)))
     error::FatalError() ("error: overflow in modProd");
 
-  a *= b;
-  a %= n;
-
-  return a;
+  return (a * b) % n;
 }
 
-unsigned long power(unsigned long x, unsigned int n)
+Denom_t power(Denom_t x, unsigned int n)
 { if (n==0)
     return 1;
   if (x<=1)
     return x;
   unsigned int l=bits::lastBit(n); // now $n<2^l$
-  unsigned long result=1;
+  Denom_t result=1;
   while (l-->0)
   { result *= result;
     if ((n>>l & 1)!=0)
@@ -107,10 +103,10 @@ unsigned long power(unsigned long x, unsigned int n)
   return result;
 }
 
-Rational& Rational::operator+=(long n) { num+=n*denom; return *this; }
-Rational& Rational::operator-=(long n) { num-=n*denom; return *this; }
+Rational& Rational::operator+=(Numer_t n) { num+=n*denom; return *this; }
+Rational& Rational::operator-=(Numer_t n) { num-=n*denom; return *this; }
 
-Rational& Rational::operator*=(long n)
+Rational& Rational::operator*=(Numer_t n)
 { if (n==0)
   { num=0; denom=1; }
   else
@@ -125,7 +121,7 @@ Rational& Rational::operator*=(long n)
   return *this;
 }
 
-Rational& Rational::operator/=(long n)
+Rational& Rational::operator/=(Numer_t n)
 { if (n<0)
   { n=-n; num=-num; }
   if (num%n==0)
@@ -137,14 +133,14 @@ Rational& Rational::operator/=(long n)
 
 Rational Rational::operator+(Rational q) const
 {
-  unsigned long sum_denom=lcm(denom,q.denom);
-  return Rational(num*long(sum_denom/denom)+q.num*long(sum_denom/q.denom),
+  Denom_t sum_denom=lcm(denom,q.denom);
+  return Rational(num*Numer_t(sum_denom/denom)+q.num*Numer_t(sum_denom/q.denom),
 		  sum_denom);
 }
 Rational Rational::operator-(Rational q) const
 {
-  unsigned long sum_denom=lcm(denom,q.denom);
-  return Rational(num*long(sum_denom/denom)-q.num*long(sum_denom/q.denom),
+  Denom_t sum_denom=lcm(denom,q.denom);
+  return Rational(num*Numer_t(sum_denom/denom)-q.num*Numer_t(sum_denom/q.denom),
 		  sum_denom);
 }
 
@@ -156,24 +152,24 @@ Rational Rational::operator*(Rational q) const
 Rational Rational::operator/(Rational q) const
 {
   if (q.num>0)
-    return Rational(num*long(q.denom),denom*q.num).normalize();
+    return Rational(num*Numer_t(q.denom),denom*q.num).normalize();
   else if (q.num==0)
     throw std::domain_error("Rational division by 0");
   else
-    return Rational(-num*long(q.denom),denom*-q.num).normalize();
+    return Rational(-num*Numer_t(q.denom),denom*-q.num).normalize();
 }
 
 Rational& Rational::power(int n)
 {
   normalize();
-  unsigned long numer=arithmetic::abs(num);
+  Denom_t numer=arithmetic::abs(num);
   if (n<0)
   { if (num==0)
       throw std::domain_error("Negative power of rational zero");
     std::swap(numer,denom); n=-n;
   }
   numer = arithmetic::power(numer,n); denom = arithmetic::power(denom,n);
-  num = (num>0 ? numer : - long(numer));
+  num = (num>0 ? numer : - Numer_t(numer));
   return *this;
 }
 

@@ -621,15 +621,15 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
     assert(Tg.is_valid(GlobalTitsElement(t,tw)));
 
     Weight tworho_nonintegral_real(GR.rank(),0);
-    LatticeCoeff n=gamma.denominator();
-    Weight v=gamma.numerator();
+    arithmetic::Numer_t n=gamma.denominator();
+    Ratvec_Numer_t v=gamma.numerator();
     size_t numpos = rd.numPosRoots();
 
     for(size_t j=0; j<numpos; ++j)
     {
       RootNbr alpha = rd.posRootNbr(j); // that's |j+numpos|
       if (theta*rd.root(alpha) == -rd.root(alpha) and
-	  v.dot(rd.coroot(alpha)) %n !=0 ) // whether coroot is NONintegral real
+	  rd.coroot(alpha).dot(v) %n !=0 ) // whether coroot is NONintegral real
 	tworho_nonintegral_real += rd.root(alpha); //if so add it
     }
 
@@ -1554,7 +1554,7 @@ Weight non_integral_block::lambda_rho(BlockElt z) const
   RatWeight lr =
     (infin_char - t - RatWeight(GR.rootDatum().twoRho(),2)).normalize();
   assert(lr.denominator()==1);
-  return lr.numerator();
+  return Weight(lr.numerator().begin(),lr.numerator().end());
 }
 
 // reconstruct $\lambda$ from $\gamma$ and the torus part $t$ of $y$ using the
@@ -1565,7 +1565,7 @@ RatWeight non_integral_block::lambda(BlockElt z) const
   InvolutionNbr i_x = kgb.inv_nr(parent_x(z));
   const WeightInvolution& theta = involution_table().matrix(i_x);
   RatWeight t =  y_info[d_y[z]].log_2pi();
-  const Weight& num = t.numerator();
+  const Ratvec_Numer_t& num = t.numerator();
   return infin_char - RatWeight(num-theta*num,t.denominator());
 }
 

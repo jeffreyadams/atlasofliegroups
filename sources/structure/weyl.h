@@ -583,14 +583,18 @@ public:
   // reflection action of Weyl group on a root
   void act(const RootDatum& rd, const WeylElt& w, RootNbr& alpha) const;
   // standard reflection action of Weyl group using a root datum
-  void act(const RootDatum& rd, const WeylElt& w, Weight& v) const;
+  template<typename C>
+    void act(const RootDatum& rd, const WeylElt& w, matrix::Vector<C>& v)
+    const;
   // standard reflection action of Weyl group using a root datum
   void act(const RootDatum& rd, const WeylElt& w, RatWeight& v) const;
   // standard reflection action of Weyl group using a root datum
   void act(const RootDatum& rd, const WeylElt& w, LatticeMatrix& M) const;
 
   // same using only lists of simple (co)roots avoiding construction root datum
-  void act(const PreRootDatum& prd, const WeylElt& w, Weight& v) const;
+  template<typename C>
+    void act(const PreRootDatum& prd, const WeylElt& w, matrix::Vector<C>& v)
+    const;
   void act(const PreRootDatum& prd, const WeylElt& w, RatWeight& v) const;
   void act(const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M) const;
  /*!

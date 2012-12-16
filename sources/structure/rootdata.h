@@ -476,24 +476,32 @@ use by accessors.
     { return simpleRoot(i).dot(simpleCoroot(j)); }
 
   //!\brief  Applies to |lambda| the reflection about root |alpha|.
-  void reflect(Weight& lambda, RootNbr alpha) const
-    { lambda -= root(alpha)*lambda.dot(coroot(alpha)); }
+  template<typename C>
+  void reflect(matrix::Vector<C>& lambda, RootNbr alpha) const
+  { lambda -= root(alpha).scaled(coroot(alpha).dot(lambda)); }
   //!\brief  Applies reflection about coroot |alpha| to a coweight
-  void coreflect(Coweight& co_lambda, RootNbr alpha) const
-    { co_lambda -= coroot(alpha)*co_lambda.dot(root(alpha)); }
+  template<typename C>
+  void coreflect(matrix::Vector<C>& co_lambda, RootNbr alpha) const
+  { co_lambda -= coroot(alpha).scaled(root(alpha).dot(co_lambda)); }
 
   // on matrices we have left and right multiplication by reflection matrices
   void reflect(RootNbr alpha, LatticeMatrix& M) const;
   void reflect(LatticeMatrix& M,RootNbr alpha) const;
 
-  Weight reflection(Weight lambda, RootNbr alpha) const
+  template<typename C>
+    matrix::Vector<C>
+    reflection(matrix::Vector<C> lambda, RootNbr alpha) const
     { reflect(lambda,alpha); return lambda; }
-  Coweight coreflection(Coweight co_lambda, RootNbr alpha) const
+  template<typename C>
+  matrix::Vector<C>
+    coreflection(matrix::Vector<C> co_lambda, RootNbr alpha) const
     { coreflect(co_lambda,alpha); return co_lambda; }
 
-  void simpleReflect(Weight& v, weyl::Generator i) const
+  template<typename C>
+  void simpleReflect(matrix::Vector<C>& v, weyl::Generator i) const
     { reflect(v,simpleRootNbr(i)); }
-  void simpleCoreflect(Coweight& v, weyl::Generator i) const
+  template<typename C>
+  void simpleCoreflect(matrix::Vector<C>& v, weyl::Generator i) const
     { coreflect(v,simpleRootNbr(i)); }
 
   void simple_reflect(weyl::Generator i, LatticeMatrix& M) const
@@ -502,9 +510,13 @@ use by accessors.
   { reflect(M,simpleRootNbr(i)); }
 
 
-  Weight simpleReflection(Weight lambda, weyl::Generator i) const
+  template<typename C>
+    matrix::Vector<C>
+    simpleReflection(matrix::Vector<C> lambda, weyl::Generator i) const
     { simpleReflect(lambda,i); return lambda; }
-  Coweight simpleCoreflection(Coweight co_lambda, weyl::Generator i) const
+  template<typename C>
+    matrix::Vector<C>
+    simpleCoreflection(matrix::Vector<C> co_lambda, weyl::Generator i) const
     { simpleCoreflect(co_lambda,i); return co_lambda; }
 
   WeylWord to_dominant(Weight lambda) const; // call by value

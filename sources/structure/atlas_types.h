@@ -62,7 +62,12 @@ namespace atlas {
   namespace bitmap { class BitMap; }
   using bitmap::BitMap;
 
-  namespace arithmetic { class Rational; class Split_integer; }
+  namespace arithmetic {
+    typedef long long int Numer_t;
+    typedef unsigned long long int Denom_t;
+    class Rational;
+    class Split_integer;
+  }
   using arithmetic::Rational;
   typedef std::vector<Rational> RationalList;
   using arithmetic::Split_integer;
@@ -145,8 +150,9 @@ namespace atlas {
   // when related to a root system, these alternatives can be used
   typedef int_Vector Weight;
   typedef int_Vector Coweight;
-  typedef ratvec::RationalVector<int> RatWeight;
-  typedef ratvec::RationalVector<int> RatCoweight;
+  typedef ratvec::RationalVector<arithmetic::Numer_t> RatWeight;
+  typedef ratvec::RationalVector<arithmetic::Numer_t> RatCoweight;
+  typedef matrix::Vector<arithmetic::Numer_t> Ratvec_Numer_t;
   typedef int_Matrix WeightInvolution;
   typedef int_Matrix CoweightInvolution;
 

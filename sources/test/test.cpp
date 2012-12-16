@@ -1283,11 +1283,11 @@ TorusElement torus_part
 {
   InvolutionData id(rd,theta);
   Weight cumul(rd.rank(),0);
-  LatticeCoeff n=gamma.denominator();
-  Weight v=gamma.numerator();
+  arithmetic::Numer_t n=gamma.denominator();
+  const Ratvec_Numer_t& v=gamma.numerator();
   const RootNbrSet pos_real = id.real_roots() & rd.posRootSet();
   for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
-    if (v.dot(rd.coroot(*it)) %n !=0) // nonintegral
+    if (rd.coroot(*it).dot(v) %n !=0) // nonintegral
       cumul+=rd.root(*it);
   // now |cumul| is $2\rho_\Re(G)-2\rho_\Re(G(\gamma))$
 

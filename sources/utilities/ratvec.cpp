@@ -24,15 +24,17 @@ namespace ratvec {
 //		      The RationalVector class template
 
 template<typename C>
-RationalVector<C>::RationalVector(const V& v, C d)
- : d_num(v), d_denom(arithmetic::abs(d))
+template<typename C1>
+RationalVector<C>::RationalVector(const  matrix::Vector<C1>& v, C d)
+  : d_num(v.begin(),v.end()), d_denom(arithmetic::abs(d))
 { if (d<C(0)) d_num*=-C(1); }
 
 // the following implementation assumes |long| can hold cross products
 template<typename C>
   bool RationalVector<C>::operator==(const RationalVector<C>& v) const
 { return  // cross multiply
-    d_num*(signed long)v.d_denom == v.d_num*(signed long)d_denom;
+    d_num*arithmetic::Numer_t(v.d_denom) ==
+    v.d_num*arithmetic::Numer_t(d_denom);
 }
 
 template<typename C>
@@ -40,7 +42,8 @@ template<typename C>
 { // cross multiply component-wise, and compare
   for (size_t i=0; i<d_num.size(); ++i)
   {
-    C d = d_num[i]*(signed long)v.d_denom - v.d_num[i]*(signed long)d_denom;
+    C d = d_num[i]*arithmetic::Numer_t(v.d_denom)
+      - v.d_num[i]*arithmetic::Numer_t(d_denom);
     if (d!=0)
       return d<0;
   }
@@ -51,8 +54,8 @@ template<typename C>
 RationalVector<C> RationalVector<C>::operator+(const RationalVector<C>& v)
   const
 {
-  unsigned long gcd, m = arithmetic::lcm(d_denom,v.d_denom,gcd);
-  unsigned long f = v.d_denom/gcd;
+  arithmetic::Denom_t gcd, m = arithmetic::lcm(d_denom,v.d_denom,gcd);
+  arithmetic::Denom_t f = v.d_denom/gcd;
   assert (f==m/d_denom); // if this fails, then there was overflow on m
   RationalVector<C> result(d_num*f,m);
   result.d_num += v.d_num*(d_denom/gcd);
@@ -64,13 +67,14 @@ RationalVector<C> RationalVector<C>::operator+(const RationalVector<C>& v)
 template<typename C>
 RationalVector<C>& RationalVector<C>::operator*=(C n)
 {
-  if (n!=0 and ((signed long)d_denom)%n==0) // avoid converting |n| to unsigned
+  if (n!=0 and
+      arithmetic::Numer_t(d_denom)%n==0) // avoid converting |n| to unsigned
     if (n>0)
-      d_denom/=(unsigned long)n; // unsigned arithmetic OK here
+      d_denom/=arithmetic::Denom_t(n); // unsigned arithmetic OK here
     else
     {
       d_num=-d_num;
-      d_denom/=(unsigned long)(-n);
+      d_denom/=arithmetic::Numer_t(-n);
     }
   else d_num*=n;
   return *this;
@@ -82,12 +86,12 @@ template<typename C>
 RationalVector<C>& RationalVector<C>::operator/=(C n)
 {
   if (n>0)
-    d_denom*=(unsigned long)n;
+    d_denom*=arithmetic::Denom_t(n);
   else
   {
     assert(n!=0);
     d_num=-d_num;
-    d_denom*=(unsigned long)(-n);
+    d_denom*=arithmetic::Denom_t(-n);
   }
   return *this;
 }
@@ -103,7 +107,7 @@ const
 template<typename C>
 RationalVector<C>& RationalVector<C>::normalize()
 {
-  unsigned long d=d_denom;
+  arithmetic::Denom_t d=d_denom;
 
   if (d==0)
     throw std::runtime_error("Denominator 0 in rational vector");
@@ -127,8 +131,9 @@ RationalVector<C>& RationalVector<C>::normalize()
 
   */
 
-template class RationalVector<int>;           // the main instance used
-
+template class RationalVector<arithmetic::Numer_t>; // the main instance used
+template RationalVector<arithmetic::Numer_t>::RationalVector
+  (const matrix::Vector<int>&, arithmetic::Numer_t);
 
 } // |namespace ratvec|
 

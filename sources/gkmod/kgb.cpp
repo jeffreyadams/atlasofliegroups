@@ -72,7 +72,7 @@ void makeHasse(std::vector<set::EltList>&, const KGB_base&);
 size_t KGB_elt_entry::hashCode(size_t modulus) const
 {
   unsigned long d= fingerprint.denominator();
-  const int_Vector& num=fingerprint.numerator();
+  const Ratvec_Numer_t& num=fingerprint.numerator();
   size_t h=tw.hashCode(modulus);
   for (size_t i=0; i<num.size(); ++i)
     h=((h*d)+num[i])&(modulus-1);
@@ -1139,7 +1139,7 @@ bool GlobalFiberData::equivalent(const GlobalTitsElement& x,
     return false;
 
   RatWeight t= (x.torus_part()-y.torus_part()).log_2pi();
-  int_Vector p = info[k].proj*t.numerator();
+  Ratvec_Numer_t p = info[k].proj*t.numerator();
 
   for (size_t i=0; i<p.size(); ++i)
     if (p[i]%t.denominator()!=0)
@@ -1155,7 +1155,7 @@ RatWeight
   unsigned int k = hash_table.find(x.tw());
   assert (k!=hash_table.empty);
   RatWeight t = x.torus_part().log_2pi();
-  int_Vector p = info[k].proj*t.numerator();
+  Ratvec_Numer_t p = info[k].proj*t.numerator();
 
   // reduce modulo integers and return
   for (size_t i=0; i<p.size(); ++i)

@@ -91,10 +91,11 @@ Vector<C>& Vector<C>::negate ()
 }
 
 template<typename C>
-  C Vector<C>::scalarProduct (const Vector<C>& v) const
+template<typename C1>
+  C1 Vector<C>::dot (const Vector<C1>& v) const
 {
   assert(base::size()==v.size());
-  C result= C(0);
+  C1 result= C(0);
   for (size_t i=0; i<base::size(); ++i)
     result += (*this)[i] * v[i];
 
@@ -265,6 +266,24 @@ Vector<C> Matrix<C>::operator *(const Vector<C>& w) const
   for (size_t i=0; i<base::numRows(); ++i)
   {
     C c(0);
+    for (size_t j=0; j<base::numColumns(); ++j)
+      c += (*this)(i,j) * w[j];
+    result[i] = c;
+  }
+
+  return result;
+}
+
+template<typename C>
+template<typename C1>
+Vector<C1> Matrix<C>::operator *(const Vector<C1>& w) const
+{
+  assert(base::numColumns()==w.size());
+  Vector<C1> result(base::numRows());
+
+  for (size_t i=0; i<base::numRows(); ++i)
+  {
+    C1 c(0);
     for (size_t j=0; j<base::numColumns(); ++j)
       c += (*this)(i,j) * w[j];
     result[i] = c;
@@ -669,15 +688,25 @@ template<typename C>
     Instantiation of templates (only these are generated)
 
   */
+typedef arithmetic::Numer_t Num; // abreviation
 
 template std::vector<Vector<int> > standard_basis<int>(size_t n);
 
 template class Vector<int>;           // the main instance used
 template class Vector<signed char>;   // used inside root data
 template class Vector<unsigned long>; // for |abelian::Homomorphism|
+template class Vector<Num>;           // numerators of rational vectors
 template class Matrix_base<int>;
 template class Matrix<int>;           // the main instance used
 template class Matrix_base<unsigned long>; // for |abelian::Endomorphism|
+
+
+template int Vector<int>::dot(Vector<int> const&) const;
+template signed char
+  Vector<signed char>::dot(const Vector<signed char>&) const;
+template Num Vector<int>::dot(Vector<Num> const&) const;
+
+template Vector<Num> Matrix<int>::operator*(Vector<Num> const&) const;
 
 template Matrix_base<int>::Matrix_base
   (std::vector<Vector<int> >::const_iterator,

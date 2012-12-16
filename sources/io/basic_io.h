@@ -36,8 +36,9 @@ namespace weyl {
   std::ostream& operator<< (std::ostream&, const WeylWord&);
 }
 
-namespace matrix { // since |Weight| = |matrix::Vector<int>|
-  std::ostream& operator<< (std::ostream&, const Weight&);
+namespace matrix {
+  template<typename C>
+    std::ostream& operator<< (std::ostream&, const Vector<C>&);
 }
 
 namespace polynomials {

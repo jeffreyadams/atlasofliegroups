@@ -73,11 +73,11 @@ SubSystem::SubSystem(const RootDatum& parent,
 SubSystem SubSystem::integral // pseudo contructor for integral system
   (const RootDatum& parent, const RatWeight& gamma)
 {
-  LatticeCoeff n=gamma.denominator();
-  const Weight& v=gamma.numerator();
+  arithmetic::Numer_t n=gamma.denominator(); // signed!
+  const Ratvec_Numer_t& v=gamma.numerator();
   RootNbrSet int_roots(parent.numRoots());
   for (size_t i=0; i<parent.numPosRoots(); ++i)
-    if (v.dot(parent.posCoroot(i))%n == 0)
+    if (parent.posCoroot(i).dot(v)%n == 0)
       int_roots.insert(parent.posRootNbr(i));
 
   // it suffices that simpleBasis computed below live until end of constructor
@@ -207,11 +207,11 @@ SubSystemWithGroup::SubSystemWithGroup(const RootDatum& parent,
 SubSystemWithGroup SubSystemWithGroup::integral // pseudo contructor
   (const RootDatum& parent, const RatWeight& gamma)
 {
-  LatticeCoeff n=gamma.denominator();
-  const Weight& v=gamma.numerator();
+  arithmetic::Numer_t n=gamma.denominator(); // signed!
+  const Ratvec_Numer_t& v=gamma.numerator();
   RootNbrSet int_roots(parent.numRoots());
   for (size_t i=0; i<parent.numPosRoots(); ++i)
-    if (v.dot(parent.posCoroot(i))%n == 0)
+    if (parent.posCoroot(i).dot(v)%n == 0)
       int_roots.insert(parent.posRootNbr(i));
 
   // it suffices that simpleBasis computed below live until end of constructor

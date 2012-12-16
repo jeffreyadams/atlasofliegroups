@@ -276,7 +276,7 @@ bool InvolutionTable::equivalent
 {
   assert(i<hash.size());
   RatWeight wt=(t2-t1).log_2pi();
-  int_Vector p = data[i].projector * wt.numerator();
+  Ratvec_Numer_t p = data[i].projector * wt.numerator();
 
   for (size_t j=0; j<p.size(); ++j)
     if (p[j]%wt.denominator()!=0)
@@ -290,7 +290,7 @@ RatWeight InvolutionTable::fingerprint
 {
   assert(i<hash.size());
   RatWeight wt = t.log_2pi();
-  int_Vector p = data[i].projector * wt.numerator();
+  Ratvec_Numer_t p = data[i].projector * wt.numerator();
 
   // reduce modulo integers and return
   for (size_t j=0; j<p.size(); ++j)
@@ -315,7 +315,7 @@ KGB_elt_entry InvolutionTable::x_pack(const GlobalTitsElement& x) const
   for (size_t i=0; i<A.numRows(); ++i)
     A(i,i) += 1;
   int_Matrix projector = lattice::row_saturate(A);
-  int_Vector p = projector * wt.numerator();
+  Ratvec_Numer_t p = projector * wt.numerator();
 
   // reduce modulo integers and return
   for (size_t j=0; j<p.size(); ++j)
@@ -339,7 +339,7 @@ InvolutionTable::x_equiv(const GlobalTitsElement& x0,
   for (size_t i=0; i<A.numRows(); ++i)
     A(i,i) += 1;
   int_Matrix projector = lattice::row_saturate(A);
-  int_Vector p = projector * wt.numerator();
+  Ratvec_Numer_t p = projector * wt.numerator();
 
   for (size_t i=0; i<p.size(); ++i)
     if (p[i]%wt.denominator()!=0)
@@ -360,7 +360,7 @@ TorusPart InvolutionTable::check_rho_imaginary(InvolutionNbr inv) const
 void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const
 {
   const record& rec=data[inv];
-  int_Vector v = rec.M_real * y.numerator();
+  Ratvec_Numer_t v = rec.M_real * y.numerator();
   assert(v.size()==rec.diagonal.size());
   for (unsigned i=0; i<v.size(); ++i)
     v[i]= arithmetic::remainder(v[i],2*rec.diagonal[i]*y.denominator());

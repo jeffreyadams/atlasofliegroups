@@ -16,6 +16,7 @@
 #include <set>
 
 #include "abelian_fwd.h"
+#include "arithmetic_fwd.h"
 
 #include "bitmap.h"
 #include "matrix.h"
@@ -42,7 +43,7 @@ namespace abelian {
   void generators(GrpNbrList&, const bitmap::BitMap&,
 		  const FiniteAbelianGroup&);
 
-  bool isElementaryAbelian(const std::vector<unsigned long>&);
+  bool isElementaryAbelian(const std::vector<arithmetic::Denom_t>&);
 
   void quotReps(bitmap::BitMap&, const bitmap::BitMap&,
 		const FiniteAbelianGroup&);
@@ -79,7 +80,7 @@ class FiniteAbelianGroup {
   /*!
 Cardinality of the group.
   */
-  unsigned long d_size; // this limits the order of representable groups
+  unsigned long long d_size; // this limits the order of representable groups
   /*!
   Sizes of the canonical cyclic factors, arranged so that each divides
   the next.
@@ -98,7 +99,7 @@ Cardinality of the group.
 // constructors and destructors
   FiniteAbelianGroup() {}
 
-  explicit FiniteAbelianGroup(const std::vector<unsigned long>&);
+  explicit FiniteAbelianGroup(const GroupType&);
 
 // copy and assignment: defaults are ok
 
@@ -111,11 +112,11 @@ Cardinality of the group.
     return not operator==(A);
   }
 
-  unsigned long rank() const { return d_type.size(); }
+  unsigned int rank() const { return d_type.size(); }
   const GroupType& type() const {  return d_type; }
 
   // calling the following member |size| proved to be error prone
-  unsigned long order() const { return d_size; } // order of entire group
+  unsigned long long order() const { return d_size; } // order of entire group
 
 // representation conversions
   GrpArr toArray(GrpNbr x) const
