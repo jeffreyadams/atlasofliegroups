@@ -134,6 +134,8 @@ RationalVector<C>& RationalVector<C>::normalize()
 template class RationalVector<arithmetic::Numer_t>; // the main instance used
 template RationalVector<arithmetic::Numer_t>::RationalVector
   (const matrix::Vector<int>&, arithmetic::Numer_t);
+template RationalVector<arithmetic::Numer_t>::RationalVector
+  (const matrix::Vector<arithmetic::Numer_t>&, arithmetic::Numer_t);
 
 } // |namespace ratvec|
 
