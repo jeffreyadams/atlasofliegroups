@@ -192,11 +192,11 @@ ifeq (,$(findstring t,$(MAKEFLAGS))) # unless a flag -t was given
 	$(MAKE) -t $@ # now that build succeeds mark everything as up-to-date
 endif
 
-# the parser is produced by bison, and compiled using the C compiler
+# the parser is produced by bison, and compiled using the C++ compiler
 parser.tab.c parser.tab.h: parser.y
 	bison -d parser.y
 parser.tab.o: parser.tab.c parsetree.h
-	$(CC) -c -g -Wall $(CFLAGS) $(CPPFLAGS) $< -o $@
+	$(CXX) -c -g -Wall $(CFLAGS) $(CPPFLAGS) $< -o $@
 
 # miscellaneous dependencies (some already known), produced by hand for now
 # these are also included from the main atlas makefile

@@ -4892,7 +4892,7 @@ directly. To provide some feedback to the user we report any types assigned,
 but not the values.
 
 @< Function definitions @>=
-extern "C"
+// |extern "C"|
 void global_set_identifier(id_pat pat, expr rhs, int overload)
 { using namespace atlas::interpreter;
   size_t n_id=count_identifiers(pat);
@@ -5057,7 +5057,7 @@ catch (std::exception& err)
 but undefined value.
 
 @< Function definitions @>=
-extern "C"
+// |extern "C"|
 void global_declare_identifier(Hash_table::id_type id, ptr t)
 { value undef=NULL;
   const type_expr& type=*static_cast<type_p>(t);
@@ -5070,7 +5070,7 @@ void global_declare_identifier(Hash_table::id_type id, ptr t)
 following function achieves.
 
 @< Function definitions @>=
-extern "C"
+// |extern "C"|
 void global_forget_identifier(Hash_table::id_type id)
 { std::cout << "Identifier " << main_hash_table->name_of(id)
             << (global_id_table->remove(id) ? " forgotten" : " not known")
@@ -5081,7 +5081,7 @@ void global_forget_identifier(Hash_table::id_type id)
 similar.
 
 @< Function definitions @>=
-extern "C"
+// |extern "C"|
 void global_forget_overload(Hash_table::id_type id, ptr t)
 { const type_expr& type=*static_cast<type_p>(t);
   std::cout << "Definition of " << main_hash_table->name_of(id)
@@ -5110,7 +5110,7 @@ catching it re-throws a |std::runtime_error|. By catching and |std::exception|
 we ensure ourselves against unlikely events like |bad_alloc|.
 
 @< Function definitions @>=
-extern "C"
+// |extern "C"|
 void type_of_expr(expr e)
 { try
   {@; expression_ptr p;
@@ -5124,7 +5124,7 @@ types of overloaded symbols. It is however much simpler, since it just has to
 look into the overload table and extract the types stored there.
 
 @< Function definitions @>=
-extern "C"
+// |extern "C"|
 void show_overloads(id_type id)
 { const overload_table::variant_list& variants =
    global_overload_table->variants(id);
@@ -5141,7 +5141,7 @@ void show_overloads(id_type id)
 types.
 
 @< Function definitions @>=
-extern "C"
+// |extern "C"|
 void show_ids()
 { *output_stream << "Overloaded operators and functions:\n"
                  << *global_overload_table @|

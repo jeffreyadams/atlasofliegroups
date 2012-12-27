@@ -712,36 +712,36 @@ type), and a somewhat less painful conversion back. Nothing can throw during
 these conversions, so passing bare pointers is exception-safe.
 
 @< Function def... @>=
-extern "C"
+// |extern "C"|
 ptr mk_type_singleton(ptr t)
 {@;
   return make_type_singleton(type_ptr(static_cast<type_p>(t)))
   .release();
 }
-extern "C"
+// |extern "C"|
 ptr mk_type_list(ptr t,ptr l)
 { return make_type_list(type_ptr(static_cast<type_p>(t)),@|
                         type_list_ptr(static_cast<type_list>(l))).release(); }
-extern "C"
+// |extern "C"|
 ptr mk_prim_type(int p)
 {@; return make_prim_type(static_cast<primitive_tag>(p)).release(); }
-extern "C"
+// |extern "C"|
 ptr mk_row_type(ptr c)
 {@; return make_row_type(type_ptr(static_cast<type_p>(c)))
   .release(); }
-extern "C"
+// |extern "C"|
 ptr mk_tuple_type(ptr l)
 {@; return make_tuple_type(type_list_ptr(static_cast<type_list>(l)))
   .release(); }
-extern "C"
+// |extern "C"|
 ptr mk_function_type(ptr a,ptr r)
 { return make_function_type(type_ptr(static_cast<type_p>(a)),@|
     type_ptr(static_cast<type_p>(r))).release(); }
 @)
-extern "C"
+// |extern "C"|
 void destroy_type(ptr t)@+
 {@; delete static_cast<type_p>(t); }
-extern "C"
+// |extern "C"|
 void destroy_type_list(ptr t)@+
 {@; delete static_cast<type_list>(t); }
 
