@@ -64,9 +64,8 @@ definition of the type |expr|.
 @< Typedefs that are required in |union expru@;| @>@;
 union expru {@; @< Variants of |union expru @;| @>@; };
 
-typedef enum @+
-{ @< Enumeration tags for |expr_kind| @> @;@; } expr_kind;
-typedef struct {@; union expru e; atlas::interpreter::expr_kind kind; } expr;
+enum expr_kind @+ { @< Enumeration tags for |expr_kind| @> @;@; };
+struct expr {@; union expru e; expr_kind kind; };
 
 @< Structure and typedef declarations for types built upon |expr| @>@;
 
@@ -117,8 +116,8 @@ the parser will build an appropriate node for them, which just stores the
 constant value denoted. We need no structures here, since the value itself
 will fit comfortably inside the |union expru@;|. The fact that strings are
 stored as a character pointer, which should be produced using |new[]| by the
-caller of the functions described here, is a consequence of the restriction
-that only types representable in \Cee\ can be used.
+caller of the functions described here, is a legacy of the restriction
+that only types representable in \Cee\ could be used originally.
 
 @< Variants... @>=
 
@@ -173,9 +172,8 @@ expr make_bool_denotation(int val)
 }
 
 @ Another atomic expression is an applied identifier. They use the type
-|id_type| that should ideally be |Hash_table::id_type|, but since we are
-restricted to using \Cee-syntax for defining |expr|, we see no better way than
-to redefine a global typedef.
+|Hash_table::id_type| (a small integer type) of indices into the table of
+identifier names, which we lift out of that class by using a |typedef|.
 
 @< Typedefs... @>=
 typedef Hash_table::id_type id_type;
@@ -228,7 +226,7 @@ struct exprlist_node {@; expr e; expr_list next; };
 
 @ Before we go on to use this type, let us define a simple function for
 calculating the length of the list; it will actually be used by the evaluator
-rather than by the parser, so we declare it for \Cpp~use.
+rather than by the parser.
 
 @< Declarations of \Cpp\ functions @>=
 size_t length(expr_list l);
@@ -1617,30 +1615,6 @@ void include_file(int skip_seen)
     main_input_buffer->close_includes();
      // nested include failure aborts all includes
 }
-
-@ The next functions were declared here, because the parser needed to see these
-declarations in \Cee-style, but they are defined in in the file
-\.{evaluator.w}, since that is where the functionality is available, and we do
-not want to make the current compilation unit depend on \.{evaluator.h}.
-
-The function |global_set_identifier| handles introducing identifiers, either
-normal ones or overloaded instances of functions, using the \&{set} syntax.
-The left hand side~|id| is a pattern of identifiers defined, |e| their
-defining expression, and |overload| indicates whether additions are to be made
-to the overload table rather than to the global identifier table. If
-|overload| is true, all defining values should be functions; in practice this
-is guaranteed by |id| being a single identifier and |e| a
-$\lambda$-expression.
-
-@< Declarations of functions for the parser @>=
-void global_set_identifier(struct id_pat id, expr e, int overload);
-void global_declare_identifier(id_type id, ptr type);
-void global_forget_identifier(id_type id);
-void global_forget_overload(id_type id, ptr type);
-void show_ids();
-void type_of_expr(expr e);
-void show_overloads(id_type id);
-
 
 @* Index.
 

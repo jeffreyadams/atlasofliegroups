@@ -196,7 +196,7 @@ endif
 parser.tab.c parser.tab.h: parser.y
 	bison -d parser.y
 parser.tab.o: parser.tab.c parsetree.h
-	$(CXX) -c -g -Wall $(CFLAGS) $(CPPFLAGS) $< -o $@
+	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
 # miscellaneous dependencies (some already known), produced by hand for now
 # these are also included from the main atlas makefile
@@ -207,6 +207,6 @@ include dependencies
 # file, since cweave scans the same header files as the C++ compiler
 
 lexer.o lexer.tex: parser.tab.h buffer.h
-evaluator.o evaluator.tex: evaluator.h lexer.h parsetree.h
-built-in-types.o built-in-types.tex: evaluator.h
+evaluator.o evaluator.tex: evaluator.h types.h lexer.h parsetree.h
+built-in-types.o built-in-types.tex: evaluator.h types.h lexer.h
 main.o main.tex: $(headers)

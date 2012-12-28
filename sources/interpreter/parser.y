@@ -1,7 +1,7 @@
 %{
   /*
-   Copyright (C) 2006 Marc van Leeuwen
-   This file is part of the Atlas of Reductive Lie Groups software (the Atlas)
+   Copyright (C) 2006-2012 Marc van Leeuwen
+   This file is part of the Atlas of Lie Groups and Representations (the Atlas)
 
    This program is made available under the terms stated in the GNU
    General Public License (GPL), see http://www.gnu.org/licences/licence.html
@@ -23,8 +23,9 @@
 
 
   #include <stdio.h>
-  #include "parsetree.h"  /* types and functions used to construct nodes */
-  using namespace atlas::interpreter;
+#include "parsetree.h"  // types and functions used to construct nodes
+#include "evaluator.h" // action functions invoked from within the parser
+  using namespace atlas::interpreter; // to allow simplifying action code
 %}
 %union {
   int	val;	    /* For integral constants.	*/
