@@ -99,104 +99,72 @@ void reset_evaluator()
   @< Actions to reset the evaluator @>
 }
 
-@~The cleaning up action just clears the pointer; in fact the pointed to
-objects have already disappeared from the \Cpp\ runtime stack at the time this
-code gets executed.
 
-@< Actions to reset the evaluator @>=
-id_context=NULL;
-
-@ A disadvantege of using a static variable is that in case of exceptions it
-retains the value current before throwing. Therefore we need to explicitly
-reset the execution in such cases. Since it is a smart pointer, resetting
-automatically takes care of adjusting reference counts and maybe deleting
-values that are part of the discarded context.
-
-@< Actions... @>=
-execution_context.reset();
-
-
-@* Executable expression objects.
+@* Outline of the evaluation process.
 %
-Let us define our first class derived from |expression_base|, which is
-|denotation|; it simply stores a |value|, which it returns upon evaluation.
-The constructor is passed a smart pointer for the usual reason: if the
-constructor should be part of a |new| expression (as is practice it will) then
-the allocation for that |new| happens between the moment of passing the
-constructor arguments and the invocation of the constructor, and if that
-allocation throws it would produce a memory leak if raw a pointer were passed.
-This does force us to cast the arguments to |shared_value| below.
+This module is concerned with the transformation of an abstract syntax tree as
+produced by the parser into ultimately actions and computed values. This
+transformation consist of two separate parts: type analysis, which also
+transforms the syntax tree into a more directly executable form, and execution
+of those transformed expressions.
 
-@< Type definitions @>=
-struct denotation : public expression_base
-{ shared_value denoted_value;
-@)
-  explicit denotation(shared_value v) : denoted_value(v) @+{}
-  virtual void evaluate(level l) const;
-  virtual void print(std::ostream& out) const
-  @+{@; denoted_value->print(out); }
-};
+The expression returned by the parser, of type |expr|, and the conversion to
+the executable format |expression| (a type defined in \.{types.w} as a pointer
+to the base class |expression_base|, from which many more specialised classes
+will be derived) is performed by the function |convert_expr|. This is a large
+and highly recursive function, and a large part of the current module is
+dedicated to its definition. The execution of the converted value is performed
+by calling the (purely) virtual method |expression_base::evaluate|, so that
+the code describing the actual execution of expressions is distributed among
+the many definitions of that method in derived classes, and this definition is
+only implicitly (mutually) recursive through calls to the
+|expression_base::evaluate| method.
 
-@ The following function is not defined inside the class definition, because
-that definition precedes the one of the |inline| function |push_value| in the
-header file. It is not even made |inline| itself, since there is little point
-in doing so for virtual methods (calls via the vtable cannot be inlined). For
-the first time we see the |level| argument in action; whenever |l==no_value|
-we should avoid producing a result value.
-
-@< Function def... @>=
-void denotation::evaluate(level l) const
-@+{@; if (l!=no_value) push_value(denoted_value); }
-
-
-@* Type-checking and conversion to executable form  of expressions.
-%
-The expression returned by the parser is type-checked before execution starts.
-During type checking, there are subexpressions for which a definite type is
-required, and others where none is (like the complete expression). The
-difference is important, as in the former case conversions can be inserted to
-make types match, for instance between a list of integers and a vector value;
-this is in fact the only way the user can produce the latter kind of values.
-However, both cases are handled by a single function |convert_expr|, which in
-addition builds (upon success) an |expression| value, i.e., one in terms of
-which evaluation is defined. Apart from the |expr e@;| produced by the parser,
-|convert_expr| takes a type as argument, in the form of a non-constant
-reference |type_expr& type@;|. If |type| is undefined initially, then it
-will be set to the type derived for the expression; if it is defined then it
-will just be tested. It could also be partially defined initially (such as
+@ During type checking, it may happen for certain subexpressions that a
+definite type is required for them, while for others nothing is known
+beforehand about their type (for instance this is the case for the complete
+expression entered by the user for evaluation). The difference is important,
+as in the former case conversions can be inserted to make types match, for
+instance between a list of integers and a vector value; this is in fact the
+only way the user can initially produce vector values. However, both cases are
+handled by a single function |convert_expr|, which in addition builds (upon
+success) an |expression| value. As arguments |convert_expr| takes an |expr
+e@;| value produced by the parser, and a type in the form of a non-constant
+reference |type_expr& type@;|. If |type| is undefined initially, then it will
+be set to the type derived for the expression; if it is defined then it may
+guide the conversion process, and the type eventually found will have to match
+it. It could also be that |type| is initially partially defined (such as
 `\.{(int,*)}', meaning ``pair on an integer and something''), in which case
 derivation and testing functionality are combined; this gives flexibility to
-|convert_expr|. Upon successful completion, |type| will usually have become a
-completely defined. The object |type| should be owned by the caller, who will
-automatically gain ownership of any new nodes added, which will be so due to
-calling the |specialise| method for |type| or for its descendants. In some
-cases |type| will remain partly undefined, like for an emtpy list display
-which gets type~`\.{[*]}'; however if |type| remains completely undefined
-`\.*' (as would happen for the selection of a value from an empty list, or for
-a function that is unconditionally recursive) then it can be seen that
-evaluation cannot possibly complete without error, so we might treat this case
-as a type error (we do so occasionally if it simplifies our code).
+|convert_expr|.
 
-With the translation of expressions into |expression| values, there is no need
-for a separate evaluator function: we shall just call the |evaluate| method of
-the expression object, which will do its work with the help of the similar
-methods of its subexpressions, resulting in an indirectly recursive evaluation
-framework.
+Upon successful completion, |type| will usually have become a completely
+defined. The object |type| should be owned by the caller, who will
+automatically gain ownership of any new nodes added. The latter, if it
+happens, will be so due to calling the |specialise| method for |type| or for
+its descendants. In some cases |type| will remain partly undefined, like for
+an emtpy list display which gets type~`\.{[*]}'; however if |type| remains
+completely undefined `\.*' (as would happen for the selection of a value from
+an empty list, or for a function that is unconditionally recursive) then it
+can be seen that evaluation cannot possibly complete without error, so we
+might treat this case as a type error (and we shall do so occasionally if this
+allows us to simplify our code).
 
 @< Declarations of exported functions @>=
 expression convert_expr(const expr& e, type_expr& type)
-  throw(std::bad_alloc,program_error);
+ @/ throw(std::bad_alloc,program_error);
 
 @ In the function |convert_expr| we shall need a type for storing bindings
-between identifiers and types. We use a vector, and since these cannot hold
-auto-pointers, we need to define a destructor to clean up the types. Different
-such binding vectors will be stacked, for nested scopes, but using an STL
-container for that would necessitate defining a copy constructor, which would
-be a painful operation: (1)~it must call |copy| on the types held in the
-bindings, in order to avoid double destruction, (2)~these calls to |copy|
-could throw an exception, and (3)~the constructor won't be complete, and the
-destructor therefore not activated, until the final entry is copied, so we
-would need a |try|\dots|catch| in the constructor to avoid a memory leak.
+between identifiers and types, and this will be the |bindings| class. It uses
+a vector of individual bindings, and since a vector cannot hold auto-pointers,
+we need to define a destructor to clean up the types. Different such binding
+vectors will be stacked, for nested scopes, but using an STL container for
+that would necessitate defining a copy constructor, which would be a painful
+operation: (1)~it must call |copy| on the types held in the bindings, in order
+to avoid double destruction, (2)~these calls to |copy| could throw an
+exception, and (3)~the constructor won't be complete, and the destructor
+therefore not activated, until the final entry is copied, so we would need a
+|try|\dots|catch| in the constructor to avoid a memory leak.
 
 So instead we chain the different bindings into a linked list, and forbid any
 copy or assignment. In fact the nesting of the various bindings will embed in
@@ -274,6 +242,13 @@ action for clearing it.
 @< Local var... @>=
 bindings* id_context;
 
+@~The cleaning up action just clears the pointer; in fact the pointed to
+objects have already disappeared from the \Cpp\ runtime stack at the time this
+code gets executed.
+
+@< Actions to reset the evaluator @>=
+id_context=NULL;
+
 @ The function |convert_expr| returns a pointer to the conversion of the
 |expr| to |expression|, of which the caller should take ownership. The reason
 we don't return an |expression_ptr| is entirely pragmatic: there are many
@@ -318,6 +293,39 @@ expression convert_expr(const expr& e, type_expr& type)
  }
  return NULL; // keep compiler happy
 }
+
+@*1 Executable expression objects.
+%
+Let us define a first class derived from |expression_base|, which is
+|denotation|; it simply stores a |value|, which it returns upon evaluation.
+The constructor is passed a smart pointer for the usual reason: if the
+constructor should be part of a |new| expression (as is practice it will) then
+the allocation for that |new| happens between the moment of passing the
+constructor arguments and the invocation of the constructor, and if that
+allocation throws it would produce a memory leak if raw a pointer were passed.
+This does force us to cast the arguments to |shared_value| below.
+
+@< Type definitions @>=
+struct denotation : public expression_base
+{ shared_value denoted_value;
+@)
+  explicit denotation(shared_value v) : denoted_value(v) @+{}
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const
+  @+{@; denoted_value->print(out); }
+};
+
+@ The following function is not defined inside the class definition, because
+that definition precedes the one of the |inline| function |push_value| in the
+header file. It is not even made |inline| itself, since there is little point
+in doing so for virtual methods (calls via the vtable cannot be inlined). For
+the first time we see the |level| argument in action; whenever |l==no_value|
+we should avoid producing a result value.
+
+@< Function def... @>=
+void denotation::evaluate(level l) const
+@+{@; if (l!=no_value) push_value(denoted_value); }
+
 
 @* List displays.
 %
@@ -1097,6 +1105,15 @@ functions).
 
 @< Local var... @>=
 context_ptr execution_context;
+
+@~A disadvantege of using a static variable is that in case of exceptions it
+retains the value current before throwing. Therefore we need to explicitly
+reset the execution in such cases. Since it is a smart pointer, resetting
+automatically takes care of adjusting reference counts and maybe deleting
+values that are part of the discarded context.
+
+@< Actions... @>=
+execution_context.reset();
 
 @ We derive the class of local identifiers from that of global ones, which
 takes care of its |print| method.

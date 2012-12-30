@@ -29,6 +29,17 @@ This file originated from splitting off a part of the module \.{evaluator.w}
 that was getting too large. It collects functions that are important to the
 evaluation process, but which are not part of the recursive machinery of
 type-checking and evaluating all different expression forms.
+
+This module has three major, largely unrelated, parts. The first part groups
+some peripheral operations to the main evaluation process: the calling
+interface to the type checking and conversion process, and operations that
+implement global changes such as the introduction of new global identifiers.
+The second part is dedicated to some fundamental types, like integers,
+Booleans, strings, without which the programming language would be an empty
+shell (but types more specialised to the Atlas software are defined in another
+module, \.{built-in-types}. Finally there is a large section with basic
+functions related to these types.
+
 @( global.h @>=
 
 #ifndef GLOBAL_H
@@ -43,7 +54,8 @@ namespace atlas { namespace interpreter {
 }@; }@;
 #endif
 
-@ The implementation unit follows a somewhat similar pattern.
+@ The implementation unit follows the usual pattern, although not all possible
+sections are present.
 
 @h "global.h"
 @h <cstdlib>
@@ -53,7 +65,7 @@ namespace atlas { namespace interpreter {
 namespace {@;
 @< Local function definitions @>@;
 }@;
-@< Function definitions @>@;
+@< Global function definitions @>@;
 }@; }@;
 
 @* Global operations.
@@ -70,41 +82,47 @@ void initialise_evaluator();
 @ The details of this initialisation will be given when the variables involved
 are introduced.
 
-@< Function definitions @>=
+@< Global function definitions @>=
 void initialise_evaluator()
 @+{@; @< Initialise evaluator @> }
 
 @~Although not necessary, the following will avoid some early reallocations of
-|execution_stack|.
+|execution_stack|, a vector variable defined in \.{types.w}.
 
 @< Initialise evaluator @>=
 execution_stack.reserve(16); // avoid some early reallocations
 
 @*1 Invoking the type checker.
 %
-Let us recapitulate what will happen. The parser will read what the user
-types, and returns an |expr| value. Then we shall call |convert_expr| for this
-value, which will either produce (a pointer to) an executable object of a type
+Let us recapitulate the general organisation of the evaluator, explained in
+more detail in the introduction of \.{evaluator.w}. The parser reads what the
+user types, and returns an |expr| value representing the abstract syntax tree.
+Then the highly recursive function |convert_expr| is called for this value,
+which will either produce (a pointer to) an executable object of a type
 derived from |expression_base|, or throw an exception in case a type error or
 other problem is detected. In the former case we are ready to call the
 |evaluate| method of the value returned by |convert_expr|; after this main
-program will print the result. The call to |convert_expr| is done via
-|analyse_types|, takes care of printing error messages for exceptions thrown.
+program will print the result. The initial call to |convert_expr| however is
+done via |analyse_types|, which takes care of catching any exceptions thrown,
+and printing error messages.
 
 @< Declarations of exported functions @>=
 type_ptr analyse_types(const expr& e,expression_ptr& p)
    throw(std::bad_alloc,std::runtime_error);
 
-@~An important reason for having this function is that it will give us an
-occasion to catch any thrown |type_error| and |program_error| exceptions,
-something we did not want to do inside the recursive function |convert_expr|;
-since we cannot return normally from |analyse_types| in the presence of these
-errors, we map these errors to |std::runtime_error|, an exception for which
-the code that calls us will have to provide a handler anyway.
+@~The function |analyse_types| switches the roles of the output parameter
+|type| of |convert_expr| and its return value: the former becomes the return
+value and the latter is assigned to the output parameter~|p|. The initial
+value of |type| passed to |convert_expr| is a completely unknown type. Since
+we cannot return any type from |analyse_types| in the presence of errors, we
+map these errors to |std::runtime_error| after printing their error message;
+that error is an exception for which the code that calls us will have to
+provide a handler anyway, and which handler will serve as a more practical
+point to really resume after an error.
 
 @h "evaluator.h"
 
-@< Function definitions @>=
+@< Global function definitions @>=
 type_ptr analyse_types(const expr& e,expression_ptr& p)
   throw(std::bad_alloc,std::runtime_error)
 { try
@@ -134,18 +152,17 @@ type_ptr analyse_types(const expr& e,expression_ptr& p)
 @*1 Operations other than evaluation of expressions.
 %
 This section will be devoted to some interactions between user and program
-that do not consist just of evaluating expressions. What will presented is not
-particularly related to the evaluator, and is present here for somewhat
-opportunistic purposes.
+that do not consist just of evaluating expressions.
 
 The function |global_set_identifier| handles introducing identifiers, either
 normal ones or overloaded instances of functions, using the \&{set} syntax.
-The left hand side~|id| is a pattern of identifiers defined, |e| their
-defining expression, and |overload| indicates whether additions are to be made
-to the overload table rather than to the global identifier table. If
-|overload| is true, all defining values should be functions; in practice this
-is guaranteed by |id| being a single identifier and |e| a
-$\lambda$-expression.
+The function |global_declare_identifier| just introduces an identifier into
+the global (non-overloaded) table with a definite type, but does not provide a
+value (it will then have to be assigned to before it can be validly used).
+Conversely |global_forget_identifier| removes an identifier from the global
+table. The last three functions serve to provide the user with information
+about the state of the global tables (but invoking |type_of_expr| will
+actually go through the full type analysis and conversion process).
 
 @< Declarations of exported functions @>=
 void global_set_identifier(struct id_pat id, expr e, int overload);
@@ -156,30 +173,40 @@ void show_ids();
 void type_of_expr(expr e);
 void show_overloads(id_type id);
 
-@ Applied identifiers can be introduced (or modified) by the function
-|global_set_identifier|; it was declared in \.{parsetree.h} since it is called
-directly by the parser, and therefore it has \Cee-linkage. We define it here
-since it uses the services of the evaluator.
-
-We allow the same possibilities in a global identifier definition as in a
-local one, so we take an |id_pat| as argument. We also handle definitions of
-overloaded function instances in case the parameter |overload| is nonzero. As
+@ Global identifiers can be introduced (or modified) by the function
+|global_set_identifier|. We allow (in the \&{set} syntax) the same
+possibilities in a global identifier definition as in a local one (the \&{let}
+syntax), so we take an |id_pat| as argument. We also handle definitions of
+overloaded function instances in case the parameter |overload| is nonzero. In
 a change from our initial implementation, that parameter set by the parser
 allows overloading but does not force it. Allowing the parameter to be cleared
-here therefore actually serves to allow more cases to result in addition to
-the overload table, since the parser will now set |overload>0| more freely.
+here then actually serves to allow more cases to be handled using the overload
+table, since the parser will now set |overload>0| more freely. Indeed the
+parser currently passes |overload==0| only when the
+``\\{identifier}\.:\\{value}'' syntax is used to introduce a new identifier.
 
-We follow the logic for type-analysis of a let-expression, and that of binding
-identifiers in a user-defined function for evaluation. However we use
-|analyse_types| (which reports errors) rather than calling |convert_expr|
-directly. To provide some feedback to the user we report any types assigned,
-but not the values.
+However, the code below sets |overload=0| also whenever the defining
+expression has anything other that a function type (which must in addition
+take at least one argument); in particular this makes it impossible to add
+multiple items to the overload table with a single \&{set} command. This
+restriction is mostly motivated by the complications that allowing mixing of
+overloaded and non-overloaded definitions would entail (for instance when
+reporting the resulting updates to the user), and by the fact that operator
+definitions would in any case be excluded from multiple-overload situations
+for syntactic reasons.
 
-@< Function definitions @>=
+We follow the logic for type-analysis of a let-expression, and for evaluation
+we follow the logic of binding identifiers in a user-defined function (these
+are defined in \.{evaluator.w}). However we use |analyse_types| here (which
+catches and reports errors) rather than calling |convert_expr| directly. To
+provide some feedback to the user we report any types assigned, but not the
+values.
+
+@< Global function definitions @>=
 void global_set_identifier(id_pat pat, expr rhs, int overload)
 { size_t n_id=count_identifiers(pat);
-  int phase=0;
   static const char* phase_name[3] = {"type_check","evaluation","definition"};
+  int phase=0; // needs to be declared outside the |try|, is used in |catch|
   try
   { expression_ptr e;
     type_ptr t=analyse_types(rhs,e);
@@ -196,7 +223,7 @@ void global_set_identifier(id_pat pat, expr rhs, int overload)
     std::vector<shared_value> v;
     v.reserve(n_id);
 @/  e->eval();
-    thread_components(pat,pop_value(),v);
+    thread_components(pat,pop_value(),v); // associate values with identifiers
 @)
     phase=2;
     @< Emit indentation corresponding to the input level to |std::cout| @>
@@ -204,7 +231,7 @@ void global_set_identifier(id_pat pat, expr rhs, int overload)
       @< Add instance of identifiers in |b| with values in |v| to
          |global_id_table| @>
     else
-      @< Add instance of identifiers in |b| with values in |v| to
+      @< Add instance of identifier in |b[0]| with value in |v[0]| to
          |global_overload_table| @>
 
     std::cout << std::endl;
@@ -214,15 +241,14 @@ void global_set_identifier(id_pat pat, expr rhs, int overload)
 
 @ When |overload>0|, choosing whether the definition enters into the overload
 table or into the global identifier table is determined by the type of the
-defining expression.
-
-In fact it is now natural to also allow operators to be defined by an
-arbitrary expression rather than necessarily by a lambda-expression. However,
-this creates the possibility of adding an operator to the global identifier
-table, which is pointless (syntax does not allow the value to be retrieved) so
-this case needs some attention: the parser will pass |overload==2| in this
-case, signalling that it must not be cleared to~$0$, but rather result in an
-error message if that should be attempted.
+defining expression (in particular this allows operators to be defined by an
+arbitrary expression). However, this creates the possibility (if the defining
+expression should have non-function type) of causing an operator to be added
+the global identifier table, which is pointless (since the syntax does not
+allow such a value to be retrieved). Therefore this case needs some attention:
+the parser will pass |overload==2| in this case, signalling that it must not
+be cleared to~$0$, but rather result in an error message in cases where
+setting it to~$0$ is attempted.
 
 @< Set |overload=0| if type |t| is not an appropriate function type @>=
 { bool clear = t->kind!=function_type;
@@ -233,7 +259,7 @@ error message if that should be attempted.
      // nor parameterless functions
   }
   if (clear and overload==2) // inappropriate function type with operator
-    throw std::runtime_error("Cannot set operator to non-function value");
+    throw std::runtime_error("Cannot set operator to a non-function value");
   if (clear)
     overload=0;
 }
@@ -255,22 +281,27 @@ to the very common singular case), before calling |global_id_table->add|.
 }
 
 @ For overloaded definitions the main difference is calling the |add| method
-of |global_overload_table| instead of that of |global_id_table|. However
-another difference is that overloaded definitions may be rejected because of a
-conflict with an existing one, so we do not print anything before the |add|
+of |global_overload_table| instead of that of |global_id_table|, and the
+different wording of the report to the user. However another difference is
+that here the |add| method may throw because of a conflict of a new definition
+with an existing one; we therefore do not print anything before the |add|
 method has successfully completed. Multiple overloaded definitions in a
-single \&{set} statement are non currently allowed syntactically, which the
-|assert| below tests. If such multiple definitions should be made possible
-syntactically, one could introduce a loop below as in the ordinary definition
-case; then however error handling would also need adaptation since a failed
-definition need no be the first one, and the previous ones would need to be
-either undone or not reported as failed.
+single \&{set} statement are excluded by the fact that a tuple type for the
+defining expression will cause setting |overload=0|, so that we are prevented
+from coming here either by that assignment or by a pattern mismatch error
+being thrown during type analysis; the |assert| statement below checks this
+exclusion. If the logic above were relaxed to allow such multiple definitions,
+one could introduce a loop below as in the ordinary definition case; then
+however error handling would also need adaptation, since a failed definition
+need no be the first one, and the previous ones would need to be either undone
+or not reported as failed.
 
-@< Add instance of identifiers in |b| with values in |v| to
+@< Add instance of identifier in |b[0]| with value in |v[0]| to
    |global_overload_table| @>=
 { assert(n_id=1);
   size_t old_n=global_overload_table->variants(b[0].first).size();
   global_overload_table->add(b[0].first,v[0],copy(*b[0].second));
+    // insert or replace table entry
   size_t n=global_overload_table->variants(b[0].first).size();
   if (n==old_n)
     std::cout << "Redefined ";
@@ -338,7 +369,7 @@ catch (std::exception& err)
 @ The following function is called when an identifier is declared with type
 but undefined value.
 
-@< Function definitions @>=
+@< Global function definitions @>=
 void global_declare_identifier(Hash_table::id_type id, ptr t)
 { value undef=NULL;
   const type_expr& type=*static_cast<type_p>(t);
@@ -350,7 +381,7 @@ void global_declare_identifier(Hash_table::id_type id, ptr t)
 @ Finally the user may wish to forget the value of an identifier, which the
 following function achieves.
 
-@< Function definitions @>=
+@< Global function definitions @>=
 void global_forget_identifier(Hash_table::id_type id)
 { std::cout << "Identifier " << main_hash_table->name_of(id)
             << (global_id_table->remove(id) ? " forgotten" : " not known")
@@ -360,7 +391,7 @@ void global_forget_identifier(Hash_table::id_type id)
 @ Forgetting the binding of an overloaded identifier at a given type is
 similar.
 
-@< Function definitions @>=
+@< Global function definitions @>=
 void global_forget_overload(Hash_table::id_type id, ptr t)
 { const type_expr& type=*static_cast<type_p>(t);
   std::cout << "Definition of " << main_hash_table->name_of(id)
@@ -371,24 +402,27 @@ void global_forget_overload(Hash_table::id_type id, ptr t)
             << std::endl;
 }
 
-@ It is useful to print type information, either for a single expression or for
-all identifiers in the table. We declare the pointer that was already used in
-|print_wrapper|.
+@ It is useful to print type information, either for a single expression or
+for all identifiers in the table. We here define and export the pointer
+variable that is used for all normal output from the evaluator.
 
 @< Declarations of global variables @>=
 extern std::ostream* output_stream;
-@ The |output_stream| will normally point to |std::cout|.
+
+@ The |output_stream| will normally point to |std::cout|, but the pointer
+may be assigned to in the main program, which causes output redirection.
 
 @< Global variable definitions @>=
 std::ostream* output_stream= &std::cout;
 
 @ The function |type_of_expr| prints the type of a single expression, without
-evaluating it. Since we allows arbitrary expressions, we must cater for the
-possibility of failing type analysis, in which case |analyse types| after
-catching it re-throws a |std::runtime_error|. By catching and |std::exception|
-we ensure ourselves against unlikely events like |bad_alloc|.
+evaluating it. Since we allow arbitrary expressions, we must cater for the
+possibility of failing type analysis, in which case |analyse_types|, after
+catching it, will re-throw a |std::runtime_error|. By in fact catching and
+reporting any |std::exception| that may be thrown, we also ensure ourselves
+against unlikely events like |bad_alloc|.
 
-@< Function definitions @>=
+@< Global function definitions @>=
 void type_of_expr(expr e)
 { try
   {@; expression_ptr p;
@@ -397,11 +431,12 @@ void type_of_expr(expr e)
   catch (std::exception& err) {@; std::cerr<<err.what()<<std::endl; }
 }
 
-@ The function |show_overloads| has a similar purpose, namely to find out the
-types of overloaded symbols. It is however much simpler, since it just has to
-look into the overload table and extract the types stored there.
+@ The function |show_overloads| has a similar purpose to |type_of_expr|,
+namely to find out the types of overloaded symbols. It does not however need
+to call |analyse_types|, as it just has to look into the overload table and
+extract the types stored there.
 
-@< Function definitions @>=
+@< Global function definitions @>=
 void show_overloads(id_type id)
 { const overload_table::variant_list& variants =
    global_overload_table->variants(id);
@@ -414,18 +449,19 @@ void show_overloads(id_type id)
     << std::endl;
 }
 
-@ The function |show_ids| prints a table of all known identifiers and their
-types.
+@ The function |show_ids| prints a table of all known identifiers, their
+types, and the stored values; it does this both for overloaded symbols and for
+global identifiers.
 
-@< Function definitions @>=
+@< Global function definitions @>=
 void show_ids()
 { *output_stream << "Overloaded operators and functions:\n"
                  << *global_overload_table @|
-                 << "Global values:\n" << *global_id_table;
+                 << "Global variables:\n" << *global_id_table;
 }
 
 @ Here is a tiny bit of global state that can be set from the main program and
-inspected by any module that cares to (and that reads \.{evaluator.h}).
+inspected by any module that cares to (and that reads \.{global.h}).
 
 @< Declarations of global variables @>=
 extern int verbosity;
@@ -436,18 +472,19 @@ be activated.
 @< Global variable definitions @>=
 int verbosity=0;
 
-@*1 Auxiliaries for error messages.
-%
-We start with a small template function to help giving sensible error messages.
+@ We shall define a small template function |str| to help giving sensible
+error messages, by converting integers into strings that can be incorporated
+into thrown values. The reason for using a template is that without them it is
+hard to do a decent job for both signed and unsigned types.
 
 @< Includes needed in the header file @>=
 #include <string>
 #include <sstream>
 
-@~The template function |str| just returns an integer (or any printable value)
-represented as a string (in decimal). The reason for using a template is that
-without them it is hard to do a decent job for both signed and unsigned types.
-Using string streams, the definition of~|str| is trivial.
+@~Using string streams, the definition of~|str| is trivial; in fact the
+overloads of the output operator ``|<<|'' determine the exact conversion. As a
+consequence of this implementation, the template function will in fact turn
+anything printable into a string.
 
 @< Template and inline function definitions @>=
 template <typename T>
@@ -458,11 +495,16 @@ template <typename T>
 This section is devoted to primitive types that are not not very
 Atlas-specific, ranging from integers to matrices, and which often have some
 related functionality in the programming language (like conditional clauses
-for Boolean values), which are defined in \.{evaluator.w}. There are also
-related implicit conversions, which will be defined in the current module.
+for Boolean values), which functionality is defined in \.{evaluator.w}. There
+are also implicit conversions related to these types, and these will be
+defined in the current module.
 
-The type for rational numbers is in fact implemented in the atlas library, so
-we must include a header file into ours.
+This section can be seen as in introduction to the large
+module \.{built-in-types.w}, in which many more types and functions are
+defined that provide Atlas-specific functionality. In fact the type for
+rational numbers defined here is based on the |RatWeight| class defined in the
+Atlas library, so we must include a header file (which defines the necessary
+class template) into ours.
 
 @<Includes needed in the header file @>=
 #include "arithmetic.h"
@@ -470,9 +512,13 @@ we must include a header file into ours.
 @*1 First primitive types: integer, rational, string and Boolean values.
 %
 We derive the first ``primitive'' value types. For each type we define a
-corresponding auto-pointer type (whose name ends with \&{\_ptr}), since we
-shall often need to hold such values by pointers, and the risk of exceptions
-is ever present.
+corresponding auto-pointer type (whose name has the \&{\_ptr} suffix),
+since we shall often need to hold such values by pointers, and the risk of
+exceptions is ever present. Whenever the values get stored in a more permanent
+place (which includes being bound to an identifier, but also being places on
+the |execution_stack|), we shall in fact use smart pointers of the
+|shared_ptr| kind, and for the corresponding types we shall used
+the \&{shared\_} prefix.
 
 @< Type definitions @>=
 
@@ -558,15 +604,16 @@ but we need to see the actual type definitions in order to incorporated these
 values in ours.
 
 @< Includes needed in the header file @>=
-#include "atlas_types.h"
+#include "atlas_types.h" // type declarations that are ``common knowledge''
 #include "types.h" // base types we derive from
 #include "matrix.h" // to make |int_Vector| and |int_Matrix| complete types
 #include "ratvec.h" // to make |RatWeight| a complete type
 
-@ We start with deriving |vector_value| from |value_base|. In its constructor,
-the argument is a reference to |std::vector<int>|, from which |int_Vector| is
-derived (without adding data members); since a constructor for the latter from
-the former is defined, we can do with just one constructor for |vector_value|.
+@ The definition of |vector_value| is much like the preceding ones. In its
+constructor, the argument is a reference to |std::vector<int>|, from which
+|int_Vector| is derived (without adding data members); since a constructor for
+the latter from the former is defined, we can do with just one constructor for
+|vector_value|.
 
 @< Type definitions @>=
 
@@ -585,8 +632,9 @@ private:
 typedef std::auto_ptr<vector_value> vector_ptr;
 typedef std::tr1::shared_ptr<vector_value> shared_vector;
 
-@ Matrices and rational vectors follow the same pattern, but have constructors
-from identical types to the one stored.
+@ Matrices and rational vectors follow the same pattern, but in this case the
+constructors take a constant reference to a type identical to the one that
+will be stored.
 
 @< Type definitions @>=
 struct matrix_value : public value_base
@@ -630,7 +678,7 @@ minimum necessary. Rational vectors are a small veriation.
 @h<sstream>
 @h<iomanip>
 
-@< Function def... @>=
+@< Global function def... @>=
 void vector_value::print(std::ostream& out) const
 { size_t l=val.size(),w=0; std::vector<std::string> tmp(l);
   for (size_t i=0; i<l; ++i)
@@ -663,7 +711,7 @@ void rational_vector_value::print(std::ostream& out) const
 @ For matrices we align columns, and print vertical bars along the sides.
 However if there are no entries, we print the dimensions of the matrix.
 
-@< Function def... @>=
+@< Global function def... @>=
 void matrix_value::print(std::ostream& out) const
 { size_t k=val.numRows(),l=val.numColumns();
   if (k==0 or l==0)
@@ -688,66 +736,12 @@ void matrix_value::print(std::ostream& out) const
 Here we define the set of implicit conversions that apply to types in the base
 language; there will also be implicit conversions added that concern
 Atlas-specific types, such as the conversion from (certain) strings to Lie
-types. The conversions defined here are from (nested) lists of integers to
-vectors and matrices, and back, conversion from integers to rationals, and
-from lists of rationals to rational vectors and back.
+types. The conversions defined here are from integers to rationals,
+from lists of rationals to rational vectors and back, from vectors to rational
+vectors, and from (nested) lists of integers to vectors and matrices and back.
 
-@ The conversions into vectors or matrices these use an auxiliary function
-|row_to_weight|, which constructs a new |Weight| from a row of integers,
-leaving the task to clean up that row to their caller.
-
-Note that |row_to_weight| returns its result by value (rather than by
-assignment to a reference parameter); in principle this involves making a copy
-of the vector |result| (which includes duplicating its entries). However since
-there is only one |return| statement, the code generated by a decent compiler
-like \.{g++} creates the vector object directly at its destination in this
-case (whose location is passed as a hidden pointer argument), and does not
-call the copy constructor at all. More generally this is avoided if all
-|return| statements return the same variable, or if all of them return
-expressions instead. So we shall not hesitate to use this idiom henceforth; in
-fact, while it was exceptional when this code was first written, it is now
-being used throughout the Atlas library.
-
-@< Local function def... @>=
-int_Vector row_to_weight(const row_value& r)
-{ int_Vector result(r.val.size());
-  for(size_t i=0; i<r.val.size(); ++i)
-    result[i]=force<int_value>(r.val[i].get())->val;
-  return result;
-}
-@)
-void vector_convert()
-{@; shared_row r(get<row_value>());
-  push_value(new vector_value(row_to_weight(*r)));
-}
-
-@ For |matrix_conversion|, the |evaluate| method is longer, but still
-straightforward. Since the type of the argument was checked to be \.{[vec]},
-we can safely cast the argument pointer to |(row_value*)|, and each of its
-component pointers to |(vector_value*)|. Any ragged columns are silently
-extended with null entries to make a rectangular shape for the matrix.
-
-@< Local function def... @>=
-void matrix_convert()
-{ shared_row r(get<row_value>());
-@/std::vector<int_Vector > column_list;
-  column_list.reserve(r->val.size());
-  size_t depth=0; // maximal length of vectors
-  for(size_t i=0; i<r->val.size(); ++i)
-  { column_list.push_back(force<vector_value>(r->val[i].get())->val);
-    if (column_list[i].size()>depth) depth=column_list[i].size();
-  }
-  for(size_t i=0; i<column_list.size(); ++i)
-    // extend weights with 0's if necessary
-    if (column_list[i].size()<depth)
-    { size_t j=column_list[i].size();
-      column_list[i].resize(depth);
-      for (;j<depth; ++j) column_list[i][j]=0;
-    }
-  push_value(new matrix_value(matrix::Matrix<int>(column_list,depth)));
-}
-
-@ Here are the conversions involving rational numbers and rational vectors.
+@ Here are the first conversions involving rational numbers and rational
+vectors.
 
 @< Local function def... @>=
 void rational_convert() // convert integer to rational (with denominator~1)
@@ -785,19 +779,81 @@ void vec_ratvec_convert() // convert vector to rational vector
 { shared_vector v = get<vector_value>();
   push_value(new rational_vector_value(RatWeight(v->val,1)));
 }
+
+@ The conversions into vectors or matrices use an auxiliary function
+|row_to_weight|, which constructs a new |Weight| from a row of integers,
+leaving the task to clean up that row to their caller.
+
+Note that |row_to_weight| returns its result by value (rather than by
+assignment to a reference parameter); in principle this involves making a copy
+of the vector |result| (which includes duplicating its entries). However since
+there is only one |return| statement, the code generated by a decent compiler
+like \.{g++} creates the vector object directly at its destination in this
+case (whose location is passed as a hidden pointer argument), and does not
+call the copy constructor at all. More generally this is avoided if all
+|return| statements return the same variable, or if all of them return
+expressions instead. So we shall not hesitate to use this idiom henceforth; in
+fact, while it was exceptional when this code was first written, it is now
+being used throughout the Atlas library. In fact this is so much true that
+this comment can be considered to be a mere relic to remind where this change
+of idiom was first applied within the Atlas software.
+
+@< Local function def... @>=
+int_Vector row_to_weight(const row_value& r)
+{ int_Vector result(r.val.size());
+  for(size_t i=0; i<r.val.size(); ++i)
+    result[i]=force<int_value>(r.val[i].get())->val;
+  return result;
+}
+@)
+void intlist_vector_convert()
+{@; shared_row r(get<row_value>());
+  push_value(new vector_value(row_to_weight(*r)));
+}
 @)
 void intlist_ratvec_convert()
 {@; shared_row r(get<row_value>());
   push_value(new rational_vector_value(RatWeight(row_to_weight(*r),1)));
 }
 
-
-@ There remains one ``internalising'' conversion function, from row of row of
-integer to matrix, and the ``externalising'' counterparts (towards lists) of
-the vector and matrix conversions. The former is similar to |matrix_convert|.
+@ The conversion |veclist_matrix_convert| is longer, but still
+straightforward. Any ragged columns are silently extended with null entries to
+make a rectangular shape for the matrix. This has as inevitable consequence
+that for an empty list of vectors the number of rows of the resulting empty
+matrix is based on an uninformed and usually wrong guess (namely that it is
+$0$, like the number of columns. Functions that need a set of vectors as
+argument can better take matrix as argument, so that the size of a vector can
+be deduced even if there aren't any, but if the user nevertheless supplies a
+list of vectors using this coercion, then the vector size will be wrongly
+deduced for an empty list. For this reason functions that really need the
+vector size do better to include it as a separate, though often redundant,
+argument.
 
 @< Local function def... @>=
-void matrix2_convert()
+void veclist_matrix_convert()
+{ shared_row r(get<row_value>());
+@/std::vector<int_Vector > column_list;
+  column_list.reserve(r->val.size());
+  size_t depth=0; // maximal length of vectors
+  for(size_t i=0; i<r->val.size(); ++i)
+  { column_list.push_back(force<vector_value>(r->val[i].get())->val);
+    if (column_list[i].size()>depth) depth=column_list[i].size();
+  }
+  for(size_t i=0; i<column_list.size(); ++i)
+    // extend weights with 0's if necessary
+    if (column_list[i].size()<depth)
+    { size_t j=column_list[i].size();
+      column_list[i].resize(depth);
+      for (;j<depth; ++j) column_list[i][j]=0;
+    }
+  push_value(new matrix_value(matrix::Matrix<int>(column_list,depth)));
+}
+
+@ There remains one ``internalising'' conversion function, from row of row of
+integer to matrix.
+
+@< Local function def... @>=
+void intlistlist_matrix_convert()
 { shared_row r(get<row_value>());
 @/std::vector<int_Vector > column_list;
   column_list.reserve(r->val.size());
@@ -817,9 +873,10 @@ void matrix2_convert()
 
 }
 
-@ For the ``externalising'' conversions, it will be handy to have a basic
-function |weight_to_row| that performs more or less the inverse transformation
-of |row_to_weight|, but rather than returning a |row_value| it returns a
+@ There remain the ``externalising'' conversions (towards lists of values) of
+the vector and matrix conversions. It will be handy to have a basic function
+|weight_to_row| that performs more or less the inverse transformation of
+|row_to_weight|, but rather than returning a |row_value| it returns a
 |row_ptr| pointing to it.
 
 @< Local function def... @>=
@@ -830,12 +887,12 @@ row_ptr weight_to_row(const int_Vector& v)
   return result;
 }
 @)
-void int_list_convert()
+void vector_intlist_convert()
 {@; shared_vector v(get<vector_value>());
   push_value(weight_to_row(v->val));
 }
 @)
-void vec_list_convert()
+void matrix_veclist_convert()
 { shared_matrix m=get<matrix_value>();
   row_ptr result(new row_value(m->val.numColumns()));
   for(size_t i=0; i<m->val.numColumns(); ++i)
@@ -843,7 +900,7 @@ void vec_list_convert()
   push_value(result);
 }
 @)
-void int_list_list_convert()
+void matrix_intlistlist_convert()
 { shared_matrix m=get<matrix_value>();
   row_ptr result(new row_value(m->val.numColumns()));
   for(size_t i=0; i<m->val.numColumns(); ++i)
@@ -860,24 +917,23 @@ coercion(ratvec_type,row_of_rat_type, "[Q]Qv", ratvec_ratlist_convert); @/
 coercion(vec_type,ratvec_type,"QvV", vec_ratvec_convert); @/
 coercion(row_of_int_type,ratvec_type,"Rv[I]", intlist_ratvec_convert);
 @)
-coercion(row_of_int_type, vec_type, "V[I]", vector_convert); @/
-coercion(row_of_vec_type,mat_type, "M[V]", matrix_convert);
-coercion(row_row_of_int_type,mat_type, "M[[I]]", matrix2_convert); @/
-coercion(vec_type,row_of_int_type, "[I]V", int_list_convert); @/
-coercion(mat_type,row_of_vec_type, "[V]M", vec_list_convert); @/
-coercion(mat_type,row_row_of_int_type, "[[I]]M", int_list_list_convert); @/
+coercion(row_of_int_type, vec_type, "V[I]", intlist_vector_convert); @/
+coercion(row_of_vec_type,mat_type, "M[V]", veclist_matrix_convert);
+coercion(row_row_of_int_type,mat_type, "M[[I]]", intlistlist_matrix_convert); @/
+coercion(vec_type,row_of_int_type, "[I]V", vector_intlist_convert); @/
+coercion(mat_type,row_of_vec_type, "[V]M", matrix_veclist_convert); @/
+coercion(mat_type,row_row_of_int_type, "[[I]]M", matrix_intlistlist_convert); @/
 
 @* Wrapper functions.
 %
 We now come to defining wrapper functions. The arguments and results of
 wrapper functions will be transferred from and to stack as a |shared_value|,
-so a wrapper function has neither arguments nor a result type. Thus variables
-that refer to a wrapper function have the type |wrapper_function| defined
-below; the |level| parameter serves the same function as for |evaluate|
-methods, to inform whether a result value should be produced at all, and if so
-whether it should be expanded on the |execution_stack| in case it is a tuple.
-We shall need to bind values of this type to identifiers representing built-in
-functions, so we derive an associated ``primitive type'' from |value_base|.
+so a wrapper function has neither arguments nor a result type. Variables that
+refer to a wrapper function have the type |wrapper_function| defined below;
+the |level| parameter serves the same function as for |evaluate| methods of
+classes derived from |expression_base|, as described in \.{evaluator.w}: to
+inform whether a result value should be produced at all, and if so whether it
+should be expanded on the |execution_stack| in case it is a tuple.
 
 @< Type definitions @>=
 typedef void (* wrapper_function)(expression_base::level);
@@ -897,7 +953,7 @@ built-in functions with void argument type, we make a provision for them in
 case they would be needed later; notably they should not be overloaded and are
 added to |global_id_table| instead.
 
-@< Function def... @>=
+@< Global function def... @>=
 void install_function
  (wrapper_function f,const char*name, const char* type_string)
 { type_ptr type = make_type(type_string);
@@ -918,10 +974,10 @@ void install_function
 
 @*1 Integer functions.
 %
-Our first built-in functions implement with integer arithmetic. Arithmetic
+Our first built-in functions implement integer arithmetic. Arithmetic
 operators are implemented by wrapper functions with two integer arguments.
-Since arguments top built-in functions are evaluated with |level| parameter
-|multi_value|, two separate value will be produced on the stack. Note that
+Since arguments to built-in functions are evaluated with |level| parameter
+|multi_value|, two separate values will be present on the stack. Note that
 these are pulled from the stack in reverse order, which is important for the
 non-commutative operations like `|-|' and `|/|'. Since values are shared, we
 must allocate new value objects for the results.
@@ -946,9 +1002,14 @@ void times_wrapper(expression_base::level l)
     push_value(new int_value(i*j));
 }
 
-@ We take the occasion to repair the integer division operation for negative
-arguments, by using |arithmetic::divide| rather than |operator/|. Since that
-takes an unsigned second argument, we handle the case |j<0| ourselves.
+@ We take the occasion of defining a division operation to repair the integer
+division operation |operator/| built into \Cpp, which is traditionally broken
+for negative dividends. This is done by using |arithmetic::divide| that
+handles such cases correctly (rounding the quotient systematically downwards).
+Since |arithmetic::divide| takes an unsigned second argument, we handle the
+case of a negative divisor ourselves. Incidentally, this Euclidean division
+operation will be bound to the operator ``$\backslash$'', because ``$/$'' is
+used to form rational numbers.
 
 @< Local function definitions @>=
 void divide_wrapper(expression_base::level l)
@@ -960,9 +1021,8 @@ void divide_wrapper(expression_base::level l)
 }
 
 @ We also define a remainder operation |modulo|, a combined
-quotient-and-remainder operation |divmod|, unary subtraction, exact division
-of integers producing a rational number, and an integer power operation
-(defined whenever the result is integer).
+quotient-and-remainder operation |divmod|, unary subtraction, and an integer
+power operation (defined whenever the result is integer).
 
 @< Local function definitions @>=
 void modulo_wrapper(expression_base::level l)
@@ -985,9 +1045,10 @@ void divmod_wrapper(expression_base::level l)
 }
 @)
 void unary_minus_wrapper(expression_base::level l)
-{@; int i=get<int_value>()->val;
+{ int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new int_value(-i)); }
+    push_value(new int_value(-i));
+}
 @)
 void power_wrapper(expression_base::level l)
 { static shared_int one(new int_value(1));
@@ -1011,12 +1072,16 @@ void power_wrapper(expression_base::level l)
 
 @*1 Rationals.
 %
-The operator `/' will not denote integer division, but rather formation of
-fractions (rational numbers). Since the |Rational| constructor
-requires an unsigned denominator, we must make sure the integer passed to it
-is positive. The opposite operation of separating a rational number into
-numerator and denominator is also provided; this operation is essential in
-order to be able to get from rationals back into the world of integers.
+As mentioned above the operator `/' applied to integers will not denote
+integer division, but rather formation of fractions (rational numbers). Since
+the |Rational| constructor requires an unsigned denominator, we must make sure
+the integer passed to it is positive. The opposite operation of separating a
+rational number into numerator and denominator is also provided; this
+operation is essential in order to be able to get from rationals back into the
+world of integers. Currently this splitting operation has an intrinsic danger,
+since the \Cpp-type |int| used in |int_value| is smaller than the types used
+for numerator and denominator of |Rational| values (which are |long long int|
+respectively |unsigned long long int|).
 
 @< Local function definitions @>=
 
@@ -1334,7 +1399,7 @@ void mat_neq_wrapper (expression_base::level);
 
 @ This is of course quite similar to what we saw for rationals, for instance.
 
-@< Function definitions @>=
+@< Global function definitions @>=
 void vec_eq_wrapper(expression_base::level l)
 { shared_vector j=get<vector_value>(); shared_vector i=get<vector_value>();
   if (l!=expression_base::no_value)
@@ -1380,7 +1445,7 @@ Since in general built-in functions may throw exceptions (even for such simple
 operations as |transposed|) we hold the pointers to local values in smart
 pointers; for values popped from the stack this would in fact be hard to avoid.
 
-@< Function definitions @>=
+@< Global function definitions @>=
 void null_vec_wrapper(expression_base::level lev)
 { int l=get<int_value>()->val;
   if (lev!=expression_base::no_value)
@@ -1478,7 +1543,7 @@ void vm_prod_wrapper(expression_base::level l);
 they are to be popped from the stack in reverse order; here in fact this only
 matters for error reporting.
 
-@< Function definitions @>=
+@< Global function definitions @>=
 void vv_prod_wrapper(expression_base::level l)
 { shared_vector w=get<vector_value>();
   shared_vector v=get<vector_value>();
@@ -1491,7 +1556,7 @@ void vv_prod_wrapper(expression_base::level l)
 
 @ The other product operations are very similar.
 
-@< Function definitions @>=
+@< Global function definitions @>=
 void mv_prod_wrapper(expression_base::level l)
 { shared_vector v=get<vector_value>();
   shared_matrix m=get<matrix_value>();
@@ -1664,19 +1729,6 @@ void invert_wrapper(expression_base::level l)
   if (l==expression_base::single_value)
     wrap_tuple(2);
 }
-
-@ All that remains is to initialise the |coerce_table|.
-@< Initialise evaluator @>=
-coercion(int_type,rat_type, "QI", rational_convert); @/
-coercion(row_of_rat_type,ratvec_type, "Qv[Q]", ratlist_ratvec_convert); @/
-coercion(ratvec_type,row_of_rat_type, "[Q]Qv", ratvec_ratlist_convert); @/
-coercion(vec_type,ratvec_type,"QvV", vec_ratvec_convert); @/
-coercion(row_of_int_type,ratvec_type,"Rv[I]", intlist_ratvec_convert);
-@)
-coercion(row_row_of_int_type,mat_type, "M[[I]]", matrix2_convert); @/
-coercion(vec_type,row_of_int_type, "[I]V", int_list_convert); @/
-coercion(mat_type,row_of_vec_type, "[V]M", vec_list_convert); @/
-coercion(mat_type,row_row_of_int_type, "[[I]]M", int_list_list_convert); @/
 
 @ We must not forget to install what we have defined. The names of the
 arithmetic operators correspond to the ones used in the parser definition
