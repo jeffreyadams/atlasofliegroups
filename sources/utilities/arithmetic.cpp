@@ -169,7 +169,7 @@ Rational& Rational::power(int n)
     std::swap(numer,denom); n=-n;
   }
   numer = arithmetic::power(numer,n); denom = arithmetic::power(denom,n);
-  num = (num>0 ? numer : - Numer_t(numer));
+  num = (num>=0 ? numer : - Numer_t(numer));
   return *this;
 }
 
