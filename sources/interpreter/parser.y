@@ -37,10 +37,13 @@
   atlas::interpreter::expr_list expression_list; /* Any list of expressions */
   atlas::interpreter::let_list decls; /* declarations in a LET expression */
   atlas::interpreter::id_pat ip;
-  struct { atlas::interpreter::ptr typel; atlas::interpreter::patlist patl; }
-    id_sp;
+  struct {
+    atlas::interpreter::type_list typel;
+    atlas::interpreter::patlist patl;
+  } id_sp;
   atlas::interpreter::patlist pl;
-  atlas::interpreter::ptr gen_ptr;
+  atlas::interpreter::type_p type_pt;
+  atlas::interpreter::type_list type_l;
 }
 
 %locations
@@ -82,8 +85,9 @@
 %destructor { destroy_id_pat(&$$); } pattern pattern_opt
 %type <pl> pat_list
 %destructor { destroy_pattern($$); } pat_list
-%type <gen_ptr> type types types_opt
+%type <type_pt> type
 %destructor { destroy_type($$); } type
+%type <type_l> types types_opt
 %destructor { destroy_type_list($$); } types types_opt
 %type <id_sp> id_specs id_specs_opt
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); } id_specs id_specs_opt
@@ -108,7 +112,7 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT; }
 	| SET operator '(' id_specs ')' '=' exp '\n'
 	  { struct id_pat id; id.kind=0x1; id.name=$2.id;
-	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7),1);
+	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7),2);
 	    YYABORT;
 	  }
 	| SET operator '=' exp '\n'

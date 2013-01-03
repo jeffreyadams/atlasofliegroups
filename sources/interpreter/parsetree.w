@@ -711,6 +711,13 @@ all (while providing a void value) has its uses. However patterns of the form
 $(x)$, which would give a sublist of length~$1$, will be forbidden: they would
 be confusing since $1$-tuples do not exist.
 
+Since patterns pointed to by |patlist| will need to be duplicated (in the
+evaluator), we provide a (default) constructor for |pattern_node| that will
+ensure that constructed nodes will immediately be safe for possible
+destruction by |destroy_id_pat| (no undefined pointers; the |sublist| pointer
+of |id_pat| is ignored when |kind==0|). The structure |id_pat| itself cannot
+have a constructor, since it figures in a |union|, where this is not allowed.
+
 @< Typedefs... @>=
 typedef struct pattern_node* patlist;
 struct id_pat
@@ -719,8 +726,9 @@ struct id_pat
   unsigned char kind; /* bit 0: has name, bit 1: has sublist */
 };
 struct pattern_node
-{@; patlist next;
+{ patlist next;
   struct id_pat body;
+  pattern_node () : next(NULL) @+{@; body.kind=0; }
 };
 
 @ These types do not themselves represent a variant of |expru|, but will be
@@ -943,41 +951,75 @@ there is no way to know the type of the arguments with certainty, unless the
 user specifies them (at least this is true if we want to allow such things as
 type coercion and function overloading to be possible, so that types cannot be
 deduced by analysis of the \emph{usage} of the parameters in the function
-only). The syntax for types is easy enough, but we have to decide what kind of
-object the parser will use to represent types specified by the user. The
-evaluator has an internal type |struct type_declarator@;| to represent them,
-but the \Cpp\ definition of that type cannot be understood by the parser. So
-we tried to manage with pointers to incomplete types. That does not work
-either, because |struct type_declarator@;| is actually defined within a
-|namespace|, so we cannot give the correct name and be understood in \Cee,
-while if we lie about the name of the |struct| then \Cpp\ will complain about
-converting between pointers to different structures. So, grudgingly, we shall
-cast to and from pointers to |void|.
+only). Types are also an essential ingredient of casts.
 
-@< Typedefs that are required... @>=
-typedef void* ptr;
+When the parser was compiled as \Cee~code, we were forced to use void pointers
+in the parser, to masquerade for the actual pointers to \Cpp~types; numerous
+static casts were then used to get the proper pointer types from them. Now
+that this is no longer necessary, everything has been reformulated in terms of
+the actual pointer types. Something that remains (for now) is the avoidance of
+smart pointers for types in the parser, since other pointers for expressions
+that it handles are not smart pointers either.
 
-@~The functions declared below provide an interface to routines defined in
-the module \.{evaluator.w}.
+We avoid including \.{types.h} into our header file \.{parsetree.h}, since the
+reverse inclusion is present and necessary. But we do need to know about the
+following type names, where it fortunately suffices to know they are pointers
+to unspecified structures.
 
-@< Declarations for the parser @>=
-ptr mk_type_singleton(ptr t);
-ptr mk_type_list(ptr t,ptr l);
-ptr mk_prim_type(int p);
-ptr mk_row_type(ptr c);
-ptr mk_tuple_type(ptr l);
-ptr mk_function_type(ptr a,ptr r);
+@< Structure and typedef... @>=
+typedef struct type_expr* type_p;
+typedef struct type_node* type_list;
+
+@ These functions provide an interface to routines defined in the
+module \.{types.w}, stripping off the smart pointers.
+
+@< Declarations of functions for the parser @>=
+type_list mk_type_singleton(type_p t);
+type_list mk_type_list(type_p t,type_list l);
+type_p mk_prim_type(int p);
+type_p mk_row_type(type_p c);
+type_p mk_tuple_type(type_list l);
+type_p mk_function_type(type_p a,type_p r);
 @)
-void destroy_type(ptr t);
-void destroy_type_list(ptr t);
+void destroy_type(type_p t);
+void destroy_type_list(type_list t);
 
-@ Some other functions that must also convert pointers from |ptr|, and which
-are therefore defined in \.{evaluator.w}, are not used directly by the parser;
-their declarations can use \Cpp\ types.
+@ The following function is not used in the parser, and never had \Cee~linkage.
 
 @< Declarations of \Cpp... @>=
-ptr first_type(ptr typel);
-std::ostream& print_type(std::ostream& out, ptr type);
+std::ostream& print_type(std::ostream& out, type_p type);
+
+@ All that is needed are conversions from ordinary pointer to auto-pointer and
+back (or from integer to enumeration type). Nothing can throw during these
+conversions, so passing bare pointers is exception-safe.
+
+@< Definitions of functions for the parser @>=
+
+type_list mk_type_singleton(type_p t)
+{@; return make_type_singleton(type_ptr(t)).release(); }
+
+type_list mk_type_list(type_p t,type_list l)
+{@; return make_type_list(type_ptr(t),type_list_ptr(l)).release(); }
+
+type_p mk_prim_type(int p)
+{@; return make_prim_type(static_cast<primitive_tag>(p)).release(); }
+
+type_p mk_row_type(type_p c)
+{@; return make_row_type(type_ptr(c)).release(); }
+
+type_p mk_tuple_type(type_list l)
+{@; return make_tuple_type(type_list_ptr(l)).release(); }
+
+type_p mk_function_type(type_p a,type_p r)
+{@; return make_function_type(type_ptr(a),type_ptr(r)).release(); }
+@)
+
+void destroy_type(type_p t)@+ {@; delete t; }
+
+void destroy_type_list(type_list t)@+ {@; delete t; }
+
+std::ostream& print_type(std::ostream& out, type_p type) @+
+{@; return out << *type; }
 
 @ For user-defined functions we shall use a structure |lambda_node|.
 @< Typedefs that are required... @>=
@@ -989,7 +1031,7 @@ in \.{evaluator.w}), and an  expression (the body of the function).
 
 @< Structure and typedef... @>=
 struct lambda_node
-{@; struct id_pat pattern; ptr arg_type; expr body; };
+{@; struct id_pat pattern; type_p arg_type; expr body; };
 
 @ The tag used for user-defined functions is |lambda_expr|.
 @< Enumeration tags... @>=
@@ -1016,11 +1058,13 @@ break;
 @ And we must of course take care of destroying lambda expressions, which just
 call handler functions.
 
+@h "types.h" // so that |type_p| will point to a complete type in |delete|
+
 @< Cases for destroying an expression |e| @>=
 case lambda_expr:
 { lambda fun=e.e.lambda_variant;
   destroy_id_pat(&fun->pattern);
-  destroy_type(fun->arg_type);
+  delete(fun->arg_type);
   destroy_expr(fun->body);
 }
 break;
@@ -1029,23 +1073,29 @@ break;
 by the parser.
 
 @< Declarations of functions for the parser @>=
-expr make_lambda_node(patlist patl, ptr typel, expr body);
+expr make_lambda_node(patlist pat_l, type_list type_l, expr body);
 
-@~There is a twist in building a lambda node, in that it is passed lists of
-patterns and types rather than single ones. We must distinguish the case of a
-singleton, where the head node must be unpacked, and the multiple case, where
-a tuple pattern and type must be wrapped up from the lists.
+@~There is a twist in building a lambda node, in that for syntactic reasons
+the parser passes lists of patterns and types rather than single ones. We must
+distinguish the case of a singleton, in which case the head node must be
+unpacked, and the multiple case, where a tuple pattern and type must be
+wrapped up from the lists. In the former case, |fun->arg_type| wants to have a
+pointer to an isolated |type_expr|, but the head of |type_l| is a |type_node|
+that contains a |type_expr| as its |t| field; making a (deep) copy of that
+field is the easiest way to obtain an isolated |type_expr|. After the deep
+copy, destruction of |type_l| deletes the original |type_node|.
 
 @< Definitions of functions for the parser @>=
-expr make_lambda_node(patlist patl, ptr typel, expr body)
+expr make_lambda_node(patlist pat_l, type_list type_l, expr body)
 { lambda fun=new lambda_node; fun->body=body;
-  if (patl!=NULL and patl->next==NULL)
-  { fun->pattern=patl->body; delete patl; // clean up node
-    fun->arg_type = first_type(typel);
+  if (pat_l!=NULL and pat_l->next==NULL)
+  { fun->pattern=pat_l->body; delete pat_l; // clean up node
+    fun->arg_type = new type_expr(type_l->t); delete type_l;
+      // make a deep copy, clean up
   }
   else
-  @/{@; fun->pattern.kind=0x2; fun->pattern.sublist=patl;
-    fun->arg_type=mk_tuple_type(typel);
+  { fun->pattern.kind=0x2; fun->pattern.sublist=pat_l;
+    fun->arg_type=mk_tuple_type(type_l);
   }
   expr result; result.kind=lambda_expr; result.e.lambda_variant=fun;
   return result;
@@ -1317,7 +1367,7 @@ typedef struct cast_node* cast;
 known reasons.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct cast_node {@; ptr type; expr exp; };
+struct cast_node {@; type_p type; expr exp; };
 
 @ The tag used for casts is |cast_expr|.
 
@@ -1340,12 +1390,12 @@ break;
 @ Casts are built by |make_cast|.
 
 @< Declarations of functions for the parser @>=
-expr make_cast(ptr type, expr exp);
+expr make_cast(type_p type, expr exp);
 
 @~No surprises here.
 
 @< Definitions of functions for the parser@>=
-expr make_cast(ptr type, expr exp)
+expr make_cast(type_p type, expr exp)
 { cast c=new cast_node; c->type=type; c->exp=exp;
 @/ expr result; result.kind=cast_expr; result.e.cast_variant=c;
    return result;
@@ -1368,7 +1418,7 @@ typedef struct op_cast_node* op_cast;
 void pointer.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct op_cast_node {@; id_type oper; ptr type; };
+struct op_cast_node {@; id_type oper; type_p type; };
 
 @ The tag used for casts is |op_cast_expr|.
 
@@ -1391,12 +1441,12 @@ break;
 @ Casts are built by |make_cast|.
 
 @< Declarations of functions for the parser @>=
-expr make_op_cast(id_type name,ptr type);
+expr make_op_cast(id_type name,type_p type);
 
 @~No surprises here either.
 
 @< Definitions of functions for the parser@>=
-expr make_op_cast(id_type name,ptr type)
+expr make_op_cast(id_type name,type_p type)
 { op_cast c=new op_cast_node; c->oper=name; c->type=type;
 @/ expr result; result.kind=op_cast_expr; result.e.op_cast_variant=c;
    return result;

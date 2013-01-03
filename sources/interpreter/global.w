@@ -166,9 +166,9 @@ actually go through the full type analysis and conversion process).
 
 @< Declarations of exported functions @>=
 void global_set_identifier(struct id_pat id, expr e, int overload);
-void global_declare_identifier(id_type id, ptr type);
+void global_declare_identifier(id_type id, type_p type);
 void global_forget_identifier(id_type id);
-void global_forget_overload(id_type id, ptr type);
+void global_forget_overload(id_type id, type_p type);
 void show_ids();
 void type_of_expr(expr e);
 void show_overloads(id_type id);
@@ -259,7 +259,10 @@ setting it to~$0$ is attempted.
      // nor parameterless functions
   }
   if (clear and overload==2) // inappropriate function type with operator
-    throw std::runtime_error("Cannot set operator to a non-function value");
+  { std::string which(t->kind==function_type ? "parameterless " : "non-");
+    throw std::runtime_error
+      ("Cannot set operator to a "+which+"function value");
+  }
   if (clear)
     overload=0;
 }
@@ -370,9 +373,9 @@ catch (std::exception& err)
 but undefined value.
 
 @< Global function definitions @>=
-void global_declare_identifier(Hash_table::id_type id, ptr t)
+void global_declare_identifier(Hash_table::id_type id, type_p t)
 { value undef=NULL;
-  const type_expr& type=*static_cast<type_p>(t);
+  const type_expr& type=*t;
   global_id_table->add(id,shared_value(undef),copy(type));
   std::cout << "Identifier " << main_hash_table->name_of(id)
             << " : " << type << std::endl;
@@ -392,8 +395,8 @@ void global_forget_identifier(Hash_table::id_type id)
 similar.
 
 @< Global function definitions @>=
-void global_forget_overload(Hash_table::id_type id, ptr t)
-{ const type_expr& type=*static_cast<type_p>(t);
+void global_forget_overload(Hash_table::id_type id, type_p t)
+{ const type_expr& type=*t;
   std::cout << "Definition of " << main_hash_table->name_of(id)
             << '@@' << type @|
             << (global_overload_table->remove(id,type)

@@ -695,62 +695,6 @@ type_ptr make_function_type (type_ptr a, type_ptr r)
 {@; return type_ptr(new type_expr(a,r));
 }
 
-@*1 A parser interface to constructing types.
-%
-In order for the parser, which is (currently) compiled as \Cee\ code, to be
-able to call the type-constructing functions, we provide functions
-with \Cee-linkage and types understandable from \Cee, which call the above
-functions. Their prototypes, visible to the parser, were defined in the
-module \.{parsetree.w}.
-
-@< Includes needed in \.{types.h} @>=
-#include "parsetree.h"
-
-@ All that happens here is a painful conversion from
-void pointer (the type |ptr|) to auto-pointer (or from integer to enumeration
-type), and a somewhat less painful conversion back. Nothing can throw during
-these conversions, so passing bare pointers is exception-safe.
-
-@< Function def... @>=
-// |extern "C"|
-ptr mk_type_singleton(ptr t)
-{@;
-  return make_type_singleton(type_ptr(static_cast<type_p>(t)))
-  .release();
-}
-// |extern "C"|
-ptr mk_type_list(ptr t,ptr l)
-{ return make_type_list(type_ptr(static_cast<type_p>(t)),@|
-                        type_list_ptr(static_cast<type_list>(l))).release(); }
-// |extern "C"|
-ptr mk_prim_type(int p)
-{@; return make_prim_type(static_cast<primitive_tag>(p)).release(); }
-// |extern "C"|
-ptr mk_row_type(ptr c)
-{@; return make_row_type(type_ptr(static_cast<type_p>(c)))
-  .release(); }
-// |extern "C"|
-ptr mk_tuple_type(ptr l)
-{@; return make_tuple_type(type_list_ptr(static_cast<type_list>(l)))
-  .release(); }
-// |extern "C"|
-ptr mk_function_type(ptr a,ptr r)
-{ return make_function_type(type_ptr(static_cast<type_p>(a)),@|
-    type_ptr(static_cast<type_p>(r))).release(); }
-@)
-// |extern "C"|
-void destroy_type(ptr t)@+
-{@; delete static_cast<type_p>(t); }
-// |extern "C"|
-void destroy_type_list(ptr t)@+
-{@; delete static_cast<type_list>(t); }
-
-ptr first_type(ptr typel)@+
-{@; return &static_cast<type_list>(typel)->t; }
-
-std::ostream& print_type(std::ostream& out, ptr type)
-{@; return out << *static_cast<type_p>(type); }
-
 @*1 Specifying types by strings.
 %
 
@@ -1824,6 +1768,7 @@ exception types will be used without any type derivation.
 
 @< Includes needed in \.{types.h} @>=
 #include <stdexcept>
+#include "parsetree.h" // type |expr| will be used in error classes
 
 @ For errors detected before execution starts, we first derive a general
 exception class |program_error| from |std::exception|; it represents any kind

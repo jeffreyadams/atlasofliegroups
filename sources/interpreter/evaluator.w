@@ -66,22 +66,26 @@ namespace {@;
 }@; }@;
 
 @ Although initialising the evaluator will be handled in \.{global.w}, we
-define a function that resets the evaluator here. The stack owns the values it
-contains, but there was no reason to wrap it into a class with a destructor,
-since we never intend to destroy the stack entirely: if our program exits
-either peacefully or by an uncaught exception we don't care about some values
-that are not destroyed. We must remember however to |delete| the values
-whenever we empty the stack after catching a runtime error. We provide a
-function to reset the evaluator after catching an exception that does this, as
-well as other actions needed to have the evaluator start with a clear slate.
+define a function that resets the evaluator here (since it effectively
+functions as destructor, in case of exceptions only, for some values that are
+used in this module).
 
 @< Declarations of exported functions @>=
 void reset_evaluator ();
 
-@~We shall monitor disappearing values when clearing the stack. This provides
-some output that may not be easy to interpret for an unsuspecting user, so we
-limit this to the case that the |verbosity| parameter (defined below) is
-nonzero. Other actions necessary for a clean restart will be added later.
+@~The |execution_stack|, held in a global variable defined in \.{types.w},
+owns the values it contains, but there was no reason to wrap it into a class
+with a destructor, since we never intend to destroy the stack entirely: if our
+program exits either peacefully or by an uncaught exception we don't care
+about some values that are not destroyed. We must however remember to empty
+the stack after catching a runtime error; since the stack holds |shared_value|
+smart pointers, this will automatically |delete| the objects remaining on the
+stack. We provide a function to reset the evaluator after catching an
+exception that does this, as well as other actions (defined later) needed to
+have the evaluator start with a clear slate. We allow monitoring disappearing
+values when they are cleared off the stack. As this output may not be easy to
+interpret for an unsuspecting user, we limit this to the case that the
+|verbosity| variable (defined in \.{global.h}) is nonzero.
 
 @< Function definitions @>=
 void reset_evaluator()
@@ -102,9 +106,9 @@ void reset_evaluator()
 
 @* Outline of the evaluation process.
 %
-This module is concerned with the transformation of an abstract syntax tree as
-produced by the parser into ultimately actions and computed values. This
-transformation consist of two separate parts: type analysis, which also
+This module is concerned with the processing of the abstract syntax tree as
+produced by the parser, ultimately producing actions and computed values. This
+processing consist of two separate stages: type analysis, which also
 transforms the syntax tree into a more directly executable form, and execution
 of those transformed expressions.
 
@@ -125,30 +129,33 @@ definite type is required for them, while for others nothing is known
 beforehand about their type (for instance this is the case for the complete
 expression entered by the user for evaluation). The difference is important,
 as in the former case conversions can be inserted to make types match, for
-instance between a list of integers and a vector value; this is in fact the
-only way the user can initially produce vector values. However, both cases are
-handled by a single function |convert_expr|, which in addition builds (upon
-success) an |expression| value. As arguments |convert_expr| takes an |expr
-e@;| value produced by the parser, and a type in the form of a non-constant
-reference |type_expr& type@;|. If |type| is undefined initially, then it will
-be set to the type derived for the expression; if it is defined then it may
-guide the conversion process, and the type eventually found will have to match
-it. It could also be that |type| is initially partially defined (such as
-`\.{(int,*)}', meaning ``pair on an integer and something''), in which case
-derivation and testing functionality are combined; this gives flexibility to
-|convert_expr|.
+instance between a list of integers and a vector value (this is in fact the
+only way the user can explicitly construct vector values). However, both
+situations (and some intermediate ones) are handled by a single function
+|convert_expr|, which in addition builds (upon success) an |expression| value.
+As arguments |convert_expr| takes an |expr e@;| value produced by the parser,
+and a type in the form of a non-constant reference |type_expr& type@;|. If
+|type| is undefined initially, then it will be set to the type derived for the
+expression; if it is defined then it may guide the conversion process, and the
+type eventually found will have to match it. It could also be that |type| is
+initially partially defined (such as `\.{(int,*)}', meaning ``pair on an
+integer and something''), in which case derivation and testing functionality
+are combined; this gives flexibility to |convert_expr|.
 
 Upon successful completion, |type| will usually have become a completely
 defined. The object |type| should be owned by the caller, who will
-automatically gain ownership of any new nodes added. The latter, if it
-happens, will be so due to calling the |specialise| method for |type| or for
-its descendants. In some cases |type| will remain partly undefined, like for
-an emtpy list display which gets type~`\.{[*]}'; however if |type| remains
-completely undefined `\.*' (as would happen for the selection of a value from
-an empty list, or for a function that is unconditionally recursive) then it
-can be seen that evaluation cannot possibly complete without error, so we
-might treat this case as a type error (and we shall do so occasionally if this
-allows us to simplify our code).
+automatically gain ownership of any new nodes added in the process, and
+accessible from |type|. The latter, if it happens, will be caused by calls of
+the |specialise| method for |type|, or for its descendants, within
+|convert_expr|. In some cases |type| will remain partly undefined, like for an
+emtpy list display with an unknown type, which gets specialised only
+to~`\.{[*]}'. However if |type| remains completely undefined `\.*' (as will
+happen for the selection of a value from an empty list, or would happen for a
+function that is recursive without any terminating case if it were possible to
+specify such a function in \.{realex}) then it can be seen that evaluation
+cannot possibly complete without error, so we might treat this case as a type
+error (and we shall do so occasionally if this allows us to simplify our
+code).
 
 @< Declarations of exported functions @>=
 expression convert_expr(const expr& e, type_expr& type)
@@ -169,9 +176,11 @@ therefore not activated, until the final entry is copied, so we would need a
 So instead we chain the different bindings into a linked list, and forbid any
 copy or assignment. In fact the nesting of the various bindings will embed in
 the nested calls of |convert_expr|, so we can afford to allocate each
-|bindings| as local variable to (some instace of) |convert_expr|, and there is
-no ownership of them down the linked list. We do provide methods |push| and
-|pop| to prepend and detach a |bindings| from a list.
+|bindings| as local variable to (some instance of) |convert_expr|, where links
+always point to an instance with larger lifetime. Then there is no ownership
+of pointed-to structures at all, the usual handling of the \Cpp call stack
+being sufficient. We do provide methods |push| and |pop| to prepend and detach
+a |bindings| from a list.
 
 @< Type def... @>=
 class bindings
@@ -191,8 +200,8 @@ public:
   void add(Hash_table::id_type id,type_ptr t);
   type_p lookup
     (Hash_table::id_type id, size_t& depth, size_t& offset) const;
-  void push (bindings*& sp) @+{@; next=sp; sp=this; }
-  void pop (bindings*& sp) const @+{@; sp=next; }
+  void push (bindings*& sp) @+{@; next=sp; sp=this; } // push |*this| onto |sp|
+  void pop (bindings*& sp) const @+{@; sp=next; } // pop from |*this| to |sp|
 };
 
 @ The method |add| adds a pair to the vector of bindings, taking care not to
@@ -211,9 +220,9 @@ void bindings::add(Hash_table::id_type id,type_ptr t)
 }
 
 @ The method |lookup| runs through the linked list of bindings and returns a
-pointer to the type if a match was found, also assigning the coordinates to
-output arguments. If no match is found a null pointer is returned and the
-output parameters are unchanged.
+pointer to the type if a match for the identifier |id| was found, also
+assigning the coordinates to output arguments. If no match is found a null
+pointer is returned and the output parameters are unchanged.
 
 @< Function def... @>=
 type_p bindings::lookup
@@ -257,44 +266,24 @@ before return would be somewhat laborious, whereas the conversion can be
 easily and safely achieved by the caller; also sometimes the resulting pointer
 is stored in a data structure that cannot accommodate auto-pointers.
 
-The code below takes into account the possibility that a denotation is
-converted immediately to some other type, for instance integer denotations can
-be used where a rational number is expected. The function |coerce| tests for
-this possibility, and may modify its final argument correspondingly.
-
 Altogether this is a quite extensive function, with as many cases in the
 switch as there are variants of |expr_union|, and for many of those branches a
 considerable amount of work to be done. It is therefore convenient to postpone
-most of these cases and treat them one syntactic construction at the time.
+these cases and treat them one syntactic construction at the time.
 
 @< Function definitions @>=
 expression convert_expr(const expr& e, type_expr& type)
-  throw(std::bad_alloc,program_error)
+@/  throw(std::bad_alloc,program_error)
 {
-
   switch(e.kind)
-  { case integer_denotation:
-    { expression_ptr d@|(new denotation
-        (shared_value(new int_value(e.e.int_denotation_variant))));
-      return conform_types(int_type,type,d,e);
-    }
-   case string_denotation:
-    { expression_ptr d@|(new denotation
-        (shared_value(new string_value(e.e.str_denotation_variant))));
-      return conform_types(str_type,type,d,e);
-    }
-   case boolean_denotation:
-    { expression_ptr d@|(new denotation
-          (shared_value(new bool_value(e.e.int_denotation_variant))));
-      return conform_types(bool_type,type,d,e);
-    }
-   @\@< Other cases for type-checking and converting expression~|e| against
+  {
+   @\@< Cases for type-checking and converting expression~|e| against
    |type|, all of which either |return| or |throw| a |type_error| @>
- }
- return NULL; // keep compiler happy
+  }
+  return NULL; // keep compiler happy
 }
 
-@*1 Executable expression objects.
+@* Denotations.
 %
 Let us define a first class derived from |expression_base|, which is
 |denotation|; it simply stores a |value|, which it returns upon evaluation.
@@ -315,17 +304,49 @@ struct denotation : public expression_base
   @+{@; denoted_value->print(out); }
 };
 
-@ The following function is not defined inside the class definition, because
-that definition precedes the one of the |inline| function |push_value| in the
-header file. It is not even made |inline| itself, since there is little point
-in doing so for virtual methods (calls via the vtable cannot be inlined). For
-the first time we see the |level| argument in action; whenever |l==no_value|
-we should avoid producing a result value.
+@ Since the |denotation| object stores a (constant, shared) value inside it,
+the evaluation simply consists of copying the pointer to the
+|execution_stack|. In spite of this simplicity, the |evaluate| is not defined
+inside the class definition, because that definition precedes the one of the
+|inline| function |push_value| in the header file. The method is not even made
+|inline|, since there is little point in doing so for virtual methods (calls
+via the vtable cannot be inlined). For the first time we see the |level|
+argument in action; whenever |l==no_value| we should avoid producing a result
+value.
 
 @< Function def... @>=
 void denotation::evaluate(level l) const
 @+{@; if (l!=no_value) push_value(denoted_value); }
 
+@ Here are the first examples of the conversions done in |convert_expr|. Each
+time we extract a \Cpp\ value from the |expr e@;| returned by the parser,
+construct and |new|-allocate a \.{realex} value (for instance |int_value|)
+from it, get a smart pointer to it, and pass that to the |denotation|
+constructor
+
+The code below takes into account the possibility that a denotation is
+converted immediately to some other type, for instance integer denotations can
+be used where a rational number is expected. The function |conform_types|
+(defined in \.{types.w}) will test whether the denotation provides or can be
+converted to the required type, and may modify its final argument in the
+latter case.
+
+@< Cases for type-checking and converting... @>=
+case integer_denotation:
+  { expression_ptr d@|(new denotation
+      (shared_value(new int_value(e.e.int_denotation_variant))));
+    return conform_types(int_type,type,d,e);
+  }
+case string_denotation:
+  { expression_ptr d@|(new denotation
+      (shared_value(new string_value(e.e.str_denotation_variant))));
+    return conform_types(str_type,type,d,e);
+  }
+case boolean_denotation:
+  { expression_ptr d@|(new denotation
+        (shared_value(new bool_value(e.e.int_denotation_variant))));
+    return conform_types(bool_type,type,d,e);
+  }
 
 @* List displays.
 %
@@ -344,6 +365,7 @@ struct list_expression : public expression_base
   virtual ~list_expression();
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
+  typedef std::vector<expression>::const_iterator c_it; // for commodity
 };
 
 @ A |list_expression| owns its component expressions, so the destructor must
@@ -351,8 +373,7 @@ take care to delete them.
 
 @< Function def... @>=
 list_expression::~list_expression()
-{@; for (size_t i=0; i<component.size(); ++i) delete component[i];
-}
+{@; for (c_it it=component.begin(); it!=component.end(); ++it) delete(*it); }
 
 @ When we print a list display, we just print the component expressions,
 enclosed in brackets and separated by commas, just as in their input syntax.
@@ -362,8 +383,8 @@ void list_expression::print(std::ostream& out) const
 { out << '[';
   if (component.size()==0) out << ']';
   else
-    for (size_t i=0; i<component.size(); ++i)
-    out << *component[i] << (i<component.size()-1 ? ',' : ']');
+    for (c_it it=component.begin(); it!=component.end(); ++it)
+      out << **it << (it+1!=component.end() ? ',' : ']');
 }
 
 
@@ -374,10 +395,11 @@ particular type is required then the components will just be required to have
 equal types; in addition we want to allow additional cases which can be made
 to conform by inserting conversion routines.
 
-The function |convert_expr| handles all this in an elegant way. As we proceed
-along the components, our type may get specialised, and in case of definitely
-unequal types we may look up if a conversion between them is defined. It may
-even happen that the type remains partly undetermined, in case of an empty
+The function |convert_expr| handles all this in a fairly effortless way. As we
+proceed along the components, the type |*type.component_type|, may get
+specialised if undefined initially, and once this is the case further
+components may be coerced into the previously established component type. It
+may even happen that the type remains partly undetermined, in case of an empty
 list. The current code does have a slight asymmetry, in that types from
 previous components may guide conversions applied to later components but not
 vice versa: if some components are vectors and other are lists of integers,
@@ -386,14 +408,15 @@ context requires a particular type, in which case all components are converted
 accordingly).
 
 We also have the obligation here to build a converted |list_expression|
-representing the list display; we know its size beforehand, and upon
-allocation we fill it with null pointers that will progressively be replaced,
-in order to ensure proper destruction in case a |type_error| is thrown by a
-component expression. When a type other than ``row of'' is expected, we must
-of course take explicit action to see whether some type conversion can resolve
-the conflict.
+representing the list display; we know its size beforehand, and reserve that
+space, but let the vector start out empty, pushing completed |expression|
+pointers into it whenever |convert_expr| has converted a subexpression; this
+ensures proper destruction in case a |type_error| is thrown by a component
+expression. When a type other than ``row of'' is expected, we must instead
+take explicit action to see whether some type conversion can resolve the
+conflict.
 
-@< Other cases for type-checking and converting... @>=
+@< Cases for type-checking and converting... @>=
 case list_display:
   if (type.specialise(row_of_type))
   { std::auto_ptr<list_expression> result (new list_expression(0));
@@ -409,11 +432,15 @@ case list_display:
 
 @ When in |convert_expr| we encounter a list display when a non-row type is
 expected, we single out the cases that a conversion from a row type to the
-required type is available; in that case we continue to convert the component
-expressions with as expected type the corresponding component type (if
-multiple coercions to the required type are known, the first one in the table
-gets preference; this occurs for required type \.{mat}, and means that the
-component type will then be \.{vec} rather than \.{[int]}).
+required type is available; this conversion is searched for by |row_coercion|
+(defined in \.{types.w}). If this is successful, we continue to convert the
+component expressions with as expected type the corresponding component type
+(if multiple coercions to the required type are known, |row_coercion| gives
+preference to the first one in the table; this occurs for required
+type \.{mat}, and means that the component type will then be \.{vec} rather
+than \.{[int]}). Once a conversion has been determined, we proceed as in the
+case where as ``row-of'' type was required, and in particular there may be
+further coercions of individual expressions in the list display.
 
 @< If |type| can be converted from some row-of type, check the components of
    |e.e.sublist|... @>=
@@ -423,18 +450,18 @@ component type will then be \.{vec} rather than \.{[int]}).
     throw type_error(e,copy(row_of_type),copy(type));
 @)
   std::auto_ptr<list_expression> display@|
-      (new list_expression@|(length(e.e.sublist)));
-  @/size_t i=0;
-    for (expr_list l=e.e.sublist; l!=NULL; l=l->next,++i)
-      display->component[i]=convert_expr(l->e,comp_type);
-    return new conversion(*conv,expression_ptr(display));
+      (new list_expression(0));
+  display->component.reserve(length(e.e.sublist));
+  for (expr_list l=e.e.sublist; l!=NULL; l=l->next)
+    display->component.push_back(convert_expr(l->e,comp_type));
+  return new conversion(*conv,expression_ptr(display));
 }
 
 @ The evaluation of a |list_expression| evaluates the components in a simple
 loop. If |l==no_value|, we only evaluate for side effects, otherwise we wrap
 the result in a single |row_value|. Since evaluation of component expressions
 pushes the resulting value onto the execution stack, we pop each one off
-immediately t integrate it into the result. We take care to hold the partial
+immediately to integrate it into the result. We take care to hold the partial
 result via an auto-pointer |result|, so that in case of a runtime error during
 the evaluation of one of the component expressions the values already computed
 are cleaned up.
@@ -442,12 +469,12 @@ are cleaned up.
 @< Function def... @>=
 void list_expression::evaluate(level l) const
 { if (l==no_value)
-    for (size_t i=0; i<component.size(); ++i)
-      component[i]->void_eval();
+    for (c_it it=component.begin(); it!=component.end(); ++it)
+      (*it)->void_eval();
   else
-  { row_ptr result(new row_value(component.size()));
-    for (size_t i=0; i<component.size(); ++i)
-      component[i]->eval(),result->val[i]=pop_value();
+  { row_ptr result(new row_value(0)); result->val.reserve(component.size());
+    for (c_it it=component.begin(); it!=component.end(); ++it)
+      (*it)->eval(),result->val.push_back(pop_value());
     push_value(result); // result will be shared from here on
   }
 }
@@ -487,22 +514,29 @@ void tuple_expression::print(std::ostream& out) const
 { out << '(';
   if (component.size()==0) out << ')';
   else
-    for (size_t i=0; i<component.size(); ++i)
-    out << *component[i] << (i<component.size()-1 ? ',' : ')');
+    for (c_it it=component.begin(); it!=component.end(); ++it)
+      out << **it << (it+1!=component.end() ? ',' : ')');
 }
 
 
 @ When converting a tuple expression, we first try to specialise |type| to a
 tuple type with the right number of unknown components; unless |type| was
 completely undetermined, this just amounts to a test that it is a tuple type
-with the right number of components. We report a wrong number of components
-via a type pattern, which is probably as clear as mentioning too few or too
-many components.
+with the right number of components. Even if the specialisation fails, it need
+not be a type error: the tuple mights be convertible to the proper type. For
+this reason continue to type-check components even when |tuple_expected| is
+false, using the a priori (tuple) type found as starting point for a possible
+coercion. In this case we already know that |type| cannot be specialised to
+|*tup|, so we call |coerce| directly rather than using |conform_types| as
+happens elsewhere. If we do find a type error due to a wrong number of
+components, this is reported via a type pattern; this is probably as clear as
+mentioning too few or too many components explicitly.
 
-@< Other cases for type-checking and converting... @>=
+@< Cases for type-checking and converting... @>=
 case tuple_display:
 { type_ptr tup=unknown_tuple(length(e.e.sublist));
-  bool tuple_expected=type.specialise(*tup); // whether |type| is a tuple
+  bool tuple_expected=type.specialise(*tup);
+    // whether |type| is a tuple of correct size
   tuple_expression* tup_exp;
   expression_ptr result(tup_exp=new tuple_expression(0));
   tup_exp->component.reserve(length(e.e.sublist));
@@ -527,11 +561,11 @@ single value only if |l==single_value|, which is accomplished by |wrap_tuple|.
 @< Function def... @>=
 void tuple_expression::evaluate(level l) const
 { if (l==no_value)
-    for (size_t i=0; i<component.size(); ++i)
-      component[i]->void_eval();
+    for (c_it it=component.begin(); it!=component.end(); ++it)
+      (*it)->void_eval();
   else
-  { for (size_t i=0; i<component.size(); ++i)
-      component[i]->eval();
+  { for (c_it it=component.begin(); it!=component.end(); ++it)
+      (*it)->eval();
     if (l==single_value)
       wrap_tuple(component.size());
   }
@@ -539,23 +573,24 @@ void tuple_expression::evaluate(level l) const
 
 @* Array subscription.
 %
-While we have seen expressions to build lists, and to make vectors and
-matrices out of them, we so far are not able to access their components once
-they are constructed. To that end we shall now introduce operations to index
-such values. We allow subscription of rows, but also of vectors, rational
-vectors, matrices, and strings. Since after type analysis we know which of the
-cases applies, we define several classes. These differ mostly by their
-|evaluate| method, so we first derive an intermediate class from
-|expression_base|, and derive the others from it. This class also serves to
-host an enumeration type that will serve later. We include cases here that are
-related to types define in \.{built-in-types}.
+While we have seen expressions to build lists, and although vectors and
+matrices can be made out of them using coercions, we so far are not able to
+access their components once they are constructed. To that end we shall now
+introduce operations to index such values. We allow subscription of rows, but
+also of vectors, rational vectors, matrices, and strings. Since after type
+analysis we know which of the cases applies for a given expression, we define
+several classes among which type analysis will choose. These classes differ
+mostly by their |evaluate| method, so we first derive an intermediate class
+from |expression_base|, and derive the others from it. This class also serves
+to host an enumeration type that will serve later. We include a case here,
+|mod_poly_term|, that is related to a type defined in \.{built-in-types}.
 
 @< Type definitions @>=
 struct subscr_base : public expression_base
 { enum sub_type
   { row_entry, vector_entry, ratvec_entry, string_char
   , matrix_entry, matrix_column, mod_poly_term };
-  expression array, index;
+  expression array, index; // the two parts of the subscription expression
 @)
   subscr_base(expression_ptr a, expression_ptr i)
   : array(a.release()),index(i.release()) @+{}
@@ -634,7 +669,11 @@ void matrix_subscription::print(std::ostream& out) const
 }
 
 @ It shall be useful to have a function recognising valid aggregate-index
-combinations.
+combinations. Upon success, the last two parameters serve to store the type
+the subscription will result in, and an element of the |sub_type| enumeration
+that indicates the kind of subscription that was found. The |mod_poly_term|
+case indicates that a ``parameter polynomial'' can be subscripted with a
+parameter to return a split integer result.
 
 @< Function def... @>=
 bool subscr_base::indexable
@@ -673,7 +712,7 @@ from a string).
 @< Function def... @>=
 bool subscr_base::assignable(subscr_base::sub_type t)
 { switch (t)
-  {@; case ratvec_entry: case string_char: case mod_poly_term: return false;
+  { case ratvec_entry: case string_char: case mod_poly_term: return false;
     default: return true;
   }
 }
@@ -681,9 +720,9 @@ bool subscr_base::assignable(subscr_base::sub_type t)
 
 @ When encountering a subscription in |convert_expr|, we determine the types
 of array and of the indexing expression separately, ignoring so far any type
-required by the context. Then we look if the types agree with any of the four
-types of subscription expressions that we can convert to, throwing an error if
-it does not. Finally we check is the a priori type |subscr_type| of the
+required by the context. Then we look if the types agree with any of the types
+of subscription expressions that we can convert to, throwing an error if it
+does not. Finally we check is the a priori type |subscr_type| of the
 subscripted expression equals or specialises to the required |type|, or can be
 converted to it by |coerce|, again throwing an error if nothing works. For the
 indexing expression only equality of types is admitted, since the basic
@@ -694,10 +733,10 @@ there is little point in catering for (indexing) expressions having completely
 undetermined type, as such a type can only apply to an expression that can
 never return (it cannot be evaluated without error).
 
-@< Other cases for type-checking and converting... @>=
+@< Cases for type-checking and converting... @>=
 case subscription:
 { type_expr array_type, index_type, subscr_type;
-    // initialised to |undetermined_type|
+    // all initialised to |undetermined_type|
   expression_ptr array
     (convert_expr(e.e.subscription_variant->array,array_type));
   expression_ptr index
@@ -789,7 +828,8 @@ void string_subscription::evaluate(level l) const
     push_value(new string_value(s->val.substr(i->val,1)));
 }
 
-@ And here are the cases for matrix indexing.
+@ And here are the cases for matrix indexing, which are just slightly more
+complicated.
 
 @< Function definitions @>=
 void matrix_subscription::evaluate(level l) const
@@ -831,10 +871,9 @@ identifier at that time, and indeed during different evaluations the same
 local identifier may find itself bound to different values.
 
 Global identifiers values will be stored in a global identifier table holding
-values and their types (initially it does so for the built-in functions). The
-values of local identifiers will be stored at runtime in a stack of variable
-bindings, but not their types (these are held elsewhere during type analysis,
-and have disappeared at evaluation time).
+values and their types. The values of local identifiers will be stored at
+runtime in a stack of variable bindings, but not their types (these are held
+elsewhere during type analysis, and have disappeared at evaluation time).
 
 In spite of these differences there is some common ground for global and local
 identifiers: they have a name that can be printed. For this reason we derive
@@ -1008,9 +1047,8 @@ shared_share Id_table::address_of(Hash_table::id_type id)
 
 @ We provide a |print| member that shows the contents of the entire table.
 Since identifiers might have undefined values, we must test for that condition
-and print dummy output in that case. This case is distinct from the one where
-a user explicitly asks for the value of an uninitialised variable; the latter
-will be caught by the evaluator at the point where the variable is evaluated.
+and print dummy output in that case. This signals that attempting to evaluate
+the identifier at this point would cause the evaluator to raise an exception.
 
 @< Function def... @>=
 
@@ -1051,11 +1089,13 @@ When during type checking an identifiers binds to a value in the global
 identifier table, it will be converted into a |global_identifier| object.
 Since a value is already available at this time, we can record the location of
 the (pointer to the shared) value in the |global_identifier| object. Apart
-from avoiding look-up at evaluation time, this measure also allows detaching
-an applied global identifier from a newly assigned value if the latter should
-have a different type, as was done in the |add| method of the identifier
-table. This precaution ensures that evaluation will always result in a value
-of the expected type.
+from avoiding look-up at evaluation time, this binding can remain intact in
+case the global identifier should be defined anew using the |add| method of
+the identifier table, and will continue to access the old value. This
+precaution is necessary because (in contrast to assignment) a new definition
+may change the type of the identifier, but the applied identifier expression
+has already been type-checked and should not be allowed to return a value of a
+different type than it did originally.
 
 @< Type definitions @>=
 class global_identifier : public identifier
@@ -1075,10 +1115,10 @@ global_identifier::global_identifier(Hash_table::id_type id)
 @+{}
 
 
-@ Evaluating a global identifier returns the value stored in the location
-|address|, possibly expanded if |l==multi_value|, or nothing at all if
-|l==no_value|. However, since initially undefined global variables were added
-to the language, we have to watch out for a (shared) null pointer at
+@ Evaluating a global identifier returns the value currently stored in the
+location |address|, possibly expanded if |l==multi_value|, or nothing at all
+if |l==no_value|. However, since undefined global variables have been made
+possible in the language, we have to watch out for a (shared) null pointer at
 |*address|.
 
 @< Function definitions @>=
@@ -1097,26 +1137,34 @@ Local identifiers will be accessed from the current execution context, which
 is a stack of variable bindings independent of the |execution_stack| (the
 latter bieng used for anonymous components of expressions being evaluated).
 This stack is implemented as a singly linked list, and accessed through a
-(smart) pointer. That pointer is declared local to the evaluator; compared
-with making it a parameter to the |evaluate| methods, this has the advantage
-of not encumbering the numerous such methods that neither use nor modify the
-context in any way (those not involving identifiers or user defined
-functions).
+(smart) pointer. The structure |context| pointed to by |context_ptr| is
+described in \.{types.w}; essentially, each node of the list is a vector of
+values that, although each is associated with an identifier, are stored
+anonymously; the proper location of a variable in this list of frames will
+determined during type checking and stored, so that no looking up is required
+at run time (although traversing of the linked list may be necessary).
+
+The pointer |context_ptr| is declared a as static variable local to the
+evaluator; compared with making it a parameter to the |evaluate| methods, this
+has the advantage of not encumbering the numerous such methods that neither
+use nor modify the context in any way (those not involving identifiers or user
+defined functions).
 
 @< Local var... @>=
 context_ptr execution_context;
 
-@~A disadvantege of using a static variable is that in case of exceptions it
-retains the value current before throwing. Therefore we need to explicitly
-reset the execution in such cases. Since it is a smart pointer, resetting
-automatically takes care of adjusting reference counts and maybe deleting
-values that are part of the discarded context.
+@~A disadvantege of using a static variable |context_ptr| is that in case of
+exceptions it retains the value current before throwing. Therefore we need to
+explicitly reset the execution in such cases. Since it is a smart pointer,
+resetting automatically takes care of adjusting reference counts and maybe
+deleting values that are part of the discarded context.
 
 @< Actions... @>=
 execution_context.reset();
 
 @ We derive the class of local identifiers from that of global ones, which
-takes care of its |print| method.
+takes care of its |print| method. The data stored are |depth| identifying a
+frame, and |offset| locating the proper values withing the frame.
 
 @< Type definitions @>=
 class local_identifier : public identifier
@@ -1127,48 +1175,48 @@ public:
   virtual void evaluate(level l) const; // only this method is redefined
 };
 
-@ The method |local_identifier::evaluate| looks up a value in the
-|execution_context|.
+@ The method |local_identifier::evaluate| looks up a value in the current
+|execution_context|, which the method |context::elem| accomplishes.
 
 @< Function definitions @>=
 void local_identifier::evaluate(level l) const
 {@; push_expanded(l,execution_context->elem(depth,offset)); }
 
-@ For an applied identifier, we first look in |id_context| for a binding of
-the identifier, and if found it will be a local identifier, and otherwise we
-look in |global_id_table|. If found in either way, the associated type must
-equal the expected type (if any), or be convertible to it using |coerce|.
-There is a subtlety in that the identifier may have a more general type than
-|type| required by the context (for instance if it was \&{let} equal to an
-empty list, and a concrete type of list is required). In this case
-|specialise| succeeds without modifying |type| and we specialise the
-identifier to |type| instead, so that it cannot be subsequently used with an
-incompatible specialisation (notably any further assignments to the variable
-must respect the more specific type).
+@ When type-checking an applied identifier, we first look in |id_context| for
+a binding of the identifier; if found it will be a local identifier, and
+otherwise we look in |global_id_table|. If found in either way, the associated
+type must equal the expected type (if any), or be convertible to it using
+|coerce|. There is a subtlety in that the identifier may have a more general
+type than |type| required by the context (for instance if it was \&{let} equal
+to an empty list, and a concrete type of list is required). In this case the
+first call of |specialise| below succeeds without modifying |type|, and we
+then specialise the identifier to |type| instead, so that it cannot be
+subsequently used with an incompatible specialisation (notably any further
+assignments to the variable must respect the more specific type).
 
-@< Other cases for type-checking and converting... @>=
+@< Cases for type-checking and converting... @>=
 case applied_identifier:
-{ type_p it; expression_ptr id; size_t i,j;
-  if ((it=id_context->lookup(e.e.identifier_variant,i,j))!=NULL)
+{ type_p id_t; expression_ptr id; size_t i,j;
+  if ((id_t=id_context->lookup(e.e.identifier_variant,i,j))!=NULL)
     id.reset(new local_identifier(e.e.identifier_variant,i,j));
-  else if ((it=global_id_table->type_of(e.e.identifier_variant))!=NULL)
+  else if ((id_t=global_id_table->type_of(e.e.identifier_variant))!=NULL)
     id.reset(new global_identifier(e.e.identifier_variant));
   else throw program_error  @|
        (std::string("Undefined identifier ")
 	+main_hash_table->name_of(e.e.identifier_variant));
 @.Undefined identifier@>
-  if (type.specialise(*it))
-    {@; it->specialise(type); return id.release(); }
-  else if (coerce(*it,type,id))
+  if (type.specialise(*id_t))
+    {@; id_t->specialise(type); return id.release(); }
+  else if (coerce(*id_t,type,id))
     return id.release();
-  else throw type_error(e,copy(*it),copy(type));
+  else throw type_error(e,copy(*id_t),copy(type));
 }
 
 @*1 Operator and function overloading.
 %
 While the simple mechanism of identifier identification given above suffices
 for many purposes, it would be very restrictive in case of operators (since it
-allows only one function, with fixes argument types, to be bound globally to
+allows only one function, with fixed argument types, to be bound globally to
 an operator symbol identifier), and to a somewhat lesser measure (since one
 could vary the identifier name according to the argument types) for functions.
 So we definitely want to allow operator overloading (defining the same
@@ -1183,10 +1231,11 @@ identifier table. However the basic table entry for an overloading needs a
 level of sharing less, since the function bound for given argument types
 cannot be changed by assignment, so the call will refer directly to the value
 stored rather than to its location. We also take into account that the stored
-types are always function types (this saves space, while for normal use we do
-not need to access the full function type as a |type_expr|, something this
-representation makes rather difficult). Remarks about ownership of the type
-apply without change however.
+types are always function types, so that we can store a |func_type| structure
+without tag or pointer to it. This saves space, although it makes  access the
+full function type as a |type_expr| rather difficult; however the latter is
+seldom needed in normal use. Remarks about ownership of the type
+apply without change from the non-overloaded case however.
 
 @< Type definitions @>=
 
@@ -1195,17 +1244,21 @@ struct overload_data
   overload_data() : val(),type(NULL)@+ {}
 };
 
-@ Looking up an overloaded identifier leads to a vector of value-type pairs.
-This is preferable to using a |std::multimap| multi-mapping identifiers to
-individual value-type pairs, as that would give us no control over the order
-in which the pairs for the same identifier are ordered. This is important
-since we want to try matching more specific (harder to convert to) argument
-types before trying less specific ones. We envisage as only method for making
-an identifier overloaded actually giving an overloaded definition, so the
-table will not normally associate an empty vector to an identifier (though it
-could do so after an entry is explicitly removed). The |variants| method will
-signal absence of an identifier by returning an empty list of variants, and no
-separate test for this condition is provided.
+@*2 Overload tables.
+%
+Looking up an overloaded identifier should given an ordered list of possible
+overloads, the ordering being important since we want to try matching more
+specific (harder to convert to) argument types before trying less specific
+ones. Therefore, rather than using a |std::multimap| multi-mapping identifiers
+to individual value-type pairs, we use a |std::map| from identifiers to
+vectors of value-type pairs.
+
+An identifier is entered into the table when it is first given an overloaded
+definition, so the table will not normally associate an empty vector to an
+identifier; however this situation can arise after removal of a (last)
+definition for an identifier. The |variants| method will signal absence of an
+identifier by returning an empty list of variants, and no separate test for
+this condition is provided.
 
 @< Type definitions @>=
 
@@ -1214,6 +1267,7 @@ class overload_table
 public:
   typedef std::vector<overload_data> variant_list;
   typedef std::map<Hash_table::id_type,variant_list> map_type;
+  typedef map_type::const_iterator c_it;
 private:
   map_type table;
   overload_table(const Id_table&); // copying forbidden
@@ -1232,46 +1286,44 @@ public:
 };
 
 @ As for the ordinary identifier table, the table owns the types, so the
-destructor must clean then up.
+destructor must clean them up.
 
 @< Function definitions @>=
 
 overload_table::~overload_table()
-{ for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
+{ for (c_it p=table.begin(); p!=table.end(); ++p)
     for (size_t i=0; i<p->second.size(); ++i)
     {@; delete p->second[i].type; }
 }
 
-@ The |variants| method just returns a reference to the stored vector of
-overload instances, or to a static empty vector if nothing is found.
+@ The |variants| method just returns a reference to the found vector of
+overload instances, or else an empty vector. Since it is returned as
+reference, a static empty vector is used to ensure sufficient lifetime.
 
 @< Function definitions @>=
 const overload_table::variant_list& overload_table::variants
   (Hash_table::id_type id) const
 { static const variant_list empty;
-  map_type::const_iterator p=table.find(id);
+  c_it p=table.find(id);
   return p==table.end() ? empty : p->second;
 }
 
 @ The |add| method is what introduces and controls overloading. We first try
-to associate an singleton vector with the identifier, and upon success insert
+to associate a singleton vector with the identifier, and upon success insert
 the given value-type pair. In the contrary case (the identifier already had a
 vector associate to it), we must test the new pair against existing elements,
-reject it is there is a conflicting entry present, and otherwise make sure it
+reject it if there is a conflicting entry present, and otherwise make sure it
 is inserted before any strictly less specific overloaded instances.
 
 @< Function def... @>=
 void overload_table::add
   (Hash_table::id_type id, shared_value val, type_ptr tp)
-{ if (tp->kind!=function_type)
-    throw std::logic_error("Wrapper function has non-function type");
-  func_type_ptr type(tp->func);
-  tp->kind=undetermined_type; // release
-  if (type->arg_type==void_type)
-    throw program_error("Cannot define function overload without arguments");
+{ func_type_ptr type(tp->func); // access using more specific pointer
+  tp->kind=undetermined_type; // release original pointer
   std::pair<map_type::iterator,bool> trial=
     table.insert(std::make_pair(id,variant_list(1,overload_data())));
   variant_list& slot=trial.first->second;
+    // vector of all variants (a singleton if |trial.second|)
   if (trial.second) // a fresh overloaded identifier
   {@; slot[0].val=val;
     slot[0].type=type.release();
@@ -1292,7 +1344,7 @@ The last of the former cases and the first of the latter are recorded, and
 their requirements should be compatible.
 
 Although the module name does not mention it, we allow one case of close and
-mutually convertible types, namely identical types; in this case we simple
+mutually convertible types, namely identical types; in this case we simply
 replace the old definition for this type by the new one. This could still
 change the result type, but that does not matter because if any calls that
 were type-checked against the old definition should survive (in a closure),
@@ -1306,58 +1358,83 @@ in no way altered by the replacement of the definition.
   { unsigned int cmp= is_close(type->arg_type,slot[i].type->arg_type);
     switch (cmp)
     {
-      case 0x6: lwb=i+1; break; // existent type |i| converts to |type|
-      case 0x5: @+ if (upb>i) upb=i; @+ break; // |type| converts to type |i|
-      case 0x7:
+      case 0x6: lwb=i+1; break;
+        // existent type |i| converts to |type|, which must come later
+      case 0x5: @+ if (upb>i) upb=i; @+ break;
+        // |type| converts to type |i|, so it must come before
+      case 0x7: // mutually convertible types, maybe identical ones
         if (slot[i].type->arg_type==type->arg_type)
+          // identical ones: overload redefinition case
         @/{@; slot[i].val=val;
             delete slot[i].type;
             slot[i].type=type.release();
             return;
           }
       @/// |else| {\bf fall through}
-      case 0x4: // conflicting cases
-        { std::ostringstream o;
-          o << "Cannot overload `" << main_hash_table->name_of(id) << "', " @|
-               "previous type " << slot[i].type->arg_type
-            << " is too close to "@| << type->arg_type
-            << ",\nmaking overloading potentially ambiguous." @|
-               " Priority cannot\ndisambiguate, as "
-            << (cmp==0x4 ? "neither" :"either") @|
-            << " type converts to the other";
-          throw program_error(o.str());
-        }
+      case 0x4:
+         @< Report conflict of attempted overload for |id| with previous one
+            in |slot[i]| @>
       default: @+{} // nothing for unrelated argument types
     }
   }
-  if(lwb>upb)
-    throw std::logic_error("Conflicting order related types");
-  @< Insert |val| and |type| at entry |upb| after shifting remainder up @>
+  @< Insert |val| and |type| after |lwb| and before |upb| @>
 }
 
-@ Shifting entries during a call of |insert| will probably create duplicated
-type pointers at some points; however these do not risk double deletion since
-no errors can be thrown at such points. Indeed, the only point where throwing
-may occur is when extending the vector which happens at the beginning, and in
-case of successful reallocation entries are copied (and temporarily
-duplicated) anyway; the |insert| method involves nothing more dangerous than
-this.
+@ We get here when the argument types to be added are either mutually
+convertible but distinct form existing types (the fall through case above), or
+close to existing types without being convertible in any direction (which
+would have given a way to disambiguate), so we must report an error. The error
+message is quite verbose, but tries to precisely pinpoint the kind of problem
+encountered so that the user will hopefully able to understand.
 
-@< Insert |val| and |type| at entry |upb| after shifting remainder up @>=
+@< Report conflict of attempted overload for |id| with previous one in
+  |slot[i]| @>=
+{ std::ostringstream o;
+  o << "Cannot overload `" << main_hash_table->name_of(id) << "', " @|
+       "previous type " << slot[i].type->arg_type
+    << " is too close to "@| << type->arg_type
+    << ",\nmaking overloading potentially ambiguous." @|
+       " Broadness cannot disambiguate,\nas "
+    << (cmp==0x4 ? "neither" :"either") @|
+    << " type converts to the other";
+  throw program_error(o.str());
+}
+
+@ Once we arrive here, the value of |lwb| indicates the first position in
+|slot| where we could insert our overload (after any narrower match, and |upb|
+indicates the last possible position (before any broader match). It should not
+be possible (by transitivity of convertibility) that any narrower match comes
+after any broader match, so we insist that |lwb>upb| always, and throw a
+|std::logic_error| in case it should fail. Having passed this test, we insert
+the new overload into the vector |slot| at position |upb|, the last possible
+one.
+
+Shifting entries during a call of |insert| may temporarily create duplicated
+(non-smart) type pointers at some points; however these do not risk double
+deletion since no errors can be thrown at such points. Indeed, the only point
+where throwing may occur is when extending the vector which happens at the
+very beginning. We note also that in case of necessary reallocation, entries
+will be copied (and temporarily duplicated) anyway; the |variant_list::insert|
+method we are calling here does nothing more dangerous than that.
+
+@< Insert |val| and |type| after |lwb| and before |upb| @>=
+if (lwb>upb)
+  throw std::logic_error("Conflicting order of related overload types");
+else
 { slot.insert(slot.begin()+upb,overload_data());
 @/slot[upb].val=val; slot[upb].type=type.release();
 }
 
 
 @ The |remove| method allows removing an entry from the overload table, for
-instance to make place for another one. It returns a boolean telling whether
+instance to make place for another one. It returns a Boolean telling whether
 any such binding was found (and removed). The |variants| array might become
 empty, but remains present and will be reused upon future additions.
 
 @< Function def... @>=
 bool overload_table::remove(Hash_table::id_type id, const type_expr& arg_t)
 { map_type::iterator p=table.find(id);
-  if (p==table.end()) return false;
+  if (p==table.end()) return false; // |id| was not known at all
   variant_list& variants=p->second;
   for (size_t i=0; i<variants.size(); ++i)
     if (variants[i].type->arg_type==arg_t)
@@ -1365,18 +1442,18 @@ bool overload_table::remove(Hash_table::id_type id, const type_expr& arg_t)
       variants.erase(variants.begin()+i);
       return true;
     }
-  return false;
+  return false; // |id| was known, but no such overload is present
 }
 
-@ We provide a |print| member that shows the contents of the entire table,
-just like for identifier tables. Only this one prints multiple entries per
-identifier.
+@ We provide a |print| member of |overload_table| that shows the contents of
+the entire table, just like for identifier tables. Only this one prints
+multiple entries per identifier.
 
 @< Function def... @>=
 
 void overload_table::print(std::ostream& out) const
 { type_expr type; type.kind=function_type;
-  for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
+  for (c_it p=table.begin(); p!=table.end(); ++p)
     for (size_t i=0; i<p->second.size(); ++i)
     { type.func = p->second[i].type;
       out << main_hash_table->name_of(p->first) << ": " @|
@@ -1405,9 +1482,11 @@ create the table.
 @< Global variable definitions @>=
 overload_table* global_overload_table=NULL;
 
-@ Overloading resolution will be called from the case in |convert_expr| for
-function applications, after testing that overloads exist, so we can transmit
-the relevant |variants| together with the other parameters.
+@*2 Resolution of overloading.
+%
+We shall call |resolve_overload| from the case for function applications in
+|convert_expr|, after testing that overloads exist. So we can pass the
+relevant |variants| as a parameter.
 
 @< Declarations of exported functions @>=
 expression resolve_overload
@@ -1417,23 +1496,23 @@ expression resolve_overload
 
 @~To resolve overloading, we used to plunge into each variant, catching and
 ignoring errors, until one succeeded without error. For long formulae this
-traverses a search tree of exponential size, giving unacceptably inefficient
-expression analysis. So instead we now first try to find a matching variant,
-using an \foreign{a priori} type of the operand(s). This implies that the
-operand must be correctly typed without the benefit of a known result type,
-but the type found need not be an exact match with the one specified in the
-variant. Our matching condition is that |is_close| should hold, with the bit
-set that indicates a possible conversion from |a_priori_type| to the operand
-type for which the variant is defined. Coercions may need to be inserted in
-the operand expression, and since that expression could be arbitrarily
-complex, inserting coercions explicitly after the fact would be very hard to
-program. We choose the easier approach to cast away the converted expression
-once the matching variant is found, and to redo the analysis with the now
-known result type so that coercions get inserted during conversion. But then
-we again risk exponential time (although with powers of~2 rather than powers
-of the number of variants); since probably coercions will not be needed at all
-levels, we mitigate this risk by not redoing any work in case of an exact
-match.
+caused traversing a search tree of exponential size, giving unacceptably
+inefficient expression analysis. So instead we now first try to find a
+matching variant, using an \foreign{a priori} type of the operand(s). This
+implies that the operand must be correctly typed without the benefit of a
+known result type, but the type found need not be an exact match with the one
+specified in the variant. Our matching condition is that |is_close| should
+hold, with the bit set that indicates a possible conversion from
+|a_priori_type| to the operand type for which the variant is defined.
+Coercions may need to be inserted in the operand expression, and since that
+expression could be arbitrarily complex, inserting coercions explicitly after
+the fact would be very hard to program. We choose the easier approach to cast
+away the converted expression once the matching variant is found, and to redo
+the analysis with the now known result type so that coercions get inserted
+during conversion. But then we again risk exponential time (although with
+powers of~2 rather than powers of the number of variants); since probably
+coercions will not be needed at all levels, we mitigate this risk by not
+redoing any work in case of an exact match.
 
 Apart from those in |variants|, we also test for certain argument types that
 will match without being in any table; for instance the size-of operator~`\#'
@@ -1450,9 +1529,10 @@ expression resolve_overload
 { const expr& args = e.e.call_variant->arg;
   type_expr a_priori_type;
   expression_ptr arg(convert_expr(args,a_priori_type));
+    // get \foreign{a priori} types once
   Hash_table::id_type id =  e.e.call_variant->fun.e.identifier_variant;
-  @< If a special operator like size-of matches |id|, |return| a call of it
-     with argument |args| @>
+  @< If |id| is a special operator like size-of and it matches
+  |a_priori_type|, |return| a call |id(args)| @>
   for (size_t i=0; i<variants.size(); ++i)
   { const overload_data& v=variants[i];
     if ((is_close(a_priori_type,v.type->arg_type)&0x1)!=0)
@@ -1468,10 +1548,10 @@ expression resolve_overload
   @< Complain about failing overload resolution @>
 }
 
-@ Failing overload resolution causes a |program_error| explaining the
-is matching identifier and type. Since most function definitions will be in
-the overload table even when only one definition is present, we produce a
-|type_error| in that case, so that the message will mention the unique
+@ Failing overload resolution causes a |expr_error| explaining the is matching
+identifier and type. As most function definitions will be in the overload
+table even if only one definition is present, we produce a more specific
+|type_error| in that case, whose message will mention the unique
 expected argument type.
 
 @< Complain about failing overload resolution @>=
@@ -1488,12 +1568,24 @@ else
 
 @* Function calls.
 %
-One of the most basic tasks of the evaluator is to allow function calls, which
-may involve either buit-in or user-defined functions. We start with
-introducing a type for representing general function calls after type
-checking; the function is not assumes to be given by an identifier, and if it
-should anyway, it is a non-overloaded call that dynamically takes the value
-bound to the (possibly local) identifier.
+One of the most basic and important tasks of the evaluator is to allow
+function calls, which may involve either built-in or user-defined functions.
+This central part of the evaluator will be presented with an initial focus on
+built-in functions, while leaving the particulars of user defined functions
+(also known as $\lambda$-expressions) and their evaluation aside until
+somewhat later. This corresponds somewhat to the development history of the
+interpreter, in which initially only built-in functions were catered for;
+however many of the aspects that we deal with right away, notably function
+overloading, are in fact much more recent additions than used-defined
+functions were.
+
+We start with introducing a type for representing general function calls after
+type checking. This is the general form where function can be given by any
+kind of expression, not necessarily an applied identifier; indeed most cases
+where a named function is called will handled by another kind of expression,
+the overloaded call. In contrast with that, this type of call will dynamically
+evaluate the function expression, possibly resulting in different functions
+between evaluations.
 
 @< Type def... @>=
 struct call_expression : public expression_base
@@ -1506,10 +1598,10 @@ struct call_expression : public expression_base
   virtual void print(std::ostream& out) const;
 };
 
-@ To print a function call we print the function expression in parentheses,
-and the argument, latter enclosed in parentheses unless it is a tuple
-expression (which already has parentheses), which condition is tested by a
-dynamic cast.
+@ To print a function call we print the function expression, enclosed in
+parentheses unless it is an identifier, and the argument, enclosed in
+parentheses unless it is a tuple expression (which already has parentheses).
+The conditions for suppressing parentheses are tested a dynamic casts.
 
 @< Function definitions @>=
 void call_expression::print(std::ostream& out) const
@@ -1519,16 +1611,17 @@ void call_expression::print(std::ostream& out) const
   else out << '(' << *argument << ')';
 }
 
-@ The evaluation of the call of a built-in function executes a ``wrapper
-function'', which is defined in \.{global.h}.
+@ When a call involves a built-in function, what is executed is a ``wrapper
+function'', defined in \.{global.h}.
 
 @< Includes needed in the header file @>=
 
 #include "global.h" // for |wrapper_function|
 
-@ A wrapper function usually consists of a call to a library function
-sandwiched between unpacking and repacking statements; in some simple cases a
-wrapper function may decide to do the entire job itself.
+@ The class of dynamic values holding a wrapper function is called
+|builtin_value|; it also stores a print name, which is used when the wrapper
+function, rather than being called, gets printed as (part of) a value in its
+own right.
 
 @< Type definitions @>=
 
@@ -1585,10 +1678,11 @@ void overloaded_builtin_call::print(std::ostream& out) const
 particular tuples of any length. For such functions we cannot adopt the method
 used for other built-in functions of expanding argument tuples on the stack,
 since there would then be no way to recover their number. Fortunately such
-functions are necessarily accessed through overloading, so we detect their use
-at analysis time, and record it in the type off call expression generated.
-Therefore we derive a type from |overloaded_builtin_call| that will override
-only the |evaluate| method.
+functions are necessarily accessed through overloading, so we detect the fact
+that they are being used at analysis time. This fact is then recorded it in
+the type of call expression generated, and the |evaluate| method will ask for
+an unexpanded argument on the execution stack. Therefore we derive a type from
+|overloaded_builtin_call| that will override only the |evaluate| method.
 
 @< Type definitions @>=
 struct generic_builtin_call : public overloaded_builtin_call
@@ -1601,21 +1695,23 @@ struct generic_builtin_call : public overloaded_builtin_call
 
 @*1 Type-checking function calls.
 %
-The function in a call can be any type of expression; in case of a non-local
-identifier for which overloads are defined we attempt overload resolution (and
-ignore any value possibly present in the global identifier table). Otherwise
-the function expression determines its own type, and once this is known, its
-argument and result types can be used to help converting the argument
-expression and the call expression itself. Thus we first get the type of the
+When we type-check a function call, we must expect the function part to be any
+type of expression. However, when it is a single identifier (possibly operator
+symbol) that is not locally bound, and for which overloads are defined, then
+we attempt overload resolution (and in this case we ignore any value possibly
+present in the global identifier table). In all other cases, the function
+expression determines its own type, and once this is known, its argument and
+result types can be used to help converting the argument expression and the
+call expression itself. Thus in such cases we first get the type of the
 expression in the function position, requiring only that it be a function
 type, then type-check and convert the argument expression using the obtained
-result type, and build a converted function call~|call|. Finally we test if
-the required type matches the return type (in which case we simply
-return~|call|), or if the return type can be coerced to it (in which case we
-return |call| as transformed by |coerce|); if neither is possible we throw
-a~|type_error|.
+result type, and build a converted function call~|call|. Finally (and this is
+done by |conform_types|) we test if the required type matches the return type
+(in which case we simply return~|call|), or if the return type can be coerced
+to it (in which case we return |call| as transformed by |coerce|); if neither
+is possible we throw a~|type_error|.
 
-@< Other cases for type-checking and converting... @>=
+@< Cases for type-checking and converting... @>=
 case function_call:
 { if (e.e.call_variant->fun.kind==applied_identifier)
     @< Convert and |return| an overloaded function call if
@@ -1654,9 +1750,11 @@ in the overload table.
   }
 }
 
-@ The names of some special operators are tested for each time analyse an
-overloaded call; to avoid having to look them up in |main_hash_table| each
-time, we store each one in a static variable inside a local function.
+@ The names of some special operators are tested for each time we analyse an
+overloaded call. The numeric values of these identifiers are not known
+explicitly at compile time, but they will not change once the tables are
+initialised; to avoid having to look them up in |main_hash_table| each time,
+we store each one in a static variable inside a dedicated local function.
 
 @< Local function definitions @>=
 Hash_table::id_type equals_name()
@@ -1690,11 +1788,11 @@ case here, and will give the user-defined case later when we have discussed
 the necessary value types.
 
 As a special safety measure against the easily made error of writing `\.='
-instead of an assignment operator~`\.{:=}', we forbid converting the result of
-an (always overloaded) call to the equality operator to the void type,
-treating this case as a type error instead. In the unlikely case that the user
-defines an overloaded instance of `\.=' with void result type, calls to this
-operator will still be accepted.
+instead of an assignment operator~`\.{:=}', we forbid converting to void the
+result of an (always overloaded) call to the equality operator, treating this
+case as a type error instead. In the unlikely case that the user defines an
+overloaded instance of `\.=' with void result type, calls to this operator
+will still be accepted.
 
 @< Return a call of variant |v|... @>=
 { expression_ptr call;
@@ -1720,13 +1818,25 @@ argument type but fail to match the returned type, we throw a |type_error|.
 The function |print| (but not |prints|) will return the value printed if
 required, so it has the type of a generic identity function. This is done so
 that inserting |print| around subexpressions for debugging purposes can be
-done without other modifications of the user program. To ensure that coercions
-that would apply in the absence of |print| still get their chance, we do a
-recursive call to |coerce| after accepting without check the call to |print|.
+done without other modifications of the user program. Any call to |print| is
+accepted without check of the argument, and to ensure that coercions that
+would apply in the absence of |print| still get their chance, we call
+|conform_types| to possibly insert them at the outside of that call (so the
+value printed is the one before any coercion). It is still theoretically
+possible that inserting a call to print into valid code results in an error,
+namely for argument expressions that \emph{need} the type expected by the
+context in order to pass the type check. These cases are quite rare though,
+and can be overcome by inserting a cast inside the |print|. Moreover, in such
+cases an error will have been reported before we even get to this code, due to
+the fact that we have required that arguments can be analysed to
+|a_priori_type| without benefit of a context type; therefore there is nothing
+we could do about it here.
 
-@: sizeof section @>
+In the case of |prints|, the context must either expect or accept a void
+result, which is the condition that the call |type.specialise(void_type)|
+below tests.
 
-@< If a special operator like size-of... @>=
+@< If |id| is a special operator like size-of... @>=
 { if (id==size_of_name())
   { if (a_priori_type.kind==row_type)
     { expression_ptr call(new overloaded_builtin_call(sizeof_wrapper,"#",arg));
@@ -1740,9 +1850,7 @@ recursive call to |coerce| after accepting without check the call to |print|.
   else if (id==print_name()) // this one always matches
   { expression c = new generic_builtin_call(print_wrapper,"print",arg);
     expression_ptr call(c); // get ownership
-    if (type.specialise(a_priori_type) or coerce(a_priori_type,type,call))
-      return call.release();
-    else throw type_error(e,copy(a_priori_type),copy(type));
+    return conform_types(a_priori_type,type,call,e);
  }
   else if(id==prints_name()) // this always matches as well
   { expression c = new generic_builtin_call(prints_wrapper,"prints",arg);
@@ -1753,170 +1861,22 @@ recursive call to |coerce| after accepting without check the call to |print|.
   }
 }
 
-@*1 Wrappers that are not accessed through tables.
-%
-Here is a simple function that outputs any value, in the format used by the
-interpreter itself. This function has an argument of unknown type; we just
-pass the popped value to the |operator<<|. The function returns its argument
-as result.
-
-This is the first place in this file where we produce user output to a file.
-In general, rather than writing directly to |std::cout|, we shall pass via a
-pointer whose |output_stream| value is maintained in the main program, so that
-redirecting output to a different stream can be easily implemented. Since this
-is a wrapper function there is no other way to convey the output stream to be
-used than via a dedicated global variable.
-
-@< Local function definitions @>=
-void print_wrapper(expression_base::level l)
-{
-  *output_stream << *execution_stack.back() << std::endl;
-  if (l!=expression_base::single_value)
-    push_expanded(l,pop_value()); // remove and possibly expand value
-}
-
-@ Sometimes the user may want to use a stripped version of the |print| output:
-no quotes in case of a string value, or no parentheses or commas in case of a
-tuple value (so that a single statement can chain several texts on the same
-line). The |prints_wrapper| does this down to the level of omitting quotes in
-individual argument strings, using dynamic casts to determine the case that
-applies.
-
-@< Local function definitions @>=
-void prints_wrapper(expression_base::level l)
-{ shared_value v=pop_value();
-  string_value* s=dynamic_cast<string_value*>(v.get());
-  if (s!=NULL)
-    *output_stream << s->val << std::endl;
-  else
-  { tuple_value* t=dynamic_cast<tuple_value*>(v.get());
-    if (t!=NULL)
-    { for (size_t i=0; i<t->val.size(); ++i)
-      { s=dynamic_cast<string_value*>(t->val[i].get());
-        if (s!=NULL)
-	  *output_stream << s->val;
-        else
-           *output_stream << *t->val[i];
-      }
-      *output_stream << std::endl;
-    }
-    else
-      *output_stream << *v << std::endl; // just like |print| in other cases
-  }
-  if (l==expression_base::single_value)
-    wrap_tuple(0); // don't forget to return a value if asked for
-}
-
-@ The generic size-of wrapper was explicitly referenced in
-section@# sizeof section @> and never accessed in any other way. Therefore we
-do not enter it into any table like wrapper functions usually are, but just
-define it here.
-
-@< Local function definitions @>=
-void sizeof_wrapper(expression_base::level l)
-{ size_t s=get<row_value>()->val.size();
-  if (l!=expression_base::no_value)
-    push_value(new int_value(s));
-}
-
-@ The operator `\#' can be used also as infix operator, to join (concatenate)
-two row values of the same type or to extend one on either end by a single
-element. In the former case we require that both arguments have identical row
-type, in the latter case we allow the single element to be, or to be converted
-to, the component type of the row value.
-
-There is a subtlety in the order here, due to the fact that one of the
-arguments could be the empty list, with undetermined row type. Then there is
-actual ambiguity: with `\#' interpreted as join, the result is just the other
-operand, while suffixing or prefixing to the empty list gives a singleton of
-the other operand, and to some operands the empty list itself can also be
-suffixed or prefixed. The simplest resolution of this ambiguity is to say that
-join never applies with one of the arguments of undetermined list type, and
-that suffixing is preferred over prefixing (for instance $[[2]]\#[\,]$ will
-give $[[2],[\,]]$, but $[\,]\#[[2]]$ will give $[[[2]]]$). This can be
-obtained by testing for suffixing before testing for join: after the former
-test we know the first argument does not have type \.{[*]}, so it will match
-the second argument type only if both are determined row types.
-
-@< Recognise and return 2-argument versions of `\#'... @>=
-{ type_expr& arg_tp0 = a_priori_type.tuple->t;
-  type_expr& arg_tp1 = a_priori_type.tuple->next->t;
-  if (arg_tp0.kind==row_type)
-  { if (arg_tp0.component_type->specialise(arg_tp1) or @|
-        can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type)) // suffix
-    { expression_ptr call(new overloaded_builtin_call
-        (suffix_element_wrapper,"#",arg));
-      return conform_types(arg_tp0,type,call,e);
-    }
-    if (arg_tp0==arg_tp1) // join
-    { expression_ptr call(new overloaded_builtin_call
-        (join_rows_wrapper,"#",arg));
-      return conform_types(arg_tp0,type,call,e);
-    }
-  }
-  if (arg_tp1.kind==row_type and @|
-         (arg_tp1.component_type->specialise(arg_tp0) or @|
-          can_coerce_arg(arg.get(),0,arg_tp0,*arg_tp1.component_type)))
-          // prefix
-  { expression_ptr call(new overloaded_builtin_call
-      (prefix_element_wrapper,"#",arg));
-    return conform_types(arg_tp1,type,call,e);
-  }
-}
-
-@ We called |can_coerce_arg| when type-checking the dyadic use of the operator
-`\#', in order to see if one of its arguments can be coerced from its type
-|from| to |to|. The situation there is somewhat unusual, in that we have
-already converted the entire argument expression at the point where we
-discover, based on the type found, that one of the arguments might need to be
-coerced. This means that such a coercion must be inserted into an already
-constructed expression, whereas usually it is applied on the outside of an
-expression under construction (notably in ordinary overloading if coercion is
-needed we simply convert the operands a second time, inserting the coercions
-while doing so). Concretely this means that although we can use the |coerce|
-function, it wants a reference to an auto-pointer for the expression needing
-modification (so that it can manage ownership during its operation), but the
-expression here is held in an ordinary pointer inside a |tuple_expression|.
-Therefore we must copy the ordinary |expression| pointer temporarily to an
-|expression_ptr|, simulating the auto-pointer actions manually: after
-construction of the |expression_ptr| we set the |expression| (temporarily)
-to~|NULL| to avoid potential double destruction, and after the call to
-|coerce| we release the (possibly modified) |expression_ptr| back into the
-|expression|.
-
-Another complication is that we decided having a dyadic use of `\#' based on
-finding a 2-tuple type, but this is no guarantee there are actually two
-operand subexpressions (in a |tuple_expression|); we do a dynamic cast to find
-that out, and in the case the user was so contrived as to use monadic `\#' on
-a non-tuple expression of 2-tuple type, we just report that no coercion of
-operands is done (after all we need a subexpression to be able to insert any
-conversion). These complications warrant defining a separate function to
-handle them.
-
-@< Local function definitions @>=
-bool can_coerce_arg
-  (expression e,size_t i,const type_expr& from,const type_expr& to)
-{ tuple_expression* tup= dynamic_cast<tuple_expression*>(e);
-  if (tup==NULL) return false;
-  expression_ptr comp(tup->component[i]); tup->component[i]=NULL;
-  bool result = coerce(from,to,comp); tup->component[i]=comp.release();
-  return result;
-}
-
-
 @*1 Evaluating built-in function calls.
 %
-To evaluate a |call_expression| object we evaluate the function, and then
-test whether it is a built-in function. In the former case we evaluate the
-arguments expanded on the stack and call the built-in function, passing the
-|level| parameter so that if necessary the call can in its turn return and
-expanded result (or no result at all). If not a built-in function, it must be
-a user-defined function, whose execution will be detailed later, but in this
-case it will be more useful to have the argument as a single value. As a
-general mechanism to aid locating errors, we signal if an error was produced
-during the evaluation of a function call, but we make sure the evaluation of
-the arguments(s) is done outside this |try| block, since reporting functions
-that have not yet started executing would be confusing.
+To evaluate a |call_expression| object, in which the function part can be any
+expression, we must dynamically evaluate this function part, and then test
+whether it is a built-in or a user-defined function. In the former case we
+evaluate the arguments, expanding them on the |execution_stack|, and then call
+the built-in function. In that call we pass the |level| parameter that was
+passed to the |evaluate| method we are executing, so that if necessary the
+built-in function can in its turn return and expanded result (or no result at
+all). The evaluation of user-defined functions will be detailed later, but we
+can already say that in this case it will be more useful to receive the
+argument on the stack as a single value. As a general mechanism to aid
+locating errors, we signal if an error was produced during the evaluation of a
+function call, but we make sure the evaluation of the arguments(s) is done
+outside this |try| block, since reporting functions that have not yet started
+executing would be confusing.
 
 @< Function definitions @>=
 void call_expression::evaluate(level l) const
@@ -1934,18 +1894,27 @@ void call_expression::evaluate(level l) const
 
 @ Although we catch all |std::exception| errors thrown during the execution of
 a function call, we only report it if the function was referred to by an
-identifier, for otherwise the message would become too messy. In the mentioned
-case we tack a line with the function name to the error string, and re-throw
-the error. This will result in a traceback, inner to outer, of interrupted
-(non anonymous) function calls. Different types of error could be concerned:
-|std::runtime_error| thrown in some |evaluate| method or built-in function is
-the most common case, but there could be some |std::logic_error| as well, and
-|std::bad_alloc| is also always a possibility. Since the base class
-|std::exception| provides no means to influence the message produced by the
-|what| method, nor does |std::bad_alloc|, we necessarily have to relabel the
-latter as |std::runtime_error| in order to extend the error message. However
-we can maintain the distinction between a |logic_error| and a |runtime_error|
-using a dynamic cast.
+identifier, for otherwise the message would become too messy. Even though the
+test whether the |function| field of our |call_expression| is an identifier is
+done using a |dynamic_cast| during evaluation, this is a syntactic and
+therefore unchanging property of the call expression (we could have added a
+Boolean field to record it for instance). It may be noted that having an
+identifier as |function| in a |call_expression| is a rare circumstance, since
+most function calls will lead to an |overloaded_builtin_call| or an
+|overloaded_closure_call|, which will be treated later. Currently however
+recursive function calls necessarily involve a general |call_expression|.
+
+In the mentioned case we tack a line with the function name to the error
+string, and re-throw the error. This will result in a traceback, inner to
+outer, of interrupted (non anonymous) function calls. Different types of error
+could be concerned: |std::runtime_error| thrown in some |evaluate| method or
+built-in function is the most common case, but there could be some
+|std::logic_error| as well, and |std::bad_alloc| is also always a possibility.
+Since the base class |std::exception| provides no means to influence on
+throwing the message produced by the |what| method, nor does |std::bad_alloc|,
+we necessarily have to relabel the latter as |std::runtime_error| in order to
+extend the error message. However we can maintain the distinction between a
+|logic_error| and a |runtime_error| using a dynamic cast.
 
 @< Catch-block for exceptions thrown within function calls @>=
 catch (const std::exception& e)
@@ -2002,16 +1971,194 @@ void generic_builtin_call::evaluate(level l) const
   }
 }
 
+@*1 Some special wrapper functions.
+%
+In this chapter we define some wrapper functions that are not accessed through
+the overload table; they must be directly visible to the type checking code
+that inserts them, which is why they are defined as local functions to the
+current \.{evaluator.w} module.
+
+The function |print| outputs any value in the format used by the interpreter
+itself. This function has an argument of unknown type; we just pass the popped
+value to the |operator<<|. The function returns its argument unchanged as
+result, which facilitates inserting |print| statements for debugging purposes.
+
+This is the first place in this file where we produce user output to a file.
+In general, rather than writing directly to |std::cout|, we shall pass via a
+pointer whose |output_stream| value is maintained in the main program, so that
+redirecting output to a different stream can be easily implemented. Since this
+is a wrapper function there is no other way to convey the output stream to be
+used than via a dedicated global variable.
+
+@< Local function definitions @>=
+void print_wrapper(expression_base::level l)
+{
+  *output_stream << *execution_stack.back() << std::endl;
+  if (l!=expression_base::single_value)
+    push_expanded(l,pop_value()); // remove and possibly expand value
+}
+
+@ Sometimes the user may want to use a stripped version of the |print| output:
+no quotes in case of a string value, or no parentheses or commas in case of a
+tuple value (so that a single statement can chain several texts on the same
+line). The |prints_wrapper| does this down to the level of omitting quotes in
+individual argument strings, using dynamic casts to determine the case that
+applies.
+
+@< Local function definitions @>=
+void prints_wrapper(expression_base::level l)
+{ shared_value v=pop_value();
+  string_value* s=dynamic_cast<string_value*>(v.get());
+  if (s!=NULL)
+    *output_stream << s->val << std::endl;
+  else
+  { tuple_value* t=dynamic_cast<tuple_value*>(v.get());
+    if (t!=NULL)
+    { for (size_t i=0; i<t->val.size(); ++i)
+      { s=dynamic_cast<string_value*>(t->val[i].get());
+        if (s!=NULL)
+	  *output_stream << s->val;
+        else
+           *output_stream << *t->val[i];
+      }
+      *output_stream << std::endl;
+    }
+    else
+      *output_stream << *v << std::endl; // just like |print| in other cases
+  }
+  if (l==expression_base::single_value)
+    wrap_tuple(0); // don't forget to return a value if asked for
+}
+
+@ The generic size-of wrapper is used to find the length of any ``row-of''
+value. Finding sizes of other objects like vectors, matrices, polynomials,
+will require more specialised unary overloads of the `\#' operator.
+
+@< Local function definitions @>=
+void sizeof_wrapper(expression_base::level l)
+{ size_t s=get<row_value>()->val.size();
+  if (l!=expression_base::no_value)
+    push_value(new int_value(s));
+}
+
+@ The operator `\#' can be used also as infix operator, to join (concatenate)
+two row values of the same type or to extend one on either end by a single
+element. In the former case we require that both arguments have identical row
+type, in the latter case we allow the single element to be, or to be converted
+to, the component type of the row value.
+
+There is a subtlety in the order here, due to the fact that one of the
+arguments could be the empty list, with undetermined row type. Then there is
+actual ambiguity: with `\#' interpreted as join, the result is just the other
+operand, while suffixing or prefixing to the empty list gives a singleton of
+the other operand, and to some operands the empty list itself can also be
+suffixed or prefixed. The simplest resolution of this ambiguity is to say that
+join never applies with one of the arguments of undetermined list type, and
+that suffixing is preferred over prefixing (for instance $[[2]]\#[\,]$ will
+give $[[2],[\,]]$, but $[\,]\#[[2]]$ will give $[[[2]]]$). This can be
+obtained by testing for suffixing before testing for join: after the former
+test we know the first argument does not have type \.{[*]}, so it will match
+the second argument type only if both are determined row types.
+
+In order to be as general as a user might expect, we allow the additional
+component to be suffixed or prefixed to a row value to be coerced to the
+component type of that row. There are some technical complications that
+justify defining a small function |can_coerce_arg| to handle this, which are
+explained at the definition of this function below. The arguments to this
+function are: a tuple (pair) expression, an index of a component ($0$ or $1$),
+the initial type of that component of the pair and the (component) type it
+should be coerced to. The function returns a success code, and may have
+modified the component type (by specialising it) or the pair expression (by
+inserting a coercion) if (and only if) it returns |true|.
+
+@< Recognise and return 2-argument versions of `\#'... @>=
+{ type_expr& arg_tp0 = a_priori_type.tuple->t;
+  type_expr& arg_tp1 = a_priori_type.tuple->next->t;
+  if (arg_tp0.kind==row_type)
+  { if (can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type)) // suffix
+    { expression_ptr call(new overloaded_builtin_call
+        (suffix_element_wrapper,"#",arg));
+      return conform_types(arg_tp0,type,call,e);
+    }
+    if (arg_tp0==arg_tp1) // join
+    { expression_ptr call(new overloaded_builtin_call
+        (join_rows_wrapper,"#",arg));
+      return conform_types(arg_tp0,type,call,e);
+    }
+  }
+  if (arg_tp1.kind==row_type and @|
+         can_coerce_arg(arg.get(),0,arg_tp0,*arg_tp1.component_type))
+          // prefix
+  { expression_ptr call(new overloaded_builtin_call
+      (prefix_element_wrapper,"#",arg));
+    return conform_types(arg_tp1,type,call,e);
+  }
+}
+
+@ We called |can_coerce_arg| when type-checking the dyadic use of the operator
+`\#', in order to see if one of its arguments can be coerced from its type
+|from| to |to|. The situation there is somewhat unusual, in that we have
+already converted the entire argument expression at the point where we
+discover, based on the type found, that one of the arguments might need to be
+coerced. This means that such a coercion must be inserted into an already
+constructed expression, whereas usually it is applied on the outside of an
+expression under construction (notably in ordinary overloading if coercion is
+needed we simply convert the operands a second time, inserting the coercions
+while doing so). Concretely this means that although we can use the |coerce|
+function, it wants a reference to an auto-pointer for the expression needing
+modification (so that it can manage ownership during its operation), but the
+expression here is held in an ordinary pointer inside a |tuple_expression|.
+Therefore we must copy the ordinary |expression| pointer temporarily to an
+|expression_ptr| auto-pointer that |coerce| will manage; once constructed we
+set the |expression| component (temporarily) to~|NULL| to avoid potential
+double destruction, and after the call to |coerce| we release the (possibly
+modified) |expression_ptr| back into the |expression|.
+
+Before we plunge into this coercion insertion, we test if the types can be
+made to match without coercion, after possibly specialising the type |to|
+(which might be undefined, for instance when suffixing/prefixing to an empty
+list).
+
+Another complication is that we decided having a dyadic use of `\#' based on
+finding a 2-tuple type, but this is no guarantee there are actually two
+operand subexpressions (in a |tuple_expression|); we do a dynamic cast to find
+that out, and in the case the user was so contrived as to use monadic `\#' on
+a non-tuple expression of 2-tuple type, we just report that no coercion of
+operands is done (after all we need a subexpression to be able to insert any
+conversion). These complications warrant defining a separate function to
+handle them.
+
+@< Local function definitions @>=
+bool can_coerce_arg
+  (expression e,size_t i,const type_expr& from,type_expr& to)
+{ if (to.specialise(from))
+    return true; // type matches without coercion
+  tuple_expression* tup= dynamic_cast<tuple_expression*>(e);
+  if (tup==NULL)
+    return false; // we need a pair to insert a coercion
+  expression_ptr comp(tup->component[i]); tup->component[i]=NULL;
+  bool result = coerce(from,to,comp); tup->component[i]=comp.release();
+  return result;
+}
+
+
 @* Let-expressions.
 %
 We shall now consider a simple type of expression in which local variables
 occur, the let-expression. It is equivalent to an anonymous function
 ($\lambda$-expression) applied to the expression(s) in the let-declarations,
 but no types need to be declared for the function parameters, since the types
-of the corresponding expressions can be used for this. Nevertheless, we shall
-in converting expressions to internal form forget the syntactic origin of the
-expression, and translate to an application of an anonymous function, giving
-us an occasion to introduce such functions as a new form of~|expression|.
+of the corresponding expressions can be used for this. Nevertheless, we
+currently convert let-expressions to an internal form that is exactly an
+application of a $\lambda$-expression, hiding the syntactic origin of the
+expression. This economy of implementation does not seem to have a too
+negative effect on performance. (However it might still be that a direct
+implementation of let-expressions, without building an intermediate closure
+value, turns out to be more efficient, so this implementation of
+let-expressions could change in the future.) In our presentation this gives
+us an occasion to introduce $\lambda$-expressions as a new form
+of~|expression|, but in fact it is quite useful independently of its use for
+let-expressions.
 
 @ We prepare the definition of $\lambda$-expression with the introduction of
 auxiliary types, needed to deal with the general patterns by which formal
@@ -2036,16 +2183,25 @@ typedef std::tr1::shared_ptr<id_pat> shared_pattern;
   // deleter type does not enter into this
 
 @ We must also treat the question of obtaining ownership of an |id_pat|
-structure. An initial node to be shared must certainly be allocated (the
-parser never excutes |new idpat|), but we might steal a possible |sublist|
-field, replacing it in the original by a null pointer to avoid double
-destruction. However doing a deep copy is a cleaner solution, which avoids
-modifying the parsed expression and isolates us from the allocation policy
-used in the parser, which might change. To provide exception safety during the
-copy, it seems for once easier to explicitly catch and clean up than to
-introduce an intermediate class only for exception safety. At each point where
-an exception might be thrown the argument to |destroy_id_pat| is properly
-|NULL|-terminated.
+structure. An top level node to be shared must certainly be allocated (the
+parser never executes an |new idpat| creating such an isolated node), but we
+might steal a possible |sublist| field, replacing it in the original by a null
+pointer to avoid double destruction. However doing a deep copy is a cleaner
+solution, which avoids modifying the parsed expression and isolates us from
+the allocation policy used in the parser, which might change.
+
+To provide exception safety during the copy, it seems for once easier to
+explicitly catch and clean up than to introduce an intermediate class only for
+exception safety. The cleaning up by |destroy_id_pat(&result);| recursively
+deletes all the nodes created by the calls to |new pattern_node| within the
+current loop, as well as everything accessible from the |body| fields that
+were filled by a \emph{successful} recursive call to |copy_id_pat| (in case
+one such call was in fact responsible for the exception, the corresponding
+body will not have been assigned, and the |pattern_node| is in its original
+constructed state, which has no loose ends and is therefore safe for
+|destroy_id_pat|). In particular at each point where an exception might be
+thrown the argument to |destroy_id_pat| is properly |NULL|-terminated (by the
+|pattern_node| constructor).
 
 @< Local function def... @>=
 id_pat copy_id_pat(const id_pat& p)
@@ -2057,7 +2213,7 @@ id_pat copy_id_pat(const id_pat& p)
       for (patlist s=p.sublist,*d=&result.sublist;
            s!=NULL; s=s->next,d=&(*d)->next)
       @/{@;
-        *d=new pattern_node; (*d)->next=NULL; (*d)->body=copy_id_pat(s->body);
+        *d=new pattern_node; (*d)->body=copy_id_pat(s->body);
       }
     }
   }
@@ -2093,8 +2249,13 @@ lambda_expression::lambda_expression(const id_pat& p, expression_ptr b)
 
 @ To print an anonymous function, we print the parameter, enclosed in
 parentheses if the full parameter is named, followed by a colon and by the
-function body. The parameter list cannot include types with the current setup,
-as they are not explicitly stored after type analysis.
+function body. The printed parameter list cannot include types with the
+current setup, as they are not explicitly stored after type analysis. It could
+be made possible to print types if a type were explicitly stored in the
+|lambda_expression| structure; at the time of writing this would seem
+possible because each function has to have a definite type, but if the type
+system were extended with second order types (which would be quite useful),
+then this might no longer be true.
 
 @< Function definitions @>=
 void lambda_expression::print(std::ostream& out) const
@@ -2118,7 +2279,7 @@ void thread_components
   (const id_pat& pat,const shared_value& val, std::vector<shared_value>& dst);
 
 @ For handling declarations with patterns as left hand side, we need a
-corresponding type pattern; for instance \\{whole}:$(x,,z:(f,))$ requires the
+corresponding type pattern; for instance $(x,,(f,):z)$:\\{whole} requires the
 type \.{(*,*,(*,*))}. These recursive functions construct such types.
 
 @< Function definitions @>=
@@ -2175,7 +2336,9 @@ appropriate |shared_value|.
 @< Function definitions @>=
 void thread_components
   (const id_pat& pat,const shared_value& val, std::vector<shared_value>& dst)
-{ if ((pat.kind & 0x1)!=0) dst.push_back(val);
+{ if ((pat.kind & 0x1)!=0)
+     dst.push_back(val); // copy |shared_value| pointer, creating sharing
+
   if ((pat.kind & 0x2)!=0)
   { tuple_value* t=force<tuple_value>(val.get());
     size_t i=0;
@@ -2194,7 +2357,7 @@ The |expression| obtained from converting the body is first turned into a
 |lambda_expression|, and then an application of that expression to the
 argument is produced and returned.
 
-@< Other cases for type-checking and converting... @>=
+@< Cases for type-checking and converting... @>=
 case let_expr:
 { let lexp=e.e.let_variant;
   id_pat& pat=lexp->pattern;
@@ -2249,25 +2412,37 @@ void closure_value::print(std::ostream& out) const
   out << ": " << *body;
 }
 
-@ Evaluating a $\lambda$-expression just forms a closure and returns that.
+@ Evaluating a $\lambda$-expression just forms a closure using the current
+|execution_context|, and returns that.
 
 @< Function def... @>=
 void lambda_expression::evaluate(level l) const
 { if (l!=no_value)
-  @/{@;closure_ptr result(new closure_value(execution_context,param,body));
-     push_value(result);
-  }
+     push_value(closure_ptr(new closure_value(execution_context,param,body)));
 }
 
 @ A call of a user-defined function passes through the same code as that of a
-builtin function; after all, the type check does not make a difference between
-the two kinds, so the distinction can only be made by a dynamic test during
-evaluation (which test was already presented). After the test we come to the
-code below, which in essence a call-by-value $\lambda$-calculus
-evaluator. We must now have a closure as function value, and its evaluation
-just temporarily replaces the current execution context from the one stored in
-the closure, pushes a new frame defined by the argument and the evaluates the
-function body.
+built-in function; after all, the type check does not make a difference
+between the two kinds, so the distinction can only be made by a dynamic test
+during evaluation (which test was already presented). After the test we come
+to the code below, which in essence a call-by-value $\lambda$-calculus
+evaluator. An important part of the implementation work is already done in the
+form of the |context| data structure and the way applied local identifiers
+have been translated into references by relative frame number and offset.
+Notably the actual names of the identifiers are not used at all at runtime
+(they are present in the |id_pat| structure for printing purposes, but ignored
+by |thread_bindings| which is used here), and our implementation is one using
+so-called ``nameless dummies''.
+
+When we come here |f| must be a |closure_value|, and the argument has already
+been evaluated, and is available as a single value on the |execution_stack|.
+The evaluation of the call just temporarily replaces the current execution
+context by one composed of the context stored in the closure onto which a new
+frame defined by the parameter list |f->param| and the argument value is
+pushed; the function body is evaluated in this extended context. Afterwards
+the original context is restored from the local variable |saved_context|.
+
+@: lambda evaluation @>
 
 @< Call user-defined function |fun| with argument on |execution_stack| @>=
 { closure_value* f=force<closure_value>(fun.get());
@@ -2326,7 +2501,8 @@ if it was not a |builtin_value|.
 @ Evaluation of an overloaded function call bound to a closure is a simplified
 version the part of |call_expression::evaluate| dedicated to a closures,
 including the temporary catching of errors in order to produce a trace of
-interrupted function calls in the error message. The simplification consists
+interrupted function calls in the error message, and the evaluation part of
+section~@# lambda evaluation @>. The simplification consists
 of the fact that the closure is already evaluated and stored, and that in
 particular we don't have to distinguish dynamically between built-in functions
 and closures, nor between calls of anonymous or named functions (we are always
@@ -2357,31 +2533,33 @@ void overloaded_closure_call::evaluate(level l) const
 
 @* User-defined functions.
 %
-Now we shall consider the general case of a user-defined function. In fact all
-that needs to be done is type-check and convert the case |lambda_expr| of an
-|expr| constructed by the parser; the necessary types derived from
-|expression| that provide their implementation were already introduced.
+Now we shall consider the general case of a user-defined function. But nearly
+all of the work is already done, notably defining the evaluation of built-in
+and user-defined functions, whether occurring in an overloaded call or in
+another form of function call. In fact all that remains to be done is defining
+how to type-check and convert the case |lambda_expr| of an |expr| constructed
+by the parser; the necessary types derived from |expression| that provide
+their implementation were already introduced.
 
 We first test if the required |type| specialises to a function type, i.e.,
 either it was some function type or undefined. Then we get the argument type
-|arg_type| from the function expression the parser provided; we need to
-statically cast from a void pointer that was used to hide from the parser the
-class |type_expr| that a \Cee-compiler does not understand. We further
+|arg_type| from the function expression the parser provided. We further
 specialise the argument type of |type| to the argument type of the function
 (signalling a type error in the rare cases that a different type was
 expected). Then a call to |thread_bindings| extracts from the specified
 pattern |id_pat| the identifiers it contains, and couples them to the
 associated types extracted from |arg_type|, storing the result in
 |new_bindings|. These bindings are activated during the type-check and
-conversion of the function body, and if all this went well, we check that the
+conversion of the function body, after which the old |id_context| is restored
+by popping of the bindings for the arguments.
 
-@< Other cases for type-checking and converting... @>=
+@< Cases for type-checking and converting... @>=
 case lambda_expr:
 { if (not type.specialise(gen_func_type))
     throw type_error(e,copy(gen_func_type),copy(type));
   lambda fun=e.e.lambda_variant;
   id_pat& pat=fun->pattern;
-  type_expr& arg_type=*static_cast<type_p>(fun->arg_type);
+  type_expr& arg_type=*fun->arg_type;
   if (not type.func->arg_type.specialise(arg_type))
   @/throw type_error(e,
                      make_function_type(copy(arg_type),copy(unknown_type)),
@@ -2457,7 +2635,7 @@ equal to |bool_type|. The latter option would be slightly different by
 excluding any coercions to \&{bool} in the condition. However this would not
 be noticeable since (currently) no such coercions exist anyway.
 
-@< Other cases for type-checking and converting... @>=
+@< Cases for type-checking and converting... @>=
 case conditional_expr:
 { expression_ptr c (convert_expr(e.e.if_variant->condition,bool_type));
   expression_ptr el (convert_expr(e.e.if_variant->else_branch,type));
@@ -2508,7 +2686,7 @@ anyway. In all other cases we proceed for the body expression as for the
 components of a row display (except that there is only one expression in this
 case).
 
-@< Other cases for type-checking and converting... @>=
+@< Cases for type-checking and converting... @>=
 case while_expr:
 { w_loop w=e.e.while_variant;
   expression_ptr c (convert_expr(w->condition,bool_type));
@@ -2611,7 +2789,7 @@ since more types and potential coercions are involved. we start by processing
 the in-part in a neutral type context, which will on success set |in_type| to
 its a priori type.
 
-@< Other cases for type-checking and converting... @>=
+@< Cases for type-checking and converting... @>=
 case for_expr:
 { f_loop f=e.e.for_variant;
   bindings bind(count_identifiers(f->id));
@@ -2867,7 +3045,7 @@ void dec_for_expression::print(std::ostream& out) const
 we must extend the context with the loop variable while processing the loop
 body.
 
-@< Other cases for type-checking and converting... @>=
+@< Cases for type-checking and converting... @>=
 case cfor_expr:
 { c_loop c=e.e.cfor_variant;
   expression_ptr count_expr(convert_expr(c->count,int_type));
@@ -2972,7 +3150,7 @@ void dec_for_expression::evaluate(level l) const
 Casts are very simple to process; they do not need any |expression| type to
 represent them.
 
-@< Other cases for type-checking and converting... @>=
+@< Cases for type-checking and converting... @>=
 case cast_expr:
 { cast c=e.e.cast_variant;
   type_expr& ctype=*static_cast<type_p>(c->type);
@@ -2996,7 +3174,7 @@ however access the global overload table to find the value. Since upon success
 we find a bare function value, we must abuse the |denotation| class a bit to
 serve as wrapper that upon evaluation will return the value again.
 
-@< Other cases for type-checking and converting... @>=
+@< Cases for type-checking and converting... @>=
 case op_cast_expr:
 { op_cast c=e.e.op_cast_variant;
   const overload_table::variant_list& variants =
@@ -3188,7 +3366,7 @@ is concerned. We first look in |id_context| for a local binding of the
 identifier, and if not found we look in |global_id_table|. If found in either
 way,
 
-@< Other cases for type-checking and converting... @>=
+@< Cases for type-checking and converting... @>=
 case ass_stat:
 { Hash_table::id_type lhs=e.e.assign_variant->lhs;
   const expr& rhs=e.e.assign_variant->rhs;
@@ -3435,7 +3613,7 @@ same lines as that of ordinary assignment statements, but must also
 distinguish different aggregate types.
 @:comp_ass_type_check@>
 
-@< Other cases for type-checking and converting... @>=
+@< Cases for type-checking and converting... @>=
 case comp_ass_stat:
 { Hash_table::id_type aggr=e.e.comp_assign_variant->aggr;
   const expr& index=e.e.comp_assign_variant->index;
@@ -3524,7 +3702,7 @@ void next_expression::evaluate(level l) const
 
 @ It remains to type-check and convert sequence expressions, which is easy.
 
-@< Other cases for type-checking and converting... @>=
+@< Cases for type-checking and converting... @>=
 case seq_expr:
 { sequence seq=e.e.sequence_variant;
   if (seq->forward!=0)
