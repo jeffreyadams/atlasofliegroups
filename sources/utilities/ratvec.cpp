@@ -57,7 +57,7 @@ RationalVector<C> RationalVector<C>::operator+(const RationalVector<C>& v)
   arithmetic::Denom_t gcd, m = arithmetic::lcm(d_denom,v.d_denom,gcd);
   arithmetic::Denom_t f = v.d_denom/gcd;
   assert (f==m/d_denom); // if this fails, then there was overflow on m
-  RationalVector<C> result(d_num*f,m);
+  RationalVector<C> result(d_num*f,m); // |operator*| returns |Ratvec_Numer_t|
   result.d_num += v.d_num*(d_denom/gcd);
   return result; // don't normalize, better just limit denominator growth
 }

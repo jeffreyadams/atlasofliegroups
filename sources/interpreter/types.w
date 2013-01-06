@@ -73,21 +73,28 @@ static ``type'' errors may prevent us from undertaking any meaningful action,
 and in absence of such errors there still can be dynamic ``runtime'' errors.
 
 We first define some data types used by the evaluator. First of all we shall
-consider ``type'' values, represented by the structure |type_expr|, in
-terms of which the static analysis is performed. Then we shall define the
-structure of values for user data, the kind manipulated by the evaluator at
-runtime; these are of classes derived from~|value_base|. Then we shall define
-values that represent the user expression after type analysis, and which serve
-to control the runtime actions; these are of classes derived from
-|expression_base|. Originally the |expr| value itself (possibly slightly
-modified during type analysis) was used for this purpose, but it turns out to
-be useful to rebuild the expression tree; as a side benefit we can liberate
-ourselves from the constraint on data types built by the parser, that they can
-be understood by a \Cee-program. Finally we need some types for errors that we
-might have to throw; these are the classes |program_error|, and |type_error|
-which is derived from it.
+consider ``type'' values, represented by the structure |type_expr|, in terms
+of which the static analysis is performed. Then we shall define the structure
+of values for user data, the kind manipulated by the evaluator at runtime;
+these are of classes derived from~|value_base|. Then we shall define values
+that represent the user expression after type analysis, and which serve to
+control the runtime actions; these are of classes derived from
+|expression_base|. Finally we need some types for errors that we might have
+to throw; these are the classes |program_error|, and |type_error| which is
+derived from it.
 
-Most of these types are recursive in a manner more complicated that simple
+Originally the |expr| value itself (possibly slightly modified during type
+analysis) was used for evaluation, but it turns out to be useful to rebuild
+the expression tree with a modified structure. It used to be a side benefit
+that we could liberate ourselves from the constraint on data types built by
+the parser, that they could be understood by a \Cee-program; currently
+however \Cpp~language types can be, and are, part of the type |expr|.
+Nonetheless the structure built on |expression_base| is different in many
+respects from |expr|, and the transformation between these structures involves
+certain processes like overloading resolution that more resemble compilation
+than interpretation.
+
+Most of these types are recursive in a manner more complicated than simple
 linked lists or binary trees: at each level they represent various alternative
 possibilities, each of which might recursively refer to the original type one
 or more times. Such recursion is represented by linked structures that cannot

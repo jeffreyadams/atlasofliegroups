@@ -15,7 +15,7 @@ To load basic.rx, for example, do:
 
 <basic or <basic.rx
 
-Every file will also load qll the files on which it depends.
+Every file will also load all the files on which it depends.
 Probably you should just do:
 
 <hermitian

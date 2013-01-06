@@ -2581,6 +2581,22 @@ after plenty of other language elements were in place, such as
 let-expressions, functions, rows and selection form them, implicit
 conversions.
 
+In fact, the power of functions is such that certain control structures can be
+simulated with functions. For instance, there are currently no multi-way
+choice expressions (also known as |case| or |switch| statements), but one can
+define an row of anonymous functions without parameters, use row selection to
+pick out one of them based on an integer value, and then call it. Recursion is
+not directly supported either, because anonymous $\lambda$-expressions have no
+way of referring to themselves; however recursion can be realised assigning to
+a local function variable as new value a $\lambda$-expression referring to
+that same variable.
+
+Nonetheless a good repertoire of control structures is essential to easy
+programming. We provide the conditional expression as unique selection
+statement, and a large variety of iterative statements. Somewhat unusual is
+the fact that all control structures are expressions that may yield a value;
+in the case of loop statements, a value of ``row-of'' type is returned.
+
 @*1 Conditional expressions.
 %
 A first control structure it the conditional expression.
@@ -2600,7 +2616,11 @@ struct conditional_expression : public expression_base
 
 @ To print a conditional expression, we reconstruct \&{elif} constructions
 that were eliminated in the parser (and even those that the user did not
-employ, but could have).
+employ, but could have). To this end, we remain in a loop as long as the
+|else|-part is itself a conditional expression. This makes a loop with exit in
+the middle a natural solution, and in any case \Cpp\ does not allow using a
+variable introduced in the body, like |p| below, to be used it the condition
+of a |while| or |for| controlling the loop.
 
 @< Function definitions @>=
 void conditional_expression::print(std::ostream& out) const
@@ -2613,7 +2633,7 @@ void conditional_expression::print(std::ostream& out) const
       break;
     out << " elif "; cur=p;
   }
-  while(true); // \Cpp\ does not allow using |p| in final condition
+  while(true);
   out << " else " << *cur->else_branch << " fi ";
 }
 
@@ -2650,8 +2670,8 @@ then-branch or the else-branch.
 void conditional_expression::evaluate(level l) const
 { condition->eval();
   if (get<bool_value>()->val)
-   then_branch->evaluate(l);
-  else else_branch->evaluate(l);
+    then_branch->evaluate(l);
+  @+ else else_branch->evaluate(l);
 }
 
 @*1 While loops.
@@ -2716,12 +2736,15 @@ component type as for list displays.
     throw type_error(e,copy(row_of_type),copy(type));
 @)
   expression_ptr b(convert_expr(w->body,comp_type));
-  expression_ptr loop(new while_expression(c,b));
-  return new conversion(*conv,loop);
+  return new conversion(*conv,  expression_ptr(new while_expression(c,b)));
 }
 
 
 @ Of course evaluating is what most distinguishes loops from conditionals.
+There are few surprises: if no value is asked for we simple perform a |while|-loop at the \Cpp~level (applying |void_eval| to the body expression), and
+otherwise we also do a |while|-loop, but use |eval| to produce a value on
+|execution_stack| each time around, popping it off and pushing it onto a
+|row_value| value that will ultimately become the value of the loop.
 
 @< Function definitions @>=
 void while_expression::evaluate(level l) const
@@ -3153,7 +3176,7 @@ represent them.
 @< Cases for type-checking and converting... @>=
 case cast_expr:
 { cast c=e.e.cast_variant;
-  type_expr& ctype=*static_cast<type_p>(c->type);
+  type_expr& ctype=*c->type;
   expression_ptr p(convert_expr(c->exp,ctype));
   return conform_types(ctype,type,p,e);
 }
@@ -3179,7 +3202,7 @@ case op_cast_expr:
 { op_cast c=e.e.op_cast_variant;
   const overload_table::variant_list& variants =
    global_overload_table->variants(c->oper);
-  type_expr& ctype=*static_cast<type_p>(c->type);
+  type_expr& ctype=*c->type;
   if (is_special_operator(c->oper))
     @< Test special argument patterns, and on match |return| an appropriate
        denotation @>
