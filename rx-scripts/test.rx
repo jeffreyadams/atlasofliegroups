@@ -27,8 +27,10 @@ then
     let (c_form,count)=
       let on_p=orientation_nr(p), P = null_module(rf)
       , KL_sum = KL_sum_at_s(p)
-      in for ev@q in KL_sum
-         do P+:= ev*orientation_nr_term(on_p,q)*full_deform(q) od
+      in for ev@q in KL_sum do
+      let fd=full_deform(q) in
+      let ()=prints(q,": ",#(reducibility_points(q))," ",#fd) in
+      P+:= ev*orientation_nr_term(on_p,q)*fd od
       ; (P,#KL_sum)
     then form=convert_cform_hermitian(c_form)
     then unitary=is_unitary(form)
@@ -50,6 +52,9 @@ else
   od
 ; prints("Result: ",if rv then "Passed" else "Failed" fi); rv
 fi
+
+set test_one(Param param,bool unitary)=test([(param,unitary)])
+set test_one_unitary(Param param)=test([(param,true)])
 
 { prepare parameters, all are supposed to be unitary }
 set all_unitary([Param] parameters)= [(Param,bool)]:

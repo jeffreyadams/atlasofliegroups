@@ -1,5 +1,5 @@
-% Copyright (C) 2006 Marc van Leeuwen
-% This file is part of the Atlas of Reductive Lie Groups software (the Atlas)
+% Copyright (C) 2006-2012 Marc van Leeuwen
+% This file is part of the Atlas of Lie Groups and Representations (the Atlas)
 
 % This program is made available under the terms stated in the GNU
 % General Public License (GPL), see http://www.gnu.org/licences/licence.html
@@ -80,10 +80,10 @@ void initialise_builtin_types()
 in \.{types.w} from which we shall derive others are known. Including this as
 first file from our header file ensures the types are known wherever they are
 needed. Some more basic built-in types likes integers, vectors, and strings
-are defined in \.{evaluator.w}, and we need their declarations too in our
+are defined in \.{global.w}, and we need their declarations too in our
 implementation, but we avoid including its header into out header file.
 
-@h "evaluator.h"
+@h "global.h"
 
 @< Includes needed in the header file @>=
 #include "types.h"
@@ -3464,6 +3464,9 @@ derived from |subscr_base|.
 @ In a subscription of a polynomial by a parameter, the arguments are not
 initially on the stack, but come from evaluating the |array| and |index|
 fields of the |module_coefficient| expression.
+
+@h "evaluator.h" // for |module_coefficient|
+
 @< Function def... @>=
 void module_coefficient::evaluate(level l) const
 { shared_virtual_module m = (array->eval(),get<virtual_module_value>());

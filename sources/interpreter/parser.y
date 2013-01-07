@@ -1,7 +1,7 @@
 %{
   /*
-   Copyright (C) 2006 Marc van Leeuwen
-   This file is part of the Atlas of Reductive Lie Groups software (the Atlas)
+   Copyright (C) 2006-2012 Marc van Leeuwen
+   This file is part of the Atlas of Lie Groups and Representations (the Atlas)
 
    This program is made available under the terms stated in the GNU
    General Public License (GPL), see http://www.gnu.org/licences/licence.html
@@ -23,25 +23,31 @@
 
 
   #include <stdio.h>
-  #include "parsetree.h"  /* types and functions used to construct nodes */
+#include "parsetree.h"  // types and functions used to construct nodes
+#include "evaluator.h" // action functions invoked from within the parser
+  using namespace atlas::interpreter; // to allow simplifying action code
 %}
 %union {
   int	val;	    /* For integral constants.	*/
   short id_code;    /* For identifier codes  */
   struct { short id, priority; } oper; /* for operator symbols */
-  form_stack ini_form;
+  atlas::interpreter::form_stack ini_form;
   unsigned short type_code; /* For type names */
-  expr	expression; /* For generic expressions */
-  expr_list expression_list; /* For any list of expressions */
-  let_list decls; /* declarations in a LET expression */
-  struct id_pat ip;
-  struct { ptr typel; patlist patl; } id_sp;
-  patlist pl;
-  ptr gen_ptr;
+  atlas::interpreter::expr	expression; /* For generic expressions */
+  atlas::interpreter::expr_list expression_list; /* Any list of expressions */
+  atlas::interpreter::let_list decls; /* declarations in a LET expression */
+  atlas::interpreter::id_pat ip;
+  struct {
+    atlas::interpreter::type_list typel;
+    atlas::interpreter::patlist patl;
+  } id_sp;
+  atlas::interpreter::patlist pl;
+  atlas::interpreter::type_p type_pt;
+  atlas::interpreter::type_list type_l;
 }
 
 %locations
-%parse-param { expr* parsed_expr}
+%parse-param { atlas::interpreter::expr* parsed_expr}
 %parse-param { int* verbosity }
 %pure-parser
 %error-verbose
@@ -79,60 +85,61 @@
 %destructor { destroy_id_pat(&$$); } pattern pattern_opt
 %type <pl> pat_list
 %destructor { destroy_pattern($$); } pat_list
-%type <gen_ptr> type types types_opt
+%type <type_pt> type
 %destructor { destroy_type($$); } type
+%type <type_l> types types_opt
 %destructor { destroy_type_list($$); } types types_opt
 %type <id_sp> id_specs id_specs_opt
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); } id_specs id_specs_opt
 
 %{
   int yylex (YYSTYPE *, YYLTYPE *);
-  void yyerror (YYLTYPE *, expr*, int*,const char *);
+  void yyerror (YYLTYPE *, atlas::interpreter::expr*, int*,const char *);
 %}
 %%
 
-input:	'\n'			{ YYABORT } /* null input, skip evaluator */
-	| '\f'	   { YYABORT } /* allow form feed as well at command level */
+input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
+	| '\f'	   { YYABORT; } /* allow form feed as well at command level */
 	| exp '\n'		{ *parsed_expr=$1; }
 	| tertiary ';' '\n'
 	  { *parsed_expr=make_sequence($1,wrap_tuple_display(NULL),1); }
-	| SET pattern '=' exp '\n' { global_set_identifier($2,$4,1); YYABORT }
+	| SET pattern '=' exp '\n' { global_set_identifier($2,$4,1); YYABORT; }
 	| SET IDENT '(' id_specs_opt ')' '=' exp '\n'
 	  { struct id_pat id; id.kind=0x1; id.name=$2;
 	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7),1);
-	    YYABORT
+	    YYABORT;
 	  }
-	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT }
+	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT; }
 	| SET operator '(' id_specs ')' '=' exp '\n'
 	  { struct id_pat id; id.kind=0x1; id.name=$2.id;
-	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7),1);
-	    YYABORT
+	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7),2);
+	    YYABORT;
 	  }
 	| SET operator '=' exp '\n'
 	  { struct id_pat id; id.kind=0x1; id.name=$2.id;
-	    global_set_identifier(id,$4,2); YYABORT
+	    global_set_identifier(id,$4,2); YYABORT;
 	  }
 	| FORGET IDENT '@' type '\n'
-	  { global_forget_overload($2,$4); YYABORT  }
+	  { global_forget_overload($2,$4); YYABORT;  }
 	| FORGET operator '@' type '\n'
-	  { global_forget_overload($2.id,$4); YYABORT }
+	  { global_forget_overload($2.id,$4); YYABORT; }
 	| IDENT ':' exp '\n'
 		{ struct id_pat id; id.kind=0x1; id.name=$1;
-		  global_set_identifier(id,$3,0); YYABORT }
-	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3); YYABORT }
+		  global_set_identifier(id,$3,0); YYABORT; }
+	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3); YYABORT; }
 	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
-	| QUIET '\n'		{ *verbosity =0; YYABORT } /* quiet mode */
-	| VERBOSE '\n'		{ *verbosity =1; YYABORT } /* verbose mode */
+	| QUIET '\n'		{ *verbosity =0; YYABORT; } /* quiet mode */
+	| VERBOSE '\n'		{ *verbosity =1; YYABORT; } /* verbose mode */
 	| TOFILE exp '\n'	{ *parsed_expr=$2; *verbosity=2; }
 	| ADDTOFILE exp '\n'	{ *parsed_expr=$2; *verbosity=3; }
-	| FROMFILE '\n'		{ include_file(1); YYABORT } /* include file */
-	| FORCEFROMFILE '\n'	{ include_file(0); YYABORT } /* force include */
-	| WHATTYPE exp '\n'	{ type_of_expr($2); YYABORT } /* print type */
+	| FROMFILE '\n'		{ include_file(1); YYABORT; } /* include file */
+	| FORCEFROMFILE '\n'	{ include_file(0); YYABORT; } /* force include */
+	| WHATTYPE exp '\n'	{ type_of_expr($2); YYABORT; } /* print type */
 	| WHATTYPE operator '?' '\n'
-			     { show_overloads($2.id); YYABORT } /* show types */
+			     { show_overloads($2.id); YYABORT; } /* show types */
 	| WHATTYPE IDENT '?' '\n'
-				{ show_overloads($2); YYABORT } /* show types */
-	| SHOWALL '\n'		{ show_ids(); YYABORT } /* print id table */
+				{ show_overloads($2); YYABORT; } /* show types */
+	| SHOWALL '\n'		{ show_ids(); YYABORT; } /* print id table */
 ;
 
 exp: LET lettail { $$=$2; }

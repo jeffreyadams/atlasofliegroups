@@ -4,46 +4,55 @@
 @* Building the parse tree.
 This is the program unit \.{parsetree} which produces the implementation file
 \.{parsetree.cpp} and the header file \.{parsetree.h}; the latter is read in
-by \&{\#include} from the \Cee-file generated from \.{parser.y}, so it should
-contain declarations in \Cee-format. Some other functions defined here are not
+by \&{\#include} from the \Cee-file \.{parser.tab.c} generated
+from \.{parser.y}. It used to be the case that this file was compiled by
+a \Cee\ compiler, and therefore produced functions with \Cee-language linking.
+As a consequence some jumping through hoops was necessary to cleanly integrate
+them into the \Cpp\ program. However it turns out to be possible to compile
+the file \.{parser.tab.c} by a \Cpp-compiler, which makes all linkage to be
+for \Cpp, and removes any need for |extern "C"| declarations. For the moment
+these declarations are simply removed, and the structure of this file still
+carries a legacy of the original design.
+
+This file also defines some other functions defined here are not
 used in the parser, but can be used by other modules written in~\Cpp; their
-declaration is skipped when the header file is read in from a
-\Cee-file.
+declaration is separated, so it can skipped when the header file is read in
+using a \Cee\ compiler (although this does not happen any more).
 
 @( parsetree.h @>=
 #ifndef PARSETREE_H
 #define PARSETREE_H
-#if __cplusplus
-#include <iostream>
-extern "C" {
-#endif
-@< Declarations in \Cee-style for the parser @>@;
-#if __cplusplus
-}@;
 
+#include <iostream>
+#include "buffer.h" // for |Hash_table|
 namespace atlas
-{@; namespace interpreter
-  {@;
+{ namespace interpreter
+  {
+
+@< Declarations for the parser @>@;
+
 @< Declarations of \Cpp\ functions @>@;
   }@;
 }@;
 
 #endif
-#endif
+
 
 @ The main file \.{parsetree.cpp} contains the implementations of the
 functions that are needed to build the parse tree. Since these are to be
-called from the parser, we declare them all to be callable from~\Cee.
+called from the parser, we used to declare them all to be callable from~\Cee;
+however now the parser is compiled as \Cpp\ code, that is no longer an issue,
+and we define everything in a \Cpp\ namespace as usual.
 
 @h "parsetree.h"
 @c
-@< Definitions of constants... @>@;
 namespace atlas
 { namespace interpreter
   {
-extern "C" {@;
-@< Definitions of functions in \Cee-style for the parser @>@;
-}@;
+@< Definitions of constants... @>@;
+
+@< Definitions of functions for the parser @>@;
+
 @< Definitions of \Cpp\ functions @>@;
   }@;
 }@;
@@ -51,17 +60,16 @@ extern "C" {@;
 @ For a large part the declarations for the parser consist of the recursive
 definition of the type |expr|.
 
-@< Declarations in \Cee-style for the parser @>=
+@< Declarations for the parser @>=
 @< Typedefs that are required in |union expru@;| @>@;
 union expru {@; @< Variants of |union expru @;| @>@; };
 
-typedef enum @+
-{ @< Enumeration tags for |expr_kind| @> @;@; } expr_kind;
-typedef struct {@; union expru e; expr_kind kind; } expr;
+enum expr_kind @+ { @< Enumeration tags for |expr_kind| @> @;@; };
+struct expr {@; union expru e; expr_kind kind; };
 
 @< Structure and typedef declarations for types built upon |expr| @>@;
 
-@< Declarations of functions in \Cee-style for the parser @>@;
+@< Declarations of functions for the parser @>@;
 
 @ While we are defining functions to parse expressions, we shall also define
 a function to print the expressions once parsed; this provides a useful test
@@ -87,13 +95,13 @@ std::ostream& operator<< (std::ostream& out, expr e)
 occupied by an expression. It is classified as a parsing function since it is
 called amongst others by the parser when popping off tokens at syntax errors.
 
-@< Declarations of functions in \Cee-style for the parser @>=
+@< Declarations of functions for the parser @>=
 void destroy_expr(expr e);
 
 @~The definition of |destroy_expr| is also distributed among the different
 variants of the |union expru@;|.
 
-@< Definitions of functions in \Cee-style for the parser @>=
+@< Definitions of functions for the parser @>=
 void destroy_expr(expr e)
 {@; switch (e.kind)
   {@; @< Cases for destroying an expression |e| @>
@@ -108,8 +116,8 @@ the parser will build an appropriate node for them, which just stores the
 constant value denoted. We need no structures here, since the value itself
 will fit comfortably inside the |union expru@;|. The fact that strings are
 stored as a character pointer, which should be produced using |new[]| by the
-caller of the functions described here, is a consequence of the restriction
-that only types representable in \Cee\ can be used.
+caller of the functions described here, is a legacy of the restriction
+that only types representable in \Cee\ could be used originally.
 
 @< Variants... @>=
 
@@ -141,7 +149,7 @@ case string_denotation: delete[] e.e.str_denotation_variant; break;
 
 @ To build the node for denotations, we provide the functions below.
 
-@< Declarations of functions in \Cee-style for the parser @>=
+@< Declarations of functions for the parser @>=
 expr make_int_denotation (int val);
 expr make_string_denotation(char* val);
 expr make_bool_denotation(int val);
@@ -149,7 +157,7 @@ expr make_bool_denotation(int val);
 @~The definition of these functions is quite trivial, as will be typical for
 node-building functions.
 
-@< Definitions of functions in \Cee... @>=
+@< Definitions of functions for the parser @>=
 expr make_int_denotation (int val)
 { expr result; result.kind=integer_denotation;
 @/result.e.int_denotation_variant=val; return result;
@@ -164,12 +172,11 @@ expr make_bool_denotation(int val)
 }
 
 @ Another atomic expression is an applied identifier. They use the type
-|id_type| that should ideally be |Hash_table::id_type|, but since we are
-restricted to using \Cee-syntax for defining |expr|, we see no better way than
-to redefine a global typedef.
+|Hash_table::id_type| (a small integer type) of indices into the table of
+identifier names, which we lift out of that class by using a |typedef|.
 
 @< Typedefs... @>=
-typedef short id_type;
+typedef Hash_table::id_type id_type;
 
 @ For identifiers we just store their code.
 @< Variants... @>=
@@ -195,12 +202,12 @@ case applied_identifier: break;
 @ To build the node for applied identifiers we provide the function
 |make_applied_identifier|.
 
-@< Declarations of functions in \Cee-style for the parser @>=
+@< Declarations of functions for the parser @>=
 expr make_applied_identifier (id_type id);
 
 @~The definition of |make_applied_identifier| is entirely trivial.
 
-@< Definitions of functions in \Cee... @>=
+@< Definitions of functions for the parser @>=
 expr make_applied_identifier (id_type id)
 {@; expr result; result.kind=applied_identifier;
   result.e.identifier_variant=id; return result;
@@ -219,7 +226,7 @@ struct exprlist_node {@; expr e; expr_list next; };
 
 @ Before we go on to use this type, let us define a simple function for
 calculating the length of the list; it will actually be used by the evaluator
-rather than by the parser, so we declare it for \Cpp~use.
+rather than by the parser.
 
 @< Declarations of \Cpp\ functions @>=
 size_t length(expr_list l);
@@ -261,14 +268,14 @@ break;
 @ Destroying lists of expressions will be done in a function callable from the
 parser, as it may need to discard tokens holding such lists.
 
-@< Declarations of functions in \Cee-style for the parser @>=
+@< Declarations of functions for the parser @>=
 void destroy_exprlist(expr_list l);
 
 @~This function recursively destroys subexpressions, and cleans up the nodes of
 the list themselves when we are done with them. Note that | l=l->next| cannot
 be the final statement in the loop body below.
 
-@< Definitions of functions in \Cee-style for the parser @>=
+@< Definitions of functions for the parser @>=
 void destroy_exprlist(expr_list l)
 {@; while (l!=NULL)
   {@; destroy_expr(l->e); expr_list this_node=l; l=l->next; delete this_node; }
@@ -289,7 +296,7 @@ reversal function to get the proper ordering once the end of the list is
 reached. Finally we provide the wrapping function |wrap_expr_list| for list
 displays.
 
-@< Declarations of functions in \Cee-style for the parser @>=
+@< Declarations of functions for the parser @>=
 extern const expr_list null_expr_list;
 expr_list make_exprlist_node(expr e, expr_list l);
 expr_list reverse_expr_list(expr_list l);
@@ -309,7 +316,7 @@ with |t=l->next|. Either one would do just as well. We do not call
 combined, since whether or not the list should be reversed can only be
 understood when the grammar rules are given.
 
-@< Definitions of functions in \Cee... @>=
+@< Definitions of functions for the parser @>=
 expr_list make_exprlist_node(expr e, expr_list l)
 {@; expr_list n=new exprlist_node; n->e=e; n->next=l; return n; }
 expr_list reverse_expr_list(expr_list l)
@@ -351,11 +358,11 @@ case tuple_display: destroy_exprlist(e.e.sublist);
 break;
 
 @ To make tuple displays, we use a function similar to that for list displays.
-@< Declarations of functions in \Cee-style for the parser @>=
+@< Declarations of functions for the parser @>=
 expr wrap_tuple_display(expr_list l);
 
 @~In fact the only difference is the tag inserted.
-@< Definitions of functions in \Cee... @>=
+@< Definitions of functions for the parser @>=
 expr wrap_tuple_display(expr_list l)
 {@; expr result; result.kind=tuple_display; result.e.sublist=l; return result;
 }
@@ -432,7 +439,7 @@ syntax; the latter option would allow avoiding to pack singleton lists. But
 the current method should be compatible with providing multiple arguments as a
 single tuple value.
 
-@< Declarations of functions in \Cee-style for the parser @>=
+@< Declarations of functions for the parser @>=
 expr make_application_node(expr f, expr_list args);
 
 @~Here for once there is some work to do. If a singleton argument list is
@@ -441,7 +448,7 @@ cases the argument list must be made into a tuple display. Note that it is
 convenient here that |wrap_tuple_display| does not reverse the list, since
 this is already done by the parser before calling |make_application_node|.
 
-@< Definitions of functions in \Cee... @>=
+@< Definitions of functions for the parser @>=
 expr make_application_node(expr f, expr_list args)
 { app a=new application_node; a->fun=f;
   if (args!=NULL && args->next==NULL) // a single argument
@@ -456,14 +463,14 @@ is accessed by an applied identifier and the argument is either a single
 expression or a tuple of two expressions. We provide two functions to
 facilitate those constructions.
 
-@< Declarations of functions in \Cee-style for the parser @>=
+@< Declarations of functions for the parser @>=
 expr make_unary_call(id_type name, expr arg);
 expr make_binary_call(id_type name, expr x, expr y);
 
 @~In the unary case we avoid calling |make_application| with a singleton
 list that will be immediately destroyed,
 
-@< Definitions of functions in \Cee... @>=
+@< Definitions of functions for the parser @>=
 expr make_unary_call(id_type name, expr arg)
 { app a=new application_node; a->fun=make_applied_identifier(name); a->arg=arg;
   expr result; result.kind=function_call; result.e.call_variant=a;
@@ -593,7 +600,7 @@ struct partial_formula
 indicate a pending initial unary operator. For this we use the address of a
 dummy static variable.
 
-@< Declarations in \Cee-style... @>=
+@< Declarations for the parser @>=
 
 extern struct partial_formula dummy_formula;
 const form_stack unary_marker=&dummy_formula;
@@ -607,7 +614,7 @@ start them out with a binary or unary operator, the principal one to extend
 with a new operand and binary operator, one to finish off the formula with
 a final operand, and of course one to clean up.
 
-@< Declarations in \Cee-style... @>=
+@< Declarations for the parser @>=
 form_stack start_formula (expr e, id_type op, int prio);
 form_stack start_unary_formula (id_type op, int prio);
 form_stack extend_formula (form_stack pre, expr e,id_type op, int prio);
@@ -615,7 +622,7 @@ expr end_formula (form_stack pre, expr e);
 void destroy_formula(form_stack s);
 
 @ Starting a binary formula simply creates an initial node.
-@< Definitions of functions in \Cee-style... @>=
+@< Definitions of functions for the parser @>=
 form_stack start_formula (expr e, Hash_table::id_type op, int prio)
 { form_stack result = new partial_formula;
   result->left_subtree=e; result->op=op; result->prio=prio;
@@ -634,7 +641,7 @@ form_stack start_unary_formula (id_type op, int prio)
 indicated above. It turns out |start_formula| could be replaced by a call to
 |extend_formula| with |pre==NULL|.
 
-@< Definitions of functions in \Cee-style... @>=
+@< Definitions of functions for the parser @>=
 form_stack extend_formula (form_stack pre, expr e,id_type op, int prio)
 { form_stack result=NULL;
   while (pre!=NULL and (pre->prio>prio or pre->prio==prio and prio%2==0))
@@ -670,7 +677,7 @@ but with an infinitely low value for the ``current priority'' |prio|. So we
 can reuse the main part of the loop of |extend_formula|, with just a minor
 modification to make sure all nodes get cleaned up after use.
 
-@< Definitions of functions in \Cee-style... @>=
+@< Definitions of functions for the parser @>=
 expr end_formula (form_stack pre, expr e)
 { while (pre!=NULL)
   { form_stack t=pre;
@@ -681,7 +688,7 @@ expr end_formula (form_stack pre, expr e)
 }
 
 @ Destroying a formula stack is straightforward.
-@< Definitions of functions in \Cee-style... @>=
+@< Definitions of functions for the parser @>=
 void destroy_formula(form_stack s)
 {@; while (s!=NULL and s!=unary_marker)
   {@; form_stack t=s; s=s->prev; delete t;
@@ -704,6 +711,13 @@ all (while providing a void value) has its uses. However patterns of the form
 $(x)$, which would give a sublist of length~$1$, will be forbidden: they would
 be confusing since $1$-tuples do not exist.
 
+Since patterns pointed to by |patlist| will need to be duplicated (in the
+evaluator), we provide a (default) constructor for |pattern_node| that will
+ensure that constructed nodes will immediately be safe for possible
+destruction by |destroy_id_pat| (no undefined pointers; the |sublist| pointer
+of |id_pat| is ignored when |kind==0|). The structure |id_pat| itself cannot
+have a constructor, since it figures in a |union|, where this is not allowed.
+
 @< Typedefs... @>=
 typedef struct pattern_node* patlist;
 struct id_pat
@@ -712,8 +726,9 @@ struct id_pat
   unsigned char kind; /* bit 0: has name, bit 1: has sublist */
 };
 struct pattern_node
-{@; patlist next;
+{ patlist next;
   struct id_pat body;
+  pattern_node () : next(NULL) @+{@; body.kind=0; }
 };
 
 @ These types do not themselves represent a variant of |expru|, but will be
@@ -750,7 +765,7 @@ variable in the parser. Patterns also need cleaning up, which
 |destroy_pattern| and |destroy_id_pat| will handle, and reversal as handled by
 |reverse_patlist|.
 
-@< Declarations in \Cee... @>=
+@< Declarations for the parser @>=
 patlist make_pattern_node(patlist next,struct id_pat* body);
 void destroy_pattern(patlist p);
 void destroy_id_pat(struct id_pat* p);
@@ -760,7 +775,7 @@ patlist reverse_patlist(patlist p);
 point to previously parsed nodes, so (as usual) reversal will be necessary.
 Being bored, we add a variation on list reversal.
 
-@< Definitions of functions in \Cee... @>=
+@< Definitions of functions for the parser @>=
 patlist make_pattern_node(patlist next,struct id_pat* body)
 {@; patlist l=new pattern_node; l->next=next; l->body=*body; return l; }
 @)
@@ -829,13 +844,13 @@ break;
 @ Destroying lists of declarations will be done in a function callable from the
 parser, like |destroy_exprlist|.
 
-@< Declarations of functions in \Cee-style for the parser @>=
+@< Declarations of functions for the parser @>=
 void destroy_letlist(let_list l);
 
 @~Like |destroy_exprlist|, this function recursively destroys nodes, and the
 expressions they contain.
 
-@< Definitions of functions in \Cee-style for the parser @>=
+@< Definitions of functions for the parser @>=
 void destroy_letlist(let_list l)
 { while (l!=NULL)
     @/{@; let_list p=l; l=l->next;
@@ -863,7 +878,7 @@ appends such a list |cur| (assured to be of length~$1$) to a previously
 constructed list |prev| of declaration; finally |make_let_expr_node| wraps up
 an entire let-expression.
 
-@< Declarations of functions in \Cee-style for the parser @>=
+@< Declarations of functions for the parser @>=
 let_list make_let_node(struct id_pat pattern, expr val);
 let_list append_let_node(let_list prev, let_list cur);
 expr make_let_expr_node(let_list decls, expr body);
@@ -891,7 +906,7 @@ building the parse tree (avoiding explicit calls to |new| but allocating from
 local storage pools that can explicitly be emptied), in which case all
 cleaning up in the code below should also be removed.
 
-@< Definitions of functions in \Cee... @>=
+@< Definitions of functions for the parser @>=
 let_list make_let_node(struct id_pat pattern, expr val)
 {@; let_list l=new let_node;
   l->pattern=pattern; l->val=val; l->next=NULL;
@@ -936,41 +951,75 @@ there is no way to know the type of the arguments with certainty, unless the
 user specifies them (at least this is true if we want to allow such things as
 type coercion and function overloading to be possible, so that types cannot be
 deduced by analysis of the \emph{usage} of the parameters in the function
-only). The syntax for types is easy enough, but we have to decide what kind of
-object the parser will use to represent types specified by the user. The
-evaluator has an internal type |struct type_declarator@;| to represent them,
-but the \Cpp\ definition of that type cannot be understood by the parser. So
-we tried to manage with pointers to incomplete types. That does not work
-either, because |struct type_declarator@;| is actually defined within a
-|namespace|, so we cannot give the correct name and be understood in \Cee,
-while if we lie about the name of the |struct| then \Cpp\ will complain about
-converting between pointers to different structures. So, grudgingly, we shall
-cast to and from pointers to |void|.
+only). Types are also an essential ingredient of casts.
 
-@< Typedefs that are required... @>=
-typedef void* ptr;
+When the parser was compiled as \Cee~code, we were forced to use void pointers
+in the parser, to masquerade for the actual pointers to \Cpp~types; numerous
+static casts were then used to get the proper pointer types from them. Now
+that this is no longer necessary, everything has been reformulated in terms of
+the actual pointer types. Something that remains (for now) is the avoidance of
+smart pointers for types in the parser, since other pointers for expressions
+that it handles are not smart pointers either.
 
-@~The functions declared below provide an interface to routines defined in
-the module \.{evaluator.w}.
+We avoid including \.{types.h} into our header file \.{parsetree.h}, since the
+reverse inclusion is present and necessary. But we do need to know about the
+following type names, where it fortunately suffices to know they are pointers
+to unspecified structures.
 
-@< Declarations in \Cee... @>=
-ptr mk_type_singleton(ptr t);
-ptr mk_type_list(ptr t,ptr l);
-ptr mk_prim_type(int p);
-ptr mk_row_type(ptr c);
-ptr mk_tuple_type(ptr l);
-ptr mk_function_type(ptr a,ptr r);
+@< Structure and typedef... @>=
+typedef struct type_expr* type_p;
+typedef struct type_node* type_list;
+
+@ These functions provide an interface to routines defined in the
+module \.{types.w}, stripping off the smart pointers.
+
+@< Declarations of functions for the parser @>=
+type_list mk_type_singleton(type_p t);
+type_list mk_type_list(type_p t,type_list l);
+type_p mk_prim_type(int p);
+type_p mk_row_type(type_p c);
+type_p mk_tuple_type(type_list l);
+type_p mk_function_type(type_p a,type_p r);
 @)
-void destroy_type(ptr t);
-void destroy_type_list(ptr t);
+void destroy_type(type_p t);
+void destroy_type_list(type_list t);
 
-@ Some other functions that must also convert pointers from |ptr|, and which
-are therefore defined in \.{evaluator.w}, are not used directly by the parser;
-their declarations can use \Cpp\ types.
+@ The following function is not used in the parser, and never had \Cee~linkage.
 
 @< Declarations of \Cpp... @>=
-ptr first_type(ptr typel);
-std::ostream& print_type(std::ostream& out, ptr type);
+std::ostream& print_type(std::ostream& out, type_p type);
+
+@ All that is needed are conversions from ordinary pointer to auto-pointer and
+back (or from integer to enumeration type). Nothing can throw during these
+conversions, so passing bare pointers is exception-safe.
+
+@< Definitions of functions for the parser @>=
+
+type_list mk_type_singleton(type_p t)
+{@; return make_type_singleton(type_ptr(t)).release(); }
+
+type_list mk_type_list(type_p t,type_list l)
+{@; return make_type_list(type_ptr(t),type_list_ptr(l)).release(); }
+
+type_p mk_prim_type(int p)
+{@; return make_prim_type(static_cast<primitive_tag>(p)).release(); }
+
+type_p mk_row_type(type_p c)
+{@; return make_row_type(type_ptr(c)).release(); }
+
+type_p mk_tuple_type(type_list l)
+{@; return make_tuple_type(type_list_ptr(l)).release(); }
+
+type_p mk_function_type(type_p a,type_p r)
+{@; return make_function_type(type_ptr(a),type_ptr(r)).release(); }
+@)
+
+void destroy_type(type_p t)@+ {@; delete t; }
+
+void destroy_type_list(type_list t)@+ {@; delete t; }
+
+std::ostream& print_type(std::ostream& out, type_p type) @+
+{@; return out << *type; }
 
 @ For user-defined functions we shall use a structure |lambda_node|.
 @< Typedefs that are required... @>=
@@ -982,7 +1031,7 @@ in \.{evaluator.w}), and an  expression (the body of the function).
 
 @< Structure and typedef... @>=
 struct lambda_node
-{@; struct id_pat pattern; ptr arg_type; expr body; };
+{@; struct id_pat pattern; type_p arg_type; expr body; };
 
 @ The tag used for user-defined functions is |lambda_expr|.
 @< Enumeration tags... @>=
@@ -1009,11 +1058,13 @@ break;
 @ And we must of course take care of destroying lambda expressions, which just
 call handler functions.
 
+@h "types.h" // so that |type_p| will point to a complete type in |delete|
+
 @< Cases for destroying an expression |e| @>=
 case lambda_expr:
 { lambda fun=e.e.lambda_variant;
   destroy_id_pat(&fun->pattern);
-  destroy_type(fun->arg_type);
+  delete(fun->arg_type);
   destroy_expr(fun->body);
 }
 break;
@@ -1021,24 +1072,30 @@ break;
 @ Finally there is as usual a function for constructing a node, to be called
 by the parser.
 
-@< Declarations of functions... @>=
-expr make_lambda_node(patlist patl, ptr typel, expr body);
+@< Declarations of functions for the parser @>=
+expr make_lambda_node(patlist pat_l, type_list type_l, expr body);
 
-@~There is a twist in building a lambda node, in that it is passed lists of
-patterns and types rather than single ones. We must distinguish the case of a
-singleton, where the head node must be unpacked, and the multiple case, where
-a tuple pattern and type must be wrapped up from the lists.
+@~There is a twist in building a lambda node, in that for syntactic reasons
+the parser passes lists of patterns and types rather than single ones. We must
+distinguish the case of a singleton, in which case the head node must be
+unpacked, and the multiple case, where a tuple pattern and type must be
+wrapped up from the lists. In the former case, |fun->arg_type| wants to have a
+pointer to an isolated |type_expr|, but the head of |type_l| is a |type_node|
+that contains a |type_expr| as its |t| field; making a (deep) copy of that
+field is the easiest way to obtain an isolated |type_expr|. After the deep
+copy, destruction of |type_l| deletes the original |type_node|.
 
-@< Definitions of functions... @>=
-expr make_lambda_node(patlist patl, ptr typel, expr body)
+@< Definitions of functions for the parser @>=
+expr make_lambda_node(patlist pat_l, type_list type_l, expr body)
 { lambda fun=new lambda_node; fun->body=body;
-  if (patl!=NULL and patl->next==NULL)
-  { fun->pattern=patl->body; delete patl; // clean up node
-    fun->arg_type = first_type(typel);
+  if (pat_l!=NULL and pat_l->next==NULL)
+  { fun->pattern=pat_l->body; delete pat_l; // clean up node
+    fun->arg_type = new type_expr(type_l->t); delete type_l;
+      // make a deep copy, clean up
   }
   else
-  @/{@; fun->pattern.kind=0x2; fun->pattern.sublist=patl;
-    fun->arg_type=mk_tuple_type(typel);
+  { fun->pattern.kind=0x2; fun->pattern.sublist=pat_l;
+    fun->arg_type=mk_tuple_type(type_l);
   }
   expr result; result.kind=lambda_expr; result.e.lambda_variant=fun;
   return result;
@@ -1092,12 +1149,12 @@ break;
 
 
 @ To build an |conditional_node|, we define a function as usual.
-@< Declarations of functions in \Cee-style for the parser @>=
+@< Declarations of functions for the parser @>=
 expr make_conditional_node(expr c, expr t, expr e);
 
 @~It is entirely straightforward.
 
-@< Definitions of functions in \Cee... @>=
+@< Definitions of functions for the parser @>=
 expr make_conditional_node(expr c, expr t, expr e)
 { cond n=new conditional_node; n->condition=c;
   n->then_branch=t; n->else_branch=e;
@@ -1198,14 +1255,14 @@ break;
 @ To build a |while_node|, |for_node| or |cfor_node|, here are yet three
 more \\{make}-functions.
 
-@< Declarations of functions in \Cee-style for the parser @>=
+@< Declarations of functions for the parser @>=
 expr make_while_node(expr c, expr b);
 expr make_for_node(struct id_pat id, expr ip, expr b);
 expr make_cfor_node(id_type id, expr count, expr bound, short up, expr b);
 
 @~They are quite straightforward, as usual.
 
-@< Definitions of functions in \Cee... @>=
+@< Definitions of functions for the parser @>=
 expr make_while_node(expr c, expr b)
 { w_loop w=new while_node; w->condition=c; w->body=b;
 @/expr result; result.kind=while_expr; result.e.while_variant=w;
@@ -1286,12 +1343,12 @@ break;
 @ To build an |subscription_node|, we simply combine the array and the index
 part.
 
-@< Declarations of functions in \Cee-style for the parser @>=
+@< Declarations of functions for the parser @>=
 expr make_subscription_node(expr a, expr i);
 
 @~This is straightforward, as usual.
 
-@< Definitions of functions in \Cee... @>=
+@< Definitions of functions for the parser @>=
 expr make_subscription_node(expr a, expr i)
 { sub s=new subscription_node; s->array=a; s->index=i;
   expr result; result.kind=subscription; result.e.subscription_variant=s;
@@ -1310,7 +1367,7 @@ typedef struct cast_node* cast;
 known reasons.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct cast_node {@; ptr type; expr exp; };
+struct cast_node {@; type_p type; expr exp; };
 
 @ The tag used for casts is |cast_expr|.
 
@@ -1332,13 +1389,13 @@ break;
 
 @ Casts are built by |make_cast|.
 
-@< Declarations of functions in \Cee... @>=
-expr make_cast(ptr type, expr exp);
+@< Declarations of functions for the parser @>=
+expr make_cast(type_p type, expr exp);
 
 @~No surprises here.
 
-@< Definitions of functions in \Cee...@>=
-expr make_cast(ptr type, expr exp)
+@< Definitions of functions for the parser@>=
+expr make_cast(type_p type, expr exp)
 { cast c=new cast_node; c->type=type; c->exp=exp;
 @/ expr result; result.kind=cast_expr; result.e.cast_variant=c;
    return result;
@@ -1361,7 +1418,7 @@ typedef struct op_cast_node* op_cast;
 void pointer.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct op_cast_node {@; id_type oper; ptr type; };
+struct op_cast_node {@; id_type oper; type_p type; };
 
 @ The tag used for casts is |op_cast_expr|.
 
@@ -1383,13 +1440,13 @@ break;
 
 @ Casts are built by |make_cast|.
 
-@< Declarations of functions in \Cee... @>=
-expr make_op_cast(id_type name,ptr type);
+@< Declarations of functions for the parser @>=
+expr make_op_cast(id_type name,type_p type);
 
 @~No surprises here either.
 
-@< Definitions of functions in \Cee...@>=
-expr make_op_cast(id_type name,ptr type)
+@< Definitions of functions for the parser@>=
+expr make_op_cast(id_type name,type_p type)
 { op_cast c=new op_cast_node; c->oper=name; c->type=type;
 @/ expr result; result.kind=op_cast_expr; result.e.op_cast_variant=c;
    return result;
@@ -1434,13 +1491,13 @@ break;
 
 @ Assignment statements are built by |make_assignment|.
 
-@< Declarations of functions in \Cee... @>=
+@< Declarations of functions for the parser @>=
 expr make_assignment(id_type lhs, expr rhs);
 
 @~It does what one would expect it to (except for those who expect their
 homework assignment made).
 
-@< Definitions of functions in \Cee...@>=
+@< Definitions of functions for the parser@>=
 expr make_assignment(id_type lhs, expr rhs)
 { assignment a=new assignment_node; a->lhs=lhs; a->rhs=rhs;
 @/ expr result; result.kind=ass_stat; result.e.assign_variant=a;
@@ -1491,12 +1548,12 @@ not simply combine the expression components, because for reason of parser
 generation the array and index will have already been combined before this
 function can be called.
 
-@< Declarations of functions in \Cee... @>=
+@< Declarations of functions for the parser @>=
 expr make_comp_ass(expr lhs, expr rhs);
 
 @~Here we have to take the left hand side apart a bit, and clean up its node.
 
-@< Definitions of functions in \Cee...@>=
+@< Definitions of functions for the parser@>=
 expr make_comp_ass(expr lhs, expr rhs)
 { comp_assignment a=new comp_assignment_node;
 @/a->aggr=lhs.e.subscription_variant->array.e.identifier_variant;
@@ -1558,13 +1615,13 @@ break;
 
 @ Sequences are built by |make_sequence|.
 
-@< Declarations of functions in \Cee... @>=
+@< Declarations of functions for the parser @>=
 expr make_sequence(expr first, expr last, int forward);
 expr make_reverse_sequence(expr first, expr last);
 
 @~It does what one would expect it to.
 
-@< Definitions of functions in \Cee...@>=
+@< Definitions of functions for the parser @>=
 expr make_sequence(expr first, expr last, int forward)
 { sequence s=new sequence_node; s->first=first; s->last=last;
   s->forward=forward;
@@ -1585,14 +1642,14 @@ break;
 Here are some functions that are not so much a parsing functions as just
 wrapper functions enabling the parser to call \Cpp~functions.
 
-@< Declarations of functions in \Cee-style for the parser @>=
-short lookup_identifier(const char*);
+@< Declarations of functions for the parser @>=
+id_type lookup_identifier(const char*);
 void include_file(int skip_seen);
 
 @~The parser will only call this with string constants, so we can use the
 |match_literal| method.
 
-@< Definitions of functions in \Cee-style for the parser @>=
+@< Definitions of functions for the parser @>=
 id_type lookup_identifier(const char* name)
 {@; return main_hash_table->match_literal(name); }
 
@@ -1601,37 +1658,13 @@ providing a file name that was remembered by the lexical analyser. If this
 fails, then we abort all includes, as there is not much point in continuing to
 read a file when another on which it depends cannot be found.
 
-@< Definitions of functions in \Cee-style for the parser @>=
+@< Definitions of functions for the parser @>=
 void include_file(int skip_seen)
 { if (not main_input_buffer->push_file
           (lex->scanned_file_name(),skip_seen!=0))
     main_input_buffer->close_includes();
      // nested include failure aborts all includes
 }
-
-@ The next functions are declared here, because the parser needs to see these
-declarations in \Cee-style, but they are defined in in the file
-\.{evaluator.w}, since that is where the functionality is available, and we do
-not want to make the current compilation unit depend on \.{evaluator.h}.
-
-The function |global_set_identifier| handles introducing identifiers, either
-normal ones or overloaded instances of functions, using the \&{set} syntax.
-The left hand side~|id| is a pattern of identifiers defined, |e| their
-defining expression, and |overload| indicates whether additions are to be made
-to the overload table rather than to the global identifier table. If
-|overload| is true, all defining values should be functions; in practice this
-is guaranteed by |id| being a single identifier and |e| a
-$\lambda$-expression.
-
-@< Declarations of functions in \Cee-style for the parser @>=
-void global_set_identifier(struct id_pat id, expr e, int overload);
-void global_declare_identifier(id_type id, ptr type);
-void global_forget_identifier(id_type id);
-void global_forget_overload(id_type id, ptr type);
-void show_ids();
-void type_of_expr(expr e);
-void show_overloads(id_type id);
-
 
 @* Index.
 

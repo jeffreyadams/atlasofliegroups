@@ -1,5 +1,5 @@
-% Copyright (C) 2006-2009 Marc van Leeuwen
-% This file is part of the Atlas of Reductive Lie Groups software (the Atlas)
+% Copyright (C) 2006-2012 Marc van Leeuwen
+% This file is part of the Atlas of Lie Groups and Representations (the Atlas)
 
 % This program is made available under the terms stated in the GNU
 % General Public License (GPL), see http://www.gnu.org/licences/licence.html
@@ -73,21 +73,28 @@ static ``type'' errors may prevent us from undertaking any meaningful action,
 and in absence of such errors there still can be dynamic ``runtime'' errors.
 
 We first define some data types used by the evaluator. First of all we shall
-consider ``type'' values, represented by the structure |type_expr|, in
-terms of which the static analysis is performed. Then we shall define the
-structure of values for user data, the kind manipulated by the evaluator at
-runtime; these are of classes derived from~|value_base|. Then we shall define
-values that represent the user expression after type analysis, and which serve
-to control the runtime actions; these are of classes derived from
-|expression_base|. Originally the |expr| value itself (possibly slightly
-modified during type analysis) was used for this purpose, but it turns out to
-be useful to rebuild the expression tree; as a side benefit we can liberate
-ourselves from the constraint on data types built by the parser, that they can
-be understood by a \Cee-program. Finally we need some types for errors that we
-might have to throw; these are the classes |program_error|, and |type_error|
-which is derived from it.
+consider ``type'' values, represented by the structure |type_expr|, in terms
+of which the static analysis is performed. Then we shall define the structure
+of values for user data, the kind manipulated by the evaluator at runtime;
+these are of classes derived from~|value_base|. Then we shall define values
+that represent the user expression after type analysis, and which serve to
+control the runtime actions; these are of classes derived from
+|expression_base|. Finally we need some types for errors that we might have
+to throw; these are the classes |program_error|, and |type_error| which is
+derived from it.
 
-Most of these types are recursive in a manner more complicated that simple
+Originally the |expr| value itself (possibly slightly modified during type
+analysis) was used for evaluation, but it turns out to be useful to rebuild
+the expression tree with a modified structure. It used to be a side benefit
+that we could liberate ourselves from the constraint on data types built by
+the parser, that they could be understood by a \Cee-program; currently
+however \Cpp~language types can be, and are, part of the type |expr|.
+Nonetheless the structure built on |expression_base| is different in many
+respects from |expr|, and the transformation between these structures involves
+certain processes like overloading resolution that more resemble compilation
+than interpretation.
+
+Most of these types are recursive in a manner more complicated than simple
 linked lists or binary trees: at each level they represent various alternative
 possibilities, each of which might recursively refer to the original type one
 or more times. Such recursion is represented by linked structures that cannot
@@ -694,62 +701,6 @@ type_ptr make_tuple_type (type_list_ptr l)
 type_ptr make_function_type (type_ptr a, type_ptr r)
 {@; return type_ptr(new type_expr(a,r));
 }
-
-@*1 A parser interface to constructing types.
-%
-In order for the parser, which is (currently) compiled as \Cee\ code, to be
-able to call the type-constructing functions, we provide functions
-with \Cee-linkage and types understandable from \Cee, which call the above
-functions. Their prototypes, visible to the parser, were defined in the
-module \.{parsetree.w}.
-
-@< Includes needed in \.{types.h} @>=
-#include "parsetree.h"
-
-@ All that happens here is a painful conversion from
-void pointer (the type |ptr|) to auto-pointer (or from integer to enumeration
-type), and a somewhat less painful conversion back. Nothing can throw during
-these conversions, so passing bare pointers is exception-safe.
-
-@< Function def... @>=
-extern "C"
-ptr mk_type_singleton(ptr t)
-{@;
-  return make_type_singleton(type_ptr(static_cast<type_p>(t)))
-  .release();
-}
-extern "C"
-ptr mk_type_list(ptr t,ptr l)
-{ return make_type_list(type_ptr(static_cast<type_p>(t)),@|
-                        type_list_ptr(static_cast<type_list>(l))).release(); }
-extern "C"
-ptr mk_prim_type(int p)
-{@; return make_prim_type(static_cast<primitive_tag>(p)).release(); }
-extern "C"
-ptr mk_row_type(ptr c)
-{@; return make_row_type(type_ptr(static_cast<type_p>(c)))
-  .release(); }
-extern "C"
-ptr mk_tuple_type(ptr l)
-{@; return make_tuple_type(type_list_ptr(static_cast<type_list>(l)))
-  .release(); }
-extern "C"
-ptr mk_function_type(ptr a,ptr r)
-{ return make_function_type(type_ptr(static_cast<type_p>(a)),@|
-    type_ptr(static_cast<type_p>(r))).release(); }
-@)
-extern "C"
-void destroy_type(ptr t)@+
-{@; delete static_cast<type_p>(t); }
-extern "C"
-void destroy_type_list(ptr t)@+
-{@; delete static_cast<type_list>(t); }
-
-ptr first_type(ptr typel)@+
-{@; return &static_cast<type_list>(typel)->t; }
-
-std::ostream& print_type(std::ostream& out, ptr type)
-{@; return out << *static_cast<type_p>(type); }
 
 @*1 Specifying types by strings.
 %
@@ -1824,6 +1775,7 @@ exception types will be used without any type derivation.
 
 @< Includes needed in \.{types.h} @>=
 #include <stdexcept>
+#include "parsetree.h" // type |expr| will be used in error classes
 
 @ For errors detected before execution starts, we first derive a general
 exception class |program_error| from |std::exception|; it represents any kind

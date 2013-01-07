@@ -1,5 +1,5 @@
 % Copyright (C) 2006 Marc van Leeuwen
-% This file is part of the Atlas of Reductive Lie Groups software (the Atlas)
+% This file is part of the Atlas of Lie Groups and Representations (the Atlas)
 
 % This program is made available under the terms stated in the GNU
 % General Public License (GPL), see http://www.gnu.org/licences/licence.html
@@ -25,15 +25,10 @@
 This file describes a lexical scanner that provides a layer situated between
 the class |BufferedInput| that provides lines of input, and the parser that is
 to receive a sequence of tokens. The functionality provided is the recognition
-of tokens, in particular keywords and constants. The module \.{buffer} is used
-that provides classes for tables that store identifiers and encode them by
-small numbers, as well as the class |BufferedInput| itself.
-
-@h "buffer.h"
-
+of tokens, in particular keywords and constants.
 
 @ As usual the external interface is written to the header file associated to
-this file.
+this file. In this module all include files are needed in the header file.
 
 @( lexer.h @>=
 #ifndef LEXER_H
@@ -89,8 +84,7 @@ called from the |readline| function (which is probably called by
 dictated by the \.{readline} library.
 
 @< Declarations of exported functions @>=
-extern "C"
-char* id_completion_func(const char* text, int state);
+extern "C" char* id_completion_func(const char* text, int state);
 
 @~The completion function will find and identifiers currently present in the
 main hash table. This includes keywords, built-in functions and identifiers
@@ -138,13 +132,16 @@ char* id_completion_func(const char* text, int state)
 @* The lexical analyser class.
 %
 We now come to the lexical analyser proper. Although only one lexical analyser
-is envisaged, we shall define a class for it. The file \.{parser.tab.h}
-contains definitions of constants defined by the parser and used in the code
-below, but on its turn it uses types defined in \.{parsetree.h} which is
-therefore loaded before it (we would like to have put an \&{\#include} of the
-file \.{parsetree.h} into \.{parser.tab.h}, but do not know if or how this
-could be arranged).
+is envisaged, we shall define a class for it. The module \.{buffer} is used
+for the class |BufferedInput| as well as for the type |id_type| defined within
+that class. The file \.{parser.tab.h} contains definitions of |YYSTYPE| and
+|YYLTYPE| defined by the parser and used in the code below, but on its turn it
+uses (for other purposes) types defined in \.{parsetree.h} which therefore has
+to be loaded before it (we would like to have put an \&{\#include} of the
+file \.{parsetree.h} into \.{parser.tab.h} so that it need no be mentioned
+here, but we do not know if or how this could be arranged).
 
+@h "buffer.h"
 @h "parsetree.h"
 @h "parser.tab.h"
 
