@@ -169,7 +169,7 @@ $(interpreter_objects) : %.o : %.cpp
 
 sources/interpreter/parser.tab.o: \
   sources/interpreter/parser.tab.c sources/interpreter/parsetree.h
-	$(CC) -c -g -Wall $(CFLAGS) $(CPPFLAGS) -o $@ $<
+	$(CXX) $(cflags) -o $@ $<
 
 # generate files that describe which .o files depend on which other (.h) files
 $(dependencies) : %.d : %.cpp
