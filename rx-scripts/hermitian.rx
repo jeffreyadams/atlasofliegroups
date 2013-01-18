@@ -1,7 +1,7 @@
 <misc.rx
 <kl.rx
 
-{ a varable used in this file; set to true for more output from functions }
+{ a variable used in this file; set to true for more output from functions }
 set hermitian_debug = false
 
 set -(ParamPol P,ParamPol Q) = ParamPol: P+(-1)*Q
@@ -13,7 +13,7 @@ set =(ParamPol P,ParamPol Q) = bool: #(P-Q)=0
 set *(Param p,rat alpha) = let (x,lambda,nu)=%p in param(x,lambda,alpha*nu)
 
 {set nu=0 in Param (x,lambda,nu) }
-set make_no0 (Param p) = p*0
+set make_nu0 (Param p) = p*0
 set make_nu0 (ParamPol P)= ParamPol:
   null_module(real_form(P)) + for w@p in P do (w,p*0) od
 
@@ -30,7 +30,7 @@ set orientation_nr_term = (int,Param->Split):
   write c-invariant form on standard module in terms of standardrepks,
   as a ParamPol
 }
-set c_form_std (Param p) = (ParamPol):
+set c_form_std (Param p) = ParamPol:
 ( if hermitian_debug then prints("computing c-form on standard module: ",p) fi
 ; full_deform(p)
 )
@@ -42,9 +42,8 @@ set c_form_std (Param p) = (ParamPol):
   then
     J(y)_c=sum_x (-1)^{on(x,y)}(-1)^{ell(x)-ell(y)}P(x,y)(q=s)I(x)_c
   where
-    P(x,y) is a cumulated KL polyomial
+    P(x,y) is a cumulated KL polynomial
     (-1)^{ell(x)-ell(y)}P(x,y) is given by signedKL(y)[i] with indices[i]=x
-       (note sign is taken care of already)
     on(x,y)=orientation number given by orientation_nr_term()
     I(x)_c given as combination of standards x' with nu(x')=0 by c_form_std(x)
   algorithm: just compute the sum for J(y)_c, using signedKL and c_form_std

@@ -185,3 +185,13 @@ set dual_integral(InnerClass ic, ratvec gamma) = InnerClass:
   inner_class(dual(integrality_datum(ic,gamma)),-^distinguished_involution(ic))
 
 set KGB(RealForm rf) = [KGBElt]: for i:KGB_size(rf) do KGB(rf,i) od
+set is_complex(int s,KGBElt x) = status(s,x)%4=0
+set is_real(int s,KGBElt x) = status(s,x)=2
+set is_imaginary(int s,KGBElt x) = status(s,x)%2=1
+set is_noncompact(int s,KGBElt x) = status(s,x)=3
+set is_compact(int s,KGBElt x) = status(s,x)=1
+set is_descent(int s,KGBElt x) = status(s,x)<3
+set is_ascent(int s,KGBElt x) = status(s,x)>=3
+set status_code(int s,KGBElt x) = ["C+","ic","r ","nc","C+"][status(s,x)]
+set status_code(KGBElt x) =
+  for s:semisimple_rank(real_form(x)) do status_code(s,x) od

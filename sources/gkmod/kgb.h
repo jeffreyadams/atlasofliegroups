@@ -7,7 +7,7 @@ representing orbits of K on G/B.
   This is kgb.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006-2011 Marc van Leeuwen
+  Copyright (C) 2006-2013 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -56,10 +56,11 @@ class KGB_base
   // per KGB element information
   struct EltInfo
   {
-    gradings::Status status; ///< status of each simple root for this element
-    DescentSet desc; ///<  which simple reflections are complex descent or real
+    gradings::Status status; // status of each simple root for this element
+    DescentSet desc; //  which simple reflections are complex descent or real
+    KGBElt dual; // number of Hermitian dual of this element
 
-  EltInfo() : status(), desc() {}
+  EltInfo() : status(), desc(), dual(UndefKGB) {}
 
   }; // |struct EltInfo|
 
@@ -130,6 +131,8 @@ class KGB_base
   KGBElt cross(KGBElt x, const WeylWord& ww) const;
 
   unsigned int length(KGBElt x) const;
+
+  KGBElt Hermitian_dual(KGBElt x) const { return info[x].dual; }
 
   TwistedInvolution nth_involution(unsigned int n) const
     { return inv_pool[n]; }
@@ -433,7 +436,7 @@ and in addition the Hasse diagram (set of all covering relations).
   bool simple_imaginary_grading(KGBElt x,RootNbr alpha) const
   { return d_base->simple_imaginary_grading(torus_part(x),alpha); }
 
-  KGBElt lookup(const TitsElt& a, const TitsGroup& Tg) const;
+  KGBElt lookup(const TitsElt& a) const;
 
 
 // manipulators

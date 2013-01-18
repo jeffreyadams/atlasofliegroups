@@ -11,6 +11,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <set>
 
 #include "complexredgp.h"
@@ -157,6 +158,33 @@ std::ostream& print_X(std::ostream& strm, const kgb::global_KGB& kgb)
   return print(strm,kgb,false,NULL,NULL);
 }
 
+std::ostream& print_twist(std::ostream& strm, const kgb::KGB_base& kgb)
+{
+  std::ostringstream os; KGBElt count=0;
+
+  os << "Elements fixed under twist: ";
+  for (KGBElt i=0; i<kgb.size(); ++i)
+    if (kgb.Hermitian_dual(i)==i)
+    {
+      if (count>0)
+	os << ", ";
+      os << i;
+      ++count;
+    }
+  ioutils::foldLine(strm,os.str());
+
+  os.str("Elements interchanged by twist: "); // clear and replace string
+  strm << "" << std::endl;
+  for (KGBElt i=0; i<kgb.size(); ++i)
+    if (kgb.Hermitian_dual(i)>i)
+      os << '(' << i << ' ' << kgb.Hermitian_dual(i) << ") ";
+
+  ioutils::foldLine(strm,os.str(),"",") ") << std::endl;
+
+  return strm << "Total " << count << " fixed elements out of " << kgb.size()
+	      << std::endl;
+}
+
 
 // Print the Hasse diagram of the Bruhat ordering |bruhat| to |strm|.
 std::ostream&
@@ -178,24 +206,27 @@ printBruhatOrder(std::ostream& strm, const BruhatOrder& bruhat)
 
 // make a '.dot' file that can be processed by the 'dot' program
 // see www.graphviz.org for more info
-void makeDotFile(std::ostream& strm, const KGB& kgb, const BruhatOrder& bruhat) {
+void makeDotFile
+  (std::ostream& strm, const KGB& kgb, const BruhatOrder& bruhat)
+{
   // local data
   size_t size = kgb.size();
   size_t rank = kgb.rank();
 
   // edge colors - feel free to change these
   // but remember to change them in the help file as well - spc
-  std::string colorca("black"); // cross action 
+  std::string colorca("black"); // cross action
   std::string colorctI("blue"); // cayley transform type I
   std::string colorctII("green"); // cayley transform type II
   std::string colorcl("gray"); // additional R/S closure edge
 
   // write header
-  strm << "digraph G {" << std::endl << "ratio=\"1.5\"" << std::endl << "size=\"7.5,10.0\"" << std::endl;
+  strm << "digraph G {" << std::endl << "ratio=\"1.5\"" << std::endl
+       << "size=\"7.5,10.0\"" << std::endl;
 
   // create the vertices
   for (size_t i=0; i<size; i++) {
-    strm << "v" << i << std::endl;    
+    strm << "v" << i << std::endl;
   }
 
   // vector of sets to track which closure edges come from
@@ -207,7 +238,7 @@ void makeDotFile(std::ostream& strm, const KGB& kgb, const BruhatOrder& bruhat) 
     for (size_t j=0; j<rank; j++) {
 		  // depending on the type of root, add an edge if appropriate
       const gradings::Status& type = kgb.status(i);
-      
+
       // CASE: complex cross action
       if (type[j] == gradings::Status::Complex) {
         // get the cross action
@@ -216,7 +247,8 @@ void makeDotFile(std::ostream& strm, const KGB& kgb, const BruhatOrder& bruhat) 
         // its only a closure edge if it inceases length
         if (ca > i) {
           // add an edge in the graph
-          strm << "v" << ca << " -> v" << i << "[color=" << colorca << "] [arrowhead=none] [style=bold]" << std::endl;
+          strm << "v" << ca << " -> v" << i << "[color=" << colorca
+	       << "] [arrowhead=none] [style=bold]" << std::endl;
           edges[ca].insert(i);
         }
       }
@@ -230,14 +262,16 @@ void makeDotFile(std::ostream& strm, const KGB& kgb, const BruhatOrder& bruhat) 
         // CASE: type I
         if (ca != i) {
           // add an edge in the graph
-          strm << "v" << ct << " -> v" << i << "[color=" << colorctI << "] [arrowhead=none] [style=bold]" << std::endl;
+          strm << "v" << ct << " -> v" << i << "[color=" << colorctI
+	       << "] [arrowhead=none] [style=bold]" << std::endl;
           edges[ct].insert(i);
         }
 
         // CASE: type II
         else {
           // add an edge in the graph
-          strm << "v" << ct << " -> v" << i << "[color=" << colorctII << "] [arrowhead=none] [style=bold]" << std::endl;
+          strm << "v" << ct << " -> v" << i << "[color=" << colorctII
+	       << "] [arrowhead=none] [style=bold]" << std::endl;
           edges[ct].insert(i);
         }
       }
@@ -255,7 +289,8 @@ void makeDotFile(std::ostream& strm, const KGB& kgb, const BruhatOrder& bruhat) 
       set::Elt e = clist[j];
       if (edges[i].count(e) == 0) {
           // add an edge in the graph
-          strm << "v" << i << " -> v" << e << "[color=" << colorcl << "] [arrowhead=none]" << std::endl;        
+          strm << "v" << i << " -> v" << e << "[color=" << colorcl
+	       << "] [arrowhead=none]" << std::endl;
       }
     }
   }

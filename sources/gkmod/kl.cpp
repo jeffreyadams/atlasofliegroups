@@ -354,7 +354,7 @@ BitMap KLContext::primMap (BlockElt y) const
 /*!
   \brief Returns the first descent generator that is not real type II
 
-  Explanation: tho se are the ones that give a direct recursion formula for the
+  Explanation: these are the ones that give a direct recursion formula for the
   K-L basis element. Explicitly, we search for a generator |s| such that
   |descentValue(s,y)| is either |DescentStatus::ComplexDescent| or
   |DescentStatus::RealTypeI|. If no such generator exists, we return |rank()|.

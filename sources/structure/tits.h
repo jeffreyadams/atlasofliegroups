@@ -229,6 +229,9 @@ class GlobalTitsGroup : public TwistedWeylGroup
   bool has_central_square(GlobalTitsElement a) const; // idem (but by-value)
   bool is_valid(const GlobalTitsElement& a, // weaker condition: square being
 		const SubSystem& sub) const; // central in subgroup
+  GlobalTitsElement twisted(const GlobalTitsElement& a) const
+  { return GlobalTitsElement(twisted(a.t),twisted(a.w)); }
+
 
   // determine status of simple root, if assumed imaginary
   bool compact(weyl::Generator s, const TorusElement& t) const
@@ -285,7 +288,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
   void do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a) const;
 
  private: // this exists for pragmatic reasons only; no reason to export it
-  // multiply left by either (t,sigma_ww) or delta_1(t,sigma_ww)delta_1
+  // multiply b on left by either (t,sigma_ww) or delta_1(t,sigma_ww)delta_1
   void left_mult(const TorusElement& t,
 		 const WeylWord& ww,
 		 bool do_twist, // whether $(t,ww)$ is conjugated by $\delta_1$
@@ -589,6 +592,7 @@ $H(2)$, for twisting TorusPart values when commuting with \f$\delta\f$.
 
   //!\brief Binary matrix*vector product to compute twist on torus part
   TorusPart twisted(const TorusPart x) const { return d_involution*x; }
+  TitsElt twisted(const TitsElt& te) const;
 
   //!\brief In-place imperative version of |twisted(TorusPart x)|
   void twist(TorusPart x) const { x=twisted(x); }

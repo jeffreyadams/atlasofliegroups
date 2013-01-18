@@ -51,7 +51,8 @@ in for k:n do for i:r do for j:c do
       result[k*r+i,k*c+j]:=m[i,j]
    od od od; result
 
-set complex(RootDatum rd) = { complex group for |rd| viewed as real form }
+{ complex group for |rd| (the group viewed as a real form of doubled type) }
+set complex(RootDatum rd) = RealForm:
 let r=rank(rd)
 then C_inv=null(2*r,2*r)
 , rd_C = root_datum(block_repeat(simple_roots(rd),2)
@@ -295,7 +296,6 @@ set E7_h = real_form(E7_ic_e,1)
 set E7_E6T = real_form(E7_ic_e,1)
 set E7_q = real_form(E7_ic_e,2)
 set E7_D6A1 = real_form(E7_ic_e,2)
-set E7_D6A1 = real_form(E7_ic_e,3)
 set E7_s = real_form(E7_ic_e,3)
 set E7_A7 = real_form(E7_ic_e,3)
 
