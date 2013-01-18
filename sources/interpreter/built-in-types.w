@@ -1806,6 +1806,7 @@ void set_inner_class_wrapper(expression_base::level l)
   shared_matrix M(get<matrix_value>());
   size_t r=lo.d_type.rank();
   assert(M->val.numRows()==r and M->val.numRows()==r);
+  ndebug_use(r);
 @)
   push_value(rdv);
   try

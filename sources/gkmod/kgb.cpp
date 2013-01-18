@@ -12,7 +12,7 @@
   This is kgb.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2007-2009 Marc van Leeuwen
+  Copyright (C) 2007-2013 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -515,6 +515,7 @@ KGB::KGB(RealReductiveGroup& GR,
       i_tab.reduce(a);
       size_t k=elt_hash.match(a);
       assert(k==info.size()); // this KGB element should be new
+      ndebug_use(k);
       KGB_base::add_element(); // add additional info for element |k|
     } // |for (it)|
   }

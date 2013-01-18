@@ -31,6 +31,13 @@
 
 #include "constants.h"
 
+// |ndebug_use| can be used to ensure variables in assert statements are "used"
+#ifdef NDEBUG
+#define ndebug_use(v) static_cast<void>(v)
+#else
+#define ndebug_use(v)
+#endif
+
 /******** forward type declarations ******************************************/
 
 namespace atlas {
