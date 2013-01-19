@@ -11,7 +11,7 @@ corresponding Cartan subgroup. In the output of KGB this is moved to
 the second to last column.
 
 Every kgb element maps to a twisted involution in the Weyl group.
-This is an element of w satisfying w\delta(w)=1 where \delta is the basic
+This is an element of w satisfying w*delta(w)=1 where delta is the basic
 distinguished involution for the inner class. The element w is given
 by the last entry in the row. The Cartan subgroups are parametrized by
 conjugacy classes of such involutions. Each conjugacy class contains a
@@ -26,34 +26,54 @@ the rank of G.
 
 Example: KGB for Sp(4,R)
 
+empty: KGB
+Lie type: C2 sc s
+(weak) real forms are:
+0: sp(2)
+1: sp(1,1)
+2: sp(4,R)
+enter your choice: 2
+kgbsize: 11
+Name an output file (return for stdout, ? to abandon):
 Base grading: [11].
- 0:  0  [n,n]    1   2     6   4  (0,0)#0  e
- 1:  0  [n,n]    0   3     6   5  (1,0)#0  e
- 2:  0  [c,n]    2   0     *   4  (0,1)#0  e
- 3:  0  [c,n]    3   1     *   5  (1,1)#0  e
- 4:  1  [C,r]    8   4     *   *  (0,0) 2  2
- 5:  1  [C,r]    9   5     *   *  (1,0) 2  2
- 6:  1  [r,C]    6   7     *   *  (0,0) 1  1
- 7:  2  [n,C]    7   6    10   *  (0,0)#1  2,1,2
- 8:  2  [C,n]    4   9     *  10  (0,0)#2  1,2,1
- 9:  2  [C,n]    5   8     *  10  (0,1)#2  1,2,1
-10:  3  [r,r]   10  10     *   *  (0,0)#3  1,2,1,2
+ 0:  0  [n,n]    1   2     4   5  (0,0)#0 e
+ 1:  0  [n,n]    0   3     4   6  (1,0)#0 e
+ 2:  0  [c,n]    2   0     *   5  (0,1)#0 e
+ 3:  0  [c,n]    3   1     *   6  (1,1)#0 e
+ 4:  1  [r,C]    4   9     *   *  (0,0) 1 1^e
+ 5:  1  [C,r]    7   5     *   *  (0,0) 2 2^e
+ 6:  1  [C,r]    8   6     *   *  (1,0) 2 2^e
+ 7:  2  [C,n]    5   8     *  10  (0,0)#2 1x2^e
+ 8:  2  [C,n]    6   7     *  10  (0,1)#2 1x2^e
+ 9:  2  [n,C]    9   4    10   *  (0,0)#1 2x1^e
+10:  3  [r,r]   10  10     *   *  (0,0)#3 1^2x1^e
 
 Since Sp(4,R) contains a compact Cartan subgroup \delta acts trivially
 on G and W, and twisted involutions are ordinary involutions.
 
 Elements 0-3 all correspond to the compact Cartan subgroup (number 0),
-with trivial involution. This involution is the only one for the
-Cartan and is therefore canonical. These elements are parametrized by
-Z/2Z^2.
+with trivial involution. This involution is the only one for the Cartan
+and is therefore canonical. The fiber at this Cartan has 4 elements (as
+reported by the cartan command), all of which belong to our real form
+sp(4,R) (as reported by strongreal), so the KGB elements 0-3 are
+distinguished by the values in Z/2Z^2.
 
-Elements 6,7 correspond to Cartan number 1; the two involutions 1 and
-2,1,2 occur, the latter is canonical. The fiber parts are (1,0) and
-(0,0).  
+Elements 4,9 correspond to Cartan number 1; the two involutions 1^e and
+2x1^e occur, the latter is canonical. The fiber at this Cartan has only
+one element, so the fiber parts (both (0,0)) do not discriminate here.
 
-Elements 4,5,8,9 correspond to Cartan number 2. The twisted
-involutions are 2 and 1,2,1 (canonical), and there are four fiber
-elements.  
+Elements 5-8 correspond to Cartan number 2. The involutions are 2^e and
+1x2^e (canonical), and the fiber has size 2, all told 4 elements. Note
+that the set of values for the fiber part is not the same for the two
+involutions.
 
-Finally there is only one element x=10 on the split Cartan number 3. 
+Finally there is only one element x=10 on the split Cartan number 3.
 
+
+The precise meaning of the vector of 0s and 1s of the fiber part depends
+on the "base grading" used for the entire KGB set, and given at the
+beginning out the output of the KGB command (here [11] indicates a
+non-compact base grading on both simple roots). Both the actual gradings
+at each KGB element (third column) and the cross actions and Cayley
+transforms (fourth through seventh column) have been computed with aid
+of the base grading and the fiber parts of the individual KGB elements.

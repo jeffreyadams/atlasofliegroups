@@ -26,7 +26,7 @@ imaginary compact root system, and A is an elementary abelian 2-group, the
 "R-group" of the situation. The computation of A is the most delicate aspect,
 and is also the only one that depends on the actual choice of group; everything
 else depends only on the Lie algebra. The algorithm for the computation is
-described in my du Cloux/Adams [Algorithms].
+described in du Cloux/Adams [Algorithms].
 
 [IC4] David A. Vogan, Jr, Irreducible characters of semisimple Lie groups IV:
 Character-multiplicity duality. Duke Math. J. 49 (1982), no. 4,

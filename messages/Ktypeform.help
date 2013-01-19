@@ -40,8 +40,8 @@ image of lambda in X^*(T)+rho/(1-theta)X^*(T).
 
 Definition: a "standard K-parameter" is a pair (x,lambda) where x is a
 KGB element, lambda is in X^*(T)+rho/(1-theta)X^*(T) and
-<lambda,alpha^v> >= 0 for all theta-imaginary roots alpha (here
-theta=theta_x).
+<lambda,alpha^v> >= 0 for all positive theta-imaginary roots alpha
+(here theta=theta_x).
 
 Attached to a standard K-parameter (x,lambda) is a standard module
 I_K(x,lambda) restricted to K=K_x.
@@ -49,17 +49,21 @@ I_K(x,lambda) restricted to K=K_x.
 Definition: a standard K-parameter (x,lambda) is "final" if
 
 1) <lambda,alpha^v> > 0 for all compact roots alpha which are simple in
-the set of imaginary roots (alpha^v is the coroot of alpha)
+the set of imaginary roots (alpha^v is the coroot of alpha), and
 
 2) <lambda,alpha^v> is odd for all real roots which are simple in the
-set of real roots
+set of real roots.
 
-If (x,lambda) is final then I_K(x,lambda) has a unique, non-zero
-lowest K-type mu(x,lambda). The Weyl group W acts on the set of
-standard K-parameters [jda: is this the right notion of equivalence?]
-[dav: not quite; there is a problem when w changes the imaginary or
-real positive roots]. The map (x,lambda)->mu(x,lambda) is a bijection
-between W-orbits of standard K-parameters and the irreducible
+If (x,lambda) is nonzero final then I_K(x,lambda) has a unique lowest
+K-type mu(x,lambda). The Weyl group does not quite act on final
+standard K-parameters, because the positivity hypothesis on lambda is
+not preserved by all of W.  We therefore define an equivalence
+relation (x,lambda) ~ (x',lambda') if there is an element y of W such
+that y.x = x', y.lambda = lambda', and no theta_x-imaginary root
+changes sign under y.
+
+Theorem. The map (x,lambda)->mu(x,lambda) induces a bijection between
+equivalence classes of final standard K-parameters and irreducible
 representations of K.
 
 Note: The groups K_x=Cent(theta_x) depend on x; the question arises of
@@ -68,25 +72,21 @@ conjugate by g in G, the coset gK_x is well-defined. Conjugation by g
 therefore provides a well-defined identification of irreducible
 representations of K_x with those of K_y.
 
-Definition: a standard K-parameter is "normal" if x maps to a
-canonical involution (see the help file for the KGB command).
+Definition: a standard K-parameter (x,lambda) is "normal" if theta_x
+is a canonical involution (see the help file for the KGB command;
+these are the elements x labeled by a # in the output of KGB).
 
-Every (x,lambda) is W-conjugate to a (unique?) normal one, and the map
-(x,lambda)-> mu(x,lambda) from "normal final standard K-parameters" to
-irreducible representations of K is a bijection.
+Every (x,lambda) is equivalent to a unique normal one, and the map
+(x,lambda)--> mu(x,lambda) from "normal final standard K-parameters"
+to irreducible representations of K is therefore a bijection.
 
 Fix a normal final standard K-parameter (x,lambda). Then I_K(x,lambda)
 is a sum of K-types, each of which is parametrized by a normal final
 standard K-parameter. This gives a matrix with rows and columns
-parametrized by normal final standard K-parameters: an entry n in
-column (x,lambda) and row (x',lambda') means that mu(x',lambda') occurs
-in I_K(x,lambda) with multiplicity n. For an appropriate ordering of the
-normal final standard K-parameters, this matrix is lower triangular,
-with 1s on the diagonal, and is therefore invertible. (This makes sense
-even though the matrix is infinite, since only finitiely many entries in
-each row are nonzero.) In fact the inverse matrix is more directly
-accessible computationally, as besides being lower triangular it also
-has only finitely many nonzero entries in each column.
+parametrized by normal final standard K-parameters: an entry n in column
+(x,lambda) and row (x',lambda') means that mu(x',lambda') occurs in
+I_K(x,lambda) with multiplicity n. This matrix is lower triangular,
+with 1s on the diagonal, and is therefore invertible.
 
 The Ktypeform command computes a single column of the inverse of this
 matrix. Thus if mu(x,lambda) is the lowest K-type of a normal final
@@ -167,7 +167,7 @@ either 0 or plus or minus 1 times an actual representation of K. It
 may be reducible if K is disconnected. The Ktypeform command is well
 defined in this setting, and writes this representation of K as a
 linear combination of normal final standard representations restricted
-to K. 
+to K.
 
 *** Examples ***
 
@@ -209,12 +209,12 @@ R1: [ 6 ]@(0)#0, height: 6           this is a normal final standard parameter
                                      with infinitesimal character 3*rho
 
 Converted to Standard normal final limit form:
- + [ 2 ]@(0)#0 - [ 6 ]@(0)#0         this says the lowest Ktype of pi_1 
+ + [ 2 ]@(0)#0 - [ 6 ]@(0)#0         this says the lowest Ktype of pi_1
                                      is (pi_1 -pi_3) restricted to K
 
 Here K=S^1 and writing K^=Z as usual this says:
 
-pi_1 restricted to K: 2 + 4 + 6 + 
+pi_1 restricted to K: 2 + 4 + 6 +
 pi_3 restricted to K: 4 + 6 + ...
 2 = (2 + 4 + 6 + ...) - (4 + 6 + 8 + ...)
 
@@ -222,7 +222,7 @@ Example 2: trivial representation of SL(2,R):
 
 The principal series is given by KGB element 2. In this case
 X^*(T)+rho/(1-theta)X^*(T)=Z/2Z (character group of the compact part
-of R^*). 
+of R^*).
 
 real: Ktypeform
 Choose KGB element: 2
@@ -234,7 +234,7 @@ K-type formula for mu([ 2 ]@(0)#1):
 [ 2 ]@(0)#0 has height 2
 R0: [ 2 ]@(0)#0, height: 2
 [ 2 ]@(0)#0 =  + R0
-[ 2 ]@(1)#0 has height 2 
+[ 2 ]@(1)#0 has height 2
 R1: [ 2 ]@(1)#0, height: 2
 [ 2 ]@(1)#0 =  + R1
 [ 2 ]@(0)#1 has height 0
@@ -246,7 +246,7 @@ Converted to Standard normal final limit form:
 This says the trivial representation is  R0-R1-R2 (restricted to K),
 where
 
-R0 is the spherical principal series 
+R0 is the spherical principal series
 R1 is the holomorphic discrete series
 R1 is the anti-holomorphic discrete series
 
@@ -264,7 +264,7 @@ and the rest of the output is identical.
 Example 3: odd spherical principal series of SL(2,R)
 
 This is the same as the previous example, except we take lambda-rho
-odd: 
+odd:
 
 Choose KGB element: 2
 2rho = [ 2 ]
@@ -296,4 +296,3 @@ R1: [ 6 ]@(1)#0, height: 6
 [ 6 ]@(1)#0 =  + R1
 Converted to Standard normal final limit form:
  + [ 2 ]@(1)#0 - [ 6 ]@(1)#0
-

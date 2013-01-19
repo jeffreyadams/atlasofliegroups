@@ -5,3 +5,7 @@ the dual group without having to reset the current complex group.
 
 The dualblock and dualmap commands use the numbering of kgb elements
 for the dual group provided by dualkgb. 
+
+NB: the numbering of kgb elements provided by the dualkgb command and
+the kgb command (applied with the dual group in place of G) may fail
+to agree.

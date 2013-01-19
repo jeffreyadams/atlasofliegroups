@@ -1,2 +1,10 @@
 
-See the help file for smallkgb.
+"smallblock" is a variant of the "block" command, which generates the
+block using only the necessary part of the KGB structures for the real
+form and dual real form. It is related to the commands "smallkgb" and
+"smalldualkgb" which do individual generation of these
+structures. Because the initial elements of the full KGB structure
+will in general be missing, the numbering of the small KGB structures
+will be different, and those of the "small" block might as well. In
+any case the output of the smallblock command will differ from that of
+block.
