@@ -476,11 +476,6 @@ void Block::compute_supports()
       d_involutionSupport[z].set(s);
     }
   } // |for(z)|
-
-
-#ifdef VERBOSE
-  std::cerr << "done" << std::endl;
-#endif
 } // |Block::compute_supports|
 
 Block::Block(const Block& b)
