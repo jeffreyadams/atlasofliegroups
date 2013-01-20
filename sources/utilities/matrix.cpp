@@ -258,25 +258,8 @@ Applies the matrix to the vector w, and returns the result. It is assumed that
 the size of w is the number of columns; result size is the number of rows.
 */
 template<typename C>
-Vector<C> Matrix<C>::operator *(const Vector<C>& w) const
-{
-  assert(base::numColumns()==w.size());
-  Vector<C> result(base::numRows());
-
-  for (size_t i=0; i<base::numRows(); ++i)
-  {
-    C c(0);
-    for (size_t j=0; j<base::numColumns(); ++j)
-      c += (*this)(i,j) * w[j];
-    result[i] = c;
-  }
-
-  return result;
-}
-
-template<typename C>
 template<typename C1>
-Vector<C1> Matrix<C>::operator *(const Vector<C1>& w) const
+Vector<C1> Matrix<C>::operator*(const Vector<C1>& w) const
 {
   assert(base::numColumns()==w.size());
   Vector<C1> result(base::numRows());

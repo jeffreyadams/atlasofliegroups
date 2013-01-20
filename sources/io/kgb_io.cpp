@@ -146,7 +146,7 @@ std::ostream& var_print_KGB(std::ostream& strm,
 }
 
 
-std::ostream& print_X(std::ostream& strm, const kgb::global_KGB& kgb)
+std::ostream& print_X(std::ostream& strm, const global_KGB& kgb)
 {
   {
     TorusElement yrho =
@@ -158,7 +158,7 @@ std::ostream& print_X(std::ostream& strm, const kgb::global_KGB& kgb)
   return print(strm,kgb,false,NULL,NULL);
 }
 
-std::ostream& print_twist(std::ostream& strm, const kgb::KGB_base& kgb)
+std::ostream& print_twist(std::ostream& strm, const KGB_base& kgb)
 {
   std::ostringstream os; KGBElt count=0;
 
@@ -171,10 +171,10 @@ std::ostream& print_twist(std::ostream& strm, const kgb::KGB_base& kgb)
       os << i;
       ++count;
     }
-  ioutils::foldLine(strm,os.str());
+  ioutils::foldLine(strm,os.str()) << std::endl;
 
-  os.str("Elements interchanged by twist: "); // clear and replace string
-  strm << "" << std::endl;
+  os.str(""); // clear string for rewriting
+  strm << "Elements interchanged by twist: " << std::endl;
   for (KGBElt i=0; i<kgb.size(); ++i)
     if (kgb.Hermitian_dual(i)>i)
       os << '(' << i << ' ' << kgb.Hermitian_dual(i) << ") ";

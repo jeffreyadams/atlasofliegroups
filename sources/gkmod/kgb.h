@@ -202,7 +202,7 @@ struct KGB_elt_entry
 {
   TorusElement t_rep; // a representative, ignored in test
   weyl::TI_Entry tw;
-  RatWeight fingerprint; // charcterizes the torus element
+  RatWeight fingerprint; // characterizes the torus element, modulo equivalence
 
   // obligatory fields for hashable entry
   typedef std::vector<KGB_elt_entry> Pooltype;

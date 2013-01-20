@@ -69,7 +69,6 @@ set denom (ratvec a) = let (,d)=%a in d
 set =(ratvec v,ratvec w) = let (n,d)=%v, (m,e)=%w in e*n=d*m
 set -(ratvec v) = let (n,d)=%v in (-n)/d
 set *(int m,ratvec v) = let (n,d)=%v in m*n/d
-set *(mat m,ratvec v) = let (n,d)=%v in m*n/d
 set /(ratvec v,int m) = let (n,d)=%v in n/(m*d)
 set *(rat r,ratvec v) = let (n,d)=%r, (nv,dv)=%v in (n*nv)/(d*dv)
 set *(ratvec r, vec v) = let (n,d)=%r in n*v/d

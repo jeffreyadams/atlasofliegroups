@@ -108,7 +108,7 @@ struct y_entry
 
   y_entry (const RatWeight& f, InvolutionNbr i, const TorusElement& t)
   : t_rep(t), nr(i), fingerprint(f) {}
-  TorusElement repr() const { return t_rep; }
+  const TorusElement& repr() const { return t_rep; }
 
 }; //  |struct y_entry|
 

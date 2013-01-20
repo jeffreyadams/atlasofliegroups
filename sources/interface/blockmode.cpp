@@ -65,6 +65,7 @@ namespace {
   void blockorder_f();
   void blockwrite_f();
   void blockstabilizer_f();
+  void blocktwist_f();
   void klbasis_f();
   void kllist_f();
   void primkl_f();
@@ -118,6 +119,7 @@ commands::CommandMode& blockMode()
     block_mode.add("blockorder",blockorder_f);
     block_mode.add("blockwrite",blockwrite_f);
     block_mode.add("blockstabilizer",blockstabilizer_f);
+    block_mode.add("blocktwist",blocktwist_f);
     block_mode.add("klbasis",klbasis_f);
     block_mode.add("kllist",kllist_f);
     block_mode.add("primkl",primkl_f);
@@ -430,6 +432,13 @@ void blockstabilizer_f()
   ioutils::OutputFile file;
   realredgp_io::printBlockStabilizer
     (file,realmode::currentRealGroup(),cn,currentDualRealForm());
+}
+
+void blocktwist_f()
+{
+  ioutils::OutputFile file;
+
+  block_io::print_twist(file,currentBlock());
 }
 
 /* For each element $y$ in the block, outputs the list of non-zero K-L

@@ -54,12 +54,11 @@ struct Permutation
 
     bitmap::BitMap renumbering(const bitmap::BitMap& b) const;
 
-  // left-compose with |*this|, but allowing an exception value
-    template<typename U>
-      std::vector<U> renumbering(const std::vector<U>& v, U except) const;
-
   // left-multiply by |*this|; imperative version of |renumbering|
-    template<typename U> void left_mult(std::vector<U>& v) const;
+    template<typename U> void renumber(std::vector<U>& v) const;
+
+  // left-multiply by |*this|, but allowing an exception value
+    template<typename U> void renumber(std::vector<U>& v, U except) const;
 
   // right-compose with the inverse of the permutation (defining a left action)
     template<typename T> void permute(std::vector<T>& v) const;

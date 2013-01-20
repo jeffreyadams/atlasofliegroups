@@ -34,9 +34,9 @@ namespace kgb_io {
   std::ostream& print_sub_KGB(std::ostream& strm,
 			      const KGB& kgb,
 			      const KGBEltList& which);
-  std::ostream& print_X(std::ostream&, const kgb::global_KGB&);
+  std::ostream& print_X(std::ostream&, const global_KGB&);
 
-  std::ostream& print_twist(std::ostream& strm, const kgb::KGB_base& kgb);
+  std::ostream& print_twist(std::ostream& strm, const KGB_base& kgb);
 
   std::ostream& printBruhatOrder(std::ostream&, const BruhatOrder&);
 

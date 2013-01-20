@@ -660,7 +660,7 @@ struct rational_vector_value : public value_base
 @)
   explicit rational_vector_value(const RatWeight& v):val(v)@+{}
   rational_vector_value(const int_Vector& v,int d)
-   : val(v,d) @+ { val.normalize(); }
+   : val(v,d) @+ {@; val.normalize(); }
   ~rational_vector_value()@+ {}
   virtual void print(std::ostream& out) const;
   rational_vector_value* clone() const
@@ -1393,16 +1393,10 @@ Atlas library, which is developed in much more detail in the compilation
 unit \.{built-in-types}. In fact we shall make some of these wrapper functions
 externally callable, so they can be directly used from that compilation unit.
 
-We start with vector and matrix equality comparisons.
-@< Declarations of exported functions @>=
-void vec_eq_wrapper (expression_base::level);
-void vec_neq_wrapper (expression_base::level);
-void mat_eq_wrapper (expression_base::level);
-void mat_neq_wrapper (expression_base::level);
+We start with vector and matrix equality comparisons, which are quite similar
+to what we saw for rationals, for instance.
 
-@ This is of course quite similar to what we saw for rationals, for instance.
-
-@< Global function definitions @>=
+@< Local function definitions @>=
 void vec_eq_wrapper(expression_base::level l)
 { shared_vector j=get<vector_value>(); shared_vector i=get<vector_value>();
   if (l!=expression_base::no_value)
@@ -1427,28 +1421,21 @@ void mat_neq_wrapper(expression_base::level l)
     push_value(new bool_value(i->val!=j->val));
 }
 
-@ Next we have the null vector and matrices, the identity matrix and matrix
-transposition.
-
-@< Declarations of exported functions @>=
-void null_vec_wrapper (expression_base::level);
-void null_mat_wrapper (expression_base::level);
-void id_mat_wrapper (expression_base::level);
-void transpose_mat_wrapper (expression_base::level);
-void transpose_vec_wrapper (expression_base::level);
-
 @ Null vectors and matrices are particularly useful as starting values. In
 addition, the latter can produce empty matrices without any (null) entries,
 when either the number of rows or column is zero but the other is not; such
 matrices (which are hard to obtain by other means) are good starting points
 for iterations that consist of adding a number of rows or columns of equal
 size, and they determine this size even if none turn out to be contributed.
+Since vectors are treated as column vectors, their transpose is a one-line
+matrix; such matrices (like null matrices) cannot be obtained from the special
+matrix-building expressions.
 
-Since in general built-in functions may throw exceptions (even for such simple
-operations as |transposed|) we hold the pointers to local values in smart
-pointers; for values popped from the stack this would in fact be hard to avoid.
+Since in general built-in functions may throw exceptions, we hold the pointers
+to local values in smart pointers; for values popped from the stack this would
+in fact be hard to avoid.
 
-@< Global function definitions @>=
+@< Local function definitions @>=
 void null_vec_wrapper(expression_base::level lev)
 { int l=get<int_value>()->val;
   if (lev!=expression_base::no_value)
@@ -1461,17 +1448,7 @@ void null_vec_wrapper(expression_base::level lev)
     push_value(new matrix_value
       (matrix::Matrix<int>(std::abs(k),std::abs(l),0)));
 }
-@) void id_mat_wrapper(expression_base::level l)
-{ int i=get<int_value>()->val;
-  if (l!=expression_base::no_value)
-    push_value(new matrix_value(matrix::Matrix<int>(std::abs(i)))); // identity
-}
-@) void transpose_mat_wrapper(expression_base::level l)
-{ shared_matrix m=get<matrix_value>();
-  if (l!=expression_base::no_value)
-    push_value(new matrix_value(m->val.transposed()));
-}
-@) void transpose_vec_wrapper(expression_base::level l)
+void transpose_vec_wrapper(expression_base::level l)
 { shared_vector v=get<vector_value>();
   if (l!=expression_base::no_value)
   { matrix_ptr m (new matrix_value(matrix::Matrix<int>(1,v->val.size())));
@@ -1479,6 +1456,29 @@ void null_vec_wrapper(expression_base::level lev)
       m->val(0,j)=v->val[j];
     push_value(m);
   }
+}
+
+@ The wrapper functions for matrix transposition and identity matrix are
+called from \.{built-in-types.w}.
+
+@< Declarations of exported functions @>=
+void transpose_mat_wrapper (expression_base::level);
+void id_mat_wrapper(expression_base::level l);
+
+@ Their definitions are particularly simple, as they just call a matrix method
+to do the work.
+
+@< Global function definitions @>=
+@) void transpose_mat_wrapper(expression_base::level l)
+{ shared_matrix m=get<matrix_value>();
+  if (l!=expression_base::no_value)
+    push_value(new matrix_value(m->val.transposed()));
+}
+@)
+void id_mat_wrapper(expression_base::level l)
+{ int i=get<int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(new matrix_value(matrix::Matrix<int>(std::abs(i)))); // identity
 }
 
 @ We also define |diagonal_wrapper|, a slight generalisation of
@@ -1531,45 +1531,17 @@ void ratvec_minus_wrapper(expression_base::level l)
 }
 
 
-@ Now the products between vector and/or matrices. The function |mv_prod| was
-in fact our first function with more than one argument (arithmetic on integer
-constants was done inside the parser at that time). We make them callable from
-other compilation units.
-
+@ Now the products between vector and/or matrices. We make the wrapper
+|mm_prod_wrapper| around matrix multiplication callable from other compilation
+units; for the other wrappers this is not necessary and the will be kept
+local.
 @< Declarations of exported functions @>=
-void vv_prod_wrapper (expression_base::level);
-void mv_prod_wrapper (expression_base::level);
 void mm_prod_wrapper (expression_base::level);
-void vm_prod_wrapper(expression_base::level l);
 
 @ For wrapper functions with multiple arguments, we must always remember that
-they are to be popped from the stack in reverse order; here in fact this only
-matters for error reporting.
+they are to be popped from the stack in reverse order.
 
 @< Global function definitions @>=
-void vv_prod_wrapper(expression_base::level l)
-{ shared_vector w=get<vector_value>();
-  shared_vector v=get<vector_value>();
-  if (v->val.size()!=w->val.size())
-    throw std::runtime_error(std::string("Size mismatch ")@|
-     + str(v->val.size()) + ":" + str(w->val.size()));
-  if (l!=expression_base::no_value)
-    push_value(new int_value(v->val.dot(w->val)));
-}
-
-@ The other product operations are very similar.
-
-@< Global function definitions @>=
-void mv_prod_wrapper(expression_base::level l)
-{ shared_vector v=get<vector_value>();
-  shared_matrix m=get<matrix_value>();
-  if (m->val.numColumns()!=v->val.size())
-    throw std::runtime_error(std::string("Size mismatch ")@|
-     + str(m->val.numColumns()) + ":" + str(v->val.size()));
-  if (l!=expression_base::no_value)
-    push_value(new vector_value(m->val*v->val));
-}
-@)
 void mm_prod_wrapper(expression_base::level l)
 { shared_matrix rf=get<matrix_value>(); // right factor
   shared_matrix lf=get<matrix_value>(); // left factor
@@ -1580,6 +1552,42 @@ void mm_prod_wrapper(expression_base::level l)
   }
   if (l!=expression_base::no_value)
     push_value(new matrix_value(lf->val*rf->val));
+}
+
+@ The other product operations are very similar. As a historic note, the
+function corresponding to |mv_prod_wrapper| was in fact our first function
+with more than one argument (arithmetic on integer constants was done inside
+the parser at that time).
+
+@< Local function definitions @>=
+void mv_prod_wrapper(expression_base::level l)
+{ shared_vector v=get<vector_value>();
+  shared_matrix m=get<matrix_value>();
+  if (m->val.numColumns()!=v->val.size())
+    throw std::runtime_error(std::string("Size mismatch ")@|
+     + str(m->val.numColumns()) + ":" + str(v->val.size()));
+  if (l!=expression_base::no_value)
+    push_value(new vector_value(m->val*v->val));
+}
+@)
+void mrv_prod_wrapper(expression_base::level l)
+{ shared_rational_vector v=get<rational_vector_value>();
+  shared_matrix m=get<matrix_value>();
+  if (m->val.numColumns()!=v->val.size())
+    throw std::runtime_error(std::string("Size mismatch ")@|
+     + str(m->val.numColumns()) + ":" + str(v->val.size()));
+  if (l!=expression_base::no_value)
+    push_value(new rational_vector_value(m->val*v->val));
+}
+@)
+void vv_prod_wrapper(expression_base::level l)
+{ shared_vector w=get<vector_value>();
+  shared_vector v=get<vector_value>();
+  if (v->val.size()!=w->val.size())
+    throw std::runtime_error(std::string("Size mismatch ")@|
+     + str(v->val.size()) + ":" + str(w->val.size()));
+  if (l!=expression_base::no_value)
+    push_value(new int_value(v->val.dot(w->val)));
 }
 @)
 void vm_prod_wrapper(expression_base::level l)
@@ -1798,6 +1806,7 @@ install_function(transpose_mat_wrapper,"^","(mat->mat)");
 install_function(transpose_vec_wrapper,"^","(vec->mat)");
 install_function(diagonal_wrapper,"diagonal","(vec->mat)");
 install_function(vv_prod_wrapper,"*","(vec,vec->int)");
+install_function(mrv_prod_wrapper,"*","(mat,ratvec->ratvec)");
 install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
 install_function(mm_prod_wrapper,"*","(mat,mat->mat)");
 install_function(vm_prod_wrapper,"*","(vec,mat->vec)");

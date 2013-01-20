@@ -891,7 +891,7 @@ RootNbrList TwistedWeylGroup::simple_images
     result[i]=rs.simpleRootNbr(twisted(i));
   WeylWord ww=word(tw.w());
   for (size_t i=ww.size(); i-->0;)
-    rs.simple_root_permutation(ww[i]).left_mult(result);
+    rs.simple_root_permutation(ww[i]).renumber(result);
 
   return result;
 }

@@ -312,6 +312,36 @@ std::ostream& printDescent(std::ostream& strm,
   return strm;
 }
 
+std::ostream& print_twist(std::ostream& strm, const Block_base& block)
+{
+  if (block.Hermitian_dual(0)==blocks::UndefBlock)
+    return strm << "Block is not stable under twist" << std::endl;
+
+  std::ostringstream os; BlockElt count=0;
+
+  os << "Elements fixed under twist: ";
+  for (BlockElt z=0; z<block.size(); ++z)
+    if (block.Hermitian_dual(z)==z)
+    {
+      if (count>0)
+	os << ", ";
+      os << z;
+      ++count;
+    }
+  ioutils::foldLine(strm,os.str()) << std::endl;
+
+  os.str(""); // clear string for rewriting
+  strm << "Elements interchanged by twist: " << std::endl;
+  for (BlockElt z=0; z<block.size(); ++z)
+    if (block.Hermitian_dual(z)>z)
+      os << '(' << z << ' ' << block.Hermitian_dual(z) << ") ";
+
+  ioutils::foldLine(strm,os.str(),"",") ") << std::endl;
+
+  return strm << "Total " << count << " fixed elements out of " << block.size()
+	      << std::endl;
+}
+
 std::ostream& print_KL(std::ostream& f, non_integral_block& block, BlockElt z)
 {
   // silently fill the whole KL table

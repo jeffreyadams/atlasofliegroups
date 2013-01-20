@@ -246,9 +246,9 @@ void RootSystem::cons(const int_Matrix& Cartan_matrix)
     size_t i=ri[alpha].descents.firstBit();
     assert(i<rk);
     Permutation& alpha_perm=root_perm[alpha];
-    alpha_perm=root_perm[i];
-    root_perm[link[alpha][i]].left_mult(alpha_perm);
-    root_perm[i].left_mult(alpha_perm);
+    alpha_perm=root_perm[i]; // copy; this and next two statements alias-free
+    root_perm[link[alpha][i]].renumber(alpha_perm);
+    root_perm[i].renumber(alpha_perm);
   }
 
 } // end of basic constructor

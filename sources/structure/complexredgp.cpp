@@ -1143,7 +1143,7 @@ void crossTransform(RootNbrList& rl,
 		    const RootSystem& rs)
 {
   for (size_t i = ww.size(); i-->0;)
-    rs.simple_root_permutation(ww[i]).left_mult(rl);
+    rs.simple_root_permutation(ww[i]).renumber(rl);
 }
 
 /*!
