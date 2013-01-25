@@ -456,33 +456,23 @@ Block::Block(const KGB& kgb,const KGB& dual_kgb)
     size += kgb.packet_size(w)*dual_kgb.packet_size(dual_w.back());
   }
 
-  d_first_z_of_x.reserve(kgb.size()+1);
-
   info.reserve(size);
 
-  BlockElt base_z = 0; // block element |z| where generation for |x| starts
-
-  // fill |info| and |d_first_z_of_x|
+  // fill |info|
   for (unsigned int i=0; i<kgb.nr_involutions(); ++i)
   {
-    const TwistedInvolution w = kgb.nth_involution(i);
-
     // here is where the fibred product via |dual_w| is built
+    const TwistedInvolution w = kgb.nth_involution(i);
     const KGBEltPair x_step = kgb.tauPacket(w);
     const KGBEltPair y_step = dual_kgb.tauPacket(dual_w[i]);
 
     for (KGBElt x=x_step.first; x<x_step.second; ++x)
-    {
-      d_first_z_of_x.push_back(base_z); // set, even for |x| without any |y|
       for (KGBElt y=y_step.first; y<y_step.second; ++y)
 	info.push_back(EltInfo(x,y,descents(x,y,kgb,dual_kgb),kgb.length(x)));
-      base_z += y_step.second - y_step.first; // skip to next |x|
-    } // |for(x)|
   } // |for (i)|
-  d_first_z_of_x.push_back(base_z);// make |d_first_z_of_x[d_xrange]==d_size|
+  compute_first_zs();
 
   assert(this->size()==size); // check that |info| has exactly |size| elements
-  assert(d_first_z_of_x.size()==kgb.size()+1); // all |x|'s have been seen
 
   // Now |element| can be safely called; install cross and Cayley tables
 
@@ -597,7 +587,7 @@ void Block::compute_supports()
   } // |for(z)|
 } // |Block::compute_supports|
 
-// 		****		Nothing else for |Block|	****
+// 		****	     Nothing else for |Block|		****
 
 
 
@@ -627,11 +617,12 @@ void param_block::compute_duals(const ComplexReductiveGroup& G)
     {
       KGBElt parent_x = kgb_nr_of[x(z)];
       KGBElt dual_x = kgb.Hermitian_dual(parent_x);
-      assert(y_hash[y(z)].nr==kgb.inv_nr(parent_x));
+      assert(y_hash[y(z)].nr==kgb.inv_nr(parent_x)); // check coherence
       TorusElement t = y_hash[y(z)].t_rep;
       t = y_values::exp_pi(delta*t.log_pi(false)); // twist |t| by |delta|
       KGBElt dual_y = y_hash.find(i_tab.pack(t,kgb.inv_nr(dual_x)));
-      info[z].dual = element(x_of[dual_x],dual_y);
+      if (dual_y!=y_hash.empty)
+	info[z].dual = element(x_of[dual_x],dual_y);
     }
 }
 
@@ -646,7 +637,6 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 			 const RatWeight& gamma, // infinitesimal character
 			 BlockElt& entry_element) // output parameter
   : param_block(GR.kgb(),sub.rank())
-  , y_rep()
 {
   infin_char = gamma; // this field of |param_block| must be set explicitly
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
@@ -726,8 +716,7 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 
   InvolutionNbr inv = kgb.inv_nr(x);
 
-  y_pool.push_back(i_tab.pack(t,inv));
-  y_rep.push_back(t);
+  y_hash.match(i_tab.pack(t,inv));
 
   // step 3: generate imaginary fiber-orbit of |x|'s (|y|'s are unaffected)
   {
@@ -751,7 +740,6 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
     // now insert elements from |seen| as first $x$-fiber of block
     size_t fs = seen.size(); // this is lower bound for final size, so reserve
     info.reserve(fs);
-    d_first_z_of_x.reserve(fs+1);
     for (weyl::Generator s=0; s<our_rank; ++s)
       data[s].reserve(fs);
 
@@ -760,13 +748,13 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
       KGBElt kgb_nr = *it+p.first;
       x_of[kgb_nr]=kgb_nr_of.size();
       kgb_nr_of.push_back(kgb_nr);
-      d_first_z_of_x.push_back(info.size());
       info.push_back(EltInfo(x_of[kgb_nr],0,DescentStatus(),0));
       // makes |info.size()=kgb_nr_of.size()|, |y| number remains 0 in loop
       // the length is set to $0$, its true mathematical value is not known
     }
 
-    d_first_z_of_x.push_back(info.size()); // ensure one more entry is defined
+    // ensure that |element| will find the elements created so far
+    compute_first_zs(); // defines |kgb_nr_of.size()+1| values |first_z_of_x|
   } // end of step 3
 
   // step 4: generate packets for successive involutions
@@ -783,8 +771,8 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
     const InvolutionNbr inv = i_tab.nr(tw); // $\theta$
 
     ys.clear();
-    size_t nr_y = 0;
-    size_t cur_size = info.size();
+    unsigned int nr_y = 0;
+    BlockElt cur_size = info.size();
     for (BlockElt z=next; z<cur_size and this->x(z)==this->x(next); ++z,++nr_y)
     {
       assert(y(z)==y(next)+nr_y); // consecutive, so use of array |ys|
@@ -828,8 +816,6 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 	     prudently one could use |Tg.imaginary_cross_act(s,t);|, which
 	     does not depend on integrality, but does assume a simple root */
 	  cross_ys.push_back(y_hash.match(i_tab.pack(t,s_x_inv)));
-	  if (new_cross)
-	    y_rep.push_back(t);
 	  assert(y_hash.size()== (new_cross ? old_size+j+1 : old_size));
 	  ndebug_use(old_size);
 	}
@@ -932,9 +918,7 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 			       i_tab.real_roots(Cayley_inv));
 	      for (size_t j=y_begin; j<y_hash.size(); ++j) // |y_hash| grows
 	      {
-		TorusElement t = y_hash[j].t_rep;
-		y_rep.push_back(t); // |y| in new Cartan
-
+		TorusElement t = y_rep(j);
 		for (size_t k=0; k<rb.size(); ++k)
 		{
 		  TorusElement new_t = t.simple_imaginary_cross(rd,rb[k]);
@@ -1285,16 +1269,14 @@ non_integral_block::non_integral_block
     }
 
     // now insert elements from |yy_hash| as first R-packet of block
-    size_t fs = y_hash.size(); // this is lower bound for final size; reserve
-    info.reserve(fs);
-    d_first_z_of_x.reserve(fs+1);
+    info.reserve(y_hash.size()); // this is lower bound for final size; reserve
     for (weyl::Generator s=0; s<our_rank; ++s)
-      data[s].reserve(fs);
+      data[s].reserve(y_hash.size());
 
-    d_first_z_of_x.push_back(0);
     for (size_t i=0; i<y_hash.size(); ++i)
       add_z(0,i,0); // length is on dual side
-    d_first_z_of_x.push_back(info.size()); // ensure one more entry is defined
+
+    // we leave |first_z_of_x| empty, |compute_first_zs()| would set 2 values
   } // end of step 3
 
   // step 4: generate packets for successive involutions
@@ -1314,11 +1296,11 @@ non_integral_block::non_integral_block
 
     ys.clear();
     size_t nr_y = 0;
-    // now traverse |R_packet(first_x)|, collecting their |y|'s
+    // now traverse R_packet of |first_x|, collecting their |y|'s
     for (BlockElt z=next; z<info.size() and x(z)==x(next); ++z,++nr_y)
     {
       assert(y_hash[y(z)].nr==i_theta); // involution of |y| must match |x|
-      assert(y(z)==y(next)+nr_y); // consecutive
+      assert(y(z)==y(next)+nr_y);   // and |y|s are consecutive
       ys.push_back(y(z));           // so |ys| could have been avoided
     }
 
@@ -1381,7 +1363,7 @@ non_integral_block::non_integral_block
 	    add_z(x_of[s_x_n],cross_ys[j],length);
 	    // same |x| neighbour throughout loop, but |y| neighbour varies
 	  } // |for(j)|
-	  d_first_z_of_x.push_back(info.size()); // finally mark end of R-packet
+	  // |d_first_z_of_x.push_back(info.size())| would mark end of R-packet
 	} // |if(new_cross)|
 	else // install cross links to previously existing elements
 	  for (unsigned int j=0; j<nr_y; ++j)
@@ -1481,11 +1463,10 @@ non_integral_block::non_integral_block
 
 	      // then generate corrsponding part of block, combining (x,y)'s
 	      for (size_t k=x_start; k<kgb_nr_of.size(); ++k)
-	      {
 		for (unsigned int y=y_start; y<y_hash.size(); ++y)
 		  add_z(k,y,length);
-		d_first_z_of_x.push_back(info.size()); // mark end of R-packet
-	      } // |for(k)|
+	        // again we could (and used to) mark end of R-packet here
+	      // |for(k)|
 	      // finallly make sure that Cayley links slots exist for code below
 	      tab_s.resize(info.size());
 	    } // |if (new_Cayley)|: finished creating new R-packets

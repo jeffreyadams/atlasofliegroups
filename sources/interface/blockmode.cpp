@@ -190,8 +190,8 @@ wgraph::WGraph& currentWGraph()
 namespace {
 
 /*
-  Synopsis: attempts to set a real form interactively. In case of failure,
-  throws an InputError and returns. All Cartan classes are generated.
+  Synopsis: attempts to set a real form and dual real form interactively.
+  In case of failure, throws an InputError and returns.
 */
 void block_mode_entry() throw(commands::EntryError)
 {

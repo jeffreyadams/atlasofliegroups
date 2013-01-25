@@ -329,12 +329,10 @@ class param_block : public Block_base // blocks of parameters
   dual side. However base-point shifting when converting to and from |y|
   values using this representation is currently not well enough understood,
   and therefore this class does not function reliably. The alternative class
-  |nonintegeral_block| defined below avoids this problem and appears correct.
+  |non_integeral_block| defined below avoids this problem and appears correct.
 */
 class gamma_block : public param_block
 {
-  std::vector<TorusElement> y_rep; // representatives, by child |y| numbers
-
  public:
   gamma_block(RealReductiveGroup& GR,
 	      const SubSystemWithGroup& sub,
@@ -350,7 +348,7 @@ class gamma_block : public param_block
 
   // new methods
   RatWeight local_system(BlockElt z) const // reconstruct a |lambda| from |y|
-  { assert(z<size()); return y_rep[y(z)].log_2pi(); }
+  { assert(z<size()); return y_rep(y(z)).log_2pi(); }
 
 }; // |class gamma_block|
 
