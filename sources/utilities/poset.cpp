@@ -120,8 +120,8 @@ set::EltList Poset::minima(const bitmap::BitMap& b) const
 {
   set::EltList result; // we shall produce a list of elements directly
   for (bitmap::BitMap::iterator it=b.begin(); it(); ++it)
-    if (b.disjoint(d_below[*it])) // this certainly clears |t[n]|
-      result.push_back(*it); // if intersection was empty, |n| is minimal
+    if (b.disjoint(d_below[*it]))
+      result.push_back(*it); // if intersection was empty, |*it| is minimal
 
   return result;
 }

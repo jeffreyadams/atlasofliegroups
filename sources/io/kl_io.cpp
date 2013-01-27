@@ -46,7 +46,7 @@ namespace kl_io {
 
 // Print the non-zero Kazhdan-Lusztig-Vogan polynomials from klc to strm.
 std::ostream& printAllKL
-  (std::ostream& strm, const kl::KLContext& klc, Block& block)
+  (std::ostream& strm, const kl::KLContext& klc, Block_base& block)
 {
   size_t count = 0;
 
@@ -97,7 +97,7 @@ std::ostream& printAllKL
 
 // Print the primitive kl polynomials from klc to strm.
 std::ostream& printPrimitiveKL
-  (std::ostream& strm, const kl::KLContext& klc, Block& block)
+  (std::ostream& strm, const kl::KLContext& klc, Block_base& block)
 {
   size_t count = 0;
   size_t zero_count = 0;

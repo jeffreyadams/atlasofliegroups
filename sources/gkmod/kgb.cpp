@@ -479,11 +479,11 @@ KGB::KGB(RealReductiveGroup& GR,
   //const TitsGroup& Tg = G.titsGroup();
   size_t rank = G.semisimpleRank(); // |G.rank()| does not interest us here
 
-  {// check |Cartan_classes|
+  {// check that |Cartan_classes| is upwards closed within |GR.Cartan_set()|
     BitMap test_set = GR.Cartan_set();
     test_set.andnot(Cartan_classes);
     for (BitMap::iterator it=test_set.begin(); it(); ++it)
-      assert(G.Cartan_ordering().below(*it).disjoint(Cartan_classes));
+      assert(Cartan_classes.disjoint(G.Cartan_ordering().below(*it)));
   }
 
   // make sure |G| has information about involutions for |Cartan_classes|

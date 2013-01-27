@@ -3116,7 +3116,6 @@ void print_n_block_wrapper(expression_base::level l)
                @|<< " of the following block:" << std::endl;
   block.print_to(*output_stream,true);
     // print block using involution expressions
-  block_io::print_KL(*output_stream,block,init_index);
   if (l==expression_base::single_value)
     wrap_tuple(0);
 }

@@ -594,18 +594,110 @@ void Block::compute_supports()
 
 
 
-param_block::param_block(const KGB& parent_kgb, unsigned int rank)
+param_block::param_block(const Rep_context& rc0, unsigned int rank)
   : Block_base(rank)
-  , kgb(parent_kgb)
+  , rc(rc0)
   , infin_char(0) // don't set yet
+  , singular() // idem
   , kgb_nr_of()
-  , x_of(kgb.size(),UndefKGB)
+  , x_of(rc.kgb().size(),UndefKGB)
   , y_pool()
   , y_hash(y_pool)
 {}
 
 const TwistedInvolution& param_block::involution(BlockElt z) const
-{ return kgb.involution(kgb_nr_of[x(z)]); }
+{ return rc.kgb().involution(kgb_nr_of[x(z)]); }
+
+RatWeight param_block::nu(BlockElt z) const
+{
+  InvolutionNbr i_x = rc.kgb().inv_nr(parent_x(z));
+  const WeightInvolution& theta = involution_table().matrix(i_x);
+  return RatWeight (gamma().numerator()-theta*gamma().numerator()
+		    ,2*gamma().denominator()).normalize();
+}
+
+// reconstruct $\lambda-\rho$ from $\gamma$ and the torus part $t$ of $y$
+// using $\lambda = \gamma - {1-\theta\over2}.\log{{t\over\pi\ii})$
+// the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
+Weight param_block::lambda_rho(BlockElt z) const
+{
+  RatWeight t =  y_rep(y(z)).log_pi(false);
+  InvolutionNbr i_x = rc.kgb().inv_nr(parent_x(z));
+  involution_table().real_unique(i_x,t);
+
+  RatWeight lr =
+    (infin_char - t - RatWeight(realGroup().rootDatum().twoRho(),2))
+    .normalize();
+  assert(lr.denominator()==1);
+  return Weight(lr.numerator().begin(),lr.numerator().end());
+}
+
+// reconstruct $\lambda$ from $\gamma$ and the torus part $t$ of $y$ using the
+// formula $\lambda = \gamma - {1-\theta\over2}.\log{{t\over\pi\ii})$
+// the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
+RatWeight param_block::lambda(BlockElt z) const
+{
+  InvolutionNbr i_x = rc.kgb().inv_nr(parent_x(z));
+  const WeightInvolution& theta = involution_table().matrix(i_x);
+  RatWeight t =  y_rep(y(z)).log_2pi();
+  const Ratvec_Numer_t& num = t.numerator();
+  return infin_char - RatWeight(num-theta*num,t.denominator());
+}
+
+
+// translation functor from regular to singular $\gamma$ might kill $J_{reg}$
+// this depends on the simple coroots for the integral system that vanish on
+// the infinitesimal character $\gamma$, namely they make the element zero if
+// they define a complex descent, an imaginary compact or a real parity root
+bool param_block::survives(BlockElt z) const
+{
+  const DescentStatus& desc=descent(z);
+  for (RankFlags::iterator it=singular.begin(); it(); ++it)
+    if (DescentStatus::isDescent(desc[*it]))
+      return false;
+  return true; // there are no singular simple coroots that are descents
+}
+
+// descend through singular simple coroots and return any survivors that were
+// reached; they express singular $I(z)$ as sum of 0 or more surviving $I(z')$
+BlockEltList param_block::survivors_below(BlockElt z) const
+{
+  BlockEltList result;
+  RankFlags::iterator it;
+  do
+  {
+    const descents::DescentStatus& desc=descent(z);
+    for (it=singular.begin(); it(); ++it)
+      if (DescentStatus::isDescent(desc[*it]))
+      {
+	switch (desc[*it])
+	{
+	case DescentStatus::ImaginaryCompact:
+	  return result; // 0
+	case DescentStatus::ComplexDescent: z = cross(*it,z);
+	  break; // follow descent, no branching
+	case DescentStatus::RealTypeII:
+	  z=inverseCayley(*it,z).first; break; // follow descent, no branching
+	case descents::DescentStatus::RealTypeI:
+	  {
+	    BlockEltPair iC=inverseCayley(*it,z);
+	    BlockEltList left=survivors_below(iC.first);
+	    if (result.empty())
+	      left.swap(result); // take left result as current value
+	    else
+	      std::copy(left.begin(),left.end(),back_inserter(result));
+	    z = iC.second; // continue with right branch, adding its results
+	  }
+	  break;
+       	default: assert(false); // should never happen, but compiler wants it
+	}
+	break; // restart outer loop if a descent was applied
+      } // |if(descent(*it,z)|
+  }
+  while (it());
+  result.push_back(z);
+  return result;
+} // |param_block::survivors_below|
 
 void param_block::compute_duals(const ComplexReductiveGroup& G)
 {
@@ -616,11 +708,11 @@ void param_block::compute_duals(const ComplexReductiveGroup& G)
     for (BlockElt z=0; z<size(); ++z)
     {
       KGBElt parent_x = kgb_nr_of[x(z)];
-      KGBElt dual_x = kgb.Hermitian_dual(parent_x);
-      assert(y_hash[y(z)].nr==kgb.inv_nr(parent_x)); // check coherence
+      KGBElt dual_x = rc.kgb().Hermitian_dual(parent_x);
+      assert(y_hash[y(z)].nr==rc.kgb().inv_nr(parent_x)); // check coherence
       TorusElement t = y_hash[y(z)].t_rep;
       t = y_values::exp_pi(delta*t.log_pi(false)); // twist |t| by |delta|
-      KGBElt dual_y = y_hash.find(i_tab.pack(t,kgb.inv_nr(dual_x)));
+      KGBElt dual_y = y_hash.find(i_tab.pack(t,rc.kgb().inv_nr(dual_x)));
       if (dual_y!=y_hash.empty)
 	info[z].dual = element(x_of[dual_x],dual_y);
     }
@@ -630,20 +722,28 @@ void param_block::compute_duals(const ComplexReductiveGroup& G)
 
 /*****				gamma_block				****/
 
-gamma_block::gamma_block(RealReductiveGroup& GR,
-			 const SubSystemWithGroup& sub, // at the dual side
-			 KGBElt x,
-			 const RatWeight& lambda, // discrete parameter
-			 const RatWeight& gamma, // infinitesimal character
+gamma_block::gamma_block(const repr::Rep_context& rc,
+			 const SubSystemWithGroup& sub,
+			 const StandardRepr& sr,
 			 BlockElt& entry_element) // output parameter
-  : param_block(GR.kgb(),sub.rank())
+  : param_block(rc,sub.rank())
 {
-  infin_char = gamma; // this field of |param_block| must be set explicitly
+  infin_char = sr.gamma(); // this field of |param_block| must be set explicitly
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
   WeylWord dual_involution; // set in |GlobalTitsGroup| constructor:
+
+  RealReductiveGroup& GR = rc.realGroup();
   const RootDatum& rd = GR.rootDatum();
   const ComplexReductiveGroup& G = GR.complexGroup();
   const Cartan_orbits& i_tab = G.involution_table();
+  const KGB& kgb = rc.kgb();
+
+  for (weyl::Generator s=0; s<our_rank; ++s)
+    singular.set(s,rd.coroot(sub.parent_nr_simple(s))
+		            .dot(infin_char.numerator())==0);
+
+  const RatWeight lambda = rc.lambda(sr);
+  KGBElt x=sr.x();
 
   // first construct global Tits group for |y|s, and |dual_involution|
   const WeightInvolution& theta = kgb.involution_matrix(x);
@@ -652,15 +752,16 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
   const TwistedInvolution tw = Tg.weylGroup().element(dual_involution);
   // now |tw| describes |-theta^tr| as twisted involution for |sub|
 
-  // step 1: get a valid value for |y|. Has $t=\exp(\pi\ii(\gamma-\lambda))$
-  TorusElement t = y_values::exp_pi(gamma-lambda);
+  // step 1: get a valid value for |y|.
+  // Has $t=\exp(\pi\ii(\infin_char-\lambda))$
+  TorusElement t = y_values::exp_pi(infin_char-lambda);
 
   {// step 1.5: correct the grading on the dual imaginary roots.
     assert(Tg.is_valid(GlobalTitsElement(t,tw)));
 
     Weight tworho_nonintegral_real(GR.rank(),0);
-    arithmetic::Numer_t n=gamma.denominator();
-    Ratvec_Numer_t v=gamma.numerator();
+    arithmetic::Numer_t n=infin_char.denominator();
+    Ratvec_Numer_t v=infin_char.numerator();
     size_t numpos = rd.numPosRoots();
 
     for(size_t j=0; j<numpos; ++j)
@@ -787,7 +888,7 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
       std::vector<block_fields>& tab_s = data[s];
       tab_s.resize(cur_size); // ensure enough slots for now
 
-      // do (non-simple) cross action on |x| size and compute new |sub|-length
+      // do (non-simple) cross action on |x| and compute new |sub|-length
       int l = length(next);
       KGBElt cross_sample =
 	kgb.cross(sub.to_simple(s),kgb_nr_of[this->x(next)]);
@@ -808,7 +909,7 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 	  TorusElement t = y_hash[ys[j]].t_rep;
 	  if (i_tab.complex_roots(inv).isMember(sub.parent_nr_simple(s)))
 	    Tg.complex_cross_act(s,t);
-	  else if (i_tab.imaginary_roots(inv).isMember(sub.parent_nr_simple(s)))
+	  else if (i_tab.real_roots(inv).isMember(sub.parent_nr_simple(s)))
 	    t = t.simple_imaginary_cross(rd,sub.parent_nr_simple(s));
 	  /* We could use |simple_imaginary_cross| because |is_valid| has
 	     ensured that all coroots of |sub| are integral on |t|, and the
@@ -879,7 +980,7 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 	case gradings::Status::Real: // now status depends on |y|
 	  for (unsigned int j=0; j<nr_y; ++j)
 	    if (cross_ys[j] != ys[j]) // implies parity condition
-	      info[base_z+j].descent.set(s,DescentStatus::ImaginaryTypeII);
+	      info[base_z+j].descent.set(s,DescentStatus::RealTypeII);
 	    else
 	      if (y_hash[y(base_z+j)].t_rep.negative_at
 		  (rd.coroot(sub.parent_nr_simple(s))))
@@ -1015,9 +1116,11 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 
 } // |gamma_block::gamma_block|
 
-const ComplexReductiveGroup& non_integral_block::complexGroup() const
-  { return GR.complexGroup(); }
-const InvolutionTable& non_integral_block::involution_table() const
+RealReductiveGroup& param_block::realGroup() const
+  { return rc.realGroup(); }
+const ComplexReductiveGroup& param_block::complexGroup() const
+  { return rc.realGroup().complexGroup(); }
+const InvolutionTable& param_block::involution_table() const
   { return complexGroup().involution_table(); }
 
 class nblock_elt // internal representation during construction
@@ -1193,14 +1296,13 @@ non_integral_block::non_integral_block
    StandardRepr sr,             // by value; made dominant internally
    BlockElt& entry_element	// set to block element matching input
   )
-  : param_block(rc.kgb(),rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
-  , GR(rc.realGroup())
-  , singular()
+  : param_block(rc,rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
   , z_hash(info)
 {
   const ComplexReductiveGroup& G = complexGroup();
   const RootDatum& rd = G.rootDatum();
   const InvolutionTable& i_tab = G.involution_table();
+  const KGB& kgb = rc.kgb();
 
   rc.make_dominant(sr); // make dominant before computing subsystem
   infin_char=sr.gamma(); // now we can set the infinitesimal character
@@ -1210,9 +1312,9 @@ non_integral_block::non_integral_block
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
   for (weyl::Generator s=0; s<our_rank; ++s)
     singular.set(s,rd.coroot(sub.parent_nr_simple(s))
-		 	    .dot(infin_char.numerator())==0);
+		            .dot(infin_char.numerator())==0);
 
-  nblock_help aux(GR,sub);
+  nblock_help aux(realGroup(),sub);
 
   // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
   const KGBElt x_org = sr.x();
@@ -1535,104 +1637,6 @@ non_integral_block::non_integral_block
 } // |non_integral_block::non_integral_block|
 
 
-RatWeight non_integral_block::nu(BlockElt z) const
-{
-  InvolutionNbr i_x = kgb.inv_nr(parent_x(z));
-  const WeightInvolution& theta = involution_table().matrix(i_x);
-  return RatWeight (gamma().numerator()-theta*gamma().numerator()
-		    ,2*gamma().denominator()).normalize();
-}
-
-RatWeight non_integral_block::y_part(BlockElt z) const
-{
-  RatWeight t =  y_rep(y(z)).log_pi(false);
-  InvolutionNbr i_x = kgb.inv_nr(parent_x(z));
-  involution_table().real_unique(i_x,t);
-  return (t/=2).normalize();
-}
-
-// reconstruct $\lambda-\rho$ from $\gamma$ and the torus part $t$ of $y$
-// using $\lambda = \gamma - {1-\theta\over2}.\log{{t\over\pi\ii})$
-// the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
-Weight non_integral_block::lambda_rho(BlockElt z) const
-{
-  RatWeight t =  y_rep(y(z)).log_pi(false);
-  InvolutionNbr i_x = kgb.inv_nr(parent_x(z));
-  involution_table().real_unique(i_x,t);
-
-  RatWeight lr =
-    (infin_char - t - RatWeight(GR.rootDatum().twoRho(),2)).normalize();
-  assert(lr.denominator()==1);
-  return Weight(lr.numerator().begin(),lr.numerator().end());
-}
-
-// reconstruct $\lambda$ from $\gamma$ and the torus part $t$ of $y$ using the
-// formula $\lambda = \gamma - {1-\theta\over2}.\log{{t\over\pi\ii})$
-// the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
-RatWeight non_integral_block::lambda(BlockElt z) const
-{
-  InvolutionNbr i_x = kgb.inv_nr(parent_x(z));
-  const WeightInvolution& theta = involution_table().matrix(i_x);
-  RatWeight t =  y_rep(y(z)).log_2pi();
-  const Ratvec_Numer_t& num = t.numerator();
-  return infin_char - RatWeight(num-theta*num,t.denominator());
-}
-
-
-// translation functor from regular to singular $\gamma$ might kill $J_{reg}$
-// this depends on the simple coroots for the integral system that vanish on
-// the infinitesimal character $\gamma$, namely they make the element zero if
-// they define a complex descent, an imaginary compact or a real parity root
-bool non_integral_block::survives(BlockElt z) const
-{
-  const DescentStatus& desc=descent(z);
-  for (RankFlags::iterator it=singular.begin(); it(); ++it)
-    if (DescentStatus::isDescent(desc[*it]))
-      return false;
-  return true; // there are no singular simple coroots that are descents
-}
-
-// descend through singular simple coroots and return any survivors that were
-// reached; they express singular $I(z)$ as sum of 0 or more surviving $I(z')$
-BlockEltList non_integral_block::survivors_below(BlockElt z) const
-{
-  BlockEltList result;
-  RankFlags::iterator it;
-  do
-  {
-    const descents::DescentStatus& desc=descent(z);
-    for (it=singular.begin(); it(); ++it)
-      if (DescentStatus::isDescent(desc[*it]))
-      {
-	switch (desc[*it])
-	{
-	case DescentStatus::ImaginaryCompact:
-	  return result; // 0
-	case DescentStatus::ComplexDescent: z = cross(*it,z);
-	  break; // follow descent, no branching
-	case DescentStatus::RealTypeII:
-	  z=inverseCayley(*it,z).first; break; // follow descent, no branching
-	case descents::DescentStatus::RealTypeI:
-	  {
-	    BlockEltPair iC=inverseCayley(*it,z);
-	    BlockEltList left=survivors_below(iC.first);
-	    if (result.empty())
-	      left.swap(result); // take left result as current value
-	    else
-	      std::copy(left.begin(),left.end(),back_inserter(result));
-	    z = iC.second; // continue with right branch, adding its results
-	  }
-	  break;
-       	default: assert(false); // should never happen, but compiler wants it
-	}
-	break; // restart outer loop if a descent was applied
-      } // |if(descent(*it,z)|
-  }
-  while (it());
-  result.push_back(z);
-  return result;
-} // |non_integral_block::survivors_below|
-
 
 
 struct partial_nblock_help : public nblock_help
@@ -1789,12 +1793,11 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
 // alternative constructor, for interval below |sr|
 non_integral_block::non_integral_block
 (const Rep_context& rc, StandardRepr sr) // by value; made dominant internally
-  : param_block(rc.kgb(),rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
-  , GR(rc.realGroup())
-  , singular()
+  : param_block(rc,rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
   , z_hash(info)
 {
   const RootDatum& rd = complexGroup().rootDatum();
+  const KGB& kgb = rc.kgb();
 
   rc.make_dominant(sr); // make dominant before computing subsystem
   infin_char=sr.gamma(); // now we can set the infinitesimal character
@@ -1806,7 +1809,7 @@ non_integral_block::non_integral_block
     singular.set(s,rd.coroot(sub.parent_nr_simple(s))
 			    .dot(infin_char.numerator())==0);
 
-  partial_nblock_help aux(GR,sub,y_hash,z_hash);
+  partial_nblock_help aux(realGroup(),sub,y_hash,z_hash);
 
   // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
   const KGBElt x_org = sr.x();
@@ -1930,6 +1933,15 @@ non_integral_block::non_integral_block
   compute_duals(complexGroup());
 
 } // |non_integral_block::non_integral_block|, partial version
+
+RatWeight non_integral_block::y_part(BlockElt z) const
+{
+  RatWeight t =  y_rep(y(z)).log_pi(false);
+  InvolutionNbr i_x = rc.kgb().inv_nr(parent_x(z));
+  involution_table().real_unique(i_x,t);
+  return (t/=2).normalize();
+}
+
 
 /*****************************************************************************
 

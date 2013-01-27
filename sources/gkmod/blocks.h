@@ -296,9 +296,10 @@ typedef HashTable<y_entry,KGBElt> y_part_hash;
 class param_block : public Block_base // blocks of parameters
 {
  protected: // everything that is here serves derived classes only
-  const KGB& kgb; // on the |x| size we employ a pre-computed KGB structure
+  const Rep_context& rc; // accesses many things, including KGB set for x
 
   RatWeight infin_char; // infinitesimal character
+  RankFlags singular; // flags simple roots for which |infin_char| is singular
 
   std::vector<KGBElt> kgb_nr_of; // maps child |x| numbers to parent |kgb|
   std::vector<KGBElt> x_of;      // inverse mapping, partial
@@ -306,16 +307,28 @@ class param_block : public Block_base // blocks of parameters
   y_entry::Pooltype y_pool;
   y_part_hash y_hash;
 
-  param_block(const KGB& parent_kgb, unsigned int rank);
+  param_block(const Rep_context& rc, unsigned int rank);
 
   // auxiliary for construction
   void compute_duals(const ComplexReductiveGroup& G);
 
  public:
+  // "inherited" accessors
+  const ComplexReductiveGroup& complexGroup() const;
+  const InvolutionTable& involution_table() const;
+  RealReductiveGroup& realGroup() const;
+
   const RatWeight& gamma() const { return infin_char; }
   KGBElt parent_x(BlockElt z) const { return kgb_nr_of[x(z)]; }
   const TorusElement& y_rep(KGBElt y) const { return y_pool[y].repr(); }
   const TwistedInvolution& involution(BlockElt z) const; // obtained from |kgb|
+
+  RatWeight nu(BlockElt z) const; // "real" projection of |infin_char|
+  Weight lambda_rho(BlockElt z) const; // reconstruct from y value
+  RatWeight lambda(BlockElt z) const; // reconstruct from y value
+  RankFlags singular_simple_roots() { return singular; }
+  bool survives(BlockElt z) const; // whether $J(z_{reg})$ survives tr. functor
+  BlockEltList survivors_below(BlockElt z) const; // expression for $I(z)$
 
   // virtual methods
   virtual KGBElt xsize() const { return kgb_nr_of.size(); } // child |x| range
@@ -334,11 +347,9 @@ class param_block : public Block_base // blocks of parameters
 class gamma_block : public param_block
 {
  public:
-  gamma_block(RealReductiveGroup& GR,
+  gamma_block(const repr::Rep_context& rc,
 	      const SubSystemWithGroup& sub,
-	      KGBElt x,			// starting |x| value
-	      const RatWeight& lambda,	// discrete parameter
-	      const RatWeight& gamma,	// infinitesimal character
+	      const StandardRepr& sr,
 	      BlockElt& entry_element	// set to block element matching input
 	      );
 
@@ -363,8 +374,6 @@ class non_integral_block : public param_block
   // into the |info| field for some (future) block into a hashable value
 
 
-  RealReductiveGroup& GR; // non-const to allow construction of |Rep_context|
-  RankFlags singular; // flags simple roots for which |infin_char| is singular
   block_hash z_hash; //  on |Block_base::info|
 
  public:
@@ -378,25 +387,13 @@ class non_integral_block : public param_block
     (const repr::Rep_context& rc,
      StandardRepr sr); // by value,since it will be made dominant before use
 
-  // "inherited" accessors
-  const ComplexReductiveGroup& complexGroup() const;
-  const InvolutionTable& involution_table() const;
-
+  // virtual methods
   virtual BlockElt element(KGBElt x,KGBElt y) const; // redefined using |z_hash|
   virtual std::ostream& print // defined in block_io.cpp
     (std::ostream& strm, BlockElt z,bool as_invol_expr) const;
 
   // new methods
-
-  RealReductiveGroup& realGroup() const { return GR; }
-
-  RatWeight nu(BlockElt z) const; // "real" projection of |infin_char|
   RatWeight y_part(BlockElt z) const; // raw torus part info, normalized
-  Weight lambda_rho(BlockElt z) const; // reconstruct from y value
-  RatWeight lambda(BlockElt z) const; // reconstruct from y value
-  RankFlags singular_simple_roots() { return singular; }
-  bool survives(BlockElt z) const; // whether $J(z_{reg})$ survives tr. functor
-  BlockEltList survivors_below(BlockElt z) const; // expression for $I(z)$
 
  private:
   void add_z(KGBElt x,KGBElt y, unsigned short l);

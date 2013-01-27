@@ -20,6 +20,7 @@
 #include "kgb.h"     // |kgb.size()|
 #include "complexredgp.h" // |twoRho| in |nu_block::print|
 #include "kl.h"
+#include "repr.h"
 
 #include "basic_io.h"	// operator |<<|
 #include "ioutils.h"	// |digits|
@@ -111,6 +112,7 @@ std::ostream& Block::print
 std::ostream& gamma_block::print
   (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {
+  const KGB& kgb = rc.kgb();
   int xwidth = ioutils::digits(kgb.size()-1,10ul);
 
   RatWeight ls = local_system(z);
@@ -130,6 +132,7 @@ std::ostream& gamma_block::print
 std::ostream& non_integral_block::print
   (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {
+  const KGB& kgb = rc.kgb();
   int xwidth = ioutils::digits(kgb.size()-1,10ul);
   RatWeight ll=y_part(z);
 
@@ -342,7 +345,7 @@ std::ostream& print_twist(std::ostream& strm, const Block_base& block)
 	      << std::endl;
 }
 
-std::ostream& print_KL(std::ostream& f, non_integral_block& block, BlockElt z)
+std::ostream& print_KL(std::ostream& f, param_block& block, BlockElt z)
 {
   // silently fill the whole KL table
   const kl::KLContext& klc = block.klc(z,false);
