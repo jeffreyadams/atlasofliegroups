@@ -51,6 +51,7 @@
 #include "mainmode.h"
 #include "realmode.h"
 #include "blockmode.h"
+#include "reprmode.h"
 
 #include "testrun.h"
 #include "kltest.h"
@@ -151,7 +152,8 @@ namespace {
   in every template instance of |addTestCommands| and of |addTestHelp| below.
   Set this constant according to the requirements of the |test_f| function.
 */
-  enum TestMode {EmptyMode, MainMode, RealMode, BlockMode, numTestMode};
+  enum TestMode {EmptyMode, MainMode, RealMode, BlockMode, ReprMode,
+		 numTestMode};
   const TestMode testMode = RealMode; // currently does subsystem KGB test
 
   // utilities
@@ -233,10 +235,7 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("srtest",srtest_f);
 
   mode.add("examine",exam_f);
-  mode.add("iblock",iblock_f);
-  mode.add("nblock",nblock_f);
   mode.add("deform",deform_f);
-  mode.add("partial_block",partial_block_f);
   mode.add("embedding",embedding_f);
 }
 
@@ -249,6 +248,21 @@ void addTestCommands<blockmode::BlockmodeTag>
     mode.add("test",test_f);
 
 }
+
+// Add to the repr mode the test commands that require that mode.
+template<>
+void addTestCommands<reprmode::ReprmodeTag>
+  (commands::CommandMode& mode, reprmode::ReprmodeTag)
+{
+  if (testMode == ReprMode)
+    mode.add("test",test_f);
+
+  // add additional commands here :
+  mode.add("iblock",iblock_f);
+  mode.add("nblock",nblock_f);
+  mode.add("partial_block",partial_block_f);
+}
+
 
 
 // Add to the help mode the test commands that require that mode.
@@ -1067,103 +1081,85 @@ void X_f()
 
 void iblock_f()
 {
-  RealReductiveGroup& GR = realmode::currentRealGroup();
-  ComplexReductiveGroup& G = GR.complexGroup();
-  const RootDatum& rd = G.rootDatum();
+  if (reprmode::state!=reprmode::iblock)
+  {
+    delete reprmode::block_pointer; // destroy any installed block first
+    reprmode::block_pointer =
+      new blocks::gamma_block(reprmode::currentRepContext(),
+			      reprmode::currentSubSystem(),
+			      reprmode::currentStandardRepr(),
+			      reprmode::entry_z);
+    reprmode::state=reprmode::iblock;
+  }
 
-  Weight lambda_rho =
-    interactive::get_weight(interactive::sr_input(),
-			    "Give lambda-rho: ",
-			    G.rank());
-
-  RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
-
-
-  RatWeight nu=
-    interactive::get_ratweight
-    (interactive::sr_input(),"rational parameter nu: ",rd.rank());
-
-  const KGB& kgb = GR.kgb();
-  unsigned long x=interactive::get_bounded_int
-    (interactive::common_input(),"KGB element: ",kgb.size());
-
-  WeightInvolution theta = G.involutionMatrix(kgb.involution(x));
-
-  nu = RatWeight // make |nu| fixed by $-\theta$
-    (nu.numerator()- theta*nu.numerator(),2*nu.denominator());
-
-  RatWeight gamma = nu + RatWeight
-    (lambda.numerator()+theta*lambda.numerator(),2*lambda.denominator());
+  const blocks::param_block& block = reprmode::currentBlock();
 
   ioutils::OutputFile f;
-  f << "Infinitesimal character is " << gamma << std::endl;
-
-  SubSystemWithGroup sub = SubSystemWithGroup::integral(rd,gamma);
-
-  WeylWord ww;
-  sub.twist(theta,ww); // resulting |weyl::Twist| is unused, but |ww| is set
-
-  Permutation pi;
-
-  f << "Subsystem on dual side is ";
-  if (sub.rank()==0)
-    f << "empty.\n";
-  else
-  {
-    f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
-      << ", with roots ";
-    for (weyl::Generator s=0; s<sub.rank(); ++s)
-      f << sub.parent_nr_simple(pi[s]) << (s<sub.rank()-1 ? "," : ".\n");
-  }
-  f << "Twisted involution in subsystem: " << ww << ".\n";
-
-  BlockElt z;
-  blocks::gamma_block block(GR,sub,x,lambda,gamma,z);
-
-  f << "Given parameters define element " << z
-    << " of the following block:" << std::endl;
-
   block.print_to(f,false);
+  f << "Input parameters define element " << reprmode::entry_z
+    << " of this block." << std::endl;
+
 } // |iblock_f|
 
 void nblock_f()
 {
-  RealReductiveGroup& GR = realmode::currentRealGroup();
-
-  Weight lambda_rho;
-  RatWeight gamma(0);
-  KGBElt x;
-
-  SubSystem sub = interactive::get_parameter(GR,x,lambda_rho,gamma);
+  if (reprmode::state!=reprmode::nblock)
+  {
+    delete reprmode::block_pointer; // destroy installed block first
+    reprmode::block_pointer =
+      new non_integral_block(reprmode::currentRepContext(),
+			     reprmode::currentStandardRepr(),
+			     reprmode::entry_z);
+    reprmode::state=reprmode::nblock;
+  }
+  const blocks::param_block& block = reprmode::currentBlock();
 
   ioutils::OutputFile f;
-
-  Permutation pi;
-
-  f << "Subsystem on dual side is ";
-  if (sub.rank()==0)
-    f << "empty.\n";
-  else
-  {
-    f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
-      << ", with roots ";
-    for (weyl::Generator s=0; s<sub.rank(); ++s)
-      f << sub.parent_nr_simple(pi[s])
-	<< (s<sub.rank()-1 ? "," : ".\n");
-  }
-
-  Rep_context rc(GR);
-  StandardRepr sr = rc.sr(x,lambda_rho,gamma);
-
-  BlockElt z;
-  non_integral_block block(GR,sr,z);
-
-  f << "Given parameters define element " << z
+  f << "Given parameters define element " << reprmode::entry_z
     << " of the following block:" << std::endl;
 
   block.print_to(f,false);
-  block_io::print_KL(f,block,z);
+  f << "Input parameters define element " << reprmode::entry_z
+    << " of this block." << std::endl;
+  // block_io::print_KL(f,block,z);
 } // |nblock_f|
+
+void partial_block_f()
+{
+  if (reprmode::state!=reprmode::partial_block)
+  {
+    delete reprmode::block_pointer; // destroy installed block first
+    reprmode::block_pointer =
+      new non_integral_block(reprmode::currentRepContext(),
+			     reprmode::currentStandardRepr());
+    reprmode::state=reprmode::partial_block;
+    reprmode::entry_z = reprmode::currentBlock().size()-1;
+  }
+  const blocks::param_block& block = reprmode::currentBlock();
+  ioutils::OutputFile f;
+  block.print_to(f,false);
+} // |partial_block_f|
+
+
+TorusElement torus_part
+  (const RootDatum& rd,
+   const WeightInvolution& theta,
+   const RatWeight& lambda, // discrete parameter
+   const RatWeight& gamma // infinitesimal char
+  )
+{
+  InvolutionData id(rd,theta);
+  Weight cumul(rd.rank(),0);
+  arithmetic::Numer_t n=gamma.denominator();
+  const Ratvec_Numer_t& v=gamma.numerator();
+  const RootNbrSet pos_real = id.real_roots() & rd.posRootSet();
+  for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
+    if (rd.coroot(*it).dot(v) %n !=0) // nonintegral
+      cumul+=rd.root(*it);
+  // now |cumul| is $2\rho_\Re(G)-2\rho_\Re(G(\gamma))$
+
+  return y_values::exp_pi(gamma-lambda+RatWeight(cumul,2));
+}
 
 void deform_f()
 {
@@ -1195,7 +1191,7 @@ void deform_f()
   StandardRepr sr = rt.sr(x,lambda_rho,gamma);
 
   BlockElt entry_elem;
-  non_integral_block block(GR,sr,entry_elem);
+  non_integral_block block(rt,sr,entry_elem);
 
   f << "Given parameters define element " << entry_elem
     << " of the following block:" << std::endl;
@@ -1238,61 +1234,6 @@ void deform_f()
 
   }
 } // |deform_f|
-
-void partial_block_f()
-{
-  RealReductiveGroup& GR = realmode::currentRealGroup();
-
-  Weight lambda_rho;
-  RatWeight gamma(0);
-  KGBElt x;
-
-  SubSystem sub = interactive::get_parameter(GR,x,lambda_rho,gamma);
-
-  ioutils::OutputFile f;
-
-  Permutation pi;
-
-  f << "Subsystem on dual side is ";
-  if (sub.rank()==0)
-    f << "empty.\n";
-  else
-  {
-    f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
-      << ", with roots ";
-    for (weyl::Generator s=0; s<sub.rank(); ++s)
-      f << sub.parent_nr_simple(pi[s])
-	<< (s<sub.rank()-1 ? "," : ".\n");
-  }
-
-  Rep_context rc(GR);
-  StandardRepr sr = rc.sr(x,lambda_rho,gamma);
-
-  blocks::non_integral_block block(rc,sr);
-  block.print_to(f,false);
-  block_io::print_KL(f,block,block.size()-1);
-} // |partial_block_f|
-
-
-TorusElement torus_part
-  (const RootDatum& rd,
-   const WeightInvolution& theta,
-   const RatWeight& lambda, // discrete parameter
-   const RatWeight& gamma // infinitesimal char
-  )
-{
-  InvolutionData id(rd,theta);
-  Weight cumul(rd.rank(),0);
-  arithmetic::Numer_t n=gamma.denominator();
-  const Ratvec_Numer_t& v=gamma.numerator();
-  const RootNbrSet pos_real = id.real_roots() & rd.posRootSet();
-  for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
-    if (rd.coroot(*it).dot(v) %n !=0) // nonintegral
-      cumul+=rd.root(*it);
-  // now |cumul| is $2\rho_\Re(G)-2\rho_\Re(G(\gamma))$
-
-  return y_values::exp_pi(gamma-lambda+RatWeight(cumul,2));
-}
 
 void embedding_f()
 {
@@ -1401,7 +1342,7 @@ void test_f()
   ioutils::OutputFile f;
 
   BlockElt z;
-  non_integral_block block(GR,sr,z);
+  non_integral_block block(rc,sr,z);
 
   f << "Given parameters define element " << z
     << " of the following block:" << std::endl;

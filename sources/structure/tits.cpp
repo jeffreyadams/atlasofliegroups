@@ -204,7 +204,8 @@ bool GlobalTitsGroup::has_central_square(GlobalTitsElement a) const
   return true;
 }
 
-// Simplified form of the same condition. Valid because |a.t==id| gives |true|
+// Simplified form of the same condition. The simplification is valid
+// because whenever |a.t==id| (basepoint), it is ensured that |is_valid(a)|
 bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a) const
 {
   const TorusElement t = a.torus_part()+theta_tr_times_torus(a);
@@ -591,6 +592,10 @@ TorusPart TitsGroup::pull_across(const WeylElt& w, TorusPart x) const
   return x;
 }
 
+TitsElt TitsGroup::twisted(const TitsElt& te) const
+{
+  return TitsElt(*this,twisted(left_torus_part(te)),twisted(te.w()));
+}
 
 /*!
   \brief Left multiplication of |a| by the canonical generator \f$\sigma_s\f$.

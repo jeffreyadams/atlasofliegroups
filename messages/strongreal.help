@@ -12,9 +12,9 @@ pinning.  The extended group G^Gamma is the semi-direct product of G
 with Gamma = {1, delta}.  A _strong involution_ is by definition an
 H-conjugacy class x of elements xi in the non-identity coset of
 G^Gamma, normalizing H, such that xi^2 is central in G. The
-conjugation action of xi on G defines an involutive automorphism
-theta_xi, which is the Cartan involution of the corresponding "weak
-real form."
+conjugation action of xi defines an involutive automorphism
+theta_xi of G, which is the Cartan involution of the corresponding
+"weak real form."
 
 Two strong involutions are _equivalent_ if they are conjugate by G.  A
 _strong real form_ is an equivalence class of strong involutions.
@@ -23,10 +23,10 @@ Notice that each strong involution defines an involution tau_x of the
 root datum; this is the restriction to H of a Cartan involution
 theta_xi. There are only finitely many of these involutions tau that
 can be realized using our fixed G^Gamma.  The Weyl group W acts by
-conjugation on the tau.  Each conjugacy class of Cartan subgroups for
-the real form corresponds to a W-conjugacy class of involutions
-tau. (If the real form is quasisplit, this correspondence is
-surjective.)
+conjugation on the set of involutions tau.  Each conjugacy class of
+Cartan subgroups for the real form corresponds to a W-conjugacy class
+of involutions. (If the real form is quasisplit, this correspondence
+is surjective.)
 
 The command "strongreal" begins by asking for a Cartan subgroup; that
 is, for a W-conjugacy class of root datum involutions. (At this point
@@ -76,9 +76,8 @@ in the equivalence class.
 
 Example: strong real forms of Spin(4,4):
 
-empty: type
+empty: strongreal
 Lie type: D4 sc s
-main: strongreal
 (weak) real forms are:
 0: so(8)
 1: so(6,2)

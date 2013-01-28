@@ -766,10 +766,10 @@ StandardRepr get_repr(const Rep_context& c) throw(error::InputError)
 }
 
 
-SubSystem get_parameter(RealReductiveGroup& GR,
-			KGBElt& x,
-			Weight& lambda_rho,
-			RatWeight& gamma)
+SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
+				 KGBElt& x,
+				 Weight& lambda_rho,
+				 RatWeight& gamma)
   throw(error::InputError)
 {
   // first step: get initial x in canonical fiber
@@ -926,7 +926,7 @@ SubSystem get_parameter(RealReductiveGroup& GR,
 
   }
 
-  return SubSystem::integral(rd,gamma); // fix integral system only now
+  return SubSystemWithGroup::integral(rd,gamma); // fix integral system only now
 }
 
 

@@ -2,16 +2,21 @@
 The "rootdatum" command prints out the root datum defining the complex
 reductive group G.
 
-The software picks a basis of the character lattice X^*(T). If G is
-defined using the "sc" (respectively "ad") option to be simply
-connected (resp. adjoint) this basis is the basis of fundamental
-weights (resp. simple roots), plus a copy of Z^n if G is not
-semisimple. In general this basis may be fairly arbitrary and
-difficult to understand.
+The software uses a basis of the character lattice X^*(T) that depends
+on the way the group was specified by the user. If G is defined using
+the "sc" (respectively "ad") option to be simply connected (resp.
+adjoint) this basis is the basis of fundamental weights (resp. simple
+roots), plus a basis of a direct factor Z^r if G is non-semisimple with
+a central torus of rank r. In general (notably when the user specifies
+kernel generators explicitly) this basis may be fairly arbitrary
+and difficult to understand; in particular in the non-semisimple case
+there might not be any basis vectors on which all coroots vanish.
 
-Similarly the software picks a basis of the co-character lattice
-X_*(T), given by coroots (in the of "sc") and fundamental coweights
-(in the case of "ad"), plus a copy of Z^n if G is not semisimple.
+The software uses a basis of the co-character lattice X_*(T), that
+is the dual basis of the basis for the character lattice. In
+particular it consists of the simple coroots in the case "sc" was
+specified, and of fundamental coweights in the case "ad" was specified,
+in both cases plus a copy of Z^n if G is not semisimple.
 
 
 The output consists of:
@@ -32,41 +37,47 @@ output of the coroots and poscoroots commands.
 
 4) radical basis
 
-The columns gives a basis of X^*(S) in the given basis (S is the
-maximal central torus).
+The columns gives a basis of X_*(S) in the given basis (S is the maximal
+central torus); X_*(S) is the sublattice of the co-character lattice
+X_*(T) on which all roots vanish.
 
 5) coradical basis
 
-The columns gives a basis of X_*(S) in the given basis (S as in 4)
+The columns gives a basis of the sublattice of the character lattice
+X^*(T) on which all coroots vanish. This is not the dual basis of the
+radical basis, nor does the sublattice correspond to X^*(S) in general.
 
 6) positive roots
 
-A matrix with m rows and n columns where m is the rank and n is the
-semisimple rank. The rows give the positive roots in the given
-basis. See the posroots command.
+The list of positive roots (printed as row vectors) in the given basis.
+See the posroots command.
 
-7) positive roots
+7) positive coroots
 
-A matrix with m rows and n columns where m is the rank and n is the
-semisimple rank. The rows give the positive coroots in the given
+The list of positive coroots (printed as row vectors) in the given
 basis. See the poscoroots command.
 
 These matrices satisfy the following identity. Let R be the "root
 basis" matrix, C the "coroot basis" matrix, and M the Cartan
-matrix. Then 
+matrix. Then
 
 R^t*C=M
 
 An abstract root datum can be defined to be a pair of m by n integral
-matrices (R,C) satisfying R^t*C=M where M is a Cartan
-matrix. Equivalence is by the action (R,C) -> (gR,transpose(g^{-1})C)
-for g in GL(m,Z). Such a root datum is the root datum of a reductive
-algebraic group, where the Cartan matrix of the derived group is M.
+matrices (R,C) satisfying R^t*C=M where M is a Cartan matrix.
+Equivalence is by the action (R,C) -> (gR,transpose(g^{-1})C) for g in
+GL(m,Z). Such a root datum is the root datum of a reductive algebraic
+group, where the Cartan matrix of the derived group is M.
+
+For the numbering of the simple roots see the help file for the
+cmatrix command.
+
 
 Example: root datum of Sp(4)
 
 Since G is simply connected the basis of X^*(T) is the fundamental
-weights, and the basis of X_*(T) is the simple coroots.
+weights, and the basis of X_*(T) is the simple coroots, so the
+"coroot basis" matrix is the identity.
 
 main: type
 Lie type: C2 sc s

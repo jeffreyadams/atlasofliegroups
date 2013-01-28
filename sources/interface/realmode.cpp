@@ -55,7 +55,9 @@ namespace {
   void kgb_f();
   void KGB_f();
   void kgborder_f();
+  void kgbtwist_f();
   void kgbgraph_f();
+
   void kgp_f();
   void kgporder_f();
   void kgpgraph_f();
@@ -97,6 +99,7 @@ commands::CommandMode& realMode()
     real_mode.add("kgb",kgb_f);
     real_mode.add("KGB",KGB_f);
     real_mode.add("kgborder",kgborder_f);
+    real_mode.add("kgbtwist",kgbtwist_f);
     real_mode.add("kgbgraph",kgbgraph_f);
     real_mode.add("kgp", kgp_f);
     real_mode.add("kgporder", kgporder_f);
@@ -279,6 +282,15 @@ void kgborder_f()
   ioutils::OutputFile file;
 
   kgb_io::printBruhatOrder(file,G.Bruhat_KGB());
+}
+
+void kgbtwist_f()
+{
+  RealReductiveGroup& G = currentRealGroup();
+
+  ioutils::OutputFile file;
+
+  kgb_io::print_twist(file,G.kgb());
 }
 
 /* Reset the type of the complex group.

@@ -119,7 +119,7 @@ void InvolutionData::swap(InvolutionData& other)
 
 void InvolutionData::cross_act(const Permutation& root_reflection)
 {
-  root_reflection.left_mult(d_rootInvolution); // first half of conjugation
+  root_reflection.renumber(d_rootInvolution); // first half of conjugation
   // then do |root_reflection.permute(d_rootInvolution)|, exploiting involution
   RootNbr beta;
   for (RootNbr alpha=0; alpha<d_rootInvolution.size(); ++alpha)

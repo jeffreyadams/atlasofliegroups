@@ -1,5 +1,5 @@
 /*
-  This is realmode.h
+  This is blockmode.h
 
   Copyright (C) 2007 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations

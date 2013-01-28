@@ -173,7 +173,6 @@ template<typename C> class Matrix : public Matrix_base<C>
     { Matrix<C> result(*this); result.negate(); result.transpose();
       return result; }
 
-  Vector<C> operator* (const Vector<C>&) const;
   template<typename C1> Vector<C1> operator* (const Vector<C1>&) const;
 
   Vector<C> right_mult(const Vector<C>&) const;

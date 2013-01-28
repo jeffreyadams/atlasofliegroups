@@ -110,8 +110,8 @@ class SubSystemWithGroup : public SubSystem
   const WeylGroup sub_W; // Weyl group no reference: built by contructor
  public:
   SubSystemWithGroup(const RootDatum& parent,
-	    const RootNbrList& sub_sys // list of simple roots in subsys
-           );
+		     const RootNbrList& sub_sys // simple roots in subsys
+		     );
 
   static SubSystemWithGroup integral // pseudo contructor for integral system
   (const RootDatum& parent, const RatWeight& gamma);

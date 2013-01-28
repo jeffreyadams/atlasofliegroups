@@ -48,9 +48,8 @@ else in the program where real forms occur.
 
 Example: Here are the two Cartan subgroups of SL(2,R):
 
-real: type
+empty: cartan
 Lie type: A1 sc s
-main: cartan
 (weak) real forms are:
 0: su(2)
 1: sl(2,R)
@@ -101,5 +100,4 @@ real form #1: [0,1,2] (3)
 real form #0: [3] (1)
 
 [IC4] David A. Vogan, Jr, Irreducible characters of semisimple Lie groups IV:
-Character-multiplicity duality. Duke Math. J. 49 (1982), no. 4,
-pp. 943--1073.
+Character-multiplicity duality. Duke Math. J. 49 (1982), no. 4, pp. 943--1073.

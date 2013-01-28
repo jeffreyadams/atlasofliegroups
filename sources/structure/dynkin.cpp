@@ -474,8 +474,8 @@ irreducibleNormalize(Permutation& a,
   case 'g':
     typeGNormalize(a,d);
     break;
-  default: // this should never happen!
-    assert(false && "unexpected type in irreducibleNormalize");
+  default: // not any valid type, signal an error
+    return SimpleLieType('T',d.rank()); // this will cause a throw if tested
     break;
   }
   return SimpleLieType(x,d.rank());
@@ -483,7 +483,9 @@ irreducibleNormalize(Permutation& a,
 
 
 /*!
-  Determines the (simple) type of a connected Dynkin diagram
+  Determines candidate for the (simple) type of a connected Dynkin diagram
+  Returns \0 if no candidate is found, but nonzero does not guarantee that the
+  Dynkin diagram is correct.
 
   Precondition : d is connected (and therefore not empty)
 */
@@ -522,7 +524,8 @@ lietype::TypeLetter irreducibleType(const DynkinDiagram& d)
     case 3: // type is G
       return 'G';
 
-    default: // should never happen
+    default: // cannot happen
+      assert(false && "connected Dynkin diagram with zero multiplicity");
       return 0;
     }
 
@@ -537,8 +540,8 @@ lietype::TypeLetter irreducibleType(const DynkinDiagram& d)
 	return 'D';
     }
 
-  default: // should never happen
-    return 0;
+  default: // should never happen for valid Dynkin diagrams
+    return 0; // error code
   }
 }
 
@@ -755,8 +758,8 @@ void typeENormalize(Permutation& a, const DynkinDiagram& d)
   Precondition : d is irreducible of type F4;
 
   Postcondition : a holds a permutation which enumerates the graph in linear
-  order, for which the middle edge is oriented from 1 to 2; such a permutation
-  is unique.
+  order, for which the middle edge is oriented from 1 to 2; (the arrow in F4
+  is like in the Bn diagrams) such a permutation is unique.
 */
 void typeFNormalize(Permutation& a, const DynkinDiagram& d)
 {
@@ -783,7 +786,7 @@ void typeFNormalize(Permutation& a, const DynkinDiagram& d)
   Precondition : d is irreducible of type G2;
 
   Postcondition : a holds the permutation for which the edge is oriented from
-  0 to 1; this is unique.
+  1 to 0 (the arrow in G2 is like Cn); this is unique.
 */
 void typeGNormalize(Permutation& a, const DynkinDiagram& d)
 {
@@ -791,8 +794,8 @@ void typeGNormalize(Permutation& a, const DynkinDiagram& d)
 
   Edge e = d.labelEdge();
 
-  a[0] = e.first;
-  a[1] = e.second;
+  a[1] = e.first;
+  a[0] = e.second;
 }
 
 } // |namespace|

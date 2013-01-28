@@ -85,7 +85,7 @@ class Rep_context
   const KGB& KGB_set;
 
  public:
-  Rep_context(RealReductiveGroup &G);
+  explicit Rep_context(RealReductiveGroup &G);
 
   // accessors
   RealReductiveGroup& realGroup() const { return G; }

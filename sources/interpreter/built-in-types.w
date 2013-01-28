@@ -1806,6 +1806,7 @@ void set_inner_class_wrapper(expression_base::level l)
   shared_matrix M(get<matrix_value>());
   size_t r=lo.d_type.rank();
   assert(M->val.numRows()==r and M->val.numRows()==r);
+  ndebug_use(r);
 @)
   push_value(rdv);
   try
@@ -2724,6 +2725,72 @@ void real_form_of_KGB_wrapper(expression_base::level l)
     push_value(x->rf);
 }
 
+@ Cross actions and Cayley transforms define the structure of a KGB set, and
+we make them available as functions.
+
+@< Local function def...@>=
+void cross_action_wrapper(expression_base::level l)
+{ shared_KGB_elt x = get_own<KGB_elt_value>();
+  const KGB& kgb=x->rf->kgb();
+  int s = get<int_value>()->val;
+  if (static_cast<unsigned>(s)>=kgb.rank())
+    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+  if (l==expression_base::no_value)
+    return;
+  x->val= kgb.cross(s,x->val); // do cross action
+  push_value(x);
+}
+@)
+void Cayley_transform_wrapper(expression_base::level l)
+{ shared_KGB_elt x = get_own<KGB_elt_value>();
+  const KGB& kgb=x->rf->kgb();
+  int s = get<int_value>()->val;
+  if (static_cast<unsigned>(s)>=kgb.rank())
+    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+  if (kgb.cayley(s,x->val)==UndefKGB)
+    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+  if (l==expression_base::no_value)
+    return;
+  x->val= kgb.cayley(s,x->val); // do Cayley transform
+  push_value(x);
+}
+
+@ One also needs to be able find out the status of simple roots. Although
+somewhat low-level, the simplest thing is to export the
+|gradings::Status::Value| as an integer value. It seems however useful to
+change complex ascents from $0$ to $4$, so that the coding is 0:~Complex
+descent, 1:~imaginary compact, 2:~real, 3:~imaginary non-compact, 4:Complex
+ascent. This way a value $v$ is a descent if |v<3|, imaginary if |v%2==1|,
+Complex if |v%4==0|, Cayley transform defined if |v==3|.
+
+@< Local function def...@>=
+void KGB_status_wrapper(expression_base::level l)
+{ shared_KGB_elt x = get<KGB_elt_value>();
+  const KGB& kgb=x->rf->kgb();
+  int s = get<int_value>()->val;
+  if (static_cast<unsigned>(s)>=kgb.rank())
+    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+  if (l==expression_base::no_value)
+    return;
+  unsigned stat=kgb.status(s,x->val);
+  push_value(new int_value
+    (stat==0 and not kgb.isDescent(s,x->val) ? 4 : stat));
+}
+
+
+@ One can conjugate a KGB element by the distinguished involution of the inner
+class.
+
+@< Local function def...@>=
+void KGB_twist_wrapper(expression_base::level l)
+{ shared_KGB_elt x = get_own<KGB_elt_value>();
+  const KGB& kgb=x->rf->kgb();
+  if (l==expression_base::no_value)
+    return;
+  x->val= kgb.Hermitian_dual(x->val); // do twist
+  push_value(x);
+}
+
 @ One important attribute of KGB elements is the associated root datum
 involution.
 
@@ -2785,6 +2852,10 @@ void KGB_equals_wrapper(expression_base::level l)
 @< Install wrapper functions @>=
 install_function(KGB_elt_wrapper,@|"KGB","(RealForm,int->KGBElt)");
 install_function(real_form_of_KGB_wrapper,@|"real_form","(KGBElt->RealForm)");
+install_function(cross_action_wrapper,@|"cross","(int,KGBElt->KGBElt)");
+install_function(Cayley_transform_wrapper,@|"Cayley","(int,KGBElt->KGBElt)");
+install_function(KGB_status_wrapper,@|"status","(int,KGBElt->int)");
+install_function(KGB_twist_wrapper,@|"twist","(KGBElt->KGBElt)");
 install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");
 install_function(torus_bits_wrapper,@|"torus_bits","(KGBElt->vec)");
 install_function(torus_factor_wrapper,@|"torus_factor","(KGBElt->ratvec)");
@@ -3045,7 +3116,6 @@ void print_n_block_wrapper(expression_base::level l)
                @|<< " of the following block:" << std::endl;
   block.print_to(*output_stream,true);
     // print block using involution expressions
-  block_io::print_KL(*output_stream,block,init_index);
   if (l==expression_base::single_value)
     wrap_tuple(0);
 }
@@ -3767,14 +3837,9 @@ void raw_dual_KL_wrapper (expression_base::level l)
   if (l==expression_base::no_value)
     return;
   matrix_ptr M(new matrix_value(int_Matrix(klc.size())));
-  const kl::KLPol* base_pt = &klc.polStore()[0];
   for (size_t y=1; y<klc.size(); ++y)
     for (size_t x=0; x<y; ++x)
-    {
-      const kl::KLPol& pol = klc.klPol(dual[y],dual[x]);
-      if (not pol.isZero()) // exception needed: zero need not be from table
-        M->val(x,y)= &pol-base_pt;
-    }
+      M->val(x,y) = klc.KL_pol_index(dual[y],dual[x]);
 @)
   row_ptr polys(new row_value(0)); polys->val.reserve(klc.polStore().size());
   for (size_t i=0; i<klc.polStore().size(); ++i)
@@ -3786,10 +3851,16 @@ void raw_dual_KL_wrapper (expression_base::level l)
     polys->val.push_back(shared_value(new vector_value(coeffs)));
   }
 @)
+  std::vector<int> length_stops(block.length(block.size()-1)+1);
+  length_stops[0]=0;
+  for (size_t i=1; i<length_stops.size(); ++i)
+    length_stops[i]=block.length_first(i);
+@)
   push_value(M);
   push_value(polys);
+  push_value(new vector_value(length_stops));
   if (l==expression_base::single_value)
-    wrap_tuple(2);
+    wrap_tuple(3);
 }
 
 @* Installing coercions.
@@ -4160,7 +4231,7 @@ void print_W_graph_wrapper(expression_base::level l)
 install_function(raw_KL_wrapper,@|"raw_KL"
                 ,"(RealForm,DualRealForm->mat,[vec],vec)");
 install_function(raw_dual_KL_wrapper,@|"dual_KL"
-                ,"(RealForm,DualRealForm->mat,[vec])");
+                ,"(RealForm,DualRealForm->mat,[vec],vec)");
 install_function(print_gradings_wrapper,@|"print_gradings"
 		,"(CartanClass,RealForm->)");
 install_function(print_realweyl_wrapper,@|"print_real_Weyl"

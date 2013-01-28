@@ -98,6 +98,14 @@ class RationalVector
 }; // |template <typename C> class RationalVector|
 
 
+
+
+//				Functions
+
+template<typename C1, typename C2>
+  RationalVector<C2> operator*
+  (const matrix::Matrix<C1>& M, const RationalVector<C2>& v);
+
 } // |namespace ratvec|
 } // |namespace atlas|
 #endif

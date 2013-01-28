@@ -1,7 +1,7 @@
 /*
-  This is blockmode.cpp
+  This is reprmode.cpp
 
-  Copyright (C) 2007 Marc van Leeuwen
+  Copyright (C) 2013 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For copyright and license information see the LICENSE file
@@ -10,7 +10,7 @@
 #include <iostream>
 #include <fstream>
 
-#include "blockmode.h"
+#include "reprmode.h"
 #include "realmode.h"
 #include "mainmode.h"
 
@@ -31,6 +31,7 @@
 #include "kgb.h"
 #include "kgb_io.h"
 #include "blocks.h"
+#include "repr.h"
 #include "block_io.h"
 #include "kl.h"
 #include "kl_io.h"
@@ -40,35 +41,28 @@
 
 /****************************************************************************
 
-  This file contains the commands defined in the "block" mode of the program.
-  This means that a real form and a dual real form have been chosen.
+  This file contains the commands defined in the "repr" mode of the program.
+  This means that a real form and a representation parameter have been chosen
 
 *****************************************************************************/
 
 namespace atlas {
 
-namespace {
+namespace reprmode {
 
-  using namespace blockmode;
-
-  void block_mode_entry() throw(commands::EntryError);
-  void block_mode_exit();
+  void repr_mode_entry() throw(commands::EntryError);
+  void repr_mode_exit();
 
   // functions for the predefined commands
 
-  void small_kgb_f();
-  void small_dual_kgb_f();
+  void small_kgb_f(); // not yet implemented
+  void small_dual_kgb_f(); // not yet implemented
   void block_f();
-  void smallblock_f();
-  void dual_block_f();
-  void small_dual_block_f();
-  void dual_map_f();
-  void blockd_f();
-  void blocku_f();
   void blockorder_f();
-  void blockwrite_f();
-  void blockstabilizer_f();
+  void blockwrite_f(); // not yet implemented
+  void blockstabilizer_f(); // not yet implemented
   void blocktwist_f();
+  void kl_f();
   void klbasis_f();
   void kllist_f();
   void primkl_f();
@@ -79,96 +73,82 @@ namespace {
   void type_f();
   void realform_f();
 
-  // local variables
-
-  ComplexReductiveGroup* dual_G_C_pointer=NULL;
-  RealReductiveGroup* dual_G_R_pointer=NULL;
-  Block* block_pointer=NULL;
+  // mode-local variables
+  block_type state=noblock;
+  BlockElt entry_z = blocks::UndefBlock;
+  Rep_context* rc=NULL;
+  SubSystemWithGroup* sub=NULL;
+  StandardRepr* sr=NULL;
+  param_block* block_pointer=NULL; // block contains |KLContext| pointer
   wgraph::WGraph* WGr_pointer=NULL;
-}
+
 
 /*****************************************************************************
 
-        Chapter I -- Functions declared in blockmode.h
+        Chapter I -- Functions declared in reprmode.h
 
 ******************************************************************************/
 
-namespace blockmode {
 
 // Returns a |CommandMode| object that is constructed on first call.
-commands::CommandMode& blockMode()
+commands::CommandMode& reprMode()
 {
-  static commands::CommandMode block_mode
-    ("block: ",block_mode_entry,block_mode_exit);
-  if (block_mode.empty()) // true upon first call
+  static commands::CommandMode repr_mode
+    ("repr: ",repr_mode_entry,repr_mode_exit);
+  if (repr_mode.empty()) // true upon first call
   {
     // add the commands from the real mode
-    commands::addCommands(block_mode,realmode::realMode());
+    commands::addCommands(repr_mode,realmode::realMode());
 
     // add commands for this mode
     // the "type" command should be redefined here because it needs to exit
     // the block and real modes
-    block_mode.add("type",type_f); // override
-    block_mode.add("realform",realform_f); // this one too
-    block_mode.add("smallkgb",small_kgb_f);
-    block_mode.add("smalldualkgb",small_dual_kgb_f);
-    block_mode.add("block",block_f);
-    block_mode.add("smallblock",smallblock_f);
-    block_mode.add("dualblock",dual_block_f);
-    block_mode.add("smalldualblock",small_dual_block_f);
-    block_mode.add("dualmap",dual_map_f);
-    block_mode.add("blockd",blockd_f);
-    block_mode.add("blocku",blocku_f);
-    block_mode.add("blockorder",blockorder_f);
-    block_mode.add("blockwrite",blockwrite_f);
-    block_mode.add("blockstabilizer",blockstabilizer_f);
-    block_mode.add("blocktwist",blocktwist_f);
-    block_mode.add("klbasis",klbasis_f);
-    block_mode.add("kllist",kllist_f);
-    block_mode.add("primkl",primkl_f);
-    block_mode.add("klwrite",klwrite_f);
-    block_mode.add("wcells",wcells_f);
-    block_mode.add("wgraph",wgraph_f);
+    repr_mode.add("type",type_f); // override
+    repr_mode.add("realform",realform_f); // this one too
+    // repr_mode.add("smallkgb",small_kgb_f);
+    // repr_mode.add("smalldualkgb",small_dual_kgb_f);
+    // repr_mode.add("block",block_f);
+    repr_mode.add("blockorder",blockorder_f);
+    // repr_mode.add("blockwrite",blockwrite_f);
+    // repr_mode.add("blockstabilizer",blockstabilizer_f);
+    repr_mode.add("blocktwist",blocktwist_f);
+    repr_mode.add("kl",kl_f);
+    repr_mode.add("klbasis",klbasis_f);
+    repr_mode.add("kllist",kllist_f);
+    repr_mode.add("primkl",primkl_f);
+    repr_mode.add("klwrite",klwrite_f);
+    repr_mode.add("wcells",wcells_f);
+    repr_mode.add("wgraph",wgraph_f);
 
     // add test commands
-    test::addTestCommands(block_mode,BlockmodeTag());
+    test::addTestCommands(repr_mode,ReprmodeTag());
   }
-  return block_mode;
+  return repr_mode;
 }
 
-ComplexReductiveGroup& currentDualComplexGroup()
+param_block& currentBlock()
 {
-  return *dual_G_C_pointer;
-}
-
-RealReductiveGroup& currentDualRealGroup()
-{
-  return *dual_G_R_pointer;
-}
-
-RealFormNbr currentDualRealForm()
-{
-  return dual_G_R_pointer->realForm();
-}
-
-Block& currentBlock()
-{
-  if (block_pointer==NULL)
+  if (state==noblock) // we have entered reprmode without setting block
   {
-    block_pointer =
-      new Block(Block::build
-			 (realmode::currentRealGroup(),
-			  currentDualRealGroup()));
+    block_pointer =  new non_integral_block(*rc,*sr); // partial block default
+    state=partial_block;
+    entry_z = block_pointer->size()-1;
   }
   return *block_pointer;
 }
+
+const Rep_context& currentRepContext() { return *rc; }
+
+const SubSystemWithGroup& currentSubSystem() { return *sub; }
+
+const StandardRepr& currentStandardRepr() { return *sr; }
 
 kl::KLContext& currentKL()
 {
   return currentBlock().klc(currentBlock().size()-1,true);
 }
 
-wgraph::WGraph& currentWGraph()
+const wgraph::WGraph& currentWGraph()
 {
   if (WGr_pointer==NULL)
   {
@@ -179,46 +159,55 @@ wgraph::WGraph& currentWGraph()
   return *WGr_pointer;
 }
 
-} // namespace blockmode
 
 /****************************************************************************
 
-        Chapter II -- The block mode |CommandMode|
+        Chapter II -- The repr mode |CommandMode|
 
-  One instance of |CommandMode| for the block mode is created at the
-  first call of |blockMode()|; further calls just return a reference to it.
+  One instance of |CommandMode| for the repr mode is created at the
+  first call of |reprMode()|; further calls just return a reference to it.
 
 *****************************************************************************/
-
-namespace {
 
 /*
   Synopsis: attempts to set a real form and dual real form interactively.
   In case of failure, throws an InputError and returns.
 */
-void block_mode_entry() throw(commands::EntryError)
+void repr_mode_entry() throw(commands::EntryError)
 {
   try
   {
-    RealReductiveGroup& G_R = realmode::currentRealGroup();
+    RealReductiveGroup& GR = realmode::currentRealGroup();
 
-    ComplexReductiveGroup& G_C = G_R.complexGroup();
-    const complexredgp_io::Interface& G_I = mainmode::currentComplexInterface();
+    Weight lambda_rho;
+    RatWeight gamma(0);
+    KGBElt x;
 
-    // get dual real form
-    RealFormNbr drf;
+    sub = new SubSystemWithGroup
+      (interactive::get_parameter(GR,x,lambda_rho,gamma));
 
-    interactive::getInteractive
-      (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
+    Permutation pi;
 
-    dual_G_C_pointer=new
-      ComplexReductiveGroup(G_C,tags::DualTag());
-    dual_G_R_pointer=new RealReductiveGroup(*dual_G_C_pointer,drf);
+    std::cout << "Subsystem on dual side is ";
+    if (sub->rank()==0)
+      std::cout << "empty.\n";
+    else
+    {
+      std::cout << "of type "
+		<< dynkin::Lie_type(sub->cartanMatrix(),true,false,pi)
+		<< ", with roots ";
+      for (weyl::Generator s=0; s<sub->rank(); ++s)
+	std::cout << sub->parent_nr_simple(pi[s])
+		  << (s<sub->rank()-1 ? "," : ".\n");
+    }
+
+    rc = new Rep_context(GR);
+    sr = new StandardRepr(rc->sr(x,lambda_rho,gamma));
   }
   catch(error::InputError& e)
   {
-    block_mode_exit(); // clean up
-    e("no dual real form set");
+    repr_mode_exit(); // clean up
+    e("no parameter was set");
     throw commands::EntryError();
   }
 }
@@ -227,15 +216,15 @@ void block_mode_entry() throw(commands::EntryError)
 /*
   Synopsis: destroys any local data, resoring NULL pointers
 */
-void block_mode_exit()
+void repr_mode_exit()
 {
-  delete dual_G_C_pointer; dual_G_C_pointer=NULL;
-  delete dual_G_R_pointer; dual_G_R_pointer=NULL;
+  state=noblock;
+  delete rc; rc=NULL;
+  delete sr; sr=NULL;
   delete block_pointer; block_pointer=NULL;
   delete WGr_pointer; WGr_pointer=NULL;
 }
 
-} // namespace
 
 /*****************************************************************************
 
@@ -245,8 +234,6 @@ void block_mode_exit()
   various commands defined in this mode.
 
 ******************************************************************************/
-
-namespace {
 
 /*
   Synopsis: resets the type of the complex group.
@@ -282,53 +269,13 @@ void realform_f()
     interactive::getRealGroup(mainmode::currentComplexInterface()).swap
       (realmode::currentRealGroup());
 
-    commands::exitMode(); // upon success pop block mode, destroying dual group
+    commands::exitMode(); // upon success pop repr mode, destroying data
   }
   catch (error::InputError& e) {
     e("real form not changed");
   }
 }
 
-// Print the kgb table, only the necessary part for one block
-void small_kgb_f()
-{
-  RealReductiveGroup& G_R = realmode::currentRealGroup();
-  RealReductiveGroup& dGR = currentDualRealGroup();
-
-  BitMap common=blocks::common_Cartans(G_R,dGR);
-
-  std::cout << "relevant Cartan classes: ";
-  basic_io::seqPrint(std::cout,common.begin(),common.end(),",","{","}\n");
-
-  std::cout
-    << "partial kgb size: "
-    << mainmode::currentComplexGroup().KGB_size
-         (realmode::currentRealForm(),common)
-    << std::endl;
-
-  ioutils::OutputFile file;
-  KGB kgb(G_R,common);
-  kgb_io::printKGB(file,kgb);
-}
-
-void small_dual_kgb_f()
-{
-  RealReductiveGroup& G_R = realmode::currentRealGroup();
-  RealReductiveGroup& dGR = currentDualRealGroup();
-  ComplexReductiveGroup& dGC = currentDualComplexGroup();
-
-  BitMap common=blocks::common_Cartans(dGR,G_R);
-
-  std::cout << "relevant Cartan classes for dual group: ";
-  basic_io::seqPrint(std::cout,common.begin(),common.end(),",","{","}\n");
-
-  std::cout << "partial kgb size: " <<
-    dGC.KGB_size(currentDualRealForm(),common) << std::endl;
-  ioutils::OutputFile file;
-
-  KGB kgb(dGR,common);
-  kgb_io::printKGB(file,kgb);
-}
 
 // Print the current block
 void block_f()
@@ -337,111 +284,25 @@ void block_f()
   currentBlock().print_to(file,false);
 }
 
-void smallblock_f()
-{
-  ioutils::OutputFile file;
-  // must unfortunatly regenerate the block here
-  Block::build(mainmode::currentComplexGroup(),
-	       realmode::currentRealForm(),
-	       currentDualRealForm()).print_to(file,false);
-}
-
-// Print the dual block of the current block
-void dual_block_f()
-{
-  Block block =
-    Block::build(currentDualRealGroup(),realmode::currentRealGroup());
-
-  ioutils::OutputFile file;
-  block.print_to(file,false);
-}
-
-void small_dual_block_f()
-{
-  ComplexReductiveGroup& dG = currentDualComplexGroup();
-
-  Block block =
-    Block::build(dG,currentDualRealForm(),realmode::currentRealForm());
-
-  ioutils::OutputFile file;
-  block.print_to(file,false);
-}
-
-// Print the correspondence of the current block with its dual block
-void dual_map_f()
-{
-  const Block& block = currentBlock();
-  Block dual_block =
-    Block::build(currentDualRealGroup(),realmode::currentRealGroup());
-
-  const std::vector<BlockElt> v=blocks::dual_map(block,dual_block);
-
-  std::ostringstream s("");
-  basic_io::seqPrint(s,v.begin(),v.end(),", ","[","]\n");
-  ioutils::OutputFile file;
-  foldLine(file,s.str()," ");
-}
-
-// Print the current block with involutions in involution-reduced form
-void blockd_f()
-{
-  ioutils::OutputFile file;
-  currentBlock().print_to(file,true);
-}
-
-// Print the unitary elements of the block.
-void blocku_f()
-{
-  ioutils::OutputFile file;
-  block_io::printBlockU(file,currentBlock());
-}
-
-
 // Print the Hasse diagram for the Bruhat order on the current block
 void blockorder_f()
 {
-  Block& block = currentBlock();
+  param_block& block = currentBlock();
   std::cout << "block size: " << block.size() << std::endl;
   ioutils::OutputFile file;
   kgb_io::printBruhatOrder(file,block.bruhatOrder());
 }
 
-// Writes a binary file containing descent sets and ascent sets for block
-void blockwrite_f()
-{
-  std::ofstream block_out; // binary output files
-  if (interactive::open_binary_file
-      (block_out,"File name for block output: "))
-  {
-    filekl::write_block_file(currentBlock(),block_out);
-    std::cout<< "Binary file written.\n" << std::endl;
-  }
-  else
-    std::cout << "No file written.\n";
-}
-
-/*
-  Synopsis: prints out information about the stabilizer of a representation
-  under the cross action
-*/
-void blockstabilizer_f()
-{
-  RealReductiveGroup& G_R = realmode::currentRealGroup();
-  RealReductiveGroup& dGR = currentDualRealGroup();
-
-  // get Cartan class; abort if unvalid
-  size_t cn=interactive::get_Cartan_class(blocks::common_Cartans(G_R,dGR));
-
-  ioutils::OutputFile file;
-  realredgp_io::printBlockStabilizer
-    (file,realmode::currentRealGroup(),cn,currentDualRealForm());
-}
-
 void blocktwist_f()
 {
   ioutils::OutputFile file;
-
   block_io::print_twist(file,currentBlock());
+}
+
+void kl_f()
+{
+  ioutils::OutputFile file;
+  block_io::print_KL(file,currentBlock(),entry_z);
 }
 
 /* For each element $y$ in the block, outputs the list of non-zero K-L
@@ -514,14 +375,14 @@ void klwrite_f()
 // Print the W-graph corresponding to a block.
 void wgraph_f()
 {
-  wgraph::WGraph& wg = currentWGraph();
+  const wgraph::WGraph& wg = currentWGraph();
   ioutils::OutputFile file; wgraph_io::printWGraph(file,wg);
 }
 
 // Print the cells of the W-graph of the block.
 void wcells_f()
 {
-  wgraph::WGraph& wg = currentWGraph();
+  const wgraph::WGraph& wg = currentWGraph();
   wgraph::DecomposedWGraph dg(wg);
 
   ioutils::OutputFile file; wgraph_io::printWDecomposition(file,dg);
@@ -543,21 +404,10 @@ void wcells_f()
 namespace {
 
   const char* small_kgb_tag =
-    "prints part of the KGB data pertinent to one block";
+    "prints part of the KGB data pertinent to the current block";
   const char* small_dual_kgb_tag =
-    "prints part of the dual KGB data pertinent to one block";
+    "prints part of the dual KGB data pertinent to the current block";
   const char* block_tag = "prints all the representations in a block";
-  const char* small_block_tag =
-    "generates block using partial KGB and dual KGB data";
-  const char* dual_block_tag = "prints a block for the dual group";
-  const char* small_dual_block_tag =
-    "generates dual block using partial KGB and dual KGB data";
-  const char* dual_map_tag =
-    "prints the bijection from block to its dual block";
-  const char* blockd_tag =
-   "prints all representations in the block, alternative format";
-  const char* blocku_tag =
-   "prints the unitary representations in the block at rho";
   const char* blockorder_tag =
    "shows Hasse diagram of the Bruhat order on the blocks";
   const char* blockwrite_tag = "writes the block information to disk";
@@ -582,36 +432,6 @@ void small_dual_kgb_h()
 void block_h()
 {
   io::printFile(std::cerr,"block.help",io::MESSAGE_DIR);
-}
-
-void small_block_h()
-{
-  io::printFile(std::cerr,"smallblock.help",io::MESSAGE_DIR);
-}
-
-void dualblock_h()
-{
-  io::printFile(std::cerr,"dualblock.help",io::MESSAGE_DIR);
-}
-
-void small_dual_block_h()
-{
-  io::printFile(std::cerr,"smalldualblock.help",io::MESSAGE_DIR);
-}
-
-void dualmap_h()
-{
-  io::printFile(std::cerr,"dualmap.help",io::MESSAGE_DIR);
-}
-
-void blockd_h()
-{
-  io::printFile(std::cerr,"blockd.help",io::MESSAGE_DIR);
-}
-
-void blocku_h()
-{
-  io::printFile(std::cerr,"blocku.help",io::MESSAGE_DIR);
 }
 
 void blockorder_h()
@@ -659,9 +479,7 @@ void wgraph_h()
   io::printFile(std::cerr,"wgraph.help",io::MESSAGE_DIR);
 }
 
-} // namespace
 
-namespace blockmode {
 
 void addBlockHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
 
@@ -669,15 +487,7 @@ void addBlockHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   mode.add("smallkgb",small_kgb_h);
   mode.add("smalldualkgb",small_dual_kgb_h);
   mode.add("block",block_h);
-  mode.add("smallblock",small_block_h);
-  mode.add("dualblock",dualblock_h);
-  mode.add("smalldualblock",small_dual_block_h);
-  mode.add("dualmap",dualmap_h);
-  mode.add("blockd",blockd_h);
-  mode.add("blocku",blocku_h);
   mode.add("blockorder",blockorder_h);
-  mode.add("blockwrite",blockwrite_h);
-  mode.add("blockstabilizer",block_stabilizer_h);
   mode.add("klwrite",klwrite_h);
   mode.add("kllist",kllist_h);
   mode.add("primkl",primkl_h);
@@ -691,16 +501,9 @@ void addBlockHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   insertTag(tagDict,"smallkgb",small_kgb_tag);
   insertTag(tagDict,"smalldualkgb",small_dual_kgb_tag);
   insertTag(tagDict,"block",block_tag);
-  insertTag(tagDict,"smallblock",small_block_tag);
-  insertTag(tagDict,"dualblock",dual_block_tag);
-  insertTag(tagDict,"smalldualblock",small_dual_block_tag);
-  insertTag(tagDict,"blockd",blockd_tag);
-  insertTag(tagDict,"blocku",blocku_tag);
   insertTag(tagDict,"blockorder",blockorder_tag);
   insertTag(tagDict,"blockwrite",blockwrite_tag);
   insertTag(tagDict,"blockstabilizer",blockstabilizer_tag);
-  insertTag(tagDict,"dualblock",dual_block_tag);
-  insertTag(tagDict,"dualmap",dual_map_tag);
   insertTag(tagDict,"klbasis",klbasis_tag);
   insertTag(tagDict,"kllist",kllist_tag);
   insertTag(tagDict,"primkl",klprim_tag);
@@ -709,6 +512,6 @@ void addBlockHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   insertTag(tagDict,"wgraph",wgraph_tag);
 }
 
-} // namespace blockmode
+} // namespace reprmode
 
 } // namespace atlas

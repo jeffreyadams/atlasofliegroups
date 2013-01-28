@@ -1,0 +1,112 @@
+
+Given a block for a real group, the "dualblock" command constructs a
+block for a real form of the dual group which is dual in the sense of
+Vogan to the given block.
+
+Fix a block B of representations of a real form G(R) of G, with
+regular integral infinitesimal character. (This is a finite set of
+irreducible representations; the the help file for the block
+command). According to Vogan {IC4] there is a real form G^v(R) of the
+dual group G^v, and a block B^v of representations of G^v(R) with
+regular integral infinitesimal character, which is "dual" to B. This
+means that there is a bijection B -> B^v, written pi -> pi^v, with a
+number of properties.
+
+In the context of atlas a block B is determined by a real form of G
+and a real form of G^v. Associated to these choices are K and K^v, the
+(complexified) maximal compact subgroups of the real form of G and
+G^v, respectively. The K-orbits on G/B are parametrized by integers
+0<=x<=m, and those of K^v on G^v/B^v by integers 0<=y<=n. The B is
+parametrized by a subset S of pairs (x,y). See the help file for the
+block command. The numbering of the kgb elements for G^v is that of
+the dualkgb command.
+
+The dual block B^v is parametrized by {(y,x)| (x,y) in S}. 
+
+The dualmap command gives the bijection between B and B^v. Also see
+dualkgb. 
+
+
+Example: principal block for Sp(4,R) and its dual
+
+The principal block of Sp(4,R) (containing a finite dimensional
+representation) has 12 elements. The corresponding real form of the
+dual group is the split one, SO(4,3). There are 11 orbits (0..10) of K
+on G/B, and 7 (0..6) of K^v on G^v/B^v.
+
+The block B contains 4 discrete series representations, numbers 0-4,
+with parameters (0,6),(1,6),(2,6) and (3,6). Dual to these are 4
+principal series representations of SO(4,3), numbers 8-11, with
+parameters (6,0),(6,1), (6,2) and (6,3).
+
+Lie type: C2 sc s
+main: block
+(weak) real forms are:
+0: sp(2)
+1: sp(1,1)
+2: sp(4,R)
+enter your choice: 2
+possible (weak) dual real forms are:
+0: so(5)
+1: so(4,1)
+2: so(2,3)
+enter your choice: 2
+Name an output file (return for stdout, ? to abandon):
+ 0( 0,6):  0  0  [i1,i1]   1   2   ( 6, *)  ( 4, *)
+ 1( 1,6):  0  0  [i1,i1]   0   3   ( 6, *)  ( 5, *)
+ 2( 2,6):  0  0  [ic,i1]   2   0   ( *, *)  ( 4, *)
+ 3( 3,6):  0  0  [ic,i1]   3   1   ( *, *)  ( 5, *)
+ 4( 4,4):  1  2  [C+,r1]   8   4   ( *, *)  ( 0, 2)   2
+ 5( 5,4):  1  2  [C+,r1]   9   5   ( *, *)  ( 1, 3)   2
+ 6( 6,5):  1  1  [r1,C+]   6   7   ( 0, 1)  ( *, *)   1
+ 7( 7,2):  2  1  [i2,C-]   7   6   (10,11)  ( *, *)   2,1,2
+ 8( 8,3):  2  2  [C-,i1]   4   9   ( *, *)  (10, *)   1,2,1
+ 9( 9,3):  2  2  [C-,i1]   5   8   ( *, *)  (10, *)   1,2,1
+10(10,0):  3  3  [r2,r1]  11  10   ( 7, *)  ( 8, 9)   1,2,1,2
+11(10,1):  3  3  [r2,rn]  10  11   ( 7, *)  ( *, *)   1,2,1,2
+block: dualblock
+Name an output file (return for stdout, ? to abandon):
+ 0(0,10):  0  0  [i1,i2]   1   0   ( 2, *)  ( 3, 4)
+ 1(1,10):  0  0  [i1,ic]   0   1   ( 2, *)  ( *, *)
+ 2(2, 7):  1  1  [r1,C+]   2   7   ( 0, 1)  ( *, *)   1
+ 3(3, 8):  1  2  [C+,r2]   5   4   ( *, *)  ( 0, *)   2
+ 4(3, 9):  1  2  [C+,r2]   6   3   ( *, *)  ( 0, *)   2
+ 5(4, 4):  2  2  [C-,i2]   3   5   ( *, *)  ( 8,10)   1,2,1
+ 6(4, 5):  2  2  [C-,i2]   4   6   ( *, *)  ( 9,11)   1,2,1
+ 7(5, 6):  2  1  [i2,C-]   7   2   ( 8, 9)  ( *, *)   2,1,2
+ 8(6, 0):  3  3  [r2,r2]   9  10   ( 7, *)  ( 5, *)   2,1,2,1
+ 9(6, 1):  3  3  [r2,r2]   8  11   ( 7, *)  ( 6, *)   2,1,2,1
+10(6, 2):  3  3  [rn,r2]  10   8   ( *, *)  ( 5, *)   2,1,2,1
+11(6, 3):  3  3  [rn,r2]  11   9   ( *, *)  ( 6, *)   2,1,2,1
+
+
+Example: Block of the irreducible principal series of Sp(4,R)
+
+Take G(R)=Sp(4,R) and G^v(R)=SO(5) (compact). Then K\G/B has 11
+elements as in the previous example, and K^v\G^v/B^v is a
+singleton. In this case the block B consists of a single irreducible
+principal series representation of Sp(4,R), parametrized by
+(10,0). The dual block consists of the trivial representation of
+SO(5), parametrized by (0,10).
+
+Lie type: C2 sc s
+main: block
+(weak) real forms are:
+0: sp(2)
+1: sp(1,1)
+2: sp(4,R)
+enter your choice: 2
+possible (weak) dual real forms are:
+0: so(5)
+1: so(4,1)
+2: so(2,3)
+enter your choice: 0
+Name an output file (return for stdout, ? to abandon):
+0(10,0):  3  3  [rn,rn]  0  0   (*,*)  (*,*)   1,2,1,2
+block: dualblock
+Name an output file (return for stdout, ? to abandon):
+0(0,10):  0  0  [ic,ic]  0  0   (*,*)  (*,*)
+
+
+[IC4] David A. Vogan, Jr, Irreducible characters of semisimple Lie groups IV:
+Character-multiplicity duality. Duke Math. J. 49 (1982), no. 4, pp. 943--1073.

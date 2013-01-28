@@ -125,6 +125,14 @@ RationalVector<C>& RationalVector<C>::normalize()
   return *this;
 }
 
+
+template<typename C1, typename C2>
+  RationalVector<C2> operator*
+  (const matrix::Matrix<C1>& M, const RationalVector<C2>& v)
+{
+  return RationalVector<C2>(M*v.numerator(),v.denominator());
+}
+
   /*
 
     Instantiation of templates (only these are generated)
@@ -136,6 +144,8 @@ template RationalVector<arithmetic::Numer_t>::RationalVector
   (const matrix::Vector<int>&, arithmetic::Numer_t);
 template RationalVector<arithmetic::Numer_t>::RationalVector
   (const matrix::Vector<arithmetic::Numer_t>&, arithmetic::Numer_t);
+template RationalVector<arithmetic::Numer_t> operator*
+  (const matrix::Matrix<int>& M, const RationalVector<arithmetic::Numer_t>& v);
 
 } // |namespace ratvec|
 

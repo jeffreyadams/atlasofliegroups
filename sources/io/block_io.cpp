@@ -20,6 +20,7 @@
 #include "kgb.h"     // |kgb.size()|
 #include "complexredgp.h" // |twoRho| in |nu_block::print|
 #include "kl.h"
+#include "repr.h"
 
 #include "basic_io.h"	// operator |<<|
 #include "ioutils.h"	// |digits|
@@ -111,6 +112,7 @@ std::ostream& Block::print
 std::ostream& gamma_block::print
   (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {
+  const KGB& kgb = rc.kgb();
   int xwidth = ioutils::digits(kgb.size()-1,10ul);
 
   RatWeight ls = local_system(z);
@@ -130,6 +132,7 @@ std::ostream& gamma_block::print
 std::ostream& non_integral_block::print
   (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {
+  const KGB& kgb = rc.kgb();
   int xwidth = ioutils::digits(kgb.size()-1,10ul);
   RatWeight ll=y_part(z);
 
@@ -312,7 +315,37 @@ std::ostream& printDescent(std::ostream& strm,
   return strm;
 }
 
-std::ostream& print_KL(std::ostream& f, non_integral_block& block, BlockElt z)
+std::ostream& print_twist(std::ostream& strm, const Block_base& block)
+{
+  if (block.Hermitian_dual(0)==blocks::UndefBlock)
+    return strm << "Block is not stable under twist" << std::endl;
+
+  std::ostringstream os; BlockElt count=0;
+
+  os << "Elements fixed under twist: ";
+  for (BlockElt z=0; z<block.size(); ++z)
+    if (block.Hermitian_dual(z)==z)
+    {
+      if (count>0)
+	os << ", ";
+      os << z;
+      ++count;
+    }
+  ioutils::foldLine(strm,os.str()) << std::endl;
+
+  os.str(""); // clear string for rewriting
+  strm << "Elements interchanged by twist: " << std::endl;
+  for (BlockElt z=0; z<block.size(); ++z)
+    if (block.Hermitian_dual(z)>z)
+      os << '(' << z << ' ' << block.Hermitian_dual(z) << ") ";
+
+  ioutils::foldLine(strm,os.str(),"",") ") << std::endl;
+
+  return strm << "Total " << count << " fixed elements out of " << block.size()
+	      << std::endl;
+}
+
+std::ostream& print_KL(std::ostream& f, param_block& block, BlockElt z)
 {
   // silently fill the whole KL table
   const kl::KLContext& klc = block.klc(z,false);

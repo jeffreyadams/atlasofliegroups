@@ -98,26 +98,24 @@ bitmap::BitMap Permutation::renumbering(const bitmap::BitMap& b) const
   return result;
 }
 
+// Replace each index |i| in |v| by |(*this)[i]|
+template<typename U>
+void Permutation::renumber(std::vector<U>& v) const
+{
+  const Permutation& pi=*this;
+  for (typename std::vector<U>::iterator it=v.begin(); it!=v.end(); ++it)
+    *it = pi[*it];
+}
+
 /* Here we are again applying the permutation |p| to each of the entries
    of |v|, but the exceptional value of |except| is passed unchanged */
 template<typename U>
-std::vector<U>
-   Permutation::renumbering(const std::vector<U>& v, U except) const
+void Permutation::renumber(std::vector<U>& v, U except) const
 {
   const Permutation& pi=*this;
-  std::vector<U> result; result.reserve(v.size());
-  for (size_t i=0; i<v.size(); ++i)
-    result.push_back(v[i]==except ? except : pi[v[i]]);
-  return result;
-}
-
-// Replace each index |i| in |v| by |(*this)[i]|
-template<typename U>
-void Permutation::left_mult(std::vector<U>& v) const
-{
-  const Permutation& pi=*this;
-  for (size_t i=0; i<v.size(); ++i)
-    v[i]=pi[v[i]];
+  for (typename std::vector<U>::iterator it=v.begin(); it!=v.end(); ++it)
+    if (*it!=except)
+      *it = pi[*it];
 }
 
 /*! Permutes rows and columns of the matrix according to the permutation,
@@ -223,10 +221,13 @@ template std::vector<unsigned short>
 Permutation::renumbering(const std::vector<unsigned short>& v) const; // kgb
 
 template void
-Permutation::left_mult(std::vector<unsigned short>& v) const; // complexredgp
+Permutation::renumber(std::vector<unsigned short>& v) const; // complexredgp
 
 template void
-Permutation::left_mult(std::vector<unsigned long>& v) const; // rootdata,weyl,.
+Permutation::renumber(std::vector<unsigned long>& v) const; // rootdata,weyl,.
+
+template void
+Permutation::renumber(std::vector<unsigned int>&, unsigned int) const; // blocks
 
 template void
 Permutation::inv_conjugate(matrix::Matrix_base<int>& M) const; // weyl

@@ -53,7 +53,7 @@ StandardRepr
      const RatWeight& nu) const
 {
   const TitsElt a = khc.titsElt(srk); // was reduced during construction |srk|
-  const KGBElt x= khc.kgb().lookup(a,titsGroup());
+  const KGBElt x= khc.kgb().lookup(a);
   const InvolutionNbr i_x = kgb().inv_nr(x);
   const InvolutionTable& i_tab = complexGroup().involution_table();
   const WeightInvolution& theta = i_tab.matrix(i_x);

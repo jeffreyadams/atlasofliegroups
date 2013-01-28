@@ -25,7 +25,7 @@ transparent, but still not so easy to compute.
 THIRD DEFINITION: Identify each block element a with a pair (x,y)
 consisting of an orbit x of $K$ on the flag manifold $G/B$, and an
 orbit $y$ of $K^\vee$ on the flag manifold $G^\vee/B^\vee$ for the
-dual group (see the help file for "block").  Then 
+dual group (see the help file for "block").  Then
 
 a' = (x',y') \le a = (x,y)  IF AND ONLY IF   x' \le x   AND   y' \ge y
 
@@ -56,21 +56,20 @@ the output of the "block" command.)
 Each row of the output corresponds to a single representation, and the first
 column is the representation number followed by a colon.
 
-Following the representation number a is a comma-separated list of the
-immediate predecessors of representation #a in the Bruhat order.  
+Following the representation number i is a comma-separated list of the
+immediate predecessors of representation #i in the Bruhat order.
 
-The very last line of output records the total number of pairs (a',a)
-of representations for which a' \le a.  This number is an upper bound
-for the number of non-vanishing KL polynomials P_{a',a}; equality holds
+The very last line of output records the total number of pairs (x,y)
+of representations for which x \le y.  This number is an upper bound
+for the number of non-vanishing KL polynomials P_{x,y}; equality holds
 if all the K orbits on G/B have connected stabilizer (for example in
 U(p,q) or in complex groups).
 
 For example here is the block of the trivial representation of
-PGL(2,R)=SO(2,1): 
+PGL(2,R)=SO(2,1):
 
-block: type
+empty: blockorder
 Lie type: A1 ad s
-main: blockorder
 (weak) real forms are:
 0: su(2)
 1: sl(2,R)
@@ -96,7 +95,7 @@ formulas for each of the two finite-dimensional irreducibles 1 and 2.
 The last line says that there are five comparable pairs in the Bruhat
 order, so that at most five KL polynomials can be non-zero.  In fact
 the bound is achieved for PGL(2,R) (as one can see with the command
-"klbasis"): all the polynomials are 1.  
+"klbasis"): all the polynomials are 1.
 
 Perhaps the simplest case when the bound is _not_ achieved is for the
 large block (of 6 representations) in SL(3,R), where there are 15

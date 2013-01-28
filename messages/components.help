@@ -1,7 +1,7 @@
 
-The "components" command gives a description of the connected
-components of a real reductive group. This group is of the form
-(Z/2Z)^n for n less than or equal to the rank.
+The "components" command gives a description of the group of connected
+components of a real reductive group. This group is of the form (Z/2Z)^n
+for n less than or equal to the rank.
 
 If G is semisimple and simply connected then the real points of G is
 connected. If G is a torus the component group is (Z/2Z)^n where n is

@@ -190,16 +190,11 @@ bool BitMap::contains(const BitMap& b) const
   return true;
 }
 
-/*
-  Tells whether the current bitmap is disjoint from |b| (our complement
-  contains |b|). It is assumed that |b.capacity()<=capacity()|.
-*/
+// Whether the current bitmap is disjoint from |b|.
 bool BitMap::disjoint(const BitMap& b) const
 {
-  assert(b.capacity()<=capacity());
-
-  for (unsigned long j = 0; j < b.d_map.size(); ++j)
-    if ((b.d_map[j] & d_map[j])!=0)
+  for (unsigned long j = 0; j < d_map.size() and j < b.d_map.size(); ++j)
+    if ((d_map[j] & b.d_map[j])!=0)
       return false;
 
   return true;

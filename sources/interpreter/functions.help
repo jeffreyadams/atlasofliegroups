@@ -357,6 +357,14 @@ KGB: (RealFrom,int->KGBElt): select a KGB element x among those of a real form
   The call KGB(i,rf) selects the element in line i of the print_KGB(rf)
   output.
 real_form: (KGBElt->RealForm): the real form for which the argument is defined
+cross: (int,KGBElt->KGBElt): cross action for (generator,KGB element)
+Cayley: (int,KGBElt->KGBElt): Cayley transform for (generator,KGB element)
+  Calling Cayley(s,x) causes an error unless status(s,x)=3 (imag. non-compact)
+status: (int,KGBElt->int): status of generator on KGB element, scale 0..4
+  Encoding 0: Complex descent, 1: imaginary compact, 2: real,
+  3: imaginary non-compact, 4:Complex ascent
+twist: (KGBElt->KGBElt): twist of KGB element x, useful for Hermitian dual
+  This is defined by conjugation of x by the distinguished involution delta
 involution: (KGBElt->mat): the involution associated to the KGB element
 torus_bits: (KGBElt->vec): torus part of KGB element as vector of 0,1 values
 torus_factor:KGBElt->ratvec): torus part of KGB element, twice that in print_X
@@ -445,6 +453,11 @@ raw_KL: (RealForm,DualRealForm->mat,[vec],vec): Kazhdan-Lusztig data, raw form
   coefficients of the KL polynomial P_{v,w}. The length of v is the lergest
   index i such that len[i]<=v, so the length difference between v and w is the
   number of indices with v<len[i]<=w.
+dual_KL: (RealForm,DualRealForm->mat,[vec],vec) dual KL polynomials (Q_{x,y})
+  This is like raw_KL, but computes the polynomials Q instead of P. The
+  indexing of the block is the same as for the polynomials P, so up to length
+  signs, the matrix should be the inverse of the P matrix. The length stops
+  are provided as final value,as fo raw_KL; these are fot the _same_ block.
 
 print_gradings: (CartanClass,RealForm->): print gradings defined by real form
   This more or less gives the output of the 'gradings' command in the Atlas

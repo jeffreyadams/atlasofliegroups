@@ -28,7 +28,10 @@ namespace block_io {
 
   std::ostream& printDescent(std::ostream&, const DescentStatus& ds,
 			     size_t rank, RankFlags mask = RankFlags(~0ul));
-  std::ostream& print_KL(std::ostream&f, non_integral_block& block, BlockElt z);
+
+  std::ostream& print_twist(std::ostream& strm, const Block_base& block);
+
+  std::ostream& print_KL(std::ostream&f, param_block& block, BlockElt z);
 
 }
 

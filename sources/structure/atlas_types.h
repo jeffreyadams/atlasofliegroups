@@ -31,6 +31,13 @@
 
 #include "constants.h"
 
+// |ndebug_use| can be used to ensure variables in assert statements are "used"
+#ifdef NDEBUG
+#define ndebug_use(v) static_cast<void>(v)
+#else
+#define ndebug_use(v)
+#endif
+
 /******** forward type declarations ******************************************/
 
 namespace atlas {
@@ -350,10 +357,13 @@ namespace atlas {
   namespace blocks {
     class Block_base;
     class Block;
+    class param_block;
+    class gamma_block;
     class non_integral_block;
   }
   using blocks::Block_base;
   using blocks::Block;
+  using blocks::param_block;
   using blocks::non_integral_block;
   typedef unsigned int BlockElt;
   typedef std::vector<BlockElt> BlockEltList;

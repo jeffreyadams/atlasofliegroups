@@ -28,41 +28,45 @@ group. We have fixed a "fundamental" element delta in W^Gamma-W, and
 this element acts on W (permuting the simple reflections that generate
 W). (If G contains a compact Cartan subgroup this action is
 trivial). Then tau=p(x)=w*delta. We say w is a "twisted involution":
-w*delta(w)=1.  The last column gives the element w as a product of
-simple reflections. The identity is denoted e; the corresponding
-involution is tau=delta.
+w*delta(w)=1. The identity is denoted e; the corresponding
+involution is tau=delta. The last column gives the element w as
+obtained from this initial involution by a series of multiplications
+(by a commuting generator, so that the result is again an involution)
+and conjugations.
 
 For example:
-empty: type
+empty: kgb
 Lie type: C2 sc s
-main: realform
 (weak) real forms are:
 0: sp(2)
 1: sp(1,1)
 2: sp(4,R)
 enter your choice: 2
-real: kgb
 kgbsize: 11
 Name an output file (return for stdout, ? to abandon):
- 0:  0  0  [n,n]    1   2     6   4  e
- 1:  0  0  [n,n]    0   3     6   5  e
- 2:  0  0  [c,n]    2   0     *   4  e
- 3:  0  0  [c,n]    3   1     *   5  e
- 4:  1  2  [C,r]    8   4     *   *  2
- 5:  1  2  [C,r]    9   5     *   *  2
- 6:  1  1  [r,C]    6   7     *   *  1
- 7:  2  1  [n,C]    7   6    10   *  2,1,2
- 8:  2  2  [C,n]    4   9     *  10  1,2,1
- 9:  2  2  [C,n]    5   8     *  10  1,2,1
-10:  3  3  [r,r]   10  10     *   *  1,2,1,2
+ 0:  0  0  [n,n]    1   2     4   5  e
+ 1:  0  0  [n,n]    0   3     4   6  e
+ 2:  0  0  [c,n]    2   0     *   5  e
+ 3:  0  0  [c,n]    3   1     *   6  e
+ 4:  1  1  [r,C]    4   9     *   *  1^e
+ 5:  1  2  [C,r]    7   5     *   *  2^e
+ 6:  1  2  [C,r]    8   6     *   *  2^e
+ 7:  2  2  [C,n]    5   8     *  10  1x2^e
+ 8:  2  2  [C,n]    6   7     *  10  1x2^e
+ 9:  2  1  [n,C]    9   4    10   *  2x1^e
+10:  3  3  [r,r]   10  10     *   *  1^2x1^e
 
 These are the 11 orbits of K on G/B for G=Sp(4,R). In this case the
 outer automorphism is trivial, twisted involutions correspond to
 involutions in W, and delta=1. There are 6 involutions in W: the
-identity; 1; 2; 2,1,2; 1,2,1; and the long element 1,2,1,2. Of these 2
-and 1,2,1 are (twisted) conjugate (Cartan class #2) as are 1 and 2,1,2
-(Cartan class #1); the other two form a conjugacy class by themselves
-(Cartan classes #0 and #3) There are 4 minimal orbits, which are
-projective lines CP^1 in this case. The cross action permutes these 4
-lines among themselves, while Cayley transforms take them to orbits
-4-6. The final (open) orbit alone maps to the long element of W.
+identity e; simple reflections 1, 2 (printed as 1^e, 2^e, where the
+caret stands for multiplication, as occurs in Cayley transforms);
+the conjugates of each simple reflection by the other, printed as
+2x1^e and 1x2^e (the cross denotes conjugation); and the long element
+printed as 1^2x1^e. Of these 2^e and 1x2^e are (twisted) conjugate
+(Cartan class #2) as are 1^1 and 2x1^e (Cartan class #1); the other
+two form a conjugacy class by themselves (Cartan classes #0 and #3).
+There are 4 minimal orbits, which are projective lines CP^1 in this case.
+The cross action permutes these 4 lines among themselves, while Cayley
+transforms take them to orbits 4-6. The final (open) orbit alone
+maps to the long element of W.

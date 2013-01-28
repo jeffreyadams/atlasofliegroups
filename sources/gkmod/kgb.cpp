@@ -12,7 +12,7 @@
   This is kgb.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2007-2009 Marc van Leeuwen
+  Copyright (C) 2007-2013 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -452,6 +452,10 @@ void global_KGB::generate(size_t predicted_size)
   } // while length interval non-empty
 
   assert(elt.size()==predicted_size or predicted_size==0);
+
+  // finally set the Hermitian dual links
+  for (KGBElt i=0; i<elt.size(); ++i)
+    info[i].dual = lookup(Tg.twisted(elt[i]));
 } // |global_KGB::generate|
 
 
@@ -475,11 +479,11 @@ KGB::KGB(RealReductiveGroup& GR,
   //const TitsGroup& Tg = G.titsGroup();
   size_t rank = G.semisimpleRank(); // |G.rank()| does not interest us here
 
-  {// check |Cartan_classes|
+  {// check that |Cartan_classes| is upwards closed within |GR.Cartan_set()|
     BitMap test_set = GR.Cartan_set();
     test_set.andnot(Cartan_classes);
     for (BitMap::iterator it=test_set.begin(); it(); ++it)
-      assert(G.Cartan_ordering().below(*it).disjoint(Cartan_classes));
+      assert(Cartan_classes.disjoint(G.Cartan_ordering().below(*it)));
   }
 
   // make sure |G| has information about involutions for |Cartan_classes|
@@ -515,6 +519,7 @@ KGB::KGB(RealReductiveGroup& GR,
       i_tab.reduce(a);
       size_t k=elt_hash.match(a);
       assert(k==info.size()); // this KGB element should be new
+      ndebug_use(k);
       KGB_base::add_element(); // add additional info for element |k|
     } // |for (it)|
   }
@@ -635,6 +640,7 @@ KGB::KGB(RealReductiveGroup& GR,
 
   // finally install inverse Cayley links
   for (KGBElt x=0; x<size; ++x)
+  {
     for (weyl::Generator s=0; s<rank; ++s)
     {
       KGBElt c=data[s][x].Cayley_image;
@@ -645,6 +651,10 @@ KGB::KGB(RealReductiveGroup& GR,
 	else target.second=x;
       }
     }
+    TitsElt twx=titsGroup().twisted(titsElt(x));
+    i_tab.reduce(twx);
+    info[x].dual = lookup(twx);
+  }
 } // |KGB::KGB(GR,Cartan_classes,i_tab)|
 
 
@@ -679,8 +689,9 @@ TorusElement KGB::torus_part_global(const RootDatum&rd, KGBElt x) const
 
 // Looks up a |TitsElt| value and returns its KGB number, or |size()|
 // Since KGB does not have mod space handy, must assume |a| already reduced
-KGBElt KGB::lookup(const TitsElt& a, const TitsGroup& Tg) const
+KGBElt KGB::lookup(const TitsElt& a) const
 {
+  const TitsGroup& Tg=titsGroup();
   KGBEltPair p = tauPacket(a.tw());
   tits::TorusPart t = Tg.left_torus_part(a);
   for (KGBElt x=p.first; x<p.second; ++x)
@@ -936,8 +947,7 @@ subsys_KGB::subsys_KGB
 	torus_part.push_back(Tg.left_torus_part(elt_pool[x]));
 	Cartan.push_back(fd.cartanClass(elt_pool[x].tw()));
 	in_parent.push_back // find the |KGBElt| value in parent for |x|
-	  (kgb.lookup(TitsElt(Tg,torus_part.back(),w), // reconstruct with |w|
-		      Tg)); // |Tg| is needed again to extract torus parts...
+	  (kgb.lookup(TitsElt(Tg,torus_part.back(),w))); // reconstruct with |w|
       }
     }
     inv_hash.reconstruct();
