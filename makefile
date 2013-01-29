@@ -50,14 +50,16 @@ realex_includes := $(addprefix -Isources/,$(realex_dirs))
 
 # for the interpreter (realex sans the atlas library) sources are *.w files
 interpreter_cwebs := $(wildcard sources/interpreter/*.w)
-interpreter_objects := $(interpreter_cwebs:%.w=%.o)
+interpreter_cweb_objects := $(interpreter_cwebs:%.w=%.o)
+interpreter_objects := $(interpreter_cweb_objects) \
+    sources/interpreter/parser.tab.o
 interpreter_made_files := $(interpreter_cwebs:%.w=%.cpp) \
     $(filter-out %main.h,$(interpreter_cwebs:%.w=%.h))
 # the following variable is a list of patterns, not files!
 non_realex_objects := sources/io/interactive%.o \
     sources/interface/%.o sources/test/%.o \
     sources/io/poset.o sources/utilities/abelian.o sources/gkmod/kgp.o
-realex_objects := $(interpreter_objects) sources/interpreter/parser.tab.o \
+realex_objects := $(interpreter_objects)  \
     $(filter-out $(non_realex_objects),$(atlas_objects))
 
 objects := $(atlas_objects) $(interpreter_objects)
@@ -164,7 +166,7 @@ $(filter-out sources/interface/io.o,$(atlas_objects)) : %.o : %.cpp
 sources/interface/io.o : sources/interface/io.cpp
 	$(CXX) $(cflags) $(atlas_flags) -DMESSAGE_DIR_MACRO=\"$(messagedir)\" \
 	  -o sources/interface/io.o sources/interface/io.cpp
-$(interpreter_objects) : %.o : %.cpp
+$(interpreter_cweb_objects) : %.o : %.cpp
 	$(CXX) $(cflags) $(realex_flags) -o $*.o $*.cpp
 
 sources/interpreter/parser.tab.o: \
@@ -224,7 +226,8 @@ distribution:
 
 .PHONY: mostlyclean clean cleanall show
 mostlyclean:
-	rm -f $(objects) *~ *.out junk
+	rm -f $(objects) $(interpreter_made_files) \
+            sources/interpreter/parser.tab.* *~ *.out junk
 
 clean: mostlyclean
 	rm -f atlas realex
@@ -235,3 +238,6 @@ cleanall: clean
 $(cweb_dir)/ctanglex: \
   $(cweb_dir)/common.h $(cweb_dir)/ctangle.c $(cweb_dir)/ctangle.c
 	cd $(cweb_dir) && $(MAKE) ctanglex
+
+showobjects:
+	@echo $(objects)
