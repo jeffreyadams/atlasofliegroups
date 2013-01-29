@@ -302,7 +302,8 @@ void blocktwist_f()
 void kl_f()
 {
   ioutils::OutputFile file;
-  block_io::print_KL(file,currentBlock(),entry_z);
+  param_block& block=currentBlock(); // now |entry_z| is defined
+  block_io::print_KL(file,block,entry_z);
 }
 
 /* For each element $y$ in the block, outputs the list of non-zero K-L
