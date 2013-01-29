@@ -689,6 +689,7 @@ template signed char
   Vector<signed char>::dot(const Vector<signed char>&) const;
 template Num Vector<int>::dot(Vector<Num> const&) const;
 
+template Vector<int> Matrix<int>::operator*(Vector<int> const&) const;
 template Vector<Num> Matrix<int>::operator*(Vector<Num> const&) const;
 
 template Matrix_base<int>::Matrix_base

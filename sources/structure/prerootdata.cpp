@@ -31,10 +31,8 @@ namespace atlas {
 
 namespace {
 
-  WeightList rootBasis(const LieType& lt,
-		       const WeightList&);
-  CoweightList corootBasis(const LieType& lt,
-			   const CoweightList& lb);
+  WeightList rootBasis(const LieType& lt, const WeightList&);
+  CoweightList corootBasis(const LieType& lt, const CoweightList& lb);
 
 }
 
@@ -135,7 +133,7 @@ void PreRootDatum::swap(PreRootDatum& other)
   std::swap(d_rank,other.d_rank);
 }
 
-}
+} // |namespace prerootdata|
 
 /*****************************************************************************
 
@@ -166,8 +164,7 @@ namespace {
   This function returns the coordinates of the simple root basis in |lb|, so
   it is simply a base change by left multiplication by the inverse of |lb|.
 */
-WeightList rootBasis(const LieType& lt,
-				   const WeightList& lb)
+WeightList rootBasis(const LieType& lt, const WeightList& lb)
 {
   assert(lb.size()==lt.rank());
   LatticeCoeff d;
@@ -206,8 +203,7 @@ WeightList rootBasis(const LieType& lt,
   from the transposed matrix the columns representing vectors in the radical;
   this is what |lt| is used for. In fact we avoid transposition, copying rows.
 */
-CoweightList corootBasis(const LieType& lt,
-			 const WeightList& lb)
+CoweightList corootBasis(const LieType& lt, const WeightList& lb)
 {
   assert(lb.size()==lt.rank());
   LatticeMatrix q(lb,lb.size()); // square matrix
@@ -223,7 +219,10 @@ CoweightList corootBasis(const LieType& lt,
 }
 
 
-} // namsepace
+} // namespace
+
+
+// template instantiation
 
 namespace prerootdata {
 
