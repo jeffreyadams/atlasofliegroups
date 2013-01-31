@@ -15,17 +15,19 @@
 #include "complexredgp.h"
 #include "complexredgp_io.h"
 #include "error.h"
-#include "helpmode.h"
 #include "interactive.h"
 #include "io.h"
 #include "ioutils.h"
-#include "mainmode.h"
 #include "realredgp.h"
 #include "realredgp_io.h"
 #include "kgb.h"
 #include "kgb_io.h"
 #include "test.h"
 #include "kgp.h"
+
+#include "mainmode.h"
+#include "blockmode.h"
+#include "helpmode.h"
 
 /****************************************************************************
 
@@ -64,6 +66,7 @@ namespace {
 
   void type_f();
   void realform_f();
+  void dualrealform_f();
 
 
   // local variables
@@ -94,7 +97,6 @@ commands::CommandMode& realMode()
     real_mode.add("components",components_f);
     real_mode.add("cartan",cartan_f);
     real_mode.add("corder",corder_f);
-    real_mode.add("realform",realform_f);
     real_mode.add("realweyl",realweyl_f);
     real_mode.add("kgb",kgb_f);
     real_mode.add("KGB",KGB_f);
@@ -107,6 +109,8 @@ commands::CommandMode& realMode()
     // the "type" command should be redefined here because it needs to exit
     // the real mode
     real_mode.add("type",type_f); // override
+    real_mode.add("realform",realform_f); // override
+    real_mode.add("dualrealform",dualrealform_f);
 
     // add test commands
     test::addTestCommands(real_mode,RealmodeTag());
@@ -157,6 +161,24 @@ void real_mode_entry() throw(commands::EntryError)
     throw commands::EntryError();
   }
 }
+
+/*
+  Reset the real form, effectively re-entering the real mode. If the choice
+  of a new real form fails, the current real form remains in force.
+*/
+void realform_f()
+{
+  try
+  { // we can call the swap method for rvalues, but not with and rvalue arg
+    interactive::getRealGroup(mainmode::currentComplexInterface()).swap
+      (realmode::currentRealGroup());
+  }
+  catch (error::InputError& e)
+  {
+    e("real form not changed");
+  }
+}
+
 
 
 /*
@@ -219,21 +241,10 @@ void corder_f()
 }
 
 
-/*
-  Reset the type, effectively re-entering the real mode. If the
-  construction of the new type fails, the current real form remains in force.
-*/
-void realform_f()
+// enter block mode
+void dualrealform_f()
 {
-  try
-  { // we can call the swap method for rvalues, but not with and rvalue arg
-    interactive::getRealGroup(mainmode::currentComplexInterface()).swap
-      (realmode::currentRealGroup());
-  }
-  catch (error::InputError& e)
-  {
-    e("real form not changed");
-  }
+  commands::activate(blockmode::blockMode());
 }
 
 // Show the structure of the real weyl group.

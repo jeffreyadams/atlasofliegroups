@@ -57,6 +57,9 @@ namespace reprmode {
 
   void small_kgb_f(); // not yet implemented
   void small_dual_kgb_f(); // not yet implemented
+  void iblock_f();
+  void nblock_f();
+  void partial_block_f();
   void block_f();
   void blockorder_f();
   void blockwrite_f(); // not yet implemented
@@ -107,7 +110,10 @@ commands::CommandMode& reprMode()
     repr_mode.add("realform",realform_f); // this one too
     // repr_mode.add("smallkgb",small_kgb_f);
     // repr_mode.add("smalldualkgb",small_dual_kgb_f);
-    // repr_mode.add("block",block_f);
+    repr_mode.add("iblock",iblock_f);
+    repr_mode.add("nblock",nblock_f);
+    repr_mode.add("partial_block",partial_block_f);
+    repr_mode.add("block",block_f);
     repr_mode.add("blockorder",blockorder_f);
     // repr_mode.add("blockwrite",blockwrite_f);
     // repr_mode.add("blockstabilizer",blockstabilizer_f);
@@ -276,6 +282,69 @@ void realform_f()
   }
 }
 
+void iblock_f()
+{
+  if (state!=iblock)
+  {
+    delete WGr_pointer; WGr_pointer=NULL;
+    delete block_pointer; // destroy any installed block first
+    block_pointer =
+      new blocks::gamma_block(currentRepContext(),
+			      currentSubSystem(),
+			      currentStandardRepr(),
+			      entry_z);
+    state=iblock;
+  }
+
+  const blocks::param_block& block = currentBlock();
+
+  ioutils::OutputFile f;
+  block.print_to(f,false);
+  f << "Input parameters define element " << entry_z
+    << " of this block." << std::endl;
+
+} // |iblock_f|
+
+void nblock_f()
+{
+  if (state!=nblock)
+  {
+    delete WGr_pointer; WGr_pointer=NULL;
+    delete block_pointer; // destroy installed block first
+    block_pointer =
+      new non_integral_block(currentRepContext(),
+			     currentStandardRepr(),
+			     entry_z);
+    state=nblock;
+  }
+  const blocks::param_block& block = currentBlock();
+
+  ioutils::OutputFile f;
+  f << "Given parameters define element " << entry_z
+    << " of the following block:" << std::endl;
+
+  block.print_to(f,false);
+  f << "Input parameters define element " << entry_z
+    << " of this block." << std::endl;
+  // block_io::print_KL(f,block,z);
+} // |nblock_f|
+
+void partial_block_f()
+{
+  if (state!=partial_block)
+  {
+    delete WGr_pointer; WGr_pointer=NULL;
+    delete block_pointer; // destroy installed block first
+    block_pointer =
+      new non_integral_block(currentRepContext(),
+			     currentStandardRepr());
+    state=partial_block;
+    entry_z = currentBlock().size()-1;
+  }
+  const blocks::param_block& block = currentBlock();
+  ioutils::OutputFile f;
+  block.print_to(f,false);
+} // |partial_block_f|
 
 // Print the current block
 void block_f()

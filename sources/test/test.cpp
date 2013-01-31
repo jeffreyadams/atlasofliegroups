@@ -90,10 +90,7 @@ namespace {
   void exam_f();
 
   void X_f();
-  void iblock_f();
-  void nblock_f();
   void deform_f();
-  void partial_block_f();
   void embedding_f();
 
 
@@ -258,9 +255,6 @@ void addTestCommands<reprmode::ReprmodeTag>
     mode.add("test",test_f);
 
   // add additional commands here :
-  mode.add("iblock",iblock_f);
-  mode.add("nblock",nblock_f);
-  mode.add("partial_block",partial_block_f);
 }
 
 
@@ -1079,66 +1073,6 @@ void X_f()
   kgb_io::print_X(f,kgb);
 }
 
-void iblock_f()
-{
-  if (reprmode::state!=reprmode::iblock)
-  {
-    delete reprmode::block_pointer; // destroy any installed block first
-    reprmode::block_pointer =
-      new blocks::gamma_block(reprmode::currentRepContext(),
-			      reprmode::currentSubSystem(),
-			      reprmode::currentStandardRepr(),
-			      reprmode::entry_z);
-    reprmode::state=reprmode::iblock;
-  }
-
-  const blocks::param_block& block = reprmode::currentBlock();
-
-  ioutils::OutputFile f;
-  block.print_to(f,false);
-  f << "Input parameters define element " << reprmode::entry_z
-    << " of this block." << std::endl;
-
-} // |iblock_f|
-
-void nblock_f()
-{
-  if (reprmode::state!=reprmode::nblock)
-  {
-    delete reprmode::block_pointer; // destroy installed block first
-    reprmode::block_pointer =
-      new non_integral_block(reprmode::currentRepContext(),
-			     reprmode::currentStandardRepr(),
-			     reprmode::entry_z);
-    reprmode::state=reprmode::nblock;
-  }
-  const blocks::param_block& block = reprmode::currentBlock();
-
-  ioutils::OutputFile f;
-  f << "Given parameters define element " << reprmode::entry_z
-    << " of the following block:" << std::endl;
-
-  block.print_to(f,false);
-  f << "Input parameters define element " << reprmode::entry_z
-    << " of this block." << std::endl;
-  // block_io::print_KL(f,block,z);
-} // |nblock_f|
-
-void partial_block_f()
-{
-  if (reprmode::state!=reprmode::partial_block)
-  {
-    delete reprmode::block_pointer; // destroy installed block first
-    reprmode::block_pointer =
-      new non_integral_block(reprmode::currentRepContext(),
-			     reprmode::currentStandardRepr());
-    reprmode::state=reprmode::partial_block;
-    reprmode::entry_z = reprmode::currentBlock().size()-1;
-  }
-  const blocks::param_block& block = reprmode::currentBlock();
-  ioutils::OutputFile f;
-  block.print_to(f,false);
-} // |partial_block_f|
 
 
 TorusElement torus_part
