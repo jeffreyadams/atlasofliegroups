@@ -102,7 +102,7 @@ void help_f()
 
 {
   helpmode::intro_h();
-  activate(helpmode::helpMode());
+  helpmode::helpMode().activate();
 }
 
 void q_h()
@@ -115,7 +115,7 @@ void type_f()
 
 {
   try {
-    activate(mainmode::mainMode());
+    mainmode::mainMode().activate();
   }
   catch (commands::EntryError) { // silently ignore failure to enter
   }

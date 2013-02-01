@@ -32,7 +32,6 @@ namespace reprmode {
 /******** function declarations ********************************************/
 
   commands::CommandMode& reprMode();
-  const Rep_context& currentRepContext();
   const SubSystemWithGroup& currentSubSystem();
   param_block& currentBlock();
   const StandardRepr& currentStandardRepr();

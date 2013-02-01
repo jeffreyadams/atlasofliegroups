@@ -179,7 +179,7 @@ commands::CommandMode& mainMode()
   if (main_mode.empty()) // true on first call
   {
     // add the commands from the empty mode
-    commands::addCommands(main_mode,emptymode::emptyMode());
+    main_mode.addCommands(emptymode::emptyMode());
 
     // add the commands from the current mode
     main_mode.add("type",type_f);
@@ -309,7 +309,7 @@ void poscoroots_f()
 
 void help_f() // override more extensive help of empty mode by simple help
 {
-  activate(helpmode::helpMode());
+  helpmode::helpMode().activate();
 }
 
 // Print the matrix of blocksizes.
@@ -321,7 +321,7 @@ void blocksizes_f()
 // Activates real mode (user will select real form)
 void realform_f()
 {
-  commands::activate(realmode::realMode());
+  realmode::realMode().activate();
 }
 
 

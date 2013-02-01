@@ -30,6 +30,8 @@ namespace realmode {
   commands::CommandMode& realMode();
   RealReductiveGroup& currentRealGroup();
   RealFormNbr currentRealForm();
+  const Rep_context& currentRepContext();
+  Rep_table& currentRepTable();
 
 }
 

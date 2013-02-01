@@ -82,7 +82,7 @@ StandardRepr Rep_context::sr
 		      ((lambda+nu+theta_diff)/=2).normalize());
 }
 
-StandardRepr Rep_context::sr(const non_integral_block& b, BlockElt i) const
+StandardRepr Rep_context::sr(const param_block& b, BlockElt i) const
 {
   assert(i<b.size());
   return sr(b.parent_x(i),b.lambda_rho(i),b.gamma());
@@ -411,8 +411,7 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
   else return SR_poly(z,repr_less());
 } // |Rep_context::expand_final|
 
-void Rep_table::add_block
-  (non_integral_block& block, const BlockEltList& survivors)
+void Rep_table::add_block(param_block& block, const BlockEltList& survivors)
 {
   size_t old_size = hash.size();
   BlockEltList new_survivors;
@@ -488,8 +487,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr z)
   return KL_list[hash_index];
 }
 
-SR_poly Rep_table::deformation_terms
-  (non_integral_block& block,BlockElt entry_elem)
+SR_poly Rep_table::deformation_terms (param_block& block,BlockElt entry_elem)
 {
   SR_poly result(repr_less());
   if (not block.survives(entry_elem) or block.length(entry_elem)==0)

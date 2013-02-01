@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
     realmode::realMode().add_descendant(reprmode::reprMode());
 
     input::initReadLine();
-    commands::run(emptymode::emptyMode());
+    emptymode::emptyMode().run();
 
     std::exit(0);
   }

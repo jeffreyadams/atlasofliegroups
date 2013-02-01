@@ -104,7 +104,7 @@ commands::CommandMode& blockMode()
   if (block_mode.empty()) // true upon first call
   {
     // add the commands from the real mode
-    commands::addCommands(block_mode,realmode::realMode());
+    block_mode.addCommands(realmode::realMode());
 
     // add commands for this mode
     // the "type" command should be redefined here because it needs to exit
@@ -232,9 +232,8 @@ void block_mode_entry() throw(commands::EntryError)
 void dualrealform_f()
 {
   try
-  { // we can call the swap method for rvalues, but not with and rvalue arg
+  {
     RealReductiveGroup& G_R = realmode::currentRealGroup();
-
     ComplexReductiveGroup& G_C = G_R.complexGroup();
     const complexredgp_io::Interface& G_I = mainmode::currentComplexInterface();
 
@@ -244,7 +243,9 @@ void dualrealform_f()
     interactive::getInteractive
       (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
 
+    // we can call the swap method for rvalues, but not with and rvalue arg
     RealReductiveGroup(*dual_G_C_pointer,drf).swap(*dual_G_R_pointer);
+
     delete block_pointer; block_pointer=NULL;
     delete WGr_pointer; WGr_pointer=NULL;
   }

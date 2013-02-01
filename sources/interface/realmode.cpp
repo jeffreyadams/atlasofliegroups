@@ -24,9 +24,11 @@
 #include "kgb_io.h"
 #include "test.h"
 #include "kgp.h"
+#include "repr.h"
 
 #include "mainmode.h"
 #include "blockmode.h"
+#include "reprmode.h"
 #include "helpmode.h"
 
 /****************************************************************************
@@ -67,12 +69,13 @@ namespace {
   void type_f();
   void realform_f();
   void dualrealform_f();
+  void repr_f();
 
 
   // local variables
 
   RealReductiveGroup* G_R_pointer=NULL;
-
+  Rep_table* rt=NULL;
 }
 
 /*****************************************************************************
@@ -91,7 +94,7 @@ commands::CommandMode& realMode()
   if (real_mode.empty()) // true upon first call
   {
     // add the commands from the main mode
-    commands::addCommands(real_mode,mainmode::mainMode());
+    real_mode.addCommands(mainmode::mainMode());
 
     // add commands for this mode
     real_mode.add("components",components_f);
@@ -111,6 +114,7 @@ commands::CommandMode& realMode()
     real_mode.add("type",type_f); // override
     real_mode.add("realform",realform_f); // override
     real_mode.add("dualrealform",dualrealform_f);
+    real_mode.add("repr",repr_f);
 
     // add test commands
     test::addTestCommands(real_mode,RealmodeTag());
@@ -128,6 +132,8 @@ RealFormNbr currentRealForm()
   return G_R_pointer->realForm();
 }
 
+const Rep_context& currentRepContext() { return *rt; }
+Rep_table& currentRepTable() { return *rt; }
 
 } // namespace realmode
 
@@ -153,6 +159,7 @@ void real_mode_entry() throw(commands::EntryError)
   {
     G_R_pointer=new RealReductiveGroup
       (interactive::getRealGroup(mainmode::currentComplexInterface()));
+    rt = new Rep_table(currentRealGroup());
   }
   catch(error::InputError& e)
   {
@@ -171,7 +178,8 @@ void realform_f()
   try
   { // we can call the swap method for rvalues, but not with and rvalue arg
     interactive::getRealGroup(mainmode::currentComplexInterface()).swap
-      (realmode::currentRealGroup());
+      (currentRealGroup());
+    delete rt; rt = new Rep_table(currentRealGroup());
   }
   catch (error::InputError& e)
   {
@@ -187,6 +195,7 @@ void realform_f()
 void real_mode_exit()
 {
   delete G_R_pointer; G_R_pointer=NULL;
+  delete rt; rt=NULL;
 }
 
 
@@ -244,7 +253,13 @@ void corder_f()
 // enter block mode
 void dualrealform_f()
 {
-  commands::activate(blockmode::blockMode());
+  blockmode::blockMode().activate();
+}
+
+// enter repr mode
+void repr_f()
+{
+  reprmode::reprMode().activate();
 }
 
 // Show the structure of the real weyl group.

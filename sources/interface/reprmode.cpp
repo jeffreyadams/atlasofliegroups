@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 
 #include "reprmode.h"
 #include "realmode.h"
@@ -65,6 +66,7 @@ namespace reprmode {
   void blockwrite_f(); // not yet implemented
   void blockstabilizer_f(); // not yet implemented
   void blocktwist_f();
+  void deform_f();
   void kl_f();
   void klbasis_f();
   void kllist_f();
@@ -75,11 +77,11 @@ namespace reprmode {
 
   void type_f();
   void realform_f();
+  void repr_f();
 
   // mode-local variables
   block_type state=noblock;
   BlockElt entry_z = blocks::UndefBlock;
-  Rep_context* rc=NULL;
   SubSystemWithGroup* sub=NULL;
   StandardRepr* sr=NULL;
   param_block* block_pointer=NULL; // block contains |KLContext| pointer
@@ -101,7 +103,7 @@ commands::CommandMode& reprMode()
   if (repr_mode.empty()) // true upon first call
   {
     // add the commands from the real mode
-    commands::addCommands(repr_mode,realmode::realMode());
+    repr_mode.addCommands(realmode::realMode());
 
     // add commands for this mode
     // the "type" command should be redefined here because it needs to exit
@@ -118,6 +120,7 @@ commands::CommandMode& reprMode()
     // repr_mode.add("blockwrite",blockwrite_f);
     // repr_mode.add("blockstabilizer",blockstabilizer_f);
     repr_mode.add("blocktwist",blocktwist_f);
+    repr_mode.add("deform",deform_f);
     repr_mode.add("kl",kl_f);
     repr_mode.add("klbasis",klbasis_f);
     repr_mode.add("kllist",kllist_f);
@@ -136,14 +139,13 @@ param_block& currentBlock()
 {
   if (state==noblock) // we have entered reprmode without setting block
   {
-    block_pointer =  new non_integral_block(*rc,*sr); // partial block default
+    block_pointer = // partial block default
+      new non_integral_block(realmode::currentRepTable(),*sr);
     state=partial_block;
     entry_z = block_pointer->size()-1;
   }
   return *block_pointer;
 }
-
-const Rep_context& currentRepContext() { return *rc; }
 
 const SubSystemWithGroup& currentSubSystem() { return *sub; }
 
@@ -207,8 +209,8 @@ void repr_mode_entry() throw(commands::EntryError)
 		  << (s<sub->rank()-1 ? "," : ".\n");
     }
 
-    rc = new Rep_context(GR);
-    sr = new StandardRepr(rc->sr(x,lambda_rho,gamma));
+    sr = new
+      StandardRepr(realmode::currentRepContext().sr(x,lambda_rho,gamma));
   }
   catch(error::InputError& e)
   {
@@ -218,14 +220,54 @@ void repr_mode_entry() throw(commands::EntryError)
   }
 }
 
+/*
+  Reset the parameter, effectively re-entering repr mode. If the choice
+  of a new parameter fails, the current parameter remains in force.
+*/
+void repr_f()
+{
+  try
+  {
+    RealReductiveGroup& GR = realmode::currentRealGroup();
 
+    Weight lambda_rho;
+    RatWeight gamma(0);
+    KGBElt x;
+
+    sub = new SubSystemWithGroup
+      (interactive::get_parameter(GR,x,lambda_rho,gamma));
+
+    Permutation pi;
+
+    std::cout << "Subsystem on dual side is ";
+    if (sub->rank()==0)
+      std::cout << "empty.\n";
+    else
+    {
+      std::cout << "of type "
+		<< dynkin::Lie_type(sub->cartanMatrix(),true,false,pi)
+		<< ", with roots ";
+      for (weyl::Generator s=0; s<sub->rank(); ++s)
+	std::cout << sub->parent_nr_simple(pi[s])
+		  << (s<sub->rank()-1 ? "," : ".\n");
+    }
+    delete sr;
+    sr = new
+      StandardRepr(realmode::currentRepContext().sr(x,lambda_rho,gamma));
+    delete block_pointer; block_pointer=NULL;
+    delete WGr_pointer; WGr_pointer=NULL;
+  }
+  catch (error::InputError& e)
+  {
+    e("parameter not changed");
+  }
+}
 /*
   Synopsis: destroys any local data, resoring NULL pointers
 */
 void repr_mode_exit()
 {
   state=noblock;
-  delete rc; rc=NULL;
   delete sr; sr=NULL;
   delete block_pointer; block_pointer=NULL;
   delete WGr_pointer; WGr_pointer=NULL;
@@ -289,20 +331,13 @@ void iblock_f()
     delete WGr_pointer; WGr_pointer=NULL;
     delete block_pointer; // destroy any installed block first
     block_pointer =
-      new blocks::gamma_block(currentRepContext(),
+      new blocks::gamma_block(realmode::currentRepContext(),
 			      currentSubSystem(),
 			      currentStandardRepr(),
 			      entry_z);
     state=iblock;
   }
-
-  const blocks::param_block& block = currentBlock();
-
-  ioutils::OutputFile f;
-  block.print_to(f,false);
-  f << "Input parameters define element " << entry_z
-    << " of this block." << std::endl;
-
+  block_f();
 } // |iblock_f|
 
 void nblock_f()
@@ -312,21 +347,12 @@ void nblock_f()
     delete WGr_pointer; WGr_pointer=NULL;
     delete block_pointer; // destroy installed block first
     block_pointer =
-      new non_integral_block(currentRepContext(),
+      new non_integral_block(realmode::currentRepContext(),
 			     currentStandardRepr(),
 			     entry_z);
     state=nblock;
   }
-  const blocks::param_block& block = currentBlock();
-
-  ioutils::OutputFile f;
-  f << "Given parameters define element " << entry_z
-    << " of the following block:" << std::endl;
-
-  block.print_to(f,false);
-  f << "Input parameters define element " << entry_z
-    << " of this block." << std::endl;
-  // block_io::print_KL(f,block,z);
+  block_f();
 } // |nblock_f|
 
 void partial_block_f()
@@ -336,14 +362,12 @@ void partial_block_f()
     delete WGr_pointer; WGr_pointer=NULL;
     delete block_pointer; // destroy installed block first
     block_pointer =
-      new non_integral_block(currentRepContext(),
+      new non_integral_block(realmode::currentRepContext(),
 			     currentStandardRepr());
     state=partial_block;
     entry_z = currentBlock().size()-1;
   }
-  const blocks::param_block& block = currentBlock();
-  ioutils::OutputFile f;
-  block.print_to(f,false);
+  block_f();
 } // |partial_block_f|
 
 // Print the current block
@@ -351,6 +375,8 @@ void block_f()
 {
   ioutils::OutputFile file;
   currentBlock().print_to(file,false);
+  file << "Input parameters define element " << entry_z
+       << " of this block." << std::endl;
 }
 
 // Print the Hasse diagram for the Bruhat order on the current block
@@ -374,6 +400,52 @@ void kl_f()
   param_block& block=currentBlock(); // now |entry_z| is defined
   block_io::print_KL(file,block,entry_z);
 }
+
+
+void deform_f()
+{
+
+  Rep_table& rt = realmode::currentRepTable();
+  param_block& block = currentBlock();
+  repr::SR_poly terms = rt.deformation_terms(block,entry_z);
+
+  std::vector<StandardRepr> pool;
+  HashTable<StandardRepr,unsigned long> hash(pool);
+
+  ioutils::OutputFile f;
+
+  f << "Orientation numbers:\n";
+  bool first=true;
+  for (BlockElt x=0; x<=entry_z; ++x)
+    if (block.survives(x))
+    {
+      hash.match(rt.sr(block,x));
+      if (first) first=false;
+      else f<< ", ";
+      StandardRepr r = rt.sr(block,x);
+      f << x << ": " <<  rt.orientation_number(r);
+    }
+  f << ".\n";
+
+  if (block.survives(entry_z))
+  {
+    f << "Deformation terms for I(" << entry_z << ")_c: (1-s) times\n";
+    std::ostringstream os;
+    for (repr::SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
+    {
+      int eval=it->second.e();
+      os << ' ';
+      if (eval==1 or eval==-1)
+	os << (eval==1 ? '+' : '-'); // sign of evaluation
+      else
+	os << std::setiosflags(std::ios_base::showpos) << eval;
+      os <<"I(" << hash.find(it->first) << ")_c";
+    }
+    ioutils::foldLine(f,os.str()) << std::endl;
+
+  }
+} // |deform_f|
+
 
 /* For each element $y$ in the block, outputs the list of non-zero K-L
    polynomials $P_{x,y}$.
