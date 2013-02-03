@@ -14,6 +14,7 @@
 #include "reprmode.h"
 #include "realmode.h"
 #include "mainmode.h"
+#include "blockmode.h" // for re-use of |currentKL| and such
 
 #include "complexredgp.h"
 #include "complexredgp_io.h"
@@ -49,9 +50,9 @@
 
 namespace atlas {
 
-namespace reprmode {
+namespace commands {
 
-  void repr_mode_entry() throw(commands::EntryError);
+  void repr_mode_entry() throw(EntryError);
   void repr_mode_exit();
 
   // functions for the predefined commands
@@ -95,52 +96,43 @@ namespace reprmode {
 ******************************************************************************/
 
 
-// Returns a |CommandMode| object that is constructed on first call.
-commands::CommandMode& reprMode()
+// Returns a |CommandNode| object that is constructed on first call.
+CommandNode reprNode()
 {
-  static commands::CommandMode repr_mode
-    ("repr: ",repr_mode_entry,repr_mode_exit);
-  if (repr_mode.empty()) // true upon first call
-  {
-    // add the commands from the real mode
-    repr_mode.addCommands(realmode::realMode());
+  CommandNode result("repr: ",repr_mode_entry,repr_mode_exit);
+  result.add("type",type_f); // override
+  result.add("realform",realform_f); // this one too
+  // result.add("smallkgb",small_kgb_f);
+  // result.add("smalldualkgb",small_dual_kgb_f);
+  result.add("iblock",iblock_f);
+  result.add("nblock",nblock_f);
+  result.add("partial_block",partial_block_f);
+  result.add("block",block_f);
+  result.add("blockorder",blockorder_f);
+  // result.add("blockwrite",blockwrite_f);
+  // result.add("blockstabilizer",blockstabilizer_f);
+  result.add("blocktwist",blocktwist_f);
+  result.add("deform",deform_f);
+  result.add("kl",kl_f);
+  result.add("klbasis",klbasis_f);
+  result.add("kllist",kllist_f);
+  result.add("primkl",primkl_f);
+  result.add("klwrite",klwrite_f);
+  result.add("wcells",wcells_f);
+  result.add("wgraph",wgraph_f);
 
-    // add commands for this mode
-    // the "type" command should be redefined here because it needs to exit
-    // the block and real modes
-    repr_mode.add("type",type_f); // override
-    repr_mode.add("realform",realform_f); // this one too
-    // repr_mode.add("smallkgb",small_kgb_f);
-    // repr_mode.add("smalldualkgb",small_dual_kgb_f);
-    repr_mode.add("iblock",iblock_f);
-    repr_mode.add("nblock",nblock_f);
-    repr_mode.add("partial_block",partial_block_f);
-    repr_mode.add("block",block_f);
-    repr_mode.add("blockorder",blockorder_f);
-    // repr_mode.add("blockwrite",blockwrite_f);
-    // repr_mode.add("blockstabilizer",blockstabilizer_f);
-    repr_mode.add("blocktwist",blocktwist_f);
-    repr_mode.add("deform",deform_f);
-    repr_mode.add("kl",kl_f);
-    repr_mode.add("klbasis",klbasis_f);
-    repr_mode.add("kllist",kllist_f);
-    repr_mode.add("primkl",primkl_f);
-    repr_mode.add("klwrite",klwrite_f);
-    repr_mode.add("wcells",wcells_f);
-    repr_mode.add("wgraph",wgraph_f);
+  // add test commands
+  test::addTestCommands(result,ReprmodeTag());
 
-    // add test commands
-    test::addTestCommands(repr_mode,ReprmodeTag());
-  }
-  return repr_mode;
+  return result;
 }
 
-param_block& currentBlock()
+param_block& current_param_block()
 {
   if (state==noblock) // we have entered reprmode without setting block
   {
     block_pointer = // partial block default
-      new non_integral_block(realmode::currentRepTable(),*sr);
+      new non_integral_block(currentRepTable(),*sr);
     state=partial_block;
     entry_z = block_pointer->size()-1;
   }
@@ -151,28 +143,12 @@ const SubSystemWithGroup& currentSubSystem() { return *sub; }
 
 const StandardRepr& currentStandardRepr() { return *sr; }
 
-kl::KLContext& currentKL()
-{
-  return currentBlock().klc(currentBlock().size()-1,true);
-}
-
-const wgraph::WGraph& currentWGraph()
-{
-  if (WGr_pointer==NULL)
-  {
-    const kl::KLContext& c=currentKL();
-    WGr_pointer=new wgraph::WGraph(c.rank());
-    kl::wGraph(*WGr_pointer,c);
-  }
-  return *WGr_pointer;
-}
-
 
 /****************************************************************************
 
-        Chapter II -- The repr mode |CommandMode|
+        Chapter II -- The repr mode |CommandNode|
 
-  One instance of |CommandMode| for the repr mode is created at the
+  One instance of |CommandNode| for the repr mode is created at the
   first call of |reprMode()|; further calls just return a reference to it.
 
 *****************************************************************************/
@@ -181,11 +157,11 @@ const wgraph::WGraph& currentWGraph()
   Synopsis: attempts to set a real form and dual real form interactively.
   In case of failure, throws an InputError and returns.
 */
-void repr_mode_entry() throw(commands::EntryError)
+void repr_mode_entry() throw(EntryError)
 {
   try
   {
-    RealReductiveGroup& GR = realmode::currentRealGroup();
+    RealReductiveGroup& GR = currentRealGroup();
 
     Weight lambda_rho;
     RatWeight gamma(0);
@@ -210,13 +186,13 @@ void repr_mode_entry() throw(commands::EntryError)
     }
 
     sr = new
-      StandardRepr(realmode::currentRepContext().sr(x,lambda_rho,gamma));
+      StandardRepr(currentRepContext().sr(x,lambda_rho,gamma));
   }
   catch(error::InputError& e)
   {
     repr_mode_exit(); // clean up
     e("no parameter was set");
-    throw commands::EntryError();
+    throw EntryError();
   }
 }
 
@@ -228,7 +204,7 @@ void repr_f()
 {
   try
   {
-    RealReductiveGroup& GR = realmode::currentRealGroup();
+    RealReductiveGroup& GR = currentRealGroup();
 
     Weight lambda_rho;
     RatWeight gamma(0);
@@ -253,7 +229,7 @@ void repr_f()
     }
     delete sr;
     sr = new
-      StandardRepr(realmode::currentRepContext().sr(x,lambda_rho,gamma));
+      StandardRepr(currentRepContext().sr(x,lambda_rho,gamma));
     delete block_pointer; block_pointer=NULL;
     delete WGr_pointer; WGr_pointer=NULL;
   }
@@ -296,9 +272,9 @@ void type_f()
     complexredgp_io::Interface* I;
 
     interactive::getInteractive(G,I);
-    mainmode::replaceComplexGroup(G,I);
-    commands::exitMode(); // upon success pop block mode, destroying dual group
-    commands::exitMode(); // and pop real mode, destroying real group
+    replaceComplexGroup(G,I);
+    exitMode(); // upon success pop block mode, destroying dual group
+    exitMode(); // and pop real mode, destroying real group
   }
   catch (error::InputError& e) {
     e("complex group and real form not changed");
@@ -314,10 +290,10 @@ void realform_f()
 {
   try
   { // we can call the swap method for rvalues, but not with and rvalue arg
-    interactive::getRealGroup(mainmode::currentComplexInterface()).swap
-      (realmode::currentRealGroup());
+    interactive::getRealGroup(currentComplexInterface()).swap
+      (currentRealGroup());
 
-    commands::exitMode(); // upon success pop repr mode, destroying data
+    exitMode(); // upon success pop repr mode, destroying data
   }
   catch (error::InputError& e) {
     e("real form not changed");
@@ -331,7 +307,7 @@ void iblock_f()
     delete WGr_pointer; WGr_pointer=NULL;
     delete block_pointer; // destroy any installed block first
     block_pointer =
-      new blocks::gamma_block(realmode::currentRepContext(),
+      new blocks::gamma_block(currentRepContext(),
 			      currentSubSystem(),
 			      currentStandardRepr(),
 			      entry_z);
@@ -347,7 +323,7 @@ void nblock_f()
     delete WGr_pointer; WGr_pointer=NULL;
     delete block_pointer; // destroy installed block first
     block_pointer =
-      new non_integral_block(realmode::currentRepContext(),
+      new non_integral_block(currentRepContext(),
 			     currentStandardRepr(),
 			     entry_z);
     state=nblock;
@@ -362,10 +338,10 @@ void partial_block_f()
     delete WGr_pointer; WGr_pointer=NULL;
     delete block_pointer; // destroy installed block first
     block_pointer =
-      new non_integral_block(realmode::currentRepContext(),
+      new non_integral_block(currentRepContext(),
 			     currentStandardRepr());
     state=partial_block;
-    entry_z = currentBlock().size()-1;
+    entry_z = current_param_block().size()-1;
   }
   block_f();
 } // |partial_block_f|
@@ -374,7 +350,7 @@ void partial_block_f()
 void block_f()
 {
   ioutils::OutputFile file;
-  currentBlock().print_to(file,false);
+  current_param_block().print_to(file,false);
   file << "Input parameters define element " << entry_z
        << " of this block." << std::endl;
 }
@@ -382,7 +358,7 @@ void block_f()
 // Print the Hasse diagram for the Bruhat order on the current block
 void blockorder_f()
 {
-  param_block& block = currentBlock();
+  param_block& block = current_param_block();
   std::cout << "block size: " << block.size() << std::endl;
   ioutils::OutputFile file;
   kgb_io::printBruhatOrder(file,block.bruhatOrder());
@@ -391,13 +367,13 @@ void blockorder_f()
 void blocktwist_f()
 {
   ioutils::OutputFile file;
-  block_io::print_twist(file,currentBlock());
+  block_io::print_twist(file,current_param_block());
 }
 
 void kl_f()
 {
   ioutils::OutputFile file;
-  param_block& block=currentBlock(); // now |entry_z| is defined
+  param_block& block=current_param_block(); // now |entry_z| is defined
   block_io::print_KL(file,block,entry_z);
 }
 
@@ -405,8 +381,8 @@ void kl_f()
 void deform_f()
 {
 
-  Rep_table& rt = realmode::currentRepTable();
-  param_block& block = currentBlock();
+  Rep_table& rt = currentRepTable();
+  param_block& block = current_param_block();
   repr::SR_poly terms = rt.deformation_terms(block,entry_z);
 
   std::vector<StandardRepr> pool;
@@ -459,7 +435,7 @@ void klbasis_f()
   ioutils::OutputFile file;
   file << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:"
        << std::endl << std::endl;
-  kl_io::printAllKL(file,klc,currentBlock());
+  kl_io::printAllKL(file,klc,current_param_block());
 }
 
 
@@ -487,7 +463,7 @@ void primkl_f()
   ioutils::OutputFile file;
   file << "Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
        << std::endl << std::endl;
-  kl_io::printPrimitiveKL(file,klc,currentBlock());
+  kl_io::printPrimitiveKL(file,klc,current_param_block());
 }
 
 // Write the results of the KL computations to a pair of binary files
@@ -529,12 +505,6 @@ void wcells_f()
 
   ioutils::OutputFile file; wgraph_io::printWDecomposition(file,dg);
 }
-
-
-
-
-} // namespace
-
 
 
 
@@ -623,7 +593,7 @@ void wgraph_h()
 
 
 
-void addBlockHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
+void addBlockHelp(CommandNode& mode, TagDict& tagDict)
 
 {
   mode.add("smallkgb",small_kgb_h);
@@ -654,6 +624,9 @@ void addBlockHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   insertTag(tagDict,"wgraph",wgraph_tag);
 }
 
-} // namespace reprmode
 
-} // namespace atlas
+} // |namespace|
+
+} // |namespace commands|
+
+} // |namespace atlas|

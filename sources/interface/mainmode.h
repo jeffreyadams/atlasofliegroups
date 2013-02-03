@@ -13,29 +13,26 @@
 #include "atlas_types.h"
 #include "commands_fwd.h"
 
-/******** type declarations ************************************************/
-
 namespace atlas {
 
-namespace mainmode {
+namespace commands {
+
+/******** type declarations ************************************************/
 
   struct MainmodeTag {};
 
-}
-
 /******** function declarations ********************************************/
 
-namespace mainmode {
-
-  commands::CommandMode& mainMode();
+  commands::CommandNode mainNode();
+  extern commands::CommandTree& main_mode; // defined in main.cpp
   ComplexReductiveGroup& currentComplexGroup();
   ComplexReductiveGroup& current_dual_group();
   complexredgp_io::Interface& currentComplexInterface();
   void replaceComplexGroup(ComplexReductiveGroup*
 			   ,complexredgp_io::Interface*);
 
-}
+} // |namespace commands|
 
-}
+} // |namespace atlas|
 
 #endif

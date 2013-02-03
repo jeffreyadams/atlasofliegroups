@@ -77,7 +77,7 @@ namespace {
 
 namespace mainhelp {
 
-void addMainHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
+void addMainHelp(commands::CommandNode& mode, commands::TagDict& tagDict)
 
 {
   using namespace commands;

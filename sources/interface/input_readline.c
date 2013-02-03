@@ -232,7 +232,7 @@ char* completionGenerator(const char* text, int state)
   static std::vector<const char*> e;
   static std::vector<const char*>::iterator prev;
 
-  const CommandMode* mode = currentMode();
+  const CommandTree* mode = currentMode();
 
   if (state == 0) { // compute list of completions
     mode->extensions(e,text);

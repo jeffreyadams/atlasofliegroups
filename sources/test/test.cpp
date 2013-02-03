@@ -55,17 +55,18 @@
 #include "testrun.h"
 #include "kltest.h"
 
+
+namespace atlas {
+
+namespace test {
+
 /*****************************************************************************
 
   This module contains some commands for testing the program.
 
 ******************************************************************************/
 
-namespace atlas {
-
 namespace {
-  using namespace test;
-
   // functions for the test commands
 
   void test_f();
@@ -154,7 +155,7 @@ namespace {
   // utilities
   const RootDatum& currentRootDatum();
 
-}
+} // |namespace|
 
 /*****************************************************************************
 
@@ -168,8 +169,6 @@ namespace {
 
 ******************************************************************************/
 
-namespace test {
-
 /* |addTestCommands| is a template only so that its declaration is shorter;
    its defining instances are defined just as overloaded functions would,
    since each of them needs to test a specific value of |testMode|.
@@ -178,8 +177,8 @@ namespace test {
 
 // Add to the empty mode the test commands that require that mode.
 template<>
-void addTestCommands<emptymode::EmptymodeTag>
-  (commands::CommandMode& mode, emptymode::EmptymodeTag)
+void addTestCommands<commands::EmptymodeTag>
+  (commands::CommandNode& mode, commands::EmptymodeTag)
 {
   mode.add("testrun",testrun_f);
   if (testMode == EmptyMode)
@@ -190,8 +189,8 @@ void addTestCommands<emptymode::EmptymodeTag>
 
 // Add to the main mode the test commands that require that mode.
 template<>
-void addTestCommands<mainmode::MainmodeTag>
-  (commands::CommandMode& mode, mainmode::MainmodeTag)
+void addTestCommands<commands::MainmodeTag>
+  (commands::CommandNode& mode, commands::MainmodeTag)
 {
   if (testMode == MainMode)
     mode.add("test",test_f);
@@ -209,8 +208,8 @@ void addTestCommands<mainmode::MainmodeTag>
 
 // Add to the real mode the test commands that require that mode.
 template<>
-void addTestCommands<realmode::RealmodeTag>
-  (commands::CommandMode& mode, realmode::RealmodeTag)
+void addTestCommands<commands::RealmodeTag>
+  (commands::CommandNode& mode, commands::RealmodeTag)
 {
   if (testMode == RealMode)
     mode.add("test",test_f);
@@ -235,8 +234,8 @@ void addTestCommands<realmode::RealmodeTag>
 
 // Add to the block mode the test commands that require that mode.
 template<>
-void addTestCommands<blockmode::BlockmodeTag>
-  (commands::CommandMode& mode, blockmode::BlockmodeTag)
+void addTestCommands<commands::BlockmodeTag>
+  (commands::CommandNode& mode, commands::BlockmodeTag)
 {
   if (testMode == BlockMode)
     mode.add("test",test_f);
@@ -245,8 +244,8 @@ void addTestCommands<blockmode::BlockmodeTag>
 
 // Add to the repr mode the test commands that require that mode.
 template<>
-void addTestCommands<reprmode::ReprmodeTag>
-  (commands::CommandMode& mode, reprmode::ReprmodeTag)
+void addTestCommands<commands::ReprmodeTag>
+  (commands::CommandNode& mode, commands::ReprmodeTag)
 {
   if (testMode == ReprMode)
     mode.add("test",test_f);
@@ -257,21 +256,18 @@ void addTestCommands<reprmode::ReprmodeTag>
 
 
 // Add to the help mode the test commands that require that mode.
-template<> void addTestHelp<emptymode::EmptymodeTag>
-             (commands::CommandMode& mode, commands::TagDict& t,
-	      emptymode::EmptymodeTag)
+template<> void addTestHelp<commands::EmptymodeTag>
+             (commands::CommandNode& mode, commands::TagDict& t,
+	      commands::EmptymodeTag)
 {
-  using namespace commands;
-  using namespace helpmode;
-
   if (testMode == EmptyMode) {
-    mode.add("test",nohelp_h);
+    mode.add("test",commands::nohelp_h);
     commands::insertTag(t,"test",test_tag);
   }
 
 
   // add additional help commands here:
-  mode.add("testrun",helpmode::nohelp_h);
+  mode.add("testrun",commands::nohelp_h);
 
   // add additional command tags here:
   commands::insertTag(t,"testrun",testrun_tag);
@@ -280,15 +276,13 @@ template<> void addTestHelp<emptymode::EmptymodeTag>
 
 
 // Add to the main mode the help commands for test commands with that mode
-template<> void addTestHelp<mainmode::MainmodeTag>
-             (commands::CommandMode& mode, commands::TagDict& t,
-	      mainmode::MainmodeTag)
+template<> void addTestHelp<commands::MainmodeTag>
+             (commands::CommandNode& mode, commands::TagDict& t,
+	      commands::MainmodeTag)
 {
-  using namespace commands;
-  using namespace helpmode;
 
   if (testMode == MainMode) {
-    mode.add("test",nohelp_h);
+    mode.add("test",commands::nohelp_h);
     insertTag(t,"test",test_tag);
   }
 
@@ -310,29 +304,26 @@ template<> void addTestHelp<mainmode::MainmodeTag>
 
 
 // Add to the real mode the help commands for test commands with that mode
-template<> void addTestHelp<realmode::RealmodeTag>
-             (commands::CommandMode& mode, commands::TagDict& t,
-	      realmode::RealmodeTag)
+template<> void addTestHelp<commands::RealmodeTag>
+             (commands::CommandNode& mode, commands::TagDict& t,
+	      commands::RealmodeTag)
 {
-  using namespace commands;
-  using namespace helpmode;
-
   if (testMode == RealMode) {
-    mode.add("test",nohelp_h);
+    mode.add("test",commands::nohelp_h);
     insertTag(t,"test",test_tag);
   }
 
   // add additional help commands here:
 
   mode.add("checkbasept",checkbasept_h);
-  mode.add("sub_KGB",helpmode::nohelp_h);
-  mode.add("trivial",helpmode::nohelp_h);
+  mode.add("sub_KGB",commands::nohelp_h);
+  mode.add("trivial",commands::nohelp_h);
   mode.add("Ktypeform",Ktypeform_h);
   mode.add("Ktypemat",Ktypemat_h);
   mode.add("mod_lattice",mod_lattice_h);
   mode.add("branch",branch_h);
   mode.add("srtest",srtest_h);
-  mode.add("examine",helpmode::nohelp_h);
+  mode.add("examine",commands::nohelp_h);
   mode.add("nblock",nblock_h);
 
 
@@ -352,15 +343,13 @@ template<> void addTestHelp<realmode::RealmodeTag>
 }
 
 // Add to the block mode the help commands for test commands with that mode
-template<> void addTestHelp<blockmode::BlockmodeTag>
-             (commands::CommandMode& mode, commands::TagDict& t,
-	      blockmode::BlockmodeTag)
+template<> void addTestHelp<commands::BlockmodeTag>
+             (commands::CommandNode& mode, commands::TagDict& t,
+	      commands::BlockmodeTag)
 {
-  using namespace commands;
-  using namespace helpmode;
-
-  if (testMode == BlockMode) {
-    mode.add("test",nohelp_h);
+  if (testMode == BlockMode)
+  {
+    mode.add("test",commands::nohelp_h);
     insertTag(t,"test",test_tag);
   }
 
@@ -371,9 +360,6 @@ template<> void addTestHelp<blockmode::BlockmodeTag>
   // add additional command tags here:
 
 }
-
-} // namespace test
-
 
 /*****************************************************************************
 
@@ -388,7 +374,7 @@ namespace {
 // Print the roots in the simple root coordinates.
 void roots_rootbasis_f()
 {
-  const RootSystem& rs =  mainmode::currentComplexGroup().rootSystem();
+  const RootSystem& rs =  commands::currentComplexGroup().rootSystem();
   ioutils::OutputFile file;
 
   for (RootNbr i=0; i<rs.numRoots(); ++i)
@@ -399,7 +385,7 @@ void roots_rootbasis_f()
 void posroots_rootbasis_f()
 
 {
-  const RootSystem& rs = mainmode::currentComplexGroup().rootSystem();
+  const RootSystem& rs = commands::currentComplexGroup().rootSystem();
 
   ioutils::OutputFile file;
   prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
@@ -408,7 +394,7 @@ void posroots_rootbasis_f()
 // Print the coroots in the simple coroot coordinates.
 void coroots_rootbasis_f()
 {
-  const RootSystem rs (mainmode::currentComplexGroup().dualRootSystem());
+  const RootSystem rs (commands::currentComplexGroup().dualRootSystem());
 
   ioutils::OutputFile file;
   for (RootNbr i=0; i<rs.numRoots(); ++i)
@@ -419,7 +405,7 @@ void coroots_rootbasis_f()
 // Print the positive coroots in the simple coroot coordinates.
 void poscoroots_rootbasis_f()
 {
-  const RootSystem rs (mainmode::currentComplexGroup().dualRootSystem());
+  const RootSystem rs (commands::currentComplexGroup().dualRootSystem());
 
   ioutils::OutputFile file;
   prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
@@ -429,7 +415,7 @@ void poscoroots_rootbasis_f()
 
 void checkbasept_f()
 {
-  RealReductiveGroup& G_R = realmode::currentRealGroup();
+  RealReductiveGroup& G_R = commands::currentRealGroup();
 
   KGB kgb(G_R,G_R.Cartan_set());
   kltest::checkBasePoint(kgb);
@@ -437,7 +423,7 @@ void checkbasept_f()
 
 void sub_KGB_f()
 {
-  RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = commands::currentRealGroup();
   standardrepk::KhatContext khc(G);
 
   StandardRepK sr=interactive::get_standardrep(khc);
@@ -452,7 +438,7 @@ void sub_KGB_f()
 
 void trivial_f()
 {
-  RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = commands::currentRealGroup();
   const RootDatum& rd=G.rootDatum();
   const KGB& kgb = G.kgb();
 
@@ -489,7 +475,7 @@ void trivial_f()
 
 void Ktypeform_f()
 {
-  RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = commands::currentRealGroup();
 
   standardrepk::KhatContext khc(G);
 
@@ -553,7 +539,7 @@ void Ktypeform_f()
 
 void qKtypeform_f()
 {
-  RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = commands::currentRealGroup();
 
   standardrepk::qKhatContext khc(G);
 
@@ -612,7 +598,7 @@ void qKtypeform_f()
 
 void Ktypemat_f()
 {
-  RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = commands::currentRealGroup();
 
   standardrepk::KhatContext khc(G);
 
@@ -697,7 +683,7 @@ void Ktypemat_f()
 
 void qKtypemat_f()
 {
-  RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = commands::currentRealGroup();
 
   standardrepk::qKhatContext khc(G);
 
@@ -806,7 +792,7 @@ void qKtypemat_f()
 
 void mod_lattice_f()
 {
-  RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = commands::currentRealGroup();
 
   unsigned long cn=interactive::get_Cartan_class(G.Cartan_set());
 
@@ -853,7 +839,7 @@ void mod_lattice_f()
 
 void branch_f()
 {
-  RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = commands::currentRealGroup();
 
   standardrepk::KhatContext khc(G);
 
@@ -908,7 +894,7 @@ void branch_f()
 
 void qbranch_f()
 {
-  RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = commands::currentRealGroup();
 
   standardrepk::qKhatContext khc(G);
 
@@ -974,7 +960,7 @@ void qbranch_f()
 */
 void srtest_f()
 {
-  RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = commands::currentRealGroup();
   const KGB& kgb = G.kgb();
 
   unsigned long x=interactive::get_bounded_int
@@ -1057,14 +1043,14 @@ void testrun_f()
 void exam_f()
 {
   std::cout << "W-length monotine in KGB? "
-            << (examine(realmode::currentRealGroup())
+            << (examine(commands::currentRealGroup())
 		? "yes" : "no")
 	    << std::endl;
 }
 
 void X_f()
 {
-  ComplexReductiveGroup& G=mainmode::currentComplexGroup();
+  ComplexReductiveGroup& G=commands::currentComplexGroup();
   kgb::global_KGB kgb(G); // build global Tits group, "all" square classes
   ioutils::OutputFile f;
   kgb_io::print_X(f,kgb);
@@ -1094,7 +1080,7 @@ TorusElement torus_part
 
 void embedding_f()
 {
-  RealReductiveGroup& GR = realmode::currentRealGroup();
+  RealReductiveGroup& GR = commands::currentRealGroup();
   ComplexReductiveGroup& G = GR.complexGroup();
   const RootDatum& rd = G.rootDatum();
 
@@ -1259,5 +1245,8 @@ void nblock_h()
 }
 
 } // |namespace|
+
+
+} // |namespace test|
 
 } // |namespace atlas|

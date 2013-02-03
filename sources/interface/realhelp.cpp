@@ -64,7 +64,7 @@ namespace {
 
 namespace realhelp {
 
-void addRealHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
+void addRealHelp(commands::CommandNode& mode, commands::TagDict& tagDict)
 
 {
   using commands::insertTag;

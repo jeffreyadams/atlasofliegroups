@@ -76,15 +76,15 @@ void qq_h()
 
 namespace emptyhelp {
 
-void addEmptyHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
+void addEmptyHelp(commands::CommandNode& mode, commands::TagDict& tagDict)
 
 {
   using namespace commands;
 
   mode.add("help",help_h);
   mode.add("qq",qq_h);
-  mode.add("extract-graph",helpmode::nohelp_h);
-  mode.add("extract-cells",helpmode::nohelp_h);
+  mode.add("extract-graph",nohelp_h);
+  mode.add("extract-cells",nohelp_h);
 
   TagDict::value_type help_entry("help",help_tag);
   tagDict.insert(help_entry);
