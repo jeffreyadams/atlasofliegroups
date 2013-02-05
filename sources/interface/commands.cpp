@@ -33,16 +33,49 @@
   map and stack provided by C++, as well as the C++ string facility. Exceptions
   remain somewhat of a grey area here.
 
-  The basic class is the CommandNode class. This contains a set of recognized
-  names, for which it will execute corresponding functions. At each point of
-  time, there is a stack of such modes, the local variable modeStack, the top
-  of which is the currently active mode. Some commands will lead to pushing
-  a new mode on the stack; the entry function of the mode is then executed.
-  Similarly, some commands (typically the "q" command) pop the mode stack; this
-  results in executing the exit function of the mode.
+  The basic class is the CommandNode class, of which a few instances will be
+  explitly constructed at initialisation in separate modules, such as
+  mainmode.cpp. Each instance defines a set of recognized names, with
+  associated action functions. These instances serve as base class for
+  CommandTree, which includes additional links that allow defining a hierarchy
+  of "modes", which is constructed in main.cpp. During this construction,
+  commands are transitively inherited from ancestor to descendant node, unless
+  the child defines a command of the same name as the parent does.
+
+  At each point of time during execution, there is a stack of such modes, held
+  in the local variable modeStack, the top of which is the currently active
+  mode, with below it its ancestors (the code in the current module does not
+  quite enforce the latter relation, but the action functions that may
+  changethe state of the stack are defined so as to respect it). Some commands
+  will lead to pushing a new mode on the stack; the entry function of the mode
+  is then executed. Similarly, some commands (typically the "q" command) pop
+  the mode stack; this results in executing the exit function of the mode.
+
+  A command that was originally defined in some CommandNode can be called from
+  that mode or from its descendants, and may assume that the entry function
+  for the mode has been executed (but not subsequently the exit function).
+  This allows using values obtained interactively from the user during the
+  entry function, and so limits the amount of dialogue the individual
+  mathematical commands need to execute to obtain the arguments they require.
+  Ifa command is not defined in the currently active mode, it will be searched
+  in descendent modes, and if found there the command will be executed after
+  performing in order the entry functions of the modes on the path towards the
+  descendant. The variable commandStack serves to retain the name of the
+  command to be later executed while performing the entry functions. Some
+  commands (like "type" when not called from the empty mode) explitily alter,
+  after a user interaction, the values stored in an already active mode. This
+  in general makes the values in descendants of that mode invalid; such
+  commands therefore should pop any such descendant modes. Since a function
+  that was propagated by inheritance does not know from which mode it was
+  called, this operation currently requires such functions to be explicitly
+  redefined in all decendants of the mode it affects, each redefinition
+  executing the proper number of pop operations. This might be improved.
 
   Also, there is a unique help mode, which provides some help information for
-  all commands available.
+  all commands available. it has no ancestors but can be entered from any
+  other mode; since it contains no mode-changing commands except "q" (which
+  pops the top mode), and it inherits no commands from other modes, the help
+  mode effectively disables executing anything but its own the help commands.
 
 ******************************************************************************/
 
@@ -60,7 +93,7 @@ namespace {
 
   input::InputBuffer commandLine;           // the current command line
 
-  bool runFlag;
+  bool runFlag;   // set to false to initiate shutdown of the program
 
   // running the command interface
 
@@ -86,20 +119,9 @@ namespace {
 
 /****************************************************************************
 
-        Chapter I -- The CommandNode class.
+        Chapter I -- The CommandNode and CommandTree classes.
 
-  This is the central class of the command module.
-
-  The following member functions are defined :
-
-  - constructors and destructors :
-
-    - CommandNode(prompt,entry,exit,error) : constructor;
-    - ~CommandNode() : destructor;
-
-  - accessors :
-
-    - prompt : prints the prompt;
+  These are the central class of the command module.
 
   - manipulators :
 
@@ -117,17 +139,45 @@ namespace {
 */
 CommandNode::CommandNode(const char* str,
 			 void (*entry)(),
-			 void (*exit)(),
-			 void (*error)(const char*))
+			 void (*exit)())
   : d_map()      // start out without commands
   , d_prompt(str)
   , d_entry(entry)
   , d_exit(exit)
-  , d_error(error)
 {} // don't add any commands, so that |empty()| is true initially
 
 /******** accessors *********************************************************/
 
+
+/******** manipulators ******************************************************/
+
+/*
+  Synopsis: adds a new command during intial construction of a |CommandNode|
+  NOTE: names should be unique within the Node, whence the |assert| below
+*/
+void CommandNode::add(const char* const name, const Command& command)
+{
+  std::pair<CommandDict::iterator,bool> p
+    = d_map.insert(std::make_pair(name,command));
+
+  assert(p.second); // then name should not be already present
+}
+
+/*
+  Inserts the commands from source into dest. This is used when going to a
+  "desecendant" mode, to inherit the commands defined for the parent mode.
+  Here existing commands are not overridden!
+*/
+void CommandNode::addCommands(const CommandNode& source)
+{
+  for (CommandNode::const_iterator it = source.begin(); it!=source.end(); ++it)
+    d_map.insert(*it); // ignore result
+}
+
+
+
+
+  //	********		CommandTree			********
 
 
 /*
@@ -150,39 +200,6 @@ CommandNode::const_iterator CommandTree::findName(const char* name) const
 
   return end();
 }
-
-/******** manipulators ******************************************************/
-
-/*
-  Synopsis: adds a new command to the mode.
-
-  The parameters have the following meaning :
-    - name : name of the command;
-    - command: the function to be executed by the command;
-
-  NOTE: names should be unique within a mode, whence the |assert| below
-*/
-void CommandNode::add(const char* const name, const Command& command)
-{
-  std::pair<const char* const, Command> v(name,command);
-
-  std::pair<CommandDict::iterator,bool> p
-    = d_map.insert(v);
-
-  assert(p.second); // then name should not be already present
-}
-
-/*
-  Synopsis: inserts the commands from source into dest. This is used when
-  going to a "desecendant" mode, to inherit the commands defined for
-  the parent mode. Here existing commands are not overridden!
-*/
-void CommandNode::addCommands(const CommandNode& source)
-{
-  for (CommandNode::const_iterator it = source.begin(); it!=source.end(); ++it)
-    d_map.insert(*it); // ignore result
-}
-
 
 /*
   Synopsis: tries to find name in mode, or in one of its descendants.
@@ -254,16 +271,17 @@ void CommandTree::extensions(std::set<const char*,StrCmp>& e,
 
 
 
-/*!
-  \brief Execute the command "name". Also install default error handling.
-
-  Precondition: name is defined either in the current mode or in one of its
-  descendants.
+/*
+  Execute the command "name", which is a complete command name,
+  defined either in the current mode or in one of its descendants.
 
   If name is found in the current mode, we simply execute it. Otherwise,
   we find out in which descendant mode it is found, we attempt the mode
   change, and in case of success, push command on the stack, so that it
   will be executed at the next loop in |run|.
+
+  Failure to enter some mode (which will already have been reported), and all
+  other kinds of errors (which we report here) are caught by this method.
 */
 void CommandTree::execute(const char* name) const
 {
@@ -280,7 +298,7 @@ void CommandTree::execute(const char* name) const
       for (size_t j = 0; j < n_desc(); ++j)
       {
 	const CommandTree& next = nextMode(j);
-	pos = next.findName(name);
+	pos = next.findName(name); // this descends recursively
 	if (pos != next.end()) // name is defined in a descendent of next
 	{
 	  next.activate();
@@ -289,7 +307,7 @@ void CommandTree::execute(const char* name) const
 	}
       }
   }
-  catch (commands::EntryError&) { // silently ignore failure to enter mode
+  catch (commands::EntryError&) { // resume here after failure to enter mode
   }
   catch (error::MemoryOverflow& e) {
     e("error: memory overflow");
@@ -306,7 +324,7 @@ void CommandTree::execute(const char* name) const
   {
     std::cerr << std::endl << "unidentified error occurred" << std::endl;
   }
-} // |CommandNode::execute|
+} // |CommandTree::execute|
 
 
 CommandTree::~CommandTree()
@@ -327,7 +345,7 @@ void CommandTree::activate() const
 }
 
 /*
-  Synopsis: runs an interactive session of the program.
+  Runs an interactive session of the program with this mode as basic mode
 
   Gets commands from the user until it gets the "qq" command, at which time it
   returns control.
@@ -336,15 +354,12 @@ void CommandTree::activate() const
   is chopped off by default in C++); look it up in the current CommandNode, or,
   in case of failure, in its descendants; execute it if it is found, get new
   input otherwise.
-
-  The initMode argument is the startup mode of the interactive session;
-  that is, the session starts by executing the entry function of initMode.
 */
 void CommandTree::run() const
 {
   try
   {
-    activate(); // activate mode pushing initial mode onto |modeStack|
+    activate(); // activate mode, pushing our mode onto |modeStack|
 
     const char* name;
 
@@ -352,15 +367,15 @@ void CommandTree::run() const
     {                             // (or "q" in startup mode)
 
       const CommandTree& mode = *modeStack.top();  // get current active mode
-      name = getCommand(&mode);
+      name = getCommand(&mode); // get user input, as edited by readline
 
       std::vector<const char*> ext;
-      mode.extensions(ext,name);
+      mode.extensions(ext,name); // find all commands with this prefix
 
       switch (ext.size())
       {
       case 0: // command was not found
-	mode.error(name);
+	std::cout << name << ": not found" << std::endl;
 	break;
       case 1: // command can be unambiguously completed
 	mode.execute(ext[0]);
@@ -374,10 +389,10 @@ void CommandTree::run() const
       }
     } // for(runFlag)
   }
-  catch(EntryError) { // something is very wrong
+  catch(EntryError) { // failed to activate our mode as initial mode
     return;
   }
-}
+} // |CommandTree::run|
 
 CommandTree& CommandTree::add_descendant(const CommandNode& c)
 {
@@ -394,25 +409,23 @@ CommandTree& CommandTree::add_descendant(const CommandNode& c)
   This section contains the definitions of the functions declared in
   commands.h :
 
-    - defaultError(const char*) : default error handler for command reading;
-    - default_help() : the default help function;
+    - currentLine() : get input buffer holding (remainder of) command line
+    - currentMode() : return pointer to mode on top of the stack
+    - exitMode() : exits the current mode;
+    - drop_to(mode): exit modes until |mode| is left
     - exitInteractive() : sets runFlag to false;
-    - printTags(stream&,map<std::string,const char*>&) : prints the tag list;
-    - quitMode() : exits the current mode;
     - relax_f() : does nothing;
 
 *****************************************************************************/
 
 
-input::InputBuffer& currentLine()
-
 /*
-  Synopsis: returns the current command line.
+  Returns the InputBuffer in which the current command line was stored
 
   Explanation: the idea is to enable functions to pick off arguments from the
-  command line, so that the user can type forward.
+  command line, so that the user can type forward. Nobody actually does this.
 */
-
+input::InputBuffer& currentLine()
 {
   return commandLine;
 }
@@ -429,35 +442,7 @@ const CommandTree* currentMode()
 
 
 /*
-  Synopsis: default error handler, which is called when |str| is not a string
-  which is recognized by the command tree.
-
-  It prints the name of |str| and an error message.
-*/
-void defaultError(const char* str)
-{
-  std::cout << str << ": not found" << std::endl;
-}
-
-
-/*
-  Synopsis: quits interactive mode, after exiting all active modes.
-
-  This should be called only if none of the modes in the stack can throw on
-  exit, which seems a reasonable assumption.
-*/
-void exitInteractive()
-
-{
-  while (modeStack.size())
-    exitMode(); // applies to mode at top of stack, which is then popped
-
-  runFlag = false; // this will cause the |run| loop to terminate
-}
-
-
-/*
-  Synopsis: exits the current mode.
+  Exit the current mode, and pop it off the stack
 */
 void exitMode()  // it is assumed that exit functions don't throw
 {
@@ -465,34 +450,39 @@ void exitMode()  // it is assumed that exit functions don't throw
   modeStack.pop();
 }
 
-// The |TagDict| type is addressed below, but no instance is defined here.
+/* this function helps "mode changing" functions like "type" to be defined
+   only twice: once in the parent mode where it just activates the mode, and
+   once in the mode itself, where (upon successful obtention of new values for
+   the mode) it drops to the current mode and replaces the values
 
-/*
-  Synopsis: associates tag with name in t.
-
-  NOTE: this is the only way the sun CC compiler will accept it!
-*/
-
-void insertTag(TagDict& t, const char* name, const char* tag)
+   Avoiding the first definition altogether is not possible, since if only the
+   definition in the mode itself would remain, it would have no way to know
+   whether that mode had just been entered as a consequence of its own call
+   (and in which case it would need to avoid immediately changing anything).
+ */
+void drop_to(const CommandTree& mode)
 {
-  TagDict::value_type v(name,tag); // pair of strings acceptable to |TagDict|
-  t.insert(v);
-}
-
-
-/*
-  Synopsis: outputs the list of commands with their attached tags.
-*/
-void printTags(std::ostream& strm, const TagDict& t)
-{
-  typedef TagDict::const_iterator I;
-
-  for (I i = t.begin(); i != t.end(); ++i) {
-    const char* key = i->first;
-    const char* tag = i->second;
-    strm << "  - " << key << " : " << tag << std::endl;
+  while (modeStack.top()!= &mode)
+  {
+    exitMode();
+    assert(not modeStack.empty()); // not finding |mode| is fatal
   }
 }
+
+/*
+  Quit interactive mode, after exiting all active modes.
+
+  This should be called only if none of the modes in the stack can throw on
+  exit, which seems a reasonable assumption.
+*/
+void exitInteractive()
+{
+  while (modeStack.size())
+    exitMode(); // applies to mode at top of stack, which is then popped
+
+  runFlag = false; // this will cause the |run| loop to terminate
+}
+
 
 
 /*****************************************************************************
@@ -518,37 +508,47 @@ namespace {
 */
 void ambiguous(const std::vector<const char*>& ext, const char* name)
 {
-  typedef std::vector<const char*>::const_iterator I;
-
   std::cout << name << " : ambiguous (";
 
-  for (I i = ext.begin(); i != ext.end();) {
-    std::cout << *i;
-    ++i;
-    if (i != ext.end())
-      std::cout << ",";
-  }
+  for (std::vector<const char*>::const_iterator
+	 it = ext.begin(); it != ext.end(); ++it)
+    std::cout << (it == ext.begin() ? "" : ",") << *it;
 
   std::cout << ")" << std::endl;
 }
 
 
+/*
+  Get a command interactively from the user.
+
+  The actual input line is gotten through the readline library. For
+  convenience we pack it into a global InputBuffer variable |commandLine|, in
+  order to have a C++-like interaction.
+*/
+void getInteractive(std::string& name, const char* prompt)
+{
+  commandLine.getline(prompt);
+  commandLine >> name;
+}
+
 
 /*
-  Synopsis: gets the name of the next command.
+  Get the name of the next command.
 
-  It is gotten either from the commandStack, if there are commands waiting
-  to be processed, or interactively from the user.
+  It is gotten either from the commandStack, if there are pending commands,
+  or else interactively from the user.
 */
 const char* getCommand(const CommandNode* mode)
 {
-  static std::string nameString;
+  static std::string nameString; // semi-permanent storage for name
   const char* name;
 
-  if (commandStack.size()) { // there is a command to process
+  if (not commandStack.empty())
+  {  // there is a command pending
     name = commandStack.top();
     commandStack.pop();
-  } else {  // get command from user
+  } else
+  {  // get command from user
     nameString.erase();
     getInteractive(nameString,mode->prompt());
     name = nameString.c_str();
@@ -557,21 +557,6 @@ const char* getCommand(const CommandNode* mode)
   return name;
 }
 
-
-/*
-  Synopsis: gets a command interactively from the user.
-
-  The actual input line is gotten through the readline library. For
-  convenience we pack it into a global InputBuffer variable |commandLine|, in
-  order to have a C++-like interaction.
-*/
-void getInteractive(std::string& name, const char* prompt)
-{
-  using namespace input;
-
-  commandLine.getline(prompt);
-  commandLine >> name;
-}
 
 } // namespace
 

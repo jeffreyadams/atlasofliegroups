@@ -13,7 +13,7 @@
 #include <iostream>
 
 #include "io.h"
-#include "mainmode.h"
+#include "helpmode.h"
 #include "test.h"
 
 /****************************************************************************

@@ -37,11 +37,10 @@ namespace commands {
 
   input::InputBuffer& currentLine();
   const CommandTree* currentMode();
-  void defaultError(const char*);
+
+  void drop_to(const CommandTree& mode); // exit modes until |mode| is left
   void exitInteractive();
   void exitMode();
-  void insertTag(TagDict&, const char*, const char*);
-  void printTags(std::ostream&, const TagDict&);
   inline void relax_f() {}
 
 }
@@ -73,7 +72,6 @@ class CommandNode
   const char* d_prompt;
   void (*d_entry)();
   void (*d_exit)();
-  void (*d_error)(const char*);
 
  public:
 
@@ -83,15 +81,12 @@ class CommandNode
 // Constructors and destructors
   CommandNode(const char*,
 	      void (*entry)() = &relax_f,
-	      void (*exit)() = &relax_f,
-	      void (*error)(const char*) = &defaultError);
+	      void (*exit)() = &relax_f);
 
   ~CommandNode() {}
 
 // accessors
   const char* prompt() const { return d_prompt; }
-
-  bool empty() const { return d_map.empty(); }
 
   void addCommands(const CommandNode& source); // inherit commands from |source|
 
@@ -102,8 +97,6 @@ class CommandNode
 
 
  protected: // methods for use by |CommandNode| or |CommandTree| objects only
-
-  void error(const char* str) const { d_error(str); }
 
   // bind |name| to |action| in current mode, possibly overriding previous
   void add(const char* const name, const Command& action);

@@ -76,8 +76,6 @@ namespace commands {
   void wgraph_f();
   void wcells_f();
 
-  void type_f();
-  void realform_f();
   void repr_f();
 
   // mode-local variables
@@ -100,8 +98,6 @@ namespace commands {
 CommandNode reprNode()
 {
   CommandNode result("repr: ",repr_mode_entry,repr_mode_exit);
-  result.add("type",type_f); // override
-  result.add("realform",realform_f); // this one too
   // result.add("smallkgb",small_kgb_f);
   // result.add("smalldualkgb",small_dual_kgb_f);
   result.add("iblock",iblock_f);
@@ -232,6 +228,7 @@ void repr_f()
       StandardRepr(currentRepContext().sr(x,lambda_rho,gamma));
     delete block_pointer; block_pointer=NULL;
     delete WGr_pointer; WGr_pointer=NULL;
+    drop_to(repr_mode); // exit from (hypothetical) descendant modes
   }
   catch (error::InputError& e)
   {
@@ -258,47 +255,6 @@ void repr_mode_exit()
   various commands defined in this mode.
 
 ******************************************************************************/
-
-/*
-  Synopsis: resets the type of the complex group.
-
-  In case of success, the real forms are invalidated, and therefore we
-  should exit real mode; in case of failure, we don't need to.
-*/
-void type_f()
-{
-  try {
-    ComplexReductiveGroup* G;
-    complexredgp_io::Interface* I;
-
-    interactive::getInteractive(G,I);
-    replaceComplexGroup(G,I);
-    exitMode(); // upon success pop block mode, destroying dual group
-    exitMode(); // and pop real mode, destroying real group
-  }
-  catch (error::InputError& e) {
-    e("complex group and real form not changed");
-  }
-}
-
-
-/*
-  Synopsis: resets the type, effectively re-entering the real mode. If the
-  construction of the new type fails, the current block remains in force.
-*/
-void realform_f()
-{
-  try
-  { // we can call the swap method for rvalues, but not with and rvalue arg
-    interactive::getRealGroup(currentComplexInterface()).swap
-      (currentRealGroup());
-
-    exitMode(); // upon success pop repr mode, destroying data
-  }
-  catch (error::InputError& e) {
-    e("real form not changed");
-  }
-}
 
 void iblock_f()
 {

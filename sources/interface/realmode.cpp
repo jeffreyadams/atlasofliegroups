@@ -66,7 +66,6 @@ namespace {
   void kgporder_f();
   void kgpgraph_f();
 
-  void type_f();
   void realform_f();
   void dualrealform_f();
   void repr_f();
@@ -100,7 +99,6 @@ CommandNode realNode()
   result.add("kgp", kgp_f);
   result.add("kgporder", kgporder_f);
   result.add("kgpgraph", kgpgraph_f);
-  result.add("type",type_f); // override
   result.add("realform",realform_f); // override
   result.add("dualrealform",dualrealform_f);
   result.add("repr",repr_f);
@@ -166,6 +164,7 @@ void realform_f()
     interactive::getRealGroup(currentComplexInterface()).swap
       (currentRealGroup());
     delete rt; rt = new Rep_table(currentRealGroup());
+    drop_to(real_mode); // drop invalidated descendant modes if called from them
   }
   catch (error::InputError& e)
   {
@@ -302,25 +301,6 @@ void kgbtwist_f()
   kgb_io::print_twist(file,G.kgb());
 }
 
-/* Reset the type of the complex group.
-
-  In case of success, the real forms are invalidated, and therefore we
-  should exit real mode; in case of failure, we don't need to.
-*/
-void type_f()
-{
-  try {
-    ComplexReductiveGroup* G;
-    complexredgp_io::Interface* I;
-
-    interactive::getInteractive(G,I);
-    replaceComplexGroup(G,I);
-    exitMode(); // upon success pop real mode, destroying real group
-  }
-  catch (error::InputError& e) {
-    e("complex group and real form not changed");
-  }
-}
 
 void kgbgraph_f()
 {

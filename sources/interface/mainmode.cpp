@@ -397,6 +397,7 @@ void type_f()
     complexredgp_io::Interface* I;
     interactive::getInteractive(G,I);
     replaceComplexGroup(G,I);
+    drop_to(main_mode); // drop invalidated descendant modes if called from them
   }
   catch(error::InputError& e) {
     e("complex group not changed");

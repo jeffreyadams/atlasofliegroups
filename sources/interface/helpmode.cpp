@@ -157,7 +157,19 @@ CommandNode helpNode()
   return result;
 }
 
+// associate a tag with name in t.
+void insertTag(TagDict& t, const char* name, const char* tag)
+{
+  t.insert(std::make_pair(name,tag));
+}
 
+
+// output the list of commands with their attached tags.
+void printTags(std::ostream& strm, const TagDict& t)
+{
+  for (TagDict::const_iterator it = t.begin(); it != t.end(); ++it)
+    strm << "  - " << it->first << " : " <<  it->second << std::endl;
+}
 
 void intro_h()
 {

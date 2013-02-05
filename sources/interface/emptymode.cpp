@@ -102,11 +102,7 @@ void q_h()
 
 void type_f()
 {
-  try {
-    main_mode.activate();
-  }
-  catch (EntryError) { // silently ignore failure to enter
-  }
+  main_mode.activate();
 }
 
 
