@@ -233,7 +233,7 @@ char* completionGenerator(const char* text, int state)
 
   if (state == 0)
   { // compute list of completions
-    mode->extensions(e,text);
+    e = mode->extensions(text);
     prev = e.begin();
   }
 

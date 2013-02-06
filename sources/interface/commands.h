@@ -27,7 +27,7 @@ namespace commands {
 
   typedef void (*action_pointer)(); // pointer to void function, no arguments
 
-  enum CheckResult { Ambiguous, Found, NotFound, numCheckResults };
+  enum CheckResult { NotFound, PartialMatch, Ambiguous, Found };
 
 }
 
@@ -38,9 +38,10 @@ namespace commands {
   input::InputBuffer& currentLine();
   const CommandTree* currentMode();
 
+  void run_from(const CommandTree& initial_mode);
   void drop_to(const CommandTree& mode); // exit modes until |mode| is left
-  void exitInteractive();
-  void exitMode();
+  void exitInteractive(); // used by 'qq' in empty mode
+  void exitMode(); // used by 'q' in help mode
   inline void relax_f() {}
 
 }
@@ -70,13 +71,9 @@ class CommandNode
 
   CommandDict d_map;
   const char* d_prompt;
-  void (*d_entry)();
-  void (*d_exit)();
+  action_pointer d_entry, d_exit;
 
  public:
-
-  typedef CommandDict::iterator iterator;
-  typedef CommandDict::const_iterator const_iterator;
 
 // Constructors and destructors
   CommandNode(const char*,
@@ -97,6 +94,8 @@ class CommandNode
 
 
  protected: // methods for use by |CommandNode| or |CommandTree| objects only
+
+  typedef CommandDict::const_iterator const_iterator;
 
   // bind |name| to |action| in current mode, possibly overriding previous
   void add(const char* const name, const Command& action);
@@ -123,33 +122,34 @@ class CommandTree : public CommandNode
  public:
   explicit CommandTree(const CommandNode& root)
     : CommandNode(root) , d_nextList() {}
+  ~CommandTree(); // since we have owned pointers
 
   // extend mode tree, returning reference to added (singleton) subtree
   CommandTree& add_descendant(const CommandNode& c); // make |c| a descendant
-  ~CommandTree(); //
 
   void run() const; // start a command session based on this mode
 
   void activate() const; // enter (and push) this mode tree
 
-  // the following is for use in guiding readline
-  void extensions(std::vector<const char*>&, const char*) const;
+  // the following is for use in guiding readline, and for ambiguity reporting
+  std::vector<const char*> extensions(const char*) const;
 
  private:
 
   size_t n_desc() const { return d_nextList.size(); }
 
-  const CommandTree& nextMode(size_t j) const { return *(d_nextList[j]); }
+  const CommandTree& nextMode(unsigned int i) const { return *(d_nextList[i]); }
 
-  // recursive search in this and descendant modes
-  CommandNode::const_iterator findName(const char* name) const;
+  bool has_descendant (const CommandTree* mode) const; // search decendants tree
 
-  // recursive search for |name| or unique command stqrting with |name|
-  CheckResult checkName(const char* name) const;
+  // look up |name|, return result in |status|, which is an in-out argument.
+  // |status| should be anything except |Found| initially, and the result
+  // and |where| are set only when it becomes |Found| or |PartialMatch|
+  CommandNode::const_iterator look_up(const char* name,
+				      CheckResult& status,
+				      CommandTree const* & where) const;
 
-  // execute |name| in this or descendant mode, maybe extending mode stack
-  void execute(const char* name) const;
-
+  // implementation of the public |extensions| method, eliminates duplicates
   void extensions(std::set<const char*,StrCmp>&, const char*) const;
 
 }; // |class CommandTree|
