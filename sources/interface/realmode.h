@@ -13,23 +13,22 @@
 #include "commands_fwd.h"
 #include "atlas_types.h"
 
-/******** type declarations *************************************************/
-
 namespace atlas {
 
-namespace realmode {
+namespace commands {
+
+/******** type declarations *************************************************/
 
   struct RealmodeTag {};
 
-}
-
 /******** function declarations ********************************************/
 
-namespace realmode {
-
-  commands::CommandMode& realMode();
+  commands::CommandNode realNode();
+  extern commands::CommandTree& real_mode; // defined in main.cpp
   RealReductiveGroup& currentRealGroup();
   RealFormNbr currentRealForm();
+  const Rep_context& currentRepContext();
+  Rep_table& currentRepTable();
 
 }
 

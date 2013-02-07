@@ -16,7 +16,7 @@
 
 namespace atlas {
 
-namespace reprmode {
+namespace commands {
 
 /******** type declarations ************************************************/
 
@@ -31,16 +31,15 @@ namespace reprmode {
 
 /******** function declarations ********************************************/
 
-  commands::CommandMode& reprMode();
-  const Rep_context& currentRepContext();
+  commands::CommandNode reprNode();
+  extern CommandTree& repr_mode; // defined in main.cpp
   const SubSystemWithGroup& currentSubSystem();
-  param_block& currentBlock();
+  param_block& current_param_block();
   const StandardRepr& currentStandardRepr();
-  kl::KLContext& currentKL();
-  const wgraph::WGraph& currentWGraph();
+  // kl::KLContext& currentKL();            // defined in blockmode.cpp
+  // const wgraph::WGraph& currentWGraph(); // defined in blockmode.cpp
 
-  void addBlockHelp(commands::CommandMode&, commands::TagDict&);
-
+  void addBlockHelp(CommandNode&, TagDict&);
 
 } // namespace reprmode
 

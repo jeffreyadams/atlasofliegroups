@@ -31,13 +31,14 @@
 
 namespace atlas {
 
+namespace commands {
+
 namespace {
-  using namespace helpmode;
 
   void help_entry();
   void help_exit();
 
-  commands::TagDict tagDict;
+  TagDict tagDict; // static, filled by |helpNode()|: initialisation danger
 
   // help commands
 
@@ -52,7 +53,6 @@ namespace {
   const char* q_tag = "exits the current mode";
   const char* questionMark_tag =
     "(in help mode only) lists the available commands";
-}
 
 /****************************************************************************
 
@@ -62,8 +62,6 @@ namespace {
   call of the emptyHelp function.
 
 *****************************************************************************/
-
-namespace {
 
 void help_entry()
 
@@ -79,8 +77,6 @@ void help_exit()
 
 {}
 
-}
-
 /*****************************************************************************
 
         Chapter II --- Functions for the help commands
@@ -89,8 +85,6 @@ void help_exit()
   the various commands defined in this mode.
 
 ******************************************************************************/
-
-namespace {
 
 void help_h()
 
@@ -110,13 +104,14 @@ void questionMark_h()
 
 {
   std::cerr << std::endl;
-  commands::printTags(std::cerr,tagDict);
+  printTags(std::cerr,tagDict);
   std::cerr << std::endl;
 
   return;
 }
 
-}
+} // |namespace|
+
 
 /*****************************************************************************
 
@@ -124,76 +119,74 @@ void questionMark_h()
 
 ******************************************************************************/
 
-namespace helpmode {
-
 /*
-  Synopsis: returns the help mode.
-
-  It is constructed on the first call.
+  Construct and return the help node.
+  For static initialisation, this should be called from *this module* only,
+  since it uses |tagDict| that might otherwise be uninitialised
 */
-const commands::CommandMode& helpMode()
+CommandNode helpNode()
 {
-  static commands::CommandMode help_mode
-    ("help: ",help_entry,help_exit);
-  if (help_mode.empty()) // true upon first call
-  {
-    help_mode.add("q",commands::exitMode);
-    insertTag(tagDict,"q",q_tag);
+  insertTag(tagDict,"q",q_tag);
 
-    help_mode.add("?",questionMark_h);
-    insertTag(tagDict,"?",questionMark_tag);
+  CommandNode result ("help: ",help_entry,help_exit);
+  result.add("q",exitMode);
+  insertTag(tagDict,"q",q_tag);
 
-    help_mode.add("intro",intro_h);
-    insertTag(tagDict,"intro",intro_tag);
+  result.add("?",questionMark_h);
+  insertTag(tagDict,"?",questionMark_tag);
 
-    // add help functions for the empty mode
-    emptyhelp::addEmptyHelp(help_mode,tagDict);
+  result.add("intro",intro_h);
+  insertTag(tagDict,"intro",intro_tag);
 
-    test::addTestHelp(help_mode,tagDict,emptymode::EmptymodeTag());
+  // add help functions for the empty mode
+  emptyhelp::addEmptyHelp(result,tagDict);
+  test::addTestHelp(result,tagDict,EmptymodeTag());
 
   // add help functions for the main mode
-    mainhelp::addMainHelp(help_mode,tagDict);
-
-    test::addTestHelp(help_mode,tagDict,mainmode::MainmodeTag());
+  mainhelp::addMainHelp(result,tagDict);
+  test::addTestHelp(result,tagDict,MainmodeTag());
 
   // add help functions for the real mode
-    realhelp::addRealHelp(help_mode,tagDict);
-
-    test::addTestHelp(help_mode,tagDict,realmode::RealmodeTag());
+  realhelp::addRealHelp(result,tagDict);
+  test::addTestHelp(result,tagDict,RealmodeTag());
 
   // add help functions for the block mode
-    blockmode::addBlockHelp(help_mode,tagDict);
+  addBlockHelp(result,tagDict);
+  test::addTestHelp(result,tagDict,BlockmodeTag());
 
-    test::addTestHelp(help_mode,tagDict,blockmode::BlockmodeTag());
+  return result;
+}
 
-  }
-  return help_mode;
+// associate a tag with name in t.
+void insertTag(TagDict& t, const char* name, const char* tag)
+{
+  t.insert(std::make_pair(name,tag));
 }
 
 
+// output the list of commands with their attached tags.
+void printTags(std::ostream& strm, const TagDict& t)
+{
+  for (TagDict::const_iterator it = t.begin(); it != t.end(); ++it)
+    strm << "  - " << it->first << " : " <<  it->second << std::endl;
+}
 
 void intro_h()
-
 {
-  using namespace io;
-
-  printFile(std::cerr,"intro_mess",io::MESSAGE_DIR);
-
-  return;
+  io::printFile(std::cerr,"intro_mess",io::MESSAGE_DIR);
 }
-
-void nohelp_h()
 
 /*
   Synopsis: help message for when there is no help.
 */
-
+void nohelp_h()
 {
   std::cerr << "sorry, no help available for this command" << std::endl;
-
-  return;
 }
 
-}
+// variable that must be defined in this module to avoid initialisation fiasco
+CommandTree help_mode(helpNode());
 
-}
+} // |namespace helpmode|
+
+} // |namespace atlas|

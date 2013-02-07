@@ -1,8 +1,8 @@
 /*
   This is emptyhelp.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Lie Groups and Representations 
+  part of the Atlas of Lie Groups and Representations
 
   For copyright and license information see the LICENSE file
 */
@@ -18,7 +18,7 @@ namespace atlas {
 
 namespace emptyhelp {
 
-  void addEmptyHelp(commands::CommandMode&, commands::TagDict&);
+  void addEmptyHelp(commands::CommandNode&, commands::TagDict&);
 
 }
 

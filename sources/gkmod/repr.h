@@ -111,7 +111,7 @@ class Rep_context
        const Weight lambda_rho,
        const RatWeight& nu) const;
 
-  StandardRepr sr(const non_integral_block& b, BlockElt i) const;
+  StandardRepr sr(const param_block& b, BlockElt i) const;
 
   // component extraction
   Weight lambda_rho(const StandardRepr& z) const;
@@ -170,11 +170,14 @@ class Rep_table : public Rep_context
 
   SR_poly KL_column_at_s(StandardRepr z); // by value
 
-  SR_poly deformation_terms (non_integral_block& block,BlockElt entry_elem);
+  SR_poly deformation_terms (param_block& block,BlockElt entry_elem);
+  // here |block| is non-|const| because it calls |add_block|
+
   SR_poly deformation(const StandardRepr& z);
 
  private:
-  void add_block(non_integral_block& block, const BlockEltList& survivors);
+  void add_block(param_block& block, const BlockEltList& survivors);
+  // here |block| is non-|const| as the method generates KL polynomials in it
 
 }; // |Rep_table|
 

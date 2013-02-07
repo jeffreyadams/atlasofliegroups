@@ -1,8 +1,8 @@
 /*
   This is test.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Lie Groups and Representations 
+  part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
@@ -21,10 +21,10 @@ namespace atlas {
 
 namespace test {
 
-template<typename T> void addTestCommands(commands::CommandMode&, T);
+template<typename T> void addTestCommands(commands::CommandNode&, T);
 
-template<typename T> 
-  void addTestHelp(commands::CommandMode&, commands::TagDict&, T);
+template<typename T>
+  void addTestHelp(commands::CommandNode&, commands::TagDict&, T);
 
 }
 

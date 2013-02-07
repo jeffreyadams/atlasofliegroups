@@ -213,7 +213,6 @@ void initReadLine()
 
 namespace {
 
-char* completionGenerator(const char* text, int state)
 
 /*
   Synopsis: function passed to the readline library for command completion.
@@ -225,23 +224,23 @@ char* completionGenerator(const char* text, int state)
   text, 0 if there is none such. The passed char* should be written in a string
   correctly allocated by malloc, as it will be deallocated by readline!
 */
-
+char* completionGenerator(const char* text, int state)
 {
-  using namespace commands;
-
   static std::vector<const char*> e;
   static std::vector<const char*>::iterator prev;
 
-  const CommandMode* mode = currentMode();
+  const commands::CommandTree* mode = commands::currentMode();
 
-  if (state == 0) { // compute list of completions
-    mode->extensions(e,text);
+  if (state == 0)
+  { // compute list of completions
+    e = mode->extensions(text);
     prev = e.begin();
   }
 
   if (prev == e.end())
     return 0;
-  else {
+  else
+  { //
     char* val = (char*)std::malloc(strlen(*prev)+1);
     std::strcpy(val,*prev);
     ++prev;
@@ -249,13 +248,12 @@ char* completionGenerator(const char* text, int state)
   }
 }
 
-void displayCompletions(char** matches, int num, int)
 
 /*
   Synopsis: function passed to the readline library for the display of
   completion lists
 */
-
+void displayCompletions(char** matches, int num, int)
 {
   rl_crlf();
   fprintf(rl_outstream,"completions are: ");

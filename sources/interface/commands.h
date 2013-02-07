@@ -27,7 +27,7 @@ namespace commands {
 
   typedef void (*action_pointer)(); // pointer to void function, no arguments
 
-  enum CheckResult { Ambiguous, Found, NotFound, numCheckResults };
+  enum CheckResult { NotFound, PartialMatch, Ambiguous, Found };
 
 }
 
@@ -35,18 +35,14 @@ namespace commands {
 
 namespace commands {
 
-  void activate(const CommandMode&);
-  void addCommands(CommandMode&, const CommandMode&);
-  CheckResult checkName(const CommandMode&, const char*);
   input::InputBuffer& currentLine();
-  const CommandMode* currentMode();
-  void defaultError(const char*);
-  void exitInteractive();
-  void exitMode();
-  void insertTag(TagDict&, const char*, const char*);
-  void printTags(std::ostream&, const TagDict&);
+  const CommandTree* currentMode();
+
+  void run_from(const CommandTree& initial_mode);
+  void drop_to(const CommandTree& mode); // exit modes until |mode| is left
+  void exitInteractive(); // used by 'qq' in empty mode
+  void exitMode(); // used by 'q' in help mode
   inline void relax_f() {}
-  void run(const CommandMode&);
 
 }
 
@@ -54,7 +50,7 @@ namespace commands {
 
 namespace commands {
 
-struct StrCmp // the string comparison function disguised as function object
+struct StrCmp // the string "less than" function disguised as function object
 { // a zero-size class with just one accessor method
   bool operator() (const char* a, const char* b) const
   { return strcmp(a,b) < 0; }
@@ -69,100 +65,97 @@ Command(action_pointer a) : action(a) {}; // store |a| as |action|
   void operator() () const { action(); }
 };
 
-class CommandMode {
-
- private:
-
+class CommandNode
+{
   typedef std::map<const char*,Command,StrCmp> CommandDict;
-
-  std::vector<const CommandMode*> d_nextList; // direct successor modes
 
   CommandDict d_map;
   const char* d_prompt;
-  void (*d_entry)();
-  void (*d_exit)();
-  void (*d_error)(const char*);
+  action_pointer d_entry, d_exit;
 
  public:
 
-  typedef CommandDict::iterator iterator;
-  typedef CommandDict::const_iterator const_iterator;
-
 // Constructors and destructors
-  CommandMode(const char*,
+  CommandNode(const char*,
 	      void (*entry)() = &relax_f,
-	      void (*exit)() = &relax_f,
-	      void (*error)(const char*) = &defaultError);
+	      void (*exit)() = &relax_f);
 
-  virtual ~CommandMode() {}
+  ~CommandNode() {}
 
 // accessors
-  const_iterator begin() const {
-    return d_map.begin();
-  }
+  const char* prompt() const { return d_prompt; }
 
-  const_iterator end() const {
-    return d_map.end();
-  }
+  void addCommands(const CommandNode& source); // inherit commands from |source|
 
-  bool empty() const { return d_map.empty(); }
+  // bind |name| to |f| in current mode, possibly overriding previous
+  void add(const char* const name, action_pointer f) { add(name,Command(f)); }
 
-  const_iterator find(const char* name) const {
-    return d_map.find(name);
-  }
+  void exit() const { d_exit(); }
 
-  const char* prompt() const {
-    return d_prompt;
-  }
 
-  void entry() const {
-    d_entry();
-  }
+ protected: // methods for use by |CommandNode| or |CommandTree| objects only
 
-  void error(const char* str) const {
-    d_error(str);
-  }
+  typedef CommandDict::const_iterator const_iterator;
 
-  void exit() const {
-    d_exit();
-  }
+  // bind |name| to |action| in current mode, possibly overriding previous
+  void add(const char* const name, const Command& action);
 
-  void extensions(std::set<const char*,StrCmp>&, const char*) const;
+  // basic search in our own command map
+  const_iterator find(const char* name) const { return d_map.find(name); }
 
-  void extensions(std::vector<const char*>&, const char*) const;
+  const_iterator find_prefix(const char* name) const
+    { return d_map.lower_bound(name); }
 
-  const_iterator findName(const char* name) const;
+  void entry() const { d_entry(); }
 
-  virtual const std::vector<const CommandMode*>& next() const {
-    return d_nextList;
-  }
+  const_iterator begin() const { return d_map.begin(); }
+
+  const_iterator end() const { return d_map.end(); }
+
+}; // |class CommandNode|
+
+class CommandTree : public CommandNode
+{
+ // list direct descendant modes
+  std::vector<CommandTree*> d_nextList; // owned pointers
+
+ public:
+  explicit CommandTree(const CommandNode& root)
+    : CommandNode(root) , d_nextList() {}
+  ~CommandTree(); // since we have owned pointers
+
+  // extend mode tree, returning reference to added (singleton) subtree
+  CommandTree& add_descendant(const CommandNode& c); // make |c| a descendant
+
+  void run() const; // start a command session based on this mode
+
+  void activate() const; // enter (and push) this mode tree
+
+  // the following is for use in guiding readline, and for ambiguity reporting
+  std::vector<const char*> extensions(const char*) const;
+
+ private:
 
   size_t n_desc() const { return d_nextList.size(); }
 
-  const CommandMode& nextMode(size_t j) const {
-    return *(d_nextList[j]);
-  }
+  const CommandTree& nextMode(unsigned int i) const { return *(d_nextList[i]); }
 
-// manipulators
-  void add(const char* const name, void (*action)()) {
-    add(name,Command(action));
-  }
+  bool has_descendant (const CommandTree* mode) const; // search decendants tree
 
-  void add(const char* const, const Command&);
+  // look up |name|, return result in |status|, which is an in-out argument.
+  // |status| should be anything except |Found| initially, and the result
+  // and |where| are set only when it becomes |Found| or |PartialMatch|
+  CommandNode::const_iterator look_up(const char* name,
+				      CheckResult& status,
+				      CommandTree const* & where) const;
 
-  void add_descendant(CommandMode& c) // make |c| a descendant of |*this|
-  { d_nextList.push_back(&c); }
+  // implementation of the public |extensions| method, eliminates duplicates
+  void extensions(std::set<const char*,StrCmp>&, const char*) const;
 
-  iterator find(const char* name) {
-    return d_map.find(name);
-  }
+}; // |class CommandTree|
 
-  void setAction(const char*, void (*)());
+} // |namespace commands|
 
-}; // class CommandMode
-
-}
-
-}
+} // |namespace atlas|
 
 #endif
