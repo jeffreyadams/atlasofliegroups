@@ -28,14 +28,6 @@ namespace atlas {
 
 namespace blocks {
 
-/******** type declarations *************************************************/
-
-/******** constant declarations *********************************************/
-
-// reserve the last possible unsigned value; it is supposed unused
-const BlockElt UndefBlock = ~ BlockElt(0);
-
-
 
 /******** function declarations *********************************************/
 
@@ -132,17 +124,17 @@ class Block_base
 
   BlockElt length_first(size_t l) const; // first element of given length
 
-  BlockElt cross(size_t s, BlockElt z) const //!< cross action
+  BlockElt cross(weyl::Generator s, BlockElt z) const
   { assert(z<size()); assert(s<rank()); return data[s][z].cross_image; }
 
-  BlockEltPair cayley(size_t s, BlockElt z) const //!< Cayley transform
+  BlockEltPair cayley(weyl::Generator s, BlockElt z) const
   { assert(z<size()); assert(s<rank());
     if (not isWeakDescent(s,z))
       return data[s][z].Cayley_image;
     else return BlockEltPair(UndefBlock,UndefBlock);
   }
 
-  BlockEltPair inverseCayley(size_t s, BlockElt z) const //!< inverse Cayley
+  BlockEltPair inverseCayley(weyl::Generator s, BlockElt z) const
   { assert(z<size()); assert(s<rank());
     if (isWeakDescent(s,z))
       return data[s][z].Cayley_image;
@@ -151,22 +143,24 @@ class Block_base
 
   const DescentStatus& descent(BlockElt z) const
     { assert(z<size()); return info[z].descent; }
-  DescentStatus::Value descentValue(size_t s, BlockElt z) const
+  DescentStatus::Value descentValue(weyl::Generator s, BlockElt z) const
     { assert(z<size()); assert(s<rank()); return descent(z)[s]; }
 
-  bool isWeakDescent(size_t s, BlockElt z) const
+  bool isWeakDescent(weyl::Generator s, BlockElt z) const
     { return DescentStatus::isDescent(descentValue(s,z)); }
 
-  bool isStrictAscent(size_t, BlockElt) const;
-  bool isStrictDescent(size_t, BlockElt) const;
-  size_t firstStrictDescent(BlockElt z) const;
-  size_t firstStrictGoodDescent(BlockElt z) const;
+  bool isStrictAscent(weyl::Generator, BlockElt) const;
+  bool isStrictDescent(weyl::Generator, BlockElt) const;
+  weyl::Generator firstStrictDescent(BlockElt z) const;
+  weyl::Generator firstStrictGoodDescent(BlockElt z) const;
 
   BlockElt Hermitian_dual(BlockElt z) const { return info[z].dual; }
 
   // The functor $T_{\alpha,\beta}$; might have been a non-method function
   BlockEltPair link
     (weyl::Generator alpha,weyl::Generator beta,BlockElt y) const;
+
+  virtual const TwistedInvolution& involution(BlockElt z) const =0;
 
   // print whole block to stream (name chosen to avoid masking by |print|)
   std::ostream& print_to
@@ -270,11 +264,11 @@ class Block : public Block_base
   This is the corresponding Weyl group element w, such that w.delta is the
   root datum involution tau corresponding to z
 */
-  const TwistedInvolution& involution(BlockElt z) const
+  virtual const TwistedInvolution& involution(BlockElt z) const
     { assert(z<size()); return d_involution[z]; }
 
   //! \brief the simple roots occurring in reduced expression |involution(z)|
-  const RankFlags& involutionSupport(size_t z) const
+  const RankFlags& involutionSupport(BlockElt z) const
   {
     assert(z<size());
     return d_involutionSupport[z];
@@ -321,7 +315,6 @@ class param_block : public Block_base // blocks of parameters
   const RatWeight& gamma() const { return infin_char; }
   KGBElt parent_x(BlockElt z) const { return kgb_nr_of[x(z)]; }
   const TorusElement& y_rep(KGBElt y) const { return y_pool[y].repr(); }
-  const TwistedInvolution& involution(BlockElt z) const; // obtained from |kgb|
 
   RatWeight nu(BlockElt z) const; // "real" projection of |infin_char|
   Weight lambda_rho(BlockElt z) const; // reconstruct from y value
@@ -333,6 +326,7 @@ class param_block : public Block_base // blocks of parameters
   // virtual methods
   virtual KGBElt xsize() const { return kgb_nr_of.size(); } // child |x| range
   virtual KGBElt ysize() const { return y_hash.size(); }    // child |y| range
+  virtual const TwistedInvolution& involution(BlockElt z) const; // from |kgb|
 
 }; // |class param_block|
 

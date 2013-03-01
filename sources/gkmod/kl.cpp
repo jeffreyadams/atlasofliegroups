@@ -182,7 +182,7 @@ KLContext::KLContext(const Block_base& b)
   */
 KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
 {
-  if (x==blocks::UndefBlock) // partial blocks can cause this in many ways
+  if (x==UndefBlock) // partial blocks can cause this in many ways
     return d_store[d_zero];
   const KLRow& klr = d_kl[y];
   unsigned int inx=prim_index(x,descentSet(y));
@@ -195,7 +195,7 @@ KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
 // The same, but just return the index into |d_store| that gives $P_{x,y}$
 KLIndex KLContext::KL_pol_index(BlockElt x, BlockElt y) const
 {
-  if (x==blocks::UndefBlock) // partial blocks can cause this in many ways
+  if (x==UndefBlock) // partial blocks can cause this in many ways
     return d_zero;
   const KLRow& klr = d_kl[y];
   unsigned int inx=prim_index(x,descentSet(y));
@@ -411,7 +411,7 @@ std::pair<weyl::Generator,weyl::Generator>
     if (dy[s]==DescentStatus::RealNonparity and
 	dx[s]==DescentStatus::ImaginaryTypeI)
     { BlockElt sx = cross(s,x);
-      if (sx==blocks::UndefBlock) // cross image might be outside partial block
+      if (sx==UndefBlock) // cross image might be outside partial block
 	return std::make_pair(s,r); // cannot and need not search for |t|
       const DescentStatus& dsx = descent(sx);
       for (t = 0; t<r; ++t)

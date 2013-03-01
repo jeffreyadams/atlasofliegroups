@@ -16,9 +16,10 @@
 #include <map>
 
 #include "polynomials.h"
-#include "blocks.h"
 #include "kgb.h"     // |kgb.size()|
 #include "complexredgp.h" // |twoRho| in |nu_block::print|
+#include "blocks.h"
+#include "ext_block.h"
 #include "kl.h"
 #include "repr.h"
 
@@ -69,7 +70,7 @@ std::ostream& Block_base::print_to(std::ostream& strm,
     for (weyl::Generator s = 0; s < rank(); ++s)
     {
       strm << std::setw(width+pad);
-      if (cross(s,z)==blocks::UndefBlock) strm << '*';
+      if (cross(s,z)==UndefBlock) strm << '*';
       else strm << cross(s,z);
     }
     strm << std::setw(pad+1) << "";
@@ -80,9 +81,9 @@ std::ostream& Block_base::print_to(std::ostream& strm,
       BlockEltPair p =
 	isWeakDescent(s,z) ? inverseCayley(s,z) : cayley(s,z);
       strm << '(' << std::setw(width);
-      if (p.first ==blocks::UndefBlock) strm << '*'; else strm << p.first;
+      if (p.first ==UndefBlock) strm << '*'; else strm << p.first;
       strm << ',' << std::setw(width);
-      if (p.second==blocks::UndefBlock) strm << '*'; else strm << p.second;
+      if (p.second==UndefBlock) strm << '*'; else strm << p.second;
       strm << ')' << std::setw(pad) << "";
     }
 
@@ -91,7 +92,7 @@ std::ostream& Block_base::print_to(std::ostream& strm,
   } // |for (z)|
 
   return strm;
-} // |print_on|
+} // |print_to|
 
 
 std::ostream& Block::print
@@ -154,6 +155,110 @@ std::ostream& non_integral_block::print
 
 
 } // |namespace blocks|
+
+namespace ext_block {
+
+std::ostream& extended_block::print_to (std::ostream& strm) const
+{
+  // compute maximal width of entry
+  int width = ioutils::digits(z(size()-1),10ul);
+  int lwidth = ioutils::digits(length(size()-1),10ul);
+
+  const int pad = 2;
+
+  for (BlockElt n=0; n<size(); ++n)
+  {
+    // print parent entry number
+    strm << std::setw(width) << z(n);
+
+    // print length
+    strm << std::setw(lwidth+pad) << length(n) << std::setw(pad) << "";
+
+    // print descents types
+    if (rank()==0)
+      strm << '[';
+    else
+      for (weyl::Generator s=0; s<rank(); ++s)
+	strm << (s==0 ? '[' : ',') << descent_code(descent_type(s,n));
+    strm << ']';
+
+    // print cross actions
+    for (weyl::Generator s = 0; s < rank(); ++s)
+    {
+      strm << std::setw(width+pad);
+      if (cross(s,n)==UndefBlock) strm << '*';
+      else strm << z(cross(s,n));
+    }
+    strm << std::setw(pad+1) << "";
+
+    // print Cayley transforms
+    for (size_t s = 0; s < rank(); ++s)
+    {
+      strm << '(' << std::setw(width);
+      if (data[s][n].links.first==UndefBlock)
+	strm << '*';
+      else strm << z(data[s][n].links.first);
+      strm << ',' << std::setw(width);
+      if (has_double_image(descent_type(s,n)))
+	strm << z(data[s][n].links.second);
+      else
+	strm << '*';
+      strm << ')' << std::setw(pad) << "";
+    }
+
+    weyl::InvolutionWord dec =
+      tW.extended_involution_expr(parent.involution(z(n)));
+    for (size_t i=0; i<dec.size(); ++i)
+      if (dec[i]>=0) strm << static_cast<char>('1'+dec[i]) << '^';
+      else strm << static_cast<char>('1'+~dec[i]) << 'x';
+    strm << 'e' << std::endl;
+  } // |for (n)|
+
+  return strm;
+} // |print_to|
+
+const char* descent_code(DescValue v)
+{
+  switch(v)
+  {
+  case one_complex_ascent: return "1C+ ";
+  case one_complex_descent: return "1C- ";
+  case one_imaginary_single: return "1i1 ";
+  case one_real_pair_fixed: return "1r1f";
+  case one_imaginary_pair_fixed: return "1i2f";
+  case one_real_single: return "1r2 ";
+  case one_imaginary_pair_switched: return "1i2s";
+  case one_real_pair_switched: return "1r1s";
+  case one_real_nonparity: return "1rn ";
+  case one_imaginary_compact: return "1ic ";
+
+  case two_complex_ascent: return "2C+ ";
+  case two_complex_descent: return "2C- ";
+  case two_semi_imaginary: return "2Ci ";
+  case two_semi_real: return "2Cr ";
+  case two_imaginary_single_single: return "2i11";
+  case two_real_double_double: return "2r11";
+  case two_imaginary_single_double: return "2i12";
+  case two_real_single_double: return "2r21";
+  case two_imaginary_double_double: return "2i22";
+  case two_real_single_single: return "2r22";
+  case two_real_nonparity: return "2rn ";
+  case two_imaginary_compact: return "2ic ";
+
+  case three_complex_ascent: return "3C+ ";
+  case three_complex_descent: return "3C- ";
+  case three_semi_imaginary: return "3Ci ";
+  case three_real_semi: return "3r  ";
+  case three_imaginary_semi: return "3i  ";
+  case three_semi_real: return "3Cr ";
+  case three_real_nonparity: return "3rn ";
+  case three_imaginary_compact: return "3ic ";
+  }
+  assert(false); return NULL;
+}
+
+} // |namespace ext_block|
+
 /*****************************************************************************
 
         Chapter I -- Functions declared in block_io.h
@@ -237,12 +342,12 @@ std::ostream& printBlockU(std::ostream& strm, const Block& block)
                              ? block.inverseCayley(s,j)
 	                     : block.cayley(s,j);
       strm << '(' << std::setw(width);
-      if (z.first == blocks::UndefBlock)
+      if (z.first == UndefBlock)
 	strm << '*';
       else
 	strm << z.first;
       strm << ',' << std::setw(width);
-      if (z.second == blocks::UndefBlock)
+      if (z.second == UndefBlock)
 	strm << '*';
       else
 	strm << z.second;
@@ -315,9 +420,10 @@ std::ostream& printDescent(std::ostream& strm,
   return strm;
 }
 
+
 std::ostream& print_twist(std::ostream& strm, const Block_base& block)
 {
-  if (block.Hermitian_dual(0)==blocks::UndefBlock)
+  if (block.Hermitian_dual(0)==UndefBlock)
     return strm << "Block is not stable under twist" << std::endl;
 
   std::ostringstream os; BlockElt count=0;
