@@ -193,7 +193,7 @@ void write_block_file(const Block& block, std::ostream& out)
 	  or v==DescentStatus::ImaginaryTypeII)
 	basic_io::put_int(noGoodAscent,out);
       else if (v == DescentStatus::RealNonparity)
-	basic_io::put_int(blocks::UndefBlock,out);
+	basic_io::put_int(UndefBlock,out);
       else if (v == DescentStatus::ComplexAscent)
 	basic_io::put_int(block.cross(s,x),out);
       else if (v == DescentStatus::ImaginaryTypeI)

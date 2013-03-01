@@ -369,6 +369,7 @@ namespace atlas {
   typedef std::vector<BlockElt> BlockEltList;
   typedef std::pair<BlockElt,BlockElt> BlockEltPair;
   typedef std::vector<BlockEltPair> BlockEltPairList;
+  static const BlockElt UndefBlock = ~0u;
 
   namespace klsupport { class KLSupport; }
   namespace wgraph {

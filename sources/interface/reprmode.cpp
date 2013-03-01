@@ -33,6 +33,7 @@
 #include "kgb.h"
 #include "kgb_io.h"
 #include "blocks.h"
+#include "ext_block.h"
 #include "repr.h"
 #include "block_io.h"
 #include "kl.h"
@@ -67,6 +68,7 @@ namespace commands {
   void blockwrite_f(); // not yet implemented
   void blockstabilizer_f(); // not yet implemented
   void blocktwist_f();
+  void extblock_f();
   void deform_f();
   void kl_f();
   void klbasis_f();
@@ -80,7 +82,7 @@ namespace commands {
 
   // mode-local variables
   block_type state=noblock;
-  BlockElt entry_z = blocks::UndefBlock;
+  BlockElt entry_z = UndefBlock;
   SubSystemWithGroup* sub=NULL;
   StandardRepr* sr=NULL;
   param_block* block_pointer=NULL; // block contains |KLContext| pointer
@@ -108,6 +110,7 @@ CommandNode reprNode()
   // result.add("blockwrite",blockwrite_f);
   // result.add("blockstabilizer",blockstabilizer_f);
   result.add("blocktwist",blocktwist_f);
+  result.add("extblock",extblock_f);
   result.add("deform",deform_f);
   result.add("kl",kl_f);
   result.add("klbasis",klbasis_f);
@@ -324,6 +327,14 @@ void blocktwist_f()
 {
   ioutils::OutputFile file;
   block_io::print_twist(file,current_param_block());
+}
+
+void extblock_f()
+{
+  ext_block::extended_block eblock(current_param_block(),
+				   currentComplexGroup().twistedWeylGroup());
+  ioutils::OutputFile file;
+  eblock.print_to(file);
 }
 
 void kl_f()

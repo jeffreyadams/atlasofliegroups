@@ -221,7 +221,7 @@ BlockElt Block_base::length_first(size_t l) const
   Explanation: this means that descentValue(s,z) is one of ComplexAscent,
   ImaginaryTypeI or ImaginaryTypeII.
 */
-bool Block_base::isStrictAscent(size_t s, BlockElt z) const
+bool Block_base::isStrictAscent(weyl::Generator s, BlockElt z) const
 {
   DescentStatus::Value v = descentValue(s,z);
   return not DescentStatus::isDescent(v)
@@ -234,7 +234,7 @@ bool Block_base::isStrictAscent(size_t s, BlockElt z) const
   Explanation: this means that descentValue(s,z) is one of ComplexDescent,
   RealTypeI or RealTypeII.
 */
-bool Block_base::isStrictDescent(size_t s, BlockElt z) const
+bool Block_base::isStrictDescent(weyl::Generator s, BlockElt z) const
 {
   DescentStatus::Value v = descentValue(s,z);
   return DescentStatus::isDescent(v)
@@ -245,9 +245,9 @@ bool Block_base::isStrictDescent(size_t s, BlockElt z) const
   \brief Returns the first descent for z (the number of a simple root) that is
 not imaginary compact, or rank() if there is no such descent.
 */
-size_t Block_base::firstStrictDescent(BlockElt z) const
+weyl::Generator Block_base::firstStrictDescent(BlockElt z) const
 {
-  for (size_t s = 0; s < rank(); ++s)
+  for (weyl::Generator s = 0; s < rank(); ++s)
     if (isStrictDescent(s,z))
       return s;
 
@@ -258,9 +258,9 @@ size_t Block_base::firstStrictDescent(BlockElt z) const
   \brief Returns the first descent for z (the number of a simple root) that is
 either complex or real type I; if there is no such descent returns |rank()|
 */
-size_t Block_base::firstStrictGoodDescent(BlockElt z) const
+weyl::Generator Block_base::firstStrictGoodDescent(BlockElt z) const
 {
-  for (size_t s = 0; s < rank(); ++s)
+  for (weyl::Generator s = 0; s < rank(); ++s)
     if (isStrictDescent(s,z) and
 	descentValue(s,z)!=DescentStatus::RealTypeII)
       return s;
@@ -570,7 +570,7 @@ void Block::compute_supports()
   // complete involution supports at non-minimal lengths, using previous
   for (BlockElt z=d_involutionSupport.size(); z<size(); ++z)
   {
-    size_t s = firstStrictDescent(z);
+    weyl::Generator s = firstStrictDescent(z);
     assert (s<rank()); // must find one, as we are no longer at minimal length
     DescentStatus::Value v = descentValue(s,z);
     if (v == DescentStatus::ComplexDescent) // cross link
@@ -606,7 +606,7 @@ param_block::param_block(const Rep_context& rc0, unsigned int rank)
 {}
 
 const TwistedInvolution& param_block::involution(BlockElt z) const
-{ return rc.kgb().involution(kgb_nr_of[x(z)]); }
+{ return rc.kgb().involution(parent_x(z)); }
 
 RatWeight param_block::nu(BlockElt z) const
 {

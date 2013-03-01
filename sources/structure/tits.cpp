@@ -594,7 +594,9 @@ TorusPart TitsGroup::pull_across(const WeylElt& w, TorusPart x) const
 
 TitsElt TitsGroup::twisted(const TitsElt& te) const
 {
-  return TitsElt(*this,twisted(left_torus_part(te)),twisted(te.w()));
+  return TitsElt(*this,
+		 TitsGroup::twisted(left_torus_part(te)),
+		 TwistedWeylGroup::twisted(te.w()));
 }
 
 /*!

@@ -131,11 +131,11 @@ BlockElt
 {
   RankFlags a; // good ascents for x that are descents for y
 
-  while (x!=blocks::UndefBlock and (a = goodAscentSet(x)&d).any())
+  while (x!=UndefBlock and (a = goodAscentSet(x)&d).any())
   {
     size_t s = a.firstBit();
     DescentStatus::Value v = descentValue(s,x);
-    x = v == DescentStatus::RealNonparity ? blocks::UndefBlock
+    x = v == DescentStatus::RealNonparity ? UndefBlock
       : v == DescentStatus::ComplexAscent ? d_block.cross(s,x)
       : d_block.cayley(s,x).first; // imaginary type I
   }

@@ -31,6 +31,7 @@
 #include "kgb.h"
 #include "kgb_io.h"
 #include "blocks.h"
+#include "ext_block.h"
 #include "block_io.h"
 #include "kl.h"
 #include "kl_io.h"
@@ -69,6 +70,7 @@ namespace {
   void blockwrite_f();
   void blockstabilizer_f();
   void blocktwist_f();
+  void extblock_f();
   void klbasis_f();
   void kllist_f();
   void primkl_f();
@@ -111,6 +113,7 @@ CommandNode blockNode()
   result.add("blockwrite",blockwrite_f);
   result.add("blockstabilizer",blockstabilizer_f);
   result.add("blocktwist",blocktwist_f);
+  result.add("extblock",extblock_f);
   result.add("klbasis",klbasis_f);
   result.add("kllist",kllist_f);
   result.add("primkl",primkl_f);
@@ -413,9 +416,17 @@ void blockstabilizer_f()
 void blocktwist_f()
 {
   ioutils::OutputFile file;
-
   block_io::print_twist(file,currentBlock());
 }
+
+void extblock_f()
+{
+  ext_block::extended_block eblock(currentBlock(),
+				   currentComplexGroup().twistedWeylGroup());
+  ioutils::OutputFile file;
+  eblock.print_to(file);
+}
+
 
 /* For each element $y$ in the block, outputs the list of non-zero K-L
    polynomials $P_{x,y}$.

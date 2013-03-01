@@ -548,6 +548,13 @@ public:
  */
   Generator leftDescent(const WeylElt& w) const;
 
+  bool commutes (Generator s, Generator t) const
+  {
+    WeylElt w = generator(s);
+    conjugate(w,t);
+    return w==generator(s);
+  }
+
   const WeylElt& longest() const { return d_longest; }
 
   // correspondence with dual Weyl group; is coherent with twist on right
@@ -729,9 +736,13 @@ public:
 
  /*!
   \brief Returns a reduced expression of |tw| as a twisted involution.
+  The second form assures the lexicographically first possible form is used
 */
    InvolutionWord involution_expr(TwistedInvolution tw) const; // call by value
    InvolutionWord canonical_involution_expr(TwistedInvolution tw) const; // idem
+
+   // extended involution expression for a twist-fixed twisted involution
+   InvolutionWord extended_involution_expr(TwistedInvolution tw) const; // idem
 
   //!\brief Roots that are images of the simple roots under involution of |tw|
   RootNbrList simple_images

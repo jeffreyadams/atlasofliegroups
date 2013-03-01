@@ -439,7 +439,7 @@ std::pair<weyl::Generator,weyl::Generator>
     if (dy[s]==DescentStatus::RealNonparity and
 	dx[s]==DescentStatus::ImaginaryTypeI)
     { BlockElt sx = cross(s,x);
-      if (sx==blocks::UndefBlock) // cross image might be outside partial block
+      if (sx==UndefBlock) // cross image might be outside partial block
 	return std::make_pair(s,r); // cannot and need not search for |t|
       const DescentStatus& dsx = descent(sx);
       for (t = 0; t<r; ++t)
