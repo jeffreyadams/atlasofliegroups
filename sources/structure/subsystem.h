@@ -25,10 +25,12 @@ namespace subsystem {
 /* The following data type has a purpose specific for representation theory.
    It is associated to a subsystem of the dual root datum (with positive roots
    contained in the positive parent coroots), and is derived from |RootSystem|
-   at that dual side. It remains however attached to the parent root _datum_,
-   contains and exports a reference to that rootdatum, and has a method to
-   produce a |PreRootDatum| for the subsystem of the parent defined by simple
-   coroots for the subsystem (not a full root datum, for efficientcy reasons).
+   at that dual side (meaning that inherited |rootSystem| methods present that
+   subsystem of the dual root system of the parent). It remains however
+   attached to the parent root _datum_ (nont sustem), containing and exporting
+   a reference to that rootdatum, and has a method to produce a |PreRootDatum|
+   for the subsystem of the parent defined by simple coroots for the subsystem
+   (not a full root datum, for efficientcy reasons).
  */
 
 // A subsystem on the dual side of a given root datum
@@ -65,12 +67,10 @@ class SubSystem : public RootSystem // new system, subsytem of dual
 
   const RootDatum& parent_datum() const { return rd; }
 
-  weyl::Twist twist(const WeightInvolution& theta,
-		    WeylWord& ww) const;
+  weyl::Twist twist(const WeightInvolution& theta, WeylWord& ww) const;
   // output value |ww| gives |-^theta| as twisted involution for |sub|
 
-  weyl::Twist parent_twist(const WeightInvolution& theta,
-			   WeylWord& ww) const;
+  weyl::Twist parent_twist(const WeightInvolution& theta, WeylWord& ww) const;
   // similar, but |ww| is (for subsystem) on parent side, and anchored at its
   // distinguished involution |delta|: one has |theta=parent(ww).delta|.
 

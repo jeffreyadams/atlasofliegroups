@@ -46,7 +46,14 @@ namespace blocks {
 
 /******** type definitions **************************************************/
 
-
+struct ext_gen // generator of extended Weyl group
+{
+  enum { one, two, three } type;
+  weyl::Generator s0,s1;
+  explicit ext_gen (weyl::Generator s) : type(one), s0(s), s1(~0) {}
+  ext_gen (bool commute, weyl::Generator s, weyl::Generator t)
+  : type(commute ? two : three), s0(s), s1(t) {}
+};
 
 // The class |BlockBase| serves external functionality, not block construction
 class Block_base
@@ -82,6 +89,7 @@ class Block_base
 
   std::vector<EltInfo> info; // its size defines the size of the block
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
+  std::vector<ext_gen> orbits;
 
   // map KGB element |x| to the first block element |z| with |this->x(z)>=x|
   // this vector may remain empty if |element| virtual methodis redefined
@@ -109,10 +117,13 @@ class Block_base
 // accessors
 
   size_t rank() const { return data.size(); } // semisimple rank matters
+  size_t folded_rank() const { return orbits.size(); }
   size_t size() const { return info.size(); }
 
   virtual KGBElt xsize() const = 0;
   virtual KGBElt ysize() const = 0;
+
+  ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
 
   KGBElt x(BlockElt z) const { assert(z<size()); return info[z].x; }
   KGBElt y(BlockElt z) const { assert(z<size()); return info[z].y; }
@@ -304,7 +315,7 @@ class param_block : public Block_base // blocks of parameters
   param_block(const Rep_context& rc, unsigned int rank);
 
   // auxiliary for construction
-  void compute_duals(const ComplexReductiveGroup& G);
+  void compute_duals(const ComplexReductiveGroup& G,const SubSystem rs);
 
  public:
   // "inherited" accessors

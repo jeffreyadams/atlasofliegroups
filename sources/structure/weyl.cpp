@@ -32,7 +32,7 @@
 #include "permutations.h"// to hold the result from dynkin
 #include "prerootdata.h"// for defining action using only simple (co)roots
 #include "rootdata.h"	// also needed for defining action, and deducing twist
-#include "ext_block.h"  // for |twist_orbits|
+#include "blocks.h"  // for |ext_gen|
 
 // extra defs for windows compilation -spc
 #ifdef WIN32
@@ -675,6 +675,25 @@ TwistedWeylGroup::TwistedWeylGroup
 {
 }
 
+std::vector<ext_gen> TwistedWeylGroup::twist_orbits ()  const
+{
+  unsigned int size=0;
+  for (weyl::Generator s=0; s<rank(); ++s)
+    if (twisted(s)>=s)
+      ++size;
+
+  std::vector<ext_gen> result; result.reserve(size);
+
+  for (weyl::Generator s=0; s<rank(); ++s)
+    if (twisted(s)==s)
+      result.push_back(ext_gen(s));
+    else if (twisted(s)>s)
+      result.push_back(ext_gen(W.commutes(s,twisted(s)),s,twisted(s)));
+
+  return result;
+} // |twist_orbits|
+
+
 Twist TwistedWeylGroup::dual_twist() const
 {
   Twist twist; // "dimensioned" but not initialised
@@ -861,7 +880,7 @@ InvolutionWord TwistedWeylGroup::extended_involution_expr(TwistedInvolution tw)
   const
 {
   assert(twisted(tw)==tw);
-  std::vector<ext_block::ext_gen> orbit = ext_block::twist_orbits(*this);
+  std::vector<blocks::ext_gen> orbit = twist_orbits();
 
   InvolutionWord result; result.reserve(involutionLength(tw));
 
@@ -878,7 +897,7 @@ InvolutionWord TwistedWeylGroup::extended_involution_expr(TwistedInvolution tw)
 
     switch(orbit[s].type)
     {
-    case ext_block::ext_gen::one:
+    case ext_gen::one:
       if (hasTwistedCommutation(orbit[s].s0,tw))
       {
 	leftMult(tw,orbit[s].s0); // real
@@ -890,7 +909,7 @@ InvolutionWord TwistedWeylGroup::extended_involution_expr(TwistedInvolution tw)
 	result.push_back(~s);
       }
       break;
-    case ext_block::ext_gen::two:
+    case ext_gen::two:
       if (hasTwistedCommutation(orbit[s].s0,tw))
       {
 	result.push_back(s); // a double real descent
@@ -909,7 +928,7 @@ InvolutionWord TwistedWeylGroup::extended_involution_expr(TwistedInvolution tw)
 	  result.push_back(s); // semi-real descent
       }
       break;
-    case ext_block::ext_gen::three:
+    case ext_gen::three:
       if (hasTwistedCommutation(orbit[s].s0,tw))
       {
 	result.push_back(s); // a real-complex descent
