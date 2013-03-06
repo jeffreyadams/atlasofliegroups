@@ -18,6 +18,7 @@
 
 #include <cassert>
 #include <iostream>
+#include "blocks.h" // for the structure |ext_gen|
 
 namespace atlas {
 
@@ -25,15 +26,6 @@ namespace ext_block {
 
 
 // type defintions
-
-struct ext_gen // generator of extended Weyl group
-{
-  enum { one, two, three } type;
-  weyl::Generator s0,s1;
-  explicit ext_gen (weyl::Generator s) : type(one), s0(s), s1(~0) {}
-  ext_gen (bool commute, weyl::Generator s, weyl::Generator t)
-  : type(commute ? two : three), s0(s), s1(t) {}
-};
 
 enum DescValue // every even/odd pair is one of associated ascent and descent
 {
@@ -95,7 +87,6 @@ class extended_block
 
   const Block_base& parent;
   const TwistedWeylGroup& tW;
-  std::vector<ext_gen> orbit;
   std::vector<elt_info> info; // its size defines the size of the block
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
 
@@ -106,7 +97,7 @@ class extended_block
 
 // accessors
 
-  size_t rank() const { return orbit.size(); }
+  size_t rank() const { return parent.folded_rank(); }
   size_t size() const { return info.size(); }
 
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
@@ -137,8 +128,6 @@ class extended_block
 const char* descent_code(DescValue v); // defined in |block_io|
 inline bool is_descent(DescValue v) { return v%2!=0; }
 bool has_double_image(DescValue v);
-
-std::vector<ext_gen> twist_orbits(const TwistedWeylGroup& W);
 
 DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
 			BlockElt& first_link);

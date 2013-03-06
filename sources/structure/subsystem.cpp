@@ -121,9 +121,9 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta,
 
   // |Delta| now describes the |sub|-side fundamental involution, a twist
 
-  weyl::Twist result; // the subsystem twist that |Delta| has be  reduced to
+  weyl::Twist result; // the subsystem twist that |Delta| has been reduced to
   for (weyl::Generator i=0; i<rank(); ++i)
-    result[i] = simpleRootIndex(Delta[i]);
+    result[i] = RootSystem::simpleRootIndex(Delta[i]);
 
   // Let |theta_0| be the involution such that |Delta| describes $-theta_0^t$
   // then (for integrality systems) |theta_0| is parent quasi-split involution
@@ -162,7 +162,7 @@ weyl::Twist SubSystem::parent_twist(const WeightInvolution& theta,
 
   weyl::Twist result;
   for (weyl::Generator i=0; i<rank(); ++i)
-    result[i] = simpleRootIndex(Delta[i]);
+    result[i] = RootSystem::simpleRootIndex(Delta[i]);
 
   return result;
 }

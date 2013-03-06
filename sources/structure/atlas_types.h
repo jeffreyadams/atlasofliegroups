@@ -355,12 +355,14 @@ namespace atlas {
   typedef std::vector<DescentStatus> DescentStatusList;
 
   namespace blocks {
+    class ext_gen;
     class Block_base;
     class Block;
     class param_block;
     class gamma_block;
     class non_integral_block;
   }
+  using blocks::ext_gen;
   using blocks::Block_base;
   using blocks::Block;
   using blocks::param_block;

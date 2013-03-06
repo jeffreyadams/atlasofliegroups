@@ -154,7 +154,7 @@ inline BlockElt& first_free_slot(BlockEltPair& p)
 }
 
 Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
-  : info(), data(kgb.rank())
+  : info(), data(kgb.rank()), orbits()
   , d_first_z_of_x() // filled below
   , d_bruhat(NULL)
   , klc_ptr(NULL)
@@ -163,14 +163,14 @@ Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
 
 // an almost trivial constructor used for derived non-integral block types
 Block_base::Block_base(unsigned int rank)
-  : info(), data(rank)
+  : info(), data(rank), orbits()
   , d_first_z_of_x()
   , d_bruhat(NULL)
   , klc_ptr(NULL)
 {}
 
 Block_base::Block_base(const Block_base& b) // copy constructor, unused
-  : info(b.info), data(b.data)
+  : info(b.info), data(b.data), orbits(b.orbits)
   , d_first_z_of_x(b.d_first_z_of_x)
   , d_bruhat(NULL) // don't care to copy; is empty in |Block::build| anyway
   , klc_ptr(NULL)  // likewise
@@ -444,6 +444,7 @@ Block::Block(const KGB& kgb,const KGB& dual_kgb)
   , xrange(kgb.size()), yrange(dual_kgb.size())
   , d_Cartan(), d_involution(), d_involutionSupport() // filled below
 {
+  orbits = tW.twist_orbits(); // orbits on full Dynkin diagram
   const TwistedWeylGroup& dual_W =dual_kgb.twistedWeylGroup();
 
   std::vector<TwistedInvolution> dual_w; // tabulate bijection |W| -> |dual_W|
@@ -699,12 +700,30 @@ BlockEltList param_block::survivors_below(BlockElt z) const
   return result;
 } // |param_block::survivors_below|
 
-void param_block::compute_duals(const ComplexReductiveGroup& G)
+void param_block::compute_duals(const ComplexReductiveGroup& G,
+				const SubSystem rs)
 {
   const WeightInvolution& delta = G.distinguished();
   const InvolutionTable& i_tab = G.involution_table();
 
   if (delta*infin_char==infin_char) // for stable blocks compute |delta|-action
+  {
+    WeylWord dummy;
+    weyl::Twist twist = rs.parent_twist(delta,dummy);
+    {
+      unsigned int size=0;
+      for (weyl::Generator s=0; s<rs.rank(); ++s)
+	if (twist[s]>=s)
+	  ++size;
+      orbits.reserve(size);
+    }
+
+    for (weyl::Generator s=0; s<rs.rank(); ++s)
+    if (twist[s]==s)
+      orbits.push_back(ext_gen(s));
+    else if (twist[s]>s)
+      orbits.push_back(ext_gen(rs.cartan(s,twist[s])==0, s,twist[s]));
+
     for (BlockElt z=0; z<size(); ++z)
     {
       KGBElt parent_x = kgb_nr_of[x(z)];
@@ -716,6 +735,7 @@ void param_block::compute_duals(const ComplexReductiveGroup& G)
       if (dual_y!=y_hash.empty)
 	info[z].dual = element(x_of[dual_x],dual_y);
     }
+  }
 }
 
 
@@ -1108,7 +1128,7 @@ gamma_block::gamma_block(const repr::Rep_context& rc,
   // finish off construction
   std::vector<KGBElt>(kgb_nr_of).swap(kgb_nr_of); // consolidate size
 
-  compute_duals(G);
+  compute_duals(G,sub);
 
   // finally look up which element matches the original input
   entry_element = element
@@ -1289,6 +1309,7 @@ void non_integral_block::add_z(KGBElt x,KGBElt y, unsigned short l)
   assert(z==old_size);
   assert(z+1==info.size());
   ndebug_use(old_size);
+  ndebug_use(z);
 }
 
 non_integral_block::non_integral_block
@@ -1629,7 +1650,7 @@ non_integral_block::non_integral_block
     z_hash.reconstruct(); // adapt to permutation and remapped |x| values
   }
 
-  compute_duals(G); // finally compute Hermitian duals
+  compute_duals(G,sub); // finally compute Hermitian duals
 
   // and look up which element matches the original input
   entry_element = element(x_of[x_org],y_hash.find(aux.pack_y(org)));
@@ -1930,7 +1951,7 @@ non_integral_block::non_integral_block
   } // |for(i)|
 
   kgb_nr_of.assign(&x_of[0],&x_of[x_org+1]); // copy identity map with holes
-  compute_duals(complexGroup());
+  compute_duals(complexGroup(),sub);
 
 } // |non_integral_block::non_integral_block|, partial version
 

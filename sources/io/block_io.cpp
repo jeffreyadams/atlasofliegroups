@@ -160,6 +160,9 @@ namespace ext_block {
 
 std::ostream& extended_block::print_to (std::ostream& strm) const
 {
+  if (size()==0)
+    return strm << "Empty extended block (block is not twist-stable)."
+		<< std::endl;
   // compute maximal width of entry
   int width = ioutils::digits(z(size()-1),10ul);
   int lwidth = ioutils::digits(length(size()-1),10ul);
@@ -199,7 +202,8 @@ std::ostream& extended_block::print_to (std::ostream& strm) const
 	strm << '*';
       else strm << z(data[s][n].links.first);
       strm << ',' << std::setw(width);
-      if (has_double_image(descent_type(s,n)))
+      if (has_double_image(descent_type(s,n))
+	  and data[s][n].links.second!=UndefBlock)
 	strm << z(data[s][n].links.second);
       else
 	strm << '*';

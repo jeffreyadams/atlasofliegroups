@@ -688,6 +688,7 @@ public:
   const Twist& twist() const { return d_twist; } // noun "twist"
   void twist(WeylElt& w) const { w=twisted(w); } // verb "twist"
 
+  std::vector<ext_gen> twist_orbits () const;
   Twist dual_twist() const; // the twist for the dual twisted Weyl group
 
   /*!

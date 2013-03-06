@@ -104,7 +104,7 @@ ifeq ($(readline),false)
     cflags += -DNREADLINE
     rl_libs =
 else
-    rl_libs ?= -lreadline -lcurses
+    rl_libs ?= -lreadline
 
 # to override this, either define and export a shell variable 'rl_libs'
 # or set LDFLAGS when calling make. For instance for readline on the Mac do:

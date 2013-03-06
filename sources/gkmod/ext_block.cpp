@@ -26,25 +26,6 @@ namespace atlas {
 
 namespace ext_block {
 
-std::vector<ext_gen> twist_orbits (const TwistedWeylGroup& W)
-{
-  const WeylGroup& Wg = W.weylGroup();
-  unsigned int size=0;
-  for (weyl::Generator s=0; s<W.rank(); ++s)
-    if (W.twisted(s)>=s)
-      ++size;
-
-  std::vector<ext_gen> result; result.reserve(size);
-
-  for (weyl::Generator s=0; s<W.rank(); ++s)
-    if (W.twisted(s)==s)
-      result.push_back(ext_gen(s));
-    else if (W.twisted(s)>s)
-      result.push_back(ext_gen(Wg.commutes(s,W.twisted(s)),s,W.twisted(s)));
-
-  return result;
-} // |twist_orbits|
-
 BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
 {
   switch (descent_type(s,n))
@@ -133,12 +114,12 @@ DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
       link=block.inverseCayley(p.s0,z).first; return one_real_single;
     case DescentStatus::ImaginaryTypeII:
       link=block.cayley(p.s0,z).first;
-      if (block.Hermitian_dual(link)==link)
+      if (link!=UndefBlock and block.Hermitian_dual(link)==link)
 	return one_imaginary_pair_fixed;
       link=UndefBlock; return one_imaginary_pair_switched;
     case DescentStatus::RealTypeI:
       link=block.inverseCayley(p.s0,z).first;
-      if (block.Hermitian_dual(link)==link)
+      if (link!=UndefBlock and block.Hermitian_dual(link)==link)
 	return one_imaginary_pair_fixed;
       link=UndefBlock; return one_imaginary_pair_switched;
     }
@@ -148,41 +129,65 @@ DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
        case DescentStatus::ComplexAscent:
 	 link=block.cross(p.s0,z);
 	 if (link==block.cross(p.s1,z))
-	   return two_semi_imaginary;
-	 link=block.cross(p.s1,link); return two_complex_ascent;
+	   return two_semi_imaginary; // just a guess if |link==UndefBlock|
+	 if (link!=UndefBlock)
+	   link=block.cross(p.s1,link);
+	 return two_complex_ascent;
        case DescentStatus::ComplexDescent:
 	 link=block.cross(p.s0,z);
 	 if (link==block.cross(p.s1,z))
-	   return two_semi_real;
-	 link=block.cross(p.s1,link); return two_complex_descent;
+	   return two_semi_real; // just a guess if |link==UndefBlock|
+	 if (link!=UndefBlock)
+	   link=block.cross(p.s1,link);
+	 return two_complex_descent;
        case DescentStatus::RealNonparity:
 	 link=UndefBlock; return two_real_nonparity;
        case DescentStatus::ImaginaryCompact:
 	 link=UndefBlock; return two_imaginary_compact;
        case DescentStatus::ImaginaryTypeI:
-	 link=block.cayley(p.s1,block.cayley(p.s0,z).first).first;
+	 link=block.cayley(p.s0,z).first;
+	 if (link==UndefBlock)
+	   return two_imaginary_single_single; // really just a guess
+	 link=block.cayley(p.s1,link).first;
+	 if (link==UndefBlock)
+	   return two_imaginary_single_single; // really just a guess
 	 assert(block.Hermitian_dual(link)==link);
 	 return block.descentValue(p.s0,link)==DescentStatus::RealTypeI
 	   ? two_imaginary_single_single :  two_imaginary_single_double;
        case DescentStatus::RealTypeII:
-	 link=block.inverseCayley(p.s1,block.inverseCayley(p.s0,z).first).first;
+	 link=block.inverseCayley(p.s0,z).first;
+	 if (link==UndefBlock)
+	   return two_real_single_single; // really just a guess
+	 link=block.inverseCayley(p.s1,link).first;
+	 if (link==UndefBlock)
+	   return two_real_single_single; // really just a guess
 	 assert(block.Hermitian_dual(link)==link);
 	 return block.descentValue(p.s0,link)==DescentStatus::ImaginaryTypeII
 	   ? two_real_single_single : two_real_single_double;
        case DescentStatus::ImaginaryTypeII:
-	 link=block.cayley(p.s1,block.cayley(p.s0,z).first).first;
+	 link=block.cayley(p.s0,z).first;
+	 if (link==UndefBlock)
+	   return two_imaginary_double_double;
+	 link=block.cayley(p.s1,link).first;
+	 if (link==UndefBlock)
+	   return two_imaginary_double_double;
 	 if (block.Hermitian_dual(link)!=link)
 	 {
 	   link=block.cross(p.s0,link);
-	   assert(block.Hermitian_dual(link)==link);
+	   assert(link==UndefBlock or block.Hermitian_dual(link)==link);
 	 }
 	 return two_imaginary_double_double;
        case DescentStatus::RealTypeI:
-	 link=block.inverseCayley(p.s1,block.inverseCayley(p.s0,z).first).first;
+	 link=block.inverseCayley(p.s0,z).first;
+	 if (link==UndefBlock)
+	   return two_real_double_double;
+	 link=block.inverseCayley(p.s1,link).first;
+	 if (link==UndefBlock)
+	   return two_real_double_double;
 	 if (block.Hermitian_dual(link)!=link)
 	 {
 	   link=block.cross(p.s0,link);
-	   assert(block.Hermitian_dual(link)==link);
+	   assert(link==UndefBlock or block.Hermitian_dual(link)==link);
 	 }
 	 return two_real_double_double;
     }
@@ -195,49 +200,75 @@ DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
 	 link=UndefBlock; return three_imaginary_compact;
        case DescentStatus::ComplexAscent:
 	 link=block.cross(p.s0,z);
+	 if (link==UndefBlock)
+	   return three_complex_ascent; // just a guess
 	 if (link==block.cross(p.s1,link))
 	 {
 	   assert(block.descentValue(p.s1,link)==
 		  DescentStatus::ImaginaryTypeII);
 	   link=block.cayley(p.s1,link).first;
-	   if (block.Hermitian_dual(link)!=link)
+	   if (link!=UndefBlock and block.Hermitian_dual(link)!=link)
 	   {
 	     link=block.cross(p.s1,link);
-	     assert(block.Hermitian_dual(link)==link);
+	     assert(link==UndefBlock or block.Hermitian_dual(link)==link);
 	   }
 	   return three_semi_imaginary;
 	 }
-	 link=block.cross(p.s0,block.cross(p.s1,link));
-	 assert(block.Hermitian_dual(link)==link);
+	 link=block.cross(p.s1,link);
+	 if (link!=UndefBlock)
+	   link=block.cross(p.s0,link);
+	 if (link!=UndefBlock)
+	   assert(block.Hermitian_dual(link)==link);
 	 return three_complex_ascent;
        case DescentStatus::ComplexDescent:
 	 link=block.cross(p.s0,z);
+	 if (link==UndefBlock)
+	   return three_complex_descent; // just a guess
 	 if (link==block.cross(p.s1,link))
 	 {
 	   assert(block.descentValue(p.s1,link)==DescentStatus::RealTypeI);
 	   link=block.inverseCayley(p.s1,link).first;
-	   if (block.Hermitian_dual(link)!=link)
+	   if (link!=UndefBlock and block.Hermitian_dual(link)!=link)
 	   {
 	     link=block.cross(p.s1,link);
-	     assert(block.Hermitian_dual(link)==link);
+	     assert(link==UndefBlock or block.Hermitian_dual(link)==link);
 	   }
 	   return three_semi_real;
 	 }
-	 link=block.cross(p.s0,block.cross(p.s1,link));
-	 assert(block.Hermitian_dual(link)==link);
+	 link=block.cross(p.s1,link);
+	 if (link!=UndefBlock)
+	   link=block.cross(p.s0,link);
+	 if (link!=UndefBlock)
+	   assert(block.Hermitian_dual(link)==link);
 	 return three_complex_descent;
        case DescentStatus::ImaginaryTypeI:
-	 link=block.cross(p.s1,block.cayley(p.s0,z).first);
-	 assert(link==block.cross(p.s0,block.cayley(p.s1,z).first));
-	 assert(block.Hermitian_dual(link)==link);
+	 link=block.cayley(p.s0,z).first;
+	 if (link!=UndefBlock)
+	 {
+	   link=block.cross(p.s1,link);
+	   if (block.cayley(p.s1,z).first!=UndefBlock)
+	     assert(link==block.cross(p.s0,block.cayley(p.s1,z).first));
+	 }
+	 else if ((link=block.cayley(p.s1,z).first)!=UndefBlock)
+	   link=block.cross(p.s0,link);
+	 if (link!=UndefBlock)
+	   assert(block.Hermitian_dual(link)==link);
 	 return three_imaginary_semi;
        case DescentStatus::RealTypeII:
-	 link=block.cross(p.s1,block.inverseCayley(p.s0,z).first);
-	 assert(link==block.cross(p.s0,block.inverseCayley(p.s1,z).first));
-	 assert(block.Hermitian_dual(link)==link);
+	 link=block.inverseCayley(p.s0,z).first;
+	 if (link!=UndefBlock)
+	 {
+	   link=block.cross(p.s1,link);
+	   if (block.inverseCayley(p.s1,z).first!=UndefBlock)
+	     assert(link==block.cross(p.s0,block.inverseCayley(p.s1,z).first));
+	 }
+	 else if ((link=block.inverseCayley(p.s1,z).first)!=UndefBlock)
+	   link=block.cross(p.s0,link);
+	 if (link!=UndefBlock)
+	   assert(block.Hermitian_dual(link)==link);
 	 return three_real_semi;
        case DescentStatus::ImaginaryTypeII: case DescentStatus::RealTypeI:
-	 assert(false);
+	 assert(false); // these cases should never occur
     }
   } // |switch (p.type)|
   assert(false); return one_complex_ascent; // keep compiler happy
@@ -247,11 +278,12 @@ extended_block::extended_block
   (const Block_base& block,const TwistedWeylGroup& W)
   : parent(block)
   , tW(W)
-  , orbit(twist_orbits(tW))
   , info()
-  , data(orbit.size())
+  , data(parent.folded_rank())
 {
-  unsigned int folded_rank = orbit.size();
+  unsigned int folded_rank = data.size();
+  if (folded_rank==0 or block.Hermitian_dual(0)==UndefBlock)
+    return; // block not stable under twist, so leave extended block empty
 
   std::vector<BlockElt> child_nr(block.size(),UndefBlock);
   std::vector<BlockElt> parent_nr;
@@ -275,51 +307,71 @@ extended_block::extended_block
     for (weyl::Generator s=0; s<folded_rank; ++s)
     {
       BlockElt link;
-      DescValue type = extended_type(block,z,orbit[s],link);
+      DescValue type = extended_type(block,z,parent.orbit(s),link);
       data[s].push_back(block_fields(type));
       if (link==UndefBlock)
 	continue; // |s| done for imaginary compact and real nonparity cases
       if (is_descent(type))
 	info.back().length = length(child_nr[link])+1;
       data[s].back().links.first=child_nr[link];
+      BlockElt second = UndefBlock;
       switch (type)
       {
-      default: break;
+      default: continue;
 
       case one_imaginary_single:
       case one_real_single: // in these cases find "cross neighbour" for |s|
-	data[s].back().links.second = child_nr[block.cross(orbit[s].s0,z)];
+	second = block.cross(parent.orbit(s).s0,z);
 	break;
 
       case one_real_pair_fixed:
       case one_imaginary_pair_fixed: // in these cases find second Cayley image
-	data[s].back().links.second =
-	  child_nr[block.cross(orbit[s].s0,link)];
+	second = block.cross(parent.orbit(s).s0,link);
 	break;
 
       case two_imaginary_single_single:
       case two_real_single_single: // now find "double cross neighbour" for |s|
-	assert(block.cross(orbit[s].s0,block.cross(orbit[s].s1,z))==
-	       block.cross(orbit[s].s1,block.cross(orbit[s].s0,z)));
-	data[s].back().links.second =
-	  child_nr[block.cross(orbit[s].s1,block.cross(orbit[s].s0,z))];
+	if (block.cross(parent.orbit(s).s0,z)==UndefBlock)
+	  if (block.cross(parent.orbit(s).s1,z)==UndefBlock)
+	    continue; // can't get there, let's hope it doesn't exist
+	  else second = block.cross(parent.orbit(s).s0,
+				    block.cross(parent.orbit(s).s1,z));
+	else
+	{
+	  second = block.cross(parent.orbit(s).s1,
+			       block.cross(parent.orbit(s).s0,z));
+	  if (block.cross(parent.orbit(s).s1,z)!=UndefBlock)
+	    assert(block.cross(parent.orbit(s).s0,
+			       block.cross(parent.orbit(s).s1,z))==second);
+	}
 	break;
 
       case two_imaginary_single_double:
       case two_real_single_double: // find second Cayley image
-	assert(block.cross(orbit[s].s0,link)==block.cross(orbit[s].s1,link));
-	data[s].back().links.second =
-	  child_nr[block.cross(orbit[s].s0,link)];
+	second = block.cross(parent.orbit(s).s0,link);
+	assert(block.cross(parent.orbit(s).s1,link)==second);
 	break;
 
       case two_imaginary_double_double:
       case two_real_double_double: // find second Cayley image
-	assert(block.cross(orbit[s].s0,block.cross(orbit[s].s1,link))==
-	       block.cross(orbit[s].s1,block.cross(orbit[s].s0,link)));
-	data[s].back().links.second =
-	  child_nr[block.cross(orbit[s].s1,block.cross(orbit[s].s0,link))];
+	if (block.cross(parent.orbit(s).s0,link)==UndefBlock)
+	  if (block.cross(parent.orbit(s).s1,link)==UndefBlock)
+	    continue; // can't get there, let's hope it doesn't exist
+	  else second = block.cross(parent.orbit(s).s0,
+				    block.cross(parent.orbit(s).s1,link));
+	else
+	{
+	  second = block.cross(parent.orbit(s).s1,
+			       block.cross(parent.orbit(s).s0,link));
+	  if (block.cross(parent.orbit(s).s1,link)!=UndefBlock)
+	    assert(block.cross(parent.orbit(s).s0,
+			       block.cross(parent.orbit(s).s1,link))
+		   ==second);
+	}
 	break;
       }
+      if (second!=UndefBlock)
+	data[s].back().links.second = child_nr[second];
     }
   } // |for(n)|
 }
