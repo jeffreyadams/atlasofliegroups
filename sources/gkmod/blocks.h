@@ -315,7 +315,7 @@ class param_block : public Block_base // blocks of parameters
   param_block(const Rep_context& rc, unsigned int rank);
 
   // auxiliary for construction
-  void compute_duals(const ComplexReductiveGroup& G,const SubSystem rs);
+  void compute_duals(const ComplexReductiveGroup& G,const SubSystem& rs);
 
  public:
   // "inherited" accessors

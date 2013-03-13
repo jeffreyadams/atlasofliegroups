@@ -47,7 +47,7 @@ namespace atlas {
 
   The function object this class provides, and that can be used by
   |partition::makeOrbits|, takes the index |s| of a simple-imaginary root and
-  a number |x| encoding an element of the fiber; it return a number |y|
+  a number |x| encoding an element of the fiber; it returns a number |y|
   similarly encoding the image of that element under the action of |s|.
 
   In fact the number |x| describes (in binary form) the element of the fiber

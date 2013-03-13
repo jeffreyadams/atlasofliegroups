@@ -701,7 +701,7 @@ BlockEltList param_block::survivors_below(BlockElt z) const
 } // |param_block::survivors_below|
 
 void param_block::compute_duals(const ComplexReductiveGroup& G,
-				const SubSystem rs)
+				const SubSystem& rs)
 {
   const WeightInvolution& delta = G.distinguished();
   const InvolutionTable& i_tab = G.involution_table();
