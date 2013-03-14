@@ -44,15 +44,14 @@ template<size_t dim>
 				  const BitSet<dim>&);
 
 
-/*!
-  \brief Put into |c| a solution of the system with as left hand sides the
-  rows of a matrix whose columns are given by |b|, and as right hand sides the
-  bits of |rhs|, and return |true|; if no solution exists just return |false|.
+/*
+  Find out whether any combination of the vectos in |b| adds to |rhs|, and if
+  so flag such a combination in the bits of |c|. Nothing changes when |false|.
 */
 template<size_t dim>
-  bool firstSolution(BitSet<dim>& c,
-		     const std::vector<BitVector<dim> >& b,
-		     const BitVector<dim>& rhs);
+  bool combination_exists(const std::vector<BitVector<dim> >& b,
+			  const BitVector<dim>& rhs,
+			  BitSet<dim>& c);
 
 /*!
   \brief Either find a solution of the system of equations |eqn|, putting it
@@ -66,15 +65,15 @@ template<size_t dim>
   if the set of equations is empty, |sol| is left unchanged.
 */
 template<size_t dimsol, size_t dimeq>
-  bool firstSolution(BitVector<dimsol>& sol,
-		     const std::vector<BitVector<dimeq> >& eqns);
+  bool solvable(const std::vector<BitVector<dimeq> >& eqns,
+		BitVector<dimsol>& sol);
 
 template<size_t dim> void identityMatrix(BitMatrix<dim>&, size_t);
 
 template<size_t dim> void initBasis(std::vector<BitVector<dim> >&, size_t);
 
 template<size_t dim>
-  void normalize(BitSet<dim>&, std::vector<BitVector<dim> >&);
+  void Gauss_Jordan(BitSet<dim>&, std::vector<BitVector<dim> >&);
 
 template<size_t dim>
   void normalSpanAdd(std::vector<BitVector<dim> >&, std::vector<size_t>&,
@@ -408,10 +407,6 @@ template<size_t dim> class BitMatrix
 
 
   template<typename I, typename O> void apply(const I&, const I&, O) const;
-
-
-  // whether the BitMatrix is empty (has zero columns).
-  bool isEmpty() const { return d_data.size() == 0; }
 
   BitVectorList<dim> image() const; // free generators of image of matrix
   BitVectorList<dim> kernel() const; // free generators of kernel of matrix

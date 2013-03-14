@@ -45,7 +45,7 @@ Subspace(const BitVectorList<dim>& b, size_t n)
   assert(b.size()==0 or b[0].size()==n);
 
   // change |d_basis| and set |d_support|:
-  bitvector::normalize(d_support,d_basis);
+  bitvector::Gauss_Jordan(d_support,d_basis);
 }
 
 /*!
@@ -58,7 +58,8 @@ Subspace(const BitMatrix<dim>& M)
   , d_support()
   , d_rank(M.numRows())
 {
-  bitvector::normalize(d_support,d_basis); // change |d_basis|, set |d_support|:
+ // change |d_basis| to a normalised form, and set |d_support|:
+  bitvector::Gauss_Jordan(d_support,d_basis);
 }
 
 /******** accessors **********************************************************/

@@ -1181,9 +1181,10 @@ unsigned long makeRepresentative(const Grading& gr,
 
   // set up equations
   RankFlags x;
-  bitvector::firstSolution(x,cl,rhs);
-
-  return x.to_ulong();
+  if (bitvector::combination_exists(cl,rhs,x))
+    return x.to_ulong();
+  else
+    throw std::runtime_error("Representative of impossible grading requested");
 }
 
 

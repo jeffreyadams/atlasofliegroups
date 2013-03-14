@@ -1038,7 +1038,7 @@ TitsElt TitsCoset::grading_seed
   // solve, and tack a solution |x| to the left of |a|.
   tits::TorusPart x(G.rank());
 #ifndef NDEBUG
-  bool success=bitvector::firstSolution(x,eqns);
+  bool success=bitvector::solvable(eqns,x);
   assert(success);
 #else
   bitvector::firstSolution(x,eqns);
