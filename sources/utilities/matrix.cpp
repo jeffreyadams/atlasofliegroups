@@ -280,15 +280,15 @@ Multiplies the matrix to right to the row-vector w, and returns the result.
 It is assumed that the size of w is the number of rows; result size is the
 number of columns. This is the proper sense of application for dual space.
 */
-template<typename C>
-Vector<C> Matrix<C>::right_mult(const Vector<C>& w) const
+template<typename C> template<typename C1>
+Vector<C1> Matrix<C>::right_mult(const Vector<C1>& w) const
 {
   assert(base::numRows()==w.size());
-  Vector<C> result(base::numColumns());
+  Vector<C1> result(base::numColumns());
 
-    for (size_t j=0; j<base::numColumns(); ++j)
+  for (size_t j=0; j<base::numColumns(); ++j)
   {
-    C c(0);
+    C1 c(0);
     for (size_t i=0; i<base::numRows(); ++i)
       c += w[i] * (*this)(i,j);
     result[j] = c;
@@ -691,6 +691,7 @@ template Num Vector<int>::dot(Vector<Num> const&) const;
 
 template Vector<int> Matrix<int>::operator*(Vector<int> const&) const;
 template Vector<Num> Matrix<int>::operator*(Vector<Num> const&) const;
+template Vector<int> Matrix<int>::right_mult(const Vector<int>&) const;
 
 template Matrix_base<int>::Matrix_base
   (std::vector<Vector<int> >::const_iterator,
@@ -709,6 +710,7 @@ template Matrix_base<int>::Matrix_base
    Vector<int>*,
    size_t,
    tags::IteratorTag);
+
 
 
 template class Matrix_base<polynomials::Polynomial<int> >;

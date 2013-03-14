@@ -444,7 +444,6 @@ Block::Block(const KGB& kgb,const KGB& dual_kgb)
   , xrange(kgb.size()), yrange(dual_kgb.size())
   , d_Cartan(), d_involution(), d_involutionSupport() // filled below
 {
-  orbits = tW.twist_orbits(); // orbits on full Dynkin diagram
   const TwistedWeylGroup& dual_W =dual_kgb.twistedWeylGroup();
 
   std::vector<TwistedInvolution> dual_w; // tabulate bijection |W| -> |dual_W|
@@ -508,14 +507,13 @@ Block::Block(const KGB& kgb,const KGB& dual_kgb)
   } // |for(s)|
 
   // Complete |Block_base| initialisation by installing the dual links.
+  if (dual_kgb.Hermitian_dual(0)!=UndefKGB) // then whole block stable
   {
-    const WeylGroup& Wy = dual_W.weylGroup(); // computation is in this group
-    WeylWord w0 = Wy.word(Wy.longest()); // twist y AND cross act by w0
+    orbits = tW.twist_orbits(); // orbits on full Dynkin diagram
+    // the following is correct since |dual_kgb| was built with dual twist
     for (BlockElt z=0; z<size; ++z)
-    {
-      KGBElt yd= dual_kgb.Hermitian_dual(y(z));
-      info[z].dual = element(kgb.Hermitian_dual(x(z)),dual_kgb.cross(w0,yd));
-    }
+      info[z].dual =
+	element(kgb.Hermitian_dual(x(z)),dual_kgb.Hermitian_dual(y(z)));
   }
 
   // Continue filling the fields of the |Block| derived class proper
@@ -539,14 +537,14 @@ Block Block::build(ComplexReductiveGroup& G, RealFormNbr rf, RealFormNbr drf)
   ComplexReductiveGroup dG(G,tags::DualTag()); // the dual group
   RealReductiveGroup dG_R(dG,drf);
 
-  KGB kgb     (G_R, common_Cartans(G_R,dG_R));
-  KGB dual_kgb(dG_R,common_Cartans(dG_R,G_R));
+  KGB kgb     (G_R, common_Cartans(G_R,dG_R),false);
+  KGB dual_kgb(dG_R,common_Cartans(dG_R,G_R),true);
   return Block(kgb,dual_kgb); // |kgb| and |dual_kgb| disappear afterwards!
 }
 
 // Given both real group and dual real group, we can just call main contructor
 Block Block::build(RealReductiveGroup& G_R, RealReductiveGroup& dG_R)
-{ return Block(G_R.kgb(),dG_R.kgb()); }
+{ return Block(G_R.kgb(),dG_R.kgb_as_dual()); }
 
 // compute the supports in $S$ of twisted involutions
 void Block::compute_supports()

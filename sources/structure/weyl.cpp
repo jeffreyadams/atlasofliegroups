@@ -137,6 +137,7 @@ WeylGroup::WeylGroup(const int_Matrix& c)
   , d_maxlength(0)
   , d_longest()
   , d_coxeterMatrix()
+  , Chevalley()
   , d_transducer(d_rank)
   , d_in()
   , d_out()
@@ -174,11 +175,10 @@ WeylGroup::WeylGroup(const int_Matrix& c)
     d_maxlength += d_transducer[j].maxlength();
 
   // and the Weyl group size is the product of the numbers of transducer states
-  for (size_t j = 0; j < d_rank; ++j) {
+  for (size_t j = 0; j < d_rank; ++j)
     d_order *= d_transducer[j].size();
-  }
 
-  // precompute for each |j| the first non-commuting or equal |i<=j|
+  // precompute for each |j| the first non-commuting or equal generator |i<=j|
   for (size_t j = 0; j < d_rank; ++j)
     for (size_t i=0; i<=j; ++i)
       if (d_coxeterMatrix(i,j)!=2)
@@ -186,7 +186,23 @@ WeylGroup::WeylGroup(const int_Matrix& c)
 	d_min_star[j]=i; break;
       }
 
-}
+  // now our Weyl group is operational for computations
+
+  // precompute the Chevalley involution
+  // since we dont have a root datum at hand, we conjugate by |longest()|
+  for (Generator s=0; s<rank(); ++s)
+  {
+    WeylElt w = longest();
+    mult(w,s);
+    mult(w,longest());
+
+    // |w| should be some generator |t|; find which, and store it
+    for (Generator t=0; t<rank(); ++t)
+      if (w==generator(t))
+      {	Chevalley[s] = t; break; }
+  }
+
+} // |WeylGroup::WeylGroup|
 
 
 /******** accessors **********************************************************/
@@ -675,6 +691,14 @@ TwistedWeylGroup::TwistedWeylGroup
 {
 }
 
+WeylElt TwistedWeylGroup::dual_twisted(const WeylElt& w) const
+{
+  Twist dual_twist;
+  for (Generator s=0; s<rank(); ++s)
+    dual_twist[s] = W.Chevalley_dual(d_twist[s]);
+  return W.translation(w,dual_twist);
+}
+
 std::vector<ext_gen> TwistedWeylGroup::twist_orbits ()  const
 {
   unsigned int size=0;
@@ -697,20 +721,8 @@ std::vector<ext_gen> TwistedWeylGroup::twist_orbits ()  const
 Twist TwistedWeylGroup::dual_twist() const
 {
   Twist twist; // "dimensioned" but not initialised
-  for (size_t s=0; s<W.rank(); ++s)
-  {
-    WeylElt w = W.longest();
-    mult(w,twisted(s));
-    mult(w,W.longest()); // now |w| represents $w_0 twist_s w_0$ as WeylElt
-
-    // |w| should be some generator |t|; find which, and store it
-    for (Generator t=0; t<W.rank(); ++t)
-      if (w==W.generator(t))
-      {
-	twist[s] = t; // make outer, since |t| is inner
-	break;
-      }
-  }
+  for (Generator s=0; s<W.rank(); ++s)
+    twist[s] = W.Chevalley_dual(twisted(s));
   return twist;
 }
 

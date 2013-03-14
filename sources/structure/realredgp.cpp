@@ -44,6 +44,7 @@ RealReductiveGroup::RealReductiveGroup
 	 TitsCoset(G_C,tits::square_class_grading_offset
 			 (G_C.fundamental(),square_class(),G_C.rootDatum())))
   , kgb_ptr(NULL)
+  , dual_kgb_ptr(NULL)
   , d_status()
 {
   tori::RealTorus msT = G_C.cartan(G_C.mostSplit(rf)).fiber().torus();
@@ -71,7 +72,8 @@ RealReductiveGroup::RealReductiveGroup
 #endif
 }
 
-RealReductiveGroup::~RealReductiveGroup() { delete d_Tg; delete kgb_ptr; }
+RealReductiveGroup::~RealReductiveGroup()
+{ delete d_Tg; delete kgb_ptr; delete dual_kgb_ptr; }
 
 /******** accessors *********************************************************/
 
@@ -87,6 +89,7 @@ void RealReductiveGroup::swap(RealReductiveGroup& other)
   d_connectivity.swap(other.d_connectivity);
   std::swap(d_Tg,other.d_Tg);
   std::swap(kgb_ptr,other.kgb_ptr);
+  std::swap(dual_kgb_ptr,other.dual_kgb_ptr);
   std::swap(d_status,other.d_status);
 }
 
@@ -151,8 +154,16 @@ RootNbrSet RealReductiveGroup::noncompactRoots() const
 const KGB& RealReductiveGroup::kgb()
 {
   if (kgb_ptr==NULL)
-    kgb_ptr = new KGB(*this,Cartan_set()); // non-traditional is stored
+    kgb_ptr = new KGB(*this,Cartan_set(),false); // generate as non-dual
   return *kgb_ptr;
+}
+
+// return stored KGB structure, after generating it if necessary
+const KGB& RealReductiveGroup::kgb_as_dual()
+{
+  if (dual_kgb_ptr==NULL)
+    dual_kgb_ptr = new KGB(*this,Cartan_set(),true); // generate as dual
+  return *dual_kgb_ptr;
 }
 
 // return stored Bruhat order of KGB, after generating it if necessary

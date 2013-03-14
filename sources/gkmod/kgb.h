@@ -339,10 +339,11 @@ class global_KGB : public KGB_base
   global_KGB(const global_KGB& org); // forbid copying
 
  public:
-  global_KGB(ComplexReductiveGroup& G);
+  global_KGB(ComplexReductiveGroup& G, bool dual_twist=false);
 
   global_KGB(ComplexReductiveGroup& G,
-	     const GlobalTitsElement& x); // generate KGB containing |x|
+	     const GlobalTitsElement& x,
+	     bool dual_twist=false); // generate KGB containing |x|
 
 // accessors
   const GlobalTitsGroup& globalTitsGroup() const { return Tg; }
@@ -359,7 +360,7 @@ class global_KGB : public KGB_base
 
  private:
   void generate_involutions(size_t n);
-  void generate(size_t predicted_size);
+  void generate(size_t predicted_size, bool dual_twist);
 
 }; // |class global_KGB|
 
@@ -397,13 +398,13 @@ and in addition the Hasse diagram (set of all covering relations).
   BruhatOrder* d_bruhat;
 
   //! \brief Owned pointer to the based Tits group.
-  TitsCoset* d_base; // pointer, because contructed late by |generate|
+  TitsCoset* d_base; // pointer, because constructed late by |generate|
 
  public:
 
 // constructors and destructors
   explicit KGB(RealReductiveGroup& GR,
-	       const BitMap& Cartan_classes);
+	       const BitMap& Cartan_classes, bool dual_twist=false);
 
   ~KGB(); // { delete d_bruhat; delete d_base; } // these are owned (or NULL)
 
@@ -451,7 +452,8 @@ and in addition the Hasse diagram (set of all covering relations).
 
 // private methods
 private:
-  size_t generate (RealReductiveGroup& GR,const BitMap& Cartan_classes);
+  bool is_dual_twist_stable(const RealReductiveGroup& GR, TorusPart& shift)
+    const; // auxiliary to see if this dual KGB can be twist-stable
 
   void fillBruhat();
 

@@ -221,8 +221,8 @@ namespace atlas {
   typedef bitmap::BitMap RootNbrSet;
 
   namespace weyl {
-    class WeylInterface;
-    typedef WeylInterface Twist; // use the same implementation
+    class Twist; // diagram automorphism (in practice always an involution)
+    typedef Twist WeylInterface; // no automorphism, but same implementation
     typedef unsigned char Generator; // index of simple root / simple reflection
     struct WeylWord : public std::vector<Generator>  { }; // in weyl namesace
 
