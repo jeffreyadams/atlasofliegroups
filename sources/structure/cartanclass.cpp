@@ -47,7 +47,7 @@ namespace atlas {
 
   The function object this class provides, and that can be used by
   |partition::makeOrbits|, takes the index |s| of a simple-imaginary root and
-  a number |x| encoding an element of the fiber; it return a number |y|
+  a number |x| encoding an element of the fiber; it returns a number |y|
   similarly encoding the image of that element under the action of |s|.
 
   In fact the number |x| describes (in binary form) the element of the fiber
@@ -706,12 +706,9 @@ std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
 
     // solve equation |toAdjoint(xf)=v|
     RankFlags xf;
-#ifndef NDEBUG
-    bool success=bitvector::firstSolution(xf,b,v);
+    bool success=bitvector::combination_exists(b,v,xf);
     assert(success);  // there has to be a solution!
-#else
-    bitvector::firstSolution(xf,b,v);
-#endif
+    ndebug_use(success); // avoid warning about unused variable
 
     // make representative
     fiber_orbit x = d_strongReal[c].class_of(xf.to_ulong());
@@ -794,11 +791,11 @@ AdjointFiberElt Fiber::gradingRep(const Grading& gr) const
   for (size_t i = 0; i < shifts.size(); ++i)
     shifts[i]=SmallBitVector(d_gradingShift[i],ir);
 
-  RankFlags result; bool success=firstSolution(result,shifts,target);
-  if (not success)
+  RankFlags result;
+  if (combination_exists(shifts,target,result))
+    return AdjointFiberElt(result.to_ulong()); // condition has set |result|
+  else
     throw std::runtime_error("Representative of impossible grading requested");
-
-  return AdjointFiberElt(result.to_ulong());
 }
 
 /*!

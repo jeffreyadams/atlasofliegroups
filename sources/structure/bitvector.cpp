@@ -13,7 +13,7 @@ unsigned long integer).
   This is bitvector.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2008,2009 Marc van Leeuwen
+  Copyright (C) 2008,2009,2013 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -23,6 +23,8 @@ unsigned long integer).
 #include <cassert>
 
 #include "bitvector.h"
+
+#include "atlas_types.h"
 
 #include "comparison.h"
 #include "constants.h"
@@ -241,14 +243,14 @@ BitVectorList<dim> BitMatrix<dim>::image() const
   This is based on making the transpose matrix echelon, and then solving the
   resulting trivialised system of equations.
 */
-  template<size_t dim> BitVectorList<dim> BitMatrix<dim>::kernel() const
+template<size_t dim> BitVectorList<dim> BitMatrix<dim>::kernel() const
 {
   BitVectorList<dim> result;
 
-  if (isEmpty())
-    return result; // no unknowns, no nontrivial solutions
+  if (numColumns()==0)
+    return result; // no unknowns, so there are no nontrivial solutions
 
-  assert(d_columns<=dim);
+  assert(numColumns()<=dim);
   std::vector<BitVector<dim> > eqn(d_rows);
 
   // get rows of the matrix into |eqn|
@@ -258,9 +260,9 @@ BitVectorList<dim> BitMatrix<dim>::image() const
 
   // normalize |eqn|
 
-  BitSet<dim> t; // will flag a subset of [0,d_columns[
+  BitSet<dim> t; // will flag a subset of [0,numColumns()[
 
-  normalize(t,eqn);
+  Gauss_Jordan(t,eqn);
 
 /* Now the coordinates in the positions not flagged by |t| are free parameters
    of the kernel, and each element of |eqn| allows one of the remaining
@@ -274,13 +276,13 @@ BitVectorList<dim> BitMatrix<dim>::image() const
    explained below under |normalSpanAdd|, but that complement not lex-minimal.
 */
 
-  result.reserve(d_columns-t.count());
-  for (size_t j = 0; j < d_columns; ++j)
+  result.reserve(numColumns()-t.count());
+  for (size_t j = 0; j < numColumns(); ++j)
     if (not t[j])
     {
-      BitVector<dim> v(d_columns,j); // start with unit vector $e_j$
+      BitVector<dim> v(numColumns(),j); // start with unit vector $e_j$
       size_t c = 0;
-      for (typename BitSet<dim>::iterator it=t.begin(); it(); ++it,++c)
+      for (typename BitSet<dim>::iterator it=t.begin(); it(); ++it, ++c)
 	v.set(*it,eqn[c][j]); // use |eqn[c]| to find |v[*it]|
       result.push_back(v);
     }
@@ -301,7 +303,7 @@ BitMatrix<dim>& BitMatrix<dim>::operator+= (const BitMatrix<dim>& m)
 {
   assert(d_rows==m.d_rows);
   assert(d_columns==m.d_columns);
-  for (size_t j = 0; j < d_columns; ++j)
+  for (size_t j = 0; j < numColumns(); ++j)
     d_data[j] ^= m.d_data[j]; // not |+|, since these are |BitSet|s
 
   return *this;
@@ -314,7 +316,7 @@ BitMatrix<dim>& BitMatrix<dim>::operator+= (const BitMatrix<dim>& m)
   As in apply, this can be done rather efficently by computing a whole column
   at a time.
 
-  NOTE : of course |m.d_rows| must be equal to |d_columns|.
+  NOTE : of course |m.numRows()| must be equal to |numColumns()|.
 */
 template<size_t dim>
 BitMatrix<dim>& BitMatrix<dim>::operator*= (const BitMatrix<dim>& m)
@@ -479,20 +481,18 @@ template<size_t dim>
   }
 
 /*!
-  \brief Put into |c| a solution of the system with as left hand sides the
-  rows of a matrix whose columns are given by |b|, and as right hand sides the
-  bits of |rhs|, and return |true|; if no solution exists just return |false|.
+  Find out whether any combination of the vectors in |b| adds to |rhs|, and if
+  so flag such a combination in the bits of |c|. Nothing changes when |false|.
 */
 template<size_t dim>
-  bool firstSolution(BitSet<dim>& c,
-		     const std::vector<BitVector<dim> >& b,
-		     const BitVector<dim>& rhs)
-
-
+  bool combination_exists(const std::vector<BitVector<dim> >& b,
+			  const BitVector<dim>& rhs,
+			  BitSet<dim>& c)
 {
   if (b.size() == 0) // then there are no unknowns to solve
   {
-    if (rhs.isZero()) {
+    if (rhs.isZero())
+    {
       c.reset(); // clear any previously set bits
       return true; // list of 0 "solved" unknowns
     }
@@ -507,7 +507,8 @@ template<size_t dim>
   BitSet<dim> rh;      // corresponding right hand sides
   std::vector<size_t> f;       // list indicating "pivot" positions in |a|
 
-  for (size_t i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i)
+  {
     BitSet<dim> r;
     // set r to i-th row of matrix whose columns are the |b[j]|
     for (size_t j = 0; j < b.size(); ++j)
@@ -516,7 +517,8 @@ template<size_t dim>
 
     // normalize |r| with respect to |a|: clear coefficients at previous pivots
     for (size_t j = 0; j < f.size(); ++j)
-      if (r[f[j]]) {
+      if (r[f[j]])
+      {
 	r ^= a[j];
 	x ^= rh[j];
       }
@@ -529,7 +531,8 @@ template<size_t dim>
 
       // update previous equations, clearing their coefficient at position |m|
       for (size_t j = 0; j < a.size(); ++j)
-	if (a[j][m]) {
+	if (a[j][m])
+	{
 	  a[j] ^= r;
 	  rh.set(j,rh[j]^x);
 	}
@@ -557,52 +560,45 @@ template<size_t dim>
 
 /*!
   \brief Either find a solution of the system of equations |eqn|, putting it
-  into |sol| and returning |true|, or return |false| if no solition exists.
+  into |sol| and returning |true|, or return |false| if no solution exists.
 
   Here |eqn| holds a system of equations, the last bit of each being
   interpreted as the right hand side.
-
-  However, to solve it we may introduce an extra indeterminate for this final
-  position, solve the homogenous system (which is like finding the kernel of
-  the transpose matrix), and look for a kernel element with final coordinate
-  equal to $-1$ (which working over $Z/2Z$ is of course the same as $1$).
 */
 template<size_t dimsol, size_t dimeq>
-bool firstSolution(BitVector<dimsol>& sol,
-		   const std::vector<BitVector<dimeq> >& eqns)
-
-
+bool solvable(const std::vector<BitVector<dimeq> >& eqns,
+	      BitVector<dimsol>& sol)
 {
-  std::vector<BitVector<dimeq> > eqn(eqns); // local copy
-  BitSet<dimeq> t;
+  if (eqns.empty()) // nothing to do, and we cannot even dimension |sol|
+    return true; // just say "anything goes", in particular the original |sol|
 
-  normalize(t,eqn); // normalize matrix, treating the last bit like all others
+  std::vector<BitVector<dimeq> > eqn(eqns); // make a local copy
+  BitSet<dimeq> pivots;
+  /*
+    We solve by imagining an extra unknown for the final position,
+    solve the homogenous system (find the kernel of transpose matrix), and
+    look for a kernel element with final coordinate equal to $-1$
+    (which working over $Z/2Z$ is of course the same as $1$).
+  */
+  Gauss_Jordan(pivots,eqn); // get equation matrix into reduced echelon form
 
   /* now the system is contradictory if and only if the last bit in |t| is
      set, since that means some equation sets the corresponding indeterminate
      to 0 (because it has its \emph{leading} bit at the final position), while
      absence of any equation for that indeterminate means we can make it $-1$.
    */
-  if (eqn.size()>0 and t[eqn[0].size()-1])
-    return false;
+  unsigned int last = eqns[0].size()-1;
+  if (pivots[last]) // some equation sets the extra unknown to $0$
+    return false; // note that we leave |sol| at its original size here
 
-  sol.reset(); // only now can we clear the solution
+  sol.resize(last); // otherwise |sol| is one shorter than the equations
+  sol.reset(); // zero out all unknowns: all free unknowns are taken to be $0$
 
-  if (eqn.size() == 0) // do nothing, then zero solution solves the null system
-    return true; // note that we leave |sol| at its original size (only) here
-
-  sol.resize(eqn[0].size()-1); // otherwise |sol| is one shorter than equations
-
-  // we set the bits flagged by |t| to the corresponding right hand side
-
+  // we set any non-free unknown, flagged by |pivots|, to the right hand side
+  // of the corresponding equation (which involves no other non-free unknowns)
   size_t c = 0;
-  const size_t rhs = sol.size();
-
-  for (size_t j = 0; j < rhs; ++j)
-    if (t[j]) {
-      sol.set(j,eqn[c][rhs]);
-      ++c;
-    }
+  for (typename BitSet<dimeq>::iterator it=pivots.begin(); it(); ++it, ++c)
+    sol.set(*it,eqn[c][last]); // set equated unknown |c| (at |*it|)
 
   return true;
 }
@@ -653,19 +649,19 @@ template<size_t dim> struct FirstBit
 
   What is flagged in |t| is the set $J$ in described in the comment for
   |normalSpanAdd| below. For any $j$, only |b[j]| has a nonzero bit at the
-  position $j'$ of set bit number |j| of |t|; consequently, for any \f$v\in
-  V\f$, the coordinate of |b[j]| in $v$ is $v[j']$.
+  position $j'$ where number |j| among the raised bits of |t| is found;
+  consequently, for any $v\in V$, the coordinate of |b[j]| in $v$ is $v[j']$.
 
-  This function works essentially be repeatedly calling |normalSpanAdd| for
+  This function works essentially by repeatedly calling |normalSpanAdd| for
   the vectors of |b|, replacing |b| by the resulting canonical basis at the
   end. However, the selected coordiante positions |f| do not come out
   increasingly this way, so we have to sort the canonical basis by leading bit
   position. This amounts to setting $a'[k]=a[p(k)]$ where
-  \f$p(0)\ldots,p(l-1)\f$ is the result of sorting \f$f[0]\ldots,f[l-1]\f$
+  $p(0)\ldots,p(l-1)$ is the result of sorting $f[0]\ldots,f[l-1]$
   with $l=f.size()=a.size()$.
 */
 template<size_t dim>
-  void normalize(BitSet<dim>& t, std::vector<BitVector<dim> >& b)
+  void Gauss_Jordan(BitSet<dim>& t, std::vector<BitVector<dim> >& b)
 
 {
   std::vector<BitVector<dim> > a;
@@ -695,22 +691,22 @@ template<size_t dim>
   |a[i][f[j]]==(i==j?1:0)| for all $i,j<l$.
 
   For each subvectorspace $V$ of $k^d$, let $I$ be a subset of
-  \f$\{0,\ldots,d-1\}\f$ such that the standard basis vectors $e_i$ for
-  \f$i\in I\f$ generate a complementary subspace $e_I$ to $V$ (one can find
-  such an $I$ by repeatedly throwing in $e_i$s linearly independent to $V$ and
-  previously chosen ones). The normal basis of $V$ corresponding to $I$ is
-  obtained by projecting the $e_j$ for $j$ in the complement $J$ of $I$ onto
-  $V$ along $e_I$ (i.e., according to the direct sum decompostion
-  \f$k^d=V\oplus e_I\f$). This can be visualised by viewing $V$ as the
-  function-graph of a linear map from $k^J$ to $k^I$; then the normal basis is
-  the lift to $V$ of the standard basis of $k^J$. We define the canonical
-  basis of $V$ be the normal basis for the complement $I$ of the
-  lexicographically minimal possible set $J$ (lexicographic for the increasing
-  sequences representing the subsets; in fact $I$ is lexicographically maximal
-  since complementation reverses this ordering one fixed-size subsets). One
-  can find this $J$ by repeatedly choosing the smallest index such that the
-  projection from $V$ defined by extracting the coordinates at the selected
-  indices remains surjective.
+  $\{0,\ldots,d-1\}$ such that the standard basis vectors $e_i$ for $i\in I$
+  generate a complementary subspace $e_I$ to $V$ (one can find such an $I$ by
+  repeatedly throwing in $e_i$s linearly independent to $V$ and previously
+  chosen ones). The normal basis of $V$ corresponding to $I$ is obtained by
+  projecting the $e_j$ for $j$ in the complement $J$ of $I$ onto $V$ along
+  $e_I$ (i.e., according to the direct sum decompostion $k^d=V\oplus e_I$).
+  This can be visualised by viewing $V$ as the function-graph of a linear map
+  from $k^J$ to $k^I$; then the normal basis is the lift to $V$ of the
+  standard basis of $k^J$. We define the canonical basis of $V$ the be the
+  normal basis for the complement $I$ of the lexicographically minimal
+  possible set $J$ (lexicographic for the increasing sequences representing
+  the subsets; in fact $I$ is lexicographically maximal since complementation
+  reverses this ordering on fixed-size subsets). One can find this $J$ by
+  repeatedly choosing the smallest index such that the projection from $V$
+  defined by extracting the coordinates at the selected indices remains
+  surjective.
 
   This function assumes that $a$ already contains the canonical basis of some
   subspace, and that the elements of |f| describe the corresponding set $J$.
@@ -758,11 +754,11 @@ template<size_t dim>
 
 
 /*!
-  \brief Enlarges the basis a to span v.
+  \brief Enlarges the basis |a| so as to span |v|.
 
   This is a simplified version of |normalSpanAdd|
 
-  It is assumed that a contains a list of independent bitvectors all of size
+  It is assumed that |a| contains a list of independent bitvectors all of size
   |v.size()|; then a reduction of |v| modulo the vectors of |a| is added to
   the list if |v| was independent, and if it was dependent nothing happens.
 
@@ -983,8 +979,8 @@ template<size_t dim>
 #endif // end of unused functions
 
 template
-  BitVector<constants::RANK_MAX> combination
-   (const std::vector<BitVector<constants::RANK_MAX> >& b,
+  SmallBitVector combination
+   (const std::vector<SmallBitVector>& b,
     size_t n,
     const BitSet<constants::RANK_MAX>& e);
 
@@ -994,24 +990,23 @@ template
    const BitSet<constants::RANK_MAX>&);
 
 template
-  void normalize(BitSet<constants::RANK_MAX>& t,
-		 std::vector<BitVector<constants::RANK_MAX> >& b);
+  void Gauss_Jordan(BitSet<constants::RANK_MAX>& t,
+		    std::vector<SmallBitVector>& b);
 
 template
-  bool firstSolution(BitSet<constants::RANK_MAX>& c,
-		     const std::vector<BitVector<constants::RANK_MAX> >& b,
-		     const BitVector<constants::RANK_MAX>& rhs);
+  bool combination_exists(const std::vector<SmallBitVector>& b,
+			  const SmallBitVector& rhs,
+			  BitSet<constants::RANK_MAX>& c);
 template
-  bool firstSolution
-   (BitVector<constants::RANK_MAX>& sol,
-    const std::vector<BitVector<constants::RANK_MAX+1> >& eqns);
+  bool solvable(const std::vector<BitVector<constants::RANK_MAX+1> >& eqns,
+		SmallBitVector& sol);
 
 template void identityMatrix(BitMatrix<constants::RANK_MAX>&, size_t);
-template void initBasis(std::vector<BitVector<constants::RANK_MAX> >&, size_t);
+template void initBasis(std::vector<SmallBitVector>&, size_t);
 
-template class BitVector<constants::RANK_MAX>;
-template class BitVector<constants::RANK_MAX+1>;//|BinaryEquation|
-template class BitMatrix<constants::RANK_MAX>;
+template class BitVector<constants::RANK_MAX>;   // |SmallBitVector|
+template class BitVector<constants::RANK_MAX+1>; // |BinaryEquation|
+template class BitMatrix<constants::RANK_MAX>;   // |BinaryMap|
 
 } // |namespace bitvector|
 

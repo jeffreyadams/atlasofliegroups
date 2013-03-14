@@ -78,7 +78,7 @@ namespace commands {
   void wgraph_f();
   void wcells_f();
 
-  void repr_f();
+  void repr_f(); // assign a new parameter while staying in this mode
 
   // mode-local variables
   block_type state=noblock;
@@ -100,6 +100,8 @@ namespace commands {
 CommandNode reprNode()
 {
   CommandNode result("repr: ",repr_mode_entry,repr_mode_exit);
+
+  result.add("repr",repr_f); // override
   // result.add("smallkgb",small_kgb_f);
   // result.add("smalldualkgb",small_dual_kgb_f);
   result.add("iblock",iblock_f);
@@ -229,6 +231,7 @@ void repr_f()
     delete sr;
     sr = new
       StandardRepr(currentRepContext().sr(x,lambda_rho,gamma));
+    state = noblock;
     delete block_pointer; block_pointer=NULL;
     delete WGr_pointer; WGr_pointer=NULL;
     drop_to(repr_mode); // exit from (hypothetical) descendant modes

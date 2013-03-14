@@ -145,12 +145,9 @@ RealFormNbr currentDualRealForm()
 Block& currentBlock()
 {
   if (block_pointer==NULL)
-  {
     block_pointer =
-      new Block(Block::build
-			 (currentRealGroup(),
-			  currentDualRealGroup()));
-  }
+      new Block(Block::build(currentRealGroup(),currentDualRealGroup()));
+
   return *block_pointer;
 }
 

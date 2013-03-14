@@ -52,10 +52,11 @@ class RealReductiveGroup
   ComplexReductiveGroup& d_complexGroup;
 
   RealFormNbr d_realForm; // our identification number
-  topology::Connectivity d_connectivity; // characterss of componentn group
+  topology::Connectivity d_connectivity; // characters of the component group
 
   const TitsCoset* d_Tg; // owned pointer; the group is stored here
   KGB* kgb_ptr; // owned pointer, but initially |NULL|
+  KGB* dual_kgb_ptr; // owned pointer, but initially |NULL|
 
   Status d_status;
 
@@ -63,7 +64,7 @@ class RealReductiveGroup
 
 // constructors and destructors
   RealReductiveGroup(ComplexReductiveGroup&, RealFormNbr);
-  ~RealReductiveGroup(); // not inline: type incomplete; deletes d_Tg, kgb_ptr
+  ~RealReductiveGroup(); // not inline: type incomplete; deletes pointers
 
 // accessors
   const ComplexReductiveGroup& complexGroup() const { return d_complexGroup; }
@@ -119,6 +120,7 @@ formed by extracting only the information concerning the presence of the
     { return d_complexGroup; }
 
   const KGB& kgb();
+  const KGB& kgb_as_dual();
   const BruhatOrder& Bruhat_KGB();
 
 }; // |class RealReductiveGroup|

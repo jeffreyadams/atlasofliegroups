@@ -175,8 +175,8 @@ template<typename C> class Matrix : public Matrix_base<C>
 
   template<typename C1> Vector<C1> operator* (const Vector<C1>&) const;
 
-  Vector<C> right_mult(const Vector<C>&) const;
-  void apply_to(Vector<C>& v) const { v= operator*(v); }
+  template<typename C1> Vector<C1> right_mult(const Vector<C1>&) const;
+  template<typename C1> void apply_to(Vector<C1>& v) const { v= operator*(v); }
 
   Matrix<C> operator* (const Matrix<C>&) const;
 

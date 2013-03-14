@@ -237,11 +237,12 @@ class Block : public Block_base
   std::vector<RankFlags> d_involutionSupport; // of size |size()|
 
 
- public:
-
 // constructors and destructors
+  // the main constructor is private to ensure consistency of twists of KGBs
   Block(const KGB& kgb,const KGB& dual_kgb);
 
+ public:
+  // use one of the following two pseudo contructors to build |Block| values
   static Block build // pseudo contructor with small (and forgotten) KGB sets
     (ComplexReductiveGroup&, RealFormNbr rf, RealFormNbr drf);
 
@@ -315,7 +316,7 @@ class param_block : public Block_base // blocks of parameters
   param_block(const Rep_context& rc, unsigned int rank);
 
   // auxiliary for construction
-  void compute_duals(const ComplexReductiveGroup& G,const SubSystem rs);
+  void compute_duals(const ComplexReductiveGroup& G,const SubSystem& rs);
 
  public:
   // "inherited" accessors

@@ -159,6 +159,16 @@ TorusElement GlobalTitsGroup::twisted(const TorusElement& x) const
 				    rw.denominator()));
 }
 
+ // act by $-w_0\delta$; the three parts are mutually commuting involutions
+TorusElement GlobalTitsGroup::dual_twisted(const TorusElement& x) const
+{
+  RatWeight rw = x.log_pi(false);
+  const WeylGroup& W = weylGroup();
+  W.act(simple,W.longest(),rw);
+  return y_values::exp_pi(RatWeight(delta_tr*-rw.numerator(),
+				    rw.denominator()));
+}
+
 TorusElement GlobalTitsGroup::theta_tr_times_torus(const GlobalTitsElement& a)
   const
 { RatWeight rw = a.torus_part().log_pi(false);
@@ -376,14 +386,14 @@ namespace {
  The function |compute_square_classes| computes this list of generators.
 
  Actually the valid gradings do not form a $\Z/2\Z$ vector space, but an
- affine space for which one can take the granding of $\delta$ as base point.
+ affine space for which one can take the grading of $\delta$ as base point.
  These gradings apply to the set $(\<\Phi>_\Z)^\delta$ of $\delta$-fixed
  elements of the root lattice. The grading for the strong involution
  $t.\delta$, with torus-offset $t=\exp(\pi i c)$ from $\delta$, differs at
  weight vector $v$ from the grading for $\delta$ by a factor $(-1)^{\<v,c>}$.
  But since $c$ must be $\delta$-stable to define a valid square of a strong
  involution, we certainly have $\<(1+\delta)x,c>\in2\Z$ for all
- $x\in\<\Phi>_\Z$; thus the grading is allways invariant under translating $v$
+ $x\in\<\Phi>_\Z$; thus the grading is always invariant under translating $v$
  by an element of the $1+\delta$-image of the root lattice. Therefore it
  suffices to record the grading on the $\delta$-fixed \emph{simple} roots.
 
@@ -496,18 +506,26 @@ TorusElement SubTitsGroup::base_point_offset(const TwistedInvolution& tw)
 */
 TitsGroup::TitsGroup(const RootDatum& rd,
 		     const WeylGroup& W,
-		     const WeightInvolution& d)
-  : TwistedWeylGroup(W,weyl::make_twist(rd,d))
+		     const WeightInvolution& delta)
+  : TwistedWeylGroup(W,weyl::make_twist(rd,delta))
   , d_rank(rd.rank())
   , d_simpleRoot(rd.semisimpleRank())   // set number of vectors, but not yet
   , d_simpleCoroot(rd.semisimpleRank()) // their size (which will be |d_rank|)
-  , d_involution(d.transposed())
+  , d_involution(delta.transposed())
+  , dual_involution(rd.rank()) // set below
 {
   for (size_t i = 0; i<rd.semisimpleRank(); ++i) // reduce vectors mod 2
   {
     d_simpleRoot[i]  =TorusPart(rd.simpleRoot(i));
     d_simpleCoroot[i]=TorusPart(rd.simpleCoroot(i));
   }
+
+  // we could compute $w_0*d_invulution$ to give |dual_involution|
+  // but computing the integer matrix and then reducing modulo 2 is easier
+  int_Matrix M = delta;
+  W.act(rd,W.longest(),M);
+  // M.negate(); // morally it is $-w_0$, but we will reduce modulo 2
+  dual_involution = BinaryMap(M.transposed()); // (-w_0*delta).transposed()
 }
 
 
@@ -523,6 +541,7 @@ TitsGroup::TitsGroup(const int_Matrix& Cartan_matrix,
   , d_simpleRoot()
   , d_simpleCoroot()
   , d_involution(d_rank)   // square matrix, initially zero
+  , dual_involution(d_rank)   // square matrix, initially zero
 {
   d_simpleRoot.reserve(d_rank); d_simpleCoroot.reserve(d_rank);
   for (size_t i=0; i<d_rank; ++i)
@@ -531,11 +550,12 @@ TitsGroup::TitsGroup(const int_Matrix& Cartan_matrix,
     d_simpleCoroot.push_back(TorusPart
 			     (Cartan_matrix.column(i))); // adjoint coroot
     d_involution.set(i,twist[i]); // (transpose of) |twist| permutation matrix
+    dual_involution.set(i,W.Chevalley_dual(twist[i]));
   }
 }
 
 // build Tits group for |sub|, get sub-twist defined by |-theta^t| into |ww|
-// called from |Subdatum| constructor, and indirectly from |TitsCoset|
+// called from |SubDatum| constructor, and unsused |TitsCoset| sub-contructor
 TitsGroup::TitsGroup(const SubSystemWithGroup& sub,
 		     const WeightInvolution& theta,
 		     WeylWord& ww)
@@ -543,7 +563,8 @@ TitsGroup::TitsGroup(const SubSystemWithGroup& sub,
   , d_rank(sub.parent_datum().rank()) // not |sub.rank()|
   , d_simpleRoot(sub.rank())
   , d_simpleCoroot(sub.rank())
-  , d_involution(theta.transposed())
+  , d_involution(theta.transposed()) // made "distinguished" below
+  , dual_involution(d_involution) // copy is modified differently below
 {
   for (weyl::Generator s=0; s<sub.rank(); ++s)
   {
@@ -560,7 +581,13 @@ TitsGroup::TitsGroup(const SubSystemWithGroup& sub,
 					 .transposed()));
 
   for (size_t i=0; i<ww.size(); ++i) // make it distinguished by applying |ww|
-    d_involution*= simple_tr[ww[i]];
+    d_involution *= simple_tr[ww[i]];
+
+  const WeylGroup& W = weylGroup();
+  WeylWord w_opp = W.word(W.opposite(W.element(ww)));
+  for (size_t i=0; i<w_opp.size(); ++i) // make it opposite distinguished
+    dual_involution *= simple_tr[w_opp[i]];
+  // no need to negate the binary matrix |dual_involution|
 }
 
 // Switching between left and right torus parts is a fundamental tool.
@@ -597,6 +624,13 @@ TitsElt TitsGroup::twisted(const TitsElt& te) const
   return TitsElt(*this,
 		 TitsGroup::twisted(left_torus_part(te)),
 		 TwistedWeylGroup::twisted(te.w()));
+}
+
+TitsElt TitsGroup::dual_twisted(const TitsElt& te, const TorusPart shift) const
+{
+  return TitsElt(*this,
+		 shift+TitsGroup::dual_twisted(left_torus_part(te)),
+		 TwistedWeylGroup::dual_twisted(te.w()));
 }
 
 /*!
@@ -948,7 +982,7 @@ TitsElt TitsCoset::naive_seed
   // right-multiply this torus part by canonical twisted involution for |cn|
   TitsElt result(titsGroup(),x,G.twistedInvolution(cn));
 
-  return result; // result should be reduced immediatly by caller
+  return result; // result should be reduced immediately by caller
 }
 
 /* The method |grading_seed| attempts to correct the shortcomings of
@@ -1037,12 +1071,9 @@ TitsElt TitsCoset::grading_seed
 
   // solve, and tack a solution |x| to the left of |a|.
   tits::TorusPart x(G.rank());
-#ifndef NDEBUG
-  bool success=bitvector::firstSolution(x,eqns);
+  bool success=bitvector::solvable(eqns,x);
   assert(success);
-#else
-  bitvector::firstSolution(x,eqns);
-#endif
+  ndebug_use(success);
 
   TitsElt seed(Tg,x,tw); // $x.\sigma_w$
 

@@ -94,7 +94,8 @@ atlas_objects := $(atlas_sources)/structure/prerootdata.o \
  $(atlas_sources)/gkmod/subdatum.o \
  $(atlas_sources)/structure/subsystem.o \
  $(atlas_sources)/structure/involutions.o \
- $(atlas_sources)/structure/y_values.o
+ $(atlas_sources)/structure/y_values.o \
+ $(atlas_sources)/gkmod/ext_block.o
 
 cwebx_sources := $(wildcard *.w)
 
@@ -118,7 +119,7 @@ ifeq ($(readline),false)
     CXXFLAGS += -DNREADLINE
     rl_libs =
 else
-    rl_libs ?= -lreadline -lcurses
+    rl_libs ?= -lreadline
 
 # to override this, either define and export a shell variable 'rl_libs'
 # or set LDFLAGS when calling make. For instance for readline on the Mac do:

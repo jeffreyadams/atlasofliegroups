@@ -126,149 +126,149 @@ DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
   case ext_gen::two:
     switch (block.descentValue(p.s0,z))
     {
-       case DescentStatus::ComplexAscent:
-	 link=block.cross(p.s0,z);
-	 if (link==block.cross(p.s1,z))
-	   return two_semi_imaginary; // just a guess if |link==UndefBlock|
-	 if (link!=UndefBlock)
-	   link=block.cross(p.s1,link);
-	 return two_complex_ascent;
-       case DescentStatus::ComplexDescent:
-	 link=block.cross(p.s0,z);
-	 if (link==block.cross(p.s1,z))
-	   return two_semi_real; // just a guess if |link==UndefBlock|
-	 if (link!=UndefBlock)
-	   link=block.cross(p.s1,link);
-	 return two_complex_descent;
-       case DescentStatus::RealNonparity:
-	 link=UndefBlock; return two_real_nonparity;
-       case DescentStatus::ImaginaryCompact:
-	 link=UndefBlock; return two_imaginary_compact;
-       case DescentStatus::ImaginaryTypeI:
-	 link=block.cayley(p.s0,z).first;
-	 if (link==UndefBlock)
-	   return two_imaginary_single_single; // really just a guess
-	 link=block.cayley(p.s1,link).first;
-	 if (link==UndefBlock)
-	   return two_imaginary_single_single; // really just a guess
-	 assert(block.Hermitian_dual(link)==link);
-	 return block.descentValue(p.s0,link)==DescentStatus::RealTypeI
-	   ? two_imaginary_single_single :  two_imaginary_single_double;
-       case DescentStatus::RealTypeII:
-	 link=block.inverseCayley(p.s0,z).first;
-	 if (link==UndefBlock)
-	   return two_real_single_single; // really just a guess
-	 link=block.inverseCayley(p.s1,link).first;
-	 if (link==UndefBlock)
-	   return two_real_single_single; // really just a guess
-	 assert(block.Hermitian_dual(link)==link);
-	 return block.descentValue(p.s0,link)==DescentStatus::ImaginaryTypeII
-	   ? two_real_single_single : two_real_single_double;
-       case DescentStatus::ImaginaryTypeII:
-	 link=block.cayley(p.s0,z).first;
-	 if (link==UndefBlock)
-	   return two_imaginary_double_double;
-	 link=block.cayley(p.s1,link).first;
-	 if (link==UndefBlock)
-	   return two_imaginary_double_double;
-	 if (block.Hermitian_dual(link)!=link)
-	 {
-	   link=block.cross(p.s0,link);
-	   assert(link==UndefBlock or block.Hermitian_dual(link)==link);
-	 }
-	 return two_imaginary_double_double;
-       case DescentStatus::RealTypeI:
-	 link=block.inverseCayley(p.s0,z).first;
-	 if (link==UndefBlock)
-	   return two_real_double_double;
-	 link=block.inverseCayley(p.s1,link).first;
-	 if (link==UndefBlock)
-	   return two_real_double_double;
-	 if (block.Hermitian_dual(link)!=link)
-	 {
-	   link=block.cross(p.s0,link);
-	   assert(link==UndefBlock or block.Hermitian_dual(link)==link);
-	 }
-	 return two_real_double_double;
+    case DescentStatus::ComplexAscent:
+      link=block.cross(p.s0,z);
+      if (link==block.cross(p.s1,z))
+	return two_semi_imaginary; // just a guess if |link==UndefBlock|
+      if (link!=UndefBlock)
+	link=block.cross(p.s1,link);
+      return two_complex_ascent;
+    case DescentStatus::ComplexDescent:
+      link=block.cross(p.s0,z);
+      if (link==block.cross(p.s1,z))
+	return two_semi_real; // just a guess if |link==UndefBlock|
+      if (link!=UndefBlock)
+	link=block.cross(p.s1,link);
+      return two_complex_descent;
+    case DescentStatus::RealNonparity:
+      link=UndefBlock; return two_real_nonparity;
+    case DescentStatus::ImaginaryCompact:
+      link=UndefBlock; return two_imaginary_compact;
+    case DescentStatus::ImaginaryTypeI:
+      link=block.cayley(p.s0,z).first;
+      if (link==UndefBlock)
+	return two_imaginary_single_single; // really just a guess
+      link=block.cayley(p.s1,link).first;
+      if (link==UndefBlock)
+	return two_imaginary_single_single; // really just a guess
+      assert(block.Hermitian_dual(link)==link);
+      return block.descentValue(p.s0,link)==DescentStatus::RealTypeI
+	? two_imaginary_single_single :  two_imaginary_single_double;
+    case DescentStatus::RealTypeII:
+      link=block.inverseCayley(p.s0,z).first;
+      if (link==UndefBlock)
+	return two_real_single_single; // really just a guess
+      link=block.inverseCayley(p.s1,link).first;
+      if (link==UndefBlock)
+	return two_real_single_single; // really just a guess
+      assert(block.Hermitian_dual(link)==link);
+      return block.descentValue(p.s0,link)==DescentStatus::ImaginaryTypeII
+	? two_real_single_single : two_real_single_double;
+    case DescentStatus::ImaginaryTypeII:
+      link=block.cayley(p.s0,z).first;
+      if (link==UndefBlock)
+	return two_imaginary_double_double;
+      link=block.cayley(p.s1,link).first;
+      if (link==UndefBlock)
+	return two_imaginary_double_double;
+      if (block.Hermitian_dual(link)!=link)
+      {
+	link=block.cross(p.s0,link);
+	assert(link==UndefBlock or block.Hermitian_dual(link)==link);
+      }
+      return two_imaginary_double_double;
+    case DescentStatus::RealTypeI:
+      link=block.inverseCayley(p.s0,z).first;
+      if (link==UndefBlock)
+	return two_real_double_double;
+      link=block.inverseCayley(p.s1,link).first;
+      if (link==UndefBlock)
+	return two_real_double_double;
+      if (block.Hermitian_dual(link)!=link)
+      {
+	link=block.cross(p.s0,link);
+	assert(link==UndefBlock or block.Hermitian_dual(link)==link);
+      }
+      return two_real_double_double;
     }
   case ext_gen::three:
     switch (block.descentValue(p.s0,z))
     {
-       case DescentStatus::RealNonparity:
-	 link=UndefBlock; return three_real_nonparity;
-       case DescentStatus::ImaginaryCompact:
-	 link=UndefBlock; return three_imaginary_compact;
-       case DescentStatus::ComplexAscent:
-	 link=block.cross(p.s0,z);
-	 if (link==UndefBlock)
-	   return three_complex_ascent; // just a guess
-	 if (link==block.cross(p.s1,link))
-	 {
-	   assert(block.descentValue(p.s1,link)==
-		  DescentStatus::ImaginaryTypeII);
-	   link=block.cayley(p.s1,link).first;
-	   if (link!=UndefBlock and block.Hermitian_dual(link)!=link)
-	   {
-	     link=block.cross(p.s1,link);
-	     assert(link==UndefBlock or block.Hermitian_dual(link)==link);
-	   }
-	   return three_semi_imaginary;
-	 }
-	 link=block.cross(p.s1,link);
-	 if (link!=UndefBlock)
-	   link=block.cross(p.s0,link);
-	 if (link!=UndefBlock)
-	   assert(block.Hermitian_dual(link)==link);
-	 return three_complex_ascent;
-       case DescentStatus::ComplexDescent:
-	 link=block.cross(p.s0,z);
-	 if (link==UndefBlock)
-	   return three_complex_descent; // just a guess
-	 if (link==block.cross(p.s1,link))
-	 {
-	   assert(block.descentValue(p.s1,link)==DescentStatus::RealTypeI);
-	   link=block.inverseCayley(p.s1,link).first;
-	   if (link!=UndefBlock and block.Hermitian_dual(link)!=link)
-	   {
-	     link=block.cross(p.s1,link);
-	     assert(link==UndefBlock or block.Hermitian_dual(link)==link);
-	   }
-	   return three_semi_real;
-	 }
-	 link=block.cross(p.s1,link);
-	 if (link!=UndefBlock)
-	   link=block.cross(p.s0,link);
-	 if (link!=UndefBlock)
-	   assert(block.Hermitian_dual(link)==link);
-	 return three_complex_descent;
-       case DescentStatus::ImaginaryTypeI:
-	 link=block.cayley(p.s0,z).first;
-	 if (link!=UndefBlock)
-	 {
-	   link=block.cross(p.s1,link);
-	   if (block.cayley(p.s1,z).first!=UndefBlock)
-	     assert(link==block.cross(p.s0,block.cayley(p.s1,z).first));
-	 }
-	 else if ((link=block.cayley(p.s1,z).first)!=UndefBlock)
-	   link=block.cross(p.s0,link);
-	 if (link!=UndefBlock)
-	   assert(block.Hermitian_dual(link)==link);
-	 return three_imaginary_semi;
-       case DescentStatus::RealTypeII:
-	 link=block.inverseCayley(p.s0,z).first;
-	 if (link!=UndefBlock)
-	 {
-	   link=block.cross(p.s1,link);
-	   if (block.inverseCayley(p.s1,z).first!=UndefBlock)
-	     assert(link==block.cross(p.s0,block.inverseCayley(p.s1,z).first));
-	 }
-	 else if ((link=block.inverseCayley(p.s1,z).first)!=UndefBlock)
-	   link=block.cross(p.s0,link);
-	 if (link!=UndefBlock)
-	   assert(block.Hermitian_dual(link)==link);
-	 return three_real_semi;
-       case DescentStatus::ImaginaryTypeII: case DescentStatus::RealTypeI:
-	 assert(false); // these cases should never occur
+    case DescentStatus::RealNonparity:
+      link=UndefBlock; return three_real_nonparity;
+    case DescentStatus::ImaginaryCompact:
+      link=UndefBlock; return three_imaginary_compact;
+    case DescentStatus::ComplexAscent:
+      link=block.cross(p.s0,z);
+      if (link==UndefBlock)
+	return three_complex_ascent; // just a guess
+      if (link==block.cross(p.s1,link))
+      {
+	assert(block.descentValue(p.s1,link)==
+	       DescentStatus::ImaginaryTypeII);
+	link=block.cayley(p.s1,link).first;
+	if (link!=UndefBlock and block.Hermitian_dual(link)!=link)
+	{
+	  link=block.cross(p.s1,link);
+	  assert(link==UndefBlock or block.Hermitian_dual(link)==link);
+	}
+	return three_semi_imaginary;
+      }
+      link=block.cross(p.s1,link);
+      if (link!=UndefBlock)
+	link=block.cross(p.s0,link);
+      if (link!=UndefBlock)
+	assert(block.Hermitian_dual(link)==link);
+      return three_complex_ascent;
+    case DescentStatus::ComplexDescent:
+      link=block.cross(p.s0,z);
+      if (link==UndefBlock)
+	return three_complex_descent; // just a guess
+      if (link==block.cross(p.s1,link))
+      {
+	assert(block.descentValue(p.s1,link)==DescentStatus::RealTypeI);
+	link=block.inverseCayley(p.s1,link).first;
+	if (link!=UndefBlock and block.Hermitian_dual(link)!=link)
+	{
+	  link=block.cross(p.s1,link);
+	  assert(link==UndefBlock or block.Hermitian_dual(link)==link);
+	}
+	return three_semi_real;
+      }
+      link=block.cross(p.s1,link);
+      if (link!=UndefBlock)
+	link=block.cross(p.s0,link);
+      if (link!=UndefBlock)
+	assert(block.Hermitian_dual(link)==link);
+      return three_complex_descent;
+    case DescentStatus::ImaginaryTypeI:
+      link=block.cayley(p.s0,z).first;
+      if (link!=UndefBlock)
+      {
+	link=block.cross(p.s1,link);
+	if (block.cayley(p.s1,z).first!=UndefBlock)
+	  assert(link==block.cross(p.s0,block.cayley(p.s1,z).first));
+      }
+      else if ((link=block.cayley(p.s1,z).first)!=UndefBlock)
+	link=block.cross(p.s0,link);
+      if (link!=UndefBlock)
+	assert(block.Hermitian_dual(link)==link);
+      return three_imaginary_semi;
+    case DescentStatus::RealTypeII:
+      link=block.inverseCayley(p.s0,z).first;
+      if (link!=UndefBlock)
+      {
+	link=block.cross(p.s1,link);
+	if (block.inverseCayley(p.s1,z).first!=UndefBlock)
+	  assert(link==block.cross(p.s0,block.inverseCayley(p.s1,z).first));
+      }
+      else if ((link=block.inverseCayley(p.s1,z).first)!=UndefBlock)
+	link=block.cross(p.s0,link);
+      if (link!=UndefBlock)
+	assert(block.Hermitian_dual(link)==link);
+      return three_real_semi;
+    case DescentStatus::ImaginaryTypeII: case DescentStatus::RealTypeI:
+      assert(false); // these cases should never occur
     }
   } // |switch (p.type)|
   assert(false); return one_complex_ascent; // keep compiler happy

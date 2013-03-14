@@ -188,7 +188,7 @@ void KGB_base::add_element()
 */
 
 // create structure incorporating all KGB structures for a given inner class
-global_KGB::global_KGB(ComplexReductiveGroup& G_C) // |G_C| is non-|const|
+global_KGB::global_KGB(ComplexReductiveGroup& G_C, bool dual_twist)
   : KGB_base(G_C,G_C.semisimpleRank())
   , Tg(G) // construct global Tits group as subobject
   , elt()
@@ -227,12 +227,12 @@ global_KGB::global_KGB(ComplexReductiveGroup& G_C) // |G_C| is non-|const|
     first_of_tau.push_back(elt.size()); // end of fundamental fiber
   }
 
-  generate(size);
+  generate(size,dual_twist);
 
 }
 
 global_KGB::global_KGB(ComplexReductiveGroup& G_C,
-		       const GlobalTitsElement& x)
+		       const GlobalTitsElement& x, bool dual_twist)
   : KGB_base(G_C,G_C.semisimpleRank())
   , Tg(G) // construct global Tits group as subobject
   , elt()
@@ -281,7 +281,7 @@ global_KGB::global_KGB(ComplexReductiveGroup& G_C,
       elt.push_back(elt_hash[i].repr());
   } // got elements at the fundamental fiber
 
-  generate(0); // complete element generation, no predicted size
+  generate(0,dual_twist); // complete element generation, no predicted size
 } // |global_KGB::global_KGB|
 
 bool global_KGB::compact(RootNbr n, // assumed imaginary at |a|
@@ -347,7 +347,7 @@ void global_KGB::generate_involutions(size_t n)
   assert(inv_pool.size()==n);
 } // |global_KGB::generate_involutions|
 
-void global_KGB::generate(size_t predicted_size)
+void global_KGB::generate(size_t predicted_size, bool dual_twist)
 {
   const Cartan_orbits& i_tab = G.involution_table();
   const TwistedWeylGroup& W = Tg; // for when |GlobalTitsGroup| is not used
@@ -455,7 +455,8 @@ void global_KGB::generate(size_t predicted_size)
 
   // finally set the Hermitian dual links
   for (KGBElt i=0; i<elt.size(); ++i)
-    info[i].dual = lookup(Tg.twisted(elt[i]));
+    info[i].dual = lookup
+      (dual_twist ? Tg.dual_twisted(elt[i]) : Tg.twisted(elt[i]));
 } // |global_KGB::generate|
 
 
@@ -467,7 +468,7 @@ void global_KGB::generate(size_t predicted_size)
 */
 
 KGB::KGB(RealReductiveGroup& GR,
-	 const BitMap& Cartan_classes)
+	 const BitMap& Cartan_classes, bool dual_twist)
   : KGB_base(GR.complexGroup(),GR.complexGroup().semisimpleRank())
   , Cartan()
   , left_torus_part()
@@ -533,7 +534,7 @@ KGB::KGB(RealReductiveGroup& GR,
     for (weyl::Generator s=0; s<rank; ++s)
     {
       KGBfields& my_s = data[s][x];
-      TitsElt a = current; d_base->basedTwistedConjugate(a,s);
+      TitsElt a = current; basedTitsGroup().basedTwistedConjugate(a,s);
       i_tab.reduce(a);
 
       int lc=
@@ -560,13 +561,14 @@ KGB::KGB(RealReductiveGroup& GR,
       }
       else // imaginary
       {
-	my_info.status.set_imaginary(s,d_base->simple_grading(current,s));
+	my_info.status.set_imaginary
+	  (s,basedTitsGroup().simple_grading(current,s));
 	my_info.desc.reset(s); // imaginary roots are never (KGB) descents
 
 	if (my_info.status[s] == gradings::Status::ImaginaryNoncompact)
 	{
 	  // Cayley-transform |current| by $\sigma_s$
-	  TitsElt a = current; d_base->Cayley_transform(a,s);
+	  TitsElt a = current; basedTitsGroup().Cayley_transform(a,s);
 	  assert(titsGroup().length(a)>titsGroup().length(current));
 	  i_tab.reduce(a); // subspace has grown, mod out new subspace
 
@@ -602,7 +604,7 @@ KGB::KGB(RealReductiveGroup& GR,
 
     inv_pool.reserve(invs.size());
     std::transform(invs.begin(), invs.end(),back_inserter(inv_pool),
-		   i_tab.as_map());
+		   i_tab.as_map()); // fill |inv_pool| according to |invs|
     inv_hash.reconstruct(); // now |inv_hash| numbers in sorted order
 
     invs.clear();
@@ -638,6 +640,16 @@ KGB::KGB(RealReductiveGroup& GR,
   for (InvolutionNbr i=0; i<inv_pool.size(); ++i)
     Cartan.push_back(i_tab.Cartan_class(inv_pool[i]));
 
+  TorusPart shift;
+  bool do_dual_twist = dual_twist and is_dual_twist_stable(GR,shift);
+  if (do_dual_twist)
+  {
+    // see whether some element (our initial seed) maps into the block
+    TitsElt test = titsGroup().dual_twisted(elt_pool[0],shift);
+    i_tab.reduce(test);
+    if (elt_hash.find(test)==elt_hash.empty)
+      do_dual_twist = false; // twist stablises the square class, but not KGB
+  }
   // finally install inverse Cayley links
   for (KGBElt x=0; x<size; ++x)
   {
@@ -651,12 +663,59 @@ KGB::KGB(RealReductiveGroup& GR,
 	else target.second=x;
       }
     }
-    TitsElt twx=titsGroup().twisted(titsElt(x));
-    i_tab.reduce(twx);
-    info[x].dual = lookup(twx);
+    if (not dual_twist)
+    {
+      TitsElt twx = titsGroup().twisted(titsElt(x));
+      i_tab.reduce(twx);
+      info[x].dual = lookup(twx);
+    }
+    else if (do_dual_twist)
+    {
+      TitsElt twx = titsGroup().dual_twisted(titsElt(x),shift);
+      i_tab.reduce(twx);
+      info[x].dual = lookup(twx);
+    }
+    else
+      info[x].dual = UndefKGB;
   }
 } // |KGB::KGB(GR,Cartan_classes,i_tab)|
 
+
+bool KGB::is_dual_twist_stable
+  (const RealReductiveGroup& GR, TorusPart& shift) const
+{
+  // although |GR| will be for "dualrealform", we use non-dualised nomenclature
+  const RootDatum& rd = GR.rootDatum();
+
+  Grading base = basedTitsGroup().base_grading();
+  RatWeight rw (titsGroup().rank());
+  for (Grading::iterator it=base.begin(); it(); ++it) // flagged simple roots
+  {
+    rw -= rd.fundamental_coweight(*it); // because relative to implicit base
+    rw += rd.fundamental_coweight(weylGroup().Chevalley_dual(*it));
+  }
+  // before requiring integrality, we need to mod out by equivalence
+  int_Matrix A = GR.complexGroup().distinguished().transposed();
+  for (unsigned int i=0; i<A.numRows(); ++i)
+    A(i,i) += 1;
+  int_Matrix projector = lattice::row_saturate(A);
+  projector.apply_to(rw.numerator()); // this may change the size of |rw|
+  rw.normalize();
+  if (rw.denominator()!=1)
+    return false;
+
+  // now there is an integer vector with same projection as |rw|; find one
+  BinaryEquationList eqns; eqns.reserve(projector.numRows());
+  for (unsigned int i=0; i<projector.numRows(); ++i)
+  {
+    eqns.push_back(BinaryEquation(projector.row(i)));
+    eqns.back().pushBack(rw.numerator()[i]); // rhs of equation
+  }
+
+  bool success = bitvector::solvable(eqns,shift);
+  assert(success);
+  return success;
+} // |KGB::is_dual_twist_stable|
 
 
 
@@ -736,6 +795,8 @@ void KGB::fillBruhat()
 describing how corresponding Tits elements should be normalized.
 
 It also records the Cartan class that each twisted involution belongs to.
+
+It is currently only used, once, in the |subsys_KGB| constructor
 */
 class FiberData
 {
@@ -749,9 +810,6 @@ class FiberData
   std::vector<unsigned int> involution_length;
   std::vector<unsigned int> Cartan_class;
 public:
-  FiberData(ComplexReductiveGroup& G,
-	    const BitMap& Cartan_classes); // for |KGB::generate|
-
   FiberData(const TitsGroup& Tg); // for |subsys_KGB|; start without classes
 
   InvolutionNbr n_involutions() const { return pool.size(); }
@@ -783,8 +841,6 @@ private: // the space actually stored need not be exposed
   }
   void complete_class(unsigned int initial); // extend by conjugations
 }; // |class FiberData|
-
-
 
 
 /*
@@ -1190,14 +1246,14 @@ GlobalTitsElement GlobalFiberData::imaginary_cross
 
 
 /*
-  The |FiberData| constructor computes a subspace for each twisted involution
-  $tw$ (representing an involution $\tau$ of $H$ and an involution
-  $q=tw.\delta$ of the weight lattice $X$) that occurs for $GR$. The subspace
-  of $X^\vee/2X^\vee$ that will be stored for $tw$ is the image $I$ of the
-  $-1$ eigenspace $X^\vee_-$ of $q^t$. When a Tits group element of the form
-  $x.\sigma_w$ occurs in the KGB construction, only the coset of the left torus
-  part $x$ modulo $I$ matters, and it will after computation be systematically
-  normalized by reducing the left torus part $x$ modulo $I$.
+  The |FiberData| class stores a subspace for each twisted involution $tw$
+  (representing an involution $\tau$ of $H$ and an involution $q=tw.\delta$ of
+  the weight lattice $X$) that occurs for $GR$. The subspace of
+  $X^\vee/2X^\vee$ that will be stored for $tw$ is the image $I$ of the $-1$
+  eigenspace $X^\vee_-$ of $q^t$. When a Tits group element of the form
+  $x.\sigma_w$ occurs in the KGB construction, only the coset of the left
+  torus part $x$ modulo $I$ matters, and it will after computation be
+  systematically normalized by reducing the left torus part $x$ modulo $I$.
 
   The image $I$ is what one divides by to get the fiber group of the real
   Cartan associated to $H$ and $\tau$, in which case the "numerator" is the
@@ -1207,55 +1263,7 @@ GlobalTitsElement GlobalFiberData::imaginary_cross
   value for $x$: the possible values are such that the Tits group element $a$
   given by $(x,w)$ satisfies $a*twisted(a)=e$, where the twisting is done
   with respect to the based Tits group (determined by the base grading).
-
-  This constructor depends on the real form only via the set |Cartan_classes|
-  that determines (limits) the set of twisted involutions to be considered.
 */
-FiberData::FiberData(ComplexReductiveGroup& G,
-		     const BitMap& Cartan_classes)
-  : Tits(G.titsGroup())
-  , pool()
-  , hash_table(pool)
-  , refl(G.semisimpleRank())
-  , data()
-  , involution_length()
-  , Cartan_class()
-{
-  { // dimension |data|, |element_length|, and |Cartan_class|
-    size_t n_inv=G.numInvolutions(Cartan_classes);
-    data.reserve(n_inv); Cartan_class.reserve(n_inv);
-  }
-
-  const RootDatum& rd = G.rootDatum();
-  const TwistedWeylGroup& tW = G.twistedWeylGroup();
-
-  for (weyl::Generator s=0; s<refl.size(); ++s)
-    // get endomorphism of weight lattice $X$ given by generator $s$
-    // reflection map is induced vector space endomorphism of $X_* / 2X_*$
-    refl[s] = BinaryMap(rd.simple_reflection(s).transposed());
-
-  for (BitMap::iterator it=Cartan_classes.begin(); it(); ++it)
-  {
-    size_t cn=*it;
-    const TwistedInvolution& canonical = G.twistedInvolution(cn);
-    size_t i = hash_table.match(canonical);
-    assert(i==data.size()); // this twisted involution should be new
-
-    { // store data for canonical twisted involution of Cartan class |cn|
-      const WeightInvolution &q = G.cartan(cn).involution();
-      data.push_back(tits::fiber_denom(q)); // compute subspace $I$
-      involution_length.push_back(tW.involutionLength(canonical));
-      Cartan_class.push_back(cn); // record number of Cartan class
-    }
-
-    complete_class(i);
-  } // |for (it)|
-
-  // check that the number of generated elements is as predicted
-  assert(data.size()==G.numInvolutions(Cartan_classes));
-  assert(Cartan_class.size()==G.numInvolutions(Cartan_classes));
-}
-
 
 FiberData::FiberData(const TitsGroup& Tg)
   : Tits(Tg)

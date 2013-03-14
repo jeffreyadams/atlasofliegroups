@@ -87,6 +87,8 @@ namespace {
 CommandNode realNode()
 {
   CommandNode result("real: ",real_mode_entry,real_mode_exit);
+
+  result.add("realform",realform_f); // override
   result.add("components",components_f);
   result.add("cartan",cartan_f);
   result.add("corder",corder_f);
@@ -99,7 +101,6 @@ CommandNode realNode()
   result.add("kgp", kgp_f);
   result.add("kgporder", kgporder_f);
   result.add("kgpgraph", kgpgraph_f);
-  result.add("realform",realform_f); // override
   result.add("dualrealform",dualrealform_f);
   result.add("repr",repr_f);
 
@@ -235,12 +236,14 @@ void corder_f()
 // enter block mode
 void dualrealform_f()
 {
+  drop_to(real_mode); // ensure we have left any descendent mode
   block_mode.activate();
 }
 
 // enter repr mode
 void repr_f()
 {
+  drop_to(real_mode); // ensure we have left any descendent mode
   repr_mode.activate();
 }
 
