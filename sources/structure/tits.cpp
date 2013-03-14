@@ -982,7 +982,7 @@ TitsElt TitsCoset::naive_seed
   // right-multiply this torus part by canonical twisted involution for |cn|
   TitsElt result(titsGroup(),x,G.twistedInvolution(cn));
 
-  return result; // result should be reduced immediatly by caller
+  return result; // result should be reduced immediately by caller
 }
 
 /* The method |grading_seed| attempts to correct the shortcomings of

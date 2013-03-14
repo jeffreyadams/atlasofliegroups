@@ -604,7 +604,7 @@ KGB::KGB(RealReductiveGroup& GR,
 
     inv_pool.reserve(invs.size());
     std::transform(invs.begin(), invs.end(),back_inserter(inv_pool),
-		   i_tab.as_map());
+		   i_tab.as_map()); // fill |inv_pool| according to |invs|
     inv_hash.reconstruct(); // now |inv_hash| numbers in sorted order
 
     invs.clear();

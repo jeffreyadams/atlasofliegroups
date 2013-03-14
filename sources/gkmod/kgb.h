@@ -428,7 +428,7 @@ and in addition the Hasse diagram (set of all covering relations).
   TorusElement torus_part_global // |torus_part| but coded as in |global_KGB|
     (const RootDatum&rd, KGBElt x) const; // needs root datum (for base grading)
 
-  TitsElt titsElt(KGBElt x) const;
+  TitsElt titsElt(KGBElt x) const; // get KGB element |x| as a |TitsElt|
   size_t torus_rank() const; // the (non-semisimple) rank of torus parts.
 
   Grading base_grading() const { return d_base->base_grading(); }
