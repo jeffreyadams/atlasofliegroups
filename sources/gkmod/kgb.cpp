@@ -709,7 +709,7 @@ bool KGB::is_dual_twist_stable
   for (unsigned int i=0; i<projector.numRows(); ++i)
   {
     eqns.push_back(BinaryEquation(projector.row(i)));
-    eqns.back().pushBack(rw.numerator()[i]); // rhs of equation
+    eqns.back().pushBack(rw.numerator()[i]%2!=0); // rhs of equation
   }
 
   bool success = bitvector::solvable(eqns,shift);
