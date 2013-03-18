@@ -459,28 +459,6 @@ private:
 
 }; // |class KGB|
 
-// extract the KGB for a root subsystem; DV says this is not always possible
-class subsys_KGB : public KGB_base
-{
-  Grading base_grading;
-
- public:
-  std::vector<KGBElt> in_parent; // map elements back to parent, if possible
-  std::vector<unsigned int> Cartan; ///< records Cartan classes of elements
-  std::vector<tits::TorusPart> torus_part; // of size |size()|
-  KGBElt parent_size;
-
-  subsys_KGB(const KGB& kgb,
-	     const subdatum::SubDatum& sub, // must be constructed before
-	     KGBElt x);
-
-// virtual methods
-  virtual CartanNbr Cartan_class(KGBElt x) const // override with subsys Cartan
-  { return Cartan[x];}
-  virtual std::ostream& print(std::ostream& strm, KGBElt x) const;
-
-}; // |struct subsys_KGB|
-
 /* ****************** function definitions **************************** */
 
 // general cross action in (non simple) root
