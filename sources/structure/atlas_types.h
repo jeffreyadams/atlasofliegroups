@@ -327,10 +327,8 @@ namespace atlas {
   namespace kgb {
     class KGB_base;
     struct KGB_elt_entry;
-    class GlobalFiberData;
     class global_KGB;
     class KGB;
-    class subsys_KGB;
     typedef RankFlags DescentSet;
     class KGP;
   }
