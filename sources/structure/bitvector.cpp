@@ -1008,6 +1008,10 @@ template class BitVector<constants::RANK_MAX>;   // |SmallBitVector|
 template class BitVector<constants::RANK_MAX+1>; // |BinaryEquation|
 template class BitMatrix<constants::RANK_MAX>;   // |BinaryMap|
 
+template class BitVector<64ul>; // used in realex function |subspace_normal|
+template
+   void initBasis<64ul>(std::vector<BitVector<64ul> >& b, size_t r); // idem
+
 } // |namespace bitvector|
 
 } // |namespace atlas|

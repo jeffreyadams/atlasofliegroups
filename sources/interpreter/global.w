@@ -22,6 +22,7 @@
 \def\emph#1{{\it#1\/}}
 \def\foreign#1{{\sl#1\/}}
 \def\id{\mathop{\rm id}}
+\def\Z{{\bf Z}}
 
 @* Outline.
 %
@@ -1421,83 +1422,10 @@ void mat_neq_wrapper(expression_base::level l)
     push_value(new bool_value(i->val!=j->val));
 }
 
-@ Null vectors and matrices are particularly useful as starting values. In
-addition, the latter can produce empty matrices without any (null) entries,
-when either the number of rows or column is zero but the other is not; such
-matrices (which are hard to obtain by other means) are good starting points
-for iterations that consist of adding a number of rows or columns of equal
-size, and they determine this size even if none turn out to be contributed.
-Since vectors are treated as column vectors, their transpose is a one-line
-matrix; such matrices (like null matrices) cannot be obtained from the special
-matrix-building expressions.
-
-Since in general built-in functions may throw exceptions, we hold the pointers
-to local values in smart pointers; for values popped from the stack this would
-in fact be hard to avoid.
-
-@< Local function definitions @>=
-void null_vec_wrapper(expression_base::level lev)
-{ int l=get<int_value>()->val;
-  if (lev!=expression_base::no_value)
-    push_value(new vector_value(int_Vector(std::abs(l),0)));
-}
-@) void null_mat_wrapper(expression_base::level lev)
-{ int l=get<int_value>()->val;
-  int k=get<int_value>()->val;
-  if (lev!=expression_base::no_value)
-    push_value(new matrix_value
-      (matrix::Matrix<int>(std::abs(k),std::abs(l),0)));
-}
-void transpose_vec_wrapper(expression_base::level l)
-{ shared_vector v=get<vector_value>();
-  if (l!=expression_base::no_value)
-  { matrix_ptr m (new matrix_value(matrix::Matrix<int>(1,v->val.size())));
-    for (size_t j=0; j<v->val.size(); ++j)
-      m->val(0,j)=v->val[j];
-    push_value(m);
-  }
-}
-
-@ The wrapper functions for matrix transposition and identity matrix are
-called from \.{built-in-types.w}.
-
-@< Declarations of exported functions @>=
-void transpose_mat_wrapper (expression_base::level);
-void id_mat_wrapper(expression_base::level l);
-
-@ Their definitions are particularly simple, as they just call a matrix method
-to do the work.
-
-@< Global function definitions @>=
-@) void transpose_mat_wrapper(expression_base::level l)
-{ shared_matrix m=get<matrix_value>();
-  if (l!=expression_base::no_value)
-    push_value(new matrix_value(m->val.transposed()));
-}
-@)
-void id_mat_wrapper(expression_base::level l)
-{ int i=get<int_value>()->val;
-  if (l!=expression_base::no_value)
-    push_value(new matrix_value(matrix::Matrix<int>(std::abs(i)))); // identity
-}
-
-@ We also define |diagonal_wrapper|, a slight generalisation of
-|id_mat_wrapper| that produces a diagonal matrix from a vector. The function
-|vector_div_wrapper| produces a rational vector, for which we also provide
-addition and subtraction.
+@ The function |vector_div_wrapper| produces a rational vector, for which we
+also provide addition and subtraction.
 
 @< Local function def... @>=
-void diagonal_wrapper(expression_base::level l)
-{ shared_vector d=get<vector_value>();
-  if (l==expression_base::no_value)
-    return;
-  size_t n=d->val.size();
-  matrix_ptr m (new matrix_value(matrix::Matrix<int>(n)));
-  for (size_t i=0; i<n; ++i)
-    m->val(i,i)=d->val[i];
-  push_value(m);
-}
-@)
 void vector_div_wrapper(expression_base::level l)
 { int n=get<int_value>()->val;
   shared_vector v=get<vector_value>();
@@ -1600,6 +1528,148 @@ void vm_prod_wrapper(expression_base::level l)
   }
   if (l!=expression_base::no_value)
     push_value(new vector_value(m->val.right_mult(v->val)));
+}
+
+@ We must not forget to install what we have defined. The names of the
+arithmetic operators correspond to the ones used in the parser definition
+file \.{parser.y}.
+
+@< Initialise... @>=
+install_function(plus_wrapper,"+","(int,int->int)");
+install_function(minus_wrapper,"-","(int,int->int)");
+install_function(times_wrapper,"*","(int,int->int)");
+install_function(divide_wrapper,"\\","(int,int->int)");
+install_function(modulo_wrapper,"%","(int,int->int)");
+install_function(divmod_wrapper,"\\%","(int,int->int,int)");
+install_function(unary_minus_wrapper,"-","(int->int)");
+install_function(power_wrapper,"^","(int,int->int)");
+install_function(fraction_wrapper,"/","(int,int->rat)");
+install_function(unfraction_wrapper,"%","(rat->int,int)");
+   // unary \% means ``break open''
+install_function(rat_plus_wrapper,"+","(rat,rat->rat)");
+install_function(rat_minus_wrapper,"-","(rat,rat->rat)");
+install_function(rat_times_wrapper,"*","(rat,rat->rat)");
+install_function(rat_divide_wrapper,"/","(rat,rat->rat)");
+install_function(rat_unary_minus_wrapper,"-","(rat->rat)");
+install_function(rat_inverse_wrapper,"/","(rat->rat)");
+install_function(rat_power_wrapper,"^","(rat,int->rat)");
+install_function(int_eq_wrapper,"=","(int,int->bool)");
+install_function(int_neq_wrapper,"!=","(int,int->bool)");
+install_function(int_less_wrapper,"<","(int,int->bool)");
+install_function(int_lesseq_wrapper,"<=","(int,int->bool)");
+install_function(int_greater_wrapper,">","(int,int->bool)");
+install_function(int_greatereq_wrapper,">=","(int,int->bool)");
+install_function(rat_eq_wrapper,"=","(rat,rat->bool)");
+install_function(rat_neq_wrapper,"!=","(rat,rat->bool)");
+install_function(rat_less_wrapper,"<","(rat,rat->bool)");
+install_function(rat_lesseq_wrapper,"<=","(rat,rat->bool)");
+install_function(rat_greater_wrapper,">","(rat,rat->bool)");
+install_function(rat_greatereq_wrapper,">=","(rat,rat->bool)");
+install_function(equiv_wrapper,"=","(bool,bool->bool)");
+install_function(inequiv_wrapper,"!=","(bool,bool->bool)");
+install_function(string_eq_wrapper,"=","(string,string->bool)");
+install_function(string_leq_wrapper,"<=","(string,string->bool)");
+install_function(concatenate_wrapper,"#","(string,string->string)");
+install_function(int_format_wrapper,"int_format","(int->string)");
+install_function(string_to_ascii_wrapper,"ascii","(string->int)");
+install_function(ascii_char_wrapper,"ascii","(int->string)");
+install_function(sizeof_string_wrapper,"#","(string->int)");
+install_function(sizeof_vector_wrapper,"#","(vec->int)");
+install_function(matrix_bounds_wrapper,"#","(mat->int,int)");
+install_function(vector_div_wrapper,"/","(vec,int->ratvec)");
+install_function(ratvec_unfraction_wrapper,"%","(ratvec->vec,int)");
+install_function(ratvec_plus_wrapper,"+","(ratvec,ratvec->ratvec)");
+install_function(ratvec_minus_wrapper,"-","(ratvec,ratvec->ratvec)");
+install_function(error_wrapper,"error","(string->*)");
+install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
+install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
+install_function(join_vectors_wrapper,"#","(vec,vec->vec)");
+install_function(vec_eq_wrapper,"=","(vec,vec->bool)");
+install_function(vec_neq_wrapper,"!=","(vec,vec->bool)");
+install_function(mat_eq_wrapper,"=","(mat,mat->bool)");
+install_function(mat_neq_wrapper,"!=","(mat,mat->bool)");
+install_function(vv_prod_wrapper,"*","(vec,vec->int)");
+install_function(mrv_prod_wrapper,"*","(mat,ratvec->ratvec)");
+install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
+install_function(mm_prod_wrapper,"*","(mat,mat->mat)");
+install_function(vm_prod_wrapper,"*","(vec,mat->vec)");
+
+@* Miscellaneous functions. This section defines functions of general nature
+that did not fit in comfortably elsewhere.
+
+Null vectors and matrices are particularly useful as starting values. In
+addition, the latter can produce empty matrices without any (null) entries,
+when either the number of rows or column is zero but the other is not; such
+matrices (which are hard to obtain by other means) are good starting points
+for iterations that consist of adding a number of rows or columns of equal
+size, and they determine this size even if none turn out to be contributed.
+Since vectors are treated as column vectors, their transpose is a one-line
+matrix; such matrices (like null matrices) cannot be obtained from the special
+matrix-building expressions.
+
+Since in general built-in functions may throw exceptions, we hold the pointers
+to local values in smart pointers; for values popped from the stack this would
+in fact be hard to avoid.
+
+@< Local function definitions @>=
+void null_vec_wrapper(expression_base::level lev)
+{ int l=get<int_value>()->val;
+  if (lev!=expression_base::no_value)
+    push_value(new vector_value(int_Vector(std::abs(l),0)));
+}
+@) void null_mat_wrapper(expression_base::level lev)
+{ int l=get<int_value>()->val;
+  int k=get<int_value>()->val;
+  if (lev!=expression_base::no_value)
+    push_value(new matrix_value
+      (matrix::Matrix<int>(std::abs(k),std::abs(l),0)));
+}
+void transpose_vec_wrapper(expression_base::level l)
+{ shared_vector v=get<vector_value>();
+  if (l!=expression_base::no_value)
+  { matrix_ptr m (new matrix_value(matrix::Matrix<int>(1,v->val.size())));
+    for (size_t j=0; j<v->val.size(); ++j)
+      m->val(0,j)=v->val[j];
+    push_value(m);
+  }
+}
+
+@ The wrapper functions for matrix transposition and identity matrix are
+called from \.{built-in-types.w}.
+
+@< Declarations of exported functions @>=
+void transpose_mat_wrapper (expression_base::level);
+void id_mat_wrapper(expression_base::level l);
+
+@ Their definitions are particularly simple, as they just call a matrix method
+to do the work.
+
+@< Global function definitions @>=
+@) void transpose_mat_wrapper(expression_base::level l)
+{ shared_matrix m=get<matrix_value>();
+  if (l!=expression_base::no_value)
+    push_value(new matrix_value(m->val.transposed()));
+}
+@)
+void id_mat_wrapper(expression_base::level l)
+{ int i=get<int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(new matrix_value(matrix::Matrix<int>(std::abs(i)))); // identity
+}
+
+@ We also define |diagonal_wrapper|, a slight generalisation of
+|id_mat_wrapper| that produces a diagonal matrix from a vector.
+
+@< Local function def... @>=
+void diagonal_wrapper(expression_base::level l)
+{ shared_vector d=get<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  size_t n=d->val.size();
+  matrix_ptr m (new matrix_value(matrix::Matrix<int>(n)));
+  for (size_t i=0; i<n; ++i)
+    m->val(i,i)=d->val[i];
+  push_value(m);
 }
 
 @ Here is the column echelon function.
@@ -1741,75 +1811,138 @@ void invert_wrapper(expression_base::level l)
     wrap_tuple(2);
 }
 
-@ We must not forget to install what we have defined. The names of the
-arithmetic operators correspond to the ones used in the parser definition
-file \.{parser.y}.
+@ We define a function that makes available the normal form for basis of
+subspaces over the field $\Z/2\Z$. It is specifically intended to be usable
+with sets of generators that may not form a basis, and to provide feedback
+about expressions both for the normalised basis vectors returned, and
+relations that show the excluded vectors to be dependent on the retained ones.
 
+@h "bitvector.h"
+
+@< Local function definitions @>=
+void subspace_normal_wrapper(expression_base::level l)
+{
+  typedef BitVector<64> bitvec;
+  shared_row generators=get<row_value>();
+  unsigned int n_gens = generators->val.size();
+  unsigned int rank = n_gens=0 ? 0 :
+    force<vector_value>(generators->val[0].get())->val.size();
+  if (rank>64)
+    throw std::runtime_error("Rank too large to handle "+str(rank));
+  if (n_gens>64)
+    throw std::runtime_error ("Too many generators to handle "+str(n_gens));
+@)
+  std::vector<bitvec> basis, combination;
+  std::vector<unsigned int> pivot; // |pivot[i]| is bit position for |basis[i]|
+  std::vector<unsigned int> pivoter;
+    // generator |pivoter[i]| led to |basis[i]|
+  basis.reserve(rank); pivot.reserve(rank); pivoter.reserve(rank);
+  bitvector::initBasis(combination,n_gens);
+@)
+  @< Transform columns from |generators| to reduced column echelon form in
+     |basis|, storing pivot rows in |pivot|, and recording indices of
+     generators that were independent in |pivoter| @>
+
+  if (l!=expression_base::no_value)
+  @< Push as results the basis found, the corresponding combinations of
+     original generators, the relations produced by unused generators, and the
+     list of pivot positions @>
+
+}
+
+@ We maintain a |basis| constructed so far, in reduced column echelon form but
+for not a necessarily increasing sequence of |pivot| positions, and an
+increasing list |pivoter| telling for each basis element from which original
+generator it was obtained, and therefore which index into |combination| gives
+the expression of that basis element in the original generators. The entries
+of |combination| not indexed by |pivoter| hold independent expressions that
+give the zero vector.
+
+@< Transform columns from |generators| to reduced column echelon form... @>=
+for (unsigned int i=0; i<n_gens; ++i)
+{ vector_value* p=force<vector_value>(generators->val[i].get());
+  if (p->val.size()!=rank)
+    throw std::runtime_error
+          ("Generator vector of wrong size "+str(p->val.size()));
+  bitvec v(p->val);
+  for (unsigned int j=0; j<basis.size(); ++j)
+    if (v[pivot[j]])
+    {@;
+       v -= basis[j];
+       combination[i] -= combination[pivoter[j]];
+    }
+  if (v.nonZero())
+  {
+    unsigned int p = v.firstBit(); // new pivot
+    for (unsigned int j=0; j<basis.size(); ++j)
+    if (basis[j][p])
+    {@;
+       basis[j] -= v;
+       combination[pivoter[j]] -= combination[i];
+    }
+    basis.push_back(v);
+    pivoter.push_back(i);
+    pivot.push_back(p);
+  }
+}
+
+@ We return four rows of objects, constructing them in one loop over the
+indices of the original generators. At index $i$ we either have a
+corresponding basis element, whose index in the basis will be currently $k$,
+but which will be moved to position $\pi(k)$ according to the relative size of
+|pivot[k]|, or it will no in which case we collect the corresponding
+|combination[i]| that expresses a relation among the original generators.
+
+@h "permutations.h"
+
+@< Push as results the basis found, ... @>=
+{ Permutation pi = permutations::standardization(pivot,n_gens);
+  row_ptr basis_r(new row_value(basis.size()));
+  row_ptr combin_r(new row_value(basis.size()));
+  row_ptr relations(new row_value(n_gens-basis.size()));
+  row_ptr pivot_r(new row_value(basis.size()));
+  unsigned int k=0;
+  for (unsigned int i=0; i<n_gens; ++i)
+    if (k<basis.size() and i==pivoter[k])
+    { unsigned d = pi[k]; // destination position
+      basis_r->val[d]=shared_vector(new vector_value(int_Vector(rank,0)));
+      { int_Vector& v = force<vector_value>(basis_r->val[d].get())->val;
+        for (bitvec::base_set::iterator it=basis[k].data().begin(); it(); ++it)
+          v[*it]=1;
+      }
+      combin_r->val[d]=shared_vector(new vector_value(int_Vector(n_gens,0)));
+      { int_Vector& v = force<vector_value>(combin_r->val[d].get())->val;
+        for (bitvec::base_set::iterator
+             it=combination[i].data().begin(); it(); ++it)
+          v[*it]=1;
+      }
+      pivot_r->val[d] = shared_int(new int_value(pivot[k]));
+      ++k;
+    }
+    else
+    { relations->val[i-k]=shared_vector(new vector_value(int_Vector(n_gens,0)));
+      int_Vector& v = force<vector_value>(relations->val[i-k].get())->val;
+      for (bitvec::base_set::iterator
+           it=combination[i].data().begin(); it(); ++it)
+      v[*it]=1;
+    }
+  assert (k==basis.size());
+@/push_value(basis_r);
+  push_value(combin_r);
+  push_value(relations);
+  push_value(pivot_r);
+  if (l==expression_base::single_value)
+    wrap_tuple(4);
+}
+
+@ Once more we need to install what was defined.
 @< Initialise... @>=
-install_function(plus_wrapper,"+","(int,int->int)");
-install_function(minus_wrapper,"-","(int,int->int)");
-install_function(times_wrapper,"*","(int,int->int)");
-install_function(divide_wrapper,"\\","(int,int->int)");
-install_function(modulo_wrapper,"%","(int,int->int)");
-install_function(divmod_wrapper,"\\%","(int,int->int,int)");
-install_function(unary_minus_wrapper,"-","(int->int)");
-install_function(power_wrapper,"^","(int,int->int)");
-install_function(fraction_wrapper,"/","(int,int->rat)");
-install_function(unfraction_wrapper,"%","(rat->int,int)");
-   // unary \% means ``break open''
-install_function(rat_plus_wrapper,"+","(rat,rat->rat)");
-install_function(rat_minus_wrapper,"-","(rat,rat->rat)");
-install_function(rat_times_wrapper,"*","(rat,rat->rat)");
-install_function(rat_divide_wrapper,"/","(rat,rat->rat)");
-install_function(rat_unary_minus_wrapper,"-","(rat->rat)");
-install_function(rat_inverse_wrapper,"/","(rat->rat)");
-install_function(rat_power_wrapper,"^","(rat,int->rat)");
-install_function(int_eq_wrapper,"=","(int,int->bool)");
-install_function(int_neq_wrapper,"!=","(int,int->bool)");
-install_function(int_less_wrapper,"<","(int,int->bool)");
-install_function(int_lesseq_wrapper,"<=","(int,int->bool)");
-install_function(int_greater_wrapper,">","(int,int->bool)");
-install_function(int_greatereq_wrapper,">=","(int,int->bool)");
-install_function(rat_eq_wrapper,"=","(rat,rat->bool)");
-install_function(rat_neq_wrapper,"!=","(rat,rat->bool)");
-install_function(rat_less_wrapper,"<","(rat,rat->bool)");
-install_function(rat_lesseq_wrapper,"<=","(rat,rat->bool)");
-install_function(rat_greater_wrapper,">","(rat,rat->bool)");
-install_function(rat_greatereq_wrapper,">=","(rat,rat->bool)");
-install_function(equiv_wrapper,"=","(bool,bool->bool)");
-install_function(inequiv_wrapper,"!=","(bool,bool->bool)");
-install_function(string_eq_wrapper,"=","(string,string->bool)");
-install_function(string_leq_wrapper,"<=","(string,string->bool)");
-install_function(concatenate_wrapper,"#","(string,string->string)");
-install_function(int_format_wrapper,"int_format","(int->string)");
-install_function(string_to_ascii_wrapper,"ascii","(string->int)");
-install_function(ascii_char_wrapper,"ascii","(int->string)");
-install_function(sizeof_string_wrapper,"#","(string->int)");
-install_function(sizeof_vector_wrapper,"#","(vec->int)");
-install_function(matrix_bounds_wrapper,"#","(mat->int,int)");
-install_function(vector_div_wrapper,"/","(vec,int->ratvec)");
-install_function(ratvec_unfraction_wrapper,"%","(ratvec->vec,int)");
-install_function(ratvec_plus_wrapper,"+","(ratvec,ratvec->ratvec)");
-install_function(ratvec_minus_wrapper,"-","(ratvec,ratvec->ratvec)");
 install_function(null_vec_wrapper,"null","(int->vec)");
 install_function(null_mat_wrapper,"null","(int,int->mat)");
-install_function(id_mat_wrapper,"id_mat","(int->mat)");
-install_function(error_wrapper,"error","(string->*)");
-install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
-install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
-install_function(join_vectors_wrapper,"#","(vec,vec->vec)");
-install_function(vec_eq_wrapper,"=","(vec,vec->bool)");
-install_function(vec_neq_wrapper,"!=","(vec,vec->bool)");
-install_function(mat_eq_wrapper,"=","(mat,mat->bool)");
-install_function(mat_neq_wrapper,"!=","(mat,mat->bool)");
-install_function(transpose_mat_wrapper,"^","(mat->mat)");
 install_function(transpose_vec_wrapper,"^","(vec->mat)");
+install_function(transpose_mat_wrapper,"^","(mat->mat)");
+install_function(id_mat_wrapper,"id_mat","(int->mat)");
 install_function(diagonal_wrapper,"diagonal","(vec->mat)");
-install_function(vv_prod_wrapper,"*","(vec,vec->int)");
-install_function(mrv_prod_wrapper,"*","(mat,ratvec->ratvec)");
-install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
-install_function(mm_prod_wrapper,"*","(mat,mat->mat)");
-install_function(vm_prod_wrapper,"*","(vec,mat->vec)");
 install_function(echelon_wrapper,"echelon","(mat->mat,[int])");
 install_function(diagonalize_wrapper,"diagonalize","(mat->vec,mat,mat)");
 install_function(adapted_basis_wrapper,"adapted_basis","(mat->mat,vec)");
@@ -1820,7 +1953,8 @@ install_function(invfact_wrapper,"inv_fact","(mat->vec)");
 install_function(Smith_basis_wrapper,"Smith_basis","(mat->mat)");
 install_function(Smith_wrapper,"Smith","(mat->mat,vec)");
 install_function(invert_wrapper,"invert","(mat->mat,int)");
-
+install_function(subspace_normal_wrapper,@|
+   "subspace_normal","([vec]->[vec],[vec],[vec],[int])");
 @* Index.
 
 % Local IspellDict: british
