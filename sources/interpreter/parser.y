@@ -57,7 +57,7 @@
 %token TRUE FALSE QUIET VERBOSE WHATTYPE SHOWALL FORGET
 %token <oper> OPERATOR '='
 %token <val> INT
-%token <expression> STRING
+%token <expression> STRING '$'
 %token <id_code> IDENT
 %token TOFILE ADDTOFILE FROMFILE FORCEFROMFILE
 
@@ -239,6 +239,7 @@ comprim: subscription
 	| TRUE { $$ = make_bool_denotation(1); }
 	| FALSE { $$ = make_bool_denotation(0); }
 	| STRING
+        | '$' { $$.kind=last_value_computed; }
 	| IF iftail { $$=$2; }
 	| WHILE exp DO exp OD { $$=make_while_node($2,$4); }
 	| FOR pattern IN exp DO exp OD

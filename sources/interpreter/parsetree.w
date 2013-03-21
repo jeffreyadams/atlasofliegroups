@@ -171,6 +171,20 @@ expr make_bool_denotation(int val)
 @/result.e.int_denotation_variant=val; return result;
 }
 
+@ An expression that behaves somewhat like a denotation is `\.\$', which
+stands for the last value computed. This leads to an expression type with no
+associated value. The node for it will be directly created in the parser.
+
+@< Enumeration tags for |expr_kind| @>=
+last_value_computed, @[@]
+
+@~Like for integer and boolean denotations, there is nothing to destroy here.
+@< Cases for destroying... @>=
+case last_value_computed: break;
+
+@~@< Cases for printing... @>=
+case last_value_computed: out << '$'; @q$@> break;
+
 @ Another atomic expression is an applied identifier. They use the type
 |Hash_table::id_type| (a small integer type) of indices into the table of
 identifier names, which we lift out of that class by using a |typedef|.
