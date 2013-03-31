@@ -230,6 +230,7 @@ template<> class BitSetBase<2>
 
 // accessors
 
+ public:
   bool operator==(const BitSetBase<2>& b) const
     { return d_bits0==b.d_bits0 and d_bits1==b.d_bits1; }
   bool operator!=(const BitSetBase<2>& b) const
