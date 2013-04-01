@@ -10,7 +10,7 @@ StandardRepK and KhatContext.
   Copyright (C) 2008, 2009 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations version 0.2.4
 
-  See file main.cpp for full copyright notice
+  For license information see the LICENSE file
 */
 
 #ifndef STANDARDREPK_H  /* guard against multiple inclusions */

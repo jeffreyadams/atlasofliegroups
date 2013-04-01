@@ -70,6 +70,34 @@ namespace {
   void dualrealform_f();
   void repr_f();
 
+  // help commands
+  void components_h();
+  void cartan_h();
+  void corder_h();
+  void realweyl_h();
+  void kgb_h();
+  void KGB_h();
+  void kgborder_h();
+  void kgbgraph_h();
+  void kgp_h();
+  void kgporder_h();
+  void kgpgraph_h();
+
+  // command tags for the help facility
+  const char* components_tag = "describes component group of the real group";
+  const char* cartan_tag = "prints the conjugacy classes of Cartan subgroups";
+  const char* corder_tag = "shows Hasse diagram of ordering of Cartan classes";
+  const char* realweyl_tag = "outputs the structure of the real Weyl group";
+  const char* kgb_tag = "prints the orbits of K on G/B";
+  const char* KGB_tag =
+    "computes KGB data (more information than the kgb command)";
+  const char* kgborder_tag = "prints the Bruhat ordering on K\\G/B";
+  const char* kgbgraph_tag =
+    "makes a 'dot' file for the Bruhat ordering on K\\G/B";
+  const char* kgp_tag = "prints the orbits of K on G/P";
+  const char* kgporder_tag = "prints the Bruhat ordering on K\\G/P";
+  const char* kgpgraph_tag =
+    "makes a 'dot' file for the Bruhat ordering on K\\G/P";
 
   // local variables
 
@@ -88,24 +116,24 @@ CommandNode realNode()
 {
   CommandNode result("real: ",real_mode_entry,real_mode_exit);
 
-  result.add("realform",realform_f); // override
-  result.add("components",components_f);
-  result.add("cartan",cartan_f);
-  result.add("corder",corder_f);
-  result.add("realweyl",realweyl_f);
-  result.add("kgb",kgb_f);
-  result.add("KGB",KGB_f);
-  result.add("kgborder",kgborder_f);
-  result.add("kgbtwist",kgbtwist_f);
-  result.add("kgbgraph",kgbgraph_f);
-  result.add("kgp", kgp_f);
-  result.add("kgporder", kgporder_f);
-  result.add("kgpgraph", kgpgraph_f);
-  result.add("dualrealform",dualrealform_f);
-  result.add("repr",repr_f);
+  result.add("realform",realform_f,"override");
+  result.add("components",components_f,components_tag,components_h);
+  result.add("cartan",cartan_f,cartan_tag,cartan_h);
+  result.add("corder",corder_f,corder_tag,corder_h);
+  result.add("realweyl",realweyl_f,realweyl_tag,realweyl_h);
+  result.add("kgb",kgb_f,kgb_tag,kgb_h);
+  result.add("KGB",KGB_f,KGB_tag,KGB_h);
+  result.add("kgborder",kgborder_f,kgborder_tag,kgborder_h);
+  result.add("kgbtwist",kgbtwist_f,"shows twist orbits on K\\G/B");
+  result.add("kgbgraph",kgbgraph_f,kgbgraph_tag,kgbgraph_h);
+  result.add("kgp", kgp_f,kgp_tag,kgp_h);
+  result.add("kgporder", kgporder_f,kgporder_tag,kgporder_h);
+  result.add("kgpgraph", kgpgraph_f,kgpgraph_tag,kgpgraph_h);
+  result.add("dualrealform",dualrealform_f,"sets the dual real form");
+  result.add("repr",repr_f,"sets the parameter for a representation");
 
   // add test commands
-  test::addTestCommands(result,RealmodeTag());
+  test::addTestCommands<RealmodeTag>(result);
   return result;
 }
 
@@ -404,6 +432,64 @@ void kgpgraph_f()
   // make the dot file
   kgp.makeDotFile(file);
 }
+
+
+
+void components_h()
+{
+  io::printFile(std::cerr,"components.help",io::MESSAGE_DIR);
+}
+
+void cartan_h()
+{
+  io::printFile(std::cerr,"cartan.help",io::MESSAGE_DIR);
+}
+
+void corder_h()
+{
+  io::printFile(std::cerr,"corder.help",io::MESSAGE_DIR);
+}
+
+void realweyl_h()
+{
+  io::printFile(std::cerr,"realweyl.help",io::MESSAGE_DIR);
+}
+
+void kgb_h()
+{
+  io::printFile(std::cerr,"kgb.help",io::MESSAGE_DIR);
+}
+
+void KGB_h()
+{
+  io::printFile(std::cerr,"KGB_.help",io::MESSAGE_DIR);
+}
+
+void kgborder_h()
+{
+  io::printFile(std::cerr,"kgborder.help",io::MESSAGE_DIR);
+}
+
+void kgbgraph_h()
+{
+  io::printFile(std::cerr,"kgbgraph.help",io::MESSAGE_DIR);
+}
+
+void kgp_h()
+{
+  io::printFile(std::cerr,"kgp.help",io::MESSAGE_DIR);
+}
+
+void kgporder_h()
+{
+  io::printFile(std::cerr,"kgporder.help",io::MESSAGE_DIR);
+}
+
+void kgpgraph_h()
+{
+  io::printFile(std::cerr,"kgpgraph.help",io::MESSAGE_DIR);
+}
+
 
 } // namespace
 

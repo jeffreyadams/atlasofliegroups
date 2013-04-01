@@ -112,18 +112,10 @@ namespace {
   void testrun_h();
   void exam_h();
 
-  void nblock_h();
 
   // tags
   const char* test_tag = "test command (for development only)";
 
-  const char* roots_rootbasis_tag = "outputs the roots in the simple rootbasis";
-  const char* coroots_rootbasis_tag =
-    "outputs the coroots in the simple coroot basis";
-  const char* posroots_rootbasis_tag =
-     "outputs the positive roots in the simple root basis";
-  const char* poscoroots_rootbasis_tag =
-      "outputs the positive coroots in the simple coroot basis";
   const char* sub_KGB_tag =
     "computes subset of KGB data used in Ktypeform";
   const char* trivial_tag =
@@ -135,12 +127,7 @@ namespace {
     "gives a basis of quotient of character lattice";
   const char* branch_tag = "computes restriction of representation to K";
   const char* srtest_tag = "gives information about a representation";
-  const char* testrun_tag =
-                "iterates over root data of given rank, calling examine";
   const char* examine_tag = "tests whether block is ordered by Weyl length";
-
-  const char* nblock_tag = "computes a non-integral block";
-  const char* partial_block_tag = "computes part of a non-integral block";
 
 /*
   For convenience, the "test" command is added to the mode that is flagged by
@@ -175,191 +162,86 @@ namespace {
 */
 
 
-// Add to the empty mode the test commands that require that mode.
+// Add to the empty mode node the test commands that require that mode.
 template<>
-void addTestCommands<commands::EmptymodeTag>
-  (commands::CommandNode& mode, commands::EmptymodeTag)
+void addTestCommands<commands::EmptymodeTag> (commands::CommandNode& mode)
 {
-  mode.add("testrun",testrun_f);
+  mode.add("testrun",testrun_f,
+	   "iterates over root data of given rank, calling examine");
   if (testMode == EmptyMode)
-    mode.add("test",test_f);
-
+    mode.add("test",test_f,test_tag);
 }
 
 
-// Add to the main mode the test commands that require that mode.
+// Add to the main mode node the test commands that require that mode.
 template<>
-void addTestCommands<commands::MainmodeTag>
-  (commands::CommandNode& mode, commands::MainmodeTag)
+void addTestCommands<commands::MainmodeTag> (commands::CommandNode& mode)
 {
+  mode.add("roots_rootbasis",roots_rootbasis_f,
+	   "outputs the roots in the simple root basis",roots_rootbasis_h);
+  mode.add("posroots_rootbasis",posroots_rootbasis_f,
+	   "outputs the positive roots in the simple root basis",
+	   posroots_rootbasis_h);
+  mode.add("coroots_rootbasis",coroots_rootbasis_f,
+	   "outputs the coroots in the simple coroot basis",
+	   coroots_rootbasis_h);
+  mode.add("poscoroots_rootbasis",poscoroots_rootbasis_f,
+	   "outputs the positive coroots in the simple coroot basis",
+	   poscoroots_rootbasis_h);
+
+  mode.add("X",X_f,"prints union of K\\G/B for real forms in inner class");
+
   if (testMode == MainMode)
-    mode.add("test",test_f);
+    mode.add("test",test_f,test_tag);
 
-  // add additional commands here :
-
-  mode.add("roots_rootbasis",roots_rootbasis_f);
-  mode.add("posroots_rootbasis",posroots_rootbasis_f);
-  mode.add("coroots_rootbasis",coroots_rootbasis_f);
-  mode.add("poscoroots_rootbasis",poscoroots_rootbasis_f);
-
-  mode.add("X",X_f);
 }
 
-
-// Add to the real mode the test commands that require that mode.
+// Add to the real mode node the test commands that require that mode.
 template<>
-void addTestCommands<commands::RealmodeTag>
-  (commands::CommandNode& mode, commands::RealmodeTag)
+void addTestCommands<commands::RealmodeTag> (commands::CommandNode& mode)
 {
+  mode.add("checkbasept",checkbasept_f,
+	   "checks basepoint conjecture",checkbasept_h);
+  mode.add("sub_KGB",sub_KGB_f,sub_KGB_tag);
+  mode.add("trivial",trivial_f,trivial_tag);
+  mode.add("Ktypeform",Ktypeform_f,Ktypeform_tag,Ktypeform_h);
+  mode.add("qKtypeform",qKtypeform_f,"q version of Ktypeform");
+  mode.add("Ktypemat",Ktypemat_f,Ktypemat_tag,Ktypemat_h);
+  mode.add("qKtypemat",qKtypemat_f,"q version of Ktypemat");
+  mode.add("mod_lattice",mod_lattice_f,mod_lattice_tag,mod_lattice_h);
+  mode.add("branch",branch_f,branch_tag,branch_h);
+  mode.add("qbranch",qbranch_f,"q version of branch");
+  mode.add("srtest",srtest_f,srtest_tag,srtest_h);
+
+  mode.add("examine",exam_f,examine_tag);
+  mode.add("embedding",embedding_f,
+	   "give information about embedding of KGB of subsystem");
+
   if (testMode == RealMode)
-    mode.add("test",test_f);
+    mode.add("test",test_f,test_tag);
 
-  // add additional commands here :
-
-  mode.add("checkbasept",checkbasept_f);
-  mode.add("sub_KGB",sub_KGB_f);
-  mode.add("trivial",trivial_f);
-  mode.add("Ktypeform",Ktypeform_f);
-  mode.add("qKtypeform",qKtypeform_f);
-  mode.add("Ktypemat",Ktypemat_f);
-  mode.add("qKtypemat",qKtypemat_f);
-  mode.add("mod_lattice",mod_lattice_f);
-  mode.add("branch",branch_f);
-  mode.add("qbranch",qbranch_f);
-  mode.add("srtest",srtest_f);
-
-  mode.add("examine",exam_f);
-  mode.add("embedding",embedding_f);
 }
+
 
 // Add to the block mode the test commands that require that mode.
 template<>
-void addTestCommands<commands::BlockmodeTag>
-  (commands::CommandNode& mode, commands::BlockmodeTag)
+void addTestCommands<commands::BlockmodeTag> (commands::CommandNode& mode)
 {
   if (testMode == BlockMode)
-    mode.add("test",test_f);
+    mode.add("test",test_f,test_tag);
 
 }
 
 // Add to the repr mode the test commands that require that mode.
 template<>
-void addTestCommands<commands::ReprmodeTag>
-  (commands::CommandNode& mode, commands::ReprmodeTag)
+void addTestCommands<commands::ReprmodeTag> (commands::CommandNode& mode)
 {
   if (testMode == ReprMode)
-    mode.add("test",test_f);
+    mode.add("test",test_f,test_tag);
 
   // add additional commands here :
 }
 
-
-
-// Add to the help mode the test commands that require that mode.
-template<> void addTestHelp<commands::EmptymodeTag>
-             (commands::CommandNode& mode, commands::TagDict& t,
-	      commands::EmptymodeTag)
-{
-  if (testMode == EmptyMode) {
-    mode.add("test",commands::nohelp_h);
-    commands::insertTag(t,"test",test_tag);
-  }
-
-
-  // add additional help commands here:
-  mode.add("testrun",commands::nohelp_h);
-
-  // add additional command tags here:
-  commands::insertTag(t,"testrun",testrun_tag);
-
-}
-
-
-// Add to the main mode the help commands for test commands with that mode
-template<> void addTestHelp<commands::MainmodeTag>
-             (commands::CommandNode& mode, commands::TagDict& t,
-	      commands::MainmodeTag)
-{
-
-  if (testMode == MainMode) {
-    mode.add("test",commands::nohelp_h);
-    insertTag(t,"test",test_tag);
-  }
-
-  // add additional help commands here:
-
-  mode.add("roots_rootbasis",roots_rootbasis_h);
-  mode.add("posroots_rootbasis",posroots_rootbasis_h);
-  mode.add("coroots_rootbasis",coroots_rootbasis_h);
-  mode.add("poscoroots_rootbasis",poscoroots_rootbasis_h);
-
-  // add additional command tags here :
-
-  insertTag(t,"roots_rootbasis",roots_rootbasis_tag);
-  insertTag(t,"posroots_rootbasis",posroots_rootbasis_tag);
-  insertTag(t,"coroots_rootbasis",coroots_rootbasis_tag);
-  insertTag(t,"poscoroots_rootbasis",poscoroots_rootbasis_tag);
-
-}
-
-
-// Add to the real mode the help commands for test commands with that mode
-template<> void addTestHelp<commands::RealmodeTag>
-             (commands::CommandNode& mode, commands::TagDict& t,
-	      commands::RealmodeTag)
-{
-  if (testMode == RealMode) {
-    mode.add("test",commands::nohelp_h);
-    insertTag(t,"test",test_tag);
-  }
-
-  // add additional help commands here:
-
-  mode.add("checkbasept",checkbasept_h);
-  mode.add("sub_KGB",commands::nohelp_h);
-  mode.add("trivial",commands::nohelp_h);
-  mode.add("Ktypeform",Ktypeform_h);
-  mode.add("Ktypemat",Ktypemat_h);
-  mode.add("mod_lattice",mod_lattice_h);
-  mode.add("branch",branch_h);
-  mode.add("srtest",srtest_h);
-  mode.add("examine",commands::nohelp_h);
-  mode.add("nblock",nblock_h);
-
-
-  // add additional command tags here :
-
-  insertTag(t,"sub_KGB",sub_KGB_tag);
-  insertTag(t,"trivial",trivial_tag);
-  insertTag(t,"Ktypeform",Ktypeform_tag);
-  insertTag(t,"Ktypemat",Ktypemat_tag);
-  insertTag(t,"mod_lattice",mod_lattice_tag);
-  insertTag(t,"branch",branch_tag);
-  insertTag(t,"srtest",srtest_tag);
-  insertTag(t,"examine",examine_tag);
-  insertTag(t,"nblock",nblock_tag);
-  insertTag(t,"partial_block",partial_block_tag);
-
-}
-
-// Add to the block mode the help commands for test commands with that mode
-template<> void addTestHelp<commands::BlockmodeTag>
-             (commands::CommandNode& mode, commands::TagDict& t,
-	      commands::BlockmodeTag)
-{
-  if (testMode == BlockMode)
-  {
-    mode.add("test",commands::nohelp_h);
-    insertTag(t,"test",test_tag);
-  }
-
-  // add additional help commands here:
-
-
-
-  // add additional command tags here:
-
-}
 
 /*****************************************************************************
 
@@ -1237,11 +1119,6 @@ void branch_h()
 void srtest_h()
 {
   io::printFile(std::cerr,"srtest.help",io::MESSAGE_DIR);
-}
-
-void nblock_h()
-{
-  io::printFile(std::cerr,"nblock.help",io::MESSAGE_DIR);
 }
 
 } // |namespace|

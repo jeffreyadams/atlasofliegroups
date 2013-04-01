@@ -16,28 +16,10 @@
 
 #include "commands.h"
 #include "emptymode.h"
-#include "mainmode.h"
-#include "realmode.h"
-#include "blockmode.h"
-#include "reprmode.h"
-#include "helpmode.h"
 #include "error.h"
 #include "input.h"
 #include "version.h"
 #include "io.h" // so modify message directory
-
-namespace atlas {
-  namespace commands {
-    CommandTree empty_mode(emptyNode());
-    CommandTree& main_mode = empty_mode.add_descendant(mainNode());
-    CommandTree& real_mode = main_mode.add_descendant(realNode());
-    CommandTree& block_mode = real_mode.add_descendant(blockNode());
-    CommandTree& repr_mode =  real_mode.add_descendant(reprNode());
-
-  } // |namespace reprmode|
-} // |namespace atlas|
-
-
 
 // This one function should not reside in the |atlas| (or any other) namespace
 int main(int argc, char* argv[])

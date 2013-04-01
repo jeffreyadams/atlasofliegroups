@@ -10,7 +10,7 @@ subgroups for the real form corresponds to a $W$-conjugacy class of
 involutions (an injective correspondence that is bijective only for the
 quasisplit real form).
 
-The command "grading" begins by asking for a Cartan subgroup; that is, for a
+The command "gradings" begins by asking for a Cartan subgroup; that is, for a
 $W$-conjugacy class of root datum involutions. (At this point the real form
 under consideration should not matter, but in fact only Cartan subgroups in
 this real form are presented. If no real form was specified before, the

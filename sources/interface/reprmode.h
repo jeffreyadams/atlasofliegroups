@@ -29,17 +29,15 @@ namespace commands {
   extern block_type state;
   extern BlockElt entry_z;
 
-/******** function declarations ********************************************/
+/******** function and variable declarations ********************************/
 
   commands::CommandNode reprNode();
-  extern CommandTree& repr_mode; // defined in main.cpp
+  extern CommandTree& repr_mode; // defined in commands.cpp
   const SubSystemWithGroup& currentSubSystem();
   param_block& current_param_block();
   const StandardRepr& currentStandardRepr();
   // kl::KLContext& currentKL();            // defined in blockmode.cpp
   // const wgraph::WGraph& currentWGraph(); // defined in blockmode.cpp
-
-  void addBlockHelp(CommandNode&, TagDict&);
 
 } // namespace reprmode
 

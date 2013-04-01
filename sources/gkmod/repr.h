@@ -5,7 +5,7 @@
   Copyright (C) 2009-2012 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
-  See file main.cpp for full copyright notice
+  For license information see the LICENSE file
 */
 
 #ifndef REPR_H  /* guard against multiple inclusions */

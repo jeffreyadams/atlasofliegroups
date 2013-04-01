@@ -76,8 +76,48 @@ namespace {
   void blocksizes_f();
   void gradings_f();
   void strongreal_f();
-  void dual_kgb_f();
+  void dualkgb_f();
   void help_f();
+
+  // help commands
+  void type_h();
+  void cmatrix_h();
+  void rootdatum_h();
+  void roots_h();
+  void coroots_h();
+  void simpleroots_h();
+  void simplecoroots_h();
+  void posroots_h();
+  void poscoroots_h();
+  void realform_h();
+  void showdualforms_h();
+  void showrealforms_h();
+  void blocksizes_h();
+  void gradings_h();
+  void strongreal_h();
+  void dualkgb_h();
+
+  // command tags for the help facility
+  const char* cmatrix_tag = "prints the Cartan matrix";
+  const char* rootdatum_tag = "outputs the root datum";
+  const char* roots_tag = "outputs the roots in the lattice basis";
+  const char* coroots_tag = "outputs the coroots in the lattice basis";
+  const char* simpleroots_tag =
+    "outputs the simple roots in the lattice basis";
+  const char* simplecoroots_tag =
+    "outputs the simple coroots in the lattice basis";
+  const char* posroots_tag = "outputs the positive roots in the lattice basis";
+  const char* poscoroots_tag =
+    "outputs the positive coroots in the lattice basis";
+  const char* realform_tag = "sets the real form for the group";
+  const char* showdualforms_tag =
+    "outputs the weak real forms for the dual group";
+  const char* showrealforms_tag =
+    "outputs the weak real forms for this complex group";
+  const char* blocksizes_tag = "outputs the matrix of blocksizes";
+  const char* gradings_tag="prints gradings of imaginary roots for real forms";
+  const char* strongreal_tag = "outputs information about strong real forms";
+  const char* dualkgb_tag = "prints the KGB data for a dual real form";
 
   // local variables
   // these have been changed to pointers to avoid swapping of G_C
@@ -130,9 +170,6 @@ void replaceComplexGroup(ComplexReductiveGroup* G
 
         Chapter II -- The main mode |CommandNode|
 
-  One instance of |CommandNode| for the main mode is created at the
-  first call of |mainNode()|; further calls just return a reference to it.
-
 *****************************************************************************/
 
 namespace {
@@ -164,33 +201,34 @@ void main_mode_exit()
 
 
 /*
-  Synopsis: returns a |CommandNode| object that is constructed on first call.
+  Synopsis: returns a |CommandNode| object that is constructed during the call.
 */
 CommandNode mainNode()
 {
   CommandNode result ("main: ",main_mode_entry,main_mode_exit);
-  result.add("type",type_f);
-  result.add("cmatrix",cmatrix_f);
-  result.add("rootdatum",rootdatum_f);
-  result.add("roots",roots_f);
-  result.add("coroots",coroots_f);
-  result.add("simpleroots",simpleroots_f);
-  result.add("simplecoroots",simplecoroots_f);
-  result.add("posroots",posroots_f);
-  result.add("poscoroots",poscoroots_f);
-  result.add("realform",realform_f);
-  result.add("showrealforms",showrealforms_f);
-  result.add("showdualforms",showdualforms_f);
-  result.add("blocksizes",blocksizes_f);
-  result.add("gradings",gradings_f);
-  result.add("strongreal",strongreal_f);
-  result.add("dualkgb",dual_kgb_f); // here, since no real form needed
-  result.add("help",help_f); // override
-  result.add("q",exitMode);
+  result.add("type",type_f,"override"); // tag is a dummy
+  result.add("cmatrix",cmatrix_f,cmatrix_tag,cmatrix_h);
+  result.add("rootdatum",rootdatum_f,rootdatum_tag,rootdatum_h);
+  result.add("roots",roots_f,roots_tag,roots_h);
+  result.add("coroots",coroots_f,coroots_tag,coroots_h);
+  result.add("simpleroots",simpleroots_f,simpleroots_tag,simpleroots_h);
+  result.add("simplecoroots",simplecoroots_f,simplecoroots_tag,simplecoroots_h);
+  result.add("posroots",posroots_f,posroots_tag,posroots_h);
+  result.add("poscoroots",poscoroots_f,poscoroots_tag,poscoroots_h);
+  result.add("realform",realform_f,realform_tag,realform_h);
+  result.add("showrealforms",showrealforms_f,showrealforms_tag,showrealforms_h);
+  result.add("showdualforms",showdualforms_f,showdualforms_tag,showdualforms_h);
+  result.add("blocksizes",blocksizes_f,blocksizes_tag,blocksizes_h);
+  result.add("gradings",gradings_f,gradings_tag,gradings_h);
+  result.add("strongreal",strongreal_f,strongreal_tag,strongreal_h);
+  // the next function is in main mode since no real form needed
+  result.add("dualkgb",dualkgb_f,dualkgb_tag,dualkgb_h);
+  result.add("help",help_f,"override");
+  result.add("q",exitMode,"override"); // q is inactive in empty mode
 
   // add test commands
 
-  test::addTestCommands(result,MainmodeTag());
+  test::addTestCommands<MainmodeTag>(result);
   return result;
 }
 
@@ -362,7 +400,7 @@ void strongreal_f()
 }
 
 // Print a kgb table for a dual real form.
-void dual_kgb_f()
+void dualkgb_f()
 {
   ComplexReductiveGroup& G_C = currentComplexGroup();
 
@@ -405,8 +443,84 @@ void type_f()
 
 }
 
-} // |namespace|
+
+void cmatrix_h()
+{
+  io::printFile(std::cerr,"cmatrix.help",io::MESSAGE_DIR);
+}
+
+void rootdatum_h()
+{
+  io::printFile(std::cerr,"rootdatum.help",io::MESSAGE_DIR);
+}
+
+void roots_h()
+{
+  io::printFile(std::cerr,"roots.help",io::MESSAGE_DIR);
+}
+
+void coroots_h()
+{
+  io::printFile(std::cerr,"coroots.help",io::MESSAGE_DIR);
+}
+
+void simpleroots_h()
+{
+  io::printFile(std::cerr,"simpleroots.help",io::MESSAGE_DIR);
+}
+
+void simplecoroots_h()
+{
+  io::printFile(std::cerr,"simplecoroots.help",io::MESSAGE_DIR);
+}
+
+void posroots_h()
+{
+  io::printFile(std::cerr,"posroots.help",io::MESSAGE_DIR);
+}
+
+void poscoroots_h()
+{
+  io::printFile(std::cerr,"poscoroots.help",io::MESSAGE_DIR);
+}
+
+void realform_h()
+{
+  io::printFile(std::cerr,"realform.help",io::MESSAGE_DIR);
+}
+
+void showrealforms_h()
+{
+  io::printFile(std::cerr,"showrealforms.help",io::MESSAGE_DIR);
+}
+
+void showdualforms_h()
+{
+  io::printFile(std::cerr,"showdualforms.help",io::MESSAGE_DIR);
+}
+
+void blocksizes_h()
+{
+  io::printFile(std::cerr,"blocksizes.help",io::MESSAGE_DIR);
+}
+
+void gradings_h()
+{
+  io::printFile(std::cerr,"gradings.help",io::MESSAGE_DIR);
+}
+
+void strongreal_h()
+{
+  io::printFile(std::cerr,"strongreal.help",io::MESSAGE_DIR);
+}
+
+void dualkgb_h()
+{
+  io::printFile(std::cerr,"dualkgb.help",io::MESSAGE_DIR);
+}
 
 } // |namespace|
 
-} // namespace atlas
+} // |namespace commands|
+
+} // |namespace atlas|

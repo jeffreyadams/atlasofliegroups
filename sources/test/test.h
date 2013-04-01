@@ -21,7 +21,17 @@ namespace atlas {
 
 namespace test {
 
-template<typename T> void addTestCommands(commands::CommandNode&, T);
+/* The following function is called to complete the various |CommandNode|
+   objects with actions defined in test.cpp, prior to constructing the
+   corresponding |CommandTree|. This addition cannot be done on the completed
+   |CommandTree|, as the commands would the fail to inherit to descendant
+   modes. Therefore the addition cannot be done in one sweep, and the pieces
+   for different |CommandNode| values are done in separate calls. Rather than
+   use a single function with a switch, we might as well use a template
+   function whose instances are distinguished by a dummy type. The node to
+   alter is passed as argument.
+ */
+template<typename T> void addTestCommands(commands::CommandNode&);
 
 template<typename T>
   void addTestHelp(commands::CommandNode&, commands::TagDict&, T);

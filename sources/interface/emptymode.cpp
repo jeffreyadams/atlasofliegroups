@@ -40,10 +40,14 @@ namespace {
   // functions for the predefined commands
 
   void help_f();
-  void q_h();
   void type_f();
   void extract_graph_f();
   void extract_cells_f();
+
+  void type_h();
+  void help_h();
+  void q_h();
+  void qq_h();
 
 } // |namespace|
 
@@ -51,8 +55,8 @@ namespace {
 
         Chapter I -- The empty mode |CommandNode|
 
-  One instance of |CommandNode| for the empty mode is created at the
-  first call of |emptyNode()|; further calls just return a reference to it.
+  An instance of |CommandNode| for the empty mode is created at the first
+  and unique call of |emptyNode()|.
 
 *****************************************************************************/
 
@@ -62,18 +66,23 @@ namespace {
 CommandNode emptyNode()
 {
   CommandNode result("empty: ",printVersion,relax_f);
-  result.add("",relax_f); // so typing nothing is OK
-  result.add("help",help_f);
-  result.add("q",q_h); // in empty mode "q" just gives help information
-  result.add("qq",exitInteractive);
+  result.nohelp_add("",relax_f); // so typing nothing is OK
+  result.add("help",help_f,"enters help mode",help_h);
+  result.add("q",q_h,"exits the current mode",exitMode);
+  // in empty mode "q" gives help information, in help mode it exits
+  result.add("qq",exitInteractive,"exits the program",qq_h);
+
   // the type command needs to be recognized in the empty mode, or else
   // it will trigger activation of the main mode and _then_ execute, which
   // leads to setting the type twice!
-  result.add("type",type_f);
-  result.add("extract-graph",extract_graph_f);
-  result.add("extract-cells",extract_cells_f);
+  result.add("type",type_f,
+	     "sets or resets the group type",type_h);
+  result.add("extract-graph",extract_graph_f,
+	     "reads block and KL binary files and prints W-graph");
+  result.add("extract-cells",extract_cells_f,
+	     "reads block and KL binary files and prints W-cells");
 
-  test::addTestCommands(result,EmptymodeTag());
+  test::addTestCommands<EmptymodeTag>(result);
   return result;
 }
 
@@ -95,9 +104,30 @@ void help_f()
   help_mode.activate();
 }
 
+void help_h()
+
+{
+  io::printFile(std::cerr,"help.help",io::MESSAGE_DIR);
+  return;
+}
+
+void type_h()
+
+{
+  io::printFile(std::cerr,"type.help",io::MESSAGE_DIR);
+  return;
+}
+
 void q_h()
 {
   io::printFile(std::cerr,"q.help",io::MESSAGE_DIR);
+}
+
+void qq_h()
+
+{
+  io::printFile(std::cerr,"qq.help",io::MESSAGE_DIR);
+  return;
 }
 
 void type_f()

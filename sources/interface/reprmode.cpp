@@ -80,6 +80,8 @@ namespace commands {
 
   void repr_f(); // assign a new parameter while staying in this mode
 
+  void nblock_h();
+
   // mode-local variables
   block_type state=noblock;
   BlockElt entry_z = UndefBlock;
@@ -101,29 +103,27 @@ CommandNode reprNode()
 {
   CommandNode result("repr: ",repr_mode_entry,repr_mode_exit);
 
-  result.add("repr",repr_f); // override
-  // result.add("smallkgb",small_kgb_f);
-  // result.add("smalldualkgb",small_dual_kgb_f);
-  result.add("iblock",iblock_f);
-  result.add("nblock",nblock_f);
-  result.add("partial_block",partial_block_f);
-  result.add("block",block_f);
-  result.add("blockorder",blockorder_f);
-  // result.add("blockwrite",blockwrite_f);
-  // result.add("blockstabilizer",blockstabilizer_f);
-  result.add("blocktwist",blocktwist_f);
-  result.add("extblock",extblock_f);
-  result.add("deform",deform_f);
-  result.add("kl",kl_f);
-  result.add("klbasis",klbasis_f);
-  result.add("kllist",kllist_f);
-  result.add("primkl",primkl_f);
-  result.add("klwrite",klwrite_f);
-  result.add("wcells",wcells_f);
-  result.add("wgraph",wgraph_f);
+  result.add("repr",repr_f,"override");
+  result.add("iblock",iblock_f,"computes block for integral subsystem");
+  result.add("nblock",nblock_f,"computes a non-integral block",nblock_h);
+  result.add("partial_block",partial_block_f,
+	     "computes part of a non-integral block");
+  result.add("block",block_f,"second"); // block mode sets tag
+  result.add("blockorder",blockorder_f,"second");
+  result.add("blocktwist",blocktwist_f,"second");
+  result.add("extblock",extblock_f,"second");
+  result.add("deform",deform_f,"computes deformation terms");
+  result.add("kl",kl_f,
+	     "computes KL polynomials in character formula for this parameter");
+  result.add("klbasis",klbasis_f,"second");
+  result.add("kllist",kllist_f,"second");
+  result.add("primkl",primkl_f,"second");
+  result.add("klwrite",klwrite_f,"second");
+  result.add("wcells",wcells_f,"second");
+  result.add("wgraph",wgraph_f,"second");
 
   // add test commands
-  test::addTestCommands(result,ReprmodeTag());
+  test::addTestCommands<ReprmodeTag>(result);
 
   return result;
 }
@@ -477,125 +477,11 @@ void wcells_f()
 }
 
 
-
-//      Chapter IV ---    H E L P    F U N C T I O N S
-
-
-// Install help functions for block functions into help mode
-
-namespace {
-
-  const char* small_kgb_tag =
-    "prints part of the KGB data pertinent to the current block";
-  const char* small_dual_kgb_tag =
-    "prints part of the dual KGB data pertinent to the current block";
-  const char* block_tag = "prints all the representations in a block";
-  const char* blockorder_tag =
-   "shows Hasse diagram of the Bruhat order on the blocks";
-  const char* blockwrite_tag = "writes the block information to disk";
-  const char* blockstabilizer_tag = "print the real Weyl group for the block";
-  const char* klbasis_tag = "prints the KL basis for the Hecke module";
-  const char* kllist_tag = "prints the list of distinct KL polynomials";
-  const char* klprim_tag = "prints the KL polynomials for primitive pairs";
-  const char* klwrite_tag = "writes the KL polynomials to disk";
-  const char* wgraph_tag = "prints the W-graph for the block";
-  const char* wcells_tag = "prints the Kazhdan-Lusztig cells for the block";
-
-void small_kgb_h()
+void nblock_h()
 {
-  io::printFile(std::cerr,"smallkgb.help",io::MESSAGE_DIR);
+  io::printFile(std::cerr,"nblock.help",io::MESSAGE_DIR);
 }
 
-void small_dual_kgb_h()
-{
-  io::printFile(std::cerr,"smalldualkgb.help",io::MESSAGE_DIR);
-}
-
-void block_h()
-{
-  io::printFile(std::cerr,"block.help",io::MESSAGE_DIR);
-}
-
-void blockorder_h()
-{
-  io::printFile(std::cerr,"blockorder.help",io::MESSAGE_DIR);
-}
-
-void blockwrite_h()
-{
-  io::printFile(std::cerr,"blockwrite.help",io::MESSAGE_DIR);
-}
-
-void block_stabilizer_h()
-{
-  io::printFile(std::cerr,"blockstabilizer.help",io::MESSAGE_DIR);
-}
-
-void klbasis_h()
-{
-  io::printFile(std::cerr,"klbasis.help",io::MESSAGE_DIR);
-}
-
-void kllist_h()
-{
-  io::printFile(std::cerr,"kllist.help",io::MESSAGE_DIR);
-}
-
-void primkl_h()
-{
-  io::printFile(std::cerr,"primkl.help",io::MESSAGE_DIR);
-}
-
-void klwrite_h()
-{
-  io::printFile(std::cerr,"klwrite.help",io::MESSAGE_DIR);
-}
-
-void wcells_h()
-{
-  io::printFile(std::cerr,"wcells.help",io::MESSAGE_DIR);
-}
-
-void wgraph_h()
-{
-  io::printFile(std::cerr,"wgraph.help",io::MESSAGE_DIR);
-}
-
-
-
-void addBlockHelp(CommandNode& mode, TagDict& tagDict)
-
-{
-  mode.add("smallkgb",small_kgb_h);
-  mode.add("smalldualkgb",small_dual_kgb_h);
-  mode.add("block",block_h);
-  mode.add("blockorder",blockorder_h);
-  mode.add("klwrite",klwrite_h);
-  mode.add("kllist",kllist_h);
-  mode.add("primkl",primkl_h);
-  mode.add("klbasis",klbasis_h);
-  mode.add("wcells",wcells_h);
-  mode.add("wgraph",wgraph_h);
-
-  // using commands::insertTag; // argument-dependent lookup will find it
-
-  // insertTag(tagDict,"components",components_tag);
-  insertTag(tagDict,"smallkgb",small_kgb_tag);
-  insertTag(tagDict,"smalldualkgb",small_dual_kgb_tag);
-  insertTag(tagDict,"block",block_tag);
-  insertTag(tagDict,"blockorder",blockorder_tag);
-  insertTag(tagDict,"blockwrite",blockwrite_tag);
-  insertTag(tagDict,"blockstabilizer",blockstabilizer_tag);
-  insertTag(tagDict,"klbasis",klbasis_tag);
-  insertTag(tagDict,"kllist",kllist_tag);
-  insertTag(tagDict,"primkl",klprim_tag);
-  insertTag(tagDict,"klwrite",klwrite_tag);
-  insertTag(tagDict,"wcells",wcells_tag);
-  insertTag(tagDict,"wgraph",wgraph_tag);
-}
-
-
-} // |namespace|
 
 } // |namespace commands|
 

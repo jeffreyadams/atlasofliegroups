@@ -57,13 +57,13 @@ namespace {
 
   // functions for the predefined commands
 
-  void small_kgb_f();
-  void small_dual_kgb_f();
+  void smallkgb_f();
+  void smalldualkgb_f();
   void block_f();
   void smallblock_f();
-  void dual_block_f();
-  void small_dual_block_f();
-  void dual_map_f();
+  void dualblock_f();
+  void smalldualblock_f();
+  void dualmap_f();
   void blockd_f();
   void blocku_f();
   void blockorder_f();
@@ -79,6 +79,55 @@ namespace {
   void wcells_f();
 
   void dualrealform_f();
+
+  void smallkgb_h();
+  void smalldualkgb_h();
+  void block_h();
+  void smallblock_h();
+  void dualblock_h();
+  void smalldualblock_h();
+  void dualmap_h();
+  void blockd_h();
+  void blocku_h();
+  void blockorder_h();
+  void blockwrite_h();
+  void blockstabilizer_h();
+  void blocktwist_h();
+  void extblock_h();
+  void klbasis_h();
+  void kllist_h();
+  void primkl_h();
+  void klwrite_h();
+  void wgraph_h();
+  void wcells_h();
+
+
+  const char* smallkgb_tag =
+    "prints part of the KGB data pertinent to one block";
+  const char* smalldualkgb_tag =
+    "prints part of the dual KGB data pertinent to one block";
+  const char* block_tag = "prints all the representations in a block";
+  const char* smallblock_tag =
+    "generates block using partial KGB and dual KGB data";
+  const char* dualblock_tag = "prints a block for the dual group";
+  const char* smalldualblock_tag =
+    "generates dual block using partial KGB and dual KGB data";
+  const char* dualmap_tag =
+    "prints the bijection from block to its dual block";
+  const char* blockd_tag =
+   "prints all representations in the block, alternative format";
+  const char* blocku_tag =
+   "prints the unitary representations in the block at rho";
+  const char* blockorder_tag =
+   "shows Hasse diagram of the Bruhat order on the blocks";
+  const char* blockwrite_tag = "writes the block information to disk";
+  const char* blockstabilizer_tag = "print the real Weyl group for the block";
+  const char* klbasis_tag = "prints the KL basis for the Hecke module";
+  const char* kllist_tag = "prints the list of distinct KL polynomials";
+  const char* primkl_tag = "prints the KL polynomials for primitive pairs";
+  const char* klwrite_tag = "writes the KL polynomials to disk";
+  const char* wgraph_tag = "prints the W-graph for the block";
+  const char* wcells_tag = "prints the Kazhdan-Lusztig cells for the block";
 
   // local variables
 
@@ -99,30 +148,32 @@ CommandNode blockNode()
 {
   CommandNode result("block: ",block_mode_entry,block_mode_exit);
 
-  result.add("dualrealform",dualrealform_f); // override
-  result.add("smallkgb",small_kgb_f);
-  result.add("smalldualkgb",small_dual_kgb_f);
-  result.add("block",block_f);
-  result.add("smallblock",smallblock_f);
-  result.add("dualblock",dual_block_f);
-  result.add("smalldualblock",small_dual_block_f);
-  result.add("dualmap",dual_map_f);
-  result.add("blockd",blockd_f);
-  result.add("blocku",blocku_f);
-  result.add("blockorder",blockorder_f);
-  result.add("blockwrite",blockwrite_f);
-  result.add("blockstabilizer",blockstabilizer_f);
-  result.add("blocktwist",blocktwist_f);
-  result.add("extblock",extblock_f);
-  result.add("klbasis",klbasis_f);
-  result.add("kllist",kllist_f);
-  result.add("primkl",primkl_f);
-  result.add("klwrite",klwrite_f);
-  result.add("wcells",wcells_f);
-  result.add("wgraph",wgraph_f);
+  result.add("dualrealform",dualrealform_f,"override");
+  result.add("smallkgb",smallkgb_f,smallkgb_tag,smallkgb_h);
+  result.add("smalldualkgb",smalldualkgb_f,smalldualkgb_tag,smalldualkgb_h);
+  result.add("block",block_f,block_tag,block_h);
+  result.add("smallblock",smallblock_f,smallblock_tag,smallblock_h);
+  result.add("dualblock",dualblock_f,dualblock_tag,dualblock_h);
+  result.add("smalldualblock",smalldualblock_f,
+	     smalldualblock_tag,smalldualblock_h);
+  result.add("dualmap",dualmap_f,dualmap_tag,dualmap_h);
+  result.add("blockd",blockd_f,blockd_tag,blockd_h);
+  result.add("blocku",blocku_f,blocku_tag,blocku_h);
+  result.add("blockorder",blockorder_f,blockorder_tag,blockorder_h);
+  result.add("blockwrite",blockwrite_f,blockwrite_tag,blockwrite_h);
+  result.add("blockstabilizer",blockstabilizer_f,
+	     blockstabilizer_tag,blockstabilizer_h);
+  result.add("blocktwist",blocktwist_f,"shows twist orbits on block");
+  result.add("extblock",extblock_f,"prints block for extended group");
+  result.add("klbasis",klbasis_f,klbasis_tag,klbasis_h);
+  result.add("kllist",kllist_f,kllist_tag,kllist_h);
+  result.add("primkl",primkl_f,primkl_tag,primkl_h);
+  result.add("klwrite",klwrite_f,klwrite_tag,klwrite_h);
+  result.add("wcells",wcells_f,wcells_tag,wcells_h);
+  result.add("wgraph",wgraph_f,wgraph_tag,wgraph_h);
 
   // add test commands
-  test::addTestCommands(result,BlockmodeTag());
+  test::addTestCommands<BlockmodeTag>(result);
 
   return result;
 }
@@ -263,7 +314,7 @@ void block_mode_exit()
 
 
 // Print the kgb table, only the necessary part for one block
-void small_kgb_f()
+void smallkgb_f()
 {
   RealReductiveGroup& G_R = currentRealGroup();
   RealReductiveGroup& dGR = currentDualRealGroup();
@@ -284,7 +335,7 @@ void small_kgb_f()
   kgb_io::printKGB(file,kgb);
 }
 
-void small_dual_kgb_f()
+void smalldualkgb_f()
 {
   RealReductiveGroup& G_R = currentRealGroup();
   RealReductiveGroup& dGR = currentDualRealGroup();
@@ -320,7 +371,7 @@ void smallblock_f()
 }
 
 // Print the dual block of the current block
-void dual_block_f()
+void dualblock_f()
 {
   Block block =
     Block::build(currentDualRealGroup(),currentRealGroup());
@@ -329,7 +380,7 @@ void dual_block_f()
   block.print_to(file,false);
 }
 
-void small_dual_block_f()
+void smalldualblock_f()
 {
   ComplexReductiveGroup& dG = currentDualComplexGroup();
 
@@ -341,7 +392,7 @@ void small_dual_block_f()
 }
 
 // Print the correspondence of the current block with its dual block
-void dual_map_f()
+void dualmap_f()
 {
   const Block& block = currentBlock();
   Block dual_block =
@@ -515,41 +566,13 @@ void wcells_f()
 //      Chapter IV ---    H E L P    F U N C T I O N S
 
 
-// Install help functions for block functions into help mode
 
-  const char* small_kgb_tag =
-    "prints part of the KGB data pertinent to one block";
-  const char* small_dual_kgb_tag =
-    "prints part of the dual KGB data pertinent to one block";
-  const char* block_tag = "prints all the representations in a block";
-  const char* small_block_tag =
-    "generates block using partial KGB and dual KGB data";
-  const char* dual_block_tag = "prints a block for the dual group";
-  const char* small_dual_block_tag =
-    "generates dual block using partial KGB and dual KGB data";
-  const char* dual_map_tag =
-    "prints the bijection from block to its dual block";
-  const char* blockd_tag =
-   "prints all representations in the block, alternative format";
-  const char* blocku_tag =
-   "prints the unitary representations in the block at rho";
-  const char* blockorder_tag =
-   "shows Hasse diagram of the Bruhat order on the blocks";
-  const char* blockwrite_tag = "writes the block information to disk";
-  const char* blockstabilizer_tag = "print the real Weyl group for the block";
-  const char* klbasis_tag = "prints the KL basis for the Hecke module";
-  const char* kllist_tag = "prints the list of distinct KL polynomials";
-  const char* klprim_tag = "prints the KL polynomials for primitive pairs";
-  const char* klwrite_tag = "writes the KL polynomials to disk";
-  const char* wgraph_tag = "prints the W-graph for the block";
-  const char* wcells_tag = "prints the Kazhdan-Lusztig cells for the block";
-
-void small_kgb_h()
+void smallkgb_h()
 {
   io::printFile(std::cerr,"smallkgb.help",io::MESSAGE_DIR);
 }
 
-void small_dual_kgb_h()
+void smalldualkgb_h()
 {
   io::printFile(std::cerr,"smalldualkgb.help",io::MESSAGE_DIR);
 }
@@ -559,7 +582,7 @@ void block_h()
   io::printFile(std::cerr,"block.help",io::MESSAGE_DIR);
 }
 
-void small_block_h()
+void smallblock_h()
 {
   io::printFile(std::cerr,"smallblock.help",io::MESSAGE_DIR);
 }
@@ -569,7 +592,7 @@ void dualblock_h()
   io::printFile(std::cerr,"dualblock.help",io::MESSAGE_DIR);
 }
 
-void small_dual_block_h()
+void smalldualblock_h()
 {
   io::printFile(std::cerr,"smalldualblock.help",io::MESSAGE_DIR);
 }
@@ -599,7 +622,7 @@ void blockwrite_h()
   io::printFile(std::cerr,"blockwrite.help",io::MESSAGE_DIR);
 }
 
-void block_stabilizer_h()
+void blockstabilizer_h()
 {
   io::printFile(std::cerr,"blockstabilizer.help",io::MESSAGE_DIR);
 }
@@ -635,50 +658,6 @@ void wgraph_h()
 }
 
 } // namespace
-
-void addBlockHelp(CommandNode& mode, TagDict& tagDict)
-
-{
-  mode.add("smallkgb",small_kgb_h);
-  mode.add("smalldualkgb",small_dual_kgb_h);
-  mode.add("block",block_h);
-  mode.add("smallblock",small_block_h);
-  mode.add("dualblock",dualblock_h);
-  mode.add("smalldualblock",small_dual_block_h);
-  mode.add("dualmap",dualmap_h);
-  mode.add("blockd",blockd_h);
-  mode.add("blocku",blocku_h);
-  mode.add("blockorder",blockorder_h);
-  mode.add("blockwrite",blockwrite_h);
-  mode.add("blockstabilizer",block_stabilizer_h);
-  mode.add("klwrite",klwrite_h);
-  mode.add("kllist",kllist_h);
-  mode.add("primkl",primkl_h);
-  mode.add("klbasis",klbasis_h);
-  mode.add("wcells",wcells_h);
-  mode.add("wgraph",wgraph_h);
-
-  // insertTag(tagDict,"components",components_tag);
-  insertTag(tagDict,"smallkgb",small_kgb_tag);
-  insertTag(tagDict,"smalldualkgb",small_dual_kgb_tag);
-  insertTag(tagDict,"block",block_tag);
-  insertTag(tagDict,"smallblock",small_block_tag);
-  insertTag(tagDict,"dualblock",dual_block_tag);
-  insertTag(tagDict,"smalldualblock",small_dual_block_tag);
-  insertTag(tagDict,"blockd",blockd_tag);
-  insertTag(tagDict,"blocku",blocku_tag);
-  insertTag(tagDict,"blockorder",blockorder_tag);
-  insertTag(tagDict,"blockwrite",blockwrite_tag);
-  insertTag(tagDict,"blockstabilizer",blockstabilizer_tag);
-  insertTag(tagDict,"dualblock",dual_block_tag);
-  insertTag(tagDict,"dualmap",dual_map_tag);
-  insertTag(tagDict,"klbasis",klbasis_tag);
-  insertTag(tagDict,"kllist",kllist_tag);
-  insertTag(tagDict,"primkl",klprim_tag);
-  insertTag(tagDict,"klwrite",klwrite_tag);
-  insertTag(tagDict,"wcells",wcells_tag);
-  insertTag(tagDict,"wgraph",wgraph_tag);
-} // |addBlockHelp|
 
 } // |namespace commands|
 

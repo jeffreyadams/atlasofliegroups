@@ -22,19 +22,16 @@ namespace commands {
 
   struct BlockmodeTag {};
 
-/******** function declarations ********************************************/
+/******** function and variable declarations ********************************/
 
   CommandNode blockNode(); // create a node with new commands
-  extern CommandTree& block_mode;
+  extern CommandTree& block_mode; // defined in commands.cpp
   ComplexReductiveGroup& currentDualComplexGroup();
   RealReductiveGroup& currentDualRealGroup();
   RealFormNbr currentDualRealForm();
   Block& currentBlock();
   kl::KLContext& currentKL();
   const wgraph::WGraph& currentWGraph();
-
-  void addBlockHelp(CommandNode&, TagDict&);
-
 
 } // |namespace commands|
 

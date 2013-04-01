@@ -17,6 +17,12 @@
 #include <cassert>
 
 #include "error.h"
+#include "emptymode.h"
+#include "mainmode.h"
+#include "realmode.h"
+#include "blockmode.h"
+#include "reprmode.h"
+#include "helpmode.h"
 
 // extra defs for windows compilation -spc
 #ifdef WIN32
@@ -32,14 +38,15 @@
   map and stack provided by C++, as well as the C++ string facility. Exceptions
   remain somewhat of a grey area here.
 
-  The basic class is the CommandNode class, of which a few instances will be
+  The basic class is the |CommandNode| class, of which a few instances will be
   explitly constructed at initialisation in separate modules, such as
   mainmode.cpp. Each instance defines a set of recognized names, with
   associated action functions. These instances serve as base class for
-  CommandTree, which includes additional links that allow defining a hierarchy
-  of "modes", which is constructed in main.cpp. During this construction,
-  commands are transitively inherited from ancestor to descendant node, unless
-  the child defines a command of the same name as the parent does.
+  |CommandTree|, which includes additional links that allow defining a
+  hierarchy of "modes", which is constructed in main.cpp. During this
+  construction, commands are transitively inherited from ancestor to
+  descendant node, unless the child defines a command of the same name as the
+  parent does.
 
   At each point of time during execution, there is a stack of such modes, held
   in the local variable modeStack, the top of which is the currently active
@@ -56,19 +63,20 @@
   This allows using values obtained interactively from the user during the
   entry function, and so limits the amount of dialogue the individual
   mathematical commands need to execute to obtain the arguments they require.
-  Ifa command is not defined in the currently active mode, it will be searched
-  in descendent modes, and if found there the command will be executed after
-  performing in order the entry functions of the modes on the path towards the
-  descendant. The variable commandStack serves to retain the name of the
-  command to be later executed while performing the entry functions. Some
-  commands (like "type" when not called from the empty mode) explitily alter,
-  after a user interaction, the values stored in an already active mode. This
-  in general makes the values in descendants of that mode invalid; such
-  commands therefore should pop any such descendant modes. Since a function
-  that was propagated by inheritance does not know from which mode it was
-  called, this operation currently requires such functions to be explicitly
-  redefined in all decendants of the mode it affects, each redefinition
-  executing the proper number of pop operations. This might be improved.
+  If a command is not defined in the currently active mode, it will be
+  searched in descendent modes, and if found there the command will be
+  executed after performing in order the entry functions of the modes on the
+  path towards the descendant. The variable commandStack serves to retain the
+  name of the command to be later executed while performing the entry
+  functions. Some commands (like "type" when not called from the empty mode)
+  explitily alter, after a user interaction, the values stored in an already
+  active mode. This in general makes the values in descendants of that mode
+  invalid; such commands therefore should pop any such descendant modes. Since
+  a function that was propagated by inheritance does not know from which mode
+  it was called, this operation currently requires such functions to be
+  explicitly redefined in all decendants of the mode it affects, each
+  redefinition executing the proper number of pop operations. This might be
+  improved.
 
   Also, there is a unique help mode, which provides some help information for
   all commands available. it has no ancestors but can be entered from any
@@ -80,6 +88,21 @@
 
 namespace atlas {
 namespace commands {
+
+  TagDict tagDict; // static, filled by |helpNode()|
+
+  // this mode must be constructed before the others, because the functions
+  // called for their construction also populate |help_mode|
+  CommandTree help_mode(helpNode());
+
+// static mode variables, declared here to control order of intialisation
+
+  CommandTree empty_mode(emptyNode());
+  CommandTree& main_mode = empty_mode.add_descendant(mainNode());
+  CommandTree& real_mode = main_mode.add_descendant(realNode());
+  CommandTree& block_mode = real_mode.add_descendant(blockNode());
+  CommandTree& repr_mode =  real_mode.add_descendant(reprNode());
+
 
 // Local variables to the command.cpp module
 namespace {
@@ -141,7 +164,7 @@ CommandNode::CommandNode(const char* str,
 /******** manipulators ******************************************************/
 
 /*
-  Synopsis: adds a new command during intial construction of a |CommandNode|
+  Synopsis: adds a new command during initial construction of a |CommandNode|
   NOTE: names should be unique within the Node, whence the |assert| below
 */
 void CommandNode::add(const char* const name, const Command& command)
@@ -149,7 +172,17 @@ void CommandNode::add(const char* const name, const Command& command)
   std::pair<CommandDict::iterator,bool> p
     = d_map.insert(std::make_pair(name,command));
 
-  assert(p.second); // then name should not be already present
+  assert(p.second); // name should not be doubly defined in one |CommandNode|
+}
+
+void CommandNode::add(const char* const name, action_pointer f,
+		      const char* const tag, action_pointer help_f)
+{
+  add(name,Command(f));
+  std::pair<TagDict::iterator,bool> p =
+    tagDict.insert(std::make_pair(name,tag));
+  if (p.second) // don't try to add after first definition in help mode
+    help_mode.add(name,Command(help_f));
 }
 
 /*
@@ -448,6 +481,14 @@ void exitInteractive()
     exitMode(); // applies to mode at top of stack, which is then popped
 
   runFlag = false; // this will cause the |run| loop to terminate
+}
+
+/*
+  Synopsis: help message for when there is no help.
+*/
+void nohelp_h()
+{
+  std::cerr << "sorry, no help available for this command" << std::endl;
 }
 
 

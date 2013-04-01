@@ -13,14 +13,12 @@
 #include <iostream>
 
 #include "commands.h"
-#include "emptyhelp.h"
 #include "emptymode.h"
 #include "io.h"
-#include "mainhelp.h"
 #include "mainmode.h"
-#include "realhelp.h"
 #include "realmode.h"
 #include "blockmode.h"
+#include "reprmode.h"
 #include "test.h"
 
 /****************************************************************************
@@ -38,8 +36,6 @@ namespace {
   void help_entry();
   void help_exit();
 
-  TagDict tagDict; // static, filled by |helpNode()|: initialisation danger
-
   // help commands
 
   void help_h();
@@ -50,7 +46,6 @@ namespace {
 
   const char* intro_tag =
     "(in help mode only) prints a message for first time users";
-  const char* q_tag = "exits the current mode";
   const char* questionMark_tag =
     "(in help mode only) lists the available commands";
 
@@ -104,7 +99,9 @@ void questionMark_h()
 
 {
   std::cerr << std::endl;
-  printTags(std::cerr,tagDict);
+  for (TagDict::const_iterator it = tagDict.begin(); it != tagDict.end(); ++it)
+    std::cerr << "  - " << it->first << " : " <<  it->second << std::endl;
+
   std::cerr << std::endl;
 
   return;
@@ -126,49 +123,15 @@ void questionMark_h()
 */
 CommandNode helpNode()
 {
-  insertTag(tagDict,"q",q_tag);
-
   CommandNode result ("help: ",help_entry,help_exit);
-  result.add("q",exitMode);
-  insertTag(tagDict,"q",q_tag);
 
-  result.add("?",questionMark_h);
-  insertTag(tagDict,"?",questionMark_tag);
+  result.nohelp_add("?",questionMark_h);
+  tagDict.insert(std::make_pair("?",questionMark_tag));
 
-  result.add("intro",intro_h);
-  insertTag(tagDict,"intro",intro_tag);
-
-  // add help functions for the empty mode
-  emptyhelp::addEmptyHelp(result,tagDict);
-  test::addTestHelp(result,tagDict,EmptymodeTag());
-
-  // add help functions for the main mode
-  mainhelp::addMainHelp(result,tagDict);
-  test::addTestHelp(result,tagDict,MainmodeTag());
-
-  // add help functions for the real mode
-  realhelp::addRealHelp(result,tagDict);
-  test::addTestHelp(result,tagDict,RealmodeTag());
-
-  // add help functions for the block mode
-  addBlockHelp(result,tagDict);
-  test::addTestHelp(result,tagDict,BlockmodeTag());
+  result.nohelp_add("intro",intro_h);
+  tagDict.insert(std::make_pair("intro",intro_tag));
 
   return result;
-}
-
-// associate a tag with name in t.
-void insertTag(TagDict& t, const char* name, const char* tag)
-{
-  t.insert(std::make_pair(name,tag));
-}
-
-
-// output the list of commands with their attached tags.
-void printTags(std::ostream& strm, const TagDict& t)
-{
-  for (TagDict::const_iterator it = t.begin(); it != t.end(); ++it)
-    strm << "  - " << it->first << " : " <<  it->second << std::endl;
 }
 
 void intro_h()
@@ -176,16 +139,6 @@ void intro_h()
   io::printFile(std::cerr,"intro_mess",io::MESSAGE_DIR);
 }
 
-/*
-  Synopsis: help message for when there is no help.
-*/
-void nohelp_h()
-{
-  std::cerr << "sorry, no help available for this command" << std::endl;
-}
-
-// variable that must be defined in this module to avoid initialisation fiasco
-CommandTree help_mode(helpNode());
 
 } // |namespace helpmode|
 
