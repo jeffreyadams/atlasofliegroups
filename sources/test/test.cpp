@@ -35,6 +35,7 @@
 #include "kl.h"
 #include "standardrepk.h"
 #include "repr.h"
+#include "ext_block.h"
 
 #include "ioutils.h"
 #include "basic_io.h"
@@ -137,7 +138,7 @@ namespace {
 */
   enum TestMode {EmptyMode, MainMode, RealMode, BlockMode, ReprMode,
 		 numTestMode};
-  const TestMode testMode = RealMode; // currently does subsystem KGB test
+  const TestMode testMode = ReprMode; // currently does test of extended block
 
   // utilities
   const RootDatum& currentRootDatum();
@@ -1052,9 +1053,49 @@ void embedding_f()
   }
 } // |embedding_f|
 
+// help function for |test_f|
+int z_choice(TorusPart t, const ComplexReductiveGroup& G,
+	     const CoweightInvolution& theta_t, const Weight& lambda)
+{
+  const TitsGroup& Tg= G.titsGroup();
+  t -= Tg.twisted(t);
+  Coweight h(t.size(),0); // |h| represents rational, implicit denominator $4$
+  for (TorusPart::base_set::iterator it = t.data().begin(); it(); ++it)
+    h[*it]=1;
+  CoweightInvolution theta1 = theta_t;
+  for (unsigned int i=0; i<theta1.numRows(); ++i)
+    theta1(i,i)+=1; // add identity
+
+  Coweight deviation = theta1*h; // failure of |h| to be |-theta| fixed
+  deviation /= 2; // may, but should not, |throw std::runtime_error|
+  Coweight correction = matreduc::find_solution(theta1,deviation); // idem
+  correction *= 2; // the correction must be by an element of $2X_*$
+  h -= correction;
+  assert ( theta_t*h == -h );
+  h += G.distinguished().transposed()*h;  // compute $z^2=\lambda(h\delta(h))$
+  return lambda.dot(h) ; // square root will have implicit denominator $8$
+}
+
 void test_f()
 {
-  // replace this with your definition
+  ioutils::OutputFile file;
+  const ComplexReductiveGroup& G = commands::currentComplexGroup();
+  const KGB& kgb = commands::currentRealGroup().kgb();
+  param_block& block = commands::current_param_block();
+  ext_block::extended_block eblock(block,G.twistedWeylGroup());
+  for (BlockElt n=0; n<eblock.size(); ++n)
+  {
+    BlockElt fix = eblock.z(n);
+    const CoweightInvolution theta_t =
+      G.involution_table().matrix(block.involution(fix)).transposed();
+    const RatWeight& lambda = block.lambda(fix);
+    const Weight lamnum (lambda.numerator().begin(),lambda.numerator().end());
+    int z = z_choice(kgb.torus_part(block.parent_x(fix)),G,theta_t,lamnum);
+    if (z % lambda.denominator() == 0)
+      file << fix << ": " << z / lambda.denominator() << "/4" << std::endl;
+    else
+      file << fix << ": " << z << "/8" << std::endl;
+  }
 } // |test_f|
 
 

@@ -78,7 +78,7 @@ GlobalTitsElement GlobalTitsElement::simple_imaginary_cross
 {
   GlobalTitsElement a(*this); // make a copy in all cases
   if (not t.negative_at(dual_rd.coroot(alpha))) // |alpha| is a noncompact root
-    a.torus_part() += tits::TorusPart(dual_rd.root(alpha)); // so add $m_\alpha$
+    a.torus_part() += TorusPart(dual_rd.root(alpha)); // so add $m_\alpha$
   return a;
 }
 
@@ -977,7 +977,7 @@ TitsElt TitsCoset::naive_seed
   // now lift strong real form from fiber group to a torus part in |result|
   const Partition& pi = f.fiber_partition(srf.second);
   SmallBitVector v(RankFlags(pi.classRep(srf.first)),f.fiberRank());
-  tits::TorusPart x = f.fiberGroup().fromBasis(v);
+  TorusPart x = f.fiberGroup().fromBasis(v);
 
   // right-multiply this torus part by canonical twisted involution for |cn|
   TitsElt result(titsGroup(),x,G.twistedInvolution(cn));
@@ -1070,7 +1070,7 @@ TitsElt TitsCoset::grading_seed
   }
 
   // solve, and tack a solution |x| to the left of |a|.
-  tits::TorusPart x(G.rank());
+  TorusPart x(G.rank());
   bool success=bitvector::solvable(eqns,x);
   assert(success);
   ndebug_use(success);

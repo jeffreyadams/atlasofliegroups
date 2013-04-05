@@ -830,7 +830,7 @@ class EnrichedTitsGroup : public TitsCoset
   cartanclass::square_class square() const { return srf.second; }
 
   // whether arbitrary root |n| is compact for |x| in fundamental fiber
-  bool is_compact(const tits::TorusPart& x, RootNbr n) const
+  bool is_compact(const TorusPart& x, RootNbr n) const
     { return not grading(TitsElt(titsGroup(),x),n); }
 
   TitsElt backtrack_seed (const ComplexReductiveGroup& G,

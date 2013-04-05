@@ -752,7 +752,7 @@ KGBElt KGB::lookup(const TitsElt& a) const
 {
   const TitsGroup& Tg=titsGroup();
   KGBEltPair p = tauPacket(a.tw());
-  tits::TorusPart t = Tg.left_torus_part(a);
+  TorusPart t = Tg.left_torus_part(a);
   for (KGBElt x=p.first; x<p.second; ++x)
     if (Tg.left_torus_part(titsElt(x))==t)
       return x;

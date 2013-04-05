@@ -249,7 +249,7 @@ void ComplexReductiveGroup::construct()
 	  RealFormNbr rf = *rfi;
 	  const RankFlags in_rep = Cartan[i].rep[rf];
 	  RankFlags& out_rep = Cartan[ii].rep[rf]; // to be filled in
-	  tits::TorusPart tp(in_rep,alpha_bin.size());
+	  TorusPart tp(in_rep,alpha_bin.size());
 	  if (alpha_bin.dot(tp)!=zero_grading)
 	  {
 	    if (not Cartan[ii].real_forms.isMember(rf))
@@ -295,7 +295,7 @@ void ComplexReductiveGroup::construct()
 	  cartanclass::restrictGrading // values at simple roots give torus part
 	  (f.compactRoots(weak_real.classRep(i)), // compact ones need a set bit
 	   d_rootDatum.simpleRootList()); // reproduces grading at imag. simples
-	TitsElt x(dual_Tg,tits::TorusPart(gr,d_rootDatum.semisimpleRank()));
+	TitsElt x(dual_Tg,TorusPart(gr,d_rootDatum.semisimpleRank()));
 	dual_adj_Tg.basedTwistedConjugate(x,ww); // transform to canonical
 	Cartan.back().dual_rep[i] = dual_Tg.left_torus_part(x).data();
       }
@@ -348,7 +348,7 @@ void ComplexReductiveGroup::construct()
 	  RealFormNbr drf = *drfi;
 	  const RankFlags in_rep = Cartan[i].dual_rep[drf];
 	  RankFlags& out_rep = Cartan[ii].dual_rep[drf];
-	  tits::TorusPart tp(in_rep,alpha_bin.size());
+	  TorusPart tp(in_rep,alpha_bin.size());
 	  if (alpha_bin.dot(tp)!=zero_grading)
 	  {
 	    if (not Cartan[ii].dual_real_forms.isMember(drf))
@@ -420,9 +420,7 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
 
     for (BitMap::iterator it=dst.real_forms.begin(); it(); ++it)
     {
-      TitsElt x(Tg,
-		      tits::TorusPart(dst.rep[*it],semisimpleRank()),
-		      tw_org);
+      TitsElt x(Tg,TorusPart(dst.rep[*it],semisimpleRank()),tw_org);
       adj_Tg.basedTwistedConjugate(x,conjugator);
       assert(x.tw()==dst.tw);
       dst.rep[*it] =Tg.left_torus_part(x).data();
@@ -431,8 +429,8 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
     for (BitMap::iterator it=dst.dual_real_forms.begin(); it(); ++it)
     {
       TitsElt y(dual_Tg,
-		      tits::TorusPart(dst.dual_rep[*it],semisimpleRank()),
-		      dual_tw_org);
+		TorusPart(dst.dual_rep[*it],semisimpleRank()),
+		dual_tw_org);
       dual_adj_Tg.basedTwistedConjugate(y,conjugator);
       assert(y.tw()==W.opposite(dst.tw));
       dst.dual_rep[*it] = dual_Tg.left_torus_part(y).data();
@@ -516,7 +514,7 @@ void ComplexReductiveGroup::map_real_forms(CartanNbr cn)
 
   Cartan[cn].real_labels.resize(weak_real.classCount());
 
-  tits::TorusPart base = sample_torus_part(cn,quasisplit());
+  TorusPart base = sample_torus_part(cn,quasisplit());
   TitsElt a(adj_Tg.titsGroup(),base,tw);
   Grading ref_gr; // reference grading for quasisplit form
   for (size_t i=0; i<sim.size(); ++i)
@@ -533,7 +531,7 @@ void ComplexReductiveGroup::map_real_forms(CartanNbr cn)
 	 rfi=Cartan[cn].real_forms.begin(); rfi(); ++rfi)
   {
     RealFormNbr rf = *rfi;
-    tits::TorusPart tp = sample_torus_part(cn,rf);
+    TorusPart tp = sample_torus_part(cn,rf);
     cartanclass::AdjointFiberElt rep =
       f.adjointFiberGroup().toBasis(tp-=base).data().to_ulong();
     Cartan[cn].real_labels[weak_real.class_of(rep)]=rf;
@@ -553,7 +551,7 @@ void ComplexReductiveGroup::map_dual_real_forms(CartanNbr cn)
   Cartan[cn].dual_real_labels.resize(dual_weak_real.classCount());
   assert(dual_weak_real.classCount()==Cartan[cn].dual_real_forms.size());
 
-  tits::TorusPart dual_base = dual_sample_torus_part(cn,0);
+  TorusPart dual_base = dual_sample_torus_part(cn,0);
   TitsElt dual_a(dual_adj_Tg.titsGroup(),dual_base,dual_tw);
   Grading dual_ref_gr; // reference for dual quasisplit form
   for (size_t i=0; i<sre.size(); ++i)
@@ -570,7 +568,7 @@ void ComplexReductiveGroup::map_dual_real_forms(CartanNbr cn)
 	 drfi=Cartan[cn].dual_real_forms.begin(); drfi(); ++drfi)
   {
     RealFormNbr drf = *drfi;
-    tits::TorusPart tp = dual_sample_torus_part(cn,drf);
+    TorusPart tp = dual_sample_torus_part(cn,drf);
     cartanclass::AdjointFiberElt rep =
       dual_f.adjointFiberGroup().toBasis(tp-=dual_base).data().to_ulong();
     Cartan[cn].dual_real_labels[dual_weak_real.class_of(rep)]=drf;
