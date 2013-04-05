@@ -387,6 +387,33 @@ matrix::Matrix<C> Smith_basis(const matrix::Matrix<C>& M,
   }
   return result;
 }
+
+
+template<typename C> // find a solution |x| for |A*x==b|
+matrix::Vector<C> find_solution(const matrix::Matrix<C>& A,
+				matrix::Vector<C> b)
+  throw (std::runtime_error)
+{
+  matrix::Matrix<C> row,col;
+  std::vector<C> diagonal = diagonalise(A,row,col); // $R*A*C=D$ diagonal
+  row.apply_to(b); // left multiply equation by $R$, giving $D*C^{-1}*x=R*b$
+
+  // now solve for the value of $C^{-1}*x$
+  for (unsigned int i=0; i<diagonal.size(); ++i)
+  {
+    C d = diagonal[i];
+    if (b[i] % d != C(0))
+      throw std::runtime_error("unsolvable integral system");
+    b[i] /= d;
+  }
+  for (unsigned int i=diagonal.size(); i<b.size(); ++i)
+    if (b[i] != C(0))
+      throw std::runtime_error("unsolvable system");
+
+  col.apply_to(b); // finally reconstruct value of |x|
+  return b;
+}
+
  // instantiations
 template
 bool column_clear(matrix::Matrix<int>& M, size_t i, size_t j, size_t k);
@@ -408,6 +435,10 @@ matrix::Matrix<int> Smith_basis(const matrix::Matrix<int>& M,
 template
 matrix::Matrix<int> adapted_basis(const matrix::Matrix<int> M,
 				  std::vector<int>& diagonal);
+
+template
+matrix::Vector<int> find_solution(const matrix::Matrix<int>& A,
+				  matrix::Vector<int> b);
 
 } // |namespace matreduc|
 } // |namespace atlas|
