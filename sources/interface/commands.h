@@ -46,7 +46,9 @@ namespace commands {
   void exitMode(); // used by 'q' in help mode
   inline void relax_f() {}
 
-  void nohelp_h(); // this is used when no help command is defined (yet)
+  void nohelp_h(); // this is used when no help command at all is defined
+  void std_help(); // searches help file for the curent command name
+  void use_tag(); // fallback when no help file exists
 
 }
 
@@ -116,7 +118,7 @@ class CommandNode
 	   const char* const tag, action_pointer help_f = nohelp_h);
 
   void nohelp_add(const char* const name, action_pointer f)
-   { add(name,Command(f)); }
+    { add(name,Command(f)); } // used to explicitly avoid creating help action
 
 
   void exit() const { d_exit(); }

@@ -17,6 +17,8 @@
 #include <cassert>
 
 #include "error.h"
+#include "io.h"
+
 #include "emptymode.h"
 #include "mainmode.h"
 #include "realmode.h"
@@ -113,6 +115,8 @@ namespace {
   input::InputBuffer commandLine;           // the current command line
 
   bool runFlag;   // set to false to initiate shutdown of the program
+
+  const char* command_name = NULL; // name of currently executing command
 
   // auxiliaries for running the command interface
   const char* getCommand(const char* prompt); // get command string
@@ -382,6 +386,7 @@ void CommandTree::run() const
 	      assert(modeStack.back()==mode); // it should have been pushed
 	      break; // from |for| loop, see whether |mode==where| next
 	    }
+	command_name = it->first; // set pointer to name of command
 	it->second(); // finally execute the command in its proper mode
       }
     } // try
@@ -483,15 +488,27 @@ void exitInteractive()
   runFlag = false; // this will cause the |run| loop to terminate
 }
 
-/*
-  Synopsis: help message for when there is no help.
-*/
+// help message for when there is no help file.
 void nohelp_h()
 {
   std::cerr << "sorry, no help available for this command" << std::endl;
 }
 
+void std_help()
+{
+  std::string file_name = command_name;
+  file_name += ".help";
+  io::printFile(std::cerr,file_name.c_str(),io::MESSAGE_DIR);
+}
 
+void use_tag() // lacking a help file, we might just print the tag as help
+{
+  TagDict::const_iterator it = tagDict.find(command_name);
+  if (it != tagDict.end())
+    std::cerr << it->second << std::endl;
+  else
+    nohelp_h();
+}
 
 /*****************************************************************************
 

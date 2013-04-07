@@ -80,8 +80,6 @@ namespace commands {
 
   void repr_f(); // assign a new parameter while staying in this mode
 
-  void nblock_h();
-
   // mode-local variables
   block_type state=noblock;
   BlockElt entry_z = UndefBlock;
@@ -104,17 +102,21 @@ CommandNode reprNode()
   CommandNode result("repr: ",repr_mode_entry,repr_mode_exit);
 
   result.add("repr",repr_f,"override");
-  result.add("iblock",iblock_f,"computes block for integral subsystem");
-  result.add("nblock",nblock_f,"computes a non-integral block",nblock_h);
+  result.add("iblock",iblock_f,
+	     "computes block for integral subsystem (prefer using nblock)",
+	     use_tag);
+  result.add("nblock",nblock_f,"computes a non-integral block",std_help);
   result.add("partial_block",partial_block_f,
-	     "computes part of a non-integral block");
+	     "computes the part of a non-integral block below given parameter",
+	     use_tag);
   result.add("block",block_f,"second"); // block mode sets tag
   result.add("blockorder",blockorder_f,"second");
   result.add("blocktwist",blocktwist_f,"second");
   result.add("extblock",extblock_f,"second");
-  result.add("deform",deform_f,"computes deformation terms");
+  result.add("deform",deform_f,"computes deformation terms",std_help);
   result.add("kl",kl_f,
-	     "computes KL polynomials in character formula for this parameter");
+	     "computes KL polynomials in character formula for this parameter",
+	     std_help);
   result.add("klbasis",klbasis_f,"second");
   result.add("kllist",kllist_f,"second");
   result.add("primkl",primkl_f,"second");
@@ -474,12 +476,6 @@ void wcells_f()
   wgraph::DecomposedWGraph dg(wg);
 
   ioutils::OutputFile file; wgraph_io::printWDecomposition(file,dg);
-}
-
-
-void nblock_h()
-{
-  io::printFile(std::cerr,"nblock.help",io::MESSAGE_DIR);
 }
 
 
