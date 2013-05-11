@@ -10,6 +10,7 @@
 #include "repr.h"
 
 #include <map> // used in computing |reducibility_points|
+#include <iostream>
 
 #include "arithmetic.h"
 #include "tits.h"
@@ -19,6 +20,8 @@
 #include "standardrepk.h"// |KhatContext| methods
 
 #include "kl.h"
+
+#include "basic_io.h"
 
 namespace atlas {
   namespace repr {
@@ -593,6 +596,21 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 
   return result;
 } // |Rep_table::deformation|
+
+std::ostream& Rep_context::print (std::ostream& str,const StandardRepr& z)
+  const
+{
+  return
+    str << "{x=" << z.x() << ",lambda=" << lambda(z) << ",nu=" << nu(z) << '}';
+}
+
+std::ostream& Rep_context::print (std::ostream& str,const SR_poly& P) const
+{
+  for (SR_poly::const_iterator it=P.begin(); it!=P.end(); ++it)
+    print(str << (it==P.begin() ?"":"+") << it->second, it->first)
+      << std::endl;
+  return str;
+}
 
   } // |namespace repr|
 } // |namespace atlas|

@@ -148,7 +148,6 @@ class Rep_context
 
   poly expand_final(StandardRepr z) const; // express in final SReprs (by value)
 
-  // I/O operations, implemented in basic_io.cpp
   std::ostream& print (std::ostream&,const StandardRepr& z) const;
   std::ostream& print (std::ostream&,const poly& P) const;
 
