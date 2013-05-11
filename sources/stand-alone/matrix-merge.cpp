@@ -70,7 +70,7 @@ void write_int(unsigned int n, std::ostream& out)
 template<unsigned int n>
   void combine_rows
     (unsigned int y,
-     atlas::HashTable<tuple_entry<n>,unsigned int>& hash,
+     atlas::hashtable::HashTable<tuple_entry<n>,unsigned int>& hash,
      std::vector<std::istream*>in, std::ostream& out,
      std::vector<unsigned int>& lim,
      coord_vector* first_use)
@@ -163,7 +163,7 @@ void do_work
       }
 
   std::vector<tuple_entry<n> > pool;
-  atlas::HashTable<tuple_entry<n>,unsigned int> hash(pool);
+  atlas::hashtable::HashTable<tuple_entry<n>,unsigned int> hash(pool);
   hash.match(tuple_entry<n>()); // insert index of Zero, it does not occur!
 
   std::vector<unsigned int> limits(n,1); // limit of modular sequence numbers

@@ -18,8 +18,6 @@ CWEAVE := cweavex ++ $(INCLUDE_FLAGS)
 CWEAVEFLAGS  := -p +mde
 CTANGLEFLAGS := -p
 
-CWEBXMACROS := $(shell kpsewhich cwebxmac.tex)
-
 debug ?= false
 
 ifeq ($(debug),true)
@@ -39,19 +37,22 @@ webtexfiles   := $(cwebx_sources:%.w=%.tex)
 dvifiles := $(cwebx_sources:%.w=%.dvi)
 derived_cpp := $(cwebx_sources:%.w=%.cpp)
 
-illiterate_sources := matstat.cpp polstat.cpp linear.cpp
+illiterate_sources := matstat.cpp polstat.cpp linear.cpp Poincare.cpp
 
 matrix-merge_objects := ../utilities/bitmap.o ../utilities/constants.o \
    ../utilities/bits.o ../utilities/arithmetic.o ../error/error.o
 
-matstat_objects:=../utilities/filekl_in.o ../io/basic_io.o \
+matstat_objects:=../io/filekl_in.o ../io/basic_io.o \
    ../utilities/bits.o ../utilities/bitset.o ../utilities/constants.o
 
 
-polstat_objects:=../utilities/filekl_in.o ../io/basic_io.o \
+polstat_objects:=../io/filekl_in.o ../io/basic_io.o \
    ../utilities/bits.o ../utilities/bitset.o ../utilities/constants.o
 
 searchpol_objects:=
+
+Poincare_objects:= ../io/basic_io.o \
+   ../utilities/bitset.o ../utilities/bits.o ../utilities/constants.o
 
 executables := $(cwebx_sources:%.w=%) $(illiterate_sources:%.cpp=%)
 
@@ -72,10 +73,7 @@ mostlyclean:
 
 # 'make compilable' prepares everything for compilation
 compilable: clean
-	$(MAKE) CTANGLEFLAGS=-pl parser.tab.c $(c++files) $(webtexfiles)
-ifneq ($(CWEBXMACROS),./cwebxmac.tex)
-	cp $(CWEBXMACROS) .
-endif
+	$(MAKE) CTANGLEFLAGS=-pl $(derived_cpp)
 
 # we use no implicit suffix rules in this Makefile
 .SUFFIXES:
@@ -102,6 +100,8 @@ matstat: matstat.cpp $(matstat_objects)
 
 polstat: polstat.cpp $(polstat_objects)
 linear: linear.cpp $(polstat_objects)
+
+Poincare: Poincare.cpp $(Poincare_objects)
 
 # a static pattern rule giving the usual C++ single-module compilation
 $(executables): %: %.cpp

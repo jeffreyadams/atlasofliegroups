@@ -1,4 +1,8 @@
+#include <iostream>
+#include <fstream>
+#include <cstdlib> // for |exit|
 #include "filekl_in.h"
+
 
 int main(int argc, char** argv)
 {

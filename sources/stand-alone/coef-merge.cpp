@@ -172,7 +172,7 @@ ChineseBox::ChineseBox(ulong aa, ulong bb) : a(aa),b(bb)
 ulong ChineseBox::lift_remainders(ulong s, ulong t) const
 { if ((s<=t ? t-s : s-t)%gcd==0)
      return (t+ (s>=t ? (s-t)/gcd*m : (t-s)/gcd*mm))%lcm;
-  std::cerr << "Incompatible remainders " 
+  std::cerr << "Incompatible remainders "
               << s << " (mod " << a << ") and "
 	      << t << " (mod " << b << ").\n";
   throw false;
@@ -194,7 +194,7 @@ ulong TabledChineseBox::lift_remainders(ulong s, ulong t) const
   { ulong d=s>=t ? m_table[(s-t)/gcd] : mm_table[(t-s)%a/gcd];
     return t<lcm-d ? t+d : t-(lcm-d);
   }
-  std::cerr << "Incompatible remainders " 
+  std::cerr << "Incompatible remainders "
               << s << " (mod " << a << ") and "
 	      << t << " (mod " << b << ").\n";
   throw false;
@@ -221,7 +221,7 @@ ulong DoubleTabledChineseBox::lift_remainders(ulong s, ulong t) const
   { ulong d=s>=t ? m_table[(s-t)/gcd] : mm_table[(t-s)/gcd];
     return t<lcm-d ? t+d : t-(lcm-d);
   }
-  std::cerr << "Incompatible remainders " 
+  std::cerr << "Incompatible remainders "
               << s << " (mod " << a << ") and "
 	      << t << " (mod " << b << ").\n";
   throw false;
@@ -267,7 +267,7 @@ modulus_info::modulus_info
   coefficients_begin=coefficient_file.tellg();
 
   if (using_renumber)
-    
+
     { renumbering_file.seekg(0,std::ios_base::end);
       nr_polynomials= renumbering_file.tellg()/4;
       renumbering_file.seekg(0,std::ios_base::beg);
@@ -357,7 +357,7 @@ file_pos write_indices
   write_bytes(nr_pols,4,out);
   for (ulong j=1; j<mod_info.size(); ++j)
     if (mod_info[j]->nr_pol()!=nr_pols)
-    
+
     { std::cout << "Conflicting numbers of polynomials in renumbering files: "
               << nr_pols << "!=" << mod_info[j]->nr_pol()
         	<< " (modulus nrs O, " << j << ").\n";
@@ -371,7 +371,7 @@ file_pos write_indices
     ulong len=0; // maximum of degree+1 of polynomials selected
     for (ulong j=0; j<mod_info.size(); ++j)
     { ulong new_len = mod_info[j]->length(i);
-      
+
       if (new_len>32)
       { std::cout << "Too large length " << new_len << " in polynomial "
       	    << i  << " for modulus nr " << j << ".\n";
@@ -410,7 +410,7 @@ ulong write_coefficients
     ulong len=0; // maximum of degree+1 of polynomials selected
 
 
-    
+
     for (ulong j=0; j<mod_info.size(); ++j)
     { modular_pol[j]=mod_info[j]->coefficients(i);
       if (modular_pol[j].size()>len) len=modular_pol[j].size();
@@ -426,10 +426,10 @@ ulong write_coefficients
            rem[n+j]=box[j]->lift_remainders(rem[2*j],rem[2*j+1]);
            // it happens here!
          ulong c=rem.back();
-	 
+
 	 if (c>max)
 	 { max=c;
-	   std::cout << "Maximal coefficient so far: " 
+	   std::cout << "Maximal coefficient so far: "
 	             << max << ", in polynomial " << i << std::endl;
 	 }
          if (output) write_bytes(c, coefficient_size, out);
@@ -499,11 +499,11 @@ int main(int argc, char** argv)
   std::vector<ulong> moduli;
   bool interactive= argc<2;
 
-  
+
   if (interactive) argc=0; // ignore
   else  { mat_base=*argv++; --argc; coef_base=*argv++; --argc; }
-  
-  if (argc==0) 
+
+  if (argc==0)
              { std::cout << "Give moduli used, or 0 to terminate.\n";
                while(true)
                { std::cout << "Modulus: ";
@@ -526,7 +526,7 @@ int main(int argc, char** argv)
   ulong n=moduli.size();
   std::vector<ChineseBox*> box(n-1,NULL);
   ulong lcm;
-  
+
   { std::vector<ulong> mod(moduli);
     for (ulong i=0; i<n-1; ++i)
     { ChineseBox b(mod[2*i],mod[2*i+1]);
@@ -552,7 +552,7 @@ int main(int argc, char** argv)
   try
   { if (interactive) test(moduli,box); // does not return
 
-    
+
     { for (ulong i=0; i<moduli.size(); ++i)
       { std::ostringstream name0,name1;
         name0 << mat_base << "-renumbering-mod" << moduli[i];
@@ -563,20 +563,20 @@ int main(int argc, char** argv)
                     << "." << std::endl;
           renumber_file=NULL; // signal absence of renumbering file
         }
-    
+
         name1 << coef_base << "-mod" << moduli[i];
         std::ifstream* coef_file=new std::ifstream(name1.str().c_str(),binary_in);
         if (not coef_file->is_open())
         { std::cerr << "Could not open file '" << name1.str() << "'.\n";
           exit(1);
         }
-        
+
         try
         { mod_info.push_back
            (new modulus_info_with_table(moduli[i],renumber_file,coef_file));
         }
         catch (std::length_error)
-        { std::cout << "Renumbering table for modulus " << moduli[i] 
+        { std::cout << "Renumbering table for modulus " << moduli[i]
                     << " is too large for architecture, doing without" << std::endl;
         mod_info.push_back(new modulus_info(moduli[i],renumber_file,coef_file));
         }
@@ -586,11 +586,11 @@ int main(int argc, char** argv)
         mod_info.push_back(new modulus_info(moduli[i],renumber_file,coef_file));
         }
       }
-    
+
       if (output)
       { std::ostringstream name;
         name << coef_base << "-mod" << lcm;
-        
+
         { bool write_protect=false;
           for (ulong i=0; i<moduli.size() ; ++i)
             if (lcm==moduli[i]) write_protect=true;

@@ -1,8 +1,9 @@
+#include <cassert>
+#include <cstdlib> // for |exit|
 #include <vector>
 #include <string>
 #include <fstream>
 #include <map>
-#include <cassert>
 #include <iostream>
 #include <stdexcept>
 
@@ -25,8 +26,6 @@ void scan_polynomials
     ,const tally_vec& total_mu
     ,const std::string file_name_base)
 {
-  using blocks::BlockElt;
-
   const size_t deg_limit=(bi.max_length+1)/2; // this is |(max_length-1)/2+1|
 
   tally_vec deg_val(deg_limit*(deg_limit+1)/2);
@@ -50,7 +49,7 @@ void scan_polynomials
 
   for (size_t l=0; l<=bi.max_length; ++l)
   {
-    for (blocks::BlockElt y=bi.start_length[l]; y<bi.start_length[l+1]; ++y)
+    for (BlockElt y=bi.start_length[l]; y<bi.start_length[l+1]; ++y)
     {
       if (verbose)
 	std::cerr << y << ", #" << ri.first_new_in_row(y) << '\r'
@@ -207,8 +206,6 @@ void scan_polynomials
     ,const atlas::filekl::progress_info& ri
     ,const std::string file_name_base)
 {
-  using blocks::BlockElt;
-
   const size_t deg_limit=(bi.max_length+1)/2; // this is |(max_length-1)/2+1|
 
   tally_vec deg_val(deg_limit*(deg_limit+1)/2);
@@ -226,7 +223,7 @@ void scan_polynomials
 
   for (size_t l=0; l<=bi.max_length; ++l)
   {
-    for (blocks::BlockElt y=bi.start_length[l]; y<bi.start_length[l+1]; ++y)
+    for (BlockElt y=bi.start_length[l]; y<bi.start_length[l+1]; ++y)
     {
       if (verbose)
 	std::cerr << y << ", #" << ri.first_new_in_row(y) << '\r'
