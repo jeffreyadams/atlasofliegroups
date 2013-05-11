@@ -126,6 +126,7 @@ namespace atlas {
 @< Includes needed in the input header file @>=
 #include <iosfwd>
 
+#include "bitset.h"
 #include "atlas_types.h"
 
 @

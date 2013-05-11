@@ -277,61 +277,6 @@ std::ostream& printMatrix(std::ostream& strm, const matrix::Matrix_base<C>& m,
 
 
 /*
-  Synopsis: prints out the monomial c.x^d.
-
-  Preconditions: c is non-zero;
-
-  Explanation: c and d are printed only if non-one, except in degree zero
-  where c is always printed; x is the name of the indeterminate.
-
-  The output format for the exponents is tex-like, but "q^13", not "q^{13}".
-*/
-template<typename C>
-std::ostream& printMonomial(std::ostream& strm, C c, polynomials::Degree d,
-			    const char* x)
-{
-  if (d == 0) // output c regardless
-    strm << c;
-  else
-  {
-    if (c<C(0) and c == C(-1)) // condition always false for unsigned types
-      strm << '-';
-    else if (c != C(1))
-      strm << c;
-    strm << x;
-    if (d > 1)
-      strm << "^" << d;
-  }
-
-  return strm;
-}
-
-
-/*
-  Synopsis: outputs the polynomial  |p| on |strm|.
-
-  It is assumed that operator<< exists for the coefficient type. The string
-  |x| is the printed name of the indeterminate. Zero term are suppressed.
-
-*/
-template<typename C>
-std::ostream& printPol(std::ostream& strm, const Polynomial<C>& p,
-		       const char* x)
-{
-  std::ostringstream o; // accumulate in string for interpretation of width
-  if (p.isZero())
-    o << "0";
-  else
-    for (size_t i = p.size(); i-->0; )
-      if (p[i]!=C(0)) // guaranteed true the first time
-	printMonomial(i<p.degree() and p[i]>C(0) ? o<<'+' : o,p[i],i,x);
-
-  return strm << o.str(); // now |strm.width()| is applied to whole polynomial
-}
-
-
-
-/*
   Synopsis: prints the status flags.
 
   Precondition: there are rank valid fields in gs;
@@ -459,15 +404,6 @@ template std::ostream& printMatrix
   (std::ostream&,
    const matrix::Matrix_base<Polynomial<int> >&,
    unsigned long);
-
-template std::ostream& printMonomial
-  (std::ostream&, int, polynomials::Degree, const char*);
-
-template std::ostream& printPol
-  (std::ostream&, const Polynomial<unsigned int>&, const char*);
-
-template std::ostream& printPol
-  (std::ostream&, const Polynomial<int>&, const char*);
 
 } // namespace prettyprint
 

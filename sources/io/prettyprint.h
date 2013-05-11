@@ -55,12 +55,6 @@ template<typename C>
 std::ostream& printMatrix(std::ostream&, const matrix::Matrix_base<C>&,
 			  unsigned long width = 4);
 
-template<typename C>
-std::ostream& printMonomial(std::ostream&, C, polynomials::Degree, const char*);
-
-template<typename C>
-std::ostream& printPol(std::ostream&, const Polynomial<C>&, const char*);
-
 std::ostream& printRootList(std::ostream&,
 			    const RootNbrList&,const RootDatum&,
 			    const char* sep = "\n");
