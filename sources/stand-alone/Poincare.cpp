@@ -20,6 +20,7 @@ class partition : public atlas::int_Vector
    // bool operator !=(const partition& other) const; // inherited
 
    bool next(); // advance, return whether possible
+   bool dual_next(); // similar, for reverse-transpose ordering
  };
 
  partition::partition(const iv& v) : iv(v)
@@ -51,6 +52,30 @@ class partition : public atlas::int_Vector
    return true;
  }
 
+ bool partition::dual_next()
+ {
+   if (empty())
+     return false;
+   atlas::int_Vector& me=*this;
+   unsigned int i=0;
+   int part=me[i++]--;
+   if (part==1)
+     return me.resize(0),false;
+   while (i<size() and me[i]+1>=part)
+     ++i;
+   if (i==size())
+     push_back(0);
+   unsigned int new_part = ++me[i];
+   unsigned int rest = 0;
+   while (i-->1)
+   {
+     rest += me[i]-new_part;
+     me[i]=new_part;
+   }
+   me[0] += rest;
+
+   return true;
+ }
  typedef atlas::polynomials::Safe_Poly<unsigned long long int> poly;
 
  bool is_unimodular(poly p)
@@ -170,7 +195,7 @@ int main(int argc, char** argp)
       assert(is_log_concave(p));
     }
     catch (atlas::error::NumericOverflow&) { ++errors; }
-  while (lambda.next());
+  while (lambda.dual_next());
   if (errors>0)
   {
     std::cerr << "Caught overflow " << errors << " times." << std::endl;
