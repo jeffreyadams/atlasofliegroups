@@ -21,10 +21,10 @@ namespace commands {
 
   struct RealmodeTag {};
 
-/******** function declarations ********************************************/
+/******** function and variable declarations ********************************/
 
   commands::CommandNode realNode();
-  extern commands::CommandTree& real_mode; // defined in main.cpp
+  extern commands::CommandTree& real_mode; // defined in commands.cpp
   RealReductiveGroup& currentRealGroup();
   RealFormNbr currentRealForm();
   const Rep_context& currentRepContext();

@@ -31,18 +31,24 @@ namespace commands {
 
 }
 
-/******** function declarations ********************************************/
+/******** function and variable declarations *******************************/
 
 namespace commands {
 
   input::InputBuffer& currentLine();
   const CommandTree* currentMode();
 
+  extern TagDict tagDict; // used for helpmode
+
   void run_from(const CommandTree& initial_mode);
   void drop_to(const CommandTree& mode); // exit modes until |mode| is left
   void exitInteractive(); // used by 'qq' in empty mode
   void exitMode(); // used by 'q' in help mode
   inline void relax_f() {}
+
+  void nohelp_h(); // this is used when no help command at all is defined
+  void std_help(); // searches help file for the curent command name
+  void use_tag(); // fallback when no help file exists
 
 }
 
@@ -60,11 +66,30 @@ struct Command // a class wrapping a function pointer into a function object
 {
   action_pointer action; // one data field: a function pointer
 // constructor
-Command(action_pointer a) : action(a) {}; // store |a| as |action|
+explicit Command(action_pointer a) : action(a) {}; // store |a| as |action|
 // accessor
   void operator() () const { action(); }
 };
 
+/*
+  |CommandNode| instances are ephemerous objects that contain the attributes
+  specific to a command mode; they will be passed to the constructor of the
+  more long-lived |CommandTree| derived class, of which it (the copy) becomes
+  a base object. The contruction of the ephemerous object is done by a
+  non-member function, which repeatedly uses the public |add| method to
+  populate the node with commands. We have chosen for the |CommandTree|
+  objects for the modes to be stored in static rather than automatic
+  variables, as this facilitates access by the various (action) functions that
+  need to refer to explicitly names modes. This implies however that the
+  lifetime of |CommandNode| instances is at static initialisation time, before
+  the main program starts; this creates a potential for static initialisation
+  fiasco. Therefore no calls of |CommandNode| methods should rely on the prior
+  initialisation of static variables, except if these are defined in the same
+  compilation unit as the |CommandTree| objects for the modes are (which is
+  this unit, commands.cpp). Fortunately the arguments to the |add| method, a
+  |C|-style string and a function pointer, can be given by constants that need
+  no static initialisation.
+ */
 class CommandNode
 {
   typedef std::map<const char*,Command,StrCmp> CommandDict;
@@ -88,7 +113,13 @@ class CommandNode
   void addCommands(const CommandNode& source); // inherit commands from |source|
 
   // bind |name| to |f| in current mode, possibly overriding previous
-  void add(const char* const name, action_pointer f) { add(name,Command(f)); }
+  // also provide a descriptive tag and possibly a help mode action
+  void add(const char* const name, action_pointer f,
+	   const char* const tag, action_pointer help_f = nohelp_h);
+
+  void nohelp_add(const char* const name, action_pointer f)
+    { add(name,Command(f)); } // used to explicitly avoid creating help action
+
 
   void exit() const { d_exit(); }
 

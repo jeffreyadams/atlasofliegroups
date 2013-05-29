@@ -20,10 +20,10 @@ namespace commands {
 
   struct EmptymodeTag {};
 
-/******** function declarations ********************************************/
+/******** function and variable declarations ********************************/
 
 commands::CommandNode emptyNode();
-extern commands::CommandTree empty_mode; // defined in main.cpp
+extern commands::CommandTree empty_mode; // defined in commands.cpp
 
 }
 

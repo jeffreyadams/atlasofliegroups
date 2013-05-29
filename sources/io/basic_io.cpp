@@ -16,14 +16,12 @@
 #include "matrix.h"  // vectors, matrices
 #include "ratvec.h" // rational vectors
 
-#include "partition.h" // instantions
+#include "partition.h" // instantations
 
 #include "bitvector.h"
 #include "lietype.h" // Lie types
 
-#include "prettyprint.h" // |printPol| (why isn't this needed?)
-
-#include "repr.h" // printing of parameters and parameter polynomials
+#include "polynomials.h" // |printPol|
 
 /*****************************************************************************
 
@@ -56,7 +54,7 @@ namespace polynomials {
 template <typename C>
   std::ostream& operator<< (std::ostream& strm, const Polynomial<C>& P)
 {
-  return prettyprint::printPol(strm,P,"q");
+  return P.print(strm,"q");
 }
 
 } // |namespace polynomials|
@@ -160,28 +158,6 @@ namespace arithmetic {
   { return strm << '(' << s.e() << '+' << s.s() << "s)"; }
 
 } // |namespace arithmetic|
-
-namespace repr {
-
-  std::ostream& Rep_context::print (std::ostream& str,const StandardRepr& z)
-    const
-  {
-    return
-      str << "{x=" << z.x()
-	  << ",lambda=" << lambda(z)
-	  << ",nu=" << nu(z) << '}';
-  }
-
-  std::ostream& Rep_context::print (std::ostream& str,const SR_poly& P) const
-  {
-    for (SR_poly::const_iterator it=P.begin(); it!=P.end(); ++it)
-      print(str << (it==P.begin() ?"":"+") << it->second, it->first)
-	<< std::endl;
-    return str;
-  }
-
-} // |namespace repr|
-
 
 
 // binary input

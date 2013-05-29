@@ -1,11 +1,13 @@
 #include <vector>
 #include <string>
+#include <iostream>
+#include <fstream>
 #include <sstream>
 #include <map>
 #include <cassert>
-#include <iostream>
 #include <stdexcept>
 
+#include "atlas_types.h"
 #include "filekl_in.h"
 #include "basic_io.h"
 #include "tally.h"
@@ -24,12 +26,12 @@ typedef tally::TallyVec<unsigned char> tally_vec;
    element $x$ for $y$ how many $x_0$'s primitivise to $x$ for $y$.
 */
 std::vector<unsigned int>
-prim_multiplicities(matrix_info& m,blocks::BlockElt y)
+prim_multiplicities(matrix_info& m,BlockElt y)
 {
   std::vector<unsigned int> multiplicity(y+1,0);
-  for (blocks::BlockElt x0=0; x0<=y; ++x0)
+  for (BlockElt x0=0; x0<=y; ++x0)
   {
-    blocks::BlockElt x=m.primitivize(x0,y);
+    BlockElt x=m.primitivize(x0,y);
     if (x<=y) ++multiplicity[x];
   }
   const strong_prim_list& spy=m.strongly_primitives(y);
@@ -52,7 +54,7 @@ void scan_matrix(matrix_info& m, size_t n_pol, bool with_multiplicities,
   ullong prev_l_nr_sp=0, prev_l_nr_nonzero=0, prev_l_npol=0;
   size_t l=0;
 
-  for (blocks::BlockElt y=0; y<m.block_size(); ++y)
+  for (BlockElt y=0; y<m.block_size(); ++y)
   {
     while (y==m.first_of_length(l+1))
     {

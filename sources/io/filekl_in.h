@@ -6,6 +6,7 @@
 
 #include <iosfwd>
 
+#include "bitset.h"
 #include "atlas_types.h"
 
 namespace atlas {

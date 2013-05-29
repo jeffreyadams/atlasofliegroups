@@ -236,6 +236,10 @@ int main(int argc, char** argv)
 ").\nIt is the programmable interpreter interface to the library (version " @|
        << atlas::version::VERSION @| << ") of\n"
        << atlas::version::NAME << @| ". http://www.liegroups.org/\n";
+@)
+  last_value = shared_value (new tuple_value(0));
+  last_type = copy(void_type);
+   // |last_type| is a |type_ptr| defined in \.{evaluator.w}
   while (ana.reset()) // get a fresh line for lexical analyser, or quit
   { expr parse_tree;
     int old_verbosity=verbosity;
@@ -294,16 +298,16 @@ suppress printing of the uninteresting value.
 { bool type_OK=false;
   try
   { expression_ptr e;
-    type_ptr type=analyse_types(parse_tree,e);
+    last_type=analyse_types(parse_tree,e);
     type_OK=true;
     if (verbosity>0)
-      cout << "Type found: " << *type << endl @|
+      cout << "Type found: " << *last_type << endl @|
 	   << "Converted expression: " << *e << endl;
     e->evaluate(expression_base::single_value);
-    shared_value v=pop_value();
+    last_value=pop_value();
     static type_expr empty(type_list_ptr(NULL));
-    if (*type!=empty)
-      *output_stream << "Value: " << *v << endl;
+    if (*last_type!=empty)
+      *output_stream << "Value: " << *last_value << endl;
     destroy_expr(parse_tree);
   }
   catch (runtime_error& err)

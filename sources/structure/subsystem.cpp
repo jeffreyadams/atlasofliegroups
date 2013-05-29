@@ -142,7 +142,8 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta,
 }
 
 // Here we seek twist and |ww| on parent side (dual with respect to |sub|)
-// used in |TitsGroup| constructor for subdatum, called from |SubDatum|
+// used in |TitsGroup| constructor for subdatum, called from |SubDatum|,
+// and in |blocks::param_block::compute_duals| (just for the induced |Twist|)
 weyl::Twist SubSystem::parent_twist(const WeightInvolution& theta,
 				    WeylWord& ww) const
 {
@@ -158,7 +159,7 @@ weyl::Twist SubSystem::parent_twist(const WeightInvolution& theta,
 
   // set |ww| to parent-side word, omitting inversion and twist done above
   ww = rootdata::wrt_distinguished(*this,Delta);
-  // the above call has makes |Delta| sub-distinguished from parent side
+  // the above call has made |Delta| sub-distinguished from parent side
 
   weyl::Twist result;
   for (weyl::Generator i=0; i<rank(); ++i)

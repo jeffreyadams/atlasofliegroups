@@ -14,6 +14,7 @@
 #define HASHTABLE_H
 
 #include "hashtable_fwd.h"
+#include <cstddef>
 #include <vector>
 
 namespace atlas {

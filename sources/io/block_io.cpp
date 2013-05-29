@@ -492,10 +492,7 @@ std::ostream& print_KL(std::ostream& f, param_block& block, BlockElt z)
     BlockElt x = it->first;
     const Poly& pol = it->second;
     if (not pol.isZero())
-    {
-      f << std::setw(width) << x << ": ";
-      prettyprint::printPol(f,pol,"q") << std::endl;
-    }
+      pol.print(f << std::setw(width) << x << ": ","q") << std::endl;
   }
   return f;
 }

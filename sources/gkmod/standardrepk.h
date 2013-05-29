@@ -10,7 +10,7 @@ StandardRepK and KhatContext.
   Copyright (C) 2008, 2009 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations version 0.2.4
 
-  See file main.cpp for full copyright notice
+  For license information see the LICENSE file
 */
 
 #ifndef STANDARDREPK_H  /* guard against multiple inclusions */
@@ -151,7 +151,7 @@ class StandardRepK
 /*!
   \brief Element of the fiber group; left torus part of the strong involution
 */
-  tits::TorusPart d_fiberElt; // a SmallBitVector
+  TorusPart d_fiberElt; // a SmallBitVector
 
 /*!
   \brief Character of the rho cover of H^theta, on basis of $(1/2)X^*$
@@ -162,7 +162,7 @@ class StandardRepK
 
   // main constructor is private, used by |SRK_context| methods
   // fundamental bare-bones constructor
-  StandardRepK(size_t cn, const tits::TorusPart& x, const HCParam& lambda)
+  StandardRepK(size_t cn, const TorusPart& x, const HCParam& lambda)
     : d_cartan(cn), d_fiberElt(x), d_lambda(lambda) {}
 
 public:

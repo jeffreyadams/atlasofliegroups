@@ -70,6 +70,10 @@ namespace {
   void dualrealform_f();
   void repr_f();
 
+  // help commands
+  void KGB_h();
+
+  // command tags for the help facility
 
   // local variables
 
@@ -88,24 +92,33 @@ CommandNode realNode()
 {
   CommandNode result("real: ",real_mode_entry,real_mode_exit);
 
-  result.add("realform",realform_f); // override
-  result.add("components",components_f);
-  result.add("cartan",cartan_f);
-  result.add("corder",corder_f);
-  result.add("realweyl",realweyl_f);
-  result.add("kgb",kgb_f);
-  result.add("KGB",KGB_f);
-  result.add("kgborder",kgborder_f);
-  result.add("kgbtwist",kgbtwist_f);
-  result.add("kgbgraph",kgbgraph_f);
-  result.add("kgp", kgp_f);
-  result.add("kgporder", kgporder_f);
-  result.add("kgpgraph", kgpgraph_f);
-  result.add("dualrealform",dualrealform_f);
-  result.add("repr",repr_f);
+  result.add("realform",realform_f,"override");
+  result.add("components",components_f,
+	     "describes component group of the real group",std_help);
+  result.add("cartan",cartan_f,
+	     "prints the conjugacy classes of Cartan subgroups",std_help);
+  result.add("corder",corder_f,
+	     "shows Hasse diagram of ordering of Cartan classes",std_help);
+  result.add("realweyl",realweyl_f,
+	     "outputs the structure of the real Weyl group",std_help);
+  result.add("kgb",kgb_f,"prints the orbits of K on G/B",std_help);
+  result.add("KGB",KGB_f,
+	     "computes KGB data (more information than the kgb command)",KGB_h);
+  result.add("kgborder",kgborder_f,
+	     "prints the Bruhat ordering on K\\G/B",std_help);
+  result.add("kgbtwist",kgbtwist_f,"shows twist orbits on K\\G/B");
+  result.add("kgbgraph",kgbgraph_f,
+	     "makes a 'dot' file for the Bruhat ordering on K\\G/B",std_help);
+  result.add("kgp", kgp_f,"prints the orbits of K on G/P",std_help);
+  result.add("kgporder", kgporder_f,
+	     "prints the Bruhat ordering on K\\G/P",std_help);
+  result.add("kgpgraph", kgpgraph_f,
+	     "makes a 'dot' file for the Bruhat ordering on K\\G/P",std_help);
+  result.add("dualrealform",dualrealform_f,"sets the dual real form",use_tag);
+  result.add("repr",repr_f,"sets the parameter for a representation",use_tag);
 
   // add test commands
-  test::addTestCommands(result,RealmodeTag());
+  test::addTestCommands<RealmodeTag>(result);
   return result;
 }
 
@@ -404,6 +417,14 @@ void kgpgraph_f()
   // make the dot file
   kgp.makeDotFile(file);
 }
+
+
+
+void KGB_h()
+{
+  io::printFile(std::cerr,"KGB_.help",io::MESSAGE_DIR);
+}
+
 
 } // namespace
 

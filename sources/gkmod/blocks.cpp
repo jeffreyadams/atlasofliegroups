@@ -706,8 +706,8 @@ void param_block::compute_duals(const ComplexReductiveGroup& G,
 
   if (delta*infin_char==infin_char) // for stable blocks compute |delta|-action
   {
-    WeylWord dummy;
-    weyl::Twist twist = rs.parent_twist(delta,dummy);
+    WeylWord dummy; // remains empty; the following only serves to get the
+    weyl::Twist twist = rs.parent_twist(delta,dummy); // twist induced in |rs|
     {
       unsigned int size=0;
       for (weyl::Generator s=0; s<rs.rank(); ++s)
@@ -716,6 +716,7 @@ void param_block::compute_duals(const ComplexReductiveGroup& G,
       orbits.reserve(size);
     }
 
+    // analyse the |twist|-orbits on the Dynkin diagram of |rs|
     for (weyl::Generator s=0; s<rs.rank(); ++s)
     if (twist[s]==s)
       orbits.push_back(ext_gen(s));

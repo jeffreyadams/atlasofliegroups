@@ -35,6 +35,7 @@
 #include "kl.h"
 #include "standardrepk.h"
 #include "repr.h"
+#include "ext_block.h"
 
 #include "ioutils.h"
 #include "basic_io.h"
@@ -92,56 +93,6 @@ namespace {
   void X_f();
   void embedding_f();
 
-
-  // help functions
-
-  // no |test_h|, test command remains development-reserved; uses |nohelp_h|
-
-  void roots_rootbasis_h();
-  void coroots_rootbasis_h();
-  void posroots_rootbasis_h();
-  void poscoroots_rootbasis_h();
-  void mod_lattice_h();
-  void checkbasept_h();
-  void sub_KGB_h();
-  void trivial_h();
-  void Ktypeform_h();
-  void Ktypemat_h();
-  void branch_h();
-  void srtest_h();
-  void testrun_h();
-  void exam_h();
-
-  void nblock_h();
-
-  // tags
-  const char* test_tag = "test command (for development only)";
-
-  const char* roots_rootbasis_tag = "outputs the roots in the simple rootbasis";
-  const char* coroots_rootbasis_tag =
-    "outputs the coroots in the simple coroot basis";
-  const char* posroots_rootbasis_tag =
-     "outputs the positive roots in the simple root basis";
-  const char* poscoroots_rootbasis_tag =
-      "outputs the positive coroots in the simple coroot basis";
-  const char* sub_KGB_tag =
-    "computes subset of KGB data used in Ktypeform";
-  const char* trivial_tag =
-    "tries to compute Ktypeform for trivial representation";
-  const char* Ktypeform_tag = "computes formula for a K-type";
-  const char* Ktypemat_tag =
-     "computes matrix relating K-types and standard modules";
-  const char* mod_lattice_tag =
-    "gives a basis of quotient of character lattice";
-  const char* branch_tag = "computes restriction of representation to K";
-  const char* srtest_tag = "gives information about a representation";
-  const char* testrun_tag =
-                "iterates over root data of given rank, calling examine";
-  const char* examine_tag = "tests whether block is ordered by Weyl length";
-
-  const char* nblock_tag = "computes a non-integral block";
-  const char* partial_block_tag = "computes part of a non-integral block";
-
 /*
   For convenience, the "test" command is added to the mode that is flagged by
   the testMode constant defined here; therefore "test" appears (conditionally)
@@ -150,7 +101,7 @@ namespace {
 */
   enum TestMode {EmptyMode, MainMode, RealMode, BlockMode, ReprMode,
 		 numTestMode};
-  const TestMode testMode = RealMode; // currently does subsystem KGB test
+  const TestMode testMode = ReprMode; // currently does test of extended block
 
   // utilities
   const RootDatum& currentRootDatum();
@@ -169,197 +120,109 @@ namespace {
 
 ******************************************************************************/
 
+  const char* test_tag = "test command (for development only)";
+
+
 /* |addTestCommands| is a template only so that its declaration is shorter;
    its defining instances are defined just as overloaded functions would,
    since each of them needs to test a specific value of |testMode|.
 */
 
 
-// Add to the empty mode the test commands that require that mode.
+// Add to the empty mode node the test commands that require that mode.
 template<>
-void addTestCommands<commands::EmptymodeTag>
-  (commands::CommandNode& mode, commands::EmptymodeTag)
+void addTestCommands<commands::EmptymodeTag> (commands::CommandNode& mode)
 {
-  mode.add("testrun",testrun_f);
+  mode.add("testrun",testrun_f,
+	   "iterates over root data of given rank, calling examine",
+	   commands::use_tag);
   if (testMode == EmptyMode)
-    mode.add("test",test_f);
-
+    mode.add("test",test_f,"test command (for development only)");
 }
 
 
-// Add to the main mode the test commands that require that mode.
+// Add to the main mode node the test commands that require that mode.
 template<>
-void addTestCommands<commands::MainmodeTag>
-  (commands::CommandNode& mode, commands::MainmodeTag)
+void addTestCommands<commands::MainmodeTag> (commands::CommandNode& mode)
 {
+  mode.add("roots_rootbasis",roots_rootbasis_f,
+	   "outputs the roots in the simple root basis",commands::std_help);
+  mode.add("posroots_rootbasis",posroots_rootbasis_f,
+	   "outputs the positive roots in the simple root basis",
+	   commands::std_help);
+  mode.add("coroots_rootbasis",coroots_rootbasis_f,
+	   "outputs the coroots in the simple coroot basis",
+	   commands::std_help);
+  mode.add("poscoroots_rootbasis",poscoroots_rootbasis_f,
+	   "outputs the positive coroots in the simple coroot basis",
+	   commands::std_help);
+
+  mode.add("X",X_f,"prints union of K\\G/B for real forms in inner class");
+
   if (testMode == MainMode)
-    mode.add("test",test_f);
+    mode.add("test",test_f,test_tag);
 
-  // add additional commands here :
-
-  mode.add("roots_rootbasis",roots_rootbasis_f);
-  mode.add("posroots_rootbasis",posroots_rootbasis_f);
-  mode.add("coroots_rootbasis",coroots_rootbasis_f);
-  mode.add("poscoroots_rootbasis",poscoroots_rootbasis_f);
-
-  mode.add("X",X_f);
 }
 
-
-// Add to the real mode the test commands that require that mode.
+// Add to the real mode node the test commands that require that mode.
 template<>
-void addTestCommands<commands::RealmodeTag>
-  (commands::CommandNode& mode, commands::RealmodeTag)
+void addTestCommands<commands::RealmodeTag> (commands::CommandNode& mode)
 {
+  mode.add("checkbasept",checkbasept_f,
+	   "checks basepoint conjecture",commands::std_help);
+  mode.add("sub_KGB",sub_KGB_f,
+	   "computes subset of KGB data used in Ktypeform",
+	   commands::use_tag);
+  mode.add("trivial",trivial_f,
+	   "tries to compute Ktypeform for trivial representation",
+	   commands::use_tag);
+  mode.add("Ktypeform",Ktypeform_f,
+	   "computes formula for a K-type",commands::std_help);
+  mode.add("qKtypeform",qKtypeform_f,
+	   "q version of Ktypeform",commands::use_tag);
+  mode.add("Ktypemat",Ktypemat_f,
+	   "computes matrix relating K-types and standard modules",
+	   commands::std_help);
+  mode.add("qKtypemat",qKtypemat_f,"q version of Ktypemat",commands::use_tag);
+  mode.add("mod_lattice",mod_lattice_f,
+	   "gives a basis of quotient of character lattice",commands::std_help);
+  mode.add("branch",branch_f,
+	   "computes restriction of representation to K",commands::std_help);
+  mode.add("qbranch",qbranch_f,"q version of branch");
+  mode.add("srtest",srtest_f,
+	   "gives information about a representation",commands::std_help);
+
+  mode.add("examine",exam_f,
+	   "tests whether block is ordered by Weyl length",commands::use_tag);
+  mode.add("embedding",embedding_f,
+	   "give information about embedding of KGB of subsystem",
+	   commands::std_help);
+
   if (testMode == RealMode)
-    mode.add("test",test_f);
+    mode.add("test",test_f,test_tag);
 
-  // add additional commands here :
-
-  mode.add("checkbasept",checkbasept_f);
-  mode.add("sub_KGB",sub_KGB_f);
-  mode.add("trivial",trivial_f);
-  mode.add("Ktypeform",Ktypeform_f);
-  mode.add("qKtypeform",qKtypeform_f);
-  mode.add("Ktypemat",Ktypemat_f);
-  mode.add("qKtypemat",qKtypemat_f);
-  mode.add("mod_lattice",mod_lattice_f);
-  mode.add("branch",branch_f);
-  mode.add("qbranch",qbranch_f);
-  mode.add("srtest",srtest_f);
-
-  mode.add("examine",exam_f);
-  mode.add("embedding",embedding_f);
 }
+
 
 // Add to the block mode the test commands that require that mode.
 template<>
-void addTestCommands<commands::BlockmodeTag>
-  (commands::CommandNode& mode, commands::BlockmodeTag)
+void addTestCommands<commands::BlockmodeTag> (commands::CommandNode& mode)
 {
   if (testMode == BlockMode)
-    mode.add("test",test_f);
+    mode.add("test",test_f,test_tag);
 
 }
 
 // Add to the repr mode the test commands that require that mode.
 template<>
-void addTestCommands<commands::ReprmodeTag>
-  (commands::CommandNode& mode, commands::ReprmodeTag)
+void addTestCommands<commands::ReprmodeTag> (commands::CommandNode& mode)
 {
   if (testMode == ReprMode)
-    mode.add("test",test_f);
+    mode.add("test",test_f,test_tag);
 
   // add additional commands here :
 }
 
-
-
-// Add to the help mode the test commands that require that mode.
-template<> void addTestHelp<commands::EmptymodeTag>
-             (commands::CommandNode& mode, commands::TagDict& t,
-	      commands::EmptymodeTag)
-{
-  if (testMode == EmptyMode) {
-    mode.add("test",commands::nohelp_h);
-    commands::insertTag(t,"test",test_tag);
-  }
-
-
-  // add additional help commands here:
-  mode.add("testrun",commands::nohelp_h);
-
-  // add additional command tags here:
-  commands::insertTag(t,"testrun",testrun_tag);
-
-}
-
-
-// Add to the main mode the help commands for test commands with that mode
-template<> void addTestHelp<commands::MainmodeTag>
-             (commands::CommandNode& mode, commands::TagDict& t,
-	      commands::MainmodeTag)
-{
-
-  if (testMode == MainMode) {
-    mode.add("test",commands::nohelp_h);
-    insertTag(t,"test",test_tag);
-  }
-
-  // add additional help commands here:
-
-  mode.add("roots_rootbasis",roots_rootbasis_h);
-  mode.add("posroots_rootbasis",posroots_rootbasis_h);
-  mode.add("coroots_rootbasis",coroots_rootbasis_h);
-  mode.add("poscoroots_rootbasis",poscoroots_rootbasis_h);
-
-  // add additional command tags here :
-
-  insertTag(t,"roots_rootbasis",roots_rootbasis_tag);
-  insertTag(t,"posroots_rootbasis",posroots_rootbasis_tag);
-  insertTag(t,"coroots_rootbasis",coroots_rootbasis_tag);
-  insertTag(t,"poscoroots_rootbasis",poscoroots_rootbasis_tag);
-
-}
-
-
-// Add to the real mode the help commands for test commands with that mode
-template<> void addTestHelp<commands::RealmodeTag>
-             (commands::CommandNode& mode, commands::TagDict& t,
-	      commands::RealmodeTag)
-{
-  if (testMode == RealMode) {
-    mode.add("test",commands::nohelp_h);
-    insertTag(t,"test",test_tag);
-  }
-
-  // add additional help commands here:
-
-  mode.add("checkbasept",checkbasept_h);
-  mode.add("sub_KGB",commands::nohelp_h);
-  mode.add("trivial",commands::nohelp_h);
-  mode.add("Ktypeform",Ktypeform_h);
-  mode.add("Ktypemat",Ktypemat_h);
-  mode.add("mod_lattice",mod_lattice_h);
-  mode.add("branch",branch_h);
-  mode.add("srtest",srtest_h);
-  mode.add("examine",commands::nohelp_h);
-  mode.add("nblock",nblock_h);
-
-
-  // add additional command tags here :
-
-  insertTag(t,"sub_KGB",sub_KGB_tag);
-  insertTag(t,"trivial",trivial_tag);
-  insertTag(t,"Ktypeform",Ktypeform_tag);
-  insertTag(t,"Ktypemat",Ktypemat_tag);
-  insertTag(t,"mod_lattice",mod_lattice_tag);
-  insertTag(t,"branch",branch_tag);
-  insertTag(t,"srtest",srtest_tag);
-  insertTag(t,"examine",examine_tag);
-  insertTag(t,"nblock",nblock_tag);
-  insertTag(t,"partial_block",partial_block_tag);
-
-}
-
-// Add to the block mode the help commands for test commands with that mode
-template<> void addTestHelp<commands::BlockmodeTag>
-             (commands::CommandNode& mode, commands::TagDict& t,
-	      commands::BlockmodeTag)
-{
-  if (testMode == BlockMode)
-  {
-    mode.add("test",commands::nohelp_h);
-    insertTag(t,"test",test_tag);
-  }
-
-  // add additional help commands here:
-
-
-
-  // add additional command tags here:
-
-}
 
 /*****************************************************************************
 
@@ -1170,79 +1033,48 @@ void embedding_f()
   }
 } // |embedding_f|
 
+// help function for |test_f|
+int z_choice(TorusPart t, const ComplexReductiveGroup& G,
+	     const CoweightInvolution& theta_t, const Weight& lambda)
+{
+  const TitsGroup& Tg= G.titsGroup();
+  t -= Tg.twisted(t);
+  Coweight h(t.size(),0); // |h| represents rational, implicit denominator $4$
+  for (TorusPart::base_set::iterator it = t.data().begin(); it(); ++it)
+    h[*it]=1;
+  CoweightInvolution theta1 = theta_t;
+  for (unsigned int i=0; i<theta1.numRows(); ++i)
+    theta1(i,i)+=1; // add identity
+
+  Coweight deviation = theta1*h; // failure of |h| to be |-theta| fixed
+  deviation /= 2; // may, but should not, |throw std::runtime_error|
+  Coweight correction = matreduc::find_solution(theta1,deviation); // idem
+  correction *= 2; // the correction must be by an element of $2X_*$
+  h -= correction;
+  assert ( theta_t*h == -h );
+  h += G.distinguished().transposed()*h;  // compute $z^2=\lambda(h\delta(h))$
+  return lambda.dot(h) ; // square root will have implicit denominator $8$
+}
+
 void test_f()
 {
-  // replace this with your definition
+  ioutils::OutputFile file;
+  const ComplexReductiveGroup& G = commands::currentComplexGroup();
+  const KGB& kgb = commands::currentRealGroup().kgb();
+  param_block& block = commands::current_param_block();
+  ext_block::extended_block eblock(block,G.twistedWeylGroup());
+  for (BlockElt n=0; n<eblock.size(); ++n)
+  {
+    BlockElt fix = eblock.z(n);
+    const CoweightInvolution theta_t =
+      G.involution_table().matrix(block.involution(fix)).transposed();
+    const RatWeight& lambda = block.lambda(fix);
+    const Weight lamnum (lambda.numerator().begin(),lambda.numerator().end());
+    int z = z_choice(kgb.torus_part(block.parent_x(fix)),G,theta_t,lamnum);
+    file << fix << ": " << z << '/' << 4*lambda.denominator() << std::endl;
+  }
 } // |test_f|
 
-
-
-//Help commands
-
-void roots_rootbasis_h()
-{
-  io::printFile(std::cerr,"roots_rootbasis.help",io::MESSAGE_DIR);
-}
-
-void coroots_rootbasis_h()
-{
-  io::printFile(std::cerr,"coroots_rootbasis.help",io::MESSAGE_DIR);
-}
-
-void posroots_rootbasis_h()
-{
-  io::printFile(std::cerr,"posroots_rootbasis.help",io::MESSAGE_DIR);
-}
-
-void poscoroots_rootbasis_h()
-{
-  io::printFile(std::cerr,"poscoroots_rootbasis.help",io::MESSAGE_DIR);
-}
-
-void checkbasept_h()
-{
-  io::printFile(std::cerr,"checkbasept.help",io::MESSAGE_DIR);
-}
-
-void sub_KGB_h()
-{
-  io::printFile(std::cerr,"sub_KGB.help",io::MESSAGE_DIR);
-}
-
-void trivial_h()
-{
-  io::printFile(std::cerr,"trivial.help",io::MESSAGE_DIR);
-}
-
-void Ktypemat_h()
-{
-  io::printFile(std::cerr,"Ktypemat.help",io::MESSAGE_DIR);
-}
-
-void Ktypeform_h()
-{
-  io::printFile(std::cerr,"Ktypeform.help",io::MESSAGE_DIR);
-}
-
-void mod_lattice_h()
-{
-  io::printFile(std::cerr,"mod_lattice.help",io::MESSAGE_DIR);
-}
-
-void branch_h()
-{
-  io::printFile(std::cerr,"branch.help",io::MESSAGE_DIR);
-}
-
-void srtest_h()
-{
-  io::printFile(std::cerr,"srtest.help",io::MESSAGE_DIR);
-}
-
-void nblock_h()
-{
-  io::printFile(std::cerr,"nblock.help",io::MESSAGE_DIR);
-}
 
 } // |namespace|
 

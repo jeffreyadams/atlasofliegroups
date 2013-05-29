@@ -348,6 +348,32 @@ case boolean_denotation:
     return conform_types(bool_type,type,d,e);
   }
 
+@ We allow using the last value computed to be used in an expression, using
+the symbol `\.\$'.
+
+@< Declarations of global variables @>=
+extern type_ptr last_type;
+extern shared_value last_value;
+
+@~We set the pointers to |NULL| here, but the |main| function will give them
+more appropriate starting values.
+
+@< Global variable definitions @>=
+type_ptr last_type;
+shared_value last_value;
+
+@ Upon parsing `\.\$', and |expr| value with |kind==last_value_computed| is
+transmitted. Upon type-checking we capture the value in a |denotation|
+structure, which may or may not be evaluated soon after; even if the value
+gets captured in a function value, it will remain immutable.
+
+@< Cases for type-checking and converting... @>=
+case last_value_computed:
+  { expression_ptr d@|(new denotation(last_value));
+    return conform_types(*last_type,type,d,e);
+  }
+
+
 @* List displays.
 %
 Now we shall consider the handling of list displays, expressions that build a

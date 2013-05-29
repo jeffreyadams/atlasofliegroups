@@ -76,7 +76,7 @@ namespace {
   void blocksizes_f();
   void gradings_f();
   void strongreal_f();
-  void dual_kgb_f();
+  void dualkgb_f();
   void help_f();
 
   // local variables
@@ -130,9 +130,6 @@ void replaceComplexGroup(ComplexReductiveGroup* G
 
         Chapter II -- The main mode |CommandNode|
 
-  One instance of |CommandNode| for the main mode is created at the
-  first call of |mainNode()|; further calls just return a reference to it.
-
 *****************************************************************************/
 
 namespace {
@@ -164,33 +161,47 @@ void main_mode_exit()
 
 
 /*
-  Synopsis: returns a |CommandNode| object that is constructed on first call.
+  Synopsis: returns a |CommandNode| object that is constructed during the call.
 */
 CommandNode mainNode()
 {
   CommandNode result ("main: ",main_mode_entry,main_mode_exit);
-  result.add("type",type_f);
-  result.add("cmatrix",cmatrix_f);
-  result.add("rootdatum",rootdatum_f);
-  result.add("roots",roots_f);
-  result.add("coroots",coroots_f);
-  result.add("simpleroots",simpleroots_f);
-  result.add("simplecoroots",simplecoroots_f);
-  result.add("posroots",posroots_f);
-  result.add("poscoroots",poscoroots_f);
-  result.add("realform",realform_f);
-  result.add("showrealforms",showrealforms_f);
-  result.add("showdualforms",showdualforms_f);
-  result.add("blocksizes",blocksizes_f);
-  result.add("gradings",gradings_f);
-  result.add("strongreal",strongreal_f);
-  result.add("dualkgb",dual_kgb_f); // here, since no real form needed
-  result.add("help",help_f); // override
-  result.add("q",exitMode);
+  result.add("type",type_f,"override"); // tag is a dummy
+  result.add("cmatrix",cmatrix_f,"prints the Cartan matrix",std_help);
+  result.add("rootdatum",rootdatum_f,"outputs the root datum",std_help);
+  result.add("roots",roots_f,
+	     "outputs the roots in the lattice basis",std_help);
+  result.add("coroots",coroots_f,
+	     "outputs the coroots in the lattice basis",std_help);
+  result.add("simpleroots",simpleroots_f,
+	     "outputs the simple roots in the lattice basis",std_help);
+  result.add("simplecoroots",simplecoroots_f,
+	     "outputs the simple coroots in the lattice basis",std_help);
+  result.add("posroots",posroots_f,
+	     "outputs the positive roots in the lattice basis",std_help);
+  result.add("poscoroots",poscoroots_f,
+	     "outputs the positive coroots in the lattice basis",std_help);
+  result.add("realform",realform_f,
+	     "sets the real form for the group",std_help);
+  result.add("showrealforms",showrealforms_f,
+	     "outputs the weak real forms for this complex group",std_help);
+  result.add("showdualforms",showdualforms_f,
+	     "outputs the weak real forms for the dual group",std_help);
+  result.add("blocksizes",blocksizes_f,
+	     "outputs the matrix of blocksizes",std_help);
+  result.add("gradings",gradings_f,
+	     "prints gradings of imaginary roots for real forms",std_help);
+  result.add("strongreal",strongreal_f,
+	     "outputs information about strong real forms",std_help);
+  // the next function is in main mode since no real form needed
+  result.add("dualkgb",dualkgb_f,
+	     "prints the KGB data for a dual real form",std_help);
+  result.add("help",help_f,"override");
+  result.add("q",exitMode,"override"); // q defined but inactive in empty mode
 
   // add test commands
 
-  test::addTestCommands(result,MainmodeTag());
+  test::addTestCommands<MainmodeTag>(result);
   return result;
 }
 
@@ -362,7 +373,7 @@ void strongreal_f()
 }
 
 // Print a kgb table for a dual real form.
-void dual_kgb_f()
+void dualkgb_f()
 {
   ComplexReductiveGroup& G_C = currentComplexGroup();
 
@@ -405,8 +416,9 @@ void type_f()
 
 }
 
-} // |namespace|
 
 } // |namespace|
 
-} // namespace atlas
+} // |namespace commands|
+
+} // |namespace atlas|

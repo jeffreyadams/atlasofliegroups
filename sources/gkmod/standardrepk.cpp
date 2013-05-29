@@ -426,7 +426,7 @@ q_Char SRK_context::q_reflect_eq(const StandardRepK& sr,size_t i,
 				 const Weight& cowt) const
 {
   const RootDatum& rd = rootDatum();
-  const tits::TorusPart& x = sr.d_fiberElt;
+  const TorusPart& x = sr.d_fiberElt;
   size_t cn = sr.Cartan();
 
   int n = -lambda.dot(cowt);

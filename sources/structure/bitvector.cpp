@@ -21,6 +21,7 @@ unsigned long integer).
 
 #include <algorithm>
 #include <cassert>
+#include <stdexcept>
 
 #include "bitvector.h"
 
@@ -339,11 +340,8 @@ BitMatrix<dim>& BitMatrix<dim>::operator*= (const BitMatrix<dim>& m)
 /*!
   \brief Replaces the current matrix by its inverse.
 
-  [This code is untested by me, and may be removed if no use is found. MvL]
-
   It is the caller's responsibility to make sure that m is in fact
-  invertible (in particular, that it is square).  If necessary, this
-  may be done by a call to isInvertible().
+  invertible (in particular, that it is square).
 
   For the algorithm, we use the normalSpanAdd function. We start out with
   a matrix of size (2r,c) (if r,c is the size of our original matrix)
@@ -357,38 +355,44 @@ BitMatrix<dim>& BitMatrix<dim>::operator*= (const BitMatrix<dim>& m)
 */
 template<size_t dim> BitMatrix<dim>& BitMatrix<dim>::invert()
 {
-  BitMatrix<dim> i(d_rows);
+  assert(d_rows==d_columns);
+  BitMatrix<dim> inv(d_columns); // square bitmatrix
 
-  for (size_t j = 0; j < d_rows; ++j)
-    i.set(j,j);
+  for (size_t j = 0; j < d_columns; ++j)
+    inv.set(j,j);
 
   std::vector<size_t> f;
 
-  for (size_t k = 0; k < d_rows; ++k) {// add column k
+  for (size_t k = 0; k < d_columns; ++k) // add column k
+  {
 
     for (size_t j = 0; j < k; ++j)
-      if (test(k,f[j])) { // set bit f[j] of data[k] to zero
+      if (d_data[k][f[j]]) // then set bit f[j] of column k to zero
+      {
 	d_data[k] ^= d_data[j];
-	i.d_data[k] ^= i.d_data[j];
+	inv.d_data[k] ^= inv.d_data[j];
       }
 
-    // adjust the basis a
+    // now find f[k] and adjust the basis by clearing that bit in other columns
 
-    size_t n = d_data[k].firstBit();
+    if (d_data[k].none())
+      throw std::runtime_error("Non invertible binary matrix");
+    size_t n = d_data[k].firstBit(); // this will be f[k]
 
     for (size_t j = 0; j < k; ++j)
-      if (d_data[j][n]) {
+      if (d_data[j][n])
+      {
 	d_data[j] ^= d_data[k];
-	i.d_data[j] ^= i.d_data[k];
+	inv.d_data[j] ^= inv.d_data[k];
       }
 
     f.push_back(n);
   }
 
-  // write the appropriate column-permutation of i in the current matrix
+  // write the appropriate column-permutation of inv in the current matrix
 
   for (size_t j = 0; j < d_rows; ++j)
-    d_data[f[j]] = i.d_data[j];
+    d_data[f[j]] = inv.d_data[j];
 
   return *this;
 }
@@ -699,7 +703,7 @@ template<size_t dim>
   $e_I$ (i.e., according to the direct sum decompostion $k^d=V\oplus e_I$).
   This can be visualised by viewing $V$ as the function-graph of a linear map
   from $k^J$ to $k^I$; then the normal basis is the lift to $V$ of the
-  standard basis of $k^J$. We define the canonical basis of $V$ the be the
+  standard basis of $k^J$. We define the canonical basis of $V$ to be the
   normal basis for the complement $I$ of the lexicographically minimal
   possible set $J$ (lexicographic for the increasing sequences representing
   the subsets; in fact $I$ is lexicographically maximal since complementation
@@ -1007,6 +1011,11 @@ template void initBasis(std::vector<SmallBitVector>&, size_t);
 template class BitVector<constants::RANK_MAX>;   // |SmallBitVector|
 template class BitVector<constants::RANK_MAX+1>; // |BinaryEquation|
 template class BitMatrix<constants::RANK_MAX>;   // |BinaryMap|
+
+template class BitVector<64ul>; // used in realex function |subspace_normal|
+template
+   void initBasis<64ul>(std::vector<BitVector<64ul> >& b, size_t r); // idem
+template class BitMatrix<64ul>; // used in realex function |binary_invert|
 
 } // |namespace bitvector|
 

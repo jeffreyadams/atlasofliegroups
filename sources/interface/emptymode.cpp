@@ -40,7 +40,6 @@ namespace {
   // functions for the predefined commands
 
   void help_f();
-  void q_h();
   void type_f();
   void extract_graph_f();
   void extract_cells_f();
@@ -51,8 +50,8 @@ namespace {
 
         Chapter I -- The empty mode |CommandNode|
 
-  One instance of |CommandNode| for the empty mode is created at the
-  first call of |emptyNode()|; further calls just return a reference to it.
+  An instance of |CommandNode| for the empty mode is created at the first
+  and unique call of |emptyNode()|.
 
 *****************************************************************************/
 
@@ -62,18 +61,23 @@ namespace {
 CommandNode emptyNode()
 {
   CommandNode result("empty: ",printVersion,relax_f);
-  result.add("",relax_f); // so typing nothing is OK
-  result.add("help",help_f);
-  result.add("q",q_h); // in empty mode "q" just gives help information
-  result.add("qq",exitInteractive);
+  result.nohelp_add("",relax_f); // so typing nothing is OK
+  result.add("help",help_f,"enters help mode",std_help);
+  result.add("q",std_help,  // in empty mode "q" gives help information,
+	     "exits the current mode",exitMode); // in help mode it exits
+
+  result.add("qq",exitInteractive,"exits the program",std_help);
+
   // the type command needs to be recognized in the empty mode, or else
   // it will trigger activation of the main mode and _then_ execute, which
   // leads to setting the type twice!
-  result.add("type",type_f);
-  result.add("extract-graph",extract_graph_f);
-  result.add("extract-cells",extract_cells_f);
+  result.add("type",type_f,"sets or resets the group type",std_help);
+  result.add("extract-graph",extract_graph_f,
+	     "reads block and KL binary files and prints W-graph",use_tag);
+  result.add("extract-cells",extract_cells_f,
+	     "reads block and KL binary files and prints W-cells",use_tag);
 
-  test::addTestCommands(result,EmptymodeTag());
+  test::addTestCommands<EmptymodeTag>(result);
   return result;
 }
 
@@ -93,11 +97,6 @@ void help_f()
 {
   intro_h();
   help_mode.activate();
-}
-
-void q_h()
-{
-  io::printFile(std::cerr,"q.help",io::MESSAGE_DIR);
 }
 
 void type_f()

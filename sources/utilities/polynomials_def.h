@@ -1,6 +1,14 @@
-/*!
-\file
-\brief
+/*
+  This is polynomials_def.h.
+
+  Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2009 Marc van Leeuwen
+  part of the Atlas of Lie Groups and Representations
+
+  For license information see the LICENSE file
+*/
+
+/*
   Template definitions for the class Polynomial.
 
   This module contains the implementation of the few things we need about
@@ -12,23 +20,15 @@
   As a class invariant, the leading coefficient stored is nonzero, so that the
   degree of the polynomial is simply deduced from the size of the coefficient
   vector: it is |size()-1|. As a corollary, the degree of the zero polynomial
-  is -1 (for the unsigned |Degree| type); this is designated as |UndefDegree|.
-  A consequence of this is that the subtraction operations have to watch out
-  for drop in degree (not the addition operators, because coefficients are
-  unsigned.)
+  is -1 (for the unsigned |Degree| type). A consequence of this is that the
+  subtraction operations have to watch out for drop in degree (not the
+  addition operators, because coefficients are unsigned.)
 */
-/*
-  This is polynomials_def.h.
 
-  Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2009 Marc van Leeuwen
-  part of the Atlas of Lie Groups and Representations
-
-  For license information see the LICENSE file
-*/
 
 #include <limits>
 #include <cassert>
+#include <sstream>
 
 #include "error.h"
 
@@ -194,6 +194,49 @@ bool compare (const Polynomial<C>& p, const Polynomial<C>& q)
   return false;
 }
 
+/*
+  Synopsis: prints out the monomial c.x^d.
+
+  Preconditions: c is non-zero;
+
+  Explanation: c and d are printed only if non-one, except in degree zero
+  where c is always printed; x is the name of the indeterminate.
+
+  The output format for the exponents is tex-like, but "q^13", not "q^{13}".
+*/
+template<typename C>
+void printMonomial
+       (std::ostream& strm, C c, polynomials::Degree d, const char* x)
+{
+  if (d == 0) // output c regardless
+    strm << c;
+  else
+  {
+    if (c<C(0) and c == C(-1)) // condition always false for unsigned types
+      strm << '-';
+    else if (c != C(1))
+      strm << c;
+    strm << x;
+    if (d > 1)
+      strm << "^" << d;
+  }
+}
+
+
+template<typename C>
+std::ostream& Polynomial<C>::print(std::ostream& strm, const char* x) const
+{
+  const Polynomial<C>& p = *this;
+  std::ostringstream o; // accumulate in string for interpretation of width
+  if (p.isZero())
+    o << "0";
+  else
+    for (size_t i = p.size(); i-->0; )
+      if (p[i]!=C(0)) // guaranteed true the first time
+	printMonomial(i<p.degree() and p[i]>C(0) ? o<<'+' : o,p[i],i,x);
+
+  return strm << o.str(); // now |strm.width()| is applied to whole polynomial
+}
 
 
 /*****************************************************************************
@@ -403,7 +446,7 @@ void Safe_Poly<C>::safeSubtract(const Safe_Poly& q, Degree d)
 
   // set degree
   base::adjustSize();
-}
+ } // |safeSubtract|
 
 } // namespace polynomials
 

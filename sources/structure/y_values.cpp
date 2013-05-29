@@ -108,7 +108,7 @@ TorusElement TorusElement::simple_imaginary_cross
 {
   TorusElement t(*this); // make a copy in all cases
   if (not negative_at(dual_rd.coroot(alpha))) // |alpha| is a noncompact root
-    t += tits::TorusPart(dual_rd.root(alpha)); // so add $m_\alpha$
+    t += TorusPart(dual_rd.root(alpha)); // so add $m_\alpha$
   return t;
 }
 

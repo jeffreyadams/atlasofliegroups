@@ -139,7 +139,10 @@ namespace bitvector {
 
 template<size_t dim> class BitVector
 {
-  BitSet<dim> d_data;
+ public:
+  typedef BitSet<dim> base_set;
+ private:
+  base_set d_data;
   unsigned short int d_size; // this is more than large enough for all uses
 
  public:

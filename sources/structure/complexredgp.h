@@ -393,11 +393,11 @@ class ComplexReductiveGroup
   void twisted_act
     (const TwistedInvolution& tw,Weight& v) const;
 
-  tits::TorusPart sample_torus_part(CartanNbr cn, RealFormNbr rf) const
-  { return tits::TorusPart(Cartan[cn].rep[rf],semisimpleRank()); }
-  tits::TorusPart dual_sample_torus_part(CartanNbr cn, RealFormNbr drf)
+  TorusPart sample_torus_part(CartanNbr cn, RealFormNbr rf) const
+  { return TorusPart(Cartan[cn].rep[rf],semisimpleRank()); }
+  TorusPart dual_sample_torus_part(CartanNbr cn, RealFormNbr drf)
     const
-  { return tits::TorusPart(Cartan[cn].dual_rep[drf],semisimpleRank()); }
+  { return TorusPart(Cartan[cn].dual_rep[drf],semisimpleRank()); }
 
 
 // manipulators

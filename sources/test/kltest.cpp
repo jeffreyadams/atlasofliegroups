@@ -211,7 +211,7 @@ bool dualityVerify(const kl::KLContext& klc, const kl::KLContext& dual_klc)
       if (not sum.isZero())
       {
 	std::cerr << "at (" << x << ',' << dx << "), non-zero entry :";
-	prettyprint::printPol(std::cerr,sum,"q"); std::cerr << std::endl;
+	sum.print(std::cerr,"q") << std::endl;
 	return false;
       }
     }

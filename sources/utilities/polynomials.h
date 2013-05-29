@@ -124,6 +124,8 @@ template <typename U>
     { return Polynomial(*this)-=q; }
   Polynomial operator- () const { return Polynomial(*this)*= C(-1); }
 
+  std::ostream& print(std::ostream& strm, const char* x) const;
+
 protected:
   void resize (Degree d) { d_data.resize(d,C(0)); }
   void adjustSize(); // shrink |d_data| to make leading coefficient nonzero
@@ -146,7 +148,7 @@ template <typename C>
   // unlike |operator+| etc., the following test for negative coefficients
   void safeAdd(const Safe_Poly& p, Degree d, C c); // *this += c*q^d*p
   void safeAdd(const Safe_Poly& p, Degree d = 0);  // *this += q^d*p
-  void safeDivide(C c);  // *this = *this/c 
+  void safeDivide(C c);  // *this = *this/c
   void safeQuotient(Degree d = 0);  // *this = (*this + mq^d)/(q+1)
 
   void safeSubtract(const Safe_Poly& p, Degree d, C c);

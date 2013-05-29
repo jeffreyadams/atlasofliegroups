@@ -5,7 +5,7 @@
   Copyright (C) 2009-2012 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
-  See file main.cpp for full copyright notice
+  For license information see the LICENSE file
 */
 
 #ifndef REPR_H  /* guard against multiple inclusions */
@@ -148,7 +148,6 @@ class Rep_context
 
   poly expand_final(StandardRepr z) const; // express in final SReprs (by value)
 
-  // I/O operations, implemented in basic_io.cpp
   std::ostream& print (std::ostream&,const StandardRepr& z) const;
   std::ostream& print (std::ostream&,const poly& P) const;
 

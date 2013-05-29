@@ -14,6 +14,8 @@
 #include "matrix_fwd.h"
 #include "bitmap_fwd.h"
 
+#include <stdexcept>
+
 namespace atlas {
 
 namespace matreduc {
@@ -21,17 +23,23 @@ namespace matreduc {
 template<typename C>
   bitmap::BitMap column_echelon(matrix::Matrix<C>& vectors);
 
+template<typename C> // find |row,col| making |row*M*col| (returned) diagonal
+  std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
+			     matrix::Matrix<C>& row,
+			     matrix::Matrix<C>& col);
 template<typename C>
-std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
-			   matrix::Matrix<C>& row,
-			   matrix::Matrix<C>& col);
+  matrix::Matrix<C> adapted_basis(matrix::Matrix<C> M, // by value
+				  std::vector<C>& diagonal);
 template<typename C>
-matrix::Matrix<C> adapted_basis(matrix::Matrix<C> M, // by value
+  matrix::Matrix<C> Smith_basis(const matrix::Matrix<C>& M,
 				std::vector<C>& diagonal);
-template<typename C>
-matrix::Matrix<C> Smith_basis(const matrix::Matrix<C>& M,
-			      std::vector<C>& diagonal);
+
+template<typename C> // find a solution |x| for |A*x==b|
+  matrix::Vector<C> find_solution(const matrix::Matrix<C>& A,
+				  matrix::Vector<C> b) // by value
+  throw (std::runtime_error); // thrown if no solution exists
+
 } // |namespace matreduc|
 } // |namespace atlas|
 
-#endif 	    /* !ECHELON_H */
+#endif

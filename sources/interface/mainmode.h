@@ -21,10 +21,10 @@ namespace commands {
 
   struct MainmodeTag {};
 
-/******** function declarations ********************************************/
+/******** function and variable declarations *******************************/
 
   commands::CommandNode mainNode();
-  extern commands::CommandTree& main_mode; // defined in main.cpp
+  extern commands::CommandTree& main_mode; // defined in commands.cpp
   ComplexReductiveGroup& currentComplexGroup();
   ComplexReductiveGroup& current_dual_group();
   complexredgp_io::Interface& currentComplexInterface();

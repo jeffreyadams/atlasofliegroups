@@ -73,8 +73,7 @@ std::ostream& printAllKL
 	strm << std::setw(width+tab)<< ""
 	     << std::setw(width) << x << ": ";
       }
-      prettyprint::printPol(strm,pol,KLIndeterminate);
-      strm << std::endl;
+      pol.print(strm,KLIndeterminate) << std::endl;
       ++count;
     }
 
@@ -132,8 +131,7 @@ std::ostream& printPrimitiveKL
 	       << std::setw(width) << e[j] << ": ";
 	}
 
-	prettyprint::printPol(strm,klc.klPol(e[j],y),KLIndeterminate);
-	strm << std::endl;
+	klc.klPol(e[j],y).print(strm,KLIndeterminate) << std::endl;
       }
       else
       {
@@ -174,10 +172,7 @@ std::ostream& printKLList(std::ostream& strm, const kl::KLContext& klc)
   std::sort(polList.begin(),polList.end(),polynomials::compare<kl::KLCoeff>);
 
   for (size_t j = 0; j < polList.size(); ++j)
-  {
-    prettyprint::printPol(strm,polList[j],KLIndeterminate);
-    strm << std::endl;
-  }
+    polList[j].print(strm,KLIndeterminate) << std::endl;
 
   return strm;
 }
