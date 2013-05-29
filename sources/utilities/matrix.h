@@ -78,7 +78,7 @@ public:
     { Vector<C> result(*this); return result.negate(); }
 
   template<typename C1>
-    Vector<C1> scaled (C1 c) const // like operator*, but forces tye to C1
+    Vector<C1> scaled (C1 c) const // like operator*, but forces type to C1
   { Vector<C1> result(base::begin(),base::end()); return result *=c; }
 
 
