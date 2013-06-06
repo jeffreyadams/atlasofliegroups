@@ -501,7 +501,7 @@ KGB::KGB(RealReductiveGroup& GR,
 
   {
     tits::EnrichedTitsGroup square_class_base(GR);
-    d_base = new TitsCoset(square_class_base);
+    d_base = new TitsCoset(square_class_base); // copy construct from base
     RealFormNbr rf=GR.realForm();
     assert(square_class_base.square()==
 	   G.fundamental().central_square_class(rf));

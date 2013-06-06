@@ -747,8 +747,7 @@ class TitsCoset
   const RootSystem& rs; // needed (only) for the |grading| method
 
  public:
-  TitsCoset(const ComplexReductiveGroup& G,
-	    Grading base_grading);
+  TitsCoset(const ComplexReductiveGroup& G, Grading base_grading);
 
   TitsCoset(const ComplexReductiveGroup& G);// adjoint case
 

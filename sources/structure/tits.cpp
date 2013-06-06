@@ -736,8 +736,7 @@ TitsGroup::involutionMatrix(const WeylWord& ww) const
  *
  */
 
-TitsCoset::TitsCoset(const ComplexReductiveGroup& G,
-			       Grading base_grading)
+TitsCoset::TitsCoset(const ComplexReductiveGroup& G, Grading base_grading)
   : my_Tits_group(NULL) // no ownership in this case
   , Tg(G.titsGroup())
   , grading_offset(base_grading)
