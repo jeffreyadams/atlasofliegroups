@@ -50,9 +50,14 @@ struct ext_gen // generator of extended Weyl group
 {
   enum { one, two, three } type;
   weyl::Generator s0,s1;
-  explicit ext_gen (weyl::Generator s) : type(one), s0(s), s1(~0) {}
+  WeylWord w_tau;
+  explicit ext_gen (weyl::Generator s)
+    : type(one), s0(s), s1(~0), w_tau() { w_tau.push_back(s); }
   ext_gen (bool commute, weyl::Generator s, weyl::Generator t)
-  : type(commute ? two : three), s0(s), s1(t) {}
+  : type(commute ? two : three), s0(s), s1(t)
+  { w_tau.push_back(s);  w_tau.push_back(t);
+    if (not commute) w_tau.push_back(s);
+  }
 };
 
 // The class |BlockBase| serves external functionality, not block construction

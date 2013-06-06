@@ -1033,36 +1033,56 @@ void embedding_f()
   }
 } // |embedding_f|
 
-// help function for |test_f|
-int z_choice(TorusPart t, const ComplexReductiveGroup& G,
-	     const CoweightInvolution& theta_t, const Weight& lambda)
+// help functions for |test_f|
+
+// find lift |h| of |t| such that |theta_t*h = -h|; |t| is |theta_t|-stable
+Coweight minus_stable_lift(TorusPart t, const CoweightInvolution& theta_t)
 {
-  const TitsGroup& Tg= G.titsGroup();
-  t -= Tg.twisted(t);
-  Coweight h(t.size(),0); // |h| represents rational, implicit denominator $4$
+  Coweight h(t.size(),0);
   for (TorusPart::base_set::iterator it = t.data().begin(); it(); ++it)
-    h[*it]=1;
+    h[*it]=1; // lift torus part to a coweight
   CoweightInvolution theta1 = theta_t;
   for (unsigned int i=0; i<theta1.numRows(); ++i)
     theta1(i,i)+=1; // add identity
-
   Coweight deviation = theta1*h; // failure of |h| to be |-theta| fixed
   deviation /= 2; // may, but should not, |throw std::runtime_error|
   Coweight correction = matreduc::find_solution(theta1,deviation); // idem
   correction *= 2; // the correction must be by an element of $2X_*$
   h -= correction;
   assert ( theta_t*h == -h );
-  h += G.distinguished().transposed()*h;  // compute $z^2=\lambda(h\delta(h))$
-  return lambda.dot(h) ; // square root will have implicit denominator $8$
+  assert(TorusPart(h) == t); // the correction kept |h| a lift of |t|
+  return h;
+}
+
+
+struct z_data { TorusPart t; Coweight h; Weight lamnum; int z; };
+
+void z_choice(TorusPart t, const ComplexReductiveGroup& G,
+	      const CoweightInvolution& theta_t, const Weight& lambda,
+	      z_data& out)
+{
+  const TitsGroup& Tg= G.titsGroup();
+  out.t = t; out.lamnum=lambda;
+  t -= Tg.twisted(t);
+  Coweight h = minus_stable_lift(t,theta_t);
+  out.h=h;
+  int z =
+    arithmetic::remainder(lambda.dot(h+G.distinguished().transposed()*h),4);
+  out.z=z; // reinterpreted modulo 8, thus choosing the "positive" square root
 }
 
 void test_f()
 {
   ioutils::OutputFile file;
   const ComplexReductiveGroup& G = commands::currentComplexGroup();
+  const RootDatum& rd = G.rootDatum();
+  const TitsCoset& bTg = commands::currentRealGroup().basedTitsGroup();
   const KGB& kgb = commands::currentRealGroup().kgb();
   param_block& block = commands::current_param_block();
+  const RatWeight& gamma = block.gamma();
+  const Weight gam_num (gamma.numerator().begin(),gamma.numerator().end());
   ext_block::extended_block eblock(block,G.twistedWeylGroup());
+  std::vector<z_data> data(eblock.size());
   for (BlockElt n=0; n<eblock.size(); ++n)
   {
     BlockElt fix = eblock.z(n);
@@ -1070,8 +1090,64 @@ void test_f()
       G.involution_table().matrix(block.involution(fix)).transposed();
     const RatWeight& lambda = block.lambda(fix);
     const Weight lamnum (lambda.numerator().begin(),lambda.numerator().end());
-    int z = z_choice(kgb.torus_part(block.parent_x(fix)),G,theta_t,lamnum);
-    file << fix << ": " << z << '/' << 4*lambda.denominator() << std::endl;
+
+    // just transmitting the torus part $t$ suffices, because one has
+    // $\sigma_w\delta((\sigma_w)^{-1})=1$ as fix implies $\delta(w)=w$
+    z_choice(kgb.torus_part(block.parent_x(fix)),G,theta_t,lamnum,data[n]);
+    file << fix << ": " << data[n].z << '/' << 4*lambda.denominator()
+	 << std::endl;
+  }
+  // now check how cross links relate to the choices made
+
+  CoweightInvolution deltr1 = G.distinguished().transposed();
+  for (unsigned int i=0; i<deltr1.numRows(); ++i)
+    deltr1(i,i)+=1; // add identity
+  for (BlockElt n=0; n<eblock.size(); ++n)
+  {
+    const z_data& here=data[n];
+    BlockElt fix = eblock.z(n);
+    const CoweightInvolution theta_t =
+      G.involution_table().matrix(block.involution(fix)).transposed();
+    std::cout << eblock.z(n) << ": ";
+    for (weyl::Generator s=0; s<eblock.rank(); ++s)
+      if (eblock.cross(s,n)!=UndefBlock)
+      {
+	BlockElt sn = eblock.cross(s,n);
+	const z_data& there=data[sn];
+	TitsElt a = kgb.titsElt(block.parent_x(eblock.z(sn)));
+	ext_gen g = block.orbit(s);
+	for (unsigned int i=0; i<g.w_tau.size(); ++i)
+	  bTg.basedTwistedConjugate(a,g.w_tau[i]); // transport titsElt here
+
+	TorusPart shift = here.t+bTg.titsGroup().left_torus_part(a);
+	Coweight lift = minus_stable_lift(shift,theta_t);
+	Coweight wh = there.h;
+	for (unsigned int i=0; i<g.w_tau.size(); ++i)
+	  rd.simpleCoreflect(wh,g.w_tau[i]); // SHOULD use subsystem....
+	wh += lift; // multiply (under $exp(\pi\ii/2 * )$) by |lift|
+	wh -= G.distinguished().transposed()*lift; // and by $lift^{-\delta}$
+	// now |wh| is compatible with the torus part choice down |here|
+
+	Coweight offset = here.h-wh;
+	(offset - theta_t*offset)/=4; // |assert((1-theta_t)*offset % 4 == 0)|;
+	int Lhh = here.lamnum.dot(offset); // significant modulo 4
+
+	// now compute $(w.\gamma-\gamma)(h)$, by which $z$ gets multiplied
+	Weight gn =gam_num;
+	for (unsigned int i=0; i<g.w_tau.size(); ++i)
+	  rd.simpleReflect(gn,g.w_tau[i]);
+	gn -= gam_num;
+	gn /= gamma.denominator(); // the result should lie in root lattice
+	int zz = gn.dot(there.h); // offset, significant modulo 4
+	zz = there.z + 2*zz ; // transport here, result is mod 8
+	assert ( (here.lamnum.dot(deltr1*wh)-zz)%4==0 );
+	int diff = (zz - here.z) - Lhh;
+	diff = arithmetic::remainder(diff,8);
+	assert ( diff%4 == 0);
+	if (diff!=0)
+	  std::cout << (int)s << ' ';
+      }
+    std::cout << std::endl;
   }
 } // |test_f|
 
