@@ -225,6 +225,11 @@ template<size_t dim> class BitVector
   BitVector operator+ (const BitVector& v) const
   { BitVector<dim> result(*this); result+=v; return result; }
 
+  // the same operation as the previous method, under different name
+  // the destinction may sometimes be useful for documentation purposes
+  BitVector operator- (const BitVector& v) const
+  { BitVector<dim> result(*this); result-=v; return result; }
+
 // manipulators
 
   BitVector& operator+= (const BitVector& v)

@@ -1117,7 +1117,7 @@ void test_f()
 	TitsElt a = kgb.titsElt(block.parent_x(eblock.z(sn)));
 	ext_gen g = block.orbit(s);
 	for (unsigned int i=0; i<g.w_tau.size(); ++i)
-	  bTg.basedTwistedConjugate(a,g.w_tau[i]); // transport titsElt here
+	  bTg.strict_based_twisted_conjugate(a,g.w_tau[i]); // pull |a| here
 
 	TorusPart shift = here.t+bTg.titsGroup().left_torus_part(a);
 	Coweight lift = minus_stable_lift(shift,theta_t);

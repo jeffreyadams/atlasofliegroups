@@ -924,6 +924,15 @@ bool TitsCoset::simple_imaginary_grading(TorusPart t, RootNbr alpha) const
   return evaluation;
 }
 
+// the  difference with |basedTwistedConjugate| is that we |right_add| here
+void TitsCoset::strict_based_twisted_conjugate(TitsElt& a, size_t s) const
+{
+  Tg.twistedConjugate(a,s);
+  if (grading_offset[s])
+    Tg.right_add(a,Tg.m_alpha(s));
+}
+
+
 bool TitsCoset::is_valid(TitsElt a) const
 {
   static TitsElt e(Tg);  // identity
