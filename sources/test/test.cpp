@@ -1130,7 +1130,7 @@ void test_f()
 
 	Coweight offset = here.h-wh;
 	(offset - theta_t*offset)/=4; // |assert((1-theta_t)*offset % 4 == 0)|;
-	int Lhh = here.lamnum.dot(offset); // significant modulo 4
+	int Lambda_h_over_h = here.lamnum.dot(offset); // significant modulo 4
 
 	// now compute $(w.\gamma-\gamma)(h)$, by which $z$ gets multiplied
 	Weight gn =gam_num;
@@ -1141,11 +1141,11 @@ void test_f()
 	int zz = gn.dot(there.h); // offset, significant modulo 4
 	zz = there.z + 2*zz ; // transport here, result is mod 8
 	assert ( (here.lamnum.dot(deltr1*wh)-zz)%4==0 );
-	int diff = (zz - here.z) - Lhh;
-	diff = arithmetic::remainder(diff,8);
-	assert ( diff%4 == 0);
-	if (diff!=0)
-	  std::cout << (int)s << ' ';
+	int compare = (zz - here.z) - 2*Lambda_h_over_h;
+	compare = arithmetic::remainder(compare,8);
+	assert ( compare%4 == 0);
+	if (compare!=0)
+	  std::cout << (int)s << '(' << eblock.z(sn) << ") ";
       }
     std::cout << std::endl;
   }
