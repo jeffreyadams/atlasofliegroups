@@ -295,6 +295,20 @@ void nblock_f()
   block_f();
 } // |nblock_f|
 
+void ensure_full_block()
+{
+  if (state!=nblock)
+  {
+    delete WGr_pointer; WGr_pointer=NULL;
+    delete block_pointer; // destroy installed block first
+    block_pointer =
+      new non_integral_block(currentRepContext(),
+			     currentStandardRepr(),
+			     entry_z);
+    state=nblock;
+  }
+}
+
 void partial_block_f()
 {
   if (state!=partial_block)

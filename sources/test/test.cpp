@@ -1055,14 +1055,20 @@ Coweight minus_stable_lift(TorusPart t, const CoweightInvolution& theta_t)
 }
 
 
-struct z_data { TorusPart t; Coweight h; Weight lamnum; int z; };
+struct z_data
+{ const TitsCoset& Tg;
+  TitsElt a; Coweight h; Weight lamnum; int z;
+  z_data(const TitsCoset& G): Tg(G), a(G.titsGroup()) {}
+  TorusPart t() const { return Tg.titsGroup().left_torus_part(a); }
+};
 
-void z_choice(TorusPart t, const ComplexReductiveGroup& G,
+void z_choice(TitsElt a, const ComplexReductiveGroup& G,
 	      const CoweightInvolution& theta_t, const Weight& lambda,
 	      z_data& out)
 {
+  out.a = a; out.lamnum=lambda;
   const TitsGroup& Tg= G.titsGroup();
-  out.t = t; out.lamnum=lambda;
+  TorusPart t = Tg.left_torus_part(a);
   t -= Tg.twisted(t);
   Coweight h = minus_stable_lift(t,theta_t);
   out.h=h;
@@ -1071,18 +1077,54 @@ void z_choice(TorusPart t, const ComplexReductiveGroup& G,
   out.z=z; // reinterpreted modulo 8, thus choosing the "positive" square root
 }
 
+bool switched (const z_data& there,const z_data& here,
+	       ext_gen g, const RealReductiveGroup& GR,
+	       const CoweightInvolution& theta_t, const RatWeight& gamma)
+{
+  const RootDatum& rd = GR.rootDatum();
+  const TitsCoset& bTg = GR.basedTitsGroup();
+  TitsElt a = there.a;
+  for (unsigned int i=0; i<g.w_tau.size(); ++i)
+    bTg.strict_based_twisted_conjugate(a,g.w_tau[i]); // pull |a| here
+
+  TorusPart shift = here.t()+here.Tg.titsGroup().left_torus_part(a);
+  Coweight lift = minus_stable_lift(shift,theta_t);
+  Coweight wh = there.h;
+  for (unsigned int i=0; i<g.w_tau.size(); ++i)
+    rd.simpleCoreflect(wh,g.w_tau[i]); // SHOULD use subsystem....
+  wh += lift; // multiply (under $exp(\pi\ii/2 * )$) by |lift| and by
+  wh -= GR.complexGroup().distinguished().transposed()*lift; // $lift^{-\delta}$
+  // now |wh| is compatible with the torus part choice down |here|
+
+  Coweight offset = here.h-wh;
+  (offset - theta_t*offset)/=4; // |assert((1-theta_t)*offset % 4 == 0)|;
+  int Lambda_h_over_h = here.lamnum.dot(offset); // significant modulo 4
+
+  // now compute $(w.\gamma-\gamma)(h)$, by which $z$ gets multiplied
+  const Weight gn (gamma.numerator().begin(),gamma.numerator().end());
+  Weight mu=gn;
+  for (unsigned int i=0; i<g.w_tau.size(); ++i)
+    rd.simpleReflect(mu,g.w_tau[i]);
+  mu -= gn;
+  mu /= gamma.denominator(); // the result should lie in root lattice
+  int zz = mu.dot(there.h); // offset, significant modulo 4
+  zz = there.z + 2*zz ; // transport here, result is mod 8
+  int compare = (zz - here.z) - 2*Lambda_h_over_h;
+  compare = arithmetic::remainder(compare,8);
+  assert ( compare%4 == 0);
+  return compare==4;
+}
 void test_f()
 {
+  commands::ensure_full_block(); // silently force |nblock|
   ioutils::OutputFile file;
   const ComplexReductiveGroup& G = commands::currentComplexGroup();
-  const RootDatum& rd = G.rootDatum();
   const TitsCoset& bTg = commands::currentRealGroup().basedTitsGroup();
   const KGB& kgb = commands::currentRealGroup().kgb();
   param_block& block = commands::current_param_block();
   const RatWeight& gamma = block.gamma();
-  const Weight gam_num (gamma.numerator().begin(),gamma.numerator().end());
   ext_block::extended_block eblock(block,G.twistedWeylGroup());
-  std::vector<z_data> data(eblock.size());
+  std::vector<z_data> data(eblock.size(),z_data(bTg));
   for (BlockElt n=0; n<eblock.size(); ++n)
   {
     BlockElt fix = eblock.z(n);
@@ -1093,61 +1135,61 @@ void test_f()
 
     // just transmitting the torus part $t$ suffices, because one has
     // $\sigma_w\delta((\sigma_w)^{-1})=1$ as fix implies $\delta(w)=w$
-    z_choice(kgb.torus_part(block.parent_x(fix)),G,theta_t,lamnum,data[n]);
-    file << fix << ": " << data[n].z << '/' << 4*lambda.denominator()
-	 << std::endl;
+    z_choice(kgb.titsElt(block.parent_x(fix)),G,theta_t,lamnum,data[n]);
   }
-  // now check how cross links relate to the choices made
 
-  CoweightInvolution deltr1 = G.distinguished().transposed();
-  for (unsigned int i=0; i<deltr1.numRows(); ++i)
-    deltr1(i,i)+=1; // add identity
+  { // flip some choices of |z| so as to make switches disappear
+    std::vector<BlockElt> todo;
+    BitMap marked(eblock.size());
+    for (BlockElt n=0; n<eblock.size(); ++n)
+      if (not marked.isMember(n))
+      {
+	todo.push_back(n);
+	marked.insert(n); // mark element on first visit
+	do
+	{
+	  BlockElt m = todo.back();
+	  todo.pop_back();
+	  const z_data& here=data[m];
+	  const CoweightInvolution theta_t =
+	    G.involution_table().matrix(block.involution(eblock.z(m)))
+	    .transposed();
+	  for (weyl::Generator s=0; s<eblock.rank(); ++s)
+	    if (not marked.isMember(eblock.cross(s,m)))
+	    {
+	      BlockElt sm = eblock.cross(s,m);
+	      todo.push_back(sm);
+	      if (switched(data[sm],here,block.orbit(s),
+			   commands::currentRealGroup(),theta_t, gamma))
+		data[sm].z+=4;
+	      marked.insert(sm);
+	    }
+	}
+	while (not todo.empty());
+      }
+
+  }
+
+
+  // now check how cross links relate to the choices made
   for (BlockElt n=0; n<eblock.size(); ++n)
   {
-    const z_data& here=data[n];
     BlockElt fix = eblock.z(n);
+    file << fix << ": z=exp(" << data[n].z << "\\pi i/"
+	 << 4*block.lambda(fix).denominator() << ") ";
+    const z_data& here=data[n];
     const CoweightInvolution theta_t =
       G.involution_table().matrix(block.involution(fix)).transposed();
-    std::cout << eblock.z(n) << ": ";
     for (weyl::Generator s=0; s<eblock.rank(); ++s)
-      if (eblock.cross(s,n)!=UndefBlock)
-      {
-	BlockElt sn = eblock.cross(s,n);
-	const z_data& there=data[sn];
-	TitsElt a = kgb.titsElt(block.parent_x(eblock.z(sn)));
-	ext_gen g = block.orbit(s);
-	for (unsigned int i=0; i<g.w_tau.size(); ++i)
-	  bTg.strict_based_twisted_conjugate(a,g.w_tau[i]); // pull |a| here
-
-	TorusPart shift = here.t+bTg.titsGroup().left_torus_part(a);
-	Coweight lift = minus_stable_lift(shift,theta_t);
-	Coweight wh = there.h;
-	for (unsigned int i=0; i<g.w_tau.size(); ++i)
-	  rd.simpleCoreflect(wh,g.w_tau[i]); // SHOULD use subsystem....
-	wh += lift; // multiply (under $exp(\pi\ii/2 * )$) by |lift|
-	wh -= G.distinguished().transposed()*lift; // and by $lift^{-\delta}$
-	// now |wh| is compatible with the torus part choice down |here|
-
-	Coweight offset = here.h-wh;
-	(offset - theta_t*offset)/=4; // |assert((1-theta_t)*offset % 4 == 0)|;
-	int Lambda_h_over_h = here.lamnum.dot(offset); // significant modulo 4
-
-	// now compute $(w.\gamma-\gamma)(h)$, by which $z$ gets multiplied
-	Weight gn =gam_num;
-	for (unsigned int i=0; i<g.w_tau.size(); ++i)
-	  rd.simpleReflect(gn,g.w_tau[i]);
-	gn -= gam_num;
-	gn /= gamma.denominator(); // the result should lie in root lattice
-	int zz = gn.dot(there.h); // offset, significant modulo 4
-	zz = there.z + 2*zz ; // transport here, result is mod 8
-	assert ( (here.lamnum.dot(deltr1*wh)-zz)%4==0 );
-	int compare = (zz - here.z) - 2*Lambda_h_over_h;
-	compare = arithmetic::remainder(compare,8);
-	assert ( compare%4 == 0);
-	if (compare!=0)
-	  std::cout << (int)s << '(' << eblock.z(sn) << ") ";
-      }
-    std::cout << std::endl;
+    {
+      BlockElt sn = eblock.cross(s,n);
+      const z_data& there=data[sn];
+      bool differs = switched(there,here,block.orbit(s),
+			      commands::currentRealGroup(),theta_t, gamma);
+      if (differs)
+	file << (int)s << '(' << eblock.z(sn) << ") ";
+    }
+    static_cast<std::ostream&>(file) << std::endl;
   }
 } // |test_f|
 
