@@ -12,6 +12,7 @@
 #define BITMAP_H
 
 #include <vector>
+#include <cassert>
 
 #include "bitmap_fwd.h"
 
@@ -191,14 +192,20 @@ class BitMap
    this makes |isMember(n)| hold.
  */
  void insert(unsigned long n)
- { d_map[n >> baseShift] |= constants::bitMask[n & posBits]; }
+ {
+   assert(n<d_capacity);
+   d_map[n >> baseShift] |= constants::bitMask[n & posBits];
+ }
 
  /*!
    Clear the bit at position n (that is, removes an element of the set);
    this makes |isMember(n)| false.
  */
  void remove(unsigned long n)
- { d_map[n >> baseShift] &= ~constants::bitMask[n & posBits]; }
+ {
+   assert(n<d_capacity);
+   d_map[n >> baseShift] &= ~constants::bitMask[n & posBits];
+ }
 
  void set_to(unsigned long n,bool b)
  { if (b) insert(n); else remove(n); }
@@ -206,7 +213,10 @@ class BitMap
  void set_mod2(unsigned long n, unsigned long v) { set_to(n,(v&1)!=0); }
 
  void flip(unsigned long n)
- { d_map[n >> baseShift] ^= constants::bitMask[n & posBits]; }
+ {
+   assert(n<d_capacity);
+   d_map[n >> baseShift] ^= constants::bitMask[n & posBits];
+ }
 
 
  void fill(); // set all bits
