@@ -1033,36 +1033,98 @@ void embedding_f()
   }
 } // |embedding_f|
 
-// help function for |test_f|
-int z_choice(TorusPart t, const ComplexReductiveGroup& G,
-	     const CoweightInvolution& theta_t, const Weight& lambda)
+// help functions for |test_f|
+
+// find lift |h| of |t| such that |theta_t*h = -h|; |t| is |theta_t|-stable
+Coweight minus_stable_lift(TorusPart t, const CoweightInvolution& theta_t)
 {
-  const TitsGroup& Tg= G.titsGroup();
-  t -= Tg.twisted(t);
-  Coweight h(t.size(),0); // |h| represents rational, implicit denominator $4$
+  Coweight h(t.size(),0);
   for (TorusPart::base_set::iterator it = t.data().begin(); it(); ++it)
-    h[*it]=1;
+    h[*it]=1; // lift torus part to a coweight
   CoweightInvolution theta1 = theta_t;
   for (unsigned int i=0; i<theta1.numRows(); ++i)
     theta1(i,i)+=1; // add identity
-
   Coweight deviation = theta1*h; // failure of |h| to be |-theta| fixed
   deviation /= 2; // may, but should not, |throw std::runtime_error|
   Coweight correction = matreduc::find_solution(theta1,deviation); // idem
   correction *= 2; // the correction must be by an element of $2X_*$
   h -= correction;
   assert ( theta_t*h == -h );
-  h += G.distinguished().transposed()*h;  // compute $z^2=\lambda(h\delta(h))$
-  return lambda.dot(h) ; // square root will have implicit denominator $8$
+  assert(TorusPart(h) == t); // the correction kept |h| a lift of |t|
+  return h;
 }
 
+
+struct z_data
+{ const TitsCoset& Tg;
+  TitsElt a; Coweight h; Weight lamnum; int z;
+  z_data(const TitsCoset& G): Tg(G), a(G.titsGroup()) {}
+  TorusPart t() const { return Tg.titsGroup().left_torus_part(a); }
+};
+
+void z_choice(TitsElt a, const ComplexReductiveGroup& G,
+	      const CoweightInvolution& theta_t, const Weight& lambda,
+	      z_data& out)
+{
+  out.a = a; out.lamnum=lambda;
+  const TitsGroup& Tg= G.titsGroup();
+  TorusPart t = Tg.left_torus_part(a);
+  t -= Tg.twisted(t);
+  Coweight h = minus_stable_lift(t,theta_t);
+  out.h=h;
+  int z =
+    arithmetic::remainder(lambda.dot(h+G.distinguished().transposed()*h),4);
+  out.z=z; // reinterpreted modulo 8, thus choosing the "positive" square root
+}
+
+bool switched (const z_data& there,const z_data& here,
+	       ext_gen g, const RealReductiveGroup& GR,
+	       const CoweightInvolution& theta_t, const RatWeight& gamma)
+{
+  const RootDatum& rd = GR.rootDatum();
+  const TitsCoset& bTg = GR.basedTitsGroup();
+  TitsElt a = there.a;
+  for (unsigned int i=0; i<g.w_tau.size(); ++i)
+    bTg.strict_based_twisted_conjugate(a,g.w_tau[i]); // pull |a| here
+
+  TorusPart shift = here.t()+here.Tg.titsGroup().left_torus_part(a);
+  Coweight lift = minus_stable_lift(shift,theta_t);
+  Coweight wh = there.h;
+  for (unsigned int i=0; i<g.w_tau.size(); ++i)
+    rd.simpleCoreflect(wh,g.w_tau[i]); // SHOULD use subsystem....
+  wh += lift; // multiply (under $exp(\pi\ii/2 * )$) by |lift| and by
+  wh -= GR.complexGroup().distinguished().transposed()*lift; // $lift^{-\delta}$
+  // now |wh| is compatible with the torus part choice down |here|
+
+  Coweight offset = here.h-wh;
+  (offset - theta_t*offset)/=4; // |assert((1-theta_t)*offset % 4 == 0)|;
+  int Lambda_h_over_h = here.lamnum.dot(offset); // significant modulo 4
+
+  // now compute $(w.\gamma-\gamma)(h)$, by which $z$ gets multiplied
+  const Weight gn (gamma.numerator().begin(),gamma.numerator().end());
+  Weight mu=gn;
+  for (unsigned int i=0; i<g.w_tau.size(); ++i)
+    rd.simpleReflect(mu,g.w_tau[i]);
+  mu -= gn;
+  mu /= gamma.denominator(); // the result should lie in root lattice
+  int zz = mu.dot(there.h); // offset, significant modulo 4
+  zz = there.z + 2*zz ; // transport here, result is mod 8
+  int compare = (zz - here.z) - 2*Lambda_h_over_h;
+  compare = arithmetic::remainder(compare,8);
+  assert ( compare%4 == 0);
+  return compare==4;
+}
 void test_f()
 {
+  commands::ensure_full_block(); // silently force |nblock|
   ioutils::OutputFile file;
   const ComplexReductiveGroup& G = commands::currentComplexGroup();
+  const TitsCoset& bTg = commands::currentRealGroup().basedTitsGroup();
   const KGB& kgb = commands::currentRealGroup().kgb();
   param_block& block = commands::current_param_block();
+  const RatWeight& gamma = block.gamma();
   ext_block::extended_block eblock(block,G.twistedWeylGroup());
+  std::vector<z_data> data(eblock.size(),z_data(bTg));
   for (BlockElt n=0; n<eblock.size(); ++n)
   {
     BlockElt fix = eblock.z(n);
@@ -1070,8 +1132,64 @@ void test_f()
       G.involution_table().matrix(block.involution(fix)).transposed();
     const RatWeight& lambda = block.lambda(fix);
     const Weight lamnum (lambda.numerator().begin(),lambda.numerator().end());
-    int z = z_choice(kgb.torus_part(block.parent_x(fix)),G,theta_t,lamnum);
-    file << fix << ": " << z << '/' << 4*lambda.denominator() << std::endl;
+
+    // just transmitting the torus part $t$ suffices, because one has
+    // $\sigma_w\delta((\sigma_w)^{-1})=1$ as fix implies $\delta(w)=w$
+    z_choice(kgb.titsElt(block.parent_x(fix)),G,theta_t,lamnum,data[n]);
+  }
+
+  { // flip some choices of |z| so as to make switches disappear
+    std::vector<BlockElt> todo;
+    BitMap marked(eblock.size());
+    for (BlockElt n=0; n<eblock.size(); ++n)
+      if (not marked.isMember(n))
+      {
+	todo.push_back(n);
+	marked.insert(n); // mark element on first visit
+	do
+	{
+	  BlockElt m = todo.back();
+	  todo.pop_back();
+	  const z_data& here=data[m];
+	  const CoweightInvolution theta_t =
+	    G.involution_table().matrix(block.involution(eblock.z(m)))
+	    .transposed();
+	  for (weyl::Generator s=0; s<eblock.rank(); ++s)
+	    if (not marked.isMember(eblock.cross(s,m)))
+	    {
+	      BlockElt sm = eblock.cross(s,m);
+	      todo.push_back(sm);
+	      if (switched(data[sm],here,block.orbit(s),
+			   commands::currentRealGroup(),theta_t, gamma))
+		data[sm].z+=4;
+	      marked.insert(sm);
+	    }
+	}
+	while (not todo.empty());
+      }
+
+  }
+
+
+  // now check how cross links relate to the choices made
+  for (BlockElt n=0; n<eblock.size(); ++n)
+  {
+    BlockElt fix = eblock.z(n);
+    file << fix << ": z=exp(" << data[n].z << "\\pi i/"
+	 << 4*block.lambda(fix).denominator() << ") ";
+    const z_data& here=data[n];
+    const CoweightInvolution theta_t =
+      G.involution_table().matrix(block.involution(fix)).transposed();
+    for (weyl::Generator s=0; s<eblock.rank(); ++s)
+    {
+      BlockElt sn = eblock.cross(s,n);
+      const z_data& there=data[sn];
+      bool differs = switched(there,here,block.orbit(s),
+			      commands::currentRealGroup(),theta_t, gamma);
+      if (differs)
+	file << (int)s << '(' << eblock.z(sn) << ") ";
+    }
+    static_cast<std::ostream&>(file) << std::endl;
   }
 } // |test_f|
 

@@ -36,8 +36,7 @@ namespace commands {
   const SubSystemWithGroup& currentSubSystem();
   param_block& current_param_block();
   const StandardRepr& currentStandardRepr();
-  // kl::KLContext& currentKL();            // defined in blockmode.cpp
-  // const wgraph::WGraph& currentWGraph(); // defined in blockmode.cpp
+  void ensure_full_block();
 
 } // namespace reprmode
 

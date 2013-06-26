@@ -747,8 +747,7 @@ class TitsCoset
   const RootSystem& rs; // needed (only) for the |grading| method
 
  public:
-  TitsCoset(const ComplexReductiveGroup& G,
-	    Grading base_grading);
+  TitsCoset(const ComplexReductiveGroup& G, Grading base_grading);
 
   TitsCoset(const ComplexReductiveGroup& G);// adjoint case
 
@@ -791,6 +790,10 @@ class TitsCoset
 
   // operation defining cross action of simple roots
   inline void basedTwistedConjugate(TitsElt& a, size_t s) const;
+
+  // when no equivalence of |TitsElt| values is to be allowed (extended blocks)
+  // a more strict implementation of twisted conjugations is called for
+  void strict_based_twisted_conjugate(TitsElt& a, size_t s) const;
 
   void basedTwistedConjugate(TitsElt& a, const WeylWord& w) const;
   void basedTwistedConjugate(const WeylWord& w, TitsElt& a) const;
