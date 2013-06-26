@@ -43,16 +43,13 @@ namespace input {
 /*!
   Forget string in input buffer, read a new line, and position at start
 */
-std::istream& InputBuffer::getline(std::istream& is, const char* prompt,
-				   bool toHistory)
+void InputBuffer::getline(const char* prompt, bool toHistory)
 
 {
   const char* line = readLine(prompt,toHistory); // non-owned pointer
 
   str(line==NULL ? std::cout << "qq\n","qq" : line); // 'qq' at end of input
   reset();
-
-  return is;
 }
 
 void InputBuffer::reset()
