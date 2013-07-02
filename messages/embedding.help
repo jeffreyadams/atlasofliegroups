@@ -1,0 +1,7 @@
+
+The "embedding" command prints information whose purpose is to make explicit,
+for a given infinitesimal character, the base points of the dual KGB fibers
+for the subgroup defined by the coroots with integral value on the
+infinitesimal character when embedded in the dual fibers for the full group.
+What is shown for each involution (fiber) is the offset of the subgroup
+basepoint from the full group basepoint.

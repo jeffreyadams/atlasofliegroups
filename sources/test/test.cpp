@@ -157,7 +157,8 @@ void addTestCommands<commands::MainmodeTag> (commands::CommandNode& mode)
 	   "outputs the positive coroots in the simple coroot basis",
 	   commands::std_help);
 
-  mode.add("X",X_f,"prints union of K\\G/B for real forms in inner class");
+  mode.add("X",X_f,"prints union of K\\G/B for real forms in inner class",
+	   commands::std_help);
 
   if (testMode == MainMode)
     mode.add("test",test_f,test_tag);
