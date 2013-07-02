@@ -2791,10 +2791,17 @@ void KGB_twist_wrapper(expression_base::level l)
   push_value(x);
 }
 
-@ One important attribute of KGB elements is the associated root datum
-involution.
+@ Two important attributes of KGB elements are the associated Cartan class and
+root datum involution.
 
 @< Local function def...@>=
+void KGB_Cartan_wrapper(expression_base::level l)
+{ shared_KGB_elt x = get<KGB_elt_value>();
+  const KGB& kgb=x->rf->kgb();
+  if (l!=expression_base::no_value)
+    push_value(new Cartan_class_value(x->rf->parent,kgb.Cartan_class(x->val)));
+}
+
 void KGB_involution_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
@@ -2856,6 +2863,7 @@ install_function(cross_action_wrapper,@|"cross","(int,KGBElt->KGBElt)");
 install_function(Cayley_transform_wrapper,@|"Cayley","(int,KGBElt->KGBElt)");
 install_function(KGB_status_wrapper,@|"status","(int,KGBElt->int)");
 install_function(KGB_twist_wrapper,@|"twist","(KGBElt->KGBElt)");
+install_function(KGB_Cartan_wrapper,@|"Cartan_class","(KGBElt->CartanClass)");
 install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");
 install_function(torus_bits_wrapper,@|"torus_bits","(KGBElt->vec)");
 install_function(torus_factor_wrapper,@|"torus_factor","(KGBElt->ratvec)");

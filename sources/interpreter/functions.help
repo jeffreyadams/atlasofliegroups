@@ -371,6 +371,8 @@ KGB: (RealFrom,int->KGBElt): select a KGB element x among those of a real form
   The call KGB(i,rf) selects the element in line i of the print_KGB(rf)
   output.
 real_form: (KGBElt->RealForm): the real form for which the argument is defined
+Cartan_class: (KGBElt->CartanClass): the Cartan class for the KGB element
+involution: (KGBElt->mat): the involution associated to the KGB element
 cross: (int,KGBElt->KGBElt): cross action for (generator,KGB element)
 Cayley: (int,KGBElt->KGBElt): Cayley transform for (generator,KGB element)
   Calling Cayley(s,x) causes an error unless status(s,x)=3 (imag. non-compact)
@@ -379,7 +381,6 @@ status: (int,KGBElt->int): status of generator on KGB element, scale 0..4
   3: imaginary non-compact, 4:Complex ascent
 twist: (KGBElt->KGBElt): twist of KGB element x, useful for Hermitian dual
   This is defined by conjugation of x by the distinguished involution delta
-involution: (KGBElt->mat): the involution associated to the KGB element
 torus_bits: (KGBElt->vec): torus part of KGB element as vector of 0,1 values
 torus_factor:KGBElt->ratvec): torus part of KGB element, twice that in print_X
   To be interpreted modulo $(2\Z)^n$, and modulo the image of (transposed)
