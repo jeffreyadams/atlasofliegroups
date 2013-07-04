@@ -131,8 +131,7 @@ class GlobalTitsElement
    reduction of the |TorusElement| component that could be applied after
    Cayley transforms (and should be for deciding equality) is not implemented
    here, since it depends on the twisted involution in a way that is more
-   efficiently handled by tabulation than by on-the-fly computation (cf.
-   |kgb::GlobalFiberData|).
+   efficiently handled by tabulation than by on-the-fly computation.
 
    This class has two applications: the main one is just to be able to
    manipulate a given |GlobalTitsElement|, which in practice is used for |y|
@@ -140,13 +139,13 @@ class GlobalTitsElement
    testing purposes an initial application was to build a |GlobalTitsGroup| as
    a substitute for the |TitsGroup| and |TitsCoset| support classes handling
    |x| values. It is then attached to a whole inner class rather than to a
-   specific real form (as |TitsCoset| is) and as a consequence it can generate
-   "all" valid elements for it (the command 'X'). For the latter purpose the
-   |square_class_gen| and associated method are included, which permits
-   listing a set of initial elements from which others can be deduced. For the
-   main application however this field can be left an empty list, so as not to
-   waste any time computing it during construction. This dichotomy should of
-   course be reimplemented through a derived class.
+   specific real form, as |TitsCoset| is, whence the "Global". As a
+   consequence it can generate "all" valid elements for it (the command 'X').
+   For the latter purpose the |square_class_gen| and associated method are
+   included, which permits listing a set of initial elements from which others
+   can be deduced. For the main application however this field can be left an
+   empty list, so as not to waste any time computing it during construction.
+   This dichotomy should of course be reimplemented through a derived class.
 
    Another heritage of this double usage is an ambiguity in terminology: in
    the main use the |GlobalTitsElement|s are |y| values, in which case the
@@ -176,13 +175,13 @@ class GlobalTitsGroup : public TwistedWeylGroup
   GlobalTitsGroup& operator= (const GlobalTitsGroup&);
 
  public:
-  //!\brief constructor for inner class (use after latter is fully constructed)
+  // for implementing 'X' for inner class (when latter is fully constructed)
   GlobalTitsGroup(const ComplexReductiveGroup& G);
 
-  //!\brief constructor for dual inner class (the side of following contructor)
+  // will handle |y|-values from parent group, in |SubTitsGroup| (embedding)
   GlobalTitsGroup(const ComplexReductiveGroup& G,tags::DualTag);
 
-  //!\brief constructor from subdatum (dual side) + involution information
+  // will handle |y|-values from subdatum; starting point depends on |theta|
   GlobalTitsGroup(const SubSystemWithGroup& sub,
   		  const WeightInvolution& theta, // on opposite side from |sub|
 		  WeylWord& ww); // output: expresses |-theta^t| for |sub|
@@ -302,22 +301,25 @@ class GlobalTitsGroup : public TwistedWeylGroup
 
 
 
-//			     |class SubTutsGroup|
+//			     |class SubTitsGroup|
 
 
 // a class that also stores a torus part induced by the parent base involution
 // used only to implement the 'embedding' command, whence it has few methods
 class SubTitsGroup : public GlobalTitsGroup
 {
-  GlobalTitsGroup parent; // a second one!
-  const SubSystem& subsys;
-  TorusElement t;
+  // for comparison we store a second |GlobalTitsGroup|, also for |y|-values
+  GlobalTitsGroup parent; // this one operates in terms of parent generators
+  const SubSystem& subsys; // the subsystem for which we were created
+  TorusElement t; // "base grading" information for subsystem
  public:
   //!\brief constructor from subdatum (dual side) + involution information
   SubTitsGroup(const ComplexReductiveGroup& G,
 	       const SubSystemWithGroup& sub,
 	       const WeightInvolution& theta,
 	       WeylWord& ww); // output: expesses |-theta^t| for |sub|
+
+  // the method for which this class was introduced, used in 'embedding'
   TorusElement base_point_offset(const TwistedInvolution& tw) const;
 };
 

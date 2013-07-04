@@ -123,7 +123,7 @@ GlobalTitsGroup::GlobalTitsGroup
 
 GlobalTitsGroup::GlobalTitsGroup(const SubSystemWithGroup& sub,
 				 const WeightInvolution& theta,
-				 WeylWord& ww)
+				 WeylWord& ww) // express |-theta^t| for |sub|
   : TwistedWeylGroup(sub.Weyl_group(),sub.twist(theta,ww)) // sets |ww|
   , simple(sub.pre_root_datum()) // roots/coroots of sub, viewed from parent
   , delta_tr(theta) // is made transpose-fundamental (sub side) below, by |ww|
@@ -136,8 +136,8 @@ GlobalTitsGroup::GlobalTitsGroup(const SubSystemWithGroup& sub,
     delta_tr *= // right-multiply on parent side because of duality
       (sub.parent_datum().root_reflection // translating to parent reflections
        (sub.parent_nr_simple(ww[i])));
-  // now |delta_tr| is split-Cartan involution for parent
-  delta_tr.negate(); // change sign, so as to stabilise set of positive roots
+  // now |delta_tr| is (from parent side) most-split-Cartan-for-sub involution
+  delta_tr.negate(); // change sign, to stabilise set of sub-positive roots
 
   for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
     alpha_v[i]=TorusPart(simple.roots()[i]);
@@ -461,18 +461,22 @@ SubTitsGroup::SubTitsGroup(const ComplexReductiveGroup& G,
 , t(G.rank())
 {
   assert(sub.parent_datum().rank()==G.rank());
-  const RootDatum rd(sub.pre_root_datum()); // need to construct it
+  const RootDatum rd(sub.pre_root_datum()); // construct dual-sub root datum
   GlobalTitsElement a(G.rank()); // identity
+
+  // record compactness of (imaginary ones among) subsystem simple roots in |t|
   for (weyl::Generator s=0; s<sub.rank(); ++s)
     if (parent.compact(sub.parent_datum(),sub.parent_nr_simple(s),a))
       t = t + y_values::exp_2pi(rd.fundamental_weight(s));
 }
 
-TorusElement SubTitsGroup::base_point_offset(const TwistedInvolution& tw)
-  const
+// transport subsystem base |GlobalTitsElement| to fiber |tw|, doing Cayley and
+// cross within parent |GlobalTitsGroup|; return the accumulated |TorusEement|
+TorusElement SubTitsGroup::base_point_offset(const TwistedInvolution& tw) const
 {
-  GlobalTitsElement a(t);
-  weyl::InvolutionWord iw=involution_expr(tw);
+  GlobalTitsElement a(t); // base baspoint for subsystem, view within parent
+  // use method _inherited_ from |TwistedWeylGroup|, which therefore interprets
+  weyl::InvolutionWord iw=involution_expr(tw); // |tw| on subsystem generators
   for (size_t i=iw.size(); i-->0;)
     if (iw[i]>=0) // Cayley
     {
@@ -490,6 +494,7 @@ TorusElement SubTitsGroup::base_point_offset(const TwistedInvolution& tw)
 	parent.cross_act(ww[j],a);
     }
 
+  // parent |a.tw()| and subsystem |tw| should match; |GlobalTitsGroup| matrices
   assert(parent.involution_matrix(a.tw())==involution_matrix(tw));
   return a.torus_part();
 }

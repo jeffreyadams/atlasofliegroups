@@ -311,7 +311,7 @@ KGB_elt_entry InvolutionTable::x_pack(const GlobalTitsElement& x) const
   assert(i<hash.size());
   RatWeight wt = x.torus_part().log_2pi();
   // we need projector modulo kernel of |theta^tr+1|, cf. constructor
-  int_Matrix A = matrix(i).transposed(); // |kgb::GlobalFiberData(G,tab)|
+  int_Matrix A = matrix(i).transposed();
   for (size_t i=0; i<A.numRows(); ++i)
     A(i,i) += 1;
   int_Matrix projector = lattice::row_saturate(A);
@@ -335,7 +335,7 @@ InvolutionTable::x_equiv(const GlobalTitsElement& x0,
   RatWeight wt = x0.torus_part().log_2pi()-x1.torus_part().log_2pi();
 
   // we need projector modulo kernel of |theta^tr+1|, cf. constructor
-  int_Matrix A = matrix(i).transposed(); // |kgb::GlobalFiberData(G,tab)|
+  int_Matrix A = matrix(i).transposed();
   for (size_t i=0; i<A.numRows(); ++i)
     A(i,i) += 1;
   int_Matrix projector = lattice::row_saturate(A);

@@ -1,6 +1,6 @@
 
 The Ktypemat command is part of the K-type suite of commands:
-KTypeform, Ktypemat, test and branch. It describes the irreducible
+KTypeform, Ktypemat, srtest and branch. It describes the irreducible
 representations of K "K-types". See [David Vogan, Branching to a
 Maximal Compact Subgroup, in proceedings of the conference for Roger
 Howe, Singapore 2007].
@@ -14,7 +14,7 @@ See the help file for Ktypeform for an overview of K-types and normal
 final standard modules.
 
 In response to the Ktypemat command the user enters a standard module,
-as in the Ktypeform command. The software test if this is both
+as in the Ktypeform command. The software tests if this is both
 "standard" and "final" (for Ktypeform it is only required to be
 final); if not it prints a message and quits. If so, the user is told
 the height of this representation, and asked for a height bound.

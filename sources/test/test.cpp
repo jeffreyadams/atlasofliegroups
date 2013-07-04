@@ -78,7 +78,6 @@ namespace {
   void poscoroots_rootbasis_f();
   void checkbasept_f();
   void sub_KGB_f();
-  void trivial_f();
   void Ktypeform_f();
   void qKtypeform_f();
   void Ktypemat_f();
@@ -137,7 +136,7 @@ void addTestCommands<commands::EmptymodeTag> (commands::CommandNode& mode)
 	   "iterates over root data of given rank, calling examine",
 	   commands::use_tag);
   if (testMode == EmptyMode)
-    mode.add("test",test_f,"test command (for development only)");
+    mode.add("test",test_f,test_tag);
 }
 
 
@@ -174,9 +173,6 @@ void addTestCommands<commands::RealmodeTag> (commands::CommandNode& mode)
   mode.add("sub_KGB",sub_KGB_f,
 	   "computes subset of KGB data used in Ktypeform",
 	   commands::use_tag);
-  mode.add("trivial",trivial_f,
-	   "tries to compute Ktypeform for trivial representation",
-	   commands::use_tag);
   mode.add("Ktypeform",Ktypeform_f,
 	   "computes formula for a K-type",commands::std_help);
   mode.add("qKtypeform",qKtypeform_f,
@@ -195,9 +191,6 @@ void addTestCommands<commands::RealmodeTag> (commands::CommandNode& mode)
 
   mode.add("examine",exam_f,
 	   "tests whether block is ordered by Weyl length",commands::use_tag);
-  mode.add("embedding",embedding_f,
-	   "give information about embedding of KGB of subsystem",
-	   commands::std_help);
 
   if (testMode == RealMode)
     mode.add("test",test_f,test_tag);
@@ -218,6 +211,9 @@ void addTestCommands<commands::BlockmodeTag> (commands::CommandNode& mode)
 template<>
 void addTestCommands<commands::ReprmodeTag> (commands::CommandNode& mode)
 {
+  mode.add("embedding",embedding_f,
+	   "give information about embedding of KGB of subsystem",
+	   commands::std_help);
   if (testMode == ReprMode)
     mode.add("test",test_f,test_tag);
 
@@ -233,7 +229,48 @@ void addTestCommands<commands::ReprmodeTag> (commands::CommandNode& mode)
 
 namespace {
 
-  // Main mode functions
+
+// Empty mode functions
+
+bool examine(RealReductiveGroup& G);
+void testrun_f()
+{
+  unsigned long rank=interactive::get_bounded_int
+    (interactive::common_input(),"rank: ",constants::RANK_MAX+1);
+  std::cout << "Testing W-length monotonicity.\n"; // adapt to |examine|
+  for (testrun::LieTypeIterator it(testrun::Semisimple,rank); it(); ++it)
+  {
+    std::cout<< *it << std::endl;
+    size_t count=0;
+    for (testrun::CoveringIterator cit(*it); cit(); ++cit)
+    {
+      if (count>0) std::cout << ',';
+      std::cout << ++count;
+      PreRootDatum prd = *cit;
+      WeightInvolution id(prd.rank()); // identity
+      ComplexReductiveGroup G(prd,id);
+      for (RealFormNbr rf=0; rf<G.numRealForms(); ++rf)
+      {
+	RealReductiveGroup G_R(G,rf);
+	if (not examine(G_R))
+	{
+	  lietype::InnerClassType ict;
+	  for (size_t i=0; i<it->size(); ++i)
+	    ict.push_back('e');
+	  lietype::Layout lay(*it,ict);
+	  realform_io::Interface itf(G,lay);
+	  std::cout << " Failure at real form " << itf.out(rf) << std::endl;
+	}
+	std::cout << std::flush;
+      }
+    }
+    std::cout << '.' << std::endl;
+  }
+
+}
+
+
+// Main mode functions
 
 // Print the roots in the simple root coordinates.
 void roots_rootbasis_f()
@@ -275,6 +312,16 @@ void poscoroots_rootbasis_f()
   prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
 }
 
+
+void X_f()
+{
+  ComplexReductiveGroup& G=commands::currentComplexGroup();
+  kgb::global_KGB kgb(G); // build global Tits group, "all" square classes
+  ioutils::OutputFile f;
+  kgb_io::print_X(f,kgb);
+}
+
+
 // Real mode functions
 
 void checkbasept_f()
@@ -299,43 +346,6 @@ void sub_KGB_f()
   std::cout << "Conjugating word [" << ww << "]\n";
   kgb_io::print_sub_KGB(std::cout,G.kgb(),sub);
 }
-
-void trivial_f()
-{
-  RealReductiveGroup& G = commands::currentRealGroup();
-  const RootDatum& rd=G.rootDatum();
-  const KGB& kgb = G.kgb();
-
-  standardrepk::KhatContext khc(G);
-
-  KGBElt last=kgb.size()-1;
-
-  WeylWord ww;
-  standardrepk::PSalgebra q=
-    khc.theta_stable_parabolic(khc.KGB_elt_rep(last),ww);
-
-  KGBEltList subset=khc.sub_KGB(q);
-  size_t max_l=kgb.length(subset.back());
-
-  standardrepk::combination sum(khc.height_order());
-  for (size_t i=0; i<subset.size(); ++i)
-  {
-    KGBElt x=subset[i];
-    StandardRepK sr=khc.std_rep(rd.twoRho(),kgb.titsElt(x));
-    standardrepk::combination c=khc.standardize(sr);
-    if ((max_l-kgb.length(x))%2 == 0)
-      sum += c;
-    else
-      sum-=c;
-  }
-
-
-  {
-    std::ostringstream s; khc.print(s,sum);
-    ioutils::foldLine(std::cout,s.str(),"+\n- ","",1) << std::endl;
-  }
-
-} // trivial
 
 void Ktypeform_f()
 {
@@ -812,13 +822,6 @@ void qbranch_f()
 } // |qbranch_f|
 
 
-// Block mode functions
-
-
-
-// Empty mode functions
-
-
 /*
   Function invoked by the "srtest" command.
 */
@@ -868,56 +871,12 @@ bool examine(RealReductiveGroup& G)
   return true;
 }
 
-void testrun_f()
-{
-  unsigned long rank=interactive::get_bounded_int
-    (interactive::common_input(),"rank: ",constants::RANK_MAX+1);
-  std::cout << "Testing W-length monotonicity.\n";
-  for (testrun::LieTypeIterator it(testrun::Semisimple,rank); it(); ++it)
-  {
-    std::cout<< *it << std::endl;
-    size_t count=0;
-    for (testrun::CoveringIterator cit(*it); cit(); ++cit)
-    {
-      if (count>0) std::cout << ',';
-      std::cout << ++count;
-      PreRootDatum prd = *cit;
-      WeightInvolution id(prd.rank()); // identity
-      ComplexReductiveGroup G(prd,id);
-      for (RealFormNbr rf=0; rf<G.numRealForms(); ++rf)
-      {
-	RealReductiveGroup G_R(G,rf);
-	if (not examine(G_R))
-	{
-	  lietype::InnerClassType ict;
-	  for (size_t i=0; i<it->size(); ++i)
-	    ict.push_back('e');
-	  lietype::Layout lay(*it,ict);
-	  realform_io::Interface itf(G,lay);
-	  std::cout << " Failure at real form " << itf.out(rf) << std::endl;
-	}
-	std::cout << std::flush;
-      }
-    }
-    std::cout << '.' << std::endl;
-  }
-
-}
-
 void exam_f()
 {
   std::cout << "W-length monotine in KGB? "
             << (examine(commands::currentRealGroup())
 		? "yes" : "no")
 	    << std::endl;
-}
-
-void X_f()
-{
-  ComplexReductiveGroup& G=commands::currentComplexGroup();
-  kgb::global_KGB kgb(G); // build global Tits group, "all" square classes
-  ioutils::OutputFile f;
-  kgb_io::print_X(f,kgb);
 }
 
 
@@ -944,69 +903,31 @@ TorusElement torus_part
 
 void embedding_f()
 {
-  RealReductiveGroup& GR = commands::currentRealGroup();
-  ComplexReductiveGroup& G = GR.complexGroup();
-  const RootDatum& rd = G.rootDatum();
+  const Rep_context& rc = commands::currentRepContext();
+  const ComplexReductiveGroup& G = rc.complexGroup();
+  const KGB& kgb = rc.kgb();
 
-  Weight lambda_rho =
-    interactive::get_weight(interactive::sr_input(),"Give lambda-rho: ",
-			    G.rank());
-
-  RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
-
-  RatWeight nu=
-    interactive::get_ratweight
-    (interactive::sr_input(),"rational parameter nu: ",rd.rank());
-
-  const KGB& kgb = GR.kgb();
-  unsigned long x=interactive::get_bounded_int
-    (interactive::common_input(),"KGB element: ",kgb.size());
-
+  KGBElt x = commands::currentStandardRepr().x();
   WeightInvolution theta = G.involutionMatrix(kgb.involution(x));
 
-  nu = RatWeight // make |nu| fixed by $-\theta$
-    (nu.numerator()- theta*nu.numerator(),2*nu.denominator());
-
-  RatWeight gamma = nu + RatWeight
-    (lambda.numerator()+theta*lambda.numerator(),2*lambda.denominator());
-
-  ioutils::OutputFile f;
-  f << "Infinitesimal character is " << gamma << std::endl;
-
-  SubSystemWithGroup sub = SubSystemWithGroup::integral(rd,gamma);
-
-  WeylWord ww;
-  const tits::SubTitsGroup sub_gTg
-    (G,sub,G.involutionMatrix(kgb.involution(x)),ww);
-
-  Permutation pi;
-
-  f << "Subsystem on dual side is ";
-  if (sub.rank()==0)
-    f << "empty.\n";
-  else
-  {
-    f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
-      << ", with roots ";
-    for (weyl::Generator s=0; s<sub.rank(); ++s)
-      f << sub.parent_nr_simple(pi[s]) << (s<sub.rank()-1 ? "," : ".\n");
-  }
-  f << "Twisted involution in subsystem: " << ww << ".\n";
+  WeylWord ww; // will record the most compact involution for the subsystem
+  const tits::SubTitsGroup sub_gTg (G,commands::currentSubSystem(),theta,ww);
 
   weyl::TI_Entry::Pooltype pool;
   HashTable<weyl::TI_Entry,unsigned int> hash_table(pool);
   std::vector<unsigned int> stops;
   {
+    const TwistedWeylGroup& tW = // used for handling subsystem involutions
+      sub_gTg; // therefore use this rather than |rc.twistedWeylGroup()|
     std::vector<TwistedInvolution> queue(1,TwistedInvolution());
     size_t qi = 0; // |queue| inspected up to |qi|
-    const TwistedWeylGroup& tW = sub_gTg; // base object, subgroup
 
     while (qi<queue.size())
     {
       weyl::TI_Entry tw=queue[qi++];
       if (hash_table.find(tw)==hash_table.empty) // Cartan class not seen yet
       { stops.push_back(hash_table.size());
-	// generate like kgb::FiberData::complete_class|
+	// generate, like kgb::FiberData::complete_class|
 	for (unsigned int i=hash_table.match(tw); i<hash_table.size(); ++i)
 	{
 	  tw=pool[i];
@@ -1023,6 +944,9 @@ void embedding_f()
     } // |while| queue not completely inspected
   } // forget |queue|
   stops.push_back(~0); // sentinel
+
+  ioutils::OutputFile f;
+
   size_t si=0; // index into |stops|
   for (unsigned int i=0; i<pool.size(); ++i)
   {
@@ -1190,6 +1114,10 @@ void test_f()
     static_cast<std::ostream&>(file) << std::endl;
   }
 } // |test_f|
+
+
+// Block mode functions
+
 
 
 } // |namespace|
