@@ -616,8 +616,7 @@ RatWeight param_block::nu(BlockElt z) const
 }
 
 // reconstruct $\lambda-\rho$ from $\gamma$ and the torus part $t$ of $y$
-// using $\lambda = \gamma - {1-\theta\over2}.\log{{t\over\pi\ii})$
-// the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
+// here the lift $t$ is normalised using |InvolutionTable::real_unique|
 Weight param_block::lambda_rho(BlockElt z) const
 {
   RatWeight t =  y_rep(y(z)).log_pi(false);
@@ -1142,66 +1141,20 @@ const ComplexReductiveGroup& param_block::complexGroup() const
 const InvolutionTable& param_block::involution_table() const
   { return complexGroup().involution_table(); }
 
-class nblock_elt // internal representation during construction
+
+nblock_help::nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
+  : kgb(GR.kgb()), rd(subsys.parent_datum()), sub(subsys)
+  , i_tab(GR.complexGroup().involution_table())
+  , dual_m_alpha(kgb.rank()), half_alpha()
 {
-  friend class nblock_help;
-  KGBElt xx; // identifies element in parent KGB set
-  TorusElement yy; // adds "local system" information to |xx|
-public:
-  nblock_elt (KGBElt x, const TorusElement& t) : xx(x), yy(t) {}
-
-  KGBElt x() const { return xx; }
-  const TorusElement y() const { return yy; }
-
-}; // |class nblock_elt|
-
-class nblock_help // a support class for |nblock_elt|
-{
-public: // references stored for convenience, no harm in exposing them
-  const KGB& kgb;
-  const RootDatum& rd;  // the full (parent) root datum
-  const SubSystem& sub; // the relevant subsystem
-  const InvolutionTable& i_tab; // information about involutions, for |pack|
-
-private:
-  std::vector<TorusPart> dual_m_alpha; // the simple roots, reduced modulo 2
-  std::vector<TorusElement> half_alpha; // half the simple roots
-
-  void check_y(const TorusElement& t, InvolutionNbr i) const;
-  void parent_cross_act(nblock_elt& z, weyl::Generator s) const;
-  void parent_up_Cayley(nblock_elt& z, weyl::Generator s) const;
-  void parent_down_Cayley(nblock_elt& z, weyl::Generator s) const;
-
-public:
-  nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
-    : kgb(GR.kgb()), rd(subsys.parent_datum()), sub(subsys)
-    , i_tab(GR.complexGroup().involution_table())
-    , dual_m_alpha(kgb.rank()), half_alpha()
+  assert(kgb.rank()==rd.semisimpleRank());
+  half_alpha.reserve(kgb.rank());
+  for (weyl::Generator s=0; s<kgb.rank(); ++s)
   {
-    assert(kgb.rank()==rd.semisimpleRank());
-    half_alpha.reserve(kgb.rank());
-    for (weyl::Generator s=0; s<kgb.rank(); ++s)
-    {
-      dual_m_alpha[s]=TorusPart(rd.simpleRoot(s));
-      half_alpha.push_back(TorusElement(RatWeight(rd.simpleRoot(s),2),false));
-    }
+    dual_m_alpha[s]=TorusPart(rd.simpleRoot(s));
+    half_alpha.push_back(TorusElement(RatWeight(rd.simpleRoot(s),2),false));
   }
-
-  void cross_act(nblock_elt& z, weyl::Generator s) const;
-  void cross_act_parent_word(const WeylWord& ww, nblock_elt& z) const;
-  void do_up_Cayley (nblock_elt& z, weyl::Generator s) const;
-  void do_down_Cayley (nblock_elt& z, weyl::Generator s) const;
-  bool is_real_nonparity(nblock_elt z, weyl::Generator s) const; // by value
-
-  y_entry pack_y(const nblock_elt& z) const
-  {
-    InvolutionNbr i = kgb.inv_nr(z.x());
-#ifndef NDEBUG
-    check_y(z.y(),i);
-#endif
-    return i_tab.pack(z.y(),i);
-  }
-}; // |class nblock_help|
+}
 
 void nblock_help::check_y(const TorusElement& t, InvolutionNbr i) const
 {
@@ -1241,7 +1194,10 @@ void nblock_help::cross_act (nblock_elt& z, weyl::Generator s) const
 
 void nblock_help::parent_up_Cayley(nblock_elt& z, weyl::Generator s) const
 {
-  z.xx=kgb.cayley(s,z.xx); // direct Cayley transform on $x$ side
+  KGBElt cx=kgb.cayley(s,z.xx); // direct Cayley transform on $x$ side
+  if (cx == UndefKGB)
+    return; // silently ignore undefined Cayley case
+  z.xx = cx;
 
   /* on $y$ side ensure that |z.yy.evaluate_at(rd.simpleCoroot(s))| is even.
    We must adapt by adding a multiple of |simpleRoot(s)|. This may be a
@@ -1278,7 +1234,11 @@ bool nblock_help::is_real_nonparity(nblock_elt z, weyl::Generator s) const
 
 void nblock_help::parent_down_Cayley(nblock_elt& z, weyl::Generator s) const
 {
-  z.xx=kgb.inverseCayley(s,z.xx).first; // inverse Cayley transform on $x$ side
+  KGBElt cx=kgb.inverseCayley(s,z.xx).first; // inverse Cayley on $x$ side
+  if (cx == UndefKGB)
+    return; // silently ignore undefined inverse Cayley case
+  z.xx = cx;
+
   // on $y$ side just keep the same dual |TorusElement|, so nothing to do
 #ifndef NDEBUG
   Rational r = z.yy.evaluate_at(rd.simpleCoroot(s)); // modulo $2\Z$
@@ -1295,6 +1255,16 @@ void nblock_help::do_down_Cayley (nblock_elt& z, weyl::Generator s) const
   for (size_t i=0; i<ww.size(); ++i)
     parent_cross_act(z,ww[i]);
 }
+
+y_entry nblock_help::pack_y(const nblock_elt& z) const
+{
+  InvolutionNbr i = kgb.inv_nr(z.x());
+#ifndef NDEBUG
+  check_y(z.y(),i);
+#endif
+  return i_tab.pack(z.y(),i);
+}
+
 
 BlockElt non_integral_block::element(KGBElt x,KGBElt y) const
 {

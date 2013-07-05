@@ -357,6 +357,7 @@ TorusPart InvolutionTable::check_rho_imaginary(InvolutionNbr inv) const
   return result;
 }
 
+// choose unique representative for real projection of rational weight
 void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const
 {
   const record& rec=data[inv];

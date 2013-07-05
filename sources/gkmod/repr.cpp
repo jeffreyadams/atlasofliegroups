@@ -71,18 +71,22 @@ StandardRepr
 		      ((lambda+nu+theta_diff)/=2).normalize());
 }
 
-StandardRepr Rep_context::sr
-  (KGBElt x, const Weight lambda_rho, const RatWeight& nu) const
+StandardRepr Rep_context::sr_gamma
+  (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const
 {
-  const InvolutionNbr i_x = kgb().inv_nr(x);
   const InvolutionTable& i_tab = complexGroup().involution_table();
-  const WeightInvolution& theta = i_tab.matrix(i_x);
+  return StandardRepr(x, i_tab.pack(kgb().inv_nr(x),lambda_rho), gamma);
+}
+
+RatWeight Rep_context::gamma
+  (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
+{
+  const InvolutionTable& i_tab = complexGroup().involution_table();
   const RatWeight lambda(lambda_rho*2+rootDatum().twoRho(),2);
   const RatWeight diff = lambda - nu;
-  const RatWeight theta_diff(theta*diff.numerator(),
+  const RatWeight theta_diff(i_tab.matrix(kgb().inv_nr(x))*diff.numerator(),
 			     diff.denominator()); // theta(lambda-nu)
-  return StandardRepr(x,i_tab.pack(i_x,lambda_rho),
-		      ((lambda+nu+theta_diff)/=2).normalize());
+  return ((lambda+nu+theta_diff)/=2).normalize();
 }
 
 StandardRepr Rep_context::sr(const param_block& b, BlockElt i) const
@@ -177,6 +181,65 @@ bool Rep_context::is_final(const StandardRepr& z, RootNbr& witness) const
   return true;
 }
 
+bool Rep_context::is_oriented(const StandardRepr& z, RootNbr alpha) const
+{
+  const RootDatum& rd = rootDatum();
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const RootNbrSet real = complexGroup().involution_table().real_roots(i_x);
+
+  assert(real.isMember(alpha)); // only real roots should be tested
+
+  const Weight& av = rootDatum().coroot(alpha);
+  const int numer = av.dot(z.gamma().numerator());
+  const int denom = z.gamma().denominator();
+  assert(numer%denom!=0); // and the real root alpha should be non-integral
+
+  const Weight test_wt = i_tab.unpack(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
+  const int eps = av.dot(test_wt)%4==0 ? 0 : denom;
+
+  return arithmetic::remainder(numer+eps,2*denom)< (unsigned)denom;
+}
+
+unsigned int Rep_context::orientation_number(const StandardRepr& z) const
+{
+  const RootDatum& rd = rootDatum();
+  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const RootNbrSet real = i_tab.real_roots(i_x);
+  const Permutation& root_inv = i_tab.root_involution(i_x);
+  const Ratvec_Numer_t& numer = z.gamma().numerator();
+  const arithmetic::Numer_t denom = z.gamma().denominator();
+  const Weight test_wt = i_tab.unpack(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
+
+  unsigned count = 0;
+
+  for (unsigned i=0; i<rd.numPosRoots(); ++i)
+  {
+    const RootNbr alpha = rd.numPosRoots()+i;
+    const Weight& av = rootDatum().coroot(alpha);
+    const arithmetic::Numer_t num = av.dot(numer);
+    if (num%denom!=0) // skip integral roots
+    { if (real.isMember(alpha))
+      {
+	int eps = av.dot(test_wt)%4==0 ? 0 : denom;
+	if ((num>0) == // either positive for gamma and oriented, or neither
+	    (arithmetic::remainder(num+eps,2*denom)< (unsigned)denom))
+	  ++count;
+      }
+      else // complex root
+      {
+	assert(i_tab.complex_roots(i_x).isMember(alpha));
+	const RootNbr beta = root_inv[alpha];
+	if (i<rd.rt_abs(beta) // consider only first conjugate "pair"
+	    and (num>0)!=(rootDatum().coroot(beta).dot(numer)>0))
+	  ++count;
+      }
+    }
+  }
+  return count;
+} // |orientation_number|
+
 void Rep_context::make_dominant(StandardRepr& z) const
 {
   const RootDatum& rd = rootDatum();
@@ -212,7 +275,7 @@ void Rep_context::make_dominant(StandardRepr& z) const
     while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
   }
   z.y_bits=i_tab.pack(i_x,lr);
-}
+} // |make_dominant|
 
 RationalList Rep_context::reducibility_points(const StandardRepr& z) const
 {
@@ -275,66 +338,73 @@ RationalList Rep_context::reducibility_points(const StandardRepr& z) const
       fracs.insert(Rational(s,it->first));
 
   return RationalList(fracs.begin(),fracs.end());
-}
+} // |reducibility_points|
 
-bool Rep_context::is_oriented(const StandardRepr& z, RootNbr alpha) const
+
+StandardRepr Rep_context::cross(weyl::Generator s, StandardRepr z) const
 {
+  make_dominant(z);
+  const RatWeight infin_char=z.gamma(); // now get the infinitesimal character
   const RootDatum& rd = rootDatum();
-  const InvolutionNbr i_x = kgb().inv_nr(z.x());
-  const InvolutionTable& i_tab = complexGroup().involution_table();
-  const RootNbrSet real = complexGroup().involution_table().real_roots(i_x);
+  const SubSystem& subsys = SubSystem::integral(rd,infin_char);
+  blocks::nblock_help aux(realGroup(),subsys);
+  blocks::nblock_elt src(z.x(),y_values::exp_pi(infin_char-lambda(z)));
+  aux.cross_act(src,s);
+  RatWeight t =  src.y().log_pi(false);
+  // InvolutionNbr i_x = kgb().inv_nr(z.x());
+  // no need to do |complexGroup().involution_table().real_unique(i_x,t)|
 
-  assert(real.isMember(alpha)); // only real roots should be tested
-
-  const Weight& av = rootDatum().coroot(alpha);
-  const int numer = av.dot(z.gamma().numerator());
-  const int denom = z.gamma().denominator();
-  assert(numer%denom!=0); // and the real root alpha should be non-integral
-
-  const Weight test_wt = i_tab.unpack(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
-  const int eps = av.dot(test_wt)%4==0 ? 0 : denom;
-
-  return arithmetic::remainder(numer+eps,2*denom)< (unsigned)denom;
+  RatWeight lr =  (infin_char - t - RatWeight(rd.twoRho(),2)).normalize();
+  assert(lr.denominator()==1);
+  return StandardRepr
+    (sr_gamma(src.x(),
+	      Weight(lr.numerator().begin(),lr.numerator().end()),
+	      infin_char));
 }
 
-unsigned int Rep_context::orientation_number(const StandardRepr& z) const
+StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
 {
+  make_dominant(z);
+  const RatWeight infin_char=z.gamma(); // now get the infinitesimal character
   const RootDatum& rd = rootDatum();
-  const InvolutionTable& i_tab = complexGroup().involution_table();
-  const InvolutionNbr i_x = kgb().inv_nr(z.x());
-  const RootNbrSet real = i_tab.real_roots(i_x);
-  const Permutation& root_inv = i_tab.root_involution(i_x);
-  const Ratvec_Numer_t& numer = z.gamma().numerator();
-  const arithmetic::Numer_t denom = z.gamma().denominator();
-  const Weight test_wt = i_tab.unpack(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
+  const SubSystem& subsys = SubSystem::integral(rd,infin_char);
+  blocks::nblock_help aux(realGroup(),subsys);
+  blocks::nblock_elt src(z.x(),y_values::exp_pi(infin_char-lambda(z)));
+  aux.do_up_Cayley(src,s);
+  RatWeight t =  src.y().log_pi(false);
+  // InvolutionNbr i_x = kgb().inv_nr(z.x());
+  // no need to do |complexGroup().involution_table().real_unique(i_x,t)|
 
-  unsigned count = 0;
-
-  for (unsigned i=0; i<rd.numPosRoots(); ++i)
-  {
-    const RootNbr alpha = rd.numPosRoots()+i;
-    const Weight& av = rootDatum().coroot(alpha);
-    const arithmetic::Numer_t num = av.dot(numer);
-    if (num%denom!=0) // skip integral roots
-    { if (real.isMember(alpha))
-      {
-	int eps = av.dot(test_wt)%4==0 ? 0 : denom;
-	if ((num>0) == // either positive for gamma and oriented, or neither
-	    (arithmetic::remainder(num+eps,2*denom)< (unsigned)denom))
-	  ++count;
-      }
-      else // complex root
-      {
-	assert(i_tab.complex_roots(i_x).isMember(alpha));
-	const RootNbr beta = root_inv[alpha];
-	if (i<rd.rt_abs(beta) // consider only first conjugate "pair"
-	    and (num>0)!=(rootDatum().coroot(beta).dot(numer)>0))
-	  ++count;
-      }
-    }
-  }
-  return count;
+  RatWeight lr =  (infin_char - t - RatWeight(rd.twoRho(),2)).normalize();
+  assert(lr.denominator()==1);
+  return StandardRepr
+    (sr_gamma(src.x(),
+	      Weight(lr.numerator().begin(),lr.numerator().end()),
+	      infin_char));
 }
+
+StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
+{
+  make_dominant(z);
+  const RatWeight infin_char=z.gamma(); // now get the infinitesimal character
+  const RootDatum& rd = rootDatum();
+  const SubSystem& subsys = SubSystem::integral(rd,infin_char);
+  blocks::nblock_help aux(realGroup(),subsys);
+  blocks::nblock_elt src(z.x(),y_values::exp_pi(infin_char-lambda(z)));
+  aux.do_down_Cayley(src,s);
+  RatWeight t =  src.y().log_pi(false);
+  // InvolutionNbr i_x = kgb().inv_nr(z.x());
+  // no need to do |complexGroup().involution_table().real_unique(i_x,t)|
+
+  RatWeight lr =  (infin_char - t - RatWeight(rd.twoRho(),2)).normalize();
+  assert(lr.denominator()==1);
+  return StandardRepr
+    (sr_gamma(src.x(),
+	      Weight(lr.numerator().begin(),lr.numerator().end()),
+	      infin_char));
+}
+
+
 
 Rep_context::compare Rep_context::repr_less() const
 { return compare(rootDatum().dual_twoRho()); }

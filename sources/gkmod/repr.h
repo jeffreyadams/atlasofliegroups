@@ -106,10 +106,13 @@ class Rep_context
        const standardrepk::KhatContext& khc,
        const RatWeight& nu) const;
 
-  StandardRepr
-    sr(KGBElt x,
-       const Weight lambda_rho,
-       const RatWeight& nu) const;
+  RatWeight gamma // compute (representative of) infinitesimal character
+    (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const;
+  StandardRepr sr_gamma // use this one when infinitesimal character is known
+    (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const;
+  StandardRepr sr // construct parameter from |(x,\lambda,\nu)| triplet
+    (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
+  { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
 
   StandardRepr sr(const param_block& b, BlockElt i) const;
 
@@ -133,6 +136,10 @@ class Rep_context
   void make_dominant(StandardRepr& z) const;
 
   RationalList reducibility_points(const StandardRepr& z) const;
+
+  StandardRepr cross(weyl::Generator s, StandardRepr z) const;
+  StandardRepr Cayley(weyl::Generator s, StandardRepr z) const;
+  StandardRepr inv_Cayley(weyl::Generator s, StandardRepr z) const;
 
   class compare
   { Coweight level_vec; // linear form to apply to |gamma| for ordering
