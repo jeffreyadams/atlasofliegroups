@@ -49,28 +49,6 @@ size_t Rep_context::rank() const { return rootDatum().rank(); }
 const TwistedInvolution Rep_context::twistedInvolution(size_t cn) const
 { return complexGroup().twistedInvolution(cn); }
 
-StandardRepr
-  Rep_context::sr
-    (const standardrepk::StandardRepK& srk,
-     const standardrepk::KhatContext& khc,
-     const RatWeight& nu) const
-{
-  const TitsElt a = khc.titsElt(srk); // was reduced during construction |srk|
-  const KGBElt x= khc.kgb().lookup(a);
-  const InvolutionNbr i_x = kgb().inv_nr(x);
-  const InvolutionTable& i_tab = complexGroup().involution_table();
-  const WeightInvolution& theta = i_tab.matrix(i_x);
-
-  const Weight lambda2 = khc.lift(srk); // doubled coordinates
-  const RatWeight lambda(lambda2,2);
-  const RatWeight diff = lambda - nu;
-  const RatWeight theta_diff(theta*diff.numerator(),
-			     diff.denominator()); // theta(lambda-nu)
-  const Weight lambda_rho = (lambda2-khc.rootDatum().twoRho())/=2;
-  return StandardRepr(x,i_tab.pack(i_x,lambda_rho),
-		      ((lambda+nu+theta_diff)/=2).normalize());
-}
-
 StandardRepr Rep_context::sr_gamma
   (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const
 {
@@ -89,10 +67,24 @@ RatWeight Rep_context::gamma
   return ((lambda+nu+theta_diff)/=2).normalize();
 }
 
+StandardRepr
+  Rep_context::sr
+    (const standardrepk::StandardRepK& srk,
+     const standardrepk::SRK_context& srkc,
+     const RatWeight& nu) const
+{
+  const TitsElt a = srkc.titsElt(srk); // was reduced during construction |srk|
+  const KGBElt x= kgb().lookup(a);
+  Weight lambda_rho = srkc.lift(srk)-rootDatum().twoRho();
+  lambda_rho/=2; // undo doubled coordinates
+
+  return sr(x,lambda_rho,nu);
+}
+
 StandardRepr Rep_context::sr(const param_block& b, BlockElt i) const
 {
   assert(i<b.size());
-  return sr(b.parent_x(i),b.lambda_rho(i),b.gamma());
+  return sr_gamma(b.parent_x(i),b.lambda_rho(i),b.gamma());
 }
 
 Weight Rep_context::lambda_rho(const StandardRepr& z) const

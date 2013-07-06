@@ -3745,7 +3745,55 @@ void split_mult_virtual_module_wrapper(expression_base::level l)
   }
 }
 
-@ Here is our principal application of virtual modules.
+@*2 Computing with $K$-types.
+The ``restriction to $K$'' component of the Atlas library has for a long time
+had an isolated existence, in part because the ``nonzero final standard
+$K$ parameters'' used to designate $K$-types is both hard to decipher and does
+not seem to relate easily to values used elsewhere. However, these parameters
+do in fact correspond to the subset of module pareters with $\nu=0$.
+
+@h "standardrepk.h"
+
+@< Local function def...@>=
+void K_type_formula_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  standardrepk::SRK_context srkc(p->rf->val);
+  TitsElt a=p->rf->kgb().titsElt(p->val.x());
+  StandardRepK sr=srkc.std_rep_rho_plus (p->rc().lambda_rho(p->val),a);
+  @< Check that |sr| is final, and if not |throw| an error @>
+  standardrepk::Char formula = srkc.K_type_formula(sr).second;
+@)
+  if (l!=expression_base::no_value)
+  { RatWeight zero_nu(p->rf->val.rank());
+    virtual_module_ptr acc
+      (new virtual_module_value(p->rf, repr::SR_poly(p->rc().repr_less())));
+    for (standardrepk::Char::const_iterator
+           it=formula.begin(); it!=formula.end(); ++it)
+    {
+      StandardRepr term =  p->rc().sr(it->first,srkc,zero_nu);
+      repr::SR_poly contribution = p->rc().expand_final(term);
+      acc->val.add_multiple(contribution,Split_integer(it->second));
+    }
+    push_value(acc);
+  }
+}
+
+@ We must test the parameter for being final, or else the method
+|K_type_formula| will fail. The error message mentions restriction to $K$,
+since the parameter itself reported here might be final.
+
+@< Check that |sr| is final, and if not |throw| an error @>=
+{ size_t witness;
+  if (not srkc.isFinal(sr,witness))
+  { std::ostringstream os; p->print(os << "\nRestricted to K, parameter ");
+    os << " is not final; witness coroot #" << witness;
+    throw std::runtime_error(os.str());
+  }
+}
+
+
+@*2 Deformation formulas.
+Here is our principal application of virtual modules.
 %
 Using the computation of non-integral blocks, we can compute a deformation
 formula for the given parameter. This also involves computing Kazhdan-Lusztig
@@ -3834,6 +3882,7 @@ install_function(int_mult_virtual_module_wrapper,@|"*"
 		,"(int,ParamPol->ParamPol)");
 install_function(split_mult_virtual_module_wrapper,@|"*"
 		,"(Split,ParamPol->ParamPol)");
+install_function(K_type_formula_wrapper,@|"K_type_formula" ,"(Param->ParamPol)");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");

@@ -101,11 +101,6 @@ class Rep_context
 
   const TwistedInvolution twistedInvolution(size_t cn) const;
 
-  StandardRepr
-    sr(const standardrepk::StandardRepK& srk,
-       const standardrepk::KhatContext& khc,
-       const RatWeight& nu) const;
-
   RatWeight gamma // compute (representative of) infinitesimal character
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const;
   StandardRepr sr_gamma // use this one when infinitesimal character is known
@@ -114,6 +109,10 @@ class Rep_context
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
   { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
 
+  StandardRepr
+    sr(const standardrepk::StandardRepK& srk,
+       const standardrepk::SRK_context& srkc,
+       const RatWeight& nu) const;
   StandardRepr sr(const param_block& b, BlockElt i) const;
 
   // component extraction
