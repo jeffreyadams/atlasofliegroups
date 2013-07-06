@@ -14,10 +14,10 @@ K-type commands.
 See the help file for Ktypeform for an overview of K-types and normal
 final standard modules.
 
-The user is prompted for a kgb element and sequence of integers a1
-... an just as in the Ktypeform command. The resulting parameter is
+The user is prompted for a kgb element and sequence of integers a1,
+..., an just as in the Ktypeform command. The resulting parameter is
 not required to be final (the corresponding representation may be 0)
-or standard (The corresponding representation may be a virtual
+or standard (the corresponding representation may be a virtual
 "continued" representation).
 
 The software then converts the representation to a sum of normal final

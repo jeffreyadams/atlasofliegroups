@@ -113,9 +113,7 @@ namespace {
 
   This section defines the functions declared in test.h :
 
-    - addTestCommands() : adds the test commands to the main command
-      tree;
-    - addTestHelp() : adds help functionality;
+    - addTestCommands() : adds the test commands to the main command tree;
 
 ******************************************************************************/
 
