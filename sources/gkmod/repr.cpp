@@ -18,6 +18,7 @@
 #include "kgb.h"	// various methods
 #include "blocks.h"	// |dual_involution|
 #include "standardrepk.h"// |KhatContext| methods
+#include "subsystem.h"
 
 #include "kl.h"
 

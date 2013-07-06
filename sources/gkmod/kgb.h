@@ -16,10 +16,13 @@ representing orbits of K on G/B.
 #ifndef KGB_H  /* guard against multiple inclusions */
 #define KGB_H
 
-#include "subdatum.h"
+#include "atlas_types.h"
 
 #include "gradings.h"	// containment in |KGBEltInfo|
 #include "hashtable.h"	// containment in |KGB_base|
+#include "weyl.h"       // |weyl::TI_Entry::Pooltype|
+#include "tits.h"       // containment |GlobalTitsGroup|
+#include "y_values.h"   // containment |TorusElement|
 
 #include <algorithm>
 #include <iostream> // for virtual print method
@@ -306,7 +309,7 @@ and in addition the Hasse diagram (set of all covering relations).
 //! \brief The Tits group.
   const TitsGroup& titsGroup() const { return d_base->titsGroup(); }
 
-  RatWeight half_rho() const { return RatWeight(rootDatum().twoRho(),4); }
+  RatWeight half_rho() const;
 
   TorusPart torus_part(KGBElt x) const { return left_torus_part[x]; }
   TorusElement torus_part_global // |torus_part| but coded as in |global_KGB|

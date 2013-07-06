@@ -15,6 +15,7 @@
 
 #include "prerootdata.h"
 #include "kgb.h"	// |KGB|
+#include "subsystem.h"
 #include "standardrepk.h"
 #include "repr.h"
 

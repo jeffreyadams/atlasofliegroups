@@ -347,33 +347,6 @@ class param_block : public Block_base // blocks of parameters
 
 }; // |class param_block|
 
-/*
-  The class |gamma_block| class was meant to compute blocks at non-integral
-  infinitesimal character |gamma| using only the integrality subsystem on the
-  dual side. However base-point shifting when converting to and from |y|
-  values using this representation is currently not well enough understood,
-  and therefore this class does not function reliably. The alternative class
-  |non_integeral_block| defined below avoids this problem and appears correct.
-*/
-class gamma_block : public param_block
-{
- public:
-  gamma_block(const repr::Rep_context& rc,
-	      const SubSystemWithGroup& sub,
-	      const StandardRepr& sr,
-	      BlockElt& entry_element	// set to block element matching input
-	      );
-
-
-  virtual std::ostream& print // in block_io.cpp
-   (std::ostream& strm, BlockElt z,bool as_invol_expr) const;
-
-  // new methods
-  RatWeight local_system(BlockElt z) const // reconstruct a |lambda| from |y|
-  { assert(z<size()); return y_rep(y(z)).log_2pi(); }
-
-}; // |class gamma_block|
-
 
 typedef Block_base::EltInfo block_elt_entry;
 typedef HashTable<block_elt_entry,BlockElt> block_hash;

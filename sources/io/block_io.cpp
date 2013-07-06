@@ -110,26 +110,6 @@ std::ostream& Block::print
   return strm ;
 }
 
-std::ostream& gamma_block::print
-  (std::ostream& strm, BlockElt z,bool as_invol_expr) const
-{
-  const KGB& kgb = rc.kgb();
-  int xwidth = ioutils::digits(kgb.size()-1,10ul);
-
-  RatWeight ls = local_system(z);
-  strm << "(=" << std::setw(xwidth) << parent_x(z)
-       << ',' << std::setw(3*ls.size()+3) << ls
-       << ')' << std::setw(2) << "";
-
-  // print root datum involution
-  if (as_invol_expr)
-    prettyprint::printInvolution(strm,involution(z),kgb.twistedWeylGroup());
-  else
-    prettyprint::printWeylElt(strm,involution(z),kgb.weylGroup());
-
-  return strm ;
-}
-
 std::ostream& non_integral_block::print
   (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {

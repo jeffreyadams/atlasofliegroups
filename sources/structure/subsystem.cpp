@@ -142,8 +142,7 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta,
 }
 
 // Here we seek twist and |ww| on parent side (dual with respect to |sub|)
-// used in |TitsGroup| constructor for subdatum, called from |SubDatum|,
-// and in |blocks::param_block::compute_duals| (just for the induced |Twist|)
+// used in |blocks::param_block::compute_duals| (just for the induced |Twist|)
 weyl::Twist SubSystem::parent_twist(const WeightInvolution& theta,
 				    WeylWord& ww) const
 {
