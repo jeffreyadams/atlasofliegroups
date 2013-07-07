@@ -4174,7 +4174,7 @@ void print_KL_basis_wrapper(expression_base::level l)
 @.Real form and dual...@>
 @)
   Block block = Block::build(rf->val,drf->val);
-  kl::KLContext klc(block); klc.fill();
+  kl::KLContext klc(block); klc.fill(false);
 @)
   *output_stream
     << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:\n\n";
@@ -4202,7 +4202,7 @@ void print_prim_KL_wrapper(expression_base::level l)
 @.Real form and dual...@>
 @)
   Block block = Block::build(rf->val,drf->val);
-  kl::KLContext klc(block); klc.fill();
+  kl::KLContext klc(block); klc.fill(false);
 @)
   *output_stream
     << "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:\n\n";
@@ -4231,7 +4231,7 @@ void print_KL_list_wrapper(expression_base::level l)
 @.Real form and dual...@>
 @)
   Block block = Block::build(rf->val,drf->val);
-  kl::KLContext klc(block); klc.fill();
+  kl::KLContext klc(block); klc.fill(false);
 @)
   kl_io::printKLList(*output_stream,klc);
 @)
@@ -4262,7 +4262,7 @@ void print_W_cells_wrapper(expression_base::level l)
 @.Real form and dual...@>
 @)
   Block block = Block::build(rf->val,drf->val);
-  kl::KLContext klc(block); klc.fill();
+  kl::KLContext klc(block); klc.fill(false);
 
   wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
   wgraph::DecomposedWGraph dg(wg);
@@ -4292,7 +4292,7 @@ void print_W_graph_wrapper(expression_base::level l)
 @.Real form and dual...@>
 @)
   Block block = Block::build(rf->val,drf->val);
-  kl::KLContext klc(block); klc.fill();
+  kl::KLContext klc(block); klc.fill(false);
 
   wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
 @)

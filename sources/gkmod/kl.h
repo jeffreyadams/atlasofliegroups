@@ -140,10 +140,10 @@ class KLContext
 		   PrimitiveRow::const_iterator p_end) const;
 
     // manipulators
-    // the |size_t| results serve only for statistics; caller may ignore them
     void silent_fill(BlockElt last_y);
     void verbose_fill(BlockElt last_y);
 
+    // the |size_t| results serve only for statistics; caller may ignore them
     size_t fillKLRow(BlockElt y, KLHash& hash);
     void recursionRow(std::vector<KLPol> & klv,
 		      const PrimitiveRow& e, BlockElt y, size_t s);
