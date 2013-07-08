@@ -76,8 +76,6 @@ namespace {
   void coroots_rootbasis_f();
   void posroots_rootbasis_f();
   void poscoroots_rootbasis_f();
-  void checkbasept_f();
-  void sub_KGB_f();
   void Ktypeform_f();
   void qKtypeform_f();
   void Ktypemat_f();
@@ -86,11 +84,8 @@ namespace {
   void branch_f();
   void qbranch_f();
   void srtest_f();
-  void testrun_f();
-  void exam_f();
 
   void X_f();
-  void embedding_f();
 
 /*
   For convenience, the "test" command is added to the mode that is flagged by
@@ -130,9 +125,6 @@ namespace {
 template<>
 void addTestCommands<commands::EmptymodeTag> (commands::CommandNode& mode)
 {
-  mode.add("testrun",testrun_f,
-	   "iterates over root data of given rank, calling examine",
-	   commands::use_tag);
   if (testMode == EmptyMode)
     mode.add("test",test_f,test_tag);
 }
@@ -166,11 +158,6 @@ void addTestCommands<commands::MainmodeTag> (commands::CommandNode& mode)
 template<>
 void addTestCommands<commands::RealmodeTag> (commands::CommandNode& mode)
 {
-  mode.add("checkbasept",checkbasept_f,
-	   "checks basepoint conjecture",commands::std_help);
-  mode.add("sub_KGB",sub_KGB_f,
-	   "computes subset of KGB data used in Ktypeform",
-	   commands::use_tag);
   mode.add("Ktypeform",Ktypeform_f,
 	   "computes formula for a K-type",commands::std_help);
   mode.add("qKtypeform",qKtypeform_f,
@@ -186,9 +173,6 @@ void addTestCommands<commands::RealmodeTag> (commands::CommandNode& mode)
   mode.add("qbranch",qbranch_f,"q version of branch");
   mode.add("srtest",srtest_f,
 	   "gives information about a representation",commands::std_help);
-
-  mode.add("examine",exam_f,
-	   "tests whether block is ordered by Weyl length",commands::use_tag);
 
   if (testMode == RealMode)
     mode.add("test",test_f,test_tag);
@@ -209,9 +193,6 @@ void addTestCommands<commands::BlockmodeTag> (commands::CommandNode& mode)
 template<>
 void addTestCommands<commands::ReprmodeTag> (commands::CommandNode& mode)
 {
-  mode.add("embedding",embedding_f,
-	   "give information about embedding of KGB of subsystem",
-	   commands::std_help);
   if (testMode == ReprMode)
     mode.add("test",test_f,test_tag);
 
@@ -229,43 +210,6 @@ namespace {
 
 
 // Empty mode functions
-
-bool examine(RealReductiveGroup& G);
-void testrun_f()
-{
-  unsigned long rank=interactive::get_bounded_int
-    (interactive::common_input(),"rank: ",constants::RANK_MAX+1);
-  std::cout << "Testing W-length monotonicity.\n"; // adapt to |examine|
-  for (testrun::LieTypeIterator it(testrun::Semisimple,rank); it(); ++it)
-  {
-    std::cout<< *it << std::endl;
-    size_t count=0;
-    for (testrun::CoveringIterator cit(*it); cit(); ++cit)
-    {
-      if (count>0) std::cout << ',';
-      std::cout << ++count;
-      PreRootDatum prd = *cit;
-      WeightInvolution id(prd.rank()); // identity
-      ComplexReductiveGroup G(prd,id);
-      for (RealFormNbr rf=0; rf<G.numRealForms(); ++rf)
-      {
-	RealReductiveGroup G_R(G,rf);
-	if (not examine(G_R))
-	{
-	  lietype::InnerClassType ict;
-	  for (size_t i=0; i<it->size(); ++i)
-	    ict.push_back('e');
-	  lietype::Layout lay(*it,ict);
-	  realform_io::Interface itf(G,lay);
-	  std::cout << " Failure at real form " << itf.out(rf) << std::endl;
-	}
-	std::cout << std::flush;
-      }
-    }
-    std::cout << '.' << std::endl;
-  }
-
-}
 
 
 // Main mode functions
@@ -321,29 +265,6 @@ void X_f()
 
 
 // Real mode functions
-
-void checkbasept_f()
-{
-  RealReductiveGroup& G_R = commands::currentRealGroup();
-
-  KGB kgb(G_R,G_R.Cartan_set());
-  kltest::checkBasePoint(kgb);
-}
-
-void sub_KGB_f()
-{
-  RealReductiveGroup& G = commands::currentRealGroup();
-  standardrepk::KhatContext khc(G);
-
-  StandardRepK sr=interactive::get_standardrep(khc);
-
-  WeylWord ww;
-  standardrepk::PSalgebra p= khc.theta_stable_parabolic(sr,ww);
-  KGBEltList sub=khc.sub_KGB(p);
-
-  std::cout << "Conjugating word [" << ww << "]\n";
-  kgb_io::print_sub_KGB(std::cout,G.kgb(),sub);
-}
 
 void Ktypeform_f()
 {
@@ -869,14 +790,6 @@ bool examine(RealReductiveGroup& G)
   return true;
 }
 
-void exam_f()
-{
-  std::cout << "W-length monotine in KGB? "
-            << (examine(commands::currentRealGroup())
-		? "yes" : "no")
-	    << std::endl;
-}
-
 
 
 TorusElement torus_part
@@ -899,218 +812,8 @@ TorusElement torus_part
   return y_values::exp_pi(gamma-lambda+RatWeight(cumul,2));
 }
 
-void embedding_f()
-{
-  const Rep_context& rc = commands::currentRepContext();
-  const ComplexReductiveGroup& G = rc.complexGroup();
-  const KGB& kgb = rc.kgb();
-
-  KGBElt x = commands::currentStandardRepr().x();
-  WeightInvolution theta = G.involutionMatrix(kgb.involution(x));
-
-  WeylWord ww; // will record the most compact involution for the subsystem
-  const tits::SubTitsGroup sub_gTg (G,commands::currentSubSystem(),theta,ww);
-
-  weyl::TI_Entry::Pooltype pool;
-  HashTable<weyl::TI_Entry,unsigned int> hash_table(pool);
-  std::vector<unsigned int> stops;
-  {
-    const TwistedWeylGroup& tW = // used for handling subsystem involutions
-      sub_gTg; // therefore use this rather than |rc.twistedWeylGroup()|
-    std::vector<TwistedInvolution> queue(1,TwistedInvolution());
-    size_t qi = 0; // |queue| inspected up to |qi|
-
-    while (qi<queue.size())
-    {
-      weyl::TI_Entry tw=queue[qi++];
-      if (hash_table.find(tw)==hash_table.empty) // Cartan class not seen yet
-      { stops.push_back(hash_table.size());
-	// generate, like kgb::FiberData::complete_class|
-	for (unsigned int i=hash_table.match(tw); i<hash_table.size(); ++i)
-	{
-	  tw=pool[i];
-	  for (weyl::Generator s=0; s<tW.rank(); ++s)
-	    if (tW.hasTwistedCommutation(s,tw)) // |s| real or imaginary
-	    {
-	      if (not tW.hasDescent(s,tw)) // |s| imaginary
-		queue.push_back(tW.prod(s,tw));
-	    }
-	    else // |s| complex
-	      hash_table.match(tW.twistedConjugated(tw,s));
-	} // |for(i)|
-      } // |if| new Cartan class
-    } // |while| queue not completely inspected
-  } // forget |queue|
-  stops.push_back(~0); // sentinel
-
-  ioutils::OutputFile f;
-
-  size_t si=0; // index into |stops|
-  for (unsigned int i=0; i<pool.size(); ++i)
-  {
-    if (i==stops[si])
-    { (std::ostream&)f << std::endl; ++si; } // separate classes
-    TwistedInvolution tw=pool[i];
-    f << sub_gTg.base_point_offset(tw).log_2pi()
-      << "  \t@  " << sub_gTg.word(tw) <<std::endl;
-  }
-} // |embedding_f|
-
-// help functions for |test_f|
-
-// find lift |h| of |t| such that |theta_t*h = -h|; |t| is |theta_t|-stable
-Coweight minus_stable_lift(TorusPart t, const CoweightInvolution& theta_t)
-{
-  Coweight h(t.size(),0);
-  for (TorusPart::base_set::iterator it = t.data().begin(); it(); ++it)
-    h[*it]=1; // lift torus part to a coweight
-  CoweightInvolution theta1 = theta_t;
-  for (unsigned int i=0; i<theta1.numRows(); ++i)
-    theta1(i,i)+=1; // add identity
-  Coweight deviation = theta1*h; // failure of |h| to be |-theta| fixed
-  deviation /= 2; // may, but should not, |throw std::runtime_error|
-  Coweight correction = matreduc::find_solution(theta1,deviation); // idem
-  correction *= 2; // the correction must be by an element of $2X_*$
-  h -= correction;
-  assert ( theta_t*h == -h );
-  assert(TorusPart(h) == t); // the correction kept |h| a lift of |t|
-  return h;
-}
-
-
-struct z_data
-{ const TitsCoset& Tg;
-  TitsElt a; Coweight h; Weight lambda_rho; int z;
-  z_data(const TitsCoset& G): Tg(G), a(G.titsGroup()) {}
-  TorusPart t() const { return Tg.titsGroup().left_torus_part(a); }
-};
-
-void z_choice(TitsElt a, const ComplexReductiveGroup& G,
-	      const CoweightInvolution& theta_t, const Weight& lam_rho,
-	      z_data& out)
-{
-  out.a = a; out.lambda_rho=lam_rho;
-  const TitsGroup& Tg= G.titsGroup();
-  TorusPart t = Tg.left_torus_part(a); // same as |out.t()|
-  t -= Tg.twisted(t);
-  Coweight h = minus_stable_lift(t,theta_t);
-  out.h=h;
-  int z =
-    arithmetic::remainder(lam_rho.dot(h+G.distinguished().transposed()*h),4);
-  out.z=z; // reinterpreted modulo 8, thus choosing the "positive" square root
-}
-
-// find out whether choices in the |z_data| are switched across a cross link
-bool switched (const z_data& there,const z_data& here,
-	       ext_gen g, const ComplexReductiveGroup& G,
-	       const CoweightInvolution& theta_t, const RatWeight& gamma)
-{
-  const RootDatum& rd = G.rootDatum();
-  TitsElt a = there.a;
-  for (unsigned int i=0; i<g.w_tau.size(); ++i)
-    here.Tg.strict_based_twisted_conjugate(a,g.w_tau[i]); // pull |a| here
-
-  TorusPart shift = here.t()+here.Tg.titsGroup().left_torus_part(a);
-  Coweight lift = minus_stable_lift(shift,theta_t);
-  Coweight wh = there.h;
-  for (unsigned int i=0; i<g.w_tau.size(); ++i)
-    rd.simpleCoreflect(wh,g.w_tau[i]); // SHOULD use subsystem....
-  wh += lift; // multiply (under $exp(\pi\ii/2 * )$) by |lift| and by
-  wh -= G.distinguished().transposed()*lift; // $lift^{-\delta}$
-  // now |wh| is compatible with the torus part choice down |here|
-
-  Coweight offset = here.h-wh;
-  (offset - theta_t*offset)/=4; // |assert((1-theta_t)*offset % 4 == 0)|;
-  int Lambda_h_over_h = here.lambda_rho.dot(offset); // significant modulo 4
-
-  // now compute $(w.\gamma-\gamma)(h)$, by which $z$ gets multiplied
-  const Weight gn (gamma.numerator().begin(),gamma.numerator().end());
-  Weight mu=gn;
-  for (unsigned int i=0; i<g.w_tau.size(); ++i)
-    rd.simpleReflect(mu,g.w_tau[i]);
-  mu -= gn;
-  mu /= gamma.denominator(); // the result should lie in root lattice
-  int zz = mu.dot(there.h); // offset, significant modulo 4
-  zz = there.z + 2*zz ; // transport here, result is mod 8
-  int compare = (zz - here.z) - 2*Lambda_h_over_h;
-  compare = arithmetic::remainder(compare,8);
-  assert ( compare%4 == 0);
-  return compare==4;
-} // |switched|
-
 void test_f()
 {
-  commands::ensure_full_block(); // silently force |nblock|
-  ioutils::OutputFile file;
-  const ComplexReductiveGroup& G = commands::currentComplexGroup();
-  const TitsCoset& bTg = commands::currentRealGroup().basedTitsGroup();
-  const KGB& kgb = commands::currentRealGroup().kgb();
-  param_block& block = commands::current_param_block();
-  const RatWeight& gamma = block.gamma();
-  ext_block::extended_block eblock(block,G.twistedWeylGroup());
-  std::vector<z_data> data(eblock.size(),z_data(bTg));
-  for (BlockElt n=0; n<eblock.size(); ++n)
-  {
-    BlockElt fix = eblock.z(n);
-    const CoweightInvolution theta_t =
-      G.involution_table().matrix(block.involution(fix)).transposed();
-    const Weight lam_rho = block.lambda_rho(fix);
-
-    // just transmitting the torus part $t$ suffices, because one has
-    // $\sigma_w\delta((\sigma_w)^{-1})=1$ as fix implies $\delta(w)=w$
-    z_choice(kgb.titsElt(block.parent_x(fix)),G,theta_t,lam_rho,data[n]);
-  }
-
-  { // flip some choices of |z| so as to make switches disappear
-    std::vector<BlockElt> todo;
-    BitMap marked(eblock.size());
-    for (BlockElt n=0; n<eblock.size(); ++n)
-      if (not marked.isMember(n))
-      {
-	todo.push_back(n);
-	marked.insert(n); // mark element on first visit
-	do
-	{
-	  BlockElt m = todo.back();
-	  todo.pop_back();
-	  const z_data& here=data[m];
-	  const CoweightInvolution theta_t =
-	    G.involution_table().matrix(block.involution(eblock.z(m)))
-	    .transposed();
-	  for (weyl::Generator s=0; s<eblock.rank(); ++s)
-	    if (not marked.isMember(eblock.cross(s,m)))
-	    {
-	      BlockElt sm = eblock.cross(s,m);
-	      todo.push_back(sm);
-	      if (switched(data[sm],here,block.orbit(s),G,theta_t, gamma))
-		data[sm].z+=4;
-	      marked.insert(sm);
-	    }
-	}
-	while (not todo.empty());
-      }
-
-  }
-
-
-  // now check how cross links relate to the choices made
-  for (BlockElt n=0; n<eblock.size(); ++n)
-  {
-    BlockElt fix = eblock.z(n);
-    file << fix << ": z=exp(" << data[n].z << "\\pi i/4) ";
-    const z_data& here=data[n];
-    const CoweightInvolution theta_t =
-      G.involution_table().matrix(block.involution(fix)).transposed();
-    for (weyl::Generator s=0; s<eblock.rank(); ++s)
-    {
-      BlockElt sn = eblock.cross(s,n);
-      const z_data& there=data[sn];
-      bool differs = switched(there,here,block.orbit(s),G,theta_t, gamma);
-      if (differs)
-	file << (int)s << '(' << eblock.z(sn) << ") ";
-    }
-    static_cast<std::ostream&>(file) << std::endl;
-  }
 } // |test_f|
 
 

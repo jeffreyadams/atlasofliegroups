@@ -34,6 +34,7 @@
 #include "kgb_io.h"
 #include "blocks.h"
 #include "ext_block.h"
+#include "subsystem.h"
 #include "repr.h"
 #include "block_io.h"
 #include "kl.h"
@@ -58,15 +59,10 @@ namespace commands {
 
   // functions for the predefined commands
 
-  void small_kgb_f(); // not yet implemented
-  void small_dual_kgb_f(); // not yet implemented
-  void iblock_f();
   void nblock_f();
   void partial_block_f();
   void block_f();
   void blockorder_f();
-  void blockwrite_f(); // not yet implemented
-  void blockstabilizer_f(); // not yet implemented
   void blocktwist_f();
   void extblock_f();
   void deform_f();
@@ -102,9 +98,6 @@ CommandNode reprNode()
   CommandNode result("repr: ",repr_mode_entry,repr_mode_exit);
 
   result.add("repr",repr_f,"override");
-  result.add("iblock",iblock_f,
-	     "computes block for integral subsystem (prefer using nblock)",
-	     use_tag);
   result.add("nblock",nblock_f,"computes a non-integral block",std_help);
   result.add("partial_block",partial_block_f,
 	     "computes the part of a non-integral block below given parameter",
@@ -263,22 +256,6 @@ void repr_mode_exit()
   various commands defined in this mode.
 
 ******************************************************************************/
-
-void iblock_f()
-{
-  if (state!=iblock)
-  {
-    delete WGr_pointer; WGr_pointer=NULL;
-    delete block_pointer; // destroy any installed block first
-    block_pointer =
-      new blocks::gamma_block(currentRepContext(),
-			      currentSubSystem(),
-			      currentStandardRepr(),
-			      entry_z);
-    state=iblock;
-  }
-  block_f();
-} // |iblock_f|
 
 void nblock_f()
 {

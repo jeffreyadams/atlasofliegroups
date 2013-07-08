@@ -91,7 +91,6 @@ atlas_objects := $(atlas_sources)/structure/prerootdata.o \
  $(atlas_sources)/utilities/matreduc.o \
  $(atlas_sources)/gkmod/standardrepk.o \
  $(atlas_sources)/gkmod/repr.o \
- $(atlas_sources)/gkmod/subdatum.o \
  $(atlas_sources)/structure/subsystem.o \
  $(atlas_sources)/structure/involutions.o \
  $(atlas_sources)/structure/y_values.o \
