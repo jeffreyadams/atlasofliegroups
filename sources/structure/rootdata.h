@@ -52,10 +52,10 @@ WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta);
 
 WeightInvolution refl_prod(const RootNbrSet&, const RootDatum&);
 
-RootDatum integrality_datum(const RootDatum& rd, const RatWeight& nu);
+RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
 RationalList integrality_points(const RootDatum& rd,
-				RatWeight& nu); // non-const: is normalized
-unsigned int integrality_rank(const RootDatum& rd, const RatWeight& nu);
+				RatWeight& gamma); // non-const: is normalized
+unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
 
 } // namespace rootdata
 
