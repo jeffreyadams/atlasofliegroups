@@ -26,6 +26,21 @@ namespace atlas {
 
 namespace ext_block {
 
+bool is_complex(DescValue v)
+{
+  switch (v)
+  {
+  case one_complex_ascent:
+  case one_complex_descent:
+  case two_complex_ascent:
+  case two_complex_descent:
+  case three_complex_ascent:
+  case three_complex_descent:
+    return true;
+  default: return false;
+  }
+}
+
 BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
 {
   switch (descent_type(s,n))

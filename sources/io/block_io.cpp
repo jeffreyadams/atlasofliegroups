@@ -178,7 +178,7 @@ std::ostream& extended_block::print_to (std::ostream& strm) const
     for (size_t s = 0; s < rank(); ++s)
     {
       strm << '(' << std::setw(width);
-      if (data[s][n].links.first==UndefBlock)
+      if (is_complex(descent_type(s,n)) or data[s][n].links.first==UndefBlock)
 	strm << '*';
       else strm << z(data[s][n].links.first);
       strm << ',' << std::setw(width);

@@ -127,6 +127,7 @@ class extended_block
 
 const char* descent_code(DescValue v); // defined in |block_io|
 inline bool is_descent(DescValue v) { return v%2!=0; }
+bool is_complex(DescValue v);
 bool has_double_image(DescValue v);
 
 DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
