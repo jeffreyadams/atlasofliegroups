@@ -84,15 +84,14 @@ set normparam (RealForm G,int x,ratvec lambda,ratvec nu) =
 set finite_dimensional(RealForm G,vec tau) = Param:
   param(KGB(G,KGB_size(G)-1),tau,tau+rho(G))
 
-{ get just the parameters from an n_block,
-  just a shorcut to: (params,)=n_block(p) }
-set get_n_block (Param p) = [Param]: let (params,)=n_block(p) in params
+{ get just the parameters from a block, just a shorcut to: (params,)=block(p) }
+set get_block (Param p) = [Param]: let (params,)=block(p) in params
 
 { trivial representation of G, see finite_dimensional }
 set trivial(RealForm G) = Param: finite_dimensional(G,null(rank(G)))
 
 { returns [Param] list of parameters in block of trivial }
-set trivial_block(RealForm G) = [Param]: get_n_block(trivial(G))
+set trivial_block(RealForm G) = [Param]: get_block(trivial(G))
 
 { spherical principal series of split group
   assumes G is split, otherwise no guarantees

@@ -11,7 +11,7 @@ set x = for i:KGB_size(sp4R) do KGB(sp4R,i) od { list of all x's, [x[0],..] }
 
 set do_block ( (Param->) f) = { f is function executed for block elements }
 ( (Param p):
-  let (b,i)=n_block(p)
+  let (b,i)=block(p)
   in for q in b do f(q) od
   ; i
 )

@@ -1,6 +1,6 @@
 
 The "Ktypeform" command is part of the K-type suite of commands:
-KTypeform, Ktypemat, test and branch. It describes the irreducible
+KTypeform, Ktypemat, srtest and branch. It describes the irreducible
 representations of K "K-types". See [David Vogan, Branching to a
 Maximal Compact Subgroup, in proceedings of the conference for Roger
 Howe, Singapore 2007].
@@ -52,15 +52,15 @@ Definition: a standard K-parameter (x,lambda) is "final" if
 the set of imaginary roots (alpha^v is the coroot of alpha), and
 
 2) <lambda,alpha^v> is odd for all real roots which are simple in the
-set of real roots.
+set of real roots. (Parameters failing this condition are called "zero")
 
-If (x,lambda) is nonzero final then I_K(x,lambda) has a unique lowest
-K-type mu(x,lambda). The Weyl group does not quite act on final
-standard K-parameters, because the positivity hypothesis on lambda is
-not preserved by all of W.  We therefore define an equivalence
-relation (x,lambda) ~ (x',lambda') if there is an element y of W such
-that y.x = x', y.lambda = lambda', and no theta_x-imaginary root
-changes sign under y.
+If (x,lambda) is final then I_K(x,lambda) has a unique lowest K-type
+mu(x,lambda). The Weyl group does not quite act on final standard
+K-parameters, because the positivity hypothesis on lambda is not
+preserved by all of W. We therefore define an equivalence relation
+(x,lambda) ~ (x',lambda') if there is an element y of W such that
+y.x = x', y.lambda = lambda', and no theta_x-imaginary root changes sign
+under y.
 
 Theorem. The map (x,lambda)->mu(x,lambda) induces a bijection between
 equivalence classes of final standard K-parameters and irreducible
@@ -124,7 +124,7 @@ The software first converts this data into a triple of the form:
 where:
 
 * [a1,...,an] is a vector of integers; 1/2[a1,...,an] is an element of
-X^*(T)+rho with the same image as lambda modulo (1-theta)X^(T).
+X^*(T)+rho with the same image as lambda modulo (1-theta)X^*(T).
 
 * @(b1,...,bn) is a vector of 0s and 1s, giving the torus part of of a
 KGB parameter x' (see the help file for the KGB command). Here x' lies
@@ -173,6 +173,12 @@ to K.
 
 Example 1: holomorphic discrete series of SL(2,R):
 
+empty: realform
+Lie type: A1 sc s
+(weak) real forms are:
+0: su(2)
+1: sl(2,R)
+enter your choice: 1
 main: Ktypeform
 Choose KGB element: 0
 2rho = [ 2 ]
@@ -248,9 +254,9 @@ where
 
 R0 is the spherical principal series
 R1 is the holomorphic discrete series
-R1 is the anti-holomorphic discrete series
+R2 is the anti-holomorphic discrete series
 
-NB: only the parity of lambda-rho matters:
+NB: In the principal series only the parity of lambda-rho matters:
 
 real: Ktypeformreal: Ktypeform
 Choose KGB element: 2

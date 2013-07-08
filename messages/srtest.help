@@ -1,34 +1,34 @@
 
-The test command is part of the K-type suite of commands:
-KTypeform, Ktypemat, test and branch. It describes the irreducible
-representations of K "K-types". See [David Vogan, Branching to a
-Maximal Compact Subgroup, in proceedings of the conference for Roger
-Howe, Singapore 2007].
+The srtest command is part of the K-type suite of commands: KTypeform,
+Ktypemat, srtest and branch. It describes "K-types", the irreducible
+representations of K. See [David Vogan, Branching to a Maximal Compact
+Subgroup, in proceedings of the conference for Roger Howe, Singapore
+2007].
 
-The test command takes as input a parameter for a (continued) standard
-representation restricted to K, and writes this representation as a
-sum of normal final standard modules. This is primarily intended as an
-aid to the user in understanding these parameters for use in the other
+The srtest command takes as input a parameter for a (continued) standard
+representation restricted to K, and writes this representation as a sum
+of normal final standard modules. This is primarily intended as an aid
+to the user in understanding these parameters for use in the other
 K-type commands.
 
 See the help file for Ktypeform for an overview of K-types and normal
-final standard modules.  
+final standard modules.
 
-The user is prompted for a kgb element and sequence of integers a1
-... an just as in the Ktypeform command. The resulting parameter is
+The user is prompted for a kgb element and sequence of integers a1,
+..., an just as in the Ktypeform command. The resulting parameter is
 not required to be final (the corresponding representation may be 0)
-or standard (The corresponding representation may be a virtual
-"continued" representation). 
+or standard (the corresponding representation may be a virtual
+"continued" representation).
 
 The software then converts the representation to a sum of normal final
-standard limit representations. 
+standard limit representations.
 
 This is useful for understanding when a standard module fails to be
-final. 
+final.
 
 Example 1: holomorphic discrete series of SL(2,R) and continuations:
 
-real: test
+real: srtest
 Choose KGB element: 0
 2rho = [ 2 ]
 Give lambda-rho: 0
@@ -38,7 +38,7 @@ Standard normal final limit representations:
 R0: [ 2 ]@(0)#0 [2]
 Standardized expression for [ 2 ]@(0)#0:
  + R0
-real: test
+real: srtest
 Choose KGB element: 0
 2rho = [ 2 ]
 Give lambda-rho: -1
@@ -48,7 +48,7 @@ Standard normal final limit representations:
 R0: [ 0 ]@(0)#0 [0]
 Standardized expression for [ 0 ]@(0)#0:
  + R0
-real: test
+real: srtest
 Choose KGB element: 0
 2rho = [ 2 ]
 Give lambda-rho: -1
@@ -58,7 +58,7 @@ Standard normal final limit representations:
 R0: [ 0 ]@(0)#0 [0]
 Standardized expression for [ 0 ]@(0)#0:
  + R0
-real: test
+real: srtest
 Choose KGB element: 0
 2rho = [ 2 ]
 Give lambda-rho: -2
@@ -75,11 +75,10 @@ Standardized expression for [-2 ]@(0)#0:
 The first case (lambda-rho =0) is the holomorphic discrete series
 representation of SL(2,R) at infinitesimal character rho. The second
 (lambda-rho=0), is this representation continued to infinitesimal
-character 0, i.e. the limit of discrete series. 
+character 0, i.e. the limit of discrete series.
 
-The final case (lambda-rho=-2) is this representation continued to
--rho. This continued standard module is virtual. Its restriction to K
-is
+The final case (lambda-rho=-2) is this representation continued to -rho.
+This continued standard module is virtual. Its restriction to K is
 
 (spherical principal series) - (antiholomorphic discrete series at
                                 infinitesimal character rho)
@@ -87,7 +86,7 @@ is
 
 Example: non-spherical principal series of SL(2,R)
 
-real: test
+real: srtest
 Choose KGB element: 2
 2rho = [ 2 ]
 Give lambda-rho: -1
@@ -101,11 +100,10 @@ R1: [ 0 ]@(1)#0 [0]
 Standardized expression for [ 4 ]@(0)#1:
  + R0 + R1
 
-The non-spherical principal series of SL(2,R) is not final (since
-we're only considering the restriction to K, we are essentially
-considering nu-parameter, i.e. infinitesimal character, 0). The
-Ktypeform commands will not return a result for this parameter (see
-the Ktypeform help file). 
+The non-spherical principal series of SL(2,R) is not final (since we're
+only considering the restriction to K, we are essentially considering
+nu-parameter, i.e. infinitesimal character, 0). The Ktypeform commands
+will not return a result for this parameter (see the Ktypeform help).
 
-The test command shows that this representation is the sum of the two
+The srtest command shows that this representation is the sum of the two
 limits of discrete series.

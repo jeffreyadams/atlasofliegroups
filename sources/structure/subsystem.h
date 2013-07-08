@@ -27,10 +27,10 @@ namespace subsystem {
    contained in the positive parent coroots), and is derived from |RootSystem|
    at that dual side (meaning that inherited |rootSystem| methods present that
    subsystem of the dual root system of the parent). It remains however
-   attached to the parent root _datum_ (nont sustem), containing and exporting
+   attached to the parent root _datum_ (not system), containing and exporting
    a reference to that rootdatum, and has a method to produce a |PreRootDatum|
-   for the subsystem of the parent defined by simple coroots for the subsystem
-   (not a full root datum, for efficientcy reasons).
+   for the subsystem of the _parent_ defined by simple coroots for the
+   subsystem (a full such root datum is not stored, for efficientcy reasons).
  */
 
 // A subsystem on the dual side of a given root datum
@@ -103,8 +103,8 @@ class SubSystem : public RootSystem // new system, subsytem of dual
 
 }; // |class SubSystem|
 
-// We have attempt to alleviate |SubSystem| by splitting off the |WeylGroup|
-
+// We have attempted to alleviate |SubSystem| by splitting off the |WeylGroup|
+// The following class is for cases where a Weyl group does need to exist
 class SubSystemWithGroup : public SubSystem
 {
   const WeylGroup sub_W; // Weyl group no reference: built by contructor

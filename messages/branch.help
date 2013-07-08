@@ -1,6 +1,6 @@
 
 The "branch" command is part of the K-type suite of commands:
-KTypeform, Ktypemat, test and branch. It describes the irreducible
+KTypeform, Ktypemat, srtest and branch. It describes the irreducible
 representations of K "K-types". See [David Vogan, Branching to a
 Maximal Compact Subgroup, in proceedings of the conference for Roger
 Howe, Singapore 2007].
@@ -14,7 +14,7 @@ the output of the Ktypemat command. See the help file for Ktypemat for
 more information.
 
 See the help file for Ktypeform for an overview of K-types and normal
-final standard modules.  
+final standard modules.
 
 Example 1: K-types of the holomorphic discrete series of SL(2,R):
 

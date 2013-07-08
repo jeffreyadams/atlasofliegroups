@@ -1,45 +1,37 @@
 
-The "strongreal" command prints information about the strong real
-forms for the current reductive group G (always endowed with an inner
-class of real forms). It gives the closest possible approximation to
-listing all of them for a given root datum involution, suppressing
-only the trivial repetition due to a translation action of the
-(possibly infinite) center of G
+The "strongreal" command prints information about the strong real forms
+for the current inner class of a reductive group G. It gives the closest
+possible approximation to listing all of them for a given root datum
+involution, suppressing only the trivial repetition due to a translation
+action of the (possibly infinite) center of G
 
-Recall that G is endowed with a Borel subgroup B containing a Cartan
-H, a pinning, and an involutive automorphism delta preserving the
-pinning.  The extended group G^Gamma is the semi-direct product of G
-with Gamma = {1, delta}.  A _strong involution_ is by definition an
-H-conjugacy class x of elements xi in the non-identity coset of
-G^Gamma, normalizing H, such that xi^2 is central in G. The
-conjugation action of xi defines an involutive automorphism
-theta_xi of G, which is the Cartan involution of the corresponding
-"weak real form."
+Recall that G is endowed with a Borel subgroup B containing a Cartan H,
+a pinning, and an involutive automorphism delta preserving the pinning.
+The extended group G^Gamma is the semi-direct product of G with Gamma =
+{1, delta}. A _strong involution_ is by definition an H-conjugacy class
+x of elements xi in the non-identity coset of G^Gamma, normalizing H,
+such that xi^2 is central in G. The conjugation action of xi defines an
+involutive automorphism theta_xi of G, which is the Cartan involution of
+the corresponding "weak real form."
 
-Two strong involutions are _equivalent_ if they are conjugate by G.  A
-_strong real form_ is an equivalence class of strong involutions.
+Two strong involutions are _equivalent_ if they are conjugate by G.
+A _strong real form_ is an equivalence class of strong involutions.
 
-Notice that each strong involution defines an involution tau_x of the
-root datum; this is the restriction to H of a Cartan involution
-theta_xi. There are only finitely many of these involutions tau that
-can be realized using our fixed G^Gamma.  The Weyl group W acts by
-conjugation on the set of involutions tau.  Each conjugacy class of
-Cartan subgroups for the real form corresponds to a W-conjugacy class
-of involutions. (If the real form is quasisplit, this correspondence
-is surjective.)
+Each strong involution defines an involution tau_x of the root datum;
+this is the restriction to H of a Cartan involution theta_xi. There are
+only finitely many of these involutions tau that can be realized using
+our fixed G^Gamma. The Weyl group W acts by conjugation on the set of
+involutions tau. Each conjugacy class of Cartan subgroups for the real
+form corresponds to a W-conjugacy class of involutions. (If the real
+form is quasisplit, this correspondence is surjective.)
 
-The command "strongreal" begins by asking for a Cartan subgroup; that
-is, for a W-conjugacy class of root datum involutions. (At this point
-the real form under consideration should not matter, but in fact only
-Cartan subgroups in this real form are presented. If no real form was
-specified before, the software will first ask for one only so that it
-can generate its Cartan subgroups to choose from; here one can safely
-enter the last (quasisplit) choice, in order to see all the Cartan
-subgroups.) The software essentially fixes a representative involution
-tau_0. The output of the command is a list with one entry for each
-strong involution x such that tau_x is equal to tau_0, or more
-precisely for each coset for Z(G) of such strong involutions, so as to
-suppress possibly infinite repetition as mentioned above.
+The command "strongreal" begins by asking for a Cartan subgroup in the
+inner class; that is, for a W-conjugacy class of root datum involutions.
+The software essentially fixes a representative involution tau_0. The
+output of the command is a list with one entry for each strong
+involution x such that tau_x is equal to tau_0, or more precisely for
+each coset for Z(G) of such strong involutions, so as to suppress
+possibly infinite repetition as mentioned above.
 
 The output is organized first by "square class".  If x is a strong
 involution, then x^2 = c is an element of Z(G)^delta (fixed points of
@@ -67,24 +59,17 @@ tau_0", which is a product of m copies of Z/2Z for some m (which is
 bounded by the rank of the +1 eigenspace of tau_0). The software
 numbers these 2^m strong involutions as 0, 1, 2,... 2^m -1.
 
-Each line of the output shows all the strong involutions belonging to
-a fixed strong real form.  The line is labelled at the beginning by
-the number of the corresponding weak real form of G (see the
-"realform" command) and at the end by the number of strong involutions
-in the equivalence class.
+Each line of the output shows all the strong involutions belonging to a
+fixed strong real form, in square brackets. The line is labelled at the
+beginning by the number of the corresponding weak real form of G (see
+the "realform" command) and at the end (for convenience) by the number
+of strong involutions in the equivalence class, in parentheses.
 
 
 Example: strong real forms of Spin(4,4):
 
 empty: strongreal
 Lie type: D4 sc s
-(weak) real forms are:
-0: so(8)
-1: so(6,2)
-2: so*(8)[0,1]
-3: so*(8)[1,0]
-4: so(4,4)
-enter your choice: 4
 choose Cartan class (one of 0,1,2,3,4,5,6): 0
 Name an output file (return for stdout, ? to abandon):
 

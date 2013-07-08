@@ -371,15 +371,21 @@ KGB: (RealFrom,int->KGBElt): select a KGB element x among those of a real form
   The call KGB(i,rf) selects the element in line i of the print_KGB(rf)
   output.
 real_form: (KGBElt->RealForm): the real form for which the argument is defined
+Cartan_class: (KGBElt->CartanClass): the Cartan class for the KGB element
+involution: (KGBElt->mat): the involution associated to the KGB element
 cross: (int,KGBElt->KGBElt): cross action for (generator,KGB element)
 Cayley: (int,KGBElt->KGBElt): Cayley transform for (generator,KGB element)
-  Calling Cayley(s,x) causes an error unless status(s,x)=3 (imag. non-compact)
+  If (and only if) the transform is undefined it returns the same parameter
+inv_Cayley: (int,KGBElt->KGBElt): first inverse Cayley transform
+  If (and only if) the transform is undefined it returns the same parameter
+  Whether there is a second inverse Cayley transform can be found out by
+  applying cross action to the result; it either returns the same result,
+  which signifies a single-value inverse Cayley, or else the second value
 status: (int,KGBElt->int): status of generator on KGB element, scale 0..4
   Encoding 0: Complex descent, 1: imaginary compact, 2: real,
   3: imaginary non-compact, 4:Complex ascent
 twist: (KGBElt->KGBElt): twist of KGB element x, useful for Hermitian dual
   This is defined by conjugation of x by the distinguished involution delta
-involution: (KGBElt->mat): the involution associated to the KGB element
 torus_bits: (KGBElt->vec): torus part of KGB element as vector of 0,1 values
 torus_factor:KGBElt->ratvec): torus part of KGB element, twice that in print_X
   To be interpreted modulo $(2\Z)^n$, and modulo the image of (transposed)
@@ -397,12 +403,20 @@ dominant: (Param->Param): make gamma dominant and do singular complex descents
 operator =: (Param,Param->bool): test equivalence of parameters
   This is implemented by applying make_dominant and testing identity of all
   three components x, lambda (defined modulo (1-theta_x)X^*) and nu.
+cross: (int,Param->Param): cross action for (Weyl group generator,parameter)
+Cayley: (int,Param->Param): Cayley transform for (Weyl generator,parameter)
+  If (and only if) the transform is undefined it returns the same parameter
+  Find out possible second value by applying cross action to the result
+inv_Cayley: (int,Param->Param): inverse Cayley transform
+  If (and only if) the inverse transform is undefined it returns the same
+  parameter. Find out possible second value of invere transform by applying
+  cross action to the result, which either produces it or else fixes result
 orientation_nr: (Param->int): the orientation number
 reducibility_points: (Param->[rat]): the 0<t<=1 with I(x,lambda,t\nu) reducible
-print_n_block: (Param->): print (nonintegral) block generated from parameter
-n_block: (Param->[Param],int): return block as list of parameters, and index
+print_block: (Param->): print (nonintegral) block generated from parameter
+block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
-KL_block: (Param->[Param],int,mat,[vec],vec,vec,mat): n_block, raw_KL, and more
+KL_block: (Param->[Param],int,mat,[vec],vec,vec,mat): block, raw_KL, and more
   This combines n_block with the Kazhdan-Lustzig table for the block appended,
   and two more values that allow cumulation to be performed. The two values of
   n_block are followed by three values in the format of raw_KL below: a matrix

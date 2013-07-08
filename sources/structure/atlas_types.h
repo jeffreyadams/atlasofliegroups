@@ -357,7 +357,6 @@ namespace atlas {
     class Block_base;
     class Block;
     class param_block;
-    class gamma_block;
     class non_integral_block;
   }
   using blocks::ext_gen;

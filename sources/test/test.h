@@ -2,6 +2,7 @@
   This is test.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2013 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -32,9 +33,6 @@ namespace test {
    alter is passed as argument.
  */
 template<typename T> void addTestCommands(commands::CommandNode&);
-
-template<typename T>
-  void addTestHelp(commands::CommandNode&, commands::TagDict&, T);
 
 }
 

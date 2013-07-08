@@ -2725,11 +2725,15 @@ void real_form_of_KGB_wrapper(expression_base::level l)
     push_value(x->rf);
 }
 
-@ Cross actions and Cayley transforms define the structure of a KGB set, and
-we make them available as functions.
+@ Cross actions and (inverse) Cayley transforms define the structure of a KGB
+set, and we make them available as functions. The inverse Cayley transform may
+be double valued of which we only report the first one; the user can easily
+test whether it was double valued by applying cross action by the same
+generator to the result and testing whether it gives a new KGB element (which
+then is the other value of the Cayley transform).
 
 @< Local function def...@>=
-void cross_action_wrapper(expression_base::level l)
+void KGB_cross_wrapper(expression_base::level l)
 { shared_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
   int s = get<int_value>()->val;
@@ -2741,17 +2745,29 @@ void cross_action_wrapper(expression_base::level l)
   push_value(x);
 }
 @)
-void Cayley_transform_wrapper(expression_base::level l)
+void KGB_Cayley_wrapper(expression_base::level l)
 { shared_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
   int s = get<int_value>()->val;
   if (static_cast<unsigned>(s)>=kgb.rank())
     throw std::runtime_error ("Illegal simple reflection: "+str(s));
-  if (kgb.cayley(s,x->val)==UndefKGB)
+  if (l==expression_base::no_value)
+    return;
+  if (kgb.cayley(s,x->val)!=UndefKGB) // when defined
+    x->val= kgb.cayley(s,x->val); // do Cayley transform
+  push_value(x);
+}
+@)
+void KGB_inv_Cayley_wrapper(expression_base::level l)
+{ shared_KGB_elt x = get_own<KGB_elt_value>();
+  const KGB& kgb=x->rf->kgb();
+  int s = get<int_value>()->val;
+  if (static_cast<unsigned>(s)>=kgb.rank())
     throw std::runtime_error ("Illegal simple reflection: "+str(s));
   if (l==expression_base::no_value)
     return;
-  x->val= kgb.cayley(s,x->val); // do Cayley transform
+  if (kgb.inverseCayley(s,x->val).first!=UndefKGB) // when defined, do first
+    x->val= kgb.inverseCayley(s,x->val).first; // inverse Cayley transform
   push_value(x);
 }
 
@@ -2791,10 +2807,17 @@ void KGB_twist_wrapper(expression_base::level l)
   push_value(x);
 }
 
-@ One important attribute of KGB elements is the associated root datum
-involution.
+@ Two important attributes of KGB elements are the associated Cartan class and
+root datum involution.
 
 @< Local function def...@>=
+void KGB_Cartan_wrapper(expression_base::level l)
+{ shared_KGB_elt x = get<KGB_elt_value>();
+  const KGB& kgb=x->rf->kgb();
+  if (l!=expression_base::no_value)
+    push_value(new Cartan_class_value(x->rf->parent,kgb.Cartan_class(x->val)));
+}
+
 void KGB_involution_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
@@ -2852,10 +2875,12 @@ void KGB_equals_wrapper(expression_base::level l)
 @< Install wrapper functions @>=
 install_function(KGB_elt_wrapper,@|"KGB","(RealForm,int->KGBElt)");
 install_function(real_form_of_KGB_wrapper,@|"real_form","(KGBElt->RealForm)");
-install_function(cross_action_wrapper,@|"cross","(int,KGBElt->KGBElt)");
-install_function(Cayley_transform_wrapper,@|"Cayley","(int,KGBElt->KGBElt)");
+install_function(KGB_cross_wrapper,@|"cross","(int,KGBElt->KGBElt)");
+install_function(KGB_Cayley_wrapper,@|"Cayley","(int,KGBElt->KGBElt)");
+install_function(KGB_inv_Cayley_wrapper,@|"inv_Cayley","(int,KGBElt->KGBElt)");
 install_function(KGB_status_wrapper,@|"status","(int,KGBElt->int)");
 install_function(KGB_twist_wrapper,@|"twist","(KGBElt->KGBElt)");
+install_function(KGB_Cartan_wrapper,@|"Cartan_class","(KGBElt->CartanClass)");
 install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");
 install_function(torus_bits_wrapper,@|"torus_bits","(KGBElt->vec)");
 install_function(torus_factor_wrapper,@|"torus_factor","(KGBElt->ratvec)");
@@ -2984,7 +3009,8 @@ void unwrap_parameter_wrapper(expression_base::level l)
   }
 }
 
-@ A crucial attribute of module parameters is their infinitesimal character.
+@*2 Functions operating on module parameters.
+A crucial attribute of module parameters is their infinitesimal character.
 
 @< Local function def...@>=
 void infinitesimal_character_wrapper(expression_base::level l)
@@ -3057,6 +3083,62 @@ void parameter_equivalent_wrapper(expression_base::level l)
   }
 }
 
+@ While parameters can be used to compute blocks of (other) parameters, it can
+be useful to have available the basic operations of cross actions and Cayley
+transforms on individual parameters without going through the construction of
+an entire block. This should basically be simple because the construction of
+blocks is based on just such operations defined on individual parameters;
+however the reality is more complicated because the storage format
+|StandardRepr| used in parameter values is not directly suited to the way
+(currently) cross actions and Cayley transforms are computed. So the functions
+below involve the actual computation sandwiched between unpacking and
+repacking operations; this is hidden in the methods |Rep_context::cross| and
+friends that are called blow.
+
+Like for KGB elements there is the possibilty of double values, this time both
+for the Cayley and inverse Cayley transforms. The ``solution'' to this
+difficulty is the same here: the user can find out by herself about a possible
+second image by applying a cross action to the result. In the current case
+this approach has in fact already been adopted in the methods that are called
+here, which present a single-minded interface to these transforms.
+
+@< Local function def...@>=
+void parameter_cross_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  int s = get<int_value>()->val;
+  unsigned int r =
+    rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
+  if (static_cast<unsigned>(s)>=r)
+    throw std::runtime_error
+      ("Illegal simple reflection: "+str(s)+ ", should be <"+str(r));
+  if (l!=expression_base::no_value)
+    push_value(new module_parameter_value(p->rf,p->rc().cross(s,p->val)));
+}
+
+void parameter_Cayley_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  int s = get<int_value>()->val;
+  unsigned int r =
+    rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
+  if (static_cast<unsigned>(s)>=r)
+    throw std::runtime_error
+      ("Illegal simple reflection: "+str(s)+ ", should be <"+str(r));
+  if (l!=expression_base::no_value)
+    push_value(new module_parameter_value(p->rf,p->rc().Cayley(s,p->val)));
+}
+void parameter_inv_Cayley_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  int s = get<int_value>()->val;
+  unsigned int r =
+    rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
+  if (static_cast<unsigned>(s)>=r)
+    throw std::runtime_error
+      ("Illegal simple reflection: "+str(s)+ ", should be <"+str(r));
+  if (l!=expression_base::no_value)
+    push_value(new module_parameter_value(p->rf,p->rc().inv_Cayley(s,p->val)));
+}
+
+
 @ The library can also compute orientation numbers for parameters.
 
 @< Local function def...@>=
@@ -3122,7 +3204,8 @@ void print_n_block_wrapper(expression_base::level l)
 
 @ More interesting than printing the block is to return is to the user as a
 list of parameter values. The following function does this, and adds as a
-second result the index that the original parameter has in the result.
+second result the index that the original parameter has in the resulting
+block.
 
 @< Local function def...@>=
 void n_block_wrapper(expression_base::level l)
@@ -3322,12 +3405,16 @@ install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
 install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
 install_function(parameter_dominant_wrapper,@|"dominant" ,"(Param->Param)");
 install_function(parameter_equivalent_wrapper,@|"=" ,"(Param,Param->bool)");
+install_function(parameter_cross_wrapper,@|"cross" ,"(int,Param->Param)");
+install_function(parameter_Cayley_wrapper,@|"Cayley" ,"(int,Param->Param)");
+install_function(parameter_inv_Cayley_wrapper,@|"inv_Cayley"
+                ,"(int,Param->Param)");
 install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(reducibility_points_wrapper,@|
 		"reducibility_points" ,"(Param->[rat])");
-install_function(print_n_block_wrapper,@|"print_n_block"
+install_function(print_n_block_wrapper,@|"print_block"
                 ,"(Param->)");
-install_function(n_block_wrapper,@|"n_block" ,"(Param->[Param],int)");
+install_function(n_block_wrapper,@|"block" ,"(Param->[Param],int)");
 install_function(KL_block_wrapper,@|"KL_block"
                 ,"(Param->[Param],int,mat,[vec],vec,vec,mat)");
 install_function(partial_block_wrapper,@|"partial_block"
@@ -4096,7 +4183,7 @@ void print_KL_basis_wrapper(expression_base::level l)
 @.Real form and dual...@>
 @)
   Block block = Block::build(rf->val,drf->val);
-  kl::KLContext klc(block); klc.fill();
+  kl::KLContext klc(block); klc.fill(false);
 @)
   *output_stream
     << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:\n\n";
@@ -4124,7 +4211,7 @@ void print_prim_KL_wrapper(expression_base::level l)
 @.Real form and dual...@>
 @)
   Block block = Block::build(rf->val,drf->val);
-  kl::KLContext klc(block); klc.fill();
+  kl::KLContext klc(block); klc.fill(false);
 @)
   *output_stream
     << "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:\n\n";
@@ -4153,7 +4240,7 @@ void print_KL_list_wrapper(expression_base::level l)
 @.Real form and dual...@>
 @)
   Block block = Block::build(rf->val,drf->val);
-  kl::KLContext klc(block); klc.fill();
+  kl::KLContext klc(block); klc.fill(false);
 @)
   kl_io::printKLList(*output_stream,klc);
 @)
@@ -4184,7 +4271,7 @@ void print_W_cells_wrapper(expression_base::level l)
 @.Real form and dual...@>
 @)
   Block block = Block::build(rf->val,drf->val);
-  kl::KLContext klc(block); klc.fill();
+  kl::KLContext klc(block); klc.fill(false);
 
   wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
   wgraph::DecomposedWGraph dg(wg);
@@ -4214,7 +4301,7 @@ void print_W_graph_wrapper(expression_base::level l)
 @.Real form and dual...@>
 @)
   Block block = Block::build(rf->val,drf->val);
-  kl::KLContext klc(block); klc.fill();
+  kl::KLContext klc(block); klc.fill(false);
 
   wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
 @)

@@ -731,6 +731,8 @@ TitsElt KGB::titsElt(KGBElt x) const
 
 size_t KGB::torus_rank() const { return titsGroup().rank(); }
 
+RatWeight KGB::half_rho() const { return RatWeight(rootDatum().twoRho(),4); }
+
 TorusElement KGB::torus_part_global(const RootDatum&rd, KGBElt x) const
 {
   assert(rank()==rd.semisimpleRank());

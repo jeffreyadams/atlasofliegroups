@@ -47,7 +47,6 @@
 #include "realredgp.h"
 #include "subquotient.h"
 #include "subsystem.h"
-#include "subdatum.h"
 
 #include <cassert>
 
@@ -99,46 +98,6 @@ GlobalTitsGroup::GlobalTitsGroup(const ComplexReductiveGroup& G)
   , half_rho_v(G.rootDatum().dual_twoRho(),4)
   , square_class_gen(compute_square_classes(G))
 {
-  for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
-    alpha_v[i]=TorusPart(simple.roots()[i]);
-}
-
-GlobalTitsGroup::GlobalTitsGroup
-  (const ComplexReductiveGroup& G,tags::DualTag)
-  : TwistedWeylGroup(G.twistedWeylGroup(),tags::DualTag())
-  , simple(PreRootDatum // now viewed from original side
-	   (WeightList(G.rootDatum().beginSimpleRoot(),
-		       G.rootDatum().endSimpleRoot()),
-	    CoweightList(G.rootDatum().beginSimpleCoroot(),
-			 G.rootDatum().endSimpleCoroot()),
-	    G.rootDatum().rank()))
-  , delta_tr(G.dualDistinguished().transposed()) // quasi-split involution
-  , alpha_v(G.semisimpleRank())
-  , half_rho_v(G.rootDatum().twoRho(),4)
-  , square_class_gen() // don't bother how this should be done, for now
-{
-  for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
-    alpha_v[i]=TorusPart(simple.roots()[i]);
-}
-
-GlobalTitsGroup::GlobalTitsGroup(const SubSystemWithGroup& sub,
-				 const WeightInvolution& theta,
-				 WeylWord& ww)
-  : TwistedWeylGroup(sub.Weyl_group(),sub.twist(theta,ww)) // sets |ww|
-  , simple(sub.pre_root_datum()) // roots/coroots of sub, viewed from parent
-  , delta_tr(theta) // is made transpose-fundamental (sub side) below, by |ww|
-  , alpha_v(TwistedWeylGroup::rank())
-  , half_rho_v(sub.parent_sub_2rho(),4)
-  , square_class_gen() // remains empty when this constructor is used
-{
-  // make |delta_tr| correspond (minus-tr) to fundamental involution for sub
-  for (size_t i=0; i<ww.size(); ++i) // apply in reverse, towards |-delta_tr|
-    delta_tr *= // right-multiply on parent side because of duality
-      (sub.parent_datum().root_reflection // translating to parent reflections
-       (sub.parent_nr_simple(ww[i])));
-  // now |delta_tr| is split-Cartan involution for parent
-  delta_tr.negate(); // change sign, so as to stabilise set of positive roots
-
   for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
     alpha_v[i]=TorusPart(simple.roots()[i]);
 }
@@ -451,48 +410,6 @@ std::vector<Grading> compute_square_classes
 } // |namespace|
 
 
-SubTitsGroup::SubTitsGroup(const ComplexReductiveGroup& G,
-			   const SubSystemWithGroup& sub,
-			   const WeightInvolution& theta,
-			   WeylWord& ww)
-: GlobalTitsGroup(sub,theta,ww)
-, parent(G,tags::DualTag())
-, subsys(sub)
-, t(G.rank())
-{
-  assert(sub.parent_datum().rank()==G.rank());
-  const RootDatum rd(sub.pre_root_datum()); // need to construct it
-  GlobalTitsElement a(G.rank()); // identity
-  for (weyl::Generator s=0; s<sub.rank(); ++s)
-    if (parent.compact(sub.parent_datum(),sub.parent_nr_simple(s),a))
-      t = t + y_values::exp_2pi(rd.fundamental_weight(s));
-}
-
-TorusElement SubTitsGroup::base_point_offset(const TwistedInvolution& tw)
-  const
-{
-  GlobalTitsElement a(t);
-  weyl::InvolutionWord iw=involution_expr(tw);
-  for (size_t i=iw.size(); i-->0;)
-    if (iw[i]>=0) // Cayley
-    {
-      const WeylWord& ww = subsys.to_simple(iw[i]);
-      for (size_t j=ww.size(); j-->0;)
-	parent.cross_act(ww[j],a);
-      a = parent.Cayley(subsys.simple(iw[i]),a);
-      for (size_t j=0; j<ww.size(); ++j)
-	parent.cross_act(ww[j],a);
-    }
-    else // cross
-    {
-      const WeylWord& ww = subsys.reflection(~iw[i]);
-      for (size_t j=0; j<ww.size(); ++j)
-	parent.cross_act(ww[j],a);
-    }
-
-  assert(parent.involution_matrix(a.tw())==involution_matrix(tw));
-  return a.torus_part();
-}
 
 /****************************************************************************
 
@@ -552,42 +469,6 @@ TitsGroup::TitsGroup(const int_Matrix& Cartan_matrix,
     d_involution.set(i,twist[i]); // (transpose of) |twist| permutation matrix
     dual_involution.set(i,W.Chevalley_dual(twist[i]));
   }
-}
-
-// build Tits group for |sub|, get sub-twist defined by |-theta^t| into |ww|
-// called from |SubDatum| constructor, and unsused |TitsCoset| sub-contructor
-TitsGroup::TitsGroup(const SubSystemWithGroup& sub,
-		     const WeightInvolution& theta,
-		     WeylWord& ww)
-  : TwistedWeylGroup(sub.Weyl_group(),sub.parent_twist(theta,ww))
-  , d_rank(sub.parent_datum().rank()) // not |sub.rank()|
-  , d_simpleRoot(sub.rank())
-  , d_simpleCoroot(sub.rank())
-  , d_involution(theta.transposed()) // made "distinguished" below
-  , dual_involution(d_involution) // copy is modified differently below
-{
-  for (weyl::Generator s=0; s<sub.rank(); ++s)
-  {
-    d_simpleRoot[s] =
-      TorusPart(sub.parent_datum().root(sub.parent_nr_simple(s)));
-    d_simpleCoroot[s] =
-      TorusPart(sub.parent_datum().coroot(sub.parent_nr_simple(s)));
-  }
-
-  std::vector<BinaryMap> simple_tr; simple_tr.reserve(d_rank);
-  for (size_t s=0; s<sub.rank(); ++s)
-    simple_tr.push_back(BinaryMap
-      (sub.parent_datum().root_reflection(sub.parent_nr_simple(s))
-					 .transposed()));
-
-  for (size_t i=0; i<ww.size(); ++i) // make it distinguished by applying |ww|
-    d_involution *= simple_tr[ww[i]];
-
-  const WeylGroup& W = weylGroup();
-  WeylWord w_opp = W.word(W.opposite(W.element(ww)));
-  for (size_t i=0; i<w_opp.size(); ++i) // make it opposite distinguished
-    dual_involution *= simple_tr[w_opp[i]];
-  // no need to negate the binary matrix |dual_involution|
 }
 
 // Switching between left and right torus parts is a fundamental tool.
@@ -769,29 +650,6 @@ TitsCoset::TitsCoset(const ComplexReductiveGroup& G,tags::DualTag)
   for (unsigned i=0; i<G.semisimpleRank(); ++i)
     grading_offset.set(i,Tg.twisted(i)==i);
 }
-
-// TitsCoset for subsystem, used by |kgb::subsys_KGB| constructor
-TitsCoset::TitsCoset(const subdatum::SubDatum& sub,
-		     Grading parent_base_grading)
-  : my_Tits_group(NULL)
-  , Tg(sub.Tits_group()) // use TitsGroup that is already stored in |sub|
-  , grading_offset(sub.induced(parent_base_grading))
-  , rs(sub)
-{}
-
-// this constructor adapts to |theta| (given on parent) and sets |ww|
-// it also avoids contructing a |SubDatum| at all; it is currently unused
-TitsCoset::TitsCoset(const SubSystemWithGroup& sub,
-		     const WeightInvolution& theta,
-		     Grading parent_base_grading,
-		     WeylWord& ww)
-  : my_Tits_group(new TitsGroup(sub,theta,ww)) // build TitsGroup here
-  , Tg(*my_Tits_group) // and own it
-  , grading_offset(sub.induced(parent_base_grading))
-  , rs(sub)
-{}
-
-
 
 void TitsCoset::basedTwistedConjugate
   (TitsElt& a, const WeylWord& w) const

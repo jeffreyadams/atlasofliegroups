@@ -30,8 +30,6 @@ TitsGroup and TitsElt.
 
 #include "cartanclass.h"
 
-#include "subdatum_fwd.h" // not subdatum.h, which includes us
-
 namespace atlas {
 
 namespace tits {
@@ -131,35 +129,15 @@ class GlobalTitsElement
    reduction of the |TorusElement| component that could be applied after
    Cayley transforms (and should be for deciding equality) is not implemented
    here, since it depends on the twisted involution in a way that is more
-   efficiently handled by tabulation than by on-the-fly computation (cf.
-   |kgb::GlobalFiberData|).
+   efficiently handled by tabulation than by on-the-fly computation.
 
-   This class has two applications: the main one is just to be able to
-   manipulate a given |GlobalTitsElement|, which in practice is used for |y|
-   values for the construction of possibly non-integral blocks. However, for
-   testing purposes an initial application was to build a |GlobalTitsGroup| as
-   a substitute for the |TitsGroup| and |TitsCoset| support classes handling
-   |x| values. It is then attached to a whole inner class rather than to a
-   specific real form (as |TitsCoset| is) and as a consequence it can generate
-   "all" valid elements for it (the command 'X'). For the latter purpose the
-   |square_class_gen| and associated method are included, which permits
-   listing a set of initial elements from which others can be deduced. For the
-   main application however this field can be left an empty list, so as not to
-   waste any time computing it during construction. This dichotomy should of
-   course be reimplemented through a derived class.
-
-   Another heritage of this double usage is an ambiguity in terminology: in
-   the main use the |GlobalTitsElement|s are |y| values, in which case the
-   perspective is from that side; for instance the matrix |delta_tr|, called
-   transposed, will actually be one that acts on character lattice $X^*$, and
-   defines the most split Cartan. However, in the initial use they are |x|
-   values (the output of 'X' "contains" the KGB structures for any real form).
-   Terminology in comments is relative to the side of |GlobalTitsElement|, so
-   saying the |simple| field below is on the "dual side" means that in
-   handling |y| values, it is (a subdatum viewed from the side of) the
-   original root datum; also "imaginary roots" are then real coroots for that
-   original datum. The resulting ambiguity only slightly affects method names:
-   for instance (imaginary) |compact| means (real) "nonparity" for |y|-use.
+   This class could be an alternative to the older |TitsGroup| and |TitsCoset|
+   support classes handling |x| values. It is then attached to a whole inner
+   class rather than to a specific real form, as |TitsCoset| is, whence the
+   "Global". As a consequence it can generate "all" valid elements for it (the
+   command 'X'). For the latter purpose the |square_class_gen| member and
+   associated method are included, which permits listing a set of initial
+   elements from which others can be deduced.
  */
 class GlobalTitsGroup : public TwistedWeylGroup
 {
@@ -176,16 +154,8 @@ class GlobalTitsGroup : public TwistedWeylGroup
   GlobalTitsGroup& operator= (const GlobalTitsGroup&);
 
  public:
-  //!\brief constructor for inner class (use after latter is fully constructed)
+  // for implementing 'X' for inner class (when latter is fully constructed)
   GlobalTitsGroup(const ComplexReductiveGroup& G);
-
-  //!\brief constructor for dual inner class (the side of following contructor)
-  GlobalTitsGroup(const ComplexReductiveGroup& G,tags::DualTag);
-
-  //!\brief constructor from subdatum (dual side) + involution information
-  GlobalTitsGroup(const SubSystemWithGroup& sub,
-  		  const WeightInvolution& theta, // on opposite side from |sub|
-		  WeylWord& ww); // output: expresses |-theta^t| for |sub|
 
   // accessors
   size_t semisimple_rank() const { return alpha_v.size(); }
@@ -298,32 +268,6 @@ class GlobalTitsGroup : public TwistedWeylGroup
 		 bool do_twist, // whether $(t,ww)$ is conjugated by $\delta_1$
 		 GlobalTitsElement& b) const;
 }; // |class GlobalTitsGroup|
-
-
-
-
-//			     |class SubTutsGroup|
-
-
-// a class that also stores a torus part induced by the parent base involution
-// used only to implement the 'embedding' command, whence it has few methods
-class SubTitsGroup : public GlobalTitsGroup
-{
-  GlobalTitsGroup parent; // a second one!
-  const SubSystem& subsys;
-  TorusElement t;
- public:
-  //!\brief constructor from subdatum (dual side) + involution information
-  SubTitsGroup(const ComplexReductiveGroup& G,
-	       const SubSystemWithGroup& sub,
-	       const WeightInvolution& theta,
-	       WeylWord& ww); // output: expesses |-theta^t| for |sub|
-  TorusElement base_point_offset(const TwistedInvolution& tw) const;
-};
-
-
-
-
 
 
 
@@ -551,12 +495,7 @@ $H(2)$, for twisting TorusPart values when commuting with $\delta$.
 	    const WeylGroup& W,
 	    const weyl::Twist& twist);
 
-  //!\brief Constructor for Tits group relative to a subsystem
-  TitsGroup(const SubSystemWithGroup& sub,
-	    const WeightInvolution& theta,
-	    WeylWord& ww);
-
-  //\brief Like a copy contructor, but reference |W| rather than share or copy
+  //\brief Like a copy constructor, but reference |W| rather than share or copy
   TitsGroup(const TitsGroup& Tg, const WeylGroup& W)
     : TwistedWeylGroup(W,Tg.twist())
     , d_rank(Tg.d_rank)
@@ -753,16 +692,6 @@ class TitsCoset
 
   TitsCoset(const ComplexReductiveGroup& G,
 	    tags::DualTag);// dual adjoint case
-
-  // build Tits coset for subdatum, incorporating adapted parent base grading
-  TitsCoset(const subdatum::SubDatum& sub,
-	    Grading parent_base_grading);
-
-  // this constructor computes the inner class for |sub| defined by |theta|
-  TitsCoset(const SubSystemWithGroup& sub,
-	    const WeightInvolution& theta,
-	    Grading parent_base_grading, // by value: small
-	    WeylWord& ww);
 
   ~TitsCoset() { delete(my_Tits_group); }
 

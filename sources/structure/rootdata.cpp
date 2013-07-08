@@ -1139,10 +1139,10 @@ WeightInvolution refl_prod(const RootNbrSet& rset, const RootDatum& rd)
 }
 
 
-RootDatum integrality_datum(const RootDatum& rd, const RatWeight& nu)
+RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma)
 {
-  arithmetic::Numer_t n=nu.denominator(); // signed type!
-  const Ratvec_Numer_t& v=nu.numerator();
+  arithmetic::Numer_t n=gamma.denominator(); // signed type!
+  const Ratvec_Numer_t& v=gamma.numerator();
   RootNbrSet int_roots(rd.numRoots());
   for (size_t i=0; i<rd.numPosRoots(); ++i)
     if (rd.posCoroot(i).dot(v)%n == 0)
@@ -1151,10 +1151,10 @@ RootDatum integrality_datum(const RootDatum& rd, const RatWeight& nu)
   return rd.sub_datum(rd.simpleBasis(int_roots));
 }
 
-unsigned int integrality_rank(const RootDatum& rd, const RatWeight& nu)
+unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma)
 {
-  arithmetic::Numer_t n=nu.denominator(); // signed type!
-  const Ratvec_Numer_t& v=nu.numerator();
+  arithmetic::Numer_t n=gamma.denominator(); // signed type!
+  const Ratvec_Numer_t& v=gamma.numerator();
   RootNbrSet int_roots(rd.numRoots());
   for (size_t i=0; i<rd.numPosRoots(); ++i)
     if (rd.posCoroot(i).dot(v)%n == 0)
@@ -1163,15 +1163,15 @@ unsigned int integrality_rank(const RootDatum& rd, const RatWeight& nu)
   return rd.simpleBasis(int_roots).size();
 }
 
-RationalList integrality_points(const RootDatum& rd, RatWeight& nu)
+RationalList integrality_points(const RootDatum& rd, RatWeight& gamma)
 {
-  nu.normalize();
-  arithmetic::Denom_t d = nu.denominator(); // unsigned type is safe here
+  gamma.normalize();
+  arithmetic::Denom_t d = gamma.denominator(); // unsigned type is safe here
 
   std::set<arithmetic::Denom_t> products;
   for (size_t i=0; i<rd.numPosRoots(); ++i)
   {
-    arithmetic::Denom_t p = abs(rd.posCoroot(i).dot(nu.numerator()));
+    arithmetic::Denom_t p = abs(rd.posCoroot(i).dot(gamma.numerator()));
     if (p!=0)
       products.insert(p);
   }

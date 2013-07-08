@@ -19,10 +19,10 @@ unique "canonical" involution. The elements of kgb for which the
 corresponding involution is canonical are denoted by a "#" preceding
 the Cartan class number.
 
-The elements x lying over the same twisted involution are parametrized
-by a product of m copies of Z/2Z for some m (see the strongreal
-command). This information is given by a vector of 0s and 1s of size
-the rank of G.
+The elements x lying over the same twisted involution are parametrized by a
+product of m copies of Z/2Z for some m (see the strongreal command). This
+information is given by a parenthesized vector of 0s and 1s, of size the rank
+of G, given before the indication of the Cartan class and involution.
 
 Example: KGB for Sp(4,R)
 

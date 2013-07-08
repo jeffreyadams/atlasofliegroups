@@ -142,8 +142,7 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta,
 }
 
 // Here we seek twist and |ww| on parent side (dual with respect to |sub|)
-// used in |TitsGroup| constructor for subdatum, called from |SubDatum|,
-// and in |blocks::param_block::compute_duals| (just for the induced |Twist|)
+// used in |blocks::param_block::compute_duals| (just for the induced |Twist|)
 weyl::Twist SubSystem::parent_twist(const WeightInvolution& theta,
 				    WeylWord& ww) const
 {
@@ -202,7 +201,7 @@ Grading SubSystem::induced(Grading base_grading) const
 SubSystemWithGroup::SubSystemWithGroup(const RootDatum& parent,
 				       const RootNbrList& sub_sys)
   : SubSystem(parent,sub_sys) // build
-  , sub_W(RootSystem::cartanMatrix()) // use Cartan matrix above
+  , sub_W(RootSystem::cartanMatrix()) // use sub-side Cartan matrix built above
 {}
 
 SubSystemWithGroup SubSystemWithGroup::integral // pseudo contructor
@@ -210,13 +209,13 @@ SubSystemWithGroup SubSystemWithGroup::integral // pseudo contructor
 {
   arithmetic::Numer_t n=gamma.denominator(); // signed!
   const Ratvec_Numer_t& v=gamma.numerator();
-  RootNbrSet int_roots(parent.numRoots());
+  RootNbrSet int_coroots(parent.numRoots());
   for (size_t i=0; i<parent.numPosRoots(); ++i)
     if (parent.posCoroot(i).dot(v)%n == 0)
-      int_roots.insert(parent.posRootNbr(i));
+      int_coroots.insert(parent.posRootNbr(i));
 
   // it suffices that simpleBasis computed below live until end of constructor
-  return SubSystemWithGroup(parent,parent.simpleBasis(int_roots));
+  return SubSystemWithGroup(parent,parent.simpleBasis(int_coroots));
 }
 
 } // |namespace subdatum|
