@@ -21,7 +21,7 @@
 #include "bitvector.h"
 #include "lietype.h" // Lie types
 
-#include "polynomials.h" // |printPol|
+#include "polynomials.h" // |Polynomial<C>::print|
 
 /*****************************************************************************
 
