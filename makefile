@@ -73,8 +73,11 @@ dependencies := $(atlas_objects:%.o=%.d)
 # whenever changing the setting of these flags, do 'make clean' first
 
 # the following are predefined flavors for the compiler flags:
-# optimizing (oflags), development with debugging (gflags), profiling (pflags)
-
+# normal (nflags)
+# optimizing (oflags)
+# development with debugging (gflags)
+# profiling (pflags)
+nflags := -c $(includedirs) -Wall -DNDEBUG
 oflags := -c $(includedirs) -Wall -O3 -DNDEBUG
 gflags := -c $(includedirs) -Wall -ggdb
 pflags := -c $(includedirs) -Wall -pg -O -DNREADLINE
@@ -83,18 +86,24 @@ pflags := -c $(includedirs) -Wall -pg -O -DNREADLINE
 atlas_flags :=
 realex_flags := -Wno-parentheses
 
-# the default setting is optimizing
+# the default setting in the faster branch is optimizing
 cflags ?= $(oflags)
 
-# to select another flavor, set debug=true or profile=true when calling make
-# alternatively, you can set cflags="your personal flavor" to override default
+# to select another flavor, set optimize=true, debug=true or profile=true
+# when calling make (as in "make optimize=true") or set the flavor as an
+# environment variable (only the first flavor set in above list takes effect)
+# alternatively, you can set cflags="explicit options" to override
 
+ifeq ($(optimize),true)
+      cflags := $(oflags)
+else
 ifeq ($(debug),true)
       cflags := $(gflags)
 else
-  ifeq ($(profile),true)
+ifeq ($(profile),true)
       cflags := $(pflags)
-  endif
+endif
+endif
 endif
 
 # suppress readline by setting readline=false
