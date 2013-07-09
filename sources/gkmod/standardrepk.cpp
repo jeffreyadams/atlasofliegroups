@@ -226,8 +226,7 @@ Weight SRK_context::lift(size_t cn, HCParam p) const
   return result;
 }
 
-StandardRepK SRK_context::std_rep
-  (const Weight& two_lambda, TitsElt a) const
+StandardRepK SRK_context::std_rep (const Weight& two_lambda, TitsElt a) const
 {
   const WeylGroup& W=weylGroup();
   const RootDatum& rd=rootDatum();
@@ -353,12 +352,10 @@ bool SRK_context::isStandard(const StandardRepK& sr, size_t& witness) const
   return true;
 }
 
-bool SRK_context::isNormal(Weight lambda, size_t cn,
-			   size_t& witness) const
+bool SRK_context::isNormal(Weight lambda, size_t cn, size_t& witness) const
 {
   size_t i=0; // position of |*it| below in |info(cn).bi_ortho|
-  for (RankFlags::iterator
-	 it=info(cn).bi_ortho.begin(); it(); ++it,++i)
+  for (RankFlags::iterator it=info(cn).bi_ortho.begin(); it(); ++it,++i)
     if (lambda.dot(info(cn).sum_coroots[i])<0)
     {
       witness=*it; return false; // |witness| indicates a complex simple root
