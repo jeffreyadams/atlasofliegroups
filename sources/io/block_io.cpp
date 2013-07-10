@@ -119,10 +119,9 @@ std::ostream& non_integral_block::print
 
   strm << (survives(z) ? '*' : ' ')
        << "(x=" << std::setw(xwidth) << parent_x(z)
-       << ", nu=" << std::setw(2*ll.size()+5) << nu(z);
-//strm << ',' << std::setw(2*ll.size()+5) << ll;
-  strm << ",lam=rho+" << std::setw(2*ll.size()+3) << lambda_rho(z);
-  strm << ')' << std::setw(2) << "";
+       << ",lam=rho+" << std::setw(2*ll.size()+3) << lambda_rho(z)
+       << ", nu=" << std::setw(2*ll.size()+5) << nu(z)
+       << ')' << std::setw(2) << "";
 
   const TwistedInvolution& ti = kgb.involution(parent_x(z));
   const TwistedWeylGroup& tW = kgb.twistedWeylGroup();

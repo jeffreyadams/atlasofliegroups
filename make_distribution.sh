@@ -8,7 +8,7 @@ distr_files="COPYRIGHT LICENSE README CHANGES"
 distr_all_src="error interface io utilities structure gkmod test stand-alone"
 dirs_with_cweb="interpreter stand-alone io"  # directories containing *.w files
 rx_files="basic groups misc kl iterate_deform hermitian unitary translate \
- lietypes det sp4 my nilpotent sort"
+ lietypes test det sp4 my nilpotent sort"
 
 
 echo Building $distr
@@ -21,8 +21,8 @@ ln -s $here/distr_Makefile $distr/Makefile
 ln -s $here/messages/* $distr/messages/
 for f in $rx_files ; do ln -s $here/rx-scripts/$f.rx $distr/rx-scripts ; done
 ln -s $here/rx-scripts/examples $distr/rx-scripts/
+ln -s $here/rx-scripts/*.help $distr/rx-scripts/
 ln -s $here/doc/modules $distr/
-ln -s $here/sources/interpreter/*.help $distr/
 for sd in sources/*; do mkdir $distr/$sd; done
 for sd in $distr_all_src
   do ln -s $here/sources/$sd/*.{h,cpp} $distr/sources/$sd/
