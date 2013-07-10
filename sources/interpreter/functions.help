@@ -457,6 +457,9 @@ operator +: (ParamPol,ParamPol->ParamPol): addition of formal sums
 operator *: (int,ParamPol->ParamPol): integer multiple of a formal sum
 operator *: (Split,ParamPol->ParamPol): split integer multiple of a formal sum
 
+K_type_formula: (Param->ParamPol) Express K-type in terms of standardreps@K
+to_canonical: (Param->Param) Move parameter to canonical fiber (making nu=0)
+
 deform: (Param->ParamPol): compute deformation terms when nu decreases
   The non-integral block for the parameter and its KL polynomials are
   computed, from which the deformation terms involing other members of the

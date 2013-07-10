@@ -3791,6 +3791,39 @@ since the parameter itself reported here might be final.
   }
 }
 
+@ In the K-type code, standard representations restricted to $K$ are always
+given on the canonical twisted involution of their Cartan class. In order to
+be able to understand what a parameter will look like in this representation,
+we provide a function that performs a similar transformation of a parameter,
+ignoring its $\nu$ component. The operation simply consists of applying
+complex cross actions on~$x$ until it is canonical for its Cartan class, and
+applying the corresponding simple reflections to~$\lambda$.
+
+@< Local function def...@>=
+void to_canonical_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  const ComplexReductiveGroup& G=p->rf->val.complexGroup();
+  const KGB& kgb = p->rf->val.kgb();
+  const WeylGroup& W=G.weylGroup();
+  const RootDatum& rd=G.rootDatum();
+@)
+  KGBElt x = p->val.x();
+  TwistedInvolution sigma = p->rf->kgb().involution(x);
+  WeylElt w = G.canonicalize(sigma);
+  // $x\times w$ lies over |sigma| canonical
+  Weight two_lambda = p->rc().lambda_rho(p->val)*2 + rd.twoRho();
+@)
+  x = kgb.cross(x,W.word(w));
+  assert(p->rf->kgb().involution(x)==sigma);
+   // we should now be at canonical twisted involution
+  W.inverseAct(rd,w,two_lambda);
+  if (l!=expression_base::no_value)
+  { RatWeight zero_nu(p->rf->val.rank());
+    StandardRepr result = p->rc().sr(x,(two_lambda-rd.twoRho())/=2,zero_nu);
+    push_value(new module_parameter_value(p->rf,result));
+  }
+}
+
 
 @*2 Deformation formulas.
 Here is our principal application of virtual modules.
@@ -3883,6 +3916,7 @@ install_function(int_mult_virtual_module_wrapper,@|"*"
 install_function(split_mult_virtual_module_wrapper,@|"*"
 		,"(Split,ParamPol->ParamPol)");
 install_function(K_type_formula_wrapper,@|"K_type_formula" ,"(Param->ParamPol)");
+install_function(to_canonical_wrapper,@|"to_canonical" ,"(Param->Param)");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
