@@ -207,7 +207,7 @@ ifneq ($(INSTALLDIR),$(shell pwd))
 	$(INSTALL) -d $(INSTALLDIR)/www
 	$(INSTALL) -d $(INSTALLDIR)/messages $(INSTALLDIR)/rx-scripts
 	$(INSTALL) -m 644 LICENSE COPYRIGHT README $(INSTALLDIR)
-	$(INSTALL) sources/interpreter/*.help $(INSTALLDIR)
+	$(INSTALL) rx-scripts/*.help $(INSTALLDIR)
 	$(INSTALL) -p atlas realex $(INSTALLDIR)
 	$(INSTALL) -m 644 www/*html $(INSTALLDIR)/www/
 	$(INSTALL) -m 644 messages/*.help $(INSTALLDIR)/messages/
