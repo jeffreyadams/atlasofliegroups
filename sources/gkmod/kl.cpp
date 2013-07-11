@@ -718,7 +718,7 @@ void KLContext::muCorrection(std::vector<KLPol>& klv,
   least all the extremal values $x$ for $y$, and at most for all primitive
   values $x$ for $y$. So when $x=er[i]$ then $P_{x,y}=klv[i]$. In practice
   |er| will contain either all extremal elements (when called from
-  |directRecursion|) or all primitive elements (for |newRecursion|).
+  |recursionRow|) or all primitive elements (for |newRecursionRow|).
 
   This function writes out these data to |d_prim[y]| and |d_kl[y]|,
   transformed as follows: (1) rather than storing polynomials from |klv| (or

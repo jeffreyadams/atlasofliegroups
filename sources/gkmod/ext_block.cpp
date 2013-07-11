@@ -28,18 +28,51 @@ namespace ext_block {
 
 bool is_complex(DescValue v)
 {
-  switch (v)
-  {
-  case one_complex_ascent:
-  case one_complex_descent:
-  case two_complex_ascent:
-  case two_complex_descent:
-  case three_complex_ascent:
-  case three_complex_descent:
-    return true;
-  default: return false;
-  }
+  static unsigned long mask =
+    1ul << one_complex_ascent   | 1ul << one_complex_descent |
+    1ul << two_complex_ascent   | 1ul << two_complex_descent |
+    1ul << three_complex_ascent | 1ul << three_complex_descent;
+
+  return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
+
+bool has_double_image(DescValue v)
+{
+  static unsigned long mask =
+       1ul << one_real_pair_fixed         | 1ul << one_imaginary_pair_fixed
+    |  1ul << two_real_double_double      | 1ul << two_imaginary_double_double
+    |  1ul << two_imaginary_single_double | 1ul << two_real_single_double;
+
+  return (1ul << v & mask) != 0; // whether |v| is one of the above
+}
+
+bool is_unique_image (DescValue v)
+{
+  static unsigned long mask =
+      1ul << one_real_pair_fixed    | 1ul << one_imaginary_pair_fixed
+    | 1ul << two_semi_imaginary     | 1ul << two_semi_real
+    | 1ul << two_real_double_double | 1ul << two_imaginary_double_double
+    | 1ul << three_semi_imaginary   | 1ul << three_real_semi
+    | 1ul << three_imaginary_semi   | 1ul << three_semi_real;
+
+  return (1ul << v & mask) != 0 // whether |v| is one of the above
+    or is_complex(v);  // these are also unique images
+}
+
+bool is_like_nonparity(DescValue v)
+{
+  static unsigned long mask =
+      1ul << one_imaginary_pair_switched | 1ul << one_real_nonparity
+    | 1ul << two_real_nonparity          | 1ul << three_real_nonparity;
+
+  return (1ul << v & mask) != 0; // whether |v| is one of the above
+}
+
+bool is_proper_ascent(DescValue v)
+{
+  return not(is_descent(v) or is_like_nonparity(v));
+}
+
 
 BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
 {
@@ -81,31 +114,6 @@ BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
   assert(false); return UndefBlock; // keep compiler happy
 }
 
-bool has_double_image(DescValue v)
-{
-  switch (v)
-  {
-  case one_real_pair_fixed:
-  case one_imaginary_pair_fixed:
-  case two_real_double_double: case two_imaginary_double_double:
-  case two_imaginary_single_double: case two_real_single_double:
-    return true;
-  case one_complex_ascent: case one_complex_descent:
-  case two_complex_ascent: case two_complex_descent:
-  case three_complex_ascent: case three_complex_descent:
-  case one_real_nonparity: case one_imaginary_compact:
-  case two_real_nonparity: case two_imaginary_compact:
-  case three_real_nonparity: case three_imaginary_compact:
-  case one_imaginary_single: case one_real_single:
-  case one_real_pair_switched: case one_imaginary_pair_switched:
-  case two_semi_imaginary: case two_semi_real:
-  case two_imaginary_single_single: case two_real_single_single:
-  case three_semi_imaginary: case three_real_semi:
-  case three_imaginary_semi: case three_semi_real:
-    return false;
-  }
-  assert(false); return false; // keep compiler happy
-}
 
 DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
 			BlockElt& link)

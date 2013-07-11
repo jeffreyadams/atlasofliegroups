@@ -95,7 +95,7 @@ namespace {
 */
   enum TestMode {EmptyMode, MainMode, RealMode, BlockMode, ReprMode,
 		 numTestMode};
-  const TestMode testMode = ReprMode; // currently does test of extended block
+  const TestMode testMode = BlockMode; // currently does test of extended block
 
   // utilities
   const RootDatum& currentRootDatum();
@@ -812,13 +812,59 @@ TorusElement torus_part
   return y_values::exp_pi(gamma-lambda+RatWeight(cumul,2));
 }
 
+bool isDirectRecursion(ext_block::DescValue v)
+{
+  return is_descent(v) and is_unique_image(v);
+}
+
+// Check for nasty endgame cases in block
 void test_f()
 {
+  ext_block::extended_block
+    eblock(commands::currentBlock(),
+	   commands::currentComplexGroup().twistedWeylGroup());
+  for (BlockElt y=0; y<eblock.size(); ++y)
+  { weyl::Generator s;
+    for (s=0; s<eblock.rank(); ++s)
+      if (isDirectRecursion(eblock.descent_type(s,y)))
+	break;
+    if (s<eblock.rank())
+      continue; // skip cases with a direct recursion
+
+    for (BlockElt x=0; x<y; ++x)
+    {
+      bool problem=false;
+      RankFlags which;
+      for (s=0; s<eblock.rank(); ++s)
+      {
+	ext_block::DescValue dsy = eblock.descent_type(s,y);
+	ext_block::DescValue dsx = eblock.descent_type(s,x);
+	if (is_descent(dsy) and not is_descent(dsx))
+	  goto next_x; // |x| is not extremal, so easy
+	if (is_like_nonparity(dsy) and is_proper_ascent(dsx))
+	{
+	  if (is_unique_image(dsx))
+	    goto next_x;
+	  problem=true; which.set(s);
+	}
+      } // |for(s)|
+      if (problem)
+      {
+	std::cout << '(' << eblock.z(x) << ',' << eblock.z(y) << "),  ";
+	for (RankFlags::iterator it=which.begin(); it(); ++it)
+	  std::cout << *it << ": ("
+	            << descent_code(eblock.descent_type(*it,x))  << ','
+		    << descent_code(eblock.descent_type(*it,y))  << ")  ";
+	std::cout << std::endl;
+      }
+    next_x:
+      continue;
+    } // |for(x)|
+  } // |for(y)|
 } // |test_f|
 
 
 // Block mode functions
-
 
 
 } // |namespace|
