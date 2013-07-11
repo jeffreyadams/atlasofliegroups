@@ -3458,23 +3458,15 @@ typedef std::tr1::shared_ptr<split_int_value> shared_split_int;
 
 @ Like for parameter values, we first define a printing function on the level
 of a bare |Split_integer| value, which can be used in situations where the
-method |split_int_value::print| cannot. We simplify output in the (common?)
-case of values that are multiples of $1\pm s$.
+method |split_int_value::print| cannot.
 
 @< Function def...@>=
 std::ostream& print (std::ostream& out, const Split_integer& val)
-{ if (val.e()==-val.s() or val.e()==val.s())
-  { if (arithmetic::abs(val.e())<=1)
-      out << (val.e()==1 ? '+' : val.e()==0 ? '0' : '-');
-    else out << (val.e()<0?'-':'+') << abs(val.e());
-    out << "(1" << (val.e()==-val.s() ? '-' : '+') << "s)";
-  }
-  else
-     out << '(' << val.e() << (val.s()<0?'-':'+') << abs(val.s()) << "s)";
-  return out;
+{@;
+  return out << '(' << val.e() << (val.s()<0?'-':'+') << abs(val.s()) << "s)";
 }
 @)
-void split_int_value::print(std::ostream& out) const
+void split_int_value::print(std::ostream& out) const @+
 {@; interpreter::print(out,val); }
 
 @ Here are the basic arithmetic operations.
@@ -3574,17 +3566,36 @@ typedef std::tr1::shared_ptr<virtual_module_value> shared_virtual_module;
 @ When printing a virtual module value, we traverse the |std::map| that is
 hidden in the |Free_Abelian| class template, and print individual terms using
 the auxiliary function that was defined above for printing parameter values.
+However when either all coefficients are integers or  coefficients are integer
+multiples of~$s$, then we suppress the component that is always~$0$; this is
+particularly useful if polynomials are used to encode $\Z$-linear combinations
+of parameters.
 
 @h <iomanip> // for |std::setw|
 @< Function def...@>=
 void virtual_module_value::print(std::ostream& out) const
 { if (val.empty())
-    out << "Empty sum of standard modules";
-  else
-    for (repr::SR_poly::const_iterator it=val.begin(); it!=val.end(); ++it)
-    { interpreter::print(out << '\n',it->second); // print coefficient
-      interpreter::print(out << '*',it->first,rc()); // print parameter
-    }
+    {@; out << "Empty sum of standard modules"; return; }
+  bool has_one=false, has_s=false;
+  for (repr::SR_poly::const_iterator it=val.begin(); it!=val.end(); ++it)
+  { if (it->second.e()!=0)
+      has_one=true;
+    if (it->second.s()!=0)
+      has_s=true;
+    if (has_one and has_s)
+      break;
+  }
+  assert (has_one or has_s); // otherwise the module would have been empty
+  for (repr::SR_poly::const_iterator it=val.begin(); it!=val.end(); ++it)
+  { out << '\n';
+    if (has_one and has_s)
+      interpreter::print(out,it->second); // print coefficient
+    else if (has_one)
+      out << it->second.e();
+    else
+      out << it->second.s() << 's';
+    interpreter::print(out << '*',it->first,rc()); // print parameter
+  }
 }
 
 @ To start off a |virtual_module_value|, one usually takes an empty sum, but

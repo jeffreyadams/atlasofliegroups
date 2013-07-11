@@ -73,7 +73,7 @@ sources/interpreter/built-in-types.o: \
  sources/structure/tits.h sources/structure/subsystem.h \
  sources/structure/gradings.h sources/structure/cartanclass.h \
  sources/gkmod/repr.h sources/utilities/free_abelian.h \
- sources/utilities/free_abelian_fwd.h \sources/utilities/free_abelian_def.h \
+ sources/utilities/free_abelian_fwd.h sources/utilities/free_abelian_def.h \
  sources/io/basic_io_def.h sources/structure/prerootdata.h \
  sources/io/basic_io.h sources/structure/dynkin.h sources/structure/lattice.h \
  sources/utilities/matreduc.h sources/structure/tori.h \
@@ -120,4 +120,4 @@ sources/interpreter/main.o: \
  sources/structure/tits.h sources/structure/subsystem.h \
  sources/structure/gradings.h sources/structure/cartanclass.h \
  sources/gkmod/repr.h sources/utilities/free_abelian.h \
- sources/utilities/free_abelian_fwd.h \sources/utilities/free_abelian_def.h
+ sources/utilities/free_abelian_fwd.h sources/utilities/free_abelian_def.h
