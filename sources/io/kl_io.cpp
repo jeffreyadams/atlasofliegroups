@@ -17,7 +17,7 @@
 #include "bruhat.h"	// |BruhatOrder|
 
 #include "ioutils.h"	// |digits|
-#include "prettyprint.h" // |printPol|
+#include "polynomials.h" // |Polynomial<C>::print|
 
 /*****************************************************************************
 

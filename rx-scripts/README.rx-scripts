@@ -1,15 +1,18 @@
 basic.rx          basic functions
 groups.rx     	  defining groups
 det.rx        	  matrix functions (determinant, inverse)
-sp4.rx        	  some stuff tailored to Sp(4,R)
-misc.rx       	  miscellaneous commands
-iterate_deform.rx deform nu to 0 (previously called deform.rx)
+misc.rx       	  miscellaneous useful commands
 lietypes.rx   	  lets you say C4 instead of "C4", and so forth
 hermitian.rx  	  functions related to c-forms and Hermitian forms
 kl.rx         	  Kazhdan-Lusztig polynomials
 my.rx         	  sample personal rx file
 unitary.rx  	  some unitary parameters
+nilpotent.rx	  for parameters related to nilpotent orbits
 translate.rx  	  functions related to translation {experimental}
+sort.rx		  functions for sorting parameter lists in various ways
+test.rx		  functions for testing the algorithms in many cases
+iterate_deform.rx algorithm for deforming nu to 0, now built into Atlas
+sp4.rx        	  some stuff tailored to Sp(4,R)
 
 To load basic.rx, for example, do:
 

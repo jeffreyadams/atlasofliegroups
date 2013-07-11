@@ -396,14 +396,29 @@ param: (KGBElt,vec,ratvec->Param): form parameter from (x,lambda-rho,nu)
 operator %: (Param->KGBElt,vec,ratvec): recover (x,lambda-rho,nu) from param
 real_form: (Param->RealForm): recover the real form from a Param value
 infinitesimal_character: (Param->ratvec): infinitesimal character of parameter
+  This is actually a representative of the infinitesimal character, given by
+  gamma = ((1+theta)lambda+(1-theta)nu)/2. The meaning of the x component of
+  the parameter is determined by its position relative to this representative
+  gamma, so to find the x value uniquely associated to the representation for
+  thei parameter, one should apply the function dominant to it first
 is_standard: (Param->bool): whether parameter defines a standard module
+  This is true whenever gamma is dominant relative to the imaginary roots
 is_zero: (Param->bool): whether parameter defines a zero standard module
-is_final: (Param->bool): whether parameter defines a zero standard module
+  True whenever gamma is singular on a compact (for x) simple-imaginary root
+is_final: (Param->bool): whether parameter defines a final standard module
+  False whenever associated standard representation is combination of others
+  on more compact Cartans by a Hecht-Schmid identity. So is_final(p) is true
+  provided no real coroots for which gamma is singular satisfy the parity
+  condition. Note: one could still have is_zero(p); this needs a separate test.
 dominant: (Param->Param): make gamma dominant and do singular complex descents
+  This brings the parameter p into standard form, in which it will appear when
+  p occurs in a ParamPol (which also requires is_final(p) and not is_zero(p)).
 operator =: (Param,Param->bool): test equivalence of parameters
-  This is implemented by applying make_dominant and testing identity of all
+  This is implemented by applying dominant and testing identity of all
   three components x, lambda (defined modulo (1-theta_x)X^*) and nu.
 cross: (int,Param->Param): cross action for (Weyl group generator,parameter)
+  This first argument indexes (starting at 0) a simple root for the subsystem
+  for the given parameter p: integrality_datum(infinitesimal_character(p))
 Cayley: (int,Param->Param): Cayley transform for (Weyl generator,parameter)
   If (and only if) the transform is undefined it returns the same parameter
   Find out possible second value by applying cross action to the result
@@ -417,9 +432,9 @@ print_block: (Param->): print (nonintegral) block generated from parameter
 block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
 KL_block: (Param->[Param],int,mat,[vec],vec,vec,mat): block, raw_KL, and more
-  This combines n_block with the Kazhdan-Lustzig table for the block appended,
+  This combines block with the Kazhdan-Lustzig table for the block appended,
   and two more values that allow cumulation to be performed. The two values of
-  n_block are followed by three values in the format of raw_KL below: a matrix
+  block are followed by three values in the format of raw_KL below: a matrix
   of indices into the following list of polynomials, coded as a list of
   coefficient vectors, and finally a list of indices where the length function
   increases. Finally follow a vector with indices of the block elements for

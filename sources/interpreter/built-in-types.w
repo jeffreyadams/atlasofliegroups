@@ -3106,8 +3106,11 @@ here, which present a single-minded interface to these transforms.
 void parameter_cross_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->val;
-  if (static_cast<unsigned>(s)>=p->rf->kgb().rank())
-    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+  unsigned int r =
+    rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
+  if (static_cast<unsigned>(s)>=r)
+    throw std::runtime_error
+      ("Illegal simple reflection: "+str(s)+ ", should be <"+str(r));
   if (l!=expression_base::no_value)
     push_value(new module_parameter_value(p->rf,p->rc().cross(s,p->val)));
 }
@@ -3115,16 +3118,22 @@ void parameter_cross_wrapper(expression_base::level l)
 void parameter_Cayley_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->val;
-  if (static_cast<unsigned>(s)>=p->rf->kgb().rank())
-    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+  unsigned int r =
+    rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
+  if (static_cast<unsigned>(s)>=r)
+    throw std::runtime_error
+      ("Illegal simple reflection: "+str(s)+ ", should be <"+str(r));
   if (l!=expression_base::no_value)
     push_value(new module_parameter_value(p->rf,p->rc().Cayley(s,p->val)));
 }
 void parameter_inv_Cayley_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->val;
-  if (static_cast<unsigned>(s)>=p->rf->kgb().rank())
-    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+  unsigned int r =
+    rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
+  if (static_cast<unsigned>(s)>=r)
+    throw std::runtime_error
+      ("Illegal simple reflection: "+str(s)+ ", should be <"+str(r));
   if (l!=expression_base::no_value)
     push_value(new module_parameter_value(p->rf,p->rc().inv_Cayley(s,p->val)));
 }
