@@ -3894,6 +3894,19 @@ void to_canonical_wrapper(expression_base::level l)
   }
 }
 
+@ Here is one more useful function: computing the height of a parameter
+(ignoring the $\nu$ component), as used in the |bound| argument to |branch|
+abouve.
+
+@< Local function def...@>=
+void srk_height_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  standardrepk::SRK_context srkc(p->rf->val);
+  TitsElt a=p->rf->kgb().titsElt(p->val.x());
+  StandardRepK sr=srkc.std_rep_rho_plus (p->rc().lambda_rho(p->val),a);
+  if (l!=expression_base::no_value)
+    push_value(new int_value(srkc.height(sr)));
+}
 
 @*2 Deformation formulas.
 Here is our principal application of virtual modules.
@@ -3988,6 +4001,7 @@ install_function(split_mult_virtual_module_wrapper,@|"*"
 install_function(K_type_formula_wrapper,@|"K_type_formula" ,"(Param->ParamPol)");
 install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
 install_function(to_canonical_wrapper,@|"to_canonical" ,"(Param->Param)");
+install_function(srk_height_wrapper,@|"height" ,"(Param->int)");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
