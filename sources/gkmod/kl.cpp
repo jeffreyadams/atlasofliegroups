@@ -307,7 +307,7 @@ void KLContext::fill(BlockElt y, bool verbose)
     std::cerr << "\n memory full, KL computation abondoned." << std::endl;
     d_prim.resize(fill_limit);
     d_kl.resize(fill_limit);
-    d_mu.resize(fill_limit); // truncate to previous contents helper
+    d_mu.resize(fill_limit); // truncate to previous contents
     throw error::MemoryOverflow();
   }
 
@@ -521,7 +521,7 @@ KLPolRef KLContext::klPol(BlockElt x, BlockElt y,
 */
 size_t KLContext::fillKLRow(BlockElt y, KLHash& hash)
 {
-  size_t sparseness=0; // number of entries save by suppressing zero polys
+  size_t sparseness=0; // number of entries saved by suppressing zero polys
   if (d_kl[y].size()>0)
     return 0; // row has already been filled
   weyl::Generator s = firstDirectRecursion(y);
@@ -581,7 +581,7 @@ void KLContext::recursionRow(std::vector<KLPol>& klv,
     // however it is natural to take |x| descending from |y| (exclusive)
     for (i=e.size(); i-->0; )
     {
-      BlockElt x = e[i];
+      BlockElt x = e[i]; // extremal for $y$, so $s$ is descent for $x$
       switch (descentValue(s,x))
       {
       case DescentStatus::ImaginaryCompact:
@@ -843,13 +843,13 @@ size_t KLContext::remove_zeros(const KLRow& klv,
 
   From the precondition we get: for each extremal |x| for |y|, there either
   exists a true ascent |s| that is real for |y|, necessarily nonparity because
-  |x| is extremal, or we are assured that $P_{x,y}=0$.
+  |x| is extremal (split 3), or we are assured that $P_{x,y}=0$.
 
   Here there is a recursion formula of a somewhat opposite nature than in the
   case of direct recursion. The terms involving $P_{x',y}$ where $x'$ are in
   the up-set of |x| appear in what is most naturally the left hand side of the
-  equation, while the sum involving |mu| values appears on the right. As a
-  consequence, the |mu| terms will be computed first, and then modifications
+  equation, while the sum involving |mu| values appears on the right (3.2). As
+  a consequence, the |mu| terms will be computed first, and then modifications
   involving such $P_{x',y}$ and subtraction are applied. However if |s| is
   type 'i1' for |x| the left hand side has (apart from $P_{x,y}$) another term
   $P_{s.x,y}$ for the imaginary cross image $s.x$, and so $P_{x,y}$ cannot be
@@ -1094,10 +1094,11 @@ void KLContext::silent_fill(BlockElt last_y)
 {
   try
   {
-    KLHash hash(d_store);
+    KLHash hash(d_store); // (re-)construct a hastable for polynomial storage
     // fill the lists
     for (BlockElt y=fill_limit; y<=last_y; ++y)
       fillKLRow(y,hash);
+    // after all rows are done the hash table is freed, only the store remains
   }
   catch (kl_error::KLError& e)
   {

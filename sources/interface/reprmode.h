@@ -21,7 +21,7 @@ namespace commands {
 /******** type declarations ************************************************/
 
   struct ReprmodeTag {};
-  enum block_type { noblock, iblock, nblock, partial_block };
+  enum block_type { noblock, nblock, partial_block };
 
 /******** variable declarations ********************************************/
 

@@ -66,17 +66,16 @@ sources/interpreter/built-in-types.o: \
  sources/utilities/graph_fwd.h sources/utilities/set.h \
  sources/structure/rootdata.h sources/structure/tits.h \
  sources/structure/prerootdata.h sources/structure/y_values.h \
- sources/gkmod/subdatum_fwd.h sources/io/realform_io.h \
+ sources/io/realform_io.h \
  sources/structure/realredgp.h sources/utilities/bitmap_fwd.h \
  sources/utilities/poset_fwd.h sources/structure/topology.h \
- sources/gkmod/kgb.h sources/gkmod/subdatum.h sources/structure/weyl.h \
+ sources/gkmod/kgb.h sources/structure/weyl.h \
  sources/structure/tits.h sources/structure/subsystem.h \
  sources/structure/gradings.h sources/structure/cartanclass.h \
  sources/gkmod/repr.h sources/utilities/free_abelian.h \
- sources/utilities/free_abelian_fwd.h \
- sources/utilities/free_abelian_def.h sources/io/basic_io.h \
+ sources/utilities/free_abelian_fwd.h sources/utilities/free_abelian_def.h \
  sources/io/basic_io_def.h sources/structure/prerootdata.h \
- sources/structure/dynkin.h sources/structure/lattice.h \
+ sources/io/basic_io.h sources/structure/dynkin.h sources/structure/lattice.h \
  sources/utilities/matreduc.h sources/structure/tori.h \
  sources/io/prettyprint.h sources/io/ioutils.h sources/io/realredgp_io.h \
  sources/gkmod/blocks.h sources/gkmod/descents.h sources/io/block_io.h \
@@ -115,12 +114,10 @@ sources/interpreter/main.o: \
  sources/utilities/graph_fwd.h sources/utilities/set.h \
  sources/structure/rootdata.h sources/structure/tits.h \
  sources/structure/prerootdata.h sources/structure/y_values.h \
- sources/gkmod/subdatum_fwd.h sources/io/realform_io.h \
+ sources/io/realform_io.h sources/gkmod/kgb.h sources/structure/weyl.h \
  sources/structure/realredgp.h sources/utilities/bitmap_fwd.h \
  sources/utilities/poset_fwd.h sources/structure/topology.h \
- sources/gkmod/kgb.h sources/gkmod/subdatum.h sources/structure/weyl.h \
  sources/structure/tits.h sources/structure/subsystem.h \
  sources/structure/gradings.h sources/structure/cartanclass.h \
  sources/gkmod/repr.h sources/utilities/free_abelian.h \
- sources/utilities/free_abelian_fwd.h \
- sources/utilities/free_abelian_def.h
+ sources/utilities/free_abelian_fwd.h sources/utilities/free_abelian_def.h
