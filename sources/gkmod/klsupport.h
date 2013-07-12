@@ -42,7 +42,6 @@ class KLSupport
   std::vector<BitMap> d_downset;
   std::vector<BitMap> d_primset;
   std::vector<BlockElt> d_lengthLess;
-  std::vector<atlas::BlockEltList> d_primitivize;
   std::vector<std::vector<unsigned int> > d_prim_index;
 
  public:
