@@ -3811,6 +3811,89 @@ since the parameter itself reported here might be final.
   }
 }
 
+@ A main function is the actual branching to~$K$: decomposition of a standard
+final representation into $K$-types, up to a given limit.
+
+@< Local function def...@>=
+void branch_wrapper(expression_base::level l)
+{ int bound = get<int_value>()->val;
+  shared_module_parameter p = get<module_parameter_value>();
+  standardrepk::KhatContext khc(p->rf->val);
+  TitsElt a=p->rf->kgb().titsElt(p->val.x());
+  StandardRepK sr=khc.std_rep_rho_plus (p->rc().lambda_rho(p->val),a);
+  @< Check that |sr| is normal and final, and if not |throw| an error @>
+@)
+  if (l!=expression_base::no_value)
+  { standardrepk::combination combo=khc.standardize(sr);
+    RatWeight zero_nu(p->rf->val.rank());
+@/  virtual_module_ptr acc @|
+      (new virtual_module_value(p->rf, repr::SR_poly(p->rc().repr_less())));
+    for (standardrepk::combination::const_iterator
+         it=combo.begin(); it!=combo.end(); ++it)
+    {
+      standardrepk::combination chunk = khc.branch(it->first,bound);
+      for (standardrepk::combination::const_iterator
+           jt=chunk.begin(); jt!=chunk.end(); ++jt)
+      {
+        StandardRepr sr = p->rc().sr(khc.rep_no(jt->first),khc,zero_nu);
+        acc->val.add_term(sr,Split_integer(it->second*jt->second));
+      }
+    }
+    push_value(acc);
+  }
+}
+
+@ We must test the parameter for being normal and final, or else the method
+|branch| will fail. The second error message mentions restriction to $K$,
+since the parameter itself reported here might be final.
+
+@< Check that |sr| is normal and final, and if not |throw| an error @>=
+{ size_t witness; std::ostringstream os;
+  if (not khc.isNormal(sr,witness))
+  { p->print(os << "\nParameter ");
+    os << " is not normal; witness coroot #" << witness;
+    throw std::runtime_error(os.str());
+  }
+  if (not khc.isFinal(sr,witness))
+  { p->print(os << "\nRestricted to K, parameter ");
+    os << " is not final; witness coroot #" << witness;
+    throw std::runtime_error(os.str());
+  }
+}
+
+@ In the K-type code, standard representations restricted to $K$ are always
+given on the canonical twisted involution of their Cartan class. In order to
+be able to understand what a parameter will look like in this representation,
+we provide a function that performs a similar transformation of a parameter,
+ignoring its $\nu$ component. The operation simply consists of applying
+complex cross actions on~$x$ until it is canonical for its Cartan class, and
+applying the corresponding simple reflections to~$\lambda$.
+
+@< Local function def...@>=
+void to_canonical_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  const ComplexReductiveGroup& G=p->rf->val.complexGroup();
+  const KGB& kgb = p->rf->val.kgb();
+  const WeylGroup& W=G.weylGroup();
+  const RootDatum& rd=G.rootDatum();
+@)
+  KGBElt x = p->val.x();
+  TwistedInvolution sigma = p->rf->kgb().involution(x);
+  WeylElt w = G.canonicalize(sigma);
+  // $x\times w$ lies over |sigma| canonical
+  Weight two_lambda = p->rc().lambda_rho(p->val)*2 + rd.twoRho();
+@)
+  x = kgb.cross(x,W.word(w));
+  assert(p->rf->kgb().involution(x)==sigma);
+   // we should now be at canonical twisted involution
+  W.inverseAct(rd,w,two_lambda);
+  if (l!=expression_base::no_value)
+  { RatWeight zero_nu(p->rf->val.rank());
+    StandardRepr result = p->rc().sr(x,(two_lambda-rd.twoRho())/=2,zero_nu);
+    push_value(new module_parameter_value(p->rf,result));
+  }
+}
+
 
 @*2 Deformation formulas.
 Here is our principal application of virtual modules.
@@ -3903,6 +3986,8 @@ install_function(int_mult_virtual_module_wrapper,@|"*"
 install_function(split_mult_virtual_module_wrapper,@|"*"
 		,"(Split,ParamPol->ParamPol)");
 install_function(K_type_formula_wrapper,@|"K_type_formula" ,"(Param->ParamPol)");
+install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
+install_function(to_canonical_wrapper,@|"to_canonical" ,"(Param->Param)");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
