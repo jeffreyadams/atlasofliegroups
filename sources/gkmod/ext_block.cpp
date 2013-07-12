@@ -318,7 +318,7 @@ extended_block::extended_block
   {
     BlockElt z=parent_nr[n];
     info.push_back(elt_info(z));
-    info.back().length = 0; // default value if no descents are found
+    info.back().length = block.length(z);
     for (weyl::Generator s=0; s<folded_rank; ++s)
     {
       BlockElt link;
@@ -326,8 +326,6 @@ extended_block::extended_block
       data[s].push_back(block_fields(type));
       if (link==UndefBlock)
 	continue; // |s| done for imaginary compact and real nonparity cases
-      if (is_descent(type))
-	info.back().length = length(child_nr[link])+1;
       data[s].back().links.first=child_nr[link];
       BlockElt second = UndefBlock;
       switch (type)
