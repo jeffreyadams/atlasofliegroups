@@ -143,8 +143,8 @@ DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
     case DescentStatus::RealTypeI:
       link=block.inverseCayley(p.s0,z).first;
       if (link!=UndefBlock and block.Hermitian_dual(link)==link)
-	return one_imaginary_pair_fixed;
-      link=UndefBlock; return one_imaginary_pair_switched;
+	return one_real_pair_fixed;
+      link=UndefBlock; return one_real_pair_switched;
     }
   case ext_gen::two:
     switch (block.descentValue(p.s0,z))
@@ -295,7 +295,7 @@ DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
     }
   } // |switch (p.type)|
   assert(false); return one_complex_ascent; // keep compiler happy
-}
+} // |extended_type|
 
 extended_block::extended_block
   (const Block_base& block,const TwistedWeylGroup& W)
@@ -326,7 +326,7 @@ extended_block::extended_block
   {
     BlockElt z=parent_nr[n];
     info.push_back(elt_info(z));
-    info.back().length = 0; // default value if no descents are found
+    info.back().length = block.length(z);
     for (weyl::Generator s=0; s<folded_rank; ++s)
     {
       BlockElt link;
@@ -334,8 +334,6 @@ extended_block::extended_block
       data[s].push_back(block_fields(type));
       if (link==UndefBlock)
 	continue; // |s| done for imaginary compact and real nonparity cases
-      if (is_descent(type))
-	info.back().length = length(child_nr[link])+1;
       data[s].back().links.first=child_nr[link];
       BlockElt second = UndefBlock;
       switch (type)
