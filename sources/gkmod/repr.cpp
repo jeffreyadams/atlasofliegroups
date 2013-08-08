@@ -541,8 +541,14 @@ void Rep_table::add_block(param_block& block, const BlockEltList& survivors)
   } // |for(x)|
 } // |Rep_table::add_block|
 
-SR_poly Rep_table::KL_column_at_s(StandardRepr z)
+// compute and return sum of KL polynomials at $s$ for final parameter |z|
+SR_poly Rep_table::KL_column_at_s(StandardRepr z) // must be nonzero and final
 {
+  { RootNbr witness;
+    assert(not is_zero(z,witness));
+    assert(is_final(z,witness));
+    ndebug_use(witness);
+  }
   make_dominant(z); // so that |z| it will appear at the top of its own block
   unsigned long hash_index=hash.find(z);
   if (hash_index==hash.empty) // previously unknown parameter
