@@ -3065,7 +3065,7 @@ equality operator.
 void parameter_dominant_wrapper(expression_base::level l)
 { shared_module_parameter p = get_own<module_parameter_value>();
   if (l!=expression_base::no_value)
-  { p->rc().make_dominant(p->val);
+  {@; p->rc().make_dominant(p->val);
     push_value(p);
   }
 }
@@ -3173,7 +3173,8 @@ they will use to test a parameter for validity. Even though we shall always
 have a pointer available when we call |test_standard|, we define this function
 to take a reference (requiring us to write a dereferencing at each call),
 because the type of pointer (shared or raw) available is not always the same.
-The reference is of course not owned by |test_standard|.
+The reference is of course not owned by |test_standard|. A similar test is
+|is_nonzero_final|.
 
 @< Local function def...@>=
 void test_standard(const module_parameter_value& p)
@@ -3182,6 +3183,16 @@ void test_standard(const module_parameter_value& p)
     return;
   std::ostringstream os; p.print(os);
   os << "\nParameter not standard, negative on coroot #" << witness;
+  throw std::runtime_error(os.str());
+}
+
+void test_nonzero_final(const module_parameter_value& p)
+{ RootNbr witness; bool zero=p.rc().is_zero(p.val,witness);
+  if (not zero and p.rc().is_final(p.val,witness))
+    return; // nothing to report
+  std::ostringstream os; p.print(os);
+@/os << "\nParameter is " << (zero ? "zero" : "not final")
+   @|  <<", as witnessed by coroot #" << witness;
   throw std::runtime_error(os.str());
 }
 
@@ -3815,7 +3826,7 @@ Kazhdan-Lusztig polynomials $P_{x,y}$ where $x$ ranges over the values in the
 block of $y$ (or the Bruhat interval below $y$, where all those giving a
 nonzero contribution are located), multiplied by a sign and evaluated at the
 split integer unit~$s$ (since it appears that the information most frequently
-needed can be extracted from that evaluation. In formula, this computes
+needed can be extracted from that evaluation). In formula, this computes
 $$
   \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s]
 $$
@@ -3823,6 +3834,7 @@ $$
 void KL_sum_at_s_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p);
+  test_nonzero_final(*p);
   if (l!=expression_base::no_value)
   {
     repr::SR_poly result = p->rt().KL_column_at_s(p->val);
