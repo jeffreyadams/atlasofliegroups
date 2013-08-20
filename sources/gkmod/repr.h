@@ -166,6 +166,7 @@ class Rep_table : public Rep_context
 {
   std::vector<StandardRepr> pool;
   HashTable<StandardRepr,unsigned long> hash;
+  std::vector<unsigned short int> lengths;
   std::vector<SR_poly> KL_list;
   std::vector<SR_poly> def_formula;
 
@@ -173,6 +174,8 @@ class Rep_table : public Rep_context
   Rep_table(RealReductiveGroup &G)
     : Rep_context(G), pool(), hash(pool), KL_list(), def_formula()
   {}
+
+  unsigned int length(StandardRepr z); // by value
 
   SR_poly KL_column_at_s(StandardRepr z); // by value
 

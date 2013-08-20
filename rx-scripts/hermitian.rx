@@ -43,16 +43,16 @@ set c_form_std (Param p) = ParamPol:
     J(y)_c=sum_x (-1)^{on(x,y)}(-1)^{ell(x)-ell(y)}P(x,y)(q=s)I(x)_c
   where
     P(x,y) is a cumulated KL polynomial
-    (-1)^{ell(x)-ell(y)}P(x,y) is given by signedKL(y)[i] with indices[i]=x
-    on(x,y)=orientation number given by orientation_nr_term()
+    (-1)^{ell(x)-ell(y)}P(x,y) is given by signed_KL_col(y)[i] with
+    indices[i]=x on(x,y)=orientation number given by orientation_nr_term()
     I(x)_c given as combination of standards x' with nu(x')=0 by c_form_std(x)
-  algorithm: just compute the sum for J(y)_c, using signedKL and c_form_std
+  algorithm: compute the sum for J(y)_c, using signed_KL_col and c_form_std
 }
 
 
 set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)]):
-( let (block,kl,polys,stops,indices,cumulation)=partial_block (p)
-  then klpolys=signedKL(#block-1,kl,polys,stops,indices,cumulation)
+( let (block,kl,polys,stops,indices,cumulation)=partial_KL_block (p)
+  then klpolys=signed_KL_col(#block-1,kl,polys,stops,indices,cumulation)
   , P=null_module(real_form(p)), on_p=orientation_nr(p)
   , standards=[(Param,Split,ParamPol)]: []
   in
@@ -70,8 +70,8 @@ set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)]):
 )
 
 set KL_col(Param p)= ParamPol: { this is what built-in |KL_sum_at_s| does }
-  let (block,kl,polys,stops,indices,cumulation)=partial_block (p)
-  then klpolys=signedKL(#block-1,kl,polys,stops,indices,cumulation)
+  let (block,kl,polys,stops,indices,cumulation)=partial_KL_block (p)
+  then klpolys=signed_KL_col(#block-1,kl,polys,stops,indices,cumulation)
   in null_module(real_form(p)) +
      for i:#indices do (at_s(klpolys[i]),block[indices[i]]) od
 

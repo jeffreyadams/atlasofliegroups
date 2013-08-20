@@ -487,7 +487,7 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
 
 void Rep_table::add_block(param_block& block, const BlockEltList& survivors)
 {
-  size_t old_size = hash.size();
+  unsigned long old_size = hash.size();
   BlockEltList new_survivors;
 
   // fill the |hash| table for new surviving parameters in this block
@@ -497,6 +497,7 @@ void Rep_table::add_block(param_block& block, const BlockEltList& survivors)
 
   assert(new_survivors.size()>0); // at least top element should be new
 
+  lengths.resize(hash.size());
   KL_list.resize(hash.size(),SR_poly(repr_less())); // new slots, init empty
   def_formula.resize(hash.size(),SR_poly(repr_less())); // allocate new slots
 
@@ -510,6 +511,9 @@ void Rep_table::add_block(param_block& block, const BlockEltList& survivors)
    to the |SR_poly| at |KL_list[old_size+i], where |z=new_survivors[i]| */
 
   BlockEltList::const_iterator z_start=new_survivors.begin();
+  for (BlockEltList::const_iterator it = z_start; it!=new_survivors.end(); ++it)
+    lengths[old_size+(it-z_start)]=block.length(*it);
+
   for (BlockElt x=0; x<=new_survivors.back(); ++x)
   {
     BlockEltList xs=block.survivors_below(x);
@@ -531,8 +535,9 @@ void Rep_table::add_block(param_block& block, const BlockEltList& survivors)
 	eval = eval.times_s()+Split_integer(static_cast<int>(pol[d]));
       if (eval!=Split_integer(0))
       {
-	SR_poly& dest = KL_list[old_size+(it-new_survivors.begin())];
-	if (block.length(z)%2!=parity)
+	unsigned long z_index = old_size+(it-new_survivors.begin());
+	SR_poly& dest = KL_list[z_index];
+	if (lengths[z_index]%2!=parity)
 	  eval.negate(); // incorporate sign for length difference
 	for (unsigned int i=0; i<xs.size(); ++i)
 	  dest.add_term(sr(block,xs[i]),eval);
@@ -540,6 +545,18 @@ void Rep_table::add_block(param_block& block, const BlockEltList& survivors)
     } // |for(it)|
   } // |for(x)|
 } // |Rep_table::add_block|
+
+unsigned int Rep_table::length(StandardRepr z)
+{
+  make_dominant(z); // should't hurt, and improves chances of finding |z|
+  unsigned long hash_index=hash.find(z);
+  if (hash_index!=hash.empty)
+    return lengths[hash_index];
+
+  // otherwise do it the hard way, constructing a block up to |z|
+  non_integral_block block(*this,z); // compute partial block
+  return block.length(block.size()-1);
+}
 
 // compute and return sum of KL polynomials at $s$ for final parameter |z|
 SR_poly Rep_table::KL_column_at_s(StandardRepr z) // must be nonzero and final

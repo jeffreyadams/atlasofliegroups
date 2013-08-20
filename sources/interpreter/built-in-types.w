@@ -3219,7 +3219,7 @@ second result the index that the original parameter has in the resulting
 block.
 
 @< Local function def...@>=
-void n_block_wrapper(expression_base::level l)
+void block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p);
   if (l!=expression_base::no_value)
@@ -3249,8 +3249,29 @@ also construct a module parameter value for each element of |block|.
 
 }
 
-@ Here is a version of the same command that also exports the table of
-Kazhdan-Lusztig polynomials for the block, in the same form as \\{raw\_KL}
+@ There is also a function that computes just a partial block.
+@< Local function def...@>=
+void partial_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p);
+  if (l!=expression_base::no_value)
+  {
+    non_integral_block block(p->rc(),p->val);
+    @< Push a list of parameter values for the elements of |block| @>
+  }
+}
+
+@ Knowing the length in its block of a parameter is of independent interest.
+@< Local function def...@>=
+void param_length_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p);
+  if (l!=expression_base::no_value)
+    push_value(new int_value(p->rt().length(p->val)));
+}
+
+@ Here is a version of the |block| command that also exports the table of
+Kazhdan-Lusztig polynomials for the block, in the same format as \\{raw\_KL}
 that will be defined below.
 
 @< Local function def...@>=
@@ -3322,18 +3343,18 @@ void KL_block_wrapper(expression_base::level l)
   }
 }
 
-@ Here is a version of the same command that just computes a partial block,
-and the Kazhdan-Lusztig polynomials for that block. There are six components
+@ Here is a version of the |KL_block| that computes just for a partial block
+and the Kazhdan-Lusztig polynomials for it. There are six components
 in the value returned: the list of parameters forming the partial block (of
 which the final one is the initial parameter), a matrix of KL-polynomial
 indices, a list of polynomials (as vectors), a vector of length stops (block
 element numbers at with the length function increases), a list of block
 element numbers for those whose survive the translation-to-singular functor,
-and a matrix that indicates which block elements contributes to which
-surviving element.
+and a matrix that indicates which block element contributes to which surviving
+element (and with what multiplicity).
 
 @< Local function def...@>=
-void partial_block_wrapper(expression_base::level l)
+void partial_KL_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p);
   if (l!=expression_base::no_value)
@@ -3423,12 +3444,13 @@ install_function(parameter_inv_Cayley_wrapper,@|"inv_Cayley"
 install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(reducibility_points_wrapper,@|
 		"reducibility_points" ,"(Param->[rat])");
-install_function(print_n_block_wrapper,@|"print_block"
-                ,"(Param->)");
-install_function(n_block_wrapper,@|"block" ,"(Param->[Param],int)");
+install_function(print_n_block_wrapper,@|"print_block","(Param->)");
+install_function(block_wrapper,@|"block" ,"(Param->[Param],int)");
+install_function(partial_block_wrapper,@|"partial_block","(Param->[Param])");
+install_function(param_length_wrapper,@|"length","(Param->int)");
 install_function(KL_block_wrapper,@|"KL_block"
                 ,"(Param->[Param],int,mat,[vec],vec,vec,mat)");
-install_function(partial_block_wrapper,@|"partial_block"
+install_function(partial_KL_block_wrapper,@|"partial_KL_block"
                 ,"(Param->[Param],mat,[vec],vec,vec,mat)");
 
 @*1 Polynomials formed from parameters.
@@ -3565,7 +3587,7 @@ struct virtual_module_value : public value_base
   static const char* name() @+{@; return "module parameter"; }
 @)
   const Rep_context& rc() const @+{@; return rf->rc(); }
-  repr::Rep_context& rt() const @+{@; return rf->rt(); }
+  Rep_table& rt() const @+{@; return rf->rt(); }
 private:
   virtual_module_value(const virtual_module_value& v)
   @+ : rf(v.rf),val(v.val) @+{} // copy
