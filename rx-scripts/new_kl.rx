@@ -1,6 +1,6 @@
 { KL stuff, including character formulas and composition series
   This implementation seeks to avoid using KL_block, and instead uses
-  KL_sum_at_s as mush as possible, as this function stores earlier results
+  KL_sum_at_s, as this function stores earlier results
   Also (compared to old implementation) no regular/singular case distinction
 }
 
@@ -12,10 +12,11 @@
 
   main functions:
 
-  KL_mat_at_one(p): P-matrix evaluated at 1 (integral matrix)
-  KL_singular_inverse_mat_at_one(p): Q-matrix evaluated at 1
   character_formula(p): irreducible(p) as sum of standards
   composition_series(p): standard(p) as sum of irreducibles
+
+  signed_KL_mat_at_one(p): signed P-matrix evaluated at 1 (integral matrix)
+  KL_inverse_mat_at_one(p): Q-matrix evaluated at 1 (integral matrix)
 
   also
     print_character_formula,print_composition_series
@@ -37,22 +38,6 @@ set s_to_1(ParamPol p, (Param->int) f) =
   null_module(real_form(p)) + for x@q in p do (f(q)*+%x,q) od
 set s_to_minus_1(ParamPol p, (Param->int) f) =
   null_module(real_form(p)) + for x@q in p do (f(q)*-%x,q) od
-
-{ addition of vectors (overrides definition in basic.rx) to allow vectors of
-  possibly different lengths, implicitly extending on the right by zeros as
-  needed. This gives the right thing for coefficient vectors of polynomials. }
-set +(vec v,vec w)= vec:
-  let add_ext =
-    (vec v, vec w, int l_w) vec: { add w to v under assumption l_w=#w<=#v }
-      for vi@i in v do if i<l_w then vi+w[i] else vi fi od
-  , a=#v, b=#w
-  in add_ext(if a>=b then (v,w,b) else (w,v,a) fi)
-
-set strip (vec v) = vec: { reduce polynomial by dropping trailing zeros }
-( let k=#v in
-  while k>0 and v[k-1]=0 do k -:=1 od
-; if k=#v then v else for i:k do v[i] od fi
-)
 
 { ------------------------------------------------------------------- }
 
@@ -80,26 +65,28 @@ set composition_series (Param p) = ParamPol:
 ; result
 )
 
-{ some printing functions }
+set tabulate ([Param] block, (Param->ParamPol) f) = mat:
+  for y in block { y determines a column of the result }
+  do let fy=f(y) in for x in block do +fy[x] od
+  od
 
-{ make a printable string out of a polynomial and name of indeterminate,
-  for use in other print functions }
-set stringPoly (vec v, string q)= string:
-  if #(v:=strip(v))=0 then "0"
-  else
-    let rv="" in
-    for c@k in v do
-      if c!=0 then
-	let coef = if c<0 then "-" else "+" fi #
-            if abs(c)=1 and k>0 then "" else int_format(abs(c)) fi
-	,   term = if k>1 then q#"^"#int_format(k) elif k=0 then "" else q fi
-	in rv #:= coef#term
-      fi
-    od
-  ; rv
-  fi
+set signed_KL_mat_at_one(Param p) = mat:
+( KL_sum_at_s(p) {dummy call to ensure internal tables are filled }
+; tabulate(partial_block(p), character_formula@Param)
+)
 
-{ nice printing of a polynomial }
-set printPoly (vec v)= void: prints(stringPoly(v,"q"))
+set KL_inverse_mat_at_one(Param p) = mat:
+( KL_sum_at_s(p) {dummy call to ensure internal tables are filled }
+; tabulate(partial_block(p), composition_series@Param)
+)
 
-{ nice printing of a column of KL matrix of polynomials }
+set full_signed_KL_mat_at_one(Param p) = mat:
+  tabulate(get_block(p),character_formula@Param)
+set full_KL_inverse_mat_at_one(Param p) = mat:
+  tabulate(get_block(p),composition_series@Param)
+
+set print_character_formula (Param p)= void:
+  for w@p in character_formula(p) do prints(prettyPrint(w),"*",p) od
+
+set print_composition_series(Param p)= void:
+  for w@p in composition_series(p) do prints(prettyPrint(w),"*",p) od
