@@ -1,0 +1,92 @@
+{ KL stuff, including character formulas and composition series
+  This implementation seeks to avoid using KL_block, and instead uses
+  KL_sum_at_s, as this function stores earlier results
+  Also (compared to old implementation) no regular/singular case distinction
+}
+
+<misc.rx
+
+{
+  Basic object: column of KL matrix (P-matrix), of polynomials evaluted as s,
+  which by setting s=1 gives formula for irreducible as sum of standards
+
+  main functions:
+
+  character_formula(p): irreducible(p) as sum of standards
+  composition_series(p): standard(p) as sum of irreducibles
+
+  signed_KL_mat_at_one(p): signed P-matrix evaluated at 1 (integral matrix)
+  KL_inverse_mat_at_one(p): Q-matrix evaluated at 1 (integral matrix)
+
+  also
+    print_character_formula,print_composition_series
+}
+
+{ ------------------------------------------------------------------- }
+
+{ basic definitions, not usually called by the user }
+
+set s_to_1(Split x) = int: +%x        { let (a,b)=%x in +(a,b) }
+set s_to_minus_1(Split x) = int: -%x  { let (a,b)=%x in -(a,b) }
+
+set s_to_1(ParamPol p) = null_module(real_form(p)) + for x@q in p do (+%x,q) od
+set s_to_minus_1(ParamPol p) =
+  null_module(real_form(p)) + for x@q in p do (-%x,q) od
+
+{ variants that multiply a parameter-dependent factor into each term }
+set s_to_1(ParamPol p, (Param->int) f) =
+  null_module(real_form(p)) + for x@q in p do (f(q)*+%x,q) od
+set s_to_minus_1(ParamPol p, (Param->int) f) =
+  null_module(real_form(p)) + for x@q in p do (f(q)*-%x,q) od
+
+{ ------------------------------------------------------------------- }
+
+{-------------------------------------------------------------------}
+
+set character_formula (Param p) = ParamPol: s_to_1(KL_sum_at_s(p))
+
+{-------------------------------------------------------------------}
+
+{ composition series }
+
+set composition_series (Param p) = ParamPol:
+( let block=partial_block(p)
+  , result= null_module(real_form(p)), acc=ParamPol: p in
+  for i:#block downto 0
+  do let coef = acc[block[i]] in
+    if coef!=0
+    then result +:= (coef,block[i])
+     ; acc +:= (-coef)*character_formula(block[i])
+    fi
+  od
+; if #acc>0
+  then error("Internal error: Failed to completely decompose module")
+  fi
+; result
+)
+
+set tabulate ([Param] block, (Param->ParamPol) f) = mat:
+  for y in block { y determines a column of the result }
+  do let fy=f(y) in for x in block do +fy[x] od
+  od
+
+set signed_KL_mat_at_one(Param p) = mat:
+( KL_sum_at_s(p) {dummy call to ensure internal tables are filled }
+; tabulate(partial_block(p), character_formula@Param)
+)
+
+set KL_inverse_mat_at_one(Param p) = mat:
+( KL_sum_at_s(p) {dummy call to ensure internal tables are filled }
+; tabulate(partial_block(p), composition_series@Param)
+)
+
+set full_signed_KL_mat_at_one(Param p) = mat:
+  tabulate(get_block(p),character_formula@Param)
+set full_KL_inverse_mat_at_one(Param p) = mat:
+  tabulate(get_block(p),composition_series@Param)
+
+set print_character_formula (Param p)= void:
+  for w@p in character_formula(p) do prints(prettyPrint(w),"*",p) od
+
+set print_composition_series(Param p)= void:
+  for w@p in composition_series(p) do prints(prettyPrint(w),"*",p) od

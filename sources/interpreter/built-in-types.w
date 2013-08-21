@@ -3065,7 +3065,7 @@ equality operator.
 void parameter_dominant_wrapper(expression_base::level l)
 { shared_module_parameter p = get_own<module_parameter_value>();
   if (l!=expression_base::no_value)
-  { p->rc().make_dominant(p->val);
+  {@; p->rc().make_dominant(p->val);
     push_value(p);
   }
 }
@@ -3173,7 +3173,8 @@ they will use to test a parameter for validity. Even though we shall always
 have a pointer available when we call |test_standard|, we define this function
 to take a reference (requiring us to write a dereferencing at each call),
 because the type of pointer (shared or raw) available is not always the same.
-The reference is of course not owned by |test_standard|.
+The reference is of course not owned by |test_standard|. A similar test is
+|is_nonzero_final|.
 
 @< Local function def...@>=
 void test_standard(const module_parameter_value& p)
@@ -3182,6 +3183,16 @@ void test_standard(const module_parameter_value& p)
     return;
   std::ostringstream os; p.print(os);
   os << "\nParameter not standard, negative on coroot #" << witness;
+  throw std::runtime_error(os.str());
+}
+
+void test_nonzero_final(const module_parameter_value& p)
+{ RootNbr witness; bool zero=p.rc().is_zero(p.val,witness);
+  if (not zero and p.rc().is_final(p.val,witness))
+    return; // nothing to report
+  std::ostringstream os; p.print(os);
+@/os << "\nParameter is " << (zero ? "zero" : "not final")
+   @|  <<", as witnessed by coroot #" << witness;
   throw std::runtime_error(os.str());
 }
 
@@ -3208,7 +3219,7 @@ second result the index that the original parameter has in the resulting
 block.
 
 @< Local function def...@>=
-void n_block_wrapper(expression_base::level l)
+void block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p);
   if (l!=expression_base::no_value)
@@ -3238,8 +3249,29 @@ also construct a module parameter value for each element of |block|.
 
 }
 
-@ Here is a version of the same command that also exports the table of
-Kazhdan-Lusztig polynomials for the block, in the same form as \\{raw\_KL}
+@ There is also a function that computes just a partial block.
+@< Local function def...@>=
+void partial_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p);
+  if (l!=expression_base::no_value)
+  {
+    non_integral_block block(p->rc(),p->val);
+    @< Push a list of parameter values for the elements of |block| @>
+  }
+}
+
+@ Knowing the length in its block of a parameter is of independent interest.
+@< Local function def...@>=
+void param_length_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p);
+  if (l!=expression_base::no_value)
+    push_value(new int_value(p->rt().length(p->val)));
+}
+
+@ Here is a version of the |block| command that also exports the table of
+Kazhdan-Lusztig polynomials for the block, in the same format as \\{raw\_KL}
 that will be defined below.
 
 @< Local function def...@>=
@@ -3311,18 +3343,18 @@ void KL_block_wrapper(expression_base::level l)
   }
 }
 
-@ Here is a version of the same command that just computes a partial block,
-and the Kazhdan-Lusztig polynomials for that block. There are six components
+@ Here is a version of the |KL_block| that computes just for a partial block
+and the Kazhdan-Lusztig polynomials for it. There are six components
 in the value returned: the list of parameters forming the partial block (of
 which the final one is the initial parameter), a matrix of KL-polynomial
 indices, a list of polynomials (as vectors), a vector of length stops (block
 element numbers at with the length function increases), a list of block
 element numbers for those whose survive the translation-to-singular functor,
-and a matrix that indicates which block elements contributes to which
-surviving element.
+and a matrix that indicates which block element contributes to which surviving
+element (and with what multiplicity).
 
 @< Local function def...@>=
-void partial_block_wrapper(expression_base::level l)
+void partial_KL_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p);
   if (l!=expression_base::no_value)
@@ -3412,12 +3444,13 @@ install_function(parameter_inv_Cayley_wrapper,@|"inv_Cayley"
 install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(reducibility_points_wrapper,@|
 		"reducibility_points" ,"(Param->[rat])");
-install_function(print_n_block_wrapper,@|"print_block"
-                ,"(Param->)");
-install_function(n_block_wrapper,@|"block" ,"(Param->[Param],int)");
+install_function(print_n_block_wrapper,@|"print_block","(Param->)");
+install_function(block_wrapper,@|"block" ,"(Param->[Param],int)");
+install_function(partial_block_wrapper,@|"partial_block","(Param->[Param])");
+install_function(param_length_wrapper,@|"length","(Param->int)");
 install_function(KL_block_wrapper,@|"KL_block"
                 ,"(Param->[Param],int,mat,[vec],vec,vec,mat)");
-install_function(partial_block_wrapper,@|"partial_block"
+install_function(partial_KL_block_wrapper,@|"partial_KL_block"
                 ,"(Param->[Param],mat,[vec],vec,vec,mat)");
 
 @*1 Polynomials formed from parameters.
@@ -3554,7 +3587,7 @@ struct virtual_module_value : public value_base
   static const char* name() @+{@; return "module parameter"; }
 @)
   const Rep_context& rc() const @+{@; return rf->rc(); }
-  repr::Rep_context& rt() const @+{@; return rf->rt(); }
+  Rep_table& rt() const @+{@; return rf->rt(); }
 private:
   virtual_module_value(const virtual_module_value& v)
   @+ : rf(v.rf),val(v.val) @+{} // copy
@@ -3815,7 +3848,7 @@ Kazhdan-Lusztig polynomials $P_{x,y}$ where $x$ ranges over the values in the
 block of $y$ (or the Bruhat interval below $y$, where all those giving a
 nonzero contribution are located), multiplied by a sign and evaluated at the
 split integer unit~$s$ (since it appears that the information most frequently
-needed can be extracted from that evaluation. In formula, this computes
+needed can be extracted from that evaluation). In formula, this computes
 $$
   \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s]
 $$
@@ -3823,6 +3856,7 @@ $$
 void KL_sum_at_s_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p);
+  test_nonzero_final(*p);
   if (l!=expression_base::no_value)
   {
     repr::SR_poly result = p->rt().KL_column_at_s(p->val);
