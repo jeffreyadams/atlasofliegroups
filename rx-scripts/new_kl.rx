@@ -58,8 +58,7 @@ set strip (vec v) = vec: { reduce polynomial by dropping trailing zeros }
 
 {-------------------------------------------------------------------}
 
-set character_formula (Param p) = ParamPol:
-  s_to_1(KL_sum_at_s(p),let lp=length(p) in (Param q) int: (-1)^(lp-length(q)))
+set character_formula (Param p) = ParamPol: s_to_1(KL_sum_at_s(p))
 
 {-------------------------------------------------------------------}
 
@@ -75,6 +74,9 @@ set composition_series (Param p) = ParamPol:
      ; acc +:= (-coef)*character_formula(block[i])
     fi
   od
+; if #acc>0
+  then error("Internal error: Failed to completely decompose module")
+  fi
 ; result
 )
 
