@@ -1,5 +1,5 @@
 <misc.rx
-<kl.rx
+<new_kl.rx
 
 { a variable used in this file; set to true for more output from functions }
 set hermitian_debug = false
@@ -35,7 +35,7 @@ set c_form_std (Param p) = ParamPol:
 ; full_deform(p)
 )
 
-{ c_form_irreducible(y) returns a ParamPol of standardrepks
+{ c_form_irreducible_long(y) returns a ParamPol of standardrepks
   giving the c-invariant form on irreducible(y)
   formula used: when
     J(y)  =sum_x               (-1)^{ell(x)-ell(y)}P(x,y)(q=1)I(x)
@@ -51,29 +51,17 @@ set c_form_std (Param p) = ParamPol:
 
 
 set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)]):
-( let (block,kl,polys,stops,indices,cumulation)=partial_KL_block (p)
-  then klpolys=signed_KL_col(#block-1,kl,polys,stops,indices,cumulation)
-  , P=null_module(real_form(p)), on_p=orientation_nr(p)
+( let P=null_module(real_form(p)), on_p=orientation_nr(p)
   , standards=[(Param,Split,ParamPol)]: []
   in
-  for i:#indices downto 0 do
-    let ev = at_s(klpolys[i]), q=block[indices[i]] in
-    if ev!=0 { this saves considerable time }
-    then
-      let form_on_standard=c_form_std(q)
-      , factor=ev*orientation_nr_term(on_p,q)
-      in P +:= factor*form_on_standard
-      ; standards #:= (q,factor,form_on_standard)
-    fi
+  for ev@q in KL_sum_at_s(p) do
+    let form_on_standard=c_form_std(q)
+    , factor=ev*orientation_nr_term(on_p,q)
+    in P +:= factor*form_on_standard
+    ; standards #:= (q,factor,form_on_standard)
   od
 ; (P,standards)
 )
-
-set KL_col(Param p)= ParamPol: { this is what built-in |KL_sum_at_s| does }
-  let (block,kl,polys,stops,indices,cumulation)=partial_KL_block (p)
-  then klpolys=signed_KL_col(#block-1,kl,polys,stops,indices,cumulation)
-  in null_module(real_form(p)) +
-     for i:#indices do (at_s(klpolys[i]),block[indices[i]]) od
 
 set c_form_irreducible (Param p)= ParamPol:
 ( let on_p=orientation_nr(p), P = null_module(real_form(p))

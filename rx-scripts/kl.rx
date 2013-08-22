@@ -92,14 +92,14 @@ set KL (int init, mat KL, [vec] polys, mat cumulation)= [vec]:
   for i:n_rows(cumulation) do mat_mult_int_poly(cumulation,KL,polys,i,init) od
 
 { column 'init' of KL matrix, with signs, assuming regular infinitesimal
-  character, returned as unevaluated polynomials }
-set signedKL (int init, mat KL, [vec] polys, vec stops) = [vec]:
+  character, returned as list of unevaluated polynomials }
+set signed_KL_col (int init, mat KL, [vec] polys, vec stops) = [vec]:
   let l_init = length(init,stops) { compute this one just once }
   in for i:n_rows(KL) do (-1)^(length(i,stops)-l_init)*polys[KL[i,init]] od
 
 { column 'init' of KL matrix, with signs, assuming singular infinitesimal
-  character, returned as unevaluated polynomials }
-set signedKL (
+  character, returned as list of unevaluated polynomials }
+set signed_KL_col (
     int init, mat KL, [vec] polys, vec stops, vec indices,mat cumulation) =
   [vec]:
   let l_init = length(init,stops) in { compute this one just once }
@@ -118,10 +118,11 @@ set KL_regular (Param p)= [vec]:
   fi
 
 { the same, but modified by (-1)^{\ell(x)-\ell(y)} }
-set signedKL_regular (Param p) = [vec]:
+set signed_KL_col_regular (Param p) = [vec]:
   if not is_regular(p) then error("Parameter is not regular")
   else
-    let (,init,kl,polys,stops,,)=KL_block(p) in signedKL(init,kl,polys,stops)
+    let (,init,kl,polys,stops,,)=KL_block(p)
+    in signed_KL_col(init,kl,polys,stops)
   fi
 
 { column of KL matrix at singular infinitesimal character,
@@ -133,9 +134,9 @@ set KL_singular (Param p)= [vec]:
   let (,init,kl,polys,,,cumulation)=KL_block(p) in KL(init,kl,polys,cumulation)
 
 {same as preceding, modified by (-1)^{\ell(x)-\ell(y)}}
-set signedKL_singular (Param p)= [vec]:
+set signed_KL_col_singular (Param p)= [vec]:
   let (,init,kl,polys,stops,indices,cumulation)=KL_block(p)
-  in signedKL(init,kl,polys,stops,indices,cumulation)
+  in signed_KL_col(init,kl,polys,stops,indices,cumulation)
 
 { return either KL_regular or KL_singular
   these can also be called directly
@@ -144,9 +145,10 @@ set signedKL_singular (Param p)= [vec]:
 set KL (Param p)= [vec]:
   if is_regular(p) then KL_regular(p) else KL_singular(p) fi
 
-{ return signedKL_regular or signedKL_singular }
-set signedKL (Param p)= [vec]:
-  if is_regular(p) then signedKL_regular(p) else signedKL_singular(p) fi
+{ return signed_KL_col_regular or signed_KL_col_singular }
+set signed_KL_col (Param p)= [vec]:
+  if is_regular(p) then signed_KL_col_regular(p)
+                   else signed_KL_col_singular(p) fi
 
 { ------------------------------------------------------------------- }
 
@@ -163,7 +165,7 @@ set KL_regular_matrix_at_one (Param p)= mat:
   in  for col in KL do for entry in col do eval(polys[entry],1) od od
 
 { signed KL matrix, at one, regular case }
-set signedKL_regular_matrix_at_one (Param p)= mat:
+set signed_KL_mat_regular_at_one (Param p)= mat:
   let (,,KL,polys,stops,,)=KL_block(p) in
   for col@j in KL do for entry@i in col do
     (-1)^(length_diff(i,j,stops))*eval(polys[entry],1)
@@ -180,7 +182,7 @@ set KL_singular_matrix_at_one (Param p)= mat:
     od
   od
 
-set signedKL_singular_matrix_at_one (Param p)= mat:
+set signed_KL_mat_singular_at_one (Param p)= mat:
   let (,,KL,polys,stops,indices,cumulation)=KL_block(p) in
   for ind_j in indices do { must do by columns first for building a matrix }
     for i:#indices { = n_rows(cumulation) } do
@@ -197,9 +199,9 @@ set KL_matrix_at_one (Param p)= mat:
   else KL_singular_matrix_at_one(p)
   fi
 
-set signedKL_matrix_at_one (Param p) = mat:
-  if is_regular(p) then signedKL_regular_matrix_at_one(p)
-  else signedKL_singular_matrix_at_one(p)
+set signed_KL_mat_at_one (Param p) = mat:
+  if is_regular(p) then signed_KL_mat_regular_at_one(p)
+  else signed_KL_mat_singular_at_one(p)
   fi
 
 {-------------------------------------------------------------------}
@@ -234,12 +236,12 @@ set get_singular_index (Param p) = int:
 
 { regular case }
 set KL_regular_inverse_matrix_at_one (Param p) = mat:
-  let (M,)=invert(signedKL_regular_matrix_at_one(p)) in M
+  let (M,)=invert(signed_KL_mat_regular_at_one(p)) in M
 
 { singular case, use get_singular_index(p) to get the number of the column
   in the smaller matrix }
 set KL_singular_inverse_matrix_at_one (Param p) = mat:
-  let (M,)=invert(signedKL_singular_matrix_at_one(p)) in M
+  let (M,)=invert(signed_KL_mat_singular_at_one(p)) in M
 
 { for testing: should give the same result }
 set KL_singular_inverse_matrix_at_one_alt (Param p) = mat:
@@ -367,7 +369,7 @@ set print_KL (Param p) = void:
 
 set print_signedKL (Param p) = void:
   let (block,k,kl,polys,lengths,indices,cumulated)=KL_block(p)
-  , signedKL=signedKL(p) in
+  , signedKL=signed_KL_col(p) in
   for q@i in block do
     if #strip(signedKL[i])>0 then
       prints(i,", ",q,": ", stringPoly(signedKL[i],"q"))
