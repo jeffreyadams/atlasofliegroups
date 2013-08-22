@@ -431,30 +431,34 @@ reducibility_points: (Param->[rat]): the 0<t<=1 with I(x,lambda,t\nu) reducible
 print_block: (Param->): print (nonintegral) block generated from parameter
 block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
+partial_block: (Param->[Param]): return partial block as list of parameters
+  This is the Bruhat interval of the block below the given parameter,
+  sorted by length and including the given parameter as final element
+length: (Param->int): the length of a parameter within its block
 KL_block: (Param->[Param],int,mat,[vec],vec,vec,mat): block, raw_KL, and more
   This combines block with the Kazhdan-Lustzig table for the block appended,
   and two more values that allow cumulation to be performed. The two values of
   block are followed by three values in the format of raw_KL below: a matrix
   of indices into the following list of polynomials, coded as a list of
-  coefficient vectors, and finally a list of indices where the length function
-  increases. Finally follow a vector with indices of the block elements for
-  which the the representation at regular infinitesimal character survives the
-  translation functor to the (possibly) singular infinitesimal character of
-  the given parameter, and a matrix whose rows correspond to these survivors,
-  and it columns to all block elements; the entry gives the coefficient by
-  which the block element for its column contributes to the surviving
-  parameter for its row, with a sign given by the parity of the length
-  difference between contributing and contributed-to elements. Thus one can
-  transform the given KL matrix at regular infinitesimal character to one at
-  possibly singular infinitesimal as follows: select only the columns of the
-  KL matrix whose index is among the survivors, and then multiply the
-  resulting matrix on the left by the contibution-coefficient matrix.
-partial_block: (Param->[Param],mat,[vec],vec,vec,mat) partial KL_block
-  This function operates like KL_block, but only constructs the Bruhat
-  interval below the initial parameter, sorted by length. The second component
-  of the result of KL_block is then superfluous and omitted, as the initial
-  parameter is always the final element of the partial block. All other result
-  components are the same is in KL_block, but truncated to match the interval.
+  coefficient vectors, then a list of indices where the length function
+  increases. Finally follow a vector with indices of the "surviving" block
+  elements, and a matrix whose rows correspond to those survivors, its columns
+  to all block elements, and whose the entries gives the coefficients by which
+  each the block element (column) contributes to the surviving element (row),
+  with a sign given by the parity of their length difference. Here "surviving"
+  refers to the result of applying a translation functor to a standard module,
+  namely a functor from regular infinitesimal character to the current
+  (possibly) singular infinitesimal character. Thus one can transform the
+  given KL matrix (computed at regular infinitesimal character) to one at the
+  actual block by selecting only the columns whose index is among the
+  survivors, and multiplying the resulting matrix on the left by the
+  contibution-coefficient matrix (the final component this function returns).
+partial_KL_block: (Param->[Param],mat,[vec],vec,vec,mat) partial KL_block
+  This function relates to KL_block as partial_block relates to block. The
+  first component of the result is the Bruhat interval as in partial_block,
+  and all other components are the same is in KL_block (except that the now
+  superfluous second component of KL_block is omitted), but with the two vec
+  components filtered so as to be indexed by the Bruhat interval indices only.
 
 operator +: (Split,Split->Split): addition of split integers
 operator -: (Split,Split->Split): subtraction of split integers
@@ -484,7 +488,7 @@ full_deform: (Param->ParamPol): perform deformation all the way to nu=0
 
 KL_sum_at_s: (Param->ParamPol): signed sum of KL polynomials at s, fixed y
   Computes \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s] where y is the block
-  elementof the parameter, and the sum is over other block elements x.
+  element of the parameter, and the sum is over other block elements x.
 
 raw_KL: (RealForm,DualRealForm->mat,[vec],vec): Kazhdan-Lusztig data, raw form
   The call raw_KL(rf,drf) produces a matrix of numbers identifying
