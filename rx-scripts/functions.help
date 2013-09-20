@@ -121,18 +121,18 @@ Cartan_matrix_type: (mat->LieType,vec): type given by Cartan matrix.
   ordering of the corresponding simple roots in matrix rows and columns.
 
 rank: (LieType->int) Rank of the weight lattice for this Lie type.
-semisimple_rank: (LieType->int) Rank of the root lattice of  this Lie type.
+semisimple_rank: (LieType->int) Rank of the root lattice of this Lie type.
 operator #: (LieType->int) Number of (simple or T1) factors in this Lie type
 operator %: (LieType->[LieType]) Expand into row of simple factors (or T1)
 
 Smith_Cartan: (LieType->mat,vec): compute generators of weights modulo roots.
   Find a Smith basis for the weight lattice relative to the sublattice of
   roots, with corresponding invariant factors; almost equivalent to
-  Smith(^Cartan_matrix(type)), except that (1) each simple or
-  torus factor is normalised separately, (2) for torus factors there is
-  a '1' is on the diagonal and a '0' appears as invariant factor, and (3) for
-  factors D_{2n} an equivalent basis is given, which has been tweaked so that
-  the final two vectors are standard basis vectors
+  Smith(^Cartan_matrix(type)), except that (1) each simple or torus factor is
+  normalised separately, (2) for torus factors there is a '1' is on the
+  diagonal and a '0' appears as invariant factor, and (3) for factors D_{2n}
+  an equivalent basis is given, which has been tweaked so that the final two
+  vectors are standard basis vectors
 
 filter_units: (mat,vec->mat,vec): discard entries '1' and their columns.
   The input is presumably produced by 'Smith_Cartan'; all entries '1' in the
@@ -361,7 +361,7 @@ dual_real_forms: (CartanClass->[DualRealForm]): list Cartan's dual real forms
 fiber_part: (CartanClass,RealForm->[int]): part of fiber group for real form
   This produces an increasing sequence of integers that characterizes the real
   form relative to the CartanClass. It describes a part of the adjoint fiber
-  group associated to the Cartan class (and elementary 2-group of rank r equal
+  group associated to the Cartan class (an elementary 2-group of rank r equal
   to the number of compact factors of the real torus in the adjoint group
   defined by the Cartan class), whose elements are represented by numbers 0 to
   2^r-1; as the real form traverses all those for which this Cartan class

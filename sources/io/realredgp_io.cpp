@@ -177,7 +177,7 @@ std::ostream& printStrongReal(std::ostream& strm,
   if (n>1)
     strm << "there are " << n << " real form classes:\n" << std::endl;
 
-  for (size_t csc=0; csc<n; ++csc)
+  for (square_class csc=0; csc<n; ++csc)
   {
     // print information about the square of real forms, in center
     {

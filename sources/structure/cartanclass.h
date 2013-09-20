@@ -198,7 +198,7 @@ class Fiber {
   \brief Partition of the adjoint fiber group according to weak real forms.
 
   The imaginary Weyl group acts on the adjoint fiber group; the partition is
-  by orbits of this action.
+  by orbits of this action, and each orbit corresponds to a weak real form.
   */
   Partition d_weakReal;
 
@@ -455,7 +455,7 @@ class Fiber {
   AdjointFiberElt toAdjoint(FiberElt) const;
 
 /*!\brief Returns the class number in the weak real form partition of the
-  strong real form \#c in real form class \#rfc.
+  strong real form \#c in real form class \#csc.
 */
   adjoint_fiber_orbit toWeakReal(fiber_orbit c, square_class csc) const;
 
@@ -755,18 +755,16 @@ public:
 
   /*!
   \brief Returns the class number in the weak real form partition of
-  the strong real form \#c in real form class rfc.
+  the strong real form \#c in real form class \#csc.
 
-  The pair (c,rfc) is the software representation of an equivalence
-  class of strong real forms (always assumed to induce tau on H). The
-  integer rfc labels an element of Z^delta/[(1+delta)Z], thought of as
-  a possible square value for strong real forms. The fiber group acts
-  simply transitively on strong real forms with square equal to
-  rfc. The integer c labels an orbit of W_i on this fiber group coset;
-  this orbit is the equivalence class of strong real forms.
+  The pair (c,csc) specifies a strong real form by giving its square class csc
+  (which labels an element of Z^delta/[(1+delta)Z]) and an orbit number c in
+  the corresponding action of W_i on the fiber group. The function returns the
+  corresponding weak real form, encoded (internally) as number of a W_i-orbit
+  on the adjoint fiber stored in |d_weakReal|
   */
-  adjoint_fiber_orbit toWeakReal(fiber_orbit c, square_class j) const
-    { return d_fiber.toWeakReal(c,j); }
+  adjoint_fiber_orbit toWeakReal(fiber_orbit c, square_class csc) const
+    { return d_fiber.toWeakReal(c,csc); }
 
   /*!
   \brief Partition of the weak real forms according to the
