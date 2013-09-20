@@ -826,13 +826,15 @@ AdjointFiberElt Fiber::toAdjoint(FiberElt x) const
 
 
 /*!
-  \brief Returns the class number in the weak real form partition of the
-  strong real form \#c in central square class \#csc. In spite of the name,
-  this is not of course the number globally associated to the weak real form
-  (which |Fiber| knows nothing about) but the number of the W_im-orbit in the
-  adjoint fiber (group).
+  Returns the class number in the weak real form partition of the
+  strong real form \#c in central square class \#csc.
 
-  The pair (c,rfc) is the software representation of an equivalence
+  In spite of the name of this method, the vaue returned is not the number
+  globally associated to the weak real form, which is called a real form label
+  but which |Fiber| knows nothing about, but rather the number of the
+  W_im-orbit in the adjoint fiber (group).
+
+  The pair (c,csc) is the software representation of an equivalence
   class of strong real forms (always assumed to induce |theta| on H). The
   integer |csc| labels an element of Z^delta/[(1+delta)Z], thought of as
   a possible square value for strong real forms.  The fiber group acts
@@ -852,7 +854,7 @@ AdjointFiberElt Fiber::toAdjoint(FiberElt x) const
   find a fiber group element in the |W_i|-orbit labelled by |c|, and
   (downstream) to find the number of the weak real form of its image under the
   affine map; the former is |d_strongReal[csc].classRep(c)| and the latter is
-  obtained by applying (as a function) the partition |d_weakReal|.
+  obtained by the method |class_of| of the partition |d_weakReal|.
 */
 adjoint_fiber_orbit Fiber::toWeakReal(fiber_orbit c, square_class csc) const
 {
