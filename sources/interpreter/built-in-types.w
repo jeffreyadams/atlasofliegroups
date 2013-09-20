@@ -2545,6 +2545,29 @@ void fiber_part_wrapper(expression_base::level l)
   push_value(result);
 }
 
+@ The function |square_classes| returns the set of real forms associated to a
+Cartan class, but partitioned according to their square class, determined by
+the square of any strong involution representing the real form.
+@< Local function def...@>=
+void square_classes_wrapper(expression_base::level l)
+{ shared_Cartan_class cc(get<Cartan_class_value>());
+  const realform_io::Interface rfi = cc->parent.interface;
+  const RealFormNbrList& rfl = cc->parent.val.realFormLabels(cc->number);
+  if (l==expression_base::no_value)
+    return;
+  size_t n_sq_classes = cc->val.numRealFormClasses();
+  row_ptr result @| (new row_value(n_sq_classes));
+  for (cartanclass::square_class csc=0; csc<n_sq_classes; ++csc)
+  { const Partition& pi = cc->val.fiber_partition(csc);
+    row_ptr part @| (new row_value(pi.classCount()));
+    for (unsigned long c=0; c<pi.classCount(); ++c)
+       part->val[c] =
+          shared_value(new int_value(rfi.out(rfl[cc->val.toWeakReal(c,csc)])));
+    result->val[csc] = part;
+  }
+  push_value(result);
+}
+
 @ The function |print_gradings| gives on a per-real-form basis the
 functionality of the Atlas command \.{gradings} that is implemented by
 |complexredgp_io::printGradings| and |cartan_io::printGradings|. It therefore
@@ -2658,6 +2681,8 @@ install_function(dual_real_forms_of_Cartan_wrapper,@|"dual_real_forms"
 		,"(CartanClass->[DualRealForm])");
 install_function(fiber_part_wrapper,@|"fiber_part"
 		,"(CartanClass,RealForm->[int])");
+install_function(square_classes_wrapper,@|"square_classes"
+                ,"(CartanClass->[[int]])");
 
 @*1 Elements of some $K\backslash G/B$ set.
 %

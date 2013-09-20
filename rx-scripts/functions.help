@@ -358,6 +358,14 @@ real_forms: (CartanClass->[RealForm]): list of real forms with given Cartan
 dual_real_forms: (CartanClass->[DualRealForm]): list Cartan's dual real forms
   Returns a list of the dual real forms for which this Cartan class occurs
 
+square_classes: (CartanClass->[[int]]): partition real forms by square class
+  This returns a list of lists of numbers that identify real forms in the
+  inner class. All real forms whose representative strong involutions may
+  square to the same value in the center are grouped together in a sublist
+  (the number of sublists is a power of 2). Each number occurs only in a
+  single sublist, but may be repeated, which indicates that there are mulitple
+  orbits of strong involutions (strong real forms) for the same real form.
+  The value returned represents a part of the print_strong_real output.
 fiber_part: (CartanClass,RealForm->[int]): part of fiber group for real form
   This produces an increasing sequence of integers that characterizes the real
   form relative to the CartanClass. It describes a part of the adjoint fiber
