@@ -1828,18 +1828,25 @@ Here are our first functions that access a operate on values of type
 construction, and the final one constructs the dual inner class.
 
 @< Local function def...@>=
+void inner_class_equality_wrapper(expression_base::level l)
+{ shared_inner_class G(get<inner_class_value>());
+  shared_inner_class H(get<inner_class_value>());
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(&G->val==&H->val));
+}
+@)
 void distinguished_involution_wrapper(expression_base::level l)
 { shared_inner_class G(get<inner_class_value>());
   if (l!=expression_base::no_value)
     push_value(new matrix_value(G->val.distinguished()));
 }
-
+@)
 void root_datum_of_inner_class_wrapper(expression_base::level l)
 { shared_inner_class G(get<inner_class_value>());
   if (l!=expression_base::no_value)
     push_value(new root_datum_value(G->val.rootDatum()));
 }
-
+@)
 void inner_class_to_root_datum_coercion()
 {@; root_datum_of_inner_class_wrapper(expression_base::single_value); }
 
@@ -1976,6 +1983,8 @@ install_function(set_type_wrapper,@|"inner_class"
                 ,"(LieType,[ratvec],string->InnerClass)");
 install_function(set_inner_class_wrapper,@|"inner_class"
                 ,"(RootDatum,string->InnerClass)");
+install_function(inner_class_equality_wrapper,@|"="
+                ,"(InnerClass,InnerClass->bool)");
 install_function(distinguished_involution_wrapper,@|"distinguished_involution"
                 ,"(InnerClass->mat)");
 install_function(root_datum_of_inner_class_wrapper,@|"root_datum"
@@ -2036,9 +2045,10 @@ explains why the copy constructor is protected rather than private.
 struct real_form_value : public value_base
 { const inner_class_value parent;
   RealReductiveGroup val;
+  RealFormNbr form_index;
 @)
   real_form_value(const inner_class_value& p,RealFormNbr f) @/
-  : parent(p), val(p.val,f),rt_p(NULL) @+{}
+  : parent(p), val(p.val,f),form_index( f), rt_p(NULL) @+{}
 @)
   virtual void print(std::ostream& out) const;
   real_form_value* clone() const @+
@@ -2096,7 +2106,9 @@ void real_form_value::print(std::ostream& out) const
 @ To make a real form is easy, one provides an |inner_class_value| and a valid
 index into its list of real forms. Since this number coming from the outside
 is to be interpreted as an outer index, we must convert it to an inner index
-at this point. As a special case we also provide the quasisplit form.
+at this point. We also inversely allow finding the index of a real form in its
+inner class; of course the opposite conversion applies here.
+As a special case we also provide the quasisplit form.
 
 @< Local function def...@>=
 void real_form_wrapper(expression_base::level l)
@@ -2107,6 +2119,12 @@ void real_form_wrapper(expression_base::level l)
 @.Illegal real form number@>
   if (l!=expression_base::no_value)
     push_value(new real_form_value(*G,G->interface.in(i->val)));
+}
+@)
+void form_number_wrapper(expression_base::level l)
+{ shared_real_form rf(get<real_form_value>());
+  if (l!=expression_base::no_value)
+    push_value(new int_value(rf->parent.interface.out(rf->form_index)));
 }
 @)
 void quasisplit_form_wrapper(expression_base::level l)
@@ -2273,6 +2291,7 @@ void real_form_from_dual_wrapper(expression_base::level l)
 @ Finally we install everything related to real forms.
 @< Install wrapper functions @>=
 install_function(real_form_wrapper,@|"real_form","(InnerClass,int->RealForm)");
+install_function(form_number_wrapper,@|"form_number","(RealForm->int)");
 install_function(quasisplit_form_wrapper,@|"quasisplit_form"
 		,"(InnerClass->RealForm)");
 install_function(inner_class_of_real_form_wrapper
