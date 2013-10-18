@@ -1,0 +1,93 @@
+{computing coherent continuation}
+
+{--------------------auxiliary tools---------------------}
+{convert sum of standards to sum of irreducibles}
+set std_to_irr(ParamPol P)=ParamPol:
+let N=null_module(real_form(P)) in
+for (coeff,p) in %P do N:=N+coeff*composition_series(p) od;N
+
+{convert sum of irreducibles to sum of standards}
+set irr_to_std(ParamPol P)=ParamPol:
+let N=null_module(real_form(P)) in
+for (coeff,p) in %P do N:=N+coeff*character_formula(p) od;N
+
+{-------------cayleys as sums of one or two terms----------}
+{nci type I cayley as a sum of one or two terms}
+set nci_Cayley(int k,Param p)=ParamPol:
+let c1=Cayley(k,p) then
+c2=cross(k,c1) in
+if c1=c2 then null_module(real_form(p))+c1 else
+null_module(real_form(p))+c1+c2 fi
+
+{real type I cayley as a sum of one or two terms}
+set r1_Cayley(int k,Param p)=ParamPol:
+let c1=inv_Cayley(k,p) then
+c2=cross(k,c1) in
+if c1=c2 then null_module(real_form(p))+c1 else
+null_module(real_form(p))+c1+c2 fi
+
+{--------------cross action------------------------------------}
+
+{cross action of Weyl group}
+set cross(vec v,Param p)=Param:
+let N=p in for k: #v downto 0  do N:=cross(v[k],N) od;N
+
+{------------coherent continuation in basis of standards------------}
+
+{coherent continuation action of simple root on Param in basis of standards}
+set coherent(int k,Param p)=ParamPol:
+let (x,,)=%p then
+type=status(k,x) then
+N=null_module(real_form(p)) in
+if type=1 then N-p {compact imaginary}
+elif type=3 then N+nci_Cayley(k,p)-cross(k,p) {non-compact imaginary}
+else N+cross(k,p)  {complex or real} fi
+
+{coherent continuation action of simple root on ParamPol, basis of standards}
+set coherent(int k,ParamPol P)=ParamPol:
+let N=null_module(real_form(P)) in
+for (coeff,p) in %P do N:=N+coeff*coherent(k,p) od;N
+
+{coherent continuation action of Weyl group on Param in basis of standards}
+set coherent(vec v,Param p)=ParamPol:
+let N=null_module(real_form(p))+p in 
+for k: #v downto 0  do N:=coherent(v[k],N) od;N
+
+{coherent continuation action of Weyl group on ParamPol in basis of standards}
+set coherent(vec v,ParamPol P)=ParamPol:
+let N=P in for k: #v downto 0  do N:=coherent(v[k],N) od;N
+
+{------------coherent continuation in basis of irreducibles------------}
+
+{coherent continuation of simple root on Param in basis of irreducibles}
+set coherent_irr(int k,Param p)=std_to_irr(coherent(k,character_formula(p)))
+
+{coherent continuation of simple root on ParamPol, basis of irreducibles}
+set coherent_irr(int k,ParamPol P)=ParamPol:std_to_irr(coherent(k,std_to_irr(P)))
+
+{coherent continuation of Weyl group element on ParamPol in basis of irreducibles}
+set coherent_irr(vec v,ParamPol P)=ParamPol:std_to_irr(coherent(v,irr_to_std(P)))
+
+{------------skew symmetrized coherent continuation in basis of standards------------}
+{ sum_{w in W} sgn(w) w.pi -- at rho should give multiple of trivial representation}
+{ first argument is a list of Weyl group elements }
+
+{skew symmetrized coherent continuation action element on Param in basis of standards}
+set skew_symm_coherent([[int]] v,Param p)=ParamPol:
+let N=null_module(real_form(p))+p in 
+for w in v do N:=N+(-1)^#w*coherent(w,N) od;N
+
+{---skew symmetrized coherent continuation on ParamPol in basis of standards}
+set skew_symm_coherent([[int]] v,ParamPol P)=ParamPol:
+let N=P in for w in v do N:=N+(-1)^#w*coherent(w,N) od;N
+
+{------------skew symmetrized coherent continuation in basis of irreducibles------------}
+
+{signed coherent continuation action of Weyl group element on Param in basis of standards}
+set skew_symm_coherent_irr([[int]] v,Param p)=ParamPol:
+let N=null_module(real_form(p))+irr_to_std(p) in 
+for w in v do N:=N+(-1)^#w*coherent(w,N) od;std_to_irr(N)
+
+{signed coherent continuation action of Weyl group element on ParamPol in basis of standards}
+set skew_symm_coherent_irr([[int]] v,ParamPol P)=ParamPol:
+std_to_irr(skew_symm_coherent(v,irr_to_std(P)))
