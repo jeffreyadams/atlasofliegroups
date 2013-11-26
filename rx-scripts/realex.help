@@ -891,42 +891,55 @@ variable we can nevertheless get recursion into place. The trick is to first
 introduce a dummy function name with the correct type, so that the "recursive"
 function body can pass the type check, and then by assignment replace it by a
 properly recursive expression (note that the requirement that assignments do
-not change types guarantees the type check continues to makes sense). One is
-forced to assign an anonymous function to the name, as follows:
+not change types guarantees the type check continues to makes sense). An
+ordinary function definition will not create a variable that can be assigned
+to (instead it will enter an instance of the function name in the overload
+table), so one must use a special form to create a function-valued variable.
+Not using the overload table is forced by using the '<name> : <value>' syntax
+instead of the 'let <name> = <value>' syntax. So the following works:
 
-  expr> set fac = (int n): 0
+  expr> fac : (int n): 0
   Identifier fac: (int->int)
   expr> fac := ((int n): if n>0 then n*fac(n-1) else 1 fi);
   expr> fac(7)
   Value: 5040
 
-The assignement is necessary to make the recursive call identify a function
-object with value defined by the function body; if we would have used the
-usual syntax 'set fac (int n)=' instead, we would have created a new function
-object 'fac' whose body refers to the old (and not otherwise accessible)
-function object also called 'fac'; there would have been no recursion and any
-execution (with argument n>0) would return 0. The semicolon after the
-assignment to 'fac' serves to suppress printing of the internal representation
-of the function object as value of the assignment. Note that the dummy initial
-definition does not use 'set fac (int n)=' either, since that would not create
-a function valued variable, but rather an entry in the overload table, which
-cannot be modified via assignment (the subsequent asignment would be refused
-because of an "undefined identifier" 'fac'). Indeed overloading is always
-resolved during expression analysis, and there is no run-time lookup of
-overloaded functions.
+The semicolon after the assignment to 'fac' serves to suppress printing of the
+internal representation of the function object as value of the assignment.
 
 Since the initial function value is to be never actually used (only its type
-serves) one might as well not specify it at all, by writing:
+serves) one might as well not specify it at all, by writing as first line:
 
   expr> fac : (int->int)
 
-will give the global identifier 'fac' the indicated type but an undefined
+This will give the global identifier 'fac' the indicated type but an undefined
 value, with which nothing can be done except assigning another value of the
 same type to it, which is exactly what we need for the recursive definition.
-One can use the same syntax to create undefined values of any type, but this
+(One can use the same syntax to create undefined values of any type, but this
 does not have much practical use, since a value must be supplied anyway before
-it can be used.
+it can be used.)
 
+Often it is better to have the recursive function be local (introduced by
+'let') to another definition, for instance because an outer function does some
+sanity check that should not be repeated recursively. In this case the
+difficulty with the overload table disappears, since local definitions always
+create (assignable) variables rather than entries in the overload table. On
+the other hand the option of giving just a type but no value in the (dummy)
+initial creation of the variable is not available for local values. So one may
+define the factorial function using a local recursive function (called 'f' for
+clarity, to distinguish it from the global name 'fac') as follows:
+
+  expr> set fac (int n) =
+          if n<0 then error("Factorial of negative number")
+          else let f(int i)=0
+               in f:=((int n): if n>0 then n*f(n-1) else 1 fi)
+             ; f(n)
+          fi
+
+(We have omitted the prompts after the first line.) Note that after the
+assignment to 'f' one needs to apply the now defined recursive function to the
+argument 'n' of the outer function, whence the 'f(n)'. Alternatively one might
+have written '(f:=( ... )) (n)', applying the value of the assignment to 'n'.
 
 9 Splitting commands across lines
 
