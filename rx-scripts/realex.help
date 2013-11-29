@@ -920,14 +920,18 @@ does not have much practical use, since a value must be supplied anyway before
 it can be used.)
 
 Often it is better to have the recursive function be local (introduced by
-'let') to another definition, for instance because an outer function does some
-sanity check that should not be repeated recursively. In this case the
-difficulty with the overload table disappears, since local definitions always
-create (assignable) variables rather than entries in the overload table. On
-the other hand the option of giving just a type but no value in the (dummy)
-initial creation of the variable is not available for local values. So one may
-define the factorial function using a local recursive function (called 'f' for
-clarity, to distinguish it from the global name 'fac') as follows:
+'let') to another definition. One reason for this would be to have the outer
+function do some sanity check that should not be repeated recursively. Other
+possible reasons are that the function to be defined should in fact be
+overloaded with other instances of the same name (and the above approach as
+said is not compatible with overloading), or that it should be bound to an
+operator symbol (which symbols never refer to function-valued variables). For
+local names the difficulty with the overload table disappears (they always
+refer to assignable local variables). On the other hand the option of giving a
+local name initially just a type but no value is not available: local
+variables are created from values, so one must write a dummy function body.
+One may define the factorial function using a local recursive function (called
+'f' for clarity, to distinguish it from the global name 'fac') as follows:
 
   expr> set fac (int n) =
           if n<0 then error("Factorial of negative number")
