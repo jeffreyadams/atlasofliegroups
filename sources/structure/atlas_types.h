@@ -387,6 +387,8 @@ namespace atlas {
     typedef std::vector<KLIndex> KLRow;
     typedef std::vector<BlockElt> PrimitiveRow;
   }
+  using kl::KLCoeff;
+  using kl::KLPol;
 
   namespace standardrepk {
     class StandardRepK;	// standard representation restricted to K

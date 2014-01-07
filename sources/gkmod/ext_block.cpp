@@ -73,6 +73,15 @@ bool is_proper_ascent(DescValue v)
   return not(is_descent(v) or is_like_nonparity(v));
 }
 
+bool has_defect(DescValue v)
+{
+  static unsigned long mask =
+      1ul << two_semi_imaginary   | 1ul << two_semi_real
+    | 1ul << three_semi_imaginary | 1ul << three_real_semi
+    | 1ul << three_imaginary_semi | 1ul << three_semi_real;
+
+  return (1ul << v & mask) != 0; // whether |v| is one of the above
+}
 
 BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
 {
@@ -112,8 +121,34 @@ BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
 
   }
   assert(false); return UndefBlock; // keep compiler happy
+} // |extended_block::cross|
+
+BlockEltPair extended_block::Cayleys(weyl::Generator s, BlockElt n) const
+{
+  const DescValue type = descent_type(s,n);
+  BlockEltPair result(UndefBlock,UndefBlock);
+  if (not is_descent(type) and not is_complex(type))
+  {
+    result.first = data[s][n].links.first;
+    if (has_double_image(type))
+      result.second = data[s][n].links.second;
+  }
+  return result;
 }
 
+BlockEltPair
+extended_block::inverse_Cayleys(weyl::Generator s, BlockElt n) const
+{
+  const DescValue type = descent_type(s,n);
+  BlockEltPair result(UndefBlock,UndefBlock);
+  if (is_descent(type) and not is_complex(type))
+  {
+    result.first = data[s][n].links.first;
+    if (has_double_image(type))
+      result.second = data[s][n].links.second;
+  }
+  return result;
+}
 
 DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
 			BlockElt& link)
@@ -303,6 +338,7 @@ extended_block::extended_block
   , tW(W)
   , info()
   , data(parent.folded_rank())
+  , l_start(block.length(block.size()-1)+1)
 {
   unsigned int folded_rank = data.size();
   if (folded_rank==0 or block.Hermitian_dual(0)==UndefBlock)
@@ -311,12 +347,18 @@ extended_block::extended_block
   std::vector<BlockElt> child_nr(block.size(),UndefBlock);
   std::vector<BlockElt> parent_nr;
 
-  for (BlockElt z=0; z<block.size(); ++z)
-    if (block.Hermitian_dual(z)==z)
-    {
-      child_nr[z]=parent_nr.size();
-      parent_nr.push_back(z);
-    }
+  {
+    size_t cur_len=0; l_start[cur_len]=0;
+    for (BlockElt z=0; z<block.size(); ++z)
+      if (block.Hermitian_dual(z)==z)
+      {
+	while (cur_len<block.length(z))
+	  l_start[++cur_len]=z;
+	child_nr[z]=parent_nr.size();
+	parent_nr.push_back(z);
+      }
+    l_start[++cur_len]=block.size();
+  }
 
   info.reserve(parent_nr.size());
   for (weyl::Generator s=0; s<folded_rank; ++s)
@@ -395,7 +437,7 @@ extended_block::extended_block
 	data[s].back().links.second = child_nr[second];
     }
   } // |for(n)|
-}
+} // |extended_block::extended_block|
 
 } // namespace ext_block
 
