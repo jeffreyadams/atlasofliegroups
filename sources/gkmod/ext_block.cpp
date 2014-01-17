@@ -83,6 +83,15 @@ bool has_defect(DescValue v)
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
 
+int length(DescValue v)
+{
+  if (v<two_complex_ascent)
+    return 1;
+  if (v<three_complex_ascent)
+    return 2;
+  return 3;
+}
+
 BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
 {
   switch (descent_type(s,n))
@@ -123,6 +132,20 @@ BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
   assert(false); return UndefBlock; // keep compiler happy
 } // |extended_block::cross|
 
+BlockElt extended_block::Cayley(weyl::Generator s, BlockElt n) const
+{
+  const DescValue type = descent_type(s,n);
+  return
+    is_descent(type) or is_complex(type) ? UndefBlock : data[s][n].links.first;
+}
+
+BlockElt extended_block::inverse_Cayley(weyl::Generator s, BlockElt n) const
+{
+  const DescValue type = descent_type(s,n);
+  return
+    not is_descent(type) or is_complex(type) ? UndefBlock
+    : data[s][n].links.first;
+}
 BlockEltPair extended_block::Cayleys(weyl::Generator s, BlockElt n) const
 {
   const DescValue type = descent_type(s,n);
@@ -148,6 +171,16 @@ extended_block::inverse_Cayleys(weyl::Generator s, BlockElt n) const
       result.second = data[s][n].links.second;
   }
   return result;
+}
+
+int extended_block::epsilon(weyl::Generator s, BlockElt n,unsigned i) const
+{
+  if (i==0)
+    return 1; // for now we assume the first Cayley link is always unflipped
+  const DescValue type = descent_type(s,n);
+  if (type==two_imaginary_single_double or type==two_real_single_double)
+    return data[s][n].epsilon ? -1 : 1;
+  return 1;
 }
 
 DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
@@ -333,31 +366,31 @@ DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
 } // |extended_type|
 
 extended_block::extended_block
-  (const Block_base& block,const TwistedWeylGroup& W)
+(const Block_base& block,const TwistedWeylGroup& W)
   : parent(block)
   , tW(W)
   , info()
   , data(parent.folded_rank())
-  , l_start(block.length(block.size()-1)+1)
+  , l_start(parent.length(parent.size()-1)+1)
 {
   unsigned int folded_rank = data.size();
-  if (folded_rank==0 or block.Hermitian_dual(0)==UndefBlock)
+  if (folded_rank==0 or parent.Hermitian_dual(0)==UndefBlock)
     return; // block not stable under twist, so leave extended block empty
 
-  std::vector<BlockElt> child_nr(block.size(),UndefBlock);
+  std::vector<BlockElt> child_nr(parent.size(),UndefBlock);
   std::vector<BlockElt> parent_nr;
 
-  {
+  { // compute |child_nr| and |parent_nr| tables, and the |l_start| vector
     size_t cur_len=0; l_start[cur_len]=0;
-    for (BlockElt z=0; z<block.size(); ++z)
-      if (block.Hermitian_dual(z)==z)
+    for (BlockElt z=0; z<parent.size(); ++z)
+      if (parent.Hermitian_dual(z)==z)
       {
-	while (cur_len<block.length(z))
+	while (cur_len<parent.length(z))
 	  l_start[++cur_len]=z;
 	child_nr[z]=parent_nr.size();
 	parent_nr.push_back(z);
       }
-    l_start[++cur_len]=block.size();
+    l_start[++cur_len]=parent.size();
   }
 
   info.reserve(parent_nr.size());
@@ -368,12 +401,12 @@ extended_block::extended_block
   {
     BlockElt z=parent_nr[n];
     info.push_back(elt_info(z));
-    info.back().length = block.length(z);
+    info.back().length = parent.length(z);
     for (weyl::Generator s=0; s<folded_rank; ++s)
     {
       BlockElt link;
       DescValue type = extended_type(block,z,parent.orbit(s),link);
-      data[s].push_back(block_fields(type));
+      data[s].push_back(block_fields(type)); // create entry for block element
       if (link==UndefBlock)
 	continue; // |s| done for imaginary compact and real nonparity cases
       data[s].back().links.first=child_nr[link];
@@ -384,57 +417,73 @@ extended_block::extended_block
 
       case one_imaginary_single:
       case one_real_single: // in these cases find "cross neighbour" for |s|
-	second = block.cross(parent.orbit(s).s0,z);
+	second = parent.cross(parent.orbit(s).s0,z);
 	break;
 
       case one_real_pair_fixed:
       case one_imaginary_pair_fixed: // in these cases find second Cayley image
-	second = block.cross(parent.orbit(s).s0,link);
+	second = parent.cross(parent.orbit(s).s0,link);
 	break;
 
       case two_imaginary_single_single:
       case two_real_single_single: // now find "double cross neighbour" for |s|
-	if (block.cross(parent.orbit(s).s0,z)==UndefBlock)
-	  if (block.cross(parent.orbit(s).s1,z)==UndefBlock)
+	if (parent.cross(parent.orbit(s).s0,z)==UndefBlock)
+	  if (parent.cross(parent.orbit(s).s1,z)==UndefBlock)
 	    continue; // can't get there, let's hope it doesn't exist
-	  else second = block.cross(parent.orbit(s).s0,
-				    block.cross(parent.orbit(s).s1,z));
+	  else second = parent.cross(parent.orbit(s).s0,
+				     parent.cross(parent.orbit(s).s1,z));
 	else
 	{
-	  second = block.cross(parent.orbit(s).s1,
-			       block.cross(parent.orbit(s).s0,z));
-	  if (block.cross(parent.orbit(s).s1,z)!=UndefBlock)
-	    assert(block.cross(parent.orbit(s).s0,
-			       block.cross(parent.orbit(s).s1,z))==second);
+	  second = parent.cross(parent.orbit(s).s1,
+				parent.cross(parent.orbit(s).s0,z));
+	  if (parent.cross(parent.orbit(s).s1,z)!=UndefBlock)
+	    assert(parent.cross(parent.orbit(s).s0,
+				parent.cross(parent.orbit(s).s1,z))==second);
 	}
 	break;
 
       case two_imaginary_single_double:
       case two_real_single_double: // find second Cayley image
-	second = block.cross(parent.orbit(s).s0,link);
-	assert(block.cross(parent.orbit(s).s1,link)==second);
+	second = parent.cross(parent.orbit(s).s0,link);
+	assert(parent.cross(parent.orbit(s).s1,link)==second);
 	break;
 
       case two_imaginary_double_double:
       case two_real_double_double: // find second Cayley image
-	if (block.cross(parent.orbit(s).s0,link)==UndefBlock)
-	  if (block.cross(parent.orbit(s).s1,link)==UndefBlock)
+	if (parent.cross(parent.orbit(s).s0,link)==UndefBlock)
+	  if (parent.cross(parent.orbit(s).s1,link)==UndefBlock)
 	    continue; // can't get there, let's hope it doesn't exist
-	  else second = block.cross(parent.orbit(s).s0,
-				    block.cross(parent.orbit(s).s1,link));
+	  else second = parent.cross(parent.orbit(s).s0,
+				     parent.cross(parent.orbit(s).s1,link));
 	else
 	{
-	  second = block.cross(parent.orbit(s).s1,
-			       block.cross(parent.orbit(s).s0,link));
-	  if (block.cross(parent.orbit(s).s1,link)!=UndefBlock)
-	    assert(block.cross(parent.orbit(s).s0,
-			       block.cross(parent.orbit(s).s1,link))
+	  second = parent.cross(parent.orbit(s).s1,
+				parent.cross(parent.orbit(s).s0,link));
+	  if (parent.cross(parent.orbit(s).s1,link)!=UndefBlock)
+	    assert(parent.cross(parent.orbit(s).s0,
+				parent.cross(parent.orbit(s).s1,link))
 		   ==second);
 	}
 	break;
       }
       if (second!=UndefBlock)
 	data[s].back().links.second = child_nr[second];
+
+      // compute epsilon values in relevant cases
+      if (type==two_imaginary_single_double)
+      { // ensure Cayley links are in increasing order
+	if (data[s].back().links.first>data[s].back().links.second)
+	  std::swap(data[s].back().links.first,data[s].back().links.second);
+      }
+      if (type==two_real_single_double) // install from descent
+      { // ensure Cayley links are in increasing order
+	if (data[s].back().links.first>data[s].back().links.second)
+	  std::swap(data[s].back().links.first,data[s].back().links.second);
+	// now if |n| is second link of out second link, mark both
+	BlockElt Cayley2 = data[s].back().links.second; // our 2nd link
+	if (data[s][Cayley2].links.second==n) // we are their second link too
+	  data[s].back().epsilon = data[s][Cayley2].epsilon = true;
+      }
     }
   } // |for(n)|
 } // |extended_block::extended_block|

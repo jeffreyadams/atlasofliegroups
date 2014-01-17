@@ -58,6 +58,8 @@ struct ext_gen // generator of extended Weyl group
   { w_tau.push_back(s);  w_tau.push_back(t);
     if (not commute) w_tau.push_back(s);
   }
+
+  int length() const { return type+1; }
 };
 
 // The class |BlockBase| serves external functionality, not block construction

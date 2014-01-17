@@ -27,6 +27,7 @@ namespace ext_block {
 
 // type defintions
 
+// for correspondence of enumerations and conventional codes, see |descent_code|
 enum DescValue // every even/odd pair is one of associated ascent and descent
 {
   one_complex_ascent,
@@ -82,7 +83,9 @@ class extended_block
   {
     DescValue type;
     BlockEltPair links; // one or two values, depending on |type|
-  block_fields(DescValue t) : type(t),links(UndefBlock,UndefBlock) {}
+    bool epsilon; // whether second Cayley link carries minus sign
+  block_fields(DescValue t)
+  : type(t),links(UndefBlock,UndefBlock),epsilon(false) {}
   };
 
   const Block_base& parent;
@@ -113,9 +116,14 @@ class extended_block
   BlockElt length_first(size_t l) const { return l_start[l]; }
 
   BlockElt cross(weyl::Generator s, BlockElt n) const;
+  BlockElt Cayley(weyl::Generator s, BlockElt n) const; // just one or none
+  BlockElt inverse_Cayley(weyl::Generator s, BlockElt n) const; // one or none
 
   BlockEltPair Cayleys(weyl::Generator s, BlockElt n) const;
   BlockEltPair inverse_Cayleys(weyl::Generator s, BlockElt n) const;
+
+  // whether $i$-th (inverse) Cayley link at |s| from |n| flips sign
+  int epsilon(weyl::Generator s, BlockElt n,unsigned i) const;
 
   const DescValue descent_type(weyl::Generator s, BlockElt n) const
     { assert(n<size()); assert(s<rank()); return data[s][n].type; }

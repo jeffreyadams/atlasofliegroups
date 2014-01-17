@@ -24,8 +24,9 @@ class descent_table
   std::vector<RankFlags> good_ascents; // ascents usable in primitivization
 
   std::vector<std::vector<unsigned int> > prim_index;
-
+  std::vector<BlockElt> prim_count; // counts of primitive block elements
  public:
+  const ext_block::extended_block& block;
 
 // constructors and destructors
   descent_table(const ext_block::extended_block&);
@@ -34,17 +35,20 @@ class descent_table
   // index of primitive element corresponding to $x$ in row for $y$
   unsigned int x_index(BlockElt x, BlockElt y) const
   { return prim_index[descents[y].to_ulong()][x]; }
-
   unsigned int self_index(BlockElt y) const { return x_index(y,y); }
+
+  BlockElt length_floor(BlockElt y) const
+  { return block.length_first(block.length(y)); }
   unsigned int col_size(BlockElt y) const;
 
   // set $x$ to last primitive element for $y$ strictly before $x$, or fail
-  bool back_up(BlockElt& x, BlockElt y) const;
+  bool prim_back_up(BlockElt& x, BlockElt y) const;
+  bool extr_back_up(BlockElt& x, BlockElt y) const; // same for extremal
+
 }; // |descent_table|
 
 class KL_table
 {
-  const ext_block::extended_block& block;
   const descent_table& aux;
   kl::KLStore& storage_pool; // the distinct actual polynomials
 
@@ -52,9 +56,13 @@ class KL_table
 
  public:
    KL_table(const ext_block::extended_block& b, kl::KLStore& pool)
-    : block(b), aux(b), storage_pool(pool), column() {}
+    : aux(b), storage_pool(pool), column() {}
 
-  // A constant reference to the Kazhdan-Lusztig-Vogan polynomial P_{x,y}
+  size_t rank() const { return aux.block.rank(); }
+  ext_block::DescValue type(weyl::Generator s,BlockElt y) const
+  { return aux.block.descent_type(s,y); }
+
+  // A constant reference to twisted Kazhdan-Lusztig-Vogan polynomial P_{x,y}
   kl::KLPolRef P(BlockElt x, BlockElt y) const
   { return storage_pool[KL_pol_index(x,y)]; }
   kl::KLIndex KL_pol_index(BlockElt x, BlockElt y) const;
@@ -69,7 +77,7 @@ class KL_table
   // manipulator
   void fill_columns(BlockElt y=0)
   { if (y==0)
-      y=block.size();
+      y=aux.block.size();
     column.reserve(y);
     while (column.size()<y)
       fill_next_column();
@@ -78,6 +86,11 @@ class KL_table
   void fill_next_column();
   BlockEltList mu1top(weyl::Generator s,BlockElt x, BlockElt y) const;
   BlockEltList mu1bot(weyl::Generator s,BlockElt x, BlockElt y) const;
+
+  // look for a direct recursion and return whether possible;
+  // if possible also get extremal contributions from $c_s*a_y$ into |out|
+  bool direct_recursion(BlockElt y,
+			weyl::Generator& s, std::vector<KLPol>& out) const;
 
 }; // |KL_table|
 
