@@ -29,6 +29,7 @@
 #include <limits>
 #include <cassert>
 #include <sstream>
+#include <algorithm> // |std::fill| and |std::copy|
 
 #include "error.h"
 
@@ -61,6 +62,16 @@ template<typename C>
 {
   assert(c!=C(0));
   d_data[d] = c;
+}
+
+// shifted copy of an existing polynomial
+template<typename C>
+  Polynomial<C>::Polynomial(Degree d,const Polynomial& Q)
+  : d_data(Q.degree()+d)
+{
+  typename std::vector<C>::iterator bottom=d_data.begin()+d;
+  std::fill(d_data.begin(),bottom,C(0)); // zero coefficient below bottom
+  std::copy(Q.d_data.begin(),Q.d_data.end(),bottom); // remainder copied from Q
 }
 
 /******** accessors **********************************************************/

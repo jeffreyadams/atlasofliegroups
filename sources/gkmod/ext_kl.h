@@ -18,6 +18,9 @@ namespace atlas {
 
 namespace ext_kl {
 
+typedef Polynomial<int> Pol;
+typedef const Pol& PolRef;
+
 class descent_table
 {
   std::vector<RankFlags> descents; // sets of descents ($\tau$-invariants)
@@ -50,12 +53,12 @@ class descent_table
 class KL_table
 {
   const descent_table& aux;
-  kl::KLStore& storage_pool; // the distinct actual polynomials
+  std::vector<Pol>& storage_pool; // the distinct actual polynomials
 
   std::vector<kl::KLRow> column; // columns are lists of polynomial pointers
 
  public:
-   KL_table(const ext_block::extended_block& b, kl::KLStore& pool)
+   KL_table(const ext_block::extended_block& b, std::vector<Pol>& pool)
     : aux(b), storage_pool(pool), column() {}
 
   size_t rank() const { return aux.block.rank(); }
@@ -63,14 +66,14 @@ class KL_table
   { return aux.block.descent_type(s,y); }
 
   // A constant reference to twisted Kazhdan-Lusztig-Vogan polynomial P_{x,y}
-  kl::KLPolRef P(BlockElt x, BlockElt y) const
+  PolRef P(BlockElt x, BlockElt y) const
   { return storage_pool[KL_pol_index(x,y)]; }
   kl::KLIndex KL_pol_index(BlockElt x, BlockElt y) const;
 
   // coefficients of P_{x,y} of $q^{(l(y/x)-i)/2}$ (use with i=1,2,3)
-  kl::KLCoeff mu(int i,BlockElt x, BlockElt y) const;
+  int mu(int i,BlockElt x, BlockElt y) const;
 
-  kl::KLPol m(weyl::Generator s,BlockElt x, BlockElt y) const;
+  Pol m(weyl::Generator s,BlockElt x, BlockElt y) const;
 
   // That polynomial in the form of an index into |storage_pool|
 
@@ -90,7 +93,7 @@ class KL_table
   // look for a direct recursion and return whether possible;
   // if possible also get extremal contributions from $c_s*a_y$ into |out|
   bool direct_recursion(BlockElt y,
-			weyl::Generator& s, std::vector<KLPol>& out) const;
+			weyl::Generator& s, std::vector<Pol>& out) const;
 
 }; // |KL_table|
 

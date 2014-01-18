@@ -71,12 +71,12 @@ template<typename C> class Polynomial
   Polynomial() : d_data() {} // zero polynomial
   explicit Polynomial(C c);  // constant polynomial, |c==0| handled correctly
   Polynomial(Degree d, C c); // initialised to $cX^d$ (with |c!=0|)
+  Polynomial(Degree d,const Polynomial& Q); // initialised to $X^d Q$
 
 // copy, assignment (default will do) and swap
 
 template <typename U>
-  Polynomial(const Polynomial<U>& src)
-  : d_data(src.begin(),src.end()) { }
+  Polynomial(const Polynomial<U>& src) : d_data(src.begin(),src.end()) { }
 
   void swap(Polynomial& other) { d_data.swap(other.d_data); }
 

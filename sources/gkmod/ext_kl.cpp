@@ -102,13 +102,13 @@ kl::KLIndex KL_table::KL_pol_index(BlockElt x, BlockElt y) const
     x==aux.self_index(y) ? 1 : 0;
 }
 
-kl::KLCoeff KL_table::mu(int i,BlockElt x, BlockElt y) const
+int KL_table::mu(int i,BlockElt x, BlockElt y) const
 {
   unsigned d=aux.block.l(y,x)-i;
   if (d%2!=0)
     return 0;
   d/=2;
-  kl::KLPolRef Pxy=P(x,y);
+  PolRef Pxy=P(x,y);
   return Pxy.degree()<d ? 0 : Pxy[d];
 }
 
@@ -147,7 +147,7 @@ BlockEltList KL_table::mu1bot(weyl::Generator s,BlockElt x, BlockElt y) const
 }
 
 // See theorem 9.3.10, whose case (1) $y\overset\kappa\to y$ does not apply
-kl::KLPol KL_table::m(weyl::Generator s,BlockElt x, BlockElt y) const
+Pol KL_table::m(weyl::Generator s,BlockElt x, BlockElt y) const
 { // check that we are not being called in unexpected conditions
   assert(aux.block.length(y)>aux.block.length(x));
   assert(is_descent(type(s,x)));
@@ -164,17 +164,17 @@ kl::KLPol KL_table::m(weyl::Generator s,BlockElt x, BlockElt y) const
       else
       { // |d==0|
 	BlockEltList interval=mu1top(s,x,y);
-	KLCoeff sum=0;
+	int sum=0;
 	for (size_t i=interval.size(); i-->0; )
 	{
 	  BlockElt t=interval[i];
-	  sum+=mu(1,x,t)*mu(1,t,y);
+	  sum -= mu(1,x,t)*mu(1,t,y);
 	}
 	if (has_defect(type(s,y)))
-	  sum+=mu(1,x,aux.block.Cayley(s,y));
+	  sum -= mu(1,x,aux.block.Cayley(s,y));
 	if (has_defect(type(s,x)))
-	  result[0]+=mu(1,aux.block.Cayley(s,x),y); // positive contribution
-	result[0]-=sum; // subtract negative contributions last
+	  sum += mu(1,aux.block.Cayley(s,x),y); // positive contribution
+	result[0] += sum;
       }
       return result;
     }
@@ -184,43 +184,44 @@ kl::KLPol KL_table::m(weyl::Generator s,BlockElt x, BlockElt y) const
       if (d==0)
       {
 	BlockEltList interval=mu1top(s,x,y);
-	KLCoeff sum=0;
+	int sum=0;
 	for (size_t i=interval.size(); i-->0; )
 	{
 	  BlockElt t=interval[i];
-	  sum+=mu(1,x,t)*mu(1,t,y);
+	  sum -= mu(1,x,t)*mu(1,t,y);
 	}
-	result[1]-=sum;
-	result[0]=result[1]; // change multiple of $q$ to multiple of $q+1$
+	result[1] += sum;
+	result[0] = result[1]; // change multiple of $q$ to multiple of $q+1$
       }
       else
       { // |d==1|
 	result[0]=result[2]; // $\mu_{-3}(x,y)(q^2+1)$
+
 	BlockEltList top=mu1top(s,x,y);
-	KLCoeff sum=0;
+	int sum=0;
 	for (size_t i=top.size(); i-->0; )
 	{
 	  BlockElt t=top[i];
-	  sum+=mu(2,x,t)*mu(1,t,y);
+	  sum -= mu(2,x,t)*mu(1,t,y);
 	}
+
 	BlockEltList bot=mu1bot(s,x,y);
 	for (size_t i=bot.size(); i-->0; )
 	{
 	  BlockElt t=bot[i];
-	  KLCoeff m1xt=mu(1,x,t),acc=0;
-	  sum+=mu(1,x,t)*mu(2,t,y);
+	  int m1xt=mu(1,x,t),acc = -mu(2,t,y);
 	  for (size_t j=top.size(); j-->0 and top[j]>t; )
 	  {
 	    BlockElt u=top[j];
-	    acc += mu(1,t,u)*mu(1,u,y);
+	    acc += mu(1,t,u)*mu(1,u,y); // positive contribution
 	  }
-	  result[1]=m1xt*acc; // start with positive contribution only
+	  sum += m1xt*acc;
 	} // fot |t|
 	if (has_defect(type(s,y)))
-	  sum+=mu(1,x,aux.block.Cayley(s,y));
+	  sum -= mu(1,x,aux.block.Cayley(s,y));
 	if (has_defect(type(s,x)))
-	  result[1] += mu(1,aux.block.Cayley(s,x),y); // positive contribution
-	result[1]-=sum; // subtract negative contributions last
+	  sum += mu(1,aux.block.Cayley(s,x),y); // positive contribution
+	result[1] += sum;
       }
       return result;
     }
@@ -230,7 +231,7 @@ kl::KLPol KL_table::m(weyl::Generator s,BlockElt x, BlockElt y) const
 
 bool KL_table::direct_recursion(BlockElt y,
 				weyl::Generator& s,
-				std::vector<KLPol>& out) const
+				std::vector<Pol>& out) const
 {
   ext_block::DescValue v; // make value survice loop
   for (s=0; s<rank(); ++s)
@@ -242,8 +243,13 @@ bool KL_table::direct_recursion(BlockElt y,
   if (s==rank())
     return false; // none of the generators gives a direct recursion
 
-  int k = aux.block.orbit(s).length();
-  BlockElt sy = is_complex(v) ? aux.block.cross(s,y) : aux.block.Cayley(s,y);
+  const int k = aux.block.orbit(s).length();
+  const Pol qk_plus_1 = Pol(k,1)+Pol(1);
+  const Pol qk_minus_1 = Pol(k,1)-Pol(1);
+  static const Pol q1 = Pol(1,1)+Pol(1);
+  const Pol qk_minus_q = Pol(k,1)-Pol(1,1);
+  const BlockElt sy =
+    is_complex(v) ? aux.block.cross(s,y) : aux.block.Cayley(s,y);
 
   out.reserve(aux.col_size(y)); // but we'll do only extremal elements
 
@@ -251,7 +257,7 @@ bool KL_table::direct_recursion(BlockElt y,
   {
     assert(is_descent(type(s,x))); // or else |x| was certainly not extremal
     out.push_back(KLPol());
-    KLPol& Q = out.back();
+    Pol& Q = out.back();
     switch(type(s,x))
     { default: assert(false); break; // list will only contain descent types
 	// complex
@@ -259,8 +265,7 @@ bool KL_table::direct_recursion(BlockElt y,
     case ext_block::two_complex_descent:
     case ext_block::three_complex_descent:
       // contribute $P_{sx,sy}+q^kP_{x,sy}$
-      Q = P(aux.block.cross(s,x),sy);
-      Q.safeAdd(P(x,sy),k);
+      Q = P(aux.block.cross(s,x),sy) + Pol(k,P(x,sy));
       break;
       // imaginary compact, real switched
     case ext_block::one_imaginary_compact:
@@ -268,55 +273,37 @@ bool KL_table::direct_recursion(BlockElt y,
     case ext_block::three_imaginary_compact:
     case ext_block::one_real_pair_switched:
       // contribute $(q^k+1)P_{x,sy}$
-      Q = P(x,sy);
-      Q.safeAdd(Q,k);
+      Q = qk_plus_1 * P(x,sy);
       break;
       // real type 1
     case ext_block::one_real_pair_fixed:
     case ext_block::two_real_double_double:
       { // contribute $P_{x',sy}+P_{x'',sy}+(q^k-1)P_{x,sy}$
 	BlockEltPair sx = aux.block.inverse_Cayleys(s,x);
-	Q = P(sx.first,sy);
-	Q.safeAdd(P(sx.second,sy));
-	kl::KLPolRef Pxsy = P(x,sy);
-	Q.safeAdd(Pxsy,k);
-	Q.safeSubtract(Pxsy);
+	Q = P(sx.first,sy) + P(sx.second,sy) + qk_minus_1 * P(x,sy);
       }
       break;
       // real type 2
     case ext_block::one_real_single:
     case ext_block::two_real_single_single:
-      { // contribute $P_{x_s,sy}+q^kP_{x,sy}-P_{s*x,sy}$
-	Q = P(aux.block.inverse_Cayley(s,x),sy);
-	Q.safeAdd(P(x,sy),k);
-	Q.safeSubtract(P(aux.block.cross(s,x),sy));
-      }
+      // contribute $P_{x_s,sy}+q^kP_{x,sy}-P_{s*x,sy}$
+      Q = P(aux.block.inverse_Cayley(s,x),sy) - P(aux.block.cross(s,x),sy)
+	+ Pol(k,P(x,sy));
       break;
       // defect type descents: 2Cr, 3Cr, 3r
-      case ext_block::two_semi_real:
-      case ext_block::three_semi_real:
-      case ext_block::three_real_semi:
-      { // contribute $(q+1)P_{x_s,sy}+(q^k-q)P_{x,sy}$
-	Q = P(aux.block.inverse_Cayley(s,x),sy);
-	Q.safeAdd(Q,1);
-	kl::KLPolRef Pxsy = P(x,sy);
-	Q.safeAdd(Pxsy,k);
-	Q.safeSubtract(Pxsy,1);
-      }
+    case ext_block::two_semi_real:
+    case ext_block::three_semi_real:
+    case ext_block::three_real_semi:
+      // contribute $(q+1)P_{x_s,sy}+(q^k-q)P_{x,sy}$
+      Q = q1 * P(aux.block.inverse_Cayley(s,x),sy) + qk_minus_q * P(x,sy);
       break;
       // epsilon case: 2r21
     case ext_block::two_real_single_double:
       { // contribute $P_{x',sy}\pm P_{x'',sy}+(q^2-1)P_{x,sy}$
 	BlockEltPair sx = aux.block.inverse_Cayleys(s,x);
-	kl::KLPolRef Pxsy = P(x,sy);
-	assert(aux.block.epsilon(s,x,0)>0); // for now this is assumed
-	Q = P(sx.first,sy);
-	Q.safeAdd(Pxsy,2); // since $k=2$ here
-	Q.safeSubtract(Pxsy);
-	if (aux.block.epsilon(s,x,1)>0)
-	  Q.safeAdd(P(sx.second,sy));
-	else
-	  Q.safeSubtract(P(sx.second,sy));
+	Q = P(sx.first,sy)*aux.block.epsilon(s,x,0)
+	  + P(sx.second,sy)*aux.block.epsilon(s,x,1)
+	  + qk_minus_1 * P(x,sy); // since $k=2$ here
       }
     } // |switch(type(s,x))|
   } // |for(x)|
