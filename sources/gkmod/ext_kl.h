@@ -35,6 +35,9 @@ class descent_table
   descent_table(const ext_block::extended_block&);
 
 // accessors
+
+  RankFlags descent_set(BlockElt y) const { return descents[y]; }
+
   // index of primitive element corresponding to $x$ in row for $y$
   unsigned int x_index(BlockElt x, BlockElt y) const
   { return prim_index[descents[y].to_ulong()][x]; }
@@ -49,6 +52,8 @@ class descent_table
   bool extr_back_up(BlockElt& x, BlockElt y) const; // same for extremal
 
 }; // |descent_table|
+
+class PolEntry; // class definition will be given in the implementation file
 
 class KL_table
 {
@@ -68,32 +73,33 @@ class KL_table
   // A constant reference to twisted Kazhdan-Lusztig-Vogan polynomial P_{x,y}
   PolRef P(BlockElt x, BlockElt y) const
   { return storage_pool[KL_pol_index(x,y)]; }
+  // That polynomial in the form of an index into |storage_pool|
   kl::KLIndex KL_pol_index(BlockElt x, BlockElt y) const;
+
+  bool extremal(BlockElt x, BlockElt y) const
+  { return aux.descent_set(x).contains(aux.descent_set(y)); }
+
 
   // coefficients of P_{x,y} of $q^{(l(y/x)-i)/2}$ (use with i=1,2,3)
   int mu(int i,BlockElt x, BlockElt y) const;
 
-  Pol m(weyl::Generator s,BlockElt x, BlockElt y) const;
+  // value for correction term; |go_up| allows ascent of |y| to be inspected
+  // |x| should be a descent for |s|, and |y| a longer ascent for |s|
+  Pol m(weyl::Generator s,BlockElt x, BlockElt y, bool go_up) const;
 
-  // That polynomial in the form of an index into |storage_pool|
 
   // manipulator
-  void fill_columns(BlockElt y=0)
-  { if (y==0)
-      y=aux.block.size();
-    column.reserve(y);
-    while (column.size()<y)
-      fill_next_column();
-  }
+  void fill_columns(BlockElt y=0);
  private:
-  void fill_next_column();
+  typedef HashTable<PolEntry,kl::KLIndex> PolHash;
+  void fill_next_column(PolHash& hash);
   BlockEltList mu1top(weyl::Generator s,BlockElt x, BlockElt y) const;
   BlockEltList mu1bot(weyl::Generator s,BlockElt x, BlockElt y) const;
 
   // look for a direct recursion and return whether possible;
   // if possible also get extremal contributions from $c_s*a_y$ into |out|
   bool direct_recursion(BlockElt y,
-			weyl::Generator& s, std::vector<Pol>& out) const;
+	weyl::Generator& s, BlockElt& sy, std::vector<Pol>& out) const;
 
 }; // |KL_table|
 

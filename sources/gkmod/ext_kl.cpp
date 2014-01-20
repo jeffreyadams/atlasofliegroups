@@ -12,6 +12,40 @@
 namespace atlas {
 namespace ext_kl {
 
+class PolEntry : public Pol
+{
+public:
+  // constructors
+  PolEntry() : Pol() {} // default constructor builds zero polynomial
+  PolEntry(const Pol& p) : Pol(p) {} // lift polynomial to this class
+
+  // members required for an Entry parameter to the HashTable template
+  typedef std::vector<Pol> Pooltype;  // associated storage type
+  size_t hashCode(size_t modulus) const; // hash function
+
+  // compare polynomial with one from storage
+  bool operator!=(Pooltype::const_reference e) const;
+}; // |class KLPolEntry|
+
+inline size_t PolEntry::hashCode(size_t modulus) const
+{ const Pol& P=*this;
+  if (P.isZero()) return 0;
+  polynomials::Degree i=P.degree();
+  size_t h=P[i]; // start with leading coefficient
+  while (i-->0) h= ((h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i]) & (modulus-1);
+  return h;
+}
+
+bool PolEntry::operator!=(PolEntry::Pooltype::const_reference e) const
+{
+  if (degree()!=e.degree()) return true;
+  if (isZero()) return false; // since degrees match
+  for (polynomials::Degree i=0; i<=degree(); ++i)
+    if ((*this)[i]!=e[i]) return true;
+  return false; // no difference found
+}
+
+
 descent_table::descent_table(const ext_block::extended_block& eb)
   : descents(eb.size()), good_ascents(eb.size())
   , prim_index(1<<eb.rank(),std::vector<unsigned int>(eb.size(),0))
@@ -147,7 +181,7 @@ BlockEltList KL_table::mu1bot(weyl::Generator s,BlockElt x, BlockElt y) const
 }
 
 // See theorem 9.3.10, whose case (1) $y\overset\kappa\to y$ does not apply
-Pol KL_table::m(weyl::Generator s,BlockElt x, BlockElt y) const
+Pol KL_table::m(weyl::Generator s,BlockElt x, BlockElt y, bool go_up) const
 { // check that we are not being called in unexpected conditions
   assert(aux.block.length(y)>aux.block.length(x));
   assert(is_descent(type(s,x)));
@@ -170,7 +204,7 @@ Pol KL_table::m(weyl::Generator s,BlockElt x, BlockElt y) const
 	  BlockElt t=interval[i];
 	  sum -= mu(1,x,t)*mu(1,t,y);
 	}
-	if (has_defect(type(s,y)))
+	if (go_up and has_defect(type(s,y)))
 	  sum -= mu(1,x,aux.block.Cayley(s,y));
 	if (has_defect(type(s,x)))
 	  sum += mu(1,aux.block.Cayley(s,x),y); // positive contribution
@@ -217,7 +251,7 @@ Pol KL_table::m(weyl::Generator s,BlockElt x, BlockElt y) const
 	  }
 	  sum += m1xt*acc;
 	} // fot |t|
-	if (has_defect(type(s,y)))
+	if (go_up and has_defect(type(s,y)))
 	  sum -= mu(1,x,aux.block.Cayley(s,y));
 	if (has_defect(type(s,x)))
 	  sum += mu(1,aux.block.Cayley(s,x),y); // positive contribution
@@ -231,6 +265,7 @@ Pol KL_table::m(weyl::Generator s,BlockElt x, BlockElt y) const
 
 bool KL_table::direct_recursion(BlockElt y,
 				weyl::Generator& s,
+				BlockElt& sy,
 				std::vector<Pol>& out) const
 {
   ext_block::DescValue v; // make value survice loop
@@ -248,8 +283,7 @@ bool KL_table::direct_recursion(BlockElt y,
   const Pol qk_minus_1 = Pol(k,1)-Pol(1);
   static const Pol q1 = Pol(1,1)+Pol(1);
   const Pol qk_minus_q = Pol(k,1)-Pol(1,1);
-  const BlockElt sy =
-    is_complex(v) ? aux.block.cross(s,y) : aux.block.Cayley(s,y);
+  sy = is_complex(v) ? aux.block.cross(s,y) : aux.block.Cayley(s,y);
 
   out.reserve(aux.col_size(y)); // but we'll do only extremal elements
 
@@ -310,21 +344,53 @@ bool KL_table::direct_recursion(BlockElt y,
   return true;
 }
 
-void KL_table::fill_next_column()
+void KL_table::fill_columns(BlockElt y)
+{
+  PolHash hash(storage_pool); // (re)construct hash table for the polynomials
+  if (y==0)
+    y=aux.block.size();
+  column.reserve(y);
+  while (column.size()<y)
+    fill_next_column(hash);
+}
+
+void KL_table::fill_next_column(PolHash& hash)
 {
   BlockElt y = column.size();
   column.push_back(kl::KLRow()); column.back().resize(aux.col_size(y));
   weyl::Generator s;
-  for (s=0; s<rank(); ++s)
-  { ext_block::DescValue v=type(s,y);
-    if (is_descent(v) and is_unique_image(v))
-      break;
-  }
-  if (s<rank()) // now for all $x$ a recursion via $s$ is possible
-    for (BlockElt x=aux.length_floor(y); aux.prim_back_up(x,y); )
-    {
-    }
+  BlockElt sy;
+  std::vector<Pol> extr_contribs;
+  if (direct_recursion(y,s,sy,extr_contribs))
+  {
+    unsigned extr_p=0; // index into extr_contribs
+    kl::KLRow::reverse_iterator it = column.back().rbegin();
+    for (BlockElt x=aux.length_floor(y); aux.prim_back_up(x,y); it++)
+      if (extremal(x,y))
+      {
+	assert(aux.descent_set(x)[s]);
+	Pol Q = extr_contribs[extr_p++]; // contribution from $(T_s+1).a_{sy}$
 
+	// now subtract U_s(x,y) from Definition 10.2.2 except delta=y term
+	const BlockElt last = aux.block.length_first(aux.block.length(x)+1);
+	for (BlockElt u=aux.length_floor(y); u-->last; )
+	  if (aux.descent_set(u)[s])
+	    Q -= P(x,u)*m(s,u,sy,true);
+	Q -= m(s,x,sy,false);
+
+        *it = hash.match(Q);
+      }
+      else // |x| is primitive but not extremal
+      { // find and use a double-valued ascent for |x| that is decsent for |y|
+	weyl::Generator t =
+	  aux.descent_set(y).andnot(aux.descent_set(x)).firstBit();
+	assert(t<rank() and has_double_image(type(t,x)));
+	BlockEltPair tx = aux.block.Cayleys(x,t);
+	Pol Q = P(tx.first,y) + P(tx.second,y); // computed earlier in this loop
+        *it = hash.match(Q);
+      }
+    assert(it==column.back().rend()); // check that we've traversed the column
+  }
   else // direct recursion was not possible
   {}
 } // |KL_table::fill_next_column|
