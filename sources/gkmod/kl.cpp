@@ -668,26 +668,33 @@ void KLContext::muCorrection(std::vector<KLPol>& klv,
   const MuRow& mrow = d_mu[sy];
   size_t l_y = length(y);
 
+  size_t zi=e.size(); // should satisfy |e[zi]==z| whenever such |zi| exists
+
   size_t j; // define outside for error reporting
   try {
-    for (size_t i = 0; i<mrow.size(); ++i)
+    for (size_t i = mrow.size(); i-->0; ) // loop over |z| decreasing from |sy|
     {
       BlockElt z = mrow[i].first;
-      size_t l_z = length(z);
-
       DescentStatus::Value v = descentValue(s,z);
       if (not DescentStatus::isDescent(v))
 	continue;
+
+      size_t l_z = length(z);
+      while (zi>0 and e[zi-1]>=z)
+	--zi; // ensure |e[k]>=z| if and only if |k>=iz|
 
       MuCoeff mu = mrow[i].second; // mu!=MuCoeff(0)
 
       polynomials::Degree d = (l_y-l_z)/2; // power of q used in the loops below
 
+      assert( zi==e.size() or e[zi]>z or
+	      (klv[zi].degree()==d and klv[zi][d]==mu) );
+
       if (mu==MuCoeff(1)) // avoid useless multiplication by 1 if possible
 	for (j = 0; j < e.size(); ++j)
 	{
 	  BlockElt x = e[j];
-	  if (length(x) > l_z) break; // once reached, no more terms for |z|
+	  if (length(x) >= l_z) break; // once reached, no more terms for |z|
 
 	  KLPolRef pol = klPol(x,z);
 	  klv[j].safeSubtract(pol,d); // subtract q^d.P_{x,z} from klv[j]
@@ -696,11 +703,17 @@ void KLContext::muCorrection(std::vector<KLPol>& klv,
 	for (j = 0; j < e.size(); ++j)
 	{
 	  BlockElt x = e[j];
-	  if (length(x) > l_z) break; // once reached, no more terms for |z|
+	  if (length(x) >= l_z) break; // once reached, no more terms for |z|
 
 	  KLPolRef pol = klPol(x,z);
 	  klv[j].safeSubtract(pol,d,mu); // subtract q^d.mu.P_{x,z} from klv[j]
 	} // for {j)
+
+      if (zi<e.size() and e[zi]==z) // handle final term |x==z|
+      {
+	assert( klv[zi].degree()==d and klv[zi][d]==mu );
+	klv[zi].safeSubtract(KLPol(d,mu)); // subtract off the term $mu.q^d$
+      }
 
     } // for (i)
   }

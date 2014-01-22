@@ -53,6 +53,8 @@
 #include "blockmode.h"
 #include "reprmode.h"
 
+#include "ext_kl.h"
+
 #include "testrun.h"
 #include "kltest.h"
 
@@ -812,13 +814,31 @@ TorusElement torus_part
   return y_values::exp_pi(gamma-lambda+RatWeight(cumul,2));
 }
 
+void test_f() // trial of twisted KLV computation
+{
+  ext_block::extended_block
+    eblock(commands::currentBlock(),
+	   commands::currentComplexGroup().twistedWeylGroup());
+  std::vector<ext_kl::Pol> pool;
+  ext_kl::KL_table twisted_KLV(eblock,pool);
+  twisted_KLV.fill_columns();
+  for (BlockElt y=0; y<eblock.size(); ++y)
+    for (BlockElt x=y+1; x-->0; )
+      if (not twisted_KLV.P(x,y).isZero())
+      {
+	std::cout << "P(" << eblock.z(x) << ',' << eblock.z(y) << ")=";
+	std::cout << twisted_KLV.P(x,y) << std::endl;
+      }
+
+}
+
 bool isDirectRecursion(ext_block::DescValue v)
 {
   return is_descent(v) and is_unique_image(v);
 }
 
 // Check for nasty endgame cases in block
-void test_f()
+void nasty_endgame_f() // used to be |test_f|, might some day be useful again
 {
   ext_block::extended_block
     eblock(commands::currentBlock(),

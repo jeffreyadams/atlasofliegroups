@@ -32,7 +32,7 @@ class descent_table
   const ext_block::extended_block& block;
 
 // constructors and destructors
-  descent_table(const ext_block::extended_block&);
+  explicit descent_table(const ext_block::extended_block&);
 
 // accessors
 
@@ -57,7 +57,7 @@ class PolEntry; // class definition will be given in the implementation file
 
 class KL_table
 {
-  const descent_table& aux;
+  const descent_table aux;
   std::vector<Pol>& storage_pool; // the distinct actual polynomials
 
   std::vector<kl::KLRow> column; // columns are lists of polynomial pointers
@@ -85,8 +85,11 @@ class KL_table
 
   // value for correction term; |go_up| allows ascent of |y| to be inspected
   // |x| should be a descent for |s|, and |y| a longer ascent for |s|
-  Pol m(weyl::Generator s,BlockElt x, BlockElt y, bool go_up) const;
+  Pol m(weyl::Generator s,BlockElt x, BlockElt sy, bool go_up) const;
 
+  // a different approach: compute $m(s,x,sy)$ recursively using vector |m|
+  Pol set_m(weyl::Generator s,BlockElt x, BlockElt sy,
+	    std::vector<Pol>& m) const; // |m| filled above |m[x]| which is set
 
   // manipulator
   void fill_columns(BlockElt y=0);
@@ -97,7 +100,7 @@ class KL_table
   BlockEltList mu1bot(weyl::Generator s,BlockElt x, BlockElt y) const;
 
   // look for a direct recursion and return whether possible;
-  // if possible also get extremal contributions from $c_s*a_y$ into |out|
+  // if possible also get contributions from $c_s*a_y$ into |out|
   bool direct_recursion(BlockElt y,
 	weyl::Generator& s, BlockElt& sy, std::vector<Pol>& out) const;
 

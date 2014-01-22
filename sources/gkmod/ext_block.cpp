@@ -385,10 +385,10 @@ extended_block::extended_block
     for (BlockElt z=0; z<parent.size(); ++z)
       if (parent.Hermitian_dual(z)==z)
       {
-	while (cur_len<parent.length(z))
-	  l_start[++cur_len]=z;
 	child_nr[z]=parent_nr.size();
 	parent_nr.push_back(z);
+	while (cur_len<parent.length(z)) // for new length level(s) reached
+	  l_start[++cur_len]=child_nr[z]; // mark element as first of |cur_len|
       }
     l_start[++cur_len]=parent.size();
   }
