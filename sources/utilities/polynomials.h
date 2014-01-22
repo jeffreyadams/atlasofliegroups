@@ -124,6 +124,9 @@ template <typename U>
     { return Polynomial(*this)-=q; }
   Polynomial operator- () const { return Polynomial(*this)*= C(-1); }
 
+  // write $P+rX^{\deg(P)} = (1+cX)Q$, changing $P$ to $Q$ and returning $r$
+  C factor_by(C c);
+
   std::ostream& print(std::ostream& strm, const char* x) const;
 
 protected:

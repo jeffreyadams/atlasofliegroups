@@ -173,6 +173,20 @@ Polynomial<C> Polynomial<C>::operator* (const Polynomial& q) const
   return result;
 }
 
+// rising degree division by $(1+cX)$, return new coefficient of $X^d$
+template<typename C>
+C Polynomial<C>::factor_by(C c)
+{
+  if (isZero())
+    return C(0);
+  C sum = d_data[0];
+  for (Degree i=1; i<=degree(); ++i)
+    sum = (d_data[i]-=c*sum);
+  d_data[degree()]=0; // kill any remaining top coefficient, it is also in |sum|
+  adjustSize();
+  return sum;
+}
+
 template<typename C>
 bool Polynomial<C>::multi_term () const
 {
