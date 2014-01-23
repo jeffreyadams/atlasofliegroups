@@ -461,7 +461,8 @@ void KL_table::fill_next_column(PolHash& hash)
   }
   else // direct recursion was not possible
   {
-    std::cerr << "No direct recursion for column " << y << std::endl;
+    std::cerr << "No direct recursion for element " << aux.block.z(y)
+	      << std::endl;
   }
 } // |KL_table::fill_next_column|
 

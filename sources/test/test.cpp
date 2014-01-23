@@ -816,13 +816,22 @@ TorusElement torus_part
 
 void test_f() // trial of twisted KLV computation
 {
+
   ext_block::extended_block
     eblock(commands::currentBlock(),
 	   commands::currentComplexGroup().twistedWeylGroup());
+
+  BlockElt last; input::InputBuffer& cl= commands::currentLine();
+  cl >> last; // maybe get threshold for filling
+  if (cl.fail())
+    last=eblock.size();
+  else // convert to block number
+    last=eblock.element(last);
+
   std::vector<ext_kl::Pol> pool;
   ext_kl::KL_table twisted_KLV(eblock,pool);
-  twisted_KLV.fill_columns();
-  for (BlockElt y=0; y<eblock.size(); ++y)
+  twisted_KLV.fill_columns(last);
+  for (BlockElt y=0; y<last; ++y)
     for (BlockElt x=y+1; x-->0; )
       if (not twisted_KLV.P(x,y).isZero())
       {

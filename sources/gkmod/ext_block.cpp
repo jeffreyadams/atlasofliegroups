@@ -92,6 +92,15 @@ int length(DescValue v)
   return 3;
 }
 
+// find element |n| such that |z(n)>=zz|
+BlockElt extended_block::element(BlockElt zz) const
+{
+  BlockElt n=0;
+  while (n<size() and z(n)<zz)
+    ++n;
+  return n;
+}
+
 BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
 {
   switch (descent_type(s,n))
