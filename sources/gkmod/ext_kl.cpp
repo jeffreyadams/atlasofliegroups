@@ -271,25 +271,107 @@ Pol KL_table::m(weyl::Generator s,BlockElt x, BlockElt y, bool go_up) const
   of $r^0$ in $m(x)$, and instead one must use that the difference between the
   members of above congruence should be a multiple of $(r+r^{-1})$.
  */
-Pol KL_table::set_m(weyl::Generator s,BlockElt x, BlockElt sy,
-		    std::vector<Pol>& m) const
+Pol KL_table::set_m(weyl::Generator s, BlockElt sy, BlockElt x,
+		    std::vector<Pol>& M) const
 {
   const BlockElt y = // unique ascent by |s| of |sy|
     is_complex(type(s,sy)) ? aux.block.cross(s,sy) : aux.block.Cayley(s,sy);
-  const int k = aux.block.orbit(s).length();
-  // in the following |l(sy,x)| might be $-1$, which is OK
-  const unsigned d=(k+aux.block.l(sy,x))%2; // degree parity for $m(x)$
-  Pol Q= Pol(k,P(x,sy));
+  const unsigned defect = has_defect(type(s,y)) ? 1 : 0;
 
-  // INCOMPLETE
-  return Q;
+  Pol Q= product_comp(s,sy,x);
+
+  for (BlockElt u=aux.block.length_first(aux.block.length(x)+1);
+       u<aux.length_floor(y); u++ )
+    if (aux.descent_set(u)[s])
+    { // subtract $q^{(d-deg(M))/2}M_u*P_{x,u}$ from contribution for $x$
+      unsigned d=aux.block.l(y,u)+defect; // doubled implicit degree shift
+      Q -= Pol((d-M[u].degree())/2,M[u]*P(x,u));
+    }
+
+  // UNFINISHED: need to extract top coefficients, maybe divide by $q+1$
+  return M[x]=Q;
 }
 
+Pol KL_table::qk_plus_1(int k) const
+{
+  assert(k>=1 and k<=3);
+  Pol res = Pol(k,1);
+  res[0] = 1;
+  return res;
+}
+
+Pol KL_table::qk_minus_1(int k) const
+{
+  assert(k>=1 and k<=3);
+  Pol res = Pol(k,1);
+  res[0] = -1;
+  return res;
+}
+
+Pol KL_table::qk_minus_q(int k) const
+{
+  assert(k>1 and k<=3);
+  Pol res = Pol(k,1);
+  res[1] = -1;
+  return res;
+}
+
+// component in product $(T_s+1)a_{sy}$ of element $a_x$
+Pol KL_table::product_comp (weyl::Generator s, BlockElt sy,BlockElt x) const
+{
+  const int k = aux.block.orbit(s).length();
+  switch(type(s,x))
+  { default:
+      assert(false); // list will only contain descent types
+      return Pol();
+      // complex
+  case ext_block::one_complex_descent:
+  case ext_block::two_complex_descent:
+  case ext_block::three_complex_descent:
+    // contribute $P_{sx,sy}+q^kP_{x,sy}$
+    return P(aux.block.cross(s,x),sy) + Pol(k,P(x,sy));
+    // imaginary compact, real switched
+  case ext_block::one_imaginary_compact:
+  case ext_block::two_imaginary_compact:
+  case ext_block::three_imaginary_compact:
+  case ext_block::one_real_pair_switched:
+    // contribute $(q^k+1)P_{x,sy}$
+    return qk_plus_1(k) * P(x,sy);
+    // real type 1
+  case ext_block::one_real_pair_fixed:
+  case ext_block::two_real_double_double:
+    { // contribute $P_{x',sy}+P_{x'',sy}+(q^k-1)P_{x,sy}$
+      BlockEltPair sx = aux.block.inverse_Cayleys(s,x);
+      return P(sx.first,sy) + P(sx.second,sy) + qk_minus_1(k) * P(x,sy);
+    }
+    // real type 2
+  case ext_block::one_real_single:
+  case ext_block::two_real_single_single:
+    // contribute $P_{x_s,sy}+q^kP_{x,sy}-P_{s*x,sy}$
+    return P(aux.block.inverse_Cayley(s,x),sy)
+      - P(aux.block.cross(s,x),sy)
+      + Pol(k,P(x,sy));
+    // defect type descents: 2Cr, 3Cr, 3r
+  case ext_block::two_semi_real:
+  case ext_block::three_semi_real:
+  case ext_block::three_real_semi:
+    // contribute $(q+1)P_{x_s,sy}+(q^k-q)P_{x,sy}$
+    return q_plus_1() * P(aux.block.inverse_Cayley(s,x),sy)
+      + qk_minus_q(k) * P(x,sy);
+    // epsilon case: 2r21
+  case ext_block::two_real_single_double:
+    { // contribute $P_{x',sy}\pm P_{x'',sy}+(q^2-1)P_{x,sy}$
+      BlockEltPair sx = aux.block.inverse_Cayleys(s,x);
+      return P(sx.first,sy)*aux.block.epsilon(s,x,0)
+	+ P(sx.second,sy)*aux.block.epsilon(s,x,1)
+	+ qk_minus_1(k) * P(x,sy); // since $k=2$ here
+    }
+  } // |switch(type(s,x))|
+}
 
 bool KL_table::direct_recursion(BlockElt y,
 				weyl::Generator& s,
-				BlockElt& sy,
-				std::vector<Pol>& out) const
+				BlockElt& sy) const
 {
   ext_block::DescValue v; // make value survice loop
   for (s=0; s<rank(); ++s)
@@ -301,68 +383,7 @@ bool KL_table::direct_recursion(BlockElt y,
   if (s==rank())
     return false; // none of the generators gives a direct recursion
 
-  const int k = aux.block.orbit(s).length();
-  const Pol qk_plus_1 = Pol(k,1)+Pol(1);
-  const Pol qk_minus_1 = Pol(k,1)-Pol(1);
-  static const Pol q1 = Pol(1,1)+Pol(1);
-  const Pol qk_minus_q = Pol(k,1)-Pol(1,1);
   sy = is_complex(v) ? aux.block.cross(s,y) : aux.block.inverse_Cayley(s,y);
-
-  out.resize(aux.length_floor(y)); // vector indexed by block elements |x|
-
-  for (BlockElt x=aux.length_floor(y); x-->0; )
-    if (aux.descent_set(x)[s]) // compute contributions at all descent elts
-    {
-      Pol& Q = out[x];
-      switch(type(s,x))
-      { default: assert(false); break; // list will only contain descent types
-	  // complex
-      case ext_block::one_complex_descent:
-      case ext_block::two_complex_descent:
-      case ext_block::three_complex_descent:
-	// contribute $P_{sx,sy}+q^kP_{x,sy}$
-	Q = P(aux.block.cross(s,x),sy) + Pol(k,P(x,sy));
-	break;
-	// imaginary compact, real switched
-      case ext_block::one_imaginary_compact:
-      case ext_block::two_imaginary_compact:
-      case ext_block::three_imaginary_compact:
-      case ext_block::one_real_pair_switched:
-	// contribute $(q^k+1)P_{x,sy}$
-	Q = qk_plus_1 * P(x,sy);
-	break;
-	// real type 1
-      case ext_block::one_real_pair_fixed:
-      case ext_block::two_real_double_double:
-	{ // contribute $P_{x',sy}+P_{x'',sy}+(q^k-1)P_{x,sy}$
-	  BlockEltPair sx = aux.block.inverse_Cayleys(s,x);
-	  Q = P(sx.first,sy) + P(sx.second,sy) + qk_minus_1 * P(x,sy);
-	}
-	break;
-	// real type 2
-      case ext_block::one_real_single:
-      case ext_block::two_real_single_single:
-	// contribute $P_{x_s,sy}+q^kP_{x,sy}-P_{s*x,sy}$
-	Q = P(aux.block.inverse_Cayley(s,x),sy) - P(aux.block.cross(s,x),sy)
-	  + Pol(k,P(x,sy));
-	break;
-	// defect type descents: 2Cr, 3Cr, 3r
-      case ext_block::two_semi_real:
-      case ext_block::three_semi_real:
-      case ext_block::three_real_semi:
-	// contribute $(q+1)P_{x_s,sy}+(q^k-q)P_{x,sy}$
-	Q = q1 * P(aux.block.inverse_Cayley(s,x),sy) + qk_minus_q * P(x,sy);
-	break;
-	// epsilon case: 2r21
-      case ext_block::two_real_single_double:
-	{ // contribute $P_{x',sy}\pm P_{x'',sy}+(q^2-1)P_{x,sy}$
-	  BlockEltPair sx = aux.block.inverse_Cayleys(s,x);
-	  Q = P(sx.first,sy)*aux.block.epsilon(s,x,0)
-	    + P(sx.second,sy)*aux.block.epsilon(s,x,1)
-	    + qk_minus_1 * P(x,sy); // since $k=2$ here
-	}
-      } // |switch(type(s,x))|
-    } // |for(x)|
   return true;
 }
 
@@ -388,22 +409,32 @@ void KL_table::fill_next_column(PolHash& hash)
   column.back().resize(aux.col_size(y));
   weyl::Generator s;
   BlockElt sy;
-  std::vector<Pol> extr_contribs,Ms;
-  Ms.resize(y);
-  if (direct_recursion(y,s,sy,extr_contribs))
+  if (direct_recursion(y,s,sy))
   {
-    const int defect = has_defect(type(s,y)) ? 1 : 0;
-    const int k = aux.block.orbit(s).length();
+    std::vector<Pol> cy(y,(Pol())),Ms(y,(Pol()));
 
+    const unsigned defect = has_defect(type(s,y)) ? 1 : 0;
+    const unsigned k = aux.block.orbit(s).length();
+    assert(1<=k and k<=3);
+
+    // fill array |cy| with initial contributions from $(T_s+1)*c_{sy}$
+    for (BlockElt x=aux.length_floor(y); x-->0; )
+      if (aux.descent_set(x)[s]) // compute contributions at all descent elts
+	cy[x] = product_comp(s,sy,x);
+
+    // next loop downwards, refining coefficient polys to meet degree bound
     for (BlockElt u=aux.length_floor(y); u-->0; )
       if (aux.descent_set(u)[s])
       {
 	unsigned d=aux.block.l(y,u)+defect; // doubled implicit degree shift $Q$
-	Pol& Q = extr_contribs[u];
+	assert(u<cy.size());
+	Pol& Q = cy[u]; // has been modified by previous passes of current loop
 	if (Q.isZero())
 	  continue;
+
 	assert(2*Q.degree()<d+k);
 	unsigned M_deg = 2*Q.degree()-d; // might be negative; if so, unused
+	assert(u<Ms.size());
 	Pol& M_u = Ms[u];
 	if (defect==0) // then just pick up high degree terms from $Q$
 	{
@@ -411,11 +442,16 @@ void KL_table::fill_next_column(PolHash& hash)
 	    continue; // no correction needed
 
 	  // compute $m_s(u,sy)$, the correction coefficient for $c_u$
+	  assert(M_deg<k);
 	  M_u = Pol(M_deg,Q[Q.degree()]);
-	  if (M_u.degree()==2)
-	    M_u[1]=Q[Q.degree()-1];
+	  assert(M_u.degree()==M_deg); // in particular |M_u| is nonzero
 	  if (M_deg>0)
+	  {
 	    M_u[0] = M_u[M_deg]; // symmetrise if non-constant
+	    if (M_deg==2)
+	      M_u[1]=Q[Q.degree()-1]; // set sub-dominant coefficient here
+	  }
+	  assert(Q.degree()>=M_deg);
 	  Q -= Pol(Q.degree()-M_deg,M_u);
 	}
 	else // |defect==1|
@@ -429,34 +465,36 @@ void KL_table::fill_next_column(PolHash& hash)
 	  }
 	  else
 	  {
+	    assert(M_deg!=0 and M_deg<k);
 	    M_u = Pol(M_deg,Q[Q.degree()]);
 	    M_u[0]=M_u[M_deg]; // symmetrise
+	    assert(Q.degree()>=M_deg);
 	    Q -= Pol(Q.degree()-M_deg,M_u); // subtract contribution
 	    int r = Q.factor_by(1);
 	    if (M_deg==1)
-	    {
-	      assert(r==0); ndebug_use(r);
-	    }
+	      assert(r==0 and 2*Q.degree()<d);
 	    else if (r!=0)
 	    {
-	      assert(d%2==0 and Q.degree()==d/2);
+	      assert(d==2*Q.degree()); // term to eliminate must be "constant"
 	      M_u[1]=r;
 	    }
 	  }
 	} // |if(defect)|
+
+	// now update contributions al lower descents |x|
 	for (BlockElt x=aux.length_floor(u); x-->0; )
 	  if (aux.descent_set(x)[s])
 	  { // subtract $q^{(d-M_deg)/2}M_u*P_{x,u}$ from contribution for $x$
-	    extr_contribs[x] -= Pol((d-M_deg)/2,M_u*P(x,u));
+	    assert(x<cy.size());
+	    cy[x] -= Pol((d-M_deg)/2,M_u*P(x,u));
 	  }
       } // |for(u)|
 
-    // Now |extr_contribs|
-
+    // finally copy relevant coefficients from |cy| array to |column[y]|
     kl::KLRow::reverse_iterator it = column.back().rbegin();
     for (BlockElt x=aux.length_floor(y); aux.prim_back_up(x,y); it++)
       if (aux.descent_set(x)[s]) // then we computed $P(x,y)$ above
-        *it = hash.match(extr_contribs[x]);
+        *it = hash.match(cy[x]);
       else // |x| might not be descent for |s| if primitive but not extremal
       { // find and use a double-valued ascent for |x| that is decsent for |y|
 	assert(has_double_image(type(s,x))); // since |s| non-good ascent

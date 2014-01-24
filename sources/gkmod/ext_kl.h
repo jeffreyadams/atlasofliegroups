@@ -99,10 +99,17 @@ class KL_table
   BlockEltList mu1top(weyl::Generator s,BlockElt x, BlockElt y) const;
   BlockEltList mu1bot(weyl::Generator s,BlockElt x, BlockElt y) const;
 
+  Pol q_plus_1() const { return qk_plus_1(1); }
+  Pol qk_plus_1(int k) const;
+  Pol qk_minus_1(int k) const;
+  Pol qk_minus_q(int k) const;
+
+  // component in product $(T_s+1)a_{sy}$ of element $a_x$
+  Pol product_comp (weyl::Generator s, BlockElt sy,BlockElt x) const;
+
   // look for a direct recursion and return whether possible;
   // if possible also get contributions from $c_s*a_y$ into |out|
-  bool direct_recursion(BlockElt y,
-	weyl::Generator& s, BlockElt& sy, std::vector<Pol>& out) const;
+  bool direct_recursion(BlockElt y,weyl::Generator& s, BlockElt& sy) const;
 
 }; // |KL_table|
 

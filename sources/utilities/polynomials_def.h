@@ -70,7 +70,7 @@ template<typename C>
   : d_data(Q.isZero() ? 0 : Q.d_data.size()+d)
 {
   if (Q.isZero())
-    return; 
+    return; // avoid moving zeroes into an empty |d_data| array
   typename std::vector<C>::iterator bottom=d_data.begin()+d;
   std::fill(d_data.begin(),bottom,C(0)); // zero coefficient below bottom
   std::copy(Q.d_data.begin(),Q.d_data.end(),bottom); // remainder copied from Q
@@ -78,7 +78,20 @@ template<typename C>
 
 /******** accessors **********************************************************/
 
+template<typename C>
+const C& Polynomial<C>::operator[] (Degree i) const
+{ assert(i<d_data.size());
+  return d_data[i];
+}
+
+
 /******** manipulators *******************************************************/
+
+template<typename C>
+C& Polynomial<C>::operator[] (Degree i)
+{ assert(i<d_data.size());
+  return d_data[i];
+}
 
 /*!
   \brief Adjusts the size of d_data so that it corresponds to the degree + 1.

@@ -291,11 +291,11 @@ void getInteractive(LieType& d_lt) throw(error::InputError)
 
   // if we reach this point, the type is correct
 
-  inputBuf.str(type_input_buffer.str());
-  inputBuf.reset();
+  inputBuf.str(type_input_buffer.str()); // copy all text to |inputBuf|
+  inputBuf.reset(); // and prepare to read from it
 
   LieType lt;
-  interactive_lietype::readLieType(lt,inputBuf);
+  interactive_lietype::readLieType(lt,inputBuf); // decipher Lie type
   d_lt.swap(lt);
 }
 
@@ -310,7 +310,7 @@ void getInteractive(InnerClassType& ict, const LieType& lt)
   throw(error::InputError)
 {
   if (interactive_lietype::checkInnerClass(inputBuf,lt,false))
-    goto read; // skip interaction if |inputBuf| alreadty has valid input
+    goto read; // skip interaction if |inputBuf| already has valid input
 
   inputBuf.getline("enter inner class(es): ",false);
 
@@ -566,7 +566,7 @@ RealReductiveGroup getRealGroup(complexredgp_io::Interface& CI)
 
 /*!\brief
   Replaces |pI| by a  pointer to a new |Interface| gotten interactively from
-  the user, and |pG| by a poitner the the corresponding inner class
+  the user, and |pG| by a pointer the the corresponding inner class
 
   Throws an |InputError| if the interaction with the user is not successful;
   in that case both pointers are unchanged.

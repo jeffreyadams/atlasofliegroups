@@ -81,7 +81,7 @@ template <typename U>
   void swap(Polynomial& other) { d_data.swap(other.d_data); }
 
 // accessors
-  C operator[] (Degree i) const { return d_data[i]; } // get coefficient $X^i$
+  const C& operator[] (Degree i) const; // get coefficient $X^i$
 
   bool operator== (const Polynomial& q) const { return d_data == q.d_data; }
   bool operator!= (const Polynomial& q) const { return d_data != q.d_data; }
@@ -106,7 +106,7 @@ template <typename U>
   bool multi_term () const; // whether more than one term is nonzero (printing)
 
 // manipulators
-  C& operator[] (Degree j) { return d_data[j]; } // non-const version of above
+  C& operator[] (Degree j); // non-const version of above
 
   Polynomial& operator+= (const Polynomial& q);
 

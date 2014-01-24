@@ -554,7 +554,7 @@ const std::string& getInteractive(std::string& name, const char* prompt)
 {
   name.erase();  // probably redundant
   commandLine.getline(prompt);
-  commandLine >> name;
+  commandLine >> name; // get word (up to whitespace) into |name|
   return name;
 }
 
@@ -567,7 +567,7 @@ const std::string& getInteractive(std::string& name, const char* prompt)
 */
 const char* getCommand( const char* prompt)
 {
-  static std::string nameString; // semi-permanent storage for name
+  static std::string nameString; // semi-permanent: most recent command name
   return getInteractive(nameString,prompt).c_str();
 }
 
