@@ -67,7 +67,7 @@ template<typename C>
 // shifted copy of an existing polynomial
 template<typename C>
   Polynomial<C>::Polynomial(Degree d,const Polynomial& Q)
-: d_data(Q.isZero() ? 0 : Q.degree()+d)
+  : d_data(Q.isZero() ? 0 : Q.d_data.size()+d)
 {
   if (Q.isZero())
     return; 

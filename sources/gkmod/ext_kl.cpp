@@ -403,7 +403,7 @@ void KL_table::fill_next_column(PolHash& hash)
 	if (Q.isZero())
 	  continue;
 	assert(2*Q.degree()<d+k);
-	unsigned M_deg = 2*Q.degree()-d; // might be negative, then unused
+	unsigned M_deg = 2*Q.degree()-d; // might be negative; if so, unused
 	Pol& M_u = Ms[u];
 	if (defect==0) // then just pick up high degree terms from $Q$
 	{
@@ -414,17 +414,24 @@ void KL_table::fill_next_column(PolHash& hash)
 	  M_u = Pol(M_deg,Q[Q.degree()]);
 	  if (M_u.degree()==2)
 	    M_u[1]=Q[Q.degree()-1];
-	  M_u[0] = M_u[M_deg]; // symmetrise
+	  if (M_deg>0)
+	    M_u[0] = M_u[M_deg]; // symmetrise if non-constant
+	  Q -= Pol(Q.degree()-M_deg,M_u);
 	}
 	else // |defect==1|
 	{ // we must ensure that $q+1$ divides $Q-q^{(d-M_deg)/2}M_u$
-	  if (M_deg==0)
-	    M_u = Pol(0,Q.factor_by(1)); // divide and adjust constant term
+	  if (2*Q.degree()<=d) // only possible "constant" term to consider
+	  {
+	    M_u=Pol(Q.factor_by(1)); // but divide by $q+1$ always
+	    assert(M_deg==0 or M_u.isZero()); // correct only constant term
+	    if (M_u.isZero())
+	      continue; // if no correction was necessary, move to next |u|
+	  }
 	  else
 	  {
 	    M_u = Pol(M_deg,Q[Q.degree()]);
 	    M_u[0]=M_u[M_deg]; // symmetrise
-	    Q -= Pol(Q.degree()-M_deg)*M_u; // subtract contribution
+	    Q -= Pol(Q.degree()-M_deg,M_u); // subtract contribution
 	    int r = Q.factor_by(1);
 	    if (M_deg==1)
 	    {
@@ -440,7 +447,7 @@ void KL_table::fill_next_column(PolHash& hash)
 	for (BlockElt x=aux.length_floor(u); x-->0; )
 	  if (aux.descent_set(x)[s])
 	  { // subtract $q^{(d-M_deg)/2}M_u*P_{x,u}$ from contribution for $x$
-	    extr_contribs[x] -= Pol((d-M_deg)/2)*P(x,u);
+	    extr_contribs[x] -= Pol((d-M_deg)/2,M_u*P(x,u));
 	  }
       } // |for(u)|
 
