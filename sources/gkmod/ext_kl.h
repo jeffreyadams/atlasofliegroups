@@ -87,9 +87,9 @@ class KL_table
   // |x| should be a descent for |s|, and |y| a longer ascent for |s|
   Pol m(weyl::Generator s,BlockElt x, BlockElt sy, bool go_up) const;
 
-  // a different approach: compute $m(s,x,sy)$ recursively using vector |m|
-  Pol set_m(weyl::Generator s,BlockElt x, BlockElt sy,
-	    std::vector<Pol>& m) const; // |m| filled above |m[x]| which is set
+  // a different approach: compute $M(s,x,sy)$ recursively using vector |m|
+  Pol get_M(weyl::Generator s,BlockElt x, BlockElt sy,
+	    const std::vector<Pol>& Ms) const; // previous values $M(s,u,sy)$
 
   // manipulator
   void fill_columns(BlockElt y=0);
@@ -104,8 +104,9 @@ class KL_table
   Pol qk_minus_1(int k) const;
   Pol qk_minus_q(int k) const;
 
-  // component in product $(T_s+1)a_{sy}$ of element $a_x$
-  Pol product_comp (weyl::Generator s, BlockElt sy,BlockElt x) const;
+  // component of basis element $a_x$ in product $(T_s+1)a_{sy}$
+  Pol product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const;
+  Pol extract_M(Pol& Q,unsigned d,unsigned defect) const;
 
   // look for a direct recursion and return whether possible;
   // if possible also get contributions from $c_s*a_y$ into |out|

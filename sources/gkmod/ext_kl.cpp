@@ -264,21 +264,21 @@ Pol KL_table::m(weyl::Generator s,BlockElt x, BlockElt y, bool go_up) const
 
 
 /* Use recursive formula (in degree-shifted Laurent polynomials in $r$)
-  $m(x)\cong r^k p_{x,sy} + r^def(s,x)p_{s_x,sy}-\sum_{x<u<y}m(u)p_{x,u}$
+  $m(x)\cong r^k p_{x,sy} + def(s,x) r p_{s_x,sy}-\sum_{x<u<y}m(u)p_{x,u}$
   where congruence is modulo $r^{-1+def(s,y)}\Z[r^{-1}]$, and use symmetry of
   $m(x)$ to complete. There is a complication when $def(s,y)=1$, since a
   congruence modulo $\Z[r^{-1}]$ cannot be used to determine the coefficient
   of $r^0$ in $m(x)$, and instead one must use that the difference between the
   members of above congruence should be a multiple of $(r+r^{-1})$.
  */
-Pol KL_table::set_m(weyl::Generator s, BlockElt sy, BlockElt x,
-		    std::vector<Pol>& M) const
+Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt sy,
+		    const std::vector<Pol>& M) const
 {
   const BlockElt y = // unique ascent by |s| of |sy|
     is_complex(type(s,sy)) ? aux.block.cross(s,sy) : aux.block.Cayley(s,sy);
   const unsigned defect = has_defect(type(s,y)) ? 1 : 0;
 
-  Pol Q= product_comp(s,sy,x);
+  Pol Q= product_comp(x,s,sy);
 
   for (BlockElt u=aux.block.length_first(aux.block.length(x)+1);
        u<aux.length_floor(y); u++ )
@@ -288,8 +288,9 @@ Pol KL_table::set_m(weyl::Generator s, BlockElt sy, BlockElt x,
       Q -= Pol((d-M[u].degree())/2,M[u]*P(x,u));
     }
 
-  // UNFINISHED: need to extract top coefficients, maybe divide by $q+1$
-  return M[x]=Q;
+  Pol Mx =
+    extract_M(Q,aux.block.l(y,x)+defect,defect);
+  return Mx;
 }
 
 Pol KL_table::qk_plus_1(int k) const
@@ -317,7 +318,7 @@ Pol KL_table::qk_minus_q(int k) const
 }
 
 // component in product $(T_s+1)a_{sy}$ of element $a_x$
-Pol KL_table::product_comp (weyl::Generator s, BlockElt sy,BlockElt x) const
+Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
 {
   const int k = aux.block.orbit(s).length();
   switch(type(s,x))
@@ -400,6 +401,64 @@ void KL_table::fill_columns(BlockElt y)
     fill_next_column(hash);
 }
 
+/* Clear terms of degree${}\geq d$ in $Q$ by subtracting $r^d*m$ where $m$ is
+   a symmetric Laurent polynomial in $r=\sqrt q$, and if $defect>0$ dividing
+   what remains by $q+1$, which division must be exact. Return $r^{deg(m)}m$.
+   Implemented only under the hypothesis that $Q.degree()<(d+3)/2$ initially,
+   and $Q.degree()\leq d$ (so if $d=0$ then $Q$ must be constant).
+ */
+Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
+{
+  assert(2*Q.degree()<d+3 and Q.degree()<=d);
+  unsigned M_deg = 2*Q.degree()-d; // might be negative; if so, unused
+  Pol M(0); // result
+
+  if (defect==0) // easy case; just pick up too high degree terms from $Q$
+  {
+    if (2*Q.degree()<d)
+      return M; // no correction needed
+
+    // compute $m_s(u,sy)$, the correction coefficient for $c_u$
+    assert(M_deg<3);
+    M=Pol(M_deg,Q[Q.degree()]);
+    assert(M.degree()==M_deg); // in particular |M_u| is nonzero
+    if (M_deg>0)
+    {
+      M[0] = M[M_deg]; // symmetrise if non-constant
+      if (M_deg==2)
+	M[1]=Q[Q.degree()-1]; // set sub-dominant coefficient here
+    }
+    assert(Q.degree()>=M_deg); // this expains the $Q.degree()<=d$ requirement
+    Q -= Pol(Q.degree()-M_deg,M);
+    return M;
+  } // |if(defect==0)|
+
+  // now $defect=1$; we must ensure that $q+1$ divides $Q-q^{(d-M_deg)/2}M$
+  if (2*Q.degree()>d)
+  {
+    assert(M_deg!=0 and M_deg<3); // now |0<M_deg<3|
+    M= Pol(M_deg,Q[Q.degree()]);
+    M[0]=M[M_deg]; // symmetrise
+    assert(Q.degree()>=M_deg);
+    Q -= Pol(Q.degree()-M_deg,M); // subtract contribution
+    assert(2*Q.degree()<=d); // terms of strictly positive degree are gone
+  }
+  int c = Q.factor_by(1,d/2); // division by $q+1$ is done here
+  assert (c==0 or d%2==0); // if $d$ odd, there should be no remainder
+  if (c==0)
+    return M;
+
+  // now add constant $c$ to $m$, since $cr^d$ had to be subtracted from $Q$
+  if (M.isZero())
+    M=Pol(c); // if there were no terms, create one of degree $0$
+  else
+  {
+    assert(M_deg==2); // in which case "constant" term is in the middle
+    M[1]=c;
+  }
+  return M;
+} // |KL_table::extract_M|
+
 void KL_table::fill_next_column(PolHash& hash)
 {
   const BlockElt y = column.size();
@@ -420,73 +479,33 @@ void KL_table::fill_next_column(PolHash& hash)
     // fill array |cy| with initial contributions from $(T_s+1)*c_{sy}$
     for (BlockElt x=aux.length_floor(y); x-->0; )
       if (aux.descent_set(x)[s]) // compute contributions at all descent elts
-	cy[x] = product_comp(s,sy,x);
+	cy[x] = product_comp(x,s,sy);
 
     // next loop downwards, refining coefficient polys to meet degree bound
     for (BlockElt u=aux.length_floor(y); u-->0; )
       if (aux.descent_set(u)[s])
       {
-	unsigned d=aux.block.l(y,u)+defect; // doubled implicit degree shift $Q$
+	unsigned d=aux.block.l(y,u)+defect; // doubled degree shift of |cy[u]|
 	assert(u<cy.size());
-	Pol& Q = cy[u]; // has been modified by previous passes of current loop
-	if (Q.isZero())
+	if (cy[u].isZero())
 	  continue;
 
-	assert(2*Q.degree()<d+k);
-	unsigned M_deg = 2*Q.degree()-d; // might be negative; if so, unused
 	assert(u<Ms.size());
-	Pol& M_u = Ms[u];
-	if (defect==0) // then just pick up high degree terms from $Q$
-	{
-	  if (2*Q.degree()<d)
-	    continue; // no correction needed
+	Ms[u]=extract_M(cy[u],d,defect);
+	assert(Ms[u]==get_M(s,u,sy,Ms));
 
-	  // compute $m_s(u,sy)$, the correction coefficient for $c_u$
-	  assert(M_deg<k);
-	  M_u = Pol(M_deg,Q[Q.degree()]);
-	  assert(M_u.degree()==M_deg); // in particular |M_u| is nonzero
-	  if (M_deg>0)
-	  {
-	    M_u[0] = M_u[M_deg]; // symmetrise if non-constant
-	    if (M_deg==2)
-	      M_u[1]=Q[Q.degree()-1]; // set sub-dominant coefficient here
-	  }
-	  assert(Q.degree()>=M_deg);
-	  Q -= Pol(Q.degree()-M_deg,M_u);
-	}
-	else // |defect==1|
-	{ // we must ensure that $q+1$ divides $Q-q^{(d-M_deg)/2}M_u$
-	  if (2*Q.degree()<=d) // only possible "constant" term to consider
-	  {
-	    M_u=Pol(Q.factor_by(1)); // but divide by $q+1$ always
-	    assert(M_deg==0 or M_u.isZero()); // correct only constant term
-	    if (M_u.isZero())
-	      continue; // if no correction was necessary, move to next |u|
-	  }
-	  else
-	  {
-	    assert(M_deg!=0 and M_deg<k);
-	    M_u = Pol(M_deg,Q[Q.degree()]);
-	    M_u[0]=M_u[M_deg]; // symmetrise
-	    assert(Q.degree()>=M_deg);
-	    Q -= Pol(Q.degree()-M_deg,M_u); // subtract contribution
-	    int r = Q.factor_by(1);
-	    if (M_deg==1)
-	      assert(r==0 and 2*Q.degree()<d);
-	    else if (r!=0)
-	    {
-	      assert(d==2*Q.degree()); // term to eliminate must be "constant"
-	      M_u[1]=r;
-	    }
-	  }
-	} // |if(defect)|
+	if (Ms[u].isZero())
+	  continue;
 
-	// now update contributions al lower descents |x|
+	d -= Ms[u].degree();
+	assert (d%2==0);
+	d/=2;
+	// now update contributions to all lower descents |x|
 	for (BlockElt x=aux.length_floor(u); x-->0; )
 	  if (aux.descent_set(x)[s])
 	  { // subtract $q^{(d-M_deg)/2}M_u*P_{x,u}$ from contribution for $x$
 	    assert(x<cy.size());
-	    cy[x] -= Pol((d-M_deg)/2,M_u*P(x,u));
+	    cy[x] -= Pol(d,Ms[u]*P(x,u));
 	  }
       } // |for(u)|
 

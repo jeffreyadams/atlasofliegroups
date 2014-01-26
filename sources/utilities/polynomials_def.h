@@ -188,18 +188,21 @@ Polynomial<C> Polynomial<C>::operator* (const Polynomial& q) const
   return result;
 }
 
-// rising degree division by $(1+cX)$, return new coefficient of $X^d$
+// rising degree division by $(1+cX)$, return remainder in coefficient of $X^d$
 template<typename C>
-C Polynomial<C>::factor_by(C c)
+C Polynomial<C>::factor_by(C c, Degree d)
 {
+  assert(degree()<=d);
   if (isZero())
     return C(0);
-  C sum = d_data[0];
-  for (Degree i=1; i<=degree(); ++i)
-    sum = (d_data[i]-=c*sum);
-  d_data[degree()]=0; // kill any remaining top coefficient, it is also in |sum|
+  if (d>degree())
+    d_data.resize(d+1,C(0)); // extend with zero coefficients to make degree $d$
+  C remainder = d_data[0];
+  for (Degree i=1; i<=d; ++i) // |d_data[i-1]| becomes quotient coefficient
+    remainder = (d_data[i] -= c*remainder); // |d_data[i]| is now remainder
+  d_data[d]=0; // kill remainder in top coefficient, its value is held in |sum|
   adjustSize();
-  return sum;
+  return remainder; // excess that was found in |d_data[d]| for exact division
 }
 
 template<typename C>
