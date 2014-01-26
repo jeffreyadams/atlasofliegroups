@@ -831,12 +831,14 @@ void test_f() // trial of twisted KLV computation
   std::vector<ext_kl::Pol> pool;
   ext_kl::KL_table twisted_KLV(eblock,pool);
   twisted_KLV.fill_columns(last);
+
+  ioutils::OutputFile f;
   for (BlockElt y=0; y<last; ++y)
     for (BlockElt x=y+1; x-->0; )
       if (not twisted_KLV.P(x,y).isZero())
       {
-	std::cout << "P(" << eblock.z(x) << ',' << eblock.z(y) << ")=";
-	std::cout << twisted_KLV.P(x,y) << std::endl;
+	f << "P(" << eblock.z(x) << ',' << eblock.z(y) << ")=";
+	f << twisted_KLV.P(x,y) << std::endl;
       }
 
 }

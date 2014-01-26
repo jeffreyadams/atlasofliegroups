@@ -380,7 +380,7 @@ extended_block::extended_block
   , tW(W)
   , info()
   , data(parent.folded_rank())
-  , l_start(parent.length(parent.size()-1)+1)
+  , l_start(parent.length(parent.size()-1)+2)
 {
   unsigned int folded_rank = data.size();
   if (folded_rank==0 or parent.Hermitian_dual(0)==UndefBlock)
@@ -399,7 +399,8 @@ extended_block::extended_block
 	while (cur_len<parent.length(z)) // for new length level(s) reached
 	  l_start[++cur_len]=child_nr[z]; // mark element as first of |cur_len|
       }
-    l_start[++cur_len]=parent.size();
+    assert(cur_len+1<l_start.size());
+    l_start[++cur_len]=parent.size(); // makes |l_start[length(...)+1]| legal
   }
 
   info.reserve(parent_nr.size());
