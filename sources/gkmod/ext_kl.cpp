@@ -428,7 +428,7 @@ Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
       if (M_deg==2)
 	M[1]=Q[Q.degree()-1]; // set sub-dominant coefficient here
     }
-    assert(Q.degree()>=M_deg); // this expains the $Q.degree()<=d$ requirement
+    assert(Q.degree()>=M_deg); // this explains the $Q.degree()<=d$ requirement
     Q -= Pol(Q.degree()-M_deg,M);
     return M;
   } // |if(defect==0)|
@@ -518,7 +518,8 @@ void KL_table::fill_next_column(PolHash& hash)
       { // find and use a double-valued ascent for |x| that is decsent for |y|
 	assert(has_double_image(type(s,x))); // since |s| non-good ascent
 	BlockEltPair sx = aux.block.Cayleys(s,x);
-	Pol Q = P(sx.first,y) + P(sx.second,y); // computed earlier in this loop
+	Pol Q = P(sx.first,y)*aux.block.epsilon(s,x,0) // computed earlier
+	  + P(sx.second,y)*aux.block.epsilon(s,x,1);   // in this loop
         *it = hash.match(Q);
       }
     assert(it==column.back().rend()); // check that we've traversed the column

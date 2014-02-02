@@ -882,7 +882,7 @@ size_t KLContext::remove_zeros(const KLRow& klv,
   presence of $P_{s.x,y}$, because that term can be computed on the fly.
 
   The sum involving mu, produced by |muNewFormula|, has terms involving
-  $P_{x,z}\mu(z,y}$, so when doing a downward loop over |x| it pays to keep
+  $P_{x,u}\mu(u,y}$, so when doing a downward loop over |x| it pays to keep
   track of the previous |u| with nonzero $\mu(u,y)$.
 
   This code gets executed for |y| that are of minimal length, in which case
