@@ -82,6 +82,7 @@ template <typename U>
 
 // accessors
   const C& operator[] (Degree i) const; // get coefficient $X^i$
+  const C coef (Degree i) const { return i>=d_data.size() ? C(0) : d_data[i]; }
 
   bool operator== (const Polynomial& q) const { return d_data == q.d_data; }
   bool operator!= (const Polynomial& q) const { return d_data != q.d_data; }
@@ -105,6 +106,9 @@ template <typename U>
   bool isZero() const { return size() == 0; } // because of reduction
   bool multi_term () const; // whether more than one term is nonzero (printing)
 
+  // write polynomial as $(1+cX)Q+rX^d$, and return $r$
+  C up_remainder(C c, Degree d) const; // assumes $d\geq degree()$
+
 // manipulators
   C& operator[] (Degree j); // non-const version of above
 
@@ -124,7 +128,7 @@ template <typename U>
     { return Polynomial(*this)-=q; }
   Polynomial operator- () const { return Polynomial(*this)*= C(-1); }
 
-  // write polynomial as $(1+cX)Q+rX^d$, changing it to $Q$ and returning $r$
+  // as |up_remainder| above, but also change polynomial into quotient $Q$
   C factor_by(C c, Degree d); // assumes $d\geq degree()$
 
   std::ostream& print(std::ostream& strm, const char* x) const;

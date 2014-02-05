@@ -189,12 +189,23 @@ Polynomial<C> Polynomial<C>::operator* (const Polynomial& q) const
 }
 
 // rising degree division by $(1+cX)$, return remainder in coefficient of $X^d$
-template<typename C>
-C Polynomial<C>::factor_by(C c, Degree d)
+template<typename C> C Polynomial<C>::up_remainder(C c, Degree d) const
 {
-  assert(degree()<=d);
   if (isZero())
     return C(0);
+  assert(degree()<=d);
+  C remainder = d_data[0];
+  for (Degree i=1; i<=d; ++i)
+    remainder = coef(i) - c*remainder;
+  return remainder; // excess that was found in |coef(d)| for exact division
+}
+
+// non const version of the same, changing polynomial into the quotient
+template<typename C> C Polynomial<C>::factor_by(C c, Degree d)
+{
+  if (isZero())
+    return C(0);
+  assert(degree()<=d);
   if (d>degree())
     d_data.resize(d+1,C(0)); // extend with zero coefficients to make degree $d$
   C remainder = d_data[0];

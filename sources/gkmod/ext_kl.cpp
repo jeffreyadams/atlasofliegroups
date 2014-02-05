@@ -137,12 +137,14 @@ kl::KLIndex KL_table::KL_pol_index(BlockElt x, BlockElt y) const
 
 int KL_table::mu(int i,BlockElt x, BlockElt y) const
 {
+  if (aux.block.length(x)+i>aux.block.length(y))
+    return 0;
   unsigned d=aux.block.l(y,x)-i;
   if (d%2!=0)
     return 0;
   d/=2;
   PolRef Pxy=P(x,y);
-  return Pxy.degree()<d ? 0 : Pxy[d];
+  return Pxy.isZero() or Pxy.degree()<d ? 0 : Pxy[d];
 }
 
 // Find descents |d| for |s| in interval $(x,y)$ with |mu(1,d,y)| nonzero
@@ -263,33 +265,67 @@ Pol KL_table::m(weyl::Generator s,BlockElt x, BlockElt y, bool go_up) const
 } // |KL_table::m|
 
 
-/* Use recursive formula (in degree-shifted Laurent polynomials in $r$)
-  $m(x)\cong r^k p_{x,sy} + def(s,x) r p_{s_x,sy}-\sum_{x<u<y}m(u)p_{x,u}$
-  where congruence is modulo $r^{-1+def(s,y)}\Z[r^{-1}]$, and use symmetry of
-  $m(x)$ to complete. There is a complication when $def(s,y)=1$, since a
-  congruence modulo $\Z[r^{-1}]$ cannot be used to determine the coefficient
-  of $r^0$ in $m(x)$, and instead one must use that the difference between the
-  members of above congruence should be a multiple of $(r+r^{-1})$.
+/*
+  Use recursive formula (in degree-shifted Laurent polynomials in $r$)
+  $m(x)\cong r^k p_{x,y} + def(s,x) r p_{s_x,y}-\sum_{x<u<y}m(u)p_{x,u}$ where
+  congruence is modulo $r^{-1+def(s,y)}\Z[r^{-1}]$, and use symmetry of $m(x)$
+  to complete. There is a complication when $def(s,y)=1$, since a congruence
+  modulo $\Z[r^{-1}]$ cannot be used to determine the coefficient of $r^0$ in
+  $m(x)$, and instead one must use that the difference between the members of
+  above congruence should be a multiple of $(r+r^{-1})$. To that end we use
+  the appropriate |up_remainder(1,d)| values of polynomials, instead of the
+  coefficient in $r^0$, for our computations.
  */
-Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt sy,
+Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 		    const std::vector<Pol>& M) const
 {
-  const BlockElt y = // unique ascent by |s| of |sy|
-    is_complex(type(s,sy)) ? aux.block.cross(s,sy) : aux.block.Cayley(s,sy);
-  const unsigned defect = has_defect(type(s,y)) ? 1 : 0;
+  const BlockElt z = // unique ascent by |s| of |y|
+    is_complex(type(s,y)) ? aux.block.cross(s,y) : aux.block.Cayley(s,y);
+  const unsigned defect = has_defect(type(s,z)) ? 1 : 0;
+  const unsigned k = aux.block.orbit(s).length();
 
-  Pol Q= product_comp(x,s,sy);
+  if (k==1)
+    return  Pol(aux.block.l(y,x)%2==0 ? 0 : mu(1,x,y));
+
+  if (k==2)
+  {
+    if (aux.block.l(y,x)%2!=0)
+      return q_plus_1() * Pol(mu(1,x,y));
+    if (defect==0)
+    {
+      int acc = mu(2,x,y);
+      if (has_defect(type(s,x)))
+	acc += mu(1,aux.block.inverse_Cayley(s,x),y);
+      for (unsigned l=aux.block.length(x)+1; l<aux.block.length(z); l+=2)
+	for (BlockElt u=aux.block.length_first(l);
+	     u<aux.block.length_first(l+1); ++u)
+	  if (aux.descent_set(u)[s] and not M[u].isZero())
+	    acc -= mu(1,x,u)*M[u][0];
+      return Pol(acc);
+    }
+    // |k==2| defect case
+    int acc= product_comp(x,s,y).up_remainder(1,(aux.block.l(z,x)+1)/2);
+    for (unsigned l=aux.block.length(x)+2; l<aux.block.length(z); l+=2)
+      for (BlockElt u=aux.block.length_first(l);
+	   u<aux.block.length_first(l+1); ++u)
+	if (aux.descent_set(u)[s] and not M[u].isZero())
+	  acc -= P(x,u).up_remainder(1,aux.block.l(u,x)/2)*M[u][0];
+    return Pol(acc);
+  }
+
+  // case |k==3| is handled as what used to be the general case
+  Pol Q= product_comp(x,s,y);
 
   for (BlockElt u=aux.block.length_first(aux.block.length(x)+1);
-       u<aux.length_floor(y); u++ )
+       u<aux.length_floor(z); u++ )
     if (aux.descent_set(u)[s])
     { // subtract $q^{(d-deg(M))/2}M_u*P_{x,u}$ from contribution for $x$
-      unsigned d=aux.block.l(y,u)+defect; // doubled implicit degree shift
+      unsigned d=aux.block.l(z,u)+defect; // doubled implicit degree shift
       Q -= Pol((d-M[u].degree())/2,M[u]*P(x,u));
     }
 
   Pol Mx =
-    extract_M(Q,aux.block.l(y,x)+defect,defect);
+    extract_M(Q,aux.block.l(z,x)+defect,defect);
   return Mx;
 }
 
