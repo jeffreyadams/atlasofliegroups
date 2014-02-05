@@ -312,21 +312,62 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 	  acc -= P(x,u).up_remainder(1,aux.block.l(u,x)/2)*M[u][0];
     return Pol(acc);
   }
+  if (k==3)
+  {
+    if (aux.block.l(y,x)%2==0) // now we need a multiple of $1+q$
+    {
+      int acc = mu(2,x,y); // degree $1$ coefficient of |product_comp(x,s,y)|
+      for (unsigned l=aux.block.length(x)+1; l<aux.block.length(z); l+=2)
+	for (BlockElt u=aux.block.length_first(l);
+	     u<aux.block.length_first(l+1); ++u)
+	  if (aux.descent_set(u)[s] and M[u].degree()==2)
+	    acc -= mu(1,x,u)*M[u][2];
+      return q_plus_1() * acc;
+    }
 
-  // case |k==3| is handled as what used to be the general case
+    // now we need a polynomial of the form $a+bq+aq^2$ for some $a,b$
+    int a = mu(1,x,y); // degree $2$ coefficient of |product_comp(x,s,y)|
+    if (defect==0)
+    {
+      int b = mu(3,x,y);
+      if (has_defect(type(s,x)))
+	b += mu(1,aux.block.inverse_Cayley(s,x),y);
+      for (BlockElt u=aux.block.length_first(aux.block.length(x)+1);
+	   u<aux.length_floor(z); u++ )
+	if (aux.descent_set(u)[s] and M[u].degree()==2-aux.block.l(u,x)%2)
+	  b -= mu(M[u].degree(),x,u)*M[u][M[u].degree()];
+      return qk_plus_1(2)*a + Pol(1,b);
+    }
+    // remains the |k==3|, even degree $m$ defect case
+    Pol Q = product_comp(x,s,y);
+    if (a!=0)
+      Q -= Pol((aux.block.l(z,x)-1)/2,qk_plus_1(2)*a); // shaves top term
+    assert(2*Q.degree()<=aux.block.l(z,x)+1);
+    int b= Q.up_remainder(1,(aux.block.l(z,x)+1)/2); // remainder by $q+1$
+    for (unsigned l=aux.block.length(x)+1; l<aux.block.length(z); l+=2)
+      for (BlockElt u=aux.block.length_first(l);
+	   u<aux.block.length_first(l+1); ++u)
+	if (aux.descent_set(u)[s] and not M[u].isZero())
+	{
+	  int mu_rem = M[u].degree()==0 ? M[u][0] : M[u][1]-2*M[u][0];
+	  b -= P(x,u).up_remainder(1,aux.block.l(u,x))*mu_rem;
+	}
+    return qk_plus_1(2)*a + Pol(1,b);
+  }
+
+  // this was the general case, now unused; it always works but not optimally
   Pol Q= product_comp(x,s,y);
 
   for (BlockElt u=aux.block.length_first(aux.block.length(x)+1);
        u<aux.length_floor(z); u++ )
-    if (aux.descent_set(u)[s])
+    if (aux.descent_set(u)[s] and not M[u].isZero())
     { // subtract $q^{(d-deg(M))/2}M_u*P_{x,u}$ from contribution for $x$
       unsigned d=aux.block.l(z,u)+defect; // doubled implicit degree shift
+      assert(M[u].degree()<=d);
       Q -= Pol((d-M[u].degree())/2,M[u]*P(x,u));
     }
 
-  Pol Mx =
-    extract_M(Q,aux.block.l(z,x)+defect,defect);
-  return Mx;
+  return extract_M(Q,aux.block.l(z,x)+defect,defect);
 }
 
 Pol KL_table::qk_plus_1(int k) const
@@ -437,8 +478,8 @@ void KL_table::fill_columns(BlockElt y)
     fill_next_column(hash);
 }
 
-/* Clear terms of degree${}\geq d$ in $Q$ by subtracting $r^d*m$ where $m$ is
-   a symmetric Laurent polynomial in $r=\sqrt q$, and if $defect>0$ dividing
+/* Clear terms of degree${}\geq d/2$ in $Q$ by subtracting $r^d*m$ where $m$
+   is a symmetric Laurent polynomial in $r=\sqrt q$, and if $defect>0$ dividing
    what remains by $q+1$, which division must be exact. Return $r^{deg(m)}m$.
    Implemented only under the hypothesis that $Q.degree()<(d+3)/2$ initially,
    and $Q.degree()\leq d$ (so if $d=0$ then $Q$ must be constant).
