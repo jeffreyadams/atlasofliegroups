@@ -68,6 +68,15 @@ bool is_like_nonparity(DescValue v)
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
 
+bool is_like_compact(DescValue v)
+{
+  static unsigned long mask =
+      1ul << one_real_pair_switched | 1ul << one_imaginary_compact
+    | 1ul << two_imaginary_compact  | 1ul << three_imaginary_compact;
+
+  return (1ul << v & mask) != 0; // whether |v| is one of the above
+}
+
 bool is_proper_ascent(DescValue v)
 {
   return not(is_descent(v) or is_like_nonparity(v));
@@ -190,6 +199,22 @@ int extended_block::epsilon(weyl::Generator s, BlockElt n,unsigned i) const
   if (type==two_imaginary_single_double or type==two_real_single_double)
     return data[s][n].epsilon ? -1 : 1;
   return 1;
+}
+
+BlockEltList extended_block::down_set(BlockElt n) const
+{
+  BlockEltList result; result.reserve(rank());
+  for (weyl::Generator s=0; s<rank(); ++s)
+  {
+    const DescValue type = descent_type(s,n);
+    if (is_descent(type) and not is_like_compact(type))
+    {
+      result.push_back(data[s][n].links.first);
+      if (has_double_image(type))
+	result.push_back(data[s][n].links.second);
+    }
+  }
+  return result;
 }
 
 DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,

@@ -128,6 +128,8 @@ class extended_block
   const DescValue descent_type(weyl::Generator s, BlockElt n) const
     { assert(n<size()); assert(s<rank()); return data[s][n].type; }
 
+  BlockEltList down_set(BlockElt y) const;
+
   // print whole block to stream (name chosen to avoid masking by |print|)
   std::ostream& print_to(std::ostream& strm) const; // defined in |block_io|
 
@@ -144,6 +146,7 @@ bool is_complex(DescValue v);
 bool is_unique_image(DescValue v);
 bool has_double_image(DescValue v);
 bool is_like_nonparity(DescValue v);
+bool is_like_compact(DescValue v);
 bool is_proper_ascent(DescValue v);
 bool has_defect(DescValue v);
 

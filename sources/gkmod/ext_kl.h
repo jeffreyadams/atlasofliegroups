@@ -83,21 +83,11 @@ class KL_table
   // coefficients of P_{x,y} of $q^{(l(y/x)-i)/2}$ (use with i=1,2,3)
   int mu(int i,BlockElt x, BlockElt y) const;
 
-  // value for correction term; |go_up| allows ascent of |y| to be inspected
-  // |x| should be a descent for |s|, and |y| a longer ascent for |s|
-  Pol m(weyl::Generator s,BlockElt x, BlockElt sy, bool go_up) const;
-
-  // a different approach: compute $M(s,x,sy)$ recursively using vector |m|
-  Pol get_M(weyl::Generator s,BlockElt x, BlockElt sy,
-	    const std::vector<Pol>& Ms) const; // previous values $M(s,u,sy)$
-
   // manipulator
   void fill_columns(BlockElt y=0);
  private:
   typedef HashTable<PolEntry,kl::KLIndex> PolHash;
   void fill_next_column(PolHash& hash);
-  BlockEltList mu1top(weyl::Generator s,BlockElt x, BlockElt y) const;
-  BlockEltList mu1bot(weyl::Generator s,BlockElt x, BlockElt y) const;
 
   Pol q_plus_1() const { return qk_plus_1(1); }
   Pol qk_plus_1(int k) const;
@@ -107,6 +97,14 @@ class KL_table
   // component of basis element $a_x$ in product $(T_s+1)a_{sy}$
   Pol product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const;
   Pol extract_M(Pol& Q,unsigned d,unsigned defect) const;
+
+  // compute $M(s,x,sy)$ recursively using vector |Ms| (for direct recursion)
+  Pol get_M(weyl::Generator s,BlockElt x, BlockElt sy,
+	    const std::vector<Pol>& Ms) const; // previous values $M(s,u,sy)$
+
+  // variant of above for new recursion: omit term if depending on $P_{x_s,y}$
+  Pol get_Mp(weyl::Generator s,BlockElt x, BlockElt y,
+	     const std::vector<Pol>& Ms) const; // previous values $M(s,u,sy)$
 
   // look for a direct recursion and return whether possible;
   // if possible also get contributions from $c_s*a_y$ into |out|

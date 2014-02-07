@@ -147,134 +147,19 @@ int KL_table::mu(int i,BlockElt x, BlockElt y) const
   return Pxy.isZero() or Pxy.degree()<d ? 0 : Pxy[d];
 }
 
-// Find descents |d| for |s| in interval $(x,y)$ with |mu(1,d,y)| nonzero
-BlockEltList KL_table::mu1top(weyl::Generator s,BlockElt x, BlockElt y) const
-{
-  size_t ly=aux.block.length(y);
-  size_t l0=aux.block.length(x)+1;
-  assert(l0<=ly);
-  BlockEltList result;
-  result.reserve(aux.block.length_first(ly)-aux.block.length_first(l0));
-  for (size_t l=l0+((ly+1-l0)&1); l<ly; l+=2)
-    for (BlockElt d=aux.block.length_first(l);
-	 d<aux.block.length_first(l+1); ++d)
-      if (is_descent(type(s,d)))
-	if (mu(1,d,y)!=0)
-	  result.push_back(d);
-  return result;
-}
-
-// Find descents |d| for |s| in interval $(x,y)$ with |mu(1,x,d)| nonzero
-BlockEltList KL_table::mu1bot(weyl::Generator s,BlockElt x, BlockElt y) const
-{
-  size_t ly=aux.block.length(y);
-  size_t l0=aux.block.length(x)+1;
-  assert(l0<=ly);
-  BlockEltList result;
-  result.reserve(aux.block.length_first(ly)-aux.block.length_first(l0));
-  for (size_t l=l0; l<ly; l+=2)
-    for (BlockElt d=aux.block.length_first(l);
-	 d<aux.block.length_first(l+1); ++d)
-      if (is_descent(type(s,d)))
-	if (mu(1,x,d)!=0)
-	  result.push_back(d);
-  return result;
-}
-
-// See theorem 9.3.10, whose case (1) $y\overset\kappa\to y$ does not apply
-Pol KL_table::m(weyl::Generator s,BlockElt x, BlockElt y, bool go_up) const
-{ // check that we are not being called in unexpected conditions
-  assert(aux.block.length(y)>aux.block.length(x));
-  assert(is_descent(type(s,x)));
-  assert(not is_descent(type(s,y)));
-  const unsigned d=aux.block.l(y,x)%2; // 0 or 1
-  switch(aux.block.orbit(s).type)
-  {
-  case ext_gen::one: return KLPol(0,d==0 ? 0 : mu(1,x,y));
-  case ext_gen::two:
-    {
-      KLPol result(d,mu(2-d,x,y)); // $\mu_{-2}(x,y)$ or $q\mu_{-1}(x,y)$
-      if (d!=0)
-	result[0]=result[1]; // change to $(q+1)\mu_{-1}(x,y)$
-      else
-      { // |d==0|
-	BlockEltList interval=mu1top(s,x,y);
-	int sum=0;
-	for (size_t i=interval.size(); i-->0; )
-	{
-	  BlockElt t=interval[i];
-	  sum -= mu(1,x,t)*mu(1,t,y);
-	}
-	if (go_up and has_defect(type(s,y)))
-	  sum -= mu(1,x,aux.block.Cayley(s,y));
-	if (has_defect(type(s,x)))
-	  sum += mu(1,aux.block.Cayley(s,x),y); // positive contribution
-	result[0] += sum;
-      }
-      return result;
-    }
-  case ext_gen::three:
-    {
-      KLPol result(1+d,mu(2+d,x,y)); // $q\mu_{-2}(x,y)$ or $q^2\mu_{-3}(x,y)$
-      if (d==0)
-      {
-	BlockEltList interval=mu1top(s,x,y);
-	int sum=0;
-	for (size_t i=interval.size(); i-->0; )
-	{
-	  BlockElt t=interval[i];
-	  sum -= mu(1,x,t)*mu(1,t,y);
-	}
-	result[1] += sum;
-	result[0] = result[1]; // change multiple of $q$ to multiple of $q+1$
-      }
-      else
-      { // |d==1|
-	result[0]=result[2]; // $\mu_{-3}(x,y)(q^2+1)$
-
-	BlockEltList top=mu1top(s,x,y);
-	int sum=0;
-	for (size_t i=top.size(); i-->0; )
-	{
-	  BlockElt t=top[i];
-	  sum -= mu(2,x,t)*mu(1,t,y);
-	}
-
-	BlockEltList bot=mu1bot(s,x,y);
-	for (size_t i=bot.size(); i-->0; )
-	{
-	  BlockElt t=bot[i];
-	  int m1xt=mu(1,x,t),acc = -mu(2,t,y);
-	  for (size_t j=top.size(); j-->0 and top[j]>t; )
-	  {
-	    BlockElt u=top[j];
-	    acc += mu(1,t,u)*mu(1,u,y); // positive contribution
-	  }
-	  sum += m1xt*acc;
-	} // fot |t|
-	if (go_up and has_defect(type(s,y)))
-	  sum -= mu(1,x,aux.block.Cayley(s,y));
-	if (has_defect(type(s,x)))
-	  sum += mu(1,aux.block.Cayley(s,x),y); // positive contribution
-	result[1] += sum;
-      }
-      return result;
-    }
-  } // |switch(kappa.type)|
-  assert(false); return KLPol(); // dummy to keep compiler happy
-} // |KL_table::m|
-
 
 /*
   Use recursive formula (in degree-shifted Laurent polynomials in $r$)
   $m(x)\cong r^k p_{x,y} + def(s,x) r p_{s_x,y}-\sum_{x<u<y}m(u)p_{x,u}$ where
-  congruence is modulo $r^{-1+def(s,y)}\Z[r^{-1}]$, and use symmetry of $m(x)$
-  to complete. There is a complication when $def(s,y)=1$, since a congruence
-  modulo $\Z[r^{-1}]$ cannot be used to determine the coefficient of $r^0$ in
-  $m(x)$, and instead one must use that the difference between the members of
-  above congruence should be a multiple of $(r+r^{-1})$. To that end we use
-  the appropriate |up_remainder(1,d)| values of polynomials, instead of the
-  coefficient in $r^0$, for our computations.
+  $M(x)$ abbreviates $m_s(x,y)$ and the congruence is modulo
+  $r^{-1+def(s,y)}\Z[r^{-1}]$; then use symmetry of $m(x)$ to complete. There
+  is a complication when $def(s,y)=1$, since a congruence modulo $\Z[r^{-1}]$
+  cannot be used to determine the coefficient of $r^0$ in $m(x)$, and instead
+  one must use that the difference between the members of above congruence
+  should be a multiple of $(r+r^{-1})$. To that end we use the appropriate
+  |up_remainder(1,d)| values of polynomials, instead of the coefficient in
+  $r^0$, for our computations. We use that |up_remainder| (with appropriate
+  shifts) is a ring morphism, so can be applied to the factors in a product.
  */
 Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 		    const std::vector<Pol>& M) const
@@ -368,6 +253,61 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
     }
 
   return extract_M(Q,aux.block.l(z,x)+defect,defect);
+}
+
+/*
+  This is largely the same formula, but used in different context, which
+  obliges to possibly leave out some term. Here one knows that $y$ is real
+  nonparity for $s$, so in particular has no defect and the is no element $z$;
+  also $x$ is known to be a descent for $s$ (unlike in the code above). On the
+  other hand one is still busy computing the Hecke element $C_y$. It is a
+  precondition that its coefficient $P_{x,y}$ has already been determined, and
+  stored, but not necessarily $P_{x',y}$ for $x'<x$; we must therefore refrain
+  from (implicit) references to such polynomials. The vector $M$ can be used
+  to safely access the (complete) values $M_s(u,y)$ for all $u>x$.
+
+  Comparing with the formulas above, the terms to skip are those involving
+  |inverse_Cayley(s,x)|. 
+ */
+Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
+		     const std::vector<Pol>& M) const
+{
+  const unsigned k = aux.block.orbit(s).length();
+  if (k==1) // nothing changed for this case
+    return  Pol(aux.block.l(y,x)%2==0 ? 0 : mu(1,x,y));
+  if (k==2)
+  {
+    if (aux.block.l(y,x)%2!=0)
+      return q_plus_1() * Pol(mu(1,x,y));
+    int acc = mu(2,x,y);
+    for (unsigned l=aux.block.length(x)+1; l<aux.block.length(y); l+=2)
+      for (BlockElt u=aux.block.length_first(l);
+	   u<aux.block.length_first(l+1); ++u)
+	if (aux.descent_set(u)[s] and not M[u].isZero())
+	  acc -= mu(1,x,u)*M[u][0];
+      return Pol(acc);
+  }
+
+  assert(k==3); // this case remains
+  if (aux.block.l(y,x)%2==0) // now we need a multiple of $1+q$
+  {
+    int acc = mu(2,x,y); // degree $1$ coefficient of |product_comp(x,s,y)|
+    for (unsigned l=aux.block.length(x)+1; l<aux.block.length(y); l+=2)
+      for (BlockElt u=aux.block.length_first(l);
+	   u<aux.block.length_first(l+1); ++u)
+	if (aux.descent_set(u)[s] and M[u].degree()==2)
+	  acc -= mu(1,x,u)*M[u][2];
+    return q_plus_1() * acc;
+  }
+
+  // now we need a polynomial of the form $a+bq+aq^2$ for some $a,b$
+  int a = mu(1,x,y); // degree $2$ coefficient of |product_comp(x,s,y)|
+  int b = mu(3,x,y); // degree $0$ coefficient of |product_comp(x,s,y)|
+  for (BlockElt u=aux.block.length_first(aux.block.length(x)+1);
+       u<aux.length_floor(y); u++ )
+    if (aux.descent_set(u)[s] and M[u].degree()==2-aux.block.l(u,x)%2)
+      b -= mu(M[u].degree(),x,u)*M[u][M[u].degree()];
+  return qk_plus_1(2)*a + Pol(1,b);
 }
 
 Pol KL_table::qk_plus_1(int k) const
@@ -543,12 +483,12 @@ void KL_table::fill_next_column(PolHash& hash)
   if (aux.col_size(y)==0)
     return; // there is just the non-recorded $P(y,y)=1$
   column.back().resize(aux.col_size(y));
+  std::vector<Pol> cy(y,(Pol())),Ms(y,(Pol()));
+
   weyl::Generator s;
   BlockElt sy;
   if (direct_recursion(y,s,sy))
   {
-    std::vector<Pol> cy(y,(Pol())),Ms(y,(Pol()));
-
     const unsigned defect = has_defect(type(s,y)) ? 1 : 0;
     const unsigned k = aux.block.orbit(s).length();
     assert(1<=k and k<=3);
@@ -603,8 +543,20 @@ void KL_table::fill_next_column(PolHash& hash)
   }
   else // direct recursion was not possible
   {
-    std::cerr << "No direct recursion for element " << aux.block.z(y)
-	      << std::endl;
+    BlockEltList downs = aux.block.down_set(y);
+    for (BlockEltList::const_iterator it=downs.begin(); it!=downs.end(); ++it)
+    {
+      BlockElt u = *it;
+      cy[u] = Pol(1); // $P_{u,y}=1$ by easy recursion leading to $P_{y,y}$
+      // who is $s$ now ???
+      if (is_descent(type(s,u)))
+      {
+	
+      }
+      else if (has_defect(type(s,u))) // not good case
+      {
+      }
+    }
   }
 } // |KL_table::fill_next_column|
 
