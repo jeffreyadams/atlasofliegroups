@@ -47,6 +47,12 @@ class descent_table
   { return block.length_first(block.length(y)); }
   unsigned int col_size(BlockElt y) const;
 
+  RankFlags very_easy_set(BlockElt& x, BlockElt y) const
+  { return good_ascents[x]&descents[y]; }
+
+  RankFlags easy_set(BlockElt& x, BlockElt y) const
+  { return descents[y]-descents[x]; }
+
   // set $x$ to last primitive element for $y$ strictly before $x$, or fail
   bool prim_back_up(BlockElt& x, BlockElt y) const;
   bool extr_back_up(BlockElt& x, BlockElt y) const; // same for extremal
@@ -109,6 +115,8 @@ class KL_table
   // look for a direct recursion and return whether possible;
   // if possible also get contributions from $c_s*a_y$ into |out|
   bool direct_recursion(BlockElt y,weyl::Generator& s, BlockElt& sy) const;
+
+  bool do_new_recursion(BlockElt y);
 
 }; // |KL_table|
 

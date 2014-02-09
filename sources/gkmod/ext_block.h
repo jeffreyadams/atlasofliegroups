@@ -64,6 +64,22 @@ enum DescValue // every even/odd pair is one of associated ascent and descent
   three_imaginary_compact
 }; // |enum DescValue|
 
+// function declarations
+
+const char* descent_code(DescValue v); // defined in |block_io|
+inline bool is_descent(DescValue v) { return v%2!=0; }
+bool is_complex(DescValue v);
+bool is_unique_image(DescValue v);
+bool has_double_image(DescValue v);
+bool is_like_nonparity(DescValue v);
+bool is_like_compact(DescValue v);
+bool is_proper_ascent(DescValue v);
+bool has_defect(DescValue v);
+
+DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
+			BlockElt& first_link);
+
+
 class extended_block
 {
   struct elt_info // per block element information
@@ -119,6 +135,9 @@ class extended_block
   BlockElt Cayley(weyl::Generator s, BlockElt n) const; // just one or none
   BlockElt inverse_Cayley(weyl::Generator s, BlockElt n) const; // one or none
 
+  BlockElt cover(weyl::Generator s, BlockElt n) const
+  { return is_complex(descent_type(s,n)) ? cross(s,n) : Cayley(s,n); }
+
   BlockEltPair Cayleys(weyl::Generator s, BlockElt n) const;
   BlockEltPair inverse_Cayleys(weyl::Generator s, BlockElt n) const;
 
@@ -135,23 +154,6 @@ class extended_block
 
 
 }; // |class extended_block|
-
-
-
-// function declarations
-
-const char* descent_code(DescValue v); // defined in |block_io|
-inline bool is_descent(DescValue v) { return v%2!=0; }
-bool is_complex(DescValue v);
-bool is_unique_image(DescValue v);
-bool has_double_image(DescValue v);
-bool is_like_nonparity(DescValue v);
-bool is_like_compact(DescValue v);
-bool is_proper_ascent(DescValue v);
-bool has_defect(DescValue v);
-
-DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
-			BlockElt& first_link);
 
 } // |namespace ext_block|
 

@@ -78,8 +78,7 @@ descent_table::descent_table(const ext_block::extended_block& eb)
       else
       {
 	weyl::Generator s = D.firstBit();
-	ext_block::DescValue v = block.descent_type(s,x);
-	BlockElt sx = is_complex(v) ? block.cross(s,x) : block.Cayley(s,x);
+	BlockElt sx = block.cover(s,x);
 	assert(sx>x); // ascents go up in block; also |~0| exceeds everyobe
 	prim_index[desc][x] = sx==UndefBlock ? ~0 : prim_index[desc][sx];
       }
@@ -109,7 +108,6 @@ unsigned int descent_table::col_size(BlockElt y) const
   return 0; // no primitives below length of |y| at all
 } // |descent_table::col_size|
 
-
 bool descent_table::prim_back_up(BlockElt& x, BlockElt y) const
 {
   RankFlags desc=descents[y];
@@ -126,7 +124,7 @@ bool descent_table::extr_back_up(BlockElt& x, BlockElt y) const
     if (descents[x].contains(desc))
       return true; // stop when no descents of |y| are (any) ascents of |x|
   return false;
-} // |descent_table::prim_back_up|
+} // |descent_table::extr_back_up|
 
 kl::KLIndex KL_table::KL_pol_index(BlockElt x, BlockElt y) const
 {
@@ -164,8 +162,8 @@ int KL_table::mu(int i,BlockElt x, BlockElt y) const
 Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 		    const std::vector<Pol>& M) const
 {
-  const BlockElt z = // unique ascent by |s| of |y|
-    is_complex(type(s,y)) ? aux.block.cross(s,y) : aux.block.Cayley(s,y);
+  const BlockElt z =  aux.block.cover(s,y); // unique successor by |s| of |y|
+
   const unsigned defect = has_defect(type(s,z)) ? 1 : 0;
   const unsigned k = aux.block.orbit(s).length();
 
@@ -249,7 +247,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
     { // subtract $q^{(d-deg(M))/2}M_u*P_{x,u}$ from contribution for $x$
       unsigned d=aux.block.l(z,u)+defect; // doubled implicit degree shift
       assert(M[u].degree()<=d);
-      Q -= Pol((d-M[u].degree())/2,M[u]*P(x,u));
+      Q -= Pol((d-M[u].degree())/2,P(x,u)*M[u]);
     }
 
   return extract_M(Q,aux.block.l(z,x)+defect,defect);
@@ -401,7 +399,7 @@ bool KL_table::direct_recursion(BlockElt y,
   if (s==rank())
     return false; // none of the generators gives a direct recursion
 
-  sy = is_complex(v) ? aux.block.cross(s,y) : aux.block.inverse_Cayley(s,y);
+  sy = aux.block.cover(s,y); // unique predecessor by $s$ of $y$
   return true;
 }
 
@@ -522,7 +520,7 @@ void KL_table::fill_next_column(PolHash& hash)
 	  if (aux.descent_set(x)[s])
 	  { // subtract $q^{(d-M_deg)/2}M_u*P_{x,u}$ from contribution for $x$
 	    assert(x<cy.size());
-	    cy[x] -= Pol(d,Ms[u]*P(x,u));
+	    cy[x] -= Pol(d,P(x,u)*Ms[u]);
 	  }
       } // |for(u)|
 
@@ -542,23 +540,115 @@ void KL_table::fill_next_column(PolHash& hash)
     assert(it==column.back().rend()); // check that we've traversed the column
   }
   else // direct recursion was not possible
-  {
-    BlockEltList downs = aux.block.down_set(y);
-    for (BlockEltList::const_iterator it=downs.begin(); it!=downs.end(); ++it)
+    do_new_recursion(y);
+
+ } // |KL_table::fill_next_column|
+
+bool KL_table::do_new_recursion(BlockElt y)
+{
+  std::vector<Pol> cy(y,(Pol()));
+  std::vector<weyl::Generator> rn_s; rn_s.reserve(rank());
+  std::vector<std::vector<Pol> > M_s; M_s.reserve(rank());
+  for (weyl::Generator s=0; s<rank(); ++s)
+    if (is_like_nonparity(type(s,y)))
     {
-      BlockElt u = *it;
-      cy[u] = Pol(1); // $P_{u,y}=1$ by easy recursion leading to $P_{y,y}$
-      // who is $s$ now ???
+      rn_s.push_back(s);
+      M_s.push_back(std::vector<Pol>(y,Pol()));
+    }
+  if (rn_s.empty()) // then no extremals to compute
+    return true;
+
+  BlockEltList downs = aux.block.down_set(y);
+  for (BlockEltList::const_iterator it=downs.begin(); it!=downs.end(); ++it)
+  {
+    BlockElt u = *it;
+    const unsigned d = aux.block.l(y,u);
+
+    cy[u] = Pol(1); // $P_{u,y}=1$ by easy recursion leading to $P_{y,y}$
+    for (unsigned i=0; i<rn_s.size(); ++i)
+    {
+      weyl::Generator s=rn_s[i];
+      const unsigned k = aux.block.orbit(s).length();
       if (is_descent(type(s,u)))
       {
-	
+	if (k>=d)
+	  M_s[i][u] = k==d ? Pol(1) : qk_plus_1(k-d);
+	// possible contribution from below omitted if |has_defect(type(s,u))|
       }
-      else if (has_defect(type(s,u))) // not good case
+      else if (has_defect(type(s,u))) // defect ascent: not-good case
       {
+	std::cerr << "Bad element " << aux.block.z(u)
+		  << "in down-set for " << aux.block.z(y) << std::endl;
+	return false;
+      }
+    } // |for(i)|, loop over |s|
+  } // |for(it)|, initialise downset
+
+  for (BlockElt x=aux.length_floor(y); x-->0; )
+  {
+    if (aux.easy_set(x,y).any())
+    {
+      if (cy[x].isZero()) // otherwise already done via downset
+      {
+	weyl::Generator s=aux.very_easy_set(x,y).firstBit();
+	if (s<rank())
+	{
+	  BlockElt sx =  aux.block.cover(s,x);
+	  cy[x]=cy[sx];
+	}
+	else // do primitive but not extremal case
+	{
+	  s = aux.easy_set(x,y).firstBit();
+	  assert(has_double_image(type(s,x))); // since |s| non-good ascent
+	  BlockEltPair sx = aux.block.Cayleys(s,x);
+	  cy[x] = cy[sx.first]*aux.block.epsilon(s,x,0) // computed earlier
+	    + cy[sx.second]*aux.block.epsilon(s,x,1);   // in this loop
+	}
       }
     }
-  }
-} // |KL_table::fill_next_column|
+    else // |x| is extremal for |y|, must do computation
+    { // first seek proper |s|
+      unsigned i; ext_block::DescValue tsx; weyl::Generator spare;
+      bool below=false;
+      for (i=0; i<rn_s.size(); ++i)
+	if (is_proper_ascent(tsx=type(rn_s[i],x)))
+	{
+	  below=true; // found at least one proper ascent
+	  if (is_complex(tsx) or has_defect(tsx)
+	      or tsx==ext_block::one_imaginary_pair_fixed
+	      or tsx==ext_block::two_imaginary_single_double)
+	    break;
+	  else // type 1 ascent
+	    spare=rn_s[i]; // might have to do endgame for |s==spare|
+	}
+      if (not below) // no proper ascents at all, |x| cannot be below |y|
+	continue; // just leave |cy[x]==Pol(0)|
+      if (i<rn_s.size())
+      {
+	const weyl::Generator s=rn_s[i];
+	const unsigned k = aux.block.orbit(s).length();
+	Pol Q;
+	const BlockElt last_u=aux.block.length_first(aux.block.length(x)+1);
+	for (BlockElt u=aux.length_floor(y); u-->last_u; )
+	  if (is_descent(type(s,u)) and not M_s[i][u].isZero())
+	    Q += Pol((aux.block.l(y,u)+k-M_s[i][u].degree())/2,
+		     P(x,u)*M_s[i][u]);
+	if (is_complex(tsx))
+	  Q -= Pol(k,cy[aux.block.cross(s,x)]);
+	// other cases remain TODO
+      }
+      else // endgame situation
+      { const weyl::Generator s=spare; // TODO
+      }
+    } // end of easy/hard condition
+    // now if there is a defect ascent from x, update |M_s| for |mu(1,x,y)|
+    {}
+    // and update the entries |M_s[i][x]|
+    for (unsigned i=0; i<rn_s.size(); ++i)
+      M_s[i][x] = get_Mp(rn_s[i],x,y,M_s[i]);
+  } // |for(x)|
+  return true;
+}
 
 } // |namespace kl|
 } // |namespace atlas|
