@@ -164,6 +164,14 @@ BlockElt extended_block::inverse_Cayley(weyl::Generator s, BlockElt n) const
     not is_descent(type) or is_complex(type) ? UndefBlock
     : data[s][n].links.first;
 }
+
+BlockElt extended_block::some_scent(weyl::Generator s, BlockElt n) const
+{
+  const BlockElt c = data[s][n].links.first;
+  assert(c!=UndefBlock);
+  return c;
+}
+
 BlockEltPair extended_block::Cayleys(weyl::Generator s, BlockElt n) const
 {
   const DescValue type = descent_type(s,n);

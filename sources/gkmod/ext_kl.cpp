@@ -78,9 +78,14 @@ descent_table::descent_table(const ext_block::extended_block& eb)
       else
       {
 	weyl::Generator s = D.firstBit();
-	BlockElt sx = block.cover(s,x);
-	assert(sx>x); // ascents go up in block; also |~0| exceeds everyobe
-	prim_index[desc][x] = sx==UndefBlock ? ~0 : prim_index[desc][sx];
+	if (is_like_nonparity(block.descent_type(s,x)))
+	  prim_index[desc][x] = ~0; // stop primitivisation with zero result
+	else
+	{
+	  BlockElt sx = block.some_scent(s,x);
+	  assert(sx>x); // ascents go up in block
+	  prim_index[desc][x] = prim_index[desc][sx];
+	}
       }
     } // |for (desc)|
   } // |for(x)|
@@ -162,7 +167,7 @@ int KL_table::mu(int i,BlockElt x, BlockElt y) const
 Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 		    const std::vector<Pol>& M) const
 {
-  const BlockElt z =  aux.block.cover(s,y); // unique successor by |s| of |y|
+  const BlockElt z =  aux.block.some_scent(s,y); // unique ascent by |s| of |y|
 
   const unsigned defect = has_defect(type(s,z)) ? 1 : 0;
   const unsigned k = aux.block.orbit(s).length();
@@ -389,19 +394,19 @@ bool KL_table::direct_recursion(BlockElt y,
 				weyl::Generator& s,
 				BlockElt& sy) const
 {
-  ext_block::DescValue v; // make value survice loop
+  ext_block::DescValue v; // make value survive loop
   for (s=0; s<rank(); ++s)
   {
     v=type(s,y);
     if (is_descent(v) and is_unique_image(v))
-      break;
+    {
+      sy = aux.block.some_scent(s,y); // some descent by $s$ of $y$
+      return true;
+    }
   }
-  if (s==rank())
-    return false; // none of the generators gives a direct recursion
-
-  sy = aux.block.cover(s,y); // unique predecessor by $s$ of $y$
-  return true;
+  return false; // none of the generators gives a direct recursion
 }
+
 
 void KL_table::fill_columns(BlockElt y)
 {
@@ -592,17 +597,17 @@ bool KL_table::do_new_recursion(BlockElt y)
       {
 	weyl::Generator s=aux.very_easy_set(x,y).firstBit();
 	if (s<rank())
-	{
-	  BlockElt sx =  aux.block.cover(s,x);
-	  cy[x]=cy[sx];
-	}
+	  cy[x] = is_like_nonparity(type(s,x)) ? Pol()
+	    : cy[aux.block.some_scent(s,x)];
 	else // do primitive but not extremal case
 	{
 	  s = aux.easy_set(x,y).firstBit();
 	  assert(has_double_image(type(s,x))); // since |s| non-good ascent
 	  BlockEltPair sx = aux.block.Cayleys(s,x);
-	  cy[x] = cy[sx.first]*aux.block.epsilon(s,x,0) // computed earlier
-	    + cy[sx.second]*aux.block.epsilon(s,x,1);   // in this loop
+	  if (sx.first<y)
+	    cy[x]  = cy[sx.first]*aux.block.epsilon(s,x,0);  // computed earlier
+	  if (sx.second<y)
+	    cy[x] += cy[sx.second]*aux.block.epsilon(s,x,1); // in this loop
 	}
       }
     }
@@ -634,7 +639,11 @@ bool KL_table::do_new_recursion(BlockElt y)
 	    Q += Pol((aux.block.l(y,u)+k-M_s[i][u].degree())/2,
 		     P(x,u)*M_s[i][u]);
 	if (is_complex(tsx))
-	  Q -= Pol(k,cy[aux.block.cross(s,x)]);
+	{
+	  BlockElt sx=aux.block.cross(s,x);
+	  if (sx<y)
+	    Q -= Pol(k,cy[aux.block.cross(s,x)]);
+	}
 	// other cases remain TODO
       }
       else // endgame situation

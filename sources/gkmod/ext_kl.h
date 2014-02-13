@@ -58,7 +58,6 @@ class descent_table
   bool extr_back_up(BlockElt& x, BlockElt y) const; // same for extremal
 
 }; // |descent_table|
-
 class PolEntry; // class definition will be given in the implementation file
 
 class KL_table

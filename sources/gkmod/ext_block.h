@@ -135,8 +135,8 @@ class extended_block
   BlockElt Cayley(weyl::Generator s, BlockElt n) const; // just one or none
   BlockElt inverse_Cayley(weyl::Generator s, BlockElt n) const; // one or none
 
-  BlockElt cover(weyl::Generator s, BlockElt n) const
-  { return is_complex(descent_type(s,n)) ? cross(s,n) : Cayley(s,n); }
+  // an element covering or covered by |n|; assumed to be well defined
+  BlockElt some_scent(weyl::Generator s, BlockElt n) const;
 
   BlockEltPair Cayleys(weyl::Generator s, BlockElt n) const;
   BlockEltPair inverse_Cayleys(weyl::Generator s, BlockElt n) const;
