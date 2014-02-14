@@ -119,6 +119,7 @@ template <typename U>
   Polynomial& subtract_from (const Polynomial& p); // *this = p - *this
 
   Polynomial& operator*= (C);
+  Polynomial& operator/= (C);
   Polynomial operator* (C c) const { return Polynomial (*this)*=c; }
 
   Polynomial operator* (const Polynomial& q) const;

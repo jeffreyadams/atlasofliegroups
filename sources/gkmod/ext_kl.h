@@ -115,7 +115,7 @@ class KL_table
   // if possible also get contributions from $c_s*a_y$ into |out|
   bool direct_recursion(BlockElt y,weyl::Generator& s, BlockElt& sy) const;
 
-  bool do_new_recursion(BlockElt y);
+  void do_new_recursion(BlockElt y,PolHash& hash);
 
 }; // |KL_table|
 

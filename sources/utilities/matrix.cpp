@@ -14,6 +14,8 @@
 #include <cassert>
 #include <limits>
 #include <algorithm>
+#include <stdexcept>
+
 #include "matreduc.h"
 #include "permutations.h"
 #include "arithmetic.h"
@@ -75,10 +77,12 @@ Vector<C>& Vector<C>::operator*= (C c)
 template<typename C>
 Vector<C>& Vector<C>::operator/= (C c) throw (std::runtime_error)
 {
+  if (c==C(0))
+    throw std::runtime_error("Vector division by 0");
   for (typename Vector<C>::iterator it=base::begin(); it!=base::end(); ++it)
     if (*it%c==C(0))
       *it/=c;
-    else throw std::runtime_error("Inexact integer division");
+    else throw std::runtime_error("Inexact vector integer division");
   return *this;
 }
 

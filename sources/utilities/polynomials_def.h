@@ -30,6 +30,7 @@
 #include <cassert>
 #include <sstream>
 #include <algorithm> // |std::fill| and |std::copy|
+#include <stdexcept>
 
 #include "error.h"
 
@@ -164,6 +165,20 @@ Polynomial<C>& Polynomial<C>::operator*= (C c)
   if (c==C(0)) *this=Polynomial();
   else
     for (C* p=&*d_data.end(); p>&d_data[0]; ) *--p *= c;
+
+  return *this;
+}
+
+template<typename C>
+Polynomial<C>& Polynomial<C>::operator/= (C c)
+{
+  if (c==C(0))
+    throw std::runtime_error("Polynomial division by 0");
+  for (C* p=&*d_data.end(); p>&d_data[0]; )
+    if (*--p%c==C(0))
+      *p /= c;
+    else
+      throw std::runtime_error("Inexact polynomial integer division");
 
   return *this;
 }
