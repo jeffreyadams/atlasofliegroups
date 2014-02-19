@@ -150,6 +150,31 @@ int KL_table::mu(int i,BlockElt x, BlockElt y) const
   return Pxy.isZero() or Pxy.degree()<d ? 0 : Pxy[d];
 }
 
+Pol qk_plus_1(int k)
+{
+  assert(k>=1 and k<=3);
+  Pol res = Pol(k,1);
+  res[0] = 1;
+  return res;
+}
+
+Pol qk_minus_1(int k)
+{
+  assert(k>=1 and k<=3);
+  Pol res = Pol(k,1);
+  res[0] = -1;
+  return res;
+}
+
+Pol qk_minus_q(int k)
+{
+  assert(k>1 and k<=3);
+  Pol res = Pol(k,1);
+  res[1] = -1;
+  return res;
+}
+
+inline Pol m(int a,int b) { return a==0 ? Pol(b) : qk_plus_1(2)*a + Pol(1,b); }
 
 /*
   Use recursive formula (in degree-shifted Laurent polynomials in $r$)
@@ -224,7 +249,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 	   u<aux.length_floor(z); u++ )
 	if (aux.descent_set(u)[s] and M[u].degree()==2-aux.block.l(u,x)%2)
 	  b -= mu(M[u].degree(),x,u)*M[u][M[u].degree()];
-      return a==0 ? Pol(b) : qk_plus_1(2)*a + Pol(1,b);
+      return m(a,b);
     }
     // remains the |k==3|, even degree $m$ defect case
     Pol Q = product_comp(x,s,y);
@@ -240,7 +265,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 	  int mu_rem = M[u].degree()==0 ? M[u][0] : M[u][1]-2*M[u][0];
 	  b -= P(x,u).up_remainder(1,aux.block.l(u,x))*mu_rem;
 	}
-    return a==0 ? Pol(b) : qk_plus_1(2)*a + Pol(1,b);
+    return m(a,b);
   }
 
   // this was the general case, now unused; it always works but not optimally
@@ -313,32 +338,9 @@ Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
        u<aux.length_floor(y); u++ )
     if (aux.descent_set(u)[s] and M[u].degree()==2-aux.block.l(u,x)%2)
       b -= mu(M[u].degree(),x,u)*M[u][M[u].degree()];
-  return a==0 ? Pol(b) : qk_plus_1(2)*a + Pol(1,b);
+  return m(a,b);
 }
 
-Pol KL_table::qk_plus_1(int k) const
-{
-  assert(k>=1 and k<=3);
-  Pol res = Pol(k,1);
-  res[0] = 1;
-  return res;
-}
-
-Pol KL_table::qk_minus_1(int k) const
-{
-  assert(k>=1 and k<=3);
-  Pol res = Pol(k,1);
-  res[0] = -1;
-  return res;
-}
-
-Pol KL_table::qk_minus_q(int k) const
-{
-  assert(k>1 and k<=3);
-  Pol res = Pol(k,1);
-  res[1] = -1;
-  return res;
-}
 
 // component in product $(T_s+1)a_{sy}$ of element $a_x$
 Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
@@ -597,24 +599,16 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
     }
     else // |x| is extremal for |y|, must do computation
     { // first seek proper |s|
-      unsigned i; ext_block::DescValue tsx; weyl::Generator spare;
-      bool below=false;
+      unsigned i; ext_block::DescValue tsx; weyl::Generator s;
       for (i=0; i<rn_s.size(); ++i)
-	if (is_proper_ascent(tsx=type(rn_s[i],x)))
+	if (is_proper_ascent(tsx=type(s=rn_s[i],x)))
 	{
-	  below=true; // found at least one proper ascent
-	  if (is_complex(tsx) or has_defect(tsx)
-	      or tsx==ext_block::one_imaginary_pair_fixed
-	      or tsx==ext_block::two_imaginary_single_double)
+	  if (not is_like_type_1(tsx))
 	    break;
-	  else // type 1 ascent
-	    spare=rn_s[i]; // might have to do endgame for |s==spare|
+	  else if (aux.easy_set(aux.block.cross(s,x),y).any())
+	    break;
 	}
-      if (not below) // no proper ascents at all, |x| cannot be below |y|
-      {
-	*out_it++ = hash.match(cy[x]); // just leave |cy[x]==Pol(0)|
-	continue;
-      }
+
       if (i<rn_s.size())
       {
 	const weyl::Generator s=rn_s[i];
@@ -643,7 +637,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	    assert(c==0);
 	  ndebug_use(c);
 	}
-	else if (tsx==ext_block::one_imaginary_pair_fixed)
+	else if (is_like_type_2(tsx))
 	{
 	  BlockEltPair sx=aux.block.Cayleys(s,x);
 	  Pol S;
@@ -653,6 +647,19 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	    S += cy[sx.second];
 	  Q -= qk_minus_1(k)*S;
 	  Q/=2;
+	}
+	else if (is_like_type_1(tsx))
+	{ // this used to be called the endgame case
+	  BlockElt x_prime=aux.block.Cayley(s,x);
+	  if (x_prime<y)
+	    Q -= qk_minus_1(k)*cy[x_prime];
+	  BlockElt s_cross_x = aux.block.cross(s,x);
+	  const weyl::Generator t=aux.easy_set(s_cross_x,y).firstBit();
+	  BlockEltPair sx_up_t = aux.block.Cayleys(t,s_cross_x);
+	  if (sx_up_t.first<y)
+	    Q -= cy[sx_up_t.first];
+	  if (sx_up_t.second<y)
+	    Q -= cy[sx_up_t.second];
 	}
 	else
 	{
@@ -667,12 +674,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	  Q/=2;
 	}
 	// now |Q| is stored in |cy[x]|
-      }
-      else // endgame situation
-      { const weyl::Generator s=spare; // TODO
-	std::cerr << "Endgame case for " << aux.block.z(x) << ','
-		  << aux.block.z(y) << ", generator " << s+1 << std::endl;
-      }
+      } // end of |if(i<rn_s.size())|; no |else|, just leave |cy[x]==Pol(0)|
     } // end of easy/hard condition
 
     if (aux.very_easy_set(x,y).none())

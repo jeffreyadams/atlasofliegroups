@@ -73,8 +73,10 @@ bool is_unique_image(DescValue v);
 bool has_double_image(DescValue v);
 bool is_like_nonparity(DescValue v);
 bool is_like_compact(DescValue v);
-bool is_proper_ascent(DescValue v);
+bool is_like_type_1(DescValue v);
+bool is_like_type_2(DescValue v);
 bool has_defect(DescValue v);
+bool is_proper_ascent(DescValue v);
 
 DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
 			BlockElt& first_link);

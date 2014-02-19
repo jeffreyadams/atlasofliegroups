@@ -77,6 +77,24 @@ bool is_like_compact(DescValue v)
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
 
+bool is_like_type_1(DescValue v)
+{
+  static unsigned long mask =
+      1ul << one_imaginary_single | 1ul << one_real_pair_fixed
+    | 1ul << two_imaginary_single_single  | 1ul << two_real_double_double;
+
+  return (1ul << v & mask) != 0; // whether |v| is one of the above
+}
+
+bool is_like_type_2(DescValue v)
+{
+  static unsigned long mask =
+      1ul << one_imaginary_pair_fixed | 1ul << one_real_single
+    | 1ul << two_imaginary_double_double  | 1ul << two_real_single_single;
+
+  return (1ul << v & mask) != 0; // whether |v| is one of the above
+}
+
 bool is_proper_ascent(DescValue v)
 {
   return not(is_descent(v) or is_like_nonparity(v));

@@ -21,6 +21,11 @@ namespace ext_kl {
 typedef Polynomial<int> Pol;
 typedef const Pol& PolRef;
 
+Pol qk_plus_1(int k);
+inline Pol q_plus_1() { return qk_plus_1(1); }
+Pol qk_minus_1(int k);
+Pol qk_minus_q(int k);
+
 class descent_table
 {
   std::vector<RankFlags> descents; // sets of descents ($\tau$-invariants)
@@ -47,10 +52,10 @@ class descent_table
   { return block.length_first(block.length(y)); }
   unsigned int col_size(BlockElt y) const;
 
-  RankFlags very_easy_set(BlockElt& x, BlockElt y) const
+  RankFlags very_easy_set(BlockElt x, BlockElt y) const
   { return good_ascents[x]&descents[y]; }
 
-  RankFlags easy_set(BlockElt& x, BlockElt y) const
+  RankFlags easy_set(BlockElt x, BlockElt y) const
   { return descents[y]-descents[x]; }
 
   // set $x$ to last primitive element for $y$ strictly before $x$, or fail
@@ -93,11 +98,6 @@ class KL_table
  private:
   typedef HashTable<PolEntry,kl::KLIndex> PolHash;
   void fill_next_column(PolHash& hash);
-
-  Pol q_plus_1() const { return qk_plus_1(1); }
-  Pol qk_plus_1(int k) const;
-  Pol qk_minus_1(int k) const;
-  Pol qk_minus_q(int k) const;
 
   // component of basis element $a_x$ in product $(T_s+1)a_{sy}$
   Pol product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const;
