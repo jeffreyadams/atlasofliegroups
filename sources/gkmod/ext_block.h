@@ -101,13 +101,13 @@ class extended_block
   {
     DescValue type;
     BlockEltPair links; // one or two values, depending on |type|
-    bool epsilon; // whether second Cayley link carries minus sign
-  block_fields(DescValue t)
-  : type(t),links(UndefBlock,UndefBlock),epsilon(false) {}
+  block_fields(DescValue t) : type(t),links(UndefBlock,UndefBlock) {}
   };
 
   const Block_base& parent;
-  const TwistedWeylGroup& tW;
+  const TwistedWeylGroup& tW; // needed for printing only
+  const DynkinDiagram folded;
+
   std::vector<elt_info> info; // its size defines the size of the block
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
   BlockEltList l_start; // where elements of given length start
@@ -119,10 +119,11 @@ class extended_block
 
 // accessors
 
-  size_t rank() const { return parent.folded_rank(); }
+  size_t rank() const { return data.size(); }
   size_t size() const { return info.size(); }
 
   ext_gen orbit(weyl::Generator s) const { return parent.orbit(s); }
+  const DynkinDiagram& Dynkin() const { return folded; }
 
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
 
@@ -154,7 +155,8 @@ class extended_block
   // print whole block to stream (name chosen to avoid masking by |print|)
   std::ostream& print_to(std::ostream& strm) const; // defined in |block_io|
 
-
+ private:
+  void patch_signs();
 }; // |class extended_block|
 
 } // |namespace ext_block|

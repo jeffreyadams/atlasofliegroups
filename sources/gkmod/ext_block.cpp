@@ -220,11 +220,13 @@ extended_block::inverse_Cayleys(weyl::Generator s, BlockElt n) const
 int extended_block::epsilon(weyl::Generator s, BlockElt n,unsigned i) const
 {
   if (i==0)
-    return 1; // for now we assume the first Cayley link is always unflipped
+    return 1; // the first Cayley link is always unflipped
   const DescValue type = descent_type(s,n);
-  if (type==two_imaginary_single_double or type==two_real_single_double)
-    return data[s][n].epsilon ? -1 : 1;
-  return 1;
+  if (type!=two_imaginary_single_double and type!=two_real_single_double)
+    return 1; // cases where epsilon is not needed; always $1$
+
+  // epsilon is $-1$ for a pair that mutually refer through the second link
+  return n==data[s][data[s][n].links.second].links.second ? -1 : 1;
 }
 
 BlockEltList extended_block::down_set(BlockElt n) const
@@ -304,7 +306,7 @@ DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
 	return two_imaginary_single_single; // really just a guess
       assert(block.Hermitian_dual(link)==link);
       return block.descentValue(p.s0,link)==DescentStatus::RealTypeI
-	? two_imaginary_single_single :  two_imaginary_single_double;
+	? two_imaginary_single_single : two_imaginary_single_double;
     case DescentStatus::RealTypeII:
       link=block.inverseCayley(p.s0,z).first;
       if (link==UndefBlock)
@@ -429,6 +431,7 @@ extended_block::extended_block
 (const Block_base& block,const TwistedWeylGroup& W)
   : parent(block)
   , tW(W)
+  , folded(blocks::folded(block.Dynkin(),block.fold_orbits()))
   , info()
   , data(parent.folded_rank())
   , l_start(parent.length(parent.size()-1)+2)
@@ -465,29 +468,28 @@ extended_block::extended_block
     info.back().length = parent.length(z);
     for (weyl::Generator s=0; s<folded_rank; ++s)
     {
-      BlockElt link;
+      BlockElt link, second = UndefBlock;
       DescValue type = extended_type(block,z,parent.orbit(s),link);
       data[s].push_back(block_fields(type)); // create entry for block element
       if (link==UndefBlock)
 	continue; // |s| done for imaginary compact and real nonparity cases
-      data[s].back().links.first=child_nr[link];
-      BlockElt second = UndefBlock;
-      switch (type)
+
+      switch (type) // maybe set |second|, depending on case
       {
-      default: continue;
+      default: break;
 
       case one_imaginary_single:
-      case one_real_single: // in these cases find "cross neighbour" for |s|
+      case one_real_single: // in these cases: parent cross neighbour for |s|
 	second = parent.cross(parent.orbit(s).s0,z);
 	break;
 
       case one_real_pair_fixed:
-      case one_imaginary_pair_fixed: // in these cases find second Cayley image
+      case one_imaginary_pair_fixed: // in these cases: second Cayley image
 	second = parent.cross(parent.orbit(s).s0,link);
 	break;
 
       case two_imaginary_single_single:
-      case two_real_single_single: // now find "double cross neighbour" for |s|
+      case two_real_single_single: // here: double cross neighbour for |s|
 	if (parent.cross(parent.orbit(s).s0,z)==UndefBlock)
 	  if (parent.cross(parent.orbit(s).s1,z)==UndefBlock)
 	    continue; // can't get there, let's hope it doesn't exist
@@ -504,9 +506,11 @@ extended_block::extended_block
 	break;
 
       case two_imaginary_single_double:
-      case two_real_single_double: // find second Cayley image
-	second = parent.cross(parent.orbit(s).s0,link);
-	assert(parent.cross(parent.orbit(s).s1,link)==second);
+      case two_real_single_double: // find second Cayley image, which is
+	second = parent.cross(parent.orbit(s).s0,link); // parent cross link
+	assert(parent.cross(parent.orbit(s).s1,link)==second); // (either gen)
+	if (link>second) // to make sure ordering is same for a twin pair
+	  std::swap(link,second); // we order both by block number (for now)
 	break;
 
       case two_imaginary_double_double:
@@ -526,28 +530,183 @@ extended_block::extended_block
 		   ==second);
 	}
 	break;
-      }
-      if (second!=UndefBlock)
-	data[s].back().links.second = child_nr[second];
+      } // |switch(type)|
 
-      // compute epsilon values in relevant cases
-      if (type==two_imaginary_single_double)
-      { // ensure Cayley links are in increasing order
-	if (data[s].back().links.first>data[s].back().links.second)
-	  std::swap(data[s].back().links.first,data[s].back().links.second);
-      }
-      if (type==two_real_single_double) // install from descent
-      { // ensure Cayley links are in increasing order
-	if (data[s].back().links.first>data[s].back().links.second)
-	  std::swap(data[s].back().links.first,data[s].back().links.second);
-	// now if |n| is second link of out second link, mark both
-	BlockElt Cayley2 = data[s].back().links.second; // our 2nd link
-	if (data[s][Cayley2].links.second==n) // we are their second link too
-	  data[s].back().epsilon = data[s][Cayley2].epsilon = true;
-      }
+      // enter translations of |link| and |second| to child block numbering
+      BlockEltPair& dest = data[s].back().links;
+      dest.first=child_nr[link];
+      if (second!=UndefBlock)
+	dest.second = child_nr[second];
     }
   } // |for(n)|
+  patch_signs();
 } // |extended_block::extended_block|
+
+void extended_block::patch_signs()
+{
+  for (weyl::Generator s=0; s<rank(); ++s)
+    if (orbit(s).length()==2)
+    {
+      std::vector<block_fields>& ds = data[s]; // the array to update
+      const RankFlags adj_gen=folded.star(s);
+      std::vector<BlockEltPair> i12s, r21s;
+      std::vector<unsigned int> loc(size(),~0);
+      for (BlockElt n=0,m; n<size(); ++n)
+	if (descent_type(s,n)==two_imaginary_single_double and
+	    ds[m=ds[n].links.first].links.first==n)
+	{
+	  loc[n] = loc[m] = // make lookup of |n,m| possible
+	    loc[ds[n].links.second] = // and of their twins
+	    loc[ds[m].links.second] = i12s.size();
+	  r21s.push_back(ds[n].links);
+	  i12s.push_back(ds[m].links);
+	}
+      BitMap i_todo(i12s.size()), r_todo(i12s.size());
+      BitMap i_ordered(i12s.size()), r_ordered(i12s.size());
+      for (unsigned i=0; i<i12s.size(); ++i)
+	for (RankFlags::iterator it=adj_gen.begin(); it(); ++it)
+	{
+	  BlockElt n=i12s[i].first;
+	  DescValue t1 = descent_type(*it,n),
+	    t2=descent_type(*it,i12s[i].second);
+	  if (t1==one_imaginary_single or t2==one_imaginary_single)
+	  {
+	    if (t1==one_imaginary_single)
+	      assert (t2==one_imaginary_compact);
+	    else
+	    { // second of pair |i12s[i]| is "preferred" one, so swap the pair
+	      assert (t1==one_imaginary_compact);
+	      i12s[i].first=i12s[i].second; i12s[i].second=n;
+
+	      std::cerr << "Swap 2i12 pair(" << z(i12s[i].first) << ','
+			<< z(n) << ')' << std::endl;
+
+	      // but the real effect is in link order from the 2r21 twins
+	      ds[r21s[i].first].links =	ds[r21s[i].second].links = i12s[i];
+	    }
+	    i_ordered.insert(i); // mark as certainly correctly ordered
+	    i_todo.insert(i);    // and record for propagation
+	  }
+
+	  n=r21s[i].first; // now do the same for the 2r21 twins
+	  t1 = descent_type(*it,n);
+	  t2 = descent_type(*it,r21s[i].second);
+	  if (t1==one_real_single or t2==one_real_single)
+	  {
+	    if (t1==one_real_single)
+	      assert (t2==one_real_nonparity);
+	    else
+	    { // second of pair |r21s[i]| is "preferred" one, so swap the pair
+	      assert (t1==one_real_nonparity);
+	      r21s[i].first=r21s[i].second; r21s[i].second=n;
+
+	      std::cerr << "Swap 2r21 pair(" << z(r21s[i].first) << ','
+			<< z(n) << ')' << std::endl;
+
+	      // but the real effect is in link order from the 2i12 twins
+	      ds[i12s[i].first].links =	ds[i12s[i].second].links = r21s[i];
+	    }
+	    r_ordered.insert(i); // mark as certainly correctly ordered
+	    r_todo.insert(i);    // record for propagation
+	  }
+	} // |for(it), for(i)|
+
+      RankFlags nonadj_gen = adj_gen;
+      nonadj_gen.complement(rank()); nonadj_gen.reset(s);
+
+      // iterate over |i_todo| until exhausted
+      for(BitMap::iterator p = i_todo.begin(); p(); p = i_todo.begin())
+        do
+	{
+	  unsigned i= *p;
+	  for (RankFlags::iterator it=nonadj_gen.begin(); it(); ++it)
+	    if (is_complex(descent_type(*it,i12s[i].first)))
+	    {
+	      BlockElt n = cross(*it,i12s[i].first);
+	      if (n==UndefBlock)
+		continue; // might happen in partial blocks
+	      unsigned j=loc[n];
+	      assert(j!=~0u);
+	      if (i_ordered.isMember(j) or i_todo.isMember(j))
+	      {
+		assert (i12s[j].first==n);
+		continue; // avoid swithching twice
+	      }
+	      if (i12s[j].first==n)
+	      {
+		assert (i12s[j].second = cross(*it,i12s[i].second));
+		assert(ds[r21s[j].first].links==i12s[j]);
+	      }
+	      else
+	      {
+		std::swap(i12s[j].first,i12s[j].second);
+		assert (i12s[j].first==n);
+		assert (i12s[j].second = cross(*it,i12s[i].second));
+		ds[r21s[j].first].links=i12s[j]; // switch Cayley links
+	      }
+	      i_todo.insert(j);
+	    }
+	  i_todo.remove(i);
+	  i_ordered.insert(i);
+	}
+	while((++p)()); // advance pointer to next element to do; if so repeat
+
+      // iterate over |r_todo| until exhausted
+      for(BitMap::iterator p = r_todo.begin(); p(); p = r_todo.begin())
+        do
+	{
+	  unsigned i= *p;
+	  for (RankFlags::iterator it=nonadj_gen.begin(); it(); ++it)
+	    if (is_complex(descent_type(*it,r21s[i].first)))
+	    {
+	      BlockElt n = cross(*it,r21s[i].first);
+	      if (n==UndefBlock)
+		continue; // might happen in partial blocks
+	      unsigned j=loc[n];
+	      assert(j!=~0u);
+	      if (r_ordered.isMember(j) or r_todo.isMember(j))
+	      {
+		assert (r21s[j].first==n); // check that order is already OK
+		continue; // avoid switching twice
+	      }
+	      if (r21s[j].first==n)
+	      {
+		assert (r21s[j].second = cross(*it,r21s[i].second));
+		assert(ds[i12s[j].first].links==r21s[j]);
+	      }
+	      else
+	      {
+		std::swap(r21s[j].first,r21s[j].second);
+		assert (r21s[j].first==n);
+		assert (r21s[j].second = cross(*it,r21s[i].second));
+		ds[i12s[j].first].links=r21s[j]; // switch Cayley links
+	      }
+	      r_todo.insert(j);
+	    }
+	  r_todo.remove(i);
+	  r_ordered.insert(i);
+	}
+	while((++p)()); // advance pointer to next element to do; if so repeat
+
+      continue; // skip reporting for now
+      if (not (i_ordered.full() and r_ordered.full())) // then report
+      {
+	std::cerr
+	  << "Failed to order certain 2i12 and/or 2r21 pairs for generator "
+	  << s+1 << ":\n";
+	for (unsigned i=0; i<i12s.size(); ++i)
+	{
+ 	  if (not i_ordered.isMember(i))
+	    std::cerr << '(' << z(i12s[i].first) << ',' << z(i12s[i].second)
+		      << (r_ordered.isMember(i) ? ")\n" : ") and ");
+	  if (not r_ordered.isMember(i))
+	    std::cerr << '(' << z(r21s[i].first) << ',' << z(r21s[i].second)
+		      << ")\n";
+	}
+	std::cerr << std::flush;
+      } // end report unordered pairs
+    } // |for(s)|
+} // |extended_block::patch_signs|
 
 } // namespace ext_block
 

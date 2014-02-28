@@ -156,6 +156,7 @@ inline BlockElt& first_free_slot(BlockEltPair& p)
 Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
   : info(), data(kgb.rank()), orbits()
   , d_first_z_of_x() // filled below
+  , dd(kgb.complexGroup().rootDatum().cartanMatrix())
   , d_bruhat(NULL)
   , klc_ptr(NULL)
 {
@@ -165,6 +166,7 @@ Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
 Block_base::Block_base(unsigned int rank)
   : info(), data(rank), orbits()
   , d_first_z_of_x()
+  , dd()
   , d_bruhat(NULL)
   , klc_ptr(NULL)
 {}
@@ -172,6 +174,7 @@ Block_base::Block_base(unsigned int rank)
 Block_base::Block_base(const Block_base& b) // copy constructor, unused
   : info(b.info), data(b.data), orbits(b.orbits)
   , d_first_z_of_x(b.d_first_z_of_x)
+  , dd(b.dd)
   , d_bruhat(NULL) // don't care to copy; is empty in |Block::build| anyway
   , klc_ptr(NULL)  // likewise
 {
@@ -895,6 +898,8 @@ non_integral_block::non_integral_block
 {
   const ComplexReductiveGroup& G = complexGroup();
   const RootDatum& rd = G.rootDatum();
+  Block_base::dd = DynkinDiagram(rd.cartanMatrix());
+
   const InvolutionTable& i_tab = G.involution_table();
   const KGB& kgb = rc.kgb();
 
@@ -1391,6 +1396,8 @@ non_integral_block::non_integral_block
   , z_hash(info)
 {
   const RootDatum& rd = complexGroup().rootDatum();
+  Block_base::dd = DynkinDiagram(rd.cartanMatrix());
+
   const KGB& kgb = rc.kgb();
 
   rc.make_dominant(sr); // make dominant before computing subsystem
@@ -1725,11 +1732,40 @@ std::vector<BlockElt> dual_map(const Block_base& b, const Block_base& dual_b)
   return result;
 }
 
-BitMap common_Cartans(RealReductiveGroup& GR,
-			      RealReductiveGroup& dGR)
-  { return GR.Cartan_set()
-      & GR.complexGroup().dual_Cartan_set(dGR.realForm());
+// build Dynkin diagram resulting from folding by diagram involution |fold|
+DynkinDiagram folded
+  (const DynkinDiagram& diag, const std::vector<ext_gen>& orbit)
+{
+  unsigned n=orbit.size();
+  // we can only build complete Dynkin diagrams, so compute the Cartan matrix
+  int_Matrix Cartan(n,n,0);
+  for (unsigned int i=0; i<n; ++i)
+  {
+    Cartan(i,i) = 2;
+    RankFlags neighbours = diag.star(orbit[i].s0);
+    if (orbit[i].length()>1)
+      neighbours |= diag.star(orbit[i].s1);
+    for (unsigned j=n; --j>i;)
+      if (neighbours[orbit[j].s0])
+      {
+	int d=orbit[i].length()-orbit[j].length();
+	if (d==0)
+	{
+	  Cartan(i,j)=diag.cartanEntry(i,j); // for same type orbits just
+	  Cartan(j,i)=diag.cartanEntry(j,i); // copy Cartan matrix entry
+	}
+	else // unequal type, mark $-2$ when first index is longer than second
+	{
+	  Cartan(i,j)=d>0 ? -2 : -1;
+	  Cartan(j,i)=d<0 ? -2 : -1;
+	}
+      }
   }
+  return DynkinDiagram(Cartan);
+} // |folded|
+
+BitMap common_Cartans(RealReductiveGroup& GR, RealReductiveGroup& dGR)
+{ return GR.Cartan_set() & GR.complexGroup().dual_Cartan_set(dGR.realForm()); }
 
 } // namespace blocks
 
