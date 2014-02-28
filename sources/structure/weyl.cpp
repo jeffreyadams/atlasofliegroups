@@ -146,7 +146,7 @@ WeylGroup::WeylGroup(const int_Matrix& c)
 {
   /* analyse the Cartan matrix */
 
-  dynkin::DynkinDiagram d(c); // make diagram from Cartan matrix
+  DynkinDiagram d(c); // make diagram from Cartan matrix
   // find renumbering |a| putting labels in canonical order
   Permutation a= dynkin::normalize(d);
 

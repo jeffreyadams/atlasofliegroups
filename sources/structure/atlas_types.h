@@ -220,6 +220,9 @@ namespace atlas {
   typedef std::vector<RootNbr> RootNbrList;
   typedef bitmap::BitMap RootNbrSet;
 
+  namespace dynkin { class DynkinDiagram; }
+  using dynkin::DynkinDiagram;
+
   namespace weyl {
     class Twist; // diagram automorphism (in practice always an involution)
     typedef Twist WeylInterface; // no automorphism, but same implementation
