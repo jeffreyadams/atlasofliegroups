@@ -7,7 +7,7 @@ ComplexReductiveGroup.
   This is complexredgp.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006--2001 Marc van Leeuwen
+  Copyright (C) 2006--2010 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file

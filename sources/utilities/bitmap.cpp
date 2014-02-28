@@ -551,7 +551,7 @@ void BitMap::swap(BitMap& other)
   course not what a non-constant iterator should allow doing). On the other
   hand we may modify our bitmap |M| using this iterator |it|, notably to clear
   the set bit |it| points at by |M.remove(*it)|. Unlike the situation for
-  |std::set|, such a removal does not invalidate the iterator |it| itself, do
+  |std::set|, such a removal does not invalidate the iterator |it| itself, so
   it is not an invariant of the |BitMap::iterator| class that it always points
   at a set bit.
 
@@ -621,7 +621,7 @@ BitMap::iterator& BitMap::iterator::operator++ ()
 /*!
   Post-increment operator; it should return the value as it was _before_ the
   incrementation. This operator can mostly by avoided, as |M.remove(*it++)|
-  can safely be replaced by |M.remove(*it),it++|
+  can safely be replaced by |M.remove(*it),++it|
 */
 BitMap::iterator BitMap::iterator::operator++ (int)
 {
