@@ -444,15 +444,15 @@ Block::Block(const KGB& kgb,const KGB& dual_kgb)
   , xrange(kgb.size()), yrange(dual_kgb.size())
   , d_Cartan(), d_involution(), d_involutionSupport() // filled below
 {
-  const TwistedWeylGroup& dual_W =dual_kgb.twistedWeylGroup();
+  const TwistedWeylGroup& dual_tW =dual_kgb.twistedWeylGroup();
 
-  std::vector<TwistedInvolution> dual_w; // tabulate bijection |W| -> |dual_W|
+  std::vector<TwistedInvolution> dual_w; // tabulate bijection |tW->dual_tW|
   dual_w.reserve(kgb.nr_involutions());
   size_t size=0;
   for (unsigned int i=0; i<kgb.nr_involutions(); ++i)
   {
     const TwistedInvolution w = kgb.nth_involution(i);
-    dual_w.push_back(dual_involution(w,tW,dual_W));
+    dual_w.push_back(dual_involution(w,tW,dual_tW));
     size += kgb.packet_size(w)*dual_kgb.packet_size(dual_w.back());
   }
 
@@ -1669,46 +1669,47 @@ std::vector<set::EltList> makeHasse(const Block_base& block)
 /*
   We have $\tau = w.\delta$, with $w$ in the Weyl group $W$, and $\delta$ the
   fundamental involution of $X^*$. We seek the twisted involution $v$ in the
-  dual twisted Weyl group |dual_W| such that $-\tau^t = v.\delta^\vee$. Here
-  $\delta^\vee$ is the dual fundamental involution, which acts on $X_*$ as
-  minus the transpose of the longest involution $w_0.\delta$, where $w_0$ is
-  the longest element of $W$. This relation relation can be defined
-  independently of being a twisted involution, and leads to a bijection $f$:
-  $W \to W$ that is characterised by $f(e)=w_0$ and $f(s.w)=f(w)dwist(s)$ for
-  any simple generator $e$ and $w\in W$, where $dwist$ is the twist of the
-  dual twisted Weyl group (one also has $f(w.twist(s))=s.f(w)$ so that $f$
-  intertwines twisted conjugation: $f(s.w.twist(s))=s.f(w).dwist(s)$).
+  dually twisted Weyl group |dual_tW| such that $-\tau^t = v.\delta^\vee$.
+  Here $\delta^\vee$ is the dual fundamental involution, which acts on $X_*$
+  as minus the transpose of the longest involution $w_0.\delta$, where $w_0$
+  is the longest element of $W$. This relation can be defined independently of
+  being a twisted involution, and leads to a bijection $f: W \to W$ that is
+  characterised by $f(e)=w_0$ and $f(s.w)=f(w).dwist(s)$ for any simple
+  generator $s$ and $w\in W$, where $dwist$ is the twist of the dual twisted
+  Weyl group (one also has $f(w.twist(s))=s.f(w)$ so that $f$ intertwines
+  twisted conjugation: $f(s.w.twist(s))=s.f(w).dwist(s)$).
 
   The implementation below is based directly on the above characterisation, by
   converting |w| into a |WeylWord|, and then starting from $w_0$
   right-multiplying successively by the $dwist$ image of the letters of the
-  word taken right-to-left. The only thing assumed common to |W| and |W_dual|
-  is the \emph{external} numbering of generators (letters in |ww|), a minimal
-  requirement without which the notion of dual twisted involution would make
-  no sense. Notably the result will be correct (when interpreted for |dual_W|)
-  even if the underlying (untwisted) Weyl groups of |W| and |dual_W| should
-  differ in their external-to-internal mappings. If one assumes that |W| and
-  |dual_W| share the same underlying Weyl group (as is currently the case for
-  an inner class and its dual) then one could alternatively say simply
+  word taken right-to-left. The only thing assumed common to |tW| and
+  |dual_tW| is the \emph{external} numbering of generators (letters in |ww|),
+  a minimal requirement without which the notion of dual twisted involution
+  would make no sense. Notably the result will be correct (when interpreted
+  for |dual_tW|) even if the underlying (untwisted) Weyl groups of |W| and
+  |dual_W| should differ in their external-to-internal mappings. If one
+  assumes that |W| and |dual_W| share the same underlying Weyl group (as is
+  currently the case for an inner class and its dual) then one could
+  alternatively say simply
 
-    |return W.prod(W.weylGroup().longest(),dual_W.twisted(W.inverse(w)))|
+    |return tW.prod(tW.weylGroup().longest(),dual_tW.twisted(W.inverse(w)))|
 
   or
 
-    |return W.prod(W.inverse(W.twisted(w)),W.weylGroup().longest())|.
+    |return tW.prod(tW.inverse(tW.twisted(w)),tW.weylGroup().longest())|.
 
   Note that this would involve implicit conversion of an element of |W| as one
-  of |dual_W|.x
+  of |dual_W|.
 */
 TwistedInvolution
 dual_involution(const TwistedInvolution& w,
-		const TwistedWeylGroup& W,
-		const TwistedWeylGroup& dual_W)
+		const TwistedWeylGroup& tW,
+		const TwistedWeylGroup& dual_tW)
 {
-  WeylWord ww= W.word(w);
-  TwistedInvolution result = dual_W.weylGroup().longest();
+  WeylWord ww= tW.word(w);
+  TwistedInvolution result = dual_tW.weylGroup().longest();
   for (size_t i=ww.size(); i-->0; )
-    dual_W.mult(result,dual_W.twisted(ww[i]));
+    dual_tW.mult(result,dual_tW.twisted(ww[i]));
   return result;
 }
 
