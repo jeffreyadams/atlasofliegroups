@@ -269,6 +269,10 @@ inner_class: (Lie_type,[ratvec],string->InnerClass): inner class as in Atlas
     ; rd=root_datum(lt,basis), inv=based_involution(lt,basis,ic_string)
     in inner_class(rd,inv).
 
+operator = : (InnerClass,InnerClass->bool): identity of inner classes
+  This holds only when both arguments refer to the same inner class creation,
+  in other words it will recognise ic=inner_class(real_form(ic,0)) as true,
+  but any freshly built inner class tests unequal to anything preexisting
 distinguished_involution: (InnerClass->mat): involution of the inner class.
   Extract the distinguised involution from the InnerClass value
 dual: (InnerClass->InnerClass): dual inner class for dual complex group
@@ -300,6 +304,7 @@ real_form: (InnerClass,int->RealForm): select a real form from inner class.
   position (starting from 0). The list is always the same for a given inner
   class (independent of other computations), unlike the list of Cartan classes
   for a real form as discussed below
+form_number: (RealForm->int): index of the real form in its inner class
 real_form: (DualRealForm->RealForm): interpret dual real form as real form
   This function allows a DualRealForm value to be interpreted as a real form
   for the dual group (and dual inner class), so that functions like KGB_size
@@ -358,6 +363,14 @@ real_forms: (CartanClass->[RealForm]): list of real forms with given Cartan
 dual_real_forms: (CartanClass->[DualRealForm]): list Cartan's dual real forms
   Returns a list of the dual real forms for which this Cartan class occurs
 
+square_classes: (CartanClass->[[int]]): partition real forms by square class
+  This returns a list of lists of numbers that identify real forms in the
+  inner class. All real forms whose representative strong involutions may
+  square to the same value in the center are grouped together in a sublist
+  (the number of sublists is a power of 2). Each number occurs only in a
+  single sublist, but may be repeated, which indicates that there are mulitple
+  orbits of strong involutions (strong real forms) for the same real form.
+  The value returned represents a part of the print_strong_real output.
 fiber_part: (CartanClass,RealForm->[int]): part of fiber group for real form
   This produces an increasing sequence of integers that characterizes the real
   form relative to the CartanClass. It describes a part of the adjoint fiber

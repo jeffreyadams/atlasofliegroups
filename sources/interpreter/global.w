@@ -187,7 +187,7 @@ parser currently passes |overload==0| only when the
 ``\\{identifier}\.:\\{value}'' syntax is used to introduce a new identifier.
 
 However, the code below sets |overload=0| also whenever the defining
-expression has anything other that a function type (which must in addition
+expression has anything other than a function type (which must in addition
 take at least one argument); in particular this makes it impossible to add
 multiple items to the overload table with a single \&{set} command. This
 restriction is mostly motivated by the complications that allowing mixing of
