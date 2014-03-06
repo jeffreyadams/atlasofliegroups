@@ -83,6 +83,7 @@ namespace atlas {
     template<typename C> class Vector;
     template<typename C> class Matrix_base;
     template<typename C> class Matrix;
+    template<typename C> class PID_Matrix;
   }
   namespace ratvec { template<typename C> class RationalVector; }
 
@@ -151,7 +152,7 @@ namespace atlas {
 
   // interpetationless terminology
   typedef matrix::Vector<int> int_Vector;
-  typedef matrix::Matrix<int> int_Matrix;
+  typedef matrix::PID_Matrix<int> int_Matrix;
   typedef std::vector<int_Vector> int_VectorList;
 
   // when related to a root system, these alternatives can be used
@@ -172,7 +173,7 @@ namespace atlas {
   typedef std::vector<LatticeCoeff> CoeffList; // no vector arithmetic here
   typedef matrix::Vector<LatticeCoeff> LatticeElt;
   typedef std::vector<LatticeElt> latticeEltList;
-  typedef matrix::Matrix<LatticeCoeff> LatticeMatrix;
+  typedef matrix::PID_Matrix<LatticeCoeff> LatticeMatrix;
 
   namespace bitvector {
     template<size_t> class BitVector;

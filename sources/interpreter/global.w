@@ -642,9 +642,9 @@ will be stored.
 
 @< Type definitions @>=
 struct matrix_value : public value_base
-{ matrix::Matrix<int> val;
+{ int_Matrix val;
 @)
-  explicit matrix_value(const matrix::Matrix<int>& v) : val(v) @+ {}
+  explicit matrix_value(const int_Matrix& v) : val(v) @+ {}
   ~matrix_value()@+ {}
   virtual void print(std::ostream& out) const;
   matrix_value* clone() const @+{@; return new matrix_value(*this); }
@@ -850,7 +850,7 @@ void veclist_matrix_convert()
       column_list[i].resize(depth);
       for (;j<depth; ++j) column_list[i][j]=0;
     }
-  push_value(new matrix_value(matrix::Matrix<int>(column_list,depth)));
+  push_value(new matrix_value(int_Matrix(column_list,depth)));
 }
 
 @ There remains one ``internalising'' conversion function, from row of row of
@@ -873,7 +873,7 @@ void intlistlist_matrix_convert()
       column_list[i].resize(depth);
       for (;j<depth; ++j) column_list[i][j]=0;
     }
-  push_value(new matrix_value(matrix::Matrix<int>(column_list,depth)));
+  push_value(new matrix_value(int_Matrix(column_list,depth)));
 
 }
 
@@ -1621,13 +1621,12 @@ void null_vec_wrapper(expression_base::level lev)
 { int l=get<int_value>()->val;
   int k=get<int_value>()->val;
   if (lev!=expression_base::no_value)
-    push_value(new matrix_value
-      (matrix::Matrix<int>(std::abs(k),std::abs(l),0)));
+    push_value(new matrix_value(int_Matrix(std::abs(k),std::abs(l),0)));
 }
 void transpose_vec_wrapper(expression_base::level l)
 { shared_vector v=get<vector_value>();
   if (l!=expression_base::no_value)
-  { matrix_ptr m (new matrix_value(matrix::Matrix<int>(1,v->val.size())));
+  { matrix_ptr m (new matrix_value(int_Matrix(1,v->val.size())));
     for (size_t j=0; j<v->val.size(); ++j)
       m->val(0,j)=v->val[j];
     push_value(m);
@@ -1654,7 +1653,7 @@ to do the work.
 void id_mat_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new matrix_value(matrix::Matrix<int>(std::abs(i)))); // identity
+    push_value(new matrix_value(int_Matrix(std::abs(i)))); // identity
 }
 
 @ We also define |diagonal_wrapper|, a slight generalisation of
@@ -1666,7 +1665,7 @@ void diagonal_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   size_t n=d->val.size();
-  matrix_ptr m (new matrix_value(matrix::Matrix<int>(n)));
+  matrix_ptr m (new matrix_value(int_Matrix(n)));
   for (size_t i=0; i<n; ++i)
     m->val(i,i)=d->val[i];
   push_value(m);
@@ -1703,8 +1702,8 @@ matrix.
 void diagonalize_wrapper(expression_base::level l)
 { shared_matrix M=get<matrix_value>();
   if (l!=expression_base::no_value)
-  { matrix_ptr row(new matrix_value(matrix::Matrix<int>())),
-            column(new matrix_value(matrix::Matrix<int>()));
+  { matrix_ptr row(new matrix_value(int_Matrix())),
+            column(new matrix_value(int_Matrix()));
     vector_ptr diagonal(
        new vector_value(matreduc::diagonalise(M->val,row->val,column->val)));
     push_value(diagonal);

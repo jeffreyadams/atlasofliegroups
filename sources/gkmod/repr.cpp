@@ -67,7 +67,7 @@ StandardRepr
   const RatWeight diff = lambda - nu;
   const RatWeight theta_diff(theta*diff.numerator(),
 			     diff.denominator()); // theta(lambda-nu)
-  const Weight lambda_rho = (lambda2-khc.rootDatum().twoRho())/=2;
+  const Weight lambda_rho = (lambda2-khc.rootDatum().twoRho())/2;
   return StandardRepr(x,i_tab.pack(i_x,lambda_rho),
 		      ((lambda+nu+theta_diff)/=2).normalize());
 }
@@ -106,7 +106,7 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
   Ratvec_Numer_t im_part2 = gamma_rho.numerator()+theta*gamma_rho.numerator();
   im_part2 /= gamma_rho.denominator(); // exact: $(1+\theta)(\lambda-\rho)$
   Weight i2(im_part2.begin(),im_part2.end()); // convert to |Weight|
-  return (i2 + i_tab.unpack(i_x,z.y()))/=2; // division exact again
+  return (i2 + i_tab.unpack(i_x,z.y()))/2; // division exact again
 }
 
 // return $\lambda \in \rho+X^*$ as half-integer rational vector

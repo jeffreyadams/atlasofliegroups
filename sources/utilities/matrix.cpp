@@ -75,15 +75,15 @@ Vector<C>& Vector<C>::operator*= (C c)
   All entries must allow exact division, if not a std::runtime_error is thrown
 */
 template<typename C>
-Vector<C>& Vector<C>::operator/= (C c) throw (std::runtime_error)
+Vector<C>& operator/= (Vector<C>& v,C c) throw (std::runtime_error)
 {
   if (c==C(0))
     throw std::runtime_error("Vector division by 0");
-  for (typename Vector<C>::iterator it=base::begin(); it!=base::end(); ++it)
+  for (typename std::vector<C>::iterator it=v.begin(); it!=v.end(); ++it)
     if (*it%c==C(0))
       *it/=c;
     else throw std::runtime_error("Inexact vector integer division");
-  return *this;
+  return v;
 }
 
 template<typename C>
@@ -110,7 +110,7 @@ template<typename C>
   bool Vector<C>::isZero() const
 {
   for (size_t i=0; i<base::size(); ++i)
-    if ((*this)[i]!=0)
+    if ((*this)[i]!=C(0))
       return false;
   return true;
 }
@@ -324,14 +324,14 @@ Matrix<C> Matrix<C>::operator* (const Matrix<C>&  m) const
   This function constructs expresses our square matrix on the basis b.
 */
 template<typename C>
-  Matrix<C> Matrix<C>::on_basis(const std::vector<Vector<C> >& b) const
+  PID_Matrix<C> PID_Matrix<C>::on_basis(const std::vector<Vector<C> >& b) const
 {
   assert (base::numRows()==base::numColumns());
   assert (b.size()==base::numRows());
 
-  Matrix<C> p(b,b.size()); // square matrix
+  PID_Matrix<C> p(b,b.size()); // square matrix
   C d;
-  Matrix<C> result(p.inverse(d)* *this *p);
+  PID_Matrix<C> result(p.inverse(d)* *this *p);
   return result /= d;
 }
 
@@ -421,7 +421,7 @@ Matrix<C>& Matrix<C>::operator-= (const Matrix<C>&  m)
 
 
 template<typename C>
-Matrix<C>& Matrix<C>::operator/= (const C& c) throw (std::runtime_error)
+PID_Matrix<C>& PID_Matrix<C>::operator/= (const C& c) throw (std::runtime_error)
 {
   if (c != C(1))
     base::d_data /= c;
@@ -459,7 +459,7 @@ template<typename C> void Matrix<C>::transpose()
   Here we invert the matrix without catching the denominator. The intent
   is that it should be used for invertible matrices only.
 */
-template<typename C> void Matrix<C>::invert()
+template<typename C> void PID_Matrix<C>::invert()
 {
   C d; invert(d);
   assert(d==C(1));
@@ -480,14 +480,14 @@ template<typename C> void Matrix<C>::invert()
 
 */
 template<typename C>
-void Matrix<C>::invert(C& d)
+void PID_Matrix<C>::invert(C& d)
 {
   assert(base::numRows()==base::numColumns());
   size_t n=base::numRows();
   if (n==0) // do nothing to matrix, but set |d=1|
   { d=C(1); return; }
 
-  Matrix<C> row,col;    // for recording column operations
+  PID_Matrix<C> row,col;    // for recording column operations
   std::vector<C> diagonal = matreduc::diagonalise(*this,row,col);
 
   if (diagonal.size()<n) // insufficient rank for inversion
@@ -512,7 +512,7 @@ void Matrix<C>::invert(C& d)
   Tells if all coefficients of the matrix are divisible by c.
 */
 template<typename C>
-bool Matrix<C>::divisible(C c) const
+bool PID_Matrix<C>::divisible(C c) const
 {
   for (size_t j=0; j<base::d_data.size(); ++j)
     if (base::d_data[j]%c!=0)
@@ -527,12 +527,13 @@ bool Matrix<C>::divisible(C c) const
   of source. This implementation uses that storage is by rows.
 */
 template<typename C>
-  Matrix<C> Matrix<C>::block(size_t i0, size_t j0, size_t i1, size_t j1) const
+  PID_Matrix<C>
+    PID_Matrix<C>::block(size_t i0, size_t j0, size_t i1, size_t j1) const
 {
   assert(i0<=i1 and i1<=base::numRows());
   assert(j0<=j1 and j1<=base::numColumns());
 
-  Matrix<C> result(i1-i0,j1-j0);
+  PID_Matrix<C> result(i1-i0,j1-j0);
   C* p = &result.d_data[0]; // writing pointer
   for (size_t i=i0; i<i1; ++i)
   {
@@ -686,12 +687,14 @@ template class Vector<Num>;           // numerators of rational vectors
 template class Matrix_base<int>;
 template class Matrix<int>;           // the main instance used
 template class Matrix_base<unsigned long>; // for |abelian::Endomorphism|
-
+template class PID_Matrix<int>;
 
 template int Vector<int>::dot(Vector<int> const&) const;
 template signed char
   Vector<signed char>::dot(const Vector<signed char>&) const;
 template Num Vector<int>::dot(Vector<Num> const&) const;
+
+template Vector<Num>& operator/=(Vector<Num>&,Num);
 
 template Vector<int> Matrix<int>::operator*(Vector<int> const&) const;
 template Vector<Num> Matrix<int>::operator*(Vector<Num> const&) const;
@@ -716,12 +719,9 @@ template Matrix_base<int>::Matrix_base
    tags::IteratorTag);
 
 
-
+template class Vector<polynomials::Polynomial<int> >;
 template class Matrix_base<polynomials::Polynomial<int> >;
-
-  // the following fails: insufficient polynomial arithmetic operations
-  // template class Matrix<polynomials::Polynomial<int> >;
-
+template class Matrix<polynomials::Polynomial<int> >;
 
 } // |namespace matrix|
 

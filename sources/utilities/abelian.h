@@ -52,7 +52,7 @@ namespace abelian {
 
   void to_array(GrpArr&, const matrix::Vector<int>&, const GroupType&);
 
-  void toEndomorphism(Endomorphism&, const matrix::Matrix<int>&,
+  void toEndomorphism(Endomorphism&, const matrix::PID_Matrix<int>&,
 		      const FiniteAbelianGroup&);
 
   GrpNbr to_GrpNbr(const GrpArr&, const GroupType&);
@@ -203,7 +203,7 @@ class Homomorphism {
   GroupType d_cosource; // cotypes of source components with respect to $M$
   GroupType d_codest;   // cotypes destination components with respect to $M$
   unsigned long d_annihilator; // the common multiple $M$
-  matrix::Matrix<unsigned long> d_matrix;
+  matrix::PID_Matrix<unsigned long> d_matrix;
 
  public:
 

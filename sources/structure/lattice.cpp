@@ -78,7 +78,7 @@ template<typename I, typename O>
 
   while (first!=last)
   {
-    *out = (q*(*first)/=d);
+    *out = (q*(*first)/d);
     ++out, ++first;
   }
 }
