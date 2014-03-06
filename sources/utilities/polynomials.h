@@ -118,6 +118,8 @@ template <typename U>
   Polynomial operator* (C c) const { return Polynomial (*this)*=c; }
 
   Polynomial operator* (const Polynomial& q) const;
+  Polynomial& operator*= (const Polynomial& q)
+    { operator*(q).swap(*this); return *this; }
   Polynomial operator+ (const Polynomial& q) const
     { return Polynomial(*this)+=q; }
   Polynomial operator- (const Polynomial& q) const

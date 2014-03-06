@@ -121,7 +121,7 @@ RationalVector<C>& RationalVector<C>::normalize()
   }
 
   d_denom/=d;
-  d_num/=d;
+  d_num/=C(d);
   return *this;
 }
 
