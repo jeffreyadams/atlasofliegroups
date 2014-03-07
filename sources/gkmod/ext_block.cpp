@@ -1,7 +1,7 @@
 /*
   This is ext_block.cpp
 
-  Copyright (C) 2013 Marc van Leeuwen
+  Copyright (C) 2013-2014 Marc van Leeuwen
   Part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -15,6 +15,8 @@
 #include "blocks.h"
 #include "weyl.h"
 
+#include "bitmap.h"
+#include "polynomials.h"
 /*
   For an extended group, the block structure is more complicated than an
   ordinary block, because each link in fact represents a local part of the
@@ -95,6 +97,14 @@ bool is_like_type_2(DescValue v)
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
 
+bool has_quadruple(DescValue v)
+{
+  static const unsigned long mask =
+    1ul << two_imaginary_single_double | 1ul << two_real_single_double;
+
+  return (1ul << v & mask) != 0; // whether |v| is one of the above
+}
+
 bool is_proper_ascent(DescValue v)
 {
   return not(is_descent(v) or is_like_nonparity(v));
@@ -111,13 +121,7 @@ bool has_defect(DescValue v)
 }
 
 int length(DescValue v)
-{
-  if (v<two_complex_ascent)
-    return 1;
-  if (v<three_complex_ascent)
-    return 2;
-  return 3;
-}
+{ return v<two_complex_ascent ? 1 : v<three_complex_ascent ? 2 : 3; }
 
 // find element |n| such that |z(n)>=zz|
 BlockElt extended_block::element(BlockElt zz) const
@@ -190,6 +194,18 @@ BlockElt extended_block::some_scent(weyl::Generator s, BlockElt n) const
   return c;
 }
 
+void extended_block::add_neighbours
+  (BlockEltList& dst, weyl::Generator s, BlockElt n) const
+{
+  const BlockEltPair& links = data[s][n].links;
+  if (links.first==UndefBlock)
+    return;
+  dst.push_back(links.first);
+  if (links.second==UndefBlock)
+    return;
+  dst.push_back(links.second);
+}
+
 BlockEltPair extended_block::Cayleys(weyl::Generator s, BlockElt n) const
 {
   const DescValue type = descent_type(s,n);
@@ -221,8 +237,7 @@ int extended_block::epsilon(weyl::Generator s, BlockElt n,unsigned i) const
 {
   if (i==0)
     return 1; // the first Cayley link is always unflipped
-  const DescValue type = descent_type(s,n);
-  if (type!=two_imaginary_single_double and type!=two_real_single_double)
+  if (not has_quadruple(descent_type(s,n)))
     return 1; // cases where epsilon is not needed; always $1$
 
   // epsilon is $-1$ for a pair that mutually refer through the second link
@@ -630,7 +645,7 @@ void extended_block::patch_signs()
 	      if (i_ordered.isMember(j) or i_todo.isMember(j))
 	      {
 		assert (i12s[j].first==n);
-		continue; // avoid swithching twice
+		continue; // avoid switching twice
 	      }
 	      if (i12s[j].first==n)
 	      {
@@ -642,7 +657,8 @@ void extended_block::patch_signs()
 		std::swap(i12s[j].first,i12s[j].second);
 		assert (i12s[j].first==n);
 		assert (i12s[j].second = cross(*it,i12s[i].second));
-		ds[r21s[j].first].links=i12s[j]; // switch Cayley links
+		ds[r21s[j].first].links=
+		  ds[r21s[j].second].links= i12s[j]; // switch Cayley links
 	      }
 	      i_todo.insert(j);
 	    }
@@ -707,6 +723,110 @@ void extended_block::patch_signs()
       } // end report unordered pairs
     } // |for(s)|
 } // |extended_block::patch_signs|
+
+// coefficient in action $T_s*a_x$, of ($i=0$) $a_x$ or ($i=1,2$) neighbour
+Pol T_coef(const extended_block& b, weyl::Generator s, BlockElt x, int i)
+{
+  DescValue v = b.descent_type(s,x);
+  if (not is_descent(v))
+  {
+    if (i==0)
+      if (has_defect(v))
+	return Pol(1,1);
+      else
+	return Pol(is_like_nonparity(v) ? -1 : has_double_image(v) ? 1 : 0);
+    else
+      if (has_defect(v))
+	return Pol(1,1)+Pol(1);
+      else
+	return Pol(b.epsilon(s,x,i-1));
+  }
+
+  int k=length(v);
+  Pol result(k,1);
+  if (i==0)
+  {
+    if (has_double_image(v))
+      result[0] = -2; // $q^k-2$
+    else if (not is_like_compact(v))
+    {
+      result[0] = -1; // $q^k-1$
+      if (has_defect(v))
+	result[1] = -1; // $q^k-q-1$
+    }
+  }
+  else if (is_like_type_2(v) and i==2)
+    return Pol(-1);
+  else if (not is_complex(v))
+  {
+    result[has_defect(v) ? 1 : 0] = -1; // $q^k-1$ or $q^k-q$
+    if (has_quadruple(v))
+      result *= b.epsilon(s,x,i-1); // incorporate sign of link
+  }
+
+  return result;
+} // |T_coef|
+
+void set(matrix::Matrix<Pol>& dst, unsigned i, unsigned j, Pol P)
+{
+  //  P.print(std::cerr << "M[" << i << ',' << j << "] =","q") << std::endl;
+  dst(i,j)=P;
+}
+
+bool check_braid
+(const extended_block& b, weyl::Generator s, weyl::Generator t, BlockElt x)
+{
+  if (s==t)
+    return true;
+  static const unsigned int cox_entry[] = {2, 3, 4, 6};
+  unsigned int len = cox_entry[b.Dynkin().edgeMultiplicity(s,t)];
+
+  BitMap todo(b.size()),used(b.size());
+  todo.insert(x);
+  for (unsigned int i=0; i<len; ++i)
+    for (BitMap::iterator it=todo.begin(); it(); ++it)
+    {
+      used.insert(*it);
+      todo.remove(*it);
+      BlockEltList l; l.reserve(4);
+      b.add_neighbours(l,s,*it);
+      b.add_neighbours(l,t,*it);
+      for (unsigned j=0; j<l.size(); ++j)
+	if (not used.isMember(l[j]))
+	  todo.insert(l[j]);
+    }
+
+  unsigned int n=used.size();
+  matrix::Matrix<Pol> Ts(n,n,Pol()), Tt(n,n,Pol());
+
+  unsigned int j=0;
+  for (BitMap::iterator jt=used.begin(); jt(); ++jt,++j)
+  {
+    BlockElt y = *jt;
+    set(Ts,j,j, T_coef(b,s,y,0)); set(Tt,j,j, T_coef(b,t,y,0));
+    BlockEltList l; l.reserve(2);
+    b.add_neighbours(l,s,*jt);
+    for (unsigned int i=0; i<l.size(); ++i)
+      if (used.isMember(l[i]))
+	set(Ts,used.position(l[i]),j, T_coef(b,s,y,i+1));
+    l.clear();
+    b.add_neighbours(l,t,*jt);
+    for (unsigned int i=0; i<l.size(); ++i)
+      if (used.isMember(l[i]))
+	set(Tt,used.position(l[i]),j, T_coef(b,t,y,i+1));
+  }
+  matrix::Vector<Pol> v(n,Pol()), w;
+  v[used.position(x)]=Pol(1); w=v;
+
+  // finally compute braid relation
+  for (unsigned i=0; i<len; ++i)
+    if (i%2==0)
+      Ts.apply_to(v), Tt.apply_to(w);
+    else
+      Tt.apply_to(v), Ts.apply_to(w);
+
+  return v==w;
+}
 
 } // namespace ext_block
 

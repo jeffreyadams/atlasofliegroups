@@ -73,6 +73,7 @@ namespace {
   // functions for the test commands
 
   void test_f();
+  void braid_f();
 
   void roots_rootbasis_f();
   void coroots_rootbasis_f();
@@ -186,6 +187,8 @@ void addTestCommands<commands::RealmodeTag> (commands::CommandNode& mode)
 template<>
 void addTestCommands<commands::BlockmodeTag> (commands::CommandNode& mode)
 {
+  mode.add("braid",braid_f,
+	   "tests braid relations on an extended block",commands::use_tag);
   if (testMode == BlockMode)
     mode.add("test",test_f,test_tag);
 
@@ -849,50 +852,24 @@ bool isDirectRecursion(ext_block::DescValue v)
 }
 
 // Check for nasty endgame cases in block
-void nasty_endgame_f() // used to be |test_f|, might some day be useful again
+void braid_f()
 {
+  bool OK=true; int count=0;
   ext_block::extended_block
     eblock(commands::currentBlock(),
 	   commands::currentComplexGroup().twistedWeylGroup());
-  for (BlockElt y=0; y<eblock.size(); ++y)
-  { weyl::Generator s;
-    for (s=0; s<eblock.rank(); ++s)
-      if (isDirectRecursion(eblock.descent_type(s,y)))
-	break;
-    if (s<eblock.rank())
-      continue; // skip cases with a direct recursion
-
-    for (BlockElt x=0; x<y; ++x)
-    {
-      bool problem=false;
-      RankFlags which;
-      for (s=0; s<eblock.rank(); ++s)
-      {
-	ext_block::DescValue dsy = eblock.descent_type(s,y);
-	ext_block::DescValue dsx = eblock.descent_type(s,x);
-	if (is_descent(dsy) and not is_descent(dsx))
-	  goto next_x; // |x| is not extremal, so easy
-	if (is_like_nonparity(dsy) and is_proper_ascent(dsx))
-	{
-	  if (is_unique_image(dsx))
-	    goto next_x;
-	  problem=true; which.set(s);
-	}
-      } // |for(s)|
-      if (problem)
-      {
-	std::cout << '(' << eblock.z(x) << ',' << eblock.z(y) << "),  ";
-	for (RankFlags::iterator it=which.begin(); it(); ++it)
-	  std::cout << *it << ": ("
-	            << descent_code(eblock.descent_type(*it,x))  << ','
-		    << descent_code(eblock.descent_type(*it,y))  << ")  ";
-	std::cout << std::endl;
-      }
-    next_x:
-      continue;
-    } // |for(x)|
-  } // |for(y)|
-} // |test_f|
+  for (weyl::Generator t=1; t<eblock.rank(); ++t)
+    for (weyl::Generator s=0; s<t; ++s)
+      for (BlockElt x=0; x<eblock.size(); ++x)
+	if (ext_block::check_braid(eblock,s,t,x))
+	  ++count;
+	else
+	  OK = false,
+	  std::cout << "Braid relation failure: " << eblock.z(x)
+		    << ", s=" << s+1 << ", t=" << t+1 << std::endl;
+  if (OK)
+    std::cout << "All " << count << " relations hold!\n";
+} // |braid_f|
 
 
 // Block mode functions
