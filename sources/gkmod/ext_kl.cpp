@@ -8,6 +8,7 @@
 */
 
 #include "ext_kl.h"
+#include "basic_io.h"
 
 namespace atlas {
 namespace ext_kl {
@@ -130,6 +131,11 @@ bool descent_table::extr_back_up(BlockElt& x, BlockElt y) const
       return true; // stop when no descents of |y| are (any) ascents of |x|
   return false;
 } // |descent_table::extr_back_up|
+
+KL_table::KL_table(const ext_block::extended_block& b, std::vector<Pol>& pool)
+  : aux(b), storage_pool(pool), column()
+  , untwisted(b.untwisted())
+{ untwisted.fill(false); }
 
 kl::KLIndex KL_table::KL_pol_index(BlockElt x, BlockElt y) const
 {
@@ -552,6 +558,7 @@ void KL_table::fill_next_column(PolHash& hash)
   else // direct recursion was not possible
     do_new_recursion(y,hash);
 
+  assert(check_polys(y));
  } // |KL_table::fill_next_column|
 
 void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
@@ -699,6 +706,37 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	M_s[i][x] = get_Mp(rn_s[i],x,y,M_s[i]);
   } // |for(x)|
   assert(out_it==column[y].rend()); // check that we've traversed the column
+} // |KL_table::do_new_recursion|
+
+
+bool check(const Pol& P_sigma, const KLPol& P)
+{
+  if (P_sigma.isZero())
+    return true;
+  if (P.isZero() or P_sigma.degree()>P.degree())
+    return false;
+  for (polynomials::Degree i=0; i<=P.degree(); ++i)
+  {
+    KLCoeff d = P[i]+KLCoeff(P_sigma.coef(i));
+    if (d%2!=0 or d>2*P[i])
+      return false;
+  }
+  return true;
+}
+
+bool KL_table::check_polys(BlockElt y) const
+{
+  bool result = true;
+  for (BlockElt x=y; x-->0; )
+    if (not check(P(x,y),untwisted.klPol(aux.block.z(x),aux.block.z(y))))
+    {
+      std::cerr << "Mismatch at (" << aux.block.z(x) << ',' << aux.block.z(y)
+		<< "): ";
+      std::cerr << P(x,y) << " and "
+		<< untwisted.klPol(aux.block.z(x),aux.block.z(y)) << std::endl;
+      result=false;
+    }
+  return result;
 }
 
 } // |namespace kl|

@@ -122,6 +122,8 @@ class extended_block
   size_t rank() const { return parent.folded_rank(); }
   size_t size() const { return info.size(); }
 
+  const Block_base& untwisted() const { return parent; }
+
   ext_gen orbit(weyl::Generator s) const { return parent.orbit(s); }
 
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }

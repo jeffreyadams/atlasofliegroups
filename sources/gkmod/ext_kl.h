@@ -13,6 +13,7 @@
 #include "ext_block.h"
 #include "atlas_types.h"
 #include "polynomials.h"
+#include "kl.h"
 
 namespace atlas {
 
@@ -72,9 +73,11 @@ class KL_table
 
   std::vector<kl::KLRow> column; // columns are lists of polynomial pointers
 
+  //TEMPORARY
+  kl::KLContext untwisted;
+
  public:
-   KL_table(const ext_block::extended_block& b, std::vector<Pol>& pool)
-    : aux(b), storage_pool(pool), column() {}
+  KL_table(const ext_block::extended_block& b, std::vector<Pol>& pool);
 
   size_t rank() const { return aux.block.rank(); }
   ext_block::DescValue type(weyl::Generator s,BlockElt y) const
@@ -116,6 +119,8 @@ class KL_table
   bool direct_recursion(BlockElt y,weyl::Generator& s, BlockElt& sy) const;
 
   void do_new_recursion(BlockElt y,PolHash& hash);
+
+  bool check_polys(BlockElt y) const;
 
 }; // |KL_table|
 
