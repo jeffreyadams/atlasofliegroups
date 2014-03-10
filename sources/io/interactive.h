@@ -44,16 +44,23 @@ namespace interactive {
 
   size_t get_Cartan_class(const BitMap& cs) throw(error::InputError);
 
-  void getInteractive(LieType&) throw(error::InputError);
-
-  void getInteractive(InnerClassType&, const LieType&)
+  void getInteractive(ComplexReductiveGroup*&,
+		      complexredgp_io::Interface*&)
     throw(error::InputError);
+
+  void getInteractive(LieType&) throw(error::InputError);
 
   void getInteractive(PreRootDatum&,
 		      WeightList&,
 		      const LieType&) throw(error::InputError);
+  WeightInvolution
+    getInnerClass(lietype::Layout& lo, const WeightList& basis)
+    throw(error::InputError);
+  void getInteractive(InnerClassType&, const LieType&)
+    throw(error::InputError);
 
-  void getInteractive(RealFormNbr&, const complexredgp_io::Interface&)
+
+ void getInteractive(RealFormNbr&, const complexredgp_io::Interface&)
     throw(error::InputError);
 
   void getInteractive(RealFormNbr&, const complexredgp_io::Interface&,
@@ -65,10 +72,6 @@ namespace interactive {
     throw(error::InputError);
 
   RealReductiveGroup getRealGroup(complexredgp_io::Interface&)
-    throw(error::InputError);
-
-  void getInteractive(ComplexReductiveGroup*&,
-		      complexredgp_io::Interface*&)
     throw(error::InputError);
 
   unsigned long get_bounded_int(input::InputBuffer& ib,

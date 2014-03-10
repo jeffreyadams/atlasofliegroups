@@ -6,6 +6,8 @@
 
 * Work on the atlas program
 
+- Clean up the mess dealing with input (interface/input, io/interactive...)
+
 * Work on the realex program
 
  - Allow for declaring an input path, and (silent) default prelude
@@ -16,7 +18,6 @@
 
  - Mention file and line in non-syntax errors
  - Improve output of expressions
- - Make last computed value(s) accessible
  - Add more functionality for KGBElt values
  - Improve the way KL_block gives access to it values, add variants
    Inspect how KL_block is actually used, and provide more lightweight values
@@ -28,6 +29,14 @@
    when a first overloaded instance is added). It would be preferable to treat
    them as overloaded functions anyway, but to disable the voiding coercion in
    argument positions of overloaded functions. Check possible complications.
+
+ - See if overloads with empty row argument cannot be via '[*]' type
+   Currently, since any row type could match the argument expression '[]',
+   overloads differing only in the kind of row type are not allowed, lest a
+   potential call with uncast '[]' argument would be ambiguous. One could
+   imagine that such an argument would only match a '[*]' type specification
+   (which would in return only match that) so that multiple row overloads can
+   coexist, and the user still has control of how to handle the '[]' case.
 
  - Allow loops executed in reverse order
    This generalises downto to for-in loops. Saying 'for e@i reverse in array

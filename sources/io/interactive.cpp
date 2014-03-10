@@ -12,6 +12,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <string>
 
 #include "prerootdata.h"
 #include "kgb.h"	// |KGB|
@@ -19,6 +20,8 @@
 #include "standardrepk.h"
 #include "repr.h"
 
+#include "input.h"
+#include "commands.h" // to acces input buffer from issuing command
 #include "interactive_lattice.h" // auxiliary functions
 #include "interactive_lietype.h" // auxiliary functions
 #include "prettyprint.h"	// |printVector|
@@ -221,52 +224,40 @@ size_t get_Cartan_class(const BitMap& cs) throw(error::InputError)
   return c;
 }
 
-
 /*
-  Precondition: |lo| already contains the Lie type resulting from user
-  interaction, and the identity permutation, and |basis| the sublattice basis
+  This is called in the entry function to the "main mode", and drives some of
+  the calls to other instances of |getInteractive| below.
 
-  Writes an inner class into |lo.d_inner| and returns distinguished involution
+  Replaces |pI| by a  pointer to a new |Interface| gotten interactively from
+  the user, and |pG| by a poitner the the corresponding inner class
 
-  An inner class is described by a sequence of typeletters, one of:
+  Throws an |InputError| if the interaction with the user is not successful;
+  in that case both pointers are unchanged.
 
-    - c : compact (d is the identity);
-    - e : equal rank (same as compact)
-    - s : split (d is minus the identity followed by longest W element);
-    - C : complex (d flips two consecutive isomorphic factors in lt);
-    - u : unequal rank : non-identity involution of simple factor (A,D,E6)
-          there are actually three non-identity involutions in type D_{2n},
-          but they are conjugate in Out(G), so we consider it enough to
-	  allow choosing one of them.
-
-  The user has to supply enough letters to deal with all factors of the Lie
-  type (a C consumes two entries in |lt|). Moreover, the inner class has to be
-  compatible with the chosen sublattice: |d| has to stabilize this sublattice.
-
-  Throws an InputError if the interaction is not successful.
+  We pass references to pointers to both a |ComplexReductiveGroup| and to a
+  |complexredgp_io::Interface|, both of which will be assigned appropriately
 */
-WeightInvolution
-getInnerClass(lietype::Layout& lo, const WeightList& basis)
-  throw(error::InputError)
+  void getInteractive(ComplexReductiveGroup*& pG,
+		      complexredgp_io::Interface*& pI)
+    throw(error::InputError)
 {
-  const LieType& lt = lo.d_type;
+  // first get the Lie type
+  LieType lt; getInteractive(lt);  // may throw an InputError
 
-  InnerClassType ict;
-  getInteractive(ict,lt); //< may throw an InputError
+  // then get kernel generators to define the (pre-) root datum
+  WeightList b; PreRootDatum prd;
+  getInteractive(prd,b,lt); // may throw an InputError
 
-  WeightInvolution i = lietype::involution(lt,ict);
+  // complete the Lie type with inner class specification, into a Layout |lo|
+  // and also compute the involution matrix |inv| for this inner class
+  lietype::Layout lo(lt);
+  // basis |b| is used to express |inv| on, and may reject some inner classes
+  WeightInvolution inv=getInnerClass(lo,b); // may throw InputError
 
-  while (not checkInvolution(i,basis)) // complain and reget the inner class
-  {
-    std::cerr
-      << "sorry, that inner class is not compatible with the weight lattice"
-      << std::endl;
-    getInteractive(ict,lt);
-    i = lietype::involution(lt,ict);
-  }
-
-  lo.d_inner = ict;
-  return i.on_basis(basis);
+  // commit (unless |RootDatum(prd)| should throw: then nothing is changed)
+  pG=new ComplexReductiveGroup(prd,inv);
+  pI=new complexredgp_io::Interface(*pG,lo);
+  // the latter constructor also constructs two realform interfaces in *pI
 }
 
 
@@ -278,7 +269,18 @@ getInnerClass(lietype::Layout& lo, const WeightList& basis)
 */
 void getInteractive(LieType& d_lt) throw(error::InputError)
 {
-  type_input_buffer.getline("Lie type: ");
+  char x; input::InputBuffer& command_line = commands::currentLine();
+  do command_line>>x; // clear spaces trailing after command
+  while (x==' ');
+  command_line.unget();
+
+  std::string remains;
+  getline(command_line,remains);
+
+  if (remains.empty())
+    type_input_buffer.getline("Lie type: ");
+  else
+    type_input_buffer.str(remains);
 
   if (hasQuestionMark(type_input_buffer))
     throw error::InputError();
@@ -291,40 +293,12 @@ void getInteractive(LieType& d_lt) throw(error::InputError)
 
   // if we reach this point, the type is correct
 
-  inputBuf.str(type_input_buffer.str());
-  inputBuf.reset();
+  inputBuf.str(type_input_buffer.str()); // copy type string to |inputBuf|
+  inputBuf.reset(); // and prepare for reading it
 
   LieType lt;
   interactive_lietype::readLieType(lt,inputBuf);
   d_lt.swap(lt);
-}
-
-
-/*
-  Synopsis: gets an InnerClassType interactively from the user.
-
-  Throws an InputError is the interaction does not end in a correct assignment
-  of ict. Does not touch ict unless the assignment succeeds.
-*/
-void getInteractive(InnerClassType& ict, const LieType& lt)
-  throw(error::InputError)
-{
-  if (interactive_lietype::checkInnerClass(inputBuf,lt,false))
-    goto read; // skip interaction if |inputBuf| alreadty has valid input
-
-  inputBuf.getline("enter inner class(es): ",false);
-
-  if (hasQuestionMark(inputBuf))
-    throw error::InputError();
-
-  while (not interactive_lietype::checkInnerClass(inputBuf,lt)) { // retry
-    inputBuf.getline("enter inner class(es) (? to abort): ",false);
-    if (hasQuestionMark(inputBuf))
-      throw error::InputError();
-  }
-
- read:
-  interactive_lietype::readInnerClass(ict,inputBuf,lt);
 }
 
 /*
@@ -383,6 +357,82 @@ void getInteractive(PreRootDatum& d_prd,
 
   PreRootDatum(lt,d_b).swap(d_prd);
   // swap with d_prd; the old PreRootDatum will be destroyed
+} // |getInteractive(PreRootDatum&,...)|
+
+
+/*
+  Precondition: |lo| already contains the Lie type resulting from user
+  interaction, and the identity permutation, and |basis| the sublattice basis
+
+  Writes an inner class into |lo.d_inner| and returns distinguished involution
+
+  An inner class is described by a sequence of typeletters, one of:
+
+    - c : compact (d is the identity);
+    - e : equal rank (same as compact);
+    - s : split (d is minus the identity followed by longest W element);
+    - C : complex (d flips two consecutive isomorphic factors in lt);
+    - u : unequal rank : non-identity involution of simple factor (A,D,E6)
+          there are actually three non-identity involutions in type D_{2n},
+          but they are conjugate in Out(G), so we consider it enough to
+	  allow choosing one of them.
+
+  The user has to supply enough letters to deal with all factors of the Lie
+  type (a C consumes two entries in |lt|). Moreover, the inner class has to be
+  compatible with the chosen sublattice: |d| has to stabilize this sublattice.
+
+  Throws an InputError if the interaction is not successful.
+*/
+WeightInvolution
+getInnerClass(lietype::Layout& lo, const WeightList& basis)
+  throw(error::InputError)
+{
+  const LieType& lt = lo.d_type;
+
+  InnerClassType ict;
+  getInteractive(ict,lt); //< may throw an InputError
+
+  WeightInvolution i = lietype::involution(lt,ict);
+
+  while (not checkInvolution(i,basis)) // complain and reget the inner class
+  {
+    std::cerr
+      << "sorry, that inner class is not compatible with the weight lattice"
+      << std::endl;
+    getInteractive(ict,lt);
+    i = lietype::involution(lt,ict);
+  }
+
+  lo.d_inner = ict;
+  return i.on_basis(basis);
+} // |getInnerClass|
+
+
+/*
+  Synopsis: gets an InnerClassType interactively from the user.
+
+  Throws an InputError is the interaction does not end in a correct assignment
+  of ict. Does not touch ict unless the assignment succeeds.
+*/
+void getInteractive(InnerClassType& ict, const LieType& lt)
+  throw(error::InputError)
+{
+  if (interactive_lietype::checkInnerClass(inputBuf,lt,false))
+    goto read; // skip interaction if |inputBuf| alreadty has valid input
+
+  inputBuf.getline("enter inner class(es): ",false);
+
+  if (hasQuestionMark(inputBuf))
+    throw error::InputError();
+
+  while (not interactive_lietype::checkInnerClass(inputBuf,lt)) { // retry
+    inputBuf.getline("enter inner class(es) (? to abort): ",false);
+    if (hasQuestionMark(inputBuf))
+      throw error::InputError();
+  }
+
+ read:
+  interactive_lietype::readInnerClass(ict,inputBuf,lt);
 }
 
 
@@ -562,39 +612,6 @@ RealReductiveGroup getRealGroup(complexredgp_io::Interface& CI)
   getInteractive(rf,CI); // may throw an InputError
 
   return RealReductiveGroup(CI.complexGroup(),rf);
-}
-
-/*!\brief
-  Replaces |pI| by a  pointer to a new |Interface| gotten interactively from
-  the user, and |pG| by a poitner the the corresponding inner class
-
-  Throws an |InputError| if the interaction with the user is not successful;
-  in that case both pointers are unchanged.
-
-  We pass references to pointers to both a |ComplexReductiveGroup| and to a
-  |complexredgp_io::Interface|, both of which will be assigned appropriately
-*/
-  void getInteractive(ComplexReductiveGroup*& pG,
-		      complexredgp_io::Interface*& pI)
-    throw(error::InputError)
-{
-  // first get the Lie type
-  LieType lt; getInteractive(lt);  // may throw an InputError
-
-  // then get kernel generators to define the (pre-) root datum
-  WeightList b; PreRootDatum prd;
-  getInteractive(prd,b,lt); // may throw an InputError
-
-  // complete the Lie type with inner class specification, into a Layout |lo|
-  // and also compute the involution matrix |inv| for this inner class
-  lietype::Layout lo(lt);
-  // basis |b| is used to express |inv| on, and may reject some inner classes
-  WeightInvolution inv=getInnerClass(lo,b); // may throw InputError
-
-  // commit (unless |RootDatum(prd)| should throw: then nothing is changed)
-  pG=new ComplexReductiveGroup(prd,inv);
-  pI=new complexredgp_io::Interface(*pG,lo);
-  // the latter constructor also constructs two realform interfaces in *pI
 }
 
 
