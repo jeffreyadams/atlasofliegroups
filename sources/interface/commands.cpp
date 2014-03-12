@@ -26,6 +26,8 @@
 #include "reprmode.h"
 #include "helpmode.h"
 
+#include "interactive.h" // to clear input buffer
+
 // extra defs for windows compilation -spc
 #ifdef WIN32
 #include "constants.h"
@@ -553,6 +555,7 @@ void ambiguous(const std::vector<const char*>& ext, const char* name)
 const std::string& getInteractive(std::string& name, const char* prompt)
 {
   name.erase();  // probably redundant
+  interactive::common_input().str(""); // clear any previous type-ahead
   commandLine.getline(prompt);
   commandLine >> name; // get word (up to whitespace) into |name|
   return name;
