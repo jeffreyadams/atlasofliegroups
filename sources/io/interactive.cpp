@@ -237,9 +237,8 @@ size_t get_Cartan_class(const BitMap& cs) throw(error::InputError)
   We pass references to pointers to both a |ComplexReductiveGroup| and to a
   |complexredgp_io::Interface|, both of which will be assigned appropriately
 */
-  void getInteractive(ComplexReductiveGroup*& pG,
-		      complexredgp_io::Interface*& pI)
-    throw(error::InputError)
+void get_group_type(ComplexReductiveGroup*& pG,complexredgp_io::Interface*& pI)
+  throw(error::InputError)
 {
   // first get the Lie type
   LieType lt; getInteractive(lt);  // may throw an InputError
@@ -260,6 +259,22 @@ size_t get_Cartan_class(const BitMap& cs) throw(error::InputError)
   // the latter constructor also constructs two realform interfaces in *pI
 }
 
+bool get_type_ahead(input::InputBuffer& src, input::InputBuffer& dst)
+{
+  char x;
+  do src>>x; // clear spaces trailing after command
+  while (x==' ');
+  src.unget();
+
+  std::string remains;
+  getline(src,remains);
+
+  if (remains.empty())
+    return false;
+  dst.str(remains);
+  dst.reset(); // make sure to start at beginning
+  return true;
+}
 
 /*
   Synopsis: gets a LieType interactively from the user.
@@ -269,18 +284,8 @@ size_t get_Cartan_class(const BitMap& cs) throw(error::InputError)
 */
 void getInteractive(LieType& d_lt) throw(error::InputError)
 {
-  char x; input::InputBuffer& command_line = commands::currentLine();
-  do command_line>>x; // clear spaces trailing after command
-  while (x==' ');
-  command_line.unget();
-
-  std::string remains;
-  getline(command_line,remains);
-
-  if (remains.empty())
+  if (not get_type_ahead(commands::currentLine(),type_input_buffer))
     type_input_buffer.getline("Lie type: ");
-  else
-    type_input_buffer.str(remains);
 
   if (hasQuestionMark(type_input_buffer))
     throw error::InputError();
@@ -436,74 +441,113 @@ void getInteractive(InnerClassType& ict, const LieType& lt)
 }
 
 
-/*
-  Synposis: replaces rf with a new real form gotten interactively from the
-  user.
 
-  Throws an InputError if the interaction with the user fails; in that case,
-  rf is not modified.
+
+/*
+  This is called by the entry function to "real mode".
+
+  Synopsis: replaces d_G by a new RealReductiveGroup gotten
+  interactively from the user. The complex group interface is not touched.
+
+  Throws an InputError if the interaction with the user is not successful;
+  in that case, d_G is not touched.
 */
 
-void getInteractive(RealFormNbr& d_rf,
-		    const complexredgp_io::Interface& I)
+RealFormNbr get_real_form(complexredgp_io::Interface& CI)
   throw(error::InputError)
 {
-  const realform_io::Interface rfi = I.realFormInterface();
+  const realform_io::Interface rfi = CI.realFormInterface();
 
   // if there is only one choice, make it
   if (rfi.numRealForms() == 1) {
     std::cout << "there is a unique real form: " << rfi.typeName(0)
 	      << std::endl;
-    d_rf = 0;
-    return;
+    return 0;
   }
 
-  // else get choice from user
-  std::cout << "(weak) real forms are:" << std::endl;
-  for (size_t j = 0; j < rfi.numRealForms(); ++j) {
-    std::cout << j << ": " << rfi.typeName(j) << std::endl;
+  unsigned long r=rfi.numRealForms();
+  if (get_type_ahead(common_input(),realform_input_buffer) or
+      get_type_ahead(commands::currentLine(),realform_input_buffer))
+  {
+    realform_input_buffer >> r;
+    if (r>=rfi.numRealForms())
+      std::cout << "Discarding invalid type-ahead.\n";
   }
 
-  unsigned long r=get_bounded_int
-    (realform_input_buffer,"enter your choice: ",rfi.numRealForms());
+  if (r>=rfi.numRealForms()) // must get (another) choice from user
+  {
+    std::cout << "(weak) real forms are:" << std::endl;
+    for (size_t i = 0; i < rfi.numRealForms(); ++i)
+      std::cout << i << ": " << rfi.typeName(i) << std::endl;
 
-  d_rf = rfi.in(r);
-}
+    r=get_bounded_int
+      (realform_input_buffer,"enter your choice: ",rfi.numRealForms());
+  }
 
+  return rfi.in(r);
+} // |get_real_group|
 
 /*
-  Synposis: replaces rf with a new dual real form gotten interactively from
-  the user.
+  This is called by the entry function to "block mode".
 
-  Throws an InputError if the interaction with the user fails; in that case,
-  rf is not modified.
+  Synposis: return an internal dual real form number, selected by the user
+  from a list presented by external numbers for the dual real forms compatible
+  with real form |rf|. If |rf| too large to be a real form number, present the
+  list of all dual real forms in the inner class, and select from it.
+
+  Throws an InputError if the interaction with the user fails.
 */
-void getInteractive(RealFormNbr& rf,
-		    const complexredgp_io::Interface& I,
-		    tags::DualTag)
+RealFormNbr get_dual_real_form(complexredgp_io::Interface& CI,
+			       RealFormNbr rf)
   throw(error::InputError)
 {
-  const realform_io::Interface rfi = I.dualRealFormInterface();
+  ComplexReductiveGroup& G = CI.complexGroup();
+  bool restrict = rf<G.numRealForms();
+  RealFormNbrList drfl;
+  if (restrict)
+    drfl = G.dualRealFormLabels(G.mostSplit(rf));
+
+  const realform_io::Interface drfi = CI.dualRealFormInterface();
 
   // if there is only one choice, make it
-  if (rfi.numRealForms() == 1) {
-    std::cout << "there is a unique dual real form: " << rfi.typeName(0)
-	      << std::endl;
-    rf = 0;
-    return;
+  if ((restrict ? drfl.size() : drfi.numRealForms())== 1)
+  {
+    RealFormNbr rfn = restrict ? drfl[0] : 0;
+    std::cout << "there is a unique dual real form choice: "
+	      << drfi.typeName(drfi.out(rfn)) << std::endl;
+    return rfn;
   }
 
-  // else get choice from user
-  std::cout << "(weak) dual real forms are:" << std::endl;
-  for (size_t j = 0; j < rfi.numRealForms(); ++j) {
-    std::cout << j << ": " << rfi.typeName(j) << std::endl;
+  // else get choice interactively
+  BitMap vals(drfi.numRealForms());
+  if (restrict)
+    for (size_t i = 0; i < drfl.size(); ++i)
+      vals.insert(drfi.out(drfl[i]));
+  else
+    vals.fill();
+
+  unsigned long r=drfi.numRealForms();
+  if (get_type_ahead(realform_input_buffer,realform_input_buffer) or
+      get_type_ahead(common_input(),realform_input_buffer) or
+      get_type_ahead(commands::currentLine(),realform_input_buffer))
+  {
+    realform_input_buffer >> r;
+    if (not vals.isMember(r))
+      std::cout << "Discarding invalid type-ahead.\n";
   }
 
-  unsigned long r=get_bounded_int
-    (realform_input_buffer,"enter your choice: ",rfi.numRealForms());
+  if (not vals.isMember(r))
+  {
+    std::cout << "possible (weak) dual real forms are:" << std::endl;
 
-  rf = rfi.in(r);
-}
+    for (BitMap::iterator it = vals.begin(); it(); ++it)
+      std::cout << *it << ": " << drfi.typeName(*it) << std::endl;
+    r = get_int_in_set("enter your choice: ",vals);
+  }
+
+  return drfi.in(r);
+} // |get_dual_real_form|
+
 
 void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
 {
@@ -556,63 +600,6 @@ void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
 }
 
 
-/*
-  Synposis: replaces rf with a new real form from the list drfl.
-
-  Throws an InputError if the interaction with the user fails; in that case,
-  rf is not modified.
-*/
-
-void getInteractive(RealFormNbr& rf,
-		    const complexredgp_io::Interface& I,
-		    const RealFormNbrList& drfl,
-		    tags::DualTag)
-  throw(error::InputError)
-{
-  const realform_io::Interface rfi = I.dualRealFormInterface();
-
-  // if there is only one choice, make it
-  if (drfl.size() == 1) {
-    RealFormNbr rfo = rfi.out(drfl[0]);
-    std::cout << "there is a unique dual real form choice: "
-	      << rfi.typeName(rfo) << std::endl;
-    rf = drfl[0];
-    return;
-  }
-
-  // else get choice from user
-  BitMap vals(rfi.numRealForms());
-  for (size_t j = 0; j < drfl.size(); ++j)
-    vals.insert(rfi.out(drfl[j]));
-
-  std::cout << "possible (weak) dual real forms are:" << std::endl;
-  BitMap::iterator vals_end = vals.end();
-  for (BitMap::iterator i = vals.begin(); i != vals_end; ++i) {
-    std::cout << *i << ": " << rfi.typeName(*i) << std::endl;
-  }
-
-  unsigned long r = get_int_in_set("enter your choice: ",vals);
-
-  rf = rfi.in(r);
-}
-
-
-/*
-  Synopsis: replaces d_G by a new RealReductiveGroup gotten
-  interactively from the user. The complex group interface is not touched.
-
-  Throws an InputError if the interaction with the user is not successful;
-  in that case, d_G is not touched.
-*/
-
-RealReductiveGroup getRealGroup(complexredgp_io::Interface& CI)
-  throw(error::InputError)
-{
-  RealFormNbr rf = 0;
-  getInteractive(rf,CI); // may throw an InputError
-
-  return RealReductiveGroup(CI.complexGroup(),rf);
-}
 
 
 /*
