@@ -132,6 +132,43 @@ BlockElt extended_block::element(BlockElt zz) const
   return n;
 }
 
+
+bool extended_block::toggle_edge(BlockElt x,BlockElt y)
+{
+  x = element(x); y=element(y);
+  assert (x!=UndefBlock and y!=UndefBlock);
+  BlockEltPair p= x<y ? std::make_pair(x,y) : std::make_pair(y,x);
+  std::pair<std::set<BlockEltPair>::iterator,bool>
+    inserted = flipped_edges.insert(p);
+  if (not inserted.second)
+    flipped_edges.erase(inserted.first);
+
+  std::cerr << "Toggle edge (" << z(p.first) << ',' << z(p.second) << ')'
+	    << std::endl;
+
+
+  return inserted.second;
+}
+
+void extended_block::order_quad
+  (BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s)
+{
+  x = element(x); y=element(y); // decipher user friendly numbering
+  p = element(p); q=element(q);
+  assert (x!=UndefBlock and y!=UndefBlock and p!=UndefBlock and q!=UndefBlock);
+  assert (descent_type(s-1,x)==two_imaginary_single_double);
+  assert (descent_type(s-1,y)==two_imaginary_single_double);
+  assert (descent_type(s-1,p)==two_real_single_double);
+  assert (descent_type(s-1,q)==two_real_single_double);
+  const BlockEltPair xy(x,y);
+  const BlockEltPair pq(p,q);
+  std::vector<block_fields>& data_s = data[s-1];
+  data_s[x].links = data_s[y].links = pq;
+  data_s[p].links = data_s[q].links = xy;
+  std::cerr << "Ordering (" << z(x) << ',' << z(y) << ','
+	    << z(p) << ',' << z(q) << ") for generator " << s << std::endl;
+}
+
 BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
 {
   switch (descent_type(s,n))
@@ -235,13 +272,16 @@ extended_block::inverse_Cayleys(weyl::Generator s, BlockElt n) const
 
 int extended_block::epsilon(weyl::Generator s, BlockElt n,unsigned i) const
 {
-  if (i==0)
-    return 1; // the first Cayley link is always unflipped
-  if (not has_quadruple(descent_type(s,n)))
-    return 1; // cases where epsilon is not needed; always $1$
+  BlockElt y = i==0 ? data[s][n].links.first : data[s][n].links.second;
+  BlockEltPair p= n<y ? std::make_pair(n,y) : std::make_pair(y,n);
+  int sign = flipped_edges.count(p)==0 ? 1 : -1;
 
-  // epsilon is $-1$ for a pair that mutually refer through the second link
-  return n==data[s][data[s][n].links.second].links.second ? -1 : 1;
+  // each 2i12/21r21 quadruple has one negative sign not using |flipped_edges|
+  if (i==1 and has_quadruple(descent_type(s,n)) and
+      n==data[s][data[s][n].links.second].links.second)
+    sign = -sign; // it is between second elements in both pairs of the quad
+
+  return sign;
 }
 
 BlockEltList extended_block::down_set(BlockElt n) const
@@ -450,6 +490,7 @@ extended_block::extended_block
   , info()
   , data(parent.folded_rank())
   , l_start(parent.length(parent.size()-1)+2)
+  , flipped_edges()
 {
   unsigned int folded_rank = data.size();
   if (folded_rank==0 or parent.Hermitian_dual(0)==UndefBlock)
@@ -554,7 +595,6 @@ extended_block::extended_block
 	dest.second = child_nr[second];
     }
   } // |for(n)|
-  patch_signs();
 } // |extended_block::extended_block|
 
 void extended_block::patch_signs()
@@ -568,7 +608,7 @@ void extended_block::patch_signs()
       std::vector<unsigned int> loc(size(),~0);
       for (BlockElt n=0,m; n<size(); ++n)
 	if (descent_type(s,n)==two_imaginary_single_double and
-	    ds[m=ds[n].links.first].links.first==n)
+ 	    ds[m=ds[n].links.first].links.first==n)
 	{
 	  loc[n] = loc[m] = // make lookup of |n,m| possible
 	    loc[ds[n].links.second] = // and of their twins
@@ -592,20 +632,13 @@ void extended_block::patch_signs()
 	    { // second of pair |i12s[i]| is "preferred" one, so swap the pair
 	      assert (t1==one_imaginary_compact);
 	      i12s[i].first=i12s[i].second; i12s[i].second=n;
-
-	      std::cerr << "Swap 2i12 pair(" << z(i12s[i].first) << ','
-			<< z(n) << ')' << std::endl;
-
-	      // but the real effect is in link order from the 2r21 twins
-	      ds[r21s[i].first].links =	ds[r21s[i].second].links = i12s[i];
 	    }
 	    i_ordered.insert(i); // mark as certainly correctly ordered
 	    i_todo.insert(i);    // and record for propagation
 	  }
 
 	  n=r21s[i].first; // now do the same for the 2r21 twins
-	  t1 = descent_type(*it,n);
-	  t2 = descent_type(*it,r21s[i].second);
+	  t1 = descent_type(*it,n), t2 = descent_type(*it,r21s[i].second);
 	  if (t1==one_real_single or t2==one_real_single)
 	  {
 	    if (t1==one_real_single)
@@ -614,12 +647,6 @@ void extended_block::patch_signs()
 	    { // second of pair |r21s[i]| is "preferred" one, so swap the pair
 	      assert (t1==one_real_nonparity);
 	      r21s[i].first=r21s[i].second; r21s[i].second=n;
-
-	      std::cerr << "Swap 2r21 pair(" << z(r21s[i].first) << ','
-			<< z(n) << ')' << std::endl;
-
-	      // but the real effect is in link order from the 2i12 twins
-	      ds[i12s[i].first].links =	ds[i12s[i].second].links = r21s[i];
 	    }
 	    r_ordered.insert(i); // mark as certainly correctly ordered
 	    r_todo.insert(i);    // record for propagation
@@ -657,8 +684,6 @@ void extended_block::patch_signs()
 		std::swap(i12s[j].first,i12s[j].second);
 		assert (i12s[j].first==n);
 		assert (i12s[j].second = cross(*it,i12s[i].second));
-		ds[r21s[j].first].links=
-		  ds[r21s[j].second].links= i12s[j]; // switch Cayley links
 	      }
 	      i_todo.insert(j);
 	    }
@@ -695,7 +720,6 @@ void extended_block::patch_signs()
 		std::swap(r21s[j].first,r21s[j].second);
 		assert (r21s[j].first==n);
 		assert (r21s[j].second = cross(*it,r21s[i].second));
-		ds[i12s[j].first].links=r21s[j]; // switch Cayley links
 	      }
 	      r_todo.insert(j);
 	    }
@@ -704,23 +728,12 @@ void extended_block::patch_signs()
 	}
 	while((++p)()); // advance pointer to next element to do; if so repeat
 
-      continue; // skip reporting for now
-      if (not (i_ordered.full() and r_ordered.full())) // then report
-      {
-	std::cerr
-	  << "Failed to order certain 2i12 and/or 2r21 pairs for generator "
-	  << s+1 << ":\n";
-	for (unsigned i=0; i<i12s.size(); ++i)
-	{
- 	  if (not i_ordered.isMember(i))
-	    std::cerr << '(' << z(i12s[i].first) << ',' << z(i12s[i].second)
-		      << (r_ordered.isMember(i) ? ")\n" : ") and ");
-	  if (not r_ordered.isMember(i))
-	    std::cerr << '(' << z(r21s[i].first) << ',' << z(r21s[i].second)
-		      << ")\n";
-	}
-	std::cerr << std::flush;
-      } // end report unordered pairs
+      for (unsigned i=0; i<i12s.size(); ++i)
+	if (i12s[i].first>i12s[i].second or r21s[i].first>r21s[i].second)
+	  order_quad(z(i12s[i].first),z(i12s[i].second),
+		     z(r21s[i].first),z(r21s[i].second),
+		     s+1);
+
     } // |for(s)|
 } // |extended_block::patch_signs|
 
@@ -730,23 +743,32 @@ Pol T_coef(const extended_block& b, weyl::Generator s, BlockElt x, int i)
   DescValue v = b.descent_type(s,x);
   if (not is_descent(v))
   {
-    if (i==0)
+    if (i==0) // diagonal coefficient
       if (has_defect(v))
-	return Pol(1,1);
-      else
+	return Pol(1,1); // $q$
+      else  // $-1$, $0$, or $1$
 	return Pol(is_like_nonparity(v) ? -1 : has_double_image(v) ? 1 : 0);
-    else
-      if (has_defect(v))
-	return Pol(1,1)+Pol(1);
+    else if (is_like_type_1(v) and i==2) // type 1 imaginary cross edge
+    {
+      BlockElt y = b.Cayley(s,x); // pass via this element for signs
+      int sign = b.epsilon(s,y,0)*b.epsilon(s,y,1); // combine two Cayley signs
+      return Pol(sign);
+    }
+    else // below diagonal coefficient
+    {
+      int sign = b.epsilon(s,x,i-1);
+      if (has_defect(v)) // $\pm(q+1)$
+	return Pol(1,sign)+Pol(sign);
       else
-	return Pol(b.epsilon(s,x,i-1));
+	return Pol(sign); // $\pm1$
+    }
   }
 
   int k=length(v);
-  Pol result(k,1);
-  if (i==0)
+  Pol result(k,1); // start with $q^k$
+  if (i==0) // diagonal coefficient
   {
-    if (has_double_image(v))
+    if (has_double_image(v))  // diagonal coefficient
       result[0] = -2; // $q^k-2$
     else if (not is_like_compact(v))
     {
@@ -755,13 +777,17 @@ Pol T_coef(const extended_block& b, weyl::Generator s, BlockElt x, int i)
 	result[1] = -1; // $q^k-q-1$
     }
   }
-  else if (is_like_type_2(v) and i==2)
-    return Pol(-1);
-  else if (not is_complex(v))
+  else if (is_like_type_2(v) and i==2) // type 2 real cross edge
   {
-    result[has_defect(v) ? 1 : 0] = -1; // $q^k-1$ or $q^k-q$
-    if (has_quadruple(v))
-      result *= b.epsilon(s,x,i-1); // incorporate sign of link
+    BlockElt y = b.inverse_Cayley(s,x); // pass via this element for signs
+    int sign = b.epsilon(s,y,0)*b.epsilon(s,y,1); // combine two Cayley signs
+    return Pol(-sign); // forget term $\pm q^k$, return $\mp 1$ instead
+  }
+  else // remaining cases involve descending edge (above-diagonal coefficient)
+  {
+    if (not is_complex(v))
+      result[has_defect(v) ? 1 : 0] = -1; // change into $q^k-1$ or $q^k-q$
+    result *= b.epsilon(s,x,i-1); // flip sign according to chosen edge
   }
 
   return result;
@@ -773,8 +799,19 @@ void set(matrix::Matrix<Pol>& dst, unsigned i, unsigned j, Pol P)
   dst(i,j)=P;
 }
 
+void show_mat(std::ostream& strm,const matrix::Matrix<Pol> M,unsigned inx)
+{
+  strm << "T_" << inx+1 << " [";
+  for (unsigned i=0; i<M.numRows(); ++i)
+    for (unsigned j=0; j<M.numColumns(); ++j)
+      if (not M(i,j).isZero())
+	M(i,j).print(strm << i << ',' << j << ':',"q")  << ';';
+  strm << ']' << std::endl;
+}
+
 bool check_braid
-(const extended_block& b, weyl::Generator s, weyl::Generator t, BlockElt x)
+(const extended_block& b, weyl::Generator s, weyl::Generator t, BlockElt x,
+ BitMap& cluster)
 {
   if (s==t)
     return true;
@@ -825,7 +862,15 @@ bool check_braid
     else
       Tt.apply_to(v), Ts.apply_to(w);
 
-  return v==w;
+  cluster |= used;
+  static bool verbose = false;
+  bool success = v==w;
+  if (verbose and not success)
+  {
+    show_mat(std::cout,Ts,s);
+    show_mat(std::cout,Tt,t);
+  }
+  return success;
 }
 
 } // namespace ext_block
