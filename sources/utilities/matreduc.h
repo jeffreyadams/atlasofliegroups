@@ -21,21 +21,21 @@ namespace atlas {
 namespace matreduc {
 
 template<typename C>
-  bitmap::BitMap column_echelon(matrix::Matrix<C>& vectors);
+  bitmap::BitMap column_echelon(matrix::PID_Matrix<C>& vectors);
 
 template<typename C> // find |row,col| making |row*M*col| (returned) diagonal
-  std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
-			     matrix::Matrix<C>& row,
-			     matrix::Matrix<C>& col);
+  std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
+			     matrix::PID_Matrix<C>& row,
+			     matrix::PID_Matrix<C>& col);
 template<typename C>
-  matrix::Matrix<C> adapted_basis(matrix::Matrix<C> M, // by value
-				  std::vector<C>& diagonal);
+  matrix::PID_Matrix<C> adapted_basis(matrix::PID_Matrix<C> M, // by value
+				      std::vector<C>& diagonal);
 template<typename C>
-  matrix::Matrix<C> Smith_basis(const matrix::Matrix<C>& M,
-				std::vector<C>& diagonal);
+  matrix::PID_Matrix<C> Smith_basis(const matrix::PID_Matrix<C>& M,
+				    std::vector<C>& diagonal);
 
 template<typename C> // find a solution |x| for |A*x==b|
-  matrix::Vector<C> find_solution(const matrix::Matrix<C>& A,
+  matrix::Vector<C> find_solution(const matrix::PID_Matrix<C>& A,
 				  matrix::Vector<C> b) // by value
   throw (std::runtime_error); // thrown if no solution exists
 

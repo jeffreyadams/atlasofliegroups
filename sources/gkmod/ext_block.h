@@ -18,6 +18,8 @@
 
 #include <cassert>
 #include <iostream>
+#include <set>
+
 #include "blocks.h" // for the structure |ext_gen|
 
 namespace atlas {
@@ -76,7 +78,11 @@ bool is_like_compact(DescValue v);
 bool is_like_type_1(DescValue v);
 bool is_like_type_2(DescValue v);
 bool has_defect(DescValue v);
+bool has_quadruple(DescValue v); // 2i12/2r21 cases
+
 bool is_proper_ascent(DescValue v);
+
+int length(DescValue v);
 
 DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
 			BlockElt& first_link);
@@ -101,30 +107,39 @@ class extended_block
   {
     DescValue type;
     BlockEltPair links; // one or two values, depending on |type|
-    bool epsilon; // whether second Cayley link carries minus sign
-  block_fields(DescValue t)
-  : type(t),links(UndefBlock,UndefBlock),epsilon(false) {}
+  block_fields(DescValue t) : type(t),links(UndefBlock,UndefBlock) {}
   };
 
   const Block_base& parent;
-  const TwistedWeylGroup& tW;
+  const TwistedWeylGroup& tW; // needed for printing only
+  const DynkinDiagram folded;
+
   std::vector<elt_info> info; // its size defines the size of the block
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
   BlockEltList l_start; // where elements of given length start
+
+  std::set<BlockEltPair> flipped_edges;
 
  public:
 
 // constructors and destructors
   extended_block(const Block_base& block,const TwistedWeylGroup& W);
 
+// manipulators
+
+  void patch_signs();
+  void order_quad(BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s);
+  bool toggle_edge(BlockElt x,BlockElt y); // result tells new value;
+
 // accessors
 
-  size_t rank() const { return parent.folded_rank(); }
+  size_t rank() const { return data.size(); }
   size_t size() const { return info.size(); }
 
   const Block_base& untwisted() const { return parent; }
 
   ext_gen orbit(weyl::Generator s) const { return parent.orbit(s); }
+  const DynkinDiagram& Dynkin() const { return folded; }
 
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
 
@@ -139,9 +154,6 @@ class extended_block
   BlockElt Cayley(weyl::Generator s, BlockElt n) const; // just one or none
   BlockElt inverse_Cayley(weyl::Generator s, BlockElt n) const; // one or none
 
-  // an element covering or covered by |n|; assumed to be well defined
-  BlockElt some_scent(weyl::Generator s, BlockElt n) const;
-
   BlockEltPair Cayleys(weyl::Generator s, BlockElt n) const;
   BlockEltPair inverse_Cayleys(weyl::Generator s, BlockElt n) const;
 
@@ -153,11 +165,25 @@ class extended_block
 
   BlockEltList down_set(BlockElt y) const;
 
+  // an (a/de)scent of |n| in block; assumed to exist
+  BlockElt some_scent(weyl::Generator s, BlockElt n) const;
+  // here all elements reached by a link are added to |l|, (a/de)scent first
+  void add_neighbours(BlockEltList& dst, weyl::Generator s, BlockElt n) const;
+
   // print whole block to stream (name chosen to avoid masking by |print|)
   std::ostream& print_to(std::ostream& strm) const; // defined in |block_io|
 
-
 }; // |class extended_block|
+
+typedef Polynomial<int> Pol;
+
+// coefficient in action $T_s*a_x$, of ($i=0$) $a_x$ or ($i=1,2$) neighbour
+Pol T_coef(const extended_block& b, weyl::Generator s, BlockElt x, int i);
+
+// check braid relation at |x|; also mark all involved elements in |cluster|
+bool check_braid
+  (const extended_block& b, weyl::Generator s, weyl::Generator t, BlockElt x,
+   BitMap& cluster);
 
 } // |namespace ext_block|
 

@@ -73,6 +73,8 @@ namespace {
   // functions for the test commands
 
   void test_f();
+  void braid_f();
+  void go_f();
 
   void roots_rootbasis_f();
   void coroots_rootbasis_f();
@@ -127,6 +129,9 @@ namespace {
 template<>
 void addTestCommands<commands::EmptymodeTag> (commands::CommandNode& mode)
 {
+  mode.add("go",go_f,
+	   "generates difficult SO(5,5) extended block, and runs 'braid'",
+	   commands::use_tag);
   if (testMode == EmptyMode)
     mode.add("test",test_f,test_tag);
 }
@@ -186,6 +191,8 @@ void addTestCommands<commands::RealmodeTag> (commands::CommandNode& mode)
 template<>
 void addTestCommands<commands::BlockmodeTag> (commands::CommandNode& mode)
 {
+  mode.add("braid",braid_f,
+	   "tests braid relations on an extended block",commands::use_tag);
   if (testMode == BlockMode)
     mode.add("test",test_f,test_tag);
 
@@ -849,50 +856,66 @@ bool isDirectRecursion(ext_block::DescValue v)
 }
 
 // Check for nasty endgame cases in block
-void nasty_endgame_f() // used to be |test_f|, might some day be useful again
+void test_braid(const ext_block::extended_block eblock)
+{
+  bool OK=true; int count=0;
+  for (weyl::Generator t=1; t<eblock.rank(); ++t)
+    for (weyl::Generator s=0; s<t; ++s)
+    {
+      BitMap seen(eblock.size());
+      for (BlockElt x=0; x<eblock.size(); ++x)
+	if (not seen.isMember(x))
+	  {
+	    BitMap cluster(eblock.size());
+	    if (ext_block::check_braid(eblock,s,t,x,cluster))
+	      ++count;
+	    else
+	    {
+	      OK = false;
+	      std::cout << "Braid relation failure: " << eblock.z(x)
+			<< ", s=" << s+1 << ", t=" << t+1;
+	      for (BitMap::iterator it=cluster.begin(); it(); ++it)
+		std::cout << (it==cluster.begin() ? " (" : ",")
+			  << eblock.z(*it) ;
+	      std::cout << ')' << std::endl;
+	      seen |= cluster; // don't do elements of same cluster again
+	    }
+	  }
+    }
+  if (OK)
+    std::cout << "All " << count << " relations hold!\n";
+} // |braid_f|
+
+void braid_f()
 {
   ext_block::extended_block
     eblock(commands::currentBlock(),
 	   commands::currentComplexGroup().twistedWeylGroup());
-  for (BlockElt y=0; y<eblock.size(); ++y)
-  { weyl::Generator s;
-    for (s=0; s<eblock.rank(); ++s)
-      if (isDirectRecursion(eblock.descent_type(s,y)))
-	break;
-    if (s<eblock.rank())
-      continue; // skip cases with a direct recursion
+  test_braid(eblock);
+}
 
-    for (BlockElt x=0; x<y; ++x)
-    {
-      bool problem=false;
-      RankFlags which;
-      for (s=0; s<eblock.rank(); ++s)
-      {
-	ext_block::DescValue dsy = eblock.descent_type(s,y);
-	ext_block::DescValue dsx = eblock.descent_type(s,x);
-	if (is_descent(dsy) and not is_descent(dsx))
-	  goto next_x; // |x| is not extremal, so easy
-	if (is_like_nonparity(dsy) and is_proper_ascent(dsx))
-	{
-	  if (is_unique_image(dsx))
-	    goto next_x;
-	  problem=true; which.set(s);
-	}
-      } // |for(s)|
-      if (problem)
-      {
-	std::cout << '(' << eblock.z(x) << ',' << eblock.z(y) << "),  ";
-	for (RankFlags::iterator it=which.begin(); it(); ++it)
-	  std::cout << *it << ": ("
-	            << descent_code(eblock.descent_type(*it,x))  << ','
-		    << descent_code(eblock.descent_type(*it,y))  << ")  ";
-	std::cout << std::endl;
-      }
-    next_x:
-      continue;
-    } // |for(x)|
-  } // |for(y)|
-} // |test_f|
+
+void go_f()
+{
+  drop_to(commands::empty_mode); // make sure all modes will need re-entering
+  commands::currentLine().str("D5 sc u 2 3"); // type-ahead in input buffer
+  commands::currentLine().reset(); // and reset to start at beginning
+  commands::main_mode.activate();
+  commands::real_mode.activate();
+  commands::block_mode.activate();
+
+  ext_block::extended_block
+    eblock(commands::currentBlock(),
+	   commands::currentComplexGroup().twistedWeylGroup());
+
+  // eblock.patch_signs();
+  eblock.order_quad(100,97,163,165,4);
+  eblock.order_quad(62,59,115,117,4);
+  eblock.toggle_edge(190,165);
+  eblock.toggle_edge(75,117);
+
+  test_braid(eblock);
+}
 
 
 // Block mode functions

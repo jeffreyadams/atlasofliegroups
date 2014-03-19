@@ -260,7 +260,7 @@ then number =
       if n<=2 then 0        { inner classes without noncompact form, SO(2)=T1 }
       elif n%2=1 then q     { type B_{n\2} }
       elif q%2=1 then q\2   { type D_{n\2}, unequal rank }
-      elif q\2<n\4 then q\2 { type D_{n\2}, equal rank, more compact forms }
+      elif q<=n\4 then q\2  { type D_{n\2}, equal rank, more compact forms }
       elif n%4=2 then q\2+1 { type D_{n\2}odd, equal rank, more split forms }
       else q\2+2            { type D_{n\2}even, equal rank, more split forms }
       fi

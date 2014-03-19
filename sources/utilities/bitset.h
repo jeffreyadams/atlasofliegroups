@@ -339,7 +339,7 @@ template<size_t n> class BitSet
 
 // constructors and destructors
   BitSet() : Base() {}
-  explicit BitSet(unsigned long b) : Base(b) {}
+  explicit BitSet(unsigned long b) : Base(b) {} // set at most |longBits| bits
 
   template<typename I> // integer type
     explicit BitSet(const std::vector<I>& v); // takes parity bit of each entry

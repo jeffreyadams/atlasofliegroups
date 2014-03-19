@@ -22,7 +22,7 @@
 #include "atlas_types.h"
 #include "tits.h"	// representative of $y$ in |non_integral_block|
 #include "descents.h"	// inline methods
-
+#include "dynkin.h"     // DynkinDiagram
 
 namespace atlas {
 
@@ -42,6 +42,9 @@ namespace blocks {
 
   BitMap common_Cartans(RealReductiveGroup& GR,	RealReductiveGroup& dGR);
 
+  struct ext_gen; // defined below, represents fold-orbit of Weyl generators
+  DynkinDiagram folded // produced folded version of diagram, given orbits
+    (const DynkinDiagram& diag, const std::vector<ext_gen>& orbits);
 
 
 /******** type definitions **************************************************/
@@ -51,6 +54,7 @@ struct ext_gen // generator of extended Weyl group
   enum { one, two, three } type;
   weyl::Generator s0,s1;
   WeylWord w_tau;
+
   explicit ext_gen (weyl::Generator s)
     : type(one), s0(s), s1(~0), w_tau() { w_tau.push_back(s); }
   ext_gen (bool commute, weyl::Generator s, weyl::Generator t)
@@ -102,6 +106,7 @@ class Block_base
   // this vector may remain empty if |element| virtual methodis redefined
   std::vector<BlockElt> d_first_z_of_x; // of size |xsize+1|
 
+  DynkinDiagram dd;
   // possible tables of Bruhat order and Kazhdan-Lusztig polynomials
   BruhatOrder* d_bruhat;
   kl::KLContext* klc_ptr;
@@ -130,7 +135,9 @@ class Block_base
   virtual KGBElt xsize() const = 0;
   virtual KGBElt ysize() const = 0;
 
+  const DynkinDiagram& Dynkin() const { return dd; }
   ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
+  const std::vector<ext_gen>& fold_orbits() const { return orbits; }
 
   KGBElt x(BlockElt z) const { assert(z<size()); return info[z].x; }
   KGBElt y(BlockElt z) const { assert(z<size()); return info[z].y; }

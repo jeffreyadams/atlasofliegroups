@@ -156,6 +156,7 @@ inline BlockElt& first_free_slot(BlockEltPair& p)
 Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
   : info(), data(kgb.rank()), orbits()
   , d_first_z_of_x() // filled below
+  , dd(kgb.complexGroup().rootDatum().cartanMatrix())
   , d_bruhat(NULL)
   , klc_ptr(NULL)
 {
@@ -165,6 +166,7 @@ Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
 Block_base::Block_base(unsigned int rank)
   : info(), data(rank), orbits()
   , d_first_z_of_x()
+  , dd()
   , d_bruhat(NULL)
   , klc_ptr(NULL)
 {}
@@ -172,6 +174,7 @@ Block_base::Block_base(unsigned int rank)
 Block_base::Block_base(const Block_base& b) // copy constructor, unused
   : info(b.info), data(b.data), orbits(b.orbits)
   , d_first_z_of_x(b.d_first_z_of_x)
+  , dd(b.dd)
   , d_bruhat(NULL) // don't care to copy; is empty in |Block::build| anyway
   , klc_ptr(NULL)  // likewise
 {
@@ -444,15 +447,15 @@ Block::Block(const KGB& kgb,const KGB& dual_kgb)
   , xrange(kgb.size()), yrange(dual_kgb.size())
   , d_Cartan(), d_involution(), d_involutionSupport() // filled below
 {
-  const TwistedWeylGroup& dual_W =dual_kgb.twistedWeylGroup();
+  const TwistedWeylGroup& dual_tW =dual_kgb.twistedWeylGroup();
 
-  std::vector<TwistedInvolution> dual_w; // tabulate bijection |W| -> |dual_W|
+  std::vector<TwistedInvolution> dual_w; // tabulate bijection |tW->dual_tW|
   dual_w.reserve(kgb.nr_involutions());
   size_t size=0;
   for (unsigned int i=0; i<kgb.nr_involutions(); ++i)
   {
     const TwistedInvolution w = kgb.nth_involution(i);
-    dual_w.push_back(dual_involution(w,tW,dual_W));
+    dual_w.push_back(dual_involution(w,tW,dual_tW));
     size += kgb.packet_size(w)*dual_kgb.packet_size(dual_w.back());
   }
 
@@ -799,8 +802,8 @@ void nblock_help::cross_act (nblock_elt& z, weyl::Generator s) const
 void nblock_help::parent_up_Cayley(nblock_elt& z, weyl::Generator s) const
 {
   KGBElt cx=kgb.cayley(s,z.xx); // direct Cayley transform on $x$ side
-  if (cx == UndefKGB)
-    return; // silently ignore undefined Cayley case
+  if (cx == UndefKGB) // undefined Cayley transform: not imaginary noncompact
+    return; // silently ignore, done for use from realex |Cayley| function
   z.xx = cx;
 
   /* on $y$ side ensure that |z.yy.evaluate_at(rd.simpleCoroot(s))| is even.
@@ -839,15 +842,15 @@ bool nblock_help::is_real_nonparity(nblock_elt z, weyl::Generator s) const
 void nblock_help::parent_down_Cayley(nblock_elt& z, weyl::Generator s) const
 {
   KGBElt cx=kgb.inverseCayley(s,z.xx).first; // inverse Cayley on $x$ side
-  if (cx == UndefKGB)
-    return; // silently ignore undefined inverse Cayley case
-  z.xx = cx;
+  if (cx == UndefKGB) // not a real root, so undefined inverse Cayley
+    return; // silently ignore, done for use from realex |inv_Cayley| function
 
   // on $y$ side just keep the same dual |TorusElement|, so nothing to do
-#ifndef NDEBUG
+  // however, for non-parity roots, leave $x$ unchenged as well
   Rational r = z.yy.evaluate_at(rd.simpleCoroot(s)); // modulo $2\Z$
-  assert(r.numerator()%(2*r.denominator())==0); // but it must be a parity root
-#endif
+  if (r.numerator()%(2*r.denominator())==0) // then it is a parity root
+    z.xx = cx; // move $x$ component of |z|
+  // for nonparity roots, leave |z| is unchanged for realex |inv_Cayley|
 }
 
 void nblock_help::do_down_Cayley (nblock_elt& z, weyl::Generator s) const
@@ -895,6 +898,8 @@ non_integral_block::non_integral_block
 {
   const ComplexReductiveGroup& G = complexGroup();
   const RootDatum& rd = G.rootDatum();
+  Block_base::dd = DynkinDiagram(rd.cartanMatrix());
+
   const InvolutionTable& i_tab = G.involution_table();
   const KGB& kgb = rc.kgb();
 
@@ -1391,6 +1396,8 @@ non_integral_block::non_integral_block
   , z_hash(info)
 {
   const RootDatum& rd = complexGroup().rootDatum();
+  Block_base::dd = DynkinDiagram(rd.cartanMatrix());
+
   const KGB& kgb = rc.kgb();
 
   rc.make_dominant(sr); // make dominant before computing subsystem
@@ -1669,46 +1676,47 @@ std::vector<set::EltList> makeHasse(const Block_base& block)
 /*
   We have $\tau = w.\delta$, with $w$ in the Weyl group $W$, and $\delta$ the
   fundamental involution of $X^*$. We seek the twisted involution $v$ in the
-  dual twisted Weyl group |dual_W| such that $-\tau^t = v.\delta^\vee$. Here
-  $\delta^\vee$ is the dual fundamental involution, which acts on $X_*$ as
-  minus the transpose of the longest involution $w_0.\delta$, where $w_0$ is
-  the longest element of $W$. This relation relation can be defined
-  independently of being a twisted involution, and leads to a bijection $f$:
-  $W \to W$ that is characterised by $f(e)=w_0$ and $f(s.w)=f(w)dwist(s)$ for
-  any simple generator $e$ and $w\in W$, where $dwist$ is the twist of the
-  dual twisted Weyl group (one also has $f(w.twist(s))=s.f(w)$ so that $f$
-  intertwines twisted conjugation: $f(s.w.twist(s))=s.f(w).dwist(s)$).
+  dually twisted Weyl group |dual_tW| such that $-\tau^t = v.\delta^\vee$.
+  Here $\delta^\vee$ is the dual fundamental involution, which acts on $X_*$
+  as minus the transpose of the longest involution $w_0.\delta$, where $w_0$
+  is the longest element of $W$. This relation can be defined independently of
+  being a twisted involution, and leads to a bijection $f: W \to W$ that is
+  characterised by $f(e)=w_0$ and $f(s.w)=f(w).dwist(s)$ for any simple
+  generator $s$ and $w\in W$, where $dwist$ is the twist of the dual twisted
+  Weyl group (one also has $f(w.twist(s))=s.f(w)$ so that $f$ intertwines
+  twisted conjugation: $f(s.w.twist(s))=s.f(w).dwist(s)$).
 
   The implementation below is based directly on the above characterisation, by
   converting |w| into a |WeylWord|, and then starting from $w_0$
   right-multiplying successively by the $dwist$ image of the letters of the
-  word taken right-to-left. The only thing assumed common to |W| and |W_dual|
-  is the \emph{external} numbering of generators (letters in |ww|), a minimal
-  requirement without which the notion of dual twisted involution would make
-  no sense. Notably the result will be correct (when interpreted for |dual_W|)
-  even if the underlying (untwisted) Weyl groups of |W| and |dual_W| should
-  differ in their external-to-internal mappings. If one assumes that |W| and
-  |dual_W| share the same underlying Weyl group (as is currently the case for
-  an inner class and its dual) then one could alternatively say simply
+  word taken right-to-left. The only thing assumed common to |tW| and
+  |dual_tW| is the \emph{external} numbering of generators (letters in |ww|),
+  a minimal requirement without which the notion of dual twisted involution
+  would make no sense. Notably the result will be correct (when interpreted
+  for |dual_tW|) even if the underlying (untwisted) Weyl groups of |W| and
+  |dual_W| should differ in their external-to-internal mappings. If one
+  assumes that |W| and |dual_W| share the same underlying Weyl group (as is
+  currently the case for an inner class and its dual) then one could
+  alternatively say simply
 
-    |return W.prod(W.weylGroup().longest(),dual_W.twisted(W.inverse(w)))|
+    |return tW.prod(tW.weylGroup().longest(),dual_tW.twisted(W.inverse(w)))|
 
   or
 
-    |return W.prod(W.inverse(W.twisted(w)),W.weylGroup().longest())|.
+    |return tW.prod(tW.inverse(tW.twisted(w)),tW.weylGroup().longest())|.
 
   Note that this would involve implicit conversion of an element of |W| as one
-  of |dual_W|.x
+  of |dual_W|.
 */
 TwistedInvolution
 dual_involution(const TwistedInvolution& w,
-		const TwistedWeylGroup& W,
-		const TwistedWeylGroup& dual_W)
+		const TwistedWeylGroup& tW,
+		const TwistedWeylGroup& dual_tW)
 {
-  WeylWord ww= W.word(w);
-  TwistedInvolution result = dual_W.weylGroup().longest();
+  WeylWord ww= tW.word(w);
+  TwistedInvolution result = dual_tW.weylGroup().longest();
   for (size_t i=ww.size(); i-->0; )
-    dual_W.mult(result,dual_W.twisted(ww[i]));
+    dual_tW.mult(result,dual_tW.twisted(ww[i]));
   return result;
 }
 
@@ -1724,11 +1732,40 @@ std::vector<BlockElt> dual_map(const Block_base& b, const Block_base& dual_b)
   return result;
 }
 
-BitMap common_Cartans(RealReductiveGroup& GR,
-			      RealReductiveGroup& dGR)
-  { return GR.Cartan_set()
-      & GR.complexGroup().dual_Cartan_set(dGR.realForm());
+// build Dynkin diagram resulting from folding by diagram involution |fold|
+DynkinDiagram folded
+  (const DynkinDiagram& diag, const std::vector<ext_gen>& orbit)
+{
+  unsigned n=orbit.size();
+  // we can only build complete Dynkin diagrams, so compute the Cartan matrix
+  int_Matrix Cartan(n,n,0);
+  for (unsigned int i=0; i<n; ++i)
+  {
+    Cartan(i,i) = 2;
+    RankFlags neighbours = diag.star(orbit[i].s0);
+    if (orbit[i].length()>1)
+      neighbours |= diag.star(orbit[i].s1);
+    for (unsigned j=n; --j>i;)
+      if (neighbours[orbit[j].s0])
+      {
+	int d=orbit[i].length()-orbit[j].length();
+	if (d==0)
+	{
+	  Cartan(i,j)=diag.cartanEntry(i,j); // for same type orbits just
+	  Cartan(j,i)=diag.cartanEntry(j,i); // copy Cartan matrix entry
+	}
+	else // unequal type, mark $-2$ when first index is longer than second
+	{
+	  Cartan(i,j)=d>0 ? -2 : -1;
+	  Cartan(j,i)=d<0 ? -2 : -1;
+	}
+      }
   }
+  return DynkinDiagram(Cartan);
+} // |folded|
+
+BitMap common_Cartans(RealReductiveGroup& GR, RealReductiveGroup& dGR)
+{ return GR.Cartan_set() & GR.complexGroup().dual_Cartan_set(dGR.realForm()); }
 
 } // namespace blocks
 

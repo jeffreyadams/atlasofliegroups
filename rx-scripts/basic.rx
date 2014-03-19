@@ -164,6 +164,8 @@ set simple_reflection (RootDatum rd, int s) = mat: { s indexes simple root }
 set reflection (RootDatum rd, int alpha) = mat: { alpha indexes any root! }
   id_mat(rank(rd))- [roots(rd)[alpha]] * ^[coroots(rd)[alpha]]
 
+set != (InnerClass x,InnerClass y) = bool: not(x=y)
+
 set involution (InnerClass ic, [int] tw) = mat: { tw is a Weyl word }
 ( let rd = root_datum(ic), theta = distinguished_involution(ic)
   in for i : #tw downto 0 do theta := simple_reflection(rd,tw[i])*theta od
@@ -182,6 +184,10 @@ set real_coroots (InnerClass ic, [int] tw) = mat:      { tw is a Weyl word }
 { integrality inner class (dual side) defined by inf. character and involution }
 set dual_integral(InnerClass ic, ratvec gamma) = InnerClass:
   inner_class(dual(integrality_datum(ic,gamma)),-^distinguished_involution(ic))
+
+set = (RealForm f, RealForm g) = bool:
+  inner_class(f) = inner_class(g) and form_number(f)=form_number(g)
+set != (RealForm f, RealForm g) = bool: not(f=g)
 
 set KGB(RealForm rf) = [KGBElt]: for i:KGB_size(rf) do KGB(rf,i) od
 set is_complex(int s,KGBElt x) = status(s,x)%4=0
