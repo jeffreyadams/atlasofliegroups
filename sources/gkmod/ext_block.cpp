@@ -120,7 +120,7 @@ bool has_defect(DescValue v)
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
 
-int length(DescValue v)
+int generator_length(DescValue v)
 { return v<two_complex_ascent ? 1 : v<three_complex_ascent ? 2 : 3; }
 
 // find element |n| such that |z(n)>=zz|
@@ -764,7 +764,7 @@ Pol T_coef(const extended_block& b, weyl::Generator s, BlockElt x, int i)
     }
   }
 
-  int k=length(v);
+  int k=generator_length(v);
   Pol result(k,1); // start with $q^k$
   if (i==0) // diagonal coefficient
   {
