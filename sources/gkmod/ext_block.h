@@ -87,6 +87,7 @@ int generator_length(DescValue v);
 DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
 			BlockElt& first_link);
 
+typedef Polynomial<int> Pol;
 
 class extended_block
 {
@@ -144,6 +145,9 @@ class extended_block
   // Look up element by |x|, |y| coordinates
   BlockElt element(BlockElt z) const; // partial inverse of method |z|
 
+  const DescValue descent_type(weyl::Generator s, BlockElt n) const
+    { assert(n<size()); assert(s<rank()); return data[s][n].type; }
+
   size_t length(BlockElt n) const { return info[n].length; }
   size_t l(BlockElt y, BlockElt x) const { return length(y)-length(x); }
   BlockElt length_first(size_t l) const { return l_start[l]; }
@@ -155,11 +159,11 @@ class extended_block
   BlockEltPair Cayleys(weyl::Generator s, BlockElt n) const;
   BlockEltPair inverse_Cayleys(weyl::Generator s, BlockElt n) const;
 
-  // whether $i$-th (inverse) Cayley link at |s| from |n| flips sign
-  int epsilon(weyl::Generator s, BlockElt n,unsigned i) const;
+  // whether link for |s| from |x| to |y| has a signe flip attached
+  int epsilon(weyl::Generator s, BlockElt x, BlockElt y) const;
 
-  const DescValue descent_type(weyl::Generator s, BlockElt n) const
-    { assert(n<size()); assert(s<rank()); return data[s][n].type; }
+  // coefficient in action $(T_s+1)*a_x$, of neighbour |sx|
+  Pol T_coef(weyl::Generator s, BlockElt x, BlockElt sx) const;
 
   BlockEltList down_set(BlockElt y) const;
 
@@ -172,11 +176,6 @@ class extended_block
   std::ostream& print_to(std::ostream& strm) const; // defined in |block_io|
 
 }; // |class extended_block|
-
-typedef Polynomial<int> Pol;
-
-// coefficient in action $T_s*a_x$, of ($i=0$) $a_x$ or ($i=1,2$) neighbour
-Pol T_coef(const extended_block& b, weyl::Generator s, BlockElt x, int i);
 
 // check braid relation at |x|; also mark all involved elements in |cluster|
 bool check_braid

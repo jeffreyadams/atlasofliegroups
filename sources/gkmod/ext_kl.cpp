@@ -102,7 +102,7 @@ descent_table::descent_table(const ext_block::extended_block& eb)
     }
   }
 
-} // |descent_table|
+} // |descent_table| constructor
 
 // number of primimitive elements for descents(y) of length less than y
 unsigned int descent_table::col_size(BlockElt y) const
@@ -281,7 +281,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
     }
 
   return extract_M(Q,aux.block.l(z,x)+defect,defect);
-}
+} // |KL_table::get_M|
 
 /*
   This is largely the same formula, but used in different context, which
@@ -339,13 +339,13 @@ Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
     if (aux.descent_set(u)[s] and M[u].degree()==2-aux.block.l(u,x)%2)
       b -= mu(M[u].degree(),x,u)*M[u][M[u].degree()];
   return m(a,b);
-}
+} // |KL_table::get_Mp|
 
 
 // component in product $(T_s+1)a_{sy}$ of element $a_x$
 Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
 {
-  const int k = aux.block.orbit(s).length();
+  const ext_block::extended_block& b = aux.block;
   switch(type(s,x))
   { default:
       assert(false); // list will only contain descent types
@@ -353,44 +353,56 @@ Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
       // complex
   case ext_block::one_complex_descent:
   case ext_block::two_complex_descent:
-  case ext_block::three_complex_descent:
-    // contribute $P_{sx,sy}+q^kP_{x,sy}$
-    return P(aux.block.cross(s,x),sy) + Pol(k,P(x,sy));
+  case ext_block::three_complex_descent: // contribute $P_{sx,sy}+q^kP_{x,sy}$
+    {
+      const BlockElt sx = b.cross(s,x);
+      return b.T_coef(s,sx,x)*P(sx,sy) + b.T_coef(s,x,x)*P(x,sy);
+    }
     // imaginary compact, real switched
   case ext_block::one_imaginary_compact:
   case ext_block::two_imaginary_compact:
   case ext_block::three_imaginary_compact:
   case ext_block::one_real_pair_switched:
     // contribute $(q^k+1)P_{x,sy}$
-    return qk_plus_1(k) * P(x,sy);
+    return b.T_coef(s,x,x) * P(x,sy);
     // real type 1
   case ext_block::one_real_pair_fixed:
   case ext_block::two_real_double_double:
     { // contribute $P_{x',sy}+P_{x'',sy}+(q^k-1)P_{x,sy}$
-      BlockEltPair sx = aux.block.inverse_Cayleys(s,x);
-      return P(sx.first,sy) + P(sx.second,sy) + qk_minus_1(k) * P(x,sy);
+      BlockEltPair sx = b.inverse_Cayleys(s,x);
+      return b.T_coef(s,sx.first,x)*P(sx.first,sy)
+	+ b.T_coef(s,sx.second,x)*P(sx.second,sy)
+	+ b.T_coef(s,x,x) * P(x,sy);
     }
     // real type 2
   case ext_block::one_real_single:
   case ext_block::two_real_single_single:
-    // contribute $P_{x_s,sy}+q^kP_{x,sy}-P_{s*x,sy}$
-    return P(aux.block.inverse_Cayley(s,x),sy)
-      - P(aux.block.cross(s,x),sy)
-      + Pol(k,P(x,sy));
+    { // contribute $P_{x_s,sy}+q^kP_{x,sy}-P_{s*x,sy}$
+      const BlockElt s_x = b.inverse_Cayley(s,x);
+      const BlockElt x_cross = b.cross(s,x);
+      return b.T_coef(s,s_x,x)*P(s_x,sy)
+	+ b.T_coef(s,x_cross,x)*P(x_cross,sy)
+	+ b.T_coef(s,x,x) * P(x,sy);
+    }
     // defect type descents: 2Cr, 3Cr, 3r
   case ext_block::two_semi_real:
   case ext_block::three_semi_real:
   case ext_block::three_real_semi:
-    // contribute $(q+1)P_{x_s,sy}+(q^k-q)P_{x,sy}$
-    return q_plus_1() * P(aux.block.inverse_Cayley(s,x),sy)
-      + qk_minus_q(k) * P(x,sy);
+    { // contribute $(q+1)P_{x_s,sy}+(q^k-q)P_{x,sy}$
+      const BlockElt sx = b.inverse_Cayley(s,x);
+      return b.T_coef(s,sx,x) * P(sx,sy)
+	+ b.T_coef(s,x,x) * P(x,sy);
+    }
     // epsilon case: 2r21
   case ext_block::two_real_single_double:
     { // contribute $P_{x',sy}\pm P_{x'',sy}+(q^2-1)P_{x,sy}$
-      BlockEltPair sx = aux.block.inverse_Cayleys(s,x);
-      return P(sx.first,sy)*aux.block.epsilon(s,x,0)
-	+ P(sx.second,sy)*aux.block.epsilon(s,x,1)
-	+ qk_minus_1(k) * P(x,sy); // since $k=2$ here
+      BlockEltPair sx = b.inverse_Cayleys(s,x);
+      return b.T_coef(s,sx.first,x)*P(sx.first,sy)
+	+ b.T_coef(s,sx.second,x)*P(sx.second,sy)
+	+ b.T_coef(s,x,x) * P(x,sy);
+      // return P(sx.first,sy)*b.epsilon(s,x,sx.first)
+      // 	+ P(sx.second,sy)*b.epsilon(s,x,sx.second)
+      // 	+ b.T_coef(s,x,x) * P(x,sy);
     }
   } // |switch(type(s,x))|
 }
@@ -543,8 +555,9 @@ void KL_table::fill_next_column(PolHash& hash)
       { // find and use a double-valued ascent for |x| that is decsent for |y|
 	assert(has_double_image(type(s,x))); // since |s| non-good ascent
 	BlockEltPair sx = aux.block.Cayleys(s,x);
-	Pol Q = P(sx.first,y)*aux.block.epsilon(s,x,0) // computed earlier
-	  + P(sx.second,y)*aux.block.epsilon(s,x,1);   // in this loop
+	Pol Q
+	  = P(sx.first,y)*aux.block.epsilon(s,x,sx.first)    // computed earlier
+	  + P(sx.second,y)*aux.block.epsilon(s,x,sx.second); // in this loop
         *it = hash.match(Q);
       }
     assert(it==column.back().rend()); // check that we've traversed the column
@@ -593,8 +606,9 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	s = aux.easy_set(x,y).firstBit();
 	assert(has_double_image(type(s,x))); // since |s| non-good ascent
 	BlockEltPair sx = aux.block.Cayleys(s,x);
-	cy[x] = P(sx.first,y)*aux.block.epsilon(s,x,0)   // computed earlier
-	  + P(sx.second,y)*aux.block.epsilon(s,x,1); // in this loop
+	cy[x]
+	  = P(sx.first,y)*aux.block.epsilon(s,x,sx.first)    // computed earlier
+	  + P(sx.second,y)*aux.block.epsilon(s,x,sx.second); // in this loop
       }
     }
     else // |x| is extremal for |y|, must do computation
@@ -667,9 +681,9 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	  BlockEltPair sx=aux.block.Cayleys(s,x);
 	  Pol S;
 	  if (sx.first<y)
-	    S = cy[sx.first]*aux.block.epsilon(s,x,0);;
+	    S = cy[sx.first]*aux.block.epsilon(s,x,sx.first);
 	  if (sx.second<y)
-	    S += cy[sx.second]*aux.block.epsilon(s,x,1);;
+	    S += cy[sx.second]*aux.block.epsilon(s,x,sx.second);
 	  Q -= qk_minus_1(2)*S;
 	  Q/=2;
 	}

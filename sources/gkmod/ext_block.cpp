@@ -270,15 +270,15 @@ extended_block::inverse_Cayleys(weyl::Generator s, BlockElt n) const
   return result;
 }
 
-int extended_block::epsilon(weyl::Generator s, BlockElt n,unsigned i) const
+// whether link for |s| from |x| to |y| has a signe flip attached
+int extended_block::epsilon(weyl::Generator s, BlockElt x, BlockElt y ) const
 {
-  BlockElt y = i==0 ? data[s][n].links.first : data[s][n].links.second;
-  BlockEltPair p= n<y ? std::make_pair(n,y) : std::make_pair(y,n);
+  BlockEltPair p= x<y ? std::make_pair(x,y) : std::make_pair(y,x);
   int sign = flipped_edges.count(p)==0 ? 1 : -1;
 
   // each 2i12/21r21 quadruple has one negative sign not using |flipped_edges|
-  if (i==1 and has_quadruple(descent_type(s,n)) and
-      n==data[s][data[s][n].links.second].links.second)
+  if (has_quadruple(descent_type(s,x)) and
+      data[s][x].links.second==y and data[s][y].links.second==x)
     sign = -sign; // it is between second elements in both pairs of the quad
 
   return sign;
@@ -737,65 +737,66 @@ void extended_block::patch_signs()
     } // |for(s)|
 } // |extended_block::patch_signs|
 
-// coefficient in action $T_s*a_x$, of ($i=0$) $a_x$ or ($i=1,2$) neighbour
-Pol T_coef(const extended_block& b, weyl::Generator s, BlockElt x, int i)
+// coefficient in action $(T_s+1)*a_x$, of neighbour |sx| for $s$
+Pol extended_block::T_coef(weyl::Generator s, BlockElt x, BlockElt sx) const
 {
-  DescValue v = b.descent_type(s,x);
+  DescValue v = descent_type(s,x);
   if (not is_descent(v))
   {
-    if (i==0) // diagonal coefficient
+    if (x==sx) // diagonal coefficient
       if (has_defect(v))
-	return Pol(1,1); // $q$
-      else  // $-1$, $0$, or $1$
-	return Pol(is_like_nonparity(v) ? -1 : has_double_image(v) ? 1 : 0);
-    else if (is_like_type_1(v) and i==2) // type 1 imaginary cross edge
+	return Pol(1,1)+Pol(1); // $q+1$
+      else  // $0$, $1$, or $2$
+	return Pol(is_like_nonparity(v) ? 0 : has_double_image(v) ? 2 : 1);
+    else if (is_like_type_1(v) and sx==cross(s,x)) // type 1 imaginary cross
     {
-      BlockElt y = b.Cayley(s,x); // pass via this element for signs
-      int sign = b.epsilon(s,y,0)*b.epsilon(s,y,1); // combine two Cayley signs
+      BlockElt y = Cayley(s,x); // pass via this element for signs
+      int sign = epsilon(s,x,y)*epsilon(s,sx,y); // combine two Cayley signs
       return Pol(sign);
     }
     else // below diagonal coefficient
     {
-      int sign = b.epsilon(s,x,i-1);
+      assert (data[s][x].links.first==sx or data[s][x].links.second==sx);
+      int sign = epsilon(s,x,sx);
       if (has_defect(v)) // $\pm(q+1)$
 	return Pol(1,sign)+Pol(sign);
       else
 	return Pol(sign); // $\pm1$
     }
-  }
+  } // |if (not is_descent(v))|
 
-  int k=generator_length(v);
+  int k = orbit(s).length();
   Pol result(k,1); // start with $q^k$
-  if (i==0) // diagonal coefficient
+  if (x==sx) // diagonal coefficient
   {
     if (has_double_image(v))  // diagonal coefficient
-      result[0] = -2; // $q^k-2$
-    else if (not is_like_compact(v))
-    {
       result[0] = -1; // $q^k-1$
-      if (has_defect(v))
-	result[1] = -1; // $q^k-q-1$
-    }
+    else if (is_like_compact(v))
+      result[0] = 1; // $q^k+1$
+    else if (has_defect(v))
+      result[1] = -1; // $q^k-q$
+    // |else| leave $q^k$
   }
-  else if (is_like_type_2(v) and i==2) // type 2 real cross edge
+  else if (is_like_type_2(v) and sx==cross(s,x)) // type 2 real cross
   {
-    BlockElt y = b.inverse_Cayley(s,x); // pass via this element for signs
-    int sign = b.epsilon(s,y,0)*b.epsilon(s,y,1); // combine two Cayley signs
-    return Pol(-sign); // forget term $\pm q^k$, return $\mp 1$ instead
+    BlockElt y = inverse_Cayley(s,x); // pass via this element for signs
+    int sign = epsilon(s,y,x)*epsilon(s,y,sx); // combine two Cayley signs
+    return Pol(-sign); // forget term $q^k$, return $\mp 1$ instead
   }
   else // remaining cases involve descending edge (above-diagonal coefficient)
   {
+    assert (data[s][x].links.first==sx or data[s][x].links.second==sx);
     if (not is_complex(v))
       result[has_defect(v) ? 1 : 0] = -1; // change into $q^k-1$ or $q^k-q$
-    result *= b.epsilon(s,x,i-1); // flip sign according to chosen edge
+    result *= epsilon(s,x,sx); // flip sign according to chosen edge
   }
 
   return result;
-} // |T_coef|
+} // |extended_block::T_coef|
 
 void set(matrix::Matrix<Pol>& dst, unsigned i, unsigned j, Pol P)
 {
-  //  P.print(std::cerr << "M[" << i << ',' << j << "] =","q") << std::endl;
+  // P.print(std::cerr << "M[" << i << ',' << j << "] =","q") << std::endl;
   dst(i,j)=P;
 }
 
@@ -840,17 +841,17 @@ bool check_braid
   for (BitMap::iterator jt=used.begin(); jt(); ++jt,++j)
   {
     BlockElt y = *jt;
-    set(Ts,j,j, T_coef(b,s,y,0)); set(Tt,j,j, T_coef(b,t,y,0));
+    set(Ts,j,j, b.T_coef(s,y,y)-Pol(1)); set(Tt,j,j, b.T_coef(t,y,y)-Pol(1));
     BlockEltList l; l.reserve(2);
     b.add_neighbours(l,s,*jt);
     for (unsigned int i=0; i<l.size(); ++i)
       if (used.isMember(l[i]))
-	set(Ts,used.position(l[i]),j, T_coef(b,s,y,i+1));
+	set(Ts,used.position(l[i]),j, b.T_coef(s,y,l[i]));
     l.clear();
     b.add_neighbours(l,t,*jt);
     for (unsigned int i=0; i<l.size(); ++i)
       if (used.isMember(l[i]))
-	set(Tt,used.position(l[i]),j, T_coef(b,t,y,i+1));
+	set(Tt,used.position(l[i]),j, b.T_coef(t,y,l[i]));
   }
   matrix::Vector<Pol> v(n,Pol()), w;
   v[used.position(x)]=Pol(1); w=v;
