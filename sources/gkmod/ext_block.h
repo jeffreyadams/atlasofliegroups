@@ -162,8 +162,8 @@ class extended_block
   // whether link for |s| from |x| to |y| has a signe flip attached
   int epsilon(weyl::Generator s, BlockElt x, BlockElt y) const;
 
-  // coefficient in action $(T_s+1)*a_x$, of neighbour |sx|
-  Pol T_coef(weyl::Generator s, BlockElt x, BlockElt sx) const;
+  // coefficient of neighbour |sx| for $s$ in action $(T_s+1)*a_x$
+  Pol T_coef(weyl::Generator s, BlockElt sx, BlockElt x) const;
 
   BlockEltList down_set(BlockElt y) const;
 

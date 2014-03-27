@@ -174,68 +174,138 @@ Pol qk_minus_q(int k)
   return res;
 }
 
+
+// component of element $a_x$ in product $(T_s+1)a_{sy}$
+Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
+{
+  const ext_block::extended_block& b = aux.block;
+  switch(type(s,x))
+  { default:
+      assert(false); // list will only contain descent types
+      return Pol();
+      // complex
+  case ext_block::one_complex_descent:
+  case ext_block::two_complex_descent:
+  case ext_block::three_complex_descent: // contribute $P_{sx,sy}+q^kP_{x,sy}$
+    {
+      const BlockElt sx = b.cross(s,x);
+      return b.T_coef(s,x,sx)*P(sx,sy) + b.T_coef(s,x,x)*P(x,sy);
+    }
+    // imaginary compact, real switched
+  case ext_block::one_imaginary_compact:
+  case ext_block::two_imaginary_compact:
+  case ext_block::three_imaginary_compact:
+  case ext_block::one_real_pair_switched:
+    // contribute $(q^k+1)P_{x,sy}$
+    return b.T_coef(s,x,x) * P(x,sy);
+    // real type 1
+  case ext_block::one_real_pair_fixed:
+  case ext_block::two_real_double_double:
+    { // contribute $P_{x',sy}+P_{x'',sy}+(q^k-1)P_{x,sy}$
+      BlockEltPair sx = b.inverse_Cayleys(s,x);
+      return b.T_coef(s,x,sx.first)*P(sx.first,sy)
+	+ b.T_coef(s,x,sx.second)*P(sx.second,sy)
+	+ b.T_coef(s,x,x) * P(x,sy);
+    }
+    // real type 2
+  case ext_block::one_real_single:
+  case ext_block::two_real_single_single:
+    { // contribute $P_{x_s,sy}+q^kP_{x,sy}-P_{s*x,sy}$
+      const BlockElt s_x = b.inverse_Cayley(s,x);
+      const BlockElt x_cross = b.cross(s,x);
+      return b.T_coef(s,x,s_x)*P(s_x,sy)
+	+ b.T_coef(s,x,x_cross)*P(x_cross,sy)
+	+ b.T_coef(s,x,x) * P(x,sy);
+    }
+    // defect type descents: 2Cr, 3Cr, 3r
+  case ext_block::two_semi_real:
+  case ext_block::three_semi_real:
+  case ext_block::three_real_semi:
+    { // contribute $(q+1)P_{x_s,sy}+(q^k-q)P_{x,sy}$
+      const BlockElt sx = b.inverse_Cayley(s,x);
+      return b.T_coef(s,x,sx) * P(sx,sy)
+	+ b.T_coef(s,x,x) * P(x,sy);
+    }
+    // epsilon case: 2r21
+  case ext_block::two_real_single_double:
+    { // contribute $P_{x',sy}\pm P_{x'',sy}+(q^2-1)P_{x,sy}$
+      BlockEltPair sx = b.inverse_Cayleys(s,x);
+      return b.T_coef(s,x,sx.first)*P(sx.first,sy)
+	+ b.T_coef(s,x,sx.second)*P(sx.second,sy)
+	+ b.T_coef(s,x,x) * P(x,sy);
+      // return P(sx.first,sy)*b.epsilon(s,x,sx.first)
+      // 	+ P(sx.second,sy)*b.epsilon(s,x,sx.second)
+      // 	+ b.T_coef(s,x,x) * P(x,sy);
+    }
+  } // |switch(type(s,x))|
+}
+
+// shift symmetric Laurent polynomial $aq^{-1}+b+aq$ to ordinary polynomial
 inline Pol m(int a,int b) { return a==0 ? Pol(b) : qk_plus_1(2)*a + Pol(1,b); }
 
 /*
-  Use recursive formula (in degree-shifted Laurent polynomials in $r$)
-  $m(x)\cong r^k p_{x,y} + def(s,x) r p_{s_x,y}-\sum_{x<u<y}m(u)p_{x,u}$ where
-  $M(x)$ abbreviates $m_s(x,y)$ and the congruence is modulo
-  $r^{-1+def(s,y)}\Z[r^{-1}]$; then use symmetry of $m(x)$ to complete. There
-  is a complication when $def(s,y)=1$, since a congruence modulo $\Z[r^{-1}]$
-  cannot be used to determine the coefficient of $r^0$ in $m(x)$, and instead
-  one must use that the difference between the members of above congruence
-  should be a multiple of $(r+r^{-1})$. To that end we use the appropriate
-  |up_remainder(1,d)| values of polynomials, instead of the coefficient in
-  $r^0$, for our computations. We use that |up_remainder| (with appropriate
-  shifts) is a ring morphism, so can be applied to the factors in a product.
+  Find $m_s(x,y)$ (symmetric Laurent polynomials in $r$) by recursive formula
+  $m(x)\cong r^k p_{x,y} + def(s,x) r p_{s_x,y}-\sum_{x<u<y}p_{x,u}m(u)$ where
+  $m(x)$ is $m_s(x,y)$, and congruence is modulo $r^{-1+def(s,y)}\Z[r^{-1}]$;
+  then use symmetry of $m(x)$ to complete. Actual result returned is shifted
+  minimally to an ordinary polynomial in $q$. There is a complication when
+  $def(s,y)=1$, since a congruence modulo $\Z[r^{-1}]$ cannot be used to
+  determine the coefficient of $r^0$ in $m(x)$, and instead one must use that
+  the difference between the members of above congruence should be a multiple
+  of $(r+r^{-1})$. To that end we use the appropriate |up_remainder(1,d)|
+  values of polynomials, instead of the coefficient in $r^0$, for our
+  computations. We use that |up_remainder| (with appropriate shifts) is a ring
+  morphism, so can be applied to the factors in a product.
  */
 Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 		    const std::vector<Pol>& M) const
 {
-  const BlockElt z =  aux.block.some_scent(s,y); // unique ascent by |s| of |y|
+  const ext_block::extended_block& bl=aux.block;
+  const BlockElt z =  bl.some_scent(s,y); // unique ascent by |s| of |y|
+  const int sign = bl.epsilon(s,y,z);
 
   const unsigned defect = has_defect(type(s,z)) ? 1 : 0;
-  const unsigned k = aux.block.orbit(s).length();
+  const unsigned k = bl.orbit(s).length();
 
   if (k==1)
-    return  Pol(aux.block.l(y,x)%2==0 ? 0 : mu(1,x,y));
+    return  Pol(bl.l(y,x)%2==0 ? 0 : mu(1,x,y)*sign);
 
   if (k==2)
   {
-    if (aux.block.l(y,x)%2!=0)
-      return q_plus_1() * Pol(mu(1,x,y));
+    if (bl.l(y,x)%2!=0)
+      return q_plus_1() * Pol(mu(1,x,y)*sign);
     if (defect==0)
     {
       int acc = mu(2,x,y);
       if (has_defect(type(s,x)))
-	acc += mu(1,aux.block.inverse_Cayley(s,x),y);
-      for (unsigned l=aux.block.length(x)+1; l<aux.block.length(z); l+=2)
-	for (BlockElt u=aux.block.length_first(l);
-	     u<aux.block.length_first(l+1); ++u)
+      {
+	BlockElt sx=bl.inverse_Cayley(s,x);
+	acc += mu(1,sx,y)*bl.epsilon(s,sx,x); // sign is |T_coef(s,x,sx)[1]|
+      }
+      for (unsigned l=bl.length(x)+1; l<bl.length(z); l+=2)
+	for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
 	  if (aux.descent_set(u)[s] and not M[u].isZero())
 	    acc -= mu(1,x,u)*M[u][0];
-      return Pol(acc);
+      return Pol(acc*sign);
     }
     // |k==2| defect case
-    int acc= product_comp(x,s,y).up_remainder(1,(aux.block.l(z,x)+1)/2);
-    for (unsigned l=aux.block.length(x)+2; l<aux.block.length(z); l+=2)
-      for (BlockElt u=aux.block.length_first(l);
-	   u<aux.block.length_first(l+1); ++u)
+    int acc= product_comp(x,s,y).up_remainder(1,(bl.l(z,x)+1)/2);
+    for (unsigned l=bl.length(x)+2; l<bl.length(z); l+=2)
+      for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
 	if (aux.descent_set(u)[s] and not M[u].isZero())
-	  acc -= P(x,u).up_remainder(1,aux.block.l(u,x)/2)*M[u][0];
-    return Pol(acc);
+	  acc -= P(x,u).up_remainder(1,bl.l(u,x)/2)*M[u][0];
+    return Pol(acc*sign);
   }
   if (k==3)
   {
-    if (aux.block.l(y,x)%2==0) // now we need a multiple of $1+q$
+    if (bl.l(y,x)%2==0) // now we need a multiple of $1+q$
     {
       int acc = mu(2,x,y); // degree $1$ coefficient of |product_comp(x,s,y)|
-      for (unsigned l=aux.block.length(x)+1; l<aux.block.length(z); l+=2)
-	for (BlockElt u=aux.block.length_first(l);
-	     u<aux.block.length_first(l+1); ++u)
+      for (unsigned l=bl.length(x)+1; l<bl.length(z); l+=2)
+	for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
 	  if (aux.descent_set(u)[s] and M[u].degree()==2)
 	    acc -= mu(1,x,u)*M[u][2];
-      return q_plus_1() * acc;
+      return q_plus_1() * (acc * sign);
     }
 
     // now we need a polynomial of the form $a+bq+aq^2$ for some $a,b$
@@ -244,43 +314,44 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
     {
       int b = mu(3,x,y);
       if (has_defect(type(s,x)))
-	b += mu(1,aux.block.inverse_Cayley(s,x),y);
-      for (BlockElt u=aux.block.length_first(aux.block.length(x)+1);
+      {
+	BlockElt sx=bl.inverse_Cayley(s,x);
+	b += mu(1,sx,y)*bl.epsilon(s,sx,x); // sign is |T_coef(s,x,sx)[1]|
+      }
+      for (BlockElt u=bl.length_first(bl.length(x)+1);
 	   u<aux.length_floor(z); u++ )
-	if (aux.descent_set(u)[s] and M[u].degree()==2-aux.block.l(u,x)%2)
+	if (aux.descent_set(u)[s] and M[u].degree()==2-bl.l(u,x)%2)
 	  b -= mu(M[u].degree(),x,u)*M[u][M[u].degree()];
-      return m(a,b);
+      return m(a,b)*sign;
     }
     // remains the |k==3|, even degree $m$ defect case
     Pol Q = product_comp(x,s,y);
     if (a!=0)
-      Q -= Pol((aux.block.l(z,x)-1)/2,qk_plus_1(2)*a); // shaves top term
-    assert(2*Q.degree()<=aux.block.l(z,x)+1);
-    int b= Q.up_remainder(1,(aux.block.l(z,x)+1)/2); // remainder by $q+1$
-    for (unsigned l=aux.block.length(x)+1; l<aux.block.length(z); l+=2)
-      for (BlockElt u=aux.block.length_first(l);
-	   u<aux.block.length_first(l+1); ++u)
+      Q -= Pol((bl.l(z,x)-1)/2,qk_plus_1(2)*a); // shaves top term
+    assert(2*Q.degree()<=bl.l(z,x)+1);
+    int b= Q.up_remainder(1,(bl.l(z,x)+1)/2); // remainder by $q+1$
+    for (unsigned l=bl.length(x)+1; l<bl.length(z); l+=2)
+      for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
 	if (aux.descent_set(u)[s] and not M[u].isZero())
 	{
 	  int mu_rem = M[u].degree()==0 ? M[u][0] : M[u][1]-2*M[u][0];
-	  b -= P(x,u).up_remainder(1,aux.block.l(u,x))*mu_rem;
+	  b -= P(x,u).up_remainder(1,bl.l(u,x))*mu_rem;
 	}
-    return m(a,b);
+    return m(a,b)*sign;
   }
 
   // this was the general case, now unused; it always works but not optimally
   Pol Q= product_comp(x,s,y);
 
-  for (BlockElt u=aux.block.length_first(aux.block.length(x)+1);
-       u<aux.length_floor(z); u++ )
+  for (BlockElt u=bl.length_first(bl.length(x)+1); u<aux.length_floor(z); u++)
     if (aux.descent_set(u)[s] and not M[u].isZero())
     { // subtract $q^{(d-deg(M))/2}M_u*P_{x,u}$ from contribution for $x$
-      unsigned d=aux.block.l(z,u)+defect; // doubled implicit degree shift
+      unsigned d=bl.l(z,u)+defect; // doubled implicit degree shift
       assert(M[u].degree()<=d);
       Q -= Pol((d-M[u].degree())/2,P(x,u)*M[u]);
     }
 
-  return extract_M(Q,aux.block.l(z,x)+defect,defect);
+  return extract_M(Q,bl.l(z,x)+defect,defect);
 } // |KL_table::get_M|
 
 /*
@@ -300,17 +371,17 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
 		     const std::vector<Pol>& M) const
 {
-  const unsigned k = aux.block.orbit(s).length();
+  const ext_block::extended_block& bl=aux.block;
+  const unsigned k = bl.orbit(s).length();
   if (k==1) // nothing changed for this case
-    return  Pol(aux.block.l(y,x)%2==0 ? 0 : mu(1,x,y));
+    return  Pol(bl.l(y,x)%2==0 ? 0 : mu(1,x,y));
   if (k==2)
   {
-    if (aux.block.l(y,x)%2!=0)
+    if (bl.l(y,x)%2!=0)
       return q_plus_1() * Pol(mu(1,x,y));
     int acc = mu(2,x,y);
-    for (unsigned l=aux.block.length(x)+1; l<aux.block.length(y); l+=2)
-      for (BlockElt u=aux.block.length_first(l);
-	   u<aux.block.length_first(l+1); ++u)
+    for (unsigned l=bl.length(x)+1; l<bl.length(y); l+=2)
+      for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
 	if (aux.descent_set(u)[s] and not M[u].isZero())
 	{
 	  assert(M[u].degree()==1);
@@ -320,12 +391,11 @@ Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
   }
 
   assert(k==3); // this case remains
-  if (aux.block.l(y,x)%2==0) // now we need a multiple of $1+q$
+  if (bl.l(y,x)%2==0) // now we need a multiple of $1+q$
   {
     int acc = mu(2,x,y); // degree $1$ coefficient of |product_comp(x,s,y)|
-    for (unsigned l=aux.block.length(x)+1; l<aux.block.length(y); l+=2)
-      for (BlockElt u=aux.block.length_first(l);
-	   u<aux.block.length_first(l+1); ++u)
+    for (unsigned l=bl.length(x)+1; l<bl.length(y); l+=2)
+      for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
 	if (aux.descent_set(u)[s] and M[u].degree()==2)
 	  acc -= mu(1,x,u)*M[u][2];
     return q_plus_1() * acc;
@@ -334,78 +404,13 @@ Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
   // now we need a polynomial of the form $a+bq+aq^2$ for some $a,b$
   int a = mu(1,x,y); // degree $2$ coefficient of |product_comp(x,s,y)|
   int b = mu(3,x,y); // degree $0$ coefficient of |product_comp(x,s,y)|
-  for (BlockElt u=aux.block.length_first(aux.block.length(x)+1);
-       u<aux.length_floor(y); u++ )
-    if (aux.descent_set(u)[s] and M[u].degree()==2-aux.block.l(u,x)%2)
+  for (BlockElt u=bl.length_first(bl.length(x)+1); u<aux.length_floor(y); u++)
+    if (aux.descent_set(u)[s] and M[u].degree()==2-bl.l(u,x)%2)
       b -= mu(M[u].degree(),x,u)*M[u][M[u].degree()];
   return m(a,b);
 } // |KL_table::get_Mp|
 
 
-// component in product $(T_s+1)a_{sy}$ of element $a_x$
-Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
-{
-  const ext_block::extended_block& b = aux.block;
-  switch(type(s,x))
-  { default:
-      assert(false); // list will only contain descent types
-      return Pol();
-      // complex
-  case ext_block::one_complex_descent:
-  case ext_block::two_complex_descent:
-  case ext_block::three_complex_descent: // contribute $P_{sx,sy}+q^kP_{x,sy}$
-    {
-      const BlockElt sx = b.cross(s,x);
-      return b.T_coef(s,sx,x)*P(sx,sy) + b.T_coef(s,x,x)*P(x,sy);
-    }
-    // imaginary compact, real switched
-  case ext_block::one_imaginary_compact:
-  case ext_block::two_imaginary_compact:
-  case ext_block::three_imaginary_compact:
-  case ext_block::one_real_pair_switched:
-    // contribute $(q^k+1)P_{x,sy}$
-    return b.T_coef(s,x,x) * P(x,sy);
-    // real type 1
-  case ext_block::one_real_pair_fixed:
-  case ext_block::two_real_double_double:
-    { // contribute $P_{x',sy}+P_{x'',sy}+(q^k-1)P_{x,sy}$
-      BlockEltPair sx = b.inverse_Cayleys(s,x);
-      return b.T_coef(s,sx.first,x)*P(sx.first,sy)
-	+ b.T_coef(s,sx.second,x)*P(sx.second,sy)
-	+ b.T_coef(s,x,x) * P(x,sy);
-    }
-    // real type 2
-  case ext_block::one_real_single:
-  case ext_block::two_real_single_single:
-    { // contribute $P_{x_s,sy}+q^kP_{x,sy}-P_{s*x,sy}$
-      const BlockElt s_x = b.inverse_Cayley(s,x);
-      const BlockElt x_cross = b.cross(s,x);
-      return b.T_coef(s,s_x,x)*P(s_x,sy)
-	+ b.T_coef(s,x_cross,x)*P(x_cross,sy)
-	+ b.T_coef(s,x,x) * P(x,sy);
-    }
-    // defect type descents: 2Cr, 3Cr, 3r
-  case ext_block::two_semi_real:
-  case ext_block::three_semi_real:
-  case ext_block::three_real_semi:
-    { // contribute $(q+1)P_{x_s,sy}+(q^k-q)P_{x,sy}$
-      const BlockElt sx = b.inverse_Cayley(s,x);
-      return b.T_coef(s,sx,x) * P(sx,sy)
-	+ b.T_coef(s,x,x) * P(x,sy);
-    }
-    // epsilon case: 2r21
-  case ext_block::two_real_single_double:
-    { // contribute $P_{x',sy}\pm P_{x'',sy}+(q^2-1)P_{x,sy}$
-      BlockEltPair sx = b.inverse_Cayleys(s,x);
-      return b.T_coef(s,sx.first,x)*P(sx.first,sy)
-	+ b.T_coef(s,sx.second,x)*P(sx.second,sy)
-	+ b.T_coef(s,x,x) * P(x,sy);
-      // return P(sx.first,sy)*b.epsilon(s,x,sx.first)
-      // 	+ P(sx.second,sy)*b.epsilon(s,x,sx.second)
-      // 	+ b.T_coef(s,x,x) * P(x,sy);
-    }
-  } // |switch(type(s,x))|
-}
 
 bool KL_table::direct_recursion(BlockElt y,
 				weyl::Generator& s,
@@ -511,12 +516,13 @@ void KL_table::fill_next_column(PolHash& hash)
   {
     const unsigned defect = has_defect(type(s,y)) ? 1 : 0;
     const unsigned k = aux.block.orbit(s).length();
+    const int sign = aux.block.epsilon(s,sy,y);
     assert(1<=k and k<=3);
 
     // fill array |cy| with initial contributions from $(T_s+1)*c_{sy}$
     for (BlockElt x=aux.length_floor(y); x-->0; )
       if (aux.descent_set(x)[s]) // compute contributions at all descent elts
-	cy[x] = product_comp(x,s,sy);
+	cy[x] = product_comp(x,s,sy)*sign;
 
     // next loop downwards, refining coefficient polys to meet degree bound
     for (BlockElt u=aux.length_floor(y); u-->0; )
@@ -528,8 +534,9 @@ void KL_table::fill_next_column(PolHash& hash)
 	  continue;
 
 	assert(u<Ms.size());
+	Pol gM = get_M(s,u,sy,Ms);
 	Ms[u]=extract_M(cy[u],d,defect);
-	assert(Ms[u]==get_M(s,u,sy,Ms));
+	assert(Ms[u]==gM);
 
 	if (Ms[u].isZero())
 	  continue;

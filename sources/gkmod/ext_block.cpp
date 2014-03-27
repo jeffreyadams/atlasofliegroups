@@ -737,8 +737,8 @@ void extended_block::patch_signs()
     } // |for(s)|
 } // |extended_block::patch_signs|
 
-// coefficient in action $(T_s+1)*a_x$, of neighbour |sx| for $s$
-Pol extended_block::T_coef(weyl::Generator s, BlockElt x, BlockElt sx) const
+// coefficient of neighbour |sx| for $s$ in action $(T_s+1)*a_x$
+Pol extended_block::T_coef(weyl::Generator s, BlockElt sx, BlockElt x) const
 {
   DescValue v = descent_type(s,x);
   if (not is_descent(v))
@@ -846,12 +846,12 @@ bool check_braid
     b.add_neighbours(l,s,*jt);
     for (unsigned int i=0; i<l.size(); ++i)
       if (used.isMember(l[i]))
-	set(Ts,used.position(l[i]),j, b.T_coef(s,y,l[i]));
+	set(Ts,used.position(l[i]),j, b.T_coef(s,l[i],y));
     l.clear();
     b.add_neighbours(l,t,*jt);
     for (unsigned int i=0; i<l.size(); ++i)
       if (used.isMember(l[i]))
-	set(Tt,used.position(l[i]),j, b.T_coef(t,y,l[i]));
+	set(Tt,used.position(l[i]),j, b.T_coef(t,l[i],y));
   }
   matrix::Vector<Pol> v(n,Pol()), w;
   v[used.position(x)]=Pol(1); w=v;
