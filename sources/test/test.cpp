@@ -913,8 +913,23 @@ void go_f()
   eblock.order_quad(62,59,115,117,4);
   eblock.toggle_edge(190,165);
   eblock.toggle_edge(75,117);
+  eblock.toggle_edge(240,265);
 
   test_braid(eblock);
+
+  std::vector<ext_kl::Pol> pool;
+  ext_kl::KL_table twisted_KLV(eblock,pool);
+  twisted_KLV.fill_columns();
+
+  ioutils::OutputFile f;
+  for (BlockElt y=0; y<eblock.size(); ++y)
+    for (BlockElt x=y+1; x-->0; )
+      if (not twisted_KLV.P(x,y).isZero())
+      {
+	f << "P(" << eblock.z(x) << ',' << eblock.z(y) << ")=";
+	f << twisted_KLV.P(x,y) << std::endl;
+      }
+
 }
 
 
