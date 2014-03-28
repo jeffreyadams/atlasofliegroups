@@ -50,9 +50,12 @@ bool PolEntry::operator!=(PolEntry::Pooltype::const_reference e) const
 descent_table::descent_table(const ext_block::extended_block& eb)
   : descents(eb.size()), good_ascents(eb.size())
   , prim_index(1<<eb.rank(),std::vector<unsigned int>(eb.size(),0))
-  , prim_count(1<<eb.rank(),0) // one for each descent set
+  , prim_flip(eb.size(),BitMap(prim_index.size()))
   , block(eb)
 {
+  // counts of primitive block elements, one for each descent set
+  std::vector<BlockElt> prim_count(1<<eb.rank(),0);
+
   // following loop must decrease for primitivization calculation below
   for (BlockElt x = block.size(); x-->0; )
   {
@@ -67,6 +70,8 @@ descent_table::descent_table(const ext_block::extended_block& eb)
     }
     descents[x]=desc;
     good_ascents[x]=good_asc;
+
+    BitMap& flip = prim_flip[x]; // place to record primitivation flips for $x$
 
     // compute primitivizations of |x|, storing index among primitives for |D|
     // loop must be downwards so initially index is w.r.t. descending order
@@ -86,6 +91,8 @@ descent_table::descent_table(const ext_block::extended_block& eb)
 	  BlockElt sx = block.some_scent(s,x);
 	  assert(sx>x); // ascents go up in block
 	  prim_index[desc][x] = prim_index[desc][sx];
+	  if ((block.epsilon(s,x,sx)<0)!=prim_flip[sx].isMember(desc))
+	    flip.insert(desc);
 	}
       }
     } // |for (desc)|
@@ -137,11 +144,13 @@ KL_table::KL_table(const ext_block::extended_block& b, std::vector<Pol>& pool)
   , untwisted(b.untwisted())
 { untwisted.fill(false); }
 
-kl::KLIndex KL_table::KL_pol_index(BlockElt x, BlockElt y) const
+Pol KL_table::P(BlockElt x, BlockElt y) const
 {
   const kl::KLRow& col_y = column[y];
   unsigned inx=aux.x_index(x,y);
-  return inx<col_y.size() ? col_y[inx] : inx==aux.self_index(y) ? 1 : 0;
+  if (inx>=col_y.size())
+    return Pol(inx==aux.self_index(y) ? aux.flips(x,y) ? -1 : 1 : 0);
+  return aux.flips(x,y) ? -storage_pool[col_y[inx]] : storage_pool[col_y[inx]];
 }
 
 int KL_table::mu(int i,BlockElt x, BlockElt y) const
@@ -268,18 +277,17 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 {
   const ext_block::extended_block& bl=aux.block;
   const BlockElt z =  bl.some_scent(s,y); // unique ascent by |s| of |y|
-  const int sign = bl.epsilon(s,y,z);
 
   const unsigned defect = has_defect(type(s,z)) ? 1 : 0;
   const unsigned k = bl.orbit(s).length();
 
   if (k==1)
-    return  Pol(bl.l(y,x)%2==0 ? 0 : mu(1,x,y)*sign);
+    return  Pol(bl.l(y,x)%2==0 ? 0 : mu(1,x,y));
 
   if (k==2)
   {
     if (bl.l(y,x)%2!=0)
-      return q_plus_1() * Pol(mu(1,x,y)*sign);
+      return q_plus_1() * Pol(mu(1,x,y));
     if (defect==0)
     {
       int acc = mu(2,x,y);
@@ -292,7 +300,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 	for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
 	  if (aux.descent_set(u)[s] and not M[u].isZero())
 	    acc -= mu(1,x,u)*M[u][0];
-      return Pol(acc*sign);
+      return Pol(acc);
     }
     // |k==2| defect case
     int acc= product_comp(x,s,y).up_remainder(1,(bl.l(z,x)+1)/2);
@@ -300,7 +308,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
       for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
 	if (aux.descent_set(u)[s] and not M[u].isZero())
 	  acc -= P(x,u).up_remainder(1,bl.l(u,x)/2)*M[u][0];
-    return Pol(acc*sign);
+    return Pol(acc);
   }
   if (k==3)
   {
@@ -311,7 +319,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 	for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
 	  if (aux.descent_set(u)[s] and M[u].degree()==2)
 	    acc -= mu(1,x,u)*M[u][2];
-      return q_plus_1() * (acc * sign);
+      return q_plus_1() * acc;
     }
 
     // now we need a polynomial of the form $a+bq+aq^2$ for some $a,b$
@@ -328,7 +336,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 	   u<aux.length_floor(z); u++ )
 	if (aux.descent_set(u)[s] and M[u].degree()==2-bl.l(u,x)%2)
 	  b -= mu(M[u].degree(),x,u)*M[u][M[u].degree()];
-      return m(a,b)*sign;
+      return m(a,b);
     }
     // remains the |k==3|, even degree $m$ defect case
     Pol Q = product_comp(x,s,y);
@@ -343,7 +351,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 	  int mu_rem = M[u].degree()==0 ? M[u][0] : M[u][1]-2*M[u][0];
 	  b -= P(x,u).up_remainder(1,bl.l(u,x))*mu_rem;
 	}
-    return m(a,b)*sign;
+    return m(a,b);
   }
 
   // this was the general case, now unused; it always works but not optimally
@@ -442,9 +450,6 @@ void KL_table::fill_columns(BlockElt y)
   if (y==0 or y>aux.block.size())
     y=aux.block.size(); // fill whole block if no explicit stop was indicated
   column.reserve(y);
-  kl::KLIndex zero=hash.match(Pol(0)); // ensure 0 and 1 hold these constants
-  kl::KLIndex one=hash.match(Pol(1)); // as |KL_pol_index| and |P| assume this
-  assert (zero==0 and one==1); ndebug_use(zero); ndebug_use(one);
   while (column.size()<y)
     fill_next_column(hash);
 }
@@ -528,7 +533,7 @@ void KL_table::fill_next_column(PolHash& hash)
     // fill array |cy| with initial contributions from $(T_s+1)*c_{sy}$
     for (BlockElt x=aux.length_floor(y); x-->0; )
       if (aux.descent_set(x)[s]) // compute contributions at all descent elts
-	cy[x] = product_comp(x,s,sy)*sign;
+	cy[x] = product_comp(x,s,sy);
 
     // next loop downwards, refining coefficient polys to meet degree bound
     for (BlockElt u=aux.length_floor(y); u-->0; )
@@ -563,7 +568,7 @@ void KL_table::fill_next_column(PolHash& hash)
     kl::KLRow::reverse_iterator it = column.back().rbegin();
     for (BlockElt x=aux.length_floor(y); aux.prim_back_up(x,y); it++)
       if (aux.descent_set(x)[s]) // then we computed $P(x,y)$ above
-        *it = hash.match(cy[x]);
+        *it = hash.match(cy[x]*sign);
       else // |x| might not be descent for |s| if primitive but not extremal
       { // find and use a double-valued ascent for |x| that is decsent for |y|
 	assert(has_double_image(type(s,x))); // since |s| non-good ascent

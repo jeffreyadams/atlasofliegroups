@@ -908,12 +908,9 @@ void go_f()
     eblock(commands::currentBlock(),
 	   commands::currentComplexGroup().twistedWeylGroup());
 
-  // eblock.patch_signs();
-  eblock.order_quad(100,97,163,165,4);
-  eblock.order_quad(62,59,115,117,4);
-  eblock.toggle_edge(190,165);
-  eblock.toggle_edge(75,117);
-  eblock.toggle_edge(240,265);
+  eblock.toggle_edge(153,213); // 4, 2Ci/2Cr
+  eblock.toggle_edge(256,198); // 4, 2Ci/2Cr
+  eblock.toggle_edge(240,284); // 4, 2Ci/2Cr
 
   test_braid(eblock);
 
@@ -922,7 +919,7 @@ void go_f()
   twisted_KLV.fill_columns();
 
   ioutils::OutputFile f;
-  for (BlockElt y=0; y<eblock.size(); ++y)
+  for (BlockElt y=0; y<twisted_KLV.size(); ++y)
     for (BlockElt x=y+1; x-->0; )
       if (not twisted_KLV.P(x,y).isZero())
       {
