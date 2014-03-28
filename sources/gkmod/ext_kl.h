@@ -32,7 +32,7 @@ class descent_table
   std::vector<RankFlags> good_ascents; // ascents usable in primitivization
 
   std::vector<std::vector<unsigned int> > prim_index;
-  std::vector<BlockElt> prim_count; // counts of primitive block elements
+  std::vector<BitMap> prim_flip; // sign for |prim_index|, transposed indexing
  public:
   const ext_block::extended_block& block;
 
@@ -47,6 +47,8 @@ class descent_table
   unsigned int x_index(BlockElt x, BlockElt y) const
   { return prim_index[descents[y].to_ulong()][x]; }
   unsigned int self_index(BlockElt y) const { return x_index(y,y); }
+  bool flips(BlockElt x,BlockElt y) const
+  { return prim_flip[x].isMember(descents[y].to_ulong()); }
 
   BlockElt length_floor(BlockElt y) const
   { return block.length_first(block.length(y)); }
@@ -77,14 +79,13 @@ class KL_table
     : aux(b), storage_pool(pool), column() {}
 
   size_t rank() const { return aux.block.rank(); }
+  size_t size() const { return column.size(); }
+
   ext_block::DescValue type(weyl::Generator s,BlockElt y) const
   { return aux.block.descent_type(s,y); }
 
-  // A constant reference to twisted Kazhdan-Lusztig-Vogan polynomial P_{x,y}
-  PolRef P(BlockElt x, BlockElt y) const
-  { return storage_pool[KL_pol_index(x,y)]; }
-  // That polynomial in the form of an index into |storage_pool|
-  kl::KLIndex KL_pol_index(BlockElt x, BlockElt y) const;
+  // The twisted Kazhdan-Lusztig-Vogan polynomial P_{x,y}
+  Pol P(BlockElt x, BlockElt y) const;
 
   bool extremal(BlockElt x, BlockElt y) const
   { return aux.descent_set(x).contains(aux.descent_set(y)); }
