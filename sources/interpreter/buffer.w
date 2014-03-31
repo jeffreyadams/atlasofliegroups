@@ -383,10 +383,10 @@ one or more files), and these will be accessed through |std::istream| values.
 The copy constructor for that class is private, so there is no question of
 actually containing data members of that type; they will always be handled by
 reference or by pointer. As a consequence it should suffice in the header file
-to know that |std::istream| is a class in the header file, which is done by
-including \.{iosfwd}, and include \.{iostream} in the implementation. The
-actual pointer to input streams will be contained in an |input_record|
-structure that we shall discuss in more detail later.
+to know that |std::istream| is a class, which is done by including \.{iosfwd},
+and include \.{iostream} in the implementation. The actual pointer to input
+streams will be contained in an |input_record| structure that we shall discuss
+in more detail later.
 
 @h <iostream>
 
@@ -497,19 +497,21 @@ std::istream* stream; // points to the current input stream
 
 @ There are two constructors, one for associating an input buffer to some
 (raw) |istream| object (which may represent a disk file or pipe), another for
-associating it to interactive input from |stdin|. A prompt and readline
-function only apply to the second case (and |rl| may be a null pointer to
-request no input editing). Constructing the class does not yet fetch a line.
+associating it to probably interactive input from |stdin|. A prompt and
+readline function only apply to the second case and are set to |NULL| in the
+first case, which will disable certain interactions when fetching new lines; a
+null pointer may also be passed explicitly in the second case to obtain this
+disabling. Constructing the class does not yet fetch a line.
 
 @< Definitions of class members @>=
 BufferedInput::BufferedInput (std::istream& s)@/
 :base_stream(s)
 ,line_buffer()
 ,p(NULL)
-,prompt("")
-,prompt2("")
+,prompt(NULL)
+,prompt2(NULL)
 ,def_ext(NULL)
-,temp_prompt("")
+,temp_prompt(NULL)
 ,@|readline(NULL)
 ,add_hist(NULL)
 ,line_no(1)
@@ -534,6 +536,7 @@ de)@/
 ,line_no(1)
 ,cur_lines(0)
 ,input_stack()
+,input_files_seen()
 ,stream(&base_stream)
 @+{}
 
@@ -776,7 +779,7 @@ bool BufferedInput::getline()
   { std::string line;
   @/@< Get |line| without newline from |stream| if there is one; if none can be
        obtained then |break| if |cur_lines>0|, otherwise pop |input_stack|,
-       set |popped=true| and |break|; if nothing works return |false| @>
+       set |popped=true| and |break|; if nothing works, |return false| @>
     ++cur_lines;
     std::string::size_type l=line.length();
     while (l>0 and std::isspace(line[l-1]))
@@ -865,9 +868,10 @@ error.
 @h <cstdlib>
 
 @< Read a line... @>=
-if (stream==&std::cin) // which implies |input_stack.empty()|
+if (input_stack.empty() and prompt!=NULL)
+  // do only at top level, and only if prompt enabled
 { prompt_length= std::strlen(pr);
-  if (readline!=NULL)
+  if (readline!=NULL) // skip calling 'readline' if no function is supplied
   { char* l=readline(pr);
     if (l==NULL) // then |readline| failed, flag end of file
     {@; line=""; stream->setstate(std::ios_base::eofbit);

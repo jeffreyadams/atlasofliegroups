@@ -212,6 +212,7 @@ which will discard any input that is left by a possible previous erroneous
 input. This also already fetches a new line of input, or abandons the program
 in case none can be obtained.
 
+@h <unistd.h> // for |isatty|
 @< Main program @>=
 
 int main(int argc, char** argv)
@@ -219,7 +220,7 @@ int main(int argc, char** argv)
 @)
   @< Handle command line arguments @>
 
-@/BufferedInput input_buffer("expr> "
+@/BufferedInput input_buffer(isatty(STDIN_FILENO) ? "expr> " : NULL
                             ,use_readline ? readline : NULL
 			    ,use_readline ? add_history : NULL);
   main_input_buffer= &input_buffer;
