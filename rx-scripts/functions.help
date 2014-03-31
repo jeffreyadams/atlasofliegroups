@@ -517,7 +517,7 @@ dual_KL: (RealForm,DualRealForm->mat,[vec],vec) dual KL polynomials (Q_{x,y})
   This is like raw_KL, but computes the polynomials Q instead of P. The
   indexing of the block is the same as for the polynomials P, so up to length
   signs, the matrix should be the inverse of the P matrix. The length stops
-  are provided as final value,as fo raw_KL; these are fot the _same_ block.
+  are provided as final value, as in raw_KL; these are for the _same_ block.
 
 print_gradings: (CartanClass,RealForm->): print gradings defined by real form
   This more or less gives the output of the 'gradings' command in the Atlas
