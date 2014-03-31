@@ -89,12 +89,19 @@ public:
   Rational& operator*=(Numer_t n);
   Rational& operator/=(Numer_t n);
 
-  bool operator==(Rational q) const { return num*q.denom==denom*q.num; }
-  bool operator!=(Rational q) const { return num*q.denom!=denom*q.num; }
-  bool operator<(Rational q)  const { return num*q.denom<denom*q.num; }
-  bool operator<=(Rational q) const { return num*q.denom<=denom*q.num; }
-  bool operator>(Rational q)  const { return num*q.denom>denom*q.num; }
-  bool operator>=(Rational q) const { return num*q.denom>=denom*q.num; }
+  // these definitions must use |denominator()| to ensure signed comparison
+  bool operator==(Rational q) const
+    { return num*q.denominator()==denominator()*q.num; }
+  bool operator!=(Rational q) const
+    { return num*q.denominator()!=denominator()*q.num; }
+  bool operator<(Rational q)  const
+    { return num*q.denominator()<denominator()*q.num; }
+  bool operator<=(Rational q) const
+    { return num*q.denominator()<=denominator()*q.num; }
+  bool operator>(Rational q)  const
+    { return num*q.denominator()>denominator()*q.num; }
+  bool operator>=(Rational q) const
+    { return num*q.denominator()>=denominator()*q.num; }
 
   inline Rational& normalize();
   Rational& power(int n); // raise to power |n| and return |*this|
