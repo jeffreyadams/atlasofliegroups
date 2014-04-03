@@ -99,7 +99,6 @@ class RootSystem
   const Byte_vector& root(RootNbr i) const { return ri[i].root;}
   const Byte_vector& coroot(RootNbr i) const { return ri[i].dual;}
 
-  void cons(const int_Matrix& Cartan_matrix); // panse bete
  public:
 
 // constructors and destructors

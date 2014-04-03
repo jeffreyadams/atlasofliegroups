@@ -378,6 +378,7 @@ void global_declare_identifier(Hash_table::id_type id, type_p t)
 { value undef=NULL;
   const type_expr& type=*t;
   global_id_table->add(id,shared_value(undef),copy(type));
+  @< Emit indentation corresponding to the input level to |std::cout| @>
   std::cout << "Identifier " << main_hash_table->name_of(id)
             << " : " << type << std::endl;
 }

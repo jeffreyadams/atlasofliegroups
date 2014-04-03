@@ -419,7 +419,7 @@ int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
   skip_space(); prevent_termination='\0';
   input.locate(input.point(),locp->first_line,locp->first_column);
   int code; char c=input.shift();
-  if (isalpha(c))
+  if (isalpha(c) or c=='_')
     @< Scan an identifier or a keyword @>
   else if (isdigit(c))
     @< Scan a number @>

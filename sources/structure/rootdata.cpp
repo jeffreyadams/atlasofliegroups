@@ -128,12 +128,9 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix)
   , two_rho_in_simple_roots(rk,0)
   , root_perm()
 {
-  if (rk>0)
-    cons(Cartan_matrix);
-}
+  if (rk==0)
+    return; // avoid problems in trivial case
 
-void RootSystem::cons(const int_Matrix& Cartan_matrix)
-{
   std::vector<Byte_vector> simple_root(rk,Byte_vector(rk));
   std::vector<Byte_vector> simple_coroot(rk,Byte_vector(rk));
 
@@ -542,7 +539,7 @@ RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
   {
     RootNbr alpha=*it;
     for (RootNbrSet::iterator
-	   jt=rs.begin(); jt(); ++jt) // run through unpruned subsystem
+	   jt=rs.begin(); jt(); ++jt) // traverse unpruned positive subsystem
     {
       RootNbr beta=*jt;
       if (alpha==beta) continue; // avoid reflecting root itself
