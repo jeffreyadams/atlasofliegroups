@@ -112,7 +112,8 @@ Lie_type: (RootDatum->LieType): Lie type of a root datum.
 Cartan_matrix: (LieType->mat): Cartan matrix of Lie type (square of size rank).
   A block form Cartan matrix, with zeros in rows and columns of torus factors
 Cartan_matrix: (RootDatum->mat): Cartan matrix of root datum.
-  This pairs roots and coroots, so it is square of size the semisimple rank
+  This pairs roots and coroots, so it is square, of size the semisimple rank.
+  By force of convention, rows correspond to roots and columns to coroots.
 
 Cartan_matrix_type: (mat->LieType,vec): type given by Cartan matrix.
   The input should be a Cartan matrix for a semisimple type (no zero rows or
@@ -186,7 +187,7 @@ root_datum: (InnerClass->RootDatum): root datum of inner class.
 
 quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
   Interpret the rational vectors as kernel generators for the given type, as
-  in the Atlas software, and return the corresponding sublattice as a matrix
+  in the atlas program, and return the corresponding sublattice as a matrix
   whose column are its generators; if M is the matrix whose columns are the
   numerators of the kernel generators, brought to a common denominator d, this
   amounts to setting S=Smith_Cartan(type); (C,v)=filter_units(S) and then
@@ -215,6 +216,8 @@ adjoint: (LieType->RootDatum): adjoint root datum for given type.
 
 simple_roots: (RootDatum->mat): matrix of simple roots in the root datum.
 simple_coroots: (RootDatum->mat): matrix of simple coroots in the root datum.
+posroots: (RootDatum->mat): matrix of positive roots in the root datum.
+poscoroots: (RootDatum->mat): matrix of positive coroots in the root datum.
 roots: (RootDatum->mat): set of roots in the root datum (columns of result).
 coroots: (RootDatum->mat): set of coroots in the root datum (as columns).
 root_coradical: (RootDatum->mat): simple roots and coradical basis.
@@ -224,10 +227,12 @@ coroot_radical: (RootDatum->mat): simple coroots and radical basis.
 fundamental_weight: (RootDatum,int->ratvec): fundamental weight number $i$
 fundamental_coweight: (RootDatum,int->ratvec): fundamental coweight number $i$
 dual: (RootDatum->RootDatum): dual of given root datum.
-derived: (RootDatum->RootDatum,mat): root datum for derived group, restriction
-  The second argument is matrix mapping weights from original to derived datum.
+derived_info: (RootDatum->RootDatum,mat): information for the derived group
+  The first result is the root datum for the derived group itslef, the second
+  result is a matrix mapping weights from the original to the derived datum.
 rank: (RootDatum->int) Rank of the weight lattice for this Lie type.
 semisimple_rank: (RootDatum->int) Rank of the root lattice of  this Lie type.
+nr_of_posroots: (RootDatum->int) Number of positive roots in the root datum.
 
 integrality_datum: (RootDatum,ratvec->RootDatum): integral coroots subdatum
   Forms the root datum for the coroot subsystem of coroots that take an
@@ -349,14 +354,17 @@ most_split_Cartan: (RealForm->CartanClass): most split Cartan class for form
   The most split Cartan class of a given real form is the last one in the list
   of its Cartan classes, so
     set most_split_Cartan(RealForm rf)=Cartan_class(rf,count_Cartans(rf)-1)
-
-print_Cartan_info: (CartanClass->): print information about the Cartan class
-  This produces essentially the output of 'cartan' in the Atlas, except for
-  the final partition corresponding to the real forms for this Cartan class.
-  So it prints the number of split (GL(1,R)), compact (U(1)) and complex
-  (GL(1,C)) factors of the real torus defined by this Cartan class, the number
-  of distinct twisted involutions defining this same Cartan class, and the
-  types of the imaginary, real, and complex root subsystems
+involution: (CartanClass->mat): weight lattice involution for Cartan class
+Cartan_info: (CartanClass->(int,int,int),vec,(int,int),(LieType,LieType,LieType)):
+  Information about the Cartan class, essentially that given by the output of
+  'cartan' in the Atlas (except for the final partition corresponding to the
+  real forms for this Cartan class, for which fiber_part can be used instead).
+  The first triple of integers gives in order the number of compact (U(1)),
+  complex (GL(1,C)), and split (GL(1,R)) factors of the real torus defined by
+  this Cartan class, the canonical twisted involution for the Cartan class, a
+  pair of integers formed of the number of distinct twisted involutions
+  defining this same Cartan class and the fiber size, and finally the types of
+  the imaginary, real, and complex root subsystems (note the order here).
 
 real_forms: (CartanClass->[RealForm]): list of real forms with given Cartan
   Returns a list of the real forms for which this Cartan class occurs

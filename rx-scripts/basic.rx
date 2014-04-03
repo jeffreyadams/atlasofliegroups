@@ -114,6 +114,11 @@ set ^ =
   else error("Negative matrix power "+n)
   fi
 
+set columns_with ((vec->bool) p,mat m) = mat:
+( let res = [vec]: [] in for alpha in m do if p(alpha) then res #:= alpha fi od
+; if #res=0 then null(n_rows(m),0) else res fi
+)
+
 { sum of columns of a matrix }
 set sum (mat m)=
   let (r,)=#m then sum = null(r) in for col in m do sum+:=col od; sum
@@ -160,11 +165,6 @@ set ^ = { exponentiation of split integers }
 
 set -(ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
 
-{ these cases are handled by the coercion code, so they have been removed
-set +(ParamPol a, (int,Param) (c,p)) = ParamPol: a+(Split:  c,p)
-set -(ParamPol a, (int,Param) (c,p)) = ParamPol: a+(Split: -c,p)
-}
-
 set +(mat M,mat N)= mat:
 ( if #M != #N then error("Size mismatch " + #M + ":" + #N) fi
 ; for col@j in M do for e@i in col do e+N[i,j] od od
@@ -178,10 +178,18 @@ set -(mat M,mat N)= mat:
 
 {				Root data 				}
 
+{ transitional function; the built-in function should have this prototype }
+set root_datum(mat simple_roots, mat simple_coroots) = RootDatum:
+  root_datum(simple_roots,simple_coroots,n_rows(simple_roots))
+
 set rho (RootDatum rd) = ratvec:
   let res= ratvec: null(rank(rd))
   in for i:semisimple_rank(rd) do res +:= fundamental_weight(rd,i) od; res
 { this uses fewer additions than computing half sum of the positive roots }
+
+set rho_check (RootDatum rd) = ratvec: { rho(dual(rd)), but a bit faster }
+  let res= ratvec: null(rank(rd))
+  in for i:semisimple_rank(rd) do res +:= fundamental_coweight(rd,i) od; res
 
 { see also rho_i@KGBElt and rho_r@KGBElt defined below }
 
@@ -194,11 +202,6 @@ set is_real      (mat theta) = (vec->bool): (vec alpha): theta*alpha=-alpha
 set is_complex   (mat theta) = (vec->bool): (vec alpha):
   let ta = theta*alpha in ta!=alpha and ta!=-alpha
 
-set columns_with ((vec->bool) p,mat m) = mat:
-( let res = [vec]: [] in for alpha in m do if p(alpha) then res #:= alpha fi od
-; if #res=0 then null(n_rows(m),0) else res fi
-)
-
 set imaginary_roots (RootDatum rd, mat theta) = mat:
   columns_with(is_imaginary(theta),roots(rd))
 set real_roots (RootDatum rd, mat theta) = mat:
@@ -210,7 +213,19 @@ set imaginary_coroots (RootDatum rd, mat theta) = mat:
 set real_coroots (RootDatum rd, mat theta) = mat:
   columns_with(is_real(^theta),coroots(rd))
 
+{ positive (co)roots versions are actually more useful }
+set imaginary_posroots (RootDatum rd,mat theta) = mat:
+  columns_with(is_imaginary(theta),posroots(rd))
+set real_posroots (RootDatum rd,mat theta) = mat:
+  columns_with(is_real(theta),posroots(rd))
+set imaginary_poscoroots (RootDatum rd,mat theta) = mat:
+  columns_with(is_imaginary(^theta),poscoroots(rd))
+set real_poscoroots (RootDatum rd,mat theta) = mat:
+  columns_with(is_real(^theta),poscoroots(rd))
 
+
+{ get just the derived root datum, forgetting about weight embedding }
+set derived (RootDatum rd) = RootDatum: let (d,)=derived_info(rd) in d
 
 {				Inner classes				}
 
@@ -250,19 +265,21 @@ set is_ascent(int s,KGBElt x) = status(s,x)>=3
 
 { status of general roots for a KGBElt (which here just represents its fiber) }
 
-set is_imaginary(KGBElt x) = (vec->bool): is_imaginary(involution(x))
-set is_real(KGBElt x)      = (vec->bool): is_real(involution(x))
-set is_complex(KGBElt x)   = (vec->bool): is_complex(involution(x))
+set is_imaginary (KGBElt x) = (vec->bool): is_imaginary(involution(x))
+set is_real (KGBElt x)      = (vec->bool): is_real(involution(x))
+set is_complex (KGBElt x)   = (vec->bool): is_complex(involution(x))
 
-set imaginary_roots(KGBElt x) = mat:
-  columns_with(is_imaginary(x),roots(real_form(x)))
-set real_roots(KGBElt x) = mat:
-  columns_with(is_real(x),roots(real_form(x)))
-set complex_roots(KGBElt x) = mat:
-  columns_with(is_complex(x),roots(real_form(x)))
+set imaginary_posroots (KGBElt x) = mat:
+  imaginary_posroots(real_form(x),involution(x))
+set real_posroots (KGBElt x) = mat:
+  real_posroots(real_form(x),involution(x))
+set imaginary_poscoroots (KGBElt x) = mat:
+  imaginary_poscoroots(real_form(x),involution(x))
+set real_poscoroots (KGBElt x) = mat:
+  real_poscoroots(real_form(x),involution(x))
 
-set rho_i(KGBElt x) = ratvec: sum(imaginary_roots(x))/2
-set rho_r(KGBElt x) = ratvec: sum(imaginary_roots(x))/2
+set rho_i (KGBElt x) = ratvec: sum(imaginary_posroots(x))/2
+set rho_r (KGBElt x) = ratvec: sum(real_posroots(x))/2
 
 
 {			    Module parameters				}
@@ -273,6 +290,9 @@ set != (Param x,Param y) = bool: not(x=y)
 set *(Param p,rat alpha) = let (x,lambda,nu)=%p in param(x,lambda,alpha*nu)
 
 set x(Param p) = KGBElt: let (x,,) =%p in x
+set lambda_minus_rho(Param p) = vec: let (,lambda_rho,) =%p in lambda_rho
+set lambda(Param p) = ratvec: lambda_minus_rho(p)+rho(real_form(p))
+set nu(Param p) = ratvec: let (,,nu) =%p in nu
 
 { simulate coercion (KGBElt->RealForm) in some cases }
 set involution(Param p)=involution(x(p))

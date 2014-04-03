@@ -1008,7 +1008,8 @@ void coroots_wrapper(expression_base::level l)
   push_value(new matrix_value(int_Matrix(crl,rd->val.rank())));
 }
 
-@ Here are two utility functions.
+@ Here are three important numeric attributes of root data.
+
 @< Local function definitions @>=
 void rd_rank_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
@@ -1020,6 +1021,12 @@ void rd_semisimple_rank_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l!=expression_base::no_value)
     push_value(new int_value(rd->val.semisimpleRank()));
+}
+@)
+void rd_nposroots_wrapper(expression_base::level l)
+{ shared_root_datum rd(get<root_datum_value>());
+  if (l!=expression_base::no_value)
+    push_value(new int_value(rd->val.numPosRoots()));
 }
 
 @ It is useful to have bases for the sum of the root lattice and the
@@ -1156,12 +1163,9 @@ install_function(simply_connected_datum_wrapper
 install_function(adjoint_datum_wrapper,@| "adjoint","(LieType->RootDatum)");
 install_function(simple_roots_wrapper,@|"simple_roots","(RootDatum->mat)");
 install_function(simple_coroots_wrapper,@|"simple_coroots","(RootDatum->mat)");
-install_function(positive_roots_wrapper,@|
-		 "positive_roots","(RootDatum->mat)");
-install_function(positive_coroots_wrapper,@|
-		 "positive_coroots","(RootDatum->mat)");
-install_function(datum_Cartan_wrapper,@|"Cartan_matrix"
-		,"(RootDatum->mat)");
+install_function(positive_roots_wrapper,@| "posroots","(RootDatum->mat)");
+install_function(positive_coroots_wrapper,@| "poscoroots","(RootDatum->mat)");
+install_function(datum_Cartan_wrapper,@|"Cartan_matrix","(RootDatum->mat)");
 install_function(roots_wrapper,@|"roots","(RootDatum->mat)");
 install_function(coroots_wrapper,@|"coroots","(RootDatum->mat)");
 install_function(root_coradical_wrapper,@|"root_coradical","(RootDatum->mat)");
@@ -1172,10 +1176,12 @@ install_function(fundamental_coweight_wrapper,@|
 		 "fundamental_coweight","(RootDatum,int->ratvec)");
 install_function(dual_datum_wrapper,@|"dual","(RootDatum->RootDatum)");
 install_function(derived_datum_wrapper,@|
-		 "derived","(RootDatum->RootDatum,mat)");
+		 "derived_info","(RootDatum->RootDatum,mat)");
 install_function(rd_rank_wrapper,@|"rank","(RootDatum->int)");
 install_function(rd_semisimple_rank_wrapper@|
 		,"semisimple_rank","(RootDatum->int)");
+install_function(rd_nposroots_wrapper@|
+		,"nr_of_posroots","(RootDatum->int)");
 install_function(integrality_datum_wrapper
                 ,@|"integrality_datum","(RootDatum,ratvec->RootDatum)");
 install_function(integrality_points_wrapper

@@ -1,125 +1,86 @@
 <basic.rx
+<det.rx
 
 { test if an integer is even, or a rational is an integer }
 set is_even (int i)    = bool: i%2=0
+set is_odd (int i)    = bool: i%2=1
 set is_integer (rat r) = bool: denom(r)=1
+set is_nonnegative (vec v) = bool:
+  let n=#v-1 in while n>=0 and v[n]>=0 do n-:=1 od; n<0
+set is_positive (vec v) = bool:
+  let n=#v-1 in while n>=0 and v[n]>0 do n-:=1 od; n<0
 
 { test if a ratvec is in fact a vec (integers)}
 set is_integer (ratvec v) = bool: denom(v)=1
+set is_positive (ratvec v) = bool: is_positive(numer(v))
+set is_nonnegative (ratvec v)= bool: is_nonnegative(numer(v))
 
 { make a rational into an integer if possible }
-set rattoint (rat r) = int:
+set rat_as_int (rat r) = int:
   let (n,d)=%r in if d=1 then n else error("Not an integer") fi
 
 { make a rational vector into an integer one if possible }
-set ratvectovec (ratvec v)= vec:
+set ratvec_as_vec(ratvec v) = vec:
   let (w,d)=%v in if d=1 then w else error("Not an integer vector") fi
-
-{ define dot product ratvec*ratvec,ratvec*vec,vec*ratvec }
-set *(ratvec v,ratvec w)= rat: let (a,b)=%v then (c,d)=%w in a*c/(b*d)
 
 { transform ParamPol into a list of (Split,Param) pairs; previously built-in }
 set %(ParamPol P) = [(Split,Param)]: for c@p in P do (c,p) od
 
-{ cases *@(vec,ratvec) and *@(ratvec,vec) are now handled by coercion }
+set root_datum(Param p) = RootDatum: root_datum(real_form(p))
+set root_datum(ParamPol P) = RootDatum: root_datum(real_form(P))
 
-{ split, simply connected group of given type }
-set split_form(RootDatum r)=quasisplit_form(inner_class(r,-id_mat(rank(r))))
-set split_form(LieType t)=split_form(simply_connected(t))
-set split_group(string s)= RealForm: split_form(s)
+set is_dominant(RootDatum rd, ratvec v) = bool:
+  is_nonnegative(numer(v)*simple_coroots(rd))
+set is_regular(RootDatum rd,ratvec v)= bool: { tests all positive coroots }
+  let w=numer(v)*poscoroots(rd), i=semisimple_rank(rd)-1
+  in while i>=0 and w[i]!=0 do i-:=1 od; i<0
+set is_strictly_dominant(RootDatum rd, ratvec v) = bool:
+  is_positive(numer(v)*simple_coroots(rd))
 
-{ Quasisplit form: the quasisplit, but not split, form of G, if it exists }
-set Quasisplit_form(RootDatum r)=quasisplit_form (inner_class (r,"u"))
-set Quasisplit_form(LieType t)= Quasisplit_form(simply_connected(t))
-
-set root_datum(Param p)=RootDatum: real_form(p)
-
-set print_real_forms(RealForm G)= void:
-  for n@i in form_names(inner_class(G))
-  do prints(i,": ",n)
-  od; prints("To define a real form rf do: set rf=real_forms(G)[i]")
-
-set ss_rank(RootDatum rd)= semisimple_rank(rd)
-
-{ test if rartional weight (not necessarily dominant) is regular }
-set is_regular(RootDatum rd,ratvec lambda)= bool:
-  let regular=true
-  in for alpha in positive_coroots(rd) do
-       if alpha*lambda=0 then regular:=false fi
-     od; regular
-
-set is_regular(RealForm G,ratvec lambda)=is_regular(root_datum(G),lambda)
 set is_regular(Param p)=is_regular(real_form(p),infinitesimal_character(p))
 
-set rhocheck(RootDatum rd)= ratvec: rho(dual(rd))
-set rhocheck(RealForm G)  = ratvec: rhocheck(root_datum(G))
-
-{ make rho as an vector of integers if possible }
-set intrho (RealForm G) = vec: ratvectovec(rho(G))
-set intrho (RootDatum r)= vec: ratvectovec(rho(r))
+{ make rho as a vector of integers if possible }
+set rho_as_vec (RootDatum r)= vec: ratvec_as_vec(rho(r))
 
 { some data defined by a Param p }
 set integrality_datum(Param p)= RootDatum:
-  integrality_datum(real_form(p),infinitesimal_character(p))
+  integrality_datum(root_datum(p),infinitesimal_character(p))
 
-{ extract x,lambda-rho,lambda,nu from p
-  lambda-rho =vec,  lambda= ratvec }
-set x(Param p) = KGBElt: let (x,,) =%p in x
-set lambdaminusrho(Param p) = vec: let (,lambda,) =%p in lambda
-set lambda(Param p) = ratvec: lambdaminusrho(p)+rho(real_form(p))
-set nu(Param p) = ratvec: let (,,nu) =%p in nu
+{ simpler syntax for param command: param(G,3,...) for param(KGB(G,3),...)  }
+set param(RealForm G,int k, vec lambda_rho,ratvec nu) = Param:
+  param(KGB(G,k),lambda_rho,nu)
 
-{ alternate syntax for param command:
-  param(G,3,...) instead of param(KGB(G,3),...)  }
-set param(RealForm G,int k, vec lambda,ratvec nu)=param(KGB(G,k),lambda,nu)
+{ parameter(G,x,lambda,nu)=param(G,x,lambda-rho(G),nu), so you can enter
+  lambda without the rho shift; lambda may have denominator 2 or be a vec }
+set parameter (RealForm G,int x,ratvec lambda,ratvec nu) = Param:
+  param(KGB(G,x),ratvec_as_vec(lambda-rho(G)),nu)
+set parameter (KGBElt x,ratvec lambda,ratvec nu) = Param:
+  param(x,ratvec_as_vec(lambda-rho(real_form(x))),nu)
 
-{ normparam(G,x,lambda,nu)=param(G,x,lambda-rho(G),nu), so you can enter
-  lambda without the rho shift (don't need a denominator if lambda\in X^*(H)) }
-set normparam (RealForm G,int x,ratvec lambda,ratvec nu) =
-  param(G,x,ratvectovec(lambda-rho(G)),nu)
-
-{ finite dimensional with highest weight tau in X^*
-  I'm not sure this always works; it returns
-    param(last KGB element,tau,tau+rho) so lambda=tau+rho }
-set finite_dimensional(RealForm G,vec tau) = Param:
-  param(KGB(G,KGB_size(G)-1),tau,tau+rho(G))
 
 { get just the parameters from a block, just a shorcut to: (params,)=block(p) }
-set get_block (Param p) = [Param]: let (params,)=block(p) in params
-
-{ trivial representation of G, see finite_dimensional }
-set trivial(RealForm G) = Param: finite_dimensional(G,null(rank(G)))
-
-{ returns [Param] list of parameters in block of trivial }
-set trivial_block(RealForm G) = [Param]: get_block(trivial(G))
-
-{ spherical principal series of split group
-  assumes G is split, otherwise no guarantees
-  specify nu as a vec or ratvec }
-set spherical_principal_series (RealForm G, ratvec nu)= Param:
-  let lambda=null(rank(G)) in param(KGB(G,KGB_size(G)-1),lambda,nu)
+set block_of (Param p) = [Param]: let (params,)=block(p) in params
 
 { replace non-final parameter with [Param p] of final ones
   uses this feature of ParamPol, but ignores any coefficients }
-set make_final (Param p)= [Param]: for c@q in ParamPol: p do q od
+set make_finals (Param p)= [Param]: for c@q in ParamPol: p do q od
 
 { nicer display of Splits }
-set prettyPrint (Split w) = string:
+set split_format (Split w) = string:
   let (a,b)=%w in
-  if   b=0 then int_format(a)
-  elif a=0 then
-       if b=1 then "s" elif b=-1 then "-s" else int_format(b)#"s" fi
-  elif b=1 then int_format(a)#"+s"
-  elif b=-1 then int_format(a)#"-s"
-  elif b<-1 then int_format(a)#int_format(b)#"s"
-  else int_format(a)#"+"#int_format(b)#"s"
+  if a=0 and b!=0
+  then if abs(b)>1 then int_format(b) elif b=1 then "" else "-" fi #"s"
+  else int_format(a) #
+    if abs(b)>1 then if b<0 then "" else "+" fi #int_format(b)#"s"
+    elif b=0 then "" elif b=1 then "+s" else "-s"
+    fi
   fi
 
 { nice output of ParamPol:
-  prettyPrint the coefficients, print terms in order of x }
-set prettyPrint (ParamPol P)= void:
-for w@p in P
-do prints("(",prettyPrint(w),")*",p,", ",infinitesimal_character(p)) od
+  split_format the coefficients, print terms in order of x }
+set pol_format (ParamPol P)= void:
+  for w@p in P
+  do prints("(",split_format(w),")*",p,", ",infinitesimal_character(p)) od
 
 { evaluate at s=t for t integer (or rational?): replace w=a+bs with a+bt }
 { would seem to make sense only if t^2=1, so if either t=1 or t=-1 }
@@ -132,8 +93,74 @@ set  #(ParamPol P,int t)= ParamPol: { with integer coefficiens }
 set eval(vec v,Split w)= Split:
   let sum=Split:0 in  for i:#v downto 0 do sum:= v[i] + w*sum od; sum
 
-set at_s(vec v)=eval(v,s)
+set at_s(vec v) = Split: eval(v,s)
 
 { evaluate polynomial at integer }
 set eval(vec v,int k)= int:
   let sum=0 in  for i:#v downto 0 do sum:= v[i] + k*sum od; sum
+
+set fundamental_Cartan(RealForm G) = CartanClass: Cartan_class(G,0)
+set most_split_Cartan(RealForm G) = CartanClass:
+  Cartan_class(G,nr_of_Cartan_classes(G)-1)
+
+{properties of groups}
+
+set fiber_part(RealForm G) = [int]: fiber_part(Cartan_class(G,0),G)
+
+set in_distinguished_fiber(KGBElt x) = bool:
+  involution(x)=distinguished_involution(real_form(x))
+
+set distinguished_fiber(RealForm G)=[int]:
+  let i=0 in
+  while i<KGB_size(G) and in_distinguished_fiber(KGB(G,i)) do i next i:=i+1 od
+
+set ss_rank(RootDatum rd)= semisimple_rank(rd)
+
+set dimension(RootDatum rd) = 2*nr_of_posroots(rd)+rank(rd)
+
+set root_length(RootDatum rd,vec alpha) = int: rat_as_int(alpha*rho_check(rd))
+set is_simple_root(RootDatum rd,[int] alpha) = bool: root_length(rd,alpha)=1
+
+set get_simple_number(RootDatum rd,vec alpha) = int:
+  let i=semisimple_rank(rd)-1, sr=simple_roots(rd)
+  in while i>=0 and alpha!=sr[i] do i-:=1 od; i
+
+set reverse (vec v)= vec: for i:#v downto 0 do v[i] od
+
+set is_simple_for (vec dual_two_rho) = (vec->bool):
+  (vec alpha): dual_two_rho*alpha=2
+
+set simple_imaginary_subsystem (KGBElt x) = (mat,mat): { simple (co)roots }
+  let ipr=imaginary_posroots(x), ipcr=imaginary_poscoroots(x)
+  in ( columns_with(is_simple_for(sum(ipcr)),ipr)
+     , columns_with(is_simple_for(sum(ipr)),ipcr) )
+
+set simple_real_subsystem (KGBElt x) = (mat,mat): { simple (co)roots }
+  let rpr=real_posroots(x), rpcr=real_poscoroots(x)
+  in ( columns_with(is_simple_for(sum(rpcr)),rpr)
+     , columns_with(is_simple_for(sum(rpr)),rpcr) )
+
+set split_rank(RealForm G) = int:
+  let ((c,C,s),,,) = Cartan_info(most_split_Cartan(G)) in C+s
+
+set to_binary (int length, int n) = vec:
+  let v=null(length) in
+  while (length-:=1)>=0 and n!=0 do let (q,r)=n\%2 in v[length]:=r; n:=q od; v
+
+set generate_all_binary (int length) = [vec]:
+  let start=null(length)
+  then binary (int n) = vec:
+    let v=start, l=length { we need working copies here }
+    in while (l-:=1)>=0 and n!=0 do let (q,r)=n\%2 in v[l]:=r; n:=q od; v
+  in for i:2^length do binary(i) od
+
+set generate_all_subsets([int] S) = [[int]]:
+  let len=#S
+  , gen (int i) = [[int]]: [] { recursive stub; generate subset of S[i:] }
+  in
+  ( gen :=
+    ((int i):
+      if i=len then [[]]
+      else let r=gen(i+1) in r # for x in r do S[i]#x od
+      fi)
+  )(0)
