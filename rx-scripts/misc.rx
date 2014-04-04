@@ -1,5 +1,4 @@
 <basic.rx
-<det.rx
 
 { test if an integer is even, or a rational is an integer }
 set is_even (int i)    = bool: i%2=0
@@ -124,8 +123,6 @@ set is_simple_root(RootDatum rd,[int] alpha) = bool: root_length(rd,alpha)=1
 set get_simple_number(RootDatum rd,vec alpha) = int:
   let i=semisimple_rank(rd)-1, sr=simple_roots(rd)
   in while i>=0 and alpha!=sr[i] do i-:=1 od; i
-
-set reverse (vec v)= vec: for i:#v downto 0 do v[i] od
 
 set is_simple_for (vec dual_two_rho) = (vec->bool):
   (vec alpha): dual_two_rho*alpha=2

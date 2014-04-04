@@ -61,9 +61,9 @@ diagonalise: (mat->vec,mat,mat): partial Smith reduction, without divisibility
   assured to be positive), and the pair of determinant 1 integral matrices
   that have been applied to left and right respectively.
 adapted_basis: (mat->mat,vec): find basis whose integer multiples span image
-  Returns for M a pair (B,c) of a basis (as columns of B) and matching list c
-  of integers, such that the column span of M is the same as the span of the
-  multiples c_j*B_j of the columns B_j of the matrix B by the scalars c_j
+  Returns for M a pair (B,c) of a basis (columns of B) and matching list c of
+  positive integers, such that the column span of M is the same as the span of
+  the multiples c_j*B_j of the columns B_j of the matrix B by the scalars c_j
 kernel: (mat->mat): find matrix whose columns span kernel of the given matrix
 eigen_lattice: (mat,int->mat): eigen-lattice of matrix (at integer eigenvalue)
   eigen_lattice(M,lambda) = kernel(M-lambda*id_mat(n)), where #M=(n,n)
@@ -87,8 +87,8 @@ Smith: (mat->mat,vec): Smith(M)= ( Smith_basis(M), inv_fact(M) ) (almost).
   component of Smith but relative to the true invariant factors inv_fact(M).
 
 invert: (mat->mat,int): invert(M)=inv,d such that M*inv=d*Id, with d minimal.
-  The inverse matrix, represented as an integral numerator matrix and a
-  minimal common denominator
+  The inverse matrix, represented as an integral numerator matrix inv, and a
+  minimal positive common denominator d. Note: d does not mean determinant.
 
 subspace_normal: ([vec]->[vec],[vec],[vec],[int]) normalised mod2 basis Given
   a list of binary vectors, find a normalised basis for the subspace they

@@ -11,6 +11,11 @@
 * Work on the realex program
 
  - Allow for declaring an input path, and (silent) default prelude
+ - Rig readline for file name completion after < or <<
+
+ - Allow Python-style slices of lists, vectors, matrices
+ - Allow list-comprehension syntax like in Haskell (and Python?)
+
  - Handle catching of a user interrupt
    When a user types ^C, this should break off computation as soon as feasible
    and return the realex prompt. This may be quite difficult to implement if
@@ -18,10 +23,8 @@
 
  - Mention file and line in non-syntax errors
  - Improve output of expressions
- - Add more functionality for KGBElt values
- - Improve the way KL_block gives access to it values, add variants
-   Inspect how KL_block is actually used, and provide more lightweight values
 
+ - Allow multiple overloaded functions defined in a single 'set' statement
  - Allow recursion through a more intuitive syntax
  - See if functions without argument can still live in overload table
    Currently they live in the table for ordinary variables, which can produce

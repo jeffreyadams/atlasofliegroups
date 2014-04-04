@@ -22,9 +22,9 @@ set none ((int->bool) filter, int limit) = bool:
 
 {				Integers				}
 
-{ absolute value and sgn of integer}
+{ absolute value and sign of integer}
 set abs (int k)= int: if k<0 then -k else k fi
-set sgn (int k)= int: if k<0 then -1 elif k=0 then 0 else 1 fi
+set sign (int k)= int: if k<0 then -1 elif k=0 then 0 else 1 fi
 
 set min (int k, int l) = int: if k<l then k else l fi
 set max (int k, int l) = int: if k<l then l else k fi
@@ -83,12 +83,17 @@ set -(vec v,vec w)= vec:
 set *(int c,vec v) = vec: for e in v do c*e od
 set -(vec w)= vec: for e in w do -e od
 
+{ integer division }
+set \(vec v,int d) = vec: for x in v do x\d od
+
 { entrywise modulo }
 set %(vec v,int d) = vec: for x in v do x%d od
 
 { sum, product of entries }
 set sum (vec v)= let s=0 in for e in v do s+:=e od; s
 set product (vec v)= let s=1 in for e in v do s*:=e od; s
+
+set reverse (vec v)= vec: for i:#v downto 0 do v[i] od
 
 
 {				Matrices				}
@@ -99,6 +104,12 @@ set n_columns(mat m)= int: let (,c)=#m in c
 { scalar multiplication }
 set *(int c,mat m) = mat: for col in m do for e in col do c*e od od
 set -(mat m)= mat: for c in m do for e in c do -e od od
+
+{ integer division }
+set \(mat m,int d) = mat: for v in m do v\d od
+
+{ entrywise modulo }
+set %(mat m,int d) = mat: for v in m do v%d od
 
 set ^ =
   let matrix_power (mat m,int n)= mat: m { dummy for recursion }
@@ -114,14 +125,29 @@ set ^ =
   else error("Negative matrix power "+n)
   fi
 
-set columns_with ((vec->bool) p,mat m) = mat:
-( let res = [vec]: [] in for alpha in m do if p(alpha) then res #:= alpha fi od
+set inverse (mat M) = mat:
+  let (inv,d)=invert(M) in
+  if d=1 then inv else error("Matrix not invertible over the integers") fi
+
+{ surprisingly coercion allows, and does not provide, the following overload }
+set # (mat A, mat B) = mat: ([vec]:A)#([vec]:B)
+
+set columns_with ((int,vec->bool) p,mat m) = mat:
+( let res = [vec]: [] in for col@j in m do if p(j,col) then res #:= col fi od
 ; if #res=0 then null(n_rows(m),0) else res fi
 )
+set columns_with ((vec->bool) p,mat m) = mat:
+  columns_with (((int,vec)(,col))bool: p(col),m)
+set columns_with ((int->bool) p,mat m) = mat:
+  columns_with (((int,vec)(j,))bool: p(j),m)
+
+set rows_with ((int,vec->bool) p,mat m) = mat: ^columns_with(p,^m)
+set rows_with ((    vec->bool) p,mat m) = mat: ^columns_with(p,^m)
+set rows_with ((int    ->bool) p,mat m) = mat: ^columns_with(p,^m)
+
 
 { sum of columns of a matrix }
-set sum (mat m)=
-  let (r,)=#m then sum = null(r) in for col in m do sum+:=col od; sum
+set sum (mat m)= vec: m*ones(n_columns(m))
 
 
 {			    Rational vectors				}

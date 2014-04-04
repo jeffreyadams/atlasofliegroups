@@ -1,0 +1,101 @@
+<basic.rx
+<matrix.rx
+
+{ M is an nxk matrix, columns of M define a Z-module W }
+
+{basis of sublattice: M=SDT
+basis is {a_i*v_i|i=1,...,k} where a_1,...,a_k are the invariant factors of M
+}
+set submodule_basis(mat M) = mat:
+  let (B,cs) = adapted_basis(M) in for c@j in cs do c*B[j] od
+
+{ a basis representing the quotient by sublattice spanned by columns;
+  tests that this sublattice is a direct factor, and throws an error if not }
+set quotient_module_basis(mat M) = mat:
+  let (B,cs) = adapted_basis(M) then l=#cs
+  then ()= if cs!=ones(l) then error("sublattice is not a direct factor") fi
+  in for j: n_columns(B)-l from l do B[j] od
+
+{ a basis representing the quotient by saturation of sublattice, so no test }
+set saturation_quotient_module_basis(mat M) = mat:
+  let (B,cs) = adapted_basis(M) then l=#cs
+  in for j: n_columns(B)-l from l do B[j] od
+
+{ M is an n*k matrix whose columns span a rank m submodule W of V=Z^n
+  A is an n*n matrix preserving W
+  sub_matrix(M,W) is the m*m matrix giving the action of M on W,
+  using columns of M as basis
+}
+set sub_matrix(mat A,mat M) = mat:
+  let P = M#kernel(^M) then (Pinverse,d) = invert(P)
+  then Q = minor(Pinverse*A*P,n_columns(M))
+  in if Q%d!=null(#Q) then error("lattice not fixed") else Q\d fi
+
+{ assuming M injective and Im(A*M)\subset Im(A), find unique C with A*M=M*C }
+{ method: using decomposition M = B * D * R^{-1} (B,R invertible, D diagonal)
+  first find A' = B^{-1}*A*B, then A'' such that D*A'' = A'*D, which must
+  exist, and finally compute C = R*A''*R^{-1}
+}
+set restrict_action (mat A, mat M) = mat:
+  let (B,ds) = adapted_basis(M), (Binv,,R) = diagonalize(M), (nr,nc)=#M
+  then () = if #ds!=nc then error("matrix has dependent columns") fi
+  then A1 = Binv * A * B
+  then A1Dtr = ^for d@j in ds do d*A1[j] od
+  , zero=null(nr), A2tr= [vec]:[]
+  then () =
+     for i: nr downto 0
+     do if i>=nc
+        then if A1Dtr[i]!=zero then error("matrix does not fix image") fi
+        elif A1Dtr[i]%ds[i]!=zero then error("matrix does not fix lattice")
+	else A2tr #:=  A1Dtr[i]\ds[i]
+        fi
+     od
+  in R * ^A2tr * inverse(R)
+
+{ M is an nxk matrix whose columns span a submodule W of V=Z^n
+  A is an nxn matrix preserving W
+  quotient_matrix(M,W) is the matrix of M on V/W,
+  using the basis from quotient_module_basis(M)
+}
+set quotient_matrix(mat M,mat A) = mat:
+  let P= submodule_basis(M)#quotient_module_basis(M), ncM=n_columns(M)
+  then (Pinverse,d) = invert(P)
+  then Q = minor(Pinverse*A*P,n_columns(A)-ncM,ncM)
+  in Q\d
+
+{ induced action of A on quotient by image of M, w.r.t. tail of adapted_basis }
+set quotient_action (mat A, mat M) = mat:
+  let (B,cs) = adapted_basis(M), (nr,nc)=#M
+  then d=#cs, zero=null(nr)
+  then A1tr = ^(inverse(B) * A * for j: nr-d from d do B[j] od)
+  then () =
+    for i: d do if A1tr[i]!=zero then error("matrix does not fix image") fi od
+  in ^for i: nr-d from d do A1tr[i] od { final rows of A' }
+
+
+
+{ M is an nxk matrix whose columns span a submodule W of V=Z^n
+  projection of v onto V/W parallel to W in basis from adapted_basis
+}
+set projection (mat M) = mat:
+  let (B,cs) = adapted_basis(M) then d=#cs
+  in rows_with( (int i): i>=d, inverse(B) )
+
+{ let sub = submodule_basis(M), quotient = saturation_quotient_module_basis(M)
+  then P = mat: sub#quotient, dim_sum = n_columns(sub)
+  in rows_with( (int i): i>=dim_sum, inverse(P) )
+}
+
+{ M is an nxk matrix whose columns span a submodule  W of V=Z^n
+  coprojection of v: projection of v onto saturation of W, parallel to
+  a complement given by adapted_basis(M)
+}
+set coprojection (mat M) = mat:
+  let (B,cs) = adapted_basis(M) then d=#cs
+  in rows_with( (int i): i<d, inverse(B) )
+
+{ let sub=submodule_basis(M), quotient=saturation_quotient_module_basis(M)
+  then P= mat: sub#quotient
+  in rows_with( (int i): i<d, inverse(P) )
+}
+
