@@ -53,13 +53,13 @@ set > ((string,string)p) = bool: not <=p
 set >= (string x, string y) = bool: y<=x
 set < (string x, string y) = bool: y>x
 
-set +(string s,string t) = string: s # t { alias for concatenation }
-set *(string s, int n)= string: let r="" in (for i:n do r#:=s od; r)
+set + (string s,string t) = string: s # t { alias for concatenation }
+set * (string s, int n)= string: let r="" in (for i:n do r#:=s od; r)
 
-set +(string s, int i)= string: s # int_format(i)
-set +(int i, string s)= string: int_format(i) # s
+set + (string s, int i)= string: s # int_format(i)
+set + (int i, string s)= string: int_format(i) # s
 
-set +(string s, (int,int)(x,y)) = s + "(" + x + "," + y + ")"
+set + (string s, (int,int)(x,y)) = s + "(" + x + "," + y + ")"
 
 
 {				Vectors					}
@@ -94,12 +94,29 @@ set sum (vec v)= let s=0 in for e in v do s+:=e od; s
 set product (vec v)= let s=1 in for e in v do s*:=e od; s
 
 set reverse (vec v)= vec: for i:#v downto 0 do v[i] od
+set lower (int k,vec v)= vec: for i:k do v[i] od
+set upper (int k,vec v)= vec: for i:#v-k from k do v[i] od
 
+set is_member (vec v) = (int->bool):
+  let start = #v-1
+  in (int val)bool: let i=start in while i>=0 and v[i]!=val do i-:=1 od; i>=0
+
+set contains (int val) = (vec->bool): (vec v)bool: is_member(v)(val)
 
 {				Matrices				}
 
 set n_rows(mat m)= int: let (r,)=#m in r
 set n_columns(mat m)= int: let (,c)=#m in c
+
+set +(mat M,mat N)= mat:
+( if #M != #N then error("Size mismatch " + #M + ":" + #N) fi
+; for col@j in M do for e@i in col do e+N[i,j] od od
+)
+
+set -(mat M,mat N)= mat:
+( if #M != #N then error("Size mismatch " + #M + ":" + #N) fi
+; for col@j in M do for e@i in col do e-N[i,j] od od
+)
 
 { scalar multiplication }
 set *(int c,mat m) = mat: for col in m do for e in col do c*e od od
@@ -128,6 +145,14 @@ set ^ =
 set inverse (mat M) = mat:
   let (inv,d)=invert(M) in
   if d=1 then inv else error("Matrix not invertible over the integers") fi
+
+set det (mat M) = int:
+  let (diag,,)=diagonalize(M), (n,):shape = #M
+  then () = if != shape then error("Determinant of non-square matrix") fi
+  in
+    if #diag<n then 0 { there is at least one zero on the diagonal }
+    else product(diag) { otherwise multiply out }
+    fi
 
 { surprisingly coercion allows, and does not provide, the following overload }
 set # (mat A, mat B) = mat: ([vec]:A)#([vec]:B)
@@ -191,22 +216,20 @@ set ^ = { exponentiation of split integers }
 
 set -(ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
 
-set +(mat M,mat N)= mat:
-( if #M != #N then error("Size mismatch " + #M + ":" + #N) fi
-; for col@j in M do for e@i in col do e+N[i,j] od od
-)
-
-set -(mat M,mat N)= mat:
-( if #M != #N then error("Size mismatch " + #M + ":" + #N) fi
-; for col@j in M do for e@i in col do e-N[i,j] od od
-)
-
 
 {				Root data 				}
 
-{ transitional function; the built-in function should have this prototype }
-set root_datum(mat simple_roots, mat simple_coroots) = RootDatum:
-  root_datum(simple_roots,simple_coroots,n_rows(simple_roots))
+{ backwards compatibility function; used to be the built-in prototype }
+set root_datum([vec] simple_roots, [vec] simple_coroots, int r) = RootDatum:
+  let (nr,):sizes=(#simple_roots,#simple_coroots) in
+  if  != sizes
+  then error ("Numbers "+sizes+" of simple roots and coroots differ")
+  elif nr != 0 then root_datum(simple_roots,simple_coroots)
+  else let empty = null(r,0) in root_datum(empty,empty)
+  fi
+
+{ allow single kernel generator in root datum construction }
+set root_datum (LieType t, ratvec gen) = RootDatum: root_datum(t,[gen])
 
 set rho (RootDatum rd) = ratvec:
   let res= ratvec: null(rank(rd))
@@ -249,9 +272,11 @@ set imaginary_poscoroots (RootDatum rd,mat theta) = mat:
 set real_poscoroots (RootDatum rd,mat theta) = mat:
   columns_with(is_real(^theta),poscoroots(rd))
 
-
-{ get just the derived root datum, forgetting about weight embedding }
+{ the following funtions give but partial information; giving a more complete
+  definition for InnerClass values requires more work (group_operations.rx) }
 set derived (RootDatum rd) = RootDatum: let (d,)=derived_info(rd) in d
+set adjoint (RootDatum rd) = RootDatum: let (d,)=adjoint_info(rd) in d
+
 
 {				Inner classes				}
 
@@ -262,11 +287,33 @@ set dual_integral(InnerClass ic, ratvec gamma) = InnerClass:
   inner_class(dual(integrality_datum(ic,gamma)),-^distinguished_involution(ic))
 
 
+{				Cartan classes				}
+
+set fundamental_Cartan(InnerClass ic) = CartanClass: Cartan_class(ic,0)
+set fundamental_Cartan(RealForm f) = CartanClass:
+  fundamental_Cartan(inner_class(f)) { this is constant on the inner class }
+set most_split_Cartan(InnerClass ic) = CartanClass:
+  Cartan_class(ic,nr_of_Cartan_classes(ic)-1)
+{ also most_split_Cartan@RealForm is built-in, but is not that of inner class }
+
+
 {				Real forms				}
 
 set = (RealForm f, RealForm g) = bool:
   inner_class(f) = inner_class(g) and form_number(f)=form_number(g)
 set != (RealForm f, RealForm g) = bool: not(f=g)
+
+set form_name (RealForm f) = string: form_names(f)[form_number(f)]
+
+set real_forms(InnerClass ic)= [RealForm]: real_forms(fundamental_Cartan(ic))
+
+set split_form(RootDatum r) = quasisplit_form(inner_class(r,-id_mat(rank(r))))
+
+{ split form of a Lie type is taken simply connected (times a split torus) }
+set split_form(LieType t) = split_form(simply_connected(t))
+
+set quasicompact_form(InnerClass ic) = RealForm: real_forms(ic)[0]
+{ quasisplit_form is built-in }
 
 
 {			       KGB elements				}

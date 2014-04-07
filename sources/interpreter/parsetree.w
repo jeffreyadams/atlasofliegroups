@@ -758,11 +758,7 @@ we can print a first comma unconditionally.
 
 @< Definitions of \Cpp...@>=
 std::ostream& operator<< (std::ostream& out, const id_pat& p)
-{ if ((p.kind & 0x1)!=0)
-    out << main_hash_table->name_of(p.name);
-  if (p.kind==0x3) // both parts present
-    out << ':';
-  if ((p.kind & 0x2)!=0)
+{ if ((p.kind & 0x2)!=0)
     if (p.sublist==NULL)
       out << "()";
     else
@@ -770,6 +766,10 @@ std::ostream& operator<< (std::ostream& out, const id_pat& p)
       for (patlist l=p.sublist->next; l!=NULL; l=l->next)
       out << l->body << (l->next!=NULL ? ',' : ')');
     }
+  if (p.kind==0x3) // both parts present
+    out << ':';
+  if ((p.kind & 0x1)!=0)
+    out << main_hash_table->name_of(p.name);
   return out;
 }
 

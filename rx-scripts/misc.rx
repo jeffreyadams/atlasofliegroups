@@ -95,27 +95,23 @@ set eval(vec v,Split w)= Split:
 set at_s(vec v) = Split: eval(v,s)
 
 { evaluate polynomial at integer }
-set eval(vec v,int k)= int:
+set eval(vec v,int k) = int:
   let sum=0 in  for i:#v downto 0 do sum:= v[i] + k*sum od; sum
-
-set fundamental_Cartan(RealForm G) = CartanClass: Cartan_class(G,0)
-set most_split_Cartan(RealForm G) = CartanClass:
-  Cartan_class(G,nr_of_Cartan_classes(G)-1)
 
 {properties of groups}
 
-set fiber_part(RealForm G) = [int]: fiber_part(Cartan_class(G,0),G)
+set fiber_partition(RealForm G) = [int]: fiber_partition(Cartan_class(G,0),G)
 
 set in_distinguished_fiber(KGBElt x) = bool:
   involution(x)=distinguished_involution(real_form(x))
 
-set distinguished_fiber(RealForm G)=[int]:
+set distinguished_fiber (RealForm G) = [int]:
   let i=0 in
   while i<KGB_size(G) and in_distinguished_fiber(KGB(G,i)) do i next i:=i+1 od
 
-set ss_rank(RootDatum rd)= semisimple_rank(rd)
+set ss_rank (RootDatum rd)= semisimple_rank(rd)
 
-set dimension(RootDatum rd) = 2*nr_of_posroots(rd)+rank(rd)
+set dimension (RootDatum rd) = 2*nr_of_posroots(rd)+rank(rd)
 
 set root_length(RootDatum rd,vec alpha) = int: rat_as_int(alpha*rho_check(rd))
 set is_simple_root(RootDatum rd,[int] alpha) = bool: root_length(rd,alpha)=1

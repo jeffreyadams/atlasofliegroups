@@ -341,9 +341,9 @@ use by accessors.
 
   RootDatum(const RootDatum&, tags::DualTag);
 
-  RootDatum(int_Matrix&, const RootDatum&, tags::DerivedTag);
+  RootDatum(int_Matrix& projector, const RootDatum&, tags::DerivedTag);
 
-  RootDatum(int_Matrix&, const RootDatum&, tags::SimplyConnectedTag);
+  RootDatum(int_Matrix& injector, const RootDatum&, tags::AdjointTag);
 
   RootDatum sub_datum(const RootNbrList& generators) const; // pseudo-constructor
 

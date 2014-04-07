@@ -172,16 +172,12 @@ root_datum: (LieType,mat->RootDatum): root datum for given type and sublattice.
   lattice of G'. The sublattice becomes the standard lattice for working with
   the root datum, and is identified with Z^n using the given basis, which thus
   becomes the standard basis of the sublattice, henceforth called lattice.
-root_datum: ([vec],[vec],int->RootDatum): root datum from simple (co)roots.
-  In root_datum(roots,coroots,r), the list of vectors roots and coroots must
-  have the same length (the semisimple rank), and each of their elements
-  should have size r (which argument is necessary in case the lists are
-  empty). A root datum is returned in which roots are the simple roots
-  expressed in some basis of the character lattice, and coroots are the simple
-  coroots expressed in the dual basis of the cocharacter lattice. For this to
-  be possible, it is necessary and sufficient that the matrix of scalar
-  products of the proposed simple roots with the proposed simple coroots form
-  a valid Cartan matrix (if not the function call fails)
+root_datum: (mat,mat->RootDatum): root datum from simple (co)root systems.
+  In root_datum(roots,coroots), matrices roots and coroots must have the same
+  dimensions (rank x semisimple rank); their columns give the desired systems
+  of simple roots respectively simple coroots. The matrix of pairings of roots
+  and coroots should be a valid Cartan matrix. A root datum with those systems
+  of simple roots and simple coroots is returned.
 root_datum: (InnerClass->RootDatum): root datum of inner class.
   Extract the root datum from the InnerClass value
 
@@ -228,8 +224,11 @@ fundamental_weight: (RootDatum,int->ratvec): fundamental weight number $i$
 fundamental_coweight: (RootDatum,int->ratvec): fundamental coweight number $i$
 dual: (RootDatum->RootDatum): dual of given root datum.
 derived_info: (RootDatum->RootDatum,mat): information for the derived group
-  The first result is the root datum for the derived group itslef, the second
+  The first result is the root datum for the derived group itself, the second
   result is a matrix mapping weights from the original to the derived datum.
+adjoint_info: (RootDatum->RootDatum,mat): information for the adjoint group
+  The first result is the root datum for the adjoint group itself, the second
+  result is a matrix mapping coweights from the original to the adjoint datum.
 rank: (RootDatum->int) Rank of the weight lattice for this Lie type.
 semisimple_rank: (RootDatum->int) Rank of the root lattice of  this Lie type.
 nr_of_posroots: (RootDatum->int) Number of positive roots in the root datum.
@@ -316,7 +315,8 @@ real_form: (DualRealForm->RealForm): interpret dual real form as real form
   can be applied to the result
 
 quasisplit_form: (InnerClass->RealForm): quasisplit form for the inner class
-  This is the last one in the list of real forms for the inner class
+  This is the last one in the list of real forms for the fundamental Cartan
+  (number 0 in the list) of the inner class
 
 components_rank: (RealForm->int): rank of the component group
   The group of connected components of the real Lie group defined by a real
@@ -358,7 +358,7 @@ involution: (CartanClass->mat): weight lattice involution for Cartan class
 Cartan_info: (CartanClass->(int,int,int),vec,(int,int),(LieType,LieType,LieType)):
   Information about the Cartan class, essentially that given by the output of
   'cartan' in the Atlas (except for the final partition corresponding to the
-  real forms for this Cartan class, for which fiber_part can be used instead).
+  real forms for this Cartan class, for which see fiber_partition).
   The first triple of integers gives in order the number of compact (U(1)),
   complex (GL(1,C)), and split (GL(1,R)) factors of the real torus defined by
   this Cartan class, the canonical twisted involution for the Cartan class, a
@@ -379,11 +379,11 @@ square_classes: (CartanClass->[[int]]): partition real forms by square class
   single sublist, but may be repeated, which indicates that there are mulitple
   orbits of strong involutions (strong real forms) for the same real form.
   The value returned represents a part of the print_strong_real output.
-fiber_part: (CartanClass,RealForm->[int]): part of fiber group for real form
+fiber_partition: (CartanClass,RealForm->[int]): identifying part of fiber group
   This produces an increasing sequence of integers that characterizes the real
   form relative to the CartanClass. It describes a part of the adjoint fiber
   group associated to the Cartan class (an elementary 2-group of rank r equal
-  to the number of compact factors of the real torus in the adjoint group
+  to the number of compact factors of the real torus in the _adjoint_ group
   defined by the Cartan class), whose elements are represented by numbers 0 to
   2^r-1; as the real form traverses all those for which this Cartan class
   occurs, the results of the function form a partition of that set of numbers.

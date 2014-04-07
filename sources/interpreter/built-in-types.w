@@ -751,47 +751,44 @@ void root_datum_wrapper(expression_base::level l)
   }
 }
 
-@ Alternatively, a user may just specify lists of simple roots and coroots,
-which implicitly define a Lie type and weight lattice. To make sure the root
-datum construction will succeed, we must test the ``Cartan'' matrix computed
-from these data to be a valid one.
+@ Alternatively, a user may just specify bases of simple roots and coroots in
+the form of matrices, which implicitly define a Lie type and weight lattice.
+To make sure the root datum construction will succeed, we must test the
+``Cartan'' matrix computed from these data to be a valid one.
 
 @< Local function definitions @>=
 void raw_root_datum_wrapper(expression_base::level l)
-{ shared_int rank = get<int_value>();
-  shared_row simple_coroots=get<row_value>();
-  shared_row simple_roots=get<row_value>();
+{ shared_matrix simple_coroots=get<matrix_value>();
+  shared_matrix simple_roots=get<matrix_value>();
 
-  if (rank->val<0)
-    throw std::runtime_error("Negative rank "+str(rank->val));
-  if (simple_roots->val.size()!=simple_coroots->val.size())
+  size_t nr = simple_roots->val.numRows(),
+         nc = simple_roots->val.numColumns();
+
+  if (simple_coroots->val.numRows()!=nr @| or
+      simple_coroots->val.numColumns()!=nc)
     throw std::runtime_error
-    ("Numbers "+str(simple_roots->val.size())+","
-      +str(simple_coroots->val.size())+  " of simple (co)roots mismatch");
-@.Numbers of simple roots...@>
+    ("Sizes (" +str(nr)+ "," +str(nc) +"),("+
+      str(simple_coroots->val.numRows()) +"),("+
+      str(simple_coroots->val.numColumns()) +
+      ") of simple (co)root systems differ");
+@.Sizes of simple (co)root systems...@>
 
-  size_t r = rank->val; WeightList s; CoweightList c;
-  s.reserve(simple_roots->val.size());
-  c.reserve(simple_roots->val.size());
+  WeightList s; CoweightList c;
+  s.reserve(nc);
+  c.reserve(nc);
 
-  for (size_t i=0; i<simple_roots->val.size(); ++i)
-  { const Weight& sr
-      =force<vector_value>(simple_roots->val[i].get())->val;
-    const Coweight& scr
-      =force<vector_value>(simple_coroots->val[i].get())->val;
-
-    if (sr.size()!=r or scr.size()!=r)
-      throw std::runtime_error("Simple (co)roots not all of size "+str(r));
-    s.push_back(sr);
-    c.push_back(scr);
+  for (size_t j=0; j<nc; ++j)
+@/{@; s.push_back(simple_roots->val.column(j));
+      c.push_back(simple_coroots->val.column(j));
   }
 
-  PreRootDatum prd(s,c,r);
+  PreRootDatum prd(s,c,nr);
   try @/{@; Permutation dummy;
     dynkin::Lie_type(prd.Cartan_matrix(),true,true,dummy);
   }
   catch (std::runtime_error& e)
-  {@; throw std::runtime_error("Invalid simple (co)roots"); }
+@/{@; throw std::runtime_error("Invalid simple (co)root systems"); }
+@.Invalid simple (co)root systems@>
   if (l!=expression_base::no_value)
     push_value(new root_datum_value @| (RootDatum(prd)));
 }
@@ -1079,7 +1076,7 @@ void fundamental_coweight_wrapper(expression_base::level l)
 }
 
 
-@ And here are functions for the dual and derived root data.
+@ And here are functions for the dual, derived and adjoint root data.
 
 @h "tags.h"
 @< Local function definitions @>=
@@ -1090,13 +1087,25 @@ void dual_datum_wrapper(expression_base::level l)
       (RootDatum(rd->val,tags::DualTag())));
 }
 @)
-void derived_datum_wrapper(expression_base::level l)
+void derived_info_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l!=expression_base::no_value)
   { int_Matrix projector;
     push_value(new root_datum_value@|
       (RootDatum(projector,rd->val,tags::DerivedTag())));
     push_value(new matrix_value(projector));
+    if (l==expression_base::single_value)
+      wrap_tuple(2);
+  }
+}
+@)
+void adjoint_info_wrapper(expression_base::level l)
+{ shared_root_datum rd(get<root_datum_value>());
+  if (l!=expression_base::no_value)
+  { int_Matrix injector;
+    push_value(new root_datum_value@|
+      (RootDatum(injector,rd->val,tags::AdjointTag())));
+    push_value(new matrix_value(injector));
     if (l==expression_base::single_value)
       wrap_tuple(2);
   }
@@ -1153,7 +1162,7 @@ install_function(type_of_root_datum_wrapper,@|"Lie_type"
                 ,"(RootDatum->LieType)");
 install_function(root_datum_wrapper,@|"root_datum","(LieType,mat->RootDatum)");
 install_function(raw_root_datum_wrapper,
-                 @|"root_datum","([vec],[vec],int->RootDatum)");
+                 @|"root_datum","(mat,mat->RootDatum)");
 install_function(quotient_basis_wrapper
 		,@|"quotient_basis","(LieType,[ratvec]->mat)");
 install_function(quotient_datum_wrapper
@@ -1175,8 +1184,10 @@ install_function(fundamental_weight_wrapper,@|
 install_function(fundamental_coweight_wrapper,@|
 		 "fundamental_coweight","(RootDatum,int->ratvec)");
 install_function(dual_datum_wrapper,@|"dual","(RootDatum->RootDatum)");
-install_function(derived_datum_wrapper,@|
+install_function(derived_info_wrapper,@|
 		 "derived_info","(RootDatum->RootDatum,mat)");
+install_function(adjoint_info_wrapper,@|
+		 "adjoint_info","(RootDatum->RootDatum,mat)");
 install_function(rd_rank_wrapper,@|"rank","(RootDatum->int)");
 install_function(rd_semisimple_rank_wrapper@|
 		,"semisimple_rank","(RootDatum->int)");
@@ -2544,7 +2555,7 @@ that |realFormLabels| list, and the part returned here will be empty. The part
 of the partition is returned as a list of integral values.
 
 @< Local function def...@>=
-void fiber_part_wrapper(expression_base::level l)
+void fiber_partition_wrapper(expression_base::level l)
 { shared_real_form rf(get<real_form_value>());
   shared_Cartan_class cc(get<Cartan_class_value>());
   if (&rf->parent.val!=&cc->parent.val)
@@ -2596,7 +2607,7 @@ void square_classes_wrapper(expression_base::level l)
 @ The function |print_gradings| gives on a per-real-form basis the
 functionality of the Atlas command \.{gradings} that is implemented by
 |complexredgp_io::printGradings| and |cartan_io::printGradings|. It therefore
-takes, like |fiber_part|, a Cartan class and a real form as parameter. Its
+takes, like |fiber_partition|, a Cartan class and a real form as parameter. Its
 output consist of a list of $\Z/2\Z$-gradings of each of the fiber group
 elements in the part corresponding to the real form, where each grading is a
 sequence of bits corresponding to the simple imaginary roots.
@@ -2704,7 +2715,7 @@ install_function(real_forms_of_Cartan_wrapper,@|"real_forms"
 		,"(CartanClass->[RealForm])");
 install_function(dual_real_forms_of_Cartan_wrapper,@|"dual_real_forms"
 		,"(CartanClass->[DualRealForm])");
-install_function(fiber_part_wrapper,@|"fiber_part"
+install_function(fiber_partition_wrapper,@|"fiber_partition"
 		,"(CartanClass,RealForm->[int])");
 install_function(square_classes_wrapper,@|"square_classes"
                 ,"(CartanClass->[[int]])");

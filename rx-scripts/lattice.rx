@@ -1,5 +1,5 @@
 <basic.rx
-<matrix.rx
+<matrix.rx { for 'minor' (this dependency might be eliminated) }
 
 { M is an nxk matrix, columns of M define a Z-module W }
 
@@ -32,18 +32,18 @@ set sub_matrix(mat A,mat M) = mat:
   in if Q%d!=null(#Q) then error("lattice not fixed") else Q\d fi
 
 { assuming M injective and Im(A*M)\subset Im(A), find unique C with A*M=M*C }
-{ method: using decomposition M = B * D * R^{-1} (B,R invertible, D diagonal)
-  first find A' = B^{-1}*A*B, then A'' such that D*A'' = A'*D, which must
+{ using decomposition M = L^{-1} * D * R^{-1} (B,L invertible, D diagonal)
+  first find A' = L*A*L^{-1}, then A'' such that D*A'' = A'*D, which must
   exist, and finally compute C = R*A''*R^{-1}
 }
 set restrict_action (mat A, mat M) = mat:
-  let (B,ds) = adapted_basis(M), (Binv,,R) = diagonalize(M), (nr,nc)=#M
+  let (ds,L,R) = diagonalize(M), (nr,nc)=#M
   then () = if #ds!=nc then error("matrix has dependent columns") fi
-  then A1 = Binv * A * B
+  then A1 = L * A * inverse(L)
   then A1Dtr = ^for d@j in ds do d*A1[j] od
-  , zero=null(nr), A2tr= [vec]:[]
+  , zero=null(nc), A2tr= [vec]:[]
   then () =
-     for i: nr downto 0
+     for i: nr
      do if i>=nc
         then if A1Dtr[i]!=zero then error("matrix does not fix image") fi
         elif A1Dtr[i]%ds[i]!=zero then error("matrix does not fix lattice")
@@ -51,6 +51,8 @@ set restrict_action (mat A, mat M) = mat:
         fi
      od
   in R * ^A2tr * inverse(R)
+
+set corestrict_action (mat A, mat M) = mat: ^restrict_action(^A,^M)
 
 { M is an nxk matrix whose columns span a submodule W of V=Z^n
   A is an nxn matrix preserving W

@@ -81,12 +81,12 @@ set KL_inverse_mat_at_one(Param p) = mat:
 )
 
 set full_signed_KL_mat_at_one(Param p) = mat:
-  tabulate(get_block(p),character_formula@Param)
+  tabulate(block_of(p),character_formula@Param)
 set full_KL_inverse_mat_at_one(Param p) = mat:
-  tabulate(get_block(p),composition_series@Param)
+  tabulate(block_of(p),composition_series@Param)
 
 set print_character_formula (Param p)= void:
-  for w@p in character_formula(p) do prints(prettyPrint(w),"*",p) od
+  for w@p in character_formula(p) do prints(split_format(w),"*",p) od
 
 set print_composition_series(Param p)= void:
-  for w@p in composition_series(p) do prints(prettyPrint(w),"*",p) od
+  for w@p in composition_series(p) do prints(split_format(w),"*",p) od
