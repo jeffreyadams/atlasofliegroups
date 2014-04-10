@@ -830,11 +830,15 @@ KGBElt inverse_Cayley (const KGB_base& kgb, KGBElt x,
   return kgb.cross(kgb.inverseCayley(s,kgb.cross(ww,x)).first,ww);
 }
 
+
 // status of |alpha| in |kgb|: conjugate to simple root follow cross actions
 gradings::Status::Value status(const KGB_base& kgb, KGBElt x,
 			       const RootSystem& rs, RootNbr alpha)
 {
   weyl::Generator s;
+  if (not rs.isPosRoot(alpha))
+    alpha = rs.rootMinus(alpha); // make |alpha| positive
+
   while (alpha!=rs.simpleRootNbr(s=rs.find_descent(alpha)))
   {
     rs.simple_reflect_root(alpha,s);
@@ -842,6 +846,7 @@ gradings::Status::Value status(const KGB_base& kgb, KGBElt x,
   }
   return kgb.status(s,x);
 }
+
 
 /*****************************************************************************
 

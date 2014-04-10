@@ -310,7 +310,7 @@ void GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
 
 // Sometimes we need to compute the grading at non-simple imaginary roots.
 // This could be computed using expression in simple-imaginary roots |alpha|,
-// for which grading is \emph{compact} iff  |torus_part().negative_at(alpha)|
+// for which grading is \emph{compact} iff |torus_part().negative_at(alpha)|
 // however that is not easy to implement; conjugating to simple is easier.
 // Root system |rs| necessary to interpret |alpha|, dual makes no difference
 bool GlobalTitsGroup::compact(const RootSystem& rs,

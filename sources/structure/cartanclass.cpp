@@ -899,9 +899,9 @@ restrictGrading(const RootNbrSet& rs, const RootNbrList& rl)
   return result;
 }
 
-/*!
-  \brief Returns a grading in the orbit corresponding to |rf|, with the
-  smallest possible number of noncompact roots among the simple roots.
+/*
+  Find a grading in the orbit corresponding to |rf| with the smallest possible
+  number (0 or 1 per simple factor) of noncompact ones among the simple roots.
 
   Precondition: |f| is the fundamental fiber;
 
@@ -910,20 +910,18 @@ restrictGrading(const RootNbrSet& rs, const RootNbrList& rl)
   with exactly one noncompact simple root. (The unequal rank inner class in
   type $A_n$ is particular by the rareness of imaginary simple roots candidate
   for being noncompact: there is at most one, and only if $n$ is odd; for this
-  case this still just suffices to distinguish sl(n+1,R) from sl((n+1/2,H).)
+  case this still just suffices to distinguish sl(n+1,R) from sl(n+1/2,H).)
 
   Our choice for non-simple types will be a grading which has such a grading
   on each noncompact noncomplex simple factor, which is achieved by minimising
   the number of noncompact simple roots. This special grading for the real
   form will the easily allow a name to be associated to the real form.
 
-  NOTE : the grading is represented as the set of noncompact imaginary roots
+  NOTE: the grading is represented as the set of noncompact imaginary roots
   that are also simple roots for the root system |rs|. This is OK; knowledge
   of just that set is sufficient to characterise the real form.
 */
-Grading
-specialGrading(const Fiber& f,
-	       RealFormNbr rf, const RootSystem& rs)
+Grading specialGrading(const Fiber& f, RealFormNbr rf, const RootSystem& rs)
 {
   std::set<Grading,gradings::GradingCompare> grs;
   // |GradingCompare| first compares number of set bits
@@ -947,8 +945,7 @@ specialGrading(const Fiber& f,
   roots, use one of them to get to a less compact Cartan.
 */
 RootNbrSet
-toMostSplit(const Fiber& fundf,
-	    RealFormNbr rf, const RootSystem& rs)
+toMostSplit(const Fiber& fundf, RealFormNbr rf, const RootSystem& rs)
 {
   RootNbrSet ir = fundf.imaginaryRootSet();
   unsigned long rep = fundf.weakReal().classRep(rf);

@@ -1294,8 +1294,9 @@ the matrix is already expressed on the basis of the weight lattice used by the
 root datum, the question of stabilising that lattice is settled, but we must
 check that the matrix is indeed an involution, and that it gives an
 automorphism of the root datum. In fact we need an automorphism of the based
-root datum, but we will apply (and export thought the |ww| parameter) a Weyl
-group element to map positive roots to positive roots. While we are doing all
+root datum, but we will allow a conjugate of such an automorphism to be
+supplied as~$M$, and export thought the |ww| parameter a Weyl group element
+conjugates the based root datum automorphism to~$M$. While we are doing all
 this, we can also determine the Lie type of the root datum, the permutation
 possibly needed to map the standard (Bourbaki) ordering of that Dynkin diagram
 to the actual one, and the inner class letters corresponding to each of its
@@ -1324,10 +1325,10 @@ lietype::Layout check_involution
 { size_t r=rd.rank(),s=rd.semisimpleRank();
   @< Check that |M| is an $r\times{r}$ matrix defining an involution @>
 @/Permutation p(s);
-  @< Set |ww| to the Weyl group element needed to the left of |M| to map
-  positive roots to positive roots, and |p| to the permutation of the simple
-  roots so obtained, or throw a |runtime_error| if |M| is not an automorphism
-  of |rd| @>
+  @< Set |ww| to the reversed Weyl group element needed to be applied after
+  the action of |M| in order to map positive roots to positive roots, and |p|
+  to the permutation of the simple roots so obtained; throw a |runtime_error|
+  if |M| is not an automorphism of |rd| @>
 @/lietype::Layout result;
 @/LieType& type=result.d_type;
   InnerClassType& inner_class=result.d_inner;
@@ -1342,10 +1343,11 @@ lietype::Layout check_involution
 
 @ That |M| is an automorphism means that the roots are permuted among
 each other, and that after applying the Weyl group action to map simple roots
-to the Cartan matrix is invariant under that permutation of
-its rows and columns.
+to simple roots, the result is a diagram automorphism; this is tested by
+checking that the Cartan matrix is invariant under the corresponding
+permutation of its rows and columns.
 
-@< Set |ww| to the Weyl group element...@>=
+@< Set |ww| to the reversed Weyl group element...@>=
 { RootNbrList Delta(s);
   for (size_t i=0; i<s; ++i)
   { Delta[i]=rd.rootNbr(M*rd.simpleRoot(i));
@@ -1452,11 +1454,10 @@ it at its moved-down place.
       break;
     else
       j+=type[k].second;
-
-
   if (k==type.size())
     throw std::logic_error("Non matching Complex factor");
 @.Non matching Complex factor@>
+
 #ifndef NDEBUG
   assert(type[k]==type[i]); // paired simple types for complex factor
   for (size_t l=1; l<comp_rank; ++l)
@@ -1693,7 +1694,7 @@ void fix_involution_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  for (unsigned int i=ww.size(); i-->0;)
+  for (unsigned int i=0; i<ww.size(); ++i) // apply elements in generation order
     rd->val.simple_reflect(ww[i],M);
   std::auto_ptr<ComplexReductiveGroup> G(new ComplexReductiveGroup(rd->val,M));
   push_value(new inner_class_value(G,lo));
@@ -2397,8 +2398,7 @@ void ic_Cartan_class_wrapper(expression_base::level l)
 { shared_int i(get<int_value>());
   shared_inner_class ic(get<inner_class_value>());
   if (size_t(i->val)>=ic->val.numCartanClasses())
-    throw std::runtime_error
-    ("Illegal Cartan class number: "+str(i->val)
+    throw std::runtime_error ("Illegal Cartan class number: "+str(i->val)
 @.Illegal Cartan class number@>
     +", this inner class only has "+str(ic->val.numCartanClasses())
     +" of them");
@@ -2416,8 +2416,7 @@ void rf_Cartan_class_wrapper(expression_base::level l)
 { shared_int i(get<int_value>());
   shared_real_form rf(get<real_form_value>());
   if (size_t(i->val)>=rf->val.numCartan())
-    throw std::runtime_error
-    ("Illegal Cartan class number: "+str(i->val)
+    throw std::runtime_error ("Illegal Cartan class number: "+str(i->val)
 @.Illegal Cartan class number@>
     +", this real form only has "+str(rf->val.numCartan())+" of them");
   BitMap cs=rf->val.Cartan_set();
@@ -2624,8 +2623,7 @@ void print_gradings_wrapper(expression_base::level l)
 @.Inner class mismatch...@>
   BitMap b(cc->parent.val.Cartan_set(rf->val.realForm()));
   if (!b.isMember(cc->number))
-    throw std::runtime_error
-    ("Cartan class not defined for this real form");
+    throw std::runtime_error ("Cartan class not defined for this real form");
 @.Cartan class not defined...@>
 @)
   const Partition& pi = cc->val.fiber().weakReal();
@@ -2778,12 +2776,32 @@ void KGB_elt_wrapper(expression_base::level l)
     push_value(new KGB_elt_value(rf,i));
 }
 
-@ Working with KGB elements it may be necessary to access its real form.
+@ Working with KGB elements often requires having access to its real form.
+
 @< Local function def...@>=
 void real_form_of_KGB_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   if (l!=expression_base::no_value)
     push_value(x->rf);
+}
+
+@ Two important attributes of KGB elements are the associated Cartan class and
+root datum involution.
+
+@< Local function def...@>=
+void KGB_Cartan_wrapper(expression_base::level l)
+{ shared_KGB_elt x = get<KGB_elt_value>();
+  const KGB& kgb=x->rf->kgb();
+  if (l!=expression_base::no_value)
+    push_value(new Cartan_class_value(x->rf->parent,kgb.Cartan_class(x->val)));
+}
+
+void KGB_involution_wrapper(expression_base::level l)
+{ shared_KGB_elt x = get<KGB_elt_value>();
+  const KGB& kgb=x->rf->kgb();
+  const ComplexReductiveGroup& G=x->rf->val.complexGroup();
+  if (l!=expression_base::no_value)
+    push_value(new matrix_value(G.involutionMatrix(kgb.involution(x->val))));
 }
 
 @ Cross actions and (inverse) Cayley transforms define the structure of a KGB
@@ -2854,6 +2872,39 @@ void KGB_status_wrapper(expression_base::level l)
     (stat==0 and not kgb.isDescent(s,x->val) ? 4 : stat));
 }
 
+@ For a given KGB element, all imaginary roots are classified into compact and
+non-compact roots. While this could be deduced from other attributes of the
+element, this would be laborious and error-prone, so we supply this
+information as built-in function. The root is transmitted in coordinates
+rather than as index into the list of positive roots, as this avoids possible
+confusion about the interpretation of the index, and ambiguity with the
+previous instance of |status|; it is also more convenient in those cases where
+the root results from a computation (as opposed to selection from the list of
+roots).
+
+@< Local function def...@>=
+void root_status_wrapper(expression_base::level l)
+{ shared_KGB_elt x = get<KGB_elt_value>();
+  const KGB& kgb=x->rf->kgb();
+  const ComplexReductiveGroup& G=x->rf->parent.val;
+  const RootDatum& rd = G.rootDatum();
+  shared_vector alpha_vec = get<vector_value>();
+  RootNbr alpha = rd.rootNbr(alpha_vec->val);
+  if (alpha>=rd.numRoots())
+    throw std::runtime_error ("Vector is not a root");
+@.Vector is not a root@>
+  if (l==expression_base::no_value)
+    return;
+  unsigned stat=kgb::status(kgb,x->val, rd,alpha);
+  if (stat==0) // $\alpha$ is a complex root, check if it is an ascent
+  {
+    RootNbr theta_alpha =
+      G.involution_table().root_involution(kgb.inv_nr(x->val),alpha);
+    if (rd.isPosRoot(alpha)==rd.isPosRoot(theta_alpha))
+      stat = 4; // set status to complex ascent
+  }
+  push_value(new int_value (stat));
+}
 
 @ One can conjugate a KGB element by the distinguished involution of the inner
 class.
@@ -2866,25 +2917,6 @@ void KGB_twist_wrapper(expression_base::level l)
     return;
   x->val= kgb.Hermitian_dual(x->val); // do twist
   push_value(x);
-}
-
-@ Two important attributes of KGB elements are the associated Cartan class and
-root datum involution.
-
-@< Local function def...@>=
-void KGB_Cartan_wrapper(expression_base::level l)
-{ shared_KGB_elt x = get<KGB_elt_value>();
-  const KGB& kgb=x->rf->kgb();
-  if (l!=expression_base::no_value)
-    push_value(new Cartan_class_value(x->rf->parent,kgb.Cartan_class(x->val)));
-}
-
-void KGB_involution_wrapper(expression_base::level l)
-{ shared_KGB_elt x = get<KGB_elt_value>();
-  const KGB& kgb=x->rf->kgb();
-  const ComplexReductiveGroup& G=x->rf->val.complexGroup();
-  if (l!=expression_base::no_value)
-    push_value(new matrix_value(G.involutionMatrix(kgb.involution(x->val))));
 }
 
 @ Here is a function that returns the vector of bits that distinguish KGB
@@ -2940,6 +2972,7 @@ install_function(KGB_cross_wrapper,@|"cross","(int,KGBElt->KGBElt)");
 install_function(KGB_Cayley_wrapper,@|"Cayley","(int,KGBElt->KGBElt)");
 install_function(KGB_inv_Cayley_wrapper,@|"inv_Cayley","(int,KGBElt->KGBElt)");
 install_function(KGB_status_wrapper,@|"status","(int,KGBElt->int)");
+install_function(root_status_wrapper,@|"status","(vec,KGBElt->int)");
 install_function(KGB_twist_wrapper,@|"twist","(KGBElt->KGBElt)");
 install_function(KGB_Cartan_wrapper,@|"Cartan_class","(KGBElt->CartanClass)");
 install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");

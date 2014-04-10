@@ -11,7 +11,6 @@
 * Work on the realex program
 
  - Allow for declaring an input path, and (silent) default prelude
- - Rig readline for file name completion after < or <<
 
  - Allow Python-style slices of lists, vectors, matrices
  - Allow list-comprehension syntax like in Haskell (and Python?)
@@ -63,6 +62,7 @@
  - Extend language with recursive types, as well as disjoint union types.
  - Allow encapsulation into user-defined types
 
+ - Ensure that root data obtained from inner classes or beyond are shared
  - Check if efficiency features actually work as intended
    For instance v[i]=k should usually avoid a copy of v being made. Also see
    if something can be done to avoid duplication in a +:= x (probably not, as

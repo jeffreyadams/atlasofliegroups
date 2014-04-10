@@ -202,24 +202,26 @@ class Fiber {
   */
   Partition d_weakReal;
 
-  /*! \brief Partition of the set [0,numRealForms()[ indexing weak real forms
-  according to the corresponding classes in Z(G)^delta/[(1+delta)Z(G)].
+  /*
+  Partition of the set [0,numRealForms()[ indexing weak real forms according
+  to their corresponding square classes, in Z(G)^delta/[(1+delta)Z(G)].
 
-  Constructed by the function realFormPartition; details in that documentation.
+  Constructed by the function makeRealFormPartition; details can be found
+  in that documentation.
   */
   Partition d_realFormPartition;
 
-  /*!
-  \brief Partitions of Fiber group cosets corresponding to the
+  /*
+  Collection of partitions of Fiber group cosets, each corresponding to a
   possible square classes in Z^delta/[(1+delta)Z].
 
   The Fiber group acts in a simply transitive way on strong real forms
   (inducing tau on H) with a fixed square in Z^delta. The number of squares
   that occur (modulo (1+delta)Z) is equal to the number c of classes in the
-  partition d_weakReal. The collection of strong real forms is therefore a
-  collection of c cosets of the fiber group F. Each of these c cosets is
-  partitioned into W_i-orbits; these partitions into orbits are described by
-  the c partitions in d_strongReal.
+  partition d_realFormPartition. The collection of strong real forms is
+  therefore a collection of c cosets of the fiber group F. Each of these c
+  cosets is partitioned into W_i-orbits; these partitions into orbits are
+  described by the c partitions in d_strongReal.
   */
   std::vector<Partition> d_strongReal;
 

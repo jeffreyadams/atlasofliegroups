@@ -137,15 +137,11 @@ class KGB_base
 
   KGBElt Hermitian_dual(KGBElt x) const { return info[x].dual; }
 
-  TwistedInvolution nth_involution(unsigned int n) const
-    { return inv_pool[n]; }
+  const TwistedInvolution& nth_involution(unsigned int n) const
+  { return inv_pool[n]; } // useful mostly in traversing all our involutions
 
-  InvolutionNbr involution_index(KGBElt x) const // internal index of involution
-  { return std::upper_bound(first_of_tau.begin(),first_of_tau.end(),x)
-      -first_of_tau.begin() -1;
-  }
   const TwistedInvolution& involution(KGBElt x) const // after construction only
-  { return inv_pool[involution_index(x)]; }
+  { return inv_pool[involution_index(x)]; } // the one associated to |x|
 
   const WeightInvolution & involution_matrix(KGBElt x) const;
   InvolutionNbr inv_nr(KGBElt x) const; // external number (within inner class)
@@ -185,6 +181,12 @@ class KGB_base
   // print derived-class specific per-element information
   virtual std::ostream& print(std::ostream& strm, KGBElt x) const
   { return strm; }
+
+ private: // this internal index of involution is only visible to methods above
+  InvolutionNbr involution_index(KGBElt x) const
+  { return std::upper_bound(first_of_tau.begin(),first_of_tau.end(),x)
+      -first_of_tau.begin() -1;
+  }
 
  protected:
   void reserve (size_t n); // prepare for generating |n| elements

@@ -405,6 +405,9 @@ inv_Cayley: (int,KGBElt->KGBElt): first inverse Cayley transform
 status: (int,KGBElt->int): status of generator on KGB element, scale 0..4
   Encoding 0: Complex descent, 1: imaginary compact, 2: real,
   3: imaginary non-compact, 4:Complex ascent
+status: (vec,KGBElt->int): status of any root on KGB element, scale 0..4
+  The value status(alpha,x) gives the status of the root alpha at x; the
+  encoding of statusses is the same as for the function status@(int,KGBElt)
 twist: (KGBElt->KGBElt): twist of KGB element x, useful for Hermitian dual
   This is defined by conjugation of x by the distinguished involution delta
 torus_bits: (KGBElt->vec): torus part of KGB element as vector of 0,1 values
