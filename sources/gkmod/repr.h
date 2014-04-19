@@ -99,7 +99,7 @@ class Rep_context
   const KGB& kgb() const { return KGB_set; }
   size_t rank() const;
 
-  const TwistedInvolution twistedInvolution(size_t cn) const;
+  const TwistedInvolution involution_of_Cartan(size_t cn) const;
 
   StandardRepr
     sr(const standardrepk::StandardRepK& srk,

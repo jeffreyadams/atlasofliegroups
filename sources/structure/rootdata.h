@@ -527,6 +527,35 @@ use by accessors.
   Weight image_by(const WeylWord& ww,Weight lambda) const
     { act(ww,lambda); return lambda; }
 
+  // with inverse we invert operands to remind how letters of |ww| are used
+  void act_inverse(Weight& lambda,const WeylWord& ww) const
+    {
+      for (weyl::Generator i=0; i<ww.size(); ++i)
+	simpleReflect(lambda,ww[i]);
+    }
+
+  Weight image_by_inverse(Weight lambda,const WeylWord& ww) const
+    { act_inverse(lambda,ww); return lambda; }
+
+#if 0
+  void dual_act_inverse(const WeylWord& ww,Weight& lambda) const
+    {
+      for (weyl::Generator i=ww.size(); i-->0; )
+	simpleCoreflect(lambda,ww[i]);
+    }
+  Weight dual_image_by_inverse(const WeylWord& ww,Weight lambda) const
+    { dual_act_inverse(ww,lambda); return lambda; }
+#endif
+
+  // here the word |ww| is travered as in |act_inverse|, but coreflection used
+  void dual_act(Coweight& lambda,const WeylWord& ww) const
+    {
+      for (weyl::Generator i=0; i<ww.size(); ++i)
+	simpleCoreflect(lambda,ww[i]);
+    }
+  Weight dual_image_by(Coweight lambda,const WeylWord& ww) const
+    { dual_act(lambda,ww); return lambda; }
+
   // here any matrix permuting the roots is allowed, e.g., root_reflection(r)
   Permutation rootPermutation(const WeightInvolution& q) const;
 

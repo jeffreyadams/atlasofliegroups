@@ -847,7 +847,7 @@ TitsElt TitsCoset::naive_seed
   TorusPart x = f.fiberGroup().fromBasis(v);
 
   // right-multiply this torus part by canonical twisted involution for |cn|
-  TitsElt result(titsGroup(),x,G.twistedInvolution(cn));
+  TitsElt result(titsGroup(),x,G.involution_of_Cartan(cn));
 
   return result; // result should be reduced immediately by caller
 }
@@ -897,7 +897,7 @@ TitsElt TitsCoset::grading_seed
   // locate fiber and weak real form
   const Fiber& f=G.cartan(cn).fiber();
   cartanclass::adjoint_fiber_orbit wrf = G.real_form_part(rf,cn);
-  const TwistedInvolution& tw = G.twistedInvolution(cn);
+  const TwistedInvolution& tw = G.involution_of_Cartan(cn);
 
   // get an element lying over the canonical twisted involution for |cn|
   TitsElt a(Tg,tw); // trial element with null torus part
@@ -1004,7 +1004,7 @@ TitsElt EnrichedTitsGroup::backtrack_seed
   const TitsGroup& Tgr= titsGroup();
   // a name chosen to avoid shadowing (inaccessible) |Tg|, and thereby warnings
 
-  const TwistedInvolution& tw=G.twistedInvolution(cn);
+  const TwistedInvolution& tw=G.involution_of_Cartan(cn);
 
   RootNbrSet rset;
   WeylWord cross;

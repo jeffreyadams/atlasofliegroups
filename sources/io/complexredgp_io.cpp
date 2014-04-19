@@ -107,7 +107,7 @@ std::ostream& printGradings(std::ostream& strm, size_t cn, Interface& CI)
   RealFormNbrList rfl(cc.numRealForms());
   const realform_io::Interface& rfi = CI.realFormInterface();
 
-  for (size_t i = 0; i < rfl.size(); ++i)
+  for (cartanclass::adjoint_fiber_orbit i = 0; i < rfl.size(); ++i)
     rfl[i] = rfi.out(G.realFormLabels(cn)[i]);
 
   cartan_io::printGradings(strm,cc.fiber(),rfl,G.rootDatum());

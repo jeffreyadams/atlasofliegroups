@@ -399,7 +399,7 @@ Cartan_orbit::Cartan_orbit(InvolutionTable& i_tab,
   , start(i_tab.size())
   , size(G.cartan(cn).orbitSize())
 {
-  const TwistedInvolution& canonical = G.twistedInvolution(cn);
+  const TwistedInvolution& canonical = G.involution_of_Cartan(cn);
   assert(i_tab.unseen(canonical)); // should only generate orbit once
 
   i_tab.reserve(start+size);

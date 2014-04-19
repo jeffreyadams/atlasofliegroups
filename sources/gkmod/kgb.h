@@ -314,8 +314,9 @@ and in addition the Hasse diagram (set of all covering relations).
   RatWeight half_rho() const;
 
   TorusPart torus_part(KGBElt x) const { return left_torus_part[x]; }
-  TorusElement torus_part_global // |torus_part| but coded as in |global_KGB|
-    (const RootDatum&rd, KGBElt x) const; // needs root datum (for base grading)
+  // reconstruct from |torus_part| a |TorusElement| as in |global_KGB|
+  RatCoweight base_grading_vector() const; // offset for |torus_part_global|
+  RatCoweight torus_part_global(KGBElt x) const; // will be $\theta^t$-fixed
 
   TitsElt titsElt(KGBElt x) const; // get KGB element |x| as a |TitsElt|
   size_t torus_rank() const; // the (non-semisimple) rank of torus parts.
@@ -326,7 +327,7 @@ and in addition the Hasse diagram (set of all covering relations).
   bool simple_imaginary_grading(KGBElt x,RootNbr alpha) const
   { return d_base->simple_imaginary_grading(torus_part(x),alpha); }
 
-  KGBElt lookup(const TitsElt& a) const;
+  KGBElt lookup(TitsElt a) const; // by value
 
 
 // manipulators

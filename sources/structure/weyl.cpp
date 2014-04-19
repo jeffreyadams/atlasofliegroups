@@ -659,7 +659,7 @@ void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M)
   Same as |act(rd,inverse(w),v)|, but avoiding computation of |inverse(w)|.
   Here the leftmost factors act first.
 */
-void WeylGroup::inverseAct(const RootDatum& rd, const WeylElt& w, Weight& v)
+void WeylGroup::inverse_act(const RootDatum& rd, const WeylElt& w, Weight& v)
   const
 {
   for (size_t i=0; i<d_rank; ++i )

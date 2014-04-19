@@ -664,17 +664,9 @@ KGB::KGB(RealReductiveGroup& GR,
       }
     }
     if (not dual_twist)
-    {
-      TitsElt twx = titsGroup().twisted(titsElt(x));
-      i_tab.reduce(twx);
-      info[x].dual = lookup(twx);
-    }
+      info[x].dual = lookup(titsGroup().twisted(titsElt(x)));
     else if (do_dual_twist)
-    {
-      TitsElt twx = titsGroup().dual_twisted(titsElt(x),shift);
-      i_tab.reduce(twx);
-      info[x].dual = lookup(twx);
-    }
+      info[x].dual = lookup(titsGroup().dual_twisted(titsElt(x),shift));
     else
       info[x].dual = UndefKGB;
   }
@@ -733,25 +725,38 @@ size_t KGB::torus_rank() const { return titsGroup().rank(); }
 
 RatWeight KGB::half_rho() const { return RatWeight(rootDatum().twoRho(),4); }
 
-TorusElement KGB::torus_part_global(const RootDatum&rd, KGBElt x) const
+RatCoweight KGB::base_grading_vector() const
 {
-  assert(rank()==rd.semisimpleRank());
-  RatWeight rw (rd.rank());
+  const RootDatum& rd = G.rootDatum();
+  RatWeight result (rd.rank());
   RankFlags gr = base_grading();
   gr.complement(rank()); // take complement in set of simple roots
   for (Grading::iterator it=gr.begin(); it(); ++it)
-    rw += rd.fundamental_coweight(*it);
-
-  TorusElement result(y_values::exp_pi(rw));
-
-  result += torus_part(x);
+    result += rd.fundamental_coweight(*it);
   return result;
+}
+
+
+RatCoweight KGB::torus_part_global(KGBElt x) const
+{
+  RatWeight rw = base_grading_vector();
+
+  RankFlags tp = torus_part(x).data();
+  arithmetic::Numer_t d = rw.denominator();
+  for (RankFlags::iterator it = tp.begin(); it(); ++it)
+    rw.numerator()[*it]+=d;
+
+  // finally ensure result is $\theta^t$-fixed
+  const int_Matrix& theta = involution_matrix(x);
+  return RatCoweight(rw.numerator()+theta.right_mult(rw.numerator()),2*d)
+        .normalize();
 }
 
 // Looks up a |TitsElt| value and returns its KGB number, or |size()|
 // Since KGB does not have mod space handy, must assume |a| already reduced
-KGBElt KGB::lookup(const TitsElt& a) const
+KGBElt KGB::lookup(TitsElt a) const
 {
+  G.involution_table().reduce(a); // make sure |a| is reduced before searching
   const TitsGroup& Tg=titsGroup();
   KGBEltPair p = tauPacket(a.tw());
   TorusPart t = Tg.left_torus_part(a);

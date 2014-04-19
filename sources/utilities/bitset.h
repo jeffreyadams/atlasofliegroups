@@ -395,7 +395,8 @@ template<size_t n> class BitSet
   BitSet& set(unsigned int j, bool b)
     { if (b) Base::set(j); else Base::reset(j); return *this; }
   BitSet& fill(unsigned int limit) { Base::fill(limit); return *this; }
-  BitSet& complement(unsigned int limit) { Base::complement(limit); return *this; }
+  BitSet& complement(unsigned int limit)
+    { Base::complement(limit); return *this; }
   BitSet& truncate(unsigned int m) { Base::truncate(m); return *this; }
 
   BitSet& slice(const BitSet& c) { Base::slice(c); return *this; }

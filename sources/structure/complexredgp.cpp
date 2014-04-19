@@ -145,7 +145,7 @@ ComplexReductiveGroup::ComplexReductiveGroup
   , Cartan_poset() // poset is extended and populated below
   , d_mostSplit(numRealForms(),0) // values 0 may be increased below
 
-  , C_orb(d_rootDatum,distinguished(),d_titsGroup)// don't store ref to |d|!
+  , C_orb(d_rootDatum,distinguished(),d_titsGroup)// don't store ref to |tmp_d|!
 {
   construct();
 }
@@ -175,12 +175,12 @@ ComplexReductiveGroup::ComplexReductiveGroup
   , Cartan_poset() // poset is extended and populated below
   , d_mostSplit(numRealForms(),0) // values 0 may be increased below
 
-  , C_orb(d_rootDatum,distinguished(),d_titsGroup)// don't store ref to |d|!
+  , C_orb(d_rootDatum,distinguished(),d_titsGroup)// don't store ref to |tmp_d|!
 {
   construct();
 }
 
-void ComplexReductiveGroup::construct()
+void ComplexReductiveGroup::construct() // common part of two constructors
 {
   { // task 1: generate Cartan classes, fill non-dual part of |Cartan|
     const TitsCoset adj_Tg(*this);     // based adjoint Tits group
@@ -190,7 +190,7 @@ void ComplexReductiveGroup::construct()
       const Fiber& f=fundamental();
       const Partition& weak_real=f.weakReal();
       // fill initial |form_reps| vector with assignment from |weak_real|
-      for (unsigned long i=0; i<weak_real.classCount(); ++i)
+      for (RealFormNbr i=0; i<weak_real.classCount(); ++i)
       {
 	Cartan[0].real_forms.insert(i); // Cartan 0 exists at all real forms
 	// setting the initial torus part for each real form is subtle.
@@ -216,56 +216,58 @@ void ComplexReductiveGroup::construct()
 	RootNbr alpha=*it;
 	SmallBitVector alpha_bin(d_rootDatum.inSimpleRoots(alpha));
 
-	// create a test element with null torus part
-	TitsElt a(Tg,Cartan[i].tw);
-	WeylWord conjugator;
+	TitsElt a(Tg,Cartan[i].tw);// test element with null torus part
+	WeylWord conjugator; // will right-conjugate from |Cartan[i].tw|
 
-	size_t j; // declare outside loop to allow inspection of final value
-	while (alpha!=d_rootDatum.simpleRootNbr
-				   (j=d_rootDatum.find_descent(alpha)))
+	weyl::Generator s; // outside loop to allow inspection of final value
+
+	// loop while |alpha| not simple, i.e., has a descent |s| not itself
+	while (alpha!=
+	       d_rootDatum.simpleRootNbr(s=d_rootDatum.find_descent(alpha)))
 	{
-	  conjugator.push_back(j);
-	  adj_Tg.basedTwistedConjugate(a,j);
-	  d_rootDatum.simple_reflect_root(alpha,j);
+	  conjugator.push_back(s);
+	  adj_Tg.basedTwistedConjugate(a,s);
+	  d_rootDatum.simple_reflect_root(alpha,s);
 	}
 
-	bool zero_grading = adj_Tg.simple_grading(a,j); // grading of test elt
+	// fix how test element at |Cartan[i].tw| grades original root $\alpha$
+	bool zero_grading = adj_Tg.simple_grading(a,s); // whether noncompact
 
-	TwistedInvolution sigma = W.prod(j,a.tw()); // "Cayley transform"
-	WeylWord ww = W.word(canonicalize(sigma));
+	TwistedInvolution sigma = // involution after "Cayley transform"
+	  W.prod(s,a.tw());       // starting from |a.tw()|
+	WeylWord ww = // Weyl word that will conjugate canonical back to current
+	  canonicalize(sigma); // and sigma is now that canonical elt
 
 	CartanNbr ii;
 	for (ii=0; ii<Cartan.size(); ++ii)
-	  if (Cartan[ii].tw==sigma)
+	  if (Cartan[ii].tw==sigma) // see if |sigma| matches known canonical
 	    break; // found a previously encountered Cartan class
 
-	if (ii==Cartan.size())
-	  Cartan.push_back(C_info(*this,sigma,ii));
+	if (ii==Cartan.size()) // if not seen before, create a new Cartan
+	  Cartan.push_back(C_info(*this,sigma,ii)); // with involution |sigma|
 
-	Cartan[ii].below.insert(i);
+	Cartan[ii].below.insert(i); // mark parent Cartan as below |sigma|
 
 	for (BitMap::iterator rfi=Cartan[i].real_forms.begin(); rfi(); ++rfi)
 	{
 	  RealFormNbr rf = *rfi;
 	  const RankFlags in_rep = Cartan[i].rep[rf];
 	  RankFlags& out_rep = Cartan[ii].rep[rf]; // to be filled in
-	  TorusPart tp(in_rep,alpha_bin.size());
-	  if (alpha_bin.dot(tp)!=zero_grading)
-	  {
-	    if (not Cartan[ii].real_forms.isMember(rf))
-	    { // this is the first hit of |ii| for |rf|
-	      assert(ii>=entry_level); // we may populate only newborn sets
-	      Cartan[ii].real_forms.insert(rf); // mark existence for |rf|
+	  TorusPart tp(in_rep,alpha_bin.size()); // size semisimple rank
+	  if (alpha_bin.dot(tp)!=zero_grading // |tp| makes $\alpha$ noncompact
+	      and not Cartan[ii].real_forms.isMember(rf)) // and |rf| is new
+	  { // this is the first hit of |ii| for |rf|
+	    assert(ii>=entry_level); // we may populate only newborn sets
+	    Cartan[ii].real_forms.insert(rf); // mark that |rf| has new Cartan
 
-	      TitsElt x(Tg,tp,Cartan[i].tw);
-	      adj_Tg.basedTwistedConjugate(x,conjugator);
-	      adj_Tg.Cayley_transform(x,j);
-	      adj_Tg.basedTwistedConjugate(x,ww);
-	      assert(x.tw()==sigma);
+	    TitsElt x(Tg,tp,Cartan[i].tw); // make adjoint Tits group element
+	    adj_Tg.basedTwistedConjugate(x,conjugator); // at old Cartan, and
+	    adj_Tg.Cayley_transform(x,s);               // move to new Cartan
+	    adj_Tg.basedTwistedConjugate(x,ww); // right-conjugate: to $\sigma$
+	    assert(x.tw()==sigma); // check we arrived at intended involution
 
-	      out_rep=Tg.left_torus_part(x).data();
-	      d_mostSplit[rf]=ii; // the last such assignment for |rf| sticks
-	    }
+	    out_rep=Tg.left_torus_part(x).data(); // unpack, store torus part
+	    d_mostSplit[rf]=ii; // the last such assignment for |rf| sticks
 	  }
 	} // for (rf)
       } // for (alpha)
@@ -280,7 +282,7 @@ void ComplexReductiveGroup::construct()
 
     { // first initialise |Cartan.back().dual_rep|
       TwistedInvolution w0(W.longest()); // this is always a twisted inv.
-      WeylWord ww = W.word(canonicalize(w0)); // but not always canonical
+      WeylWord ww = canonicalize(w0); // but not always canonical
       assert(w0==Cartan.back().tw);
 
       const Fiber& f=dualFundamental();
@@ -333,7 +335,7 @@ void ComplexReductiveGroup::construct()
 	assert(tw==W.opposite(a.tw())); // coherence with dual group
 
 	W.leftMult(tw,j); // "Cayley transform"
-	WeylWord ww=W.word(canonicalize(tw)); // in non-dual setting
+	WeylWord ww=canonicalize(tw); // in non-dual setting
 
 	CartanNbr ii;
 
@@ -368,8 +370,8 @@ void ComplexReductiveGroup::construct()
       } // for (alpha)
     } // |for (i=Cartan.size()-->0)|
 
-  }
-}
+  } // task 2
+} // |ComplexReductiveGroup::construct|
 
 /*!
   \brief constructs the complex reductive group dual to G.
@@ -411,7 +413,7 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
     const TwistedInvolution tw_org = dst.tw;
     const TwistedInvolution dual_tw_org = src.tw;
 
-    WeylWord conjugator = W.word(canonicalize(dst.tw));
+    WeylWord conjugator = canonicalize(dst.tw);
 
     dst.real_forms = src.dual_real_forms;
     dst.dual_real_forms = src.real_forms;
@@ -494,16 +496,51 @@ ComplexReductiveGroup::reflection(RootNbr alpha,
 /******** manipulators *******************************************************/
 
 
-
+/* This function gets called when a Cartan subgroup is first used, except that
+   the most compact Cartan is already installed by the constructor.
+   The numbering of Cartans is fixed, but calls here may arrive in any order
+*/
 void ComplexReductiveGroup::add_Cartan(CartanNbr cn)
 {
   Cartan[cn].class_pt =
     new CartanClass(rootDatum(),dualRootDatum(),
-				 involutionMatrix(Cartan[cn].tw));
+		    involutionMatrix(Cartan[cn].tw));
   map_real_forms(cn);      // used to be |correlateForms(cn);|
   map_dual_real_forms(cn); // used to be |correlateDualForms(cn);|
 }
 
+/*
+  The following function matches real forms between different Cartan classes,
+  more precisely it sets the |Cartan[cn].real_labels| for all orbits in the
+  adjoint fiber for Cartan |cn| to the corresponding internal real form
+  number, identifying an orbit in the fundamental fiber of its inner class.
+
+  This is achieved by first computing a |TorusPart| value |base|, that will,
+  when combined with the canonical twisted involution |tw| for the Cartan
+  class, give an adjoint Tits element that grades all simple-imaginary roots
+  as noncompact. Once this is found, the sample torus parts stored for the
+  different real forms over which this Cartan is defined are compared with
+  this base torus part, the difference projected to the adjoint fiber group
+  (which is a subquotient of the adjoint cocharacter lattice) at this Cartan
+  by |toBasis|, and the class of that adjoint fiber group element in the weak
+  real form partition of the current fiber selected; the number of that class
+  is the index into the |real_labels| of this Cartan that is set to point to
+  the real form used.
+
+  Even though there must be an adjoint Tits element associated to the
+  quasisplit real form that grades all simple-imaginary roots (at the
+  canonical twisted involution for this Cartan) as noncompact, it might not
+  have the torus part that was stored as sample in |Cartan[cn].rep[0]| (where
+  $0$ is the internal |RealFormNbr| for the quasisplit form). Therefor we
+  start by modifying the stored representative, by computing the grading
+  |ref_gr| of the imaginary-simple roots the original choice |base| defines,
+  looking up a representative adjoint fiber element |rep|, and interpreting it
+  (by |fromBasis|) in the adjoint fiber group, and subtracting it from |base|
+  so that the resulting |TorusPart| grades all simple-imaginary noncompact.
+  The new value replaces the old one (though no other Atlas function uses the
+  fact that the representatives for the quasisplit form are thus improved).
+
+ */
 void ComplexReductiveGroup::map_real_forms(CartanNbr cn)
 {
   TitsCoset adj_Tg(*this);
@@ -516,19 +553,19 @@ void ComplexReductiveGroup::map_real_forms(CartanNbr cn)
 
   TorusPart base = sample_torus_part(cn,quasisplit());
   TitsElt a(adj_Tg.titsGroup(),base,tw);
-  Grading ref_gr; // reference grading for quasisplit form
+  Grading ref_gr; // reference simple-imaginary grading for quasisplit form
   for (size_t i=0; i<sim.size(); ++i)
     ref_gr.set(i,adj_Tg.grading(a,sim[i]));
 
   cartanclass::AdjointFiberElt rep = f.gradingRep(ref_gr);
 
   // now lift |rep| to a torus part and subtract from |base|
-  SmallBitVector v(RankFlags(rep),
-				 f.adjointFiberRank());
+  SmallBitVector v(RankFlags(rep),f.adjointFiberRank());
   base -= f.adjointFiberGroup().fromBasis(v);
+  // now |base| grades all imaginary simple roots noncompact
+  Cartan[cn].rep[quasisplit()] = base.data(); // store improved representative
 
-  for (BitMap::iterator
-	 rfi=Cartan[cn].real_forms.begin(); rfi(); ++rfi)
+  for (BitMap::iterator rfi=Cartan[cn].real_forms.begin(); rfi(); ++rfi)
   {
     RealFormNbr rf = *rfi;
     TorusPart tp = sample_torus_part(cn,rf);
@@ -537,7 +574,6 @@ void ComplexReductiveGroup::map_real_forms(CartanNbr cn)
     Cartan[cn].real_labels[weak_real.class_of(rep)]=rf;
   }
   assert(Cartan[cn].real_labels[0]==quasisplit());
-  Cartan[cn].rep[0] = base.data(); // change representative to remember base
 }
 
 void ComplexReductiveGroup::map_dual_real_forms(CartanNbr cn)
@@ -560,8 +596,7 @@ void ComplexReductiveGroup::map_dual_real_forms(CartanNbr cn)
   cartanclass::AdjointFiberElt dual_rep = dual_f.gradingRep(dual_ref_gr);
 
   // now lift |rep| to a torus part and subtract from |base|
-  SmallBitVector v(RankFlags(dual_rep),
-				 dual_f.adjointFiberRank());
+  SmallBitVector v(RankFlags(dual_rep),dual_f.adjointFiberRank());
   dual_base -= dual_f.adjointFiberGroup().fromBasis(v);
 
   for (BitMap::iterator
@@ -870,10 +905,10 @@ Weight
     We find conjugating generators starting at the original `|sigma|' end, so
     these form the letters of |w| from left (last applied) to right (first).
 */
-WeylElt // return value is conjugating element
+WeylWord // return value is conjugating element
 ComplexReductiveGroup::canonicalize
   (TwistedInvolution &sigma, // element to modify
-   RankFlags gens) // subset of generators
+   RankFlags gens) // subset of generators, "defaults" to all simple generators
   const
 {
   return complexredgp::canonicalize(sigma,rootDatum(),twistedWeylGroup(),gens);
@@ -967,7 +1002,7 @@ void ComplexReductiveGroup::twisted_act
 
 namespace complexredgp {
 
-WeylElt canonicalize // return value is conjugating element
+WeylWord canonicalize // return value conjugates element new |sigma| to old
   (TwistedInvolution& sigma,
    const RootDatum& rd,
    const TwistedWeylGroup& W,
@@ -991,7 +1026,7 @@ WeylElt canonicalize // return value is conjugating element
    $\alpha$ does not lie in $S$.
  */
 
-  WeylElt w; // initialized to identity; this will be the result
+  WeylWord ww; // initialized empty; this will be the result
 
   { // first phase: make |rrs| dominant for all complex simple roots in |gens|
     // and make |irs| dominant for all such roots that are orthogonal to |rrs|
@@ -999,14 +1034,14 @@ WeylElt canonicalize // return value is conjugating element
     do
       for (it=gens.begin(); it(); ++it)
       {
-	size_t i=*it;
-	LatticeCoeff c=rrs.dot(rd.simpleCoroot(i));
-	if (c<0 or (c==0 and irs.dot(rd.simpleCoroot(i))<0))
+	weyl::Generator s=*it;
+	LatticeCoeff c=rrs.dot(rd.simpleCoroot(s));
+	if (c<0 or (c==0 and irs.dot(rd.simpleCoroot(s))<0))
 	{
-	  rd.reflect(rrs,rd.simpleRootNbr(i));   // apply $s_i$ to re-root sum
-	  rd.reflect(irs,rd.simpleRootNbr(i));   // apply $s_i$ to im-root sum
-	  W.twistedConjugate(sigma,i); // adjust |sigma| accordingly
-	  W.mult(w,i);                 // and add generator to |w|
+	  rd.reflect(rrs,rd.simpleRootNbr(s));   // apply $s_i$ to re-root sum
+	  rd.reflect(irs,rd.simpleRootNbr(s));   // apply $s_i$ to im-root sum
+	  W.twistedConjugate(sigma,s); // adjust |sigma| accordingly
+	  ww.push_back(s);                 // and add generator to |ww|
 	  break;     // after this change, continue the |do|-|while| loop
 	}
       }
@@ -1015,14 +1050,15 @@ WeylElt canonicalize // return value is conjugating element
 
 /*
   Now that |rrs| and |irs| are dominant vectors, the simple coroots have non
-  negative values on them. Any positive coroot is the sum of a multiset of
-  simple coroots, and if that coroot is orthogonal to |rrs| and |irs|, then
-  its constituents must be so as well, since there can be no cancellation in
-  its evaluations on |rrs| and |irs|. Therefore the root subsystem orhogonal
-  to |rrs| and |irs| is generated by a subset of the simple roots.
+  negative values on them [NOT TRUE: |irs| is only partly assured dominant!].
+  Any positive coroot $\alpha$ is the sum of a multiset of simple coroots, and
+  if $\alpha$ is orthogonal to |rrs| and |irs|, then its simple constituents
+  must be so as well, since there can be no cancellation in the evaluations of
+  $\alpha$ on |rrs|, nor on |irs|. Therefore the root subsystem orhogonal to
+  |rrs| and |irs| is generated by a subset of the simple roots.
  */
 
-  // clear those simple roots in |gens| not orthogonal to |irs|
+  // clear those simple roots in |gens| not orthogonal to both |rrs| and |irs|
   for (RankFlags::iterator it=gens.begin(); it(); ++it)
     if (rrs.dot(rd.simpleCoroot(*it))>0 or irs.dot(rd.simpleCoroot(*it))>0)
       gens.reset(*it);
@@ -1045,20 +1081,20 @@ WeylElt canonicalize // return value is conjugating element
     do
       for (it=gens.begin(); it(); ++it)
       {
-	size_t i=*it;
-	RootNbr beta= // image of |rd.simpleRootNbr(i)| by $\theta$
-	  rd.permuted_root(W.word(sigma.w()),rd.simpleRootNbr(W.twisted(i)));
+	weyl::Generator s=*it;
+	RootNbr beta= // image of |rd.simpleRootNbr(s)| by $\theta$
+	  rd.permuted_root(W.word(sigma.w()),rd.simpleRootNbr(W.twisted(s)));
 	if (not rd.isPosRoot(beta))
 	{
-	  W.twistedConjugate(sigma,i); // adjust |sigma|
-	  W.mult(w,i);                 // and add generator to |w|
+	  W.twistedConjugate(sigma,s); // adjust |sigma|
+	  ww.push_back(s);             // and add generator to |ww|
 	  break;                       // and continue |do|-|while| loop
 	}
       }
     while (it()); // i.e., while |for| loop was interrupted
   }
 
-  return  w; // but the main result is the modfied value left in |sigma|
+  return ww; // but the main result is the modfied value left in |sigma|
 }
 
 /*!

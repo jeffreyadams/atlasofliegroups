@@ -768,7 +768,7 @@ void srtest_f()
   prettyprint::printVector(std::cout << " converted to (1/2)",khc.lift(sr));
 
   const TwistedInvolution& canonical =
-    G.complexGroup().twistedInvolution(sr.Cartan());
+    G.complexGroup().involution_of_Cartan(sr.Cartan());
   if (kgb.involution(x)!=canonical)
     prettyprint::printWeylElt(std::cout << " at involution ",
 			      canonical, G.weylGroup());

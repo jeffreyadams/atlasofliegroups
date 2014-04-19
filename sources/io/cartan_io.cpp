@@ -47,7 +47,7 @@ std::ostream& printCartanClass(std::ostream& strm, size_t cn,
   {
     std::ostringstream os;
     os << "canonical twisted involution: ";
-    prettyprint::printWeylElt(os,G.twistedInvolution(cn),G.weylGroup());
+    prettyprint::printWeylElt(os,G.involution_of_Cartan(cn),G.weylGroup());
     ioutils::foldLine(strm,os.str(),"",",") << std::endl;
   }
 
@@ -84,7 +84,7 @@ std::ostream& printCartanClass(std::ostream& strm, size_t cn,
   RealFormNbrList rfl(cc.numRealForms());
   const realform_io::Interface& rfi = CI.realFormInterface();
 
-  for (size_t i = 0; i < rfl.size(); ++i)
+  for (cartanclass::adjoint_fiber_orbit i = 0; i < rfl.size(); ++i)
     rfl[i] = rfi.out(G.realFormLabels(cn)[i]);
 
   printFiber(strm,f,rfl);

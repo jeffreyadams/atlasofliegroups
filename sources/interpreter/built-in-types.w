@@ -1349,21 +1349,21 @@ permutation of its rows and columns.
 
 @< Set |ww| to the reversed Weyl group element...@>=
 { RootNbrList Delta(s);
-  for (size_t i=0; i<s; ++i)
+  for (weyl::Generator i=0; i<s; ++i)
   { Delta[i]=rd.rootNbr(M*rd.simpleRoot(i));
     if (Delta[i]==rd.numRoots()) // then image not found
       throw std::runtime_error@|
         ("Matrix maps simple root "+str(i)+" to non-root");
   }
   ww = wrt_distinguished(rd,Delta);
-  for (size_t i=0; i<s; ++i)
+  for (weyl::Generator i=0; i<s; ++i)
     if (rd.isSimpleRoot(Delta[i])) // should have made every root simple
       p[i]=rd.simpleRootIndex(Delta[i]);
     else throw std::runtime_error
       ("Matrix does not define a root datum automorphism");
 @.Matrix does not define...@>
-  for (size_t i=0; i<s; ++i)
-    for (size_t j=0; j<s; ++j)
+  for (weyl::Generator i=0; i<s; ++i)
+    for (weyl::Generator j=0; j<s; ++j)
       if (rd.cartan(p[i],p[j])!=rd.cartan(i,j)) throw std::runtime_error@|
       ("Matrix does not define a root datum automorphism");
 }
@@ -2063,7 +2063,7 @@ explains why the copy constructor is protected rather than private.
 struct real_form_value : public value_base
 { const inner_class_value parent;
   RealReductiveGroup val;
-  RealFormNbr form_index;
+  RealFormNbr form_index; // internal number associated to real form in |parent|
 @)
   real_form_value(const inner_class_value& p,RealFormNbr f) @/
   : parent(p), val(p.val,f),form_index( f), rt_p(NULL) @+{}
@@ -2479,7 +2479,7 @@ void Cartan_info_wrapper(expression_base::level l)
   wrap_tuple(3);
 
   const weyl::TwistedInvolution& tw =
-    cc->parent.val.twistedInvolution(cc->number);
+    cc->parent.val.involution_of_Cartan(cc->number);
   WeylWord ww = cc->parent.val.weylGroup().word(tw);
 
   std::vector<int> v(ww.begin(),ww.end());
@@ -2945,11 +2945,9 @@ interpreted in $({\bf Q}/2{\bf Z})^n$.
 void torus_factor_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   if (l!=expression_base::no_value)
-  { const RealReductiveGroup& rf = x->rf->val;
-    const KGB& kgb=x->rf->kgb();
-    TorusElement t = kgb.torus_part_global(rf.rootDatum(),x->val);
-    rational_vector_ptr result(new rational_vector_value(t.log_pi(true)));
-    push_value(result);
+  { const KGB& kgb=x->rf->kgb();
+    RatCoweight t = kgb.torus_part_global(x->val);
+    push_value(new rational_vector_value(t));
   }
 }
 
