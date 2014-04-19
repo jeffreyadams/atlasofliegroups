@@ -2142,7 +2142,7 @@ void real_form_wrapper(expression_base::level l)
 void form_number_wrapper(expression_base::level l)
 { shared_real_form rf(get<real_form_value>());
   if (l!=expression_base::no_value)
-    push_value(new int_value(rf->parent.interface.out(rf->form_index)));
+    push_value(new int_value(rf->parent.interface.out(rf->val.realForm())));
 }
 @)
 void quasisplit_form_wrapper(expression_base::level l)
@@ -2200,8 +2200,25 @@ void KGB_size_wrapper(expression_base::level l)
     push_value(new int_value(rf->val.KGB_size()));
 }
 
+@ Here is a somewhat technical function that will facilitate working ``in
+coordinates'' with KGB elements for this real form. It returns a rational
+vector that determines the base grading for the real form, which is an offset
+that should be added to |torus_bits| values. It is defined so as to be zero
+for quasisplit real forms, so in order to compute gradings, the
+imaginary-$\rho$ value (dependent on the involution) should be added to it.
+
+@< Local function def...@>=
+void base_grading_vector_wrapper(expression_base::level l)
+{ shared_real_form rf(get<real_form_value>());
+  if (l!=expression_base::no_value)
+  { const KGB& kgb=rf->kgb();
+    RatCoweight t = kgb.base_grading_vector();
+    push_value(new rational_vector_value(t.normalize()));
+  }
+}
+
 @ There is a partial ordering on the Cartan classes defined for a real form. A
-matrix for this partial ordering is displayed by the function
+matrix for this partial ordering is computed by the function
 |Cartan_order_matrix|, which more or less replaces the \.{corder} command in
 \.{atlas}.
 
@@ -2294,8 +2311,8 @@ void dual_quasisplit_form_wrapper(expression_base::level l)
 }
 
 @ Rather than provide all functions for real forms for dual real forms, we
-provide a function that converts it to a real form, which of course will be
-associated to the dual inner class.
+provide functions that convert a dual real form to a real form, which of
+course will be associated to the dual inner class, and back.
 
 @< Local function def...@>=
 void real_form_from_dual_wrapper(expression_base::level l)
@@ -2304,6 +2321,14 @@ void real_form_from_dual_wrapper(expression_base::level l)
     push_value(new real_form_value
                  (inner_class_value(d->parent,tags::DualTag())
                  ,d->val.realForm()));
+}
+
+void dual_real_form_from_wrapper(expression_base::level l)
+{ shared_real_form rf = get<real_form_value>();
+  if (l!=expression_base::no_value)
+    push_value(new dual_real_form_value
+                 (inner_class_value(rf->parent,tags::DualTag())
+                 ,rf->val.realForm()));
 }
 
 @ Finally we install everything related to real forms.
@@ -2317,6 +2342,8 @@ install_function(inner_class_of_real_form_wrapper
 install_function(components_rank_wrapper,@|"components_rank","(RealForm->int)");
 install_function(count_Cartans_wrapper,@|"count_Cartans","(RealForm->int)");
 install_function(KGB_size_wrapper,@|"KGB_size","(RealForm->int)");
+install_function(base_grading_vector_wrapper
+                ,@|"base_grading_vector","(RealForm->ratvec)");
 install_function(Cartan_order_matrix_wrapper,@|"Cartan_order"
 					    ,"(RealForm->mat)");
 install_function(dual_real_form_wrapper,@|"dual_real_form"
@@ -2325,6 +2352,8 @@ install_function(dual_quasisplit_form_wrapper,@|"dual_quasisplit_form"
 		,"(InnerClass->DualRealForm)");
 install_function(real_form_from_dual_wrapper,@|"real_form"
 				  ,"(DualRealForm->RealForm)");
+install_function(dual_real_form_from_wrapper,@|"dual_real_form"
+				  ,"(RealForm->DualRealForm)");
 
 @*1 A type for Cartan classes.
 %
@@ -2437,6 +2466,60 @@ void most_split_Cartan_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new Cartan_class_value(rf->parent,rf->val.mostSplit()));
 }
+
+@ It is useful to be able to compute a real form or Cartan class based on
+other information than their enumeration within an inner class. The \.{realex}
+function |Cartan_class_real_form| takes an inner class, a matrix giving an
+involution, and a rational co-weight describing the grading of the imaginary
+roots, or more precisely the offset with respect to the grading that makes all
+simple-imaginary roots non-compact; it returns a pair consisting of the Cartan
+class for the involution and the real form associated there to the grading.
+
+@:Cartan_class_real_form@>
+
+@< Local function def...@>=
+TwistedInvolution twisted_from_involution
+  (const ComplexReductiveGroup& G, const WeightInvolution theta)
+{ const RootDatum& rd = G.rootDatum();
+  unsigned int s =  rd.semisimpleRank();
+  RootNbrList Delta(s);
+  for (weyl::Generator i=0; i<s; ++i)
+   { Delta[i]=rd.rootNbr(theta*rd.simpleRoot(i));
+     if (Delta[i]==rd.numRoots()) // then image not found
+       throw std::runtime_error@|
+         ("Matrix maps simple root "+str(i)+" to non-root");
+  }
+  WeylWord ww = wrt_distinguished(rd,Delta);
+  for (weyl::Generator i=0; i<s; ++i)
+    if (not rd.isSimpleRoot(Delta[i])) // should have made every root simple
+      throw std::runtime_error@|
+        ("Matrix does not define a root datum automorphism");
+  return G.weylGroup().element(ww);
+}
+
+void Cartan_class_real_form_wrapper(expression_base::level l)
+{ shared_rational_vector grading_shift = get<rational_vector_value>();
+  shared_matrix theta = get<matrix_value>();
+  shared_inner_class G(get<inner_class_value>());
+  { Coweight num(grading_shift->val.numerator().begin(),
+                 grading_shift->val.numerator().end());
+    if (theta->val.right_mult(num)!=num)
+      throw std::runtime_error ("Grading coweight not fixed by involution");
+@.Grading coweight not fixed@>
+  }
+
+  TwistedInvolution tw = twisted_from_involution(G->val,theta->val);
+
+  CartanNbr cn; WeylWord ww; cartanclass::AdjointFiberElt rep;
+  RealFormNbr rf = real_form_of(G->val,tw,grading_shift->val,cn,ww,rep);
+  if (l==expression_base::no_value)
+     return;
+  push_value(new Cartan_class_value(*G,cn));
+  push_value(new real_form_value(*G,rf));
+  if (l==expression_base::single_value)
+    wrap_tuple(2);
+}
+
 
 
 @*2 Functions operating on Cartan classes.
@@ -2705,6 +2788,8 @@ install_function(rf_Cartan_class_wrapper,@|"Cartan_class"
 		,"(RealForm,int->CartanClass)");
 install_function(most_split_Cartan_wrapper,@|"most_split_Cartan"
 		,"(RealForm->CartanClass)");
+install_function(Cartan_class_real_form_wrapper,@|"Cartan_class_real_form"
+		,"(InnerClass,mat,ratvec->CartanClass,RealForm)");
 install_function(Cartan_involution_wrapper,@|"involution","(CartanClass->mat)");
 install_function(Cartan_info_wrapper,@|"Cartan_info"
 		,"(CartanClass->(int,int,int),"
@@ -2906,6 +2991,43 @@ void root_status_wrapper(expression_base::level l)
   push_value(new int_value (stat));
 }
 
+@ In order to ``synthesise'' a KGB element, one may specify a real form and a
+rational vector that defines a grading of the corresponding imaginary roots,
+in the same manner as for |Cartan_class_real_form| in section
+@#Cartan_class_real_form@> above.
+
+@< Local function def...@>=
+void build_KGB_element_wrapper(expression_base::level l)
+{ shared_rational_vector grading_shift = get<rational_vector_value>();
+  shared_matrix theta = get<matrix_value>();
+  shared_real_form rf = get<real_form_value>();
+
+  { Coweight num(grading_shift->val.numerator().begin(),
+                 grading_shift->val.numerator().end());
+    if (theta->val.right_mult(num)!=num)
+      throw std::runtime_error ("Grading coweight not fixed by involution");
+@.Grading coweight not fixed@>
+  }
+  RatCoweight tv = grading_shift->val - rf->kgb().base_grading_vector();
+  if (tv.normalize().denominator()!=1)
+    throw std::runtime_error("Grading coweight not appropriate for real form");
+
+  const ComplexReductiveGroup& G = rf->parent.val;
+  TorusPart t(tv.numerator());
+  TwistedInvolution tw = twisted_from_involution(G,theta->val);
+  TitsElt a (G.titsGroup(),t,tw);
+
+  KGBElt x = rf->kgb().lookup(a);
+  if (x== rf->kgb().size())
+    throw std::runtime_error("KGB element not present");
+
+  if (l==expression_base::no_value)
+    return;
+  push_value(new KGB_elt_value (rf,x));
+}
+
+
+
 @ One can conjugate a KGB element by the distinguished involution of the inner
 class.
 
@@ -2971,6 +3093,8 @@ install_function(KGB_Cayley_wrapper,@|"Cayley","(int,KGBElt->KGBElt)");
 install_function(KGB_inv_Cayley_wrapper,@|"inv_Cayley","(int,KGBElt->KGBElt)");
 install_function(KGB_status_wrapper,@|"status","(int,KGBElt->int)");
 install_function(root_status_wrapper,@|"status","(vec,KGBElt->int)");
+install_function(build_KGB_element_wrapper,@|"KGB_elt"
+		,"(RealForm,mat,ratvec->KGBElt)");
 install_function(KGB_twist_wrapper,@|"twist","(KGBElt->KGBElt)");
 install_function(KGB_Cartan_wrapper,@|"Cartan_class","(KGBElt->CartanClass)");
 install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");

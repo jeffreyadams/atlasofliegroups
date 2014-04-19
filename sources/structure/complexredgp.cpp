@@ -1156,6 +1156,64 @@ void Cayley_and_cross_part(RootNbrSet& Cayley,
   Cayley = rs.long_orthogonalize(Cayley);
 }
 
+/* For a very long time real forms in the Atlas software were exclusively
+   approached by selecting from a list that is presented after a rather
+   elaborate preparatory calculation. The following function marks a different
+   possibility, namely by allowing a real form (and in fact a strong real form
+   representative) to be selected based on specifying an involution and a
+   grading of the imaginary roots. For practical reasons the grading is
+   specified by its difference with the grading that makes noncompact all
+   simple-imaginary roots (which grading belongs to the quasisplit real form)
+   and this difference is specified by a rational coweight, whose pairing with
+   any imaginary root should be integer, and its parity gives the mentioned
+   difference in grading.
+ */
+RealFormNbr real_form_of // who claims this KGB element?
+  (ComplexReductiveGroup& G,
+   TwistedInvolution tw, const RatCoweight& grading_shift,
+   CartanNbr& cn, WeylWord& conj, cartanclass::AdjointFiberElt& rep // outputs
+   )
+{
+  const TwistedWeylGroup& W = G.twistedWeylGroup();
+  const RootDatum& rd=G.rootDatum();
+
+  { // test if |tw| is a proper twisted involution
+    WeylElt test = tw;
+    W.mult(test,W.twisted(tw));
+    if (test!= WeylElt())
+      throw std::runtime_error("Not a twisted involution");
+  }
+
+  // find the proper Cartan class
+  conj = G.canonicalize(tw);
+  for (cn=G.numCartanClasses(); cn-->0;)
+    if (tw==G.involution_of_Cartan(cn))
+      break;
+  assert(cn!=~0); // every valid twisted involution should be found here
+
+  // find the grading of the simple-imaginary roots at |tw|
+  Grading gr;
+  Coweight numer(grading_shift.numerator().begin(),
+		 grading_shift.numerator().end()); // copy and convert
+  arithmetic::Numer_t denom = grading_shift.denominator();
+  rd.dual_act(numer,conj); // convert towards canonical involution
+  InvolutionData id = InvolutionData::build(rd,W,tw);
+  for (unsigned int i=0; i<id.imaginary_rank(); ++i)
+  {
+    int eval = rd.root(id.imaginary_basis(i)).dot(numer);
+    if (eval%denom!=0)
+      throw std::runtime_error
+	("Rational coweight nonintegral at imaginary root");
+    gr.set(i,eval%(2*denom)==0); // set means noncompact; happens if |eval==0|
+  }
+
+  // look up the grading
+  const Fiber& f = G.cartan(cn).fiber();
+  rep = f.gradingRep(gr);
+  cartanclass::adjoint_fiber_orbit orb = f.weakReal().class_of(rep);
+  return G.realFormLabels(cn)[orb]; // found our real form!!
+} // |real_form_of|
+
 } // namespace complexredgp
 
 

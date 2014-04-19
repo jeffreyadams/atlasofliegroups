@@ -191,6 +191,8 @@ set * (rat r,ratvec v) = ratvec: let (n,d)=%r, (nv,dv)=%v in (n*nv)/(d*dv)
 set / (ratvec v,int m) = ratvec: let (n,d)=%v in n/(m*d)
 set / (ratvec v,rat r) = ratvec: let (nv,dv)=%v, (n,d)=%r in (d*nv)/(n*dv)
 
+set * (ratvec v, mat m) = ratvec: (^m)*v { right multiply uses transpose }
+
 { extend built-in scalar product of vectors to rational vector case }
 set * (ratvec v, ratvec w) = rat: let (nv,dv)=%v,(nw,dw)=%w in nv*nw/(dv*dw)
 
@@ -301,12 +303,19 @@ set most_split_Cartan (InnerClass ic) = CartanClass:
   Cartan_class(ic,nr_of_Cartan_classes(ic)-1)
 { also most_split_Cartan@RealForm is built-in, but is not that of inner class }
 
+set Cartan_class (InnerClass ic, mat theta) = CartanClass:
+  let (cc,) = Cartan_class_real_form(ic,theta,ratvec:null(rank(ic))) in cc
+
+
 
 {				Real forms				}
 
 set = (RealForm f, RealForm g) = bool:
   inner_class(f) = inner_class(g) and form_number(f)=form_number(g)
 set != (RealForm f, RealForm g) = bool: not(f=g)
+
+set real_form ((InnerClass,mat,ratvec) all) = RealForm:
+  let (,rf) = Cartan_class_real_form(all) in rf
 
 set form_name (RealForm f) = string: form_names(f)[form_number(f)]
 
@@ -326,6 +335,11 @@ set quasicompact_form (InnerClass ic) = RealForm: real_forms(ic)[0]
 set != (KGBElt x,KGBElt y) = bool: not(x=y)
 
 set KGB (RealForm rf) = [KGBElt]: for i:KGB_size(rf) do KGB(rf,i) od
+
+set KGB_elt ((RootDatum,mat,ratvec) (rd,theta,v):all) = KGBElt:
+  let ic = inner_class(rd,theta)               { find the proper inner class }
+  then (,rf) = Cartan_class_real_form(ic,theta,v) { find real form within ic }
+  in KGB_elt(rf,theta,v)                    { find KGB element within rf }
 
 set status_text (int s,KGBElt x) = string:
   ["C-","ic","r ","nc","C+"][status(s,x)]
