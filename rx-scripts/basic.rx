@@ -123,9 +123,15 @@ set - (mat M,mat N)= mat:
 ; for col@j in M do for e@i in col do e-N[i,j] od od
 )
 
+{ apply a function to all matrix entries }
+set map_on (mat m) = ((int->int)->mat):
+  if n_columns(m)=0 then ((int->int)f) mat: m { do nothing, but keep size }
+  else ((int->int)f) mat: for c in m do for e in c do f(e) od od
+  fi
+
 { scalar multiplication }
-set * (int c,mat m) = mat: for col in m do for e in col do c*e od od
-set - (mat m)= mat: for c in m do for e in c do -e od od
+set * (int c,mat m) = mat: map_on(m)((int e) int: c*e)
+set - (mat m)= mat: map_on(m)(-@int)
 
 { integer division }
 set \ (mat m,int d) = mat: for v in m do v\d od
@@ -306,6 +312,10 @@ set most_split_Cartan (InnerClass ic) = CartanClass:
 set Cartan_class (InnerClass ic, mat theta) = CartanClass:
   let (cc,) = Cartan_class_real_form(ic,theta,ratvec:null(rank(ic))) in cc
 
+set split_rank (CartanClass cc) = int:
+  let ((,C,s),,,) = Cartan_info(cc) in C+s
+set compact_rank (CartanClass cc) = int:
+  let ((c,C,),,,) = Cartan_info(cc) in c+C
 
 
 {				Real forms				}

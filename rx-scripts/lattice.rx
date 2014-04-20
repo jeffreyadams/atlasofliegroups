@@ -40,7 +40,7 @@ set restrict_action (mat A, mat M) = mat:
   let (ds,L,R) = diagonalize(M), (nr,nc)=#M
   then () = if #ds!=nc then error("matrix has dependent columns") fi
   then A1 = L * A * inverse(L)
-  then A1Dtr = ^for d@j in ds do d*A1[j] od
+  then A1Dtr = if nc=0 then null(0,nr) else ^for d@j in ds do d*A1[j] od fi
   , zero=null(nc), A2tr= [vec]:[]
   then () =
      for i: nr
@@ -64,17 +64,6 @@ set quotient_matrix(mat M,mat A) = mat:
   then (Pinverse,d) = invert(P)
   then Q = minor(Pinverse*A*P,n_columns(A)-ncM,ncM)
   in Q\d
-
-{ induced action of A on quotient by image of M, w.r.t. tail of adapted_basis }
-set quotient_action (mat A, mat M) = mat:
-  let (B,cs) = adapted_basis(M), (nr,nc)=#M
-  then d=#cs, zero=null(nr)
-  then A1tr = ^(inverse(B) * A * for j: nr-d from d do B[j] od)
-  then () =
-    for i: d do if A1tr[i]!=zero then error("matrix does not fix image") fi od
-  in ^for i: nr-d from d do A1tr[i] od { final rows of A' }
-
-
 
 { M is an nxk matrix whose columns span a submodule W of V=Z^n
   projection of v onto V/W parallel to W in basis from adapted_basis

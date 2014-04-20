@@ -688,7 +688,7 @@ made by the caller.
 @< Definitions of class members @>=
 bool BufferedInput::push_file(const char* name, bool skip_seen)
 {
-  if (input_files_seen.knows(name))
+  if (skip_seen and input_files_seen.knows(name))
     return true;
   input_stack.push_back(input_record(name,def_ext,line_no+cur_lines));
   // reading will resume there

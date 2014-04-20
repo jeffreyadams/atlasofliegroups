@@ -1,6 +1,6 @@
-<misc
-<lattice { for (co)restrict_action }
-<torus { for torus }
+<misc.rx
+<lattice.rx { for (co)restrict_action }
+<torus.rx { for torus }
 
 {----------------some more general group constructions----------------}
 
@@ -111,27 +111,19 @@ set Levi (InnerClass ic,[int] S) = InnerClass: { just change the root datum }
 { don't have a definitive way to decide the real form
   use split_rank(M_der)+dim(A)=split_rank(G)
   might be more than one real form of M satisfying this }
-set real_Levi(RealForm G,KGBElt x) = RealForm:
-  let ic_M =
-    inner_class(root_datum(simple_imaginary_subsystem(x)),involution(x))
-  then C_M=Cartan_class(ic_M,0), splrt = split_rank(torus(Cartan_class(x)))
-  , rv= [RealForm]: []
-  then () =
-    for H in real_forms(ic_M)
-    do if split_rank(derived(H))+splrt = split_rank(G) then rv#:=H fi od
-  ; if #rv>1
-    then for H in rv do prints(H) od
-    ; error("Could not determine real form of Levi factor of parabolic")
-    fi
-  in rv[0]
+set real_Levi(KGBElt x) = RealForm:
+  let theta = involution(x)
+  then ic_M = inner_class(root_datum(simple_imaginary_subsystem(x)),theta)
+  then (,rf) = Cartan_class_real_form(ic_M,theta,torus_factor(x))
+  in rf
 
-set theta_stable_Levi (RealForm G,KGBElt x) = RealForm:
+set theta_stable_Levi (KGBElt x) = RealForm:
   let ic_L=inner_class(root_datum(simple_real_subsystem(x)), involution(x))
   in quasisplit_form(ic_L)
 
-set M = real_Levi@(RealForm,KGBElt) { synonym }
+set M = real_Levi@KGBElt { synonym }
 
-set L = theta_stable_Levi@(RealForm,KGBElt) { synonym }
+set L = theta_stable_Levi@KGBElt { synonym }
 
 
 
@@ -140,11 +132,9 @@ set L = theta_stable_Levi@(RealForm,KGBElt) { synonym }
 
 { ----------------tests for classes of groups---------------- }
 
-set is_equal_rank(RealForm G) = bool:
-  let ((,a,b),,,) = Cartan_info(fundamental_Cartan(G)) in a+b=0
+set is_equal_rank(RealForm G) = bool: split_rank(fundamental_Cartan(G))=0
 
-set is_split(RealForm G) = bool:
-let ((a,b,),,,) = Cartan_info(most_split_Cartan(G)) in a+b=0
+set is_split(RealForm G) = bool: compact_rank(most_split_Cartan(G))=0
 
 set is_quasisplit (RealForm G) = bool: form_number(G)=nr_of_real_forms(G)-1
 set is_quasicompact (RealForm G) = bool: form_number(G)=0
@@ -157,7 +147,8 @@ set is_simply_connected (RootDatum rd) = bool:
 set is_adjoint (RootDatum rd) = bool:
   is_semisimple(rd) and abs(det(simple_roots(rd)))=1
 
-set has_connected_center (RootDatum rd)=is_simply_connected(derived(dual(rd)))
+set has_connected_center (RootDatum rd) = bool:
+  is_simply_connected(derived(dual(rd)))
 
 { for real groups return information about the topology of G(R) }
 { set is_simply_connected_real_group(RealForm G) = bool:
