@@ -50,6 +50,11 @@ set ceil  (rat a) = int: -\ %-a   { same, sandwiched in negations }
 set floor ([rat] v) = vec: for a in v do floor(a) od
 set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
 
+{ make a rational into an integer if possible }
+set rat_as_int (rat r) = int:
+  let (n,d)=%r in if d=1 then n else error("Not an integer") fi
+
+
 
 {				Strings					}
 
@@ -134,10 +139,10 @@ set * (int c,mat m) = mat: map_on(m)((int e) int: c*e)
 set - (mat m)= mat: map_on(m)(-@int)
 
 { integer division }
-set \ (mat m,int d) = mat: for v in m do v\d od
+set \ (mat m,int d) = mat: map_on(m)((int e) int: e\d)
 
 { entrywise modulo }
-set % (mat m,int d) = mat: for v in m do v%d od
+set % (mat m,int d) = mat: map_on(m)((int e) int: e%d)
 
 set ^ =
   let matrix_power (mat m,int n)= mat: m { dummy for recursion }
@@ -204,6 +209,11 @@ set * (ratvec v, ratvec w) = rat: let (nv,dv)=%v,(nw,dw)=%w in nv*nw/(dv*dw)
 
 set * (vec v, ratvec w) = rat: let (nw,dw)=%w in v*nw/dw { more efficient }
 { cannot also define: *(ratvec v, vec w) = rat: let (nv,dv)=%v in nv*w/dv }
+
+{ make a rational vector into an integer one if possible }
+set ratvec_as_vec(ratvec v) = vec:
+  let (w,d)=%v in if d=1 then w else error("Not an integer vector") fi
+
 
 
 {			    Split integers				}
@@ -288,7 +298,10 @@ set real_poscoroots (RootDatum rd,mat theta) = mat:
 { the following funtions give but partial information; giving a more complete
   definition for InnerClass values requires more work (group_operations.rx) }
 set derived (RootDatum rd) = RootDatum: let (d,)=derived_info(rd) in d
-set adjoint (RootDatum rd) = RootDatum: let (d,)=adjoint_info(rd) in d
+set mod_central_torus (RootDatum rd) = RootDatum:
+  let (d,)=mod_central_torus_info(rd) in d
+set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
+  root_datum(id_mat(semisimple_rank(rd)),Cartan_matrix(rd))
 
 
 {				Inner classes				}
@@ -351,20 +364,20 @@ set KGB_elt ((RootDatum,mat,ratvec) (rd,theta,v):all) = KGBElt:
   then (,rf) = Cartan_class_real_form(ic,theta,v) { find real form within ic }
   in KGB_elt(rf,theta,v)                    { find KGB element within rf }
 
-set status_text (int s,KGBElt x) = string:
-  ["C-","ic","r ","nc","C+"][status(s,x)]
-set status_text (vec alpha,KGBElt x) = string:
-  ["C-","ic","r ","nc","C+"][status(alpha,x)]
+set status_text ((int,KGBElt)p) = string:
+  ["C-","ic","r ","nc","C+"][status(p)]
+set status_text ((vec,KGBElt)p) = string:
+  ["C-","ic","r ","nc","C+"][status(p)]
 set status_texts (KGBElt x) = [string]:
   for s:semisimple_rank(real_form(x)) do status_text(s,x) od
 
-set is_complex (int s,KGBElt x) = status(s,x)%4=0
-set is_real (int s,KGBElt x) = status(s,x)=2
-set is_imaginary (int s,KGBElt x) = status(s,x)%2=1
-set is_noncompact (int s,KGBElt x) = status(s,x)=3
-set is_compact (int s,KGBElt x) = status(s,x)=1
-set is_descent (int s,KGBElt x) = status(s,x)<3
-set is_ascent (int s,KGBElt x) = status(s,x)>=3
+set is_complex ((int,KGBElt)p) = status(p)%4=0
+set is_real ((int,KGBElt)p) = status(p)=2
+set is_imaginary ((int,KGBElt)p) = status(p)%2=1
+set is_noncompact ((int,KGBElt)p) = status(p)=3
+set is_compact ((int,KGBElt)p) = status(p)=1
+set is_descent ((int,KGBElt)p) = status(p)<3
+set is_ascent ((int,KGBElt)p) = status(p)>=3
 
 
 { status of general roots for a KGBElt (which here just represents its fiber) }
@@ -384,6 +397,16 @@ set real_poscoroots (KGBElt x) = mat:
 
 set rho_i (KGBElt x) = ratvec: sum(imaginary_posroots(x))/2
 set rho_r (KGBElt x) = ratvec: sum(real_posroots(x))/2
+set rho_check_i (KGBElt x) = ratvec: sum(imaginary_poscoroots(x))/2
+set rho_check_r (KGBElt x) = ratvec: sum(real_poscoroots(x))/2
+
+{ status for a given KGBElt of general imaginary roots }
+set is_compact (KGBElt x) = (vec->bool):
+  let coweight = rho_check_i(x)+torus_factor(x)
+  in (vec alpha) bool: rat_as_int(coweight*alpha)%2=0
+set is_noncompact (KGBElt x) = (vec->bool):
+  let coweight = rho_check_i(x)+torus_factor(x)
+  in (vec alpha) bool: rat_as_int(coweight*alpha)%2!=0
 
 
 {			    Module parameters				}

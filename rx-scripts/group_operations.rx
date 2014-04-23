@@ -82,16 +82,32 @@ set derived (InnerClass ic) = InnerClass:
   let (der_rd,proj)=derived_info(root_datum(ic))
   in inner_class(der_rd,corestrict_action(distinguished_involution(ic),proj))
 
-set adjoint(InnerClass ic) = InnerClass:
-  let (adj_rd,inj)=adjoint_info(root_datum(ic))
-  in inner_class(adj_rd,restrict_action(distinguished_involution(ic),inj))
+set mod_central_torus (InnerClass ic) = InnerClass:
+  let (quot_rd,inj)=mod_central_torus_info(root_datum(ic))
+  in inner_class(quot_rd,restrict_action(distinguished_involution(ic),inj))
 
+set adjoint_transform (RootDatum rd, mat theta) = mat:
+  let  image = theta*simple_roots(rd)
+  then image_coords = [vec]:
+     for i: semisimple_rank(rd)
+     do ratvec_as_vec(fundamental_coweight(rd,i)*image) od
+  in ^(mat: image_coords)
+
+set adjoint(InnerClass ic) = InnerClass:
+  let rd = root_datum(ic)
+  in inner_class(adjoint(rd)
+                ,adjoint_transform(rd,distinguished_involution(ic)))
 
 set derived (RealForm G) = RealForm:
-  real_forms(derived(inner_class(G)))[form_number(G)]
+  let ic = inner_class(G),  (der_rd,proj)=derived_info(root_datum(G))
+  , x0 = KGB(G,0)
+  then act = corestrict_action(distinguished_involution(ic),proj)
+  in real_form(inner_class(der_rd,act),act,torus_factor(x0)*proj)
 
 set adjoint(RealForm G)=
-  real_forms(adjoint(inner_class(G)))[form_number(G)]
+  let adj_ic = adjoint(inner_class(G))
+  , tf = torus_factor(KGB(G,0))*simple_roots(root_datum(G)) { to adjoint }
+  in real_form(adj_ic,distinguished_involution(adj_ic),tf)
 
 { ----------------real Levi factors---------------- }
 
@@ -108,9 +124,6 @@ set Levi (InnerClass ic,[int] S) = InnerClass: { just change the root datum }
 
 
 { M=centralizer of A in H=TA, as a RealForm }
-{ don't have a definitive way to decide the real form
-  use split_rank(M_der)+dim(A)=split_rank(G)
-  might be more than one real form of M satisfying this }
 set real_Levi(KGBElt x) = RealForm:
   let theta = involution(x)
   then ic_M = inner_class(root_datum(simple_imaginary_subsystem(x)),theta)

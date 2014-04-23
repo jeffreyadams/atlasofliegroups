@@ -1076,7 +1076,12 @@ void fundamental_coweight_wrapper(expression_base::level l)
 }
 
 
-@ And here are functions for the dual, derived and adjoint root data.
+@ And here are functions for the dual, derived and quotient by central torus
+root data. There is no need for a similar function for the adjoint root datum,
+as this is easily synthesised (due to the fact that the simple roots provide a
+standard basis for the adjoint character lattice): the simple root matrix is
+the identity, the simple coroot matrix the Cartan matrix, and mapping to new
+weight coordinates is achieved by pairing with the old coroots.
 
 @h "tags.h"
 @< Local function definitions @>=
@@ -1099,7 +1104,7 @@ void derived_info_wrapper(expression_base::level l)
   }
 }
 @)
-void adjoint_info_wrapper(expression_base::level l)
+void mod_central_torus_info_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l!=expression_base::no_value)
   { int_Matrix injector;
@@ -1147,8 +1152,8 @@ void integrality_points_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  RationalList ipl =
-    rootdata::integrality_points(rd->val,lambda->val);
+  RationalList ipl = rootdata::integrality_points(rd->val,lambda->val);
+    // method normalises rationals
   row_ptr result (new row_value(ipl.size()));
   for (size_t i=0; i<ipl.size(); ++i)
     result->val[i]=shared_value(new rat_value(ipl[i]));
@@ -1186,8 +1191,8 @@ install_function(fundamental_coweight_wrapper,@|
 install_function(dual_datum_wrapper,@|"dual","(RootDatum->RootDatum)");
 install_function(derived_info_wrapper,@|
 		 "derived_info","(RootDatum->RootDatum,mat)");
-install_function(adjoint_info_wrapper,@|
-		 "adjoint_info","(RootDatum->RootDatum,mat)");
+install_function(mod_central_torus_info_wrapper,@|
+		 "mod_central_torus_info","(RootDatum->RootDatum,mat)");
 install_function(rd_rank_wrapper,@|"rank","(RootDatum->int)");
 install_function(rd_semisimple_rank_wrapper@|
 		,"semisimple_rank","(RootDatum->int)");
@@ -2213,7 +2218,7 @@ void base_grading_vector_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   { const KGB& kgb=rf->kgb();
     RatCoweight t = kgb.base_grading_vector();
-    push_value(new rational_vector_value(t.normalize()));
+    push_value(new rational_vector_value(t));
   }
 }
 
@@ -2481,17 +2486,18 @@ class for the involution and the real form associated there to the grading.
 TwistedInvolution twisted_from_involution
   (const ComplexReductiveGroup& G, const WeightInvolution theta)
 { const RootDatum& rd = G.rootDatum();
-  unsigned int s =  rd.semisimpleRank();
-  RootNbrList Delta(s);
-  for (weyl::Generator i=0; i<s; ++i)
-   { Delta[i]=rd.rootNbr(theta*rd.simpleRoot(i));
-     if (Delta[i]==rd.numRoots()) // then image not found
-       throw std::runtime_error@|
-         ("Matrix maps simple root "+str(i)+" to non-root");
+  unsigned int ssr =  rd.semisimpleRank();
+  RootNbrList Delta(ssr);
+  for (weyl::Generator i=0; i<ssr; ++i)
+  { Delta[i]=rd.rootNbr(theta*rd.simpleRoot(i));
+    if (Delta[i]==rd.numRoots()) // then image not found
+      throw std::runtime_error@|
+        ("Matrix maps simple root "+str(i)+" to non-root");
   }
   WeylWord ww = wrt_distinguished(rd,Delta);
-  for (weyl::Generator i=0; i<s; ++i)
-    if (not rd.isSimpleRoot(Delta[i])) // should have made every root simple
+  for (weyl::Generator i=0; i<ssr; ++i)
+    if (Delta[i]!=G.twisted_root(rd.simpleRootNbr(i)))
+        // |Delta| should now match distinguished involution
       throw std::runtime_error@|
         ("Matrix does not define a root datum automorphism");
   return G.weylGroup().element(ww);
@@ -3219,7 +3225,6 @@ void unwrap_parameter_wrapper(expression_base::level l)
   { push_value(new KGB_elt_value(p->rf,p->val.x()));
     push_value(new vector_value(p->rc().lambda_rho(p->val)));
     push_value(new rational_vector_value(p->rc().nu(p->val)));
-      // method |nu| normalises
     if (l==expression_base::single_value)
       wrap_tuple(3);
   }
@@ -3375,6 +3380,7 @@ void reducibility_points_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {
     RationalList rp = p->rc().reducibility_points(p->val);
+      // method normalises rationals
     row_ptr result(new row_value(rp.size()));
     for (size_t i=0; i<rp.size(); ++i)
       result->val[i]=shared_value(new rat_value(rp[i]));

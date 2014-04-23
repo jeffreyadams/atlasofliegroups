@@ -71,6 +71,7 @@ public:
      error prone; e.g., floor=numerator()/denominator() would wreak havoc */
   Numer_t denominator() const { return Numer_t(denom); }
 
+  // these operators all return normalised results
   Rational operator+(Rational q) const;
   Rational operator-(Rational q) const;
   Rational operator*(Rational q) const;

@@ -226,9 +226,9 @@ dual: (RootDatum->RootDatum): dual of given root datum.
 derived_info: (RootDatum->RootDatum,mat): information for the derived group
   The first result is the root datum for the derived group itself, the second
   result is a matrix mapping weights from the original to the derived datum.
-adjoint_info: (RootDatum->RootDatum,mat): information for the adjoint group
-  The first result is the root datum for the adjoint group itself, the second
-  result is a matrix mapping coweights from the original to the adjoint datum.
+mod_central_torus_info: (RootDatum->RootDatum,mat): quotient by central torus
+  The (semisimple) root datum obtained by quotienting by the central torus,
+  and matrix embedding weights for the quotient datum into the original datum.
 rank: (RootDatum->int) Rank of the weight lattice for this Lie type.
 semisimple_rank: (RootDatum->int) Rank of the root lattice of  this Lie type.
 nr_of_posroots: (RootDatum->int) Number of positive roots in the root datum.
@@ -372,10 +372,11 @@ Cartan_class_real_form: (InnerClass,mat,ratvec->CartanClass,RealForm):
   under the Weyl group to the involution of one of its Cartan classes, which
   is returned as first component by this function. The rational vector v,
   which should satisfy v*M=v, defines a grading of imaginary roots \alpha for
-  M by the parity of < v+\rho_i , \alpha > where \rho_i is half the sum of the
-  positive imaginary roots for M (its presnece ensures that v=0 is a valid, an
-  grades all simple-imaginary roots as noncompact). This grading selects a
-  real form over which this Cartan is defined, which is the second component.
+  M by the parity of < v+\check\rho_i , \alpha > where \check\rho_i is half
+  the sum of the positive imaginary coroots for M (its presence ensures that
+  v=0 is a valid, an grades all simple-imaginary roots as noncompact). This
+  grading selects a real form over which this Cartan is defined, which real
+  form is the second component of the result.
 
 involution: (CartanClass->mat): weight lattice involution for Cartan class
 Cartan_info: (CartanClass->(int,int,int),vec,(int,int),(LieType,LieType,LieType)):
@@ -436,8 +437,8 @@ torus_factor:KGBElt->ratvec): torus part of KGB element, twice that in print_X
   This is a \theta^t stable rational vector v with integral evaluations on
   all imaginary roots; interpreted modulo the image of 1+\theta^t acting
   on X_*, so in particular modulo (2\Z)^n. For an imaginary root \alpha
-  the scalar product < v + \rho_i , \alpha > determines whether \alpha is
-  compact (if even) or noncompact (if odd)
+  the scalar product < v + \check\rho_i , \alpha > determines whether \alpha
+  is compact (if even) or noncompact (if odd)
 torus_bits: (KGBElt->vec): torus part of KGB element as vector of 0,1 values
   A vector of size the rank that distinguishes between different KGB elements
   at the same involution, in the format used internally. From this the value

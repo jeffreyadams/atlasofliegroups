@@ -690,8 +690,8 @@ bool BufferedInput::push_file(const char* name, bool skip_seen)
 {
   if (skip_seen and input_files_seen.knows(name))
     return true;
-  input_stack.push_back(input_record(name,def_ext,line_no+cur_lines));
-  // reading will resume there
+  input_stack.push_back(@|input_record(name,def_ext,line_no+cur_lines));
+  // record where reading will resume
   if (input_stack.back().stream->good())
   { const std::string& name_ext=input_stack.back().name; bool avoid=false;
     for (unsigned i=input_stack.size()-1; i-->0; )
@@ -701,11 +701,11 @@ bool BufferedInput::push_file(const char* name, bool skip_seen)
         (skip_seen and input_files_seen.knows(name_ext.c_str()))) // seen before
     @/{@; delete input_stack.back().stream;
       input_stack.pop_back();
-    } // so just close file and pop record
+    } // close file and pop record
     else
     { std::cout << "Starting to read from file '" << input_stack.back().name
-                << "'." << std::endl;
-      stream= input_stack.back().stream;
+             << "'." @| << std::endl;
+    @/stream= input_stack.back().stream;
       line_no=1; // prepare to read from pushed file
       cur_lines=0;
         // so we won't advance |line_no| when getting first line of new file

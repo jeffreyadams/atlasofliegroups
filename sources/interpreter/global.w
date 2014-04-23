@@ -489,11 +489,18 @@ hard to do a decent job for both signed and unsigned types.
 @~Using string streams, the definition of~|str| is trivial; in fact the
 overloads of the output operator ``|<<|'' determine the exact conversion. As a
 consequence of this implementation, the template function will in fact turn
-anything printable into a string.
+anything printable into a string. We do however provide an inline overload
+(which in general is better then a template specialisation) for the case of
+unsigned characters, since these need to be interpreted as (small) unsigned
+integers when |str| is called for them, rather than as themselves (the latter
+is never intended as it would be a silly use, which in addition would for
+instance interpret the value $0$ as a string-terminating null character).
 
 @< Template and inline function definitions @>=
 template <typename T>
   std::string str(T n) @+{@; std::ostringstream s; s<<n; return s.str(); }
+inline std::string str(unsigned char c)
+  @+{@; return str(static_cast<unsigned int>(c)); }
 
 @* Basic types.
 %
@@ -660,7 +667,8 @@ typedef std::tr1::shared_ptr<matrix_value> shared_matrix;
 struct rational_vector_value : public value_base
 { RatWeight val;
 @)
-  explicit rational_vector_value(const RatWeight& v):val(v)@+{}
+  explicit rational_vector_value(const RatWeight& v)
+   : val(v)@+{ val.normalize();}
   rational_vector_value(const int_Vector& v,int d)
    : val(v,d) @+ {@; val.normalize(); }
   ~rational_vector_value()@+ {}
@@ -1449,14 +1457,14 @@ void ratvec_plus_wrapper(expression_base::level l)
 { shared_rational_vector v1= get<rational_vector_value>();
   shared_rational_vector v0= get<rational_vector_value>();
   if (l!=expression_base::no_value)
-    push_value(new rational_vector_value((v0->val+v1->val).normalize()));
+    push_value(new rational_vector_value(v0->val+v1->val));
 }
 @)
 void ratvec_minus_wrapper(expression_base::level l)
 { shared_rational_vector v1= get<rational_vector_value>();
   shared_rational_vector v0= get<rational_vector_value>();
   if (l!=expression_base::no_value)
-    push_value(new rational_vector_value((v0->val-v1->val).normalize()));
+    push_value(new rational_vector_value(v0->val-v1->val));
 }
 
 

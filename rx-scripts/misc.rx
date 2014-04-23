@@ -14,14 +14,6 @@ set is_integer (ratvec v) = bool: denom(v)=1
 set is_positive (ratvec v) = bool: is_positive(numer(v))
 set is_nonnegative (ratvec v)= bool: is_nonnegative(numer(v))
 
-{ make a rational into an integer if possible }
-set rat_as_int (rat r) = int:
-  let (n,d)=%r in if d=1 then n else error("Not an integer") fi
-
-{ make a rational vector into an integer one if possible }
-set ratvec_as_vec(ratvec v) = vec:
-  let (w,d)=%v in if d=1 then w else error("Not an integer vector") fi
-
 { transform ParamPol into a list of (Split,Param) pairs; previously built-in }
 set %(ParamPol P) = [(Split,Param)]: for c@p in P do (c,p) od
 

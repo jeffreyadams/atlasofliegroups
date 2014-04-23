@@ -135,7 +135,7 @@ class Rep_context
   // prepare for |deform|: make |gamma| dominant, and as theta-stable as can be
   void make_dominant(StandardRepr& z) const;
 
-  RationalList reducibility_points(const StandardRepr& z) const;
+  RationalList reducibility_points(const StandardRepr& z) const; // normalised
 
   StandardRepr cross(weyl::Generator s, StandardRepr z) const;
   StandardRepr Cayley(weyl::Generator s, StandardRepr z) const;
