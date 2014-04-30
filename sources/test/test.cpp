@@ -7,6 +7,28 @@
   For license information see the LICENSE file
 */
 
+
+#include "block_io.h"
+
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+#include <cassert>
+#include <map>
+
+#include "polynomials.h"
+#include "kgb.h"     // |kgb.size()|
+#include "complexredgp.h" // |twoRho| in |nu_block::print|
+#include "blocks.h"
+#include "ext_block.h"
+#include "kl.h"
+#include "repr.h"
+
+#include "basic_io.h"	// operator |<<|
+#include "ioutils.h"	// |digits|
+#include "prettyprint.h" // |printWeylElt|
+//extra
+
 #include "io.h"    //needed for help commands
 
 #include "test.h"
@@ -28,7 +50,9 @@
 #include "cartanclass.h"
 #include "complexredgp.h"
 #include "realredgp.h"
-
+#include "tits.h"
+#include "weyl.h"
+#include "involutions.h" // for |InvolutionTable|
 #include "kgb.h"
 #include "blocks.h"
 #include "klsupport.h"
@@ -75,6 +99,8 @@ namespace {
   void test_f();
   void braid_f();
   void go_f();
+  void mytest_f();
+  void fix_braid_f();
 
   void roots_rootbasis_f();
   void coroots_rootbasis_f();
@@ -196,6 +222,11 @@ void addTestCommands<commands::BlockmodeTag> (commands::CommandNode& mode)
   if (testMode == BlockMode)
     mode.add("test",test_f,test_tag);
 
+  mode.add("mytest",mytest_f,
+	   "my test command",commands::use_tag);
+  if (testMode == BlockMode)
+    mode.add("test",test_f,test_tag);
+
 }
 
 // Add to the repr mode the test commands that require that mode.
@@ -216,6 +247,9 @@ void addTestCommands<commands::ReprmodeTag> (commands::CommandNode& mode)
 ******************************************************************************/
 
 namespace {
+
+  std::ostream& print(std::ostream& strm);
+
 
 
 // Empty mode functions
@@ -855,9 +889,306 @@ bool isDirectRecursion(ext_block::DescValue v)
   return is_descent(v) and is_unique_image(v);
 }
 
+
+void mytest(KGB kgb){
+  //  prettyprint::printInvolution(strm,kgb.involution(1),kgb.twistedWeylGroup())<< std::endl;
+
+  }
+void mytest_f(){
+  // RealReductiveGroup& G = commands::currentRealGroup();
+  // ComplexReductiveGroup& GC=commands::currentComplexGroup();
+  // const global_KGB& global_kgb = global_KGB(GC);
+  // const KGB& kgb = G.kgb();
+  // const TitsGroup& Tg = G.titsGroup();
+  // const GlobalTitsGroup& global_Tg = GlobalTitsGroup(GC);
+  // ioutils::OutputFile f;
+
+  // RatWeight zero=global_kgb.torus_part(0).log_2pi();
+  // WeightInvolution delta = G.distinguished();
+  // std::cout<<  "delta:" << std::endl;
+  // for (unsigned i=0; i<delta.numRows(); ++i)
+  // 	{   std::cout << " " << std::endl;
+  // 	  for (unsigned j=0; j<delta.numColumns(); ++j)
+  // 	    std::cout << delta(i,j);}
+
+
+  // for (size_t i=0; i<kgb.size(); ++i){
+  //   KGBElt dual_x=kgb.Hermitian_dual(i);
+  //   if (dual_x==i){
+  //     f << "" << std::endl << "x=" << i << " w=";
+  //     prettyprint::printInvolution(f,kgb.involution(i),kgb.twistedWeylGroup());      
+
+  //     //    WeightInvolution matrix=kgb.involution_matrix(i);
+  //     //    RatWeight shift=y_shift-matrix*y_shift;
+      
+  //   //    TorusPart t=kgb.torus_part(i);
+  //   //TorusElement global_t=global_kgb.torus_part(i);
+  //     //    RootDatum rd=GC.rootDatum();
+
+  //     TorusElement s=global_kgb.torus_part(i);
+  //     WeightInvolution theta=kgb.involution_matrix(i);
+  //     RatWeight log_s=s.log_2pi();
+
+  //     RatWeight gamma=(theta*log_s-log_s);
+  //     RatWeight log_h=(gamma-delta*gamma);
+  //     log_h=RatWeight(log_h.numerator(),4*log_h.denominator()).normalize();
+
+  //     RatWeight log_s_new=(log_s+theta*log_s);
+  //     log_s_new=RatWeight(log_s_new.numerator(),2*log_s_new.denominator()).normalize();
+  //     bool equal=(log_s==log_s_new);
+  //     //      std::cout << "  s=" << log_t << "  t_new: " << t_new;
+  //     std::cout << "  s=" << log_s << "  ";
+  //     if (!equal) std::cout << " s'=" << log_s_new;
+  //     if (log_h != zero)      std::cout << " " <<  "  h=" << log_h;
+  //     RatWeight log_t=log_h+delta*log_h;
+  //     log_t=RatWeight(log_t.numerator(),log_t.denominator()).normalize();
+  //     if (log_t != zero) std::cout << " t=" << log_t;
+      
+
+
+      
+
+  //   // WeightInvolution matrix=kgb.involution_matrix(i);
+  //   // if (matrix*rw==rw) std::cout << "yes equal"; else std::cout << "NOT not equal";
+  //   // std::cout << "rw=" << rw << "theta(rw)=" << matrix*rw << std::endl;
+
+
+
+  //   //    TorusElement t=kgb.torus_part_global(rd,i);
+  //   //    TwistedInvolution ti=kgb.involution(i);
+  //   //    WeylElt w=WeylElt(ti);
+  //   //    GlobalTitsElement xi=GlobalTitsElement(t,w);
+
+  //   //    TorusPart tp=kgb.torus_part(i);
+  //   //    TitsElt xi_tits=TitsElt(Tg,tp,w);
+  //   //    WeylElt wxi=xi_tits.w();
+
+
+
+  //   }
+
+  //   //  f << "" << std::endl;
+  // }
+}
+
+
+void mytest_f_old(){
+
+
+  RealReductiveGroup& G = commands::currentRealGroup();
+  ComplexReductiveGroup& GC=commands::currentComplexGroup();
+  const global_KGB& global_kgb = global_KGB(GC);
+  const KGB& kgb = G.kgb();
+  
+  const TitsGroup& Tg = G.titsGroup();
+  const GlobalTitsGroup& global_Tg = GlobalTitsGroup(GC);
+  ioutils::OutputFile f;
+
+  TorusElement yrho =y_values::exp_2pi(global_kgb.globalTitsGroup().torus_part_offset());
+  //  const GlobalTitsElement& hdelta=GlobalTitsElement(yrho);
+  //  GlobalTitsElement minus_hdelta=GlobalTitsElement(minus_yrho);
+  RatWeight y_shift=yrho.log_2pi();
+  f << "m_rho=exp(i\\pi(" << y_shift << "), terms with h=m_rho labelled *" << std::endl;
+  static TorusElement id =global_kgb.torus_part(0);
+
+  for (size_t i=0; i<kgb.size(); ++i){
+    KGBElt dual_x=kgb.Hermitian_dual(i);
+        if (dual_x==i){
+	  f << "" << std::endl << "x=" << i << " w=";
+      prettyprint::printInvolution(f,kgb.involution(i),kgb.twistedWeylGroup());      
+
+      //    WeightInvolution matrix=kgb.involution_matrix(i);
+      //    RatWeight shift=y_shift-matrix*y_shift;
+      
+    //    TorusPart t=kgb.torus_part(i);
+    //TorusElement global_t=global_kgb.torus_part(i);
+    RootDatum rd=GC.rootDatum();
+
+
+
+
+    TorusElement t=kgb.torus_part_global(rd,i);
+    TwistedInvolution ti=kgb.involution(i);
+    WeylElt w=WeylElt(ti);
+    GlobalTitsElement xi=GlobalTitsElement(t,w);
+
+    //    TorusPart tp=kgb.torus_part(i);
+    //    TitsElt xi_tits=TitsElt(Tg,tp,w);
+    //    WeylElt wxi=xi_tits.w();
+
+    
+
+    RatWeight log_torus_part_xi=t.log_2pi()+y_shift;
+    f << " h(xi): ";
+    if (t==id){
+      f << "*";
+    }
+
+
+
+  //    eblock.toggle_edge(153,213); // 4, 2Ci/2Cr
+  //    eblock.toggle_edge(254,196); // 4, 2Ci/2Cr
+  //    eblock.toggle_edge(240,284); // 4, 2Ci/2Cr
+
+
+
+
+  //    eblock.toggle_edge(153,213); // 4, 2Ci/2Cr
+  //    eblock.toggle_edge(254,196); // 4, 2Ci/2Cr
+  //    eblock.toggle_edge(240,284); // 4, 2Ci/2Cr
+
+
+
+
+  //    eblock.toggle_edge(153,213); // 4, 2Ci/2Cr
+  //    eblock.toggle_edge(254,196); // 4, 2Ci/2Cr
+  //    eblock.toggle_edge(240,284); // 4, 2Ci/2Cr
+
+
+
+
+  //    eblock.toggle_edge(153,213); // 4, 2Ci/2Cr
+  //    eblock.toggle_edge(254,196); // 4, 2Ci/2Cr
+  //    eblock.toggle_edge(240,284); // 4, 2Ci/2Cr
+
+    f << log_torus_part_xi << " ";
+
+     GlobalTitsElement delta_xi=global_Tg.twisted(xi);
+     TorusElement torus_part_delta_xi=delta_xi.torus_part();
+     RatWeight log_torus_part_delta_xi=torus_part_delta_xi.log_2pi()+y_shift;
+     f << "h(delta(xi)):" << log_torus_part_delta_xi << " ";
+     RatWeight difference=log_torus_part_delta_xi-log_torus_part_xi;
+     
+     if (xi==delta_xi)
+       f << "true";
+     else
+       f <<  "false  " << difference;
+
+     const WeylGroup& W = Tg.weylGroup();
+     // test Cayleys                         
+     //     weyl::Generator s;
+     unsigned s;
+     for (s=0; s<G.semisimpleRank(); ++s)
+       {if (kgb.status(s,i)==gradings::Status::Real)
+	   {  f << "" << std::endl;
+	     f << " s: " << s << " " ;
+	     WeylElt sw=w;
+	     W.leftMult(sw,s);
+	     GlobalTitsElement my_cayley=GlobalTitsElement(t,sw);
+	     GlobalTitsElement cayley=xi;
+	     global_Tg.do_inverse_Cayley(s,cayley);
+
+	     TwistedInvolution xi_w=xi.tw();
+	     TwistedInvolution cayley_wtemp=cayley.tw();
+	     f << "first ";
+	     prettyprint::printInvolution(f,xi_w,kgb.twistedWeylGroup());      
+	     f << "second ";
+	     prettyprint::printInvolution(f,cayley_wtemp,kgb.twistedWeylGroup());      
+
+	     TorusElement torus_part_my_cayley=my_cayley.torus_part();
+	     RatWeight log_torus_part_my_cayley=torus_part_my_cayley.log_2pi()+y_shift;
+	     TwistedInvolution my_cayley_w=my_cayley.tw();
+	     f << "  my_cayley:" << log_torus_part_my_cayley << " ";
+	     prettyprint::printInvolution(f,my_cayley_w,kgb.twistedWeylGroup());      
+	     f << "  ";
+
+	     TorusElement torus_part_cayley=cayley.torus_part();
+	     RatWeight log_torus_part_cayley=torus_part_cayley.log_2pi()+y_shift;
+	     TwistedInvolution cayley_w=cayley.tw();
+	     f << "cayley: " << log_torus_part_cayley << " ";
+	     prettyprint::printInvolution(f,cayley_w,kgb.twistedWeylGroup());      
+	     f << "  ";
+	     
+	     if (my_cayley==cayley)
+	       f << "cayleys are equal ";
+	     else
+	       f << "cayleys not equal ";
+	     
+
+	     //	     WeylElt w = WeylElt();  // the identity
+	     //W.leftMult(w,s);   // s as an element of W
+	     
+
+
+	     //	     TitsElt muin=TitsElt(Tg,w);
+	     //	     f << "  muin: ";
+	     //	     prettyprint::printTitsElt(f,muin,Tg);
+
+	     //	     GlobalTitsElement sigma=GlobalTitsElement(w,rd.rank());
+	     //	     TitsElt sigma_tits=TitsElt(Tg,w);
+
+	     //	     GlobalTitsElement my_Cayley=global_Tg.prod(sigma,xi);
+			      //	     GlobalTitsElement cayley=xi;
+			      //	     global_Tg.do_inverse_Cayley(s,cayley);
+
+			      //	     if (my_Cayley==cayley)
+			      //	       f << " cayleys are equal ";
+	     
+
+	     //	     TitsElt mu=TitsElt(Tg,w);
+	     //	     f << "  mu: ";
+	     //	     prettyprint::printTitsElt(f,mu,Tg);
+
+	   }
+
+
+
+	 //	 GlobalTitsElement test=global_Tg.prod(axi,xi);
+	 
+	 //std::ostream& printTitsElt(std::ostream& strm, const TitsElt& a,const TitsGroup& Tg)
+
+      //      W.leftMult(xi.w,s);
+      //GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
+	 //      global_Tg.do_inverse_Cayley(s,xi);
+      //      WeylElt test=prod(WeylElt(),s);
+      //      GlobalTitsElement sigma=GlobalTitsElement(s,rd.rank());
+      //(const WeylElt& we,size_t rank) : t(rank),w(we) {}
+
+       //      global_Tg.mult_sigma(xi,s);
+      //      mult_sigma(TitsElt&, weyl::Generator);
+      
+    //	  assert(kgb.status(sub.simple(s),conj_x)==gradings::Status::Real);
+	}
+
+
+
+
+  // RatWeight twisted_weight=twisted_te.log_2pi();
+  // TorusElement modified=y_values::exp_2pi(shift+twisted_weight);
+  // GlobalTitsElement modified_tits_element=GlobalTitsElement(modified,w);
+
+  // f << "  modified: " << shift+twisted_weight+y_shift << " ";
+  
+  // if (modified_tits_element==global_te)
+  //   f << "  modified is true"; 
+  // else
+  //   f << "  modified is false";
+
+
+      }//  if (dual_x==i){
+
+
+
+
+  }
+  //    TorusElement torus_twist=y_values::exp_2pi(shift);
+    
+  
+
+
+
+
+  f << "" << std::endl;
+}
+
+  
+
+
 // Check for nasty endgame cases in block
-void test_braid(const ext_block::extended_block eblock)
+void test_braid(ext_block::extended_block my_eblock)
 {
+  ext_block::extended_block eblock=my_eblock;
+  std::cout << "testing braids" << std::endl;
   bool OK=true; int count=0;
   for (weyl::Generator t=1; t<eblock.rank(); ++t)
     for (weyl::Generator s=0; s<t; ++s)
@@ -868,23 +1199,110 @@ void test_braid(const ext_block::extended_block eblock)
 	  {
 	    BitMap cluster(eblock.size());
 	    if (ext_block::check_braid(eblock,s,t,x,cluster))
-	      ++count;
+	      {
+		++count;
+		// if ((eblock.z(x)==59 or eblock.z(x)==97 or eblock.z(x)==237 or eblock.z(x)==32) and (s+1==3 or s+1==2) and t+1==4){
+		//    std::cout << std::endl << "Braid relation SUCCESS: " << eblock.z(x)
+		//  	    << ", s=" << s+1 << ", t=" << t+1;
+		//    for (BitMap::iterator it=cluster.begin(); it(); ++it)
+		//      std::cout << (it==cluster.begin() ? " (" : ",")
+		//  	      << eblock.z(*it) ;
+		//    std::cout << ')' << std::endl << std::endl << std::endl;
+		//    seen |= cluster; // don't do elements of same cluster again}
+		// }
+	      }
 	    else
 	    {
 	      OK = false;
-	      std::cout << "Braid relation failure: " << eblock.z(x)
+	      std::cout << std::endl << "Braid relation failure: " << eblock.z(x)
 			<< ", s=" << s+1 << ", t=" << t+1;
-	      for (BitMap::iterator it=cluster.begin(); it(); ++it)
+	      for (BitMap::iterator it=cluster.begin(); it(); ++it){
 		std::cout << (it==cluster.begin() ? " (" : ",")
 			  << eblock.z(*it) ;
-	      std::cout << ')' << std::endl;
+		//		const ext_block::DescValue type = eblock.descent_type(t,eblock.z(*it));
+		//		std::cout << " " << descent_code(type);
+	      }
+	      std::cout << ')';
+	      // for (BitMap::iterator iter=cluster.begin(); iter(); ++iter){
+	      // 	BlockElt x=eblock.z(*iter);
+	      // 	const ext_block::DescValue type = eblock.descent_type(t,x);
+	      // 	if (type==atlas::ext_block::two_semi_imaginary){
+	      // 	  BlockElt y=eblock.Cayley(t,*iter);
+	      // 	  std::cout << "y=" << eblock.Cayley(t,x) << "  " << eblock.z(y) << std::endl;
+	      // 	  eblock.toggle_edge(x,eblock.z(y));
+
+	      // 	  break;
+	      // 	}
+	      // }
+	      //	      std::cout << ')' << std::endl;
+
 	      seen |= cluster; // don't do elements of same cluster again
 	    }
 	  }
     }
   if (OK)
     std::cout << "All " << count << " relations hold!\n";
+  std::cout << std::endl;
 } // |braid_f|
+
+
+
+ext_block::extended_block fix_braid(ext_block::extended_block eblock)
+{
+  std::cout << std::endl << "Fixing braids" << std::endl;
+  bool OK=true; int count=0;
+  for (weyl::Generator t=1; t<eblock.rank(); ++t)
+    for (weyl::Generator s=0; s<t; ++s)
+    {
+      BitMap seen(eblock.size());
+      for (BlockElt x=0; x<eblock.size(); ++x)
+	if (not seen.isMember(x))
+	  {
+	    BitMap cluster(eblock.size());
+	    if (ext_block::check_braid(eblock,s,t,x,cluster))
+		++count;
+	    else
+	    {
+	      OK = false;
+	      std::cout << std::endl << "Braid relation failure: " << eblock.z(x)
+			<< ", s=" << s+1 << ", t=" << t+1;
+	      for (BitMap::iterator it=cluster.begin(); it(); ++it){
+		std::cout << (it==cluster.begin() ? " (" : ",")
+			  << eblock.z(*it);
+		std::cout << "[" << descent_code(eblock.descent_type(t,*it)) << "]";
+	      }
+	      std::cout << ")";
+	      //	      for (BitMap::iterator iter=cluster.begin(); iter(); ++iter){
+	      int found_2Ci=0;
+	      for (BitMap::iterator iter=cluster.begin(); iter(); ++iter){
+		BlockElt x=eblock.z(*iter);
+		const ext_block::DescValue type = eblock.descent_type(t,*iter);
+		//		std::cout << " " << descent_code(type) << " ";
+		if (type==atlas::ext_block::two_semi_imaginary){
+		  if (found_2Ci==0){
+		    ++found_2Ci;
+		  }else{
+		    BlockElt y=eblock.Cayley(t,*iter);
+		    eblock.toggle_edge(x,eblock.z(y));
+		    std::cout << std::endl;
+		  break;
+		  }
+		}
+	      }
+	      //	      std::cout << ')' << std::endl;
+	      //	      std::cout << ')';
+	      seen |= cluster; // don't do elements of same cluster again
+	    }
+	  }
+    }
+  if (OK)
+    std::cout << "All " << count << " relations hold!\n";
+  std::cout << std::endl;
+  std::cout << "returning eblock" << std::endl;
+  return eblock;
+} // |braid_f|
+
+
 
 void braid_f()
 {
@@ -895,25 +1313,68 @@ void braid_f()
 }
 
 
+void toggle(int v[]){
+  int w[4];
+  int i;
+  for (i=0; i<4; ++i){
+    w[i]=v[i];
+  }
+  if (v[4]==1){
+    w[0]=v[0];w[1]=v[3];w[2]=v[1];w[3]=v[3];
+  } 
+  else if (v[4]==1){
+    w[0]=v[1];w[1]=v[2];w[2]=v[2];w[3]=v[3];
+  }
+  else if (v[4]==2){
+    w[0]=v[0];w[1]=v[2];w[2]=v[1];w[3]=v[3];
+  }
+  else if (v[4]==3){
+    w[0]=v[0];w[1]=v[2];w[2]=v[1];w[3]=v[2];
+  }
+  else if (v[4]==4){
+    w[0]=v[0];w[1]=v[2];w[2]=v[1];w[3]=v[3];
+  }
+  else if (v[4]==5){
+    w[0]=v[0];w[1]=v[3];w[2]=v[1];w[3]=v[2];
+  }
+  else if (v[4]==6){
+    w[0]=v[0];w[1]=v[3];w[2]=v[1];w[3]=v[3];
+  }
+  else if (v[4]==7){
+    w[0]=v[0];w[1]=v[3];w[2]=v[1];w[3]=v[3];
+  }
+  v[0]=w[0];v[1]=w[1];v[2]=w[2];v[3]=w[3];
+}
+
 void go_f()
 {
   drop_to(commands::empty_mode); // make sure all modes will need re-entering
-  commands::currentLine().str("D5 sc u 2 3"); // type-ahead in input buffer
-  commands::currentLine().reset(); // and reset to start at beginning
+  //commands::currentLine().str("D6 sc u 2 2"); // type-ahead in input buffer
+  //  commands::currentLine().str("D5 sc s 2 3"); // type-ahead in input buffer
+  // commands::currentLine().reset(); // and reset to start at beginning
   commands::main_mode.activate();
   commands::real_mode.activate();
   commands::block_mode.activate();
 
-  ext_block::extended_block
-    eblock(commands::currentBlock(),
+  ext_block::extended_block eblock(commands::currentBlock(),
 	   commands::currentComplexGroup().twistedWeylGroup());
-
-  eblock.toggle_edge(153,213); // 4, 2Ci/2Cr
-  eblock.toggle_edge(256,198); // 4, 2Ci/2Cr
-  eblock.toggle_edge(240,284); // 4, 2Ci/2Cr
-
+  //std::cout <<  "default braids"<< std::endl;
+  //WORKS
+  //  eblock.toggle_edge(153,213); // 4, 2Ci/2Cr
+  //  eblock.toggle_edge(256,198); // 4, 2Ci/2Cr
+  //  eblock.toggle_edge(240,284); // 4, 2Ci/2Cr
+  //WORKS
   test_braid(eblock);
+  // eblock.toggle_edge(153,213); // 4, 2Ci/2Cr
+  // eblock.toggle_edge(198,256); // 4, 2Ci/2Cr
+  // eblock.toggle_edge(240,284); // 4, 2Ci/2Cr
+  // test_braid(eblock);exit(0);
 
+  ext_block::extended_block fixed_eblock=fix_braid(eblock);
+  test_braid(fixed_eblock);
+
+  bool polynomials=false;
+  if (polynomials){
   std::vector<ext_kl::Pol> pool;
   ext_kl::KL_table twisted_KLV(eblock,pool);
   twisted_KLV.fill_columns();
@@ -926,7 +1387,7 @@ void go_f()
 	f << "P(" << eblock.z(x) << ',' << eblock.z(y) << ")=";
 	f << twisted_KLV.P(x,y) << std::endl;
       }
-
+  }
 }
 
 
