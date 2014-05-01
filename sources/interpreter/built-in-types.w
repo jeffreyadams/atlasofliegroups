@@ -768,7 +768,7 @@ void raw_root_datum_wrapper(expression_base::level l)
       simple_coroots->val.numColumns()!=nc)
     throw std::runtime_error
     ("Sizes (" +str(nr)+ "," +str(nc) +"),("+
-      str(simple_coroots->val.numRows()) +"),("+
+      str(simple_coroots->val.numRows()) +","+
       str(simple_coroots->val.numColumns()) +
       ") of simple (co)root systems differ");
 @.Sizes of simple (co)root systems...@>
@@ -786,9 +786,11 @@ void raw_root_datum_wrapper(expression_base::level l)
   try @/{@; Permutation dummy;
     dynkin::Lie_type(prd.Cartan_matrix(),true,true,dummy);
   }
-  catch (std::runtime_error& e)
-@/{@; throw std::runtime_error("Invalid simple (co)root systems"); }
-@.Invalid simple (co)root systems@>
+  catch (error::CartanError)
+@/{@;
+    throw std::runtime_error("System of (co)roots has invalid Cartan matrix");
+}
+@.System of (co)roots has invalid...@>
   if (l!=expression_base::no_value)
     push_value(new root_datum_value @| (RootDatum(prd)));
 }

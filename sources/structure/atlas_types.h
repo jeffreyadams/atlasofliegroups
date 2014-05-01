@@ -201,6 +201,7 @@ namespace atlas {
     struct LieType;
     struct InnerClassType;
     struct Layout;
+    typedef char TypeLetter;
   }
   using lietype::SimpleLieType;
   using lietype::LieType;

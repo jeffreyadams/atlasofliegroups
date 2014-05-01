@@ -541,28 +541,26 @@ by the convention that associativity is to the left at even levels, and to the
 right at odd levels. Thus there is never a conflict of different directions of
 associativity at the same priority level.
 
-In the absence of unary operators, a formula is an alternation of operands
-and operators, where the former comprises any expression bound more tightly
-than any formula, for instance one enclosed in parentheses. For every operator
-that comes along we can already determine its left subtree by comparing
-priorities with any previous ones. For some operators~$\omega$, the right
-subtree may also be completed, if~$\omega$ turned out to bind more strongly to
-it than a subsequent operator; the whole subtree of such~$\omega$ is
-constructed, and becomes (part of) a single operand for further
-considerations. Therefore at any point just after seeing an operator, there
-will be a list of pending operators, each with a complete left subtree and an
-uncompleted right subtree (if the formula would terminate after one more
-operand, that operand would become part of the mentioned right subtree). In
-the list, the operators are of increasing priority from left to right, where
-increase is weak in case of right-associative operators and strict otherwise:
-otherwise their right subtree would have been complete. Therefore once a new
-operand and operator~$\omega$ comes along, the pending operators are
-considered from right to left, each one that has higher priority than~$\omega$
-(or in case of left-associativity possibly equal priority) incorporates the
-new operand as its right subtree, with the whole tree for the operator
-replaces the operand. Once an operator is encountered whose priority is too
-low to capture the operand, the operand becomes the left subtree of~$\omega$,
-and it becomes the leftmost pending operator.
+In the absence of unary operators, a formula is an alternation of operands and
+operators, where the former comprises any expression bound more tightly than
+any formula, for instance one enclosed in parentheses. For every operator that
+comes along we can already determine its left subtree by comparing priorities
+with any previous ones. As a consequence of these comparisons, the right
+subtree of some previous operators~$\omega$ may also be completed (if~$\omega$
+turned out to bind more strongly than the current operator); in that case a
+formula with root~$\omega$ is constructed and henceforth becomes a single
+operand. Therefore at any point just after seeing an operator, there will be a
+list of pending operators of increasing priorities (weakly at odd priority
+levels), each with a complete left operand. If the formula would terminate
+after one more operand, then each pending operator would get as right operand
+the formula recursively constructed from everything that follows it. Now when
+a new operand followed by an operator~$\omega$ comes along, the pending
+operators are considered from right to left; while the operator has a higher
+priority than~$\omega$, or the same even priority, it receives the new(est)
+operand as its right operand, and the resulting formula becomes the newest
+operand. Once an operator is encountered whose priority is too low to capture
+the operand, the newest operand becomes the left subtree of~$\omega$, which
+now becomes the leftmost pending operator.
 
 Unary operators complicate the picture. Any priority one would like to
 associate to a prefix operator can only be relevant with respect to operators
@@ -580,7 +578,8 @@ immediately preceded by another operator. We choose the latter option, since
 it allows interpreting \.{-x\pow2} less surprisingly as $-(x^2)$; somewhat
 more surprisingly the parentheses in $x+(-1)^n*y$ become superfluous. The
 example \.{x\pow-2*y} will then parse as $(x^{-2})*y$, which also seems
-reasonable.
+reasonable. Note however that with this rule one does have the surprise
+that \.{x\pow-y\pow2} parses as $x^{(-y)^2}$.
 
 @ The data type necessary to store these intermediate data during priority
 resolutions is a dynamic list of triples subtree-operator-priority. We use a
