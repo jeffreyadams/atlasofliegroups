@@ -132,6 +132,8 @@ class extended_block
   void order_quad(BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s);
   bool toggle_edge(BlockElt x,BlockElt y); // result tells new value;
   bool set_edge(BlockElt x,BlockElt y);    // always set
+  //  int  list_edges(extended_block eblock);  //returns number of pairs
+  int  list_edges();  //returns number of pairs
 
 // accessors
 

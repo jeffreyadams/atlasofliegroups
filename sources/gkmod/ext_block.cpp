@@ -132,6 +132,19 @@ BlockElt extended_block::element(BlockElt zz) const
   return n;
 }
 
+int extended_block::list_edges(){
+  std::set<BlockEltPair>::iterator it;
+  std::cout << "flipped edges:" << std::endl;
+  int count=0;
+  for (it = flipped_edges.begin(); it != flipped_edges.end(); it++) {
+    BlockEltPair p=*it;
+    std::cout << z(p.first) << "," << z(p.second) << std::endl;
+    ++count;
+  }
+  std::cout << std::endl;
+  return count;
+  }
+
 bool extended_block::toggle_edge(BlockElt x,BlockElt y)
 {
   x = element(x); y=element(y);

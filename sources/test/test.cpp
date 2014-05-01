@@ -1185,11 +1185,12 @@ void mytest_f_old(){
 
 
 // Check for nasty endgame cases in block
-void test_braid(ext_block::extended_block my_eblock)
+//void test_braid(ext_block::extended_block my_eblock)
+int test_braid(ext_block::extended_block my_eblock)
 {
   ext_block::extended_block eblock=my_eblock;
   std::cout << "testing braids" << std::endl;
-  bool OK=true; int count=0;
+  bool OK=true; int count=0; int failed=0;
   for (weyl::Generator t=1; t<eblock.rank(); ++t)
     for (weyl::Generator s=0; s<t; ++s)
     {
@@ -1213,6 +1214,7 @@ void test_braid(ext_block::extended_block my_eblock)
 	      }
 	    else
 	    {
+	      ++failed;
 	      OK = false;
 	      std::cout << std::endl <<  "Braid relation failure: " << eblock.z(x)
 			<< ", s=" << s+1 << ", t=" << t+1;
@@ -1243,6 +1245,7 @@ void test_braid(ext_block::extended_block my_eblock)
   if (OK)
     std::cout << "All " << count << " relations hold!\n";
   std::cout << std::endl;
+  return failed;
 } // |braid_f|
 
 
@@ -1381,16 +1384,32 @@ void go_f()
   //  eblock.toggle_edge(256,198); // 4, 2Ci/2Cr
   //  eblock.toggle_edge(240,284); // 4, 2Ci/2Cr
   //WORKS
-  test_braid(eblock);
-  // eblock.toggle_edge(153,213); // 4, 2Ci/2Cr
-  // eblock.toggle_edge(198,256); // 4, 2Ci/2Cr
-  // eblock.toggle_edge(240,284); // 4, 2Ci/2Cr
-  // test_braid(eblock);exit(0);
-
-  ext_block::extended_block fixed_eblock=fix_braid(eblock);
-  test_braid(fixed_eblock);
-  ext_block::extended_block fixed_eblock_2=fix_braid(fixed_eblock);
-  test_braid(fixed_eblock_2);
+  int nr_failures=0;
+  int failures=test_braid(eblock);
+  if (failures==0)
+    std::cout << "No braid relation failures. " << std::endl;
+  else{
+    std::cout << "Number of braid relation failures: " << failures << std::endl;
+    nr_failures += failures;
+    ext_block::extended_block eblock_1=fix_braid(eblock);
+    eblock_1.list_edges();
+    int failures_1=test_braid(eblock_1);
+    if (failures_1==0)
+      std::cout << "Total braid relation failures: " << nr_failures << std::endl;
+      else{
+	nr_failures += failures_1;
+	std::cout << "Number of braid relation failures: " << failures_1 << std::endl;
+	ext_block::extended_block eblock_2=fix_braid(eblock_1);
+	eblock_2.list_edges();
+	int failures_2=test_braid(eblock_2);
+	if (failures_2==0)
+	  std::cout << "Total braid relation failures: " << nr_failures << std::endl;
+	else{
+	nr_failures += failures_2;
+	  std::cout << "Giving up, total braid relation failures: " << nr_failures << std::endl;
+	}
+      }
+    }
 
 
 
