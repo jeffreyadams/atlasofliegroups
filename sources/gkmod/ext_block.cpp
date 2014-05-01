@@ -1,4 +1,4 @@
-/*
+/*!
   This is ext_block.cpp
 
   Copyright (C) 2013-2014 Marc van Leeuwen
@@ -132,26 +132,35 @@ BlockElt extended_block::element(BlockElt zz) const
   return n;
 }
 
-
 bool extended_block::toggle_edge(BlockElt x,BlockElt y)
 {
   x = element(x); y=element(y);
   assert (x!=UndefBlock and y!=UndefBlock);
   BlockEltPair p= x<y ? std::make_pair(x,y) : std::make_pair(y,x);
-  std::pair<std::set<BlockEltPair>::iterator,bool>
-    inserted = flipped_edges.insert(p);
-  if (not inserted.second)
-    flipped_edges.erase(inserted.first);
+  std::pair<std::set<BlockEltPair>::iterator,bool> inserted = flipped_edges.insert(p);
+  if (not inserted.second) flipped_edges.erase(inserted.first);
 
-  std::cerr << "Toggle edge (" << z(p.first) << ',' << z(p.second) << ')'
-	    << std::endl;
-
-
+  std::cerr << std::endl << "Toggle edge (" << z(p.first) << ',' << z(p.second) << ')';
+  std::cerr << "[" << inserted.second << "]";
+    //	    << std::endl;
   return inserted.second;
 }
 
-void extended_block::order_quad
-  (BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s)
+//same as toggle_edge, but always set the edge
+bool extended_block::set_edge(BlockElt x,BlockElt y)
+{
+  x = element(x); y=element(y);
+  assert (x!=UndefBlock and y!=UndefBlock);
+  BlockEltPair p= x<y ? std::make_pair(x,y) : std::make_pair(y,x);
+  std::pair<std::set<BlockEltPair>::iterator,bool> inserted = flipped_edges.insert(p);
+  //  if (not inserted.second) flipped_edges.erase(inserted.first);
+
+  std::cerr << ""  << "set edge (" << z(p.first) << ',' << z(p.second) << ')';
+    //	    << std::endl;
+  return inserted.second;
+}
+
+void extended_block::order_quad(BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s)
 {
   x = element(x); y=element(y); // decipher user friendly numbering
   p = element(p); q=element(q);
@@ -165,8 +174,8 @@ void extended_block::order_quad
   std::vector<block_fields>& data_s = data[s-1];
   data_s[x].links = data_s[y].links = pq;
   data_s[p].links = data_s[q].links = xy;
-  std::cerr << "Ordering (" << z(x) << ',' << z(y) << ','
-	    << z(p) << ',' << z(q) << ") for generator " << s << std::endl;
+   std::cerr << "Ordering (" << z(x) << ',' << z(y) << ','
+ 	    << z(p) << ',' << z(q) << ") for generator " << s << std::endl;
 }
 
 BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
@@ -275,13 +284,42 @@ int extended_block::epsilon(weyl::Generator s, BlockElt x, BlockElt y ) const
 {
   BlockEltPair p= x<y ? std::make_pair(x,y) : std::make_pair(y,x);
   int sign = flipped_edges.count(p)==0 ? 1 : -1;
-
+  //  std::cerr << "computing epsilon " << x << "  " << y << std::endl;
   // each 2i12/21r21 quadruple has one negative sign not using |flipped_edges|
-  if (has_quadruple(descent_type(s,x)) and
-      data[s][x].links.second==y and data[s][y].links.second==x)
-    sign = -sign; // it is between second elements in both pairs of the quad
 
-  return sign;
+  // if (has_quadruple(descent_type(s,x)) and data[s][x].links.first==y 
+  //     and data[s][y].links.first==x) sign = -sign; 
+  // if (has_quadruple(descent_type(s,x)) and data[s][x].links.second==y 
+  //     and data[s][y].links.first==x) sign = -sign; 
+  // if (has_quadruple(descent_type(s,x)) and data[s][x].links.first==y 
+  //     and data[s][y].links.second==x) sign = -sign; 
+  // // they are between all but second elements in both pairs
+  
+  // if ((descent_type(s,x) == two_imaginary_single_single) and 
+  //     (data[s][x].links.first==y)) sign = -sign;
+
+  // if ((descent_type(s,x) == two_imaginary_double_double) and 
+  //     ((data[s][x].links.first==y) or (data[s][x].links.second==y))) 
+  //     sign = -sign;
+
+  // if ((descent_type(s,x) == two_real_single_single) and 
+  //     (data[s][x].links.first==y)) sign = -sign;
+
+  // if ((descent_type(s,x) == two_real_double_double) and 
+  //     ((data[s][x].links.first==y) or (data[s][x].links.second==y)))
+  //     sign = -sign;
+
+  // if ((descent_type(s,x) == two_semi_imaginary) and 
+  //     (data[s][x].links.first==y)) sign = -sign;
+
+
+  // if ((descent_type(s,x) == two_semi_real) and 
+  //     (data[s][x].links.first==y)) sign = -sign;
+
+    if (has_quadruple(descent_type(s,x)) and
+        data[s][x].links.second==y and data[s][y].links.second==x)
+      sign = -sign; // it is between second elements in both pairs of the quad
+    return sign;
 }
 
 BlockEltList extended_block::down_set(BlockElt n) const
@@ -491,6 +529,7 @@ extended_block::extended_block
   , data(parent.folded_rank())
   , l_start(parent.length(parent.size()-1)+2)
   , flipped_edges()
+    
 {
   unsigned int folded_rank = data.size();
   if (folded_rank==0 or parent.Hermitian_dual(0)==UndefBlock)
@@ -599,6 +638,7 @@ extended_block::extended_block
 
 void extended_block::patch_signs()
 {
+  exit(0);
   for (weyl::Generator s=0; s<rank(); ++s)
     if (orbit(s).length()==2)
     {
@@ -800,15 +840,35 @@ void set(matrix::Matrix<Pol>& dst, unsigned i, unsigned j, Pol P)
   dst(i,j)=P;
 }
 
+void show_mathematica_mat(std::ostream& strm,const matrix::Matrix<Pol> M,unsigned inx)
+{
+  int m=M.numRows();
+  int n=M.numColumns();
+  strm << "T" << inx+1 << " =ConstantArray[0,{" << m << "," << n << "}];" << std::endl;
+  for (unsigned i=0; i<M.numRows(); ++i)
+    for (unsigned j=0; j<M.numColumns(); ++j)
+      if (not M(i,j).isZero())
+	M(i,j).print(strm <<  "T" << inx+1 << "[[" << i+1 << ',' << j+1 << "]]=", "q")  << ";";
+    strm << "" << std::endl;
+}
 void show_mat(std::ostream& strm,const matrix::Matrix<Pol> M,unsigned inx)
 {
   strm << "T_" << inx+1 << " [";
   for (unsigned i=0; i<M.numRows(); ++i)
+    {        strm << " " << std::endl;
     for (unsigned j=0; j<M.numColumns(); ++j)
-      if (not M(i,j).isZero())
-	M(i,j).print(strm << i << ',' << j << ':',"q")  << ';';
-  strm << ']' << std::endl;
+      //      if (not M(i,j).isZero())
+      //	M(i,j).print(strm << i << ',' << j << ':',"q")  << ';';
+      M(i,j).print(strm  << ' ',"q");
+    //  strm << " " << std::endl;
+    }
 }
+
+void show_quadratic(std::ostream& strm,unsigned inx, unsigned len, unsigned size)
+{
+  strm << "T" << inx+1 << "." "T" << inx+1 << "-q^" << len << "*T" << inx+1 << "-(q^" << len << "-1)*IdentityMatrix[" <<  size << "," << size << "]";
+}
+
 
 bool check_braid
 (const extended_block& b, weyl::Generator s, weyl::Generator t, BlockElt x,
@@ -864,12 +924,35 @@ bool check_braid
       Tt.apply_to(v), Ts.apply_to(w);
 
   cluster |= used;
+  //  if (b.z(x)==125){
+  //  for (BitMap::iterator it=cluster.begin(); it(); ++it)
+  //		std::cout << (it==cluster.begin() ? " (" : ",")
+  //			  << b.z(*it) ;
+  //	      std::cout << ')' << std::endl;
+  //  std::cout << b.z(x);
+  //  std::cout << " s=";
+  //  show_mat(std::cout,Ts,s);
+  //  std::cout << " t: ";
+  //  show_mat(std::cout,Tt,t);
+  //  std::cout << "" << std::endl;
+  //}
+
+
+  
   static bool verbose = false;
   bool success = v==w;
-  if (verbose and not success)
+  //if ((verbose) and ((s+1==3 or s+1==2) and t+1==4 and (b.z(x)==59 or b.z(x)==97 or b.z(x)==237 or b.z(x)==32)))
+    if (verbose and (not success or b.z(x)==59))
+    //      if (verbose)
   {
+    //    std::cout << "success: " << success << std::endl;
     show_mat(std::cout,Ts,s);
+    std::cout << std::endl;
     show_mat(std::cout,Tt,t);
+    //    show_mathematica_mat(std::cout,Ts,s);
+    //    show_mathematica_mat(std::cout,Tt,t);
+    int size=Ts.numRows();
+    //    show_quadratic(std::cout,s,len/2,size);
   }
   return success;
 }

@@ -1214,7 +1214,7 @@ void test_braid(ext_block::extended_block my_eblock)
 	    else
 	    {
 	      OK = false;
-	      std::cout << std::endl << "Braid relation failure: " << eblock.z(x)
+	      std::cout << std::endl <<  "Braid relation failure: " << eblock.z(x)
 			<< ", s=" << s+1 << ", t=" << t+1;
 	      for (BitMap::iterator it=cluster.begin(); it(); ++it){
 		std::cout << (it==cluster.begin() ? " (" : ",")
@@ -1262,37 +1262,54 @@ ext_block::extended_block fix_braid(ext_block::extended_block eblock)
 	    if (ext_block::check_braid(eblock,s,t,x,cluster))
 		++count;
 	    else
-	    {
-	      OK = false;
-	      std::cout << std::endl << "Braid relation failure: " << eblock.z(x)
-			<< ", s=" << s+1 << ", t=" << t+1;
-	      for (BitMap::iterator it=cluster.begin(); it(); ++it){
-		std::cout << (it==cluster.begin() ? " (" : ",")
-			  << eblock.z(*it);
-		std::cout << "[" << descent_code(eblock.descent_type(t,*it)) << "]";
-	      }
-	      std::cout << ")";
-	      //	      for (BitMap::iterator iter=cluster.begin(); iter(); ++iter){
-	      int found_2Ci=0;
-	      for (BitMap::iterator iter=cluster.begin(); iter(); ++iter){
-		BlockElt x=eblock.z(*iter);
-		const ext_block::DescValue type = eblock.descent_type(t,*iter);
-		//		std::cout << " " << descent_code(type) << " ";
-		if (type==atlas::ext_block::two_semi_imaginary){
-		  if (found_2Ci==0){
-		    ++found_2Ci;
-		  }else{
-		    BlockElt y=eblock.Cayley(t,*iter);
-		    eblock.toggle_edge(x,eblock.z(y));
-		    std::cout << std::endl;
-		  break;
-		  }
+	      {//braid failure
+		OK = false;
+		std::cout  << "Braid relation failure: " << eblock.z(x)
+			  << ", s=" << s+1 << ", t=" << t+1;
+		for (BitMap::iterator it=cluster.begin(); it(); ++it){
+		  std::cout << (it==cluster.begin() ? " (" : ",")
+			    << eblock.z(*it);
+		  std::cout << "[" << descent_code(eblock.descent_type(t,*it)) << "]";
 		}
+		std::cout << ")";
+		if (cluster.size()>10){
+		  int found_2Ci=0;
+		  for (BitMap::iterator iter=cluster.begin(); iter(); ++iter){
+		    BlockElt x=eblock.z(*iter);
+		    const ext_block::DescValue type = eblock.descent_type(t,*iter);
+		    //		std::cout << " " << descent_code(type) << " ";
+		    BlockElt y1,y2;
+		    if (type==atlas::ext_block::two_semi_imaginary){
+		      if (found_2Ci==0){
+			++found_2Ci;
+			y1=eblock.Cayley(t,*iter);
+			//			std::cout << std::endl << "first: " << x << ";" << eblock.z(y1);
+		      }else{
+			y2=eblock.Cayley(t,*iter);
+			//			std::cout << "second: " << x << ";" << eblock.z(y2);
+			eblock.toggle_edge(x,eblock.z(y2));
+			std::cout << std::endl;
+			if (eblock.z(y2)<eblock.z(y1)) std::cout << "OUT OF ORDER"<< std::endl;
+			break;
+		      }
+		    }
+		  }
+		}//cluster.size()>10
+		else{//cluster.size()=4 or 6
+		  std::cout << std::endl << "fixing small cluster (" << cluster.size() << ")" << std::endl;
+		  for (BitMap::iterator it=cluster.begin(); it(); ++it){
+		    BlockElt x=eblock.z(*it);
+		    const ext_block::DescValue type = eblock.descent_type(t,*it);
+		    if (type==atlas::ext_block::two_semi_imaginary){
+			BlockElt y=eblock.Cayley(t,*it);
+			eblock.set_edge(x,eblock.z(y));
+			std::cout << std::endl;
+		    }
+		  }
+		    std::cout << std::endl;
+		}
+		  seen |= cluster; // don't do elements of same cluster again
 	      }
-	      //	      std::cout << ')' << std::endl;
-	      //	      std::cout << ')';
-	      seen |= cluster; // don't do elements of same cluster again
-	    }
 	  }
     }
   if (OK)
@@ -1372,6 +1389,10 @@ void go_f()
 
   ext_block::extended_block fixed_eblock=fix_braid(eblock);
   test_braid(fixed_eblock);
+  ext_block::extended_block fixed_eblock_2=fix_braid(fixed_eblock);
+  test_braid(fixed_eblock_2);
+
+
 
   bool polynomials=false;
   if (polynomials){

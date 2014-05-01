@@ -131,6 +131,7 @@ class extended_block
   void patch_signs();
   void order_quad(BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s);
   bool toggle_edge(BlockElt x,BlockElt y); // result tells new value;
+  bool set_edge(BlockElt x,BlockElt y);    // always set
 
 // accessors
 
