@@ -134,6 +134,7 @@ class extended_block
   bool set_edge(BlockElt x,BlockElt y);    // always set
   //  int  list_edges(extended_block eblock);  //returns number of pairs
   int  list_edges();  //returns number of pairs
+  void report_nci_toggles(extended_block eblock);
 
 // accessors
 

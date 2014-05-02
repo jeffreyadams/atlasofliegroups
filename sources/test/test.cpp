@@ -1248,11 +1248,8 @@ int test_braid(ext_block::extended_block my_eblock)
   return failed;
 } // |braid_f|
 
-
-
-ext_block::extended_block fix_braid(ext_block::extended_block eblock)
+ext_block::extended_block fix_braid(ext_block::extended_block& eblock)
 {
-  std::cout << std::endl << "Fixing braids" << std::endl;
   bool OK=true; int count=0;
   for (weyl::Generator t=1; t<eblock.rank(); ++t)
     for (weyl::Generator s=0; s<t; ++s)
@@ -1366,6 +1363,7 @@ void toggle(int v[]){
   v[0]=w[0];v[1]=w[1];v[2]=w[2];v[3]=w[3];
 }
 
+
 void go_f()
 {
   drop_to(commands::empty_mode); // make sure all modes will need re-entering
@@ -1376,7 +1374,7 @@ void go_f()
   commands::real_mode.activate();
   commands::block_mode.activate();
 
-  ext_block::extended_block eblock(commands::currentBlock(),
+   ext_block::extended_block eblock(commands::currentBlock(),
 	   commands::currentComplexGroup().twistedWeylGroup());
   //std::cout <<  "default braids"<< std::endl;
   //WORKS
@@ -1385,33 +1383,22 @@ void go_f()
   //  eblock.toggle_edge(240,284); // 4, 2Ci/2Cr
   //WORKS
   int nr_failures=0;
-  int failures=test_braid(eblock);
-  if (failures==0)
-    std::cout << "No braid relation failures. " << std::endl;
-  else{
-    std::cout << "Number of braid relation failures: " << failures << std::endl;
-    nr_failures += failures;
-    ext_block::extended_block eblock_1=fix_braid(eblock);
-    eblock_1.list_edges();
-    int failures_1=test_braid(eblock_1);
-    if (failures_1==0)
-      std::cout << "Total braid relation failures: " << nr_failures << std::endl;
-      else{
-	nr_failures += failures_1;
-	std::cout << "Number of braid relation failures: " << failures_1 << std::endl;
-	ext_block::extended_block eblock_2=fix_braid(eblock_1);
-	eblock_2.list_edges();
-	int failures_2=test_braid(eblock_2);
-	if (failures_2==0)
-	  std::cout << "Total braid relation failures: " << nr_failures << std::endl;
-	else{
-	nr_failures += failures_2;
-	  std::cout << "Giving up, total braid relation failures: " << nr_failures << std::endl;
-	}
-      }
+  int max_tries=10;
+  for (int j=0; j<max_tries; ++j){
+    int failures=test_braid(eblock);
+    if (failures==0){
+      std::cout << "Total braid relations fixed: " << nr_failures << std::endl;
+      eblock.report_nci_toggles(eblock);
+      break;
     }
-
-
+    else{
+      std::cout << "Number of braid relation failures: " << failures << std::endl;
+      nr_failures += failures;
+      std::cout << std::endl <<"Fixing braids pass " << j << std::endl;
+      fix_braid(eblock);
+      eblock.list_edges();
+    }
+  }
 
   bool polynomials=false;
   if (polynomials){

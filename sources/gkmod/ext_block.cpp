@@ -173,6 +173,22 @@ bool extended_block::set_edge(BlockElt x,BlockElt y)
   return inserted.second;
 }
 
+void extended_block::report_nci_toggles(ext_block::extended_block eblock){
+  std::cout << "all (2Ci,2Cr) pairs and their flipped status" << std::endl;
+  for (weyl::Generator s=1; s<eblock.rank(); ++s){
+    for (BlockElt x=0; x<eblock.size(); ++x){
+      if (eblock.descent_type(s,x)==atlas::ext_block::two_semi_imaginary){
+	BlockElt y=eblock.Cayley(s,x);
+	BlockEltPair p= x<y ? std::make_pair(x,y) : std::make_pair(y,x);
+	std::cout << s+1 << " " << eblock.z(x) << " " << eblock.z(y);
+	if (eblock.flipped_edges.count(p)==1) std::cout << " flipped";
+	std::cout << std::endl;
+      }
+    }
+  }
+
+}
+
 void extended_block::order_quad(BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s)
 {
   x = element(x); y=element(y); // decipher user friendly numbering
