@@ -152,8 +152,8 @@ void Lie_type_value::add_simple_factor (char c,size_t rank)
   if (t==std::string::npos)
     throw std::runtime_error(std::string("Invalid type letter '")+c+'\'');
 @.Invalid type letter@>
-  static const size_t lwb[]={1,2,2,4,6,4,2,0};
   const size_t r=constants::RANK_MAX;
+@/static const size_t lwb[]={1,2,2,4,6,4,2,0};
   static const size_t upb[]={r,r,r,r,8,4,2,r};
   if (rank<lwb[t])
     throw std::runtime_error("Too small rank "+str(rank)+" for Lie type "+c);
@@ -196,7 +196,7 @@ void Lie_type_wrapper(expression_base::level l)
   size_t total_rank=0; char c;
   while (skip_punctuation(is)>>c) // i.e., until |not is.good()|
   { size_t rank;
-    if (not (is>>rank))
+    if (is.peek()=='-' or not (is>>rank)) // explicitly forbid minus sign
       throw std::runtime_error
        ("Error in type string '"+is.str()+"' for Lie type");
 @.Error in type string@>

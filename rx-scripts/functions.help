@@ -80,11 +80,11 @@ Smith: (mat->mat,vec): Smith(M)= ( Smith_basis(M), inv_fact(M) ) (almost).
   The first component is an invertible matrix, whose columns, multiplied by
   the corresponding entries of the second component, span that sublattice.
   inv_fact(M) is the list of the invariant factors of M, which are like the
-  second component of Smith but with additional requirement that each one
-  divides the next; this may involve using a different basis. Smith_basis(M)
-  is that basis corresponding to inv_fact(M), an invertible (over Z) square
-  matrix of height equal to that of M, with the same property as the first
-  component of Smith but relative to the true invariant factors inv_fact(M).
+  second component of adpted_basis(M), but with additional requirement that
+  each entry divides the next; this may involve using a different basis.
+  Smith_basis(M) is that basis corresponding to inv_fact(M), an invertible
+  (over Z) square matrix equal in height to M, whose columns, each multiplied
+  by the corresponding invariant factor (or 0), span the same as those of M
 
 invert: (mat->mat,int): invert(M)=inv,d such that M*inv=d*Id, with d minimal.
   The inverse matrix, represented as an integral numerator matrix inv, and a
@@ -126,7 +126,7 @@ semisimple_rank: (LieType->int) Rank of the root lattice of this Lie type.
 operator #: (LieType->int) Number of (simple or T1) factors in this Lie type
 operator %: (LieType->[LieType]) Expand into row of simple factors (or T1)
 
-Smith_Cartan: (LieType->mat,vec): compute generators of weights modulo roots.
+Smith_Cartan: (LieType->mat,vec): generators of weights modulo roots.
   Find a Smith basis for the weight lattice relative to the sublattice of
   roots, with corresponding invariant factors; almost equivalent to
   Smith(^Cartan_matrix(type)), except that (1) each simple or torus factor is

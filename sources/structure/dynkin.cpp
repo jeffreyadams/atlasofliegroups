@@ -480,10 +480,9 @@ Permutation order_by_components(const RankFlagsList& cl, unsigned int r)
 
   // traverse each component, write down its elements in sequence
   for (unsigned int i = 0; i<cl.size(); ++i)
-    for (RankFlags::iterator it = cl[i].begin(); it(); ++it,--r)
-      result.push_back(*it);
+    std::copy(cl[i].begin(),cl[i].end(),std::back_inserter(result));
 
-  assert (r==0); // check that correct rank was passed
+  assert (result.size()==r); // check that correct rank was passed
   return result;
 } // |order_by_components|
 

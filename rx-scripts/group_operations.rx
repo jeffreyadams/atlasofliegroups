@@ -4,16 +4,14 @@
 
 {----------------some more general group constructions----------------}
 
-{real forms}
+{ real forms }
 
 { preferred terminology when argument is not an inner class: inner_forms }
 
 set inner_forms (RealForm G) = real_forms(InnerClass:G)
 
 set print_real_forms(InnerClass ic)= void:
-  for n@i in form_names(ic)
-  do prints(i,": ",n)
-  od
+  for n@i in form_names(ic) do prints(i,": ",n) od
 
 set print_inner_forms (RealForm G) = void:
 begin print_real_forms(G)
@@ -22,7 +20,7 @@ end
 
 { defining split groups }
 
-set split_form(InnerClass ic) = { try to retain the same inner class }
+set split_form(InnerClass ic) = RealForm: { try to retain the same inner class }
   let rd = root_datum(ic)
   then ic_split = inner_class(rd,-id_mat(rank(rd)))
   in quasisplit_form(
@@ -87,11 +85,10 @@ set mod_central_torus (InnerClass ic) = InnerClass:
   in inner_class(quot_rd,restrict_action(distinguished_involution(ic),inj))
 
 set adjoint_transform (RootDatum rd, mat theta) = mat:
-  let  image = theta*simple_roots(rd)
+  let  image = theta*simple_roots(rd), ssr = semisimple_rank(rd)
   then image_coords = [vec]:
-     for i: semisimple_rank(rd)
-     do ratvec_as_vec(fundamental_coweight(rd,i)*image) od
-  in ^(mat: image_coords)
+     for i: ssr do ratvec_as_vec(fundamental_coweight(rd,i)*image) od
+  in ssr ^ image_coords { square matrix of size ssr }
 
 set adjoint(InnerClass ic) = InnerClass:
   let rd = root_datum(ic)

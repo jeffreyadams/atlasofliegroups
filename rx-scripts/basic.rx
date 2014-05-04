@@ -74,23 +74,25 @@ set + (string s, (int,int)(x,y)) = s + "(" + x + "," + y + ")"
 
 {				Vectors					}
 
+set vector(int n,(int->int)f) = vec: for i:n do f(i) od
+
 set ones (int n)= vec: for i:n do 1 od
 
 { for computing greatest common divisors, inv_fact can do most of the work }
-set gcd (vec v)= int: let f=inv_fact([v]) in if #f=0 then 0 else f[0] fi
+set gcd ([int] v)= int:
+  let f=inv_fact(stack_rows([v])) in if #f=0 then 0 else f[0] fi
 
-set + (vec v,vec w)= vec:
-( if #v != #w then error("Size mismatch " + #v + ":" + #w) fi
-; for e@i in v do e+w[i] od
-)
+set raw_add (vec v,vec w)= vec:  for e@i in v do e+w[i] od
+set raw_sub (vec v,vec w)= vec:  for e@i in v do e-w[i] od
 
-set - (vec v,vec w)= vec:
-( if #v != #w then error("Size mismatch " + #v + ":" + #w) fi
-; for e@i in v do e-w[i] od
-)
+set + ((vec,vec) (v,w):p)= vec:
+  if #v != #w then error("Size mismatch " + #v + ":" + #w) else raw_add(p) fi
+set - ((vec,vec) (v,w):p)= vec:
+  if #v != #w then error("Size mismatch " + #v + ":" + #w) else raw_sub(p) fi
 
 { scalar multiplication }
 set * (int c,vec v) = vec: for e in v do c*e od
+set * (vec v,int c) = vec: for e in v do c*e od
 set - (vec w)= vec: for e in w do -e od
 
 { integer division }
@@ -115,24 +117,27 @@ set contains (int val) = (vec->bool): (vec v)bool: is_member(v)(val)
 
 {				Matrices				}
 
+set matrix ((int,int)(r,c),(int,int->int) f) = mat:
+  r#for j:c do for i:r do f(i,j) od od
+
 set n_rows (mat m)= int: let (r,)=#m in r
 set n_columns (mat m)= int: let (,c)=#m in c
 
 set + (mat M,mat N)= mat:
-( if #M != #N then error("Size mismatch " + #M + ":" + #N) fi
-; for col@j in M do for e@i in col do e+N[i,j] od od
-)
-
+  let (n,):sm = #M, sn = #N
+  in if sm != sn then error("Size mismatch " + sm + ":" + sn)
+     else n # for col@j in M do raw_add(col,N[j]) od
+     fi
 set - (mat M,mat N)= mat:
-( if #M != #N then error("Size mismatch " + #M + ":" + #N) fi
-; for col@j in M do for e@i in col do e-N[i,j] od od
-)
+  let (n,):sm = #M, sn = #N
+  in if sm != sn then error("Size mismatch " + sm + ":" + sn)
+     else n # for col@j in M do raw_sub(col,N[j]) od
+     fi
 
 { apply a function to all matrix entries }
 set map_on (mat m) = ((int->int)->mat):
-  if n_columns(m)=0 then ((int->int)f) mat: m { do nothing, but keep size }
-  else ((int->int)f) mat: for c in m do for e in c do f(e) od od
-  fi
+  let nr = n_rows(m)
+  in ((int->int)f) mat: nr # for c in m do for e in c do f(e) od od
 
 { scalar multiplication }
 set * (int c,mat m) = mat: map_on(m)((int e) int: c*e)
@@ -171,21 +176,24 @@ set det (mat M) = int:
     fi
 
 { surprisingly coercion allows, and does not provide, the following overload }
-set # (mat A, mat B) = mat: ([vec]:A)#([vec]:B)
+set # (mat A, mat B) = mat: { concatenate horizontally, must have same depth }
+   n_rows(B)#(([vec]:A)#([vec]:B))
 
 set columns_with ((int,vec->bool) p,mat m) = mat:
-( let res = [vec]: [] in for col@j in m do if p(j,col) then res #:= col fi od
-; if #res=0 then null(n_rows(m),0) else res fi
-)
+  let res = [vec]: [] in
+  for col@j in m do if p(j,col) then res #:= col fi od; n_rows(m)#res
 set columns_with ((vec->bool) p,mat m) = mat:
   columns_with (((int,vec)(,col))bool: p(col),m)
 set columns_with ((int->bool) p,mat m) = mat:
   columns_with (((int,vec)(j,))bool: p(j),m)
 
-set rows_with ((int,vec->bool) p,mat m) = mat: ^columns_with(p,^m)
-set rows_with ((    vec->bool) p,mat m) = mat: ^columns_with(p,^m)
-set rows_with ((int    ->bool) p,mat m) = mat: ^columns_with(p,^m)
-
+set rows_with ((int,vec->bool) p,mat m) = mat:
+  let res = [vec]: [] in
+  for row@i in ^m do if p(i,row) then res #:= row fi od; n_columns(m)^res
+set rows_with ((vec->bool) p,mat m) = mat:
+  rows_with (((int,vec)(,row))bool: p(row),m)
+set rows_with ((int->bool) p,mat m) = mat:
+  rows_with (((int,vec)(i,))bool: p(i),m)
 
 { sum of columns of a matrix }
 set sum (mat m)= vec: m*ones(n_columns(m))
@@ -244,12 +252,7 @@ set - (ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
 
 { backwards compatibility function; used to be the built-in prototype }
 set root_datum ([vec] simple_roots, [vec] simple_coroots, int r) = RootDatum:
-  let (nr,):sizes=(#simple_roots,#simple_coroots) in
-  if  != sizes
-  then error ("Numbers "+sizes+" of simple roots and coroots differ")
-  elif nr != 0 then root_datum(simple_roots,simple_coroots)
-  else let empty = null(r,0) in root_datum(empty,empty)
-  fi
+  root_datum(r#simple_roots,r#simple_coroots)
 
 { allow single kernel generator in root datum construction }
 set root_datum (LieType t, ratvec gen) = RootDatum: root_datum(t,[gen])
@@ -303,6 +306,13 @@ set mod_central_torus (RootDatum rd) = RootDatum:
 set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
   root_datum(id_mat(semisimple_rank(rd)),Cartan_matrix(rd))
 
+set is_simple_for (vec dual_two_rho) = (vec->bool):
+  (vec alpha): dual_two_rho*alpha=2
+
+set simple_from_positive (mat posroots,mat poscoroots) = (mat,mat):
+  ( columns_with(is_simple_for(sum(poscoroots)),posroots)
+  , columns_with(is_simple_for(sum(posroots)),poscoroots)
+  )
 
 {				Inner classes				}
 

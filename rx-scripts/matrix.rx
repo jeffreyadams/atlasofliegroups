@@ -1,27 +1,26 @@
 <basic.rx
 
 set block_matrix(mat A,mat B) = mat:
-  let (ra,ca)=#A, (rb,cb)=#B in
-  if ca+cb=0 then null(ra+rb,0) { retain vertical size in absence of columns }
-  else for i:ca do A[i]#null(rb) od # for i:cb do null(ra)#B[i] od
-  fi
+  let ra=n_rows(A), rb=n_rows(B) then za=null(ra), zb=null(rb) in
+  (ra+rb)# (for col in A do col#zb od # for col in B do za#col od)
 
 set minor(mat M, int size, int start) = mat: { principal minor, offset start }
-  let rv=null(size,size) in
-  for i:size do for j:size  do rv[i,j]:=M[i+start,j+start] od od; rv
+  size ^ for i:size from start do for j:size from start do M[i,j] od od
 
 set minor(mat M,int size) = mat: minor(M,size,0)
 
-set right_inverse(mat A) = mat:
-  let (diag,L,R) = diagonalize(A)
+set right_inverse(mat A) = mat: { section of a surjective lattice map A }
+  let (diag,L,R) = diagonalize(A), (l,r)=#A { also sizes of L,R }
   then ()=
-    if #diag<n_rows(A) then error("image does not have full rank")
+    if #diag<l then error("image does not have full rank")
     elif abs(product(diag))!=1 then error("image is a proper sublattice")
     fi
-  { now since every element of diag is $\pm1$, division is almost trivial }
-  in (mat: for d@j in diag do if d>0 then R[j] else -R[j] fi od)*L
+  { now since every element of diag is $\pm1$, division is multiplication;
+    so L*A*R has right-inv cols<l(I_r)*D_l; conjugate identity by L^-1, get: }
+  in (r # for j:l do diag[j]*R[j] od) * L
 
-set left_inverse(mat A) = mat: ^right_inverse(^A)
+set left_inverse(mat A) = mat: { for injective map to saturated sublattice }
+  ^right_inverse(^A)
 
 set weak_left_inverse(mat A) = (int,mat): { left inverse after saturation }
   let (diag,L,R) = diagonalize(A) then r = #diag then less_r = (int j):j<r
