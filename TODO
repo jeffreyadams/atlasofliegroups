@@ -51,6 +51,8 @@
    The same question arises in conditional: if the condition is the result of
    a complicated computation, could that computation define some local
    variables that remain accessible in addition to the boolean condition?
+   However for the conditional one could start a 'let' block before the
+   conditional starts to keep variables in scope; for while this doesn't work.
 
  - Allow skipping entries in value-producing loops; concatenating sub-rows.
    When generating a row from a loop, not every iteration need contribute, and

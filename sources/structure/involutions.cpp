@@ -424,8 +424,10 @@ void Cartan_orbits::add(ComplexReductiveGroup& G, CartanNbr cn)
 {
   assert(cn<Cartan_index.size());
   if (Cartan_index[cn]!=undefined)
-    return;
-  Cartan_index[cn]=orbit.size();
+    return; // class was already added before, so nothing to do
+  Cartan_index[cn]=orbit.size(); // if not, it will be added at this position
+
+  // now actually generate the involutions associated to this Cartan class
   orbit.push_back(Cartan_orbit(static_cast<InvolutionTable&>(*this),G,cn));
 }
 

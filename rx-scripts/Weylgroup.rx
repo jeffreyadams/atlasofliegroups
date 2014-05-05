@@ -17,13 +17,11 @@ set move_towards_dominant (RootDatum rd, vec v)=(vec,int):
   w=[a1,a2,...,ak] acts by w*v_dom = s_{a1}s_{a2}...s_{ak} v_dom
 }
 
-set make_dominant = (RootDatum,vec->vec,[int]):
-  let f (RootDatum rd, vec v,[int] w) = (vec,[int]): (v,w) { dummy }
-  then () = f :=
-    ( (RootDatum rd, vec v,[int] w) (vec,[int]):
-      let (new_v,k)=move_towards_dominant(rd,v) in
-      if k<0 then (v,w) else f(rd,new_v,w#k) fi)
-  in (RootDatum rd, vec v) (vec,[int]): f(rd,v,[])
+set make_dominant (RootDatum rd, vec v) = (vec,[int]):
+  let i=0 then w =
+    while let (new_v,k)=move_towards_dominant(rd,v) in v:=new_v; (i:=k)>=0
+    do i od
+  in (v,w)
 
 set make_dominant(RootDatum rd,ratvec v)=(ratvec,[int]):
   let (v,denom)=%v then (v_dom,w)=make_dominant(rd,v) in (v_dom/denom,w)
