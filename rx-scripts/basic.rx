@@ -459,8 +459,8 @@ set is_descent (int s,Param p) = bool: status(s,p)<4
 set tau_bitset(Param p) = ((int->bool),int):
   ((int s): is_descent(s,p), semisimple_rank(real_form(p)))
 
-set tau (Param p)            = list(tau_bitset(p))
-set tau_complement (Param p) = complement(tau_bitset(p))
+set tau (Param p)            = [int]: list(tau_bitset(p))
+set tau_complement (Param p) = [int]: complement(tau_bitset(p))
 
 
 {		    Polynomials in module parameters			}
