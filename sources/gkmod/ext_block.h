@@ -128,9 +128,11 @@ class extended_block
 
 // manipulators
 
-  void patch_signs();
-  void order_quad(BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s);
-  bool toggle_edge(BlockElt x,BlockElt y); // result tells new value;
+  void patch_signs(); // automatic correction of edge signs
+  void order_quad // make 2i12/2r21 quadruple have minus for |y|--|q| edge
+    (BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s, bool verbose=true);
+  bool // return new value; true means edge was flipped to minus
+    toggle_edge(BlockElt x,BlockElt y, bool verbose=true);
 
 // accessors
 

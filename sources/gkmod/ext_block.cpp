@@ -11,6 +11,7 @@
 
 #include <cassert>
 #include <vector>
+#include <iostream>
 
 #include "blocks.h"
 #include "weyl.h"
@@ -133,7 +134,7 @@ BlockElt extended_block::element(BlockElt zz) const
 }
 
 
-bool extended_block::toggle_edge(BlockElt x,BlockElt y)
+bool extended_block::toggle_edge(BlockElt x,BlockElt y, bool verbose)
 {
   x = element(x); y=element(y);
   assert (x!=UndefBlock and y!=UndefBlock);
@@ -143,15 +144,15 @@ bool extended_block::toggle_edge(BlockElt x,BlockElt y)
   if (not inserted.second)
     flipped_edges.erase(inserted.first);
 
-  std::cerr << "Toggle edge (" << z(p.first) << ',' << z(p.second) << ')'
-	    << std::endl;
-
+  if (verbose)
+    std::cerr << (inserted.second ? "Set" : "Unset") << " edge ("
+	      << z(p.first) << ',' << z(p.second) << ')' << std::endl;
 
   return inserted.second;
 }
 
 void extended_block::order_quad
-  (BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s)
+  (BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s, bool verbose)
 {
   x = element(x); y=element(y); // decipher user friendly numbering
   p = element(p); q=element(q);
@@ -165,8 +166,9 @@ void extended_block::order_quad
   std::vector<block_fields>& data_s = data[s-1];
   data_s[x].links = data_s[y].links = pq;
   data_s[p].links = data_s[q].links = xy;
-  std::cerr << "Ordering (" << z(x) << ',' << z(y) << ','
-	    << z(p) << ',' << z(q) << ") for generator " << s << std::endl;
+  if (verbose)
+    std::cerr << "Ordering (" << z(x) << ',' << z(y) << ';'
+	      << z(p) << ',' << z(q) << ") for generator " << s << std::endl;
 }
 
 BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
@@ -655,7 +657,7 @@ void extended_block::patch_signs()
 	if (descent_type(s,m)!=two_semi_imaginary)
 	  continue;
 	flipped_2Ci.insert(m);
-	bool flipped = toggle_edge(z(m),z(Cayley(s,m)));
+	bool flipped = toggle_edge(z(m),z(Cayley(s,m)),false);
 	assert(flipped); ndebug_use(flipped);
       }
 
@@ -668,7 +670,7 @@ void extended_block::patch_signs()
 	if (descent_type(s,m)!=two_semi_real)
 	  continue;
 	flipped_2Ci.insert(inverse_Cayley(s,m));
-	bool flipped = toggle_edge(z(m),z(inverse_Cayley(s,m)));
+	bool flipped = toggle_edge(z(m),z(inverse_Cayley(s,m)),false);
 	assert(flipped); ndebug_use(flipped);
       }
 
@@ -696,7 +698,7 @@ void extended_block::patch_signs()
 	  for (unsigned int i=0; i<l.size(); ++i)
 	    if (flipped_edges.count(std::make_pair(l[i],Cayley(s,l[i])))==0)
 	    {
-	      toggle_edge(z(l[i]),z(Cayley(s,l[i])));
+	      toggle_edge(z(l[i]),z(Cayley(s,l[i])),false);
 	      new_flips.insert(l[i]);
 	    }
 	} // |for(it)|
