@@ -75,8 +75,8 @@ size_t KGB_elt_entry::hashCode(size_t modulus) const
   const Ratvec_Numer_t& num=fingerprint.numerator();
   size_t h=tw.hashCode(modulus);
   for (size_t i=0; i<num.size(); ++i)
-    h=((h*d)+num[i])&(modulus-1);
-  return h;
+    h=(h*d)+num[i];
+  return h&(modulus-1);
 }
 
 bool KGB_elt_entry::operator !=(const KGB_elt_entry& x) const

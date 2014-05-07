@@ -134,8 +134,8 @@ inline size_t KLPolEntry::hashCode(size_t modulus) const
   if (P.isZero()) return 0;
   polynomials::Degree i=P.degree();
   size_t h=P[i]; // start with leading coefficient
-  while (i-->0) h= ((h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i]) & (modulus-1);
-  return h;
+  while (i-->0) h= (h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i];
+  return h & (modulus-1);
 }
 
 bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
