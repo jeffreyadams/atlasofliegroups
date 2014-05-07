@@ -132,18 +132,20 @@ BlockElt extended_block::element(BlockElt zz) const
   return n;
 }
 
-int extended_block::list_edges(){
+unsigned int extended_block::list_edges()
+{
   std::set<BlockEltPair>::iterator it;
   std::cout << "flipped edges:" << std::endl;
   int count=0;
-  for (it = flipped_edges.begin(); it != flipped_edges.end(); it++) {
+  for (it = flipped_edges.begin(); it != flipped_edges.end(); it++)
+  {
     BlockEltPair p=*it;
     std::cout << z(p.first) << "," << z(p.second) << std::endl;
     ++count;
   }
   std::cout << std::endl;
   return count;
-  }
+}
 
 bool extended_block::toggle_edge(BlockElt x,BlockElt y)
 {
@@ -173,19 +175,19 @@ bool extended_block::set_edge(BlockElt x,BlockElt y)
   return inserted.second;
 }
 
-void extended_block::report_nci_toggles(ext_block::extended_block eblock){
+void extended_block::report_2Ci_toggles(ext_block::extended_block eblock)
+{
   std::cout << "all (2Ci,2Cr) pairs and their flipped status" << std::endl;
-  for (weyl::Generator s=1; s<eblock.rank(); ++s){
-    for (BlockElt x=0; x<eblock.size(); ++x){
-      if (eblock.descent_type(s,x)==atlas::ext_block::two_semi_imaginary){
+  for (weyl::Generator s=1; s<eblock.rank(); ++s)
+    for (BlockElt x=0; x<eblock.size(); ++x)
+      if (eblock.descent_type(s,x)==atlas::ext_block::two_semi_imaginary)
+      {
 	BlockElt y=eblock.Cayley(s,x);
 	BlockEltPair p= x<y ? std::make_pair(x,y) : std::make_pair(y,x);
 	std::cout << s+1 << " " << eblock.z(x) << " " << eblock.z(y);
 	if (eblock.flipped_edges.count(p)==1) std::cout << " flipped";
 	std::cout << std::endl;
       }
-    }
-  }
 
 }
 
@@ -203,8 +205,8 @@ void extended_block::order_quad(BlockElt x,BlockElt y, BlockElt p, BlockElt q, i
   std::vector<block_fields>& data_s = data[s-1];
   data_s[x].links = data_s[y].links = pq;
   data_s[p].links = data_s[q].links = xy;
-   std::cerr << "Ordering (" << z(x) << ',' << z(y) << ','
- 	    << z(p) << ',' << z(q) << ") for generator " << s << std::endl;
+  std::cerr << "Ordering (" << z(x) << ',' << z(y) << ','
+	    << z(p) << ',' << z(q) << ") for generator " << s << std::endl;
 }
 
 BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
@@ -313,42 +315,11 @@ int extended_block::epsilon(weyl::Generator s, BlockElt x, BlockElt y ) const
 {
   BlockEltPair p= x<y ? std::make_pair(x,y) : std::make_pair(y,x);
   int sign = flipped_edges.count(p)==0 ? 1 : -1;
-  //  std::cerr << "computing epsilon " << x << "  " << y << std::endl;
-  // each 2i12/21r21 quadruple has one negative sign not using |flipped_edges|
 
-  // if (has_quadruple(descent_type(s,x)) and data[s][x].links.first==y 
-  //     and data[s][y].links.first==x) sign = -sign; 
-  // if (has_quadruple(descent_type(s,x)) and data[s][x].links.second==y 
-  //     and data[s][y].links.first==x) sign = -sign; 
-  // if (has_quadruple(descent_type(s,x)) and data[s][x].links.first==y 
-  //     and data[s][y].links.second==x) sign = -sign; 
-  // // they are between all but second elements in both pairs
-  
-  // if ((descent_type(s,x) == two_imaginary_single_single) and 
-  //     (data[s][x].links.first==y)) sign = -sign;
-
-  // if ((descent_type(s,x) == two_imaginary_double_double) and 
-  //     ((data[s][x].links.first==y) or (data[s][x].links.second==y))) 
-  //     sign = -sign;
-
-  // if ((descent_type(s,x) == two_real_single_single) and 
-  //     (data[s][x].links.first==y)) sign = -sign;
-
-  // if ((descent_type(s,x) == two_real_double_double) and 
-  //     ((data[s][x].links.first==y) or (data[s][x].links.second==y)))
-  //     sign = -sign;
-
-  // if ((descent_type(s,x) == two_semi_imaginary) and 
-  //     (data[s][x].links.first==y)) sign = -sign;
-
-
-  // if ((descent_type(s,x) == two_semi_real) and 
-  //     (data[s][x].links.first==y)) sign = -sign;
-
-    if (has_quadruple(descent_type(s,x)) and
-        data[s][x].links.second==y and data[s][y].links.second==x)
-      sign = -sign; // it is between second elements in both pairs of the quad
-    return sign;
+  if (has_quadruple(descent_type(s,x)) and
+      data[s][x].links.second==y and data[s][y].links.second==x)
+    sign = -sign; // it is between second elements in both pairs of the quad
+  return sign;
 }
 
 BlockEltList extended_block::down_set(BlockElt n) const
@@ -558,7 +529,6 @@ extended_block::extended_block
   , data(parent.folded_rank())
   , l_start(parent.length(parent.size()-1)+2)
   , flipped_edges()
-    
 {
   unsigned int folded_rank = data.size();
   if (folded_rank==0 or parent.Hermitian_dual(0)==UndefBlock)
@@ -665,146 +635,6 @@ extended_block::extended_block
   } // |for(n)|
 } // |extended_block::extended_block|
 
-void extended_block::patch_signs()
-{
-  exit(0);
-  for (weyl::Generator s=0; s<rank(); ++s)
-    if (orbit(s).length()==2)
-    {
-      std::vector<block_fields>& ds = data[s]; // the array to update
-      const RankFlags adj_gen=folded.star(s);
-      std::vector<BlockEltPair> i12s, r21s;
-      std::vector<unsigned int> loc(size(),~0);
-      for (BlockElt n=0,m; n<size(); ++n)
-	if (descent_type(s,n)==two_imaginary_single_double and
- 	    ds[m=ds[n].links.first].links.first==n)
-	{
-	  loc[n] = loc[m] = // make lookup of |n,m| possible
-	    loc[ds[n].links.second] = // and of their twins
-	    loc[ds[m].links.second] = i12s.size();
-	  r21s.push_back(ds[n].links);
-	  i12s.push_back(ds[m].links);
-	}
-      BitMap i_todo(i12s.size()), r_todo(i12s.size());
-      BitMap i_ordered(i12s.size()), r_ordered(i12s.size());
-      for (unsigned i=0; i<i12s.size(); ++i)
-	for (RankFlags::iterator it=adj_gen.begin(); it(); ++it)
-	{
-	  BlockElt n=i12s[i].first;
-	  DescValue t1 = descent_type(*it,n),
-	    t2=descent_type(*it,i12s[i].second);
-	  if (t1==one_imaginary_single or t2==one_imaginary_single)
-	  {
-	    if (t1==one_imaginary_single)
-	      assert (t2==one_imaginary_compact);
-	    else
-	    { // second of pair |i12s[i]| is "preferred" one, so swap the pair
-	      assert (t1==one_imaginary_compact);
-	      i12s[i].first=i12s[i].second; i12s[i].second=n;
-	    }
-	    i_ordered.insert(i); // mark as certainly correctly ordered
-	    i_todo.insert(i);    // and record for propagation
-	  }
-
-	  n=r21s[i].first; // now do the same for the 2r21 twins
-	  t1 = descent_type(*it,n), t2 = descent_type(*it,r21s[i].second);
-	  if (t1==one_real_single or t2==one_real_single)
-	  {
-	    if (t1==one_real_single)
-	      assert (t2==one_real_nonparity);
-	    else
-	    { // second of pair |r21s[i]| is "preferred" one, so swap the pair
-	      assert (t1==one_real_nonparity);
-	      r21s[i].first=r21s[i].second; r21s[i].second=n;
-	    }
-	    r_ordered.insert(i); // mark as certainly correctly ordered
-	    r_todo.insert(i);    // record for propagation
-	  }
-	} // |for(it), for(i)|
-
-      RankFlags nonadj_gen = adj_gen;
-      nonadj_gen.complement(rank()); nonadj_gen.reset(s);
-
-      // iterate over |i_todo| until exhausted
-      for(BitMap::iterator p = i_todo.begin(); p(); p = i_todo.begin())
-        do
-	{
-	  unsigned i= *p;
-	  for (RankFlags::iterator it=nonadj_gen.begin(); it(); ++it)
-	    if (is_complex(descent_type(*it,i12s[i].first)))
-	    {
-	      BlockElt n = cross(*it,i12s[i].first);
-	      if (n==UndefBlock)
-		continue; // might happen in partial blocks
-	      unsigned j=loc[n];
-	      assert(j!=~0u);
-	      if (i_ordered.isMember(j) or i_todo.isMember(j))
-	      {
-		assert (i12s[j].first==n);
-		continue; // avoid switching twice
-	      }
-	      if (i12s[j].first==n)
-	      {
-		assert (i12s[j].second = cross(*it,i12s[i].second));
-		assert(ds[r21s[j].first].links==i12s[j]);
-	      }
-	      else
-	      {
-		std::swap(i12s[j].first,i12s[j].second);
-		assert (i12s[j].first==n);
-		assert (i12s[j].second = cross(*it,i12s[i].second));
-	      }
-	      i_todo.insert(j);
-	    }
-	  i_todo.remove(i);
-	  i_ordered.insert(i);
-	}
-	while((++p)()); // advance pointer to next element to do; if so repeat
-
-      // iterate over |r_todo| until exhausted
-      for(BitMap::iterator p = r_todo.begin(); p(); p = r_todo.begin())
-        do
-	{
-	  unsigned i= *p;
-	  for (RankFlags::iterator it=nonadj_gen.begin(); it(); ++it)
-	    if (is_complex(descent_type(*it,r21s[i].first)))
-	    {
-	      BlockElt n = cross(*it,r21s[i].first);
-	      if (n==UndefBlock)
-		continue; // might happen in partial blocks
-	      unsigned j=loc[n];
-	      assert(j!=~0u);
-	      if (r_ordered.isMember(j) or r_todo.isMember(j))
-	      {
-		assert (r21s[j].first==n); // check that order is already OK
-		continue; // avoid switching twice
-	      }
-	      if (r21s[j].first==n)
-	      {
-		assert (r21s[j].second = cross(*it,r21s[i].second));
-		assert(ds[i12s[j].first].links==r21s[j]);
-	      }
-	      else
-	      {
-		std::swap(r21s[j].first,r21s[j].second);
-		assert (r21s[j].first==n);
-		assert (r21s[j].second = cross(*it,r21s[i].second));
-	      }
-	      r_todo.insert(j);
-	    }
-	  r_todo.remove(i);
-	  r_ordered.insert(i);
-	}
-	while((++p)()); // advance pointer to next element to do; if so repeat
-
-      for (unsigned i=0; i<i12s.size(); ++i)
-	if (i12s[i].first>i12s[i].second or r21s[i].first>r21s[i].second)
-	  order_quad(z(i12s[i].first),z(i12s[i].second),
-		     z(r21s[i].first),z(r21s[i].second),
-		     s+1);
-
-    } // |for(s)|
-} // |extended_block::patch_signs|
 
 // coefficient of neighbour |sx| for $s$ in action $(T_s+1)*a_x$
 Pol extended_block::T_coef(weyl::Generator s, BlockElt sx, BlockElt x) const
@@ -953,26 +783,10 @@ bool check_braid
       Tt.apply_to(v), Ts.apply_to(w);
 
   cluster |= used;
-  //  if (b.z(x)==125){
-  //  for (BitMap::iterator it=cluster.begin(); it(); ++it)
-  //		std::cout << (it==cluster.begin() ? " (" : ",")
-  //			  << b.z(*it) ;
-  //	      std::cout << ')' << std::endl;
-  //  std::cout << b.z(x);
-  //  std::cout << " s=";
-  //  show_mat(std::cout,Ts,s);
-  //  std::cout << " t: ";
-  //  show_mat(std::cout,Tt,t);
-  //  std::cout << "" << std::endl;
-  //}
 
-
-  
   static bool verbose = false;
   bool success = v==w;
-  //if ((verbose) and ((s+1==3 or s+1==2) and t+1==4 and (b.z(x)==59 or b.z(x)==97 or b.z(x)==237 or b.z(x)==32)))
-    if (verbose and (not success or b.z(x)==59))
-    //      if (verbose)
+  if (verbose and (not success or b.z(x)==59))
   {
     //    std::cout << "success: " << success << std::endl;
     show_mat(std::cout,Ts,s);
@@ -980,11 +794,10 @@ bool check_braid
     show_mat(std::cout,Tt,t);
     //    show_mathematica_mat(std::cout,Ts,s);
     //    show_mathematica_mat(std::cout,Tt,t);
-    int size=Ts.numRows();
-    //    show_quadratic(std::cout,s,len/2,size);
+    //    show_quadratic(std::cout,s,len/2,Ts.numRows(););
   }
   return success;
-}
+} // |ext_block::check_braid|
 
 } // namespace ext_block
 
