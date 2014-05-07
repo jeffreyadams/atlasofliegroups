@@ -11,6 +11,7 @@
 
 #include <cassert>
 #include <vector>
+#include <iostream>
 
 #include "blocks.h"
 #include "weyl.h"
@@ -133,7 +134,7 @@ BlockElt extended_block::element(BlockElt zz) const
 }
 
 
-bool extended_block::toggle_edge(BlockElt x,BlockElt y)
+bool extended_block::toggle_edge(BlockElt x,BlockElt y, bool verbose)
 {
   x = element(x); y=element(y);
   assert (x!=UndefBlock and y!=UndefBlock);
@@ -143,15 +144,15 @@ bool extended_block::toggle_edge(BlockElt x,BlockElt y)
   if (not inserted.second)
     flipped_edges.erase(inserted.first);
 
-  std::cerr << "Toggle edge (" << z(p.first) << ',' << z(p.second) << ')'
-	    << std::endl;
-
+  if (verbose)
+    std::cerr << (inserted.second ? "Set" : "Unset") << " edge ("
+	      << z(p.first) << ',' << z(p.second) << ')' << std::endl;
 
   return inserted.second;
 }
 
 void extended_block::order_quad
-  (BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s)
+  (BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s, bool verbose)
 {
   x = element(x); y=element(y); // decipher user friendly numbering
   p = element(p); q=element(q);
@@ -165,8 +166,9 @@ void extended_block::order_quad
   std::vector<block_fields>& data_s = data[s-1];
   data_s[x].links = data_s[y].links = pq;
   data_s[p].links = data_s[q].links = xy;
-  std::cerr << "Ordering (" << z(x) << ',' << z(y) << ','
-	    << z(p) << ',' << z(q) << ") for generator " << s << std::endl;
+  if (verbose)
+    std::cerr << "Ordering (" << z(x) << ',' << z(y) << ';'
+	      << z(p) << ',' << z(q) << ") for generator " << s << std::endl;
 }
 
 BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
@@ -595,6 +597,8 @@ extended_block::extended_block
 	dest.second = child_nr[second];
     }
   } // |for(n)|
+
+  patch_signs();
 } // |extended_block::extended_block|
 
 void extended_block::patch_signs()
@@ -602,137 +606,104 @@ void extended_block::patch_signs()
   for (weyl::Generator s=0; s<rank(); ++s)
     if (orbit(s).length()==2)
     {
-      std::vector<block_fields>& ds = data[s]; // the array to update
-      const RankFlags adj_gen=folded.star(s);
+      weyl::Generator adj_gen=rank();
+      for (RankFlags::iterator it=folded.star(s).begin(); it(); ++it)
+	if (orbit(*it).length()==1)
+	{ adj_gen=*it; break; }
+      if (adj_gen==rank())
+	continue; // only consider length 2 generators a length 1 neighbour
+
       std::vector<BlockEltPair> i12s, r21s;
-      std::vector<unsigned int> loc(size(),~0);
       for (BlockElt n=0,m; n<size(); ++n)
 	if (descent_type(s,n)==two_imaginary_single_double and
- 	    ds[m=ds[n].links.first].links.first==n)
+ 	    inverse_Cayleys(s,m=Cayleys(s,n).first).first==n)
 	{
-	  loc[n] = loc[m] = // make lookup of |n,m| possible
-	    loc[ds[n].links.second] = // and of their twins
-	    loc[ds[m].links.second] = i12s.size();
-	  r21s.push_back(ds[n].links);
-	  i12s.push_back(ds[m].links);
+	  r21s.push_back(Cayleys(s,n));
+	  i12s.push_back(inverse_Cayleys(s,m));
 	}
-      BitMap i_todo(i12s.size()), r_todo(i12s.size());
-      BitMap i_ordered(i12s.size()), r_ordered(i12s.size());
+
+      BitMap todo_lo12(i12s.size()), todo_hi21(i12s.size());
       for (unsigned i=0; i<i12s.size(); ++i)
-	for (RankFlags::iterator it=adj_gen.begin(); it(); ++it)
+      {
+	BlockElt n=i12s[i].first;
+	DescValue t1 = descent_type(adj_gen,n),
+	  t2=descent_type(adj_gen,i12s[i].second);
+	if (t1==one_imaginary_single or t2==one_imaginary_single)
 	{
-	  BlockElt n=i12s[i].first;
-	  DescValue t1 = descent_type(*it,n),
-	    t2=descent_type(*it,i12s[i].second);
-	  if (t1==one_imaginary_single or t2==one_imaginary_single)
-	  {
-	    if (t1==one_imaginary_single)
-	      assert (t2==one_imaginary_compact);
-	    else
-	    { // second of pair |i12s[i]| is "preferred" one, so swap the pair
-	      assert (t1==one_imaginary_compact);
-	      i12s[i].first=i12s[i].second; i12s[i].second=n;
-	    }
-	    i_ordered.insert(i); // mark as certainly correctly ordered
-	    i_todo.insert(i);    // and record for propagation
-	  }
-
-	  n=r21s[i].first; // now do the same for the 2r21 twins
-	  t1 = descent_type(*it,n), t2 = descent_type(*it,r21s[i].second);
-	  if (t1==one_real_single or t2==one_real_single)
-	  {
-	    if (t1==one_real_single)
-	      assert (t2==one_real_nonparity);
-	    else
-	    { // second of pair |r21s[i]| is "preferred" one, so swap the pair
-	      assert (t1==one_real_nonparity);
-	      r21s[i].first=r21s[i].second; r21s[i].second=n;
-	    }
-	    r_ordered.insert(i); // mark as certainly correctly ordered
-	    r_todo.insert(i);    // record for propagation
-	  }
-	} // |for(it), for(i)|
-
-      RankFlags nonadj_gen = adj_gen;
-      nonadj_gen.complement(rank()); nonadj_gen.reset(s);
-
-      // iterate over |i_todo| until exhausted
-      for(BitMap::iterator p = i_todo.begin(); p(); p = i_todo.begin())
-        do
-	{
-	  unsigned i= *p;
-	  for (RankFlags::iterator it=nonadj_gen.begin(); it(); ++it)
-	    if (is_complex(descent_type(*it,i12s[i].first)))
-	    {
-	      BlockElt n = cross(*it,i12s[i].first);
-	      if (n==UndefBlock)
-		continue; // might happen in partial blocks
-	      unsigned j=loc[n];
-	      assert(j!=~0u);
-	      if (i_ordered.isMember(j) or i_todo.isMember(j))
-	      {
-		assert (i12s[j].first==n);
-		continue; // avoid switching twice
-	      }
-	      if (i12s[j].first==n)
-	      {
-		assert (i12s[j].second = cross(*it,i12s[i].second));
-		assert(ds[r21s[j].first].links==i12s[j]);
-	      }
-	      else
-	      {
-		std::swap(i12s[j].first,i12s[j].second);
-		assert (i12s[j].first==n);
-		assert (i12s[j].second = cross(*it,i12s[i].second));
-	      }
-	      i_todo.insert(j);
-	    }
-	  i_todo.remove(i);
-	  i_ordered.insert(i);
+	  if (t1==one_imaginary_single)
+	    assert (t2==one_imaginary_compact);
+	  else
+	    todo_lo12.insert(i);
 	}
-	while((++p)()); // advance pointer to next element to do; if so repeat
 
-      // iterate over |r_todo| until exhausted
-      for(BitMap::iterator p = r_todo.begin(); p(); p = r_todo.begin())
-        do
+	n=r21s[i].first; // now do the same for the 2r21 twins
+	t1 = descent_type(adj_gen,n), t2 = descent_type(adj_gen,r21s[i].second);
+	if (t1==one_real_single or t2==one_real_single)
 	{
-	  unsigned i= *p;
-	  for (RankFlags::iterator it=nonadj_gen.begin(); it(); ++it)
-	    if (is_complex(descent_type(*it,r21s[i].first)))
-	    {
-	      BlockElt n = cross(*it,r21s[i].first);
-	      if (n==UndefBlock)
-		continue; // might happen in partial blocks
-	      unsigned j=loc[n];
-	      assert(j!=~0u);
-	      if (r_ordered.isMember(j) or r_todo.isMember(j))
-	      {
-		assert (r21s[j].first==n); // check that order is already OK
-		continue; // avoid switching twice
-	      }
-	      if (r21s[j].first==n)
-	      {
-		assert (r21s[j].second = cross(*it,r21s[i].second));
-		assert(ds[i12s[j].first].links==r21s[j]);
-	      }
-	      else
-	      {
-		std::swap(r21s[j].first,r21s[j].second);
-		assert (r21s[j].first==n);
-		assert (r21s[j].second = cross(*it,r21s[i].second));
-	      }
-	      r_todo.insert(j);
-	    }
-	  r_todo.remove(i);
-	  r_ordered.insert(i);
+	  if (t1==one_real_single)
+	    assert (t2==one_real_nonparity);
+	  else
+	    todo_hi21.insert(i);
 	}
-	while((++p)()); // advance pointer to next element to do; if so repeat
+      } // |for(i)|
 
-      for (unsigned i=0; i<i12s.size(); ++i)
-	if (i12s[i].first>i12s[i].second or r21s[i].first>r21s[i].second)
-	  order_quad(z(i12s[i].first),z(i12s[i].second),
-		     z(r21s[i].first),z(r21s[i].second),
-		     s+1);
+      BitMap flipped_2Ci(size());
+      for (BitMap::iterator it=todo_lo12.begin(); it(); ++it)
+      {
+	BlockElt n=r21s[*it].second; // high end of -1 link in 2i12/2r21 quad
+	if (descent_type(adj_gen,n)!=one_complex_ascent)
+	  continue;
+	BlockElt m = cross(adj_gen,n);
+	if (descent_type(s,m)!=two_semi_imaginary)
+	  continue;
+	flipped_2Ci.insert(m);
+	bool flipped = toggle_edge(z(m),z(Cayley(s,m)),false);
+	assert(flipped); ndebug_use(flipped);
+      }
+
+      for (BitMap::iterator it=todo_hi21.begin(); it(); ++it)
+      {
+	BlockElt n=i12s[*it].second; // low end of -1 link in 2i12/2r21 quad
+	if (descent_type(adj_gen,n)!=one_complex_descent)
+	  continue;
+	BlockElt m = cross(adj_gen,n);
+	if (descent_type(s,m)!=two_semi_real)
+	  continue;
+	flipped_2Ci.insert(inverse_Cayley(s,m));
+	bool flipped = toggle_edge(z(m),z(inverse_Cayley(s,m)),false);
+	assert(flipped); ndebug_use(flipped);
+      }
+
+      // now check which flipped edges need propagation
+      weyl::Generator prev=s;
+      while (not flipped_2Ci.empty())
+      {
+	RankFlags star=folded.star(adj_gen);
+	star.reset(prev);
+	if (star.none())
+	{
+	  flipped_2Ci.reset();
+	  break; // if no more neighbour of |t|, we are done with |s|
+	}
+	assert(star.count()==1); // in parent diagram |t| is at most degree 3
+	prev = adj_gen;
+	adj_gen = star.firstBit();
+	assert(orbit(adj_gen).length()==1);
+
+	BitMap new_flips(size());
+	for (BitMap::iterator it=flipped_2Ci.begin(); it(); ++it)
+	{
+	  BlockEltList l; l.reserve(2);
+	  add_neighbours(l,adj_gen,*it);
+	  for (unsigned int i=0; i<l.size(); ++i)
+	    if (flipped_edges.count(std::make_pair(l[i],Cayley(s,l[i])))==0)
+	    {
+	      toggle_edge(z(l[i]),z(Cayley(s,l[i])),false);
+	      new_flips.insert(l[i]);
+	    }
+	} // |for(it)|
+	flipped_2Ci = new_flips;
+      } // |while (not flipped_2Ci.empty())|
 
     } // |for(s)|
 } // |extended_block::patch_signs|
