@@ -1,203 +1,175 @@
 <basic.rx
 
-set show (string s) = if s="" then "empty" else s fi
+set show (string s) = string: if s="" then "empty" else s fi
 
-set print_Cartan_info (CartanClass cc)=
-let ((cr,Cr,sr),ww,(orbit_size,fiber_size),(i_tp,r_tp,C_tp))=Cartan_info(cc) in
-begin
-  prints("compact: ",cr,", complex: ",Cr,", split: ",sr)
-; (let str="canonical twisted involution: " in
-     if #ww=0 then str #:= "e"
-     else str +:= ww[0]+1; for i : #ww-1 from 1 do str #:= ","+(ww[i]+1) od
-     fi
-   ; prints(str)
-  )
-; prints("twisted involution orbit size: ",orbit_size,
-         "; fiber size: ",fiber_size,"; strong inv: ",orbit_size*fiber_size)
-; prints("imaginary root system: ",show(str(i_tp)))
-; prints("real root system: ",show(str(r_tp)))
-; prints("complex factor: ",show(str(C_tp)))
-end
+set print_Cartan_info (CartanClass cc) = void:
+  let ((cr,Cr,sr),ww,(orbit_size,fiber_size),(i_tp,r_tp,C_tp)) =
+    Cartan_info(cc)
+  in
+  begin
+    prints("compact: ",cr,", complex: ",Cr,", split: ",sr)
+  ; (let str = "canonical twisted involution: " in
+       if #ww=0 then str #:= "e"
+       else str +:= ww[0]+1; for i : #ww-1 from 1 do str #:= ","+(ww[i]+1) od
+       fi
+     ; prints(str)
+    )
+  ; prints("twisted involution orbit size: ",orbit_size,
+	   "; fiber size: ",fiber_size,"; strong inv: ",orbit_size*fiber_size)
+  ; prints("imaginary root system: ",show(str(i_tp)))
+  ; prints("real root system: ",show(str(r_tp)))
+  ; prints("complex factor: ",show(str(C_tp)))
+  end
 
 { Cartan matrix information for positions at distance d(<=2) off diagonal }
-set Cartan_dispatch(int type, int r, int min, int d, bool lower)=
-if d=0 then 2    { diagonal entry }
-elif type=4 then { Dn }
- if if min<r-3 then d=1 else min=r-3 fi then -1 else 0 fi
-elif type=5 then { En }
- if d=if min<2 then 2 else 1 fi then -1 else 0 fi
-elif d=2 then 0  { nodes far apart in liear diagrams }
-elif type<4 then { classical linear diagrams }
- if type = if lower then 2 else 3 fi and min=r-2 then -2 else -1 fi
-elif type=6 then if lower and min=1 then -2 else -1 fi { F4 }
-elif lower then -1 else -3 { G2 }
-fi
+set Cartan_dispatch (int type, int r, int min, int d, bool lower) = int:
+  if d=0 then 2    { diagonal entry }
+  elif type=4 then { Dn }
+   if if min<r-3 then d=1 else min=r-3 fi then -1 else 0 fi
+  elif type=5 then { En }
+   if d=if min<2 then 2 else 1 fi then -1 else 0 fi
+  elif d=2 then 0  { nodes far apart in liear diagrams }
+  elif type<4 then { classical linear diagrams }
+   if type = if lower then 2 else 3 fi and min=r-2 then -2 else -1 fi
+  elif type=6 then if lower and min=1 then -2 else -1 fi { F4 }
+  elif lower then -1 else -3 { G2 }
+  fi
 
-set Cartan_entry(int type, int r,int i, int j)=
-if type=0 then 0 { null Cartan entries for torus factors }
-else let (min,d) = if i<j then (i,j-i) else (j,i-j) fi
-     in  if d>2 then 0 else Cartan_dispatch(type,r,min,d,i<j) fi
-fi
+set Cartan_entry (int type, int r,int i, int j) = int:
+  if type=0 then 0 { null Cartan entries for torus factors }
+  else let (min,d) = if i<j then (i,j-i) else (j,i-j) fi
+       in  if d>2 then 0 else Cartan_dispatch(type,r,min,d,i<j) fi
+  fi
 
-set Cartan_matrix(int type, int r)= mat:
-for j:r do for i:r do Cartan_entry(type,r,i,j) od od
+set Cartan_matrix (int type, int r) = mat:
+  r#for j:r do for i:r do Cartan_entry(type,r,i,j) od od
 
-set Lie_type((int,int) p) =
+set Lie_type((int,int) p) = LieType:
   let (type,) = Cartan_matrix_type(Cartan_matrix(p)) in type
 
-set block_repeat(mat m, int n) =
-let (r,c)=#m then result = null(n*r,n*c)
-in for k:n do for i:r do for j:c do
-      result[k*r+i,k*c+j]:=m[i,j]
-   od od od; result
+set block_repeat (mat m, int n) = mat:
+  let (r,c)=#m then result = null(n*r,n*c)
+  then () =
+    for k:n do for i:r do for j:c do result[k*r+i,k*c+j]:=m[i,j] od od od
+  in result
 
 { complex group for |rd| (the group viewed as a real form of doubled type) }
 set complex(RootDatum rd) = RealForm:
-let r=rank(rd)
-then C_inv=null(2*r,2*r)
-, rd_C = root_datum(block_repeat(simple_roots(rd),2)
-                   ,block_repeat(simple_coroots(rd),2)
-                   ,2*r)
-in (for i:r do C_inv[i,i+r]:=1; C_inv[i+r,i]:=1 od
-   ; quasisplit_form(inner_class(rd_C,C_inv)))
+  let r = rank(rd)
+  then C_inv=null(2*r,2*r)
+  then rd_C = root_datum(block_repeat(simple_roots(rd),2)
+                        ,block_repeat(simple_coroots(rd),2))
+  , () = for i:r do C_inv[i,i+r]:=1; C_inv[i+r,i]:=1 od
+  in quasisplit_form(inner_class(rd_C,C_inv))
 
-{ complexification of a real group }
-set complexification(RealForm G) = RealForm: complex(G)
+{ complexification of a real group, another name for the same }
+set complexification = complex@RootDatum
 
 { some root systems }
 
 { type A root data }
 
-set GL_roots (int n) = [vec]:
-for i : n-1
-do for j : n
-   do if j=i then 1 elif j=i+1 then -1 else 0 fi od
-od
+set GL_roots (int n) = mat:
+  if n>0 then matrix((n,n-1),(int i, int j) int: #(i=j)-#(i=j+1))
+  else error("Positive index required")
+  fi
 
-set SL_coroots (int n) = [vec]:
-for i : n-1
-do for j : n-1
-   do if j=i then 1 elif j=i+1 then -1 else 0 fi od
-od
+set SL_coroots (int n) = mat:
+  if n>0 then matrix((n-1,n-1),(int i, int j) int: #(i=j)-#(i=j+1))
+  else error("Positive index required")
+  fi
 
-set SL_roots (int n) = [vec]:
-for col@j in SL_coroots(n)
-do if j<n-2 then col
-   else for e in col do e+1 od
-   fi
-od
+set SL_roots (int n) = mat:
+  matrix((n-1,n-1),(int i, int j) int: #(i=j)-#(i=j+1)+#(j=n-2))
 
-set GL(int n)= let r=GL_roots(n) in root_datum(r,r,n)
-set SL(int n)= root_datum(SL_roots(n),SL_coroots(n),n-1)
-set PSL(int n)=root_datum(SL_coroots(n),SL_roots(n),n-1)
+set GL(int n) = RootDatum: let r=GL_roots(n) in root_datum(r,r)
+set SL(int n) = RootDatum: root_datum(SL_roots(n),SL_coroots(n))
+set PSL(int n)= RootDatum: root_datum(SL_coroots(n),SL_roots(n))
 
-{ rotts and coroots in nice coordinates for roots in types B,C,D }
+{ roots and coroots in nice coordinates for roots in types B,C,D }
 
-set type_B_roots (int n) = [vec]:
-for i : n
-do if i<n-1
-   then for j : n
-        do if j=i then 1 elif j=i+1 then -1 else 0 fi od
-   else for j : n do if j<n-1 then 0 else 1 fi od
-   fi
-od
+set type_B_roots (int n) = mat:
+  matrix((n,n),(int i, int j) int: #(i=j)-#(i=j+1))
 
-set type_C_roots (int n) = [vec]:
-for i : n
-do if i<n-1
-   then for j : n
-        do if j=i then 1 elif j=i+1 then -1 else 0 fi od
-   else for j : n do if j<n-1 then 0 else 2 fi od
-   fi
-od
+set type_C_roots (int n) = mat:
+  matrix((n,n),((int,int)(i,j):p) int:
+    if p=(n-1,n-1) then 2 else #(i=j)-#(i=j+1) fi)
 
-set type_D_roots (int n) = [vec]:
-if n<2 then [] { SO(2) is pure torus }
-else
-  for i : n
-  do if i<n-1
-     then for j : n
-          do if j=i then 1 elif j=i+1 then -1 else 0 fi od
-     else for j : n do if j<n-2 then 0 else 1 fi od
-     fi
-  od
-fi
+set type_D_roots (int n) = mat:
+  if n<=1 then null(n,0) { type D1 has no roots, it is T1 }
+  else matrix((n,n),((int,int)(i,j):p) int:
+    if p=(n-2,n-1) then 1 else #(i=j)-#(i=j+1) fi)
+  fi
 
 { type C root data }
 
-set Sp(int n)=
-let (m,r)=n\%2 in
-( if r=1 then error("Odd symplectic datum") fi
-; root_datum(type_C_roots(m),type_B_roots(m),m)
-)
+set Sp(int n) = RootDatum:
+  let (m,r) = n\%2 then ()= if r=1 then error("Odd symplectic datum") fi
+  in root_datum(type_C_roots(m),type_B_roots(m))
 
-set PSp(int n)=
-if n%2=1 then error("Odd symplectic datum") else
-let type= if n\2=1 then "A" else "C" fi in adjoint(type+int_format(n\2)) fi
+set PSp(int n) = RootDatum: { same as adjoint(Sp(n)) }
+  let (m,r) = n\%2 then ()= if r=1 then error("Odd symplectic datum") fi
+  in root_datum(id_mat(m),^type_C_roots(m)*type_B_roots(m))
 
-set GSp(int n)=
-if n%2=1 then error("Odd symplectic datum") else
-let type= if n\2=1 then "A1.T1" else "C"+int_format(n\2)+"T1" fi in
-root_datum(Lie_type(type),quotient_basis(Lie_type(type),[[1/2,1/2]]))
-fi
+set GSp(int n) = RootDatum:
+  let (m,r) = n\%2 then ()= if r=1 then error("Odd symplectic datum") fi
+  , type = LieType:
+     if m>1 then "C" elif m=1 then "A" else "T" fi+int_format(m)+".T1"
+  in root_datum(type,quotient_basis(type,[[1/2,1/2]]))
 
 { type B/D root data }
 
 { use the standard basis for SO(n) }
-set SO(int n)=
-let m=n\2 in
-if n%2=1
-then root_datum(type_B_roots(m),type_C_roots(m),m)
-else let r=type_D_roots(m) in root_datum(r,r,m)
-fi
+set SO(int n)= RootDatum:
+  let (m,r)=n\%2 in
+  if r=1 then root_datum(type_B_roots(m),type_C_roots(m))
+  else let r=type_D_roots(m) in root_datum(r,r)
+  fi
 
-set SO_lie_type(int n)=
-if n=1 then "" elif
-n=2 then "T1" elif
-n=3 then "A1" elif
-n=4 then "A1.A1" elif
-n=6 then "A3" elif
-n%2=1 then "B"+n\2 else
-"D"+n\2 fi
+set SO_Lie_type(int n) = LieType: { same as Lie_type(SO(n)) }
+  if n>6 then let (m,r)=n\%2 in if r=0 then "D" else "B" fi + int_format(m)
+  elif n=1 then ""
+  elif n=2 then "T1"
+  elif n=3 then "A1"
+  elif n=4 then "A1.A1"
+  elif n=6 then "A3" else "B3"
+  fi
 
-set Spin(int n)=simply_connected(SO_lie_type(n))
-set PSO(int n)=adjoint(SO_lie_type(n))
+set Spin(int n) = RootDatum: simply_connected(SO_Lie_type(n))
+set PSO(int n)  = RootDatum: adjoint(SO_Lie_type(n))
 
 { real forms }
 
 { type A real forms }
 
 { here rd should be SL(p+q) or PSL(p+q) }
-set SU(int p,int q, RootDatum rd)=
-let n=p+q
-then ic = inner_class(rd,if n>1 then "c" else "" fi)
-in real_form(ic,min(p,q))
+set SU(int p,int q, RootDatum rd) = RealForm:
+  let n=p+q then ic = inner_class(rd,if n>1 then "c" else "" fi)
+  in real_form(ic,min(p,q))
 
-set SU(int p,int q)=SU(p,q,SL(p+q))
-set PSU(int p,int q)=SU(p,q,PSL(p+q))
-set SU(int n) = SU(n,0)
-set PSU(int n) = PSU(n,0)
+set SU(int p,int q)= RealForm: SU(p,q,SL(p+q))
+set PSU(int p,int q)= RealForm:SU(p,q,PSL(p+q))
+set SU(int n) = RealForm: SU(n,0)
+set PSU(int n) = RealForm: PSU(n,0)
 
 { U(p,q), no isogenies in this case }
-set U(int p,int q)=
-real_form(inner_class(GL(p+q),if p+q>1 then "cc" else "c" fi),min(p,q))
+set U(int p,int q) = RealForm:
+  real_form(inner_class(GL(p+q),id_mat(p+q)),min(p,q))
 
-set SL_R(int n) = quasisplit_form(inner_class(SL(n),if n>1 then "s" else "" fi))
-set PSL_R(int n)=
-  quasisplit_form(inner_class(PSL(n),if n>1 then "s" else "" fi))
-set PGL_R(int n)=PSL_R(n)
+set SL_R(int n)  = RealForm: quasisplit_form(inner_class(SL(n),id_mat(n-1)))
+set PSL_R(int n) = RealForm: quasisplit_form(inner_class(PSL(n),id_mat(n-1)))
+set PGL_R(int n) = RealForm: PSL_R(n)
 
-set SL_C(int n) = complex(SL(n))
-set PSL_C(int n) = complex(PSL(n))
-set PGL_C(int n) = PSL_C(n)
+set SL_C(int n)  = RealForm: complex(SL(n))
+set PSL_C(int n) = RealForm: complex(PSL(n))
+set PGL_C(int n) = RealForm: PSL_C(n)
 
-set SL_H(int n) = real_form(inner_class(SL(2*n),"s"),0)
-set PSL_H(int n) = real_form(inner_class(PSL(2*n),"s"),0)
-set PGL_H(int n) = PSL_H(n)
+set SL_H(int n)  = RealForm: quasicompact_form(inner_class(SL(2*n),"s"))
+set PSL_H(int n) = RealForm: quasicompact_form(inner_class(PSL(2*n),"s"))
+set PGL_H(int n) = RealForm: PSL_H(n)
 
-set GL_R(int n) =
-  quasisplit_form(inner_class(GL(n),if n>1 then "ss" else "s" fi))
-set GL_C(int n) = complex(GL(n))
+set GL_R(int n) = RealForm: quasisplit_form(inner_class(GL(n),-id_mat(n)))
+set GL_C(int n) = RealForm: complex(GL(n))
 set GL_H(int n) = RealForm: error("gl(n,H) is not yet implemented")
 
 {complex and quaternionic groups of type A}
@@ -217,11 +189,10 @@ set PGL(int n, string K) = PSL(n,K)
 
 { type C real forms }
 
-{ split real forms }
-{calls to Sp(n), PSp(n), GSp(n) catch odd n}
-set Sp_R(int n)=quasisplit_form(inner_class(Sp(n),"e"))
-set PSp_R(int n)=quasisplit_form(inner_class(PSp(n),"s"))
-set GSp_R(int n)=quasisplit_form(inner_class(GSp(n),"ss"))
+{ split real forms; the calls to Sp(n), PSp(n), GSp(n) will catch odd n }
+set Sp_R(int n) = RealForm: quasisplit_form(inner_class(Sp(n),id_mat(n\2)))
+set PSp_R(int n)= RealForm: quasisplit_form(inner_class(PSp(n),-id_mat(n\2)))
+set GSp_R(int n)= RealForm: quasisplit_form(inner_class(GSp(n),-id_mat(n\2+1)))
 
 { Sp(p,q) }
 
@@ -245,35 +216,43 @@ set GSp(int n, string K) = by_field (GSp_R@int,GSp_C@int,GSp_H@int) (K)(n)
 
 { type B/D real forms }
 
-set SO_inner_class(int p,int q)=
-let ic=
- if p+q=1 then ""
-elif p+q=4 then if p%2=0 then "ee" else "C" fi
-else
- if p%2=1 and q%2=1 then
-  if (p+q)%4=0 and p+q>4 then "u" else "s" fi
-else "e" fi fi in ic
+set SO_inner_class(int p,int q) = string:
+  if p+q=1 then ""
+  elif p+q=4 then if p%2=0 then "ee" else "C" fi
+  elif p%2=1 and q%2=1 then
+      if (p+q)%4=0 and p+q>4 then "u" else "s" fi
+  else "e"
+  fi
 
-set SO_real_form_number(int p,int q)=
+
+set SO_real_form_number(int p,int q) = int:
 let n=p+q, (p,q) = if p<q then (q,p) else (p,q) fi { make q the smallest one }
-then number =
-      if n<=2 then 0        { inner classes without noncompact form, SO(2)=T1 }
-      elif n%2=1 then q     { type B_{n\2} }
-      elif q%2=1 then q\2   { type D_{n\2}, unequal rank }
-      elif q<=n\4 then q\2  { type D_{n\2}, equal rank, more compact forms }
-      elif n%4=2 then q\2+1 { type D_{n\2}odd, equal rank, more split forms }
-      else q\2+2            { type D_{n\2}even, equal rank, more split forms }
-      fi
-in number
+in  if n<=2 then 0        { inner classes without noncompact form, SO(2)=T1 }
+    elif n%2=1 then q     { type B_{n\2} }
+    elif q%2=1 then q\2   { type D_{n\2}, unequal rank }
+    elif q<=n\4 then q\2  { type D_{n\2}, equal rank, more compact forms }
+    elif n%4=2 then q\2+1 { type D_{n\2}odd, equal rank, more split forms }
+    else q\2+2            { type D_{n\2}even, equal rank, more split forms }
+    fi
 
-set SO(int p,int q,RootDatum rd) =
+set SO(int p,int q,RootDatum rd) = RealForm:
   real_form(inner_class(rd,SO_inner_class(p,q)),SO_real_form_number(p,q))
 
-set Spin(int p,int q)=SO(p,q,Spin(p+q))
-set SO(int p,int q)=SO(p,q,SO(p+q))
-set PSO(int p,int q)=SO(p,q,PSO(p+q))
+set Spin(int p,int q) = RealForm: SO(p,q,Spin(p+q))
+set SO(int p,int q)   = RealForm: SO(p,q,SO(p+q))
+set PSO(int p,int q)  = RealForm: SO(p,q,PSO(p+q))
 
 { exceptional groups }
+
+set G2_ic  = inner_class(simply_connected("G2"),"e")
+
+set G2_c   = quasicompact_form(G2_ic)
+set G2_s   = quasisplit_form(G2_ic)
+
+set F4_ic  = inner_class(simply_connected("F4"),"e")
+set F4_c   = quasicompact_form(F4_ic)
+set F4_B4  = real_form(F4_ic,1)
+set F4_s   = quasisplit_form(F4_ic)
 
 set E6_ic_e = inner_class (simply_connected ("E6"),"e")
 

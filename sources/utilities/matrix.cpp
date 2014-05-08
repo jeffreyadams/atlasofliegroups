@@ -704,6 +704,7 @@ template Vector<Num>& operator/=(Vector<Num>&,Num);
 template Vector<int> Matrix<int>::operator*(Vector<int> const&) const;
 template Vector<Num> Matrix<int>::operator*(Vector<Num> const&) const;
 template Vector<int> Matrix<int>::right_mult(const Vector<int>&) const;
+template Vector<Num> Matrix<int>::right_mult(const Vector<Num>&) const;
 
 template Matrix_base<int>::Matrix_base
   (std::vector<Vector<int> >::const_iterator,

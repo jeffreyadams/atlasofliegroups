@@ -56,7 +56,8 @@ class RealWeyl {
 // constructors and destructors
   RealWeyl():d_group(0) {}
 
-  RealWeyl(const CartanClass&, unsigned long, unsigned long,
+  RealWeyl(const CartanClass&,
+	   cartanclass::AdjointFiberElt, cartanclass::AdjointFiberElt,
 	   const RootDatum&, const WeylGroup&);
 
   ~RealWeyl() {}

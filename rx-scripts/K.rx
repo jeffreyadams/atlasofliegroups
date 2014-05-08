@@ -1,0 +1,113 @@
+<basic.rx
+<matrix.rx { for left_inverse }
+
+{---------------- tests for any root, not just simple  --------------}
+
+{ this is mostly already done in basic.rx, just add imaginary test }
+set is_imaginary_compact(KGBElt x) = (vec->bool):
+  let p=is_imaginary(x), q=is_compact(x) { allow pre-computation for x }
+  in (vec alpha) bool: p(alpha) and q(alpha)
+
+set is_imaginary_noncompact(KGBElt x) = (vec->bool):
+  let p=is_imaginary(x), q=is_noncompact(x)
+  in (vec alpha) bool: p(alpha) and q(alpha)
+
+
+set compact_roots(KGBElt x) = mat:
+  columns_with(is_compact(x),imaginary_posroots(x))
+
+set rho_ic(KGBElt x) = ratvec: sum(compact_roots(x))/2
+
+set rho_in(KGBElt x) = ratvec:
+  sum(columns_with(is_noncompact(x),imaginary_posroots(x)))/2
+
+
+{ ------------------    matrices related to T_K\subset T  ------------------ }
+
+{ basis of cocharacter lattice of K_0, and matrix of theta^t+1 towards it:
+  returns a pair of matrices (B,M), sizes n*r and r*n where r is the rank
+  of K (and that of the +1 eigenspace of delta), such that 1+^delta=B*M
+}
+set cocharacter_lattice_K_info (InnerClass ic) = (mat,mat):
+  let rd = root_datum(ic) then r=rank(rd)
+  then (coefs,L,R) = diagonalize(id_mat(r)+^distinguished_involution(ic))
+  then rank_K = #coefs, Linv = inverse(L), Rinv_tr = ^inverse(R)
+  in ( columns_with((int j)bool: j<rank_K,Linv)
+     , r ^ for i:rank_K do coefs[i]*Rinv_tr[i] od
+     )
+
+{ matrix of projection X^*(T)-> X^*(T_K) where T is fundamental Cartan of G,
+  and T_K is identity component of fundamental Cartan of K }
+
+{ project modulo the -1 eigenspace of the distinguished involution }
+set projection_to_K_matrix (InnerClass ic) = mat:
+  let (inj,)=cocharacter_lattice_K_info(ic) in ^inj
+
+{ projection function that accepts rational vectors whose image is integral }
+set project_K (InnerClass ic,ratvec v)= vec:
+  ratvec_as_vec(projection_to_K_matrix(ic)*v)
+
+{ matrix of injection X_*(T_K)->X_*(T); image is a saturated sublattice }
+set injection_from_K_matrix(InnerClass ic) = mat:
+  let (inj,)=cocharacter_lattice_K_info(ic) in inj
+
+
+set rank_K (InnerClass ic) = int: n_columns(injection_from_K_matrix(ic))
+
+{ G_K_roots_and_coroots
+  Input: x in fundamental fiber, so theta permutes positive complex roots
+  Output:
+  ((G_K_roots: roots of K as elements of X^*(T_K) (proj is applied)
+     (all compact imaginary roots, and one of each complex theta-orbit)
+   ,G_K_coroots: coroots of K as elements of X_*(T_K) (restrict is applied)
+     (all compact imaginary coroots, for each complex theta-orbit the coweight
+      c.(1+^theta)(alpha^v); c= if <delta(alpha),alpha^v>=0 then 1 else 2 fi)
+   )
+  ,( injection(X_*(T_K)->X_*(T)), restriction (X_*(T)->X_*(T_K)) )
+  )
+}
+
+set G_K_roots_and_coroots (KGBElt x) = ((mat,mat),(mat,mat)):
+  let ic = inner_class(real_form(x))
+  then (inj,delta_tr_plus_1) = cocharacter_lattice_K_info(ic)
+  , delta = distinguished_involution(ic), rd = root_datum(ic)
+  then proj = ^inj { weights }, restrict = left_inverse(inj) { coweights }
+  , proots = posroots(rd), pcroots = poscoroots(rd), r = rank(rd)
+  , is_ic  = is_imaginary_compact(x), is_C = is_complex(x) { predicates }
+  , ic_inx = [int]:[], C_inx = [int]:[] { list indices into proots/pcroots }
+  in begin
+    if involution(x)!=delta then error("x is not in fundamental fiber") fi
+  ; for alpha@j in proots
+    do if is_ic(alpha) then ic_inx #:= j
+       elif is_C(alpha) and { delta*alpha is not among the previous roots: }
+	(let beta=delta*alpha, i=#C_inx-1
+	 in while i>=0 and proots[C_inx[i]]!=beta do i-:=1 od; i<0)
+       then C_inx #:= j
+       fi
+    od
+  ; (( proj * r#for i in ic_inx#C_inx do proots[i] od
+     , (restrict * r#for i in ic_inx do pcroots[i] od)
+      #( delta_tr_plus_1 *
+         r#for i in C_inx do (1-pcroots[i]*delta*proots[i])*pcroots[i] od
+       )
+     )
+    ,(inj,restrict)
+    )
+  end
+
+
+{ extract simple roots, coroots by computing pairing with rho,rho^v }
+set G_K_simple_roots_and_coroots(KGBElt x) = (mat,mat):
+  let (pos_sys,)=G_K_roots_and_coroots(x) in simple_from_positive(pos_sys)
+
+set K_root_datum (KGBElt x) = RootDatum:
+  root_datum(G_K_simple_roots_and_coroots(x))
+
+set K_0 (KGBElt x) = RealForm:
+  let rd = K_root_datum(x)
+  in quasicompact_form(inner_class(rd,id_mat(rank(rd))))
+
+set K_0(RealForm G) = RealForm: K_0(KGB(G,0))
+
+set rho_K(KGBElt x)=ratvec:rho(K_0(x))
+set rho_K(RealForm G)=ratvec:rho(K_0(G))

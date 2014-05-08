@@ -16,7 +16,8 @@
 namespace atlas {
 
 namespace {
-RootNbrList orthogonalMAlpha(unsigned long, const Fiber&, const RootDatum&);
+RootNbrList orthogonalMAlpha
+  (cartanclass::AdjointFiberElt, const Fiber&, const RootDatum&);
 SmallBitVectorList rGenerators
   (const RootNbrList&, const Fiber&, const RootDatum&);
 }
@@ -30,7 +31,8 @@ SmallBitVectorList rGenerators
 namespace realweyl {
 
 RealWeyl::RealWeyl(const CartanClass& cc,
-		   unsigned long x, unsigned long y,
+		   cartanclass::AdjointFiberElt x,
+		   cartanclass::AdjointFiberElt y,
 		   const RootDatum& rd, const WeylGroup& W)
   :d_group(&W)
 
@@ -231,7 +233,7 @@ namespace {
   NOTE: they are even super-orthogonal, see IC4, prop 3.20.
 */
 RootNbrList orthogonalMAlpha
-  (unsigned long x, const Fiber& f, const RootDatum& rd)
+  (cartanclass::AdjointFiberElt x, const Fiber& f, const RootDatum& rd)
 {
   Weight tworho_ic = compactTwoRho(x,f,rd);
 

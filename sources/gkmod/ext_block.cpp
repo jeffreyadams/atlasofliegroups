@@ -788,7 +788,7 @@ bool check_braid
   if (s==t)
     return true;
   static const unsigned int cox_entry[] = {2, 3, 4, 6};
-  unsigned int len = cox_entry[b.Dynkin().edgeMultiplicity(s,t)];
+  unsigned int len = cox_entry[b.Dynkin().edge_multiplicity(s,t)];
 
   BitMap todo(b.size()),used(b.size());
   todo.insert(x);

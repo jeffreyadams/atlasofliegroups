@@ -75,8 +75,6 @@ struct Layout;
 
 
 
-typedef char TypeLetter;
-
 struct SimpleLieType : public std::pair<TypeLetter,size_t>
 { typedef std::pair<TypeLetter,size_t> base;
   SimpleLieType(TypeLetter t,size_t rank) : base(t,rank) {}

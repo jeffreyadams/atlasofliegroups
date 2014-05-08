@@ -1,0 +1,169 @@
+<misc.rx
+<lattice.rx { for (co)restrict_action }
+<torus.rx { for torus }
+
+{----------------some more general group constructions----------------}
+
+{ real forms }
+
+{ preferred terminology when argument is not an inner class: inner_forms }
+
+set inner_forms (RealForm G) = real_forms(InnerClass:G)
+
+set print_real_forms(InnerClass ic)= void:
+  for n@i in form_names(ic) do prints(i,": ",n) od
+
+set print_inner_forms (RealForm G) = void:
+begin print_real_forms(G)
+; prints("To define a real form rf do: set rf=real_forms(G)[i]")
+end
+
+{ defining split groups }
+
+set split_form(InnerClass ic) = RealForm: { try to retain the same inner class }
+  let rd = root_datum(ic)
+  then ic_split = inner_class(rd,-id_mat(rank(rd)))
+  in quasisplit_form(
+    if distinguished_involution(ic)=distinguished_involution(ic_split)
+    then ic else ic_split fi)
+
+{ direct product of RootDatum, InnerClass and RealForm }
+
+set *(RootDatum R,RootDatum S) = RootDatum:
+  root_datum(block_matrix(simple_roots(R),simple_roots(S))
+            ,block_matrix(simple_coroots(R),simple_coroots(S)))
+
+set *(InnerClass ic1,InnerClass ic2) = InnerClass:
+  let di =
+    block_matrix(distinguished_involution(ic1),distinguished_involution(ic2))
+  in inner_class(root_datum(ic1)*root_datum(ic2),di)
+
+set real_form (InnerClass ic, string name) = RealForm:
+  let fn = form_names(ic) then i=#fn-1
+  then () = while i>=0 and fn[i]!=name do i-:=1 od
+  in if i<0 then error("unknown real form") else real_form(ic,i) fi
+
+set form_number_by_fiber_partition (InnerClass ic,vec v) = int:
+  let realforms=real_forms(ic), i=nr_of_real_forms(ic)-1
+  in while i>0 and fiber_partition(realforms[i])!=v do i-:=1 od; i
+
+set * (RealForm G,RealForm H) = RealForm:
+  real_form(inner_class(G)*inner_class(H), form_name(G) + "." + form_name(H))
+
+{ then ((n,,),,,) = Cartan_info(fundamental_Cartan(G))
+  { fiber part of G has size 2^number of compact factors of fundamental torus }
+  then v=vec: []
+  then ()=
+    for i in fiber_partition(G)
+    do for j in fiber_partition(H) do v:=v#(i+(2^n)*j) od od
+  in real_forms(ic)[form_number_by_fiber_partition(ic,sort(v))]
+}
+
+
+{ ----------------radical, i.e. maximal central torus---------------- }
+
+set radical (RootDatum rd) = RootDatum:
+  let empty = null(rank(rd)-semisimple_rank(rd),0) in root_datum(empty,empty)
+
+set radical (InnerClass ic) = RealForm:
+  let rd = root_datum(ic) then ssr = semisimple_rank(rd)
+  then coradical = columns_with((int j): j>=ssr,root_coradical(rd))
+  then involution = restrict_action(distinguished_involution(ic),coradical)
+  in quasisplit_form(inner_class(radical(rd),involution))
+
+set maximal_central_torus = (RootDatum->RootDatum): radical@RootDatum
+set maximal_central_torus = (InnerClass->RealForm): radical@InnerClass
+
+{ -------------derived, adjoint inner class and real form--------------  }
+
+set derived (InnerClass ic) = InnerClass:
+  let (der_rd,proj)=derived_info(root_datum(ic))
+  in inner_class(der_rd,corestrict_action(distinguished_involution(ic),proj))
+
+set mod_central_torus (InnerClass ic) = InnerClass:
+  let (quot_rd,inj)=mod_central_torus_info(root_datum(ic))
+  in inner_class(quot_rd,restrict_action(distinguished_involution(ic),inj))
+
+set adjoint_transform (RootDatum rd, mat theta) = mat:
+  let  image = theta*simple_roots(rd), ssr = semisimple_rank(rd)
+  then image_coords = [vec]:
+     for i: ssr do ratvec_as_vec(fundamental_coweight(rd,i)*image) od
+  in ssr ^ image_coords { square matrix of size ssr }
+
+set adjoint(InnerClass ic) = InnerClass:
+  let rd = root_datum(ic)
+  in inner_class(adjoint(rd)
+                ,adjoint_transform(rd,distinguished_involution(ic)))
+
+set derived (RealForm G) = RealForm:
+  let ic = inner_class(G),  (der_rd,proj)=derived_info(root_datum(G))
+  , x0 = KGB(G,0)
+  then act = corestrict_action(distinguished_involution(ic),proj)
+  in real_form(inner_class(der_rd,act),act,torus_factor(x0)*proj)
+
+set adjoint(RealForm G)=
+  let adj_ic = adjoint(inner_class(G))
+  , tf = torus_factor(KGB(G,0))*simple_roots(root_datum(G)) { to adjoint }
+  in real_form(adj_ic,distinguished_involution(adj_ic),tf)
+
+{ ----------------real Levi factors---------------- }
+
+set Levi (RootDatum rd, (int->bool) select) = RootDatum:
+  root_datum(columns_with(select,simple_roots(rd))
+            ,columns_with(select,simple_coroots(rd)))
+
+set Levi (RootDatum rd,[int] S) = Levi (rd,is_member(S))
+
+set Levi (InnerClass ic,[int] S) = InnerClass: { just change the root datum }
+  inner_class(Levi(root_datum(ic),is_member(S)),distinguished_involution(ic))
+
+{ ------------------Levi factor of real parabolic----------- }
+
+
+{ M=centralizer of A in H=TA, as a RealForm }
+set real_Levi(KGBElt x) = RealForm:
+  let theta = involution(x)
+  then ic_M = inner_class(root_datum(simple_imaginary_subsystem(x)),theta)
+  then (,rf) = Cartan_class_real_form(ic_M,theta,torus_factor(x))
+  in rf
+
+set theta_stable_Levi (KGBElt x) = RealForm:
+  let ic_L=inner_class(root_datum(simple_real_subsystem(x)), involution(x))
+  in quasisplit_form(ic_L)
+
+set M = real_Levi@KGBElt { synonym }
+
+set L = theta_stable_Levi@KGBElt { synonym }
+
+
+
+
+
+
+{ ----------------tests for classes of groups---------------- }
+
+set is_equal_rank(RealForm G) = bool: split_rank(fundamental_Cartan(G))=0
+
+set is_split(RealForm G) = bool: compact_rank(most_split_Cartan(G))=0
+
+set is_quasisplit (RealForm G) = bool: form_number(G)=nr_of_real_forms(G)-1
+set is_quasicompact (RealForm G) = bool: form_number(G)=0
+
+set is_semisimple (RootDatum rd) = bool: semisimple_rank(rd) = rank(rd)
+
+set is_simply_connected (RootDatum rd) = bool:
+  is_semisimple(rd) and abs(det(simple_coroots(rd)))=1
+
+set is_adjoint (RootDatum rd) = bool:
+  is_semisimple(rd) and abs(det(simple_roots(rd)))=1
+
+set has_connected_center (RootDatum rd) = bool:
+  is_simply_connected(derived(dual(rd)))
+
+{ for real groups return information about the topology of G(R) }
+{ set is_simply_connected_real_group(RealForm G) = bool:
+    is_simply_connected(root_datum(K_0(G)))
+}
+
+
+

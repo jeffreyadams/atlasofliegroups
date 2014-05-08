@@ -64,13 +64,13 @@ namespace gradings {
    and passing through these roots only compact roots remain in the orthogonal
  */
 RootNbrSet max_orth(const RootNbrSet& non_compact,
-			   const RootNbrSet& subsys,
-			   const RootSystem& rs)
+		    const RootNbrSet& subsys,
+		    const RootSystem& rs)
 {
   RootNbrSet ncr = non_compact; // working variables
   RootNbrSet sub = subsys;
 
-  ncr &= rs.posRootSet();    // restricting to positive roots is safe
+  ncr &= rs.posRootSet(); // restricting to positive roots is safe
   sub &= rs.posRootSet(); // and improves performance
 
   RootNbrSet result(rs.numRoots());
@@ -80,14 +80,14 @@ RootNbrSet max_orth(const RootNbrSet& non_compact,
     result.insert(alpha);
     for (RootNbrSet::iterator it = sub.begin(); it(); ++it)
       if (not rs.isOrthogonal(alpha,*it))
-	sub.remove(*it);
+	sub.remove(*it); // remove non-orthogonal roots as candidates
       else if (rs.sumIsRoot(alpha,*it))
-	ncr.flip(*it);
+	ncr.flip(*it); // and flip compactness status of these short roots
 
-    ncr &= sub; // this removes in particular |alpha|
+    ncr &= sub; // ensure removed roots, and |alpha|, are no longer considered
   }
 
-  return rs.long_orthogonalize(result);
+  return rs.long_orthogonalize(result); // ensure \emph{strong} orthogonality
 }
 
 

@@ -22,8 +22,8 @@ TitsGroup and TitsElt.
 
 #include "atlas_types.h"
 
-#include "bitvector.h" // contained in |TitsGrooup|
-#include "prerootdata.h" // contained in |GlobalTitsGrooup|
+#include "bitvector.h" // contained in |TitsGroup|
+#include "prerootdata.h" // contained in |GlobalTitsGroup|
 #include "weyl.h"      // contained in |TitsElt|
 
 #include "y_values.h"
@@ -133,11 +133,11 @@ class GlobalTitsElement
 
    This class could be an alternative to the older |TitsGroup| and |TitsCoset|
    support classes handling |x| values. It is then attached to a whole inner
-   class rather than to a specific real form, as |TitsCoset| is, whence the
-   "Global". As a consequence it can generate "all" valid elements for it (the
-   command 'X'). For the latter purpose the |square_class_gen| member and
-   associated method are included, which permits listing a set of initial
-   elements from which others can be deduced.
+   class rather than to a specific real form or just a square class of them,
+   as |TitsCoset| is, whence the "Global". As a consequence it can generate
+   "all" valid elements for it (the command 'X'). For the latter purpose the
+   |square_class_gen| member and associated method are included, which permits
+   listing a set of initial elements from which others can be deduced.
  */
 class GlobalTitsGroup : public TwistedWeylGroup
 {
@@ -225,7 +225,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
 			 const GlobalTitsElement& b) const;
 
   bool compact(const RootSystem& rs,
-	       RootNbr alpha,
+	       RootNbr alpha, // assumed imaginary
 	       GlobalTitsElement a) const; // whether alpha compact
 
 // methods that manipulate a |GlobalTitsElement|

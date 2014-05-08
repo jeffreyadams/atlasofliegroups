@@ -42,8 +42,8 @@ namespace atlas {
 
 namespace bitvector {
 
-template<size_t dim>
-BitVector<dim>::BitVector(const matrix::Vector<int>& v) // reduce mod 2
+template<size_t dim> template<typename C>
+BitVector<dim>::BitVector(const matrix::Vector<C>& v) // reduce mod 2
   : d_data()
   , d_size(v.size())
 {
@@ -1016,6 +1016,18 @@ template class BitVector<64ul>; // used in realex function |subspace_normal|
 template
    void initBasis<64ul>(std::vector<BitVector<64ul> >& b, size_t r); // idem
 template class BitMatrix<64ul>; // used in realex function |binary_invert|
+
+template
+  BitVector<constants::RANK_MAX>::BitVector
+    (const matrix::Vector<int>& weight);
+template
+  BitVector<constants::RANK_MAX>::BitVector
+    (const matrix::Vector<long long int>& weight);
+template
+  BitVector<constants::RANK_MAX+1>::BitVector
+    (const matrix::Vector<int>& weight);
+template
+  BitVector<64ul>::BitVector (const matrix::Vector<int>& weight);
 
 } // |namespace bitvector|
 

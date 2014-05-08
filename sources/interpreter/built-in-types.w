@@ -152,8 +152,8 @@ void Lie_type_value::add_simple_factor (char c,size_t rank)
   if (t==std::string::npos)
     throw std::runtime_error(std::string("Invalid type letter '")+c+'\'');
 @.Invalid type letter@>
-  static const size_t lwb[]={1,2,2,4,6,4,2,0};
   const size_t r=constants::RANK_MAX;
+@/static const size_t lwb[]={1,2,2,4,6,4,2,0};
   static const size_t upb[]={r,r,r,r,8,4,2,r};
   if (rank<lwb[t])
     throw std::runtime_error("Too small rank "+str(rank)+" for Lie type "+c);
@@ -196,7 +196,7 @@ void Lie_type_wrapper(expression_base::level l)
   size_t total_rank=0; char c;
   while (skip_punctuation(is)>>c) // i.e., until |not is.good()|
   { size_t rank;
-    if (not (is>>rank))
+    if (is.peek()=='-' or not (is>>rank)) // explicitly forbid minus sign
       throw std::runtime_error
        ("Error in type string '"+is.str()+"' for Lie type");
 @.Error in type string@>
@@ -751,47 +751,46 @@ void root_datum_wrapper(expression_base::level l)
   }
 }
 
-@ Alternatively, a user may just specify lists of simple roots and coroots,
-which implicitly define a Lie type and weight lattice. To make sure the root
-datum construction will succeed, we must test the ``Cartan'' matrix computed
-from these data to be a valid one.
+@ Alternatively, a user may just specify bases of simple roots and coroots in
+the form of matrices, which implicitly define a Lie type and weight lattice.
+To make sure the root datum construction will succeed, we must test the
+``Cartan'' matrix computed from these data to be a valid one.
 
 @< Local function definitions @>=
 void raw_root_datum_wrapper(expression_base::level l)
-{ shared_int rank = get<int_value>();
-  shared_row simple_coroots=get<row_value>();
-  shared_row simple_roots=get<row_value>();
+{ shared_matrix simple_coroots=get<matrix_value>();
+  shared_matrix simple_roots=get<matrix_value>();
 
-  if (rank->val<0)
-    throw std::runtime_error("Negative rank "+str(rank->val));
-  if (simple_roots->val.size()!=simple_coroots->val.size())
+  size_t nr = simple_roots->val.numRows(),
+         nc = simple_roots->val.numColumns();
+
+  if (simple_coroots->val.numRows()!=nr @| or
+      simple_coroots->val.numColumns()!=nc)
     throw std::runtime_error
-    ("Numbers "+str(simple_roots->val.size())+","
-      +str(simple_coroots->val.size())+  " of simple (co)roots mismatch");
-@.Numbers of simple roots...@>
+    ("Sizes (" +str(nr)+ "," +str(nc) +"),("+
+      str(simple_coroots->val.numRows()) +","+
+      str(simple_coroots->val.numColumns()) +
+      ") of simple (co)root systems differ");
+@.Sizes of simple (co)root systems...@>
 
-  size_t r = rank->val; WeightList s; CoweightList c;
-  s.reserve(simple_roots->val.size());
-  c.reserve(simple_roots->val.size());
+  WeightList s; CoweightList c;
+  s.reserve(nc);
+  c.reserve(nc);
 
-  for (size_t i=0; i<simple_roots->val.size(); ++i)
-  { const Weight& sr
-      =force<vector_value>(simple_roots->val[i].get())->val;
-    const Coweight& scr
-      =force<vector_value>(simple_coroots->val[i].get())->val;
-
-    if (sr.size()!=r or scr.size()!=r)
-      throw std::runtime_error("Simple (co)roots not all of size "+str(r));
-    s.push_back(sr);
-    c.push_back(scr);
+  for (size_t j=0; j<nc; ++j)
+@/{@; s.push_back(simple_roots->val.column(j));
+      c.push_back(simple_coroots->val.column(j));
   }
 
-  PreRootDatum prd(s,c,r);
+  PreRootDatum prd(s,c,nr);
   try @/{@; Permutation dummy;
     dynkin::Lie_type(prd.Cartan_matrix(),true,true,dummy);
   }
-  catch (std::runtime_error& e)
-  {@; throw std::runtime_error("Invalid simple (co)roots"); }
+  catch (error::CartanError)
+@/{@;
+    throw std::runtime_error("System of (co)roots has invalid Cartan matrix");
+}
+@.System of (co)roots has invalid...@>
   if (l!=expression_base::no_value)
     push_value(new root_datum_value @| (RootDatum(prd)));
 }
@@ -1008,7 +1007,8 @@ void coroots_wrapper(expression_base::level l)
   push_value(new matrix_value(int_Matrix(crl,rd->val.rank())));
 }
 
-@ Here are two utility functions.
+@ Here are three important numeric attributes of root data.
+
 @< Local function definitions @>=
 void rd_rank_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
@@ -1020,6 +1020,12 @@ void rd_semisimple_rank_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l!=expression_base::no_value)
     push_value(new int_value(rd->val.semisimpleRank()));
+}
+@)
+void rd_nposroots_wrapper(expression_base::level l)
+{ shared_root_datum rd(get<root_datum_value>());
+  if (l!=expression_base::no_value)
+    push_value(new int_value(rd->val.numPosRoots()));
 }
 
 @ It is useful to have bases for the sum of the root lattice and the
@@ -1072,7 +1078,12 @@ void fundamental_coweight_wrapper(expression_base::level l)
 }
 
 
-@ And here are functions for the dual and derived root data.
+@ And here are functions for the dual, derived and quotient by central torus
+root data. There is no need for a similar function for the adjoint root datum,
+as this is easily synthesised (due to the fact that the simple roots provide a
+standard basis for the adjoint character lattice): the simple root matrix is
+the identity, the simple coroot matrix the Cartan matrix, and mapping to new
+weight coordinates is achieved by pairing with the old coroots.
 
 @h "tags.h"
 @< Local function definitions @>=
@@ -1083,13 +1094,25 @@ void dual_datum_wrapper(expression_base::level l)
       (RootDatum(rd->val,tags::DualTag())));
 }
 @)
-void derived_datum_wrapper(expression_base::level l)
+void derived_info_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l!=expression_base::no_value)
   { int_Matrix projector;
     push_value(new root_datum_value@|
       (RootDatum(projector,rd->val,tags::DerivedTag())));
     push_value(new matrix_value(projector));
+    if (l==expression_base::single_value)
+      wrap_tuple(2);
+  }
+}
+@)
+void mod_central_torus_info_wrapper(expression_base::level l)
+{ shared_root_datum rd(get<root_datum_value>());
+  if (l!=expression_base::no_value)
+  { int_Matrix injector;
+    push_value(new root_datum_value@|
+      (RootDatum(injector,rd->val,tags::AdjointTag())));
+    push_value(new matrix_value(injector));
     if (l==expression_base::single_value)
       wrap_tuple(2);
   }
@@ -1131,8 +1154,8 @@ void integrality_points_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  RationalList ipl =
-    rootdata::integrality_points(rd->val,lambda->val);
+  RationalList ipl = rootdata::integrality_points(rd->val,lambda->val);
+    // method normalises rationals
   row_ptr result (new row_value(ipl.size()));
   for (size_t i=0; i<ipl.size(); ++i)
     result->val[i]=shared_value(new rat_value(ipl[i]));
@@ -1146,7 +1169,7 @@ install_function(type_of_root_datum_wrapper,@|"Lie_type"
                 ,"(RootDatum->LieType)");
 install_function(root_datum_wrapper,@|"root_datum","(LieType,mat->RootDatum)");
 install_function(raw_root_datum_wrapper,
-                 @|"root_datum","([vec],[vec],int->RootDatum)");
+                 @|"root_datum","(mat,mat->RootDatum)");
 install_function(quotient_basis_wrapper
 		,@|"quotient_basis","(LieType,[ratvec]->mat)");
 install_function(quotient_datum_wrapper
@@ -1156,12 +1179,9 @@ install_function(simply_connected_datum_wrapper
 install_function(adjoint_datum_wrapper,@| "adjoint","(LieType->RootDatum)");
 install_function(simple_roots_wrapper,@|"simple_roots","(RootDatum->mat)");
 install_function(simple_coroots_wrapper,@|"simple_coroots","(RootDatum->mat)");
-install_function(positive_roots_wrapper,@|
-		 "positive_roots","(RootDatum->mat)");
-install_function(positive_coroots_wrapper,@|
-		 "positive_coroots","(RootDatum->mat)");
-install_function(datum_Cartan_wrapper,@|"Cartan_matrix"
-		,"(RootDatum->mat)");
+install_function(positive_roots_wrapper,@| "posroots","(RootDatum->mat)");
+install_function(positive_coroots_wrapper,@| "poscoroots","(RootDatum->mat)");
+install_function(datum_Cartan_wrapper,@|"Cartan_matrix","(RootDatum->mat)");
 install_function(roots_wrapper,@|"roots","(RootDatum->mat)");
 install_function(coroots_wrapper,@|"coroots","(RootDatum->mat)");
 install_function(root_coradical_wrapper,@|"root_coradical","(RootDatum->mat)");
@@ -1171,11 +1191,15 @@ install_function(fundamental_weight_wrapper,@|
 install_function(fundamental_coweight_wrapper,@|
 		 "fundamental_coweight","(RootDatum,int->ratvec)");
 install_function(dual_datum_wrapper,@|"dual","(RootDatum->RootDatum)");
-install_function(derived_datum_wrapper,@|
-		 "derived","(RootDatum->RootDatum,mat)");
+install_function(derived_info_wrapper,@|
+		 "derived_info","(RootDatum->RootDatum,mat)");
+install_function(mod_central_torus_info_wrapper,@|
+		 "mod_central_torus_info","(RootDatum->RootDatum,mat)");
 install_function(rd_rank_wrapper,@|"rank","(RootDatum->int)");
 install_function(rd_semisimple_rank_wrapper@|
 		,"semisimple_rank","(RootDatum->int)");
+install_function(rd_nposroots_wrapper@|
+		,"nr_of_posroots","(RootDatum->int)");
 install_function(integrality_datum_wrapper
                 ,@|"integrality_datum","(RootDatum,ratvec->RootDatum)");
 install_function(integrality_points_wrapper
@@ -1277,8 +1301,9 @@ the matrix is already expressed on the basis of the weight lattice used by the
 root datum, the question of stabilising that lattice is settled, but we must
 check that the matrix is indeed an involution, and that it gives an
 automorphism of the root datum. In fact we need an automorphism of the based
-root datum, but we will apply (and export thought the |ww| parameter) a Weyl
-group element to map positive roots to positive roots. While we are doing all
+root datum, but we will allow a conjugate of such an automorphism to be
+supplied as~$M$, and export thought the |ww| parameter a Weyl group element
+conjugates the based root datum automorphism to~$M$. While we are doing all
 this, we can also determine the Lie type of the root datum, the permutation
 possibly needed to map the standard (Bourbaki) ordering of that Dynkin diagram
 to the actual one, and the inner class letters corresponding to each of its
@@ -1307,10 +1332,10 @@ lietype::Layout check_involution
 { size_t r=rd.rank(),s=rd.semisimpleRank();
   @< Check that |M| is an $r\times{r}$ matrix defining an involution @>
 @/Permutation p(s);
-  @< Set |ww| to the Weyl group element needed to the left of |M| to map
-  positive roots to positive roots, and |p| to the permutation of the simple
-  roots so obtained, or throw a |runtime_error| if |M| is not an automorphism
-  of |rd| @>
+  @< Set |ww| to the reversed Weyl group element needed to be applied after
+  the action of |M| in order to map positive roots to positive roots, and |p|
+  to the permutation of the simple roots so obtained; throw a |runtime_error|
+  if |M| is not an automorphism of |rd| @>
 @/lietype::Layout result;
 @/LieType& type=result.d_type;
   InnerClassType& inner_class=result.d_inner;
@@ -1325,26 +1350,27 @@ lietype::Layout check_involution
 
 @ That |M| is an automorphism means that the roots are permuted among
 each other, and that after applying the Weyl group action to map simple roots
-to the Cartan matrix is invariant under that permutation of
-its rows and columns.
+to simple roots, the result is a diagram automorphism; this is tested by
+checking that the Cartan matrix is invariant under the corresponding
+permutation of its rows and columns.
 
-@< Set |ww| to the Weyl group element...@>=
+@< Set |ww| to the reversed Weyl group element...@>=
 { RootNbrList Delta(s);
-  for (size_t i=0; i<s; ++i)
+  for (weyl::Generator i=0; i<s; ++i)
   { Delta[i]=rd.rootNbr(M*rd.simpleRoot(i));
     if (Delta[i]==rd.numRoots()) // then image not found
       throw std::runtime_error@|
         ("Matrix maps simple root "+str(i)+" to non-root");
   }
   ww = wrt_distinguished(rd,Delta);
-  for (size_t i=0; i<s; ++i)
+  for (weyl::Generator i=0; i<s; ++i)
     if (rd.isSimpleRoot(Delta[i])) // should have made every root simple
       p[i]=rd.simpleRootIndex(Delta[i]);
     else throw std::runtime_error
       ("Matrix does not define a root datum automorphism");
 @.Matrix does not define...@>
-  for (size_t i=0; i<s; ++i)
-    for (size_t j=0; j<s; ++j)
+  for (weyl::Generator i=0; i<s; ++i)
+    for (weyl::Generator j=0; j<s; ++j)
       if (rd.cartan(p[i],p[j])!=rd.cartan(i,j)) throw std::runtime_error@|
       ("Matrix does not define a root datum automorphism");
 }
@@ -1435,11 +1461,10 @@ it at its moved-down place.
       break;
     else
       j+=type[k].second;
-
-
   if (k==type.size())
     throw std::logic_error("Non matching Complex factor");
 @.Non matching Complex factor@>
+
 #ifndef NDEBUG
   assert(type[k]==type[i]); // paired simple types for complex factor
   for (size_t l=1; l<comp_rank; ++l)
@@ -1676,7 +1701,7 @@ void fix_involution_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  for (unsigned int i=ww.size(); i-->0;)
+  for (unsigned int i=0; i<ww.size(); ++i) // apply elements in generation order
     rd->val.simple_reflect(ww[i],M);
   std::auto_ptr<ComplexReductiveGroup> G(new ComplexReductiveGroup(rd->val,M));
   push_value(new inner_class_value(G,lo));
@@ -2045,7 +2070,7 @@ explains why the copy constructor is protected rather than private.
 struct real_form_value : public value_base
 { const inner_class_value parent;
   RealReductiveGroup val;
-  RealFormNbr form_index;
+  RealFormNbr form_index; // internal number associated to real form in |parent|
 @)
   real_form_value(const inner_class_value& p,RealFormNbr f) @/
   : parent(p), val(p.val,f),form_index( f), rt_p(NULL) @+{}
@@ -2124,7 +2149,7 @@ void real_form_wrapper(expression_base::level l)
 void form_number_wrapper(expression_base::level l)
 { shared_real_form rf(get<real_form_value>());
   if (l!=expression_base::no_value)
-    push_value(new int_value(rf->parent.interface.out(rf->form_index)));
+    push_value(new int_value(rf->parent.interface.out(rf->val.realForm())));
 }
 @)
 void quasisplit_form_wrapper(expression_base::level l)
@@ -2182,8 +2207,25 @@ void KGB_size_wrapper(expression_base::level l)
     push_value(new int_value(rf->val.KGB_size()));
 }
 
+@ Here is a somewhat technical function that will facilitate working ``in
+coordinates'' with KGB elements for this real form. It returns a rational
+vector that determines the base grading for the real form, which is an offset
+that should be added to |torus_bits| values. It is defined so as to be zero
+for quasisplit real forms, so in order to compute gradings, the
+imaginary-$\rho$ value (dependent on the involution) should be added to it.
+
+@< Local function def...@>=
+void base_grading_vector_wrapper(expression_base::level l)
+{ shared_real_form rf(get<real_form_value>());
+  if (l!=expression_base::no_value)
+  { const KGB& kgb=rf->kgb();
+    RatCoweight t = kgb.base_grading_vector();
+    push_value(new rational_vector_value(t));
+  }
+}
+
 @ There is a partial ordering on the Cartan classes defined for a real form. A
-matrix for this partial ordering is displayed by the function
+matrix for this partial ordering is computed by the function
 |Cartan_order_matrix|, which more or less replaces the \.{corder} command in
 \.{atlas}.
 
@@ -2276,8 +2318,8 @@ void dual_quasisplit_form_wrapper(expression_base::level l)
 }
 
 @ Rather than provide all functions for real forms for dual real forms, we
-provide a function that converts it to a real form, which of course will be
-associated to the dual inner class.
+provide functions that convert a dual real form to a real form, which of
+course will be associated to the dual inner class, and back.
 
 @< Local function def...@>=
 void real_form_from_dual_wrapper(expression_base::level l)
@@ -2286,6 +2328,14 @@ void real_form_from_dual_wrapper(expression_base::level l)
     push_value(new real_form_value
                  (inner_class_value(d->parent,tags::DualTag())
                  ,d->val.realForm()));
+}
+
+void dual_real_form_from_wrapper(expression_base::level l)
+{ shared_real_form rf = get<real_form_value>();
+  if (l!=expression_base::no_value)
+    push_value(new dual_real_form_value
+                 (inner_class_value(rf->parent,tags::DualTag())
+                 ,rf->val.realForm()));
 }
 
 @ Finally we install everything related to real forms.
@@ -2299,6 +2349,8 @@ install_function(inner_class_of_real_form_wrapper
 install_function(components_rank_wrapper,@|"components_rank","(RealForm->int)");
 install_function(count_Cartans_wrapper,@|"count_Cartans","(RealForm->int)");
 install_function(KGB_size_wrapper,@|"KGB_size","(RealForm->int)");
+install_function(base_grading_vector_wrapper
+                ,@|"base_grading_vector","(RealForm->ratvec)");
 install_function(Cartan_order_matrix_wrapper,@|"Cartan_order"
 					    ,"(RealForm->mat)");
 install_function(dual_real_form_wrapper,@|"dual_real_form"
@@ -2307,6 +2359,8 @@ install_function(dual_quasisplit_form_wrapper,@|"dual_quasisplit_form"
 		,"(InnerClass->DualRealForm)");
 install_function(real_form_from_dual_wrapper,@|"real_form"
 				  ,"(DualRealForm->RealForm)");
+install_function(dual_real_form_from_wrapper,@|"dual_real_form"
+				  ,"(RealForm->DualRealForm)");
 
 @*1 A type for Cartan classes.
 %
@@ -2380,8 +2434,7 @@ void ic_Cartan_class_wrapper(expression_base::level l)
 { shared_int i(get<int_value>());
   shared_inner_class ic(get<inner_class_value>());
   if (size_t(i->val)>=ic->val.numCartanClasses())
-    throw std::runtime_error
-    ("Illegal Cartan class number: "+str(i->val)
+    throw std::runtime_error ("Illegal Cartan class number: "+str(i->val)
 @.Illegal Cartan class number@>
     +", this inner class only has "+str(ic->val.numCartanClasses())
     +" of them");
@@ -2399,8 +2452,7 @@ void rf_Cartan_class_wrapper(expression_base::level l)
 { shared_int i(get<int_value>());
   shared_real_form rf(get<real_form_value>());
   if (size_t(i->val)>=rf->val.numCartan())
-    throw std::runtime_error
-    ("Illegal Cartan class number: "+str(i->val)
+    throw std::runtime_error ("Illegal Cartan class number: "+str(i->val)
 @.Illegal Cartan class number@>
     +", this real form only has "+str(rf->val.numCartan())+" of them");
   BitMap cs=rf->val.Cartan_set();
@@ -2421,6 +2473,61 @@ void most_split_Cartan_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new Cartan_class_value(rf->parent,rf->val.mostSplit()));
 }
+
+@ It is useful to be able to compute a real form or Cartan class based on
+other information than their enumeration within an inner class. The \.{realex}
+function |Cartan_class_real_form| takes an inner class, a matrix giving an
+involution, and a rational co-weight describing the grading of the imaginary
+roots, or more precisely the offset with respect to the grading that makes all
+simple-imaginary roots non-compact; it returns a pair consisting of the Cartan
+class for the involution and the real form associated there to the grading.
+
+@:Cartan_class_real_form@>
+
+@< Local function def...@>=
+TwistedInvolution twisted_from_involution
+  (const ComplexReductiveGroup& G, const WeightInvolution theta)
+{ const RootDatum& rd = G.rootDatum();
+  unsigned int ssr =  rd.semisimpleRank();
+  RootNbrList Delta(ssr);
+  for (weyl::Generator i=0; i<ssr; ++i)
+  { Delta[i]=rd.rootNbr(theta*rd.simpleRoot(i));
+    if (Delta[i]==rd.numRoots()) // then image not found
+      throw std::runtime_error@|
+        ("Matrix maps simple root "+str(i)+" to non-root");
+  }
+  WeylWord ww = wrt_distinguished(rd,Delta);
+  for (weyl::Generator i=0; i<ssr; ++i)
+    if (Delta[i]!=G.twisted_root(rd.simpleRootNbr(i)))
+        // |Delta| should now match distinguished involution
+      throw std::runtime_error@|
+        ("Matrix does not define a root datum automorphism");
+  return G.weylGroup().element(ww);
+}
+
+void Cartan_class_real_form_wrapper(expression_base::level l)
+{ shared_rational_vector grading_shift = get<rational_vector_value>();
+  shared_matrix theta = get<matrix_value>();
+  shared_inner_class G(get<inner_class_value>());
+  { Coweight num(grading_shift->val.numerator().begin(),
+                 grading_shift->val.numerator().end());
+    if (theta->val.right_mult(num)!=num)
+      throw std::runtime_error ("Grading coweight not fixed by involution");
+@.Grading coweight not fixed@>
+  }
+
+  TwistedInvolution tw = twisted_from_involution(G->val,theta->val);
+
+  CartanNbr cn; WeylWord ww; cartanclass::AdjointFiberElt rep;
+  RealFormNbr rf = real_form_of(G->val,tw,grading_shift->val,cn,ww,rep);
+  if (l==expression_base::no_value)
+     return;
+  push_value(new Cartan_class_value(*G,cn));
+  push_value(new real_form_value(*G,rf));
+  if (l==expression_base::single_value)
+    wrap_tuple(2);
+}
+
 
 
 @*2 Functions operating on Cartan classes.
@@ -2463,7 +2570,7 @@ void Cartan_info_wrapper(expression_base::level l)
   wrap_tuple(3);
 
   const weyl::TwistedInvolution& tw =
-    cc->parent.val.twistedInvolution(cc->number);
+    cc->parent.val.involution_of_Cartan(cc->number);
   WeylWord ww = cc->parent.val.weylGroup().word(tw);
 
   std::vector<int> v(ww.begin(),ww.end());
@@ -2538,7 +2645,7 @@ that |realFormLabels| list, and the part returned here will be empty. The part
 of the partition is returned as a list of integral values.
 
 @< Local function def...@>=
-void fiber_part_wrapper(expression_base::level l)
+void fiber_partition_wrapper(expression_base::level l)
 { shared_real_form rf(get<real_form_value>());
   shared_Cartan_class cc(get<Cartan_class_value>());
   if (&rf->parent.val!=&cc->parent.val)
@@ -2590,7 +2697,7 @@ void square_classes_wrapper(expression_base::level l)
 @ The function |print_gradings| gives on a per-real-form basis the
 functionality of the Atlas command \.{gradings} that is implemented by
 |complexredgp_io::printGradings| and |cartan_io::printGradings|. It therefore
-takes, like |fiber_part|, a Cartan class and a real form as parameter. Its
+takes, like |fiber_partition|, a Cartan class and a real form as parameter. Its
 output consist of a list of $\Z/2\Z$-gradings of each of the fiber group
 elements in the part corresponding to the real form, where each grading is a
 sequence of bits corresponding to the simple imaginary roots.
@@ -2607,8 +2714,7 @@ void print_gradings_wrapper(expression_base::level l)
 @.Inner class mismatch...@>
   BitMap b(cc->parent.val.Cartan_set(rf->val.realForm()));
   if (!b.isMember(cc->number))
-    throw std::runtime_error
-    ("Cartan class not defined for this real form");
+    throw std::runtime_error ("Cartan class not defined for this real form");
 @.Cartan class not defined...@>
 @)
   const Partition& pi = cc->val.fiber().weakReal();
@@ -2690,6 +2796,8 @@ install_function(rf_Cartan_class_wrapper,@|"Cartan_class"
 		,"(RealForm,int->CartanClass)");
 install_function(most_split_Cartan_wrapper,@|"most_split_Cartan"
 		,"(RealForm->CartanClass)");
+install_function(Cartan_class_real_form_wrapper,@|"Cartan_class_real_form"
+		,"(InnerClass,mat,ratvec->CartanClass,RealForm)");
 install_function(Cartan_involution_wrapper,@|"involution","(CartanClass->mat)");
 install_function(Cartan_info_wrapper,@|"Cartan_info"
 		,"(CartanClass->(int,int,int),"
@@ -2698,7 +2806,7 @@ install_function(real_forms_of_Cartan_wrapper,@|"real_forms"
 		,"(CartanClass->[RealForm])");
 install_function(dual_real_forms_of_Cartan_wrapper,@|"dual_real_forms"
 		,"(CartanClass->[DualRealForm])");
-install_function(fiber_part_wrapper,@|"fiber_part"
+install_function(fiber_partition_wrapper,@|"fiber_partition"
 		,"(CartanClass,RealForm->[int])");
 install_function(square_classes_wrapper,@|"square_classes"
                 ,"(CartanClass->[[int]])");
@@ -2761,12 +2869,32 @@ void KGB_elt_wrapper(expression_base::level l)
     push_value(new KGB_elt_value(rf,i));
 }
 
-@ Working with KGB elements it may be necessary to access its real form.
+@ Working with KGB elements often requires having access to its real form.
+
 @< Local function def...@>=
 void real_form_of_KGB_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   if (l!=expression_base::no_value)
     push_value(x->rf);
+}
+
+@ Two important attributes of KGB elements are the associated Cartan class and
+root datum involution.
+
+@< Local function def...@>=
+void KGB_Cartan_wrapper(expression_base::level l)
+{ shared_KGB_elt x = get<KGB_elt_value>();
+  const KGB& kgb=x->rf->kgb();
+  if (l!=expression_base::no_value)
+    push_value(new Cartan_class_value(x->rf->parent,kgb.Cartan_class(x->val)));
+}
+
+void KGB_involution_wrapper(expression_base::level l)
+{ shared_KGB_elt x = get<KGB_elt_value>();
+  const KGB& kgb=x->rf->kgb();
+  const ComplexReductiveGroup& G=x->rf->val.complexGroup();
+  if (l!=expression_base::no_value)
+    push_value(new matrix_value(G.involutionMatrix(kgb.involution(x->val))));
 }
 
 @ Cross actions and (inverse) Cayley transforms define the structure of a KGB
@@ -2837,6 +2965,76 @@ void KGB_status_wrapper(expression_base::level l)
     (stat==0 and not kgb.isDescent(s,x->val) ? 4 : stat));
 }
 
+@ For a given KGB element, all imaginary roots are classified into compact and
+non-compact roots. While this could be deduced from other attributes of the
+element, this would be laborious and error-prone, so we supply this
+information as built-in function. The root is transmitted in coordinates
+rather than as index into the list of positive roots, as this avoids possible
+confusion about the interpretation of the index, and ambiguity with the
+previous instance of |status|; it is also more convenient in those cases where
+the root results from a computation (as opposed to selection from the list of
+roots).
+
+@< Local function def...@>=
+void root_status_wrapper(expression_base::level l)
+{ shared_KGB_elt x = get<KGB_elt_value>();
+  const KGB& kgb=x->rf->kgb();
+  const ComplexReductiveGroup& G=x->rf->parent.val;
+  const RootDatum& rd = G.rootDatum();
+  shared_vector alpha_vec = get<vector_value>();
+  RootNbr alpha = rd.rootNbr(alpha_vec->val);
+  if (alpha>=rd.numRoots())
+    throw std::runtime_error ("Vector is not a root");
+@.Vector is not a root@>
+  if (l==expression_base::no_value)
+    return;
+  unsigned stat=kgb::status(kgb,x->val, rd,alpha);
+  if (stat==0) // $\alpha$ is a complex root, check if it is an ascent
+  {
+    RootNbr theta_alpha =
+      G.involution_table().root_involution(kgb.inv_nr(x->val),alpha);
+    if (rd.isPosRoot(alpha)==rd.isPosRoot(theta_alpha))
+      stat = 4; // set status to complex ascent
+  }
+  push_value(new int_value (stat));
+}
+
+@ In order to ``synthesise'' a KGB element, one may specify a real form and a
+rational vector that defines a grading of the corresponding imaginary roots,
+in the same manner as for |Cartan_class_real_form| in section
+@#Cartan_class_real_form@> above.
+
+@< Local function def...@>=
+void build_KGB_element_wrapper(expression_base::level l)
+{ shared_rational_vector grading_shift = get<rational_vector_value>();
+  shared_matrix theta = get<matrix_value>();
+  shared_real_form rf = get<real_form_value>();
+
+  { Coweight num(grading_shift->val.numerator().begin(),
+                 grading_shift->val.numerator().end());
+    if (theta->val.right_mult(num)!=num)
+      throw std::runtime_error ("Grading coweight not fixed by involution");
+@.Grading coweight not fixed@>
+  }
+  RatCoweight tv = grading_shift->val - rf->kgb().base_grading_vector();
+  if (tv.normalize().denominator()!=1)
+    throw std::runtime_error("Grading coweight not appropriate for real form");
+
+  const ComplexReductiveGroup& G = rf->parent.val;
+  TorusPart t(tv.numerator());
+  TwistedInvolution tw = twisted_from_involution(G,theta->val);
+  TitsElt a (G.titsGroup(),t,tw);
+
+  KGBElt x = rf->kgb().lookup(a);
+  if (x== rf->kgb().size())
+    throw std::runtime_error("KGB element not present");
+
+  if (l==expression_base::no_value)
+    return;
+  push_value(new KGB_elt_value (rf,x));
+}
+
+
 
 @ One can conjugate a KGB element by the distinguished involution of the inner
 class.
@@ -2849,25 +3047,6 @@ void KGB_twist_wrapper(expression_base::level l)
     return;
   x->val= kgb.Hermitian_dual(x->val); // do twist
   push_value(x);
-}
-
-@ Two important attributes of KGB elements are the associated Cartan class and
-root datum involution.
-
-@< Local function def...@>=
-void KGB_Cartan_wrapper(expression_base::level l)
-{ shared_KGB_elt x = get<KGB_elt_value>();
-  const KGB& kgb=x->rf->kgb();
-  if (l!=expression_base::no_value)
-    push_value(new Cartan_class_value(x->rf->parent,kgb.Cartan_class(x->val)));
-}
-
-void KGB_involution_wrapper(expression_base::level l)
-{ shared_KGB_elt x = get<KGB_elt_value>();
-  const KGB& kgb=x->rf->kgb();
-  const ComplexReductiveGroup& G=x->rf->val.complexGroup();
-  if (l!=expression_base::no_value)
-    push_value(new matrix_value(G.involutionMatrix(kgb.involution(x->val))));
 }
 
 @ Here is a function that returns the vector of bits that distinguish KGB
@@ -2896,11 +3075,9 @@ interpreted in $({\bf Q}/2{\bf Z})^n$.
 void torus_factor_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   if (l!=expression_base::no_value)
-  { const RealReductiveGroup& rf = x->rf->val;
-    const KGB& kgb=x->rf->kgb();
-    TorusElement t = kgb.torus_part_global(rf.rootDatum(),x->val);
-    rational_vector_ptr result(new rational_vector_value(t.log_pi(true)));
-    push_value(result);
+  { const KGB& kgb=x->rf->kgb();
+    RatCoweight t = kgb.torus_part_global(x->val);
+    push_value(new rational_vector_value(t));
   }
 }
 
@@ -2923,6 +3100,9 @@ install_function(KGB_cross_wrapper,@|"cross","(int,KGBElt->KGBElt)");
 install_function(KGB_Cayley_wrapper,@|"Cayley","(int,KGBElt->KGBElt)");
 install_function(KGB_inv_Cayley_wrapper,@|"inv_Cayley","(int,KGBElt->KGBElt)");
 install_function(KGB_status_wrapper,@|"status","(int,KGBElt->int)");
+install_function(root_status_wrapper,@|"status","(vec,KGBElt->int)");
+install_function(build_KGB_element_wrapper,@|"KGB_elt"
+		,"(RealForm,mat,ratvec->KGBElt)");
 install_function(KGB_twist_wrapper,@|"twist","(KGBElt->KGBElt)");
 install_function(KGB_Cartan_wrapper,@|"Cartan_class","(KGBElt->CartanClass)");
 install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");
@@ -3047,7 +3227,6 @@ void unwrap_parameter_wrapper(expression_base::level l)
   { push_value(new KGB_elt_value(p->rf,p->val.x()));
     push_value(new vector_value(p->rc().lambda_rho(p->val)));
     push_value(new rational_vector_value(p->rc().nu(p->val)));
-      // method |nu| normalises
     if (l==expression_base::single_value)
       wrap_tuple(3);
   }
@@ -3203,6 +3382,7 @@ void reducibility_points_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {
     RationalList rp = p->rc().reducibility_points(p->val);
+      // method normalises rationals
     row_ptr result(new row_value(rp.size()));
     for (size_t i=0; i<rp.size(); ++i)
       result->val[i]=shared_value(new rat_value(rp[i]));

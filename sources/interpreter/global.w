@@ -378,6 +378,7 @@ void global_declare_identifier(Hash_table::id_type id, type_p t)
 { value undef=NULL;
   const type_expr& type=*t;
   global_id_table->add(id,shared_value(undef),copy(type));
+  @< Emit indentation corresponding to the input level to |std::cout| @>
   std::cout << "Identifier " << main_hash_table->name_of(id)
             << " : " << type << std::endl;
 }
@@ -488,11 +489,18 @@ hard to do a decent job for both signed and unsigned types.
 @~Using string streams, the definition of~|str| is trivial; in fact the
 overloads of the output operator ``|<<|'' determine the exact conversion. As a
 consequence of this implementation, the template function will in fact turn
-anything printable into a string.
+anything printable into a string. We do however provide an inline overload
+(which in general is better then a template specialisation) for the case of
+unsigned characters, since these need to be interpreted as (small) unsigned
+integers when |str| is called for them, rather than as themselves (the latter
+is never intended as it would be a silly use, which in addition would for
+instance interpret the value $0$ as a string-terminating null character).
 
 @< Template and inline function definitions @>=
 template <typename T>
   std::string str(T n) @+{@; std::ostringstream s; s<<n; return s.str(); }
+inline std::string str(unsigned char c)
+  @+{@; return str(static_cast<unsigned int>(c)); }
 
 @* Basic types.
 %
@@ -659,7 +667,8 @@ typedef std::tr1::shared_ptr<matrix_value> shared_matrix;
 struct rational_vector_value : public value_base
 { RatWeight val;
 @)
-  explicit rational_vector_value(const RatWeight& v):val(v)@+{}
+  explicit rational_vector_value(const RatWeight& v)
+   : val(v)@+{ val.normalize();}
   rational_vector_value(const int_Vector& v,int d)
    : val(v,d) @+ {@; val.normalize(); }
   ~rational_vector_value()@+ {}
@@ -820,61 +829,60 @@ void intlist_ratvec_convert()
   push_value(new rational_vector_value(RatWeight(row_to_weight(*r),1)));
 }
 
-@ The conversion |veclist_matrix_convert| is longer, but still
-straightforward. Any ragged columns are silently extended with null entries to
-make a rectangular shape for the matrix. This has as inevitable consequence
-that for an empty list of vectors the number of rows of the resulting empty
-matrix is based on an uninformed and usually wrong guess (namely that it is
-$0$, like the number of columns. Functions that need a set of vectors as
-argument can better take matrix as argument, so that the size of a vector can
-be deduced even if there aren't any, but if the user nevertheless supplies a
-list of vectors using this coercion, then the vector size will be wrongly
-deduced for an empty list. For this reason functions that really need the
-vector size do better to include it as a separate, though often redundant,
-argument.
+@ The conversion |veclist_matrix_convert| interprets a list of vectors as the
+columns of a matrix which it returns. While initially this function was
+written in a tolerant style that would accept varying column lengths,
+zero-filling the shorter ones to the maximal column size present, this
+attitude proved to induce subtle programming errors. This happens notably by
+letting pass the case of no vectors at all, for which the implied column
+length of~$0$ is almost certainly wrong in the context: there usually is a
+obvious size~$n$ that the vectors in the list would have had it there had been
+any, but which can of course not be deduced from the empty list itself; then
+by returning a $0\times0$ matrix rather than an $n\times0$ matrix subsequent
+matrix operations are likely to fail. The proper attitude is instead that
+implicitly called functions should prefer prudence, so the function below will
+insist on vectors of equal lengths, and at least one of them; otherwise an
+error is signalled. The old functionality is more or less retained in the
+explicit function |stack_rows| that will be defined later (but which works by
+rows rather than by columns).
 
 @< Local function def... @>=
 void veclist_matrix_convert()
 { shared_row r(get<row_value>());
-@/std::vector<int_Vector > column_list;
-  column_list.reserve(r->val.size());
-  size_t depth=0; // maximal length of vectors
-  for(size_t i=0; i<r->val.size(); ++i)
-  { column_list.push_back(force<vector_value>(r->val[i].get())->val);
-    if (column_list[i].size()>depth) depth=column_list[i].size();
+  if (r->val.size()==0)
+    throw std::runtime_error("Cannot convert empty list of vectors to matrix");
+@.Cannot convert empty list of vectors@>
+  size_t n = force<vector_value>(r->val[0].get())->val.size();
+  matrix_ptr m (new matrix_value(int_Matrix(n,r->val.size())));
+  for(size_t j=0; j<r->val.size(); ++j)
+  { int_Vector& col = force<vector_value>(r->val[j].get())->val;
+    if (col.size()!=n)
+      throw std::runtime_error("Vector sizes differ in conversion to matrix");
+@.Vector sizes differ in conversion@>
+    m->val.set_column(j,col);
   }
-  for(size_t i=0; i<column_list.size(); ++i)
-    // extend weights with 0's if necessary
-    if (column_list[i].size()<depth)
-    { size_t j=column_list[i].size();
-      column_list[i].resize(depth);
-      for (;j<depth; ++j) column_list[i][j]=0;
-    }
-  push_value(new matrix_value(int_Matrix(column_list,depth)));
+  push_value(m);
 }
 
 @ There remains one ``internalising'' conversion function, from row of row of
-integer to matrix.
+integer to matrix. We also give it prudent characteristics.
 
 @< Local function def... @>=
 void intlistlist_matrix_convert()
 { shared_row r(get<row_value>());
-@/std::vector<int_Vector > column_list;
-  column_list.reserve(r->val.size());
-  size_t depth=0; // maximal length of vectors
-  for(size_t i=0; i<r->val.size(); ++i)
-  { column_list.push_back(row_to_weight(*force<row_value>(r->val[i].get())));
-    if (column_list[i].size()>depth) depth=column_list[i].size();
+  if (r->val.size()==0)
+    throw std::runtime_error("Cannot convert empty list of lists to matrix");
+@.Cannot convert empty list of lists@>
+  size_t n = force<vector_value>(r->val[0].get())->val.size();
+  matrix_ptr m (new matrix_value(int_Matrix(n,r->val.size())));
+  for(size_t j=0; j<r->val.size(); ++j)
+  { int_Vector col = row_to_weight(*force<row_value>(r->val[j].get()));
+    if (col.size()!=n)
+      throw std::runtime_error("List sizes differ in conversion to matrix");
+@.List differ in conversion@>
+    m->val.set_column(j,col);
   }
-  for(size_t i=0; i<column_list.size(); ++i)
-    // extend weights with 0's if necessary
-    if (column_list[i].size()<depth)
-    { size_t j=column_list[i].size();
-      column_list[i].resize(depth);
-      for (;j<depth; ++j) column_list[i][j]=0;
-    }
-  push_value(new matrix_value(int_Matrix(column_list,depth)));
-
+  push_value(m);
 }
 
 @ There remain the ``externalising'' conversions (towards lists of values) of
@@ -922,7 +930,7 @@ coercion(vec_type,ratvec_type,"QvV", vec_ratvec_convert); @/
 coercion(row_of_int_type,ratvec_type,"Rv[I]", intlist_ratvec_convert);
 @)
 coercion(row_of_int_type, vec_type, "V[I]", intlist_vector_convert); @/
-coercion(row_of_vec_type,mat_type, "M[V]", veclist_matrix_convert);
+coercion(row_of_vec_type,mat_type, "M[V]", veclist_matrix_convert); @/
 coercion(row_row_of_int_type,mat_type, "M[[I]]", intlistlist_matrix_convert); @/
 coercion(vec_type,row_of_int_type, "[I]V", vector_intlist_convert); @/
 coercion(mat_type,row_of_vec_type, "[V]M", matrix_veclist_convert); @/
@@ -1448,14 +1456,14 @@ void ratvec_plus_wrapper(expression_base::level l)
 { shared_rational_vector v1= get<rational_vector_value>();
   shared_rational_vector v0= get<rational_vector_value>();
   if (l!=expression_base::no_value)
-    push_value(new rational_vector_value((v0->val+v1->val).normalize()));
+    push_value(new rational_vector_value(v0->val+v1->val));
 }
 @)
 void ratvec_minus_wrapper(expression_base::level l)
 { shared_rational_vector v1= get<rational_vector_value>();
   shared_rational_vector v0= get<rational_vector_value>();
   if (l!=expression_base::no_value)
-    push_value(new rational_vector_value((v0->val-v1->val).normalize()));
+    push_value(new rational_vector_value(v0->val-v1->val));
 }
 
 
@@ -1530,6 +1538,79 @@ void vm_prod_wrapper(expression_base::level l)
     push_value(new vector_value(m->val.right_mult(v->val)));
 }
 
+@ The function |stack_rows_wrapper| interprets a row of vectors as a ragged
+tableau, and returns the result as a matrix. It inherits functionality that
+used to be (in a transposed form) applied when implicitly converting lists of
+vectors into matrices, namely to compute the maximum of the lengths of the
+vectors and zero-extending the other rows to that length. As a consequence
+an empty list of vectors gives a $0\times0$ matrix, something that turned out
+to be usually undesirable for an implicit conversion; however here is seems
+not very problematic.
+
+@< Local function def... @>=
+void stack_rows_wrapper(expression_base::level l)
+{ shared_row r(get<row_value>());
+  size_t n = r->val.size();
+  std::vector<int_Vector*> row(n);
+  size_t width=0; // maximal length of vectors
+  for(size_t i=0; i<n; ++i)
+  { row[i] = & force<vector_value>(r->val[i].get())->val;
+    if (row[i]->size()>width)
+      width=row[i]->size();
+  }
+
+  if (l==expression_base::no_value)
+    return;
+
+  matrix_ptr m (new matrix_value(int_Matrix(n,width,0)));
+  for(size_t i=0; i<n; ++i)
+    for (size_t j=0; j<row[i]->size(); ++j)
+      m->val(i,j)=(*row[i])[j];
+  push_value(m);
+}
+
+@ Here is the preferred way to combine columns to a matrix, explicitly
+providing a desired number of rows.
+
+@< Local function def... @>=
+void combine_columns_wrapper(expression_base::level l)
+{ shared_row r(get<row_value>());
+  int n = get<int_value>()->val;
+  if (n<0)
+    throw std::runtime_error("Negative number "+str(n)+" of rows requested");
+@.Negative number of rows@>
+  matrix_ptr m (new matrix_value(int_Matrix(n,r->val.size())));
+  for(size_t j=0; j<r->val.size(); ++j)
+  { int_Vector& col = force<vector_value>(r->val[j].get())->val;
+    if (col.size()!=size_t(n))
+      throw std::runtime_error("Column "+str(j)+" size "+str(col.size())@|
+          +" does not match specified size "+str(n));
+@.Column size does not match@>
+    m->val.set_column(j,col);
+  }
+  if (l!=expression_base::no_value)
+    push_value(m);
+}
+@)
+void combine_rows_wrapper(expression_base::level l)
+{ shared_row r(get<row_value>());
+  int n = get<int_value>()->val;
+  if (n<0)
+    throw std::runtime_error("Negative number "+str(n)+" of columns requested");
+@.Negative number of columns@>
+  matrix_ptr m (new matrix_value(int_Matrix(r->val.size(),n)));
+  for(size_t i=0; i<r->val.size(); ++i)
+  { int_Vector& row = force<vector_value>(r->val[i].get())->val;
+    if (row.size()!=size_t(n))
+      throw std::runtime_error("Row "+str(i)+" size "+str(row.size())@|
+          +" does not match specified size "+str(n));
+@.Row size does not match@>
+    m->val.set_row(i,row);
+  }
+  if (l!=expression_base::no_value)
+    push_value(m);
+}
+
 @ We must not forget to install what we have defined. The names of the
 arithmetic operators correspond to the ones used in the parser definition
 file \.{parser.y}.
@@ -1593,6 +1674,9 @@ install_function(mrv_prod_wrapper,"*","(mat,ratvec->ratvec)");
 install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
 install_function(mm_prod_wrapper,"*","(mat,mat->mat)");
 install_function(vm_prod_wrapper,"*","(vec,mat->vec)");
+install_function(stack_rows_wrapper,"stack_rows","([vec]->mat)");
+install_function(combine_columns_wrapper,"#","(int,[vec]->mat)");
+install_function(combine_rows_wrapper,"^","(int,[vec]->mat)");
 
 @* Miscellaneous functions. This section defines functions of general nature
 that did not fit in comfortably elsewhere.
