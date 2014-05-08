@@ -47,8 +47,8 @@ Rep_context::Rep_context(RealReductiveGroup &G_R)
 
 size_t Rep_context::rank() const { return rootDatum().rank(); }
 
-const TwistedInvolution Rep_context::twistedInvolution(size_t cn) const
-{ return complexGroup().twistedInvolution(cn); }
+const TwistedInvolution Rep_context::involution_of_Cartan(size_t cn) const
+{ return complexGroup().involution_of_Cartan(cn); }
 
 StandardRepr
   Rep_context::sr
@@ -56,8 +56,7 @@ StandardRepr
      const standardrepk::KhatContext& khc,
      const RatWeight& nu) const
 {
-  const TitsElt a = khc.titsElt(srk); // was reduced during construction |srk|
-  const KGBElt x= khc.kgb().lookup(a);
+  const KGBElt x= khc.kgb().lookup(khc.titsElt(srk));
   const InvolutionNbr i_x = kgb().inv_nr(x);
   const InvolutionTable& i_tab = complexGroup().involution_table();
   const WeightInvolution& theta = i_tab.matrix(i_x);

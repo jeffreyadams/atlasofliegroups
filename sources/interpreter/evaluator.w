@@ -311,12 +311,16 @@ inside the class definition, because that definition precedes the one of the
 |inline| function |push_value| in the header file. The method is not even made
 |inline|, since there is little point in doing so for virtual methods (calls
 via the vtable cannot be inlined). For the first time we see the |level|
-argument in action; whenever |l==no_value| we should avoid producing a result
-value.
+argument in action, but it is actually handled inside the call to
+|push_expanded|. It may be surprising that denotations may need to be expanded
+as a tuple (as long as there are no such things as denotations for complex
+numbers), and indeed this was not done until the possibility to refer to the
+last value computed was added to the language (see just below); that value is
+wrapped into a denotation, and it could well be a tuple.
 
 @< Function def... @>=
 void denotation::evaluate(level l) const
-@+{@; if (l!=no_value) push_value(denoted_value); }
+@+{@; push_expanded(l,denoted_value); }
 
 @ Here are the first examples of the conversions done in |convert_expr|. Each
 time we extract a \Cpp\ value from the |expr e@;| returned by the parser,
@@ -362,14 +366,14 @@ more appropriate starting values.
 type_ptr last_type;
 shared_value last_value;
 
-@ Upon parsing `\.\$', and |expr| value with |kind==last_value_computed| is
+@ Upon parsing `\.\$', an |expr| value with |kind==last_value_computed| is
 transmitted. Upon type-checking we capture the value in a |denotation|
 structure, which may or may not be evaluated soon after; even if the value
 gets captured in a function value, it will remain immutable.
 
 @< Cases for type-checking and converting... @>=
 case last_value_computed:
-  { expression_ptr d@|(new denotation(last_value));
+@/{@; expression_ptr d@|(new denotation(last_value));
     return conform_types(*last_type,type,d,e);
   }
 
@@ -892,9 +896,9 @@ identifiers, which are treated in fairly different way, and during type
 analysis the two are converted into different kinds of |expression|. The most
 fundamental difference is that for global identifiers a value is already known
 at the time the identifier expression is type-checked, and the type of this
-value can be used; for local identifiers only a type is associated to the
-identifier at that time, and indeed during different evaluations the same
-local identifier may find itself bound to different values.
+value can be used; for local identifiers just a type is associated to the
+identifier during type analysis, and indeed during different evaluations the
+same local identifier may find itself bound to different values.
 
 Global identifiers values will be stored in a global identifier table holding
 values and their types. The values of local identifiers will be stored at

@@ -1,0 +1,43 @@
+<misc.rx { for is_dominant }
+<Weyl.rx
+
+{ move_towards_dominant(rd,v)=(s_i.v,i)
+  where i is the first simple root negative on v }
+
+set non_dominant_index (RootDatum rd, vec v) = int:
+  let coords = v*simple_coroots(rd), i=semisimple_rank(rd)-1 in
+  while i>=0 and coords[i]>=0 do i-:=1 od; i
+
+set move_towards_dominant (RootDatum rd, vec v)=(vec,int):
+  let i = non_dominant_index(rd,v) in
+  (if i<0 then v else simple_reflection(rd,i)*v fi, i)
+
+
+{ make_dominant(rd,v) returns (v_dom,w) where v_dom is dominant, v=w*v_dom
+  w=[a1,a2,...,ak] acts by w*v_dom = s_{a1}s_{a2}...s_{ak} v_dom
+}
+
+set make_dominant (RootDatum rd, vec v) = (vec,[int]):
+  let i=0 then w =
+    while let (new_v,k)=move_towards_dominant(rd,v) in v:=new_v; (i:=k)>=0
+    do i od
+  in (v,w)
+
+set make_dominant(RootDatum rd,ratvec v)=(ratvec,[int]):
+  let (v,denom)=%v then (v_dom,w)=make_dominant(rd,v) in (v_dom/denom,w)
+
+
+set inverse([int] w)=[int]: for i:#w downto 0 do w[i] od
+
+set w_long(RootDatum rd) = [int]: let (,w) = make_dominant(rd,-rho(rd)) in w
+
+set w_matrix(RootDatum rd, [int] w) = mat:
+  let M=id_mat(rank(rd)) in for j in w do M*:=simple_reflection(rd,j) od; M
+
+{ action of Weyl word }
+set action(RootDatum rd,[int] w,ratvec rv) = ratvec:
+  let (v,den)=%rv in
+  for i:#w downto 0 do v:=simple_reflection(rd,w[i])*v od; v/den
+
+set cross([int] w,KGBElt x) = KGBElt:
+  for i:#w downto 0 do x:=cross(w[i],x) od; x

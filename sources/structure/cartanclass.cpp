@@ -1,15 +1,13 @@
-/*!
-\file
-  \brief Implementation for the CartanClass and Fiber classes.
-*/
 /*
   This is cartanclass.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006-2014 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
+// Implementation for the CartanClass and Fiber classes.
 
 #include "cartanclass.h"
 
@@ -226,9 +224,10 @@ Fiber& Fiber::operator= (const Fiber& other)
   The group that acts 1-transitively on each central square class in the fiber.
 
   This is the subquotient $V_+ + V_-/V_+$ as constructed by |tori::dualPi0|,
-  but for |-^theta|. So the group is isomorphic to the +1 eigenspace of the
-  transpose involution |^theta|, modulo the image of |1+^theta|, and also to
-  the component group of the set of |-theta| fixed points of the Cartan $H$.
+  but for $-\theta^t$. So the group is isomorphic to the +1 eigenspace of the
+  transpose involution $\theta^t$|, modulo the image of $\theta^t+1|, in other
+  words it is $\Ker(\theta^t-1)/\Im(\theta^t+1)$, and it also isomorphic to
+  the component group of the set of $-\theta$ fixed points of the Cartan $H$.
 
   Note that only the involution |theta| is used, not the root datum.
 */
@@ -326,8 +325,8 @@ Fiber::gradingGroup (const RootSystem& rs) const
   \brief Returns the base grading (all ones) on simple-imaginary roots, while
   flagging all noncompact imaginary roots in |flagged_roots|
 
-  Algorithm: for the noncompact roots, express imaginary roots in terms of
-  the simple-imaginary ones, and see if the sum of coordinates is even.
+  Algorithm: for the noncompact roots, express each imaginary root in terms
+  of the simple-imaginary ones, and flag it if the sum of coordinates is odd.
 */
 Grading Fiber::makeBaseGrading
   (RootNbrSet& flagged_roots,const RootSystem& rs) const
@@ -440,7 +439,9 @@ RankFlagsList Fiber::mAlphas (const RootDatum& rd) const
   RankFlagsList result(imaginaryRank());
 
   for (size_t i = 0; i<result.size(); ++i)
-    result[i]= d_fiberGroup.toBasis(rd.coroot(simpleImaginary(i))).data();
+    result[i]=
+      d_fiberGroup.toBasis(SmallBitVector(rd.coroot(simpleImaginary(i))))
+      .data();
 
   return result;
 }
@@ -489,19 +490,19 @@ Fiber::adjointMAlphas (const RootSystem& rs) const
   Explanation: this is the matrix of the natural map from the fiber group to
   the adjoint fiber group. Such a map exists because (1) the root lattice is a
   sublattice of the weight lattice, so there is a restriction map from the
-  coweight lattice $X^*$ (dual to the weight lattice) to the lattice $Y^*$
-  spanned by the fundamental coweights (dual to the root lattice), and (2)
-  this map sends $X^*_+$ to $Y^*_+$ and $X^*_-$ to $Y^*_-$ and of course
-  $2X^*$ to $2Y^*$, so it induces a map on the respective subquotients of the
-  form $(V_+ + V_-)/V_-$, where $V_+$ is the modulo $2X^*$ image of $X^*_+$
-  (or similarly for $Y^*_-$). While the map $X^* \to Y^*$ is injective (only)
-  in the semisimple case, little can be said about the induced map.
+  cocharacter lattice $X_*$ (dual to the character lattice $X^*$) to the
+  lattice $Y_*$ spanned by the fundamental coweights (dual to the root
+  lattice), and (2) this map induces a map on the respective subquotients of
+  the form $(V_+ + V_-)/V_-$, where $V_+$ is the modulo $2X_*$ image of the
+  $\theta^t$ fixed cocharacters, and similarly for $V_-$. While the
+  restriction map $X_* \to Y_*$ is injective (only) in the semisimple case,
+  little can be said about the induced map.
 
   The above argument shows that the vector |v| computed below of scalar
   products of a generator of the fiber group with simple roots can be validly
   incorporated (by calling |d_adjointFiberGroup.toBasis|) into the adjoint
   fiber group; notably, it represents an element of $V_+ + V_-$ in
-  $Y^* / 2Y^*$. (without space that formula would have ended our comment!)
+  $Y_* / 2Y_*$. (without space that formula would have ended our comment!)
 */
 BinaryMap
 Fiber::makeFiberMap(const RootDatum& rd) const
@@ -899,9 +900,9 @@ restrictGrading(const RootNbrSet& rs, const RootNbrList& rl)
   return result;
 }
 
-/*!
-  \brief Returns a grading in the orbit corresponding to |rf|, with the
-  smallest possible number of noncompact roots among the simple roots.
+/*
+  Find a grading in the orbit corresponding to |rf| with the smallest possible
+  number (0 or 1 per simple factor) of noncompact ones among the simple roots.
 
   Precondition: |f| is the fundamental fiber;
 
@@ -910,20 +911,18 @@ restrictGrading(const RootNbrSet& rs, const RootNbrList& rl)
   with exactly one noncompact simple root. (The unequal rank inner class in
   type $A_n$ is particular by the rareness of imaginary simple roots candidate
   for being noncompact: there is at most one, and only if $n$ is odd; for this
-  case this still just suffices to distinguish sl(n+1,R) from sl((n+1/2,H).)
+  case this still just suffices to distinguish sl(n+1,R) from sl(n+1/2,H).)
 
   Our choice for non-simple types will be a grading which has such a grading
   on each noncompact noncomplex simple factor, which is achieved by minimising
   the number of noncompact simple roots. This special grading for the real
   form will the easily allow a name to be associated to the real form.
 
-  NOTE : the grading is represented as the set of noncompact imaginary roots
+  NOTE: the grading is represented as the set of noncompact imaginary roots
   that are also simple roots for the root system |rs|. This is OK; knowledge
   of just that set is sufficient to characterise the real form.
 */
-Grading
-specialGrading(const Fiber& f,
-	       RealFormNbr rf, const RootSystem& rs)
+Grading specialGrading(const Fiber& f, RealFormNbr rf, const RootSystem& rs)
 {
   std::set<Grading,gradings::GradingCompare> grs;
   // |GradingCompare| first compares number of set bits
@@ -947,8 +946,7 @@ specialGrading(const Fiber& f,
   roots, use one of them to get to a less compact Cartan.
 */
 RootNbrSet
-toMostSplit(const Fiber& fundf,
-	    RealFormNbr rf, const RootSystem& rs)
+toMostSplit(const Fiber& fundf, RealFormNbr rf, const RootSystem& rs)
 {
   RootNbrSet ir = fundf.imaginaryRootSet();
   unsigned long rep = fundf.weakReal().classRep(rf);

@@ -273,8 +273,8 @@ class SRK_context
   const TitsCoset& basedTitsGroup() const
     { return G.basedTitsGroup(); }
 
-  const TwistedInvolution twistedInvolution(size_t cn) const
-    { return complexGroup().twistedInvolution(cn); }
+  const TwistedInvolution involution_of_Cartan(size_t cn) const
+    { return complexGroup().involution_of_Cartan(cn); }
   const Fiber& fiber(const StandardRepK& sr) const
     { return G.cartan(sr.Cartan()).fiber(); }
 
@@ -351,7 +351,7 @@ class SRK_context
 
   TitsElt titsElt(const StandardRepK& s) const
   {
-    return TitsElt(titsGroup(), twistedInvolution(s.d_cartan), s.d_fiberElt);
+    return TitsElt(titsGroup(), involution_of_Cartan(s.d_cartan), s.d_fiberElt);
   }
 
   KGBEltList sub_KGB(const PSalgebra& q) const;

@@ -48,8 +48,8 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
 
   RealFormNbr rf = G_R.realForm();
 
-  unsigned long x = G_C.representative(rf,cn);
-  unsigned long y = G_C.dualRepresentative(drf,cn);
+  cartanclass::AdjointFiberElt x = G_C.representative(rf,cn);
+  cartanclass::AdjointFiberElt y = G_C.dualRepresentative(drf,cn);
   const CartanClass& cc = G_C.cartan(cn);
 
   realweyl::RealWeyl rw(cc,x,y,rd,W);

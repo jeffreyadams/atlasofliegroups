@@ -76,8 +76,8 @@ Hash_table* main_hash_table=NULL;
 @*1 Identifier completion.
 %
 We define a completion function |id_completion_func| that will be used by the
-\.{readline} library. This is done here since it deals with the hash table,
-but strictly speaking this has nothing to do with lexical analysis. The
+\.{readline} library. The definition is done here since it deals with the hash
+table, but strictly speaking this has nothing to do with lexical analysis. The
 completion function will be installed in the main program, and it will be
 called from the |readline| function (which is probably called by
 |BufferedInput::getline|) if the user asks for it. The function prototype is
@@ -100,9 +100,9 @@ prefix |text|. A tricky point is that once a partial match is found, we must
 increment the static iterator before returning, since that |return| jumps out
 of our local loop. For this reason we increment |i| right away while picking
 its identifier from the hash table. Otherwise there are no other complications,
-except having to produce a string allocated by |malloc|. If our local
-loop terminates normally there are no more matches and we return |NULL| to
-indicate that.
+except having to produce a string allocated by |malloc|, which |strdup| does
+for us. If our local loop terminates normally there are no more matches and we
+return |NULL| to indicate that.
 
 @h <cstdlib>
 @< Function definitions @>=
@@ -118,16 +118,25 @@ char* id_completion_func(const char* text, int state)
   { const char* s=main_hash_table->name_of(i++);
       // get stored identifier and increment loop
     if (std::strncmp(text,s,l) == 0) // is |text| a prefix of |s|?
-    { char* res=static_cast<char*>(std::malloc(std::strlen(s)+1));
-        // we need a |malloc|ed string
-      if (res==NULL)
-	return NULL; // if memory gets full here, that's just too bad
-      std::strcpy(res,s);
-      return res;
-    }
+      return strdup(s);
   }
   return NULL; /* if loop terminates, report failure */
 }
+
+@ The readline library needs to know where to break the input into completable
+words. The string of characters that serve as word boundaries will be defined
+here, and installed in the main program.
+
+@< Declarations of static variables @>=
+extern char lexical_break_chars[];
+
+@~The following value reflects what the lexical analyser considers separating
+characters. The list contains those non-alphanumeric characters that are
+valid input characters, as implicitly defined by the |get_token| function
+below.
+
+@< Definitions of static variables @>=
+char lexical_break_chars[] = " \t\n=<>+-*/\\%,;:()[]{}$@@\"|";
 
 @* The lexical analyser class.
 %
@@ -267,7 +276,7 @@ void Lexical_analyser::skip_space(void)
 { if (prevent_termination!='\0') input.push_prompt(prevent_termination);
   do
   { char c=input.shift();
-    if (isspace(c))
+    if (std::isspace(c))
     { if (c=='\n' and prevent_termination=='\0' and nesting==0
           or c=='\f')
         break;
@@ -419,7 +428,7 @@ int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
   skip_space(); prevent_termination='\0';
   input.locate(input.point(),locp->first_line,locp->first_column);
   int code; char c=input.shift();
-  if (isalpha(c))
+  if (isalpha(c) or c=='_')
     @< Scan an identifier or a keyword @>
   else if (isdigit(c))
     @< Scan a number @>
@@ -608,7 +617,7 @@ if ((skip_space(),c=input.shift())=='"')
 @/{@; char* s=scan_quoted_string(); file_name=s; delete[] s; }
 else
 @/{@; file_name="";
-    while (!isspace(c))
+    while (!std::isspace(c))
     {@; file_name+=c; c=input.shift(); }
     input.unshift();
 }

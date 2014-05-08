@@ -166,7 +166,8 @@ template<size_t dim> class BitVector
     : d_data(data), d_size(n)
     {}
 
-  BitVector(const matrix::Vector<int>& weight); // reduce weight mod 2
+  template<typename C>
+    explicit BitVector(const matrix::Vector<C>& weight); // reduce weight mod 2
 
 // copy and assignment
   BitVector(const BitVector& v)

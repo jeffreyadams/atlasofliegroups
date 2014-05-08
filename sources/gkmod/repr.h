@@ -99,7 +99,7 @@ class Rep_context
   const KGB& kgb() const { return KGB_set; }
   size_t rank() const;
 
-  const TwistedInvolution twistedInvolution(size_t cn) const;
+  const TwistedInvolution involution_of_Cartan(size_t cn) const;
 
   StandardRepr
     sr(const standardrepk::StandardRepK& srk,
@@ -135,7 +135,7 @@ class Rep_context
   // prepare for |deform|: make |gamma| dominant, and as theta-stable as can be
   void make_dominant(StandardRepr& z) const;
 
-  RationalList reducibility_points(const StandardRepr& z) const;
+  RationalList reducibility_points(const StandardRepr& z) const; // normalised
 
   StandardRepr cross(weyl::Generator s, StandardRepr z) const;
   StandardRepr Cayley(weyl::Generator s, StandardRepr z) const;

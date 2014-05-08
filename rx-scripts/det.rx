@@ -1,11 +1,3 @@
-{ determinant }
-set det (mat M) = int:
-  let (diag,,)=diagonalize(M),(n,m)=#M in
-  if n!=m then error("Determinant of non-square matrix")
-  elif #diag<n then 0 { there is at least one zero on the diagonal }
-  else let p=1 in for d in diag do p*:=d od; p { otherwise multiply out }
-  fi
-
 { compute Smith (almost) normal form in two ways }
 set test (mat M) = (mat,mat):
 ( let model = null(#M), (diag,R,C) = diagonalize(M) in

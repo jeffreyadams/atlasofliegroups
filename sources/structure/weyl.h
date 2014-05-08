@@ -612,17 +612,17 @@ public:
   \brief Nondestructive version of |act| method
 */
   Weight
-    imageBy(const RootDatum& rd, const WeylElt& w, Weight v) const
+    image_by(const RootDatum& rd, const WeylElt& w, Weight v) const
     { act(rd,w,v); return v; }
 
-  void inverseAct(const RootDatum& rd, const WeylElt& w, Weight& v) const;
+  void inverse_act(const RootDatum& rd, const WeylElt& w, Weight& v) const;
 
 /*!
-  \brief Nondestructive version of |inverseAct| method
+  \brief Nondestructive version of |inverse_act| method
 */
   Weight
-    imageByInverse(const RootDatum& rd, const WeylElt& w, Weight v) const
-    { inverseAct(rd,w,v); return v; }
+    image_by_inverse(const RootDatum& rd, const WeylElt& w, Weight v) const
+    { inverse_act(rd,w,v); return v; }
 
 
 // manipulators

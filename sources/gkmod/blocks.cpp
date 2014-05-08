@@ -1751,8 +1751,8 @@ DynkinDiagram folded
 	int d=orbit[i].length()-orbit[j].length();
 	if (d==0)
 	{
-	  Cartan(i,j)=diag.cartanEntry(i,j); // for same type orbits just
-	  Cartan(j,i)=diag.cartanEntry(j,i); // copy Cartan matrix entry
+	  Cartan(i,j)=diag.Cartan_entry(i,j); // for same type orbits just
+	  Cartan(j,i)=diag.Cartan_entry(j,i); // copy Cartan matrix entry
 	}
 	else // unequal type, mark $-2$ when first index is longer than second
 	{

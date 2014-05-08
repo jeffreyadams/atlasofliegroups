@@ -10,13 +10,9 @@ set sp4R = quasisplit_form(sp4c) { sp4(R) real form }
 set x = for i:KGB_size(sp4R) do KGB(sp4R,i) od { list of all x's, [x[0],..] }
 
 set do_block ( (Param->) f) = { f is function executed for block elements }
-( (Param p):
-  let (b,i)=block(p)
-  in for q in b do f(q) od
-  ; i
-)
+  (Param p): void: let (b,)=block(p) in for q in b do f(q) od
 
-set block = do_block ( (Param q): prints(q) )
+set show_block = do_block ( (Param q): prints(q) )
 
 { Cartan #0, discrete series parameters; assume $a,b\geq0$ }
 set ds0(int a,int b) = param(x[0],[a-2,b-1],[0,0]/1) { large }
@@ -57,7 +53,7 @@ set c3(int a,int b,rat nu0,rat nu1) =
 
 set triv = param (x[10],[0,0],[2,1]/1) { example: trivial representation }
 
-{ example calls: block(triv);
+{ example calls: show_block(triv);
   do_block( (Param q): prints("gamma = ",infinitesimal_character(q)) )(triv)
   deform(triv)
 }

@@ -34,7 +34,7 @@ namespace atlas {
 
 namespace complexredgp {
 
-  WeylElt canonicalize // return value is conjugating element
+  WeylWord canonicalize // return value is conjugator, built left-to-right
     (TwistedInvolution& sigma,
      const RootDatum& rd,
      const TwistedWeylGroup& W,
@@ -49,6 +49,12 @@ namespace complexredgp {
 			     const RootSystem& rs,
 			     const TwistedWeylGroup& W);
 
+  RealFormNbr real_form_of // who claims this KGB element?
+    (ComplexReductiveGroup& G,
+     TwistedInvolution tw /* by value */, const RatCoweight& grading_shift,
+     CartanNbr& cn, WeylWord& conj, cartanclass::AdjointFiberElt& rep // outputs
+     );
+
 }
 
 /******** type definitions ***************************************************/
@@ -59,12 +65,11 @@ namespace complexredgp {
   \brief Complex reductive group endowed with an inner class of real
   forms.
 
-  This class computes those aspects of the structure theory of (an
-  inner class of) real reductive groups G(R) that will be needed to
-  describe the Langlands classification of irreducible representations
-  of G(R).  Since we look at an inner class of real forms, the first
-  problem is to enumerate the different real forms constituting this
-  inner class.
+  This class computes those aspects of the structure theory of (an inner class
+  of) real reductive groups G(R) that will be needed to describe the Langlands
+  classification of irreducible representations of G(R). Since we look at an
+  inner class of real forms, the first problem is to enumerate the different
+  real forms constituting this inner class.
 
   We list in d_cartanSet the conjugacy classes of real Cartan subgroups up to
   stable conjugacy; this classification does not refer to a particular real
@@ -75,20 +80,19 @@ namespace complexredgp {
   the real forms over which it is defined (the fundamental Cartan subgroup is
   defined for all real forms).
 
-  We compute the structure of the real Cartan subgroups (notably the
-  groups of connected components); this depends only on the stable
-  conjugacy class.  We determine the real Weyl groups of Cartan
-  subgroups (which are _almost_ constant across the stable class, but
-  not quite).
+  We compute the structure of the real Cartan subgroups (notably the groups of
+  connected components); this depends only on the stable conjugacy class. We
+  determine the real Weyl groups of Cartan subgroups (which are _almost_
+  constant across the stable class, but not quite).
 
   Everything is determined by (and computed from) two things: the based root
   datum recorded in the RootDatum class d_rootDatum, and its involutive
-  automorphism. Many computations take place inside the Tits group, which is
-  an extension of the (complex) Weyl group by the elements of order 2 in the
-  torus. (In fact the structure we store in |d_titsGroup| allows computing in
-  an even larger group, the semidirect product of the Tits group just
-  described by a factor Z/2Z whose action on the other factor is determined by
-  the given automorphism of the based root datum, the "twist".)
+  distinguished automorphism. Many computations take place inside the Tits
+  group, which is an extension of the (complex) Weyl group by the elements of
+  order 2 in the torus. (In fact the structure we store in |d_titsGroup|
+  allows computing in an even larger group, the semidirect product of the Tits
+  group just described by a factor Z/2Z whose action on the other factor is
+  determined by the given automorphism of the based root datum, the "twist".)
 
   The field |d_rootDatum| stores the root datum, which must have been
   constructed before. The field |d_titsGroup| holds the mentioned (enlarged)
@@ -103,18 +107,35 @@ namespace complexredgp {
   complement of its subgroup W. Since such involutions are of the form
   (w,Gamma), they can be represented by their element w, which is called a
   twisted involution. The condition for being a twisted involution $t$ is
-  $t\Gamma(t)=e$ and "twisted conjugacy" of $t$ by \f$w\in W\f$ is given by
-  \f$w\cdot t=wt\Gamma(w^{-1})\f$. The stable conjugacy classes of Cartan
+  $t\Gamma(t)=e$ and "twisted conjugacy" of $t$ by $w\in W$ is given by
+  $w\cdot t=wt\Gamma(w^{-1})$. The stable conjugacy classes of Cartan
   subgroups will each be represented by a canonical representative of the
   corresponding twisted conjugacy class of twisted involutions.
 
   In addition to describing the set of Cartan classes, this class provides
-  access (via the |d_cartan| array) to data for each individual one of them,
-  and (via |Cartan_poset|) to the partial order relation between them. For the
-  latter, let |tau_i| be involutions acting on the complex torus |H| for
-  various classes of Cartan subgroups; (H,tau_1) is considered "more compact"
-  than (H,tau_2) if the identity component of the fixed point set H^tau_2 is
-  W-conjugate to a subtorus of H^tau_1.
+  access (via the |Cartan| array) to data for each individual one of them, and
+  (via |Cartan_poset|) to the partial order relation between them. The
+  structure |C_info| of the elements of the |Cartan| array refelcts a design
+  decision that may seem somewhat questionable in retrospect: while most of
+  the information about Cartan classes is stored in the |Fiber| structure
+  defined in the \.{cartanclass} module, generating those is postponed until
+  after the construction of the |ComplexReductiveGroup| instance. This means
+  that real forms, which are identified as orbits in the adjoint fiber group,
+  are generated without access to the object describing that fiber group (a
+  subquotient of a vector space over the $2$-element field); instead the
+  action is preformed by an "adjoint" instance of the Tits group (of which
+  another instance will serve for generation of KGB elements). What is stored
+  in |Cartan| is minimal information derived from this generation: a single
+  torus part |rep| of an adjoint Tits group element for each real form over
+  which the Cartan class is defined. This design decision explains the
+  elaborate jumping through hoops that is necessary to populate the Cartans
+  with real forms and to identify the real forms at different Cartan classes
+  (all this becomes much more natural for the generation of KGB elements).
+
+  For the partial order relation, let |tau_i| be involutions acting on the
+  complex torus |H| for various classes of Cartan subgroups; (H,tau_1) is
+  considered "more compact" than (H,tau_2) if the identity component of the
+  fixed point set H^tau_2 is W-conjugate to a subtorus of H^tau_1.
 
   The problem for the dual group of G is identical, the bijection taking the
   negative transpose of a twisted involution. This bijection reverses the
@@ -163,13 +184,14 @@ class ComplexReductiveGroup
   //!\brief the permutation of the roots given by the based automorphism
   const Permutation root_twist;
 
-  typedef std::vector<RankFlags> form_reps; // gradings for real forms
+  // gradings of the set of all simple roots, for all real forms
+  typedef std::vector<RankFlags> form_reps;
 
   struct C_info
   { TwistedInvolution tw;
     BitMap real_forms,dual_real_forms; // mark present (dual) real forms
     form_reps rep,dual_rep; // gradings representing those (dual) real forms
-    BitMap below;
+    BitMap below; // numbers of Cartan classes below this in partial ordering
     CartanClass* class_pt; //!< owned (by parent) pointer, might be NULL
     // remaining fields are set only once |class_pt| has been made non-NULL
     RealFormNbrList real_labels,dual_real_labels;
@@ -353,11 +375,10 @@ class ComplexReductiveGroup
       involution corresponding to twisted involution fixes (globally) the
       dominant chamber of the subsystem (it permutes its simple roots).
 */
-  WeylElt
-    canonicalize(TwistedInvolution& sigma, RankFlags gens) const;
+  WeylWord canonicalize(TwistedInvolution& sigma, RankFlags gens) const;
 
   inline
-  WeylElt canonicalize(TwistedInvolution& sigma) const
+  WeylWord canonicalize(TwistedInvolution& sigma) const
     { return canonicalize
 	(sigma,RankFlags(constants::lMask[semisimpleRank()]));
     }
@@ -366,9 +387,9 @@ class ComplexReductiveGroup
 /*!\brief
   (Representative) twisted involutions for each class of Cartan subgroup.
 */
-  const TwistedInvolution& twistedInvolution(CartanNbr cn) const
+  const TwistedInvolution& involution_of_Cartan(CartanNbr cn) const
     { return Cartan[cn].tw; }
-  TwistedInvolution dualTwistedInvolution(CartanNbr cn) const
+  TwistedInvolution dual_involution_of_Cartan(CartanNbr cn) const
     { return W.opposite(Cartan[cn].tw); }
 
   CartanNbr class_number(TwistedInvolution) const;
@@ -393,6 +414,7 @@ class ComplexReductiveGroup
   void twisted_act
     (const TwistedInvolution& tw,Weight& v) const;
 
+  // adjoint torus parts, in fundamental coweight basis, \emph{are} gradings
   TorusPart sample_torus_part(CartanNbr cn, RealFormNbr rf) const
   { return TorusPart(Cartan[cn].rep[rf],semisimpleRank()); }
   TorusPart dual_sample_torus_part(CartanNbr cn, RealFormNbr drf)
@@ -420,7 +442,7 @@ class ComplexReductiveGroup
   in the classification of weak real forms for cartan |\#cn|.
   This amounts to searching for |rf| in |Cartan[cn].real_labels|.
 */
-  unsigned long representative(RealFormNbr rf, CartanNbr cn)
+  cartanclass::AdjointFiberElt representative(RealFormNbr rf, CartanNbr cn)
     { return cartan(cn).fiber().weakReal().classRep(real_form_part(rf,cn)); }
 
 /*!\brief
@@ -428,7 +450,7 @@ class ComplexReductiveGroup
   in the classification of dual weak real forms for cartan |\#cn|.
   This amounts to searching for |drf| in |Cartan[cn].dual_real_labels|.
 */
-  unsigned long dualRepresentative(RealFormNbr drf, CartanNbr cn)
+  cartanclass::AdjointFiberElt dualRepresentative(RealFormNbr drf, CartanNbr cn)
     { return cartan(cn).dualFiber().
 	weakReal().classRep(dual_real_form_part(drf,cn));
     }
@@ -472,7 +494,7 @@ class ComplexReductiveGroup
     { return KGB_size(rf,Cartan_set(rf)); }
 
 /*!
-  \brief returns the cardinality of the union of sets \f$K\backslash G/B\f$
+  \brief returns the cardinality of the union of sets $K\backslash G/B$
   for this inner class.
 */
   unsigned long global_KGB_size();

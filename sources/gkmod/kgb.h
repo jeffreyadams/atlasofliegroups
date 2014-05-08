@@ -137,15 +137,11 @@ class KGB_base
 
   KGBElt Hermitian_dual(KGBElt x) const { return info[x].dual; }
 
-  TwistedInvolution nth_involution(unsigned int n) const
-    { return inv_pool[n]; }
+  const TwistedInvolution& nth_involution(unsigned int n) const
+  { return inv_pool[n]; } // useful mostly in traversing all our involutions
 
-  InvolutionNbr involution_index(KGBElt x) const // internal index of involution
-  { return std::upper_bound(first_of_tau.begin(),first_of_tau.end(),x)
-      -first_of_tau.begin() -1;
-  }
   const TwistedInvolution& involution(KGBElt x) const // after construction only
-  { return inv_pool[involution_index(x)]; }
+  { return inv_pool[involution_index(x)]; } // the one associated to |x|
 
   const WeightInvolution & involution_matrix(KGBElt x) const;
   InvolutionNbr inv_nr(KGBElt x) const; // external number (within inner class)
@@ -185,6 +181,12 @@ class KGB_base
   // print derived-class specific per-element information
   virtual std::ostream& print(std::ostream& strm, KGBElt x) const
   { return strm; }
+
+ private: // this internal index of involution is only visible to methods above
+  InvolutionNbr involution_index(KGBElt x) const
+  { return std::upper_bound(first_of_tau.begin(),first_of_tau.end(),x)
+      -first_of_tau.begin() -1;
+  }
 
  protected:
   void reserve (size_t n); // prepare for generating |n| elements
@@ -312,8 +314,9 @@ and in addition the Hasse diagram (set of all covering relations).
   RatWeight half_rho() const;
 
   TorusPart torus_part(KGBElt x) const { return left_torus_part[x]; }
-  TorusElement torus_part_global // |torus_part| but coded as in |global_KGB|
-    (const RootDatum&rd, KGBElt x) const; // needs root datum (for base grading)
+  // reconstruct from |torus_part| a |TorusElement| as in |global_KGB|
+  RatCoweight base_grading_vector() const; // offset for |torus_part_global|
+  RatCoweight torus_part_global(KGBElt x) const; // will be $\theta^t$-fixed
 
   TitsElt titsElt(KGBElt x) const; // get KGB element |x| as a |TitsElt|
   size_t torus_rank() const; // the (non-semisimple) rank of torus parts.
@@ -324,7 +327,7 @@ and in addition the Hasse diagram (set of all covering relations).
   bool simple_imaginary_grading(KGBElt x,RootNbr alpha) const
   { return d_base->simple_imaginary_grading(torus_part(x),alpha); }
 
-  KGBElt lookup(const TitsElt& a) const;
+  KGBElt lookup(TitsElt a) const; // by value
 
 
 // manipulators

@@ -789,7 +789,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
     if (kgb.Cartan_class(k)==cn)
     {
       cf.insert(k);
-      if (kgb.involution(k)==G.twistedInvolution(cn))
+      if (kgb.involution(k)==G.involution_of_Cartan(cn))
 	canonical_fiber.push_back(k);
     }
 

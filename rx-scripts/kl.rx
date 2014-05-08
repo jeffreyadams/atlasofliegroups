@@ -378,11 +378,11 @@ set print_signedKL (Param p) = void:
 
 set print_regular_character_formula (Param p)= void:
   let char=regular_character_formula(p) in
-  for w@p in char do prints(prettyPrint(w),"*",p) od
+  for w@p in char do prints(split_format(w),"*",p) od
 
 set print_singular_character_formula (Param p)= void:
   let char=singular_character_formula(p) in
-  for w@p in char do prints(prettyPrint(w),"*",p) od
+  for w@p in char do prints(split_format(w),"*",p) od
 
 set print_character_formula (Param p)= void:
   if is_regular(p) then print_regular_character_formula(p)
@@ -391,11 +391,11 @@ set print_character_formula (Param p)= void:
 
 set print_regular_composition_series(Param p)= void:
   let char=regular_composition_series(p) in
-  for w@p in char do prints(prettyPrint(w),"*",p) od
+  for w@p in char do prints(split_format(w),"*",p) od
 
 set print_singular_composition_series(Param p)= void:
   let char=singular_composition_series(p) in
-  for w@p in char do prints(prettyPrint(w),"*",p) od
+  for w@p in char do prints(split_format(w),"*",p) od
 
 set print_composition_series (Param p)= void:
   if is_regular(p) then print_regular_composition_series(p)

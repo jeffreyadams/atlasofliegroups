@@ -106,7 +106,7 @@ std::ostream& print(std::ostream& strm,
     {
       kgb.print(strm,j) // virtual print method
 	<< (G!=NULL and
-	    kgb.involution(j)==G->twistedInvolution(kgb.Cartan_class(j))
+	    kgb.involution(j)==G->involution_of_Cartan(kgb.Cartan_class(j))
 	    ? '#' : ' ');
       unsigned cc= kgb.Cartan_class(j);
       if (cc!=~0u)
