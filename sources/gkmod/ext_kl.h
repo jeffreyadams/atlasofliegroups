@@ -103,7 +103,7 @@ class KL_table
   typedef HashTable<PolEntry,kl::KLIndex> PolHash;
   void fill_next_column(PolHash& hash);
 
-  // component of basis element $a_x$ in product $(T_s+1)a_{sy}$
+  // component of basis element $a_x$ in product $(T_s+1)C_{sy}$
   Pol product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const;
   Pol extract_M(Pol& Q,unsigned d,unsigned defect) const;
 
@@ -117,7 +117,7 @@ class KL_table
 
   // look for a direct recursion and return whether possible;
   // if possible also get contributions from $c_s*a_y$ into |out|
-  bool direct_recursion(BlockElt y,weyl::Generator& s, BlockElt& sy) const;
+  bool has_direct_recursion(BlockElt y,weyl::Generator& s, BlockElt& sy) const;
 
   void do_new_recursion(BlockElt y,PolHash& hash);
 

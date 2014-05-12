@@ -126,9 +126,15 @@ template <typename U>
   Polynomial& operator*= (const Polynomial& q)
     { operator*(q).swap(*this); return *this; }
   Polynomial operator+ (const Polynomial& q) const
-    { return Polynomial(*this)+=q; }
+    { // avoid requiring reallocation during addition
+      return d_data.size()>=q.d_data.size()
+	? Polynomial(*this)+=q : Polynomial(q)+=*this;
+    }
   Polynomial operator- (const Polynomial& q) const
-    { return Polynomial(*this)-=q; }
+    { // avoid requiring reallocation during addition
+      return d_data.size()>=q.d_data.size()
+	? Polynomial(*this)-=q : (Polynomial(q)*=C(-1))+=*this;
+    }
   Polynomial operator- () const { return Polynomial(*this)*= C(-1); }
 
   // as |up_remainder| above, but also change polynomial into quotient $Q$
