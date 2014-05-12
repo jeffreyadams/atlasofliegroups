@@ -393,7 +393,7 @@ Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
       for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
 	if (aux.descent_set(u)[s] and not M[u].isZero())
 	{
-	  assert(M[u].degree()==1);
+	  assert(M[u].degree()==1 and M[u][0]==M[u][1]);
 	  acc -= mu(1,x,u)*M[u][1];
 	}
       return Pol(acc);
@@ -566,11 +566,14 @@ void KL_table::fill_next_column(PolHash& hash)
       { // find and use a double-valued ascent for |x| that is decsent for |y|
 	assert(has_double_image(type(s,x))); // since |s| non-good ascent
 	BlockEltPair sx = aux.block.Cayleys(s,x);
-	PolEntry Q1 = P(sx.first,y);  // computed earlier
-	PolEntry Q2 = P(sx.second,y); // in this loop
-	Q1 *= aux.block.epsilon(s,x,sx.first);
-	Q2 *= aux.block.epsilon(s,x,sx.second);
-        *it = hash.match(Q1+=Q2);
+	PolEntry Q = P(sx.first,y);  // computed earlier in this loop
+	if (aux.block.epsilon(s,x,sx.first)<0)
+	  Q *= -1;
+	if (aux.block.epsilon(s,x,sx.second)>0)
+	  Q += P(sx.second,y);
+	else
+	  Q -= P(sx.second,y);
+        *it = hash.match(Q);
       }
     assert(it==column.back().rend()); // check that we've traversed the column
   }
@@ -587,7 +590,7 @@ void KL_table::fill_next_column(PolHash& hash)
   0 = [T_x](T_s+1).C_y - [T_x]\sum_u [s\in\tau(u)]r^{l(y/u)+k} P_{x,u}m_s(u,y)
   $$
 
-  where in the first term occurs $P_{x,y}$ (which we are after) with a
+  where in the first term occurs $P_{x,y}$ (which we are after) with a nonzero
   coefficient, and $P_{x^s,y}$ (known by descending induction on $x$), while
   the terms in the summation (where $u=x$ does not contribute since
   $s\notin\tau(x)$) are also known by descending induction on $x$
@@ -637,16 +640,20 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	assert(has_double_image(type(s,x))); // since |s| non-good ascent
 	BlockEltPair sx = aux.block.Cayleys(s,x);
 	cy[x] = P(sx.first,y);  // computed earlier this loop
-	cy[x] *= aux.block.epsilon(s,x,sx.first);
-	cy[x] += (P(sx.second,y)*=aux.block.epsilon(s,x,sx.second));
+	if (aux.block.epsilon(s,x,sx.first)<0)
+	  cy[x] *= -1;
+	if (aux.block.epsilon(s,x,sx.second)>0)
+	  cy[x] += P(sx.second,y);
+	else
+	  cy[x] -= P(sx.second,y);
       }
     }
     else // |x| is extremal for |y|, so we must do real computation
     { // first seek proper |s|
-      unsigned i; ext_block::DescValue tsx; weyl::Generator s;
+      unsigned i; ext_block::DescValue tx; weyl::Generator s;
       for (i=0; i<rn_s.size(); ++i)
-	if (is_proper_ascent(tsx=type(s=rn_s[i],x)) // (we don't do 'ic' here)
-	    and ( not is_like_type_1(tsx)
+	if (is_proper_ascent(tx=type(s=rn_s[i],x)) // (we don't do 'ic' here)
+	    and ( not is_like_type_1(tx)
 		  or aux.easy_set(aux.block.cross(s,x),y).any()) )
 	    break;
 
@@ -664,28 +671,28 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 		     P(x,u)*M[u]);
 
 	// subtract terms for ascent(s) of |x|; divide by its own coefficient
-	switch(tsx)
+	switch(tx)
 	{
  	case ext_block::one_complex_ascent:
 	case ext_block::two_complex_ascent:
 	case ext_block::three_complex_ascent:
-	  { // |(is_complex(tsx))|
+	  { // |(is_complex(tx))|
 	    BlockElt sx=aux.block.cross(s,x);
-	    if (sx<floor_y)
-	      Q -= Pol(k,cy[sx]); // from $[T_x](T_s+1).T_{sx}=q^k$
-	  } // implicit division of $Q$ here is by $[T_x](T_s+1).T_x=1$
+	    if (sx<floor_y) //from $[T_x](T_s+1).T_{sx}=q^k$
+	      Q -= aux.block.T_coef(s,x,sx)*cy[sx]; // coef is $\pm q^k$
+	  } // implicit division of $Q$ here is by |T_coef(s,x,x)==1|
 	  break;
 	case ext_block::two_semi_imaginary:
 	case ext_block::three_semi_imaginary:
 	case ext_block::three_imaginary_semi:
-	  { // |has_defect(tsx)|
+	  { // |has_defect(tx)|
 	    BlockElt sx=aux.block.Cayley(s,x);
 	    if (sx<floor_y)
-	      Q -= qk_minus_q(k)*cy[sx]; // from $[T_x](T_s+1).T_{sx}=q^k-q$
+	      Q -= aux.block.T_coef(s,x,sx)*cy[sx]; // coef is $\pm(q^k-q)$
 
-	    /* divide by $1+q$, knowing that $Q$ may be missing a term in
-	       effective degree $r^1$, from |mu(1,x,y)| that is not included
-	       in $M[sx]$ when it was used to fill |Q| in loop above */
+	    /* divide by |T_coef(s,x,x)==1+q|, knowing that $Q$ may be missing
+	       a term in effective degree $r^1$, from |mu(1,x,y)| that is not
+	       included in $M[sx]$ when used to fill |Q| in loop above */
 	    int c = // remainder in upward division by $[T_x](T_s+1).T_x=1+q$
 	      Q.factor_by(1,(aux.block.l(y,x)+1)/2); // deg $\ceil l(y/x)/2$
 	    if (aux.block.l(y,x)%2!=0)
@@ -697,24 +704,22 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	  break;
 	case ext_block::one_imaginary_pair_fixed:
 	case ext_block::two_imaginary_double_double:
-	  { // |is_like_type_2(tsx)|
+	  { // |is_like_type_2(tx)|
 	    BlockEltPair sx=aux.block.Cayleys(s,x);
-	    Pol S;
 	    if (sx.first<floor_y)
-	      S = cy[sx.first];
+	      Q -= aux.block.T_coef(s,x,sx.first)*cy[sx.first]; // $\pm(q^k-1)$
 	    if (sx.second<floor_y)
-	      S += cy[sx.second];
-	    Q -= qk_minus_1(k)*S; // from $[T_x](T_s+1).T_{sx*}=q^k-1$
-	    Q/=2;                 // division by $[T_x](T_s+1).T_x=2$
+	      Q -= aux.block.T_coef(s,x,sx.second)*cy[sx.second]; // idem
+	    Q/=2;                     // divide by |T_coef(s,x,x)==2|
 	  }
 	  break;
 	case ext_block::one_imaginary_single:
 	case ext_block::two_imaginary_single_single:
-	  { // |is_like_type_1(tsx)|, this used to be called the endgame case
+	  { // |is_like_type_1(tx)|, this used to be called the endgame case
 	    BlockElt x_prime=aux.block.Cayley(s,x);
 	    if (x_prime<floor_y)
-	      Q -= qk_minus_1(k)*cy[x_prime]; // $[T_x](T_s+1).T_{x'}=q^k-1$
-	    // implict division of $Q$ here is by $[T_x](T_s+1).T_x=1$
+	      Q -= aux.block.T_coef(s,x,x_prime)*cy[x_prime]; // $\pm(q^k-1)$
+	    // implict division of $Q$ here is by |T_coef(s,x,x)==1|
 
 	    // now subtract off $P_{s\times x,y}$, easily computed on the fly
 	    BlockElt s_cross_x = aux.block.cross(s,x);
@@ -730,21 +735,15 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	case ext_block::two_imaginary_single_double:
 	  {
 	    BlockEltPair sx=aux.block.Cayleys(s,x);
-	    Pol S;
 	    if (sx.first<floor_y)
-	    {
-	      S = cy[sx.first];
-	      S *= aux.block.epsilon(s,x,sx.first);
-	    }
+	      Q -= aux.block.T_coef(s,x,sx.first)*cy[sx.first]; // $\pm(q^2-1)$
 	    if (sx.second<floor_y)
-	      S += (Pol(cy[sx.second]) *= aux.block.epsilon(s,x,sx.second));
-
-	    Q -= qk_minus_1(2)*S; // from $[T_x](T_s+1).T_{sx*}=\pm(q^2-1)$
-	    Q/=2;                 // division by $[T_x](T_s+1).T_x=2$
+	      Q -= aux.block.T_coef(s,x,sx.second)*cy[sx.second]; // idem
+ 	    Q/=2; // divide by |T_coef(s,x,x)==2|
 	  }
 	  break;
 	default: assert(false); // other cases should not have selected |s|
-	} // |switch(tsx)|
+	} // |switch(tx)|
 	// now |Q| is stored in |cy[x]|
       } // end of |if(i<rn_s.size())|; no |else|, just leave |cy[x]==Pol(0)|
     } // end of easy/hard condition
@@ -757,8 +756,8 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
       for (unsigned j=0; j<rn_s.size(); ++j)
       {
 	const weyl::Generator s=rn_s[j];
-	const ext_block::DescValue tsx=type(s,x);
-	if (not is_descent(tsx) and has_defect(tsx))
+	const ext_block::DescValue tx=type(s,x);
+	if (not is_descent(tx) and has_defect(tx))
 	{
 	  const BlockElt sx = aux.block.Cayley(s,x);
 	  assert(sx<floor_y); // could only fail if |x| in downset tested above
