@@ -318,10 +318,10 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
     }
 
     // now we need a polynomial of the form $a+bq+aq^2$ for some $a,b$
-    int a = mu(1,x,y); // degree $2$ coefficient of |product_comp(x,s,y)|
+    int a = mu(1,x,y); // coefficient $r^2$ in centered |product_comp(x,s,y)|
     if (defect==0)
     {
-      int b = mu(3,x,y);
+      int b = mu(3,x,y); // coefficient $r^0$ in same
       if (has_defect(type(s,x)))
       {
 	BlockElt sx=bl.inverse_Cayley(s,x);
@@ -333,18 +333,22 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 	  b -= mu(M[u].degree(),x,u)*M[u][M[u].degree()];
       return m(a,b);
     }
-    // remains the |k==3|, even degree $m$ defect case
+    // remains the |k==3|, even degree $m_s(x,y)$, defect $y$ case
     Pol Q = product_comp(x,s,y);
     if (a!=0)
       Q -= Pol((bl.l(z,x)-1)/2,qk_plus_1(2)*a); // shaves top term
     assert(2*Q.degree()<=bl.l(z,x)+1);
     int b= Q.up_remainder(1,(bl.l(z,x)+1)/2); // remainder by $q+1$
-    for (unsigned l=bl.length(x)+1; l<bl.length(z); l+=2)
+
+    /* since odd degree $m_s(u,y)$ do not contribute to $q+1$ remainder
+       we restrict to those $u$ of the same length parity as $x$ */
+    for (unsigned l=bl.length(x)+2; l<bl.length(z); l+=2)
       for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
 	if (aux.descent_set(u)[s] and not M[u].isZero())
-	{
+	{ // extract $b-2a$ from |M[u]| representing $ar^{-2}+br^0+ar^2$
+	  assert(M[u].degree()%2==0);
 	  int mu_rem = M[u].degree()==0 ? M[u][0] : M[u][1]-2*M[u][0];
-	  b -= P(x,u).up_remainder(1,bl.l(u,x))*mu_rem;
+	  b -= P(x,u).up_remainder(1,bl.l(u,x)/2)*mu_rem;
 	}
     return m(a,b);
   }
