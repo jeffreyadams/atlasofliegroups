@@ -856,7 +856,7 @@ bool isDirectRecursion(ext_block::DescValue v)
 }
 
 // Check for nasty endgame cases in block
-void test_braid(const ext_block::extended_block eblock)
+bool test_braid(const ext_block::extended_block eblock)
 {
   bool OK=true; int count=0;
   for (weyl::Generator t=1; t<eblock.rank(); ++t)
@@ -884,6 +884,7 @@ void test_braid(const ext_block::extended_block eblock)
     }
   if (OK)
     std::cout << "All " << count << " relations hold!\n";
+  return OK;
 } // |braid_f|
 
 void braid_f()
@@ -898,7 +899,7 @@ void braid_f()
 void go_f()
 {
   drop_to(commands::empty_mode); // make sure all modes will need re-entering
-  commands::currentLine().str("D5 sc u 2 3"); // type-ahead in input buffer
+  commands::currentLine().str("D7 ad u 3 3"); // type-ahead in input buffer
   commands::currentLine().reset(); // and reset to start at beginning
   commands::main_mode.activate();
   commands::real_mode.activate();
@@ -908,25 +909,32 @@ void go_f()
     eblock(commands::currentBlock(),
 	   commands::currentComplexGroup().twistedWeylGroup());
 
-  eblock.toggle_edge(153,213); // 4, 2Ci/2Cr
-  eblock.toggle_edge(256,198); // 4, 2Ci/2Cr
-  eblock.toggle_edge(240,284); // 4, 2Ci/2Cr
+  eblock.toggle_edge(1,5);               // 3, 1i1/1r1f
 
-  test_braid(eblock);
+  // eblock.order_quad(188,189,339,337,6);
+  eblock.toggle_edge(189,246);           // 1, 1i1/1r1f
+  // eblock.order_quad(523,524,779,777,6);
+  eblock.toggle_edge(392,484);           // 2, 1i1/1r1f
+  // eblock.order_quad(673,674,952,950,6);
+  eblock.toggle_edge(674,792);           // 3, 1i1/1r1f
+  // eblock.order_quad(996,997,1073,1071,6);
+  eblock.toggle_edge(997,1136);          // 4, 1i1/1r1f
 
-  std::vector<ext_kl::Pol> pool;
-  ext_kl::KL_table twisted_KLV(eblock,pool);
-  twisted_KLV.fill_columns();
+  if (test_braid(eblock))
+  {
+    std::vector<ext_kl::Pol> pool;
+    ext_kl::KL_table twisted_KLV(eblock,pool);
+    twisted_KLV.fill_columns();
 
-  ioutils::OutputFile f;
-  for (BlockElt y=0; y<twisted_KLV.size(); ++y)
-    for (BlockElt x=y+1; x-->0; )
-      if (not twisted_KLV.P(x,y).isZero())
-      {
-	f << "P(" << eblock.z(x) << ',' << eblock.z(y) << ")=";
-	f << twisted_KLV.P(x,y) << std::endl;
-      }
-
+    ioutils::OutputFile f;
+    for (BlockElt y=0; y<twisted_KLV.size(); ++y)
+      for (BlockElt x=y+1; x-->0; )
+	if (not twisted_KLV.P(x,y).isZero())
+	{
+	  f << "P(" << eblock.z(x) << ',' << eblock.z(y) << ")=";
+	  f << twisted_KLV.P(x,y) << std::endl;
+	}
+  }
 }
 
 
