@@ -910,15 +910,29 @@ void go_f()
 	   commands::currentComplexGroup().twistedWeylGroup());
 
   eblock.toggle_edge(1,5);               // 3, 1i1/1r1f
+  eblock.toggle_edge(20,31);		 // 4, 1i1/1r1f
+  eblock.toggle_edge(39,62);		 // 4, 1i1/1r1f
+  eblock.toggle_edge(74,109);		 // 4, 1i1/1r1f
 
-  // eblock.order_quad(188,189,339,337,6);
-  eblock.toggle_edge(189,246);           // 1, 1i1/1r1f
-  // eblock.order_quad(523,524,779,777,6);
-  eblock.toggle_edge(392,484);           // 2, 1i1/1r1f
-  // eblock.order_quad(673,674,952,950,6);
-  eblock.toggle_edge(674,792);           // 3, 1i1/1r1f
-  // eblock.order_quad(996,997,1073,1071,6);
-  eblock.toggle_edge(997,1136);          // 4, 1i1/1r1f
+  eblock.toggle_edge(68,95);		 // 5, 1i1/1r1f
+  eblock.toggle_edge(117,156);		 // 5, 1i1/1r1f
+  eblock.toggle_edge(183,238);		 // 5, 1i1/1r1f
+  eblock.toggle_edge(186,241);		 // 5, 1i1/1r1f
+  eblock.toggle_edge(274,346);		 // 5, 1i1/1r1f
+  eblock.toggle_edge(386,475);		 // 5, 1i1/1r1f
+
+
+
+  eblock.order_quad(188,189,339,337,6);
+  eblock.order_quad(276,277,469,467,6);
+  eblock.order_quad(388,389,609,607,6);
+  eblock.order_quad(391,392,618,616,6);
+  eblock.order_quad(520,521,762,760,6);
+  eblock.order_quad(523,524,779,777,6);
+  eblock.order_quad(670,671,935,933,6);
+  eblock.order_quad(673,674,952,950,6);
+  eblock.order_quad(831,832,1110,1108,6);
+  eblock.order_quad(996,997,1273,1271,6);
 
   if (test_braid(eblock))
   {
