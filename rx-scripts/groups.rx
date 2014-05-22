@@ -156,8 +156,8 @@ set PSU(int n) = RealForm: PSU(n,0)
 set U(int p,int q) = RealForm:
   real_form(inner_class(GL(p+q),id_mat(p+q)),min(p,q))
 
-set SL_R(int n)  = RealForm: quasisplit_form(inner_class(SL(n),id_mat(n-1)))
-set PSL_R(int n) = RealForm: quasisplit_form(inner_class(PSL(n),id_mat(n-1)))
+set SL_R(int n)  = RealForm: quasisplit_form(inner_class(SL(n),-id_mat(n-1)))
+set PSL_R(int n) = RealForm: quasisplit_form(inner_class(PSL(n),-id_mat(n-1)))
 set PGL_R(int n) = RealForm: PSL_R(n)
 
 set SL_C(int n)  = RealForm: complex(SL(n))
