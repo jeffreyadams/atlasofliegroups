@@ -642,11 +642,9 @@ template void BitMap::insert
  (std::vector<unsigned short>::iterator,
   std::vector<unsigned short>::iterator); // root sets from RootNbrList
 
-// These instantiations are not used, but may serve to test compilation:
+typedef std::vector<unsigned long>::iterator VI;
 
-// typedef std::vector<unsigned short>::iterator VI;
-
-// template BitMap::BitMap(unsigned long n, const VI& first, const VI& last);
+template BitMap::BitMap(unsigned long n, const VI& first, const VI& last);
 // template BitMap::BitMap(const VI& f,const VI& l, const VI& sf,const VI& sl);
 
 } // |namespace bitmap|
