@@ -41,17 +41,6 @@ set integrality_datum(Param p)= RootDatum:
 set param(RealForm G,int k, vec lambda_rho,ratvec nu) = Param:
   param(KGB(G,k),lambda_rho,nu)
 
-{ parameter(G,x,lambda,nu)=param(G,x,lambda-rho(G),nu), so you can enter
-  lambda without the rho shift; lambda may have denominator 2 or be a vec }
-set parameter (RealForm G,int x,ratvec lambda,ratvec nu) = Param:
-  param(KGB(G,x),ratvec_as_vec(lambda-rho(G)),nu)
-set parameter (KGBElt x,ratvec lambda,ratvec nu) = Param:
-  param(x,ratvec_as_vec(lambda-rho(real_form(x))),nu)
-
-
-{ get just the parameters from a block, just a shorcut to: (params,)=block(p) }
-set block_of (Param p) = [Param]: let (params,)=block(p) in params
-
 { replace non-final parameter with [Param p] of final ones
   uses this feature of ParamPol, but ignores any coefficients }
 set make_finals (Param p)= [Param]: for c@q in ParamPol: p do q od

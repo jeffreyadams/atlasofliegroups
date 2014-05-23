@@ -650,7 +650,7 @@ KGB::KGB(RealReductiveGroup& GR,
     if (elt_hash.find(test)==elt_hash.empty)
       do_dual_twist = false; // twist stablises the square class, but not KGB
   }
-  // finally install inverse Cayley links
+  // finally install inverse Cayley and twist links
   for (KGBElt x=0; x<size; ++x)
   {
     for (weyl::Generator s=0; s<rank; ++s)
