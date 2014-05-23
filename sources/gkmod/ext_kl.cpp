@@ -56,7 +56,7 @@ descent_table::descent_table(const ext_block::extended_block& eb)
   // counts of primitive block elements, one for each descent set
   std::vector<BlockElt> prim_count(1<<eb.rank(),0);
 
-  // following loop must decrease for primitivization calculation below
+  // following loop must decrease for primitivisation calculation below
   for (BlockElt x = block.size(); x-->0; )
   {
     RankFlags desc, good_asc;
@@ -71,9 +71,9 @@ descent_table::descent_table(const ext_block::extended_block& eb)
     descents[x]=desc;
     good_ascents[x]=good_asc;
 
-    BitMap& flip = prim_flip[x]; // place to record primitivation flips for $x$
+    BitMap& flip = prim_flip[x]; // place to record primitivisation flips $x$
 
-    // compute primitivizations of |x|, storing index among primitives for |D|
+    // compute primitivisations of |x|, storing index among primitives for |D|
     // loop must be downwards so initially index is w.r.t. descending order
     for (unsigned long desc=prim_index.size(); desc-->0;)
     {
@@ -636,17 +636,9 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
     {
       weyl::Generator s=aux.very_easy_set(x,y).firstBit();
       if (s<rank()) // non primitive case; equate to a previous polynomial
-      {
-	if (not is_like_nonparity(type(s,x))) // for nonparity leave it zero
-	{
-	  BlockElt sx = aux.block.some_scent(s,x);
-	  cy[x] = P(sx,y);
-	  if (aux.block.epsilon(s,x,sx)<0)
-	    cy[x] *= -1;
-	}
-      }
+	cy[x] = P(x,y); // primitivisation returns copy of such a polynomial
       else // do primitive but not extremal case
-      {
+      { // must compute by hand here, since |P(x,y)| would be yet undefined
 	s = aux.easy_set(x,y).firstBit();
 	assert(has_double_image(type(s,x))); // since |s| non-good ascent
 	BlockEltPair sx = aux.block.Cayleys(s,x);
