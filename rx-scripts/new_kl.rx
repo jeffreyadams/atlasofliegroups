@@ -4,7 +4,8 @@
   Also (compared to old implementation) no regular/singular case distinction
 }
 
-<misc.rx
+<basic.rx
+<misc.rx { for split_format }
 
 {
   Basic object: column of KL matrix (P-matrix), of polynomials evaluted as s,
@@ -41,8 +42,6 @@ set s_to_minus_1(ParamPol p, (Param->int) f) =
 
 { ------------------------------------------------------------------- }
 
-{-------------------------------------------------------------------}
-
 set character_formula (Param p) = ParamPol: s_to_1(KL_sum_at_s(p))
 
 {-------------------------------------------------------------------}
@@ -50,8 +49,9 @@ set character_formula (Param p) = ParamPol: s_to_1(KL_sum_at_s(p))
 { composition series }
 
 set composition_series (Param p) = ParamPol:
-( let block=partial_block(p)
-  , result= null_module(real_form(p)), acc=ParamPol: p in
+( let block=partial_block(p), result= null_module(real_form(p))
+  , acc=ParamPol: p
+  in
   for i:#block downto 0
   do let coef = acc[block[i]] in
     if coef!=0
@@ -85,8 +85,12 @@ set full_signed_KL_mat_at_one(Param p) = mat:
 set full_KL_inverse_mat_at_one(Param p) = mat:
   tabulate(block_of(p),composition_series@Param)
 
-set print_character_formula (Param p)= void:
-  for w@p in character_formula(p) do prints(split_format(w),"*",p) od
 
-set print_composition_series(Param p)= void:
-  for w@p in composition_series(p) do prints(split_format(w),"*",p) od
+set print_formatted (ParamPol P) = void:
+  for w@p in P do prints(split_format(w),"*",p) od
+
+set print_character_formula (Param p) = void:
+  print_formatted(character_formula(p))
+
+set print_composition_series(Param p) = void:
+  print_formatted(composition_series(p))

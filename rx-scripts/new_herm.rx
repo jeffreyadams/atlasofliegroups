@@ -1,19 +1,11 @@
-<misc.rx
+<basic.rx
+<representations.rx { for spherical_principal_series }
 <new_kl.rx
 
 { a variable used in this file; set to true for more output from functions }
 set hermitian_debug = false
 
-set -(ParamPol P,ParamPol Q) = ParamPol: P+(-1)*Q
-
-{ test equality of ParamPols }
-set =(ParamPol P,ParamPol Q) = bool: #(P-Q)=0
-
-{ order of operands in the next function avoids conflicting *@(int,ParamPol) }
-set *(Param p,rat alpha) = let (x,lambda,nu)=%p in param(x,lambda,alpha*nu)
-
-{set nu=0 in Param (x,lambda,nu) }
-set make_nu0 (Param p) = p*0
+{set nu=0 in all terms of a ParamPol }
 set make_nu0 (ParamPol P)= ParamPol:
   null_module(real_form(P)) + for w@p in P do (w,p*0) od
 

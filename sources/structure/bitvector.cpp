@@ -702,15 +702,18 @@ template<size_t dim>
   projecting the $e_j$ for $j$ in the complement $J$ of $I$ onto $V$ along
   $e_I$ (i.e., according to the direct sum decompostion $k^d=V\oplus e_I$).
   This can be visualised by viewing $V$ as the function-graph of a linear map
-  from $k^J$ to $k^I$; then the normal basis is the lift to $V$ of the
-  standard basis of $k^J$. We define the canonical basis of $V$ to be the
-  normal basis for the complement $I$ of the lexicographically minimal
-  possible set $J$ (lexicographic for the increasing sequences representing
-  the subsets; in fact $I$ is lexicographically maximal since complementation
-  reverses this ordering on fixed-size subsets). One can find this $J$ by
-  repeatedly choosing the smallest index such that the projection from $V$
-  defined by extracting the coordinates at the selected indices remains
-  surjective.
+  from $k^J$ to $k^I$ (with the coordinates of domain and codomain interwoven
+  at the positions $J$ and $I$, respectively); then the normal basis is the
+  lift to the graph $V$ of the standard basis of $k^J$. We define the
+  canonical basis of $V$ to be the normal basis for the complement $I$ of the
+  lexicographically minimal possible set $J$ (lexicographic for the increasing
+  sequences representing the subsets; in fact $I$ is lexicographically maximal
+  since complementation reverses this ordering on fixed-size subsets). One can
+  find this $J$ by repeatedly choosing the smallest index such that the
+  projection from $V$ defined by extracting the coordinates at the selected
+  indices remains surjective to the set of all possible coordinate tuples.
+  (Intersect $V$ with the subspace defined by setting previously selected
+  coordinates to zero; choose the smallest coordinate that can be nonzero.)
 
   This function assumes that $a$ already contains the canonical basis of some
   subspace, and that the elements of |f| describe the corresponding set $J$.
