@@ -676,7 +676,11 @@ template<typename C>
     Instantiation of templates (only these are generated)
 
   */
-typedef arithmetic::Numer_t Num; // abreviation
+
+ // type abreviations used in these instantiations
+typedef arithmetic::Numer_t Num;
+typedef polynomials::Polynomial<int> Pol;
+
 
 template std::vector<Vector<int> > standard_basis<int>(size_t n);
 
@@ -689,6 +693,7 @@ template class Matrix<int>;           // the main instance used
 template class Matrix_base<unsigned long>; // for |abelian::Endomorphism|
 template class PID_Matrix<int>;
 
+// template member instances
 template int Vector<int>::dot(Vector<int> const&) const;
 template signed char
   Vector<signed char>::dot(const Vector<signed char>&) const;
@@ -720,9 +725,11 @@ template Matrix_base<int>::Matrix_base
    tags::IteratorTag);
 
 
-template class Vector<polynomials::Polynomial<int> >;
-template class Matrix_base<polynomials::Polynomial<int> >;
-template class Matrix<polynomials::Polynomial<int> >;
+template class Vector<Pol>;
+template class Matrix_base<Pol>;
+template class Matrix<Pol>;
+
+template Vector<Pol> Matrix<Pol>::operator*(Vector<Pol> const&) const;
 
 } // |namespace matrix|
 

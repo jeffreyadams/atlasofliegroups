@@ -15,14 +15,16 @@
 #include "atlas_types.h"
 
 #include "bitset.h"	// for default argument to |printDescent|
+#include "ext_block.h"  // for |ext_block::DescValue|
 
 namespace atlas {
+
+namespace block_io {
+
 
 /******** function declarations *********************************************/
 
 // the main output interface is via methods of |blocks::Block_base|
-
-namespace block_io {
 
   std::ostream& printBlockU(std::ostream&, const Block&);
 
@@ -33,8 +35,15 @@ namespace block_io {
 
   std::ostream& print_KL(std::ostream&f, param_block& block, BlockElt z);
 
-}
+} // |namespace block_io|
 
-}
+namespace ext_block {
+
+  const char* descent_code(DescValue v);
+
+} // |namespace ext_block|
+
+} // |namespace atlas|
+
 
 #endif

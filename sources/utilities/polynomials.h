@@ -71,17 +71,18 @@ template<typename C> class Polynomial
   Polynomial() : d_data() {} // zero polynomial
   explicit Polynomial(C c);  // constant polynomial, |c==0| handled correctly
   Polynomial(Degree d, C c); // initialised to $cX^d$ (with |c!=0|)
+  Polynomial(Degree d,const Polynomial& Q); // initialised to $X^d Q$
 
 // copy, assignment (default will do) and swap
 
 template <typename U>
-  Polynomial(const Polynomial<U>& src)
-  : d_data(src.begin(),src.end()) { }
+  Polynomial(const Polynomial<U>& src) : d_data(src.begin(),src.end()) { }
 
   void swap(Polynomial& other) { d_data.swap(other.d_data); }
 
 // accessors
-  C operator[] (Degree i) const { return d_data[i]; } // get coefficient $X^i$
+  const C& operator[] (Degree i) const; // get coefficient $X^i$
+  const C coef (Degree i) const { return i>=d_data.size() ? C(0) : d_data[i]; }
 
   bool operator== (const Polynomial& q) const { return d_data == q.d_data; }
   bool operator!= (const Polynomial& q) const { return d_data != q.d_data; }
@@ -105,8 +106,11 @@ template <typename U>
   bool isZero() const { return size() == 0; } // because of reduction
   bool multi_term () const; // whether more than one term is nonzero (printing)
 
+  // write polynomial as $(1+cX)Q+rX^d$, and return $r$
+  C up_remainder(C c, Degree d) const; // assumes $d\geq degree()$
+
 // manipulators
-  C& operator[] (Degree j) { return d_data[j]; } // non-const version of above
+  C& operator[] (Degree j); // non-const version of above
 
   Polynomial& operator+= (const Polynomial& q);
 
@@ -115,16 +119,26 @@ template <typename U>
   Polynomial& subtract_from (const Polynomial& p); // *this = p - *this
 
   Polynomial& operator*= (C);
+  Polynomial& operator/= (C);
   Polynomial operator* (C c) const { return Polynomial (*this)*=c; }
 
   Polynomial operator* (const Polynomial& q) const;
   Polynomial& operator*= (const Polynomial& q)
     { operator*(q).swap(*this); return *this; }
   Polynomial operator+ (const Polynomial& q) const
-    { return Polynomial(*this)+=q; }
+    { // avoid requiring reallocation during addition
+      return d_data.size()>=q.d_data.size()
+	? Polynomial(*this)+=q : Polynomial(q)+=*this;
+    }
   Polynomial operator- (const Polynomial& q) const
-    { return Polynomial(*this)-=q; }
+    { // avoid requiring reallocation during addition
+      return d_data.size()>=q.d_data.size()
+	? Polynomial(*this)-=q : (Polynomial(q)*=C(-1))+=*this;
+    }
   Polynomial operator- () const { return Polynomial(*this)*= C(-1); }
+
+  // as |up_remainder| above, but also change polynomial into quotient $Q$
+  C factor_by(C c, Degree d); // assumes $d\geq degree()$
 
   std::ostream& print(std::ostream& strm, const char* x) const;
 

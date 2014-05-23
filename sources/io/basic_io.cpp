@@ -243,6 +243,9 @@ void write_bytes(unsigned int n, unsigned long long val, std::ostream& out)
 //   (std::ostream& strm, const BitSet<constants::RANK_MAX>& b);
 
 template std::ostream& polynomials::operator<<
+  (std::ostream& strm, const Polynomial<KLCoeff>& P);
+
+template std::ostream& polynomials::operator<<
   (std::ostream& strm, const Polynomial<int>& P);
 
 template std::ostream& bitvector::operator<<

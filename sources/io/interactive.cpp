@@ -302,7 +302,7 @@ void getInteractive(LieType& d_lt) throw(error::InputError)
   inputBuf.reset(); // and prepare for reading it
 
   LieType lt;
-  interactive_lietype::readLieType(lt,inputBuf);
+  interactive_lietype::readLieType(lt,inputBuf); // decipher Lie type
   d_lt.swap(lt);
 }
 

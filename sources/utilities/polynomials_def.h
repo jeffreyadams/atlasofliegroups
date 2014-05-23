@@ -29,6 +29,8 @@
 #include <limits>
 #include <cassert>
 #include <sstream>
+#include <algorithm> // |std::fill| and |std::copy|
+#include <stdexcept>
 
 #include "error.h"
 
@@ -63,9 +65,34 @@ template<typename C>
   d_data[d] = c;
 }
 
+// shifted copy of an existing polynomial
+template<typename C>
+  Polynomial<C>::Polynomial(Degree d,const Polynomial& Q)
+  : d_data(Q.isZero() ? 0 : Q.d_data.size()+d)
+{
+  if (Q.isZero())
+    return; // avoid moving zeroes into an empty |d_data| array
+  typename std::vector<C>::iterator bottom=d_data.begin()+d;
+  std::fill(d_data.begin(),bottom,C(0)); // zero coefficient below bottom
+  std::copy(Q.d_data.begin(),Q.d_data.end(),bottom); // remainder copied from Q
+}
+
 /******** accessors **********************************************************/
 
+template<typename C>
+const C& Polynomial<C>::operator[] (Degree i) const
+{ assert(i<d_data.size());
+  return d_data[i];
+}
+
+
 /******** manipulators *******************************************************/
+
+template<typename C>
+C& Polynomial<C>::operator[] (Degree i)
+{ assert(i<d_data.size());
+  return d_data[i];
+}
 
 /*!
   \brief Adjusts the size of d_data so that it corresponds to the degree + 1.
@@ -143,6 +170,20 @@ Polynomial<C>& Polynomial<C>::operator*= (C c)
 }
 
 template<typename C>
+Polynomial<C>& Polynomial<C>::operator/= (C c)
+{
+  if (c==C(0))
+    throw std::runtime_error("Polynomial division by 0");
+  for (C* p=&*d_data.end(); p>&d_data[0]; )
+    if (*--p%c==C(0))
+      *p /= c;
+    else
+      throw std::runtime_error("Inexact polynomial integer division");
+
+  return *this;
+}
+
+template<typename C>
 Polynomial<C> Polynomial<C>::operator* (const Polynomial& q) const
 {
   if (isZero() or q.isZero()) // we must avoid negative degrees!
@@ -160,6 +201,34 @@ Polynomial<C> Polynomial<C>::operator* (const Polynomial& q) const
     while (src>&q.d_data[0]) *--dst += c * *--src;
   }
   return result;
+}
+
+// rising degree division by $(1+cX)$, return remainder in coefficient of $X^d$
+template<typename C> C Polynomial<C>::up_remainder(C c, Degree d) const
+{
+  if (isZero())
+    return C(0);
+  assert(degree()<=d);
+  C remainder = d_data[0];
+  for (Degree i=1; i<=d; ++i)
+    remainder = coef(i) - c*remainder;
+  return remainder; // excess that was found in |coef(d)| for exact division
+}
+
+// non const version of the same, changing polynomial into the quotient
+template<typename C> C Polynomial<C>::factor_by(C c, Degree d)
+{
+  if (isZero())
+    return C(0);
+  assert(degree()<=d);
+  if (d>degree())
+    d_data.resize(d+1,C(0)); // extend with zero coefficients to make degree $d$
+  C remainder = d_data[0];
+  for (Degree i=1; i<=d; ++i) // |d_data[i-1]| becomes quotient coefficient
+    remainder = (d_data[i] -= c*remainder); // |d_data[i]| is now remainder
+  d_data[d]=0; // kill remainder in top coefficient, its value is held in |sum|
+  adjustSize();
+  return remainder; // excess that was found in |d_data[d]| for exact division
 }
 
 template<typename C>
