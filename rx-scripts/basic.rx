@@ -434,6 +434,16 @@ set nu (Param p) = ratvec: let (,,nu) =%p in nu
 { simulate coercion (KGBElt->RealForm) in some cases }
 set involution (Param p)=involution(x(p))
 
+{ parameter(G,x,lambda,nu)=param(G,x,lambda-rho(G),nu), so you can enter
+  lambda without the rho shift; lambda may have denominator 2 or be a vec }
+set parameter (RealForm G,int x,ratvec lambda,ratvec nu) = Param:
+  param(KGB(G,x),ratvec_as_vec(lambda-rho(G)),nu)
+set parameter (KGBElt x,ratvec lambda,ratvec nu) = Param:
+  param(x,ratvec_as_vec(lambda-rho(real_form(x))),nu)
+
+{ get just the parameters from a block, just a shorcut to: (params,)=block(p) }
+set block_of (Param p) = [Param]: let (params,)=block(p) in params
+
 { status of a parameter with respect of a Weyl generator s }
 
 set imaginary_type (int s, Param p) = int: if cross(s,p)=p then 2 else 1 fi
