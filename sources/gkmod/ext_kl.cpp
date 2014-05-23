@@ -588,7 +588,7 @@ void KL_table::fill_next_column(PolHash& hash)
 
 /*
   Basic idea for new recursion: if some $s$ is real nonparity for $y$ and a
-  proper ascent for $x$ (with some restriction for type 1) then one has
+  proper ascent for $x$ (with some restriction in case of type 1) then one has
 
   $$
   0 = [T_x](T_s+1).C_y - [T_x]\sum_u [s\in\tau(u)]r^{l(y/u)+k} P_{x,u}m_s(u,y)
@@ -636,8 +636,15 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
     {
       weyl::Generator s=aux.very_easy_set(x,y).firstBit();
       if (s<rank()) // non primitive case; equate to a previous polynomial
-	cy[x] = is_like_nonparity(type(s,x)) ? Pol()
-	  : P(aux.block.some_scent(s,x),y);
+      {
+	if (not is_like_nonparity(type(s,x))) // for nonparity leave it zero
+	{
+	  BlockElt sx = aux.block.some_scent(s,x);
+	  cy[x] = P(sx,y);
+	  if (aux.block.epsilon(s,x,sx)<0)
+	    cy[x] *= -1;
+	}
+      }
       else // do primitive but not extremal case
       {
 	s = aux.easy_set(x,y).firstBit();
@@ -671,8 +678,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	// initialise $Q=\sum_{x<u<y}[s\in\tau(u)]r^{l(y/u)+k}P_{x,u}m_s(u,y)$
 	for (BlockElt u=floor_y; u-->last_u; )
 	  if (is_descent(type(s,u)) and not M[u].isZero())
-	    Q += Pol((aux.block.l(y,u)+k-M[u].degree())/2,
-		     P(x,u)*M[u]);
+	    Q += Pol((aux.block.l(y,u)+k-M[u].degree())/2, P(x,u)*M[u]);
 
 	// subtract terms for ascent(s) of |x|; divide by its own coefficient
 	switch(tx)
@@ -682,7 +688,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	case ext_block::three_complex_ascent:
 	  { // |(is_complex(tx))|
 	    BlockElt sx=aux.block.cross(s,x);
-	    if (sx<floor_y) //from $[T_x](T_s+1).T_{sx}=q^k$
+	    if (sx<floor_y) // subtract contrib. from $[T_x](T_s+1).T_{sx}=q^k$
 	      Q -= aux.block.T_coef(s,x,sx)*cy[sx]; // coef is $\pm q^k$
 	  } // implicit division of $Q$ here is by |T_coef(s,x,x)==1|
 	  break;
@@ -765,7 +771,9 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	{
 	  const BlockElt sx = aux.block.Cayley(s,x);
 	  assert(sx<floor_y); // could only fail if |x| in downset tested above
-	  M_s[j][sx] += Pol(cy[x].coef(aux.block.l(y,x)/2));
+	  Pol& dst = M_s[j][sx];
+	  int mu = cy[x].coef(aux.block.l(y,x)/2) * aux.block.epsilon(s,x,sx);
+	  dst += Pol (dst.degree()==2 ? 1 : 0, mu);
 	}
       }
     // and update the entries |M_s[j][x]|
