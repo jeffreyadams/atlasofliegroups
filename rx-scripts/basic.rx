@@ -366,6 +366,8 @@ set quasicompact_form (InnerClass ic) = RealForm: real_forms(ic)[0]
 {			       KGB elements				}
 
 set != (KGBElt x,KGBElt y) = bool: not(x=y)
+set real_form (KGBElt x) = let (rf,) = %x in rf
+set # (KGBElt x) = let (,n) = %x in n
 
 set KGB (RealForm rf) = [KGBElt]: for i:KGB_size(rf) do KGB(rf,i) od
 
@@ -418,6 +420,20 @@ set is_noncompact (KGBElt x) = (vec->bool):
   let coweight = rho_check_i(x)+torus_factor(x)
   in (vec alpha) bool: rat_as_int(coweight*alpha)%2!=0
 
+
+{				Blocks					}
+
+set raw_KL  ((RealForm,DualRealForm) p) = (mat,[vec],vec): raw_KL(block(p))
+set dual_KL ((RealForm,DualRealForm) p) = (mat,[vec],vec): dual_KL(block(p))
+
+set print_block  ((RealForm,DualRealForm) p) = void: print_block (block(p))
+set print_blocku ((RealForm,DualRealForm) p) = void: print_blocku(block(p))
+set print_blockd ((RealForm,DualRealForm) p) = void: print_blockd(block(p))
+set print_KL_basis ((RealForm,DualRealForm) p) = void: print_KL_basis(block(p))
+set print_prim_KL  ((RealForm,DualRealForm) p) = void: print_prim_KL(block(p))
+set print_KL_list  ((RealForm,DualRealForm) p) = void: print_KL_list(block(p))
+set print_W_cells  ((RealForm,DualRealForm) p) = void: print_W_cells(block(p))
+set print_W_graph  ((RealForm,DualRealForm) p) = void: print_W_cells(block(p))
 
 {			    Module parameters				}
 
