@@ -20,6 +20,8 @@ namespace atlas {
 
 namespace kl_io {
 
+  /* these functions have non-|const| final arguments,
+     this is necessary because the implementation generates the Bruhat order */
   std::ostream& printAllKL
     (std::ostream&, const kl::KLContext&, Block_base&);
   std::ostream& printPrimitiveKL
