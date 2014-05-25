@@ -434,6 +434,9 @@ status: (vec,KGBElt->int): status of any root on KGB element, scale 0..4
   The value status(alpha,x) gives the status of the root alpha at x; the
   encoding of statusses is the same as for the function status@(int,KGBElt)
 
+twist: (KGBElt->KGBElt): twist of KGB element x, useful for Hermitian dual
+  This is defined by conjugation of x by the distinguished involution delta
+
 torus_factor: (KGBElt->ratvec): torus part of KGB element, twice that in print_X
   This is a \theta^t stable rational vector v with integral evaluations on
   all imaginary roots; interpreted modulo the image of 1+\theta^t acting
@@ -457,13 +460,22 @@ KGB_elt: (RealForm,mat,ratvec): KGB element defined by rational coweight
 
 operator =: (KGBElt,KGBElt): equality of elements of a same KGB set
 
-twist: (KGBElt->KGBElt): twist of KGB element x, useful for Hermitian dual
-  This is defined by conjugation of x by the distinguished involution delta
-
 block: (RealForm,DualRealForm->Block): construct tradiational atlas block
 %: (Block->RealForm,DualRealForm): decompose block, inverse of 'block'
 #: (Block->int): number of elements of block
 element: (Block,int->KGBElt,KGBElt): KGB and dual KGB values for block element
+index (Block,KGBElt,KGBElt->int): index in block, from KGB, dual KGB components
+  This is the inverse of the map defined by element@(Block,int): given a
+  compatible pair of a KGB element x and a dual KGB element y, it returns the
+  index in the block of the corresponding element. For efficiency reasons the
+  function requires the containing block to be supplied as first argument; if
+  needed, block(real_form(x),dual_real_form(real_form(y))) computes the block
+dual: (Block->Block): dual block, with real form and dual real form swapped
+status: (int,Block,int->): status at a block element of a simple reflection
+  For s the index of a reflection, and i the index of an element of block b,
+  status(s,b,i) gives according to the codes 0:C-, 1:ic, 2:r1, 3:r2,  4:C+,
+  5: rn, 6:i1, 7:i2. Note that the descents s have status(b,i,s)<4
+
 
 param: (KGBElt,vec,ratvec->Param): form parameter from (x,lambda-rho,nu)
 operator %: (Param->KGBElt,vec,ratvec): recover (x,lambda-rho,nu) from param

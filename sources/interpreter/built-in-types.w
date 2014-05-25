@@ -1307,9 +1307,12 @@ conjugates the based root datum automorphism to~$M$. While we are doing all
 this, we can also determine the Lie type of the root datum, the permutation
 possibly needed to map the standard (Bourbaki) ordering of that Dynkin diagram
 to the actual one, and the inner class letters corresponding to each of its
-factors. This is precisely the data stored in a |lietype::Layout| structure
-(which is later also used to associate real form names to internal data
-(gradings)).
+factors. This is precisely the data stored in a |lietype::Layout| structure,
+which we shall compute here and then store in the constructed inner class.
+Given the amount of effort required below, one might wonder if this component
+of an inner class is really necessary, but its presence is essential to be
+able to associate real form names to internal data (namely gradings), so in
+the current set-up its computation cannot be avoided.
 
 The Lie type will in general be identical to that of the root datum (and in
 particular any torus factors will come at the end), but in case of Complex
@@ -1582,11 +1585,12 @@ struct inner_class_value : public value_base
   ComplexReductiveGroup& dual;
   size_t& ref_count;
 @)
-  lietype::Layout type_info;
+  lietype::LieType rd_type;
+  lietype::InnerClassType ic_type;
   const realform_io::Interface interface,dual_interface;
 @)
-  inner_class_value(std::auto_ptr<ComplexReductiveGroup> G
-   ,@| const lietype::Layout& lo); // main constructor
+  inner_class_value  // main constructor
+   (std::auto_ptr<ComplexReductiveGroup> G, const lietype::Layout& lo);
   ~inner_class_value();
 @)
   virtual void print(std::ostream& out) const;
@@ -1606,7 +1610,7 @@ typedef std::tr1::shared_ptr<inner_class_value> shared_inner_class;
 @< Function def...@>=
 inner_class_value::inner_class_value(const inner_class_value& v)
 : val(v.val), dual(v.dual), ref_count(v.ref_count)
-, type_info(v.type_info)
+, rd_type(v.rd_type), ic_type(v.ic_type)
 , interface(v.interface), dual_interface(v.dual_interface)
 {@; ++ref_count; }
 
@@ -1641,7 +1645,8 @@ inner_class_value::inner_class_value
 @/: val(*g)
 , dual(*new ComplexReductiveGroup(*g,tags::DualTag()))
 @/, ref_count(*new size_t(1))
-@/, type_info(lo), interface(*g,lo), dual_interface(*g,lo,tags::DualTag())
+@/, rd_type(lo.d_type), ic_type(lo.d_inner)
+, interface(*g,lo), dual_interface(*g,lo,tags::DualTag())
  {@; g.release(); } // now that we own |g|, release the auto-pointer
 
 @ We allow construction of a dual |inner_class_value|. Since it can share the
@@ -1656,13 +1661,10 @@ value will behave exactly like a copy of the original inner class.
 inner_class_value::inner_class_value(const inner_class_value& v,tags::DualTag)
 @/: val(v.dual), dual(v.val)
 , ref_count(v.ref_count)
-@/,type_info(v.type_info)
+@/, rd_type(lietype::dual_type(v.rd_type))
+, ic_type(lietype::dual_type(v.ic_type,rd_type))
 , interface(v.dual_interface), dual_interface(v.interface)
-{ ++ref_count;
-@/type_info.d_type=lietype::dual_type(type_info.d_type);
-  type_info.d_inner=lietype::dual_type(type_info.d_inner,type_info.d_type);
-@/// |d_perm| remains identical to |v.d_perm|
-}
+{@; ++ref_count; }
 
 
 @ One of the most practical informations about a |ComplexReductiveGroup|,
@@ -1672,9 +1674,9 @@ forms in the inner class defined by it; we print this information when a
 
 @< Function def...@>=
 void inner_class_value::print(std::ostream& out) const
-{ out << "Complex reductive group of type " << type_info.d_type @|
+{ out << "Complex reductive group of type " << rd_type @|
       << ", with involution defining\n"
-         "inner class of type '" << type_info.d_inner @|
+         "inner class of type '" << ic_type @|
       << "', with " << val.numRealForms() @| << " real "
       << (val.numRealForms()==1 ? "form" : "forms") @| << " and "
       << val.numDualRealForms() @| << " dual real "
@@ -2072,10 +2074,9 @@ explains why the copy constructor is protected rather than private.
 struct real_form_value : public value_base
 { const inner_class_value parent;
   RealReductiveGroup val;
-  RealFormNbr form_index; // internal number associated to real form in |parent|
 @)
   real_form_value(const inner_class_value& p,RealFormNbr f) @/
-  : parent(p), val(p.val,f),form_index( f), rt_p(NULL) @+{}
+  : parent(p), val(p.val,f), rt_p(NULL) @+{}
 @)
   virtual void print(std::ostream& out) const;
   real_form_value* clone() const @+
@@ -2324,7 +2325,7 @@ provide functions that convert a dual real form to a real form, which of
 course will be associated to the dual inner class, and back.
 
 @< Local function def...@>=
-void real_form_from_dual_wrapper(expression_base::level l)
+void real_form_from_drf_wrapper(expression_base::level l)
 { shared_dual_real_form d(get<dual_real_form_value>());
   if (l!=expression_base::no_value)
     push_value(new real_form_value
@@ -2332,7 +2333,7 @@ void real_form_from_dual_wrapper(expression_base::level l)
                  ,d->val.realForm()));
 }
 
-void dual_real_form_from_wrapper(expression_base::level l)
+void dual_real_form_from_rf_wrapper(expression_base::level l)
 { shared_real_form rf = get<real_form_value>();
   if (l!=expression_base::no_value)
     push_value(new dual_real_form_value
@@ -2359,9 +2360,9 @@ install_function(dual_real_form_wrapper,@|"dual_real_form"
 				       ,"(InnerClass,int->DualRealForm)");
 install_function(dual_quasisplit_form_wrapper,@|"dual_quasisplit_form"
 		,"(InnerClass->DualRealForm)");
-install_function(real_form_from_dual_wrapper,@|"real_form"
+install_function(real_form_from_drf_wrapper,@|"real_form"
 				  ,"(DualRealForm->RealForm)");
-install_function(dual_real_form_from_wrapper,@|"dual_real_form"
+install_function(dual_real_form_from_rf_wrapper,@|"dual_real_form"
 				  ,"(RealForm->DualRealForm)");
 
 @*1 A type for Cartan classes.
@@ -3095,15 +3096,22 @@ void torus_factor_wrapper(expression_base::level l)
   }
 }
 
-@ We haven't defined much useful other things to do with KGB elements yet, but
-by popular request we make available the straightforward equality test.
+@ Finally we make available, by popular request, the equality test. This is
+not as straightforward as we initially thought it was, since we should not
+just test the (smart) pointers |x->rf|  and |y->rf| to the |real_form_value|
+objects for equality, as they could point to separate instances of the same
+real form in a identical inner class. So instead one should check the real
+form numbers, and the identity of their parent objects.
 
 @< Local function def...@>=
 void KGB_equals_wrapper(expression_base::level l)
 { shared_KGB_elt y = get<KGB_elt_value>();
   shared_KGB_elt x = get<KGB_elt_value>();
-  if (l!=expression_base::no_value)
-    push_value(new bool_value(x->rf==y->rf and x->val==y->val));
+  if (l==expression_base::no_value)
+    return;
+  bool same_ic = &x->rf->val.complexGroup() == &y->rf->val.complexGroup();
+  push_value(new bool_value(@|same_ic and
+    x->rf->val.realForm()==y->rf->val.realForm() and x->val==y->val));
 }
 
 @ Finally we install everything related to $K\backslash G/B$ elements.
@@ -3153,7 +3161,7 @@ struct Block_value : public value_base
   : rf(form), dual_rf(dual_form)
   ,
   val(Block::build(rf->val.complexGroup(),
-                   rf->form_index,dual_rf->form_index)) {}
+                   rf->val.realForm(),dual_rf->val.realForm())) {}
   ~Block_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -3229,17 +3237,142 @@ void block_element_wrapper(expression_base::level l)
   shared_Block b = get<Block_value>();
   BlockElt z = i->val; // extract value unsigned
   if (z>=b->val.size())
-    throw std::runtime_error("Block element out of range");
+    throw std::runtime_error
+      ("Block element " +str(z) + " out of range (<" + str(b->val.size())+")");
   if (l==expression_base::no_value)
     return;
   push_value(new KGB_elt_value(b->rf,b->val.x(z)));
   inner_class_value dual_ic(b->rf->parent,tags::DualTag());
-  shared_real_form drf (new real_form_value(dual_ic,b->dual_rf->form_index));
+  shared_real_form drf (new real_form_value(dual_ic,b->dual_rf->val.realForm()));
   push_value(new KGB_elt_value(drf,b->val.y(z)));
   if (l==expression_base::single_value)
     wrap_tuple(2);
 }
 
+@ The inverse operation of decomposing a block element into a KGB element and
+a dual KGB element is also useful. While one could construct the containing
+|Block| value from the given values |x|, |y|, this function is probably most
+used repeatedly with a fixed known lock, so it is more efficient to require
+that such a block be passed as a parameter. Much of the effort here goes into
+testing that the parameters supplied are coherent with each other; after this,
+the method |Block::element| does the actual work of looking up the pair
+$(x,y)$ in the block.
+
+@< Local function def...@>=
+void block_index_wrapper(expression_base::level l)
+{ shared_KGB_elt y = get<KGB_elt_value>();
+  shared_KGB_elt x = get<KGB_elt_value>();
+  shared_Block b = get<Block_value>();
+  if (&b->rf->parent.val!=&x->rf->parent.val)
+    throw std::runtime_error ("Real form not in inner class of block");
+  if (&b->rf->parent.val!=&y->rf->parent.dual)
+    throw std::runtime_error ("Dual real form not in inner class of block");
+#if 0
+  const KGB& kgb = b->rf->kgb(); const KGB& dual_kgb = b->dual_rf->kgb();
+  const TwistedWeylGroup& tw = kgb.twistedWeylGroup();
+  const TwistedWeylGroup& dual_tw = dual_kgb.twistedWeylGroup();
+  if (blocks::dual_involution(kgb.involution(x->val),tw,dual_tw)
+      != dual_kgb.involution(y->val))
+    throw std::runtime_error ("Fiber mismatch KGB and dual KGB elements");
+#endif
+
+  BlockElt z = b->val.element(x->val,y->val);
+
+  if (l==expression_base::no_value)
+    return;
+  push_value(new int_value(z));
+}
+
+@ The dual block might be computed from other functions (provided the block
+has any elements), but it is fairly easy to implement directly.
+
+@< Local function def...@>=
+void dual_block_wrapper(expression_base::level l)
+{ shared_Block b = get<Block_value>();
+  if (l==expression_base::no_value)
+    return;
+  inner_class_value dual_ic(b->rf->parent,tags::DualTag());
+@/shared_real_form rf(new real_form_value(dual_ic,b->dual_rf->val.realForm()));
+  shared_dual_real_form dual_rf
+    (new dual_real_form_value(dual_ic,b->rf->val.realForm()));
+  push_value(new Block_value(rf,dual_rf));
+}
+
+@ To make blocks more easily useful we add functions giving a status code for
+a Weyl group generator with respect to a block element.
+
+@< Local function def...@>=
+void block_status_wrapper(expression_base::level l)
+{ BlockElt i = get<int_value>()->val;
+  shared_Block b = get<Block_value>();
+  unsigned int s = get<int_value>()->val;
+  if (s>=b->rf->val.semisimpleRank())
+    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+  if (i>=b->val.size())
+    throw std::runtime_error
+      ("Block element " +str(i) + " out of range (<" + str(b->val.size())+")");
+  if (l==expression_base::no_value)
+    return;
+
+  const DescentStatus::Value dv = b->val.descentValue(s,i);
+@/// renumber from |DescentStatus::Value| order to C-,ic,r1,r2,C+,rn,i1,i2
+  static const unsigned char tab [] = {4,5,6,7,1,0,3,2};
+  push_value(new int_value(tab[dv]));
+}
+
+@ We also allow computing cross actions and (inverse) Cayley transforms.
+
+@< Local function def...@>=
+
+void block_cross_wrapper(expression_base::level l)
+{ BlockElt i = get<int_value>()->val;
+  shared_Block b = get<Block_value>();
+  unsigned int s = get<int_value>()->val;
+  if (s>=b->rf->val.semisimpleRank())
+    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+  if (i>=b->val.size())
+    throw std::runtime_error
+      ("Block element " +str(i) + " out of range (<" + str(b->val.size())+")");
+  if (l==expression_base::no_value)
+    return;
+  push_value(new int_value(b->val.cross(s,i)));
+}
+@)
+void block_Cayley_wrapper(expression_base::level l)
+{ shared_int i = get<int_value>();
+  shared_Block b = get<Block_value>();
+  unsigned int s = get<int_value>()->val;
+  if (s>=b->rf->val.semisimpleRank())
+    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+  if (static_cast<unsigned int>(i->val) >= b->val.size())
+    throw std::runtime_error
+      ("Block element " +str(i) + " out of range (<" + str(b->val.size())+")");
+  if (l==expression_base::no_value)
+    return;
+  BlockElt sx = b->val.cayley(s,i->val).first;
+  if (sx==UndefBlock) // when undefined, return i to indicate so
+    push_value(i);
+  else
+    push_value(new int_value(sx));
+}
+@)
+void block_inverse_Cayley_wrapper(expression_base::level l)
+{ shared_int i = get<int_value>();
+  shared_Block b = get<Block_value>();
+  unsigned int s = get<int_value>()->val;
+  if (s>=b->rf->val.semisimpleRank())
+    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+  if (static_cast<unsigned int>(i->val) >= b->val.size())
+    throw std::runtime_error
+      ("Block element " +str(i) + " out of range (<" + str(b->val.size())+")");
+  if (l==expression_base::no_value)
+    return;
+  BlockElt sx = b->val.inverseCayley(s,i->val).first;
+  if (sx==UndefBlock) // when undefined, return i to indicate so
+    push_value(i);
+  else
+    push_value(new int_value(sx));
+}
 
 @ Finally we install everything related to blocks.
 
@@ -3249,6 +3382,13 @@ install_function(decompose_block_wrapper,@|"%"
                 ,"(Block->RealForm,DualRealForm)");
 install_function(block_size_wrapper,"#","(Block->int)");
 install_function(block_element_wrapper,"element","(Block,int->KGBElt,KGBElt)");
+install_function(block_index_wrapper,"index","(Block,KGBElt,KGBElt->int)");
+install_function(dual_block_wrapper,"dual","(Block->Block)");
+install_function(block_status_wrapper,"status","(int,Block,int->int)");
+install_function(block_cross_wrapper,@|"cross","(int,Block,int->int)");
+install_function(block_Cayley_wrapper,@|"Cayley","(int,Block,int->int)");
+install_function(block_inverse_Cayley_wrapper,@|"inverse_Cayley"
+                ,"(int,Block,int->int)");
 
 @*1 Standard module parameters.
 %
