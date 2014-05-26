@@ -3157,11 +3157,7 @@ struct Block_value : public value_base
   Block val; // cannot be |const|, as Bruhat order may be generated implicitly
 @)
   Block_value(const shared_real_form& form,
-         const shared_dual_real_form& dual_form)
-  : rf(form), dual_rf(dual_form)
-  ,
-  val(Block::build(rf->val.complexGroup(),
-                   rf->val.realForm(),dual_rf->val.realForm())) {}
+         const shared_dual_real_form& dual_form);
   ~Block_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -3174,6 +3170,23 @@ private:
 @)
 typedef std::auto_ptr<Block_value> Block_ptr;
 typedef std::tr1::shared_ptr<Block_value> shared_Block;
+
+@ The constructor got |Block_value| is relatively elaborate, so we lift it out
+of the class declaration. One should avoid calling the version of the |build|
+method that takes real form and deal real form numbers (as we originally did
+here), as this will generate small versions of the KGB sets, which changes the
+numbering and causes inconsistencies when KGB elements are extracted from
+block elements. Instead we call the |build| method that accepts a pair of
+|RealReductiveGroup| arguments, so that the generated block will be exactly a
+classical one.
+
+@< Function def...@>=
+  Block_value::Block_value(const shared_real_form& form,
+         const shared_dual_real_form& dual_form)
+  : rf(form), dual_rf(dual_form)
+  ,
+  val(Block::build(rf->val,dual_rf->val)) {}
+
 
 @ When printing a block, we print its size; we shall later provide a separate
 print function that tabulates its individual elements.
@@ -3267,14 +3280,12 @@ void block_index_wrapper(expression_base::level l)
     throw std::runtime_error ("Real form not in inner class of block");
   if (&b->rf->parent.val!=&y->rf->parent.dual)
     throw std::runtime_error ("Dual real form not in inner class of block");
-#if 0
   const KGB& kgb = b->rf->kgb(); const KGB& dual_kgb = b->dual_rf->kgb();
   const TwistedWeylGroup& tw = kgb.twistedWeylGroup();
   const TwistedWeylGroup& dual_tw = dual_kgb.twistedWeylGroup();
   if (blocks::dual_involution(kgb.involution(x->val),tw,dual_tw)
       != dual_kgb.involution(y->val))
     throw std::runtime_error ("Fiber mismatch KGB and dual KGB elements");
-#endif
 
   BlockElt z = b->val.element(x->val,y->val);
 
