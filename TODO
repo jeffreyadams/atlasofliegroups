@@ -6,9 +6,14 @@
 
 * Work on the atlas program
 
-- Clean up the mess dealing with input (interface/input, io/interactive...)
+ - correct bug with myterisous typeahead after bailing out with ?
+ - clean up the mess dealing with input (interface/input, io/interactive...)
 
 * Work on the realex program
+
+ - correct test for compatibility of (x,y) in index@(Blocj,KGBElt,KGBElt)
+ - correct spurious coercion preventing call of dual@InnerClass
+ - figure out why print_block shows smallblock x,y coordinates
 
  - Allow for declaring an input path, and (silent) default prelude
 
@@ -65,6 +70,8 @@
  - Allow encapsulation into user-defined types
 
  - Ensure that root data obtained from inner classes or beyond are shared
+ - Avoid creating many identical |real_form_value| instances, by storing links
+   to those currently generated within an |inner_class_value| object
  - Check if efficiency features actually work as intended
    For instance v[i]=k should usually avoid a copy of v being made. Also see
    if something can be done to avoid duplication in a +:= x (probably not, as

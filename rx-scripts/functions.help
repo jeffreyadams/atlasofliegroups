@@ -415,9 +415,10 @@ fiber_partition: (CartanClass,RealForm->[int]): identifying part of fiber group
 KGB: (RealFrom,int->KGBElt): select a KGB element x among those of a real form
   The call KGB(i,rf) selects the element in line i of the print_KGB(rf)
   output.
-real_form: (KGBElt->RealForm): the real form for which the argument is defined
+%: (KGBElt->RealForm,int): real form and number; inverse of KGB@(RealForm,int)
 Cartan_class: (KGBElt->CartanClass): the Cartan class for the KGB element
 involution: (KGBElt->mat): the involution associated to the KGB element
+length: (KGBElt->int): length of the element within its KGB set
 cross: (int,KGBElt->KGBElt): cross action for (generator,KGB element)
 Cayley: (int,KGBElt->KGBElt): Cayley transform for (generator,KGB element)
   If (and only if) the transform is undefined it returns the same parameter
@@ -432,6 +433,9 @@ status: (int,KGBElt->int): status of generator on KGB element, scale 0..4
 status: (vec,KGBElt->int): status of any root on KGB element, scale 0..4
   The value status(alpha,x) gives the status of the root alpha at x; the
   encoding of statusses is the same as for the function status@(int,KGBElt)
+
+twist: (KGBElt->KGBElt): twist of KGB element x, useful for Hermitian dual
+  This is defined by conjugation of x by the distinguished involution delta
 
 torus_factor: (KGBElt->ratvec): torus part of KGB element, twice that in print_X
   This is a \theta^t stable rational vector v with integral evaluations on
@@ -456,8 +460,21 @@ KGB_elt: (RealForm,mat,ratvec): KGB element defined by rational coweight
 
 operator =: (KGBElt,KGBElt): equality of elements of a same KGB set
 
-twist: (KGBElt->KGBElt): twist of KGB element x, useful for Hermitian dual
-  This is defined by conjugation of x by the distinguished involution delta
+block: (RealForm,DualRealForm->Block): construct tradiational atlas block
+%: (Block->RealForm,DualRealForm): decompose block, inverse of 'block'
+#: (Block->int): number of elements of block
+element: (Block,int->KGBElt,KGBElt): KGB and dual KGB values for block element
+index (Block,KGBElt,KGBElt->int): index in block, from KGB, dual KGB components
+  This is the inverse of the map defined by element@(Block,int): given a
+  compatible pair of a KGB element x and a dual KGB element y, it returns the
+  index in the block of the corresponding element. For efficiency reasons the
+  function requires the containing block to be supplied as first argument; if
+  needed, block(real_form(x),dual_real_form(real_form(y))) computes the block
+dual: (Block->Block): dual block, with real form and dual real form swapped
+status: (int,Block,int->): status at a block element of a simple reflection
+  For s the index of a reflection, and i the index of an element of block b,
+  status(s,b,i) gives according to the codes 0:C-, 1:ic, 2:r1, 3:r2,  4:C+,
+  5: rn, 6:i1, 7:i2. Note that the descents s have status(b,i,s)<4
 
 
 param: (KGBElt,vec,ratvec->Param): form parameter from (x,lambda-rho,nu)
@@ -555,20 +572,21 @@ full_deform: (Param->ParamPol): perform deformation all the way to nu=0
   as they do not have nu=0; all terms in the reult therfore have nu=0
 
 KL_sum_at_s: (Param->ParamPol): signed sum of KL polynomials at s, fixed y
-  Computes \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s] where y is the block
+  Computes \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s].x where y is the block
   element of the parameter, and the sum is over other block elements x.
 
-raw_KL: (RealForm,DualRealForm->mat,[vec],vec): Kazhdan-Lusztig data, raw form
-  The call raw_KL(rf,drf) produces a matrix of numbers identifying
-  polynomials, a list of those polynomials in the form of coefficient vectors,
-  and a sequence of length boundaries that allow deducing the "lengths" of the
-  integers used to index the matrix. These integers identify block elements
-  for the block print_block(rf,drf). If (M,L,len)=raw_KL(rf,drf), and v,w are
-  integers identifying block elements, then the vector L[M[v,w]] gives the
-  coefficients of the KL polynomial P_{v,w}. The length of v is the lergest
-  index i such that len[i]<=v, so the length difference between v and w is the
-  number of indices with v<len[i]<=w.
-dual_KL: (RealForm,DualRealForm->mat,[vec],vec) dual KL polynomials (Q_{x,y})
+raw_KL: (Block->mat,[vec],vec): Kazhdan-Lusztig data for block, raw form
+  The call raw_KL(b) produces a matrix of numbers identifying polynomials, a
+  list of those polynomials in the form of coefficient vectors, and a sequence
+  of length boundaries that allow deducing the "lengths" of the integers used
+  to index the matrix. These integers identify block elements for the block
+  print_block(b). If (M,L,len)=raw_KL(b), and v,w are integers identifying
+  block elements, then the vector L[M[v,w]] gives the coefficients of the KL
+  polynomial P_{v,w}. The length of v is the lergest index i such that
+  len[i]<=v, so the length difference between v and w is the number of indices
+  with v<len[i]<=w.
+
+dual_KL: (Block->mat,[vec],vec): dual KL polynomials (Q_{x,y}) for block
   This is like raw_KL, but computes the polynomials Q instead of P. The
   indexing of the block is the same as for the polynomials P, so up to length
   signs, the matrix should be the inverse of the P matrix. The length stops
@@ -587,19 +605,16 @@ print_gradings: (CartanClass,RealForm->): print gradings defined by real form
 print_real_Weyl: (RealForm,CartanClass->)
 print_strong_real: (CartanClass->)
 
-print_block: (RealForm,DualRealForm->):
-print_blocku: (RealForm,DualRealForm->):
-print_blockd: (RealForm,DualRealForm->):
-print_blockstabilizer: (RealForm,DualRealForm,CartanClass->):
+print_block: (Block->):
+print_blocku: (Block->):
+print_blockd: (Block->):
+print_blockstabilizer: (Block,CartanClass->):
 print_KGB: (RealForm->):
 print_X: (InnerClass->):
-print_KL_basis: (RealForm,DualRealForm->): :print_KL_basis:
-print_prim_KL: (RealForm,DualRealForm->): :print_prim_KL:
-print_KL_list: (RealForm,DualRealForm->): :print_KL_list:
-print_W_cells: (RealForm,DualRealForm->): :print_W_cells:
-print_W_graph: (RealForm,DualRealForm->):
-  These commands give the output of the corresponding commands of the Atlas
-  software. It is required that the real form and dual real form (and in
-  relevant cases the Cartan class) be associated to the same inner class,
-  and that they have at least one Cartan class (respectively the given Cartan
-  class) in common.
+print_KL_basis: (Block->):
+print_prim_KL: (Block->):
+print_KL_list: (Block->):
+print_W_cells: (Block->):
+print_W_graph: (Block->):
+  These commands give the output of the corresponding commands of 'atlas'.
+
