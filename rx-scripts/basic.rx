@@ -371,15 +371,20 @@ set # (KGBElt x) = let (,n) = %x in n
 
 set KGB (RealForm rf) = [KGBElt]: for i:KGB_size(rf) do KGB(rf,i) od
 
-set KGB_elt ((RootDatum,mat,ratvec) (rd,theta,v):all) = KGBElt:
+set KGB_elt ((InnerClass, mat, ratvec) (,theta,v):all) = KGBElt:
+  let (,rf) = Cartan_class_real_form(all) { find real form within ic }
+  in KGB_elt(rf,theta,v)                  { find KGB element within rf }
+
+{ NB: elements produced by the following function test unequal to any others }
+set KGB_elt (RootDatum rd, mat theta, ratvec v) = KGBElt:
   let ic = inner_class(rd,theta)               { find the proper inner class }
   then (,rf) = Cartan_class_real_form(ic,theta,v) { find real form within ic }
-  in KGB_elt(rf,theta,v)                    { find KGB element within rf }
+  in KGB_elt(rf,theta,v)                        { find KGB element within rf }
 
-set status_text ((int,KGBElt)p) = string:
-  ["C-","ic","r ","nc","C+"][status(p)]
-set status_text ((vec,KGBElt)p) = string:
-  ["C-","ic","r ","nc","C+"][status(p)]
+set KGB_status_text (int i) = string: ["C-","ic","r ","nc","C+"][i]
+
+set status_text ((int,KGBElt)p) = string: KGB_status_text(status(p))
+set status_text ((vec,KGBElt)p) = string: KGB_status_text(status(p))
 set status_texts (KGBElt x) = [string]:
   for s:semisimple_rank(real_form(x)) do status_text(s,x) od
 
@@ -476,8 +481,10 @@ set status (int s,Param p) = int: { enum: C-, ic, r1, r2, C+, rn, i1, i2 }
   else 1+real_type(s,p)
   fi
 
-set status_text (int s,Param p) = string:
-  ["C-","ic","r1","r2","C+","rn","i1","i2"][status(s,p)]
+set block_status_text (int i) = string:
+  ["C-","ic","r1","r2","C+","rn","i1","i2"][i]
+
+set status_text (int s,Param p) = string: block_status_text(status(s,p))
 set status_texts(Param p) = [string]:
   for s:semisimple_rank(real_form(p)) do status_text(s,p) od
 

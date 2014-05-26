@@ -43,21 +43,8 @@ set real_form (InnerClass ic, string name) = RealForm:
   then () = while i>=0 and fn[i]!=name do i-:=1 od
   in if i<0 then error("unknown real form") else real_form(ic,i) fi
 
-set form_number_by_fiber_partition (InnerClass ic,vec v) = int:
-  let realforms=real_forms(ic), i=nr_of_real_forms(ic)-1
-  in while i>0 and fiber_partition(realforms[i])!=v do i-:=1 od; i
-
 set * (RealForm G,RealForm H) = RealForm:
   real_form(inner_class(G)*inner_class(H), form_name(G) + "." + form_name(H))
-
-{ then ((n,,),,,) = Cartan_info(fundamental_Cartan(G))
-  { fiber part of G has size 2^number of compact factors of fundamental torus }
-  then v=vec: []
-  then ()=
-    for i in fiber_partition(G)
-    do for j in fiber_partition(H) do v:=v#(i+(2^n)*j) od od
-  in real_forms(ic)[form_number_by_fiber_partition(ic,sort(v))]
-}
 
 
 { ----------------radical, i.e. maximal central torus---------------- }
@@ -84,6 +71,7 @@ set mod_central_torus (InnerClass ic) = InnerClass:
   let (quot_rd,inj)=mod_central_torus_info(root_datum(ic))
   in inner_class(quot_rd,restrict_action(distinguished_involution(ic),inj))
 
+{ transform involution theta to basis of simple roots }
 set adjoint_transform (RootDatum rd, mat theta) = mat:
   let  image = theta*simple_roots(rd), ssr = semisimple_rank(rd)
   then image_coords = [vec]:
@@ -99,7 +87,8 @@ set derived (RealForm G) = RealForm:
   let ic = inner_class(G),  (der_rd,proj)=derived_info(root_datum(G))
   , x0 = KGB(G,0)
   then act = corestrict_action(distinguished_involution(ic),proj)
-  in real_form(inner_class(der_rd,act),act,torus_factor(x0)*proj)
+  in real_form(inner_class(der_rd,act),act
+              ,torus_factor(x0)*right_inverse(proj))
 
 set adjoint(RealForm G)=
   let adj_ic = adjoint(inner_class(G))
