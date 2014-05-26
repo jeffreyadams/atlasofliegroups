@@ -11,9 +11,7 @@
 
 * Work on the realex program
 
- - correct test for compatibility of (x,y) in index@(Blocj,KGBElt,KGBElt)
  - correct spurious coercion preventing call of dual@InnerClass
- - figure out why print_block shows smallblock x,y coordinates
 
  - Allow for declaring an input path, and (silent) default prelude
 
