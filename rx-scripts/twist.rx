@@ -17,26 +17,23 @@ set is_twist_fixed ((InnerClass, mat) icm) = (RealForm->bool):
   let twist = KGB_twist(icm) in
   (RealForm rf) bool: real_form(twist(KGB(rf,0)))=rf
 
+{ check that for distinguished involution one gets the Atlas library 'twist' }
 set test (RealForm rf) = bool:
   let mytwist=KGB_twist(rf,distinguished_involution(rf)), i=KGB_size(rf)-1 in
   while i>=0 and (let x=KGB(rf,i) in twist(x) = mytwist(x)) do i-:=1 od; i<0
 
-set real_form (Block b) = let (x,) = element(b,0) in real_form(x)
+set % (Block b) = (RealForm,DualRealForm):
+  let (x,y) = element(b,0) in (real_form(x), dual_real_form(real_form(y)))
 
-set show (Block b, int i) = void:
-  let ssr = semisimple_rank(real_form(b))
-  then statuses = string: let str="[" in
-    for s: ssr
-    do str#:= block_status_text(status(s,b,i))
-            # if s<ssr-1 then "," else "]" fi
-    od; str
-  , crosses = [int]: for s: ssr do cross(s,b,i) od
-  , Cayleys = [int]: for s: ssr do Cayley(s,b,i) od
-  in prints(i,": ",statuses, ", ", crosses, ", ", Cayleys)
+set block_is_twist_fixed ((InnerClass, mat) (ic,delta):icd) = (int,int->bool):
+  let f = is_twist_fixed(icd), g = is_twist_fixed(dual(ic),^delta)
+  , size = block_sizes(ic) in
+  (int i, int j) bool:
+    size[i,j]>0 and f(real_form(ic,i)) and g(real_form(dual_real_form(ic,j)))
+
 
 set block_twist (InnerClass ic, mat delta) = (Block->(int->int)):
-  let dual_ic = dual@InnerClass(ic), dual_delta = ^delta
-  then x_twist = KGB_twist(ic,delta), y_twist=KGB_twist(dual_ic,dual_delta)
+  let x_twist = KGB_twist(ic,delta), y_twist=KGB_twist(dual(ic),^delta)
   in
   (Block b) (int->int):
   let (x,y)=element(b,0)
@@ -47,3 +44,34 @@ set block_twist (InnerClass ic, mat delta) = (Block->(int->int)):
     then error("Dual real form non fixed")
     fi
   in  (int i) int: let (x,y)=element(b,i) in index(b,x_twist(x),y_twist(y))
+
+set show_pairs ((int->int) f, int n) = string:
+  let t = "" in
+  for i: n
+  do let j=f(i) in
+    if j=i then t #:= " "+i elif i<j then t #:= " ("+i+","+j+")" fi
+  od; t
+
+set show_block_twists ((InnerClass, mat) (ic,delta):icd) = void:
+  let bt=block_twist(icd), bs= block_sizes(ic), p=block_is_twist_fixed(icd)
+  in
+  for i: nr_of_real_forms(ic) do for j: nr_of_dual_real_forms(ic) do
+    if p(i,j)
+    then
+      let b = block(real_form(ic,i),dual_real_form(ic,j)) in
+        print_block(b)
+      ; prints("twist:",show_pairs(bt(b), #b))
+      ; prints("")
+    fi
+  od od
+
+set show (Block b, int i) = void:
+  let (rf,) = %b then ssr = semisimple_rank(root_datum(rf))
+  then statuses = string: let str="[" in
+    for s: ssr
+    do str#:= block_status_text(status(s,b,i))
+            # if s<ssr-1 then "," else "]" fi
+    od; str
+  , crosses = [int]: for s: ssr do cross(s,b,i) od
+  , Cayleys = [int]: for s: ssr do Cayley(s,b,i) od
+  in prints(i,": ",statuses, ",  ", crosses, ",  ", Cayleys)
