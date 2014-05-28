@@ -1276,12 +1276,12 @@ struct overload_data
 
 @*2 Overload tables.
 %
-Looking up an overloaded identifier should given an ordered list of possible
-overloads, the ordering being important since we want to try matching more
-specific (harder to convert to) argument types before trying less specific
-ones. Therefore, rather than using a |std::multimap| multi-mapping identifiers
-to individual value-type pairs, we use a |std::map| from identifiers to
-vectors of value-type pairs.
+Looking up an overloaded identifier should be done using an ordered list of
+possible overloads; the ordering is important since we want to try matching
+more specific (harder to convert to) argument types before trying less
+specific ones. Therefore, rather than using a |std::multimap| multi-mapping
+identifiers to individual value-type pairs, we use a |std::map| from
+identifiers to vectors of value-type pairs.
 
 An identifier is entered into the table when it is first given an overloaded
 definition, so the table will not normally associate an empty vector to an
@@ -1363,7 +1363,7 @@ void overload_table::add
   |val| and |type| at the end, if any is close without being one-way
   convertible to or from it throw an error, and in the remaining case make
   sure |type| is added after any types that convert to it and before any types
-  it converts to @>
+  it convert to @>
 }
 
 @ We call |is_close| for each existing argument type; if it returns a nonzero
