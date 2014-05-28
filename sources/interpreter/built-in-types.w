@@ -68,12 +68,16 @@ void initialise_builtin_types();
 
 @ Since all wrapper functions are defined as local functions, their
 definitions will have been seen when the definition below is compiled. This
-avoids having to declare each wrapper function.
+avoids having to declare each wrapper function. We also install all coercions,
+and it is important that we do this \emph{before} installing the wrapper
+functions, since the presence of coercions should have an effect on the order
+in which overloads for the same name are ordered, so the former should be
+present before the latter are processed.
 
 @< Function definitions @>=
 void initialise_builtin_types()
-{ @< Install wrapper functions @>
-  @< Install coercions @>
+{ @< Install coercions @>
+  @< Install wrapper functions @>
 }
 
 @ Before we can define any types we must make sure the types defined
@@ -214,16 +218,13 @@ void Lie_type_wrapper(expression_base::level l)
 void Lie_type_coercion()
 @+{@; Lie_type_wrapper(expression_base::single_value); }
 
-@ We shall call this function \.{Lie\_type}.
+@ We shall call this function \.{Lie\_type}. Since we shall also make
+|Lie_type_coercion| available as an implicit conversion, this function serves
+in practice only to make the requested conversion explicit in the program.
+
 
 @< Install wrapper functions @>=
 install_function(Lie_type_wrapper,"Lie_type","(string->LieType)");
-
-@ In fact we shall also make it available as an implicit conversion. This is
-very easy to implement.
-
-@< Install coercions @>=
-
 
 
 @*2 Auxiliary functions for Lie types.
