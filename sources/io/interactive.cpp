@@ -359,9 +359,8 @@ void getInteractive(PreRootDatum& d_prd,
   }
 
   // make new PreRootDatum
+  d_prd = PreRootDatum(lt,d_b);
 
-  PreRootDatum(lt,d_b).swap(d_prd);
-  // swap with d_prd; the old PreRootDatum will be destroyed
 } // |getInteractive(PreRootDatum&,...)|
 
 
@@ -532,8 +531,12 @@ RealFormNbr get_dual_real_form(complexredgp_io::Interface& CI,
       get_type_ahead(commands::currentLine(),realform_input_buffer))
   {
     realform_input_buffer >> r;
-    if (not vals.isMember(r))
+    if (realform_input_buffer.fail() or not vals.isMember(r))
+    {
+      realform_input_buffer.str("");
+      r = drfi.numRealForms(); // make |r| positively invalid again
       std::cout << "Discarding invalid type-ahead.\n";
+    }
   }
 
   if (not vals.isMember(r))

@@ -141,7 +141,7 @@ class GlobalTitsElement
  */
 class GlobalTitsGroup : public TwistedWeylGroup
 {
-  const PreRootDatum simple; // from DUAL side, allows W action
+  const PreRootDatum prd; // from DUAL side, allows W action
   WeightInvolution delta_tr; // transposed distinguished involution
   std::vector<TorusPart> alpha_v; // |simple.roots()| reduced modulo 2
   const RatWeight half_rho_v;
@@ -159,7 +159,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
 
   // accessors
   size_t semisimple_rank() const { return alpha_v.size(); }
-  size_t rank() const { return simple.rank(); }
+  size_t rank() const { return prd.rank(); }
   const RatWeight& torus_part_offset () const
   { return half_rho_v; }
   //  { return RatWeight(root_datum.dual_twoRho(),4); }
@@ -168,9 +168,9 @@ class GlobalTitsGroup : public TwistedWeylGroup
   TorusPart m_alpha(size_t j) const { return alpha_v[j]; }
 
   Weight parent_simple_root(weyl::Generator s) const
-  { return simple.roots()[s]; }
+  { return prd.simple_roots()[s]; }
   Coweight parent_simple_coroot(weyl::Generator s) const
-  { return simple.coroots()[s]; }
+  { return prd.simple_coroots()[s]; }
 
   // Reflection of |TorusElement|s defined by a twisted involution.
   // This matrix is negated-transposed w.r.t. |tw| (so |-delta_tr| if $tw=e$)
@@ -192,7 +192,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
 // methods that operate on an isolated |TorusElement|
 
   void complex_cross_act(weyl::Generator s,TorusElement& t) const
-  { t.simple_reflect(simple,s); }  // OK since |simple| on dual side for |t|
+  { t.simple_reflect(prd,s); }  // OK since |prd| on dual side for |t|
   void imaginary_cross_act(weyl::Generator s,TorusElement& t) const;
 
 // methods that only access some |GlobalTitsElement|
@@ -209,7 +209,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
 
   // determine status of simple root, if assumed imaginary
   bool compact(weyl::Generator s, const TorusElement& t) const
-  { return t.negative_at(simple.coroots()[s]); }
+  { return t.negative_at(prd.simple_coroots()[s]); }
   bool compact(weyl::Generator s, const GlobalTitsElement& a) const
   { return compact(s,a.torus_part()); }
 

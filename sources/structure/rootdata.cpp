@@ -520,14 +520,18 @@ WeylWord RootSystem::reflectionWord(RootNbr r) const
   return result;
 }
 
+
+// |Delta| gives images of simple roots by an automorphism; find image of 2rho
 matrix::Vector<int> RootSystem::pos_system_vec(const RootNbrList& Delta) const
 {
-  assert(Delta.size()==rk); // must be an image of $\Delta^+$, in correct order
+  assert(Delta.size()==rk); // as many images as simple roots
   matrix::Vector<int> coef(rk,0); // coefficients of simple roots in result
   for (weyl::Generator s=0; s<rk; ++s) // compute matrix*vector for image
     coef += root_expr(Delta[s])*=two_rho_in_simple_roots[s]; // Delta*2rho
+  // now |coef| holds image of $2\rho$ expressed as sum of simple roots
 
-  return cartanMatrix().right_mult(coef); // transform to fundamental weights
+  // multiplication is from the right here because Cartan matrix is unnatural
+  return cartanMatrix().right_prod(coef); // transform to fundamental weights
 }
 
 RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
@@ -643,8 +647,8 @@ RootDatum::RootDatum(const PreRootDatum& prd)
   , Cartan_denom()
   , d_status()
 {
-  int_Matrix root_mat(prd.roots(),d_rank); // simple roots
-  int_Matrix coroot_mat(prd.coroots(),d_rank); // simple too
+  int_Matrix root_mat(prd.simple_roots(),d_rank);
+  int_Matrix coroot_mat(prd.simple_coroots(),d_rank);
   for (RootNbr alpha=numPosRoots(); alpha<numRoots(); ++alpha)
   {
     d_roots[alpha]= root_mat*root_expr(alpha);
@@ -667,8 +671,8 @@ RootDatum::RootDatum(const PreRootDatum& prd)
   // get basis of co-radical character lattice, if any (or leave empty list)
   if (semisimpleRank()<d_rank)
   {
-    d_coradicalBasis = lattice::perp(prd.coroots(),d_rank);
-    d_radicalBasis   = lattice::perp(prd.roots(),d_rank);
+    d_coradicalBasis = lattice::perp(prd.simple_coroots(),d_rank);
+    d_radicalBasis   = lattice::perp(prd.simple_roots(),d_rank);
   }
 
   // fill in the status
@@ -741,11 +745,11 @@ RootDatum::RootDatum(int_Matrix& projector, const RootDatum& rd,
   for (RootNbr i=0; i<rd.numRoots(); ++i)
   {
     d_roots[i] = projector*rd.d_roots[i];
-    d_coroots[i] = section.right_mult(rd.d_coroots[i]);
+    d_coroots[i] = section.right_prod(rd.d_coroots[i]);
   }
 
   d_2rho = projector*rd.d_2rho;
-  d_dual_2rho = section.right_mult(rd.d_dual_2rho);
+  d_dual_2rho = section.right_prod(rd.d_dual_2rho);
 
   fillStatus();
 } // |RootDatum::RootDatum(...,Derived_Tag)|
@@ -782,12 +786,12 @@ RootDatum::RootDatum(int_Matrix& injector, const RootDatum& rd,
 
   for (RootNbr i=0; i<rd.numRoots(); ++i)
   {
-    d_roots[i] = section.right_mult(rd.d_roots[i]);
-    d_coroots[i] = injector.right_mult(rd.d_coroots[i]);
+    d_roots[i] = section.right_prod(rd.d_roots[i]);
+    d_coroots[i] = injector.right_prod(rd.d_coroots[i]);
   }
 
-  d_2rho = section.right_mult(rd.d_2rho);
-  d_dual_2rho = injector.right_mult(rd.d_dual_2rho);
+  d_2rho = section.right_prod(rd.d_2rho);
+  d_dual_2rho = injector.right_prod(rd.d_dual_2rho);
 
   fillStatus();
 } // |RootDatum::RootDatum(...,Adjoint_Tag)|
