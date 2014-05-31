@@ -129,15 +129,18 @@ operator %: (LieType->[LieType]) Expand into row of simple factors (or T1)
 Smith_Cartan: (LieType->mat,vec): generators of weights modulo roots.
   Find a Smith basis for the weight lattice relative to the sublattice of
   roots, with corresponding invariant factors; almost equivalent to
-  Smith(^Cartan_matrix(type)), except that (1) each simple or torus factor is
-  normalised separately, (2) for torus factors there is a '1' is on the
-  diagonal and a '0' appears as invariant factor, and (3) for factors D_{2n}
-  an equivalent basis is given, which has been tweaked so that the final two
-  vectors are standard basis vectors
+  Smith(^Cartan_matrix(type)), except that (1) the diagonal blick for each
+  simple or torus factor is handled separately by Smith, (2) for torus factors
+  there is a diagonal block '1' in the Smith basis, but with an invariant
+  factor '0', and (3) for factors D_{2n} an equivalent basis is given, which
+  has been tweaked so that the final two vectors are standard basis vectors
 
 filter_units: (mat,vec->mat,vec): discard entries '1' and their columns.
-  The input is presumably produced by 'Smith_Cartan'; all entries '1' in the
-  vector and the corresponding columns of the matrix are thrown away
+  The input is presumably produced by 'Smith_Cartan' or 'adapted_basis'; for
+  all positions where the second (vector) component has '1', that entry and
+  the corresponding column of the first matrix is discarded; what is left of
+  the matrix and the vector is returned. If the vector has fewer entries than
+  the matrix has columns (cf. adapted_basis), missing entries count as not 1.
 
 ann_mod: (mat,int->mat): find maximal matrix with product divisible by d.
   The call ann_mod(M,d) finds a square matrix A whose columns have the same
@@ -146,8 +149,10 @@ ann_mod: (mat,int->mat): find maximal matrix with product divisible by d.
   divisible by d (the matrix product ^A*M vanishes modulo d).
 
 replace_gen: ((mat,vec),mat->mat): replace generators of weight lattice.
-  For every entry different from '1' in the vector argument, replace a column
-  from the first matrix by a column from the second matrix
+  The arguments are as for 'filter_units'. For every entry different from '1'
+  in the vector argument, replace a column from the first matrix by a column
+  from the second matrix. Both matrices must have the same column size; like
+  for 'filter_units' the vector may be short, missing entries being not 1.
 
 involution: (LieType,string->mat): diagram involution for inner class.
   Return an involution matrix corresponding to the diagram involution
@@ -162,6 +167,12 @@ involution: (LieType,mat,string->mat): basic involution on given basis.
   the columns of the matrix specified as second argument; this expression must
   be possible, so the sublattice spanned should be stable under the involution
 
+root_datum: (mat,mat->RootDatum): root datum from simple (co)root systems.
+  In root_datum(roots,coroots), matrices roots and coroots must have the same
+  dimensions (rank x semisimple rank); their columns give the desired systems
+  of simple roots respectively simple coroots. The matrix of pairings of roots
+  and coroots should be a valid Cartan matrix. A root datum with those systems
+  of simple roots and simple coroots is returned.
 root_datum: (LieType,mat->RootDatum): root datum for given type and sublattice.
   The columns of the matrix argument are interpreted as specifying the basis
   of a sublattice of the character lattice of the "simply connected" group G
@@ -172,22 +183,27 @@ root_datum: (LieType,mat->RootDatum): root datum for given type and sublattice.
   lattice of G'. The sublattice becomes the standard lattice for working with
   the root datum, and is identified with Z^n using the given basis, which thus
   becomes the standard basis of the sublattice, henceforth called lattice.
-root_datum: (mat,mat->RootDatum): root datum from simple (co)root systems.
-  In root_datum(roots,coroots), matrices roots and coroots must have the same
-  dimensions (rank x semisimple rank); their columns give the desired systems
-  of simple roots respectively simple coroots. The matrix of pairings of roots
-  and coroots should be a valid Cartan matrix. A root datum with those systems
-  of simple roots and simple coroots is returned.
+root_datum: (RootDatum,mat->RootDatum): root datum for sublattice in old one
+  This is like root_datum@(LieType,mat), but starting from the specified root
+  datum rd rather than from the simply connected one for the Lie type. The
+  provided sublattice matrix must be square and full rank (invertible of the
+  rational numbers) and the roots of rd must be in its integral column span.
 root_datum: (InnerClass->RootDatum): root datum of inner class.
   Extract the root datum from the InnerClass value
 
 quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
   Interpret the rational vectors as kernel generators for the given type, as
   in the atlas program, and return the corresponding sublattice as a matrix
-  whose column are its generators; if M is the matrix whose columns are the
-  numerators of the kernel generators, brought to a common denominator d, this
-  amounts to setting S=Smith_Cartan(type); (C,v)=filter_units(S) and then
-  returning the value replace_gen(S,mm_prod(C,ann_mod(M,d)))
+  whose column are its generators. More precisely, the rational vectors
+  represent linear combinations of certain coweights in the dual basis to a
+  basis of the weight lattice adapted to the root lattice; for those weights
+  in the latter basis that already lie in the root lattice, the corresponding
+  coweight is omitted, since there are no useful rational multiples of it
+  anyway. Return a basis for the sublattice of X^* of weights on which all
+  kernel generators have integer evaluation. If M is the matrix whose columns
+  are the numerators of the kernel generators, brought to a common denominator
+  d, this amounts to setting S=Smith_Cartan(type) and (C,)=filter_units(S),
+  and then returning the value replace_gen(S,C*ann_mod(M,d)).
 
 root_datum: (LieType,[ratvec]->RootDatum): root datum as entrered in Atlas.
     set root_datum(LieType type,[ratvec] gens) =

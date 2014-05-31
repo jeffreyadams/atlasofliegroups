@@ -1535,7 +1535,7 @@ void vm_prod_wrapper(expression_base::level l)
     throw std::runtime_error(s.str());
   }
   if (l!=expression_base::no_value)
-    push_value(new vector_value(m->val.right_mult(v->val)));
+    push_value(new vector_value(m->val.right_prod(v->val)));
 }
 
 @ The function |stack_rows_wrapper| interprets a row of vectors as a ragged

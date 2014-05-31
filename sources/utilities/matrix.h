@@ -178,9 +178,12 @@ template<typename C> class Matrix : public Matrix_base<C>
       return result; }
 
   template<typename C1> Vector<C1> operator* (const Vector<C1>&) const;
+  template<typename C1> Vector<C1> right_prod(const Vector<C1>&) const;
 
-  template<typename C1> Vector<C1> right_mult(const Vector<C1>&) const;
-  template<typename C1> void apply_to(Vector<C1>& v) const { v= operator*(v); }
+  template<typename C1> void apply_to(Vector<C1>& v) const
+    { v= operator*(v); }
+  template<typename C1> void right_mult(Vector<C1>& v) const
+    { v= right_prod(v); }
 
   Matrix<C> operator* (const Matrix<C>&) const;
 

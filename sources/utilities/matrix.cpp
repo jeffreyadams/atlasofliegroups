@@ -279,13 +279,13 @@ Vector<C1> Matrix<C>::operator*(const Vector<C1>& w) const
   return result;
 }
 
-/*! \brief
-Multiplies the matrix to right to the row-vector w, and returns the result.
-It is assumed that the size of w is the number of rows; result size is the
-number of columns. This is the proper sense of application for dual space.
+/*
+  Multiplies the matrix to right to the row-vector w, and returns the result.
+  It is assumed that the size of w is the number of rows; result size is the
+  number of columns. This is the proper sense of application for dual space.
 */
 template<typename C> template<typename C1>
-Vector<C1> Matrix<C>::right_mult(const Vector<C1>& w) const
+Vector<C1> Matrix<C>::right_prod(const Vector<C1>& w) const
 {
   assert(base::numRows()==w.size());
   Vector<C1> result(base::numColumns());
@@ -703,8 +703,8 @@ template Vector<Num>& operator/=(Vector<Num>&,Num);
 
 template Vector<int> Matrix<int>::operator*(Vector<int> const&) const;
 template Vector<Num> Matrix<int>::operator*(Vector<Num> const&) const;
-template Vector<int> Matrix<int>::right_mult(const Vector<int>&) const;
-template Vector<Num> Matrix<int>::right_mult(const Vector<Num>&) const;
+template Vector<int> Matrix<int>::right_prod(const Vector<int>&) const;
+template Vector<Num> Matrix<int>::right_prod(const Vector<Num>&) const;
 
 template Matrix_base<int>::Matrix_base
   (std::vector<Vector<int> >::const_iterator,

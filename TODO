@@ -17,6 +17,9 @@
 
  - Allow Python-style slices of lists, vectors, matrices
  - Allow list-comprehension syntax like in Haskell (and Python?)
+ - Integrate a bigint library to store realex int (and rat?) values; while
+   attending that, signal overflow in arithmetic operations / conversions
+
 
  - Handle catching of a user interrupt
    When a user types ^C, this should break off computation as soon as feasible

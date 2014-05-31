@@ -182,12 +182,20 @@ bool hasQuestionMark(InputBuffer& buf)
 */
 
 {
-  std::streampos pos = buf.tellg();
-  char x = 0;
+  char x;
   buf >> x;
-  buf.reset(pos);
 
-  return x == '?';
+  if (buf.fail())
+    return false; // nothing read, so there is no question mark
+
+  if (x == '?')
+  {
+    buf.str(""); // clear remaining contents, so no type-ahead will be left
+    return true;
+  }
+  buf.unget(); // place non-questionmark character back in the stream
+
+  return false;
 }
 
 void initReadLine()
