@@ -1,7 +1,5 @@
-/*!
-\file
-  \brief Constructs a root datum from user interaction: class
-  definitions and function declarations.
+/*
+  Constructing a root datum from user interaction
 
   The idea is to construct an abstract root datum (a lattice and a
   subset of "roots," together with the dual lattice and a subset of
@@ -15,6 +13,7 @@
 
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
+  Copyright (C) 2014 Marc van Leeuwen
 
   For license information see the LICENSE file
 */
@@ -23,14 +22,14 @@
 #define PREROOTDATA_H
 
 #include "atlas_types.h"
+#include <stdexcept>
 
 namespace atlas {
 
 /******** type definitions **************************************************/
 
 namespace prerootdata {
-  /*!
-  \brief Root datum specified by user interaction.
+  /* Root datum specified by user interaction, having passed validity tests.
 
   The idea is to construct an abstract root datum (a lattice and a
   subset of "roots," together with the dual lattice and a subset of
@@ -88,17 +87,10 @@ class PreRootDatum
   */
   size_t rank() const { return d_rank; }
 
-/*!
-\brief  List of the SIMPLE roots as elements of Z^d_rank,
-expressed in the basis specified by argument b of the constructor.
-*/
-  const WeightList& roots() const { return d_roots; }
-/*!
-\brief List of the SIMPLE coroots as elements of Z^d_rank, expressed
-in the dual of the basis specified by argument b of the constructor.
-*/
-  const CoweightList& coroots() const { return d_coroots; }
-
+  // List of the simple roots, in basis that is implicit in constructor.
+  const WeightList& simple_roots() const { return d_roots; }
+  // List of the simple coroots, in basis that is implicit in constructor.
+  const CoweightList& simple_coroots() const { return d_coroots; }
 
   int_Matrix Cartan_matrix() const;
 
@@ -108,7 +100,9 @@ in the dual of the basis specified by argument b of the constructor.
   void simple_reflect(LatticeMatrix& M,weyl::Generator i) const;
 
 // manipulators
-  void swap(PreRootDatum&);
+  // replace by root datum for finite central quotient with weight |sublattice|
+  void quotient(const LatticeMatrix& sublattice) throw(std::runtime_error);
+
 };
 
 } // |namespace prerootdata|

@@ -58,14 +58,13 @@ namespace {
 
 namespace interactive_lattice {
 
-/*! \brief
+/*
   Gets the generators of X/Q, where Q is the root lattice, from the user.
 
   It throws an InputError if the interaction with the user does not conclude
   successfully. In that case, d_rwl is not modified.
 */
-int getGenerators(RatWeightList& d_rwl,
-		  const CoeffList& u)
+int getGenerators(RatWeightList& d_rwl, const CoeffList& u)
   throw(error::InputError)
 {
   RatWeightList rwl;
@@ -79,7 +78,7 @@ int getGenerators(RatWeightList& d_rwl,
     return 2; // code for adjoint
 
   std::cout
-    << "elements of finite order in the center of the simply connected group:"
+    << "torsion subgroup of the center of the simply connected group is:"
     << std::endl;
 
   printCenter(std::cout,u) << std::endl;
@@ -153,11 +152,12 @@ int getGenerators(RatWeightList& d_rwl,
   each torus factor the corresponding factor in |root_invf| is zero.
 
   Guided (only) by the non-unit values among those factors, the user has to
-  specify "kernel generators" (in |getGenerators|) which are rational
-  coweights; this implicitly specifies a full rank (and therefore finite
-  index) sublattice of weights taking integral values on all those coweights,
-  and which sublattice contains the root lattice (by limitation of the choice
-  of the generators roots automatically satisfy the integrality condition).
+  specify "kernel generators" (in |getGenerators|), sequences of rational
+  numbers that are transformed into rational coweights; this implicitly
+  specifies a full rank (and therefore finite index) sublattice of weights
+  taking integral values on all those coweights, and which sublattice contains
+  the root lattice (by limitation of the choice of the generators roots
+  automatically satisfy the integrality condition).
 
   Generators for the nontrivial part of this sublattice are computed by
   |makeOrthogonal| into |q|. More precisely, extracting the elements of
@@ -174,8 +174,7 @@ int getGenerators(RatWeightList& d_rwl,
   prefers answering "ad" or "sc" rather than giving any generators, we pass
   this condition as a return code without modifying anything.
 */
-int getLattice(const CoeffList& root_invf,
-	       WeightList& root_lattice_basis)
+int getLattice(const CoeffList& root_invf, WeightList& root_lattice_basis)
   throw(error::InputError)
 {
   size_t r = root_lattice_basis.size(); // full rank of root datum
@@ -199,7 +198,7 @@ int getLattice(const CoeffList& root_invf,
 
   // make basis elements corresponding to those central elements
 
-  LatticeMatrix q = makeOrthogonal(rwl,u.size());
+  LatticeMatrix q = makeOrthogonal(rwl,u.size()); // local function, see below
 
   // convert |lb| columns to linear combinations of them according to |q|
   LatticeMatrix lin_comb(lb,r); // matrix with columns |lb|
@@ -209,7 +208,7 @@ int getLattice(const CoeffList& root_invf,
   for (size_t i=0,j=0; i<r; ++i)
     if (root_invf[i] != 1)
     {
-      lin_comb.get_column(root_lattice_basis[i],j);
+      lin_comb.get_column(root_lattice_basis[i],j); // |rlb[i] = lc.column(j)|
       ++j;
     }
   return 0; // normal exit
@@ -304,7 +303,7 @@ GeneratorError checkGenerator(input::InputBuffer& buf, size_t& r,
 /*
   Synopsis: puts in |q| a basis for the lattice "orthogonal" to |rwl|.
 
-  Precondition: each of the elements of |rwl| has size |r|, |mult| is empty.
+  Precondition: each of the elements of |rwl| is a rational weight, size |r|.
 
   Explanation: the elements of rwl are interpreted as elements of finite
   order in the torus (more precisely, their order divides their denominator.)
@@ -324,8 +323,7 @@ GeneratorError checkGenerator(input::InputBuffer& buf, size_t& r,
 
   NOTE: this is a sloppy implementation; we don't worry about overflow.
 */
-LatticeMatrix makeOrthogonal
-  (const RatWeightList& rwl, size_t r)
+LatticeMatrix makeOrthogonal (const RatWeightList& rwl, size_t r)
 {
   // find common denominator
   arithmetic::Denom_t d = 1;

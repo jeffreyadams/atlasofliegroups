@@ -748,7 +748,7 @@ RatCoweight KGB::torus_part_global(KGBElt x) const
 
   // finally ensure result is $\theta^t$-fixed
   const int_Matrix& theta = involution_matrix(x);
-  return RatCoweight(rw.numerator()+theta.right_mult(rw.numerator()),2*d)
+  return RatCoweight(rw.numerator()+theta.right_prod(rw.numerator()),2*d)
         .normalize();
 }
 

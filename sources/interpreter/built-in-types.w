@@ -218,15 +218,6 @@ void Lie_type_wrapper(expression_base::level l)
 void Lie_type_coercion()
 @+{@; Lie_type_wrapper(expression_base::single_value); }
 
-@ We shall call this function \.{Lie\_type}. Since we shall also make
-|Lie_type_coercion| available as an implicit conversion, this function serves
-in practice only to make the requested conversion explicit in the program.
-
-
-@< Install wrapper functions @>=
-install_function(Lie_type_wrapper,"Lie_type","(string->LieType)");
-
-
 @*2 Auxiliary functions for Lie types.
 Before we do anything more complicated with this primitive type, we must
 ensure that we can print its values. We can use an operator defined in
@@ -322,8 +313,10 @@ void Lie_factors_wrapper(expression_base::level l)
   push_value(result);
 }
 
-@ Again we install our wrapper functions.
+@ We now install all wrapper functions directly associated to Lie types.
+
 @< Install wrapper functions @>=
+install_function(Lie_type_wrapper,"Lie_type","(string->LieType)");
 install_function(Cartan_matrix_wrapper,"Cartan_matrix","(LieType->mat)");
 install_function(type_of_Cartan_matrix_wrapper
 		,@|"Cartan_matrix_type","(mat->LieType,vec)");
@@ -375,16 +368,18 @@ corresponding columns.
 void filter_units_wrapper (expression_base::level l)
 { shared_vector inv_f=get_own<vector_value>();
   shared_matrix basis=get_own<matrix_value>();
-  if (inv_f->val.size()!=basis->val.numColumns())
-    throw std::runtime_error @|("Size mismatch "+
-@.Size mismatch@>
-      str(inv_f->val.size())+':'+str(basis->val.numColumns()));
+  unsigned int n=basis->val.numColumns();
+  if (inv_f->val.size()>n)
+    throw std::runtime_error @|("Too many factors: "+
+@.Too many factors@>
+      str(inv_f->val.size()) + " for " +str(n)+ " columns");
   if (l==expression_base::no_value)
     return;
 @)
   size_t i=0;
-  while (i<inv_f->val.size())
-    if (inv_f->val[i]!=1) ++i; // keep invariant factor and column
+  while (i<n)
+    if (i>=inv_f->val.size() or inv_f->val[i]!=1)
+      ++i; // keep invariant factor and column
     else
     {@; inv_f->val.erase(inv_f->val.begin()+i);
         basis->val.eraseColumn(i);
@@ -400,19 +395,23 @@ have taken the occasion to change the name and interface and everything else,
 which also avoids the need to introduce rational matrices as primitive type.
 
 The function |annihilator_modulo| takes as argument an $m\times{n}$
-matrix~$M$, and an integer |d|. It returns a $m\times{m}$ matrix~|A| whose
-columns span the full rank sub-lattice of $\Z^m$ of vectors $v$ such that
-$v^t\cdot{M}\in d\,\Z^n$. The fact that $d$ is called |denominator| below
+matrix~$M$, and an integer |d|. It returns a full rank (so invertible
+over~$\bf Q$) $m\times{m}$ matrix~|A| such that $A^t\cdot{M}$ is divisible
+by~$d$, and whose column span is maximal subject to this constraint: the
+columns of~$A$ span the full rank sub-lattice of $\Z^m$ of vectors $v$ such
+that $v^t\cdot{M}\in d\,\Z^n$. The fact that $d$ is called |denominator| below
 comes from the alternative interpretation that the transpose of~$A$ times the
 rational matrix $M/d$ gives an integral matrix as result.
+
 
 The algorithm is quite simple. After finding invertible matrices |row|, |col|
 such that $row*M*col$ is diagonal with non-zero diagonal entries given in
 $\lambda$ (and any zero diagonal entries trailing those), we know that any row
 of |row| with factor $\lambda_i$ is a linear form sending the image of $M$ to
-$\lambda_i\Z$, while any remaining row of |row| annihilates the image
-altogether. Then all that is needed it to multiply rows of~|row| of the first
-kind by $d/\gcd(d,\lambda_i)$ and transpose the result.
+$\lambda_i\Z$, while any remaining rows of |row| (those without corresponding
+invariant factor) annihilate the image altogether. Then all that is needed it
+to multiply rows of~|row| of the first kind by $d/\gcd(d,\lambda_i)$ and
+transpose the result.
 
 @h "arithmetic.h"
 @h "lattice.h"
@@ -421,15 +420,14 @@ kind by $d/\gcd(d,\lambda_i)$ and transpose the result.
 
 @< Local function definitions @>=
 LatticeMatrix @|
-annihilator_modulo(const LatticeMatrix& M, LatticeCoeff denominator)
+annihilator_modulo(const LatticeMatrix& M, arithmetic::Denom_t denominator)
 
 { int_Matrix row,col;
   CoeffList lambda = matreduc::diagonalise(M,row,col);
 
   for (size_t i=0; i<lambda.size(); ++i)
-  @/{@; unsigned long c = arithmetic::div_gcd(denominator,lambda[i]);
-    row.rowMultiply(i,c);
-  }
+    row.rowMultiply(i,arithmetic::div_gcd(denominator,lambda[i]));
+
   return row.transposed();
 }
 
@@ -444,15 +442,18 @@ void ann_mod_wrapper(expression_base::level l)
     push_value(new matrix_value(annihilator_modulo(m->val,d->val)));
 }
 
-@ Next a simple administrative routine, needed here because we cannot handle
-matrices in our programming language yet. Once one has computed a new lattice
-(possibly with the help of |ann_mod|), in the form of vectors to replace those
-selected by |filter_units| from the result of |Smith_Cartan|, one needs to
-make the replacement. The following function does this, taking as its first
-argument the result of |Smith_Cartan|, and as second a matrix whose columns
-are to be substituted. The invariant factors in the first argument serve only
-to determine, by the place the non-unit ones, where the insertion has to take
-place. In fact this is so simple that we define the wrapper function directly.
+@ Next a simple administrative routine, introduced because we could not handle
+matrices in our programming language at the time (and still necessary as long
+as we want to define |quotient_basis| below as built-in function, since such a
+function cannot use the \.{realex} interpreter). Having computed a new
+lattice (possibly with the help of |ann_mod|), in the form of vectors to
+replace those selected by |filter_units| from the result of |Smith_Cartan|,
+one needs to make the replacement. The following function does this, taking as
+its first argument the result of |Smith_Cartan|, and as second a matrix whose
+columns are to be substituted. The invariant factors in the first argument
+serve only to determine, by the place the non-unit ones, where the insertion
+has to take place. In fact this is so simple that we define the wrapper
+function directly.
 
 @< Local function definitions @>=
 void replace_gen_wrapper (expression_base::level l)
@@ -460,19 +461,20 @@ void replace_gen_wrapper (expression_base::level l)
   push_tuple_components(); // a pair as returned by \.{Smith\_Cartan}
   shared_vector inv_f=get<vector_value>();
   shared_matrix generators=get_own<matrix_value>();
-   // start with old generators
+  unsigned int n=generators->val.numColumns();
+  if (inv_f->val.size()>n)
+    throw std::runtime_error @|("Too many factors: "+
+@.Too many factors@>
+      str(inv_f->val.size()) + " for " +str(n)+ " columns");
 @)
   if (new_generators->val.numRows()!=generators->val.numRows())
     throw std::runtime_error("Column lengths do not match");
 @.Column lengths do not match@>
-  if (inv_f->val.size()!=generators->val.numColumns())
-    throw std::runtime_error("Number of columns mismatch");
-@.Number of columns mismatch@>
 @)
   size_t k=0; // index to replacement generators
-  for (size_t j=0; j<inv_f->val.size(); ++j)
-    if (inv_f->val[j]!=1)
-       // replace column |j| by column |k| from |new_generators|
+  for (size_t j=0; j<n; ++j)
+    if (j>=inv_f->val.size() or inv_f->val[j]!=1)
+       // replace column |j| by |k| from |new_generators|
     { if (k>=new_generators->val.numColumns())
         throw std::runtime_error ("Not enough replacement columns");
 @.Not enough replacement columns@>
@@ -484,6 +486,105 @@ void replace_gen_wrapper (expression_base::level l)
 @.Too many replacement columns@>
   if (l!=expression_base::no_value)
     push_value(generators);
+}
+
+@ To emulate what is done in the Atlas software, we write a function that
+integrates some of the previous ones. It is called as |quotient_basis(lt,L)|
+where $t$ is a Lie type, and $L$ is a list of rational vectors, each giving a
+kernel generator as would be entered in the Atlas software. In this
+interpretation each rational vector implicitly gives a rational coweight,
+where each position either corresponds to a generator of a finite cyclic
+factor of order $d$ of the centre, with the rational entry $1/d$ in that
+position representing that generator, or to a central $1$-parameter subgroup
+(torus factor) of the centre with any rational entry in that position
+(interpreted modulo~$\Z$) describing an element (of finite order) of that
+subgroup. More precisely one is taking rational linear combinations of certain
+coweights in the dual basis to a basis of the weight lattice adapted to the
+root lattice; for those weights in the latter basis that already lie in the
+root lattice, the corresponding coweight is omitted, since there are no useful
+rational multiples of it anyway. This function computes appropriate integer
+linear combinations of the relevant subset of the adapted basis, corresponding
+to the given choice of kernel generators; it is the sublattice of the weight
+lattice they span that is ultimately of interest.
+
+Let |S==Smith_Cartan(lt)| and $(C,v)=\\{filter\_units}(S)$, then we find a
+basis for the sub-lattice needed to build the root datum as follows. The
+vector $v$, which describes the orders of the cyclic factors of the centre, is
+only used to validate the values in~$L$: each vector in~$L$ should have the
+same length as~$v$, and multiplication of corresponding entries should always
+give an integer. Then a common denominator~$d$ is found and a matrix $M$ whose
+columns form the numerators of the lists of~$L$ brought to the
+denominator~$d$. The call $quotient\_basis(lt,L)$ then yields the result of
+computing $replace\_gen(S,C*ann\_mod(M,d))$.
+
+This wrapper function does most of its work by calling other wrapper
+functions, using the evaluator stack many times. In one case we duplicate the
+top of the stack, as~$S$ serves both in the call to $filter\_units$
+(immediately) and in the to~$replace\_gen$ (at the end).
+
+@< Local function definitions @>=
+void quotient_basis_wrapper(expression_base::level l)
+{ shared_row L=get<row_value>();
+  // and leave Lie type on stack for $Smith\_Cartan$
+  Smith_Cartan_wrapper(expression_base::multi_value);
+  shared_value SC_basis = *(execution_stack.end()-2);
+  shared_value invf = *(execution_stack.end()-1);
+  wrap_tuple(2); // |replace_gen| wants as first argument a tuple
+@/push_value(SC_basis);
+  push_value(invf);
+  filter_units_wrapper(expression_base::multi_value);
+  shared_vector v=get<vector_value>();
+  // and leave $C$ for call to $mm\_prod$
+@)
+  LatticeMatrix M(v->val.size(),L->length());
+  arithmetic::Denom_t d=1;
+  @< Compute common denominator |d| of entries in~$L$, and place converted
+     denominators into the columns of $M$; also test validity of entries
+     against |v|, and |throw| a runtime error for invalid ones @>
+  push_value(new matrix_value(annihilator_modulo(M,d)));
+@/mm_prod_wrapper(expression_base::single_value);
+@/replace_gen_wrapper(l); // pass level parameter to final call
+}
+
+@ Each vector in |L| must have as many entries as |v|, and multiplying by the
+corresponding entry of~$v$ should chase the denominator of each entry. In a
+first pass we copy the numerator vectors to columns of~$M$, check divisibility
+according to |v| and compute the common denominator |d|; in a second pass the
+numerators are reduced modulo their original denominator, and then brought to
+the new denominator~|d|.
+
+@< Compute common denominator |d| of entries in~$L$... @>=
+{ std::vector<arithmetic::Denom_t> denom(L->length());
+  for (size_t j=0; j<L->length(); ++j)
+  { const RatWeight& gen =
+      force<rational_vector_value>(&*L->val[j])->val;
+    denom[j] = gen.denominator();
+    d=arithmetic::lcm(d,denom[j]);
+
+    if (gen.size()!=v->val.size())
+      throw std::runtime_error@|
+        ("Length mismatch for generator "+str(j) +": "@|
+@.Length mismatch...@>
+        +str(gen.size()) + ':' + str(v->val.size()));
+
+    Weight col(gen.numerator().begin(),gen.numerator().end()); // convert
+    for (size_t i=0; i<v->val.size(); ++i)
+    { if (v->val[i]*col[i]%gen.denominator()!=0) // must use signed arithmetic!!
+	throw std::runtime_error("Improper generator entry: "
+@.Improper generator entry@>
+         +str(col[i])+'/'+str(denom[j])+" not a multiple of 1/"
+         +str(v->val[i]));
+      M(i,j) = arithmetic::remainder(col[i],denom[j]);
+      // ``mod $\Z$''; makes |M(i,j)| non-negative
+    }
+  }
+// loop must end and restart here so that computation of |d| will be complete
+@)
+  for (size_t j=0; j<L->length(); ++j) // convert to common denominator |d|
+  { arithmetic::Denom_t f=d/denom[j];
+    for (size_t i=0; i<v->val.size(); ++i)
+      M(i,j) *= f;
+  }
 }
 
 @*2 Specifying inner classes. Now we move ahead a bit in the theory, from
@@ -648,6 +749,8 @@ install_function(filter_units_wrapper,"filter_units","(mat,vec->mat,vec)");
 install_function(ann_mod_wrapper,"ann_mod","(mat,int->mat)");
 install_function(replace_gen_wrapper,"replace_gen",
 		"((mat,vec),mat->mat)");
+install_function(quotient_basis_wrapper
+		,@|"quotient_basis","(LieType,[ratvec]->mat)");
 install_function(basic_involution_wrapper,"involution",
 		"(LieType,string->mat)");
 install_function(based_involution_wrapper,"involution",
@@ -715,47 +818,10 @@ void type_of_root_datum_wrapper(expression_base::level l)
 
 @*2 Building a root datum.
 %
-To create a root datum value, the user may specify a Lie type and a square
-matrix of the size of the rank of the root datum, which specifies generators
-of the desired weight lattice as a sub-lattice of the lattice of weights
-associated to the simply connected group of the type given. The given weights
-should be independent and span at least the root lattice associated to the
-type. Failure of either condition will cause the |PreRootDatum| constructor to
-throw a |std::runtime_error|, but in case a root should fail to be expressed
-in the sub-lattice basis this happens in a call buried fairly deeply, so we
-prefer to replace the |"Inexact integer division"| message by a somewhat more
-descriptive one.
-
-@< Local function definitions @>=
-void root_datum_wrapper(expression_base::level l)
-{ shared_matrix lattice=get<matrix_value>();
-  shared_Lie_type type=get<Lie_type_value>();
-  if (lattice->val.numRows()!=lattice->val.numColumns() @| or
-      lattice->val.numRows()!=type->val.rank())
-    throw std::runtime_error
-    ("Sub-lattice matrix should have size " @|
-@.Sub-lattice matrix should...@>
-      +str(type->val.rank())+'x'+str(type->val.rank()));
-  try
-  {
-    PreRootDatum prd(type->val,lattice->val.columns());
-    if (l!=expression_base::no_value)
-      push_value(new root_datum_value @| (RootDatum(prd)));
-  }
-  catch (std::runtime_error& e)
-  { if (e.what()[0]=='I') // |"Inexact integer division"|
-      throw std::runtime_error
-        ("Sub-lattice does not contain the root lattice");
-@.Sub-lattice does not contain...@>
-    throw; // |"Dependent lattice generators"|, no need to rephrase
-@.Dependent lattice generators@>
-  }
-}
-
-@ Alternatively, a user may just specify bases of simple roots and coroots in
-the form of matrices, which implicitly define a Lie type and weight lattice.
-To make sure the root datum construction will succeed, we must test the
-``Cartan'' matrix computed from these data to be a valid one.
+The most direct way to create a root datum value is to specify bases of simple
+roots and coroots in the form of matrices, which implicitly define a Lie type
+and weight lattice. To make sure the root datum construction will succeed, we
+must test the ``Cartan'' matrix computed from these data to be a valid one.
 
 @< Local function definitions @>=
 void raw_root_datum_wrapper(expression_base::level l)
@@ -796,91 +862,65 @@ void raw_root_datum_wrapper(expression_base::level l)
     push_value(new root_datum_value @| (RootDatum(prd)));
 }
 
-@ To emulate what is done in the Atlas software, we write a function that
-integrates some of the previous ones. It is called as |quotient_basis(lt,L)|
-where $t$ is a Lie type, and $L$ is a list of rational vectors (interpreted as
-coweights), each giving a kernel generator as would be entered in the Atlas
-software.
-
-Let |S==Smith_Cartan(lt)| and |(C,v)=filter\_units(S)|, then we find a basis
-for the sub-lattice needed to build the root datum as follows. Each vector
-in~$L$ should have the same length as~$v$, and multiplication of corresponding
-entries should always give an integer. Then a common denominator~$d$ is found
-and a matrix $M$ whose columns form the numerators of the lists of~$L$ brought
-to the denominator~$d$. The call $quotient\_basis(lt,L)$ then yields the result
-of computing $replace\_gen(S,C*ann\_mod(M,d))$.
-
-This wrapper function does most of its work by calling other wrapper
-functions, using the evaluator stack many times. In one case we duplicate the
-top of the stack, as~$S$ serves both in the call to $filter\_units$
-(immediately) and in the to~$replace\_gen$ (at the end).
+@ Alternatively, the user may specify a Lie type and a square
+matrix of the size of the rank of the root datum, which specifies generators
+of the desired weight lattice as a sub-lattice of the lattice of weights
+associated to the simply connected group of the type given. The given weights
+should be independent and span at least the root lattice associated to the
+type. Failure of either condition will cause the |PreRootDatum| constructor to
+throw a |std::runtime_error|.
 
 @< Local function definitions @>=
-void quotient_basis_wrapper(expression_base::level l)
-{ shared_row L=get<row_value>();
-  // and leave Lie type on stack for $Smith\_Cartan$
-  Smith_Cartan_wrapper(expression_base::multi_value);
-  shared_value SC_basis = *(execution_stack.end()-2);
-  shared_value invf = *(execution_stack.end()-1);
-  wrap_tuple(2); // |replace_gen| wants as first argument a tuple
-@/push_value(SC_basis);
-  push_value(invf);
-  filter_units_wrapper(expression_base::multi_value);
-  shared_vector v=get<vector_value>();
-  // and leave |C| for call to $mm\_prod$
-@)
-  LatticeMatrix M(v->val.size(),L->length());
-  size_t d=1;
-  @< Compute common denominator |d| of entries in~$L$, and place converted
-     denominators into the columns of $M$; also test validity of entries and
-     |throw| a runtime error for invalid ones @>
-  push_value(new matrix_value(annihilator_modulo(M,d)));
-@/mm_prod_wrapper(expression_base::single_value);
-@/replace_gen_wrapper(l); // pass level parameter to final call
+void root_datum_wrapper(expression_base::level l)
+{ shared_matrix lattice=get<matrix_value>();
+  shared_Lie_type type=get<Lie_type_value>();
+  if (lattice->val.numRows()!=lattice->val.numColumns() @| or
+      lattice->val.numRows()!=type->val.rank())
+    throw std::runtime_error
+    ("Sub-lattice matrix should have size " @|
+@.Sub-lattice matrix should...@>
+      +str(type->val.rank())+'x'+str(type->val.rank()));
+  PreRootDatum prd(type->val,lattice->val.columns());
+@.Sub-lattice matrix must be square @>
+@.Sub-lattice does not contain root lattice@>
+@.Dependent lattice generators@>
+  if (l!=expression_base::no_value)
+    push_value(new root_datum_value @| (RootDatum(prd)));
 }
 
-@ Each vector in |L| must have as many entries as |v|, and multiplying by the
-corresponding entry of~$v$ should chase the denominator of each entry. In a
-first pass we copy the numerator vectors to columns of~$M$, check divisibility
-according to |v| and compute the common denominator |d|; in a second pass the
-numerators are reduced modulo their original denominator, and then brought to
-the new denominator~|d|.
+@ While the previous function takes the sublattice to live in the weight
+lattice of the simply connected root datum of the given type, on may more
+generally wish to reduce to a full-rank sublattice of $X^*$ that contains the
+root lattice in any existing root datum. The following variant of root datum
+construction does this. The call to the |quotient| method may throw the same
+errors (Dependent lattice generators, ) as the |PreRootDatum| constructor in the previous function.
 
-@< Compute common denominator |d| of entries in~$L$... @>=
-{ std::vector<unsigned long> denom(L->length());
-  for (size_t j=0; j<L->length(); ++j)
-  { const RatWeight& gen =
-      force<rational_vector_value>(&*L->val[j])->val;
-    denom[j] = gen.denominator();
-    d=arithmetic::lcm(d,denom[j]);
+@< Local function definitions @>=
+void sublattice_root_datum_wrapper(expression_base::level l)
+{ shared_matrix lattice=get<matrix_value>();
+  shared_root_datum rd=get<root_datum_value>();
+  if (lattice->val.numRows()!=lattice->val.numColumns() @| or
+      lattice->val.numRows()!=rd->val.rank())
+    throw std::runtime_error
+    ("Sub-lattice matrix should have size " @|
+@.Sub-lattice matrix should...@>
+      +str(rd->val.rank())+'x'+str(rd->val.rank()));
 
-    if (gen.size()!=v->val.size())
-      throw std::runtime_error@|
-        ("Length mismatch for generator "+str(j) +": "@|
-@.Length mismatch...@>
-        +str(gen.size()) + ':' + str(v->val.size()));
-
-    Weight col(gen.numerator().begin(),gen.numerator().end()); // convert
-    M.set_column(j,col);
-    for (size_t i=0; i<v->val.size(); ++i)
-      if (v->val[i]*M(i,j)%long(denom[j])!=0) // must use signed arithmetic!!
-	throw std::runtime_error("Improper generator entry: "
-@.Improper generator entry@>
-         +str(M(i,j))+'/'+str(denom[j])+" not a multiple of 1/"
-         +str(v->val[i]));
-  }
-@)
-  for (size_t j=0; j<L->length(); ++j)
-    // convert modulo $\Z$ and to common denominator |d|
-  { size_t f=d/denom[j];
-    for (size_t i=0; i<v->val.size(); ++i)
-      M(i,j) = arithmetic::remainder(M(i,j),denom[j])*f;
-  }
+  WeightList simple_roots(rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
+  CoweightList simple_coroots
+        (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
+  PreRootDatum prd(simple_roots,simple_coroots,rd->val.rank());
+  prd.quotient(lattice->val);
+@.Sub-lattice matrix must be square @>
+@.Sub-lattice does not contain root lattice@>
+@.Dependent lattice generators@>
+  if (l!=expression_base::no_value)
+    push_value(new root_datum_value @| (RootDatum(prd)));
 }
 
-@ The function that integrates all is $quotient\_datum$; the call
-$quotient\_datum(lt,L)$ is equivalent to
-$root\_datum(lt,quotient\_basis(lt,L))$.
+@ There is the function |quotient_datum| that integrates |quotient_basis| into
+the construction of a root datum; the call |quotient_datum(lt,L)| is
+equivalent to |root\_datum(lt,quotient_basis(lt,L))|.
 
 @< Local function definitions @>=
 void quotient_datum_wrapper(expression_base::level l)
@@ -1168,11 +1208,11 @@ void integrality_points_wrapper(expression_base::level l)
 @< Install wrapper functions @>=
 install_function(type_of_root_datum_wrapper,@|"Lie_type"
                 ,"(RootDatum->LieType)");
+install_function(raw_root_datum_wrapper,@|"root_datum"
+                ,"(mat,mat->RootDatum)");
 install_function(root_datum_wrapper,@|"root_datum","(LieType,mat->RootDatum)");
-install_function(raw_root_datum_wrapper,
-                 @|"root_datum","(mat,mat->RootDatum)");
-install_function(quotient_basis_wrapper
-		,@|"quotient_basis","(LieType,[ratvec]->mat)");
+install_function(sublattice_root_datum_wrapper,@|"root_datum"
+                ,"(RootDatum,mat->RootDatum)");
 install_function(quotient_datum_wrapper
 		,@|"root_datum","(LieType,[ratvec]->RootDatum)");
 install_function(simply_connected_datum_wrapper
@@ -2515,7 +2555,7 @@ void Cartan_class_real_form_wrapper(expression_base::level l)
   shared_inner_class G(get<inner_class_value>());
   { Coweight num(grading_shift->val.numerator().begin(),
                  grading_shift->val.numerator().end());
-    if (theta->val.right_mult(num)!=num)
+    if (theta->val.right_prod(num)!=num)
       throw std::runtime_error ("Grading coweight not fixed by involution");
 @.Grading coweight not fixed@>
   }
@@ -3028,7 +3068,7 @@ void build_KGB_element_wrapper(expression_base::level l)
 
   { Coweight num(grading_shift->val.numerator().begin(),
                  grading_shift->val.numerator().end());
-    if (theta->val.right_mult(num)!=num)
+    if (theta->val.right_prod(num)!=num)
       throw std::runtime_error ("Grading coweight not fixed by involution");
 @.Grading coweight not fixed@>
   }
