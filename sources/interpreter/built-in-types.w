@@ -3669,7 +3669,7 @@ void parameter_cross_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new module_parameter_value(p->rf,p->rc().cross(s,p->val)));
 }
-
+@)
 void parameter_Cayley_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->val;
@@ -3681,6 +3681,7 @@ void parameter_Cayley_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new module_parameter_value(p->rf,p->rc().Cayley(s,p->val)));
 }
+
 void parameter_inv_Cayley_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->val;
@@ -3693,6 +3694,14 @@ void parameter_inv_Cayley_wrapper(expression_base::level l)
     push_value(new module_parameter_value(p->rf,p->rc().inv_Cayley(s,p->val)));
 }
 
+@ One useful thing to be able to for parameters is to compute their twist by
+the distinguished involution.
+@< Local function def...@>=
+void parameter_twist_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+    push_value(new module_parameter_value(p->rf,p->rc().twist(p->val)));
+}
 
 @ The library can also compute orientation numbers for parameters.
 
@@ -3997,6 +4006,7 @@ install_function(parameter_cross_wrapper,@|"cross" ,"(int,Param->Param)");
 install_function(parameter_Cayley_wrapper,@|"Cayley" ,"(int,Param->Param)");
 install_function(parameter_inv_Cayley_wrapper,@|"inv_Cayley"
                 ,"(int,Param->Param)");
+install_function(parameter_twist_wrapper,@|"twist" ,"(Param->Param)");
 install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(reducibility_points_wrapper,@|
 		"reducibility_points" ,"(Param->[rat])");
@@ -4408,6 +4418,9 @@ needed can be extracted from that evaluation). In formula, this computes
 $$
   \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s]
 $$
+There are in fact two variants, of this function an ordinary one and one using
+twisted KLV polynomials.
+
 @< Local function def...@>=
 void KL_sum_at_s_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
@@ -4416,6 +4429,17 @@ void KL_sum_at_s_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {
     repr::SR_poly result = p->rt().KL_column_at_s(p->val);
+    push_value (new virtual_module_value(p->rf,result));
+  }
+}
+
+void twisted_KL_sum_at_s_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p);
+  test_nonzero_final(*p);
+  if (l!=expression_base::no_value)
+  {
+    repr::SR_poly result = p->rt().twisted_KL_column_at_s(p->val);
     push_value (new virtual_module_value(p->rf,result));
   }
 }
@@ -4447,6 +4471,7 @@ install_function(split_mult_virtual_module_wrapper,@|"*"
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
+install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s","(Param->ParamPol)");
 
 
 @*1 Kazhdan-Lusztig tables. We implement a simple function that gives raw

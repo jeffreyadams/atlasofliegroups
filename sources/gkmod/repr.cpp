@@ -22,6 +22,9 @@
 
 #include "kl.h"
 
+#include "ext_block.h"
+#include "ext_kl.h"
+
 #include "basic_io.h"
 
 namespace atlas {
@@ -404,7 +407,23 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
 	      infin_char));
 }
 
-
+StandardRepr Rep_context::twist(StandardRepr z) const
+{
+  make_dominant(z);
+  const RatWeight infin_char=z.gamma(); // now get the infinitesimal character
+  const RootDatum& rd = rootDatum();
+  const SubSystem& subsys = SubSystem::integral(rd,infin_char);
+  blocks::nblock_help aux(realGroup(),subsys);
+  blocks::nblock_elt src(z.x(),y_values::exp_pi(infin_char-lambda(z)));
+  aux.twist(src);
+  RatWeight lr =
+    (infin_char - src.y().log_pi(false) - RatWeight(rd.twoRho(),2)).normalize();
+  assert(lr.denominator()==1);
+  return StandardRepr
+    (sr_gamma(src.x(),
+	      Weight(lr.numerator().begin(),lr.numerator().end()),
+	      infin_char));
+}
 
 Rep_context::compare Rep_context::repr_less() const
 { return compare(rootDatum().dual_twoRho()); }
@@ -484,17 +503,24 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
   else return SR_poly(z,repr_less());
 } // |Rep_context::expand_final|
 
-void Rep_table::add_block(param_block& block, const BlockEltList& survivors)
+void Rep_table::add_block(param_block& block, BlockEltList& survivors)
 {
+  survivors.reserve(block.size());
+  for (BlockElt x=0; x<block.size(); ++x)
+    if (block.survives(x))
+      survivors.push_back(x);
+
   unsigned long old_size = hash.size();
   BlockEltList new_survivors;
 
   // fill the |hash| table for new surviving parameters in this block
-  for (BlockElt i=0; i<survivors.size(); ++i)
-    if (hash.match(sr(block,survivors[i]))>=old_size)
-      new_survivors.push_back(survivors[i]);
+  for (BlockEltList::const_iterator
+	 it=survivors.begin(); it!=survivors.end(); ++it)
+    if (hash.match(sr(block,*it))>=old_size)
+      new_survivors.push_back(*it);
 
   assert(new_survivors.size()>0); // at least top element should be new
+  assert(hash.size()==old_size+new_survivors.size()); // only new surv. added
 
   lengths.resize(hash.size());
   KL_list.resize(hash.size(),SR_poly(repr_less())); // new slots, init empty
@@ -535,6 +561,7 @@ void Rep_table::add_block(param_block& block, const BlockEltList& survivors)
       if (eval!=Split_integer(0))
       {
 	unsigned long z_index = old_size+(it-new_survivors.begin());
+	assert(hash.find(sr(block,z))==z_index);
 	SR_poly& dest = KL_list[z_index];
 	if (lengths[z_index]%2!=parity)
 	  eval.negate(); // incorporate sign for length difference
@@ -570,10 +597,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr z) // must be nonzero and final
   if (hash_index==hash.empty) // previously unknown parameter
   {
     non_integral_block block(*this,z);
-    BlockEltList survivors; survivors.reserve(block.size());
-    for (BlockElt x=0; x<block.size(); ++x)
-      if (block.survives(x))
-	survivors.push_back(x);
+    BlockEltList survivors;
     add_block(block,survivors);
 
     hash_index=hash.find(z);
@@ -589,19 +613,20 @@ SR_poly Rep_table::deformation_terms (param_block& block,BlockElt entry_elem)
   if (not block.survives(entry_elem) or block.length(entry_elem)==0)
     return result; // easy cases, null result
 
-  // count number of survivors of length strictly less than any occurring length
-  std::vector<unsigned int> n_surv_length_less(block.length(0),0);
-  BlockEltList survivors; survivors.reserve(block.size());
-  for (BlockElt x=0; x<block.size(); ++x)
-  {
-    if (block.length(x)==n_surv_length_less.size())
-      n_surv_length_less.push_back(survivors.size());
-    if (block.survives(x))
-      survivors.push_back(x);
-  }
-
+  BlockEltList survivors;
   if (hash.find(sr(block,entry_elem))==hash.empty) // previously unknown
     add_block(block,survivors);
+
+  // count number of survivors of length strictly less than any occurring length
+  std::vector<unsigned int> n_surv_length_less
+    (block.length(survivors.back())+1); // slots for lengths |<=| largest length
+  { // compute |n_surv_length_less| values
+    unsigned int l=0;  n_surv_length_less[l]=0;
+    for (BlockEltList::const_iterator
+	   it=survivors.begin(); it!=survivors.end(); ++it)
+      while (l<block.length(*it))
+	n_surv_length_less[++l] = it-survivors.begin();
+  }
 
   assert(hash.find(sr(block,entry_elem))!=hash.empty); // should be known now
 
@@ -704,6 +729,99 @@ std::ostream& Rep_context::print (std::ostream& str,const SR_poly& P) const
       << std::endl;
   return str;
 }
+
+
+void Rep_table::add_block(ext_block::extended_block& block,
+			  param_block& parent) // must be actual parent |block|
+{
+  unsigned long old_size = hash.size();
+  BlockEltList survivors;
+  add_block(parent,survivors);
+
+  BlockEltList new_survivors;
+
+  // fill the |hash| table for new surviving parameters in this block
+  for (BlockEltList::const_iterator
+	   it=survivors.begin(); it!=survivors.end(); ++it)
+    if (hash.match(sr(parent,*it))>=old_size and
+	parent.Hermitian_dual(*it)==*it)
+      new_survivors.push_back(block.element(*it));
+
+  // extend space in twisted tables
+  twisted_KLV_list.resize(hash.size(),SR_poly(repr_less())); // init empty
+  twisted_def_formula.resize(hash.size(),SR_poly(repr_less()));
+
+  // compute cumulated KL polynomimals $P_{x,y}$ with $x\leq y$ survivors
+
+  // start with computing KL polynomials for the entire block
+  std::vector<ext_kl::Pol> pool;
+  ext_kl::KL_table twisted_KLV(block,pool);
+  twisted_KLV.fill_columns();
+
+  /* get $P(x,y)$ for |x<=y| with |y| among new |survivors|, and contribute
+   parameters from |block.survivors_below(x)| with coefficient $P(x,y)[q:=s]$
+   to the |SR_poly| at |KL_list[old_size+i], where |y=new_survivors[i]| */
+  BlockEltList::const_iterator y_start=new_survivors.begin();
+
+  for (BlockElt x=0; x<=new_survivors.back(); ++x) // elements of twisted block
+  {
+    BlockElt z = block.z(x); // number of the element for |parent|
+    BlockEltList xs=parent.survivors_below(z);
+    if (xs.empty())
+      continue; // no point doing work for |x|'s that don't contribute anywhere
+
+    const unsigned int parity = block.length(x)%2;
+
+    if (*y_start<x)
+      ++y_start; // advance so |y| only runs over values with |x<=y|
+    assert(y_start!=new_survivors.end() and *y_start>=x);
+
+    for (BlockEltList::const_iterator it=y_start; it!=new_survivors.end(); ++it)
+    {
+      const BlockElt y = *it; // element of |new_survivors| and |x<=y|
+      const ext_kl::Pol& pol = twisted_KLV.P(x,y); // twisted KLV polynomial
+      Split_integer eval(0);
+      for (polynomials::Degree d=pol.size(); d-->0; )
+	eval = eval.times_s()+Split_integer(static_cast<int>(pol[d]));
+      if (eval!=Split_integer(0))
+      {
+	unsigned long y_index = hash.find(sr(parent,block.z(y)));
+	assert (y_index!=hash.empty);
+	SR_poly& dest = twisted_KLV_list[y_index];
+	if (lengths[y_index]%2!=parity)
+	  eval.negate(); // incorporate sign for length difference
+	for (unsigned int i=0; i<xs.size(); ++i)
+	  dest.add_term(sr(parent,xs[i]),eval);
+      }
+    } // |for(it)|
+  } // |for(x)|
+} // |Rep_table::add_block| (extended block)
+
+// compute and return sum of KL polynomials at $s$ for final parameter |z|
+SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr z)
+  // |z| must be twist-fixed, nonzero and final
+{
+  { RootNbr witness;
+    if (is_zero(z,witness) or not is_final(z,witness))
+      throw std::runtime_error("Representation zero or not final");
+  }
+  make_dominant(z); // so that |z| it will appear at the top of its own block
+  unsigned long hash_index=hash.find(z);
+  if (hash_index==hash.empty) // previously unknown parameter
+  {
+    BlockElt entry; // dummy needed to ensure full block is generated
+    non_integral_block block(*this,z,entry); // which this constructor does
+    ext_block::extended_block eblock(block,twistedWeylGroup());
+
+    add_block(eblock,block);
+
+    hash_index=hash.find(z);
+    assert(hash_index!=hash.empty);
+  }
+
+  return twisted_KLV_list[hash_index];
+}
+
 
   } // |namespace repr|
 } // |namespace atlas|

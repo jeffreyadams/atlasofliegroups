@@ -1,7 +1,7 @@
 /*
-  This is involurions.h
+  This is y_values.h, for representing |y| components of module parameters
 
-  Copyright (C) 2011 Marc van Leeuwen
+  Copyright (C) 2011-2014 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -25,13 +25,17 @@ inline TorusElement exp_2pi(const RatWeight& r);
 
 /* The following classes are newer than |TitsElement|, |TitsGroup| and
    |TitsCoset|, and less efficient, but provide a framework in which te sets
-   modelled by the latter classes can be fitted.
-*/
+   modelled by the latter classes can be fitted. They are actually used mostly
+   for handling |y| values (whence the name of this module), in which case one
+   has elements of the torus of the dual group. The terminology is adapted to
+   this point of view: we store a rational weight (rather than coweight).
+ */
 
-/* An element of finite order in $H$. Externally this is like a rational vector
-   modulo integers in the coordinates. Internally we store twice the numerator
-   of the rational vector, which facilitates adding halves to its coordinates.
-*/
+
+/* An element of finite order in $H^$. This is like a rational vector in the
+   coordinates, taken modulo integers. Internally we store twice the numerator
+   of the rational vector, to facilitate adding halves to its coordinates.
+ */
 class TorusElement
 {
   RatWeight repr; // represents $\exp(\pi i repr)$, no factor 2!
@@ -85,10 +89,9 @@ class TorusElement
 
   TorusElement& operator+=(TorusPart v); // arg by value since it is small
 
-  // in the following method |prd|, |rd| are on dual side with respect to torus
-  // in other words |repr.numerator()| is a |Weight| rather than |Coweight|
   void simple_reflect(const PreRootDatum& prd, weyl::Generator s);
   void reflect(const RootDatum& rd, RootNbr alpha);
+  void act_by(const  WeightInvolution& delta);
 }; // |class TorusElement|
 
 inline TorusElement exp_pi(const RatWeight& r) { return TorusElement(r,false); }

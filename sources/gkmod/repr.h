@@ -24,6 +24,10 @@
 #include "free_abelian.h"
 #include "arithmetic.h" // |SplitInteger|
 
+#include "ext_block.h"
+#include "ext_kl.h"
+
+
 namespace atlas {
 
 namespace repr {
@@ -140,6 +144,7 @@ class Rep_context
   StandardRepr cross(weyl::Generator s, StandardRepr z) const;
   StandardRepr Cayley(weyl::Generator s, StandardRepr z) const;
   StandardRepr inv_Cayley(weyl::Generator s, StandardRepr z) const;
+  StandardRepr twist(StandardRepr z) const;
 
   class compare
   { Coweight level_vec; // linear form to apply to |gamma| for ordering
@@ -147,7 +152,7 @@ class Rep_context
     compare (const Coweight& lv) : level_vec(lv) {}
 
     bool operator()(const StandardRepr& r,const StandardRepr& s) const;
-  };
+  }; // |compare|
 
   compare repr_less() const;
 
@@ -167,8 +172,12 @@ class Rep_table : public Rep_context
   std::vector<StandardRepr> pool;
   HashTable<StandardRepr,unsigned long> hash;
   std::vector<unsigned short int> lengths;
-  std::vector<SR_poly> KL_list;
-  std::vector<SR_poly> def_formula;
+  std::vector<SR_poly> KL_list; // indexed by |hash| values for |StandardRepr|s
+  std::vector<SR_poly> def_formula; // idem
+
+  std::vector<SR_poly> twisted_KLV_list; // indexed by |hash|s for twist-fixed
+  std::vector<SR_poly> twisted_def_formula; // idem
+
 
  public:
   Rep_table(RealReductiveGroup &G)
@@ -178,6 +187,7 @@ class Rep_table : public Rep_context
   unsigned int length(StandardRepr z); // by value
 
   SR_poly KL_column_at_s(StandardRepr z); // by value
+  SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
 
   SR_poly deformation_terms (param_block& block,BlockElt entry_elem);
   // here |block| is non-|const| because it calls |add_block|
@@ -185,8 +195,11 @@ class Rep_table : public Rep_context
   SR_poly deformation(const StandardRepr& z);
 
  private:
-  void add_block(param_block& block, const BlockEltList& survivors);
+  void add_block(param_block& block, BlockEltList& survivors);
   // here |block| is non-|const| as the method generates KL polynomials in it
+
+  void add_block(ext_block::extended_block& block, param_block& parent);
+  // here |block| is non-|const|; the method generates twisted KLv polyns in it
 
 }; // |Rep_table|
 
