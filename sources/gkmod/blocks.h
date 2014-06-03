@@ -403,7 +403,7 @@ public:
   nblock_elt (KGBElt x, const TorusElement& t) : xx(x), yy(t) {}
 
   KGBElt x() const { return xx; }
-  const TorusElement y() const { return yy; }
+  const TorusElement& y() const { return yy; }
 
 }; // |class nblock_elt|
 
@@ -432,6 +432,8 @@ public:
   void do_up_Cayley (nblock_elt& z, weyl::Generator s) const;
   void do_down_Cayley (nblock_elt& z, weyl::Generator s) const;
   bool is_real_nonparity(nblock_elt z, weyl::Generator s) const; // by value
+
+  void twist(nblock_elt& z) const;
 
   y_entry pack_y(const nblock_elt& z) const;
 }; // |class nblock_help|

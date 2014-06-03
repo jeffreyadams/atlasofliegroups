@@ -140,6 +140,7 @@ class Rep_context
   StandardRepr cross(weyl::Generator s, StandardRepr z) const;
   StandardRepr Cayley(weyl::Generator s, StandardRepr z) const;
   StandardRepr inv_Cayley(weyl::Generator s, StandardRepr z) const;
+  StandardRepr twist(StandardRepr z) const;
 
   class compare
   { Coweight level_vec; // linear form to apply to |gamma| for ordering
