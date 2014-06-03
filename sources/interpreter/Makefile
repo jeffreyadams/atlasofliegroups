@@ -94,7 +94,8 @@ atlas_objects := $(atlas_sources)/structure/prerootdata.o \
  $(atlas_sources)/structure/subsystem.o \
  $(atlas_sources)/structure/involutions.o \
  $(atlas_sources)/structure/y_values.o \
- $(atlas_sources)/gkmod/ext_block.o
+ $(atlas_sources)/gkmod/ext_block.o \
+ $(atlas_sources)/gkmod/ext_kl.o
 
 cwebx_sources := $(wildcard *.w)
 

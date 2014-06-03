@@ -4418,6 +4418,9 @@ needed can be extracted from that evaluation). In formula, this computes
 $$
   \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s]
 $$
+There are in fact two variants, of this function an ordinary one and one using
+twisted KLV polynomials.
+
 @< Local function def...@>=
 void KL_sum_at_s_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
@@ -4426,6 +4429,17 @@ void KL_sum_at_s_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {
     repr::SR_poly result = p->rt().KL_column_at_s(p->val);
+    push_value (new virtual_module_value(p->rf,result));
+  }
+}
+
+void twisted_KL_sum_at_s_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p);
+  test_nonzero_final(*p);
+  if (l!=expression_base::no_value)
+  {
+    repr::SR_poly result = p->rt().twisted_KL_column_at_s(p->val);
     push_value (new virtual_module_value(p->rf,result));
   }
 }
@@ -4457,6 +4471,7 @@ install_function(split_mult_virtual_module_wrapper,@|"*"
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
+install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s","(Param->ParamPol)");
 
 
 @*1 Kazhdan-Lusztig tables. We implement a simple function that gives raw

@@ -787,7 +787,7 @@ void Rep_table::add_block(ext_block::extended_block& block,
       {
 	unsigned long y_index = hash.find(sr(parent,block.z(y)));
 	assert (y_index!=hash.empty);
-	SR_poly& dest = KL_list[y_index];
+	SR_poly& dest = twisted_KLV_list[y_index];
 	if (lengths[y_index]%2!=parity)
 	  eval.negate(); // incorporate sign for length difference
 	for (unsigned int i=0; i<xs.size(); ++i)
