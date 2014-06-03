@@ -103,7 +103,8 @@ Like for the \.{atlas} program, the compile time flag |NREADLINE|, if defined
 by setting \.{-DNREADLINE} as a flag to the compiler, will prevent any
 dependency on the readline library.
 
-@d realex_version "0.8.2" // version numbering from 0.5, on 27 November 2010
+@d realex_version "0.8.3"
+ // numbering from 0.5 (on 27/11/2010); last change 31/05/2014
 
 @c
 

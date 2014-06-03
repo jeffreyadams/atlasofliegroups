@@ -1,5 +1,5 @@
 /*
-  This is involurions.h
+  This is involutions.h
 
   Copyright (C) 2011 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations

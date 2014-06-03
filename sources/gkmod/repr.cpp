@@ -407,7 +407,23 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
 	      infin_char));
 }
 
-
+StandardRepr Rep_context::twist(StandardRepr z) const
+{
+  make_dominant(z);
+  const RatWeight infin_char=z.gamma(); // now get the infinitesimal character
+  const RootDatum& rd = rootDatum();
+  const SubSystem& subsys = SubSystem::integral(rd,infin_char);
+  blocks::nblock_help aux(realGroup(),subsys);
+  blocks::nblock_elt src(z.x(),y_values::exp_pi(infin_char-lambda(z)));
+  aux.twist(src);
+  RatWeight lr =
+    (infin_char - src.y().log_pi(false) - RatWeight(rd.twoRho(),2)).normalize();
+  assert(lr.denominator()==1);
+  return StandardRepr
+    (sr_gamma(src.x(),
+	      Weight(lr.numerator().begin(),lr.numerator().end()),
+	      infin_char));
+}
 
 Rep_context::compare Rep_context::repr_less() const
 { return compare(rootDatum().dual_twoRho()); }

@@ -3669,7 +3669,7 @@ void parameter_cross_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new module_parameter_value(p->rf,p->rc().cross(s,p->val)));
 }
-
+@)
 void parameter_Cayley_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->val;
@@ -3681,6 +3681,7 @@ void parameter_Cayley_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new module_parameter_value(p->rf,p->rc().Cayley(s,p->val)));
 }
+
 void parameter_inv_Cayley_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->val;
@@ -3693,6 +3694,14 @@ void parameter_inv_Cayley_wrapper(expression_base::level l)
     push_value(new module_parameter_value(p->rf,p->rc().inv_Cayley(s,p->val)));
 }
 
+@ One useful thing to be able to for parameters is to compute their twist by
+the distinguished involution.
+@< Local function def...@>=
+void parameter_twist_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+    push_value(new module_parameter_value(p->rf,p->rc().twist(p->val)));
+}
 
 @ The library can also compute orientation numbers for parameters.
 
@@ -3997,6 +4006,7 @@ install_function(parameter_cross_wrapper,@|"cross" ,"(int,Param->Param)");
 install_function(parameter_Cayley_wrapper,@|"Cayley" ,"(int,Param->Param)");
 install_function(parameter_inv_Cayley_wrapper,@|"inv_Cayley"
                 ,"(int,Param->Param)");
+install_function(parameter_twist_wrapper,@|"twist" ,"(Param->Param)");
 install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(reducibility_points_wrapper,@|
 		"reducibility_points" ,"(Param->[rat])");

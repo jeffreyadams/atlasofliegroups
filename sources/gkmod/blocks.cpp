@@ -720,10 +720,10 @@ void param_block::compute_duals(const ComplexReductiveGroup& G,
 
     // analyse the |twist|-orbits on the Dynkin diagram of |rs|
     for (weyl::Generator s=0; s<rs.rank(); ++s)
-    if (twist[s]==s)
-      orbits.push_back(ext_gen(s));
-    else if (twist[s]>s)
-      orbits.push_back(ext_gen(rs.cartan(s,twist[s])==0, s,twist[s]));
+      if (twist[s]==s)
+	orbits.push_back(ext_gen(s));
+      else if (twist[s]>s)
+	orbits.push_back(ext_gen(rs.cartan(s,twist[s])==0, s,twist[s]));
 
     for (BlockElt z=0; z<size(); ++z)
     {
@@ -737,9 +737,7 @@ void param_block::compute_duals(const ComplexReductiveGroup& G,
 	info[z].dual = element(x_of[dual_x],dual_y);
     }
   }
-}
-
-
+} // |param_block::compute_duals|
 
 RealReductiveGroup& param_block::realGroup() const
   { return rc.realGroup(); }
@@ -747,6 +745,7 @@ const ComplexReductiveGroup& param_block::complexGroup() const
   { return rc.realGroup().complexGroup(); }
 const InvolutionTable& param_block::involution_table() const
   { return complexGroup().involution_table(); }
+
 
 
 nblock_help::nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
@@ -863,6 +862,14 @@ void nblock_help::do_down_Cayley (nblock_elt& z, weyl::Generator s) const
     parent_cross_act(z,ww[i]);
 }
 
+void nblock_help::twist(nblock_elt& z) const
+{
+  z.xx = kgb.Hermitian_dual(z.xx);
+  z.yy.act_by(i_tab.delta);
+}
+
+
+// this essentially modularly reduces the |y| component by taking fingerprint
 y_entry nblock_help::pack_y(const nblock_elt& z) const
 {
   InvolutionNbr i = kgb.inv_nr(z.x());
