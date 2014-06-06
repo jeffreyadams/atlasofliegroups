@@ -2289,6 +2289,34 @@ void Cartan_order_matrix_wrapper(expression_base::level l)
   push_value(M);
 }
 
+
+@ Finally we make available an equality test for real forms. While this could
+easily be defined in the \.{realex} language itself (two real forms are equal
+if they belong to the same inner class, and their real form numbers are equal)
+it is useful to define a test here, since the test will also be used later in
+other equality tests (for KGB elements, or module parameters), where one
+should resist the temptation to test (by pointer equality) for identical
+|RealReductiveGroup| objects, which would be too strict.
+
+@< Local function def...@>=
+
+inline bool operator==
+  (const RealReductiveGroup& x, const RealReductiveGroup& y)
+@/{@;
+  return &x.complexGroup() == &y.complexGroup() and x.realForm()==y.realForm();
+}
+inline bool operator!=
+  (const RealReductiveGroup& x, const RealReductiveGroup& y)
+{@; return not(x==y); }
+@)
+void real_form_equals_wrapper(expression_base::level l)
+{ shared_real_form y = get<real_form_value>();
+  shared_real_form x = get<real_form_value>();
+  if (l==expression_base::no_value)
+    return;
+  push_value(new bool_value(x->val==y->val));
+}
+
 @*2 Dual real forms.
 Although they could be considered as real forms for the dual group and dual
 inner class, it will be convenient to be able to construct dual real forms in
@@ -2395,8 +2423,8 @@ install_function(count_Cartans_wrapper,@|"count_Cartans","(RealForm->int)");
 install_function(KGB_size_wrapper,@|"KGB_size","(RealForm->int)");
 install_function(base_grading_vector_wrapper
                 ,@|"base_grading_vector","(RealForm->ratvec)");
-install_function(Cartan_order_matrix_wrapper,@|"Cartan_order"
-					    ,"(RealForm->mat)");
+install_function(Cartan_order_matrix_wrapper,@|"Cartan_order","(RealForm->mat)");
+install_function(real_form_equals_wrapper,"=","(RealForm,RealForm->bool)");
 install_function(dual_real_form_wrapper,@|"dual_real_form"
 				       ,"(InnerClass,int->DualRealForm)");
 install_function(dual_quasisplit_form_wrapper,@|"dual_quasisplit_form"
@@ -3138,11 +3166,13 @@ void torus_factor_wrapper(expression_base::level l)
 }
 
 @ Finally we make available, by popular request, the equality test. This is
-not as straightforward as we initially thought it was, since we should not
-just test the (smart) pointers |x->rf|  and |y->rf| to the |real_form_value|
-objects for equality, as they could point to separate instances of the same
-real form in a identical inner class. So instead one should check the real
-form numbers, and the identity of their parent objects.
+straightforward as long as one takes care not to just test the (smart)
+pointers |x->rf| and |y->rf| to the |real_form_value| objects for equality,
+but to test their |val| fields (of type |RealReductiveGroup|) using the
+equality operator defined above, which test the |ComplexReductiveGroup|
+objects for identity, and real form numbers for equality. This distinction is
+important to make synthesised real forms (|Cartan_class_real_form|) first
+class citizens.
 
 @< Local function def...@>=
 void KGB_equals_wrapper(expression_base::level l)
@@ -3150,9 +3180,7 @@ void KGB_equals_wrapper(expression_base::level l)
   shared_KGB_elt x = get<KGB_elt_value>();
   if (l==expression_base::no_value)
     return;
-  bool same_ic = &x->rf->val.complexGroup() == &y->rf->val.complexGroup();
-  push_value(new bool_value(@|same_ic and
-    x->rf->val.realForm()==y->rf->val.realForm() and x->val==y->val));
+  push_value(new bool_value(x->rf->val==y->rf->val and x->val==y->val));
 }
 
 @ Finally we install everything related to $K\backslash G/B$ elements.
@@ -3614,7 +3642,11 @@ useful to give the user an easy way to apply it explicitly.
 Testing for equivalence of parameters amounts to testing for equality after
 the parameters are made dominant (at least that claim was not contested at the
 time of writing this). We provide this test, which will be bound to the
-equality operator.
+equality operator. Unlike earlier equality tests, we just require the
+parameters to be associated to the same real form, giving a runtime error
+rather than returning false in that case; if some operation is used producing
+parameters that may of may not be associated to the same real form, then one
+should test those forms for equality before testing the parameters.
 
 @< Local function def...@>=
 void parameter_dominant_wrapper(expression_base::level l)
@@ -3628,7 +3660,7 @@ void parameter_dominant_wrapper(expression_base::level l)
 void parameter_equivalent_wrapper(expression_base::level l)
 { shared_module_parameter q = get<module_parameter_value>();
   shared_module_parameter p = get<module_parameter_value>();
-  if (p->rf!=q->rf)
+  if (p->rf->val!=q->rf->val)
     throw std::runtime_error @|
       ("Real form mismatch when testing equivalence");
   if (l!=expression_base::no_value)

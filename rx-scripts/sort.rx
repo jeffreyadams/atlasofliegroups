@@ -1,3 +1,5 @@
+<basic.rx
+
 set merge(vec a, vec b) =
   if #a=0 then b
   else let (i,j)=(0,0)

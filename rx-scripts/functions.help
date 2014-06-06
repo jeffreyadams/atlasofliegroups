@@ -276,7 +276,9 @@ inner_class: (RootDatum,mat->InnerClass): inner_class of G from involution
   based root datum involution if necessary, using the Weyl group.
 twisted_involution (RootDatum,mat->InnerClass,vec): inner_class and Weyl word
   Build an inner class as the above function, and also return a Weyl word
-  (twisted involution) that expresses the given involution in that inner class
+  (twisted involution) that expresses the given involution in that inner
+  class. The latter is a reduced word (with Weyl group generators numbered
+  from 0), to be left-multiplied to the distinguished involution.
 inner_class: (RootDatum,string->InnerClass): get inner class of G symbolically
   Build a complex reductive group directly from a root datum, but compute
   the distinguished involution from the string describing it symbolically.
@@ -345,6 +347,9 @@ components_rank: (RealForm->int): rank of the component group
 count_Cartans: (RealForm->int): number of Cartan classes for this real form
   The Cartan classes are actually constructed, and remembered, by this command
   whence its first execution for some real form may take some time
+
+=: (RealForm,RealForm->bool): equality of real forms
+  It means they belong to an identical inner class, and have same form number
 
 KGB_size: (RealForm->int): size of the set K\G/B for this real form
 base_grading_vector: (RealForm->ratvec): Offset implicit in torus_bits values
@@ -527,6 +532,7 @@ inv_Cayley: (int,Param->Param): inverse Cayley transform
   If (and only if) the inverse transform is undefined it returns the same
   parameter. Find out possible second value of invere transform by applying
   cross action to the result, which either produces it or else fixes result
+twist: (Param->Param): twist the parameter by the distinguihed involution
 orientation_nr: (Param->int): the orientation number
 reducibility_points: (Param->[rat]): the 0<t<=1 with I(x,lambda,t\nu) reducible
 print_block: (Param->): print (nonintegral) block generated from parameter
@@ -590,6 +596,13 @@ full_deform: (Param->ParamPol): perform deformation all the way to nu=0
 KL_sum_at_s: (Param->ParamPol): signed sum of KL polynomials at s, fixed y
   Computes \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s].x where y is the block
   element of the parameter, and the sum is over other block elements x.
+twisted_KL_sum_at_s: (Param->ParamPol): KL_sum_at_s, twisted KLV polynomials
+  This does the same sum as KL_sum_at_s, but using twisted KLV polynomials
+  (the twist is for the distunguished involution) instead of ordinary KLV
+  polynomials. The actual value depends on sign choices for Hecke module
+  generators associated to the terms, so individual terms in the result are
+  mathematically well defined only up to a possible factor -1. Also WARNING:
+  the twisted KLV polynomials are not yet correctly computed in all cases.
 
 raw_KL: (Block->mat,[vec],vec): Kazhdan-Lusztig data for block, raw form
   The call raw_KL(b) produces a matrix of numbers identifying polynomials, a
