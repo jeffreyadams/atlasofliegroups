@@ -327,13 +327,6 @@ real_form: (InnerClass,int->RealForm): select a real form from inner class.
   class (independent of other computations), unlike the list of Cartan classes
   for a real form as discussed below
 form_number: (RealForm->int): index of the real form in its inner class
-real_form: (DualRealForm->RealForm): interpret dual real form as real form
-  This function allows a DualRealForm value to be interpreted as a real form
-  for the dual group (and dual inner class), so that functions like KGB_size
-  can be applied to the result
-dual_real_form: (RealForm->DualRealForm): interpret real form as dual real form
-  This function allows a RealForm value to be interpreted as a dual real form
-  for the dual group (and dual inner class)
 
 quasisplit_form: (InnerClass->RealForm): quasisplit form for the inner class
   This is the last one in the list of real forms for the fundamental Cartan
@@ -364,12 +357,12 @@ Cartan_order: (RealForm->mat): matrix describing ordering of Cartan classes
   The Cartan classes for a given real form form a partially ordered set; this
   function returns this partial ordering in the form of a square 0-1 matrix
 
-dual_real_form: (InnerClass,int->DualRealForm): select a dual real form
+dual_real_form: (InnerClass,int->RealForm): select a dual real form
   This is like real_form, but selects a dual real form for the inner class
-  (whose names are given by dual_form_names) by index, which is given type
-  DualRealForm. This is intended for functions that require both a real form
-  and a dual real form for a given inner class
-dual_quasisplit_form: (InnerClass->DualRealForm): quasisplit dual real form
+  (whose names are given by dual_form_names) by index. This is intended for
+  functions that require both a real form and a dual real form for a given
+  inner class; the compatibility between them is tested by a runtime check.
+dual_quasisplit_form: (InnerClass->RealForm): quasisplit dual real form
 
 Cartan_class: (InnerClass,int->CartanClass): Cartan class selected by number
   This selects a Cartan class by number in the list of all Cartan classes for
@@ -413,7 +406,7 @@ Cartan_info: (CartanClass->(int,int,int),vec,(int,int),(LieType,LieType,LieType)
 
 real_forms: (CartanClass->[RealForm]): list of real forms with given Cartan
   Returns a list of the real forms for which this Cartan class occurs
-dual_real_forms: (CartanClass->[DualRealForm]): list Cartan's dual real forms
+dual_real_forms: (CartanClass->[RealForm]): list Cartan's dual real forms
   Returns a list of the dual real forms for which this Cartan class occurs
 
 square_classes: (CartanClass->[[int]]): partition real forms by square class
@@ -481,8 +474,8 @@ KGB_elt: (RealForm,mat,ratvec): KGB element defined by rational coweight
 
 operator =: (KGBElt,KGBElt): equality of elements of a same KGB set
 
-block: (RealForm,DualRealForm->Block): construct tradiational atlas block
-%: (Block->RealForm,DualRealForm): decompose block, inverse of 'block'
+block: (RealForm,RealForm->Block): construct tradiational atlas block
+%: (Block->RealForm,RealForm): decompose block, inverse of 'block'
 #: (Block->int): number of elements of block
 element: (Block,int->KGBElt,KGBElt): KGB and dual KGB values for block element
 index (Block,KGBElt,KGBElt->int): index in block, from KGB, dual KGB components

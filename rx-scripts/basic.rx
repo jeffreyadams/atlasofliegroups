@@ -325,6 +325,9 @@ set dual_integral (InnerClass ic, ratvec gamma) = InnerClass:
 
 {				Cartan classes				}
 
+set Cartan_classes (InnerClass ic) = [CartanClass]:
+  for i:nr_of_Cartan_classes(ic) do Cartan_class(ic,i) od
+
 set print_Cartan_info (CartanClass cc) = void:
   let show (string s) = string: if s="" then "empty" else s fi
   , ((cr,Cr,sr),ww,(orbit_size,fiber_size),(i_tp,r_tp,C_tp)) = Cartan_info(cc)
@@ -370,7 +373,10 @@ set real_form ((InnerClass,mat,ratvec) all) = RealForm:
 
 set form_name (RealForm f) = string: form_names(f)[form_number(f)]
 
-set real_forms (InnerClass ic)= [RealForm]: real_forms(fundamental_Cartan(ic))
+set real_forms (InnerClass ic)= [RealForm]:
+  real_forms(fundamental_Cartan(ic))
+set dual_real_forms (InnerClass ic) = [RealForm]:
+  dual_real_forms(most_split_Cartan(ic))
 
 set split_form (RootDatum r) = quasisplit_form(inner_class(r,-id_mat(rank(r))))
 
@@ -379,6 +385,11 @@ set split_form (LieType t) = split_form(simply_connected(t))
 
 set quasicompact_form (InnerClass ic) = RealForm: real_forms(ic)[0]
 { quasisplit_form is built-in }
+
+set is_compatible (RealForm f, RealForm g) = bool:
+  let ic = inner_class(f)
+  then oc = occurrence_matrix(ic)*^dual_occurrence_matrix(ic)
+  in inner_class(g)=dual(ic) and oc[form_number(f),form_number(g)]>0
 
 
 {			       KGB elements				}
@@ -446,17 +457,25 @@ set is_noncompact (KGBElt x) = (vec->bool):
 
 {				Blocks					}
 
-set raw_KL  ((RealForm,DualRealForm) p) = (mat,[vec],vec): raw_KL(block(p))
-set dual_KL ((RealForm,DualRealForm) p) = (mat,[vec],vec): dual_KL(block(p))
+set blocks (InnerClass ic) = [Block]:
+  let result = [Block]: [] in
+  for rf in real_forms(ic)
+  do for drf in dual_real_forms(ic)
+     do if is_compatible(rf,drf) then result #:= block(rf,drf) fi
+     od
+  od; result
 
-set print_block  ((RealForm,DualRealForm) p) = void: print_block (block(p))
-set print_blocku ((RealForm,DualRealForm) p) = void: print_blocku(block(p))
-set print_blockd ((RealForm,DualRealForm) p) = void: print_blockd(block(p))
-set print_KL_basis ((RealForm,DualRealForm) p) = void: print_KL_basis(block(p))
-set print_prim_KL  ((RealForm,DualRealForm) p) = void: print_prim_KL(block(p))
-set print_KL_list  ((RealForm,DualRealForm) p) = void: print_KL_list(block(p))
-set print_W_cells  ((RealForm,DualRealForm) p) = void: print_W_cells(block(p))
-set print_W_graph  ((RealForm,DualRealForm) p) = void: print_W_cells(block(p))
+set raw_KL  ((RealForm,RealForm) p) = (mat,[vec],vec): raw_KL(block(p))
+set dual_KL ((RealForm,RealForm) p) = (mat,[vec],vec): dual_KL(block(p))
+
+set print_block  ((RealForm,RealForm) p) = void: print_block (block(p))
+set print_blocku ((RealForm,RealForm) p) = void: print_blocku(block(p))
+set print_blockd ((RealForm,RealForm) p) = void: print_blockd(block(p))
+set print_KL_basis ((RealForm,RealForm) p) = void: print_KL_basis(block(p))
+set print_prim_KL  ((RealForm,RealForm) p) = void: print_prim_KL(block(p))
+set print_KL_list  ((RealForm,RealForm) p) = void: print_KL_list(block(p))
+set print_W_cells  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
+set print_W_graph  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 
 {			    Module parameters				}
 
