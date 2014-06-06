@@ -90,6 +90,10 @@ set kernel_sublattice (RootDatum rd, [ratvec] generators) = mat:
   then M = mat: rank(rd) # for gen in generators do ratvec_as_vec(d*gen) od
   in replace_gen(all,C*ann_mod(M,d))
 
+set twist (Param p, mat delta) = Param:
+  let (x,lam_rho,nu)=%p in
+  param(KGB_twist(real_form(x),delta)(x),delta*lam_rho,delta*nu)
+
 set perm_mat ([int] pi) = mat:
   let n=#pi then id = id_mat(n) in n # for c in pi do id[c] od
 

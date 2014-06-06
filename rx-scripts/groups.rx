@@ -1,26 +1,5 @@
 <basic.rx
 
-set show (string s) = string: if s="" then "empty" else s fi
-
-set print_Cartan_info (CartanClass cc) = void:
-  let ((cr,Cr,sr),ww,(orbit_size,fiber_size),(i_tp,r_tp,C_tp)) =
-    Cartan_info(cc)
-  in
-  begin
-    prints("compact: ",cr,", complex: ",Cr,", split: ",sr)
-  ; (let str = "canonical twisted involution: " in
-       if #ww=0 then str #:= "e"
-       else str +:= ww[0]+1; for i : #ww-1 from 1 do str #:= ","+(ww[i]+1) od
-       fi
-     ; prints(str)
-    )
-  ; prints("twisted involution orbit size: ",orbit_size,
-	   "; fiber size: ",fiber_size,"; strong inv: ",orbit_size*fiber_size)
-  ; prints("imaginary root system: ",show(str(i_tp)))
-  ; prints("real root system: ",show(str(r_tp)))
-  ; prints("complex factor: ",show(str(C_tp)))
-  end
-
 { Cartan matrix information for positions at distance d(<=2) off diagonal }
 set Cartan_dispatch (int type, int r, int min, int d, bool lower) = int:
   if d=0 then 2    { diagonal entry }

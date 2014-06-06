@@ -325,6 +325,26 @@ set dual_integral (InnerClass ic, ratvec gamma) = InnerClass:
 
 {				Cartan classes				}
 
+set print_Cartan_info (CartanClass cc) = void:
+  let show (string s) = string: if s="" then "empty" else s fi
+  , ((cr,Cr,sr),ww,(orbit_size,fiber_size),(i_tp,r_tp,C_tp)) = Cartan_info(cc)
+  in
+  begin
+    prints("compact: ",cr,", complex: ",Cr,", split: ",sr)
+  ; (let str = "canonical twisted involution: " in
+       if #ww=0 then str #:= "e"
+       else str +:= ww[0]+1; for i : #ww-1 from 1 do str #:= ","+(ww[i]+1) od
+       fi
+     ; prints(str)
+    )
+  ; prints("twisted involution orbit size: ",orbit_size,
+	   "; fiber size: ",fiber_size,"; strong inv: ",orbit_size*fiber_size)
+  ; prints("imaginary root system: ",show(str(i_tp)))
+  ; prints("real root system: ",show(str(r_tp)))
+  ; prints("complex factor: ",show(str(C_tp)))
+  end
+
+
 set fundamental_Cartan (InnerClass ic) = CartanClass: Cartan_class(ic,0)
 set fundamental_Cartan (RealForm f) = CartanClass:
   fundamental_Cartan(inner_class(f)) { this is constant on the inner class }
@@ -343,8 +363,6 @@ set compact_rank (CartanClass cc) = int:
 
 {				Real forms				}
 
-set = (RealForm f, RealForm g) = bool:
-  inner_class(f) = inner_class(g) and form_number(f)=form_number(g)
 set != (RealForm f, RealForm g) = bool: not(f=g)
 
 set real_form ((InnerClass,mat,ratvec) all) = RealForm:
