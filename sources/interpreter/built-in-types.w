@@ -2318,57 +2318,18 @@ void real_form_equals_wrapper(expression_base::level l)
 }
 
 @*2 Dual real forms.
-Although they could be considered as real forms for the dual group and dual
-inner class, it will be convenient to be able to construct dual real forms in
-the context of the |inner_class_value| itself. The resulting objects will have
-a different type than ordinary real forms, but they will use the same structure
-layout. The interpretation of the fields is as follows for dual real forms:
-the |parent| field contains a copy of the original |inner_class_value|, but
-the |val| field contains a |RealReductiveGroup| object
-constructed for the dual inner class, so that its characteristics will be
-correct.
+It will be convenient to be able to construct dual real forms in the context
+of the |inner_class_value| itself, rather than having to construct the dual
+inner class for this purpose. Originally the resulting values were given a
+different type than ordinary real forms, but the slight chance of catching
+errors (for instance when trying to make a block for a pair of real forms
+rather than for a real form and a dual real form) via the type system, rather
+than through a runtime check, did not in the end justify the additional
+complications this gave to studying the dual situation (and with explicit type
+conversion from real form to dual form and vice versa, mentioned type safety
+was emptied of it substance).
 
-@< Function def...@>=
-
-real_form_value::real_form_value(const inner_class_value& p,RealFormNbr f
-				,tags::DualTag)
-: parent(p), val(p.dual,f), rt_p(NULL)
-@+{}
-
-@ In order to be able to use the same layout for dual real forms but to
-nevertheless make a distinction (for instance in printing), we must derive a
-new type from |real_form_value|.
-
-@< Type definitions @>=
-struct dual_real_form_value : public real_form_value
-{ dual_real_form_value(const inner_class_value& p,RealFormNbr f)
-  : real_form_value(p,f,tags::DualTag()) @+{}
-@)
-  virtual void print(std::ostream& out) const;
-  dual_real_form_value* clone() const @+
-    {@; return new dual_real_form_value(*this); }
-  static const char* name() @+{@; return "dual real form"; }
-private:
-  dual_real_form_value(const dual_real_form_value& v)
-  : real_form_value(v) @+ {}
-};
-@)
-typedef std::auto_ptr<dual_real_form_value> dual_real_form_ptr;
-typedef std::tr1::shared_ptr<dual_real_form_value> shared_dual_real_form;
-
-@ The only real difference with real forms is a slightly modified output
-routine.
-
-@< Function def...@>=
-void dual_real_form_value::print(std::ostream& out) const
-{ out << (val.isQuasisplit() ? "quasisplit " : "")
-  << "dual real form '" @|
-  << parent.dual_interface.typeName
-    (parent.dual_interface.out(val.realForm())) @|
-  << "'";
-}
-
-@ To make a dual real form, one provides an |inner_class_value| and a valid
+To make a dual real form, one provides an |inner_class_value| and a valid
 index into its list of dual real forms, which will be converted to an inner
 index. We also provide the dual quasisplit form.
 
@@ -2379,35 +2340,20 @@ void dual_real_form_wrapper(expression_base::level l)
   if (size_t(i->val)>=G->val.numDualRealForms())
     throw std::runtime_error ("Illegal dual real form number: "+str(i->val));
 @.Illegal dual real form number@>
-  if (l!=expression_base::no_value)
-    push_value(new dual_real_form_value(*G,G->dual_interface.in(i->val)));
+  if (l==expression_base::no_value)
+    return;
+  inner_class_value G_check(*G,tags::DualTag());
+   // tailor make an |inner_class_value|
+  push_value(new real_form_value(G_check ,G->dual_interface.in(i->val)));
 }
 @)
 void dual_quasisplit_form_wrapper(expression_base::level l)
 { shared_inner_class G(get<inner_class_value>());
-  if (l!=expression_base::no_value)
-    push_value(new dual_real_form_value(*G,G->dual.quasisplit()));
-}
-
-@ Rather than provide all functions for real forms for dual real forms, we
-provide functions that convert a dual real form to a real form, which of
-course will be associated to the dual inner class, and back.
-
-@< Local function def...@>=
-void real_form_from_drf_wrapper(expression_base::level l)
-{ shared_dual_real_form d(get<dual_real_form_value>());
-  if (l!=expression_base::no_value)
-    push_value(new real_form_value
-                 (inner_class_value(d->parent,tags::DualTag())
-                 ,d->val.realForm()));
-}
-
-void dual_real_form_from_rf_wrapper(expression_base::level l)
-{ shared_real_form rf = get<real_form_value>();
-  if (l!=expression_base::no_value)
-    push_value(new dual_real_form_value
-                 (inner_class_value(rf->parent,tags::DualTag())
-                 ,rf->val.realForm()));
+  if (l==expression_base::no_value)
+    return;
+  inner_class_value G_check(*G,tags::DualTag());
+   // tailor make an |inner_class_value|
+  push_value(new real_form_value(G_check,G->dual.quasisplit()));
 }
 
 @ Finally we install everything related to real forms.
@@ -2426,13 +2372,9 @@ install_function(base_grading_vector_wrapper
 install_function(Cartan_order_matrix_wrapper,@|"Cartan_order","(RealForm->mat)");
 install_function(real_form_equals_wrapper,"=","(RealForm,RealForm->bool)");
 install_function(dual_real_form_wrapper,@|"dual_real_form"
-				       ,"(InnerClass,int->DualRealForm)");
+				       ,"(InnerClass,int->RealForm)");
 install_function(dual_quasisplit_form_wrapper,@|"dual_quasisplit_form"
-		,"(InnerClass->DualRealForm)");
-install_function(real_form_from_drf_wrapper,@|"real_form"
-				  ,"(DualRealForm->RealForm)");
-install_function(dual_real_form_from_rf_wrapper,@|"dual_real_form"
-				  ,"(RealForm->DualRealForm)");
+		,"(InnerClass->RealForm)");
 
 @*1 A type for Cartan classes.
 %
@@ -2671,36 +2613,40 @@ the parts of the partition |f.weakReal()| for the fiber~|f| associated to the
 Cartan class, it is not necessary to use this order, and we can instead simply
 traverse all real forms and check whether the given Cartan class exists for
 them. Taking care to convert real form numbers to their inner representation
-here, we can in fact return a list of real forms; we also include a version
-for dual real forms.
+here, we can in fact return a list of real forms.
+
+We also include a version for dual real forms. Corresponding Cartan classes in
+the dual inner class have a different (opposite) numbering; therefore the test
+for |cc->number| should use the |dual_Cartan_set| of the current inner class
+rather than the |Cartan_set| of the just constructed dual inner class.
 
 @< Local function def...@>=
 void real_forms_of_Cartan_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
-  const inner_class_value& ic=cc->parent;
   if (l==expression_base::no_value)
     return;
+  const inner_class_value& ic=cc->parent;
   row_ptr result @| (new row_value(cc->val.numRealForms()));
   for (size_t i=0,k=0; i<ic.val.numRealForms(); ++i)
-  { BitMap b(ic.val.Cartan_set(ic.interface.in(i)));
+  { RealFormNbr rf = ic.interface.in(i);
+    BitMap b(ic.val.Cartan_set(rf));
     if (b.isMember(cc->number))
-      result->val[k++] =
-	shared_value(new real_form_value(ic,ic.interface.in(i)));
+      result->val[k++] = shared_value(new real_form_value(ic,rf));
   }
   push_value(result);
 }
 @)
 void dual_real_forms_of_Cartan_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
-  const inner_class_value& ic=cc->parent;
   if (l==expression_base::no_value)
     return;
+  const inner_class_value dual_ic(cc->parent,tags::DualTag());
   row_ptr result @| (new row_value(cc->val.numDualRealForms()));
-  for (size_t i=0,k=0; i<ic.val.numDualRealForms(); ++i)
-  { BitMap b(ic.val.dual_Cartan_set(ic.dual_interface.in(i)));
+  for (size_t i=0,k=0; i<dual_ic.val.numRealForms(); ++i)
+  { RealFormNbr drf = cc->parent.dual_interface.in(i);
+    BitMap b (cc->parent.val.dual_Cartan_set(drf));
     if (b.isMember(cc->number))
-      result->val[k++] =
-	shared_value(new dual_real_form_value(ic,ic.dual_interface.in(i)));
+      result->val[k++] = shared_value(new real_form_value(dual_ic,drf));
   }
   push_value(result);
 }
@@ -2877,7 +2823,7 @@ install_function(Cartan_info_wrapper,@|"Cartan_info"
 install_function(real_forms_of_Cartan_wrapper,@|"real_forms"
 		,"(CartanClass->[RealForm])");
 install_function(dual_real_forms_of_Cartan_wrapper,@|"dual_real_forms"
-		,"(CartanClass->[DualRealForm])");
+		,"(CartanClass->[RealForm])");
 install_function(fiber_partition_wrapper,@|"fiber_partition"
 		,"(CartanClass,RealForm->[int])");
 install_function(square_classes_wrapper,@|"square_classes"
@@ -3222,11 +3168,11 @@ field contains an actual |Block| instance, which is constructed van the
 
 @< Type definitions @>=
 struct Block_value : public value_base
-{ const shared_real_form rf; const shared_dual_real_form dual_rf;
+{ const shared_real_form rf; const shared_real_form dual_rf;
   Block val; // cannot be |const|, as Bruhat order may be generated implicitly
 @)
   Block_value(const shared_real_form& form,
-         const shared_dual_real_form& dual_form);
+         const shared_real_form& dual_form);
   ~Block_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -3251,7 +3197,7 @@ classical one.
 
 @< Function def...@>=
   Block_value::Block_value(const shared_real_form& form,
-         const shared_dual_real_form& dual_form)
+                          const shared_real_form& dual_form)
   : rf(form), dual_rf(dual_form)
   ,
   val(Block::build(rf->val,dual_rf->val)) {}
@@ -3271,15 +3217,15 @@ of the data structure that is constructed and stored here.
 
 @< Local function def...@>=
 void Fokko_block_wrapper(expression_base::level l)
-{ shared_dual_real_form drf=get<dual_real_form_value>();
+{ shared_real_form drf=get<real_form_value>();
   shared_real_form rf=get<real_form_value>();
 @)
-  if (&rf->parent.val!=&drf->parent.val)
+  if (&rf->parent.dual!=&drf->parent.val)
     throw std::runtime_error @|
     ("Inner class mismatch between real form and dual real form");
 @.Inner class mismatch...@>
   BitMap b(rf->parent.val.dual_Cartan_set(drf->val.realForm()));
-  if (!b.isMember(rf->val.mostSplit()))
+  if (not b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
@@ -3364,18 +3310,13 @@ void block_index_wrapper(expression_base::level l)
 }
 
 @ The dual block might be computed from other functions (provided the block
-has any elements), but it is fairly easy to implement directly.
+has any elements), but it is very easy to implement directly.
 
 @< Local function def...@>=
 void dual_block_wrapper(expression_base::level l)
 { shared_Block b = get<Block_value>();
-  if (l==expression_base::no_value)
-    return;
-  inner_class_value dual_ic(b->rf->parent,tags::DualTag());
-@/shared_real_form rf(new real_form_value(dual_ic,b->dual_rf->val.realForm()));
-  shared_dual_real_form dual_rf
-    (new dual_real_form_value(dual_ic,b->rf->val.realForm()));
-  push_value(new Block_value(rf,dual_rf));
+  if (l!=expression_base::no_value)
+    push_value(new Block_value(b->dual_rf,b->rf));
 }
 
 @ To make blocks more easily useful we add functions giving a status code for
@@ -3457,9 +3398,8 @@ void block_inverse_Cayley_wrapper(expression_base::level l)
 @ Finally we install everything related to blocks.
 
 @< Install wrapper functions @>=
-install_function(Fokko_block_wrapper,"block","(RealForm,DualRealForm->Block)");
-install_function(decompose_block_wrapper,@|"%"
-                ,"(Block->RealForm,DualRealForm)");
+install_function(Fokko_block_wrapper,"block","(RealForm,RealForm->Block)");
+install_function(decompose_block_wrapper,@|"%","(Block->RealForm,RealForm)");
 install_function(block_size_wrapper,"#","(Block->int)");
 install_function(block_element_wrapper,"element","(Block,int->KGBElt,KGBElt)");
 install_function(block_index_wrapper,"index","(Block,KGBElt,KGBElt->int)");

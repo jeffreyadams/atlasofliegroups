@@ -23,14 +23,11 @@ set test (RealForm rf) = bool:
   let mytwist=KGB_twist(rf,distinguished_involution(rf)), i=KGB_size(rf)-1 in
   while i>=0 and (let x=KGB(rf,i) in twist(x) = mytwist(x)) do i-:=1 od; i<0
 
-set % (Block b) = (RealForm,DualRealForm):
-  let (x,y) = element(b,0) in (real_form(x), dual_real_form(real_form(y)))
-
 set block_is_twist_fixed ((InnerClass, mat) (ic,delta):icd) = (int,int->bool):
   let f = is_twist_fixed(icd), g = is_twist_fixed(dual(ic),^delta)
   , size = block_sizes(ic) in
   (int i, int j) bool:
-    size[i,j]>0 and f(real_form(ic,i)) and g(real_form(dual_real_form(ic,j)))
+    size[i,j]>0 and f(real_form(ic,i)) and g(dual_real_form(ic,j))
 
 
 set block_twist (InnerClass ic, mat delta) = (Block->(int->int)):
