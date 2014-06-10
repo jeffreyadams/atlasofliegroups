@@ -74,6 +74,7 @@ namespace {
 
   void test_f();
   void braid_f();
+  void repr_braid_f();
   void go_f();
 
   void roots_rootbasis_f();
@@ -130,7 +131,7 @@ template<>
 void addTestCommands<commands::EmptymodeTag> (commands::CommandNode& mode)
 {
   mode.add("go",go_f,
-	   "generates difficult SO(5,5) extended block, and runs 'braid'",
+	   "generates difficult SO(7,7) extended block, and runs 'braid'",
 	   commands::use_tag);
   if (testMode == EmptyMode)
     mode.add("test",test_f,test_tag);
@@ -202,6 +203,8 @@ void addTestCommands<commands::BlockmodeTag> (commands::CommandNode& mode)
 template<>
 void addTestCommands<commands::ReprmodeTag> (commands::CommandNode& mode)
 {
+  mode.add("braid",repr_braid_f,
+	   "tests braid relations on an extended block",commands::use_tag);
   if (testMode == ReprMode)
     mode.add("test",test_f,test_tag);
 
@@ -891,6 +894,15 @@ void braid_f()
 {
   ext_block::extended_block
     eblock(commands::currentBlock(),
+	   commands::currentComplexGroup().twistedWeylGroup());
+  test_braid(eblock);
+}
+
+void repr_braid_f()
+{
+  commands::ensure_full_block();
+  ext_block::extended_block
+    eblock(commands::current_param_block(),
 	   commands::currentComplexGroup().twistedWeylGroup());
   test_braid(eblock);
 }
