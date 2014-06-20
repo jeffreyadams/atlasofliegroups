@@ -11,7 +11,6 @@
 
 #include "graph.h"
 
-#include <stack>
 #include <cassert>
 
 
