@@ -555,7 +555,7 @@ RealFormNbr get_dual_real_form(complexredgp_io::Interface& CI,
 void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
 {
   // get the user input as a string
-  psg = 0;
+  psg.reset();
   std::string line;
   std::cout << "enter simple roots (" << 1 << "-" << rank << "): ";
   std::getline(std::cin, line);
@@ -565,7 +565,8 @@ void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
   istream.str(line);
 
   // parse it
-  while (!istream.eof()) {
+  while (not istream.eof())
+  {
     // read the next non-whitespace character
     char c;
     std::streampos pos = istream.tellg();
@@ -592,7 +593,7 @@ void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
       // if the number is in range, add it to the subset
       --n; // change to 0-based convention (makes 0 huge and therefore ignored)
       if (n < rank)
-        psg |= (1<<n);
+        psg.set(n);
     }
 
     // see if the user aborted

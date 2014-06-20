@@ -16,6 +16,8 @@
 #include <iterator>
 #include <memory>
 
+#include "tags.h"
+
 namespace atlas {
 
 namespace containers {
@@ -143,10 +145,10 @@ template<typename T>
     }
 
     template<typename InputIt>
-      sl_list (InputIt first, InputIt last)
+      sl_list (InputIt first, InputIt last, tags::IteratorTag)
       : head(0), tail(&head), node_count(0)
     {
-      assign(first,last);
+      assign(first,last, tags::IteratorTag());
     }
 
     sl_list (size_type n, const T& x)
@@ -221,7 +223,7 @@ template<typename T>
     }
 
     template<typename InputIt>
-      void insert(iterator pos, InputIt first, InputIt last)
+      void insert(iterator pos, InputIt first, InputIt last, tags::IteratorTag)
     {
       for( ; first!=last; ++first)
       { // |insert(pos++,*first);|, except we don't update |tail| yet
@@ -290,7 +292,7 @@ template<typename T>
     }
 
     template<typename InputIt>
-      void assign(InputIt first, InputIt last)
+      void assign(InputIt first, InputIt last, tags::IteratorTag)
     {
       size_type count=0;
       link_type* p = &head;
@@ -337,7 +339,7 @@ template<typename T>
   // compiler-generated copy constructor and assignment should be OK
 
   template<typename InputIt>
-    mirrored_sl_list (InputIt first, InputIt last) : Base()
+    mirrored_sl_list (InputIt first, InputIt last, tags::IteratorTag) : Base()
     {
       for ( ; first!=last; ++first)
 	Base::insert(Base::begin(),*first); // this reverses the order

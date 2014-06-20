@@ -350,7 +350,7 @@ namespace atlas {
   using kgb::DescentSet;
   static const KGBElt UndefKGB = ~0u;
 
-  typedef unsigned int Parabolic;
+  typedef RankFlags Parabolic; // set of generators defining parabolic subgroup
   typedef unsigned int KGPElt;
 
   namespace descents { class DescentStatus; }
