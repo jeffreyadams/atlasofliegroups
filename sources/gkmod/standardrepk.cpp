@@ -18,7 +18,6 @@ StandardRepK and KhatContext.
 #include <cassert>
 #include <iostream>
 #include <sstream>
-#include <deque>
 
 #include "tags.h"
 #include "arithmetic.h" // |abs|
@@ -560,21 +559,22 @@ KGBEltList SRK_context::sub_KGB(const PSalgebra& q) const
   }
 
   flagged.insert(root);
-  std::deque<KGBElt> queue(1,root);
+  std::queue<KGBElt, containers::sl_list<KGBElt> > queue;
+  queue.push(root);
   do
   {
-    KGBElt x=queue.front(); queue.pop_front();
+    KGBElt x=queue.front(); queue.pop();
     for (RankFlags::iterator it=q.Levi_gens().begin(); it(); ++it)
     {
       KGBElt y=kgb().cross(*it,x);
       if (not flagged.isMember(y))
       {
-	flagged.insert(y); queue.push_back(y);
+	flagged.insert(y); queue.push(y);
       }
       y=kgb().inverseCayley(*it,x).first; // second will follow if present
       if (y!=UndefKGB and not flagged.isMember(y))
       {
-	flagged.insert(y); queue.push_back(y);
+	flagged.insert(y); queue.push(y);
       }
     }
   }
