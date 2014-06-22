@@ -109,7 +109,7 @@ template<typename T>
   class sl_list
   {
     typedef sl_node<T> node_type;
-    typedef typename sl_node<T>::link_type link_type;
+    typedef std::auto_ptr<node_type> link_type;
 
   public:
     typedef T value_type;
@@ -167,7 +167,8 @@ template<typename T>
     sl_list& operator= (const sl_list& x)
       {
 	if (this!=&x) // self-assign is useless, though it would be safe here
-	  assign(x.begin(),x.end()); // reuse existing nodes when possible
+	  // reuse existing nodes when possible
+	  assign(x.begin(),x.end(), tags::IteratorTag());
 	return *this;
       }
 
@@ -314,6 +315,17 @@ template<typename T>
       else // now |first==last|; we (possibly) need to truncate after |p|
 	(tail = p)->reset();
       node_count = count;
+    }
+
+    void swap (sl_list& other)
+    {
+      std::swap(head,other.head);
+      std::swap(node_count,other.node_count);
+      if (empty())
+	tail = &other.head; // will be subsequently moved to |other.tail|
+      if (other.empty())
+	other.tail = &head; // will be subsequently moved to |tail|
+      std::swap(tail,other.tail); // now everything is fine for both lists
     }
 
     // accessors

@@ -114,27 +114,32 @@ of a quite different nature than that of the main mathematical library.
 @* Types to represent types.
 %
 We make a fundamental choice to check types before attempting to execute any
-expression entered by the use; thus type errors can be signalled earlier and
-expressed more understandably than if would wait until an accident is about to
-happen at runtime. This means that types are to be represented independently
-of runtime values. Of course the interpreter executes the same code regardless
-of the types of the values it manipulates; those values are then accessed via
-generic pointers. The runtime values do also contain an indication of their
-actual type, which will allow us to do some dynamic testing to trap possible
-errors in the logic of our interpreter, but the user should never notice this.
+expression entered by the user; thus type errors can be signalled earlier and
+expressed more understandably than if one would wait until an accident is
+about to happen at runtime. This means that types are to be represented
+independently of runtime values. Of course the interpreter executes its same
+internal code regardless of the types of the values it manipulates; those
+values are then accessed via generic pointers. The runtime values also contain
+an indication of their actual type, which will allow us to do some dynamic
+testing to trap possible errors in the logic of our interpreter, but the user
+should never notice this.
 
 Types are represented by small tree structures, with nodes of types
-|type_expr| that will be detailed later. These expose the structure of the
-represented type rather than attempting to hide it behind a type identifier
-(as \Cpp~classes do). Note however that classes defined in the Atlas software
-library itself will be presented to the user as primitive types, so we do
-provide abstraction there. A simple but important example is a function type
-that specifies the types of the individual function arguments and returned
-values.
+|type_expr| that will be detailed later. For now we provide no user-defined
+encapsulation (as \Cpp~classes do), so a type expression exposes the
+accessible operations: a type printed as \.{(int->[(bool,mat)])} for instance
+will specify a function mapping integers to lists of pairs of a Boolean value
+and a matrix, which implies the kind of operation that can be performed with
+such a value. Note however that classes defined in the Atlas software library
+itself will be presented to the user as primitive types, so we do provide
+abstraction there. One kind of type is a function type, which specifies the
+types of the individual function arguments and of the values it returns.
 
-Different types will not share any sub-trees among each other, which simplifies
-memory management. This choice means some recursive copying of tree structures
-is sometimes required, but we avoid doing so more than absolutely necessary.
+Different types will not share any sub-trees among each other, as is the case
+for STL container types; this simplifies memory management. This choice means
+some recursive copying of tree structures is sometimes required, but (although
+runtime cost of type handling is negligible with respect to other factors in
+the interpreter) we avoid doing so more than absolutely necessary.
 
 Usually types are built from the bottom up (from leaves to the root), although
 during type checking the reverse also occurs. In bottom-up handling of types,
@@ -242,7 +247,7 @@ type_list_ptr make_type_list(type_ptr t,type_list_ptr l);
 size_t length(type_list l);
 
 @ We pass the auto-pointers by value, rather than by (necessarily non-constant)
-reference. This implies a small overhead due to multiple ownership transfer,
+reference. This implies a small overhead due to multiple ownership transfers,
 but allows (due to a clever definition of auto-pointers) passing anonymous
 values obtained from a constructor or construction function as argument, which
 would be forbidden if using non-constant reference parameters.
