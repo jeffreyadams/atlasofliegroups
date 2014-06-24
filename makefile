@@ -31,7 +31,9 @@ BINDIR := $(INSTALLDIR)/../bin
 
 version = $(shell perl getversion.pl)
 messagedir := $(INSTALLDIR)/messages/
-cweb_dir = cweb-x3.51
+cweb_dir := cwebx
+sources_dir := sources
+realex_dir := sources/realex
 
 # atlas_dirs contains subdirectories of 'atlas/sources' that need compilation
 # realex_dirs are where the object files for realex are situated
@@ -165,7 +167,10 @@ endif
 
 
 realex: $(cweb_dir)/ctanglex $(realex_objects)
-	$(CXX) -o realex $(realex_includes) $(realex_objects) $(LDFLAGS)
+	cd sources/interpreter && $(MAKE) ../../realex
+
+$(interpreter_objects):
+	cd sources/interpreter && $(MAKE) objectfiles
 
 # The following rules are static pattern rules: they are like implicit rules,
 # but only apply to the files listed in their targets
@@ -175,12 +180,9 @@ $(filter-out sources/interface/io.o,$(atlas_objects)) : %.o : %.cpp
 sources/interface/io.o : sources/interface/io.cpp
 	$(CXX) $(cflags) $(atlas_flags) -DMESSAGE_DIR_MACRO=\"$(messagedir)\" \
 	  -o sources/interface/io.o sources/interface/io.cpp
-$(interpreter_cweb_objects) : %.o : %.cpp
-	$(CXX) $(cflags) $(realex_flags) -o $*.o $*.cpp
 
 sources/interpreter/parser.tab.o: \
   sources/interpreter/parser.tab.c sources/interpreter/parsetree.h
-	$(CXX) $(cflags) -o $@ $<
 
 # generate files that describe which .o files depend on which other (.h) files
 $(dependencies) : %.d : %.cpp

@@ -73,6 +73,7 @@
 \let\GG=\gg
 \let\LL=\ll
 \let\NULL=\odot
+\let\nullptr=\odot
 \mathchardef\AND="2026 % bitwise and; also \& (unary operator)
 \def\OR{\Penalty6\mid} % bitwise or
 \let\XOR=\oplus % bitwise exclusive or
@@ -250,8 +251,8 @@
 \def\withsuffix{_{\rm\,\aftergroup}}
 \def\U{\note{This code is used in section}} % xref for use of a module
 \def\Us{\note{This code is used in sections}} % xref for uses of a module
-\def\V{\Penalty4\lor} % logical or
-\def\W{\Penalty5\land} % logical and
+\def\V{\Penalty4\mid\mid} % logical or
+\def\W{\Penalty5\mathrel{\AND\AND}} % logical and, or rvalue ref
 \def\X#1:#2\X{\langle\,${#2\eightrm\enspace#1}$\,\rangle} % module name
 \def\Y{\par\yskip}
 \let\Z=\le % less than or equal sign

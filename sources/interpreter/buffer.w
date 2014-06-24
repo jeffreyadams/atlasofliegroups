@@ -185,7 +185,7 @@ class Hash_table
 {
 public:
   typedef unsigned short id_type; // type of value representing identifiers
-  static const id_type empty = ~0; // value reserved for empty slots
+  enum { empty = ~0 }; // value reserved for empty slots
 private: // data members
   String_pool pool;
   id_type mod;  // hash modulus, the number of slots present
