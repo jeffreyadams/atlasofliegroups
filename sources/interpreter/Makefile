@@ -34,11 +34,19 @@ CTANGLEFLAGS := ++ -p
 CWEBXMACROS := $(cwebx_dir)/cwebxmac.tex
 
 # these are used for C++ compilation and linking (debugging, no optimization)
-CXXFLAGS = -std=c++11 -Wall -Wno-parentheses -Wno-deprecated-declarations -g \
+CXXFLAGS := -Wall -Wno-parentheses -Wno-deprecated-declarations -g \
    $(INCLUDE_FLAGS)
 
 # our beloved C++ compiler
-CXX = g++
+CXX := g++
+
+CXXVERSION := $(shell g++ -dumpversion)
+CXXVERSIONOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.6)
+
+ifeq "$(CXXVERSIONOLD)" "1"
+  CXXFLAGS += -Dnoexcept= -Dnullptr=0
+endif
+
 
 # only the atlas object files listed below are used
 atlas_objects := $(sources_dir)/structure/prerootdata.o \
@@ -160,8 +168,9 @@ $(CWEAVE):
 # we do use the following pattern rules (explicit implicit rules, so to say)
 
 # static pattern rules giving the usual C++ compilation; C++11 for realex
+# we still call the language version c++0x, for backward compatibility
 $(c++objects): %.o: %.cpp
-	$(CXX) -std=c++11 -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+	$(CXX) -std=c++0x -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
 $(atlas_objects): %.o: %.cpp
 	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
@@ -189,7 +198,7 @@ $(atlas_objects): %.o: %.cpp
 
 # and DVI files are made from TeX files of course
 %.dvi: %.tex
-	$(TEX) $<
+	TEXINPUTS=.:$(cwebx_dir): $(TEX) $<
 
 # these targets allow you to say "make headers" or "make dvifiles"
 headers: $(headers)
@@ -214,9 +223,12 @@ endif
 parser.tab.c parser.tab.h: parser.y
 	bison -d parser.y && echo "bison terminated"
 parser.tab.o: parser.tab.c parsetree.h
-	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+	$(CXX) -std=c++0x -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
 # miscellaneous dependencies (some already known), produced by hand for now
 # these are also included from the main atlas makefile
 
 include dependencies
+
+show:
+	@echo $(CXX) version $(CXXVERSION) old? $(CXXVERSIONOLD)
