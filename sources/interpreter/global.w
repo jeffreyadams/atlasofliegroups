@@ -547,7 +547,7 @@ private:
 };
 @)
 typedef std::auto_ptr<int_value> int_ptr;
-typedef std::tr1::shared_ptr<int_value> shared_int;
+typedef std::shared_ptr<int_value> shared_int;
 @)
 struct rat_value : public value_base
 { Rational val;
@@ -562,7 +562,7 @@ private:
 };
 @)
 typedef std::auto_ptr<rat_value> rat_ptr;
-typedef std::tr1::shared_ptr<rat_value> shared_rat;
+typedef std::shared_ptr<rat_value> shared_rat;
 
 @ Here are two more; this is quite repetitive.
 
@@ -581,7 +581,7 @@ private:
 };
 @)
 typedef std::auto_ptr<string_value> string_ptr;
-typedef std::tr1::shared_ptr<string_value> shared_string;
+typedef std::shared_ptr<string_value> shared_string;
 @)
 
 struct bool_value : public value_base
@@ -597,7 +597,7 @@ private:
 };
 @)
 typedef std::auto_ptr<bool_value> bool_ptr;
-typedef std::tr1::shared_ptr<bool_value> shared_bool;
+typedef std::shared_ptr<bool_value> shared_bool;
 
 @*1 Primitive types for vectors and matrices.
 %
@@ -642,7 +642,7 @@ private:
 };
 @)
 typedef std::auto_ptr<vector_value> vector_ptr;
-typedef std::tr1::shared_ptr<vector_value> shared_vector;
+typedef std::shared_ptr<vector_value> shared_vector;
 
 @ Matrices and rational vectors follow the same pattern, but in this case the
 constructors take a constant reference to a type identical to the one that
@@ -662,7 +662,7 @@ private:
 };
 @)
 typedef std::auto_ptr<matrix_value> matrix_ptr;
-typedef std::tr1::shared_ptr<matrix_value> shared_matrix;
+typedef std::shared_ptr<matrix_value> shared_matrix;
 @)
 struct rational_vector_value : public value_base
 { RatWeight val;
@@ -681,7 +681,7 @@ private:
 };
 @)
 typedef std::auto_ptr<rational_vector_value> rational_vector_ptr;
-typedef std::tr1::shared_ptr<rational_vector_value> shared_rational_vector;
+typedef std::shared_ptr<rational_vector_value> shared_rational_vector;
 @)
 
 @ To make a small but visible difference in printing between vectors and lists
@@ -975,12 +975,14 @@ void install_function
      ("Built-in with non-function type: "+print_name.str());
   if (type->func->arg_type==void_type)
   { shared_value val(new builtin_value(f,print_name.str()));
-    global_id_table->add (main_hash_table->match_literal(name),val,type);
+    global_id_table->add
+      (main_hash_table->match_literal(name),val,std::move(type));
   }
   else
   { print_name << '@@' << type->func->arg_type;
     shared_value val(new builtin_value(f,print_name.str()));
-    global_overload_table->add(main_hash_table->match_literal(name),val,type);
+    global_overload_table->add
+      (main_hash_table->match_literal(name),val,std::move(type));
   }
 }
 

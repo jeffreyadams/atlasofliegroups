@@ -33,6 +33,7 @@
 #include "prerootdata.h"// for defining action using only simple (co)roots
 #include "rootdata.h"	// also needed for defining action, and deducing twist
 #include "blocks.h"  // for |ext_gen|
+#include "sl_list.h"
 
 // extra defs for windows compilation -spc
 #ifdef WIN32
@@ -384,7 +385,7 @@ WeylElt WeylGroup::inverse(const WeylElt& w) const
 void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w) const
 {
   std::set<WeylElt> found;
-  std::stack<WeylElt> toDo;
+  std::stack<WeylElt,containers::mirrored_sl_list<WeylElt> > toDo;
 
   found.insert(w);
   toDo.push(w);

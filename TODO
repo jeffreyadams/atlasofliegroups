@@ -11,7 +11,7 @@
 
 * Work on the realex program
 
- - Remove the type DualRealForm; their static typechecking is vain anyway
+ - See if syntax can allow (let i=3 in for k:i do print(k) od); without parens
 
  - Allow for declaring an input path, and (silent) default prelude
 

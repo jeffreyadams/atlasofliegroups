@@ -12,7 +12,6 @@
 
 #include <cassert>
 #include <vector>
-#include <deque>
 #include <set> // for |insertAscents|
 #include <algorithm>
 #include <iterator>

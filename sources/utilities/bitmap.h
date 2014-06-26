@@ -123,7 +123,7 @@ class BitMap
   */
   unsigned long capacity() const { return d_capacity; }
   size_type size() const; // the number of bits that are set in the bitmap
-  
+
   bool operator< (const BitMap& b) const { return d_map < b.d_map; }
   bool operator== (const BitMap& b) const { return d_map == b.d_map; }
   bool operator!=(const BitMap& b) const { return d_map != b.d_map; }
@@ -186,6 +186,9 @@ class BitMap
   BitMap& operator^= (const BitMap&);
 
   bool andnot(const BitMap& b); // remove bits of |b|, return whether any left
+
+  BitMap& operator>>= (unsigned long delta); // shift right (decrease)
+  BitMap& operator<<= (unsigned long delta); // shift left (increase)
 
   /*!
     Set the bit at position n (that is, inserts the value |n| into the set);

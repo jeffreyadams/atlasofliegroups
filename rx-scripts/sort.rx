@@ -1,6 +1,6 @@
 <basic.rx
 
-set merge(vec a, vec b) =
+set merge (vec a, vec b) = vec:
   if #a=0 then b
   else let (i,j)=(0,0)
   in b#:=a[#a-1] { sentinel; when this becomes b[j] assures a is then emptied }
@@ -9,7 +9,7 @@ set merge(vec a, vec b) =
     od
   fi
 
-set sort = { merge sort }
+set sort = (vec->vec): { merge sort }
   let ms (vec v, int l) = v
   then ()= ms := ((vec v, int l):
     if l<3 then if l<2 or v[0]<=v[1] then v else [v[1],v[0]] fi
@@ -18,11 +18,12 @@ set sort = { merge sort }
     fi)
   in { sort = } (vec v) vec: ms(v,#v)
 
-set reverse_sort (vec v)= vec: reverse(sort(v))
+set reverse_sort (vec v) = vec: reverse(sort(v))
 
 { the following helps stable-sorting of anything according to a statistic }
 
-set inv_standardisation = { stable-sorting permutation of a list of integers }
+{ stable-sorting permutation of a list of integers }
+set inv_standardisation = (vec->vec):
   let merge([(int,int)] a, [(int,int)] b) = { merge based on first component }
     if #a=0 then b
     else let (i,j)=(0,0)

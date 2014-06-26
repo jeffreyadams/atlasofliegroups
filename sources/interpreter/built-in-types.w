@@ -130,7 +130,7 @@ private:
 };
 @)
 typedef std::auto_ptr<Lie_type_value> Lie_type_ptr;
-typedef std::tr1::shared_ptr<Lie_type_value> shared_Lie_type;
+typedef std::shared_ptr<Lie_type_value> shared_Lie_type;
 
 @ The type |LieType| is publicly derived from |std::vector<SimpleLieType>|,
 and in its turn the type |SimpleLieType| is publicly derived from
@@ -777,7 +777,7 @@ private:
 };
 @)
 typedef std::auto_ptr<root_datum_value> root_datum_ptr;
-typedef std::tr1::shared_ptr<root_datum_value> shared_root_datum;
+typedef std::shared_ptr<root_datum_value> shared_root_datum;
 
 @*2 Printing root data. We shall not print the complete information contained
 in the root datum. However we do exercise the routines in \.{dynkin.cpp} to
@@ -1645,7 +1645,7 @@ struct inner_class_value : public value_base
 };
 @)
 typedef std::auto_ptr<inner_class_value> inner_class_ptr;
-typedef std::tr1::shared_ptr<inner_class_value> shared_inner_class;
+typedef std::shared_ptr<inner_class_value> shared_inner_class;
 
 @ Here are the copy constructor and the destructor.
 @< Function def...@>=
@@ -2138,7 +2138,7 @@ private:
 };
 @)
 typedef std::auto_ptr<real_form_value> real_form_ptr;
-typedef std::tr1::shared_ptr<real_form_value> shared_real_form;
+typedef std::shared_ptr<real_form_value> shared_real_form;
 
 @ The methods |rc| and |rt| ensure a |Rep_table| value is constructed at
 |*rt_p|, and returns a reference. The value so obtained will serve to
@@ -2415,7 +2415,7 @@ private:
 };
 @)
 typedef std::auto_ptr<Cartan_class_value> Cartan_class_ptr;
-typedef std::tr1::shared_ptr<Cartan_class_value> shared_Cartan_class;
+typedef std::shared_ptr<Cartan_class_value> shared_Cartan_class;
 
 @ In the constructor we used to check that the Cartan class with the given
 number currently exists, but now the |ComplexReductiveGroup::cartan| method
@@ -2707,7 +2707,7 @@ void square_classes_wrapper(expression_base::level l)
     for (unsigned long c=0; c<pi.classCount(); ++c)
        part->val[c] =
           shared_value(new int_value(rfi.out(rfl[cc->val.toWeakReal(c,csc)])));
-    result->val[csc] = part;
+    result->val[csc] = std::move(part);
   }
   push_value(result);
 }
@@ -2863,7 +2863,7 @@ private:
 };
 @)
 typedef std::auto_ptr<KGB_elt_value> KGB_elt_ptr;
-typedef std::tr1::shared_ptr<KGB_elt_value> shared_KGB_elt;
+typedef std::shared_ptr<KGB_elt_value> shared_KGB_elt;
 
 @ When printing a KGB element, we print the number. It would be useful to add
 some symbolic information, like ``discrete series'', when applicable, but this
@@ -3184,7 +3184,7 @@ private:
 };
 @)
 typedef std::auto_ptr<Block_value> Block_ptr;
-typedef std::tr1::shared_ptr<Block_value> shared_Block;
+typedef std::shared_ptr<Block_value> shared_Block;
 
 @ The constructor got |Block_value| is relatively elaborate, so we lift it out
 of the class declaration. One should avoid calling the version of the |build|
@@ -3450,7 +3450,7 @@ private:
 };
 @)
 typedef std::auto_ptr<module_parameter_value> module_parameter_ptr;
-typedef std::tr1::shared_ptr<module_parameter_value> shared_module_parameter;
+typedef std::shared_ptr<module_parameter_value> shared_module_parameter;
 
 @ When printing a module parameter, we shall indicate a triple
 $(x,\lambda,\nu)$ that defines it. Since we shall need to print |StandardRepr|
@@ -4025,7 +4025,7 @@ private:
 };
 @)
 typedef std::auto_ptr<split_int_value> split_int_ptr;
-typedef std::tr1::shared_ptr<split_int_value> shared_split_int;
+typedef std::shared_ptr<split_int_value> shared_split_int;
 
 @ Like for parameter values, we first define a printing function on the level
 of a bare |Split_integer| value, which can be used in situations where the
@@ -4132,7 +4132,7 @@ private:
 };
 @)
 typedef std::auto_ptr<virtual_module_value> virtual_module_ptr;
-typedef std::tr1::shared_ptr<virtual_module_value> shared_virtual_module;
+typedef std::shared_ptr<virtual_module_value> shared_virtual_module;
 
 @ When printing a virtual module value, we traverse the |std::map| that is
 hidden in the |Free_Abelian| class template, and print individual terms using

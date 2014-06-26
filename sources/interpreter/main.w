@@ -154,7 +154,7 @@ const char* keywords[] =
  ,"true","false"
  ,"quiet","verbose"
  ,"whattype","showall","forget"
- ,NULL};
+ ,nullptr};
 
 @ Here are the wrapper function for the lexical analyser and the error
 reporting function, which are necessary because the parser cannot directly
@@ -196,8 +196,8 @@ the appropriate expansion for these macros is the null pointer.
 
 @< Conditionally include the header files for the readline library @>=
 #ifdef NREADLINE
-#define readline NULL
-#define add_history NULL
+#define readline nullptr
+#define add_history nullptr
 #define clear_history()
 #else
 #include <readline/readline.h>
@@ -221,9 +221,9 @@ int main(int argc, char** argv)
 @)
   @< Handle command line arguments @>
 
-@/BufferedInput input_buffer(isatty(STDIN_FILENO) ? "expr> " : NULL
-                            ,use_readline ? readline : NULL
-			    ,use_readline ? add_history : NULL);
+@/BufferedInput input_buffer(isatty(STDIN_FILENO) ? "expr> " : nullptr
+                            ,use_readline ? readline : nullptr
+			    ,use_readline ? add_history : nullptr);
   main_input_buffer= &input_buffer;
 @/Hash_table hash; main_hash_table= &hash;
 @/Lexical_analyser ana(input_buffer,hash,keywords,prim_names); lex=&ana;
@@ -289,7 +289,7 @@ functions.
 plugged directly into the readline completion mechanism, but instead we
 provide an alternative function for generating matches, which may pass the
 above function to |rl_completion_matches| when it deems the situation
-appropriate, or else returns |NULL| to indicate that the default function,
+appropriate, or else returns |nullptr| to indicate that the default function,
 completing on file names, should be used instead.
 
 @< Definitions of local functions @>=
@@ -308,7 +308,7 @@ extern "C" char** do_completion(const char* text, int start, int end)
 
     if (need_file and i==start)
        // the text is preceded by one or more copies of \.<, \.>
-      return NULL; // signal that file name completion should be used
+      return nullptr; // signal that file name completion should be used
   }
   rl_attempted_completion_over = true;
     // don't try file name completion if we get here
@@ -346,7 +346,7 @@ suppress printing of the uninteresting value.
 	   << "Converted expression: " << *e << endl;
     e->evaluate(expression_base::single_value);
     last_value=pop_value();
-    static type_expr empty(type_list_ptr(NULL));
+    static type_expr empty(type_list_ptr(nullptr));
     if (*last_type!=empty)
       *output_stream << "Value: " << *last_value << endl;
     destroy_expr(parse_tree);

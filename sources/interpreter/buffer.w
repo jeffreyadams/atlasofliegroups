@@ -185,7 +185,7 @@ class Hash_table
 {
 public:
   typedef unsigned short id_type; // type of value representing identifiers
-  static const id_type empty = ~0; // value reserved for empty slots
+  static const id_type empty; // value (|~0u|) reserved for empty slots
 private: // data members
   String_pool pool;
   id_type mod;  // hash modulus, the number of slots present
@@ -217,6 +217,25 @@ sure its header is included at the proper place.
 @< Includes needed in the header file @>=
 #include <vector>
 #include <cstring>
+
+@ Let's get that static class constant defined before we forget it, since a
+temporary may be need to be created when it is passed as |const id_type&|
+argument, so the value supplied at definition does not suffice. It is amazing
+how \Cpp\ makes it a pain to define a simple compile time constant. Note that
+the common |enum| trick won't work here, since |Hash_table::id_type| is a
+|short| type, so we definitely don't want |empty| to have type |int| in
+comparisons. The |static_cast| is necessary to ensure we use the |unsigned
+short| overload of the bitwise-complement operator |~|, because there is no
+such thing as a short integer denotation; thus we avoid a warning message
+about truncating a large unsigned constant to a shorter value, even though
+that is well-defined behaviour. (The perplexed reader might be reassured, or
+not, to learn that writing just |-1| as right hand side would also get the
+desired result, and without provoking any warning message.)
+
+@< Definitions of class members @>=
+
+const Hash_table::id_type Hash_table::empty =
+   ~static_cast<Hash_table::id_type>(0);
 
 @ Here is the constructor for a hash table. By nature |hash_tab| is larger
 than the number of entries currently stored; its size is always equal to~|mod|
