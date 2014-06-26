@@ -221,7 +221,7 @@ endif
 
 # the parser is produced by bison, and compiled using the C++ compiler
 parser.tab.c parser.tab.h: parser.y
-	bison -d parser.y && echo "bison terminated"
+	bison -d parser.y
 parser.tab.o: parser.tab.c parsetree.h
 	$(CXX) -std=c++0x -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
