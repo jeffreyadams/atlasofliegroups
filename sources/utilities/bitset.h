@@ -16,6 +16,8 @@
 
 #include "bitset_fwd.h"
 
+#include <iterator>
+
 #include "bits.h"
 #include "constants.h"
 
@@ -297,7 +299,7 @@ template<> class BitSetBase<2>
 template<size_t n> struct BaseSize
 {
   static const size_t value = (n + constants::posBits)/constants::longBits;
-};
+}; // |struct BaseSize|
 
 // the actual BitSet class
 /*!
@@ -331,7 +333,7 @@ template<size_t n> class BitSet
     typedef std::forward_iterator_tag iterator_category;
     typedef unsigned int value_type;
 
-    iterator() : Base::iterator() {}
+  iterator() : Base::iterator() {} // zero (end) iterator
     explicit iterator(const typename Base::iterator& b) : Base::iterator(b) {}
 
   };
@@ -339,7 +341,7 @@ template<size_t n> class BitSet
 
 // constructors and destructors
   BitSet() : Base() {}
-  explicit BitSet(unsigned long b) : Base(b) {}
+  explicit BitSet(unsigned long b) : Base(b) {} // set at most |longBits| bits
 
   template<typename I> // integer type
     explicit BitSet(const std::vector<I>& v); // takes parity bit of each entry
@@ -376,6 +378,7 @@ template<size_t n> class BitSet
 #endif
 
   iterator begin() const { return iterator(Base::begin()); }
+  iterator end() const { return iterator(); } // zero value is end indicator
 
 // manipulators
 
@@ -395,7 +398,8 @@ template<size_t n> class BitSet
   BitSet& set(unsigned int j, bool b)
     { if (b) Base::set(j); else Base::reset(j); return *this; }
   BitSet& fill(unsigned int limit) { Base::fill(limit); return *this; }
-  BitSet& complement(unsigned int limit) { Base::complement(limit); return *this; }
+  BitSet& complement(unsigned int limit)
+    { Base::complement(limit); return *this; }
   BitSet& truncate(unsigned int m) { Base::truncate(m); return *this; }
 
   BitSet& slice(const BitSet& c) { Base::slice(c); return *this; }
@@ -420,12 +424,13 @@ template<size_t n> class BitSet
 
   bool dot(BitSet b) const { return Base::scalarProduct(b); }
 
-}; // |template<size_t n> class BitSet|
+}; // |class BitSet|
 
 
 
 //! \brief Iterator through the _set_ bits (like |BitMap::iterator|)
 class BitSetBase<1>::iterator
+  : public std::iterator<std::input_iterator_tag,unsigned int>
 {
   unsigned long d_bits; // iterator contains a copy of the set iterated over
 
@@ -436,8 +441,8 @@ class BitSetBase<1>::iterator
   explicit iterator(const BitSetBase<1>& b) : d_bits(b.to_ulong()) {}
 
 // accessors
-  bool operator== (const iterator& i) const; // rarely useful
-  bool operator!= (const iterator& i) const; // rarely useful
+  bool operator== (const iterator& i) const; // can usefully test for end
+  bool operator!= (const iterator& i) const; // can usefully test for end
   unsigned int operator* () const { return bits::firstBit(d_bits); }
   bool operator() () const { return d_bits!=0; }
 
@@ -447,6 +452,7 @@ class BitSetBase<1>::iterator
 }; // |class BitSetBase<1>::iterator|
 
 class BitSetBase<2>::iterator
+  : public std::iterator<std::input_iterator_tag,unsigned int>
 {
   unsigned long d_bits0,d_bits1; // copy of bitset data
 

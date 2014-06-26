@@ -155,8 +155,8 @@ void real_mode_entry() throw(EntryError)
 {
   try
   {
-    G_R_pointer=new RealReductiveGroup
-      (interactive::getRealGroup(currentComplexInterface()));
+    RealFormNbr rf = interactive::get_real_form(currentComplexInterface());
+    G_R_pointer=new RealReductiveGroup(currentComplexGroup(),rf);
     rt = new Rep_table(currentRealGroup());
   }
   catch(error::InputError& e)
@@ -175,8 +175,8 @@ void realform_f()
 {
   try
   { // we can call the swap method for rvalues, but not with and rvalue arg
-    interactive::getRealGroup(currentComplexInterface()).swap
-      (currentRealGroup());
+    RealFormNbr rf = interactive::get_real_form(currentComplexInterface());
+  RealReductiveGroup(currentComplexGroup(),rf).swap(currentRealGroup());
     delete rt; rt = new Rep_table(currentRealGroup());
     drop_to(real_mode); // drop invalidated descendant modes if called from them
   }
@@ -335,22 +335,21 @@ void kgp_f()
 {
   // build KGP
   RealReductiveGroup& G_R = currentRealGroup();
-  atlas::Parabolic psg;
+  Parabolic psg;
   interactive::getInteractive(psg, G_R.rank());
   kgb::KGP kgp(G_R,psg);
 
   // print the size and simple roots
   std::cout << "kgp size for roots {";
   bool first = true;
-  for (size_t i=0; i<G_R.rank(); i++)
-    if (psg & (1<<i))
-    {
-      if (first)
-	first=false;
-      else
-	std::cout << ",";
-      std::cout << i+1;
-    }
+  for (Parabolic::iterator it=psg.begin(); it(); ++it)
+  {
+    if (first)
+      first=false;
+    else
+      std::cout << ",";
+    std::cout << *it+1;
+  }
   std::cout << "}: " << kgp.size() << std::endl;
 
   ioutils::OutputFile file;
@@ -371,15 +370,14 @@ void kgporder_f()
   // print the size and simple roots
   std::cout << "kgp size for roots {";
   bool first = true;
-  for (size_t i=0; i<G_R.rank(); i++)
-    if (psg & (1<<i))
-    {
-      if (first)
-	first=false;
-      else
-	std::cout << ",";
-      std::cout << i+1;
-    }
+  for (Parabolic::iterator it=psg.begin(); it(); ++it)
+  {
+    if (first)
+      first=false;
+    else
+      std::cout << ",";
+    std::cout << *it+1;
+  }
   std::cout << "}: " << kgp.size() << std::endl;
 
   ioutils::OutputFile file;
@@ -398,15 +396,14 @@ void kgpgraph_f()
   // print the size and simple roots
   std::cout << "kgp size for roots {";
   bool first = true;
-  for (size_t i=0; i<G_R.rank(); i++)
-    if (psg & (1<<i))
-    {
-      if (first)
-	first=false;
-      else
-	std::cout << ",";
-      std::cout << i+1;
-    }
+  for (Parabolic::iterator it=psg.begin(); it(); ++it)
+  {
+    if (first)
+      first=false;
+    else
+      std::cout << ",";
+    std::cout << *it+1;
+  }
   std::cout << "}: " << kgp.size() << std::endl;
 
   // make sure the user enters an actual filename -

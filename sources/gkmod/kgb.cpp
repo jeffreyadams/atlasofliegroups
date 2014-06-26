@@ -75,8 +75,8 @@ size_t KGB_elt_entry::hashCode(size_t modulus) const
   const Ratvec_Numer_t& num=fingerprint.numerator();
   size_t h=tw.hashCode(modulus);
   for (size_t i=0; i<num.size(); ++i)
-    h=((h*d)+num[i])&(modulus-1);
-  return h;
+    h=(h*d)+num[i];
+  return h&(modulus-1);
 }
 
 bool KGB_elt_entry::operator !=(const KGB_elt_entry& x) const
@@ -650,7 +650,7 @@ KGB::KGB(RealReductiveGroup& GR,
     if (elt_hash.find(test)==elt_hash.empty)
       do_dual_twist = false; // twist stablises the square class, but not KGB
   }
-  // finally install inverse Cayley links
+  // finally install inverse Cayley and twist links
   for (KGBElt x=0; x<size; ++x)
   {
     for (weyl::Generator s=0; s<rank; ++s)
@@ -664,17 +664,9 @@ KGB::KGB(RealReductiveGroup& GR,
       }
     }
     if (not dual_twist)
-    {
-      TitsElt twx = titsGroup().twisted(titsElt(x));
-      i_tab.reduce(twx);
-      info[x].dual = lookup(twx);
-    }
+      info[x].dual = lookup(titsGroup().twisted(titsElt(x)));
     else if (do_dual_twist)
-    {
-      TitsElt twx = titsGroup().dual_twisted(titsElt(x),shift);
-      i_tab.reduce(twx);
-      info[x].dual = lookup(twx);
-    }
+      info[x].dual = lookup(titsGroup().dual_twisted(titsElt(x),shift));
     else
       info[x].dual = UndefKGB;
   }
@@ -733,25 +725,38 @@ size_t KGB::torus_rank() const { return titsGroup().rank(); }
 
 RatWeight KGB::half_rho() const { return RatWeight(rootDatum().twoRho(),4); }
 
-TorusElement KGB::torus_part_global(const RootDatum&rd, KGBElt x) const
+RatCoweight KGB::base_grading_vector() const
 {
-  assert(rank()==rd.semisimpleRank());
-  RatWeight rw (rd.rank());
+  const RootDatum& rd = G.rootDatum();
+  RatWeight result (rd.rank());
   RankFlags gr = base_grading();
   gr.complement(rank()); // take complement in set of simple roots
   for (Grading::iterator it=gr.begin(); it(); ++it)
-    rw += rd.fundamental_coweight(*it);
-
-  TorusElement result(y_values::exp_pi(rw));
-
-  result += torus_part(x);
+    result += rd.fundamental_coweight(*it);
   return result;
+}
+
+
+RatCoweight KGB::torus_part_global(KGBElt x) const
+{
+  RatWeight rw = base_grading_vector();
+
+  RankFlags tp = torus_part(x).data();
+  arithmetic::Numer_t d = rw.denominator();
+  for (RankFlags::iterator it = tp.begin(); it(); ++it)
+    rw.numerator()[*it]+=d;
+
+  // finally ensure result is $\theta^t$-fixed
+  const int_Matrix& theta = involution_matrix(x);
+  return RatCoweight(rw.numerator()+theta.right_prod(rw.numerator()),2*d)
+        .normalize();
 }
 
 // Looks up a |TitsElt| value and returns its KGB number, or |size()|
 // Since KGB does not have mod space handy, must assume |a| already reduced
-KGBElt KGB::lookup(const TitsElt& a) const
+KGBElt KGB::lookup(TitsElt a) const
 {
+  G.involution_table().reduce(a); // make sure |a| is reduced before searching
   const TitsGroup& Tg=titsGroup();
   KGBEltPair p = tauPacket(a.tw());
   TorusPart t = Tg.left_torus_part(a);
@@ -830,11 +835,15 @@ KGBElt inverse_Cayley (const KGB_base& kgb, KGBElt x,
   return kgb.cross(kgb.inverseCayley(s,kgb.cross(ww,x)).first,ww);
 }
 
+
 // status of |alpha| in |kgb|: conjugate to simple root follow cross actions
 gradings::Status::Value status(const KGB_base& kgb, KGBElt x,
 			       const RootSystem& rs, RootNbr alpha)
 {
   weyl::Generator s;
+  if (not rs.isPosRoot(alpha))
+    alpha = rs.rootMinus(alpha); // make |alpha| positive
+
   while (alpha!=rs.simpleRootNbr(s=rs.find_descent(alpha)))
   {
     rs.simple_reflect_root(alpha,s);
@@ -842,6 +851,7 @@ gradings::Status::Value status(const KGB_base& kgb, KGBElt x,
   }
   return kgb.status(s,x);
 }
+
 
 /*****************************************************************************
 

@@ -22,7 +22,7 @@
 #include "atlas_types.h"
 #include "tits.h"	// representative of $y$ in |non_integral_block|
 #include "descents.h"	// inline methods
-
+#include "dynkin.h"     // DynkinDiagram
 
 namespace atlas {
 
@@ -42,6 +42,9 @@ namespace blocks {
 
   BitMap common_Cartans(RealReductiveGroup& GR,	RealReductiveGroup& dGR);
 
+  struct ext_gen; // defined below, represents fold-orbit of Weyl generators
+  DynkinDiagram folded // produced folded version of diagram, given orbits
+    (const DynkinDiagram& diag, const std::vector<ext_gen>& orbits);
 
 
 /******** type definitions **************************************************/
@@ -51,6 +54,7 @@ struct ext_gen // generator of extended Weyl group
   enum { one, two, three } type;
   weyl::Generator s0,s1;
   WeylWord w_tau;
+
   explicit ext_gen (weyl::Generator s)
     : type(one), s0(s), s1(~0), w_tau() { w_tau.push_back(s); }
   ext_gen (bool commute, weyl::Generator s, weyl::Generator t)
@@ -58,6 +62,8 @@ struct ext_gen // generator of extended Weyl group
   { w_tau.push_back(s);  w_tau.push_back(t);
     if (not commute) w_tau.push_back(s);
   }
+
+  int length() const { return type+1; }
 };
 
 // The class |BlockBase| serves external functionality, not block construction
@@ -100,6 +106,7 @@ class Block_base
   // this vector may remain empty if |element| virtual methodis redefined
   std::vector<BlockElt> d_first_z_of_x; // of size |xsize+1|
 
+  DynkinDiagram dd;
   // possible tables of Bruhat order and Kazhdan-Lusztig polynomials
   BruhatOrder* d_bruhat;
   kl::KLContext* klc_ptr;
@@ -128,7 +135,9 @@ class Block_base
   virtual KGBElt xsize() const = 0;
   virtual KGBElt ysize() const = 0;
 
+  const DynkinDiagram& Dynkin() const { return dd; }
   ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
+  const std::vector<ext_gen>& fold_orbits() const { return orbits; }
 
   KGBElt x(BlockElt z) const { assert(z<size()); return info[z].x; }
   KGBElt y(BlockElt z) const { assert(z<size()); return info[z].y; }
@@ -394,7 +403,7 @@ public:
   nblock_elt (KGBElt x, const TorusElement& t) : xx(x), yy(t) {}
 
   KGBElt x() const { return xx; }
-  const TorusElement y() const { return yy; }
+  const TorusElement& y() const { return yy; }
 
 }; // |class nblock_elt|
 
@@ -423,6 +432,8 @@ public:
   void do_up_Cayley (nblock_elt& z, weyl::Generator s) const;
   void do_down_Cayley (nblock_elt& z, weyl::Generator s) const;
   bool is_real_nonparity(nblock_elt z, weyl::Generator s) const; // by value
+
+  void twist(nblock_elt& z) const;
 
   y_entry pack_y(const nblock_elt& z) const;
 }; // |class nblock_help|

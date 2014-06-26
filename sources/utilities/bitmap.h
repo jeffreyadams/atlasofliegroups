@@ -113,110 +113,113 @@ class BitMap
 
 
 // assignment
- BitMap& operator= (const BitMap&);
+  BitMap& operator= (const BitMap&);
 
 // accessors
- /*!
+  /*!
    Number of bits in use in the bitmap. This is the capacity
    of the BitMap as a standard library container, not d_map.size(), which is
    approximately longBits times smaller.
- */
- unsigned long capacity() const { return d_capacity; }
- size_type size() const; // the number of bits that are set in the bitmap
+  */
+  unsigned long capacity() const { return d_capacity; }
+  size_type size() const; // the number of bits that are set in the bitmap
 
- bool operator< (const BitMap& b) const { return d_map < b.d_map; }
- bool operator== (const BitMap& b) const { return d_map == b.d_map; }
- bool operator!=(const BitMap& b) const { return d_map != b.d_map; }
+  bool operator< (const BitMap& b) const { return d_map < b.d_map; }
+  bool operator== (const BitMap& b) const { return d_map == b.d_map; }
+  bool operator!=(const BitMap& b) const { return d_map != b.d_map; }
 
- bool empty() const; // whether |size()==0|
- bool full() const; // whether |size()==capacity()|
+  bool empty() const; // whether |size()==0|
+  bool full() const; // whether |size()==capacity()|
 
- /*!
-   Tests whether bit n in the bitmap is set; that is, whether element n
-   is a member of the set.
- */
- bool isMember(unsigned long n) const
- {
-   if (n >= d_capacity)
-     return false;
-   return (d_map[n >> baseShift] & constants::bitMask[n&posBits])!=0;
- }
+  /*!
+    Tests whether bit n in the bitmap is set; that is, whether element n
+    is a member of the set.
+  */
+  bool isMember(unsigned long n) const
+  {
+    if (n >= d_capacity)
+      return false;
+    return (d_map[n >> baseShift] & constants::bitMask[n&posBits])!=0;
+  }
 
- // Whether all elements of |b| satisfy |isMember|
- bool contains(const BitMap& b) const;
+  // Whether all elements of |b| satisfy |isMember|
+  bool contains(const BitMap& b) const;
 
- // Whether none of the elements of |b| satisfy |isMember|
- bool disjoint(const BitMap& b) const;
+  // Whether none of the elements of |b| satisfy |isMember|
+  bool disjoint(const BitMap& b) const;
 
- //! \brief Value at index |n| if viewed as list of |unsigned long| values
- unsigned long n_th(unsigned long n) const;
+  //! \brief Value at index |n| if viewed as list of |unsigned long| values
+  unsigned long n_th(unsigned long n) const;
 
- //! \brief Number of values |<n| present (set) in the bitmap
- unsigned long position(unsigned long n) const;
+  //! \brief Number of values |<n| present (set) in the bitmap
+  unsigned long position(unsigned long n) const;
 
- unsigned long front() const;
+  unsigned long front() const;
 
- // decrement |n| (at least once) until it points to a member
- // return value indicates whether this succeeded
- bool back_up(unsigned long& n) const;
+  // decrement |n| (at least once) until it points to a member
+  // return value indicates whether this succeeded
+  bool back_up(unsigned long& n) const;
 
- // get a range of bits as unsigned long value; see bitmap.ccp for details
- unsigned long range(unsigned long first, unsigned long number) const;
+  // get a range of bits as unsigned long value; see bitmap.ccp for details
+  unsigned long range(unsigned long first, unsigned long number) const;
 
- BitMap operator& (const BitMap& other) const
- { BitMap result(*this); result&=other; return result; }
+  BitMap operator& (const BitMap& other) const
+  { BitMap result(*this); result&=other; return result; }
 
- BitMap operator| (const BitMap& other) const
- { BitMap result(*this); result|=other; return result; }
+  BitMap operator| (const BitMap& other) const
+  { BitMap result(*this); result|=other; return result; }
 
- BitMap operator^ (const BitMap& other) const
- { BitMap result(*this); result^=other; return result; }
+  BitMap operator^ (const BitMap& other) const
+  { BitMap result(*this); result^=other; return result; }
 
 
 // manipulators
 
- // WARNING: the following looks like an accessor, but complements |*this|
- BitMap& operator~ ();
+  // WARNING: the following looks like an accessor, but complements |*this|
+  BitMap& operator~ ();
 
  // these operators allow argument to have less capacity than |*this|
- bool operator&= (const BitMap&);
+  bool operator&= (const BitMap&);
 
- BitMap& operator|= (const BitMap&);
+  BitMap& operator|= (const BitMap&);
 
- BitMap& operator^= (const BitMap&);
+  BitMap& operator^= (const BitMap&);
 
- bool andnot(const BitMap& b); // remove bits of |b|, return whether any left
+  bool andnot(const BitMap& b); // remove bits of |b|, return whether any left
 
- /*!
-   Set the bit at position n (that is, inserts the value |n| into the set);
-   this makes |isMember(n)| hold.
- */
- void insert(unsigned long n)
- {
-   assert(n<d_capacity);
-   d_map[n >> baseShift] |= constants::bitMask[n & posBits];
- }
+  BitMap& operator>>= (unsigned long delta); // shift right (decrease)
+  BitMap& operator<<= (unsigned long delta); // shift left (increase)
 
- /*!
-   Clear the bit at position n (that is, removes an element of the set);
-   this makes |isMember(n)| false.
- */
- void remove(unsigned long n)
- {
-   assert(n<d_capacity);
-   d_map[n >> baseShift] &= ~constants::bitMask[n & posBits];
- }
+  /*!
+    Set the bit at position n (that is, inserts the value |n| into the set);
+    this makes |isMember(n)| hold.
+  */
+  void insert(unsigned long n)
+  {
+    assert(n<d_capacity);
+    d_map[n >> baseShift] |= constants::bitMask[n & posBits];
+  }
 
- void set_to(unsigned long n,bool b)
- { if (b) insert(n); else remove(n); }
+  /*!
+    Clear the bit at position n (that is, removes an element of the set);
+    this makes |isMember(n)| false.
+  */
+  void remove(unsigned long n)
+  {
+    assert(n<d_capacity);
+    d_map[n >> baseShift] &= ~constants::bitMask[n & posBits];
+  }
 
- void set_mod2(unsigned long n, unsigned long v) { set_to(n,(v&1)!=0); }
+  void set_to(unsigned long n,bool b)
+  { if (b) insert(n); else remove(n); }
 
- void flip(unsigned long n)
- {
-   assert(n<d_capacity);
-   d_map[n >> baseShift] ^= constants::bitMask[n & posBits];
- }
+  void set_mod2(unsigned long n, unsigned long v) { set_to(n,(v&1)!=0); }
+
+  void flip(unsigned long n)
+  {
+    assert(n<d_capacity);
+    d_map[n >> baseShift] ^= constants::bitMask[n & posBits];
+  }
 
 
  void fill(); // set all bits

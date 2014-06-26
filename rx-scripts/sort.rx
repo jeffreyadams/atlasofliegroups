@@ -1,6 +1,6 @@
-<misc {for spherical_principal_series}
+<basic.rx
 
-set merge(vec a, vec b) =
+set merge (vec a, vec b) = vec:
   if #a=0 then b
   else let (i,j)=(0,0)
   in b#:=a[#a-1] { sentinel; when this becomes b[j] assures a is then emptied }
@@ -9,22 +9,21 @@ set merge(vec a, vec b) =
     od
   fi
 
-set sort= { merge sort }
+set sort = (vec->vec): { merge sort }
   let ms (vec v, int l) = v
   then ()= ms := ((vec v, int l):
     if l<3 then if l<2 or v[0]<=v[1] then v else [v[1],v[0]] fi
-    else let h=l\2 then hh=l-h
-         then a=ms(for i:h do v[i] od,h), b=ms(for i:hh from h do v[i] od,hh)
-         in merge(a,b)
+    else let half=l\2 in
+      merge( ms(lower(half,v),half), ms(upper(half,v),l-half) )
     fi)
-  in (vec v) vec: ms(v,#v)
+  in { sort = } (vec v) vec: ms(v,#v)
 
-set reverse (vec v)= vec: for i:#v downto 0 do v[i] od
-set reverse_sort (vec v)= vec: reverse(sort(v))
+set reverse_sort (vec v) = vec: reverse(sort(v))
 
 { the following helps stable-sorting of anything according to a statistic }
 
-set inv_standardisation = { stable-sorting permutation of a list of integers }
+{ stable-sorting permutation of a list of integers }
+set inv_standardisation = (vec->vec):
   let merge([(int,int)] a, [(int,int)] b) = { merge based on first component }
     if #a=0 then b
     else let (i,j)=(0,0)
@@ -67,7 +66,3 @@ set sort_by_reducibility_pairs = ([(Param,bool)]->[(Param,bool)]):
 set sort_by_reducibility = ([Param]->[Param]):
   sort_by((Param p) int: #reducibility_points(p) )
 
-set sort_spherical_by_reducibility (RealForm G,[ratvec] nus) = [ratvec]:
-  let sorted_spherical=
-    sort_by_reducibility(for nu in nus do spherical_principal_series(G,nu) od)
-  in for p in sorted_spherical do nu(p) od { recover nu from parameters }

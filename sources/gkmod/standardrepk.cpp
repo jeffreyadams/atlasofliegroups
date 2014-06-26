@@ -18,7 +18,6 @@ StandardRepK and KhatContext.
 #include <cassert>
 #include <iostream>
 #include <sstream>
-#include <deque>
 
 #include "tags.h"
 #include "arithmetic.h" // |abs|
@@ -228,20 +227,19 @@ Weight SRK_context::lift(size_t cn, HCParam p) const
 
 StandardRepK SRK_context::std_rep (const Weight& two_lambda, TitsElt a) const
 {
-  const WeylGroup& W=weylGroup();
   const RootDatum& rd=rootDatum();
 
   TwistedInvolution sigma=a.tw();
-  WeylElt w = complexGroup().canonicalize(sigma);
+  const WeylWord ww = complexGroup().canonicalize(sigma);
   // now |sigma| is canonical and |w| conjugates |sigma| to |a.tw()|
 
 
   // conjugate towards canonical element (left-right, for inverse conjugation)
-  basedTitsGroup().basedTwistedConjugate(a,W.word(w));
+  basedTitsGroup().basedTwistedConjugate(a,ww);
 
   assert(a.tw()==sigma); // we should now be at canonical twisted involution
 
-  Weight mu=W.imageByInverse(rd,w,two_lambda);
+  Weight mu=rd.image_by_inverse(two_lambda,ww); // move weight to canonical
 
   size_t cn = complexGroup().class_number(sigma);
   StandardRepK result(cn,
@@ -255,19 +253,16 @@ StandardRepK SRK_context::std_rep (const Weight& two_lambda, TitsElt a) const
 // the following is a variant of |std_rep_rho_plus| intended for |KGB_sum|
 // it should only transform the parameters for the Levi factor given by |gens|
 // since |lambda| is $\rho$-centered, care should be taken in transforming it
-RawRep SRK_context::Levi_rep
-    (Weight lambda, TitsElt a, RankFlags gens)
-  const
+RawRep SRK_context::Levi_rep (Weight lambda, TitsElt a, RankFlags gens) const
 {
   TwistedInvolution sigma=a.tw();
-  WeylElt w = complexGroup().canonicalize(sigma,gens);
+  const WeylWord ww = complexGroup().canonicalize(sigma,gens);
   // now |sigma| is canonical for |gens|, and |w| conjugates it to |a.tw()|
 
   const RootDatum& rd=rootDatum();
 
   // conjugate towards canonical element
   {
-    WeylWord ww=weylGroup().word(w);
     for (size_t i=0; i<ww.size(); ++i) // left-to-right for inverse conjugation
     {
       assert(gens.test(ww[i])); // check that we only used elements in $W(L)$
@@ -564,21 +559,22 @@ KGBEltList SRK_context::sub_KGB(const PSalgebra& q) const
   }
 
   flagged.insert(root);
-  std::deque<KGBElt> queue(1,root);
+  std::queue<KGBElt, containers::sl_list<KGBElt> > queue;
+  queue.push(root);
   do
   {
-    KGBElt x=queue.front(); queue.pop_front();
+    KGBElt x=queue.front(); queue.pop();
     for (RankFlags::iterator it=q.Levi_gens().begin(); it(); ++it)
     {
       KGBElt y=kgb().cross(*it,x);
       if (not flagged.isMember(y))
       {
-	flagged.insert(y); queue.push_back(y);
+	flagged.insert(y); queue.push(y);
       }
       y=kgb().inverseCayley(*it,x).first; // second will follow if present
       if (y!=UndefKGB and not flagged.isMember(y))
       {
-	flagged.insert(y); queue.push_back(y);
+	flagged.insert(y); queue.push(y);
       }
     }
   }
@@ -655,32 +651,30 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
 CharForm
 SRK_context::K_type_formula(const StandardRepK& sr, level bound)
 {
-  const WeylGroup& W=weylGroup();
   const RootDatum& rd=rootDatum();
 
   // Get theta stable parabolic subalgebra
 
   WeylWord conjugator;
-  PSalgebra q = theta_stable_parabolic(sr,conjugator);
+  PSalgebra p = theta_stable_parabolic(sr,conjugator);
 
-  Weight lambda=
-    W.imageByInverse(rd,W.element(conjugator),lift(sr));
+  Weight lambda= rd.image_by_inverse(lift(sr),conjugator); // towords |p|
 
-  RawChar KGB_sum_q= KGB_sum(q,lambda);
+  RawChar KGB_sum_p= KGB_sum(p,lambda);
 
   // type of formal linear combination of weights, associated to Tits element
 
   Char result;
-  for (RawChar::const_iterator it=KGB_sum_q.begin(); it!=KGB_sum_q.end(); ++it)
+  for (RawChar::const_iterator it=KGB_sum_p.begin(); it!=KGB_sum_p.end(); ++it)
   {
-    Char::coef_t c=it->second; // coefficient from |KGB_sum_q|
-    const Weight& mu=it->first.first; // weight from |KGB_sum_q|
-    const TitsElt& strong=it->first.second; // Tits elt from |KGB_sum_q|
+    Char::coef_t c=it->second; // coefficient from |KGB_sum_p|
+    const Weight& mu=it->first.first; // weight from |KGB_sum_p|
+    const TitsElt& strong=it->first.second; // Tits elt from |KGB_sum_p|
     InvolutionData id = complexGroup().involution_data(strong.tw());
 
     RootNbrSet A(rd.numRoots());
     for (BitMap::iterator
-	   rt=q.radical().begin(); rt!=q.radical().end(); ++rt)
+	   rt=p.radical().begin(); rt!=p.radical().end(); ++rt)
     {
       RootNbr alpha=*rt;
       assert(not id.real_roots().isMember(alpha));
@@ -801,7 +795,6 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
 q_CharForm
 SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
 {
-  const WeylGroup& W=weylGroup();
   const RootDatum& rd=rootDatum();
 
   // Get theta stable parabolic subalgebra
@@ -809,8 +802,7 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
   WeylWord conjugator;
   PSalgebra p = theta_stable_parabolic(sr,conjugator);
 
-  Weight lambda=
-    W.imageByInverse(rd,W.element(conjugator),lift(sr));
+  Weight lambda= rd.image_by_inverse(lift(sr),conjugator); // towords |p|
 
   Raw_q_Char q_KGB_sum_p= q_KGB_sum(p,lambda);
 

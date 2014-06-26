@@ -19,11 +19,11 @@ namespace matreduc {
 // make |M(i,j)==0| and |M(i,k)>0| by operations with columns |j| and |k|
 // precondition |M(i,k)>0|. Returns whether determinant -1 operation applied.
 template<typename C>
-bool column_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k)
+bool column_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k)
 {
-  bool neg=M(i,j)<0;
+  bool neg=M(i,j)<C(0);
   if (neg) // happens often in Cartan matrices; result is more pleasant
-    M.columnMultiply(j,-1); // if we ensure non-negativity the easy way
+    M.columnMultiply(j,C(-1)); // if we ensure non-negativity the easy way
   do
   {
     M.columnOperation(j,k,-(M(i,j)/M(i,k))); // makes |M(i,j)>=0| smaller
@@ -39,11 +39,11 @@ bool column_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k)
 // make |M(i,j)==0| and |M(k,j)>0| by operations with rows |i| and |k|
 // precondition |M(k,j)>0|. Returns whether determinant -1 operation applied.
 template<typename C>
-bool row_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k)
+bool row_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k)
 {
-  bool neg=M(i,j)<0;
+  bool neg=M(i,j)<C(0);
   if (neg)
-    M.rowMultiply(i,-1);
+    M.rowMultiply(i,C(-1));
   do
   {
     M.rowOperation(i,k,-(M(i,j)/M(k,j))); // makes |M(i,j)>=0| smaller
@@ -63,8 +63,8 @@ bool row_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k)
 // make |M(i,j)==0| and keep |M(i,k)>0| by operations with columns |j| and |k|
 // precondition |M(i,k)>0|
 template<typename C>
-bool column_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k,
-		  matrix::Matrix<C>& rec)
+bool column_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k,
+		  matrix::PID_Matrix<C>& rec)
 {
   // Rather than forcing the sign of |M(i,j)|, we shall use |arithmetic::divide|
   // This is done to avoid gratuitous negative entries in |lattice::kernel|
@@ -91,8 +91,8 @@ bool column_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k,
    sense; the template parameter |direct| tells whether recording is direct
 */
 template<typename C, bool direct>
-bool row_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k,
-	       matrix::Matrix<C>& rec)
+bool row_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k,
+	       matrix::PID_Matrix<C>& rec)
 {
   // Rather than forcing the sign of |M(i,j)|, we shall use |arithmetic::divide|
   // For |direct==false| this often avoids touching column |i| of |rec|
@@ -127,7 +127,7 @@ bool row_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k,
    for all |j| and |i=result.n_th(j)|, |M(i,j)>0| and |M(ii,j)==0| for |ii>i|
 */
 template<typename C>
-  bitmap::BitMap column_echelon(matrix::Matrix<C>& M)
+  bitmap::BitMap column_echelon(matrix::PID_Matrix<C>& M)
 {
   bitmap::BitMap result(M.numRows());
   for (size_t j=M.numColumns(); j-->0;)
@@ -167,15 +167,15 @@ template<typename C>
    return diagonal entries (positive except maybe first). Result is not unique.
 */
 template<typename C>
-std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
-			   matrix::Matrix<C>& row,
-			   matrix::Matrix<C>& col)
+std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
+			   matrix::PID_Matrix<C>& row,
+			   matrix::PID_Matrix<C>& col)
 {
   size_t m=M.numRows();
   size_t n=M.numColumns(); // in fact start of known null columns
 
-  matrix::Matrix<C>(m).swap(row); // initialise |row| to identity matrix
-  matrix::Matrix<C>(n).swap(col);
+  matrix::PID_Matrix<C>(m).swap(row); // initialise |row| to identity matrix
+  matrix::PID_Matrix<C>(n).swap(col);
   std::vector<C> diagonal;
   if (n==0 or m==0) return diagonal; // take out these trivial cases
   diagonal.reserve(arithmetic::min(m,n));
@@ -273,13 +273,13 @@ std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
    closely related to the original matrix. All diagonal entries are positive.
  */
 template<typename C>
-matrix::Matrix<C> adapted_basis(matrix::Matrix<C> M, // by value
-				std::vector<C>& diagonal)
+matrix::PID_Matrix<C> adapted_basis(matrix::PID_Matrix<C> M, // by value
+				    std::vector<C>& diagonal)
 {
   size_t m=M.numRows();
   size_t n=M.numColumns(); // in fact start of known null columns
 
-  matrix::Matrix<C> result (m); // initialise |result| to identity matrix
+  matrix::PID_Matrix<C> result (m); // initialise |result| to identity matrix
   diagonal.clear(); diagonal.reserve(n); // maximum, maybe not needed
 
   for (size_t d=0; d<m and d<n; ++d)
@@ -361,10 +361,10 @@ matrix::Matrix<C> adapted_basis(matrix::Matrix<C> M, // by value
   The numbers |lcm=ab/d|, |d| and |pa| are obtained from |arithmetic::lcm|
 */
 template<typename C>
-matrix::Matrix<C> Smith_basis(const matrix::Matrix<C>& M,
-			      std::vector<C>& diagonal)
+matrix::PID_Matrix<C> Smith_basis(const matrix::PID_Matrix<C>& M,
+				  std::vector<C>& diagonal)
 {
-  matrix::Matrix<C> result = adapted_basis(M,diagonal);
+  matrix::PID_Matrix<C> result = adapted_basis(M,diagonal);
   size_t start=0, stop=diagonal.size()>0 ? diagonal.size()-1 : 0, new_stop=stop;
   while (start<stop)
   {
@@ -390,11 +390,11 @@ matrix::Matrix<C> Smith_basis(const matrix::Matrix<C>& M,
 
 
 template<typename C> // find a solution |x| for |A*x==b|
-matrix::Vector<C> find_solution(const matrix::Matrix<C>& A,
+matrix::Vector<C> find_solution(const matrix::PID_Matrix<C>& A,
 				matrix::Vector<C> b)
   throw (std::runtime_error)
 {
-  matrix::Matrix<C> row,col;
+  matrix::PID_Matrix<C> row,col;
   std::vector<C> diagonal = diagonalise(A,row,col); // $R*A*C=D$ diagonal
   row.apply_to(b); // left multiply equation by $R$, giving $D*C^{-1}*x=R*b$
 
@@ -416,28 +416,28 @@ matrix::Vector<C> find_solution(const matrix::Matrix<C>& A,
 
  // instantiations
 template
-bool column_clear(matrix::Matrix<int>& M, size_t i, size_t j, size_t k);
+bool column_clear(matrix::PID_Matrix<int>& M, size_t i, size_t j, size_t k);
 template
-bool row_clear(matrix::Matrix<int>& M, size_t i, size_t j, size_t k);
+bool row_clear(matrix::PID_Matrix<int>& M, size_t i, size_t j, size_t k);
 
 template
-bitmap::BitMap column_echelon<int>(matrix::Matrix<int>& M);
+bitmap::BitMap column_echelon<int>(matrix::PID_Matrix<int>& M);
 
 template
-std::vector<int> diagonalise(matrix::Matrix<int> M,
-			     matrix::Matrix<int>& row,
-			     matrix::Matrix<int>& col);
+std::vector<int> diagonalise(matrix::PID_Matrix<int> M,
+			     matrix::PID_Matrix<int>& row,
+			     matrix::PID_Matrix<int>& col);
 
 template
-matrix::Matrix<int> Smith_basis(const matrix::Matrix<int>& M,
-				std::vector<int>& diagonal);
+matrix::PID_Matrix<int> Smith_basis(const matrix::PID_Matrix<int>& M,
+				    std::vector<int>& diagonal);
 
 template
-matrix::Matrix<int> adapted_basis(const matrix::Matrix<int> M,
-				  std::vector<int>& diagonal);
+matrix::PID_Matrix<int> adapted_basis(const matrix::PID_Matrix<int> M,
+				      std::vector<int>& diagonal);
 
 template
-matrix::Vector<int> find_solution(const matrix::Matrix<int>& A,
+matrix::Vector<int> find_solution(const matrix::PID_Matrix<int>& A,
 				  matrix::Vector<int> b);
 
 } // |namespace matreduc|

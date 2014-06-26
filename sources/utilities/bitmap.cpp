@@ -9,7 +9,7 @@
 
 #include "bitmap.h"
 
-#include <algorithm> // for |lower_bound|
+#include <algorithm> // for |lower_bound|, |copy|, |copy_backward|
 #include "bits.h"
 
 #include <cassert>
@@ -433,6 +433,50 @@ bool BitMap::andnot(const BitMap& b)
   return any;
 }
 
+BitMap& BitMap::operator<<= (unsigned long delta) // increase values by |delta|
+{
+  unsigned long delta_rem = delta & posBits;
+  delta >>= baseShift; // we must move |delta| words, and then |delta_rem| bits
+  if (delta>0) // shifting by |0| is useless, and undefined behavior too
+  {
+    std::copy_backward(d_map.begin(),d_map.end()-delta,d_map.end());
+    std::fill(d_map.begin(),d_map.begin()+delta,0ul);
+  }
+  if (delta_rem>0 and not d_map.empty())
+  {
+    std::vector<unsigned long>::iterator it;
+    for (it=d_map.end(); --it!=d_map.begin(); )
+    {
+      *it <<= delta_rem; // shift bits up
+      *it |= *(it-1) >> (constants::longBits-delta_rem);
+    }
+    *it <<= delta_rem; // shift bits up
+  }
+  return *this;
+}
+
+BitMap& BitMap::operator>>= (unsigned long delta) // decrease values by |delta|
+{
+  unsigned long delta_rem = delta & posBits;
+  delta >>= baseShift; // we must move |delta| words, and then |delta_rem| bits
+  if (delta>0) // shifting by |0| is useless, and undefined behavior too
+  {
+    std::copy(d_map.begin()+delta,d_map.end(),d_map.begin());
+    std::fill(d_map.end()-delta,d_map.end(),0ul);
+  }
+  if (delta_rem>0 and not d_map.empty())
+  {
+    std::vector<unsigned long>::iterator it;
+    for (it=d_map.begin(); it+1!=d_map.end(); ++it)
+    {
+      *it >>= delta_rem; // shift bits doan
+      *it |= *(it+1) << (constants::longBits-delta_rem);
+    }
+    *it <<= delta_rem; // shift last bits down
+  }
+  return *this;
+}
+
 /*!
   Synopsis: sets all the bits in the bitmap.
 
@@ -551,7 +595,7 @@ void BitMap::swap(BitMap& other)
   course not what a non-constant iterator should allow doing). On the other
   hand we may modify our bitmap |M| using this iterator |it|, notably to clear
   the set bit |it| points at by |M.remove(*it)|. Unlike the situation for
-  |std::set|, such a removal does not invalidate the iterator |it| itself, do
+  |std::set|, such a removal does not invalidate the iterator |it| itself, so
   it is not an invariant of the |BitMap::iterator| class that it always points
   at a set bit.
 
@@ -621,7 +665,7 @@ BitMap::iterator& BitMap::iterator::operator++ ()
 /*!
   Post-increment operator; it should return the value as it was _before_ the
   incrementation. This operator can mostly by avoided, as |M.remove(*it++)|
-  can safely be replaced by |M.remove(*it),it++|
+  can safely be replaced by |M.remove(*it),++it|
 */
 BitMap::iterator BitMap::iterator::operator++ (int)
 {
@@ -642,11 +686,9 @@ template void BitMap::insert
  (std::vector<unsigned short>::iterator,
   std::vector<unsigned short>::iterator); // root sets from RootNbrList
 
-// These instantiations are not used, but may serve to test compilation:
+typedef std::vector<unsigned long>::iterator VI;
 
-// typedef std::vector<unsigned short>::iterator VI;
-
-// template BitMap::BitMap(unsigned long n, const VI& first, const VI& last);
+template BitMap::BitMap(unsigned long n, const VI& first, const VI& last);
 // template BitMap::BitMap(const VI& f,const VI& l, const VI& sf,const VI& sl);
 
 } // |namespace bitmap|

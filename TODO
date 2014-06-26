@@ -6,9 +6,21 @@
 
 * Work on the atlas program
 
+ - correct bug with myterisous typeahead after bailing out with ?
+ - clean up the mess dealing with input (interface/input, io/interactive...)
+
 * Work on the realex program
 
+ - See if syntax can allow (let i=3 in for k:i do print(k) od); without parens
+
  - Allow for declaring an input path, and (silent) default prelude
+
+ - Allow Python-style slices of lists, vectors, matrices
+ - Allow list-comprehension syntax like in Haskell (and Python?)
+ - Integrate a bigint library to store realex int (and rat?) values; while
+   attending that, signal overflow in arithmetic operations / conversions
+
+
  - Handle catching of a user interrupt
    When a user types ^C, this should break off computation as soon as feasible
    and return the realex prompt. This may be quite difficult to implement if
@@ -16,11 +28,8 @@
 
  - Mention file and line in non-syntax errors
  - Improve output of expressions
- - Make last computed value(s) accessible
- - Add more functionality for KGBElt values
- - Improve the way KL_block gives access to it values, add variants
-   Inspect how KL_block is actually used, and provide more lightweight values
 
+ - Allow multiple overloaded functions defined in a single 'set' statement
  - Allow recursion through a more intuitive syntax
  - See if functions without argument can still live in overload table
    Currently they live in the table for ordinary variables, which can produce
@@ -28,6 +37,14 @@
    when a first overloaded instance is added). It would be preferable to treat
    them as overloaded functions anyway, but to disable the voiding coercion in
    argument positions of overloaded functions. Check possible complications.
+
+ - See if overloads with empty row argument cannot be via '[*]' type
+   Currently, since any row type could match the argument expression '[]',
+   overloads differing only in the kind of row type are not allowed, lest a
+   potential call with uncast '[]' argument would be ambiguous. One could
+   imagine that such an argument would only match a '[*]' type specification
+   (which would in return only match that) so that multiple row overloads can
+   coexist, and the user still has control of how to handle the '[]' case.
 
  - Allow loops executed in reverse order
    This generalises downto to for-in loops. Saying 'for e@i reverse in array
@@ -40,6 +57,8 @@
    The same question arises in conditional: if the condition is the result of
    a complicated computation, could that computation define some local
    variables that remain accessible in addition to the boolean condition?
+   However for the conditional one could start a 'let' block before the
+   conditional starts to keep variables in scope; for while this doesn't work.
 
  - Allow skipping entries in value-producing loops; concatenating sub-rows.
    When generating a row from a loop, not every iteration need contribute, and
@@ -51,6 +70,9 @@
  - Extend language with recursive types, as well as disjoint union types.
  - Allow encapsulation into user-defined types
 
+ - Ensure that root data obtained from inner classes or beyond are shared
+ - Avoid creating many identical |real_form_value| instances, by storing links
+   to those currently generated within an |inner_class_value| object
  - Check if efficiency features actually work as intended
    For instance v[i]=k should usually avoid a copy of v being made. Also see
    if something can be done to avoid duplication in a +:= x (probably not, as

@@ -191,7 +191,7 @@ class bindings
 @)bindings(const bindings&); // copy constructor
   void operator= (const bindings&); // assignment operator
 public:
-  bindings(size_t n=0) : @[ base() @], next(NULL) @+{@; base::reserve(n); }
+  bindings(size_t n=0) : @[ base() @], next(nullptr) @+{@; base::reserve(n); }
     // predict size |n|, informative
   ~bindings () @+
   {@; for (base::iterator it=begin(); it!=end(); ++it)
@@ -215,7 +215,7 @@ void bindings::add(Hash_table::id_type id,type_ptr t)
       throw program_error(std::string("Multiple binding of ")
                           +main_hash_table->name_of(id)
                           +" in same scope");
-  push_back(std::make_pair(id,(type_p)NULL));
+  push_back(std::make_pair(id,(type_p)nullptr));
   back().second=t.release();
 }
 
@@ -228,11 +228,11 @@ pointer is returned and the output parameters are unchanged.
 type_p bindings::lookup
   (Hash_table::id_type id, size_t& depth, size_t& offset) const
 { size_t i=0;
-  for (const bindings* p=this; p!=NULL; p=p->next,++i)
+  for (const bindings* p=this; p!=nullptr; p=p->next,++i)
     for (size_t j=0; j<p->size(); ++j)
       if ((*p)[j].first==id)
       {@; depth=i; offset=j; return (*p)[j].second; }
-  return NULL;
+  return nullptr;
 }
 
 @ During conversion of expressions, we keep a stack |id_context| of identifier
@@ -256,7 +256,7 @@ objects have already disappeared from the \Cpp\ runtime stack at the time this
 code gets executed.
 
 @< Actions to reset the evaluator @>=
-id_context=NULL;
+id_context=nullptr;
 
 @ The function |convert_expr| returns a pointer to the conversion of the
 |expr| to |expression|, of which the caller should take ownership. The reason
@@ -280,7 +280,7 @@ expression convert_expr(const expr& e, type_expr& type)
    @\@< Cases for type-checking and converting expression~|e| against
    |type|, all of which either |return| or |throw| a |type_error| @>
   }
-  return NULL; // keep compiler happy
+  return nullptr; // keep compiler happy
 }
 
 @* Denotations.
@@ -311,12 +311,16 @@ inside the class definition, because that definition precedes the one of the
 |inline| function |push_value| in the header file. The method is not even made
 |inline|, since there is little point in doing so for virtual methods (calls
 via the vtable cannot be inlined). For the first time we see the |level|
-argument in action; whenever |l==no_value| we should avoid producing a result
-value.
+argument in action, but it is actually handled inside the call to
+|push_expanded|. It may be surprising that denotations may need to be expanded
+as a tuple (as long as there are no such things as denotations for complex
+numbers), and indeed this was not done until the possibility to refer to the
+last value computed was added to the language (see just below); that value is
+wrapped into a denotation, and it could well be a tuple.
 
 @< Function def... @>=
 void denotation::evaluate(level l) const
-@+{@; if (l!=no_value) push_value(denoted_value); }
+@+{@; push_expanded(l,denoted_value); }
 
 @ Here are the first examples of the conversions done in |convert_expr|. Each
 time we extract a \Cpp\ value from the |expr e@;| returned by the parser,
@@ -355,21 +359,21 @@ the symbol `\.\$'.
 extern type_ptr last_type;
 extern shared_value last_value;
 
-@~We set the pointers to |NULL| here, but the |main| function will give them
+@~We set the pointers to |nullptr| here, but the |main| function will give them
 more appropriate starting values.
 
 @< Global variable definitions @>=
 type_ptr last_type;
 shared_value last_value;
 
-@ Upon parsing `\.\$', and |expr| value with |kind==last_value_computed| is
+@ Upon parsing `\.\$', an |expr| value with |kind==last_value_computed| is
 transmitted. Upon type-checking we capture the value in a |denotation|
 structure, which may or may not be evaluated soon after; even if the value
 gets captured in a function value, it will remain immutable.
 
 @< Cases for type-checking and converting... @>=
 case last_value_computed:
-  { expression_ptr d@|(new denotation(last_value));
+@/{@; expression_ptr d@|(new denotation(last_value));
     return conform_types(*last_type,type,d,e);
   }
 
@@ -386,7 +390,7 @@ structure is already taken, so we call it a |list_expression| instead.
 struct list_expression : public expression_base
 { std::vector<expression> component;
 @)
-  explicit list_expression(size_t n) : component(n,NULL) @+{}
+  explicit list_expression(size_t n) : component(n,nullptr) @+{}
    // always start out with null pointers
   virtual ~list_expression();
   virtual void evaluate(level l) const;
@@ -447,7 +451,7 @@ case list_display:
   if (type.specialise(row_of_type))
   { std::auto_ptr<list_expression> result (new list_expression(0));
     result->component.reserve(length(e.e.sublist));
-    for (expr_list l=e.e.sublist; l!=NULL; l=l->next)
+    for (expr_list l=e.e.sublist; l!=nullptr; l=l->next)
       result->component.push_back(convert_expr(l->e,*type.component_type));
     return result.release(); // and convert (derived|->|base) to |expression|
   }
@@ -472,13 +476,13 @@ further coercions of individual expressions in the list display.
    |e.e.sublist|... @>=
 { type_expr comp_type;
   const conversion_record* conv = row_coercion(type,comp_type);
-  if (conv==NULL)
+  if (conv==nullptr)
     throw type_error(e,copy(row_of_type),copy(type));
 @)
   std::auto_ptr<list_expression> display@|
       (new list_expression(0));
   display->component.reserve(length(e.e.sublist));
-  for (expr_list l=e.e.sublist; l!=NULL; l=l->next)
+  for (expr_list l=e.e.sublist; l!=nullptr; l=l->next)
     display->component.push_back(convert_expr(l->e,comp_type));
   return new conversion(*conv,expression_ptr(display));
 }
@@ -567,7 +571,7 @@ case tuple_display:
   expression_ptr result(tup_exp=new tuple_expression(0));
   tup_exp->component.reserve(length(e.e.sublist));
   type_list tl= tuple_expected ? type.tuple : tup->tuple;
-  for (expr_list el=e.e.sublist; el!=NULL; el=el->next,tl=tl->next)
+  for (expr_list el=e.e.sublist; el!=nullptr; el=el->next,tl=tl->next)
     tup_exp->component.push_back(convert_expr(el->e,tl->t));
   if (tuple_expected)
     return result.release();  // and convert (derived|->|base) to |expression|
@@ -689,7 +693,7 @@ void subscr_base::print(std::ostream& out) const
 @)
 void matrix_subscription::print(std::ostream& out) const
 { tuple_expression* p=dynamic_cast<tuple_expression*>(index);
-  if (p==NULL) out << *array << '[' << *index << ']';
+  if (p==nullptr) out << *array << '[' << *index << ']';
   else
     out << *array << '[' << *p->component[0] << ',' << *p->component[1] << ']';
 }
@@ -892,9 +896,9 @@ identifiers, which are treated in fairly different way, and during type
 analysis the two are converted into different kinds of |expression|. The most
 fundamental difference is that for global identifiers a value is already known
 at the time the identifier expression is type-checked, and the type of this
-value can be used; for local identifiers only a type is associated to the
-identifier at that time, and indeed during different evaluations the same
-local identifier may find itself bound to different values.
+value can be used; for local identifiers just a type is associated to the
+identifier during type analysis, and indeed during different evaluations the
+same local identifier may find itself bound to different values.
 
 Global identifiers values will be stored in a global identifier table holding
 values and their types. The values of local identifiers will be stored at
@@ -957,10 +961,10 @@ table, which then immediately assumes ownership of the type.
 
 @< Type definitions @>=
 
-typedef std::tr1::shared_ptr<shared_value> shared_share;
+typedef std::shared_ptr<shared_value> shared_share;
 struct id_data
 { shared_share val; @+ type_p type;
-  id_data() : val(),type(NULL)@+ {}
+  id_data() : val(),type(nullptr)@+ {}
 };
 
 @ We cannot store auto pointers in a table, so upon entering into the table we
@@ -1055,11 +1059,11 @@ since the pointer returned may be used to modify a stored value.
 @< Function def... @>=
 type_p Id_table::type_of(Hash_table::id_type id) const
 {@; map_type::const_iterator p=table.find(id);
-  return p==table.end() ? NULL : p->second.type;
+  return p==table.end() ? nullptr : p->second.type;
 }
 shared_value Id_table::value_of(Hash_table::id_type id) const
 { map_type::const_iterator p=table.find(id);
-  return p==table.end() ? shared_value(value(NULL)) : *p->second.val;
+  return p==table.end() ? shared_value(value(nullptr)) : *p->second.val;
 }
 shared_share Id_table::address_of(Hash_table::id_type id)
 { map_type::iterator p=table.find(id);
@@ -1082,7 +1086,7 @@ void Id_table::print(std::ostream& out) const
 { for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
   { out << main_hash_table->name_of(p->first) << ": " @|
         << *p->second.type << ": ";
-    if (*p->second.val==NULL)
+    if (*p->second.val==nullptr)
       out << '*';
     else
       out << **p->second.val;
@@ -1107,7 +1111,7 @@ extern Id_table* global_id_table;
 create the table.
 
 @< Global variable definitions @>=
-Id_table* global_id_table=NULL; // will never be |NULL| at run time
+Id_table* global_id_table=nullptr; // will never be |nullptr| at run time
 
 @*1 Global identifiers.
 %
@@ -1149,7 +1153,7 @@ possible in the language, we have to watch out for a (shared) null pointer at
 
 @< Function definitions @>=
 void global_identifier::evaluate(level l) const
-{ if (address->get()==NULL)
+{ if (address->get()==nullptr)
   { std::ostringstream o;
     o << "Taking value of uninitialized variable " << name();
     throw std::runtime_error(o.str());
@@ -1223,9 +1227,9 @@ assignments to the variable must respect the more specific type).
 @< Cases for type-checking and converting... @>=
 case applied_identifier:
 { type_p id_t; expression_ptr id; size_t i,j;
-  if ((id_t=id_context->lookup(e.e.identifier_variant,i,j))!=NULL)
+  if ((id_t=id_context->lookup(e.e.identifier_variant,i,j))!=nullptr)
     id.reset(new local_identifier(e.e.identifier_variant,i,j));
-  else if ((id_t=global_id_table->type_of(e.e.identifier_variant))!=NULL)
+  else if ((id_t=global_id_table->type_of(e.e.identifier_variant))!=nullptr)
     id.reset(new global_identifier(e.e.identifier_variant));
   else throw program_error  @|
        (std::string("Undefined identifier ")
@@ -1267,17 +1271,17 @@ apply without change from the non-overloaded case however.
 
 struct overload_data
 { shared_value val; @+ func_type_p type;
-  overload_data() : val(),type(NULL)@+ {}
+  overload_data() : val(),type(nullptr)@+ {}
 };
 
 @*2 Overload tables.
 %
-Looking up an overloaded identifier should given an ordered list of possible
-overloads, the ordering being important since we want to try matching more
-specific (harder to convert to) argument types before trying less specific
-ones. Therefore, rather than using a |std::multimap| multi-mapping identifiers
-to individual value-type pairs, we use a |std::map| from identifiers to
-vectors of value-type pairs.
+Looking up an overloaded identifier should be done using an ordered list of
+possible overloads; the ordering is important since we want to try matching
+more specific (harder to convert to) argument types before trying less
+specific ones. Therefore, rather than using a |std::multimap| multi-mapping
+identifiers to individual value-type pairs, we use a |std::map| from
+identifiers to vectors of value-type pairs.
 
 An identifier is entered into the table when it is first given an overloaded
 definition, so the table will not normally associate an empty vector to an
@@ -1359,7 +1363,7 @@ void overload_table::add
   |val| and |type| at the end, if any is close without being one-way
   convertible to or from it throw an error, and in the remaining case make
   sure |type| is added after any types that convert to it and before any types
-  it converts to @>
+  it convert to @>
 }
 
 @ We call |is_close| for each existing argument type; if it returns a nonzero
@@ -1506,7 +1510,7 @@ extern overload_table* global_overload_table;
 create the table.
 
 @< Global variable definitions @>=
-overload_table* global_overload_table=NULL;
+overload_table* global_overload_table=nullptr;
 
 @*2 Resolution of overloading.
 %
@@ -1631,9 +1635,9 @@ The conditions for suppressing parentheses are tested a dynamic casts.
 
 @< Function definitions @>=
 void call_expression::print(std::ostream& out) const
-{ if (dynamic_cast<identifier*>(function)!=NULL) out << *function;
+{ if (dynamic_cast<identifier*>(function)!=nullptr) out << *function;
   else out << '(' << *function << ')';
-  if (dynamic_cast<tuple_expression*>(argument)!=NULL) out << *argument;
+  if (dynamic_cast<tuple_expression*>(argument)!=nullptr) out << *argument;
   else out << '(' << *argument << ')';
 }
 
@@ -1696,7 +1700,7 @@ general function calls with an identifier as function.
 @< Function definitions @>=
 void overloaded_builtin_call::print(std::ostream& out) const
 { out << print_name;
-  if (dynamic_cast<tuple_expression*>(argument)!=NULL) out << *argument;
+  if (dynamic_cast<tuple_expression*>(argument)!=nullptr) out << *argument;
   else out << '(' << *argument << ')';
 }
 
@@ -1768,7 +1772,7 @@ in the overload table.
 { const Hash_table::id_type id =e.e.call_variant->fun.e.identifier_variant;
   const expr arg=e.e.call_variant->arg;
   size_t i,j; // dummies; local binding not used here
-  if (not is_empty(arg) and id_context->lookup(id,i,j)==NULL)
+  if (not is_empty(arg) and id_context->lookup(id,i,j)==nullptr)
   { const overload_table::variant_list& variants
       = global_overload_table->variants(id);
     if (variants.size()>0 or is_special_operator(id))
@@ -1823,7 +1827,7 @@ will still be accepted.
 @< Return a call of variant |v|... @>=
 { expression_ptr call;
   builtin_value* f = dynamic_cast<builtin_value*>(v.val.get());
-  if (f!=NULL)
+  if (f!=nullptr)
     call = expression_ptr
       (new overloaded_builtin_call(f->val,f->print_name.c_str(),arg));
   else @< Set |call| to the call of the user-defined function |v| @>
@@ -1908,9 +1912,9 @@ executing would be confusing.
 void call_expression::evaluate(level l) const
 { function->eval(); @+ shared_value fun=pop_value();
 @/builtin_value* f=dynamic_cast<builtin_value*>(fun.get());
-  argument->evaluate(f==NULL ? single_value : multi_value);
+  argument->evaluate(f==nullptr ? single_value : multi_value);
   try
-  { if (f==NULL)
+  { if (f==nullptr)
       @< Call user-defined function |fun| with argument on |execution_stack| @>
     else // built-in functions
       (*f->val)(l); // call the wrapper function, handling |l| appropriately
@@ -1945,10 +1949,10 @@ extend the error message. However we can maintain the distinction between a
 @< Catch-block for exceptions thrown within function calls @>=
 catch (const std::exception& e)
 { identifier* p=dynamic_cast<identifier*>(function);
-  if (p!=NULL) // named function
+  if (p!=nullptr) // named function
   {
     const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
-    if (l_err!=NULL)
+    if (l_err!=nullptr)
       throw std::logic_error
         (std::string(e.what())+"\n(in call of "+p->name()+')');
     throw std::runtime_error
@@ -1971,7 +1975,7 @@ void overloaded_builtin_call::evaluate(level l) const
   {@; (*f)(l); }
   catch (const std::exception& e)
   { const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
-    if (l_err!=NULL)
+    if (l_err!=nullptr)
       throw std::logic_error
         (std::string(e.what())+"\n(in call of "+print_name+')');
     throw std::runtime_error
@@ -1989,7 +1993,7 @@ void generic_builtin_call::evaluate(level l) const
   {@; (*f)(l); }
   catch (const std::exception& e)
   { const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
-    if (l_err!=NULL)
+    if (l_err!=nullptr)
       throw std::logic_error
         (std::string(e.what())+"\n(in call of "+print_name+')');
     throw std::runtime_error
@@ -2035,14 +2039,14 @@ applies.
 void prints_wrapper(expression_base::level l)
 { shared_value v=pop_value();
   string_value* s=dynamic_cast<string_value*>(v.get());
-  if (s!=NULL)
+  if (s!=nullptr)
     *output_stream << s->val << std::endl;
   else
   { tuple_value* t=dynamic_cast<tuple_value*>(v.get());
-    if (t!=NULL)
+    if (t!=nullptr)
     { for (size_t i=0; i<t->val.size(); ++i)
       { s=dynamic_cast<string_value*>(t->val[i].get());
-        if (s!=NULL)
+        if (s!=nullptr)
 	  *output_stream << s->val;
         else
            *output_stream << *t->val[i];
@@ -2136,7 +2140,7 @@ modification (so that it can manage ownership during its operation), but the
 expression here is held in an ordinary pointer inside a |tuple_expression|.
 Therefore we must copy the ordinary |expression| pointer temporarily to an
 |expression_ptr| auto-pointer that |coerce| will manage; once constructed we
-set the |expression| component (temporarily) to~|NULL| to avoid potential
+set the |expression| component (temporarily) to~|nullptr| to avoid potential
 double destruction, and after the call to |coerce| we release the (possibly
 modified) |expression_ptr| back into the |expression|.
 
@@ -2160,9 +2164,9 @@ bool can_coerce_arg
 { if (to.specialise(from))
     return true; // type matches without coercion
   tuple_expression* tup= dynamic_cast<tuple_expression*>(e);
-  if (tup==NULL)
+  if (tup==nullptr)
     return false; // we need a pair to insert a coercion
-  expression_ptr comp(tup->component[i]); tup->component[i]=NULL;
+  expression_ptr comp(tup->component[i]); tup->component[i]=nullptr;
   bool result = coerce(from,to,comp); tup->component[i]=comp.release();
   return result;
 }
@@ -2205,7 +2209,7 @@ without runtime storage, we wrap it into a zero-size structure.
 @< Type def... @>=
 struct id_pat_deleter
 {@; void operator()(id_pat* p) @+{@; destroy_id_pat(p); delete p; }};
-typedef std::tr1::shared_ptr<id_pat> shared_pattern;
+typedef std::shared_ptr<id_pat> shared_pattern;
   // deleter type does not enter into this
 
 @ We must also treat the question of obtaining ownership of an |id_pat|
@@ -2226,7 +2230,7 @@ one such call was in fact responsible for the exception, the corresponding
 body will not have been assigned, and the |pattern_node| is in its original
 constructed state, which has no loose ends and is therefore safe for
 |destroy_id_pat|). In particular at each point where an exception might be
-thrown the argument to |destroy_id_pat| is properly |NULL|-terminated (by the
+thrown the argument to |destroy_id_pat| is properly |nullptr|-terminated (by the
 |pattern_node| constructor).
 
 @< Local function def... @>=
@@ -2235,9 +2239,9 @@ id_pat copy_id_pat(const id_pat& p)
   id_pat result=p; // shallow copy
   try
   { if ((p.kind&0x2)!=0)
-    { result.sublist=NULL;
+    { result.sublist=nullptr;
       for (patlist s=p.sublist,*d=&result.sublist;
-           s!=NULL; s=s->next,d=&(*d)->next)
+           s!=nullptr; s=s->next,d=&(*d)->next)
       @/{@;
         *d=new pattern_node; (*d)->body=copy_id_pat(s->body);
       }
@@ -2285,7 +2289,7 @@ then this might no longer be true.
 
 @< Function definitions @>=
 void lambda_expression::print(std::ostream& out) const
-{ if (param.get()==NULL)
+{ if (param.get()==nullptr)
     out << "()";
   else if ((param->kind&0x1)!=0)
     out << '(' << *param << ')';
@@ -2310,7 +2314,7 @@ type \.{(*,*,(*,*))}. These recursive functions construct such types.
 
 @< Function definitions @>=
 type_list_ptr pattern_list(const patlist p)
-{@; return p==NULL ? type_list_ptr(NULL)
+{@; return p==nullptr ? type_list_ptr(nullptr)
   : make_type_list(pattern_type(p->body),pattern_list(p->next));
 }
 @)
@@ -2328,7 +2332,7 @@ concatenation of vectors.
 size_t count_identifiers(const id_pat& pat)
 { size_t result= pat.kind & 0x1; // 1 if |pat.name| is defined, 0 otherwise
   if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
-    for (patlist p=pat.sublist; p!=NULL; p=p->next)
+    for (patlist p=pat.sublist; p!=nullptr; p=p->next)
       result+=count_identifiers(p->body);
   return result;
 }
@@ -2337,7 +2341,7 @@ void list_identifiers(const id_pat& pat, std::vector<Hash_table::id_type>& d)
 { if ((pat.kind & 0x1)!=0)
     d.push_back(pat.name);
   if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
-    for (patlist p=pat.sublist; p!=NULL; p=p->next)
+    for (patlist p=pat.sublist; p!=nullptr; p=p->next)
       list_identifiers(p->body,d);
 }
 
@@ -2351,7 +2355,7 @@ void thread_bindings
   if ((pat.kind & 0x2)!=0)
   { assert(type.kind==tuple_type);
     type_list l=type.tuple;
-    for (patlist p=pat.sublist; p!=NULL; p=p->next,l=l->next)
+    for (patlist p=pat.sublist; p!=nullptr; p=p->next,l=l->next)
       thread_bindings(p->body,l->t,dst);
   }
 }
@@ -2368,7 +2372,7 @@ void thread_components
   if ((pat.kind & 0x2)!=0)
   { tuple_value* t=force<tuple_value>(val.get());
     size_t i=0;
-    for (patlist p=pat.sublist; p!=NULL; p=p->next,++i)
+    for (patlist p=pat.sublist; p!=nullptr; p=p->next,++i)
       thread_components(p->body,t->val[i],dst);
   }
 }
@@ -2421,7 +2425,7 @@ struct closure_value : public value_base
   static const char* name() @+{@; return "closure"; }
 };
 typedef std::auto_ptr<closure_value> closure_ptr;
-typedef std::tr1::shared_ptr<closure_value> shared_closure;
+typedef std::shared_ptr<closure_value> shared_closure;
 
 @ For now a closure prints just like the |lambda_expression| from which it was
 obtained. One could imagine printing after this body ``where'' followed by the
@@ -2430,7 +2434,7 @@ relevant (because referenced) identifiers could be printed.
 
 @< Function def... @>=
 void closure_value::print(std::ostream& out) const
-{ if (param.get()==NULL)
+{ if (param.get()==nullptr)
     out << "()";
   else if ((param->kind&0x1)!=0)
     out << '(' << *param << ')';
@@ -2505,7 +2509,7 @@ name.
 @< Function definitions @>=
 void overloaded_closure_call::print(std::ostream& out) const
 { out << print_name;
-  if (dynamic_cast<tuple_expression*>(argument)!=NULL) out << *argument;
+  if (dynamic_cast<tuple_expression*>(argument)!=nullptr) out << *argument;
   else out << '(' << *argument << ')';
 }
 
@@ -2516,8 +2520,8 @@ if it was not a |builtin_value|.
 
 @< Set |call| to the call of the user-defined function |v| @>=
 { shared_closure fun =
-   std::tr1::dynamic_pointer_cast<closure_value>(v.val);
-  if (fun==NULL)
+   std::dynamic_pointer_cast<closure_value>(v.val);
+  if (fun==nullptr)
     throw std::logic_error("Overloaded value is not a function");
   std::ostringstream name;
   name << main_hash_table->name_of(id) << '@@' << v.type->arg_type;
@@ -2549,7 +2553,7 @@ void overloaded_closure_call::evaluate(level l) const
   }
   catch (const std::exception& e)
   { const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
-    if (l_err!=NULL)
+    if (l_err!=nullptr)
       throw std::logic_error
         (std::string(e.what())+"\n(in call of "+print_name+')');
     throw std::runtime_error
@@ -2655,7 +2659,7 @@ void conditional_expression::print(std::ostream& out) const
   { out << *cur->condition << " then " << *cur->then_branch;
     conditional_expression* p =
       dynamic_cast<conditional_expression*>(cur->else_branch);
-    if (p==NULL)
+    if (p==nullptr)
       break;
     out << " elif "; cur=p;
   }
@@ -2741,7 +2745,7 @@ case while_expr:
      (convert_expr(w->body, @|
                    type==void_type ? void_type :*type.component_type));
     expression_ptr result(new while_expression(c,b));
-    return type==void_type ? new voiding(result) : result.release();
+    return type==void_type ? new voiding(std::move(result)) : result.release();
   }
   else
   @< If |type| can be converted from some row-of type, check |w->body|
@@ -2758,7 +2762,7 @@ component type as for list displays.
    appropriate conversion function to it; otherwise |throw| a |type_error| @>=
 { type_expr comp_type;
   const conversion_record* conv = row_coercion(type,comp_type);
-  if (conv==NULL)
+  if (conv==nullptr)
     throw type_error(e,copy(row_of_type),copy(type));
 @)
   expression_ptr b(convert_expr(w->body,comp_type));
@@ -2848,20 +2852,20 @@ case for_expr:
   subscr_base::sub_type which; // the kind of aggregate iterated over
   @< Set |which| according to |in_type|, and set |bind| according to the
      identifiers contained in |f->id| @>
-  type_expr body_type, *btp; const conversion_record* conv=NULL;
+  type_expr body_type, *btp; const conversion_record* conv=nullptr;
   if (type==void_type)
     btp=&void_type; // void context is more permissive for body
   else if (type.specialise(row_of_type))
     btp=type.component_type;
-  else if ((conv=row_coercion(type,body_type))!=NULL)
+  else if ((conv=row_coercion(type,body_type))!=nullptr)
     btp=&body_type;
   else throw type_error(e,copy(row_of_type),copy(type));
   bind.push(id_context);
   expression_ptr body(convert_expr (f->body,*btp));
 @/bind.pop(id_context);
   expression_ptr loop(new for_expression(f->id,in_expr,body,which));
-@/return type==void_type ? new voiding(loop) :
-      @| conv!=NULL ? new conversion(*conv,loop) : @| loop.release() ;
+@/return type==void_type ? new voiding(std::move(loop)) :
+    @| conv!=nullptr ? new conversion(*conv,std::move(loop)) : @| loop.release() ;
 }
 
 @ This type must be indexable by integers (so it is either a row-type or
@@ -2911,7 +2915,7 @@ void for_expression::evaluate(level l) const
        // this is safe to re-use between iterations
   std::vector<shared_value> loop_frame; loop_frame.reserve(n_id);
 
-  row_ptr result(NULL);
+  row_ptr result(nullptr);
   @< Evaluate the loop, dispatching the various possibilities for |kind|, and
   setting |result| @>
 
@@ -3106,12 +3110,12 @@ case cfor_expr:
     );
 @)
   bindings bind(1); bind.add(c->id,copy(int_type));
-  type_expr body_type, *btp; const conversion_record* conv=NULL;
+  type_expr body_type, *btp; const conversion_record* conv=nullptr;
   if (type==void_type)
     btp=&void_type;
   else if (type.specialise(row_of_type))
     btp=type.component_type;
-  else if ((conv=row_coercion(type,body_type))!=NULL)
+  else if ((conv=row_coercion(type,body_type))!=nullptr)
     btp=&body_type;
   else throw type_error(e,copy(row_of_type),copy(type));
   bind.push(id_context);
@@ -3123,7 +3127,7 @@ case cfor_expr:
   else
     loop.reset(new dec_for_expression(c->id,count_expr,bound_expr,body));
   return type==void_type ? new voiding(loop) : @|
-         conv!=NULL ? new conversion(*conv,loop) : @|  loop.release();
+         conv!=nullptr ? new conversion(*conv,loop) : @|  loop.release();
 
 }
 
@@ -3240,7 +3244,7 @@ case op_cast_expr:
         return p.release();
       type_ptr ftype=make_function_type
 	(copy(ctype),copy(variants[i].type->result_type));
-      throw type_error(e,ftype,copy(type));
+      throw type_error(e,std::move(ftype),copy(type));
     }
   std::ostringstream o;
   o << "Cannot resolve " << main_hash_table->name_of(c->oper) @|
@@ -3420,11 +3424,11 @@ case ass_stat:
 { Hash_table::id_type lhs=e.e.assign_variant->lhs;
   const expr& rhs=e.e.assign_variant->rhs;
   type_p it; expression_ptr assign; size_t i,j;
-  if ((it=id_context->lookup(lhs,i,j))!=NULL)
+  if ((it=id_context->lookup(lhs,i,j))!=nullptr)
   @/{@; expression_ptr r(convert_expr(rhs,*it));
     assign.reset(new local_assignment(lhs,i,j,r));
   }
-  else if ((it=global_id_table->type_of(lhs))!=NULL)
+  else if ((it=global_id_table->type_of(lhs))!=nullptr)
   @/{@; expression_ptr r(convert_expr(rhs,*it));
     assign.reset(new global_assignment(lhs,r));
   }
@@ -3517,7 +3521,7 @@ undefined value in the variable.
 
 @< Function def... @>=
 void global_component_assignment::evaluate(level l) const
-{ if (address->get()==NULL)
+{ if (address->get()==nullptr)
   { std::ostringstream o;
     o << "Assigning to component of uninitialized variable "
       << main_hash_table->name_of(lhs);
@@ -3669,9 +3673,9 @@ case comp_ass_stat:
   const expr& rhs=e.e.comp_assign_variant->rhs;
 @/type_p aggr_t; type_expr ind_t; type_expr comp_t;
   expression_ptr assign; size_t d,o; bool is_local;
-  if ((aggr_t=id_context->lookup(aggr,d,o))!=NULL)
+  if ((aggr_t=id_context->lookup(aggr,d,o))!=nullptr)
     is_local=true;
-  else if ((aggr_t=global_id_table->type_of(aggr))!=NULL)
+  else if ((aggr_t=global_id_table->type_of(aggr))!=nullptr)
     is_local=false;
   else throw program_error @|
     (std::string("Undefined identifier in component assignment: ")

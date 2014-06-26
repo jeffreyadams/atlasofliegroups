@@ -83,6 +83,7 @@ namespace atlas {
     template<typename C> class Vector;
     template<typename C> class Matrix_base;
     template<typename C> class Matrix;
+    template<typename C> class PID_Matrix;
   }
   namespace ratvec { template<typename C> class RationalVector; }
 
@@ -151,7 +152,7 @@ namespace atlas {
 
   // interpetationless terminology
   typedef matrix::Vector<int> int_Vector;
-  typedef matrix::Matrix<int> int_Matrix;
+  typedef matrix::PID_Matrix<int> int_Matrix;
   typedef std::vector<int_Vector> int_VectorList;
 
   // when related to a root system, these alternatives can be used
@@ -172,7 +173,7 @@ namespace atlas {
   typedef std::vector<LatticeCoeff> CoeffList; // no vector arithmetic here
   typedef matrix::Vector<LatticeCoeff> LatticeElt;
   typedef std::vector<LatticeElt> latticeEltList;
-  typedef matrix::Matrix<LatticeCoeff> LatticeMatrix;
+  typedef matrix::PID_Matrix<LatticeCoeff> LatticeMatrix;
 
   namespace bitvector {
     template<size_t> class BitVector;
@@ -200,6 +201,7 @@ namespace atlas {
     struct LieType;
     struct InnerClassType;
     struct Layout;
+    typedef char TypeLetter;
   }
   using lietype::SimpleLieType;
   using lietype::LieType;
@@ -219,6 +221,9 @@ namespace atlas {
   typedef unsigned short RootNbr;
   typedef std::vector<RootNbr> RootNbrList;
   typedef bitmap::BitMap RootNbrSet;
+
+  namespace dynkin { class DynkinDiagram; }
+  using dynkin::DynkinDiagram;
 
   namespace weyl {
     class Twist; // diagram automorphism (in practice always an involution)
@@ -345,7 +350,7 @@ namespace atlas {
   using kgb::DescentSet;
   static const KGBElt UndefKGB = ~0u;
 
-  typedef unsigned int Parabolic;
+  typedef RankFlags Parabolic; // set of generators defining parabolic subgroup
   typedef unsigned int KGPElt;
 
   namespace descents { class DescentStatus; }
@@ -387,6 +392,8 @@ namespace atlas {
     typedef std::vector<KLIndex> KLRow;
     typedef std::vector<BlockElt> PrimitiveRow;
   }
+  using kl::KLCoeff;
+  using kl::KLPol;
 
   namespace standardrepk {
     class StandardRepK;	// standard representation restricted to K

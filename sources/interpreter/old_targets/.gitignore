@@ -1,0 +1,8 @@
+# This file is present because git cannot otherwise record the directory
+# The directory must be present (but may be empty or not) in order
+# for the make process of realex to function properly
+
+# Ignore everything in this directory
+*
+# Except this file
+!.gitignore

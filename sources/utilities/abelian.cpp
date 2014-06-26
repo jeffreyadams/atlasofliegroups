@@ -430,7 +430,7 @@ namespace abelian {
   GrpNbrList gen;
   generators(gen,B,A); // transform bitset to list
 
-  matrix::Matrix<int> M(A.rank(),A.rank()+gen.size(),0);
+  matrix::PID_Matrix<int> M(A.rank(),A.rank()+gen.size(),0);
 
   // put in the kernel basis
 
@@ -448,7 +448,7 @@ namespace abelian {
   // get Smith normal basis for columns span of |M|, and invariant factors
 
   std::vector<int> inv_factors;
-  matrix::Matrix<int> basis = matreduc::Smith_basis(M,inv_factors);
+  matrix::PID_Matrix<int> basis = matreduc::Smith_basis(M,inv_factors);
 
   // export scaled columns
   b.resize(inv_factors.size());
@@ -633,7 +633,7 @@ void to_array(GrpArr& a, const matrix::Vector<int>& v, const GroupType& t)
   This just involves rewriting the coeficients as unsigned longs modulo
   the type factors.
 */
-void toEndomorphism(Endomorphism& e, const matrix::Matrix<int>& q,
+void toEndomorphism(Endomorphism& e, const matrix::PID_Matrix<int>& q,
 		    const FiniteAbelianGroup& A)
 {
   Endomorphism(q.numRows(),q.numColumns()).swap(e);

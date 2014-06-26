@@ -1,5 +1,5 @@
 /*
-  This is involurions.h
+  This is involutions.h
 
   Copyright (C) 2011 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
@@ -28,7 +28,10 @@
    supplementary information in the form of a table indexed by those numbers.
    This information, which includes root classification and the (somewhat
    voluminous) involution matrix, is generated as soon a an involution is
-   registered here; user code can add parallel arrays for specific uses.
+   registered here, which happens for whole twisted conjugacy classes at a
+   time through a call to |Cartan_orbits::add| defined below. If user code
+   should need additional information associated involutions, it might define
+   an array indexed by |InvolutionNbr|; but currently this happens nowhere.
  */
 
 namespace atlas {
@@ -237,8 +240,8 @@ struct Cartan_orbit
 
 class Cartan_orbits : public InvolutionTable
 {
-  std::vector<Cartan_orbit> orbit;
-  std::vector<unsigned int> Cartan_index;
+  std::vector<Cartan_orbit> orbit; // orbits of Cartan classes that were added
+  std::vector<unsigned int> Cartan_index; // maps Cartan number to its position
 
   unsigned int locate(InvolutionNbr i) const;
 public:
@@ -248,7 +251,7 @@ public:
 
 // manipulators
 
-  void set_size(CartanNbr n_Cartans);
+  void set_size(CartanNbr n_Cartans); // resize once number of Cartans is known
   void add(ComplexReductiveGroup& G, CartanNbr cn);
   void add(ComplexReductiveGroup& G, const BitMap& Cartan_classes);
 

@@ -1,6 +1,4 @@
-/*!
-\file
-\brief Implementation of the classes TitsGroup and TitsElt.
+/*       Implementation of the classes TitsGroup and TitsElt.
 
   This module contains an implementation of a slight variant of the
   Tits group (also called extended Weyl group) as defined in J. Tits,
@@ -87,19 +85,19 @@ GlobalTitsElement GlobalTitsElement::simple_imaginary_cross
 
 GlobalTitsGroup::GlobalTitsGroup(const ComplexReductiveGroup& G)
   : TwistedWeylGroup(G.twistedWeylGroup())
-  , simple(PreRootDatum // viewed from the dual side
-	   (CoweightList(G.rootDatum().beginSimpleCoroot(),
-			 G.rootDatum().endSimpleCoroot()),
-	    WeightList(G.rootDatum().beginSimpleRoot(),
-		       G.rootDatum().endSimpleRoot()),
-	    G.rootDatum().rank()))
+  , prd( // |PreRootDatum|, viewed from the dual side
+	CoweightList(G.rootDatum().beginSimpleCoroot(),
+		     G.rootDatum().endSimpleCoroot()),
+	WeightList(G.rootDatum().beginSimpleRoot(),
+		   G.rootDatum().endSimpleRoot()),
+	G.rootDatum().rank())
   , delta_tr(G.distinguished().transposed())
   , alpha_v(G.semisimpleRank())
   , half_rho_v(G.rootDatum().dual_twoRho(),4)
   , square_class_gen(compute_square_classes(G))
 {
   for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
-    alpha_v[i]=TorusPart(simple.roots()[i]);
+    alpha_v[i]=TorusPart(prd.simple_roots()[i]);
 }
 
 WeightInvolution
@@ -107,7 +105,7 @@ WeightInvolution
 {
   WeightInvolution M = delta_tr;
   M.negate(); // we need the involution |-^delta| corresponding to |delta|
-  weylGroup().act(simple,tw,M); // twisted involution, so left action is OK
+  weylGroup().act(prd,tw,M); // twisted involution, so left action is OK
   return M;
 }
 
@@ -123,7 +121,7 @@ TorusElement GlobalTitsGroup::dual_twisted(const TorusElement& x) const
 {
   RatWeight rw = x.log_pi(false);
   const WeylGroup& W = weylGroup();
-  W.act(simple,W.longest(),rw);
+  W.act(prd,W.longest(),rw);
   return y_values::exp_pi(RatWeight(delta_tr*-rw.numerator(),
 				    rw.denominator()));
 }
@@ -132,7 +130,7 @@ TorusElement GlobalTitsGroup::theta_tr_times_torus(const GlobalTitsElement& a)
   const
 { RatWeight rw = a.torus_part().log_pi(false);
   RatWeight delta_rw(delta_tr*rw.numerator(),rw.denominator());
-  weylGroup().act(simple,a.tw(),delta_rw);
+  weylGroup().act(prd,a.tw(),delta_rw);
   return y_values::exp_pi(delta_rw);
 }
 
@@ -147,7 +145,7 @@ void GlobalTitsGroup::left_mult(const TorusElement& t,
   {
     weyl::Generator s =  // multiply by $\sigma_i$ or $\sigma_{tw(i)}^{-1}$
       do_twist ? twisted(ww[i]) : ww[i];
-    b.t.simple_reflect(simple,s); // note: |b.t| is \emph{weight} for |simple|
+    b.t.simple_reflect(prd,s); // note: |b.t| is \emph{weight} for |simple|
     if ((weylGroup().leftMult(b.w,s)>0)==do_twist)
       b.t += m_alpha(s); // adjust torus part on length (do_twist|in|de)crease
   }
@@ -166,8 +164,8 @@ bool GlobalTitsGroup::has_central_square(GlobalTitsElement a) const
   // now check if |a.t| is central, by scalar products with |simple.coroots()|
   RatWeight rw = a.t.log_2pi();
   for (weyl::Generator s=0; s<semisimple_rank(); ++s)
-    if (arithmetic::remainder(simple.coroots()[s].dot(rw.numerator())
-			    ,rw.denominator())!=0)
+    if (arithmetic::remainder(prd.simple_coroots()[s].dot(rw.numerator())
+			     ,rw.denominator())!=0)
       return false;
 
   return true;
@@ -182,7 +180,7 @@ bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a) const
   // now check if |t| is central, by scalar products with |simple.coroots()|
   RatWeight rw = t.log_2pi();
   for (weyl::Generator s=0; s<semisimple_rank(); ++s)
-    if (arithmetic::remainder(simple.coroots()[s].dot(rw.numerator())
+    if (arithmetic::remainder(prd.simple_coroots()[s].dot(rw.numerator())
 			    ,rw.denominator())!=0)
       return false;
 
@@ -222,10 +220,11 @@ void
 GlobalTitsGroup::imaginary_cross_act(weyl::Generator s,TorusElement& t) const
 {
   Rational r =
-    t.evaluate_at(simple.coroots()[s]) - Rational(1); // $\rho_{im}$ shift
+    t.evaluate_at(prd.simple_coroots()[s])
+		   - Rational(1); // $\rho_{im}$ shift
   if (r.numerator()!=0) // compact imaginary case needs no action
     add(RatWeight // now reflect for |s|, shifted to fix $\rho_{im}$
-	(simple.roots()[s]*-r.numerator(),2*r.denominator()),t);
+	(prd.simple_roots()[s]*-r.numerator(),2*r.denominator()),t);
 }
 
 /* The code below uses Tits element representation as $t*\sigma_w*\delta_1$
@@ -287,13 +286,13 @@ int GlobalTitsGroup::cross_act(GlobalTitsElement& a,const  WeylWord& w)
 void
 GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,TorusElement& t) const
 {
-  const Coweight& eval_pt=simple.coroots()[s];
+  const Coweight& eval_pt=prd.simple_coroots()[s];
   RatWeight w=t.log_2pi();
   int num = eval_pt.dot(w.numerator()); // should become multiple of denominator
 
   if (num % w.denominator()!=0) // correction needed if alpha compact
   {
-    const Weight& shift_vec= simple.roots()[s];
+    const Weight& shift_vec= prd.simple_roots()[s];
     // |eval_pt.dot(shift_vec)==2|, so correct numerator by |(num/2d)*shift_vec|
     w -= RatWeight(shift_vec*num,2*w.denominator());
     assert(eval_pt.dot(w.numerator())==0);
@@ -310,7 +309,7 @@ void GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
 
 // Sometimes we need to compute the grading at non-simple imaginary roots.
 // This could be computed using expression in simple-imaginary roots |alpha|,
-// for which grading is \emph{compact} iff  |torus_part().negative_at(alpha)|
+// for which grading is \emph{compact} iff |torus_part().negative_at(alpha)|
 // however that is not easy to implement; conjugating to simple is easier.
 // Root system |rs| necessary to interpret |alpha|, dual makes no difference
 bool GlobalTitsGroup::compact(const RootSystem& rs,
@@ -847,7 +846,7 @@ TitsElt TitsCoset::naive_seed
   TorusPart x = f.fiberGroup().fromBasis(v);
 
   // right-multiply this torus part by canonical twisted involution for |cn|
-  TitsElt result(titsGroup(),x,G.twistedInvolution(cn));
+  TitsElt result(titsGroup(),x,G.involution_of_Cartan(cn));
 
   return result; // result should be reduced immediately by caller
 }
@@ -897,7 +896,7 @@ TitsElt TitsCoset::grading_seed
   // locate fiber and weak real form
   const Fiber& f=G.cartan(cn).fiber();
   cartanclass::adjoint_fiber_orbit wrf = G.real_form_part(rf,cn);
-  const TwistedInvolution& tw = G.twistedInvolution(cn);
+  const TwistedInvolution& tw = G.involution_of_Cartan(cn);
 
   // get an element lying over the canonical twisted involution for |cn|
   TitsElt a(Tg,tw); // trial element with null torus part
@@ -1004,7 +1003,7 @@ TitsElt EnrichedTitsGroup::backtrack_seed
   const TitsGroup& Tgr= titsGroup();
   // a name chosen to avoid shadowing (inaccessible) |Tg|, and thereby warnings
 
-  const TwistedInvolution& tw=G.twistedInvolution(cn);
+  const TwistedInvolution& tw=G.involution_of_Cartan(cn);
 
   RootNbrSet rset;
   WeylWord cross;

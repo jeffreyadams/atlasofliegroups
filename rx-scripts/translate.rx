@@ -15,9 +15,9 @@ set translate_debug=false
   if gamma or gamma_new is not dominant, no guarantees
 }
 set T(Param p, ratvec gamma_new)= Param:
-  let (x,lambdaminusrho,nu)=%p
-  , delta=ratvectovec(gamma_new-infinitesimal_character(p))
-  in  param(x,lambdaminusrho+delta,nu+delta)
+  let (x,lambda_minus_rho,nu)=%p
+  , delta=ratvec_as_vec(gamma_new-infinitesimal_character(p))
+  in  param(x,lambda_minus_rho+delta,nu+delta)
 
 { translate a ParamPol by translating each term }
 set T(ParamPol P, ratvec gamma_new)= ParamPol:
@@ -30,7 +30,7 @@ set T(ParamPol P, ratvec gamma_new)= ParamPol:
 set Psi(Param p,int k)= Param:
   let rd=integrality_datum(p), gamma=infinitesimal_character(p)
   then coroot=simple_coroots(rd)[k]
-  then c=rattoint(coroot*gamma) { integrality assures this is integer }
+  then c=rat_as_int(coroot*gamma) { integrality assures this is integer }
   then shift=c*fundamental_weight(rd,k) { this will be -delta in T }
   in
   if not is_integer(shift) then error("cannot project to this wall")
@@ -50,7 +50,7 @@ set Psi(Param p,[int] v)= Param:
   then shift = ratvec: null(rank(rd))
   in
   for k in v { select components in fundamental weight basis for these k }
-  do shift +:= rattoint(simple_coroots(rd)[k]*gamma)*fundamental_weight(rd,k)
+  do shift +:= rat_as_int(simple_coroots(rd)[k]*gamma)*fundamental_weight(rd,k)
   od
 ; if not is_integer(shift) then error("cannot project to this subspace")
   else T(p,gamma-shift)
@@ -72,7 +72,7 @@ set Psi(ParamPol P,[int] v)= ParamPol:
 
   root k of the integral roots is in pseudo-tau(p) if
   <gamma,alpha_k^v>*fund_weight is integral, and
-  Psi(p,k)=0 or its x(Psi(p,k)) gets changed by make_final
+  Psi(p,k)=0 or its x(Psi(p,k)) gets changed by make_finals
   (here Psi(p,k) is the translation of the standard module for p)
 }
 
@@ -82,7 +82,7 @@ set root_in_pseudo_tau (Param p,int k)= bool:
     (simple_coroots(rd)[k]*infinitesimal_character(p))*fundamental_weight(rd,k)
   in
   ( is_integer(weight) and is_zero(Psi(p,k))
-    or not x(Psi(p,k))=x(make_final(Psi(p,k))[0]) )
+    or not x(Psi(p,k))=x(make_finals(Psi(p,k))[0]) )
 
 { set of integers, defining a subset of the simple integral roots }
 set pseudo_tau (Param p)= [int]:
@@ -115,7 +115,7 @@ set test_even_unipotent (Param p)= void:
   prints(""); prints("original parameter: ",p)
 ; prints("translated parameter: ",q,", ", infinitesimal_character(q))
 ; prints("translated irreducible is unitary: ",unitary)
-; if translate_debug then prettyPrint(Q) fi
+; if translate_debug then pol_format(Q) fi
 )
 
 { test_even_unipotent of a list of parameters }

@@ -128,12 +128,9 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix)
   , two_rho_in_simple_roots(rk,0)
   , root_perm()
 {
-  if (rk>0)
-    cons(Cartan_matrix);
-}
+  if (rk==0)
+    return; // avoid problems in trivial case
 
-void RootSystem::cons(const int_Matrix& Cartan_matrix)
-{
   std::vector<Byte_vector> simple_root(rk,Byte_vector(rk));
   std::vector<Byte_vector> simple_coroot(rk,Byte_vector(rk));
 
@@ -523,14 +520,18 @@ WeylWord RootSystem::reflectionWord(RootNbr r) const
   return result;
 }
 
+
+// |Delta| gives images of simple roots by an automorphism; find image of 2rho
 matrix::Vector<int> RootSystem::pos_system_vec(const RootNbrList& Delta) const
 {
-  assert(Delta.size()==rk); // must be an image of $\Delta^+$, in correct order
+  assert(Delta.size()==rk); // as many images as simple roots
   matrix::Vector<int> coef(rk,0); // coefficients of simple roots in result
   for (weyl::Generator s=0; s<rk; ++s) // compute matrix*vector for image
     coef += root_expr(Delta[s])*=two_rho_in_simple_roots[s]; // Delta*2rho
+  // now |coef| holds image of $2\rho$ expressed as sum of simple roots
 
-  return cartanMatrix().right_mult(coef); // transform to fundamental weights
+  // multiplication is from the right here because Cartan matrix is unnatural
+  return cartanMatrix().right_prod(coef); // transform to fundamental weights
 }
 
 RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
@@ -542,7 +543,7 @@ RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
   {
     RootNbr alpha=*it;
     for (RootNbrSet::iterator
-	   jt=rs.begin(); jt(); ++jt) // run through unpruned subsystem
+	   jt=rs.begin(); jt(); ++jt) // traverse unpruned positive subsystem
     {
       RootNbr beta=*jt;
       if (alpha==beta) continue; // avoid reflecting root itself
@@ -646,8 +647,8 @@ RootDatum::RootDatum(const PreRootDatum& prd)
   , Cartan_denom()
   , d_status()
 {
-  int_Matrix root_mat(prd.roots(),d_rank); // simple roots
-  int_Matrix coroot_mat(prd.coroots(),d_rank); // simple too
+  int_Matrix root_mat(prd.simple_roots(),d_rank);
+  int_Matrix coroot_mat(prd.simple_coroots(),d_rank);
   for (RootNbr alpha=numPosRoots(); alpha<numRoots(); ++alpha)
   {
     d_roots[alpha]= root_mat*root_expr(alpha);
@@ -670,8 +671,8 @@ RootDatum::RootDatum(const PreRootDatum& prd)
   // get basis of co-radical character lattice, if any (or leave empty list)
   if (semisimpleRank()<d_rank)
   {
-    d_coradicalBasis = lattice::perp(prd.coroots(),d_rank);
-    d_radicalBasis   = lattice::perp(prd.roots(),d_rank);
+    d_coradicalBasis = lattice::perp(prd.simple_coroots(),d_rank);
+    d_radicalBasis   = lattice::perp(prd.simple_roots(),d_rank);
   }
 
   // fill in the status
@@ -713,8 +714,7 @@ RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)
 
 /* Construct the derived root datum, and put weight mapping into |projector| */
 
-RootDatum::RootDatum(int_Matrix& projector,
-		     const RootDatum& rd,
+RootDatum::RootDatum(int_Matrix& projector, const RootDatum& rd,
 		     tags::DerivedTag)
   : RootSystem(rd)
   , d_rank(rd.semisimpleRank())
@@ -729,7 +729,7 @@ RootDatum::RootDatum(int_Matrix& projector,
   , d_status()
 {
   size_t r=rd.rank(), d=r-d_rank;
-  int_Matrix kernel // of projector map
+  int_Matrix kernel // of restriction map from weights to derived weights
     (rd.beginCoradical(),rd.endCoradical(),r,tags::IteratorTag());
 
   assert(kernel.numColumns()==d);
@@ -737,21 +737,66 @@ RootDatum::RootDatum(int_Matrix& projector,
   int_Matrix row,col;
   matreduc::diagonalise(kernel,row,col); // factors (|d| times 1) not needed
 
-  projector = row.block(d,0,r,r); // annihilator of |kernel|, projects weights
+  // the restriction map is surjective, and therefore called |projector|
+  projector = row.block(d,0,r,r); // cokernel of |kernel|, projects weights
   int_Matrix section // will satisfy $projector*section=Id_d$;
-    = row.inverse().block(0,d,r,r); // transforms cocharacters by right-action
+    = row.inverse().block(0,d,r,r); // transforms coweights by right-action
 
   for (RootNbr i=0; i<rd.numRoots(); ++i)
   {
     d_roots[i] = projector*rd.d_roots[i];
-    d_coroots[i] = section.right_mult(rd.d_coroots[i]);
+    d_coroots[i] = section.right_prod(rd.d_coroots[i]);
   }
 
   d_2rho = projector*rd.d_2rho;
-  d_dual_2rho = section.right_mult(rd.d_dual_2rho);
+  d_dual_2rho = section.right_prod(rd.d_dual_2rho);
 
   fillStatus();
-}
+} // |RootDatum::RootDatum(...,Derived_Tag)|
+
+/* Construct the adjoint root datum, and put weight mapping into |injector| */
+
+RootDatum::RootDatum(int_Matrix& injector, const RootDatum& rd,
+		     tags::AdjointTag)
+  : RootSystem(rd)
+  , d_rank(rd.semisimpleRank())
+  , d_roots(rd.numRoots())
+  , d_coroots(rd.numRoots())
+  , weight_numer(d_rank)
+  , coweight_numer(d_rank)
+  , d_radicalBasis(), d_coradicalBasis() // these remain empty
+  , d_2rho()
+  , d_dual_2rho()
+  , Cartan_denom(rd.Cartan_denom)
+  , d_status()
+{
+  size_t r=rd.rank(), d=r-d_rank;
+  int_Matrix kernel // of restriction map from coweights to adjoint coweights
+    (rd.beginRadical(),rd.endRadical(),r,tags::IteratorTag());
+
+  assert(kernel.numColumns()==d);
+
+  int_Matrix row,col;
+  matreduc::diagonalise(kernel,row,col); // factors (|d| times 1) not needed
+
+  // the restriction map is surjective, its transpose is called |injector|
+  injector = row.block(d,0,r,r).transposed(); // maps adjoint weights to wts
+  int_Matrix section // will satisfy $section^t*injector=Id_d$;
+    = row.inverse().block(0,d,r,r); // maps adjoint coweights to coweights
+
+  for (RootNbr i=0; i<rd.numRoots(); ++i)
+  {
+    d_roots[i] = section.right_prod(rd.d_roots[i]);
+    d_coroots[i] = injector.right_prod(rd.d_coroots[i]);
+  }
+
+  d_2rho = section.right_prod(rd.d_2rho);
+  d_dual_2rho = injector.right_prod(rd.d_dual_2rho);
+
+  fillStatus();
+} // |RootDatum::RootDatum(...,Adjoint_Tag)|
+
+
 
 RootDatum RootDatum::sub_datum(const RootNbrList& generators) const
 {

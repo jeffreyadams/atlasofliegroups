@@ -47,8 +47,8 @@ Rep_context::Rep_context(RealReductiveGroup &G_R)
 
 size_t Rep_context::rank() const { return rootDatum().rank(); }
 
-const TwistedInvolution Rep_context::twistedInvolution(size_t cn) const
-{ return complexGroup().twistedInvolution(cn); }
+const TwistedInvolution Rep_context::involution_of_Cartan(size_t cn) const
+{ return complexGroup().involution_of_Cartan(cn); }
 
 StandardRepr
   Rep_context::sr
@@ -56,8 +56,7 @@ StandardRepr
      const standardrepk::KhatContext& khc,
      const RatWeight& nu) const
 {
-  const TitsElt a = khc.titsElt(srk); // was reduced during construction |srk|
-  const KGBElt x= khc.kgb().lookup(a);
+  const KGBElt x= khc.kgb().lookup(khc.titsElt(srk));
   const InvolutionNbr i_x = kgb().inv_nr(x);
   const InvolutionTable& i_tab = complexGroup().involution_table();
   const WeightInvolution& theta = i_tab.matrix(i_x);
@@ -67,7 +66,7 @@ StandardRepr
   const RatWeight diff = lambda - nu;
   const RatWeight theta_diff(theta*diff.numerator(),
 			     diff.denominator()); // theta(lambda-nu)
-  const Weight lambda_rho = (lambda2-khc.rootDatum().twoRho())/=2;
+  const Weight lambda_rho = (lambda2-khc.rootDatum().twoRho())/2;
   return StandardRepr(x,i_tab.pack(i_x,lambda_rho),
 		      ((lambda+nu+theta_diff)/=2).normalize());
 }
@@ -106,7 +105,7 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
   Ratvec_Numer_t im_part2 = gamma_rho.numerator()+theta*gamma_rho.numerator();
   im_part2 /= gamma_rho.denominator(); // exact: $(1+\theta)(\lambda-\rho)$
   Weight i2(im_part2.begin(),im_part2.end()); // convert to |Weight|
-  return (i2 + i_tab.unpack(i_x,z.y()))/=2; // division exact again
+  return (i2 + i_tab.unpack(i_x,z.y()))/2; // division exact again
 }
 
 // return $\lambda \in \rho+X^*$ as half-integer rational vector
@@ -405,7 +404,23 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
 	      infin_char));
 }
 
-
+StandardRepr Rep_context::twist(StandardRepr z) const
+{
+  make_dominant(z);
+  const RatWeight infin_char=z.gamma(); // now get the infinitesimal character
+  const RootDatum& rd = rootDatum();
+  const SubSystem& subsys = SubSystem::integral(rd,infin_char);
+  blocks::nblock_help aux(realGroup(),subsys);
+  blocks::nblock_elt src(z.x(),y_values::exp_pi(infin_char-lambda(z)));
+  aux.twist(src);
+  RatWeight lr =
+    (infin_char - src.y().log_pi(false) - RatWeight(rd.twoRho(),2)).normalize();
+  assert(lr.denominator()==1);
+  return StandardRepr
+    (sr_gamma(src.x(),
+	      Weight(lr.numerator().begin(),lr.numerator().end()),
+	      infin_char));
+}
 
 Rep_context::compare Rep_context::repr_less() const
 { return compare(rootDatum().dual_twoRho()); }

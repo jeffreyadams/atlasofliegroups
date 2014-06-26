@@ -12,6 +12,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <string>
 
 #include "prerootdata.h"
 #include "kgb.h"	// |KGB|
@@ -19,6 +20,8 @@
 #include "standardrepk.h"
 #include "repr.h"
 
+#include "input.h"
+#include "commands.h" // to acces input buffer from issuing command
 #include "interactive_lattice.h" // auxiliary functions
 #include "interactive_lietype.h" // auxiliary functions
 #include "prettyprint.h"	// |printVector|
@@ -221,54 +224,57 @@ size_t get_Cartan_class(const BitMap& cs) throw(error::InputError)
   return c;
 }
 
-
 /*
-  Precondition: |lo| already contains the Lie type resulting from user
-  interaction, and the identity permutation, and |basis| the sublattice basis
+  This is called in the entry function to the "main mode", and drives some of
+  the calls to other instances of |getInteractive| below.
 
-  Writes an inner class into |lo.d_inner| and returns distinguished involution
+  Replaces |pI| by a  pointer to a new |Interface| gotten interactively from
+  the user, and |pG| by a poitner the the corresponding inner class
 
-  An inner class is described by a sequence of typeletters, one of:
+  Throws an |InputError| if the interaction with the user is not successful;
+  in that case both pointers are unchanged.
 
-    - c : compact (d is the identity);
-    - e : equal rank (same as compact)
-    - s : split (d is minus the identity followed by longest W element);
-    - C : complex (d flips two consecutive isomorphic factors in lt);
-    - u : unequal rank : non-identity involution of simple factor (A,D,E6)
-          there are actually three non-identity involutions in type D_{2n},
-          but they are conjugate in Out(G), so we consider it enough to
-	  allow choosing one of them.
-
-  The user has to supply enough letters to deal with all factors of the Lie
-  type (a C consumes two entries in |lt|). Moreover, the inner class has to be
-  compatible with the chosen sublattice: |d| has to stabilize this sublattice.
-
-  Throws an InputError if the interaction is not successful.
+  We pass references to pointers to both a |ComplexReductiveGroup| and to a
+  |complexredgp_io::Interface|, both of which will be assigned appropriately
 */
-WeightInvolution
-getInnerClass(lietype::Layout& lo, const WeightList& basis)
+void get_group_type(ComplexReductiveGroup*& pG,complexredgp_io::Interface*& pI)
   throw(error::InputError)
 {
-  const LieType& lt = lo.d_type;
+  // first get the Lie type
+  LieType lt; getInteractive(lt);  // may throw an InputError
 
-  InnerClassType ict;
-  getInteractive(ict,lt); //< may throw an InputError
+  // then get kernel generators to define the (pre-) root datum
+  WeightList b; PreRootDatum prd;
+  getInteractive(prd,b,lt); // may throw an InputError
 
-  WeightInvolution i = lietype::involution(lt,ict);
+  // complete the Lie type with inner class specification, into a Layout |lo|
+  // and also compute the involution matrix |inv| for this inner class
+  lietype::Layout lo(lt);
+  // basis |b| is used to express |inv| on, and may reject some inner classes
+  WeightInvolution inv=getInnerClass(lo,b); // may throw InputError
 
-  while (not checkInvolution(i,basis)) // complain and reget the inner class
-  {
-    std::cerr
-      << "sorry, that inner class is not compatible with the weight lattice"
-      << std::endl;
-    getInteractive(ict,lt);
-    i = lietype::involution(lt,ict);
-  }
-
-  lo.d_inner = ict;
-  return i.on_basis(basis);
+  // commit (unless |RootDatum(prd)| should throw: then nothing is changed)
+  pG=new ComplexReductiveGroup(prd,inv);
+  pI=new complexredgp_io::Interface(*pG,lo);
+  // the latter constructor also constructs two realform interfaces in *pI
 }
 
+bool get_type_ahead(input::InputBuffer& src, input::InputBuffer& dst)
+{
+  char x;
+  do src>>x; // clear spaces trailing after command
+  while (x==' ');
+  src.unget();
+
+  std::string remains;
+  getline(src,remains);
+
+  if (remains.empty())
+    return false;
+  dst.str(remains);
+  dst.reset(); // make sure to start at beginning
+  return true;
+}
 
 /*
   Synopsis: gets a LieType interactively from the user.
@@ -278,7 +284,8 @@ getInnerClass(lietype::Layout& lo, const WeightList& basis)
 */
 void getInteractive(LieType& d_lt) throw(error::InputError)
 {
-  type_input_buffer.getline("Lie type: ");
+  if (not get_type_ahead(commands::currentLine(),type_input_buffer))
+    type_input_buffer.getline("Lie type: ");
 
   if (hasQuestionMark(type_input_buffer))
     throw error::InputError();
@@ -291,40 +298,12 @@ void getInteractive(LieType& d_lt) throw(error::InputError)
 
   // if we reach this point, the type is correct
 
-  inputBuf.str(type_input_buffer.str());
-  inputBuf.reset();
+  inputBuf.str(type_input_buffer.str()); // copy type string to |inputBuf|
+  inputBuf.reset(); // and prepare for reading it
 
   LieType lt;
-  interactive_lietype::readLieType(lt,inputBuf);
+  interactive_lietype::readLieType(lt,inputBuf); // decipher Lie type
   d_lt.swap(lt);
-}
-
-
-/*
-  Synopsis: gets an InnerClassType interactively from the user.
-
-  Throws an InputError is the interaction does not end in a correct assignment
-  of ict. Does not touch ict unless the assignment succeeds.
-*/
-void getInteractive(InnerClassType& ict, const LieType& lt)
-  throw(error::InputError)
-{
-  if (interactive_lietype::checkInnerClass(inputBuf,lt,false))
-    goto read; // skip interaction if |inputBuf| alreadty has valid input
-
-  inputBuf.getline("enter inner class(es): ",false);
-
-  if (hasQuestionMark(inputBuf))
-    throw error::InputError();
-
-  while (not interactive_lietype::checkInnerClass(inputBuf,lt)) { // retry
-    inputBuf.getline("enter inner class(es) (? to abort): ",false);
-    if (hasQuestionMark(inputBuf))
-      throw error::InputError();
-  }
-
- read:
-  interactive_lietype::readInnerClass(ict,inputBuf,lt);
 }
 
 /*
@@ -380,85 +359,203 @@ void getInteractive(PreRootDatum& d_prd,
   }
 
   // make new PreRootDatum
+  d_prd = PreRootDatum(lt,d_b);
 
-  PreRootDatum(lt,d_b).swap(d_prd);
-  // swap with d_prd; the old PreRootDatum will be destroyed
-}
+} // |getInteractive(PreRootDatum&,...)|
 
 
 /*
-  Synposis: replaces rf with a new real form gotten interactively from the
-  user.
+  Precondition: |lo| already contains the Lie type resulting from user
+  interaction, and the identity permutation, and |basis| the sublattice basis
 
-  Throws an InputError if the interaction with the user fails; in that case,
-  rf is not modified.
+  Writes an inner class into |lo.d_inner| and returns distinguished involution
+
+  An inner class is described by a sequence of typeletters, one of:
+
+    - c : compact (d is the identity);
+    - e : equal rank (same as compact);
+    - s : split (d is minus the identity followed by longest W element);
+    - C : complex (d flips two consecutive isomorphic factors in lt);
+    - u : unequal rank : non-identity involution of simple factor (A,D,E6)
+          there are actually three non-identity involutions in type D_{2n},
+          but they are conjugate in Out(G), so we consider it enough to
+	  allow choosing one of them.
+
+  The user has to supply enough letters to deal with all factors of the Lie
+  type (a C consumes two entries in |lt|). Moreover, the inner class has to be
+  compatible with the chosen sublattice: |d| has to stabilize this sublattice.
+
+  Throws an InputError if the interaction is not successful.
 */
-
-void getInteractive(RealFormNbr& d_rf,
-		    const complexredgp_io::Interface& I)
+WeightInvolution
+getInnerClass(lietype::Layout& lo, const WeightList& basis)
   throw(error::InputError)
 {
-  const realform_io::Interface rfi = I.realFormInterface();
+  const LieType& lt = lo.d_type;
+
+  InnerClassType ict;
+  getInteractive(ict,lt); //< may throw an InputError
+
+  WeightInvolution i = lietype::involution(lt,ict);
+
+  while (not checkInvolution(i,basis)) // complain and reget the inner class
+  {
+    std::cerr
+      << "sorry, that inner class is not compatible with the weight lattice"
+      << std::endl;
+    getInteractive(ict,lt);
+    i = lietype::involution(lt,ict);
+  }
+
+  lo.d_inner = ict;
+  return i.on_basis(basis);
+} // |getInnerClass|
+
+
+/*
+  Synopsis: gets an InnerClassType interactively from the user.
+
+  Throws an InputError is the interaction does not end in a correct assignment
+  of ict. Does not touch ict unless the assignment succeeds.
+*/
+void getInteractive(InnerClassType& ict, const LieType& lt)
+  throw(error::InputError)
+{
+  if (interactive_lietype::checkInnerClass(inputBuf,lt,false))
+    goto read; // skip interaction if |inputBuf| alreadty has valid input
+
+  inputBuf.getline("enter inner class(es): ",false);
+
+  if (hasQuestionMark(inputBuf))
+    throw error::InputError();
+
+  while (not interactive_lietype::checkInnerClass(inputBuf,lt)) { // retry
+    inputBuf.getline("enter inner class(es) (? to abort): ",false);
+    if (hasQuestionMark(inputBuf))
+      throw error::InputError();
+  }
+
+ read:
+  interactive_lietype::readInnerClass(ict,inputBuf,lt);
+}
+
+
+
+
+/*
+  This is called by the entry function to "real mode".
+
+  Synopsis: replaces d_G by a new RealReductiveGroup gotten
+  interactively from the user. The complex group interface is not touched.
+
+  Throws an InputError if the interaction with the user is not successful;
+  in that case, d_G is not touched.
+*/
+
+RealFormNbr get_real_form(complexredgp_io::Interface& CI)
+  throw(error::InputError)
+{
+  const realform_io::Interface rfi = CI.realFormInterface();
 
   // if there is only one choice, make it
   if (rfi.numRealForms() == 1) {
     std::cout << "there is a unique real form: " << rfi.typeName(0)
 	      << std::endl;
-    d_rf = 0;
-    return;
+    return 0;
   }
 
-  // else get choice from user
-  std::cout << "(weak) real forms are:" << std::endl;
-  for (size_t j = 0; j < rfi.numRealForms(); ++j) {
-    std::cout << j << ": " << rfi.typeName(j) << std::endl;
+  unsigned long r=rfi.numRealForms();
+  if (get_type_ahead(common_input(),realform_input_buffer) or
+      get_type_ahead(commands::currentLine(),realform_input_buffer))
+  {
+    realform_input_buffer >> r;
+    if (r>=rfi.numRealForms())
+      std::cout << "Discarding invalid type-ahead.\n";
   }
 
-  unsigned long r=get_bounded_int
-    (realform_input_buffer,"enter your choice: ",rfi.numRealForms());
+  if (r>=rfi.numRealForms()) // must get (another) choice from user
+  {
+    std::cout << "(weak) real forms are:" << std::endl;
+    for (size_t i = 0; i < rfi.numRealForms(); ++i)
+      std::cout << i << ": " << rfi.typeName(i) << std::endl;
 
-  d_rf = rfi.in(r);
-}
+    r=get_bounded_int
+      (realform_input_buffer,"enter your choice: ",rfi.numRealForms());
+  }
 
+  return rfi.in(r);
+} // |get_real_group|
 
 /*
-  Synposis: replaces rf with a new dual real form gotten interactively from
-  the user.
+  This is called by the entry function to "block mode".
 
-  Throws an InputError if the interaction with the user fails; in that case,
-  rf is not modified.
+  Synposis: return an internal dual real form number, selected by the user
+  from a list presented by external numbers for the dual real forms compatible
+  with real form |rf|. If |rf| too large to be a real form number, present the
+  list of all dual real forms in the inner class, and select from it.
+
+  Throws an InputError if the interaction with the user fails.
 */
-void getInteractive(RealFormNbr& rf,
-		    const complexredgp_io::Interface& I,
-		    tags::DualTag)
+RealFormNbr get_dual_real_form(complexredgp_io::Interface& CI,
+			       RealFormNbr rf)
   throw(error::InputError)
 {
-  const realform_io::Interface rfi = I.dualRealFormInterface();
+  ComplexReductiveGroup& G = CI.complexGroup();
+  bool restrict = rf<G.numRealForms();
+  RealFormNbrList drfl;
+  if (restrict)
+    drfl = G.dualRealFormLabels(G.mostSplit(rf));
+
+  const realform_io::Interface drfi = CI.dualRealFormInterface();
 
   // if there is only one choice, make it
-  if (rfi.numRealForms() == 1) {
-    std::cout << "there is a unique dual real form: " << rfi.typeName(0)
-	      << std::endl;
-    rf = 0;
-    return;
+  if ((restrict ? drfl.size() : drfi.numRealForms())== 1)
+  {
+    RealFormNbr rfn = restrict ? drfl[0] : 0;
+    std::cout << "there is a unique dual real form choice: "
+	      << drfi.typeName(drfi.out(rfn)) << std::endl;
+    return rfn;
   }
 
-  // else get choice from user
-  std::cout << "(weak) dual real forms are:" << std::endl;
-  for (size_t j = 0; j < rfi.numRealForms(); ++j) {
-    std::cout << j << ": " << rfi.typeName(j) << std::endl;
+  // else get choice interactively
+  BitMap vals(drfi.numRealForms());
+  if (restrict)
+    for (size_t i = 0; i < drfl.size(); ++i)
+      vals.insert(drfi.out(drfl[i]));
+  else
+    vals.fill();
+
+  unsigned long r=drfi.numRealForms();
+  if (get_type_ahead(realform_input_buffer,realform_input_buffer) or
+      get_type_ahead(common_input(),realform_input_buffer) or
+      get_type_ahead(commands::currentLine(),realform_input_buffer))
+  {
+    realform_input_buffer >> r;
+    if (realform_input_buffer.fail() or not vals.isMember(r))
+    {
+      realform_input_buffer.str("");
+      r = drfi.numRealForms(); // make |r| positively invalid again
+      std::cout << "Discarding invalid type-ahead.\n";
+    }
   }
 
-  unsigned long r=get_bounded_int
-    (realform_input_buffer,"enter your choice: ",rfi.numRealForms());
+  if (not vals.isMember(r))
+  {
+    std::cout << "possible (weak) dual real forms are:" << std::endl;
 
-  rf = rfi.in(r);
-}
+    for (BitMap::iterator it = vals.begin(); it(); ++it)
+      std::cout << *it << ": " << drfi.typeName(*it) << std::endl;
+    r = get_int_in_set("enter your choice: ",vals);
+  }
+
+  return drfi.in(r);
+} // |get_dual_real_form|
+
 
 void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
 {
   // get the user input as a string
-  psg = 0;
+  psg.reset();
   std::string line;
   std::cout << "enter simple roots (" << 1 << "-" << rank << "): ";
   std::getline(std::cin, line);
@@ -468,7 +565,8 @@ void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
   istream.str(line);
 
   // parse it
-  while (!istream.eof()) {
+  while (not istream.eof())
+  {
     // read the next non-whitespace character
     char c;
     std::streampos pos = istream.tellg();
@@ -495,7 +593,7 @@ void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
       // if the number is in range, add it to the subset
       --n; // change to 0-based convention (makes 0 huge and therefore ignored)
       if (n < rank)
-        psg |= (1<<n);
+        psg.set(n);
     }
 
     // see if the user aborted
@@ -506,96 +604,6 @@ void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
 }
 
 
-/*
-  Synposis: replaces rf with a new real form from the list drfl.
-
-  Throws an InputError if the interaction with the user fails; in that case,
-  rf is not modified.
-*/
-
-void getInteractive(RealFormNbr& rf,
-		    const complexredgp_io::Interface& I,
-		    const RealFormNbrList& drfl,
-		    tags::DualTag)
-  throw(error::InputError)
-{
-  const realform_io::Interface rfi = I.dualRealFormInterface();
-
-  // if there is only one choice, make it
-  if (drfl.size() == 1) {
-    RealFormNbr rfo = rfi.out(drfl[0]);
-    std::cout << "there is a unique dual real form choice: "
-	      << rfi.typeName(rfo) << std::endl;
-    rf = drfl[0];
-    return;
-  }
-
-  // else get choice from user
-  BitMap vals(rfi.numRealForms());
-  for (size_t j = 0; j < drfl.size(); ++j)
-    vals.insert(rfi.out(drfl[j]));
-
-  std::cout << "possible (weak) dual real forms are:" << std::endl;
-  BitMap::iterator vals_end = vals.end();
-  for (BitMap::iterator i = vals.begin(); i != vals_end; ++i) {
-    std::cout << *i << ": " << rfi.typeName(*i) << std::endl;
-  }
-
-  unsigned long r = get_int_in_set("enter your choice: ",vals);
-
-  rf = rfi.in(r);
-}
-
-
-/*
-  Synopsis: replaces d_G by a new RealReductiveGroup gotten
-  interactively from the user. The complex group interface is not touched.
-
-  Throws an InputError if the interaction with the user is not successful;
-  in that case, d_G is not touched.
-*/
-
-RealReductiveGroup getRealGroup(complexredgp_io::Interface& CI)
-  throw(error::InputError)
-{
-  RealFormNbr rf = 0;
-  getInteractive(rf,CI); // may throw an InputError
-
-  return RealReductiveGroup(CI.complexGroup(),rf);
-}
-
-/*!\brief
-  Replaces |pI| by a  pointer to a new |Interface| gotten interactively from
-  the user, and |pG| by a poitner the the corresponding inner class
-
-  Throws an |InputError| if the interaction with the user is not successful;
-  in that case both pointers are unchanged.
-
-  We pass references to pointers to both a |ComplexReductiveGroup| and to a
-  |complexredgp_io::Interface|, both of which will be assigned appropriately
-*/
-  void getInteractive(ComplexReductiveGroup*& pG,
-		      complexredgp_io::Interface*& pI)
-    throw(error::InputError)
-{
-  // first get the Lie type
-  LieType lt; getInteractive(lt);  // may throw an InputError
-
-  // then get kernel generators to define the (pre-) root datum
-  WeightList b; PreRootDatum prd;
-  getInteractive(prd,b,lt); // may throw an InputError
-
-  // complete the Lie type with inner class specification, into a Layout |lo|
-  // and also compute the involution matrix |inv| for this inner class
-  lietype::Layout lo(lt);
-  // basis |b| is used to express |inv| on, and may reject some inner classes
-  WeightInvolution inv=getInnerClass(lo,b); // may throw InputError
-
-  // commit (unless |RootDatum(prd)| should throw: then nothing is changed)
-  pG=new ComplexReductiveGroup(prd,inv);
-  pI=new complexredgp_io::Interface(*pG,lo);
-  // the latter constructor also constructs two realform interfaces in *pI
-}
 
 
 /*
@@ -785,7 +793,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
     if (kgb.Cartan_class(k)==cn)
     {
       cf.insert(k);
-      if (kgb.involution(k)==G.twistedInvolution(cn))
+      if (kgb.involution(k)==G.involution_of_Cartan(cn))
 	canonical_fiber.push_back(k);
     }
 

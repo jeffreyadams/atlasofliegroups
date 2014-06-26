@@ -60,7 +60,6 @@ public:
   Vector<C>& operator+= (const Vector<C>&);
   Vector<C>& operator-= (const Vector<C>&);
   Vector<C>& operator*= (C);
-  Vector<C>& operator/= (C) throw (std::runtime_error);
   Vector<C>& negate (); // negates argument in place
 
   template<typename C1> C1 dot (const Vector<C1>& v) const;
@@ -72,8 +71,6 @@ public:
     { Vector<C> result(*this); return result -=v; }
   Vector<C> operator* (C c) const
     { Vector<C> result(*this); return result *=c; }
-  Vector<C> operator/ (C c) const // throws |std::runtime_error| if not exact
-    { Vector<C> result(*this); return result /=c; }
   Vector<C> operator- () const
     { Vector<C> result(*this); return result.negate(); }
 
@@ -85,6 +82,13 @@ public:
   Matrix<C> row_matrix() const;    // vector as 1-row matrix
   Matrix<C> column_matrix() const; // vector as 1-column matrix
 }; // Vector
+
+// these are external functions, to allow instantiating |Vector<Pol>|
+template<typename C>
+  Vector<C>& operator/= (Vector<C>& v, C c) throw (std::runtime_error);
+template<typename C>
+  Vector<C> operator/ (Vector<C> v,C c) throw (std::runtime_error)
+  { return v /= c; }
 
 
 template<typename C> class Matrix_base
@@ -174,18 +178,14 @@ template<typename C> class Matrix : public Matrix_base<C>
       return result; }
 
   template<typename C1> Vector<C1> operator* (const Vector<C1>&) const;
+  template<typename C1> Vector<C1> right_prod(const Vector<C1>&) const;
 
-  template<typename C1> Vector<C1> right_mult(const Vector<C1>&) const;
-  template<typename C1> void apply_to(Vector<C1>& v) const { v= operator*(v); }
+  template<typename C1> void apply_to(Vector<C1>& v) const
+    { v= operator*(v); }
+  template<typename C1> void right_mult(Vector<C1>& v) const
+    { v= right_prod(v); }
 
   Matrix<C> operator* (const Matrix<C>&) const;
-
-  Matrix<C> inverse() const
-    { Matrix<C> result(*this); result.invert(); return result; }
-  Matrix<C> inverse(C& d) const
-    { Matrix<C> result(*this); result.invert(d); return result; }
-
-  Matrix<C> on_basis(const std::vector<Vector<C> >& basis) const;
 
 // manipulators
 
@@ -195,18 +195,9 @@ template<typename C> class Matrix : public Matrix_base<C>
     { (*this*Q).swap(*this); return *this; }
   Matrix<C>& leftMult (const Matrix<C>& P)
     { (P**this).swap(*this); return *this; }
-  Matrix<C>& operator/= (const C& c) throw (std::runtime_error);
 
   void negate(){ base::d_data.negate(); }
   void transpose();
-
-  void invert();
-  void invert(C& d);
-
-  // secondary accessors (mainly for inversion algorithms)
-
-  bool divisible(C) const;
-  Matrix<C> block(size_t i0, size_t j0, size_t i1, size_t j1) const;
 
   // secondary manipulators
 
@@ -220,6 +211,67 @@ template<typename C> class Matrix : public Matrix_base<C>
   void swapRows(size_t, size_t);
 
 }; // |template<typename C> class Matrix|
+
+// The following derived class is for integer types only
+template<typename C> class PID_Matrix : public Matrix<C>
+{
+  typedef Matrix<C> base;
+
+ public:
+// forward constructors to Matrix
+  PID_Matrix() : base() {}
+
+  PID_Matrix(size_t m, size_t n) : base(m,n) {}
+  PID_Matrix(size_t m, size_t n, const C& c) : base(m,n,c) {}
+
+  explicit PID_Matrix(size_t n) : base(n) {} // square identity matrix
+  PID_Matrix(const std::vector<Vector<C> >&cols, size_t n_rows)
+    : base(cols,n_rows) {}
+
+  template<typename I> // from sequence of columns obtained via iterator
+    PID_Matrix(I begin, I end, size_t n_rows, tags::IteratorTag)
+    : base(begin,end,n_rows,tags::IteratorTag()) {}
+
+// manipulators
+  PID_Matrix<C>& operator/= (const C& c) throw (std::runtime_error);
+
+  void invert();
+  void invert(C& d);
+
+// accessors
+  PID_Matrix<C> transposed() const
+    { PID_Matrix<C> result(*this); result.transpose(); return result; }
+  PID_Matrix<C> negative_transposed() const
+    { PID_Matrix<C> result(*this); result.negate(); result.transpose();
+      return result; }
+
+  using base::operator*;
+
+  PID_Matrix<C>& operator+= (const Matrix<C>& M)
+    { base::operator+=(M); return *this; }
+  PID_Matrix<C>& operator-= (const Matrix<C>& M)
+    { base::operator-=(M); return *this; }
+  PID_Matrix<C>& operator*= (const Matrix<C>& Q)
+    { base::operator*(Q).swap(*this); return *this; }
+  PID_Matrix<C>& leftMult (const Matrix<C>& P)
+    { (P**this).swap(*this); return *this; }
+
+  PID_Matrix<C> operator* (const Matrix<C>& Q) const
+  { PID_Matrix<C> res; base::operator*(Q).swap(res); return res; }
+
+  PID_Matrix<C> inverse() const
+    { PID_Matrix<C> result(*this); result.invert(); return result; }
+  PID_Matrix<C> inverse(C& d) const
+    { PID_Matrix<C> result(*this); result.invert(d); return result; }
+
+
+  PID_Matrix<C> on_basis(const std::vector<Vector<C> >& basis) const;
+
+  // secondary accessors (for inversion algorithms)
+  bool divisible(C) const;
+  PID_Matrix<C> block(size_t i0, size_t j0, size_t i1, size_t j1) const;
+
+}; // |class PID_Matrix|
 
 } // |namespace matrix|
 

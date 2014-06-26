@@ -143,7 +143,7 @@ namespace {
 void main_mode_entry() throw(EntryError)
 {
   try {
-    interactive::getInteractive(G_C_pointer,G_I_pointer);
+    interactive::get_group_type(G_C_pointer,G_I_pointer);
   }
   catch(error::InputError& e) {
     e("complex group not set");
@@ -376,14 +376,9 @@ void strongreal_f()
 void dualkgb_f()
 {
   ComplexReductiveGroup& G_C = currentComplexGroup();
+  complexredgp_io::Interface& G_I = currentComplexInterface();
 
-  const complexredgp_io::Interface& G_I = currentComplexInterface();
-  const RealFormNbrList rfl = // get list of all dual real forms
-    G_C.dualRealFormLabels(G_C.mostSplit(G_C.quasisplit()));
-
-  RealFormNbr drf;
-
-  interactive::getInteractive(drf,G_I,rfl,tags::DualTag());
+  RealFormNbr drf = interactive::get_dual_real_form(G_I,G_C.numRealForms());
 
   // the complex group must be in a variable: is non-const for real group
   ComplexReductiveGroup dG_C(G_C,tags::DualTag());
@@ -406,7 +401,7 @@ void type_f()
   {
     ComplexReductiveGroup* G;
     complexredgp_io::Interface* I;
-    interactive::getInteractive(G,I);
+    interactive::get_group_type(G,I);
     replaceComplexGroup(G,I);
     drop_to(main_mode); // drop invalidated descendant modes if called from them
   }

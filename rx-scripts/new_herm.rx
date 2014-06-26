@@ -1,19 +1,11 @@
-<misc.rx
+<basic.rx
+<representations.rx { for spherical_principal_series }
 <new_kl.rx
 
 { a variable used in this file; set to true for more output from functions }
 set hermitian_debug = false
 
-set -(ParamPol P,ParamPol Q) = ParamPol: P+(-1)*Q
-
-{ test equality of ParamPols }
-set =(ParamPol P,ParamPol Q) = bool: #(P-Q)=0
-
-{ order of operands in the next function avoids conflicting *@(int,ParamPol) }
-set *(Param p,rat alpha) = let (x,lambda,nu)=%p in param(x,lambda,alpha*nu)
-
-{set nu=0 in Param (x,lambda,nu) }
-set make_nu0 (Param p) = p*0
+{set nu=0 in all terms of a ParamPol }
 set make_nu0 (ParamPol P)= ParamPol:
   null_module(real_form(P)) + for w@p in P do (w,p*0) od
 
@@ -75,12 +67,12 @@ set print_c_form_irreducible_long (Param p) = void:
 ( for (q,coeff,Q) in b
   do prints("")
   ; prints("standard module: ",q)
-  ; prints("coefficient: ",prettyPrint(coeff))
+  ; prints("coefficient: ",split_format(coeff))
   ; prints("form on standard: ")
-  ; prettyPrint(Q)
+  ; pol_format(Q)
   od
 ; prints(""); prints("c-form on irreducible module:")
-; prints(p, " at ",infinitesimal_character(p)); prettyPrint(f)
+; prints(p, " at ",infinitesimal_character(p)); pol_format(f)
 )
 
 { analyse }
@@ -89,7 +81,7 @@ set mixed (Split w)= bool: let (a,b)=%w in a*b!=0
 set analyse (ParamPol P) = void:
 begin prints("Mixed terms:")
 ; for w@p in P do if mixed(w) then
-    prints("(",prettyPrint(w),")*",p,", ",infinitesimal_character(p))
+    prints("(",split_format(w),")*",p,", ",infinitesimal_character(p))
   fi od
 end
 
@@ -115,14 +107,14 @@ set lambda_plus_rho_res_T(KGBElt x,ratvec lambda) = ratvec:
 { formula: < (1+theta_x)(lambda+rho)/2 , torus_factor(x)+rho^\vee > }
 set mu(Param p) = rat:
   lambda_plus_rho_res_T(x(p),lambda(p))*
-  (torus_factor(x(p))+rhocheck(real_form(p)))
+  (torus_factor(x(p))+rho_check(real_form(p)))
 
 set convert_cform_hermitian (ParamPol P)= ParamPol:
   if #P=0 then P { since we cannot select a term for a null polynomial }
   else
     let a_mu = mu( for w@p in P do p od [0] ) { mu of the first term }
     in null_module(real_form(P)) +
-      for w@p in P do (s^(rattoint(mu(p)-a_mu))*w,p) od
+      for w@p in P do (s^(rat_as_int(mu(p)-a_mu))*w,p) od
   fi
 
 { ParamPol giving the hermitian form on irreducible p }
@@ -135,7 +127,7 @@ set hermitian_form_irreducible(Param p) = ParamPol:
 
 { nice output of hermitian_form_irreducible }
 set print_hermitian_form_irreducible(Param p) = void:
-  prettyPrint(hermitian_form_irreducible(p))
+  pol_format(hermitian_form_irreducible(p))
 
 { nice output of Hermitian forms on list of parameters }
 set print_hermitian_form_irreducible([Param] P) = void:
@@ -189,7 +181,7 @@ set test_spherical_unitary(RealForm G,[ratvec] nus)= void:
   od
 
 set test_line (Param p) = void:
-( let (x,lambdaminusrho,nu) = %p
+( let (x,lambda_minus_rho,nu) = %p
   then points=reducibility_points(p)
   ,   ipoints=integrality_points(root_datum(p),2*nu)
   in prints("testing line through ", p)
@@ -203,8 +195,8 @@ set test_line (Param p) = void:
     if not points[#points-1]=1/1 then points:=points#1/1 fi
   ; for i:#points-1 from 1 do
       let t=(points[i]+points[i-1])/2
-      then q=param(x,lambdaminusrho,t*nu)
-      then r=param(x,lambdaminusrho,points[i]*nu)
+      then q=param(x,lambda_minus_rho,t*nu)
+      then r=param(x,lambda_minus_rho,points[i]*nu)
       in prints(t*nu,": ", is_unitary(q))
       ;  prints(points[i]*nu,": ", is_unitary(r))
     od

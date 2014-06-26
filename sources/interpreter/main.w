@@ -97,13 +97,14 @@ here as an ordinary \Cpp\ program, including use of namespaces.
 Since depending on the readline libraries still gives difficulties on some
 platforms, we arrange for the possibility of compiling this program in the
 absence of that library. This means that we should refrain from any reference
-to its header files, and so the corresponding \&{\#include} statements cannot be
-given in the usual way, which would cause their inclusion unconditionally. As
-for the \.{atlas} program, the compile time flag |NREADLINE|, if defined by
-setting \.{-DNREADLINE} as a flag to the compiler, will prevent any dependency
-on the readline library.
+to its header files, and so the corresponding \&{\#include} statements cannot
+be given in the usual way, which would cause their inclusion unconditionally.
+Like for the \.{atlas} program, the compile time flag |NREADLINE|, if defined
+by setting \.{-DNREADLINE} as a flag to the compiler, will prevent any
+dependency on the readline library.
 
-@d realex_version "0.8" // version numbering from 0.5, on 27 November 2010
+@d realex_version "0.8.3"
+ // numbering from 0.5 (on 27/11/2010); last change 31/05/2014
 
 @c
 
@@ -111,7 +112,7 @@ on the readline library.
 
 @< Declaration of interface to the parser @>@;
 namespace { @< Local static data @>@; }@;
-@< Definition of wrapper functions @>@;
+@< Definitions of local functions @>@;
 @< Main program @>
 
 @ Since the file \.{parser.y} declares \.{\%pure-parser} and \.{\%locations},
@@ -125,15 +126,16 @@ an integer pointer as parameter, which it uses to signal special requests from
 the user (such as verbose output but also termination or output redirection),
 and a pointer to an expression, in which it writes the result of parsing.
 
+The definitions below used to start with |extern "C"|, but no longer do so
+since the parser is now compiled as a \Cpp\ program.
+
 @h "parsetree.h"
 @h "parser.tab.h"
 
 @< Declaration of interface to the parser @>=
 
-// |extern "C"| |{|
 int yylex (YYSTYPE *, YYLTYPE *);
 @/int yyparse( atlas::interpreter::expr* parsed_expr, int* verbosity );
-// |}|
 
 @ Here is an array that declares the keywords that the lexical scanner is to
 recognise, terminated by a null pointer. Currently the lexical analyser adds
@@ -152,7 +154,7 @@ const char* keywords[] =
  ,"true","false"
  ,"quiet","verbose"
  ,"whattype","showall","forget"
- ,NULL};
+ ,nullptr};
 
 @ Here are the wrapper function for the lexical analyser and the error
 reporting function, which are necessary because the parser cannot directly
@@ -161,13 +163,12 @@ third arguments to |yyerror| are those passed to |yyparse|, even though they
 are not used in |yyerror|. In |yyerror| we close any open include files, as
 continuing to execute their commands is undesirable.
 
-@< Definition of wrapper functions @>=
+@< Definitions of local functions @>=
 
-// extern "C"
 int yylex(YYSTYPE *valp, YYLTYPE *locp)
 {@; return atlas::interpreter::lex->get_token(valp,locp); }
 @)
-// extern "C"
+
 void yyerror (YYLTYPE* locp, atlas::interpreter::expr* ,int* ,char const *s)
 { atlas::interpreter::main_input_buffer->show_range@|
   (std::cerr,
@@ -180,11 +181,11 @@ void yyerror (YYLTYPE* locp, atlas::interpreter::expr* ,int* ,char const *s)
 @ Here are some header files which need to be included for this main program.
 As we discussed above, the inclusion of header files for the readline
 libraries is made dependent on the flag |NREADLINE|. In case the flag is set,
-we define the two symbols used from the readline library as macros, so that
+we define the few symbols used from the readline library as macros, so that
 the code using them can be compiled without needing additional \&{\#ifdef}
-lines. It turns out these symbols are not used in calls, but rather passed as
-function pointers to the |BufferedInput| constructor, so the appropriate
-expansion for these macros is the null pointer.
+lines. It turns out that |getline| and |add_history| are not used in calls,
+but rather passed as function pointers to the |BufferedInput| constructor, so
+the appropriate expansion for these macros is the null pointer.
 
 @h <iostream>
 @h <fstream>
@@ -195,8 +196,8 @@ expansion for these macros is the null pointer.
 
 @< Conditionally include the header files for the readline library @>=
 #ifdef NREADLINE
-#define readline NULL
-#define add_history NULL
+#define readline nullptr
+#define add_history nullptr
 #define clear_history()
 #else
 #include <readline/readline.h>
@@ -212,6 +213,7 @@ which will discard any input that is left by a possible previous erroneous
 input. This also already fetches a new line of input, or abandons the program
 in case none can be obtained.
 
+@h <unistd.h> // for |isatty|
 @< Main program @>=
 
 int main(int argc, char** argv)
@@ -219,9 +221,9 @@ int main(int argc, char** argv)
 @)
   @< Handle command line arguments @>
 
-@/BufferedInput input_buffer("expr> "
-                            ,use_readline ? readline : NULL
-			    ,use_readline ? add_history : NULL);
+@/BufferedInput input_buffer(isatty(STDIN_FILENO) ? "expr> " : nullptr
+                            ,use_readline ? readline : nullptr
+			    ,use_readline ? add_history : nullptr);
   main_input_buffer= &input_buffer;
 @/Hash_table hash; main_hash_table= &hash;
 @/Lexical_analyser ana(input_buffer,hash,keywords,prim_names); lex=&ana;
@@ -278,13 +280,52 @@ functions.
 @h "built-in-types.h"
 @h "constants.h"
 @< Initialise various parts of the program @>=
-#ifndef NREADLINE
-  using_history();
-  rl_completion_entry_function = id_completion_func; // set up input completion
-#endif
+@< Initialise the \.{readline} library interface @>
 
 @)ana.set_comment_delims('{','}');
 @)initialise_evaluator(); initialise_builtin_types();
+
+@ The function |id_completion_func| define in the \.{lexer} module will not be
+plugged directly into the readline completion mechanism, but instead we
+provide an alternative function for generating matches, which may pass the
+above function to |rl_completion_matches| when it deems the situation
+appropriate, or else returns |nullptr| to indicate that the default function,
+completing on file names, should be used instead.
+
+@< Definitions of local functions @>=
+#ifndef NREADLINE
+extern "C" char** do_completion(const char* text, int start, int end)
+{
+  if (start>0)
+  { int i; char c; bool need_file=false;
+    for (i=0; i<start; ++i)
+      if (std::isspace(c=rl_line_buffer[i]))
+        continue; // ignore space characters
+      else if (c=='<' or c=='>')
+        need_file=true;
+      else
+        break;
+
+    if (need_file and i==start)
+       // the text is preceded by one or more copies of \.<, \.>
+      return nullptr; // signal that file name completion should be used
+  }
+  rl_attempted_completion_over = true;
+    // don't try file name completion if we get here
+  return rl_completion_matches(text,atlas::interpreter::id_completion_func);
+}
+#endif
+
+@ The code concerning the \.{readline} library is excluded in cas
+the \.{NREADLINE} flag is set.
+
+@< Initialise the \.{readline} library interface @>=
+#ifndef NREADLINE
+  using_history();
+  rl_completer_word_break_characters = lexical_break_chars;
+  rl_attempted_completion_function = do_completion; // set up input completion
+
+#endif
 
 @ If a type error is detected by |analyse_types|, then it will have signalled
 it and thrown a |runtime_error|; if that happens |type_OK| will remain |false|
@@ -305,7 +346,7 @@ suppress printing of the uninteresting value.
 	   << "Converted expression: " << *e << endl;
     e->evaluate(expression_base::single_value);
     last_value=pop_value();
-    static type_expr empty(type_list_ptr(NULL));
+    static type_expr empty(type_list_ptr(nullptr));
     if (*last_type!=empty)
       *output_stream << "Value: " << *last_value << endl;
     destroy_expr(parse_tree);

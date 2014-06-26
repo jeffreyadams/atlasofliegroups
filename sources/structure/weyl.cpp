@@ -33,6 +33,7 @@
 #include "prerootdata.h"// for defining action using only simple (co)roots
 #include "rootdata.h"	// also needed for defining action, and deducing twist
 #include "blocks.h"  // for |ext_gen|
+#include "sl_list.h"
 
 // extra defs for windows compilation -spc
 #ifdef WIN32
@@ -146,7 +147,7 @@ WeylGroup::WeylGroup(const int_Matrix& c)
 {
   /* analyse the Cartan matrix */
 
-  dynkin::DynkinDiagram d(c); // make diagram from Cartan matrix
+  DynkinDiagram d(c); // make diagram from Cartan matrix
   // find renumbering |a| putting labels in canonical order
   Permutation a= dynkin::normalize(d);
 
@@ -384,7 +385,7 @@ WeylElt WeylGroup::inverse(const WeylElt& w) const
 void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w) const
 {
   std::set<WeylElt> found;
-  std::stack<WeylElt> toDo;
+  std::stack<WeylElt,containers::mirrored_sl_list<WeylElt> > toDo;
 
   found.insert(w);
   toDo.push(w);
@@ -659,7 +660,7 @@ void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M)
   Same as |act(rd,inverse(w),v)|, but avoiding computation of |inverse(w)|.
   Here the leftmost factors act first.
 */
-void WeylGroup::inverseAct(const RootDatum& rd, const WeylElt& w, Weight& v)
+void WeylGroup::inverse_act(const RootDatum& rd, const WeylElt& w, Weight& v)
   const
 {
   for (size_t i=0; i<d_rank; ++i )

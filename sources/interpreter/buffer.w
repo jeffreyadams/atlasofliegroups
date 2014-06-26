@@ -185,7 +185,7 @@ class Hash_table
 {
 public:
   typedef unsigned short id_type; // type of value representing identifiers
-  static const id_type empty = ~0; // value reserved for empty slots
+  static const id_type empty; // value (|~0u|) reserved for empty slots
 private: // data members
   String_pool pool;
   id_type mod;  // hash modulus, the number of slots present
@@ -217,6 +217,25 @@ sure its header is included at the proper place.
 @< Includes needed in the header file @>=
 #include <vector>
 #include <cstring>
+
+@ Let's get that static class constant defined before we forget it, since a
+temporary may be need to be created when it is passed as |const id_type&|
+argument, so the value supplied at definition does not suffice. It is amazing
+how \Cpp\ makes it a pain to define a simple compile time constant. Note that
+the common |enum| trick won't work here, since |Hash_table::id_type| is a
+|short| type, so we definitely don't want |empty| to have type |int| in
+comparisons. The |static_cast| is necessary to ensure we use the |unsigned
+short| overload of the bitwise-complement operator |~|, because there is no
+such thing as a short integer denotation; thus we avoid a warning message
+about truncating a large unsigned constant to a shorter value, even though
+that is well-defined behaviour. (The perplexed reader might be reassured, or
+not, to learn that writing just |-1| as right hand side would also get the
+desired result, and without provoking any warning message.)
+
+@< Definitions of class members @>=
+
+const Hash_table::id_type Hash_table::empty =
+   ~static_cast<Hash_table::id_type>(0);
 
 @ Here is the constructor for a hash table. By nature |hash_tab| is larger
 than the number of entries currently stored; its size is always equal to~|mod|
@@ -383,10 +402,10 @@ one or more files), and these will be accessed through |std::istream| values.
 The copy constructor for that class is private, so there is no question of
 actually containing data members of that type; they will always be handled by
 reference or by pointer. As a consequence it should suffice in the header file
-to know that |std::istream| is a class in the header file, which is done by
-including \.{iosfwd}, and include \.{iostream} in the implementation. The
-actual pointer to input streams will be contained in an |input_record|
-structure that we shall discuss in more detail later.
+to know that |std::istream| is a class, which is done by including \.{iosfwd},
+and include \.{iostream} in the implementation. The actual pointer to input
+streams will be contained in an |input_record| structure that we shall discuss
+in more detail later.
 
 @h <iostream>
 
@@ -497,19 +516,21 @@ std::istream* stream; // points to the current input stream
 
 @ There are two constructors, one for associating an input buffer to some
 (raw) |istream| object (which may represent a disk file or pipe), another for
-associating it to interactive input from |stdin|. A prompt and readline
-function only apply to the second case (and |rl| may be a null pointer to
-request no input editing). Constructing the class does not yet fetch a line.
+associating it to probably interactive input from |stdin|. A prompt and
+readline function only apply to the second case and are set to |NULL| in the
+first case, which will disable certain interactions when fetching new lines; a
+null pointer may also be passed explicitly in the second case to obtain this
+disabling. Constructing the class does not yet fetch a line.
 
 @< Definitions of class members @>=
 BufferedInput::BufferedInput (std::istream& s)@/
 :base_stream(s)
 ,line_buffer()
 ,p(NULL)
-,prompt("")
-,prompt2("")
+,prompt(NULL)
+,prompt2(NULL)
 ,def_ext(NULL)
-,temp_prompt("")
+,temp_prompt(NULL)
 ,@|readline(NULL)
 ,add_hist(NULL)
 ,line_no(1)
@@ -534,6 +555,7 @@ de)@/
 ,line_no(1)
 ,cur_lines(0)
 ,input_stack()
+,input_files_seen()
 ,stream(&base_stream)
 @+{}
 
@@ -685,10 +707,10 @@ made by the caller.
 @< Definitions of class members @>=
 bool BufferedInput::push_file(const char* name, bool skip_seen)
 {
-  if (input_files_seen.knows(name))
+  if (skip_seen and input_files_seen.knows(name))
     return true;
-  input_stack.push_back(input_record(name,def_ext,line_no+cur_lines));
-  // reading will resume there
+  input_stack.push_back(@|input_record(name,def_ext,line_no+cur_lines));
+  // record where reading will resume
   if (input_stack.back().stream->good())
   { const std::string& name_ext=input_stack.back().name; bool avoid=false;
     for (unsigned i=input_stack.size()-1; i-->0; )
@@ -698,11 +720,11 @@ bool BufferedInput::push_file(const char* name, bool skip_seen)
         (skip_seen and input_files_seen.knows(name_ext.c_str()))) // seen before
     @/{@; delete input_stack.back().stream;
       input_stack.pop_back();
-    } // so just close file and pop record
+    } // close file and pop record
     else
     { std::cout << "Starting to read from file '" << input_stack.back().name
-                << "'." << std::endl;
-      stream= input_stack.back().stream;
+             << "'." @| << std::endl;
+    @/stream= input_stack.back().stream;
       line_no=1; // prepare to read from pushed file
       cur_lines=0;
         // so we won't advance |line_no| when getting first line of new file
@@ -776,7 +798,7 @@ bool BufferedInput::getline()
   { std::string line;
   @/@< Get |line| without newline from |stream| if there is one; if none can be
        obtained then |break| if |cur_lines>0|, otherwise pop |input_stack|,
-       set |popped=true| and |break|; if nothing works return |false| @>
+       set |popped=true| and |break|; if nothing works, |return false| @>
     ++cur_lines;
     std::string::size_type l=line.length();
     while (l>0 and std::isspace(line[l-1]))
@@ -865,9 +887,10 @@ error.
 @h <cstdlib>
 
 @< Read a line... @>=
-if (stream==&std::cin) // which implies |input_stack.empty()|
+if (input_stack.empty() and prompt!=NULL)
+  // do only at top level, and only if prompt enabled
 { prompt_length= std::strlen(pr);
-  if (readline!=NULL)
+  if (readline!=NULL) // skip calling 'readline' if no function is supplied
   { char* l=readline(pr);
     if (l==NULL) // then |readline| failed, flag end of file
     {@; line=""; stream->setstate(std::ios_base::eofbit);

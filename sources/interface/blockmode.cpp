@@ -57,6 +57,7 @@ namespace {
 
   // functions for the predefined commands
 
+  void dualkgb_f();
   void smallkgb_f();
   void smalldualkgb_f();
   void block_f();
@@ -100,6 +101,7 @@ CommandNode blockNode()
   CommandNode result("block: ",block_mode_entry,block_mode_exit);
 
   result.add("dualrealform",dualrealform_f,"override");
+  result.add("dualkgb",dualkgb_f,"override");
   result.add("smallkgb",smallkgb_f,
 	     "prints part of the KGB data pertinent to one block",std_help);
   result.add("smalldualkgb",smalldualkgb_f,
@@ -208,16 +210,12 @@ void block_mode_entry() throw(EntryError)
     RealReductiveGroup& G_R = currentRealGroup();
 
     ComplexReductiveGroup& G_C = G_R.complexGroup();
-    const complexredgp_io::Interface& G_I = currentComplexInterface();
+    complexredgp_io::Interface& G_I = currentComplexInterface();
 
     // get dual real form
-    RealFormNbr drf;
+    RealFormNbr drf = interactive::get_dual_real_form(G_I,G_R.realForm());
 
-    interactive::getInteractive
-      (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
-
-    dual_G_C_pointer=new
-      ComplexReductiveGroup(G_C,tags::DualTag());
+    dual_G_C_pointer=new ComplexReductiveGroup(G_C,tags::DualTag());
     dual_G_R_pointer=new RealReductiveGroup(*dual_G_C_pointer,drf);
   }
   catch(error::InputError& e)
@@ -237,14 +235,10 @@ void dualrealform_f()
   try
   {
     RealReductiveGroup& G_R = currentRealGroup();
-    ComplexReductiveGroup& G_C = G_R.complexGroup();
-    const complexredgp_io::Interface& G_I = currentComplexInterface();
+    complexredgp_io::Interface& G_I = currentComplexInterface();
 
     // get dual real form
-    RealFormNbr drf;
-
-    interactive::getInteractive
-      (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
+    RealFormNbr drf = interactive::get_dual_real_form(G_I,G_R.realForm());
 
     // we can call the swap method for rvalues, but not with and rvalue arg
     RealReductiveGroup(*dual_G_C_pointer,drf).swap(*dual_G_R_pointer);
@@ -279,6 +273,19 @@ void block_mode_exit()
   various commands defined in this mode.
 
 ******************************************************************************/
+
+
+// Print a kgb table for a dual real form.
+void dualkgb_f()
+{
+  RealReductiveGroup& dG = currentDualRealGroup();
+
+  std::cout << "dual kgbsize: " << dG.KGB_size() << std::endl;
+  ioutils::OutputFile file;
+
+  KGB kgb(dG,dG.Cartan_set());
+  kgb_io::printKGB(file,kgb);
+}
 
 
 // Print the kgb table, only the necessary part for one block

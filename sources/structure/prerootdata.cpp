@@ -1,6 +1,5 @@
-/*!
-\file
-  \brief Constructs a root datum from user interaction: implementation.
+/*
+  Constructing a root datum from user interaction: implementation.
 
   The idea is to construct an abstract root datum (a lattice and a
   subset of "roots," together with the dual lattice and a subset of
@@ -17,8 +16,6 @@
   For license information see the LICENSE file
 */
 
-#include <string> // used implicitly in throwing |std::runtime_error|
-
 #include "prerootdata.h"
 
 #include <cassert>
@@ -28,13 +25,6 @@
 #include "lietype.h"
 
 namespace atlas {
-
-namespace {
-
-  WeightList rootBasis(const LieType& lt, const WeightList&);
-  CoweightList corootBasis(const LieType& lt, const CoweightList& lb);
-
-}
 
 /*****************************************************************************
 
@@ -73,8 +63,24 @@ dual basis.
 */
 PreRootDatum::PreRootDatum(const LieType& lt,
 			   const WeightList& b)
-: d_roots(rootBasis(lt,b)), d_coroots(corootBasis(lt,b)), d_rank(lt.rank())
-{}
+  : d_roots(lt.semisimple_rank()), d_coroots(d_roots.size())
+  , d_rank(lt.rank())
+{
+  weyl::Generator s=0; unsigned int r=0; // |r| indexes rows of |Cartan|
+  for (unsigned int k=0; k<lt.size(); ++k)
+    if (lt[k].type()=='T') // only do non-torus factors;
+      r+=lt[k].rank();  // skip row(s), keep |s| unchanged
+    else
+      for (unsigned int i=lt[k].rank(); i-->0; ++r,++s) // here |s| increases
+      { // set simple roots and coroots as for simply connected root datum
+	d_roots[s].resize(lt.rank()); d_coroots[s].resize(lt.rank(),0);
+	for (unsigned int j=0; j<lt.rank(); ++j)
+	  d_roots[s][j] = lt.Cartan_entry(r,j);
+	d_coroots[s][r] = 1;
+      }
+  assert(b.size()==lt.rank());
+  quotient(LatticeMatrix(b,b.size())); // transform |b| into a square matrix
+}
 
 
   // accessors
@@ -88,6 +94,34 @@ int_Matrix PreRootDatum::Cartan_matrix() const
       Cartan(i,j) = d_roots[i].dot(d_coroots[j]);
 
   return Cartan;
+}
+
+// replace root datum for one by a finite central quotient
+void PreRootDatum::quotient(const LatticeMatrix& sublattice)
+  throw(std::runtime_error)
+{
+  const size_t rk=sublattice.numColumns();
+
+  if (sublattice.numRows()!=rk)
+    throw std::runtime_error("Sub-lattice matrix must be square");
+
+  LatticeMatrix inv(sublattice);
+  LatticeCoeff d; inv.invert(d);
+
+  if (d==0)
+    throw std::runtime_error("Dependent lattice generators");
+
+  try {
+    for (unsigned int j=0; j<d_roots.size(); ++j)
+    {
+      inv.apply_to(d_roots[j]); d_roots[j]/=d;
+      sublattice.right_mult(d_coroots[j]);
+    }
+  }
+  catch (std::runtime_error& e) {
+    // relabel |std::runtime_error("Inexact integer division")| from division
+    throw std::runtime_error("Sub-lattice does not contain the root lattice");
+  }
 }
 
 template<typename C>
@@ -121,106 +155,7 @@ void PreRootDatum::simple_reflect(LatticeMatrix& M,weyl::Generator s) const
   }
 }
 
-
-
-  // manipulator
-
-void PreRootDatum::swap(PreRootDatum& other)
-
-{
-  d_roots.swap(other.d_roots);
-  d_coroots.swap(other.d_coroots);
-  std::swap(d_rank,other.d_rank);
-}
-
 } // |namespace prerootdata|
-
-/*****************************************************************************
-
-        Chapter II -- Auxiliary functions
-
-  This sections contains the definitions of some auxiliary functions private
-  to the present module :
-
-    - WeightList& rootBasis(const CartanMatrix&, const WeightList&):
-      writes down the simple roots in the lattice basis;
-    - WeightList corootBasis(const LieType& lt,const WeightList& lb): writes
-      down the simple coroots for |lt| in the dual lattice basis of |lb|;
-
-******************************************************************************/
-
-namespace {
-
-
-/*!
- \brief Writes down the simple roots in the lattice basis.
-
-  Given the lattice basis |lb|, expressed in terms of the simple weight basis,
-  and a Lie type |lt|, the Cartan matrix of |lt| may be interpreted as giving
-  in its _rows_ the coordinates of the simple roots in the simple weight basis
-  (this interpretation depends on our definition of the Cartan matrix to
-  include in the non-semisimple case null columns at torus factor positions;
-  in fact for symmetry null rows are inserted there as well, which we skip).
-  This function returns the coordinates of the simple root basis in |lb|, so
-  it is simply a base change by left multiplication by the inverse of |lb|.
-*/
-WeightList rootBasis(const LieType& lt, const WeightList& lb)
-{
-  assert(lb.size()==lt.rank());
-  LatticeCoeff d;
-  LatticeMatrix q(lb,lb.size()); q.invert(d);
-
-  if (d==0)
-    throw std::runtime_error("Dependent lattice generators");
-
-  // push back simple roots expressed in |lb|
-
-  const size_t rk=lt.rank();
-  Weight v(rk); // temporary vector
-  WeightList result; result.reserve(lt.semisimple_rank());
-  size_t r=0; // row number in Cartan matrix
-  for (size_t i=0; i<lt.size(); ++i)
-    for (size_t j=0; j<lt[i].rank(); ++j,++r)
-      if (lt[i].type()!='T') // skip on torus factors
-      {
-	for (size_t k=0; k<rk; ++k) // get Cartan entries for root
-	  v[k]=lt.Cartan_entry(r,k);
-	result.push_back((q*v)/=d); // may |throw std::runtime_error|
-      }
-
-  return result;
-}
-
-/*! \brief Writes down the simple coroots in the dual lattice basis.
-
-  Given the lattice basis |lb|, expressed in terms of the simple weight basis,
-  and the Lie type |lt|, this function returns the simple coroots of the
-  system. If |q| is the matrix of |lb| in the simple weight basis, its
-  transpose is the matrix of the dual basis of the simple weight basis (a
-  basis consisting of simple coroots completed with vectors in the radical) on
-  the dual basis of the sublattice |lt| (which can be a basis of a _larger_
-  lattice than that of the coweights). So all that is necessary is to drop
-  from the transposed matrix the columns representing vectors in the radical;
-  this is what |lt| is used for. In fact we avoid transposition, copying rows.
-*/
-CoweightList corootBasis(const LieType& lt, const WeightList& lb)
-{
-  assert(lb.size()==lt.rank());
-  LatticeMatrix q(lb,lb.size()); // square matrix
-
-  CoweightList result; result.reserve(lt.semisimple_rank());
-  size_t r=0; // row number in |q|
-  for (size_t i=0; i<lt.size(); ++i)
-    for (size_t j=0; j<lt[i].rank(); ++j,++r)
-      if (lt[i].type()!='T') // skip on torus factors
-	result.push_back(q.row(r));
-
-  return result;
-}
-
-
-} // namespace
-
 
 // template instantiation
 

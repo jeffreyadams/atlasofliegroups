@@ -75,10 +75,9 @@ struct Layout;
 
 
 
-typedef char TypeLetter;
-
 struct SimpleLieType : public std::pair<TypeLetter,size_t>
-{ typedef std::pair<TypeLetter,size_t> base;
+{ // there are no additional data members
+  typedef std::pair<TypeLetter,size_t> base;
   SimpleLieType(TypeLetter t,size_t rank) : base(t,rank) {}
   TypeLetter type() const { return base::first; }
   TypeLetter& type() { return base::first; }
@@ -91,7 +90,8 @@ struct SimpleLieType : public std::pair<TypeLetter,size_t>
 };
 
 struct LieType : public std::vector<SimpleLieType>
-{ typedef std::vector<SimpleLieType> base;
+{ // there are no additional data members
+  typedef std::vector<SimpleLieType> base;
   LieType() : base() {}
   LieType(const base& b) : base(b) {}
 
@@ -106,7 +106,8 @@ struct LieType : public std::vector<SimpleLieType>
 // the follwing rather empty definition serves mainly to make |InnerClassType|
 // a genuine member of |namespace lietype| for argument-dependent lookup
 struct InnerClassType : public std::vector<TypeLetter>
-{ typedef std::vector<TypeLetter> base;
+{ // there are no additional data members
+  typedef std::vector<TypeLetter> base;
   InnerClassType() : base() {}
 };
 
