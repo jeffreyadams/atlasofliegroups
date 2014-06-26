@@ -361,24 +361,26 @@ struct type_expr
   };
 @)
   type_expr() : kind(undetermined_type) @+{}
-  explicit type_expr(primitive_tag p)
+  explicit type_expr(primitive_tag p) noexcept
     : kind(primitive_type) @+{@; prim=p; }
-  explicit type_expr(type_ptr&& c)
+  explicit type_expr(type_ptr&& c) noexcept
     : kind(row_type) @+{@; component_type=c.release(); }
-  explicit type_expr(type_list_ptr l) : kind(tuple_type)
+  explicit type_expr(type_list_ptr&& l) noexcept : kind(tuple_type)
   @+{@; tuple=l.release(); }
-  inline type_expr(type_ptr&& arg, type_ptr&& result); // for function types
+  inline type_expr(type_ptr&& arg, type_ptr&& result) noexcept;
+   // for function types
 @)
-  type_expr(const type_expr& t); // copy constructor
+  type_expr(const type_expr& t); // (deep) copy constructor
   ~type_expr();
-@)
-  void set_from(type_ptr&& p) noexcept;
-  bool specialise(const type_expr& pattern);
-  bool can_specialise(const type_expr& pattern) const;
-private:
-  type_expr& operator=(const type_expr& t);
+  type_expr& operator=(const type_expr& t) = @[ delete @];
    // assignment is forbidden
-};
+@)
+  void set_from(type_ptr&& p) noexcept; // shallow copy
+  bool specialise(const type_expr& pattern);
+    // try to match pattern, possibly modifying |*this|
+  bool can_specialise(const type_expr& pattern) const;
+    // tell whether |specialse| would succeed
+ };
 
 
 @ For that definition to be processed properly, we must pay some attention to
@@ -404,7 +406,7 @@ definition, since |func_type| is not (and cannot be) a complete type there.
 The constructor for |func_type| used will be defined below.
 
 @< Template and inline function definitions @>=
-type_expr::type_expr(type_ptr&& arg, type_ptr&& result)
+type_expr::type_expr(type_ptr&& arg, type_ptr&& result) noexcept
    : kind(function_type)
  {@; func=new func_type(std::move(arg),std::move(result)); }
 
@@ -423,7 +425,7 @@ purposes, but we should take care that the basic constructor only makes a
 shallow copy of the topmost nodes pointed to. This is achieved by using the
 |set_from| method to fill the initially undetermined slots with a shallow copy
 of the types, in the same way as was done in the constructor for~|type_node|.
-The copy constructor needs no special care, as it makes a deep copy.
+The copy constructor needs no special care, as it makes deep copies.
 
 @s result_type normal
 
@@ -487,15 +489,18 @@ structure will be copied to the current |type_expr|, but without invoking the
 copy constructor; afterwards the original node will be destroyed after
 detaching any possible descendants from it. This operation is only safe if the
 |type_expr| previously had no descendants, and in fact we insist that it had
-|kind==undetermined_type|; if this condition fails we signal a
-|std::logic_error|. In a sense this is like a |swap| method, but only defined
+|kind==undetermined_type|; if this condition fails we used to signal a
+|std::logic_error|, but since for \Cpp11 this function is marked |noexcept|
+(to indicate it does not allocate memory), we have transformed that into an
+|assert| statement. In a sense this is like a |swap| method, but only defined
 if the type was undetermined to begin with; in modern parlance, it implements
 move semantics.
 
 @h <stdexcept>
 @< Function definitions @>=
 void type_expr::set_from(type_ptr&& p) noexcept
-{ if (kind!=undetermined_type) throw std::logic_error("Illegal set_from");
+{ assert (kind==undetermined_type);
+   // logic should ensure this; we promised not to |throw|
   kind=p->kind;
   switch(kind) // copy top node
   { case undetermined_type: break;
@@ -505,12 +510,12 @@ void type_expr::set_from(type_ptr&& p) noexcept
     case tuple_type: tuple=p->tuple; break;
   }
   p->kind=undetermined_type;
-  // detach descendants, so unique-pointer will destroy top-level only
+  // detach descendants, |p.~type_ptr()| will destroy top-level only
 }
 
 
 @ The |specialise| method is mostly used to either set a completely
-undetermined type to a given pattern or to test if it already matches it;
+undetermined type to a given pattern, or to test if it already matches it;
 however, we do not exclude the possibility that a partly determined type is
 modified by specialisation of one of its descendants to match the given
 pattern. Matching a pattern means being at least as specific, and specialising
@@ -539,8 +544,9 @@ where having commit-or-roll-back is important.
 bool type_expr::specialise(const type_expr& pattern)
 { if (pattern.kind==undetermined_type)
     return true; // specialisation to \.* trivially succeeds.
-  if (kind==undetermined_type)
+  if (kind==undetermined_type) // specialising \.* also always succeeds,
     {@;new(this) type_expr(pattern); return true; }
+     // by setting |*this| to |pattern|
   if (pattern.kind!=kind) return false; // impossible to refine
   switch(kind)
   { case primitive_type: return prim==pattern.prim;
@@ -657,7 +663,7 @@ bool operator== (const type_expr& x,const type_expr& y)
 { if (x.kind!=y.kind) return false;
   switch (x.kind)
   { @+ default:
-// all cases are listed below, but somehow this keeps \.{g++} from complaining
+// all cases are listed below, but compilers want a |default| to |return|
   @\case undetermined_type: return true;
     case primitive_type: return x.prim==y.prim;
     case row_type: return *x.component_type==*y.component_type;
@@ -715,18 +721,29 @@ type_ptr make_function_type (type_ptr&& a, type_ptr&& r)
 In practice we shall rarely call functions like |make_prim_type| and
 |make_row_type| directly to make explicit types, since this is rather
 laborious. Instead, such explicit types will be constructed by the function
-|make_type| that parses a string, and correspondingly calls the appropriate
-type constructing functions.
+|make_type| that parses a (\Cee~type) string, and correspondingly calls the
+appropriate type constructing functions.
 
 @< Declarations of exported functions @>=
 type_ptr make_type(const char* s);
 
 @ The task of converting a properly formatted string into a type is one of
-parsing a simple kind of expressions. We are not going to write incorrect
-strings (we hope) so we don't care if the error handling is crude. The
-simplest way of parsing ``by hand'' is recursive descent, so that is what we
-shall use. By passing a character pointer by reference, we allow the recursive
-calls to advance the index within the string read.
+parsing a simple kind of expressions. The strings used here come from string
+denotations in the source code (mostly in calls installing built-in \.{realex}
+function) rather than from user input, and we are not going to write incorrect
+strings (we hope). Therefore we don't care if the error handling is crude
+here. The simplest way of parsing ``by hand'' is recursive descent, so that is
+what we shall use. By passing a character pointer by reference, we allow the
+recursive calls to advance the index within the string read.
+
+The function |scan_type| does the real parsing, and |make_type| is just a
+wrapper around it that converts the parameter type from pointer to
+reference-to-pointer, and takes care of issuing an error message if an
+incorrect string should be inadvertently encountered (currently |make_type| is
+called only during the start-up phase of \.{realex}, and if an error
+encountered (of type |std::logic_error|, since it indicates an error in
+the \.{realex} program itself), printing of the error message will be followed
+by termination of the program.
 
 @< Function definitions @>=
 type_ptr scan_type(const char*& s);
@@ -754,8 +771,9 @@ type_ptr scan_type(const char*& s)
 }
 
 
-@ Since we did not advance the pointer when testing for |'['|, we must start
-with that.
+@ The following code demonstrates how simple recursive descent parsing can be.
+The only subtle point is that did not advance the pointer |s| when testing for
+|'['| above, so we must start with doing that.
 
 @< Scan and |return| a row type, or |throw| a |logic_error| @>=
 { type_ptr c=scan_type(++s);
@@ -772,20 +790,27 @@ type.
 
 The only complication is that single parenthesised types, and single argument
 or return types should not be converted into tuple types with one component,
-but just into the constituent type. This is done by assigning to the
+but just into the constituent type. This is done by assigning to the local
 |type_ptr| variables |a| and |r| either the extracted singleton type or the
-tuple type constructed from the non-singleton list. Note that this is one of
-the few places where we really use the ownership-tracking semantics of
-unique-pointers, in the sense that their destruction behaviour at a certain
-point is variable: the list pointed to by |l0| and |l1| will only be deleted
-in the case of a singleton list, where the unique-pointer was not passed on in a
-call to |make_tuple_type|.
+tuple type constructed from the non-singleton list. When extracting a
+singleton type, the |type_expr| reference |l0->t| or |l1->t| used is one to
+part of a |type_node| structure, so there is no other option here than calling
+|copy| to turn this reference into a |type_ptr| owning a fresh copy of that
+singleton type.
+
+Note that this is one of the few places where we really use the
+ownership-tracking semantics of unique-pointers, in the sense that their
+destruction behaviour at a certain point is runtime-dependent: the list
+pointed to by |l0| and |l1| will only be deleted in the case of a singleton
+list, where the unique-pointer was not passed on in a call to
+|make_tuple_type|.
 
 @< Scan and |return| a tuple or function type, or |throw| a |logic_error| @>=
 { type_list_ptr l0=scan_type_list(++s), l1(nullptr);
   bool is_tuple=*s==')';
   if (*s=='-' and *++s=='>') l1=scan_type_list(++s);
-  if (*s++!=')') throw std::logic_error("Missing ')' in type");
+  if (*s!=')') throw std::logic_error("Missing ')' in type");
+   @+ else ++s;
   type_ptr a =
     l0.get()!=nullptr and l0->next==nullptr ? copy(l0->t)
     : make_tuple_type(std::move(l0));
@@ -813,14 +838,18 @@ type_list_ptr scan_type_list(const char*& s)
 many characters as the type name has, and the fact that no alphanumeric
 character follows, so that a longer type name will not match a prefix of it.
 
-@h <cctype>
+In this module we use the fact lather the order in the list |prim_names|
+matches that in the enumeration type |primitive_tag|, by casting the integer
+index into the former list to an element of that enumeration.
+
+@h <cstring> // |strlen|, |strncmp|
+@h <cctype> // |isalpha|
 @< Scan and |return| a primitive type, or |throw| a |logic_error| @>=
 { for (size_t i=0; i<nr_of_primitive_types; ++i)
-  { std::string name=prim_names[i];
-    if (name.compare(0,name.length(),s,name.length())==0 and
-        not isalpha(s[name.length()]))
-    @/{@; s+=name.length();
-      return make_prim_type(static_cast<primitive_tag>(i));
+  { const char* name=prim_names[i];
+    size_t l= std::strlen(name);
+    if (std::strncmp(s,name,l)==0 and not isalpha(s[l]))
+    @/{@; s+=l; return make_prim_type(static_cast<primitive_tag>(i));
     }
   }
   throw std::logic_error("Type unrecognised");
@@ -895,8 +924,11 @@ them here (this used no not be the case, and led to a subtle bug whose
 appearance depended on the precise compiler version used!). The construction
 of type constants follows the same pattern as before, calling |copy| in the
 case of composite types. In the final case we choose the simplest solution of
-calling |make_type| and copying the resulting nested structure into the static
-variable before destroying the function result.
+calling |make_type| and copy-constructing the resulting nested structure into
+the static variable before destroying the function result. One might have done
+better using the |set_from| method if it would have been possible to include
+in a (static) variable definition the call of a method on the declared
+variable, but it is not.
 
 @< Global variable definitions @>=
 const type_expr rat_type(rational_type);
