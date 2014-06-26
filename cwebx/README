@@ -1,0 +1,33 @@
+This directory contains a stripped-down version of CWEBx (version 3.6), which
+is a tool that is used to process various source files in the Atlas project to
+compilable files on one hand, and to program documentation on the other hand.
+
+The CWEBx system consists of two executable programs, ctanglex and cweavex.
+They are built by running "make" in the current directory. This should
+normally be done automatically while building Atlas, and the programs will
+then be called automatically under control of the Atlas makefiles.
+
+This directory contains just the derived compilable sources; no orignal source
+files, documentation or examples are provided, for which the official cwebx
+distribution should be used.
+
+The CWEBX home page is at http://www-math.univ-poitiers.fr/~maavl/CWEBx/ but
+may at times be lagging behind the development, for which a git repository is
+maintained at code.google.com/p/cwebx
+
+Here is a listing of the files constituting the release with a brief
+indication of their purpose. The last two files are needed for processing the
+(plain) TeX files produced by cweavex; make sure they are on your TeX input
+path (by setting the TEXINPUTS environment variable) in case you want to
+produce source documentation for the pertinent Atlas files (mostly realex).
+
+README	        % the file you are currently reading
+Makefile	% control file for POSIX 'make' facility to build CWEB
+
+common.c	% C file for code shared by ctanglex and cweavex
+common.h	% C header file for the common code
+ctangle.c	% C file for proper code of the ctanglex program
+cweave.c	% C file for proper code of the cweavex program
+
+cwebxmac.tex	% TeX macro file needed to process files produced by CWEAVE
+cwebhmac.tex	% optional TeX macro file creating hyperlinks for xhdvi (e.g.)

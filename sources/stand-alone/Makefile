@@ -31,7 +31,7 @@ CXXFLAGS := -Wall $(OFLAG) $(INCLUDE_FLAGS)
 # our beloved C++ compiler
 CXX = g++
 
-cwebx_sources := matrix-merge.w coef-merge.w KLread.w
+cwebx_sources := matrix-merge.w coef-merge.w KLread.w Euler-201.w
 webtexfiles   := $(cwebx_sources:%.w=%.tex)
 
 dvifiles := $(cwebx_sources:%.w=%.dvi)
@@ -58,6 +58,8 @@ Poincare_objects:= ../io/basic_io.o \
 lights-off_objects:= ../utilities/mod2_system.o  ../utilities/constants.o \
    ../utilities/bitmap.o ../utilities/bits.o
 
+Euler_objects= ../utilities/bitmap.o  ../utilities/constants.o \
+   ../utilities/bits.o
 
 executables := $(cwebx_sources:%.w=%) $(illiterate_sources:%.cpp=%)
 
@@ -109,6 +111,8 @@ linear: linear.cpp $(polstat_objects)
 Poincare: Poincare.cpp $(Poincare_objects)
 
 lights-off: lights-off.cpp $(lights-off_objects)
+
+Euler-201: Euler-201.cpp $(Euler_objects)
 
 # a static pattern rule giving the usual C++ single-module compilation
 $(executables): %: %.cpp

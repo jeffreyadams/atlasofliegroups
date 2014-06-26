@@ -31,7 +31,9 @@ BINDIR := $(INSTALLDIR)/../bin
 
 version = $(shell perl getversion.pl)
 messagedir := $(INSTALLDIR)/messages/
-cweb_dir = cweb-x3.51
+cweb_dir := cwebx
+sources_dir := sources
+realex_dir := sources/realex
 
 # atlas_dirs contains subdirectories of 'atlas/sources' that need compilation
 # realex_dirs are where the object files for realex are situated
@@ -163,9 +165,17 @@ else
 	$(CXX) -o atlas $(atlas_objects) $(LDFLAGS)
 endif
 
+# for files proper to realex, the build is defined inside sources/interpreter
 
 realex: $(cweb_dir)/ctanglex $(realex_objects)
-	$(CXX) -o realex $(realex_includes) $(realex_objects) $(LDFLAGS)
+	cd sources/interpreter && $(MAKE) ../../realex
+
+$(interpreter_made_files) $(interpreter_objects):
+	cd sources/interpreter && $(MAKE) $(subst sources/interpreter/,,$@)
+
+sources/interpreter/parser.tab.c sources/interpreter/parser.tab.h: \
+  sources/interpreter/parser.y
+	cd sources/interpreter && $(MAKE)  $(subst sources/interpreter/,,$@)
 
 # The following rules are static pattern rules: they are like implicit rules,
 # but only apply to the files listed in their targets
@@ -175,12 +185,9 @@ $(filter-out sources/interface/io.o,$(atlas_objects)) : %.o : %.cpp
 sources/interface/io.o : sources/interface/io.cpp
 	$(CXX) $(cflags) $(atlas_flags) -DMESSAGE_DIR_MACRO=\"$(messagedir)\" \
 	  -o sources/interface/io.o sources/interface/io.cpp
-$(interpreter_cweb_objects) : %.o : %.cpp
-	$(CXX) $(cflags) $(realex_flags) -o $*.o $*.cpp
 
 sources/interpreter/parser.tab.o: \
   sources/interpreter/parser.tab.c sources/interpreter/parsetree.h
-	$(CXX) $(cflags) -o $@ $<
 
 # generate files that describe which .o files depend on which other (.h) files
 $(dependencies) : %.d : %.cpp
@@ -191,15 +198,11 @@ $(dependencies) : %.d : %.cpp
 # directives, for all object files of the atlas
 # make will automatically remake any of $(dependencies) if necessary
 
+ifneq ($(MAKECMDGOALS),veryclean)
 include $(dependencies)
+endif
 
 include sources/interpreter/dependencies
-# if these dependencies indicate that cwebx must be used, do recursive make
-$(interpreter_made_files):
-	cd sources/interpreter && $(MAKE) headers cppfiles
-sources/interpreter/parser.tab.c sources/interpreter/parser.tab.h: \
-  sources/interpreter/parser.y
-	cd sources/interpreter && $(MAKE) parser.tab.c
 
 install: atlas realex
 ifneq ($(INSTALLDIR),$(shell pwd))
@@ -233,16 +236,16 @@ version:
 distribution:
 	bash make_distribution.sh $(version)
 
-.PHONY: mostlyclean clean cleanall show
+.PHONY: mostlyclean clean veryclean show
 mostlyclean:
-	rm -f $(objects) $(interpreter_made_files) \
+	$(RM) -f $(objects) $(interpreter_made_files) \
             sources/interpreter/parser.tab.* *~ *.out junk
 
 clean: mostlyclean
-	rm -f atlas realex
+	$(RM) -f atlas realex
 
-cleanall: clean
-	rm -f $(dependencies)
+veryclean: clean
+	$(RM) -f sources/*/*.d
 
 $(cweb_dir)/ctanglex: \
   $(cweb_dir)/common.h $(cweb_dir)/ctangle.c $(cweb_dir)/ctangle.c

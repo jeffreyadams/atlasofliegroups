@@ -9,7 +9,7 @@
 
 #include "bitmap.h"
 
-#include <algorithm> // for |lower_bound|
+#include <algorithm> // for |lower_bound|, |copy|, |copy_backward|
 #include "bits.h"
 
 #include <cassert>
@@ -431,6 +431,50 @@ bool BitMap::andnot(const BitMap& b)
     if ((d_map[j] &= ~(b.d_map[j]))!=0) any=true;
 
   return any;
+}
+
+BitMap& BitMap::operator<<= (unsigned long delta) // increase values by |delta|
+{
+  unsigned long delta_rem = delta & posBits;
+  delta >>= baseShift; // we must move |delta| words, and then |delta_rem| bits
+  if (delta>0) // shifting by |0| is useless, and undefined behavior too
+  {
+    std::copy_backward(d_map.begin(),d_map.end()-delta,d_map.end());
+    std::fill(d_map.begin(),d_map.begin()+delta,0ul);
+  }
+  if (delta_rem>0 and not d_map.empty())
+  {
+    std::vector<unsigned long>::iterator it;
+    for (it=d_map.end(); --it!=d_map.begin(); )
+    {
+      *it <<= delta_rem; // shift bits up
+      *it |= *(it-1) >> (constants::longBits-delta_rem);
+    }
+    *it <<= delta_rem; // shift bits up
+  }
+  return *this;
+}
+
+BitMap& BitMap::operator>>= (unsigned long delta) // decrease values by |delta|
+{
+  unsigned long delta_rem = delta & posBits;
+  delta >>= baseShift; // we must move |delta| words, and then |delta_rem| bits
+  if (delta>0) // shifting by |0| is useless, and undefined behavior too
+  {
+    std::copy(d_map.begin()+delta,d_map.end(),d_map.begin());
+    std::fill(d_map.end()-delta,d_map.end(),0ul);
+  }
+  if (delta_rem>0 and not d_map.empty())
+  {
+    std::vector<unsigned long>::iterator it;
+    for (it=d_map.begin(); it+1!=d_map.end(); ++it)
+    {
+      *it >>= delta_rem; // shift bits doan
+      *it |= *(it+1) << (constants::longBits-delta_rem);
+    }
+    *it <<= delta_rem; // shift last bits down
+  }
+  return *this;
 }
 
 /*!
