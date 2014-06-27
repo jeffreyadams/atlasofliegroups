@@ -30,10 +30,10 @@ template<typename T>
 template<typename T>
 struct sl_node
 {
-  typedef std::auto_ptr<sl_node> link_type;
+  typedef std::unique_ptr<sl_node> link_type;
   link_type next;
   T contents;
-sl_node(const T& contents) : next(0), contents(contents) {}
+sl_node(const T& contents) : next(nullptr), contents(contents) {}
 }; // |class sl_node| template
 
 template<typename T>
@@ -56,7 +56,7 @@ protected:
 
 public:
   // constructors
-  sl_list_const_iterator() : link_loc(0) {} // default iterator is invalid
+  sl_list_const_iterator() : link_loc(nullptr) {} // default iterator is invalid
   explicit sl_list_const_iterator(const link_type& link)
   /* the following const_cast is safe because not exploitable using a mere
      |const_iterator|; only used for |insert| and |erase| manipulators */
@@ -98,7 +98,7 @@ public:
   // increment operators also need overload, with covariant return type
   self operator++() { Base::operator++(); return *this; }
   self operator++(int) // post-increment
-  { self tmp=*this; Base::operator++(0); return tmp; }
+  { self tmp=*this; Base::operator++(nullptr); return tmp; }
 
 }; // |struct sl_list_iterator| template
 
@@ -109,7 +109,7 @@ template<typename T>
   class sl_list
   {
     typedef sl_node<T> node_type;
-    typedef std::auto_ptr<node_type> link_type;
+    typedef std::unique_ptr<node_type> link_type;
 
   public:
     typedef T value_type;
@@ -132,11 +132,11 @@ template<typename T>
     // constructors
   public:
     explicit sl_list () // empty list
-      : head(0), tail(&head), node_count(0) {}
+      : head(nullptr), tail(&head), node_count(0) {}
     sl_list (const sl_list& x) // copy contructor
-      : head(0), tail(&head), node_count(x.node_count)
+      : head(nullptr), tail(&head), node_count(x.node_count)
     {
-      for (node_type* p=head.get(); p!=0; p=p->next.get())
+      for (node_type* p=head.get(); p!=nullptr; p=p->next.get())
       {
 	node_type* q = new node_type(p->contents); // construct node value
 	tail->reset(q); // link in new final node
@@ -146,13 +146,13 @@ template<typename T>
 
     template<typename InputIt>
       sl_list (InputIt first, InputIt last, tags::IteratorTag)
-      : head(0), tail(&head), node_count(0)
+      : head(nullptr), tail(&head), node_count(0)
     {
       assign(first,last, tags::IteratorTag());
     }
 
     sl_list (size_type n, const T& x)
-      : head(0), tail(&head), node_count(n)
+      : head(nullptr), tail(&head), node_count(n)
     {
       while (n-->0)
       {
@@ -179,7 +179,7 @@ template<typename T>
     T& front () { return head->contents; }
     void pop_front ()
     { head.reset(head->next.release());
-      if (--node_count==0) // condition without side effect is |head.get()==0|
+      if (--node_count==0) // pure condition equivalent to |head.get()==nullptr|
 	tail=&head;
     }
     void push_front(const T& val)
@@ -234,13 +234,13 @@ template<typename T>
 	pos = iterator(p->next); // or simply |++pos|
 	++node_count;
       }
-      if (pos.link_loc->get()==0) // if |pos| is (still) at end of list
+      if (pos.link_loc->get()==nullptr) // if |pos| is (still) at end of list
 	tail = pos.link_loc; // then make |tail| point to this null smart ptr
     }
 
     iterator erase(iterator pos)
     { pos.link_loc->reset((*pos.link_loc)->next.release());
-      if (pos.link_loc->get()==0) // if final node was erased
+      if (pos.link_loc->get()==nullptr) // if final node was erased
 	tail = pos.link_loc; // we need to reestablish validity of |tail|
       --node_count;
       return pos;
@@ -253,7 +253,7 @@ template<typename T>
 	first.link_loc->reset((*first.link_loc)->next.release());
 	--node_count;
       }
-      if (end==0) // if final node was erased
+      if (end==nullptr) // if final node was erased
 	tail = first.link_loc; // we need to reestablish validity of |tail|
       return first;
     }
@@ -333,6 +333,22 @@ template<typename T>
     const_iterator end()   const { return const_iterator(*tail); }
     const_iterator cbegin() const { return const_iterator(head); }
     const_iterator cend()   const { return const_iterator(*tail); }
+
+    void reverse() { reverse(cbegin(),cend()); }
+
+    void reverse(const_iterator from, const_iterator to)
+    {
+      if (to==end() and from!=to)
+	tail = &(*from.link_loc)->next;
+      link_type result((*to.link_loc).release());
+      link_type p((*from.link_loc).release());
+      while (p.get()!=nullptr)
+      { // cycle forward |(result,p->next,p|)
+	result.swap(p->next);
+	result.swap(p);
+      }
+      from.link_loc->reset(result.release());
+    }
 
   }; // |class sl_list|
 

@@ -89,21 +89,21 @@ atlas_flags :=
 realex_flags := -Wno-parentheses
 
 # the default setting is normal
-cflags ?= $(nflags)
+CXXFLAGS ?= $(nflags)
 
 # to select another flavor, set optimize=true, debug=true or profile=true
 # when calling make (as in "make optimize=true") or set the flavor as an
 # environment variable (only the first flavor set in above list takes effect)
-# alternatively, you can set cflags="explicit options" to override
+# alternatively, you can set CXXFLAGS="explicit options" to override
 
 ifeq ($(optimize),true)
-      cflags := $(oflags)
+      CXXFLAGS := $(oflags)
 else
 ifeq ($(debug),true)
-      cflags := $(gflags)
+      CXXFLAGS := $(gflags)
 else
 ifeq ($(profile),true)
-      cflags := $(pflags)
+      CXXFLAGS := $(pflags)
 endif
 endif
 endif
@@ -112,7 +112,7 @@ endif
 # and/or make more verbose by setting verbose=true
 
 ifeq ($(readline),false)
-    cflags += -DNREADLINE
+    CXXFLAGS += -DNREADLINE
     rl_libs =
 else
     rl_libs ?= -lreadline
@@ -127,7 +127,15 @@ ifeq ($(verbose),true)
 endif
 
 # the default compiler
-CXX = g++
+CXX = g++ -std=c++0x
+
+CXXVERSION := $(shell g++ -dumpversion)
+CXXVERSIONOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.6)
+
+ifeq "$(CXXVERSIONOLD)" "1"
+  CXXFLAGS += -Dnoexcept= -Dnullptr=0
+endif
+
 
 # give compiler=icc argument to make to use the intel compiler
 ifdef compiler
@@ -156,7 +164,7 @@ all: atlas realex
 # string it prints will be that of the last recompilation.
 sources/interface/emptymode.o: $(atlas_sources)
 
-# For profiling not only 'cflags' used in compiling is modified, but linking
+# For profiling not only 'CXXFLAGS' used in compiling is modified, but linking
 # also is different
 atlas: $(atlas_objects)
 ifeq ($(profile),true)
@@ -181,10 +189,10 @@ sources/interpreter/parser.tab.c sources/interpreter/parser.tab.h: \
 # but only apply to the files listed in their targets
 
 $(filter-out sources/interface/io.o,$(atlas_objects)) : %.o : %.cpp
-	$(CXX) $(cflags) $(atlas_flags) -o $*.o $*.cpp
+	$(CXX) $(CXXFLAGS) $(atlas_flags) -o $*.o $*.cpp
 sources/interface/io.o : sources/interface/io.cpp
-	$(CXX) $(cflags) $(atlas_flags) -DMESSAGE_DIR_MACRO=\"$(messagedir)\" \
-	  -o sources/interface/io.o sources/interface/io.cpp
+	$(CXX) $(CXXFLAGS) $(atlas_flags) \
+          -DMESSAGE_DIR_MACRO=\"$(messagedir)\" -o $@ @<
 
 sources/interpreter/parser.tab.o: \
   sources/interpreter/parser.tab.c sources/interpreter/parsetree.h

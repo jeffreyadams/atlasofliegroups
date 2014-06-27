@@ -20,14 +20,11 @@ ATLAS_DIRS := utilities structure gkmod error io interface
 # this variable is used both by g++, and by cweavex needing the trailing slash
 INCLUDE_FLAGS := $(ATLAS_DIRS:%=-I$(sources_dir)/%/)
 
-# please make sure cweavex and ctanglex refer to the executables of the latest
-# version of CWEBx, see http://www-math.univ-poitiers.fr/~maavl/CWEBx
-# the ++ flags make them expect C++ rather than C
-
 CTANGLE := $(cwebx_dir)/ctanglex
 CWEAVE := $(cwebx_dir)/cweavex
 
 # these are the optional flags for CWEBx, modify them according to your taste
+# do no imit flags ++ (expect C++ rather than C) and $(INCLUDE_FLAGS)
 CWEAVEFLAGS  := ++ -p +mde $(INCLUDE_FLAGS)
 CTANGLEFLAGS := ++ -p
 
@@ -38,7 +35,7 @@ CXXFLAGS := -Wall -Wno-parentheses -Wno-deprecated-declarations -g \
    $(INCLUDE_FLAGS)
 
 # our beloved C++ compiler
-CXX := g++
+CXX := g++ -std=c++0x
 
 CXXVERSION := $(shell g++ -dumpversion)
 CXXVERSIONOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.6)
@@ -170,7 +167,7 @@ $(CWEAVE):
 # static pattern rules giving the usual C++ compilation; C++11 for realex
 # we still call the language version c++0x, for backward compatibility
 $(c++objects): %.o: %.cpp
-	$(CXX) -std=c++0x -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
 $(atlas_objects): %.o: %.cpp
 	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
@@ -223,12 +220,9 @@ endif
 parser.tab.c parser.tab.h: parser.y
 	bison -d parser.y
 parser.tab.o: parser.tab.c parsetree.h
-	$(CXX) -std=c++0x -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
 # miscellaneous dependencies (some already known), produced by hand for now
 # these are also included from the main atlas makefile
 
 include dependencies
-
-show:
-	@echo $(CXX) version $(CXXVERSION) old? $(CXXVERSIONOLD)
