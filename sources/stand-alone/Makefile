@@ -120,4 +120,4 @@ lists: lists.cpp ../utilities/sl_list.h $(lists_objects)
 
 # a static pattern rule giving the usual C++ single-module compilation
 $(executables): %: %.cpp
-	$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) -o $@ $<

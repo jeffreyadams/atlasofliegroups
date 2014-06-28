@@ -129,6 +129,9 @@ template<typename T>
     link_type* tail;
     size_type node_count;
 
+    // an auxiliary function occasionally called after |head| is released
+    void set_empty() { tail=&head; node_count=0; }
+
     // constructors
   public:
     explicit sl_list () // empty list
@@ -136,13 +139,19 @@ template<typename T>
     sl_list (const sl_list& x) // copy contructor
       : head(nullptr), tail(&head), node_count(x.node_count)
     {
-      for (node_type* p=head.get(); p!=nullptr; p=p->next.get())
+      for (node_type* p=x.head.get(); p!=nullptr; p=p->next.get())
       {
 	node_type* q = new node_type(p->contents); // construct node value
 	tail->reset(q); // link in new final node
-	tail=&q->next;  // and make |tail| point to its link field
+	tail=&q->next;  // point |tail| to its link field, to append there next
       }
     }
+
+    sl_list (sl_list&& x) // move contructor
+      : head(x.head.release())
+      , tail(x.empty() ? &head : x.tail)
+      , node_count(x.node_count)
+    { x.set_empty(); }
 
     template<typename InputIt>
       sl_list (InputIt first, InputIt last, tags::IteratorTag)
@@ -169,6 +178,17 @@ template<typename T>
 	if (this!=&x) // self-assign is useless, though it would be safe here
 	  // reuse existing nodes when possible
 	  assign(x.begin(),x.end(), tags::IteratorTag());
+	return *this;
+      }
+
+    sl_list& operator= (sl_list&& x)
+      {
+	if (this!=&x) // self-assign would destroy contents
+	{
+	  clear();
+	  new (this) sl_list(std::move(x)); // move |x| into |*this|
+	  x.set_empty();
+	}
 	return *this;
       }
 
@@ -202,7 +222,7 @@ template<typename T>
       return iterator(last);
     }
 
-    bool empty() const { return tail==&head; } // |or node_count==0|
+    bool empty() const { return tail==&head; } // or |node_count==0|
     size_type size() const { return node_count; }
 
     iterator insert(iterator pos, const T& val)
@@ -259,8 +279,9 @@ template<typename T>
     }
 
     void clear()
-    { tail = &head; node_count=0;
+    {
       head.reset(); // smart pointer magic destroys all nodes
+      set_empty();
     }
 
     void assign(size_type n, const T& x)

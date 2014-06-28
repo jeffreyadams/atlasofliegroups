@@ -105,7 +105,8 @@ atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/structure/y_values.o \
  $(sources_dir)/gkmod/ext_block.o
 
-cwebx_sources := $(wildcard *.w)
+cwebx_sources :=  buffer.w parsetree.w lexer.w \
+  types.w global.w evaluator.w built-in-types.w main.w
 
 c++files      := $(cwebx_sources:%.w=%.cpp)
 c++objects    := $(c++files:%.cpp=%.o)
