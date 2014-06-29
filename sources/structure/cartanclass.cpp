@@ -202,21 +202,6 @@ Fiber::Fiber(const Fiber& other)
   , d_strongRealFormReps(other.d_strongRealFormReps)
 {}
 
-
-// Assignment operator. Uses copy constructor, with check for self-assignment
-
-Fiber& Fiber::operator= (const Fiber& other)
-{
-  // handle self-assignment
-  if (&other != this) {
-    this->~Fiber();
-    new(this) Fiber(other);
-  }
-
-  return *this;
-}
-
-
 /*       Private accessors of |Fiber| used during construction      */
 
 

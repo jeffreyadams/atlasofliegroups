@@ -204,7 +204,7 @@ struct type_node
 { type_expr t; @+ type_list next;
 @)
   type_node(type_ptr&& head, type_list_ptr&& tail) : t(),next(tail.release())
-  {@; t.set_from(std::move(head)); }
+  {@; t.set_from(*head); }
   type_node(const type_node& n);
   ~type_node();
 };
@@ -337,18 +337,14 @@ provided for however, for replacing an undefined (or partially undefined) type
 by a more specific type (note that in these cases nothing disappears, so no
 clean-up is necessary). The first case, the |set_from| method, makes a shallow
 copy of its argument into the object for which is was called, which is
-required to be undetermined initially; it is intended for use in constructors
-to avoid the deep copy of the copy constructor. Since the shallow copy
-incorporates any descendants without copying, the caller of |set_from| should
-have and relinquish ownership of the argument type passed; therefore the
-argument is passed as a unique-pointer by value. The second case, the
-|specialise| method, is used during type analysis, to see if our type matches
-a given pattern, or in case it was (partially) undefined whether it can be
-made to match the pattern by if necessary replacing some undetermined
-descendants by more specific ones. The call returns a value indicating whether
-this was possible, and if so makes the necessary specialisations to our type.
-That is done by copying, so the caller does not require or lose ownership of
-the pattern for this method.
+required to be undetermined initially; it will be used in a move constructor
+and move assignment operator. The second case, the |specialise| method, is
+used during type analysis, to see if our type matches a given pattern, or in
+case it was (partially) undefined whether it can be made to match the pattern
+by if necessary replacing some undetermined descendants by more specific ones.
+The call returns a value indicating whether this was possible, and if so makes
+the necessary specialisations to our type. That is done by copying, so the
+caller does not require or lose ownership of the pattern for this method.
 
 @< Definition of |type_expr| @>=
 struct type_expr
@@ -371,11 +367,15 @@ struct type_expr
    // for function types
 @)
   type_expr(const type_expr& t); // (deep) copy constructor
-  ~type_expr();
-  type_expr& operator=(const type_expr& t) = @[ delete @];
-   // assignment is forbidden
+  type_expr(type_expr&& t) noexcept; // move constructor
+  void clear() noexcept;
+    // resets to undefined state, cleaning up owned remotes
+  ~type_expr() noexcept @+{@; clear(); }
+    // that is all explcitly needed for destruction
+  type_expr& operator=(type_expr&& t) noexcept; // do move assignment only
+  void swap(type_expr& t) noexcept;
 @)
-  void set_from(type_ptr&& p) noexcept; // shallow copy
+  void set_from(type_expr& p) noexcept; // shallow copy
   bool specialise(const type_expr& pattern);
     // try to match pattern, possibly modifying |*this|
   bool can_specialise(const type_expr& pattern) const;
@@ -435,7 +435,7 @@ struct func_type
 @)
   func_type(type_ptr&& a, type_ptr&& r)
    : arg_type(), result_type()
-  {@; arg_type.set_from(std::move(a)); result_type.set_from(std::move(r)); }
+  {@; arg_type.set_from(*a); result_type.set_from(*r); }
   func_type(const func_type& f)
    : arg_type(f.arg_type),result_type(f.result_type) @+{}
 };
@@ -467,28 +467,27 @@ type_expr::type_expr(const type_expr& t) : kind(t.kind)
   }
 }
 
-@ The destructor must similarly clean up afterwards, with the recursion again
-being implicit.
+@ The method |clear|, doing the work for the destructor, must similarly clean
+up afterwards, with the recursion again being implicit.
 
 @< Function definitions @>=
-type_expr::~type_expr()
+void type_expr::clear() noexcept
 { switch (kind)
   { case undetermined_type: case primitive_type: break;
     case row_type: delete component_type; break;
     case tuple_type: delete tuple; break;
     case function_type: delete func; break;
   }
+  kind = undetermined_type;
 }
 
 @ The method |set_from| is like an assignment operator, but it avoids making a
-deep copy. Its argument is a unique-pointer passed by rvalue reference, to
-remind users that this argument must be |new|-allocated and that they are
-giving up ownership of this argument (possibly forcing them to apply
-|std::move| in case of a named argument). The contents of its top-level
-structure will be copied to the current |type_expr|, but without invoking the
-copy constructor; afterwards the original node will be destroyed after
-detaching any possible descendants from it. This operation is only safe if the
-|type_expr| previously had no descendants, and in fact we insist that it had
+deep copy. Its argument is another |type_expr| passed by modifiable reference.
+The contents of its top-level structure will be copied to the current
+|type_expr|, but without invoking the copy constructor, and then set to a
+empty |undetermined_type| value, which effectively detaches any possible
+descendants from it. This operation is only safe if the |type_expr| previously
+had no descendants, and in fact we insist that it had
 |kind==undetermined_type|; if this condition fails we used to signal a
 |std::logic_error|, but since for \Cpp11 this function is marked |noexcept|
 (to indicate it does not allocate memory), we have transformed that into an
@@ -498,21 +497,64 @@ move semantics.
 
 @h <stdexcept>
 @< Function definitions @>=
-void type_expr::set_from(type_ptr&& p) noexcept
+void type_expr::set_from(type_expr& p) noexcept
 { assert (kind==undetermined_type);
    // logic should ensure this; we promised not to |throw|
-  kind=p->kind;
+  kind=p.kind;
   switch(kind) // copy top node
   { case undetermined_type: break;
-    case primitive_type: prim=p->prim; break;
-    case row_type: component_type=p->component_type; break;
-    case function_type: func=p->func; break;
-    case tuple_type: tuple=p->tuple; break;
+    case primitive_type: prim=p.prim; break;
+    case row_type: component_type=p.component_type; break;
+    case function_type: func=p.func; break;
+    case tuple_type: tuple=p.tuple; break;
   }
-  p->kind=undetermined_type;
-  // detach descendants, |p.~type_ptr()| will destroy top-level only
+  p.kind=undetermined_type;
+  // detach descendants, so |p.clear()| will destroy top-level only
+}
+@)
+type_expr::type_expr(type_expr&& x) noexcept // move constructor
+: kind(x.kind)
+{ switch(kind) // move top node
+  { case undetermined_type: break;
+    case primitive_type: prim=x.prim; break;
+    case row_type: component_type=x.component_type; break;
+    case function_type: func=x.func; break;
+    case tuple_type: tuple=x.tuple; break;
+  }
+  x.kind=undetermined_type;
+  // detach descendants, so destructor of |x| will do nothing
 }
 
+@ For move assignment we reuse the |set_from| method, and for |swap| we do a
+move construction and two |set_from| calls, unless the |kind| fields match, in
+which case we can call |std::swap| directly on the matching variant fields.
+
+@< Function definitions @>=
+type_expr& type_expr::operator=(type_expr&& x) noexcept // move assignment
+{ if (this!=&x)
+  { clear(); // detach anything previously linked
+    set_from(x); // move top level structure
+  }
+  return *this;
+}
+@)
+void type_expr::swap(type_expr& other) noexcept
+{
+  if (kind==other.kind)
+    switch(kind)
+    { case undetermined_type: break;
+      case primitive_type: std::swap(prim,other.prim); break;
+      case row_type: std::swap(component_type,other.component_type); break;
+      case function_type: std::swap(func,other.func); break;
+      case tuple_type: std::swap(tuple,other.tuple); break;
+    }
+  else
+  {@;
+    type_expr t(std::move(other));
+    other.set_from(*this);
+    this->set_from(t);
+  }
+}
 
 @ The |specialise| method is mostly used to either set a completely
 undetermined type to a given pattern, or to test if it already matches it;
@@ -785,7 +827,7 @@ The only subtle point is that did not advance the pointer |s| when testing for
 pointer. Otherwise the descent is still straightforward, thanks to
 |scan_type_list|. After scanning a first list we decide whether this will be a
 tuple type (if a right parenthesis follows) and record it in a boolean
-variable~|is_tuple| to be able to share the code for constructing the tuple 
+variable~|is_tuple| to be able to share the code for constructing the tuple
 type.
 
 The only complication is that single parenthesised types, and single argument

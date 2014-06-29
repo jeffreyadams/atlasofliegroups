@@ -246,8 +246,6 @@ class Fiber {
 
   Fiber(const Fiber&);
 
-  Fiber& operator= (const Fiber&);
-
 // accessors
 
 /*!
