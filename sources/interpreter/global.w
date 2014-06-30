@@ -108,7 +108,7 @@ done via |analyse_types|, which takes care of catching any exceptions thrown,
 and printing error messages.
 
 @< Declarations of exported functions @>=
-type_ptr analyse_types(const expr& e,expression_ptr& p)
+type_expr analyse_types(const expr& e,expression_ptr& p)
    throw(std::bad_alloc,std::runtime_error);
 
 @~The function |analyse_types| switches the roles of the output parameter
@@ -124,17 +124,17 @@ point to really resume after an error.
 @h "evaluator.h"
 
 @< Global function definitions @>=
-type_ptr analyse_types(const expr& e,expression_ptr& p)
+type_expr analyse_types(const expr& e,expression_ptr& p)
   throw(std::bad_alloc,std::runtime_error)
 { try
-  {@; type_ptr type=copy(unknown_type);
-    p.reset(convert_expr(e,*type));
+  {@; type_expr type=unknown_type.copy();
+    p.reset(convert_expr(e,type));
     return type;
   }
   catch (type_error& err)
   { std::cerr << err.what() << ":\n  Subexpression " << err.offender << @|
-    " has wrong type: found " << *err.actual << @|
-    " while " << *err.required << " was needed.\n";
+    " has wrong type: found " << err.actual << @|
+    " while " << err.required << " was needed.\n";
 @.Subexpression has wrong type@>
   }
   catch (expr_error& err)
@@ -210,16 +210,16 @@ void global_set_identifier(id_pat pat, expr rhs, int overload)
   int phase=0; // needs to be declared outside the |try|, is used in |catch|
   try
   { expression_ptr e;
-    type_ptr t=analyse_types(rhs,e);
-    if (not pattern_type(pat)->specialise(*t))
-      @< Report that type of |rhs| does not have required structure,
+    type_expr t=analyse_types(rhs,e);
+    if (not pattern_type(pat)->specialise(t))
+      @< Report that type |t| of |rhs| does not have required structure,
          and |throw| @>
     if (overload!=0)
       @< Set |overload=0| if type |t| is not an appropriate function type @>
 @)
     phase=1;
     bindings b(n_id);
-    thread_bindings(pat,*t,b); // match identifiers and their future types
+    thread_bindings(pat,t,b); // match identifiers and their future types
 
     std::vector<shared_value> v;
     v.reserve(n_id);
@@ -252,15 +252,15 @@ be cleared to~$0$, but rather result in an error message in cases where
 setting it to~$0$ is attempted.
 
 @< Set |overload=0| if type |t| is not an appropriate function type @>=
-{ bool clear = t->kind!=function_type;
+{ bool clear = t.kind!=function_type;
     // cannot overload with a non-function value
   if (not clear)
-  { type_expr& arg=t->func->arg_type;
+  { type_expr& arg=t.func->arg_type;
   @/clear = arg.kind==tuple_type and arg.tuple==NULL;
      // nor parameterless functions
   }
   if (clear and overload==2) // inappropriate function type with operator
-  { std::string which(t->kind==function_type ? "parameterless " : "non-");
+  { std::string which(t.kind==function_type ? "parameterless " : "non-");
     throw std::runtime_error
       ("Cannot set operator to a "+which+"function value");
   }
@@ -280,7 +280,7 @@ to the very common singular case), before calling |global_id_table->add|.
     if (global_id_table->type_of(b[i].first)!=NULL)
       std::cout << " (overriding previous)";
     std::cout << ": " << *b[i].second;
-    global_id_table->add(b[i].first,v[i],copy(*b[i].second));
+    global_id_table->add(b[i].first,v[i],acquire(b[i].second));
   }
 }
 
@@ -304,7 +304,7 @@ or not reported as failed.
    |global_overload_table| @>=
 { assert(n_id=1);
   size_t old_n=global_overload_table->variants(b[0].first).size();
-  global_overload_table->add(b[0].first,v[0],copy(*b[0].second));
+  global_overload_table->add(b[0].first,v[0],acquire(b[0].second));
     // insert or replace table entry
   size_t n=global_overload_table->variants(b[0].first).size();
   if (n==old_n)
@@ -329,9 +329,10 @@ available from the |main_input_buffer|.
 a |runtime_error| signalling this fact; we have to re-generate the required
 pattern using |pattern_type| to do this.
 
-@< Report that type of |rhs| does not have required structure, and |throw| @>=
+@< Report that type |t| of |rhs| does not have required structure,
+   and |throw| @>=
 { std::ostringstream o;
-  o << "Type " << *t @|
+  o << "Type " << t @|
     << " of right hand side does not match required pattern "
     << *pattern_type(pat);
   throw std::runtime_error(o.str());
@@ -376,11 +377,10 @@ but undefined value.
 @< Global function definitions @>=
 void global_declare_identifier(Hash_table::id_type id, type_p t)
 { value undef=NULL;
-  const type_expr& type=*t;
-  global_id_table->add(id,shared_value(undef),copy(type));
+  global_id_table->add(id,shared_value(undef),acquire(t));
   @< Emit indentation corresponding to the input level to |std::cout| @>
   std::cout << "Identifier " << main_hash_table->name_of(id)
-            << " : " << type << std::endl;
+            << " : " << *t << std::endl;
 }
 
 @ Finally the user may wish to forget the value of an identifier, which the
@@ -431,7 +431,7 @@ against unlikely events like |bad_alloc|.
 void type_of_expr(expr e)
 { try
   {@; expression_ptr p;
-    *output_stream << "type: " << *analyse_types(e,p) << std::endl;
+    *output_stream << "type: " << analyse_types(e,p) << std::endl;
   }
   catch (std::exception& err) {@; std::cerr<<err.what()<<std::endl; }
 }

@@ -356,14 +356,14 @@ case boolean_denotation:
 the symbol `\.\$'.
 
 @< Declarations of global variables @>=
-extern type_ptr last_type;
+extern type_expr last_type;
 extern shared_value last_value;
 
 @~We set the pointers to |nullptr| here, but the |main| function will give them
 more appropriate starting values.
 
 @< Global variable definitions @>=
-type_ptr last_type;
+type_expr last_type;
 shared_value last_value;
 
 @ Upon parsing `\.\$', an |expr| value with |kind==last_value_computed| is
@@ -374,7 +374,7 @@ gets captured in a function value, it will remain immutable.
 @< Cases for type-checking and converting... @>=
 case last_value_computed:
 @/{@; expression_ptr d@|(new denotation(last_value));
-    return conform_types(*last_type,type,d,e);
+    return conform_types(last_type,type,d,e);
   }
 
 
@@ -477,7 +477,7 @@ further coercions of individual expressions in the list display.
 { type_expr comp_type;
   const conversion_record* conv = row_coercion(type,comp_type);
   if (conv==nullptr)
-    throw type_error(e,copy(row_of_type),copy(type));
+    throw type_error(e,row_of_type.copy(),type.copy());
 @)
   std::auto_ptr<list_expression> display@|
       (new list_expression(0));
@@ -564,20 +564,20 @@ mentioning too few or too many components explicitly.
 
 @< Cases for type-checking and converting... @>=
 case tuple_display:
-{ type_ptr tup=unknown_tuple(length(e.e.sublist));
-  bool tuple_expected=type.specialise(*tup);
+{ type_expr tup=unknown_tuple(length(e.e.sublist));
+  bool tuple_expected=type.specialise(tup);
     // whether |type| is a tuple of correct size
   tuple_expression* tup_exp;
   expression_ptr result(tup_exp=new tuple_expression(0));
   tup_exp->component.reserve(length(e.e.sublist));
-  type_list tl= tuple_expected ? type.tuple : tup->tuple;
+  type_list tl= tuple_expected ? type.tuple : tup.tuple;
   for (expr_list el=e.e.sublist; el!=nullptr; el=el->next,tl=tl->next)
     tup_exp->component.push_back(convert_expr(el->e,tl->t));
   if (tuple_expected)
     return result.release();  // and convert (derived|->|base) to |expression|
-  else if (coerce(*tup,type,result))
+  else if (coerce(tup,type,result))
     return result.release();
-  else throw type_error(e,copy(*tup),copy(type));
+  else throw type_error(e,tup.copy(),type.copy());
 }
 
 @*1 Evaluating tuple displays.
@@ -1239,7 +1239,7 @@ case applied_identifier:
     {@; id_t->specialise(type); return id.release(); }
   else if (coerce(*id_t,type,id))
     return id.release();
-  else throw type_error(e,copy(*id_t),copy(type));
+  else throw type_error(e,id_t->copy(),type.copy());
 }
 
 @*1 Operator and function overloading.
@@ -1586,7 +1586,7 @@ expected argument type.
 
 @< Complain about failing overload resolution @>=
 if (variants.size()==1)
-  throw type_error(args,copy(a_priori_type),copy(variants[0].type->arg_type));
+  throw type_error(args,a_priori_type.copy(),variants[0].type->arg_type.copy());
 else
 { std::ostringstream o;
   o << "Failed to match `"
@@ -1747,12 +1747,12 @@ case function_call:
     @< Convert and |return| an overloaded function call if
     |e.e.call_variant->fun| is not a local identifier and is known in
     |global_overload_table| @>
-  type_ptr f_type=copy(gen_func_type); // start with generic function type
-  expression_ptr fun(convert_expr(e.e.call_variant->fun,*f_type));
+  type_expr f_type=gen_func_type.copy(); // start with generic function type
+  expression_ptr fun(convert_expr(e.e.call_variant->fun,f_type));
   expression_ptr arg
-    (convert_expr(e.e.call_variant->arg,f_type->func->arg_type));
+    (convert_expr(e.e.call_variant->arg,f_type.func->arg_type));
   expression_ptr call (new call_expression(fun,arg));
-  return conform_types(f_type->func->result_type,type,call,e);
+  return conform_types(f_type.func->result_type,type,call,e);
 }
 
 @ The main work here has been relegated to |resolve_overload|; otherwise we
@@ -1835,7 +1835,7 @@ will still be accepted.
   if (type==void_type and
       id==equals_name() and
       v.type->result_type!=void_type)
-    throw type_error(e,copy(v.type->result_type),copy(type));
+    throw type_error(e,v.type->result_type.copy(),type.copy());
   return conform_types(v.type->result_type,type,call,e);
 }
 
@@ -1887,7 +1887,7 @@ below tests.
     expression_ptr call(c); // get ownership
     if (type.specialise(void_type))
       return call.release();
-    throw type_error(e,copy(void_type),copy(type));
+    throw type_error(e,void_type.copy(),type.copy());
   }
 }
 
@@ -2314,13 +2314,13 @@ type \.{(*,*,(*,*))}. These recursive functions construct such types.
 
 @< Function definitions @>=
 type_list_ptr pattern_list(const patlist p)
-{@; return p==nullptr ? type_list_ptr(nullptr)
-  : make_type_list(pattern_type(p->body),pattern_list(p->next));
+{@; return p==nullptr ? empty_tuple()
+  : make_type_list(std::move(*pattern_type(p->body)),pattern_list(p->next));
 }
 @)
 type_ptr pattern_type(const id_pat& pat)
 {@; return (pat.kind&0x2)==0
-  ? copy(unknown_type)
+  ? acquire(&unknown_type)
   : make_tuple_type(pattern_list(pat.sublist));
 }
 
@@ -2351,7 +2351,7 @@ pushing pairs onto a |bindings|.
 @< Function definitions @>=
 void thread_bindings
 (const id_pat& pat,const type_expr& type, bindings& dst)
-{ if ((pat.kind & 0x1)!=0) dst.add(pat.name,copy(type));
+{ if ((pat.kind & 0x1)!=0) dst.add(pat.name,acquire(&type));
   if ((pat.kind & 0x2)!=0)
   { assert(type.kind==tuple_type);
     type_list l=type.tuple;
@@ -2586,14 +2586,14 @@ by popping of the bindings for the arguments.
 @< Cases for type-checking and converting... @>=
 case lambda_expr:
 { if (not type.specialise(gen_func_type))
-    throw type_error(e,copy(gen_func_type),copy(type));
+    throw type_error(e,gen_func_type.copy(),type.copy());
   lambda fun=e.e.lambda_variant;
   id_pat& pat=fun->pattern;
   type_expr& arg_type=*fun->arg_type;
   if (not type.func->arg_type.specialise(arg_type))
   @/throw type_error(e,
-                     make_function_type(copy(arg_type),copy(unknown_type)),
-                     copy(type));
+       std::move(*make_function_type(arg_type.copy(),unknown_type.copy())),
+                     type.copy());
   size_t n_id=count_identifiers(pat);
 @/bindings new_bindings(n_id);
   thread_bindings(pat,arg_type,new_bindings);
@@ -2763,7 +2763,7 @@ component type as for list displays.
 { type_expr comp_type;
   const conversion_record* conv = row_coercion(type,comp_type);
   if (conv==nullptr)
-    throw type_error(e,copy(row_of_type),copy(type));
+    throw type_error(e,row_of_type.copy(),type.copy());
 @)
   expression_ptr b(convert_expr(w->body,comp_type));
   return new conversion(*conv,  expression_ptr(new while_expression(c,b)));
@@ -2859,7 +2859,7 @@ case for_expr:
     btp=type.component_type;
   else if ((conv=row_coercion(type,body_type))!=nullptr)
     btp=&body_type;
-  else throw type_error(e,copy(row_of_type),copy(type));
+  else throw type_error(e,row_of_type.copy(),type.copy());
   bind.push(id_context);
   expression_ptr body(convert_expr (f->body,*btp));
 @/bind.pop(id_context);
@@ -2880,7 +2880,7 @@ component type resulting from such a subscription.
    or subscr_base::indexable(in_type,*(tp=&param_type),comp_type,which))
   { type_ptr pt = pattern_type(f->id), @|
       it_type=make_tuple_type(make_type_list@|
-      (copy(*tp),make_type_singleton(copy(comp_type))));
+      (type_expr(tp->copy()),make_type_singleton(std::move(comp_type))));
     if (not pt->specialise(*it_type))
       throw expr_error(e,"Improper structure of loop variable pattern");
     thread_bindings(f->id,*it_type,bind);
@@ -3109,7 +3109,7 @@ case cfor_expr:
     : convert_expr(c->bound,int_type)
     );
 @)
-  bindings bind(1); bind.add(c->id,copy(int_type));
+  bindings bind(1); bind.add(c->id,acquire(&int_type));
   type_expr body_type, *btp; const conversion_record* conv=nullptr;
   if (type==void_type)
     btp=&void_type;
@@ -3117,7 +3117,7 @@ case cfor_expr:
     btp=type.component_type;
   else if ((conv=row_coercion(type,body_type))!=nullptr)
     btp=&body_type;
-  else throw type_error(e,copy(row_of_type),copy(type));
+  else throw type_error(e,row_of_type.copy(),type.copy());
   bind.push(id_context);
   expression_ptr body(convert_expr (c->body,*btp));
 @/bind.pop(id_context);
@@ -3243,8 +3243,8 @@ case op_cast_expr:
       if (spec_func(type,ctype,variants[i].type->result_type))
         return p.release();
       type_ptr ftype=make_function_type
-	(copy(ctype),copy(variants[i].type->result_type));
-      throw type_error(e,std::move(ftype),copy(type));
+	(ctype.copy(),variants[i].type->result_type.copy());
+      throw type_error(e,std::move(*ftype),type.copy());
     }
   std::ostringstream o;
   o << "Cannot resolve " << main_hash_table->name_of(c->oper) @|
@@ -3261,7 +3261,7 @@ break;
     { if (spec_func(type,ctype,int_type))
       return new denotation(shared_value
         (new builtin_value(sizeof_wrapper,"#@@[T]")));
-      throw type_error(e,copy(ctype),copy(type));
+      throw type_error(e,ctype.copy(),type.copy());
     }
     else if (ctype.specialise(pair_type))
     { type_expr& arg_tp0 = ctype.tuple->t;
@@ -3271,20 +3271,20 @@ break;
         { if (spec_func(type,ctype,arg_tp0))
           return new denotation(shared_value @|
             (new builtin_value(join_rows_wrapper,"#@@([T],[T]->[T])")));
-          throw type_error(e,copy(ctype),copy(type));
+          throw type_error(e,ctype.copy(),type.copy());
         }
 	else if (*arg_tp0.component_type==arg_tp1)
         { if (spec_func(type,ctype,arg_tp0))
           return new denotation(shared_value @|
             (new builtin_value(suffix_element_wrapper,"#@@([T],T->[T])")));
-          throw type_error(e,copy(ctype),copy(type));
+          throw type_error(e,ctype.copy(),type.copy());
         }
       }
       if (arg_tp1.kind==row_type and *arg_tp1.component_type==arg_tp0)
       { if (spec_func(type,ctype,arg_tp1))
         return new denotation(shared_value @|
           (new builtin_value(prefix_element_wrapper,"#@@(T,[T]->[T])")));
-        throw type_error(e,copy(ctype),copy(type));
+        throw type_error(e,ctype.copy(),type.copy());
       }
     }
   }

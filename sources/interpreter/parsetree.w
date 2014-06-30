@@ -1009,10 +1009,14 @@ conversions, so passing bare pointers is exception-safe.
 @< Definitions of functions for the parser @>=
 
 type_list mk_type_singleton(type_p t)
-{@; return make_type_singleton(type_ptr(t)).release(); }
+{ type_expr tmp(std::move(*t)); // |t| should really be passed by rvalue ref
+  return make_type_singleton(std::move(tmp)).release();
+}
 
 type_list mk_type_list(type_p t,type_list l)
-{@; return make_type_list(type_ptr(t),type_list_ptr(l)).release(); }
+{ type_expr tmp(std::move(*t)); // |t| should really be passed by rvalue ref
+  return make_type_list(std::move(tmp),type_list_ptr(l)).release();
+}
 
 type_p mk_prim_type(int p)
 {@; return make_prim_type(static_cast<primitive_tag>(p)).release(); }
@@ -1024,7 +1028,8 @@ type_p mk_tuple_type(type_list l)
 {@; return make_tuple_type(type_list_ptr(l)).release(); }
 
 type_p mk_function_type(type_p a,type_p r)
-{@; return make_function_type(type_ptr(a),type_ptr(r)).release(); }
+{ type_ptr pa(a), pr(r); // ensure cleaning up at return
+  return make_function_type(std::move(*a),std::move(*r)).release(); }
 @)
 
 void destroy_type(type_p t)@+ {@; delete t; }
@@ -1103,7 +1108,7 @@ expr make_lambda_node(patlist pat_l, type_list type_l, expr body)
 { lambda fun=new lambda_node; fun->body=body;
   if (pat_l!=NULL and pat_l->next==NULL)
   { fun->pattern=pat_l->body; delete pat_l; // clean up node
-    fun->arg_type = new type_expr(type_l->t); delete type_l;
+    fun->arg_type = new type_expr(std::move(type_l->t)); delete type_l;
       // make a deep copy, clean up
   }
   else

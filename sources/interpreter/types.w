@@ -57,9 +57,7 @@ functions (the last point being is the main goal of the implementation unit).
 @c
 
 namespace atlas { namespace interpreter {
-namespace {
-@< Local type definitions @>@;
-}@; // |namespace|
+namespace {@; @< Local type definitions @>@; }@;
 @< Global variable definitions @>@;
 @< Function definitions @>@;
 }@; }@;
@@ -160,40 +158,44 @@ typedef struct type_node* type_list;
 typedef std::unique_ptr<type_node> type_list_ptr;
 
 @ Since types and type lists own their trees, their copy constructors must
-make a deep copy. Most invocations of the copy constructor for types, from
-outside the implementation of the |type_expr| class itself, will take
-place by an explicit call of a function |copy| for improved visibility. This
-function converts a reference to a |type_expr| into a unique-pointer to a
-copied instance of that type expression.
+make a deep copy. The class |type_expr| will provide no copy constructor but
+instead a more visible |copy| method to do a deep copy. On some occasions
+however one rather needs a copy at the pointers level: one has access to a
+pointer to some |type_expr| (possibly by simply taking its address), but one
+needs an owning |type_ptr| instead. The function |acquire| will achieve this.
 
 @< Declarations of exported functions @>=
-type_ptr copy(const type_expr& t);
+type_ptr acquire(const type_expr* t);
 
-@~The function |copy| simply creates a unique-pointer from the call of |new|
-for |type_expr(t)|, where the latter invokes the copy constructor of
-|type_expr|. The latter, has a recursive definition (given in section
-@#type expression copy@>) that performs a deep copy, but the details don't
-concern us here.
+@~The function |acquire| simply creates a unique-pointer from the call of
+|new| whose constructor invokes the |copy| method of |type_expr| pointed to.
+The latter, has a recursive definition that performs a deep copy, but the
+details (given in section @#type expression copy@>) don't concern us here.
 
 @< Function definitions @>=
-type_ptr copy(const type_expr& t) @+
-{@; return type_ptr(new type_expr(t)); }
+type_ptr acquire(const type_expr* t) @+
+{@; return type_ptr(new type_expr(t->copy())); }
+
 
 @*1 Type lists.
 %
 The auxiliary type |type_list| gives a preview of matters related to
-ownership, that will also apply, in a more complex setting, to
-|type_expr|. It is a simply linked list, whose nodes contain a
-|type_expr| as a sub-object. We might instead have used a pointer there,
-but that would be less compact and require more memory (de)allocations. On the
-other hand it forced us to introduce the |type_expr::set_from| method
-(see below) to make a shallow copy, avoiding the deep copy that would result
-from initialising |t(*head)|. Note how the pointer on the new node is passed
-as a unique-pointer that is immediately released when inserted into the node;
-this is the unique way to handle this that assures there is exactly one owner
-at all times (if an ordinary pointer had been passed, the pointed-to structure
-might fail to be deleted if the allocation of this node should throw an
-exception).
+ownership, that will also apply, in a more complex setting, to |type_expr|. It
+is a simply linked list, whose nodes contain a |type_expr| as a sub-object. We
+might instead have used a pointer there, but that would be less compact and
+require more memory (de)allocations. The structure |type_expr| provides a move
+constructor that allows us to make a shallow copy, instead of the deep copy
+that would result from initialising |t(head->copy())|. The |head| pointer is
+passed by reference so the node being moved from remains owned by a temporary
+in the caller until our constructor returns (at which time the temporary will
+have been cleared by the move construction). The |tail| argument must be
+passed in a smart pointer, since the current constructor is typically used in
+the context of a |new| expression, and if it were given a raw pointer
+argument (a reference is no option as the pointer might be null), then we
+would leak memory in case that |new| throws |std::bad_alloc|. As it is done
+here, having that argument in a unique-pointer ensures strong exception
+safety. We pass that pointer by (rvalue) reference, and of course release it
+at the instant it gets inserted into our data structure.
 
 Because a |type_node| contains a
 |type_expr| we must make sure its definition given here \emph{follows}
@@ -203,13 +205,15 @@ that of |type_expr|, at least in the tangled code.
 struct type_node
 { type_expr t; @+ type_list next;
 @)
-  type_node(type_ptr&& head, type_list_ptr&& tail) : t(),next(tail.release())
-  {@; t.set_from(*head); }
-  type_node(const type_node& n);
+  type_node(type_expr&& head, type_list_ptr&& tail) noexcept
+   : t(std::move(head)),next(tail.release()) @+ {}
+  type_node(type_node&& n) noexcept
+  : t(std::move(n.t)), next(std::move(n.next)) @+ {}
+  type_node copy() const; // in lieu of a copy constructor
   ~type_node();
 };
 
-@ Copy-constructing a type list is easy: the recursive copy of the tail list
+@ Copy a type list is easy: the recursive copy of the tail list
 is copy-constructed into the fresh node. This is safe because the node
 contains only one pointer: if |new| succeeds, the construction is immediately
 terminated, without any occasion for an exception causing loss of the pointer
@@ -218,9 +222,10 @@ then some protection against a memory leak would be needed (since |new| might
 throw); another advantage of not using a pointer for the |t| field.
 
 @< Function definitions @>=
-type_node::type_node(const type_node& n)
- : t(n.t),next(n.next==nullptr ? nullptr : new type_node(*n.next))
-@+{}
+type_node type_node::copy() const
+{ type_list_ptr tail(next==nullptr ? nullptr : new type_node(next->copy()));
+  return type_node(t.copy(),std::move(tail));
+}
 
 @ The destructor for |type_node| will possibly be called implicitly by the
 destruction of a |type_list_ptr|. The destructor for variants containing a
@@ -233,31 +238,32 @@ type_node::~type_node()
 
 @ Type lists are usually built by calling |make_type_singleton| (to get
 started) or |make_type_list| (to prefix a type to an existing list), rather
-than using a constructor. These functions are efficient, due to the use of
-unique-pointers. A caller holding unique-pointers to the descendants transfers
-ownership to the new node at the call (the copied unique-pointers are released
-at precisely the right moment), and regains ownership of the new structure
-upon return. Using ordinary pointers one would run into ownership conflicts
-that can only be solved by calling the (recursive) copy constructor, which
-would also be necessary when using local |type_node| variables.
+than using a constructor. These functions are efficient, due to their use of
+move-semantics. A caller transfers ownership to the new node at the call, and
+regains ownership of the new structure by receiving a unique pointer upon
+return. For passing parameters in, a smart pointers are only used for the
+second argument |l| to |make_type_list|, since the structure |type_expr|
+already ensures exception safety.
 
 @< Declarations of exported functions @>=
-type_list_ptr make_type_singleton(type_ptr&& t);
-type_list_ptr make_type_list(type_ptr&& t,type_list_ptr&& l);
+type_list_ptr empty_tuple();
+type_list_ptr make_type_singleton(type_expr&& t);
+type_list_ptr make_type_list(type_expr&& t,type_list_ptr&& l);
 size_t length(type_list l);
 
-@ We pass the unique-pointers by value, rather than by (necessarily non-constant)
-reference. This implies a small overhead due to multiple ownership transfers,
-but allows (due to a clever definition of unique-pointers) passing anonymous
-values obtained from a constructor or construction function as argument, which
-would be forbidden if using non-constant reference parameters.
+@ We pass the unique-pointer for |make_type_list| by rvalue reference (call by
+check), rather than by value (call by cash). Thus should the |new type_node|
+throw an exception, the list will not be destroyed here, and the caller in
+principle has the option of recovering it by cleverly catching the exception
+(but none of the caller of this function actually do so).
 
 @< Function def... @>=
-
-type_list_ptr make_type_singleton(type_ptr&& t)
-{@; return type_list_ptr(new type_node(std::move(t),type_list_ptr(nullptr))); }
+type_list_ptr empty_tuple() { return type_list_ptr(nullptr); }
 @)
-type_list_ptr make_type_list(type_ptr&& t,type_list_ptr&& l)
+type_list_ptr make_type_singleton(type_expr&& t)
+{@; return type_list_ptr(new type_node(std::move(t),empty_tuple())); }
+@)
+type_list_ptr make_type_list(type_expr&& t,type_list_ptr&& l)
 {@; return type_list_ptr(new type_node(std::move(t),std::move(l))); }
 
 @ Here is one more function that is convenient to have around.
@@ -271,11 +277,16 @@ size_t length(type_list l)
 
 @*1 Primitive types.
 %
-Types can be formed in a variety of ways (primitive types, tuple types,
-function types, etc.), and correspondingly will involve a |union| of various
-alternatives. So before we can define |type_expr|, we need to enumerate
-its variants and the possibilities for primitive types. Some of them will be
-introduced later.
+We have a simple but flexible type model. There is a finite number of
+``primitive'' types, many of which are abstractions of complicated classes
+defined in the Atlas library, such as root data or reductive groups.
+Furthermore one has types that are ``row of'' some other type, tuples
+(Cartesian products) of some given sequence of types, and function types. We
+also allow for an undetermined type, which can serve as a wild-card to specify
+type patterns. Before we can define |type_expr|, we need to enumerate its
+variants and the possibilities for primitive types. Here are enumerations of
+tags for the basic kinds of types, and for the sub-cases of |primitive_type|
+(some of them will be introduced later).
 
 @< Type definitions @>=
 enum type_tag @+
@@ -305,15 +316,6 @@ const char* prim_names[]=@/
 
 @*1 Type expressions.
 %
-We have a simple but flexible type model. There is a finite number of
-``primitive'' types, many of which are abstractions of complicated classes
-defined in the Atlas library, such as root data or reductive groups.
-Furthermore one has types that are ``row of'' some other type, tuples
-(Cartesian products) of some given sequence of types, and function types. We
-also allow for an undetermined type, which can serve as a wild-card to specify
-type patterns. Here are enumerations of tags for the basic kinds of types, and
-for the sub-cases of |primitive_type|.
-
 Type expressions are defined by a tagged union. Code accessing the union will
 in general test the tag and access the corresponding variant directly, so we
 give public access to the data fields (it is not obvious how coherent variant
@@ -330,58 +332,68 @@ length~$1$ (but length~$0$ is allowed). This is because anything that would
 suggest a $1$-tuple (for instance a parenthesised expression) is identified
 with its unique component.
 
-We forbid the assignment operator, since the default definition would not do
-the right thing, the proper definition would be somewhat complicated, and
-without much use since types do not change dynamically. Two special cases are
-provided for however, for replacing an undefined (or partially undefined) type
-by a more specific type (note that in these cases nothing disappears, so no
+A move constructor is provided, but no copy constructor; instead of the latter
+we provide a |copy| method explicitly creating a deep copy value, to which one
+may then apply move-construction. We similarly provide a move assignment
+operator, which implicitly makes the copy assignment operator deleted (rather
+then implicitly provided), and a |swap| method (as proof-of-concept, it is not
+currently used). Two special cases of (partial) move semantics are provided
+for however, for replacing an undefined (or partially undefined) type by a
+more specific type (note that in these cases nothing disappears, so no
 clean-up is necessary). The first case, the |set_from| method, makes a shallow
 copy of its argument into the object for which is was called, which is
-required to be undetermined initially; it will be used in a move constructor
-and move assignment operator. The second case, the |specialise| method, is
-used during type analysis, to see if our type matches a given pattern, or in
-case it was (partially) undefined whether it can be made to match the pattern
-by if necessary replacing some undetermined descendants by more specific ones.
-The call returns a value indicating whether this was possible, and if so makes
-the necessary specialisations to our type. That is done by copying, so the
-caller does not require or lose ownership of the pattern for this method.
+required to be undetermined initially. This method that was present long
+before \Cpp11 allowed proper move semantics is in fact used to implement the
+move constructor and move assignment operator. The second case, the
+|specialise| method, is used during type analysis, to see if our type matches
+a given pattern, or in case it was (partially) undefined whether it can be
+made to match the pattern by if necessary replacing some undetermined
+descendants by more specific ones. The call returns a value indicating whether
+this was possible, and if so makes the necessary specialisations to our type.
+That is done by copying, so the caller does not require or lose ownership of
+the pattern for this method.
+
+The constructors for the row and tuple types receive pointers that will be
+directly inserted into our |struct| and become owned by it; the ownership
+management is simplest when such pointers are ``passed by check'', i.e., as
+rvalue references to smart pointers.
 
 @< Definition of |type_expr| @>=
 struct type_expr
 { type_tag kind;
   union
-  { primitive_tag prim; // when |kind==primitive|
+  { struct@+{} nothing; // when |kind==undetermined_type|
+    primitive_tag prim; // when |kind==primitive|
     type_p component_type; // when |kind==row_type|
     type_list tuple; // when |kind==tuple_type|
     func_type* func; // when |kind==function_type|
   };
 @)
-  type_expr() : kind(undetermined_type) @+{}
+  type_expr() noexcept : kind(undetermined_type), nothing() @+{}
   explicit type_expr(primitive_tag p) noexcept
-    : kind(primitive_type) @+{@; prim=p; }
+    : kind(primitive_type), prim(p) @+{}
   explicit type_expr(type_ptr&& c) noexcept
-    : kind(row_type) @+{@; component_type=c.release(); }
-  explicit type_expr(type_list_ptr&& l) noexcept : kind(tuple_type)
-  @+{@; tuple=l.release(); }
-  inline type_expr(type_ptr&& arg, type_ptr&& result) noexcept;
+    : kind(row_type), component_type(c.release()) @+{}
+  explicit type_expr(type_list_ptr&& l) noexcept
+    : kind(tuple_type), tuple(l.release()) @+{}
+  inline type_expr(type_expr&& arg, type_expr&& result) noexcept;
    // for function types
-@)
-  type_expr(const type_expr& t); // (deep) copy constructor
+  @)
   type_expr(type_expr&& t) noexcept; // move constructor
   void clear() noexcept;
-    // resets to undefined state, cleaning up owned remotes
+    // resets to undefined state, cleaning up owned pointers
   ~type_expr() noexcept @+{@; clear(); }
     // that is all explcitly needed for destruction
   type_expr& operator=(type_expr&& t) noexcept; // do move assignment only
   void swap(type_expr& t) noexcept;
-@)
-  void set_from(type_expr& p) noexcept; // shallow copy
+  @)
+  type_expr copy() const; // in lieu of deep copy constructor
+  void set_from(type_expr&& p) noexcept; // shallow copy
   bool specialise(const type_expr& pattern);
     // try to match pattern, possibly modifying |*this|
   bool can_specialise(const type_expr& pattern) const;
     // tell whether |specialse| would succeed
  };
-
 
 @ For that definition to be processed properly, we must pay some attention to
 ordering of type definitions, because of the recursions present. The structure
@@ -391,84 +403,53 @@ as a structure before the definition of |type_expr| is seen. Similarly the
 structure |type_node| used in type lists must be declared before the
 definition of |type_expr|, but we already did that above; on the other hand
 the definition of that structure, which is also already presented, should be
-seen by the compiler \emph{after} that of |type_expr|, so we tend to that when
-inserting the module reference for that definition.
+seen by the compiler \emph{after} that of |type_expr|; the module references
+below are carefully ordered to make this happen.
 
 @< Type definitions @>=
 
 struct func_type; // must be predeclared for |type_expr|
 @< Definition of |type_expr| @>
-
 @< Definition of |struct type_node@;| @>@; // this must \emph{follow}
 
-@ The constructor for function types cannot be defined inside the structure
-definition, since |func_type| is not (and cannot be) a complete type there.
-The constructor for |func_type| used will be defined below.
+@ Instead of a regular copy constructor, which would have to make a deep copy
+(because these descendants are owned by the object), |type_expr| provides a
+method |copy| that recursively copies the descendant types; this way the
+inadvertent making of deep copies is avoided. If necessary the |type_expr|
+move constructor can be applied to the temporary for the result from |copy|,
+but this can probably always be avoided by return value optimisation (and in
+any case move construction costs little). Using a named function here results
+in the recursion being visible in the argument the calls of |new|. Since this
+is not a constructor, the pointers returned from |new| are immediately owned
+when stored in a component of |type_expr| (and even if this had been a
+constructor, no exception can happen between the storing the pointer and
+termination).
 
-@< Template and inline function definitions @>=
-type_expr::type_expr(type_ptr&& arg, type_ptr&& result) noexcept
-   : kind(function_type)
- {@; func=new func_type(std::move(arg),std::move(result)); }
-
-@ The variant for function types needs both an argument type and a result
-type. We cannot define the appropriate structure directly within the |union|
-of |type_expr| where it is needed, since the scope of that definition
-would then be too limited to perform the appropriate |new| in the constructor.
-Therefore we must declare and name the structure type before using it in
-|type_expr|. Afterwards we define the structure, and while we are doing
-that, we also define a constructor to fill the structure (it was used above)
-and a copy constructor.
-
-The |func_type| structure has two sub-objects of type |type_expr|,
-rather than pointers to them. This is more compact and practical for most
-purposes, but we should take care that the basic constructor only makes a
-shallow copy of the topmost nodes pointed to. This is achieved by using the
-|set_from| method to fill the initially undetermined slots with a shallow copy
-of the types, in the same way as was done in the constructor for~|type_node|.
-The copy constructor needs no special care, as it makes deep copies.
-
-@s result_type normal
-
-@< Type definitions @>=
-struct func_type
-{ type_expr arg_type, result_type;
-@)
-  func_type(type_ptr&& a, type_ptr&& r)
-   : arg_type(), result_type()
-  {@; arg_type.set_from(*a); result_type.set_from(*r); }
-  func_type(const func_type& f)
-   : arg_type(f.arg_type),result_type(f.result_type) @+{}
-};
-typedef func_type* func_type_p;
-typedef std::unique_ptr<func_type> func_type_ptr;
-
-@ As we remarked above, the copy constructor for a |type_expr|
-recursively copies the descendant types; this is necessary because these
-descendants are owned by the object. As usual the recursion is implicit in the
-use of a copy constructor within |new|. In all cases there is only one object
-directly pointed to, so there is no need for intermediate unique-pointers: no
-exception can be thrown between the moment that the call to |new| returns (if
-it does), and the completion of our constructor, which incorporates the
-returned pointer.
 @:type expression copy@>
 
 @< Function definitions @>=
-type_expr::type_expr(const type_expr& t) : kind(t.kind)
-{ switch (kind)
-  { case undetermined_type: break;
-    case primitive_type: prim=t.prim; break;
+type_expr type_expr::copy() const
+{ type_expr result;
+  switch (result.kind=kind)
+  { case undetermined_type: result.nothing = nothing; break;
+    case primitive_type: result.prim=prim; break;
     case row_type:
-      component_type=new type_expr(*t.component_type);
+      result.component_type=new type_expr(component_type->copy());
     break;
     case tuple_type:
-      tuple= t.tuple==nullptr ? nullptr : new type_node(*t.tuple);
+      result.tuple= tuple==nullptr ? nullptr : new type_node(tuple->copy());
     break;
-    case function_type: func=new func_type(*t.func); break;
+    case function_type: result.func=new func_type(func->copy()); break;
   }
+  return result;
 }
 
 @ The method |clear|, doing the work for the destructor, must similarly clean
-up afterwards, with the recursion again being implicit.
+up afterwards, with the recursion again being implicit. We assign to the
+|nothing| field to formally terminate the lifetime of any other variant,
+although the only really important point is setting |kind = undetermined_type|
+so that the current function will not try to delete any variant a second time
+if it should subsequently be called by the destructor.
 
 @< Function definitions @>=
 void type_expr::clear() noexcept
@@ -478,7 +459,7 @@ void type_expr::clear() noexcept
     case tuple_type: delete tuple; break;
     case function_type: delete func; break;
   }
-  kind = undetermined_type;
+  kind = undetermined_type; nothing = @[{}@];
 }
 
 @ The method |set_from| is like an assignment operator, but it avoids making a
@@ -497,11 +478,10 @@ move semantics.
 
 @h <stdexcept>
 @< Function definitions @>=
-void type_expr::set_from(type_expr& p) noexcept
+void type_expr::set_from(type_expr&& p) noexcept
 { assert (kind==undetermined_type);
    // logic should ensure this; we promised not to |throw|
-  kind=p.kind;
-  switch(kind) // copy top node
+  switch(kind=p.kind) // copy top node
   { case undetermined_type: break;
     case primitive_type: prim=p.prim; break;
     case row_type: component_type=p.component_type; break;
@@ -533,16 +513,16 @@ which case we can call |std::swap| directly on the matching variant fields.
 type_expr& type_expr::operator=(type_expr&& x) noexcept // move assignment
 { if (this!=&x)
   { clear(); // detach anything previously linked
-    set_from(x); // move top level structure
+    set_from(std::move(x)); // move top level structure
   }
   return *this;
 }
 @)
 void type_expr::swap(type_expr& other) noexcept
 {
-  if (kind==other.kind)
+  if (kind==other.kind) // an easy case
     switch(kind)
-    { case undetermined_type: break;
+    { case undetermined_type: break; // no need to swap |nothing| fields
       case primitive_type: std::swap(prim,other.prim); break;
       case row_type: std::swap(component_type,other.component_type); break;
       case function_type: std::swap(func,other.func); break;
@@ -551,8 +531,8 @@ void type_expr::swap(type_expr& other) noexcept
   else
   {@;
     type_expr t(std::move(other));
-    other.set_from(*this);
-    this->set_from(t);
+    other.set_from(std::move(*this));
+    this->set_from(std::move(t));
   }
 }
 
@@ -567,12 +547,10 @@ common specialisation) of its previous value and |pattern|. Therefore the name
 of this method is somewhat misleading, in that the specialisation is not
 necessarily to |pattern|, but to something matching |pattern|.
 
-In the case of an |undetermined_type|, |specialise| calls the copy constructor
-of the specified type via a placement-|new| into the undetermined type
-indication. This overwrites the old value, which is harmless since no
-destruction is necessary for the |undetermined_type| case. In the other cases
-we only continue if the top levels of both type declarers match, in which case
-we try to recursively specialise all descendants. We do not guarantee
+In the case of an |undetermined_type|, |specialise| uses the |set_from| method
+to make |*this| a copy of |pattern|. In the other cases we only continue if
+the top levels of both type declarers match, in which case we try to
+recursively specialise all descendants. We do not guarantee
 commit-or-roll-back, in other words, when the specialisation fails, some
 modifications to our type may still have been made. This is no problem in most
 situations, since failure to specialise $t_1$ to $t_2$ will usually be
@@ -587,7 +565,7 @@ bool type_expr::specialise(const type_expr& pattern)
 { if (pattern.kind==undetermined_type)
     return true; // specialisation to \.* trivially succeeds.
   if (kind==undetermined_type) // specialising \.* also always succeeds,
-    {@;new(this) type_expr(pattern); return true; }
+    {@; set_from(pattern.copy()); return true; }
      // by setting |*this| to |pattern|
   if (pattern.kind!=kind) return false; // impossible to refine
   switch(kind)
@@ -643,12 +621,54 @@ bool type_expr::can_specialise(const type_expr& pattern) const
   }
 }
 
+@ The constructor for function types cannot be defined inside the structure
+definition, since |func_type| is not (and cannot be) a complete type there.
+The constructor for |func_type| used will be defined below.
+
+@< Template and inline function definitions @>=
+type_expr::type_expr(type_expr&& arg, type_expr&& result) noexcept
+@/ : kind(function_type)
+   , func(new func_type(std::move(arg),std::move(result)))
+   @+{}
+
+@ The variant for function types needs both an argument type and a result
+type. We cannot define the appropriate structure directly within the |union|
+of |type_expr| where it is needed, since the scope of that definition
+would then be too limited to perform the appropriate |new| in the constructor.
+Therefore we must declare and name the structure type before using it in
+|type_expr|. Afterwards we define the structure, and while we are doing
+that, we also define a constructor to fill the structure (it was used above)
+and a move constructor.
+
+The |func_type| structure has two sub-objects of type |type_expr|,
+rather than pointers to them. A move constructor only makes a
+shallow copy of the topmost nodes in the same way as was done in the move
+constructor for~|type_node|. Like for |type_expr| we do not provide an
+ordinary copy constructor, but a value-returning |copy| accessor method.
+
+@s result_type normal
+
+@< Type definitions @>=
+struct func_type
+{ type_expr arg_type, result_type;
+@)
+  func_type(type_expr&& a, type_expr&& r)
+@/ : arg_type(std::move(a)), result_type(std::move(r)) @+{}
+  func_type(func_type&& f) // move constructor
+   : arg_type(std::move(f.arg_type)),result_type(std::move(f.result_type))
+   @+{}
+  func_type copy() const // in lieu of a copy contructor
+  {@; return func_type(arg_type.copy(),result_type.copy()); }
+};
+typedef func_type* func_type_p;
+typedef std::unique_ptr<func_type> func_type_ptr;
+
 @ For printing types, we shall pass |type_expr| values to the
 operator~`|<<|' by constant reference, which seems more decent than doing
 so by pointer (which would override the definition that simply prints the
 hexadecimal address of a pointer); we shall not define instances of~`|<<|' for
 other pointer types either. Since we often hold types in |type_ptr| values,
-this does mean the we must dereference explicitly in printing.
+this does mean the we must then dereference explicitly in printing.
 
 @< Declarations of exported functions @>=
 std::ostream& operator<<(std::ostream& out, const type_expr& t);
@@ -723,19 +743,31 @@ bool operator== (const type_expr& x,const type_expr& y)
 }
 
 @ Instead of using the constructors directly, we usually use the constructing
-functions below, which take and return |type_ptr| or |type_list_ptr| values,
-which are unique-pointers.
+functions below. They all and return |type_ptr| values owning the constructed
+expression. They also take such smart pointers, or |type_list_ptr| values, as
+argument whenever the underlying pointer is to be directly inserted into the
+structure built. However for |make_function_type| this is not the case, so
+instead of insisting that the caller hold a unique-pointer to the argument
+types it suffices to hold a |type_expr| whose contents can be moved into the
+type to be constructed. If |t| is a |type_ptr| held by a client, it can pass
+|std::move(*t)| as argument to |make_function_type|, which will move the
+contents of the node |t| points to into the function type, and after return
+the destructor of |t| will eventually delete the now empty node.
+
 @< Declarations of exported functions @>=
 type_ptr make_undetermined_type();
 type_ptr make_prim_type(primitive_tag p);
 type_ptr make_row_type(type_ptr&& c);
-type_ptr make_tuple_type (type_list_ptr&& l);
-type_ptr make_function_type (type_ptr&& a, type_ptr&& r);
+type_ptr make_tuple_type(type_list_ptr&& l);
+type_ptr make_function_type(type_expr&& a, type_expr&& r);
 
-@ The reasons for, and the way of, using them are the
-same as explained above for |make_type_list|. Note that |make_prim_type|
-contrary to what its name suggests returns and empty tuple type for the type
-name |"void"|.
+@ The functions below simply wrap the call to the constructor into one of the
+operator |new|, and then capture of the resulting pointer into a |type_ptr|
+result.
+
+Note that we make a special provision that |make_prim_type| will return an
+empty tuple type when called with the type name for |"void"|, although this is
+contrary to what the name of the function suggests.
 
 @< Function definitions @>=
 type_ptr make_undetermined_type()
@@ -744,22 +776,21 @@ type_ptr make_undetermined_type()
 type_ptr make_prim_type(primitive_tag p)
 { return p<nr_of_primitive_types ?
     type_ptr(new type_expr(p)) :
-    type_ptr(new type_expr(type_list_ptr(nullptr)));
+    type_ptr(make_tuple_type(empty_tuple()));
 }
 @)
 type_ptr make_row_type(type_ptr&& c)
-{@; return type_ptr(new type_expr(std::move(c))); }
+{@; return type_ptr (new type_expr(std::move(c))); }
 @)
 type_ptr make_tuple_type (type_list_ptr&& l)
 {@; return type_ptr(new type_expr(std::move(l))); }
 @)
-type_ptr make_function_type (type_ptr&& a, type_ptr&& r)
+type_ptr make_function_type (type_expr&& a, type_expr&& r)
 {@; return type_ptr(new type_expr(std::move(a),std::move(r)));
 }
 
 @*1 Specifying types by strings.
 %
-
 In practice we shall rarely call functions like |make_prim_type| and
 |make_row_type| directly to make explicit types, since this is rather
 laborious. Instead, such explicit types will be constructed by the function
@@ -768,6 +799,8 @@ appropriate type constructing functions.
 
 @< Declarations of exported functions @>=
 type_ptr make_type(const char* s);
+type_expr make_type_expr(const char* s);
+  // ``exported'' for our global variable initialisation
 
 @ The task of converting a properly formatted string into a type is one of
 parsing a simple kind of expressions. The strings used here come from string
@@ -778,32 +811,22 @@ here. The simplest way of parsing ``by hand'' is recursive descent, so that is
 what we shall use. By passing a character pointer by reference, we allow the
 recursive calls to advance the index within the string read.
 
-The function |scan_type| does the real parsing, and |make_type| is just a
-wrapper around it that converts the parameter type from pointer to
-reference-to-pointer, and takes care of issuing an error message if an
-incorrect string should be inadvertently encountered (currently |make_type| is
+The function |scan_type| does the real parsing, |make_type_expr| calls it,
+providing a local modifiable pointer to bind to its reference parameter (which
+is important because |make_type_expr| cannot directly accept a \Cee-string
+constant as argument) while also doing error reporting, and |make_type| is
+just a wrapper around |make_type_expr| that converts the parameter type from
+pointer to reference-to-pointer. Currently the function |make_type_expr| is
 called only during the start-up phase of \.{realex}, and if an error
 encountered (of type |std::logic_error|, since it indicates an error in
 the \.{realex} program itself), printing of the error message will be followed
 by termination of the program.
 
 @< Function definitions @>=
-type_ptr scan_type(const char*& s);
 type_list_ptr scan_type_list(const char*& s);
 @)
-type_ptr make_type(const char* s)
-{ const char* orig=s;
-  try {@; return scan_type(s); }   // provide an lvalue
-  catch (std::logic_error e)
-  { std::cerr << e.what() << "; original string: '" << orig @|
-              << "' text remaining: '" << s << "'\n";
-    throw@[@];
-  // make the error hard to ignore; if thrown probably aborts the program
-  }
-}
-
-type_ptr scan_type(const char*& s)
-{ if (*s=='*') return ++s,make_undetermined_type();
+type_expr scan_type(const char*& s)
+{ if (*s=='*') return ++s,@[type_expr()@]; // undetermined type
   else if (*s=='[')
     @< Scan and |return| a row type, or |throw| a |logic_error| @>
   else if (*s=='(')
@@ -811,6 +834,22 @@ type_ptr scan_type(const char*& s)
        or |throw| a |logic_error| @>
   else @< Scan and |return| a primitive type, or |throw| a |logic_error| @>
 }
+@)
+type_expr make_type_expr(const char* s)
+{ const char* orig=s;
+  try
+  {@; return type_expr(scan_type(s)); }
+  catch (std::logic_error e)
+  { std::cerr << e.what() << "; original string: '" << orig @|
+              << "' text remaining: '" << s << "'\n";
+    throw@[@];
+  // make the error hard to ignore; if thrown probably aborts the program
+  }
+}
+@)
+type_ptr make_type(const char* s)
+{@; return type_ptr(new type_expr(make_type_expr(s))); }
+  // wrap up |type_expr| in |type_ptr|
 
 
 @ The following code demonstrates how simple recursive descent parsing can be.
@@ -818,9 +857,9 @@ The only subtle point is that did not advance the pointer |s| when testing for
 |'['| above, so we must start with doing that.
 
 @< Scan and |return| a row type, or |throw| a |logic_error| @>=
-{ type_ptr c=scan_type(++s);
+{ type_expr comp=scan_type(++s);
   if (*s++!=']') throw std::logic_error("Missing ']' in type");
-    return make_row_type(std::move(c));
+    return type_expr(type_ptr(new type_expr(std::move(comp))));
 }
 
 @ Now we do tuple and function types. Here again we start by advancing the
@@ -842,10 +881,11 @@ singleton type.
 
 Note that this is one of the few places where we really use the
 ownership-tracking semantics of unique-pointers, in the sense that their
-destruction behaviour at a certain point is runtime-dependent: the list
+destruction behaviour at a certain point is runtime-dependent: the list nodes
 pointed to by |l0| and |l1| will only be deleted in the case of a singleton
-list, where the unique-pointer was not passed on in a call to
-|make_tuple_type|.
+list, where |type_list_ptr| was not captured and set to null in the
+|type_expr| constructor for a tuple type; in that case the node will be
+deleted, but its contents has been moved out by then.
 
 @< Scan and |return| a tuple or function type, or |throw| a |logic_error| @>=
 { type_list_ptr l0=scan_type_list(++s), l1(nullptr);
@@ -853,14 +893,17 @@ list, where the unique-pointer was not passed on in a call to
   if (*s=='-' and *++s=='>') l1=scan_type_list(++s);
   if (*s!=')') throw std::logic_error("Missing ')' in type");
    @+ else ++s;
-  type_ptr a =
-    l0.get()!=nullptr and l0->next==nullptr ? copy(l0->t)
-    : make_tuple_type(std::move(l0));
-  if (is_tuple) return a;
-  type_ptr r =
-    l1.get()!=nullptr and l1->next==nullptr ? copy(l1->t)
-    : make_tuple_type(std::move(l1));
-  return make_function_type(std::move(a),std::move(r));
+  type_expr a =
+    l0.get()!=nullptr and l0->next==nullptr
+    ? std::move(l0->t)
+    : type_expr(std::move(l0)); //tuple type
+  if (is_tuple)
+    return a;
+  type_expr r =
+    l1.get()!=nullptr and l1->next==nullptr
+    ? std::move(l1->t)
+    : type_expr(std::move(l1)); // tuple type
+  return type_expr(std::move(a),std::move(r)); // function type
 }
 
 @ A comma-separated list of types is handled by a straightforward recursion.
@@ -870,9 +913,10 @@ very first character we see is |')'| or |'-'|.
 @< Function definitions @>=
 @)
 type_list_ptr scan_type_list(const char*& s)
-{ if (*s==')' or *s=='-') return type_list_ptr(nullptr);
-  type_ptr head=scan_type(s);
-  if (*s!=',') return make_type_singleton(std::move(head));
+{ if (*s==')' or *s=='-') return empty_tuple();
+  type_expr head=scan_type(s);
+  if (*s!=',')
+     return make_type_singleton(std::move(head));
   return make_type_list(std::move(head),scan_type_list(++s));
 }
 
@@ -891,7 +935,11 @@ index into the former list to an element of that enumeration.
   { const char* name=prim_names[i];
     size_t l= std::strlen(name);
     if (std::strncmp(s,name,l)==0 and not isalpha(s[l]))
-    @/{@; s+=l; return make_prim_type(static_cast<primitive_tag>(i));
+    { s+=l;
+      primitive_tag tag = static_cast<primitive_tag>(i);
+      if (tag == nr_of_primitive_types) // then name scanned was |"void"|
+        return type_expr(empty_tuple()); // which is equivalent to |"()"|
+      return type_expr(tag); // otherwise this is a true primitive type
     }
   }
   throw std::logic_error("Type unrecognised");
@@ -927,11 +975,11 @@ calling |copy| for previous type constants.
 @< Global variable definitions @>=
 
 const type_expr unknown_type; // uses default constructor
- type_expr void_type(type_list_ptr(nullptr));
+ type_expr void_type(empty_tuple());
  type_expr int_type(integral_type);
  type_expr bool_type(boolean_type);
-const type_expr row_of_type(copy(unknown_type));
-const type_expr gen_func_type(copy(unknown_type),copy(unknown_type));
+const type_expr row_of_type(make_type_expr("[*]"));
+const type_expr gen_func_type(make_type_expr("(*->*)"));
 
 @ There are more such statically allocated type expressions, which are used in
 the evaluator. They are less fundamental, as they are not actually used in any
@@ -978,12 +1026,12 @@ const type_expr str_type(string_type);
 const type_expr vec_type(vector_type);
 const type_expr ratvec_type(rational_vector_type);
 const type_expr mat_type(matrix_type);
-const type_expr row_of_int_type(copy(int_type));
-const type_expr row_of_rat_type(copy(rat_type));
-const type_expr row_of_vec_type(copy(vec_type));
-const type_expr row_row_of_int_type(copy(row_of_int_type));
-const type_expr pair_type(*unknown_tuple(2));  // copy and destroy original
-const type_expr int_int_type(*make_type("(int,int)")); // idem
+const type_expr row_of_int_type(make_type_expr("[int]"));
+const type_expr row_of_rat_type(make_type_expr("[rat]"));
+const type_expr row_of_vec_type(make_type_expr("[vec]"));
+const type_expr row_row_of_int_type(make_type_expr("[[int]]"));
+const type_expr pair_type(make_type_expr("(*,*)"));
+const type_expr int_int_type(make_type_expr("(int,int)"));
 const type_expr Lie_type_type(complex_lie_type_type);
 const type_expr rd_type(root_datum_type);
 const type_expr ic_type(inner_class_type);
@@ -996,15 +1044,16 @@ const type_expr param_pol_type(virtual_module_type);
 such a type is built by calling |unknown_tuple|.
 
 @< Declarations of exported functions @>=
-type_ptr unknown_tuple(size_t n);
+type_expr unknown_tuple(size_t n);
 
 @~This pattern is built up in a simple loop.
 
 @< Function definitions @>=
-type_ptr unknown_tuple(size_t n)
+type_expr unknown_tuple(size_t n)
 { type_list_ptr tl(nullptr);
-  while (n-->0) tl=make_type_list(copy(unknown_type),std::move(tl));
-  return make_tuple_type(std::move(tl));
+  while (n-->0)
+    tl=make_type_list(type_expr(),std::move(tl));
+  return type_expr(std::move(tl));
 }
 
 @* Dynamically typed values.
@@ -1699,7 +1748,7 @@ be destructed before the error is caught.
 expression conform_types
 (const type_expr& found, type_expr& required, expression_ptr d, expr e)
 { if (not required.specialise(found) and not coerce(found,required,d))
-    throw type_error(e,copy(found),copy(required));
+    throw type_error(e,found.copy(),required.copy());
   return d.release();
 }
 
@@ -1900,50 +1949,32 @@ struct expr_error : public program_error
 
 @ We derive from |expr_error| an even more specific exception type
 |type_error| that we shall throw when an expression fails to have the right
-type. In addition to the offending subexpression it stores pointers to the
+type. In addition to the offending subexpression it stores the
 types that failed to match. For the latter, the error value owns the types
 pointed to, so the caller should relinquish ownership of, or copy (in case it
 did not own), the types passed when throwing the exception.
 
 @< Type definitions @>=
 struct type_error : public expr_error
-{ type_p actual; @+
-  type_p required; // the types that conflicted
+{ type_expr actual; @+
+  type_expr required; // the types that conflicted
 @)
-  type_error (const expr& e, type_ptr a, type_ptr r) throw() @/
+  type_error (const expr& e, type_expr&& a, type_expr&& r) noexcept @/
     : expr_error(e,"Type error") @|
-      ,actual(a.release()),required(r.release()) @+{}
-  type_error(const type_error& e);
-  ~type_error() throw() @+{@; delete actual; delete required; }
+      ,actual(std::move(a)),required(std::move(r)) @+{}
+  type_error(type_error&& e);
 };
 
-@ We do not plan to use the copy constructor for |type_error| since its use on
-throwing can be avoided by good compilers (and in addition we shall always
-catch by reference, although the compiler cannot know this at the point where
-it throws). However the language requires that a copy constructor be
-accessible for objects thrown, so we cannot make the copy constructor private.
-This being the case, we cannot let it be synthesised by the compiler either,
-because a shallow copy would lead to the types pointed to being destroyed
-twice.
-
-So we must laboriously define the proper way to do it, hoping that it will
-never be used. This is not easy either, since two copies of type expressions
-must be made, which can throw exceptions (let us hope the hypothetical call to
-the copy constructor is made \emph{before} the |throw| of |type_error| is
-executed, or else we will be dead due to interwoven exceptions\dots), and
-during the second copy the pointer to the first copy must be held in an
-unique-pointer to avoid a memory leak. This excludes any attempt to initialise
-|actual| and |required| directly to their proper values, sigh! In the code
-below, we could have said instead |actual=new type_expr(*e.actual)|,
-thus avoiding the use of the anonymous unique-pointer produced by the second
-call of |copy|, at the price of some loss of symmetry and readability.
+@ A copy or move constructor for |type_error| must be defined in order to be
+able to use it for throwing. The latter is very straightforward as no type
+have to be duplicated, so we choose that option.
 
 @< Function definitions @>=
-type_error::type_error(const type_error& e)
+type_error::type_error(type_error&& e)
  : expr_error(e)
-{@; type_ptr p=copy(*e.required);
-  actual=copy(*e.actual).release(); required=p.release();
-}
+ , actual(std::move(e.actual))
+ , required(std::move(e.required))
+@+{}
 
 @* Enumeration of primitive types.
 %
