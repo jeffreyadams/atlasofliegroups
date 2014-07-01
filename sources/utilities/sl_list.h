@@ -175,20 +175,15 @@ template<typename T>
 
     sl_list& operator= (const sl_list& x)
       {
-	if (this!=&x) // self-assign is useless, though it would be safe here
+	if (this!=&x) // self-assign is useless, though it would be safe
 	  // reuse existing nodes when possible
 	  assign(x.begin(),x.end(), tags::IteratorTag());
 	return *this;
       }
 
     sl_list& operator= (sl_list&& x)
-      {
-	if (this!=&x) // self-assign would destroy contents
-	{
-	  clear();
-	  new (this) sl_list(std::move(x)); // move |x| into |*this|
-	  x.set_empty();
-	}
+      { // self-assignment is safe and cheap, don't bother to test here
+	swap(x);
 	return *this;
       }
 
@@ -202,9 +197,20 @@ template<typename T>
       if (--node_count==0) // pure condition equivalent to |head.get()==nullptr|
 	tail=&head;
     }
+
     void push_front(const T& val)
     {
       node_type* p = new node_type(val); // construct node value
+      if (empty()) // we must move |tail| if and only if this is first node
+	tail = &p->next; // move |tail| to point to null smart ptr
+      p->next.reset(head.release()); // link trailing nodes here
+      head.reset(p); // make new node the first one in the list
+      ++node_count;
+    }
+
+    void push_front(T&& val)
+    {
+      node_type* p = new node_type(std::move(val)); // construct node value
       if (empty()) // we must move |tail| if and only if this is first node
 	tail = &p->next; // move |tail| to point to null smart ptr
       p->next.reset(head.release()); // link trailing nodes here
@@ -222,12 +228,33 @@ template<typename T>
       return iterator(last);
     }
 
+    iterator push_back(const T&& val)
+    {
+      link_type& last = *tail; // hold this link field for |return| statement
+      node_type* p= new node_type(std::move(val)); // construct node value
+      tail = &p->next; // then move |tail| to point to null smart ptr agin
+      last.reset(p); // append new node to previous ones
+      ++node_count;
+      return iterator(last);
+    }
+
     bool empty() const { return tail==&head; } // or |node_count==0|
     size_type size() const { return node_count; }
 
     iterator insert(iterator pos, const T& val)
     {
       node_type* p = new node_type(val); // construct node value
+      p->next.reset(pos.link_loc->release()); // link the trailing nodes here
+      if (tail==pos.link_loc) // if |pos==end()|
+	tail = &p->next; // then move |tail| to point to null smart ptr agin
+      pos.link_loc->reset(p); // and attach new node to previous ones
+      ++node_count;
+      return pos; // while unchanged, it now "points to" the new node
+    }
+
+    iterator insert(iterator pos, const T&& val)
+    {
+      node_type* p = new node_type(std::move(val)); // construct node value
       p->next.reset(pos.link_loc->release()); // link the trailing nodes here
       if (tail==pos.link_loc) // if |pos==end()|
 	tail = &p->next; // then move |tail| to point to null smart ptr agin
