@@ -256,7 +256,7 @@ setting it to~$0$ is attempted.
     // cannot overload with a non-function value
   if (not clear)
   { type_expr& arg=t.func->arg_type;
-  @/clear = arg.kind==tuple_type and arg.tuple==NULL;
+  @/clear = arg.kind==tuple_type and arg.tupple.empty();
      // nor parameterless functions
   }
   if (clear and overload==2) // inappropriate function type with operator

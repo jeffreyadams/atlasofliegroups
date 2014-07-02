@@ -34,6 +34,7 @@ struct sl_node
   link_type next;
   T contents;
 sl_node(const T& contents) : next(nullptr), contents(contents) {}
+sl_node(T&& contents) : next(nullptr), contents(std::move(contents)) {}
 }; // |class sl_node| template
 
 template<typename T>
@@ -160,6 +161,17 @@ template<typename T>
       assign(first,last, tags::IteratorTag());
     }
 
+    sl_list (size_type n)
+      : head(nullptr), tail(&head), node_count(n)
+    {
+      while (n-->0)
+      {
+	node_type* p = new node_type(T()); // construct default node value
+        tail->reset(p); // splice in new node
+	tail = &p->next; // then move |tail| to point to null smart ptr agin
+      }
+    }
+
     sl_list (size_type n, const T& x)
       : head(nullptr), tail(&head), node_count(n)
     {
@@ -228,7 +240,7 @@ template<typename T>
       return iterator(last);
     }
 
-    iterator push_back(const T&& val)
+    iterator push_back(T&& val)
     {
       link_type& last = *tail; // hold this link field for |return| statement
       node_type* p= new node_type(std::move(val)); // construct node value
@@ -252,7 +264,7 @@ template<typename T>
       return pos; // while unchanged, it now "points to" the new node
     }
 
-    iterator insert(iterator pos, const T&& val)
+    iterator insert(iterator pos, T&& val)
     {
       node_type* p = new node_type(std::move(val)); // construct node value
       p->next.reset(pos.link_loc->release()); // link the trailing nodes here

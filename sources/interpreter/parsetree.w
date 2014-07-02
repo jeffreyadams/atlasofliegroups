@@ -16,22 +16,23 @@ carries a legacy of the original design.
 
 This file also defines some other functions defined here are not
 used in the parser, but can be used by other modules written in~\Cpp; their
-declaration is separated, so it can skipped when the header file is read in
-using a \Cee\ compiler (although this does not happen any more).
+declaration is separated fro historic reasons only.
 
 @( parsetree.h @>=
 #ifndef PARSETREE_H
 #define PARSETREE_H
 
 #include <iostream>
+#include <memory>
 #include "buffer.h" // for |Hash_table|
+#include "sl_list.h"
 namespace atlas
-{ namespace interpreter
+{
+  namespace interpreter
   {
-
 @< Declarations for the parser @>@;
 
-@< Declarations of \Cpp\ functions @>@;
+@< Declaration of functions not for the parser @>@;
   }@;
 }@;
 
@@ -76,7 +77,7 @@ a function to print the expressions once parsed; this provides a useful test
 to see if what we have read in corresponds to what was typed, and this
 functionality will also be used in producing error messages.
 
-@< Declarations of \Cpp\ functions @>=
+@< Declaration of functions not for the parser @>=
 std::ostream& operator<< (std::ostream& out, expr e);
 
 @~The definitions of this instance of the operator~`|<<|' are distributed
@@ -242,7 +243,7 @@ struct exprlist_node {@; expr e; expr_list next; };
 calculating the length of the list; it will actually be used by the evaluator
 rather than by the parser.
 
-@< Declarations of \Cpp\ functions @>=
+@< Declaration of functions not for the parser @>=
 size_t length(expr_list l);
 
 @~The definition is no surprise.
@@ -386,7 +387,7 @@ nothing useful is provided, for instance for a missing else-branch. They are
 easy to build, but for recognising them later, it is useful to have a function
 at hand.
 
-@< Declarations of \Cpp\ functions @>=
+@< Declaration of functions not for the parser @>=
 bool is_empty(const expr& e);
 
 @~The implementation is of course straightforward.
@@ -747,7 +748,7 @@ struct pattern_node
 @ These types do not themselves represent a variant of |expru|, but will be
 used inside such variants. We can already provide a printing function.
 
-@< Declarations of \Cpp... @>=
+@< Declaration of functions not for the parser @>=
 std::ostream& operator<< (std::ostream& out, const id_pat& p);
 
 @~Only parts whose presence is indicated in |kind| are printed. We take care
@@ -980,7 +981,10 @@ following type names, where it fortunately suffices to know they are pointers
 to unspecified structures.
 
 @< Structure and typedef... @>=
-typedef struct type_expr* type_p;
+struct type_expr;
+typedef class atlas::containers::sl_list<type_expr> new_tl; // predeclare;
+typedef type_expr* type_p;
+typedef std::unique_ptr<type_expr> type_ptr;
 typedef struct type_node* type_list;
 
 @ These functions provide an interface to routines defined in the
@@ -989,17 +993,21 @@ module \.{types.w}, stripping off the smart pointers.
 @< Declarations of functions for the parser @>=
 type_list mk_type_singleton(type_p t);
 type_list mk_type_list(type_p t,type_list l);
+new_tl mk_type_singleton(type_ptr&& t);
+new_tl mk_new_tl(type_p&& t,new_tl&& l);
 type_p mk_prim_type(int p);
 type_p mk_row_type(type_p c);
 type_p mk_tuple_type(type_list l);
+type_ptr mk_tuple_type(new_tl&& l);
 type_p mk_function_type(type_p a,type_p r);
 @)
 void destroy_type(type_p t);
 void destroy_type_list(type_list t);
+void destroy_type_list(new_tl& t);
 
 @ The following function is not used in the parser, and never had \Cee~linkage.
 
-@< Declarations of \Cpp... @>=
+@< Declaration of functions not for the parser @>=
 std::ostream& print_type(std::ostream& out, type_p type);
 
 @ All that is needed are conversions from ordinary pointer to auto-pointer and
@@ -1017,7 +1025,16 @@ type_list mk_type_list(type_p t,type_list l)
 { type_expr tmp(std::move(*t)); // |t| should really be passed by rvalue ref
   return make_type_list(std::move(tmp),type_list_ptr(l)).release();
 }
+@)
+new_tl mk_type_singleton(type_ptr&& t)
+{@; new_tl result;
+  result.push_front(std::move(*t));
+  return result;
+}
 
+new_tl mk_new_tl(type_ptr&& t,new_tl&& l)
+{@; return std::move(prefix(std::move(*t),l)); }
+@)
 type_p mk_prim_type(int p)
 {@; return make_prim_type(static_cast<primitive_tag>(p)).release(); }
 
@@ -1027,6 +1044,9 @@ type_p mk_row_type(type_p c)
 type_p mk_tuple_type(type_list l)
 {@; return make_tuple_type(type_list_ptr(l)).release(); }
 
+type_ptr mk_tuple_type(new_tl&& l)
+{@; return make_tuple_type(std::move(l)); } // just an alias
+
 type_p mk_function_type(type_p a,type_p r)
 { type_ptr pa(a), pr(r); // ensure cleaning up at return
   return make_function_type(std::move(*a),std::move(*r)).release(); }
@@ -1035,6 +1055,7 @@ type_p mk_function_type(type_p a,type_p r)
 void destroy_type(type_p t)@+ {@; delete t; }
 
 void destroy_type_list(type_list t)@+ {@; delete t; }
+void destroy_type_list(new_tl& t)@+ {@; t.~new_tl(); }
 
 std::ostream& print_type(std::ostream& out, type_p type) @+
 {@; return out << *type; }
@@ -1092,6 +1113,7 @@ by the parser.
 
 @< Declarations of functions for the parser @>=
 expr make_lambda_node(patlist pat_l, type_list type_l, expr body);
+expr make_lambda_node(patlist pat_l, new_tl&& type_l, expr body);
 
 @~There is a twist in building a lambda node, in that for syntactic reasons
 the parser passes lists of patterns and types rather than single ones. We must
@@ -1099,8 +1121,8 @@ distinguish the case of a singleton, in which case the head node must be
 unpacked, and the multiple case, where a tuple pattern and type must be
 wrapped up from the lists. In the former case, |fun->arg_type| wants to have a
 pointer to an isolated |type_expr|, but the head of |type_l| is a |type_node|
-that contains a |type_expr| as its |t| field; making a (deep) copy of that
-field is the easiest way to obtain an isolated |type_expr|. After the deep
+that contains a |type_expr| as its |t| field; making a (shallow) copy of that
+field is the easiest way to obtain an isolated |type_expr|. After the
 copy, destruction of |type_l| deletes the original |type_node|.
 
 @< Definitions of functions for the parser @>=
@@ -1108,12 +1130,28 @@ expr make_lambda_node(patlist pat_l, type_list type_l, expr body)
 { lambda fun=new lambda_node; fun->body=body;
   if (pat_l!=NULL and pat_l->next==NULL)
   { fun->pattern=pat_l->body; delete pat_l; // clean up node
-    fun->arg_type = new type_expr(std::move(type_l->t)); delete type_l;
-      // make a deep copy, clean up
+    fun->arg_type = new type_expr(std::move(type_l->t));
+     // make a shallow copy
+    delete type_l; // clean up
   }
   else
   { fun->pattern.kind=0x2; fun->pattern.sublist=pat_l;
     fun->arg_type=mk_tuple_type(type_l);
+  }
+  expr result; result.kind=lambda_expr; result.e.lambda_variant=fun;
+  return result;
+}
+@)
+expr make_lambda_node(patlist pat_l, new_tl&& type_l, expr body)
+{ lambda fun=new lambda_node; fun->body=body;
+  if (type_l.size()==1)
+  { fun->pattern=pat_l->body; delete pat_l; // clean up node
+    fun->arg_type = new type_expr(std::move(type_l.front()));
+     // make a shallow copy
+  }
+  else
+  { fun->pattern.kind=0x2; fun->pattern.sublist=pat_l;
+    fun->arg_type=mk_tuple_type(std::move(type_l)).get();
   }
   expr result; result.kind=lambda_expr; result.e.lambda_variant=fun;
   return result;

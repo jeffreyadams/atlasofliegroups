@@ -570,9 +570,10 @@ case tuple_display:
   tuple_expression* tup_exp;
   expression_ptr result(tup_exp=new tuple_expression(0));
   tup_exp->component.reserve(length(e.e.sublist));
-  type_list tl= tuple_expected ? type.tuple : tup.tuple;
-  for (expr_list el=e.e.sublist; el!=nullptr; el=el->next,tl=tl->next)
-    tup_exp->component.push_back(convert_expr(el->e,tl->t));
+  new_tl& tl = tuple_expected ? type.tupple : tup.tupple;
+  new_tl::iterator tl_it = tl.begin();
+  for (expr_list el=e.e.sublist; el!=nullptr; el=el->next,++tl_it)
+    tup_exp->component.push_back(convert_expr(el->e,*tl_it));
   if (tuple_expected)
     return result.release();  // and convert (derived|->|base) to |expression|
   else if (coerce(tup,type,result))
@@ -2102,8 +2103,8 @@ modified the component type (by specialising it) or the pair expression (by
 inserting a coercion) if (and only if) it returns |true|.
 
 @< Recognise and return 2-argument versions of `\#'... @>=
-{ type_expr& arg_tp0 = a_priori_type.tuple->t;
-  type_expr& arg_tp1 = a_priori_type.tuple->next->t;
+{ type_expr& arg_tp0 = *a_priori_type.tupple.begin();
+  type_expr& arg_tp1 = *++a_priori_type.tupple.begin();
   if (arg_tp0.kind==row_type)
   { if (can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type)) // suffix
     { expression_ptr call(new overloaded_builtin_call
@@ -2313,9 +2314,11 @@ corresponding type pattern; for instance $(x,,(f,):z)$:\\{whole} requires the
 type \.{(*,*,(*,*))}. These recursive functions construct such types.
 
 @< Function definitions @>=
-type_list_ptr pattern_list(const patlist p)
-{@; return p==nullptr ? empty_tuple()
-  : make_type_list(std::move(*pattern_type(p->body)),pattern_list(p->next));
+new_tl pattern_list(patlist p)
+{ new_tl result;
+  for (; p!=nullptr; p=p->next)
+    result.push_back(std::move(*pattern_type(p->body)));
+  return result;
 }
 @)
 type_ptr pattern_type(const id_pat& pat)
@@ -2354,9 +2357,9 @@ void thread_bindings
 { if ((pat.kind & 0x1)!=0) dst.add(pat.name,acquire(&type));
   if ((pat.kind & 0x2)!=0)
   { assert(type.kind==tuple_type);
-    type_list l=type.tuple;
-    for (patlist p=pat.sublist; p!=nullptr; p=p->next,l=l->next)
-      thread_bindings(p->body,l->t,dst);
+    new_tl::const_iterator it = type.tupple.begin();
+    for (patlist p=pat.sublist; p!=nullptr; p=p->next,++it)
+      thread_bindings(p->body,*it,dst);
   }
 }
 
@@ -2869,7 +2872,7 @@ case for_expr:
 }
 
 @ This type must be indexable by integers (so it is either a row-type or
-vector, matrix or string), or it must be loop over the coefficients of a
+vector, matrix or string), or it must be a loop over the coefficients of a
 polynomial. The call to |subscr_base::indexable| will set |comp_type| to the
 component type resulting from such a subscription.
 
@@ -2878,12 +2881,14 @@ component type resulting from such a subscription.
 { type_expr comp_type; const type_expr* tp;
   if (subscr_base::indexable(in_type,*(tp=&int_type),comp_type,which) @|
    or subscr_base::indexable(in_type,*(tp=&param_type),comp_type,which))
-  { type_ptr pt = pattern_type(f->id), @|
-      it_type=make_tuple_type(make_type_list@|
-      (type_expr(tp->copy()),make_type_singleton(std::move(comp_type))));
-    if (not pt->specialise(*it_type))
+  { type_ptr pt = pattern_type(f->id);
+    new_tl it_comps;
+    it_comps.push_back(std::move(comp_type));
+    it_comps.push_front(type_expr(tp->copy()));
+    type_expr it_type(std::move(it_comps));
+    if (not pt->specialise(it_type))
       throw expr_error(e,"Improper structure of loop variable pattern");
-    thread_bindings(f->id,*it_type,bind);
+    thread_bindings(f->id,it_type,bind);
   }
   else
   { std::ostringstream o;
@@ -3264,8 +3269,8 @@ break;
       throw type_error(e,ctype.copy(),type.copy());
     }
     else if (ctype.specialise(pair_type))
-    { type_expr& arg_tp0 = ctype.tuple->t;
-      type_expr& arg_tp1 = ctype.tuple->next->t;
+    { type_expr& arg_tp0 = *ctype.tupple.begin();
+      type_expr& arg_tp1 = *++ctype.tupple.begin();
       if (arg_tp0.kind==row_type)
       { if (arg_tp0==arg_tp1)
         { if (spec_func(type,ctype,arg_tp0))
