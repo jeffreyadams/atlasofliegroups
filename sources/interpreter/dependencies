@@ -18,6 +18,7 @@ $(realex_dir)/buffer.o $(realex_dir)/buffer.tex: $(realex_dir)/buffer.h
 $(realex_dir)/parsetree.o: $(realex_dir)/parsetree.cpp
 $(realex_dir)/parsetree.o $(realex_dir)/parsetree.tex: \
  $(realex_dir)/parsetree.h \
+ $(sources_dir)/utilities/sl_list.h \
  $(realex_dir)/types.h \
  $(realex_dir)/lexer.h \
  $(realex_dir)/buffer.h \

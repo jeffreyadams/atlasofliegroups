@@ -11,6 +11,7 @@
 
 typedef atlas::tags::IteratorTag IT;
 
+
 class A
 {
   unsigned int a;
@@ -19,10 +20,16 @@ public:
   A (const A& x) : a(x.a) { std::cout << "copy " << a << std::endl; }
   A& operator = (const A& x)
   { a=x.a; std::cout << "assign " << a << std::endl; return *this; }
-  ~A () { std::cout << "destruct " << a << std::endl; }
+  ~A ();
   operator unsigned int () { return a; }
 };
 
+typedef std::unique_ptr<A> uA;
+uA p;
+
+A::~A()  { std::cout << "destruct " << a
+		    << ", p is " << (p.get()==nullptr ? "null" : "not null" )
+		    << std::endl; }
 
 void g()
 {
@@ -118,22 +125,39 @@ void g()
   std::cout << std::endl;
 }
 
-typedef atlas::containers::sl_list<int> intlist;
+typedef atlas::containers::simple_list<int> intlist;
+typedef atlas::containers::sl_list<int> int_list;
+
+std::ostream& operator << (std::ostream& os, const intlist & l)
+{
+  os << '[';
+  for (auto it = l.begin(); not l.at_end(it); ++it)
+    os << (it==l.begin() ? "" : ",") << *it;
+  return os << ']';
+}
 
 int main()
 {
   intlist a;
-  a.push_back(3);
-  a.push_back(1);
-  a.push_back(4);
-  a.push_back(13);
-  a.reverse();
-
   std::ostream_iterator<int> lister(std::cout,", ");
-  std::copy(a.begin(),a.end(),lister);
-  std::cout<<std::endl;
+
+  a.push_front(3);
+  a.push_front(1);
+  a.push_front(4);
+  a.push_front(13);
+  std::cout << a << "; ";
+  a.reverse();
+  std::cout << a << std::endl;
 
   a.reverse(a.begin(),++++++a.begin());
-  std::copy(a.begin(),a.end(),lister);
-  std::cout<<std::endl;
+  std::cout << a << std::endl;
+
+  int_list b(std::move(a));
+  std::cout << a << std::endl;
+  std::copy(b.begin(),b.end(),lister); std::cout<<std::endl;
+  b.push_back(17);
+  std::copy(b.begin(),b.end(),lister); std::cout<<std::endl;
+  a = b.undress();
+  std::cout << a << std::endl;
+  std::copy(b.begin(),b.end(),lister); std::cout<<std::endl;
 }
