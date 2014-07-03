@@ -38,12 +38,12 @@
   atlas::interpreter::let_list decls; /* declarations in a LET expression */
   atlas::interpreter::id_pat ip;
   struct {
-    atlas::interpreter::type_list typel;
+    atlas::interpreter::raw_type_list typel;
     atlas::interpreter::patlist patl;
   } id_sp;
   atlas::interpreter::patlist pl;
   atlas::interpreter::type_p type_pt;
-  atlas::interpreter::type_list type_l;
+  atlas::interpreter::raw_type_list type_l;
 }
 
 %locations
@@ -143,11 +143,11 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 ;
 
 exp: LET lettail { $$=$2; }
-	| '(' ')' ':' exp { $$=make_lambda_node(NULL,NULL,$4); }
+	| '(' ')' ':' exp { $$=make_lambda_node(NULL,raw_type_list(NULL),$4); }
 	| '(' id_specs ')' ':' exp
 	  { $$=make_lambda_node($2.patl,$2.typel,$5); }
 	| '(' ')' type ':' exp
-	  { $$=make_lambda_node(NULL,NULL,make_cast($3,$5)); }
+	  { $$=make_lambda_node(NULL,raw_type_list(NULL),make_cast($3,$5)); }
 	| '(' id_specs ')' type ':' exp
 	  { $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6)); }
         | type ':' exp	 { $$ = make_cast($1,$3); }

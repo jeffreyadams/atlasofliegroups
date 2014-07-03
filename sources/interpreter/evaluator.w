@@ -570,8 +570,8 @@ case tuple_display:
   tuple_expression* tup_exp;
   expression_ptr result(tup_exp=new tuple_expression(0));
   tup_exp->component.reserve(length(e.e.sublist));
-  new_tl& tl = tuple_expected ? type.tupple : tup.tupple;
-  new_tl::iterator tl_it = tl.begin();
+  type_list& tl = tuple_expected ? type.tupple : tup.tupple;
+  type_list::iterator tl_it = tl.begin();
   for (expr_list el=e.e.sublist; el!=nullptr; el=el->next,++tl_it)
     tup_exp->component.push_back(convert_expr(el->e,*tl_it));
   if (tuple_expected)
@@ -2314,11 +2314,11 @@ corresponding type pattern; for instance $(x,,(f,):z)$:\\{whole} requires the
 type \.{(*,*,(*,*))}. These recursive functions construct such types.
 
 @< Function definitions @>=
-new_tl pattern_list(patlist p)
-{ new_tl result;
+type_list pattern_list(patlist p)
+{ dressed_type_list result;
   for (; p!=nullptr; p=p->next)
     result.push_back(std::move(*pattern_type(p->body)));
-  return result;
+  return result.undress();
 }
 @)
 type_ptr pattern_type(const id_pat& pat)
@@ -2357,7 +2357,7 @@ void thread_bindings
 { if ((pat.kind & 0x1)!=0) dst.add(pat.name,acquire(&type));
   if ((pat.kind & 0x2)!=0)
   { assert(type.kind==tuple_type);
-    new_tl::const_iterator it = type.tupple.begin();
+    type_list::const_iterator it = type.tupple.begin();
     for (patlist p=pat.sublist; p!=nullptr; p=p->next,++it)
       thread_bindings(p->body,*it,dst);
   }
@@ -2882,8 +2882,8 @@ component type resulting from such a subscription.
   if (subscr_base::indexable(in_type,*(tp=&int_type),comp_type,which) @|
    or subscr_base::indexable(in_type,*(tp=&param_type),comp_type,which))
   { type_ptr pt = pattern_type(f->id);
-    new_tl it_comps;
-    it_comps.push_back(std::move(comp_type));
+    type_list it_comps;
+    it_comps.push_front(std::move(comp_type));
     it_comps.push_front(type_expr(tp->copy()));
     type_expr it_type(std::move(it_comps));
     if (not pt->specialise(it_type))

@@ -51,10 +51,8 @@ namespace atlas
 { namespace interpreter
   {
 @< Definitions of constants... @>@;
-
 @< Definitions of functions for the parser @>@;
-
-@< Definitions of \Cpp\ functions @>@;
+@< Definitions of functions not for the parser @>@;
   }@;
 }@;
 
@@ -83,7 +81,7 @@ std::ostream& operator<< (std::ostream& out, expr e);
 @~The definitions of this instance of the operator~`|<<|' are distributed
 among the different variants of the |union expru@;| that we shall define.
 
-@< Definitions of \Cpp\ functions @>=
+@< Definitions of functions not for the parser @>=
 std::ostream& operator<< (std::ostream& out, expr e)
 {@; switch (e.kind)
   {@; @< Cases for printing an expression |e| @>
@@ -248,7 +246,7 @@ size_t length(expr_list l);
 
 @~The definition is no surprise.
 
-@< Definitions of \Cpp\ functions @>=
+@< Definitions of functions not for the parser @>=
 size_t length(expr_list l) @+
 {@; size_t n=0; while(l!=NULL) {@; ++n; l=l->next;}
   return n;
@@ -392,7 +390,7 @@ bool is_empty(const expr& e);
 
 @~The implementation is of course straightforward.
 
-@< Definitions of \Cpp\ functions @>=
+@< Definitions of functions not for the parser @>=
 bool is_empty(const expr& e)
 @+{@; return e.kind==tuple_display and e.e.sublist==NULL; }
 
@@ -756,7 +754,7 @@ that even if |sublist| is marked as present, it might be null. However, the
 list cannot be of length~1, so having put aside the case of an empty sublist,
 we can print a first comma unconditionally.
 
-@< Definitions of \Cpp...@>=
+@< Definitions of functions not for the parser @>=
 std::ostream& operator<< (std::ostream& out, const id_pat& p)
 { if ((p.kind & 0x2)!=0)
     if (p.sublist==NULL)
@@ -982,28 +980,24 @@ to unspecified structures.
 
 @< Structure and typedef... @>=
 struct type_expr;
-typedef class atlas::containers::sl_list<type_expr> new_tl; // predeclare;
+typedef class atlas::containers::sl_node<type_expr>* raw_type_list; // predeclare;
+typedef class atlas::containers::simple_list<type_expr> type_list; // predeclare;
 typedef type_expr* type_p;
 typedef std::unique_ptr<type_expr> type_ptr;
-typedef struct type_node* type_list;
 
 @ These functions provide an interface to routines defined in the
 module \.{types.w}, stripping off the smart pointers.
 
 @< Declarations of functions for the parser @>=
-type_list mk_type_singleton(type_p t);
-type_list mk_type_list(type_p t,type_list l);
-new_tl mk_type_singleton(type_ptr&& t);
-new_tl mk_new_tl(type_p&& t,new_tl&& l);
+raw_type_list mk_type_singleton(type_p raw);
+raw_type_list mk_type_list(type_p t,raw_type_list l);
 type_p mk_prim_type(int p);
 type_p mk_row_type(type_p c);
-type_p mk_tuple_type(type_list l);
-type_ptr mk_tuple_type(new_tl&& l);
+type_p mk_tuple_type(raw_type_list l);
 type_p mk_function_type(type_p a,type_p r);
 @)
 void destroy_type(type_p t);
-void destroy_type_list(type_list t);
-void destroy_type_list(new_tl& t);
+void destroy_type_list(raw_type_list t);
 
 @ The following function is not used in the parser, and never had \Cee~linkage.
 
@@ -1016,24 +1010,18 @@ conversions, so passing bare pointers is exception-safe.
 
 @< Definitions of functions for the parser @>=
 
-type_list mk_type_singleton(type_p t)
-{ type_expr tmp(std::move(*t)); // |t| should really be passed by rvalue ref
-  return make_type_singleton(std::move(tmp)).release();
-}
-
-type_list mk_type_list(type_p t,type_list l)
-{ type_expr tmp(std::move(*t)); // |t| should really be passed by rvalue ref
-  return make_type_list(std::move(tmp),type_list_ptr(l)).release();
-}
-@)
-new_tl mk_type_singleton(type_ptr&& t)
-{@; new_tl result;
+raw_type_list mk_type_singleton(type_p raw)
+{ type_ptr t(raw); // ensures node is cleaned up
+  type_list result;
   result.push_front(std::move(*t));
-  return result;
+  return result.release();
 }
 
-new_tl mk_new_tl(type_ptr&& t,new_tl&& l)
-{@; return std::move(prefix(std::move(*t),l)); }
+raw_type_list mk_type_list(type_p raw,raw_type_list l)
+{ type_ptr t(raw); // ensure clean-up
+  type_list tmp(l); // since |prefix| needs second argument an lvalue reference
+  return prefix(std::move(*t),tmp).release();
+}
 @)
 type_p mk_prim_type(int p)
 {@; return make_prim_type(static_cast<primitive_tag>(p)).release(); }
@@ -1041,11 +1029,8 @@ type_p mk_prim_type(int p)
 type_p mk_row_type(type_p c)
 {@; return make_row_type(type_ptr(c)).release(); }
 
-type_p mk_tuple_type(type_list l)
-{@; return make_tuple_type(type_list_ptr(l)).release(); }
-
-type_ptr mk_tuple_type(new_tl&& l)
-{@; return make_tuple_type(std::move(l)); } // just an alias
+type_p mk_tuple_type(raw_type_list l)
+{@; return make_tuple_type(type_list(l)).release(); }
 
 type_p mk_function_type(type_p a,type_p r)
 { type_ptr pa(a), pr(r); // ensure cleaning up at return
@@ -1053,9 +1038,7 @@ type_p mk_function_type(type_p a,type_p r)
 @)
 
 void destroy_type(type_p t)@+ {@; delete t; }
-
-void destroy_type_list(type_list t)@+ {@; delete t; }
-void destroy_type_list(new_tl& t)@+ {@; t.~new_tl(); }
+void destroy_type_list(raw_type_list t)@+ {@; delete t; } // recursive destruction
 
 std::ostream& print_type(std::ostream& out, type_p type) @+
 {@; return out << *type; }
@@ -1112,8 +1095,7 @@ break;
 by the parser.
 
 @< Declarations of functions for the parser @>=
-expr make_lambda_node(patlist pat_l, type_list type_l, expr body);
-expr make_lambda_node(patlist pat_l, new_tl&& type_l, expr body);
+expr make_lambda_node(patlist pat_l, raw_type_list type_l, expr body);
 
 @~There is a twist in building a lambda node, in that for syntactic reasons
 the parser passes lists of patterns and types rather than single ones. We must
@@ -1126,32 +1108,17 @@ field is the easiest way to obtain an isolated |type_expr|. After the
 copy, destruction of |type_l| deletes the original |type_node|.
 
 @< Definitions of functions for the parser @>=
-expr make_lambda_node(patlist pat_l, type_list type_l, expr body)
-{ lambda fun=new lambda_node; fun->body=body;
-  if (pat_l!=NULL and pat_l->next==NULL)
-  { fun->pattern=pat_l->body; delete pat_l; // clean up node
-    fun->arg_type = new type_expr(std::move(type_l->t));
-     // make a shallow copy
-    delete type_l; // clean up
-  }
-  else
-  { fun->pattern.kind=0x2; fun->pattern.sublist=pat_l;
-    fun->arg_type=mk_tuple_type(type_l);
-  }
-  expr result; result.kind=lambda_expr; result.e.lambda_variant=fun;
-  return result;
-}
-@)
-expr make_lambda_node(patlist pat_l, new_tl&& type_l, expr body)
-{ lambda fun=new lambda_node; fun->body=body;
-  if (type_l.size()==1)
+expr make_lambda_node(patlist pat_l, raw_type_list raw, expr body)
+{ type_list type_l(raw); // smart pointer might clean up a node
+  lambda fun=new lambda_node; fun->body=body;
+  if (not type_l.empty() and type_l.at_end(++type_l.begin()))
   { fun->pattern=pat_l->body; delete pat_l; // clean up node
     fun->arg_type = new type_expr(std::move(type_l.front()));
      // make a shallow copy
   }
   else
   { fun->pattern.kind=0x2; fun->pattern.sublist=pat_l;
-    fun->arg_type=mk_tuple_type(std::move(type_l)).get();
+    fun->arg_type=make_tuple_type(std::move(type_l)).release();
   }
   expr result; result.kind=lambda_expr; result.e.lambda_variant=fun;
   return result;

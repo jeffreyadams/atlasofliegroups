@@ -11,6 +11,8 @@
 
 * Work on the realex program
 
+ - Move code for blobal identifier tables from evaluator.w to global.w
+
  - See if syntax can allow (let i=3 in for k:i do print(k) od); without parens
 
  - Allow for declaring an input path, and (silent) default prelude
@@ -88,6 +90,7 @@
 * Work on documentation
 
 * Work on makefiles, distribution and support programs
+ - Change interpreter/Makefile so it does not remake io/fliekl.cpp and friends
  - Figure out how to avoid 'unrecognised typedef at line 367 of atlas_types.h'
- - Improve makefile so that 'make realex' doesn't run ctanglex many times
+ - Make cwebx messages mention file name, to 'make -jN' output comprehensible
  - Add some make targets for recording options as suggested by Nelson Beebe

@@ -219,7 +219,15 @@ endif
 
 # the parser is produced by bison, and compiled using the C++ compiler
 parser.tab.c parser.tab.h: parser.y
+	@if [ -f parser.tab.c ]; then mv parser.tab.c old_targets;\
+                                 else touch old_targets/parser.tab.c; fi
+	@if [ -f parser.tab.h ]; then mv parser.tab.h old_targets;\
+                                 else touch old_targets/$*.h; fi
 	bison -d parser.y
+	@for i in parser.tab.c parser.tab.h;\
+        do if cmp -s old_targets/$$i $$i;\
+           then mv old_targets/$$i $$i; echo $$i unchanged;\
+           fi done
 parser.tab.o: parser.tab.c parsetree.h
 	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 

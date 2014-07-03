@@ -164,11 +164,9 @@ of manipulation it provides.
 struct type_expr;
 typedef type_expr* type_p;
 typedef std::unique_ptr<type_expr> type_ptr;
-typedef struct type_node* type_list;
-typedef std::unique_ptr<type_node> type_list_ptr;
 @)
-// |typedef containers::sl_list<type_expr> new_tl;|
-typedef containers::sl_list<type_expr> new_tl;
+typedef containers::simple_list<type_expr> type_list;
+typedef containers::sl_list<type_expr> dressed_type_list;
 
 @ Since types and type lists own their trees, their copy constructors must
 make a deep copy. The class |type_expr| will provide no copy constructor but
@@ -192,133 +190,33 @@ type_ptr acquire(const type_expr* t) @+
 
 @*1 Type lists.
 %
-The auxiliary type |type_list| gives a preview of matters related to
-ownership, that will also apply, in a more complex setting, to |type_expr|. It
-is a simply linked list, whose nodes contain a |type_expr| as a sub-object. We
-might instead have used a pointer there, but that would be less compact and
-require more memory (de)allocations. The structure |type_expr| provides a move
-constructor that allows us to make a shallow copy, instead of the deep copy
-that would result from initialising |t(head->copy())|. The |head| pointer is
-passed by reference so the node being moved from remains owned by a temporary
-in the caller until our constructor returns (at which time the temporary will
-have been cleared by the move construction). The |tail| argument must be
-passed in a smart pointer, since the current constructor is typically used in
-the context of a |new| expression, and if it were given a raw pointer
-argument (a reference is no option as the pointer might be null), then we
-would leak memory in case that |new| throws |std::bad_alloc|. As it is done
-here, having that argument in a unique-pointer ensures strong exception
-safety. We pass that pointer by (rvalue) reference, and of course release it
-at the instant it gets inserted into our data structure.
-
-Because a |type_node| contains a
-|type_expr| we must make sure its definition given here \emph{follows}
-that of |type_expr|, at least in the tangled code.
-
-@< Definition of |struct type_node@;| @>=
-struct type_node
-{ type_expr t; @+ type_list next;
-@)
-  type_node(type_expr&& head, type_list_ptr&& tail) noexcept
-   : t(std::move(head)),next(tail.release()) @+ {}
-  type_node(type_node&& n) noexcept
-  : t(std::move(n.t)), next(std::move(n.next)) @+ {}
-  type_node copy() const; // in lieu of a copy constructor
-  ~type_node();
-};
-
-@ Copy a type list is easy: the recursive copy of the tail list
-is copy-constructed into the fresh node. This is safe because the node
-contains only one pointer: if |new| succeeds, the construction is immediately
-terminated, without any occasion for an exception causing loss of the pointer
-before our destructor is in place. If there had been two pointers in the node,
-then some protection against a memory leak would be needed (since |new| might
-throw); another advantage of not using a pointer for the |t| field.
-
-@< Function definitions @>=
-type_node type_node::copy() const
-{ type_list_ptr tail(next==nullptr ? nullptr : new type_node(next->copy()));
-  return type_node(t.copy(),std::move(tail));
-}
-
-@ The destructor for |type_node| will possibly be called implicitly by the
-destruction of a |type_list_ptr|. The destructor for variants containing a
-|type_list| should call |delete| for that pointer, which will also call the
-destructor below, which will recursively clean up the whole list.
-
-@< Function def... @>=
-type_node::~type_node()
-@+{@; delete next; }
-
-@ Type lists are usually built by calling |make_type_singleton| (to get
-started) or |make_type_list| (to prefix a type to an existing list), rather
-than using a constructor. These functions are efficient, due to their use of
-move-semantics. A caller transfers ownership to the new node at the call, and
-regains ownership of the new structure by receiving a unique pointer upon
-return. For passing parameters in, a smart pointers are only used for the
-second argument |l| to |make_type_list|, since the structure |type_expr|
-already ensures exception safety.
+Type lists are usually built by starting with a default-constructed
+|type_list| (which is equivalent to initialising it with |empty_tuple()|
+defined below, and which function can help avoid a Most Vexing Parse
+situation), and repeatedly calling |prefix| to add nodes in front. This
+function is efficient, due its use of move-semantics, both for the node, and
+for the list itself, although the latter is a modifiable lvalue reference
+because it will continue to hold the extended list.
 
 @< Declarations of exported functions @>=
-type_list_ptr empty_tuple();
-type_list_ptr make_type_singleton(type_expr&& t);
-type_list_ptr make_type_list(type_expr&& t,type_list_ptr&& l);
-size_t length(type_list l);
-@)
-new_tl make_new_type_singleton(type_ptr&& t);
-new_tl& prefix(type_expr&& t, new_tl& dst);
+type_list empty_tuple();
+type_list& prefix(type_expr&& t, type_list& dst);
+dressed_type_list& prefix(type_expr&& t, dressed_type_list& dst);
 
-@ We pass the unique-pointer for |make_type_list| by rvalue reference (call by
-check), rather than by value (call by cash). Thus should the |new type_node|
-throw an exception, the list will not be destroyed here, and the caller in
-principle has the option of recovering it by cleverly catching the exception
-(but none of the caller of this function actually do so).
-
-Move semantics, introduced in \Cpp11, could also solve this difficulty. Since
-we are not using that (yet), and we don't want to make a deep copy when
-inserting a type into a type list, we roll a bit of our own move-semantics for
-|type_expr|, by giving it a method |set_from| (described in detail below) that
-will take a |type_ptr| argument (by value or by non-|const| reference; either
-way ownership will be relinquished) and does a shallow copy of just the
-top-level node into the |type_expr| called for, which takes ownership of the
-whole tree accessed from that node.
+@ Move semantics, introduced in \Cpp11, solves any difficulty with ownership
+management that this code previously had to deal with.
 
 @< Function def... @>=
-type_list_ptr empty_tuple() { return type_list_ptr(nullptr); }
+type_list empty_tuple() @+{@; return type_list(); }
 @)
-type_list_ptr make_type_singleton(type_expr&& t)
-{@; return type_list_ptr(new type_node(std::move(t),empty_tuple())); }
-@)
-type_list_ptr make_type_list(type_expr&& t,type_list_ptr&& l)
-{@; return type_list_ptr(new type_node(std::move(t),std::move(l))); }
-@)
-new_tl make_new_type_singleton(type_expr&& t)
-{ new_tl result; result.push_back(std::move(t));
-  return result;
+type_list& prefix(type_expr&& t, type_list& dst)
+{@; dst.push_front(std::move(t));
+   return dst;
 }
-@)
-new_tl& prefix(type_expr&& t, new_tl& dst)
-{@; dst.push_front(std::move(t)); return dst;
+dressed_type_list& prefix(type_expr&& t, dressed_type_list& dst)
+{@; dst.push_front(std::move(t));
+  return dst;
 }
-@)
-new_tl convert_new(type_list_ptr&& l)
-{
-  new_tl result;
-  for (type_list p=l.get(); p!=NULL; p=p->next)
-    result.push_back(p->t.copy()); // cannot avoid deep copy for now
-  return result;
-}
-
-@ Here is one more function that is convenient to have around.
-
-@< Function definitions @>=
-size_t length(type_list l)
-@+{@; size_t len=0;
-  for (; l!=nullptr; l=l->next) ++len;
-  return len;
-}
-@)
-size_t length(const new_tl& l) @+{@; return l.size(); }
-
 
 @*1 Primitive types.
 %
@@ -387,10 +285,9 @@ with its unique component.
 struct type_expr
 { type_tag kind;
   union
-  { struct@+{} nothing; // when |kind==undetermined_type|
-    primitive_tag prim; // when |kind==primitive|
+  { primitive_tag prim; // when |kind==primitive|
     type_p component_type; // when |kind==row_type|
-    new_tl tupple; // when |kind==tuple_type|
+    type_list tupple; // when |kind==tuple_type|
     func_type* func; // when |kind==function_type|
   };
 @)
@@ -398,13 +295,15 @@ struct type_expr
  };
 
 @ Every variant of the union gets its own constructor that directly constructs
-the |type_expr| structure under this variant of the structure. For cases where
-it will be necessary (or simply more convenient) to first default-construct a
-|type_expr| and then change its variant, one will have to take care to create
-the variant first by placement-|new| unless the variant is a POD type (in
-which case one can simply assign to the field instead). The destructor for
-|type_expr| must similarly take care to explicitly call the destructor for the
-active field.
+the |type_expr| structure under this variant of the structure, and in addition
+there is a default constructor that sets |kind==undetermined_type| and
+constructs no variant at all (in \Cpp\ \emph{at most} one variant of a union
+is active). For cases where it will be necessary (or simply more convenient)
+to first default-construct a |type_expr| and then change its variant, one will
+have to take care to create the variant first by placement-|new|, unless the
+variant is a POD type in which case one can simply assign to the field
+instead. The destructor for |type_expr| must similarly take care to explicitly
+call the destructor for the active field.
 
 A move constructor for |type_expr| is provided, but no copy constructor;
 instead of the latter we provide a |copy| method explicitly creating a deep
@@ -434,13 +333,13 @@ rvalue references to smart pointers.
 
 @< Methods of the |type_expr| structure @>=
 
-type_expr() noexcept : kind(undetermined_type), nothing() @+{}
+type_expr() noexcept : kind(undetermined_type) @+{}
 explicit type_expr(primitive_tag p) noexcept
   : kind(primitive_type), prim(p) @+{}
 explicit type_expr(type_ptr&& c) noexcept
   : kind(row_type), component_type(c.release()) @+{}
-explicit type_expr(type_list_ptr&& l) noexcept; // tuple types
-explicit type_expr(new_tl&& l) noexcept; // tuple types
+explicit type_expr(type_list&& l) noexcept; // tuple types
+explicit type_expr(dressed_type_list&& l) noexcept; // tuple types
 inline type_expr(type_expr&& arg, type_expr&& result) noexcept;
  // for function types
 @)
@@ -463,31 +362,22 @@ bool can_specialise(const type_expr& pattern) const;
 ordering of type definitions, because of the recursions present. The structure
 |func_type| will contain instances of |type_expr|, so its definition must
 follow, but since we used a pointer to such a structure, it must be declared
-as a structure before the definition of |type_expr| is seen. Similarly the
-structure |type_node| used in type lists must be declared before the
-definition of |type_expr|, but we already did that above; on the other hand
-the definition of that structure, which is also already presented, should be
-seen by the compiler \emph{after} that of |type_expr|; the module references
-below are carefully ordered to make this happen.
+as a structure before the definition of |type_expr| is seen. For type lists
+this kind of difficulty is taken care of because |simple_list<type_expr>|
+could be used in a |typedef| before |type_expr| was a complete type.
 
 @< Type definitions @>=
 
 struct func_type; // must be predeclared for |type_expr|
 @< Definition of |type_expr| @>
-@< Definition of |struct type_node@;| @>@; // this must \emph{follow}
 
-@ The constructor for the |new_tl| variant with |tupple| field is a move
+@ The constructor for the |type_list| variant with |tupple| field is a move
 constructor, and is easily implemented since |type_expr| has a move
 constructor.
 @< Function definitions @>=
-type_expr::type_expr(type_list_ptr&& l) noexcept
-  : kind(tuple_type)
-  , tupple(convert_new(std::move(l))) // RVO will avoid an actual move
-  {}
-@)
-type_expr::type_expr(new_tl&& l) noexcept
+type_expr::type_expr(type_list&& l) noexcept
   : kind(tuple_type), tupple(std::move(l))
-  {}
+  @+{}
 
 @ Instead of a regular copy constructor, which would have to make a deep copy
 (because these descendants are owned by the object), |type_expr| provides a
@@ -508,7 +398,7 @@ termination).
 type_expr type_expr::copy() const
 { type_expr result;
   switch (result.kind=kind)
-  { case undetermined_type: result.nothing = nothing; break;
+  { case undetermined_type: break;
     case primitive_type: result.prim=prim; break;
     case row_type:
       result.component_type=new type_expr(component_type->copy());
@@ -523,44 +413,42 @@ type_expr type_expr::copy() const
 
 @ First off, as the module name says we must make sure a valid object is
 constructed into the field |result.tupple|, because we default constructed
-|result| under the variant that has the variant |result.nothing| constructed
-instead. We cannot use a copy constructor of |new_tl| to do this, because
-since |type_expr| has a deleted copy constructor, |new_tl| has no copy
-constructor either (more precisely, the class template declares such a
-constructor, but an attempt to use it will not compile because of the missing
-|type_expr| has no copy constructor). We must instead construct an empty shell
-first and then fill it, applying the |copy| method for all members of the list
-|tupple|. This is achieved by first creating |result.tupple| as a list of
-default constructed |type_expr| values, and then setting each of them from a
-copy of the corresponding element of |tupple|.
+|result| with no variant active. We cannot use a copy constructor of
+|type_list| to do this, because since |type_expr| has a deleted copy
+constructor, |type_list| has no copy constructor either (more precisely, the
+class template declares such a constructor, but an attempt to use it will not
+compile because of the missing |type_expr| has no copy constructor). We must
+instead construct an empty shell first and then fill it, applying the |copy|
+method for all members of the list |tupple|. This is achieved by first
+default constructing |result.tupple|, and then adding fields, keeping an
+(output) iterator |oit| pointing at the end of the list, where |insert| can be
+used to add node (note that the class template |simple_list| defines no method
+|end|, as this would be expensive is used like |end| methods usually are).
 
 @h <algorithm>
 
 @< Placement-construct a deep copy of |tupple| into |result.tupple| @>=
-{ new (&result.tupple) new_tl(tupple.size());
-   // construct object with empty nodes in |result.tupple|
-  auto it = tupple.begin();
-  for (auto oit = result.tupple.begin(); oit!=result.tupple.end(); ++it,++oit)
-    *oit = it->copy();
-@/  // |std::transform (tupple.begin(),tupple.end(),result.tupple.begin(),f)|
+{ new (&result.tupple) @[type_list@]; // construct empty object
+  auto oit = result.tupple.begin();
+  for (auto it = tupple.begin(); not tupple.at_end(it); ++it,++oit)
+    result.tupple.insert(oit,it->copy());
 }
 
 @ The method |clear|, doing the work for the destructor, must similarly clean
-up afterwards, with the recursion again being implicit. We assign to the
-|nothing| field to formally terminate the lifetime of any other variant,
-although the only really important point is setting |kind = undetermined_type|
-so that the current function will not try to delete any variant a second time
-if it should subsequently be called by the destructor.
+up afterwards, with the recursion again being implicit. We set |kind =
+undetermined_type| to indicate that no variant is active; this condition is
+tested in the |set_from| method (and also in by the destructor, though if
+|clear| is \emph{called by} the destructor, that test is already behind us).
 
 @< Function definitions @>=
 void type_expr::clear() noexcept
 { switch (kind)
   { case undetermined_type: case primitive_type: break;
     case row_type: delete component_type; break;
-    case tuple_type: tupple.~new_tl(); break;
+    case tuple_type: tupple.~type_list(); break;
     case function_type: delete func; break;
   }
-  kind = undetermined_type; nothing = @[{}@];
+  kind = undetermined_type;
 }
 
 @ The method |set_from| is like an assignment operator, but it avoids making a
@@ -587,7 +475,7 @@ void type_expr::set_from(type_expr&& p) noexcept
     case primitive_type: prim=p.prim; break;
     case row_type: component_type=p.component_type; break;
     case function_type: func=p.func; break;
-    case tuple_type: new (&tupple) new_tl(std::move(p.tupple)); break;
+    case tuple_type: new (&tupple) type_list(std::move(p.tupple)); break;
   }
   p.kind=undetermined_type;
   // detach descendants, so |p.clear()| will destroy top-level only
@@ -600,7 +488,7 @@ type_expr::type_expr(type_expr&& x) noexcept // move constructor
     case primitive_type: prim=x.prim; break;
     case row_type: component_type=x.component_type; break;
     case function_type: func=x.func; break;
-    case tuple_type: new(&tupple) new_tl(std::move(x.tupple)); break;
+    case tuple_type: new(&tupple) type_list(std::move(x.tupple)); break;
   }
   x.kind=undetermined_type;
   // detach descendants, so destructor of |x| will do nothing
@@ -630,7 +518,7 @@ void type_expr::swap(type_expr& other) noexcept
       case tuple_type: std::swap(tupple,other.tupple); break;
     }
   else
-  {@;
+  {
     type_expr t(std::move(other));
     other.set_from(std::move(*this));
     this->set_from(std::move(t));
@@ -687,13 +575,13 @@ beforehand that the lengths of the lists match, without which there is no hope
 of finding a proper specialisation.
 
 @< Try to specialise types in |tupple| to those in |pattern.tupple|... @>=
-{ if (tupple.size()!=pattern.tupple.size())
-    return false;
-  new_tl::iterator l0=tupple.begin();
-  new_tl::const_iterator l1=pattern.tupple.begin();
-  while (l0!=tupple.end() and l0->specialise(*l1))
-    {@; ++l0; ++l1; }
-  return l0==tupple.end(); // we succeeded only if we hit the end
+{ auto l0=tupple.begin();
+  auto l1=pattern.tupple.begin();
+  while (not tupple.at_end(l0) and not pattern.tupple.at_end(l1)
+         and l0->specialise(*l1))
+    @/{@; ++l0; ++l1; }
+  return tupple.at_end(l0) and pattern.tupple.at_end(l1);
+  // whether both lists terminated
 }
 
 
@@ -715,13 +603,12 @@ bool type_expr::can_specialise(const type_expr& pattern) const
       return func->arg_type.can_specialise(pattern.func->arg_type) @|
          and func->result_type.can_specialise(pattern.func->result_type);
     case tuple_type:
-    { if (tupple.size()!=pattern.tupple.size())
-        return false;
-      new_tl::const_iterator l0=tupple.begin();
-      new_tl::const_iterator l1=pattern.tupple.begin();
-      while (l0!=tupple.end() and l0->can_specialise(*l1))
-      {@; ++l0; ++l1; }
-      return l0==tupple.end(); // we succeeded only if we hit the end
+    { auto l0=tupple.begin(), l1=pattern.tupple.begin();
+      while (not tupple.at_end(l0) and not pattern.tupple.at_end(l1)
+             and l0->can_specialise(*l1))
+      @/{@; ++l0; ++l1; }
+      return tupple.at_end(l0) and pattern.tupple.at_end(l1);
+      // whether both lists terminated
     }
     default: return true; // to keep the compiler happy, cannot be reached
   }
@@ -787,9 +674,9 @@ task a bit.
 
 @< Function definitions @>=
 
-std::ostream& operator<<(std::ostream& out, const new_tl& l)
-{ for (auto it=l.begin(); it!=l.end(); ++it)
-    out << *it << ( std::next(it)!=l.end() ? "," : "" );
+std::ostream& operator<<(std::ostream& out, const type_list& l)
+{ for (auto it=l.begin(); not l.at_end(it); ++it)
+    out << *it << ( l.at_end(std::next(it)) ? "" : "," );
   return out;
 }
 @)
@@ -837,23 +724,21 @@ bool operator== (const type_expr& x,const type_expr& y)
     case primitive_type: return x.prim==y.prim;
     case row_type: return *x.component_type==*y.component_type;
     case tuple_type:
-    { if (x.tupple.size()!=y.tupple.size())
-        return false;
-      new_tl::const_iterator it0=x.tupple.begin();
-      new_tl::const_iterator it1=y.tupple.begin();
-      while (it0!=x.tupple.end() and *it0==*it1)
-        {@; ++it0; ++it1; }
-      return it0==x.tupple.end(); // we succeeded only if we hit the end
+    { auto it0=x.tupple.begin(), it1=y.tupple.begin();
+      while (not x.tupple.at_end(it0) and not y.tupple.at_end(it1)
+             and *it0==*it1)
+      @/{@; ++it0; ++it1; }
+      return x.tupple.at_end(it0) and y.tupple.at_end(it1);
     }
     case function_type:
-      return  x.func->arg_type==y.func->arg_type
-	 and   x.func->result_type==y.func->result_type;
+      return x.func->arg_type==y.func->arg_type
+	 and x.func->result_type==y.func->result_type;
   }
 }
 
-@ Instead of using the constructors directly, we usually use the constructing
+@ Instead of using the constructors directly, we often use the constructing
 functions below. They all and return |type_ptr| values owning the constructed
-expression. They also take such smart pointers, or |type_list_ptr| values, as
+expression. They also take such smart pointers, or |type_list| values, as
 argument whenever the underlying pointer is to be directly inserted into the
 structure built. However for |make_function_type| this is not the case, so
 instead of insisting that the caller hold a unique-pointer to the argument
@@ -867,8 +752,7 @@ the destructor of |t| will eventually delete the now empty node.
 type_ptr make_undetermined_type();
 type_ptr make_prim_type(primitive_tag p);
 type_ptr make_row_type(type_ptr&& c);
-type_ptr make_tuple_type(type_list_ptr&& l);
-type_ptr make_tuple_type (new_tl&& l);
+type_ptr make_tuple_type (type_list&& l);
 type_ptr make_function_type(type_expr&& a, type_expr&& r);
 
 @ The functions below simply wrap the call to the constructor into one of the
@@ -886,15 +770,13 @@ type_ptr make_undetermined_type()
 type_ptr make_prim_type(primitive_tag p)
 { return p<nr_of_primitive_types ?
     type_ptr(new type_expr(p)) :
-    type_ptr(make_tuple_type(new_tl()));
+    type_ptr(make_tuple_type(empty_tuple()));
 }
 @)
 type_ptr make_row_type(type_ptr&& c)
 {@; return type_ptr (new type_expr(std::move(c))); }
 @)
-type_ptr make_tuple_type (type_list_ptr&& l)
-{@; return type_ptr(new type_expr(std::move(l))); }
-type_ptr make_tuple_type (new_tl&& l)
+type_ptr make_tuple_type (type_list&& l)
 {@; return type_ptr(new type_expr(std::move(l))); }
 
 @)
@@ -926,17 +808,17 @@ recursive calls to advance the index within the string read.
 
 The function |scan_type| does the real parsing, |make_type_expr| calls it,
 providing a local modifiable pointer to bind to its reference parameter (which
-is important because |make_type_expr| cannot directly accept a \Cee-string
-constant as argument) while also doing error reporting, and |make_type| is
-just a wrapper around |make_type_expr| that converts the parameter type from
-pointer to reference-to-pointer. Currently the function |make_type_expr| is
-called only during the start-up phase of \.{realex}, and if an error
-encountered (of type |std::logic_error|, since it indicates an error in
-the \.{realex} program itself), printing of the error message will be followed
-by termination of the program.
+is important because |scan_type| cannot directly accept a \Cee-string constant
+as argument) while also doing error reporting, and |make_type| is just a
+wrapper around |make_type_expr| that converts the result from a |type_expr| to
+a smart pointer to (a freshly allocated instance of) such. Currently the
+function |make_type_expr| is called only during the start-up phase
+of \.{realex}, and if an error encountered (of type |std::logic_error|, since
+it indicates an error in the \.{realex} program itself), printing of the error
+message will be followed by termination of the program.
 
 @< Function definitions @>=
-new_tl scan_type_list(const char*& s);
+dressed_type_list scan_type_list(const char*& s);
 @)
 type_expr scan_type(const char*& s)
 { if (*s=='*') return ++s,@[type_expr()@]; // undetermined type
@@ -1001,7 +883,7 @@ list, where |type_list_ptr| was not captured and set to null in the
 deleted, but its contents has been moved out by then.
 
 @< Scan and |return| a tuple or function type, or |throw| a |logic_error| @>=
-{ new_tl l0=scan_type_list(++s), l1;
+{ dressed_type_list l0=scan_type_list(++s), l1;
   bool is_tuple=*s==')';
   if (*s=='-' and *++s=='>') l1=scan_type_list(++s);
   if (*s!=')') throw std::logic_error("Missing ')' in type");
@@ -1009,13 +891,13 @@ deleted, but its contents has been moved out by then.
   type_expr a =
     l0.size()==1
     ? std::move(l0.front())
-    : type_expr(std::move(l0)); // construct tuple type
+    : type_expr(l0.undress()); // construct tuple type
   if (is_tuple)
     return a;
   type_expr r =
     l1.size()==1
     ? std::move(l1.front())
-    : type_expr(std::move(l1)); // construct tuple type
+    : type_expr(l1.undress()); // construct tuple type
   return type_expr(std::move(a),std::move(r)); // construct function type
 }
 
@@ -1027,8 +909,8 @@ when the test fails, i.e., after loop exit.
 
 @< Function definitions @>=
 @)
-new_tl scan_type_list(const char*& s)
-{ new_tl result; // start with empty tuple
+dressed_type_list scan_type_list(const char*& s)
+{ dressed_type_list result; // start with empty tuple
   if (*s==')' or *s=='-')
     return result;
   do result.push_back(scan_type(s));
@@ -1167,9 +1049,9 @@ type_expr unknown_tuple(size_t n);
 
 @< Function definitions @>=
 type_expr unknown_tuple(size_t n)
-{ type_list_ptr tl(nullptr);
+{ type_list tl;
   while (n-->0)
-    tl=make_type_list(type_expr(),std::move(tl));
+    prefix(type_expr(),tl);
   return type_expr(std::move(tl));
 }
 
@@ -1377,13 +1259,13 @@ popping a value and checking it to be a tuple, which is done by
 |get<tuple_value>| that will be defined later. The |shared_value| type takes
 care of ownership; there is (at least) double shared ownership of the
 components as the stack expands, but this is normal, and afterwards this
-sharing disappears with |tupple|.
+sharing disappears with |tuple|.
 
 @< Function definitions @>=
 void push_tuple_components()
-{ shared_tuple tupple=get<tuple_value>();
-  for (size_t i=0; i<tupple->length(); ++i)
-    push_value(tupple->val[i]); // push component
+{ shared_tuple tuple=get<tuple_value>();
+  for (size_t i=0; i<tuple->length(); ++i)
+    push_value(tuple->val[i]); // push component
 }
 
 @ We need no unique-pointer in |wrap_tuple|, as shrinking the stack will not
@@ -2005,13 +1887,12 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
     return 0x4 | is_close(*x.component_type,*y.component_type); // always close
   if (x.kind!=tuple_type)
     return 0x0; // non-aggregate types are only close if equal
-  if (x.tupple.size()!=y.tupple.size())
-    return 0x0; // different size tuples are not close
-  new_tl::const_iterator it0=x.tupple.begin(), it1=y.tupple.begin();
+  auto it0=x.tupple.begin(), it1=y.tupple.begin();
   unsigned int flags=0x7;
-  while (it0!=x.tupple.end() and (flags&=is_close(*it0,*it1))!=0)
-    @/{@; ++it0; ++it1; }
-  return flags; // either |flags==0| or we reached the end with another value
+  while (not x.tupple.at_end(it0) and not y.tupple.at_end(it1)
+         and (flags&=is_close(*it0,*it1))!=0)
+  @/{@; ++it0; ++it1; }
+  return x.tupple.at_end(it0) and y.tupple.at_end(it1) ? flags : 0x0;
 }
 
 @* Error values.

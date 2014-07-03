@@ -474,6 +474,9 @@ template<typename T>
     iterator begin() { return iterator(head); }
     iterator end()   { return iterator(*tail); }
 
+    // in addition to |end()| we provide the |at_end| condition
+    static bool at_end (iterator p) { return *p.link_loc==nullptr; }
+
     T& front () { return head->contents; }
     void pop_front ()
     { head.reset(head->next.release());
@@ -664,6 +667,9 @@ template<typename T>
     const_iterator end()   const { return const_iterator(*tail); }
     const_iterator cbegin() const { return const_iterator(head); }
     const_iterator cend()   const { return const_iterator(*tail); }
+
+    // in addition to |end()| we provide the |at_end| condition
+    static bool at_end (const_iterator p) { return *p.link_loc==nullptr; }
 
     void reverse() { reverse(cbegin(),cend()); }
 
