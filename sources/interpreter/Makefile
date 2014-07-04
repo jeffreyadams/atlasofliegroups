@@ -187,8 +187,10 @@ $(atlas_objects): %.o: %.cpp
            then mv old_targets/$$i $$i; echo $$i unchanged;\
            fi done
 
-# prevent remaking files that are under CVS, unless .w file changed recently
-../utilities/filekl.h ../utilities/filekl.cpp ../utilities/filekl_in.h ../utilities/filekl_in.cpp : ../utilities/filekl.w ;
+# prevent remaking files under version control, unless .w file changed recently
+../io/filekl.h ../io/filekl.cpp \
+  ../io/filekl_in.h ../io/filekl_in.cpp : ../io/filekl.w
+	cd ../io && $(CTANGLE) $(CTANGLEFLAGS) -l filekl.w
 
 # TeX files are also made from CWEBx files (.w) with the ++ switch, by cweavex
 %.tex: %.w

@@ -173,29 +173,37 @@ else
 	$(CXX) -o atlas $(atlas_objects) $(LDFLAGS)
 endif
 
+# Rules with two colons are static pattern rules: they are like implicit
+# rules, but only apply to the files listed before the first colon
+
+$(filter-out sources/interface/io.o,$(atlas_objects)) : %.o : %.cpp
+	$(CXX) $(CXXFLAGS) $(atlas_flags) -o $*.o $*.cpp
+
+# the $(messagedir) variable is only needed for the compilation of io.cpp
+sources/interface/io.o : sources/interface/io.cpp
+	$(CXX) $(CXXFLAGS) $(atlas_flags) \
+          -DMESSAGE_DIR_MACRO=\"$(messagedir)\" -o $@ $<
+
+
 # for files proper to realex, the build is defined inside sources/interpreter
 
 realex: $(cweb_dir)/ctanglex $(realex_objects)
 	cd sources/interpreter && $(MAKE) ../../realex
 
-$(interpreter_made_files) $(interpreter_objects):
+$(interpreter_made_files):
+	cd sources/interpreter && $(MAKE) $(subst sources/interpreter/,,$@)
+
+$(filter-out sources/interpreter/parser.tab.o,$(interpreter_objects)) :\
+  %.o : %.cpp
 	cd sources/interpreter && $(MAKE) $(subst sources/interpreter/,,$@)
 
 sources/interpreter/parser.tab.c sources/interpreter/parser.tab.h: \
   sources/interpreter/parser.y
-	cd sources/interpreter && $(MAKE)  $(subst sources/interpreter/,,$@)
-
-# The following rules are static pattern rules: they are like implicit rules,
-# but only apply to the files listed in their targets
-
-$(filter-out sources/interface/io.o,$(atlas_objects)) : %.o : %.cpp
-	$(CXX) $(CXXFLAGS) $(atlas_flags) -o $*.o $*.cpp
-sources/interface/io.o : sources/interface/io.cpp
-	$(CXX) $(CXXFLAGS) $(atlas_flags) \
-          -DMESSAGE_DIR_MACRO=\"$(messagedir)\" -o $@ @<
+	cd sources/interpreter && $(MAKE) $(subst sources/interpreter/,,$@)
 
 sources/interpreter/parser.tab.o: \
   sources/interpreter/parser.tab.c sources/interpreter/parsetree.h
+	cd sources/interpreter && $(MAKE) parser.tab.o
 
 # generate files that describe which .o files depend on which other (.h) files
 $(dependencies) : %.d : %.cpp
