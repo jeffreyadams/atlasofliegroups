@@ -166,12 +166,12 @@ about the state of the global tables (but invoking |type_of_expr| will
 actually go through the full type analysis and conversion process).
 
 @< Declarations of exported functions @>=
-void global_set_identifier(struct id_pat id, expr e, int overload);
+void global_set_identifier(struct id_pat id, expr_p e, int overload);
 void global_declare_identifier(id_type id, type_p type);
 void global_forget_identifier(id_type id);
 void global_forget_overload(id_type id, type_p type);
 void show_ids();
-void type_of_expr(expr e);
+void type_of_expr(expr_p e);
 void show_overloads(id_type id);
 
 @ Global identifiers can be introduced (or modified) by the function
@@ -204,8 +204,9 @@ provide some feedback to the user we report any types assigned, but not the
 values.
 
 @< Global function definitions @>=
-void global_set_identifier(id_pat pat, expr rhs, int overload)
-{ size_t n_id=count_identifiers(pat);
+void global_set_identifier(id_pat pat, expr_p raw, int overload)
+{ expr_ptr saf(raw); const expr& rhs(*raw);
+  size_t n_id=count_identifiers(pat);
   static const char* phase_name[3] = {"type_check","evaluation","definition"};
   int phase=0; // needs to be declared outside the |try|, is used in |catch|
   try
@@ -428,8 +429,9 @@ reporting any |std::exception| that may be thrown, we also ensure ourselves
 against unlikely events like |bad_alloc|.
 
 @< Global function definitions @>=
-void type_of_expr(expr e)
-{ try
+void type_of_expr(expr_p raw)
+{ expr_ptr saf(raw); const expr& e=*raw;
+  try
   {@; expression_ptr p;
     *output_stream << "type: " << analyse_types(e,p) << std::endl;
   }

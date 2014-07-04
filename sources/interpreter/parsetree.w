@@ -57,7 +57,9 @@ namespace atlas
 }@;
 
 @ For a large part the declarations for the parser consist of the recursive
-definition of the type |expr|.
+definition of the type |expr|. While that used to be a POD type used directly
+on the parser stack, the inflexibility of this solution motivated changing
+this to placing row pointers
 
 @< Declarations for the parser @>=
 @< Typedefs that are required in |union expru@;| @>@;
@@ -65,6 +67,8 @@ union expru {@; @< Variants of |union expru @;| @>@; };
 
 enum expr_kind @+ { @< Enumeration tags for |expr_kind| @> @;@; };
 struct expr {@; union expru e; expr_kind kind; };
+typedef expr* expr_p; // raw pointer type for use on parser stack
+typedef std::unique_ptr<expr> expr_ptr;
 
 @< Structure and typedef declarations for types built upon |expr| @>@;
 
@@ -95,18 +99,23 @@ occupied by an expression. It is classified as a parsing function since it is
 called amongst others by the parser when popping off tokens at syntax errors.
 
 @< Declarations of functions for the parser @>=
-void destroy_expr(expr e);
+void destroy_expr_body(const expr& e);
+void destroy_expr(expr_p e);
 
 @~The definition of |destroy_expr| is also distributed among the different
 variants of the |union expru@;|.
 
 @< Definitions of functions for the parser @>=
-void destroy_expr(expr e)
-{@; switch (e.kind)
+void destroy_expr_body(const expr& e)
+{ switch (e.kind)
   {@; @< Cases for destroying an expression |e| @>
   }
 }
 
+void destroy_expr(expr_p p)
+{@; destroy_expr_body(*p);
+  delete p;
+}
 
 @*1 Atomic expressions.
 The simplest expressions are atomic constants, which we shall call
@@ -149,26 +158,34 @@ case string_denotation: delete[] e.e.str_denotation_variant; break;
 @ To build the node for denotations, we provide the functions below.
 
 @< Declarations of functions for the parser @>=
-expr make_int_denotation (int val);
-expr make_string_denotation(char* val);
-expr make_bool_denotation(int val);
+expr_p make_int_denotation (int val);
+expr_p make_string_denotation(char* val);
+expr_p make_bool_denotation(int val);
 
 @~The definition of these functions is quite trivial, as will be typical for
 node-building functions.
 
 @< Definitions of functions for the parser @>=
-expr make_int_denotation (int val)
+expr mk_int_denotation (int val)
 { expr result; result.kind=integer_denotation;
 @/result.e.int_denotation_variant=val; return result;
 }
-expr make_string_denotation(char* val)
+expr_p make_int_denotation (int val)
+  { return new expr(mk_int_denotation(val)); }
+
+expr mk_string_denotation(char* val)
 { expr result; result.kind=string_denotation;
 @/result.e.str_denotation_variant=val; return result;
 }
-expr make_bool_denotation(int val)
+expr_p make_string_denotation(char* val)
+ { return new expr(mk_string_denotation(val)); }
+
+expr mk_bool_denotation(int val)
 { expr result; result.kind=boolean_denotation;
 @/result.e.int_denotation_variant=val; return result;
 }
+expr_p make_bool_denotation(int val)
+ { return new expr(mk_bool_denotation(val)); }
 
 @ An expression that behaves somewhat like a denotation is `\.\$', which
 stands for the last value computed. This leads to an expression type with no
@@ -216,15 +233,17 @@ case applied_identifier: break;
 |make_applied_identifier|.
 
 @< Declarations of functions for the parser @>=
-expr make_applied_identifier (id_type id);
+expr_p make_applied_identifier (id_type id);
 
 @~The definition of |make_applied_identifier| is entirely trivial.
 
 @< Definitions of functions for the parser @>=
-expr make_applied_identifier (id_type id)
+expr mk_applied_identifier (id_type id)
 {@; expr result; result.kind=applied_identifier;
   result.e.identifier_variant=id; return result;
 }
+expr_p make_applied_identifier (id_type id)
+ { return new expr(mk_applied_identifier(id)); }
 
 @*1 Expression lists, and list and tuple displays.
 A first recursive type of expression is the expression list, which will be
@@ -291,7 +310,7 @@ be the final statement in the loop body below.
 @< Definitions of functions for the parser @>=
 void destroy_exprlist(expr_list l)
 {@; while (l!=NULL)
-  {@; destroy_expr(l->e); expr_list this_node=l; l=l->next; delete this_node; }
+  {@; destroy_expr_body(l->e); expr_list this_node=l; l=l->next; delete this_node; }
 }
 
 @~Destroying a list display is now easily defined.
@@ -311,9 +330,9 @@ displays.
 
 @< Declarations of functions for the parser @>=
 extern const expr_list null_expr_list;
-expr_list make_exprlist_node(expr e, expr_list l);
+expr_list make_exprlist_node(expr_p e, expr_list l);
 expr_list reverse_expr_list(expr_list l);
-expr wrap_list_display(expr_list l);
+expr_p wrap_list_display(expr_list l);
 
 
 @~The definition of |make_expr_list| is quite trivial.
@@ -330,16 +349,22 @@ combined, since whether or not the list should be reversed can only be
 understood when the grammar rules are given.
 
 @< Definitions of functions for the parser @>=
-expr_list make_exprlist_node(expr e, expr_list l)
+expr_list mk_exprlist_node(expr e, expr_list l)
 {@; expr_list n=new exprlist_node; n->e=e; n->next=l; return n; }
+expr_list make_exprlist_node(expr_p e, expr_list l)
+  { expr_ptr saf(e); return mk_exprlist_node(*e,l); }
+
 expr_list reverse_expr_list(expr_list l)
 { expr_list r=null_expr_list;
   while (l!=null_expr_list) {@; expr_list t=l; l=t->next; t->next=r; r=t; }
   return r;
 }
-expr wrap_list_display(expr_list l)
+
+expr wrp_list_display(expr_list l)
 {@; expr result; result.kind=list_display; result.e.sublist=l; return result;
 }
+expr_p wrap_list_display(expr_list l)
+  { return new expr(wrp_list_display(l)); }
 
 @ Besides list displays in which all types must agree, we have tuple displays.
 These are rather different from a type-checking point of view, but for
@@ -372,13 +397,15 @@ break;
 
 @ To make tuple displays, we use a function similar to that for list displays.
 @< Declarations of functions for the parser @>=
-expr wrap_tuple_display(expr_list l);
+expr_p wrap_tuple_display(expr_list l);
 
 @~In fact the only difference is the tag inserted.
 @< Definitions of functions for the parser @>=
-expr wrap_tuple_display(expr_list l)
+expr wrp_tuple_display(expr_list l)
 {@; expr result; result.kind=tuple_display; result.e.sublist=l; return result;
 }
+expr_p wrap_tuple_display(expr_list l)
+ { return new expr(wrp_tuple_display(l)); }
 
 @ Length 0 tuple displays are sometimes used as a substitute expression where
 nothing useful is provided, for instance for a missing else-branch. They are
@@ -439,8 +466,8 @@ call itself.
 
 @< Cases for destroying... @>=
 case function_call:
-  destroy_expr(e.e.call_variant->fun);
-  destroy_expr(e.e.call_variant->arg);
+  destroy_expr_body(e.e.call_variant->fun);
+  destroy_expr_body(e.e.call_variant->arg);
   delete e.e.call_variant;
 break;
 
@@ -453,7 +480,7 @@ the current method should be compatible with providing multiple arguments as a
 single tuple value.
 
 @< Declarations of functions for the parser @>=
-expr make_application_node(expr f, expr_list args);
+expr_p make_application_node(expr_p f, expr_list args);
 
 @~Here for once there is some work to do. If a singleton argument list is
 provided, the argument expression must be picked from it, but in all other
@@ -462,14 +489,16 @@ convenient here that |wrap_tuple_display| does not reverse the list, since
 this is already done by the parser before calling |make_application_node|.
 
 @< Definitions of functions for the parser @>=
-expr make_application_node(expr f, expr_list args)
+expr mk_application_node(expr f, expr_list args)
 { app a=new application_node; a->fun=f;
   if (args!=NULL && args->next==NULL) // a single argument
   {@; a->arg=args->e; delete args; }
-  else a->arg=wrap_tuple_display(args);
+  else a->arg=wrp_tuple_display(args);
   expr result; result.kind=function_call; result.e.call_variant=a;
   return result;
 }
+expr_p make_application_node(expr_p f, expr_list args)
+ { expr_ptr saf(f); return new expr(mk_application_node(*f,args)); }
 
 @ We shall frequently need to form a function application where the function
 is accessed by an applied identifier and the argument is either a single
@@ -477,23 +506,31 @@ expression or a tuple of two expressions. We provide two functions to
 facilitate those constructions.
 
 @< Declarations of functions for the parser @>=
-expr make_unary_call(id_type name, expr arg);
-expr make_binary_call(id_type name, expr x, expr y);
+expr_p make_unary_call(id_type name, expr_p arg);
+expr_p make_binary_call(id_type name, expr_p x, expr_p y);
 
 @~In the unary case we avoid calling |make_application| with a singleton
 list that will be immediately destroyed,
 
 @< Definitions of functions for the parser @>=
-expr make_unary_call(id_type name, expr arg)
-{ app a=new application_node; a->fun=make_applied_identifier(name); a->arg=arg;
+expr mk_unary_call(id_type name, expr arg)
+{ app a=new application_node;
+  a->fun=mk_applied_identifier(name);
+  a->arg=arg;
   expr result; result.kind=function_call; result.e.call_variant=a;
   return result;
 }
+expr_p make_unary_call(id_type name, expr_p arg)
+ { expr_ptr saf(arg); return new expr(mk_unary_call(name,*arg)); }
 @)
-expr make_binary_call(id_type name, expr x, expr y)
-{ expr_list args=make_exprlist_node(x,make_exprlist_node(y,NULL));
-  return make_application_node(make_applied_identifier(name),args);
+expr mk_binary_call(id_type name, expr x, expr y)
+{ expr_list args=mk_exprlist_node(x,mk_exprlist_node(y,NULL));
+  return mk_application_node(mk_applied_identifier(name),args);
 }
+expr_p make_binary_call(id_type name, expr_p x, expr_p y)
+ { expr_ptr xx(x), yy(y);
+   return new expr(mk_binary_call(name,*x,*y));
+ }
 
 @*1 Operators and priority.
 %
@@ -627,17 +664,18 @@ with a new operand and binary operator, one to finish off the formula with
 a final operand, and of course one to clean up.
 
 @< Declarations for the parser @>=
-form_stack start_formula (expr e, id_type op, int prio);
+form_stack start_formula (expr_p e, id_type op, int prio);
 form_stack start_unary_formula (id_type op, int prio);
-form_stack extend_formula (form_stack pre, expr e,id_type op, int prio);
-expr end_formula (form_stack pre, expr e);
+form_stack extend_formula (form_stack pre, expr_p e,id_type op, int prio);
+expr_p end_formula (form_stack pre, expr_p e);
 void destroy_formula(form_stack s);
 
 @ Starting a binary formula simply creates an initial node.
 @< Definitions of functions for the parser @>=
-form_stack start_formula (expr e, Hash_table::id_type op, int prio)
-{ form_stack result = new partial_formula;
-  result->left_subtree=e; result->op=op; result->prio=prio;
+form_stack start_formula (expr_p e, Hash_table::id_type op, int prio)
+{ expr_ptr saf(e);
+  form_stack result = new partial_formula;
+  result->left_subtree=*e; result->op=op; result->prio=prio;
   result->prev=NULL;
   return result;
 }
@@ -654,8 +692,8 @@ indicated above. It turns out |start_formula| could be replaced by a call to
 |extend_formula| with |pre==NULL|.
 
 @< Definitions of functions for the parser @>=
-form_stack extend_formula (form_stack pre, expr e,id_type op, int prio)
-{ form_stack result=NULL;
+form_stack extend_formula (form_stack pre, expr_p ee,id_type op, int prio)
+{ form_stack result=NULL; expr_ptr saf(ee); expr e = *ee;
   while (pre!=NULL and (pre->prio>prio or pre->prio==prio and prio%2==0))
   { delete result; result=pre; // clean up, but holding on to one node
     @< Put |e| as right subtree into rightmost element of |pre|, and replace
@@ -676,11 +714,11 @@ section).
 
 @< Put |e| as right subtree into rightmost element of |pre|...@>=
 if (pre->prev!=unary_marker)
-@/{@; e = make_binary_call(pre->op,pre->left_subtree,e);
+@/{@; e = mk_binary_call(pre->op,pre->left_subtree,e);
   pre=pre->prev;
 }
 else
-{@; e = make_unary_call(pre->op,e);
+{@; e = mk_unary_call(pre->op,e);
   pre=NULL;
 } // apply initial unary operator
 
@@ -690,7 +728,7 @@ can reuse the main part of the loop of |extend_formula|, with just a minor
 modification to make sure all nodes get cleaned up after use.
 
 @< Definitions of functions for the parser @>=
-expr end_formula (form_stack pre, expr e)
+expr nd_formula (form_stack pre, expr e)
 { while (pre!=NULL)
   { form_stack t=pre;
     @< Put |e| as right subtree into rightmost element of |pre|...@>
@@ -698,6 +736,8 @@ expr end_formula (form_stack pre, expr e)
   }
   return e;
 }
+expr_p end_formula (form_stack pre, expr_p e)
+{ expr_ptr saf(e); return new expr(nd_formula(pre,*e)); }
 
 @ Destroying a formula stack is straightforward.
 @< Definitions of functions for the parser @>=
@@ -867,7 +907,7 @@ void destroy_letlist(let_list l)
 { while (l!=NULL)
     @/{@; let_list p=l; l=l->next;
       destroy_id_pat(&p->pattern);
-      destroy_expr(p->val);
+      destroy_expr_body(p->val);
       delete p;
     }
 }
@@ -878,8 +918,8 @@ void destroy_letlist(let_list l)
 case let_expr:
 { let lexp=e.e.let_variant;
   destroy_id_pat(&lexp->pattern);
-  destroy_expr(lexp->val);
-  destroy_expr(lexp->body);
+  destroy_expr_body(lexp->val);
+  destroy_expr_body(lexp->body);
   delete lexp;
 }
 break;
@@ -891,9 +931,9 @@ constructed list |prev| of declaration; finally |make_let_expr_node| wraps up
 an entire let-expression.
 
 @< Declarations of functions for the parser @>=
-let_list make_let_node(struct id_pat pattern, expr val);
+let_list make_let_node(struct id_pat pattern, expr_p val);
 let_list append_let_node(let_list prev, let_list cur);
-expr make_let_expr_node(let_list decls, expr body);
+expr_p make_let_expr_node(let_list decls, expr_p body);
 
 @~The functions |make_let_node| and |append_let_node| build a list in reverse
 order, which makes the latter function a particularly simple one. In
@@ -919,16 +959,17 @@ local storage pools that can explicitly be emptied), in which case all
 cleaning up in the code below should also be removed.
 
 @< Definitions of functions for the parser @>=
-let_list make_let_node(struct id_pat pattern, expr val)
-{@; let_list l=new let_node;
-  l->pattern=pattern; l->val=val; l->next=NULL;
+let_list make_let_node(struct id_pat pattern, expr_p val)
+{ expr_ptr saf(val);
+  let_list l=new let_node;
+  l->pattern=pattern; l->val=*val; l->next=NULL;
   return l;
 }
 @)
 let_list append_let_node(let_list prev, let_list cur)
 {@; cur->next=prev; return cur; }
 @)
-expr make_let_expr_node(let_list decls, expr body)
+expr mk_let_expr_node(let_list decls, expr body)
 { let l=new let_expr_node; l->body=body;
   expr result; result.kind=let_expr; result.e.let_variant=l;
   try
@@ -938,21 +979,23 @@ expr make_let_expr_node(let_list decls, expr body)
     }
     else
     { l->pattern.kind=0x2; l->pattern.sublist=NULL;
-      l->val=wrap_tuple_display(null_expr_list);
+      l->val=wrp_tuple_display(null_expr_list);
       while (decls!=NULL)
       { l->pattern.sublist =
 	  make_pattern_node(l->pattern.sublist,&decls->pattern);
-	l->val.e.sublist=make_exprlist_node(decls->val,l->val.e.sublist);
+	l->val.e.sublist=mk_exprlist_node(decls->val,l->val.e.sublist);
 	let_list p=decls; decls=p->next; delete p;
       }
     }
     return result;
   }
   catch(...)
-  {@; destroy_expr(result);
+  {@; destroy_expr_body(result);
     throw;
   }
 }
+expr_p make_let_expr_node(let_list decls, expr_p body)
+ { expr_ptr saf(body); return new expr(mk_let_expr_node(decls,*body)); }
 
 @*1 Types and user-defined functions.
 %
@@ -1087,7 +1130,7 @@ case lambda_expr:
 { lambda fun=e.e.lambda_variant;
   destroy_id_pat(&fun->pattern);
   delete(fun->arg_type);
-  destroy_expr(fun->body);
+  destroy_expr_body(fun->body);
 }
 break;
 
@@ -1095,7 +1138,7 @@ break;
 by the parser.
 
 @< Declarations of functions for the parser @>=
-expr make_lambda_node(patlist pat_l, raw_type_list type_l, expr body);
+expr_p make_lambda_node(patlist pat_l, raw_type_list type_l, expr_p body);
 
 @~There is a twist in building a lambda node, in that for syntactic reasons
 the parser passes lists of patterns and types rather than single ones. We must
@@ -1108,7 +1151,7 @@ field is the easiest way to obtain an isolated |type_expr|. After the
 copy, destruction of |type_l| deletes the original |type_node|.
 
 @< Definitions of functions for the parser @>=
-expr make_lambda_node(patlist pat_l, raw_type_list raw, expr body)
+expr mk_lambda_node(patlist pat_l, raw_type_list raw, expr body)
 { type_list type_l(raw); // smart pointer might clean up a node
   lambda fun=new lambda_node; fun->body=body;
   if (not type_l.empty() and type_l.at_end(++type_l.begin()))
@@ -1123,6 +1166,8 @@ expr make_lambda_node(patlist pat_l, raw_type_list raw, expr body)
   expr result; result.kind=lambda_expr; result.e.lambda_variant=fun;
   return result;
 }
+expr_p make_lambda_node(patlist pat_l, raw_type_list raw, expr_p body)
+ { expr_ptr saf(body); return new expr(mk_lambda_node(pat_l,raw,*body)); }
 
 @*1 Control structures.
 
@@ -1164,26 +1209,30 @@ call itself.
 
 @< Cases for destroying... @>=
 case conditional_expr:
-  destroy_expr(e.e.if_variant->condition);
-  destroy_expr(e.e.if_variant->then_branch);
-  destroy_expr(e.e.if_variant->else_branch);
+  destroy_expr_body(e.e.if_variant->condition);
+  destroy_expr_body(e.e.if_variant->then_branch);
+  destroy_expr_body(e.e.if_variant->else_branch);
   delete e.e.if_variant;
 break;
 
 
 @ To build an |conditional_node|, we define a function as usual.
 @< Declarations of functions for the parser @>=
-expr make_conditional_node(expr c, expr t, expr e);
+expr_p make_conditional_node(expr_p c, expr_p t, expr_p e);
 
 @~It is entirely straightforward.
 
 @< Definitions of functions for the parser @>=
-expr make_conditional_node(expr c, expr t, expr e)
+expr mk_conditional_node(expr c, expr t, expr e)
 { cond n=new conditional_node; n->condition=c;
   n->then_branch=t; n->else_branch=e;
 @/expr result; result.kind=conditional_expr; result.e.if_variant=n;
   return result;
 }
+expr_p make_conditional_node(expr_p c, expr_p t, expr_p e)
+ { expr_ptr saf0(c), saf1(t), saf2(e);
+   return new expr(mk_conditional_node(*c,*t,*e));
+ }
 
 @*2 Loops.
 %
@@ -1257,20 +1306,20 @@ break;
 
 @< Cases for destroying... @>=
 case while_expr:
-  destroy_expr(e.e.while_variant->condition);
-  destroy_expr(e.e.while_variant->body);
+  destroy_expr_body(e.e.while_variant->condition);
+  destroy_expr_body(e.e.while_variant->body);
   delete e.e.while_variant;
 break;
 case for_expr:
   destroy_id_pat(&e.e.for_variant->id);
-  destroy_expr(e.e.for_variant->in_part);
-  destroy_expr(e.e.for_variant->body);
+  destroy_expr_body(e.e.for_variant->in_part);
+  destroy_expr_body(e.e.for_variant->body);
   delete e.e.for_variant;
 break;
 case cfor_expr:
-  destroy_expr(e.e.cfor_variant->count);
-  destroy_expr(e.e.cfor_variant->bound);
-  destroy_expr(e.e.cfor_variant->body);
+  destroy_expr_body(e.e.cfor_variant->count);
+  destroy_expr_body(e.e.cfor_variant->bound);
+  destroy_expr_body(e.e.cfor_variant->body);
   delete e.e.cfor_variant;
 break;
 
@@ -1279,29 +1328,39 @@ break;
 more \\{make}-functions.
 
 @< Declarations of functions for the parser @>=
-expr make_while_node(expr c, expr b);
-expr make_for_node(struct id_pat id, expr ip, expr b);
-expr make_cfor_node(id_type id, expr count, expr bound, short up, expr b);
+expr_p make_while_node(expr_p c, expr_p b);
+expr_p make_for_node(struct id_pat id, expr_p ip, expr_p b);
+expr_p make_cfor_node(id_type id, expr_p count, expr_p bound, short up, expr_p b);
 
 @~They are quite straightforward, as usual.
 
 @< Definitions of functions for the parser @>=
-expr make_while_node(expr c, expr b)
+expr mk_while_node(expr c, expr b)
 { w_loop w=new while_node; w->condition=c; w->body=b;
 @/expr result; result.kind=while_expr; result.e.while_variant=w;
   return result;
 }
-expr make_for_node(struct id_pat id, expr ip, expr b)
+expr_p make_while_node(expr_p c, expr_p b)
+ { expr_ptr saf0(c),saf1(b); return new expr(mk_while_node(*c,*b)); }
+
+expr mk_for_node(struct id_pat id, expr ip, expr b)
 { f_loop f=new for_node; f->id=id; f->in_part=ip; f->body=b;
 @/expr result; result.kind=for_expr; result.e.for_variant=f;
   return result;
 }
-expr make_cfor_node(id_type id, expr count, expr bound, short up, expr b)
+expr_p make_for_node(struct id_pat id, expr_p ip, expr_p b)
+ { expr_ptr saf0(ip),saf1(b); return new expr(mk_for_node(id,*ip,*b)); }
+
+expr mk_cfor_node(id_type id, expr count, expr bound, short up, expr b)
 { c_loop c=new cfor_node; c->id=id; c->count=count; c->bound=bound;
   c->up=up; c->body=b;
 @/expr result; result.kind=cfor_expr; result.e.cfor_variant=c;
   return result;
 }
+expr_p make_cfor_node(id_type id, expr_p count, expr_p bound, short up, expr_p b)
+ { expr_ptr saf0(count),saf1(bound),saf2(b);
+   return new expr(mk_cfor_node(id,*count,*bound,up,*b));
+ }
 
 @*1 Array subscriptions.
 %
@@ -1357,8 +1416,8 @@ subscription call itself.
 
 @< Cases for destroying... @>=
 case subscription:
-  destroy_expr(e.e.subscription_variant->array);
-  destroy_expr(e.e.subscription_variant->index);
+  destroy_expr_body(e.e.subscription_variant->array);
+  destroy_expr_body(e.e.subscription_variant->index);
   delete e.e.subscription_variant;
 break;
 
@@ -1367,16 +1426,18 @@ break;
 part.
 
 @< Declarations of functions for the parser @>=
-expr make_subscription_node(expr a, expr i);
+expr_p make_subscription_node(expr_p a, expr_p i);
 
 @~This is straightforward, as usual.
 
 @< Definitions of functions for the parser @>=
-expr make_subscription_node(expr a, expr i)
+expr mk_subscription_node(expr a, expr i)
 { sub s=new subscription_node; s->array=a; s->index=i;
   expr result; result.kind=subscription; result.e.subscription_variant=s;
   return result;
 }
+expr_p make_subscription_node(expr_p a, expr_p i)
+ { expr_ptr saf0(a),saf1(i); return new expr(mk_subscription_node(*a,*i)); }
 
 @*1 Cast expressions.
 %S
@@ -1413,22 +1474,24 @@ break;
 @ Casts are built by |make_cast|.
 
 @< Declarations of functions for the parser @>=
-expr make_cast(type_p type, expr exp);
+expr_p make_cast(type_p type, expr_p exp);
 
 @~No surprises here.
 
 @< Definitions of functions for the parser@>=
-expr make_cast(type_p type, expr exp)
+expr mk_cast(type_p type, expr exp)
 { cast c=new cast_node; c->type=type; c->exp=exp;
 @/ expr result; result.kind=cast_expr; result.e.cast_variant=c;
    return result;
 }
+expr_p make_cast(type_p type, expr_p exp)
+ { expr_ptr saf(exp); return new expr(mk_cast(type,*exp)); }
 
 @ Eventually we want to rid ourselves from the cast.
 
 @< Cases for destr... @>=
 case cast_expr:
-  destroy_expr(e.e.cast_variant->exp); delete e.e.cast_variant;
+  destroy_expr_body(e.e.cast_variant->exp); delete e.e.cast_variant;
 break;
 
 @ A different kind of cast serves to obtain the current value of an overloaded
@@ -1464,16 +1527,18 @@ break;
 @ Casts are built by |make_cast|.
 
 @< Declarations of functions for the parser @>=
-expr make_op_cast(id_type name,type_p type);
+expr_p make_op_cast(id_type name,type_p type);
 
 @~No surprises here either.
 
 @< Definitions of functions for the parser@>=
-expr make_op_cast(id_type name,type_p type)
+expr mk_op_cast(id_type name,type_p type)
 { op_cast c=new op_cast_node; c->oper=name; c->type=type;
 @/ expr result; result.kind=op_cast_expr; result.e.op_cast_variant=c;
    return result;
 }
+expr_p make_op_cast(id_type name,type_p type)
+ { return new expr(mk_op_cast(name,type)); }
 
 @ Eventually we want to rid ourselves from the operator cast.
 
@@ -1515,23 +1580,25 @@ break;
 @ Assignment statements are built by |make_assignment|.
 
 @< Declarations of functions for the parser @>=
-expr make_assignment(id_type lhs, expr rhs);
+expr_p make_assignment(id_type lhs, expr_p rhs);
 
 @~It does what one would expect it to (except for those who expect their
 homework assignment made).
 
 @< Definitions of functions for the parser@>=
-expr make_assignment(id_type lhs, expr rhs)
+expr mk_assignment(id_type lhs, expr rhs)
 { assignment a=new assignment_node; a->lhs=lhs; a->rhs=rhs;
 @/ expr result; result.kind=ass_stat; result.e.assign_variant=a;
    return result;
 }
+expr_p make_assignment(id_type lhs, expr_p rhs)
+ { expr_ptr saf(rhs); return new expr(mk_assignment(lhs,*rhs)); }
 
 @ What is made must eventually be unmade (even assignments).
 
 @< Cases for destr... @>=
 case ass_stat:
-  destroy_expr(e.e.assign_variant->rhs); delete e.e.assign_variant;
+  destroy_expr_body(e.e.assign_variant->rhs); delete e.e.assign_variant;
 break;
 
 @*2 Component assignments.
@@ -1572,12 +1639,12 @@ generation the array and index will have already been combined before this
 function can be called.
 
 @< Declarations of functions for the parser @>=
-expr make_comp_ass(expr lhs, expr rhs);
+expr_p make_comp_ass(expr_p lhs, expr_p rhs);
 
 @~Here we have to take the left hand side apart a bit, and clean up its node.
 
 @< Definitions of functions for the parser@>=
-expr make_comp_ass(expr lhs, expr rhs)
+expr mk_comp_ass(expr lhs, expr rhs)
 { comp_assignment a=new comp_assignment_node;
 @/a->aggr=lhs.e.subscription_variant->array.e.identifier_variant;
   a->index=lhs.e.subscription_variant->index;
@@ -1586,13 +1653,15 @@ expr make_comp_ass(expr lhs, expr rhs)
 @/expr result; result.kind=comp_ass_stat; result.e.comp_assign_variant=a;
   return result;
 }
+expr_p make_comp_ass(expr_p lhs, expr_p rhs)
+ { expr_ptr saf0(lhs),saf1(rhs); return new expr(mk_comp_ass(*lhs,*rhs)); }
 
 @~Destruction one the other hand is as straightforward as usual.
 
 @< Cases for destr... @>=
 case comp_ass_stat:
-  destroy_expr(e.e.comp_assign_variant->index);
-  destroy_expr(e.e.comp_assign_variant->rhs);
+  destroy_expr_body(e.e.comp_assign_variant->index);
+  destroy_expr_body(e.e.comp_assign_variant->rhs);
   delete e.e.comp_assign_variant;
 break;
 
@@ -1639,25 +1708,28 @@ break;
 @ Sequences are built by |make_sequence|.
 
 @< Declarations of functions for the parser @>=
-expr make_sequence(expr first, expr last, int forward);
-expr make_reverse_sequence(expr first, expr last);
+expr_p make_sequence(expr_p first, expr_p last, int forward);
 
 @~It does what one would expect it to.
 
 @< Definitions of functions for the parser @>=
-expr make_sequence(expr first, expr last, int forward)
+expr mk_sequence(expr first, expr last, int forward)
 { sequence s=new sequence_node; s->first=first; s->last=last;
   s->forward=forward;
 @/ expr result; result.kind=seq_expr; result.e.sequence_variant=s;
    return result;
 }
+expr_p make_sequence(expr_p first, expr_p last, int forward)
+ { expr_ptr saf0(first),saf1(last);
+   return new expr(mk_sequence(*first,*last,forward));
+ }
 
 @ Finally sequence nodes need destruction, like everything else.
 
 @< Cases for destr... @>=
 case seq_expr:
-  destroy_expr(e.e.sequence_variant->first);
-  destroy_expr(e.e.sequence_variant->last);
+  destroy_expr_body(e.e.sequence_variant->first);
+  destroy_expr_body(e.e.sequence_variant->last);
   delete e.e.sequence_variant;
 break;
 

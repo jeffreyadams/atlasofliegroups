@@ -33,7 +33,7 @@
   struct { short id, priority; } oper; /* for operator symbols */
   atlas::interpreter::form_stack ini_form;
   unsigned short type_code; /* For type names */
-  atlas::interpreter::expr	expression; /* For generic expressions */
+  atlas::interpreter::expr_p    expression; /* For generic expressions */
   atlas::interpreter::expr_list expression_list; /* Any list of expressions */
   atlas::interpreter::let_list decls; /* declarations in a LET expression */
   atlas::interpreter::id_pat ip;
@@ -47,7 +47,7 @@
 }
 
 %locations
-%parse-param { atlas::interpreter::expr* parsed_expr}
+%parse-param { atlas::interpreter::expr_p* parsed_expr}
 %parse-param { int* verbosity }
 %pure-parser
 %error-verbose
@@ -94,7 +94,7 @@
 
 %{
   int yylex (YYSTYPE *, YYLTYPE *);
-  void yyerror (YYLTYPE *, atlas::interpreter::expr*, int*,const char *);
+  void yyerror (YYLTYPE *, atlas::interpreter::expr_p*, int*,const char *);
 %}
 %%
 
@@ -103,7 +103,7 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| exp '\n'		{ *parsed_expr=$1; }
 	| tertiary ';' '\n'
 	  { *parsed_expr=make_sequence($1,wrap_tuple_display(NULL),1); }
-	| SET pattern '=' exp '\n' { global_set_identifier($2,$4,1); YYABORT; }
+	| SET pattern '=' exp '\n' { global_set_identifier($2,$4,1); YYABORT; } 
 	| SET IDENT '(' id_specs_opt ')' '=' exp '\n'
 	  { struct id_pat id; id.kind=0x1; id.name=$2;
 	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7),1);
@@ -239,7 +239,7 @@ comprim: subscription
 	| TRUE { $$ = make_bool_denotation(1); }
 	| FALSE { $$ = make_bool_denotation(0); }
 	| STRING
-        | '$' { $$.kind=last_value_computed; }
+        | '$' { $$->kind=last_value_computed; }
 	| IF iftail { $$=$2; }
 	| WHILE exp DO exp OD { $$=make_while_node($2,$4); }
 	| FOR pattern IN exp DO exp OD
