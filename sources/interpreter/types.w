@@ -141,37 +141,46 @@ runtime cost of type handling is negligible with respect to other factors in
 the interpreter) we avoid doing so more than absolutely necessary.
 
 Usually types are built from the bottom up (from leaves to the root), although
-during type checking the reverse also occurs. In bottom-up handling of types,
-they should not reside in local |type_expr| variables, since these would
-require (recursive) copying in order to become a descendant type of another
-type. Instead they will be referred to by local pointer values, and in order
-to ensure exception-safety, these should be unique-pointers; for this reason we
-define |type_ptr| to be a unique-pointer type. For the links between a node and
-its descendant types however we use ordinary pointers of type~|type_p|.
-
-We also need type lists as building block for types (for instance for the
-arguments of a function). These used to be defined in a similar manner to
-types themselves, but since an STL-compatible singly-linked list container
-|sl_list| was added to the Atlas utilities library, these were used to replace
-the implementation of type lists; this provide a good test for the usability
-of the new container type. Due to the implementation, the object representing
-the list itself has two pointers rather than one (one making extension at the
-end of the list possible), so there is a slight space overhead associated to
-this implementation change, but which (we hope) is justified by the facility
-of manipulation it provides.
+during type checking the reverse also occurs. This means that nodes of the
+structure are held in local variables before being moved to dynamically
+managed storage; it is important to be able to do this while transferring
+ownership of data linked to, which requires resetting the original node so
+that it can be cleaned up without destroying dependent data. This is called
+move semantics, and was originally realised using auto-pointers for individual
+pointers, and by a special method on the level of complete nodes. With the
+advent of \Cpp11, special syntactic support was added, so that one can
+distinguish calls that should be realised with shallow copies and ownership
+transfer from the occasionally needed deep copy. At the same time
+auto-pointers were replaced by unique-pointers, with essentially the same
+functionality, but better adapted to the syntactic facilities. The structure
+also uses ordinary pointers of type~|type_p| whose ownership is managed by the
+containing structure.
 
 @< Type definitions @>=
 struct type_expr;
 typedef type_expr* type_p;
 typedef std::unique_ptr<type_expr> type_ptr;
-@)
+
+@*2 Type lists.
+%
+We also need type lists as building block for types (for instance for the
+arguments of a function). These used to be defined in a similar manner to
+types themselves, but since an STL-compatible singly-linked list container
+class templates |simple_list| and |sl_list| was added to the Atlas utilities
+library, these were used to replace the implementation of type lists. The
+former is built into the structure itself, the latter which is mode flexible
+but requires more space for the class instance itself is occasionally used for
+temporary variables. This provide a good test for the usability of the new
+container type.
+
+@< Type definitions @>=
 typedef containers::simple_list<type_expr> type_list;
 typedef containers::sl_list<type_expr> dressed_type_list;
 
 @ Since types and type lists own their trees, their copy constructors must
 make a deep copy. The class |type_expr| will provide no copy constructor but
 instead a more visible |copy| method to do a deep copy. On some occasions
-however one rather needs a copy at the pointers level: one has access to a
+however one rather needs a copy at the pointer level: one has access to a
 pointer to some |type_expr| (possibly by simply taking its address), but one
 needs an owning |type_ptr| instead. The function |acquire| will achieve this.
 
@@ -188,9 +197,7 @@ type_ptr acquire(const type_expr* t) @+
 {@; return type_ptr(new type_expr(t->copy())); }
 
 
-@*1 Type lists.
-%
-Type lists are usually built by starting with a default-constructed
+@ Type lists are usually built by starting with a default-constructed
 |type_list| (which is equivalent to initialising it with |empty_tuple()|
 defined below, and which function can help avoid a Most Vexing Parse
 situation), and repeatedly calling |prefix| to add nodes in front. This
@@ -218,7 +225,7 @@ dressed_type_list& prefix(type_expr&& t, dressed_type_list& dst)
   return dst;
 }
 
-@*1 Primitive types.
+@*2 Primitive types.
 %
 We have a simple but flexible type model. There is a finite number of
 ``primitive'' types, many of which are abstractions of complicated classes
@@ -440,6 +447,12 @@ undetermined_type| to indicate that no variant is active; this condition is
 tested in the |set_from| method (and also in by the destructor, though if
 |clear| is \emph{called by} the destructor, that test is already behind us).
 
+There is no reason to use a smart pointers as variant of a union, since one
+must still explicitly propagate destruction to the active variant, as happens
+here for the |tupple| field. If it were done here, then all that would change
+is that the code below would have to call their destructors rather than call
+|delete| directly.
+
 @< Function definitions @>=
 void type_expr::clear() noexcept
 { switch (kind)
@@ -451,19 +464,15 @@ void type_expr::clear() noexcept
   kind = undetermined_type;
 }
 
-@ The method |set_from| is like an assignment operator, but it avoids making a
-deep copy. Its argument is another |type_expr| passed by modifiable reference.
-The contents of its top-level structure will be copied to the current
-|type_expr|, but without invoking the copy constructor, and then set to a
-empty |undetermined_type| value, which effectively detaches any possible
-descendants from it. This operation is only safe if the |type_expr| previously
-had no descendants, and in fact we insist that it had
-|kind==undetermined_type|; if this condition fails we used to signal a
-|std::logic_error|, but since for \Cpp11 this function is marked |noexcept|
-(to indicate it does not allocate memory), we have transformed that into an
-|assert| statement. In a sense this is like a |swap| method, but only defined
-if the type was undetermined to begin with; in modern parlance, it implements
-move semantics.
+@ The method |set_from| makes a shallow copy of the structure; it implements
+ move semantics. Correspondingly it takes as argument another |type_expr| by
+ modifiable rvalue reference. The contents of its top-level structure will be
+ moved to the current |type_expr| using move assignment where applicable, and
+ then set to a empty |undetermined_type| value, which effectively detaches any
+ possible descendants from it. This operation requires that |type_expr|
+ previously had |kind==undetermined_type|. We test this condition using an
+ |assert| statement (rather than throwing |std::logic_error|) to honour the
+ |noexcept| specification.
 
 @h <stdexcept>
 @< Function definitions @>=

@@ -385,7 +385,7 @@ WeylElt WeylGroup::inverse(const WeylElt& w) const
 void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w) const
 {
   std::set<WeylElt> found;
-  std::stack<WeylElt,containers::mirrored_sl_list<WeylElt> > toDo;
+  std::stack<WeylElt,containers::mirrored_simple_list<WeylElt> > toDo;
 
   found.insert(w);
   toDo.push(w);
@@ -761,7 +761,8 @@ void TwistedWeylGroup::twistedConjugacyClass
   const
 {
   std::set<TwistedInvolution> found;
-  std::stack<TwistedInvolution> toDo;
+  std::stack<TwistedInvolution,
+	     containers::mirrored_simple_list<TwistedInvolution> > toDo;
 
   found.insert(tw);
   toDo.push(tw);
