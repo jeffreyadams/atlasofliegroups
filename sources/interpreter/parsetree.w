@@ -62,11 +62,13 @@ on the parser stack, the inflexibility of this solution motivated changing
 this to placing row pointers
 
 @< Declarations for the parser @>=
-@< Typedefs that are required in |union expru@;| @>@;
-union expru {@; @< Variants of |union expru @;| @>@; };
+@< Type declarations needed in definition of |struct expr@;| @>@;
 
 enum expr_kind @+ { @< Enumeration tags for |expr_kind| @> @;@; };
-struct expr {@; union expru e; expr_kind kind; };
+struct expr {
+  expr_kind kind; 
+  union {@; @< Variants of |union expru @;| @>@; };
+};
 typedef expr* expr_p; // raw pointer type for use on parser stack
 typedef std::unique_ptr<expr> expr_ptr;
 
@@ -83,7 +85,7 @@ functionality will also be used in producing error messages.
 std::ostream& operator<< (std::ostream& out, expr e);
 
 @~The definitions of this instance of the operator~`|<<|' are distributed
-among the different variants of the |union expru@;| that we shall define.
+among the different variants of |expr| that we shall define.
 
 @< Definitions of functions not for the parser @>=
 std::ostream& operator<< (std::ostream& out, expr e)
@@ -103,7 +105,7 @@ void destroy_expr_body(const expr& e);
 void destroy_expr(expr_p e);
 
 @~The definition of |destroy_expr| is also distributed among the different
-variants of the |union expru@;|.
+variants of |expr|.
 
 @< Definitions of functions for the parser @>=
 void destroy_expr_body(const expr& e)
@@ -122,7 +124,7 @@ The simplest expressions are atomic constants, which we shall call
 denotations. There are recognised by the scanner, and either the scanner or
 the parser will build an appropriate node for them, which just stores the
 constant value denoted. We need no structures here, since the value itself
-will fit comfortably inside the |union expru@;|. The fact that strings are
+will fit comfortably inside the |struct expr@;|. The fact that strings are
 stored as a character pointer, which should be produced using |new[]| by the
 caller of the functions described here, is a legacy of the restriction
 that only types representable in \Cee\ could be used originally.
@@ -142,18 +144,18 @@ denotations we do the same but enclosed in quotes, while for Boolean
 denotations we reproduce the keyword that gives the denotation.
 
 @< Cases for printing... @>=
-case integer_denotation: out << e.e.int_denotation_variant; break;
+case integer_denotation: out << e.int_denotation_variant; break;
 case string_denotation:
-  out << '"' << e.e.str_denotation_variant << '"'; break;
+  out << '"' << e.str_denotation_variant << '"'; break;
 case boolean_denotation:
-  out << (e.e.int_denotation_variant!=0 ? "true" : "false"); break;
+  out << (e.int_denotation_variant!=0 ? "true" : "false"); break;
 
 @~When a string denotation is destroyed, we free the string that was created
 by the lexical scanner.
 
 @< Cases for destroying... @>=
 case integer_denotation: case boolean_denotation: break;
-case string_denotation: delete[] e.e.str_denotation_variant; break;
+case string_denotation: delete[] e.str_denotation_variant; break;
 
 @ To build the node for denotations, we provide the functions below.
 
@@ -168,21 +170,21 @@ node-building functions.
 @< Definitions of functions for the parser @>=
 expr mk_int_denotation (int val)
 { expr result; result.kind=integer_denotation;
-@/result.e.int_denotation_variant=val; return result;
+@/result.int_denotation_variant=val; return result;
 }
 expr_p make_int_denotation (int val)
   { return new expr(mk_int_denotation(val)); }
 
 expr mk_string_denotation(char* val)
 { expr result; result.kind=string_denotation;
-@/result.e.str_denotation_variant=val; return result;
+@/result.str_denotation_variant=val; return result;
 }
 expr_p make_string_denotation(char* val)
  { return new expr(mk_string_denotation(val)); }
 
 expr mk_bool_denotation(int val)
 { expr result; result.kind=boolean_denotation;
-@/result.e.int_denotation_variant=val; return result;
+@/result.int_denotation_variant=val; return result;
 }
 expr_p make_bool_denotation(int val)
  { return new expr(mk_bool_denotation(val)); }
@@ -205,7 +207,7 @@ case last_value_computed: out << '$'; @q$@> break;
 |Hash_table::id_type| (a small integer type) of indices into the table of
 identifier names, which we lift out of that class by using a |typedef|.
 
-@< Typedefs... @>=
+@< Type declarations needed in definition of |struct expr@;| @>=
 typedef Hash_table::id_type id_type;
 
 @ For identifiers we just store their code.
@@ -221,7 +223,7 @@ applied_identifier, @[@]
 
 @< Cases for printing... @>=
 case applied_identifier:
-  out << main_hash_table->name_of(e.e.identifier_variant);
+  out << main_hash_table->name_of(e.identifier_variant);
 break;
 
 @~For destroying an applied identifier, there is nothing to do.
@@ -240,7 +242,7 @@ expr_p make_applied_identifier (id_type id);
 @< Definitions of functions for the parser @>=
 expr mk_applied_identifier (id_type id)
 {@; expr result; result.kind=applied_identifier;
-  result.e.identifier_variant=id; return result;
+  result.identifier_variant=id; return result;
 }
 expr_p make_applied_identifier (id_type id)
  { return new expr(mk_applied_identifier(id)); }
@@ -249,7 +251,7 @@ expr_p make_applied_identifier (id_type id)
 A first recursive type of expression is the expression list, which will be
 used for various purposes.
 
-@< Typedefs... @>=
+@< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct exprlist_node* expr_list;
 
 @~The type is implemented as a simply linked list.
@@ -287,7 +289,7 @@ subexpressions.
 
 @< Cases for printing... @>=
 case list_display:
-{ expr_list l=e.e.sublist;
+{ expr_list l=e.sublist;
   if (l==NULL) out << "[]";
   else
   { out << '[';
@@ -316,7 +318,7 @@ void destroy_exprlist(expr_list l)
 @~Destroying a list display is now easily defined.
 
 @< Cases for destroying... @>=
-case list_display: destroy_exprlist(e.e.sublist);
+case list_display: destroy_exprlist(e.sublist);
 break;
 
 
@@ -361,7 +363,7 @@ expr_list reverse_expr_list(expr_list l)
 }
 
 expr wrp_list_display(expr_list l)
-{@; expr result; result.kind=list_display; result.e.sublist=l; return result;
+{@; expr result; result.kind=list_display; result.sublist=l; return result;
 }
 expr_p wrap_list_display(expr_list l)
   { return new expr(wrp_list_display(l)); }
@@ -379,7 +381,7 @@ parentheses instead of brackets.
 
 @< Cases for printing... @>=
 case tuple_display:
-{ expr_list l=e.e.sublist;
+{ expr_list l=e.sublist;
   if (l==NULL) out << "()";
   else
   { out << '(';
@@ -392,7 +394,7 @@ break;
 @~Destroying a tuple display is the same as destroying a list display.
 
 @< Cases for destroying... @>=
-case tuple_display: destroy_exprlist(e.e.sublist);
+case tuple_display: destroy_exprlist(e.sublist);
 break;
 
 @ To make tuple displays, we use a function similar to that for list displays.
@@ -402,7 +404,7 @@ expr_p wrap_tuple_display(expr_list l);
 @~In fact the only difference is the tag inserted.
 @< Definitions of functions for the parser @>=
 expr wrp_tuple_display(expr_list l)
-{@; expr result; result.kind=tuple_display; result.e.sublist=l; return result;
+{@; expr result; result.kind=tuple_display; result.sublist=l; return result;
 }
 expr_p wrap_tuple_display(expr_list l)
  { return new expr(wrp_tuple_display(l)); }
@@ -419,12 +421,12 @@ bool is_empty(const expr& e);
 
 @< Definitions of functions not for the parser @>=
 bool is_empty(const expr& e)
-@+{@; return e.kind==tuple_display and e.e.sublist==NULL; }
+@+{@; return e.kind==tuple_display and e.sublist==NULL; }
 
 @*1 Function applications.
 Another recursive type of expression is the function application.
 
-@< Typedefs... @>=
+@< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct application_node* app;
 
 @~Now that we have tuples, a function application just takes one argument, so
@@ -452,7 +454,7 @@ attempt to reconstruct infix formulae.
 
 @< Cases for printing... @>=
 case function_call:
-{ app a=e.e.call_variant;
+{ app a=e.call_variant;
   expr fun=a->fun,arg=a->arg;
   if (fun.kind==applied_identifier) out << fun;
   else out << '(' << fun << ')';
@@ -466,9 +468,9 @@ call itself.
 
 @< Cases for destroying... @>=
 case function_call:
-  destroy_expr_body(e.e.call_variant->fun);
-  destroy_expr_body(e.e.call_variant->arg);
-  delete e.e.call_variant;
+  destroy_expr_body(e.call_variant->fun);
+  destroy_expr_body(e.call_variant->arg);
+  delete e.call_variant;
 break;
 
 
@@ -494,7 +496,7 @@ expr mk_application_node(expr f, expr_list args)
   if (args!=NULL && args->next==NULL) // a single argument
   {@; a->arg=args->e; delete args; }
   else a->arg=wrp_tuple_display(args);
-  expr result; result.kind=function_call; result.e.call_variant=a;
+  expr result; result.kind=function_call; result.call_variant=a;
   return result;
 }
 expr_p make_application_node(expr_p f, expr_list args)
@@ -517,7 +519,7 @@ expr mk_unary_call(id_type name, expr arg)
 { app a=new application_node;
   a->fun=mk_applied_identifier(name);
   a->arg=arg;
-  expr result; result.kind=function_call; result.e.call_variant=a;
+  expr result; result.kind=function_call; result.call_variant=a;
   return result;
 }
 expr_p make_unary_call(id_type name, expr_p arg)
@@ -770,7 +772,7 @@ destruction by |destroy_id_pat| (no undefined pointers; the |sublist| pointer
 of |id_pat| is ignored when |kind==0|). The structure |id_pat| itself cannot
 have a constructor, since it figures in a |union|, where this is not allowed.
 
-@< Typedefs... @>=
+@< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct pattern_node* patlist;
 struct id_pat
 { patlist sublist;
@@ -783,7 +785,7 @@ struct pattern_node
   pattern_node () : next(NULL) @+{@; body.kind=0; }
 };
 
-@ These types do not themselves represent a variant of |expru|, but will be
+@ These types do not themselves represent a variant of |expr|, but will be
 used inside such variants. We can already provide a printing function.
 
 @< Declaration of functions not for the parser @>=
@@ -857,7 +859,7 @@ before considereing user-defined functions in general is that this avoids for
 now having to specify in the user program the types of the parameters of the
 function, these type being determined by the values provided.
 
-@< Typedefs... @>=
+@< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct let_expr_node* let;
 
 @~After parsing, let-expression will have a single let-binding followed by a
@@ -888,7 +890,7 @@ parentheses; this should be fixed (for all printing routines).
 
 @< Cases for printing... @>=
 case let_expr:
-{ let lexp=e.e.let_variant;
+{ let lexp=e.let_variant;
   out << "let " << lexp->pattern << '=' << lexp->val <<	 " in " << lexp->body;
 }
 break;
@@ -916,7 +918,7 @@ void destroy_letlist(let_list l)
 
 @< Cases for destroying... @>=
 case let_expr:
-{ let lexp=e.e.let_variant;
+{ let lexp=e.let_variant;
   destroy_id_pat(&lexp->pattern);
   destroy_expr_body(lexp->val);
   destroy_expr_body(lexp->body);
@@ -971,7 +973,7 @@ let_list append_let_node(let_list prev, let_list cur)
 @)
 expr mk_let_expr_node(let_list decls, expr body)
 { let l=new let_expr_node; l->body=body;
-  expr result; result.kind=let_expr; result.e.let_variant=l;
+  expr result; result.kind=let_expr; result.let_variant=l;
   try
   { if (decls->next==NULL) // single declaration
     @/{@; l->pattern=decls->pattern; l->val=decls->val;
@@ -983,7 +985,7 @@ expr mk_let_expr_node(let_list decls, expr body)
       while (decls!=NULL)
       { l->pattern.sublist =
 	  make_pattern_node(l->pattern.sublist,&decls->pattern);
-	l->val.e.sublist=mk_exprlist_node(decls->val,l->val.e.sublist);
+	l->val.sublist=mk_exprlist_node(decls->val,l->val.sublist);
 	let_list p=decls; decls=p->next; delete p;
       }
     }
@@ -1087,7 +1089,7 @@ std::ostream& print_type(std::ostream& out, type_p type) @+
 {@; return out << *type; }
 
 @ For user-defined functions we shall use a structure |lambda_node|.
-@< Typedefs that are required... @>=
+@< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct lambda_node* lambda;
 
 @~It contains a pattern for the formal parameter(s), its type (a void pointer
@@ -1102,7 +1104,7 @@ struct lambda_node
 @< Enumeration tags... @>=
 lambda_expr,@[@]
 
-@ We introduce the variant of |union expru@;| as usual.
+@ We introduce the variant of |expr| as usual.
 @< Variants of |union... @>=
 lambda lambda_variant;
 
@@ -1111,7 +1113,7 @@ parentheses.
 
 @< Cases for printing... @>=
 case lambda_expr:
-{ lambda fun=e.e.lambda_variant;
+{ lambda fun=e.lambda_variant;
   if ((fun->pattern.kind&0x1)!=0)
     out << '(' << fun->pattern << ')';
   else
@@ -1127,7 +1129,7 @@ call handler functions.
 
 @< Cases for destroying an expression |e| @>=
 case lambda_expr:
-{ lambda fun=e.e.lambda_variant;
+{ lambda fun=e.lambda_variant;
   destroy_id_pat(&fun->pattern);
   delete(fun->arg_type);
   destroy_expr_body(fun->body);
@@ -1163,7 +1165,7 @@ expr mk_lambda_node(patlist pat_l, raw_type_list raw, expr body)
   { fun->pattern.kind=0x2; fun->pattern.sublist=pat_l;
     fun->arg_type=make_tuple_type(std::move(type_l)).release();
   }
-  expr result; result.kind=lambda_expr; result.e.lambda_variant=fun;
+  expr result; result.kind=lambda_expr; result.lambda_variant=fun;
   return result;
 }
 expr_p make_lambda_node(patlist pat_l, raw_type_list raw, expr_p body)
@@ -1174,7 +1176,7 @@ expr_p make_lambda_node(patlist pat_l, raw_type_list raw, expr_p body)
 @*2 Conditional expressions.
 Of course we need if-then-else expressions.
 
-@< Typedefs... @>=
+@< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct conditional_node* cond;
 
 @~The parser handles \&{elif} constructions, so we only need to handle the
@@ -1199,7 +1201,7 @@ reconstruct \&{elif} constructions.
 
 @< Cases for printing... @>=
 case conditional_expr:
-{ cond c=e.e.if_variant; out << " if " << c->condition @|
+{ cond c=e.if_variant; out << " if " << c->condition @|
   << " then " << c->then_branch << " else " << c->else_branch << " fi ";
 }
 break;
@@ -1209,10 +1211,10 @@ call itself.
 
 @< Cases for destroying... @>=
 case conditional_expr:
-  destroy_expr_body(e.e.if_variant->condition);
-  destroy_expr_body(e.e.if_variant->then_branch);
-  destroy_expr_body(e.e.if_variant->else_branch);
-  delete e.e.if_variant;
+  destroy_expr_body(e.if_variant->condition);
+  destroy_expr_body(e.if_variant->then_branch);
+  destroy_expr_body(e.if_variant->else_branch);
+  delete e.if_variant;
 break;
 
 
@@ -1226,7 +1228,7 @@ expr_p make_conditional_node(expr_p c, expr_p t, expr_p e);
 expr mk_conditional_node(expr c, expr t, expr e)
 { cond n=new conditional_node; n->condition=c;
   n->then_branch=t; n->else_branch=e;
-@/expr result; result.kind=conditional_expr; result.e.if_variant=n;
+@/expr result; result.kind=conditional_expr; result.if_variant=n;
   return result;
 }
 expr_p make_conditional_node(expr_p c, expr_p t, expr_p e)
@@ -1242,7 +1244,7 @@ open-ended iteration, while the latter fix the range of iteration at entry.
 However we provide a relative innovation by having both types deliver a value:
 this will be a row value with one entry for each iteration performed.
 
-@< Typedefs... @>=
+@< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct while_node* w_loop;
 typedef struct for_node* f_loop;
 typedef struct cfor_node* c_loop;
@@ -1281,12 +1283,12 @@ input syntax.
 
 @< Cases for printing... @>=
 case while_expr:
-{ w_loop w=e.e.while_variant;
+{ w_loop w=e.while_variant;
   out << " while " << w->condition << " do " << w->body << " od ";
 }
 break;
 case for_expr:
-{ f_loop f=e.e.for_variant;
+{ f_loop f=e.for_variant;
   out << " for " << f->id.sublist->next->body;
   if (f->id.sublist->body.kind==0x1)
     out << '@@' << f->id.sublist->body;
@@ -1294,9 +1296,9 @@ case for_expr:
 }
 break;
 case cfor_expr:
-{ c_loop c=e.e.cfor_variant;
+{ c_loop c=e.cfor_variant;
   out << " for " << main_hash_table->name_of(c->id) << ": " << c->count;
-  if (c->bound.kind!=tuple_display or c->bound.e.sublist!=NULL)
+  if (c->bound.kind!=tuple_display or c->bound.sublist!=NULL)
     out << (c->up!=0 ? " from " : " downto ") << c->bound;
   out << " do " << c->body << " od ";
 }
@@ -1306,21 +1308,21 @@ break;
 
 @< Cases for destroying... @>=
 case while_expr:
-  destroy_expr_body(e.e.while_variant->condition);
-  destroy_expr_body(e.e.while_variant->body);
-  delete e.e.while_variant;
+  destroy_expr_body(e.while_variant->condition);
+  destroy_expr_body(e.while_variant->body);
+  delete e.while_variant;
 break;
 case for_expr:
-  destroy_id_pat(&e.e.for_variant->id);
-  destroy_expr_body(e.e.for_variant->in_part);
-  destroy_expr_body(e.e.for_variant->body);
-  delete e.e.for_variant;
+  destroy_id_pat(&e.for_variant->id);
+  destroy_expr_body(e.for_variant->in_part);
+  destroy_expr_body(e.for_variant->body);
+  delete e.for_variant;
 break;
 case cfor_expr:
-  destroy_expr_body(e.e.cfor_variant->count);
-  destroy_expr_body(e.e.cfor_variant->bound);
-  destroy_expr_body(e.e.cfor_variant->body);
-  delete e.e.cfor_variant;
+  destroy_expr_body(e.cfor_variant->count);
+  destroy_expr_body(e.cfor_variant->bound);
+  destroy_expr_body(e.cfor_variant->body);
+  delete e.cfor_variant;
 break;
 
 
@@ -1337,7 +1339,7 @@ expr_p make_cfor_node(id_type id, expr_p count, expr_p bound, short up, expr_p b
 @< Definitions of functions for the parser @>=
 expr mk_while_node(expr c, expr b)
 { w_loop w=new while_node; w->condition=c; w->body=b;
-@/expr result; result.kind=while_expr; result.e.while_variant=w;
+@/expr result; result.kind=while_expr; result.while_variant=w;
   return result;
 }
 expr_p make_while_node(expr_p c, expr_p b)
@@ -1345,7 +1347,7 @@ expr_p make_while_node(expr_p c, expr_p b)
 
 expr mk_for_node(struct id_pat id, expr ip, expr b)
 { f_loop f=new for_node; f->id=id; f->in_part=ip; f->body=b;
-@/expr result; result.kind=for_expr; result.e.for_variant=f;
+@/expr result; result.kind=for_expr; result.for_variant=f;
   return result;
 }
 expr_p make_for_node(struct id_pat id, expr_p ip, expr_p b)
@@ -1354,7 +1356,7 @@ expr_p make_for_node(struct id_pat id, expr_p ip, expr_p b)
 expr mk_cfor_node(id_type id, expr count, expr bound, short up, expr b)
 { c_loop c=new cfor_node; c->id=id; c->count=count; c->bound=bound;
   c->up=up; c->body=b;
-@/expr result; result.kind=cfor_expr; result.e.cfor_variant=c;
+@/expr result; result.kind=cfor_expr; result.cfor_variant=c;
   return result;
 }
 expr_p make_cfor_node(id_type id, expr_p count, expr_p bound, short up, expr_p b)
@@ -1369,7 +1371,7 @@ matrices), so we define a subscription expression. If there are multiple
 indices, these can be realised as a subscription by a tuple expression, so we
 define only one type so subscription expression.
 
-@< Typedefs... @>=
+@< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct subscription_node* sub;
 
 @~In a subscription the array and the index(es) can syntactically be arbitrary
@@ -1383,8 +1385,7 @@ struct subscription_node {@; expr array; expr index; };
 
 @< Enumeration tags for |expr_kind| @>= subscription, @[@]
 
-@~And here is the corresponding variant of the |union expru@;|.
-value is a function call.
+@~And here is the corresponding variant of |expr|.
 
 @< Variants... @>=
 sub subscription_variant;
@@ -1397,11 +1398,11 @@ parentheses directly inside the brackets.
 @h "lexer.h"
 @< Cases for printing... @>=
 case subscription:
-{ sub s=e.e.subscription_variant; out << s->array << '[';
+{ sub s=e.subscription_variant; out << s->array << '[';
   expr i=s->index;
   if (i.kind!=tuple_display) out << i;
   else
-  { expr_list l=i.e.sublist;
+  { expr_list l=i.sublist;
     if (l!=NULL)
     {@; out << l->e;
       while ((l=l->next)!=NULL) out << ',' << l->e;
@@ -1416,9 +1417,9 @@ subscription call itself.
 
 @< Cases for destroying... @>=
 case subscription:
-  destroy_expr_body(e.e.subscription_variant->array);
-  destroy_expr_body(e.e.subscription_variant->index);
-  delete e.e.subscription_variant;
+  destroy_expr_body(e.subscription_variant->array);
+  destroy_expr_body(e.subscription_variant->index);
+  delete e.subscription_variant;
 break;
 
 
@@ -1433,7 +1434,7 @@ expr_p make_subscription_node(expr_p a, expr_p i);
 @< Definitions of functions for the parser @>=
 expr mk_subscription_node(expr a, expr i)
 { sub s=new subscription_node; s->array=a; s->index=i;
-  expr result; result.kind=subscription; result.e.subscription_variant=s;
+  expr result; result.kind=subscription; result.subscription_variant=s;
   return result;
 }
 expr_p make_subscription_node(expr_p a, expr_p i)
@@ -1444,7 +1445,7 @@ expr_p make_subscription_node(expr_p a, expr_p i)
 These are very simple expressions consisting of a type and an expression,
 which is forced to be of that type.
 
-@< Typedefs... @>=
+@< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct cast_node* cast;
 
 @~The type contained in the cast is represented by a void pointer, for the
@@ -1466,7 +1467,7 @@ cast cast_variant;
 
 @< Cases for printing... @>=
 case cast_expr:
-{@; cast c = e.e.cast_variant;
+{@; cast c = e.cast_variant;
   print_type(out,c->type) << ':' << c->exp ;
 }
 break;
@@ -1481,7 +1482,7 @@ expr_p make_cast(type_p type, expr_p exp);
 @< Definitions of functions for the parser@>=
 expr mk_cast(type_p type, expr exp)
 { cast c=new cast_node; c->type=type; c->exp=exp;
-@/ expr result; result.kind=cast_expr; result.e.cast_variant=c;
+@/ expr result; result.kind=cast_expr; result.cast_variant=c;
    return result;
 }
 expr_p make_cast(type_p type, expr_p exp)
@@ -1491,13 +1492,13 @@ expr_p make_cast(type_p type, expr_p exp)
 
 @< Cases for destr... @>=
 case cast_expr:
-  destroy_expr_body(e.e.cast_variant->exp); delete e.e.cast_variant;
+  destroy_expr_body(e.cast_variant->exp); delete e.cast_variant;
 break;
 
 @ A different kind of cast serves to obtain the current value of an overloaded
 operator symbol.
 
-@< Typedefs... @>=
+@< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct op_cast_node* op_cast;
 
 @~We store an (operator) identifier and a type, as before represented by a
@@ -1519,7 +1520,7 @@ op_cast op_cast_variant;
 
 @< Cases for printing... @>=
 case op_cast_expr:
-{ op_cast c = e.e.op_cast_variant;
+{ op_cast c = e.op_cast_variant;
   print_type(out << main_hash_table->name_of(c->oper) << '@@',c->type);
 }
 break;
@@ -1534,7 +1535,7 @@ expr_p make_op_cast(id_type name,type_p type);
 @< Definitions of functions for the parser@>=
 expr mk_op_cast(id_type name,type_p type)
 { op_cast c=new op_cast_node; c->oper=name; c->type=type;
-@/ expr result; result.kind=op_cast_expr; result.e.op_cast_variant=c;
+@/ expr result; result.kind=op_cast_expr; result.op_cast_variant=c;
    return result;
 }
 expr_p make_op_cast(id_type name,type_p type)
@@ -1544,14 +1545,14 @@ expr_p make_op_cast(id_type name,type_p type)
 
 @< Cases for destr... @>=
 case op_cast_expr:
-  delete e.e.op_cast_variant;
+  delete e.op_cast_variant;
 break;
 
 @*1 Assignment statements.
 %
 Simple assignment statements are quite simple as expressions.
 
-@< Typedefs... @>=
+@< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct assignment_node* assignment;
 
 @~In a simple assignment the left hand side is just an identifier.
@@ -1572,7 +1573,7 @@ assignment assign_variant;
 
 @< Cases for printing... @>=
 case ass_stat:
-{@; assignment ass = e.e.assign_variant;
+{@; assignment ass = e.assign_variant;
   out << main_hash_table->name_of(ass->lhs) << ":=" << ass->rhs ;
 }
 break;
@@ -1588,7 +1589,7 @@ homework assignment made).
 @< Definitions of functions for the parser@>=
 expr mk_assignment(id_type lhs, expr rhs)
 { assignment a=new assignment_node; a->lhs=lhs; a->rhs=rhs;
-@/ expr result; result.kind=ass_stat; result.e.assign_variant=a;
+@/ expr result; result.kind=ass_stat; result.assign_variant=a;
    return result;
 }
 expr_p make_assignment(id_type lhs, expr_p rhs)
@@ -1598,14 +1599,14 @@ expr_p make_assignment(id_type lhs, expr_p rhs)
 
 @< Cases for destr... @>=
 case ass_stat:
-  destroy_expr_body(e.e.assign_variant->rhs); delete e.e.assign_variant;
+  destroy_expr_body(e.assign_variant->rhs); delete e.assign_variant;
 break;
 
 @*2 Component assignments.
 %
 We have special expressions for assignments to a component.
 
-@< Typedefs... @>=
+@< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct comp_assignment_node* comp_assignment;
 
 @~In a component assignment has for the left hand side an identifier and an
@@ -1627,7 +1628,7 @@ comp_assignment comp_assign_variant;
 
 @< Cases for printing... @>=
 case comp_ass_stat:
-{@; comp_assignment ass = e.e.comp_assign_variant;
+{@; comp_assignment ass = e.comp_assign_variant;
   out << main_hash_table->name_of(ass->aggr) << '[' << ass->index << "]:="
       << ass->rhs ;
 }
@@ -1646,11 +1647,11 @@ expr_p make_comp_ass(expr_p lhs, expr_p rhs);
 @< Definitions of functions for the parser@>=
 expr mk_comp_ass(expr lhs, expr rhs)
 { comp_assignment a=new comp_assignment_node;
-@/a->aggr=lhs.e.subscription_variant->array.e.identifier_variant;
-  a->index=lhs.e.subscription_variant->index;
-  delete lhs.e.subscription_variant;
+@/a->aggr=lhs.subscription_variant->array.identifier_variant;
+  a->index=lhs.subscription_variant->index;
+  delete lhs.subscription_variant;
   a->rhs=rhs;
-@/expr result; result.kind=comp_ass_stat; result.e.comp_assign_variant=a;
+@/expr result; result.kind=comp_ass_stat; result.comp_assign_variant=a;
   return result;
 }
 expr_p make_comp_ass(expr_p lhs, expr_p rhs)
@@ -1660,9 +1661,9 @@ expr_p make_comp_ass(expr_p lhs, expr_p rhs)
 
 @< Cases for destr... @>=
 case comp_ass_stat:
-  destroy_expr_body(e.e.comp_assign_variant->index);
-  destroy_expr_body(e.e.comp_assign_variant->rhs);
-  delete e.e.comp_assign_variant;
+  destroy_expr_body(e.comp_assign_variant->index);
+  destroy_expr_body(e.comp_assign_variant->rhs);
+  delete e.comp_assign_variant;
 break;
 
 @*1 Sequence statements.
@@ -1670,7 +1671,7 @@ break;
 Having assignments statements, it is logical to be able to build a sequence of
 expressions (statements) as well, retaining the value only of the final one.
 
-@< Typedefs... @>=
+@< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct sequence_node* sequence;
 
 @~Since control structures and let-expressions tend to break up long chains,
@@ -1700,7 +1701,7 @@ sequence sequence_variant;
 
 @< Cases for printing... @>=
 case seq_expr:
-{@; sequence seq = e.e.sequence_variant;
+{@; sequence seq = e.sequence_variant;
   out << seq->first << (seq->forward ? ";" : " next ") << seq->last ;
 }
 break;
@@ -1716,7 +1717,7 @@ expr_p make_sequence(expr_p first, expr_p last, int forward);
 expr mk_sequence(expr first, expr last, int forward)
 { sequence s=new sequence_node; s->first=first; s->last=last;
   s->forward=forward;
-@/ expr result; result.kind=seq_expr; result.e.sequence_variant=s;
+@/ expr result; result.kind=seq_expr; result.sequence_variant=s;
    return result;
 }
 expr_p make_sequence(expr_p first, expr_p last, int forward)
@@ -1728,9 +1729,9 @@ expr_p make_sequence(expr_p first, expr_p last, int forward)
 
 @< Cases for destr... @>=
 case seq_expr:
-  destroy_expr_body(e.e.sequence_variant->first);
-  destroy_expr_body(e.e.sequence_variant->last);
-  delete e.e.sequence_variant;
+  destroy_expr_body(e.sequence_variant->first);
+  destroy_expr_body(e.sequence_variant->last);
+  delete e.sequence_variant;
 break;
 
 @* Other functions callable from the parser.

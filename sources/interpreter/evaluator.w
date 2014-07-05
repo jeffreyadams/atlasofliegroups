@@ -338,17 +338,17 @@ latter case.
 @< Cases for type-checking and converting... @>=
 case integer_denotation:
   { expression_ptr d@|(new denotation
-      (shared_value(new int_value(e.e.int_denotation_variant))));
+      (shared_value(new int_value(e.int_denotation_variant))));
     return conform_types(int_type,type,d,e);
   }
 case string_denotation:
   { expression_ptr d@|(new denotation
-      (shared_value(new string_value(e.e.str_denotation_variant))));
+      (shared_value(new string_value(e.str_denotation_variant))));
     return conform_types(str_type,type,d,e);
   }
 case boolean_denotation:
   { expression_ptr d@|(new denotation
-        (shared_value(new bool_value(e.e.int_denotation_variant))));
+        (shared_value(new bool_value(e.int_denotation_variant))));
     return conform_types(bool_type,type,d,e);
   }
 
@@ -450,14 +450,14 @@ conflict.
 case list_display:
   if (type.specialise(row_of_type))
   { std::auto_ptr<list_expression> result (new list_expression(0));
-    result->component.reserve(length(e.e.sublist));
-    for (expr_list l=e.e.sublist; l!=nullptr; l=l->next)
+    result->component.reserve(length(e.sublist));
+    for (expr_list l=e.sublist; l!=nullptr; l=l->next)
       result->component.push_back(convert_expr(l->e,*type.component_type));
     return result.release(); // and convert (derived|->|base) to |expression|
   }
   else
   @< If |type| can be converted from some row-of type, check the components of
-     |e.e.sublist| against the required type, and apply a conversion function
+     |e.sublist| against the required type, and apply a conversion function
      to the converted expression; otherwise |throw| a |type_error| @>
 
 @ When in |convert_expr| we encounter a list display when a non-row type is
@@ -473,7 +473,7 @@ case where as ``row-of'' type was required, and in particular there may be
 further coercions of individual expressions in the list display.
 
 @< If |type| can be converted from some row-of type, check the components of
-   |e.e.sublist|... @>=
+   |e.sublist|... @>=
 { type_expr comp_type;
   const conversion_record* conv = row_coercion(type,comp_type);
   if (conv==nullptr)
@@ -481,8 +481,8 @@ further coercions of individual expressions in the list display.
 @)
   std::auto_ptr<list_expression> display@|
       (new list_expression(0));
-  display->component.reserve(length(e.e.sublist));
-  for (expr_list l=e.e.sublist; l!=nullptr; l=l->next)
+  display->component.reserve(length(e.sublist));
+  for (expr_list l=e.sublist; l!=nullptr; l=l->next)
     display->component.push_back(convert_expr(l->e,comp_type));
   return new conversion(*conv,expression_ptr(display));
 }
@@ -564,15 +564,15 @@ mentioning too few or too many components explicitly.
 
 @< Cases for type-checking and converting... @>=
 case tuple_display:
-{ type_expr tup=unknown_tuple(length(e.e.sublist));
+{ type_expr tup=unknown_tuple(length(e.sublist));
   bool tuple_expected=type.specialise(tup);
     // whether |type| is a tuple of correct size
   tuple_expression* tup_exp;
   expression_ptr result(tup_exp=new tuple_expression(0));
-  tup_exp->component.reserve(length(e.e.sublist));
+  tup_exp->component.reserve(length(e.sublist));
   type_list& tl = tuple_expected ? type.tupple : tup.tupple;
   type_list::iterator tl_it = tl.begin();
-  for (expr_list el=e.e.sublist; el!=nullptr; el=el->next,++tl_it)
+  for (expr_list el=e.sublist; el!=nullptr; el=el->next,++tl_it)
     tup_exp->component.push_back(convert_expr(el->e,*tl_it));
   if (tuple_expected)
     return result.release();  // and convert (derived|->|base) to |expression|
@@ -769,9 +769,9 @@ case subscription:
 { type_expr array_type, index_type, subscr_type;
     // all initialised to |undetermined_type|
   expression_ptr array
-    (convert_expr(e.e.subscription_variant->array,array_type));
+    (convert_expr(e.subscription_variant->array,array_type));
   expression_ptr index
-    (convert_expr(e.e.subscription_variant->index,index_type));
+    (convert_expr(e.subscription_variant->index,index_type));
   subscr_base::sub_type kind;
   expression_ptr subscr;
   if (subscr_base::indexable(array_type,index_type,subscr_type,kind))
@@ -1228,13 +1228,13 @@ assignments to the variable must respect the more specific type).
 @< Cases for type-checking and converting... @>=
 case applied_identifier:
 { type_p id_t; expression_ptr id; size_t i,j;
-  if ((id_t=id_context->lookup(e.e.identifier_variant,i,j))!=nullptr)
-    id.reset(new local_identifier(e.e.identifier_variant,i,j));
-  else if ((id_t=global_id_table->type_of(e.e.identifier_variant))!=nullptr)
-    id.reset(new global_identifier(e.e.identifier_variant));
+  if ((id_t=id_context->lookup(e.identifier_variant,i,j))!=nullptr)
+    id.reset(new local_identifier(e.identifier_variant,i,j));
+  else if ((id_t=global_id_table->type_of(e.identifier_variant))!=nullptr)
+    id.reset(new global_identifier(e.identifier_variant));
   else throw program_error  @|
        (std::string("Undefined identifier ")
-	+main_hash_table->name_of(e.e.identifier_variant));
+	+main_hash_table->name_of(e.identifier_variant));
 @.Undefined identifier@>
   if (type.specialise(*id_t))
     {@; id_t->specialise(type); return id.release(); }
@@ -1557,11 +1557,11 @@ expression resolve_overload
   (const expr& e,
    type_expr& type,
    const overload_table::variant_list& variants)
-{ const expr& args = e.e.call_variant->arg;
+{ const expr& args = e.call_variant->arg;
   type_expr a_priori_type;
   expression_ptr arg(convert_expr(args,a_priori_type));
     // get \foreign{a priori} types once
-  Hash_table::id_type id =  e.e.call_variant->fun.e.identifier_variant;
+  Hash_table::id_type id =  e.call_variant->fun.identifier_variant;
   @< If |id| is a special operator like size-of and it matches
   |a_priori_type|, |return| a call |id(args)| @>
   for (size_t i=0; i<variants.size(); ++i)
@@ -1744,14 +1744,14 @@ is possible we throw a~|type_error|.
 
 @< Cases for type-checking and converting... @>=
 case function_call:
-{ if (e.e.call_variant->fun.kind==applied_identifier)
+{ if (e.call_variant->fun.kind==applied_identifier)
     @< Convert and |return| an overloaded function call if
-    |e.e.call_variant->fun| is not a local identifier and is known in
+    |e.call_variant->fun| is not a local identifier and is known in
     |global_overload_table| @>
   type_expr f_type=gen_func_type.copy(); // start with generic function type
-  expression_ptr fun(convert_expr(e.e.call_variant->fun,f_type));
+  expression_ptr fun(convert_expr(e.call_variant->fun,f_type));
   expression_ptr arg
-    (convert_expr(e.e.call_variant->arg,f_type.func->arg_type));
+    (convert_expr(e.call_variant->arg,f_type.func->arg_type));
   expression_ptr call (new call_expression(fun,arg));
   return conform_types(f_type.func->result_type,type,call,e);
 }
@@ -1770,8 +1770,8 @@ like the size-of operator~`\#', even in case such an operator should not occur
 in the overload table.
 
 @< Convert and |return| an overloaded function call... @>=
-{ const Hash_table::id_type id =e.e.call_variant->fun.e.identifier_variant;
-  const expr arg=e.e.call_variant->arg;
+{ const Hash_table::id_type id =e.call_variant->fun.identifier_variant;
+  const expr arg=e.call_variant->arg;
   size_t i,j; // dummies; local binding not used here
   if (not is_empty(arg) and id_context->lookup(id,i,j)==nullptr)
   { const overload_table::variant_list& variants
@@ -2392,7 +2392,7 @@ argument is produced and returned.
 
 @< Cases for type-checking and converting... @>=
 case let_expr:
-{ let lexp=e.e.let_variant;
+{ let lexp=e.let_variant;
   id_pat& pat=lexp->pattern;
   type_ptr decl_type=pattern_type(pat);
   expression_ptr arg(convert_expr(lexp->val,*decl_type));
@@ -2574,7 +2574,7 @@ how to type-check and convert the case |lambda_expr| of an |expr| constructed
 by the parser; the necessary types derived from |expression| that provide
 their implementation were already introduced.
 
-We first test if the required |type| specialises to a function type, i.e.,
+We first test if the required |type| specialises to a function type, i.,
 either it was some function type or undefined. Then we get the argument type
 |arg_type| from the function expression the parser provided. We further
 specialise the argument type of |type| to the argument type of the function
@@ -2590,7 +2590,7 @@ by popping of the bindings for the arguments.
 case lambda_expr:
 { if (not type.specialise(gen_func_type))
     throw type_error(e,gen_func_type.copy(),type.copy());
-  lambda fun=e.e.lambda_variant;
+  lambda fun=e.lambda_variant;
   id_pat& pat=fun->pattern;
   type_expr& arg_type=*fun->arg_type;
   if (not type.func->arg_type.specialise(arg_type))
@@ -2690,9 +2690,9 @@ be noticeable since (currently) no such coercions exist anyway.
 
 @< Cases for type-checking and converting... @>=
 case conditional_expr:
-{ expression_ptr c (convert_expr(e.e.if_variant->condition,bool_type));
-  expression_ptr el (convert_expr(e.e.if_variant->else_branch,type));
-  expression_ptr th (convert_expr(e.e.if_variant->then_branch,type));
+{ expression_ptr c (convert_expr(e.if_variant->condition,bool_type));
+  expression_ptr el (convert_expr(e.if_variant->else_branch,type));
+  expression_ptr th (convert_expr(e.if_variant->then_branch,type));
   return new conditional_expression(c,th,el);
 }
 
@@ -2741,7 +2741,7 @@ case).
 
 @< Cases for type-checking and converting... @>=
 case while_expr:
-{ w_loop w=e.e.while_variant;
+{ w_loop w=e.while_variant;
   expression_ptr c (convert_expr(w->condition,bool_type));
   if (type==void_type or type.specialise(row_of_type))
   { expression_ptr b
@@ -2847,7 +2847,7 @@ its a priori type.
 
 @< Cases for type-checking and converting... @>=
 case for_expr:
-{ f_loop f=e.e.for_variant;
+{ f_loop f=e.for_variant;
   bindings bind(count_identifiers(f->id));
    // for identifier(s) introduced in this loop
   type_expr in_type;
@@ -3105,7 +3105,7 @@ body.
 
 @< Cases for type-checking and converting... @>=
 case cfor_expr:
-{ c_loop c=e.e.cfor_variant;
+{ c_loop c=e.cfor_variant;
   expression_ptr count_expr(convert_expr(c->count,int_type));
   static shared_value zero=shared_value(new int_value(0));
     // avoid repeated allocation
@@ -3210,7 +3210,7 @@ represent them.
 
 @< Cases for type-checking and converting... @>=
 case cast_expr:
-{ cast c=e.e.cast_variant;
+{ cast c=e.cast_variant;
   type_expr& ctype=*c->type;
   expression_ptr p(convert_expr(c->exp,ctype));
   return conform_types(ctype,type,p,e);
@@ -3234,7 +3234,7 @@ serve as wrapper that upon evaluation will return the value again.
 
 @< Cases for type-checking and converting... @>=
 case op_cast_expr:
-{ op_cast c=e.e.op_cast_variant;
+{ op_cast c=e.op_cast_variant;
   const overload_table::variant_list& variants =
    global_overload_table->variants(c->oper);
   type_expr& ctype=*c->type;
@@ -3426,8 +3426,8 @@ way,
 
 @< Cases for type-checking and converting... @>=
 case ass_stat:
-{ Hash_table::id_type lhs=e.e.assign_variant->lhs;
-  const expr& rhs=e.e.assign_variant->rhs;
+{ Hash_table::id_type lhs=e.assign_variant->lhs;
+  const expr& rhs=e.assign_variant->rhs;
   type_p it; expression_ptr assign; size_t i,j;
   if ((it=id_context->lookup(lhs,i,j))!=nullptr)
   @/{@; expression_ptr r(convert_expr(rhs,*it));
@@ -3673,9 +3673,9 @@ distinguish different aggregate types.
 
 @< Cases for type-checking and converting... @>=
 case comp_ass_stat:
-{ Hash_table::id_type aggr=e.e.comp_assign_variant->aggr;
-  const expr& index=e.e.comp_assign_variant->index;
-  const expr& rhs=e.e.comp_assign_variant->rhs;
+{ Hash_table::id_type aggr=e.comp_assign_variant->aggr;
+  const expr& index=e.comp_assign_variant->index;
+  const expr& rhs=e.comp_assign_variant->rhs;
 @/type_p aggr_t; type_expr ind_t; type_expr comp_t;
   expression_ptr assign; size_t d,o; bool is_local;
   if ((aggr_t=id_context->lookup(aggr,d,o))!=nullptr)
@@ -3762,7 +3762,7 @@ void next_expression::evaluate(level l) const
 
 @< Cases for type-checking and converting... @>=
 case seq_expr:
-{ sequence seq=e.e.sequence_variant;
+{ sequence seq=e.sequence_variant;
   if (seq->forward!=0)
   { expression_ptr first(convert_expr(seq->first,void_type));
     expression_ptr last(convert_expr(seq->last,type));
