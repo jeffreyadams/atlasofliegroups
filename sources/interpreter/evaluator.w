@@ -1772,7 +1772,7 @@ in the overload table.
 
 @< Convert and |return| an overloaded function call... @>=
 { const Hash_table::id_type id =e.call_variant->fun.identifier_variant;
-  const expr arg=e.call_variant->arg;
+  const expr& arg=e.call_variant->arg;
   size_t i,j; // dummies; local binding not used here
   if (not is_empty(arg) and id_context->lookup(id,i,j)==nullptr)
   { const overload_table::variant_list& variants

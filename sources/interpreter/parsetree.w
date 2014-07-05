@@ -80,7 +80,7 @@ typedef std::unique_ptr<expr> expr_ptr;
 
 @ When default-constructing an |expr| we set its |kind| to |no_expr|.
 @< Methods of |expr| @>=
-expr() : kind(no_expr) @+{}
+expr();
 ~expr(); // defined below using a large |switch| statement
 
 @ While we are defining functions to parse expressions, we shall also define a
@@ -91,26 +91,60 @@ parser when popping off tokens at syntax errors.
 @< Declarations of functions for the parser @>=
 void destroy_expr(expr_p e);
 
-@~The definition of |destroy_expr| is distributed among the different
-variants of |expr|.
+@~The definition of |destroy_expr| just calls |delete|, which will invoke the
+destructor of the |expr| pointed to.
 
 @< Definitions of functions for the parser @>=
-void destroy_expr_body(const expr& e)
-{@; switch (e.kind)
-  {@; @< Cases for destroying an expression |e| @>
-    @+ case no_expr: {}
+void destroy_expr(expr_p p) @+ {@; delete p; }
+void destroy_expr_body(const expr& e) @+ {@; e.~expr(); }
+
+@ The actual definition of the destructor is distributed among the different
+variants of |expr|.
+
+@< Definitions of functions not for the parser @>=
+expr::expr() : kind(no_expr)
+@+{}
+
+expr::~expr()
+{
+  if (kind!=no_expr)
+  {
+    expr& e = *this;
+    switch (kind)
+    {@; @< Cases for destroying an expression |e| @>
+      @+ case no_expr: {}
+    }
+    kind = no_expr;
   }
 }
 
-void destroy_expr(expr_p p)
-{@; destroy_expr_body(*p);
-  delete p;
+@ We define a move constructor and move assignment; our first purpose is to
+eliminate the need for copying as much as possible by detecting now forbidden
+copy constructions hidden in the code.
+
+@< Methods of |expr| @>=
+void set_from (expr& other);
+expr (expr&& other);
+void operator= (expr&& other);
+
+@ For now we use that |expr| is trivially copyable; this should be changed.
+
+@h <cstring>
+
+@< Definitions of functions not for... @>=
+void expr::set_from (expr& other)
+{@; std::memcpy(this,&other,sizeof(expr)); other.kind = no_expr; }
+
+expr::expr (expr&& other) : @[ expr () @]
+{@; set_from(other); }
+
+void expr::operator= (expr&& other)
+{
+  if (this!=&other)
+  {@; this->~expr();
+    set_from(other);
+  }
 }
-
-@ @< Definitions of functions not for the parser @>=
-expr::~expr()
-{}
-
 
 @ In parallel, we also define a function to print the expressions once parsed;
 this provides a useful test to see if what we have read in corresponds to what
@@ -118,13 +152,13 @@ was typed, and this functionality will also be used in producing error
 messages.
 
 @< Declaration of functions not for the parser @>=
-std::ostream& operator<< (std::ostream& out, expr e);
+std::ostream& operator<< (std::ostream& out, const expr& e);
 
 @~The definitions of this instance of the operator~`|<<|' are also distributed
 among the different variants of |expr| that we shall define.
 
 @< Definitions of functions not for the parser @>=
-std::ostream& operator<< (std::ostream& out, expr e)
+std::ostream& operator<< (std::ostream& out, const expr& e)
 {@; switch (e.kind)
   {@; @< Cases for printing an expression |e| @>
     @+ case no_expr: {}
@@ -365,8 +399,8 @@ combined, since whether or not the list should be reversed can only be
 understood when the grammar rules are given.
 
 @< Definitions of functions for the parser @>=
-expr_list mk_exprlist_node(expr e, expr_list l)
-{@; expr_list n=new exprlist_node; n->e=e; n->next=l; return n; }
+expr_list mk_exprlist_node(expr& e, expr_list l)
+{@; expr_list n=new exprlist_node; n->e=std::move(e); n->next=l; return n; }
 expr_list make_exprlist_node(expr_p e, expr_list l)
   { expr_ptr saf(e); return mk_exprlist_node(*e,l); }
 
@@ -469,7 +503,7 @@ attempt to reconstruct infix formulae.
 @< Cases for printing... @>=
 case function_call:
 { app a=e.call_variant;
-  expr fun=a->fun,arg=a->arg;
+  const expr& fun=a->fun; const expr& arg=a->arg;
   if (fun.kind==applied_identifier) out << fun;
   else out << '(' << fun << ')';
   if (arg.kind==tuple_display) out << arg;
@@ -505,16 +539,16 @@ convenient here that |wrap_tuple_display| does not reverse the list, since
 this is already done by the parser before calling |make_application_node|.
 
 @< Definitions of functions for the parser @>=
-expr mk_application_node(expr f, expr_list args)
-{ app a=new application_node; a->fun=f;
+expr mk_application_node(expr&& f, expr_list args)
+{ app a=new application_node; a->fun=std::move(f);
   if (args!=NULL && args->next==NULL) // a single argument
-  {@; a->arg=args->e; delete args; }
+  {@; a->arg=std::move(args->e); delete args; }
   else a->arg=wrp_tuple_display(args);
   expr result; result.kind=function_call; result.call_variant=a;
   return result;
 }
 expr_p make_application_node(expr_p f, expr_list args)
- { expr_ptr saf(f); return new expr(mk_application_node(*f,args)); }
+ { expr_ptr saf(f); return new expr(mk_application_node(std::move(*f),args)); }
 
 @ We shall frequently need to form a function application where the function
 is accessed by an applied identifier and the argument is either a single
@@ -529,17 +563,17 @@ expr_p make_binary_call(id_type name, expr_p x, expr_p y);
 list that will be immediately destroyed,
 
 @< Definitions of functions for the parser @>=
-expr mk_unary_call(id_type name, expr arg)
+expr mk_unary_call(id_type name, expr& arg)
 { app a=new application_node;
   a->fun=mk_applied_identifier(name);
-  a->arg=arg;
+  a->arg=std::move(arg);
   expr result; result.kind=function_call; result.call_variant=a;
   return result;
 }
 expr_p make_unary_call(id_type name, expr_p arg)
  { expr_ptr saf(arg); return new expr(mk_unary_call(name,*arg)); }
 @)
-expr mk_binary_call(id_type name, expr x, expr y)
+expr mk_binary_call(id_type name, expr& x, expr& y)
 { expr_list args=mk_exprlist_node(x,mk_exprlist_node(y,NULL));
   return mk_application_node(mk_applied_identifier(name),args);
 }
@@ -639,10 +673,8 @@ linked list, which can be used without difficulty from the parser; the link
 points to an operator further to the left in the formula, whence it is called
 |prev| rather than the more usual~|next|. To implement the above solution for
 unary operators, we allow for the very first pending operator to not have any
-left subtree; since it is last in the list, we can indicate such absence
-without adding data fields or a dummy case for |expr|, by replacing the final
-null pointer by another exceptional value. Thus this possibility is not
-evident in the type declaration.
+left subtree; the expression is left of type |no_expr|, which can be tested to
+detect the end of the list.
 
 Postfix operators are quite rare in mathematics (the factorial exclamation
 mark is the clearest example, though certain exponential notations like the
@@ -653,26 +685,12 @@ comparisons were needed, they could be handled by a new function operating in
 the list of partial formulae, and need not be taken into account in the data
 structure of that list itself. So here is that structure:
 
-
 @< Structure and typedef declarations... @>=
 typedef struct partial_formula* form_stack;
 struct partial_formula
 {@; expr left_subtree; id_type op; int prio;
   form_stack prev;
 };
-
-@ As mentioned above, we need an exceptional value of type |form_stack| to
-indicate a pending initial unary operator. For this we use the address of a
-dummy static variable.
-
-@< Declarations for the parser @>=
-
-extern struct partial_formula dummy_formula;
-const form_stack unary_marker=&dummy_formula;
-
-@~The |dummy_formula| needs to be allocated, even if it is never accessed.
-@< Definitions of constants... @>=
-struct partial_formula dummy_formula;
 
 @ We define the following functions operating on partial formulae: two to
 start them out with a binary or unary operator, the principal one to extend
@@ -691,15 +709,15 @@ void destroy_formula(form_stack s);
 form_stack start_formula (expr_p e, Hash_table::id_type op, int prio)
 { expr_ptr saf(e);
   form_stack result = new partial_formula;
-  result->left_subtree=*e; result->op=op; result->prio=prio;
+  result->left_subtree=std::move(*e); result->op=op; result->prio=prio;
   result->prev=NULL;
   return result;
 }
 @)
 form_stack start_unary_formula (id_type op, int prio)
 { form_stack result = new partial_formula;
-  result->op=op; result->prio=prio;
-  result->prev=unary_marker;
+  result->op=op; result->prio=prio; // leave |result->left_subtree| empty
+  result->prev=NULL;
   return result;
 }
 
@@ -709,7 +727,7 @@ indicated above. It turns out |start_formula| could be replaced by a call to
 
 @< Definitions of functions for the parser @>=
 form_stack extend_formula (form_stack pre, expr_p ee,id_type op, int prio)
-{ form_stack result=NULL; expr_ptr saf(ee); expr e = *ee;
+{ form_stack result=NULL; expr_ptr saf(ee); expr& e = *ee;
   while (pre!=NULL and (pre->prio>prio or pre->prio==prio and prio%2==0))
   { delete result; result=pre; // clean up, but holding on to one node
     @< Put |e| as right subtree into rightmost element of |pre|, and replace
@@ -718,25 +736,19 @@ form_stack extend_formula (form_stack pre, expr_p ee,id_type op, int prio)
 
   if (result==NULL)
     result=new partial_formula; // allocate if no nodes were combined
-  result->left_subtree=e; result->op=op; result->prio=prio;
+  result->left_subtree=std::move(e); result->op=op; result->prio=prio;
   result->prev=pre; return result;
 }
 
-@ In case of an initial unary operator we ignore the unset |left_subtree|
-field. The other difference is that we advance by setting |pre=NULL| so that
-the loop will terminate correctly (alternative one could say |break|, but that
-would break the reuse we intend to make of this module in the following
-section).
+@ Here we make either a unary or a binary operator call.
 
 @< Put |e| as right subtree into rightmost element of |pre|...@>=
-if (pre->prev!=unary_marker)
-@/{@; e = mk_binary_call(pre->op,pre->left_subtree,e);
+{ if (pre->left_subtree.kind==no_expr)
+    e = mk_unary_call(pre->op,e); // apply initial unary operator
+  else
+    e = mk_binary_call(pre->op,pre->left_subtree,e);
   pre=pre->prev;
 }
-else
-{@; e = mk_unary_call(pre->op,e);
-  pre=NULL;
-} // apply initial unary operator
 
 @ Wrapping up a formula is similar to the initial part of |extend_formula|,
 but with an infinitely low value for the ``current priority'' |prio|. So we
@@ -744,21 +756,23 @@ can reuse the main part of the loop of |extend_formula|, with just a minor
 modification to make sure all nodes get cleaned up after use.
 
 @< Definitions of functions for the parser @>=
-expr nd_formula (form_stack pre, expr e)
+expr nd_formula (form_stack pre, expr& e)
 { while (pre!=NULL)
   { form_stack t=pre;
     @< Put |e| as right subtree into rightmost element of |pre|...@>
     delete t;
   }
-  return e;
+  return std::move(e);
 }
 expr_p end_formula (form_stack pre, expr_p e)
-{ expr_ptr saf(e); return new expr(nd_formula(pre,*e)); }
+{@; expr_ptr ee(e);
+  return new expr(nd_formula(pre,*e));
+}
 
 @ Destroying a formula stack is straightforward.
 @< Definitions of functions for the parser @>=
 void destroy_formula(form_stack s)
-{@; while (s!=NULL and s!=unary_marker)
+{@; while (s!=NULL)
   {@; form_stack t=s; s=s->prev; delete t;
   }
 }
@@ -978,19 +992,19 @@ cleaning up in the code below should also be removed.
 let_list make_let_node(struct id_pat pattern, expr_p val)
 { expr_ptr saf(val);
   let_list l=new let_node;
-  l->pattern=pattern; l->val=*val; l->next=NULL;
+  l->pattern=pattern; l->val=std::move(*val); l->next=NULL;
   return l;
 }
 @)
 let_list append_let_node(let_list prev, let_list cur)
 {@; cur->next=prev; return cur; }
 @)
-expr mk_let_expr_node(let_list decls, expr body)
-{ let l=new let_expr_node; l->body=body;
+expr mk_let_expr_node(let_list decls, expr& body)
+{ let l=new let_expr_node; l->body=std::move(body);
   expr result; result.kind=let_expr; result.let_variant=l;
   try
   { if (decls->next==NULL) // single declaration
-    @/{@; l->pattern=decls->pattern; l->val=decls->val;
+    @/{@; l->pattern=decls->pattern; l->val=std::move(decls->val);
       delete decls;
     }
     else
@@ -1167,9 +1181,9 @@ field is the easiest way to obtain an isolated |type_expr|. After the
 copy, destruction of |type_l| deletes the original |type_node|.
 
 @< Definitions of functions for the parser @>=
-expr mk_lambda_node(patlist pat_l, raw_type_list raw, expr body)
+expr mk_lambda_node(patlist pat_l, raw_type_list raw, expr& body)
 { type_list type_l(raw); // smart pointer might clean up a node
-  lambda fun=new lambda_node; fun->body=body;
+  lambda fun=new lambda_node; fun->body=std::move(body);
   if (not type_l.empty() and type_l.at_end(++type_l.begin()))
   { fun->pattern=pat_l->body; delete pat_l; // clean up node
     fun->arg_type = new type_expr(std::move(type_l.front()));
@@ -1239,9 +1253,9 @@ expr_p make_conditional_node(expr_p c, expr_p t, expr_p e);
 @~It is entirely straightforward.
 
 @< Definitions of functions for the parser @>=
-expr mk_conditional_node(expr c, expr t, expr e)
-{ cond n=new conditional_node; n->condition=c;
-  n->then_branch=t; n->else_branch=e;
+expr mk_conditional_node(expr& c, expr& t, expr& e)
+{ cond n=new conditional_node; n->condition=std::move(c);
+  n->then_branch=std::move(t); n->else_branch=std::move(e);
 @/expr result; result.kind=conditional_expr; result.if_variant=n;
   return result;
 }
@@ -1351,25 +1365,27 @@ expr_p make_cfor_node(id_type id, expr_p count, expr_p bound, short up, expr_p b
 @~They are quite straightforward, as usual.
 
 @< Definitions of functions for the parser @>=
-expr mk_while_node(expr c, expr b)
-{ w_loop w=new while_node; w->condition=c; w->body=b;
+expr mk_while_node(expr& c, expr& b)
+{ w_loop w=new while_node; w->condition=std::move(c); w->body=std::move(b);
 @/expr result; result.kind=while_expr; result.while_variant=w;
   return result;
 }
 expr_p make_while_node(expr_p c, expr_p b)
  { expr_ptr saf0(c),saf1(b); return new expr(mk_while_node(*c,*b)); }
 
-expr mk_for_node(struct id_pat id, expr ip, expr b)
-{ f_loop f=new for_node; f->id=id; f->in_part=ip; f->body=b;
+expr mk_for_node(struct id_pat id, expr& ip, expr& b)
+{ f_loop f=new for_node;
+  f->id=id; f->in_part=std::move(ip); f->body=std::move(b);
 @/expr result; result.kind=for_expr; result.for_variant=f;
   return result;
 }
 expr_p make_for_node(struct id_pat id, expr_p ip, expr_p b)
  { expr_ptr saf0(ip),saf1(b); return new expr(mk_for_node(id,*ip,*b)); }
 
-expr mk_cfor_node(id_type id, expr count, expr bound, short up, expr b)
-{ c_loop c=new cfor_node; c->id=id; c->count=count; c->bound=bound;
-  c->up=up; c->body=b;
+expr mk_cfor_node(id_type id, expr& count, expr& bound, short up, expr& b)
+{ c_loop c=new cfor_node;
+  c->id=id; c->count=std::move(count); c->bound=std::move(bound);
+  c->up=up; c->body=std::move(b);
 @/expr result; result.kind=cfor_expr; result.cfor_variant=c;
   return result;
 }
@@ -1413,7 +1429,7 @@ parentheses directly inside the brackets.
 @< Cases for printing... @>=
 case subscription:
 { sub s=e.subscription_variant; out << s->array << '[';
-  expr i=s->index;
+  const expr& i=s->index;
   if (i.kind!=tuple_display) out << i;
   else
   { expr_list l=i.sublist;
@@ -1446,8 +1462,8 @@ expr_p make_subscription_node(expr_p a, expr_p i);
 @~This is straightforward, as usual.
 
 @< Definitions of functions for the parser @>=
-expr mk_subscription_node(expr a, expr i)
-{ sub s=new subscription_node; s->array=a; s->index=i;
+expr mk_subscription_node(expr& a, expr& i)
+{ sub s=new subscription_node; s->array=std::move(a); s->index=std::move(i);
   expr result; result.kind=subscription; result.subscription_variant=s;
   return result;
 }
@@ -1494,8 +1510,8 @@ expr_p make_cast(type_p type, expr_p exp);
 @~No surprises here.
 
 @< Definitions of functions for the parser@>=
-expr mk_cast(type_p type, expr exp)
-{ cast c=new cast_node; c->type=type; c->exp=exp;
+expr mk_cast(type_p type, expr& exp)
+{ cast c=new cast_node; c->type=type; c->exp=std::move(exp);
 @/ expr result; result.kind=cast_expr; result.cast_variant=c;
    return result;
 }
@@ -1601,8 +1617,8 @@ expr_p make_assignment(id_type lhs, expr_p rhs);
 homework assignment made).
 
 @< Definitions of functions for the parser@>=
-expr mk_assignment(id_type lhs, expr rhs)
-{ assignment a=new assignment_node; a->lhs=lhs; a->rhs=rhs;
+expr mk_assignment(id_type lhs, expr& rhs)
+{ assignment a=new assignment_node; a->lhs=lhs; a->rhs=std::move(rhs);
 @/ expr result; result.kind=ass_stat; result.assign_variant=a;
    return result;
 }
@@ -1659,12 +1675,11 @@ expr_p make_comp_ass(expr_p lhs, expr_p rhs);
 @~Here we have to take the left hand side apart a bit, and clean up its node.
 
 @< Definitions of functions for the parser@>=
-expr mk_comp_ass(expr lhs, expr rhs)
+expr mk_comp_ass(expr& lhs, expr& rhs)
 { comp_assignment a=new comp_assignment_node;
 @/a->aggr=lhs.subscription_variant->array.identifier_variant;
-  a->index=lhs.subscription_variant->index;
-  delete lhs.subscription_variant;
-  a->rhs=rhs;
+  a->index=std::move(lhs.subscription_variant->index);
+  a->rhs=std::move(rhs);
 @/expr result; result.kind=comp_ass_stat; result.comp_assign_variant=a;
   return result;
 }
@@ -1728,9 +1743,9 @@ expr_p make_sequence(expr_p first, expr_p last, int forward);
 @~It does what one would expect it to.
 
 @< Definitions of functions for the parser @>=
-expr mk_sequence(expr first, expr last, int forward)
-{ sequence s=new sequence_node; s->first=first; s->last=last;
-  s->forward=forward;
+expr mk_sequence(expr& first, expr& last, int forward)
+{ sequence s=new sequence_node;
+  s->first=std::move(first); s->last=std::move(last); s->forward=forward;
 @/ expr result; result.kind=seq_expr; result.sequence_variant=s;
    return result;
 }

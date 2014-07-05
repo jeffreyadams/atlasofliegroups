@@ -1539,9 +1539,10 @@ table.
 bool coerce(const type_expr& from_type, const type_expr& to_type,
             expression_ptr& e);
 expression conform_types
-  (const type_expr& found, type_expr& required, expression_ptr d, expr e);
+  (const type_expr& found, type_expr& required
+  , expression_ptr d, const expr& e);
 const conversion_record* row_coercion(const type_expr& final_type,
-                                            type_expr& component_type);
+				     type_expr& component_type);
 void coercion(const type_expr& from,
               const type_expr& to,
               const char* s, conversion_info::conv_f f);
@@ -1754,7 +1755,7 @@ be destructed before the error is caught.
 
 @< Function def... @>=
 expression conform_types
-(const type_expr& found, type_expr& required, expression_ptr d, expr e)
+(const type_expr& found, type_expr& required, expression_ptr d, const expr& e)
 { if (not required.specialise(found) and not coerce(found,required,d))
     throw type_error(e,found.copy(),required.copy());
   return d.release();
@@ -1936,20 +1937,27 @@ public:
 };
 
 @ We derive from |program_error| an exception type |expr_error| that stores in
-addition to the error message an expression to which the message applies. It
-is declared a |struct|, as we leave it up to the |catch| code to incorporate
-the offending expression in a message in addition to the one produced by
-|what()|. For this type no virtual methods are defined at all, in particular
-we do not need a virtual destructor: the (automatically generated) destruction
-code that takes care of destructing |offender| is not called through a vtable
-(which in fact is absent). It is not quite clear whether this explains that
-the compiler does not complain here that the undeclared destructor has a too
-loose (because absent) |throw| specification, while it would for
-|program_error|.
+addition to the error message a reference t an expression to which the message
+applies. Placing a reference in an error object may seem hazardous, because the
+error might terminate the lifetime of the object referred to, but in fact it
+is safe: all |expr| objects are constructed in dynamic memory during parsing,
+and destructed at the disposal of the now translated expression at the end of
+the main interpreter loop; all throwing of |expr_error| (or derived types)
+happens after the parser has finished, and the corresponding |catch| happens
+in the main loop before disposal of the expression, so the reference certainly
+survives the lifetime of the |expr_error| object.
+
+The error type is declared a |struct|, as we leave it up to the |catch| code
+to incorporate the offending expression in a message in addition to the one
+produced by |what()|. In fact no virtual methods are defined at all, in
+particular we do not need a virtual destructor; there is nothing to destruct.
+It is not quite clear whether this explains that the compiler does not
+complain here that the undeclared destructor has a too loose (because absent)
+|throw| specification, while it would for |program_error|.
 
 @< Type definitions @>=
 struct expr_error : public program_error
-{ expr offender; // the subexpression causing a problem
+{ const expr& offender; // the subexpression causing a problem
 @)
   expr_error (const expr& e,const std::string& s) throw()
     : program_error(s),offender(e) @+{}
@@ -1974,12 +1982,12 @@ struct type_error : public expr_error
 };
 
 @ A copy or move constructor for |type_error| must be defined in order to be
-able to use it for throwing. The latter is very straightforward as no type
+able to use it for throwing. The latter is very straightforward as no types
 have to be duplicated, so we choose that option.
 
 @< Function definitions @>=
 type_error::type_error(type_error&& e)
- : expr_error(e)
+ : expr_error(e) // expression is passed by reference
  , actual(std::move(e.actual))
  , required(std::move(e.required))
 @+{}
