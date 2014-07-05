@@ -279,6 +279,7 @@ expression convert_expr(const expr& e, type_expr& type)
   {
    @\@< Cases for type-checking and converting expression~|e| against
    |type|, all of which either |return| or |throw| a |type_error| @>
+   case no_expr: {}
   }
   return nullptr; // keep compiler happy
 }

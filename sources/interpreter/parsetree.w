@@ -64,53 +64,41 @@ this to placing row pointers
 @< Declarations for the parser @>=
 @< Type declarations needed in definition of |struct expr@;| @>@;
 
-enum expr_kind @+ { @< Enumeration tags for |expr_kind| @> @;@; };
+enum expr_kind @+
+ { @< Enumeration tags for |expr_kind| @>@;@; @+no_expr };
 struct expr {
-  expr_kind kind; 
+  expr_kind kind;
   union {@; @< Variants of |union expru @;| @>@; };
+@)
+  @< Methods of |expr| @>@;
 };
 typedef expr* expr_p; // raw pointer type for use on parser stack
 typedef std::unique_ptr<expr> expr_ptr;
-
+@)
 @< Structure and typedef declarations for types built upon |expr| @>@;
-
 @< Declarations of functions for the parser @>@;
 
-@ While we are defining functions to parse expressions, we shall also define
-a function to print the expressions once parsed; this provides a useful test
-to see if what we have read in corresponds to what was typed, and this
-functionality will also be used in producing error messages.
+@ When default-constructing an |expr| we set its |kind| to |no_expr|.
+@< Methods of |expr| @>=
+expr() : kind(no_expr) @+{}
+~expr(); // defined below using a large |switch| statement
 
-@< Declaration of functions not for the parser @>=
-std::ostream& operator<< (std::ostream& out, expr e);
-
-@~The definitions of this instance of the operator~`|<<|' are distributed
-among the different variants of |expr| that we shall define.
-
-@< Definitions of functions not for the parser @>=
-std::ostream& operator<< (std::ostream& out, expr e)
-{@; switch (e.kind)
-  {@; @< Cases for printing an expression |e| @>
-  }
-  return out;
-}
-
-
-@ In parallel, we also define a function |destroy_expr| to clean up the memory
-occupied by an expression. It is classified as a parsing function since it is
-called amongst others by the parser when popping off tokens at syntax errors.
+@ While we are defining functions to parse expressions, we shall also define a
+function |destroy_expr| to clean up the memory occupied by an expression. It
+is classified as a parsing function since it is called amongst others by the
+parser when popping off tokens at syntax errors.
 
 @< Declarations of functions for the parser @>=
-void destroy_expr_body(const expr& e);
 void destroy_expr(expr_p e);
 
-@~The definition of |destroy_expr| is also distributed among the different
+@~The definition of |destroy_expr| is distributed among the different
 variants of |expr|.
 
 @< Definitions of functions for the parser @>=
 void destroy_expr_body(const expr& e)
-{ switch (e.kind)
+{@; switch (e.kind)
   {@; @< Cases for destroying an expression |e| @>
+    @+ case no_expr: {}
   }
 }
 
@@ -118,6 +106,32 @@ void destroy_expr(expr_p p)
 {@; destroy_expr_body(*p);
   delete p;
 }
+
+@ @< Definitions of functions not for the parser @>=
+expr::~expr()
+{}
+
+
+@ In parallel, we also define a function to print the expressions once parsed;
+this provides a useful test to see if what we have read in corresponds to what
+was typed, and this functionality will also be used in producing error
+messages.
+
+@< Declaration of functions not for the parser @>=
+std::ostream& operator<< (std::ostream& out, expr e);
+
+@~The definitions of this instance of the operator~`|<<|' are also distributed
+among the different variants of |expr| that we shall define.
+
+@< Definitions of functions not for the parser @>=
+std::ostream& operator<< (std::ostream& out, expr e)
+{@; switch (e.kind)
+  {@; @< Cases for printing an expression |e| @>
+    @+ case no_expr: {}
+  }
+  return out;
+}
+
 
 @*1 Atomic expressions.
 The simplest expressions are atomic constants, which we shall call
