@@ -133,14 +133,15 @@ instance between a list of integers and a vector value (this is in fact the
 only way the user can explicitly construct vector values). However, both
 situations (and some intermediate ones) are handled by a single function
 |convert_expr|, which in addition builds (upon success) an |expression| value.
-As arguments |convert_expr| takes an |expr e@;| value produced by the parser,
-and a type in the form of a non-constant reference |type_expr& type@;|. If
-|type| is undefined initially, then it will be set to the type derived for the
-expression; if it is defined then it may guide the conversion process, and the
-type eventually found will have to match it. It could also be that |type| is
-initially partially defined (such as `\.{(int,*)}', meaning ``pair on an
-integer and something''), in which case derivation and testing functionality
-are combined; this gives flexibility to |convert_expr|.
+As arguments |convert_expr| takes an |const expr& e@;| referring to a value
+produced by the parser, and a type in the form of a non-constant reference
+|type_expr& type@;|. If |type| is undefined initially, then it will be set to
+the type derived for the expression; if it is defined then it may guide the
+conversion process, and the type eventually found will have to match it. It
+could also be that |type| is initially partially defined (such as
+`\.{(int,*)}', meaning ``pair on an integer and something''), in which case
+derivation and testing functionality are combined; this gives flexibility to
+|convert_expr|.
 
 Upon successful completion, |type| will usually have become a completely
 defined. The object |type| should be owned by the caller, who will
@@ -324,7 +325,7 @@ void denotation::evaluate(level l) const
 @+{@; push_expanded(l,denoted_value); }
 
 @ Here are the first examples of the conversions done in |convert_expr|. Each
-time we extract a \Cpp\ value from the |expr e@;| returned by the parser,
+time we extract a \Cpp\ value from the |expr| produced by the parser,
 construct and |new|-allocate a \.{realex} value (for instance |int_value|)
 from it, get a smart pointer to it, and pass that to the |denotation|
 constructor

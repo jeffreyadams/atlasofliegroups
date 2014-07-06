@@ -183,18 +183,18 @@ tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3); }
 ;
 
 or_expr : and_expr OR or_expr
-	  { $$ = make_conditional_node($1,make_bool_denotation(1),$3); }
+	  { $$ = make_conditional_node($1,make_bool_denotation(true),$3); }
 	| and_expr
 ;
 
 and_expr: not_expr AND and_expr
-	  { $$ = make_conditional_node($1,$3,make_bool_denotation(0)); }
+	  { $$ = make_conditional_node($1,$3,make_bool_denotation(false)); }
 	| not_expr
 ;
 
 not_expr: NOT secondary
-	  { $$ = make_conditional_node($2,make_bool_denotation(0),
-					  make_bool_denotation(1)); }
+	  { $$ = make_conditional_node($2,make_bool_denotation(false),
+					  make_bool_denotation(true)); }
 	| secondary
 ;
 
@@ -236,10 +236,10 @@ comprim: subscription
 	| primary '(' commalist_opt ')'
 		{ $$=make_application_node($1,reverse_expr_list($3)); }
 	| INT { $$ = make_int_denotation($1); }
-	| TRUE { $$ = make_bool_denotation(1); }
-	| FALSE { $$ = make_bool_denotation(0); }
+	| TRUE { $$ = make_bool_denotation(true); }
+	| FALSE { $$ = make_bool_denotation(false); }
 	| STRING
-        | '$' { $$->kind=last_value_computed; }
+        | '$' { $$=make_dollar(); }
 	| IF iftail { $$=$2; }
 	| WHILE exp DO exp OD { $$=make_while_node($2,$4); }
 	| FOR pattern IN exp DO exp OD

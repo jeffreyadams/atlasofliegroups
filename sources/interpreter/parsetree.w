@@ -24,6 +24,7 @@ declaration is separated fro historic reasons only.
 
 #include <iostream>
 #include <memory>
+#include <string>
 #include "buffer.h" // for |Hash_table|
 #include "sl_list.h"
 namespace atlas
@@ -129,11 +130,15 @@ void operator= (expr&& other);
 
 @ For now we use that |expr| is trivially copyable; this should be changed.
 
-@h <cstring>
-
 @< Definitions of functions not for... @>=
 void expr::set_from (expr& other)
-{@; std::memcpy(this,&other,sizeof(expr)); other.kind = no_expr; }
+{ assert(kind==no_expr);
+  switch (kind=other.kind)
+    {@; @< Cases for copying an expression from |other| @>
+       @+ case no_expr: {}
+    }
+  other.kind = no_expr;
+}
 
 expr::expr (expr&& other) : @[ expr () @]
 {@; set_from(other); }
@@ -167,89 +172,97 @@ std::ostream& operator<< (std::ostream& out, const expr& e)
 }
 
 
-@*1 Atomic expressions.
-The simplest expressions are atomic constants, which we shall call
-denotations. There are recognised by the scanner, and either the scanner or
-the parser will build an appropriate node for them, which just stores the
-constant value denoted. We need no structures here, since the value itself
-will fit comfortably inside the |struct expr@;|. The fact that strings are
-stored as a character pointer, which should be produced using |new[]| by the
-caller of the functions described here, is a legacy of the restriction
-that only types representable in \Cee\ could be used originally.
+@*1 Denotations. The simplest expressions are atomic constants, which we shall
+call denotations. There are recognised by the scanner, and either the scanner
+or the parser will build an appropriate node for them, which just stores the
+constant value denoted. For integer and Boolean denotations, the value itself
+will fit comfortably inside the |struct expr@;|, and moreover we can share a
+variant because the tag will tell whether to interpret it is integer or
+Boolean. For strings we store a |std::string|, which is more complicated than
+the |char*@[@]@;| that we used to store, but it is instructive for how the
+special member functions of |expr| should handle non-POD variants, which can
+neither be assigned to non-initialised memory  without calling a constructor,
+nor be left in memory that will be reclaimed without calling a destructor.
 
 @< Variants... @>=
 
 int int_denotation_variant;
-char* str_denotation_variant;
+std::string str_denotation_variant;
 
-@~But each type of denotation has a tag identifying it.
+@~Each of the three types of denotation has a tag identifying it.
 
 @< Enumeration tags for |expr_kind| @>=
 integer_denotation, string_denotation, boolean_denotation, @[@]
 
-@ To print an integer denotation we just print its variant field; for string
-denotations we do the same but enclosed in quotes, while for Boolean
-denotations we reproduce the keyword that gives the denotation.
+@ For each of these variants there is a corresponding constructor that
+placement-constructs the constant value into that variant. For the integer and
+Boolean case we might alternatively have assigned to the field, bit not for
+the string variant.
 
-@< Cases for printing... @>=
-case integer_denotation: out << e.int_denotation_variant; break;
-case string_denotation:
-  out << '"' << e.str_denotation_variant << '"'; break;
-case boolean_denotation:
-  out << (e.int_denotation_variant!=0 ? "true" : "false"); break;
+@< Methods of |expr| @>=
+  expr(int n) : kind(integer_denotation), int_denotation_variant(n) @+{}
+  expr(bool b)
+   : kind(boolean_denotation), int_denotation_variant(b ? 1 : 0) @+{}
+  expr(std::string&& s)
+   : kind(string_denotation)
+   , str_denotation_variant(std::move(s)) @+{}
 
-@~When a string denotation is destroyed, we free the string that was created
-by the lexical scanner.
+@~For integer and Boolean denotations there is nothing to destroy. For string
+denotations however we must destroy the |str::string| object. It was quite a
+puzzle to find the right syntax for that.
 
 @< Cases for destroying... @>=
 case integer_denotation: case boolean_denotation: break;
-case string_denotation: delete[] e.str_denotation_variant; break;
+case string_denotation:
+  e.str_denotation_variant.std::string::~string(); break;
+
+@ In the |expr::set_from| method we change variants both in |*this| (which was
+|no_expr|) and in |other| (which was |no_expr|). This means that for non-POD
+type we must combine construction into a variant of |*this| and a destruction
+of that variant of |other|. We use move construction for efficiency, and it
+will probably leave an empty shell to be destructed, but this does not mean we
+can omit the destruction.
+
+@< Cases for copying... @>=
+  case integer_denotation:
+  case boolean_denotation:
+    int_denotation_variant = other.int_denotation_variant; break;
+  case string_denotation:
+    new (&str_denotation_variant)
+    std::string(std::move(other.str_denotation_variant));
+    other.str_denotation_variant.std::string::~string();
+  break;
 
 @ To build the node for denotations, we provide the functions below.
 
 @< Declarations of functions for the parser @>=
 expr_p make_int_denotation (int val);
 expr_p make_string_denotation(char* val);
-expr_p make_bool_denotation(int val);
+expr_p make_bool_denotation(bool val);
 
 @~The definition of these functions is quite trivial, as will be typical for
 node-building functions.
 
 @< Definitions of functions for the parser @>=
-expr mk_int_denotation (int val)
-{ expr result; result.kind=integer_denotation;
-@/result.int_denotation_variant=val; return result;
-}
 expr_p make_int_denotation (int val)
-  { return new expr(mk_int_denotation(val)); }
+  @+{@; return new expr(val); }
 
-expr mk_string_denotation(char* val)
-{ expr result; result.kind=string_denotation;
-@/result.str_denotation_variant=val; return result;
-}
+expr_p make_bool_denotation(bool val)
+  @+{@; return new expr(val); }
+
 expr_p make_string_denotation(char* val)
- { return new expr(mk_string_denotation(val)); }
+ {@; std::string s(val); delete[] val; return new expr(std::move(s)); }
 
-expr mk_bool_denotation(int val)
-{ expr result; result.kind=boolean_denotation;
-@/result.int_denotation_variant=val; return result;
-}
-expr_p make_bool_denotation(int val)
- { return new expr(mk_bool_denotation(val)); }
+@ To print an integer denotation we just print its variant field; for Boolean
+denotations we reproduce the keyword that gives the denotation, while for string
+denotations we print the stored string enclosed in quotes.
 
-@ An expression that behaves somewhat like a denotation is `\.\$', which
-stands for the last value computed. This leads to an expression type with no
-associated value. The node for it will be directly created in the parser.
-
-@< Enumeration tags for |expr_kind| @>=
-last_value_computed, @[@]
-
-@~Like for integer and boolean denotations, there is nothing to destroy here.
-@< Cases for destroying... @>=
-case last_value_computed: break;
-
-@~@< Cases for printing... @>=
-case last_value_computed: out << '$'; @q$@> break;
+@< Cases for printing... @>=
+case integer_denotation: out << e.int_denotation_variant; break;
+case boolean_denotation:
+  out << (e.int_denotation_variant!=0 ? "true" : "false"); break;
+case string_denotation:
+  out << '"' << e.str_denotation_variant << '"'; break;
 
 @ Another atomic expression is an applied identifier. They use the type
 |Hash_table::id_type| (a small integer type) of indices into the table of
@@ -258,34 +271,29 @@ identifier names, which we lift out of that class by using a |typedef|.
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef Hash_table::id_type id_type;
 
-@ For identifiers we just store their code.
+@~Their tag is |applied_identifier|. An expression that behaves somewhat
+similarly is `\.\$', which stands for the last value computed.
+
+@< Enumeration tags for |expr_kind| @>=
+applied_identifier,
+last_value_computed, @[@]
+
+@ For identifiers we just store their code; for |last_value_computed| nothing
+at all.
 @< Variants... @>=
 id_type identifier_variant;
 
-@~Their tag is |applied_identifier|.
-
-@< Enumeration tags for |expr_kind| @>=
-applied_identifier, @[@]
-
-@ To print an applied identifier, we look it up in the main hash table.
-
-@< Cases for printing... @>=
-case applied_identifier:
-  out << main_hash_table->name_of(e.identifier_variant);
-break;
-
-@~For destroying an applied identifier, there is nothing to do.
-
-@< Cases for destroying... @>=
-case applied_identifier: break;
-
-@ To build the node for applied identifiers we provide the function
-|make_applied_identifier|.
+@ Rather than having separate constructors for these variants, which would be
+ambiguous with constructors already defined, we build these variants directly
+in the following functions.
 
 @< Declarations of functions for the parser @>=
 expr_p make_applied_identifier (id_type id);
+expr_p make_dollar();
 
-@~The definition of |make_applied_identifier| is entirely trivial.
+@~In spite of the absence of dedicated constructors, these function have
+rather simple definitions. We split off a function |mk_applied_identifier|
+that is like a constructor, because it will be serve again below.
 
 @< Definitions of functions for the parser @>=
 expr mk_applied_identifier (id_type id)
@@ -293,7 +301,35 @@ expr mk_applied_identifier (id_type id)
   result.identifier_variant=id; return result;
 }
 expr_p make_applied_identifier (id_type id)
- { return new expr(mk_applied_identifier(id)); }
+ {@; return new expr(mk_applied_identifier(id)); }
+
+expr_p make_dollar ()
+{@; expr_p result = new expr;
+  result->kind=last_value_computed;
+  return result;
+}
+
+@~Like for integer and boolean denotations, there is nothing to destroy here.
+
+@< Cases for destroying... @>=
+case applied_identifier:
+case last_value_computed: break;
+
+@ Having a POD type variant, copying an applied identifier can be done by
+assignment.
+
+@< Cases for copying... @>=
+case applied_identifier: identifier_variant=other.identifier_variant; break;
+case last_value_computed: break;
+
+@~To print an applied identifier, we look it up in the main hash table. We
+print \.\$ as the user wrote it.
+
+@< Cases for printing... @>=
+case applied_identifier:
+  out << main_hash_table->name_of(e.identifier_variant);
+break;
+case last_value_computed: out << '$'; @q$@> break;
 
 @*1 Expression lists, and list and tuple displays.
 A first recursive type of expression is the expression list, which will be
@@ -327,15 +363,69 @@ the variant |sublist|.
 @< Variants... @>=
 expr_list sublist;
 
-@ An evident category with an |expr_list| as parsing value is a bracketed list
-for designating a vector; we shall call such an expression a list display.
+@~There are two such syntactic categories: tuple displays and list displays,
+which are written with parentheses respectively with square brackets.
+These are rather different from a type-checking point of view (in a list
+display the types of all components must be the same), but for
+constructing the parse tree, there is no difference, we just need a different
+tag to mark the distinction.
 
-@< Enumeration tags for |expr_kind| @>= list_display, @[@]
+@< Enumeration tags for |expr_kind| @>= tuple_display, list_display, @[@]
 
-@ To print a list display, we call the operator~`|<<|' recursively to print
-subexpressions.
+@ Copying can be obtained by move construction followed by destruction of
+(what remains of) the original value. For raw pointers simply assigning
+|sublist=other.sublist| would also work, but for smart pointers this is the
+only proper way to proceed, even though destructing one after
+move-constructing out of it is most probably a no-op.
+
+@< Cases for copying... @>=
+  case tuple_display:
+  case list_display:
+    new (&sublist) expr_list (std::move(other.sublist));
+    other.sublist.~expr_list();
+  break;
+
+@ Destroying lists of expressions will be done in a function callable from the
+parser, as it may need to discard tokens holding such lists.
+
+@< Declarations of functions for the parser @>=
+void destroy_exprlist(expr_list l);
+
+@~Destroying a tuple display or list display is now easily defined.
+
+@< Cases for destroying... @>=
+  case tuple_display:
+  case list_display: destroy_exprlist(e.sublist);
+break;
+
+@~This function recursively destroys subexpressions, and cleans up the nodes of
+the list themselves when we are done with them. Note that | l=l->next| cannot
+be the final statement in the loop body below.
+
+@< Definitions of functions for the parser @>=
+void destroy_exprlist(expr_list l)
+{@; while (l!=NULL)
+  {@; l->e.~expr();
+      expr_list this_node=l;
+      l=l->next;
+      delete this_node;
+   }
+}
+
+@ Printing tuple displays and list displays is entirely similar, using
+parentheses in the former case and brackets in the latter..
 
 @< Cases for printing... @>=
+case tuple_display:
+{ expr_list l=e.sublist;
+  if (l==NULL) out << "()";
+  else
+  { out << '(';
+    do {@; out << l->e; l=l->next; out << (l==NULL ? ')' : ',');}
+    while (l!=NULL);
+  }
+}
+break;
 case list_display:
 { expr_list l=e.sublist;
   if (l==NULL) out << "[]";
@@ -346,29 +436,6 @@ case list_display:
   }
 }
 break;
-
-@ Destroying lists of expressions will be done in a function callable from the
-parser, as it may need to discard tokens holding such lists.
-
-@< Declarations of functions for the parser @>=
-void destroy_exprlist(expr_list l);
-
-@~This function recursively destroys subexpressions, and cleans up the nodes of
-the list themselves when we are done with them. Note that | l=l->next| cannot
-be the final statement in the loop body below.
-
-@< Definitions of functions for the parser @>=
-void destroy_exprlist(expr_list l)
-{@; while (l!=NULL)
-  {@; destroy_expr_body(l->e); expr_list this_node=l; l=l->next; delete this_node; }
-}
-
-@~Destroying a list display is now easily defined.
-
-@< Cases for destroying... @>=
-case list_display: destroy_exprlist(e.sublist);
-break;
-
 
 @ To build an |exprlist_node|, we just combine an expression with an
 |expr_list| inside a freshly created node. To start off the construction, we
@@ -415,35 +482,6 @@ expr wrp_list_display(expr_list l)
 }
 expr_p wrap_list_display(expr_list l)
   { return new expr(wrp_list_display(l)); }
-
-@ Besides list displays in which all types must agree, we have tuple displays.
-These are rather different from a type-checking point of view, but for
-constructing the parse tree, there is no difference, we just need a different
-tag to mark the distinction.
-
-@< Enumeration tags for |expr_kind| @>= tuple_display, @[@]
-
-@ We must add cases the appropriate switches to handle tuple displays.
-Printing a tuple display is similar to printing a list display, but using
-parentheses instead of brackets.
-
-@< Cases for printing... @>=
-case tuple_display:
-{ expr_list l=e.sublist;
-  if (l==NULL) out << "()";
-  else
-  { out << '(';
-    do {@; out << l->e; l=l->next; out << (l==NULL ? ')' : ',');}
-    while (l!=NULL);
-  }
-}
-break;
-
-@~Destroying a tuple display is the same as destroying a list display.
-
-@< Cases for destroying... @>=
-case tuple_display: destroy_exprlist(e.sublist);
-break;
 
 @ To make tuple displays, we use a function similar to that for list displays.
 @< Declarations of functions for the parser @>=
@@ -494,6 +532,10 @@ value is a function call.
 
 @< Variants... @>=
 app call_variant;
+
+@
+@< Cases for copying... @>=
+  case function_call: call_variant = other.call_variant; break;
 
 @ To print a function call, we look up the name of the function in the global
 hash table, and either print a tuple display or a single expression enclosed
@@ -913,6 +955,10 @@ value.
 @< Variants... @>=
 let let_variant;
 
+@
+@< Cases for copying... @>=
+  case let_expr: let_variant = other.let_variant; break;
+
 @ To print a let-expression we do the obvious things, wihtout worrying about
 parentheses; this should be fixed (for all printing routines).
 
@@ -1136,6 +1182,10 @@ lambda_expr,@[@]
 @< Variants of |union... @>=
 lambda lambda_variant;
 
+@
+@< Cases for copying... @>=
+  case lambda_expr: lambda_variant = other.lambda_variant; break;
+
 @ We must take care of printing lambda expressions; we avoid a double set of
 parentheses.
 
@@ -1224,6 +1274,10 @@ struct conditional_node
 @< Variants... @>=
 cond if_variant;
 
+@
+@< Cases for copying... @>=
+  case conditional_expr: if_variant = other.if_variant; break;
+
 @ To print a conditional expression at parser level, we shall not
 reconstruct \&{elif} constructions.
 
@@ -1305,6 +1359,12 @@ struct cfor_node
 w_loop while_variant;
 f_loop for_variant;
 c_loop cfor_variant;
+
+@
+@< Cases for copying... @>=
+  case while_expr: while_variant = other.while_variant; break;
+  case for_expr: for_variant = other.for_variant; break;
+  case cfor_expr: cfor_variant = other.cfor_variant; break;
 
 @ To print a |while| or |for| expression at parser level, we reproduce the
 input syntax.
@@ -1420,6 +1480,10 @@ struct subscription_node {@; expr array; expr index; };
 @< Variants... @>=
 sub subscription_variant;
 
+@
+@< Cases for copying... @>=
+  case subscription: subscription_variant = other.subscription_variant; break;
+
 @ To print a subscription, we just print the expression of the array, followed
 by the expression for the index in brackets. As an exception, the case of a
 tuple display as index is handled separately, in order to avoid having
@@ -1493,6 +1557,10 @@ cast_expr, @[@]
 @< Variants of ... @>=
 cast cast_variant;
 
+@
+@< Cases for copying... @>=
+  case cast_expr: cast_variant = other.cast_variant; break;
+
 @ Printing cast expressions follows their input syntax.
 
 @< Cases for printing... @>=
@@ -1546,6 +1614,10 @@ op_cast_expr, @[@]
 @< Variants of ... @>=
 op_cast op_cast_variant;
 
+@
+@< Cases for copying... @>=
+  case op_cast_expr: op_cast_variant = other.op_cast_variant; break;
+
 @ Printing operator cast expressions follows their input syntax.
 
 @< Cases for printing... @>=
@@ -1598,6 +1670,10 @@ ass_stat, @[@]
 @ And there is of course a variant of |expr_union| for assignments.
 @< Variants of ... @>=
 assignment assign_variant;
+
+@
+@< Cases for copying... @>=
+  case ass_stat: assign_variant = other.assign_variant; break;
 
 @ Printing assignment statements is absolutely straightforward.
 
@@ -1653,6 +1729,10 @@ comp_ass_stat, @[@]
 @ And there is of course a variant of |expr_union| for assignments.
 @< Variants of ... @>=
 comp_assignment comp_assign_variant;
+
+@
+@< Cases for copying... @>=
+  case comp_ass_stat: comp_assign_variant = other.comp_assign_variant; break;
 
 @ Printing component assignment statements follow the input syntax.
 
@@ -1725,6 +1805,10 @@ seq_expr, @[@]
 @ And there is of course a variant of |expr_union| for sequences.
 @< Variants of ... @>=
 sequence sequence_variant;
+
+@
+@< Cases for copying... @>=
+  case seq_expr: sequence_variant = other.sequence_variant; break;
 
 @ Printing sequences is absolutely straightforward.
 
