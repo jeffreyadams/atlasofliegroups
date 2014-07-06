@@ -207,6 +207,27 @@ the string variant.
    : kind(string_denotation)
    , str_denotation_variant(std::move(s)) @+{}
 
+@~For more explicit construction of these variants in a dynamically allocated
+|expr| object, we provide the functions below.
+
+@< Declarations of functions for the parser @>=
+expr_p make_int_denotation (int val);
+expr_p make_bool_denotation(bool val);
+expr_p make_string_denotation(std::string&& val);
+
+@~The definition of these functions is quite trivial easy, as will be typical
+for node-building functions.
+
+@< Definitions of functions for the parser @>=
+expr_p make_int_denotation (int val)
+  @+{@; return new expr(val); }
+
+expr_p make_bool_denotation(bool val)
+  @+{@; return new expr(val); }
+
+expr_p make_string_denotation(std::string&& val)
+ {@; return new expr(std::move(val)); }
+
 @~For integer and Boolean denotations there is nothing to destroy. For string
 denotations however we must destroy the |str::string| object. It was quite a
 puzzle to find the right syntax for that.
@@ -214,7 +235,7 @@ puzzle to find the right syntax for that.
 @< Cases for destroying... @>=
 case integer_denotation: case boolean_denotation: break;
 case string_denotation:
-  e.str_denotation_variant.std::string::~string(); break;
+  e.str_denotation_variant.~basic_string(); break;
 
 @ In the |expr::set_from| method we change variants both in |*this| (which was
 |no_expr|) and in |other| (which was |no_expr|). This means that for non-POD
@@ -232,26 +253,6 @@ can omit the destruction.
     std::string(std::move(other.str_denotation_variant));
     other.str_denotation_variant.std::string::~string();
   break;
-
-@ To build the node for denotations, we provide the functions below.
-
-@< Declarations of functions for the parser @>=
-expr_p make_int_denotation (int val);
-expr_p make_string_denotation(char* val);
-expr_p make_bool_denotation(bool val);
-
-@~The definition of these functions is quite trivial, as will be typical for
-node-building functions.
-
-@< Definitions of functions for the parser @>=
-expr_p make_int_denotation (int val)
-  @+{@; return new expr(val); }
-
-expr_p make_bool_denotation(bool val)
-  @+{@; return new expr(val); }
-
-expr_p make_string_denotation(char* val)
- {@; std::string s(val); delete[] val; return new expr(std::move(s)); }
 
 @ To print an integer denotation we just print its variant field; for Boolean
 denotations we reproduce the keyword that gives the denotation, while for string
