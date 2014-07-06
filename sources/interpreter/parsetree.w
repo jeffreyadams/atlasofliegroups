@@ -51,7 +51,6 @@ and we define everything in a \Cpp\ namespace as usual.
 namespace atlas
 { namespace interpreter
   {
-@< Definitions of constants... @>@;
 @< Definitions of functions for the parser @>@;
 @< Definitions of functions not for the parser @>@;
   }@;
@@ -78,6 +77,13 @@ typedef std::unique_ptr<expr> expr_ptr;
 @)
 @< Structure and typedef declarations for types built upon |expr| @>@;
 @< Declarations of functions for the parser @>@;
+
+@ We start right away declaring |expr| as a |struct|, avoiding complaints that
+it is not declared.
+
+@< Type declarations needed in definition of |struct expr@;| @>=
+struct expr;
+
 
 @ When default-constructing an |expr| we set its |kind| to |no_expr|.
 @< Methods of |expr| @>=
@@ -226,16 +232,20 @@ expr_p make_bool_denotation(bool val)
   @+{@; return new expr(val); }
 
 expr_p make_string_denotation(std::string&& val)
- {@; return new expr(std::move(val)); }
+ @+{@; return new expr(std::move(val)); }
 
 @~For integer and Boolean denotations there is nothing to destroy. For string
-denotations however we must destroy the |str::string| object. It was quite a
-puzzle to find the right syntax for that.
+denotations however we must destroy the |std::string| object. It was quite a
+puzzle to find the right syntax for that, because of what is essentially a bug
+in \.{gcc}, namely with |string| in place of |basic_string| the look-up of the
+destructor fails.
+
+@s basic_string string
 
 @< Cases for destroying... @>=
 case integer_denotation: case boolean_denotation: break;
 case string_denotation:
-  e.str_denotation_variant.~basic_string(); break;
+  e.str_denotation_variant.~basic_string<char>(); break;
 
 @ In the |expr::set_from| method we change variants both in |*this| (which was
 |no_expr|) and in |other| (which was |no_expr|). This means that for non-POD
@@ -251,7 +261,7 @@ can omit the destruction.
   case string_denotation:
     new (&str_denotation_variant)
     std::string(std::move(other.str_denotation_variant));
-    other.str_denotation_variant.std::string::~string();
+    other.str_denotation_variant.~basic_string<char>();
   break;
 
 @ To print an integer denotation we just print its variant field; for Boolean
@@ -332,31 +342,17 @@ case applied_identifier:
 break;
 case last_value_computed: out << '$'; @q$@> break;
 
-@*1 Expression lists, and list and tuple displays.
-A first recursive type of expression is the expression list, which will be
-used for various purposes.
+@*1 Expression lists.
+%
+We shall need expression lists for various purposes.
+After long refactoring of the code (notably unmaking |expr| a POD-exclusive
+tagged union), we can use the atlas class template |containers::simple_list|
+to implement it, instead of having to define a custom list type.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef struct exprlist_node* expr_list;
-
-@~The type is implemented as a simply linked list.
-@< Structure and typedef declarations for types built upon |expr| @>=
-struct exprlist_node {@; expr e; expr_list next; };
-
-@ Before we go on to use this type, let us define a simple function for
-calculating the length of the list; it will actually be used by the evaluator
-rather than by the parser.
-
-@< Declaration of functions not for the parser @>=
-size_t length(expr_list l);
-
-@~The definition is no surprise.
-
-@< Definitions of functions not for the parser @>=
-size_t length(expr_list l) @+
-{@; size_t n=0; while(l!=NULL) {@; ++n; l=l->next;}
-  return n;
-}
+typedef containers::simple_list<expr> expr_list;
+typedef containers::sl_node<expr>* raw_expr_list;
+  // raw counterpart for use by parser
 
 @ Any syntactic category whose parsing value is a list of expressions will use
 the variant |sublist|.
@@ -373,6 +369,34 @@ tag to mark the distinction.
 
 @< Enumeration tags for |expr_kind| @>= tuple_display, list_display, @[@]
 
+@~We provide a constructor that serves both types of lists.
+
+@< Methods of |expr| @>=
+expr(expr_list&& nodes, bool is_tuple)
+ : kind(is_tuple ? tuple_display : list_display)
+ , sublist(std::move(nodes))
+ @+{}
+
+@~Destroying a tuple display or list display is easily defined.
+
+@< Cases for destroying... @>=
+  case tuple_display:
+  case list_display: e.sublist.~expr_list();
+break;
+
+@ Destroying lists of expressions will be done in a function callable from the
+parser, as it may need to discard tokens holding such lists.
+
+@< Declarations of functions for the parser @>=
+void destroy_exprlist(raw_expr_list l);
+
+@~Its definition is easy; since only the head pointer of the list is raw,
+simply deleting it will recursively clear up the whole list.
+
+@< Definitions of functions for the parser @>=
+void destroy_exprlist(raw_expr_list l)
+@+{@; delete l; }
+
 @ Copying can be obtained by move construction followed by destruction of
 (what remains of) the original value. For raw pointers simply assigning
 |sublist=other.sublist| would also work, but for smart pointers this is the
@@ -386,77 +410,19 @@ move-constructing out of it is most probably a no-op.
     other.sublist.~expr_list();
   break;
 
-@ Destroying lists of expressions will be done in a function callable from the
-parser, as it may need to discard tokens holding such lists.
-
-@< Declarations of functions for the parser @>=
-void destroy_exprlist(expr_list l);
-
-@~Destroying a tuple display or list display is now easily defined.
-
-@< Cases for destroying... @>=
-  case tuple_display:
-  case list_display: destroy_exprlist(e.sublist);
-break;
-
-@~This function recursively destroys subexpressions, and cleans up the nodes of
-the list themselves when we are done with them. Note that | l=l->next| cannot
-be the final statement in the loop body below.
-
-@< Definitions of functions for the parser @>=
-void destroy_exprlist(expr_list l)
-{@; while (l!=NULL)
-  {@; l->e.~expr();
-      expr_list this_node=l;
-      l=l->next;
-      delete this_node;
-   }
-}
-
-@ Printing tuple displays and list displays is entirely similar, using
-parentheses in the former case and brackets in the latter..
-
-@< Cases for printing... @>=
-case tuple_display:
-{ expr_list l=e.sublist;
-  if (l==NULL) out << "()";
-  else
-  { out << '(';
-    do {@; out << l->e; l=l->next; out << (l==NULL ? ')' : ',');}
-    while (l!=NULL);
-  }
-}
-break;
-case list_display:
-{ expr_list l=e.sublist;
-  if (l==NULL) out << "[]";
-  else
-  { out << '[';
-    do {@; out << l->e; l=l->next; out << (l==NULL ? ']' : ',');}
-    while (l!=NULL);
-  }
-}
-break;
-
-@ To build an |exprlist_node|, we just combine an expression with an
-|expr_list| inside a freshly created node. To start off the construction, we
-shall use |null_expr_list| for the empty list. Often it will be practical to
-use right recursive grammar rule that build lists backwards, so we provide a
-reversal function to get the proper ordering once the end of the list is
+@ To build an |exprlist_node|, we provide a function |make_exprlist_node| to
+combine an expression with a |raw_expr_list|. To start off the construction,
+one may use |raw_expr_list()| for the empty list. Often it will be practical
+to use right recursive grammar rule that build lists backwards, so we provide
+a reversal function to get the proper ordering once the end of the list is
 reached. Finally we provide the wrapping function |wrap_expr_list| for list
 displays.
 
 @< Declarations of functions for the parser @>=
-extern const expr_list null_expr_list;
-expr_list make_exprlist_node(expr_p e, expr_list l);
-expr_list reverse_expr_list(expr_list l);
-expr_p wrap_list_display(expr_list l);
-
-
-@~The definition of |make_expr_list| is quite trivial.
-
-@< Definitions of constants visible to the parser @>=
-const expr_list null_expr_list=NULL;
+raw_expr_list make_exprlist_node(expr_p e, raw_expr_list l);
+raw_expr_list reverse_expr_list(raw_expr_list l);
+expr_p wrap_tuple_display(raw_expr_list l);
+expr_p wrap_list_display(raw_expr_list l);
 
 @~The function |reverse_expr_list| is easy as well. Of the two possible and
 equivalent list reversal paradigms, we use the ``hold the head'' style which
@@ -467,34 +433,44 @@ combined, since whether or not the list should be reversed can only be
 understood when the grammar rules are given.
 
 @< Definitions of functions for the parser @>=
-expr_list mk_exprlist_node(expr& e, expr_list l)
-{@; expr_list n=new exprlist_node; n->e=std::move(e); n->next=l; return n; }
-expr_list make_exprlist_node(expr_p e, expr_list l)
-  { expr_ptr saf(e); return mk_exprlist_node(*e,l); }
+raw_expr_list make_exprlist_node(expr_p e, raw_expr_list raw)
+  { expr_ptr saf(e); expr_list l(raw);
+    l.push_front(std::move(*e));
+    return l.release();
+  }
 
-expr_list reverse_expr_list(expr_list l)
-{ expr_list r=null_expr_list;
-  while (l!=null_expr_list) {@; expr_list t=l; l=t->next; t->next=r; r=t; }
-  return r;
+raw_expr_list reverse_expr_list(raw_expr_list raw)
+{@; expr_list l(raw); l.reverse(); return l.release(); }
+@)
+expr_p wrap_tuple_display(raw_expr_list l)
+{@; return new expr(expr_list(l),true); }
+expr_p wrap_list_display(raw_expr_list l)
+{@; return new expr(expr_list(l),false); }
+
+@ Printing tuple displays and list displays is entirely similar, using
+parentheses in the former case and brackets in the latter..
+
+@< Cases for printing... @>=
+case tuple_display:
+{ const expr_list& l=e.sublist;
+  if (l.empty()) out << "()";
+  else
+  { for (auto it=l.begin(); not l.at_end(it); ++it)
+      out << (it==l.begin() ? '(' : ',') << *it;
+    out << ')';
+  }
 }
-
-expr wrp_list_display(expr_list l)
-{@; expr result; result.kind=list_display; result.sublist=l; return result;
+break;
+case list_display:
+{ const expr_list& l=e.sublist;
+  if (l.empty()) out << "[]";
+  else
+  { for (auto it=l.begin(); not l.at_end(it); ++it)
+      out << (it==l.begin() ? '[' : ',') << *it;
+    out << ']';
+  }
 }
-expr_p wrap_list_display(expr_list l)
-  { return new expr(wrp_list_display(l)); }
-
-@ To make tuple displays, we use a function similar to that for list displays.
-@< Declarations of functions for the parser @>=
-expr_p wrap_tuple_display(expr_list l);
-
-@~In fact the only difference is the tag inserted.
-@< Definitions of functions for the parser @>=
-expr wrp_tuple_display(expr_list l)
-{@; expr result; result.kind=tuple_display; result.sublist=l; return result;
-}
-expr_p wrap_tuple_display(expr_list l)
- { return new expr(wrp_tuple_display(l)); }
+break;
 
 @ Length 0 tuple displays are sometimes used as a substitute expression where
 nothing useful is provided, for instance for a missing else-branch. They are
@@ -508,7 +484,7 @@ bool is_empty(const expr& e);
 
 @< Definitions of functions not for the parser @>=
 bool is_empty(const expr& e)
-@+{@; return e.kind==tuple_display and e.sublist==NULL; }
+@+{@; return e.kind==tuple_display and e.sublist.empty(); }
 
 @*1 Function applications.
 Another recursive type of expression is the function application.
@@ -573,7 +549,7 @@ the current method should be compatible with providing multiple arguments as a
 single tuple value.
 
 @< Declarations of functions for the parser @>=
-expr_p make_application_node(expr_p f, expr_list args);
+expr_p make_application_node(expr_p f, raw_expr_list args);
 
 @~Here for once there is some work to do. If a singleton argument list is
 provided, the argument expression must be picked from it, but in all other
@@ -582,16 +558,18 @@ convenient here that |wrap_tuple_display| does not reverse the list, since
 this is already done by the parser before calling |make_application_node|.
 
 @< Definitions of functions for the parser @>=
-expr mk_application_node(expr&& f, expr_list args)
+expr mk_application_node(expr&& f, expr_list&& args)
 { app a=new application_node; a->fun=std::move(f);
-  if (args!=NULL && args->next==NULL) // a single argument
-  {@; a->arg=std::move(args->e); delete args; }
-  else a->arg=wrp_tuple_display(args);
+  if (not args.empty() and args.at_end(++args.begin())) // a single argument
+    a->arg=std::move(args.front());
+  else
+    a->arg=expr(std::move(args),true); // make into an argument tuple
   expr result; result.kind=function_call; result.call_variant=a;
   return result;
 }
-expr_p make_application_node(expr_p f, expr_list args)
- { expr_ptr saf(f); return new expr(mk_application_node(std::move(*f),args)); }
+expr_p make_application_node(expr_p f, raw_expr_list args)
+ { expr_ptr saf(f);
+   return new expr(mk_application_node(std::move(*f),expr_list(args))); }
 
 @ We shall frequently need to form a function application where the function
 is accessed by an applied identifier and the argument is either a single
@@ -617,8 +595,10 @@ expr_p make_unary_call(id_type name, expr_p arg)
  { expr_ptr saf(arg); return new expr(mk_unary_call(name,*arg)); }
 @)
 expr mk_binary_call(id_type name, expr& x, expr& y)
-{ expr_list args=mk_exprlist_node(x,mk_exprlist_node(y,NULL));
-  return mk_application_node(mk_applied_identifier(name),args);
+{ expr_list args;
+  args.push_front(std::move(y));
+  args.push_front(std::move(x));
+  return mk_application_node(mk_applied_identifier(name),std::move(args));
 }
 expr_p make_binary_call(id_type name, expr_p x, expr_p y)
  { expr_ptr xx(x), yy(y);
@@ -831,10 +811,10 @@ options apply recursively, and in addition the identifier may be suppressed
 altogether, to allow such partial tagging of components as \\{ident}:$(,,z)$.
 To accommodate such possibilities we introduce the following recursive types.
 Our grammar allows for a pattern $()$ (but not $()$:\\{ident}), in which case
-|sublist==NULL|; it turned out that the possibility to bind no identifiers at
-all (while providing a void value) has its uses. However patterns of the form
-$(x)$, which would give a sublist of length~$1$, will be forbidden: they would
-be confusing since $1$-tuples do not exist.
+|sublist.empty()|; it turned out that the possibility to bind no identifiers
+at all (while providing a void value) has its uses. However patterns of the
+form $(x)$, which would give a sublist of length~$1$, will be forbidden: they
+would be confusing since $1$-tuples do not exist.
 
 Since patterns pointed to by |patlist| will need to be duplicated (in the
 evaluator), we provide a (default) constructor for |pattern_node| that will
@@ -1056,11 +1036,11 @@ expr mk_let_expr_node(let_list decls, expr& body)
     }
     else
     { l->pattern.kind=0x2; l->pattern.sublist=NULL;
-      l->val=wrp_tuple_display(null_expr_list);
+      l->val=expr(expr_list(),true);
       while (decls!=NULL)
       { l->pattern.sublist =
 	  make_pattern_node(l->pattern.sublist,&decls->pattern);
-	l->val.sublist=mk_exprlist_node(decls->val,l->val.sublist);
+	l->val.sublist.push_front(std::move(decls->val));
 	let_list p=decls; decls=p->next; delete p;
       }
     }
@@ -1387,7 +1367,7 @@ break;
 case cfor_expr:
 { c_loop c=e.cfor_variant;
   out << " for " << main_hash_table->name_of(c->id) << ": " << c->count;
-  if (c->bound.kind!=tuple_display or c->bound.sublist!=NULL)
+  if (c->bound.kind!=tuple_display or c->bound.sublist.empty())
     out << (c->up!=0 ? " from " : " downto ") << c->bound;
   out << " do " << c->body << " od ";
 }
@@ -1497,12 +1477,8 @@ case subscription:
   const expr& i=s->index;
   if (i.kind!=tuple_display) out << i;
   else
-  { expr_list l=i.sublist;
-    if (l!=NULL)
-    {@; out << l->e;
-      while ((l=l->next)!=NULL) out << ',' << l->e;
-    }
-  }
+    for (auto it=i.sublist.begin(); not i.sublist.at_end(it); ++it)
+      out << (it==i.sublist.begin() ? "" : ",") << *it;
   out << ']';
 }
 break;

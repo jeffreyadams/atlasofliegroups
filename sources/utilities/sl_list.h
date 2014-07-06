@@ -367,13 +367,13 @@ template<typename T>
     from.link_loc->reset(remainder.release()); // attach remainder at |from|
   }
 
-}; // |class simple_list|
+}; // |class simple_list<T>|
 
 // external functions for |simple_list<T>|
 template<typename T>
 size_t length(const simple_list<T>& l)
 {
-  size_t result;
+  size_t result=0;
   for (auto it=l.begin(); not l.at_end(it); ++it)
     ++result;
   return result;
@@ -721,7 +721,17 @@ template<typename T>
     return simple_list<T>(head.release());
   }
 
-}; // |class sl_list|
+}; // |class sl_list<T>|
+
+// external functions for |sl_list<T>|
+template<typename T>
+size_t length(const sl_list<T>& l) { return l.size(); }
+
+template<typename T>
+typename simple_list<T>::const_iterator end(const sl_list<T>& l)
+{ return l.end(); }
+
+
 
 
 template<typename T>

@@ -34,7 +34,7 @@
   atlas::interpreter::form_stack ini_form;
   unsigned short type_code; /* For type names */
   atlas::interpreter::expr_p    expression; /* For generic expressions */
-  atlas::interpreter::expr_list expression_list; /* Any list of expressions */
+  atlas::interpreter::raw_expr_list expression_list; /* list of expressions */
   atlas::interpreter::let_list decls; /* declarations in a LET expression */
   atlas::interpreter::id_pat ip;
   struct {
@@ -344,18 +344,18 @@ types_opt : /* empty */ { $$=NULL; }
 	| types
 ;
 
-commalist_opt: /* empty */	 { $$=null_expr_list; }
+commalist_opt: /* empty */	 { $$=raw_expr_list(nullptr); }
 	| commalist
 ;
 
-commalist: exp		    { $$=make_exprlist_node($1,null_expr_list); }
+commalist: exp		    { $$=make_exprlist_node($1,raw_expr_list(nullptr)); }
 	| commalist ',' exp { $$=make_exprlist_node($3,$1); }
 ;
 
 commabarlist: commalist_opt '|' commalist_opt
 	{ $$ = make_exprlist_node(wrap_list_display(reverse_expr_list($3))
 		 ,make_exprlist_node(wrap_list_display(reverse_expr_list($1))
-		   ,null_expr_list));
+		   ,raw_expr_list(nullptr)));
 	}
 	| commabarlist '|' commalist_opt
 	{ $$=make_exprlist_node(wrap_list_display(reverse_expr_list($3)),$1); }

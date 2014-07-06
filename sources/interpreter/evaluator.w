@@ -453,8 +453,8 @@ case list_display:
   if (type.specialise(row_of_type))
   { std::auto_ptr<list_expression> result (new list_expression(0));
     result->component.reserve(length(e.sublist));
-    for (expr_list l=e.sublist; l!=nullptr; l=l->next)
-      result->component.push_back(convert_expr(l->e,*type.component_type));
+    for (auto it=e.sublist.begin(); not e.sublist.at_end(it); ++it)
+      result->component.push_back(convert_expr(*it,*type.component_type));
     return result.release(); // and convert (derived|->|base) to |expression|
   }
   else
@@ -484,8 +484,8 @@ further coercions of individual expressions in the list display.
   std::auto_ptr<list_expression> display@|
       (new list_expression(0));
   display->component.reserve(length(e.sublist));
-  for (expr_list l=e.sublist; l!=nullptr; l=l->next)
-    display->component.push_back(convert_expr(l->e,comp_type));
+  for (auto it=e.sublist.begin(); not e.sublist.at_end(it); ++it)
+    display->component.push_back(convert_expr(*it,comp_type));
   return new conversion(*conv,expression_ptr(display));
 }
 
@@ -574,8 +574,8 @@ case tuple_display:
   tup_exp->component.reserve(length(e.sublist));
   type_list& tl = tuple_expected ? type.tupple : tup.tupple;
   type_list::iterator tl_it = tl.begin();
-  for (expr_list el=e.sublist; el!=nullptr; el=el->next,++tl_it)
-    tup_exp->component.push_back(convert_expr(el->e,*tl_it));
+  for (auto it=e.sublist.begin(); not e.sublist.at_end(it); ++it,++tl_it)
+    tup_exp->component.push_back(convert_expr(*it,*tl_it));
   if (tuple_expected)
     return result.release();  // and convert (derived|->|base) to |expression|
   else if (coerce(tup,type,result))
