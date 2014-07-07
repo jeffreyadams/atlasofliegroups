@@ -711,38 +711,35 @@ so should \.{x\pow-2*y} parse as $(x^{-2})*y$ or as $x^{-(2*y)}$?
 
 Two reasonable solutions exists for defining a general mechanism: the simple
 solution is to give unary operators maximum priority (so that they can be
-handled immediately), the other is to give that priority whenever they are
-immediately preceded by another operator. We choose the latter option, since
-it allows interpreting \.{-x\pow2} less surprisingly as $-(x^2)$; somewhat
-more surprisingly the parentheses in $x+(-1)^n*y$ become superfluous. The
-example \.{x\pow-2*y} will then parse as $(x^{-2})*y$, which also seems
-reasonable. Note however that with this rule one does have the surprise
-that \.{x\pow-y\pow2} parses as $x^{(-y)^2}$.
+handled immediately), the other is to give them maximal priority only when
+they are immediately preceded by another operator. We choose the latter
+option, since it allows interpreting \.{-x\pow2} less surprisingly as
+$-(x^2)$; somewhat more surprisingly the parentheses in $x+(-1)^n*y$ become
+superfluous. The example \.{x\pow-2*y} will then parse as $(x^{-2})*y$, which
+also seems reasonable. Note however that with this rule one does have the
+surprise that \.{x\pow-y\pow2} parses as $x^{(-y)^2}$.
 
 @ The data type necessary to store these intermediate data during priority
 resolutions is a dynamic list of triples subtree-operator-priority. We use a
-linked list, which can be used without difficulty from the parser; the link
-points to an operator further to the left in the formula, whence it is called
-|prev| rather than the more usual~|next|. To implement the above solution for
-unary operators, we allow for the very first pending operator to not have any
-left subtree; the expression is left of type |no_expr|, which can be tested to
-detect the end of the list.
+|simple_list|, which is though to have it |front| on the right. To implement
+the above solution for unary operators, we allow for the very first pending
+operator to not have any left subtree; the expression is left of type
+|no_expr|, which can be tested to detect the end of the list.
 
 Postfix operators are quite rare in mathematics (the factorial exclamation
 mark is the clearest example, though certain exponential notations like the
 derivative prime could be considered as postfix operators as well) and more
-importantly seem to invariably have infinite priority, so the can be handled
+importantly seem to invariably have infinite priority, so the could be handled
 in the parser without dynamic priority comparisons. And even if such
 comparisons were needed, they could be handled by a new function operating in
 the list of partial formulae, and need not be taken into account in the data
 structure of that list itself. So here is that structure:
 
 @< Structure and typedef declarations... @>=
-typedef struct partial_formula* form_stack;
-struct partial_formula
-{@; expr left_subtree; id_type op; int prio;
-  form_stack prev;
-};
+struct formula_node {@; expr left_subtree; id_type op; int prio; };
+
+typedef containers::simple_list<formula_node> form_stack;
+typedef containers::sl_node<formula_node>* raw_form_stack;
 
 @ We define the following functions operating on partial formulae: two to
 start them out with a binary or unary operator, the principal one to extend
@@ -750,56 +747,57 @@ with a new operand and binary operator, one to finish off the formula with
 a final operand, and of course one to clean up.
 
 @< Declarations for the parser @>=
-form_stack start_formula (expr_p e, id_type op, int prio);
-form_stack start_unary_formula (id_type op, int prio);
-form_stack extend_formula (form_stack pre, expr_p e,id_type op, int prio);
-expr_p end_formula (form_stack pre, expr_p e);
-void destroy_formula(form_stack s);
+raw_form_stack start_formula (expr_p e, id_type op, int prio);
+raw_form_stack start_unary_formula (id_type op, int prio);
+raw_form_stack extend_formula (raw_form_stack pre, expr_p e,id_type op, int prio);
+expr_p end_formula (raw_form_stack pre, expr_p e);
+void destroy_formula(raw_form_stack s);
 
-@ Starting a binary formula simply creates an initial node.
+@ Starting a formula simply creates an initial node, with a left operand in
+the case of a binary formula.
 @< Definitions of functions for the parser @>=
-form_stack start_formula (expr_p e, Hash_table::id_type op, int prio)
-{ expr_ptr saf(e);
-  form_stack result = new partial_formula;
-  result->left_subtree=std::move(*e); result->op=op; result->prio=prio;
-  result->prev=NULL;
-  return result;
+raw_form_stack start_formula (expr_p e, id_type op, int prio)
+{ expr_ptr ee(e);
+  form_stack result;
+  result.push_front ( {std::move(*e), op, prio } );
+  return result.release();
 }
 @)
-form_stack start_unary_formula (id_type op, int prio)
-{ form_stack result = new partial_formula;
-  result->op=op; result->prio=prio; // leave |result->left_subtree| empty
-  result->prev=NULL;
-  return result;
+raw_form_stack start_unary_formula (id_type op, int prio)
+{ form_stack result;
+  result.push_front ( { expr(), op, prio } ); // leave |left_subtree| empty
+  return result.release();
 }
 
 @ Extending a formula involves the priority comparisons and manipulations
-indicated above. It turns out |start_formula| could be replaced by a call to
-|extend_formula| with |pre==NULL|.
+indicated above. It turns out |start_formula| could have been replaced by a
+call to |extend_formula| with |pre==NULL|. The second part of the condition in
+the while loop is short for |s.front().prio>prio or (s.front().prio==prio and
+prio%2==0)|.
 
 @< Definitions of functions for the parser @>=
-form_stack extend_formula (form_stack pre, expr_p ee,id_type op, int prio)
-{ form_stack result=NULL; expr_ptr saf(ee); expr& e = *ee;
-  while (pre!=NULL and (pre->prio>prio or pre->prio==prio and prio%2==0))
-  { delete result; result=pre; // clean up, but holding on to one node
-    @< Put |e| as right subtree into rightmost element of |pre|, and replace
-    |e| by the result, popping it from |pre| @>
-  }
 
-  if (result==NULL)
-    result=new partial_formula; // allocate if no nodes were combined
-  result->left_subtree=std::move(e); result->op=op; result->prio=prio;
-  result->prev=pre; return result;
+raw_form_stack extend_formula (raw_form_stack pre, expr_p ep,id_type op, int prio)
+{ expr_ptr ee(ep); form_stack s(pre); expr& e = *ep;
+  while (not s.empty() and s.front().prio>=prio+prio%2)
+    @< Replace |e| by |op(left_subtree,e)| where |op| and |left_subtree|
+       come from popped |s.front()| @>
+  s.push_front({std::move(e),op,prio});
+  return s.release();
 }
 
-@ Here we make either a unary or a binary operator call.
+@ Here we make either a unary or a binary operator call. Only once emptied do
+we pop |s.front()|.
 
-@< Put |e| as right subtree into rightmost element of |pre|...@>=
-{ if (pre->left_subtree.kind==no_expr)
-    e = mk_unary_call(pre->op,std::move(e)); // apply initial unary operator
+@< Replace |e| by |op(left_subtree,e)|...@>=
+{ if (s.front().left_subtree.kind==no_expr)
+    e = mk_unary_call(s.front().op,std::move(e));
+      // apply initial unary operator
   else
-    e = mk_binary_call(pre->op,std::move(pre->left_subtree),std::move(e));
-  pre=pre->prev;
+    e = mk_binary_call(s.front().op
+                     ,std::move(s.front().left_subtree)
+                     ,std::move(e));
+  s.pop_front();
 }
 
 @ Wrapping up a formula is similar to the initial part of |extend_formula|,
@@ -808,26 +806,17 @@ can reuse the main part of the loop of |extend_formula|, with just a minor
 modification to make sure all nodes get cleaned up after use.
 
 @< Definitions of functions for the parser @>=
-expr nd_formula (form_stack pre, expr& e)
-{ while (pre!=NULL)
-  { form_stack t=pre;
-    @< Put |e| as right subtree into rightmost element of |pre|...@>
-    delete t;
-  }
-  return std::move(e);
-}
-expr_p end_formula (form_stack pre, expr_p e)
-{@; expr_ptr ee(e);
-  return new expr(nd_formula(pre,*e));
+expr_p end_formula (raw_form_stack pre, expr_p ep)
+{ expr_ptr ee(ep); form_stack s(pre); expr& e=*ep;
+  while (not s.empty())
+    @< Replace |e| by |op(left_subtree,e)|...@>
+  return new expr(std::move(e));
 }
 
 @ Destroying a formula stack is straightforward.
 @< Definitions of functions for the parser @>=
-void destroy_formula(form_stack s)
-{@; while (s!=NULL)
-  {@; form_stack t=s; s=s->prev; delete t;
-  }
-}
+void destroy_formula(raw_form_stack s)
+{@; static_cast<form_stack>(s); }
 
 @*1 Identifier patterns.
 %

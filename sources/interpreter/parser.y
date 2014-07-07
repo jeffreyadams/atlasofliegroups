@@ -31,7 +31,7 @@
   int	val;	    /* For integral constants.	*/
   short id_code;    /* For identifier codes  */
   struct { short id, priority; } oper; /* for operator symbols */
-  atlas::interpreter::form_stack ini_form;
+  atlas::interpreter::raw_form_stack ini_form;
   unsigned short type_code; /* For type names */
   atlas::interpreter::expr_p    expression; /* For generic expressions */
   atlas::interpreter::raw_expr_list expression_list; /* list of expressions */
