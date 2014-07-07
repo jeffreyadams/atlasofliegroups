@@ -390,12 +390,15 @@ parser, as it may need to discard tokens holding such lists.
 @< Declarations of functions for the parser @>=
 void destroy_exprlist(raw_expr_list l);
 
-@~Its definition is easy; since only the head pointer of the list is raw,
-simply deleting it will recursively clear up the whole list.
+@~Its definition is easy; we convert the raw pointer from the parser into an
+|expr_list| then simply let it die, which cleans up the list. This is
+equivalent to calling |delete l| directly, but depends less on knowing
+implementation details. We use static cast syntax since |expr_list(l);| would
+be interpreted as a declaration.
 
 @< Definitions of functions for the parser @>=
 void destroy_exprlist(raw_expr_list l)
-@+{@; delete l; }
+@+{@; static_cast<expr_list>(l); }
 
 @ Copying can be obtained by move construction followed by destruction of
 (what remains of) the original value. For raw pointers simply assigning
@@ -406,14 +409,15 @@ move-constructing out of it is most probably a no-op.
 @< Cases for copying... @>=
   case tuple_display:
   case list_display:
-    new (&sublist) expr_list (std::move(other.sublist));
+  @/new (&sublist) expr_list (std::move(other.sublist));
     other.sublist.~expr_list();
   break;
 
 @ To build an |exprlist_node|, we provide a function |make_exprlist_node| to
 combine an expression with a |raw_expr_list|. To start off the construction,
 one may use |raw_expr_list()| for the empty list. Often it will be practical
-to use right recursive grammar rule that build lists backwards, so we provide
+to use right recursive grammar rule that build lists backwards (so |e| is
+actually to the right of |l|), so we provide
 a reversal function to get the proper ordering once the end of the list is
 reached. Finally we provide the wrapping function |wrap_expr_list| for list
 displays.
@@ -434,7 +438,7 @@ understood when the grammar rules are given.
 
 @< Definitions of functions for the parser @>=
 raw_expr_list make_exprlist_node(expr_p e, raw_expr_list raw)
-  { expr_ptr saf(e); expr_list l(raw);
+  {@; expr_ptr saf(e); expr_list l(raw);
     l.push_front(std::move(*e));
     return l.release();
   }
@@ -443,9 +447,9 @@ raw_expr_list reverse_expr_list(raw_expr_list raw)
 {@; expr_list l(raw); l.reverse(); return l.release(); }
 @)
 expr_p wrap_tuple_display(raw_expr_list l)
-{@; return new expr(expr_list(l),true); }
+@+{@; return new expr(expr_list(l),true); }
 expr_p wrap_list_display(raw_expr_list l)
-{@; return new expr(expr_list(l),false); }
+@+{@; return new expr(expr_list(l),false); }
 
 @ Printing tuple displays and list displays is entirely similar, using
 parentheses in the former case and brackets in the latter..
@@ -487,20 +491,32 @@ bool is_empty(const expr& e)
 @+{@; return e.kind==tuple_display and e.sublist.empty(); }
 
 @*1 Function applications.
-Another recursive type of expression is the function application.
+%
+Another recursive type of expression is the function application. Since it
+will hold two subexpressions, we must use a pointer when including it as
+variant of |expr|. We use a smart pointer, though in principle there is not
+much point in doing that for a variant field in a |union| (the variant does
+not benefit from automatic destruction, so the destructor |expr::~expr| must
+still explicitly call the destructor for the variant, where it would otherwise
+have directly called |delete| for the pointer). However, since some variants
+already have types with move semantics, it seems that similarly making all
+variants have it is the less confusing solution.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef struct application_node* app;
+typedef std::unique_ptr<struct application_node> app;
 
-@~Now that we have tuples, a function application just takes one argument, so
-an |application_node| contains an identifier tag and an argument expression.
-Function and argument can be arbitrary expressions.
+@~Since \.{realex} has tuples, we convene that every function call takes just
+one argument. So we define an |application_node| to contain a function and an
+argument expression; both are allowed to be arbitrary expressions, though the
+function is often an applied identifier, and the argument is often a tuple
+display.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct application_node {@; expr fun; expr arg; };
 
 @ The tag used for expressions that will invoke a built-in function is
-|function_call|. It is used for operator invocations as well.
+|function_call|. It is used as internal representation for operator
+applications (entered as formulae) as well.
 
 @< Enumeration tags for |expr_kind| @>= function_call, @[@]
 
@@ -510,18 +526,68 @@ value is a function call.
 @< Variants... @>=
 app call_variant;
 
-@
-@< Cases for copying... @>=
-  case function_call: call_variant = other.call_variant; break;
+@ There is a constructor for building this variant.
+@< Methods of |expr| @>=
+expr(app&& fx)
+ : kind(function_call)
+ , call_variant(std::move(fx))
+ @+{}
 
-@ To print a function call, we look up the name of the function in the global
-hash table, and either print a tuple display or a single expression enclosed
-in parentheses for which we call the operator~`|<<|' recursively. We do not
-attempt to reconstruct infix formulae.
+@ To build an |application_node|, we combine the function identifier with an
+|expr_list| for the argument. The argument list will either be packed into a
+tuple, or if it has length$~1$ unpacked into a single expression.
+
+@< Declarations of functions for the parser @>=
+expr_p make_application_node(expr_p f, raw_expr_list args);
+
+@~Here for once there is some work to do. Since there are two cases to deal
+with, the argument expression is initially default-constructed, after which
+either it is set from the unique element of the argument list, or to a tuple
+display for the argument list. In the latter case we use a move assignment,
+since binding a freshly constructed |expr| to the modifiable lvalue that
+|set_from| wants would require introducing a dummy name.
+
+@< Definitions of functions for the parser @>=
+expr mk_application_node(expr&& f, expr_list&& args)
+{ app a(new application_node @[{ std::move(f), expr() }@]);
+  if (not args.empty() and args.at_end(++args.begin())) // a single argument
+    a->arg.set_from(args.front());
+  else
+    a->arg=expr(std::move(args),true); // make into an argument tuple
+  return expr(std::move(a)); // move construct application expression
+}
+expr_p make_application_node(expr_p f, raw_expr_list args)
+ {@; expr_ptr ff(f);
+   return new expr(mk_application_node(std::move(*f),expr_list(args))); }
+
+@ A |unique_ptr| should not be moved by writing
+|call_variant=std::move(other.call_variant)| since this would attempt to apply
+delete to the uninitialised ``previous value'' of |call_variant|. On the other
+hand we know that afterwards |other.call_variant| holds a null pointer, so we
+do not bother to call its destructor.
+
+@< Cases for copying... @>=
+   case function_call:
+ @/ new (&call_variant) app(std::move(other.call_variant)); break;
+
+@~Destroying a smart pointer field just means calling its destructor.
+
+@< Cases for destroying... @>=
+case function_call:
+  e.call_variant.~app();
+break;
+
+@ To print a function call, we print the function and a tuple display for the
+ arguments, even if there is only one. The function part will also be enclosed
+ in parentheses, except in the (very common) case where the function is given
+ by an identifier (possibly an operator name). The recursive call of |<<|
+ handles all details, such as looking up the function name. We do not yet
+ attempt to (re)construct infix formulae, but this is the place where is could
+ be done.
 
 @< Cases for printing... @>=
 case function_call:
-{ app a=e.call_variant;
+{ const app& a=e.call_variant;
   const expr& fun=a->fun; const expr& arg=a->arg;
   if (fun.kind==applied_identifier) out << fun;
   else out << '(' << fun << ')';
@@ -529,47 +595,6 @@ case function_call:
   else out << '(' << arg << ')';
 }
 break;
-
-@~Here we clean up function and argument, and then the node for the function
-call itself.
-
-@< Cases for destroying... @>=
-case function_call:
-  destroy_expr_body(e.call_variant->fun);
-  destroy_expr_body(e.call_variant->arg);
-  delete e.call_variant;
-break;
-
-
-@ To build an |application_node|, we combine the function identifier with an
-|expr_list| for the argument. For the moment we do the packing or unpacking
-(in case of a single argument) of the argument list here, rather than via the
-syntax; the latter option would allow avoiding to pack singleton lists. But
-the current method should be compatible with providing multiple arguments as a
-single tuple value.
-
-@< Declarations of functions for the parser @>=
-expr_p make_application_node(expr_p f, raw_expr_list args);
-
-@~Here for once there is some work to do. If a singleton argument list is
-provided, the argument expression must be picked from it, but in all other
-cases the argument list must be made into a tuple display. Note that it is
-convenient here that |wrap_tuple_display| does not reverse the list, since
-this is already done by the parser before calling |make_application_node|.
-
-@< Definitions of functions for the parser @>=
-expr mk_application_node(expr&& f, expr_list&& args)
-{ app a=new application_node; a->fun=std::move(f);
-  if (not args.empty() and args.at_end(++args.begin())) // a single argument
-    a->arg=std::move(args.front());
-  else
-    a->arg=expr(std::move(args),true); // make into an argument tuple
-  expr result; result.kind=function_call; result.call_variant=a;
-  return result;
-}
-expr_p make_application_node(expr_p f, raw_expr_list args)
- { expr_ptr saf(f);
-   return new expr(mk_application_node(std::move(*f),expr_list(args))); }
 
 @ We shall frequently need to form a function application where the function
 is accessed by an applied identifier and the argument is either a single
@@ -581,28 +606,32 @@ expr_p make_unary_call(id_type name, expr_p arg);
 expr_p make_binary_call(id_type name, expr_p x, expr_p y);
 
 @~In the unary case we avoid calling |make_application| with a singleton
-list that will be immediately destroyed,
+list that will be immediately destroyed.
 
 @< Definitions of functions for the parser @>=
-expr mk_unary_call(id_type name, expr& arg)
-{ app a=new application_node;
-  a->fun=mk_applied_identifier(name);
-  a->arg=std::move(arg);
-  expr result; result.kind=function_call; result.call_variant=a;
-  return result;
+expr mk_unary_call(id_type name, expr&& arg)
+{@;
+  return expr(app(
+      new application_node { mk_applied_identifier(name), std::move(arg) }));
 }
-expr_p make_unary_call(id_type name, expr_p arg)
- { expr_ptr saf(arg); return new expr(mk_unary_call(name,*arg)); }
-@)
-expr mk_binary_call(id_type name, expr& x, expr& y)
+expr_p make_unary_call(id_type name, expr_p a)
+ {@; expr_ptr aa(a); return new expr(mk_unary_call(name,std::move(*a))); }
+
+@~In the binary case, we must construct an argument list of two expressions.
+We were tempted to initialise |args| below using a two-element initialiser
+list, but initialiser lists are incompatible with move semantics.
+
+@< Definitions of functions for the parser @>=
+
+expr mk_binary_call(id_type name, expr&& x, expr&& y)
 { expr_list args;
   args.push_front(std::move(y));
   args.push_front(std::move(x));
   return mk_application_node(mk_applied_identifier(name),std::move(args));
 }
 expr_p make_binary_call(id_type name, expr_p x, expr_p y)
- { expr_ptr xx(x), yy(y);
-   return new expr(mk_binary_call(name,*x,*y));
+ {@; expr_ptr xx(x), yy(y);
+   return new expr(mk_binary_call(name,std::move(*x),std::move(*y)));
  }
 
 @*1 Operators and priority.
@@ -651,25 +680,25 @@ right at odd levels. Thus there is never a conflict of different directions of
 associativity at the same priority level.
 
 In the absence of unary operators, a formula is an alternation of operands and
-operators, where the former comprises any expression bound more tightly than
-any formula, for instance one enclosed in parentheses. For every operator that
-comes along we can already determine its left subtree by comparing priorities
-with any previous ones. As a consequence of these comparisons, the right
-subtree of some previous operators~$\omega$ may also be completed (if~$\omega$
-turned out to bind more strongly than the current operator); in that case a
-formula with root~$\omega$ is constructed and henceforth becomes a single
-operand. Therefore at any point just after seeing an operator, there will be a
-list of pending operators of increasing priorities (weakly at odd priority
-levels), each with a complete left operand. If the formula would terminate
-after one more operand, then each pending operator would get as right operand
-the formula recursively constructed from everything that follows it. Now when
-a new operand followed by an operator~$\omega$ comes along, the pending
-operators are considered from right to left; while the operator has a higher
-priority than~$\omega$, or the same even priority, it receives the new(est)
-operand as its right operand, and the resulting formula becomes the newest
-operand. Once an operator is encountered whose priority is too low to capture
-the operand, the newest operand becomes the left subtree of~$\omega$, which
-now becomes the leftmost pending operator.
+operators, where the former comprises any expression types bound more tightly
+than formulae, for instance expressions enclosed in parentheses. For every
+operator that comes along we can already determine its left subtree by
+comparing priorities with any previous ones. As a consequence of these
+comparisons, the right subtree of some previous operators~$\omega$ may also be
+completed (if~$\omega$ turned out to bind more strongly than the current
+operator); in that case a formula with root~$\omega$ is constructed and
+henceforth becomes a single operand. Therefore at any point just after seeing
+an operator, there will be a list of pending operators of increasing
+priorities (weakly at odd priority levels), each with a complete left operand.
+If the formula would terminate after one more operand, then each pending
+operator would get as right operand the formula recursively constructed from
+everything that follows it. Now when a new operand followed by an
+operator~$\omega$ comes along, the pending operators are considered from right
+to left; while the operator has a higher priority than~$\omega$, or the same
+even priority, it receives the new(est) operand as its right operand, and the
+resulting formula becomes the newest operand. Once an operator is encountered
+whose priority is too low to capture the operand, the newest operand becomes
+the left subtree of~$\omega$, which now becomes the leftmost pending operator.
 
 Unary operators complicate the picture. Any priority one would like to
 associate to a prefix operator can only be relevant with respect to operators
@@ -767,9 +796,9 @@ form_stack extend_formula (form_stack pre, expr_p ee,id_type op, int prio)
 
 @< Put |e| as right subtree into rightmost element of |pre|...@>=
 { if (pre->left_subtree.kind==no_expr)
-    e = mk_unary_call(pre->op,e); // apply initial unary operator
+    e = mk_unary_call(pre->op,std::move(e)); // apply initial unary operator
   else
-    e = mk_binary_call(pre->op,pre->left_subtree,e);
+    e = mk_binary_call(pre->op,std::move(pre->left_subtree),std::move(e));
   pre=pre->prev;
 }
 
