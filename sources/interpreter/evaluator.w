@@ -2211,7 +2211,7 @@ without runtime storage, we wrap it into a zero-size structure.
 
 @< Type def... @>=
 struct id_pat_deleter
-{@; void operator()(id_pat* p) @+{@; destroy_id_pat(p); delete p; }};
+{@; void operator()(id_pat* p) @+{@; destroy_id_pat(*p); delete p; }};
 typedef std::shared_ptr<id_pat> shared_pattern;
   // deleter type does not enter into this
 
@@ -2240,17 +2240,12 @@ thrown the argument to |destroy_id_pat| is properly |nullptr|-terminated (by the
 id_pat copy_id_pat(const id_pat& p)
 {
   id_pat result=p; // shallow copy
-  try
-  { if ((p.kind&0x2)!=0)
-    { result.sublist=nullptr;
-      for (patlist s=p.sublist,*d=&result.sublist;
-           s!=nullptr; s=s->next,d=&(*d)->next)
-      @/{@;
-        *d=new pattern_node; (*d)->body=copy_id_pat(s->body);
-      }
-    }
+  if ((p.kind&0x2)!=0)
+  { containers::sl_list<id_pat> rl;
+    for (raw_patlist s=p.sublist; s!=nullptr; s=s->next.get())
+      rl.push_back(copy_id_pat(s->contents));
+    result.sublist = rl.undress().release();
   }
-  catch (...) @+{@; destroy_id_pat(&result); throw; }
   return result;
 }
 
@@ -2316,10 +2311,10 @@ corresponding type pattern; for instance $(x,,(f,):z)$:\\{whole} requires the
 type \.{(*,*,(*,*))}. These recursive functions construct such types.
 
 @< Function definitions @>=
-type_list pattern_list(patlist p)
+type_list pattern_list(raw_patlist p)
 { dressed_type_list result;
-  for (; p!=nullptr; p=p->next)
-    result.push_back(std::move(*pattern_type(p->body)));
+  for ( ; p!=nullptr; p=p->next.get())
+    result.push_back(std::move(*pattern_type(p->contents)));
   return result.undress();
 }
 @)
@@ -2337,8 +2332,8 @@ concatenation of vectors.
 size_t count_identifiers(const id_pat& pat)
 { size_t result= pat.kind & 0x1; // 1 if |pat.name| is defined, 0 otherwise
   if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
-    for (patlist p=pat.sublist; p!=nullptr; p=p->next)
-      result+=count_identifiers(p->body);
+    for (raw_patlist p=pat.sublist; p!=nullptr; p=p->next.get())
+      result+=count_identifiers(p->contents);
   return result;
 }
 
@@ -2346,8 +2341,8 @@ void list_identifiers(const id_pat& pat, std::vector<Hash_table::id_type>& d)
 { if ((pat.kind & 0x1)!=0)
     d.push_back(pat.name);
   if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
-    for (patlist p=pat.sublist; p!=nullptr; p=p->next)
-      list_identifiers(p->body,d);
+    for (raw_patlist p=pat.sublist; p!=nullptr; p=p->next.get())
+      list_identifiers(p->contents,d);
 }
 
 @ Here we do a similar traversal, using a type of the proper structure,
@@ -2360,8 +2355,8 @@ void thread_bindings
   if ((pat.kind & 0x2)!=0)
   { assert(type.kind==tuple_type);
     type_list::const_iterator it = type.tupple.begin();
-    for (patlist p=pat.sublist; p!=nullptr; p=p->next,++it)
-      thread_bindings(p->body,*it,dst);
+    for (raw_patlist p=pat.sublist; p!=nullptr; p=p->next.get(),++it)
+      thread_bindings(p->contents,*it,dst);
   }
 }
 
@@ -2377,8 +2372,8 @@ void thread_components
   if ((pat.kind & 0x2)!=0)
   { tuple_value* t=force<tuple_value>(val.get());
     size_t i=0;
-    for (patlist p=pat.sublist; p!=nullptr; p=p->next,++i)
-      thread_components(p->body,t->val[i],dst);
+    for (raw_patlist p=pat.sublist; p!=nullptr; p=p->next.get(),++i)
+      thread_components(p->contents,t->val[i],dst);
   }
 }
 
@@ -2814,7 +2809,7 @@ struct for_expression : public expression_base
   for_expression
    (id_pat p, expression_ptr i, expression_ptr b, subscr_base::sub_type k);
   virtual ~for_expression() @+
-  {@; destroy_id_pat(&pattern); delete in_part; delete body; }
+  {@; destroy_id_pat(pattern); delete in_part; delete body; }
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2836,9 +2831,9 @@ for_expression::for_expression@|
 
 @< Function definitions @>=
 void for_expression::print(std::ostream& out) const
-{ out << " for " << pattern.sublist->next->body;
-    if (pattern.sublist->body.kind==0x1)
-      out << '@@' << pattern.sublist->body;
+{ out << " for " << pattern.sublist->next->contents;
+    if (pattern.sublist->contents.kind==0x1)
+      out << '@@' << pattern.sublist->contents;
     out << " in " << *in_part << " do " << *body << " od ";
 }
 

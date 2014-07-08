@@ -829,10 +829,11 @@ options apply recursively, and in addition the identifier may be suppressed
 altogether, to allow such partial tagging of components as \\{ident}:$(,,z)$.
 To accommodate such possibilities we introduce the following recursive types.
 Our grammar allows for a pattern $()$ (but not $()$:\\{ident}), in which case
-|sublist.empty()|; it turned out that the possibility to bind no identifiers
-at all (while providing a void value) has its uses. However patterns of the
-form $(x)$, which would give a sublist of length~$1$, will be forbidden: they
-would be confusing since $1$-tuples do not exist.
+|sublist==nullptr| even though |kind ==0x2|; it turned out that the
+possibility to bind no identifiers at all (while providing a void value) has
+its uses. However patterns of the form $(x)$, which would give a sublist of
+length~$1$, will be forbidden: they would be confusing since $1$-tuples do not
+exist.
 
 Since patterns pointed to by |patlist| will need to be duplicated (in the
 evaluator), we provide a (default) constructor for |pattern_node| that will
@@ -841,18 +842,18 @@ destruction by |destroy_id_pat| (no undefined pointers; the |sublist| pointer
 of |id_pat| is ignored when |kind==0|). The structure |id_pat| itself cannot
 have a constructor, since it figures in a |union|, where this is not allowed.
 
+@h "types.h" // so complete type definitions will be known in \.{parsetree.cpp}
+
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef struct pattern_node* patlist;
+typedef containers::simple_list<struct id_pat> patlist;
+typedef containers::sl_node<struct id_pat>* raw_patlist;
 struct id_pat
-{ patlist sublist;
-  id_type name;
-  unsigned char kind; /* bit 0: has name, bit 1: has sublist */
+{ id_type name;
+  unsigned char kind;
+  // bits 0,1: whether pattern has a name, respectively sublist
+  raw_patlist sublist;
 };
-struct pattern_node
-{ patlist next;
-  struct id_pat body;
-  pattern_node () : next(NULL) @+{@; body.kind=0; }
-};
+@)
 
 @ These types do not themselves represent a variant of |expr|, but will be
 used inside such variants. We can already provide a printing function.
@@ -862,19 +863,21 @@ std::ostream& operator<< (std::ostream& out, const id_pat& p);
 
 @~Only parts whose presence is indicated in |kind| are printed. We take care
 that even if |sublist| is marked as present, it might be null. However, the
-list cannot be of length~1, so having put aside the case of an empty sublist,
-we can print a first comma unconditionally.
+list cannot be of length~$1$, so having put aside the case of an empty
+sublist, we can print a first comma unconditionally.
 
 @< Definitions of functions not for the parser @>=
 std::ostream& operator<< (std::ostream& out, const id_pat& p)
 { if ((p.kind & 0x2)!=0)
-    if (p.sublist==NULL)
-      out << "()";
-    else
-    { out << '(' << p.sublist->body << ',';
-      for (patlist l=p.sublist->next; l!=NULL; l=l->next)
-      out << l->body << (l->next!=NULL ? ',' : ')');
+  { out << '(';
+    if (p.sublist!=nullptr)
+    { raw_patlist l=p.sublist;
+      out << l->contents;
+      for ( l=l->next.get() ; l!=nullptr; l=l->next.get())
+        out << ',' << l->contents;
     }
+    out << ')';
+  }
   if (p.kind==0x3) // both parts present
     out << ':';
   if ((p.kind & 0x1)!=0)
@@ -889,34 +892,30 @@ variable in the parser. Patterns also need cleaning up, which
 |reverse_patlist|.
 
 @< Declarations for the parser @>=
-patlist make_pattern_node(patlist next,struct id_pat* body);
-void destroy_pattern(patlist p);
-void destroy_id_pat(struct id_pat* p);
-patlist reverse_patlist(patlist p);
+raw_patlist make_pattern_node(raw_patlist next,id_pat& body);
+void destroy_pattern(raw_patlist p);
+void destroy_id_pat(const id_pat& p);
+raw_patlist reverse_patlist(raw_patlist p);
 
 @ The function just assembles the pieces. In practice the |next| pointer will
 point to previously parsed nodes, so (as usual) reversal will be necessary.
 Being bored, we add a variation on list reversal.
 
 @< Definitions of functions for the parser @>=
-patlist make_pattern_node(patlist next,struct id_pat* body)
-{@; patlist l=new pattern_node; l->next=next; l->body=*body; return l; }
+raw_patlist make_pattern_node(raw_patlist next,id_pat& body)
+{@; patlist l(next); l.push_front(std::move(body)); return l.release(); }
 @)
-void destroy_pattern(patlist p)
-{@; while (p!=NULL)
-  {@; patlist q=p; p=p->next; destroy_id_pat(&q->body); delete q; }
+void destroy_pattern(raw_patlist p) {@; static_cast<patlist>(p); }
+@)
+void destroy_id_pat(const struct id_pat& p)
+{@; if ((p.kind & 0x2)!=0)
+    destroy_pattern(p.sublist);
 }
 @)
-void destroy_id_pat(struct id_pat* p)
-{@; if ((p->kind & 0x2)!=0)
-    destroy_pattern(p->sublist);
-}
-@)
-patlist reverse_patlist(patlist p)
-{@; patlist q=NULL;
-  while (p!=NULL)
-  {@; patlist t=q; q=p; p=q->next; q->next=t; }
-  return q;
+raw_patlist reverse_patlist(raw_patlist raw)
+{@; patlist p(raw);
+  p.reverse();
+  return p.release();
 }
 
 @*1 Let expressions.
@@ -941,8 +940,8 @@ but in addition a body.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 typedef struct let_node* let_list;
-struct let_node {@; struct id_pat pattern; expr val; let_list next; };
-struct let_expr_node {@; struct id_pat pattern; expr val; expr body; };
+struct let_node {@; id_pat pattern; expr val; let_list next; };
+struct let_expr_node {@; id_pat pattern; expr val; expr body; };
 
 @ The tag used for let-expressions is |let_expr|.
 
@@ -954,7 +953,8 @@ value.
 @< Variants... @>=
 let let_variant;
 
-@
+@ Since |let| is a raw pointer, copying is done by assignment.
+
 @< Cases for copying... @>=
   case let_expr: let_variant = other.let_variant; break;
 
@@ -981,7 +981,7 @@ expressions they contain.
 void destroy_letlist(let_list l)
 { while (l!=NULL)
     @/{@; let_list p=l; l=l->next;
-      destroy_id_pat(&p->pattern);
+      destroy_id_pat(p->pattern);
       destroy_expr_body(p->val);
       delete p;
     }
@@ -992,7 +992,7 @@ void destroy_letlist(let_list l)
 @< Cases for destroying... @>=
 case let_expr:
 { let lexp=e.let_variant;
-  destroy_id_pat(&lexp->pattern);
+  destroy_id_pat(lexp->pattern);
   destroy_expr_body(lexp->val);
   destroy_expr_body(lexp->body);
   delete lexp;
@@ -1006,7 +1006,7 @@ constructed list |prev| of declaration; finally |make_let_expr_node| wraps up
 an entire let-expression.
 
 @< Declarations of functions for the parser @>=
-let_list make_let_node(struct id_pat pattern, expr_p val);
+let_list make_let_node(id_pat pattern, expr_p val);
 let_list append_let_node(let_list prev, let_list cur);
 expr_p make_let_expr_node(let_list decls, expr_p body);
 
@@ -1034,7 +1034,7 @@ local storage pools that can explicitly be emptied), in which case all
 cleaning up in the code below should also be removed.
 
 @< Definitions of functions for the parser @>=
-let_list make_let_node(struct id_pat pattern, expr_p val)
+let_list make_let_node(id_pat pattern, expr_p val)
 { expr_ptr saf(val);
   let_list l=new let_node;
   l->pattern=pattern; l->val=std::move(*val); l->next=NULL;
@@ -1057,7 +1057,7 @@ expr mk_let_expr_node(let_list decls, expr& body)
       l->val=expr(expr_list(),true);
       while (decls!=NULL)
       { l->pattern.sublist =
-	  make_pattern_node(l->pattern.sublist,&decls->pattern);
+	  make_pattern_node(l->pattern.sublist,decls->pattern);
 	l->val.sublist.push_front(std::move(decls->val));
 	let_list p=decls; decls=p->next; delete p;
       }
@@ -1098,8 +1098,10 @@ to unspecified structures.
 
 @< Structure and typedef... @>=
 struct type_expr;
-typedef class atlas::containers::sl_node<type_expr>* raw_type_list; // predeclare;
-typedef class atlas::containers::simple_list<type_expr> type_list; // predeclare;
+typedef class atlas::containers::sl_node<type_expr>* raw_type_list;
+   // predeclare;
+typedef class atlas::containers::simple_list<type_expr> type_list;
+   // predeclare;
 typedef type_expr* type_p;
 typedef std::unique_ptr<type_expr> type_ptr;
 
@@ -1165,13 +1167,12 @@ std::ostream& print_type(std::ostream& out, type_p type) @+
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct lambda_node* lambda;
 
-@~It contains a pattern for the formal parameter(s), its type (a void pointer
-that actually points to a |type_declarator| structure defined
-in \.{evaluator.w}), and an  expression (the body of the function).
+@~It contains a pattern for the formal parameter(s), its type (a smart pointer
+defined in \.{types.w}), and an expression (the body of the function).
 
 @< Structure and typedef... @>=
 struct lambda_node
-{@; struct id_pat pattern; type_p arg_type; expr body; };
+{@; id_pat pattern; type_ptr arg_type; expr body; };
 
 @ The tag used for user-defined functions is |lambda_expr|.
 @< Enumeration tags... @>=
@@ -1181,9 +1182,16 @@ lambda_expr,@[@]
 @< Variants of |union... @>=
 lambda lambda_variant;
 
-@
+@ Since |lambda| is a raw pointer, we just assign.
 @< Cases for copying... @>=
-  case lambda_expr: lambda_variant = other.lambda_variant; break;
+case lambda_expr: lambda_variant = other.lambda_variant; break;
+
+@ And we must of course take care of destroying lambda expressions, which is
+done correctly by the implicit destructions provoked by calling |delete|.
+
+@< Cases for destroying an expression |e| @>=
+case lambda_expr: delete e.lambda_variant;
+break;
 
 @ We must take care of printing lambda expressions; we avoid a double set of
 parentheses.
@@ -1199,25 +1207,11 @@ case lambda_expr:
 }
 break;
 
-@ And we must of course take care of destroying lambda expressions, which just
-call handler functions.
-
-@h "types.h" // so that |type_p| will point to a complete type in |delete|
-
-@< Cases for destroying an expression |e| @>=
-case lambda_expr:
-{ lambda fun=e.lambda_variant;
-  destroy_id_pat(&fun->pattern);
-  delete(fun->arg_type);
-  destroy_expr_body(fun->body);
-}
-break;
-
 @ Finally there is as usual a function for constructing a node, to be called
 by the parser.
 
 @< Declarations of functions for the parser @>=
-expr_p make_lambda_node(patlist pat_l, raw_type_list type_l, expr_p body);
+expr_p make_lambda_node(raw_patlist pat_l, raw_type_list type_l, expr_p body);
 
 @~There is a twist in building a lambda node, in that for syntactic reasons
 the parser passes lists of patterns and types rather than single ones. We must
@@ -1230,23 +1224,24 @@ field is the easiest way to obtain an isolated |type_expr|. After the
 copy, destruction of |type_l| deletes the original |type_node|.
 
 @< Definitions of functions for the parser @>=
-expr mk_lambda_node(patlist pat_l, raw_type_list raw, expr& body)
-{ type_list type_l(raw); // smart pointer might clean up a node
-  lambda fun=new lambda_node; fun->body=std::move(body);
+expr mk_lambda_node(patlist& pat_l, type_list& type_l, expr& body)
+{ lambda fun=new lambda_node {id_pat(),type_ptr(),std::move(body)};
   if (not type_l.empty() and type_l.at_end(++type_l.begin()))
-  { fun->pattern=pat_l->body; delete pat_l; // clean up node
-    fun->arg_type = new type_expr(std::move(type_l.front()));
+  { fun->pattern=std::move(pat_l.front());
+    fun->arg_type = type_ptr(new type_expr(std::move(type_l.front())));
      // make a shallow copy
   }
   else
-  { fun->pattern.kind=0x2; fun->pattern.sublist=pat_l;
-    fun->arg_type=make_tuple_type(std::move(type_l)).release();
+  { fun->pattern.kind=0x2; fun->pattern.sublist=std::move(pat_l).release();
+    fun->arg_type=make_tuple_type(std::move(type_l));
   }
-  expr result; result.kind=lambda_expr; result.lambda_variant=fun;
+  expr result; result.kind=lambda_expr; result.lambda_variant=std::move(fun);
   return result;
 }
-expr_p make_lambda_node(patlist pat_l, raw_type_list raw, expr_p body)
- { expr_ptr saf(body); return new expr(mk_lambda_node(pat_l,raw,*body)); }
+expr_p make_lambda_node(raw_patlist raw_patl, raw_type_list raw, expr_p body)
+ { patlist pat_l(raw_patl); type_list type_l(raw); expr_ptr saf(body);
+   return new expr(mk_lambda_node(pat_l,type_l,*body));
+ }
 
 @*1 Control structures.
 
@@ -1376,9 +1371,12 @@ case while_expr:
 break;
 case for_expr:
 { f_loop f=e.for_variant;
-  out << " for " << f->id.sublist->next->body;
-  if (f->id.sublist->body.kind==0x1)
-    out << '@@' << f->id.sublist->body;
+  raw_patlist pl = f->id.sublist;
+  const id_pat& index = pl->contents;
+  const id_pat& entry = pl->next->contents;
+  out << " for " << entry;
+  if (index.kind==0x1)
+    out << '@@' << index;
   out << " in " << f->in_part << " do " << f->body << " od ";
 }
 break;
@@ -1400,7 +1398,7 @@ case while_expr:
   delete e.while_variant;
 break;
 case for_expr:
-  destroy_id_pat(&e.for_variant->id);
+  destroy_id_pat(e.for_variant->id);
   destroy_expr_body(e.for_variant->in_part);
   destroy_expr_body(e.for_variant->body);
   delete e.for_variant;

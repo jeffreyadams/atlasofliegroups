@@ -39,9 +39,9 @@
   atlas::interpreter::id_pat ip;
   struct {
     atlas::interpreter::raw_type_list typel;
-    atlas::interpreter::patlist patl;
+    atlas::interpreter::raw_patlist patl;
   } id_sp;
-  atlas::interpreter::patlist pl;
+  atlas::interpreter::raw_patlist pl;
   atlas::interpreter::type_p type_pt;
   atlas::interpreter::raw_type_list type_l;
 }
@@ -82,7 +82,7 @@
 %left OPERATOR
 
 %type <ip> pattern pattern_opt
-%destructor { destroy_id_pat(&$$); } pattern pattern_opt
+%destructor { destroy_id_pat($$); } pattern pattern_opt
 %type <pl> pat_list
 %destructor { destroy_pattern($$); } pat_list
 %type <type_pt> type
@@ -244,12 +244,12 @@ comprim: subscription
 	| WHILE exp DO exp OD { $$=make_while_node($2,$4); }
 	| FOR pattern IN exp DO exp OD
 	  { struct id_pat p,x; p.kind=0x2; x.kind=0x0;
-	    p.sublist=make_pattern_node(make_pattern_node(NULL,&$2),&x);
+	    p.sublist=make_pattern_node(make_pattern_node(NULL,$2),x);
 	    $$=make_for_node(p,$4,$6);
 	  }
 	| FOR pattern '@' IDENT IN exp DO exp OD
 	  { struct id_pat p,i; p.kind=0x2; i.kind=0x1; i.name=$4;
-	    p.sublist=make_pattern_node(make_pattern_node(NULL,&$2),&i);
+	    p.sublist=make_pattern_node(make_pattern_node(NULL,$2),i);
 	    $$=make_for_node(p,$6,$8);
 	  }
 	| FOR IDENT ':' exp FROM exp DO exp OD
@@ -305,17 +305,17 @@ pattern_opt :/* empty */ { $$.kind=0x0; }
 ;
 
 pat_list: pattern_opt ',' pattern_opt
-	  { $$=make_pattern_node(make_pattern_node(NULL,&$1),&$3); }
-	| pat_list ',' pattern_opt { $$=make_pattern_node($1,&$3); }
+	  { $$=make_pattern_node(make_pattern_node(NULL,$1),$3); }
+	| pat_list ',' pattern_opt { $$=make_pattern_node($1,$3); }
 ;
 
 id_specs: type pattern
 	{ $$.typel=mk_type_singleton($1);
-	  $$.patl=make_pattern_node(NULL,&$2);
+	  $$.patl=make_pattern_node(NULL,$2);
 	}
 	| type pattern ',' id_specs
 	{ $$.typel=mk_type_list($1,$4.typel);
-	  $$.patl=make_pattern_node($4.patl,&$2);
+	  $$.patl=make_pattern_node($4.patl,$2);
 	}
 ;
 
