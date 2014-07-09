@@ -212,7 +212,7 @@ void global_set_identifier(id_pat pat, expr_p raw, int overload)
   try
   { expression_ptr e;
     type_expr t=analyse_types(rhs,e);
-    if (not pattern_type(pat)->specialise(t))
+    if (not pattern_type(pat).specialise(t))
       @< Report that type |t| of |rhs| does not have required structure,
          and |throw| @>
     if (overload!=0)
@@ -335,7 +335,7 @@ pattern using |pattern_type| to do this.
 { std::ostringstream o;
   o << "Type " << t @|
     << " of right hand side does not match required pattern "
-    << *pattern_type(pat);
+    << pattern_type(pat);
   throw std::runtime_error(o.str());
 }
 

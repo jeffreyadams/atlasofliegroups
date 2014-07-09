@@ -2202,18 +2202,12 @@ ownership. The value produced by the parser will be destroyed after the
 command is processed, at which time the $\lambda$-expression could still
 exist, so we cannot simply use a non-owned pointer. Moreover a
 $\lambda$-expression can be evaluated one or more times, yielding ``closure''
-values the might outlive the $\lambda$-expression, so appropriate duplication
+values that might outlive the $\lambda$-expression, so appropriate duplication
 or sharing must be organised. We opt for sharing, which will be done by a
-|shared_ptr| supplied with a specialised deleter, since the sharing is done at
-the outermost level only, but complete destruction requires calling
-|destroy_id_pat| (defined in the file \.{parsetree.w}). To get this deleter
-without runtime storage, we wrap it into a zero-size structure.
+|shared_ptr|.
 
 @< Type def... @>=
-struct id_pat_deleter
-{@; void operator()(id_pat* p) @+{@; destroy_id_pat(*p); delete p; }};
 typedef std::shared_ptr<id_pat> shared_pattern;
-  // deleter type does not enter into this
 
 @ We must also treat the question of obtaining ownership of an |id_pat|
 structure. An top level node to be shared must certainly be allocated (the
@@ -2236,17 +2230,14 @@ constructed state, which has no loose ends and is therefore safe for
 thrown the argument to |destroy_id_pat| is properly |nullptr|-terminated (by the
 |pattern_node| constructor).
 
+@h <algorithm>
 @< Local function def... @>=
 id_pat copy_id_pat(const id_pat& p)
 {
-  id_pat result=p; // shallow copy
-  if ((p.kind&0x2)!=0)
-  { containers::sl_list<id_pat> rl;
-    for (raw_patlist s=p.sublist; s!=nullptr; s=s->next.get())
-      rl.push_back(copy_id_pat(s->contents));
-    result.sublist = rl.undress().release();
-  }
-  return result;
+  containers::sl_list<id_pat> rl;
+  std::transform(p.sublist.begin(),end(p.sublist)
+                , std::back_inserter(rl), copy_id_pat);
+  return id_pat (p.name, p.kind, rl.undress());
 }
 
 @ Now we can define our $\lambda$-expression to use a |shared_pattern|; the
@@ -2272,7 +2263,7 @@ auto-pointer already gives us ownership.
 @< Function def... @>=
 inline
 lambda_expression::lambda_expression(const id_pat& p, expression_ptr b)
-: param(new id_pat(copy_id_pat(p)),id_pat_deleter()) , body(b.release())
+: param(new id_pat(copy_id_pat(p))) , body(b.release())
 @+{}
 
 @ To print an anonymous function, we print the parameter, enclosed in
@@ -2299,7 +2290,7 @@ void lambda_expression::print(std::ostream& out) const
 similar structure.
 
 @< Declarations of exported functions @>=
-type_ptr pattern_type(const id_pat& pat);
+type_expr pattern_type(const id_pat& pat);
 size_t count_identifiers(const id_pat& pat);
 void list_identifiers(const id_pat& pat, std::vector<Hash_table::id_type>& d);
 void thread_bindings(const id_pat& pat,const type_expr& type, bindings& dst);
@@ -2311,17 +2302,17 @@ corresponding type pattern; for instance $(x,,(f,):z)$:\\{whole} requires the
 type \.{(*,*,(*,*))}. These recursive functions construct such types.
 
 @< Function definitions @>=
-type_list pattern_list(raw_patlist p)
+type_list pattern_list(const patlist& p)
 { dressed_type_list result;
-  for ( ; p!=nullptr; p=p->next.get())
-    result.push_back(std::move(*pattern_type(p->contents)));
+  for (auto it = p.begin(); not p.at_end(it); ++it)
+    result.push_back(pattern_type(*it));
   return result.undress();
 }
 @)
-type_ptr pattern_type(const id_pat& pat)
+type_expr pattern_type(const id_pat& pat)
 {@; return (pat.kind&0x2)==0
-  ? acquire(&unknown_type)
-  : make_tuple_type(pattern_list(pat.sublist));
+  ? unknown_type.copy()
+  : type_expr(pattern_list(pat.sublist));
 }
 
 @ Here we count the number or list the identifiers in a pattern. The latter
@@ -2332,8 +2323,8 @@ concatenation of vectors.
 size_t count_identifiers(const id_pat& pat)
 { size_t result= pat.kind & 0x1; // 1 if |pat.name| is defined, 0 otherwise
   if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
-    for (raw_patlist p=pat.sublist; p!=nullptr; p=p->next.get())
-      result+=count_identifiers(p->contents);
+    for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it)
+      result+=count_identifiers(*it);
   return result;
 }
 
@@ -2341,8 +2332,8 @@ void list_identifiers(const id_pat& pat, std::vector<Hash_table::id_type>& d)
 { if ((pat.kind & 0x1)!=0)
     d.push_back(pat.name);
   if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
-    for (raw_patlist p=pat.sublist; p!=nullptr; p=p->next.get())
-      list_identifiers(p->contents,d);
+    for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it)
+      list_identifiers(*it,d);
 }
 
 @ Here we do a similar traversal, using a type of the proper structure,
@@ -2354,9 +2345,10 @@ void thread_bindings
 { if ((pat.kind & 0x1)!=0) dst.add(pat.name,acquire(&type));
   if ((pat.kind & 0x2)!=0)
   { assert(type.kind==tuple_type);
-    type_list::const_iterator it = type.tupple.begin();
-    for (raw_patlist p=pat.sublist; p!=nullptr; p=p->next.get(),++it)
-      thread_bindings(p->contents,*it,dst);
+    type_list::const_iterator t_it = type.tupple.begin();
+    for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
+         ++p_it,++t_it)
+      thread_bindings(*p_it,*t_it,dst);
   }
 }
 
@@ -2372,8 +2364,8 @@ void thread_components
   if ((pat.kind & 0x2)!=0)
   { tuple_value* t=force<tuple_value>(val.get());
     size_t i=0;
-    for (raw_patlist p=pat.sublist; p!=nullptr; p=p->next.get(),++i)
-      thread_components(p->contents,t->val[i],dst);
+    for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it,++i)
+      thread_components(*it,t->val[i],dst);
   }
 }
 
@@ -2391,11 +2383,11 @@ argument is produced and returned.
 case let_expr:
 { let lexp=e.let_variant;
   id_pat& pat=lexp->pattern;
-  type_ptr decl_type=pattern_type(pat);
-  expression_ptr arg(convert_expr(lexp->val,*decl_type));
+  type_expr decl_type=pattern_type(pat);
+  expression_ptr arg(convert_expr(lexp->val,decl_type));
   size_t n_id=count_identifiers(pat);
 @/bindings new_bindings(n_id);
-  thread_bindings(pat,*decl_type,new_bindings);
+  thread_bindings(pat,decl_type,new_bindings);
   new_bindings.push(id_context);
   expression_ptr body(convert_expr(lexp->body,type));
   new_bindings.pop(id_context);
@@ -2807,9 +2799,9 @@ struct for_expression : public expression_base
 { id_pat pattern; expression in_part, body; subscr_base::sub_type kind;
 @)
   for_expression
-   (id_pat p, expression_ptr i, expression_ptr b, subscr_base::sub_type k);
-  virtual ~for_expression() @+
-  {@; destroy_id_pat(pattern); delete in_part; delete body; }
+   (const id_pat& p, expression_ptr i, expression_ptr b
+   , subscr_base::sub_type k);
+  virtual ~for_expression() @+ {@; delete in_part; delete body; }
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2821,7 +2813,7 @@ the header file.
 @< Function definitions @>=
 inline
 for_expression::for_expression@|
- (id_pat p, expression_ptr i, expression_ptr b,subscr_base::sub_type k)
+ (const id_pat& p, expression_ptr i, expression_ptr b,subscr_base::sub_type k)
    : pattern(copy_id_pat(p)), in_part(i.release()), body(b.release()), kind(k)
   @+{}
 
@@ -2831,9 +2823,9 @@ for_expression::for_expression@|
 
 @< Function definitions @>=
 void for_expression::print(std::ostream& out) const
-{ out << " for " << pattern.sublist->next->contents;
-    if (pattern.sublist->contents.kind==0x1)
-      out << '@@' << pattern.sublist->contents;
+{ out << " for " << *++pattern.sublist.begin();
+    if (pattern.sublist.front().kind==0x1)
+      out << '@@' << pattern.sublist.front();
     out << " in " << *in_part << " do " << *body << " od ";
 }
 
@@ -2878,12 +2870,12 @@ component type resulting from such a subscription.
 { type_expr comp_type; const type_expr* tp;
   if (subscr_base::indexable(in_type,*(tp=&int_type),comp_type,which) @|
    or subscr_base::indexable(in_type,*(tp=&param_type),comp_type,which))
-  { type_ptr pt = pattern_type(f->id);
+  { type_expr pt = pattern_type(f->id);
     type_list it_comps;
     it_comps.push_front(std::move(comp_type));
     it_comps.push_front(type_expr(tp->copy()));
     type_expr it_type(std::move(it_comps));
-    if (not pt->specialise(it_type))
+    if (not pt.specialise(it_type))
       throw expr_error(e,"Improper structure of loop variable pattern");
     thread_bindings(f->id,it_type,bind);
   }

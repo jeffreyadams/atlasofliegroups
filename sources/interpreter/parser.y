@@ -36,7 +36,7 @@
   atlas::interpreter::expr_p    expression; /* For generic expressions */
   atlas::interpreter::raw_expr_list expression_list; /* list of expressions */
   atlas::interpreter::let_list decls; /* declarations in a LET expression */
-  atlas::interpreter::id_pat ip;
+  atlas::interpreter::raw_id_pat ip;
   struct {
     atlas::interpreter::raw_type_list typel;
     atlas::interpreter::raw_patlist patl;
@@ -105,18 +105,18 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	  { *parsed_expr=make_sequence($1,wrap_tuple_display(NULL),1); }
 	| SET pattern '=' exp '\n' { global_set_identifier($2,$4,1); YYABORT; } 
 	| SET IDENT '(' id_specs_opt ')' '=' exp '\n'
-	  { struct id_pat id; id.kind=0x1; id.name=$2;
+	  { struct raw_id_pat id; id.kind=0x1; id.name=$2;
 	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7),1);
 	    YYABORT;
 	  }
 	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT; }
 	| SET operator '(' id_specs ')' '=' exp '\n'
-	  { struct id_pat id; id.kind=0x1; id.name=$2.id;
+	  { struct raw_id_pat id; id.kind=0x1; id.name=$2.id;
 	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7),2);
 	    YYABORT;
 	  }
 	| SET operator '=' exp '\n'
-	  { struct id_pat id; id.kind=0x1; id.name=$2.id;
+	  { struct raw_id_pat id; id.kind=0x1; id.name=$2.id;
 	    global_set_identifier(id,$4,2); YYABORT;
 	  }
 	| FORGET IDENT '@' type '\n'
@@ -124,7 +124,7 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| FORGET operator '@' type '\n'
 	  { global_forget_overload($2.id,$4); YYABORT; }
 	| IDENT ':' exp '\n'
-		{ struct id_pat id; id.kind=0x1; id.name=$1;
+		{ struct raw_id_pat id; id.kind=0x1; id.name=$1;
 		  global_set_identifier(id,$3,0); YYABORT; }
 	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3); YYABORT; }
 	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
@@ -165,7 +165,7 @@ declarations: declarations ',' declaration { $$ = append_let_node($1,$3); }
 
 declaration: pattern '=' exp { $$ = make_let_node($1,$3); }
         | IDENT '(' id_specs_opt ')' '=' exp
-	  { struct id_pat p; p.kind=0x1; p.name=$1;
+	  { struct raw_id_pat p; p.kind=0x1; p.name=$1;
 	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6));
 	  }
 ;
@@ -243,12 +243,12 @@ comprim: subscription
 	| IF iftail { $$=$2; }
 	| WHILE exp DO exp OD { $$=make_while_node($2,$4); }
 	| FOR pattern IN exp DO exp OD
-	  { struct id_pat p,x; p.kind=0x2; x.kind=0x0;
+	  { struct raw_id_pat p,x; p.kind=0x2; x.kind=0x0;
 	    p.sublist=make_pattern_node(make_pattern_node(NULL,$2),x);
 	    $$=make_for_node(p,$4,$6);
 	  }
 	| FOR pattern '@' IDENT IN exp DO exp OD
-	  { struct id_pat p,i; p.kind=0x2; i.kind=0x1; i.name=$4;
+	  { struct raw_id_pat p,i; p.kind=0x2; i.kind=0x1; i.name=$4;
 	    p.sublist=make_pattern_node(make_pattern_node(NULL,$2),i);
 	    $$=make_for_node(p,$6,$8);
 	  }

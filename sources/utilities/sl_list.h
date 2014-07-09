@@ -209,6 +209,11 @@ template<typename T>
       return *this;
     }
 
+  void swap (simple_list& other)
+  {
+    std::swap(head,other.head);
+  }
+
   node_type* release() { return head.release(); } // convert to raw pointer
 
   //iterators
@@ -333,17 +338,6 @@ template<typename T>
       p->reset();
   }
 
-  void swap (simple_list& other)
-  {
-    std::swap(head,other.head);
-  }
-
-  // accessors
-  const_iterator begin() const { return const_iterator(head); }
-  const_iterator cbegin() const { return const_iterator(head); }
-  // instead of |end()| we provide the |at_end| condition
-  static bool at_end (const_iterator p) { return *p.link_loc==nullptr; }
-
   void reverse()
   {
     link_type result(nullptr);
@@ -366,6 +360,13 @@ template<typename T>
     }
     from.link_loc->reset(remainder.release()); // attach remainder at |from|
   }
+
+  // accessors
+  const T& front () const { return head->contents; }
+  const_iterator begin() const { return const_iterator(head); }
+  const_iterator cbegin() const { return const_iterator(head); }
+  // instead of |end()| we provide the |at_end| condition
+  static bool at_end (const_iterator p) { return *p.link_loc==nullptr; }
 
 }; // |class simple_list<T>|
 
@@ -498,6 +499,17 @@ template<typename T>
       swap(x);
       return *this;
     }
+
+  void swap (sl_list& other)
+  {
+    std::swap(head,other.head);
+    std::swap(node_count,other.node_count);
+    if (empty())
+      tail = &other.head; // will be subsequently moved to |other.tail|
+    if (other.empty())
+      other.tail = &head; // will be subsequently moved to |tail|
+    std::swap(tail,other.tail); // now everything is fine for both lists
+  }
 
   //iterators
   iterator begin() { return iterator(head); }
@@ -680,26 +692,6 @@ template<typename T>
     node_count = count;
   }
 
-  void swap (sl_list& other)
-  {
-    std::swap(head,other.head);
-    std::swap(node_count,other.node_count);
-    if (empty())
-      tail = &other.head; // will be subsequently moved to |other.tail|
-    if (other.empty())
-      other.tail = &head; // will be subsequently moved to |tail|
-    std::swap(tail,other.tail); // now everything is fine for both lists
-  }
-
-  // accessors
-  const_iterator begin() const { return const_iterator(head); }
-  const_iterator end()   const { return const_iterator(*tail); }
-  const_iterator cbegin() const { return const_iterator(head); }
-  const_iterator cend()   const { return const_iterator(*tail); }
-
-  // in addition to |end()| we provide the |at_end| condition
-  static bool at_end (const_iterator p) { return *p.link_loc==nullptr; }
-
   void reverse() { reverse(cbegin(),cend()); }
 
   void reverse(const_iterator from, const_iterator to)
@@ -720,6 +712,16 @@ template<typename T>
   { set_empty();
     return simple_list<T>(head.release());
   }
+
+  // accessors
+  const T& front () const { return head->contents; }
+  const_iterator begin() const { return const_iterator(head); }
+  const_iterator end()   const { return const_iterator(*tail); }
+  const_iterator cbegin() const { return const_iterator(head); }
+  const_iterator cend()   const { return const_iterator(*tail); }
+
+  // in addition to |end()| we provide the |at_end| condition
+  static bool at_end (const_iterator p) { return *p.link_loc==nullptr; }
 
 }; // |class sl_list<T>|
 
