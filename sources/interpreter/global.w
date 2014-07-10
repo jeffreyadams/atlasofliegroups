@@ -970,7 +970,7 @@ added to |global_id_table| instead.
 @< Global function def... @>=
 void install_function
  (wrapper_function f,const char*name, const char* type_string)
-{ type_ptr type = make_type(type_string);
+{ type_ptr type = mk_type(type_string);
   std::ostringstream print_name; print_name<<name;
   if (type->kind!=function_type)
     throw std::logic_error

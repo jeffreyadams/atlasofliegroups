@@ -1131,12 +1131,8 @@ typedef std::unique_ptr<type_expr> type_ptr;
 module \.{types.w}, stripping off the smart pointers.
 
 @< Declarations of functions for the parser @>=
-raw_type_list mk_type_singleton(type_p raw);
-raw_type_list mk_type_list(type_p t,raw_type_list l);
-type_p mk_prim_type(int p);
-type_p mk_row_type(type_p c);
-type_p mk_tuple_type(raw_type_list l);
-type_p mk_function_type(type_p a,type_p r);
+raw_type_list make_type_singleton(type_p raw);
+raw_type_list make_type_list(type_p t,raw_type_list l);
 @)
 void destroy_type(type_p t);
 void destroy_type_list(raw_type_list t);
@@ -1152,31 +1148,18 @@ conversions, so passing bare pointers is exception-safe.
 
 @< Definitions of functions for the parser @>=
 
-raw_type_list mk_type_singleton(type_p raw)
+raw_type_list make_type_singleton(type_p raw)
 { type_ptr t(raw); // ensures node is cleaned up
   type_list result;
   result.push_front(std::move(*t));
   return result.release();
 }
 
-raw_type_list mk_type_list(type_p raw,raw_type_list l)
+raw_type_list make_type_list(type_p raw,raw_type_list l)
 { type_ptr t(raw); // ensure clean-up
   type_list tmp(l); // since |prefix| needs second argument an lvalue reference
   return prefix(std::move(*t),tmp).release();
 }
-@)
-type_p mk_prim_type(int p)
-{@; return make_prim_type(static_cast<primitive_tag>(p)).release(); }
-
-type_p mk_row_type(type_p c)
-{@; return make_row_type(type_ptr(c)).release(); }
-
-type_p mk_tuple_type(raw_type_list l)
-{@; return make_tuple_type(type_list(l)).release(); }
-
-type_p mk_function_type(type_p a,type_p r)
-{ type_ptr pa(a), pr(r); // ensure cleaning up at return
-  return make_function_type(std::move(*a),std::move(*r)).release(); }
 @)
 
 void destroy_type(type_p t)@+ {@; delete t; }
@@ -1255,7 +1238,7 @@ expr mk_lambda_node(patlist& pat_l, type_list& type_l, expr& body)
   }
   else
   { fun->pattern.kind=0x2; fun->pattern.sublist=std::move(pat_l);
-    fun->arg_type=make_tuple_type(std::move(type_l));
+    fun->arg_type=mk_tuple_type(std::move(type_l));
   }
   expr result; result.kind=lambda_expr; result.lambda_variant=std::move(fun);
   return result;

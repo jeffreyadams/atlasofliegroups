@@ -266,7 +266,7 @@ comprim: subscription
 	  { $$=make_unary_call
 		(lookup_identifier("^"),
                  make_cast
-                 (mk_prim_type(5) /* |matrix_type| */
+                 (make_prim_type(5) /* |matrix_type| */
 		 ,wrap_list_display(reverse_expr_list($2))));
 	  }
 	| '(' commalist ',' exp ')'
@@ -310,11 +310,11 @@ pat_list: pattern_opt ',' pattern_opt
 ;
 
 id_specs: type pattern
-	{ $$.typel=mk_type_singleton($1);
+	{ $$.typel=make_type_singleton($1);
 	  $$.patl=make_pattern_node(NULL,$2);
 	}
 	| type pattern ',' id_specs
-	{ $$.typel=mk_type_list($1,$4.typel);
+	{ $$.typel=make_type_list($1,$4.typel);
 	  $$.patl=make_pattern_node($4.patl,$2);
 	}
 ;
@@ -323,21 +323,21 @@ id_specs_opt: id_specs
 	| /* empty */ { $$.typel=NULL; $$.patl=NULL; }
 ;
 
-type	: TYPE			  { $$=mk_prim_type($1); }
+type	: TYPE			  { $$=make_prim_type($1); }
         | '(' type ')'            { $$=$2; }
-	| '(' type ARROW type ')' { $$=mk_function_type($2,$4); }
+	| '(' type ARROW type ')' { $$=make_function_type($2,$4); }
 	| '(' types_opt ARROW type ')'
-			  { $$=mk_function_type(mk_tuple_type($2),$4); }
+			  { $$=make_function_type(make_tuple_type($2),$4); }
 	| '(' type ARROW types_opt ')'
-			  { $$=mk_function_type($2,mk_tuple_type($4)); }
+			  { $$=make_function_type($2,make_tuple_type($4)); }
 	| '(' types_opt ARROW types_opt ')'
-	   { $$=mk_function_type(mk_tuple_type($2),mk_tuple_type($4)); }
-	| '[' type ']'		  { $$=mk_row_type($2); }
-	| '(' types ')'		  { $$=mk_tuple_type($2); }
+	   { $$=make_function_type(make_tuple_type($2),make_tuple_type($4)); }
+	| '[' type ']'		  { $$=make_row_type($2); }
+	| '(' types ')'		  { $$=make_tuple_type($2); }
 ;
 
-types	: type ',' type	 { $$=mk_type_list($1,mk_type_singleton($3)); }
-	| type ',' types { $$=mk_type_list($1,$3); }
+types	: type ',' type	 { $$=make_type_list($1,make_type_singleton($3)); }
+	| type ',' types { $$=make_type_list($1,$3); }
 ;
 
 types_opt : /* empty */ { $$=NULL; }

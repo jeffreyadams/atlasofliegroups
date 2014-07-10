@@ -257,7 +257,7 @@ extern const char* prim_names[];
 @~Here is the list of names of the primitive types (some are given later),
 terminated by a null pointer. The last name |"void"| is not a primitive name,
 corresponds to |nr_of_primitive_types|, and will be treated exceptionally in
-|make_prim_type| to make an empty tuple type instead.
+|mk_prim_type| to make an empty tuple type instead.
 
 @< Global variable definitions @>=
 const char* prim_names[]=@/
@@ -749,61 +749,82 @@ bool operator== (const type_expr& x,const type_expr& y)
 functions below. They all and return |type_ptr| values owning the constructed
 expression. They also take such smart pointers, or |type_list| values, as
 argument whenever the underlying pointer is to be directly inserted into the
-structure built. However for |make_function_type| this is not the case, so
+structure built. However for |mk_function_type| this is not the case, so
 instead of insisting that the caller hold a unique-pointer to the argument
 types it suffices to hold a |type_expr| whose contents can be moved into the
 type to be constructed. If |t| is a |type_ptr| held by a client, it can pass
-|std::move(*t)| as argument to |make_function_type|, which will move the
+|std::move(*t)| as argument to |mk_function_type|, which will move the
 contents of the node |t| points to into the function type, and after return
 the destructor of |t| will eventually delete the now empty node.
 
 @< Declarations of exported functions @>=
-type_ptr make_undetermined_type();
-type_ptr make_prim_type(primitive_tag p);
-type_ptr make_row_type(type_ptr&& c);
-type_ptr make_tuple_type (type_list&& l);
-type_ptr make_function_type(type_expr&& a, type_expr&& r);
+type_ptr mk_prim_type(primitive_tag p);
+type_ptr mk_row_type(type_ptr&& c);
+type_ptr mk_tuple_type (type_list&& l);
+type_ptr mk_function_type(type_expr&& a, type_expr&& r);
+@)
+type_p make_prim_type(int p);
+type_p make_row_type(type_p c);
+type_p make_tuple_type(raw_type_list l);
+type_p make_function_type(type_p a,type_p r);
 
-@ The functions below simply wrap the call to the constructor into one of the
-operator |new|, and then capture of the resulting pointer into a |type_ptr|
-result.
+@ The functions like |mk_prim| below simply wrap the call to the constructor
+into one of the operator |new|, and then capture of the resulting pointer into
+a |type_ptr| result. The functions like |make_prim| wraps these functions into
+a parser interface, which converts it arguments to unique pointers, and
+converts such pointers to raw pointers for the return value; these functions
+should be used exclusively in the parser. Using this setup it is ensured that
+all pointers are considered owning their target, implicitly so while being
+manipulated by the parser (it guarantees that every pointer placed on the
+parsing stack will be argument of an interface function exactly once, possibly
+some |destroy| function in case it pops symbols during error recovery.
 
-Note that we make a special provision that |make_prim_type| will return an
+Note that we make a special provision that |mk_prim_type| will return an
 empty tuple type when called with the type name for |"void"|, although this is
 contrary to what the name of the function suggests.
 
 @< Function definitions @>=
-type_ptr make_undetermined_type()
-@+{@; return type_ptr(new type_expr); }
-@)
-type_ptr make_prim_type(primitive_tag p)
+type_ptr mk_prim_type(primitive_tag p)
 { return p<nr_of_primitive_types ?
     type_ptr(new type_expr(p)) :
-    type_ptr(make_tuple_type(empty_tuple()));
+    type_ptr(mk_tuple_type(empty_tuple()));
 }
-@)
-type_ptr make_row_type(type_ptr&& c)
+
+type_ptr mk_row_type(type_ptr&& c)
 {@; return type_ptr (new type_expr(std::move(c))); }
-@)
-type_ptr make_tuple_type (type_list&& l)
+
+type_ptr mk_tuple_type (type_list&& l)
 {@; return type_ptr(new type_expr(std::move(l))); }
 
-@)
-type_ptr make_function_type (type_expr&& a, type_expr&& r)
+type_ptr mk_function_type (type_expr&& a, type_expr&& r)
 {@; return type_ptr(new type_expr(std::move(a),std::move(r)));
+}
+@)
+type_p make_prim_type(int p)
+{@; return mk_prim_type(static_cast<primitive_tag>(p)).release(); }
+
+type_p make_row_type(type_p c)
+{@; return mk_row_type(type_ptr(c)).release(); }
+
+type_p make_tuple_type(raw_type_list l)
+{@; return mk_tuple_type(type_list(l)).release(); }
+
+type_p make_function_type(type_p a,type_p r)
+{@; return
+    mk_function_type(std::move(*type_ptr(a)),std::move(*type_ptr(r))).release();
 }
 
 @*1 Specifying types by strings.
 %
-In practice we shall rarely call functions like |make_prim_type| and
-|make_row_type| directly to make explicit types, since this is rather
+In practice we shall rarely call functions like |mk_prim_type| and
+|mk_row_type| directly to make explicit types, since this is rather
 laborious. Instead, such explicit types will be constructed by the function
-|make_type| that parses a (\Cee~type) string, and correspondingly calls the
+|mk_type| that parses a (\Cee~type) string, and correspondingly calls the
 appropriate type constructing functions.
 
 @< Declarations of exported functions @>=
-type_ptr make_type(const char* s);
-type_expr make_type_expr(const char* s);
+type_ptr mk_type(const char* s);
+type_expr mk_type_expr(const char* s);
   // ``exported'' for our global variable initialisation
 
 @ The task of converting a properly formatted string into a type is one of
@@ -815,13 +836,13 @@ here. The simplest way of parsing ``by hand'' is recursive descent, so that is
 what we shall use. By passing a character pointer by reference, we allow the
 recursive calls to advance the index within the string read.
 
-The function |scan_type| does the real parsing, |make_type_expr| calls it,
+The function |scan_type| does the real parsing, |mk_type_expr| calls it,
 providing a local modifiable pointer to bind to its reference parameter (which
 is important because |scan_type| cannot directly accept a \Cee-string constant
-as argument) while also doing error reporting, and |make_type| is just a
-wrapper around |make_type_expr| that converts the result from a |type_expr| to
+as argument) while also doing error reporting, and |mk_type| is just a
+wrapper around |mk_type_expr| that converts the result from a |type_expr| to
 a smart pointer to (a freshly allocated instance of) such. Currently the
-function |make_type_expr| is called only during the start-up phase
+function |mk_type_expr| is called only during the start-up phase
 of \.{realex}, and if an error encountered (of type |std::logic_error|, since
 it indicates an error in the \.{realex} program itself), printing of the error
 message will be followed by termination of the program.
@@ -839,7 +860,7 @@ type_expr scan_type(const char*& s)
   else @< Scan and |return| a primitive type, or |throw| a |logic_error| @>
 }
 @)
-type_expr make_type_expr(const char* s)
+type_expr mk_type_expr(const char* s)
 { const char* orig=s;
   try
   {@; return type_expr(scan_type(s)); }
@@ -851,8 +872,8 @@ type_expr make_type_expr(const char* s)
   }
 }
 @)
-type_ptr make_type(const char* s)
-{@; return type_ptr(new type_expr(make_type_expr(s))); }
+type_ptr mk_type(const char* s)
+{@; return type_ptr(new type_expr(mk_type_expr(s))); }
   // wrap up |type_expr| in |type_ptr|
 
 
@@ -957,7 +978,7 @@ index into the former list to an element of that enumeration.
 %
 We shall often need to refer to certain types for comparison or for providing
 a required type context. Instead of generating them on the fly each time using
-|make_type|, we define constant values that can be used everywhere. Three of
+|mk_type|, we define constant values that can be used everywhere. Three of
 these types, for \.{int}, \.{bool} and \.{void}, need to be non-|const|, since
 in the role of required type (as argument to |convert_expr| defined later)
 they could potentially be specialised; if they were const, we would be obliged
@@ -974,7 +995,7 @@ extern const type_expr row_of_type; // \.{[*]}
 extern const type_expr gen_func_type; // \.{(*->*)}
 
 @ The definition of the variables uses the constructors we have seen above,
-rather than functions like |make_primitive_type| and |make_row_type|, so that
+rather than functions like |mk_primitive_type| and |mk_row_type|, so that
 no dynamic allocation is required for the top level structure. For generic row
 and function types we construct the |type_expr| from unique-pointers (of which
 the constructor takes possession) pointing to other |type_expr|s produced by
@@ -986,8 +1007,8 @@ const type_expr unknown_type; // uses default constructor
  type_expr void_type(empty_tuple());
  type_expr int_type(integral_type);
  type_expr bool_type(boolean_type);
-const type_expr row_of_type(make_type_expr("[*]"));
-const type_expr gen_func_type(make_type_expr("(*->*)"));
+const type_expr row_of_type(mk_type_expr("[*]"));
+const type_expr gen_func_type(mk_type_expr("(*->*)"));
 
 @ There are more such statically allocated type expressions, which are used in
 the evaluator. They are less fundamental, as they are not actually used in any
@@ -1022,7 +1043,7 @@ them here (this used no not be the case, and led to a subtle bug whose
 appearance depended on the precise compiler version used!). The construction
 of type constants follows the same pattern as before, calling |copy| in the
 case of composite types. In the final case we choose the simplest solution of
-calling |make_type| and copy-constructing the resulting nested structure into
+calling |mk_type| and copy-constructing the resulting nested structure into
 the static variable before destroying the function result. One might have done
 better using the |set_from| method if it would have been possible to include
 in a (static) variable definition the call of a method on the declared
@@ -1034,12 +1055,12 @@ const type_expr str_type(string_type);
 const type_expr vec_type(vector_type);
 const type_expr ratvec_type(rational_vector_type);
 const type_expr mat_type(matrix_type);
-const type_expr row_of_int_type(make_type_expr("[int]"));
-const type_expr row_of_rat_type(make_type_expr("[rat]"));
-const type_expr row_of_vec_type(make_type_expr("[vec]"));
-const type_expr row_row_of_int_type(make_type_expr("[[int]]"));
-const type_expr pair_type(make_type_expr("(*,*)"));
-const type_expr int_int_type(make_type_expr("(int,int)"));
+const type_expr row_of_int_type(mk_type_expr("[int]"));
+const type_expr row_of_rat_type(mk_type_expr("[rat]"));
+const type_expr row_of_vec_type(mk_type_expr("[vec]"));
+const type_expr row_row_of_int_type(mk_type_expr("[[int]]"));
+const type_expr pair_type(mk_type_expr("(*,*)"));
+const type_expr int_int_type(mk_type_expr("(int,int)"));
 const type_expr Lie_type_type(complex_lie_type_type);
 const type_expr rd_type(root_datum_type);
 const type_expr ic_type(inner_class_type);

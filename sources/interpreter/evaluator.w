@@ -2584,7 +2584,7 @@ case lambda_expr:
   type_expr& arg_type=*fun->arg_type;
   if (not type.func->arg_type.specialise(arg_type))
   @/throw type_error(e,
-       std::move(*make_function_type(arg_type.copy(),unknown_type.copy())),
+       std::move(*mk_function_type(arg_type.copy(),unknown_type.copy())),
                      type.copy());
   size_t n_id=count_identifiers(pat);
 @/bindings new_bindings(n_id);
@@ -3236,7 +3236,7 @@ case op_cast_expr:
       expression_ptr p(new denotation(variants[i].val));
       if (spec_func(type,ctype,variants[i].type->result_type))
         return p.release();
-      type_ptr ftype=make_function_type
+      type_ptr ftype=mk_function_type
 	(ctype.copy(),variants[i].type->result_type.copy());
       throw type_error(e,std::move(*ftype),type.copy());
     }
