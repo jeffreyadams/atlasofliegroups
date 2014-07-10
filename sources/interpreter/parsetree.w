@@ -200,15 +200,16 @@ std::string str_denotation_variant;
 @< Enumeration tags for |expr_kind| @>=
 integer_denotation, string_denotation, boolean_denotation, @[@]
 
-@ For each of these variants there is a corresponding constructor that
+@ For most of these variants there is a corresponding constructor that
 placement-constructs the constant value into that variant. For the integer and
 Boolean case we might alternatively have assigned to the field, bit not for
-the string variant.
+the string variant. In fact we decided to declare the Boolean constructor
+deleted, since it many types (like all pointer types) implicitly convert to
+|bool| 
 
 @< Methods of |expr| @>=
   expr(int n) : kind(integer_denotation), int_denotation_variant(n) @+{}
-  expr(bool b)
-   : kind(boolean_denotation), int_denotation_variant(b ? 1 : 0) @+{}
+  expr(bool b) = @[ delete @];
   expr(std::string&& s)
    : kind(string_denotation)
    , str_denotation_variant(std::move(s)) @+{}
@@ -222,14 +223,20 @@ expr_p make_bool_denotation(bool val);
 expr_p make_string_denotation(std::string&& val);
 
 @~The definition of these functions is quite trivial easy, as will be typical
-for node-building functions.
+for node-building functions. However for Boolean denotations we abuse of the
+integer argument constructor and then correct the |kind| field of the
+result, so as to circumvent that that that a constructor with |bool|
+argument is not defined.
 
 @< Definitions of functions for the parser @>=
 expr_p make_int_denotation (int val)
   @+{@; return new expr(val); }
 
 expr_p make_bool_denotation(bool val)
-  @+{@; return new expr(val); }
+@+{@; expr result (val ? 1 : 0);
+  result.kind=boolean_denotation;
+  return new expr(std::move(result));
+}
 
 expr_p make_string_denotation(std::string&& val)
  @+{@; return new expr(std::move(val)); }
@@ -550,7 +557,7 @@ since binding a freshly constructed |expr| to the modifiable lvalue that
 @< Definitions of functions for the parser @>=
 expr mk_application_node(expr&& f, expr_list&& args)
 { app a(new application_node @[{ std::move(f), expr() }@]);
-  if (not args.empty() and args.at_end(++args.begin())) // a single argument
+  if (args.singleton())
     a->arg.set_from(args.front());
   else
     a->arg=expr(std::move(args),true); // make into an argument tuple
@@ -944,28 +951,29 @@ raw_patlist reverse_patlist(raw_patlist raw)
 %
 We now consider let-expressions, which introduce and bind local identifiers,
 which historically were a first step towards having user defined functions.
-Indeed let-expressions will be implemented (initially) as a user-defined
-functions that is immediately called with the values bound in the
-let-expression. The reason to have had let expressions before user-defined
-functions was that it could be done before user-specified types were
-introduced in the language; in a let expression types of variables are deduced
-from  the values provided, whereas function parameters need to have explicitly
-specified types.
+Indeed a let-expression will be implemented as a user-defined function that is
+immediately called with the (tuple of) values bound in the let-expression. The
+reason to have had let expressions before user-defined functions was that it
+could be done before user-specified types were introduced in the language; in
+a let expression types of variables are deduced from the values provided,
+whereas function parameters need to have explicitly specified types.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef struct let_expr_node* let;
+typedef std::unique_ptr<struct let_expr_node> let;
 
 @~After parsing, let-expression will have a single let-binding followed by a
 body giving the value to be returned. During parsing however, we may form
-intermediate values containing list of let-bindings, that will later be
+intermediate values containing lists of let-bindings, that will later be
 converted into a single one with a tuple as left hand side. We therefore
-define a node type |let_node| for a list of bindings, and a structure
-|let_expr_node| for a complete let-expression, containing only one binding,
-but in addition a body.
+define a list type |let_list| for a list of bindings, and a structure
+|let_expr_node| for a complete let-expression, containing (the components of)
+only one binding, and containing in addition a body.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-typedef struct let_node* let_list;
-struct let_node {@; id_pat pattern; expr val; let_list next; };
+struct let_pair {@; id_pat pattern; expr val; };
+typedef containers::simple_list<let_pair> let_list;
+typedef containers::sl_node<let_pair>* raw_let_list;
+@)
 struct let_expr_node {@; id_pat pattern; expr val; expr body; };
 
 @ The tag used for let-expressions is |let_expr|.
@@ -978,42 +986,52 @@ value.
 @< Variants... @>=
 let let_variant;
 
-@ Since |let| is a raw pointer, copying is done by assignment.
+@ There is a constructor for building this variant.
+@< Methods of |expr| @>=
+expr(let&& declaration)
+ : kind(let_expr)
+ , let_variant(std::move(declaration))
+ @+{}
+
+@ Now that |let| is a smart pointer, copying must be done by placement move
+construction. As before for smart pointers, we do not bother to call the
+destructor for |other.let_variant| once it has been set to~|nullptr|.
 
 @< Cases for copying... @>=
-  case let_expr: let_variant = other.let_variant; break;
-
-@ To print a let-expression we do the obvious things, wihtout worrying about
-parentheses; this should be fixed (for all printing routines).
-
-@< Cases for printing... @>=
-case let_expr:
-{ let lexp=e.let_variant;
-  out << "let " << lexp->pattern << '=' << lexp->val <<	 " in " << lexp->body;
-}
-break;
+ case let_expr:
+   new (&let_variant) let(std::move(other.let_variant));
+ break;
 
 @ Destroying lists of declarations will be done in a function callable from the
 parser, like |destroy_exprlist|.
 
 @< Declarations of functions for the parser @>=
-void destroy_letlist(let_list l);
+void destroy_letlist(raw_let_list l);
 
-@~Like |destroy_exprlist|, this function recursively destroys nodes, and the
-expressions they contain.
+@~Like in |destroy_exprlist|, merely reconstructing the non-raw list and
+letting that be destructed suffices to recursively destroy all nodes of the
+list, and anything accessed from them.
 
 @< Definitions of functions for the parser @>=
-void destroy_letlist(let_list l)
-{ while (l!=NULL)
-    @/{@; let_list p=l; l=l->next;
-      delete p;
-    }
-}
+void destroy_letlist(raw_let_list l)
+@+{@; (let_list(l)); }
 
-@~Here we clean up the declaration, and then the body of the let-expression.
+@~While |let_list| is only handled at the outermost level during parsing, it
+is |let| smart pointers that get built into |expr| values. As for all
+variants of |expr|, calling the destructor must be done explicitly.
 
 @< Cases for destroying... @>=
-case let_expr: delete e.let_variant;
+case let_expr: e.let_variant.~let();
+break;
+
+@ To print a let-expression we do the obvious things, without worrying about
+parentheses; this should be fixed (for all printing routines).
+
+@< Cases for printing... @>=
+case let_expr:
+{ const let& lexp=e.let_variant;
+  out << "let " << lexp->pattern << '=' << lexp->val <<	 " in " << lexp->body;
+}
 break;
 
 @ For building let-expressions, three functions will be defined. The function
@@ -1023,9 +1041,9 @@ constructed list |prev| of declaration; finally |make_let_expr_node| wraps up
 an entire let-expression.
 
 @< Declarations of functions for the parser @>=
-let_list make_let_node(raw_id_pat& pattern, expr_p val);
-let_list append_let_node(let_list prev, let_list cur);
-expr_p make_let_expr_node(let_list decls, expr_p body);
+raw_let_list make_let_node(raw_id_pat& pattern, expr_p val);
+raw_let_list append_let_node(raw_let_list prev, raw_let_list cur);
+expr_p make_let_expr_node(raw_let_list decls, expr_p body);
 
 @~The functions |make_let_node| and |append_let_node| build a list in reverse
 order, which makes the latter function a particularly simple one. In
@@ -1035,51 +1053,46 @@ tuple of patterns being declared comes out in the same order as it was
 specified in the program. Fortunately it is actually easier to build a merged
 list in reverse order.
 
-We provide local exception safety here, in the sense that if an exception is
-thrown we clean up the locally created nodes. As a side remark, we do realise
-that, as the parser function is written in \Cee, it will not be able to do any
-cleaning up of values referred to in its stack, in case of an exception thrown
-during its execution (here, or in calls to make-functions elsewhere, which it
-should be noted is fairly unlikely to happen). In fact the problem is not just
-one of programming language: even a parser generated as \Cpp~code would not
-help without special provisions (such as an exception handler in the parser
-function), since the |union| used for values on the parsing stack cannot have
-as members objects that handle their own cleaning up. Rather, this situation
-should probably be corrected by using a different allocation strategy while
-building the parse tree (avoiding explicit calls to |new| but allocating from
-local storage pools that can explicitly be emptied), in which case all
-cleaning up in the code below should also be removed.
+The argument |cur| for |append_let_node| is always the result of an
+application of |make_let_node|, so a list of length$~1$ This is just a trick
+to avoid having to deal with yet another type (corresponding to a |let_pair|,
+but demoted to POD) in the parser.
 
 @< Definitions of functions for the parser @>=
-let_list make_let_node(raw_id_pat& pattern, expr_p val)
-{ expr_ptr saf(val); id_pat pat(pattern);
-  return new let_node { std::move(pat), std::move(*val), nullptr };
+raw_let_list make_let_node(raw_id_pat& pattern, expr_p val)
+{ let_list result;
+  result.push_front ( { id_pat(pattern), std::move(*expr_ptr(val)) } );
+  return result.release();
 }
 @)
-let_list append_let_node(let_list prev, let_list cur)
-{@; cur->next=prev; return cur; }
+raw_let_list append_let_node(raw_let_list prev, raw_let_list cur)
+{@; let_list result(prev);
+  result.push_front(std::move(let_list(cur).front()));
+  return result.release();
+ }
 @)
-expr mk_let_expr_node(let_list decls, expr& body)
-{ let l=new let_expr_node { id_pat(), expr(),std::move(body) };
-  expr result; result.kind=let_expr; result.let_variant=l;
-  if (decls->next==NULL) // single declaration
-  @/{@; l->pattern=std::move(decls->pattern);
-    l->val=std::move(decls->val);
-    delete decls;
+expr mk_let_expr_node(let_list&& decls, expr& body)
+{ id_pat pattern; expr val;
+  if (decls.singleton()) // single declaration
+  @/{@; pattern=std::move(decls.front().pattern);
+    val=std::move(decls.front().val);
   }
   else
-  { l->pattern.kind=0x2;
-    l->val=expr(expr_list(),true);
-    while (decls!=NULL)
-    { l->pattern.sublist.push_front(std::move(decls->pattern));
-      l->val.sublist.push_front(std::move(decls->val));
-      let_list p=decls; decls=p->next; delete p;
+  { pattern.kind=0x2; // make pattern without name but with sublist
+    val=expr(expr_list(),true); // make a tuple expression
+    for (auto it=decls.begin(); not decls.at_end(it); ++it)
+      // zip open |decls|, reversing
+    { pattern.sublist.push_front(std::move(it->pattern));
+      val.sublist.push_front(std::move(it->val));
     }
   }
-  return result;
+  return expr(let(new let_expr_node
+    { std::move(pattern), std::move(val),std::move(body) }));
+
 }
-expr_p make_let_expr_node(let_list decls, expr_p body)
- { expr_ptr saf(body); return new expr(mk_let_expr_node(decls,*body)); }
+expr_p make_let_expr_node(raw_let_list decls, expr_p body)
+ {@; return new expr(mk_let_expr_node(let_list(decls),*expr_ptr(body)));
+ }
 
 @*1 Types and user-defined functions.
 %
@@ -1235,7 +1248,7 @@ copy, destruction of |type_l| deletes the original |type_node|.
 @< Definitions of functions for the parser @>=
 expr mk_lambda_node(patlist& pat_l, type_list& type_l, expr& body)
 { lambda fun=new lambda_node {id_pat(),type_ptr(),std::move(body)};
-  if (not type_l.empty() and type_l.at_end(++type_l.begin()))
+  if (type_l.singleton())
   { fun->pattern=std::move(pat_l.front());
   @/fun->arg_type = type_ptr(new type_expr(std::move(type_l.front())));
      // make a shallow copy

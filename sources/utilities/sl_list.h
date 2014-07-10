@@ -242,6 +242,7 @@ template<typename T>
   }
 
   bool empty() const { return head==nullptr; }
+  bool singleton() const { return head!=nullptr and head->next==nullptr; }
 
   iterator insert(iterator pos, const T& val)
   {
@@ -566,6 +567,7 @@ template<typename T>
   }
 
   bool empty() const { return tail==&head; } // or |node_count==0|
+  bool singleton() const { return node_count==1; }
   size_type size() const { return node_count; }
 
   iterator insert(iterator pos, const T& val)

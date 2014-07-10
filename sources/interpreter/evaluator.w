@@ -2381,7 +2381,7 @@ argument is produced and returned.
 
 @< Cases for type-checking and converting... @>=
 case let_expr:
-{ let lexp=e.let_variant;
+{ const let& lexp=e.let_variant;
   id_pat& pat=lexp->pattern;
   type_expr decl_type=pattern_type(pat);
   expression_ptr arg(convert_expr(lexp->val,decl_type));

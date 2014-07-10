@@ -298,7 +298,7 @@ struct type_expr
     func_type* func; // when |kind==function_type|
   };
 @)
-  @< Methods of the |type_expr| structure @>
+  @< Methods of the |type_expr| structure @>@;
  };
 
 @ Every variant of the union gets its own constructor that directly constructs

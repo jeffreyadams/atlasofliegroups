@@ -35,7 +35,7 @@
   unsigned short type_code; /* For type names */
   atlas::interpreter::expr_p    expression; /* For generic expressions */
   atlas::interpreter::raw_expr_list expression_list; /* list of expressions */
-  atlas::interpreter::let_list decls; /* declarations in a LET expression */
+  atlas::interpreter::raw_let_list decls; /* declarations in a LET expression */
   atlas::interpreter::raw_id_pat ip;
   struct {
     atlas::interpreter::raw_type_list typel;
