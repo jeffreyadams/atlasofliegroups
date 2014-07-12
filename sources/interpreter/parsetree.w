@@ -1233,7 +1233,7 @@ break;
 Of course we need if-then-else expressions.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef struct conditional_node* cond;
+typedef std::unique_ptr<struct conditional_node> cond;
 
 @~The parser handles \&{elif} constructions, so we only need to handle the
 basic two-branch case.
@@ -1252,30 +1252,27 @@ struct conditional_node
 @< Variants... @>=
 cond if_variant;
 
-@
+@ We follow the usual coding pattern for copying unique pointers.
 @< Cases for copying... @>=
-  case conditional_expr: if_variant = other.if_variant; break;
-
-@ To print a conditional expression at parser level, we shall not
-reconstruct \&{elif} constructions.
-
-@< Cases for printing... @>=
 case conditional_expr:
-{ cond c=e.if_variant; out << " if " << c->condition @|
-  << " then " << c->then_branch << " else " << c->else_branch << " fi ";
-}
+  new (&if_variant) cond(std::move(other.if_variant));
 break;
 
-@~Here we clean up constituent expressions and then the node for the conditional
-call itself.
+@~Again we just need to activate the variant destructor, the rest is
+automatic.
 
 @< Cases for destroying... @>=
 case conditional_expr:
-  destroy_expr_body(e.if_variant->condition);
-  destroy_expr_body(e.if_variant->then_branch);
-  destroy_expr_body(e.if_variant->else_branch);
-  delete e.if_variant;
+  e.if_variant.~cond();
 break;
+
+@ There is a constructor for building conditions expressions.
+@< Methods of |expr| @>=
+expr(cond&& conditional)
+ : kind(conditional_expr)
+ , if_variant(std::move(conditional))
+ @+{}
+
 
 
 @ To build an |conditional_node|, we define a function as usual.
@@ -1286,15 +1283,24 @@ expr_p make_conditional_node(expr_p c, expr_p t, expr_p e);
 
 @< Definitions of functions for the parser @>=
 expr mk_conditional_node(expr& c, expr& t, expr& e)
-{ cond n=new conditional_node; n->condition=std::move(c);
-  n->then_branch=std::move(t); n->else_branch=std::move(e);
-@/expr result; result.kind=conditional_expr; result.if_variant=n;
-  return result;
+{@;
+  return expr (cond (new @|
+      conditional_node { std::move(c), std::move(t), std::move(e) }));
 }
 expr_p make_conditional_node(expr_p c, expr_p t, expr_p e)
- { expr_ptr saf0(c), saf1(t), saf2(e);
-   return new expr(mk_conditional_node(*c,*t,*e));
- }
+{@;
+   return new expr(mk_conditional_node(*expr_ptr(c),*expr_ptr(t),*expr_ptr(e)));
+}
+
+@ To print a conditional expression at parser level, we shall not
+reconstruct \&{elif} constructions.
+
+@< Cases for printing... @>=
+case conditional_expr:
+{ const cond& c=e.if_variant; out << " if " << c->condition @|
+  << " then " << c->then_branch << " else " << c->else_branch << " fi ";
+}
+break;
 
 @*2 Loops.
 %
