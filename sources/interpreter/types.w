@@ -175,6 +175,7 @@ container type.
 
 @< Type definitions @>=
 typedef containers::simple_list<type_expr> type_list;
+typedef atlas::containers::sl_node<type_expr>* raw_type_list;
 typedef containers::sl_list<type_expr> dressed_type_list;
 
 @ Since types and type lists own their trees, their copy constructors must
@@ -767,6 +768,9 @@ type_p make_prim_type(int p);
 type_p make_row_type(type_p c);
 type_p make_tuple_type(raw_type_list l);
 type_p make_function_type(type_p a,type_p r);
+@)
+raw_type_list make_type_singleton(type_p raw);
+raw_type_list make_type_list(type_p t,raw_type_list l);
 
 @ The functions like |mk_prim| below simply wrap the call to the constructor
 into one of the operator |new|, and then capture of the resulting pointer into
@@ -812,6 +816,18 @@ type_p make_tuple_type(raw_type_list l)
 type_p make_function_type(type_p a,type_p r)
 {@; return
     mk_function_type(std::move(*type_ptr(a)),std::move(*type_ptr(r))).release();
+}
+@)
+
+raw_type_list make_type_singleton(type_p t)
+{@; type_list result;
+  result.push_front(std::move(*type_ptr(t)));
+  return result.release();
+}
+
+raw_type_list make_type_list(type_p t,raw_type_list l)
+{ type_list tmp(l); // since |prefix| needs second argument an lvalue reference
+  return prefix(std::move(*type_ptr(t)),tmp).release();
 }
 
 @*1 Specifying types by strings.
@@ -1138,9 +1154,9 @@ struct value_base
   virtual void print(std::ostream& out) const =0;
   virtual value_base* clone() const =0;
   static const char* name(); // just a model; this instance remains undefined
-private: //copying and assignment forbidden
-  value_base& operator=(const value_base& x);
-  value_base(const value_base& x);
+@)
+  value_base(const value_base& x) = @[delete@];
+  value_base& operator=(const value_base& x) = @[delete@];
 };
 @)
 typedef value_base* value;
@@ -1937,7 +1953,6 @@ exception types will be used without any type derivation.
 
 @< Includes needed in \.{types.h} @>=
 #include <stdexcept>
-#include "parsetree.h" // type |expr| will be used in error classes
 
 @ For errors detected before execution starts, we first derive a general
 exception class |program_error| from |std::exception|; it represents any kind
@@ -1958,15 +1973,16 @@ public:
 };
 
 @ We derive from |program_error| an exception type |expr_error| that stores in
-addition to the error message a reference t an expression to which the message
-applies. Placing a reference in an error object may seem hazardous, because the
-error might terminate the lifetime of the object referred to, but in fact it
-is safe: all |expr| objects are constructed in dynamic memory during parsing,
-and destructed at the disposal of the now translated expression at the end of
-the main interpreter loop; all throwing of |expr_error| (or derived types)
-happens after the parser has finished, and the corresponding |catch| happens
-in the main loop before disposal of the expression, so the reference certainly
-survives the lifetime of the |expr_error| object.
+addition to the error message a reference to an expression to which the
+message applies. Placing a reference in an error object may seem hazardous,
+because the error might terminate the lifetime of the object referred to, but
+in fact it is safe: all |expr| objects are constructed in dynamic memory
+during parsing, and destructed at the disposal of the now translated
+expression at the end of the main interpreter loop; all throwing of
+|expr_error| (or derived types) happens after the parser has finished, and the
+corresponding |catch| happens in the main loop before disposal of the
+expression, so the reference certainly survives the lifetime of the
+|expr_error| object.
 
 The error type is declared a |struct|, as we leave it up to the |catch| code
 to incorporate the offending expression in a message in addition to the one
@@ -1977,6 +1993,7 @@ complain here that the undeclared destructor has a too loose (because absent)
 |throw| specification, while it would for |program_error|.
 
 @< Type definitions @>=
+struct expr; // predeclare
 struct expr_error : public program_error
 { const expr& offender; // the subexpression causing a problem
 @)

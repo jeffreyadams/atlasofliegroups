@@ -2579,9 +2579,9 @@ by popping of the bindings for the arguments.
 case lambda_expr:
 { if (not type.specialise(gen_func_type))
     throw type_error(e,gen_func_type.copy(),type.copy());
-  lambda fun=e.lambda_variant;
-  id_pat& pat=fun->pattern;
-  type_expr& arg_type=*fun->arg_type;
+  const lambda& fun=e.lambda_variant;
+  const id_pat& pat=fun->pattern;
+  const type_expr& arg_type=*fun->arg_type;
   if (not type.func->arg_type.specialise(arg_type))
   @/throw type_error(e,
        std::move(*mk_function_type(arg_type.copy(),unknown_type.copy())),

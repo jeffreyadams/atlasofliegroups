@@ -25,8 +25,7 @@ declaration is separated fro historic reasons only.
 #include <iostream>
 #include <memory>
 #include <string>
-#include "buffer.h" // for |Hash_table|
-#include "sl_list.h"
+@< Includes needed in \.{parsetree.h} @>@;
 namespace atlas
 {
   namespace interpreter
@@ -282,10 +281,14 @@ case boolean_denotation:
 case string_denotation:
   out << '"' << e.str_denotation_variant << '"'; break;
 
-@ Another atomic expression is an applied identifier. They use the type
-|Hash_table::id_type| (a small integer type) of indices into the table of
-identifier names, which we lift out of that class by using a |typedef|.
+@ We shall use the type |Hash_table::id_type| (a small integer type) of
+indices into the table of identifier names, which we lift out of that class by
+using a |typedef|.
 
+@< Includes needed... @>=
+#include "buffer.h" // for |Hash_table|
+
+@ Another atomic expression is an applied identifier.
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef Hash_table::id_type id_type;
 
@@ -351,10 +354,15 @@ case last_value_computed: out << '$'; @q$@> break;
 
 @*1 Expression lists.
 %
-We shall need expression lists for various purposes.
 After long refactoring of the code (notably unmaking |expr| a POD-exclusive
 tagged union), we can use the atlas class template |containers::simple_list|
 to implement it, instead of having to define a custom list type.
+
+@< Includes needed... @>=
+#include "buffer.h" // for |Hash_table|
+#include "sl_list.h"
+
+@ We shall need expression lists for various purposes.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef containers::simple_list<expr> expr_list;
@@ -1113,58 +1121,32 @@ the actual pointer types. Something that remains (for now) is the avoidance of
 smart pointers for types in the parser, since other pointers for expressions
 that it handles are not smart pointers either.
 
-We avoid including \.{types.h} into our header file \.{parsetree.h}, since the
-reverse inclusion is present and necessary. But we do need to know about the
-following type names, where it fortunately suffices to know they are pointers
-to unspecified structures.
+@< Includes needed... @>=
+#include "types.h"
 
-@< Structure and typedef... @>=
-struct type_expr;
-typedef class atlas::containers::sl_node<type_expr>* raw_type_list;
-   // predeclare;
-typedef class atlas::containers::simple_list<type_expr> type_list;
-   // predeclare;
-typedef type_expr* type_p;
-typedef std::unique_ptr<type_expr> type_ptr;
-
-@ These functions provide an interface to routines defined in the
-module \.{types.w}, stripping off the smart pointers.
+@ Most functionality for these types is given in \.{types.w}; we just need to
+say how to destroy them.
 
 @< Declarations of functions for the parser @>=
-raw_type_list make_type_singleton(type_p raw);
-raw_type_list make_type_list(type_p t,raw_type_list l);
-@)
 void destroy_type(type_p t);
 void destroy_type_list(raw_type_list t);
+
+@ Since |type_ptr| and |type_list| are fully equipped types, it suffices to
+convert to them and forget.
+
+@< Definitions of functions for the parser @>=
+
+void destroy_type(type_p t)@+ {@; (type_ptr(t)); }
+void destroy_type_list(raw_type_list t)@+ {@; (type_list(t)); }
+  // recursive destruction
 
 @ The following function is not used in the parser, and never had \Cee~linkage.
 
 @< Declaration of functions not for the parser @>=
 std::ostream& print_type(std::ostream& out, type_p type);
 
-@ All that is needed are conversions from ordinary pointer to auto-pointer and
-back (or from integer to enumeration type). Nothing can throw during these
-conversions, so passing bare pointers is exception-safe.
-
-@< Definitions of functions for the parser @>=
-
-raw_type_list make_type_singleton(type_p raw)
-{ type_ptr t(raw); // ensures node is cleaned up
-  type_list result;
-  result.push_front(std::move(*t));
-  return result.release();
-}
-
-raw_type_list make_type_list(type_p raw,raw_type_list l)
-{ type_ptr t(raw); // ensure clean-up
-  type_list tmp(l); // since |prefix| needs second argument an lvalue reference
-  return prefix(std::move(*t),tmp).release();
-}
-@)
-
-void destroy_type(type_p t)@+ {@; delete t; }
-void destroy_type_list(raw_type_list t)@+ {@; delete t; } // recursive destruction
-
+@
+@< Definitions of functions not for the parser @>=
 std::ostream& print_type(std::ostream& out, type_p type) @+
 {@; return out << *type; }
 

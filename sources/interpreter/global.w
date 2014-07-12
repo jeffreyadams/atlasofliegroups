@@ -153,9 +153,15 @@ type_expr analyse_types(const expr& e,expression_ptr& p)
 @*1 Operations other than evaluation of expressions.
 %
 This section will be devoted to some interactions between user and program
-that do not consist just of evaluating expressions.
+that do not consist just of evaluating expressions. We shall need the types
+related to |type_expr|, which are defined in \.{types.h}, and those related
+|expr|, which are defined in \.{parsetree.h}
 
-The function |global_set_identifier| handles introducing identifiers, either
+@< Includes needed... @>=
+#include "types.h"
+#include "parsetree.h"
+
+@ The function |global_set_identifier| handles introducing identifiers, either
 normal ones or overloaded instances of functions, using the \&{set} syntax.
 The function |global_declare_identifier| just introduces an identifier into
 the global (non-overloaded) table with a definite type, but does not provide a
