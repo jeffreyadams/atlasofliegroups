@@ -883,6 +883,7 @@ struct id_pat
   @+{}
   id_pat (id_type n, unsigned char k, patlist&& l)
   : name(n), kind(k), sublist(std::move(l)) @+{}
+  id_pat(patlist&& l): name(), kind(0x2),  sublist(std::move(l)) @+{}
 @)
   id_pat @[@](const id_pat& x) = @[ delete @];
   id_pat @[@](id_pat&& x) = @[ default @];
@@ -1086,13 +1087,14 @@ expr mk_let_expr_node(let_list&& decls, expr& body)
     val=std::move(decls.front().val);
   }
   else
-  { pattern.kind=0x2; // make pattern without name but with sublist
+  { patlist patl;
     val=expr(expr_list(),true); // make a tuple expression
     for (auto it=decls.begin(); not decls.at_end(it); ++it)
       // zip open |decls|, reversing
-    { pattern.sublist.push_front(std::move(it->pattern));
+    {@; patl.push_front(std::move(it->pattern));
       val.sublist.push_front(std::move(it->val));
     }
+    pattern = id_pat(std::move(patl));
   }
   return expr(let(new let_expr_node
     { std::move(pattern), std::move(val),std::move(body) }));
@@ -1140,26 +1142,16 @@ void destroy_type(type_p t)@+ {@; (type_ptr(t)); }
 void destroy_type_list(raw_type_list t)@+ {@; (type_list(t)); }
   // recursive destruction
 
-@ The following function is not used in the parser, and never had \Cee~linkage.
-
-@< Declaration of functions not for the parser @>=
-std::ostream& print_type(std::ostream& out, type_p type);
-
-@
-@< Definitions of functions not for the parser @>=
-std::ostream& print_type(std::ostream& out, type_p type) @+
-{@; return out << *type; }
-
 @ For user-defined functions we shall use a structure |lambda_node|.
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef struct lambda_node* lambda;
+typedef std::unique_ptr<struct lambda_node> lambda;
 
 @~It contains a pattern for the formal parameter(s), its type (a smart pointer
 defined in \.{types.w}), and an expression (the body of the function).
 
 @< Structure and typedef... @>=
 struct lambda_node
-{@; id_pat pattern; type_ptr arg_type; expr body; };
+{@; id_pat pattern; type_expr parameter_type; expr body; };
 
 @ The tag used for user-defined functions is |lambda_expr|.
 @< Enumeration tags... @>=
@@ -1169,30 +1161,24 @@ lambda_expr,@[@]
 @< Variants of |union... @>=
 lambda lambda_variant;
 
-@ Since |lambda| is a raw pointer, we just assign.
+@ Since |lambda| is a unique pointer, we must use move construction.
 @< Cases for copying... @>=
-case lambda_expr: lambda_variant = other.lambda_variant; break;
+case lambda_expr: new (&lambda_variant) lambda(std::move(other.lambda_variant));
+break;
 
 @ And we must of course take care of destroying lambda expressions, which is
 done correctly by the implicit destructions provoked by calling |delete|.
 
 @< Cases for destroying an expression |e| @>=
-case lambda_expr: delete e.lambda_variant;
+case lambda_expr: e.lambda_variant.~lambda();
 break;
 
-@ We must take care of printing lambda expressions; we avoid a double set of
-parentheses.
-
-@< Cases for printing... @>=
-case lambda_expr:
-{ lambda fun=e.lambda_variant;
-  if ((fun->pattern.kind&0x1)!=0)
-    out << '(' << fun->pattern << ')';
-  else
-    out << fun->pattern;
-  out << ':' << fun->body;
-}
-break;
+@ There is a constructor for building lambda expressions.
+@< Methods of |expr| @>=
+expr(lambda&& fun)
+ : kind(lambda_expr)
+ , lambda_variant(std::move(fun))
+ @+{}
 
 @ Finally there is as usual a function for constructing a node, to be called
 by the parser.
@@ -1204,31 +1190,42 @@ expr_p make_lambda_node(raw_patlist pat_l, raw_type_list type_l, expr_p body);
 the parser passes lists of patterns and types rather than single ones. We must
 distinguish the case of a singleton, in which case the head node must be
 unpacked, and the multiple case, where a tuple pattern and type must be
-wrapped up from the lists. In the former case, |fun->arg_type| wants to have a
-pointer to an isolated |type_expr|, but the head of |type_l| is a |type_node|
-that contains a |type_expr| as its |t| field; making a (shallow) copy of that
-field is the easiest way to obtain an isolated |type_expr|. After the
-copy, destruction of |type_l| deletes the original |type_node|.
+wrapped up from the lists. In the former case, |fun->parameter_type| wants to
+have a pointer to an isolated |type_expr|, but the head of |type_l| is a
+|type_node| that contains a |type_expr| as its |t| field; making a (shallow)
+copy of that field is the easiest way to obtain an isolated |type_expr|. After
+the copy, destruction of |type_l| deletes the original |type_node|.
 
 @< Definitions of functions for the parser @>=
-expr mk_lambda_node(patlist& pat_l, type_list& type_l, expr& body)
-{ lambda fun=new lambda_node {id_pat(),type_ptr(),std::move(body)};
+expr mk_lambda_node(patlist&& pat_l, type_list&& type_l, expr& body)
+{ id_pat pattern; type_expr parameter_type;
   if (type_l.singleton())
-  { fun->pattern=std::move(pat_l.front());
-  @/fun->arg_type = type_ptr(new type_expr(std::move(type_l.front())));
-     // make a shallow copy
+@/{@; pattern=std::move(pat_l.front());
+    parameter_type = std::move(type_l.front());
   }
   else
-  { fun->pattern.kind=0x2; fun->pattern.sublist=std::move(pat_l);
-    fun->arg_type=mk_tuple_type(std::move(type_l));
+@/{@; pattern=id_pat(std::move(pat_l));
+    parameter_type=type_expr(std::move(type_l)); // make tuple type
   }
-  expr result; result.kind=lambda_expr; result.lambda_variant=std::move(fun);
-  return result;
+  return expr(lambda(new@| lambda_node
+      {std::move(pattern),std::move(parameter_type),std::move(body)}));
 }
-expr_p make_lambda_node(raw_patlist raw_patl, raw_type_list raw, expr_p body)
- { patlist pat_l(raw_patl); type_list type_l(raw); expr_ptr saf(body);
-   return new expr(mk_lambda_node(pat_l,type_l,*body));
+expr_p make_lambda_node(raw_patlist p, raw_type_list tl, expr_p body)
+ {@;
+   return new expr(mk_lambda_node(patlist(p),type_list(tl),*expr_ptr(body)));
  }
+
+@ Because of the above transformations, lambda expressions are printed with
+all parameter types grouped into one tuple (unless there was exactly one
+parameter).
+
+@< Cases for printing... @>=
+case lambda_expr:
+{ const lambda& fun=e.lambda_variant;
+  out << '(' << fun->parameter_type << ' ' << fun->pattern << "):" << fun->body;
+}
+break;
+
 
 @*1 Control structures.
 
@@ -1537,7 +1534,7 @@ cast cast_variant;
 @< Cases for printing... @>=
 case cast_expr:
 {@; cast c = e.cast_variant;
-  print_type(out,c->type) << ':' << c->exp ;
+  out << *c->type << ':' << c->exp ;
 }
 break;
 
@@ -1594,7 +1591,7 @@ op_cast op_cast_variant;
 @< Cases for printing... @>=
 case op_cast_expr:
 { op_cast c = e.op_cast_variant;
-  print_type(out << main_hash_table->name_of(c->oper) << '@@',c->type);
+  out << main_hash_table->name_of(c->oper) << '@@' << *c->type;
 }
 break;
 

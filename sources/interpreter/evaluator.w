@@ -2581,7 +2581,7 @@ case lambda_expr:
     throw type_error(e,gen_func_type.copy(),type.copy());
   const lambda& fun=e.lambda_variant;
   const id_pat& pat=fun->pattern;
-  const type_expr& arg_type=*fun->arg_type;
+  const type_expr& arg_type=fun->parameter_type;
   if (not type.func->arg_type.specialise(arg_type))
   @/throw type_error(e,
        std::move(*mk_function_type(arg_type.copy(),unknown_type.copy())),
