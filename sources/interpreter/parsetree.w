@@ -1273,8 +1273,6 @@ expr(cond&& conditional)
  , if_variant(std::move(conditional))
  @+{}
 
-
-
 @ To build an |conditional_node|, we define a function as usual.
 @< Declarations of functions for the parser @>=
 expr_p make_conditional_node(expr_p c, expr_p t, expr_p e);
@@ -1311,9 +1309,9 @@ However we provide a relative innovation by having both types deliver a value:
 this will be a row value with one entry for each iteration performed.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef struct while_node* w_loop;
-typedef struct for_node* f_loop;
-typedef struct cfor_node* c_loop;
+typedef std::unique_ptr<struct while_node> w_loop;
+typedef std::unique_ptr<struct for_node> f_loop;
+typedef std::unique_ptr<struct cfor_node> c_loop;
 
 @~A |while| loop has two elements: a condition (which determines whether an
 iteration will be undertaken), and a body (which contributes an entry to the
@@ -1344,54 +1342,45 @@ w_loop while_variant;
 f_loop for_variant;
 c_loop cfor_variant;
 
-@
+@ Again we apply the copying discipline for unique pointer variants.
 @< Cases for copying... @>=
-  case while_expr: while_variant = other.while_variant; break;
-  case for_expr: for_variant = other.for_variant; break;
-  case cfor_expr: cfor_variant = other.cfor_variant; break;
-
-@ To print a |while| or |for| expression at parser level, we reproduce the
-input syntax.
-
-@< Cases for printing... @>=
-case while_expr:
-{ w_loop w=e.while_variant;
-  out << " while " << w->condition << " do " << w->body << " od ";
-}
-break;
-case for_expr:
-{ f_loop f=e.for_variant;
-  const patlist& pl = f->id.sublist;
-  const id_pat& index = pl.front();
-  const id_pat& entry = *++pl.begin();
-  out << " for " << entry;
-  if (index.kind==0x1)
-    out << '@@' << index;
-  out << " in " << f->in_part << " do " << f->body << " od ";
-}
-break;
-case cfor_expr:
-{ c_loop c=e.cfor_variant;
-  out << " for " << main_hash_table->name_of(c->id) << ": " << c->count;
-  if (c->bound.kind!=tuple_display or c->bound.sublist.empty())
-    out << (c->up!=0 ? " from " : " downto ") << c->bound;
-  out << " do " << c->body << " od ";
-}
-break;
+  case while_expr:
+    new(&while_variant) w_loop(std::move(other.while_variant));
+  break;;
+  case for_expr:
+    new(&for_variant) f_loop(std::move(other.for_variant));
+  break;;
+  case cfor_expr:
+     new(&cfor_variant) c_loop(std::move(other.cfor_variant));
+  break;;
 
 @~Cleaning up is exactly like that for conditional expressions.
 
 @< Cases for destroying... @>=
 case while_expr:
-  delete e.while_variant;
+  e.while_variant.~w_loop();
 break;
 case for_expr:
-  delete e.for_variant;
+  e.for_variant.~f_loop();
 break;
 case cfor_expr:
-  delete e.cfor_variant;
+  e.cfor_variant.~c_loop();
 break;
 
+@ There is a constructor for building conditions each type of loop expression.
+@< Methods of |expr| @>=
+expr(w_loop&& loop)
+ : kind(while_expr)
+ , while_variant(std::move(loop))
+ @+{}
+expr(f_loop&& loop)
+ : kind(for_expr)
+ , for_variant(std::move(loop))
+ @+{}
+expr(c_loop&& loop)
+ : kind(cfor_expr)
+ , cfor_variant(std::move(loop))
+ @+{}
 
 @ To build a |while_node|, |for_node| or |cfor_node|, here are yet three
 more \\{make}-functions.
@@ -1405,32 +1394,61 @@ expr_p make_cfor_node(id_type id, expr_p count, expr_p bound, short up, expr_p b
 
 @< Definitions of functions for the parser @>=
 expr mk_while_node(expr& c, expr& b)
-{ w_loop w=new while_node; w->condition=std::move(c); w->body=std::move(b);
-@/expr result; result.kind=while_expr; result.while_variant=w;
-  return result;
+{@;
+  return expr (w_loop(new while_node { std::move(c), std::move(b)})) ;
 }
 expr_p make_while_node(expr_p c, expr_p b)
- { expr_ptr saf0(c),saf1(b); return new expr(mk_while_node(*c,*b)); }
-
-expr mk_for_node(raw_id_pat& id, expr& ip, expr& b)
-{ f_loop f=new for_node { id_pat(id), std::move(ip), std::move(b) };
-@/expr result; result.kind=for_expr; result.for_variant=f;
-  return result;
+{@; return new expr(mk_while_node(*expr_ptr(c),*expr_ptr(b))); }
+@)
+expr mk_for_node(id_pat&& id, expr& ip, expr& b)
+{@;
+  return expr(f_loop(new
+    for_node { std::move(id), std::move(ip), std::move(b) }));
 }
 expr_p make_for_node(raw_id_pat& id, expr_p ip, expr_p b)
- { expr_ptr saf0(ip),saf1(b); return new expr(mk_for_node(id,*ip,*b)); }
-
-expr mk_cfor_node(id_type id, expr& count, expr& bound, short up, expr& b)
-{ c_loop c=new cfor_node;
-  c->id=id; c->count=std::move(count); c->bound=std::move(bound);
-  c->up=up; c->body=std::move(b);
-@/expr result; result.kind=cfor_expr; result.cfor_variant=c;
-  return result;
+{@;
+   return new expr(mk_for_node(id_pat(id),*expr_ptr(ip),*expr_ptr(b)));
 }
-expr_p make_cfor_node(id_type id, expr_p count, expr_p bound, short up, expr_p b)
- { expr_ptr saf0(count),saf1(bound),saf2(b);
-   return new expr(mk_cfor_node(id,*count,*bound,up,*b));
- }
+@)
+expr mk_cfor_node(id_type id, expr& cnt, expr& bnd, short up, expr& b)
+{@;
+  return expr (c_loop(new @|
+   cfor_node { id, std::move(cnt),std::move(bnd),up,std::move(b) }));
+}
+expr_p make_cfor_node(id_type id, expr_p cnt, expr_p bnd, short up, expr_p b)
+{@;
+   return new
+     expr(mk_cfor_node(id,*expr_ptr(cnt),*expr_ptr(bnd),up,*expr_ptr(b)));
+}
+
+@ To print a |while| or |for| expression at parser level, we reproduce the
+input syntax.
+
+@< Cases for printing... @>=
+case while_expr:
+{ const w_loop& w=e.while_variant;
+@/ out << " while " << w->condition << " do " << w->body << " od ";
+}
+break;
+case for_expr:
+{ const f_loop& f=e.for_variant;
+  const patlist& pl = f->id.sublist;
+@/const id_pat& index = pl.front();
+  const id_pat& entry = *++pl.begin();
+@/out << " for " << entry;
+  if (index.kind==0x1)
+    out << '@@' << index;
+  out << " in " << f->in_part << " do " << f->body << " od ";
+}
+break;
+case cfor_expr:
+{ const c_loop& c=e.cfor_variant;
+@/out << " for " << main_hash_table->name_of(c->id) << ": " << c->count;
+  if (c->bound.kind!=tuple_display or c->bound.sublist.empty())
+    out << (c->up!=0 ? " from " : " downto ") << c->bound;
+  out << " do " << c->body << " od ";
+}
+break;
 
 @*1 Array subscriptions.
 %

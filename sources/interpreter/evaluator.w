@@ -2584,7 +2584,7 @@ case lambda_expr:
   const type_expr& arg_type=fun->parameter_type;
   if (not type.func->arg_type.specialise(arg_type))
   @/throw type_error(e,
-       std::move(*mk_function_type(arg_type.copy(),unknown_type.copy())),
+                     type_expr(arg_type.copy(),unknown_type.copy()),
                      type.copy());
   size_t n_id=count_identifiers(pat);
 @/bindings new_bindings(n_id);
@@ -2730,7 +2730,7 @@ case).
 
 @< Cases for type-checking and converting... @>=
 case while_expr:
-{ w_loop w=e.while_variant;
+{ const w_loop& w=e.while_variant;
   expression_ptr c (convert_expr(w->condition,bool_type));
   if (type==void_type or type.specialise(row_of_type))
   { expression_ptr b
@@ -2836,7 +2836,7 @@ its a priori type.
 
 @< Cases for type-checking and converting... @>=
 case for_expr:
-{ f_loop f=e.for_variant;
+{ const f_loop& f=e.for_variant;
   bindings bind(count_identifiers(f->id));
    // for identifier(s) introduced in this loop
   type_expr in_type;
@@ -3094,7 +3094,7 @@ body.
 
 @< Cases for type-checking and converting... @>=
 case cfor_expr:
-{ c_loop c=e.cfor_variant;
+{ const c_loop& c=e.cfor_variant;
   expression_ptr count_expr(convert_expr(c->count,int_type));
   static shared_value zero=shared_value(new int_value(0));
     // avoid repeated allocation
@@ -3236,9 +3236,8 @@ case op_cast_expr:
       expression_ptr p(new denotation(variants[i].val));
       if (spec_func(type,ctype,variants[i].type->result_type))
         return p.release();
-      type_ptr ftype=mk_function_type
-	(ctype.copy(),variants[i].type->result_type.copy());
-      throw type_error(e,std::move(*ftype),type.copy());
+      type_expr ftype(ctype.copy(),variants[i].type->result_type.copy());
+      throw type_error(e,std::move(ftype),type.copy());
     }
   std::ostringstream o;
   o << "Cannot resolve " << main_hash_table->name_of(c->oper) @|
