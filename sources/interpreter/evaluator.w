@@ -3199,10 +3199,9 @@ represent them.
 
 @< Cases for type-checking and converting... @>=
 case cast_expr:
-{ cast c=e.cast_variant;
-  type_expr& ctype=*c->type;
-  expression_ptr p(convert_expr(c->exp,ctype));
-  return conform_types(ctype,type,p,e);
+{ const cast& c=e.cast_variant;
+  expression_ptr p(convert_expr(c->exp,c->type));
+  return conform_types(c->type,type,p,e);
 }
 
 @ The overload table stores type information in a |func_type| value, which
@@ -3223,10 +3222,10 @@ serve as wrapper that upon evaluation will return the value again.
 
 @< Cases for type-checking and converting... @>=
 case op_cast_expr:
-{ op_cast c=e.op_cast_variant;
+{ const op_cast& c=e.op_cast_variant;
   const overload_table::variant_list& variants =
    global_overload_table->variants(c->oper);
-  type_expr& ctype=*c->type;
+  type_expr& ctype=c->type;
   if (is_special_operator(c->oper))
     @< Test special argument patterns, and on match |return| an appropriate
        denotation @>
@@ -3750,7 +3749,7 @@ void next_expression::evaluate(level l) const
 
 @< Cases for type-checking and converting... @>=
 case seq_expr:
-{ sequence seq=e.sequence_variant;
+{ const sequence& seq=e.sequence_variant;
   if (seq->forward!=0)
   { expression_ptr first(convert_expr(seq->first,void_type));
     expression_ptr last(convert_expr(seq->last,type));
