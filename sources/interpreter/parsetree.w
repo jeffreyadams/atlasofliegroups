@@ -1903,7 +1903,7 @@ break;
 
 @* Other functions callable from the parser.
 Here are some functions that are not so much a parsing functions as just
-wrapper functions enabling the parser to call \Cpp~functions.
+wrapper functions that used to enable the parser to call \Cpp~functions.
 
 @< Declarations of functions for the parser @>=
 id_type lookup_identifier(const char*);

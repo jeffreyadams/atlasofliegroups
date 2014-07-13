@@ -31,8 +31,7 @@ CTANGLEFLAGS := ++ -p
 CWEBXMACROS := $(cwebx_dir)/cwebxmac.tex
 
 # these are used for C++ compilation and linking (debugging, no optimization)
-CXXFLAGS := -Wall -Wno-parentheses -Wno-deprecated-declarations -g \
-   $(INCLUDE_FLAGS)
+CXXFLAGS := -Wall -Wno-parentheses -g $(INCLUDE_FLAGS)
 
 # our beloved C++ compiler
 CXX := g++ -std=c++0x

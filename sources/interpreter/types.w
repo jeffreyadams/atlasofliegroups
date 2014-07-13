@@ -1138,14 +1138,14 @@ operator is accidentally invoked. Copy constructors will in fact be defined
 for all derived types, as they are needed to implement the |clone| method;
 these will be |private| or |protected| as well, so as to forbid accidental use
 elsewhere, but they don't copy-construct the |value_base| base object (rather
-they default-construct it). We can then declare the |value_base| copy
-constructor |private| so that in case of accidental omission the use of a
-synthesised constructor will be caught here as well.
+they default-construct it). We can then |delete| the |value_base| copy
+constructor, so that in case of accidental omission the use of a synthesised
+constructor will be caught here as well.
 
 As mentioned values are always handled via pointers. We define a raw pointer
-type |value|, a unique-pointer |owned_value| (which cannot be stored in STL
-containers), and a shared smart pointer |shared_value| (which by contrast can
-be stored in STL containers).
+type |value|, a unique-pointer |owned_value| (which cannot safely be stored in
+STL containers), and a shared smart pointer |shared_value| (which by contrast
+can be stored in STL containers).
 
 @< Type definitions @>=
 struct value_base
@@ -1160,7 +1160,7 @@ struct value_base
 };
 @)
 typedef value_base* value;
-typedef std::auto_ptr<value_base> owned_value;
+typedef std::unique_ptr<value_base> owned_value;
 typedef std::shared_ptr<value_base> shared_value;
 
 @ We can already make sure that the operator~`|<<|' will do the right thing
@@ -1235,7 +1235,7 @@ protected:
     // copy still shares the individual entries
 };
 @)
-typedef std::auto_ptr<row_value> row_ptr;
+typedef std::unique_ptr<row_value> row_ptr;
 typedef std::shared_ptr<row_value> shared_row;
 
 @ So here is the first occasion where we shall use virtual functions. For the
@@ -1272,7 +1272,7 @@ private:
  // copy constructor; used by |clone|
 };
 @)
-typedef std::auto_ptr<tuple_value> tuple_ptr;
+typedef std::unique_ptr<tuple_value> tuple_ptr;
 typedef std::shared_ptr<tuple_value> shared_tuple;
 
 @ We just need to redefine the |print| method.
@@ -1401,7 +1401,7 @@ struct expression_base
 };
 @)
 typedef expression_base* expression;
-typedef std::auto_ptr<expression_base> expression_ptr;
+typedef std::unique_ptr<expression_base> expression_ptr;
 typedef std::shared_ptr<expression_base> shared_expression;
 
 @ Like for values, we can assure right away that printing converted
@@ -1457,7 +1457,7 @@ the return of |new| and the conversion of its result into a unique-pointer.
 
 @< Template and inline function definitions @>=
 template<typename D> // |D| is a type derived from |value_base|
-  inline void push_value(std::auto_ptr<D> v)
+  inline void push_value(std::unique_ptr<D>&& v)
      // value parameter accepts rvalue or lvalue alike
   {@; execution_stack.push_back(std::shared_ptr<D>(std::move(v))); }
 
@@ -1762,11 +1762,11 @@ bool coerce(const type_expr& from_type, const type_expr& to_type,
 { for (coerce_iter
        it=coerce_table.begin(); it!=coerce_table.end(); ++it)
     if (from_type==*it->from and to_type==*it->to)
-    @/{@; e.reset(new conversion(*it,e));
+    @/{@; e.reset(new conversion(*it,std::move(e)));
       return true;
     }
   if (to_type==void_type)
-  {@; e.reset(new voiding(e));
+  {@; e.reset(new voiding(std::move(e)));
      return true;
   }
   return false;

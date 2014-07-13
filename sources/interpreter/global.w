@@ -554,7 +554,7 @@ private:
   int_value(const int_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::auto_ptr<int_value> int_ptr;
+typedef std::unique_ptr<int_value> int_ptr;
 typedef std::shared_ptr<int_value> shared_int;
 @)
 struct rat_value : public value_base
@@ -569,7 +569,7 @@ private:
   rat_value(const rat_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::auto_ptr<rat_value> rat_ptr;
+typedef std::unique_ptr<rat_value> rat_ptr;
 typedef std::shared_ptr<rat_value> shared_rat;
 
 @ Here are two more; this is quite repetitive.
@@ -588,7 +588,7 @@ private:
   string_value(const string_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::auto_ptr<string_value> string_ptr;
+typedef std::unique_ptr<string_value> string_ptr;
 typedef std::shared_ptr<string_value> shared_string;
 @)
 
@@ -604,7 +604,7 @@ private:
   bool_value(const bool_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::auto_ptr<bool_value> bool_ptr;
+typedef std::unique_ptr<bool_value> bool_ptr;
 typedef std::shared_ptr<bool_value> shared_bool;
 
 @*1 Primitive types for vectors and matrices.
@@ -649,7 +649,7 @@ private:
   vector_value(const vector_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::auto_ptr<vector_value> vector_ptr;
+typedef std::unique_ptr<vector_value> vector_ptr;
 typedef std::shared_ptr<vector_value> shared_vector;
 
 @ Matrices and rational vectors follow the same pattern, but in this case the
@@ -669,7 +669,7 @@ private:
   matrix_value(const matrix_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::auto_ptr<matrix_value> matrix_ptr;
+typedef std::unique_ptr<matrix_value> matrix_ptr;
 typedef std::shared_ptr<matrix_value> shared_matrix;
 @)
 struct rational_vector_value : public value_base
@@ -688,7 +688,7 @@ private:
   rational_vector_value(const rational_vector_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::auto_ptr<rational_vector_value> rational_vector_ptr;
+typedef std::unique_ptr<rational_vector_value> rational_vector_ptr;
 typedef std::shared_ptr<rational_vector_value> shared_rational_vector;
 @)
 
@@ -793,7 +793,7 @@ void ratvec_ratlist_convert() // convert rational vector to list of rationals
   { Rational q(rv->val.numerator()[i],rv->val.denominator());
     result->val[i] = shared_value(new rat_value(q.normalize()));
   }
-  push_value(result);
+  push_value(std::move(result));
 }
 @)
 void vec_ratvec_convert() // convert vector to rational vector
@@ -869,7 +869,7 @@ void veclist_matrix_convert()
 @.Vector sizes differ in conversion@>
     m->val.set_column(j,col);
   }
-  push_value(m);
+  push_value(std::move(m));
 }
 
 @ There remains one ``internalising'' conversion function, from row of row of
@@ -890,7 +890,7 @@ void intlistlist_matrix_convert()
 @.List differ in conversion@>
     m->val.set_column(j,col);
   }
-  push_value(m);
+  push_value(std::move(m));
 }
 
 @ There remain the ``externalising'' conversions (towards lists of values) of
@@ -917,7 +917,7 @@ void matrix_veclist_convert()
   row_ptr result(new row_value(m->val.numColumns()));
   for(size_t i=0; i<m->val.numColumns(); ++i)
     result->val[i]=shared_value(new vector_value(m->val.column(i)));
-  push_value(result);
+  push_value(std::move(result));
 }
 @)
 void matrix_intlistlist_convert()
@@ -926,7 +926,7 @@ void matrix_intlistlist_convert()
   for(size_t i=0; i<m->val.numColumns(); ++i)
     result->val[i]=shared_value(weight_to_row(m->val.column(i)).release());
 
-  push_value(result);
+  push_value(std::move(result));
 }
 
 @ All that remains is to initialise the |coerce_table|.
@@ -1391,7 +1391,7 @@ void join_vectors_wrapper(expression_base::level l)
     result->val.reserve(x->val.size()+y->val.size());
     result->val.insert(result->val.end(),x->val.begin(),x->val.end());
     result->val.insert(result->val.end(),y->val.begin(),y->val.end());
-    push_value(result);
+    push_value(std::move(result));
   }
 
 }
@@ -1576,7 +1576,7 @@ void stack_rows_wrapper(expression_base::level l)
   for(size_t i=0; i<n; ++i)
     for (size_t j=0; j<row[i]->size(); ++j)
       m->val(i,j)=(*row[i])[j];
-  push_value(m);
+  push_value(std::move(m));
 }
 
 @ Here is the preferred way to combine columns to a matrix, explicitly
@@ -1599,7 +1599,7 @@ void combine_columns_wrapper(expression_base::level l)
     m->val.set_column(j,col);
   }
   if (l!=expression_base::no_value)
-    push_value(m);
+    push_value(std::move(m));
 }
 @)
 void combine_rows_wrapper(expression_base::level l)
@@ -1618,7 +1618,7 @@ void combine_rows_wrapper(expression_base::level l)
     m->val.set_row(i,row);
   }
   if (l!=expression_base::no_value)
-    push_value(m);
+    push_value(std::move(m));
 }
 
 @ We must not forget to install what we have defined. The names of the
@@ -1723,7 +1723,7 @@ void transpose_vec_wrapper(expression_base::level l)
   { matrix_ptr m (new matrix_value(int_Matrix(1,v->val.size())));
     for (size_t j=0; j<v->val.size(); ++j)
       m->val(0,j)=v->val[j];
-    push_value(m);
+    push_value(std::move(m));
   }
 }
 
@@ -1762,7 +1762,7 @@ void diagonal_wrapper(expression_base::level l)
   matrix_ptr m (new matrix_value(int_Matrix(n)));
   for (size_t i=0; i<n; ++i)
     m->val(i,i)=d->val[i];
-  push_value(m);
+  push_value(std::move(m));
 }
 
 @ Here is the column echelon function.
@@ -1778,7 +1778,7 @@ void echelon_wrapper(expression_base::level l)
     row_ptr p_list (new row_value(0)); p_list->val.reserve(pivots.size());
     for (BitMap::iterator it=pivots.begin(); it(); ++it)
       p_list->val.push_back(shared_value(new int_value(*it)));
-    push_value(p_list);
+    push_value(std::move(p_list));
     if (l==expression_base::single_value)
       wrap_tuple(2);
   }
@@ -1800,9 +1800,9 @@ void diagonalize_wrapper(expression_base::level l)
             column(new matrix_value(int_Matrix()));
     vector_ptr diagonal(
        new vector_value(matreduc::diagonalise(M->val,row->val,column->val)));
-    push_value(diagonal);
-    push_value(row);
-    push_value(column);
+    push_value(std::move(diagonal));
+    push_value(std::move(row));
+    push_value(std::move(column));
     if (l==expression_base::single_value)
       wrap_tuple(3);
   }
@@ -1814,8 +1814,8 @@ void adapted_basis_wrapper(expression_base::level l)
   { vector_ptr diagonal(new vector_value(std::vector<int>()));
     matrix_ptr basis
       (new matrix_value(matreduc::adapted_basis(M->val,diagonal->val)));
-    push_value(basis);
-    push_value(diagonal);
+    push_value(std::move(basis));
+    push_value(std::move(diagonal));
     if (l==expression_base::single_value)
       wrap_tuple(2);
   }
@@ -1860,7 +1860,7 @@ void invfact_wrapper(expression_base::level l)
     return;
   vector_ptr inv_factors (new vector_value(std::vector<int>()));
 @/matreduc::Smith_basis(m->val,inv_factors->val);
-  push_value(inv_factors);
+  push_value(std::move(inv_factors));
 }
 @)
 void Smith_basis_wrapper(expression_base::level l)
@@ -1877,7 +1877,7 @@ void Smith_wrapper(expression_base::level l)
     return;
   vector_ptr inv_factors (new vector_value(std::vector<int>()));
 @/push_value(new matrix_value(matreduc::Smith_basis(m->val,inv_factors->val)));
-  push_value(inv_factors);
+  push_value(std::move(inv_factors));
   if (l==expression_base::single_value)
     wrap_tuple(2);
 }
@@ -1899,7 +1899,7 @@ void invert_wrapper(expression_base::level l)
     return;
   int_ptr denom(new int_value(0));
 @/push_value(new matrix_value(m->val.inverse(denom->val)));
-  push_value(denom);
+  push_value(std::move(denom));
   if (l==expression_base::single_value)
     wrap_tuple(2);
 }
@@ -2020,10 +2020,10 @@ but which will be moved to position $\pi(k)$ according to the relative size of
       v[*it]=1;
     }
   assert (k==basis.size());
-@/push_value(basis_r);
-  push_value(combin_r);
-  push_value(relations);
-  push_value(pivot_r);
+@/push_value(std::move(basis_r));
+  push_value(std::move(combin_r));
+  push_value(std::move(relations));
+  push_value(std::move(pivot_r));
   if (l==expression_base::single_value)
     wrap_tuple(4);
 }
