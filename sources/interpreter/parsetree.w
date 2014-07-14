@@ -86,7 +86,7 @@ struct expr;
 
 @ When default-constructing an |expr| we set its |kind| to |no_expr|.
 @< Methods of |expr| @>=
-expr();
+expr() : kind(no_expr)@+{}
 ~expr(); // defined below using a large |switch| statement
 
 @ While we are defining functions to parse expressions, we shall also define a
@@ -102,22 +102,17 @@ destructor of the |expr| pointed to.
 
 @< Definitions of functions for the parser @>=
 void destroy_expr(expr_p p) @+ {@; delete p; }
-void destroy_expr_body(const expr& e) @+ {@; e.~expr(); }
 
 @ The actual definition of the destructor is distributed among the different
 variants of |expr|.
 
 @< Definitions of functions not for the parser @>=
-expr::expr() : kind(no_expr)
-@+{}
-
 expr::~expr()
 {
   if (kind!=no_expr)
   {
-    expr& e = *this;
     switch (kind)
-    {@; @< Cases for destroying an expression |e| @>
+    {@; @< Cases for destroying an expression @>
       @+ case no_expr: {}
     }
     kind = no_expr;
@@ -126,14 +121,14 @@ expr::~expr()
 
 @ We define a move constructor and move assignment; our first purpose is to
 eliminate the need for copying as much as possible by detecting now forbidden
-copy constructions hidden in the code.
+copy constructions and assignments hidden in the code.
 
 @< Methods of |expr| @>=
 void set_from (expr& other);
 expr (expr&& other);
 void operator= (expr&& other);
 
-@ For now we use that |expr| is trivially copyable; this should be changed.
+@ We do not assume that |expr| is trivially copyable, so copying requires case distinction.
 
 @< Definitions of functions not for... @>=
 void expr::set_from (expr& other)
@@ -144,12 +139,12 @@ void expr::set_from (expr& other)
     }
   other.kind = no_expr;
 }
-
-expr::expr (expr&& other) : @[ expr () @]
+@)
+expr::expr (expr&& other) : @[ expr () @] @+
 {@; set_from(other); }
 
 void expr::operator= (expr&& other)
-{
+{@;
   if (this!=&other)
   {@; this->~expr();
     set_from(other);
@@ -238,7 +233,7 @@ argument is not defined.
 
 @< Definitions of functions for the parser @>=
 expr_p make_int_denotation (int val)
-  @+{@; return new expr(val); }
+@+{@; return new expr(val); }
 
 expr_p make_bool_denotation(bool val)
 {@; expr result (val ? 1 : 0);
@@ -260,7 +255,7 @@ destructor fails.
 @< Cases for destroying... @>=
 case integer_denotation: case boolean_denotation: break;
 case string_denotation:
-  e.str_denotation_variant.~basic_string<char>(); break;
+  str_denotation_variant.~basic_string<char>(); break;
 
 @ In the |expr::set_from| method we change variants both in |*this| (which was
 |no_expr|) and in |other| (which was |no_expr|). This means that for non-POD
@@ -446,7 +441,7 @@ expr_p wrap_list_display(raw_expr_list l)
 
 @< Cases for destroying... @>=
   case tuple_display:
-  case list_display: e.sublist.~expr_list();
+  case list_display: sublist.~expr_list();
 break;
 
 @ Destroying lists of expressions will also be done via a function callable
@@ -557,7 +552,7 @@ app call_variant;
 
 @ There is a constructor for building this variant.
 @< Methods of |expr| @>=
-expr(app&& fx)
+explicit expr(app&& fx)
  : kind(function_call)
  , call_variant(std::move(fx))
  @+{}
@@ -593,7 +588,7 @@ expr_p make_application_node(expr_p f, raw_expr_list args)
 
 @< Cases for destroying... @>=
 case function_call:
-  e.call_variant.~app();
+  call_variant.~app();
 break;
 
 @ A |unique_ptr| should not be moved by writing
@@ -1020,7 +1015,7 @@ let let_variant;
 
 @ There is a constructor for building this variant.
 @< Methods of |expr| @>=
-expr(let&& declaration)
+explicit expr(let&& declaration)
  : kind(let_expr)
  , let_variant(std::move(declaration))
  @+{}
@@ -1098,7 +1093,7 @@ is |let| smart pointers that get built into |expr| values. As for all
 variants of |expr|, calling the destructor must be done explicitly.
 
 @< Cases for destroying... @>=
-case let_expr: e.let_variant.~let();
+case let_expr: let_variant.~let();
 break;
 
 @ Destroying lists of declarations will be done in a function callable from the
@@ -1184,7 +1179,7 @@ lambda lambda_variant;
 
 @ There is a constructor for building lambda expressions.
 @< Methods of |expr| @>=
-expr(lambda&& fun)
+explicit expr(lambda&& fun)
  : kind(lambda_expr)
  , lambda_variant(std::move(fun))
  @+{}
@@ -1233,8 +1228,8 @@ break;
 @ And we must of course take care of destroying lambda expressions, which is
 done correctly by the implicit destructions provoked by calling |delete|.
 
-@< Cases for destroying an expression |e| @>=
-case lambda_expr: e.lambda_variant.~lambda();
+@< Cases for destroying... @>=
+case lambda_expr: lambda_variant.~lambda();
 break;
 
 @ Because of the above transformations, lambda expressions are printed with
@@ -1274,9 +1269,9 @@ struct conditional_node
 @< Variants of ... @>=
 cond if_variant;
 
-@ There is a constructor for building conditions expressions.
+@ There is a constructor for building conditional expressions.
 @< Methods of |expr| @>=
-expr(cond&& conditional)
+explicit expr(cond&& conditional)
  : kind(conditional_expr)
  , if_variant(std::move(conditional))
  @+{}
@@ -1309,7 +1304,7 @@ automatic.
 
 @< Cases for destroying... @>=
 case conditional_expr:
-  e.if_variant.~cond();
+  if_variant.~cond();
 break;
 
 @ To print a conditional expression at parser level, we shall not
@@ -1364,17 +1359,17 @@ w_loop while_variant;
 f_loop for_variant;
 c_loop cfor_variant;
 
-@ There is a constructor for building conditions each type of loop expression.
+@ There is a constructor for building each type of loop expression.
 @< Methods of |expr| @>=
-expr(w_loop&& loop)
+explicit expr(w_loop&& loop)
  : kind(while_expr)
  , while_variant(std::move(loop))
  @+{}
-expr(f_loop&& loop)
+explicit expr(f_loop&& loop)
  : kind(for_expr)
  , for_variant(std::move(loop))
  @+{}
-expr(c_loop&& loop)
+explicit expr(c_loop&& loop)
  : kind(cfor_expr)
  , cfor_variant(std::move(loop))
  @+{}
@@ -1435,13 +1430,13 @@ other kinds.
 
 @< Cases for destroying... @>=
 case while_expr:
-  e.while_variant.~w_loop();
+  while_variant.~w_loop();
 break;
 case for_expr:
-  e.for_variant.~f_loop();
+  for_variant.~f_loop();
 break;
 case cfor_expr:
-  e.cfor_variant.~c_loop();
+  cfor_variant.~c_loop();
 break;
 
 @ To print a |while| or |for| expression at parser level, we reproduce the
@@ -1501,7 +1496,7 @@ sub subscription_variant;
 
 @ There is a constructor for building the new variant.
 @< Methods of |expr| @>=
-expr(sub&& s)
+explicit expr(sub&& s)
  : kind(subscription)
  , subscription_variant(std::move(s))
  @+{}
@@ -1532,7 +1527,7 @@ subscription call itself.
 
 @< Cases for destroying... @>=
 case subscription:
-  e.subscription_variant.~sub();
+  subscription_variant.~sub();
 break;
 
 @ To print a subscription, we just print the expression of the array, followed
@@ -1579,7 +1574,7 @@ cast cast_variant;
 
 @ There is a constructor for building the new variant.
 @< Methods of |expr| @>=
-expr(cast&& c)
+explicit expr(cast&& c)
  : kind(cast_expr)
  , cast_variant(std::move(c))
  @+{}
@@ -1606,9 +1601,9 @@ break;
 
 @ Eventually we want to rid ourselves from the cast.
 
-@< Cases for destr... @>=
+@< Cases for destroying... @>=
 case cast_expr:
-  e.cast_variant.~cast();
+  cast_variant.~cast();
 break;
 @ Printing cast expressions follows their input syntax.
 
@@ -1642,7 +1637,7 @@ op_cast op_cast_variant;
 
 @ There is a constructor for building the new variant.
 @< Methods of |expr| @>=
-expr(op_cast&& c)
+explicit expr(op_cast&& c)
  : kind(op_cast_expr)
  , op_cast_variant(std::move(c))
  @+{}
@@ -1670,9 +1665,9 @@ break;
 
 @ Eventually we want to rid ourselves from the operator cast.
 
-@< Cases for destr... @>=
+@< Cases for destroying... @>=
 case op_cast_expr:
-  e.op_cast_variant.~op_cast();
+  op_cast_variant.~op_cast();
 break;
 
 @ Printing operator cast expressions follows their input syntax.
@@ -1707,7 +1702,7 @@ assignment assign_variant;
 
 @ As always there is a constructor for building the new variant.
 @< Methods of |expr| @>=
-expr(assignment&& a)
+explicit expr(assignment&& a)
  : kind(ass_stat)
  , assign_variant(std::move(a))
  @+{}
@@ -1736,9 +1731,9 @@ break;
 
 @ What is made must eventually be unmade (even assignments).
 
-@< Cases for destr... @>=
+@< Cases for destroying... @>=
 case ass_stat:
-  e.assign_variant.~assignment();
+  assign_variant.~assignment();
 break;
 
 @ Printing assignment statements is absolutely straightforward.
@@ -1774,7 +1769,7 @@ comp_assignment comp_assign_variant;
 
 @ As always there is a constructor for building the new variant.
 @< Methods of |expr| @>=
-expr(comp_assignment&& ca)
+explicit expr(comp_assignment&& ca)
  : kind(comp_ass_stat)
  , comp_assign_variant(std::move(ca))
  @+{}
@@ -1811,9 +1806,9 @@ break;
 
 @~Destruction one the other hand is as straightforward as usual.
 
-@< Cases for destr... @>=
+@< Cases for destroying... @>=
 case comp_ass_stat:
-  e.comp_assign_variant.~comp_assignment();
+  comp_assign_variant.~comp_assignment();
 break;
 @ Printing component assignment statements follow the input syntax.
 
@@ -1858,7 +1853,7 @@ sequence sequence_variant;
 
 @ As always there is a constructor for building the new variant.
 @< Methods of |expr| @>=
-expr(sequence&& s)
+explicit expr(sequence&& s)
  : kind(seq_expr)
  , sequence_variant(std::move(s))
  @+{}
@@ -1887,9 +1882,9 @@ break;
 
 @ Finally sequence nodes need destruction, like everything else.
 
-@< Cases for destr... @>=
+@< Cases for destroying... @>=
 case seq_expr:
-  e.sequence_variant.~sequence();
+  sequence_variant.~sequence();
 break;
 
 @ Printing sequences is absolutely straightforward.

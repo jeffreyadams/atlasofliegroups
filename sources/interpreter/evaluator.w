@@ -134,7 +134,7 @@ only way the user can explicitly construct vector values). However, both
 situations (and some intermediate ones) are handled by a single function
 |convert_expr|, which in addition builds (upon success) an |expression| value.
 As arguments |convert_expr| takes an |const expr& e@;| referring to a value
-produced by the parser, and a type in the form of a non-constant reference
+produced by the parser, and a type in the form of a modifiable reference
 |type_expr& type@;|. If |type| is undefined initially, then it will be set to
 the type derived for the expression; if it is defined then it may guide the
 conversion process, and the type eventually found will have to match it. It
@@ -341,17 +341,17 @@ latter case.
 case integer_denotation:
   { expression_ptr d@|(new denotation
       (shared_value(new int_value(e.int_denotation_variant))));
-    return conform_types(int_type,type,std::move(d),e);
+    return conform_types(int_type,type,std::move(d),e).release();
   }
 case string_denotation:
   { expression_ptr d@|(new denotation
       (shared_value(new string_value(e.str_denotation_variant))));
-    return conform_types(str_type,type,std::move(d),e);
+    return conform_types(str_type,type,std::move(d),e).release();
   }
 case boolean_denotation:
   { expression_ptr d@|(new denotation
         (shared_value(new bool_value(e.int_denotation_variant))));
-    return conform_types(bool_type,type,std::move(d),e);
+    return conform_types(bool_type,type,std::move(d),e).release();
   }
 
 @ We allow using the last value computed to be used in an expression, using
@@ -376,7 +376,7 @@ gets captured in a function value, it will remain immutable.
 @< Cases for type-checking and converting... @>=
 case last_value_computed:
 @/{@; expression_ptr d@|(new denotation(last_value));
-    return conform_types(last_type,type,std::move(d),e);
+    return conform_types(last_type,type,std::move(d),e).release();
   }
 
 
@@ -807,7 +807,7 @@ case subscription:
     throw expr_error(e,o.str());
   }
 @)
-  return conform_types(subscr_type,type,std::move(subscr),e);
+  return conform_types(subscr_type,type,std::move(subscr),e).release();
 }
 
 
@@ -1755,7 +1755,7 @@ case function_call:
   expression_ptr arg
     (convert_expr(e.call_variant->arg,f_type.func->arg_type));
   expression_ptr call (new call_expression(std::move(fun),std::move(arg)));
-  return conform_types(f_type.func->result_type,type,std::move(call),e);
+  return conform_types(f_type.func->result_type,type,std::move(call),e).release();
 }
 
 @ The main work here has been relegated to |resolve_overload|; otherwise we
@@ -1839,7 +1839,7 @@ will still be accepted.
       id==equals_name() and
       v.type->result_type!=void_type)
     throw type_error(e,v.type->result_type.copy(),type.copy());
-  return conform_types(v.type->result_type,type,std::move(call),e);
+  return conform_types(v.type->result_type,type,std::move(call),e).release();
 }
 
 @ For operator symbols that satisfy |is_special_operator(id)|, we test generic
@@ -1874,7 +1874,7 @@ below tests.
   { if (a_priori_type.kind==row_type)
     { expression_ptr
         call(new overloaded_builtin_call(sizeof_wrapper,"#",std::move(arg)));
-      return conform_types(int_type,type,std::move(call),e);
+      return conform_types(int_type,type,std::move(call),e).release();
     }
     else if (a_priori_type.kind!=undetermined_type and
              a_priori_type.specialise(pair_type))
@@ -1885,7 +1885,7 @@ below tests.
   { expression c =
       new generic_builtin_call(print_wrapper,"print",std::move(arg));
     expression_ptr call(c); // get ownership
-    return conform_types(a_priori_type,type,std::move(call),e);
+    return conform_types(a_priori_type,type,std::move(call),e).release();
  }
   else if(id==prints_name()) // this always matches as well
   { expression c =
@@ -2114,12 +2114,12 @@ inserting a coercion) if (and only if) it returns |true|.
   { if (can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type)) // suffix
     { expression_ptr call(new overloaded_builtin_call
         (suffix_element_wrapper,"#",std::move(arg)));
-      return conform_types(arg_tp0,type,std::move(call),e);
+      return conform_types(arg_tp0,type,std::move(call),e).release();
     }
     if (arg_tp0==arg_tp1) // join
     { expression_ptr call(new overloaded_builtin_call
         (join_rows_wrapper,"#",std::move(arg)));
-      return conform_types(arg_tp0,type,std::move(call),e);
+      return conform_types(arg_tp0,type,std::move(call),e).release();
     }
   }
   if (arg_tp1.kind==row_type and @|
@@ -2127,7 +2127,7 @@ inserting a coercion) if (and only if) it returns |true|.
           // prefix
   { expression_ptr call(new overloaded_builtin_call
       (prefix_element_wrapper,"#",std::move(arg)));
-    return conform_types(arg_tp1,type,std::move(call),e);
+    return conform_types(arg_tp1,type,std::move(call),e).release();
   }
 }
 
@@ -3210,7 +3210,7 @@ represent them.
 case cast_expr:
 { const cast& c=e.cast_variant;
   expression_ptr p(convert_expr(c->exp,c->type));
-  return conform_types(c->type,type,std::move(p),e);
+  return conform_types(c->type,type,std::move(p),e).release();
 }
 
 @ The overload table stores type information in a |func_type| value, which
@@ -3437,7 +3437,7 @@ case ass_stat:
     (std::string("Undefined identifier in assignment: ")
      +main_hash_table->name_of(lhs));
 @.Undefined identifier in assignment@>
-  return conform_types(*it,type,std::move(assign),e);
+  return conform_types(*it,type,std::move(assign),e).release();
 }
 
 @*1 Component assignments.
@@ -3532,12 +3532,14 @@ void global_component_assignment::evaluate(level l) const
 }
 
 @ The |assign| method, which will also be called for local component
-assignments, starts by the common work of evaluating the index and the value
-to be assigned, and of making sure the aggregate variable is made to point to
-a unique copy of its current value, which copy can then be modified in place.
-For actually changing the aggregate, we must distinguish cases according to
-the kind of component assignment at hand. Assignments to components of
-rational vectors and of strings will be forbidden, see module
+assignments, starts by the common work of evaluating the value to be assigned,
+and of making sure the aggregate variable is made to point to a unique copy of
+its current value, which copy can then be modified in place. The index is not
+yet evaluated at this point, but this will be done inside the |switch|
+statement; this is because possible expansion of a tuple index value depends
+on~|kind|. For actually changing the aggregate, we must distinguish cases
+according to the kind of component assignment at hand. Assignments to
+components of rational vectors and of strings will be forbidden, see module
 @#comp_ass_type_check@>.
 
 @< Function def... @>=
@@ -3696,7 +3698,7 @@ case comp_ass_stat:
       assign.reset(new
          global_component_assignment(aggr,std::move(i),std::move(r),kind));
 
-    return conform_types(comp_t,type,std::move(assign),e);
+    return conform_types(comp_t,type,std::move(assign),e).release();
   }
   else
   { std::ostringstream o;
