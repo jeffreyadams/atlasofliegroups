@@ -79,7 +79,7 @@ with a destructor, since we never intend to destroy the stack entirely: if our
 program exits either peacefully or by an uncaught exception we don't care
 about some values that are not destroyed. We must however remember to empty
 the stack after catching a runtime error; since the stack holds |shared_value|
-smart pointers, this will automatically |delete| the objects remaining on the
+smart pointers, this will automatically clean up the objects remaining on the
 stack. We provide a function to reset the evaluator after catching an
 exception that does this, as well as other actions (defined later) needed to
 have the evaluator start with a clear slate. We allow monitoring disappearing
@@ -159,71 +159,60 @@ error (and we shall do so occasionally if this allows us to simplify our
 code).
 
 @< Declarations of exported functions @>=
-expression convert_expr(const expr& e, type_expr& type)
- @/ throw(std::bad_alloc,program_error);
+expression_ptr convert_expr(const expr& e, type_expr& type);
 
 @ In the function |convert_expr| we shall need a type for storing bindings
 between identifiers and types, and this will be the |bindings| class. It uses
-a vector of individual bindings, and since a vector cannot hold auto-pointers,
-we need to define a destructor to clean up the types. Different such binding
-vectors will be stacked, for nested scopes, but using an STL container for
-that would necessitate defining a copy constructor, which would be a painful
-operation: (1)~it must call |copy| on the types held in the bindings, in order
-to avoid double destruction, (2)~these calls to |copy| could throw an
-exception, and (3)~the constructor won't be complete, and the destructor
-therefore not activated, until the final entry is copied, so we would need a
-|try|\dots|catch| in the constructor to avoid a memory leak.
+a vector of individual bindings, the type being present in the form of an
+owning |type_ptr| unique-pointer.
 
-So instead we chain the different bindings into a linked list, and forbid any
-copy or assignment. In fact the nesting of the various bindings will embed in
-the nested calls of |convert_expr|, so we can afford to allocate each
-|bindings| as local variable to (some instance of) |convert_expr|, where links
-always point to an instance with larger lifetime. Then there is no ownership
-of pointed-to structures at all, the usual handling of the \Cpp call stack
-being sufficient. We do provide methods |push| and |pop| to prepend and detach
-a |bindings| from a list.
+We chain the different bindings into a linked list, and forbid any copy or
+assignment, nor do we introduce their move counterparts. In fact the nesting
+of the various bindings will embed in the nested calls of |convert_expr|, so
+we can afford to allocate each |bindings| as local variable to (some instance
+of) |convert_expr|, where links always point to an instance with larger
+lifetime: we make a linked lists that embeds into the \Cpp\ runtime stack.
+Then there is no ownership of pointed-to structures at all, the usual handling
+of the stack being sufficient. We do provide methods |push| and |pop| to
+prepend respectively detach a |bindings| object from a list.
 
 @< Type def... @>=
 class bindings
-: public std::vector<std::pair<Hash_table::id_type,type_p> >
-{ typedef std::vector<std::pair<Hash_table::id_type,type_p> >
-    base;
-  bindings* next; // non-owned pointer
-@)bindings(const bindings&); // copy constructor
-  void operator= (const bindings&); // assignment operator
+: public  std::vector<std::pair<Hash_table::id_type,type_ptr> >
+{ typedef std::vector<std::pair<Hash_table::id_type,type_ptr> >  base;
+  bindings* next; // non-owning pointer
+@)bindings(const bindings&) = @[delete@]; // copy constructor
+  bindings& operator= (const bindings&) = @[delete@]; // assignment operator
 public:
   bindings(size_t n=0) : @[ base() @], next(nullptr) @+{@; base::reserve(n); }
     // predict size |n|, informative
-  ~bindings () @+
-  {@; for (base::iterator it=begin(); it!=end(); ++it)
-      delete it->second;
-  }
-  void add(Hash_table::id_type id,type_ptr t);
+  void add(Hash_table::id_type id,type_ptr&& t);
   type_p lookup
     (Hash_table::id_type id, size_t& depth, size_t& offset) const;
   void push (bindings*& sp) @+{@; next=sp; sp=this; } // push |*this| onto |sp|
   void pop (bindings*& sp) const @+{@; sp=next; } // pop from |*this| to |sp|
 };
 
-@ The method |add| adds a pair to the vector of bindings, taking care not to
-release the type pointer until the pair is successfully allocated. This is
-also a good place to check for the presence of identical identifiers.
+@ The method |add| adds a pair to the vector of bindings; the origin type
+pointer is released upon insertion into the |bindings| object. This is also a
+good place to check for the presence of identical identifiers.
 
 @< Function def... @>=
-void bindings::add(Hash_table::id_type id,type_ptr t)
-{ for (base::const_iterator it=begin(); it!=end(); ++it)
+void bindings::add(Hash_table::id_type id,type_ptr&& t)
+{ for (auto it=begin(); it!=end(); ++it) // traverse |base| vector
     if (it->first==id)
-      throw program_error(std::string("Multiple binding of ")
-                          +main_hash_table->name_of(id)
-                          +" in same scope");
-  push_back(std::make_pair(id,(type_p)nullptr));
-  back().second=t.release();
+      throw program_error @/
+       (std::string("Multiple binding of ")
+                    +main_hash_table->name_of(id)
+                    +" in same scope");
+  push_back( { id,std::move(t) } );
 }
 
 @ The method |lookup| runs through the linked list of bindings and returns a
 pointer to the type if a match for the identifier |id| was found, also
-assigning the coordinates to output arguments. If no match is found a null
-pointer is returned and the output parameters are unchanged.
+assigning its static binding coordinates to output arguments |depth| and
+|offset|. If no match is found a null pointer is returned and the output
+parameters are unchanged.
 
 @< Function def... @>=
 type_p bindings::lookup
@@ -232,7 +221,7 @@ type_p bindings::lookup
   for (const bindings* p=this; p!=nullptr; p=p->next,++i)
     for (size_t j=0; j<p->size(); ++j)
       if ((*p)[j].first==id)
-      {@; depth=i; offset=j; return (*p)[j].second; }
+      {@; depth=i; offset=j; return (*p)[j].second.get(); }
   return nullptr;
 }
 
@@ -259,13 +248,8 @@ code gets executed.
 @< Actions to reset the evaluator @>=
 id_context=nullptr;
 
-@ The function |convert_expr| returns a pointer to the conversion of the
-|expr| to |expression|, of which the caller should take ownership. The reason
-we don't return an |expression_ptr| is entirely pragmatic: there are many
-return statements in this function, and ensuring conversion to an auto-pointer
-before return would be somewhat laborious, whereas the conversion can be
-easily and safely achieved by the caller; also sometimes the resulting pointer
-is stored in a data structure that cannot accommodate auto-pointers.
+@ The function |convert_expr| returns a owning pointer to the conversion of
+the |expr| to |expression|.
 
 Altogether this is a quite extensive function, with as many cases in the
 switch as there are variants of |expr_union|, and for many of those branches a
@@ -273,8 +257,7 @@ considerable amount of work to be done. It is therefore convenient to postpone
 these cases and treat them one syntactic construction at the time.
 
 @< Function definitions @>=
-expression convert_expr(const expr& e, type_expr& type)
-@/  throw(std::bad_alloc,program_error)
+expression_ptr convert_expr(const expr& e, type_expr& type)
 {
   switch(e.kind)
   {
@@ -289,40 +272,32 @@ expression convert_expr(const expr& e, type_expr& type)
 %
 Let us define a first class derived from |expression_base|, which is
 |denotation|; it simply stores a |value|, which it returns upon evaluation.
-The constructor is passed a smart pointer for the usual reason: if the
-constructor should be part of a |new| expression (as is practice it will) then
-the allocation for that |new| happens between the moment of passing the
-constructor arguments and the invocation of the constructor, and if that
-allocation throws it would produce a memory leak if raw a pointer were passed.
-This does force us to cast the arguments to |shared_value| below.
+The value may be passed by constant reference or by rvalue reference to
+|shared_ptr|); in the former case it creates an additional sharing, and in the
+latter case ownership is transferred upon construction of the |denoted_value|
+field. The latter case will notably apply in case the argument expression is
+the result of |new| cast to |shared_value|.
+
+Since the |denotation| object stores a (constant, shared) value inside it, the
+evaluation simply consists of copying the pointer to the |execution_stack|.
+For the first time we see the |level| argument in action, but it is actually
+handled inside the call to |push_expanded|. It may be surprising that
+denotations may need to be expanded as a tuple (as long as there are no such
+things as denotations for complex numbers), and indeed this was not done until
+the possibility to refer to the last value computed was added to the language
+(see just below); that value is wrapped into a denotation, and it could well
+be a tuple.
 
 @< Type definitions @>=
 struct denotation : public expression_base
 { shared_value denoted_value;
 @)
-  explicit denotation(shared_value v) : denoted_value(v) @+{}
-  virtual void evaluate(level l) const;
+  explicit denotation(const shared_value& v) : denoted_value(v) @+{}
+  explicit denotation(shared_value&& v) : denoted_value(std::move(v)) @+{}
+  virtual void evaluate(level l) const @+{@; push_expanded(l,denoted_value); }
   virtual void print(std::ostream& out) const
   @+{@; denoted_value->print(out); }
 };
-
-@ Since the |denotation| object stores a (constant, shared) value inside it,
-the evaluation simply consists of copying the pointer to the
-|execution_stack|. In spite of this simplicity, the |evaluate| is not defined
-inside the class definition, because that definition precedes the one of the
-|inline| function |push_value| in the header file. The method is not even made
-|inline|, since there is little point in doing so for virtual methods (calls
-via the vtable cannot be inlined). For the first time we see the |level|
-argument in action, but it is actually handled inside the call to
-|push_expanded|. It may be surprising that denotations may need to be expanded
-as a tuple (as long as there are no such things as denotations for complex
-numbers), and indeed this was not done until the possibility to refer to the
-last value computed was added to the language (see just below); that value is
-wrapped into a denotation, and it could well be a tuple.
-
-@< Function def... @>=
-void denotation::evaluate(level l) const
-@+{@; push_expanded(l,denoted_value); }
 
 @ Here are the first examples of the conversions done in |convert_expr|. Each
 time we extract a \Cpp\ value from the |expr| produced by the parser,
@@ -341,17 +316,17 @@ latter case.
 case integer_denotation:
   { expression_ptr d@|(new denotation
       (shared_value(new int_value(e.int_denotation_variant))));
-    return conform_types(int_type,type,std::move(d),e).release();
+    return conform_types(int_type,type,std::move(d),e);
   }
 case string_denotation:
   { expression_ptr d@|(new denotation
       (shared_value(new string_value(e.str_denotation_variant))));
-    return conform_types(str_type,type,std::move(d),e).release();
+    return conform_types(str_type,type,std::move(d),e);
   }
 case boolean_denotation:
   { expression_ptr d@|(new denotation
         (shared_value(new bool_value(e.int_denotation_variant))));
-    return conform_types(bool_type,type,std::move(d),e).release();
+    return conform_types(bool_type,type,std::move(d),e);
   }
 
 @ We allow using the last value computed to be used in an expression, using
@@ -375,9 +350,9 @@ gets captured in a function value, it will remain immutable.
 
 @< Cases for type-checking and converting... @>=
 case last_value_computed:
-@/{@; expression_ptr d@|(new denotation(last_value));
-    return conform_types(last_type,type,std::move(d),e).release();
-  }
+    return conform_types(last_type,type
+                        ,expression_ptr(new denotation(last_value))
+                        ,e);
 
 
 @* List displays.
@@ -390,22 +365,13 @@ structure is already taken, so we call it a |list_expression| instead.
 
 @< Type definitions @>=
 struct list_expression : public expression_base
-{ std::vector<expression> component;
+{ std::vector<expression_ptr> component;
 @)
-  explicit list_expression(size_t n) : component(n,nullptr) @+{}
+  explicit list_expression(size_t n) : component(n) @+{}
    // always start out with null pointers
-  virtual ~list_expression();
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
-  typedef std::vector<expression>::const_iterator c_it; // for commodity
 };
-
-@ A |list_expression| owns its component expressions, so the destructor must
-take care to delete them.
-
-@< Function def... @>=
-list_expression::~list_expression()
-{@; for (c_it it=component.begin(); it!=component.end(); ++it) delete(*it); }
 
 @ When we print a list display, we just print the component expressions,
 enclosed in brackets and separated by commas, just as in their input syntax.
@@ -413,10 +379,9 @@ enclosed in brackets and separated by commas, just as in their input syntax.
 @< Function def... @>=
 void list_expression::print(std::ostream& out) const
 { out << '[';
-  if (component.size()==0) out << ']';
-  else
-    for (c_it it=component.begin(); it!=component.end(); ++it)
-      out << **it << (it+1!=component.end() ? ',' : ']');
+  for (auto it=component.begin(); it!=component.end(); ++it)
+    out << (it==component.begin() ? "" : ",") << **it;
+  out << ']';
 }
 
 
@@ -428,51 +393,50 @@ equal types; in addition we want to allow additional cases which can be made
 to conform by inserting conversion routines.
 
 The function |convert_expr| handles all this in a fairly effortless way. As we
-proceed along the components, the type |*type.component_type|, may get
+proceed along the components, the type |*type.component_type| may get
 specialised if undefined initially, and once this is the case further
-components may be coerced into the previously established component type. It
-may even happen that the type remains partly undetermined, in case of an empty
-list. The current code does have a slight asymmetry, in that types from
-previous components may guide conversions applied to later components but not
-vice versa: if some components are vectors and other are lists of integers,
-then everything will be converted to the first kind that occurs (unless the
-context requires a particular type, in which case all components are converted
-accordingly).
+components may be coerced into the previously established component type. This
+does give a slight asymmetry, in that types from previous components may guide
+conversions applied to later components but not vice versa. If however the
+context requires a specific row type, all components may be coerced to the
+corresponding component type. When a type other than ``row of'' is expected,
+we must instead take explicit action to see whether some type conversion can
+resolve the conflict.
 
-We also have the obligation here to build a converted |list_expression|
-representing the list display; we know its size beforehand, and reserve that
-space, but let the vector start out empty, pushing completed |expression|
-pointers into it whenever |convert_expr| has converted a subexpression; this
-ensures proper destruction in case a |type_error| is thrown by a component
-expression. When a type other than ``row of'' is expected, we must instead
-take explicit action to see whether some type conversion can resolve the
-conflict.
+We also build a converted |list_expression| representing the list display. We
+reserve space beforehand, and then push a completed |expression_ptr| pointer
+into it whenever |convert_expr| has converted a subexpression.
 
 @< Cases for type-checking and converting... @>=
 case list_display:
-  if (type.specialise(row_of_type))
-  { std::unique_ptr<list_expression> result (new list_expression(0));
-    result->component.reserve(length(e.sublist));
+{ std::unique_ptr<list_expression> result (new list_expression(0));
+  result->component.reserve(length(e.sublist));
+  if (type==void_type)
+  { type_expr target; // initially undetermined common component type
     for (auto it=e.sublist.begin(); not e.sublist.at_end(it); ++it)
+      result->component.push_back(convert_expr(*it,target));
+    return expression_ptr(new voiding(std::move(result)));
+    // and forget |target|
+  }
+  else if (type.specialise(row_of_type))
+  { for (auto it=e.sublist.begin(); not e.sublist.at_end(it); ++it)
       result->component.push_back(convert_expr(*it,*type.component_type));
-    return result.release(); // and convert (derived|->|base) to |expression|
+    return std::move(result);
   }
   else
-  @< If |type| can be converted from some row-of type, check the components of
-     |e.sublist| against the required type, and apply a conversion function
-     to the converted expression; otherwise |throw| a |type_error| @>
+  @< If |type| can be converted from some row-of type, check the components
+     of |e.sublist| against the required type, and apply a conversion
+     function to the converted expression; otherwise |throw| a |type_error| @>
+}
 
-@ When in |convert_expr| we encounter a list display when a non-row type is
-expected, we single out the cases that a conversion from a row type to the
-required type is available; this conversion is searched for by |row_coercion|
-(defined in \.{types.w}). If this is successful, we continue to convert the
-component expressions with as expected type the corresponding component type
-(if multiple coercions to the required type are known, |row_coercion| gives
-preference to the first one in the table; this occurs for required
-type \.{mat}, and means that the component type will then be \.{vec} rather
-than \.{[int]}). Once a conversion has been determined, we proceed as in the
-case where as ``row-of'' type was required, and in particular there may be
-further coercions of individual expressions in the list display.
+@ When in |convert_expr| we encounter a list display when a non-void non-row
+type is expected, we call |row_coercion| (defined in \.{types.w}) to find a
+coercion to |type| from some row of |comp_type| type. If this is successful,
+we continue to convert the component expressions with as expected type the
+corresponding component type. Once a conversion has been determined, we
+proceed as in the case where as ``row-of'' type was required, and in
+particular there may be further coercions of individual expressions in the
+list display.
 
 @< If |type| can be converted from some row-of type, check the components of
    |e.sublist|... @>=
@@ -481,12 +445,10 @@ further coercions of individual expressions in the list display.
   if (conv==nullptr)
     throw type_error(e,row_of_type.copy(),type.copy());
 @)
-  std::unique_ptr<list_expression> display@|
-      (new list_expression(0));
-  display->component.reserve(length(e.sublist));
   for (auto it=e.sublist.begin(); not e.sublist.at_end(it); ++it)
-    display->component.push_back(convert_expr(*it,comp_type));
-  return new conversion(*conv,expression_ptr(std::move(display)));
+    result->component.push_back(convert_expr(*it,comp_type));
+  return expression_ptr(new
+    conversion(*conv,expression_ptr(std::move(result))));
 }
 
 @ The evaluation of a |list_expression| evaluates the components in a simple
@@ -494,24 +456,24 @@ loop. If |l==no_value|, we only evaluate for side effects, otherwise we wrap
 the result in a single |row_value|. Since evaluation of component expressions
 pushes the resulting value onto the execution stack, we pop each one off
 immediately to integrate it into the result. We take care to hold the partial
-result via an auto-pointer |result|, so that in case of a runtime error during
+result via a unique-pointer |result|, so that in case of a runtime error during
 the evaluation of one of the component expressions the values already computed
 are cleaned up.
 
 @< Function def... @>=
 void list_expression::evaluate(level l) const
 { if (l==no_value)
-    for (c_it it=component.begin(); it!=component.end(); ++it)
+    for (auto it=component.begin(); it!=component.end(); ++it)
       (*it)->void_eval();
   else
   { row_ptr result(new row_value(0)); result->val.reserve(component.size());
-    for (c_it it=component.begin(); it!=component.end(); ++it)
+    for (auto it=component.begin(); it!=component.end(); ++it)
       (*it)->eval(),result->val.push_back(pop_value());
     push_value(std::move(result)); // result will be shared from here on
   }
 }
 
-@* Tuples.
+@* Tuple displays.
 %
 Besides types for uniform sequences we shall need types for non-uniform
 sequences of values, usually short and with a given sequence of types for
@@ -521,8 +483,6 @@ taking multiple arguments, but then a function could still only yield a single
 value. With tuple types multiple results can be produced, and there will be no
 need to explicitly cater for functions with multiple arguments.
 
-@*1 Tuple displays.
-%
 Tuple values can be produced by tuple displays. Syntactically these are very
 much like list displays, listing explicitly their component expressions. After
 type-checking, they are represented by a |tuple_expression| object (the
@@ -544,12 +504,10 @@ enclosed in parentheses and separated by commas, to match their input syntax.
 @< Function def... @>=
 void tuple_expression::print(std::ostream& out) const
 { out << '(';
-  if (component.size()==0) out << ')';
-  else
-    for (c_it it=component.begin(); it!=component.end(); ++it)
-      out << **it << (it+1!=component.end() ? ',' : ')');
+  for (auto it=component.begin(); it!=component.end(); ++it)
+    out << (it==component.begin() ? "" : ",") << **it;
+  out << ')';
 }
-
 
 @ When converting a tuple expression, we first try to specialise |type| to a
 tuple type with the right number of unknown components; unless |type| was
@@ -573,13 +531,14 @@ case tuple_display:
   expression_ptr result(tup_exp=new tuple_expression(0));
   tup_exp->component.reserve(length(e.sublist));
   type_list& tl = tuple_expected ? type.tupple : tup.tupple;
+  // tuple either from |type| or generic
   type_list::iterator tl_it = tl.begin();
   for (auto it=e.sublist.begin(); not e.sublist.at_end(it); ++it,++tl_it)
     tup_exp->component.push_back(convert_expr(*it,*tl_it));
   if (tuple_expected)
-    return result.release();  // and convert (derived|->|base) to |expression|
+    return result;  // and convert (derived|->|base) to |expression|
   else if (coerce(tup,type,result))
-    return result.release();
+    return result;
   else throw type_error(e,tup.copy(),type.copy());
 }
 
@@ -594,10 +553,10 @@ single value only if |l==single_value|, which is accomplished by |wrap_tuple|.
 @< Function def... @>=
 void tuple_expression::evaluate(level l) const
 { if (l==no_value)
-    for (c_it it=component.begin(); it!=component.end(); ++it)
+    for (auto it=component.begin(); it!=component.end(); ++it)
       (*it)->void_eval();
   else
-  { for (c_it it=component.begin(); it!=component.end(); ++it)
+  { for (auto it=component.begin(); it!=component.end(); ++it)
       (*it)->eval();
     if (l==single_value)
       wrap_tuple(component.size());
@@ -610,24 +569,26 @@ While we have seen expressions to build lists, and although vectors and
 matrices can be made out of them using coercions, we so far are not able to
 access their components once they are constructed. To that end we shall now
 introduce operations to index such values. We allow subscription of rows, but
-also of vectors, rational vectors, matrices, and strings. Since after type
-analysis we know which of the cases applies for a given expression, we define
-several classes among which type analysis will choose. These classes differ
-mostly by their |evaluate| method, so we first derive an intermediate class
-from |expression_base|, and derive the others from it. This class also serves
-to host an enumeration type that will serve later. We include a case here,
-|mod_poly_term|, that is related to a type defined in \.{built-in-types}.
+also of vectors, rational vectors, matrices, strings, and of the
+Atlas \.{ParamPol} values. Since after type analysis we know which of the
+cases applies for a given expression, we define several classes among which
+type analysis will choose. These classes differ mostly by their |evaluate|
+method, so we first derive an intermediate class from |expression_base|, and
+derive the others from it. This class also serves to host an enumeration type
+that will serve later. We include a case here, |mod_poly_term|, that is
+related to a type defined in \.{built-in-types}.
 
 @< Type definitions @>=
 struct subscr_base : public expression_base
 { enum sub_type
   { row_entry, vector_entry, ratvec_entry, string_char
   , matrix_entry, matrix_column, mod_poly_term };
-  expression array, index; // the two parts of the subscription expression
+  expression_ptr array, index; // the two parts of the subscription expression
 @)
   subscr_base(expression_ptr&& a, expression_ptr&& i)
-  : array(a.release()),index(i.release()) @+{}
-  ~subscr_base() @+ {@; delete array; delete index; }
+@/: array(a.release()),index(i.release()) @+{}
+  virtual ~@[subscr_base() = default@] ;
+@)
   void print(std::ostream& out) const;
   static bool indexable
   (const type_expr& aggr,
@@ -637,48 +598,52 @@ struct subscr_base : public expression_base
   static bool assignable(sub_type);
 };
 
-@)
+@ We derive a number of types from |subscr_base| which only differ by their
+|evaluate| methods.
+
+@< Type definitions @>=
+
 struct row_subscription : public subscr_base
 { row_subscription(expression_ptr a, expression_ptr i)
-  : subscr_base(std::move(a),std::move(i)) @+{}
+@/: subscr_base(std::move(a),std::move(i)) @+{}
   virtual void evaluate(level l) const;
 };
 
 @)
 struct vector_subscription : public subscr_base
 { vector_subscription(expression_ptr&& a, expression_ptr&& i)
-  : subscr_base(std::move(a),std::move(i)) @+{}
+@/: subscr_base(std::move(a),std::move(i)) @+{}
   virtual void evaluate(level l) const;
 };
 @)
 struct ratvec_subscription : public subscr_base
 { ratvec_subscription(expression_ptr&& a, expression_ptr&& i)
-  : subscr_base(std::move(a),std::move(i)) @+{}
+@/: subscr_base(std::move(a),std::move(i)) @+{}
   virtual void evaluate(level l) const;
 };
 @)
 struct string_subscription : public subscr_base
 { string_subscription(expression_ptr&& a, expression_ptr&& i)
-  : subscr_base(std::move(a),std::move(i)) @+{}
+@/: subscr_base(std::move(a),std::move(i)) @+{}
   virtual void evaluate(level l) const;
 };
 @)
 struct matrix_subscription : public subscr_base
 { matrix_subscription(expression_ptr&& a, expression_ptr&& ij)
-  : subscr_base(std::move(a),std::move(ij)) @+{}
+@/: subscr_base(std::move(a),std::move(ij)) @+{}
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
 @)
 struct matrix_slice : public subscr_base
 { matrix_slice(expression_ptr&& a, expression_ptr&& j)
-  : subscr_base(std::move(a),std::move(j)) @+{}
+@/: subscr_base(std::move(a),std::move(j)) @+{}
   virtual void evaluate(level l) const;
 };
 @)
 struct module_coefficient : public subscr_base
 { module_coefficient(expression_ptr&& pol, expression_ptr&& param)
-  : subscr_base(std::move(pol),std::move(param)) @+{}
+@/: subscr_base(std::move(pol),std::move(param)) @+{}
   virtual void evaluate(level l) const;
 };
 
@@ -695,7 +660,7 @@ void subscr_base::print(std::ostream& out) const
 }
 @)
 void matrix_subscription::print(std::ostream& out) const
-{ tuple_expression* p=dynamic_cast<tuple_expression*>(index);
+{ tuple_expression* p=dynamic_cast<tuple_expression*>(index.get());
   if (p==nullptr) out << *array << '[' << *index << ']';
   else
     out << *array << '[' << *p->component[0] << ',' << *p->component[1] << ']';
@@ -755,25 +720,25 @@ bool subscr_base::assignable(subscr_base::sub_type t)
 of array and of the indexing expression separately, ignoring so far any type
 required by the context. Then we look if the types agree with any of the types
 of subscription expressions that we can convert to, throwing an error if it
-does not. Finally we check is the a priori type |subscr_type| of the
+does not. Finally we check if the a priori type |subscr_type| of the
 subscripted expression equals or specialises to the required |type|, or can be
 converted to it by |coerce|, again throwing an error if nothing works. For the
 indexing expression only equality of types is admitted, since the basic
 language has no conversions that could apply, and if an extension does provide
-some (indeed we shall later a add conversion from split integer to pair of
-integers), we would not want to apply them implicitly in index positions. Also
-there is little point in catering for (indexing) expressions having completely
-undetermined type, as such a type can only apply to an expression that can
-never return (it cannot be evaluated without error).
+some (like the implicit conversion from split integer to pair of integers that
+at some time existed), we would not want to apply them implicitly in index
+positions. Also there is little point in catering for (indexing) expressions
+having completely undetermined type, as such a type can only apply to an
+expression that can never return (it cannot be evaluated without error).
 
 @< Cases for type-checking and converting... @>=
 case subscription:
 { type_expr array_type, index_type, subscr_type;
     // all initialised to |undetermined_type|
   expression_ptr array
-    (convert_expr(e.subscription_variant->array,array_type));
+    = convert_expr(e.subscription_variant->array,array_type);
   expression_ptr index
-    (convert_expr(e.subscription_variant->index,index_type));
+    = convert_expr(e.subscription_variant->index,index_type);
   subscr_base::sub_type kind;
   expression_ptr subscr;
   if (subscr_base::indexable(array_type,index_type,subscr_type,kind))
@@ -807,15 +772,16 @@ case subscription:
     throw expr_error(e,o.str());
   }
 @)
-  return conform_types(subscr_type,type,std::move(subscr),e).release();
+  return conform_types(subscr_type,type,std::move(subscr),e);
 }
 
 
 @ Here are the |evaluate| methods for the various subscription expressions.
-For |matrix_subscription|, note that |push_tuple_components()| takes care of
-giving access to the individual index values without ownership conflict (by
-the time |j| and |i| are accessed, the tuple is already destroyed, but its
-components survive).
+They all follow the same straightforward pattern, and differ only in the way
+the result value push on the stack is constructed. The |static_cast<unsigned
+int>| allows a range check of the (signed) integer index with a single
+comparison against the unsigned array size; in the error message the signed
+quantity is transmitted however.
 
 @< Function definitions @>=
 inline std::string range_mess(int i,size_t n,const expression_base* e)
@@ -861,8 +827,13 @@ void string_subscription::evaluate(level l) const
     push_value(new string_value(s->val.substr(i->val,1)));
 }
 
-@ And here are the cases for matrix indexing, which are just slightly more
-complicated.
+@ And here are the cases for matrix indexing and slicing (extracting a
+column), which are just slightly more complicated. For the case of
+|matrix_subscription|, note that |push_tuple_components()| takes care of
+giving access to the individual index values without ownership conflict (by
+the time |j| and |i| are accessed, the tuple is already destroyed, but its
+components survive).
+
 
 @< Function definitions @>=
 void matrix_subscription::evaluate(level l) const
@@ -918,7 +889,7 @@ struct identifier : public expression_base
 { Hash_table::id_type code;
 @)
   explicit identifier(Hash_table::id_type id) : code(id) @+{}
-  virtual ~identifier() @+ {}
+  virtual ~@[identifier() =default@];
   const char* name() const;
   virtual void print(std::ostream& out) const;
 };
@@ -1054,9 +1025,9 @@ case applied_identifier:
 	+main_hash_table->name_of(e.identifier_variant));
 @.Undefined identifier@>
   if (type.specialise(*id_t))
-    {@; id_t->specialise(type); return id.release(); }
+    {@; id_t->specialise(type); return id; }
   else if (coerce(*id_t,type,id))
-    return id.release();
+    return id;
   else throw type_error(e,id_t->copy(),type.copy());
 }
 
@@ -1115,7 +1086,6 @@ class overload_table
 public:
   typedef std::vector<overload_data> variant_list;
   typedef std::map<Hash_table::id_type,variant_list> map_type;
-  typedef map_type::const_iterator c_it;
 private:
   map_type table;
   overload_table(const Id_table&); // copying forbidden
@@ -1139,7 +1109,7 @@ destructor must clean them up.
 @< Function definitions @>=
 
 overload_table::~overload_table()
-{ for (c_it p=table.begin(); p!=table.end(); ++p)
+{ for (auto p=table.begin(); p!=table.end(); ++p)
     for (size_t i=0; i<p->second.size(); ++i)
     {@; delete p->second[i].type; }
 }
@@ -1152,7 +1122,7 @@ reference, a static empty vector is used to ensure sufficient lifetime.
 const overload_table::variant_list& overload_table::variants
   (Hash_table::id_type id) const
 { static const variant_list empty;
-  c_it p=table.find(id);
+  auto p=table.find(id);
   return p==table.end() ? empty : p->second;
 }
 
@@ -1301,7 +1271,7 @@ multiple entries per identifier.
 
 void overload_table::print(std::ostream& out) const
 { type_expr type; type.kind=function_type;
-  for (c_it p=table.begin(); p!=table.end(); ++p)
+  for (auto p=table.begin(); p!=table.end(); ++p)
     for (size_t i=0; i<p->second.size(); ++i)
     { type.func = p->second[i].type;
       out << main_hash_table->name_of(p->first) << ": " @|
@@ -1376,7 +1346,7 @@ expression resolve_overload
    const overload_table::variant_list& variants)
 { const expr& args = e.call_variant->arg;
   type_expr a_priori_type;
-  expression_ptr arg(convert_expr(args,a_priori_type));
+  expression_ptr arg = convert_expr(args,a_priori_type);
     // get \foreign{a priori} types once
   Hash_table::id_type id =  e.call_variant->fun.identifier_variant;
   @< If |id| is a special operator like size-of and it matches
@@ -1386,7 +1356,7 @@ expression resolve_overload
     if ((is_close(a_priori_type,v.type->arg_type)&0x1)!=0)
       // could first convert to second?
     { if (a_priori_type!=v.type->arg_type)
-        arg=expression_ptr(convert_expr(args,v.type->arg_type));
+        arg=convert_expr(args,v.type->arg_type);
           // redo conversion
       @< Return a call of variant |v| with argument |arg|, or |throw| if
          result type mismatches |type| @>
@@ -1566,11 +1536,10 @@ case function_call:
     |e.call_variant->fun| is not a local identifier and is known in
     |global_overload_table| @>
   type_expr f_type=gen_func_type.copy(); // start with generic function type
-  expression_ptr fun(convert_expr(e.call_variant->fun,f_type));
-  expression_ptr arg
-    (convert_expr(e.call_variant->arg,f_type.func->arg_type));
+  expression_ptr fun = convert_expr(e.call_variant->fun,f_type);
+  expression_ptr arg = convert_expr(e.call_variant->arg,f_type.func->arg_type);
   expression_ptr call (new call_expression(std::move(fun),std::move(arg)));
-  return conform_types(f_type.func->result_type,type,std::move(call),e).release();
+  return conform_types(f_type.func->result_type,type,std::move(call),e);
 }
 
 @ The main work here has been relegated to |resolve_overload|; otherwise we
@@ -1594,7 +1563,7 @@ in the overload table.
   { const overload_table::variant_list& variants
       = global_overload_table->variants(id);
     if (variants.size()>0 or is_special_operator(id))
-      return resolve_overload(e,type,variants);
+      return expression_ptr(resolve_overload(e,type,variants));
   }
 }
 
@@ -1956,11 +1925,11 @@ constructed expression, whereas usually it is applied on the outside of an
 expression under construction (notably in ordinary overloading if coercion is
 needed we simply convert the operands a second time, inserting the coercions
 while doing so). Concretely this means that although we can use the |coerce|
-function, it wants a reference to an auto-pointer for the expression needing
+function, it wants a reference to a unique-pointer for the expression needing
 modification (so that it can manage ownership during its operation), but the
 expression here is held in an ordinary pointer inside a |tuple_expression|.
 Therefore we must copy the ordinary |expression| pointer temporarily to an
-|expression_ptr| auto-pointer that |coerce| will manage; once constructed we
+|expression_ptr| unique-pointer that |coerce| will manage; once constructed we
 set the |expression| component (temporarily) to~|nullptr| to avoid potential
 double destruction, and after the call to |coerce| we release the (possibly
 modified) |expression_ptr| back into the |expression|.
@@ -1987,8 +1956,8 @@ bool can_coerce_arg
   tuple_expression* tup= dynamic_cast<tuple_expression*>(e);
   if (tup==nullptr)
     return false; // we need a pair to insert a coercion
-  expression_ptr comp(tup->component[i]); tup->component[i]=nullptr;
-  bool result = coerce(from,to,comp); tup->component[i]=comp.release();
+  expression_ptr comp =std::move(tup->component[i]);
+  bool result = coerce(from,to,comp); tup->component[i]=std::move(comp);
   return result;
 }
 
@@ -2076,7 +2045,7 @@ struct lambda_expression : public expression_base
 the local function |copy_id_pat|. It creates a new node at the head of
 |param|, which will henceforth be shared, and fills it with a deep copy. For
 the body we create sharing as well, which is simpler since the passed
-auto-pointer already gives us ownership.
+unique-pointer already gives us ownership.
 
 @< Function def... @>=
 inline
@@ -2202,15 +2171,15 @@ case let_expr:
 { const let& lexp=e.let_variant;
   id_pat& pat=lexp->pattern;
   type_expr decl_type=pattern_type(pat);
-  expression_ptr arg(convert_expr(lexp->val,decl_type));
+  expression_ptr arg = convert_expr(lexp->val,decl_type);
   size_t n_id=count_identifiers(pat);
 @/bindings new_bindings(n_id);
   thread_bindings(pat,decl_type,new_bindings);
   new_bindings.push(id_context);
-  expression_ptr body(convert_expr(lexp->body,type));
+  expression_ptr body = convert_expr(lexp->body,type);
   new_bindings.pop(id_context);
   expression_ptr func(new lambda_expression(pat,std::move(body)));
-  return new call_expression(std::move(func),std::move(arg));
+  return expression_ptr(new call_expression(std::move(func),std::move(arg)));
 }
 
 @ Before we can dicuss the evaluation of user-defined functions, we need to
@@ -2409,9 +2378,9 @@ case lambda_expr:
 @/bindings new_bindings(n_id);
   thread_bindings(pat,arg_type,new_bindings);
   new_bindings.push(id_context);
-  expression_ptr body(convert_expr(fun->body,type.func->result_type));
+  expression_ptr body = convert_expr(fun->body,type.func->result_type);
   new_bindings.pop(id_context);
-  return new lambda_expression(pat,std::move(body));
+  return expression_ptr(new lambda_expression(pat,std::move(body)));
 }
 
 @* Control structures.
@@ -2498,10 +2467,11 @@ be noticeable since (currently) no such coercions exist anyway.
 
 @< Cases for type-checking and converting... @>=
 case conditional_expr:
-{ expression_ptr c (convert_expr(e.if_variant->condition,bool_type));
-  expression_ptr el (convert_expr(e.if_variant->else_branch,type));
-  expression_ptr th (convert_expr(e.if_variant->then_branch,type));
-  return new conditional_expression(std::move(c),std::move(th),std::move(el));
+{ expression_ptr c  = convert_expr(e.if_variant->condition,bool_type);
+  expression_ptr el = convert_expr(e.if_variant->else_branch,type);
+  expression_ptr th = convert_expr(e.if_variant->then_branch,type);
+  return expression_ptr(new
+    conditional_expression(std::move(c),std::move(th),std::move(el)));
 }
 
 @ Evaluating a conditional expression ends up evaluating either the
@@ -2550,13 +2520,14 @@ case).
 @< Cases for type-checking and converting... @>=
 case while_expr:
 { const w_loop& w=e.while_variant;
-  expression_ptr c (convert_expr(w->condition,bool_type));
+  expression_ptr c = convert_expr(w->condition,bool_type);
   if (type==void_type or type.specialise(row_of_type))
-  { expression_ptr b
-     (convert_expr(w->body, @|
-                   type==void_type ? void_type :*type.component_type));
+  { expression_ptr b =
+      convert_expr(w->body, @|
+                   type==void_type ? void_type :*type.component_type);
     expression_ptr result(new while_expression(std::move(c),std::move(b)));
-    return type==void_type ? new voiding(std::move(result)) : result.release();
+    return type==void_type ? expression_ptr(new voiding(std::move(result)))
+    : std::move(result);
   }
   else
   @< If |type| can be converted from some row-of type, check |w->body|
@@ -2576,9 +2547,9 @@ component type as for list displays.
   if (conv==nullptr)
     throw type_error(e,row_of_type.copy(),type.copy());
 @)
-  expression_ptr b(convert_expr(w->body,comp_type));
-  return new conversion(*conv,
-    expression_ptr(new while_expression(std::move(c),std::move(b))));
+  expression_ptr b = convert_expr(w->body,comp_type);
+  return expression_ptr(new conversion(*conv,
+    expression_ptr(new while_expression(std::move(c),std::move(b)))));
 }
 
 
@@ -2660,7 +2631,7 @@ case for_expr:
   bindings bind(count_identifiers(f->id));
    // for identifier(s) introduced in this loop
   type_expr in_type;
-  expression_ptr in_expr(convert_expr(f->in_part,in_type));  // \&{in} part
+  expression_ptr in_expr = convert_expr(f->in_part,in_type);  // \&{in} part
   subscr_base::sub_type which; // the kind of aggregate iterated over
   @< Set |which| according to |in_type|, and set |bind| according to the
      identifiers contained in |f->id| @>
@@ -2677,8 +2648,9 @@ case for_expr:
 @/bind.pop(id_context);
   expression_ptr loop(new
     for_expression(f->id,std::move(in_expr),std::move(body),which));
-@/return type==void_type ? new voiding(std::move(loop)) :
-    @| conv!=nullptr ? new conversion(*conv,std::move(loop)) : @| loop.release() ;
+@/return type==void_type ? expression_ptr(new voiding(std::move(loop)))
+  : @| conv!=nullptr ? expression_ptr(new conversion(*conv,std::move(loop)))
+  : @| std::move(loop) ;
 }
 
 @ This type must be indexable by integers (so it is either a row-type or
@@ -2916,13 +2888,11 @@ body.
 @< Cases for type-checking and converting... @>=
 case cfor_expr:
 { const c_loop& c=e.cfor_variant;
-  expression_ptr count_expr(convert_expr(c->count,int_type));
-  static shared_value zero=shared_value(new int_value(0));
+  expression_ptr count_expr = convert_expr(c->count,int_type);
+  static const shared_value zero=shared_value(new int_value(0));
     // avoid repeated allocation
-  expression_ptr bound_expr
-    (is_empty(c->bound) ? new denotation(zero)
-    : convert_expr(c->bound,int_type)
-    );
+  expression_ptr bound_expr = is_empty(c->bound)
+    ? expression_ptr(new denotation(zero)) : convert_expr(c->bound,int_type) ;
 @)
   bindings bind(1); bind.add(c->id,acquire(&int_type));
   type_expr body_type, *btp; const conversion_record* conv=nullptr;
@@ -2943,9 +2913,9 @@ case cfor_expr:
   else
     loop.reset(new dec_for_expression
       (c->id,std::move(count_expr),std::move(bound_expr),std::move(body)));
-  return type==void_type ? new voiding(std::move(loop)) : @|
-         conv!=nullptr ? new conversion(*conv,std::move(loop))
-                       : @|  loop.release();
+  return type==void_type ? expression_ptr(new voiding(std::move(loop))) : @|
+         conv!=nullptr ? expression_ptr(new conversion(*conv,std::move(loop)))
+                       : @| std::move(loop);
 
 }
 
@@ -3024,8 +2994,8 @@ represent them.
 @< Cases for type-checking and converting... @>=
 case cast_expr:
 { const cast& c=e.cast_variant;
-  expression_ptr p(convert_expr(c->exp,c->type));
-  return conform_types(c->type,type,std::move(p),e).release();
+  expression_ptr p = convert_expr(c->exp,c->type);
+  return conform_types(c->type,type,std::move(p),e);
 }
 
 @ The overload table stores type information in a |func_type| value, which
@@ -3058,7 +3028,7 @@ case op_cast_expr:
     {
       expression_ptr p(new denotation(variants[i].val));
       if (spec_func(type,ctype,variants[i].type->result_type))
-        return p.release();
+        return p;
       type_expr ftype(ctype.copy(),variants[i].type->result_type.copy());
       throw type_error(e,std::move(ftype),type.copy());
     }
@@ -3075,8 +3045,8 @@ break;
 { if (c->oper==size_of_name())
   { if (ctype.kind==row_type)
     { if (spec_func(type,ctype,int_type))
-      return new denotation(shared_value
-        (new builtin_value(sizeof_wrapper,"#@@[T]")));
+      return expression_ptr(new denotation(shared_value
+        (new builtin_value(sizeof_wrapper,"#@@[T]"))));
       throw type_error(e,ctype.copy(),type.copy());
     }
     else if (ctype.specialise(pair_type))
@@ -3085,21 +3055,21 @@ break;
       if (arg_tp0.kind==row_type)
       { if (arg_tp0==arg_tp1)
         { if (spec_func(type,ctype,arg_tp0))
-          return new denotation(shared_value @|
-            (new builtin_value(join_rows_wrapper,"#@@([T],[T]->[T])")));
+          return expression_ptr(new denotation(shared_value @|
+            (new builtin_value(join_rows_wrapper,"#@@([T],[T]->[T])"))));
           throw type_error(e,ctype.copy(),type.copy());
         }
 	else if (*arg_tp0.component_type==arg_tp1)
         { if (spec_func(type,ctype,arg_tp0))
-          return new denotation(shared_value @|
-            (new builtin_value(suffix_element_wrapper,"#@@([T],T->[T])")));
+          return expression_ptr(new denotation(shared_value @|
+            (new builtin_value(suffix_element_wrapper,"#@@([T],T->[T])"))));
           throw type_error(e,ctype.copy(),type.copy());
         }
       }
       if (arg_tp1.kind==row_type and *arg_tp1.component_type==arg_tp0)
       { if (spec_func(type,ctype,arg_tp1))
-        return new denotation(shared_value @|
-          (new builtin_value(prefix_element_wrapper,"#@@(T,[T]->[T])")));
+        return expression_ptr(new denotation(shared_value @|
+          (new builtin_value(prefix_element_wrapper,"#@@(T,[T]->[T])"))));
         throw type_error(e,ctype.copy(),type.copy());
       }
     }
@@ -3252,7 +3222,7 @@ case ass_stat:
     (std::string("Undefined identifier in assignment: ")
      +main_hash_table->name_of(lhs));
 @.Undefined identifier in assignment@>
-  return conform_types(*id_t,type,std::move(assign),e).release();
+  return conform_types(*id_t,type,std::move(assign),e);
 }
 
 @*1 Component assignments.
@@ -3501,11 +3471,11 @@ case comp_ass_stat:
      +main_hash_table->name_of(aggr));
 @.Undefined identifier in assignment@>
 @)
-  expression_ptr i(convert_expr(index,ind_t));
+  expression_ptr i = convert_expr(index,ind_t);
   subscr_base::sub_type kind;
   if (subscr_base::indexable(*aggr_t,ind_t,comp_t,kind)
       and subscr_base::assignable(kind))
-  { expression_ptr r(convert_expr(rhs,comp_t));
+  { expression_ptr r = convert_expr(rhs,comp_t);
     if (is_local)
       assign.reset(new
         local_component_assignment(aggr,std::move(i),d,o,std::move(r),kind));
@@ -3513,7 +3483,7 @@ case comp_ass_stat:
       assign.reset(new
          global_component_assignment(aggr,std::move(i),std::move(r),kind));
 
-    return conform_types(comp_t,type,std::move(assign),e).release();
+    return conform_types(comp_t,type,std::move(assign),e);
   }
   else
   { std::ostringstream o;
@@ -3580,14 +3550,16 @@ void next_expression::evaluate(level l) const
 case seq_expr:
 { const sequence& seq=e.sequence_variant;
   if (seq->forward!=0)
-  { expression_ptr first(convert_expr(seq->first,void_type));
-    expression_ptr last(convert_expr(seq->last,type));
-    return new seq_expression(std::move(first),std::move(last));
+  { expression_ptr first = convert_expr(seq->first,void_type);
+    expression_ptr last  = convert_expr(seq->last,type);
+    return expression_ptr(new
+      seq_expression(std::move(first),std::move(last)));
   }
   else
-  { expression_ptr first(convert_expr(seq->first,type));
-    expression_ptr last(convert_expr(seq->last,void_type));
-    return new next_expression(std::move(first),std::move(last));
+  { expression_ptr first = convert_expr(seq->first,type);
+    expression_ptr last  = convert_expr(seq->last,void_type);
+    return expression_ptr(new
+       next_expression(std::move(first),std::move(last)));
   }
 }
 

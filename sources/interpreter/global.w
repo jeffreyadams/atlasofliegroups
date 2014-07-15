@@ -334,7 +334,7 @@ type_expr analyse_types(const expr& e,expression_ptr& p)
   throw(std::bad_alloc,std::runtime_error)
 { try
   {@; type_expr type=unknown_type.copy();
-    p.reset(convert_expr(e,type));
+    p = convert_expr(e,type);
     return type;
   }
   catch (type_error& err)
@@ -517,7 +517,7 @@ or not reported as failed.
    |global_overload_table| @>=
 { assert(n_id=1);
   size_t old_n=global_overload_table->variants(b[0].first).size();
-  global_overload_table->add(b[0].first,v[0],acquire(b[0].second));
+  global_overload_table->add(b[0].first,v[0],acquire(b[0].second.get()));
     // insert or replace table entry
   size_t n=global_overload_table->variants(b[0].first).size();
   if (n==old_n)

@@ -1836,10 +1836,11 @@ this type.
 
 Currently all calls to this function have |component_type| initially
 undetermined, so the call to of the |specialise| method will always succeed,
-but we test the result nonetheless. The code does assume the set of possible
-coercions is such that there is at most one coercion from any row type to a
-given (non-void) type, since it there were more than one possibility we could
-not decide what |component_type| should become.
+but we test the result nonetheless. If the set of possible coercions admits a
+coercion from more than one row type to a given void type, it is the first one
+in the table that determines what |component_type| will be. Indeed this occurs
+for required type \.{mat}, for which the component type will then be \.{vec}
+rather than \.{[int]})
 
 @< Function def... @>=
 const conversion_record* row_coercion(const type_expr& final_type,

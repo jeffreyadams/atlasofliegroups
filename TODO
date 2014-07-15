@@ -11,8 +11,6 @@
 
 * Work on the realex program
 
- - Make voiding of row displays work correctly rather than give a type error
-
  - See if syntax can allow (let i=3 in for k:i do print(k) od); without parens
 
  - Allow for declaring an input path, and (silent) default prelude
