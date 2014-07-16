@@ -33,7 +33,7 @@ version = $(shell perl getversion.pl)
 messagedir := $(INSTALLDIR)/messages/
 cweb_dir := cwebx
 sources_dir := sources
-realex_dir := sources/realex
+realex_dir := sources/interpreter
 
 # atlas_dirs contains subdirectories of 'atlas/sources' that need compilation
 # realex_dirs are where the object files for realex are situated

@@ -158,6 +158,7 @@ containing structure.
 @< Type definitions @>=
 struct type_expr;
 typedef type_expr* type_p;
+typedef const type_expr* const_type_p;
 typedef std::unique_ptr<type_expr> type_ptr;
 
 @*2 Type lists.

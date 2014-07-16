@@ -31,13 +31,14 @@ that was getting too large. It collects functions that are important to the
 evaluation process, but which are not part of the recursive machinery of
 type-checking and evaluating all different expression forms.
 
-This module has three major, largely unrelated, parts. The first part groups
-some peripheral operations to the main evaluation process: the calling
-interface to the type checking and conversion process, and operations that
-implement global changes such as the introduction of new global identifiers.
-The second part is dedicated to some fundamental types, like integers,
-Booleans, strings, without which the programming language would be an empty
-shell (but types more specialised to the Atlas software are defined in another
+This module has three major, largely unrelated, parts. The first part defines
+the structure of the global identifier table, and groups some peripheral
+operations to the main evaluation process: the calling interface to the type
+checking and conversion process, and operations that implement global changes
+such as the introduction of new global identifiers. The second part is
+dedicated to some fundamental types, like integers, Booleans, strings, without
+which the programming language would be an empty shell (but types more
+specialised to the Atlas software are defined in another
 module, \.{built-in-types}. Finally there is a large section with basic
 functions related to these types.
 
@@ -68,6 +69,214 @@ namespace {@;
 }@;
 @< Global function definitions @>@;
 }@; }@;
+
+@* The global identifier table.
+%
+We need an identifier table to record the values of globally bound identifiers
+(such as those for built-in functions) and their types. The values are held in
+shared pointers, so that we can evaluate a global identifier without
+duplicating the value in the table itself. Modifying the value of such an
+identifier by an assignment will produce a new pointer, so that any
+``shareholders'' that access might the old value by a means independent of the
+global identifier will not see any change. There is another level of sharing,
+which affects applied occurrences of the identifier as converted during type
+analysis. The value accessed by such identifiers (which could be contained in
+user-defined function bodies and therefore have long lifetime) are expected to
+undergo change when a new value is assigned to the global variable; they will
+therefore access the location of the shared value pointer rather than the
+value pointed to. However, if a new identifier of the same name should be
+introduced, a new value pointer stored in a different location will be
+created, while existing applied occurrences of the identifier will continue to
+access the old value, avoiding the possibility of accessing a value of
+unexpected type. In such a circumstance, the old shared pointer location
+itself will no longer be owned by the identifier table, so we should arrange
+for shared ownership of that location. This explains that the |id_data|
+structure used for entries in the table has a shared pointer to a shared
+pointer.
+
+For the type component on the other hand, the identifier table will assume
+strict ownership. If one would instead give ownership of the |type| field
+directly to individual |id_data| entries, this would greatly complicate their
+duplication, and therefore their insertion into the table. We therefore only
+allow construction of |id_data| objects in an empty state; the pointers they
+contain should be set only \emph{after} the insertion of the object into the
+table, which then immediately assumes ownership of the type.
+
+@< Type definitions @>=
+
+typedef std::shared_ptr<shared_value> shared_share;
+class id_data
+{ shared_share val; @+ type_expr tp;
+public:
+  id_data(shared_share&& val,type_expr&& t)
+  : val(std::move(val)), tp(std::move(t)) @+{}
+  id_data(id_data&& x)
+  : val(std::move(x.val)), tp(std::move(x.tp)) @+{}
+  void swap(id_data& x) @+
+  {@; val.swap(x.val); tp.swap(x.tp); }
+  id_data& operator=(id_data x)
+  {@; swap(x); return *this; } // copy and swap idiom, see if it works
+  ~id_data () @+{@; }
+@)
+  shared_share value() const @+{@; return val; }
+  const_type_p type() const @+{@; return &tp; }
+  type_p type() @+{@; return &tp; }
+  // non-|const|! Callers can specialise type later
+};
+
+@ We cannot store auto pointers in a table, so upon entering into the table we
+convert type pointers to ordinary pointers, and this is what |type_of| lookup
+will return (the table retains ownership); destruction of the type expressions
+referred to will be handled explicitly when the entry, or the table itself, is
+destructed.
+
+@< Includes needed in the header file @>=
+#include <map>
+#include "lexer.h" // for the identifier hash table
+
+@~Overloading is not done in this table, so a simple associative table with
+the identifier as key is used.
+
+@< Type definitions @>=
+class Id_table
+{ typedef std::map<Hash_table::id_type,id_data> map_type;
+  map_type table;
+  Id_table(const Id_table&) = @[ delete @];
+  Id_table& operator=(const Id_table&) = @[ delete @];
+public:
+  Id_table() : table() @+{} // the default and only accessible constructor
+@)
+  void add(Hash_table::id_type id, shared_value v, type_expr&& t); // insertion
+  bool remove(Hash_table::id_type id); // deletion
+  shared_share address_of(Hash_table::id_type id); // locate
+@)
+  bool present (Hash_table::id_type id) const
+  @+{@; return table.find(id)!=table.end(); }
+  const_type_p type_of(Hash_table::id_type id) const;
+  // pure lookup, may return |nullptr|
+  type_p type_of(Hash_table::id_type id);
+  // lookup, caller may specialise type afterwards
+  shared_value value_of(Hash_table::id_type id) const; // lookup
+@)
+  size_t size() const @+{@; return table.size(); }
+  void print(std::ostream&) const;
+};
+
+@ The method |add| tries to insert the new mapping from the key |id| to a new
+value-type pair. Since the |std::map::emplace| method with rvalue argument
+will move from that argument regardless of whether ultimately insertion takes
+place, we cannot use that method. Instead we look up the key using the method
+|std::map::equal_range|, and use the resulting pair of iterators to decide
+whether the key was absent (if they are equal), and then use the first
+iterator either as a hint in |emplace_hint|, or as a pointer to the
+identifier-data pair found, of which the data (of type |id_data|) is
+move-assigned from the argument of |add|. The latter assignment abandons the
+old |shared_value| (which may or may not destruct the value, depending on
+whether the old identifier is referred to from some lambda expression),
+resetting the pointer to it to point to a newly allocated one, and insert the
+new type (destroying the previous).
+
+@< Global function def... @>=
+void Id_table::add(Hash_table::id_type id, shared_value val, type_expr&& type)
+{ auto its = table.equal_range(id);
+
+  if (its.first==its.second) // no global identifier was previously known
+    table.emplace_hint(its.first, id,
+       id_data( shared_share(new shared_value(val)), std::move(type) ));
+  else // a global identifier was previously known
+    its.first->second =
+      id_data( shared_share(new shared_value(val)), std::move(type) );
+}
+
+@ The |remove| method removes an identifier if present, and returns whether
+this was the case.
+
+@< Global function def... @>=
+bool Id_table::remove(Hash_table::id_type id)
+{ map_type::iterator p = table.find(id);
+  if (p==table.end())
+    return false;
+  table.erase(p); return true;
+}
+
+@ In order to have a |const| look-up method for types, we must refrain from
+inserting into the table if the key is not found; we return a null pointer in
+that case. Nonetheless the version of |type_of| that will actually be used is
+the non-|const| one, since the resulting pointer (into the table itself) will
+in some cases be used to specialise the type found (and therefore the type
+associated globally to the identifier). This strange behaviour (global
+identifiers getting a more specific type by using them) is rare (it basically
+happens for values containing an empty list) but does not seem to endanger
+type-safety: the change is irreversible, and code referring to the identifier
+that type-checked without needing specialisation should not be affected by a
+later specialisation. But should the language be modified so as to forbid this
+behaviour, it should become possible to remove the manipulator version of
+|type_of|. On the other hand it is quite normal that |address_of| should be
+classified as a manipulator (even if technically it could have been marked
+|const| if its implementation had used a |const_iterator|), since the pointer
+returned will in many cases be used to modify the value (but not the type)
+stored for the identifier in question.
+
+@< Global function def... @>=
+type_p Id_table::type_of(Hash_table::id_type id)
+{@; map_type::iterator p=table.find(id);
+  return p==table.end() ? nullptr : p->second.type();
+}
+const_type_p Id_table::type_of(Hash_table::id_type id) const
+{@; map_type::const_iterator p=table.find(id);
+  return p==table.end() ? nullptr : p->second.type();
+}
+shared_value Id_table::value_of(Hash_table::id_type id) const
+{ map_type::const_iterator p=table.find(id);
+  return p==table.end() ? shared_value(value(nullptr)) : *p->second.value();
+}
+shared_share Id_table::address_of(Hash_table::id_type id)
+{ map_type::iterator p=table.find(id);
+  if (p==table.end())
+    throw std::logic_error @|
+    (std::string("Identifier without table entry:")
+     +main_hash_table->name_of(id));
+@.Identifier without value@>
+  return p->second.value();
+}
+
+@ We provide a |print| member that shows the contents of the entire table.
+Since identifiers might have undefined values, we must test for that condition
+and print dummy output in that case. This signals that attempting to evaluate
+the identifier at this point would cause the evaluator to raise an exception.
+
+@< Global function def... @>=
+
+void Id_table::print(std::ostream& out) const
+{ for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
+  { out << main_hash_table->name_of(p->first) << ": " @|
+        << *p->second.type() << ": ";
+    if (*p->second.value()==nullptr)
+      out << '*';
+    else
+      out << **p->second.value();
+    out << std::endl;
+   }
+}
+
+std::ostream& operator<< (std::ostream& out, const Id_table& p)
+@+{@; p.print(out); return out; }
+
+@~We shouldn't forget to declare that operator, or it won't be found, giving
+kilometres of error message.
+
+@< Declarations of exported functions @>=
+std::ostream& operator<< (std::ostream& out, const Id_table& p);
+
+@ We declare just a pointer to the global identifier table here.
+@< Declarations of global variables @>=
+extern Id_table* global_id_table;
+
+@~Here we set the pointer to a null value; the main program will actually
+create the table.
+
+@< Global variable definitions @>=
+Id_table* global_id_table=nullptr; // will never be |nullptr| at run time
 
 @* Global operations.
 %
@@ -284,10 +493,10 @@ to the very common singular case), before calling |global_id_table->add|.
   for (size_t i=0; i<n_id; ++i)
   { std::cout << (i==0 ? n_id==1 ? " " : "s " : ", ") @|
               << main_hash_table->name_of(b[i].first);
-    if (global_id_table->type_of(b[i].first)!=NULL)
+    if (global_id_table->present(b[i].first))
       std::cout << " (overriding previous)";
     std::cout << ": " << *b[i].second;
-    global_id_table->add(b[i].first,v[i],acquire(b[i].second));
+    global_id_table->add(b[i].first,v[i],b[i].second->copy());
   }
 }
 
@@ -383,8 +592,8 @@ but undefined value.
 
 @< Global function definitions @>=
 void global_declare_identifier(Hash_table::id_type id, type_p t)
-{ value undef=NULL;
-  global_id_table->add(id,shared_value(undef),acquire(t));
+{ value undef=nullptr;
+  global_id_table->add(id,shared_value(undef),t->copy());
   @< Emit indentation corresponding to the input level to |std::cout| @>
   std::cout << "Identifier " << main_hash_table->name_of(id)
             << " : " << *t << std::endl;
@@ -984,7 +1193,7 @@ void install_function
   if (type->func->arg_type==void_type)
   { shared_value val(new builtin_value(f,print_name.str()));
     global_id_table->add
-      (main_hash_table->match_literal(name),val,std::move(type));
+      (main_hash_table->match_literal(name),val,std::move(*type));
   }
   else
   { print_name << '@@' << type->func->arg_type;

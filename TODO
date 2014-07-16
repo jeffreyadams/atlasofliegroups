@@ -13,8 +13,6 @@
 
  - Make voiding of row displays work correctly rather than give a type error
 
- - Move code for global identifier tables from evaluator.w to global.w
-
  - See if syntax can allow (let i=3 in for k:i do print(k) od); without parens
 
  - Allow for declaring an input path, and (silent) default prelude

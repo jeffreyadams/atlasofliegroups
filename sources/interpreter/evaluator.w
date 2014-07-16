@@ -931,191 +931,6 @@ const char* identifier::name() const
 void identifier::print(std::ostream& out) const
 @+{@; out<< name(); }
 
-@*1 The global identifier table.
-%
-We need an identifier table to record the values of globally bound identifiers
-(such as those for built-in functions) and their types. The values are held in
-shared pointers, so that we can evaluate a global identifier without
-duplicating the value in the table itself. Modifying the value of such an
-identifier by an assignment will produce a new pointer, so that
-``shareholders'' of the old value will not see any change. There is another
-level of sharing, which affects applied occurrences of the identifier as
-converted during type analysis. The value accessed by such identifiers (which
-could be contained in user-defined function bodies and therefore have long
-lifetime) are expected to undergo change when a new value is assigned to the
-global variable; they will therefore access the location of the shared value
-pointer rather than the value pointed to. However, if a new identifier of the
-same name should be introduced, a new value pointer stored in a different
-location will be created, while existing applied occurrences of the identifier
-will continue to access the old value, avoiding the possibility of accessing a
-value of unexpected type. In such a circumstance, the old shared pointer
-location itself will no longer be owned by the identifier table, so we should
-arrange for shared ownership of that location. This explains that the
-|id_data| structure used for entries in the table has a shared pointer to a
-shared pointer.
-
-For the type component on the other hand, the identifier table will assume
-strict ownership. If one would instead give ownership of the |type| field
-directly to individual |id_data| entries, this would greatly complicate their
-duplication, and therefore their insertion into the table. We therefore only
-allow construction of |id_data| objects in an empty state; the pointers they
-contain should be set only \emph{after} the insertion of the object into the
-table, which then immediately assumes ownership of the type.
-
-@< Type definitions @>=
-
-typedef std::shared_ptr<shared_value> shared_share;
-struct id_data
-{ shared_share val; @+ type_p type;
-  id_data() : val(),type(nullptr)@+ {}
-};
-
-@ We cannot store auto pointers in a table, so upon entering into the table we
-convert type pointers to ordinary pointers, and this is what |type_of| lookup
-will return (the table retains ownership); destruction of the type expressions
-referred to will be handled explicitly when the entry, or the table itself, is
-destructed.
-
-@< Includes needed in the header file @>=
-#include <map>
-#include "lexer.h" // for the identifier hash table
-
-@~Overloading is not done in this table, so a simple associative table with
-the identifier as key is used.
-
-@< Type definitions @>=
-class Id_table
-{ typedef std::map<Hash_table::id_type,id_data> map_type;
-  map_type table;
-  Id_table(const Id_table&); // copying forbidden
-  Id_table& operator=(const Id_table&); // assignment forbidden
-public:
-  Id_table() : table() @+{} // the default and only accessible constructor
-  ~Id_table(); // destructor of all values referenced in the table
-@)
-  void add(Hash_table::id_type id, shared_value v, type_ptr t); // insertion
-  bool remove(Hash_table::id_type id); // deletion
-  shared_share address_of(Hash_table::id_type id); // locate
-@)
-  type_p type_of(Hash_table::id_type id) const; // lookup
-  shared_value value_of(Hash_table::id_type id) const; // lookup
-@)
-  size_t size() const @+{@; return table.size(); }
-  void print(std::ostream&) const;
-};
-
-@ As the table has strict ownership of the contained types, the destructor
-must explicitly delete them.
-
-@< Function def... @>=
-Id_table::~Id_table()
-{ for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
-  @/{@; delete p->second.type; }
-}
-
-@ The method |add| tries to insert the new mapping from the key |id| to a new
-value-type pair. Doing so, it must distinguish two cases. It tentatively
-inserts a new empty entry for the identifier into the table; this returns a
-pair with a second boolean component telling whether a new entry was added
-(the identifier was unknown as global identifier). If this is the case, we
-continue to fill the slot with a newly allocated shared pointer and the
-provided type. If the identifier was already present, we abandon the old
-shared pointer location, resetting the pointer to it to point to a newly
-allocated one, destroy the old type and insert the new type. All in all, the
-only difference in the code of the two branches is the deletion of the old
-type.
-
-@< Function def... @>=
-void Id_table::add(Hash_table::id_type id, shared_value val, type_ptr type)
-{ std::pair<map_type::iterator,bool> trial=
-    table.insert(std::make_pair(id,id_data()));
-  id_data& slot=trial.first->second;
-  if (trial.second) // a fresh global identifier
-  {@; slot.val.reset(new shared_value(val));
-    slot.type=type.release();
-  }
-  else
-  {@; slot.val.reset(new shared_value(val));
-    delete slot.type;
-    slot.type=type.release();
-  }
-}
-
-@ The |remove| method removes an identifier if present, and returns whether
-this was the case. We should not forget to clean up the owned type that
-disappears.
-
-@< Function def... @>=
-bool Id_table::remove(Hash_table::id_type id)
-{ map_type::iterator p = table.find(id);
-  if (p==table.end())
-    return false;
-  delete p->second.type; table.erase(p); return true;
-}
-
-@ In order to have |const| lookup methods, we must refrain from inserting into
-the table if the key is not found; we return a null pointer in that case. The
-pointer returned by |type_of| remains owned by the table. Although it does not
-immediately modify the table, |address_of| is classified as a manipulator,
-since the pointer returned may be used to modify a stored value.
-
-@< Function def... @>=
-type_p Id_table::type_of(Hash_table::id_type id) const
-{@; map_type::const_iterator p=table.find(id);
-  return p==table.end() ? nullptr : p->second.type;
-}
-shared_value Id_table::value_of(Hash_table::id_type id) const
-{ map_type::const_iterator p=table.find(id);
-  return p==table.end() ? shared_value(value(nullptr)) : *p->second.val;
-}
-shared_share Id_table::address_of(Hash_table::id_type id)
-{ map_type::iterator p=table.find(id);
-  if (p==table.end())
-    throw std::logic_error @|
-    (std::string("Identifier without table entry:")
-     +main_hash_table->name_of(id));
-@.Identifier without value@>
-  return p->second.val;
-}
-
-@ We provide a |print| member that shows the contents of the entire table.
-Since identifiers might have undefined values, we must test for that condition
-and print dummy output in that case. This signals that attempting to evaluate
-the identifier at this point would cause the evaluator to raise an exception.
-
-@< Function def... @>=
-
-void Id_table::print(std::ostream& out) const
-{ for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
-  { out << main_hash_table->name_of(p->first) << ": " @|
-        << *p->second.type << ": ";
-    if (*p->second.val==nullptr)
-      out << '*';
-    else
-      out << **p->second.val;
-    out << std::endl;
-   }
-}
-
-std::ostream& operator<< (std::ostream& out, const Id_table& p)
-@+{@; p.print(out); return out; }
-
-@~We shouldn't forget to declare that operator, or it won't be found, giving
-kilometres of error message.
-
-@< Declarations of exported functions @>=
-std::ostream& operator<< (std::ostream& out, const Id_table& p);
-
-@ We declare just a pointer to the global identifier table here.
-@< Declarations of global variables @>=
-extern Id_table* global_id_table;
-
-@~Here we set the pointer to a null value; the main program will actually
-create the table.
-
-@< Global variable definitions @>=
-Id_table* global_id_table=nullptr; // will never be |nullptr| at run time
-
 @*1 Global identifiers.
 %
 When during type checking an identifiers binds to a value in the global
@@ -3424,20 +3239,20 @@ way,
 case ass_stat:
 { Hash_table::id_type lhs=e.assign_variant->lhs;
   const expr& rhs=e.assign_variant->rhs;
-  type_p it; expression_ptr assign; size_t i,j;
-  if ((it=id_context->lookup(lhs,i,j))!=nullptr)
-  @/{@; expression_ptr r(convert_expr(rhs,*it));
+  type_p id_t; expression_ptr assign; size_t i,j;
+  if ((id_t=id_context->lookup(lhs,i,j))!=nullptr)
+  @/{@; expression_ptr r(convert_expr(rhs,*id_t));
     assign.reset(new local_assignment(lhs,i,j,std::move(r)));
   }
-  else if ((it=global_id_table->type_of(lhs))!=nullptr)
-  @/{@; expression_ptr r(convert_expr(rhs,*it));
+  else if ((id_t=global_id_table->type_of(lhs))!=nullptr)
+  @/{@; expression_ptr r(convert_expr(rhs,*id_t));
     assign.reset(new global_assignment(lhs,std::move(r)));
   }
   else throw program_error @|
     (std::string("Undefined identifier in assignment: ")
      +main_hash_table->name_of(lhs));
 @.Undefined identifier in assignment@>
-  return conform_types(*it,type,std::move(assign),e).release();
+  return conform_types(*id_t,type,std::move(assign),e).release();
 }
 
 @*1 Component assignments.

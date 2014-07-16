@@ -206,6 +206,7 @@ $(realex_dir)/main.o $(realex_dir)/main.tex: \
  $(realex_dir)/buffer.h \
  $(realex_dir)/built-in-types.h \
  $(realex_dir)/evaluator.h \
+ $(realex_dir)/global.h \
  $(realex_dir)/lexer.h \
  $(realex_dir)/parser.tab.h \
  $(realex_dir)/parsetree.h \
