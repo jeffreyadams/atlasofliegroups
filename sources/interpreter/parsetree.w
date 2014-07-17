@@ -140,7 +140,7 @@ void expr::set_from (expr& other)
   other.kind = no_expr;
 }
 @)
-expr::expr (expr&& other) : @[ expr () @] @+
+expr::expr (expr&& other) : kind(no_expr) @+
 {@; set_from(other); }
 
 void expr::operator= (expr&& other)
@@ -536,7 +536,13 @@ function is often an applied identifier, and the argument is often a tuple
 display.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct application_node {@; expr fun; expr arg; };
+struct application_node
+{ expr fun; expr arg;
+@)
+  application_node(expr&& fun, expr&& arg)
+@/: fun(std::move(fun)), arg(std::move(arg)) @+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for expressions that will invoke a built-in function is
 |function_call|. It is used as internal representation for operator
@@ -1001,7 +1007,13 @@ struct let_pair {@; id_pat pattern; expr val; };
 typedef containers::simple_list<let_pair> let_list;
 typedef containers::sl_node<let_pair>* raw_let_list;
 @)
-struct let_expr_node {@; id_pat pattern; expr val; expr body; };
+struct let_expr_node
+{ id_pat pattern; expr val; expr body;
+@)
+  let_expr_node(id_pat&& pattern, expr&& val, expr&& body)
+@/: pattern(std::move(pattern)), val(std::move(val)), body(std::move(body))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for let-expressions is |let_expr|.
 
@@ -1167,7 +1179,13 @@ defined in \.{types.w}), and an expression (the body of the function).
 
 @< Structure and typedef... @>=
 struct lambda_node
-{@; id_pat pattern; type_expr parameter_type; expr body; };
+{ id_pat pattern; type_expr parameter_type; expr body;
+@)
+  lambda_node(id_pat&& pattern, type_expr&& type, expr&& body)
+@/: pattern(std::move(pattern))
+  , parameter_type(std::move(type)), body(std::move(body))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for user-defined functions is |lambda_expr|.
 @< Enumeration tags... @>=
@@ -1257,7 +1275,14 @@ basic two-branch case.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct conditional_node
- {@; expr condition; expr then_branch; expr else_branch; };
+{ expr condition; expr then_branch; expr else_branch;
+@)
+  conditional_node(expr&& condition, expr&& then_branch, expr&& else_branch)
+@/: condition(std::move(condition))
+  , then_branch(std::move(then_branch))
+  , else_branch(std::move(else_branch))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for these expressions is |conditional_expr|.
 
@@ -1340,11 +1365,33 @@ be distinguished by a boolean.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct while_node
- {@; expr condition; expr body; };
+{ expr condition; expr body;
+@)
+  while_node(expr&& condition, expr&& body)
+@/: condition(std::move(condition))
+  , body(std::move(body))@+{}
+  // backward compatibility for gcc 4.6
+};
 struct for_node
- {@; struct id_pat id; expr in_part; expr body; };
+{ struct id_pat id; expr in_part; expr body;
+@)
+  for_node(id_pat&& id, expr&& in_part, expr&& body)
+@/: id(std::move(id))
+  , in_part(std::move(in_part))
+  , body(std::move(body))@+{}
+  // backward compatibility for gcc 4.6
+};
 struct cfor_node
- {@; id_type id; expr count; expr bound; short up; expr body; };
+{ id_type id; expr count; expr bound; short up; expr body;
+@)
+  cfor_node(id_type id, expr&& count, expr&& bound, short up, expr&& body)
+@/: id(id)
+  , count(std::move(count))
+  , bound(std::move(bound))
+  , up(up)
+  , body(std::move(body))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tags used for these expressions are |while_expr|, |for_expr| and
 |cfor_expr|.
@@ -1483,7 +1530,14 @@ expressions (although the latter should have as type integer, or a tuple of
 integers).
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct subscription_node {@; expr array; expr index; };
+struct subscription_node
+{ expr array; expr index;
+@)
+  subscription_node(expr&& array, expr&& index)
+@/: array(std::move(array))
+  , index(std::move(index))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ Here is the tag used for subscriptions.
 
@@ -1561,7 +1615,14 @@ typedef std::unique_ptr<struct cast_node> cast;
 known reasons.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct cast_node {@; type_expr type; expr exp; };
+struct cast_node
+{ type_expr type; expr exp;
+@)
+  cast_node(type_expr&& type, expr&& exp)
+@/: type(std::move(type))
+  , exp(std::move(exp))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for casts is |cast_expr|.
 
@@ -1624,7 +1685,14 @@ typedef std::unique_ptr<struct op_cast_node> op_cast;
 void pointer.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct op_cast_node {@; id_type oper; type_expr type; };
+struct op_cast_node
+{ id_type oper; type_expr type;
+@)
+  op_cast_node(id_type oper,type_expr&& type)
+@/: oper(oper)
+  , type(std::move(type))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for casts is |op_cast_expr|.
 
@@ -1689,7 +1757,14 @@ typedef std::unique_ptr<struct assignment_node> assignment;
 @~In a simple assignment the left hand side is just an identifier.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct assignment_node {@; id_type lhs; expr rhs; };
+struct assignment_node
+{ id_type lhs; expr rhs;
+@)
+  assignment_node(id_type lhs, expr&& rhs)
+@/: lhs(lhs)
+  , rhs(std::move(rhs))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for assignment statements is |ass_stat|.
 
@@ -1756,7 +1831,15 @@ typedef std::unique_ptr<struct comp_assignment_node> comp_assignment;
 index.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct comp_assignment_node {@; id_type aggr; expr index; expr rhs; };
+struct comp_assignment_node
+{ id_type aggr; expr index; expr rhs;
+@)
+  comp_assignment_node(id_type aggr, expr&& index, expr&& rhs)
+@/: aggr(std::move(aggr))
+  , index(std::move(index))
+  , rhs(std::move(rhs))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for assignment statements is |comp_ass_stat|.
 
@@ -1840,7 +1923,15 @@ while the second expression is then evaluated without using its value; the
 |forward| field indicates whether the first form was used.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct sequence_node {@; expr first; expr last; int forward; };
+struct sequence_node
+{ expr first; expr last; int forward;
+@)
+  sequence_node(expr&& first, expr&& last, int forward)
+@/: first(std::move(first))
+  , last(std::move(last))
+  , forward(forward)@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for sequence statements is |seq_expr|.
 

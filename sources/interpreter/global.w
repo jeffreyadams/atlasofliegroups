@@ -181,8 +181,9 @@ void Id_table::add(Hash_table::id_type id, shared_value val, type_expr&& type)
 { auto its = table.equal_range(id);
 
   if (its.first==its.second) // no global identifier was previously known
-    table.emplace_hint(its.first, id,
-       id_data( shared_share(new shared_value(val)), std::move(type) ));
+    table.insert // better: |emplace_hint(its.first,id,@[...@])| with gcc 4.8
+      (its.first,std::make_pair(id,
+        id_data( shared_share(new shared_value(val)), std::move(type) )));
   else // a global identifier was previously known
     its.first->second =
       id_data( shared_share(new shared_value(val)), std::move(type) );

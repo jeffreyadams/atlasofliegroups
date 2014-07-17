@@ -1705,7 +1705,8 @@ itself, which instead stores non-owning pointers to them.
 
 @< Type definitions @>=
 struct conversion_record : public conversion_info
-{ const type_expr* const from, * const to; // non-owned pointers
+{ const type_expr* from, * to;
+  // non-owned pointers, themselves could be |const| in gcc 4.8
   conversion_record @| (const type_expr& from_type,
                      const type_expr& to_type,
                      const char* s, conv_f c)
@@ -1728,7 +1729,7 @@ externally callable. Its action is simply extending |coerce_table| with a new
 void coercion(const type_expr& from,
               const type_expr& to,
               const char* s, conversion_info::conv_f f)
-{@; coerce_table.push_back(conversion_record(from,to,s,f)); }
+{@; coerce_table.emplace_back(from,to,s,f); }
 
 @ There is one coercion that is not stored in the lookup table, since it can
 operate on any input type: the voiding coercion. It is necessary for instance
@@ -1998,6 +1999,7 @@ class program_error : public std::exception
 { std::string message;
 public:
   explicit program_error(const std::string& s) : message(s) @+{}
+  ~program_error () noexcept @+{} // backward compatibility for gcc 4.6
   const char* what() const throw() @+{@; return message.c_str(); }
 };
 
