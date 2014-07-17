@@ -110,13 +110,9 @@ class id_data
 public:
   id_data(shared_share&& val,type_expr&& t)
   : val(std::move(val)), tp(std::move(t)) @+{}
-  id_data(id_data&& x)
-  : val(std::move(x.val)), tp(std::move(x.tp)) @+{}
-  void swap(id_data& x) @+
-  {@; val.swap(x.val); tp.swap(x.tp); }
-  id_data& operator=(id_data x)
-  {@; swap(x); return *this; } // copy and swap idiom, see if it works
-  ~id_data () @+{@; }
+  id_data @[(id_data&& x) = default@];
+  void swap(id_data& x) @+ {@; val.swap(x.val); tp.swap(x.tp); }
+  id_data& operator=(id_data&& x) = @[default@];
 @)
   shared_share value() const @+{@; return val; }
   const_type_p type() const @+{@; return &tp; }
