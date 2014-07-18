@@ -1332,6 +1332,7 @@ determined during type analysis (static binding); it results for local
 identifiers in a method to locate the associated value in the evaluation
 context, which is formed by a stack of frames, each holding a vector of
 values.
+
 Frames are actually allocated on the heap, and their lifetimes do not follow
 a stack regime unless a very limited use is made of user-defined functions
 (never passing such a function as value out of the expression in which it was
@@ -1340,25 +1341,26 @@ singly linked list suffices, and by using shared pointers as links,
 destruction of frames once inaccessible is automatic.
 
 @< Type definitions @>=
-class context;
-typedef std::shared_ptr<context> context_ptr;
-class context
+typedef std::shared_ptr<class evaluation_context> context_ptr;
+class evaluation_context
 { const context_ptr next;
   std::vector<shared_value> frame;
-  context(const context&); // contexts should not be copied, just shared
+  evaluation_context@[(const evaluation_context&) = delete@];
+  // never copy contexts
 public:
-  context(const context_ptr& n,
-          const std::vector<shared_value>& f) : next(n), frame(f) @+{}
+  evaluation_context
+    (const context_ptr& next, const std::vector<shared_value>&& frame)
+@/: next(next), frame(std::move(frame)) @+{}
   shared_value& elem(size_t i,size_t j);
 };
 
-@ The method |context::elem| descends the stack and then selects a value from
+@ The method |evaluation_context::elem| descends the stack and then selects a value from
 the proper frame.
 
 @< Function def... @>=
-shared_value& context::elem(size_t i, size_t j)
+shared_value& evaluation_context::elem(size_t i, size_t j)
 {
-  context* p=this;
+  evaluation_context* p=this;
   while (i-->0 and (p=p->next.get())!=nullptr) {}
   assert(p!=nullptr and j<p->frame.size());
 @/return p->frame[j];
@@ -1836,11 +1838,10 @@ this type.
 
 Currently all calls to this function have |component_type| initially
 undetermined, so the call to of the |specialise| method will always succeed,
-but we test the result nonetheless. If the set of possible coercions admits a
-coercion from more than one row type to a given void type, it is the first one
-in the table that determines what |component_type| will be. Indeed this occurs
-for required type \.{mat}, for which the component type will then be \.{vec}
-rather than \.{[int]})
+but we test the result nonetheless. The code does assume the set of possible
+coercions is such that there is at most one coercion from any row type to a
+given (non-void) type, since it there were more than one possibility we could
+not decide what |component_type| should become.
 
 @< Function def... @>=
 const conversion_record* row_coercion(const type_expr& final_type,

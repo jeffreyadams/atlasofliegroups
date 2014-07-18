@@ -143,7 +143,7 @@ could also be that |type| is initially partially defined (such as
 derivation and testing functionality are combined; this gives flexibility to
 |convert_expr|.
 
-Upon successful completion, |type| will usually have become a completely
+Upon successful completion, |type| will usually have become completely
 defined. The object |type| should be owned by the caller, who will
 automatically gain ownership of any new nodes added in the process, and
 accessible from |type|. The latter, if it happens, will be caused by calls of
@@ -2260,7 +2260,7 @@ the original context is restored from the local variable |saved_context|.
   thread_components(*f->param,pop_value(),new_frame);
 @)
   context_ptr saved_context(execution_context);
-  execution_context.reset(new context(f->cont,new_frame));
+  execution_context.reset(new evaluation_context{f->cont,std::move(new_frame)});
   f->body->evaluate(l); // pass evaluation level |l| to function body
   execution_context = saved_context;
 }
@@ -2327,7 +2327,8 @@ void overloaded_closure_call::evaluate(level l) const
     thread_components(*fun->param,pop_value(),new_frame);
 @)
     context_ptr saved_context(execution_context);
-    execution_context.reset(new context(fun->cont,new_frame));
+    execution_context.reset(new
+      evaluation_context{fun->cont,std::move(new_frame)});
     fun->body->evaluate(l); // pass evaluation level |l| to function body
     execution_context = saved_context;
   }
@@ -2804,8 +2805,8 @@ loop body is standard.
 @< Set |loop_var->val[0]| to |i|,... @>=
 loop_var->val[0].reset(new int_value(i)); // index; newly created each time
 thread_components(pattern,loop_var,loop_frame);
-execution_context.reset(new context(saved_context,loop_frame));
-  // this one too
+execution_context.reset(new
+  evaluation_context{saved_context,std::move(loop_frame)}); // this one too
 if (l==no_value)
   body->void_eval();
 else
@@ -2826,7 +2827,8 @@ its header file.
   { loop_var->val[0].reset(new module_parameter_value(pol_val->rf,it->first));
     loop_var->val[1].reset(new split_int_value(it->second));
     thread_components(pattern,loop_var,loop_frame);
-    execution_context.reset(new context(saved_context,loop_frame));
+    execution_context.reset(new
+      evaluation_context{saved_context,std::move(loop_frame)});
     if (l==no_value)
       body->void_eval();
     else
@@ -2936,7 +2938,8 @@ void inc_for_expression::evaluate(level l) const
   { c+=b;
     for (int i=b; i<c; ++i)
     { loop_var.reset(new int_value(i));
-      execution_context.reset(new context(saved_context,loop_frame));
+      execution_context.reset(new
+        evaluation_context{saved_context,std::move(loop_frame)});
       body->void_eval();
     }
   }
@@ -2945,7 +2948,8 @@ void inc_for_expression::evaluate(level l) const
     c+=b;
     for (int i=b; i<c; ++i)
     { loop_var.reset(new int_value(i));
-      execution_context.reset(new context(saved_context,loop_frame));
+      execution_context.reset(new
+        evaluation_context{saved_context,std::move(loop_frame)});
       body->eval(); result->val.push_back(pop_value());
     }
     push_value(std::move(result));
@@ -2969,7 +2973,8 @@ void dec_for_expression::evaluate(level l) const
   { i+=b;
     while (i-->b)
     { loop_var.reset(new int_value(i));
-      execution_context.reset(new context(saved_context,loop_frame));
+      execution_context.reset(new
+        evaluation_context{saved_context,std::move(loop_frame)});
       body->void_eval();
     }
   }
@@ -2978,7 +2983,8 @@ void dec_for_expression::evaluate(level l) const
     i+=b;
     while (i-->b)
     { loop_var.reset(new int_value(i));
-      execution_context.reset(new context(saved_context,loop_frame));
+      execution_context.reset(new
+        evaluation_context{saved_context,std::move(loop_frame)});
       body->eval(); result->val.push_back(pop_value());
     }
     push_value(std::move(result));
