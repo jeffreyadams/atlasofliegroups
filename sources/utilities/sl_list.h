@@ -38,6 +38,9 @@ struct sl_node
   T contents;
 sl_node(const T& contents) : next(nullptr), contents(contents) {}
 sl_node(T&& contents) : next(nullptr), contents(std::move(contents)) {}
+  template<typename... Args>
+  sl_node(Args&&... args)
+  : next(nullptr), contents(std::forward<Args>(args)...) {}
 }; // |class sl_node| template
 
 template<typename T>
@@ -237,6 +240,15 @@ template<typename T>
   void push_front(T&& val)
   {
     node_type* p = new node_type(std::move(val)); // construct node value
+    p->next.reset(head.release()); // link trailing nodes here
+    head.reset(p); // make new node the first one in the list
+  }
+
+  template<typename... Args>
+    void emplace_front(Args&&... args)
+  {
+    node_type* p =
+      new node_type(std::forward<Args>(args)...); // construct node value
     p->next.reset(head.release()); // link trailing nodes here
     head.reset(p); // make new node the first one in the list
   }

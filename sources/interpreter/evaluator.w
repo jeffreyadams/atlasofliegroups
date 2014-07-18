@@ -128,20 +128,22 @@ only implicitly (mutually) recursive through calls to the
 definite type is required for them, while for others nothing is known
 beforehand about their type (for instance this is the case for the complete
 expression entered by the user for evaluation). The difference is important,
-as in the former case conversions can be inserted to make types match, for
-instance between a list of integers and a vector value (this is in fact the
-only way the user can explicitly construct vector values). However, both
-situations (and some intermediate ones) are handled by a single function
-|convert_expr|, which in addition builds (upon success) an |expression| value.
-As arguments |convert_expr| takes an |const expr& e@;| referring to a value
-produced by the parser, and a type in the form of a modifiable reference
-|type_expr& type@;|. If |type| is undefined initially, then it will be set to
-the type derived for the expression; if it is defined then it may guide the
-conversion process, and the type eventually found will have to match it. It
-could also be that |type| is initially partially defined (such as
-`\.{(int,*)}', meaning ``pair on an integer and something''), in which case
-derivation and testing functionality are combined; this gives flexibility to
-|convert_expr|.
+as in the former case it is possible to insert implicit conversions to make
+the types match, for instance between a list of integers (built using the
+facilities of the interpreter) and a vector value (one that can be directly
+used by the Atlas library); this is in fact the only way the user can
+construct such vector values. However, both cases (with known or unknown
+result type), and some intermediate cases (where the result type is partially
+known) are handled by a single function |convert_expr|. In addition to doing
+types analysis, it builds (upon success) an |expression| value. As arguments
+|convert_expr| takes an |const expr& e@;| referring to a value produced by the
+parser, and a type in the form of a modifiable reference |type_expr& type@;|.
+If |type| is undefined initially, then it will be set to the type derived for
+the expression; if it is defined then it may guide the conversion process, and
+the type eventually found will have to match it. It could also be that |type|
+is initially partially defined (such as `\.{(int,*)}', meaning ``pair on an
+integer and something''), in which case derivation and testing functionality
+are combined; this gives flexibility to |convert_expr|.
 
 Upon successful completion, |type| will usually have become completely
 defined. The object |type| should be owned by the caller, who will
@@ -151,62 +153,109 @@ the |specialise| method for |type|, or for its descendants, within
 |convert_expr|. In some cases |type| will remain partly undefined, like for an
 emtpy list display with an unknown type, which gets specialised only
 to~`\.{[*]}'. However if |type| remains completely undefined `\.*' (as will
-happen for the selection of a value from an empty list, or would happen for a
-function that is recursive without any terminating case if it were possible to
-specify such a function in \.{realex}) then it can be seen that evaluation
-cannot possibly complete without error, so we might treat this case as a type
-error (and we shall do so occasionally if this allows us to simplify our
-code).
+happen for an expression that \emph{selects} a value from an empty list, then
+this means that evaluation cannot possibly complete without error (since no
+resulting value could have all possible types at once). This situation would
+also happen for a function defined recursively without any terminating case,
+if it were possible to specify such a function in \.{realex} (in reality the
+somewhat tedious method that currently is the only way to define recursive
+functions in\.{realex} requires the type of the function to be fixed
+beforehand, so this case does not occur). Therefore we might treat the case
+where |convert_expr| leaves |type| completely undetermined as a type error;
+currently this is not signalled as such, but  occasionally we do choose to
+ignore certain scenarios in which the type derived for a subexpression is
+`\.*', if this allows us to simplify our code.
 
 @< Declarations of exported functions @>=
 expression_ptr convert_expr(const expr& e, type_expr& type);
 
 @ In the function |convert_expr| we shall need a type for storing bindings
-between identifiers and types, and this will be the |bindings| class. It uses
-a vector of individual bindings, the type being present in the form of an
-owning |type_ptr| unique-pointer.
+between identifiers and types, and this will be the |frame| class. It is
+actually a proxy to a a vector of type |frame::vec| of individual bindings,
+the type being present in the form of an owning |type_ptr| unique-pointer; the
+reason is that the actual vector will be located on the runtime stack, so the
+list container that will be used to represent nested static ranges only
+manages storage for the reference to this vector. It does mean that user of
+this class should separately construct the |frame::vec| with the proper
+lifetime from which the |frame| object is then constructed; that frame will be
+moved into dynamic memory by |frame::push|. Since the space on the runtime
+stack occupied by a |vector| is hardly larger than that of a |frame| this is
+mostly a proof-of-concept, namely that lists can be handled with storage for
+the elements in automatic variables residing in the runtime stack.
 
-We chain the different bindings into a linked list, and forbid any copy or
-assignment, nor do we introduce their move counterparts. In fact the nesting
-of the various bindings will embed in the nested calls of |convert_expr|, so
-we can afford to allocate each |bindings| as local variable to (some instance
-of) |convert_expr|, where links always point to an instance with larger
-lifetime: we make a linked lists that embeds into the \Cpp\ runtime stack.
-Then there is no ownership of pointed-to structures at all, the usual handling
-of the stack being sufficient. We do provide methods |push| and |pop| to
-prepend respectively detach a |bindings| object from a list.
+We chain the different bindings into a linked list accessed from the static
+member |frame::context|, and allow only modifiable copy construction. In
+fact the nesting of the various bindings will embed in the nested calls of
+|convert_expr|, so we can afford to allocate each |frame::vec| as local
+variable to (some instance of) |convert_expr|, where list always runs from
+more recent to older recursive instances. Then there is no ownership handling
+of |frame::vec|, the usual handling of the stack being sufficient. We do
+provide methods |push| and |pop| to prepend respectively detach a |frame|
+object from a list.
 
 @< Type def... @>=
-class bindings
-: public  std::vector<std::pair<Hash_table::id_type,type_ptr> >
-{ typedef std::vector<std::pair<Hash_table::id_type,type_ptr> >  base;
-  bindings* next; // non-owning pointer
-@)bindings(const bindings&) = @[delete@]; // copy constructor
-  bindings& operator= (const bindings&) = @[delete@]; // assignment operator
+class frame
+{
+  typedef containers::simple_list<frame> list;
 public:
-  bindings(size_t n=0) : @[ base() @], next(nullptr) @+{@; base::reserve(n); }
+  typedef std::vector<std::pair<Hash_table::id_type,type_expr> > vec;
+  static list context; // the unique |frame::list| in existence
+private:
+  vec& variable;
+public:
+  frame(const frame&) = @[delete@]; // no ordinary copy constructor
+  frame& operator= (const frame&) = @[delete@]; // nor assignment operator
+  frame(frame& x) : variable(x.variable) @+{} // copy needs non-|const| ref
+  frame(vec& obj, size_t n=0) : variable(obj) @+{@; obj.reserve(n); }
     // predict size |n|, informative
-  void add(Hash_table::id_type id,type_ptr&& t);
-  type_p lookup
-    (Hash_table::id_type id, size_t& depth, size_t& offset) const;
-  void push (bindings*& sp) @+{@; next=sp; sp=this; } // push |*this| onto |sp|
-  void pop (bindings*& sp) const @+{@; sp=next; } // pop from |*this| to |sp|
+@)
+  void add(Hash_table::id_type id,type_expr&& t);
+  static type_p lookup
+    (Hash_table::id_type id, size_t& depth, size_t& offset);
+  const std::pair<Hash_table::id_type,type_expr>& operator[] (size_t i) const
+    {@; return variable[i]; }
+  vec::const_iterator begin() const @+{@; return variable.begin(); }
+  vec::const_iterator end() const @+{@; return variable.end(); }
+  void push () @+{@; context.emplace_front(*this); }
+  void pop () const @+{@; context.pop_front(); }
 };
 
-@ The method |add| adds a pair to the vector of bindings; the origin type
-pointer is released upon insertion into the |bindings| object. This is also a
-good place to check for the presence of identical identifiers.
+
+@ The method |add| adds a pair to the vector of bindings; the original type
+pointer is released upon insertion into the |frame::vec| object. This is also
+a good place to check for the presence of identical identifiers.
 
 @< Function def... @>=
-void bindings::add(Hash_table::id_type id,type_ptr&& t)
-{ for (auto it=begin(); it!=end(); ++it) // traverse |base| vector
+void frame::add(Hash_table::id_type id,type_expr&& t)
+{ for (auto it=variable.begin(); it!=variable.end(); ++it)
+  // traverse |variable| vector
     if (it->first==id)
       throw program_error @/
        (std::string("Multiple binding of ")
                     +main_hash_table->name_of(id)
                     +" in same scope");
-  push_back( { id,std::move(t) } );
+  variable.emplace_back( id, std::move(t) );
 }
+
+@ During conversion of expressions, we keep a stack |frame::context| of
+identifier bindings in order to determine their (lexical) binding and type.
+Making this a static member if the |frame| class means we cannot start an
+independent call of |convert_expr| (one that does not build upon the current
+lexical context) while some instance of |convert_expr| is still active. Since
+we do not intend to do that, this is not a problem.
+
+@< Global var... @>=
+frame::list frame::context;
+
+@ Pushing and popping frames is done ``manually'', which means that the list
+of frames will contain dangling references after an error is thrown during
+type analysis (because stack unwinding will bypass the popping statements).
+Fortunately after catching we just need to ensure starting with a clean slate,
+by clearing the list (the nodes will be destroyed, and the references they
+contain ignored).
+
+@< Actions to reset the evaluator @>=
+frame::context.clear(); // make context empty;
 
 @ The method |lookup| runs through the linked list of bindings and returns a
 pointer to the type if a match for the identifier |id| was found, also
@@ -214,39 +263,39 @@ assigning its static binding coordinates to output arguments |depth| and
 |offset|. If no match is found a null pointer is returned and the output
 parameters are unchanged.
 
+It will be of importance that this function returns a |type_p| rather than a
+|const_type_p|, in other words that callers have the possibility to modify the
+type returned for a local variable. This may seem strange, but it allows for
+instance to introduce a variable in a let-expression initialised to an empty
+row (of type `\.{[*]}'), and the have the type specialised when the variable
+is being used. Remarkably the type analyser handles such cases reasonably well
+without any specific effort (it merely follows from the way |convert_expr|
+uses its argument |type| both to import and to export type information), but
+users might be warned that there may be some surprises (the type of the local
+variable getting more specific from left to right), which may be prevented by
+casting the empty row to a specific row type.
+
+For this reason this function might be considered a manipulator (modifier)
+rather than an accessor (observer). Technically, this is meaningless, since
+this is a static method (there is no |this|), but the iterator over
+|range->variable| below cannot be taken to be a |const_iterator|. Just to
+illustrate that the reference involved in the |variable| member shields off
+|const|-ness (even if only holding a |const| qualified |frame| object, the
+|variable| field gives a modifiable reference) we have made the outer iterator
+|range| a const-iterator.
+
 @< Function def... @>=
-type_p bindings::lookup
-  (Hash_table::id_type id, size_t& depth, size_t& offset) const
+type_p frame::lookup (Hash_table::id_type id, size_t& depth, size_t& offset)
 { size_t i=0;
-  for (const bindings* p=this; p!=nullptr; p=p->next,++i)
-    for (size_t j=0; j<p->size(); ++j)
-      if ((*p)[j].first==id)
-      {@; depth=i; offset=j; return (*p)[j].second.get(); }
+  for (auto range=context.cbegin(); not context.at_end(range); ++range,++i)
+    for (auto it=range->variable.begin(); it!=range->variable.end(); ++it)
+      if (it->first==id)
+      {@; depth=i;
+        offset=it-range->variable.begin();
+        return &it->second;
+      }
   return nullptr;
 }
-
-@ During conversion of expressions, we keep a stack |id_context| of identifier
-bindings in order to detemine their (lexical) binding and type. We could have
-passed this context as an argument to |convert_expr|, but it changes only on
-very few occasions, so it is more convenient to use a static variable to hold
-the context. This variable could have been |static| local to the function
-|convert_expr|, if it were not for the fact that conversion could be aborted by
-throwing an exception during type analysis, in which case all active
-invocations of |convert_expr| will be terminated, and unless we were willing
-to add a |catch| clause at every change to |id_context|, we would have no
-occasion to clear the context for the next type analysis. So we decide to
-declare this variable local to this compilation unit, and provide a separate
-action for clearing it.
-
-@< Local var... @>=
-bindings* id_context;
-
-@~The cleaning up action just clears the pointer; in fact the pointed to
-objects have already disappeared from the \Cpp\ runtime stack at the time this
-code gets executed.
-
-@< Actions to reset the evaluator @>=
-id_context=nullptr;
 
 @ The function |convert_expr| returns a owning pointer to the conversion of
 the |expr| to |expression|.
@@ -1016,7 +1065,7 @@ assignments to the variable must respect the more specific type).
 @< Cases for type-checking and converting... @>=
 case applied_identifier:
 { type_p id_t; expression_ptr id; size_t i,j;
-  if ((id_t=id_context->lookup(e.identifier_variant,i,j))!=nullptr)
+  if ((id_t=frame::lookup(e.identifier_variant,i,j))!=nullptr)
     id.reset(new local_identifier(e.identifier_variant,i,j));
   else if ((id_t=global_id_table->type_of(e.identifier_variant))!=nullptr)
     id.reset(new global_identifier(e.identifier_variant));
@@ -1031,7 +1080,7 @@ case applied_identifier:
   else throw type_error(e,id_t->copy(),type.copy());
 }
 
-@*1 Operator and function overloading.
+@*1 Resolution of operator and function overloading.
 %
 While the simple mechanism of identifier identification given above suffices
 for many purposes, it would be very restrictive in case of operators (since it
@@ -1045,263 +1094,6 @@ will for instance allow the intuitive convention of simply naming built-in
 functions after the mathematical meaning of the result they compute, even if
 such a result can be computed from different sets of input data.
 
-To implement overloading we use a similar structure as the ordinary global
-identifier table. However the basic table entry for an overloading needs a
-level of sharing less, since the function bound for given argument types
-cannot be changed by assignment, so the call will refer directly to the value
-stored rather than to its location. We also take into account that the stored
-types are always function types, so that we can store a |func_type| structure
-without tag or pointer to it. This saves space, although it makes  access the
-full function type as a |type_expr| rather difficult; however the latter is
-seldom needed in normal use. Remarks about ownership of the type
-apply without change from the non-overloaded case however.
-
-@< Type definitions @>=
-
-struct overload_data
-{ shared_value val; @+ func_type_p type;
-  overload_data() : val(),type(nullptr)@+ {}
-};
-
-@*2 Overload tables.
-%
-Looking up an overloaded identifier should be done using an ordered list of
-possible overloads; the ordering is important since we want to try matching
-more specific (harder to convert to) argument types before trying less
-specific ones. Therefore, rather than using a |std::multimap| multi-mapping
-identifiers to individual value-type pairs, we use a |std::map| from
-identifiers to vectors of value-type pairs.
-
-An identifier is entered into the table when it is first given an overloaded
-definition, so the table will not normally associate an empty vector to an
-identifier; however this situation can arise after removal of a (last)
-definition for an identifier. The |variants| method will signal absence of an
-identifier by returning an empty list of variants, and no separate test for
-this condition is provided.
-
-@< Type definitions @>=
-
-class overload_table
-{
-public:
-  typedef std::vector<overload_data> variant_list;
-  typedef std::map<Hash_table::id_type,variant_list> map_type;
-private:
-  map_type table;
-  overload_table(const Id_table&); // copying forbidden
-  overload_table& operator=(const Id_table&); // assignment forbidden
-public:
-  overload_table() : table() @+{} // the default and only accessible constructor
-  ~overload_table(); // destructor of all values referenced in the table
-@) // accessors
-  const variant_list& variants(Hash_table::id_type id) const;
-  size_t size() const @+{@; return table.size(); }
-  void print(std::ostream&) const;
-@) // manipulators
-  void add(Hash_table::id_type id, shared_value v, type_ptr t);
-   // insertion
-  bool remove(Hash_table::id_type id, const type_expr& arg_t); //deletion
-};
-
-@ As for the ordinary identifier table, the table owns the types, so the
-destructor must clean them up.
-
-@< Function definitions @>=
-
-overload_table::~overload_table()
-{ for (auto p=table.begin(); p!=table.end(); ++p)
-    for (size_t i=0; i<p->second.size(); ++i)
-    {@; delete p->second[i].type; }
-}
-
-@ The |variants| method just returns a reference to the found vector of
-overload instances, or else an empty vector. Since it is returned as
-reference, a static empty vector is used to ensure sufficient lifetime.
-
-@< Function definitions @>=
-const overload_table::variant_list& overload_table::variants
-  (Hash_table::id_type id) const
-{ static const variant_list empty;
-  auto p=table.find(id);
-  return p==table.end() ? empty : p->second;
-}
-
-@ The |add| method is what introduces and controls overloading. We first try
-to associate a singleton vector with the identifier, and upon success insert
-the given value-type pair. In the contrary case (the identifier already had a
-vector associate to it), we must test the new pair against existing elements,
-reject it if there is a conflicting entry present, and otherwise make sure it
-is inserted before any strictly less specific overloaded instances.
-
-@< Function def... @>=
-void overload_table::add
-  (Hash_table::id_type id, shared_value val, type_ptr tp)
-{ func_type_ptr type(tp->func); // access using more specific pointer
-  tp->kind=undetermined_type; // release original pointer
-  std::pair<map_type::iterator,bool> trial=
-    table.insert(std::make_pair(id,variant_list(1,overload_data())));
-  variant_list& slot=trial.first->second;
-    // vector of all variants (a singleton if |trial.second|)
-  if (trial.second) // a fresh overloaded identifier
-  {@; slot[0].val=val;
-    slot[0].type=type.release();
-  }
-  else
-  @< Compare |type| against entries of |slot|, if none are close then add
-  |val| and |type| at the end, if any is close without being one-way
-  convertible to or from it throw an error, and in the remaining case make
-  sure |type| is added after any types that convert to it and before any types
-  it convert to @>
-}
-
-@ We call |is_close| for each existing argument type; if it returns a nonzero
-value it must be either |0x6|, in which case insertion must be after that
-entry, or |0x5|, in which case insertion must be no later than at this
-position, so that the entry in question (after shifting forward) stays ahead.
-The last of the former cases and the first of the latter are recorded, and
-their requirements should be compatible.
-
-Although the module name does not mention it, we allow one case of close and
-mutually convertible types, namely identical types; in this case we simply
-replace the old definition for this type by the new one. This could still
-change the result type, but that does not matter because if any calls that
-were type-checked against the old definition should survive (in a closure),
-they have been also bound to the (function) \emph{value} that was previously
-accessed by that definition, and will continue to use it; their operation is
-in no way altered by the replacement of the definition.
-
-@< Compare |type| against entries of |slot|... @>=
-{ size_t lwb=0; size_t upb=slot.size();
-  for (size_t i=0; i<slot.size(); ++i)
-  { unsigned int cmp= is_close(type->arg_type,slot[i].type->arg_type);
-    switch (cmp)
-    {
-      case 0x6: lwb=i+1; break;
-        // existent type |i| converts to |type|, which must come later
-      case 0x5: @+ if (upb>i) upb=i; @+ break;
-        // |type| converts to type |i|, so it must come before
-      case 0x7: // mutually convertible types, maybe identical ones
-        if (slot[i].type->arg_type==type->arg_type)
-          // identical ones: overload redefinition case
-        @/{@; slot[i].val=val;
-            delete slot[i].type;
-            slot[i].type=type.release();
-            return;
-          }
-      @/// |else| {\bf fall through}
-      case 0x4:
-         @< Report conflict of attempted overload for |id| with previous one
-            in |slot[i]| @>
-      default: @+{} // nothing for unrelated argument types
-    }
-  }
-  @< Insert |val| and |type| after |lwb| and before |upb| @>
-}
-
-@ We get here when the argument types to be added are either mutually
-convertible but distinct form existing types (the fall through case above), or
-close to existing types without being convertible in any direction (which
-would have given a way to disambiguate), so we must report an error. The error
-message is quite verbose, but tries to precisely pinpoint the kind of problem
-encountered so that the user will hopefully able to understand.
-
-@< Report conflict of attempted overload for |id| with previous one in
-  |slot[i]| @>=
-{ std::ostringstream o;
-  o << "Cannot overload `" << main_hash_table->name_of(id) << "', " @|
-       "previous type " << slot[i].type->arg_type
-    << " is too close to "@| << type->arg_type
-    << ",\nmaking overloading potentially ambiguous." @|
-       " Broadness cannot disambiguate,\nas "
-    << (cmp==0x4 ? "neither" :"either") @|
-    << " type converts to the other";
-  throw program_error(o.str());
-}
-
-@ Once we arrive here, the value of |lwb| indicates the first position in
-|slot| where we could insert our overload (after any narrower match, and |upb|
-indicates the last possible position (before any broader match). It should not
-be possible (by transitivity of convertibility) that any narrower match comes
-after any broader match, so we insist that |lwb>upb| always, and throw a
-|std::logic_error| in case it should fail. Having passed this test, we insert
-the new overload into the vector |slot| at position |upb|, the last possible
-one.
-
-Shifting entries during a call of |insert| may temporarily create duplicated
-(non-smart) type pointers at some points; however these do not risk double
-deletion since no errors can be thrown at such points. Indeed, the only point
-where throwing may occur is when extending the vector which happens at the
-very beginning. We note also that in case of necessary reallocation, entries
-will be copied (and temporarily duplicated) anyway; the |variant_list::insert|
-method we are calling here does nothing more dangerous than that.
-
-@< Insert |val| and |type| after |lwb| and before |upb| @>=
-if (lwb>upb)
-  throw std::logic_error("Conflicting order of related overload types");
-else
-{ slot.insert(slot.begin()+upb,overload_data());
-@/slot[upb].val=val; slot[upb].type=type.release();
-}
-
-
-@ The |remove| method allows removing an entry from the overload table, for
-instance to make place for another one. It returns a Boolean telling whether
-any such binding was found (and removed). The |variants| array might become
-empty, but remains present and will be reused upon future additions.
-
-@< Function def... @>=
-bool overload_table::remove(Hash_table::id_type id, const type_expr& arg_t)
-{ map_type::iterator p=table.find(id);
-  if (p==table.end()) return false; // |id| was not known at all
-  variant_list& variants=p->second;
-  for (size_t i=0; i<variants.size(); ++i)
-    if (variants[i].type->arg_type==arg_t)
-    @/{@; delete variants[i].type;
-      variants.erase(variants.begin()+i);
-      return true;
-    }
-  return false; // |id| was known, but no such overload is present
-}
-
-@ We provide a |print| member of |overload_table| that shows the contents of
-the entire table, just like for identifier tables. Only this one prints
-multiple entries per identifier.
-
-@< Function def... @>=
-
-void overload_table::print(std::ostream& out) const
-{ type_expr type; type.kind=function_type;
-  for (auto p=table.begin(); p!=table.end(); ++p)
-    for (size_t i=0; i<p->second.size(); ++i)
-    { type.func = p->second[i].type;
-      out << main_hash_table->name_of(p->first) << ": " @|
-        << type << ": " << *p->second[i].val << std::endl;
-    }
-  type.kind=undetermined_type; // avoid destruction of |type.func|
-}
-
-std::ostream& operator<< (std::ostream& out, const overload_table& p)
-{@; p.print(out); return out; }
-
-@~We shouldn't forget to declare that operator, if we want to use it.
-
-@< Declarations of exported functions @>=
-std::ostream& operator<< (std::ostream& out, const overload_table& p);
-
-@ We introduce a single overload table in the same way as the global
-identifier table.
-
-@< Declarations of global variables @>=
-extern overload_table* global_overload_table;
-
-@~Here we set the pointer to a null value; the main program will actually
-create the table.
-
-@< Global variable definitions @>=
-overload_table* global_overload_table=nullptr;
-
-@*2 Resolution of overloading.
-%
 We shall call |resolve_overload| from the case for function applications in
 |convert_expr|, after testing that overloads exist. So we can pass the
 relevant |variants| as a parameter.
@@ -1353,11 +1145,12 @@ expression resolve_overload
   |a_priori_type|, |return| a call |id(args)| @>
   for (size_t i=0; i<variants.size(); ++i)
   { const overload_data& v=variants[i];
-    if ((is_close(a_priori_type,v.type->arg_type)&0x1)!=0)
+    if ((is_close(a_priori_type,v.type().arg_type)&0x1)!=0)
       // could first convert to second?
-    { if (a_priori_type!=v.type->arg_type)
-        arg=convert_expr(args,v.type->arg_type);
-          // redo conversion
+    { if (a_priori_type!=v.type().arg_type)
+      { type_expr at = v.type().arg_type.copy(); // need a modifiable value
+        arg=convert_expr(args,at); // redo conversion
+      }
       @< Return a call of variant |v| with argument |arg|, or |throw| if
          result type mismatches |type| @>
     }
@@ -1374,7 +1167,7 @@ expected argument type.
 
 @< Complain about failing overload resolution @>=
 if (variants.size()==1)
-  throw type_error(args,a_priori_type.copy(),variants[0].type->arg_type.copy());
+  throw type_error(args,a_priori_type.copy(),variants[0].type().arg_type.copy());
 else
 { std::ostringstream o;
   o << "Failed to match `"
@@ -1559,7 +1352,7 @@ in the overload table.
 { const Hash_table::id_type id =e.call_variant->fun.identifier_variant;
   const expr& arg=e.call_variant->arg;
   size_t i,j; // dummies; local binding not used here
-  if (not is_empty(arg) and id_context->lookup(id,i,j)==nullptr)
+  if (not is_empty(arg) and frame::lookup(id,i,j)==nullptr)
   { const overload_table::variant_list& variants
       = global_overload_table->variants(id);
     if (variants.size()>0 or is_special_operator(id))
@@ -1621,9 +1414,9 @@ will still be accepted.
 
   if (type==void_type and
       id==equals_name() and
-      v.type->result_type!=void_type)
-    throw type_error(e,v.type->result_type.copy(),type.copy());
-  return conform_types(v.type->result_type,type,std::move(call),e).release();
+      v.type().result_type!=void_type)
+    throw type_error(e,v.type().result_type.copy(),type.copy());
+  return conform_types(v.type().result_type,type,std::move(call),e).release();
 }
 
 @ For operator symbols that satisfy |is_special_operator(id)|, we test generic
@@ -2080,7 +1873,7 @@ similar structure.
 type_expr pattern_type(const id_pat& pat);
 size_t count_identifiers(const id_pat& pat);
 void list_identifiers(const id_pat& pat, std::vector<Hash_table::id_type>& d);
-void thread_bindings(const id_pat& pat,const type_expr& type, bindings& dst);
+void thread_bindings(const id_pat& pat,const type_expr& type, frame& dst);
 void thread_components
   (const id_pat& pat,const shared_value& val, std::vector<shared_value>& dst);
 
@@ -2124,12 +1917,12 @@ void list_identifiers(const id_pat& pat, std::vector<Hash_table::id_type>& d)
 }
 
 @ Here we do a similar traversal, using a type of the proper structure,
-pushing pairs onto a |bindings|.
+pushing pairs onto a |frame|.
 
 @< Function definitions @>=
 void thread_bindings
-(const id_pat& pat,const type_expr& type, bindings& dst)
-{ if ((pat.kind & 0x1)!=0) dst.add(pat.name,acquire(&type));
+(const id_pat& pat,const type_expr& type, frame& dst)
+{ if ((pat.kind & 0x1)!=0) dst.add(pat.name,type.copy());
   if ((pat.kind & 0x2)!=0)
   { assert(type.kind==tuple_type);
     type_list::const_iterator t_it = type.tupple.begin();
@@ -2160,8 +1953,8 @@ void thread_components
 identifiers from the right hand side of its declaration, then set up new
 bindings for those identifiers with the type found, and finally convert the
 body to the required type in the extended context. Note that the constructed
-|bindings| remains a local variable, but it is temporarily preprended to the
-context by calling |push| and |pop| with the pointer variable |id_context|.
+|frame| remains a local variable, but its contents (a reference to |fv|) is
+moved into the list of frames by calling |push| and |pop|.
 The |expression| obtained from converting the body is first turned into a
 |lambda_expression|, and then an application of that expression to the
 argument is produced and returned.
@@ -2173,11 +1966,12 @@ case let_expr:
   type_expr decl_type=pattern_type(pat);
   expression_ptr arg = convert_expr(lexp->val,decl_type);
   size_t n_id=count_identifiers(pat);
-@/bindings new_bindings(n_id);
-  thread_bindings(pat,decl_type,new_bindings);
-  new_bindings.push(id_context);
+@/frame::vec fv; // this is where the static frame is actually stored
+  frame new_frame(fv,n_id); // a proxy for |fv| that can be put on a list
+  thread_bindings(pat,decl_type,new_frame);
+  new_frame.push();
   expression_ptr body = convert_expr(lexp->body,type);
-  new_bindings.pop(id_context);
+  new_frame.pop();
   expression_ptr func(new lambda_expression(pat,std::move(body)));
   return expression_ptr(new call_expression(std::move(func),std::move(arg)));
 }
@@ -2303,7 +2097,7 @@ if it was not a |builtin_value|.
   if (fun==nullptr)
     throw std::logic_error("Overloaded value is not a function");
   std::ostringstream name;
-  name << main_hash_table->name_of(id) << '@@' << v.type->arg_type;
+  name << main_hash_table->name_of(id) << '@@' << v.type().arg_type;
   call =
     expression_ptr(new overloaded_closure_call(fun,name.str(),std::move(arg)));
 }
@@ -2376,11 +2170,12 @@ case lambda_expr:
                      type_expr(arg_type.copy(),unknown_type.copy()),
                      type.copy());
   size_t n_id=count_identifiers(pat);
-@/bindings new_bindings(n_id);
-  thread_bindings(pat,arg_type,new_bindings);
-  new_bindings.push(id_context);
+@/frame::vec fv;
+  frame new_frame(fv,n_id);
+  thread_bindings(pat,arg_type,new_frame);
+  new_frame.push();
   expression_ptr body = convert_expr(fun->body,type.func->result_type);
-  new_bindings.pop(id_context);
+  new_frame.pop();
   return expression_ptr(new lambda_expression(pat,std::move(body)));
 }
 
@@ -2629,7 +2424,8 @@ its a priori type.
 @< Cases for type-checking and converting... @>=
 case for_expr:
 { const f_loop& f=e.for_variant;
-  bindings bind(count_identifiers(f->id));
+  frame::vec fv;
+  frame bind(fv,count_identifiers(f->id));
    // for identifier(s) introduced in this loop
   type_expr in_type;
   expression_ptr in_expr = convert_expr(f->in_part,in_type);  // \&{in} part
@@ -2644,9 +2440,9 @@ case for_expr:
   else if ((conv=row_coercion(type,body_type))!=nullptr)
     btp=&body_type;
   else throw type_error(e,row_of_type.copy(),type.copy());
-  bind.push(id_context);
+  bind.push();
   expression_ptr body(convert_expr (f->body,*btp));
-@/bind.pop(id_context);
+@/bind.pop();
   expression_ptr loop(new
     for_expression(f->id,std::move(in_expr),std::move(body),which));
 @/return type==void_type ? expression_ptr(new voiding(std::move(loop)))
@@ -2896,7 +2692,8 @@ case cfor_expr:
   expression_ptr bound_expr = is_empty(c->bound)
     ? expression_ptr(new denotation(zero)) : convert_expr(c->bound,int_type) ;
 @)
-  bindings bind(1); bind.add(c->id,acquire(&int_type));
+  frame::vec fv;
+  frame bind(fv,1); bind.add(c->id,int_type.copy());
   type_expr body_type, *btp; const conversion_record* conv=nullptr;
   if (type==void_type)
     btp=&void_type;
@@ -2905,9 +2702,9 @@ case cfor_expr:
   else if ((conv=row_coercion(type,body_type))!=nullptr)
     btp=&body_type;
   else throw type_error(e,row_of_type.copy(),type.copy());
-  bind.push(id_context);
+  bind.push();
   expression_ptr body(convert_expr (c->body,*btp));
-@/bind.pop(id_context);
+@/bind.pop();
   expression_ptr loop;
   if (c->up!=0)
     loop.reset(new inc_for_expression
@@ -3030,12 +2827,12 @@ case op_cast_expr:
     @< Test special argument patterns, and on match |return| an appropriate
        denotation @>
   for (size_t i=0; i<variants.size(); ++i)
-    if (variants[i].type->arg_type==ctype)
+    if (variants[i].type().arg_type==ctype)
     {
       expression_ptr p(new denotation(variants[i].val));
-      if (spec_func(type,ctype,variants[i].type->result_type))
+      if (spec_func(type,ctype,variants[i].type().result_type))
         return p;
-      type_expr ftype(ctype.copy(),variants[i].type->result_type.copy());
+      type_expr ftype(ctype.copy(),variants[i].type().result_type.copy());
       throw type_error(e,std::move(ftype),type.copy());
     }
   std::ostringstream o;
@@ -3216,7 +3013,7 @@ case ass_stat:
 { Hash_table::id_type lhs=e.assign_variant->lhs;
   const expr& rhs=e.assign_variant->rhs;
   type_p id_t; expression_ptr assign; size_t i,j;
-  if ((id_t=id_context->lookup(lhs,i,j))!=nullptr)
+  if ((id_t=frame::lookup(lhs,i,j))!=nullptr)
   @/{@; expression_ptr r(convert_expr(rhs,*id_t));
     assign.reset(new local_assignment(lhs,i,j,std::move(r)));
   }
@@ -3468,7 +3265,7 @@ case comp_ass_stat:
   const expr& rhs=e.comp_assign_variant->rhs;
 @/type_p aggr_t; type_expr ind_t; type_expr comp_t;
   expression_ptr assign; size_t d,o; bool is_local;
-  if ((aggr_t=id_context->lookup(aggr,d,o))!=nullptr)
+  if ((aggr_t=frame::lookup(aggr,d,o))!=nullptr)
     is_local=true;
   else if ((aggr_t=global_id_table->type_of(aggr))!=nullptr)
     is_local=false;

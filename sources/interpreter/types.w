@@ -657,9 +657,8 @@ struct func_type
 @)
   func_type(type_expr&& a, type_expr&& r)
 @/ : arg_type(std::move(a)), result_type(std::move(r)) @+{}
-  func_type(func_type&& f) // move constructor
-   : arg_type(std::move(f.arg_type)),result_type(std::move(f.result_type))
-   @+{}
+  func_type(func_type&& f) = @[default@]; // move constructor
+  func_type& operator=(func_type&& f) = @[default@]; // move assignment
   func_type copy() const // in lieu of a copy contructor
   {@; return func_type(arg_type.copy(),result_type.copy()); }
 };
@@ -675,6 +674,7 @@ this does mean the we must then dereference explicitly in printing.
 
 @< Declarations of exported functions @>=
 std::ostream& operator<<(std::ostream& out, const type_expr& t);
+std::ostream& operator<<(std::ostream& out, const func_type& f);
 
 @~The cases for printing the types are fairly straightforward. Only
 function types are somewhat more involved, since we  want to suppress
@@ -689,6 +689,19 @@ std::ostream& operator<<(std::ostream& out, const type_list& l)
     out << *it << ( l.at_end(std::next(it)) ? "" : "," );
   return out;
 }
+std::ostream& operator<<(std::ostream& out, const func_type& f)
+{
+  out << '(';
+  if (f.arg_type.kind==tuple_type)
+     out << f.arg_type.tupple; // naked tuple
+  else out << f.arg_type; // other component type
+  out << "->";
+  if (f.result_type.kind==tuple_type)
+     out << f.result_type.tupple; // naked tuple
+  else out << f.result_type; // other component type
+  out << ')';
+  return out;
+}
 @)
 std::ostream& operator<<(std::ostream& out, const type_expr& t)
 { switch(t.kind)
@@ -698,16 +711,8 @@ std::ostream& operator<<(std::ostream& out, const type_expr& t)
     case tuple_type:
       out << '(' << t.tupple << ')' ;
     break;
-    case function_type:
-      out << '(';
-      if (t.func->arg_type.kind==tuple_type)
-         out << t.func->arg_type.tupple; // naked tuple
-      else out << t.func->arg_type; // other component type
-      out << "->";
-      if (t.func->result_type.kind==tuple_type)
-         out << t.func->result_type.tupple; // naked tuple
-      else out << t.func->result_type; // other component type
-      out << ')'; break;
+    case function_type: out << *t.func;
+    break;
   }
   return out;
 }

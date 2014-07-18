@@ -112,12 +112,12 @@ public:
   : val(std::move(val)), tp(std::move(t)) @+{}
   id_data @[(id_data&& x) = default@];
   void swap(id_data& x) @+ {@; val.swap(x.val); tp.swap(x.tp); }
-  id_data& operator=(id_data&& x) = @[default@];
+  id_data& operator=(id_data&& x) = @[default@]; // no copy-and-swap needed
 @)
   shared_share value() const @+{@; return val; }
-  const_type_p type() const @+{@; return &tp; }
-  type_p type() @+{@; return &tp; }
-  // non-|const|! Callers can specialise type later
+  const type_expr& type() const @+{@; return tp; }
+  type_expr& type() @+{@; return tp; }
+  // non-|const| reference; may be specialised by caller
 };
 
 @ We cannot store auto pointers in a table, so upon entering into the table we
@@ -137,10 +137,10 @@ the identifier as key is used.
 class Id_table
 { typedef std::map<Hash_table::id_type,id_data> map_type;
   map_type table;
+public:
   Id_table(const Id_table&) = @[ delete @];
   Id_table& operator=(const Id_table&) = @[ delete @];
-public:
-  Id_table() : table() @+{} // the default and only accessible constructor
+  Id_table() : table() @+{} // the default and only constructor
 @)
   void add(Hash_table::id_type id, shared_value v, type_expr&& t); // insertion
   bool remove(Hash_table::id_type id); // deletion
@@ -217,11 +217,11 @@ stored for the identifier in question.
 @< Global function def... @>=
 type_p Id_table::type_of(Hash_table::id_type id)
 {@; map_type::iterator p=table.find(id);
-  return p==table.end() ? nullptr : p->second.type();
+  return p==table.end() ? nullptr : &p->second.type();
 }
 const_type_p Id_table::type_of(Hash_table::id_type id) const
 {@; map_type::const_iterator p=table.find(id);
-  return p==table.end() ? nullptr : p->second.type();
+  return p==table.end() ? nullptr : &p->second.type();
 }
 shared_value Id_table::value_of(Hash_table::id_type id) const
 { map_type::const_iterator p=table.find(id);
@@ -247,7 +247,7 @@ the identifier at this point would cause the evaluator to raise an exception.
 void Id_table::print(std::ostream& out) const
 { for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
   { out << main_hash_table->name_of(p->first) << ": " @|
-        << *p->second.type() << ": ";
+        << p->second.type() << ": ";
     if (*p->second.value()==nullptr)
       out << '*';
     else
@@ -274,6 +274,250 @@ create the table.
 
 @< Global variable definitions @>=
 Id_table* global_id_table=nullptr; // will never be |nullptr| at run time
+
+@*1 Overload tables.
+%
+To implement overloading we use a similar structure as the ordinary global
+identifier table. However the basic table entry for an overloading needs a
+level of sharing less, since the function bound for given argument types
+cannot be changed by assignment, so the call will refer directly to the value
+stored rather than to its location. We also take into account that the stored
+types are always function types, so that we can store a |func_type| structure
+without tag or pointer to it. This saves space, although it makes  access the
+full function type as a |type_expr| rather difficult; however the latter is
+seldom needed in normal use. Remarks about ownership of the type
+apply without change from the non-overloaded case however.
+
+@< Type definitions @>=
+
+struct overload_data
+{ shared_value val; @+ func_type tp;
+public:
+  overload_data(shared_value&& val,func_type&& t)
+  : val(std::move(val)), tp(std::move(t)) @+{}
+  overload_data @[(overload_data&& x) = default@];
+  overload_data& operator=(overload_data&& x) = @[default@]; // no copy-and-swap needed
+@)
+  shared_value value() const @+{@; return val; }
+  const func_type& type() const @+{@; return tp; }
+};
+
+@ Looking up an overloaded identifier should be done using an ordered list of
+possible overloads; the ordering is important since we want to try matching
+more specific (harder to convert to) argument types before trying less
+specific ones. Therefore, rather than using a |std::multimap| multi-mapping
+identifiers to individual value-type pairs, we use a |std::map| from
+identifiers to vectors of value-type pairs.
+
+An identifier is entered into the table when it is first given an overloaded
+definition, so the table will not normally associate an empty vector to an
+identifier; however this situation can arise after removal of a (last)
+definition for an identifier. The |variants| method will signal absence of an
+identifier by returning an empty list of variants, and no separate test for
+this condition is provided.
+
+@< Type definitions @>=
+
+class overload_table
+{
+public:
+  typedef std::vector<overload_data> variant_list;
+  typedef std::map<Hash_table::id_type,variant_list> map_type;
+private:
+  map_type table;
+public:
+  overload_table @[(const Id_table&) =delete@];
+  overload_table& operator=(const Id_table&) = @[delete@];
+  overload_table() : table() @+{} // the default and only constructor
+@) // accessors
+  const variant_list& variants(Hash_table::id_type id) const;
+  size_t size() const @+{@; return table.size(); }
+   // number of distinct identifiers
+  void print(std::ostream&) const;
+@) // manipulators
+  void add(Hash_table::id_type id, shared_value v, type_ptr t);
+   // insertion
+  bool remove(Hash_table::id_type id, const type_expr& arg_t); //deletion
+};
+
+@ The |variants| method just returns a reference to the found vector of
+overload instances, or else an empty vector. Since it is returned as
+reference, a static empty vector is used to ensure sufficient lifetime.
+
+@< Global function definitions @>=
+const overload_table::variant_list& overload_table::variants
+  (Hash_table::id_type id) const
+{ static const variant_list empty;
+  auto p=table.find(id);
+  return p==table.end() ? empty : p->second;
+}
+
+@ The |add| method is what introduces and controls overloading. We first look
+up the identifier; if it is not found we associate a singleton vector with the
+given value and type to the identifier, but if the identifier already had a
+vector associate to it, we must test the new pair against existing elements,
+reject it if there is a conflicting entry present, and otherwise make sure it
+is inserted before any strictly less specific overloaded instances.
+
+@< Global function def... @>=
+void overload_table::add
+  (Hash_table::id_type id, shared_value val, type_ptr tp)
+{ assert (tp->kind==function_type);
+  func_type type(std::move(*tp->func)); // steal the function type
+  auto its = table.equal_range(id);
+  if (its.first==its.second) // a fresh overloaded identifier
+  { its.first=table.insert // better: |emplace_hint| with gcc 4.8
+      (its.first,std::make_pair(id, variant_list()));
+    its.first->second.push_back(
+      overload_data( std::move(val), std::move(type)) );
+  }
+  else
+  { variant_list& slot=its.first->second; // vector of all variants
+    @< Compare |type| against entries of |slot|, if none are close then add
+    |val| and |type| at the end, if any is close without being one-way
+    convertible to or from it throw an error, and in the remaining case make
+    sure |type| is added after any types that convert to it and before any types
+    it converts to @>
+  }
+}
+
+@ We call |is_close| for each existing argument type; if it returns a nonzero
+value it must be either |0x6|, in which case insertion must be after that
+entry, or |0x5|, in which case insertion must be no later than at this
+position, so that the entry in question (after shifting forward) stays ahead.
+The last of the former cases and the first of the latter are recorded, and
+their requirements should be compatible.
+
+Although the module name does not mention it, we allow one case of close and
+mutually convertible types, namely identical types; in this case we simply
+replace the old definition for this type by the new one. This could still
+change the result type, but that does not matter because if any calls that
+were type-checked against the old definition should survive (in a closure),
+they have been also bound to the (function) \emph{value} that was previously
+accessed by that definition, and will continue to use it; their operation is
+in no way altered by the replacement of the definition.
+
+@< Compare |type| against entries of |slot|... @>=
+{ size_t lwb=0; size_t upb=slot.size();
+  for (size_t i=0; i<slot.size(); ++i)
+  { unsigned int cmp= is_close(type.arg_type,slot[i].type().arg_type);
+    switch (cmp)
+    {
+      case 0x6: lwb=i+1; break;
+        // existent type |i| converts to |type|, which must come later
+      case 0x5: @+ if (upb>i) upb=i; @+ break;
+        // |type| converts to type |i|, so it must come before
+      case 0x7: // mutually convertible types, maybe identical ones
+        if (slot[i].type().arg_type==type.arg_type)
+          // identical ones: overload redefinition case
+        @/{@; slot[i] = overload_data(std::move(val),std::move(type));
+            return;
+          }
+      @/// |else| {\bf fall through}
+      case 0x4:
+         @< Report conflict of attempted overload for |id| with previous one
+            in |slot[i]| @>
+      default: @+{} // nothing for unrelated argument types
+    }
+  }
+  @< Insert |val| and |type| after |lwb| and before |upb| @>
+}
+
+@ We get here when the argument types to be added are either mutually
+convertible but distinct form existing types (the fall through case above), or
+close to existing types without being convertible in any direction (which
+would have given a way to disambiguate), so we must report an error. The error
+message is quite verbose, but tries to precisely pinpoint the kind of problem
+encountered so that the user will hopefully able to understand.
+
+@< Report conflict of attempted overload for |id| with previous one in
+  |slot[i]| @>=
+{ std::ostringstream o;
+  o << "Cannot overload `" << main_hash_table->name_of(id) << "', " @|
+       "previous type " << slot[i].type().arg_type
+    << " is too close to "@| << type.arg_type
+    << ",\nmaking overloading potentially ambiguous." @|
+       " Broadness cannot disambiguate,\nas "
+    << (cmp==0x4 ? "neither" :"either") @|
+    << " type converts to the other";
+  throw program_error(o.str());
+}
+
+@ Once we arrive here, the value of |lwb| indicates the first position in
+|slot| where we could insert our overload (after any narrower match, and |upb|
+indicates the last possible position (before any broader match). It should not
+be possible (by transitivity of convertibility) that any narrower match comes
+after any broader match, so we insist that |lwb>upb| always, and throw a
+|std::logic_error| in case it should fail. Having passed this test, we insert
+the new overload into the vector |slot| at position |upb|, the last possible
+one.
+
+Shifting entries during a call of |insert| is done by moving, so it should not
+risk doubling any unique pointers, since moving those immediately nullifies
+the pointer moved from. Similar remarks apply in case of necessary
+reallocation; a properly implemented |insert| (or |emplace|) should provide
+a strong exception guarantee.
+
+@< Insert |val| and |type| after |lwb| and before |upb| @>=
+if (lwb>upb)
+  throw std::logic_error("Conflicting order of related overload types");
+else
+{ slot.insert // better use |emplace| with gcc 4.8
+  (slot.begin()+upb,overload_data(std::move(val),std::move(type)));
+}
+
+
+@ The |remove| method allows removing an entry from the overload table, for
+instance to make place for another one. It returns a Boolean telling whether
+any such binding was found (and removed). The |variants| array might become
+empty, but remains present and will be reused upon future additions.
+
+@< Global function def... @>=
+bool overload_table::remove(Hash_table::id_type id, const type_expr& arg_t)
+{ map_type::iterator p=table.find(id);
+  if (p==table.end()) return false; // |id| was not known at all
+  variant_list& variants=p->second;
+  for (size_t i=0; i<variants.size(); ++i)
+    if (variants[i].type().arg_type==arg_t)
+    @/{@;
+      variants.erase(variants.begin()+i);
+      return true;
+    }
+  return false; // |id| was known, but no such overload is present
+}
+
+@ We provide a |print| member of |overload_table| that shows the contents of
+the entire table, just like for identifier tables. Only this one prints
+multiple entries per identifier.
+
+@< Global function def... @>=
+
+void overload_table::print(std::ostream& out) const
+{ for (auto p=table.begin(); p!=table.end(); ++p)
+    for (auto it=p->second.begin(); it!=p->second.end(); ++it)
+      out << main_hash_table->name_of(p->first) << ": " @|
+        << it->type() << ": " << *it->value() << std::endl;
+}
+
+std::ostream& operator<< (std::ostream& out, const overload_table& p)
+{@; p.print(out); return out; }
+
+@~We shouldn't forget to declare that operator, if we want to use it.
+
+@< Declarations of exported functions @>=
+std::ostream& operator<< (std::ostream& out, const overload_table& p);
+
+@ We introduce a single overload table in the same way as the global
+identifier table.
+
+@< Declarations of global variables @>=
+extern overload_table* global_overload_table;
+
+@~Here we set the pointer to a null value; the main program will actually
+create the table.
+
+@< Global variable definitions @>=
+overload_table* global_overload_table=nullptr;
 
 @* Global operations.
 %
@@ -431,7 +675,8 @@ void global_set_identifier(id_pat pat, expr_p raw, int overload)
       @< Set |overload=0| if type |t| is not an appropriate function type @>
 @)
     phase=1;
-    bindings b(n_id);
+    frame::vec fv;
+    frame b(fv,n_id);
     thread_bindings(pat,t,b); // match identifiers and their future types
 
     std::vector<shared_value> v;
@@ -492,8 +737,8 @@ to the very common singular case), before calling |global_id_table->add|.
               << main_hash_table->name_of(b[i].first);
     if (global_id_table->present(b[i].first))
       std::cout << " (overriding previous)";
-    std::cout << ": " << *b[i].second;
-    global_id_table->add(b[i].first,v[i],b[i].second->copy());
+    std::cout << ": " << b[i].second;
+    global_id_table->add(b[i].first,v[i],b[i].second.copy());
   }
 }
 
@@ -517,7 +762,7 @@ or not reported as failed.
    |global_overload_table| @>=
 { assert(n_id=1);
   size_t old_n=global_overload_table->variants(b[0].first).size();
-  global_overload_table->add(b[0].first,v[0],acquire(b[0].second.get()));
+  global_overload_table->add(b[0].first,v[0],acquire(&b[0].second));
     // insert or replace table entry
   size_t n=global_overload_table->variants(b[0].first).size();
   if (n==old_n)
@@ -526,7 +771,7 @@ or not reported as failed.
     std::cout << "Defined ";
   else
     std::cout << "Added definition [" << n << "] of ";
-  std::cout << main_hash_table->name_of(b[0].first) << ": " << *b[0].second;
+  std::cout << main_hash_table->name_of(b[0].first) << ": " << b[0].second;
 }
 
 @ For readability of the output produced during input from auxiliary files, we
@@ -664,7 +909,7 @@ void show_overloads(id_type id)
    << main_hash_table->name_of(id) << std::endl;
  for (size_t i=0; i<variants.size(); ++i)
    *output_stream << "  "
-    << variants[i].type->arg_type << "->" << variants[i].type->result_type @|
+    << variants[i].type().arg_type << "->" << variants[i].type().result_type @|
     << std::endl;
 }
 

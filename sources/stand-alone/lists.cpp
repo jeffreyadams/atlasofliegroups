@@ -27,9 +27,31 @@ public:
 typedef std::unique_ptr<A> uA;
 uA p;
 
-A::~A()  { std::cout << "destruct " << a
-		    << ", p is " << (p.get()==nullptr ? "null" : "not null" )
-		    << std::endl; }
+A::~A()  { std::cout << "destruct " << a << std::endl; }
+
+struct refA { A& a; };
+
+typedef atlas::containers::simple_list<refA> reflist;
+
+unsigned int tri (unsigned int n)
+{ static reflist list;
+  A a = n;
+  list.push_front(refA{a});
+  unsigned int sum;
+  if (n>0)
+    sum = tri(n-1);
+  else
+  { sum=0;
+    for (auto it=list.begin(); not list.at_end(it); ++it)
+    { std::cout << unsigned(it->a) << ',';
+      sum+=it->a;
+    }
+    std::cout << std::endl;
+  }
+  list.pop_front();
+  return sum;
+}
+
 
 void g()
 {
@@ -138,6 +160,7 @@ std::ostream& operator << (std::ostream& os, const intlist & l)
 
 int main()
 {
+  std::cout << "Sum is " << tri(7) << ".\n";
   std::ostream_iterator<int> lister(std::cout,", ");
   intlist a { 13,4,1,3 };
 
