@@ -170,60 +170,51 @@ ignore certain scenarios in which the type derived for a subexpression is
 expression_ptr convert_expr(const expr& e, type_expr& type);
 
 @ In the function |convert_expr| we shall need a type for storing bindings
-between identifiers and types, and this will be the |frame| class. It is
-actually a proxy to a a vector of type |frame::vec| of individual bindings,
-the type being present in the form of an owning |type_ptr| unique-pointer; the
-reason is that the actual vector will be located on the runtime stack, so the
-list container that will be used to represent nested static ranges only
-manages storage for the reference to this vector. It does mean that user of
-this class should separately construct the |frame::vec| with the proper
-lifetime from which the |frame| object is then constructed; that frame will be
-moved into dynamic memory by |frame::push|. Since the space on the runtime
-stack occupied by a |vector| is hardly larger than that of a |frame| this is
-mostly a proof-of-concept, namely that lists can be handled with storage for
-the elements in automatic variables residing in the runtime stack.
-
-We chain the different bindings into a linked list accessed from the static
-member |frame::context|, and allow only modifiable copy construction. In
-fact the nesting of the various bindings will embed in the nested calls of
-|convert_expr|, so we can afford to allocate each |frame::vec| as local
-variable to (some instance of) |convert_expr|, where list always runs from
-more recent to older recursive instances. Then there is no ownership handling
-of |frame::vec|, the usual handling of the stack being sufficient. We do
-provide methods |push| and |pop| to prepend respectively detach a |frame|
-object from a list.
+between identifiers and types, and this will be the |frame| class. It stores a
+vector of type |frame::vec| of individual bindings, while it automatically
+pushes (a reference to) itself on a stack |frame::context| of such vectors.
+Instances of |frame| shall always be stored in ordinary (stack-allocated)
+variables; since their unique constructor pushes the new object, and their
+destructor pops it, |frame::context| is guaranteed to hold at all times a list
+of references to all current |frame| objects, from newest to oldest. This
+invariant is maintained even in the presence of exceptions that may be thrown
+during type analysis. Since the space on the runtime stack occupied by a
+|vector| is hardly larger than that of the reference to it, this is mostly a
+proof-of-concept, namely that lists can be handled with storage for the
+elements in automatic variables residing in the runtime stack. The
+fact that pushing and popping is automatically managed in an exception-safe
+manner is also cute; however explicitly clearing the list in case of an
+exception, as used to be done, would also work.
 
 @< Type def... @>=
 class frame
 {
-  typedef containers::simple_list<frame> list;
+  typedef containers::simple_list<std::reference_wrapper<frame> > list;
 public:
   typedef std::vector<std::pair<Hash_table::id_type,type_expr> > vec;
   static list context; // the unique |frame::list| in existence
 private:
-  vec& variable;
+  vec variable;
 public:
   frame(const frame&) = @[delete@]; // no ordinary copy constructor
   frame& operator= (const frame&) = @[delete@]; // nor assignment operator
-  frame(frame& x) : variable(x.variable) @+{} // copy needs non-|const| ref
-  frame(vec& obj, size_t n=0) : variable(obj) @+{@; obj.reserve(n); }
-    // predict size |n|, informative
+  frame(size_t n) : variable()
+  @+{@; variable.reserve(n); context.emplace_front(std::ref(*this)); }
+  ~frame () @+{@; context.pop_front(); }
 @)
   void add(Hash_table::id_type id,type_expr&& t);
   static type_p lookup
     (Hash_table::id_type id, size_t& depth, size_t& offset);
   const std::pair<Hash_table::id_type,type_expr>& operator[] (size_t i) const
     {@; return variable[i]; }
-  vec::const_iterator begin() const @+{@; return variable.begin(); }
-  vec::const_iterator end() const @+{@; return variable.end(); }
-  void push () @+{@; context.emplace_front(*this); }
-  void pop () const @+{@; context.pop_front(); }
+  vec::iterator begin() @+{@; return variable.begin(); }
+  vec::iterator end() @+{@; return variable.end(); }
 };
 
 
-@ The method |add| adds a pair to the vector of bindings; the original type
-pointer is released upon insertion into the |frame::vec| object. This is also
-a good place to check for the presence of identical identifiers.
+@ The method |add| adds a pair to the vector of bindings; the type is moved
+into the |frame| object. This is also a good place to check for the
+presence of identical identifiers.
 
 @< Function def... @>=
 void frame::add(Hash_table::id_type id,type_expr&& t)
@@ -247,16 +238,6 @@ we do not intend to do that, this is not a problem.
 @< Global var... @>=
 frame::list frame::context;
 
-@ Pushing and popping frames is done ``manually'', which means that the list
-of frames will contain dangling references after an error is thrown during
-type analysis (because stack unwinding will bypass the popping statements).
-Fortunately after catching we just need to ensure starting with a clean slate,
-by clearing the list (the nodes will be destroyed, and the references they
-contain ignored).
-
-@< Actions to reset the evaluator @>=
-frame::context.clear(); // make context empty;
-
 @ The method |lookup| runs through the linked list of bindings and returns a
 pointer to the type if a match for the identifier |id| was found, also
 assigning its static binding coordinates to output arguments |depth| and
@@ -279,29 +260,29 @@ For this reason this function might be considered a manipulator (modifier)
 rather than an accessor (observer). Technically, this is meaningless, since
 this is a static method (there is no |this|), but the iterator over
 |range->variable| below cannot be taken to be a |const_iterator|. Just to
-illustrate that the reference involved in the |variable| member shields off
-|const|-ness (even if only holding a |const| qualified |frame| object, the
-|variable| field gives a modifiable reference) we have made the outer iterator
-|range| a const-iterator.
+illustrate that the references held in the list shield off |const|-ness (even
+from a |const_iterator| pointing to a |std::reference_wrapper| instance,
+calling the |get| method will produce a modifiable reference) we have made the
+outer iterator |range| (but not the inner one) a const-iterator.
 
 @< Function def... @>=
 type_p frame::lookup (Hash_table::id_type id, size_t& depth, size_t& offset)
 { size_t i=0;
   for (auto range=context.cbegin(); not context.at_end(range); ++range,++i)
-    for (auto it=range->variable.begin(); it!=range->variable.end(); ++it)
+    for (auto it=range->get().begin(); it!=range->get().end(); ++it)
       if (it->first==id)
       {@; depth=i;
-        offset=it-range->variable.begin();
+        offset=it-range->get().begin();
         return &it->second;
       }
   return nullptr;
 }
 
-@ The function |convert_expr| returns a owning pointer to the conversion of
-the |expr| to |expression|.
+@ The function |convert_expr| returns a owning pointer |expression_ptr| to the
+result of converting the |expr| to an |expression|.
 
 Altogether this is a quite extensive function, with as many cases in the
-switch as there are variants of |expr_union|, and for many of those branches a
+switch as there are variants of |expr|, and for many of those branches a
 considerable amount of work to be done. It is therefore convenient to postpone
 these cases and treat them one syntactic construction at the time.
 
@@ -312,7 +293,7 @@ expression_ptr convert_expr(const expr& e, type_expr& type)
   {
    @\@< Cases for type-checking and converting expression~|e| against
    |type|, all of which either |return| or |throw| a |type_error| @>
-   case no_expr: {}
+   case no_expr: assert(false);
   }
   return nullptr; // keep compiler happy
 }
@@ -1966,12 +1947,9 @@ case let_expr:
   type_expr decl_type=pattern_type(pat);
   expression_ptr arg = convert_expr(lexp->val,decl_type);
   size_t n_id=count_identifiers(pat);
-@/frame::vec fv; // this is where the static frame is actually stored
-  frame new_frame(fv,n_id); // a proxy for |fv| that can be put on a list
+@/frame new_frame(n_id);
   thread_bindings(pat,decl_type,new_frame);
-  new_frame.push();
   expression_ptr body = convert_expr(lexp->body,type);
-  new_frame.pop();
   expression_ptr func(new lambda_expression(pat,std::move(body)));
   return expression_ptr(new call_expression(std::move(func),std::move(arg)));
 }
@@ -2170,12 +2148,9 @@ case lambda_expr:
                      type_expr(arg_type.copy(),unknown_type.copy()),
                      type.copy());
   size_t n_id=count_identifiers(pat);
-@/frame::vec fv;
-  frame new_frame(fv,n_id);
+@/frame new_frame(n_id);
   thread_bindings(pat,arg_type,new_frame);
-  new_frame.push();
   expression_ptr body = convert_expr(fun->body,type.func->result_type);
-  new_frame.pop();
   return expression_ptr(new lambda_expression(pat,std::move(body)));
 }
 
@@ -2424,12 +2399,11 @@ its a priori type.
 @< Cases for type-checking and converting... @>=
 case for_expr:
 { const f_loop& f=e.for_variant;
-  frame::vec fv;
-  frame bind(fv,count_identifiers(f->id));
-   // for identifier(s) introduced in this loop
   type_expr in_type;
   expression_ptr in_expr = convert_expr(f->in_part,in_type);  // \&{in} part
   subscr_base::sub_type which; // the kind of aggregate iterated over
+  frame bind(count_identifiers(f->id));
+   // for identifier(s) introduced in this loop
   @< Set |which| according to |in_type|, and set |bind| according to the
      identifiers contained in |f->id| @>
   type_expr body_type, *btp; const conversion_record* conv=nullptr;
@@ -2440,10 +2414,8 @@ case for_expr:
   else if ((conv=row_coercion(type,body_type))!=nullptr)
     btp=&body_type;
   else throw type_error(e,row_of_type.copy(),type.copy());
-  bind.push();
   expression_ptr body(convert_expr (f->body,*btp));
-@/bind.pop();
-  expression_ptr loop(new
+@/expression_ptr loop(new
     for_expression(f->id,std::move(in_expr),std::move(body),which));
 @/return type==void_type ? expression_ptr(new voiding(std::move(loop)))
   : @| conv!=nullptr ? expression_ptr(new conversion(*conv,std::move(loop)))
@@ -2692,8 +2664,7 @@ case cfor_expr:
   expression_ptr bound_expr = is_empty(c->bound)
     ? expression_ptr(new denotation(zero)) : convert_expr(c->bound,int_type) ;
 @)
-  frame::vec fv;
-  frame bind(fv,1); bind.add(c->id,int_type.copy());
+  frame bind(1); bind.add(c->id,int_type.copy());
   type_expr body_type, *btp; const conversion_record* conv=nullptr;
   if (type==void_type)
     btp=&void_type;
@@ -2702,10 +2673,8 @@ case cfor_expr:
   else if ((conv=row_coercion(type,body_type))!=nullptr)
     btp=&body_type;
   else throw type_error(e,row_of_type.copy(),type.copy());
-  bind.push();
   expression_ptr body(convert_expr (c->body,*btp));
-@/bind.pop();
-  expression_ptr loop;
+@/expression_ptr loop;
   if (c->up!=0)
     loop.reset(new inc_for_expression
       (c->id,std::move(count_expr),std::move(bound_expr),std::move(body)));

@@ -675,8 +675,7 @@ void global_set_identifier(id_pat pat, expr_p raw, int overload)
       @< Set |overload=0| if type |t| is not an appropriate function type @>
 @)
     phase=1;
-    frame::vec fv;
-    frame b(fv,n_id);
+    frame b(n_id);
     thread_bindings(pat,t,b); // match identifiers and their future types
 
     std::vector<shared_value> v;
