@@ -48,7 +48,7 @@ their dependencies notably on the level of their header files.
 
 \point The file \.{buffer.w} defines the classes |BufferedInput| providing an
 interface to input streams, and |Hash_table| storing and providing a
-translation from identifiers to small integers |Hash_table::id_type|.
+translation from identifiers to small integers |id_type|.
 
 \point The file \.{parsetree.w} defines the |expr| structure representing parsed
 expressions, and many related types, and node constructing functions for use

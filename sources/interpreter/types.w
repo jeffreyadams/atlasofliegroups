@@ -999,21 +999,25 @@ index into the former list to an element of that enumeration.
 %
 We shall often need to refer to certain types for comparison or for providing
 a required type context. Instead of generating them on the fly each time using
-|mk_type|, we define constant values that can be used everywhere. Three of
-these types, for \.{int}, \.{bool} and \.{void}, need to be non-|const|, since
-in the role of required type (as argument to |convert_expr| defined later)
-they could potentially be specialised; if they were const, we would be obliged
-to call |copy| for every such use. However since these particular types cannot
-possibly be specialised, they are assured to remain constant even though they
-are not declared as such.
+|mk_type|, we define constant values that can be used everywhere.
 
 @< Declarations of global variables @>=
 extern const type_expr unknown_type; // \.{*}
-extern type_expr void_type; // \.{()}
-extern type_expr int_type; // \.{int}
-extern type_expr bool_type; // \.{bool}
+extern const type_expr void_type; // \.{()}
+extern const type_expr int_type; // \.{int}
+extern const type_expr bool_type; // \.{bool}
 extern const type_expr row_of_type; // \.{[*]}
 extern const type_expr gen_func_type; // \.{(*->*)}
+
+@ In some cases we need temporary copies of |void_type|, |int_type| and
+|bool_type| to be used in the position of a modifiable lvalue argument. In
+order to provide these temporary copies as arguments without having to bind
+them to named variables, we define a function template that will produce a
+modifiable lvalue from the modifiable rvalue obtained by calling the
+|expr::copy| method.
+
+@< Template and inline... @>=
+template<typename T> T& as_lvalue(T&& rvalue) @+{@; return rvalue; }
 
 @ The definition of the variables uses the constructors we have seen above,
 rather than functions like |mk_primitive_type| and |mk_row_type|, so that
@@ -1027,9 +1031,9 @@ calling |copy| for previous type constants.
 @: first types section @>
 
 const type_expr unknown_type; // uses default constructor
- type_expr void_type(empty_tuple());
- type_expr int_type(integral_type);
- type_expr bool_type(boolean_type);
+const type_expr void_type(empty_tuple());
+const type_expr int_type(integral_type);
+const type_expr bool_type(boolean_type);
 const type_expr row_of_type(mk_type_expr("[*]"));
 const type_expr gen_func_type(mk_type_expr("(*->*)"));
 

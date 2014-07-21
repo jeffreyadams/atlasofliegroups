@@ -21,7 +21,7 @@ public:
   A& operator = (const A& x)
   { a=x.a; std::cout << "assign " << a << std::endl; return *this; }
   ~A ();
-  operator unsigned int () { return a; }
+  operator unsigned int () const { return a; }
 };
 
 typedef std::unique_ptr<A> uA;
@@ -30,6 +30,14 @@ uA p;
 A::~A()  { std::cout << "destruct " << a << std::endl; }
 
 struct refA { A& a; };
+
+uA ff()
+{ uA p (new A(4));
+  return p;
+}
+
+
+unsigned int g(A& x) { return x; }
 
 typedef atlas::containers::simple_list<refA> reflist;
 
@@ -53,7 +61,7 @@ unsigned int tri (unsigned int n)
 }
 
 
-void g()
+void gg()
 {
   typedef atlas::containers::sl_list<unsigned> List;
   typedef atlas::containers::mirrored_sl_list<unsigned> rev_List;
@@ -90,7 +98,6 @@ void g()
 
   List::iterator p=++ ++c.begin();
   STList::iterator sp=++ ++sc.begin();
-  vec::iterator vp=++ ++vc.begin();
 
   a.insert(a.begin(),5);
   sa.insert(sa.begin(),5);

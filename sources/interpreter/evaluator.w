@@ -191,7 +191,7 @@ class frame
 {
   typedef containers::simple_list<std::reference_wrapper<frame> > list;
 public:
-  typedef std::vector<std::pair<Hash_table::id_type,type_expr> > vec;
+  typedef std::vector<std::pair<id_type,type_expr> > vec;
   static list context; // the unique |frame::list| in existence
 private:
   vec variable;
@@ -202,10 +202,12 @@ public:
   @+{@; variable.reserve(n); context.emplace_front(std::ref(*this)); }
   ~frame () @+{@; context.pop_front(); }
 @)
-  void add(Hash_table::id_type id,type_expr&& t);
-  static type_p lookup
-    (Hash_table::id_type id, size_t& depth, size_t& offset);
-  const std::pair<Hash_table::id_type,type_expr>& operator[] (size_t i) const
+  void add(id_type id,type_expr&& t);
+  static const_type_p lookup
+    (id_type id, size_t& depth, size_t& offset);
+  static void specialise (size_t depth, size_t offset,const type_expr& t);
+@)
+  std::pair<id_type,type_expr>& operator[] (size_t i)
     {@; return variable[i]; }
   vec::iterator begin() @+{@; return variable.begin(); }
   vec::iterator end() @+{@; return variable.end(); }
@@ -217,7 +219,7 @@ into the |frame| object. This is also a good place to check for the
 presence of identical identifiers.
 
 @< Function def... @>=
-void frame::add(Hash_table::id_type id,type_expr&& t)
+void frame::add(id_type id,type_expr&& t)
 { for (auto it=variable.begin(); it!=variable.end(); ++it)
   // traverse |variable| vector
     if (it->first==id)
@@ -266,7 +268,8 @@ calling the |get| method will produce a modifiable reference) we have made the
 outer iterator |range| (but not the inner one) a const-iterator.
 
 @< Function def... @>=
-type_p frame::lookup (Hash_table::id_type id, size_t& depth, size_t& offset)
+const_type_p frame::lookup
+  (id_type id, size_t& depth, size_t& offset)
 { size_t i=0;
   for (auto range=context.cbegin(); not context.at_end(range); ++range,++i)
     for (auto it=range->get().begin(); it!=range->get().end(); ++it)
@@ -276,6 +279,13 @@ type_p frame::lookup (Hash_table::id_type id, size_t& depth, size_t& offset)
         return &it->second;
       }
   return nullptr;
+}
+@)
+void frame::specialise (size_t depth, size_t offset,const type_expr& t)
+{ auto range=context.begin();
+  while (depth-->0)
+    ++range;
+  range->get()[offset].second.specialise(t);
 }
 
 @ The function |convert_expr| returns a owning pointer |expression_ptr| to the
@@ -306,7 +316,7 @@ The value may be passed by constant reference or by rvalue reference to
 |shared_ptr|); in the former case it creates an additional sharing, and in the
 latter case ownership is transferred upon construction of the |denoted_value|
 field. The latter case will notably apply in case the argument expression is
-the result of |new| cast to |shared_value|.
+the result of calling |std::make_shared|.
 
 Since the |denotation| object stores a (constant, shared) value inside it, the
 evaluation simply consists of copying the pointer to the |execution_stack|.
@@ -453,7 +463,6 @@ case list_display:
       result->component.push_back(convert_expr(*it,*type.component_type));
     return std::move(result);
   }
-  else
   @< If |type| can be converted from some row-of type, check the components
      of |e.sublist| against the required type, and apply a conversion
      function to the converted expression; otherwise |throw| a |type_error| @>
@@ -473,6 +482,7 @@ list display.
 { type_expr comp_type;
   const conversion_record* conv = row_coercion(type,comp_type);
   if (conv==nullptr)
+  // no conversion was found; there's nothing left but to report an error
     throw type_error(e,row_of_type.copy(),type.copy());
 @)
   for (auto it=e.sublist.begin(); not e.sublist.at_end(it); ++it)
@@ -916,9 +926,9 @@ both kinds of applied identifier expressions.
 
 @< Type definitions @>=
 struct identifier : public expression_base
-{ Hash_table::id_type code;
+{ id_type code;
 @)
-  explicit identifier(Hash_table::id_type id) : code(id) @+{}
+  explicit identifier(id_type id) : code(id) @+{}
   virtual ~@[identifier() =default@];
   const char* name() const;
   virtual void print(std::ostream& out) const;
@@ -950,7 +960,7 @@ different type than it did originally.
 class global_identifier : public identifier
 { const shared_share address;
 public:
-  explicit global_identifier(Hash_table::id_type id);
+  explicit global_identifier(id_type id);
   virtual ~global_identifier() @+ {}
   virtual void evaluate(level l) const;
 };
@@ -959,7 +969,7 @@ public:
 associated to the identifier in the global identifier table.
 
 @< Function definitions @>=
-global_identifier::global_identifier(Hash_table::id_type id)
+global_identifier::global_identifier(id_type id)
 : identifier(id), address(global_id_table->address_of(id))
 @+{}
 
@@ -1019,7 +1029,7 @@ frame, and |offset| locating the proper values withing the frame.
 class local_identifier : public identifier
 { size_t depth, offset;
 public:
-  explicit local_identifier(Hash_table::id_type id, size_t i, size_t j)
+  explicit local_identifier(id_type id, size_t i, size_t j)
      : identifier(id), depth(i), offset(j) @+{}
   virtual void evaluate(level l) const; // only this method is redefined
 };
@@ -1045,19 +1055,25 @@ assignments to the variable must respect the more specific type).
 
 @< Cases for type-checking and converting... @>=
 case applied_identifier:
-{ type_p id_t; expression_ptr id; size_t i,j;
-  if ((id_t=frame::lookup(e.identifier_variant,i,j))!=nullptr)
-    id.reset(new local_identifier(e.identifier_variant,i,j));
-  else if ((id_t=global_id_table->type_of(e.identifier_variant))!=nullptr)
-    id.reset(new global_identifier(e.identifier_variant));
-  else throw program_error  @|
+{ const id_type id=e.identifier_variant;
+  const_type_p id_t; size_t i,j;
+  const bool is_local=(id_t=frame::lookup(id,i,j))!=nullptr;
+  if (not is_local and (id_t=global_id_table->type_of(id))==nullptr)
+    throw program_error  @|
        (std::string("Undefined identifier ")
-	+main_hash_table->name_of(e.identifier_variant));
+	+main_hash_table->name_of(id));
 @.Undefined identifier@>
-  if (type.specialise(*id_t))
-    {@; id_t->specialise(type); return id; }
-  else if (coerce(*id_t,type,id))
-    return id;
+  expression_ptr id_expr = is_local
+  ? expression_ptr(new local_identifier(id,i,j))
+@/: expression_ptr(new global_identifier(id));
+  if (type.specialise(*id_t)) // required type admits known identifier type
+    { if (type!=*id_t and is_local)
+      // usage has made type of local identifier more specialised
+        frame::specialise(i,j,type); // then refine its type in the context
+      return id_expr;
+    }
+  else if (coerce(*id_t,type,id_expr))
+    return id_expr;
   else throw type_error(e,id_t->copy(),type.copy());
 }
 
@@ -1121,7 +1137,7 @@ expression resolve_overload
   type_expr a_priori_type;
   expression_ptr arg = convert_expr(args,a_priori_type);
     // get \foreign{a priori} types once
-  Hash_table::id_type id =  e.call_variant->fun.identifier_variant;
+  id_type id =  e.call_variant->fun.identifier_variant;
   @< If |id| is a special operator like size-of and it matches
   |a_priori_type|, |return| a call |id(args)| @>
   for (size_t i=0; i<variants.size(); ++i)
@@ -1330,7 +1346,7 @@ like the size-of operator~`\#', even in case such an operator should not occur
 in the overload table.
 
 @< Convert and |return| an overloaded function call... @>=
-{ const Hash_table::id_type id =e.call_variant->fun.identifier_variant;
+{ const id_type id =e.call_variant->fun.identifier_variant;
   const expr& arg=e.call_variant->arg;
   size_t i,j; // dummies; local binding not used here
   if (not is_empty(arg) and frame::lookup(id,i,j)==nullptr)
@@ -1348,25 +1364,25 @@ initialised; to avoid having to look them up in |main_hash_table| each time,
 we store each one in a static variable inside a dedicated local function.
 
 @< Local function definitions @>=
-Hash_table::id_type equals_name()
-{@; static Hash_table::id_type name=main_hash_table->match_literal("=");
+id_type equals_name()
+{@; static id_type name=main_hash_table->match_literal("=");
   return name;
 }
 
-Hash_table::id_type size_of_name()
-{@; static Hash_table::id_type name=main_hash_table->match_literal("#");
+id_type size_of_name()
+{@; static id_type name=main_hash_table->match_literal("#");
   return name;
 }
-Hash_table::id_type print_name()
-{@; static Hash_table::id_type name=main_hash_table->match_literal("print");
+id_type print_name()
+{@; static id_type name=main_hash_table->match_literal("print");
   return name;
 }
-Hash_table::id_type prints_name()
-{@; static Hash_table::id_type name=main_hash_table->match_literal("prints");
+id_type prints_name()
+{@; static id_type name=main_hash_table->match_literal("prints");
   return name;
 }
 @)
-inline bool is_special_operator(Hash_table::id_type id)
+inline bool is_special_operator(id_type id)
 {@; return id==size_of_name()
         or id==print_name()
         or id==prints_name(); }
@@ -1853,7 +1869,7 @@ similar structure.
 @< Declarations of exported functions @>=
 type_expr pattern_type(const id_pat& pat);
 size_t count_identifiers(const id_pat& pat);
-void list_identifiers(const id_pat& pat, std::vector<Hash_table::id_type>& d);
+void list_identifiers(const id_pat& pat, std::vector<id_type>& d);
 void thread_bindings(const id_pat& pat,const type_expr& type, frame& dst);
 void thread_components
   (const id_pat& pat,const shared_value& val, std::vector<shared_value>& dst);
@@ -1889,7 +1905,7 @@ size_t count_identifiers(const id_pat& pat)
   return result;
 }
 
-void list_identifiers(const id_pat& pat, std::vector<Hash_table::id_type>& d)
+void list_identifiers(const id_pat& pat, std::vector<id_type>& d)
 { if ((pat.kind & 0x1)!=0)
     d.push_back(pat.name);
   if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
@@ -2229,16 +2245,10 @@ not impose a result type, testing the else-branch first will set |type| to
 the then-branch; the opposite order might result in an error in converting the
 void else-branch to the type of the then-branch.
 
-This is the first place where we use that |bool_type| in not |const|; if it
-had been, possible alternative solutions would be to take a copy of it, or
-else to start with an undefined type and test afterwards that it has become
-equal to |bool_type|. The latter option would be slightly different by
-excluding any coercions to \&{bool} in the condition. However this would not
-be noticeable since (currently) no such coercions exist anyway.
-
 @< Cases for type-checking and converting... @>=
 case conditional_expr:
-{ expression_ptr c  = convert_expr(e.if_variant->condition,bool_type);
+{ expression_ptr c  =
+    convert_expr(e.if_variant->condition,as_lvalue(bool_type.copy()));
   expression_ptr el = convert_expr(e.if_variant->else_branch,type);
   expression_ptr th = convert_expr(e.if_variant->then_branch,type);
   return expression_ptr(new
@@ -2291,11 +2301,12 @@ case).
 @< Cases for type-checking and converting... @>=
 case while_expr:
 { const w_loop& w=e.while_variant;
-  expression_ptr c = convert_expr(w->condition,bool_type);
+  expression_ptr c = convert_expr(w->condition,as_lvalue(bool_type.copy()));
   if (type==void_type or type.specialise(row_of_type))
   { expression_ptr b =
       convert_expr(w->body, @|
-                   type==void_type ? void_type :*type.component_type);
+                   type==void_type ? as_lvalue(void_type.copy())
+                                   : *type.component_type);
     expression_ptr result(new while_expression(std::move(c),std::move(b)));
     return type==void_type ? expression_ptr(new voiding(std::move(result)))
     : std::move(result);
@@ -2400,7 +2411,8 @@ its a priori type.
 case for_expr:
 { const f_loop& f=e.for_variant;
   type_expr in_type;
-  expression_ptr in_expr = convert_expr(f->in_part,in_type);  // \&{in} part
+   type_expr void_t (void_type.copy());
+    expression_ptr in_expr = convert_expr(f->in_part,in_type);  // \&{in} part
   subscr_base::sub_type which; // the kind of aggregate iterated over
   frame bind(count_identifiers(f->id));
    // for identifier(s) introduced in this loop
@@ -2408,7 +2420,7 @@ case for_expr:
      identifiers contained in |f->id| @>
   type_expr body_type, *btp; const conversion_record* conv=nullptr;
   if (type==void_type)
-    btp=&void_type; // void context is more permissive for body
+    btp=&void_t; // void context is more permissive for body
   else if (type.specialise(row_of_type))
     btp=type.component_type;
   else if ((conv=row_coercion(type,body_type))!=nullptr)
@@ -2611,10 +2623,10 @@ distinct types.
 
 @< Type def... @>=
 struct inc_for_expression : public expression_base
-{ expression count, bound, body; Hash_table::id_type id;
+{ expression count, bound, body; id_type id;
 @)
   inc_for_expression@/
-   (Hash_table::id_type i, expression_ptr cnt, expression_ptr bnd,
+   (id_type i, expression_ptr cnt, expression_ptr bnd,
     expression_ptr b)
   : count(cnt.release()),bound(bnd.release()),body(b.release()),id(i)
   @+{}
@@ -2625,10 +2637,10 @@ struct inc_for_expression : public expression_base
 };
 
 struct dec_for_expression : public expression_base
-{ expression count, bound, body; Hash_table::id_type id;
+{ expression count, bound, body; id_type id;
 @)
   dec_for_expression@/
-   (Hash_table::id_type i, expression_ptr cnt, expression_ptr bnd,
+   (id_type i, expression_ptr cnt, expression_ptr bnd,
     expression_ptr b)
   : count(cnt.release()),bound(bnd.release()),body(b.release()),id(i)
   @+{}
@@ -2658,16 +2670,18 @@ body.
 @< Cases for type-checking and converting... @>=
 case cfor_expr:
 { const c_loop& c=e.cfor_variant;
-  expression_ptr count_expr = convert_expr(c->count,int_type);
+  type_expr void_t (void_type.copy()); // a temporary with sufficient lifetime
+  expression_ptr count_expr = convert_expr(c->count,as_lvalue(int_type.copy()));
   static const shared_value zero=shared_value(new int_value(0));
     // avoid repeated allocation
-  expression_ptr bound_expr = is_empty(c->bound)
-    ? expression_ptr(new denotation(zero)) : convert_expr(c->bound,int_type) ;
+  expression_ptr bound_expr = is_empty(c->bound) @|
+    ? expression_ptr(new denotation(zero))
+    : convert_expr(c->bound,as_lvalue(int_type.copy())) ;
 @)
   frame bind(1); bind.add(c->id,int_type.copy());
   type_expr body_type, *btp; const conversion_record* conv=nullptr;
   if (type==void_type)
-    btp=&void_type;
+    btp=&void_t;
   else if (type.specialise(row_of_type))
     btp=type.component_type;
   else if ((conv=row_coercion(type,body_type))!=nullptr)
@@ -2892,10 +2906,10 @@ derived from |assignment_expr|.
 
 @< Type definitions @>=
 struct assignment_expr : public expression_base
-{ Hash_table::id_type lhs;
+{ id_type lhs;
   expression rhs;
 @)
-  assignment_expr(Hash_table::id_type l,expression_ptr r)
+  assignment_expr(id_type l,expression_ptr r)
    : lhs(l),rhs(r.release()) @+{}
   virtual ~assignment_expr() @+{@; delete rhs; }
   virtual void print(std::ostream& out) const;
@@ -2914,7 +2928,7 @@ access to it.
 class global_assignment : public assignment_expr
 { shared_share address;
 public:
-  global_assignment(Hash_table::id_type l,expression_ptr r);
+  global_assignment(id_type l,expression_ptr r);
   virtual ~global_assignment() @+{}
   virtual void evaluate(level l) const;
 };
@@ -2923,7 +2937,7 @@ public:
 |global_identifier|.
 
 @< Function def... @>=
-global_assignment::global_assignment(Hash_table::id_type l,expression_ptr r)
+global_assignment::global_assignment(id_type l,expression_ptr r)
 : assignment_expr(l,std::move(r)), address(global_id_table->address_of(l)) @+{}
 
 @ Evaluating a global assignment evaluates the left hand side, and replaces
@@ -2946,7 +2960,7 @@ coordinates of the identifier in the evaluation context.
 class local_assignment : public assignment_expr
 { size_t depth, offset;
 public:
-  local_assignment(Hash_table::id_type l, size_t i,size_t j, expression_ptr r);
+  local_assignment(id_type l, size_t i,size_t j, expression_ptr r);
   virtual ~local_assignment() @+{}
   virtual void evaluate(level l) const;
 };
@@ -2955,7 +2969,7 @@ public:
 
 @< Function def... @>=
 local_assignment::local_assignment
- (Hash_table::id_type l, size_t i,size_t j, expression_ptr r)
+ (id_type l, size_t i,size_t j, expression_ptr r)
 : assignment_expr(l,std::move(r)), depth(i), offset(j) @+{}
 
 @ Evaluating a local assignment evaluates the left hand side, and replaces the
@@ -2979,22 +2993,27 @@ way,
 
 @< Cases for type-checking and converting... @>=
 case ass_stat:
-{ Hash_table::id_type lhs=e.assign_variant->lhs;
-  const expr& rhs=e.assign_variant->rhs;
-  type_p id_t; expression_ptr assign; size_t i,j;
-  if ((id_t=frame::lookup(lhs,i,j))!=nullptr)
-  @/{@; expression_ptr r(convert_expr(rhs,*id_t));
-    assign.reset(new local_assignment(lhs,i,j,std::move(r)));
-  }
-  else if ((id_t=global_id_table->type_of(lhs))!=nullptr)
-  @/{@; expression_ptr r(convert_expr(rhs,*id_t));
-    assign.reset(new global_assignment(lhs,std::move(r)));
-  }
-  else throw program_error @|
-    (std::string("Undefined identifier in assignment: ")
-     +main_hash_table->name_of(lhs));
+{
+  id_type lhs=e.assign_variant->lhs;
+  const_type_p id_t; size_t i,j;
+  const bool is_local = (id_t=frame::lookup(lhs,i,j))!=nullptr;
+  if (not is_local and (id_t=global_id_table->type_of(lhs))==nullptr)
+    throw program_error @| (std::string("Undefined identifier in assignment: ")
+          +main_hash_table->name_of(lhs));
 @.Undefined identifier in assignment@>
-  return conform_types(*id_t,type,std::move(assign),e);
+@)type_expr rhs_type = id_t->copy(); // provide a modifiable copy
+  expression_ptr r(convert_expr(e.assign_variant->rhs,rhs_type));
+  if (rhs_type!=*id_t) // assignment will specialise identifier
+  { if (is_local)
+      frame::specialise(i,j,rhs_type);
+    else
+      global_id_table->specialise(lhs,rhs_type);
+  }
+@)
+  expression_ptr assign = is_local
+  ? expression_ptr(new local_assignment(lhs,i,j,std::move(r)))
+@/: expression_ptr(new global_assignment(lhs,std::move(r)));
+  return conform_types(rhs_type,type,std::move(assign),e);
 }
 
 @*1 Component assignments.
@@ -3032,7 +3051,7 @@ to apply.
 struct component_assignment : public assignment_expr
 { expression index;
   component_assignment
-   (Hash_table::id_type a,expression_ptr&& i,expression_ptr&& r)
+   (id_type a,expression_ptr&& i,expression_ptr&& r)
    : assignment_expr(a,std::move(r)), index(i.release()) @+{}
 
   virtual ~component_assignment() @+{@; delete index; }
@@ -3055,7 +3074,7 @@ class global_component_assignment : public component_assignment
   shared_share address;
 public:
   global_component_assignment
-    (Hash_table::id_type a,expression_ptr i,expression_ptr r,
+    (id_type a,expression_ptr i,expression_ptr r,
      subscr_base::sub_type k);
   virtual void evaluate(level l) const;
 };
@@ -3065,7 +3084,7 @@ aggregate object and the component kind.
 
 @< Function def... @>=
 global_component_assignment::global_component_assignment @|
-  (Hash_table::id_type a,expression_ptr i,expression_ptr r,
+  (id_type a,expression_ptr i,expression_ptr r,
    subscr_base::sub_type k)
 : component_assignment(a,std::move(i),std::move(r))
 , kind(k),address(global_id_table->address_of(a)) @+{}
@@ -3200,7 +3219,7 @@ class local_component_assignment : public component_assignment
   size_t depth, offset;
 public:
   local_component_assignment @|
-   (Hash_table::id_type l, expression_ptr i,size_t d, size_t o,
+   (id_type l, expression_ptr i,size_t d, size_t o,
     expression_ptr r, subscr_base::sub_type k);
   virtual void evaluate(level l) const;
 };
@@ -3210,7 +3229,7 @@ spite of the number of arguments.
 
 @< Function def... @>=
 local_component_assignment::local_component_assignment
- (Hash_table::id_type l, expression_ptr i,size_t d, size_t o, expression_ptr r,
+ (id_type l, expression_ptr i,size_t d, size_t o, expression_ptr r,
   subscr_base::sub_type k)
 : component_assignment(l,std::move(i),std::move(r))
 , kind(k), depth(d), offset(o) @+{}
@@ -3229,10 +3248,10 @@ distinguish different aggregate types.
 
 @< Cases for type-checking and converting... @>=
 case comp_ass_stat:
-{ Hash_table::id_type aggr=e.comp_assign_variant->aggr;
+{ id_type aggr=e.comp_assign_variant->aggr;
   const expr& index=e.comp_assign_variant->index;
   const expr& rhs=e.comp_assign_variant->rhs;
-@/type_p aggr_t; type_expr ind_t; type_expr comp_t;
+@/const_type_p aggr_t; type_expr ind_t; type_expr comp_t;
   expression_ptr assign; size_t d,o; bool is_local;
   if ((aggr_t=frame::lookup(aggr,d,o))!=nullptr)
     is_local=true;
@@ -3322,14 +3341,14 @@ void next_expression::evaluate(level l) const
 case seq_expr:
 { const sequence& seq=e.sequence_variant;
   if (seq->forward!=0)
-  { expression_ptr first = convert_expr(seq->first,void_type);
+  { expression_ptr first = convert_expr(seq->first,as_lvalue(void_type.copy()));
     expression_ptr last  = convert_expr(seq->last,type);
     return expression_ptr(new
       seq_expression(std::move(first),std::move(last)));
   }
   else
   { expression_ptr first = convert_expr(seq->first,type);
-    expression_ptr last  = convert_expr(seq->last,void_type);
+    expression_ptr last  = convert_expr(seq->last,as_lvalue(void_type.copy()));
     return expression_ptr(new
        next_expression(std::move(first),std::move(last)));
   }

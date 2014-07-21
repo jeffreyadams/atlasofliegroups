@@ -135,24 +135,24 @@ the identifier as key is used.
 
 @< Type definitions @>=
 class Id_table
-{ typedef std::map<Hash_table::id_type,id_data> map_type;
+{ typedef std::map<id_type,id_data> map_type;
   map_type table;
 public:
   Id_table(const Id_table&) = @[ delete @];
   Id_table& operator=(const Id_table&) = @[ delete @];
   Id_table() : table() @+{} // the default and only constructor
 @)
-  void add(Hash_table::id_type id, shared_value v, type_expr&& t); // insertion
-  bool remove(Hash_table::id_type id); // deletion
-  shared_share address_of(Hash_table::id_type id); // locate
+  void add(id_type id, shared_value v, type_expr&& t); // insertion
+  bool remove(id_type id); // deletion
+  shared_share address_of(id_type id); // locate
 @)
-  bool present (Hash_table::id_type id) const
+  bool present (id_type id) const
   @+{@; return table.find(id)!=table.end(); }
-  const_type_p type_of(Hash_table::id_type id) const;
+  const_type_p type_of(id_type id) const;
   // pure lookup, may return |nullptr|
-  type_p type_of(Hash_table::id_type id);
-  // lookup, caller may specialise type afterwards
-  shared_value value_of(Hash_table::id_type id) const; // lookup
+  void specialise(id_type id,const type_expr& type);
+  // specialise type stored for identifier
+  shared_value value_of(id_type id) const; // look up
 @)
   size_t size() const @+{@; return table.size(); }
   void print(std::ostream&) const;
@@ -173,7 +173,7 @@ resetting the pointer to it to point to a newly allocated one, and insert the
 new type (destroying the previous).
 
 @< Global function def... @>=
-void Id_table::add(Hash_table::id_type id, shared_value val, type_expr&& type)
+void Id_table::add(id_type id, shared_value val, type_expr&& type)
 { auto its = table.equal_range(id);
 
   if (its.first==its.second) // no global identifier was previously known
@@ -189,7 +189,7 @@ void Id_table::add(Hash_table::id_type id, shared_value val, type_expr&& type)
 this was the case.
 
 @< Global function def... @>=
-bool Id_table::remove(Hash_table::id_type id)
+bool Id_table::remove(id_type id)
 { map_type::iterator p = table.find(id);
   if (p==table.end())
     return false;
@@ -215,19 +215,20 @@ returned will in many cases be used to modify the value (but not the type)
 stored for the identifier in question.
 
 @< Global function def... @>=
-type_p Id_table::type_of(Hash_table::id_type id)
-{@; map_type::iterator p=table.find(id);
-  return p==table.end() ? nullptr : &p->second.type();
-}
-const_type_p Id_table::type_of(Hash_table::id_type id) const
+const_type_p Id_table::type_of(id_type id) const
 {@; map_type::const_iterator p=table.find(id);
   return p==table.end() ? nullptr : &p->second.type();
 }
-shared_value Id_table::value_of(Hash_table::id_type id) const
+void Id_table::specialise(id_type id,const type_expr& type)
+{@; map_type::iterator p=table.find(id);
+  p->second.type().specialise(type);
+}
+@)
+shared_value Id_table::value_of(id_type id) const
 { map_type::const_iterator p=table.find(id);
   return p==table.end() ? shared_value(value(nullptr)) : *p->second.value();
 }
-shared_share Id_table::address_of(Hash_table::id_type id)
+shared_share Id_table::address_of(id_type id)
 { map_type::iterator p=table.find(id);
   if (p==table.end())
     throw std::logic_error @|
@@ -322,7 +323,7 @@ class overload_table
 {
 public:
   typedef std::vector<overload_data> variant_list;
-  typedef std::map<Hash_table::id_type,variant_list> map_type;
+  typedef std::map<id_type,variant_list> map_type;
 private:
   map_type table;
 public:
@@ -330,14 +331,14 @@ public:
   overload_table& operator=(const Id_table&) = @[delete@];
   overload_table() : table() @+{} // the default and only constructor
 @) // accessors
-  const variant_list& variants(Hash_table::id_type id) const;
+  const variant_list& variants(id_type id) const;
   size_t size() const @+{@; return table.size(); }
    // number of distinct identifiers
   void print(std::ostream&) const;
 @) // manipulators
-  void add(Hash_table::id_type id, shared_value v, type_ptr t);
+  void add(id_type id, shared_value v, type_ptr t);
    // insertion
-  bool remove(Hash_table::id_type id, const type_expr& arg_t); //deletion
+  bool remove(id_type id, const type_expr& arg_t); //deletion
 };
 
 @ The |variants| method just returns a reference to the found vector of
@@ -346,7 +347,7 @@ reference, a static empty vector is used to ensure sufficient lifetime.
 
 @< Global function definitions @>=
 const overload_table::variant_list& overload_table::variants
-  (Hash_table::id_type id) const
+  (id_type id) const
 { static const variant_list empty;
   auto p=table.find(id);
   return p==table.end() ? empty : p->second;
@@ -361,7 +362,7 @@ is inserted before any strictly less specific overloaded instances.
 
 @< Global function def... @>=
 void overload_table::add
-  (Hash_table::id_type id, shared_value val, type_ptr tp)
+  (id_type id, shared_value val, type_ptr tp)
 { assert (tp->kind==function_type);
   func_type type(std::move(*tp->func)); // steal the function type
   auto its = table.equal_range(id);
@@ -473,7 +474,7 @@ any such binding was found (and removed). The |variants| array might become
 empty, but remains present and will be reused upon future additions.
 
 @< Global function def... @>=
-bool overload_table::remove(Hash_table::id_type id, const type_expr& arg_t)
+bool overload_table::remove(id_type id, const type_expr& arg_t)
 { map_type::iterator p=table.find(id);
   if (p==table.end()) return false; // |id| was not known at all
   variant_list& variants=p->second;
@@ -805,7 +806,7 @@ function should do that while clearing its parsing stack.
 catch (std::runtime_error& err)
 { std::cerr << err.what() << '\n';
   if (n_id>0)
-  { std::vector<Hash_table::id_type> names; names.reserve(n_id);
+  { std::vector<id_type> names; names.reserve(n_id);
     list_identifiers(pat,names);
     std::cerr << "  Identifier" << (n_id==1 ? "" : "s");
     for (size_t i=0; i<n_id; ++i)
@@ -832,7 +833,7 @@ catch (std::exception& err)
 but undefined value.
 
 @< Global function definitions @>=
-void global_declare_identifier(Hash_table::id_type id, type_p t)
+void global_declare_identifier(id_type id, type_p t)
 { value undef=nullptr;
   global_id_table->add(id,shared_value(undef),t->copy());
   @< Emit indentation corresponding to the input level to |std::cout| @>
@@ -844,7 +845,7 @@ void global_declare_identifier(Hash_table::id_type id, type_p t)
 following function achieves.
 
 @< Global function definitions @>=
-void global_forget_identifier(Hash_table::id_type id)
+void global_forget_identifier(id_type id)
 { std::cout << "Identifier " << main_hash_table->name_of(id)
             << (global_id_table->remove(id) ? " forgotten" : " not known")
             << std::endl;
@@ -854,7 +855,7 @@ void global_forget_identifier(Hash_table::id_type id)
 similar.
 
 @< Global function definitions @>=
-void global_forget_overload(Hash_table::id_type id, type_p t)
+void global_forget_overload(id_type id, type_p t)
 { const type_expr& type=*t;
   std::cout << "Definition of " << main_hash_table->name_of(id)
             << '@@' << type @|

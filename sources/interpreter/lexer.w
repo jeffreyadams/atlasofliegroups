@@ -108,7 +108,7 @@ return |NULL| to indicate that.
 @< Function definitions @>=
 extern "C"
 char* id_completion_func(const char* text, int state)
-{ static size_t l; static Hash_table::id_type i,n;
+{ static size_t l; static id_type i,n;
   if (state==0)
   { i=0; n=main_hash_table->nr_entries();
     l=std::strlen(text); // fix length for during search
@@ -159,8 +159,8 @@ class Lexical_analyser
 { enum states @+ { initial, normal, ended };
 @)BufferedInput& input;
   Hash_table& id_table;
-  Hash_table::id_type keyword_limit; // first non-keyword identifier
-  Hash_table::id_type type_limit; // first non-type identifier
+  id_type keyword_limit; // first non-keyword identifier
+  id_type type_limit; // first non-type identifier
   int nesting; // number of pending opening symbols
   char prevent_termination; // either |'\0'| or character requiring more input
   int comment_start, comment_end; // characters that start/end a comment
@@ -449,7 +449,7 @@ although this is probably desirable. However type names
     c=input.shift();
   while(isalpha(c) || isdigit(c) || c=='_');
   input.unshift();
-  Hash_table::id_type id_code=id_table.match(p,input.point()-p);
+  id_type id_code=id_table.match(p,input.point()-p);
   if (id_code>=type_limit)
   {@; valp->id_code=id_code; code=IDENT; }
   else if (id_code>=keyword_limit)
