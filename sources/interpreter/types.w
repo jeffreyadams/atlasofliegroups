@@ -1130,47 +1130,53 @@ runtime.
 @< Includes needed in \.{types.h} @>=
 #include <iostream> // needed for specification of |print| method below
 
-@~We start with a base class for values. There must be at least one virtual
-function in the class, which can conveniently be a function for printing. This
-allows the base class to be defined abstract (one cannot declare a destructor
-purely virtual since it will always be called, after the destructor for a
-derived class). The printing function will demonstrate the ease of using
-dynamic typing via inheritance. It does not even require any dynamic casting,
-but other operations on values will. Apart from |print| we define another
-(purely) virtual method, |clone|, which allows making a copy of a runtime
-value of any type derived from |value_base|.
+@~We start with a base class for values. For it to be an abstract class, there
+must be at least one pure virtual function in the class; the destructor having
+to be virtual anyway, we make it pure virtual (this does not mean it is
+unimplemented, in fact it must be implemented as it will always be called,
+after the destructor for a derived class; it just means derived
+classes \emph{must} override the default. The printing function does not have
+a useful default, so we make it pure virtual as well, without providing an
+implementation (in the base class). This |print| method will demonstrate the
+ease of using dynamic typing via inheritance; it will not do any dynamic
+casting, but other operations on values will. Apart from |print| we define
+another (purely) virtual method, |clone|, which allows making a copy of a
+runtime value of any type derived from |value_base|.
 
 The method |name| is useful in reporting logic errors from template functions,
 notably the failure of a value to be of the predicted type. Since the template
 function may know the type (via a template argument) but need not have any
 object of the type at hand, we define |name| as a |static| rather than
-|virtual| method. We forbid assignment of |value_base| objects, since they
+|virtual| method. We disable assignment of |value_base| objects, since they
 should always be handled by reference; the base class is abstract anyway, but
 this ensures us that for no derived class an implicitly defined assignment
 operator is accidentally invoked. Copy constructors will in fact be defined
 for all derived types, as they are needed to implement the |clone| method;
 these will be |private| or |protected| as well, so as to forbid accidental use
-elsewhere, but they don't copy-construct the |value_base| base object (rather
-they default-construct it). We can then |delete| the |value_base| copy
-constructor, so that in case of accidental omission the use of a synthesised
-constructor will be caught here as well.
+elsewhere, but they do copy-construct their |value_base| base object (which is
+constructor is therefore made |protected|); they might have value-constructed
+it (i.e., use the no-arguments constructor) instead (and indeed this used to
+be the case), but copy-construct is what the default copy-constructor for the
+derived class does, so not deleting the copy-constructor here allows those
+defaults to be used.
 
 As mentioned values are always handled via pointers. We define a raw pointer
-type |value|, a unique-pointer |owned_value| (which cannot safely be stored in
-STL containers), and a shared smart pointer |shared_value| (which by contrast
-can be stored in STL containers).
+type |value|, a unique-pointer |owned_value|, and a shared smart pointer
+|shared_value| (both of which can be safely stored in container classes).
 
 @< Type definitions @>=
 struct value_base
 { value_base() @+ {};
-  virtual ~value_base() @+ {};
+  virtual ~value_base() = 0;
   virtual void print(std::ostream& out) const =0;
   virtual value_base* clone() const =0;
   static const char* name(); // just a model; this instance remains undefined
-@)
-  value_base(const value_base& x) = @[delete@];
+protected:
+  value_base(const value_base& x) = @[default@];
+public:
   value_base& operator=(const value_base& x) = @[delete@];
 };
+inline value_base::~value_base() @+{} // necessary but empty implementation
 @)
 typedef value_base* value;
 typedef std::unique_ptr<value_base> owned_value;
@@ -1350,15 +1356,15 @@ singly linked list suffices, and by using shared pointers as links,
 destruction of frames once inaccessible is automatic.
 
 @< Type definitions @>=
-typedef std::shared_ptr<class evaluation_context> context_ptr;
+typedef std::shared_ptr<class evaluation_context> shared_context;
 class evaluation_context
-{ const context_ptr next;
+{ const shared_context next;
   std::vector<shared_value> frame;
   evaluation_context@[(const evaluation_context&) = delete@];
   // never copy contexts
 public:
   evaluation_context
-    (const context_ptr& next, const std::vector<shared_value>&& frame)
+    (const shared_context& next, const std::vector<shared_value>&& frame)
 @/: next(next), frame(std::move(frame)) @+{}
   shared_value& elem(size_t i,size_t j);
 };
@@ -1400,10 +1406,15 @@ struct expression_base
 { enum level @+{ no_value, single_value, multi_value };
 @)
   expression_base() @+ {}
+  expression_base@[(const expression_base&) = delete@]; // they are never copied
+  expression_base@[(expression_base&&) = delete@]; // nor moved
+  expression_base& operator=(const expression_base&)=@[delete@]; // nor assigned
+  expression_base& operator=(expression_base&&)=@[delete@]; // nor move-assigned
   virtual ~expression_base() @+ {}
+@)// other virtual methods
   virtual void evaluate(level l) const =0;
   virtual void print(std::ostream& out) const =0;
-@)
+@)// non-virtuals that call the virtual |evaluate|
   void void_eval() const @+{@; evaluate(no_value); }
   void eval() const @+{@; evaluate(single_value); }
   void multi_eval() const @+{@; evaluate(multi_value); }
