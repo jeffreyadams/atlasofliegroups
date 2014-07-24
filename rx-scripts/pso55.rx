@@ -1,0 +1,5 @@
+set G=PSO(5,5)
+set delta=distinguished_involution(G)
+set (B,)=block(trivial(G))
+set p=B[0]
+set q=B[1]

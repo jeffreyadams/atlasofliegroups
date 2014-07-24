@@ -1,0 +1,78 @@
+<my
+<twist
+{twisting of parameters directly on (x,lambda,nu)}
+set my_twist(Param p,mat delta)=parameter(KGB_twist(real_form(p),delta)(x(p)),delta*lambda(p),delta*nu(p))
+set my_fixed(Param p,mat delta)=bool:
+{there is a bug: p=my_twist(p,delta)  gives
+Runtime error:
+  Real form mismatch when testing equivalence
+need to work around this}
+if KGB_twist(real_form(p),delta)(x(p)) != x(p) then false else
+p=parameter(x(p),delta*lambda(p),delta*nu(p)) fi
+set my_fixed([Param] B,mat delta)=[bool]:for p in B do my_fixed(p,delta) od
+
+
+
+set rd=root_datum(Lie_type("A1.A1.T1"),[[1/2,1/2,1/2]])
+set ic=inner_class(rd,"sss")
+set G=quasisplit_form(ic)
+set dual_rd=dual(rd)
+set dual_ic=dual(ic)
+set Gd=quasisplit_form(dual_ic)
+
+set delta=mat:[[1,0,0],[0,1,0],[-1,0,-1]]
+prints("delta: ", delta, "delta^2 = I: ", delta^2=id_mat(3))
+prints("delta preserves simple roots: ", delta*simple_roots(ic)=simple_roots(ic))
+prints("^delta preserves simple coroots: ", ^delta*simple_coroots(ic)=simple_coroots(ic))
+{
+prints("action of delta on blocks for G:");
+show_block_twists(G,delta)
+prints("action of ^delta on blocks for Gd:");
+show_block_twists(Gd,^delta)
+
+set B=block(G, dual_quasisplit_form(G))
+prints("Block B=block(G, G-dual)):")
+print_block(B)
+}
+
+prints("trivial block of G:");
+set (B,)=block(trivial(G))
+print_block(trivial(G))
+prints("infinitesimal character: ", infinitesimal_character(B[0]))
+prints("Parameters fixed by twisting by delta:")
+my_fixed(B,delta)
+prints("");
+set q=parameter(KGB(G,4),[0,1,1],[3/2,2/2,0/2])
+set (Bq,)=block(q)
+print_block(q)
+prints("infinitesimal character: ", infinitesimal_character(Bq[0]))
+prints("Parameters fixed by twisting by delta:")
+my_fixed(Bq,delta)
+prints("");
+prints("parameter 4: ", Bq[4]);
+prints("delta*(parameter 4): ", my_twist(Bq[4],delta));
+prints("      (parameter 5): ", Bq[5]);
+
+
+{
+
+
+
+
+Identifier q (overriding previous): Param
+expr> print_block(q)
+Parameter defines element 4 of the following block:
+0(0,4):  0  [i1,i1]  1  1   (2,*)  (3,*)  *(x=0,lam=rho+ [0,0,-1], nu=  [0,0,0]/1)  e
+1(1,4):  0  [i1,i1]  0  0   (2,*)  (3,*)  *(x=1,lam=rho+ [0,0,-1], nu=  [0,0,0]/1)  e
+2(2,3):  1  [r1,i2]  2  2   (0,1)  (4,5)  *(x=3,lam=rho+ [0,0,-1], nu=  [1,0,0]/1)  1^e
+3(3,2):  1  [i2,r1]  3  3   (4,5)  (0,1)  *(x=2,lam=rho+ [0,-4,3], nu=  [1,2,0]/2)  2^e
+4(4,0):  2  [r2,r2]  5  5   (3,*)  (2,*)  *(x=4,lam=rho+[-1,0,-1], nu=  [3,2,0]/2)  1^2^e
+5(4,1):  2  [r2,r2]  4  4   (3,*)  (2,*)  *(x=4,lam=rho+ [0,0,-1], nu=  [3,2,0]/2)  1^2^e
+expr> set (bq,)=block(q)
+Identifier bq (overriding previous): [Param]
+expr> my_fixed (bq,delta)
+Value: [true,true,true,true,false,false]
+expr> infinitesimal_character (q)
+Value: [ 3, 2, 0 ]/2
+expr>  
+}

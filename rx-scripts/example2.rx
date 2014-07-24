@@ -1,0 +1,48 @@
+{2i12 example G=SL(2)xSL(2)/<-1,1> with delta switching factors}
+
+<my
+<twist
+{twisting of parameters directly on (x,lambda,nu)}
+<example
+
+set rd=root_datum(Lie_type("A1.A1"),[[1/2,1/2]])
+set ic=inner_class(rd,"ss")
+set G=quasisplit_form(ic)
+set dual_rd=dual(rd)
+set dual_ic=dual(ic)
+set Gd=quasisplit_form(dual_ic)
+
+set delta=mat:[[1,2],[0,-1]]
+prints("delta: ", delta, "delta^2 = I: ", delta^2=id_mat(3))
+prints("delta preserves simple roots: ", delta*simple_roots(ic)=simple_roots(ic))
+prints("^delta preserves simple coroots: ", ^delta*simple_coroots(ic)=simple_coroots(ic))
+{
+prints("action of delta on blocks for G:");
+show_block_twists(G,delta)
+prints("action of ^delta on blocks for Gd:");
+show_block_twists(Gd,^delta)
+
+set B=block(G, dual_quasisplit_form(G))
+prints("Block B=block(G, G-dual)):")
+print_block(B)
+}
+
+
+prints("trivial block of G:");
+set (B,)=block(trivial(G))
+print_block(trivial(G))
+prints("infinitesimal character: ", infinitesimal_character(B[0]))
+prints("Parameters fixed by twisting by delta:")
+my_fixed(B,delta)
+prints("");
+
+set p=B[0]
+set q=B[1]
+set xp=make_extended(delta,p)
+set xq=make_extended(delta,q)
+set cp=ext_Cayley(0,xp)
+set cq=ext_Cayley(0,xq)
+set cp0=cp[0]
+set cp1=cp[1]
+set cq0=cq[0]
+set cq1=cq[1]
