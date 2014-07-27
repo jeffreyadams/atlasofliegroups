@@ -59,6 +59,7 @@ namespace atlas { namespace interpreter {
 namespace atlas { namespace interpreter {
 @< Global variable definitions @>@;
 namespace {@;
+@< Local class definitions @>@;
 @< Local variable definitions @>@;
 @< Local function definitions @>@;
 }@;
@@ -100,7 +101,6 @@ void reset_evaluator()
       while (!execution_stack.empty());
     }
   }
-  @< Actions to reset the evaluator @>
 }
 
 
@@ -715,13 +715,14 @@ This stack is implemented as a singly linked list, and accessed through a
 shared pointer. It is not an instance of |containers::simple_list| mainly
 because of sharing of parts between different contexts, which arises when
 closures are formed as will be described later. The structure pointed to by
-|shared_context| is described in \.{types.w}; essentially, each node of the list
-is a vector of values associate with identifiers introduced in the same
+|shared_context| is described in \.{types.w}; essentially, each node of the
+list is a vector of values associate with identifiers introduced in the same
 lexical |layer|. Although each value is associated with an identifier, they
 are stored anonymously; the proper location of a applied identifier is
 determined by its position in the list of lexical frames at the time of type
-checking, and recorded as a pair of a relative depth (of the defining occurrence
-with respect to the applied occurrence) and an offset within the layer.
+checking, and recorded as a pair of a relative depth (of the defining
+occurrence with respect to the applied occurrence) and an offset within the
+layer.
 
 Thus using applied identifiers requires no looking up at run time, although
 traversing of the linked list up to the specified depth is necessary. One
@@ -731,23 +732,15 @@ to be renewed at each context switch, such as those that occur when calling or
 returning from a user-defined function; it is doubtful whether this would
 actually result in more rapid evaluation.
 
-The |execution_context| pointer is declared a as static variable local to the
-evaluator; compared with making it a parameter to the |evaluate| methods, this
-has the advantage of not encumbering the numerous such methods that neither
+The pointer holding the current execution context is declared a as static
+variable of a local class |frame| to be detailed later. Having a static
+variable has the advantage, compared with making it a parameter to the
+|evaluate| methods, of not encumbering the numerous such methods that neither
 use nor modify the context in any way (those not involving identifiers or user
 defined functions).
 
 @< Local var... @>=
-shared_context execution_context;
-
-@~A disadvantage of using a static variable |execution_context| is, that in
-case of exceptions it retains the value current before throwing. Therefore we
-need to explicitly reset the execution in such cases. Since it is a smart
-pointer, resetting automatically takes care of adjusting reference counts and
-maybe deleting values that are part of the discarded context.
-
-@< Actions... @>=
-execution_context.reset();
+shared_context frame::current; // points to topmost current frame
 
 @ We derive the class of local identifiers from that of global ones, which
 takes care of its |print| method. The data stored are |depth| identifying a
@@ -762,12 +755,12 @@ public:
   virtual void evaluate(level l) const; // only this method is redefined
 };
 
-@ The method |local_identifier::evaluate| looks up a value in the current
-|execution_context|, which the method |context::elem| accomplishes.
+@ The method |local_identifier::evaluate| looks up a value in the evaluation
+context |frame::current|, by calling the method |evaluation_context::elem|.
 
 @< Function definitions @>=
 void local_identifier::evaluate(level l) const
-{@; push_expanded(l,execution_context->elem(depth,offset)); }
+{@; push_expanded(l,frame::current->elem(depth,offset)); }
 
 @ When type-checking an applied identifier, we first look in |id_context| for
 a binding of the identifier; if found it will be a local identifier, and
@@ -1755,7 +1748,7 @@ execution context, and returns that.
 
 While this code looks rather innocent, it should be noted that the sharing
 created here may survive after one or more frames on the list
-|execution_context| get removed (in the code to be shown presently) when the
+|frame::current| get removed (in the code to be shown presently) when the
 function whose call produced that frame returns; these frames then get an
 extended lifetime through the closure formed here. This implies that the
 execution context cannot be embedded in any kind of stack, in particular it
@@ -1765,7 +1758,34 @@ context could).
 @< Function def... @>=
 void lambda_expression::evaluate(level l) const
 {@;if (l!=no_value)
-     push_value(closure_ptr(new closure_value(execution_context,param,body)));
+     push_value(closure_ptr(new closure_value(frame::current,param,body)));
+}
+
+@ Here is a class whose main purpose is to have a constructor-destructor pair
+that temporarily suspends the current execution context, replacing it by a new
+one determined by an identifier pattern and an execution context for the
+enclosing lexical layers. All instances of this class should be automatic
+(local) variables, to ensure that they have nested lifetimes.
+
+@< Local class definitions @>=
+class frame
+{
+  shared_context saved;
+  const id_pat& pattern;
+public:
+  static shared_context current;
+@)
+  frame (const id_pat& pattern, const shared_context& outer=current)
+ : saved(current), pattern(pattern)
+ {@; current =
+     std::make_shared<evaluation_context>(outer,count_identifiers(pattern));
+ }
+ ~frame() @+{@; current = std::move(saved); }
+ void bind (const shared_value& val);
+};
+@)
+void frame::bind (const shared_value& val)
+{@; thread_components(pattern,val,current->back_inserter());
 }
 
 @ A call of a user-defined function passes through the same code as that of a
@@ -1779,7 +1799,7 @@ identifiers have been translated into references by relative layer number and
 offset. Notably the actual names of the identifiers are not used at all at
 runtime (they are present in the |id_pat| structure for printing purposes, but
 ignored by |thread_bindings| which is used here), and our implementation is
-one using ``nameless dummies''.
+one using ``nameless dummies'' (also known as ``de Bruijn indicies'').
 
 When we come here |f| must be a |closure_value|, and the argument has already
 been evaluated, and is available as a single value on the |execution_stack|.
@@ -1794,13 +1814,10 @@ the original context is restored from the local variable |saved_context|.
 @< Call user-defined function |fun| with argument on |execution_stack| @>=
 { closure_value* f=force<closure_value>(fun.get());
 @)
-  shared_context saved_context(execution_context);
-  execution_context =
-    std::make_shared<evaluation_context>(f->cont,count_identifiers(*f->param));
-  thread_components(*f->param,pop_value(),execution_context->back_inserter());
+  frame fr(*f->param,f->cont); // save context, create new one for |f|
+  fr.bind(pop_value());
   f->body->evaluate(l); // pass evaluation level |l| to function body
-  execution_context = saved_context;
-}
+} // restore context upon destruction of |fr|
 
 @ For function overloads given by a user-defined function, we need a new
 expression type which is capable of storing a closure value.
@@ -1860,13 +1877,9 @@ case) for producing the error trace.
 void overloaded_closure_call::evaluate(level l) const
 { argument->eval();
   try
-  { shared_context saved_context(execution_context);
-    execution_context = std::make_shared<evaluation_context>
-      (fun->cont,count_identifiers(*fun->param));
-    thread_components(*fun->param,pop_value(),
-                      execution_context->back_inserter());
+  { frame fr(*fun->param,fun->cont); // save context, create new one for |fun|
+    fr.bind(pop_value());
     fun->body->evaluate(l); // pass evaluation level |l| to function body
-    execution_context = saved_context;
   }
   catch (const std::exception& e)
   { const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
@@ -2523,16 +2536,13 @@ and it may remain the same between iterations.
 
 @< Function definitions @>=
 void for_expression::evaluate(level l) const
-{ size_t n_id = count_identifiers(pattern);
-  in_part->eval();
+{ in_part->eval();
   shared_tuple loop_var(new tuple_value(2));
        // this is safe to re-use between iterations
   row_ptr result(nullptr);
-  shared_context saved_context=execution_context;
   @< Evaluate the loop, dispatching the various possibilities for |kind|, and
   setting |result| @>
 
-  execution_context = saved_context;
   if (l!=no_value)
     push_value(std::move(result));
 }
@@ -2551,13 +2561,12 @@ switch (kind)
       result = row_ptr(new row_value(n));
     for (size_t i=0; unsigned(i)<n; ++i)
     { loop_var->val[1]=in_val->val[i]; // the row current component
-      @< Set |loop_var->val[0]| to |i|, fill |loop_frame| according to
-      |pattern| with values from |loop_var|, create a new |context| and
-      evaluate the |loop_body| in it, and maybe assign |result->val[i]|
-      from it @>
+      @< Set |loop_var->val[0]| to |i|, create a new |frame| for
+      |pattern| binding |loop_var|, and evaluate the |loop_body| in it;
+      maybe assign |result->val[i]| from it @>
     }
   }
-  break;
+  @+break;
   case subscr_base::vector_entry:
   { shared_vector in_val = get<vector_value>();
     size_t n=in_val->val.size();
@@ -2568,7 +2577,7 @@ switch (kind)
       @< Set |loop_var->val[0]| to |i|,... @>
     }
   }
-  break;
+  @+break;
   case subscr_base::ratvec_entry:
   { shared_rational_vector in_val = get<rational_vector_value>();
     size_t n=in_val->val.size();
@@ -2591,7 +2600,7 @@ switch (kind)
       @< Set |loop_var->val[0]| to |i|,... @>
     }
   }
-  break;
+  @+break;
   case subscr_base::matrix_column:
   { shared_matrix in_val = get<matrix_value>();
     size_t n=in_val->val.numColumns();
@@ -2602,7 +2611,7 @@ switch (kind)
       @< Set |loop_var->val[0]| to |i|,... @>
     }
   }
-  break;
+  @+break;
   case subscr_base::mod_poly_term:
   @< Perform a loop over the terms of a virtual module @>
   break;
@@ -2619,8 +2628,8 @@ various values of |kind|, but |loop_var->val[0]| is always the (integral) loop
 index. Once initialised, |loop_var| is passed through the function
 |thread_components| to set up |loop_frame|, whose pointers are copied into a
 new |context| that extends the initial |saved_context| to form the new
-|execution_context|. Like for |loop_var->val[0]|, it is important that
-|execution_context| be set to point to a newly created node at each iteration,
+execution context. Like for |loop_var->val[0]|, it is important that
+|frame::current| be set to point to a newly created node at each iteration,
 since any closure values in the loop body will incorporate its current
 instance; there would be no point in supplying fresh pointers in |loop_var| if
 they were subsequently copied to overwrite the pointers in the same |context|
@@ -2628,14 +2637,14 @@ object each time. Once these things have been handled, the evaluation of the
 loop body is standard.
 
 @< Set |loop_var->val[0]| to |i|,... @>=
-loop_var->val[0].reset(new int_value(i)); // index; newly created each time
-execution_context =
-  std::make_shared<evaluation_context>(saved_context,n_id); // this one too
-thread_components(pattern,loop_var,execution_context->back_inserter());
-if (l==no_value)
-  body->void_eval();
-else
-{@; body->eval(); result->val[i]=pop_value(); }
+{ loop_var->val[0] = std::make_shared<int_value>(i);
+    // index; newly created each time
+  frame fr (pattern);
+  fr.bind(loop_var);
+  if (l==no_value)
+    body->void_eval();
+  else {@; body->eval(); result->val[i]=pop_value(); }
+} // restore context upon destruction of |fr|
 
 @ The loop over terms of a virtual module is slightly different, and since it
 handles values defined in the modules \.{built-in-types.w} we shall include
@@ -2651,14 +2660,13 @@ its header file.
        it!=pol_val->val.end(); ++it,++i)
   { loop_var->val[0].reset(new module_parameter_value(pol_val->rf,it->first));
     loop_var->val[1].reset(new split_int_value(it->second));
-    execution_context =
-      std::make_shared<evaluation_context>(saved_context,n_id);
-    thread_components(pattern,loop_var,execution_context->back_inserter());
+    frame fr(pattern);
+    fr.bind(loop_var);
     if (l==no_value)
       body->void_eval();
     else
       {@; body->eval(); result->val[i]=pop_value(); }
-  }
+  } // restore context upon destruction of |fr|
 }
 
 @*1 Counted loops.
@@ -2754,13 +2762,12 @@ void inc_for_expression::evaluate(level l) const
   if (c<0)
     c=0; // no negative size result
 
-  shared_context saved_context=execution_context;
+  id_pat pattern(id,0x1,patlist(nullptr));
   if (l==no_value)
   { c+=b;
     for (int i=b; i<c; ++i)
-    { execution_context =
-        std::make_shared<evaluation_context> (saved_context,1);
-      execution_context->back_inserter() = std::make_shared<int_value>(i);
+    { frame fr(pattern);
+      frame::current->back_inserter() = std::make_shared<int_value>(i);
       body->void_eval();
     }
   }
@@ -2768,13 +2775,12 @@ void inc_for_expression::evaluate(level l) const
   { row_ptr result (new row_value(0)); result->val.reserve(c);
     c+=b;
     for (int i=b; i<c; ++i)
-    { execution_context = std::make_shared<evaluation_context>(saved_context,1);
-      execution_context->back_inserter() = std::make_shared<int_value>(i);
+    { frame fr(pattern);
+      frame::current->back_inserter() = std::make_shared<int_value>(i);
       body->eval(); result->val.push_back(pop_value());
     }
     push_value(std::move(result));
   }
-  execution_context=saved_context;
 }
 
 @ Downward loops are not much different, but they actually use a |while| loop.
@@ -2786,12 +2792,12 @@ void dec_for_expression::evaluate(level l) const
   if (i<0)
     i=0; // no negative size result
 
-  shared_context saved_context=execution_context;
+  id_pat pattern(id,0x1,patlist(nullptr));
   if (l==no_value)
   { i+=b;
     while (i-->b)
-    { execution_context = std::make_shared<evaluation_context>(saved_context,1);
-      execution_context->back_inserter() = std::make_shared<int_value>(i);
+    { frame fr(pattern);
+      frame::current->back_inserter() = std::make_shared<int_value>(i);
       body->void_eval();
     }
   }
@@ -2799,13 +2805,12 @@ void dec_for_expression::evaluate(level l) const
   { row_ptr result (new row_value(0)); result->val.reserve(i);
     i+=b;
     while (i-->b)
-    { execution_context = std::make_shared<evaluation_context>(saved_context,1);
-      execution_context->back_inserter() = std::make_shared<int_value>(i);
+    { frame fr(pattern);
+      frame::current->back_inserter() = std::make_shared<int_value>(i);
       body->eval(); result->val.push_back(pop_value());
     }
     push_value(std::move(result));
   }
-  execution_context=saved_context;
 }
 
 @* Casts.
@@ -3009,13 +3014,13 @@ local_assignment::local_assignment
 : assignment_expr(l,std::move(r)), depth(i), offset(j) @+{}
 
 @ Evaluating a local assignment evaluates the left hand side, and replaces the
-old value stored at |execution_context->elem(depth,offset)| by the new (shared
+old value stored at |frame::current->elem(depth,offset)| by the new (shared
 pointer) value.
 
 @< Function def... @>=
 void local_assignment::evaluate(level l) const
 { rhs->eval();
-  shared_value& dest =  execution_context->elem(depth,offset);
+  shared_value& dest =  frame::current->elem(depth,offset);
   dest= pop_value();
   push_expanded(l,dest);
 }
@@ -3276,7 +3281,7 @@ calls |assign| to do the work.
 
 @< Function def... @>=
 void local_component_assignment::evaluate(level l) const
-{@; assign(l,execution_context->elem(depth,offset),kind); }
+{@; assign(l,frame::current->elem(depth,offset),kind); }
 
 @ Type-checking and converting component assignment statements follows the
 same lines as that of ordinary assignment statements, but must also
