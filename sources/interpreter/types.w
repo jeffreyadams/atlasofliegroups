@@ -1348,12 +1348,20 @@ identifiers in a method to locate the associated value in the evaluation
 context, which is formed by a stack of frames, each holding a vector of
 values.
 
-Frames are actually allocated on the heap, and their lifetimes do not follow
+One of the methods for our frame type will produce a back insert iterator, so
+we need the following include in order to declare it.
+
+@< Includes needed... @>=
+#include <iterator>
+
+@~Frames are actually allocated on the heap, and their lifetimes do not follow
 a stack regime unless a very limited use is made of user-defined functions
 (never passing such a function as value out of the expression in which it was
 defined), so it is better to just say they are linked lists of frames. A
 singly linked list suffices, and by using shared pointers as links,
 destruction of frames once inaccessible is automatic.
+
+@s back_insert_iterator vector
 
 @< Type definitions @>=
 typedef std::shared_ptr<class evaluation_context> shared_context;
@@ -1363,14 +1371,15 @@ class evaluation_context
   evaluation_context@[(const evaluation_context&) = delete@];
   // never copy contexts
 public:
-  evaluation_context
-    (const shared_context& next, const std::vector<shared_value>&& frame)
-@/: next(next), frame(std::move(frame)) @+{}
+  evaluation_context (const shared_context& next, size_t n)
+@/: next(next), frame() @+{@; frame.reserve(n); }
   shared_value& elem(size_t i,size_t j);
+  std::back_insert_iterator<std::vector<shared_value> > back_inserter ()
+  {@; return std::back_inserter(frame); }
 };
 
-@ The method |evaluation_context::elem| descends the stack and then selects a value from
-the proper frame.
+@ The method |evaluation_context::elem| descends the stack and then selects a
+value from the proper frame.
 
 @< Function def... @>=
 shared_value& evaluation_context::elem(size_t i, size_t j)

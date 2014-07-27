@@ -179,13 +179,13 @@ ignore certain scenarios in which the type derived for a subexpression is
 expression_ptr convert_expr(const expr& e, type_expr& type);
 
 @ In the function |convert_expr| we shall need a type for storing bindings
-between identifiers and types, and this will be the |frame| class. It stores a
-vector of type |frame::vec| of individual bindings, while it automatically
-pushes (a reference to) itself on a stack |frame::context| of such vectors.
-Instances of |frame| shall always be stored in ordinary (stack-allocated)
+between identifiers and types, and this will be the |layer| class. It stores a
+vector of type |layer::vec| of individual bindings, while it automatically
+pushes (a reference to) itself on a stack |layer::context| of such vectors.
+Instances of |layer| shall always be stored in ordinary (stack-allocated)
 variables; since their unique constructor pushes the new object, and their
-destructor pops it, |frame::context| is guaranteed to hold at all times a list
-of references to all current |frame| objects, from newest to oldest. This
+destructor pops it, |layer::context| is guaranteed to hold at all times a list
+of references to all current |layer| objects, from newest to oldest. This
 invariant is maintained even in the presence of exceptions that may be thrown
 during type analysis. Since the space on the runtime stack occupied by a
 |vector| is hardly larger than that of the reference to it, this is mostly a
@@ -196,20 +196,20 @@ manner is also cute; however explicitly clearing the list in case of an
 exception, as used to be done, would also work.
 
 @< Type def... @>=
-class frame
+class layer
 {
-  typedef containers::simple_list<std::reference_wrapper<frame> > list;
+  typedef containers::simple_list<std::reference_wrapper<layer> > list;
 public:
   typedef std::vector<std::pair<id_type,type_expr> > vec;
-  static list context; // the unique |frame::list| in existence
+  static list context; // the unique |layer::list| in existence
 private:
   vec variable;
 public:
-  frame(const frame&) = @[delete@]; // no ordinary copy constructor
-  frame& operator= (const frame&) = @[delete@]; // nor assignment operator
-  frame(size_t n) : variable()
+  layer(const layer&) = @[delete@]; // no ordinary copy constructor
+  layer& operator= (const layer&) = @[delete@]; // nor assignment operator
+  layer(size_t n) : variable()
   @+{@; variable.reserve(n); context.emplace_front(std::ref(*this)); }
-  ~frame () @+{@; context.pop_front(); }
+  ~layer () @+{@; context.pop_front(); }
 @)
   void add(id_type id,type_expr&& t);
   static const_type_p lookup
@@ -224,11 +224,11 @@ public:
 
 
 @ The method |add| adds a pair to the vector of bindings; the type is moved
-into the |frame| object. This is also a good place to check for the
+into the |layer| object. This is also a good place to check for the
 presence of identical identifiers.
 
 @< Function def... @>=
-void frame::add(id_type id,type_expr&& t)
+void layer::add(id_type id,type_expr&& t)
 { for (auto it=variable.begin(); it!=variable.end(); ++it)
   // traverse |variable| vector
     if (it->first==id)
@@ -239,15 +239,15 @@ void frame::add(id_type id,type_expr&& t)
   variable.emplace_back( id, std::move(t) );
 }
 
-@ During conversion of expressions, we keep a stack |frame::context| of
+@ During conversion of expressions, we keep a stack |layer::context| of
 identifier bindings in order to determine their (lexical) binding and type.
-Making this a static member if the |frame| class means we cannot start an
+Making this a static member if the |layer| class means we cannot start an
 independent call of |convert_expr| (one that does not build upon the current
 lexical context) while some instance of |convert_expr| is still active. Since
 we do not intend to do that, this is not a problem.
 
 @< Global var... @>=
-frame::list frame::context;
+layer::list layer::context;
 
 @ The method |lookup| runs through the linked list of bindings and returns a
 pointer to the type if a match for the identifier |id| was found, also
@@ -277,7 +277,7 @@ calling the |get| method will produce a modifiable reference) we have made the
 outer iterator |range| (but not the inner one) a const-iterator.
 
 @< Function def... @>=
-const_type_p frame::lookup
+const_type_p layer::lookup
   (id_type id, size_t& depth, size_t& offset)
 { size_t i=0;
   for (auto range=context.cbegin(); not context.at_end(range); ++range,++i)
@@ -290,7 +290,7 @@ const_type_p frame::lookup
   return nullptr;
 }
 @)
-void frame::specialise (size_t depth, size_t offset,const type_expr& t)
+void layer::specialise (size_t depth, size_t offset,const type_expr& t)
 { auto range=context.begin();
   while (depth-->0)
     ++range;
@@ -632,7 +632,7 @@ to different values.
 Global identifiers values will be stored in a global identifier table holding
 values and their types. The values of local identifiers will be stored at
 runtime in a stack |execution_context| of variable bindings, but not their
-types (these are held in |frame| values during type analysis, and have
+types (these are held in |layer| values during type analysis, and have
 disappeared at evaluation time).
 
 In spite of these differences there is some common ground for global and local
@@ -717,21 +717,21 @@ because of sharing of parts between different contexts, which arises when
 closures are formed as will be described later. The structure pointed to by
 |shared_context| is described in \.{types.w}; essentially, each node of the list
 is a vector of values associate with identifiers introduced in the same
-lexical |frame|. Although each value is associated with an identifier, they
+lexical |layer|. Although each value is associated with an identifier, they
 are stored anonymously; the proper location of a applied identifier is
 determined by its position in the list of lexical frames at the time of type
-checking, and recorded as a pair of a frame depth (of the defining occurrence
-with respect to the applied occurrence) and an offset within the frame.
+checking, and recorded as a pair of a relative depth (of the defining occurrence
+with respect to the applied occurrence) and an offset within the layer.
 
 Thus using applied identifiers requires no looking up at run time, although
 traversing of the linked list up to the specified depth is necessary. One
-might imagine keeping a stack of frame pointers cached to speed up the
+might imagine keeping a stack of layer pointers cached to speed up the
 evaluation of applied identifiers of large depth, but such a cache would have
 to be renewed at each context switch, such as those that occur when calling or
 returning from a user-defined function; it is doubtful whether this would
 actually result in more rapid evaluation.
 
-The pointer |shared_context| is declared a as static variable local to the
+The |execution_context| pointer is declared a as static variable local to the
 evaluator; compared with making it a parameter to the |evaluate| methods, this
 has the advantage of not encumbering the numerous such methods that neither
 use nor modify the context in any way (those not involving identifiers or user
@@ -740,18 +740,18 @@ defined functions).
 @< Local var... @>=
 shared_context execution_context;
 
-@~A disadvantage of using a static variable |shared_context| is that in case of
-exceptions it retains the value current before throwing. Therefore we need to
-explicitly reset the execution in such cases. Since it is a smart pointer,
-resetting automatically takes care of adjusting reference counts and maybe
-deleting values that are part of the discarded context.
+@~A disadvantage of using a static variable |execution_context| is, that in
+case of exceptions it retains the value current before throwing. Therefore we
+need to explicitly reset the execution in such cases. Since it is a smart
+pointer, resetting automatically takes care of adjusting reference counts and
+maybe deleting values that are part of the discarded context.
 
 @< Actions... @>=
 execution_context.reset();
 
 @ We derive the class of local identifiers from that of global ones, which
 takes care of its |print| method. The data stored are |depth| identifying a
-frame, and |offset| locating the proper values withing the frame.
+layer, and |offset| locating the proper values withing the layer.
 
 @< Type definitions @>=
 class local_identifier : public identifier
@@ -780,7 +780,7 @@ There is a subtlety in that the identifier may have a more general type than
 empty list, and a concrete type of list is required). In this case the first
 call of |specialise| below succeeds without making |type| equal to the
 identifier type |*id_t|, and if this happens we specialise the latter instead
-to |type|, using the |specialise| method either of the |frame| class (static)
+to |type|, using the |specialise| method either of the |layer| class (static)
 respectively of |global_id_table|. This ensures that the same
 local identifier cannot be subsequently used with an incompatible
 specialisation (notably any further assignments to the variable must respect
@@ -796,7 +796,7 @@ can manage to exploit this to get false type predictions.
 case applied_identifier:
 { const id_type id=e.identifier_variant;
   const_type_p id_t; size_t i,j;
-  const bool is_local=(id_t=frame::lookup(id,i,j))!=nullptr;
+  const bool is_local=(id_t=layer::lookup(id,i,j))!=nullptr;
   if (not is_local and (id_t=global_id_table->type_of(id))==nullptr)
     throw program_error  @|
        (std::string("Undefined identifier ")
@@ -809,7 +809,7 @@ case applied_identifier:
     { if (type!=*id_t)
       // usage has made type of identifier more specialised
       { if (is_local)
-          frame::specialise(i,j,type);
+          layer::specialise(i,j,type);
           // then refine its type in the local context
         else
           global_id_table->specialise(id,type); // or in |global_id_table|
@@ -1094,7 +1094,7 @@ in the overload table.
 { const id_type id =e.call_variant->fun.identifier_variant;
   const expr& arg=e.call_variant->arg;
   size_t i,j; // dummies; local binding not used here
-  if (not is_empty(arg) and frame::lookup(id,i,j)==nullptr)
+  if (not is_empty(arg) and layer::lookup(id,i,j)==nullptr)
   { const overload_table::variant_list& variants
       = global_overload_table->variants(id);
     if (variants.size()>0 or is_special_operator(id))
@@ -1596,13 +1596,16 @@ void lambda_expression::print(std::ostream& out) const
 @ We shall need some other functions to deal with patterns, all with a
 similar structure.
 
+@s back_insert_iterator vector
+
 @< Declarations of exported functions @>=
 type_expr pattern_type(const id_pat& pat);
 size_t count_identifiers(const id_pat& pat);
 void list_identifiers(const id_pat& pat, std::vector<id_type>& d);
-void thread_bindings(const id_pat& pat,const type_expr& type, frame& dst);
+void thread_bindings(const id_pat& pat,const type_expr& type, layer& dst);
 void thread_components
-  (const id_pat& pat,const shared_value& val, std::vector<shared_value>& dst);
+  (const id_pat& pat,const shared_value& val,
+   std::back_insert_iterator<std::vector<shared_value> > dst);
 
 @ For handling declarations with patterns as left hand side, we need a
 corresponding type pattern; for instance $(x,,(f,):z)$:\\{whole} requires the
@@ -1647,11 +1650,11 @@ void list_identifiers(const id_pat& pat, std::vector<id_type>& d)
 }
 
 @ Here we do a similar traversal, using a type of the proper structure,
-pushing pairs onto a |frame|.
+pushing pairs onto a |layer|.
 
 @< Function definitions @>=
 void thread_bindings
-(const id_pat& pat,const type_expr& type, frame& dst)
+(const id_pat& pat,const type_expr& type, layer& dst)
 { if ((pat.kind & 0x1)!=0) dst.add(pat.name,type.copy());
   if ((pat.kind & 0x2)!=0)
   { assert(type.kind==tuple_type);
@@ -1663,13 +1666,17 @@ void thread_bindings
 }
 
 @ Finally, at runtime we shall perform a similar manipulation with an
-appropriate |shared_value|.
+appropriate |shared_value|. This time we do use an output iterator. It happens
+that |*dst++ = val| below could be written simply |dst=val|, as the so omitted
+operators just return their arguments; however the given expression is more in
+the spirit of general iterator handling.
 
 @< Function definitions @>=
 void thread_components
-  (const id_pat& pat,const shared_value& val, std::vector<shared_value>& dst)
+  (const id_pat& pat,const shared_value& val
+  , std::back_insert_iterator<std::vector<shared_value> > dst)
 { if ((pat.kind & 0x1)!=0)
-     dst.push_back(val); // copy |shared_value| pointer, creating sharing
+     *dst++ = val; // copy |shared_value| pointer |val|, creating sharing
 
   if ((pat.kind & 0x2)!=0)
   { tuple_value* t=force<tuple_value>(val.get());
@@ -1684,8 +1691,8 @@ void thread_components
 identifiers from the right hand side of its declaration, then set up new
 bindings for those identifiers with the type found, and finally convert the
 body to the required type in the extended context. Note that the constructed
-|frame| is a local variable whose constructor pushes it onto the
-|frame::context| list, and whose destructor will pop it off.
+|layer| is a local variable whose constructor pushes it onto the
+|layer::context| list, and whose destructor will pop it off.
 The |expression| obtained from converting the body is first turned into a
 |lambda_expression|, and then an application of that expression to the
 argument is produced and returned.
@@ -1697,8 +1704,8 @@ case let_expr:
   type_expr decl_type=pattern_type(pat);
   expression_ptr arg = convert_expr(lexp->val,decl_type);
   size_t n_id=count_identifiers(pat);
-@/frame new_frame(n_id);
-  thread_bindings(pat,decl_type,new_frame);
+@/layer new_layer(n_id);
+  thread_bindings(pat,decl_type,new_layer);
   expression_ptr func(new lambda_expression(pat,convert_expr(lexp->body,type)));
   return expression_ptr(new call_expression(std::move(func),std::move(arg)));
 }
@@ -1744,7 +1751,7 @@ void closure_value::print(std::ostream& out) const
 }
 
 @ Evaluating a $\lambda$-expression just forms a closure using the current
-|execution_context|, and returns that.
+execution context, and returns that.
 
 While this code looks rather innocent, it should be noted that the sharing
 created here may survive after one or more frames on the list
@@ -1752,7 +1759,7 @@ created here may survive after one or more frames on the list
 function whose call produced that frame returns; these frames then get an
 extended lifetime through the closure formed here. This implies that the
 execution context cannot be embedded in any kind of stack, in particular it
-cannot be embedded in the \Cpp\ runtime stack (while the frames of the lexical
+cannot be embedded in the \Cpp\ runtime stack (while the layers of the lexical
 context could).
 
 @< Function def... @>=
@@ -1768,7 +1775,7 @@ during evaluation (which test was already presented). After the test we come
 to the code below, which in essence a call-by-value $\lambda$-calculus
 evaluator. An important part of the implementation work is already done in the
 form of the |evaluation_context| data structure and the way applied local
-identifiers have been translated into references by relative frame number and
+identifiers have been translated into references by relative layer number and
 offset. Notably the actual names of the identifiers are not used at all at
 runtime (they are present in the |id_pat| structure for printing purposes, but
 ignored by |thread_bindings| which is used here), and our implementation is
@@ -1786,13 +1793,11 @@ the original context is restored from the local variable |saved_context|.
 
 @< Call user-defined function |fun| with argument on |execution_stack| @>=
 { closure_value* f=force<closure_value>(fun.get());
-@)std::vector<shared_value> new_frame;
-  new_frame.reserve(count_identifiers(*f->param));
-  thread_components(*f->param,pop_value(),new_frame);
 @)
   shared_context saved_context(execution_context);
   execution_context =
-    std::make_shared<evaluation_context>(f->cont,std::move(new_frame));
+    std::make_shared<evaluation_context>(f->cont,count_identifiers(*f->param));
+  thread_components(*f->param,pop_value(),execution_context->back_inserter());
   f->body->evaluate(l); // pass evaluation level |l| to function body
   execution_context = saved_context;
 }
@@ -1855,13 +1860,11 @@ case) for producing the error trace.
 void overloaded_closure_call::evaluate(level l) const
 { argument->eval();
   try
-  { std::vector<shared_value> new_frame;
-    new_frame.reserve(count_identifiers(*fun->param));
-    thread_components(*fun->param,pop_value(),new_frame);
-@)
-    shared_context saved_context(execution_context);
-    execution_context =
-      std::make_shared<evaluation_context>(fun->cont,std::move(new_frame));
+  { shared_context saved_context(execution_context);
+    execution_context = std::make_shared<evaluation_context>
+      (fun->cont,count_identifiers(*fun->param));
+    thread_components(*fun->param,pop_value(),
+                      execution_context->back_inserter());
     fun->body->evaluate(l); // pass evaluation level |l| to function body
     execution_context = saved_context;
   }
@@ -1909,8 +1912,8 @@ case lambda_expr:
                      type_expr(arg_type.copy(),unknown_type.copy()),
                      std::move(type));
   size_t n_id=count_identifiers(pat);
-@/frame new_frame(n_id);
-  thread_bindings(pat,arg_type,new_frame);
+@/layer new_layer(n_id);
+  thread_bindings(pat,arg_type,new_layer);
   expression_ptr body = convert_expr(fun->body,type.func->result_type);
   return expression_ptr(new lambda_expression(pat,std::move(body)));
 }
@@ -2458,7 +2461,7 @@ case for_expr:
    type_expr void_t (void_type.copy());
     expression_ptr in_expr = convert_expr(f->in_part,in_type);  // \&{in} part
   subscr_base::sub_type which; // the kind of aggregate iterated over
-  frame bind(count_identifiers(f->id));
+  layer bind(count_identifiers(f->id));
    // for identifier(s) introduced in this loop
   @< Set |which| according to |in_type|, and set |bind| according to the
      identifiers contained in |f->id| @>
@@ -2521,13 +2524,11 @@ and it may remain the same between iterations.
 @< Function definitions @>=
 void for_expression::evaluate(level l) const
 { size_t n_id = count_identifiers(pattern);
-  shared_context saved_context=execution_context;
   in_part->eval();
   shared_tuple loop_var(new tuple_value(2));
        // this is safe to re-use between iterations
-  std::vector<shared_value> loop_frame; loop_frame.reserve(n_id);
-
   row_ptr result(nullptr);
+  shared_context saved_context=execution_context;
   @< Evaluate the loop, dispatching the various possibilities for |kind|, and
   setting |result| @>
 
@@ -2548,7 +2549,7 @@ switch (kind)
     size_t n=in_val->val.size();
     if (l!=no_value)
       result = row_ptr(new row_value(n));
-    for (size_t i=0; unsigned(i)<n; ++i,loop_frame.clear())
+    for (size_t i=0; unsigned(i)<n; ++i)
     { loop_var->val[1]=in_val->val[i]; // the row current component
       @< Set |loop_var->val[0]| to |i|, fill |loop_frame| according to
       |pattern| with values from |loop_var|, create a new |context| and
@@ -2562,7 +2563,7 @@ switch (kind)
     size_t n=in_val->val.size();
     if (l!=no_value)
       result = row_ptr(new row_value(n));
-    for (size_t i=0; unsigned(i)<n; ++i,loop_frame.clear())
+    for (size_t i=0; unsigned(i)<n; ++i)
     { loop_var->val[1].reset(new int_value(in_val->val[i]));
       @< Set |loop_var->val[0]| to |i|,... @>
     }
@@ -2573,7 +2574,7 @@ switch (kind)
     size_t n=in_val->val.size();
     if (l!=no_value)
       result = row_ptr(new row_value(n));
-    for (size_t i=0; unsigned(i)<n; ++i,loop_frame.clear())
+    for (size_t i=0; unsigned(i)<n; ++i)
     { loop_var->val[1].reset(new rat_value(Rational @|
         (in_val->val.numerator()[i],in_val->val.denominator())));
       @< Set |loop_var->val[0]| to |i|,... @>
@@ -2585,7 +2586,7 @@ switch (kind)
     size_t n=in_val->val.size();
     if (l!=no_value)
       result = row_ptr(new row_value(n));
-    for (size_t i=0; unsigned(i)<n; ++i,loop_frame.clear())
+    for (size_t i=0; unsigned(i)<n; ++i)
     { loop_var->val[1].reset(new string_value(in_val->val.substr(i,1)));
       @< Set |loop_var->val[0]| to |i|,... @>
     }
@@ -2596,7 +2597,7 @@ switch (kind)
     size_t n=in_val->val.numColumns();
     if (l!=no_value)
       result = row_ptr(new row_value(n));
-    for (size_t i=0; unsigned(i)<n; ++i,loop_frame.clear())
+    for (size_t i=0; unsigned(i)<n; ++i)
     { loop_var->val[1].reset(new vector_value(in_val->val.column(i)));
       @< Set |loop_var->val[0]| to |i|,... @>
     }
@@ -2628,10 +2629,9 @@ loop body is standard.
 
 @< Set |loop_var->val[0]| to |i|,... @>=
 loop_var->val[0].reset(new int_value(i)); // index; newly created each time
-thread_components(pattern,loop_var,loop_frame);
 execution_context =
-  std::make_shared<evaluation_context>(saved_context,std::move(loop_frame));
-// this one too
+  std::make_shared<evaluation_context>(saved_context,n_id); // this one too
+thread_components(pattern,loop_var,execution_context->back_inserter());
 if (l==no_value)
   body->void_eval();
 else
@@ -2648,12 +2648,12 @@ its header file.
   if (l!=no_value)
     result = row_ptr(new row_value(n));
   for (repr::SR_poly::base::const_iterator it=pol_val->val.begin();
-       it!=pol_val->val.end(); ++it,++i,loop_frame.clear())
+       it!=pol_val->val.end(); ++it,++i)
   { loop_var->val[0].reset(new module_parameter_value(pol_val->rf,it->first));
     loop_var->val[1].reset(new split_int_value(it->second));
-    thread_components(pattern,loop_var,loop_frame);
     execution_context =
-      std::make_shared<evaluation_context>(saved_context,std::move(loop_frame));
+      std::make_shared<evaluation_context>(saved_context,n_id);
+    thread_components(pattern,loop_var,execution_context->back_inserter());
     if (l==no_value)
       body->void_eval();
     else
@@ -2721,7 +2721,7 @@ case cfor_expr:
     ? expression_ptr(new denotation(zero))
     : convert_expr(c->bound,as_lvalue(int_type.copy())) ;
 @)
-  frame bind(1); bind.add(c->id,int_type.copy());
+  layer bind(1); bind.add(c->id,int_type.copy());
   type_expr body_type, *btp; const conversion_record* conv=nullptr;
   if (type==void_type)
     btp=&void_t;
@@ -2755,15 +2755,12 @@ void inc_for_expression::evaluate(level l) const
     c=0; // no negative size result
 
   shared_context saved_context=execution_context;
-  std::vector<shared_value>loop_frame(1);
-  shared_value& loop_var=loop_frame[0];
   if (l==no_value)
   { c+=b;
     for (int i=b; i<c; ++i)
-    { loop_var.reset(new int_value(i));
-      execution_context =
-        std::make_shared<evaluation_context>
-          (saved_context,std::move(loop_frame));
+    { execution_context =
+        std::make_shared<evaluation_context> (saved_context,1);
+      execution_context->back_inserter() = std::make_shared<int_value>(i);
       body->void_eval();
     }
   }
@@ -2771,10 +2768,8 @@ void inc_for_expression::evaluate(level l) const
   { row_ptr result (new row_value(0)); result->val.reserve(c);
     c+=b;
     for (int i=b; i<c; ++i)
-    { loop_var.reset(new int_value(i));
-      execution_context =
-        std::make_shared<evaluation_context>
-          (saved_context,std::move(loop_frame));
+    { execution_context = std::make_shared<evaluation_context>(saved_context,1);
+      execution_context->back_inserter() = std::make_shared<int_value>(i);
       body->eval(); result->val.push_back(pop_value());
     }
     push_value(std::move(result));
@@ -2792,15 +2787,11 @@ void dec_for_expression::evaluate(level l) const
     i=0; // no negative size result
 
   shared_context saved_context=execution_context;
-  std::vector<shared_value>loop_frame(1);
-  shared_value& loop_var=loop_frame[0];
   if (l==no_value)
   { i+=b;
     while (i-->b)
-    { loop_var.reset(new int_value(i));
-      execution_context =
-        std::make_shared<evaluation_context>
-          (saved_context,std::move(loop_frame));
+    { execution_context = std::make_shared<evaluation_context>(saved_context,1);
+      execution_context->back_inserter() = std::make_shared<int_value>(i);
       body->void_eval();
     }
   }
@@ -2808,10 +2799,8 @@ void dec_for_expression::evaluate(level l) const
   { row_ptr result (new row_value(0)); result->val.reserve(i);
     i+=b;
     while (i-->b)
-    { loop_var.reset(new int_value(i));
-      execution_context =
-        std::make_shared<evaluation_context>
-          (saved_context,std::move(loop_frame));
+    { execution_context = std::make_shared<evaluation_context>(saved_context,1);
+      execution_context->back_inserter() = std::make_shared<int_value>(i);
       body->eval(); result->val.push_back(pop_value());
     }
     push_value(std::move(result));
@@ -3043,7 +3032,7 @@ case ass_stat:
 {
   id_type lhs=e.assign_variant->lhs;
   const_type_p id_t; size_t i,j;
-  const bool is_local = (id_t=frame::lookup(lhs,i,j))!=nullptr;
+  const bool is_local = (id_t=layer::lookup(lhs,i,j))!=nullptr;
   if (not is_local and (id_t=global_id_table->type_of(lhs))==nullptr)
     throw program_error @| (std::string("Undefined identifier in assignment: ")
           +main_hash_table->name_of(lhs));
@@ -3052,7 +3041,7 @@ case ass_stat:
   expression_ptr r(convert_expr(e.assign_variant->rhs,rhs_type));
   if (rhs_type!=*id_t) // assignment will specialise identifier
   { if (is_local)
-      frame::specialise(i,j,rhs_type);
+      layer::specialise(i,j,rhs_type);
     else
       global_id_table->specialise(lhs,rhs_type);
   }
@@ -3301,7 +3290,7 @@ case comp_ass_stat:
   const expr& rhs=e.comp_assign_variant->rhs;
 @/const_type_p aggr_t; type_expr ind_t; type_expr comp_t;
   expression_ptr assign; size_t d,o; bool is_local;
-  if ((aggr_t=frame::lookup(aggr,d,o))!=nullptr)
+  if ((aggr_t=layer::lookup(aggr,d,o))!=nullptr)
     is_local=true;
   else if ((aggr_t=global_id_table->type_of(aggr))!=nullptr)
     is_local=false;
