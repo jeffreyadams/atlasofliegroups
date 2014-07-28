@@ -58,7 +58,7 @@ namespace atlas { namespace interpreter {
 @c
 namespace atlas { namespace interpreter {
 @< Global variable definitions @>@;
-namespace {@;
+namespace {
 @< Local class definitions @>@;
 @< Local variable definitions @>@;
 @< Local function definitions @>@;
@@ -109,8 +109,8 @@ void reset_evaluator()
 This module is concerned with the processing of the abstract syntax tree as
 produced by the parser, ultimately producing actions and computed values. This
 processing consist of two separate stages: type analysis, which also
-transforms the syntax tree into a more directly executable form, and execution
-of those transformed expressions.
+transforms the syntax tree into a more directly executable form and therefore
+might be called compilation, and execution of those transformed expressions.
 
 The expression returned by the parser, of type |expr|, and the conversion to
 the executable format |expression| (a type defined in \.{types.w} as a pointer
@@ -168,7 +168,7 @@ resulting value could have all possible types at once). This situation would
 also happen for a function defined recursively without any terminating case,
 if it were possible to specify such a function in \.{realex} (in reality the
 somewhat tedious method that currently is the only way to define recursive
-functions in\.{realex} requires the type of the function to be fixed
+functions in \.{realex} requires the type of the function to be fixed
 beforehand, so this case does not occur). Therefore we might treat the case
 where |convert_expr| leaves |type| completely undetermined as a type error;
 currently this is not signalled as such, but  occasionally we do choose to
@@ -181,35 +181,36 @@ expression_ptr convert_expr(const expr& e, type_expr& type);
 @ In the function |convert_expr| we shall need a type for storing bindings
 between identifiers and types, and this will be the |layer| class. It stores a
 vector of type |layer::vec| of individual bindings, while it automatically
-pushes (a reference to) itself on a stack |layer::context| of such vectors.
-Instances of |layer| shall always be stored in ordinary (stack-allocated)
-variables; since their unique constructor pushes the new object, and their
-destructor pops it, |layer::context| is guaranteed to hold at all times a list
-of references to all current |layer| objects, from newest to oldest. This
-invariant is maintained even in the presence of exceptions that may be thrown
-during type analysis. Since the space on the runtime stack occupied by a
-|vector| is hardly larger than that of the reference to it, this is mostly a
-proof-of-concept, namely that lists can be handled with storage for the
-elements in automatic variables residing in the runtime stack. The
-fact that pushing and popping is automatically managed in an exception-safe
-manner is also cute; however explicitly clearing the list in case of an
-exception, as used to be done, would also work.
+pushes (a reference to) itself on a stack |layer::lexical_context| of such
+vectors. Instances of |layer| shall always be stored in ordinary
+(stack-allocated) variables; since their unique constructor pushes the new
+object, and their destructor pops it, |layer::lexical_context| is guaranteed
+to hold at all times a list of references to all current |layer| objects, from
+newest to oldest. This invariant is maintained even in the presence of
+exceptions that may be thrown during type analysis. Since the space on the
+runtime stack occupied by a |vector| is hardly larger than that of the
+reference to it, this is mostly a proof-of-concept, namely that lists can be
+handled with storage for the elements in automatic variables residing in the
+runtime stack. The fact that pushing and popping is automatically managed in
+an exception-safe manner is also cute; however in case of an exception
+explicitly clearing the list in |reset_evaluator|, as used to be done, would
+also work.
 
 @< Type def... @>=
 class layer
 {
-  typedef containers::simple_list<std::reference_wrapper<layer> > list;
+  typedef containers::simple_list<layer*> list;
 public:
   typedef std::vector<std::pair<id_type,type_expr> > vec;
-  static list context; // the unique |layer::list| in existence
+  static list lexical_context; // the unique |layer::list| in existence
 private:
   vec variable;
 public:
   layer(const layer&) = @[delete@]; // no ordinary copy constructor
   layer& operator= (const layer&) = @[delete@]; // nor assignment operator
   layer(size_t n) : variable()
-  @+{@; variable.reserve(n); context.emplace_front(std::ref(*this)); }
-  ~layer () @+{@; context.pop_front(); }
+  @+{@; variable.reserve(n); lexical_context.push_front(this); }
+  ~layer () @+{@; lexical_context.pop_front(); }
 @)
   void add(id_type id,type_expr&& t);
   static const_type_p lookup
@@ -217,15 +218,17 @@ public:
   static void specialise (size_t depth, size_t offset,const type_expr& t);
 @)
   std::pair<id_type,type_expr>& operator[] (size_t i)
-    {@; return variable[i]; }
+  @+{@; return variable[i]; }
   vec::iterator begin() @+{@; return variable.begin(); }
   vec::iterator end() @+{@; return variable.end(); }
+  vec::const_iterator cbegin() @+{@; return variable.begin(); }
+  vec::const_iterator cend() @+{@; return variable.end(); }
 };
 
 
 @ The method |add| adds a pair to the vector of bindings; the type is moved
-into the |layer| object. This is also a good place to check for the
-presence of identical identifiers.
+into the |layer| object. This is also a good place to check for the presence
+of identical identifiers.
 
 @< Function def... @>=
 void layer::add(id_type id,type_expr&& t)
@@ -239,62 +242,52 @@ void layer::add(id_type id,type_expr&& t)
   variable.emplace_back( id, std::move(t) );
 }
 
-@ During conversion of expressions, we keep a stack |layer::context| of
-identifier bindings in order to determine their (lexical) binding and type.
+@ During conversion of expressions, we keep a stack |layer::lexical_context|
+of identifier bindings in order to determine their (lexical) binding and type.
 Making this a static member if the |layer| class means we cannot start an
 independent call of |convert_expr| (one that does not build upon the current
 lexical context) while some instance of |convert_expr| is still active. Since
 we do not intend to do that, this is not a problem.
 
 @< Global var... @>=
-layer::list layer::context;
+layer::list layer::lexical_context;
 
-@ The method |lookup| runs through the linked list of bindings and returns a
+@ The method |lookup| runs through the linked list of layers and returns a
 pointer to the type if a match for the identifier |id| was found, also
 assigning its static binding coordinates to output arguments |depth| and
 |offset|. If no match is found a null pointer is returned and the output
 parameters are unchanged.
 
-It will be of importance that this function returns a |type_p| rather than a
-|const_type_p|, in other words that callers have the possibility to modify the
-type returned for a local variable. This may seem strange, but it allows for
-instance to introduce a variable in a let-expression initialised to an empty
-row (of type `\.{[*]}'), and the have the type specialised when the variable
-is being used. Remarkably the type analyser handles such cases reasonably well
-without any specific effort (it merely follows from the way |convert_expr|
-uses its argument |type| both to import and to export type information), but
-users might be warned that there may be some surprises (the type of the local
-variable getting more specific from left to right), which may be prevented by
-casting the empty row to a specific row type.
-
-For this reason this function might be considered a manipulator (modifier)
-rather than an accessor (observer). Technically, this is meaningless, since
-this is a static method (there is no |this|), but the iterator over
-|range->variable| below cannot be taken to be a |const_iterator|. Just to
-illustrate that the references held in the list shield off |const|-ness (even
-from a |const_iterator| pointing to a |std::reference_wrapper| instance,
-calling the |get| method will produce a modifiable reference) we have made the
-outer iterator |range| (but not the inner one) a const-iterator.
+There is a possibility that a caller will afterwards want to specialise the
+type found for an identifier, if the type returned here has some unknown
+component as in `\.{[*]}', and if the subsequent usage of the identifier makes
+clear what specific type is to replace the `\.*'. For this reason this
+function used to return a |type_p| rather than a |const_type_p|. This
+signature has now been changed to force such after-the-fact type
+specialisations to be made more explicit; they now require calling the method
+|layer::specialise|. For this reason |lookup| can use const-iterators, and in
+fact |specialise| can as well because pointers insulate const-ness.
 
 @< Function def... @>=
 const_type_p layer::lookup
   (id_type id, size_t& depth, size_t& offset)
 { size_t i=0;
-  for (auto range=context.cbegin(); not context.at_end(range); ++range,++i)
-    for (auto it=range->get().begin(); it!=range->get().end(); ++it)
+  for (auto range=lexical_context.cbegin(); not lexical_context.at_end(range);
+       ++range,++i)
+    for (auto it=(*range)->cbegin(); it!=(*range)->cend(); ++it)
       if (it->first==id)
       {@; depth=i;
-        offset=it-range->get().begin();
+        offset=it-(*range)->begin();
         return &it->second;
       }
   return nullptr;
 }
 @)
 void layer::specialise (size_t depth, size_t offset,const type_expr& t)
-{ auto range=context.begin();
+{ auto range=lexical_context.cbegin();
   while (depth-->0)
     ++range;
-  range->get()[offset].second.specialise(t);
+  (**range)[offset].second.specialise(t);
 }
 
 @ The function |convert_expr| returns a owning pointer |expression_ptr| to the
@@ -322,7 +315,7 @@ expression_ptr convert_expr(const expr& e, type_expr& type)
 Let us define a first class derived from |expression_base|, which is
 |denotation|; it simply stores a |value|, which it returns upon evaluation.
 The value may be passed by constant reference or by rvalue reference to
-|shared_ptr|); in the former case it creates an additional sharing, and in the
+|shared_ptr|; in the former case it creates an additional sharing, and in the
 latter case ownership is transferred upon construction of the |denoted_value|
 field. The latter case will notably apply in case the argument expression is
 the result of calling |std::make_shared|.
@@ -351,8 +344,9 @@ struct denotation : public expression_base
 @ Here are the first examples of the conversions done in |convert_expr|. Each
 time we extract a \Cpp\ value from the |expr| produced by the parser,
 construct and |new|-allocate a \.{realex} value (for instance |int_value|)
-from it using |std::make_shared|, get a smart pointer to it, and pass that to
-the |denotation| constructor
+from it making the pointer shared using |std::make_shared|, pass that
+pointer to the |denotation| constructor, and convert the resulting pointer to
+a unique pointer.
 
 The code below takes into account the possibility that a denotation is
 converted immediately to some other type, for instance integer denotations can
@@ -613,27 +607,27 @@ list display.
 
 @* Identifiers.
 %
-Identifiers are use to access values of all types, and also for designating
+Identifiers are used to access values of all types, and also for designating
 overloaded functions. In the latter usage a single identifier can be used to
-access (depending on its immediate context) one of many values, and require a
-certain amount of work to determine which one; this will be discussed later,
-so for the moment we stick to simple applied identifiers that identify the
-closest defining occurrence of that identifier in the current lexical context.
-This identification can result in two outcomes: it may be bound to a local or
-to a global name, which two cases are treated in fairly different way. In
-particular after type analysis the two cases are converted into different
-kinds of |expression|. The most fundamental difference is that for global
-identifiers a value is already known at the time the identifier expression is
-type-checked, and the type of this value can be used; for local identifiers
-just a type is associated to the identifier during type analysis, and indeed
-during different evaluations the same local identifier may find itself bound
-to different values.
+access (depending on its immediate context) one of many values, and it
+requires a certain amount of work to determine which one; this will be
+discussed later, so for the moment we stick to simple applied identifiers that
+identify the closest defining occurrence of that identifier in the current
+lexical context. This identification can result in two outcomes: it may be
+bound to a local or to a global name, which two cases are treated in fairly
+different way. In particular after type analysis the two cases are converted
+into different kinds of |expression|. The most fundamental difference is that
+for global identifiers a value is already known at the time the identifier
+expression is type-checked, and the type of this value can be used; for local
+identifiers just a type is associated to the identifier during type analysis,
+and indeed during different evaluations the same local identifier may find
+itself bound to different values.
 
 Global identifiers values will be stored in a global identifier table holding
 values and their types. The values of local identifiers will be stored at
-runtime in a stack |execution_context| of variable bindings, but not their
-types (these are held in |layer| values during type analysis, and have
-disappeared at evaluation time).
+runtime in a stack |frame::current| of variable bindings, but not their types
+(these are held in |layer| values during type analysis, and have disappeared
+at evaluation time).
 
 In spite of these differences there is some common ground for global and local
 identifiers: they have a name that can be printed. For this reason we derive
@@ -762,11 +756,11 @@ context |frame::current|, by calling the method |evaluation_context::elem|.
 void local_identifier::evaluate(level l) const
 {@; push_expanded(l,frame::current->elem(depth,offset)); }
 
-@ When type-checking an applied identifier, we first look in |id_context| for
-a binding of the identifier; if found it will be a local identifier, and
-otherwise we look in |global_id_table|. If found in either way, the associated
-type must equal the expected type (if any), or be convertible to it using
-|coerce|.
+@ When type-checking an applied identifier, we first look in
+|layer::lexical_context| for a binding of the identifier; if found it will be
+a local identifier, and otherwise we look in |global_id_table|. If found in
+either way, the associated type must equal the expected type (if any), or be
+convertible to it using |coerce|.
 
 There is a subtlety in that the identifier may have a more general type than
 |type| required by the context (for instance if it was \&{let} equal to an
@@ -780,7 +774,7 @@ specialisation (notably any further assignments to the variable must respect
 the more specific type). It remains a rare circumstance that an applied
 occurrence (rather than an assignment) of a local identifier specialises its
 type; it could happen if the identifier is used in a cast. However type safety
-requires that we record the type to which the identifier value was
+requires that we always record the type to which the identifier value was
 specialised, since if one allows different specialisations of the same
 identifier type to be made in different subexpressions, then a devious program
 can manage to exploit this to get false type predictions.
@@ -811,7 +805,7 @@ case applied_identifier:
     }
   else if (coerce(*id_t,type,id_expr))
     return id_expr;
-  else throw type_error(e,id_t->copy(),std::move(type));
+  throw type_error(e,id_t->copy(),std::move(type));
 }
 
 @*1 Resolution of operator and function overloading.
@@ -1483,7 +1477,7 @@ bool can_coerce_arg
 }
 
 
-@* Let-expressions.
+@* Let- and $\lambda$-expressions, and identifier patterns.
 %
 We shall now consider a simple type of expression in which local variables
 occur, the let-expression. It is equivalent to an anonymous function
@@ -1685,7 +1679,7 @@ identifiers from the right hand side of its declaration, then set up new
 bindings for those identifiers with the type found, and finally convert the
 body to the required type in the extended context. Note that the constructed
 |layer| is a local variable whose constructor pushes it onto the
-|layer::context| list, and whose destructor will pop it off.
+|layer::lexical_context| list, and whose destructor will pop it off.
 The |expression| obtained from converting the body is first turned into a
 |lambda_expression|, and then an application of that expression to the
 argument is produced and returned.
@@ -1696,32 +1690,35 @@ case let_expr:
   id_pat& pat=lexp->pattern;
   type_expr decl_type=pattern_type(pat);
   expression_ptr arg = convert_expr(lexp->val,decl_type);
-  size_t n_id=count_identifiers(pat);
-@/layer new_layer(n_id);
+@/layer new_layer(count_identifiers(pat));
   thread_bindings(pat,decl_type,new_layer);
   expression_ptr func(new lambda_expression(pat,convert_expr(lexp->body,type)));
   return expression_ptr(new call_expression(std::move(func),std::move(arg)));
 }
 
-@ Before we can dicuss the evaluation of user-defined functions, we need to
-introduce a type for the intermediate value produced by the anonymous
-function, before it is actually called. Such a value is traditionally called a
+@* Closures, and the evaluation of user defined functions.
+%
+Before we discuss the evaluation of user-defined functions, we need to
+introduce a type for the intermediate value produced by $\lambda$~expressions,
+before they are actually called. Such a value is traditionally called a
 closure, and it contains (a reference to) the expression body, as well as the
-evaluation context current at the point the anonymous function is produced.
+evaluation context current at the point the $\lambda$~expression is
+encountered.
 
 @< Type def... @>=
 struct closure_value : public value_base
-{ shared_context cont;
+{ shared_context context;
   shared_pattern param;
    // used in evaluation only to count arguments
   shared_expression body;
 @)
   closure_value@|(const shared_context& c,
                   const shared_pattern& p,
-                  const shared_expression& b) : cont(c), param(p), body(b) @+{}
+                  const shared_expression& b)
+  : context(c), param(p), body(b) @+{}
   void print(std::ostream& out) const;
   closure_value* clone() const @+
-  {@; return new closure_value(cont,param,body); }
+  {@; return new closure_value(context,param,body); }
   static const char* name() @+{@; return "closure"; }
 };
 typedef std::unique_ptr<closure_value> closure_ptr;
@@ -1729,9 +1726,8 @@ typedef std::shared_ptr<closure_value> shared_closure;
 
 @ For now a closure prints just like the |lambda_expression| from which it was
 obtained. One could imagine printing after this body ``where'' followed by the
-bindings held in the |context| field. Even better only the bindings for
-relevant (because referenced) identifiers could be printed. But it's not done
-yet.
+bindings held in the |c| field. Even better only the bindings for relevant
+(because referenced) identifiers could be printed. But it's not done yet.
 
 @< Function def... @>=
 void closure_value::print(std::ostream& out) const
@@ -1746,8 +1742,8 @@ void closure_value::print(std::ostream& out) const
 @ Evaluating a $\lambda$-expression just forms a closure using the current
 execution context, and returns that.
 
-While this code looks rather innocent, it should be noted that the sharing
-created here may survive after one or more frames on the list
+While this code looks rather innocent, note that the sharing of
+|frame::current| created here may survive after one or more frames on the list
 |frame::current| get removed (in the code to be shown presently) when the
 function whose call produced that frame returns; these frames then get an
 extended lifetime through the closure formed here. This implies that the
@@ -1761,11 +1757,12 @@ void lambda_expression::evaluate(level l) const
      push_value(closure_ptr(new closure_value(frame::current,param,body)));
 }
 
-@ Here is a class whose main purpose is to have a constructor-destructor pair
-that temporarily suspends the current execution context, replacing it by a new
-one determined by an identifier pattern and an execution context for the
-enclosing lexical layers. All instances of this class should be automatic
-(local) variables, to ensure that they have nested lifetimes.
+@ Here is a class whose main purpose, like that of |layer| before, is to have
+a constructor-destructor pair that temporarily suspends the current execution
+context, replacing it by a new one determined by an identifier pattern and an
+execution context for the enclosing lexical layers. All instances of this
+class should be automatic (local) variables, to ensure that they have nested
+lifetimes.
 
 @< Local class definitions @>=
 class frame
@@ -1781,46 +1778,45 @@ public:
      std::make_shared<evaluation_context>(outer,count_identifiers(pattern));
  }
  ~frame() @+{@; current = std::move(saved); }
- void bind (const shared_value& val);
+ void bind (const shared_value& val)
+ {@; thread_components(pattern,val,current->back_inserter());}
 };
-@)
-void frame::bind (const shared_value& val)
-{@; thread_components(pattern,val,current->back_inserter());
-}
 
-@ A call of a user-defined function passes through the same code as that of a
-built-in function; after all, the type check does not make a difference
-between the two kinds, so the distinction can only be made by a dynamic test
-during evaluation (which test was already presented). After the test we come
-to the code below, which in essence a call-by-value $\lambda$-calculus
-evaluator. An important part of the implementation work is already done in the
-form of the |evaluation_context| data structure and the way applied local
-identifiers have been translated into references by relative layer number and
-offset. Notably the actual names of the identifiers are not used at all at
-runtime (they are present in the |id_pat| structure for printing purposes, but
-ignored by |thread_bindings| which is used here), and our implementation is
-one using ``nameless dummies'' (also known as ``de Bruijn indicies'').
+@ When calling a function in a non overloading manner, we come to the code
+below if it turns out not to be a built-in function. This code basically
+implements a call-by-value $\lambda$-calculus evaluator, in concert with the
+|evaluation_context| data structure and the translation of applied local
+identifiers into references by relative layer number and offset. The names of
+the identifiers are not used at all at runtime (they are present in the
+|id_pat| structure for printing purposes, but ignored by the |bind| method
+used here); our implementation can be classified as one using ``nameless
+dummies'' (also known as ``de Bruijn indices'').
 
 When we come here |f| must be a |closure_value|, and the argument has already
 been evaluated, and is available as a single value on the |execution_stack|.
-The evaluation of the call just temporarily replaces the current execution
-context by one composed of the context stored in the closure onto which a new
-frame defined by the parameter list |f->param| and the argument value is
-pushed; the function body is evaluated in this extended context. Afterwards
-the original context is restored from the local variable |saved_context|.
+The evaluation of the call temporarily replaces the current execution context
+|frame::current| by one composed of |f->context| stored in the closure and a
+new frame defined by the parameter list |f->param| and the argument obtained
+as |pop_value()|; the function body is evaluated in this extended context.
+Afterwards the original context is restored by the destructor of~|fr|, whether
+the call completes normally or is terminated by a runtime error. This approach
+will have its most important use when the language will allow controlled
+abnormal exit from evaluation of subexpressions, such as breaking out of
+loops, explicit returning from functions, an user defined exception handling;
+currently however, none of these are possible yet.
 
 @: lambda evaluation @>
 
 @< Call user-defined function |fun| with argument on |execution_stack| @>=
 { closure_value* f=force<closure_value>(fun.get());
 @)
-  frame fr(*f->param,f->cont); // save context, create new one for |f|
-  fr.bind(pop_value());
-  f->body->evaluate(l); // pass evaluation level |l| to function body
+  frame fr(*f->param,f->context); // save context, create new one for |f|
+  fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
+  f->body->evaluate(l); // call, passing evaluation level |l| to function body
 } // restore context upon destruction of |fr|
 
 @ For function overloads given by a user-defined function, we need a new
-expression type which is capable of storing a closure value.
+|expression| type which is capable of storing a closure value.
 
 @< Type definitions @>=
 struct overloaded_closure_call : public expression_base
@@ -1863,23 +1859,25 @@ if it was not a |builtin_value|.
     expression_ptr(new overloaded_closure_call(fun,name.str(),std::move(arg)));
 }
 
-@ Evaluation of an overloaded function call bound to a closure is a simplified
-version the part of |call_expression::evaluate| dedicated to closures,
-including the temporary catching of errors in order to produce a trace of
-interrupted function calls in the error message, and the evaluation part of
-section@# lambda evaluation @>. The simplification consists of the fact that
-the closure is already evaluated and stored, and that in particular we don't
-have to distinguish dynamically between built-in functions and closures, nor
-between calls of anonymous or named functions (we are always in the latter
-case) for producing the error trace.
+@ Evaluation of an overloaded function call bound to a closure consists of a
+simplified version of the part of |call_expression::evaluate| dedicated to
+closures (including the temporary catching of errors in order to produce a
+trace of interrupted function calls in the error message) together with the
+evaluation part of section@# lambda evaluation @>. The simplification consists
+of the fact that the closure is already evaluated and stored, and that in
+particular we don't have to distinguish dynamically between built-in functions
+and closures, nor between calls of anonymous or named functions (we are always
+in the latter case) for producing the error trace.
 
 @< Function definitions @>=
 void overloaded_closure_call::evaluate(level l) const
 { argument->eval();
   try
-  { frame fr(*fun->param,fun->cont); // save context, create new one for |fun|
-    fr.bind(pop_value());
-    fun->body->evaluate(l); // pass evaluation level |l| to function body
+  { frame fr(*fun->param,fun->context);
+    // save context, create new one for |fun|
+    fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
+    fun->body->evaluate(l);
+    // call, passing evaluation level |l| to function body
   }
   catch (const std::exception& e)
   { const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
@@ -1891,7 +1889,7 @@ void overloaded_closure_call::evaluate(level l) const
   }
 }
 
-@* User-defined functions.
+@* Compilation of user-defined functions.
 %
 Now we shall consider the general case of a user-defined function. But nearly
 all of the work is already done, notably defining the evaluation of built-in
@@ -1901,7 +1899,7 @@ how to type-check and convert the case |lambda_expr| of an |expr| constructed
 by the parser; the necessary types derived from |expression| that provide
 their implementation were already introduced.
 
-We first test if the required |type| specialises to a function type, i.,
+We first test if the required |type| specialises to a function type, i.e.,
 either it was some function type or undefined. Then we get the argument type
 |arg_type| from the function expression the parser provided. We further
 specialise the argument type of |type| to the argument type of the function
@@ -1924,8 +1922,7 @@ case lambda_expr:
   @/throw type_error(e,
                      type_expr(arg_type.copy(),unknown_type.copy()),
                      std::move(type));
-  size_t n_id=count_identifiers(pat);
-@/layer new_layer(n_id);
+@/layer new_layer(count_identifiers(pat));
   thread_bindings(pat,arg_type,new_layer);
   expression_ptr body = convert_expr(fun->body,type.func->result_type);
   return expression_ptr(new lambda_expression(pat,std::move(body)));
@@ -2527,12 +2524,12 @@ bindings for the new variables whose scope is the loop body: the loop variable
 (with as value a component of the |in_part|), any named sub-components of it,
 and the optional name given to the loop index. The shared pointers held in
 this frame must be different on each iteration, because the body might get
-hold, through a closure that incorporates the |context| constructed below, of
-a copy of those pointers; this closure should not get to see changing values
-of variables during subsequent iterations. On the other hand, the syntax does
-not allow users to name the entire tuple |loop_var| formed of the loop index
-and the in-part component, so this pointer cannot end up in the |loop_frame|
-and it may remain the same between iterations.
+hold, through a closure that incorporates the |evaluation_context| constructed
+below, of a copy of those pointers; this closure should not get to see
+changing values of variables during subsequent iterations. On the other hand,
+the syntax does not allow users to name the entire tuple |loop_var| formed of
+the loop index and the in-part component, so this pointer cannot end up in the
+|loop_frame| and it may remain the same between iterations.
 
 @< Function definitions @>=
 void for_expression::evaluate(level l) const
@@ -2627,8 +2624,8 @@ We set the in-part component stored in |loop_var->val[1]| separately for the
 various values of |kind|, but |loop_var->val[0]| is always the (integral) loop
 index. Once initialised, |loop_var| is passed through the function
 |thread_components| to set up |loop_frame|, whose pointers are copied into a
-new |context| that extends the initial |saved_context| to form the new
-execution context. Like for |loop_var->val[0]|, it is important that
+new |evaluation_context| that extends the initial |saved_context| to form the
+new execution context. Like for |loop_var->val[0]|, it is important that
 |frame::current| be set to point to a newly created node at each iteration,
 since any closure values in the loop body will incorporate its current
 instance; there would be no point in supplying fresh pointers in |loop_var| if
