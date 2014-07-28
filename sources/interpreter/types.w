@@ -1376,6 +1376,7 @@ public:
   shared_value& elem(size_t i,size_t j);
   std::back_insert_iterator<std::vector<shared_value> > back_inserter ()
   {@; return std::back_inserter(frame); }
+  const shared_context& tail() const { return next; }
 };
 
 @ The method |evaluation_context::elem| descends the stack and then selects a

@@ -1764,22 +1764,43 @@ execution context for the enclosing lexical layers. All instances of this
 class should be automatic (local) variables, to ensure that they have nested
 lifetimes.
 
+Context switching is a crucial and recurrent step in the evaluation process,
+so we take care to not change the reference count of |frame::current|. It is
+either \emph{moved} into |saved| or copied to the tail of the new context, and
+the destructor moves from this destination back to |frame::current|. The former
+case needs a try block for exception safety, a an exception may occur between
+the move and the completion of the constructor.
+
 @< Local class definitions @>=
 class frame
 {
-  shared_context saved;
   const id_pat& pattern;
+  const bool switched;
+  const shared_context saved;
 public:
   static shared_context current;
 @)
-  frame (const id_pat& pattern, const shared_context& outer=current)
- : saved(current), pattern(pattern)
- {@; current =
-     std::make_shared<evaluation_context>(outer,count_identifiers(pattern));
- }
- ~frame() @+{@; current = std::move(saved); }
- void bind (const shared_value& val)
- {@; thread_components(pattern,val,current->back_inserter());}
+  frame (const id_pat& pattern)
+  : pattern(pattern), switched(false), saved(nullptr)
+  {@; current =
+     std::make_shared<evaluation_context>(current,count_identifiers(pattern));
+  }
+  frame (const id_pat& pattern, const shared_context& outer)
+  : pattern(pattern), switched(true), saved(std::move(current))
+  { assert(&outer!=&current); // for excluded case use the other constructor
+    try
+    {@; current =
+      std::make_shared<evaluation_context>(outer,count_identifiers(pattern));
+    }
+    catch(...)
+    {@; current = std::move(saved);
+      throw;
+    } // restore as the destructor would do
+  }
+  ~frame()
+    @+{@; current = std::move(*(switched ? &saved : &current->tail())); }
+  void bind (const shared_value& val)
+     {@; thread_components(pattern,val,current->back_inserter());}
 };
 
 @ When calling a function in a non overloading manner, we come to the code

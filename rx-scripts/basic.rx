@@ -151,7 +151,7 @@ set % (mat m,int d) = mat: map_on(m)((int e) int: e%d)
 
 set ^ =
   let matrix_power (mat m,int n)= mat: m { dummy for recursion }
-  then () = matrix_power := { assign recusive function body }
+  then () = matrix_power := { assign recursive function body }
     ( (mat m,int n): { we hall have n>0 }
       if n=1 then m
       else let (q,r)=n\%2 then mm=matrix_power(m,q) in
