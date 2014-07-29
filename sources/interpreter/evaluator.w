@@ -1534,6 +1534,43 @@ id_pat copy_id_pat(const id_pat& p)
   return id_pat (p.name, p.kind, rl.undress());
 }
 
+@ Now we can define our let-expression to use a |shared_pattern|; the
+body is also shared.
+
+@< Type def... @>=
+struct let_expression : public expression_base
+{ const id_pat variable;
+  expression_ptr initialiser, body;
+@)
+  let_expression(const id_pat& v, expression_ptr&& ini, expression_ptr&& b);
+  virtual ~let_expression() @+{} // subobjects do all the work
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ The main constructor cannot be inside the class definition, as it requires
+the local function |copy_id_pat|. The variable (pattern) is stored directly in
+the |let_expression| node, while for the two expression components ownership
+is transferred from the passed unique-pointer values.
+
+@< Function def... @>=
+inline
+let_expression::let_expression @|
+  (const id_pat& v, expression_ptr&& ini, expression_ptr&& b)
+: variable(copy_id_pat(v))
+, initialiser(ini.release())
+, body(b.release())
+@+{}
+
+@ To print a let expression, we reproduce the input syntax, as far as
+possible; restructuring done during type analysis makes it impossible to know
+the exact form used at input.
+
+@< Function definitions @>=
+void let_expression::print(std::ostream& out) const
+{@; out << " let " << variable << "=" << *initialiser << " in " << *body;
+}
+
 @ Now we can define our $\lambda$-expression to use a |shared_pattern|; the
 body is also shared.
 
@@ -1549,10 +1586,10 @@ struct lambda_expression : public expression_base
 };
 
 @ The main constructor cannot be inside the class definition, as it requires
-the local function |copy_id_pat|. It creates a new node at the head of
-|param|, which will henceforth be shared, and fills it with a deep copy. For
-the body we create sharing as well, which is simpler since the passed
-unique-pointer already gives us ownership.
+the local function |copy_id_pat|. It copies the pattern and creates a new
+shared reference to the copy (further sharing will occur when the
+$\lambda$-expression is evaluated). For the body we create sharing as well,
+which is simpler since the passed unique-pointer already gives us ownership.
 
 @< Function def... @>=
 inline
@@ -1572,9 +1609,7 @@ then this might no longer be true.
 
 @< Function definitions @>=
 void lambda_expression::print(std::ostream& out) const
-{ if (param.get()==nullptr)
-    out << "()";
-  else if ((param->kind&0x1)!=0)
+{ if ((param->kind&0x1)!=0)
     out << '(' << *param << ')';
   else out << *param;
   out << ": " << *body;
@@ -1692,9 +1727,22 @@ case let_expr:
   expression_ptr arg = convert_expr(lexp->val,decl_type);
 @/layer new_layer(count_identifiers(pat));
   thread_bindings(pat,decl_type,new_layer);
-  expression_ptr func(new lambda_expression(pat,convert_expr(lexp->body,type)));
-  return expression_ptr(new call_expression(std::move(func),std::move(arg)));
+  return expression_ptr(new @|
+    let_expression(pat,std::move(arg),convert_expr(lexp->body,type)));
 }
+
+@ Evaluating a let expression is now straightforward: evaluate the initialiser
+to produce a value on the stack; then create a new |frame| in which this value
+is bound to the pattern |variable|, and in this extended context evaluate
+the~|body|.
+@< Function def... @>=
+void let_expression::evaluate(level l) const
+{ initialiser->eval(); // evaluate on stack as single value
+@)
+  frame fr(variable); // save context, create new one for |f|
+  fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
+  body->evaluate(l); // call, passing evaluation level |l| to function body
+} // restore context upon destruction of |fr|
 
 @* Closures, and the evaluation of user defined functions.
 %
@@ -1731,9 +1779,7 @@ bindings held in the |c| field. Even better only the bindings for relevant
 
 @< Function def... @>=
 void closure_value::print(std::ostream& out) const
-{ if (param.get()==nullptr)
-    out << "()";
-  else if ((param->kind&0x1)!=0)
+{ if ((param->kind&0x1)!=0)
     out << '(' << *param << ')';
   else out << *param;
   out << ": " << *body;
