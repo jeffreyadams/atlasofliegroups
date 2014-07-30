@@ -1477,52 +1477,40 @@ bool can_coerce_arg
 }
 
 
-@* Let- and $\lambda$-expressions, and identifier patterns.
+@* Let-expressions, and identifier patterns.
 %
 We shall now consider a simple type of expression in which local variables
 occur, the let-expression. It is equivalent to an anonymous function
-($\lambda$-expression) applied to the expression(s) in the let-declarations,
-but no types need to be declared for the function parameters, since the types
-of the corresponding expressions can be used for this. Nevertheless, we
-currently convert let-expressions to an internal form that is exactly an
-application of a $\lambda$-expression, hiding the syntactic origin of the
-expression. This economy of implementation does not seem to have a too
-negative effect on performance. (However it might still be that a direct
-implementation of let-expressions, without building an intermediate closure
-value, turns out to be more efficient, so this implementation of
-let-expressions could change in the future.) In our presentation this gives
-us an occasion to introduce $\lambda$-expressions as a new form
-of~|expression|, but in fact it is quite useful independently of its use for
-let-expressions.
+($\lambda$-expression) applied to the initialiser expression(s) in the
+let-declarations, but no types need to be declared for the variable(s)
+introduced, since the types of the corresponding expressions can be used for
+this. Nevertheless, let-expressions could be represented internally, and
+indeed were for a very long time, as a call in which the function is given by
+a $\lambda$-expression, thus hiding the syntactic origin of the expression.
+Currently they instead use a separate internal representation as
+|let_expression|, whose evaluation is somewhat more efficient than that of the
+equivalent call form. In our presentation we shall discuss let-expressions
+before $\lambda$-expressions, which given an opportunity to compare them.
 
-@ We prepare the definition of $\lambda$-expression with the introduction of
-auxiliary types, needed to deal with the general patterns by which formal
-function parameters can be given. The parser produces values of type |id_pat|
-to describe such patterns, and they are needed at runtime to guide the
-decomposition of the corresponding values (in fact the names used in the
-pattern are not needed for this, but they are useful for printing the
-$\lambda$-expression. The |id_pat| structure can be used directly in a
-$\lambda$-expression, but ownership must be properly handled. The value
-produced by the parser will be destroyed after the command is processed, at
-which time the $\lambda$-expression could still exist, so we cannot simply use
-a non-owned pointer. Moreover a $\lambda$-expression can be evaluated one or
-more times, yielding ``closure'' values that need to refer to the pattern, and
-which might outlive the $\lambda$-expression, so appropriate duplication or
-sharing must be organised. We opt for sharing between the $\lambda$-expression
-and any closures obtained from it.
+@ We prepare the definition of let-expressions with the introduction of
+auxiliary types, needed to deal with the general patterns by which new
+variables (and later formal function parameters) can be introduced. The parser
+produces values of type |id_pat| to describe such patterns, and they are
+needed at runtime to guide the decomposition of the corresponding values (in
+fact the names used in the pattern are not needed for this, but they are
+useful for printing the let-expression). The |id_pat| structure can be
+used directly in a let-expression, but ownership must be properly
+handled. The value produced by the parser will be destroyed after the command
+is processed, at which time the let-expression could still exist (if held in a
+function body), so we cannot simply use a non-owned pointer.
 
-@< Type def... @>=
-typedef std::shared_ptr<id_pat> shared_pattern;
-
-@ When a $\lambda$-expression is constructed, it must become the (first
-shared) owner of its |id_pat| structure. It will access that structure by
-pointer (so its sharing can be managed), but the |id_pat| returned by the
-parser is not allocated by |new|. Therefore the top level |id_pat| structure
-needs to be transferred to memory allocated by |new|. We might move from the
-|id_pat| and thereby steal a possible |sublist| field and further nodes
-accessible from it. However this would amputate the expression produced by the
-parser, so instead doing a deep copy is a cleaner solution (moreover patterns
-are rarely very deep).
+The top-level |id_pat| structure for the bound variable(s) will be stored in
+ the |let_expression| itself. We might move it there from the |id_pat|
+ produced by the parser and thereby steal a possible |sublist| field and
+ further nodes accessible from it. However this would amputate that expression
+ (which would be weird if the expression were printed in an error message), so
+ instead doing a deep copy is a cleaner solution, and patterns are rarely very
+ deep. The function |copy_id_pat| accomplishes making the copy.
 
 @h <algorithm>
 @< Local function def... @>=
@@ -1534,8 +1522,8 @@ id_pat copy_id_pat(const id_pat& p)
   return id_pat (p.name, p.kind, rl.undress());
 }
 
-@ Now we can define our let-expression to use a |shared_pattern|; the
-body is also shared.
+@ Now we can define our let-expression to use a |shared_pattern|. Initialiser
+and body are owned, and held in unique-pointers.
 
 @< Type def... @>=
 struct let_expression : public expression_base
@@ -1549,9 +1537,9 @@ struct let_expression : public expression_base
 };
 
 @ The main constructor cannot be inside the class definition, as it requires
-the local function |copy_id_pat|. The variable (pattern) is stored directly in
-the |let_expression| node, while for the two expression components ownership
-is transferred from the passed unique-pointer values.
+the local function |copy_id_pat|. The variable (pattern) is copied into the
+|let_expression| node, while for the two expression components ownership is
+transferred from the passed unique-pointer values.
 
 @< Function def... @>=
 inline
@@ -1563,56 +1551,12 @@ let_expression::let_expression @|
 @+{}
 
 @ To print a let expression, we reproduce the input syntax, as far as
-possible; restructuring done during type analysis makes it impossible to know
-the exact form used at input.
+possible; restructuring done during parsing makes it impossible to know the
+exact form used at input.
 
 @< Function definitions @>=
 void let_expression::print(std::ostream& out) const
 {@; out << " let " << variable << "=" << *initialiser << " in " << *body;
-}
-
-@ Now we can define our $\lambda$-expression to use a |shared_pattern|; the
-body is also shared.
-
-@< Type def... @>=
-struct lambda_expression : public expression_base
-{ const shared_pattern param;
-  shared_expression body;
-@)
-  lambda_expression(const id_pat& p, expression_ptr&& b);
-  virtual ~lambda_expression() @+{} // subobjects do all the work
-  virtual void evaluate(level l) const;
-  virtual void print(std::ostream& out) const;
-};
-
-@ The main constructor cannot be inside the class definition, as it requires
-the local function |copy_id_pat|. It copies the pattern and creates a new
-shared reference to the copy (further sharing will occur when the
-$\lambda$-expression is evaluated). For the body we create sharing as well,
-which is simpler since the passed unique-pointer already gives us ownership.
-
-@< Function def... @>=
-inline
-lambda_expression::lambda_expression(const id_pat& p, expression_ptr&& b)
-: param(std::make_shared<id_pat>(copy_id_pat(p))) , body(b.release())
-@+{}
-
-@ To print an anonymous function, we print the parameter, enclosed in
-parentheses if the full parameter is named, followed by a colon and by the
-function body. The printed parameter list cannot include types with the
-current setup, as they are not explicitly stored after type analysis. It could
-be made possible to print types if a type were explicitly stored in the
-|lambda_expression| structure; at the time of writing this would seem
-possible because each function has to have a definite type, but if the type
-system were extended with second order types (which would be quite useful),
-then this might no longer be true.
-
-@< Function definitions @>=
-void lambda_expression::print(std::ostream& out) const
-{ if ((param->kind&0x1)!=0)
-    out << '(' << *param << ')';
-  else out << *param;
-  out << ": " << *body;
 }
 
 @ We shall need some other functions to deal with patterns, all with a
@@ -1648,10 +1592,10 @@ type_expr pattern_type(const id_pat& pat)
 }
 
 @ Here we count the number or list the identifiers in a pattern. The latter
-uses an output parameter rather than a return value since this avoids doing
-any concatenation of vectors. Instead of a modifiable reference~|d| to a
-vector it could have used a (templated) output iterator, but in practice we
-always collect the results in a vector, and this avoids having to call
+function uses an output parameter rather than a return value since this avoids
+doing any concatenation of vectors. Instead of a modifiable reference~|d| to a
+vector it could have used an output iterator, but in practice we always
+collect the results in a vector, and this avoids having to call
 |std::back_inserter| all the time.
 
 @< Function definitions @>=
@@ -1731,6 +1675,38 @@ case let_expr:
     let_expression(pat,std::move(arg),convert_expr(lexp->body,type)));
 }
 
+@ Here is a class whose main purpose, like that of |layer| before, is to have
+a constructor-destructor pair that temporarily suspends the current execution
+context, replacing it by a new one determined by an identifier pattern and an
+execution context for the enclosing lexical layers. All instances of this
+class should be automatic (local) variables, to ensure that they have nested
+lifetimes.
+
+We take care when pushing a new |evaluation_context| to avoid changing the
+reference count of the pointer in |frame::current| as would happen when
+copying it, by \emph{moving} the pointer to the tail of the new node. When
+popping on destruction however we need to copy, since the node being popped
+could have become accessed independently (through a |closure|, to be discussed
+later), so we are not free to move from the tail of this node.
+
+@< Local class definitions @>=
+class frame
+{
+  const id_pat& pattern;
+public:
+  static shared_context current;
+@)
+  frame (const id_pat& pattern)
+  : pattern(pattern)
+  {@; current = std::make_shared<evaluation_context>(std::move(current)); }
+  ~frame() @+{@; current = current->tail(); } // don't move here!
+@)
+  void bind (const shared_value& val)
+    { current->reserve(count_identifiers(pattern));
+      thread_components(pattern,val,current->back_inserter());
+    }
+};
+
 @ Evaluating a let expression is now straightforward: evaluate the initialiser
 to produce a value on the stack; then create a new |frame| in which this value
 is bound to the pattern |variable|, and in this extended context evaluate
@@ -1744,14 +1720,77 @@ void let_expression::evaluate(level l) const
   body->evaluate(l); // call, passing evaluation level |l| to function body
 } // restore context upon destruction of |fr|
 
-@* Closures, and the evaluation of user defined functions.
+@*1 Lambda-expressions.
 %
-Before we discuss the evaluation of user-defined functions, we need to
-introduce a type for the intermediate value produced by $\lambda$~expressions,
-before they are actually called. Such a value is traditionally called a
-closure, and it contains (a reference to) the expression body, as well as the
-evaluation context current at the point the $\lambda$~expression is
-encountered.
+In contrast to let-expressions, a $\lambda$-expression can be evaluated one
+or more times, yielding ``closure'' values that need to refer to the pattern,
+and which might outlive the $\lambda$-expression, so appropriate duplication
+or sharing must be organised. We opt for sharing between the
+$\lambda$-expression and any closures obtained from it.
+
+@< Type def... @>=
+typedef std::shared_ptr<id_pat> shared_pattern;
+
+@ Now we can define our $\lambda$-expression to use a |shared_pattern|; the
+body is also shared.
+
+@< Type def... @>=
+struct lambda_expression : public expression_base
+{ const shared_pattern param;
+  shared_expression body;
+@)
+  lambda_expression(const id_pat& p, expression_ptr&& b);
+  virtual ~lambda_expression() @+{} // subobjects do all the work
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ The main constructor cannot be inside the class definition, as it requires
+the local function |copy_id_pat|. It copies the pattern and creates a new
+shared reference to the copy (further sharing will occur when the
+$\lambda$-expression is evaluated). For the body we create sharing as well,
+which is simpler since the passed unique-pointer already gives us ownership;
+however, we cannot however use |std:make_shared| since the object pointed to,
+of some class derived from |expression|, already exists, and should not be
+cloned.
+
+@< Function def... @>=
+inline
+lambda_expression::lambda_expression(const id_pat& p, expression_ptr&& b)
+: param(std::make_shared<id_pat>(copy_id_pat(p)))
+, body(b.release())
+@+{}
+
+@ To print an anonymous function, we print the parameter, enclosed in
+parentheses if the full parameter is named, followed by a colon and by the
+function body. The printed parameter list cannot include types with the
+current setup, as they are not explicitly stored after type analysis. It could
+be made possible to print types if a type were explicitly stored in the
+|lambda_expression| structure; at the time of writing this would seem
+possible because each function has to have a definite type, but if the type
+system were extended with second order types (which would be quite useful),
+then this might no longer be true.
+
+@< Function definitions @>=
+void lambda_expression::print(std::ostream& out) const
+{ if ((param->kind&0x1)!=0)
+    out << '(' << *param << ')';
+  else out << *param;
+  out << ": " << *body;
+}
+
+@* Closures, and the evaluation of $\lambda$-expressions.
+%
+In first approximation $\lambda$-expression are like denotations of
+user-defined functions: their evaluation just returns the stored function
+body. However, this evaluation also captures the current evaluation context:
+the bindings of the local variables that may occur as free identifiers in the
+function body (any used global variables can be bound at compile time, so they
+d not need any special consideration). Therefore the evaluation of a
+$\lambda$~expressions actually yields an intermediate value that is
+traditionally called a closure. It contains (a reference to) the expression
+body, as well as the evaluation context current at the point the
+$\lambda$~expression is encountered.
 
 @< Type def... @>=
 struct closure_value : public value_base
@@ -1790,12 +1829,11 @@ execution context, and returns that.
 
 While this code looks rather innocent, note that the sharing of
 |frame::current| created here may survive after one or more frames on the list
-|frame::current| get removed (in the code to be shown presently) when the
-function whose call produced that frame returns; these frames then get an
-extended lifetime through the closure formed here. This implies that the
-execution context cannot be embedded in any kind of stack, in particular it
-cannot be embedded in the \Cpp\ runtime stack (while the layers of the lexical
-context could).
+|frame::current| get removed after evaluation of the expression that returned
+the closure; these frames then get an extended lifetime through the closure
+formed here. This implies that the execution context cannot be embedded in any
+kind of stack, in particular it cannot be embedded in the \Cpp\ runtime stack
+(while the layers of the lexical context could).
 
 @< Function def... @>=
 void lambda_expression::evaluate(level l) const
@@ -1803,50 +1841,44 @@ void lambda_expression::evaluate(level l) const
      push_value(closure_ptr(new closure_value(frame::current,param,body)));
 }
 
-@ Here is a class whose main purpose, like that of |layer| before, is to have
+@ Here a variation of the class |frame|; again the purpose is to have
 a constructor-destructor pair that temporarily suspends the current execution
-context, replacing it by a new one determined by an identifier pattern and an
-execution context for the enclosing lexical layers. All instances of this
-class should be automatic (local) variables, to ensure that they have nested
-lifetimes.
+context, replacing it by a new one determined by the $\lambda$-expression
+parameter(s) on top of the evaluation context stored in the closure. Again
+instances of this class should be automatic variables, to ensure that they
+have nested lifetimes.
 
 Context switching is a crucial and recurrent step in the evaluation process,
-so we take care to not change the reference count of |frame::current|. It is
-either \emph{moved} into |saved| or copied to the tail of the new context, and
-the destructor moves from this destination back to |frame::current|. The former
-case needs a try block for exception safety, a an exception may occur between
-the move and the completion of the constructor.
+so we take care to not change the reference count of |frame::current|.
+It \emph{moved} into |saved| upon construction, and upon destruction moved
+back again to |frame::current|. In contrast to |frame|, the constructor here
+needs a try block for exception safety, as the call to
+|std::make_shared<evaluation_context>| may throw an exception after
+|frame::current| has completed but before out constructor completes; since the
+destructor would in this scenario not be called to move the pointer back, we
+need to do this explicitly in the |catch| block.
 
 @< Local class definitions @>=
-class frame
+class lambda_frame
 {
   const id_pat& pattern;
-  const bool switched;
   const shared_context saved;
 public:
-  static shared_context current;
-@)
-  frame (const id_pat& pattern)
-  : pattern(pattern), switched(false), saved(nullptr)
-  {@; current =
-     std::make_shared<evaluation_context>(current,count_identifiers(pattern));
-  }
-  frame (const id_pat& pattern, const shared_context& outer)
-  : pattern(pattern), switched(true), saved(std::move(current))
-  { assert(&outer!=&current); // for excluded case use the other constructor
+  lambda_frame (const id_pat& pattern, const shared_context& outer)
+  : pattern(pattern), saved(std::move(frame::current))
+  { assert(&outer!=&frame::current); // for excluded case use |frame| instead
     try
-    {@; current =
-      std::make_shared<evaluation_context>(outer,count_identifiers(pattern));
-    }
+    {@; frame::current = std::make_shared<evaluation_context>(outer); }
     catch(...)
-    {@; current = std::move(saved);
-      throw;
-    } // restore as the destructor would do
+    {@; frame::current = std::move(saved); throw; }
+    // restore as destructor would do
   }
-  ~frame()
-    @+{@; current = std::move(*(switched ? &saved : &current->tail())); }
+  ~lambda_frame() @+{@; frame::current = std::move(saved); }
+@)
   void bind (const shared_value& val)
-     {@; thread_components(pattern,val,current->back_inserter());}
+    { frame::current->reserve(count_identifiers(pattern));
+      thread_components(pattern,val,frame::current->back_inserter());
+    }
 };
 
 @ When calling a function in a non overloading manner, we come to the code
@@ -1877,7 +1909,7 @@ currently however, none of these are possible yet.
 @< Call user-defined function |fun| with argument on |execution_stack| @>=
 { closure_value* f=force<closure_value>(fun.get());
 @)
-  frame fr(*f->param,f->context); // save context, create new one for |f|
+  lambda_frame fr(*f->param,f->context); // save context, create new one for |f|
   fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
   f->body->evaluate(l); // call, passing evaluation level |l| to function body
 } // restore context upon destruction of |fr|
@@ -1940,7 +1972,7 @@ in the latter case) for producing the error trace.
 void overloaded_closure_call::evaluate(level l) const
 { argument->eval();
   try
-  { frame fr(*fun->param,fun->context);
+  { lambda_frame fr(*fun->param,fun->context);
     // save context, create new one for |fun|
     fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
     fun->body->evaluate(l);
@@ -1958,13 +1990,7 @@ void overloaded_closure_call::evaluate(level l) const
 
 @* Compilation of user-defined functions.
 %
-Now we shall consider the general case of a user-defined function. But nearly
-all of the work is already done, notably defining the evaluation of built-in
-and user-defined functions, whether occurring in an overloaded call or in
-another form of function call. In fact all that remains to be done is defining
-how to type-check and convert the case |lambda_expr| of an |expr| constructed
-by the parser; the necessary types derived from |expression| that provide
-their implementation were already introduced.
+Now we describe the handling of user-defined functions in type analysis.
 
 We first test if the required |type| specialises to a function type, i.e.,
 either it was some function type or undefined. Then we get the argument type

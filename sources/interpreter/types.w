@@ -1366,17 +1366,22 @@ destruction of frames once inaccessible is automatic.
 @< Type definitions @>=
 typedef std::shared_ptr<class evaluation_context> shared_context;
 class evaluation_context
-{ const shared_context next;
+{ shared_context next;
   std::vector<shared_value> frame;
   evaluation_context@[(const evaluation_context&) = delete@];
   // never copy contexts
 public:
-  evaluation_context (const shared_context& next, size_t n)
-@/: next(next), frame() @+{@; frame.reserve(n); }
+  evaluation_context (const shared_context& next)
+@/: next(next), frame() @+{}
+  void reserve (size_t n) @+{@; frame.reserve(n); }
   shared_value& elem(size_t i,size_t j);
   std::back_insert_iterator<std::vector<shared_value> > back_inserter ()
   {@; return std::back_inserter(frame); }
-  const shared_context& tail() const { return next; }
+  const shared_context& tail() const @+{@; return next; }
+  std::vector<shared_value>::const_iterator begin() const
+    @+{@; return frame.begin(); }
+  std::vector<shared_value>::const_iterator end() const
+    @+{@; return frame.end(); }
 };
 
 @ The method |evaluation_context::elem| descends the stack and then selects a
