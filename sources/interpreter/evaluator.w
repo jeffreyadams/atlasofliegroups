@@ -591,6 +591,8 @@ proceed as in the case where as ``row-of'' type was required, and in
 particular there may be further coercions of individual expressions in the
 list display.
 
+@:list display conversion@>
+
 @< If |type| can be converted from some row-of type, check the components of
    |e.sublist|... @>=
 { type_expr comp_type;
@@ -671,7 +673,7 @@ class global_identifier : public identifier
 { const shared_share address;
 public:
   explicit global_identifier(id_type id);
-  virtual ~global_identifier() @+ {}
+  virtual ~@[global_identifier() = default@];
   virtual void evaluate(level l) const;
 };
 
@@ -932,7 +934,7 @@ struct call_expression : public expression_base
 @)
   call_expression(expression_ptr&& f,expression_ptr&& a)
    : function(f.release()),argument(a.release()) @+{}
-  virtual ~call_expression() @+ {}
+  virtual ~@[call_expression() = default@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -972,9 +974,10 @@ struct builtin_value : public value_base
 @)
   builtin_value(wrapper_function v,const std::string& n)
   : val(v), print_name(n) @+ {}
+  virtual ~ @[builtin_value() =default@];
   virtual void print(std::ostream& out) const
   @+{@; out << '{' << print_name << '}'; }
-  builtin_value* clone() const @+{@; return new builtin_value(*this); }
+  virtual builtin_value* clone() const @+{@; return new builtin_value(*this); }
   static const char* name() @+{@; return "built-in function"; }
 private:
   builtin_value@[(const builtin_value& v) = default@];
@@ -997,7 +1000,7 @@ struct overloaded_builtin_call : public expression_base
 @)
   overloaded_builtin_call(wrapper_function v,const char* n,expression_ptr&& a)
   : f(v), print_name(n), argument(a.release())@+ {}
-  virtual ~overloaded_builtin_call() @+ {}
+  virtual ~@[overloaded_builtin_call() = default@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -1531,7 +1534,7 @@ struct let_expression : public expression_base
   expression_ptr initialiser, body;
 @)
   let_expression(const id_pat& v, expression_ptr&& ini, expression_ptr&& b);
-  virtual ~let_expression() @+{} // subobjects do all the work
+  virtual ~@[let_expression() = default@]; // subobjects do all the work
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -1720,7 +1723,7 @@ void let_expression::evaluate(level l) const
   body->evaluate(l); // call, passing evaluation level |l| to function body
 } // restore context upon destruction of |fr|
 
-@*1 Lambda-expressions.
+@*1 Lambda-expressions (user-defined functions).
 %
 In contrast to let-expressions, a $\lambda$-expression can be evaluated one
 or more times, yielding ``closure'' values that need to refer to the pattern,
@@ -1740,7 +1743,7 @@ struct lambda_expression : public expression_base
   shared_expression body;
 @)
   lambda_expression(const id_pat& p, expression_ptr&& b);
-  virtual ~lambda_expression() @+{} // subobjects do all the work
+  virtual ~@[lambda_expression() = default@]; // subobjects do all the work
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -1750,7 +1753,7 @@ the local function |copy_id_pat|. It copies the pattern and creates a new
 shared reference to the copy (further sharing will occur when the
 $\lambda$-expression is evaluated). For the body we create sharing as well,
 which is simpler since the passed unique-pointer already gives us ownership;
-however, we cannot however use |std:make_shared| since the object pointed to,
+however, we cannot however use |std::make_shared| since the object pointed to,
 of some class derived from |expression|, already exists, and should not be
 cloned.
 
@@ -1803,8 +1806,9 @@ struct closure_value : public value_base
                   const shared_pattern& p,
                   const shared_expression& b)
   : context(c), param(p), body(b) @+{}
-  void print(std::ostream& out) const;
-  closure_value* clone() const @+
+  virtual ~ @[closure_value() =default@];
+  virtual void print(std::ostream& out) const;
+  virtual closure_value* clone() const @+
   {@; return new closure_value(context,param,body); }
   static const char* name() @+{@; return "closure"; }
 };
@@ -1849,14 +1853,18 @@ instances of this class should be automatic variables, to ensure that they
 have nested lifetimes.
 
 Context switching is a crucial and recurrent step in the evaluation process,
-so we take care to not change the reference count of |frame::current|.
-It \emph{moved} into |saved| upon construction, and upon destruction moved
-back again to |frame::current|. In contrast to |frame|, the constructor here
-needs a try block for exception safety, as the call to
+so we take care to not uselessly change the reference count of
+|frame::current|. It is \emph{moved} into |saved| upon construction, and upon
+destruction moved back again to |frame::current|. In contrast to |frame|, the
+constructor here needs a try block for exception safety, as the call to
 |std::make_shared<evaluation_context>| may throw an exception after
-|frame::current| has completed but before out constructor completes; since the
-destructor would in this scenario not be called to move the pointer back, we
-need to do this explicitly in the |catch| block.
+|frame::current| has been moved from, but before out constructor completes;
+since the destructor would in this scenario \emph{not} be called, we then need
+to move the pointer back explicitly in the |catch| block.
+
+If one tried to derive this class from |frame|, one would have to construct
+the base (which modifies |frame::current|) before doing anything else; this
+would make saving the value of |frame::current| problematic.
 
 @< Local class definitions @>=
 class lambda_frame
@@ -1926,7 +1934,7 @@ struct overloaded_closure_call : public expression_base
   overloaded_closure_call
    (shared_closure f,const std::string& n,expression_ptr&& a)
   : fun(f), print_name(n), argument(a.release())@+ {}
-  virtual ~overloaded_closure_call() @+ {}
+  virtual ~@[overloaded_closure_call() = default@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2023,18 +2031,18 @@ case lambda_expr:
 
 @* Array subscription.
 %
-While we have seen expressions to build lists, and although vectors and
-matrices can be made out of them using coercions, we so far are not able to
-access their components once they are constructed. To that end we shall now
-introduce operations to index such values. We allow subscription of rows, but
-also of vectors, rational vectors, matrices, strings, and of the
-Atlas \.{ParamPol} values. Since after type analysis we know which of the
-cases applies for a given expression, we define several classes among which
-type analysis will choose. These classes differ mostly by their |evaluate|
-method, so we first derive an intermediate class from |expression_base|, and
-derive the others from it. This class also serves to host an enumeration type
-that will serve later. We include a case here, |mod_poly_term|, that is
-related to a type defined in \.{built-in-types}.
+We have seen expressions to build lists, and although vectors and matrices can
+be made out of them using coercions, we so far are not able to access their
+components once they are constructed. To that end we shall now introduce
+operations to index such values. We allow subscription of rows, but also of
+vectors, rational vectors, matrices, strings, and of the Atlas \.{ParamPol}
+values. Since after type analysis we know which of the cases applies for a
+given expression, we define several classes among which type analysis will
+choose. These classes differ mostly by their |evaluate| method, so we first
+derive an intermediate class from |expression_base|, and derive the others
+from it. This class also serves to host an enumeration type and some static
+methods that will serve later. We include a case here, |mod_poly_term|, that
+is related to a type defined in \.{built-in-types}.
 
 @< Type definitions @>=
 struct subscr_base : public expression_base
@@ -2047,7 +2055,7 @@ struct subscr_base : public expression_base
 @/: array(a.release()),index(i.release()) @+{}
   virtual ~@[subscr_base() = default@] ;
 @)
-  void print(std::ostream& out) const;
+  virtual void print(std::ostream& out) const;
   static bool indexable
   (const type_expr& aggr,
    const type_expr& index,
@@ -2355,7 +2363,7 @@ struct conditional_expression : public expression_base
    (expression_ptr&& c,expression_ptr&& t, expression_ptr&& e)
    : condition(c.release()),then_branch(t.release()), else_branch(e.release())
   @+{}
-  virtual ~conditional_expression() @+ {}
+  virtual ~@[conditional_expression() = default@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2417,8 +2425,7 @@ void conditional_expression::evaluate(level l) const
 
 @*1 While loops.
 %
-Next we consider |while| loops, which have three parts (the final one is
-optional; if absent it will be a null pointer).
+Next we consider |while| loops, which have two parts.
 
 @< Type def... @>=
 struct while_expression : public expression_base
@@ -2427,7 +2434,7 @@ struct while_expression : public expression_base
   while_expression(expression_ptr&& c,expression_ptr&& b)
    : condition(c.release()),body(b.release())
   @+{}
-  virtual ~while_expression() @+ {}
+  virtual ~@[while_expression() = default@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2468,7 +2475,7 @@ case while_expr:
 }
 
 @ For |while| loops we follow the same logic for finding an appropriate
-component type as for list displays.
+component type as for list displays, in section@#list display conversion@>.
 
 @< If |type| can be converted from some row-of type, check |w->body| against
    its component type, construct the |while_expression|, and apply the
@@ -2523,7 +2530,7 @@ struct for_expression : public expression_base
   for_expression
    (const id_pat& p, expression_ptr&& i, expression_ptr&& b
    , subscr_base::sub_type k);
-  virtual ~for_expression() @+ {}
+  virtual ~@[for_expression() =default@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2773,7 +2780,7 @@ struct inc_for_expression : public expression_base
     expression_ptr&& b)
   : count(cnt.release()),bound(bnd.release()),body(b.release()),id(i)
   @+{}
-  virtual ~inc_for_expression() @+ {}
+  virtual ~@[inc_for_expression() = default@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2786,7 +2793,7 @@ struct dec_for_expression : public expression_base
     expression_ptr&& b)
   : count(cnt.release()),bound(bnd.release()),body(b.release()),id(i)
   @+{}
-  virtual ~dec_for_expression() @+ {}
+  virtual ~@[dec_for_expression() =default@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -3042,7 +3049,7 @@ struct assignment_expr : public expression_base
 @)
   assignment_expr(id_type l,expression_ptr&& r)
    : lhs(l),rhs(r.release()) @+{}
-  virtual ~assignment_expr() @+{}
+  virtual ~@[assignment_expr() = default@];
   virtual void print(std::ostream& out) const;
 };
 
@@ -3060,7 +3067,7 @@ class global_assignment : public assignment_expr
 { shared_share address;
 public:
   global_assignment(id_type l,expression_ptr&& r);
-  virtual ~global_assignment() @+{}
+  virtual ~@[global_assignment() = default@];
   virtual void evaluate(level l) const;
 };
 
@@ -3092,7 +3099,7 @@ class local_assignment : public assignment_expr
 { size_t depth, offset;
 public:
   local_assignment(id_type l, size_t i,size_t j, expression_ptr&& r);
-  virtual ~local_assignment() @+{}
+  virtual ~@[local_assignment() =default@];
   virtual void evaluate(level l) const;
 };
 
@@ -3185,7 +3192,7 @@ struct component_assignment : public assignment_expr
   component_assignment
    (id_type a,expression_ptr&& i,expression_ptr&& r)
    : assignment_expr(a,std::move(r)), index(i.release()) @+{}
-  virtual ~component_assignment() @+{}
+  virtual ~@[component_assignment() = default@];
 
   virtual void print (std::ostream& out) const;
 @)
@@ -3429,7 +3436,7 @@ struct seq_expression : public expression_base
 @)
   seq_expression(expression_ptr&& f,expression_ptr&& l)
    : first(f.release()),last(l.release()) @+{}
-  virtual ~seq_expression() @+ {}
+  virtual ~@[seq_expression() = default@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -3439,7 +3446,7 @@ struct next_expression : public expression_base
 @)
   next_expression(expression_ptr&& f,expression_ptr&& l)
    : first(f.release()),last(l.release()) @+{}
-  virtual ~next_expression() @+ {}
+  virtual ~@[next_expression() = default@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
