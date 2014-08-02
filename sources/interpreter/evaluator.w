@@ -181,7 +181,7 @@ expression_ptr convert_expr(const expr& e, type_expr& type);
 @ In the function |convert_expr| we shall need a type for storing bindings
 between identifiers and types, and this will be the |layer| class. It stores a
 vector of type |layer::vec| of individual bindings, while it automatically
-pushes (a reference to) itself on a stack |layer::lexical_context| of such
+pushes (a pointer to) itself on a stack |layer::lexical_context| of such
 vectors. Instances of |layer| shall always be stored in ordinary
 (stack-allocated) variables; since their unique constructor pushes the new
 object, and their destructor pops it, |layer::lexical_context| is guaranteed
@@ -878,8 +878,8 @@ expression_ptr resolve_overload
     if ((is_close(a_priori_type,v.type().arg_type)&0x1)!=0)
       // could first convert to second?
     { if (a_priori_type!=v.type().arg_type)
-      { type_expr at = v.type().arg_type.copy(); // need a modifiable value
-        arg=convert_expr(args,at); // redo conversion
+      { type_expr arg_t = v.type().arg_type.copy(); // need a modifiable value
+        arg=convert_expr(args,arg_t); // redo conversion
       }
       @< Return a call of variant |v| with argument |arg|, or |throw| if
          result type mismatches |type| @>
@@ -1791,7 +1791,7 @@ the bindings of the local variables that may occur as free identifiers in the
 function body (any used global variables can be bound at compile time, so they
 d not need any special consideration). Therefore the evaluation of a
 $\lambda$~expressions actually yields an intermediate value that is
-traditionally called a closure. It contains (a reference to) the expression
+traditionally called a closure. It contains (a pointer to) the expression
 body, as well as the evaluation context current at the point the
 $\lambda$~expression is encountered.
 
@@ -2394,20 +2394,55 @@ void conditional_expression::print(std::ostream& out) const
 @ For type-checking conditional expressions we are in a somewhat similar
 situation as for list displays: both branches need to be of the same type, but
 we might not know which. After checking that the |condition| yields a Boolean
-value, we first convert the else-branch and then the then-branch. This unusual
-order is explained by the possibility of an absent else-branch, which the
-parser will replace by an empty tuple. If this happens in a context that does
-not impose a result type, testing the else-branch first will set |type| to
-|void_type|, after which the voiding coercion is available when type-checking
-the then-branch; the opposite order might result in an error in converting the
-void else-branch to the type of the then-branch.
+value, we used to just first convert the else-branch and then the then-branch
+(this was immediately followed by the |return| statement); this unusual
+order was explained by the fact that the else-branch is more likely to have
+void type (for instance whenever it is absent) than the then-branch, in which
+case the then-branch can benefit from the ensuing strong void context. We now
+however adopt a more symmetric approach that in case of differing \foreign{a
+priori} types will try to convert one branch to the type of the other, in
+whichever direction seems most promising (as judged by |is_close|). Like for
+coercions in the context of operator overloading, the most flexible way to
+adapt to a newly discovered target type for a subexpression is to call
+|convert_expr| again with that target type.
+
+This code is a first approximation to type balancing, as it should ideally
+also be applied for instance between the expressions in a list display.
 
 @< Cases for type-checking and converting... @>=
 case conditional_expr:
 { expression_ptr c  =
     convert_expr(e.if_variant->condition,as_lvalue(bool_type.copy()));
-  expression_ptr el = convert_expr(e.if_variant->else_branch,type);
+  type_expr else_type(type.copy());
+  // make a copy so as to treat branches similarly
   expression_ptr th = convert_expr(e.if_variant->then_branch,type);
+  expression_ptr el = convert_expr(e.if_variant->else_branch,else_type);
+  if (type!=else_type) // we had different specialisations in the two branches
+  {
+    if (type==void_type or else_type==void_type)
+      // type was unknown, one branch became void
+    {
+      if (type==void_type)
+        el.reset(new voiding(std::move(el)));
+      else
+        th.reset(new voiding(std::move(th)));
+    }
+    else
+    {
+      int cmp = is_close(type,else_type);
+      if ((cmp&0x1)!=0)
+        th =
+          convert_expr(e.if_variant->then_branch,type = std::move(else_type));
+      else if ((cmp&0x2)!=0)
+        el = convert_expr(e.if_variant->else_branch,type);
+      else
+      { std::ostringstream o;
+        o << "Could not find common type for branches of conditional, "
+        "types are " << type << " and " << else_type;
+        throw expr_error(e,o.str());
+      }
+    }
+  }
   return expression_ptr(new
     conditional_expression(std::move(c),std::move(th),std::move(el)));
 }
