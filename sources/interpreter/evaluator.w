@@ -1786,13 +1786,13 @@ void lambda_expression::print(std::ostream& out) const
 %
 In first approximation $\lambda$-expression are like denotations of
 user-defined functions: their evaluation just returns the stored function
-body. However, this evaluation also captures the current evaluation context:
+body. However, this evaluation also captures the current execution context:
 the bindings of the local variables that may occur as free identifiers in the
 function body (any used global variables can be bound at compile time, so they
 d not need any special consideration). Therefore the evaluation of a
 $\lambda$~expressions actually yields an intermediate value that is
 traditionally called a closure. It contains (a pointer to) the expression
-body, as well as the evaluation context current at the point the
+body, as well as the execution context current at the point the
 $\lambda$~expression is encountered.
 
 @< Type def... @>=
@@ -1848,7 +1848,7 @@ void lambda_expression::evaluate(level l) const
 @ Here a variation of the class |frame|; again the purpose is to have
 a constructor-destructor pair that temporarily suspends the current execution
 context, replacing it by a new one determined by the $\lambda$-expression
-parameter(s) on top of the evaluation context stored in the closure. Again
+parameter(s) on top of the execution context stored in the closure. Again
 instances of this class should be automatic variables, to ensure that they
 have nested lifetimes.
 
@@ -2425,15 +2425,15 @@ case conditional_expr:
       if (type==void_type)
         el.reset(new voiding(std::move(el)));
       else
-        th.reset(new voiding(std::move(th)));
+        th.reset(new voiding(std::move(th))),type = std::move(else_type);
     }
     else
     {
       int cmp = is_close(type,else_type);
-      if ((cmp&0x1)!=0)
+      if ((cmp&0x1)!=0) // \.{then} branch may convert to |else_type|
         th =
           convert_expr(e.if_variant->then_branch,type = std::move(else_type));
-      else if ((cmp&0x2)!=0)
+      else if ((cmp&0x2)!=0) // |else| branch may convert to |type|
         el = convert_expr(e.if_variant->else_branch,type);
       else
       { std::ostringstream o;
@@ -2572,7 +2572,7 @@ struct for_expression : public expression_base
 
 @ We could not inline the following constructor definition in the class
 declaration, as it uses the local function |copy_id_pat| that is not known in
-the header file.
+the header file, but otherwise it is quite straightforward.
 
 @< Function definitions @>=
 inline
@@ -2751,11 +2751,7 @@ switch (kind)
 }
 
 
-@ Since the module below exists only for the sake of source-code sharing, we
-don't bother to put braces around its expansion, as they are not needed in the
-uses above.
-
-We set the in-part component stored in |loop_var->val[1]| separately for the
+@ We set the in-part component stored in |loop_var->val[1]| separately for the
 various values of |kind|, but |loop_var->val[0]| is always the (integral) loop
 index. Once initialised, |loop_var| is passed through the function
 |thread_components| to set up |loop_frame|, whose pointers are copied into a
@@ -3127,7 +3123,7 @@ void global_assignment::evaluate(level l) const
 identifier is stored, but as in the case of applied identifiers this location
 cannot be known when the statement is type-checked and converted (and in fact
 it may vary between evaluations of the same assignment) so we need to store
-coordinates of the identifier in the evaluation context.
+coordinates of the identifier in the execution context.
 
 @< Type definitions @>=
 class local_assignment : public assignment_expr
@@ -3385,7 +3381,7 @@ add a test for matching column length.
 
 @ For local assignments we also need to access the location where the
 identifier is stored, which as before is done by storing coordinates of the
-identifier in the evaluation context.
+identifier in the execution context.
 
 @< Type definitions @>=
 class local_component_assignment : public component_assignment

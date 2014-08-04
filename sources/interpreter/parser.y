@@ -253,11 +253,11 @@ comprim: subscription
 	    $$=make_for_node(p,$6,$8);
 	  }
 	| FOR IDENT ':' exp FROM exp DO exp OD
-	  { $$=make_cfor_node($2,$4,$6,1,$8); }
+	  { $$=make_cfor_node($2,$4,$6,true,$8); }
 	| FOR IDENT ':' exp DOWNTO exp DO exp OD
-	  { $$=make_cfor_node($2,$4,$6,0,$8); }
+	  { $$=make_cfor_node($2,$4,$6,false,$8); }
 	| FOR IDENT ':' exp DO exp OD
-	  { $$=make_cfor_node($2,$4,wrap_tuple_display(NULL),1,$6); }
+	  { $$=make_cfor_node($2,$4,wrap_tuple_display(NULL),true,$6); }
 	| '(' exp ')'	       { $$=$2; }
 	| BEGIN exp END	       { $$=$2; }
 	| '[' commalist_opt ']'

@@ -1385,9 +1385,9 @@ struct for_node
   // backward compatibility for gcc 4.6
 };
 struct cfor_node
-{ id_type id; expr count; expr bound; short up; expr body;
+{ id_type id; expr count; expr bound; bool up; expr body;
 @)
-  cfor_node(id_type id, expr&& count, expr&& bound, short up, expr&& body)
+  cfor_node(id_type id, expr&& count, expr&& bound, bool up, expr&& body)
 @/: id(id)
   , count(std::move(count))
   , bound(std::move(bound))
@@ -1430,7 +1430,7 @@ more \\{make}-functions.
 @< Declarations of functions for the parser @>=
 expr_p make_while_node(expr_p c, expr_p b);
 expr_p make_for_node(raw_id_pat& id, expr_p ip, expr_p b);
-expr_p make_cfor_node(id_type id, expr_p count, expr_p bound, short up, expr_p b);
+expr_p make_cfor_node(id_type id, expr_p count, expr_p bound, bool up, expr_p b);
 
 @ They are quite straightforward, as usual.
 
@@ -1452,12 +1452,12 @@ expr_p make_for_node(raw_id_pat& id, expr_p ip, expr_p b)
    return new expr(mk_for_node(id_pat(id),*expr_ptr(ip),*expr_ptr(b)));
 }
 @)
-expr mk_cfor_node(id_type id, expr& cnt, expr& bnd, short up, expr& b)
+expr mk_cfor_node(id_type id, expr& cnt, expr& bnd, bool up, expr& b)
 {@;
   return expr (c_loop(new @|
    cfor_node { id, std::move(cnt),std::move(bnd),up,std::move(b) }));
 }
-expr_p make_cfor_node(id_type id, expr_p cnt, expr_p bnd, short up, expr_p b)
+expr_p make_cfor_node(id_type id, expr_p cnt, expr_p bnd, bool up, expr_p b)
 {@;
    return new
      expr(mk_cfor_node(id,*expr_ptr(cnt),*expr_ptr(bnd),up,*expr_ptr(b)));
