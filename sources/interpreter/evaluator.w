@@ -159,19 +159,19 @@ should be explicitly done using the value of |type| after return from
 |convert_expr|). Consequently |convert_expr| is free to move from |type| in
 case it throws: the stealing will not leave any noticeable effects.
 
-In some cases |type| will remain partly undefined, like for an
-emtpy list display with an unknown type, which gets specialised only
-to~`\.{[*]}'. However if |type| remains completely undefined `\.*' (as will
-happen for an expression that \emph{selects} a value from an empty list, then
-this means that evaluation cannot possibly complete without error (since no
-resulting value could have all possible types at once). This situation would
-also happen for a function defined recursively without any terminating case,
-if it were possible to specify such a function in \.{realex} (in reality the
-somewhat tedious method that currently is the only way to define recursive
+In some cases |type| will remain partly undefined, like for an emtpy list
+display with an unknown type, which gets specialised only to~`\.{[*]}'.
+However if |type| remains completely undefined `\.*' (as will happen for an
+expression that selects a value from an empty list, or that calls |error|),
+then this means that evaluation cannot possibly complete without error (since
+no resulting value could have all possible types at once). This situation
+would also happen for a function defined recursively without any terminating
+case, if it were possible to specify such a function in \.{realex} (in reality
+the somewhat tedious method that currently is the only way to define recursive
 functions in \.{realex} requires the type of the function to be fixed
 beforehand, so this case does not occur). Therefore we might treat the case
 where |convert_expr| leaves |type| completely undetermined as a type error;
-currently this is not signalled as such, but  occasionally we do choose to
+currently this is not signalled as such, but occasionally we do choose to
 ignore certain scenarios in which the type derived for a subexpression is
 `\.*', if this allows us to simplify our code.
 
@@ -1206,6 +1206,96 @@ below tests.
   }
 }
 
+@ The operator `\#' can also be used as infix operator, to join (concatenate)
+two row values of the same type or to extend one on either end by a single
+element. In the former case we require that both arguments have identical row
+type, in the latter case we allow the single element to be, or to be converted
+to, the component type of the row value. The corresponding wrapper functions
+will be defined in section@#hash wrappers@>.
+
+There is a subtlety in the order here, due to the fact that one of the
+arguments could be the empty list, with undetermined row type. Then there is
+actual ambiguity: with `\#' interpreted as join, the result is just the other
+operand, while suffixing or prefixing to the empty list gives a singleton of
+the other operand, and to some operands the empty list itself can also be
+suffixed or prefixed. The simplest resolution of this ambiguity is to say that
+join never applies with one of the arguments of undetermined list type, and
+that suffixing is preferred over prefixing (for instance $[[2]]\#[\,]$ will
+give $[[2],[\,]]$, but $[\,]\#[[2]]$ will give $[[[2]]]$). This can be
+obtained by testing for suffixing before testing for join: after the former
+test we know the first argument does not have type \.{[*]}, so it will match
+the second argument type only if both are determined row types.
+
+In order to be as general as a user might expect, we allow the additional
+component to be suffixed or prefixed to a row value to be coerced to the
+component type of that row. There are some technical complications that
+justify defining a small function |can_coerce_arg| to handle this, which are
+explained at the definition of this function below. The arguments to this
+function are: a tuple (pair) expression, an index of a component ($0$ or $1$),
+the initial type of that component of the pair and the (component) type it
+should be coerced to. The function returns a success code, and if (and only
+if) it returns |true| it may have modified the component type (by specialising
+it) or the pair expression (by inserting a coercion).
+
+@< Recognise and return 2-argument versions of `\#'... @>=
+{ type_expr& arg_tp0 = *a_priori_type.tupple.begin();
+  type_expr& arg_tp1 = *++a_priori_type.tupple.begin();
+  if (arg_tp0.kind==row_type)
+  { if (can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type)) // suffix
+    { expression_ptr call(new @|
+        overloaded_builtin_call (suffix_element_wrapper,"#",std::move(arg)));
+      return conform_types(arg_tp0,type,std::move(call),e);
+    }
+    if (arg_tp0==arg_tp1) // join
+    { expression_ptr call(new @| overloaded_builtin_call
+        (join_rows_wrapper,"#",std::move(arg)));
+      return conform_types(arg_tp0,type,std::move(call),e);
+    }
+  }
+  if (arg_tp1.kind==row_type and @|
+         can_coerce_arg(arg.get(),0,arg_tp0,*arg_tp1.component_type))
+          // prefix
+  { expression_ptr call(new @| overloaded_builtin_call
+      (prefix_element_wrapper,"#",std::move(arg)));
+    return conform_types(arg_tp1,type,std::move(call),e);
+  }
+}
+
+@ We called |can_coerce_arg| when type-checking the dyadic use of the operator
+`\#', in order to see if one of its arguments can be coerced from its type
+|from| to |to|. The situation there is somewhat unusual, in that we have
+already converted the entire argument expression at the point where we
+discover, based on the type found, that one of the arguments might need to be
+coerced. This means that such a coercion must be inserted into an already
+constructed expression. Nonetheless a direct application of |coerce| is up to
+the task, after using a dynamic cast to break open the $2$-tuple forming the
+argument pair.
+
+Before we plunge into this coercion insertion, we test if the types can be
+made to match without coercion, after possibly specialising the type |to|
+(which might be undefined, for instance when suffixing/prefixing to an empty
+list).
+
+Another complication is that we decided having a dyadic use of `\#' based on
+finding a 2-tuple type, but this is no guarantee there are actually two
+operand subexpressions (in a |tuple_expression|); we do a dynamic cast to find
+that out, and in the case the user was so contrived as to use monadic `\#' on
+a non-tuple expression of 2-tuple type, we just report that no coercion of
+operands is done (after all we need a subexpression to be able to insert any
+conversion). These complications warrant defining a separate function to
+handle them.
+
+@< Local function definitions @>=
+bool can_coerce_arg
+  (expression e,size_t i,const type_expr& from,type_expr& to)
+{ if (to.specialise(from))
+    return true; // type matches without coercion
+  tuple_expression* tup= dynamic_cast<tuple_expression*>(e);
+  if (tup==nullptr or tup->component.size()!=2)
+    return false; // we need a pair to insert a coercion
+  return coerce(from,to,tup->component[i]);
+}
+
 @*1 Evaluating built-in function calls.
 %
 To evaluate a |call_expression| object, in which the function part can be any
@@ -1390,95 +1480,42 @@ void sizeof_wrapper(expression_base::level l)
     push_value(new int_value(s));
 }
 
-@ The operator `\#' can also be used as infix operator, to join (concatenate)
-two row values of the same type or to extend one on either end by a single
-element. In the former case we require that both arguments have identical row
-type, in the latter case we allow the single element to be, or to be converted
-to, the component type of the row value.
 
-There is a subtlety in the order here, due to the fact that one of the
-arguments could be the empty list, with undetermined row type. Then there is
-actual ambiguity: with `\#' interpreted as join, the result is just the other
-operand, while suffixing or prefixing to the empty list gives a singleton of
-the other operand, and to some operands the empty list itself can also be
-suffixed or prefixed. The simplest resolution of this ambiguity is to say that
-join never applies with one of the arguments of undetermined list type, and
-that suffixing is preferred over prefixing (for instance $[[2]]\#[\,]$ will
-give $[[2],[\,]]$, but $[\,]\#[[2]]$ will give $[[[2]]]$). This can be
-obtained by testing for suffixing before testing for join: after the former
-test we know the first argument does not have type \.{[*]}, so it will match
-the second argument type only if both are determined row types.
+@ Here are functions for adding individual elements to a row value, and for
+joining two such values.
 
-In order to be as general as a user might expect, we allow the additional
-component to be suffixed or prefixed to a row value to be coerced to the
-component type of that row. There are some technical complications that
-justify defining a small function |can_coerce_arg| to handle this, which are
-explained at the definition of this function below. The arguments to this
-function are: a tuple (pair) expression, an index of a component ($0$ or $1$),
-the initial type of that component of the pair and the (component) type it
-should be coerced to. The function returns a success code, and if (and only
-if) it returns |true| it may have modified the component type (by specialising
-it) or the pair expression (by inserting a coercion).
-
-@< Recognise and return 2-argument versions of `\#'... @>=
-{ type_expr& arg_tp0 = *a_priori_type.tupple.begin();
-  type_expr& arg_tp1 = *++a_priori_type.tupple.begin();
-  if (arg_tp0.kind==row_type)
-  { if (can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type)) // suffix
-    { expression_ptr call(new @|
-        overloaded_builtin_call (suffix_element_wrapper,"#",std::move(arg)));
-      return conform_types(arg_tp0,type,std::move(call),e);
-    }
-    if (arg_tp0==arg_tp1) // join
-    { expression_ptr call(new @| overloaded_builtin_call
-        (join_rows_wrapper,"#",std::move(arg)));
-      return conform_types(arg_tp0,type,std::move(call),e);
-    }
-  }
-  if (arg_tp1.kind==row_type and @|
-         can_coerce_arg(arg.get(),0,arg_tp0,*arg_tp1.component_type))
-          // prefix
-  { expression_ptr call(new @| overloaded_builtin_call
-      (prefix_element_wrapper,"#",std::move(arg)));
-    return conform_types(arg_tp1,type,std::move(call),e);
-  }
-}
-
-@ We called |can_coerce_arg| when type-checking the dyadic use of the operator
-`\#', in order to see if one of its arguments can be coerced from its type
-|from| to |to|. The situation there is somewhat unusual, in that we have
-already converted the entire argument expression at the point where we
-discover, based on the type found, that one of the arguments might need to be
-coerced. This means that such a coercion must be inserted into an already
-constructed expression. Nonetheless a direct application of |coerce| is up to
-the task, after using a dynamic cast to break open the $2$-tuple forming the
-argument pair.
-
-Before we plunge into this coercion insertion, we test if the types can be
-made to match without coercion, after possibly specialising the type |to|
-(which might be undefined, for instance when suffixing/prefixing to an empty
-list).
-
-Another complication is that we decided having a dyadic use of `\#' based on
-finding a 2-tuple type, but this is no guarantee there are actually two
-operand subexpressions (in a |tuple_expression|); we do a dynamic cast to find
-that out, and in the case the user was so contrived as to use monadic `\#' on
-a non-tuple expression of 2-tuple type, we just report that no coercion of
-operands is done (after all we need a subexpression to be able to insert any
-conversion). These complications warrant defining a separate function to
-handle them.
+@:hash wrappers@>
 
 @< Local function definitions @>=
-bool can_coerce_arg
-  (expression e,size_t i,const type_expr& from,type_expr& to)
-{ if (to.specialise(from))
-    return true; // type matches without coercion
-  tuple_expression* tup= dynamic_cast<tuple_expression*>(e);
-  if (tup==nullptr)
-    return false; // we need a pair to insert a coercion
-  return coerce(from,to,tup->component[i]);
+void suffix_element_wrapper(expression_base::level l)
+{ shared_value e=pop_value();
+  shared_row r=get_own<row_value>();
+  if (l!=expression_base::no_value)
+  {@; r->val.push_back(e);
+    push_value(r);
+  }
 }
+@)
+void prefix_element_wrapper(expression_base::level l)
+{ shared_row r=get_own<row_value>();
+  shared_value e=pop_value();
+  if (l!=expression_base::no_value)
+  {@; r->val.insert(r->val.begin(),e);
+    push_value(r);
+  }
+}
+@)
+void join_rows_wrapper(expression_base::level l)
+{ shared_row y=get<row_value>();
+  shared_row x=get<row_value>();
+  if (l!=expression_base::no_value)
+  { row_ptr result(new row_value(x->val.size()+y->val.size()));
+    std::copy(y->val.begin(),y->val.end(), @|
+     std::copy(x->val.begin(),x->val.end(),result->val.begin()));
+@/  push_value(std::move(result));
+  }
 
+}
 
 @* Let-expressions, and identifier patterns.
 %
@@ -2481,26 +2518,26 @@ void while_expression::print(std::ostream& out) const
 {@; out << " while " <<  *condition << " do " << *body << " od ";
 }
 
-@ Type checking is a bit more complicated for |while| loops that for
-conditional expressions, because a row result must be produced. If the context
-requires void type, we shall require the same for the body, knowing that
-generation of a row value will be unconditionally suppressed in these cases
-anyway. In all other cases we proceed for the body expression as for the
-components of a row display (except that there is only one expression in this
-case).
+@ Type checking for |while| loops has a few complications because possibly a
+row result must be produced from the loop body expression. If the context
+requires void type, we shall leave the body type undetermined, knowing that
+generation of a row value will be suppressed in these cases anyway. In all
+other cases we proceed for the body expression as for the components of a row
+display (except that there is only one expression in this case).
 
 @< Cases for type-checking and converting... @>=
 case while_expr:
 { const w_loop& w=e.while_variant;
   expression_ptr c = convert_expr(w->condition,as_lvalue(bool_type.copy()));
-  if (type==void_type or type.specialise(row_of_type))
-  { expression_ptr b =
-      convert_expr(w->body, @|
-                   type==void_type ? as_lvalue(void_type.copy())
-                                   : *type.component_type);
-    expression_ptr result(new while_expression(std::move(c),std::move(b)));
-    return type==void_type ? expression_ptr(new voiding(std::move(result)))
-    : std::move(result);
+  if (type==void_type)
+  { type_expr unknown;
+    expression_ptr result(new
+       while_expression(std::move(c),convert_expr(w->body, unknown)));
+    return expression_ptr(new voiding(std::move(result)));
+  }
+  else if (type.specialise(row_of_type))
+  { expression_ptr b = convert_expr(w->body, *type.component_type);
+    return expression_ptr (new while_expression(std::move(c),std::move(b)));
   }
   else
   @< If |type| can be converted from some row-of type, check |w->body|
@@ -2520,9 +2557,8 @@ component type as for list displays, in section@#list display conversion@>.
   if (conv==nullptr)
     throw type_error(e,row_of_type.copy(),std::move(type));
 @)
-  expression_ptr b = convert_expr(w->body,comp_type);
-  return expression_ptr(new conversion(*conv,
-    expression_ptr(new while_expression(std::move(c),std::move(b)))));
+  return expression_ptr(new conversion(*conv, expression_ptr
+    (new while_expression(std::move(c),convert_expr(w->body,comp_type)))));
 }
 
 
@@ -2552,11 +2588,24 @@ void while_expression::evaluate(level l) const
 Next we consider |for| loops over components of a value. They also have three
 parts, an identifier pattern defining the loop variable(s), an in-part giving
 the object whose components are iterated over, and a body that may produce a
-new value for each component of the in-part. We allow iteration over vectors
-and matrices, non-row types which are indexable by integers (for now this
-means strings), and iteration over the terms of a parameter polynomial
-(representing isotypical components of a virtual module). The syntactic
-structure of the for loop is the same for all these cases.
+new value for each component of the in-part. Due to the way |for_expressions|
+are constructed, |pattern| is always an unnamed $2$-tuple, the first component
+of which is the name (if given) of the index of the component selected, and
+the second component is the pattern for the component itself. This
+organisation of the pattern is already present in the structure \&{for\_loop}
+of the relevant variant of |expr|, and ultimately it is determined by parser
+actions building the pattern list. (Looking at those rules, the left-to-right
+reversal of component and index may not be obvious, but the function
+|make_pattern_list| used takes the \emph{tail} of the list as first argument,
+and the head as second; this is adapted to the subsequent reversal that
+usually takes place when a pattern list is completed, but this reversal does
+not happen for the $2$-element list used for the patterns in for-loops.)
+
+Apart from iterating over any kind of row value, we allow iteration over
+vectors and matrices, non-row types which are indexable by integers (for now
+this means strings), and iteration over the terms of a parameter polynomial
+(representing isotypical components of a virtual module). The syntax of the
+for loop is the same for all these cases.
 
 @< Type def... @>=
 struct for_expression : public expression_base
@@ -2583,8 +2632,9 @@ for_expression::for_expression@|
   @+{}
 
 
-@ Printing a |for| expression is straightforward, taking care that
-|next_part| could be null.
+@ Printing a |for| expression is straightforward, taking not that the index
+part is first in the pattern though written \emph{after} \.@@, and that it
+could be absent.
 
 @< Function definitions @>=
 void for_expression::print(std::ostream& out) const
@@ -2595,29 +2645,36 @@ void for_expression::print(std::ostream& out) const
 }
 
 @ Type checking is more complicated for |for| loops than for |while| loops,
-since more types and potential coercions are involved. we start by processing
+since more types and potential coercions are involved. We start by processing
 the in-part in a neutral type context, which will on success set |in_type| to
-its a priori type.
+its a priori type. Then after binding the loop variable(s) in a new |layer|,
+we process the loop body either in neutral type context from the fresh and
+subsequently ignored type |body_type| (if the loop occurs in void context), or
+passing |*type.component_type| if |type| is a row type, or else if
+|row_coercion| finds an applicable coercion, passing again |body_type| but now
+set to the required type (if none of these apply a |type_error| is thrown).
+After converting the loop, we must not forget to maybe apply voiding or a
+coercion.
 
 @< Cases for type-checking and converting... @>=
 case for_expr:
 { const f_loop& f=e.for_variant;
   type_expr in_type;
-   type_expr void_t (void_type.copy());
-    expression_ptr in_expr = convert_expr(f->in_part,in_type);  // \&{in} part
+  expression_ptr in_expr = convert_expr(f->in_part,in_type);  // \&{in} part
   subscr_base::sub_type which; // the kind of aggregate iterated over
   layer bind(count_identifiers(f->id));
    // for identifier(s) introduced in this loop
   @< Set |which| according to |in_type|, and set |bind| according to the
      identifiers contained in |f->id| @>
-  type_expr body_type, *btp; const conversion_record* conv=nullptr;
-  if (type==void_type)
-    btp=&void_t; // void context is more permissive for body
-  else if (type.specialise(row_of_type))
+  type_expr body_type;
+    // if |type==void_type| then |body_type| remains undetermined
+  type_expr *btp=&body_type;
+  // either point to |body_type| or to |*type.component_type|
+  const conversion_record* conv=nullptr;
+  if (type.specialise(row_of_type))
     btp=type.component_type;
-  else if ((conv=row_coercion(type,body_type))!=nullptr)
-    btp=&body_type;
-  else throw type_error(e,row_of_type.copy(),std::move(type));
+  else if (type!=void_type and (conv=row_coercion(type,body_type))==nullptr)
+    throw type_error(e,row_of_type.copy(),std::move(type));
   expression_ptr body(convert_expr (f->body,*btp));
 @/expression_ptr loop(new
     for_expression(f->id,std::move(in_expr),std::move(body),which));
@@ -2654,17 +2711,18 @@ component type resulting from such a subscription.
 
 @ We can start evaluating the |in_part| regardless of |kind|, but for deducing
 the number of iterations we must already distinguish on |kind| to predict the
-type of the in-part. A |loop_frame| is constructed that will contain the
-bindings for the new variables whose scope is the loop body: the loop variable
-(with as value a component of the |in_part|), any named sub-components of it,
-and the optional name given to the loop index. The shared pointers held in
-this frame must be different on each iteration, because the body might get
-hold, through a closure that incorporates the |evaluation_context| constructed
-below, of a copy of those pointers; this closure should not get to see
-changing values of variables during subsequent iterations. On the other hand,
-the syntax does not allow users to name the entire tuple |loop_var| formed of
-the loop index and the in-part component, so this pointer cannot end up in the
-|loop_frame| and it may remain the same between iterations.
+type of the in-part. A |loop_var| pair of values is constructed that will
+temporarily contain the values of the loop index and loop component before
+they are transferred to the execution context. The latter will happen by
+calling the method |frame::bind| which explains why a shared pointer is formed
+here. However because the corresponding pattern is limited, we know the shared
+pointer itself will not be copied to the context, which explains why this pair
+has to be allocated just once for all iterations of the loop. However, the
+shared pointers that might get copied to the frame must be different on each
+iteration, because the body might get hold, through a closure evaluated in the
+loop body, of a copy of those pointers; in this case we deem it undesirable
+that the closure should get to ``see'' changing values of variables during
+subsequent iterations.
 
 @< Function definitions @>=
 void for_expression::evaluate(level l) const
@@ -2784,8 +2842,7 @@ its header file.
   size_t n=pol_val->val.size(),i=0;
   if (l!=no_value)
     result = row_ptr(new row_value(n));
-  for (repr::SR_poly::base::const_iterator it=pol_val->val.begin();
-       it!=pol_val->val.end(); ++it,++i)
+  for (auto it=pol_val->val.begin(); it!=pol_val->val.end(); ++it,++i)
   { loop_var->val[0].reset(new module_parameter_value(pol_val->rf,it->first));
     loop_var->val[1].reset(new split_int_value(it->second));
     frame fr(pattern);
@@ -2842,14 +2899,13 @@ void dec_for_expression::print(std::ostream& out) const
       << " downto " << *bound << " do " << *body << " od ";
 }
 
-@ Type-checking counted |for| loops is rather like that of |while| loops, but
-we must extend the context with the loop variable while processing the loop
+@ Type-checking counted |for| loops is rather like that of other |for| loops,
+but we must extend the context with the loop variable while processing the loop
 body.
 
 @< Cases for type-checking and converting... @>=
 case cfor_expr:
 { const c_loop& c=e.cfor_variant;
-  type_expr void_t (void_type.copy()); // a temporary with sufficient lifetime
   expression_ptr count_expr = convert_expr(c->count,as_lvalue(int_type.copy()));
   static const shared_value zero=shared_value(new int_value(0));
     // avoid repeated allocation
@@ -2858,21 +2914,22 @@ case cfor_expr:
     : convert_expr(c->bound,as_lvalue(int_type.copy())) ;
 @)
   layer bind(1); bind.add(c->id,int_type.copy());
-  type_expr body_type, *btp; const conversion_record* conv=nullptr;
-  if (type==void_type)
-    btp=&void_t;
-  else if (type.specialise(row_of_type))
+  type_expr body_type;
+    // if |type==void_type| then |body_type| remains undetermined
+  type_expr *btp=&body_type;
+  // either point to |body_type| or to |*type.component_type|
+  const conversion_record* conv=nullptr;
+  if (type.specialise(row_of_type))
     btp=type.component_type;
-  else if ((conv=row_coercion(type,body_type))!=nullptr)
-    btp=&body_type;
-  else throw type_error(e,row_of_type.copy(),std::move(type));
+  else if (type!=void_type and (conv=row_coercion(type,body_type))==nullptr)
+    throw type_error(e,row_of_type.copy(),std::move(type));
   expression_ptr body(convert_expr (c->body,*btp));
 @/expression_ptr loop;
-  if (c->up!=0)
-    loop.reset(new inc_for_expression
+  if (c->up)
+    loop.reset(new @| inc_for_expression
       (c->id,std::move(count_expr),std::move(bound_expr),std::move(body)));
   else
-    loop.reset(new dec_for_expression
+    loop.reset(new @| dec_for_expression
       (c->id,std::move(count_expr),std::move(bound_expr),std::move(body)));
   return type==void_type ? expression_ptr(new voiding(std::move(loop))) : @|
          conv!=nullptr ? expression_ptr(new conversion(*conv,std::move(loop)))
@@ -2894,8 +2951,8 @@ void inc_for_expression::evaluate(level l) const
   if (l==no_value)
   { c+=b;
     for (int i=b; i<c; ++i)
-    { frame fr(pattern);
-      frame::current->back_inserter() = std::make_shared<int_value>(i);
+  @/{@; frame fr(pattern);
+      fr.bind(std::make_shared<int_value>(i));
       body->void_eval();
     }
   }
@@ -2904,8 +2961,9 @@ void inc_for_expression::evaluate(level l) const
     c+=b;
     for (int i=b; i<c; ++i)
     { frame fr(pattern);
-      frame::current->back_inserter() = std::make_shared<int_value>(i);
-      body->eval(); result->val.push_back(pop_value());
+      fr.bind(std::make_shared<int_value>(i));
+      body->eval();
+      result->val.push_back(pop_value());
     }
     push_value(std::move(result));
   }
@@ -2924,8 +2982,8 @@ void dec_for_expression::evaluate(level l) const
   if (l==no_value)
   { i+=b;
     while (i-->b)
-    { frame fr(pattern);
-      frame::current->back_inserter() = std::make_shared<int_value>(i);
+  @/{@; frame fr(pattern);
+      fr.bind(std::make_shared<int_value>(i));
       body->void_eval();
     }
   }
@@ -2934,17 +2992,19 @@ void dec_for_expression::evaluate(level l) const
     i+=b;
     while (i-->b)
     { frame fr(pattern);
-      frame::current->back_inserter() = std::make_shared<int_value>(i);
-      body->eval(); result->val.push_back(pop_value());
+      fr.bind(std::make_shared<int_value>(i));
+      body->eval();
+      result->val.push_back(pop_value());
     }
     push_value(std::move(result));
   }
 }
 
-@* Casts.
+@* Casts and operator casts.
 %
 Casts are very simple to process; they do not need any |expression| type to
-represent them.
+represent them. So type checking is all there is to it, which is easy since a
+strong context is provided.
 
 @< Cases for type-checking and converting... @>=
 case cast_expr:
@@ -2953,21 +3013,27 @@ case cast_expr:
   return conform_types(c->type,type,std::move(p),e);
 }
 
-@ The overload table stores type information in a |func_type| value, which
+@ Another kind of cast is the operator cast, which selects an operator or
+overloaded function instance as it would for arguments of specified types, but
+without giving actual arguments, so that the selected function itself can be
+handled as a value. In order to do so we shall need the following function.
+
+The overload table stores type information in a |func_type| value, which
 cannot be handed directly to the |specialise| method. The following function
 simulates specialisation to a function type |from|$\to$|to|.
 
 @< Local function definitions @>=
-inline bool spec_func(type_expr& t, const type_expr& from, const type_expr& to)
+inline bool functype_specialise
+  (type_expr& t, const type_expr& from, const type_expr& to)
 { return t.specialise(gen_func_type) @|
   and t.func->arg_type.specialise(from) @|
   and t.func->result_type.specialise(to);
 }
 
-@ Operation casts similarly only access existing kinds of expression. We must
-however access the global overload table to find the value. Since upon success
-we find a bare function value, we must abuse the |denotation| class a bit to
-serve as wrapper that upon evaluation will return the value again.
+@ Operator casts only access already existing values. In most cases we must
+access the global overload table to find the value. Since upon success we find
+a bare function value, we must (as we did for~`\.\$') use the |denotation|
+class to serve as wrapper that upon evaluation will return the value again.
 
 @< Cases for type-checking and converting... @>=
 case op_cast_expr:
@@ -2982,10 +3048,11 @@ case op_cast_expr:
     if (variants[i].type().arg_type==ctype)
     {
       expression_ptr p(new denotation(variants[i].val));
-      if (spec_func(type,ctype,variants[i].type().result_type))
+      const type_expr& res_t = variants[i].type().result_type;
+      if (functype_specialise(type,ctype,res_t))
         return p;
-      type_expr ftype(ctype.copy(),variants[i].type().result_type.copy());
-      throw type_error(e,std::move(ftype),std::move(type));
+@/ // coercions never apply to values of function type, so just fail here
+      throw type_error(e,type_expr(ctype.copy(),res_t.copy()),std::move(type));
     }
   std::ostringstream o;
   o << "Cannot resolve " << main_hash_table->name_of(c->oper) @|
@@ -2994,76 +3061,66 @@ case op_cast_expr:
 }
 break;
 
-@ For now size-of is the only identifier with special operand patterns.
+@ For our special operators, |print|, |prints| we select their wrapper
+function here always, since they accept any argument type. We signal an error
+only if the context requires a type that cannot be specialised the type of
+operator found. For $\#$ the situation will be slightly more complicated.
 
 @< Test special argument patterns... @>=
-{ if (c->oper==size_of_name())
-  { if (ctype.kind==row_type)
-    { if (spec_func(type,ctype,int_type))
-      return expression_ptr(new denotation(shared_value
-        (new builtin_value(sizeof_wrapper,"#@@[T]"))));
-      throw type_error(e,ctype.copy(),std::move(type));
-    }
-    else if (ctype.specialise(pair_type))
-    { type_expr& arg_tp0 = *ctype.tupple.begin();
-      type_expr& arg_tp1 = *++ctype.tupple.begin();
-      if (arg_tp0.kind==row_type)
-      { if (arg_tp0==arg_tp1)
-        { if (spec_func(type,ctype,arg_tp0))
-          return expression_ptr(new denotation(shared_value @|
-            (new builtin_value(join_rows_wrapper,"#@@([T],[T]->[T])"))));
-          throw type_error(e,ctype.copy(),std::move(type));
-        }
-	else if (*arg_tp0.component_type==arg_tp1)
-        { if (spec_func(type,ctype,arg_tp0))
-          return expression_ptr(new denotation(shared_value @|
-            (new builtin_value(suffix_element_wrapper,"#@@([T],T->[T])"))));
-          throw type_error(e,ctype.copy(),std::move(type));
-        }
+{ if (c->oper==print_name())
+  { if (functype_specialise(type,ctype,ctype))
+    return expression_ptr(new @| denotation
+      (std::make_shared<builtin_value>(print_wrapper,"print")));
+  }
+  else if (c->oper==prints_name())
+  { if (functype_specialise(type,ctype,void_type))
+    return expression_ptr(new @| denotation
+      (std::make_shared<builtin_value>(prints_wrapper,"prints")));
+  }
+  else if (c->oper==size_of_name())
+    @< Select the proper instance of the \.\# operator,
+       or fall through if none applies @>
+}
+
+@ For the \.\#, we select from four possible variants that deliver different
+wrapper functions. We signal an error if we found a match but the type of the
+resulting operator does not match the type required by the context. If no
+match is found here, there can still be one in the overload table.
+
+@< Select the proper instance of the \.\# operator,... @>=
+{ if (ctype.kind==row_type)
+  { if (functype_specialise(type,ctype,int_type))
+  @/return expression_ptr(new @| denotation
+      (std::make_shared<builtin_value>(sizeof_wrapper,"#@@[T]")));
+    throw type_error(e,ctype.copy(),std::move(type));
+  }
+  else if (ctype.specialise(pair_type))
+  { type_expr& arg_tp0 = *ctype.tupple.begin();
+    type_expr& arg_tp1 = *++ctype.tupple.begin();
+    if (arg_tp0.kind==row_type)
+    { if (arg_tp0==arg_tp1)
+      { if (functype_specialise(type,ctype,arg_tp0))
+        return expression_ptr(new @| denotation
+          (std::make_shared<builtin_value>@|(join_rows_wrapper
+                                          ,"#@@([T],[T]->[T])")));
+        throw type_error(e,ctype.copy(),std::move(type));
       }
-      if (arg_tp1.kind==row_type and *arg_tp1.component_type==arg_tp0)
-      { if (spec_func(type,ctype,arg_tp1))
-        return expression_ptr(new denotation(shared_value @|
-          (new builtin_value(prefix_element_wrapper,"#@@(T,[T]->[T])"))));
+      else if (*arg_tp0.component_type==arg_tp1)
+      { if (functype_specialise(type,ctype,arg_tp0))
+        return expression_ptr(new @| denotation
+            (std::make_shared<builtin_value>@|(suffix_element_wrapper
+                                              ,"#@@([T],T->[T])")));
         throw type_error(e,ctype.copy(),std::move(type));
       }
     }
+    if (arg_tp1.kind==row_type and *arg_tp1.component_type==arg_tp0)
+    { if (functype_specialise(type,ctype,arg_tp1))
+      return expression_ptr(new @| denotation
+        (std::make_shared<builtin_value>@|(prefix_element_wrapper
+                                          ,"#@@(T,[T]->[T])")));
+      throw type_error(e,ctype.copy(),std::move(type));
+    }
   }
-}
-
-@ Here are functions for adding individual elements to a row value, and for
-joining two such values.
-
-@< Local function definitions @>=
-void suffix_element_wrapper(expression_base::level l)
-{ shared_value e=pop_value();
-  shared_row r=get_own<row_value>();
-  if (l!=expression_base::no_value)
-  {@; r->val.push_back(e);
-    push_value(r);
-  }
-}
-@)
-void prefix_element_wrapper(expression_base::level l)
-{ shared_row r=get_own<row_value>();
-  shared_value e=pop_value();
-  if (l!=expression_base::no_value)
-  {@; r->val.insert(r->val.begin(),e);
-    push_value(r);
-  }
-}
-@)
-void join_rows_wrapper(expression_base::level l)
-{ shared_row y=get<row_value>();
-  shared_row x=get<row_value>();
-  if (l!=expression_base::no_value)
-  { row_ptr result(new row_value(0));
-    result->val.reserve(x->val.size()+y->val.size());
-    result->val.insert(result->val.end(),x->val.begin(),x->val.end());
-    result->val.insert(result->val.end(),y->val.begin(),y->val.end());
-    push_value(std::move(result));
-  }
-
 }
 
 @* Assignments.
@@ -3110,7 +3167,9 @@ global_assignment::global_assignment(id_type l,expression_ptr&& r)
 : assignment_expr(l,std::move(r)), address(global_id_table->address_of(l)) @+{}
 
 @ Evaluating a global assignment evaluates the left hand side, and replaces
-the old value stored at |*address| by the new (shared pointer) value.
+the old value stored at |*address| by the new (shared pointer) value. The
+value is then also pushed on the evaluation stack according to the level |l|
+(which will however often be |no_value| in which case nothing happens).
 
 @< Function def... @>=
 void global_assignment::evaluate(level l) const
@@ -3172,7 +3231,8 @@ case ass_stat:
 @.Undefined identifier in assignment@>
 @)type_expr rhs_type = id_t->copy(); // provide a modifiable copy
   expression_ptr r(convert_expr(e.assign_variant->rhs,rhs_type));
-  if (rhs_type!=*id_t) // assignment will specialise identifier
+  if (rhs_type!=*id_t)
+    // assignment will specialise identifier, record to which type it does
   { if (is_local)
       layer::specialise(i,j,rhs_type);
     else
@@ -3192,18 +3252,19 @@ other words if one sets $b=a[i]$ for some list, vector or matrix $a$, then $s$
 will behave as a copy of the entry $a[i]$ rather than as an alias, so
 subsequent assignment to $b$ will not affect~$a$ or vice versa. (This does no
 prevent us to share storage between $b$ and $a$ initially, it just means the
-sharing should be broken if $b$ or $a$ are modified.) This simplifies the
-semantic model considerably, but if we want to allow creating composite values
-by subsequently setting their components, we need to allow assignments of the
-form $a[i]:=c$. The meaning of this is the same as assigning a new value to
-all of $a$ that differs from the original value only at index~$i$; it may
-however be expected to be implemented more efficiently if the storage of $a$
-is not currently shared, as would usually be the case at least from the second
-such assignment to~$a$ on. The interpreter will have to treat such component
-assignments as a whole (with three components $a,i,c$), which also means that
-it will not be able to handle something like $a[i][j]:=c$ even when that would
-seem to make sense (however $m[i,j]:=c$ for matrix values $m$ will be
-supported).
+sharing should be broken if $b$ or $a$ are modified; we practice
+copy-on-write.) This simplifies the semantic model considerably, but if we
+want to allow creating composite values by subsequently setting their
+components, we need to allow assignments of the form $a[i]:=c$. The meaning of
+this is the same as assigning a new value to all of $a$ that differs from the
+original value only at index~$i$; it may however be expected to be implemented
+more efficiently if the storage of $a$ is not currently shared, as would
+usually be the case at least from the second such assignment to~$a$ on. The
+interpreter will have to treat such component assignments as a whole (with
+three components $a,i,c$, in which $a$ must be an identifier), which also
+means that it will not be able to handle something like $a[i][j]:=c$ even when
+that would seem to make sense (however $m[i,j]:=c$ for matrix values $m$ will
+be supported).
 
 In fact we need to implement a whole range of component assignments: there are
 assignments to general row-value components, to vector and matrix components
@@ -3235,8 +3296,8 @@ struct component_assignment : public assignment_expr
 void component_assignment::print(std::ostream& out) const
 {@; out << main_hash_table->name_of(lhs) << '[' << *index << "]:=" << *rhs; }
 
-@ For global assignments we need to non-|const| access the location where the
-identifier is stored.
+@ For global assignments, we need to have non-|const| access the location
+where the identifier is stored.
 
 @< Type definitions @>=
 class global_component_assignment : public component_assignment

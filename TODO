@@ -28,6 +28,8 @@
 
  - Mention file and line in non-syntax errors
  - Improve output of expressions
+ - Make |shared_value| a shared-pointer-to-constant, but make |get_own| return
+   a general shared pointer.
 
  - Allow multiple overloaded functions defined in a single 'set' statement
  - Allow recursion through a more intuitive syntax
