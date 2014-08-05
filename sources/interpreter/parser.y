@@ -102,7 +102,7 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| '\f'	   { YYABORT; } /* allow form feed as well at command level */
 	| exp '\n'		{ *parsed_expr=$1; }
 	| tertiary ';' '\n'
-	  { *parsed_expr=make_sequence($1,wrap_tuple_display(NULL),1); }
+	  { *parsed_expr=make_sequence($1,wrap_tuple_display(NULL),true); }
 	| SET pattern '=' exp '\n' { global_set_identifier($2,$4,1); YYABORT; } 
 	| SET IDENT '(' id_specs_opt ')' '=' exp '\n'
 	  { struct raw_id_pat id; id.kind=0x1; id.name=$2;
@@ -151,7 +151,7 @@ exp: LET lettail { $$=$2; }
 	| '(' id_specs ')' type ':' exp
 	  { $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6)); }
         | type ':' exp	 { $$ = make_cast($1,$3); }
-	| quaternary NEXT exp { $$=make_sequence($1,$3,0); }
+	| quaternary NEXT exp { $$=make_sequence($1,$3,false); }
         | quaternary
 ;
 
@@ -170,7 +170,7 @@ declaration: pattern '=' exp { $$ = make_let_node($1,$3); }
 	  }
 ;
 
-quaternary: tertiary ';' quaternary { $$=make_sequence($1,$3,1); }
+quaternary: tertiary ';' quaternary { $$=make_sequence($1,$3,true); }
 	| tertiary
 ;
 

@@ -1927,9 +1927,9 @@ while the second expression is then evaluated without using its value; the
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct sequence_node
-{ expr first; expr last; int forward;
+{ expr first; expr last; bool forward;
 @)
-  sequence_node(expr&& first, expr&& last, int forward)
+  sequence_node(expr&& first, expr&& last, bool forward)
 @/: first(std::move(first))
   , last(std::move(last))
   , forward(forward)@+{}
@@ -1955,17 +1955,17 @@ explicit expr(sequence&& s)
 @ Sequences are built by |make_sequence|.
 
 @< Declarations of functions for the parser @>=
-expr_p make_sequence(expr_p first, expr_p last, int forward);
+expr_p make_sequence(expr_p first, expr_p last, bool forward);
 
 @~It does what one would expect it to.
 
 @< Definitions of functions for the parser @>=
-expr mk_sequence(expr& first, expr& last, int forward)
+expr mk_sequence(expr& first, expr& last, bool forward)
 {@;
   return expr(sequence(new @|
     sequence_node { std::move(first), std::move(last), forward } ));
 }
-expr_p make_sequence(expr_p first, expr_p last, int forward)
+expr_p make_sequence(expr_p first, expr_p last, bool forward)
 {@; return new expr(mk_sequence(*expr_ptr(first),*expr_ptr(last),forward)); }
 
 @

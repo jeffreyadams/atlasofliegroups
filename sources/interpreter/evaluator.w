@@ -1355,6 +1355,8 @@ and a |runtime_error|, using a dynamic cast. (It is unclear why the standard
 exception classes were designed in such a way as to make doing what is done
 below so clumsy.)
 
+@:Catch to trace back calls@>
+
 @< Catch-block for exceptions thrown within function calls @>=
 catch (const std::exception& e)
 { identifier* p=dynamic_cast<identifier*>(function.get());
@@ -2005,13 +2007,14 @@ if it was not a |builtin_value|.
 
 @ Evaluation of an overloaded function call bound to a closure consists of a
 simplified version of the part of |call_expression::evaluate| dedicated to
-closures (including the temporary catching of errors in order to produce a
-trace of interrupted function calls in the error message) together with the
-evaluation part of section@# lambda evaluation @>. The simplification consists
-of the fact that the closure is already evaluated and stored, and that in
-particular we don't have to distinguish dynamically between built-in functions
-and closures, nor between calls of anonymous or named functions (we are always
-in the latter case) for producing the error trace.
+closures (including the temporary catching of errors as defined in
+section@#Catch to trace back calls@> in order to produce a trace of
+interrupted function calls in the error message) together with the evaluation
+part of section@# lambda evaluation @>. The simplification consists of the
+fact that the closure is already evaluated and stored, and that in particular
+we don't have to distinguish dynamically between built-in functions and
+closures, nor between calls of anonymous or named functions (we are always in
+the latter case) for producing the error trace.
 
 @< Function definitions @>=
 void overloaded_closure_call::evaluate(level l) const
@@ -2033,9 +2036,7 @@ void overloaded_closure_call::evaluate(level l) const
   }
 }
 
-@* Compilation of user-defined functions.
-%
-Now we describe the handling of user-defined functions in type analysis.
+@ Finally we describe the handling of user-defined functions in type analysis.
 
 We first test if the required |type| specialises to a function type, i.e.,
 either it was some function type or undefined. Then we get the argument type
@@ -2065,6 +2066,90 @@ case lambda_expr:
   expression_ptr body = convert_expr(fun->body,type.func->result_type);
   return expression_ptr(new lambda_expression(pat,std::move(body)));
 }
+
+@* Sequence expressions.
+%
+Sequence expressions are used to evaluate two expressions one after the other,
+discarding any value from on of them (although it is possible that the other
+value also gets discarded by voiding). In most cases it is the first
+expression whose value is discarded (as for the comma-operator in \Cee/\Cpp),
+and the semicolon is used to indicate this; occasionally however it is useful
+to retain the first value and evaluate a second expression for its side
+effects \emph{afterwards}, and the \.{next} keyword is used instead of a
+semicolon for this purpose.
+
+In practice it turns out that long sequences of expressions chained by
+semicolons are rare, since often the need to introduce new local variables
+will interrupt the chain. Therefore we see no need to use a |std::vector|
+representation for such sequences of expressions, and prefer to use a chained
+representation instead, just like before type analysis. In other words, we
+use an expression node with two descendents each time. The forward and
+reverse variants are implemented by similar but distinct types derived from
+|expression_base|.
+
+@< Type def... @>=
+struct seq_expression : public expression_base
+{ expression_ptr first,last;
+@)
+  seq_expression(expression_ptr&& f,expression_ptr&& l)
+   : first(f.release()),last(l.release()) @+{}
+  virtual ~@[seq_expression() = default@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+@)
+struct next_expression : public expression_base
+{ expression_ptr first,last;
+@)
+  next_expression(expression_ptr&& f,expression_ptr&& l)
+   : first(f.release()),last(l.release()) @+{}
+  virtual ~@[next_expression() = default@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ To print a sequence, we print the two expressions separated by a semicolon
+or \.{next}.
+
+@< Function definitions @>=
+void seq_expression::print(std::ostream& out) const
+{@; out << *first << ';' << *last; }
+void next_expression::print(std::ostream& out) const
+{@; out << *first << " next " << *last; }
+
+@ Evaluating a sequence expression evaluates the |first| for side effects
+only, and then the |last| expression.
+
+@< Function def... @>=
+void seq_expression::evaluate(level l) const
+{@; first->void_eval(); last->evaluate(l); }
+
+@ For a next-expression, it is the value of the first expression that is
+retained as result.
+
+@< Function def... @>=
+void next_expression::evaluate(level l) const
+{@; first->evaluate(l); last->void_eval(); }
+
+@ It remains to type-check and convert sequence expressions, which is easy.
+
+@< Cases for type-checking and converting... @>=
+case seq_expr:
+{ const sequence& seq=e.sequence_variant;
+  if (seq->forward)
+  { expression_ptr first = convert_expr(seq->first,as_lvalue(void_type.copy()));
+    expression_ptr last  = convert_expr(seq->last,type);
+    return expression_ptr(new
+      seq_expression(std::move(first),std::move(last)));
+  }
+  else
+  { expression_ptr first = convert_expr(seq->first,type);
+    expression_ptr last  = convert_expr(seq->last,as_lvalue(void_type.copy()));
+    return expression_ptr(new
+       next_expression(std::move(first),std::move(last)));
+  }
+}
+
 
 @* Array subscription.
 %
@@ -2270,8 +2355,8 @@ case subscription:
     }
   else
   { std::ostringstream o;
-    o << "Cannot subscript " << array_type << " value with index of type "
-      << index_type;
+    o << "Cannot subscript value of type " << array_type @|
+      << " with index of type " << index_type;
     throw expr_error(e,o.str());
   }
 @)
@@ -3213,11 +3298,23 @@ void local_assignment::evaluate(level l) const
 }
 
 
-@ Type-checking and converting assignment statements follows the same lines as
-that of applied identifiers as far as discriminating between local and global
-is concerned. We first look in |id_context| for a local binding of the
-identifier, and if not found we look in |global_id_table|. If found in either
-way,
+@ Converting assignment statements follows the same lines as for applied
+identifiers, as far as discriminating between local and global is concerned.
+We first look in |id_context| for a local binding of the identifier, and then
+maybe in |global_id_table|. If found in either way, the right hand side is
+converted in a type context given by the type of the variable found. After
+forming the proper kind of assignment expression, we must as usual allow for a
+coercion to be applied to the result of the assignment, if the required |type|
+demands this.
+
+While in most successful cases the type of the variable may direct the
+conversion of the right hand side, the type of the right hand side may
+occasionally be more specific than the previously known type of the variable
+(only if it is a specialisation of the latter will the conversion succeed).
+For instance this happens when assigning a row of concrete type to a variable
+initialised with an empty row. In those cases we call the
+|specialise| method of |frame| or of |global_id_table| to make sure the type
+assumed by the variable is recorded.
 
 @< Cases for type-checking and converting... @>=
 case ass_stat:
@@ -3233,9 +3330,9 @@ case ass_stat:
   expression_ptr r(convert_expr(e.assign_variant->rhs,rhs_type));
   if (rhs_type!=*id_t)
     // assignment will specialise identifier, record to which type it does
-  { if (is_local)
+  {@; if (is_local)
       layer::specialise(i,j,rhs_type);
-    else
+      else
       global_id_table->specialise(lhs,rhs_type);
   }
 @)
@@ -3339,15 +3436,15 @@ void global_component_assignment::evaluate(level l) const
 }
 
 @ The |assign| method, which will also be called for local component
-assignments, starts by the common work of evaluating the value to be assigned,
-and of making sure the aggregate variable is made to point to a unique copy of
-its current value, which copy can then be modified in place. The index is not
-yet evaluated at this point, but this will be done inside the |switch|
-statement; this is because possible expansion of a tuple index value depends
-on~|kind|. For actually changing the aggregate, we must distinguish cases
-according to the kind of component assignment at hand. Assignments to
-components of rational vectors and of strings will be forbidden, see module
-@#comp_ass_type_check@>.
+assignments, starts by the common work of evaluating the (component) value to
+be assigned, and of then making sure the aggregate variable is made to point
+to a unique copy of its current value, which copy can then be modified in
+place. The index is not yet evaluated at this point, but this will be done
+inside the |switch| statement; this is because possible expansion of a tuple
+index value depends on~|kind|. For actually changing the aggregate, we must
+distinguish cases according to the kind of component assignment at hand.
+Assignments to components of rational vectors and of strings will be
+forbidden, see module @#comp_ass_type_check@>.
 
 @< Function def... @>=
 void component_assignment::assign
@@ -3373,20 +3470,20 @@ void component_assignment::assign
 }
 
 @ A |row_value| component assignment is the simplest kind. The variable |loc|
-holds a generic pointer, known to refer to a |row_value|. Since we need their
-value, but not for incorporation into a result, we use |force| to get ordinary
-pointers of the right kind. Then we do a bound check, and on success replace a
-component of the value held in |a| by the stack-top value. Afterwards,
-depending on |l|, we may put back the stack-top value as result of the
-component assignment, possibly expanding a tuple in the process.
+holds a generic pointer, known to refer to a |row_value|. Since we need to
+access the vector of shared pointers, we use |force| to get ordinary pointer,
+and then select the |val| field. Then we do a bound check, and on success
+replace a component of the value held in |a| by the stack-top value.
+Afterwards, depending on |l|, we may put back the stack-top value as result of
+the component assignment, possibly expanding a tuple in the process.
 
 @< Replace component at |index| in row |loc|... @>=
 { unsigned int i=(index->eval(),get<int_value>()->val);
-  row_value& a=*force<row_value>(loc);
-  if (i>=a.val.size())
-    throw std::runtime_error(range_mess(i,a.val.size(),this));
-  a.val[i]= pop_value();
-  push_expanded(l,a.val[i]);
+  std::vector<shared_value>& a=force<row_value>(loc)->val;
+  if (i>=a.size())
+    throw std::runtime_error(range_mess(i,a.size(),this));
+  a[i]= pop_value();
+  push_expanded(l,a[i]);
 }
 
 @ For |vec_value| entry assignments the type of the aggregate object is
@@ -3396,10 +3493,10 @@ the component assignment expression is not used.
 
 @< Replace entry at |index| in vector |loc|... @>=
 { unsigned int i=(index->eval(),get<int_value>()->val);
-  vector_value& v=*force<vector_value>(loc);
-  if (i>=v.val.size())
-    throw std::runtime_error(range_mess(i,v.val.size(),this));
-  v.val[i]= force<int_value>(execution_stack.back().get())->val;
+  std::vector<int>& v=force<vector_value>(loc)->val;
+  if (i>=v.size())
+    throw std::runtime_error(range_mess(i,v.size(),this));
+  v[i]= force<int_value>(execution_stack.back().get())->val;
   if (l==no_value)
     execution_stack.pop_back();
 }
@@ -3412,12 +3509,12 @@ indices, and there are two bound checks.
   unsigned int j=get<int_value>()->val;
   unsigned int i=get<int_value>()->val;
 @/
-  matrix_value& m=*force<matrix_value>(loc);
-  if (i>=m.val.numRows())
-    throw std::runtime_error(range_mess(i,m.val.numRows(),this));
-  if (j>=m.val.numColumns())
-    throw std::runtime_error(range_mess(j,m.val.numColumns(),this));
-  m.val(i,j)= force<int_value>(execution_stack.back().get())->val;
+  int_Matrix& m=force<matrix_value>(loc)->val;
+  if (i>=m.numRows())
+    throw std::runtime_error(range_mess(i,m.numRows(),this));
+  if (j>=m.numColumns())
+    throw std::runtime_error(range_mess(j,m.numColumns(),this));
+  m(i,j)= force<int_value>(execution_stack.back().get())->val;
   if (l==no_value)
     execution_stack.pop_back();
 }
@@ -3427,15 +3524,15 @@ add a test for matching column length.
 
 @< Replace columns at |index| in matrix |loc|... @>=
 { unsigned int j=(index->eval(),get<int_value>()->val);
-  matrix_value& m=*force<matrix_value>(loc);
-  const vector_value& v=*force<vector_value>(execution_stack.back().get());
-  if (j>=m.val.numColumns())
-    throw std::runtime_error(range_mess(j,m.val.numColumns(),this));
-  if (v.val.size()!=m.val.numRows())
+  int_Matrix& m=force<matrix_value>(loc)->val;
+  const int_Vector& v=force<vector_value>(execution_stack.back().get())->val;
+  if (j>=m.numColumns())
+    throw std::runtime_error(range_mess(j,m.numColumns(),this));
+  if (v.size()!=m.numRows())
     throw std::runtime_error
-      (std::string("Cannot replace column of size ")+str(m.val.numRows())+
-       " by one of size "+str(v.val.size()));
-  m.val.set_column(j,v.val);
+      (std::string("Cannot replace column of size ")+str(m.numRows())+
+       " by one of size "+str(v.size()));
+  m.set_column(j,v);
   if (l==no_value)
     execution_stack.pop_back();
 }
@@ -3474,7 +3571,18 @@ void local_component_assignment::evaluate(level l) const
 
 @ Type-checking and converting component assignment statements follows the
 same lines as that of ordinary assignment statements, but must also
-distinguish different aggregate types.
+distinguish different aggregate types. Most of the code is straightforward,
+but there is a subtle point that in case of a component assignment to a
+variable of previously undetermined row type, the component type must be
+recorded with the variable. This is achieved by the call to the |specialise|
+for the pointer found at |aggr_t->component_type|, which is part of the type
+for the variable in the local or global table. Here for one time we abuse of
+the fact that, although |aggr_t| is a pointer-to-constant, we are still
+allowed to call a non-|const| method for the |type_expr| that
+|aggr_t->component_type| points to; otherwise we would have to call a
+|specialise| method for the local or global variable table that holds the
+identifier |aggr|, as was done in the case of ordinary assignments.
+
 @:comp_ass_type_check@>
 
 @< Cases for type-checking and converting... @>=
@@ -3482,109 +3590,38 @@ case comp_ass_stat:
 { id_type aggr=e.comp_assign_variant->aggr;
   const expr& index=e.comp_assign_variant->index;
   const expr& rhs=e.comp_assign_variant->rhs;
-@/const_type_p aggr_t; type_expr ind_t; type_expr comp_t;
-  expression_ptr assign; size_t d,o; bool is_local;
-  if ((aggr_t=layer::lookup(aggr,d,o))!=nullptr)
-    is_local=true;
-  else if ((aggr_t=global_id_table->type_of(aggr))!=nullptr)
-    is_local=false;
-  else throw program_error @|
+@/const_type_p aggr_t; size_t d,o;
+  bool is_local = (aggr_t=layer::lookup(aggr,d,o))!=nullptr;
+  if (not is_local and (aggr_t=global_id_table->type_of(aggr))==nullptr)
+    throw program_error @|
     (std::string("Undefined identifier in component assignment: ")
      +main_hash_table->name_of(aggr));
 @.Undefined identifier in assignment@>
 @)
+  type_expr ind_t;
   expression_ptr i = convert_expr(index,ind_t);
-  subscr_base::sub_type kind;
+@/type_expr comp_t; subscr_base::sub_type kind;
   if (subscr_base::indexable(*aggr_t,ind_t,comp_t,kind)
       and subscr_base::assignable(kind))
   { expression_ptr r = convert_expr(rhs,comp_t);
+    if (aggr_t->kind==row_type)
+      aggr_t->component_type->specialise(comp_t); // record type
     if (is_local)
-      assign.reset(new
-        local_component_assignment(aggr,std::move(i),d,o,std::move(r),kind));
+      return conform_types(comp_t,type,expression_ptr(new @|
+        local_component_assignment(aggr,std::move(i),d,o,std::move(r),kind))
+      ,e);
     else
-      assign.reset(new
-         global_component_assignment(aggr,std::move(i),std::move(r),kind));
-
-    return conform_types(comp_t,type,std::move(assign),e);
+      return conform_types(comp_t,type,expression_ptr(new @|
+        global_component_assignment(aggr,std::move(i),std::move(r),kind))
+      ,e);
   }
   else
   { std::ostringstream o;
-    o << "Cannot subscript " << *aggr_t << @| " value with index of type "
-      << ind_t << " in assignment";
+    o << "Cannot subscript value of type " << *aggr_t @|
+      << " with index of type " << ind_t << " in assignment";
     throw expr_error(e,o.str());
   }
 }
-
-@* Sequence expressions.
-%
-Since sequences are probably short on average, we use a chained
-representation after type analysis, just like before. The forward and reverse
-variants are implemented by similar but distinct types derived from
-|expression_base|.
-
-@< Type def... @>=
-struct seq_expression : public expression_base
-{ expression_ptr first,last;
-@)
-  seq_expression(expression_ptr&& f,expression_ptr&& l)
-   : first(f.release()),last(l.release()) @+{}
-  virtual ~@[seq_expression() = default@];
-  virtual void evaluate(level l) const;
-  virtual void print(std::ostream& out) const;
-};
-@)
-struct next_expression : public expression_base
-{ expression_ptr first,last;
-@)
-  next_expression(expression_ptr&& f,expression_ptr&& l)
-   : first(f.release()),last(l.release()) @+{}
-  virtual ~@[next_expression() = default@];
-  virtual void evaluate(level l) const;
-  virtual void print(std::ostream& out) const;
-};
-
-@ To print a sequence, we print the two expressions separated by a semicolon
-or \.{next}.
-
-@< Function definitions @>=
-void seq_expression::print(std::ostream& out) const
-{@; out << *first << ';' << *last; }
-void next_expression::print(std::ostream& out) const
-{@; out << *first << " next " << *last; }
-
-@ Evaluating a sequence expression evaluates the |first| for side effects
-only, and then the |last| expression.
-
-@< Function def... @>=
-void seq_expression::evaluate(level l) const
-{@; first->void_eval(); last->evaluate(l); }
-
-@ For a next-expression, it is the value of the first expression that is
-retained as result.
-
-@< Function def... @>=
-void next_expression::evaluate(level l) const
-{@; first->evaluate(l); last->void_eval(); }
-
-@ It remains to type-check and convert sequence expressions, which is easy.
-
-@< Cases for type-checking and converting... @>=
-case seq_expr:
-{ const sequence& seq=e.sequence_variant;
-  if (seq->forward!=0)
-  { expression_ptr first = convert_expr(seq->first,as_lvalue(void_type.copy()));
-    expression_ptr last  = convert_expr(seq->last,type);
-    return expression_ptr(new
-      seq_expression(std::move(first),std::move(last)));
-  }
-  else
-  { expression_ptr first = convert_expr(seq->first,type);
-    expression_ptr last  = convert_expr(seq->last,as_lvalue(void_type.copy()));
-    return expression_ptr(new
-       next_expression(std::move(first),std::move(last)));
-  }
-}
-
 
 @* Index.
 
