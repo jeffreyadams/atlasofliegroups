@@ -308,7 +308,7 @@ void Lie_factors_wrapper(expression_base::level l)
   row_ptr result(new row_value(t->val.size()));
   for (unsigned i=0; i<t->val.size(); ++i)
   { std::vector<SimpleLieType> factor(1,t->val[i]);
-    result->val[i]=shared_Lie_type(new Lie_type_value(LieType(factor)));
+    result->val[i]=std::make_shared<Lie_type_value>(LieType(factor));
   }
   push_value(std::move(result));
 }
@@ -1199,7 +1199,7 @@ void integrality_points_wrapper(expression_base::level l)
     // method normalises rationals
   row_ptr result (new row_value(ipl.size()));
   for (size_t i=0; i<ipl.size(); ++i)
-    result->val[i]=shared_value(new rat_value(ipl[i]));
+    result->val[i]=std::make_shared<rat_value>(ipl[i]);
   push_value(std::move(result));
 }
 
@@ -1937,8 +1937,8 @@ produces the list, and then use it twice.
 void push_name_list(const realform_io::Interface& interface)
 { row_ptr result(new row_value(0));
   for (size_t i=0; i<interface.numRealForms(); ++i)
-    result->val.push_back
-      (shared_value(new string_value(interface.typeName(i))));
+    result->val.emplace_back
+      (std::make_shared<string_value>(interface.typeName(i)));
   push_value(std::move(result));
 }
 @)
@@ -2633,7 +2633,7 @@ void real_forms_of_Cartan_wrapper(expression_base::level l)
   { RealFormNbr rf = ic.interface.in(i);
     BitMap b(ic.val.Cartan_set(rf));
     if (b.isMember(cc->number))
-      result->val[k++] = shared_value(new real_form_value(ic,rf));
+      result->val[k++] = std::make_shared<real_form_value>(ic,rf);
   }
   push_value(std::move(result));
 }
@@ -2648,7 +2648,7 @@ void dual_real_forms_of_Cartan_wrapper(expression_base::level l)
   { RealFormNbr drf = cc->parent.dual_interface.in(i);
     BitMap b (cc->parent.val.dual_Cartan_set(drf));
     if (b.isMember(cc->number))
-      result->val[k++] = shared_value(new real_form_value(dual_ic,drf));
+      result->val[k++] = std::make_shared<real_form_value>(dual_ic,drf);
   }
   push_value(std::move(result));
 }
@@ -2708,7 +2708,7 @@ void square_classes_wrapper(expression_base::level l)
     row_ptr part @| (new row_value(pi.classCount()));
     for (unsigned long c=0; c<pi.classCount(); ++c)
        part->val[c] =
-          shared_value(new int_value(rfi.out(rfl[cc->val.toWeakReal(c,csc)])));
+          std::make_shared<int_value>(rfi.out(rfl[cc->val.toWeakReal(c,csc)]));
     result->val[csc] = std::move(part);
   }
   push_value(std::move(result));
@@ -3273,7 +3273,8 @@ void block_element_wrapper(expression_base::level l)
     return;
   push_value(new KGB_elt_value(b->rf,b->val.x(z)));
   inner_class_value dual_ic(b->rf->parent,tags::DualTag());
-  shared_real_form drf (new real_form_value(dual_ic,b->dual_rf->val.realForm()));
+  shared_real_form drf =
+    std::make_shared<real_form_value>(dual_ic,b->dual_rf->val.realForm());
   push_value(new KGB_elt_value(drf,b->val.y(z)));
   if (l==expression_base::single_value)
     wrap_tuple(2);
@@ -3700,7 +3701,7 @@ void reducibility_points_wrapper(expression_base::level l)
       // method normalises rationals
     row_ptr result(new row_value(rp.size()));
     for (size_t i=0; i<rp.size(); ++i)
-      result->val[i]=shared_value(new rat_value(rp[i]));
+      result->val[i]=std::make_shared<rat_value>(rp[i]);
     push_value(std::move(result));
   }
 }
@@ -3782,7 +3783,7 @@ also construct a module parameter value for each element of |block|.
   { StandardRepr block_elt_param =
       p->rc().sr(block.parent_x(z),block.lambda_rho(z),gamma);
     param_list->val[z] =
-	shared_value(new module_parameter_value(p->rf,block_elt_param));
+	std::make_shared<module_parameter_value>(p->rf,block_elt_param);
   }
   push_value(std::move(param_list));
 
@@ -3837,7 +3838,7 @@ void KL_block_wrapper(expression_base::level l)
       std::vector<int> coeffs(pol.size());
       for (size_t j=pol.size(); j-->0; )
         coeffs[j]=pol[j];
-      polys->val.push_back(shared_value(new vector_value(coeffs)));
+      polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
     }
 @)
     vector_ptr length_stops(new vector_value(
@@ -3916,7 +3917,7 @@ void partial_KL_block_wrapper(expression_base::level l)
       std::vector<int> coeffs(pol.size());
       for (size_t j=pol.size(); j-->0; )
         coeffs[j]=pol[j];
-      polys->val.push_back(shared_value(new vector_value(coeffs)));
+      polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
     }
 @)
     vector_ptr length_stops(new vector_value(
@@ -4456,7 +4457,7 @@ void raw_KL_wrapper (expression_base::level l)
     std::vector<int> coeffs(pol.size());
     for (size_t j=pol.size(); j-->0; )
       coeffs[j]=pol[j];
-    polys->val.push_back(shared_value(new vector_value(coeffs)));
+    polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
   }
 @)
   std::vector<int> length_stops(block.length(block.size()-1)+1);
@@ -4496,7 +4497,7 @@ void raw_dual_KL_wrapper (expression_base::level l)
     std::vector<int> coeffs(pol.size());
     for (size_t j=pol.size(); j-->0; )
       coeffs[j]=pol[j];
-    polys->val.push_back(shared_value(new vector_value(coeffs)));
+    polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
   }
 @)
   std::vector<int> length_stops(block.length(block.size()-1)+1);
