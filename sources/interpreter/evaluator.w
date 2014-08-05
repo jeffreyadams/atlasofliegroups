@@ -636,12 +636,15 @@ identifiers: they have a name that can be printed. For this reason we derive
 an intermediate structure from |expression_base| that will serve as base for
 both kinds of applied identifier expressions.
 
+
 @< Type definitions @>=
+#define nothing_new_here {} // path for gcc 4.6, will become |=default| in \Cpp11
+
 struct identifier : public expression_base
 { id_type code;
 @)
   explicit identifier(id_type id) : code(id) @+{}
-  virtual ~@[identifier() =default@];
+  virtual ~@[identifier() nothing_new_here@];
   const char* name() const;
   virtual void print(std::ostream& out) const;
 };
@@ -673,7 +676,7 @@ class global_identifier : public identifier
 { const shared_share address;
 public:
   explicit global_identifier(id_type id);
-  virtual ~@[global_identifier() = default@];
+  virtual ~@[global_identifier() nothing_new_here@];
   virtual void evaluate(level l) const;
 };
 
@@ -934,7 +937,7 @@ struct call_expression : public expression_base
 @)
   call_expression(expression_ptr&& f,expression_ptr&& a)
    : function(f.release()),argument(a.release()) @+{}
-  virtual ~@[call_expression() = default@];
+  virtual ~@[call_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -974,7 +977,7 @@ struct builtin_value : public value_base
 @)
   builtin_value(wrapper_function v,const std::string& n)
   : val(v), print_name(n) @+ {}
-  virtual ~ @[builtin_value() =default@];
+  virtual ~ @[builtin_value() nothing_new_here@];
   virtual void print(std::ostream& out) const
   @+{@; out << '{' << print_name << '}'; }
   virtual builtin_value* clone() const @+{@; return new builtin_value(*this); }
@@ -1000,7 +1003,7 @@ struct overloaded_builtin_call : public expression_base
 @)
   overloaded_builtin_call(wrapper_function v,const char* n,expression_ptr&& a)
   : f(v), print_name(n), argument(a.release())@+ {}
-  virtual ~@[overloaded_builtin_call() = default@];
+  virtual ~@[overloaded_builtin_call() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -1573,7 +1576,7 @@ struct let_expression : public expression_base
   expression_ptr initialiser, body;
 @)
   let_expression(const id_pat& v, expression_ptr&& ini, expression_ptr&& b);
-  virtual ~@[let_expression() = default@]; // subobjects do all the work
+  virtual ~@[let_expression() nothing_new_here@]; // subobjects do all the work
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -1782,7 +1785,7 @@ struct lambda_expression : public expression_base
   shared_expression body;
 @)
   lambda_expression(const id_pat& p, expression_ptr&& b);
-  virtual ~@[lambda_expression() = default@]; // subobjects do all the work
+  virtual ~@[lambda_expression() nothing_new_here@]; // subobjects do all the work
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -1845,7 +1848,7 @@ struct closure_value : public value_base
                   const shared_pattern& p,
                   const shared_expression& b)
   : context(c), param(p), body(b) @+{}
-  virtual ~ @[closure_value() =default@];
+  virtual ~ @[closure_value() nothing_new_here@];
   virtual void print(std::ostream& out) const;
   virtual closure_value* clone() const @+
   {@; return new closure_value(context,param,body); }
@@ -1973,7 +1976,7 @@ struct overloaded_closure_call : public expression_base
   overloaded_closure_call
    (shared_closure f,const std::string& n,expression_ptr&& a)
   : fun(f), print_name(n), argument(a.release())@+ {}
-  virtual ~@[overloaded_closure_call() = default@];
+  virtual ~@[overloaded_closure_call() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2093,7 +2096,7 @@ struct seq_expression : public expression_base
 @)
   seq_expression(expression_ptr&& f,expression_ptr&& l)
    : first(f.release()),last(l.release()) @+{}
-  virtual ~@[seq_expression() = default@];
+  virtual ~@[seq_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2103,7 +2106,7 @@ struct next_expression : public expression_base
 @)
   next_expression(expression_ptr&& f,expression_ptr&& l)
    : first(f.release()),last(l.release()) @+{}
-  virtual ~@[next_expression() = default@];
+  virtual ~@[next_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2175,7 +2178,7 @@ struct subscr_base : public expression_base
 @)
   subscr_base(expression_ptr&& a, expression_ptr&& i)
 @/: array(a.release()),index(i.release()) @+{}
-  virtual ~@[subscr_base() = default@] ;
+  virtual ~@[subscr_base() nothing_new_here@] ;
 @)
   virtual void print(std::ostream& out) const;
   static bool indexable
@@ -2485,7 +2488,7 @@ struct conditional_expression : public expression_base
    (expression_ptr&& c,expression_ptr&& t, expression_ptr&& e)
    : condition(c.release()),then_branch(t.release()), else_branch(e.release())
   @+{}
-  virtual ~@[conditional_expression() = default@];
+  virtual ~@[conditional_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2591,7 +2594,7 @@ struct while_expression : public expression_base
   while_expression(expression_ptr&& c,expression_ptr&& b)
    : condition(c.release()),body(b.release())
   @+{}
-  virtual ~@[while_expression() = default@];
+  virtual ~@[while_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2699,7 +2702,7 @@ struct for_expression : public expression_base
   for_expression
    (const id_pat& p, expression_ptr&& i, expression_ptr&& b
    , subscr_base::sub_type k);
-  virtual ~@[for_expression() =default@];
+  virtual ~@[for_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2953,7 +2956,7 @@ struct inc_for_expression : public expression_base
     expression_ptr&& b)
   : count(cnt.release()),bound(bnd.release()),body(b.release()),id(i)
   @+{}
-  virtual ~@[inc_for_expression() = default@];
+  virtual ~@[inc_for_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2966,7 +2969,7 @@ struct dec_for_expression : public expression_base
     expression_ptr&& b)
   : count(cnt.release()),bound(bnd.release()),body(b.release()),id(i)
   @+{}
-  virtual ~@[dec_for_expression() =default@];
+  virtual ~@[dec_for_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -3222,7 +3225,7 @@ struct assignment_expr : public expression_base
 @)
   assignment_expr(id_type l,expression_ptr&& r)
    : lhs(l),rhs(r.release()) @+{}
-  virtual ~@[assignment_expr() = default@];
+  virtual ~@[assignment_expr() nothing_new_here@];
   virtual void print(std::ostream& out) const;
 };
 
@@ -3240,7 +3243,7 @@ class global_assignment : public assignment_expr
 { shared_share address;
 public:
   global_assignment(id_type l,expression_ptr&& r);
-  virtual ~@[global_assignment() = default@];
+  virtual ~@[global_assignment() nothing_new_here@];
   virtual void evaluate(level l) const;
 };
 
@@ -3274,7 +3277,7 @@ class local_assignment : public assignment_expr
 { size_t depth, offset;
 public:
   local_assignment(id_type l, size_t i,size_t j, expression_ptr&& r);
-  virtual ~@[local_assignment() =default@];
+  virtual ~@[local_assignment() nothing_new_here@];
   virtual void evaluate(level l) const;
 };
 
@@ -3381,7 +3384,7 @@ struct component_assignment : public assignment_expr
   component_assignment
    (id_type a,expression_ptr&& i,expression_ptr&& r)
    : assignment_expr(a,std::move(r)), index(i.release()) @+{}
-  virtual ~@[component_assignment() = default@];
+  virtual ~@[component_assignment() nothing_new_here@];
 
   virtual void print (std::ostream& out) const;
 @)
