@@ -130,7 +130,7 @@ private:
 };
 @)
 typedef std::unique_ptr<Lie_type_value> Lie_type_ptr;
-typedef std::shared_ptr<Lie_type_value> shared_Lie_type;
+typedef std::shared_ptr<const Lie_type_value> shared_Lie_type;
 
 @ The type |LieType| is publicly derived from |std::vector<SimpleLieType>|,
 and in its turn the type |SimpleLieType| is publicly derived from
@@ -366,8 +366,8 @@ corresponding columns.
 
 @< Local function definitions @>=
 void filter_units_wrapper (expression_base::level l)
-{ shared_vector inv_f=get_own<vector_value>();
-  shared_matrix basis=get_own<matrix_value>();
+{ own_vector inv_f=get_own<vector_value>();
+  own_matrix basis=get_own<matrix_value>();
   unsigned int n=basis->val.numColumns();
   if (inv_f->val.size()>n)
     throw std::runtime_error @|("Too many factors: "+
@@ -460,7 +460,7 @@ void replace_gen_wrapper (expression_base::level l)
 { shared_matrix new_generators=get<matrix_value>();
   push_tuple_components(); // a pair as returned by \.{Smith\_Cartan}
   shared_vector inv_f=get<vector_value>();
-  shared_matrix generators=get_own<matrix_value>();
+  own_matrix generators=get_own<matrix_value>();
   unsigned int n=generators->val.numColumns();
   if (inv_f->val.size()>n)
     throw std::runtime_error @|("Too many factors: "+
@@ -777,7 +777,7 @@ private:
 };
 @)
 typedef std::unique_ptr<root_datum_value> root_datum_ptr;
-typedef std::shared_ptr<root_datum_value> shared_root_datum;
+typedef std::shared_ptr<const root_datum_value> shared_root_datum;
 
 @*2 Printing root data. We shall not print the complete information contained
 in the root datum. However we do exercise the routines in \.{dynkin.cpp} to
@@ -965,7 +965,7 @@ void adjoint_datum_wrapper(expression_base::level l)
   push_value(execution_stack.back()); // duplicate Lie type argument
   Cartan_matrix_wrapper(expression_base::single_value);
   transpose_mat_wrapper(expression_base::single_value);
-  shared_matrix M=get_own<matrix_value>();
+  own_matrix M=get_own<matrix_value>();
   for (size_t i=0; i<M->val.numRows(); ++i)
     if (M->val(i,i)==0) M->val(i,i)=1;
   push_value(M);
@@ -1197,7 +1197,7 @@ void integrality_points_wrapper(expression_base::level l)
 @)
   RationalList ipl = rootdata::integrality_points(rd->val,lambda->val);
     // method normalises rationals
-  row_ptr result (new row_value(ipl.size()));
+  own_row result = std::make_shared<row_value>(ipl.size());
   for (size_t i=0; i<ipl.size(); ++i)
     result->val[i]=std::make_shared<rat_value>(ipl[i]);
   push_value(std::move(result));
@@ -1645,7 +1645,7 @@ struct inner_class_value : public value_base
 };
 @)
 typedef std::unique_ptr<inner_class_value> inner_class_ptr;
-typedef std::shared_ptr<inner_class_value> shared_inner_class;
+typedef std::shared_ptr<const inner_class_value> shared_inner_class;
 
 @ Here are the copy constructor and the destructor.
 @< Function def...@>=
@@ -1790,7 +1790,7 @@ void set_type_wrapper(expression_base::level l)
 { shared_string ict = get<string_value>();
     // and leave generators |gen| and type |lt|
   shared_value lt = *(execution_stack.end()-2);
-  LieType& type=force<Lie_type_value>(lt.get())->val;
+  const LieType& type=force<Lie_type_value>(lt.get())->val;
   lietype::Layout lo(type,transform_inner_class_type(ict->val.c_str(),type));
 @)
   quotient_basis_wrapper(expression_base::single_value); @+
@@ -1901,20 +1901,20 @@ construction, and the final one constructs the dual inner class.
 
 @< Local function def...@>=
 void inner_class_equality_wrapper(expression_base::level l)
-{ shared_inner_class G(get<inner_class_value>());
-  shared_inner_class H(get<inner_class_value>());
+{ shared_inner_class G = get<inner_class_value>();
+  shared_inner_class H = get<inner_class_value>();
   if (l!=expression_base::no_value)
     push_value(new bool_value(&G->val==&H->val));
 }
 @)
 void distinguished_involution_wrapper(expression_base::level l)
-{ shared_inner_class G(get<inner_class_value>());
+{ shared_inner_class G = get<inner_class_value>();
   if (l!=expression_base::no_value)
     push_value(new matrix_value(G->val.distinguished()));
 }
 @)
 void root_datum_of_inner_class_wrapper(expression_base::level l)
-{ shared_inner_class G(get<inner_class_value>());
+{ shared_inner_class G = get<inner_class_value>();
   if (l!=expression_base::no_value)
     push_value(new root_datum_value(G->val.rootDatum()));
 }
@@ -1923,7 +1923,7 @@ void inner_class_to_root_datum_coercion()
 {@; root_datum_of_inner_class_wrapper(expression_base::single_value); }
 
 void dual_inner_class_wrapper(expression_base::level l)
-{ shared_inner_class G(get<inner_class_value>());
+{ shared_inner_class G = get<inner_class_value>();
   if (l!=expression_base::no_value)
     push_value(new inner_class_value(*G,tags::DualTag()));
 }
@@ -1943,13 +1943,13 @@ void push_name_list(const realform_io::Interface& interface)
 }
 @)
 void form_names_wrapper(expression_base::level l)
-{ shared_inner_class G(get<inner_class_value>());
+{ shared_inner_class G = get<inner_class_value>();
   if (l!=expression_base::no_value)
     push_name_list(G->interface);
 }
 @)
 void dual_form_names_wrapper(expression_base::level l)
-{ shared_inner_class G(get<inner_class_value>());
+{ shared_inner_class G = get<inner_class_value>();
   if (l!=expression_base::no_value)
     push_name_list(G->dual_interface);
 }
@@ -1960,19 +1960,19 @@ form names.
 
 @< Local function def...@>=
 void n_real_forms_wrapper(expression_base::level l)
-{ shared_inner_class G(get<inner_class_value>());
+{ shared_inner_class G = get<inner_class_value>();
   if (l!=expression_base::no_value)
     push_value(new int_value(G->val.numRealForms()));
 }
 @)
 void n_dual_real_forms_wrapper(expression_base::level l)
-{ shared_inner_class G(get<inner_class_value>());
+{ shared_inner_class G = get<inner_class_value>();
   if (l!=expression_base::no_value)
     push_value(new int_value(G->val.numDualRealForms()));
 }
 @)
 void n_Cartan_classes_wrapper(expression_base::level l)
-{ shared_inner_class G(get<inner_class_value>());
+{ shared_inner_class G = get<inner_class_value>();
   if (l!=expression_base::no_value)
     push_value(new int_value(G->val.numCartanClasses()));
 }
@@ -1988,7 +1988,7 @@ are currently computationally feasible.
 
 @< Local function def...@>=
 void block_sizes_wrapper(expression_base::level l)
-{ shared_inner_class G(get<inner_class_value>());
+{ shared_inner_class G = get<inner_class_value>();
   if (l==expression_base::no_value)
     return;
   matrix_ptr M(new matrix_value @|
@@ -2008,7 +2008,7 @@ the columns by Cartan classes (note the alliteration).
 
 @< Local function def...@>=
 void occurrence_matrix_wrapper(expression_base::level l)
-{ shared_inner_class G(get<inner_class_value>());
+{ shared_inner_class G = get<inner_class_value>();
   if (l==expression_base::no_value)
     return;
   size_t nr=G->val.numRealForms();
@@ -2028,7 +2028,7 @@ to write this function.
 
 @< Local function def...@>=
 void dual_occurrence_matrix_wrapper(expression_base::level l)
-{ shared_inner_class G(get<inner_class_value>());
+{ shared_inner_class G = get<inner_class_value>();
   if (l==expression_base::no_value)
     return;
   size_t nr=G->val.numDualRealForms();
@@ -2131,7 +2131,6 @@ struct real_form_value : public value_base
   Rep_table& rt();
   ~real_form_value() @+{@; delete rt_p; }
 protected:
-  real_form_value(const inner_class_value&,RealFormNbr,tags::DualTag);
   real_form_value(const real_form_value& v)
   : parent(v.parent), val(v.val), rt_p(v.rt_p) @+{}
 private:
@@ -2140,7 +2139,8 @@ private:
 };
 @)
 typedef std::unique_ptr<real_form_value> real_form_ptr;
-typedef std::shared_ptr<real_form_value> shared_real_form;
+typedef std::shared_ptr<const real_form_value> shared_real_form;
+typedef std::shared_ptr<real_form_value> own_real_form;
 
 @ The methods |rc| and |rt| ensure a |Rep_table| value is constructed at
 |*rt_p|, and returns a reference. The value so obtained will serve to
@@ -2184,7 +2184,7 @@ As a special case we also provide the quasisplit form.
 @< Local function def...@>=
 void real_form_wrapper(expression_base::level l)
 { shared_int i(get<int_value>());
-  shared_inner_class G(get<inner_class_value>());
+  shared_inner_class G = get<inner_class_value>();
   if (size_t(i->val)>=G->val.numRealForms())
     throw std::runtime_error ("Illegal real form number: "+str(i->val));
 @.Illegal real form number@>
@@ -2193,13 +2193,13 @@ void real_form_wrapper(expression_base::level l)
 }
 @)
 void form_number_wrapper(expression_base::level l)
-{ shared_real_form rf(get<real_form_value>());
+{ shared_real_form rf= get<real_form_value>();
   if (l!=expression_base::no_value)
     push_value(new int_value(rf->parent.interface.out(rf->val.realForm())));
 }
 @)
 void quasisplit_form_wrapper(expression_base::level l)
-{ shared_inner_class G(get<inner_class_value>());
+{ shared_inner_class G = get<inner_class_value>();
   if (l!=expression_base::no_value)
     push_value(new real_form_value(*G,G->val.quasisplit()));
 }
@@ -2209,7 +2209,7 @@ void quasisplit_form_wrapper(expression_base::level l)
 From a real reductive group we can go back to its inner class
 @< Local function def...@>=
 void inner_class_of_real_form_wrapper(expression_base::level l)
-{ shared_real_form rf(get<real_form_value>());
+{ shared_real_form rf= get<real_form_value>();
   if (l!=expression_base::no_value)
     push_value(new inner_class_value(rf->parent));
 }
@@ -2218,7 +2218,7 @@ void real_form_to_inner_class_coercion()
 {@; inner_class_of_real_form_wrapper(expression_base::single_value); }
 
 void real_form_to_root_datum_coercion()
-{ shared_real_form rf(get<real_form_value>());
+{ shared_real_form rf= get<real_form_value>();
   push_value(new root_datum_value(rf->parent.val.rootDatum()));
 }
 
@@ -2228,7 +2228,7 @@ group is isomorphic to $(\Z/2\Z)^r$.
 
 @< Local function def...@>=
 void components_rank_wrapper(expression_base::level l)
-{ shared_real_form R(get<real_form_value>());
+{ shared_real_form R= get<real_form_value>();
   if (l!=expression_base::no_value)
     push_value(new int_value(R->val.dualComponentReps().size()));
 }
@@ -2237,7 +2237,7 @@ void components_rank_wrapper(expression_base::level l)
 
 @< Local function def...@>=
 void count_Cartans_wrapper(expression_base::level l)
-{ shared_real_form rf(get<real_form_value>());
+{ shared_real_form rf= get<real_form_value>();
   if (l!=expression_base::no_value)
     push_value(new int_value(rf->val.numCartan()));
 }
@@ -2248,7 +2248,7 @@ when doing so).
 
 @< Local function def...@>=
 void KGB_size_wrapper(expression_base::level l)
-{ shared_real_form rf(get<real_form_value>());
+{ shared_real_form rf= get<real_form_value>();
   if (l!=expression_base::no_value)
     push_value(new int_value(rf->val.KGB_size()));
 }
@@ -2262,7 +2262,7 @@ imaginary-$\rho$ value (dependent on the involution) should be added to it.
 
 @< Local function def...@>=
 void base_grading_vector_wrapper(expression_base::level l)
-{ shared_real_form rf(get<real_form_value>());
+{ own_real_form rf= non_const_get<real_form_value>();
   if (l!=expression_base::no_value)
   { const KGB& kgb=rf->kgb();
     RatCoweight t = kgb.base_grading_vector();
@@ -2278,7 +2278,7 @@ matrix for this partial ordering is computed by the function
 @h "poset.h"
 @< Local function def...@>=
 void Cartan_order_matrix_wrapper(expression_base::level l)
-{ shared_real_form rf(get<real_form_value>());
+{ shared_real_form rf= get<real_form_value>();
   if (l==expression_base::no_value)
     return;
   size_t n=rf->val.numCartan();
@@ -2338,7 +2338,7 @@ index. We also provide the dual quasisplit form.
 @< Local function def...@>=
 void dual_real_form_wrapper(expression_base::level l)
 { shared_int i(get<int_value>());
-  shared_inner_class G(get<inner_class_value>());
+  shared_inner_class G = get<inner_class_value>();
   if (size_t(i->val)>=G->val.numDualRealForms())
     throw std::runtime_error ("Illegal dual real form number: "+str(i->val));
 @.Illegal dual real form number@>
@@ -2350,7 +2350,7 @@ void dual_real_form_wrapper(expression_base::level l)
 }
 @)
 void dual_quasisplit_form_wrapper(expression_base::level l)
-{ shared_inner_class G(get<inner_class_value>());
+{ shared_inner_class G = get<inner_class_value>();
   if (l==expression_base::no_value)
     return;
   inner_class_value G_check(*G,tags::DualTag());
@@ -2417,7 +2417,7 @@ private:
 };
 @)
 typedef std::unique_ptr<Cartan_class_value> Cartan_class_ptr;
-typedef std::shared_ptr<Cartan_class_value> shared_Cartan_class;
+typedef std::shared_ptr<const Cartan_class_value> shared_Cartan_class;
 
 @ In the constructor we used to check that the Cartan class with the given
 number currently exists, but now the |ComplexReductiveGroup::cartan| method
@@ -2448,7 +2448,7 @@ a valid index into its list of Cartan classes.
 @< Local function def...@>=
 void ic_Cartan_class_wrapper(expression_base::level l)
 { shared_int i(get<int_value>());
-  shared_inner_class ic(get<inner_class_value>());
+  shared_inner_class ic = get<inner_class_value>();
   if (size_t(i->val)>=ic->val.numCartanClasses())
     throw std::runtime_error ("Illegal Cartan class number: "+str(i->val)
 @.Illegal Cartan class number@>
@@ -2466,7 +2466,7 @@ containing inner class, and then get the Cartan class from there.
 @< Local function def...@>=
 void rf_Cartan_class_wrapper(expression_base::level l)
 { shared_int i(get<int_value>());
-  shared_real_form rf(get<real_form_value>());
+  shared_real_form rf= get<real_form_value>();
   if (size_t(i->val)>=rf->val.numCartan())
     throw std::runtime_error ("Illegal Cartan class number: "+str(i->val)
 @.Illegal Cartan class number@>
@@ -2485,7 +2485,7 @@ real form, but we have a direct access to it via the |mostSplit| method for
 
 @< Local function def...@>=
 void most_split_Cartan_wrapper(expression_base::level l)
-{ shared_real_form rf(get<real_form_value>());
+{ shared_real_form rf= get<real_form_value>();
   if (l!=expression_base::no_value)
     push_value(new Cartan_class_value(rf->parent,rf->val.mostSplit()));
 }
@@ -2524,7 +2524,7 @@ TwistedInvolution twisted_from_involution
 void Cartan_class_real_form_wrapper(expression_base::level l)
 { shared_rational_vector grading_shift = get<rational_vector_value>();
   shared_matrix theta = get<matrix_value>();
-  shared_inner_class G(get<inner_class_value>());
+  shared_inner_class G = get<inner_class_value>();
   { Coweight num(grading_shift->val.numerator().begin(),
                  grading_shift->val.numerator().end());
     if (theta->val.right_prod(num)!=num)
@@ -2666,7 +2666,7 @@ of the partition is returned as a list of integral values.
 
 @< Local function def...@>=
 void fiber_partition_wrapper(expression_base::level l)
-{ shared_real_form rf(get<real_form_value>());
+{ shared_real_form rf= get<real_form_value>();
   shared_Cartan_class cc(get<Cartan_class_value>());
   if (&rf->parent.val!=&cc->parent.val)
     throw std::runtime_error
@@ -2687,7 +2687,7 @@ void fiber_partition_wrapper(expression_base::level l)
   row_ptr result (new row_value(0)); // cannot predict exact size here
   for (size_t i=0; i<pi.size(); ++i)
     if (rf_nr[pi.class_of(i)] == rf->val.realForm())
-      result->val.push_back(shared_value(new int_value(i)));
+      result->val.push_back(std::make_shared<int_value>(i));
   push_value(std::move(result));
 }
 
@@ -2726,7 +2726,7 @@ sequence of bits corresponding to the simple imaginary roots.
 
 @< Local function def...@>=
 void print_gradings_wrapper(expression_base::level l)
-{ shared_real_form rf(get<real_form_value>());
+{ shared_real_form rf= get<real_form_value>();
 @/shared_Cartan_class cc(get<Cartan_class_value>());
   if (&rf->parent.val!=&cc->parent.val)
     throw std::runtime_error
@@ -2850,10 +2850,10 @@ as long as this |KGB_elt_value| does.
 
 @< Type definitions @>=
 struct KGB_elt_value : public value_base
-{ shared_real_form rf;
+{ own_real_form rf;
   KGBElt val;
 @)
-  KGB_elt_value(const shared_real_form& form, KGBElt x) : rf(form), val(x) @+{}
+  KGB_elt_value(const own_real_form& form, KGBElt x) : rf(form), val(x) @+{}
   ~KGB_elt_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -2865,7 +2865,8 @@ private:
 };
 @)
 typedef std::unique_ptr<KGB_elt_value> KGB_elt_ptr;
-typedef std::shared_ptr<KGB_elt_value> shared_KGB_elt;
+typedef std::shared_ptr<const KGB_elt_value> shared_KGB_elt;
+typedef std::shared_ptr<KGB_elt_value> own_KGB_elt;
 
 @ When printing a KGB element, we print the number. It would be useful to add
 some symbolic information, like ``discrete series'', when applicable, but this
@@ -2881,7 +2882,7 @@ void KGB_elt_value::print(std::ostream& out) const
 @< Local function def...@>=
 void KGB_elt_wrapper(expression_base::level l)
 { int i = get<int_value>()->val;
-  shared_real_form rf(get<real_form_value>());
+  own_real_form rf= non_const_get<real_form_value>();
   if (size_t(i)>=rf->val.KGB_size())
     throw std::runtime_error ("Inexistent KGB element: "+str(i));
 @.Inexistent KGB element@>
@@ -2938,7 +2939,7 @@ then is the other value of the Cayley transform).
 
 @< Local function def...@>=
 void KGB_cross_wrapper(expression_base::level l)
-{ shared_KGB_elt x = get_own<KGB_elt_value>();
+{ own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
   int s = get<int_value>()->val;
   if (static_cast<unsigned>(s)>=kgb.rank())
@@ -2950,7 +2951,7 @@ void KGB_cross_wrapper(expression_base::level l)
 }
 @)
 void KGB_Cayley_wrapper(expression_base::level l)
-{ shared_KGB_elt x = get_own<KGB_elt_value>();
+{ own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
   int s = get<int_value>()->val;
   if (static_cast<unsigned>(s)>=kgb.rank())
@@ -2963,7 +2964,7 @@ void KGB_Cayley_wrapper(expression_base::level l)
 }
 @)
 void KGB_inv_Cayley_wrapper(expression_base::level l)
-{ shared_KGB_elt x = get_own<KGB_elt_value>();
+{ own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
   int s = get<int_value>()->val;
   if (static_cast<unsigned>(s)>=kgb.rank())
@@ -3040,7 +3041,7 @@ in the same manner as for |Cartan_class_real_form| in section
 void build_KGB_element_wrapper(expression_base::level l)
 { shared_rational_vector grading_shift = get<rational_vector_value>();
   shared_matrix theta = get<matrix_value>();
-  shared_real_form rf = get<real_form_value>();
+  own_real_form rf = non_const_get<real_form_value>();
 
   { Coweight num(grading_shift->val.numerator().begin(),
                  grading_shift->val.numerator().end());
@@ -3073,7 +3074,7 @@ class.
 
 @< Local function def...@>=
 void KGB_twist_wrapper(expression_base::level l)
-{ shared_KGB_elt x = get_own<KGB_elt_value>();
+{ own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
   if (l==expression_base::no_value)
     return;
@@ -3170,11 +3171,10 @@ field contains an actual |Block| instance, which is constructed van the
 
 @< Type definitions @>=
 struct Block_value : public value_base
-{ const shared_real_form rf; const shared_real_form dual_rf;
+{ const own_real_form rf; const own_real_form dual_rf;
   Block val; // cannot be |const|, as Bruhat order may be generated implicitly
 @)
-  Block_value(const shared_real_form& form,
-         const shared_real_form& dual_form);
+  Block_value(const own_real_form& form, const own_real_form& dual_form);
   ~Block_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -3186,7 +3186,8 @@ private:
 };
 @)
 typedef std::unique_ptr<Block_value> Block_ptr;
-typedef std::shared_ptr<Block_value> shared_Block;
+typedef std::shared_ptr<const Block_value> shared_Block;
+typedef std::shared_ptr<Block_value> own_Block;
 
 @ The constructor got |Block_value| is relatively elaborate, so we lift it out
 of the class declaration. One should avoid calling the version of the |build|
@@ -3198,8 +3199,8 @@ block elements. Instead we call the |build| method that accepts a pair of
 classical one.
 
 @< Function def...@>=
-  Block_value::Block_value(const shared_real_form& form,
-                          const shared_real_form& dual_form)
+  Block_value::Block_value(const own_real_form& form,
+                          const own_real_form& dual_form)
   : rf(form), dual_rf(dual_form)
   ,
   val(Block::build(rf->val,dual_rf->val)) {}
@@ -3219,8 +3220,8 @@ of the data structure that is constructed and stored here.
 
 @< Local function def...@>=
 void Fokko_block_wrapper(expression_base::level l)
-{ shared_real_form drf=get<real_form_value>();
-  shared_real_form rf=get<real_form_value>();
+{ own_real_form drf=non_const_get<real_form_value>();
+  own_real_form rf=non_const_get<real_form_value>();
 @)
   if (&rf->parent.dual!=&drf->parent.val)
     throw std::runtime_error @|
@@ -3273,7 +3274,7 @@ void block_element_wrapper(expression_base::level l)
     return;
   push_value(new KGB_elt_value(b->rf,b->val.x(z)));
   inner_class_value dual_ic(b->rf->parent,tags::DualTag());
-  shared_real_form drf =
+  own_real_form drf =
     std::make_shared<real_form_value>(dual_ic,b->dual_rf->val.realForm());
   push_value(new KGB_elt_value(drf,b->val.y(z)));
   if (l==expression_base::single_value)
@@ -3433,10 +3434,10 @@ can access notably the |Rep_context| that it provides.
 
 @< Type definitions @>=
 struct module_parameter_value : public value_base
-{ shared_real_form rf;
+{ own_real_form rf;
   StandardRepr val;
 @)
-  module_parameter_value(const shared_real_form& form, const StandardRepr& v)
+  module_parameter_value(const own_real_form& form, const StandardRepr& v)
   : rf(form), val(v) @+{}
   ~module_parameter_value() @+{}
 @)
@@ -3453,7 +3454,8 @@ private:
 };
 @)
 typedef std::unique_ptr<module_parameter_value> module_parameter_ptr;
-typedef std::shared_ptr<module_parameter_value> shared_module_parameter;
+typedef std::shared_ptr<const module_parameter_value> shared_module_parameter;
+typedef std::shared_ptr<module_parameter_value> own_module_parameter;
 
 @ When printing a module parameter, we shall indicate a triple
 $(x,\lambda,\nu)$ that defines it. Since we shall need to print |StandardRepr|
@@ -3503,7 +3505,7 @@ infinitesimal character $\gamma$ in the place of $\nu$.
 void module_parameter_wrapper(expression_base::level l)
 { shared_rational_vector nu(get<rational_vector_value>());
   shared_vector lam_rho(get<vector_value>());
-  shared_KGB_elt x(get<KGB_elt_value>());
+  shared_KGB_elt x = get<KGB_elt_value>();
   if (nu->val.size()!=lam_rho->val.size()
       or nu->val.size()!=x->rf->val.rank())
     throw std::runtime_error ("Rank mismatch: ("
@@ -3593,7 +3595,7 @@ should test those forms for equality before testing the parameters.
 
 @< Local function def...@>=
 void parameter_dominant_wrapper(expression_base::level l)
-{ shared_module_parameter p = get_own<module_parameter_value>();
+{ own_module_parameter p = get_own<module_parameter_value>();
   if (l!=expression_base::no_value)
   {@; p->rc().make_dominant(p->val);
     push_value(p);
@@ -4028,7 +4030,8 @@ private:
 };
 @)
 typedef std::unique_ptr<split_int_value> split_int_ptr;
-typedef std::shared_ptr<split_int_value> shared_split_int;
+typedef std::shared_ptr<const split_int_value> shared_split_int;
+typedef std::shared_ptr<split_int_value> own_split_int;
 
 @ Like for parameter values, we first define a printing function on the level
 of a bare |Split_integer| value, which can be used in situations where the
@@ -4049,20 +4052,20 @@ void split_int_value::print(std::ostream& out) const @+
 
 void split_plus_wrapper(expression_base::level l)
 { Split_integer j=get<split_int_value>()->val;
-  shared_split_int i=get_own<split_int_value>();
+  own_split_int i=get_own<split_int_value>();
   if (l!=expression_base::no_value)
   {@; i->val+=j; push_value(i); }
 }
 @)
 void split_minus_wrapper(expression_base::level l)
 { Split_integer j=get<split_int_value>()->val;
-  shared_split_int i=get_own<split_int_value>();
+  own_split_int i=get_own<split_int_value>();
   if (l!=expression_base::no_value)
   {@; i->val-=j; push_value(i); }
 }
 @)
 void split_unary_minus_wrapper(expression_base::level l)
-{ shared_split_int i=get_own<split_int_value>();
+{ own_split_int i=get_own<split_int_value>();
   if (l!=expression_base::no_value)
   {@; i->val.negate(); push_value(i); }
 }
@@ -4115,10 +4118,10 @@ that it will be assured to survive as long as parameters for it exist.
 
 @< Type definitions @>=
 struct virtual_module_value : public value_base
-{ shared_real_form rf;
+{ own_real_form rf;
   repr::SR_poly val;
 @)
-  virtual_module_value(const shared_real_form& form, const repr::SR_poly& v)
+  virtual_module_value(const own_real_form& form, const repr::SR_poly& v)
   : rf(form), val(v) @+{}
   ~virtual_module_value() @+{}
 @)
@@ -4135,7 +4138,8 @@ private:
 };
 @)
 typedef std::unique_ptr<virtual_module_value> virtual_module_ptr;
-typedef std::shared_ptr<virtual_module_value> shared_virtual_module;
+typedef std::shared_ptr<const virtual_module_value> shared_virtual_module;
+typedef std::shared_ptr<virtual_module_value> own_virtual_module;
 
 @ When printing a virtual module value, we traverse the |std::map| that is
 hidden in the |Free_Abelian| class template, and print individual terms using
@@ -4180,7 +4184,7 @@ to be empty.
 
 @< Local function def...@>=
 void virtual_module_wrapper(expression_base::level l)
-{ shared_real_form rf (get<real_form_value>());
+{ own_real_form rf = non_const_get<real_form_value>();
   if (l!=expression_base::no_value)
     push_value(new@|
        virtual_module_value(rf,repr::SR_poly(rf->rc().repr_less())));
@@ -4223,7 +4227,7 @@ void module_coefficient::evaluate(level l) const
 void param_to_poly()
 { shared_module_parameter p = get<module_parameter_value>();
 @/test_standard(*p);
-  const shared_real_form& rf=p->rf;
+  const own_real_form& rf=p->rf;
   push_value(new@|
     virtual_module_value(rf,rf->rc().expand_final(p->val)));
 }
@@ -4234,7 +4238,7 @@ parameters, or of other virtual modules.
 @< Local function def...@>=
 void add_module_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  shared_virtual_module accumulator = get_own<virtual_module_value>();
+  own_virtual_module accumulator = get_own<virtual_module_value>();
 @/test_standard(*p);
   if (accumulator->rf!=p->rf)
     throw std::runtime_error @|
@@ -4247,9 +4251,9 @@ void add_module_wrapper(expression_base::level l)
 
 void add_module_term_wrapper(expression_base::level l)
 { push_tuple_components(); // second argument is a pair |(coef,p)|
-  shared_module_parameter p = get_own<module_parameter_value>();
+  own_module_parameter p = get_own<module_parameter_value>();
   Split_integer coef=get<split_int_value>()->val;
-  shared_virtual_module accumulator = get_own<virtual_module_value>();
+  own_virtual_module accumulator = get_own<virtual_module_value>();
 @/test_standard(*p);
   if (accumulator->rf!=p->rf)
     throw std::runtime_error @|
@@ -4261,18 +4265,17 @@ void add_module_term_wrapper(expression_base::level l)
 }
 
 @ Although we initially envisioned allowing conversion from a list of terms to
-a virtual module, this could not be defined since it is not possible to not
-know the real form in case the list of terms is empty (a conversion in the
-opposite direction is given below). Therefore we provide instead the addition
-of an entire list of terms at once to a virtual module value.
+a virtual module, this could not be defined since it is not possible to know
+the real form in case the list of terms is empty (a conversion in the opposite
+direction is given below). Therefore we provide instead the addition of an
+entire list of terms at once to a virtual module value.
 
 @< Local function... @>=
 void add_module_termlist_wrapper(expression_base::level l)
 { shared_row r = get<row_value>();
-  shared_virtual_module accumulator = get_own<virtual_module_value>();
+  own_virtual_module accumulator = get_own<virtual_module_value>();
   if (l!=expression_base::no_value)
-  { for (std::vector<shared_value>::const_iterator
-           it=r->val.begin(); it!=r->val.end(); ++it)
+  { for (auto it=r->val.cbegin(); it!=r->val.cend(); ++it)
     { const tuple_value* t = force<tuple_value>(it->get());
       Split_integer coef=force<split_int_value>(t->val[0].get())->val;
       const module_parameter_value* p =
@@ -4301,7 +4304,7 @@ advance the iterator in the |for| clause.
 
 @< Local function... @>=
 void add_virtual_modules_wrapper(expression_base::level l)
-{ shared_virtual_module accumulator = get_own<virtual_module_value>();
+{ own_virtual_module accumulator = get_own<virtual_module_value>();
   shared_virtual_module addend = get<virtual_module_value>();
   if (accumulator->rf!=addend->rf)
     throw std::runtime_error @|("Real form mismatch when adding two modules");
@@ -4314,7 +4317,7 @@ void add_virtual_modules_wrapper(expression_base::level l)
 }
 @)
 void int_mult_virtual_module_wrapper(expression_base::level l)
-{ shared_virtual_module m = get_own<virtual_module_value>();
+{ own_virtual_module m = get_own<virtual_module_value>();
   int c = get<int_value>()->val;
   if (l!=expression_base::no_value)
   { if (c==0)
@@ -4327,7 +4330,7 @@ void int_mult_virtual_module_wrapper(expression_base::level l)
 }
 @)
 void split_mult_virtual_module_wrapper(expression_base::level l)
-{ shared_virtual_module m = get_own<virtual_module_value>();
+{ own_virtual_module m = get_own<virtual_module_value>();
   Split_integer c = get<split_int_value>()->val;
   if (l!=expression_base::no_value)
   { for (repr::SR_poly::iterator it=m->val.begin(); it!=m->val.end(); )
@@ -4530,7 +4533,7 @@ compatible Cartan class.
 @< Local function def...@>=
 void print_realweyl_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
-  shared_real_form rf(get<real_form_value>());
+  own_real_form rf= non_const_get<real_form_value>();
 @)
   if (&rf->parent.val!=&cc->parent.val)
     throw std::runtime_error @|
@@ -4636,7 +4639,7 @@ void print_blockstabilizer_wrapper(expression_base::level l)
 
 @< Local function def...@>=
 void print_KGB_wrapper(expression_base::level l)
-{ shared_real_form rf(get<real_form_value>());
+{ own_real_form rf= non_const_get<real_form_value>();
 @)
   *output_stream
     << "kgbsize: " << rf->val.KGB_size() << std::endl;
@@ -4651,7 +4654,7 @@ void print_KGB_wrapper(expression_base::level l)
 
 @< Local function def...@>=
 void print_X_wrapper(expression_base::level l)
-{ shared_inner_class ic(get<inner_class_value>());
+{ shared_inner_class ic = get<inner_class_value>();
 @)
   ComplexReductiveGroup& G=ic->val;
   kgb::global_KGB kgb(G); // build global Tits group, "all" square classes
@@ -4669,7 +4672,7 @@ parametrisation is concerned.
 @h "kl_io.h"
 @< Local function def...@>=
 void print_KL_basis_wrapper(expression_base::level l)
-{ shared_Block b = get<Block_value>();
+{ own_Block b = non_const_get<Block_value>();
   Block& block = b->val;
   kl::KLContext klc(block); klc.fill(false);
 @)
@@ -4685,7 +4688,7 @@ void print_KL_basis_wrapper(expression_base::level l)
 
 @< Local function def...@>=
 void print_prim_KL_wrapper(expression_base::level l)
-{ shared_Block b = get<Block_value>();
+{ own_Block b = non_const_get<Block_value>();
   Block &block = b->val; // this one must be non-|const|
   kl::KLContext klc(block); klc.fill(false);
 @)

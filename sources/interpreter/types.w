@@ -1143,7 +1143,7 @@ casting, but other operations on values will. Apart from |print| we define
 another (purely) virtual method, |clone|, which allows making a copy of a
 runtime value of any type derived from |value_base|.
 
-The method |name| is useful in reporting logic errors from template functions,
+The method |name| is useful in reporting logic errors from function templates,
 notably the failure of a value to be of the predicted type. Since the template
 function may know the type (via a template argument) but need not have any
 object of the type at hand, we define |name| as a |static| rather than
@@ -1151,25 +1151,34 @@ object of the type at hand, we define |name| as a |static| rather than
 should always be handled by reference; the base class is abstract anyway, but
 this ensures us that for no derived class an implicitly defined assignment
 operator is accidentally invoked. Copy constructors will in fact be defined
-for all derived types, as they are needed to implement the |clone| method;
+for most derived types, as they are needed to implement the |clone| method;
 these will be |private| or |protected| as well, so as to forbid accidental use
 elsewhere, but they do copy-construct their |value_base| base object (which is
-constructor is therefore made |protected|); they might have value-constructed
-it (i.e., use the no-arguments constructor) instead (and indeed this used to
-be the case), but copy-construct is what the default copy-constructor for the
-derived class does, so not deleting the copy-constructor here allows those
-defaults to be used.
+constructor is therefore made |protected|). Those derived classes might have
+value-constructed (i.e., use the no-arguments constructor) the base object
+instead (and indeed this used to be the case), but copy-construct is what the
+default copy-constructor for the derived class does, so not deleting the
+copy-constructor here allows those defaults to be used. Cloning only happens
+in specific contexts (namely the function templates |uniquify| and |get_own|
+defined below) where the actual type will in fact be known, so some derived
+types may choose to never use this and not implement |clone| at all, which is
+why it is not defined pure virtual. In fact this state of affairs suggests one
+could do duplication with a non-virtual (but systematically named) method
+instead.
 
-As mentioned values are always handled via pointers. We define a raw pointer
-type |value|, a unique-pointer |owned_value|, and a shared smart pointer
-|shared_value| (both of which can be safely stored in container classes).
+Values are always handled via pointers. The raw pointer type is |value|, and a
+shared smart pointer-to-constant is |shared_value|. The const-ness of the
+latter reflects a copy-on-write policy: we rarely need to modify values
+in-place, but when we do, we ensure our shared pointer is actually unique, and
+then |const_cast| it to |own_value| for modification (this will be hidden in a
+function template defined later).
 
 @< Type definitions @>=
 struct value_base
 { value_base() @+ {};
   virtual ~value_base() = 0;
   virtual void print(std::ostream& out) const =0;
-  virtual value_base* clone() const =0;
+  virtual value_base* clone() const @+{@; assert(false); return nullptr; }
   static const char* name(); // just a model; this instance remains undefined
 protected:
   value_base(const value_base& x) = @[default@];
@@ -1179,8 +1188,8 @@ public:
 inline value_base::~value_base() @+{} // necessary but empty implementation
 @)
 typedef value_base* value;
-typedef std::unique_ptr<value_base> owned_value;
-typedef std::shared_ptr<value_base> shared_value;
+typedef std::shared_ptr<const value_base> shared_value;
+typedef std::shared_ptr<value_base> own_value;
 
 @ We can already make sure that the operator~`|<<|' will do the right thing
 for any of our values.
@@ -1194,26 +1203,6 @@ value as usual.
 @< Function definitions @>=
 std::ostream& operator<< (std::ostream& out, const value_base& v)
 {@; v.print(out); return out; }
-
-@ Often we know what variant a |value| object takes, based on the type
-analysis. We can convert to that type using a |dynamic_cast|, but at such
-moments we wish to throw a |logic_error| in case our type prediction was
-wrong. To avoid having such casts and |throw| statements all over the place,
-we define a template function to do the casting and throwing. It is defined at
-the level of ordinary pointers, and it is not intended for use where the
-caller assumes ownership of the result; the original pointer is assumed to
-retain ownership as long as the result of this call survives, and in
-particular that result should not be converted to a smart pointer, lest double
-deletion would ensue.
-
-@< Template and inline function definitions @>=
-template <typename D> // |D| is a type derived from |value_base|
- D* force(value v) throw(std::logic_error)
-{ D* p=dynamic_cast<D*>(v);
-  if (p==nullptr) throw
-    std::logic_error(std::string("forced value is no ")+D::name());
-  return p;
-}
 
 @ Here we define a first type derived from |value_base|, namely the type for
 ``row of'' types. They are implemented using vectors from the standard
@@ -1241,7 +1230,7 @@ known to be unshared) or by a shared pointer |shared_row|.
 
 @< Type definitions @>=
 struct row_value : public value_base
-{ std::vector<shared_value> val;
+{ std::vector<std::shared_ptr<value_base> > val;
 @)
   explicit row_value(size_t n) : val(n) @+{} // start with |n| null pointers
   void print(std::ostream& out) const;
@@ -1255,7 +1244,8 @@ protected:
 };
 @)
 typedef std::unique_ptr<row_value> row_ptr;
-typedef std::shared_ptr<row_value> shared_row;
+typedef std::shared_ptr<const row_value> shared_row;
+typedef std::shared_ptr<row_value> own_row;
 
 @ So here is the first occasion where we shall use virtual functions. For the
 moment the output routine performs an immediate recursion; later we shall try
@@ -1289,7 +1279,8 @@ private:
 };
 @)
 typedef std::unique_ptr<tuple_value> tuple_ptr;
-typedef std::shared_ptr<tuple_value> shared_tuple;
+typedef std::shared_ptr<const tuple_value> shared_tuple;
+typedef std::shared_ptr<tuple_value> own_tuple;
 
 @ We just need to redefine the |print| method.
 @< Function definitions @>=
@@ -1333,9 +1324,9 @@ throw any exceptions.
 
 @< Function definitions @>=
 void wrap_tuple(size_t n)
-{ shared_tuple result(new tuple_value(n));
+{ std::shared_ptr<tuple_value> result = std::make_shared<tuple_value>(n);
   while (n-->0) // standard idiom; not |(--n>=0)|, since |n| is unsigned!
-    result->val[n]=pop_value();
+    result->val[n]=std::const_pointer_cast<value_base>(pop_value());
   push_value(result);
 }
 
@@ -1470,83 +1461,6 @@ be popped from the stack in reverse order.
 @< Global variable definitions @>=
 std::vector<shared_value> execution_stack;
 
-@ We shall define some inline functions to facilitate manipulating the stack.
-The function |push_value| does what its name suggests. For exception safety it
-takes either a unique-pointer or a shared pointer as argument; the former is
-converted into the latter, in which case the |use_count| will become~$1$. The
-former form used to take an |auto_ptr| argument by value, which allowed both
-to transfer ownership from an lvalue (i.e., a variable) of the same type, and
-to bind to an rvalue (result of a function or, conversion such as
-|owned_value(p)| below). With the change to a representation as |unique_ptr|
-instance, the lvalue argument case would no longer bind as-is, and an
-invocation of |std::move| had to be inserted into the code in more than~$60$
-places for this reason (the rvalue case does not need modification). At the
-same time the argument passing was changed to modifiable rvalue reference,
-with the same syntactic obligations for the caller; this avoids one transfer
-of ownership, doing so only when the pointer is converted to a |shared_ptr| in
-the code below. The shared pointer version of |push_value| can take its
-argument as a constant reference, since it does not need to modify the
-original pointer (the change being in the shared pointer control block
-instead); this will allow binding both from lvalue and rvalue expressions.
-Nonetheless there is a marginal preference to passing a |unique_ptr| in the
-usual case of pushing a value that has just been constructed, since pushing a
-|shared_ptr| onto the stack and then destructing the original pointer involves
-an increase and following decrease of the associated |use_count| that is
-avoided when passing a |unique_ptr| instead.
-
-For convenience we make these into function templates that accept a smart
-pointer to any type derived from |value_base|, since a conversion of such
-pointers from derived to base is not possible without a cast in a function
-argument position. For even more convenience we also provide a variant taking
-an ordinary pointer, so that expressions using |new| can be written without
-cast in the argument of |push_value|. Since |push_value| has only one
-argument, such use of does not compromise exception safety: nothing can throw
-between the return of |new| and the conversion of its result into a
-|owned_value|.
-
-@: Push execution stack @>
-
-@< Template and inline function definitions @>=
-template<typename D> // |D| is a type derived from |value_base|
-  inline void push_value(std::unique_ptr<D>&& v)
-  {@; execution_stack.push_back(std::shared_ptr<D>(std::move(v))); }
-
-template<typename D> // |D| is a type derived from |value_base|
-  inline void push_value(const std::shared_ptr<D>& v)
-  @+{@; execution_stack.push_back(v); }
-
-inline void push_value(value_base* p) @+{@; push_value(owned_value(p)); }
-
-@ There is a counterpart |pop_value| to |push_value|. By move-constructing
-from the stack top just before it is popped, we avoid incrementing and then
-immediately decrementing the |use_count| value. Most often the result must be
-dynamically cast to the type it is known to have because we passed the type
-checker; hence should the cast fail we know some built in function does not
-respect its declared type specification, and we shall throw a
-|std::logic_error|. The function template |get| with explicitly provided type
-serves for this purpose; it is very much like the template function |force|,
-but returns a shared pointer (because values on the stack are shared
-pointers).
-
-@: Pop execution stack @>
-
-@< Template and inline function definitions @>=
-
-inline shared_value pop_value()
-{@; shared_value arg(std::move(execution_stack.back()));
-  execution_stack.pop_back();
-  return arg;
-}
-@)
-template <typename D> // |D| is a type derived from |value_base|
- inline std::shared_ptr<D> get() throw(std::logic_error)
-{ std::shared_ptr<D> p=std::dynamic_pointer_cast<D>(pop_value());
-  if (p.get()==nullptr)
-    throw std::logic_error(std::string("Argument is no ")+D::name());
-  return p;
-}
-@.Argument is no ...@>
-
 @ Sometimes we may need to expand a value into tuple components separately
 pushed onto the stack, but only if the |level l@;| so indicates and the value
 is indeed of tuple type; the function |push_expanded| will help doing this.
@@ -1565,13 +1479,135 @@ void push_expanded(expression_base::level l, const shared_value& v)
 { if(l==expression_base::single_value)
     push_value(v);
   else if (l==expression_base::multi_value)
-  { shared_tuple p = std::dynamic_pointer_cast<tuple_value>(v);
+  { shared_tuple p = std::dynamic_pointer_cast<const tuple_value>(v);
     if (p==nullptr)
       push_value(v);
     else
       for (size_t i=0; i<p->length(); ++i)
         push_value(p->val[i]); // push components
   }
+}
+
+@* Some useful function templates.
+%
+We now define some inline functions to facilitate manipulating the stack. The
+function |push_value| does what its name suggests. For exception safety it
+takes either a unique-pointer or a shared pointer as argument; the former is
+converted into the latter, in which case the |use_count| will become~$1$. The
+former form used to take an |auto_ptr| argument by value, which allowed both
+to transfer ownership from an lvalue (i.e., a variable) of the same type, and
+to bind to an rvalue (for instance the result of a function). With the change
+to a representation as |unique_ptr| instance, the lvalue argument case would
+no longer bind as-is, and an invocation of |std::move| had to be inserted into
+the code in more than~$60$ places for this reason (the rvalue case does not
+need modification). The argument passing was also changed to modifiable rvalue
+reference, with the same syntactic obligations for the caller; this avoids one
+transfer of ownership, doing so only when the pointer is converted to a
+|shared_ptr| in the code below. The shared pointer version of |push_value| can
+take its argument as a constant lvalue reference (since it does not need to
+modify the pointer, just the reference count) or as rvalue reference.
+
+For convenience we make these into function templates that accept a smart
+pointer to any type derived from |value_base|, since a conversion of such
+pointers from derived to base is not possible without a cast in a function
+argument position. For even more convenience we also provide a variant taking
+an ordinary pointer, so that expressions using |new| can be written without
+cast in the argument of |push_value|. Since |push_value| has only one
+argument, such use of does not compromise exception safety: nothing can throw
+between the return of |new| and the conversion of its result into a
+|shared_value|. However, it is to be preferred that the caller use
+|std::make_shared| instead of |new|, which binds the rvalue reference shared
+pointer instance.
+
+@: Push execution stack @>
+
+@< Template and inline function definitions @>=
+template<typename D> // |D| is a type derived from |value_base|
+  inline void push_value(std::unique_ptr<D>&& v)
+  {@; execution_stack.push_back(shared_value(std::move(v))); }
+@)
+template<typename D> // |D| is a type derived from |value_base|
+  inline void push_value(const std::shared_ptr<D>& v)
+  @+{@; execution_stack.push_back(v); }
+
+template<typename D> // |D| is a type derived from |value_base|
+  inline void push_value(std::shared_ptr<D>&& v)
+  @+{@; execution_stack.push_back(std::move(v)); }
+@)
+inline void push_value(value p) @+
+  {@; execution_stack.push_back(shared_value(p)); }
+
+@ There is a counterpart |pop_value| to |push_value|. By move-constructing
+from the stack top just before it is popped, we avoid incrementing and then
+immediately decrementing the |use_count| value.
+
+@: Pop execution stack @>
+
+@< Template and inline function definitions @>=
+
+inline shared_value pop_value()
+{@; shared_value arg(std::move(execution_stack.back()));
+  execution_stack.pop_back();
+  return arg;
+}
+
+@ Most often the result of calling |pop_value| must be dynamically cast to the
+type it is known to have (by the type check that was passed); should such a
+cast fail, this reveals a flaw of our type system, so we throw a
+|std::logic_error|. The function template |get| with explicitly provided type
+serves for this purpose; it returns a shared pointer (because values on the
+stack are shared pointers) of the proper kind.
+
+Sometimes defeating copy-on-write is desired (to allow changes like filling
+internal tables that will \emph{benefit} other shareholders), and
+|non_const_get| will const-cast the result of |get| to allow that.
+
+@< Template and inline function definitions @>=
+
+template <typename D> // |D| is a type derived from |value_base|
+ inline std::shared_ptr<const D> get() throw(std::logic_error)
+{ std::shared_ptr<const D> p=std::dynamic_pointer_cast<const D>(pop_value());
+  if (p.get()==nullptr)
+    throw std::logic_error(std::string("Argument is no ")+D::name());
+  return p;
+}
+@.Argument is no ...@>
+
+@)
+template <typename D> // |D| is a type derived from |value_base|
+  inline std::shared_ptr<D> non_const_get() throw(std::logic_error)
+{@; return std::const_pointer_cast<D>(get<D>()); }
+
+@ Here is a function template similar to |get|, that applies in situations
+where the value whose type is known does not reside on the stack. As for |get|
+we convert using a |dynamic_cast|, and to throw a |logic_error| in case our
+type prediction was wrong. This function is defined at the level of ordinary
+pointers, and it is not intended for use where the caller assumes ownership of
+the result; the original pointer is assumed to retain ownership as long as the
+result of this call survives, and in particular that pointer should probably
+not be obtained from a smart pointer temporary, nor should the result be
+converted to a smart pointer, lest double deletion would ensue.
+
+We provide two versions, where overloading will choose one or the other
+depending on the const-ness of the argument. Since calling |get| for a
+|shared_value| pointer returns a pointer to constant, it will often be the
+second one that is selected.
+
+@< Template and inline function definitions @>=
+template <typename D> // |D| is a type derived from |value_base|
+ D* force(value v) throw(std::logic_error)
+{ D* p=dynamic_cast<D*>(v);
+  if (p==nullptr) throw
+    std::logic_error(std::string("forced value is no ")+D::name());
+  return p;
+}
+@)
+template <typename D> // |D| is a type derived from |value_base|
+const D* force(const value_base* v) throw(std::logic_error)
+{ const D* p=dynamic_cast<const D*>(v);
+  if (p==nullptr) throw
+    std::logic_error(std::string("forced value is no ")+D::name());
+  return p;
 }
 
 @ In some cases a wrapper function will want to get unique access to an object
@@ -1583,30 +1619,37 @@ ensure that the name of the aggregate that is being assigned to is made to
 hold a unique (non-shared) instance of its value which can then be modified in
 place (the was the original motivation for this functionality). The operation
 |uniquify| implements this, and calling it makes clear our destructive
-intentions. We could have made it take an rvalue reference argument and return
-a |shared_ptr|, but for the case of component assignment it is more useful to
-have it return void but take a modifiable lvalue argument into which a new
-pointer is stored in case duplication was necessary; thus the aggregate will
-not be emptied even temporarily.
+intentions. We make it take a modifiable lvalue argument into which a new
+shared (but currently unique) pointer is stored in case duplication was
+necessary, and return a |value| raw pointer-to-non-const version of the
+possibly modified value of that pointer, which can then be used to make the
+change to the unique copy (the original pointer cannot, of course, since it is
+still a pointer-to-const.
 
-For the case of arguments on the stack, we use |uniquify| right away to
-provide a variant template function |get_own| of |get|, which returns a
-privately owned copy of the value from the stack, so that modifications can be
-made to it without danger of altering shared instances. In spite of the
-uniqueness guarantee, |get_own| must be declared to return a |shared_ptr| in
-order to avoid having to call |clone|: there is no way to persuade a
-|shared_ptr| to release its ownership, even if it happens to be (or is known
-to be) the unique owner; returning a |unique_ptr| is not an option.
+For the more common case of arguments on the stack, we provide a variant
+function template |get_own| of |get|. It has the same prototype as
+|non_const_get|, but like |uniquify| respects copy-on-write by making a copy
+first in case there are other shareholders. Since these functions return
+pointers that are guaranteed to be unique, one might wonder why no use of
+|std::unique_ptr| is made. The answer is this is not possible, since there is
+no way to persuade a |shared_ptr| to release its ownership (as in the
+|release| method of unique pointers), even if it happens to be (or is known to
+be) the unique owner.
 
 
 @< Template and inline function def... @>=
-inline void uniquify(shared_value& v)
-{@; if (not v.unique()) v=shared_value(v->clone()); }
-@)
 template <typename D> // |D| is a type derived from |value_base|
- std::shared_ptr<D> get_own() throw(std::logic_error)
-{@; uniquify(execution_stack.back());
-    return get<D>();
+  std::shared_ptr<D> get_own() throw(std::logic_error)
+{ std::shared_ptr<const D> p=get<D>();
+  if (p.unique())
+    return std::const_pointer_cast<D>(p);
+  return std::shared_ptr<D>(p->clone());
+}
+@)
+inline value uniquify(shared_value& v)
+{ if (not v.unique())
+     v=shared_value(v->clone());
+  return const_cast<value>(v.get());
 }
 
 @* Implicit conversion of values between types.

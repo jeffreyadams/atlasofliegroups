@@ -1208,9 +1208,8 @@ unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma)
   return rd.simpleBasis(int_roots).size();
 }
 
-RationalList integrality_points(const RootDatum& rd, RatWeight& gamma)
+RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma)
 {
-  gamma.normalize();
   arithmetic::Denom_t d = gamma.denominator(); // unsigned type is safe here
 
   std::set<arithmetic::Denom_t> products;

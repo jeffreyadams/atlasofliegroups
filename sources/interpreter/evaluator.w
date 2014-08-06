@@ -532,9 +532,13 @@ void list_expression::evaluate(level l) const
     for (auto it=component.begin(); it!=component.end(); ++it)
       (*it)->void_eval();
   else
-  { row_ptr result(new row_value(0)); result->val.reserve(component.size());
+  { own_row result= std::make_shared<row_value>(0);
+    result->val.reserve(component.size());
     for (auto it=component.begin(); it!=component.end(); ++it)
-      (*it)->eval(),result->val.push_back(pop_value());
+    {
+      (*it)->eval();
+      result->val.push_back(std::const_pointer_cast<value_base>(pop_value()));
+    }
     push_value(std::move(result)); // result will be shared from here on
   }
 }
@@ -636,9 +640,9 @@ identifiers: they have a name that can be printed. For this reason we derive
 an intermediate structure from |expression_base| that will serve as base for
 both kinds of applied identifier expressions.
 
-
 @< Type definitions @>=
-#define nothing_new_here {} // path for gcc 4.6, will become |=default| in \Cpp11
+#define nothing_new_here {}
+  // patch for gcc 4.6, will become |=default| in \Cpp11
 
 struct identifier : public expression_base
 { id_type code;
@@ -1141,7 +1145,7 @@ will still be accepted.
 
 @< Return a call of variant |v|... @>=
 { expression_ptr call;
-  builtin_value* f = dynamic_cast<builtin_value*>(v.val.get());
+  const builtin_value* f = dynamic_cast<const builtin_value*>(v.val.get());
   if (f!=nullptr)
     call = expression_ptr (new @|
       overloaded_builtin_call(f->val,f->print_name.c_str(),std::move(arg)));
@@ -1321,7 +1325,7 @@ not yet started executing would be confusing.
 @< Function definitions @>=
 void call_expression::evaluate(level l) const
 { function->eval(); @+ shared_value fun=pop_value();
-@/builtin_value* f=dynamic_cast<builtin_value*>(fun.get());
+@/const builtin_value* f=dynamic_cast<const builtin_value*>(fun.get());
   argument->evaluate(f==nullptr ? single_value : multi_value);
   try
   { if (f==nullptr)
@@ -1452,14 +1456,14 @@ applies.
 @< Local function definitions @>=
 void prints_wrapper(expression_base::level l)
 { shared_value v=pop_value();
-  string_value* s=dynamic_cast<string_value*>(v.get());
+  const string_value* s=dynamic_cast<const string_value*>(v.get());
   if (s!=nullptr)
     *output_stream << s->val << std::endl;
   else
-  { tuple_value* t=dynamic_cast<tuple_value*>(v.get());
+  { const tuple_value* t=dynamic_cast<const tuple_value*>(v.get());
     if (t!=nullptr)
     { for (auto it=t->val.begin(); it!=t->val.end(); ++it)
-      { s=dynamic_cast<string_value*>(it->get());
+      { s=dynamic_cast<const string_value*>(it->get());
         if (s!=nullptr)
 	  *output_stream << s->val;
         else
@@ -1494,18 +1498,18 @@ joining two such values.
 @< Local function definitions @>=
 void suffix_element_wrapper(expression_base::level l)
 { shared_value e=pop_value();
-  shared_row r=get_own<row_value>();
+  own_row r=get_own<row_value>();
   if (l!=expression_base::no_value)
-  {@; r->val.push_back(e);
+  {@; r->val.push_back(std::const_pointer_cast<value_base>(e));
     push_value(r);
   }
 }
 @)
 void prefix_element_wrapper(expression_base::level l)
-{ shared_row r=get_own<row_value>();
+{ own_row r=get_own<row_value>();
   shared_value e=pop_value();
   if (l!=expression_base::no_value)
-  {@; r->val.insert(r->val.begin(),e);
+  {@; r->val.insert(r->val.begin(),std::const_pointer_cast<value_base>(e));
     push_value(r);
   }
 }
@@ -1514,7 +1518,7 @@ void join_rows_wrapper(expression_base::level l)
 { shared_row y=get<row_value>();
   shared_row x=get<row_value>();
   if (l!=expression_base::no_value)
-  { row_ptr result(new row_value(x->val.size()+y->val.size()));
+  { own_row result = std::make_shared<row_value>(x->val.size()+y->val.size());
     std::copy(y->val.begin(),y->val.end(), @|
      std::copy(x->val.begin(),x->val.end(),result->val.begin()));
 @/  push_value(std::move(result));
@@ -1690,7 +1694,7 @@ void thread_components
      *dst++ = val; // copy |shared_value| pointer |val|, creating sharing
 
   if ((pat.kind & 0x2)!=0)
-  { tuple_value* t=force<tuple_value>(val.get());
+  { const tuple_value* t=force<tuple_value>(val.get());
     assert(t->val.size()==length(pat.sublist));
     size_t i=0;
     for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it,++i)
@@ -1855,7 +1859,7 @@ struct closure_value : public value_base
   static const char* name() @+{@; return "closure"; }
 };
 typedef std::unique_ptr<closure_value> closure_ptr;
-typedef std::shared_ptr<closure_value> shared_closure;
+typedef std::shared_ptr<const closure_value> shared_closure;
 
 @ For now a closure prints just like the |lambda_expression| from which it was
 obtained. One could imagine printing after this body ``where'' followed by the
@@ -1957,7 +1961,7 @@ currently however, none of these are possible yet.
 @: lambda evaluation @>
 
 @< Call user-defined function |fun| with argument on |execution_stack| @>=
-{ closure_value* f=force<closure_value>(fun.get());
+{ const closure_value* f=force<closure_value>(fun.get());
 @)
   lambda_frame fr(*f->param,f->context); // save context, create new one for |f|
   fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
@@ -1998,8 +2002,7 @@ table should hold only values of function type, we must have a |closure_value|
 if it was not a |builtin_value|.
 
 @< Set |call| to the call of the user-defined function |v|... @>=
-{ shared_closure fun =
-   std::dynamic_pointer_cast<closure_value>(v.val);
+{ shared_closure fun = std::dynamic_pointer_cast<const closure_value>(v.val);
   if (fun==nullptr)
     throw std::logic_error("Overloaded value is not a function");
   std::ostringstream name;
@@ -2665,7 +2668,7 @@ void while_expression::evaluate(level l) const
   { row_ptr result (new row_value(0));
     while (condition->eval(),get<bool_value>()->val)
     @/{@; body->eval();
-      result->val.push_back(pop_value());
+      result->val.push_back(std::const_pointer_cast<value_base>(pop_value()));
     }
     push_value(std::move(result));
   }
@@ -2815,7 +2818,7 @@ subsequent iterations.
 @< Function definitions @>=
 void for_expression::evaluate(level l) const
 { in_part->eval();
-  shared_tuple loop_var(new tuple_value(2));
+  own_tuple loop_var(new tuple_value(2));
        // this is safe to re-use between iterations
   row_ptr result(nullptr);
   @< Evaluate the loop, dispatching the various possibilities for |kind|, and
@@ -2917,7 +2920,10 @@ loop body is standard.
   fr.bind(loop_var);
   if (l==no_value)
     body->void_eval();
-  else {@; body->eval(); result->val[i]=pop_value(); }
+  else
+  { body->eval();
+    result->val[i] = std::const_pointer_cast<value_base>(pop_value());
+  }
 } // restore context upon destruction of |fr|
 
 @ The loop over terms of a virtual module is slightly different, and since it
@@ -2938,7 +2944,8 @@ its header file.
     if (l==no_value)
       body->void_eval();
     else
-      {@; body->eval(); result->val[i]=pop_value(); }
+      {@; body->eval();
+          result->val[i]=std::const_pointer_cast<value_base>(pop_value()); }
   } // restore context upon destruction of |fr|
 }
 
@@ -3051,7 +3058,7 @@ void inc_for_expression::evaluate(level l) const
     { frame fr(pattern);
       fr.bind(std::make_shared<int_value>(i));
       body->eval();
-      result->val.push_back(pop_value());
+      result->val.push_back(std::const_pointer_cast<value_base>(pop_value()));
     }
     push_value(std::move(result));
   }
@@ -3082,7 +3089,7 @@ void dec_for_expression::evaluate(level l) const
     { frame fr(pattern);
       fr.bind(std::make_shared<int_value>(i));
       body->eval();
-      result->val.push_back(pop_value());
+      result->val.push_back(std::const_pointer_cast<value_base>(pop_value()));
     }
     push_value(std::move(result));
   }
@@ -3453,8 +3460,8 @@ forbidden, see module @#comp_ass_type_check@>.
 void component_assignment::assign
   (level l,shared_value& aggregate, subscr_base::sub_type kind) const
 { rhs->eval();
-  uniquify(aggregate);
-  value loc=aggregate.get(); // simple reference from shared pointer
+  value loc=uniquify(aggregate);
+    // simple pointer to modifiable value from shared pointer
   switch (kind)
   { case subscr_base::row_entry:
   @/@< Replace component at |index| in row |loc| by value on stack @>
@@ -3482,10 +3489,10 @@ the component assignment, possibly expanding a tuple in the process.
 
 @< Replace component at |index| in row |loc|... @>=
 { unsigned int i=(index->eval(),get<int_value>()->val);
-  std::vector<shared_value>& a=force<row_value>(loc)->val;
+  std::vector<own_value>& a=force<row_value>(loc)->val;
   if (i>=a.size())
     throw std::runtime_error(range_mess(i,a.size(),this));
-  a[i]= pop_value();
+  a[i]= std::const_pointer_cast<value_base>(pop_value());
   push_expanded(l,a[i]);
 }
 
