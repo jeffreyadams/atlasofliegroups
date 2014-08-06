@@ -179,10 +179,10 @@ void Id_table::add(id_type id, shared_value val, type_expr&& type)
   if (its.first==its.second) // no global identifier was previously known
     table.insert // better: |emplace_hint(its.first,id,@[...@])| with gcc 4.8
       (its.first,std::make_pair(id,
-        id_data( shared_share(new shared_value(val)), std::move(type) )));
+        id_data( std::make_shared<shared_value>(val), std::move(type) )));
   else // a global identifier was previously known
     its.first->second =
-      id_data( shared_share(new shared_value(val)), std::move(type) );
+      id_data( std::make_shared<shared_value>(val), std::move(type) );
 }
 
 @ The |remove| method removes an identifier if present, and returns whether
@@ -1006,8 +1006,8 @@ private:
   int_value(const int_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::unique_ptr<int_value> int_ptr;
 typedef std::shared_ptr<const int_value> shared_int;
+typedef std::shared_ptr<int_value> own_int;
 @)
 struct rat_value : public value_base
 { Rational val;
@@ -1221,7 +1221,7 @@ vectors.
 @< Local function def... @>=
 void rational_convert() // convert integer to rational (with denominator~1)
 {@; int i = get<int_value>()->val;
-    push_value(new rat_value(Rational(i)));
+    push_value(std::make_shared<rat_value>(Rational(i)));
 }
 @)
 void ratlist_ratvec_convert() // convert list of rationals to rational vector
@@ -1237,12 +1237,12 @@ void ratlist_ratvec_convert() // convert list of rationals to rational vector
   for (size_t i=0; i<r->val.size(); ++i)
     numer[i]*= d/denom[i]; // adjust numerators to common denominator
 
-  push_value(new rational_vector_value(numer,d)); // normalises
+  push_value(std::make_shared<rational_vector_value>(numer,d)); // normalises
 }
 @)
 void ratvec_ratlist_convert() // convert rational vector to list of rationals
 { shared_rational_vector rv = get<rational_vector_value>();
-  row_ptr result(new row_value(rv->val.size()));
+  own_row result = std::make_shared<row_value>(rv->val.size());
   for (size_t i=0; i<rv->val.size(); ++i)
   { Rational q(rv->val.numerator()[i],rv->val.denominator());
     result->val[i] = std::make_shared<rat_value>(q.normalize());
@@ -1252,7 +1252,7 @@ void ratvec_ratlist_convert() // convert rational vector to list of rationals
 @)
 void vec_ratvec_convert() // convert vector to rational vector
 { shared_vector v = get<vector_value>();
-  push_value(new rational_vector_value(RatWeight(v->val,1)));
+  push_value(std::make_shared<rational_vector_value>(RatWeight(v->val,1)));
 }
 
 @ The conversions into vectors or matrices use an auxiliary function
@@ -1283,12 +1283,13 @@ int_Vector row_to_weight(const row_value& r)
 @)
 void intlist_vector_convert()
 {@; shared_row r = get<row_value>();
-  push_value(new vector_value(row_to_weight(*r)));
+  push_value(std::make_shared<vector_value>(row_to_weight(*r)));
 }
 @)
 void intlist_ratvec_convert()
 {@; shared_row r = get<row_value>();
-  push_value(new rational_vector_value(RatWeight(row_to_weight(*r),1)));
+  push_value(std::make_shared<rational_vector_value>
+    (RatWeight(row_to_weight(*r),1)));
 }
 
 @ The conversion |veclist_matrix_convert| interprets a list of vectors as the
@@ -1315,7 +1316,7 @@ void veclist_matrix_convert()
     throw std::runtime_error("Cannot convert empty list of vectors to matrix");
 @.Cannot convert empty list of vectors@>
   size_t n = force<vector_value>(r->val[0].get())->val.size();
-  matrix_ptr m (new matrix_value(int_Matrix(n,r->val.size())));
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
   for(size_t j=0; j<r->val.size(); ++j)
   { const int_Vector& col = force<vector_value>(r->val[j].get())->val;
     if (col.size()!=n)
@@ -1336,7 +1337,7 @@ void intlistlist_matrix_convert()
     throw std::runtime_error("Cannot convert empty list of lists to matrix");
 @.Cannot convert empty list of lists@>
   size_t n = force<vector_value>(r->val[0].get())->val.size();
-  matrix_ptr m (new matrix_value(int_Matrix(n,r->val.size())));
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
   for(size_t j=0; j<r->val.size(); ++j)
   { int_Vector col = row_to_weight(*force<row_value>(r->val[j].get()));
     if (col.size()!=n)
@@ -1351,11 +1352,11 @@ void intlistlist_matrix_convert()
 the vector and matrix conversions. It will be handy to have a basic function
 |weight_to_row| that performs more or less the inverse transformation of
 |row_to_weight|, but rather than returning a |row_value| it returns a
-|row_ptr| pointing to it.
+|own_row| pointing to it.
 
 @< Local function def... @>=
-row_ptr weight_to_row(const int_Vector& v)
-{ row_ptr result (new row_value(v.size()));
+own_row weight_to_row(const int_Vector& v)
+{ own_row result = std::make_shared<row_value>(v.size());
   for(size_t i=0; i<v.size(); ++i)
     result->val[i]=std::make_shared<int_value>(v[i]);
   return result;
@@ -1368,7 +1369,7 @@ void vector_intlist_convert()
 @)
 void matrix_veclist_convert()
 { shared_matrix m=get<matrix_value>();
-  row_ptr result(new row_value(m->val.numColumns()));
+  own_row result = std::make_shared<row_value>(m->val.numColumns());
   for(size_t i=0; i<m->val.numColumns(); ++i)
     result->val[i]=std::make_shared<vector_value>(m->val.column(i));
   push_value(std::move(result));
@@ -1376,10 +1377,9 @@ void matrix_veclist_convert()
 @)
 void matrix_intlistlist_convert()
 { shared_matrix m=get<matrix_value>();
-  row_ptr result(new row_value(m->val.numColumns()));
+  own_row result = std::make_shared<row_value>(m->val.numColumns());
   for(size_t i=0; i<m->val.numColumns(); ++i)
-    result->val[i]=
-      std::shared_ptr<value_base>(weight_to_row(m->val.column(i)).release());
+    result->val[i]= weight_to_row(m->val.column(i));
 
   push_value(std::move(result));
 }
@@ -1437,13 +1437,13 @@ void install_function
     throw std::logic_error
      ("Built-in with non-function type: "+print_name.str());
   if (type->func->arg_type==void_type)
-  { shared_value val(new builtin_value(f,print_name.str()));
+  { own_value val = std::make_shared<builtin_value>(f,print_name.str());
     global_id_table->add
       (main_hash_table->match_literal(name),val,std::move(*type));
   }
   else
   { print_name << '@@' << type->func->arg_type;
-    shared_value val(new builtin_value(f,print_name.str()));
+    own_value val = std::make_shared<builtin_value>(f,print_name.str());
     global_overload_table->add
       (main_hash_table->match_literal(name),val,std::move(type));
   }
@@ -1464,19 +1464,19 @@ must allocate new value objects for the results.
 void plus_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new int_value(i+j));
+    push_value(std::make_shared<int_value>(i+j));
 }
 @)
 void minus_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new int_value(i-j));
+    push_value(std::make_shared<int_value>(i-j));
 }
 @)
 void times_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new int_value(i*j));
+    push_value(std::make_shared<int_value>(i*j));
 }
 
 @ We take the occasion of defining a division operation to repair the integer
@@ -1493,7 +1493,7 @@ void divide_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (j==0) throw std::runtime_error("Division by zero");
   if (l!=expression_base::no_value)
-    push_value(new int_value
+    push_value(std::make_shared<int_value>
      (j>0 ? arithmetic::divide(i,j) : -arithmetic::divide(i,-j)));
 }
 
@@ -1506,16 +1506,18 @@ void modulo_wrapper(expression_base::level l)
 { int  j=get<int_value>()->val; int i=get<int_value>()->val;
   if (j==0) throw std::runtime_error("Modulo zero");
   if (l!=expression_base::no_value)
-    push_value(new int_value(arithmetic::remainder(i,arithmetic::abs(j))));
+    push_value(std::make_shared<int_value>
+      (arithmetic::remainder(i,arithmetic::abs(j))));
 }
 @)
 void divmod_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (j==0) throw std::runtime_error("DivMod by zero");
   if (l!=expression_base::no_value)
-  { push_value(new int_value
+  { push_value(std::make_shared<int_value>
      (j>0 ? arithmetic::divide(i,j) : -arithmetic::divide(i,-j)));
-    push_value(new int_value(arithmetic::remainder(i,arithmetic::abs(j))));
+    push_value(std::make_shared<int_value>
+      (arithmetic::remainder(i,arithmetic::abs(j))));
     if (l==expression_base::single_value)
       wrap_tuple(2);
   }
@@ -1524,7 +1526,7 @@ void divmod_wrapper(expression_base::level l)
 void unary_minus_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new int_value(-i));
+    push_value(std::make_shared<int_value>(-i));
 }
 @)
 void power_wrapper(expression_base::level l)
@@ -1568,15 +1570,15 @@ void fraction_wrapper(expression_base::level l)
   if (d==0) throw std::runtime_error("fraction with zero denominator");
   if (d<0) {@; d=-d; n=-n; } // ensure denominator is positive
   if (l!=expression_base::no_value)
-    push_value(new rat_value(Rational(n,d)));
+    push_value(std::make_shared<rat_value>(Rational(n,d)));
 }
 @)
 
 void unfraction_wrapper(expression_base::level l)
 { Rational q=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-  { push_value(new int_value(q.numerator()));
-    push_value(new int_value(q.denominator()));
+  { push_value(std::make_shared<int_value>(q.numerator()));
+    push_value(std::make_shared<int_value>(q.denominator()));
     if (l==expression_base::single_value)
       wrap_tuple(2);
   }
@@ -1591,21 +1593,21 @@ void rat_plus_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val;
   Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new rat_value(i+j));
+    push_value(std::make_shared<rat_value>(i+j));
 }
 @)
 void rat_minus_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val;
   Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new rat_value(i-j));
+    push_value(std::make_shared<rat_value>(i-j));
 }
 @)
 void rat_times_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val;
   Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new rat_value(i*j));
+    push_value(std::make_shared<rat_value>(i*j));
 }
 @)
 void rat_divide_wrapper(expression_base::level l)
@@ -1614,27 +1616,27 @@ void rat_divide_wrapper(expression_base::level l)
   if (j.numerator()==0)
     throw std::runtime_error("Rational division by zero");
   if (l!=expression_base::no_value)
-    push_value(new rat_value(i/j));
+    push_value(std::make_shared<rat_value>(i/j));
 }
 @)
 void rat_unary_minus_wrapper(expression_base::level l)
 {@; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new rat_value(Rational(0)-i)); }
+    push_value(std::make_shared<rat_value>(Rational(0)-i)); }
 @)
 void rat_inverse_wrapper(expression_base::level l)
 {@; Rational i=get<rat_value>()->val;
   if (i.numerator()==0)
     throw std::runtime_error("Inverse of zero");
   if (l!=expression_base::no_value)
-    push_value(new rat_value(Rational(1)/i)); }
+    push_value(std::make_shared<rat_value>(Rational(1)/i)); }
 @)
 void rat_power_wrapper(expression_base::level l)
 { int n=get<int_value>()->val; Rational b=get<rat_value>()->val;
   if (b.numerator()==0 and n<0)
     throw std::runtime_error("Negative power of zero");
   if (l!=expression_base::no_value)
-    push_value(new rat_value(b.power(n)));
+    push_value(std::make_shared<rat_value>(b.power(n)));
 }
 
 @*1 Booleans.
@@ -1645,37 +1647,37 @@ Relational operators are of the same flavour.
 void int_eq_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i==j));
+    push_value(std::make_shared<bool_value>(i==j));
 }
 @)
 void int_neq_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i!=j));
+    push_value(std::make_shared<bool_value>(i!=j));
 }
 @)
 void int_less_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i<j));
+    push_value(std::make_shared<bool_value>(i<j));
 }
 @)
 void int_lesseq_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i<=j));
+    push_value(std::make_shared<bool_value>(i<=j));
 }
 @)
 void int_greater_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i>j));
+    push_value(std::make_shared<bool_value>(i>j));
 }
 @)
 void int_greatereq_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i>=j));
+    push_value(std::make_shared<bool_value>(i>=j));
 }
 
 @ We do that again for rational numbers
@@ -1685,37 +1687,37 @@ void int_greatereq_wrapper(expression_base::level l)
 void rat_eq_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i==j));
+    push_value(std::make_shared<bool_value>(i==j));
 }
 @)
 void rat_neq_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i!=j));
+    push_value(std::make_shared<bool_value>(i!=j));
 }
 @)
 void rat_less_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i<j));
+    push_value(std::make_shared<bool_value>(i<j));
 }
 @)
 void rat_lesseq_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i<=j));
+    push_value(std::make_shared<bool_value>(i<=j));
 }
 @)
 void rat_greater_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i>j));
+    push_value(std::make_shared<bool_value>(i>j));
 }
 @)
 void rat_greatereq_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i>=j));
+    push_value(std::make_shared<bool_value>(i>=j));
 }
 
 @ For booleans we also have equality and ineqality.
@@ -1724,13 +1726,13 @@ void rat_greatereq_wrapper(expression_base::level l)
 void equiv_wrapper(expression_base::level l)
 { bool a=get<bool_value>()->val; bool b=get<bool_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new bool_value(a==b));
+    push_value(std::make_shared<bool_value>(a==b));
 }
 @)
 void inequiv_wrapper(expression_base::level l)
 { bool a=get<bool_value>()->val; bool b=get<bool_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new bool_value(a!=b));
+    push_value(std::make_shared<bool_value>(a!=b));
 }
 
 @*1 Strings.
@@ -1745,26 +1747,26 @@ representation.
 void string_eq_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i->val==j->val));
+    push_value(std::make_shared<bool_value>(i->val==j->val));
 }
 @)
 void string_leq_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i->val<=j->val));
+    push_value(std::make_shared<bool_value>(i->val<=j->val));
 }
 @)
 void concatenate_wrapper(expression_base::level l)
 { shared_string b=get<string_value>(); shared_string a=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(new string_value(a->val+b->val));
+    push_value(std::make_shared<string_value>(a->val+b->val));
 }
 @)
 void int_format_wrapper(expression_base::level l)
 { int n=get<int_value>()->val;
   std::ostringstream o; o<<n;
   if (l!=expression_base::no_value)
-    push_value(new string_value(o.str()));
+    push_value(std::make_shared<string_value>(o.str()));
 }
 
 @ To give a rudimentary capability of analysing strings, we provide, in
@@ -1776,7 +1778,7 @@ character of a string into a numeric value.
 void string_to_ascii_wrapper(expression_base::level l)
 { shared_string c=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(new int_value
+    push_value(std::make_shared<int_value>
       (c->val.size()==0 ? -1 : (unsigned char)c->val[0]));
 }
 @)
@@ -1785,7 +1787,7 @@ void ascii_char_wrapper(expression_base::level l)
   if (c<' ' or c>'~')
     throw std::runtime_error("Value "+str(c)+" out of range");
   if (l!=expression_base::no_value)
-    push_value(new string_value(std::string(1,c)));
+    push_value(std::make_shared<string_value>(std::string(1,c)));
 }
 
 
@@ -1798,13 +1800,13 @@ vectors and matrices.
 void sizeof_string_wrapper(expression_base::level l)
 { size_t s=get<string_value>()->val.size();
   if (l!=expression_base::no_value)
-    push_value(new int_value(s));
+    push_value(std::make_shared<int_value>(s));
 }
 @)
 void sizeof_vector_wrapper(expression_base::level l)
 { size_t s=get<vector_value>()->val.size();
   if (l!=expression_base::no_value)
-    push_value(new int_value(s));
+    push_value(std::make_shared<int_value>(s));
 }
 
 @)
@@ -1812,8 +1814,8 @@ void matrix_bounds_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(new int_value(m->val.numRows()));
-  push_value(new int_value(m->val.numColumns()));
+  push_value(std::make_shared<int_value>(m->val.numRows()));
+  push_value(std::make_shared<int_value>(m->val.numColumns()));
   if (l==expression_base::single_value)
     wrap_tuple(2);
 }
@@ -1843,7 +1845,7 @@ void join_vectors_wrapper(expression_base::level l)
 { shared_vector y=get<vector_value>();
   shared_vector x=get<vector_value>();
   if (l!=expression_base::no_value)
-  { vector_ptr result(new vector_value(std::vector<int>()));
+  { own_vector result = std::make_shared<vector_value>(std::vector<int>());
     result->val.reserve(x->val.size()+y->val.size());
     result->val.insert(result->val.end(),x->val.begin(),x->val.end());
     result->val.insert(result->val.end(),y->val.begin(),y->val.end());
@@ -1875,25 +1877,25 @@ to what we saw for rationals, for instance.
 void vec_eq_wrapper(expression_base::level l)
 { shared_vector j=get<vector_value>(); shared_vector i=get<vector_value>();
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i->val==j->val));
+    push_value(std::make_shared<bool_value>(i->val==j->val));
 }
 @)
 void vec_neq_wrapper(expression_base::level l)
 { shared_vector j=get<vector_value>(); shared_vector i=get<vector_value>();
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i->val!=j->val));
+    push_value(std::make_shared<bool_value>(i->val!=j->val));
 }
 @)
 void mat_eq_wrapper(expression_base::level l)
 { shared_matrix j=get<matrix_value>(); shared_matrix i=get<matrix_value>();
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i->val==j->val));
+    push_value(std::make_shared<bool_value>(i->val==j->val));
 }
 @)
 void mat_neq_wrapper(expression_base::level l)
 { shared_matrix j=get<matrix_value>(); shared_matrix i=get<matrix_value>();
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i->val!=j->val));
+    push_value(std::make_shared<bool_value>(i->val!=j->val));
 }
 
 @ The function |vector_div_wrapper| produces a rational vector, for which we
@@ -1904,15 +1906,15 @@ void vector_div_wrapper(expression_base::level l)
 { int n=get<int_value>()->val;
   shared_vector v=get<vector_value>();
   if (l!=expression_base::no_value)
-    push_value(new rational_vector_value(v->val,n));
+    push_value(std::make_shared<rational_vector_value>(v->val,n));
 }
 @)
 void ratvec_unfraction_wrapper(expression_base::level l)
 { shared_rational_vector v = get<rational_vector_value>();
   if (l!=expression_base::no_value)
   { Weight num(v->val.numerator().begin(),v->val.numerator().end()); // convert
-    push_value(new vector_value(num));
-    push_value(new int_value(v->val.denominator()));
+    push_value(std::make_shared<vector_value>(num));
+    push_value(std::make_shared<int_value>(v->val.denominator()));
     if (l==expression_base::single_value)
       wrap_tuple(2);
   }
@@ -1922,14 +1924,14 @@ void ratvec_plus_wrapper(expression_base::level l)
 { shared_rational_vector v1= get<rational_vector_value>();
   shared_rational_vector v0= get<rational_vector_value>();
   if (l!=expression_base::no_value)
-    push_value(new rational_vector_value(v0->val+v1->val));
+    push_value(std::make_shared<rational_vector_value>(v0->val+v1->val));
 }
 @)
 void ratvec_minus_wrapper(expression_base::level l)
 { shared_rational_vector v1= get<rational_vector_value>();
   shared_rational_vector v0= get<rational_vector_value>();
   if (l!=expression_base::no_value)
-    push_value(new rational_vector_value(v0->val-v1->val));
+    push_value(std::make_shared<rational_vector_value>(v0->val-v1->val));
 }
 
 
@@ -1953,7 +1955,7 @@ void mm_prod_wrapper(expression_base::level l)
     throw std::runtime_error(s.str());
   }
   if (l!=expression_base::no_value)
-    push_value(new matrix_value(lf->val*rf->val));
+    push_value(std::make_shared<matrix_value>(lf->val*rf->val));
 }
 
 @ The other product operations are very similar. As a historic note, the
@@ -1969,7 +1971,7 @@ void mv_prod_wrapper(expression_base::level l)
     throw std::runtime_error(std::string("Size mismatch ")@|
      + str(m->val.numColumns()) + ":" + str(v->val.size()));
   if (l!=expression_base::no_value)
-    push_value(new vector_value(m->val*v->val));
+    push_value(std::make_shared<vector_value>(m->val*v->val));
 }
 @)
 void mrv_prod_wrapper(expression_base::level l)
@@ -1979,7 +1981,7 @@ void mrv_prod_wrapper(expression_base::level l)
     throw std::runtime_error(std::string("Size mismatch ")@|
      + str(m->val.numColumns()) + ":" + str(v->val.size()));
   if (l!=expression_base::no_value)
-    push_value(new rational_vector_value(m->val*v->val));
+    push_value(std::make_shared<rational_vector_value>(m->val*v->val));
 }
 @)
 void vv_prod_wrapper(expression_base::level l)
@@ -1989,7 +1991,7 @@ void vv_prod_wrapper(expression_base::level l)
     throw std::runtime_error(std::string("Size mismatch ")@|
      + str(v->val.size()) + ":" + str(w->val.size()));
   if (l!=expression_base::no_value)
-    push_value(new int_value(v->val.dot(w->val)));
+    push_value(std::make_shared<int_value>(v->val.dot(w->val)));
 }
 @)
 void vm_prod_wrapper(expression_base::level l)
@@ -2001,7 +2003,7 @@ void vm_prod_wrapper(expression_base::level l)
     throw std::runtime_error(s.str());
   }
   if (l!=expression_base::no_value)
-    push_value(new vector_value(m->val.right_prod(v->val)));
+    push_value(std::make_shared<vector_value>(m->val.right_prod(v->val)));
 }
 
 @ The function |stack_rows_wrapper| interprets a row of vectors as a ragged
@@ -2028,7 +2030,7 @@ void stack_rows_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 
-  matrix_ptr m (new matrix_value(int_Matrix(n,width,0)));
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,width,0));
   for(size_t i=0; i<n; ++i)
     for (size_t j=0; j<row[i]->size(); ++j)
       m->val(i,j)=(*row[i])[j];
@@ -2045,7 +2047,7 @@ void combine_columns_wrapper(expression_base::level l)
   if (n<0)
     throw std::runtime_error("Negative number "+str(n)+" of rows requested");
 @.Negative number of rows@>
-  matrix_ptr m (new matrix_value(int_Matrix(n,r->val.size())));
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
   for(size_t j=0; j<r->val.size(); ++j)
   { const int_Vector& col = force<vector_value>(r->val[j].get())->val;
     if (col.size()!=size_t(n))
@@ -2064,7 +2066,7 @@ void combine_rows_wrapper(expression_base::level l)
   if (n<0)
     throw std::runtime_error("Negative number "+str(n)+" of columns requested");
 @.Negative number of columns@>
-  matrix_ptr m (new matrix_value(int_Matrix(r->val.size(),n)));
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(r->val.size(),n));
   for(size_t i=0; i<r->val.size(); ++i)
   { const int_Vector& row = force<vector_value>(r->val[i].get())->val;
     if (row.size()!=size_t(n))
@@ -2165,18 +2167,19 @@ in fact be hard to avoid.
 void null_vec_wrapper(expression_base::level lev)
 { int l=get<int_value>()->val;
   if (lev!=expression_base::no_value)
-    push_value(new vector_value(int_Vector(std::abs(l),0)));
+    push_value(std::make_shared<vector_value>(int_Vector(std::abs(l),0)));
 }
 @) void null_mat_wrapper(expression_base::level lev)
 { int l=get<int_value>()->val;
   int k=get<int_value>()->val;
   if (lev!=expression_base::no_value)
-    push_value(new matrix_value(int_Matrix(std::abs(k),std::abs(l),0)));
+    push_value(std::make_shared<matrix_value>
+      (int_Matrix(std::abs(k),std::abs(l),0)));
 }
 void transpose_vec_wrapper(expression_base::level l)
 { shared_vector v=get<vector_value>();
   if (l!=expression_base::no_value)
-  { matrix_ptr m (new matrix_value(int_Matrix(1,v->val.size())));
+  { own_matrix m = std::make_shared<matrix_value>(int_Matrix(1,v->val.size()));
     for (size_t j=0; j<v->val.size(); ++j)
       m->val(0,j)=v->val[j];
     push_value(std::move(m));
@@ -2197,13 +2200,14 @@ to do the work.
 @) void transpose_mat_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (l!=expression_base::no_value)
-    push_value(new matrix_value(m->val.transposed()));
+    push_value(std::make_shared<matrix_value>(m->val.transposed()));
 }
 @)
 void id_mat_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new matrix_value(int_Matrix(std::abs(i)))); // identity
+    push_value(std::make_shared<matrix_value>
+      (int_Matrix(std::abs(i)))); // identity
 }
 
 @ We also define |diagonal_wrapper|, a slight generalisation of
@@ -2215,7 +2219,7 @@ void diagonal_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   size_t n=d->val.size();
-  matrix_ptr m (new matrix_value(int_Matrix(n)));
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(n));
   for (size_t i=0; i<n; ++i)
     m->val(i,i)=d->val[i];
   push_value(std::move(m));
@@ -2231,7 +2235,8 @@ void echelon_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   { BitMap pivots=matreduc::column_echelon(M->val);
     push_value(M);
-    row_ptr p_list (new row_value(0)); p_list->val.reserve(pivots.size());
+    own_row p_list = std::make_shared<row_value>(0);
+    p_list->val.reserve(pivots.size());
     for (BitMap::iterator it=pivots.begin(); it(); ++it)
       p_list->val.push_back(std::make_shared<int_value>(*it));
     push_value(std::move(p_list));
@@ -2252,8 +2257,8 @@ matrix.
 void diagonalize_wrapper(expression_base::level l)
 { shared_matrix M=get<matrix_value>();
   if (l!=expression_base::no_value)
-  { matrix_ptr row(new matrix_value(int_Matrix())),
-            column(new matrix_value(int_Matrix()));
+  { own_matrix row = std::make_shared<matrix_value>(int_Matrix());
+    own_matrix column = std::make_shared<matrix_value>(int_Matrix());
     vector_ptr diagonal(
        new vector_value(matreduc::diagonalise(M->val,row->val,column->val)));
     push_value(std::move(diagonal));
@@ -2267,10 +2272,9 @@ void diagonalize_wrapper(expression_base::level l)
 void adapted_basis_wrapper(expression_base::level l)
 { shared_matrix M=get<matrix_value>();
   if (l!=expression_base::no_value)
-  { vector_ptr diagonal(new vector_value(std::vector<int>()));
-    matrix_ptr basis
-      (new matrix_value(matreduc::adapted_basis(M->val,diagonal->val)));
-    push_value(std::move(basis));
+  { own_vector diagonal = std::make_shared<vector_value>(std::vector<int>());
+    push_value(std::make_shared<matrix_value>
+      (matreduc::adapted_basis(M->val,diagonal->val)));
     push_value(std::move(diagonal));
     if (l==expression_base::single_value)
       wrap_tuple(2);
@@ -2289,20 +2293,21 @@ computed. We include them here to enable testing these functions.
 void kernel_wrapper(expression_base::level l)
 { shared_matrix M=get<matrix_value>();
   if (l!=expression_base::no_value)
-    push_value(new matrix_value(lattice::kernel(M->val)));
+    push_value(std::make_shared<matrix_value>(lattice::kernel(M->val)));
 }
 @)
 void eigen_lattice_wrapper(expression_base::level l)
 { int eigen_value = get<int_value>()->val;
   shared_matrix M=get<matrix_value>();
   if (l!=expression_base::no_value)
-    push_value (new matrix_value(lattice::eigen_lattice(M->val,eigen_value)));
+    push_value(std::make_shared<matrix_value>
+      (lattice::eigen_lattice(M->val,eigen_value)));
 }
 @)
 void row_saturate_wrapper(expression_base::level l)
 { shared_matrix M=get<matrix_value>();
   if (l!=expression_base::no_value)
-    push_value(new matrix_value(lattice::row_saturate(M->val)));
+    push_value(std::make_shared<matrix_value>(lattice::row_saturate(M->val)));
 }
 
 @ As a last example, here is the Smith normal form algorithm. We provide both
@@ -2314,7 +2319,7 @@ void invfact_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
     return;
-  vector_ptr inv_factors (new vector_value(std::vector<int>()));
+  own_vector inv_factors = std::make_shared<vector_value>(std::vector<int>());
 @/matreduc::Smith_basis(m->val,inv_factors->val);
   push_value(std::move(inv_factors));
 }
@@ -2323,16 +2328,18 @@ void Smith_basis_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
     return;
-  vector_ptr inv_factors (new vector_value(std::vector<int>()));
-@/push_value(new matrix_value(matreduc::Smith_basis(m->val,inv_factors->val)));
+  own_vector inv_factors = std::make_shared<vector_value>(std::vector<int>());
+@/push_value(std::make_shared<matrix_value>
+    (matreduc::Smith_basis(m->val,inv_factors->val)));
 }
 @)
 void Smith_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
     return;
-  vector_ptr inv_factors (new vector_value(std::vector<int>()));
-@/push_value(new matrix_value(matreduc::Smith_basis(m->val,inv_factors->val)));
+  own_vector inv_factors = std::make_shared<vector_value>(std::vector<int>());
+@/push_value(std::make_shared<matrix_value>
+    (matreduc::Smith_basis(m->val,inv_factors->val)));
   push_value(std::move(inv_factors));
   if (l==expression_base::single_value)
     wrap_tuple(2);
@@ -2353,8 +2360,8 @@ void invert_wrapper(expression_base::level l)
   }
   if (l==expression_base::no_value)
     return;
-  int_ptr denom(new int_value(0));
-@/push_value(new matrix_value(m->val.inverse(denom->val)));
+  own_int denom = std::make_shared<int_value>(0);
+@/push_value(std::make_shared<matrix_value>(m->val.inverse(denom->val)));
   push_value(std::move(denom));
   if (l==expression_base::single_value)
     wrap_tuple(2);
@@ -2446,10 +2453,10 @@ but which will be moved to position $\pi(k)$ according to the relative size of
 
 @< Push as results the basis found, ... @>=
 { Permutation pi = permutations::standardization(pivot,n_gens);
-  row_ptr basis_r(new row_value(basis.size()));
-  row_ptr combin_r(new row_value(basis.size()));
-  row_ptr relations(new row_value(n_gens-basis.size()));
-  row_ptr pivot_r(new row_value(basis.size()));
+  own_row basis_r = std::make_shared<row_value>(basis.size());
+  own_row combin_r = std::make_shared<row_value>(basis.size());
+  own_row relations = std::make_shared<row_value>(n_gens-basis.size());
+  own_row pivot_r = std::make_shared<row_value>(basis.size());
   unsigned int k=0;
   for (unsigned int i=0; i<n_gens; ++i)
     if (k<basis.size() and i==pivoter[k])

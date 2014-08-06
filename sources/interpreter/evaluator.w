@@ -1486,7 +1486,7 @@ will require more specialised unary overloads of the `\#' operator.
 void sizeof_wrapper(expression_base::level l)
 { size_t s=get<row_value>()->val.size();
   if (l!=expression_base::no_value)
-    push_value(new int_value(s));
+    push_value(std::make_shared<int_value>(s));
 }
 
 
@@ -1888,7 +1888,7 @@ kind of stack, in particular it cannot be embedded in the \Cpp\ runtime stack
 @< Function def... @>=
 void lambda_expression::evaluate(level l) const
 {@;if (l!=no_value)
-     push_value(closure_ptr(new closure_value(frame::current,param,body)));
+     push_value(std::make_shared<closure_value>(frame::current,param,body));
 }
 
 @ Here a variation of the class |frame|; again the purpose is to have
@@ -2399,7 +2399,7 @@ void vector_subscription::evaluate(level l) const
   if (static_cast<unsigned int>(i->val)>=v->val.size())
     throw std::runtime_error(range_mess(i->val,v->val.size(),this));
   if (l!=no_value)
-    push_value(new int_value(v->val[i->val]));
+    push_value(std::make_shared<int_value>(v->val[i->val]));
 }
 @)
 void ratvec_subscription::evaluate(level l) const
@@ -2408,7 +2408,7 @@ void ratvec_subscription::evaluate(level l) const
   if (static_cast<unsigned int>(i->val)>=v->val.size())
     throw std::runtime_error(range_mess(i->val,v->val.size(),this));
   if (l!=no_value)
-    push_value(new rat_value(Rational @|
+    push_value(std::make_shared<rat_value>(Rational @|
        (v->val.numerator()[i->val],v->val.denominator())));
 }
 @)
@@ -2418,7 +2418,7 @@ void string_subscription::evaluate(level l) const
   if (static_cast<unsigned int>(i->val)>=s->val.size())
     throw std::runtime_error(range_mess(i->val,s->val.size(),this));
   if (l!=no_value)
-    push_value(new string_value(s->val.substr(i->val,1)));
+    push_value(std::make_shared<string_value>(s->val.substr(i->val,1)));
 }
 
 @ And here are the cases for matrix indexing and slicing (extracting a
@@ -2442,7 +2442,7 @@ void matrix_subscription::evaluate(level l) const
     throw std::runtime_error
      ("final "+range_mess(j->val,m->val.numColumns(),this));
   if (l!=no_value)
-    push_value(new int_value(m->val(i->val,j->val)));
+    push_value(std::make_shared<int_value>(m->val(i->val,j->val)));
 }
 @)
 void matrix_slice::evaluate(level l) const
@@ -2451,7 +2451,7 @@ void matrix_slice::evaluate(level l) const
   if (static_cast<unsigned int>(j->val)>=m->val.numColumns())
     throw std::runtime_error(range_mess(j->val,m->val.numColumns(),this));
   if (l!=no_value)
-    push_value(new vector_value(m->val.column(j->val)));
+    push_value(std::make_shared<vector_value>(m->val.column(j->val)));
 }
 
 
@@ -2665,7 +2665,7 @@ void while_expression::evaluate(level l) const
     while (condition->eval(),get<bool_value>()->val)
        body->void_eval();
   else
-  { row_ptr result (new row_value(0));
+  { own_row result = std::make_shared<row_value>(0);
     while (condition->eval(),get<bool_value>()->val)
     @/{@; body->eval();
       result->val.push_back(std::const_pointer_cast<value_base>(pop_value()));
@@ -2818,9 +2818,9 @@ subsequent iterations.
 @< Function definitions @>=
 void for_expression::evaluate(level l) const
 { in_part->eval();
-  own_tuple loop_var(new tuple_value(2));
+  own_tuple loop_var = std::make_shared<tuple_value>(2);
        // this is safe to re-use between iterations
-  row_ptr result(nullptr);
+  own_row result(nullptr);
   @< Evaluate the loop, dispatching the various possibilities for |kind|, and
   setting |result| @>
 
@@ -2839,9 +2839,9 @@ switch (kind)
   { shared_row in_val = get<row_value>();
     size_t n=in_val->val.size();
     if (l!=no_value)
-      result = row_ptr(new row_value(n));
+      result = std::make_shared<row_value>(n);
     for (size_t i=0; unsigned(i)<n; ++i)
-    { loop_var->val[1]=in_val->val[i]; // the row current component
+    { loop_var->val[1]=in_val->val[i]; // share the current row component
       @< Set |loop_var->val[0]| to |i|, create a new |frame| for
       |pattern| binding |loop_var|, and evaluate the |loop_body| in it;
       maybe assign |result->val[i]| from it @>
@@ -2852,9 +2852,9 @@ switch (kind)
   { shared_vector in_val = get<vector_value>();
     size_t n=in_val->val.size();
     if (l!=no_value)
-      result = row_ptr(new row_value(n));
+      result = std::make_shared<row_value>(n);
     for (size_t i=0; unsigned(i)<n; ++i)
-    { loop_var->val[1].reset(new int_value(in_val->val[i]));
+    { loop_var->val[1] = std::make_shared<int_value>(in_val->val[i]);
       @< Set |loop_var->val[0]| to |i|,... @>
     }
   }
@@ -2863,10 +2863,10 @@ switch (kind)
   { shared_rational_vector in_val = get<rational_vector_value>();
     size_t n=in_val->val.size();
     if (l!=no_value)
-      result = row_ptr(new row_value(n));
+      result = std::make_shared<row_value>(n);
     for (size_t i=0; unsigned(i)<n; ++i)
-    { loop_var->val[1].reset(new rat_value(Rational @|
-        (in_val->val.numerator()[i],in_val->val.denominator())));
+    { loop_var->val[1] = std::make_shared<rat_value>(Rational @|
+        (in_val->val.numerator()[i],in_val->val.denominator()));
       @< Set |loop_var->val[0]| to |i|,... @>
     }
   }
@@ -2875,9 +2875,9 @@ switch (kind)
   { shared_string in_val = get<string_value>();
     size_t n=in_val->val.size();
     if (l!=no_value)
-      result = row_ptr(new row_value(n));
+      result = std::make_shared<row_value>(n);
     for (size_t i=0; unsigned(i)<n; ++i)
-    { loop_var->val[1].reset(new string_value(in_val->val.substr(i,1)));
+    { loop_var->val[1] = std::make_shared<string_value>(in_val->val.substr(i,1));
       @< Set |loop_var->val[0]| to |i|,... @>
     }
   }
@@ -2886,9 +2886,9 @@ switch (kind)
   { shared_matrix in_val = get<matrix_value>();
     size_t n=in_val->val.numColumns();
     if (l!=no_value)
-      result = row_ptr(new row_value(n));
+      result = std::make_shared<row_value>(n);
     for (size_t i=0; unsigned(i)<n; ++i)
-    { loop_var->val[1].reset(new vector_value(in_val->val.column(i)));
+    { loop_var->val[1] = std::make_shared<vector_value>(in_val->val.column(i));
       @< Set |loop_var->val[0]| to |i|,... @>
     }
   }
@@ -2935,10 +2935,11 @@ its header file.
 { shared_virtual_module pol_val = get<virtual_module_value>();
   size_t n=pol_val->val.size(),i=0;
   if (l!=no_value)
-    result = row_ptr(new row_value(n));
+    result = std::make_shared<row_value>(n);
   for (auto it=pol_val->val.begin(); it!=pol_val->val.end(); ++it,++i)
-  { loop_var->val[0].reset(new module_parameter_value(pol_val->rf,it->first));
-    loop_var->val[1].reset(new split_int_value(it->second));
+  { loop_var->val[0] =
+      std::make_shared<module_parameter_value>(pol_val->rf,it->first);
+    loop_var->val[1] = std::make_shared<split_int_value>(it->second);
     frame fr(pattern);
     fr.bind(loop_var);
     if (l==no_value)
@@ -3002,7 +3003,7 @@ body.
 case cfor_expr:
 { const c_loop& c=e.cfor_variant;
   expression_ptr count_expr = convert_expr(c->count,as_lvalue(int_type.copy()));
-  static const shared_value zero=shared_value(new int_value(0));
+  static const shared_value zero = std::make_shared<int_value>(0);
     // avoid repeated allocation
   expression_ptr bound_expr = is_empty(c->bound) @|
     ? expression_ptr(new denotation(zero))
@@ -3052,7 +3053,7 @@ void inc_for_expression::evaluate(level l) const
     }
   }
   else
-  { row_ptr result (new row_value(0)); result->val.reserve(c);
+  { own_row result = std::make_shared<row_value>(0); result->val.reserve(c);
     c+=b;
     for (int i=b; i<c; ++i)
     { frame fr(pattern);
@@ -3083,7 +3084,7 @@ void dec_for_expression::evaluate(level l) const
     }
   }
   else
-  { row_ptr result (new row_value(0)); result->val.reserve(i);
+  { own_row result = std::make_shared<row_value>(0); result->val.reserve(i);
     i+=b;
     while (i-->b)
     { frame fr(pattern);
