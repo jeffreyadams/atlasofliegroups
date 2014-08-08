@@ -1519,7 +1519,7 @@ void divmod_wrapper(expression_base::level l)
     push_value(std::make_shared<int_value>
       (arithmetic::remainder(i,arithmetic::abs(j))));
     if (l==expression_base::single_value)
-      wrap_tuple(2);
+      wrap_tuple<2>();
   }
 }
 @)
@@ -1580,7 +1580,7 @@ void unfraction_wrapper(expression_base::level l)
   { push_value(std::make_shared<int_value>(q.numerator()));
     push_value(std::make_shared<int_value>(q.denominator()));
     if (l==expression_base::single_value)
-      wrap_tuple(2);
+      wrap_tuple<2>();
   }
 }
 
@@ -1817,7 +1817,7 @@ void matrix_bounds_wrapper(expression_base::level l)
   push_value(std::make_shared<int_value>(m->val.numRows()));
   push_value(std::make_shared<int_value>(m->val.numColumns()));
   if (l==expression_base::single_value)
-    wrap_tuple(2);
+    wrap_tuple<2>();
 }
 
 @ Here are functions for extending vectors one or many elements at a time.
@@ -1916,7 +1916,7 @@ void ratvec_unfraction_wrapper(expression_base::level l)
     push_value(std::make_shared<vector_value>(num));
     push_value(std::make_shared<int_value>(v->val.denominator()));
     if (l==expression_base::single_value)
-      wrap_tuple(2);
+      wrap_tuple<2>();
   }
 }
 @)
@@ -2241,7 +2241,7 @@ void echelon_wrapper(expression_base::level l)
       p_list->val.push_back(std::make_shared<int_value>(*it));
     push_value(std::move(p_list));
     if (l==expression_base::single_value)
-      wrap_tuple(2);
+      wrap_tuple<2>();
   }
 }
 
@@ -2259,13 +2259,13 @@ void diagonalize_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   { own_matrix row = std::make_shared<matrix_value>(int_Matrix());
     own_matrix column = std::make_shared<matrix_value>(int_Matrix());
-    vector_ptr diagonal(
-       new vector_value(matreduc::diagonalise(M->val,row->val,column->val)));
+    own_vector diagonal = std::make_shared<vector_value>
+       (matreduc::diagonalise(M->val,row->val,column->val));
     push_value(std::move(diagonal));
     push_value(std::move(row));
     push_value(std::move(column));
     if (l==expression_base::single_value)
-      wrap_tuple(3);
+      wrap_tuple<3>();
   }
 }
 @)
@@ -2277,7 +2277,7 @@ void adapted_basis_wrapper(expression_base::level l)
       (matreduc::adapted_basis(M->val,diagonal->val)));
     push_value(std::move(diagonal));
     if (l==expression_base::single_value)
-      wrap_tuple(2);
+      wrap_tuple<2>();
   }
 }
 
@@ -2342,7 +2342,7 @@ void Smith_wrapper(expression_base::level l)
     (matreduc::Smith_basis(m->val,inv_factors->val)));
   push_value(std::move(inv_factors));
   if (l==expression_base::single_value)
-    wrap_tuple(2);
+    wrap_tuple<2>();
 }
 
 @ Here is one more wrapper function that uses the Smith normal form algorithm,
@@ -2364,7 +2364,7 @@ void invert_wrapper(expression_base::level l)
 @/push_value(std::make_shared<matrix_value>(m->val.inverse(denom->val)));
   push_value(std::move(denom));
   if (l==expression_base::single_value)
-    wrap_tuple(2);
+    wrap_tuple<2>();
 }
 
 @ We define a function that makes available the normal form for basis of
@@ -2491,7 +2491,7 @@ but which will be moved to position $\pi(k)$ according to the relative size of
   push_value(std::move(relations));
   push_value(std::move(pivot_r));
   if (l==expression_base::single_value)
-    wrap_tuple(4);
+    wrap_tuple<4>();
 }
 
 @ Once more we need to install what was defined.

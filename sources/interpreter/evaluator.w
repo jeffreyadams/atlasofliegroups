@@ -1475,7 +1475,7 @@ void prints_wrapper(expression_base::level l)
       *output_stream << *v << std::endl; // just like |print| in other cases
   }
   if (l==expression_base::single_value)
-    wrap_tuple(0); // don't forget to return a value if asked for
+    wrap_tuple<0>(); // don't forget to return a value if asked for
 }
 
 @ The generic size-of wrapper is used to find the length of any ``row-of''
@@ -2422,12 +2422,7 @@ void string_subscription::evaluate(level l) const
 }
 
 @ And here are the cases for matrix indexing and slicing (extracting a
-column), which are just slightly more complicated. For the case of
-|matrix_subscription|, note that |push_tuple_components()| takes care of
-giving access to the individual index values without ownership conflict (by
-the time |j| and |i| are accessed, the tuple is already destroyed, but its
-components survive).
-
+column), which are just slightly more complicated.
 
 @< Function definitions @>=
 void matrix_subscription::evaluate(level l) const

@@ -1216,14 +1216,19 @@ We define these pointers to be |shared_value| pointers, so that the row takes
 This has the additional advantage over explicit ownership management that the
 copy constructor, needed for the |clone| method, can safely just
 copy-construct the vector of pointers: a possible exception thrown during the
-copy is guaranteed to clean up any pointers present in the vector. Note also
-that default-constructed shared pointers are set to null pointers, so the
+copy is guaranteed to clean up any pointers present in the vector (resetting
+their reference counts to their original values). Note also that
+default-constructed shared pointers are set to null pointers, so the
 constructor below, which already reserves space for |n| shared pointers, has
 set them to exception-safe values while waiting for the slots to be filled.
 
 Of course ownership of pointers to |row_value| objects also needs to be
-managed, which could be either by a unique-pointer |row_ptr| (if the pointer is
-known to be unshared) or by a shared pointer |shared_row|.
+managed. The type |own_row| will be used after constructing the row while
+filling in the contents, or after ensuring unique ownership of the row in
+order to perform destructive operations (so although a
+|shared_ptr<value_base>|, it is known to actually be unique); at all other
+times the pointer converted to |shared_row| (and possibly down-cast to
+|shared_value|) will be used.
 
 @< Type definitions @>=
 struct row_value : public value_base
@@ -1240,7 +1245,6 @@ protected:
     // copy still shares the individual entries
 };
 @)
-typedef std::unique_ptr<row_value> row_ptr;
 typedef std::shared_ptr<const row_value> shared_row;
 typedef std::shared_ptr<row_value> own_row;
 
@@ -1307,7 +1311,7 @@ popping a value and checking it to be a tuple, which is done by
 |get<tuple_value>| that will be defined later. The |shared_value| type takes
 care of ownership; there is (at least) double shared ownership of the
 components as the stack expands, but this is normal, and afterwards this
-sharing disappears with |tuple|.
+sharing disappears with the destruction of |tuple|.
 
 @< Function definitions @>=
 void push_tuple_components()
@@ -1316,15 +1320,30 @@ void push_tuple_components()
     push_value(tuple->val[i]); // push component
 }
 
-@ We need no unique-pointer in |wrap_tuple|, as shrinking the stack will not
-throw any exceptions.
+@ Wrapping a tuple is a simple matter of allocating a |tuple_value| of the
+proper size, and then filling it from back to front with shared values popped
+from the stack. This was the first place in the Atlas software where a
+descending loop using an unsigned loop variable was used; this requires a
+post-decrement operation in the test so as to stop \emph{after} handling the
+value~$0$. Similar loops can now be found all over the place, and they could
+be even more ubiquitous if would have chosen to sacrifice readability for speed
+by preferring decreasing loops to increasing ones whenever there is a choice:
+the decreasing variant can be slightly more efficient then its increasing
+equivalent, because a test against~$0$ can be more efficient than a test
+against another value, especially one not known at compile time.
+
+The concrete loop below will however only be invoked for tuples constructed
+according to the user program. For uses where an explicit value of $n$ is
+known, as happens when called internally from a wrapper function, we provide a
+templated version of |wrap_tuple| in section@#templated wrap_tuple section@>,
+and that version does not involve a loop at all.
 
 @< Function definitions @>=
 void wrap_tuple(size_t n)
 { std::shared_ptr<tuple_value> result = std::make_shared<tuple_value>(n);
   while (n-->0) // standard idiom; not |(--n>=0)|, since |n| is unsigned!
     result->val[n] =pop_value();
-  push_value(result);
+  push_value(std::move(result));
 }
 
 @*1 Representation of an evaluation context.
@@ -1333,7 +1352,7 @@ While evaluating user programs, values will be given to local identifiers such
 as arguments of functions being called. The identification of identifiers is
 determined during type analysis (static binding); it results for local
 identifiers in a method to locate the associated value in the evaluation
-context, which is formed by a stack of frames, each holding a vector of
+context, which is formed of a stack of frames, each holding a vector of
 values.
 
 One of the methods for our frame type will produce a back insert iterator, so
@@ -1390,10 +1409,11 @@ The parser is a \Cpp-program that upon success returns a value of type |expr|
 representing the parse tree. While analysing this expression for
 type-correctness, it will be convenient to transform it into a value that can
 be efficiently evaluated. This value will be a pointer to an object of one of
-a number of classes directly derived from an empty base class (in the same way
-as runtime values are pointers to an object of a class derived from
-|value_base|), which classes have a virtual method |evaluate| that performs
-the operation described by the expression. We shall now define these classes.
+a number of classes derived, most often directly, from an empty base class (in
+the same way as runtime values are pointers to an object of a class derived
+from |value_base|), which classes have a virtual method |evaluate| that
+performs the operation described by the expression. We shall now define the
+base class.
 
 A fundamental choice is whether to make the result type of the |evaluate| type
 equal to |value|. Although this would seem the natural choice, we prefer
@@ -1411,8 +1431,8 @@ struct expression_base
   expression_base() @+ {}
   expression_base@[(const expression_base&) = delete@]; // they are never copied
   expression_base@[(expression_base&&) = delete@]; // nor moved
-  expression_base& operator=(const expression_base&)=@[delete@]; // nor assigned
-  expression_base& operator=(expression_base&&)=@[delete@]; // nor move-assigned
+  expression_base& operator=@[(const expression_base&)=delete@]; // nor assigned
+  expression_base& operator=@[(expression_base&&)=delete@]; // nor move-assigned
   virtual ~expression_base() @+ {}
 @)// other virtual methods
   virtual void evaluate(level l) const =0;
@@ -1440,11 +1460,20 @@ declare it right away. We decide that values on the execution stack can be
 shared with other values (for instance when the user subscripts a row, vector
 or matrix bound to an identifier, it would be wasteful to duplicate that
 entire structure just so that it can briefly reside on the execution stack),
-whence we use |shared_value| smart pointers in the stack. This choice will
-have consequences in many places in the evaluator, since once a value is
-referred to by such a smart pointer, its ownership cannot be transferred to
-any other regime; when strict ownership should be needed, the only option will
-be to make a copy by calling |clone|.
+whence we use |shared_value| smart pointers in the stack.
+
+This choice will have consequences in many places in the evaluator, since once
+a value is referred to by such a smart pointer, its ownership cannot be
+transferred to any other regime; when strict ownership should be needed, the
+only option would be to make a copy by calling |clone|. However, it turns out
+to be convenient to \emph{always} use shared pointers for runtime values, and
+to make the distinction concerning whether one knows this pointer to be unique
+by having its type be pointer-to-non-const in that case. After construction or
+duplication one can start out with such a pointer, use it to store the proper
+value, then convert it pointer-to-const (i.e., |shared_value|), for handing on
+the stack and passing around in general; if destructive access is needed one
+may reconvert to pointer-to-non-const after having checked unique ownership
+(or else having duplicated the value pointed to).
 
 @< Declarations of global variables @>=
 extern std::vector<shared_value> execution_stack;
@@ -1489,50 +1518,34 @@ void push_expanded(expression_base::level l, const shared_value& v)
 %
 We now define some inline functions to facilitate manipulating the stack. The
 function |push_value| does what its name suggests. For exception safety it
-takes either a unique-pointer or a shared pointer as argument; the former is
-converted into the latter, in which case the |use_count| will become~$1$. The
-former form used to take an |auto_ptr| argument by value, which allowed both
-to transfer ownership from an lvalue (i.e., a variable) of the same type, and
-to bind to an rvalue (for instance the result of a function). With the change
-to a representation as |unique_ptr| instance, the lvalue argument case would
-no longer bind as-is, and an invocation of |std::move| had to be inserted into
-the code in more than~$60$ places for this reason (the rvalue case does not
-need modification). The argument passing was also changed to modifiable rvalue
-reference, with the same syntactic obligations for the caller; this avoids one
-transfer of ownership, doing so only when the pointer is converted to a
-|shared_ptr| in the code below. The shared pointer version of |push_value| can
-take its argument as a constant lvalue reference (since it does not need to
-modify the pointer, just the reference count) or as rvalue reference.
-
-For convenience we make these into function templates that accept a smart
-pointer to any type derived from |value_base|, since a conversion of such
-pointers from derived to base is not possible without a cast in a function
-argument position. For even more convenience we also provide a variant taking
-an ordinary pointer, so that expressions using |new| can be written without
-cast in the argument of |push_value|. Since |push_value| has only one
-argument, such use of does not compromise exception safety: nothing can throw
-between the return of |new| and the conversion of its result into a
-|shared_value|. However, it is to be preferred that the caller use
-|std::make_shared| instead of |new|, which binds the rvalue reference shared
-pointer instance.
+takes a shared pointer as argument. The former form used to take an |auto_ptr|
+argument by value, which allowed both to transfer ownership from an lvalue
+(i.e., a variable) of the same type, and to bind to an rvalue (for instance
+the result of a function). With the change to a representation as |unique_ptr|
+instance, the lvalue argument case would no longer bind as-is, and an
+invocation of |std::move| had to be inserted into the code in more than~$60$
+places for this reason (the rvalue case does not need modification). The
+argument passing was also changed to modifiable rvalue reference, with the
+same syntactic obligations for the caller; this avoids one transfer of
+ownership, doing so only when the pointer is converted to a |shared_ptr| in
+the code below. Finally it was realised that there is no advantage to first
+creating a unique pointer, so we now always create a shared pointer for values
+that will be pushed onto the stack; this could be a pointer-to-non-const to a
+type derived from |value_base|, which upon passing to |push_value| will be
+converted to a |shared_value| by the appropriate constructor of the
+|shared_ptr| template (very conveniently, this constructor is not marked as
+|explicit|). The shared pointer version of |push_value| can take its argument
+as a constant lvalue reference (since it does not need to modify the pointer,
+just the reference count) or as rvalue reference.
 
 @: Push execution stack @>
 
 @< Template and inline function definitions @>=
-template<typename D> // |D| is a type derived from |value_base|
-  inline void push_value(std::unique_ptr<D>&& v)
-  {@; execution_stack.push_back(shared_value(std::move(v))); }
-@)
-template<typename D> // |D| is a type derived from |value_base|
-  inline void push_value(const std::shared_ptr<D>& v)
+inline void push_value(const shared_value& v)
   @+{@; execution_stack.push_back(v); }
 
-template<typename D> // |D| is a type derived from |value_base|
-  inline void push_value(std::shared_ptr<D>&& v)
+inline void push_value(shared_value&& v)
   @+{@; execution_stack.push_back(std::move(v)); }
-@)
-inline void push_value(value p) @+
-  {@; execution_stack.push_back(shared_value(p)); }
 
 @ There is a counterpart |pop_value| to |push_value|. By move-constructing
 from the stack top just before it is popped, we avoid incrementing and then
@@ -1633,7 +1646,6 @@ no way to persuade a |shared_ptr| to release its ownership (as in the
 |release| method of unique pointers), even if it happens to be (or is known to
 be) the unique owner.
 
-
 @< Template and inline function def... @>=
 template <typename D> // |D| is a type derived from |value_base|
   std::shared_ptr<D> get_own() throw(std::logic_error)
@@ -1648,6 +1660,28 @@ inline value uniquify(shared_value& v)
      v=shared_value(v->clone());
   return const_cast<value>(v.get());
 }
+
+@ The argument~$n$ to |wrap_tuple| most often is a compile time constant, so
+we give a templated version that can be completely unrolled by the compiler.
+
+@:templated wrap_tuple section@>
+
+@< Template and inline... @>=
+template<unsigned int> void wrap_tuple();
+template<unsigned int>
+  void do_wrap(std::vector<shared_value>::iterator it);
+template<>
+   inline void do_wrap<0u>(std::vector<shared_value>::iterator it) @+{}
+template<unsigned int n>
+   void do_wrap(std::vector<shared_value>::iterator it)
+   {@; *--it = pop_value(); do_wrap@[<n-1>@](it); }
+template<unsigned int n>
+   void wrap_tuple()
+   { std::shared_ptr<tuple_value> result = std::make_shared<tuple_value>(n);
+     do_wrap<n>(result->val.end());
+     push_value(std::move(result));
+   }
+
 
 @* Implicit conversion of values between types.
 %
@@ -1834,13 +1868,13 @@ public:
 
 @ The |evaluate| method should not ignore its |level| argument completely:
 when |l==single_value| an actual empty tuple should be produced, which
-|wrap_tuple(0)| does.
+|wrap_tuple<0>()| does.
 
 @< Function definitions @>=
 void voiding::evaluate(level l) const
 {@; exp->void_eval();
   if (l==single_value)
-    wrap_tuple(0);
+    wrap_tuple<0>();
 }
 @)
 void voiding::print(std::ostream& out) const

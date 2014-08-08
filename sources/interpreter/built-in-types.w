@@ -262,7 +262,7 @@ void type_of_Cartan_matrix_wrapper (expression_base::level l)
   push_value(std::make_shared<Lie_type_value>(lt));
   push_value(std::make_shared<vector_value>(CoeffList(pi.begin(),pi.end())));
   if (l==expression_base::single_value)
-    wrap_tuple(2);
+    wrap_tuple<2>();
 }
 
 @ And some small utilities for finding the (Lie) rank and semisimple rank of
@@ -351,7 +351,7 @@ void Smith_Cartan_wrapper(expression_base::level l)
   push_value(std::make_shared<matrix_value>(LatticeMatrix(b,b.size())));
   push_value(std::move(inv_factors));
   if (l==expression_base::single_value)
-     wrap_tuple(2);
+     wrap_tuple<2>();
 }
 
 @ The result of |Smith_Cartan| can serve among other things to help specifying
@@ -385,7 +385,7 @@ void filter_units_wrapper (expression_base::level l)
     }
   push_value(basis); push_value(inv_f);
   if (l==expression_base::single_value)
-      wrap_tuple(2);
+      wrap_tuple<2>();
 }
 
 @ Here is another function, adapted from the functions |makeOrthogonal| and
@@ -528,7 +528,7 @@ void quotient_basis_wrapper(expression_base::level l)
   Smith_Cartan_wrapper(expression_base::multi_value);
   shared_value SC_basis = *(execution_stack.end()-2);
   shared_value invf = *(execution_stack.end()-1);
-  wrap_tuple(2); // |replace_gen| wants as first argument a tuple
+  wrap_tuple<2>(); // |replace_gen| wants as first argument a tuple
 @/push_value(SC_basis);
   push_value(invf);
   filter_units_wrapper(expression_base::multi_value);
@@ -1140,7 +1140,7 @@ void derived_info_wrapper(expression_base::level l)
       (RootDatum(projector,rd->val,tags::DerivedTag())));
     push_value(std::make_shared<matrix_value>(projector));
     if (l==expression_base::single_value)
-      wrap_tuple(2);
+      wrap_tuple<2>();
   }
 }
 @)
@@ -1152,7 +1152,7 @@ void mod_central_torus_info_wrapper(expression_base::level l)
       (RootDatum(injector,rd->val,tags::AdjointTag())));
     push_value(std::make_shared<matrix_value>(injector));
     if (l==expression_base::single_value)
-      wrap_tuple(2);
+      wrap_tuple<2>();
   }
 }
 
@@ -1331,7 +1331,7 @@ void classify_wrapper(expression_base::level l)
     // Complex rank
   push_value(std::make_shared<int_value>(p.second)); // split rank
   if (l==expression_base::single_value)
-    wrap_tuple(3);
+    wrap_tuple<3>();
 }
 
 @ We now come to the part of the analysis that involves the root datum. Since
@@ -1765,7 +1765,7 @@ void twisted_involution_wrapper(expression_base::level l)
   push_value(std::make_shared<inner_class_value>(std::move(G),lo));
   push_value(std::make_shared<vector_value>(std::vector<int>(ww.begin(),ww.end())));
   if (l==expression_base::single_value)
-    wrap_tuple(2);
+    wrap_tuple<2>();
 }
 
 @ To simulate the functioning of the \.{atlas} program, the function
@@ -2536,7 +2536,7 @@ void Cartan_class_real_form_wrapper(expression_base::level l)
   push_value(std::make_shared<Cartan_class_value>(*G,cn));
   push_value(std::make_shared<real_form_value>(*G,rf));
   if (l==expression_base::single_value)
-    wrap_tuple(2);
+    wrap_tuple<2>();
 }
 
 
@@ -2578,7 +2578,7 @@ void Cartan_info_wrapper(expression_base::level l)
   push_value(std::make_shared<int_value>(cc->val.fiber().torus().compactRank()));
   push_value(std::make_shared<int_value>(cc->val.fiber().torus().complexRank()));
   push_value(std::make_shared<int_value>(cc->val.fiber().torus().splitRank()));
-  wrap_tuple(3);
+  wrap_tuple<3>();
 
   const weyl::TwistedInvolution& tw =
     cc->parent.val.involution_of_Cartan(cc->number);
@@ -2589,7 +2589,7 @@ void Cartan_info_wrapper(expression_base::level l)
 
   push_value(std::make_shared<int_value>(cc->val.orbitSize()));
   push_value(std::make_shared<int_value>(cc->val.fiber().fiberSize()));
-  wrap_tuple(2);
+  wrap_tuple<2>();
 
   const RootSystem& rs=cc->parent.val.rootDatum();
 
@@ -2597,10 +2597,10 @@ void Cartan_info_wrapper(expression_base::level l)
   push_value(std::make_shared<Lie_type_value>(rs.Lie_type(cc->val.simpleImaginary())));
   push_value(std::make_shared<Lie_type_value>(rs.Lie_type(cc->val.simpleReal())));
   push_value(std::make_shared<Lie_type_value>(rs.Lie_type(cc->val.simpleComplex())));
-  wrap_tuple(3);
+  wrap_tuple<3>();
 @)
   if (l==expression_base::single_value)
-    wrap_tuple(4);
+    wrap_tuple<4>();
 }
 
 @ A functionality that is implicit in the Atlas command \.{cartan} is the
@@ -2751,7 +2751,7 @@ void print_gradings_wrapper(expression_base::level l)
   @< Print the gradings for the part of |pi| corresponding to the real form @>
 
   if (l==expression_base::single_value)
-    wrap_tuple(0);
+    wrap_tuple<0>();
 }
 
 @ For normalising the ordering of the simple imaginary roots we use two
@@ -2897,7 +2897,7 @@ void decompose_KGB_wrapper(expression_base::level l)
   push_value(x->rf);
   push_value(std::make_shared<int_value>(x->val));
   if (l==expression_base::single_value)
-    wrap_tuple(2);
+    wrap_tuple<2>();
 }
 
 @ Three important attributes of KGB elements are the associated Cartan class,
@@ -3087,10 +3087,11 @@ void torus_bits_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   { const KGB& kgb=x->rf->kgb();
     TorusPart t = kgb.torus_part(x->val);
-    vector_value* p;
-    vector_ptr result(p=new vector_value(int_Vector(kgb.torus_rank(),0)));
+    own_vector result = std::make_shared<vector_value>
+      (int_Vector(kgb.torus_rank(),0));
+    int_Vector& v = result->val;
     for (unsigned int i=0; i<kgb.torus_rank(); ++i)
-      p->val[i]=t[i];
+      v[i]=t[i]; // lift from binary to integer
     push_value(std::move(result));
   }
 }
@@ -3250,7 +3251,7 @@ void decompose_block_wrapper(expression_base::level l)
   push_value(b->rf);
   push_value(b->dual_rf);
   if (l==expression_base::single_value)
-    wrap_tuple(2);
+    wrap_tuple<2>();
 }
 
 void block_size_wrapper(expression_base::level l)
@@ -3274,7 +3275,7 @@ void block_element_wrapper(expression_base::level l)
     std::make_shared<real_form_value>(dual_ic,b->dual_rf->val.realForm());
   push_value(std::make_shared<KGB_elt_value>(drf,b->val.y(z)));
   if (l==expression_base::single_value)
-    wrap_tuple(2);
+    wrap_tuple<2>();
 }
 
 @ The inverse operation of decomposing a block element into a KGB element and
@@ -3509,7 +3510,7 @@ void module_parameter_wrapper(expression_base::level l)
 	+str(lam_rho->val.size())+","+str(nu->val.size())+")");
 @.Rank mismatch@>
   if (l!=expression_base::no_value)
-    push_value(new@| module_parameter_value(x->rf,
+    push_value(std::make_shared<module_parameter_value> @| (x->rf,
       x->rf->rc().sr(x->val,lam_rho->val,nu->val)));
 }
 
@@ -3529,7 +3530,7 @@ void unwrap_parameter_wrapper(expression_base::level l)
     push_value(std::make_shared<vector_value>(p->rc().lambda_rho(p->val)));
     push_value(std::make_shared<rational_vector_value>(p->rc().nu(p->val)));
     if (l==expression_base::single_value)
-      wrap_tuple(3);
+      wrap_tuple<3>();
   }
 }
 
@@ -3748,7 +3749,7 @@ void print_n_block_wrapper(expression_base::level l)
   block.print_to(*output_stream,true);
     // print block using involution expressions
   if (l==expression_base::single_value)
-    wrap_tuple(0);
+    wrap_tuple<0>();
 }
 
 @ More interesting than printing the block is to return is to the user as a
@@ -3767,7 +3768,7 @@ void block_wrapper(expression_base::level l)
     @< Push a list of parameter values for the elements of |block| @>
     push_value(std::make_shared<int_value>(start));
     if (l==expression_base::single_value)
-      wrap_tuple(2);
+      wrap_tuple<2>();
   }
 }
 
@@ -3879,7 +3880,7 @@ void KL_block_wrapper(expression_base::level l)
     push_value(std::move(contributes_to));
 
     if (l==expression_base::single_value)
-      wrap_tuple(7);
+      wrap_tuple<7>();
   }
 }
 
@@ -3960,7 +3961,7 @@ void partial_KL_block_wrapper(expression_base::level l)
     push_value(std::move(contributes_to));
 
     if (l==expression_base::single_value)
-      wrap_tuple(6);
+      wrap_tuple<6>();
   }
 }
 
@@ -4100,7 +4101,7 @@ void from_split_wrapper(expression_base::level l)
   {  push_value(std::make_shared<int_value>(si.e()));
      push_value(std::make_shared<int_value>(si.s()));
      if (l==expression_base::single_value)
-       wrap_tuple(2);
+       wrap_tuple<2>();
   }
 }
 
@@ -4186,8 +4187,8 @@ to be empty.
 void virtual_module_wrapper(expression_base::level l)
 { own_real_form rf = non_const_get<real_form_value>();
   if (l!=expression_base::no_value)
-    push_value(new@|
-       virtual_module_value(rf,repr::SR_poly(rf->rc().repr_less())));
+    push_value(std::make_shared<virtual_module_value> @|
+      (rf,repr::SR_poly(rf->rc().repr_less())));
 }
 @)
 void real_form_of_virtual_module_wrapper(expression_base::level l)
@@ -4228,8 +4229,8 @@ void param_to_poly()
 { shared_module_parameter p = get<module_parameter_value>();
 @/test_standard(*p);
   const own_real_form& rf=p->rf;
-  push_value(new@|
-    virtual_module_value(rf,rf->rc().expand_final(p->val)));
+  push_value(std::make_shared<virtual_module_value> @|
+    (rf,rf->rc().expand_final(p->val)));
 }
 
 @ The main operations for virtual modules are addition and subtraction of
@@ -4473,7 +4474,7 @@ void raw_KL_wrapper (expression_base::level l)
   push_value(std::move(polys));
   push_value(std::make_shared<vector_value>(length_stops));
   if (l==expression_base::single_value)
-    wrap_tuple(3);
+    wrap_tuple<3>();
 }
 
 @ For testing, it is useful to also have the dual Kazhdan-Lusztig tables.
@@ -4514,7 +4515,7 @@ void raw_dual_KL_wrapper (expression_base::level l)
   push_value(std::move(polys));
   push_value(std::make_shared<vector_value>(length_stops));
   if (l==expression_base::single_value)
-    wrap_tuple(3);
+    wrap_tuple<3>();
 }
 
 
@@ -4550,7 +4551,7 @@ void print_realweyl_wrapper(expression_base::level l)
   realredgp_io::printRealWeyl (*output_stream,rf->val,cc->number);
 @)
   if (l==expression_base::single_value)
-    wrap_tuple(0);
+    wrap_tuple<0>();
 }
 
 @)
@@ -4561,7 +4562,7 @@ void print_strongreal_wrapper(expression_base::level l)
     (*output_stream,cc->parent.val,cc->parent.interface,cc->number);
 @)
   if (l==expression_base::single_value)
-    wrap_tuple(0);
+    wrap_tuple<0>();
 }
 
 
@@ -4579,7 +4580,7 @@ void print_block_wrapper(expression_base::level l)
   block.print_to(*output_stream,false);
 @)
   if (l==expression_base::single_value)
-    wrap_tuple(0);
+    wrap_tuple<0>();
 }
 
 @ We provide functions corresponding to the \.{blockd} and \.{blocku}
@@ -4593,7 +4594,7 @@ void print_blockd_wrapper(expression_base::level l)
   block.print_to(*output_stream,true);
 @)
   if (l==expression_base::single_value)
-    wrap_tuple(0);
+    wrap_tuple<0>();
 }
 
 @)
@@ -4604,7 +4605,7 @@ void print_blocku_wrapper(expression_base::level l)
   block_io::printBlockU(*output_stream,block);
 @)
   if (l==expression_base::single_value)
-    wrap_tuple(0);
+    wrap_tuple<0>();
 }
 
 @ The \.{blockstabilizer} command has a slightly different calling scheme than
@@ -4631,7 +4632,7 @@ void print_blockstabilizer_wrapper(expression_base::level l)
    (*output_stream,b->rf->val,cc->number,b->dual_rf->val.realForm());
 @)
   if (l==expression_base::single_value)
-    wrap_tuple(0);
+    wrap_tuple<0>();
 }
 
 @ The function |print_KGB| takes only a real form as argument.
@@ -4649,7 +4650,7 @@ void print_KGB_wrapper(expression_base::level l)
   kgb_io::var_print_KGB(*output_stream,rf->val.complexGroup(),kgb);
 @)
   if (l==expression_base::single_value)
-    wrap_tuple(0);
+    wrap_tuple<0>();
 }
 
 @ The function |print_X| even takes only an inner class as argument.
@@ -4663,7 +4664,7 @@ void print_X_wrapper(expression_base::level l)
   kgb_io::print_X(*output_stream,kgb);
 @)
   if (l==expression_base::single_value)
-    wrap_tuple(0);
+    wrap_tuple<0>();
 }
 
 @ The function |print_KL_basis| behaves much like |print_block| as far as
@@ -4683,7 +4684,7 @@ void print_KL_basis_wrapper(expression_base::level l)
   kl_io::printAllKL(*output_stream,klc,block);
 @)
   if (l==expression_base::single_value)
-    wrap_tuple(0);
+    wrap_tuple<0>();
 }
 
 @ The function |print_prim_KL| is a variation of |print_KL_basis|.
@@ -4699,7 +4700,7 @@ void print_prim_KL_wrapper(expression_base::level l)
   kl_io::printPrimitiveKL(*output_stream,klc,block);
 @)
   if (l==expression_base::single_value)
-    wrap_tuple(0);
+    wrap_tuple<0>();
 }
 
 @ The function |print_KL_list| is another variation of |print_KL_basis|, it
@@ -4714,7 +4715,7 @@ void print_KL_list_wrapper(expression_base::level l)
   kl_io::printKLList(*output_stream,klc);
 @)
   if (l==expression_base::single_value)
-    wrap_tuple(0);
+    wrap_tuple<0>();
 }
 
 @ We close with two functions for printing the $W$-graph determined by the
@@ -4737,7 +4738,7 @@ void print_W_cells_wrapper(expression_base::level l)
   wgraph_io::printWDecomposition(*output_stream,dg);
 @)
   if (l==expression_base::single_value)
-    wrap_tuple(0);
+    wrap_tuple<0>();
 }
 
 @ And here is |print_W_graph|, which just gives a variation on the output
@@ -4755,7 +4756,7 @@ void print_W_graph_wrapper(expression_base::level l)
   wgraph_io::printWGraph(*output_stream,wg);
 @)
   if (l==expression_base::single_value)
-    wrap_tuple(0);
+    wrap_tuple<0>();
 }
 
 
