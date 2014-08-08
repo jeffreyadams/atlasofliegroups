@@ -2461,13 +2461,15 @@ but which will be moved to position $\pi(k)$ according to the relative size of
   for (unsigned int i=0; i<n_gens; ++i)
     if (k<basis.size() and i==pivoter[k])
     { unsigned d = pi[k]; // destination position
-      basis_r->val[d]=std::make_shared<vector_value>(int_Vector(rank,0));
-      { int_Vector& v = force<vector_value>(basis_r->val[d].get())->val;
+      { own_vector vv = std::make_shared<vector_value>(int_Vector(rank,0));
+        basis_r->val[d]=vv; // store |vv| converted to |shared_value|
+        int_Vector& v = vv->val; // then use underlying vector to set the value
         for (bitvec::base_set::iterator it=basis[k].data().begin(); it(); ++it)
           v[*it]=1;
       }
-      combin_r->val[d]=std::make_shared<vector_value>(int_Vector(n_gens,0));
-      { int_Vector& v = force<vector_value>(combin_r->val[d].get())->val;
+      { own_vector vv = std::make_shared<vector_value>(int_Vector(n_gens,0));
+        combin_r->val[d]=vv;
+        int_Vector& v = vv->val;
         for (bitvec::base_set::iterator
              it=combination[i].data().begin(); it(); ++it)
           v[*it]=1;
@@ -2476,9 +2478,9 @@ but which will be moved to position $\pi(k)$ according to the relative size of
       ++k;
     }
     else
-    { relations->val[i-k]=
-        std::make_shared<vector_value>(int_Vector(n_gens,0));
-      int_Vector& v = force<vector_value>(relations->val[i-k].get())->val;
+    { own_vector vv = std::make_shared<vector_value>(int_Vector(n_gens,0));
+      relations->val[i-k] = vv;
+      int_Vector& v = vv->val;
       for (bitvec::base_set::iterator
            it=combination[i].data().begin(); it(); ++it)
       v[*it]=1;

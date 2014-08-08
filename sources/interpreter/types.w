@@ -838,10 +838,10 @@ raw_type_list make_type_list(type_p t,raw_type_list l)
 @*1 Specifying types by strings.
 %
 In practice we shall rarely call functions like |mk_prim_type| and
-|mk_row_type| directly to make explicit types, since this is rather
-laborious. Instead, such explicit types will be constructed by the function
-|mk_type| that parses a (\Cee~type) string, and correspondingly calls the
-appropriate type constructing functions.
+|mk_row_type| directly to make explicit types, since this is rather laborious.
+Instead, such explicit types will be constructed by the function |mk_type|
+that parses a (\Cee~type) string, and correspondingly calls the appropriate
+type constructing functions.
 
 @< Declarations of exported functions @>=
 type_ptr mk_type(const char* s);
@@ -1013,18 +1013,16 @@ extern const type_expr gen_func_type; // \.{(*->*)}
 |bool_type| to be used in the position of a modifiable lvalue argument. In
 order to provide these temporary copies as arguments without having to bind
 them to named variables, we define a function template that will produce a
-modifiable lvalue from the modifiable rvalue obtained by calling the
-|expr::copy| method.
+modifiable lvalue from the modifiable rvalue, such as the result of calling
+the |expr::copy| method.
 
 @< Template and inline... @>=
 template<typename T> T& as_lvalue(T&& rvalue) @+{@; return rvalue; }
 
-@ The definition of the variables uses the constructors we have seen above,
-rather than functions like |mk_primitive_type| and |mk_row_type|, so that
-no dynamic allocation is required for the top level structure. For generic row
-and function types we construct the |type_expr| from unique-pointers (of which
-the constructor takes possession) pointing to other |type_expr|s produced by
-calling |copy| for previous type constants.
+@ The definition of the variables uses the constructors we have seen above, or
+calls to |mk_type_expr|, rather than functions like |mk_prim_type| and
+|mk_row_type|, so that no dynamic allocation is required for the top level
+structure.
 
 @< Global variable definitions @>=
 
@@ -1040,8 +1038,13 @@ const type_expr gen_func_type(mk_type_expr("(*->*)"));
 @ There are more such statically allocated type expressions, which are used in
 the evaluator. They are less fundamental, as they are not actually used in any
 of the core language constructs, but useful for instance for specifying
-various coercions. The reason they should be initialised in this compilation
-unit is explained in the next section.
+various coercions. The definition of these constants therefore might be moved
+to another compilation unit, but they are defined here so that in case their
+initialisation should use other such constants, the order of initialisation
+will be controlled (this is not the case between initialisations in different
+compilation unit, which can lead to the so-called static initialisation
+fiasco; indeed at some point we had for these constants a subtle bug whose
+appearance depended on the precise compiler version used).
 
 @< Declarations of global variables @>=
 extern const type_expr rat_type; // \.{rat}
@@ -1063,18 +1066,12 @@ extern const type_expr split_type; // \.{Split}
 extern const type_expr param_type; // \.{RealForm}
 extern const type_expr param_pol_type; // \.{RealForm}
 
-@ Since some of these types are built from earlier defined ones, it is vital
-that they are initialised in order, and since we cannot control the relative
-order of static initialisation between compilation units, we must initialise
-them here (this used no not be the case, and led to a subtle bug whose
-appearance depended on the precise compiler version used!). The construction
-of type constants follows the same pattern as before, calling |copy| in the
-case of composite types. In the final case we choose the simplest solution of
-calling |mk_type| and copy-constructing the resulting nested structure into
-the static variable before destroying the function result. One might have done
-better using the |set_from| method if it would have been possible to include
-in a (static) variable definition the call of a method on the declared
-variable, but it is not.
+@ The definitions below have all become self-contained, due to the use of
+|mk_type_expr| for non-primitive types. Indeed, since we cannot have sharing
+between type (sub-)expressions, the economy of using the |copy| method for
+previously constructed type constants would be truly marginal. So in their
+current form, some of these definitions could now (again) be moved to other
+compilation units, where they might even be just local constants.
 
 @: second types section @>
 
@@ -1135,13 +1132,13 @@ must be at least one pure virtual function in the class; the destructor having
 to be virtual anyway, we make it pure virtual (this does not mean it is
 unimplemented, in fact it must be implemented as it will always be called,
 after the destructor for a derived class; it just means derived
-classes \emph{must} override the default. The printing function does not have
+classes \emph{must} override the default). The printing function does not have
 a useful default, so we make it pure virtual as well, without providing an
 implementation (in the base class). This |print| method will demonstrate the
 ease of using dynamic typing via inheritance; it will not do any dynamic
 casting, but other operations on values will. Apart from |print| we define
-another (purely) virtual method, |clone|, which allows making a copy of a
-runtime value of any type derived from |value_base|.
+another virtual method, |clone|, which allows making a copy of a runtime value
+of any type derived from |value_base|.
 
 The method |name| is useful in reporting logic errors from function templates,
 notably the failure of a value to be of the predicted type. Since the template
@@ -1230,7 +1227,7 @@ known to be unshared) or by a shared pointer |shared_row|.
 
 @< Type definitions @>=
 struct row_value : public value_base
-{ std::vector<std::shared_ptr<value_base> > val;
+{ std::vector<shared_value> val;
 @)
   explicit row_value(size_t n) : val(n) @+{} // start with |n| null pointers
   void print(std::ostream& out) const;
@@ -1326,7 +1323,7 @@ throw any exceptions.
 void wrap_tuple(size_t n)
 { std::shared_ptr<tuple_value> result = std::make_shared<tuple_value>(n);
   while (n-->0) // standard idiom; not |(--n>=0)|, since |n| is unsigned!
-    result->val[n]=std::const_pointer_cast<value_base>(pop_value());
+    result->val[n] =pop_value();
   push_value(result);
 }
 

@@ -535,9 +535,9 @@ void list_expression::evaluate(level l) const
   { own_row result= std::make_shared<row_value>(0);
     result->val.reserve(component.size());
     for (auto it=component.begin(); it!=component.end(); ++it)
-    {
+  @/{@;
       (*it)->eval();
-      result->val.push_back(std::const_pointer_cast<value_base>(pop_value()));
+      result->val.push_back(pop_value());
     }
     push_value(std::move(result)); // result will be shared from here on
   }
@@ -1500,7 +1500,7 @@ void suffix_element_wrapper(expression_base::level l)
 { shared_value e=pop_value();
   own_row r=get_own<row_value>();
   if (l!=expression_base::no_value)
-  {@; r->val.push_back(std::const_pointer_cast<value_base>(e));
+  {@; r->val.push_back(e);
     push_value(r);
   }
 }
@@ -1509,7 +1509,7 @@ void prefix_element_wrapper(expression_base::level l)
 { own_row r=get_own<row_value>();
   shared_value e=pop_value();
   if (l!=expression_base::no_value)
-  {@; r->val.insert(r->val.begin(),std::const_pointer_cast<value_base>(e));
+  {@; r->val.insert(r->val.begin(),e);
     push_value(r);
   }
 }
@@ -2667,8 +2667,8 @@ void while_expression::evaluate(level l) const
   else
   { own_row result = std::make_shared<row_value>(0);
     while (condition->eval(),get<bool_value>()->val)
-    @/{@; body->eval();
-      result->val.push_back(std::const_pointer_cast<value_base>(pop_value()));
+  @/{@; body->eval();
+      result->val.push_back(pop_value());
     }
     push_value(std::move(result));
   }
@@ -2921,8 +2921,8 @@ loop body is standard.
   if (l==no_value)
     body->void_eval();
   else
-  { body->eval();
-    result->val[i] = std::const_pointer_cast<value_base>(pop_value());
+  {; body->eval();
+    result->val[i] = pop_value();
   }
 } // restore context upon destruction of |fr|
 
@@ -2945,8 +2945,9 @@ its header file.
     if (l==no_value)
       body->void_eval();
     else
-      {@; body->eval();
-          result->val[i]=std::const_pointer_cast<value_base>(pop_value()); }
+    {@; body->eval();
+      result->val[i]=pop_value();
+    }
   } // restore context upon destruction of |fr|
 }
 
@@ -3059,7 +3060,7 @@ void inc_for_expression::evaluate(level l) const
     { frame fr(pattern);
       fr.bind(std::make_shared<int_value>(i));
       body->eval();
-      result->val.push_back(std::const_pointer_cast<value_base>(pop_value()));
+      result->val.push_back(pop_value());
     }
     push_value(std::move(result));
   }
@@ -3090,7 +3091,7 @@ void dec_for_expression::evaluate(level l) const
     { frame fr(pattern);
       fr.bind(std::make_shared<int_value>(i));
       body->eval();
-      result->val.push_back(std::const_pointer_cast<value_base>(pop_value()));
+      result->val.push_back(pop_value());
     }
     push_value(std::move(result));
   }
@@ -3490,10 +3491,10 @@ the component assignment, possibly expanding a tuple in the process.
 
 @< Replace component at |index| in row |loc|... @>=
 { unsigned int i=(index->eval(),get<int_value>()->val);
-  std::vector<own_value>& a=force<row_value>(loc)->val;
+  std::vector<shared_value>& a=force<row_value>(loc)->val;
   if (i>=a.size())
     throw std::runtime_error(range_mess(i,a.size(),this));
-  a[i]= std::const_pointer_cast<value_base>(pop_value());
+  a[i] = pop_value();
   push_expanded(l,a[i]);
 }
 
