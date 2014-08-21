@@ -465,12 +465,13 @@ torus_bits: (KGBElt->vec): torus part of KGB element as vector of 0,1 values
 KGB_elt: (RealForm,mat,ratvec): KGB element defined by rational coweight
   This function finds a KGB element x such that real_form(x), involution(x),
   and torus_factor(x) match the values (rf,M,v) given as arguments. The
-  interpretation and requirements for the (involution) matrix M and rational
-  (coweight) vector v are as for Cartan_class_real_form, and rf should be the
-  real form should returned (for this inner class) by that function. In fact v
-  defines more than just a grading; there is at most one KGB element x for rf
-  such that torus_factor(x) is congruent to v modulo the image of M^t+id,
-  which x is then returned (if no such x is found, an error is signalled)
+  interpretation for the (involution) matrix M and rational (coweight) vector
+  v are as for Cartan_class_real_form; moreover rf should be the real form
+  returned (for this inner class) by Cartan_class_real_form, and the
+  difference v-base_grading_vector(rf) must be an integer vector. There is
+  then at most one KGB element x for rf such that torus_factor(x) is congruent
+  to v modulo the image of M^t+id, which x is then returned by this function
+  (if no such x is found, then an error is signalled instead).
 
 operator =: (KGBElt,KGBElt): equality of elements of a same KGB set
 
