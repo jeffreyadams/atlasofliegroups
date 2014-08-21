@@ -1536,7 +1536,7 @@ converted to a |shared_value| by the appropriate constructor of the
 |shared_ptr| template (very conveniently, this constructor is not marked as
 |explicit|). The shared pointer version of |push_value| can take its argument
 as a constant lvalue reference (since it does not need to modify the pointer,
-just the reference count) or as rvalue reference.
+just the reference count), or as rvalue reference.
 
 @: Push execution stack @>
 
@@ -1595,8 +1595,9 @@ type prediction was wrong. This function is defined at the level of ordinary
 pointers, and it is not intended for use where the caller assumes ownership of
 the result; the original pointer is assumed to retain ownership as long as the
 result of this call survives, and in particular that pointer should probably
-not be obtained from a smart pointer temporary, nor should the result be
-converted to a smart pointer, lest double deletion would ensue.
+not be obtained by calling the |get| method for a smart pointer temporary, nor
+should the result of |force| converted to a smart pointer, lest double
+deletion would ensue.
 
 We provide two versions, where overloading will choose one or the other
 depending on the const-ness of the argument. Since calling |get| for a
@@ -1627,14 +1628,14 @@ computed the value on the stack from a function call, it is virtually
 guaranteed to be unshared. Similarly the component assignment operation must
 ensure that the name of the aggregate that is being assigned to is made to
 hold a unique (non-shared) instance of its value which can then be modified in
-place (the was the original motivation for this functionality). The operation
+place (this was the original motivation for this functionality). The operation
 |uniquify| implements this, and calling it makes clear our destructive
 intentions. We make it take a modifiable lvalue argument into which a new
 shared (but currently unique) pointer is stored in case duplication was
 necessary, and return a |value| raw pointer-to-non-const version of the
 possibly modified value of that pointer, which can then be used to make the
-change to the unique copy (the original pointer cannot, of course, since it is
-still a pointer-to-const.
+change to the unique copy (the original pointer cannot, since it is of course
+still a pointer-to-const).
 
 For the more common case of arguments on the stack, we provide a variant
 function template |get_own| of |get|. It has the same prototype as
@@ -1673,10 +1674,10 @@ template<unsigned int>
 template<>
    inline void do_wrap<0u>(std::vector<shared_value>::iterator it) @+{}
 template<unsigned int n>
-   void do_wrap(std::vector<shared_value>::iterator it)
+   inline void do_wrap(std::vector<shared_value>::iterator it)
    {@; *--it = pop_value(); do_wrap@[<n-1>@](it); }
 template<unsigned int n>
-   void wrap_tuple()
+   inline void wrap_tuple()
    { std::shared_ptr<tuple_value> result = std::make_shared<tuple_value>(n);
      do_wrap<n>(result->val.end());
      push_value(std::move(result));
@@ -1696,7 +1697,7 @@ conversions are automatically inserted during type analysis. In fact we shall
 put in place a general mechanism of automatic type conversions, which will for
 instance also provide the inverse conversions where appropriate, and on some
 occasions merely provides convenience to the user, for instance by allowing
-integers in positions where a rational number is required.
+integers in positions where rational numbers are required.
 
 The function |coerce| requires two fully determined types |from_type| and
 |to_type|, and its final argument~|e| is a reference to the previously
@@ -1757,21 +1758,21 @@ public:
 
 @ The |evaluate| method for conversions dispatches to the |convert| member,
 after evaluating |exp|. The |level| argument is not passed to the |convert|
-function, which will always replace a one or more values on the stack by a
-single value. There is a language design decision implicit in this
-implementation: there are no implicit conversions that return a tuple type. In
-fact we tried some such conversions, for instance from a rational number (and
-later from a split integer) to a pair of integers, and this was unsatisfactory
-even when correctly implemented. One reason is that it disturbs operator and
-function overloading: one can no longer define operators for the
-converted-from type if the operator or function already exists for the tuple
-type converted to, for instance one could not define unary minus for rational
-numbers because binary minus for integers was already defined. Another reason
-is that using decomposition of tuples in a let-expression to disassemble the
-converted-from type will not work without a cast-to-a-specific-tuple-type,
-since in this context the mere desire to have some unspecified tuple does not
-suffice to activate the implicit conversion. For these reasons it is
-preferable to always make the conversion to a tuple explicit.
+function, which will always replace a value on the stack by a single other
+value. There is a language design decision implicit in this implementation:
+there are no implicit conversions that return a tuple type. In fact we tried
+some such conversions, for instance from a rational number (and later from a
+split integer) to a pair of integers, and this was unsatisfactory even when
+correctly implemented. One reason is that it disturbs operator and function
+overloading: one can no longer define operators for the converted-from type if
+the operator or function already exists for the tuple type converted to; for
+instance one could not define unary minus for rational numbers because binary
+minus for integers was already defined. Another reason is that using
+decomposition of tuples in a let-expression to disassemble the converted-from
+type will not work without a cast to a specific tuple type, since in this
+context the mere desire to have some unspecified tuple does not suffice to
+activate the implicit conversion. For these reasons it is preferable to always
+have the conversion to a tuple be an explicit function.
 
 Although automatic conversions are only inserted when the type analysis
 requires a non-empty result type, it is still possible that at run time this
@@ -1920,10 +1921,9 @@ the expression~|d| is incorporated into to return value, we choose to get |d|
 passed by rvalue reference, even though the argument will usually be held in a
 variable.
 
-@~The rvalue reference to |d| provides the modifiable reference that |coerce|
-needs. If both attempts to conform the types fail, we must take a copy of
-|found| (since it a qualified |const|), but we can move from |required|, whose
-owner will be destructed before the error is caught.
+If both attempts to conform the types fail we throw a |type_error|; doing so
+we must take a copy of |found| (since it a qualified |const|), but we can move
+from |required|, whose owner will be destructed before the error is caught.
 
 @< Function def... @>=
 expression_ptr conform_types
@@ -1932,7 +1932,6 @@ expression_ptr conform_types
     throw type_error(e,found.copy(),std::move(required));
   return std::move(d);
 }
-
 
 @ List displays and loops produce a row of values of arbitrary (but identical)
 type; when they occur in a context requiring a non-row type, we may be able to
@@ -1947,10 +1946,10 @@ this type.
 
 Currently all calls to this function have |component_type| initially
 undetermined, so the call to of the |specialise| method will always succeed,
-but we test the result nonetheless. The code does assume the set of possible
-coercions is such that there is at most one coercion from any row type to a
-given (non-void) type, since it there were more than one possibility we could
-not decide what |component_type| should become.
+but we test the result nonetheless. In case there exist multiple row types
+that could convert to |final_type|, the first one in the table is chosen; this
+currently happens when |final_type| is \.{mat}, in which case this function
+will return |component_type| equal to \.{vec} rather than to \.{[int]}.
 
 @< Function def... @>=
 const conversion_record* row_coercion(const type_expr& final_type,
@@ -1972,39 +1971,68 @@ which given operand expressions can be converted to either one of the operand
 types. This would either produce unpredictable behaviour, or necessitate a
 complicated set of rules to determine which of the definitions of the symbol
 is to be used (overloading resolution in \Cpp\ is a good example of such
-complications). There are two ways to avoid the occurrence of complications by
-restricting the rules of the language: either forbid type conversions in
-arguments of overloaded symbols, or forbid simultaneous definitions of such
-symbols for too closely related types. (A mixture of both is also conceivable,
-allowing only certain conversions and forbidding overloading between types
-related by them; the ``firm'' context for operands in the language Algol~68
-provides a good example of an approach along these lines). Forbidding all
-automatic type conversions in case of overloading would defeat to a large
-extent the purpose of overloading, namely as a convenience to the user;
-therefore we choose the latter solution of forbidding overloading in certain
-cases. The predicate |is_close| will be used to characterise pairs of argument
-types that are mutually exclusive for overloading purposes.
+complications).
+
+There are two ways to avoid the occurrence of complications by restricting the
+rules of the language: either forbid type conversions in arguments of
+overloaded symbols, or forbid simultaneous definitions of such symbols for too
+closely related types. Forbidding all automatic type conversions in case of
+overloading would defeat to a large extent the purpose of overloading, namely
+as a convenience to the user. Originally we therefore chose the latter
+solution of allowing all coercions in arguments, while forbidding overloading
+in certain cases. However this both had practical implementation problems (we
+needed to try to convert operands with every possible operand type as required
+type, which took too much time) and led to severe mutual exclusions between
+overloaded types, as often some expression might be simultaneously acceptable
+to two different types; as extreme case we needed do exclude \.{void} as
+overloaded operand type altogether, since \emph{any} valid expression can be
+voided to \.{void}. Therefore we settled for a mixture of both kinds of
+restrictions, allowing only certain conversions in operand types and
+forbidding overloading between types related by them. This is somewhat along
+the model of the language Algol~68, where the ``firm'' context for operands
+allows a subset of coercions. Our approach involves analysing operands twice:
+first in isolation to determine their \foreign{a priori} type, and then
+possibly a second time with a selected overload in the context of the required
+operand type (if different from the \foreign{a priori} type), with the
+occasion to insert coercions as needed.
+
+Our rules for coercions and overloading will be governed by a single relation
+|is_close| between pairs of (argument) types: its resulting value (a small
+integer) will tell both whether for a given \foreign{a priori} type another
+(operand) type provides a viable candidate, and whether two types can coexist
+as operand types for a same overloaded operator or function. (Multiple
+operands or arguments are considered as one argument with the tuple type
+formed from their individual types.)
 
 @< Declarations of exported functions @>=
 unsigned int is_close (const type_expr& x, const type_expr& y);
 
 @ We do allow simultaneous overloading between closely related types in some
 cases, namely if they can be ordered so that if $t_1$ precedes $t_2$ then some
-expression of type~$t_1$ can be converted to type~$t_2$ but no expression of
-type~$t_2$ can be converted to type~$t_1$; in such cases reasonable behaviour
-can be obtained by trying a match for~$t_1$ before trying one for~$t_2$, and
-this allows for instance arithmetic operators to be defined for
-type \.{(int,int)} as well as for type \.{(rat,rat}). Therefore |is_close|
-returns a value composed of 3~bits: one indicating whether the types are close
-at all, and two others for indicating the existence of conversions in one
-direction or the other. Thus |is_close| returns an integer rather than a
-boolean value, with the following interpretations: |0x0| means the types are
-unrelated, |0x4| means the types are mutually exclusive but neither can be
-converted to the other (as for instance \.{(int,rat)} and \.{(rat,int)}),
-|0x5| means the types are close and (only) the first can be converted to the
-second (example, \.{int} and \.{rat}), |0x6| is the opposite relation, and
-|0x7| means both types can be converted to each other (like \.{vec}
-and \.{[int]}, or any case of equal types).
+expression of (\foreign{a priori}) type~$t_1$ can be converted to type~$t_2$
+but no expression of type~$t_2$ can be converted to type~$t_1$; in such cases
+reasonable behaviour can be obtained by trying a match for~$t_1$ before trying
+one for~$t_2$, and this allows for instance arithmetic operators to be defined
+for type \.{(int,int)} as well as for type \.{(rat,rat}). Note that the
+conversion does not necessarily apply at the outer level, since the
+expressions could be tuple or row displays, with coercions being applied to
+individual component expressions; for instance there exists nested displays of
+type \.{([vec],[int])} that can be converted to type \.{([[int]],[rat])}
+or \.{(mat,ratvec)}. So our relation will be a partial order, and compatible
+with tuple and row formation: $x_i\leq y_i$ for all~$i$ implies
+$(x_1,\ldots,x_n)\leq(y_1,\ldots,y_n)$ as well as $[x_1]\leq[y_1]$.
+
+Therefore |is_close| returns a value composed of 3~bits: one indicating
+whether the types are close at all, and two others for indicating the
+conversion partial order in one direction or the other. Thus |is_close|
+returns an integer rather than a boolean value, with the following
+interpretations: |0x0| means the types are unrelated, |0x4| means the types
+are mutually exclusive but neither can be converted to the other (as for
+instance \.{(int,rat)} and \.{(rat,int)}), |0x5| means the types are close and
+(only) the first can be converted to the second (example, \.{int}
+and \.{rat}), |0x6| is the opposite relation, and |0x7| means both types can
+be converted to each other (like \.{vec} and \.{[int]}, or any case of equal
+types).
 
 For types $t_1$ and~$t_2$ which do not admit a relative priority, we want to
 disallow simultaneous overloading with arguments types $t_1$ and~$t_2$ if any
@@ -2012,33 +2040,30 @@ expression given as argument could be converted to either of them. Deciding
 the existence of such an expression would require study of all available
 language constructs, but the situation is somewhat simplified by the fact
 that, for efficiency reasons, overloading resolution is not done using the
-argument expression, but only using its type. In fact matching will be done
-using calls to the very function |is_close| we are discussing here, testing
-the bit for conversion towards the required argument type; this provides us
-with an opportunity to adjust rules for possible type conversions of arguments
-at the same time as defining the exclusion rules.
+complete argument expression, but only using its type. In fact matching will
+be done using calls to the very function |is_close| we are discussing here,
+testing the bit for conversion towards the required argument type; this
+provides us with an opportunity to adjust rules for possible type conversions
+of arguments at the same time as defining the exclusion rules.
 
-We must forbid \.{void} altogether as operand type of overloaded functions,
-since anything can be converted to that type; this is not a great limitation.
-Apart from that, the function |coerce| provides us with the basic information
-about possible conversions; however we do not limit ourselves to these, because
-conversions might be possible inside row or tuple displays, and we want the
-consider for instance \.{[[rat]]} as matching a required type \.{[ratvec]}.
 Empty row displays, or more precisely arguments of type~\.{[*]}, pose a
-difficulty: either we forbid using such arguments in overloaded calls, or we
-must accept that for any pair of row types, no matter how different their
-components, there exists arguments that can be converted to either type, so
-that they are mutually exclusive for overloading.
+difficulty: they would be valid in any context requiring a specific row type,
+so if we stipulated that one may write \.{[]} to designate an empty row
+operand of any row type, then |is_close| would have to consider all row types
+close to each other (and therefore mutually exclusive for overloading). This
+used to be the convention adopted, but it was found to be rather restrictive
+in use, so the rules were change to state that an un-cast expression \.{[]}
+will not match overload instances of specific row types; it might match an
+parameter of specified type \.{[*]} (once we allow that as type expression),
+and such a parameter could \emph{only} take an empty list corresponding
+argument (which is very limiting of course, but it allows being explicit about
+which overloaded instance should be selected by an argument \.{[]}).
 
-Since empty rows as arguments are probably quite common and forcing a specific
-type on them relatively tedious, we opt for the latter solution. Thus when
-comparing two row types, |is_close| will always set the bit for closeness, but
-the other two bits will be set to indicate the convertibility of the component
-types. Also, in accordance with the choice to allow~\.{[*]} as operand type,
-the (component) type \.{*} will be considered to convert to any type. On the
-other hand we disallow an empty row where a primitive type with conversion
-from some row type (like \.{vec} or \.{mat}) is required, so that these types
-can coexist with an unrelated row type for overloading purposes.
+These considerations are not limited to empty lists (although it is the most
+common case): whenever an expression has an \foreign{a priori} type
+containing \.*, that expression will not select any overload with a concrete
+type in its place (overloading does not perform type specialisation).
+
 
 @ So here is the (recursive) definition of the relation |is_close|. Equal
 types are always close, while undetermined types behave as convertible to any
@@ -2064,10 +2089,9 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
 { expression_ptr dummy(nullptr);
   if (x==y)
     return 0x7;
-  if (x.kind==undetermined_type)
-    return 0x5; // |x| matches when |y| is required
-  if (y.kind==undetermined_type)
-    return 0x6; // |y| matches when |x| is required
+  if (x.kind==undetermined_type or y.kind==undetermined_type)
+    return 0x0;
+      // undetermined types do not specialise (or coerce), and are not close
   if (x.kind==primitive_type or y.kind==primitive_type)
   { unsigned int flags=0x0;
     if (coerce(x,y,dummy)) flags |= 0x1;
@@ -2077,18 +2101,19 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
   if (x.kind!=y.kind)
     return 0x0;
   if (x.kind==row_type)
-    return 0x4 | is_close(*x.component_type,*y.component_type); // always close
+    return is_close(*x.component_type,*y.component_type);
   if (x.kind!=tuple_type)
     return 0x0; // non-aggregate types are only close if equal
   auto it0=x.tupple.begin(), it1=y.tupple.begin();
   unsigned int flags=0x7;
-  while (not x.tupple.at_end(it0) and not y.tupple.at_end(it1)
+  while (not x.tupple.at_end(it0) and not y.tupple.at_end(it1) @|
          and (flags&=is_close(*it0,*it1))!=0)
   @/{@; ++it0; ++it1; }
   return x.tupple.at_end(it0) and y.tupple.at_end(it1) ? flags : 0x0;
 }
 
 @* Error values.
+%
 Before we describe evaluation of expressions we must realise that evaluation
 can cause runtime errors. The evaluator may throw exceptions due to
 inconsistency of our (rather than the user's) program, which are classified as
@@ -2100,10 +2125,11 @@ exception types will be used without any type derivation.
 @< Includes needed in \.{types.h} @>=
 #include <stdexcept>
 
-@ For errors detected before execution starts, we first derive a general
-exception class |program_error| from |std::exception|; it represents any kind
-of error of the user input determined by static analysis (for instance use of
-undefined variables).
+@ We first derive a general exception class |program_error| from
+|std::exception|, used for all errors other than runtime errors. It
+encompasses all kind of error of the input detected before evaluation starts
+by static analysis; for instance the use of undefined variables falls in this
+category. The derived class just stores an error message string.
 
 @< Type definitions @>=
 class program_error : public std::exception
@@ -2126,10 +2152,11 @@ corresponding |catch| happens in the main loop before disposal of the
 expression, so the reference certainly survives the lifetime of the
 |expr_error| object.
 
-The error type is declared a |struct|, as we leave it up to the |catch| code
-to incorporate the offending expression in a message in addition to the one
-produced by |what()|. In fact no virtual methods are defined at all, in
-particular we do not need a virtual destructor; there is nothing to destruct.
+The error type is declared a |struct|, so that the |catch| clause may access
+the |offender| expression for use in an error message. At the point where this
+error value is constructed (and thrown), we just provide a general error
+message |s| for storage in the |program_error| base class, and the offending
+expression. There is no need to override either of the virtual methods here.
 
 @< Type definitions @>=
 struct expr; // predeclare

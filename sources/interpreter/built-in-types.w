@@ -1768,10 +1768,11 @@ void twisted_involution_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
-@ To simulate the functioning of the \.{atlas} program, the function
-|set_type| takes as argument a Lie type, a list of kernel generators, and a
-string describing the inner class. The evaluation of the call
-|set_type(lt,gen,ict)| computes ${\it basis}={\it quotient\_basis(lt,gen)}$,
+@ To simulate the functioning of the \.{atlas} program, an overload of the
+function |inner_class| (that used to be called |set_type|, whence the name of
+the wrapper below) takes as argument a Lie type, a list of kernel generators,
+and a string describing the inner class. The evaluation of the call
+|inner_class(lt,gen,ict)| computes ${\it basis}={\it quotient\_basis(lt,gen)}$,
 ${\it rd}={\it root\_datum (lt,basis)}$, ${\it M}={\it
 based\_involution(lt,basis,ict)}$, and then returns the same value as would
 |fix_involution(rd,M)|. However we avoid actually calling the function
@@ -1809,18 +1810,18 @@ void set_type_wrapper(expression_base::level l)
   push_value(std::make_shared<inner_class_value>(std::move(G),lo));
 }
 
-@ It can be awkward to use |set_type| which wants to construct the root datum
-in its own way, for instance if one already has a root datum as produced by
-special functions like $GL$. The meaning of an inner class string, in the
-sense of defining an involution of the based root datum, is almost
-unambiguous, so we introduce a function |set_inner_class| that from a root
-datum and an inner class specification produces an inner class for that datum.
-A small ambiguity can be present for torus factors, in that there is no
-obvious basis of the part of the root lattice orthogonal to the roots on which
-to interpret the inner class specification for torus factors. We shall use the
-basis implicitly defined by the radical generators in the root datum; if that
-should fail to give the desired involution, the use can always take recourse
-to |fix_involution| to explicitly specify one.
+@ If one already has a root datum at hand, such as one produced by functions
+like $GL$, it can be awkward to use |inner_class| above, which constructs the
+root datum in its own way. The meaning of an inner class string, in the sense
+of defining an involution of the based root datum, is almost unambiguous, so
+we introduce another overload of |inner_class|, which from a root datum and an
+inner class specification produces an inner class for that datum. A small
+ambiguity can be present for torus factors, in that there is no obvious basis
+of the part of the root lattice orthogonal to the roots on which to interpret
+the inner class specification for torus factors. We shall use the basis
+implicitly defined by the radical generators in the root datum; if that should
+fail to give the desired involution, the use can always take recourse to
+|fix_involution| to explicitly specify one.
 
 The wrapper for |set_inner_class| below expresses the permutation matrix~$P$
 produced by |lietype::involution| on the basis of the lattice of the root
@@ -1879,7 +1880,7 @@ void set_inner_class_wrapper(expression_base::level l)
 @)
   push_value(rdv);
   try
-  {@; push_value(std::make_shared<matrix_value>
+  {@; push_value(std::make_shared<matrix_value> @|
        (lietype::involution(lo).on_basis(M->val.columns())));
   }
   catch (std::runtime_error&) // relabel inexact division error

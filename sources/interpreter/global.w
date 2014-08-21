@@ -1390,7 +1390,7 @@ coercion(int_type,rat_type, "QI", rational_convert); @/
 coercion(row_of_rat_type,ratvec_type, "Qv[Q]", ratlist_ratvec_convert); @/
 coercion(ratvec_type,row_of_rat_type, "[Q]Qv", ratvec_ratlist_convert); @/
 coercion(vec_type,ratvec_type,"QvV", vec_ratvec_convert); @/
-coercion(row_of_int_type,ratvec_type,"Rv[I]", intlist_ratvec_convert);
+coercion(row_of_int_type,ratvec_type,"Qv[I]", intlist_ratvec_convert);
 @)
 coercion(row_of_int_type, vec_type, "V[I]", intlist_vector_convert); @/
 coercion(row_of_vec_type,mat_type, "M[V]", veclist_matrix_convert); @/

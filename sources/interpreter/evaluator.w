@@ -1075,13 +1075,7 @@ case function_call:
 }
 
 @ The main work here has been relegated to |resolve_overload|; otherwise we
-just need to take care of the things mentioned in the module name. In fact
-there is one more case where overload resolution is not invoked than that name
-mentions, namely when the argument expression is an empty tuple display, since
-overloading with void argument type is forbidden. But this special treatment
-of empty arguments makes a global value with type function-without-arguments
-almost behave like an overloaded instance; the user should just avoid
-providing a nonempty argument of void type, which is bad practice anyway.
+just need to take care of the things mentioned in the module name.
 
 The cases relegated to |resolve_overload| include calls of special operators
 like the size-of operator~`\#', even in case such an operator should not occur
@@ -1089,9 +1083,8 @@ in the overload table.
 
 @< Convert and |return| an overloaded function call... @>=
 { const id_type id =e.call_variant->fun.identifier_variant;
-  const expr& arg=e.call_variant->arg;
   size_t i,j; // dummies; local binding not used here
-  if (not is_empty(arg) and layer::lookup(id,i,j)==nullptr)
+  if (layer::lookup(id,i,j)==nullptr) // not calling by local identifier
   { const overload_table::variant_list& variants
       = global_overload_table->variants(id);
     if (variants.size()>0 or is_special_operator(id))
@@ -2043,34 +2036,44 @@ void overloaded_closure_call::evaluate(level l) const
 }
 
 @ Finally we describe the handling of user-defined functions in type analysis.
+A call to |thread_bindings| extracts from the specified pattern the
+identifiers it contains, couples them to their specified types, and stores the
+result in |new_layer|, for use during the type-check and conversion of the
+function body. No implicit conversions ever apply to values of function type,
+so there is no point in calling |conform_types| at the end. However it is
+possible that the context requires a void type; like for denotations, this is
+silly (evaluation will have no side effect) but legal. Therefore we handle
+both cases here, sharing code where possible.
 
-We first test if the required |type| specialises to a function type, i.e.,
-either it was some function type or undefined. Then we get the argument type
-|arg_type| from the function expression the parser provided. We further
-specialise the argument type of |type| to the argument type of the function
-(signalling a type error in the rare cases that a different type was
-expected). Then a call to |thread_bindings| extracts from the specified
-pattern |id_pat| the identifiers it contains, and couples them to the
-associated types extracted from |arg_type|, storing the result in
-|new_bindings|. These bindings are activated during the type-check and
-conversion of the function body, after which the old |id_context| is restored
-by popping of the bindings for the arguments.
+In non-void context we specialise the required |type| (often undetermined
+initially) to a function type with argument type the one given in the
+$\lambda$-expression (signalling a type error if a different type was
+expected), then we convert the function body in the new context, specialising
+the return type. In void context we do only the conversion (just for error
+checking), ignore the return type, and return a |voiding| of it.
 
 @< Cases for type-checking and converting... @>=
 case lambda_expr:
-{ if (not type.specialise(gen_func_type))
-    throw type_error(e,gen_func_type.copy(),std::move(type));
-  const lambda& fun=e.lambda_variant;
+{ const lambda& fun=e.lambda_variant;
   const id_pat& pat=fun->pattern;
   const type_expr& arg_type=fun->parameter_type;
-  if (not type.func->arg_type.specialise(arg_type))
-  @/throw type_error(e,
-                     type_expr(arg_type.copy(),unknown_type.copy()),
-                     std::move(type));
 @/layer new_layer(count_identifiers(pat));
   thread_bindings(pat,arg_type,new_layer);
-  expression_ptr body = convert_expr(fun->body,type.func->result_type);
-  return expression_ptr(new lambda_expression(pat,std::move(body)));
+  if (type!=void_type)
+  { if (not (type.specialise(gen_func_type)
+             and type.func->arg_type.specialise(arg_type)))
+    @/throw type_error(e,
+                       type_expr(arg_type.copy(),unknown_type.copy()),
+                       std::move(type));
+    return expression_ptr(new @|
+      lambda_expression(pat, convert_expr(fun->body,type.func->result_type)));
+  }
+  else
+  { type_expr dummy; // unused result type
+    expression_ptr result(new @|
+      lambda_expression(pat, convert_expr(fun->body,dummy)));
+    return expression_ptr(new voiding(std::move(result)));
+  }
 }
 
 @* Sequence expressions.
@@ -2550,7 +2553,8 @@ case conditional_expr:
       else
         th.reset(new voiding(std::move(th))),type = std::move(else_type);
     }
-    else
+    else if (type!=unknown_type and else_type!=unknown_type)
+      // error exit is always OK
     {
       int cmp = is_close(type,else_type);
       if ((cmp&0x1)!=0) // \.{then} branch may convert to |else_type|
