@@ -74,36 +74,41 @@ dependencies := $(atlas_objects:%.o=%.d)
 # compiler flags
 # whenever changing the setting of these flags, do 'make clean' first
 
+# the following variable contains compilation "flavor", added to CXXFLAGS
+export CXXFLAVOR
+
 # the following are predefined flavors for the compiler flags:
 # normal (nflags)
 # optimizing (oflags)
 # development with debugging (gflags)
 # profiling (pflags)
-nflags := -c $(includedirs) -Wall -DNDEBUG
-oflags := -c $(includedirs) -Wall -O3 -DNDEBUG
-gflags := -c $(includedirs) -Wall -ggdb
-pflags := -c $(includedirs) -Wall -pg -O -DNREADLINE
+nflags := -Wall -DNDEBUG
+oflags := -Wall -O3 -DNDEBUG
+gflags := -Wall -ggdb
+pflags := -Wall -pg -O -DNREADLINE
 
-# create flags specific for atlas and realex
+# create flags specific for atlas (not used realex; for that see its Makefile)
 atlas_flags :=
-realex_flags := -Wno-parentheses
 
-# the default setting is normal
-CXXFLAGS ?= $(nflags)
+# these flags are necessary for compilation, and should not be altered
+CXXFLAGS  = -c $(includedirs)
+
+# these flags set the compilation flavor (default: normal)
+CXXFLAVOR ?= $(nflags)
 
 # to select another flavor, set optimize=true, debug=true or profile=true
 # when calling make (as in "make optimize=true") or set the flavor as an
 # environment variable (only the first flavor set in above list takes effect)
-# alternatively, you can set CXXFLAGS="explicit options" to override
+# alternatively, you can set CXXFLAVOR="explicit options" to override
 
 ifeq ($(optimize),true)
-      CXXFLAGS := $(oflags)
+      CXXFLAVOR := $(oflags)
 else
 ifeq ($(debug),true)
-      CXXFLAGS := $(gflags)
+      CXXFLAVOR := $(gflags)
 else
 ifeq ($(profile),true)
-      CXXFLAGS := $(pflags)
+      CXXFLAVOR := $(pflags)
 endif
 endif
 endif
@@ -112,7 +117,7 @@ endif
 # and/or make more verbose by setting verbose=true
 
 ifeq ($(readline),false)
-    CXXFLAGS += -DNREADLINE
+    CXXFLAVOR += -DNREADLINE
     rl_libs =
 else
     rl_libs ?= -lreadline
@@ -133,7 +138,7 @@ CXXVERSION := $(shell g++ -dumpversion)
 CXXVERSIONOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.6)
 
 ifeq "$(CXXVERSIONOLD)" "1"
-  CXXFLAGS += -Dnoexcept= -Dnullptr=0
+  CXXFLAVOR += -Dnoexcept= -Dnullptr=0
 endif
 
 
@@ -177,11 +182,11 @@ endif
 # rules, but only apply to the files listed before the first colon
 
 $(filter-out sources/interface/io.o,$(atlas_objects)) : %.o : %.cpp
-	$(CXX) $(CXXFLAGS) $(atlas_flags) -o $*.o $*.cpp
+	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(atlas_flags) -o $*.o $*.cpp
 
 # the $(messagedir) variable is only needed for the compilation of io.cpp
 sources/interface/io.o : sources/interface/io.cpp
-	$(CXX) $(CXXFLAGS) $(atlas_flags) \
+	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(atlas_flags) \
           -DMESSAGE_DIR_MACRO=\"$(messagedir)\" -o $@ $<
 
 

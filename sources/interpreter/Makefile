@@ -31,9 +31,10 @@ CTANGLEFLAGS := ++ -p
 CWEBXMACROS := $(cwebx_dir)/cwebxmac.tex
 
 # these are used for C++ compilation and linking (debugging, no optimization)
-CXXFLAGS := -Wall -Wno-parentheses -g $(INCLUDE_FLAGS)
+CXXFLAGS := -c $(INCLUDE_FLAGS) -Wno-parentheses
+CXXFLAVOR ?= -Wall -ggdb
 
-# our beloved C++ compiler
+# our C++ compiler (call language version c++0x, for backward compatibility)
 CXX := g++ -std=c++0x
 
 CXXVERSION := $(shell g++ -dumpversion)
@@ -164,13 +165,9 @@ $(CWEAVE):
 
 # we do use the following pattern rules (explicit implicit rules, so to say)
 
-# static pattern rules giving the usual C++ compilation; C++11 for realex
-# we still call the language version c++0x, for backward compatibility
-$(c++objects): %.o: %.cpp
-	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
-
-$(atlas_objects): %.o: %.cpp
-	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+# static pattern rules giving the usual C++ compilation
+$(c++objects) $(atlas_objects): %.o: %.cpp
+	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
 # here we cannot use a static pattern rule, since there are multiple targets
 # C++ source and header files are made from CWEBx files (.w) with the ++ switch
