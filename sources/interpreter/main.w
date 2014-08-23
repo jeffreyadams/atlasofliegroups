@@ -120,7 +120,7 @@ the prototype of the lexical analyser (wrapper) function |yylex| is the one
 below. Curiously, the program~\.{bison} does not write this prototype to
 \.{parser.tab.h}, but it does write the definitions of the types |YYSTYPE| and
 |YYLTYPE| there; these require that \.{parsetree.h} be included first. We also
-declare ``{\tt\%parse-param \char`\{} |int* verbosity, expr* parsed_expr@;|
+declare ``{\tt\%parse-param \char`\{} |int* verbosity, expr_p* parsed_expr@;|
 {\tt\char`\}}'' in~\.{parser.y}, so that the parser itself, |yyparse|, takes
 an integer pointer as parameter, which it uses to signal special requests from
 the user (such as verbose output but also termination or output redirection),
@@ -135,7 +135,7 @@ since the parser is now compiled as a \Cpp\ program.
 @< Declaration of interface to the parser @>=
 
 int yylex (YYSTYPE *, YYLTYPE *);
-@/int yyparse( atlas::interpreter::expr* parsed_expr, int* verbosity );
+@/int yyparse( atlas::interpreter::expr_p* parsed_expr, int* verbosity );
 
 @ Here is an array that declares the keywords that the lexical scanner is to
 recognise, terminated by a null pointer. Currently the lexical analyser adds
@@ -169,7 +169,7 @@ int yylex(YYSTYPE *valp, YYLTYPE *locp)
 {@; return atlas::interpreter::lex->get_token(valp,locp); }
 @)
 
-void yyerror (YYLTYPE* locp, atlas::interpreter::expr* ,int* ,char const *s)
+void yyerror (YYLTYPE* locp, atlas::interpreter::expr_p* ,int* ,char const *s)
 { atlas::interpreter::main_input_buffer->show_range@|
   (std::cerr,
    locp->first_line, locp->first_column,
@@ -243,7 +243,7 @@ int main(int argc, char** argv)
   last_type = void_type.copy();
    // |last_type| is a |type_ptr| defined in \.{evaluator.w}
   while (ana.reset()) // get a fresh line for lexical analyser, or quit
-  { expr parse_tree;
+  { expr_p parse_tree;
     int old_verbosity=verbosity;
     ofstream redirect; // if opened, this will be closed at end of loop
     if (yyparse(&parse_tree,&verbosity)!=0)
@@ -258,7 +258,7 @@ int main(int argc, char** argv)
         verbosity=old_verbosity; // verbosity change was temporary
       }
       if (verbosity==1) //
-        cout << "Expression before type analysis: " << parse_tree << endl;
+        cout << "Expression before type analysis: " << *parse_tree << endl;
     }
     @< Analyse types and then evaluate and print, or catch runtime or other
        errors @>
@@ -339,7 +339,7 @@ suppress printing of the uninteresting value.
 { bool type_OK=false;
   try
   { expression_ptr e;
-    last_type=analyse_types(parse_tree,e); // move assignment of a |type_expr|
+    last_type=analyse_types(*parse_tree,e); // move assignment of a |type_expr|
     type_OK=true;
     if (verbosity>0)
       cout << "Type found: " << last_type << endl @|

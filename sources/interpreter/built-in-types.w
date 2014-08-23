@@ -129,7 +129,7 @@ private:
     // copy constructor, used by |clone|
 };
 @)
-typedef std::auto_ptr<Lie_type_value> Lie_type_ptr;
+typedef std::unique_ptr<Lie_type_value> Lie_type_ptr;
 typedef std::shared_ptr<Lie_type_value> shared_Lie_type;
 
 @ The type |LieType| is publicly derived from |std::vector<SimpleLieType>|,
@@ -212,7 +212,7 @@ void Lie_type_wrapper(expression_base::level l)
 @.Total rank exceeds...@>
   }
   if (l!=expression_base::no_value)
-    push_value(result);
+    push_value(std::move(result));
 }
 @)
 void Lie_type_coercion()
@@ -240,7 +240,7 @@ void Cartan_matrix_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   matrix_ptr result(new matrix_value(t->val.Cartan_matrix()));
-  push_value(result);
+  push_value(std::move(result));
 }
 
 
@@ -310,7 +310,7 @@ void Lie_factors_wrapper(expression_base::level l)
   { std::vector<SimpleLieType> factor(1,t->val[i]);
     result->val[i]=shared_Lie_type(new Lie_type_value(LieType(factor)));
   }
-  push_value(result);
+  push_value(std::move(result));
 }
 
 @ We now install all wrapper functions directly associated to Lie types.
@@ -350,7 +350,7 @@ void Smith_Cartan_wrapper(expression_base::level l)
   vector_ptr inv_factors (new vector_value(CoeffList()));
   WeightList b = t->val.Smith_basis(inv_factors->val);
   push_value(new matrix_value(LatticeMatrix(b,b.size())));
-  push_value(inv_factors);
+  push_value(std::move(inv_factors));
   if (l==expression_base::single_value)
      wrap_tuple(2);
 }
@@ -776,7 +776,7 @@ private:
   root_datum_value(const root_datum_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::auto_ptr<root_datum_value> root_datum_ptr;
+typedef std::unique_ptr<root_datum_value> root_datum_ptr;
 typedef std::shared_ptr<root_datum_value> shared_root_datum;
 
 @*2 Printing root data. We shall not print the complete information contained
@@ -1200,7 +1200,7 @@ void integrality_points_wrapper(expression_base::level l)
   row_ptr result (new row_value(ipl.size()));
   for (size_t i=0; i<ipl.size(); ++i)
     result->val[i]=shared_value(new rat_value(ipl[i]));
-  push_value(result);
+  push_value(std::move(result));
 }
 
 @ Let us install the above wrapper functions.
@@ -1631,7 +1631,7 @@ struct inner_class_value : public value_base
   const realform_io::Interface interface,dual_interface;
 @)
   inner_class_value  // main constructor
-   (std::auto_ptr<ComplexReductiveGroup> G, const lietype::Layout& lo);
+   (std::unique_ptr<ComplexReductiveGroup> G, const lietype::Layout& lo);
   ~inner_class_value();
 @)
   virtual void print(std::ostream& out) const;
@@ -1644,7 +1644,7 @@ struct inner_class_value : public value_base
    // constructor of dual
 };
 @)
-typedef std::auto_ptr<inner_class_value> inner_class_ptr;
+typedef std::unique_ptr<inner_class_value> inner_class_ptr;
 typedef std::shared_ptr<inner_class_value> shared_inner_class;
 
 @ Here are the copy constructor and the destructor.
@@ -1681,7 +1681,7 @@ an auto-pointer until the construction succeeds.
 
 @< Function def...@>=
 inner_class_value::inner_class_value
-  (std::auto_ptr<ComplexReductiveGroup> g,
+  (std::unique_ptr<ComplexReductiveGroup> g,
    const lietype::Layout& lo)
 @/: val(*g)
 , dual(*new ComplexReductiveGroup(*g,tags::DualTag()))
@@ -1748,8 +1748,9 @@ void fix_involution_wrapper(expression_base::level l)
 @)
   for (unsigned int i=0; i<ww.size(); ++i) // apply elements in generation order
     rd->val.simple_reflect(ww[i],M);
-  std::auto_ptr<ComplexReductiveGroup> G(new ComplexReductiveGroup(rd->val,M));
-  push_value(new inner_class_value(G,lo));
+  std::unique_ptr<ComplexReductiveGroup>
+    G(new ComplexReductiveGroup(rd->val,M));
+  push_value(new inner_class_value(std::move(G),lo));
 }
 
 void twisted_involution_wrapper(expression_base::level l)
@@ -1762,8 +1763,9 @@ void twisted_involution_wrapper(expression_base::level l)
 @)
   for (unsigned int i=ww.size(); i-->0;)
     rd->val.simple_reflect(ww[i],M);
-  std::auto_ptr<ComplexReductiveGroup> G(new ComplexReductiveGroup(rd->val,M));
-  push_value(new inner_class_value(G,lo));
+  std::unique_ptr<ComplexReductiveGroup>
+    G(new ComplexReductiveGroup(rd->val,M));
+  push_value(new inner_class_value(std::move(G),lo));
   push_value(new vector_value(std::vector<int>(ww.begin(),ww.end())));
   if (l==expression_base::single_value)
     wrap_tuple(2);
@@ -1805,9 +1807,9 @@ void set_type_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return; // bow out now all possible errors are passed
 @)
-  std::auto_ptr<ComplexReductiveGroup>@|
+  std::unique_ptr<ComplexReductiveGroup>@|
     G(new ComplexReductiveGroup(rd->val,M->val));
-  push_value(new inner_class_value(G,lo));
+  push_value(new inner_class_value(std::move(G),lo));
 }
 
 @ It can be awkward to use |set_type| which wants to construct the root datum
@@ -1937,7 +1939,7 @@ void push_name_list(const realform_io::Interface& interface)
   for (size_t i=0; i<interface.numRealForms(); ++i)
     result->val.push_back
       (shared_value(new string_value(interface.typeName(i))));
-  push_value(result);
+  push_value(std::move(result));
 }
 @)
 void form_names_wrapper(expression_base::level l)
@@ -1997,7 +1999,7 @@ void block_sizes_wrapper(expression_base::level l)
     for (size_t j = 0; j < M->val.numColumns(); ++j)
       M->val(i,j) =
       G->val.block_size(G->interface.in(i),G->dual_interface.in(j));
-  push_value(M);
+  push_value(std::move(M));
 }
 
 @ Next we shall provide a function that displays the occurrence of Cartan
@@ -2017,7 +2019,7 @@ void occurrence_matrix_wrapper(expression_base::level l)
     for (size_t j=0; j<nc; ++j)
       M->val(i,j)= b.isMember(j) ? 1 : 0;
   }
-  push_value(M);
+  push_value(std::move(M));
 }
 
 @ We do the same for dual real forms. Note that we had to introduce the method
@@ -2037,7 +2039,7 @@ void dual_occurrence_matrix_wrapper(expression_base::level l)
     for (size_t j=0; j<nc; ++j)
       M->val(i,j)= b.isMember(j) ? 1 : 0;
   }
-  push_value(M);
+  push_value(std::move(M));
 }
 
 @ Finally we install everything related to inner classes.
@@ -2137,7 +2139,7 @@ private:
     // owned pointer, initially |NULL|, assigned at most once
 };
 @)
-typedef std::auto_ptr<real_form_value> real_form_ptr;
+typedef std::unique_ptr<real_form_value> real_form_ptr;
 typedef std::shared_ptr<real_form_value> shared_real_form;
 
 @ The methods |rc| and |rt| ensure a |Rep_table| value is constructed at
@@ -2286,7 +2288,7 @@ void Cartan_order_matrix_wrapper(expression_base::level l)
     for (size_t j=i; j<n; ++j)
       if (p.lesseq(i,j)) M->val(i,j)=1;
 
-  push_value(M);
+  push_value(std::move(M));
 }
 
 
@@ -2414,7 +2416,7 @@ private:
   : parent(v.parent), number(v.number), val(v.val) @+{} // copy constructor
 };
 @)
-typedef std::auto_ptr<Cartan_class_value> Cartan_class_ptr;
+typedef std::unique_ptr<Cartan_class_value> Cartan_class_ptr;
 typedef std::shared_ptr<Cartan_class_value> shared_Cartan_class;
 
 @ In the constructor we used to check that the Cartan class with the given
@@ -2633,7 +2635,7 @@ void real_forms_of_Cartan_wrapper(expression_base::level l)
     if (b.isMember(cc->number))
       result->val[k++] = shared_value(new real_form_value(ic,rf));
   }
-  push_value(result);
+  push_value(std::move(result));
 }
 @)
 void dual_real_forms_of_Cartan_wrapper(expression_base::level l)
@@ -2648,7 +2650,7 @@ void dual_real_forms_of_Cartan_wrapper(expression_base::level l)
     if (b.isMember(cc->number))
       result->val[k++] = shared_value(new real_form_value(dual_ic,drf));
   }
-  push_value(result);
+  push_value(std::move(result));
 }
 
 @ For the fiber group partition information that was not produced by
@@ -2686,7 +2688,7 @@ void fiber_partition_wrapper(expression_base::level l)
   for (size_t i=0; i<pi.size(); ++i)
     if (rf_nr[pi.class_of(i)] == rf->val.realForm())
       result->val.push_back(shared_value(new int_value(i)));
-  push_value(result);
+  push_value(std::move(result));
 }
 
 @ The function |square_classes| returns the set of real forms associated to a
@@ -2709,7 +2711,7 @@ void square_classes_wrapper(expression_base::level l)
           shared_value(new int_value(rfi.out(rfl[cc->val.toWeakReal(c,csc)])));
     result->val[csc] = std::move(part);
   }
-  push_value(result);
+  push_value(std::move(result));
 }
 
 @ The function |print_gradings| gives on a per-real-form basis the
@@ -2862,7 +2864,7 @@ private:
   : rf(v.rf), val(v.val) @+{} // copy constructor
 };
 @)
-typedef std::auto_ptr<KGB_elt_value> KGB_elt_ptr;
+typedef std::unique_ptr<KGB_elt_value> KGB_elt_ptr;
 typedef std::shared_ptr<KGB_elt_value> shared_KGB_elt;
 
 @ When printing a KGB element, we print the number. It would be useful to add
@@ -3092,7 +3094,7 @@ void torus_bits_wrapper(expression_base::level l)
     vector_ptr result(p=new vector_value(int_Vector(kgb.torus_rank(),0)));
     for (unsigned int i=0; i<kgb.torus_rank(); ++i)
       p->val[i]=t[i];
-    push_value(result);
+    push_value(std::move(result));
   }
 }
 
@@ -3183,7 +3185,7 @@ private:
   : rf(v.rf), val(v.val) @+{} // copy constructor
 };
 @)
-typedef std::auto_ptr<Block_value> Block_ptr;
+typedef std::unique_ptr<Block_value> Block_ptr;
 typedef std::shared_ptr<Block_value> shared_Block;
 
 @ The constructor got |Block_value| is relatively elaborate, so we lift it out
@@ -3449,7 +3451,7 @@ private:
   : rf(v.rf),val(v.val) @+ {}
 };
 @)
-typedef std::auto_ptr<module_parameter_value> module_parameter_ptr;
+typedef std::unique_ptr<module_parameter_value> module_parameter_ptr;
 typedef std::shared_ptr<module_parameter_value> shared_module_parameter;
 
 @ When printing a module parameter, we shall indicate a triple
@@ -3699,7 +3701,7 @@ void reducibility_points_wrapper(expression_base::level l)
     row_ptr result(new row_value(rp.size()));
     for (size_t i=0; i<rp.size(); ++i)
       result->val[i]=shared_value(new rat_value(rp[i]));
-    push_value(result);
+    push_value(std::move(result));
   }
 }
 
@@ -3782,7 +3784,7 @@ also construct a module parameter value for each element of |block|.
     param_list->val[z] =
 	shared_value(new module_parameter_value(p->rf,block_elt_param));
   }
-  push_value(param_list);
+  push_value(std::move(param_list));
 
 }
 
@@ -3869,11 +3871,11 @@ void KL_block_wrapper(expression_base::level l)
       }
     }
 @)
-    push_value(M);
-    push_value(polys);
-    push_value(length_stops);
-    push_value(survivor);
-    push_value(contributes_to);
+    push_value(std::move(M));
+    push_value(std::move(polys));
+    push_value(std::move(length_stops));
+    push_value(std::move(survivor));
+    push_value(std::move(contributes_to));
 
     if (l==expression_base::single_value)
       wrap_tuple(7);
@@ -3948,11 +3950,11 @@ void partial_KL_block_wrapper(expression_base::level l)
       }
     }
 @)
-    push_value(M);
-    push_value(polys);
-    push_value(length_stops);
-    push_value(survivor);
-    push_value(contributes_to);
+    push_value(std::move(M));
+    push_value(std::move(polys));
+    push_value(std::move(length_stops));
+    push_value(std::move(survivor));
+    push_value(std::move(contributes_to));
 
     if (l==expression_base::single_value)
       wrap_tuple(6);
@@ -4024,7 +4026,7 @@ private:
   split_int_value(const split_int_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::auto_ptr<split_int_value> split_int_ptr;
+typedef std::unique_ptr<split_int_value> split_int_ptr;
 typedef std::shared_ptr<split_int_value> shared_split_int;
 
 @ Like for parameter values, we first define a printing function on the level
@@ -4131,7 +4133,7 @@ private:
   @+ : rf(v.rf),val(v.val) @+{} // copy
 };
 @)
-typedef std::auto_ptr<virtual_module_value> virtual_module_ptr;
+typedef std::unique_ptr<virtual_module_value> virtual_module_ptr;
 typedef std::shared_ptr<virtual_module_value> shared_virtual_module;
 
 @ When printing a virtual module value, we traverse the |std::map| that is
@@ -4360,7 +4362,7 @@ void deform_wrapper(expression_base::level l)
     for (repr::SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
       acc->val.add_multiple(p->rc().expand_final(it->first),it->second);
 
-    push_value(acc);
+    push_value(std::move(acc));
   }
 }
 
@@ -4462,8 +4464,8 @@ void raw_KL_wrapper (expression_base::level l)
   for (size_t i=1; i<length_stops.size(); ++i)
     length_stops[i]=block.length_first(i);
 @)
-  push_value(M);
-  push_value(polys);
+  push_value(std::move(M));
+  push_value(std::move(polys));
   push_value(new vector_value(length_stops));
   if (l==expression_base::single_value)
     wrap_tuple(3);
@@ -4502,8 +4504,8 @@ void raw_dual_KL_wrapper (expression_base::level l)
   for (size_t i=1; i<length_stops.size(); ++i)
     length_stops[i]=block.length_first(i);
 @)
-  push_value(M);
-  push_value(polys);
+  push_value(std::move(M));
+  push_value(std::move(polys));
   push_value(new vector_value(length_stops));
   if (l==expression_base::single_value)
     wrap_tuple(3);

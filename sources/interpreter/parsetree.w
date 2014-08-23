@@ -24,8 +24,8 @@ declaration is separated fro historic reasons only.
 
 #include <iostream>
 #include <memory>
-#include "buffer.h" // for |Hash_table|
-#include "sl_list.h"
+#include <string>
+@< Includes needed in \.{parsetree.h} @>@;
 namespace atlas
 {
   namespace interpreter
@@ -50,276 +50,369 @@ and we define everything in a \Cpp\ namespace as usual.
 namespace atlas
 { namespace interpreter
   {
-@< Definitions of constants... @>@;
 @< Definitions of functions for the parser @>@;
 @< Definitions of functions not for the parser @>@;
   }@;
 }@;
 
 @ For a large part the declarations for the parser consist of the recursive
-definition of the type |expr|.
+definition of the type |expr|. While that used to be a POD type used directly
+on the parser stack, the inflexibility of this solution motivated changing
+this to placing row pointers
 
 @< Declarations for the parser @>=
-@< Typedefs that are required in |union expru@;| @>@;
-union expru {@; @< Variants of |union expru @;| @>@; };
+@< Type declarations needed in definition of |struct expr@;| @>@;
 
-enum expr_kind @+ { @< Enumeration tags for |expr_kind| @> @;@; };
-struct expr {@; union expru e; expr_kind kind; };
-
+enum expr_kind @+
+ { @< Enumeration tags for |expr_kind| @>@;@; @+no_expr };
+struct expr {
+  expr_kind kind;
+  union {@; @< Variants of the anonymous |union| in |expr| @>@; };
+@)
+  @< Methods of |expr| @>@;
+};
+typedef expr* expr_p; // raw pointer type for use on parser stack
+typedef std::unique_ptr<expr> expr_ptr;
+@)
 @< Structure and typedef declarations for types built upon |expr| @>@;
-
 @< Declarations of functions for the parser @>@;
 
-@ While we are defining functions to parse expressions, we shall also define
-a function to print the expressions once parsed; this provides a useful test
-to see if what we have read in corresponds to what was typed, and this
-functionality will also be used in producing error messages.
+@ We start right away declaring |expr| as a |struct|, avoiding complaints that
+it is not declared.
 
-@< Declaration of functions not for the parser @>=
-std::ostream& operator<< (std::ostream& out, expr e);
+@< Type declarations needed in definition of |struct expr@;| @>=
+struct expr;
 
-@~The definitions of this instance of the operator~`|<<|' are distributed
-among the different variants of the |union expru@;| that we shall define.
+
+@ When default-constructing an |expr| we set its |kind| to |no_expr|.
+@< Methods of |expr| @>=
+expr() : kind(no_expr)@+{}
+~expr(); // defined below using a large |switch| statement
+
+@ While we are defining functions to parse expressions, we shall also define a
+function |destroy_expr| to clean up the memory occupied by an expression. It
+is classified as a parsing function since it is called amongst others by the
+parser when popping off tokens at syntax errors.
+
+@< Declarations of functions for the parser @>=
+void destroy_expr(expr_p e);
+
+@~The definition of |destroy_expr| just calls |delete|, which will invoke the
+destructor of the |expr| pointed to.
+
+@< Definitions of functions for the parser @>=
+void destroy_expr(expr_p p) @+ {@; delete p; }
+
+@ The actual definition of the destructor is distributed among the different
+variants of |expr|.
 
 @< Definitions of functions not for the parser @>=
-std::ostream& operator<< (std::ostream& out, expr e)
+expr::~expr()
+{
+  if (kind!=no_expr)
+  {
+    switch (kind)
+    {@; @< Cases for destroying an expression @>
+      @+ case no_expr: {}
+    }
+    kind = no_expr;
+  }
+}
+
+@ We define a move constructor and move assignment; our first purpose is to
+eliminate the need for copying as much as possible by detecting now forbidden
+copy constructions and assignments hidden in the code.
+
+@< Methods of |expr| @>=
+void set_from (expr& other);
+expr (expr&& other);
+void operator= (expr&& other);
+
+@ We do not assume that |expr| is trivially copyable, so copying requires case distinction.
+
+@< Definitions of functions not for... @>=
+void expr::set_from (expr& other)
+{ assert(kind==no_expr);
+  switch (kind=other.kind)
+    {@; @< Cases for copying an expression from |other| @>
+       @+ case no_expr: {}
+    }
+  other.kind = no_expr;
+}
+@)
+expr::expr (expr&& other) : kind(no_expr) @+
+{@; set_from(other); }
+
+void expr::operator= (expr&& other)
+{@;
+  if (this!=&other)
+  {@; this->~expr();
+    set_from(other);
+  }
+}
+
+@ In parallel, we also define a function to print the expressions once parsed;
+this provides a useful test to see if what we have read in corresponds to what
+was typed, and this functionality will also be used in producing error
+messages.
+
+@< Declaration of functions not for the parser @>=
+std::ostream& operator<< (std::ostream& out, const expr& e);
+
+@~The definitions of this instance of the operator~`|<<|' are also distributed
+among the different variants of |expr| that we shall define.
+
+@< Definitions of functions not for the parser @>=
+std::ostream& operator<< (std::ostream& out, const expr& e)
 {@; switch (e.kind)
   {@; @< Cases for printing an expression |e| @>
+    @+ case no_expr: {}
   }
   return out;
 }
 
 
-@ In parallel, we also define a function |destroy_expr| to clean up the memory
-occupied by an expression. It is classified as a parsing function since it is
-called amongst others by the parser when popping off tokens at syntax errors.
+@*1 Atomic expression. The simplest expressions are the ones consisting of
+just one symbol, namely the denotations (constants), applied identifier, and
+the symbol \.\$ referring to the last value computed.
 
-@< Declarations of functions for the parser @>=
-void destroy_expr(expr e);
+@*2 Denotations.
+%
+We call simple constant expressions ``denotations''. There are recognised by
+the scanner, and either the scanner or the parser will build an appropriate
+node for them, which just stores the constant value denoted. For integer and
+Boolean denotations, the value itself will fit comfortably inside the |struct
+expr@;|, and moreover we can share a variant because the tag will tell whether
+to interpret it is integer or Boolean. For strings we store a |std::string|,
+which is more complicated than the |char*@[@]@;| that we used to store, but it
+is instructive for how the special member functions of |expr| should handle
+non-POD variants, which can neither be assigned to non-initialised memory
+without calling a constructor, nor be left in memory that will be reclaimed
+without calling a destructor.
 
-@~The definition of |destroy_expr| is also distributed among the different
-variants of the |union expru@;|.
-
-@< Definitions of functions for the parser @>=
-void destroy_expr(expr e)
-{@; switch (e.kind)
-  {@; @< Cases for destroying an expression |e| @>
-  }
-}
-
-
-@*1 Atomic expressions.
-The simplest expressions are atomic constants, which we shall call
-denotations. There are recognised by the scanner, and either the scanner or
-the parser will build an appropriate node for them, which just stores the
-constant value denoted. We need no structures here, since the value itself
-will fit comfortably inside the |union expru@;|. The fact that strings are
-stored as a character pointer, which should be produced using |new[]| by the
-caller of the functions described here, is a legacy of the restriction
-that only types representable in \Cee\ could be used originally.
-
-@< Variants... @>=
+@< Variants of ... @>=
 
 int int_denotation_variant;
-char* str_denotation_variant;
+std::string str_denotation_variant;
 
-@~But each type of denotation has a tag identifying it.
+@~Each of the three types of denotation has a tag identifying it.
 
 @< Enumeration tags for |expr_kind| @>=
 integer_denotation, string_denotation, boolean_denotation, @[@]
 
-@ To print an integer denotation we just print its variant field; for string
-denotations we do the same but enclosed in quotes, while for Boolean
-denotations we reproduce the keyword that gives the denotation.
+@ For most of these variants there is a corresponding constructor that
+placement-constructs the constant value into that variant. For the integer and
+Boolean case we might alternatively have assigned to the field, but not for
+the string variant. In fact we decided to declare the Boolean constructor
+deleted, since it many types (like all pointer types) implicitly convert to
+|bool|, and if we had a Boolean constructor then an accidental use of such a
+type in an initialiser for |expr| would bind to that constructor, silently
+producing an error that would be hard to diagnose.
 
-@< Cases for printing... @>=
-case integer_denotation: out << e.e.int_denotation_variant; break;
-case string_denotation:
-  out << '"' << e.e.str_denotation_variant << '"'; break;
-case boolean_denotation:
-  out << (e.e.int_denotation_variant!=0 ? "true" : "false"); break;
+@< Methods of |expr| @>=
+  explicit expr(int n)
+  : kind(integer_denotation), int_denotation_variant(n) @+{}
+  expr(bool b) = @[ delete @];
+  explicit expr(std::string&& s)
+   : kind(string_denotation)
+   , str_denotation_variant(std::move(s)) @+{}
 
-@~When a string denotation is destroyed, we free the string that was created
-by the lexical scanner.
+@~For more explicit construction of these variants in a dynamically allocated
+|expr| object, we provide the functions below.
+
+@< Declarations of functions for the parser @>=
+expr_p make_int_denotation (int val);
+expr_p make_bool_denotation(bool val);
+expr_p make_string_denotation(std::string&& val);
+
+@~The definition of these functions is quite trivial easy, as will be typical
+for node-building functions. However for Boolean denotations we abuse of the
+integer argument constructor and then correct the |kind| field of the
+result, so as to circumvent that that that a constructor with |bool|
+argument is not defined.
+
+@< Definitions of functions for the parser @>=
+expr_p make_int_denotation (int val)
+@+{@; return new expr(val); }
+
+expr_p make_bool_denotation(bool val)
+{@; expr result (val ? 1 : 0);
+  result.kind=boolean_denotation;
+  return new expr(std::move(result));
+}
+
+expr_p make_string_denotation(std::string&& val)
+ @+{@; return new expr(std::move(val)); }
+
+@ For integer and Boolean denotations there is nothing to destroy. For string
+denotations however we must destroy the |std::string| object. It was quite a
+puzzle to find the right syntax for that, because of what is essentially a bug
+in \.{gcc}, namely with |string| in place of |basic_string| the look-up of the
+destructor fails.
+
+@s basic_string string
 
 @< Cases for destroying... @>=
 case integer_denotation: case boolean_denotation: break;
-case string_denotation: delete[] e.e.str_denotation_variant; break;
+case string_denotation:
+  str_denotation_variant.~basic_string<char>(); break;
 
-@ To build the node for denotations, we provide the functions below.
+@ In the |expr::set_from| method we change variants both in |*this| (which was
+|no_expr|) and in |other| (which was |no_expr|). This means that for non-POD
+type we must combine construction into a variant of |*this| and a destruction
+of that variant of |other|. We use move construction for efficiency, and it
+will probably leave an empty shell to be destructed, but this does not mean we
+can omit the destruction.
 
-@< Declarations of functions for the parser @>=
-expr make_int_denotation (int val);
-expr make_string_denotation(char* val);
-expr make_bool_denotation(int val);
+@< Cases for copying... @>=
+  case integer_denotation:
+  case boolean_denotation:
+    int_denotation_variant = other.int_denotation_variant; break;
+  case string_denotation:
+    new (&str_denotation_variant)
+    std::string(std::move(other.str_denotation_variant));
+    other.str_denotation_variant.~basic_string<char>();
+  break;
 
-@~The definition of these functions is quite trivial, as will be typical for
-node-building functions.
+@ To print an integer denotation we just print its variant field; for Boolean
+denotations we reproduce the keyword that gives the denotation, while for string
+denotations we print the stored string enclosed in quotes.
 
-@< Definitions of functions for the parser @>=
-expr make_int_denotation (int val)
-{ expr result; result.kind=integer_denotation;
-@/result.e.int_denotation_variant=val; return result;
-}
-expr make_string_denotation(char* val)
-{ expr result; result.kind=string_denotation;
-@/result.e.str_denotation_variant=val; return result;
-}
-expr make_bool_denotation(int val)
-{ expr result; result.kind=boolean_denotation;
-@/result.e.int_denotation_variant=val; return result;
-}
+@< Cases for printing... @>=
+case integer_denotation: out << e.int_denotation_variant; break;
+case boolean_denotation:
+  out << (e.int_denotation_variant!=0 ? "true" : "false"); break;
+case string_denotation:
+  out << '"' << e.str_denotation_variant << '"'; break;
 
-@ An expression that behaves somewhat like a denotation is `\.\$', which
-stands for the last value computed. This leads to an expression type with no
-associated value. The node for it will be directly created in the parser.
-
-@< Enumeration tags for |expr_kind| @>=
-last_value_computed, @[@]
-
-@~Like for integer and boolean denotations, there is nothing to destroy here.
-@< Cases for destroying... @>=
-case last_value_computed: break;
-
-@~@< Cases for printing... @>=
-case last_value_computed: out << '$'; @q$@> break;
-
-@ Another atomic expression is an applied identifier. They use the type
+@*2 Applied identifiers, and the last value computed.
+%
+For representing applied identifiers, we shall use the type
 |Hash_table::id_type| (a small integer type) of indices into the table of
 identifier names, which we lift out of that class by using a |typedef|.
 
-@< Typedefs... @>=
+@< Includes needed... @>=
+#include "buffer.h" // for |Hash_table|
+
+@~Then here is how we identify an applied identifier.
+@< Type declarations needed in definition of |struct expr@;| @>=
 typedef Hash_table::id_type id_type;
 
-@ For identifiers we just store their code.
-@< Variants... @>=
-id_type identifier_variant;
-
-@~Their tag is |applied_identifier|.
+@~Their tag is |applied_identifier|. An expression that behaves somewhat
+similarly is `\.\$', which stands for the last value computed.
 
 @< Enumeration tags for |expr_kind| @>=
-applied_identifier, @[@]
+applied_identifier,
+last_value_computed, @[@]
 
-@ To print an applied identifier, we look it up in the main hash table.
+@ For identifiers we just store their code; for |last_value_computed| nothing
+at all.
+@< Variants of ... @>=
+id_type identifier_variant;
+
+@ Rather than having separate constructors for these variants, which would be
+ambiguous with constructors already defined, we build these variants directly
+in the following functions.
+
+@< Declarations of functions for the parser @>=
+expr_p make_applied_identifier (id_type id);
+expr_p make_dollar();
+
+@~In spite of the absence of dedicated constructors, these function have
+rather simple definitions. We split off a function |mk_applied_identifier|
+that is like a constructor, because it will be serve again below.
+
+@< Definitions of functions for the parser @>=
+expr mk_applied_identifier (id_type id)
+{@; expr result; result.kind=applied_identifier;
+  result.identifier_variant=id; return result;
+}
+expr_p make_applied_identifier (id_type id)
+ {@; return new expr(mk_applied_identifier(id)); }
+
+expr_p make_dollar ()
+{@; expr_p result = new expr;
+  result->kind=last_value_computed;
+  return result;
+}
+
+@~Like for integer and boolean denotations, there is nothing to destroy here.
+
+@< Cases for destroying... @>=
+case applied_identifier:
+case last_value_computed: break;
+
+@ Having a POD type variant, copying an applied identifier can be done by
+assignment.
+
+@< Cases for copying... @>=
+case applied_identifier: identifier_variant=other.identifier_variant; break;
+case last_value_computed: break;
+
+@~To print an applied identifier, we look it up in the main hash table. We
+print \.\$ as the user wrote it.
 
 @< Cases for printing... @>=
 case applied_identifier:
-  out << main_hash_table->name_of(e.e.identifier_variant);
+  out << main_hash_table->name_of(e.identifier_variant);
 break;
+case last_value_computed: out << '$'; @q$@> break;
 
-@~For destroying an applied identifier, there is nothing to do.
+@*1 Expression lists.
+%
+We use expression lists in various contexts, so they will occur as variant
+of~|expr|.
 
-@< Cases for destroying... @>=
-case applied_identifier: break;
+@< Includes needed... @>=
+#include "sl_list.h"
 
-@ To build the node for applied identifiers we provide the function
-|make_applied_identifier|.
+@~Historically implementing these lists using the atlas class
+template |containers::simple_list| was the first time a non-POD variant of
+|expr| was introduced, and it required passage to \Cpp11 as well as
+substantial refactoring of the code to make this possible and safe.
 
-@< Declarations of functions for the parser @>=
-expr make_applied_identifier (id_type id);
-
-@~The definition of |make_applied_identifier| is entirely trivial.
-
-@< Definitions of functions for the parser @>=
-expr make_applied_identifier (id_type id)
-{@; expr result; result.kind=applied_identifier;
-  result.e.identifier_variant=id; return result;
-}
-
-@*1 Expression lists, and list and tuple displays.
-A first recursive type of expression is the expression list, which will be
-used for various purposes.
-
-@< Typedefs... @>=
-typedef struct exprlist_node* expr_list;
-
-@~The type is implemented as a simply linked list.
-@< Structure and typedef declarations for types built upon |expr| @>=
-struct exprlist_node {@; expr e; expr_list next; };
-
-@ Before we go on to use this type, let us define a simple function for
-calculating the length of the list; it will actually be used by the evaluator
-rather than by the parser.
-
-@< Declaration of functions not for the parser @>=
-size_t length(expr_list l);
-
-@~The definition is no surprise.
-
-@< Definitions of functions not for the parser @>=
-size_t length(expr_list l) @+
-{@; size_t n=0; while(l!=NULL) {@; ++n; l=l->next;}
-  return n;
-}
+@< Type declarations needed in definition of |struct expr@;| @>=
+typedef containers::simple_list<expr> expr_list;
+typedef containers::sl_node<expr>* raw_expr_list;
+  // raw counterpart for use by parser
 
 @ Any syntactic category whose parsing value is a list of expressions will use
 the variant |sublist|.
 
-@< Variants... @>=
+@< Variants of ... @>=
 expr_list sublist;
 
-@ An evident category with an |expr_list| as parsing value is a bracketed list
-for designating a vector; we shall call such an expression a list display.
+@~There are two such syntactic categories: tuple displays and list displays,
+which are written with parentheses respectively with square brackets.
+These are rather different from a type-checking point of view (in a list
+display the types of all components must be the same), but for
+constructing the parse tree, there is no difference, we just need a different
+tag to mark the distinction.
 
-@< Enumeration tags for |expr_kind| @>= list_display, @[@]
+@< Enumeration tags for |expr_kind| @>= tuple_display, list_display, @[@]
 
-@ To print a list display, we call the operator~`|<<|' recursively to print
-subexpressions.
+@~We provide a constructor that serves both types of lists.
 
-@< Cases for printing... @>=
-case list_display:
-{ expr_list l=e.e.sublist;
-  if (l==NULL) out << "[]";
-  else
-  { out << '[';
-    do {@; out << l->e; l=l->next; out << (l==NULL ? ']' : ',');}
-    while (l!=NULL);
-  }
-}
-break;
+@< Methods of |expr| @>=
+expr(expr_list&& nodes, bool is_tuple)
+ : kind(is_tuple ? tuple_display : list_display)
+ , sublist(std::move(nodes))
+ @+{}
 
-@ Destroying lists of expressions will be done in a function callable from the
-parser, as it may need to discard tokens holding such lists.
-
-@< Declarations of functions for the parser @>=
-void destroy_exprlist(expr_list l);
-
-@~This function recursively destroys subexpressions, and cleans up the nodes of
-the list themselves when we are done with them. Note that | l=l->next| cannot
-be the final statement in the loop body below.
-
-@< Definitions of functions for the parser @>=
-void destroy_exprlist(expr_list l)
-{@; while (l!=NULL)
-  {@; destroy_expr(l->e); expr_list this_node=l; l=l->next; delete this_node; }
-}
-
-@~Destroying a list display is now easily defined.
-
-@< Cases for destroying... @>=
-case list_display: destroy_exprlist(e.e.sublist);
-break;
-
-
-@ To build an |exprlist_node|, we just combine an expression with an
-|expr_list| inside a freshly created node. To start off the construction, we
-shall use |null_expr_list| for the empty list. Often it will be practical to
-use right recursive grammar rule that build lists backwards, so we provide a
-reversal function to get the proper ordering once the end of the list is
+@ To build an |exprlist_node|, we provide a function |make_exprlist_node| to
+combine an expression with a |raw_expr_list|. To start off the construction,
+one may use |raw_expr_list()| for the empty list. Often it will be practical
+to use right recursive grammar rule that build lists backwards (so |e| is
+actually to the right of |l|), so we provide
+a reversal function to get the proper ordering once the end of the list is
 reached. Finally we provide the wrapping function |wrap_expr_list| for list
 displays.
 
 @< Declarations of functions for the parser @>=
-extern const expr_list null_expr_list;
-expr_list make_exprlist_node(expr e, expr_list l);
-expr_list reverse_expr_list(expr_list l);
-expr wrap_list_display(expr_list l);
-
-
-@~The definition of |make_expr_list| is quite trivial.
-
-@< Definitions of constants visible to the parser @>=
-const expr_list null_expr_list=NULL;
+raw_expr_list make_exprlist_node(expr_p e, raw_expr_list l);
+raw_expr_list reverse_expr_list(raw_expr_list l);
+expr_p wrap_tuple_display(raw_expr_list l);
+expr_p wrap_list_display(raw_expr_list l);
 
 @~The function |reverse_expr_list| is easy as well. Of the two possible and
 equivalent list reversal paradigms, we use the ``hold the head'' style which
@@ -330,55 +423,82 @@ combined, since whether or not the list should be reversed can only be
 understood when the grammar rules are given.
 
 @< Definitions of functions for the parser @>=
-expr_list make_exprlist_node(expr e, expr_list l)
-{@; expr_list n=new exprlist_node; n->e=e; n->next=l; return n; }
-expr_list reverse_expr_list(expr_list l)
-{ expr_list r=null_expr_list;
-  while (l!=null_expr_list) {@; expr_list t=l; l=t->next; t->next=r; r=t; }
-  return r;
-}
-expr wrap_list_display(expr_list l)
-{@; expr result; result.kind=list_display; result.e.sublist=l; return result;
-}
+raw_expr_list make_exprlist_node(expr_p e, raw_expr_list raw)
+  {@; expr_ptr saf(e); expr_list l(raw);
+    l.push_front(std::move(*e));
+    return l.release();
+  }
 
-@ Besides list displays in which all types must agree, we have tuple displays.
-These are rather different from a type-checking point of view, but for
-constructing the parse tree, there is no difference, we just need a different
-tag to mark the distinction.
+raw_expr_list reverse_expr_list(raw_expr_list raw)
+{@; expr_list l(raw); l.reverse(); return l.release(); }
+@)
+expr_p wrap_tuple_display(raw_expr_list l)
+@+{@; return new expr(expr_list(l),true); }
+expr_p wrap_list_display(raw_expr_list l)
+@+{@; return new expr(expr_list(l),false); }
 
-@< Enumeration tags for |expr_kind| @>= tuple_display, @[@]
+@ Destroying a tuple display or list display is easily defined.
 
-@ We must add cases the appropriate switches to handle tuple displays.
-Printing a tuple display is similar to printing a list display, but using
-parentheses instead of brackets.
+@< Cases for destroying... @>=
+  case tuple_display:
+  case list_display: sublist.~expr_list();
+break;
+
+@ Destroying lists of expressions will also be done via a function callable
+from the parser, as it may need to discard tokens holding such lists; these
+lists are at that point represented by raw pointers.
+
+@< Declarations of functions for the parser @>=
+void destroy_exprlist(raw_expr_list l);
+
+@~Its definition is easy; we convert the raw pointer from the parser into an
+|expr_list| then simply let it die, which cleans up the list. This is
+equivalent to calling |delete l| directly, but depends less on knowing
+implementation details. We enclose the case in additional parentheses to avoid
+interpreting it as a declaration.
+
+@< Definitions of functions for the parser @>=
+void destroy_exprlist(raw_expr_list l)
+@+{@; (expr_list(l)); }
+
+@ Copying can be obtained by move construction followed by destruction of
+(what remains of) the original value. For raw pointers simply assigning
+|sublist=other.sublist| would also work, but non POD types like |expr_list|
+this is the only proper way to proceed, even though in this particular case it
+can be seen that destructing a list after emptying it by move-constructing out
+of it is in fact a no-op.
+
+@< Cases for copying... @>=
+  case tuple_display:
+  case list_display:
+  @/new (&sublist) expr_list (std::move(other.sublist));
+    other.sublist.~expr_list();
+  break;
+
+@ Printing tuple displays and list displays is entirely similar, using
+parentheses in the former case and brackets in the latter..
 
 @< Cases for printing... @>=
 case tuple_display:
-{ expr_list l=e.e.sublist;
-  if (l==NULL) out << "()";
+{ const expr_list& l=e.sublist;
+  if (l.empty()) out << "()";
   else
-  { out << '(';
-    do {@; out << l->e; l=l->next; out << (l==NULL ? ')' : ',');}
-    while (l!=NULL);
+  { for (auto it=l.begin(); not l.at_end(it); ++it)
+      out << (it==l.begin() ? '(' : ',') << *it;
+    out << ')';
   }
 }
 break;
-
-@~Destroying a tuple display is the same as destroying a list display.
-
-@< Cases for destroying... @>=
-case tuple_display: destroy_exprlist(e.e.sublist);
-break;
-
-@ To make tuple displays, we use a function similar to that for list displays.
-@< Declarations of functions for the parser @>=
-expr wrap_tuple_display(expr_list l);
-
-@~In fact the only difference is the tag inserted.
-@< Definitions of functions for the parser @>=
-expr wrap_tuple_display(expr_list l)
-{@; expr result; result.kind=tuple_display; result.e.sublist=l; return result;
+case list_display:
+{ const expr_list& l=e.sublist;
+  if (l.empty()) out << "[]";
+  else
+  { for (auto it=l.begin(); not l.at_end(it); ++it)
+      out << (it==l.begin() ? '[' : ',') << *it;
+    out << ']';
+  }
 }
+break;
 
 @ Length 0 tuple displays are sometimes used as a substitute expression where
 nothing useful is provided, for instance for a missing else-branch. They are
@@ -392,41 +512,113 @@ bool is_empty(const expr& e);
 
 @< Definitions of functions not for the parser @>=
 bool is_empty(const expr& e)
-@+{@; return e.kind==tuple_display and e.e.sublist==NULL; }
+@+{@; return e.kind==tuple_display and e.sublist.empty(); }
 
 @*1 Function applications.
-Another recursive type of expression is the function application.
+%
+Another recursive type of expression is the function application. Since it
+will hold two subexpressions, we must use a pointer when including it as
+variant of |expr|. We use a smart pointer, though in principle there is not
+much point in doing that for a variant field in a |union| (the variant does
+not benefit from automatic destruction, so the destructor |expr::~expr| must
+still explicitly call the destructor for the variant, where it would otherwise
+have directly called |delete| for the pointer). However, since some variants
+already have types with move semantics, it seems that similarly making all
+variants have it is the less confusing solution.
 
-@< Typedefs... @>=
-typedef struct application_node* app;
+@< Type declarations needed in definition of |struct expr@;| @>=
+typedef std::unique_ptr<struct application_node> app;
 
-@~Now that we have tuples, a function application just takes one argument, so
-an |application_node| contains an identifier tag and an argument expression.
-Function and argument can be arbitrary expressions.
+@~Since \.{realex} has tuples, we convene that every function call takes just
+one argument. So we define an |application_node| to contain a function and an
+argument expression; both are allowed to be arbitrary expressions, though the
+function is often an applied identifier, and the argument is often a tuple
+display.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct application_node {@; expr fun; expr arg; };
+struct application_node
+{ expr fun; expr arg;
+@)
+  application_node(expr&& fun, expr&& arg)
+@/: fun(std::move(fun)), arg(std::move(arg)) @+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for expressions that will invoke a built-in function is
-|function_call|. It is used for operator invocations as well.
+|function_call|. It is used as internal representation for operator
+applications (entered as formulae) as well.
 
 @< Enumeration tags for |expr_kind| @>= function_call, @[@]
 
 @~An evident (and unique) category of |expr| values with an |app| as parsing
 value is a function call.
 
-@< Variants... @>=
+@< Variants of ... @>=
 app call_variant;
 
-@ To print a function call, we look up the name of the function in the global
-hash table, and either print a tuple display or a single expression enclosed
-in parentheses for which we call the operator~`|<<|' recursively. We do not
-attempt to reconstruct infix formulae.
+@ There is a constructor for building this variant.
+@< Methods of |expr| @>=
+explicit expr(app&& fx)
+ : kind(function_call)
+ , call_variant(std::move(fx))
+ @+{}
+
+@ To build an |application_node|, we combine the function identifier with an
+|expr_list| for the argument. The argument list will either be packed into a
+tuple, or if it has length$~1$ unpacked into a single expression.
+
+@< Declarations of functions for the parser @>=
+expr_p make_application_node(expr_p f, raw_expr_list args);
+
+@~Here for once there is some work to do. Since there are two cases to deal
+with, the argument expression is initially default-constructed, after which
+either it is set from the unique element of the argument list, or to a tuple
+display for the argument list. In the latter case we use a move assignment,
+since binding a freshly constructed |expr| to the modifiable lvalue that
+|set_from| wants would require introducing a dummy name.
+
+@< Definitions of functions for the parser @>=
+expr mk_application_node(expr&& f, expr_list&& args)
+{ app a(new application_node @[{ std::move(f), expr() }@]);
+  if (args.singleton())
+    a->arg.set_from(args.front());
+  else
+    a->arg=expr(std::move(args),true); // make into an argument tuple
+  return expr(std::move(a)); // move construct application expression
+}
+expr_p make_application_node(expr_p f, raw_expr_list args)
+ {@; expr_ptr ff(f);
+   return new expr(mk_application_node(std::move(*f),expr_list(args))); }
+
+@ Destroying a smart pointer field just means calling its destructor.
+
+@< Cases for destroying... @>=
+case function_call:
+  call_variant.~app();
+break;
+
+@ A |unique_ptr| should not be moved by writing
+|call_variant=std::move(other.call_variant)| since this would attempt to apply
+delete to the uninitialised ``previous value'' of |call_variant|. On the other
+hand we know that afterwards |other.call_variant| holds a null pointer, so we
+do not bother to call its destructor.
+
+@< Cases for copying... @>=
+   case function_call:
+ @/ new (&call_variant) app(std::move(other.call_variant)); break;
+
+@ To print a function call, we print the function and a tuple display for the
+ arguments, even if there is only one. The function part will also be enclosed
+ in parentheses, except in the (very common) case where the function is given
+ by an identifier (possibly an operator name). The recursive call of |<<|
+ handles all details, such as looking up the function name. We do not yet
+ attempt to (re)construct infix formulae, but this is the place where is could
+ be done.
 
 @< Cases for printing... @>=
 case function_call:
-{ app a=e.e.call_variant;
-  expr fun=a->fun,arg=a->arg;
+{ const app& a=e.call_variant;
+  const expr& fun=a->fun; const expr& arg=a->arg;
   if (fun.kind==applied_identifier) out << fun;
   else out << '(' << fun << ')';
   if (arg.kind==tuple_display) out << arg;
@@ -434,66 +626,47 @@ case function_call:
 }
 break;
 
-@~Here we clean up function and argument, and then the node for the function
-call itself.
-
-@< Cases for destroying... @>=
-case function_call:
-  destroy_expr(e.e.call_variant->fun);
-  destroy_expr(e.e.call_variant->arg);
-  delete e.e.call_variant;
-break;
-
-
-@ To build an |application_node|, we combine the function identifier with an
-|expr_list| for the argument. For the moment we do the packing or unpacking
-(in case of a single argument) of the argument list here, rather than via the
-syntax; the latter option would allow avoiding to pack singleton lists. But
-the current method should be compatible with providing multiple arguments as a
-single tuple value.
-
-@< Declarations of functions for the parser @>=
-expr make_application_node(expr f, expr_list args);
-
-@~Here for once there is some work to do. If a singleton argument list is
-provided, the argument expression must be picked from it, but in all other
-cases the argument list must be made into a tuple display. Note that it is
-convenient here that |wrap_tuple_display| does not reverse the list, since
-this is already done by the parser before calling |make_application_node|.
-
-@< Definitions of functions for the parser @>=
-expr make_application_node(expr f, expr_list args)
-{ app a=new application_node; a->fun=f;
-  if (args!=NULL && args->next==NULL) // a single argument
-  {@; a->arg=args->e; delete args; }
-  else a->arg=wrap_tuple_display(args);
-  expr result; result.kind=function_call; result.e.call_variant=a;
-  return result;
-}
-
 @ We shall frequently need to form a function application where the function
 is accessed by an applied identifier and the argument is either a single
 expression or a tuple of two expressions. We provide two functions to
 facilitate those constructions.
 
 @< Declarations of functions for the parser @>=
-expr make_unary_call(id_type name, expr arg);
-expr make_binary_call(id_type name, expr x, expr y);
+expr_p make_unary_call(id_type name, expr_p arg);
+expr_p make_binary_call(id_type name, expr_p x, expr_p y);
 
-@~In the unary case we avoid calling |make_application| with a singleton
-list that will be immediately destroyed,
+@~In the binary case, we must construct an argument list of two expressions.
+We were tempted to initialise |args| below using a two-element initialiser
+list, but initialiser lists are incompatible with move semantics. So instead
+we push the arguments in reverse order onto an expression list, and then make
+a function call by calling |mk_application_node| using that argument list.
 
 @< Definitions of functions for the parser @>=
-expr make_unary_call(id_type name, expr arg)
-{ app a=new application_node; a->fun=make_applied_identifier(name); a->arg=arg;
-  expr result; result.kind=function_call; result.e.call_variant=a;
-  return result;
+
+expr mk_binary_call(id_type name, expr&& x, expr&& y)
+{ expr_list args;
+  args.push_front(std::move(y));
+  args.push_front(std::move(x));
+  return mk_application_node(mk_applied_identifier(name),std::move(args));
 }
-@)
-expr make_binary_call(id_type name, expr x, expr y)
-{ expr_list args=make_exprlist_node(x,make_exprlist_node(y,NULL));
-  return make_application_node(make_applied_identifier(name),args);
+expr_p make_binary_call(id_type name, expr_p x, expr_p y)
+ {@;
+   return new
+     expr(mk_binary_call(name,std::move(*expr_ptr(x)),std::move(*expr_ptr(y))));
+ }
+
+@~In the unary case we avoid making an argument list, constructing the
+function call directly.
+
+@< Definitions of functions for the parser @>=
+expr mk_unary_call(id_type name, expr&& arg)
+{@;
+  return expr(app(
+      new application_node { mk_applied_identifier(name), std::move(arg) }));
 }
+expr_p make_unary_call(id_type name, expr_p a)
+ {@; return new expr(mk_unary_call(name,std::move(*expr_ptr(a)))); }
+
 
 @*1 Operators and priority.
 %
@@ -541,25 +714,25 @@ right at odd levels. Thus there is never a conflict of different directions of
 associativity at the same priority level.
 
 In the absence of unary operators, a formula is an alternation of operands and
-operators, where the former comprises any expression bound more tightly than
-any formula, for instance one enclosed in parentheses. For every operator that
-comes along we can already determine its left subtree by comparing priorities
-with any previous ones. As a consequence of these comparisons, the right
-subtree of some previous operators~$\omega$ may also be completed (if~$\omega$
-turned out to bind more strongly than the current operator); in that case a
-formula with root~$\omega$ is constructed and henceforth becomes a single
-operand. Therefore at any point just after seeing an operator, there will be a
-list of pending operators of increasing priorities (weakly at odd priority
-levels), each with a complete left operand. If the formula would terminate
-after one more operand, then each pending operator would get as right operand
-the formula recursively constructed from everything that follows it. Now when
-a new operand followed by an operator~$\omega$ comes along, the pending
-operators are considered from right to left; while the operator has a higher
-priority than~$\omega$, or the same even priority, it receives the new(est)
-operand as its right operand, and the resulting formula becomes the newest
-operand. Once an operator is encountered whose priority is too low to capture
-the operand, the newest operand becomes the left subtree of~$\omega$, which
-now becomes the leftmost pending operator.
+operators, where the former comprises any expression types bound more tightly
+than formulae, for instance expressions enclosed in parentheses. For every
+operator that comes along we can already determine its left subtree by
+comparing priorities with any previous ones. As a consequence of these
+comparisons, the right subtree of some previous operators~$\omega$ may also be
+completed (if~$\omega$ turned out to bind more strongly than the current
+operator); in that case a formula with root~$\omega$ is constructed and
+henceforth becomes a single operand. Therefore at any point just after seeing
+an operator, there will be a list of pending operators of increasing
+priorities (weakly at odd priority levels), each with a complete left operand.
+If the formula would terminate after one more operand, then each pending
+operator would get as right operand the formula recursively constructed from
+everything that follows it. Now when a new operand followed by an
+operator~$\omega$ comes along, the pending operators are considered from right
+to left; while the operator has a higher priority than~$\omega$, or the same
+even priority, it receives the new(est) operand as its right operand, and the
+resulting formula becomes the newest operand. Once an operator is encountered
+whose priority is too low to capture the operand, the newest operand becomes
+the left subtree of~$\omega$, which now becomes the leftmost pending operator.
 
 Unary operators complicate the picture. Any priority one would like to
 associate to a prefix operator can only be relevant with respect to operators
@@ -572,54 +745,35 @@ so should \.{x\pow-2*y} parse as $(x^{-2})*y$ or as $x^{-(2*y)}$?
 
 Two reasonable solutions exists for defining a general mechanism: the simple
 solution is to give unary operators maximum priority (so that they can be
-handled immediately), the other is to give that priority whenever they are
-immediately preceded by another operator. We choose the latter option, since
-it allows interpreting \.{-x\pow2} less surprisingly as $-(x^2)$; somewhat
-more surprisingly the parentheses in $x+(-1)^n*y$ become superfluous. The
-example \.{x\pow-2*y} will then parse as $(x^{-2})*y$, which also seems
-reasonable. Note however that with this rule one does have the surprise
-that \.{x\pow-y\pow2} parses as $x^{(-y)^2}$.
+handled immediately), the other is to give them maximal priority only when
+they are immediately preceded by another operator. We choose the latter
+option, since it allows interpreting \.{-x\pow2} less surprisingly as
+$-(x^2)$; somewhat more surprisingly the parentheses in $x+(-1)^n*y$ become
+superfluous. The example \.{x\pow-2*y} will then parse as $(x^{-2})*y$, which
+also seems reasonable. Note however that with this rule one does have the
+surprise that \.{x\pow-y\pow2} parses as $x^{(-y)^2}$.
 
 @ The data type necessary to store these intermediate data during priority
 resolutions is a dynamic list of triples subtree-operator-priority. We use a
-linked list, which can be used without difficulty from the parser; the link
-points to an operator further to the left in the formula, whence it is called
-|prev| rather than the more usual~|next|. To implement the above solution for
-unary operators, we allow for the very first pending operator to not have any
-left subtree; since it is last in the list, we can indicate such absence
-without adding data fields or a dummy case for |expr|, by replacing the final
-null pointer by another exceptional value. Thus this possibility is not
-evident in the type declaration.
+|simple_list|, which is though to have it |front| on the right. To implement
+the above solution for unary operators, we allow for the very first pending
+operator to not have any left subtree; the expression is left of type
+|no_expr|, which can be tested to detect the end of the list.
 
 Postfix operators are quite rare in mathematics (the factorial exclamation
 mark is the clearest example, though certain exponential notations like the
 derivative prime could be considered as postfix operators as well) and more
-importantly seem to invariably have infinite priority, so the can be handled
+importantly seem to invariably have infinite priority, so the could be handled
 in the parser without dynamic priority comparisons. And even if such
 comparisons were needed, they could be handled by a new function operating in
 the list of partial formulae, and need not be taken into account in the data
 structure of that list itself. So here is that structure:
 
-
 @< Structure and typedef declarations... @>=
-typedef struct partial_formula* form_stack;
-struct partial_formula
-{@; expr left_subtree; id_type op; int prio;
-  form_stack prev;
-};
+struct formula_node {@; expr left_subtree; id_type op; int prio; };
 
-@ As mentioned above, we need an exceptional value of type |form_stack| to
-indicate a pending initial unary operator. For this we use the address of a
-dummy static variable.
-
-@< Declarations for the parser @>=
-
-extern struct partial_formula dummy_formula;
-const form_stack unary_marker=&dummy_formula;
-
-@~The |dummy_formula| needs to be allocated, even if it is never accessed.
-@< Definitions of constants... @>=
-struct partial_formula dummy_formula;
+typedef containers::simple_list<formula_node> form_stack;
+typedef containers::sl_node<formula_node>* raw_form_stack;
 
 @ We define the following functions operating on partial formulae: two to
 start them out with a binary or unary operator, the principal one to extend
@@ -627,62 +781,59 @@ with a new operand and binary operator, one to finish off the formula with
 a final operand, and of course one to clean up.
 
 @< Declarations for the parser @>=
-form_stack start_formula (expr e, id_type op, int prio);
-form_stack start_unary_formula (id_type op, int prio);
-form_stack extend_formula (form_stack pre, expr e,id_type op, int prio);
-expr end_formula (form_stack pre, expr e);
-void destroy_formula(form_stack s);
+raw_form_stack start_formula (expr_p e, id_type op, int prio);
+raw_form_stack start_unary_formula (id_type op, int prio);
+raw_form_stack extend_formula (raw_form_stack pre, expr_p e,id_type op, int prio);
+expr_p end_formula (raw_form_stack pre, expr_p e);
+void destroy_formula(raw_form_stack s);
 
-@ Starting a binary formula simply creates an initial node.
+@ Starting a formula simply creates an initial node, with a left operand in
+the case of a binary formula.
 @< Definitions of functions for the parser @>=
-form_stack start_formula (expr e, Hash_table::id_type op, int prio)
-{ form_stack result = new partial_formula;
-  result->left_subtree=e; result->op=op; result->prio=prio;
-  result->prev=NULL;
-  return result;
+raw_form_stack start_formula (expr_p e, id_type op, int prio)
+{ form_stack result;
+  result.push_front ( {std::move(*expr_ptr(e)), op, prio } );
+  return result.release();
 }
 @)
-form_stack start_unary_formula (id_type op, int prio)
-{ form_stack result = new partial_formula;
-  result->op=op; result->prio=prio;
-  result->prev=unary_marker;
-  return result;
+raw_form_stack start_unary_formula (id_type op, int prio)
+{ form_stack result;
+  result.push_front ( { expr(), op, prio } ); // leave |left_subtree| empty
+  return result.release();
 }
 
 @ Extending a formula involves the priority comparisons and manipulations
-indicated above. It turns out |start_formula| could be replaced by a call to
-|extend_formula| with |pre==NULL|.
+indicated above. It turns out |start_formula| could have been replaced by a
+call to |extend_formula| with |pre==NULL|. The second part of the condition in
+the while loop is short for |s.front().prio>prio or (s.front().prio==prio and
+prio%2==0)|.
 
 @< Definitions of functions for the parser @>=
-form_stack extend_formula (form_stack pre, expr e,id_type op, int prio)
-{ form_stack result=NULL;
-  while (pre!=NULL and (pre->prio>prio or pre->prio==prio and prio%2==0))
-  { delete result; result=pre; // clean up, but holding on to one node
-    @< Put |e| as right subtree into rightmost element of |pre|, and replace
-    |e| by the result, popping it from |pre| @>
-  }
 
-  if (result==NULL)
-    result=new partial_formula; // allocate if no nodes were combined
-  result->left_subtree=e; result->op=op; result->prio=prio;
-  result->prev=pre; return result;
+raw_form_stack extend_formula (raw_form_stack pre, expr_p ep,id_type op, int prio)
+{ expr e(std::move(*expr_ptr (ep))); form_stack s(pre);
+  while (not s.empty() and s.front().prio>=prio+prio%2)
+    @< Replace |e| by |op(left_subtree,e)| where |op| and |left_subtree|
+       come from popped |s.front()| @>
+  s.push_front({std::move(e),op,prio});
+  return s.release();
 }
 
-@ In case of an initial unary operator we ignore the unset |left_subtree|
-field. The other difference is that we advance by setting |pre=NULL| so that
-the loop will terminate correctly (alternative one could say |break|, but that
-would break the reuse we intend to make of this module in the following
-section).
+@ Here we make either a unary or a binary operator call. The unary case only
+applies for the last node of the stack (since only |start_unary_formula| can
+create a node without left operand), but that fact is not used here. Only once
+the node is emptied do we pop it with |s.front()|.
 
-@< Put |e| as right subtree into rightmost element of |pre|...@>=
-if (pre->prev!=unary_marker)
-@/{@; e = make_binary_call(pre->op,pre->left_subtree,e);
-  pre=pre->prev;
+@< Replace |e| by |op(left_subtree,e)|...@>=
+{ if (s.front().left_subtree.kind==no_expr)
+    e = mk_unary_call(s.front().op,std::move(e));
+      // apply initial unary operator
+  else
+    e = mk_binary_call(s.front().op
+                     ,std::move(s.front().left_subtree)
+                     ,std::move(e));
+  s.pop_front();
 }
-else
-{@; e = make_unary_call(pre->op,e);
-  pre=NULL;
-} // apply initial unary operator
 
 @ Wrapping up a formula is similar to the initial part of |extend_formula|,
 but with an infinitely low value for the ``current priority'' |prio|. So we
@@ -690,22 +841,17 @@ can reuse the main part of the loop of |extend_formula|, with just a minor
 modification to make sure all nodes get cleaned up after use.
 
 @< Definitions of functions for the parser @>=
-expr end_formula (form_stack pre, expr e)
-{ while (pre!=NULL)
-  { form_stack t=pre;
-    @< Put |e| as right subtree into rightmost element of |pre|...@>
-    delete t;
-  }
-  return e;
+expr_p end_formula (raw_form_stack pre, expr_p ep)
+{ expr e(std::move(*expr_ptr (ep))); form_stack s(pre);
+  while (not s.empty())
+    @< Replace |e| by |op(left_subtree,e)|...@>
+  return new expr(std::move(e));
 }
 
 @ Destroying a formula stack is straightforward.
 @< Definitions of functions for the parser @>=
-void destroy_formula(form_stack s)
-{@; while (s!=NULL and s!=unary_marker)
-  {@; form_stack t=s; s=s->prev; delete t;
-  }
-}
+void destroy_formula(raw_form_stack s)
+@+{@; (form_stack(s)); }
 
 @*1 Identifier patterns.
 %
@@ -718,52 +864,115 @@ options apply recursively, and in addition the identifier may be suppressed
 altogether, to allow such partial tagging of components as \\{ident}:$(,,z)$.
 To accommodate such possibilities we introduce the following recursive types.
 Our grammar allows for a pattern $()$ (but not $()$:\\{ident}), in which case
-|sublist==NULL|; it turned out that the possibility to bind no identifiers at
-all (while providing a void value) has its uses. However patterns of the form
-$(x)$, which would give a sublist of length~$1$, will be forbidden: they would
-be confusing since $1$-tuples do not exist.
+|sublist==nullptr| even though |kind ==0x2|; it turned out that the
+possibility to bind no identifiers at all (while providing a void value) has
+its uses. However patterns of the form $(x)$, which would give a sublist of
+length~$1$, will be forbidden: they would be confusing since $1$-tuples do not
+exist.
 
-Since patterns pointed to by |patlist| will need to be duplicated (in the
-evaluator), we provide a (default) constructor for |pattern_node| that will
-ensure that constructed nodes will immediately be safe for possible
-destruction by |destroy_id_pat| (no undefined pointers; the |sublist| pointer
-of |id_pat| is ignored when |kind==0|). The structure |id_pat| itself cannot
-have a constructor, since it figures in a |union|, where this is not allowed.
+The structure |raw_id_pat| cannot have a constructor, since it figures in a
+bare |union|, where this is not allowed. However the value from the will be
+transformed into |id_pat| which is fully equipped with (move) constructors and
+destructors. Its default constructor will ensure that constructed nodes will
+immediately be safe for possible destruction by |destroy_id_pat| (no undefined
+pointers; the |sublist| pointer of |id_pat| is ignored when |kind==0|). Other
+constructors are from a |raw_id_pat| reference and from individual components.
 
-@< Typedefs... @>=
-typedef struct pattern_node* patlist;
+@h "types.h" // so complete type definitions will be known in \.{parsetree.cpp}
+
+@< Type declarations needed in definition of |struct expr@;| @>=
+typedef containers::simple_list<struct id_pat> patlist;
+typedef containers::sl_node<struct id_pat>* raw_patlist;
+@)
+struct raw_id_pat
+{ id_type name;
+  unsigned char kind;
+  // bits 0,1: whether pattern has a name, respectively sublist
+  raw_patlist sublist;
+};
 struct id_pat
-{ patlist sublist;
-  id_type name;
-  unsigned char kind; /* bit 0: has name, bit 1: has sublist */
-};
-struct pattern_node
-{ patlist next;
-  struct id_pat body;
-  pattern_node () : next(NULL) @+{@; body.kind=0; }
+{ id_type name;
+  unsigned char kind;
+  // bits 0,1: whether pattern has a name, respectively sublist
+  patlist sublist;
+@)
+  id_pat() :name(), kind(0x0), sublist() @+{}
+  id_pat(const raw_id_pat& x)
+  @/ : name(x.name), kind(x.kind)
+  , sublist((kind & 0x2)==0 ? nullptr : x.sublist)
+  @+{}
+  id_pat (id_type n, unsigned char k, patlist&& l)
+  : name(n), kind(k), sublist(std::move(l)) @+{}
+  id_pat(patlist&& l): name(), kind(0x2),  sublist(std::move(l)) @+{}
+@)
+  id_pat (const id_pat& x) = @[ delete @];
+@/id_pat (id_pat&& x) = @[ default @];
+@/id_pat& operator=(const id_pat& x) = @[ delete @];
+@/id_pat& operator=(id_pat&& x) = @[ default @];
+  raw_id_pat release()
+  @+{@; return { name, kind, sublist.release() }; }
 };
 
-@ These types do not themselves represent a variant of |expru|, but will be
-used inside such variants. We can already provide a printing function.
+@ The function |make_pattern_node| to build a node takes a modifiable
+reference to a structure |body| with the contents of the current node; in
+practice this is a local variable in the parser.
+@< Declarations for the parser @>=
+raw_patlist make_pattern_node(raw_patlist prev,raw_id_pat& body);
+
+@ The function just assembles the pieces.
+@< Definitions of functions for the parser @>=
+raw_patlist make_pattern_node(raw_patlist prev,raw_id_pat& body)
+{@; patlist l(prev); l.push_front(id_pat(body)); return l.release(); }
+
+@ Patterns also need cleaning
+up, which is what |destroy_pattern| and |destroy_id_pat| will handle, and
+reversal as handled by |reverse_patlist|.
+
+@< Declarations for the parser @>=
+void destroy_pattern(raw_patlist p);
+void destroy_id_pat(const raw_id_pat& p);
+raw_patlist reverse_patlist(raw_patlist p);
+
+@ The function |destroy_pattern| just converts to a smart pointer, and
+|destroy_id_pat| calls it whenever there is a sub-list in a pattern.
+
+@< Definitions of functions for the parser @>=
+void destroy_pattern(raw_patlist p)
+@+{@; (patlist(p)); }
+@)
+void destroy_id_pat(const raw_id_pat& p)
+@+{@; if ((p.kind & 0x2)!=0)
+    destroy_pattern(p.sublist);
+}
+@)
+raw_patlist reverse_patlist(raw_patlist raw)
+@+{@; patlist p(raw);
+  p.reverse();
+  return p.release();
+}
+
+@ We can provide a printing function, that can be used from within the one for
+|expr|.
 
 @< Declaration of functions not for the parser @>=
 std::ostream& operator<< (std::ostream& out, const id_pat& p);
 
 @~Only parts whose presence is indicated in |kind| are printed. We take care
-that even if |sublist| is marked as present, it might be null. However, the
-list cannot be of length~1, so having put aside the case of an empty sublist,
-we can print a first comma unconditionally.
+that even if |sublist| is marked as present, it might be null. The
+list cannot be of length~$1$ but this fact is not used below.
 
 @< Definitions of functions not for the parser @>=
 std::ostream& operator<< (std::ostream& out, const id_pat& p)
 { if ((p.kind & 0x2)!=0)
-    if (p.sublist==NULL)
-      out << "()";
-    else
-    { out << '(' << p.sublist->body << ',';
-      for (patlist l=p.sublist->next; l!=NULL; l=l->next)
-      out << l->body << (l->next!=NULL ? ',' : ')');
+  { out << '(';
+    if (not p.sublist.empty())
+    { auto it = p.sublist.begin();
+      out << *it;
+      for ( ++it ; not p.sublist.at_end(it); ++it)
+        out << ',' << *it;
     }
+    out << ')';
+  }
   if (p.kind==0x3) // both parts present
     out << ':';
   if ((p.kind & 0x1)!=0)
@@ -771,67 +980,40 @@ std::ostream& operator<< (std::ostream& out, const id_pat& p)
   return out;
 }
 
-@ The function to build a node takes a pointer to a structure with the
-contents of the current node; in practice this is the address of a local
-variable in the parser. Patterns also need cleaning up, which
-|destroy_pattern| and |destroy_id_pat| will handle, and reversal as handled by
-|reverse_patlist|.
-
-@< Declarations for the parser @>=
-patlist make_pattern_node(patlist next,struct id_pat* body);
-void destroy_pattern(patlist p);
-void destroy_id_pat(struct id_pat* p);
-patlist reverse_patlist(patlist p);
-
-@ The function just assembles the pieces. In practice the |next| pointer will
-point to previously parsed nodes, so (as usual) reversal will be necessary.
-Being bored, we add a variation on list reversal.
-
-@< Definitions of functions for the parser @>=
-patlist make_pattern_node(patlist next,struct id_pat* body)
-{@; patlist l=new pattern_node; l->next=next; l->body=*body; return l; }
-@)
-void destroy_pattern(patlist p)
-{@; while (p!=NULL)
-  {@; patlist q=p; p=p->next; destroy_id_pat(&q->body); delete q; }
-}
-@)
-void destroy_id_pat(struct id_pat* p)
-{@; if ((p->kind & 0x2)!=0)
-    destroy_pattern(p->sublist);
-}
-@)
-patlist reverse_patlist(patlist p)
-{@; patlist q=NULL;
-  while (p!=NULL)
-  {@; patlist t=q; q=p; p=q->next; q->next=t; }
-  return q;
-}
-
 @*1 Let expressions.
-We introduce let-expressions that introduce and bind local identifiers, as a
-first step towards having user defined functions. Indeed let-expressions will
-be implemented (initially) as a user-defined functions that is immediately
-called with the values bound in the let-expression. The reason to do this
-before considereing user-defined functions in general is that this avoids for
-now having to specify in the user program the types of the parameters of the
-function, these type being determined by the values provided.
+%
+We now consider let-expressions, which introduce and bind local identifiers,
+which historically were a first step towards having user defined functions.
+Indeed a let-expression will be implemented as a user-defined function that is
+immediately called with the (tuple of) values bound in the let-expression. The
+reason to have had let expressions before user-defined functions was that it
+could be done before user-specified types were introduced in the language; in
+a let expression types of variables are deduced from the values provided,
+whereas function parameters need to have explicitly specified types.
 
-@< Typedefs... @>=
-typedef struct let_expr_node* let;
+@< Type declarations needed in definition of |struct expr@;| @>=
+typedef std::unique_ptr<struct let_expr_node> let;
 
 @~After parsing, let-expression will have a single let-binding followed by a
 body giving the value to be returned. During parsing however, we may form
-intermediate values containing list of let-bindings, that will later be
+intermediate values containing lists of let-bindings, that will later be
 converted into a single one with a tuple as left hand side. We therefore
-define a node type |let_node| for a list of bindings, and a structure
-|let_expr_node| for a complete let-expression, containing only one binding,
-but in addition a body.
+define a list type |let_list| for a list of bindings, and a structure
+|let_expr_node| for a complete let-expression, containing (the components of)
+only one binding, and containing in addition a body.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-typedef struct let_node* let_list;
-struct let_node {@; struct id_pat pattern; expr val; let_list next; };
-struct let_expr_node {@; struct id_pat pattern; expr val; expr body; };
+struct let_pair {@; id_pat pattern; expr val; };
+typedef containers::simple_list<let_pair> let_list;
+typedef containers::sl_node<let_pair>* raw_let_list;
+@)
+struct let_expr_node
+{ id_pat pattern; expr val; expr body;
+@)
+  let_expr_node(id_pat&& pattern, expr&& val, expr&& body)
+@/: pattern(std::move(pattern)), val(std::move(val)), body(std::move(body))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for let-expressions is |let_expr|.
 
@@ -840,49 +1022,15 @@ struct let_expr_node {@; struct id_pat pattern; expr val; expr body; };
 @~Without surprise there is a class of |expr| values with a |let| as parsing
 value.
 
-@< Variants... @>=
+@< Variants of ... @>=
 let let_variant;
 
-@ To print a let-expression we do the obvious things, wihtout worrying about
-parentheses; this should be fixed (for all printing routines).
-
-@< Cases for printing... @>=
-case let_expr:
-{ let lexp=e.e.let_variant;
-  out << "let " << lexp->pattern << '=' << lexp->val <<	 " in " << lexp->body;
-}
-break;
-
-@ Destroying lists of declarations will be done in a function callable from the
-parser, like |destroy_exprlist|.
-
-@< Declarations of functions for the parser @>=
-void destroy_letlist(let_list l);
-
-@~Like |destroy_exprlist|, this function recursively destroys nodes, and the
-expressions they contain.
-
-@< Definitions of functions for the parser @>=
-void destroy_letlist(let_list l)
-{ while (l!=NULL)
-    @/{@; let_list p=l; l=l->next;
-      destroy_id_pat(&p->pattern);
-      destroy_expr(p->val);
-      delete p;
-    }
-}
-
-@~Here we clean up the declaration, and then the body of the let-expression.
-
-@< Cases for destroying... @>=
-case let_expr:
-{ let lexp=e.e.let_variant;
-  destroy_id_pat(&lexp->pattern);
-  destroy_expr(lexp->val);
-  destroy_expr(lexp->body);
-  delete lexp;
-}
-break;
+@ There is a constructor for building this variant.
+@< Methods of |expr| @>=
+explicit expr(let&& declaration)
+ : kind(let_expr)
+ , let_variant(std::move(declaration))
+ @+{}
 
 @ For building let-expressions, three functions will be defined. The function
 |make_let_node| makes a list of one declaration, while |append_let_node|
@@ -891,11 +1039,11 @@ constructed list |prev| of declaration; finally |make_let_expr_node| wraps up
 an entire let-expression.
 
 @< Declarations of functions for the parser @>=
-let_list make_let_node(struct id_pat pattern, expr val);
-let_list append_let_node(let_list prev, let_list cur);
-expr make_let_expr_node(let_list decls, expr body);
+raw_let_list make_let_node(raw_id_pat& pattern, expr_p val);
+raw_let_list append_let_node(raw_let_list prev, raw_let_list cur);
+expr_p make_let_expr_node(raw_let_list decls, expr_p body);
 
-@~The functions |make_let_node| and |append_let_node| build a list in reverse
+@ The functions |make_let_node| and |append_let_node| build a list in reverse
 order, which makes the latter function a particularly simple one. In
 |make_let_expr_node| combines multiple declarations (that were separated by
 commas) to one, taking care to reverse the order at the same time so that the
@@ -903,56 +1051,86 @@ tuple of patterns being declared comes out in the same order as it was
 specified in the program. Fortunately it is actually easier to build a merged
 list in reverse order.
 
-We provide local exception safety here, in the sense that if an exception is
-thrown we clean up the locally created nodes. As a side remark, we do realise
-that, as the parser function is written in \Cee, it will not be able to do any
-cleaning up of values referred to in its stack, in case of an exception thrown
-during its execution (here, or in calls to make-functions elsewhere, which it
-should be noted is fairly unlikely to happen). In fact the problem is not just
-one of programming language: even a parser generated as \Cpp~code would not
-help without special provisions (such as an exception handler in the parser
-function), since the |union| used for values on the parsing stack cannot have
-as members objects that handle their own cleaning up. Rather, this situation
-should probably be corrected by using a different allocation strategy while
-building the parse tree (avoiding explicit calls to |new| but allocating from
-local storage pools that can explicitly be emptied), in which case all
-cleaning up in the code below should also be removed.
+The argument |cur| for |append_let_node| is always the result of an
+application of |make_let_node|, so a list of length$~1$ This is just a trick
+to avoid having to deal with yet another type (corresponding to a |let_pair|,
+but demoted to POD) in the parser.
 
 @< Definitions of functions for the parser @>=
-let_list make_let_node(struct id_pat pattern, expr val)
-{@; let_list l=new let_node;
-  l->pattern=pattern; l->val=val; l->next=NULL;
-  return l;
+raw_let_list make_let_node(raw_id_pat& pattern, expr_p val)
+{ let_list result;
+  result.push_front ( { id_pat(pattern), std::move(*expr_ptr(val)) } );
+  return result.release();
 }
+
+raw_let_list append_let_node(raw_let_list prev, raw_let_list cur)
+{@; let_list result(prev);
+  result.push_front(std::move(let_list(cur).front()));
+  return result.release();
+ }
 @)
-let_list append_let_node(let_list prev, let_list cur)
-{@; cur->next=prev; return cur; }
-@)
-expr make_let_expr_node(let_list decls, expr body)
-{ let l=new let_expr_node; l->body=body;
-  expr result; result.kind=let_expr; result.e.let_variant=l;
-  try
-  { if (decls->next==NULL) // single declaration
-    @/{@; l->pattern=decls->pattern; l->val=decls->val;
-      delete decls;
-    }
-    else
-    { l->pattern.kind=0x2; l->pattern.sublist=NULL;
-      l->val=wrap_tuple_display(null_expr_list);
-      while (decls!=NULL)
-      { l->pattern.sublist =
-	  make_pattern_node(l->pattern.sublist,&decls->pattern);
-	l->val.e.sublist=make_exprlist_node(decls->val,l->val.e.sublist);
-	let_list p=decls; decls=p->next; delete p;
-      }
-    }
-    return result;
+expr mk_let_expr_node(let_list&& decls, expr& body)
+{ id_pat pattern; expr val;
+  if (decls.singleton()) // single declaration
+  @/{@; pattern=std::move(decls.front().pattern);
+    val=std::move(decls.front().val);
   }
-  catch(...)
-  {@; destroy_expr(result);
-    throw;
+  else
+  { patlist patl;
+    val=expr(expr_list(),true); // make a tuple expression
+    for (auto it=decls.begin(); not decls.at_end(it); ++it)
+      // zip open |decls|, reversing
+    {@; patl.push_front(std::move(it->pattern));
+      val.sublist.push_front(std::move(it->val));
+    }
+    pattern = id_pat(std::move(patl));
   }
+  return expr(let(new let_expr_node
+    { std::move(pattern), std::move(val),std::move(body) }));
+
 }
+expr_p make_let_expr_node(raw_let_list decls, expr_p body)
+ {@; return new expr(mk_let_expr_node(let_list(decls),*expr_ptr(body)));
+ }
+
+@ For the unique pointer |let|, copying is done just as was for |app| before.
+
+@< Cases for copying... @>=
+ case let_expr:
+   new (&let_variant) let(std::move(other.let_variant));
+ break;
+
+@~While |let_list| is only handled at the outermost level during parsing, it
+is |let| smart pointers that get built into |expr| values. As for all
+variants of |expr|, calling the destructor must be done explicitly.
+
+@< Cases for destroying... @>=
+case let_expr: let_variant.~let();
+break;
+
+@ Destroying lists of declarations will be done in a function callable from the
+parser, like |destroy_exprlist|.
+
+@< Declarations of functions for the parser @>=
+void destroy_letlist(raw_let_list l);
+
+@~Like in |destroy_exprlist|, merely reconstructing the non-raw list and
+letting that be destructed suffices to recursively destroy all nodes of the
+list, and anything accessed from them.
+
+@< Definitions of functions for the parser @>=
+void destroy_letlist(raw_let_list l)
+@+{@; (let_list(l)); }
+
+@ To print a let-expression we just do the obvious things, for now without
+worrying about parentheses.
+
+@< Cases for printing... @>=
+case let_expr:
+{ const let& lexp=e.let_variant;
+  out << "let " << lexp->pattern << '=' << lexp->val <<	 " in " << lexp->body;
+}
+break;
 
 @*1 Types and user-defined functions.
 %
@@ -973,171 +1151,138 @@ the actual pointer types. Something that remains (for now) is the avoidance of
 smart pointers for types in the parser, since other pointers for expressions
 that it handles are not smart pointers either.
 
-We avoid including \.{types.h} into our header file \.{parsetree.h}, since the
-reverse inclusion is present and necessary. But we do need to know about the
-following type names, where it fortunately suffices to know they are pointers
-to unspecified structures.
+@< Includes needed... @>=
+#include "types.h"
 
-@< Structure and typedef... @>=
-struct type_expr;
-typedef class atlas::containers::sl_node<type_expr>* raw_type_list; // predeclare;
-typedef class atlas::containers::simple_list<type_expr> type_list; // predeclare;
-typedef type_expr* type_p;
-typedef std::unique_ptr<type_expr> type_ptr;
-
-@ These functions provide an interface to routines defined in the
-module \.{types.w}, stripping off the smart pointers.
+@ Most functionality for these types is given in \.{types.w}; we just need to
+say how to destroy them.
 
 @< Declarations of functions for the parser @>=
-raw_type_list mk_type_singleton(type_p raw);
-raw_type_list mk_type_list(type_p t,raw_type_list l);
-type_p mk_prim_type(int p);
-type_p mk_row_type(type_p c);
-type_p mk_tuple_type(raw_type_list l);
-type_p mk_function_type(type_p a,type_p r);
-@)
 void destroy_type(type_p t);
 void destroy_type_list(raw_type_list t);
 
-@ The following function is not used in the parser, and never had \Cee~linkage.
-
-@< Declaration of functions not for the parser @>=
-std::ostream& print_type(std::ostream& out, type_p type);
-
-@ All that is needed are conversions from ordinary pointer to auto-pointer and
-back (or from integer to enumeration type). Nothing can throw during these
-conversions, so passing bare pointers is exception-safe.
+@ Since |type_ptr| and |type_list| are fully equipped types, it suffices to
+convert to them and forget.
 
 @< Definitions of functions for the parser @>=
 
-raw_type_list mk_type_singleton(type_p raw)
-{ type_ptr t(raw); // ensures node is cleaned up
-  type_list result;
-  result.push_front(std::move(*t));
-  return result.release();
-}
-
-raw_type_list mk_type_list(type_p raw,raw_type_list l)
-{ type_ptr t(raw); // ensure clean-up
-  type_list tmp(l); // since |prefix| needs second argument an lvalue reference
-  return prefix(std::move(*t),tmp).release();
-}
-@)
-type_p mk_prim_type(int p)
-{@; return make_prim_type(static_cast<primitive_tag>(p)).release(); }
-
-type_p mk_row_type(type_p c)
-{@; return make_row_type(type_ptr(c)).release(); }
-
-type_p mk_tuple_type(raw_type_list l)
-{@; return make_tuple_type(type_list(l)).release(); }
-
-type_p mk_function_type(type_p a,type_p r)
-{ type_ptr pa(a), pr(r); // ensure cleaning up at return
-  return make_function_type(std::move(*a),std::move(*r)).release(); }
-@)
-
-void destroy_type(type_p t)@+ {@; delete t; }
-void destroy_type_list(raw_type_list t)@+ {@; delete t; } // recursive destruction
-
-std::ostream& print_type(std::ostream& out, type_p type) @+
-{@; return out << *type; }
+void destroy_type(type_p t)@+ {@; (type_ptr(t)); }
+void destroy_type_list(raw_type_list t)@+ {@; (type_list(t)); }
+  // recursive destruction
 
 @ For user-defined functions we shall use a structure |lambda_node|.
-@< Typedefs that are required... @>=
-typedef struct lambda_node* lambda;
+@< Type declarations needed in definition of |struct expr@;| @>=
+typedef std::unique_ptr<struct lambda_node> lambda;
 
-@~It contains a pattern for the formal parameter(s), its type (a void pointer
-that actually points to a |type_declarator| structure defined
-in \.{evaluator.w}), and an  expression (the body of the function).
+@~It contains a pattern for the formal parameter(s), its type (a smart pointer
+defined in \.{types.w}), and an expression (the body of the function).
 
 @< Structure and typedef... @>=
 struct lambda_node
-{@; struct id_pat pattern; type_p arg_type; expr body; };
+{ id_pat pattern; type_expr parameter_type; expr body;
+@)
+  lambda_node(id_pat&& pattern, type_expr&& type, expr&& body)
+@/: pattern(std::move(pattern))
+  , parameter_type(std::move(type)), body(std::move(body))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for user-defined functions is |lambda_expr|.
 @< Enumeration tags... @>=
 lambda_expr,@[@]
 
-@ We introduce the variant of |union expru@;| as usual.
-@< Variants of |union... @>=
+@ We introduce the variant of |expr| as usual.
+@< Variants of ... @>=
 lambda lambda_variant;
 
-@ We must take care of printing lambda expressions; we avoid a double set of
-parentheses.
+@ There is a constructor for building lambda expressions.
+@< Methods of |expr| @>=
+explicit expr(lambda&& fun)
+ : kind(lambda_expr)
+ , lambda_variant(std::move(fun))
+ @+{}
 
-@< Cases for printing... @>=
-case lambda_expr:
-{ lambda fun=e.e.lambda_variant;
-  if ((fun->pattern.kind&0x1)!=0)
-    out << '(' << fun->pattern << ')';
-  else
-    out << fun->pattern;
-  out << ':' << fun->body;
-}
-break;
-
-@ And we must of course take care of destroying lambda expressions, which just
-call handler functions.
-
-@h "types.h" // so that |type_p| will point to a complete type in |delete|
-
-@< Cases for destroying an expression |e| @>=
-case lambda_expr:
-{ lambda fun=e.e.lambda_variant;
-  destroy_id_pat(&fun->pattern);
-  delete(fun->arg_type);
-  destroy_expr(fun->body);
-}
-break;
-
-@ Finally there is as usual a function for constructing a node, to be called
+@ There is as usual a function for constructing a node, to be called
 by the parser.
 
 @< Declarations of functions for the parser @>=
-expr make_lambda_node(patlist pat_l, raw_type_list type_l, expr body);
+expr_p make_lambda_node(raw_patlist pat_l, raw_type_list type_l, expr_p body);
 
-@~There is a twist in building a lambda node, in that for syntactic reasons
-the parser passes lists of patterns and types rather than single ones. We must
+@ There is a twist in building a lambda node, similar to what we saw for
+building let-expressions, in that for syntactic reasons the parser passes
+lists of patterns and their types, rather than passing single ones. We must
 distinguish the case of a singleton, in which case the head node must be
 unpacked, and the multiple case, where a tuple pattern and type must be
-wrapped up from the lists. In the former case, |fun->arg_type| wants to have a
-pointer to an isolated |type_expr|, but the head of |type_l| is a |type_node|
-that contains a |type_expr| as its |t| field; making a (shallow) copy of that
-field is the easiest way to obtain an isolated |type_expr|. After the
-copy, destruction of |type_l| deletes the original |type_node|.
+wrapped up from the lists. In the former case, |fun->parameter_type| wants to
+have a pointer to an isolated |type_expr|, but the head of |type_l| is a
+|type_node| that contains a |type_expr| as its |t| field; making a (shallow)
+copy of that field is the easiest way to obtain an isolated |type_expr|. After
+the copy, destruction of |type_l| deletes the original |type_node|.
 
 @< Definitions of functions for the parser @>=
-expr make_lambda_node(patlist pat_l, raw_type_list raw, expr body)
-{ type_list type_l(raw); // smart pointer might clean up a node
-  lambda fun=new lambda_node; fun->body=body;
-  if (not type_l.empty() and type_l.at_end(++type_l.begin()))
-  { fun->pattern=pat_l->body; delete pat_l; // clean up node
-    fun->arg_type = new type_expr(std::move(type_l.front()));
-     // make a shallow copy
+expr mk_lambda_node(patlist&& pat_l, type_list&& type_l, expr& body)
+{ id_pat pattern; type_expr parameter_type;
+  if (type_l.singleton())
+@/{@; pattern=std::move(pat_l.front());
+    parameter_type = std::move(type_l.front());
   }
   else
-  { fun->pattern.kind=0x2; fun->pattern.sublist=pat_l;
-    fun->arg_type=make_tuple_type(std::move(type_l)).release();
+@/{@; pattern=id_pat(std::move(pat_l));
+    parameter_type=type_expr(std::move(type_l)); // make tuple type
   }
-  expr result; result.kind=lambda_expr; result.e.lambda_variant=fun;
-  return result;
+  return expr(lambda(new@| lambda_node
+      {std::move(pattern),std::move(parameter_type),std::move(body)}));
 }
+expr_p make_lambda_node(raw_patlist p, raw_type_list tl, expr_p body)
+ {@;
+   return new expr(mk_lambda_node(patlist(p),type_list(tl),*expr_ptr(body)));
+ }
+
+@ Since |lambda| is a unique pointer, we must use move construction.
+@< Cases for copying... @>=
+case lambda_expr: new (&lambda_variant) lambda(std::move(other.lambda_variant));
+break;
+
+@ And we must of course take care of destroying lambda expressions, which is
+done correctly by the implicit destructions provoked by calling |delete|.
+
+@< Cases for destroying... @>=
+case lambda_expr: lambda_variant.~lambda();
+break;
+
+@ Because of the above transformations, lambda expressions are printed with
+all parameter types grouped into one tuple (unless there was exactly one
+parameter).
+
+@< Cases for printing... @>=
+case lambda_expr:
+{ const lambda& fun=e.lambda_variant;
+  out << '(' << fun->parameter_type << ' ' << fun->pattern << "):" << fun->body;
+}
+break;
+
 
 @*1 Control structures.
 
 @*2 Conditional expressions.
 Of course we need if-then-else expressions.
 
-@< Typedefs... @>=
-typedef struct conditional_node* cond;
+@< Type declarations needed in definition of |struct expr@;| @>=
+typedef std::unique_ptr<struct conditional_node> cond;
 
 @~The parser handles \&{elif} constructions, so we only need to handle the
 basic two-branch case.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct conditional_node
- {@; expr condition; expr then_branch; expr else_branch; };
+{ expr condition; expr then_branch; expr else_branch;
+@)
+  conditional_node(expr&& condition, expr&& then_branch, expr&& else_branch)
+@/: condition(std::move(condition))
+  , then_branch(std::move(then_branch))
+  , else_branch(std::move(else_branch))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for these expressions is |conditional_expr|.
 
@@ -1146,44 +1291,56 @@ struct conditional_node
 @~The variant of |expr| values with an |cond| as parsing value is tagged
 |if_variant|.
 
-@< Variants... @>=
+@< Variants of ... @>=
 cond if_variant;
+
+@ There is a constructor for building conditional expressions.
+@< Methods of |expr| @>=
+explicit expr(cond&& conditional)
+ : kind(conditional_expr)
+ , if_variant(std::move(conditional))
+ @+{}
+
+@ To build an |conditional_node|, we define a function as usual.
+@< Declarations of functions for the parser @>=
+expr_p make_conditional_node(expr_p c, expr_p t, expr_p e);
+
+@~It is entirely straightforward.
+
+@< Definitions of functions for the parser @>=
+expr mk_conditional_node(expr& c, expr& t, expr& e)
+{@;
+  return expr (cond (new @|
+      conditional_node { std::move(c), std::move(t), std::move(e) }));
+}
+expr_p make_conditional_node(expr_p c, expr_p t, expr_p e)
+{@;
+   return new expr(mk_conditional_node(*expr_ptr(c),*expr_ptr(t),*expr_ptr(e)));
+}
+
+@ We follow the usual coding pattern for copying unique pointers.
+@< Cases for copying... @>=
+case conditional_expr:
+  new (&if_variant) cond(std::move(other.if_variant));
+break;
+
+@~Again we just need to activate the variant destructor, the rest is
+automatic.
+
+@< Cases for destroying... @>=
+case conditional_expr:
+  if_variant.~cond();
+break;
 
 @ To print a conditional expression at parser level, we shall not
 reconstruct \&{elif} constructions.
 
 @< Cases for printing... @>=
 case conditional_expr:
-{ cond c=e.e.if_variant; out << " if " << c->condition @|
+{ const cond& c=e.if_variant; out << " if " << c->condition @|
   << " then " << c->then_branch << " else " << c->else_branch << " fi ";
 }
 break;
-
-@~Here we clean up constituent expressions and then the node for the conditional
-call itself.
-
-@< Cases for destroying... @>=
-case conditional_expr:
-  destroy_expr(e.e.if_variant->condition);
-  destroy_expr(e.e.if_variant->then_branch);
-  destroy_expr(e.e.if_variant->else_branch);
-  delete e.e.if_variant;
-break;
-
-
-@ To build an |conditional_node|, we define a function as usual.
-@< Declarations of functions for the parser @>=
-expr make_conditional_node(expr c, expr t, expr e);
-
-@~It is entirely straightforward.
-
-@< Definitions of functions for the parser @>=
-expr make_conditional_node(expr c, expr t, expr e)
-{ cond n=new conditional_node; n->condition=c;
-  n->then_branch=t; n->else_branch=e;
-@/expr result; result.kind=conditional_expr; result.e.if_variant=n;
-  return result;
-}
 
 @*2 Loops.
 %
@@ -1193,10 +1350,10 @@ open-ended iteration, while the latter fix the range of iteration at entry.
 However we provide a relative innovation by having both types deliver a value:
 this will be a row value with one entry for each iteration performed.
 
-@< Typedefs... @>=
-typedef struct while_node* w_loop;
-typedef struct for_node* f_loop;
-typedef struct cfor_node* c_loop;
+@< Type declarations needed in definition of |struct expr@;| @>=
+typedef std::unique_ptr<struct while_node> w_loop;
+typedef std::unique_ptr<struct for_node> f_loop;
+typedef std::unique_ptr<struct cfor_node> c_loop;
 
 @~A |while| loop has two elements: a condition (which determines whether an
 iteration will be undertaken), and a body (which contributes an entry to the
@@ -1208,11 +1365,33 @@ be distinguished by a boolean.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct while_node
- {@; expr condition; expr body; };
+{ expr condition; expr body;
+@)
+  while_node(expr&& condition, expr&& body)
+@/: condition(std::move(condition))
+  , body(std::move(body))@+{}
+  // backward compatibility for gcc 4.6
+};
 struct for_node
- {@; struct id_pat id; expr in_part; expr body; };
+{ struct id_pat id; expr in_part; expr body;
+@)
+  for_node(id_pat&& id, expr&& in_part, expr&& body)
+@/: id(std::move(id))
+  , in_part(std::move(in_part))
+  , body(std::move(body))@+{}
+  // backward compatibility for gcc 4.6
+};
 struct cfor_node
- {@; id_type id; expr count; expr bound; short up; expr body; };
+{ id_type id; expr count; expr bound; short up; expr body;
+@)
+  cfor_node(id_type id, expr&& count, expr&& bound, short up, expr&& body)
+@/: id(id)
+  , count(std::move(count))
+  , bound(std::move(bound))
+  , up(up)
+  , body(std::move(body))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tags used for these expressions are |while_expr|, |for_expr| and
 |cfor_expr|.
@@ -1222,86 +1401,119 @@ struct cfor_node
 @~The variant of |expr| values with an |w_loop| as parsing value is tagged
 |while_variant|.
 
-@< Variants... @>=
+@< Variants of ... @>=
 w_loop while_variant;
 f_loop for_variant;
 c_loop cfor_variant;
+
+@ There is a constructor for building each type of loop expression.
+@< Methods of |expr| @>=
+explicit expr(w_loop&& loop)
+ : kind(while_expr)
+ , while_variant(std::move(loop))
+ @+{}
+explicit expr(f_loop&& loop)
+ : kind(for_expr)
+ , for_variant(std::move(loop))
+ @+{}
+explicit expr(c_loop&& loop)
+ : kind(cfor_expr)
+ , cfor_variant(std::move(loop))
+ @+{}
+
+@ To build a |while_node|, |for_node| or |cfor_node|, here are yet three
+more \\{make}-functions.
+
+@< Declarations of functions for the parser @>=
+expr_p make_while_node(expr_p c, expr_p b);
+expr_p make_for_node(raw_id_pat& id, expr_p ip, expr_p b);
+expr_p make_cfor_node(id_type id, expr_p count, expr_p bound, short up, expr_p b);
+
+@ They are quite straightforward, as usual.
+
+@< Definitions of functions for the parser @>=
+expr mk_while_node(expr& c, expr& b)
+{@;
+  return expr (w_loop(new while_node { std::move(c), std::move(b)})) ;
+}
+expr_p make_while_node(expr_p c, expr_p b)
+{@; return new expr(mk_while_node(*expr_ptr(c),*expr_ptr(b))); }
+@)
+expr mk_for_node(id_pat&& id, expr& ip, expr& b)
+{@;
+  return expr(f_loop(new
+    for_node { std::move(id), std::move(ip), std::move(b) }));
+}
+expr_p make_for_node(raw_id_pat& id, expr_p ip, expr_p b)
+{@;
+   return new expr(mk_for_node(id_pat(id),*expr_ptr(ip),*expr_ptr(b)));
+}
+@)
+expr mk_cfor_node(id_type id, expr& cnt, expr& bnd, short up, expr& b)
+{@;
+  return expr (c_loop(new @|
+   cfor_node { id, std::move(cnt),std::move(bnd),up,std::move(b) }));
+}
+expr_p make_cfor_node(id_type id, expr_p cnt, expr_p bnd, short up, expr_p b)
+{@;
+   return new
+     expr(mk_cfor_node(id,*expr_ptr(cnt),*expr_ptr(bnd),up,*expr_ptr(b)));
+}
+
+@ Again we apply the copying discipline for unique pointer variants.
+@< Cases for copying... @>=
+  case while_expr:
+    new(&while_variant) w_loop(std::move(other.while_variant));
+  break;
+  case for_expr:
+    new(&for_variant) f_loop(std::move(other.for_variant));
+  break;
+  case cfor_expr:
+     new(&cfor_variant) c_loop(std::move(other.cfor_variant));
+  break;
+
+@~Cleaning up is exactly like that for conditional expressions, or indeed most
+other kinds.
+
+@< Cases for destroying... @>=
+case while_expr:
+  while_variant.~w_loop();
+break;
+case for_expr:
+  for_variant.~f_loop();
+break;
+case cfor_expr:
+  cfor_variant.~c_loop();
+break;
 
 @ To print a |while| or |for| expression at parser level, we reproduce the
 input syntax.
 
 @< Cases for printing... @>=
 case while_expr:
-{ w_loop w=e.e.while_variant;
-  out << " while " << w->condition << " do " << w->body << " od ";
+{ const w_loop& w=e.while_variant;
+@/ out << " while " << w->condition << " do " << w->body << " od ";
 }
 break;
 case for_expr:
-{ f_loop f=e.e.for_variant;
-  out << " for " << f->id.sublist->next->body;
-  if (f->id.sublist->body.kind==0x1)
-    out << '@@' << f->id.sublist->body;
+{ const f_loop& f=e.for_variant;
+  const patlist& pl = f->id.sublist;
+@/const id_pat& index = pl.front();
+  const id_pat& entry = *++pl.begin();
+@/out << " for " << entry;
+  if (index.kind==0x1)
+    out << '@@' << index;
   out << " in " << f->in_part << " do " << f->body << " od ";
 }
 break;
 case cfor_expr:
-{ c_loop c=e.e.cfor_variant;
-  out << " for " << main_hash_table->name_of(c->id) << ": " << c->count;
-  if (c->bound.kind!=tuple_display or c->bound.e.sublist!=NULL)
+{ const c_loop& c=e.cfor_variant;
+@/out << " for " << main_hash_table->name_of(c->id) << ": " << c->count;
+  if (c->bound.kind!=tuple_display or c->bound.sublist.empty())
     out << (c->up!=0 ? " from " : " downto ") << c->bound;
   out << " do " << c->body << " od ";
 }
 break;
-
-@~Cleaning up is exactly like that for conditional expressions.
-
-@< Cases for destroying... @>=
-case while_expr:
-  destroy_expr(e.e.while_variant->condition);
-  destroy_expr(e.e.while_variant->body);
-  delete e.e.while_variant;
-break;
-case for_expr:
-  destroy_id_pat(&e.e.for_variant->id);
-  destroy_expr(e.e.for_variant->in_part);
-  destroy_expr(e.e.for_variant->body);
-  delete e.e.for_variant;
-break;
-case cfor_expr:
-  destroy_expr(e.e.cfor_variant->count);
-  destroy_expr(e.e.cfor_variant->bound);
-  destroy_expr(e.e.cfor_variant->body);
-  delete e.e.cfor_variant;
-break;
-
-
-@ To build a |while_node|, |for_node| or |cfor_node|, here are yet three
-more \\{make}-functions.
-
-@< Declarations of functions for the parser @>=
-expr make_while_node(expr c, expr b);
-expr make_for_node(struct id_pat id, expr ip, expr b);
-expr make_cfor_node(id_type id, expr count, expr bound, short up, expr b);
-
-@~They are quite straightforward, as usual.
-
-@< Definitions of functions for the parser @>=
-expr make_while_node(expr c, expr b)
-{ w_loop w=new while_node; w->condition=c; w->body=b;
-@/expr result; result.kind=while_expr; result.e.while_variant=w;
-  return result;
-}
-expr make_for_node(struct id_pat id, expr ip, expr b)
-{ f_loop f=new for_node; f->id=id; f->in_part=ip; f->body=b;
-@/expr result; result.kind=for_expr; result.e.for_variant=f;
-  return result;
-}
-expr make_cfor_node(id_type id, expr count, expr bound, short up, expr b)
-{ c_loop c=new cfor_node; c->id=id; c->count=count; c->bound=bound;
-  c->up=up; c->body=b;
-@/expr result; result.kind=cfor_expr; result.e.cfor_variant=c;
-  return result;
-}
 
 @*1 Array subscriptions.
 %
@@ -1310,25 +1522,67 @@ matrices), so we define a subscription expression. If there are multiple
 indices, these can be realised as a subscription by a tuple expression, so we
 define only one type so subscription expression.
 
-@< Typedefs... @>=
-typedef struct subscription_node* sub;
+@< Type declarations needed in definition of |struct expr@;| @>=
+typedef std::unique_ptr<struct subscription_node> sub;
 
 @~In a subscription the array and the index(es) can syntactically be arbitrary
 expressions (although the latter should have as type integer, or a tuple of
 integers).
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct subscription_node {@; expr array; expr index; };
+struct subscription_node
+{ expr array; expr index;
+@)
+  subscription_node(expr&& array, expr&& index)
+@/: array(std::move(array))
+  , index(std::move(index))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ Here is the tag used for subscriptions.
 
 @< Enumeration tags for |expr_kind| @>= subscription, @[@]
 
-@~And here is the corresponding variant of the |union expru@;|.
-value is a function call.
+@~And here is the corresponding variant of |expr|.
 
-@< Variants... @>=
+@< Variants of ... @>=
 sub subscription_variant;
+
+@ There is a constructor for building the new variant.
+@< Methods of |expr| @>=
+explicit expr(sub&& s)
+ : kind(subscription)
+ , subscription_variant(std::move(s))
+ @+{}
+
+@ To build an |subscription_node|, we simply combine the array and the index
+part.
+
+@< Declarations of functions for the parser @>=
+expr_p make_subscription_node(expr_p a, expr_p i);
+
+@~This is straightforward, as usual.
+
+@< Definitions of functions for the parser @>=
+expr mk_subscription_node(expr& a, expr& i)
+{@;
+  return expr(sub(new subscription_node {std::move(a), std::move(i) }));
+}
+expr_p make_subscription_node(expr_p a, expr_p i)
+{@; return new expr(mk_subscription_node(*expr_ptr(a),*expr_ptr(i))); }
+@
+@< Cases for copying... @>=
+case subscription:
+  new (&subscription_variant) sub(std::move(other.subscription_variant));
+break;
+
+@~Here we recursively destroy both subexpressions, and then the node for the
+subscription call itself.
+
+@< Cases for destroying... @>=
+case subscription:
+  subscription_variant.~sub();
+break;
 
 @ To print a subscription, we just print the expression of the array, followed
 by the expression for the index in brackets. As an exception, the case of a
@@ -1338,59 +1592,37 @@ parentheses directly inside the brackets.
 @h "lexer.h"
 @< Cases for printing... @>=
 case subscription:
-{ sub s=e.e.subscription_variant; out << s->array << '[';
-  expr i=s->index;
+{ const sub& s=e.subscription_variant;
+  const expr& i=s->index;
+  out << s->array << '[';
   if (i.kind!=tuple_display) out << i;
   else
-  { expr_list l=i.e.sublist;
-    if (l!=NULL)
-    {@; out << l->e;
-      while ((l=l->next)!=NULL) out << ',' << l->e;
-    }
-  }
+    for (auto it=i.sublist.begin(); not i.sublist.at_end(it); ++it)
+      out << (it==i.sublist.begin() ? "" : ",") << *it;
   out << ']';
 }
 break;
-
-@~Here we recursively destroy both subexpressions, and then the node for the
-subscription call itself.
-
-@< Cases for destroying... @>=
-case subscription:
-  destroy_expr(e.e.subscription_variant->array);
-  destroy_expr(e.e.subscription_variant->index);
-  delete e.e.subscription_variant;
-break;
-
-
-@ To build an |subscription_node|, we simply combine the array and the index
-part.
-
-@< Declarations of functions for the parser @>=
-expr make_subscription_node(expr a, expr i);
-
-@~This is straightforward, as usual.
-
-@< Definitions of functions for the parser @>=
-expr make_subscription_node(expr a, expr i)
-{ sub s=new subscription_node; s->array=a; s->index=i;
-  expr result; result.kind=subscription; result.e.subscription_variant=s;
-  return result;
-}
 
 @*1 Cast expressions.
 %S
 These are very simple expressions consisting of a type and an expression,
 which is forced to be of that type.
 
-@< Typedefs... @>=
-typedef struct cast_node* cast;
+@< Type declarations needed in definition of |struct expr@;| @>=
+typedef std::unique_ptr<struct cast_node> cast;
 
 @~The type contained in the cast is represented by a void pointer, for the
 known reasons.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct cast_node {@; type_p type; expr exp; };
+struct cast_node
+{ type_expr type; expr exp;
+@)
+  cast_node(type_expr&& type, expr&& exp)
+@/: type(std::move(type))
+  , exp(std::move(exp))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for casts is |cast_expr|.
 
@@ -1401,47 +1633,66 @@ cast_expr, @[@]
 @< Variants of ... @>=
 cast cast_variant;
 
-@ Printing cast expressions follows their input syntax.
-
-@< Cases for printing... @>=
-case cast_expr:
-{@; cast c = e.e.cast_variant;
-  print_type(out,c->type) << ':' << c->exp ;
-}
-break;
+@ There is a constructor for building the new variant.
+@< Methods of |expr| @>=
+explicit expr(cast&& c)
+ : kind(cast_expr)
+ , cast_variant(std::move(c))
+ @+{}
 
 @ Casts are built by |make_cast|.
 
 @< Declarations of functions for the parser @>=
-expr make_cast(type_p type, expr exp);
+expr_p make_cast(type_p type, expr_p exp);
 
 @~No surprises here.
 
 @< Definitions of functions for the parser@>=
-expr make_cast(type_p type, expr exp)
-{ cast c=new cast_node; c->type=type; c->exp=exp;
-@/ expr result; result.kind=cast_expr; result.e.cast_variant=c;
-   return result;
+expr mk_cast(type_expr& type, expr& exp)
+{@;
+  return expr(cast(new cast_node { std::move(type), std::move(exp) }));
 }
+expr_p make_cast(type_p type, expr_p exp)
+{@; return new expr(mk_cast(*type_ptr(type),*expr_ptr(exp))); }
+
+@
+@< Cases for copying... @>=
+case cast_expr: new (&cast_variant) cast (std::move(other.cast_variant));
+break;
 
 @ Eventually we want to rid ourselves from the cast.
 
-@< Cases for destr... @>=
+@< Cases for destroying... @>=
 case cast_expr:
-  destroy_expr(e.e.cast_variant->exp); delete e.e.cast_variant;
+  cast_variant.~cast();
+break;
+@ Printing cast expressions follows their input syntax.
+
+@< Cases for printing... @>=
+case cast_expr:
+{@; const cast& c = e.cast_variant;
+  out << c->type << ':' << c->exp ;
+}
 break;
 
 @ A different kind of cast serves to obtain the current value of an overloaded
 operator symbol.
 
-@< Typedefs... @>=
-typedef struct op_cast_node* op_cast;
+@< Type declarations needed in definition of |struct expr@;| @>=
+typedef std::unique_ptr<struct op_cast_node> op_cast;
 
 @~We store an (operator) identifier and a type, as before represented by a
 void pointer.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct op_cast_node {@; id_type oper; type_p type; };
+struct op_cast_node
+{ id_type oper; type_expr type;
+@)
+  op_cast_node(id_type oper,type_expr&& type)
+@/: oper(oper)
+  , type(std::move(type))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for casts is |op_cast_expr|.
 
@@ -1452,47 +1703,68 @@ op_cast_expr, @[@]
 @< Variants of ... @>=
 op_cast op_cast_variant;
 
-@ Printing operator cast expressions follows their input syntax.
-
-@< Cases for printing... @>=
-case op_cast_expr:
-{ op_cast c = e.e.op_cast_variant;
-  print_type(out << main_hash_table->name_of(c->oper) << '@@',c->type);
-}
-break;
+@ There is a constructor for building the new variant.
+@< Methods of |expr| @>=
+explicit expr(op_cast&& c)
+ : kind(op_cast_expr)
+ , op_cast_variant(std::move(c))
+ @+{}
 
 @ Casts are built by |make_cast|.
 
 @< Declarations of functions for the parser @>=
-expr make_op_cast(id_type name,type_p type);
+expr_p make_op_cast(id_type name,type_p type);
 
 @~No surprises here either.
 
 @< Definitions of functions for the parser@>=
-expr make_op_cast(id_type name,type_p type)
-{ op_cast c=new op_cast_node; c->oper=name; c->type=type;
-@/ expr result; result.kind=op_cast_expr; result.e.op_cast_variant=c;
-   return result;
+expr mk_op_cast(id_type name,type_expr& type)
+{@;
+  return expr(op_cast(new op_cast_node { name, std::move(type) }));
 }
+expr_p make_op_cast(id_type name,type_p type)
+{@; return new expr(mk_op_cast(name,*type_ptr(type))); }
+
+@
+@< Cases for copying... @>=
+case op_cast_expr:
+  new (&op_cast_variant) op_cast(std::move(other.op_cast_variant));
+break;
 
 @ Eventually we want to rid ourselves from the operator cast.
 
-@< Cases for destr... @>=
+@< Cases for destroying... @>=
 case op_cast_expr:
-  delete e.e.op_cast_variant;
+  op_cast_variant.~op_cast();
+break;
+
+@ Printing operator cast expressions follows their input syntax.
+
+@< Cases for printing... @>=
+case op_cast_expr:
+{ const op_cast& c = e.op_cast_variant;
+  out << main_hash_table->name_of(c->oper) << '@@' << c->type;
+}
 break;
 
 @*1 Assignment statements.
 %
 Simple assignment statements are quite simple as expressions.
 
-@< Typedefs... @>=
-typedef struct assignment_node* assignment;
+@< Type declarations needed in definition of |struct expr@;| @>=
+typedef std::unique_ptr<struct assignment_node> assignment;
 
 @~In a simple assignment the left hand side is just an identifier.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct assignment_node {@; id_type lhs; expr rhs; };
+struct assignment_node
+{ id_type lhs; expr rhs;
+@)
+  assignment_node(id_type lhs, expr&& rhs)
+@/: lhs(lhs)
+  , rhs(std::move(rhs))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for assignment statements is |ass_stat|.
 
@@ -1503,49 +1775,71 @@ ass_stat, @[@]
 @< Variants of ... @>=
 assignment assign_variant;
 
-@ Printing assignment statements is absolutely straightforward.
-
-@< Cases for printing... @>=
-case ass_stat:
-{@; assignment ass = e.e.assign_variant;
-  out << main_hash_table->name_of(ass->lhs) << ":=" << ass->rhs ;
-}
-break;
+@ As always there is a constructor for building the new variant.
+@< Methods of |expr| @>=
+explicit expr(assignment&& a)
+ : kind(ass_stat)
+ , assign_variant(std::move(a))
+ @+{}
 
 @ Assignment statements are built by |make_assignment|.
 
 @< Declarations of functions for the parser @>=
-expr make_assignment(id_type lhs, expr rhs);
+expr_p make_assignment(id_type lhs, expr_p rhs);
 
 @~It does what one would expect it to (except for those who expect their
 homework assignment made).
 
 @< Definitions of functions for the parser@>=
-expr make_assignment(id_type lhs, expr rhs)
-{ assignment a=new assignment_node; a->lhs=lhs; a->rhs=rhs;
-@/ expr result; result.kind=ass_stat; result.e.assign_variant=a;
-   return result;
+expr mk_assignment(id_type lhs, expr& rhs)
+{@;
+  return expr(assignment(new assignment_node { lhs, std::move(rhs) }));
 }
+expr_p make_assignment(id_type lhs, expr_p rhs)
+{@; return new expr(mk_assignment(lhs,*expr_ptr(rhs))); }
+
+@
+@< Cases for copying... @>=
+case ass_stat:
+  new (&assign_variant) assignment(std::move(other.assign_variant));
+break;
 
 @ What is made must eventually be unmade (even assignments).
 
-@< Cases for destr... @>=
+@< Cases for destroying... @>=
 case ass_stat:
-  destroy_expr(e.e.assign_variant->rhs); delete e.e.assign_variant;
+  assign_variant.~assignment();
+break;
+
+@ Printing assignment statements is absolutely straightforward.
+
+@< Cases for printing... @>=
+case ass_stat:
+{ const assignment& ass = e.assign_variant;
+  out << main_hash_table->name_of(ass->lhs) << ":=" << ass->rhs ;
+}
 break;
 
 @*2 Component assignments.
 %
 We have special expressions for assignments to a component.
 
-@< Typedefs... @>=
-typedef struct comp_assignment_node* comp_assignment;
+@< Type declarations needed in definition of |struct expr@;| @>=
+typedef std::unique_ptr<struct comp_assignment_node> comp_assignment;
 
 @~In a component assignment has for the left hand side an identifier and an
 index.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct comp_assignment_node {@; id_type aggr; expr index; expr rhs; };
+struct comp_assignment_node
+{ id_type aggr; expr index; expr rhs;
+@)
+  comp_assignment_node(id_type aggr, expr&& index, expr&& rhs)
+@/: aggr(std::move(aggr))
+  , index(std::move(index))
+  , rhs(std::move(rhs))@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for assignment statements is |comp_ass_stat|.
 
@@ -1556,15 +1850,12 @@ comp_ass_stat, @[@]
 @< Variants of ... @>=
 comp_assignment comp_assign_variant;
 
-@ Printing component assignment statements follow the input syntax.
-
-@< Cases for printing... @>=
-case comp_ass_stat:
-{@; comp_assignment ass = e.e.comp_assign_variant;
-  out << main_hash_table->name_of(ass->aggr) << '[' << ass->index << "]:="
-      << ass->rhs ;
-}
-break;
+@ As always there is a constructor for building the new variant.
+@< Methods of |expr| @>=
+explicit expr(comp_assignment&& ca)
+ : kind(comp_ass_stat)
+ , comp_assign_variant(std::move(ca))
+ @+{}
 
 @ Assignment statements are built by |make_assignment|, which for once does
 not simply combine the expression components, because for reason of parser
@@ -1572,28 +1863,44 @@ generation the array and index will have already been combined before this
 function can be called.
 
 @< Declarations of functions for the parser @>=
-expr make_comp_ass(expr lhs, expr rhs);
+expr_p make_comp_ass(expr_p lhs, expr_p rhs);
 
-@~Here we have to take the left hand side apart a bit, and clean up its node.
+@~Here we have to take the left hand side apart a bit; the grammar ensures
+that |lhs| presents the necessary structure for this code to work.
 
 @< Definitions of functions for the parser@>=
-expr make_comp_ass(expr lhs, expr rhs)
-{ comp_assignment a=new comp_assignment_node;
-@/a->aggr=lhs.e.subscription_variant->array.e.identifier_variant;
-  a->index=lhs.e.subscription_variant->index;
-  delete lhs.e.subscription_variant;
-  a->rhs=rhs;
-@/expr result; result.kind=comp_ass_stat; result.e.comp_assign_variant=a;
-  return result;
+expr mk_comp_ass(expr& lhs, expr& rhs)
+{ return expr(comp_assignment(new @|
+  comp_assignment_node
+  { lhs.subscription_variant->array.identifier_variant
+  , std::move(lhs.subscription_variant->index)
+  , std::move(rhs)
+  }));
 }
+expr_p make_comp_ass(expr_p lhs, expr_p rhs)
+{@; return new expr(mk_comp_ass(*expr_ptr(lhs),*expr_ptr(rhs))); }
+
+@
+@< Cases for copying... @>=
+case comp_ass_stat:
+  new (&comp_assign_variant)
+  comp_assignment(std::move(other.comp_assign_variant));
+break;
 
 @~Destruction one the other hand is as straightforward as usual.
 
-@< Cases for destr... @>=
+@< Cases for destroying... @>=
 case comp_ass_stat:
-  destroy_expr(e.e.comp_assign_variant->index);
-  destroy_expr(e.e.comp_assign_variant->rhs);
-  delete e.e.comp_assign_variant;
+  comp_assign_variant.~comp_assignment();
+break;
+@ Printing component assignment statements follow the input syntax.
+
+@< Cases for printing... @>=
+case comp_ass_stat:
+{@; const comp_assignment& ass = e.comp_assign_variant;
+  out << main_hash_table->name_of(ass->aggr) << '[' << ass->index << "]:="
+      << ass->rhs ;
+}
 break;
 
 @*1 Sequence statements.
@@ -1601,8 +1908,8 @@ break;
 Having assignments statements, it is logical to be able to build a sequence of
 expressions (statements) as well, retaining the value only of the final one.
 
-@< Typedefs... @>=
-typedef struct sequence_node* sequence;
+@< Type declarations needed in definition of |struct expr@;| @>=
+typedef std::unique_ptr<struct sequence_node> sequence;
 
 @~Since control structures and let-expressions tend to break up long chains,
 we do not expect their average length to be very great. So we build up
@@ -1616,7 +1923,15 @@ while the second expression is then evaluated without using its value; the
 |forward| field indicates whether the first form was used.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct sequence_node {@; expr first; expr last; int forward; };
+struct sequence_node
+{ expr first; expr last; int forward;
+@)
+  sequence_node(expr&& first, expr&& last, int forward)
+@/: first(std::move(first))
+  , last(std::move(last))
+  , forward(forward)@+{}
+  // backward compatibility for gcc 4.6
+};
 
 @ The tag used for sequence statements is |seq_expr|.
 
@@ -1627,43 +1942,54 @@ seq_expr, @[@]
 @< Variants of ... @>=
 sequence sequence_variant;
 
-@ Printing sequences is absolutely straightforward.
-
-@< Cases for printing... @>=
-case seq_expr:
-{@; sequence seq = e.e.sequence_variant;
-  out << seq->first << (seq->forward ? ";" : " next ") << seq->last ;
-}
-break;
+@ As always there is a constructor for building the new variant.
+@< Methods of |expr| @>=
+explicit expr(sequence&& s)
+ : kind(seq_expr)
+ , sequence_variant(std::move(s))
+ @+{}
 
 @ Sequences are built by |make_sequence|.
 
 @< Declarations of functions for the parser @>=
-expr make_sequence(expr first, expr last, int forward);
-expr make_reverse_sequence(expr first, expr last);
+expr_p make_sequence(expr_p first, expr_p last, int forward);
 
 @~It does what one would expect it to.
 
 @< Definitions of functions for the parser @>=
-expr make_sequence(expr first, expr last, int forward)
-{ sequence s=new sequence_node; s->first=first; s->last=last;
-  s->forward=forward;
-@/ expr result; result.kind=seq_expr; result.e.sequence_variant=s;
-   return result;
+expr mk_sequence(expr& first, expr& last, int forward)
+{@;
+  return expr(sequence(new @|
+    sequence_node { std::move(first), std::move(last), forward } ));
 }
+expr_p make_sequence(expr_p first, expr_p last, int forward)
+{@; return new expr(mk_sequence(*expr_ptr(first),*expr_ptr(last),forward)); }
+
+@
+@< Cases for copying... @>=
+case seq_expr:
+  new (&sequence_variant) sequence(std::move(other.sequence_variant));
+break;
 
 @ Finally sequence nodes need destruction, like everything else.
 
-@< Cases for destr... @>=
+@< Cases for destroying... @>=
 case seq_expr:
-  destroy_expr(e.e.sequence_variant->first);
-  destroy_expr(e.e.sequence_variant->last);
-  delete e.e.sequence_variant;
+  sequence_variant.~sequence();
+break;
+
+@ Printing sequences is absolutely straightforward.
+
+@< Cases for printing... @>=
+case seq_expr:
+{@; const sequence& seq = e.sequence_variant;
+  out << seq->first << (seq->forward ? ";" : " next ") << seq->last ;
+}
 break;
 
 @* Other functions callable from the parser.
 Here are some functions that are not so much a parsing functions as just
-wrapper functions enabling the parser to call \Cpp~functions.
+wrapper functions that used to enable the parser to call \Cpp~functions.
 
 @< Declarations of functions for the parser @>=
 id_type lookup_identifier(const char*);

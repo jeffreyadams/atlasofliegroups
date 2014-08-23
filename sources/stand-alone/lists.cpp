@@ -138,13 +138,9 @@ std::ostream& operator << (std::ostream& os, const intlist & l)
 
 int main()
 {
-  intlist a;
   std::ostream_iterator<int> lister(std::cout,", ");
+  intlist a { 13,4,1,3 };
 
-  a.push_front(3);
-  a.push_front(1);
-  a.push_front(4);
-  a.push_front(13);
   std::cout << a << "; ";
   a.reverse();
   std::cout << a << std::endl;

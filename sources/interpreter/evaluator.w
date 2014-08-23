@@ -133,14 +133,15 @@ instance between a list of integers and a vector value (this is in fact the
 only way the user can explicitly construct vector values). However, both
 situations (and some intermediate ones) are handled by a single function
 |convert_expr|, which in addition builds (upon success) an |expression| value.
-As arguments |convert_expr| takes an |expr e@;| value produced by the parser,
-and a type in the form of a non-constant reference |type_expr& type@;|. If
-|type| is undefined initially, then it will be set to the type derived for the
-expression; if it is defined then it may guide the conversion process, and the
-type eventually found will have to match it. It could also be that |type| is
-initially partially defined (such as `\.{(int,*)}', meaning ``pair on an
-integer and something''), in which case derivation and testing functionality
-are combined; this gives flexibility to |convert_expr|.
+As arguments |convert_expr| takes an |const expr& e@;| referring to a value
+produced by the parser, and a type in the form of a modifiable reference
+|type_expr& type@;|. If |type| is undefined initially, then it will be set to
+the type derived for the expression; if it is defined then it may guide the
+conversion process, and the type eventually found will have to match it. It
+could also be that |type| is initially partially defined (such as
+`\.{(int,*)}', meaning ``pair on an integer and something''), in which case
+derivation and testing functionality are combined; this gives flexibility to
+|convert_expr|.
 
 Upon successful completion, |type| will usually have become a completely
 defined. The object |type| should be owned by the caller, who will
@@ -279,6 +280,7 @@ expression convert_expr(const expr& e, type_expr& type)
   {
    @\@< Cases for type-checking and converting expression~|e| against
    |type|, all of which either |return| or |throw| a |type_error| @>
+   case no_expr: {}
   }
   return nullptr; // keep compiler happy
 }
@@ -323,7 +325,7 @@ void denotation::evaluate(level l) const
 @+{@; push_expanded(l,denoted_value); }
 
 @ Here are the first examples of the conversions done in |convert_expr|. Each
-time we extract a \Cpp\ value from the |expr e@;| returned by the parser,
+time we extract a \Cpp\ value from the |expr| produced by the parser,
 construct and |new|-allocate a \.{realex} value (for instance |int_value|)
 from it, get a smart pointer to it, and pass that to the |denotation|
 constructor
@@ -338,18 +340,18 @@ latter case.
 @< Cases for type-checking and converting... @>=
 case integer_denotation:
   { expression_ptr d@|(new denotation
-      (shared_value(new int_value(e.e.int_denotation_variant))));
-    return conform_types(int_type,type,d,e);
+      (shared_value(new int_value(e.int_denotation_variant))));
+    return conform_types(int_type,type,std::move(d),e).release();
   }
 case string_denotation:
   { expression_ptr d@|(new denotation
-      (shared_value(new string_value(e.e.str_denotation_variant))));
-    return conform_types(str_type,type,d,e);
+      (shared_value(new string_value(e.str_denotation_variant))));
+    return conform_types(str_type,type,std::move(d),e).release();
   }
 case boolean_denotation:
   { expression_ptr d@|(new denotation
-        (shared_value(new bool_value(e.e.int_denotation_variant))));
-    return conform_types(bool_type,type,d,e);
+        (shared_value(new bool_value(e.int_denotation_variant))));
+    return conform_types(bool_type,type,std::move(d),e).release();
   }
 
 @ We allow using the last value computed to be used in an expression, using
@@ -374,7 +376,7 @@ gets captured in a function value, it will remain immutable.
 @< Cases for type-checking and converting... @>=
 case last_value_computed:
 @/{@; expression_ptr d@|(new denotation(last_value));
-    return conform_types(last_type,type,d,e);
+    return conform_types(last_type,type,std::move(d),e).release();
   }
 
 
@@ -449,15 +451,15 @@ conflict.
 @< Cases for type-checking and converting... @>=
 case list_display:
   if (type.specialise(row_of_type))
-  { std::auto_ptr<list_expression> result (new list_expression(0));
-    result->component.reserve(length(e.e.sublist));
-    for (expr_list l=e.e.sublist; l!=nullptr; l=l->next)
-      result->component.push_back(convert_expr(l->e,*type.component_type));
+  { std::unique_ptr<list_expression> result (new list_expression(0));
+    result->component.reserve(length(e.sublist));
+    for (auto it=e.sublist.begin(); not e.sublist.at_end(it); ++it)
+      result->component.push_back(convert_expr(*it,*type.component_type));
     return result.release(); // and convert (derived|->|base) to |expression|
   }
   else
   @< If |type| can be converted from some row-of type, check the components of
-     |e.e.sublist| against the required type, and apply a conversion function
+     |e.sublist| against the required type, and apply a conversion function
      to the converted expression; otherwise |throw| a |type_error| @>
 
 @ When in |convert_expr| we encounter a list display when a non-row type is
@@ -473,18 +475,18 @@ case where as ``row-of'' type was required, and in particular there may be
 further coercions of individual expressions in the list display.
 
 @< If |type| can be converted from some row-of type, check the components of
-   |e.e.sublist|... @>=
+   |e.sublist|... @>=
 { type_expr comp_type;
   const conversion_record* conv = row_coercion(type,comp_type);
   if (conv==nullptr)
     throw type_error(e,row_of_type.copy(),type.copy());
 @)
-  std::auto_ptr<list_expression> display@|
+  std::unique_ptr<list_expression> display@|
       (new list_expression(0));
-  display->component.reserve(length(e.e.sublist));
-  for (expr_list l=e.e.sublist; l!=nullptr; l=l->next)
-    display->component.push_back(convert_expr(l->e,comp_type));
-  return new conversion(*conv,expression_ptr(display));
+  display->component.reserve(length(e.sublist));
+  for (auto it=e.sublist.begin(); not e.sublist.at_end(it); ++it)
+    display->component.push_back(convert_expr(*it,comp_type));
+  return new conversion(*conv,expression_ptr(std::move(display)));
 }
 
 @ The evaluation of a |list_expression| evaluates the components in a simple
@@ -505,7 +507,7 @@ void list_expression::evaluate(level l) const
   { row_ptr result(new row_value(0)); result->val.reserve(component.size());
     for (c_it it=component.begin(); it!=component.end(); ++it)
       (*it)->eval(),result->val.push_back(pop_value());
-    push_value(result); // result will be shared from here on
+    push_value(std::move(result)); // result will be shared from here on
   }
 }
 
@@ -564,16 +566,16 @@ mentioning too few or too many components explicitly.
 
 @< Cases for type-checking and converting... @>=
 case tuple_display:
-{ type_expr tup=unknown_tuple(length(e.e.sublist));
+{ type_expr tup=unknown_tuple(length(e.sublist));
   bool tuple_expected=type.specialise(tup);
     // whether |type| is a tuple of correct size
   tuple_expression* tup_exp;
   expression_ptr result(tup_exp=new tuple_expression(0));
-  tup_exp->component.reserve(length(e.e.sublist));
+  tup_exp->component.reserve(length(e.sublist));
   type_list& tl = tuple_expected ? type.tupple : tup.tupple;
   type_list::iterator tl_it = tl.begin();
-  for (expr_list el=e.e.sublist; el!=nullptr; el=el->next,++tl_it)
-    tup_exp->component.push_back(convert_expr(el->e,*tl_it));
+  for (auto it=e.sublist.begin(); not e.sublist.at_end(it); ++it,++tl_it)
+    tup_exp->component.push_back(convert_expr(*it,*tl_it));
   if (tuple_expected)
     return result.release();  // and convert (derived|->|base) to |expression|
   else if (coerce(tup,type,result))
@@ -623,7 +625,7 @@ struct subscr_base : public expression_base
   , matrix_entry, matrix_column, mod_poly_term };
   expression array, index; // the two parts of the subscription expression
 @)
-  subscr_base(expression_ptr a, expression_ptr i)
+  subscr_base(expression_ptr&& a, expression_ptr&& i)
   : array(a.release()),index(i.release()) @+{}
   ~subscr_base() @+ {@; delete array; delete index; }
   void print(std::ostream& out) const;
@@ -638,45 +640,45 @@ struct subscr_base : public expression_base
 @)
 struct row_subscription : public subscr_base
 { row_subscription(expression_ptr a, expression_ptr i)
-  : subscr_base(a,i) @+{}
+  : subscr_base(std::move(a),std::move(i)) @+{}
   virtual void evaluate(level l) const;
 };
 
 @)
 struct vector_subscription : public subscr_base
-{ vector_subscription(expression_ptr a, expression_ptr i)
-  : subscr_base(a,i) @+{}
+{ vector_subscription(expression_ptr&& a, expression_ptr&& i)
+  : subscr_base(std::move(a),std::move(i)) @+{}
   virtual void evaluate(level l) const;
 };
 @)
 struct ratvec_subscription : public subscr_base
-{ ratvec_subscription(expression_ptr a, expression_ptr i)
-  : subscr_base(a,i) @+{}
+{ ratvec_subscription(expression_ptr&& a, expression_ptr&& i)
+  : subscr_base(std::move(a),std::move(i)) @+{}
   virtual void evaluate(level l) const;
 };
 @)
 struct string_subscription : public subscr_base
-{ string_subscription(expression_ptr a, expression_ptr i)
-  : subscr_base(a,i) @+{}
+{ string_subscription(expression_ptr&& a, expression_ptr&& i)
+  : subscr_base(std::move(a),std::move(i)) @+{}
   virtual void evaluate(level l) const;
 };
 @)
 struct matrix_subscription : public subscr_base
-{ matrix_subscription(expression_ptr a, expression_ptr ij)
-  : subscr_base(a,ij) @+{}
+{ matrix_subscription(expression_ptr&& a, expression_ptr&& ij)
+  : subscr_base(std::move(a),std::move(ij)) @+{}
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
 @)
 struct matrix_slice : public subscr_base
-{ matrix_slice(expression_ptr a, expression_ptr j)
-  : subscr_base(a,j) @+{}
+{ matrix_slice(expression_ptr&& a, expression_ptr&& j)
+  : subscr_base(std::move(a),std::move(j)) @+{}
   virtual void evaluate(level l) const;
 };
 @)
 struct module_coefficient : public subscr_base
-{ module_coefficient(expression_ptr pol, expression_ptr param)
-  : subscr_base(pol,param) @+{}
+{ module_coefficient(expression_ptr&& pol, expression_ptr&& param)
+  : subscr_base(std::move(pol),std::move(param)) @+{}
   virtual void evaluate(level l) const;
 };
 
@@ -769,33 +771,33 @@ case subscription:
 { type_expr array_type, index_type, subscr_type;
     // all initialised to |undetermined_type|
   expression_ptr array
-    (convert_expr(e.e.subscription_variant->array,array_type));
+    (convert_expr(e.subscription_variant->array,array_type));
   expression_ptr index
-    (convert_expr(e.e.subscription_variant->index,index_type));
+    (convert_expr(e.subscription_variant->index,index_type));
   subscr_base::sub_type kind;
   expression_ptr subscr;
   if (subscr_base::indexable(array_type,index_type,subscr_type,kind))
     switch (kind)
     { case subscr_base::row_entry:
-      subscr.reset(new row_subscription(array,index));
+      subscr.reset(new row_subscription(std::move(array),std::move(index)));
     break;
     case subscr_base::vector_entry:
-      subscr.reset(new vector_subscription(array,index));
+      subscr.reset(new vector_subscription(std::move(array),std::move(index)));
     break;
     case subscr_base::ratvec_entry:
-      subscr.reset(new ratvec_subscription(array,index));
+      subscr.reset(new ratvec_subscription(std::move(array),std::move(index)));
     break;
     case subscr_base::string_char:
-      subscr.reset(new string_subscription(array,index));
+      subscr.reset(new string_subscription(std::move(array),std::move(index)));
     break;
     case subscr_base::matrix_entry:
-      subscr.reset(new matrix_subscription(array,index));
+      subscr.reset(new matrix_subscription(std::move(array),std::move(index)));
     break;
     case subscr_base::matrix_column:
-      subscr.reset(new matrix_slice(array,index));
+      subscr.reset(new matrix_slice(std::move(array),std::move(index)));
     break;
     case subscr_base::mod_poly_term:
-      subscr.reset(new module_coefficient(array,index));
+      subscr.reset(new module_coefficient(std::move(array),std::move(index)));
     break;
     }
   else
@@ -805,7 +807,7 @@ case subscription:
     throw expr_error(e,o.str());
   }
 @)
-  return conform_types(subscr_type,type,subscr,e);
+  return conform_types(subscr_type,type,std::move(subscr),e).release();
 }
 
 
@@ -929,191 +931,6 @@ const char* identifier::name() const
 void identifier::print(std::ostream& out) const
 @+{@; out<< name(); }
 
-@*1 The global identifier table.
-%
-We need an identifier table to record the values of globally bound identifiers
-(such as those for built-in functions) and their types. The values are held in
-shared pointers, so that we can evaluate a global identifier without
-duplicating the value in the table itself. Modifying the value of such an
-identifier by an assignment will produce a new pointer, so that
-``shareholders'' of the old value will not see any change. There is another
-level of sharing, which affects applied occurrences of the identifier as
-converted during type analysis. The value accessed by such identifiers (which
-could be contained in user-defined function bodies and therefore have long
-lifetime) are expected to undergo change when a new value is assigned to the
-global variable; they will therefore access the location of the shared value
-pointer rather than the value pointed to. However, if a new identifier of the
-same name should be introduced, a new value pointer stored in a different
-location will be created, while existing applied occurrences of the identifier
-will continue to access the old value, avoiding the possibility of accessing a
-value of unexpected type. In such a circumstance, the old shared pointer
-location itself will no longer be owned by the identifier table, so we should
-arrange for shared ownership of that location. This explains that the
-|id_data| structure used for entries in the table has a shared pointer to a
-shared pointer.
-
-For the type component on the other hand, the identifier table will assume
-strict ownership. If one would instead give ownership of the |type| field
-directly to individual |id_data| entries, this would greatly complicate their
-duplication, and therefore their insertion into the table. We therefore only
-allow construction of |id_data| objects in an empty state; the pointers they
-contain should be set only \emph{after} the insertion of the object into the
-table, which then immediately assumes ownership of the type.
-
-@< Type definitions @>=
-
-typedef std::shared_ptr<shared_value> shared_share;
-struct id_data
-{ shared_share val; @+ type_p type;
-  id_data() : val(),type(nullptr)@+ {}
-};
-
-@ We cannot store auto pointers in a table, so upon entering into the table we
-convert type pointers to ordinary pointers, and this is what |type_of| lookup
-will return (the table retains ownership); destruction of the type expressions
-referred to will be handled explicitly when the entry, or the table itself, is
-destructed.
-
-@< Includes needed in the header file @>=
-#include <map>
-#include "lexer.h" // for the identifier hash table
-
-@~Overloading is not done in this table, so a simple associative table with
-the identifier as key is used.
-
-@< Type definitions @>=
-class Id_table
-{ typedef std::map<Hash_table::id_type,id_data> map_type;
-  map_type table;
-  Id_table(const Id_table&); // copying forbidden
-  Id_table& operator=(const Id_table&); // assignment forbidden
-public:
-  Id_table() : table() @+{} // the default and only accessible constructor
-  ~Id_table(); // destructor of all values referenced in the table
-@)
-  void add(Hash_table::id_type id, shared_value v, type_ptr t); // insertion
-  bool remove(Hash_table::id_type id); // deletion
-  shared_share address_of(Hash_table::id_type id); // locate
-@)
-  type_p type_of(Hash_table::id_type id) const; // lookup
-  shared_value value_of(Hash_table::id_type id) const; // lookup
-@)
-  size_t size() const @+{@; return table.size(); }
-  void print(std::ostream&) const;
-};
-
-@ As the table has strict ownership of the contained types, the destructor
-must explicitly delete them.
-
-@< Function def... @>=
-Id_table::~Id_table()
-{ for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
-  @/{@; delete p->second.type; }
-}
-
-@ The method |add| tries to insert the new mapping from the key |id| to a new
-value-type pair. Doing so, it must distinguish two cases. It tentatively
-inserts a new empty entry for the identifier into the table; this returns a
-pair with a second boolean component telling whether a new entry was added
-(the identifier was unknown as global identifier). If this is the case, we
-continue to fill the slot with a newly allocated shared pointer and the
-provided type. If the identifier was already present, we abandon the old
-shared pointer location, resetting the pointer to it to point to a newly
-allocated one, destroy the old type and insert the new type. All in all, the
-only difference in the code of the two branches is the deletion of the old
-type.
-
-@< Function def... @>=
-void Id_table::add(Hash_table::id_type id, shared_value val, type_ptr type)
-{ std::pair<map_type::iterator,bool> trial=
-    table.insert(std::make_pair(id,id_data()));
-  id_data& slot=trial.first->second;
-  if (trial.second) // a fresh global identifier
-  {@; slot.val.reset(new shared_value(val));
-    slot.type=type.release();
-  }
-  else
-  {@; slot.val.reset(new shared_value(val));
-    delete slot.type;
-    slot.type=type.release();
-  }
-}
-
-@ The |remove| method removes an identifier if present, and returns whether
-this was the case. We should not forget to clean up the owned type that
-disappears.
-
-@< Function def... @>=
-bool Id_table::remove(Hash_table::id_type id)
-{ map_type::iterator p = table.find(id);
-  if (p==table.end())
-    return false;
-  delete p->second.type; table.erase(p); return true;
-}
-
-@ In order to have |const| lookup methods, we must refrain from inserting into
-the table if the key is not found; we return a null pointer in that case. The
-pointer returned by |type_of| remains owned by the table. Although it does not
-immediately modify the table, |address_of| is classified as a manipulator,
-since the pointer returned may be used to modify a stored value.
-
-@< Function def... @>=
-type_p Id_table::type_of(Hash_table::id_type id) const
-{@; map_type::const_iterator p=table.find(id);
-  return p==table.end() ? nullptr : p->second.type;
-}
-shared_value Id_table::value_of(Hash_table::id_type id) const
-{ map_type::const_iterator p=table.find(id);
-  return p==table.end() ? shared_value(value(nullptr)) : *p->second.val;
-}
-shared_share Id_table::address_of(Hash_table::id_type id)
-{ map_type::iterator p=table.find(id);
-  if (p==table.end())
-    throw std::logic_error @|
-    (std::string("Identifier without table entry:")
-     +main_hash_table->name_of(id));
-@.Identifier without value@>
-  return p->second.val;
-}
-
-@ We provide a |print| member that shows the contents of the entire table.
-Since identifiers might have undefined values, we must test for that condition
-and print dummy output in that case. This signals that attempting to evaluate
-the identifier at this point would cause the evaluator to raise an exception.
-
-@< Function def... @>=
-
-void Id_table::print(std::ostream& out) const
-{ for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
-  { out << main_hash_table->name_of(p->first) << ": " @|
-        << *p->second.type << ": ";
-    if (*p->second.val==nullptr)
-      out << '*';
-    else
-      out << **p->second.val;
-    out << std::endl;
-   }
-}
-
-std::ostream& operator<< (std::ostream& out, const Id_table& p)
-@+{@; p.print(out); return out; }
-
-@~We shouldn't forget to declare that operator, or it won't be found, giving
-kilometres of error message.
-
-@< Declarations of exported functions @>=
-std::ostream& operator<< (std::ostream& out, const Id_table& p);
-
-@ We declare just a pointer to the global identifier table here.
-@< Declarations of global variables @>=
-extern Id_table* global_id_table;
-
-@~Here we set the pointer to a null value; the main program will actually
-create the table.
-
-@< Global variable definitions @>=
-Id_table* global_id_table=nullptr; // will never be |nullptr| at run time
-
 @*1 Global identifiers.
 %
 When during type checking an identifiers binds to a value in the global
@@ -1228,13 +1045,13 @@ assignments to the variable must respect the more specific type).
 @< Cases for type-checking and converting... @>=
 case applied_identifier:
 { type_p id_t; expression_ptr id; size_t i,j;
-  if ((id_t=id_context->lookup(e.e.identifier_variant,i,j))!=nullptr)
-    id.reset(new local_identifier(e.e.identifier_variant,i,j));
-  else if ((id_t=global_id_table->type_of(e.e.identifier_variant))!=nullptr)
-    id.reset(new global_identifier(e.e.identifier_variant));
+  if ((id_t=id_context->lookup(e.identifier_variant,i,j))!=nullptr)
+    id.reset(new local_identifier(e.identifier_variant,i,j));
+  else if ((id_t=global_id_table->type_of(e.identifier_variant))!=nullptr)
+    id.reset(new global_identifier(e.identifier_variant));
   else throw program_error  @|
        (std::string("Undefined identifier ")
-	+main_hash_table->name_of(e.e.identifier_variant));
+	+main_hash_table->name_of(e.identifier_variant));
 @.Undefined identifier@>
   if (type.specialise(*id_t))
     {@; id_t->specialise(type); return id.release(); }
@@ -1557,11 +1374,11 @@ expression resolve_overload
   (const expr& e,
    type_expr& type,
    const overload_table::variant_list& variants)
-{ const expr& args = e.e.call_variant->arg;
+{ const expr& args = e.call_variant->arg;
   type_expr a_priori_type;
   expression_ptr arg(convert_expr(args,a_priori_type));
     // get \foreign{a priori} types once
-  Hash_table::id_type id =  e.e.call_variant->fun.e.identifier_variant;
+  Hash_table::id_type id =  e.call_variant->fun.identifier_variant;
   @< If |id| is a special operator like size-of and it matches
   |a_priori_type|, |return| a call |id(args)| @>
   for (size_t i=0; i<variants.size(); ++i)
@@ -1687,7 +1504,7 @@ struct overloaded_builtin_call : public expression_base
   std::string print_name;
   expression argument;
 @)
-  overloaded_builtin_call(wrapper_function v,const char* n,expression_ptr a)
+  overloaded_builtin_call(wrapper_function v,const char* n,expression_ptr&& a)
   : f(v), print_name(n), argument(a.release())@+ {}
   virtual ~overloaded_builtin_call() @+ {@; delete argument; }
   virtual void evaluate(level l) const;
@@ -1719,8 +1536,8 @@ an unexpanded argument on the execution stack. Therefore we derive a type from
 struct generic_builtin_call : public overloaded_builtin_call
 { typedef overloaded_builtin_call base;
 @)
-  generic_builtin_call(wrapper_function v,const char* n,expression_ptr a)
-  : base(v,n,a)@+ {}
+  generic_builtin_call(wrapper_function v,const char* n,expression_ptr&& a)
+  : base(v,n,std::move(a))@+ {}
   virtual void evaluate(level l) const;
 };
 
@@ -1744,16 +1561,16 @@ is possible we throw a~|type_error|.
 
 @< Cases for type-checking and converting... @>=
 case function_call:
-{ if (e.e.call_variant->fun.kind==applied_identifier)
+{ if (e.call_variant->fun.kind==applied_identifier)
     @< Convert and |return| an overloaded function call if
-    |e.e.call_variant->fun| is not a local identifier and is known in
+    |e.call_variant->fun| is not a local identifier and is known in
     |global_overload_table| @>
   type_expr f_type=gen_func_type.copy(); // start with generic function type
-  expression_ptr fun(convert_expr(e.e.call_variant->fun,f_type));
+  expression_ptr fun(convert_expr(e.call_variant->fun,f_type));
   expression_ptr arg
-    (convert_expr(e.e.call_variant->arg,f_type.func->arg_type));
-  expression_ptr call (new call_expression(fun,arg));
-  return conform_types(f_type.func->result_type,type,call,e);
+    (convert_expr(e.call_variant->arg,f_type.func->arg_type));
+  expression_ptr call (new call_expression(std::move(fun),std::move(arg)));
+  return conform_types(f_type.func->result_type,type,std::move(call),e).release();
 }
 
 @ The main work here has been relegated to |resolve_overload|; otherwise we
@@ -1770,8 +1587,8 @@ like the size-of operator~`\#', even in case such an operator should not occur
 in the overload table.
 
 @< Convert and |return| an overloaded function call... @>=
-{ const Hash_table::id_type id =e.e.call_variant->fun.e.identifier_variant;
-  const expr arg=e.e.call_variant->arg;
+{ const Hash_table::id_type id =e.call_variant->fun.identifier_variant;
+  const expr& arg=e.call_variant->arg;
   size_t i,j; // dummies; local binding not used here
   if (not is_empty(arg) and id_context->lookup(id,i,j)==nullptr)
   { const overload_table::variant_list& variants
@@ -1830,14 +1647,14 @@ will still be accepted.
   builtin_value* f = dynamic_cast<builtin_value*>(v.val.get());
   if (f!=nullptr)
     call = expression_ptr
-      (new overloaded_builtin_call(f->val,f->print_name.c_str(),arg));
+      (new overloaded_builtin_call(f->val,f->print_name.c_str(),std::move(arg)));
   else @< Set |call| to the call of the user-defined function |v| @>
 
   if (type==void_type and
       id==equals_name() and
       v.type->result_type!=void_type)
     throw type_error(e,v.type->result_type.copy(),type.copy());
-  return conform_types(v.type->result_type,type,call,e);
+  return conform_types(v.type->result_type,type,std::move(call),e).release();
 }
 
 @ For operator symbols that satisfy |is_special_operator(id)|, we test generic
@@ -1870,8 +1687,9 @@ below tests.
 @< If |id| is a special operator like size-of... @>=
 { if (id==size_of_name())
   { if (a_priori_type.kind==row_type)
-    { expression_ptr call(new overloaded_builtin_call(sizeof_wrapper,"#",arg));
-      return conform_types(int_type,type,call,e);
+    { expression_ptr
+        call(new overloaded_builtin_call(sizeof_wrapper,"#",std::move(arg)));
+      return conform_types(int_type,type,std::move(call),e).release();
     }
     else if (a_priori_type.kind!=undetermined_type and
              a_priori_type.specialise(pair_type))
@@ -1879,12 +1697,14 @@ below tests.
        case of failure @>
   }
   else if (id==print_name()) // this one always matches
-  { expression c = new generic_builtin_call(print_wrapper,"print",arg);
+  { expression c =
+      new generic_builtin_call(print_wrapper,"print",std::move(arg));
     expression_ptr call(c); // get ownership
-    return conform_types(a_priori_type,type,call,e);
+    return conform_types(a_priori_type,type,std::move(call),e).release();
  }
   else if(id==prints_name()) // this always matches as well
-  { expression c = new generic_builtin_call(prints_wrapper,"prints",arg);
+  { expression c =
+      new generic_builtin_call(prints_wrapper,"prints",std::move(arg));
     expression_ptr call(c); // get ownership
     if (type.specialise(void_type))
       return call.release();
@@ -2108,21 +1928,21 @@ inserting a coercion) if (and only if) it returns |true|.
   if (arg_tp0.kind==row_type)
   { if (can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type)) // suffix
     { expression_ptr call(new overloaded_builtin_call
-        (suffix_element_wrapper,"#",arg));
-      return conform_types(arg_tp0,type,call,e);
+        (suffix_element_wrapper,"#",std::move(arg)));
+      return conform_types(arg_tp0,type,std::move(call),e).release();
     }
     if (arg_tp0==arg_tp1) // join
     { expression_ptr call(new overloaded_builtin_call
-        (join_rows_wrapper,"#",arg));
-      return conform_types(arg_tp0,type,call,e);
+        (join_rows_wrapper,"#",std::move(arg)));
+      return conform_types(arg_tp0,type,std::move(call),e).release();
     }
   }
   if (arg_tp1.kind==row_type and @|
          can_coerce_arg(arg.get(),0,arg_tp0,*arg_tp1.component_type))
           // prefix
   { expression_ptr call(new overloaded_builtin_call
-      (prefix_element_wrapper,"#",arg));
-    return conform_types(arg_tp1,type,call,e);
+      (prefix_element_wrapper,"#",std::move(arg)));
+    return conform_types(arg_tp1,type,std::move(call),e).release();
   }
 }
 
@@ -2200,18 +2020,12 @@ ownership. The value produced by the parser will be destroyed after the
 command is processed, at which time the $\lambda$-expression could still
 exist, so we cannot simply use a non-owned pointer. Moreover a
 $\lambda$-expression can be evaluated one or more times, yielding ``closure''
-values the might outlive the $\lambda$-expression, so appropriate duplication
+values that might outlive the $\lambda$-expression, so appropriate duplication
 or sharing must be organised. We opt for sharing, which will be done by a
-|shared_ptr| supplied with a specialised deleter, since the sharing is done at
-the outermost level only, but complete destruction requires calling
-|destroy_id_pat| (defined in the file \.{parsetree.w}). To get this deleter
-without runtime storage, we wrap it into a zero-size structure.
+|shared_ptr|.
 
 @< Type def... @>=
-struct id_pat_deleter
-{@; void operator()(id_pat* p) @+{@; destroy_id_pat(p); delete p; }};
 typedef std::shared_ptr<id_pat> shared_pattern;
-  // deleter type does not enter into this
 
 @ We must also treat the question of obtaining ownership of an |id_pat|
 structure. An top level node to be shared must certainly be allocated (the
@@ -2234,22 +2048,14 @@ constructed state, which has no loose ends and is therefore safe for
 thrown the argument to |destroy_id_pat| is properly |nullptr|-terminated (by the
 |pattern_node| constructor).
 
+@h <algorithm>
 @< Local function def... @>=
 id_pat copy_id_pat(const id_pat& p)
 {
-  id_pat result=p; // shallow copy
-  try
-  { if ((p.kind&0x2)!=0)
-    { result.sublist=nullptr;
-      for (patlist s=p.sublist,*d=&result.sublist;
-           s!=nullptr; s=s->next,d=&(*d)->next)
-      @/{@;
-        *d=new pattern_node; (*d)->body=copy_id_pat(s->body);
-      }
-    }
-  }
-  catch (...) @+{@; destroy_id_pat(&result); throw; }
-  return result;
+  containers::sl_list<id_pat> rl;
+  std::transform(p.sublist.begin(),end(p.sublist)
+                , std::back_inserter(rl), copy_id_pat);
+  return id_pat (p.name, p.kind, rl.undress());
 }
 
 @ Now we can define our $\lambda$-expression to use a |shared_pattern|; the
@@ -2275,7 +2081,7 @@ auto-pointer already gives us ownership.
 @< Function def... @>=
 inline
 lambda_expression::lambda_expression(const id_pat& p, expression_ptr b)
-: param(new id_pat(copy_id_pat(p)),id_pat_deleter()) , body(b.release())
+: param(new id_pat(copy_id_pat(p))) , body(b.release())
 @+{}
 
 @ To print an anonymous function, we print the parameter, enclosed in
@@ -2302,7 +2108,7 @@ void lambda_expression::print(std::ostream& out) const
 similar structure.
 
 @< Declarations of exported functions @>=
-type_ptr pattern_type(const id_pat& pat);
+type_expr pattern_type(const id_pat& pat);
 size_t count_identifiers(const id_pat& pat);
 void list_identifiers(const id_pat& pat, std::vector<Hash_table::id_type>& d);
 void thread_bindings(const id_pat& pat,const type_expr& type, bindings& dst);
@@ -2314,17 +2120,17 @@ corresponding type pattern; for instance $(x,,(f,):z)$:\\{whole} requires the
 type \.{(*,*,(*,*))}. These recursive functions construct such types.
 
 @< Function definitions @>=
-type_list pattern_list(patlist p)
+type_list pattern_list(const patlist& p)
 { dressed_type_list result;
-  for (; p!=nullptr; p=p->next)
-    result.push_back(std::move(*pattern_type(p->body)));
+  for (auto it = p.begin(); not p.at_end(it); ++it)
+    result.push_back(pattern_type(*it));
   return result.undress();
 }
 @)
-type_ptr pattern_type(const id_pat& pat)
+type_expr pattern_type(const id_pat& pat)
 {@; return (pat.kind&0x2)==0
-  ? acquire(&unknown_type)
-  : make_tuple_type(pattern_list(pat.sublist));
+  ? unknown_type.copy()
+  : type_expr(pattern_list(pat.sublist));
 }
 
 @ Here we count the number or list the identifiers in a pattern. The latter
@@ -2335,8 +2141,8 @@ concatenation of vectors.
 size_t count_identifiers(const id_pat& pat)
 { size_t result= pat.kind & 0x1; // 1 if |pat.name| is defined, 0 otherwise
   if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
-    for (patlist p=pat.sublist; p!=nullptr; p=p->next)
-      result+=count_identifiers(p->body);
+    for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it)
+      result+=count_identifiers(*it);
   return result;
 }
 
@@ -2344,8 +2150,8 @@ void list_identifiers(const id_pat& pat, std::vector<Hash_table::id_type>& d)
 { if ((pat.kind & 0x1)!=0)
     d.push_back(pat.name);
   if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
-    for (patlist p=pat.sublist; p!=nullptr; p=p->next)
-      list_identifiers(p->body,d);
+    for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it)
+      list_identifiers(*it,d);
 }
 
 @ Here we do a similar traversal, using a type of the proper structure,
@@ -2357,9 +2163,10 @@ void thread_bindings
 { if ((pat.kind & 0x1)!=0) dst.add(pat.name,acquire(&type));
   if ((pat.kind & 0x2)!=0)
   { assert(type.kind==tuple_type);
-    type_list::const_iterator it = type.tupple.begin();
-    for (patlist p=pat.sublist; p!=nullptr; p=p->next,++it)
-      thread_bindings(p->body,*it,dst);
+    type_list::const_iterator t_it = type.tupple.begin();
+    for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
+         ++p_it,++t_it)
+      thread_bindings(*p_it,*t_it,dst);
   }
 }
 
@@ -2375,8 +2182,8 @@ void thread_components
   if ((pat.kind & 0x2)!=0)
   { tuple_value* t=force<tuple_value>(val.get());
     size_t i=0;
-    for (patlist p=pat.sublist; p!=nullptr; p=p->next,++i)
-      thread_components(p->body,t->val[i],dst);
+    for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it,++i)
+      thread_components(*it,t->val[i],dst);
   }
 }
 
@@ -2392,18 +2199,18 @@ argument is produced and returned.
 
 @< Cases for type-checking and converting... @>=
 case let_expr:
-{ let lexp=e.e.let_variant;
+{ const let& lexp=e.let_variant;
   id_pat& pat=lexp->pattern;
-  type_ptr decl_type=pattern_type(pat);
-  expression_ptr arg(convert_expr(lexp->val,*decl_type));
+  type_expr decl_type=pattern_type(pat);
+  expression_ptr arg(convert_expr(lexp->val,decl_type));
   size_t n_id=count_identifiers(pat);
 @/bindings new_bindings(n_id);
-  thread_bindings(pat,*decl_type,new_bindings);
+  thread_bindings(pat,decl_type,new_bindings);
   new_bindings.push(id_context);
   expression_ptr body(convert_expr(lexp->body,type));
   new_bindings.pop(id_context);
-  expression_ptr func(new lambda_expression(pat,body));
-  return new call_expression(func,arg);
+  expression_ptr func(new lambda_expression(pat,std::move(body)));
+  return new call_expression(std::move(func),std::move(arg));
 }
 
 @ Before we can dicuss the evaluation of user-defined functions, we need to
@@ -2427,7 +2234,7 @@ struct closure_value : public value_base
   {@; return new closure_value(cont,param,body); }
   static const char* name() @+{@; return "closure"; }
 };
-typedef std::auto_ptr<closure_value> closure_ptr;
+typedef std::unique_ptr<closure_value> closure_ptr;
 typedef std::shared_ptr<closure_value> shared_closure;
 
 @ For now a closure prints just like the |lambda_expression| from which it was
@@ -2528,7 +2335,8 @@ if it was not a |builtin_value|.
     throw std::logic_error("Overloaded value is not a function");
   std::ostringstream name;
   name << main_hash_table->name_of(id) << '@@' << v.type->arg_type;
-  call = expression_ptr (new overloaded_closure_call(fun,name.str(),arg));
+  call =
+    expression_ptr(new overloaded_closure_call(fun,name.str(),std::move(arg)));
 }
 
 @ Evaluation of an overloaded function call bound to a closure is a simplified
@@ -2574,7 +2382,7 @@ how to type-check and convert the case |lambda_expr| of an |expr| constructed
 by the parser; the necessary types derived from |expression| that provide
 their implementation were already introduced.
 
-We first test if the required |type| specialises to a function type, i.e.,
+We first test if the required |type| specialises to a function type, i.,
 either it was some function type or undefined. Then we get the argument type
 |arg_type| from the function expression the parser provided. We further
 specialise the argument type of |type| to the argument type of the function
@@ -2590,12 +2398,12 @@ by popping of the bindings for the arguments.
 case lambda_expr:
 { if (not type.specialise(gen_func_type))
     throw type_error(e,gen_func_type.copy(),type.copy());
-  lambda fun=e.e.lambda_variant;
-  id_pat& pat=fun->pattern;
-  type_expr& arg_type=*fun->arg_type;
+  const lambda& fun=e.lambda_variant;
+  const id_pat& pat=fun->pattern;
+  const type_expr& arg_type=fun->parameter_type;
   if (not type.func->arg_type.specialise(arg_type))
   @/throw type_error(e,
-       std::move(*make_function_type(arg_type.copy(),unknown_type.copy())),
+                     type_expr(arg_type.copy(),unknown_type.copy()),
                      type.copy());
   size_t n_id=count_identifiers(pat);
 @/bindings new_bindings(n_id);
@@ -2603,7 +2411,7 @@ case lambda_expr:
   new_bindings.push(id_context);
   expression_ptr body(convert_expr(fun->body,type.func->result_type));
   new_bindings.pop(id_context);
-  return new lambda_expression(pat,body);
+  return new lambda_expression(pat,std::move(body));
 }
 
 @* Control structures.
@@ -2690,10 +2498,10 @@ be noticeable since (currently) no such coercions exist anyway.
 
 @< Cases for type-checking and converting... @>=
 case conditional_expr:
-{ expression_ptr c (convert_expr(e.e.if_variant->condition,bool_type));
-  expression_ptr el (convert_expr(e.e.if_variant->else_branch,type));
-  expression_ptr th (convert_expr(e.e.if_variant->then_branch,type));
-  return new conditional_expression(c,th,el);
+{ expression_ptr c (convert_expr(e.if_variant->condition,bool_type));
+  expression_ptr el (convert_expr(e.if_variant->else_branch,type));
+  expression_ptr th (convert_expr(e.if_variant->then_branch,type));
+  return new conditional_expression(std::move(c),std::move(th),std::move(el));
 }
 
 @ Evaluating a conditional expression ends up evaluating either the
@@ -2741,13 +2549,13 @@ case).
 
 @< Cases for type-checking and converting... @>=
 case while_expr:
-{ w_loop w=e.e.while_variant;
+{ const w_loop& w=e.while_variant;
   expression_ptr c (convert_expr(w->condition,bool_type));
   if (type==void_type or type.specialise(row_of_type))
   { expression_ptr b
      (convert_expr(w->body, @|
                    type==void_type ? void_type :*type.component_type));
-    expression_ptr result(new while_expression(c,b));
+    expression_ptr result(new while_expression(std::move(c),std::move(b)));
     return type==void_type ? new voiding(std::move(result)) : result.release();
   }
   else
@@ -2769,7 +2577,8 @@ component type as for list displays.
     throw type_error(e,row_of_type.copy(),type.copy());
 @)
   expression_ptr b(convert_expr(w->body,comp_type));
-  return new conversion(*conv,  expression_ptr(new while_expression(c,b)));
+  return new conversion(*conv,
+    expression_ptr(new while_expression(std::move(c),std::move(b))));
 }
 
 
@@ -2790,7 +2599,7 @@ void while_expression::evaluate(level l) const
     @/{@; body->eval();
       result->val.push_back(pop_value());
     }
-    push_value(result);
+    push_value(std::move(result));
   }
 }
 
@@ -2810,9 +2619,9 @@ struct for_expression : public expression_base
 { id_pat pattern; expression in_part, body; subscr_base::sub_type kind;
 @)
   for_expression
-   (id_pat p, expression_ptr i, expression_ptr b, subscr_base::sub_type k);
-  virtual ~for_expression() @+
-  {@; destroy_id_pat(&pattern); delete in_part; delete body; }
+   (const id_pat& p, expression_ptr i, expression_ptr b
+   , subscr_base::sub_type k);
+  virtual ~for_expression() @+ {@; delete in_part; delete body; }
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2824,7 +2633,7 @@ the header file.
 @< Function definitions @>=
 inline
 for_expression::for_expression@|
- (id_pat p, expression_ptr i, expression_ptr b,subscr_base::sub_type k)
+ (const id_pat& p, expression_ptr i, expression_ptr b,subscr_base::sub_type k)
    : pattern(copy_id_pat(p)), in_part(i.release()), body(b.release()), kind(k)
   @+{}
 
@@ -2834,9 +2643,9 @@ for_expression::for_expression@|
 
 @< Function definitions @>=
 void for_expression::print(std::ostream& out) const
-{ out << " for " << pattern.sublist->next->body;
-    if (pattern.sublist->body.kind==0x1)
-      out << '@@' << pattern.sublist->body;
+{ out << " for " << *++pattern.sublist.begin();
+    if (pattern.sublist.front().kind==0x1)
+      out << '@@' << pattern.sublist.front();
     out << " in " << *in_part << " do " << *body << " od ";
 }
 
@@ -2847,7 +2656,7 @@ its a priori type.
 
 @< Cases for type-checking and converting... @>=
 case for_expr:
-{ f_loop f=e.e.for_variant;
+{ const f_loop& f=e.for_variant;
   bindings bind(count_identifiers(f->id));
    // for identifier(s) introduced in this loop
   type_expr in_type;
@@ -2866,7 +2675,8 @@ case for_expr:
   bind.push(id_context);
   expression_ptr body(convert_expr (f->body,*btp));
 @/bind.pop(id_context);
-  expression_ptr loop(new for_expression(f->id,in_expr,body,which));
+  expression_ptr loop(new
+    for_expression(f->id,std::move(in_expr),std::move(body),which));
 @/return type==void_type ? new voiding(std::move(loop)) :
     @| conv!=nullptr ? new conversion(*conv,std::move(loop)) : @| loop.release() ;
 }
@@ -2881,12 +2691,12 @@ component type resulting from such a subscription.
 { type_expr comp_type; const type_expr* tp;
   if (subscr_base::indexable(in_type,*(tp=&int_type),comp_type,which) @|
    or subscr_base::indexable(in_type,*(tp=&param_type),comp_type,which))
-  { type_ptr pt = pattern_type(f->id);
+  { type_expr pt = pattern_type(f->id);
     type_list it_comps;
     it_comps.push_front(std::move(comp_type));
     it_comps.push_front(type_expr(tp->copy()));
     type_expr it_type(std::move(it_comps));
-    if (not pt->specialise(it_type))
+    if (not pt.specialise(it_type))
       throw expr_error(e,"Improper structure of loop variable pattern");
     thread_bindings(f->id,it_type,bind);
   }
@@ -2926,7 +2736,7 @@ void for_expression::evaluate(level l) const
 
   execution_context = saved_context;
   if (l!=no_value)
-    push_value(result);
+    push_value(std::move(result));
 }
 
 @ For evaluating |for| loops we must take care to interpret the |kind| field
@@ -3105,7 +2915,7 @@ body.
 
 @< Cases for type-checking and converting... @>=
 case cfor_expr:
-{ c_loop c=e.e.cfor_variant;
+{ const c_loop& c=e.cfor_variant;
   expression_ptr count_expr(convert_expr(c->count,int_type));
   static shared_value zero=shared_value(new int_value(0));
     // avoid repeated allocation
@@ -3128,11 +2938,14 @@ case cfor_expr:
 @/bind.pop(id_context);
   expression_ptr loop;
   if (c->up!=0)
-    loop.reset(new inc_for_expression(c->id,count_expr,bound_expr,body));
+    loop.reset(new inc_for_expression
+      (c->id,std::move(count_expr),std::move(bound_expr),std::move(body)));
   else
-    loop.reset(new dec_for_expression(c->id,count_expr,bound_expr,body));
-  return type==void_type ? new voiding(loop) : @|
-         conv!=nullptr ? new conversion(*conv,loop) : @|  loop.release();
+    loop.reset(new dec_for_expression
+      (c->id,std::move(count_expr),std::move(bound_expr),std::move(body)));
+  return type==void_type ? new voiding(std::move(loop)) : @|
+         conv!=nullptr ? new conversion(*conv,std::move(loop))
+                       : @|  loop.release();
 
 }
 
@@ -3165,7 +2978,7 @@ void inc_for_expression::evaluate(level l) const
       execution_context.reset(new context(saved_context,loop_frame));
       body->eval(); result->val.push_back(pop_value());
     }
-    push_value(result);
+    push_value(std::move(result));
   }
   execution_context=saved_context;
 }
@@ -3198,7 +3011,7 @@ void dec_for_expression::evaluate(level l) const
       execution_context.reset(new context(saved_context,loop_frame));
       body->eval(); result->val.push_back(pop_value());
     }
-    push_value(result);
+    push_value(std::move(result));
   }
   execution_context=saved_context;
 }
@@ -3210,10 +3023,9 @@ represent them.
 
 @< Cases for type-checking and converting... @>=
 case cast_expr:
-{ cast c=e.e.cast_variant;
-  type_expr& ctype=*c->type;
-  expression_ptr p(convert_expr(c->exp,ctype));
-  return conform_types(ctype,type,p,e);
+{ const cast& c=e.cast_variant;
+  expression_ptr p(convert_expr(c->exp,c->type));
+  return conform_types(c->type,type,std::move(p),e).release();
 }
 
 @ The overload table stores type information in a |func_type| value, which
@@ -3234,10 +3046,10 @@ serve as wrapper that upon evaluation will return the value again.
 
 @< Cases for type-checking and converting... @>=
 case op_cast_expr:
-{ op_cast c=e.e.op_cast_variant;
+{ const op_cast& c=e.op_cast_variant;
   const overload_table::variant_list& variants =
    global_overload_table->variants(c->oper);
-  type_expr& ctype=*c->type;
+  type_expr& ctype=c->type;
   if (is_special_operator(c->oper))
     @< Test special argument patterns, and on match |return| an appropriate
        denotation @>
@@ -3247,9 +3059,8 @@ case op_cast_expr:
       expression_ptr p(new denotation(variants[i].val));
       if (spec_func(type,ctype,variants[i].type->result_type))
         return p.release();
-      type_ptr ftype=make_function_type
-	(ctype.copy(),variants[i].type->result_type.copy());
-      throw type_error(e,std::move(*ftype),type.copy());
+      type_expr ftype(ctype.copy(),variants[i].type->result_type.copy());
+      throw type_error(e,std::move(ftype),type.copy());
     }
   std::ostringstream o;
   o << "Cannot resolve " << main_hash_table->name_of(c->oper) @|
@@ -3325,7 +3136,7 @@ void join_rows_wrapper(expression_base::level l)
     result->val.reserve(x->val.size()+y->val.size());
     result->val.insert(result->val.end(),x->val.begin(),x->val.end());
     result->val.insert(result->val.end(),y->val.begin(),y->val.end());
-    push_value(result);
+    push_value(std::move(result));
   }
 
 }
@@ -3371,7 +3182,7 @@ public:
 
 @< Function def... @>=
 global_assignment::global_assignment(Hash_table::id_type l,expression_ptr r)
-: assignment_expr(l,r), address(global_id_table->address_of(l)) @+{}
+: assignment_expr(l,std::move(r)), address(global_id_table->address_of(l)) @+{}
 
 @ Evaluating a global assignment evaluates the left hand side, and replaces
 the old value stored at |*address| by the new (shared pointer) value.
@@ -3403,7 +3214,7 @@ public:
 @< Function def... @>=
 local_assignment::local_assignment
  (Hash_table::id_type l, size_t i,size_t j, expression_ptr r)
-: assignment_expr(l,r), depth(i), offset(j) @+{}
+: assignment_expr(l,std::move(r)), depth(i), offset(j) @+{}
 
 @ Evaluating a local assignment evaluates the left hand side, and replaces the
 old value stored at |execution_context->elem(depth,offset)| by the new (shared
@@ -3426,22 +3237,22 @@ way,
 
 @< Cases for type-checking and converting... @>=
 case ass_stat:
-{ Hash_table::id_type lhs=e.e.assign_variant->lhs;
-  const expr& rhs=e.e.assign_variant->rhs;
-  type_p it; expression_ptr assign; size_t i,j;
-  if ((it=id_context->lookup(lhs,i,j))!=nullptr)
-  @/{@; expression_ptr r(convert_expr(rhs,*it));
-    assign.reset(new local_assignment(lhs,i,j,r));
+{ Hash_table::id_type lhs=e.assign_variant->lhs;
+  const expr& rhs=e.assign_variant->rhs;
+  type_p id_t; expression_ptr assign; size_t i,j;
+  if ((id_t=id_context->lookup(lhs,i,j))!=nullptr)
+  @/{@; expression_ptr r(convert_expr(rhs,*id_t));
+    assign.reset(new local_assignment(lhs,i,j,std::move(r)));
   }
-  else if ((it=global_id_table->type_of(lhs))!=nullptr)
-  @/{@; expression_ptr r(convert_expr(rhs,*it));
-    assign.reset(new global_assignment(lhs,r));
+  else if ((id_t=global_id_table->type_of(lhs))!=nullptr)
+  @/{@; expression_ptr r(convert_expr(rhs,*id_t));
+    assign.reset(new global_assignment(lhs,std::move(r)));
   }
   else throw program_error @|
     (std::string("Undefined identifier in assignment: ")
      +main_hash_table->name_of(lhs));
 @.Undefined identifier in assignment@>
-  return conform_types(*it,type,assign,e);
+  return conform_types(*id_t,type,std::move(assign),e).release();
 }
 
 @*1 Component assignments.
@@ -3479,8 +3290,8 @@ to apply.
 struct component_assignment : public assignment_expr
 { expression index;
   component_assignment
-   (Hash_table::id_type a,expression_ptr i,expression_ptr r)
-   : assignment_expr(a,r), index(i.release()) @+{}
+   (Hash_table::id_type a,expression_ptr&& i,expression_ptr&& r)
+   : assignment_expr(a,std::move(r)), index(i.release()) @+{}
 
   virtual ~component_assignment() @+{@; delete index; }
   virtual void print (std::ostream& out) const;
@@ -3514,7 +3325,7 @@ aggregate object and the component kind.
 global_component_assignment::global_component_assignment @|
   (Hash_table::id_type a,expression_ptr i,expression_ptr r,
    subscr_base::sub_type k)
-: component_assignment(a,i,r)
+: component_assignment(a,std::move(i),std::move(r))
 , kind(k),address(global_id_table->address_of(a)) @+{}
 
 @ It is in evaluation that component assignments differ most from ordinary
@@ -3536,12 +3347,14 @@ void global_component_assignment::evaluate(level l) const
 }
 
 @ The |assign| method, which will also be called for local component
-assignments, starts by the common work of evaluating the index and the value
-to be assigned, and of making sure the aggregate variable is made to point to
-a unique copy of its current value, which copy can then be modified in place.
-For actually changing the aggregate, we must distinguish cases according to
-the kind of component assignment at hand. Assignments to components of
-rational vectors and of strings will be forbidden, see module
+assignments, starts by the common work of evaluating the value to be assigned,
+and of making sure the aggregate variable is made to point to a unique copy of
+its current value, which copy can then be modified in place. The index is not
+yet evaluated at this point, but this will be done inside the |switch|
+statement; this is because possible expansion of a tuple index value depends
+on~|kind|. For actually changing the aggregate, we must distinguish cases
+according to the kind of component assignment at hand. Assignments to
+components of rational vectors and of strings will be forbidden, see module
 @#comp_ass_type_check@>.
 
 @< Function def... @>=
@@ -3657,7 +3470,8 @@ spite of the number of arguments.
 local_component_assignment::local_component_assignment
  (Hash_table::id_type l, expression_ptr i,size_t d, size_t o, expression_ptr r,
   subscr_base::sub_type k)
-: component_assignment(l,i,r), kind(k), depth(d), offset(o) @+{}
+: component_assignment(l,std::move(i),std::move(r))
+, kind(k), depth(d), offset(o) @+{}
 
 @ The |evaluate| method locates the |shared_value| pointer of the aggregate,
 calls |assign| to do the work.
@@ -3673,9 +3487,9 @@ distinguish different aggregate types.
 
 @< Cases for type-checking and converting... @>=
 case comp_ass_stat:
-{ Hash_table::id_type aggr=e.e.comp_assign_variant->aggr;
-  const expr& index=e.e.comp_assign_variant->index;
-  const expr& rhs=e.e.comp_assign_variant->rhs;
+{ Hash_table::id_type aggr=e.comp_assign_variant->aggr;
+  const expr& index=e.comp_assign_variant->index;
+  const expr& rhs=e.comp_assign_variant->rhs;
 @/type_p aggr_t; type_expr ind_t; type_expr comp_t;
   expression_ptr assign; size_t d,o; bool is_local;
   if ((aggr_t=id_context->lookup(aggr,d,o))!=nullptr)
@@ -3693,11 +3507,13 @@ case comp_ass_stat:
       and subscr_base::assignable(kind))
   { expression_ptr r(convert_expr(rhs,comp_t));
     if (is_local)
-      assign.reset(new local_component_assignment(aggr,i,d,o,r,kind));
+      assign.reset(new
+        local_component_assignment(aggr,std::move(i),d,o,std::move(r),kind));
     else
-      assign.reset(new global_component_assignment(aggr,i,r,kind));
+      assign.reset(new
+         global_component_assignment(aggr,std::move(i),std::move(r),kind));
 
-    return conform_types(comp_t,type,assign,e);
+    return conform_types(comp_t,type,std::move(assign),e).release();
   }
   else
   { std::ostringstream o;
@@ -3762,16 +3578,16 @@ void next_expression::evaluate(level l) const
 
 @< Cases for type-checking and converting... @>=
 case seq_expr:
-{ sequence seq=e.e.sequence_variant;
+{ const sequence& seq=e.sequence_variant;
   if (seq->forward!=0)
   { expression_ptr first(convert_expr(seq->first,void_type));
     expression_ptr last(convert_expr(seq->last,type));
-    return new seq_expression(first,last);
+    return new seq_expression(std::move(first),std::move(last));
   }
   else
   { expression_ptr first(convert_expr(seq->first,type));
     expression_ptr last(convert_expr(seq->last,void_type));
-    return new next_expression(first,last);
+    return new next_expression(std::move(first),std::move(last));
   }
 }
 

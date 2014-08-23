@@ -57,7 +57,6 @@ functions (the last point being is the main goal of the implementation unit).
 @c
 
 namespace atlas { namespace interpreter {
-namespace {@; @< Local type definitions @>@; }@;
 @< Global variable definitions @>@;
 @< Function definitions @>@;
 }@; }@;
@@ -159,6 +158,7 @@ containing structure.
 @< Type definitions @>=
 struct type_expr;
 typedef type_expr* type_p;
+typedef const type_expr* const_type_p;
 typedef std::unique_ptr<type_expr> type_ptr;
 
 @*2 Type lists.
@@ -175,6 +175,7 @@ container type.
 
 @< Type definitions @>=
 typedef containers::simple_list<type_expr> type_list;
+typedef atlas::containers::sl_node<type_expr>* raw_type_list;
 typedef containers::sl_list<type_expr> dressed_type_list;
 
 @ Since types and type lists own their trees, their copy constructors must
@@ -257,7 +258,7 @@ extern const char* prim_names[];
 @~Here is the list of names of the primitive types (some are given later),
 terminated by a null pointer. The last name |"void"| is not a primitive name,
 corresponds to |nr_of_primitive_types|, and will be treated exceptionally in
-|make_prim_type| to make an empty tuple type instead.
+|mk_prim_type| to make an empty tuple type instead.
 
 @< Global variable definitions @>=
 const char* prim_names[]=@/
@@ -298,7 +299,7 @@ struct type_expr
     func_type* func; // when |kind==function_type|
   };
 @)
-  @< Methods of the |type_expr| structure @>
+  @< Methods of the |type_expr| structure @>@;
  };
 
 @ Every variant of the union gets its own constructor that directly constructs
@@ -749,61 +750,97 @@ bool operator== (const type_expr& x,const type_expr& y)
 functions below. They all and return |type_ptr| values owning the constructed
 expression. They also take such smart pointers, or |type_list| values, as
 argument whenever the underlying pointer is to be directly inserted into the
-structure built. However for |make_function_type| this is not the case, so
+structure built. However for |mk_function_type| this is not the case, so
 instead of insisting that the caller hold a unique-pointer to the argument
 types it suffices to hold a |type_expr| whose contents can be moved into the
 type to be constructed. If |t| is a |type_ptr| held by a client, it can pass
-|std::move(*t)| as argument to |make_function_type|, which will move the
+|std::move(*t)| as argument to |mk_function_type|, which will move the
 contents of the node |t| points to into the function type, and after return
 the destructor of |t| will eventually delete the now empty node.
 
 @< Declarations of exported functions @>=
-type_ptr make_undetermined_type();
-type_ptr make_prim_type(primitive_tag p);
-type_ptr make_row_type(type_ptr&& c);
-type_ptr make_tuple_type (type_list&& l);
-type_ptr make_function_type(type_expr&& a, type_expr&& r);
+type_ptr mk_prim_type(primitive_tag p);
+type_ptr mk_row_type(type_ptr&& c);
+type_ptr mk_tuple_type (type_list&& l);
+type_ptr mk_function_type(type_expr&& a, type_expr&& r);
+@)
+type_p make_prim_type(int p);
+type_p make_row_type(type_p c);
+type_p make_tuple_type(raw_type_list l);
+type_p make_function_type(type_p a,type_p r);
+@)
+raw_type_list make_type_singleton(type_p raw);
+raw_type_list make_type_list(type_p t,raw_type_list l);
 
-@ The functions below simply wrap the call to the constructor into one of the
-operator |new|, and then capture of the resulting pointer into a |type_ptr|
-result.
+@ The functions like |mk_prim| below simply wrap the call to the constructor
+into one of the operator |new|, and then capture of the resulting pointer into
+a |type_ptr| result. The functions like |make_prim| wraps these functions into
+a parser interface, which converts it arguments to unique pointers, and
+converts such pointers to raw pointers for the return value; these functions
+should be used exclusively in the parser. Using this setup it is ensured that
+all pointers are considered owning their target, implicitly so while being
+manipulated by the parser (it guarantees that every pointer placed on the
+parsing stack will be argument of an interface function exactly once, possibly
+some |destroy| function in case it pops symbols during error recovery.
 
-Note that we make a special provision that |make_prim_type| will return an
+Note that we make a special provision that |mk_prim_type| will return an
 empty tuple type when called with the type name for |"void"|, although this is
 contrary to what the name of the function suggests.
 
 @< Function definitions @>=
-type_ptr make_undetermined_type()
-@+{@; return type_ptr(new type_expr); }
-@)
-type_ptr make_prim_type(primitive_tag p)
+type_ptr mk_prim_type(primitive_tag p)
 { return p<nr_of_primitive_types ?
     type_ptr(new type_expr(p)) :
-    type_ptr(make_tuple_type(empty_tuple()));
+    type_ptr(mk_tuple_type(empty_tuple()));
 }
-@)
-type_ptr make_row_type(type_ptr&& c)
+
+type_ptr mk_row_type(type_ptr&& c)
 {@; return type_ptr (new type_expr(std::move(c))); }
-@)
-type_ptr make_tuple_type (type_list&& l)
+
+type_ptr mk_tuple_type (type_list&& l)
 {@; return type_ptr(new type_expr(std::move(l))); }
 
-@)
-type_ptr make_function_type (type_expr&& a, type_expr&& r)
+type_ptr mk_function_type (type_expr&& a, type_expr&& r)
 {@; return type_ptr(new type_expr(std::move(a),std::move(r)));
+}
+@)
+type_p make_prim_type(int p)
+{@; return mk_prim_type(static_cast<primitive_tag>(p)).release(); }
+
+type_p make_row_type(type_p c)
+{@; return mk_row_type(type_ptr(c)).release(); }
+
+type_p make_tuple_type(raw_type_list l)
+{@; return mk_tuple_type(type_list(l)).release(); }
+
+type_p make_function_type(type_p a,type_p r)
+{@; return
+    mk_function_type(std::move(*type_ptr(a)),std::move(*type_ptr(r))).release();
+}
+@)
+
+raw_type_list make_type_singleton(type_p t)
+{@; type_list result;
+  result.push_front(std::move(*type_ptr(t)));
+  return result.release();
+}
+
+raw_type_list make_type_list(type_p t,raw_type_list l)
+{ type_list tmp(l); // since |prefix| needs second argument an lvalue reference
+  return prefix(std::move(*type_ptr(t)),tmp).release();
 }
 
 @*1 Specifying types by strings.
 %
-In practice we shall rarely call functions like |make_prim_type| and
-|make_row_type| directly to make explicit types, since this is rather
+In practice we shall rarely call functions like |mk_prim_type| and
+|mk_row_type| directly to make explicit types, since this is rather
 laborious. Instead, such explicit types will be constructed by the function
-|make_type| that parses a (\Cee~type) string, and correspondingly calls the
+|mk_type| that parses a (\Cee~type) string, and correspondingly calls the
 appropriate type constructing functions.
 
 @< Declarations of exported functions @>=
-type_ptr make_type(const char* s);
-type_expr make_type_expr(const char* s);
+type_ptr mk_type(const char* s);
+type_expr mk_type_expr(const char* s);
   // ``exported'' for our global variable initialisation
 
 @ The task of converting a properly formatted string into a type is one of
@@ -815,13 +852,13 @@ here. The simplest way of parsing ``by hand'' is recursive descent, so that is
 what we shall use. By passing a character pointer by reference, we allow the
 recursive calls to advance the index within the string read.
 
-The function |scan_type| does the real parsing, |make_type_expr| calls it,
+The function |scan_type| does the real parsing, |mk_type_expr| calls it,
 providing a local modifiable pointer to bind to its reference parameter (which
 is important because |scan_type| cannot directly accept a \Cee-string constant
-as argument) while also doing error reporting, and |make_type| is just a
-wrapper around |make_type_expr| that converts the result from a |type_expr| to
+as argument) while also doing error reporting, and |mk_type| is just a
+wrapper around |mk_type_expr| that converts the result from a |type_expr| to
 a smart pointer to (a freshly allocated instance of) such. Currently the
-function |make_type_expr| is called only during the start-up phase
+function |mk_type_expr| is called only during the start-up phase
 of \.{realex}, and if an error encountered (of type |std::logic_error|, since
 it indicates an error in the \.{realex} program itself), printing of the error
 message will be followed by termination of the program.
@@ -839,7 +876,7 @@ type_expr scan_type(const char*& s)
   else @< Scan and |return| a primitive type, or |throw| a |logic_error| @>
 }
 @)
-type_expr make_type_expr(const char* s)
+type_expr mk_type_expr(const char* s)
 { const char* orig=s;
   try
   {@; return type_expr(scan_type(s)); }
@@ -851,8 +888,8 @@ type_expr make_type_expr(const char* s)
   }
 }
 @)
-type_ptr make_type(const char* s)
-{@; return type_ptr(new type_expr(make_type_expr(s))); }
+type_ptr mk_type(const char* s)
+{@; return type_ptr(new type_expr(mk_type_expr(s))); }
   // wrap up |type_expr| in |type_ptr|
 
 
@@ -957,7 +994,7 @@ index into the former list to an element of that enumeration.
 %
 We shall often need to refer to certain types for comparison or for providing
 a required type context. Instead of generating them on the fly each time using
-|make_type|, we define constant values that can be used everywhere. Three of
+|mk_type|, we define constant values that can be used everywhere. Three of
 these types, for \.{int}, \.{bool} and \.{void}, need to be non-|const|, since
 in the role of required type (as argument to |convert_expr| defined later)
 they could potentially be specialised; if they were const, we would be obliged
@@ -974,7 +1011,7 @@ extern const type_expr row_of_type; // \.{[*]}
 extern const type_expr gen_func_type; // \.{(*->*)}
 
 @ The definition of the variables uses the constructors we have seen above,
-rather than functions like |make_primitive_type| and |make_row_type|, so that
+rather than functions like |mk_primitive_type| and |mk_row_type|, so that
 no dynamic allocation is required for the top level structure. For generic row
 and function types we construct the |type_expr| from unique-pointers (of which
 the constructor takes possession) pointing to other |type_expr|s produced by
@@ -982,12 +1019,14 @@ calling |copy| for previous type constants.
 
 @< Global variable definitions @>=
 
+@: first types section @>
+
 const type_expr unknown_type; // uses default constructor
  type_expr void_type(empty_tuple());
  type_expr int_type(integral_type);
  type_expr bool_type(boolean_type);
-const type_expr row_of_type(make_type_expr("[*]"));
-const type_expr gen_func_type(make_type_expr("(*->*)"));
+const type_expr row_of_type(mk_type_expr("[*]"));
+const type_expr gen_func_type(mk_type_expr("(*->*)"));
 
 @ There are more such statically allocated type expressions, which are used in
 the evaluator. They are less fundamental, as they are not actually used in any
@@ -1022,11 +1061,13 @@ them here (this used no not be the case, and led to a subtle bug whose
 appearance depended on the precise compiler version used!). The construction
 of type constants follows the same pattern as before, calling |copy| in the
 case of composite types. In the final case we choose the simplest solution of
-calling |make_type| and copy-constructing the resulting nested structure into
+calling |mk_type| and copy-constructing the resulting nested structure into
 the static variable before destroying the function result. One might have done
 better using the |set_from| method if it would have been possible to include
 in a (static) variable definition the call of a method on the declared
 variable, but it is not.
+
+@: second types section @>
 
 @< Global variable definitions @>=
 const type_expr rat_type(rational_type);
@@ -1034,12 +1075,12 @@ const type_expr str_type(string_type);
 const type_expr vec_type(vector_type);
 const type_expr ratvec_type(rational_vector_type);
 const type_expr mat_type(matrix_type);
-const type_expr row_of_int_type(make_type_expr("[int]"));
-const type_expr row_of_rat_type(make_type_expr("[rat]"));
-const type_expr row_of_vec_type(make_type_expr("[vec]"));
-const type_expr row_row_of_int_type(make_type_expr("[[int]]"));
-const type_expr pair_type(make_type_expr("(*,*)"));
-const type_expr int_int_type(make_type_expr("(int,int)"));
+const type_expr row_of_int_type(mk_type_expr("[int]"));
+const type_expr row_of_rat_type(mk_type_expr("[rat]"));
+const type_expr row_of_vec_type(mk_type_expr("[vec]"));
+const type_expr row_row_of_int_type(mk_type_expr("[[int]]"));
+const type_expr pair_type(mk_type_expr("(*,*)"));
+const type_expr int_int_type(mk_type_expr("(int,int)"));
 const type_expr Lie_type_type(complex_lie_type_type);
 const type_expr rd_type(root_datum_type);
 const type_expr ic_type(inner_class_type);
@@ -1101,14 +1142,14 @@ operator is accidentally invoked. Copy constructors will in fact be defined
 for all derived types, as they are needed to implement the |clone| method;
 these will be |private| or |protected| as well, so as to forbid accidental use
 elsewhere, but they don't copy-construct the |value_base| base object (rather
-they default-construct it). We can then declare the |value_base| copy
-constructor |private| so that in case of accidental omission the use of a
-synthesised constructor will be caught here as well.
+they default-construct it). We can then |delete| the |value_base| copy
+constructor, so that in case of accidental omission the use of a synthesised
+constructor will be caught here as well.
 
 As mentioned values are always handled via pointers. We define a raw pointer
-type |value|, a unique-pointer |owned_value| (which cannot be stored in STL
-containers), and a shared smart pointer |shared_value| (which by contrast can
-be stored in STL containers).
+type |value|, a unique-pointer |owned_value| (which cannot safely be stored in
+STL containers), and a shared smart pointer |shared_value| (which by contrast
+can be stored in STL containers).
 
 @< Type definitions @>=
 struct value_base
@@ -1117,13 +1158,13 @@ struct value_base
   virtual void print(std::ostream& out) const =0;
   virtual value_base* clone() const =0;
   static const char* name(); // just a model; this instance remains undefined
-private: //copying and assignment forbidden
-  value_base& operator=(const value_base& x);
-  value_base(const value_base& x);
+@)
+  value_base(const value_base& x) = @[delete@];
+  value_base& operator=(const value_base& x) = @[delete@];
 };
 @)
 typedef value_base* value;
-typedef std::auto_ptr<value_base> owned_value;
+typedef std::unique_ptr<value_base> owned_value;
 typedef std::shared_ptr<value_base> shared_value;
 
 @ We can already make sure that the operator~`|<<|' will do the right thing
@@ -1198,7 +1239,7 @@ protected:
     // copy still shares the individual entries
 };
 @)
-typedef std::auto_ptr<row_value> row_ptr;
+typedef std::unique_ptr<row_value> row_ptr;
 typedef std::shared_ptr<row_value> shared_row;
 
 @ So here is the first occasion where we shall use virtual functions. For the
@@ -1208,13 +1249,10 @@ values, and adapt the formatting to that.
 
 @< Function definitions @>=
 void row_value::print(std::ostream& out) const
-{ if (val.empty()) out << "[]";
-  else
-  { out << '[';
-    std::vector<shared_value>::const_iterator p=val.begin();
-    do {@; (*p)->print(out); ++p; out << (p==val.end() ? ']' : ','); }
-    while (p!=val.end());
-  }
+{ out << '[';
+  for (auto it=val.begin(); it!=val.end(); ++it)
+    out << (it==val.begin() ? "" : ",") << **it;
+   out << ']';
 }
 
 
@@ -1235,28 +1273,26 @@ private:
  // copy constructor; used by |clone|
 };
 @)
-typedef std::auto_ptr<tuple_value> tuple_ptr;
+typedef std::unique_ptr<tuple_value> tuple_ptr;
 typedef std::shared_ptr<tuple_value> shared_tuple;
 
 @ We just need to redefine the |print| method.
 @< Function definitions @>=
 void tuple_value::print(std::ostream& out) const
-{ if (val.empty()) out << "()";
-  else
-  { out << '(';
-    std::vector<shared_value>::const_iterator p=val.begin();
-    do {@; (*p)->print(out); ++p; out << (p==val.end() ? ')' : ','); }
-    while (p!=val.end());
-  }
+{ out << '(';
+  for (auto it=val.begin(); it!=val.end(); ++it)
+    out << (it==val.begin() ? "" : ",") << **it;
+   out << ')';
 }
 
-@ Here are functions that pack and unpack tuples from values on the stack;
-they will be used by wrapper functions around functions from the Atlas
+@ Here are functions that pack and unpack tuples from values on the stack, in
+terms of the operations |push_value| and |pop_value| defined in sections
+@# Push execution stack @> and @# Pop execution stack @> below.
+They will be used by wrapper functions around functions from the Atlas
 library, and in the case of |wrap_tuple| for the evaluation of tuple
 expressions. The function |push_tuple_components| will be called by wrapper
 functions that need the tuple components on the stack; the function call
 |wrap_tuple(n)| inversely builds a tuple from $n$ components on the stack.
-
 
 @< Declarations of exported functions @>=
 void push_tuple_components();
@@ -1323,16 +1359,15 @@ the proper frame.
 shared_value& context::elem(size_t i, size_t j)
 {
   context* p=this;
-  for (; i-->0; p=p->next.get())
-    assert(p->next.use_count()>0 and p->next.get()!=nullptr);
-  assert(j<p->frame.size());
-  return p->frame[j];
+  while (i-->0 and (p=p->next.get())!=nullptr) {}
+  assert(p!=nullptr and j<p->frame.size());
+@/return p->frame[j];
 }
 
 @* Values representing type-checked expressions.
 %
-The parser is (currently) a \Cee-program that upon success returns a value of
-type |expr| representing this parse tree. While analysing this expression for
+The parser is a \Cpp-program that upon success returns a value of type |expr|
+representing the parse tree. While analysing this expression for
 type-correctness, it will be convenient to transform it into a value that can
 be efficiently evaluated. This value will be a pointer to an object of one of
 a number of classes directly derived from an empty base class (in the same way
@@ -1364,7 +1399,7 @@ struct expression_base
 };
 @)
 typedef expression_base* expression;
-typedef std::auto_ptr<expression_base> expression_ptr;
+typedef std::unique_ptr<expression_base> expression_ptr;
 typedef std::shared_ptr<expression_base> shared_expression;
 
 @ Like for values, we can assure right away that printing converted
@@ -1402,26 +1437,41 @@ std::vector<shared_value> execution_stack;
 The function |push_value| does what its name suggests. For exception safety it
 takes either a unique-pointer or a shared pointer as argument; the former is
 converted into the latter, in which case the |use_count| will become~$1$. The
-former form cannot be made to take a reference argument: if the reference were
-constant it would be impossible to transfer ownership to the shared pointer,
-and if it were non-constant it would be impossible to bind the argument to
-expressions other than variables (i.e., to rvalues), such as |owned_value(p)|
-below. The shared pointer version does not have this restriction, as a copy
-construction and assignment from constant references are possible here.
+former form used to take an |auto_ptr| argument by value, which allowed both
+to transfer ownership from an lvalue (i.e., a variable) of the same type, and
+to bind to an rvalue (result of a function or, conversion such as
+|owned_value(p)| below). With the change to a representation as |unique_ptr|
+instance, the lvalue argument case would no longer bind as-is, and an
+invocation of |std::move| had to be inserted into the code in more than~$60$
+places for this reason (the rvalue case does not need modification). At the
+same time the argument passing was changed to modifiable rvalue reference,
+with the same syntactic obligations for the caller; this avoids one transfer
+of ownership, doing so only when the pointer is converted to a |shared_ptr| in
+the code below. The shared pointer version of |push_value| can take its
+argument as a constant reference, since it does not need to modify the
+original pointer (the change being in the shared pointer control block
+instead); this will allow binding both from lvalue and rvalue expressions.
+Nonetheless there is a marginal preference to passing a |unique_ptr| in the
+usual case of pushing a value that has just been constructed, since pushing a
+|shared_ptr| onto the stack and then destructing the original pointer involves
+an increase and following decrease of the associated |use_count| that is
+avoided when passing a |unique_ptr| instead.
 
-For convenience we make these template functions that accept a smart pointer
-to any type derived from |value_base| (since a conversion of such pointers
-from derived to base is not possible without a cast in a function argument
-position). For even more convenience we also provide a variant taking an
-ordinary pointer, so that expressions using |new| can be written without cast
-in the argument of |push_value|. Since |push_value| has only one argument,
-such use of does not compromise exception safety: nothing can throw between
-the return of |new| and the conversion of its result into a unique-pointer.
+For convenience we make these into function templates that accept a smart
+pointer to any type derived from |value_base|, since a conversion of such
+pointers from derived to base is not possible without a cast in a function
+argument position. For even more convenience we also provide a variant taking
+an ordinary pointer, so that expressions using |new| can be written without
+cast in the argument of |push_value|. Since |push_value| has only one
+argument, such use of does not compromise exception safety: nothing can throw
+between the return of |new| and the conversion of its result into a
+|owned_value|.
+
+@: Push execution stack @>
 
 @< Template and inline function definitions @>=
 template<typename D> // |D| is a type derived from |value_base|
-  inline void push_value(std::auto_ptr<D> v)
-     // value parameter accepts rvalue or lvalue alike
+  inline void push_value(std::unique_ptr<D>&& v)
   {@; execution_stack.push_back(std::shared_ptr<D>(std::move(v))); }
 
 template<typename D> // |D| is a type derived from |value_base|
@@ -1430,17 +1480,23 @@ template<typename D> // |D| is a type derived from |value_base|
 
 inline void push_value(value_base* p) @+{@; push_value(owned_value(p)); }
 
-@ There is a counterpart |pop_value| to |push_value|. Most often the result
-must be dynamically cast to the type they are known to have because we passed
-the type checker; should the cast fail we shall throw a |std::logic_error|.
-The template function |get| with explicitly provided type serves for this
-purpose; it is very much like the template function |force|, but returns a
-shared pointer (because the value on the stack might be shared).
+@ There is a counterpart |pop_value| to |push_value|. By move-constructing
+from the stack top just before it is popped, we avoid incrementing and then
+immediately decrementing the |use_count| value. Most often the result must be
+dynamically cast to the type it is known to have because we passed the type
+checker; hence should the cast fail we know some built in function does not
+respect its declared type specification, and we shall throw a
+|std::logic_error|. The function template |get| with explicitly provided type
+serves for this purpose; it is very much like the template function |force|,
+but returns a shared pointer (because values on the stack are shared
+pointers).
+
+@: Pop execution stack @>
 
 @< Template and inline function definitions @>=
 
 inline shared_value pop_value()
-{@; shared_value arg=execution_stack.back();
+{@; shared_value arg(std::move(execution_stack.back()));
   execution_stack.pop_back();
   return arg;
 }
@@ -1462,8 +1518,10 @@ is indeed of tuple type; the function |push_expanded| will help doing this.
 void push_expanded(expression_base::level l, const shared_value& v);
 
 @~Type information is not retained in compiled expression values, so
-|push_expanded| cannot know which type had been found for |v|, but it can use
-a dynamic cast do determine whether it actually is a tuple value or not.
+|push_expanded| cannot know which type had been found for |v| (moreover,
+|push_expanded| is typically called for arguments for which the type is not
+determined at the time that \.{realex} is compiled). But it can use a dynamic
+cast do determine whether |v| actually is a tuple value or not.
 
 @< Function definitions @>=
 void push_expanded(expression_base::level l, const shared_value& v)
@@ -1479,19 +1537,29 @@ void push_expanded(expression_base::level l, const shared_value& v)
   }
 }
 
-@ In many cases we will want to get unique access to an object, duplicating it
-if necessary. The operation |uniquify| implements this; it was originally
-introduced in order to implement component assignments efficiently (the code
-for this will be given later) but is useful much more generally. In fact if we
-just computed the value in question from a function call it is virtually
-guaranteed to be unshared, but we shall call |uniquify| anyway to make clear
-our (destructive) intentions. Here we also use it right away to provide a
-variant template function |get_own| of |get|, which returns a privately owned
-copy of the value from the stack, so that modifications can be made to it
-without danger of altering shared instances. In spite of the uniqueness
-guarantee, |get_own| must be declared to return a |shared_ptr| in order to
-avoid having to call |clone|: there is no way to persuade a |shared_ptr| to
-release its ownership, even if it happens to be the unique owner.
+@ In some cases a wrapper function will want to get unique access to an object
+(so that we can modify it to produce its result), which requires duplicating
+the value if the value on the stack has |use_count()>1|. In fact if we just
+computed the value on the stack from a function call, it is virtually
+guaranteed to be unshared. Similarly the component assignment operation must
+ensure that the name of the aggregate that is being assigned to is made to
+hold a unique (non-shared) instance of its value which can then be modified in
+place (the was the original motivation for this functionality). The operation
+|uniquify| implements this, and calling it makes clear our destructive
+intentions. We could have made it take an rvalue reference argument and return
+a |shared_ptr|, but for the case of component assignment it is more useful to
+have it return void but take a modifiable lvalue argument into which a new
+pointer is stored in case duplication was necessary; thus the aggregate will
+not be emptied even temporarily.
+
+For the case of arguments on the stack, we use |uniquify| right away to
+provide a variant template function |get_own| of |get|, which returns a
+privately owned copy of the value from the stack, so that modifications can be
+made to it without danger of altering shared instances. In spite of the
+uniqueness guarantee, |get_own| must be declared to return a |shared_ptr| in
+order to avoid having to call |clone|: there is no way to persuade a
+|shared_ptr| to release its ownership, even if it happens to be (or is known
+to be) the unique owner; returning a |unique_ptr| is not an option.
 
 
 @< Template and inline function def... @>=
@@ -1538,10 +1606,11 @@ table.
 
 bool coerce(const type_expr& from_type, const type_expr& to_type,
             expression_ptr& e);
-expression conform_types
-  (const type_expr& found, type_expr& required, expression_ptr d, expr e);
+expression_ptr conform_types
+  (const type_expr& found, type_expr& required
+  , expression_ptr&& d, const expr& e);
 const conversion_record* row_coercion(const type_expr& final_type,
-                                            type_expr& component_type);
+				     type_expr& component_type);
 void coercion(const type_expr& from,
               const type_expr& to,
               const char* s, conversion_info::conv_f f);
@@ -1567,11 +1636,10 @@ struct conversion_info
 @)
 class conversion : public expression_base
 { const conversion_info& type;
-  expression exp;
+  expression_ptr exp;
 public:
   conversion(const conversion_info& t,expression_ptr e)
-   :type(t),exp(e.release()) @+{}
-  virtual ~conversion()@;{@; delete exp; }
+   :type(t),exp(std::move(e)) @+{}
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -1589,10 +1657,10 @@ converted-from type if the operator or function already exists for the tuple
 type converted to, for instance one could not define unary minus for rational
 numbers because binary minus for integers was already defined. Another reason
 is that using decomposition of tuples in a let-expression to disassemble the
-converted-from type will not work without a cast-to-a-tuple, since in this
-context the mere desire to have some unspecified tuple does not suffice to
-activate the implicit conversion. For these reasons it is preferable to always
-make the conversion to a tuple explicit.
+converted-from type will not work without a cast-to-a-specific-tuple-type,
+since in this context the mere desire to have some unspecified tuple does not
+suffice to activate the implicit conversion. For these reasons it is
+preferable to always make the conversion to a tuple explicit.
 
 Although automatic conversions are only inserted when the type analysis
 requires a non-empty result type, it is still possible that at run time this
@@ -1630,14 +1698,16 @@ can then be re-used to handle the more subtle cases of automatic conversions.
 @ The implementation of |coerce| will be determined by a simple table lookup.
 The records in this table contain a |conversion_info| structure (in fact they
 are derived from it) and in addition indications of the types converted from
-and to. The table entries store these types by pointer, so that table entries
-are assignable, and the table can be allowed to grow (which is a technical
-necessity in order to allow other compilation units to contribute coercions).
+and to. Since these types occur in a small fixed collection of types, all of
+which are statically created in sections @# first types section @> and~%
+@# second types section @>, the type expressions are not stored in the table
+itself, which instead stores non-owning pointers to them.
 
 @< Type definitions @>=
 struct conversion_record : public conversion_info
-{ const type_expr* from,* to; // non-owned pointers
-  conversion_record (const type_expr& from_type,
+{ const type_expr* from, * to;
+  // non-owned pointers, themselves could be |const| in gcc 4.8
+  conversion_record @| (const type_expr& from_type,
                      const type_expr& to_type,
                      const char* s, conv_f c)
    : conversion_info(s,c), from(&from_type),to(&to_type) @+{}
@@ -1652,13 +1722,6 @@ become invalid in case of reallocation.
 
 std::vector<conversion_record> coerce_table;
 
-@ We will iterate over |coerce_table| several times; the following |typedef|
-makes this easier.
-
-@< Local type def... @>=
-
-typedef std::vector<conversion_record>::const_iterator coerce_iter;
-
 @ The function |coercion| simplifies filling the coercion table; it is
 externally callable. Its action is simply extending |coerce_table| with a new
 |conversion_record|.
@@ -1666,7 +1729,7 @@ externally callable. Its action is simply extending |coerce_table| with a new
 void coercion(const type_expr& from,
               const type_expr& to,
               const char* s, conversion_info::conv_f f)
-{@; coerce_table.push_back(conversion_record(from,to,s,f)); }
+{@; coerce_table.emplace_back(from,to,s,f); }
 
 @ There is one coercion that is not stored in the lookup table, since it can
 operate on any input type: the voiding coercion. It is necessary for instance
@@ -1685,10 +1748,9 @@ coercion this level should be |no_value|. So we introduce a type derived from
 
 @< Type definitions @>=
 class voiding : public expression_base
-{ expression exp;
+{ expression_ptr exp;
 public:
   voiding(expression_ptr e) : exp(e.release()) @+{}
-  virtual ~voiding()@;{@; delete exp; }
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -1721,14 +1783,13 @@ if |to_type==void_type|.
 @< Function definitions @>=
 bool coerce(const type_expr& from_type, const type_expr& to_type,
 	    expression_ptr& e)
-{ for (coerce_iter
-       it=coerce_table.begin(); it!=coerce_table.end(); ++it)
+{ for (auto it=coerce_table.begin(); it!=coerce_table.end(); ++it)
     if (from_type==*it->from and to_type==*it->to)
-    @/{@; e.reset(new conversion(*it,e));
+    @/{@; e.reset(new conversion(*it,std::move(e)));
       return true;
     }
   if (to_type==void_type)
-  {@; e.reset(new voiding(e));
+  {@; e.reset(new voiding(std::move(e)));
      return true;
   }
   return false;
@@ -1740,24 +1801,25 @@ one required. The function |conform_types| will facilitate this. The argument
 |d| is a possibly already partially converted expression, which should be
 further wrapped in a conversion call if appropriate, while |e| is the original
 expression that should be mentioned in an error message if both attempts fail.
-A call to |conform_types| will be invariably followed (upon success) by
-returning the expression~|d| (possibly modified) from the calling function; we
-can save some work by returning the required value already from
-|conform_types|. Given that we do, we might as well take ownership of~|d| (by
-having it passed by value) so that the caller knows it should afterwards use
-our return value, rather than~|d|.
+A call to |conform_types| will beinto an invariably followed (upon success) by
+returning the expression now held in the argument~|d| from the calling
+function; we can avoid having to repeat that argument in a return statement by
+returning the value in question already from |conform_types|. To indicate that
+the expression~|d| is incorporated into to return value, we choose to get |d|
+passed by rvalue reference, even though the argument will usually be held in a
+variable.
 
-@~The copied unique-pointer |d| provides the modifiable reference that |coerce|
-needs. If both attempts to conform the types fail, we must take a copy of both
-type expressions, since the originals are not owned by us, and will probably
-be destructed before the error is caught.
+@~The rvalue reference to |d| provides the modifiable reference that |coerce|
+needs. If both attempts to conform the types fail, we must take a copy of
+|found| (since it a qualified |const|), but we can move from |required|, whose
+owner will be destructed before the error is caught.
 
 @< Function def... @>=
-expression conform_types
-(const type_expr& found, type_expr& required, expression_ptr d, expr e)
+expression_ptr conform_types
+(const type_expr& found, type_expr& required, expression_ptr&& d, const expr& e)
 { if (not required.specialise(found) and not coerce(found,required,d))
-    throw type_error(e,found.copy(),required.copy());
-  return d.release();
+    throw type_error(e,found.copy(),std::move(required));
+  return std::move(d);
 }
 
 
@@ -1765,17 +1827,28 @@ expression conform_types
 type; when they occur in a context requiring a non-row type, we may be able to
 find a coercion that reconciles the requirements. The following function finds
 whether this is possible, and if so sets |components_type| to the type
-required for the components; if not it will return~|nullptr|. By using this
-mechanism the components themselves obtain a context that may generate further
-conversions to obtain this type. The implementation is simply to look in
-|coerce_table| for conversions from some row type.
+required for the components; if not it will return~|nullptr|. The
+implementation is simply to look in |coerce_table| for conversions from some
+row type, then try to specialise |component_type| to the component type of
+that row type. By using this mechanism, the components of a row display
+themselves obtain a context that may generate further conversions to obtain
+this type.
+
+Currently all calls to this function have |component_type| initially
+undetermined, so the call to of the |specialise| method will always succeed,
+but we test the result nonetheless. The code does assume the set of possible
+coercions is such that there is at most one coercion from any row type to a
+given (non-void) type, since it there were more than one possibility we could
+not decide what |component_type| should become.
 
 @< Function def... @>=
 const conversion_record* row_coercion(const type_expr& final_type,
                                             type_expr& component_type)
-{ for (coerce_iter it=coerce_table.begin(); it!=coerce_table.end(); ++it)
+{ for (auto it=coerce_table.begin(); it!=coerce_table.end(); ++it)
     if (final_type==*it->to and it->from->kind==row_type)
-    @/{@; component_type.specialise(*it->from->component_type); return &*it; }
+      return component_type.specialise(*it->from->component_type)
+        ? &*it
+        : nullptr;
   return nullptr;
 }
 
@@ -1784,7 +1857,7 @@ const conversion_record* row_coercion(const type_expr& final_type,
 The above implicit conversions of types pose a limitation to the possibilities
 of overloading operator symbols and function identifiers. If a symbol should
 be overloaded for too closely related operand types, situations could occur in
-which given operand expressions can be converted to either of the operand
+which given operand expressions can be converted to either one of the operand
 types. This would either produce unpredictable behaviour, or necessitate a
 complicated set of rules to determine which of the definitions of the symbol
 is to be used (overloading resolution in \Cpp\ is a good example of such
@@ -1793,13 +1866,13 @@ restricting the rules of the language: either forbid type conversions in
 arguments of overloaded symbols, or forbid simultaneous definitions of such
 symbols for too closely related types. (A mixture of both is also conceivable,
 allowing only certain conversions and forbidding overloading between types
-related by them; the language Algol~68 is a good example of an approach along
-these lines). Forbidding all automatic type conversions in case of overloading
-would defeat to a large extent the purpose of overloading, namely as a
-convenience to the user; therefore we choose the latter solution of forbidding
-overloading in certain cases. The predicate |is_close| will be used to
-characterise pairs of argument types that are mutually exclusive for
-overloading purposes.
+related by them; the ``firm'' context for operands in the language Algol~68
+provides a good example of an approach along these lines). Forbidding all
+automatic type conversions in case of overloading would defeat to a large
+extent the purpose of overloading, namely as a convenience to the user;
+therefore we choose the latter solution of forbidding overloading in certain
+cases. The predicate |is_close| will be used to characterise pairs of argument
+types that are mutually exclusive for overloading purposes.
 
 @< Declarations of exported functions @>=
 unsigned int is_close (const type_expr& x, const type_expr& y);
@@ -1828,11 +1901,11 @@ expression given as argument could be converted to either of them. Deciding
 the existence of such an expression would require study of all available
 language constructs, but the situation is somewhat simplified by the fact
 that, for efficiency reasons, overloading resolution is not done using the
-argument expression, but only its type. In fact matching will be done using
-calls to the very function |is_close| we are discussing here, testing the bit
-for conversion towards the required argument type; this provides us with an
-opportunity to adjust rules for possible type conversions of arguments at the
-same time as defining the exclusion rules.
+argument expression, but only using its type. In fact matching will be done
+using calls to the very function |is_close| we are discussing here, testing
+the bit for conversion towards the required argument type; this provides us
+with an opportunity to adjust rules for possible type conversions of arguments
+at the same time as defining the exclusion rules.
 
 We must forbid \.{void} altogether as operand type of overloaded functions,
 since anything can be converted to that type; this is not a great limitation.
@@ -1915,41 +1988,42 @@ exception types will be used without any type derivation.
 
 @< Includes needed in \.{types.h} @>=
 #include <stdexcept>
-#include "parsetree.h" // type |expr| will be used in error classes
 
 @ For errors detected before execution starts, we first derive a general
 exception class |program_error| from |std::exception|; it represents any kind
 of error of the user input determined by static analysis (for instance use of
 undefined variables).
 
-Although it does nothing explicitly (the string will be destructed anyway), we
-must explicitly define a destructor for |program_error|: the automatically
-generated one would lack the |throw()| specifier.
-
 @< Type definitions @>=
 class program_error : public std::exception
 { std::string message;
 public:
   explicit program_error(const std::string& s) : message(s) @+{}
-  virtual ~program_error() throw() @+{@;} // obligatory definition
+  ~program_error () noexcept @+{} // backward compatibility for gcc 4.6
   const char* what() const throw() @+{@; return message.c_str(); }
 };
 
 @ We derive from |program_error| an exception type |expr_error| that stores in
-addition to the error message an expression to which the message applies. It
-is declared a |struct|, as we leave it up to the |catch| code to incorporate
-the offending expression in a message in addition to the one produced by
-|what()|. For this type no virtual methods are defined at all, in particular
-we do not need a virtual destructor: the (automatically generated) destruction
-code that takes care of destructing |offender| is not called through a vtable
-(which in fact is absent). It is not quite clear whether this explains that
-the compiler does not complain here that the undeclared destructor has a too
-loose (because absent) |throw| specification, while it would for
-|program_error|.
+addition to the error message a reference to an expression to which the
+message applies. Placing a reference in an error object may seem hazardous,
+because the error might terminate the lifetime of the object referred to, but
+in fact it is safe: all |expr| objects are constructed in dynamic memory
+during parsing, and destructed at the disposal of the now translated
+expression at the end of the main interpreter loop; all throwing of
+|expr_error| (or derived types) happens after the parser has finished, and the
+corresponding |catch| happens in the main loop before disposal of the
+expression, so the reference certainly survives the lifetime of the
+|expr_error| object.
+
+The error type is declared a |struct|, as we leave it up to the |catch| code
+to incorporate the offending expression in a message in addition to the one
+produced by |what()|. In fact no virtual methods are defined at all, in
+particular we do not need a virtual destructor; there is nothing to destruct.
 
 @< Type definitions @>=
+struct expr; // predeclare
 struct expr_error : public program_error
-{ expr offender; // the subexpression causing a problem
+{ const expr& offender; // the subexpression causing a problem
 @)
   expr_error (const expr& e,const std::string& s) throw()
     : program_error(s),offender(e) @+{}
@@ -1970,19 +2044,8 @@ struct type_error : public expr_error
   type_error (const expr& e, type_expr&& a, type_expr&& r) noexcept @/
     : expr_error(e,"Type error") @|
       ,actual(std::move(a)),required(std::move(r)) @+{}
-  type_error(type_error&& e);
+  type_error@[(type_error&& e) = default@];
 };
-
-@ A copy or move constructor for |type_error| must be defined in order to be
-able to use it for throwing. The latter is very straightforward as no type
-have to be duplicated, so we choose that option.
-
-@< Function definitions @>=
-type_error::type_error(type_error&& e)
- : expr_error(e)
- , actual(std::move(e.actual))
- , required(std::move(e.required))
-@+{}
 
 @* Enumeration of primitive types.
 %
