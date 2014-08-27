@@ -9,8 +9,6 @@
 #include <queue> // for comparison
 #include "sl_list.h"
 
-typedef atlas::tags::IteratorTag IT;
-
 
 class A
 {
@@ -88,7 +86,7 @@ void gg()
   vb.insert(vb.insert(++vb.begin(),7),8);
 
   c=List(4,17);
-  c.insert(c.end(),b.begin(),b.end(),IT());
+  c.insert(c.end(),b.begin(),b.end());
   sc=sb;
   vc=vb;
 
@@ -114,7 +112,7 @@ void gg()
   sc.erase(sp);
   // vc.erase(vp); // UB
 
-  b.insert(b.end(),b.begin(),b.end(),IT());
+  b.insert(b.end(),b.begin(),b.end());
   sb.insert(sb.end(),sb.begin(),sb.end());
 
 
@@ -170,7 +168,8 @@ int main()
   std::cout << "Sum is " << tri(7) << ".\n";
   std::ostream_iterator<int> lister(std::cout,", ");
   intlist a { 13,4,1,3 };
-  intlist aa;
+  intlist aa (3,14);
+  a.insert(++++a.begin(),aa.begin(),end(aa));
   aa = a;
 
   std::cout << a << ',' << aa << "; ";
@@ -185,6 +184,7 @@ int main()
 
   std::cout << a << std::endl;
   bb=b;
+  b = std::move(b); // test self-move-assignment
   std::copy(b.begin(),b.end(),lister); std::cout<<std::endl;
   std::copy(bb.begin(),bb.end(),lister); std::cout<<std::endl;
   b.push_back(17);
