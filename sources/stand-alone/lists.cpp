@@ -165,7 +165,6 @@ std::ostream& operator << (std::ostream& os, const intlist & l)
 
 int main()
 {
-  std::cout << "Sum is " << tri(7) << ".\n";
   std::ostream_iterator<int> lister(std::cout,", ");
   intlist a { 13,4,1,3 };
   intlist aa (3,14);
@@ -180,11 +179,14 @@ int main()
   std::cout << a << std::endl;
 
   int_list b(std::move(a));
-  int_list bb;
-
   std::cout << a << std::endl;
+
+  int_list bb (3,14);
+  std::copy(bb.begin(),bb.end(),lister); std::cout<<std::endl;
+
   bb=b;
   b = std::move(b); // test self-move-assignment
+  bb.insert(++++bb.begin(),2,11);
   std::copy(b.begin(),b.end(),lister); std::cout<<std::endl;
   std::copy(bb.begin(),bb.end(),lister); std::cout<<std::endl;
   b.push_back(17);
