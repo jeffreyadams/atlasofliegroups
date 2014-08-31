@@ -719,9 +719,9 @@ shared pointer. It is not an instance of |containers::simple_list| mainly
 because of sharing of parts between different contexts, which arises when
 closures are formed as will be described later. The structure pointed to by
 |shared_context| is described in \.{types.w}; essentially, each node of the
-list is a vector of values associate with identifiers introduced in the same
+list is a vector of values associated with identifiers introduced in the same
 lexical |layer|. Although each value is associated with an identifier, they
-are stored anonymously; the proper location of a applied identifier is
+are stored anonymously; the proper location of an applied identifier is
 determined by its position in the list of lexical frames at the time of type
 checking, and recorded as a pair of a relative depth (of the defining
 occurrence with respect to the applied occurrence) and an offset within the
@@ -736,11 +736,11 @@ returning from a user-defined function; it is doubtful whether this would
 actually result in more rapid evaluation.
 
 The pointer holding the current execution context is declared a as static
-variable of a local class |frame| to be detailed later. Having a static
-variable has the advantage, compared with making it a parameter to the
-|evaluate| methods, of not encumbering the numerous such methods that neither
-use nor modify the context in any way (those not involving identifiers or user
-defined functions).
+variable of a local class |frame| to be detailed in section @#frame class@>.
+Having a static variable has the advantage, compared with making it a
+parameter to the |evaluate| methods, of not encumbering the numerous such
+methods that neither use nor modify the context in any way (those not
+involving identifiers or user defined functions).
 
 @< Local var... @>=
 shared_context frame::current; // points to topmost current frame
@@ -1730,6 +1730,8 @@ copying it, by \emph{moving} the pointer to the tail of the new node. When
 popping on destruction however we need to copy, since the node being popped
 could have become accessed independently (through a |closure|, to be discussed
 later), so we are not free to move from the tail of this node.
+
+@:frame class@>
 
 @< Local class definitions @>=
 class frame

@@ -16,7 +16,7 @@ carries a legacy of the original design.
 
 This file also defines some other functions defined here are not
 used in the parser, but can be used by other modules written in~\Cpp; their
-declaration is separated fro historic reasons only.
+declaration is separated for historic reasons only.
 
 @( parsetree.h @>=
 #ifndef PARSETREE_H

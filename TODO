@@ -53,17 +53,17 @@
 
  - Allow compound assignment for components: v[i]+:=1
    The current simple rewriting scheme would give problems with side effects
-   from the index expression> Nonetheless this is so natural that it is a
+   from the index expression. Nonetheless this is so natural that it is a
    nuisance to have it forbidden; maybe translate to 'let x=i in v[x]:=v[x]+1'
 
  - Implement compound assignment directly
    While 'v #:= x' (with vec v, int x) is easy to write (and common in loop
-   bodies), its translation 'v := v#x' is not efficient, since with 'v' still
-   shared when 'v#x' is evaluated, there is no chance of reusing the same
-   memory at least on some occasions. This could be possible if built-in
-   compound assignment were handled in a single operation (even though no user
+   bodies), it is converted to 'v := v#x' which is not efficient: with 'v'
+   still shared when 'v#x' is evaluated, there is no chance of (at least on
+   some occasions) reusing the same memory. This could be possible if built-in
+   compound assignment were handled as a single operation (even though no user
    defined function could do such a thing). This is most useful for
-   conactenation, but operations such as vector addition couls also profit.
+   concatenation, but operations such as vector addition could also profit.
    This point is maybe to be considered together with the previous point.
 
  - Allow loops executed in reverse order
