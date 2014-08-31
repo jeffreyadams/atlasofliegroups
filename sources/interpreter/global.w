@@ -77,30 +77,22 @@ We need an identifier table to record the values of globally bound identifiers
 shared pointers, so that we can evaluate a global identifier without
 duplicating the value in the table itself. Modifying the value of such an
 identifier by an assignment will produce a new pointer, so that any
-``shareholders'' that access might the old value by a means independent of the
-global identifier will not see any change. There is another level of sharing,
-which affects applied occurrences of the identifier as converted during type
-analysis. The value accessed by such identifiers (which could be contained in
-user-defined function bodies and therefore have long lifetime) are expected to
-undergo change when a new value is assigned to the global variable; they will
-therefore access the location of the shared value pointer rather than the
-value pointed to. However, if a new identifier of the same name should be
-introduced, a new value pointer stored in a different location will be
-created, while existing applied occurrences of the identifier will continue to
-access the old value, avoiding the possibility of accessing a value of
-unexpected type. In such a circumstance, the old shared pointer location
-itself will no longer be owned by the identifier table, so we should arrange
-for shared ownership of that location. This explains that the |id_data|
-structure used for entries in the table has a shared pointer to a shared
-pointer.
-
-For the type component on the other hand, the identifier table will assume
-strict ownership. If one would instead give ownership of the |type| field
-directly to individual |id_data| entries, this would greatly complicate their
-duplication, and therefore their insertion into the table. We therefore only
-allow construction of |id_data| objects in an empty state; the pointers they
-contain should be set only \emph{after} the insertion of the object into the
-table, which then immediately assumes ownership of the type.
+``shareholders'' that might access the old value by a means independent of the
+global identifier will not see any change (this is called copy-on-write
+policy). There is another level of sharing, which affects applied occurrences
+of the identifier as converted during type analysis. The value accessed by
+such identifiers (which could be contained in user-defined function bodies and
+therefore have long lifetime) are expected to undergo change when a new value
+is assigned to the global variable; they will therefore access the location of
+the shared value pointer rather than the value pointed to. However, if a new
+identifier of the same name should be introduced, a new value pointer stored
+in a different location will be created, while existing applied occurrences of
+the identifier will continue to access the old value, avoiding the possibility
+of accessing a value of unexpected type. In such a circumstance, the old
+shared pointer location itself will no longer be owned by the identifier
+table, so we should arrange for shared ownership of that location. This
+explains that the |id_data| structure used for entries in the table holds a
+shared pointer to a shared pointer.
 
 @< Type definitions @>=
 
