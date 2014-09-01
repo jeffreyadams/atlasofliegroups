@@ -38,6 +38,9 @@ struct sl_node
   T contents;
 sl_node(const T& contents) : next(nullptr), contents(contents) {}
 sl_node(T&& contents) : next(nullptr), contents(std::move(contents)) {}
+  template<typename... Args>
+  sl_node(Args&&... args)
+  : next(nullptr), contents(std::forward<Args>(args)...) {}
 }; // |class sl_node| template
 
 template<typename T>
@@ -198,14 +201,24 @@ template<typename T>
     {
       if (this!=&x) // self-assign is useless, though it would be safe
 	// reuse existing nodes when possible
-	assign(x.begin(),x.end(), tags::IteratorTag());
+      {
+	iterator p = begin();
+	node_type* q=x.head.get(); // maybe more efficient than an iterator
+	for ( ; not at_end(p) and q!=nullptr; ++p, q=q->next.get())
+	  *p = q->contents;
+	if (at_end(p))
+	  for ( ; q!=nullptr; ++p, q=q->next.get()) // |insert(p,q->contents)|
+	    p.link_loc->reset(new node_type(q->contents));
+	else // input exhausted before |p|; we need to truncate after |p|
+	  p.link_loc->reset();
+      }
       return *this;
     }
 
   simple_list& operator= (simple_list&& x)
     { // self-assignment is safe and cheap, don't bother to test here
       swap(x);
-      x.clear(); // don't spill an garbage
+      x.clear(); // don't spill any garbage
       return *this;
     }
 
@@ -241,10 +254,19 @@ template<typename T>
     head.reset(p); // make new node the first one in the list
   }
 
+  template<typename... Args>
+    void emplace_front(Args&&... args)
+  {
+    node_type* p =
+      new node_type(std::forward<Args>(args)...); // construct node value
+    p->next.reset(head.release()); // link trailing nodes here
+    head.reset(p); // make new node the first one in the list
+  }
+
   bool empty() const { return head==nullptr; }
   bool singleton() const { return head!=nullptr and head->next==nullptr; }
 
-  iterator insert(iterator pos, const T& val)
+  iterator insert (iterator pos, const T& val)
   {
     node_type* p = new node_type(val); // construct node value
     p->next.reset(pos.link_loc->release()); // link the trailing nodes here
@@ -252,7 +274,7 @@ template<typename T>
     return pos; // while unchanged, it now "points to" the new node
   }
 
-  iterator insert(iterator pos, T&& val)
+  iterator insert (iterator pos, T&& val)
   {
     node_type* p = new node_type(std::move(val)); // construct node value
     p->next.reset(pos.link_loc->release()); // link the trailing nodes here
@@ -260,7 +282,7 @@ template<typename T>
     return pos; // while unchanged, it now "points to" the new node
   }
 
-  iterator insert(iterator pos, size_type n, const T& val)
+  iterator insert (iterator pos, size_type n, const T& val)
   {
     while (n-->0)
       insert(pos,val);
@@ -268,7 +290,7 @@ template<typename T>
   }
 
   template<typename InputIt>
-    void insert(iterator pos, InputIt first, InputIt last, tags::IteratorTag)
+    void insert (iterator pos, InputIt first, InputIt last, tags::IteratorTag)
   {
     for( ; first!=last; ++first)
     { // |insert(pos++,*first);|
@@ -279,12 +301,12 @@ template<typename T>
     }
   }
 
-  iterator erase(iterator pos)
+  iterator erase (iterator pos)
   { pos.link_loc->reset((*pos.link_loc)->next.release());
     return pos;
   }
 
-  iterator erase(iterator first, iterator last)
+  iterator erase (iterator first, iterator last)
   { node_type* end = last.link_loc->get(); // because |last| gets invalid
     while (first.link_loc->get()!=end)
       // |erase(first);|
@@ -292,54 +314,39 @@ template<typename T>
     return first;
   }
 
-  void clear()
+  void clear ()
   {
     head.reset(); // smart pointer magic destroys all nodes
   }
 
-  void assign(size_type n, const T& x)
+  void assign (size_type n, const T& x)
   {
-    link_type* p = &head;
-    while (*p!=nullptr and n-->0)
-    {
-      node_type& node=**p;
-      node.contents = x;
-      p = &node.next;
-    }
-    if (*p==nullptr) // then proceed |while (n-->0) insert(iterator(p),x)|
+    iterator p = begin();
+    for ( ; not at_end(p) and n-->0; ++p)
+      *p = x;
+
+    if (at_end(p))
       while (n-->0)
-      {
-	node_type* q = new node_type(x); // final node, first new one
-	p->reset(q);
-	p = &q->next;
-      }
-    else // we have |n==0|, and may need to truncate after |p|
-      p->reset();
+	insert(p,x); // this inserts backwards, which doesn't matter
+    else // we have exhausted |n| before |p|, and need to truncate after |p|
+      p.link_loc->reset();
   }
 
   template<typename InputIt>
-    void assign(InputIt first, InputIt last, tags::IteratorTag)
+    void assign (InputIt first, InputIt last, tags::IteratorTag)
   {
-    link_type* p = &head;
-    while (*p!=nullptr and first!=last)
-    {
-      node_type& node=**p;
-      node.contents = *first;
-      p = &node.next;
-      ++first;
-    }
-    if (*p==nullptr)
-      for ( ; first!=last; ++first)
-      {
-	node_type* q = new node_type(*first);
-	p->reset(q); // link in new final node
-	p=&q->next;  // and make |p| point to its link field
-      }
-    else // now |first==last|; we (possibly) need to truncate after |p|
-      p->reset();
+    iterator p = begin();
+    for ( ; not at_end(p) and first!=last; ++p,++first)
+      *p = *first;
+
+    if (at_end(p))
+      for ( ; first!=last; ++p,++first)
+	p.link_loc->reset(new node_type(*first)); // |insert(p,*first)|
+    else // input exhausted before |p|; we need to truncate after |p|
+      p.link_loc->reset();
   }
 
-  void reverse()
+  void reverse ()
   {
     link_type result(nullptr);
     while (head!=nullptr)
@@ -350,7 +357,7 @@ template<typename T>
     head=std::move(result); // attach result at |head|
   }
 
-  void reverse(const_iterator from, const_iterator to)
+  void reverse (const_iterator from, const_iterator to)
   {
     link_type remainder((*to.link_loc).release());
     link_type p((*from.link_loc).release());
@@ -364,8 +371,8 @@ template<typename T>
 
   // accessors
   const T& front () const { return head->contents; }
-  const_iterator begin() const { return const_iterator(head); }
-  const_iterator cbegin() const { return const_iterator(head); }
+  const_iterator begin () const { return const_iterator(head); }
+  const_iterator cbegin () const { return const_iterator(head); }
   // instead of |end()| we provide the |at_end| condition
   static bool at_end (const_iterator p) { return *p.link_loc==nullptr; }
 
@@ -373,7 +380,7 @@ template<typename T>
 
 // external functions for |simple_list<T>|
 template<typename T>
-size_t length(const simple_list<T>& l)
+size_t length (const simple_list<T>& l)
 {
   size_t result=0;
   for (auto it=l.begin(); not l.at_end(it); ++it)
@@ -382,7 +389,7 @@ size_t length(const simple_list<T>& l)
 }
 
 template<typename T>
-typename simple_list<T>::const_iterator end(const simple_list<T>& l)
+typename simple_list<T>::const_iterator end (const simple_list<T>& l)
 {
   auto it=l.begin();
   while (not l.at_end(it))
@@ -419,7 +426,7 @@ template<typename T>
   size_type node_count;
 
   // an auxiliary function occasionally called when |head| is released
-  void set_empty() { tail=&head; node_count=0; }
+  void set_empty () { tail=&head; node_count=0; }
 
   // constructors
  public:
@@ -485,7 +492,7 @@ template<typename T>
     assign(l.begin(),l.end(), tags::IteratorTag());
   }
 
-  ~sl_list() {} // when called, |head| is already destructed/cleaned up
+  ~sl_list () {} // when called, |head| is already destructed/cleaned up
 
   sl_list& operator= (const sl_list& x)
     {
@@ -513,8 +520,8 @@ template<typename T>
   }
 
   //iterators
-  iterator begin() { return iterator(head); }
-  iterator end()   { return iterator(*tail); }
+  iterator begin () { return iterator(head); }
+  iterator end ()   { return iterator(*tail); }
 
   // in addition to |end()| we provide the |at_end| condition
   static bool at_end (iterator p) { return *p.link_loc==nullptr; }
@@ -526,7 +533,7 @@ template<typename T>
       tail=&head;
   }
 
-  void push_front(const T& val)
+  void push_front (const T& val)
   {
     node_type* p = new node_type(val); // construct node value
     if (empty()) // we must move |tail| if and only if this is first node
@@ -536,7 +543,7 @@ template<typename T>
     ++node_count;
   }
 
-  void push_front(T&& val)
+  void push_front (T&& val)
   {
     node_type* p = new node_type(std::move(val)); // construct node value
     if (empty()) // we must move |tail| if and only if this is first node
@@ -546,7 +553,7 @@ template<typename T>
     ++node_count;
   }
 
-  iterator push_back(const T& val)
+  iterator push_back (const T& val)
   {
     link_type& last = *tail; // hold this link field for |return| statement
     node_type* p= new node_type(val); // construct node value
@@ -566,11 +573,11 @@ template<typename T>
     return iterator(last);
   }
 
-  bool empty() const { return tail==&head; } // or |node_count==0|
-  bool singleton() const { return node_count==1; }
-  size_type size() const { return node_count; }
+  bool empty () const { return tail==&head; } // or |node_count==0|
+  bool singleton () const { return node_count==1; }
+  size_type size () const { return node_count; }
 
-  iterator insert(iterator pos, const T& val)
+  iterator insert (iterator pos, const T& val)
   {
     node_type* p = new node_type(val); // construct node value
     p->next.reset(pos.link_loc->release()); // link the trailing nodes here
@@ -581,7 +588,7 @@ template<typename T>
     return pos; // while unchanged, it now "points to" the new node
   }
 
-  iterator insert(iterator pos, T&& val)
+  iterator insert (iterator pos, T&& val)
   {
     node_type* p = new node_type(std::move(val)); // construct node value
     p->next.reset(pos.link_loc->release()); // link the trailing nodes here
@@ -592,7 +599,7 @@ template<typename T>
     return pos; // while unchanged, it now "points to" the new node
   }
 
-  iterator insert(iterator pos, size_type n, const T& val)
+  iterator insert (iterator pos, size_type n, const T& val)
   {
     while (n-->0)
       insert(pos,val);
@@ -600,7 +607,7 @@ template<typename T>
   }
 
   template<typename InputIt>
-    void insert(iterator pos, InputIt first, InputIt last, tags::IteratorTag)
+    void insert (iterator pos, InputIt first, InputIt last, tags::IteratorTag)
   {
     for( ; first!=last; ++first)
     { // |insert(pos++,*first);|, except we don't update |tail| yet
@@ -614,7 +621,7 @@ template<typename T>
       tail = pos.link_loc; // then make |tail| point to this null smart ptr
   }
 
-  iterator erase(iterator pos)
+  iterator erase (iterator pos)
   { pos.link_loc->reset((*pos.link_loc)->next.release());
     if (pos.link_loc->get()==nullptr) // if final node was erased
       tail = pos.link_loc; // we need to reestablish validity of |tail|
@@ -622,7 +629,7 @@ template<typename T>
     return pos;
   }
 
-  iterator erase(iterator first, iterator last)
+  iterator erase (iterator first, iterator last)
   { node_type* end = (*last.link_loc).get(); // because |last| gets invalid
     while (first.link_loc->get()!=end)
     { // |erase(first);|
@@ -634,69 +641,57 @@ template<typename T>
     return first;
   }
 
-  void clear()
+  void clear ()
   {
     head.reset(); // smart pointer magic destroys all nodes
     set_empty();
   }
 
-  void assign(size_type n, const T& x)
+  void assign (size_type n, const T& x)
   {
     node_count=n; // not changed below
-    link_type* p = &head;
-    while (p!=tail and n-->0)
-    {
-      node_type& node=**p;
-      node.contents = x;
-      p = &node.next;
-    }
-    if (p==tail)
+    iterator p = begin();
+    for ( ; p!=end() and n-->0; ++p)
+      *p = x;
+
+    if (p==end())
     { // |while (n-->0) insert(iterator(p),x)|, but a bit more efficiently
       if (n-->0)
       {
 	node_type* q = new node_type(x); // final node, first new one
 	tail = &q->next; // tail will point to its link field
-	(*p).reset(q);
+	p.link_loc->reset(q);
 	while (n-->0)
-	{
-	  q = new node_type(x); // new node will come before previous ones
-	  q->next.reset((*p).release()); // could have said |p->release()|
-	  (*p).reset(q); // similarly here, but it would be less readable
-	}
+	  insert(p,x); // insert remaiing nodes backwards
       }
     }
-    else // we have |n==0|, and may need to truncate after |p|
-      (tail = p)->reset();
+    else // we have exhausted |n| before |p|, and need to truncate after |p|
+      (tail = p.link_loc)->reset();
   }
 
   template<typename InputIt>
-    void assign(InputIt first, InputIt last, tags::IteratorTag)
+    void assign (InputIt first, InputIt last, tags::IteratorTag)
   {
     size_type count=0;
-    link_type* p = &head;
-    while (p!=tail and first!=last)
-    {
-      node_type& node=**p;
-      node.contents = *first;
-      p = &node.next;
-      ++first,++count;
-    }
-    if (p==tail)
-      for ( ; first!=last; ++first)
-      { // |insert(end(),*first);|
+    iterator p = begin();
+    for ( ; p!=end() and first!=last; ++p,++first,++count)
+      *p = *first;
+
+    if (p==end())
+      for ( ; first!=last; ++first,++count)
+      { // |insert(end(),*first);|, but use and update |tail| directly
 	node_type* q = new node_type(*first);
 	tail->reset(q); // link in new final node
 	tail=&q->next;  // and make |tail| point to its link field
-	++count;
       }
     else // now |first==last|; we (possibly) need to truncate after |p|
-      (tail = p)->reset();
+      (tail = p.link_loc)->reset();
     node_count = count;
   }
 
-  void reverse() { reverse(cbegin(),cend()); }
+  void reverse () { reverse(cbegin(),cend()); }
 
-  void reverse(const_iterator from, const_iterator to)
+  void reverse (const_iterator from, const_iterator to)
   {
     if (to==end() and from!=to)
       tail = &(*from.link_loc)->next;
@@ -710,17 +705,17 @@ template<typename T>
     from.link_loc->reset(result.release());
   }
 
-  simple_list<T> undress() // return only |head|, amputatinh other fields
+  simple_list<T> undress() // return only |head|, amputating other fields
   { set_empty();
     return simple_list<T>(head.release());
   }
 
   // accessors
   const T& front () const { return head->contents; }
-  const_iterator begin() const { return const_iterator(head); }
-  const_iterator end()   const { return const_iterator(*tail); }
-  const_iterator cbegin() const { return const_iterator(head); }
-  const_iterator cend()   const { return const_iterator(*tail); }
+  const_iterator begin () const { return const_iterator(head); }
+  const_iterator end ()   const { return const_iterator(*tail); }
+  const_iterator cbegin () const { return const_iterator(head); }
+  const_iterator cend ()   const { return const_iterator(*tail); }
 
   // in addition to |end()| we provide the |at_end| condition
   static bool at_end (const_iterator p) { return *p.link_loc==nullptr; }
@@ -729,10 +724,10 @@ template<typename T>
 
 // external functions for |sl_list<T>|
 template<typename T>
-size_t length(const sl_list<T>& l) { return l.size(); }
+size_t length (const sl_list<T>& l) { return l.size(); }
 
 template<typename T>
-typename simple_list<T>::const_iterator end(const sl_list<T>& l)
+typename simple_list<T>::const_iterator end (const sl_list<T>& l)
 { return l.end(); }
 
 
@@ -791,12 +786,12 @@ template<typename T>
   mirrored_sl_list (typename Base::size_type n, const T& x) : Base(n,x) {}
 
   // forward |push_back|, |back| and |pop_back| methods with name change
-  void push_back(const T& val) { Base::push_front(val); }
+  void push_back (const T& val) { Base::push_front(val); }
   T& back () { return Base::front(); }
   void pop_back () { return Base::pop_front(); }
 
   // while not needed for |std::stack|, provide renaming |push_front| too
-  typename Base::iterator push_front(const T& val)
+  typename Base::iterator push_front (const T& val)
   { return Base::push_back(val); }
 
 };

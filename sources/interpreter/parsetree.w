@@ -294,7 +294,10 @@ identifier names, which we lift out of that class by using a |typedef|.
 @< Includes needed... @>=
 #include "buffer.h" // for |Hash_table|
 
-@~Then here is how we identify an applied identifier.
+@~Then here is how we identify an applied identifier. Since this |typedef| is
+written to \.{parsetree.h}, all compilation units that include that file can
+also use it.
+
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef Hash_table::id_type id_type;
 
@@ -1382,9 +1385,9 @@ struct for_node
   // backward compatibility for gcc 4.6
 };
 struct cfor_node
-{ id_type id; expr count; expr bound; short up; expr body;
+{ id_type id; expr count; expr bound; bool up; expr body;
 @)
-  cfor_node(id_type id, expr&& count, expr&& bound, short up, expr&& body)
+  cfor_node(id_type id, expr&& count, expr&& bound, bool up, expr&& body)
 @/: id(id)
   , count(std::move(count))
   , bound(std::move(bound))
@@ -1427,7 +1430,7 @@ more \\{make}-functions.
 @< Declarations of functions for the parser @>=
 expr_p make_while_node(expr_p c, expr_p b);
 expr_p make_for_node(raw_id_pat& id, expr_p ip, expr_p b);
-expr_p make_cfor_node(id_type id, expr_p count, expr_p bound, short up, expr_p b);
+expr_p make_cfor_node(id_type id, expr_p count, expr_p bound, bool up, expr_p b);
 
 @ They are quite straightforward, as usual.
 
@@ -1449,12 +1452,12 @@ expr_p make_for_node(raw_id_pat& id, expr_p ip, expr_p b)
    return new expr(mk_for_node(id_pat(id),*expr_ptr(ip),*expr_ptr(b)));
 }
 @)
-expr mk_cfor_node(id_type id, expr& cnt, expr& bnd, short up, expr& b)
+expr mk_cfor_node(id_type id, expr& cnt, expr& bnd, bool up, expr& b)
 {@;
   return expr (c_loop(new @|
    cfor_node { id, std::move(cnt),std::move(bnd),up,std::move(b) }));
 }
-expr_p make_cfor_node(id_type id, expr_p cnt, expr_p bnd, short up, expr_p b)
+expr_p make_cfor_node(id_type id, expr_p cnt, expr_p bnd, bool up, expr_p b)
 {@;
    return new
      expr(mk_cfor_node(id,*expr_ptr(cnt),*expr_ptr(bnd),up,*expr_ptr(b)));
@@ -1924,9 +1927,9 @@ while the second expression is then evaluated without using its value; the
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct sequence_node
-{ expr first; expr last; int forward;
+{ expr first; expr last; bool forward;
 @)
-  sequence_node(expr&& first, expr&& last, int forward)
+  sequence_node(expr&& first, expr&& last, bool forward)
 @/: first(std::move(first))
   , last(std::move(last))
   , forward(forward)@+{}
@@ -1952,17 +1955,17 @@ explicit expr(sequence&& s)
 @ Sequences are built by |make_sequence|.
 
 @< Declarations of functions for the parser @>=
-expr_p make_sequence(expr_p first, expr_p last, int forward);
+expr_p make_sequence(expr_p first, expr_p last, bool forward);
 
 @~It does what one would expect it to.
 
 @< Definitions of functions for the parser @>=
-expr mk_sequence(expr& first, expr& last, int forward)
+expr mk_sequence(expr& first, expr& last, bool forward)
 {@;
   return expr(sequence(new @|
     sequence_node { std::move(first), std::move(last), forward } ));
 }
-expr_p make_sequence(expr_p first, expr_p last, int forward)
+expr_p make_sequence(expr_p first, expr_p last, bool forward)
 {@; return new expr(mk_sequence(*expr_ptr(first),*expr_ptr(last),forward)); }
 
 @

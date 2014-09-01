@@ -48,7 +48,7 @@ their dependencies notably on the level of their header files.
 
 \point The file \.{buffer.w} defines the classes |BufferedInput| providing an
 interface to input streams, and |Hash_table| storing and providing a
-translation from identifiers to small integers |Hash_table::id_type|.
+translation from identifiers to small integers |id_type|.
 
 \point The file \.{parsetree.w} defines the |expr| structure representing parsed
 expressions, and many related types, and node constructing functions for use
@@ -103,8 +103,8 @@ Like for the \.{atlas} program, the compile time flag |NREADLINE|, if defined
 by setting \.{-DNREADLINE} as a flag to the compiler, will prevent any
 dependency on the readline library.
 
-@d realex_version "0.8.3"
- // numbering from 0.5 (on 27/11/2010); last change 31/05/2014
+@d realex_version "0.8.4"
+ // numbering from 0.5 (on 27/11/2010); last change 21/08/2014
 
 @c
 

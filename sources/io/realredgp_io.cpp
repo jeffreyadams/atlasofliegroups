@@ -122,7 +122,7 @@ std::ostream& printCartanOrder(std::ostream& strm,
   Precondition: cartan #cn is defined for this real form.
 */
 std::ostream& printRealWeyl(std::ostream& strm,
-			    RealReductiveGroup& G_R,
+			    RealReductiveGroup& G_R, // modifiable for |cartan|
 			    size_t cn)
 {
   ComplexReductiveGroup& G_C = G_R.complexGroup();

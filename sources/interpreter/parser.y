@@ -101,8 +101,8 @@
 input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| '\f'	   { YYABORT; } /* allow form feed as well at command level */
 	| exp '\n'		{ *parsed_expr=$1; }
-	| tertiary ';' '\n'
-	  { *parsed_expr=make_sequence($1,wrap_tuple_display(NULL),1); }
+	| quaternary ';' '\n'
+	  { *parsed_expr=make_sequence($1,wrap_tuple_display(NULL),true); }
 	| SET pattern '=' exp '\n' { global_set_identifier($2,$4,1); YYABORT; } 
 	| SET IDENT '(' id_specs_opt ')' '=' exp '\n'
 	  { struct raw_id_pat id; id.kind=0x1; id.name=$2;
@@ -151,7 +151,7 @@ exp: LET lettail { $$=$2; }
 	| '(' id_specs ')' type ':' exp
 	  { $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6)); }
         | type ':' exp	 { $$ = make_cast($1,$3); }
-	| quaternary NEXT exp { $$=make_sequence($1,$3,0); }
+	| quaternary NEXT exp { $$=make_sequence($1,$3,false); }
         | quaternary
 ;
 
@@ -170,7 +170,7 @@ declaration: pattern '=' exp { $$ = make_let_node($1,$3); }
 	  }
 ;
 
-quaternary: tertiary ';' quaternary { $$=make_sequence($1,$3,1); }
+quaternary: quaternary ';' tertiary { $$=make_sequence($1,$3,true); }
 	| tertiary
 ;
 
@@ -182,12 +182,12 @@ tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3); }
 	| or_expr
 ;
 
-or_expr : and_expr OR or_expr
+or_expr : or_expr OR and_expr
 	  { $$ = make_conditional_node($1,make_bool_denotation(true),$3); }
 	| and_expr
 ;
 
-and_expr: not_expr AND and_expr
+and_expr: and_expr AND not_expr
 	  { $$ = make_conditional_node($1,$3,make_bool_denotation(false)); }
 	| not_expr
 ;
@@ -253,11 +253,11 @@ comprim: subscription
 	    $$=make_for_node(p,$6,$8);
 	  }
 	| FOR IDENT ':' exp FROM exp DO exp OD
-	  { $$=make_cfor_node($2,$4,$6,1,$8); }
+	  { $$=make_cfor_node($2,$4,$6,true,$8); }
 	| FOR IDENT ':' exp DOWNTO exp DO exp OD
-	  { $$=make_cfor_node($2,$4,$6,0,$8); }
+	  { $$=make_cfor_node($2,$4,$6,false,$8); }
 	| FOR IDENT ':' exp DO exp OD
-	  { $$=make_cfor_node($2,$4,wrap_tuple_display(NULL),1,$6); }
+	  { $$=make_cfor_node($2,$4,wrap_tuple_display(NULL),true,$6); }
 	| '(' exp ')'	       { $$=$2; }
 	| BEGIN exp END	       { $$=$2; }
 	| '[' commalist_opt ']'
