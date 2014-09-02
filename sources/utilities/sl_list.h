@@ -23,8 +23,7 @@ namespace atlas {
 
 namespace containers {
 
-// we omit a |typename Alloc = std::allocator<T>| parameter
-// since |std::auto_ptr| does not accomodate parametrising deallcation
+// we omit a |typename Alloc = std::allocator<T>| parameter for now
 template<typename T>
   class simple_list;
 template<typename T>
@@ -36,27 +35,24 @@ struct sl_node
   typedef std::unique_ptr<sl_node> link_type;
   link_type next;
   T contents;
+
 sl_node(const T& contents) : next(nullptr), contents(contents) {}
 sl_node(T&& contents) : next(nullptr), contents(std::move(contents)) {}
-  template<typename... Args>
-  sl_node(Args&&... args)
+  template<typename... Args> sl_node(Args&&... args)
   : next(nullptr), contents(std::forward<Args>(args)...) {}
 }; // |class sl_node| template
 
 template<typename T>
 struct sl_list_const_iterator
+  : public std::iterator<std::forward_iterator_tag, T>
 {
   friend class simple_list<T>;
   friend class sl_list<T>;
-  typedef T  value_type;
-  typedef const T& reference;
-  typedef const T* pointer;
 
-  typedef std::forward_iterator_tag iterator_category;
-  typedef ptrdiff_t difference_type;
-
-  typedef sl_list_const_iterator<T> self;
   typedef typename sl_node<T>::link_type link_type;
+
+private:
+  typedef sl_list_const_iterator<T> self;
 
   // data
 protected:
@@ -85,11 +81,12 @@ public:
 }; // |struct sl_list_const_iterator| template
 
 template<typename T>
-  struct sl_list_iterator : public sl_list_const_iterator<T>
+class sl_list_iterator : public sl_list_const_iterator<T>
 {
+  friend class simple_list<T>;
+  friend class sl_list<T>;
+
   typedef sl_list_const_iterator<T> Base;
-  typedef T& reference;
-  typedef T* pointer;
   typedef sl_list_iterator<T> self;
 
   // no extra data
@@ -108,18 +105,26 @@ public:
   self operator++(int) // post-increment
   { self tmp=*this; Base::operator++(nullptr); return tmp; }
 
+private: // friend classes may do the following conversion:
+  explicit sl_list_iterator(const Base& cit) // explicit removal of constness
+  : Base(cit) {} // there's really nothing to it
 }; // |struct sl_list_iterator| template
 
 
-/*     Simple singly linked list, without size of  push_back methods   */
+
+
+
+/*     Simple singly linked list, without |size| or |push_back| method   */
 
 template<typename T>
   class simple_list
 {
   friend class sl_list<T>;
+  typedef simple_list<T> self_type;
 
   typedef sl_node<T> node_type;
   typedef std::unique_ptr<node_type> link_type;
+
 
  public:
   typedef T value_type;
@@ -142,7 +147,7 @@ template<typename T>
   explicit simple_list () // empty list
     : head(nullptr) {}
 
-  explicit simple_list (node_type* raw) // capture raw pointer
+  explicit simple_list (node_type* raw) // convert from raw pointer
     : head(raw) {}
 
   simple_list (const simple_list& x) // copy contructor
@@ -193,29 +198,27 @@ template<typename T>
   ~simple_list() {} // when called, |head| is already destructed/cleaned up
 
   simple_list& operator= (const simple_list& x)
-    {
-      if (this!=&x) // self-assign is useless, though it would be safe
-	// reuse existing nodes when possible
-      {
-	iterator p = begin();
-	node_type* q=x.head.get(); // maybe more efficient than an iterator
-	for ( ; not at_end(p) and q!=nullptr; ++p, q=q->next.get())
-	  *p = q->contents;
-	if (at_end(p))
-	  for ( ; q!=nullptr; ++p, q=q->next.get()) // |insert(p,q->contents)|
-	    p.link_loc->reset(new node_type(q->contents));
-	else // input exhausted before |p|; we need to truncate after |p|
-	  p.link_loc->reset();
-      }
-      return *this;
+  {
+    if (this!=&x) // self-assign is useless, though it would be safe
+    { // reuse existing nodes when possible
+      iterator p = begin();
+      node_type* q=x.head.get(); // maybe more efficient than an iterator
+      for ( ; not at_end(p) and q!=nullptr; ++p, q=q->next.get())
+	*p = q->contents;
+      if (at_end(p))
+	for ( ; q!=nullptr; ++p, q=q->next.get()) // |insert(p,q->contents)|
+	  p.link_loc->reset(new node_type(q->contents));
+      else // |q| was exhausted before |p|; we need to truncate after |p|
+	p.link_loc->reset();
     }
+    return *this;
+  }
 
   simple_list& operator= (simple_list&& x)
-    { // self-assignment is safe and cheap, don't bother to test here
-      swap(x);
-      x.clear(); // don't spill any garbage
-      return *this;
-    }
+  { // self-assignment is safe, because safe for |std::unique_ptr| instances
+    head = std::move(x.head); // unique_ptr move assignment
+    return *this;
+  }
 
   void swap (simple_list& other)
   {
@@ -228,20 +231,20 @@ template<typename T>
   iterator begin() { return iterator(head); }
 
   // instead of |end()| we provide the |at_end| condition
-  static bool at_end (iterator p) { return *p.link_loc==nullptr; }
+  static bool at_end (iterator p) { return p.link_loc->get()==nullptr; }
 
   T& front () { return head->contents; }
   void pop_front ()
   { head.reset(head->next.release()); }
 
-  void push_front(const T& val)
+  void push_front (const T& val)
   {
     node_type* p = new node_type(val); // construct node value
     p->next.reset(head.release()); // link trailing nodes here
     head.reset(p); // make new node the first one in the list
   }
 
-  void push_front(T&& val)
+  void push_front (T&& val)
   {
     node_type* p = new node_type(std::move(val)); // construct node value
     p->next.reset(head.release()); // link trailing nodes here
@@ -249,7 +252,7 @@ template<typename T>
   }
 
   template<typename... Args>
-    void emplace_front(Args&&... args)
+    void emplace_front (Args&&... args)
   {
     node_type* p =
       new node_type(std::forward<Args>(args)...); // construct node value
@@ -257,34 +260,35 @@ template<typename T>
     head.reset(p); // make new node the first one in the list
   }
 
-  bool empty() const { return head==nullptr; }
-  bool singleton() const { return head!=nullptr and head->next==nullptr; }
+  bool empty () const { return head.get()==nullptr; }
+  bool singleton () const { return not empty() and head->next.get()==nullptr; }
 
-  iterator insert (iterator pos, const T& val)
+  iterator insert (const_iterator pos, const T& val)
   {
     node_type* p = new node_type(val); // construct node value
     p->next.reset(pos.link_loc->release()); // link the trailing nodes here
     pos.link_loc->reset(p); // and attach new node to previous ones
-    return pos; // while unchanged, it now "points to" the new node
+    return iterator(pos); // convert type; unchanged but points to new node
   }
 
-  iterator insert (iterator pos, T&& val)
+  iterator insert (const_iterator pos, T&& val)
   {
     node_type* p = new node_type(std::move(val)); // construct node value
     p->next.reset(pos.link_loc->release()); // link the trailing nodes here
     pos.link_loc->reset(p); // and attach new node to previous ones
-    return pos; // while unchanged, it now "points to" the new node
+    return iterator(pos); // convert type; while unchanged, |pos| now "points to" new node
   }
 
-  iterator insert (iterator pos, size_type n, const T& val)
+  iterator insert (const_iterator pos, size_type n, const T& val)
   {
     while (n-->0)
       insert(pos,val);
-    return pos;
+    return iterator(pos);
   }
 
   template<typename InputIt>
-    void insert (iterator pos, InputIt first, InputIt last, tags::IteratorTag)
+    void insert (const_iterator pos, InputIt first, InputIt last,
+		 tags::IteratorTag)
   {
     for( ; first!=last; ++first)
     { // |insert(pos++,*first);|
@@ -295,17 +299,17 @@ template<typename T>
     }
   }
 
-  iterator erase (iterator pos)
+  iterator erase (const_iterator pos)
   { pos.link_loc->reset((*pos.link_loc)->next.release());
-    return pos;
+    return iterator(pos);
   }
 
-  iterator erase (iterator first, iterator last)
+  iterator erase (const_iterator first, const_iterator last)
   { node_type* end = last.link_loc->get(); // because |last| gets invalid
     while (first.link_loc->get()!=end)
       // |erase(first);|
       first.link_loc->reset((*first.link_loc)->next.release());
-    return first;
+    return iterator(first);
   }
 
   void clear ()
@@ -340,6 +344,20 @@ template<typename T>
       p.link_loc->reset();
   }
 
+  template<typename InputIt>
+    void move_assign (InputIt first, InputIt last)
+  {
+    iterator p = begin();
+    for ( ; not at_end(p) and first!=last; ++p,++first)
+      *p = std::move(*first);
+
+    if (at_end(p))
+      for ( ; first!=last; ++p,++first)
+	p.link_loc->reset(new node_type(std::move(*first)));
+    else // input exhausted before |p|; we need to truncate after |p|
+      p.link_loc->reset();
+  }
+
   void reverse ()
   {
     link_type result(nullptr);
@@ -368,9 +386,11 @@ template<typename T>
   const_iterator begin () const { return const_iterator(head); }
   const_iterator cbegin () const { return const_iterator(head); }
   // instead of |end()| we provide the |at_end| condition
-  static bool at_end (const_iterator p) { return *p.link_loc==nullptr; }
+  static bool at_end (const_iterator p) { return p.link_loc->get()==nullptr; }
 
 }; // |class simple_list<T>|
+
+
 
 // external functions for |simple_list<T>|
 template<typename T>
@@ -384,6 +404,19 @@ size_t length (const simple_list<T>& l)
 
 template<typename T>
 typename simple_list<T>::const_iterator end (const simple_list<T>& l)
+{
+  auto it=l.cbegin();
+  while (not l.at_end(it))
+    ++it;
+  return it;
+}
+
+template<typename T>
+inline typename simple_list<T>::const_iterator cend (const simple_list<T>& l)
+{ return end(l); }
+
+template<typename T>
+typename simple_list<T>::iterator end (simple_list<T>& l)
 {
   auto it=l.begin();
   while (not l.at_end(it))
@@ -429,12 +462,11 @@ template<typename T>
   void set_empty () { tail=&head; node_count=0; }
 
   class ensure // a helper class that exists for its destructor only
-  { link_type* &tail; link_type* & dst; link_type* tmp;
+  { link_type* &tail;
+    link_type* &dst;
   public:
-    ensure(link_type*& tail, link_type& head) // maybe makes |tail=&head|
-      : tail(tail),  dst(tmp), tmp(&head) {}
-    ensure(link_type*& tail, iterator& p) // maybe makes |tail=p.link_loc|
-      : tail(tail),  dst(p.link_loc), tmp(nullptr) {}
+    ensure(link_type*& tail, const_iterator& p) // maybe makes |tail=p.link_loc|
+      : tail(tail),  dst(p.link_loc) {}
     ~ensure()
     { if (dst->get()==nullptr) // if at destruction time |dst| is at end
 	tail = dst; // then make |tail| point to it
@@ -496,7 +528,8 @@ template<typename T>
     assign(n,x);
   }
 
-  sl_list (std::initializer_list<T> l) : head(nullptr)
+  sl_list (std::initializer_list<T> l)
+  : head(nullptr), tail(&head), node_count(0)
   {
     assign(l.begin(),l.end(), tags::IteratorTag());
   }
@@ -513,21 +546,28 @@ template<typename T>
 
   sl_list& operator= (sl_list&& x)
   { // self-assignment is safe, because safe for |std::unique_ptr| instances
-    head = std::move(x.head); // unique_ptr move assignment
-    if (head.get()==nullptr)
-      tail=&head;
-    node_count = x.node_count;
+    if (x.head.get()==nullptr)
+      clear(); // this modifies |tail|
+    else
+    {
+      head = std::move(x.head); // unique_ptr move assignment
+      tail = x.tail;
+      node_count = x.node_count;
+    }
     return *this;
   }
 
   void swap (sl_list& other)
   {
-    ensure me(tail,head); ensure you(other.tail,other.head);
     using std::swap;
     head.swap(other.head); // swap |std::unique_ptr| instances
     swap(node_count,other.node_count);
     std::swap(tail,other.tail); // raw pointer swap
-      // the |~ensure| calls will now uncross tail pointers if necessary
+    // uncross tail pointers if necessary
+    if (head.get()==nullptr)
+      tail=&head;
+    if (other.head.get()==nullptr)
+      other.tail=&other.head;
   }
 
   //iterators
@@ -535,21 +575,25 @@ template<typename T>
   iterator end ()   { return iterator(*tail); }
 
   // in addition to |end()| we provide the |at_end| condition
-  static bool at_end (iterator p) { return *p.link_loc==nullptr; }
+  static bool at_end (iterator p) { return p.link_loc->get()==nullptr; }
 
   T& front () { return head->contents; }
   void pop_front ()
-  { ensure me(tail,head);
+  {
     head.reset(head->next.release());
     --node_count;
+    if (head.get()==nullptr)
+      tail=&head;
   }
 
   void push_front (const T& val)
   {
     // construct node value
     node_type* p = new node_type(val);
-    ensure me(tail,p->next); // adjusts |tail| if list was empty
-    p->next.reset(head.release()); // link trailing nodes here
+    if (head.get()==nullptr)
+      tail=&p->next; // adjusts |tail| if list was empty
+    else
+      p->next.reset(head.release()); // link trailing nodes here
     head.reset(p); // make new node the first one in the list
     ++node_count;
   }
@@ -558,8 +602,10 @@ template<typename T>
   {
    // construct node value
     node_type* p = new node_type(std::move(val));
-    ensure me(tail,p->next); // adjusts |tail| if list was empty
-    p->next.reset(head.release()); // link trailing nodes here
+    if (head.get()==nullptr)
+      tail=&p->next; // adjusts |tail| if list was empty
+    else
+      p->next.reset(head.release()); // link trailing nodes here
     head.reset(p); // make new node the first one in the list
     ++node_count;
   }
@@ -569,8 +615,10 @@ template<typename T>
   {
     // construct node value
     node_type* p = new node_type(std::forward<Args>(args)...);
-    ensure me(tail,p->next); // adjusts |tail| if list was empty
-    p->next.reset(head.release()); // link trailing nodes here
+    if (head.get()==nullptr)
+      tail=&p->next; // adjusts |tail| if list was empty
+    else
+      p->next.reset(head.release()); // link trailing nodes here
     head.reset(p); // make new node the first one in the list
     ++node_count;
   }
@@ -612,27 +660,31 @@ template<typename T>
   bool singleton () const { return node_count==1; }
   size_type size () const { return node_count; }
 
-  iterator insert (iterator pos, const T& val)
+  iterator insert (const_iterator pos, const T& val)
   {
     node_type* p = new node_type(val);
-    ensure me(tail,p->next);
-    p->next.reset(pos.link_loc->release()); // link the trailing nodes here
+    if (at_end(pos))
+      tail=&p->next;
+    else
+      p->next.reset(pos.link_loc->release()); // link the trailing nodes here
     pos.link_loc->reset(p); // and attach new node to previous ones
     ++node_count;
-    return pos; // while unchanged, it now "points to" the new node
+    return iterator(pos);
   }
 
-  iterator insert (iterator pos, T&& val)
+  iterator insert (const_iterator pos, T&& val)
   {
     node_type* p = new node_type(std::move(val));
-    ensure me(tail,p->next);
-    p->next.reset(pos.link_loc->release()); // link the trailing nodes here
+    if (at_end(pos))
+      tail=&p->next;
+    else
+      p->next.reset(pos.link_loc->release()); // link the trailing nodes here
     pos.link_loc->reset(p); // and attach new node to previous ones
     ++node_count;
-    return pos; // while unchanged, it now "points to" the new node
+    return iterator(pos);
   }
 
-  iterator insert (iterator pos, size_type n, const T& val)
+  iterator insert (const_iterator pos, size_type n, const T& val)
   {
     if (n-->0)
     {
@@ -645,11 +697,12 @@ template<typename T>
 	++node_count; // exception safe tracking of the size
       }
     }
-    return pos; // while unchanged, it now "points to" the first new node
+    return iterator(pos);
   }
 
   template<typename InputIt>
-    void insert (iterator pos, InputIt first, InputIt last, tags::IteratorTag)
+    void insert (const_iterator pos, InputIt first, InputIt last,
+		 tags::IteratorTag)
   {
     ensure me(tail,pos); // will adapt |tail| if |at_end(pos)| throughout
     for( ; first!=last; ++first)
@@ -663,8 +716,7 @@ template<typename T>
   }
 
   template<typename InputIt>
-    void move_insert (iterator pos, InputIt first, InputIt last,
-		      tags::IteratorTag)
+    void move_insert (const_iterator pos, InputIt first, InputIt last)
   {
     ensure me(tail,pos); // will adapt |tail| if |at_end(pos)| throughout
     for( ; first!=last; ++first)
@@ -677,15 +729,16 @@ template<typename T>
     }
   }
 
-  iterator erase (iterator pos)
+  iterator erase (const_iterator pos)
   {
-    ensure me(tail,pos); // will adapt |tail| if |pos==end()|
     pos.link_loc->reset((*pos.link_loc)->next.release());
+    if (pos.link_loc->get()==nullptr) // if final node was erased
+      tail = pos.link_loc; // we need to reestablish validity of |tail|
     --node_count;
-    return pos;
+    return iterator(pos);
   }
 
-  iterator erase (iterator first, iterator last)
+  iterator erase (const_iterator first, const_iterator last)
   { const node_type* end_ptr =  // we must store this pointer value
       last.link_loc->get();     // because |last| will get invalidated
     while (first.link_loc->get()!=end_ptr)
@@ -695,7 +748,7 @@ template<typename T>
     }
     if (end_ptr==nullptr) // if we had |last==end()| initially, then
       tail = first.link_loc; // we need to reestablish validity of |tail|
-    return first;
+    return iterator(first);
   }
 
   void clear ()
@@ -738,7 +791,7 @@ template<typename T>
   }
 
   template<typename InputIt>
-    void move_assign (InputIt first, InputIt last, tags::IteratorTag)
+    void move_assign (InputIt first, InputIt last)
   {
     size_type count=0;
     iterator p = begin();
@@ -783,7 +836,7 @@ template<typename T>
   const_iterator cend ()   const { return const_iterator(*tail); }
 
   // in addition to |end()| we provide the |at_end| condition
-  static bool at_end (const_iterator p) { return *p.link_loc==nullptr; }
+  static bool at_end (const_iterator p) { return p.link_loc->get()==nullptr; }
 
 }; // |class sl_list<T>|
 
@@ -792,10 +845,20 @@ template<typename T>
 size_t length (const sl_list<T>& l) { return l.size(); }
 
 template<typename T>
-typename simple_list<T>::const_iterator end (const sl_list<T>& l)
+typename sl_list<T>::const_iterator end (const sl_list<T>& l)
 { return l.end(); }
 
+template<typename T>
+inline typename sl_list<T>::const_iterator cend (const sl_list<T>& l)
+{ return end(l); }
 
+template<typename T>
+typename sl_list<T>::iterator end (sl_list<T>& l)
+{ return l.end(); }
+
+// overload non-member |swap|, so argument dependent lookup will find it
+template<typename T>
+  void swap(sl_list<T>& x, sl_list<T>& y) { x.swap(y); }
 
 
 template<typename T>
