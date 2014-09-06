@@ -9,8 +9,6 @@
 #include <queue> // for comparison
 #include "sl_list.h"
 
-typedef atlas::tags::IteratorTag IT;
-
 
 class A
 {
@@ -88,7 +86,7 @@ void gg()
   vb.insert(vb.insert(++vb.begin(),7),8);
 
   c=List(4,17);
-  c.insert(c.end(),b.begin(),b.end(),IT());
+  c.insert(c.end(),b.begin(),b.end());
   sc=sb;
   vc=vb;
 
@@ -114,7 +112,7 @@ void gg()
   sc.erase(sp);
   // vc.erase(vp); // UB
 
-  b.insert(b.end(),b.begin(),b.end(),IT());
+  b.insert(b.end(),b.begin(),b.end());
   sb.insert(sb.end(),sb.begin(),sb.end());
 
 
@@ -195,8 +193,8 @@ void tester() // test all methods at least once
   intlist ccc{std::move(cc)}; // move construction
   std::cout << "[4,1];[]: " << ccc << ';' << cc << std::endl;
   cc = intlist{3,1} ; // initialiser list construction, move assignment
-  aa.insert(aa.begin(),cc.begin(),end(cc),IT());
-  bb.insert(++bb.begin(),++aa.begin(),end(aa),IT());
+  aa.insert(aa.begin(),cc.begin(),end(cc));
+  bb.insert(++bb.begin(),++aa.begin(),end(aa));
   std::cout << "[3,1,4,1]; [4,1,4,1,1]; [3,1]: "
 	    << aa << "; " << bb << "; " << cc << std::endl;
   a = intlist(4); b=intlist(7,11); c=intlist{0,1,1,2,3,5,8,13,21,34};
@@ -215,12 +213,12 @@ void tester() // test all methods at least once
 	    << a << "; " << b << "; " << c << std::endl;
   c.erase(++++++++++c.begin());
   std::cout << "[0,1,1,2,3,8,13,21,34]: " << c << std::endl;
-  c.insert(++++++++c.begin(),b.begin(),++++++b.begin(),IT());
+  c.insert(++++++++c.begin(),b.begin(),++++++b.begin());
   std::cout << "[0,1,1,2,11,11,11,3,8,13,21,34]: " << c << std::endl;
   auto it=std::next(c.cbegin(),5);
   c.erase(it,std::next(it,4));
   std::cout << "[0,1,1,2,11,13,21,34]: " << c << std::endl;
-  std::advance(it,2); c.insert(it,a.begin(),end(a),IT());
+  std::advance(it,2); c.insert(it,a.begin(),end(a));
   std::cout << "[0,1,1,2,11,13,21,0,0,0,0,34]: " << c << std::endl;
   *(std::next(c.erase(it,std::next(it)),2)) += 7; // erase converts to iterator
   c.reverse(std::next(c.begin(),2),it);
@@ -281,8 +279,8 @@ void tester() // test all methods at least once
     std::cout << "[4,1];[]: " << ccc << ';' << cc << std::endl;
     cc = int_list(intlist{3,1}) ; // initialiser list construction, move assignment
     std::cout << "[3,1]: " << cc << std::endl;
-    aa.insert(aa.begin(),cc.begin(),end(cc),IT());
-    bb.insert(++bb.begin(),++aa.begin(),end(aa),IT());
+    aa.insert(aa.begin(),cc.begin(),end(cc));
+    bb.insert(++bb.begin(),++aa.begin(),end(aa));
     std::cout << "[3,1,4,1]; [4,1,4,1,1]; [3,1]: "
 	      << aa << "; " << bb << "; " << cc << std::endl;
     a = int_list(4); b=int_list(7,11); c=int_list{0,1,1,2,3,5,8,13,21,34};
@@ -304,12 +302,12 @@ void tester() // test all methods at least once
 	      << a << "; " << b << "; " << c << std::endl;
     c.erase(++++++++++c.begin());
     std::cout << "[0,1,1,2,3,8,13,21,34]: " << c << std::endl;
-    c.insert(++++++++c.begin(),b.begin(),++++++b.begin(),IT());
+    c.insert(++++++++c.begin(),b.begin(),++++++b.begin());
     std::cout << "[0,1,1,2,11,11,11,3,8,13,21,34]: " << c << std::endl;
     int_list::const_iterator it=std::next(c.cbegin(),5);
     c.erase(it,std::next(it,4));
     std::cout << "[0,1,1,2,11,13,21,34]: " << c << std::endl;
-    std::advance(it,2); c.insert(it,a.begin(),end(a),IT());
+    std::advance(it,2); c.insert(it,a.begin(),end(a));
     std::cout << "[0,1,1,2,11,13,21,0,0,0,0,34]: " << c << std::endl;
     *(std::next(c.erase(it,std::next(it)),2)) += 7; // erase converts to iterator
     c.reverse(std::next(c.begin(),2),it);

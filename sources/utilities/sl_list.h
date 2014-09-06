@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <memory>
 #include <iterator>
+#include <type_traits>
 #include <initializer_list>
 
 #include "tags.h"
@@ -166,11 +167,14 @@ template<typename T>
     : head(x.head.release())
   { }
 
-  template<typename InputIt>
-    simple_list (InputIt first, InputIt last, tags::IteratorTag)
+  template<typename InputIt, typename = typename std::enable_if<
+  std::is_base_of<std::input_iterator_tag,
+		  typename std::iterator_traits<InputIt>::iterator_category
+  >::value>::type >
+    simple_list (InputIt first, InputIt last)
     : head(nullptr)
   {
-    assign(first,last, tags::IteratorTag());
+    assign(first,last);
   }
 
   simple_list (size_type n)
@@ -192,7 +196,7 @@ template<typename T>
 
   simple_list (std::initializer_list<T> l) : head(nullptr)
   {
-    assign(l.begin(),l.end(), tags::IteratorTag());
+    assign(l.begin(),l.end());
   }
 
   ~simple_list() {} // when called, |head| is already destructed/cleaned up
@@ -286,9 +290,11 @@ template<typename T>
     return iterator(pos);
   }
 
-  template<typename InputIt>
-    void insert (const_iterator pos, InputIt first, InputIt last,
-		 tags::IteratorTag)
+  template<typename InputIt, typename = typename std::enable_if<
+  std::is_base_of<std::input_iterator_tag,
+		  typename std::iterator_traits<InputIt>::iterator_category
+  >::value>::type >
+    void insert (const_iterator pos, InputIt first, InputIt last)
   {
     for( ; first!=last; ++first)
     { // |insert(pos++,*first);|
@@ -330,8 +336,11 @@ template<typename T>
       p.link_loc->reset();
   }
 
-  template<typename InputIt>
-    void assign (InputIt first, InputIt last, tags::IteratorTag)
+  template<typename InputIt, typename = typename std::enable_if<
+  std::is_base_of<std::input_iterator_tag,
+		  typename std::iterator_traits<InputIt>::iterator_category
+  >::value>::type >
+    void assign (InputIt first, InputIt last)
   {
     iterator p = begin();
     for ( ; not at_end(p) and first!=last; ++p,++first)
@@ -503,11 +512,14 @@ template<typename T>
       ++node_count;
   }
 
-  template<typename InputIt>
-    sl_list (InputIt first, InputIt last, tags::IteratorTag)
-    : head(nullptr), tail(&head), node_count(0)
+  template<typename InputIt, typename = typename std::enable_if<
+  std::is_base_of<std::input_iterator_tag,
+		  typename std::iterator_traits<InputIt>::iterator_category
+  >::value>::type >
+  sl_list (InputIt first, InputIt last)
+  : head(nullptr), tail(&head), node_count(0)
   {
-    assign(first,last, tags::IteratorTag());
+    assign(first,last);
   }
 
   sl_list (size_type n)
@@ -531,7 +543,7 @@ template<typename T>
   sl_list (std::initializer_list<T> l)
   : head(nullptr), tail(&head), node_count(0)
   {
-    assign(l.begin(),l.end(), tags::IteratorTag());
+    assign(l.begin(),l.end());
   }
 
   ~sl_list () {} // when called, |head| is already destructed/cleaned up
@@ -540,7 +552,7 @@ template<typename T>
   {
     if (this!=&x) // self-assign is useless, though it would be safe
       // reuse existing nodes when possible
-      assign(x.begin(),x.end(), tags::IteratorTag());
+      assign(x.begin(),x.end());
     return *this;
   }
 
@@ -700,9 +712,11 @@ template<typename T>
     return iterator(pos);
   }
 
-  template<typename InputIt>
-    void insert (const_iterator pos, InputIt first, InputIt last,
-		 tags::IteratorTag)
+  template<typename InputIt, typename = typename std::enable_if<
+  std::is_base_of<std::input_iterator_tag,
+		  typename std::iterator_traits<InputIt>::iterator_category
+  >::value>::type >
+    void insert (const_iterator pos, InputIt first, InputIt last)
   {
     ensure me(tail,pos); // will adapt |tail| if |at_end(pos)| throughout
     for( ; first!=last; ++first)
@@ -773,8 +787,11 @@ template<typename T>
     }
   }
 
-  template<typename InputIt>
-    void assign (InputIt first, InputIt last, tags::IteratorTag)
+  template<typename InputIt, typename = typename std::enable_if<
+  std::is_base_of<std::input_iterator_tag,
+		  typename std::iterator_traits<InputIt>::iterator_category
+  >::value>::type >
+    void assign (InputIt first, InputIt last)
   {
     size_type count=0;
     iterator p = begin();
@@ -782,7 +799,7 @@ template<typename T>
       *p = *first;
 
     if (p==end())
-      insert(p,first,last,tags::IteratorTag()); // also increases |node_count|
+      insert(p,first,last); // this also increases |node_count|
     else // we have exhausted input before |p|, and need to truncate after |p|
     {
       (tail = p.link_loc)->reset();
@@ -874,8 +891,11 @@ template<typename T>
     : Base(x) {}
   // compiler-generated copy constructor and assignment should be OK
 
-  template<typename InputIt>
-    mirrored_simple_list (InputIt first, InputIt last, tags::IteratorTag)
+  template<typename InputIt, typename = typename std::enable_if<
+  std::is_base_of<std::input_iterator_tag,
+		  typename std::iterator_traits<InputIt>::iterator_category
+  >::value>::type >
+    mirrored_simple_list (InputIt first, InputIt last)
     : Base()
     {
       for ( ; first!=last; ++first)
@@ -904,8 +924,11 @@ template<typename T>
     : Base(x) {}
   // compiler-generated copy constructor and assignment should be OK
 
-  template<typename InputIt>
-    mirrored_sl_list (InputIt first, InputIt last, tags::IteratorTag) : Base()
+  template<typename InputIt, typename = typename std::enable_if<
+  std::is_base_of<std::input_iterator_tag,
+		  typename std::iterator_traits<InputIt>::iterator_category
+  >::value>::type >
+    mirrored_sl_list (InputIt first, InputIt last) : Base()
     {
       for ( ; first!=last; ++first)
 	Base::insert(Base::begin(),*first); // this reverses the order
