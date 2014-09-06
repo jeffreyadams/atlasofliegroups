@@ -182,7 +182,6 @@ template<typename T, typename Alloc >
   typedef typename Alloc_traits::pointer node_ptr; // returned from |allocate|
   typedef std::unique_ptr<node_type, allocator_deleter<alloc_type> > link_type;
 
-  typedef simple_list<T, Alloc> self_type;
 
  public:
   typedef T value_type;
@@ -479,7 +478,7 @@ template<typename T, typename Alloc >
       p.link_loc->reset();
   }
 
-  template<typename InputIt, typename = if_input_iter<InputIt> >
+  template<typename InputIt>
     void move_assign (InputIt first, InputIt last)
   {
     iterator p = begin();
@@ -647,7 +646,7 @@ template<typename T, typename Alloc>
   , node_count(x.node_count)
   { x.set_empty(); }
 
-  sl_list (simple_list<T>&& x) // move and complete constructor
+  explicit sl_list (simple_list<T>&& x) // move and complete constructor
   : alloc_type(std::move(x))
   , head(x.head.release())
   , tail(&head)
@@ -905,7 +904,7 @@ template<typename T, typename Alloc>
     }
   }
 
-  template<typename InputIt, typename = if_input_iter<InputIt> >
+  template<typename InputIt>
     void move_insert (const_iterator pos, InputIt first, InputIt last)
   {
     ensure me(tail,pos); // will adapt |tail| if |at_end(pos)| throughout
@@ -980,7 +979,7 @@ template<typename T, typename Alloc>
     }
   }
 
-  template<typename InputIt, typename = if_input_iter<InputIt> >
+  template<typename InputIt>
     void move_assign (InputIt first, InputIt last)
   {
     size_type count=0;
@@ -1035,10 +1034,20 @@ template<typename T>
 size_t length (const sl_list<T>& l) { return l.size(); }
 
 template<typename T>
-typename simple_list<T>::const_iterator end (const sl_list<T>& l)
+typename sl_list<T>::const_iterator end (const sl_list<T>& l)
 { return l.end(); }
 
+template<typename T>
+inline typename sl_list<T>::const_iterator cend (const sl_list<T>& l)
+{ return end(l); }
 
+template<typename T>
+typename sl_list<T>::iterator end (sl_list<T>& l)
+{ return l.end(); }
+
+// overload non-member |swap|, so argument dependent lookup will find it
+template<typename T>
+  void swap(sl_list<T>& x, sl_list<T>& y) { x.swap(y); }
 
 
 template<typename T>
