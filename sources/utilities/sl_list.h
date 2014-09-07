@@ -24,16 +24,57 @@ namespace atlas {
 
 namespace containers {
 
-// we omit a |typename Alloc = std::allocator<T>| parameter for now
-template<typename T>
+template<typename T,typename Alloc = std::allocator<T> >
   class simple_list;
-template<typename T>
+template<typename T,typename Alloc = std::allocator<T> >
   class sl_list;
 
-template<typename T>
+// when Alloc is not std::allocator, we need a deleter class for |unique_ptr|
+// that calls the Alloc destroyer and then deallocator, rather than |::delete|
+
+template <typename Alloc> struct allocator_deleter
+: private Alloc
+{ typedef typename Alloc::value_type value_type;
+  typedef typename Alloc::pointer pointer;
+
+  constexpr allocator_deleter ()  = default;
+  allocator_deleter (const allocator_deleter&) = default;
+  void operator() (pointer p)
+  { this->destroy(std::addressof(*p));
+    this->deallocate(p,1);
+  }
+};
+
+// exception safe replacement of (non-placement) |::new| for use with |Alloc|
+template <typename Alloc, typename... Args>
+  typename Alloc::value_type *
+  allocator_new(Alloc& a, Args&&... args)
+{
+  typedef typename Alloc::value_type value_type;
+  typedef typename Alloc::pointer pointer;
+
+  pointer qq = a.allocate(1);
+  try
+  {
+    value_type* q=std::addressof(*qq); // this ought not throw
+    a.construct(q,std::forward<Args>(args)...);
+    return q;
+  }
+  catch(...) // exception safety for throwing |construct|, as |::new| does
+  {
+    a.deallocate(qq,1);
+    throw;
+  }
+}
+/* The basic node type used by |simple_list| and |sl_list|
+   It needs the Alloc template parameter to paramaterise |std::unique_ptr|
+ */
+template<typename T,typename Alloc = std::allocator<T> >
 struct sl_node
 {
-  typedef std::unique_ptr<sl_node> link_type;
+  typedef typename Alloc::template rebind<sl_node>::other alloc_type;
+  typedef std::unique_ptr<sl_node, allocator_deleter<alloc_type> > link_type;
+
   link_type next;
   T contents;
 
@@ -43,17 +84,16 @@ sl_node(T&& contents) : next(nullptr), contents(std::move(contents)) {}
   : next(nullptr), contents(std::forward<Args>(args)...) {}
 }; // |class sl_node| template
 
-template<typename T>
-struct sl_list_const_iterator
+template<typename T, typename Alloc> struct sl_list_const_iterator
   : public std::iterator<std::forward_iterator_tag, T>
 {
-  friend class simple_list<T>;
-  friend class sl_list<T>;
+  friend class simple_list<T,Alloc>;
+  friend class sl_list<T,Alloc>;
 
-  typedef typename sl_node<T>::link_type link_type;
+  typedef typename sl_node<T,Alloc>::link_type link_type;
 
 private:
-  typedef sl_list_const_iterator<T> self;
+  typedef sl_list_const_iterator<T,Alloc> self;
 
   // data
 protected:
@@ -81,14 +121,15 @@ public:
 
 }; // |struct sl_list_const_iterator| template
 
-template<typename T>
-class sl_list_iterator : public sl_list_const_iterator<T>
-{
-  friend class simple_list<T>;
-  friend class sl_list<T>;
 
-  typedef sl_list_const_iterator<T> Base;
-  typedef sl_list_iterator<T> self;
+template<typename T,typename Alloc>
+class sl_list_iterator : public sl_list_const_iterator<T,Alloc>
+{
+  friend class simple_list<T,Alloc>;
+  friend class sl_list<T,Alloc>;
+
+  typedef sl_list_const_iterator<T,Alloc> Base;
+  typedef sl_list_iterator<T,Alloc> self;
 
   // no extra data
 
@@ -117,14 +158,17 @@ private: // friend classes may do the following conversion:
 
 /*     Simple singly linked list, without |size| or |push_back| method   */
 
-template<typename T>
+template<typename T, typename Alloc >
   class simple_list
+  : private Alloc::template rebind<sl_node<T, Alloc> >::other
 {
-  friend class sl_list<T>;
-  typedef simple_list<T> self_type;
+  friend class sl_list<T, Alloc>;
 
-  typedef sl_node<T> node_type;
-  typedef std::unique_ptr<node_type> link_type;
+  typedef sl_node<T, Alloc> node_type;
+  typedef typename Alloc::template rebind<node_type>::other alloc_type;
+  typedef typename Alloc::pointer node_ptr; // returned from |allocate|
+  typedef std::unique_ptr<node_type, allocator_deleter<alloc_type> > link_type;
+
 
 
  public:
@@ -136,8 +180,8 @@ template<typename T>
   typedef value_type* pointer;
   typedef const value_type* const_pointer;
 
-  typedef sl_list_const_iterator<T> const_iterator;
-  typedef sl_list_iterator<T> iterator;
+  typedef sl_list_const_iterator<T, Alloc> const_iterator;
+  typedef sl_list_iterator<T, Alloc> iterator;
 
   // data
  private:
@@ -146,55 +190,70 @@ template<typename T>
   // constructors
  public:
   explicit simple_list () // empty list
-    : head(nullptr) {}
+  : alloc_type(), head(nullptr) {}
+
+  explicit simple_list (const alloc_type& a) // empty list, explicit allocator
+  : alloc_type(a), head(nullptr) {}
+
+  explicit simple_list (alloc_type&& a) // empty list, explicit moved allocator
+  : alloc_type(std::move(a)), head(nullptr) {}
 
   explicit simple_list (node_type* raw) // convert from raw pointer
-    : head(raw) {}
+  : alloc_type(), head(raw) {}
+
+  explicit simple_list (node_type* raw,const alloc_type& a)
+  : alloc_type(a), head(raw) {}
+
+  explicit simple_list (node_type* raw, alloc_type&& a)
+    : alloc_type(std::move(a)), head(raw) {}
 
   simple_list (const simple_list& x) // copy contructor
-    : head(nullptr)
+    : alloc_type(x) // nothing better available with gcc 4.6
+  , head(nullptr)
   {
     link_type* tail = &head;
     for (node_type* p=x.head.get(); p!=nullptr; p=p->next.get())
     {
-      node_type* q = new node_type(p->contents); // construct node value
+      node_type* q = allocator_new(node_allocator(),p->contents);
       tail->reset(q); // link in new final node
       tail=&q->next;  // point |tail| to its link field, to append there next
     }
   }
 
   simple_list (simple_list&& x) // move contructor
-    : head(x.head.release())
+  : alloc_type(std::move(x)), head(x.head.release())
   { }
 
   template<typename InputIt, typename = typename std::enable_if<
   std::is_base_of<std::input_iterator_tag,
 		  typename std::iterator_traits<InputIt>::iterator_category
   >::value>::type >
-    simple_list (InputIt first, InputIt last)
-    : head(nullptr)
+  simple_list (InputIt first, InputIt last, const alloc_type& a=alloc_type())
+  : alloc_type(a), head(nullptr)
   {
     assign(first,last);
   }
 
-  simple_list (size_type n)
-    : head(nullptr)
+  simple_list (size_type n, const alloc_type& a=alloc_type())
+  : alloc_type(a), head(nullptr)
   {
     while (n-->0)
     {
-      node_type* p = new node_type(T()); // construct default node value
+      // construct new node with default constructed value
+      node_type* p = allocator_new(node_allocator());
       p->next = std::move(head);
       head.reset(p); // splice in new node
     }
   }
 
-  simple_list (size_type n, const T& x)
-    : head(nullptr)
+  simple_list (size_type n, const T& x, const alloc_type& a=alloc_type())
+  : alloc_type(a), head(nullptr)
   {
     assign(n,x);
   }
 
-  simple_list (std::initializer_list<T> l) : head(nullptr)
+  simple_list (std::initializer_list<T> l, const alloc_type& a=alloc_type())
+  : alloc_type(a), head(nullptr)
   {
     assign(l.begin(),l.end());
   }
@@ -207,11 +266,18 @@ template<typename T>
     { // reuse existing nodes when possible
       iterator p = begin();
       node_type* q=x.head.get(); // maybe more efficient than an iterator
-      for ( ; not at_end(p) and q!=nullptr; ++p, q=q->next.get())
-	*p = q->contents;
-      if (at_end(p))
+      if (get_node_allocator() != x.get_node_allocator())
+      { // our old nodes need to be destroyed by our old allocator
+	clear(); // so we cannot reuse any of them: destroy them now
+	node_allocator() = x.get_node_allocator(); // now transfer allocator
+      }
+      else // now copy contents for as many nodes as possible
+	for ( ; not at_end(p) and q!=nullptr; ++p, q=q->next.get())
+	  *p = q->contents;
+
+      if (at_end(p)) // certainly true if previous condition was
 	for ( ; q!=nullptr; ++p, q=q->next.get()) // |insert(p,q->contents)|
-	  p.link_loc->reset(new node_type(q->contents));
+	  p.link_loc->reset(allocator_new(node_allocator(),q->contents));
       else // |q| was exhausted before |p|; we need to truncate after |p|
 	p.link_loc->reset();
     }
@@ -220,16 +286,63 @@ template<typename T>
 
   simple_list& operator= (simple_list&& x)
   { // self-assignment is safe, because safe for |std::unique_ptr| instances
-    head = std::move(x.head); // unique_ptr move assignment
+    if (get_node_allocator() == x.get_node_allocator() )
+    { // it is safe to just move the head pointer
+      // the next call starts clearing |*this|, except when |get()==x.get()|
+      head = std::move(x.head); // unique_ptr move assignment
+      if (false) // correct condition cannot be formulated with gcc 4.6
+	node_allocator() = std::move(x.node_allocator());
+    }
+    else // allocators differ and cannot be moved; so move node contents
+    { // effectively |move_assign(x.begin(),end(x));|
+      iterator p = begin();
+      node_type* q=x.head.get(); // maybe more efficient than an iterator
+      for ( ; not at_end(p) and q!=nullptr; ++p, q=q->next.get())
+	*p = std::move(q->contents);
+      if (at_end(p))
+	for ( ; q!=nullptr; ++p, q=q->next.get()) // |insert(p,q->contents)|
+	  p.link_loc->reset
+	    (allocator_new(node_allocator(),std::move(q->contents)));
+      else // |q| was exhausted before |p|; we need to truncate after |p|
+	p.link_loc->reset();
+    }
     return *this;
   }
 
   void swap (simple_list& other)
   {
-    std::swap(head,other.head);
+    if (get_node_allocator() == other.get_node_allocator() )
+    { // easy case; swap head pointers and swap allocators
+      head.swap(other.head); // swap |std::unique_ptr| instances
+      using std::swap; // ensure some swap method will be found
+      swap(node_allocator(),other.node_allocator());
+    }
+    else // we must really exchange contents
+    {
+      iterator p=begin(), q=other.begin();
+      using std::swap;
+      for ( ; not (at_end(p) or at_end(q)); ++p,++q)
+	swap(*p,*q);
+      if (at_end(p))
+	while (not at_end(q))
+	{
+	  insert(p,std::move(*q)); // move contents from node |q| points to
+	  other.erase(q); // equivalent to |q=other.erase(q);|
+	}
+      else // now |at_end(q)|
+	while (not at_end(p))
+	{
+	  other.insert(q,std::move(*p)); // move from node |p| points to
+	  erase(p); // equivalent to |p=erase(p);|
+	}
+    }
   }
 
   node_type* release() { return head.release(); } // convert to raw pointer
+
+  // access to the allocator
+  const alloc_type& get_node_allocator () const { return *this; }
+  alloc_type& node_allocator () { return *this; }
 
   //iterators
   iterator begin() { return iterator(head); }
@@ -243,14 +356,16 @@ template<typename T>
 
   void push_front (const T& val)
   {
-    node_type* p = new node_type(val); // construct node value
+    // construct node value
+    node_type* p = allocator_new(node_allocator(),val);
     p->next.reset(head.release()); // link trailing nodes here
     head.reset(p); // make new node the first one in the list
   }
 
   void push_front (T&& val)
   {
-    node_type* p = new node_type(std::move(val)); // construct node value
+    // construct node value
+    node_type* p = allocator_new(node_allocator(),std::move(val));
     p->next.reset(head.release()); // link trailing nodes here
     head.reset(p); // make new node the first one in the list
   }
@@ -258,8 +373,9 @@ template<typename T>
   template<typename... Args>
     void emplace_front (Args&&... args)
   {
+    // construct node value
     node_type* p =
-      new node_type(std::forward<Args>(args)...); // construct node value
+      allocator_new(node_allocator(),std::forward<Args>(args)...);
     p->next.reset(head.release()); // link trailing nodes here
     head.reset(p); // make new node the first one in the list
   }
@@ -269,7 +385,8 @@ template<typename T>
 
   iterator insert (const_iterator pos, const T& val)
   {
-    node_type* p = new node_type(val); // construct node value
+    // construct node value
+    node_type* p = allocator_new(node_allocator(),val);
     p->next.reset(pos.link_loc->release()); // link the trailing nodes here
     pos.link_loc->reset(p); // and attach new node to previous ones
     return iterator(pos); // convert type; unchanged but points to new node
@@ -277,7 +394,8 @@ template<typename T>
 
   iterator insert (const_iterator pos, T&& val)
   {
-    node_type* p = new node_type(std::move(val)); // construct node value
+    // construct node value
+    node_type* p = allocator_new(node_allocator(),std::move(val));
     p->next.reset(pos.link_loc->release()); // link the trailing nodes here
     pos.link_loc->reset(p); // and attach new node to previous ones
     return iterator(pos); // convert type; while unchanged, |pos| now "points to" new node
@@ -298,7 +416,8 @@ template<typename T>
   {
     for( ; first!=last; ++first)
     { // |insert(pos++,*first);|
-      node_type* p = new node_type(*first); // construct node value
+    // construct node value
+      node_type* p = allocator_new(node_allocator(),*first);
       p->next.reset(pos.link_loc->release()); // link the trailing nodes here
       pos.link_loc->reset(p); // and attach new node to previous ones
       pos = iterator(p->next); // or simply |++pos|
@@ -347,8 +466,8 @@ template<typename T>
       *p = *first;
 
     if (at_end(p))
-      for ( ; first!=last; ++p,++first)
-	p.link_loc->reset(new node_type(*first)); // |insert(p,*first)|
+      for ( ; first!=last; ++p,++first) // |insert(p,*first)|, realised as:
+	p.link_loc->reset(allocator_new(node_allocator(),*first));
     else // input exhausted before |p|; we need to truncate after |p|
       p.link_loc->reset();
   }
@@ -361,8 +480,8 @@ template<typename T>
       *p = std::move(*first);
 
     if (at_end(p))
-      for ( ; first!=last; ++p,++first)
-	p.link_loc->reset(new node_type(std::move(*first)));
+      for ( ; first!=last; ++p,++first)  // |insert(p,std::move(*first))|
+	p.link_loc->reset(allocator_new(node_allocator(),std::move(*first)));
     else // input exhausted before |p|; we need to truncate after |p|
       p.link_loc->reset();
   }
@@ -443,11 +562,14 @@ template<typename T>
 /*  		   Fully featureed simply linked list			*/
 
 
-template<typename T>
+template<typename T, typename Alloc>
   class sl_list
+  : private Alloc::template rebind<sl_node<T, Alloc> >::other
 {
-  typedef sl_node<T> node_type;
-  typedef std::unique_ptr<node_type> link_type;
+  typedef sl_node<T, Alloc> node_type;
+  typedef typename Alloc::template rebind<node_type>::other alloc_type;
+  typedef typename Alloc::pointer node_ptr; // returned from |allocate|
+  typedef std::unique_ptr<node_type, allocator_deleter<alloc_type> > link_type;
 
  public:
   typedef T value_type;
@@ -458,8 +580,8 @@ template<typename T>
   typedef value_type* pointer;
   typedef const value_type* const_pointer;
 
-  typedef sl_list_const_iterator<T> const_iterator;
-  typedef sl_list_iterator<T> iterator;
+  typedef sl_list_const_iterator<T,Alloc> const_iterator;
+  typedef sl_list_iterator<T,Alloc> iterator;
 
   // data
  private:
@@ -485,28 +607,40 @@ template<typename T>
   // constructors
  public:
   explicit sl_list () // empty list
-    : head(nullptr), tail(&head), node_count(0) {}
+    : alloc_type(), head(nullptr), tail(&head), node_count(0) {}
+
+  explicit sl_list (const alloc_type& a) // empty list, explicit allocator
+    : alloc_type(a), head(nullptr), tail(&head), node_count(0) {}
+
+  explicit sl_list (alloc_type&& a) // empty list, explicit moved allocator
+    : alloc_type(a), head(nullptr), tail(&head), node_count(0) {}
+
   sl_list (const sl_list& x) // copy contructor
-    : head(nullptr), tail(&head), node_count(x.node_count)
+  : alloc_type(x)
+  , head(nullptr)
+  , tail(&head)
+  , node_count(x.node_count)
   {
     for (node_type* p=x.head.get(); p!=nullptr; p=p->next.get())
     {
-      node_type* q = new node_type(p->contents);
+      node_type* q = allocator_new(node_allocator(),p->contents);
       tail->reset(q); // link in new final node
       tail=&q->next;  // point |tail| to its link field, to append there next
     }
   }
 
   sl_list (sl_list&& x) // move contructor
-    : head(x.head.release())
-    , tail(x.empty() ? &head : x.tail)
-    , node_count(x.node_count)
+  : alloc_type(std::move(x))
+  , head(x.head.release())
+  , tail(x.empty() ? &head : x.tail)
+  , node_count(x.node_count)
   { x.set_empty(); }
 
   explicit sl_list (simple_list<T>&& x) // move and complete constructor
-    : head(x.head.release())
-    , tail(&head)
-    , node_count(0)
+  : alloc_type(std::move(x))
+  , head(x.head.release())
+  , tail(&head)
+  , node_count(0)
   {
     for ( ; *tail!=nullptr; tail=&(*tail)->next)
       ++node_count;
@@ -516,32 +650,32 @@ template<typename T>
   std::is_base_of<std::input_iterator_tag,
 		  typename std::iterator_traits<InputIt>::iterator_category
   >::value>::type >
-  sl_list (InputIt first, InputIt last)
-  : head(nullptr), tail(&head), node_count(0)
+  sl_list (InputIt first, InputIt last, const alloc_type& a=alloc_type())
+  : alloc_type(a), head(nullptr), tail(&head), node_count(0)
   {
     assign(first,last);
   }
 
-  sl_list (size_type n)
-    : head(nullptr), tail(&head), node_count(n)
+  sl_list (size_type n, const alloc_type& a=alloc_type())
+  : alloc_type(a), head(nullptr), tail(&head), node_count(n)
   {
     while (n-->0)
     {
       // construct new node with default constructed value
-      node_type* p = new node_type();
+      node_type* p = allocator_new(node_allocator());
       tail->reset(p); // splice in new node
       tail = &p->next; // then move |tail| to point to null smart ptr agin
     }
   }
 
-  sl_list (size_type n, const T& x)
-    : head(nullptr), tail(&head), node_count(n)
+  sl_list (size_type n, const T& x, const alloc_type& a=alloc_type())
+  : alloc_type(a), head(nullptr), tail(&head), node_count(n)
   {
     assign(n,x);
   }
 
-  sl_list (std::initializer_list<T> l)
-  : head(nullptr), tail(&head), node_count(0)
+  sl_list (std::initializer_list<T> l, const alloc_type& a=alloc_type())
+  : alloc_type(a), head(nullptr), tail(&head), node_count(0)
   {
     assign(l.begin(),l.end());
   }
@@ -551,36 +685,69 @@ template<typename T>
   sl_list& operator= (const sl_list& x)
   {
     if (this!=&x) // self-assign is useless, though it would be safe
-      // reuse existing nodes when possible
+    { // reuse existing nodes when possible
+      if (get_node_allocator() != x.get_node_allocator())
+      { // our old nodes need to be destroyed by our old allocator
+	clear(); // so we cannot reuse any of them: destroy them now
+	node_allocator() = x.get_node_allocator(); // now transfer allocator
+      }
       assign(x.begin(),x.end());
+    }
     return *this;
   }
 
   sl_list& operator= (sl_list&& x)
   { // self-assignment is safe, because safe for |std::unique_ptr| instances
-    if (x.head.get()==nullptr)
-      clear(); // this modifies |tail|
-    else
-    {
-      head = std::move(x.head); // unique_ptr move assignment
-      tail = x.tail;
-      node_count = x.node_count;
+    if (get_node_allocator() == x.get_node_allocator() )
+    { // it is safe to just move the head pointer
+      // the next call starts clearing |*this|, except when |get()==x.get()|
+      if (x.head.get()==nullptr)
+        clear(); // this modifies |tail|
+      else
+      {
+	head = std::move(x.head); // unique_ptr move assignment
+	tail = x.tail;
+	node_count = x.node_count;
+      }
+      if (false)
+	node_allocator() = std::move(x.node_allocator());
     }
+    else
+      move_assign(x.begin(),x.end());
     return *this;
   }
 
   void swap (sl_list& other)
   {
-    using std::swap;
-    head.swap(other.head); // swap |std::unique_ptr| instances
-    swap(node_count,other.node_count);
-    std::swap(tail,other.tail); // raw pointer swap
-    // uncross tail pointers if necessary
-    if (head.get()==nullptr)
-      tail=&head;
-    if (other.head.get()==nullptr)
-      other.tail=&other.head;
+    if (get_node_allocator() == other.get_node_allocator() )
+    { // easy case; swap almost everything (tails need some care)
+      using std::swap;
+      swap(node_allocator(),other.node_allocator());
+      head.swap(other.head); // swap |std::unique_ptr| instances
+      swap(node_count,other.node_count);
+      std::swap(tail,other.tail); // raw pointer swap
+      // uncross tail pointers if necessary
+      if (head.get()==nullptr)
+	tail=&head;
+      if (other.head.get()==nullptr)
+	other.tail=&other.head;
+    }
+    else // we must really exchange contents
+    {
+      iterator p=begin(), q=other.begin();
+      using std::swap;
+      for ( ; p!=end() and q!=other.end(); ++p,++q)
+	swap(*p,*q);
+      if (p==end())
+	insert(p,q,other.end());
+      else // now |q==other.end()|
+	other.insert(q,p,end());
+    }
   }
+
+  // access to the allocator
+  const alloc_type& get_node_allocator () const { return *this; }
+  alloc_type& node_allocator () { return *this; }
 
   //iterators
   iterator begin () { return iterator(head); }
@@ -601,7 +768,7 @@ template<typename T>
   void push_front (const T& val)
   {
     // construct node value
-    node_type* p = new node_type(val);
+    node_type* p = allocator_new(node_allocator(),val);
     if (head.get()==nullptr)
       tail=&p->next; // adjusts |tail| if list was empty
     else
@@ -613,7 +780,7 @@ template<typename T>
   void push_front (T&& val)
   {
    // construct node value
-    node_type* p = new node_type(std::move(val));
+    node_type* p = allocator_new(node_allocator(),std::move(val));
     if (head.get()==nullptr)
       tail=&p->next; // adjusts |tail| if list was empty
     else
@@ -626,7 +793,8 @@ template<typename T>
     void emplace_front (Args&&... args)
   {
     // construct node value
-    node_type* p = new node_type(std::forward<Args>(args)...);
+    node_type* p =
+      allocator_new(node_allocator(),std::forward<Args>(args)...);
     if (head.get()==nullptr)
       tail=&p->next; // adjusts |tail| if list was empty
     else
@@ -638,7 +806,7 @@ template<typename T>
   iterator push_back (const T& val)
   {
     link_type& last = *tail; // hold this link field for |return| statement
-    node_type* p = new node_type(val); // construct node value
+    node_type* p = allocator_new(node_allocator(),val); // construct node value
     tail = &p->next; // then move |tail| to point to null link again
     last.reset(p); // append new node to previous ones
     ++node_count;
@@ -648,7 +816,7 @@ template<typename T>
   iterator push_back(T&& val)
   {
     link_type& last = *tail; // hold this link field for |return| statement
-    node_type* p = new node_type(std::move(val));
+    node_type* p = allocator_new(node_allocator(),std::move(val));
     tail = &p->next; // then move |tail| to point to null smart ptr agin
     last.reset(p); // append new node to previous ones
     ++node_count;
@@ -661,7 +829,7 @@ template<typename T>
     link_type& last = *tail; // hold this link field for |return| statement
     // construct node value
     node_type* p =
-      new node_type(std::forward<Args>(args)...);
+      allocator_new(node_allocator(),std::forward<Args>(args)...);
     tail = &p->next; // then move |tail| to point to null smart ptr agin
     last.reset(p); // append new node to previous ones
     ++node_count;
@@ -674,7 +842,7 @@ template<typename T>
 
   iterator insert (const_iterator pos, const T& val)
   {
-    node_type* p = new node_type(val);
+    node_type* p = allocator_new(node_allocator(),val);
     if (at_end(pos))
       tail=&p->next;
     else
@@ -686,7 +854,7 @@ template<typename T>
 
   iterator insert (const_iterator pos, T&& val)
   {
-    node_type* p = new node_type(std::move(val));
+    node_type* p = allocator_new(node_allocator(),std::move(val));
     if (at_end(pos))
       tail=&p->next;
     else
@@ -703,7 +871,7 @@ template<typename T>
       insert(pos,val); // this takes care of changing |tail| if necessary
       while (n-->0)
       {
-	node_type* p = new node_type(val);
+	node_type* p = allocator_new(node_allocator(),val);
 	p->next.reset(pos.link_loc->release()); // link the trailing nodes here
 	pos.link_loc->reset(p); // and attach new node to previous ones
 	++node_count; // exception safe tracking of the size
@@ -721,7 +889,7 @@ template<typename T>
     ensure me(tail,pos); // will adapt |tail| if |at_end(pos)| throughout
     for( ; first!=last; ++first)
     { // |insert(pos++,*first);|, except we don't update |tail|
-      node_type* p = new node_type(*first);
+      node_type* p = allocator_new(node_allocator(),*first);
       p->next.reset(pos.link_loc->release()); // link the trailing nodes here
       pos.link_loc->reset(p); // and attach new node to previous ones
       pos = iterator(p->next); // or simply |++pos|
@@ -735,7 +903,7 @@ template<typename T>
     ensure me(tail,pos); // will adapt |tail| if |at_end(pos)| throughout
     for( ; first!=last; ++first)
     { // |insert(pos++,std::move(*first));|, except we don't update |tail|
-      node_type* p = new node_type(std::move(*first));
+      node_type* p = allocator_new(node_allocator(),std::move(*first));
       p->next.reset(pos.link_loc->release()); // link the trailing nodes here
       pos.link_loc->reset(p); // and attach new node to previous ones
       pos = iterator(p->next); // or simply |++pos|
@@ -842,7 +1010,7 @@ template<typename T>
 
   simple_list<T> undress() // return only |head|, amputating other fields
   { set_empty(); // this is a sacrificial method
-    return simple_list<T>(head.release());
+    return simple_list<T>(head.release(),std::move(node_allocator()));
   }
 
   // accessors

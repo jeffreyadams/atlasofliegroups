@@ -177,11 +177,12 @@ std::ostream& operator << (std::ostream& os,
 
 void tester() // test all methods at least once
 {
-  intlist a, b, c; // constructors of empty list
+  auto alloc = std::allocator<int>();
+  intlist a, b{alloc},c{std::allocator<int>()}; // constructors of empty list
   a.push_front(4); a.push_front(1); c=b=a; // |push_front|, copy assignment
   std::cout << "[1,4]: " << a << "; " << b << "; " << c <<std::endl;
   auto p=a.release(), q=b.release(), r=c.release();
-  intlist aa(p), bb(q),cc(r); // raw constructors
+  intlist aa(p), bb(q,alloc),cc(r,std::allocator<int>()); // raw constructors
   // check transfer has taken place
   std::cout << "[]: " << a << "; " << b << "; " << c <<std::endl;
   std::cout << "[1,4]: " << aa << "; " << bb << "; " << cc <<std::endl;
@@ -260,12 +261,12 @@ void tester() // test all methods at least once
     std::cout << '-';
   std::cout << std::endl;
   {
-    int_list a, b, c; // constructors of empty list
+    int_list a, b{alloc},c{std::allocator<int>()}; // constructors of empty list
     a.push_front(4); a.push_front(1); c=b=a; // |push_front|, copy assignment
     std::cout << "[1,4]: " << a << "; " << b << "; " << c <<std::endl;
     auto p=a.undress().release(), q=b.undress().release();
     intlist r=c.undress();
-    int_list aa{intlist(p)}, bb{intlist(q)};
+    int_list aa{intlist(p)}, bb{intlist(q,alloc)};
     int_list cc{std::move(r)};
     // check transfer has taken place
     std::cout << "[]: " << a << "; " << b << "; " << c <<std::endl;
