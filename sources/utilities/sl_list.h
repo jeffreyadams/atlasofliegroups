@@ -84,7 +84,8 @@ sl_node(T&& contents) : next(nullptr), contents(std::move(contents)) {}
   : next(nullptr), contents(std::forward<Args>(args)...) {}
 }; // |class sl_node| template
 
-template<typename T, typename Alloc> struct sl_list_const_iterator
+template<typename T, typename Alloc = std::allocator<T> >
+  struct sl_list_const_iterator
   : public std::iterator<std::forward_iterator_tag, T>
 {
   friend class simple_list<T,Alloc>;
@@ -122,7 +123,7 @@ public:
 }; // |struct sl_list_const_iterator| template
 
 
-template<typename T,typename Alloc>
+template<typename T,typename Alloc = std::allocator<T> >
 class sl_list_iterator : public sl_list_const_iterator<T,Alloc>
 {
   friend class simple_list<T,Alloc>;
@@ -158,7 +159,7 @@ private: // friend classes may do the following conversion:
 
 /*     Simple singly linked list, without |size| or |push_back| method   */
 
-template<typename T, typename Alloc >
+template<typename T, typename Alloc>
   class simple_list
   : private Alloc::template rebind<sl_node<T, Alloc> >::other
 {
@@ -516,13 +517,13 @@ template<typename T, typename Alloc >
   // instead of |end()| we provide the |at_end| condition
   static bool at_end (const_iterator p) { return p.link_loc->get()==nullptr; }
 
-}; // |class simple_list<T>|
+}; // |class simple_list<T,Alloc>|
 
 
 
-// external functions for |simple_list<T>|
-template<typename T>
-size_t length (const simple_list<T>& l)
+// external functions for |simple_list<T,Alloc>|
+template<typename T,typename Alloc>
+size_t length (const simple_list<T,Alloc>& l)
 {
   size_t result=0;
   for (auto it=l.begin(); not l.at_end(it); ++it)
@@ -530,8 +531,8 @@ size_t length (const simple_list<T>& l)
   return result;
 }
 
-template<typename T>
-typename simple_list<T>::const_iterator end (const simple_list<T>& l)
+template<typename T,typename Alloc>
+typename simple_list<T,Alloc>::const_iterator end (const simple_list<T,Alloc>& l)
 {
   auto it=l.cbegin();
   while (not l.at_end(it))
@@ -539,12 +540,12 @@ typename simple_list<T>::const_iterator end (const simple_list<T>& l)
   return it;
 }
 
-template<typename T>
-inline typename simple_list<T>::const_iterator cend (const simple_list<T>& l)
+template<typename T,typename Alloc>
+inline typename simple_list<T,Alloc>::const_iterator cend (const simple_list<T,Alloc>& l)
 { return end(l); }
 
-template<typename T>
-typename simple_list<T>::iterator end (simple_list<T>& l)
+template<typename T,typename Alloc>
+typename simple_list<T,Alloc>::iterator end (simple_list<T,Alloc>& l)
 {
   auto it=l.begin();
   while (not l.at_end(it))
@@ -553,8 +554,8 @@ typename simple_list<T>::iterator end (simple_list<T>& l)
 }
 
 // overload non-member |swap|, so argument dependent lookup will find it
-template<typename T>
-  void swap(simple_list<T>& x, simple_list<T>& y) { x.swap(y); }
+template<typename T,typename Alloc>
+  void swap(simple_list<T,Alloc>& x, simple_list<T,Alloc>& y) { x.swap(y); }
 
 
 
@@ -636,7 +637,7 @@ template<typename T, typename Alloc>
   , node_count(x.node_count)
   { x.set_empty(); }
 
-  explicit sl_list (simple_list<T>&& x) // move and complete constructor
+  explicit sl_list (simple_list<T,Alloc>&& x) // move and complete constructor
   : alloc_type(std::move(x))
   , head(x.head.release())
   , tail(&head)
@@ -1008,9 +1009,9 @@ template<typename T, typename Alloc>
     from.link_loc->reset(result.release());
   }
 
-  simple_list<T> undress() // return only |head|, amputating other fields
+  simple_list<T,Alloc> undress() // return only |head|, amputating other fields
   { set_empty(); // this is a sacrificial method
-    return simple_list<T>(head.release(),std::move(node_allocator()));
+    return simple_list<T,Alloc>(head.release(),std::move(node_allocator()));
   }
 
   // accessors
@@ -1023,38 +1024,43 @@ template<typename T, typename Alloc>
   // in addition to |end()| we provide the |at_end| condition
   static bool at_end (const_iterator p) { return p.link_loc->get()==nullptr; }
 
-}; // |class sl_list<T>|
+}; // |class sl_list<T,Alloc>|
 
-// external functions for |sl_list<T>|
-template<typename T>
-size_t length (const sl_list<T>& l) { return l.size(); }
+// external functions for |sl_list<T,Alloc>|
+template<typename T,typename Alloc>
+size_t length (const sl_list<T,Alloc>& l) { return l.size(); }
 
-template<typename T>
-typename sl_list<T>::const_iterator end (const sl_list<T>& l)
+template<typename T,typename Alloc>
+typename sl_list<T,Alloc>::const_iterator end (const sl_list<T,Alloc>& l)
 { return l.end(); }
 
-template<typename T>
-inline typename sl_list<T>::const_iterator cend (const sl_list<T>& l)
+template<typename T,typename Alloc>
+inline typename sl_list<T,Alloc>::const_iterator cend (const sl_list<T,Alloc>& l)
 { return end(l); }
 
-template<typename T>
-typename sl_list<T>::iterator end (sl_list<T>& l)
+template<typename T,typename Alloc>
+typename sl_list<T,Alloc>::iterator end (sl_list<T,Alloc>& l)
 { return l.end(); }
 
 // overload non-member |swap|, so argument dependent lookup will find it
-template<typename T>
-  void swap(sl_list<T>& x, sl_list<T>& y) { x.swap(y); }
+template<typename T,typename Alloc>
+  void swap(sl_list<T,Alloc>& x, sl_list<T,Alloc>& y) { x.swap(y); }
 
 
-template<typename T>
+template<typename T,typename Alloc = std::allocator<T> >
   class mirrored_simple_list // trivial adapter, to allow use with |std::stack|
-  : public simple_list<T>
+  : public simple_list<T,Alloc>
 {
-  typedef simple_list<T> Base;
+  typedef simple_list<T,Alloc> Base;
+  typedef sl_node<T, Alloc> node_type;
+  typedef typename Alloc::template rebind<node_type>::other alloc_type;
 
   // forward most constructors, but reverse order for initialised ones
   public:
   mirrored_simple_list () : Base() {}
+  explicit mirrored_simple_list (const Alloc& a) : Base(a) {}
+  explicit mirrored_simple_list (Alloc&& a) : Base(std::move(a)) {}
+
   mirrored_simple_list (const Base& x) // lift base object to derived class
     : Base(x) {}
   // compiler-generated copy constructor and assignment should be OK
@@ -1063,31 +1069,38 @@ template<typename T>
   std::is_base_of<std::input_iterator_tag,
 		  typename std::iterator_traits<InputIt>::iterator_category
   >::value>::type >
-    mirrored_simple_list (InputIt first, InputIt last)
-    : Base()
+    mirrored_simple_list (InputIt first, InputIt last,
+			  const alloc_type& a=alloc_type())
+    : Base(a)
     {
       for ( ; first!=last; ++first)
 	Base::push_front(*first); // this reverses the order
     }
 
-  mirrored_simple_list (typename Base::size_type n, const T& x) : Base(n,x) {}
+  mirrored_simple_list (typename Base::size_type n, const T& x,
+			const alloc_type& a=alloc_type())
+    : Base(n,x,a) {}
 
   // forward |push_back|, |back| and |pop_back| methods with name change
   void push_back(const T& val) { Base::push_front(val); }
   T& back () { return Base::front(); }
   void pop_back () { return Base::pop_front(); }
 
-};
+}; // |class mirrored_simple_list<T,Alloc>|
 
-template<typename T>
+template<typename T,typename Alloc = std::allocator<T> >
   class mirrored_sl_list // trivial adapter, to allow use with |std::stack|
-  : public sl_list<T>
+  : public sl_list<T,Alloc>
 {
-  typedef sl_list<T> Base;
+  typedef sl_list<T,Alloc> Base;
+  typedef sl_node<T, Alloc> node_type;
+  typedef typename Alloc::template rebind<node_type>::other alloc_type;
 
   // forward most constructors, but reverse order for initialised ones
   public:
   mirrored_sl_list () : Base() {}
+  explicit mirrored_sl_list (const Alloc& a) : Base(a) {}
+  explicit mirrored_sl_list (Alloc&& a) : Base(std::move(a)) {}
   mirrored_sl_list (const Base& x) // lift base object to derived class
     : Base(x) {}
   // compiler-generated copy constructor and assignment should be OK
@@ -1096,13 +1109,17 @@ template<typename T>
   std::is_base_of<std::input_iterator_tag,
 		  typename std::iterator_traits<InputIt>::iterator_category
   >::value>::type >
-    mirrored_sl_list (InputIt first, InputIt last) : Base()
+    mirrored_sl_list (InputIt first, InputIt last,
+		      const alloc_type& a=alloc_type())
+    : Base(a)
     {
       for ( ; first!=last; ++first)
 	Base::insert(Base::begin(),*first); // this reverses the order
     }
 
-  mirrored_sl_list (typename Base::size_type n, const T& x) : Base(n,x) {}
+  mirrored_sl_list (typename Base::size_type n, const T& x,
+		    const alloc_type& a=alloc_type())
+    : Base(n,x,a) {}
 
   // forward |push_back|, |back| and |pop_back| methods with name change
   void push_back (const T& val) { Base::push_front(val); }
@@ -1113,7 +1130,7 @@ template<typename T>
   typename Base::iterator push_front (const T& val)
   { return Base::push_back(val); }
 
-};
+}; // |class mirrored_sl_list<T,Alloc>|
 
 } // |namespace cantainers|
 
