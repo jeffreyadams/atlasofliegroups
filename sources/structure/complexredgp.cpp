@@ -28,6 +28,7 @@
 #include <set>
 
 #include "weyl.h"
+#include "kgb.h"
 
 
 /*****************************************************************************
@@ -1159,14 +1160,14 @@ void Cayley_and_cross_part(RootNbrSet& Cayley,
 /* For a very long time real forms in the Atlas software were exclusively
    approached by selecting from a list that is presented after a rather
    elaborate preparatory calculation. The following function marks a different
-   possibility, namely by allowing a real form (and in fact a strong real form
-   representative) to be selected based on specifying an involution and a
-   grading of the imaginary roots. For practical reasons the grading is
-   specified by its difference with the grading that makes noncompact all
-   simple-imaginary roots (which grading belongs to the quasisplit real form)
-   and this difference is specified by a rational coweight, whose pairing with
-   any imaginary root should be integer, and its parity gives the mentioned
-   difference in grading.
+   possibility, namely by allowing a real form (and in fact a Cartan class and
+   a representative adjoint fiber element at that Cartan) to be selected based
+   on specifying an involution and a grading of the imaginary roots. For
+   practical reasons the grading is specified by its difference with the
+   grading that makes noncompact all simple-imaginary roots (which grading
+   belongs to the quasisplit real form) and this difference is specified by a
+   rational coweight, whose pairing with any imaginary root should be integer,
+   and its parity gives the mentioned difference in grading.
  */
 RealFormNbr real_form_of // who claims this KGB element?
   (ComplexReductiveGroup& G,
@@ -1213,6 +1214,77 @@ RealFormNbr real_form_of // who claims this KGB element?
   cartanclass::adjoint_fiber_orbit orb = f.weakReal().class_of(rep);
   return G.realFormLabels(cn)[orb]; // found our real form!!
 } // |real_form_of|
+
+
+// An attempt to improve the above
+/*
+   For a very long time real forms in the Atlas software were exclusively
+   approached by selecting from a list that is presented after a rather
+   elaborate preparatory calculation. The following function marks a different
+   possibility, namely by allowing a real form to be selected based on
+   specifying an involution and a rational coweight that is to be the
+   'torus_factor' of some KGB element in the fiber over that involution. In
+   fact the specified torus factor might belong to a different strong real
+   form than the one that is implicitly used, so we allow this function to
+   export a torus part that should be added to some KGB element of the (weak)
+   real for returned in order to exacly match the given |torus_factor|.
+ */
+RealFormNbr strong_real_form_of // who claims this KGB element?
+  (ComplexReductiveGroup& G,
+   TwistedInvolution tw, const RatCoweight& torus_factor,
+   TorusElement& strong_form_start // additional output
+   )
+{
+  const GlobalTitsGroup gTg(G);
+  GlobalTitsElement x(TorusElement(torus_factor,false),tw);
+  const unsigned int r = G.semisimpleRank();
+  assert(gTg.is_valid(x)); // unless this holds, we cannot hope to succeed
+  { weyl::Generator s;
+    while ((s=gTg.weylGroup().leftDescent(x.tw()))<r)
+      if (gTg.hasTwistedCommutation(s,x.tw()))
+	gTg.do_inverse_Cayley(s,x);
+      else
+	gTg.cross_act(s,x);
+
+    assert(gTg.is_valid(x)); // check that we still have a valid element
+    assert (x.tw()==TwistedInvolution()); // and we are at fundamental fiber
+  }
+
+  const InvolutionTable& i_tab = G.involution_table();
+
+  KGB_elt_entry::Pooltype elt_pool;
+  HashTable<KGB_elt_entry,unsigned long> elt_hash(elt_pool);
+  { // get all elements at the fundamental fiber
+    elt_hash.match(i_tab.x_pack(x)); // initial element
+
+    for (size_t i=0; i<elt_hash.size(); ++i) // |elt_hash| grows during loop
+      // generate using cross actions for twist-fixed (imaginary) simple roots
+      for (weyl::Generator s; s<r; ++s)
+	if (s==gTg.twisted(s))
+	  elt_hash.match(i_tab.x_pack(gTg.cross(s,elt_hash[i].repr())));
+  }
+
+  // find a special element (with minimal |identity| value for |operator<|)
+  auto minit = elt_pool.begin();
+  for (auto it = ++elt_pool.begin(); it!=elt_pool.end(); ++it)
+    if (it->label() < minit->label())
+      minit = it;
+
+  strong_form_start = minit->repr().torus_part();
+
+  // find the grading of the simple-imaginary roots at |tw|
+  Grading gr;
+  {
+    InvolutionNbr inv = i_tab.nr(x.tw());
+    for (unsigned i=0; i<i_tab.imaginary_rank(inv); ++i)
+      gr.set(i,not strong_form_start.negative_at(G.rootDatum().root(i)));
+  }
+
+  // look up the grading
+  const Fiber& fund_f = G.fundamental();
+  return fund_f.weakReal().class_of(fund_f.gradingRep(gr)); // found real form
+
+} // |strong_real_form_of|
 
 } // namespace complexredgp
 

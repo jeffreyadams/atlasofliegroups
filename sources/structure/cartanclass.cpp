@@ -771,7 +771,7 @@ AdjointFiberElt Fiber::gradingRep(const Grading& gr) const
 {
   const size_t ir=imaginaryRank();
   SmallBitVector target(gr,ir);
-  target -= SmallBitVector(d_baseGrading,ir);
+  target -= SmallBitVector(d_baseGrading,ir); // this complements gradings
 
   SmallBitVectorList shifts(adjointFiberRank());
   for (size_t i = 0; i < shifts.size(); ++i)

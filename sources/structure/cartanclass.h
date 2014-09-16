@@ -60,7 +60,7 @@ the "elements of the fiber" really live. There is a "fiber group" (which is
 a vector space over $Z/2Z$) that acts simply transitively on the fiber, in
 other words, the fiber is an affine space over $Z/2Z$ with the fiber group
 as space of translations. After a choice of a base point, the fiber itself
-can be identified which this fiber group. The way a fiber element manifests
+can be identified which this fiber group. One way a fiber element manifests
 itself is via a grading it defines on the imaginary roots; this grading is
 determined for the entire fiber by giving the "base grading" for the base
 point, and the "grading shifts" for translations by each of a set of
@@ -325,8 +325,25 @@ class Fiber {
   RootNbr involution_image_of_root(RootNbr j) const
     { return d_involutionData.root_involution()[j]; }
 
-/*!
-  \brief Fiber group for the adjoint group of G.
+
+
+  // Fiber group.
+
+  const SmallSubquotient& fiberGroup() const
+    { return d_fiberGroup; }
+
+  /*!
+  \brief Dimension of the fiber group as a Z/2Z vector space.
+  */
+  size_t fiberRank() const { return d_fiberGroup.dimension(); }
+
+  /*!
+  \brief Cardinality of the fiber group: 2^dimension.
+  */
+  size_t fiberSize() const { return d_fiberGroup.size(); }
+
+/*
+  Fiber group for the adjoint group of G.
 
   Writing H_ad for the complex torus in G_ad, and still writing tau for the
   Cartan involution, this is F_ad=H_ad^{tau}/(1+tau)H_ad (on a compact Cartan
@@ -350,23 +367,6 @@ class Fiber {
 \brief Cardinality of the adjoint fiber group.
 */
   size_t adjointFiberSize() const { return d_adjointFiberGroup.size(); }
-
-
-/*!
-  \brief Fiber group.
-*/
-  const SmallSubquotient& fiberGroup() const
-    { return d_fiberGroup; }
-
-  /*!
-  \brief Dimension of the fiber group as a Z/2Z vector space.
-  */
-  size_t fiberRank() const { return d_fiberGroup.dimension(); }
-
-  /*!
-  \brief Cardinality of the fiber group: 2^dimension.
-  */
-  size_t fiberSize() const { return d_fiberGroup.size(); }
 
 
   RootNbrSet compactRoots(AdjointFiberElt x) const;

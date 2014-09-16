@@ -388,7 +388,7 @@ Cartan_class_real_form: (InnerClass,mat,ratvec->CartanClass,RealForm):
   which should satisfy v*M=v, defines a grading of imaginary roots \alpha for
   M by the parity of < v+\check\rho_i , \alpha > where \check\rho_i is half
   the sum of the positive imaginary coroots for M (its presence ensures that
-  v=0 is a valid, an grades all simple-imaginary roots as noncompact). This
+  v=0 is a valid, and grades all simple-imaginary roots as noncompact). This
   grading selects a real form over which this Cartan is defined, which real
   form is the second component of the result.
 

@@ -49,6 +49,7 @@ class TorusElement
   TorusElement(const RatWeight& r,bool two);
 
   // accessors
+  size_t rank () const { return repr.size(); }
 
   RatWeight log_pi(bool normalize) const; // return the stored rational vector
   RatWeight log_2pi() const; // value halved: to be interpreted "mod Z^rank"
@@ -74,6 +75,9 @@ class TorusElement
     // the following asserts internally that |evaluate_at(alpha)| is integer
     return repr.scalarProduct(alpha)%2!=0; // true if evaluates to odd integer
   }
+
+  // evaluation giving rational number modulo 2, represented in interval [0,2)
+  Rational evaluate_at(const SmallBitVector& alpha) const;
 
   // evaluation giving rational number modulo 2, represented in interval [0,2)
   Rational evaluate_at(const Coweight& alpha) const;

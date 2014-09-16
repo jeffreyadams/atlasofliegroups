@@ -84,6 +84,11 @@ template<size_t dim> class Subspace
   const size_t rank() const { return d_rank; }
   const BitSet<dim>& support() const { return d_support; }
 
+  // reverse-canonical basis of perpendicular subspace of dual
+  BitVectorList<dim> basis_perp () const;
+  BitSet<dim> support_perp () const // complement of |d_support|
+  { return BitSet<dim>(d_support).complement(rank()); } // copy and complement
+
   //! \brief Expresses |v| in the subspace basis.
   BitVector<dim> toBasis(BitVector<dim> v) // by-value
     const
@@ -206,7 +211,7 @@ BitSet<dim> d_rel_support;
   size_t rank() const { return d_space.rank(); }
 
   const Subspace<dim>& space() const { return d_space; }       // numerator
-  const Subspace<dim>& subspace() const { return d_subspace; } // denominator
+  const Subspace<dim>& denominator() const { return d_subspace; }
 
   /* we call this |support| to the outside world, since it flags basis
     representatives for the quotient among the basis for |d_space| */

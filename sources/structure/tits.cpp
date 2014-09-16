@@ -344,16 +344,22 @@ namespace {
  The function |compute_square_classes| computes this list of generators.
 
  Actually the valid gradings do not form a $\Z/2\Z$ vector space, but an
- affine space for which one can take the grading of $\delta$ as base point.
- These gradings apply to the set $(\<\Phi>_\Z)^\delta$ of $\delta$-fixed
- elements of the root lattice. The grading for the strong involution
- $t.\delta$, with torus-offset $t=\exp(\pi i c)$ from $\delta$, differs at
- weight vector $v$ from the grading for $\delta$ by a factor $(-1)^{\<v,c>}$.
- But since $c$ must be $\delta$-stable to define a valid square of a strong
- involution, we certainly have $\<(1+\delta)x,c>\in2\Z$ for all
- $x\in\<\Phi>_\Z$; thus the grading is always invariant under translating $v$
- by an element of the $1+\delta$-image of the root lattice. Therefore it
- suffices to record the grading on the $\delta$-fixed \emph{simple} roots.
+ affine space, for which one can take the grading of $\delta_1$ as base point
+ (it grades all simple-imaginary roots as non-compact). These gradings apply
+ to $\delta$-fixed (imaginary) roots, and by extension to the set
+ $(\<\Phi>_\Z)^\delta$ of $\delta$-fixed elements of the root lattice. The
+ grading for the strong involution representative $t.\delta$, with torus part
+ $t=\exp(\pi i c)$, differs at $\delta$-fixed element $v$ from the grading for
+ $\delta$ by a factor $(-1)^{\<v,c>}$ (the exponent will be integer).
+ Projecting $c$ to the $\delta$-fixed subspace of $X_*\tensor\Q$ gives a
+ different representative of the same strong involution, for which the strong
+ involution condition $t=\exp(\pi i(1+delta)c)\in Z(G)$ says that $\<.c>$
+ takes integer values on all roots. Then $\<(1+\delta)x,c>\in2\Z$ for all
+ $x\in\<\Phi>_\Z$; this means all obtained gradings are invariant under
+ translation by any element of the $1+\delta$-image of the root lattice.
+ Because all $v\in(\<\Phi>_\Z)^\delta$ are sums of $\delta$-fixed simple roots
+ on one hand and of sums of $\delta$-exchanged simple root pairs on the other,
+ it suffices to know the grading on $\delta$-fixed \emph{simple} roots.
 
  The list is formed of generators of the quotient of all possible gradings of
  those simple roots by the subgroup of gradings coming from $\delta$-fixed
@@ -811,17 +817,17 @@ bool TitsCoset::is_valid(TitsElt a) const
    ones noncompact. In the KGB construction (i.e., in our |TitsCoset|) a
    grading is chosen only at the distinguished involution, and only of the
    simple roots that are imaginary for that involution; it depends on the
-   square class of the real form. The bitvector |v| below is zero for some
-   strong involution |si| in same square class as |rf| at Cartan class |cn|;
-   the result will be correct if and only if the null torus part |x| defines
-   (by |TitsCoset::grading|) the same grading of the (simple) imaginary roots
-   for the canonical involution of Cartan class |cn| as |si| does (through
-   |Fiber::class_base|).
+   square class of the real form. The bitvector |v| (a fiber group element)
+   below is zero for some strong involution |si| in same square class as |rf|
+   at Cartan class |cn|; the result will be correct if and only if the null
+   torus part |x| defines (by |TitsCoset::grading|) the same grading of the
+   (simple) imaginary roots for the canonical involution of Cartan class |cn|
+   as |si| does (through |Fiber::class_base|).
 
    The only case where one can rely on that to be true is for the fundamental
    Cartan (|cn==0|), if our |TitsCoset| was extracted as base object from
    an |EnrichedTitsGroup| (the latter being necessarily constructed through
-   |EnrichedTitsGroup::for_square_class|), because in that case the
+   |TitsCoset(G,square_class_base_grading)|), because in that case the
    |TitsCoset::grading_offset| field was actually computed from de
    grading defined by the element |si| in the fundamental fiber. In the general
    case all bets are off: the real form of |si| need not even be the same one
@@ -857,9 +863,9 @@ TitsElt TitsCoset::naive_seed
    from any fiber group, but rather a set of equations for the torus part is
    set up and solved. The equations come in two parts: a first section for
    establishing the correct coset in T(2) with respect to the "numerator"
-   subgroup of the subquotient that defines th fiber group, and a second
+   subgroup of the subquotient that defines the fiber group, and a second
    section for requiring the correct grading of the imaginary roots for the
-   real form that is intended. Both parts are inhomogeneous linear equations,
+   real form that is intended. Both parts are inhomogeneous linear systems,
    of which the left hand side (linear part) expresses a Z/2Z-linear condition
    on the torus part, and the right hand side (inhomogeneous part) describes
    the failure of the null torus part to satisfy the conditions (since these
@@ -968,14 +974,14 @@ SmallSubspace fiber_denom(const WeightInvolution& theta)
  values. |fund| must be a fundamental fiber, in order that restricting grading
  to simple roots suffice to determine the real form, or even the square class
  */
-Grading
+Grading // of the simple roots
 square_class_grading_offset(const Fiber& fund,
 			    cartanclass::square_class csc,
 			    const RootSystem& rs)
 {
   RootNbrSet rset = fund.compactRoots(fund.class_base(csc));
   return cartanclass::restrictGrading(rset,rs.simpleRootList())// restrict
-    .complement(rs.rank());// and complement with respec to to simple roots
+    .complement(rs.rank()); // and complement with respec to the simple roots
 
 }
 
@@ -1011,7 +1017,7 @@ TitsElt EnrichedTitsGroup::backtrack_seed
 
   /* at this point we can get from the fundamental fiber to |tw| by first
      applying cross actions according to |cross|, and then applying Cayley
-     transforms in the strongly orthogonal set |Cayley|.
+     transforms in the strongly orthogonal set |rset|.
   */
 
   // transform strong orthogonal set |Cayley| back to distinguished involution
