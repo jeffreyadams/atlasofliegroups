@@ -417,7 +417,7 @@ class Fiber {
   \brief Returns the base element for a central square class
 */
   AdjointFiberElt class_base(square_class c) const
-    { return d_weakReal.classRep(d_realFormPartition.classRep(c)); }
+    { return wrf_rep(d_realFormPartition.classRep(c)); }
 
 /*! \brief
   List of partitions of the fiber group cosets, its elements corresponding to
@@ -465,6 +465,8 @@ class Fiber {
      conversion to |RealFormNbr| is done in complex group via |real_labels|
   */
   const Partition& weakReal() const { return d_weakReal; }
+  AdjointFiberElt wrf_rep (adjoint_fiber_orbit wrf) const
+  { return d_weakReal.classRep(wrf); }
 
 // private accessors only needed during construction
 

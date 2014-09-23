@@ -913,7 +913,7 @@ TitsElt TitsCoset::grading_seed
     base_grading.set(i,grading(a,f.simpleImaginary(i)));
 
   // get the grading of the same system given by chosen representative of |wrf|
-  Grading form_grading = f.grading(f.weakReal().classRep(wrf));
+  Grading form_grading = f.grading(f.wrf_rep(wrf));
   /* the difference between |base_grading| and |form_grading| will have to be
      compensated by setting an appropriate torus part for |a| */
 

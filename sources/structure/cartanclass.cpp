@@ -143,7 +143,7 @@ CartanClass::CartanClass(const RootDatum& rd,
 */
 bool CartanClass::isMostSplit(adjoint_fiber_orbit wrf) const
 {
-  AdjointFiberElt x = fiber().weakReal().classRep(wrf);
+  AdjointFiberElt x = fiber().wrf_rep(wrf);
 
   Grading gr= fiber().grading(x);
 
@@ -934,7 +934,7 @@ RootNbrSet
 toMostSplit(const Fiber& fundf, RealFormNbr rf, const RootSystem& rs)
 {
   RootNbrSet ir = fundf.imaginaryRootSet();
-  unsigned long rep = fundf.weakReal().classRep(rf);
+  unsigned long rep = fundf.wrf_rep(rf);
 
   return gradings::max_orth(fundf.noncompactRoots(rep),ir,rs);
 }

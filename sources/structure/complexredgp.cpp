@@ -575,7 +575,7 @@ void ComplexReductiveGroup::map_real_forms(CartanNbr cn)
     Cartan[cn].real_labels[weak_real.class_of(rep)]=rf;
   }
   assert(Cartan[cn].real_labels[0]==quasisplit());
-}
+} // |ComplexReductiveGroup::map_real_forms|
 
 void ComplexReductiveGroup::map_dual_real_forms(CartanNbr cn)
 {
@@ -611,7 +611,7 @@ void ComplexReductiveGroup::map_dual_real_forms(CartanNbr cn)
   }
   assert(Cartan[cn].dual_real_labels[0]==0);
   Cartan[cn].dual_rep[0] = dual_base.data();
-}
+} // |ComplexReductiveGroup::map_dual_real_forms|
 
 #if 0 // functions below are no longer used
 /*!
@@ -866,18 +866,6 @@ ComplexReductiveGroup::involutionMatrix(const TwistedInvolution& tw)
   const
 {
   return rootDatum().matrix(weylGroup().word(tw.w())) * distinguished();
-}
-
-/*!
-  \brief Flags in rs the set of noncompact positive roots for Cartan \#j.
-*/
-RootNbrSet ComplexReductiveGroup::noncompactPosRootSet
-  (RealFormNbr rf, size_t j)
-{
-  const Fiber& f = cartan(j).fiber();
-  unsigned long x = representative(rf,j); // real form orbit-representative
-
-  return f.noncompactRoots(x) & rootDatum().posRootSet();
 }
 
 /*!
