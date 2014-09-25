@@ -182,11 +182,12 @@ class ComplexReductiveGroup
   //!\brief the permutation of the roots given by the based automorphism
   const Permutation root_twist;
 
-  // gradings of the set of all simple roots, for all real forms
-  typedef std::vector<RankFlags> form_reps;
 
   struct C_info
-  { TwistedInvolution tw;
+  { // gradings of the set of simple (co)roots, for all real forms
+    typedef std::vector<RankFlags> form_reps;
+
+    TwistedInvolution tw;
     BitMap real_forms,dual_real_forms; // mark present (dual) real forms
     form_reps rep,dual_rep; // gradings representing those (dual) real forms
     BitMap below; // numbers of Cartan classes below this in partial ordering
@@ -289,10 +290,10 @@ class ComplexReductiveGroup
   RealFormNbr numDualRealForms() const
   { return dualFundamental().numRealForms(); }
   // total number of involutions for the inner class.
-  InvolutionNbr numInvolutions();
+  InvolutionNbr numInvolutions() const;
 
   // size of a union of sets $K\backslash G/B$ for relevant strong real forms
-  unsigned long global_KGB_size();
+  unsigned long global_KGB_size() const;
 
   // the (inner) number of the quasisplit real form.
   RealFormNbr quasisplit() const { return RealFormNbr(0); }
@@ -317,6 +318,15 @@ class ComplexReductiveGroup
   const TwistedInvolution& involution_of_Cartan(CartanNbr cn) const
     { return Cartan[cn].tw; }
 
+  // remaining information is stored in |CartanClass| object
+  const CartanClass& cartan(CartanNbr cn) const { return *Cartan[cn].class_pt; }
+
+
+// Information selected by subset of the Cartan classes
+
+  // number of involutions for the indicated Cartans
+  InvolutionNbr numInvolutions(const BitMap& Cartan_classes) const;
+
 
 // Information about individual (weak) real forms or dual real forms
 
@@ -333,6 +343,49 @@ class ComplexReductiveGroup
      for a representative of this real form */
   RootNbrSet noncompactRoots(RealFormNbr rf) const
   { return fundamental().noncompactRoots(fundamental().wrf_rep(rf)); }
+
+  // the number of elements in K\\G/B for real form |rf|.
+  unsigned long KGB_size(RealFormNbr rf) const
+  { return KGB_size(rf,Cartan_set(rf)); }
+  // the same limited to indicated Cartan classes only
+  unsigned long KGB_size(RealFormNbr rf, const BitMap& Cartan_classes) const;
+
+// Information about a real form or dual real form at a given Cartan class
+
+  // size of the block defined by weak real form |rf| and dual real form| drf|
+  unsigned long block_size(RealFormNbr rf, RealFormNbr drf) const
+    { return block_size(rf,drf,Cartan_set(rf)& dual_Cartan_set(drf)); }
+  // the same limited to indicated Cartan classes only
+  unsigned long block_size(RealFormNbr rf, RealFormNbr drf,
+			   const BitMap& Cartan_classes) const;
+
+  // size of fibers in KGB set for |rf| over any involution in Cartan class |cn|
+  unsigned long fiberSize(RealFormNbr rf, CartanNbr cn) const;
+  unsigned long dualFiberSize(RealFormNbr drf, CartanNbr cn) const;
+
+  // real forms, vector indexed by parts in |cartan(n).fiber().weakReal()|
+  const RealFormNbrList& realFormLabels(CartanNbr cn) const
+  { return Cartan[cn].real_labels; }
+  // dual real forms, indexed by parts in |cartan(n).dual_fiber().weakReal()|
+  const RealFormNbrList& dualRealFormLabels(CartanNbr cn) const
+  { return Cartan[cn].dual_real_labels; }
+
+  // part in the |weakReal| partition at Cartan |cn| corresponding to |rf|
+  cartanclass::adjoint_fiber_orbit
+    real_form_part(RealFormNbr rf, CartanNbr cn) const
+  { return permutations::find_index(realFormLabels(cn),rf); }
+  cartanclass::adjoint_fiber_orbit
+    dual_real_form_part(RealFormNbr drf, CartanNbr cn) const
+  { return permutations::find_index(dualRealFormLabels(cn),drf); }
+
+  // adjoint fiber element in fiber of Cartan |cn|, representative of |rf|
+  cartanclass::AdjointFiberElt
+    representative(RealFormNbr rf, CartanNbr cn) const
+  { return cartan(cn).fiber().wrf_rep(real_form_part(rf,cn)); }
+  // adjoint fiber element in dual fiber of Cartan |cn|, representative of |drf|
+  cartanclass::AdjointFiberElt
+    dualRepresentative(RealFormNbr drf, CartanNbr cn) const
+  { return cartan(cn).dualFiber().wrf_rep(dual_real_form_part(drf,cn)); }
 
 
 // Information about individual twisted involutions
@@ -369,84 +422,7 @@ class ComplexReductiveGroup
 
 // Manipulators
 
-
   Cartan_orbits& involution_table () { return C_orb; }
-
-/* The main manipulator is |cartan|, which ensures the |CartanClass| is
-   generated; most other manipulators are so because they call |cartan|
- */
-
-// get data for stable conjugacy class \#cn of Cartan subgroups.
-  const CartanClass& cartan(CartanNbr cn)
-  { if (Cartan[cn].class_pt==NULL)
-      add_Cartan(cn);
-    return *Cartan[cn].class_pt;
-  }
-
-/*
-  An element of the orbit in the adjoint fiber corresponding to |rf|
-  in the classification of weak real forms for cartan |\#cn|.
-*/
-  cartanclass::AdjointFiberElt representative(RealFormNbr rf, CartanNbr cn)
-    { return cartan(cn).fiber().wrf_rep(real_form_part(rf,cn)); }
-
-/*
-  An element of the orbit in the adjoint dual fiber corresponding to |drf|
-  in the classification of dual weak real forms for cartan |\#cn|.
-*/
-  cartanclass::AdjointFiberElt dualRepresentative(RealFormNbr drf, CartanNbr cn)
-  { return cartan(cn).dualFiber().wrf_rep(dual_real_form_part(drf,cn)); }
-
-  // size of fibers in KGB set for |rf| over any involution in Cartan class |cn|
-  unsigned long fiberSize(RealFormNbr rf, CartanNbr cn);
-  unsigned long dualFiberSize(RealFormNbr drf, CartanNbr cn);
-
-  // number of involutions for the indicated Cartans.
-  InvolutionNbr numInvolutions(const BitMap& Cartan_classes);
-
-  // the number of elements in K\\G/B for real form |rf|.
-  unsigned long KGB_size(RealFormNbr rf) { return KGB_size(rf,Cartan_set(rf)); }
-  // the same limited to indicated Cartan classes only
-  unsigned long KGB_size(RealFormNbr rf, const BitMap& Cartan_classes);
-
-  // size of the block defined by weak real form |rf| and dual real form| drf|
-  unsigned long block_size(RealFormNbr rf, RealFormNbr drf)
-    { return block_size(rf,drf,Cartan_set(rf)& dual_Cartan_set(drf)); }
-  // the same limited to indicated Cartan classes only
-  unsigned long block_size(RealFormNbr rf, RealFormNbr drf,
-			   const BitMap& Cartan_classes);
-
-  /* real form labels for Cartan class |cn|
-
-  More precisely, realFormLabels(cn)[i] is the (inner) number of the real form
-  that corresponds to part i of the partition cartan(n).fiber().weakReal()
-  */
-  const RealFormNbrList& realFormLabels(CartanNbr cn)
-  {
-    cartan(cn); // make sure that labels for Cartan |cn| are generated
-    return Cartan[cn].real_labels;
-  }
-
-  // dual real form labels for Cartan class |cn|
-  const RealFormNbrList& dualRealFormLabels(CartanNbr cn)
-  {
-    cartan(cn);// make sure that dual labels for Cartan |cn| are generated
-    return Cartan[cn].dual_real_labels;
-  }
-
-  /* part in the |weakReal| partition of the fiber in Cartan \#cn
-    corresponding to real form |rf|
-  */
-  cartanclass::adjoint_fiber_orbit real_form_part(RealFormNbr rf, CartanNbr cn)
-  { return permutations::find_index(realFormLabels(cn),rf); }
-
-  /* part in the |weakReal| partition of the dual fiber in Cartan \#cn
-     corresponding to dual real form |drf|
-  */
-  cartanclass::adjoint_fiber_orbit
-    dual_real_form_part(RealFormNbr drf, CartanNbr cn)
-  { return permutations::find_index(dualRealFormLabels(cn),drf); }
-
 
 // Auxiliary accessors
  private:

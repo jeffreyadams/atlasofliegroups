@@ -184,10 +184,7 @@ ComplexReductiveGroup::ComplexReductiveGroup
 void ComplexReductiveGroup::construct() // common part of two constructors
 {
   { // task 1: generate Cartan classes, fill non-dual part of |Cartan|
-    const TitsCoset adj_Tg(*this);     // based adjoint Tits group
-    const TitsGroup& Tg=adj_Tg.titsGroup(); // same, forgetting base
-
-    {
+    { // complete initialisation of |Cartan[0]|
       const Fiber& f=fundamental();
       const Partition& weak_real=f.weakReal();
       // fill initial |form_reps| vector with assignment from |weak_real|
@@ -202,12 +199,15 @@ void ComplexReductiveGroup::construct() // common part of two constructors
       }
     }
 
+    const TitsCoset adj_Tg(*this);     // based adjoint Tits group
+    const TitsGroup& Tg=adj_Tg.titsGroup(); // same, forgetting base
+
     for (CartanNbr i=0; i<Cartan.size(); ++i) // |Cartan| grows as loop advances
     {
       Cartan_poset.new_max(Cartan[i].below); // include now completed level
 
 #ifndef NDEBUG
-      CartanNbr entry_level=Cartan.size();
+      CartanNbr entry_level=Cartan.size(); // is only used in |assert|
 #endif
       InvolutionData id =
 	InvolutionData::build(d_rootDatum,d_titsGroup,Cartan[i].tw);
@@ -237,7 +237,7 @@ void ComplexReductiveGroup::construct() // common part of two constructors
 	TwistedInvolution sigma = // involution after "Cayley transform"
 	  W.prod(s,a.tw());       // starting from |a.tw()|
 	WeylWord ww = // Weyl word that will conjugate canonical back to current
-	  canonicalize(sigma); // and sigma is now that canonical elt
+	  canonicalize(sigma); // and sigma is now canonical elt in new Cartan
 
 	CartanNbr ii;
 	for (ii=0; ii<Cartan.size(); ++ii)
@@ -249,6 +249,7 @@ void ComplexReductiveGroup::construct() // common part of two constructors
 
 	Cartan[ii].below.insert(i); // mark parent Cartan as below |sigma|
 
+	// see which real forms (newly) carry over to the new Cartan class
 	for (BitMap::iterator rfi=Cartan[i].real_forms.begin(); rfi(); ++rfi)
 	{
 	  RealFormNbr rf = *rfi;
@@ -372,6 +373,11 @@ void ComplexReductiveGroup::construct() // common part of two constructors
     } // |for (i=Cartan.size()-->0)|
 
   } // task 2
+
+  { // task 3: fill the |CartanClass*| components of each Cartan[i]
+    for (CartanNbr i=0; i<Cartan.size(); ++i)
+      add_Cartan(i);
+  }
 } // |ComplexReductiveGroup::construct|
 
 /*!
@@ -442,6 +448,8 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
     for (CartanNbr j=i+1; j<G.Cartan.size(); ++j)
       if (G.Cartan[j].below.isMember(i))
 	dst.below.insert(G.Cartan.size()-1-j);
+
+    add_Cartan(Cartan.size()-1); // ensure |CartanClass object is created|
   }
 
 }
@@ -760,7 +768,7 @@ bool checkDecomposition(const TwistedInvolution& ti,
   Precondition: Real form \#rf is defined for cartan \#cn.
 */
 unsigned long
-ComplexReductiveGroup::fiberSize(RealFormNbr rf, CartanNbr cn)
+ComplexReductiveGroup::fiberSize(RealFormNbr rf, CartanNbr cn) const
 {
   cartanclass::adjoint_fiber_orbit wrf = real_form_part(rf,cn);
   // |wrf| indexes a $W_{im}$ orbit on |cartan(cn).fiber().adjointFiberGroup()|
@@ -786,7 +794,7 @@ ComplexReductiveGroup::fiberSize(RealFormNbr rf, CartanNbr cn)
 */
 
 unsigned long
-ComplexReductiveGroup::dualFiberSize(RealFormNbr rf, CartanNbr cn)
+ComplexReductiveGroup::dualFiberSize(RealFormNbr rf, CartanNbr cn) const
 {
   cartanclass::adjoint_fiber_orbit wrf=dual_real_form_part(rf,cn);
 
@@ -835,7 +843,7 @@ ComplexReductiveGroup::dual_Cartan_set(RealFormNbr drf) const
 /*!
   \brief Returns the total number of involutions (generating Cartans as needed)
 */
-InvolutionNbr ComplexReductiveGroup::numInvolutions()
+InvolutionNbr ComplexReductiveGroup::numInvolutions() const
 {
   InvolutionNbr count = 0;
 
@@ -850,7 +858,7 @@ InvolutionNbr ComplexReductiveGroup::numInvolutions()
   indicated set of Cartans.
 */
 InvolutionNbr ComplexReductiveGroup::numInvolutions
-  (const BitMap& Cartan_classes)
+  (const BitMap& Cartan_classes) const
 {
   InvolutionNbr count = 0;
 
@@ -916,13 +924,10 @@ CartanNbr ComplexReductiveGroup::class_number(TwistedInvolution sigma) const
 }
 
 
-/*!
-  \brief Returns the cardinality of the subset of \f$K\backslash G/B\f$
-   associated to |rf| whose twisted involutions belong to |Cartan_classes|.
-*/
+// the size of the subset of KGB for |rf| for involutions in |Cartan_classes|
 unsigned long
 ComplexReductiveGroup::KGB_size(RealFormNbr rf,
-				const BitMap& Cartan_classes)
+				const BitMap& Cartan_classes) const
 {
   unsigned long result=0;
   for (BitMap::iterator it = Cartan_classes.begin(); it(); ++it)
@@ -932,15 +937,13 @@ ComplexReductiveGroup::KGB_size(RealFormNbr rf,
 
 }
 
-/*! \brief
-  Returns the cardinality of the union of sets \f$K\backslash G/B\f$ for this
-  inner class.
+/* cardinality of the union of KGB sets  for this inner class.
 
-  (Here each real form appears as often as there are strong real forms for it
-  in its square class)
+  (each real form appears as often as there are strong real forms for it in
+   its square class)
 */
 unsigned long
-ComplexReductiveGroup::global_KGB_size()
+ComplexReductiveGroup::global_KGB_size() const
 {
   unsigned long result=0;
   for (CartanNbr cn=0; cn<numCartanClasses(); ++cn)
@@ -955,7 +958,7 @@ ComplexReductiveGroup::global_KGB_size()
 unsigned long
 ComplexReductiveGroup::block_size(RealFormNbr rf,
 				  RealFormNbr drf,
-				  const BitMap& Cartan_classes)
+				  const BitMap& Cartan_classes) const
 {
   unsigned long result=0;
   for (BitMap::iterator it = Cartan_classes.begin(); it(); ++it)
