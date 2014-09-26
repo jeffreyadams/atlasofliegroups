@@ -375,8 +375,14 @@ void ComplexReductiveGroup::construct() // common part of two constructors
   } // task 2
 
   { // task 3: fill the |CartanClass*| components of each Cartan[i]
-    for (CartanNbr i=0; i<Cartan.size(); ++i)
-      add_Cartan(i);
+    for (CartanNbr cn=0; cn<Cartan.size(); ++cn)
+    {
+      Cartan[cn].class_pt =
+	new CartanClass(rootDatum(),dualRootDatum(),
+			involutionMatrix(Cartan[cn].tw));
+      map_real_forms(cn);      // used to be |correlateForms(cn);|
+      map_dual_real_forms(cn); // used to be |correlateDualForms(cn);|
+    }
   }
 } // |ComplexReductiveGroup::construct|
 
@@ -449,7 +455,14 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
       if (G.Cartan[j].below.isMember(i))
 	dst.below.insert(G.Cartan.size()-1-j);
 
-    add_Cartan(Cartan.size()-1); // ensure |CartanClass object is created|
+    {
+      CartanNbr cn=Cartan.size()-1; // ensure |CartanClass object is created|
+      Cartan[cn].class_pt =
+	new CartanClass(rootDatum(),dualRootDatum(),
+			involutionMatrix(Cartan[cn].tw));
+      map_real_forms(cn);      // used to be |correlateForms(cn);|
+      map_dual_real_forms(cn); // used to be |correlateDualForms(cn);|
+    }
   }
 
 }
@@ -504,19 +517,6 @@ ComplexReductiveGroup::reflection(RootNbr alpha,
 
 /******** manipulators *******************************************************/
 
-
-/* This function gets called when a Cartan subgroup is first used, except that
-   the most compact Cartan is already installed by the constructor.
-   The numbering of Cartans is fixed, but calls here may arrive in any order
-*/
-void ComplexReductiveGroup::add_Cartan(CartanNbr cn)
-{
-  Cartan[cn].class_pt =
-    new CartanClass(rootDatum(),dualRootDatum(),
-		    involutionMatrix(Cartan[cn].tw));
-  map_real_forms(cn);      // used to be |correlateForms(cn);|
-  map_dual_real_forms(cn); // used to be |correlateDualForms(cn);|
-}
 
 /*
   The following function matches real forms between different Cartan classes,

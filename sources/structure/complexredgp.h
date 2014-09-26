@@ -443,8 +443,6 @@ class ComplexReductiveGroup
 
 // Auxiliary manipulators
 
-  void add_Cartan(CartanNbr cn);
-
   void map_real_forms(CartanNbr cn);      // set |Cartan[cn].real_labels|
   void map_dual_real_forms(CartanNbr cn); // set |Cartan[cn].dual_real_labels|
 
