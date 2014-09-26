@@ -116,8 +116,8 @@ ComplexReductiveGroup::C_info::C_info
   , real_forms(G.numRealForms()), dual_real_forms(G.numDualRealForms())
   , rep(G.numRealForms()),        dual_rep(G.numDualRealForms())
   , below(i)
-  , class_pt(new CartanClass(G.rootDatum(),G.dualRootDatum(),
-			     G.involutionMatrix(tw)))
+  , Cc(CartanClass(G.rootDatum(),G.dualRootDatum(),
+		   G.involutionMatrix(tw)))
   , real_labels(), dual_real_labels() // these start out emtpy
   {}
 
@@ -464,8 +464,6 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
 // destruction frees Weyl group if owned
 ComplexReductiveGroup::~ComplexReductiveGroup()
 {
-  for (CartanNbr i = 0; i<numCartanClasses(); ++i)
-    delete Cartan[i].class_pt;
   delete my_W;
 }
 
@@ -544,7 +542,7 @@ ComplexReductiveGroup::reflection(RootNbr alpha,
 void ComplexReductiveGroup::map_real_forms(CartanNbr cn)
 {
   TitsCoset adj_Tg(*this);
-  const Fiber& f = Cartan[cn].class_pt->fiber();
+  const Fiber& f = Cartan[cn].Cc.fiber();
   const Partition& weak_real = f.weakReal();
   const TwistedInvolution& tw = Cartan[cn].tw;
   const RootNbrList& sim = f.simpleImaginary();
@@ -579,7 +577,7 @@ void ComplexReductiveGroup::map_real_forms(CartanNbr cn)
 void ComplexReductiveGroup::map_dual_real_forms(CartanNbr cn)
 {
   TitsCoset dual_adj_Tg(*this,tags::DualTag());
-  const Fiber& dual_f = Cartan[cn].class_pt->dualFiber();
+  const Fiber& dual_f = Cartan[cn].Cc.dualFiber();
   const Partition& dual_weak_real = dual_f.weakReal();
   const TwistedInvolution dual_tw =W.opposite(Cartan[cn].tw);
   const RootNbrList& sre = dual_f.simpleImaginary(); // simple real

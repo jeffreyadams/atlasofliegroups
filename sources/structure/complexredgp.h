@@ -191,8 +191,7 @@ class ComplexReductiveGroup
     BitMap real_forms,dual_real_forms; // mark present (dual) real forms
     form_reps rep,dual_rep; // gradings representing those (dual) real forms
     BitMap below; // numbers of Cartan classes below this in partial ordering
-    CartanClass* class_pt; //!< owned (by parent) pointer, might be NULL
-    // remaining fields are set only once |class_pt| has been made non-NULL
+    CartanClass Cc; // detailed information, basically |Fiber| and dual |Fiber|
     RealFormNbrList real_labels,dual_real_labels;
 
     C_info(const ComplexReductiveGroup& G, const TwistedInvolution twi,
@@ -319,7 +318,7 @@ class ComplexReductiveGroup
     { return Cartan[cn].tw; }
 
   // remaining information is stored in |CartanClass| object
-  const CartanClass& cartan(CartanNbr cn) const { return *Cartan[cn].class_pt; }
+  const CartanClass& cartan(CartanNbr cn) const { return Cartan[cn].Cc; }
 
 
 // Information selected by subset of the Cartan classes
