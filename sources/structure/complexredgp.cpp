@@ -415,23 +415,23 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
   for (CartanNbr i=G.Cartan.size(); i-->0; )
   {
     const C_info& src = G.Cartan[i];
-    Cartan.push_back(C_info(*this,W.opposite(src.tw),Cartan.size()));
+
+    const TwistedInvolution tw_org = W.opposite(src.tw);
+    TwistedInvolution canon_tw = tw_org;
+    WeylWord conjugator = canonicalize(canon_tw);
+
+    Cartan.push_back(C_info(*this,canon_tw,Cartan.size()));
     C_info& dst = Cartan.back();
-
-    const TitsCoset adj_Tg(*this);     // based adjoint Tits group
-    const TitsGroup& Tg=adj_Tg.titsGroup(); // same, forgetting base
-    const TitsCoset dual_adj_Tg (*this,tags::DualTag());
-    const TitsGroup& dual_Tg = dual_adj_Tg.titsGroup();
-
-    const TwistedInvolution tw_org = dst.tw;
-    const TwistedInvolution dual_tw_org = src.tw;
-
-    WeylWord conjugator = canonicalize(dst.tw);
 
     dst.real_forms = src.dual_real_forms;
     dst.dual_real_forms = src.real_forms;
     dst.rep = src.dual_rep; // these are torus parts at |tw_org|, and this
     dst.dual_rep = src.rep; // assignment is mainly to set their size in |dst|
+
+    const TitsCoset adj_Tg(*this);     // based adjoint Tits group
+    const TitsGroup& Tg=adj_Tg.titsGroup(); // same, forgetting base
+    const TitsCoset dual_adj_Tg (*this,tags::DualTag());
+    const TitsGroup& dual_Tg = dual_adj_Tg.titsGroup();
 
     for (BitMap::iterator it=dst.real_forms.begin(); it(); ++it)
     {
@@ -443,9 +443,7 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
     }
     for (BitMap::iterator it=dst.dual_real_forms.begin(); it(); ++it)
     {
-      TitsElt y(dual_Tg,
-		TorusPart(dst.dual_rep[*it],semisimpleRank()),
-		dual_tw_org);
+      TitsElt y(dual_Tg,TorusPart(dst.dual_rep[*it],semisimpleRank()),src.tw);
       dual_adj_Tg.basedTwistedConjugate(y,conjugator);
       assert(y.tw()==W.opposite(dst.tw));
       dst.dual_rep[*it] = dual_Tg.left_torus_part(y).data();
