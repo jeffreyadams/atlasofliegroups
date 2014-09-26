@@ -116,7 +116,8 @@ ComplexReductiveGroup::C_info::C_info
   , real_forms(G.numRealForms()), dual_real_forms(G.numDualRealForms())
   , rep(G.numRealForms()),        dual_rep(G.numDualRealForms())
   , below(i)
-  , class_pt(NULL)
+  , class_pt(new CartanClass(G.rootDatum(),G.dualRootDatum(),
+			     G.involutionMatrix(tw)))
   , real_labels(), dual_real_labels() // these start out emtpy
   {}
 
@@ -377,9 +378,6 @@ void ComplexReductiveGroup::construct() // common part of two constructors
   { // task 3: fill the |CartanClass*| components of each Cartan[i]
     for (CartanNbr cn=0; cn<Cartan.size(); ++cn)
     {
-      Cartan[cn].class_pt =
-	new CartanClass(rootDatum(),dualRootDatum(),
-			involutionMatrix(Cartan[cn].tw));
       map_real_forms(cn);      // used to be |correlateForms(cn);|
       map_dual_real_forms(cn); // used to be |correlateDualForms(cn);|
     }
@@ -455,9 +453,6 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
 
     {
       CartanNbr cn=Cartan.size()-1; // ensure |CartanClass object is created|
-      Cartan[cn].class_pt =
-	new CartanClass(rootDatum(),dualRootDatum(),
-			involutionMatrix(Cartan[cn].tw));
       map_real_forms(cn);      // used to be |correlateForms(cn);|
       map_dual_real_forms(cn); // used to be |correlateDualForms(cn);|
     }
@@ -466,9 +461,7 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
 }
 
 
-/*!
-  Free Weyl group is owned, and any non-NULL |CartanClass| pointers.
-*/
+// destruction frees Weyl group if owned
 ComplexReductiveGroup::~ComplexReductiveGroup()
 {
   for (CartanNbr i = 0; i<numCartanClasses(); ++i)
