@@ -28,3 +28,4 @@ set tG2ad=trivial(G2ad)
 set pG2ad=spherical_principal_series(G2ad,[3,2]/3)
 
 { put personal personal definitions here }
+

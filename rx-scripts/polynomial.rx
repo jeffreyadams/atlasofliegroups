@@ -1,0 +1,114 @@
+<basic
+
+{simple linear algebra over Z[q]}
+{[a_0,...,a_n]=a_0+a_1q+...+a_nq^n
+ multiplication, addition, subtraction, scalar multiplication are defined}
+
+set - ((vec,vec) (v,w):p)= vec:v+(-w) {in basic this is only allowed for vectors of the same length}
+
+{M=[[[int]]] is a polynomial matrix
+ e.g. 
+expr> set M=[[ [0,1], [0,0,1]], [[0], [1]]]
+expr> printPolyMatrix (M)
+ +q +q^2
+ 0 +1
+}
+
+set printPolyMatrix([[[int]]] M)=void:
+let rv="" in 
+ let n=#M in 
+ for i:n do 
+  let line="" in 
+  let ()=for j:n do line+:=" "+stringPoly(M[i][j],"q") od in prints(line)
+od 
+
+{make v, w same length}
+set normalize([int] v,[int] w)=
+let ()=if #v<#w then v:=v#null(#w-#v)  
+elif #w<#v then w:=w#null(#v-#w) fi in (v,w)
+
+set plus([int] v,[int] w)=let (v,w)=normalize(v,w) in v+w
+
+{multiply two polynomials}
+set poly_product([int]  f,[int] g)=[int]:
+let (f,g)=normalize(f,g) in 
+let n=#f in 
+let N=2*n-1 in
+{let ()=prints("n=",n, " N=",N) in}
+let rv=[] in
+let rv=for m:N do let a=0 in {prints("m=",m);}for i:min(m,n-1)-max(0,m-n+1)+1 from max(0,m-n+1) do {prints("m:",m," i:",i);} a+:=f[i]*g[m-i] od;a od in strip(rv)
+
+set transpose([[[int]]] M)=[[[int]]]:
+let n=#M in 
+for i:n do 
+ for j:n do M[j][i] od od
+
+{multiply (dot product) of two vectors of polynomials}
+set vector_poly_product([[int]] v,[[int]] w)=[int]:
+let rv=[] in let ()=for i:#v do rv#:=poly_product(v[i],w[i]) od in let answer=null(#rv[0]) in 
+let ()=for i:#rv  do answer:=plus(answer,rv[i]) od in [int]:strip(answer)
+
+{multiply two matrices of polynomials} 
+set matrix_poly_product([[[int]]] A,[[[int]]] B)=[[[int]]]:
+let n=#A in 
+let B=transpose(B) in 
+ for i:n do for j:n do vector_poly_product(A[i],B[j]) od od
+
+{use *for matrix_poly_product
+ would like to use it elsewhere, but broadness cannot disambiguate}
+set *([[[int]]] A,[[[int]]] B)=[[[int]]]:matrix_poly_product(A,B)
+
+{add two vectors of polynomials, of same length}
+set vector_poly_sum([[int]] v,[[int]] w)=[[int]]:
+if not #v=#w then error("cannot add vectors of polynomials of different length") else
+for i:#v do strip(v[i]+w[i]) od fi
+
+{add matrices of the same size}
+set +([[[int]]] A,[[[int]]] B)=[[[int]]]:if not #A=#B then error("cannot add matrices of different size")
+else for i:#A do vector_poly_sum(A[i],B[i]) od fi
+
+set poly_times_vector([int] f,[[int]] v)=[[int]]:for i:#v do poly_product(f,v[i]) od
+set poly_times_matrix([int] f,[[[int]]] M)=[[[int]]]:for i:#M do poly_times_vector(f,M[i]) od
+{can't use *, broadness failing to  disambiguate again}
+set %([int] f,[[[int]]] M)=[[[int]]]:poly_times_matrix(f,M)
+set -([[[int]]] M)=[-1]%M
+set -([[[int]]] A,[[[int]]] B)=A+(-B)
+
+{update one entry in a vector of polynomials and one row of a matrix}
+set update_row([[int]] R, int j,[int] v)=R[j]:=v;R
+{update one row of a matrix}
+set update_matrix_row([[[int]]] M, int i, [[int]] row)=M[i]:=row;M
+{update one entry in a matrix}
+set update_matrix_entry([[[int]]] M, int i, int j, [int] v)=
+let row=M[i] in row[j]:=v;M[i]:=row;M
+
+set zero_poly_row(int n)=[[int]]:for i:n do [] od
+set zero_poly_matrix(int n)=[[[int]]]: for i:n do zero_poly_row(n) od
+set identity_poly_matrix(int n)=let M=zero_poly_matrix(n) in 
+for i:n do M:=update_matrix_entry(M,i,i,[1]) od;M
+set scalar_poly_matrix(int n, int c)=[c]%identity_poly_matrix(n)
+set *(int c, [[[int]]] M)=[c]%M
+
+power: ([int] f,int n):[int]:[] 
+power:= (([int] f,int n): if n>0 then strip(poly_product(f,power(f,n-1))) else [1] fi);
+
+{equality of polynomials}
+set =([[[int]]] A,[[[int]]] B)=
+let n=#A in
+let m=#A[0] in 
+let i=0 in 
+let rv=true in
+while i<n do
+ let j=0 in 
+ while j<m do if (not A[i][j]=B[i][j]) then i:=n;j:=m;rv:=false else j:=j+1 fi od;
+  i:=i+1 od;rv
+
+{polynomial is 0}
+set is_zero([[[int]]] M)=M=zero_poly_matrix(#M)
+
+{for convenience}
+set one=[int]:[1]
+set sgn_poly(int k)=if k<0 then -one elif k>0 then one else error("k=0 in sign_poly function") fi
+set two=[int]:[2]
+set q=[int]:[0,1]
+set q2=[int]:[0,0,1]

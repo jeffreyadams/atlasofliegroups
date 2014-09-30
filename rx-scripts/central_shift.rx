@@ -1,0 +1,74 @@
+{this file has to do with blocks such that the KGB element y for G^\vee 
+is not found by KGB_elt. This requires a central_shift. 
+For the principal block, and many others, this is not needed. 
+You need to set central_shift=ratvec:[0,0,...,0].
+The simplest thing to do is take the first parameter p in your block (on the fundamental Cartan) 
+and do 
+set central_shift=get_central_shift(p)
+Then pass central_shift to various arguments
+
+The central_shift stuff does *not* currently work if the shift is nonzero (9/29/14). 
+As long as the shift is 0 the scripts behave exactly as before and work on all examples 
+I have tested.
+}
+
+set imaginary_grading(InnerClass ic, mat theta, ratvec v)=[int]:
+let (pos_im_roots, pos_im_coroots)=(imaginary_poscoroots(ic,theta),imaginary_posroots(ic,theta)) in
+let (simple_im_roots,simple_im_coroots)=simple_from_positive(pos_im_roots,pos_im_coroots) in
+for a in simple_im_coroots do rat_as_int((1+(-1)^(rat_as_int(a*v)))/2) od
+
+set imaginary_grading(KGBElt x)=imaginary_grading(inner_class(real_form(x)),involution(x), torus_factor(x))
+
+set my_KGB_elt(RealForm G, ratvec v, mat M)=
+let xi=(v,M) in 
+let KGB=KGB(G) in
+let rv=KGB[0] in {junk value so can return something}
+let valid=false in
+let i=0 in 
+while i<#KGB do
+ let y=KGB[i] in 
+ let mu=(actual_torus_factor(y),^involution(y)) in 
+ if is_equivalent(xi,mu) then
+   i:=#KGB+1;rv:=y;valid:=true else i+:=1 fi od;(valid,rv)
+
+set fundamental_fiber(RealForm G)=[KGBElt]: 
+let i=0 in 
+let delta=distinguished_involution(G) in
+let kgb=KGB(G) in 
+let rv=[KGB(G,0)] in 
+while (i>=0 and i+1<#kgb) do
+let x=KGB(G,i+1) in 
+if involution(x)=delta then 
+ rv#:=x;i:=i+1 
+else
+ i:=-1 fi od;rv
+
+set fundamental_fiber(InnerClass ic)=[[KGBElt]]:
+for rf in real_forms(Cartan_class(ic,0)) do fundamental_fiber(rf) od
+
+set find_x_by_grading(InnerClass ic, mat theta, ratvec v)=
+let fibers=fundamental_fiber(ic) in
+let grading=imaginary_grading(ic,theta,v) in 
+let rv=[] in
+for kgb in fibers do 
+ for x in kgb do 
+  if imaginary_grading(x)=grading then rv#:=x fi od od ;rv
+
+{v should be (infinitesimal_character(p)-lambda(p)+rho(G))/2 for some p in the block, with x(p) 
+in the fundamental fiber
+usually this is applied on the dual side, so y(p) should be in the fundamental fiber of G^\vee
+There may be more than one valid central_shift, get them all here. 
+For just one of them do get_central_shift()
+}
+
+set get_central_shifts(InnerClass ic, ratvec v)=
+for x in find_x_by_grading(ic,distinguished_involution(ic),v) do torus_factor(x)-v od
+
+{p is a parameter for G, but central_shift has to do with G^\vee}
+set get_central_shifts(Param p)=get_central_shifts(dual(inner_class(real_form(p))),( infinitesimal_character(p)-lambda(p)))
+set get_central_shift(InnerClass ic, ratvec v)=get_central_shifts(ic,v)[0]
+set get_central_shift(Param p)=get_central_shifts(p)[0]
+
+
+
+

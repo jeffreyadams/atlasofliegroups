@@ -1,516 +1,217 @@
-<my_lattice {added functions, fixed function in_lattice}
-<tits
+<hermitian.rx {loads lots of other necessary stuff}
+<my_lattice  {replacement for lattice.rx}
 
-{some of the stuff at the top of this file really belongs elsewhere, but 
-is left here to avoid conflicts}
+{central_shift:
+this is a GLOBAL VARIABLE, which the user needs to set, the default is null(rank(G))
+a KGBElt constructed using KGB_elt should be interpreted as having torus 
+part torus_factor(x)+central_shift
+This only plays a role on the dual side, in the KGB element y
+Even there, it is only used to construct a set {(x_i,y_i)} parametrizing the block}
 
-{ action of Weyl word on X_*\otimes Q }
-set co_action(RootDatum rd,[int] w,ratvec rv) = ratvec:
-  let (v,den)=%rv in
-  for i:#w downto 0 do v:=^simple_reflection(rd,w[i])*v od; v/den
+{set central_shift=ratvec:[-1,0,2]/2}
+set central_shift=ratvec:[0,0,0]
 
-set Cayley_set(int j,Param p)=
-let q1=Cayley(j,p) in if status_text(j,p)="i1" then [q1] else [q1,cross(j,q1)] fi
+<extended_misc  {some supplementary functions}
+<extended_types  {types of extended parameters}
+<extended_cross  {cross action of extended parameters}
+<extended_cayley  {Cayley transforms of extended parameters}
+<central_shift
+{load hecke.rx at the end of this file}
 
-set inv_Cayley_set(int j,Param p)=
-let q1=inv_Cayley(j,p) in if status_text(j,p)="r1" then [q1] else [q1,cross(j,q1)] fi
+{references:
+Parameters for Twisted Representations (Adams/Vogan)
+Extended Parameters in Atlas (Adams)
+Computing Twisted KLV Polynomials (Adams) 
+More on the 2i12, 2Ci, 1i cases (Adams)
+Examples of extended paramters/braid relations (Adams)Extended Parameters in At
+all found at www.liegroups.org/papers/extended (no public link)}
 
-set inv_Cayley_set(int j,KGBElt x)=
-let y1=inv_Cayley(j,x) in 
-if status_text(j,x)="r1" then [y1] else [y1,cross(j,y1)] fi
+{extended parameter:
+(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
+(InnerClass ic, {inner class}
+ mat delta,     {twist}
+ ratvec gamma,  {infinitesimal character, in X^*(H)\otimes Q}
+ [int] lambda,  {in X^*}
+ mat theta,    {theta_x}
+ ratvec g,      {infinitesimal co-character, in X_*(H)\otimes Q} 
+ [int] l,       {in X_*}
+ mat omega,     {=^theta_y=theta_x^t}
+ [int] tau,     {in X^*}
+ [int] t        {in X_*}
+ 
+xi_0: distinguished involution of the inner class
+xi_0^v: distinguished involution of dual inner class (=-w_0\xi_0^t on level of root data)
+e(v)=exp(2i\pi v) (in \h=Lie(H) or \h^v=\h^*)
+X^*=X^*(H)=X_*(H^v) 
+X_*=X_*(H)=X^*(H^v)
 
-set cross([int] s,KGBElt x)=for i:#s downto 0 do x:=cross(s[i],x) od;x
-set cross([int] s,Param p)=for i:#s downto 0 do p:=cross(s[i],p) od;p
+delta: supplementary distinguished twist (what David calls delta_0), acts on X_* (^delta acts on X^*)}
 
-set oneplus(mat M)=id_mat(n_columns(M))+M
-set oneminus(mat M)=id_mat(n_columns(M))-M
+{Reminders about what acts where
+delta, xi_0, theta, ^omega act on X^*, which contains gamma,lambda,tau,rho,alpha
+^delta, ^xi_0, omega, ^theta act on X_*, which contains g,l,t,rho_check,alpha_check
 
-set oneplustheta(KGBElt x)=oneplus(involution(x))
-set oneminustheta(KGBElt x)=oneminus(involution(x))
+Warning: lambda is in X^*, NOT the same as lambda in (x,lambda,nu) in atlas, which is in X^*+\rho
 
-set oneplusthetatranspose(KGBElt x)=oneplus(^involution(x))
-set oneminusthetatranspose(KGBElt x)=oneminus(^involution(x))
+(g,l,theta) -> xi:
+g=infinitesimal co-character, in X_*\otimes Q, delta-fixed
+precondition: (1-^theta)g=(1-^theta)(l+rho^v)
+l in X_* 
+    -> torus element e((g-l)/2) in H
+theta: involution of H, Lie(H), theta=theta_x, acting on X_*
+    -> w such that theta=w*\xi_0
+(g,l,theta)
+    -> xi=e((g-l)/2)\sigma_w\xi_0
+    -> x=image of xi in KGB space X of G
 
-{built in KGB_elt command requires ^theta*v=v, i.e. torus element is in H^\theta}
-{also it KGB_elt(ic,theta,v) gives actual torus factor rho_check(G)+v/2}
-{I prefer to work with the actual torus factor}
+(gamma,lambda,omega) -> eta
+entirely dual to construction of xi
+precondition: (1-^omega)gamma=(1-^omega)(lambda+rho)
+also: omega=-^theta
+   -> e((gamma-lambda)/2)\in H^v
+   -> eta=e((gamma-lambda)/2)\sigma_{ww_0}\xi^v_0 
+   -> y=image of eta in KGB space X^v of G^v
 
-set shift(RootDatum rd)=rho_check(rd)/2
-set shift(RealForm G)=rho_check(G)/2
-set actual_torus_factor(KGBElt x)=torus_factor(x)/2+shift(real_form(x))
+t: solution in X_* to (1-^delta)l=(1+^theta)t
+   -> h=e(t/2)\in H(w) -> h\delta in the extended Cartan, i.e. \xi(h\delta)\xi^{-1}=h\delta
+tau: solution to (1-delta)lambda=(1+^omega)tau
+   -> e(tau/2)\in H^v(2) -> element of extended Cartan on dual side (don't give this element a name)}
 
-{A=(H^{-theta_x})^0, in_A(v,x): exp(2\pi i v)\in A}
-{test: (1+theta)v in (1+\theta)X_*, see definition of conjugator a few lines down,
-and the miscelanneous section of the paper}
-set in_A(ratvec v,mat theta)=bool:let M=id_mat(n_columns(theta))+theta in 
-let w=M*v in if not is_integer(w) then false else in_lattice(M,ratvec_as_vec(M*v)) fi
+{main construction of extended parameters
+E: (ic,delta,gamma,x,g,y) -> (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
+(ic,delta,gamma,
+lambda=gamma-2*actual_torus_factor(y)
+theta=involution(x)
+g,
+l=g-2*actual_torus_factor(x)
+omega=involution(y)
+tau: solve (1-delta)lambda=(1+^omega)tau
+t:   solve (1-^delta)l=(1+^theta)t}
 
-{exp(2\pi iv)\sigma_w(x)\delta is H-conjugate to exp(2\pi iw)\sigma_w(y)\delta
-test:x=y  and exp(2pi i(v-w)) is in A
-see miscelaneous section of the paper}
-set is_equivalent(((ratvec, mat),(ratvec,mat))((v_1,theta_1),(v_2,theta_2)))=bool:theta_1=theta_2 and in_A(v_1-v_2,theta_1)
-
-{NB if \gamma^\vee is of a very special form, then t=\exp(2\pi
-i(\gamma^\vee+\rho^\vee(G)/2)) is the torus part of some
-\xi=t\sigma_w\delta, lying over x\in \X. This \gamma^\vee (maybe *2?)
-is the "torus_factor(x)" in atlas.  However, the inverse map is not so
-obvious: given \xi=\exp(2\pi i\mu^\vee)\sigma_w\delta, mapping to x\in
-\X, how do you recover the torus_factor(x)? It is obvious you cannot
-simply substract the rho-shift (this isn't invariant under conjugation by H).}
-
-{HORRIBLE fix for this problem: search over KGB for the correct x}
-set  my_KGB_elt(RealForm G, mat theta, ratvec v)=
-let xi=(v,^theta) in 
-let KGB=KGB(G) in
-let rv=KGB[0] in {junk value so can return something}
-let valid=false in
-let i=0 in 
-while i<#KGB do
- let y=KGB[i] in 
- let mu=(actual_torus_factor(y),^involution(y)) in 
-{ let ()=prints("i: ", i, "  xi:", xi, "mu:", mu) in}
- if is_equivalent(xi,mu) then
-   i:=#KGB+1;rv:=y;valid:=true else i+:=1 fi od;(valid,rv)
-
-set my_KGB_elt(RealForm G,(ratvec,mat)(v,theta))=my_KGB_elt(G,theta,v)
-
-{built in KGB_elt command requires specifying the real form
-instead, get the real form from Cartan_class_real_form(ic,theta,w)}
-set my_KGB_elt(InnerClass ic,mat theta, ratvec v)=
-let w=oneplus(^theta)*(v-shift(ic)) in 
-let (,G)=Cartan_class_real_form(ic,theta,w) in my_KGB_elt(G,theta,v)
-
-set square(InnerClass ic,ratvec v,mat theta)=
-^oneplus(theta)*v+^oneminus(theta)*rho_check(ic)/2
-
-set square_is_central(InnerClass ic,ratvec v,mat theta)=
-let rv=true in 
-for i:ss_rank(ic) do 
-let alpha=simple_roots(ic)[i] in 
-if  (not is_integer(alpha*square(ic,v,theta)))  then rv:=false;i:=ss_rank(ic) fi od;rv
-
-set square_is_central(InnerClass ic,(ratvec,mat)(v,theta))=square_is_central(ic,v,theta)
-
-{find exp(2\pi i\mu) that conjugates exp(2\pi iv_1)\sigma_w\delta to exp(2\pi iv_2)\sigma_w\delta}
-{see the miscellaneous section of the paper
-algorithm: v_1-v_2=(1-\theta)\mu+\tau; \mu\in X_*\otimes Q,\tau\in X_*
-solve for \mu (and \tau)
-first multiply both sides by (1+\theta) and solve for tau\in X_*:
-(1+\theta)(v_1-v_2)=(1+\theta)\tau  (this is possible, since in_A(v_1-v_2,theta) returned true)
-then solve
-(1-theta)mu=(v_1-v_2)-tau for mu\in X_*\otimes Q}
-set conjugator(((ratvec,mat),(ratvec,mat))((v_1,theta_1),(v_2,theta_2)))=
-if not is_equivalent((v_1,theta_1),(v_2,theta_2)) then error("elements are not conjugate") else
-let plus=id_mat(n_columns(theta_1))+theta_1 in
- let (tau,result1)=solve(plus,ratvec_as_vec(plus*(v_1-v_2))) in 
-{let ()=prints("tau= ", tau, "result1= ", result1) in }
-{note: plus*(v-w) is an integral vector or is_equivalent:in_A already returned false}
-let minus=id_mat(n_columns(theta_1))-theta_1 in
-let  (mu,result2)=Q_solve(minus,[rat]:(v_1-v_2)-tau) in (mu,result2) 
-fi
-
-set lambda(ratvec gamma,KGBElt x,KGBElt y)=
-{let ()=prints("x:", x, " y: ", y) in}
-if not (dual(inner_class(real_form(x)))=inner_class(real_form(y))) then error("real forms of x, y are not dual") 
-elif (not involution(x)=-^involution(y)) then error("involutions of x and y are not dual") 
-else gamma-oneminustheta(x)*torus_factor(y)/2 fi   {CHECK /2 HERE}
-
-{sometimes I don't have x, only theta_x, which is all I need}
-set lambda(ratvec gamma,mat theta,KGBElt y)=
-if (not theta=-^involution(y)) then error("theta and involution(y) are not dual") 
-else gamma-oneminus(theta)*torus_factor(y)/2 fi   {CHECK /2 HERE}
-
-set lambda(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=
-lambda(gamma,theta,y)
-
-{conjugate an extended parameter by a torus element}
-{this affects the v,u,r factors}
-set conjugate(ratvec h,(InnerClass,[rat],mat,ratvec,mat,KGBElt,ratvec,rat)(ic,gamma,delta,v,theta,y,u,r))=
-let xp=(ic,gamma,delta,v,theta,y,u,r) in
-let lambda=lambda(gamma,theta,y) in 
-(ic,gamma,delta,v+oneminus(^theta)*h,theta,y,u+oneminus(^delta)*h,r-lambda*oneminus(^delta)*h)
-
-
-set conjugate(ratvec h,(ratvec,mat)(v,theta))=(v+oneminus(^theta)*h,theta)
-
-{multiply an extended parameter on left by h in H^{theta}: h\delta-> th\delta; z->Lambda(t)z}
-set left(ratvec h,(InnerClass,[rat],mat,ratvec,mat,KGBElt,ratvec,rat)(ic,gamma,delta,v,theta,y,u,r))=
-if not (is_integer(oneminus(^theta)*h)) then error("h is not fixed by theta") else
-let lambda=lambda(ic,gamma,delta,v,theta,y,h,r) in 
-(ic,gamma,delta,v,theta,y,h+u,lambda*h+r) fi
-
-set nu(ratvec gamma,KGBElt x)=oneminustheta(x)*gamma/2
-set nu(ratvec gamma,KGBElt x,KGBElt y)=oneminustheta(x)*gamma/2
-
-set parameter(ratvec gamma,KGBElt x,KGBElt y)=parameter(x,lambda(gamma,x,y),nu(gamma,x))
-
-set parameter(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=
-let (valid,x)=my_KGB_elt(ic,theta,v) in parameter(gamma,x,y)
-
-set y(Param p)=
-let gamma=infinitesimal_character(p) in
-let mu=(gamma-lambda(p)+rho(real_form(p)))/2 in
-{let mu=gamma-lambda(p)+rho(real_form(p))/2 in}
-{let mu=(gamma-lambda(p)) in}
-{let ()=prints("lambda: ", lambda(p), " gamma-lambda: ", gamma-lambda(p), " mu: ", mu, " rhocheck: ", rho(real_form(p))) in}
-let (valid,x)=my_KGB_elt(dual(inner_class(real_form(p))),-^involution(x(p)),mu) in 
-if not valid then error("failure in y(p) to get x") else x fi
-
-set y(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=y
-set z(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=r
-set h(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=u
-set theta(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=theta
-set xi(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=(v,theta)
-
-set verify_debug=false
-
-set verify(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=
-let dual_ic=dual(ic) in 
-if (not involution(y)=-^theta) then prints("Cartan involutions are not compatible");false
-elif (not square_is_central(ic,v,theta)) then prints("element for G is not an involution");false
-elif(not delta*theta = theta*delta) then prints("involution is not fixed by delta");false
-elif(not is_integer(oneminus(^delta)*v-(oneminus(^theta))*u)) then 
-prints("delta\xi\delta\ne h\xi h^{-1}");
-prints("delta\xi\delta= ", oneminus(^delta)*v);
-prints("   h\xi h^{-1}= ", oneminus(^theta)*u);false 
+set E(mat delta, ratvec gamma, KGBElt x, ratvec g, KGBElt y, ratvec central_shift)=
+if (not dual(inner_class(real_form(x)))=inner_class(real_form(y))) then error("inner classes are not dual")
+elif not is_fixed(delta,x) then error("x is not fixed by delta") 
+elif not is_fixed(^delta,y) then error("y is not fixed by ^delta")
+elif not is_integer(square(y,central_shift)-gamma) then error("y is not compatible with infinitesimal character gamma")
+elif not is_integer(square(x)-g) then error("x is not compatible with infinitesimal cocharacter g")
 else
-let ()=prints("delta\xi\delta = h\xi h^{-1}: true") in
-let ()=if verify_debug then prints("delta\xi\delta= ", oneminus(^delta)*v) fi in
-let ()=if verify_debug then prints("   h\xi h^{-1}= ", oneminus(^theta)*u) fi in
-let (valid,x)=my_KGB_elt(ic,theta,v) in 
-let lambda=lambda(gamma,x,y) in
-let h_delta_h=oneplus(^delta)*u in 
-let Lambda_h_delta_h=lambda*h_delta_h in 
-{let ()=prints("lambda: ", lambda, "hdelta(h): ", h_delta_h, "lambda()=", Lambda_h_delta_h, "r: ", r) in}
-if  (not is_integer(Lambda_h_delta_h-2*r)) then
-prints("z^2-=Lambda(h\delta(h): false");
-prints("z^2= ", 2*r);
-prints("lambda= ", lambda);
-prints("h\delta(h)= ",h_delta_h);
-prints("Lambda(h\delta(h))= ", Lambda_h_delta_h);
-false  else 
-let ()=prints("z^2-=Lambda(h\delta(h): true") in
-true fi fi
+ let l=[int]:ratvec_as_vec(g-2*actual_torus_factor(x)) in	
+ let theta=involution(x) in  
+ let omega=involution(y) in 
+{NOTE ^theta=-omega}
+ let (t,result)=solve(oneminus(omega),ratvec_as_vec(-oneminus(^delta)*l)) in
+  if result=false then error("(1-^delta)l=(1+^theta)t has no integral solution") else
+ let lambda=[int]:ratvec_as_vec(gamma-2*actual_torus_factor(y,central_shift)) in	
+ let (tau,result)=solve(oneminus(theta),ratvec_as_vec(-oneminus(delta)*lambda)) in
+  if result=false then error("(1-delta)lambda=(1+theta)tau has no integral solution") else
+(inner_class(real_form(x)),delta,gamma,lambda,theta,g,l,omega,[int]: tau,[int]: t,central_shift) fi fi fi
 
-set x(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=
-let (valid,x)=my_KGB_elt(ic,theta,v) in x
+{to make an extended parameter from (delta,p) you need the infinitesimal cocharacter also}
+set E(mat delta, Param p, ratvec g,ratvec central_shift)=E(delta, infinitesimal_character(p), x(p), g, y(p,central_shift),central_shift)
+set E(mat delta, KGBElt x, KGBElt y, ratvec gamma, ratvec g,ratvec central_shift)=E(delta,gamma,x,g,y,central_shift)
 
+{assume delta=distinguished_involution(G)}
+set E(Param p, ratvec g,ratvec central_shift)=E(distinguished_involution(real_form(p)),p,g,central_shift)
 
+set ic(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=ic
+set delta(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=delta
+set gamma(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=gamma
+set lambda(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=lambda
+set theta(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=theta
+set g(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=g
+set l(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=l
+set omega(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=omega
+set t(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=t
+set tau(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=tau
+set torus_factor(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=(gamma-lambda)/2
+set dual_torus_factor(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=(g-l)/2
+set nu(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=let a=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in nu(gamma,x(a))
 
-set display(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=
-let (valid,x)=my_KGB_elt(ic,theta,v) in
-let ()=prints("gamma=",ratvec:gamma) in
-let ()=prints("ln(s)=2\pi i*",v) in
-let ()=prints("x=", x) in
-let ()=prints("y=", y) in
-let ()=prints("ln(h)=2i\pi*", u) in
-let ()=prints("ln(h\delta(h))=2\pi i*", oneminus(delta)*u) in
-let lambda=lambda(gamma,x,y) in 
-let ()=prints("lambda=", lambda) in
-let ()=prints("ln(Lambda(h\delta(h)))=2\pi i*", lambda*oneminus(delta)*u) in
-let ()=prints("ln(z)=2i\pi*",r) in ()
-
-set long_display(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=
-let (valid,x)=my_KGB_elt(ic,theta,v) in
-let ()=prints("gamma=",ratvec:gamma) in
-let ()=prints("ln(s)=2\pi i*",v) in
-let ()=prints("theta=", theta) in
-let ()=prints("x=", my_KGB_elt(ic,theta,v))  in
-let ()=prints("y=", y) in
-let ()=prints("ln(h)=2i\pi*", u) in
-let ()=prints("ln(h\delta(h))=2\pi i*", oneminus(delta)*u) in
-let lambda=lambda(gamma,x,y) in 
-let ()=prints("lambda=", lambda) in
-let ()=prints("ln(Lambda(h\delta(h)))=2\pi i*", lambda*oneminus(delta)*u) in
-let ()=prints("ln(z)=2i\pi*",r) in ()
-
-{THIS DOESN'T ALWAYS WORK the torus part might not be of the right form}
-{set twist(mat delta,KGBElt x)=my_KGB_elt_old(real_form(x), delta*involution(x)*inverse(delta),^delta*torus_factor(x))}
-{set twist(mat delta,KGBElt x)=}
-{my_KGB_elt(real_form(x), delta*involution(x)*inverse(delta),^delta*actual_torus_factor(x)+rho_check(real_form(x))/2)}
-{ my_KGB_elt(real_form(x), delta*involution(x)*inverse(delta),^delta*actual_torus_factor(x))}
-
-set twist(mat delta,KGBElt x)=(bool,KGBElt):
-let theta=delta*involution(x)*inverse(delta) in 
-let v=^delta*actual_torus_factor(x) in 
-let xi=(v,theta) in 
-{let ()=prints("xi:", xi) in}
-my_KGB_elt(real_form(x),xi)
-
-set twist(mat delta,Param p)=
-let (valid,y)=twist(delta,x(p)) in 
-if not valid then error("twist of KGB element in twist(delta,p) not defined") else
-parameter(y,delta*lambda(p), delta*nu(p)) fi
-
-set is_fixed(mat delta, Param p)=p=twist(delta,p)
-
-set is_fixed([rat] gamma, mat delta, KGBElt x,KGBElt y)=is_fixed(delta,parameter(gamma,x,y))
-
-set make_extended([rat] gamma,mat delta,KGBElt x,KGBElt y)=
-let ic_x=inner_class(real_form(x)) in
-let ic_y=inner_class(real_form(y)) in 
-if (not dual(ic_x)=ic_y) then error("inner classes are not dual") 
-{elif (not twist(delta,x)=x) then error("x is not fixed by delta") 
-elif (not twist(^delta,y)=y) then error("y is not fixed by delta^t")}
-elif (not is_fixed(gamma,delta,x,y)) then error("parameter is not fixed by delta")
-else 
-let G=real_form(x) in 
-let v=torus_factor(x)/2 in
-{let ()=prints("v=", v) in }
-let w=torus_factor(y) in 
-let theta=involution(x) in 
-let phi=involution(y) in 
-let (h,)=conjugator((v,^theta),(^delta*v,^theta)) in  
-{let ()=prints("h: ",h) in}
-let lambda=lambda(gamma,x,y) in 
-{let ()=prints("lambda: ",lambda) in}
-let character_value=lambda*(oneplus(delta)*h) in 
-{let ()=prints("v+shift=", v+shift(G)) in }
-let xp=(ic_x,gamma,delta,v+shift(ic_x),theta,y,ratvec:h,character_value) 
-in xp
-fi
-
-set make_extended(mat delta, Param p)=make_extended(infinitesimal_character(p),delta,x(p),y(p))
-
-{set verify(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=}
-
-{set myf(((InnerClass,[rat],ratvec),(InnerClass,[rat],ratvec))
-((ic1,gamma1,delta1,v1),(ic2,gamma2,delta2,v2)))=1}
-
-set -((InnerClass,[rat],mat,ratvec,mat,KGBElt,ratvec,rat)(ic,gamma,delta,v,theta,y,u,r))=(ic,gamma,delta,v,theta,y,u,r+1/2)
-
-set debug=true
-
-set =(((InnerClass,[rat],mat,ratvec,mat,KGBElt,ratvec,rat),(InnerClass,[rat],mat,ratvec,mat,KGBElt,ratvec,rat))((ic1,gamma1,delta1,v1,theta1,y1,u1,r1),(ic2,gamma2,delta2,v2,theta2,y2,u2,r2)))=
-if (not ic1=ic2) then prints("inner classes don't agree");false 
-elif (not gamma1=gamma2) then prints("infinitesimal characters don't agree");false
-elif (not delta1=delta2) then prints("involutions don't agree"); false 
-elif (not theta1=theta2) then prints("involutions of H don't agree");false 
-elif (not y1=y2) then prints("dual KGB elements don't agree");false 
-elif (not is_equivalent((v1,^theta1),(v2,^theta2))) then prints("parameters are not equivalent");false else
-{let (h,)=conjugator((v1,theta1),(v2,theta2)) in MISSING ^ ?}
-let (h,)=conjugator((v1,^theta1),(v2,^theta2)) in 
-let ()=if debug then prints("h=", h)  fi in
-{let (valid,x)=my_KGB_elt(ic1,theta1,v1) in  NO this doesn't always work, but only need theta1}
-{let lambda=lambda(gamma1,x,y1) in}
-let lambda=lambda(gamma1,theta1,y1) in
-let ()=if debug then prints("lambda: ", lambda) fi in
-let ()=if debug then prints("r1: ", r1, ", u1: ", u1, " u2: ", u2, " h: ", h, "oneminus: ", oneminus(delta1)) fi in
-let ()=if debug then prints((oneminus(^delta1)*h)/2+u2-u1) fi in 
-let r1_new=r1+lambda*((oneminus(^delta1)*h)+u2-u1) in 
-let()=if debug then prints("r1_new: ",r1_new, "  r2: ", r2 ) fi in
-is_integer(r2-r1_new) fi
-
-set compare(
-(InnerClass,[rat],mat,ratvec,mat,KGBElt,ratvec,rat)(ic1,gamma1,delta1,v1,theta1,y1,u1,r1),
-(InnerClass,[rat],mat,ratvec,mat,KGBElt,ratvec,rat)(ic2,gamma2,delta2,v2,theta2,y2,u2,r2))=
-let xp1=(ic1,gamma1,delta1,v1,theta1,y1,u1,r1) in 
-let xp2=(ic2,gamma2,delta2,v2,theta2,y2,u2,r2) in 
-if (xp1=xp2) then 1 elif (xp1=-xp2) then -1 else 0 fi
-
-set ext_length(RootDatum rd,mat delta, int j)=
-let alpha=simple_roots(rd)[j] in 
-let beta=delta*alpha in 
-let alphavee=simple_coroots(rd)[j] in
-if (alpha=beta) then 1 elif alphavee*beta=0 then 2 else 3 fi
-
-set ext_type_1(mat delta,int j,Param p)=
-let type=status_text(j,p) in 
-if type="i2" then let q=Cayley(0,p) in 
-if is_fixed(delta,q) then type+:="f" else type+:="s" fi  fi;"1"+type
-
-set ext_type_2(mat delta,int j,Param p)=
-let rd=root_datum(p) in 
-let alpha=simple_roots(rd)[j] in
-let beta=delta*alpha in 
-let type=status_text(j,p) in 
-let theta=involution(x(p)) in
-let ext_type=
-if is_complex(j,x(p)) then 
- if theta*alpha=beta then "2Ci"
- elif theta*alpha=-beta then "2Cr"
- else 2+type fi
-elif (is_imaginary(j,x(p))) then 
- if (status_text(j,p)="ic") then "2ic" 
- elif (status_text(j,p)="i2") then "2i22" 
- else
- let k=get_simple_number(rd,beta) in 
- if status_text(k,Cayley(j,p))="i1" then "2i11" else "2i12" fi  fi
+{sign(E,F)=\pm 1 (or 0): \pm 1 tells whether the parameters for G are equivalent, or equivalent up to -1 
+(or neither if 0). If E,F lie over the same ordinary parameter then sign(E,F)=\pm 1.
+The formula is the last line of Proposition 6.12 of PFTR.
+The i term of this formula is not symmetric in G and G^\vee, hence
+we also have dual_sign(E,F) }
+set sign(((InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec),
+(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec))((ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1,central_shift1),(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2,central_shift2)))=int:
+let E1=(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1,central_shift1) in
+let E2=(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2,central_shift2) in
+if not (ic1=ic2) then prints("inner classes are not equal");0
+elif not (delta1=delta2) then prints("involutions delta are not equal");0
+elif not (gamma1=gamma2) then prints("infinitesimal characters are not equal");0
+elif not (g1=g2) then prints("infinitesimal cocharacters are not equal");0
+elif not (theta1=theta2) then prints("involutions theta_1,theta_2 are not equal");0
+elif not (x(E1)=x(E2)) then prints("KGB elements x_1,x_2 are not equal");0
+elif not (y(E1)=y(E2)) then prints("dual KGB elements y_1,y_2 are not equal");0
 else
- if (status_text(j,p)="rn") then "2rn" 
- elif (status_text(j,p)="r1") then "2r11" 
- else
-  let k=get_simple_number(rd,beta) in 
-  if status_text(k,Cayley(j,p))="r1" then "2r21" else "2r22" fi fi
- fi in ext_type
+ let exp=rat_as_int((-tau2*oneminus(^delta1)*l2+tau1*(oneminus(^delta1)*l1))/2+tau1*(l2-l1)+(lambda2-lambda1)*t2)in (-1)^exp
+fi 
 
-set ext_type_3(mat delta,int j,Param p)=
-let rd=root_datum(p) in 
-let alpha=simple_roots(rd)[j] in
-let beta=delta*alpha in 
-let type=status_text(j,p) in 
-let theta=involution(x(p)) in
-let ext_type=
-if is_complex(j,x(p)) then 
- if theta*alpha=beta then "3Ci" 
- elif theta*alpha=-beta then "3Cr" 
- else 3+type fi
-elif is_imaginary(j,x(p)) then
- if is_compact(j,x(p)) then "3ic" else "3i" fi
-else 
- if status_text(j,p)="rn" then "3rn" else "3r" fi fi in ext_type
-
-set ext_type(mat delta,int j,Param p)=
-if (not is_fixed(delta,p)) then"" else
-let l=ext_length(root_datum(p),delta,j) in 
-if l=1 then ext_type_1(delta,j,p) 
-elif l=2 then ext_type_2(delta,j,p) 
-else ext_type_3(delta,j,p)  fi fi
-
-set ext_type((int,(InnerClass,[rat],mat,ratvec,mat,KGBElt, ratvec,rat))(j,(ic,gamma,delta,v,theta, y,u,r)))=
-ext_type(delta,j,parameter((ic,gamma,delta,v,theta, y,u,r)))
-
-set ext_types(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=
-for j:ss_rank(ic) do ext_type(j,(ic,gamma,delta,v,theta, y,u,r)) od
-
-set find([Param] P, string requested_ext_type)=
-let G=real_form(P[0]) in 
-let delta=distinguished_involution(G) in
-let rv=[] in 
-for i:#P do
- if (is_fixed(delta,P[i])) then 
- for j:rank(G) do
-   if (ext_type(delta,j,P[i])=requested_ext_type) then rv#:=(i,P[i],j) fi od
- fi od;rv
-
-
-set ext_cross(([int],(InnerClass,[rat],mat,ratvec,mat,KGBElt, ratvec,rat))(s,(ic,gamma,delta,v,theta, y,u,r)))=
-let xp=(ic,gamma,delta,v,theta, y,u,r) in
-let xi=xi(xp) in
-let p=parameter(xp) in 
-if not (is_fixed(delta,p)) then error("extended cross action is not defined") else
-let M=matrix(ic,s) in 
-if (not delta*M=M*delta) then error("w is not fixed by delta") else
-let (v_new,theta_new)=conjugate(ic,s,xi) in
-let ()=prints(v,theta) in 
-let y=cross(s,y) in 
-let u_new=co_action(ic,s,u) in 
-let lambda=lambda(xp) in 
-let r_new=(lambda+M*lambda)*u in 
-(ic,gamma,delta,v_new, theta_new,y,u_new,r_new)
-fi fi
-
-{kappa(ic,delta,j)=[j] or [j,k] or [j,k,j] where delta(j)=j, k (orthgonal) or k (not orthogonal) resp.}
-set kappa(InnerClass ic,mat delta, int j)=
-let alpha=simple_roots(ic)[j] in 
-let beta=delta*alpha in 
-let k=get_simple_number(ic,beta) in 
-if j=k then [j] 
-elif alpha*simple_coroots(ic)[k]=0 then [j,k] else [j,k,j] fi
-
-set ext_cross((int,(InnerClass,[rat],mat,ratvec,mat,KGBElt, ratvec,rat))(j,(ic,gamma,delta,v,theta, y,u,r)))=
-let kappa=kappa(ic,delta,j) in 
-let ()=prints("kappa:", kappa) in 
-ext_cross((kappa,(ic,gamma,delta,v,theta, y,u,r)))
-
-
-set ext_Cayley_1((int,(InnerClass,[rat],mat,ratvec,mat,KGBElt,ratvec,rat))(j,(ic,gamma,delta,v,theta,y,u,r)))=
-let ext_type=ext_type(j,(ic,gamma,delta,v,theta,y,u,r)) in 
-let alpha_check=simple_coroots(ic)[j] in 
-let ref=simple_reflection(ic,j) in 
-if ext_type="1i1" then [(ic,gamma,delta,v,ref*theta,inv_Cayley(j,y),u,r)] 
-elif ext_type="1i2f" then 
- let xq1=(ic,gamma,delta,v,ref*theta,inv_Cayley(j,y),u,r) in 
- let xq2=ext_cross(j,xq1) in [xq1,xq2]
-else [(ic,gamma,delta,v,theta,y,u,r)] fi
-
-
-
-{conjugate extended parameter so h\delta is in (H^{\delta})^0}
-{this affects only the v, u and r factors}
-set normalize(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=
-conjugate(u/2,(ic,gamma,delta,v,theta,y,u,r))
-
-{set ext_Cayley_2Ci((int,(InnerClass,[rat],mat,ratvec,mat,KGBElt,ratvec,rat))(j,(ic,gamma,delta,v,theta,y,u,r)))=
-let xp=normalize(ic,gamma,delta,v,theta,y,u,r) in [xp]}
-
-{kkk}
-
-set twoCi_debug=true
-
-set ext_Cayley_2Ci((int,(InnerClass,[rat],mat,ratvec,mat,KGBElt,ratvec,rat))(j,(ic,gamma,delta,v,theta,y,u,r)))=
-let xp=normalize(ic,gamma,delta,v,theta,y,u,r) in
-let ()=prints("normalized xp is valid: ", verify(xp)) in 
-let xi=xi(xp) in 
-let (v,theta)=xi in
-let u=h(xp) in 
-let r=z(xp) in 
-let lambda=lambda(xp) in 
-let (v_new,theta_new)=conjugate(ic,j,xi) in
-let ()=if twoCi_debug  then prints("u: ", u, "v: ", v) fi in
-let ()=if twoCi_debug  then prints("v_new: ", v_new, " theta_new: ", theta_new) fi in
-let alpha=simple_roots(ic)[j] in
-let beta=delta*alpha in 
-let k=get_simple_number(ic,beta) in 
-let alpha_check=simple_coroots(ic)[j] in 
-let beta_check=simple_coroots(ic)[k] in 
-let t=(beta*v)*beta_check in  {from Lemma in paper; see miscellaneous section}
-let u_new=^simple_reflection(ic,k)*(t+u)+alpha_check/2 in 
-let r_new=(alpha*u)*(lambda*alpha_check) in 
-let ()=if twoCi_debug then prints("j: ", j, " k: ", k, " t: ", t, " u_new: ", u_new, " r_new: ", r_new) fi in
-let ()=if twoCi_debug then prints("lambda: ", lambda) fi in
-let ()=if twoCi_debug then prints("alpha*u: ", alpha*u) fi in
-let ()=if twoCi_debug then prints("lambda*alpha_check: ",  lambda*alpha_check) fi in
-[(ic,gamma,delta,v_new,theta_new,cross(j,y),u_new,r_new)]
-
-
-
-set ext_Cayley_2((int,(InnerClass,[rat],mat,ratvec,mat,KGBElt,ratvec,rat))(j,(ic,gamma,delta,v,theta,y,u,r)))=
-[(InnerClass,[rat],mat,ratvec,mat,KGBElt,ratvec,rat)]:
-let xp=(ic,gamma,delta,v,theta,y,u,r) in 
-let ext_type=ext_type(j,(ic,gamma,delta,v,theta,y,u,r)) in 
-{let ()=prints("type: ", ext_type) in }
-let alpha=simple_roots(ic)[j] in 
-let beta=delta*alpha in 
-let k=get_simple_number(ic,beta) in 
-let ref=simple_reflection(ic,j)*simple_reflection(ic,k) in 
-if ext_type="2i11" then [(ic,gamma,delta,v,ref*theta,inv_Cayley(k,inv_Cayley(j,y)),u,r)]
-elif ext_type="2i12" then 
-{let ()=prints("type 2i12") in }
- let cayleys=inv_Cayley_set(j,inv_Cayley(k,y)) in
-  [(ic,gamma,delta,v,ref*theta,cayleys[0],u,r),(ic,gamma,delta,v,ref*theta,cayleys[1],u,r)] 
-elif ext_type="2i22" then 
- let x=x((ic,gamma,delta,v,theta,y,u,r)) in 
- let x_new=Cayley(j,Cayley(k,x)) in 
- let cayleys=inv_Cayley_set(j,inv_Cayley_set(k,y)[0])#inv_Cayley_set(j,inv_Cayley_set(k,y)[1]) in
- let rv=[] in 
- for y_new in cayleys do if is_fixed(delta,parameter(gamma,x_new,y_new)) 
-  then rv#:=(ic,gamma,delta,v,ref*theta,y_new,u,r) fi od;rv 
-elif ext_type="2Ci" then
- {separate out 2Ci case for special care}
- ext_Cayley_2Ci(j,(ic,gamma,delta,v,theta,y,u,r))  
+{dual_sign(E,F) see sign(E,F); dual_sign(E,F) tell whether the extended parameters for G^\vee defined by E,F are equivalent or not}
+set dual_sign(((InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec),(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec))((ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1,central_shift1),(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2,central_shift2)))=int:
+let E1=(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1,central_shift1) in
+let E2=(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2,central_shift2) in
+if not (ic1=ic2) then prints("inner classes are not equal");0
+elif not (delta1=delta2) then prints("involutions delta are not equal");0
+elif not (gamma1=gamma2) then prints("infinitesimal characters are not equal");0
+elif not (g1=g2) then prints("infinitesimal cocharacters are not equal");0
+elif not (theta1=theta2) then prints("involutions theta_1,theta_2 are not equal");0
+elif not (x(E1)=x(E2)) then prints("KGB elements x_1,x_2 are not equal");0
+elif not (y(E1)=y(E2)) then prints("dual KGB elements y_1,y_2 are not equal");0
 else
- [xp] fi
+ let exp=rat_as_int((-t2*oneminus(delta1)*lambda2+t1*(oneminus(delta1)*lambda1))/2+t1*(lambda2-lambda1)+(l2-l1)*tau2)in (-1)^exp
+fi 
+
+{default(F)=\pm F is the extended parameter constructed by atlas (by the function E) with the same image 
+as F. So default(F)=E(delta,parameter(F),g(F))}
+set default(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=
+let F=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in E(delta,parameter(F),g,central_shift)
+
+{sign (E)=sign(E,default(E))}
+set sign(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=int:let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in sign(Ep, default(Ep))
+
+{dual_sign (E)=dual_sign(E,default(E))}
+set dual_sign(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=int:
+let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in dual_sign(Ep, default(Ep))
+
+set =(((InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec),(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec))((ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1,central_sign1),(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2,central_sign2)))=
+let xp1=(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1,central_sign1) in
+let xp2=(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2,central_sign2) in
+if not (ic1=ic2) then prints("inner classes are not equal");false
+elif not (delta1=delta2) then prints("involutions delta are not equal");false 
+elif not (gamma1=gamma2) then prints("infinitesimal characters are not equal");false 
+elif not (g1=g2) then prints("infinitesimal cocharacters are not equal");false 
+elif not (theta1=theta2) then prints("involutions theta_1,theta_2 are not equal");false
+elif not (x(xp1)=x(xp2)) then prints("KGB elements x_1,x_2 are not equal");false
+elif not (y(xp1)=y(xp2)) then prints("dual KGB elements y_1,y_2 are not equal");false
+elif (sign(xp1,xp2)=1) then true else false fi
+
+{print information about an extended block}
+set ext_print_block(mat delta, [Param] B)=void:
+let G=real_form(B[0]) in 
+let ()=for p@i in B do 
+ if is_fixed(delta,p) then
+  let types="" in 
+  let ()=for i:ss_rank(G) do types+:=" "+ext_type(delta,i,p) od in 
+  prints(i, " ", types, ": ", p)
+ fi 
+od in ()
+
+set ext_print_trivial_block(RealForm G)=void:
+let (B,)=block(trivial(G)) in ext_print_block(distinguished_involution(G),B)
+
+{for convenience
+usage: set (delta,B,g,shift)=ext_basic(G)
+shift is the central_shift, which is the 0 ratvec
+then you can run, for example
+test_hecke(0,1,delta,B,g,shift)}
+set ext_basic(RealForm G)=(distinguished_involution(G),trivial_block(G), rho_check(G),ratvec:null(rank(G)))
+
+{is_default(E)=1 if E is equivalent to the extended parameter constructed by the software,
+lying over p=p(E)}
+set is_default(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=bool:
+let xp=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in let xq=E(delta,gamma,x(xp),g, y(xp),central_shift) in xp=xq
+
+<hecke
 
 
-
-
-
-set ext_Cayley_3((int,(InnerClass,[rat],mat,ratvec,mat,KGBElt, ratvec,rat))(j,(ic,gamma,delta,v,theta,y,mu,r)))=
-let xp=(ic,gamma,delta,v,theta,y,mu,r) in [xp]
-
-
-set ext_Cayley((int,(InnerClass,[rat],mat,ratvec,mat,KGBElt, ratvec,rat))(j,(ic,gamma,delta,v,theta,y,mu,r)))=
-let xp=(ic,gamma,delta,v,theta,y,mu,r) in
-let p=parameter(xp) in 
-if (not is_fixed(delta,p)) then error("Parameter is not fixed by delta") else
-let l=ext_length(root_datum(p),delta,j) in 
-if l=1 then ext_Cayley_1(j,xp) 
-elif l=2 then ext_Cayley_2(j,xp) 
-else ext_Cayley_3(j,xp) fi fi
-
-set default(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=
-let xp=(ic, gamma, delta,v,theta,y,u,r) in make_extended(delta,parameter(xp))
-
-set default_sign(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=
-let xp=(ic, gamma, delta,v,theta,y,u,r) in compare(xp, default(xp)) 
