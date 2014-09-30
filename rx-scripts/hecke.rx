@@ -544,14 +544,15 @@ set modify(
 
 {various tests of hecke relations}
 
-{test_hecke(i,j,delta,gamma,g,basis): tests quadratic and braid relations for T_i,T_j acting on basis}
+{test_hecke(i,j,delta,gamma,g,basis,central_shift): tests quadratic and braid relations for T_i,T_j acting on basis}
 set test_hecke(int i, int j, mat delta, ratvec gamma, ratvec g, [(KGBElt,KGBElt)] basis,ratvec central_shift)=bool:
 {get the inner class:} let (x_0,)=basis[0] in let rd=root_datum(real_form(x_0)) in 
 let M=hecke_matrix(i,delta,gamma,g,basis,central_shift) in 
 let N=hecke_matrix(j,delta,gamma,g,basis,central_shift) in 
 let l_i=ext_length(rd, delta, i) in
 let l_j=ext_length(rd, delta, j) in
-let bond=simple_coroots(rd)[i]*simple_coroots(rd)[j] in 
+let bond=simple_coroots(rd)[i]*simple_roots(rd)[j] in 
+let ()=prints("TEST:", i, ", ", j, ", ", bond) in 
 let m=int:
  if bond=0 then 2 
  else 

@@ -35,14 +35,3 @@ prints("infinitesimal character: ", infinitesimal_character(B[0]))
 prints("Parameters fixed by twisting by delta:")
 my_fixed(B,delta)
 prints("");
-
-set p=B[0]
-set q=B[1]
-set xp=make_extended(delta,p)
-set xq=make_extended(delta,q)
-set cp=ext_Cayley(0,xp)
-set cq=ext_Cayley(0,xq)
-set cp0=cp[0]
-set cp1=cp[1]
-set cq0=cq[0]
-set cq1=cq[1]

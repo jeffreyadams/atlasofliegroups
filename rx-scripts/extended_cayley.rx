@@ -57,8 +57,8 @@ elif (type="1i2f") then
  let new_tau=[int]:ratvec_as_vec(tau-((tau*alpha_check)/2)*alpha) in
  let xq_1=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t,central_shift) in
  let xq_2=(ic,delta,gamma,[int]:new_lambda+alpha,new_theta,g,new_l,new_omega,new_tau,new_t,central_shift) in
- let ()=test_ext_cayley(p,j,"1i2f",xq_1) in 
- let ()=test_ext_cayley(p,j,"1i2f",xq_2) in 
+{ let ()=test_ext_cayley(p,j,"1i2f",xq_1) in 
+ let ()=test_ext_cayley(p,j,"1i2f",xq_2) in }
  [xq_1,xq_2]
 elif (type="1r1f") then 
  let new_lambda=[int]:ratvec_as_vec(lambda+((gamma*alpha_check-lambda*alpha_check-1)/2)*alpha) in

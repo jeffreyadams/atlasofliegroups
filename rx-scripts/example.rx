@@ -1,17 +1,10 @@
- <my
-<twist
 {twisting of parameters directly on (x,lambda,nu)}
-set my_twist(Param p,mat delta)=parameter(KGB_twist(real_form(p),delta)(x(p)),delta*lambda(p),delta*nu(p))
-set my_fixed(Param p,mat delta)=bool:
-{there is a bug: p=my_twist(p,delta)  gives
-Runtime error:
-  Real form mismatch when testing equivalence
-need to work around this}
-if KGB_twist(real_form(p),delta)(x(p)) != x(p) then false else
-p=parameter(x(p),delta*lambda(p),delta*nu(p)) fi
-set my_fixed([Param] B,mat delta)=[bool]:for p in B do my_fixed(p,delta) od
 
-
+{this is an example of two blocks with 6 elements
+G=SL(2)xSL(2)xT/<-I,-I,-1>
+one block is at rho =(1,1,0), and all 6 elements are delta-fixed
+the other is at (3/2,1,0), and only 4 elements are delta-fixed
+see Examples of extended parameters/braid relations, sections 4-5}
 
 set rd=root_datum(Lie_type("A1.A1.T1"),[[1/2,1/2,1/2]])
 set ic=inner_class(rd,"sss")
@@ -24,55 +17,32 @@ set delta=mat:[[1,0,0],[0,1,0],[-1,0,-1]]
 prints("delta: ", delta, "delta^2 = I: ", delta^2=id_mat(3))
 prints("delta preserves simple roots: ", delta*simple_roots(ic)=simple_roots(ic))
 prints("^delta preserves simple coroots: ", ^delta*simple_coroots(ic)=simple_coroots(ic))
-{
-prints("action of delta on blocks for G:");
-show_block_twists(G,delta)
-prints("action of ^delta on blocks for Gd:");
-show_block_twists(Gd,^delta)
-
-set B=block(G, dual_quasisplit_form(G))
-prints("Block B=block(G, G-dual)):")
-print_block(B)
-}
 
 prints("trivial block of G:");
-set (B,)=block(trivial(G))
+set (B_trivial,)=block(trivial(G))
 print_block(trivial(G))
-prints("infinitesimal character: ", infinitesimal_character(B[0]))
+prints("infinitesimal character: ", infinitesimal_character(B_trivial[0]))
 prints("Parameters fixed by twisting by delta:")
-my_fixed(B,delta)
+my_fixed(B_trivial,delta)
 prints("");
+set v_trivial=get_central_shift(B_trivial[0])
+set E_trivial=E(delta,B_trivial[0],rho_check(G),v_trivial)
+set basis_trivial=generate_subspace(0,1,E_trivial)
+set M_trivial=hecke_matrix(0,delta,rho(G),rho_check(G),basis_trivial,v_trivial)
+set N_trivial=hecke_matrix(1,delta,rho(G),rho_check(G),basis_trivial,v_trivial)
+
 set p=parameter(KGB(G,4),[0,1,1],[3/2,2/2,0/2])
-set (Bp,)=block(p)
+set (B_p,)=block(p)
 print_block(p)
-prints("infinitesimal character: ", infinitesimal_character(Bp[0]))
+prints("infinitesimal character: ", infinitesimal_character(B_p[0]))
 prints("Parameters fixed by twisting by delta:")
-my_fixed(Bp,delta)
+my_fixed(B_p,delta)
 prints("");
-prints("parameter 4: ", Bp[4]);
-prints("delta*(parameter 4): ", my_twist(Bp[4],delta));
-prints("      (parameter 5): ", Bp[5]);
-
-
-{
-
-
-
-
-Identifier q (overriding previous): Param
-expr> print_block(q)
-Parameter defines element 4 of the following block:
-0(0,4):  0  [i1,i1]  1  1   (2,*)  (3,*)  *(x=0,lam=rho+ [0,0,-1], nu=  [0,0,0]/1)  e
-1(1,4):  0  [i1,i1]  0  0   (2,*)  (3,*)  *(x=1,lam=rho+ [0,0,-1], nu=  [0,0,0]/1)  e
-2(2,3):  1  [r1,i2]  2  2   (0,1)  (4,5)  *(x=3,lam=rho+ [0,0,-1], nu=  [1,0,0]/1)  1^e
-3(3,2):  1  [i2,r1]  3  3   (4,5)  (0,1)  *(x=2,lam=rho+ [0,-4,3], nu=  [1,2,0]/2)  2^e
-4(4,0):  2  [r2,r2]  5  5   (3,*)  (2,*)  *(x=4,lam=rho+[-1,0,-1], nu=  [3,2,0]/2)  1^2^e
-5(4,1):  2  [r2,r2]  4  4   (3,*)  (2,*)  *(x=4,lam=rho+ [0,0,-1], nu=  [3,2,0]/2)  1^2^e
-expr> set (bq,)=block(q)
-Identifier bq (overriding previous): [Param]
-expr> my_fixed (bq,delta)
-Value: [true,true,true,true,false,false]
-expr> infinitesimal_character (q)
-Value: [ 3, 2, 0 ]/2
-expr>  
-}
+prints("parameter 4: ", B_p[4]);
+prints("delta*(parameter 4): ", twist(B_p[4],delta));
+prints("      (parameter 5): ", B_p[5]);
+set v_p=get_central_shift(B_p[0])
+set E_p=E(delta,B_p[0],rho_check(G),v_p)
+set basis_p=generate_subspace(0,1,E_p)
+set M_p=hecke_matrix(0,delta,infinitesimal_character(p),rho_check(G),basis_p,v_p)
+set N_p=hecke_matrix(1,delta,infinitesimal_character(p),rho_check(G),basis_p,v_p)

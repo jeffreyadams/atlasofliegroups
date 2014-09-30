@@ -18,9 +18,9 @@ set ext_length((int,(InnerClass,mat,ratvec,[int],mat,ratvec,[int],mat,[int],[int
 set ext_type_1(mat delta,int j,Param p)=string:
 let type=status_text(j,p) in 
 if type="i2" then 
- let q=Cayley(0,p) in if is_fixed(delta,q) then type+:="f" else type+:="s" fi
+ let q=Cayley(j,p) in if is_fixed(delta,q) then type+:="f" else type+:="s" fi
 elif type ="r1" then
- let q=inv_Cayley(0,p) in if is_fixed(delta,q) then type+:="f" else type+:="s" fi  
+ let q=Cayley(j,p) in if is_fixed(delta,q) then type+:="f" else type+:="s" fi  
 fi;"1"+type
 
 {ext_type_2(delta,j,p)=2C+,2C-,2Ci,2Cr,2i11,2i12,2i22,2r22,2r21,2r11,2rn,2rc}
