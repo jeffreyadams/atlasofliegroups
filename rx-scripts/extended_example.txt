@@ -1,0 +1,610 @@
+expr> <my
+...
+expr> <extended
+...
+expr> set G=SO(3,3)
+Identifier G (overriding previous): RealForm
+expr> set (delta,B,g,v)=ext_basic (G)
+Identifiers delta: mat, B: [Param], g: ratvec, v: ratvec
+expr> #B
+Value: 15
+expr> ext_print_block (delta,B)
+0  1i1 2Ci 2Ci: final parameter (x=0,lambda=[2,1,0]/1,nu=[0,0,0]/1)
+1  1i1 2Ci 2Ci: final parameter (x=1,lambda=[2,1,0]/1,nu=[0,0,0]/1)
+2  1C+ 2Cr 2Cr: final parameter (x=3,lambda=[2,1,0]/1,nu=[0,1,0]/1)
+3  1C+ 2Cr 2Cr: final parameter (x=4,lambda=[2,1,0]/1,nu=[0,1,0]/1)
+4  1r1f 2C+ 2C+: final parameter (x=2,lambda=[2,1,0]/1,nu=[1,-1,0]/2)
+5  1C- 2i12 2i12: final parameter (x=7,lambda=[2,1,0]/1,nu=[2,0,0]/1)
+6  1C- 2i12 2i12: final parameter (x=8,lambda=[2,1,0]/1,nu=[2,0,0]/1)
+11  1i2f 2C- 2C-: final parameter (x=10,lambda=[2,1,0]/1,nu=[3,3,0]/2)
+12  1r2 2r21 2r21: final parameter (x=12,lambda=[2,1,0]/1,nu=[2,1,0]/1)
+13  1r2 2rn 2rn: final parameter (x=12,lambda=[3,2,0]/1,nu=[2,1,0]/1)
+14  1rn 2r21 2r21: final parameter (x=12,lambda=[2,2,1]/1,nu=[2,1,0]/1)
+>expr> set E=E(delta,B[0],g,v)
+Identifier E: (InnerClass,mat,ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec)
+expr> E
+Value: (Complex reductive group of type A3, with involution defining
+inner class of type 's', with 2 real forms and 3 dual real forms,
+| 1, 0,  0 |
+| 0, 1,  0 |
+| 0, 0, -1 |
+,[ 2, 1, 0 ]/1,[0,0,0],
+| 1, 0,  0 |
+| 0, 1,  0 |
+| 0, 0, -1 |
+,[ 2, 1, 0 ]/1,[0,0,0],
+| -1,  0, 0 |
+|  0, -1, 0 |
+|  0,  0, 1 |
+,[0,0,0],[0,0,0],[ 0, 0, 0 ]/1)
+expr> display(E)
+ gamma=[ 2, 1, 0 ]/1
+     g=[ 2, 1, 0 ]/1
+
+lambda=[0,0,0]
+   tau=[0,0,0]
+     l=[0,0,0]
+     t=[0,0,0]
+expr> ext_types (E)
+Value: ["1i1","2Ci","2Ci"]
+expr> test_hecke (0,1,delta,B,g,v)
+computing on block of 11 fixed parameters in 1 subspaces, of dimensions [11]
+subspace 0 of dimension 11
+signs in 1i1_cross: 1, 1, 1
+signs in 1i1_cross: 1, 1, 1
+2Ci signs for indices 0->3 sign_2Ci(E):1, sign(F):1 c:1
+2Ci signs for indices 1->4 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 3->0 sign_2Ci(E0):1, sign(F0):1 c:1
+2Cr signs for indices 4->1 sign_2Ci(E0):1, sign(F0):1 c:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 5 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 6 sign_F1:1, sign_F2:-1
+type 2r21 for index 8
+sign_E=1, sign_F=1 kappa=1 sign=1
+ sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 8 sign_E1:1, sign_E2:1
+type 2r21 for index 10
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 10 sign_E1:1, sign_E2:-1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+"doing with test_hecke"
+[true]
+Value: true
+expr> 
+
+{SO(5,3)}
+
+expr> set G=SO(5,3)
+Identifier G (overriding previous): RealForm
+expr> set (delta,B,g,v)=ext_basic (G)
+Identifiers delta (overriding previous): mat, B (overriding previous): [Param], g (overriding previous): ratvec, v (overriding previous): ratvec
+expr> #B
+Value: 48
+expr> v
+Value: [ 0, 0, 0, 0 ]/1
+expr> g
+Value: [ 3, 2, 1, 0 ]/1
+expr> set E=E(delta,B[0],g,v)
+Identifier E (overriding previous): (InnerClass,mat,ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec)
+expr> 
+expr> 
+expr> ext_types (E)
+Value: ["1i1","1i1","2Ci","2Ci"]
+expr> set F=ext_cross(0,E)
+Identifier F: (InnerClass,mat,ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec)
+expr> parameter(E)
+Value: final parameter (x=0,lambda=[3,2,1,0]/1,nu=[0,0,0,0]/1)
+expr> parameter(F)
+Value: final parameter (x=1,lambda=[3,2,1,0]/1,nu=[0,0,0,0]/1)
+expr> set c=ext_Cayley(0,E)
+Identifier c: [(InnerClass,mat,ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec)]
+expr> #c
+Value: 1
+expr> set A=c[0]
+Identifier A: (InnerClass,mat,ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec)
+expr> parameter(A)
+Value: final parameter (x=4,lambda=[3,2,1,0]/1,nu=[1,-1,0,0]/2)
+expr> test_hecke (1,2,delta,B,g,v)
+computing on block of 36 fixed parameters in 5 subspaces, of dimensions [11,3,8,11,3]
+subspace 0 of dimension 11
+signs in 1i1_cross: 1, 1, 1
+signs in 1i1_cross: 1, 1, 1
+2Ci signs for indices 0->3 sign_2Ci(E):1, sign(F):1 c:1
+2Ci signs for indices 1->4 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 3->0 sign_2Ci(E0):1, sign(F0):1 c:1
+2Cr signs for indices 4->1 sign_2Ci(E0):1, sign(F0):1 c:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 5 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 6 sign_F1:1, sign_F2:-1
+type 2r21 for index 8
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 8 sign_E1:1, sign_E2:1
+type 2r21 for index 10
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 10 sign_E1:1, sign_E2:-1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 1 of dimension 3
+2Ci signs for indices 0->1 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 1->0 sign_2Ci(E0):1, sign(F0):1 c:1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 2 of dimension 8
+2Ci signs for indices 0->2 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 2->0 sign_2Ci(E0):1, sign(F0):1 c:1
+2Ci signs for indices 5->7 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 7->5 sign_2Ci(E0):1, sign(F0):1 c:1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 3 of dimension 11
+signs in 1i1_cross: 1, 1, 1
+signs in 1i1_cross: 1, 1, 1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 0 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 2 sign_F1:1, sign_F2:-1
+type 2r21 for index 4
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 4 sign_E1:1, sign_E2:1
+type 2r21 for index 5
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 5 sign_E1:1, sign_E2:-1
+2Ci signs for indices 6->9 sign_2Ci(E):1, sign(F):1 c:1
+2Ci signs for indices 7->10 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 9->6 sign_2Ci(E0):1, sign(F0):1 c:1
+2Cr signs for indices 10->7 sign_2Ci(E0):1, sign(F0):1 c:1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 4 of dimension 3
+2Ci signs for indices 1->2 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 2->1 sign_2Ci(E0):1, sign(F0):1 c:1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+"doing with test_hecke"
+[true,true,true,true,true]
+Value: true
+expr> 
+
+{SO(5,5)}
+
+expr> test_hecke (2,3,delta,B,g,v)
+computing on block of 220 fixed parameters in 27 subspaces, of dimensions [11,11,3,3,8,8,11,8,8,11,11,8,11,11,16,3,3,16,3,3,4,4,11,11,11,11,1]
+subspace 0 of dimension 11
+signs in 1i1_cross: 1, 1, 1
+signs in 1i1_cross: 1, 1, 1
+2Ci signs for indices 0->3 sign_2Ci(E):1, sign(F):1 c:1
+2Ci signs for indices 1->4 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 3->0 sign_2Ci(E0):1, sign(F0):1 c:1
+2Cr signs for indices 4->1 sign_2Ci(E0):1, sign(F0):1 c:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 5 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 6 sign_F1:1, sign_F2:-1
+type 2r21 for index 8
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 8 sign_E1:1, sign_E2:1
+type 2r21 for index 10
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 10 sign_E1:1, sign_E2:-1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 1 of dimension 11
+signs in 1i1_cross: 1, 1, 1
+signs in 1i1_cross: 1, 1, 1
+2Ci signs for indices 0->3 sign_2Ci(E):1, sign(F):1 c:1
+2Ci signs for indices 1->4 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 3->0 sign_2Ci(E0):1, sign(F0):1 c:1
+2Cr signs for indices 4->1 sign_2Ci(E0):1, sign(F0):1 c:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 5 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 6 sign_F1:1, sign_F2:-1
+type 2r21 for index 8
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 8 sign_E1:1, sign_E2:1
+type 2r21 for index 10
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 10 sign_E1:1, sign_E2:-1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 2 of dimension 3
+2Ci signs for indices 0->1 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 1->0 sign_2Ci(E0):1, sign(F0):1 c:1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 3 of dimension 3
+2Ci signs for indices 0->1 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 1->0 sign_2Ci(E0):1, sign(F0):1 c:1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 4 of dimension 8
+2Ci signs for indices 0->2 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 2->0 sign_2Ci(E0):1, sign(F0):1 c:1
+2Ci signs for indices 5->7 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 7->5 sign_2Ci(E0):1, sign(F0):1 c:1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 5 of dimension 8
+2Ci signs for indices 0->2 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 2->0 sign_2Ci(E0):1, sign(F0):1 c:1
+2Ci signs for indices 5->7 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 7->5 sign_2Ci(E0):1, sign(F0):1 c:1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 6 of dimension 11
+signs in 1i1_cross: 1, 1, 1
+signs in 1i1_cross: 1, 1, 1
+2Ci signs for indices 0->3 sign_2Ci(E):1, sign(F):1 c:1
+2Ci signs for indices 1->4 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 3->0 sign_2Ci(E0):1, sign(F0):1 c:1
+2Cr signs for indices 4->1 sign_2Ci(E0):1, sign(F0):1 c:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 5 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 6 sign_F1:1, sign_F2:-1
+type 2r21 for index 8
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 8 sign_E1:1, sign_E2:1
+type 2r21 for index 10
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 10 sign_E1:1, sign_E2:-1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 7 of dimension 8
+2Ci signs for indices 0->2 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 2->0 sign_2Ci(E0):1, sign(F0):1 c:1
+2Ci signs for indices 5->7 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 7->5 sign_2Ci(E0):1, sign(F0):1 c:1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 8 of dimension 8
+2Ci signs for indices 0->2 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 2->0 sign_2Ci(E0):1, sign(F0):1 c:1
+2Ci signs for indices 5->7 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 7->5 sign_2Ci(E0):1, sign(F0):1 c:1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 9 of dimension 11
+signs in 1i1_cross: 1, 1, 1
+signs in 1i1_cross: 1, 1, 1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 0 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 2 sign_F1:1, sign_F2:-1
+type 2r21 for index 4
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 4 sign_E1:1, sign_E2:1
+type 2r21 for index 5
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 5 sign_E1:1, sign_E2:-1
+2Ci signs for indices 6->9 sign_2Ci(E):1, sign(F):1 c:1
+2Ci signs for indices 7->10 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 9->6 sign_2Ci(E0):1, sign(F0):1 c:1
+2Cr signs for indices 10->7 sign_2Ci(E0):1, sign(F0):1 c:1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 10 of dimension 11
+signs in 1i1_cross: 1, 1, 1
+signs in 1i1_cross: 1, 1, 1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 0 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 1 sign_F1:1, sign_F2:-1
+ type 2r21 for index 4
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 4 sign_E1:1, sign_E2:1
+type 2r21 for index 5
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 5 sign_E1:1, sign_E2:-1
+2Ci signs for indices 6->9 sign_2Ci(E):1, sign(F):1 c:1
+2Ci signs for indices 7->10 sign_2Ci(E):1, sign(F):-1 c:-1
+2Cr signs for indices 9->6 sign_2Ci(E0):1, sign(F0):1 c:1
+2Cr signs for indices 10->7 sign_2Ci(E0):1, sign(F0):-1 c:-1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 11 of dimension 8
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 12 of dimension 11
+signs in 1i1_cross: 1, 1, 1
+signs in 1i1_cross: 1, 1, 1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 0 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 2 sign_F1:1, sign_F2:-1
+type 2r21 for index 4
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 4 sign_E1:1, sign_E2:1
+type 2r21 for index 5
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 5 sign_E1:1, sign_E2:-1
+2Ci signs for indices 6->9 sign_2Ci(E):1, sign(F):1 c:1
+2Ci signs for indices 7->10 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 9->6 sign_2Ci(E0):1, sign(F0):1 c:1
+2Cr signs for indices 10->7 sign_2Ci(E0):1, sign(F0):1 c:1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 13 of dimension 11
+signs in 1i1_cross: 1, 1, 1
+signs in 1i1_cross: 1, 1, 1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 0 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 1 sign_F1:1, sign_F2:-1
+type 2r21 for index 4
+sign_E=1, sign_F=1 kappa=1 sign=1
+ sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 4 sign_E1:1, sign_E2:1
+type 2r21 for index 5
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 5 sign_E1:1, sign_E2:-1
+2Ci signs for indices 6->9 sign_2Ci(E):1, sign(F):1 c:1
+2Ci signs for indices 7->10 sign_2Ci(E):1, sign(F):-1 c:-1
+2Cr signs for indices 9->6 sign_2Ci(E0):1, sign(F0):1 c:1
+2Cr signs for indices 10->7 sign_2Ci(E0):1, sign(F0):-1 c:-1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 14 of dimension 16
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 0 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 1 sign_F1:1, sign_F2:-1
+type 2r21 for index 4
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 4 sign_E1:1, sign_E2:1
+type 2r21 for index 5
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 5 sign_E1:1, sign_E2:-1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 10 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 11 sign_F1:1, sign_F2:-1
+type 2r21 for index 14
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 14 sign_E1:1, sign_E2:1
+type 2r21 for index 15
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 15 sign_E1:1, sign_E2:-1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 15 of dimension 3
+2Ci signs for indices 1->2 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 2->1 sign_2Ci(E0):1, sign(F0):1 c:1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 16 of dimension 3
+2Ci signs for indices 1->2 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 2->1 sign_2Ci(E0):1, sign(F0):1 c:1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 17 of dimension 16
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 0 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 1 sign_F1:1, sign_F2:-1
+type 2r21 for index 4
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 4 sign_E1:1, sign_E2:1
+type 2r21 for index 5
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 5 sign_E1:1, sign_E2:-1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 10 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 11 sign_F1:1, sign_F2:-1
+type 2r21 for index 14
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 14 sign_E1:1, sign_E2:1
+type 2r21 for index 15
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 15 sign_E1:1, sign_E2:-1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 18 of dimension 3
+2Ci signs for indices 1->2 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 2->1 sign_2Ci(E0):1, sign(F0):1 c:1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 19 of dimension 3
+2Ci signs for indices 1->2 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 2->1 sign_2Ci(E0):1, sign(F0):1 c:1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 20 of dimension 4
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 21 of dimension 4
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 22 of dimension 11
+signs in 1i1_cross: 1, 1, 1
+signs in 1i1_cross: 1, 1, 1
+2Ci signs for indices 0->3 sign_2Ci(E):1, sign(F):1 c:1
+2Ci signs for indices 1->4 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 3->0 sign_2Ci(E0):1, sign(F0):1 c:1
+2Cr signs for indices 4->1 sign_2Ci(E0):1, sign(F0):1 c:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 5 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 6 sign_F1:1, sign_F2:-1
+type 2r21 for index 8
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 8 sign_E1:1, sign_E2:1
+type 2r21 for index 10
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 10 sign_E1:1, sign_E2:-1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 23 of dimension 11
+signs in 1i1_cross: 1, 1, 1
+signs in 1i1_cross: 1, 1, 1
+2Ci signs for indices 0->3 sign_2Ci(E):1, sign(F):1 c:1
+2Ci signs for indices 1->4 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 3->0 sign_2Ci(E0):1, sign(F0):1 c:1
+2Cr signs for indices 4->1 sign_2Ci(E0):1, sign(F0):1 c:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 5 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 6 sign_F1:1, sign_F2:-1
+type 2r21 for index 8
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 8 sign_E1:1, sign_E2:1
+type 2r21 for index 10
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 10 sign_E1:1, sign_E2:-1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 24 of dimension 11
+signs in 1i1_cross: 1, 1, 1
+signs in 1i1_cross: 1, 1, 1
+2Ci signs for indices 0->3 sign_2Ci(E):1, sign(F):1 c:1
+2Ci signs for indices 1->4 sign_2Ci(E):1, sign(F):1 c:1
+2Cr signs for indices 3->0 sign_2Ci(E0):1, sign(F0):1 c:1
+2Cr signs for indices 4->1 sign_2Ci(E0):1, sign(F0):1 c:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 5 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 6 sign_F1:1, sign_F2:-1
+type 2r21 for index 8
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 8 sign_E1:1, sign_E2:1
+type 2r21 for index 10
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 10 sign_E1:1, sign_E2:-1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 25 of dimension 11
+signs in 1i1_cross: 1, 1, 1
+signs in 1i1_cross: 1, 1, 1
+2Ci signs for indices 0->3 sign_2Ci(E):1, sign(F):1 c:1
+2Ci signs for indices 1->4 sign_2Ci(E):1, sign(F):-1 c:-1
+2Cr signs for indices 3->0 sign_2Ci(E0):1, sign(F0):1 c:1
+2Cr signs for indices 4->1 sign_2Ci(E0):1, sign(F0):-1 c:-1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2i12  for parameter with index 5 sign_F1:1, sign_F2:1
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2i12  for parameter with index 6 sign_F1:1, sign_F2:-1
+type 2r21 for index 8
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=1 sign=1
+type 2r21 for parameter with index 8 sign_E1:1, sign_E2:1
+type 2r21 for index 9
+sign_E=1, sign_F=1 kappa=1 sign=1
+sign_E=1, sign_F=1 kappa=-1 sign=-1
+type 2r21 for parameter with index 9 sign_E1:1, sign_E2:-1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+subspace 26 of dimension 1
+quadratic relation for M of length 1: true
+quadratic relation for N of length 2: true
+braid relation for M,N with 4 terms on each side: true
+"doing with test_hecke"
+[true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true]
+Value: true
+
+
+
+

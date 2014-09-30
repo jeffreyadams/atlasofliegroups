@@ -8,9 +8,6 @@ part torus_factor(x)+central_shift
 This only plays a role on the dual side, in the KGB element y
 Even there, it is only used to construct a set {(x_i,y_i)} parametrizing the block}
 
-{set central_shift=ratvec:[-1,0,2]/2}
-set central_shift=ratvec:[0,0,0]
-
 <extended_misc  {some supplementary functions}
 <extended_types  {types of extended parameters}
 <extended_cross  {cross action of extended parameters}

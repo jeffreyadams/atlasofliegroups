@@ -206,16 +206,16 @@ let t_alpha_beta=t*(alpha+beta) in
 let t_0=[int]:ratvec_as_vec(t+t*beta*s-t_alpha_beta/2*alpha_check) in
 let E_new=
 if l_test_1 then 
-(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_F,omega_E,tau_0,t_0, central_shift) 
+(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_F,omega_E,tau_0,t_0, central_shift_E) 
 elif l_test_2 then
-(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,[int]:l_F+alpha_check,omega_E,tau_0,[int]:t_0-s,central_shift) 
+(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,[int]:l_F+alpha_check,omega_E,tau_0,[int]:t_0-s,central_shift_E) 
 else error("l_test_1 and l_test_2 both false") 
 fi in
 let F_new=
 if lambda_test_1 then 
-(ic_F,delta_F,gamma_F,lambda_E,theta_F,g_F,l_F,omega_F,tau_0,t_0,central_shift) 
+(ic_F,delta_F,gamma_F,lambda_E,theta_F,g_F,l_F,omega_F,tau_0,t_0,central_shift_F) 
 elif lambda_test_2 then
-(ic_F,delta_F,gamma_F,[int]:lambda_E+alpha,theta_F,g_F,l_F,omega_F,[int]:tau_0-sigma,t_0,central_shift) 
+(ic_F,delta_F,gamma_F,[int]:lambda_E+alpha,theta_F,g_F,l_F,omega_F,[int]:tau_0-sigma,t_0,central_shift_F) 
 else 
 prints(E, x(E), y(E), F, x(F), y(F));error("lambda_test_1 and lambda_test_2 both false") fi in
 let ()=if not verify(E_new) then error("E_new is not valid") fi in
