@@ -399,10 +399,10 @@ Cartan_info: (CartanClass->(int,int,int),vec,(int,int),(LieType,LieType,LieType)
   real forms for this Cartan class, for which see fiber_partition).
   The first triple of integers gives in order the number of compact (U(1)),
   complex (GL(1,C)), and split (GL(1,R)) factors of the real torus defined by
-  this Cartan class, the canonical twisted involution for the Cartan class, a
-  pair of integers formed of the number of distinct twisted involutions
-  defining this same Cartan class and the fiber size, and finally the types of
-  the imaginary, real, and complex root subsystems (note the order here).
+  this Cartan class. Follows the canonical twisted involution for the Cartan
+  class, a pair of integers giving the number of distinct twisted involutions
+  defining this same Cartan class and their fiber size, and finally the types
+  of the imaginary, real, and complex root subsystems (note the order here).
 
 real_forms: (CartanClass->[RealForm]): list of real forms with given Cartan
   Returns a list of the real forms for which this Cartan class occurs
