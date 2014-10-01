@@ -808,30 +808,30 @@ bool TitsCoset::is_valid(TitsElt a) const
    a KGB construction for the real form |rf| starting at Cartan class |cn|, by
    extracting the necessary information fom the |Fiber| object associated to
    the Cartan class |cn|, and lifting that information from the level of the
-   fiber group back to the level of torus parts. But as the name indicates,
-   the result is not always good, as it fails to account for the different
-   grading choices involved in identifying the (weak) real form in the fiber
-   and in the KGB construction. In the fiber construction, the action used to
-   partition the fiber group according to real forms uses a grading of the
-   imaginary roots for the twisted involution that makes all simple-imaginary
-   ones noncompact. In the KGB construction (i.e., in our |TitsCoset|) a
-   grading is chosen only at the distinguished involution, and only of the
-   simple roots that are imaginary for that involution; it depends on the
-   square class of the real form. The bitvector |v| (a fiber group element)
-   below is zero for some strong involution |si| in same square class as |rf|
-   at Cartan class |cn|; the result will be correct if and only if the null
-   torus part |x| defines (by |TitsCoset::grading|) the same grading of the
-   (simple) imaginary roots for the canonical involution of Cartan class |cn|
-   as |si| does (through |Fiber::class_base|).
+   fiber group to the level of torus parts. The idea is to interpret |rf| as
+   labeling a conjugation orbit in the adjoint fiber group of the current
+   Cartan class, find a strong real form representative |srf| of it using the
+   |Fiber::strongRealForm| method, which value identifies a square class
+   |srf.second| and a (corresondingly shifted) conjugation orbit in the fiber
+   group of the current Cartan class. Choosing a representative in the latter,
+   one can lift from the fiber group to a (theta-fixed) element of
+   $X_{*}/2X_{*}$ using the |Subquotient::from_basis| method, the result of
+   which (a |SmallBitVector|) can be used as the |TorusPart| that was sought.
 
-   The only case where one can rely on that to be true is for the fundamental
-   Cartan (|cn==0|), if our |TitsCoset| was extracted as base object from
-   an |EnrichedTitsGroup| (the latter being necessarily constructed through
-   |TitsCoset(G,square_class_base_grading)|), because in that case the
-   |TitsCoset::grading_offset| field was actually computed from de
-   grading defined by the element |si| in the fundamental fiber. In the general
-   case all bets are off: the real form of |si| need not even be the same one
-   as the one corresponding to |TitsCoset::grading_offset|.
+   As the name indicates, this method has drawbacks that makes it not always
+   useful. The main drawback is that it interpretes the real form as
+   identifying an orbit in the adjoint fiber group for |Cartan[cn]|, whereas
+   the normal interpretation of |RealFormNbr| values identifies an orbit in
+   the adjoint fiber group for the fundamental Cartan class (|Cartan[0]|).
+   This means that if it is used for other Cartan classes than the fundamental
+   one of the inner class, |rf| must be adapted to the proper labelling using
+   the |real_labels| for |Cartan[cn]| stored in the |ComplexReductiveGroup|.
+
+   Another drawback, harder to circumvent, is that there is no guarantee that
+   the strong real forms chosen at different Cartan classes by the |classRep|
+   method will be the same. Thus the |TorusPart| values returned for different
+   Cartan classes (even assuming |rf| has been properly adapted in each case)
+   need not occur in a common KGB set, even up to equivalence of torus parts.
 
    The main reason for leaving this (unused) method in the code is that it
    illustrates how to apply the group morphism from the fiber group to T(2).
@@ -844,7 +844,6 @@ TitsElt TitsCoset::naive_seed
   cartanclass::adjoint_fiber_orbit wrf = G.real_form_part(rf,cn);
   cartanclass::StrongRealFormRep srf=f.strongRealForm(wrf);
   assert(srf.second==f.central_square_class(wrf));
-  // the |grading_offset| of our |TitsCoset| gives the square class base
 
   // now lift strong real form from fiber group to a torus part in |result|
   const Partition& pi = f.fiber_partition(srf.second);
