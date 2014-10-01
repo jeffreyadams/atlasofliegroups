@@ -132,12 +132,13 @@ ComplexReductiveGroup::ComplexReductiveGroup
  (const PreRootDatum& prd, const WeightInvolution& tmp_d)
   : d_rootDatum(prd)
   , d_dualRootDatum(d_rootDatum,tags::DualTag())
-  , d_fundamental(d_rootDatum,tmp_d) // will also be fiber of cartan(0)
-  , d_dualFundamental(d_dualRootDatum,dualBasedInvolution(tmp_d,d_rootDatum))
-    // dual fundamental fiber is dual fiber of most split Cartan
 
   , my_W(new WeylGroup(d_rootDatum.cartanMatrix()))
   , W(*my_W) // owned when this constructor is used
+
+  , d_fundamental(d_rootDatum,tmp_d) // will also be fiber of cartan(0)
+  , d_dualFundamental(d_dualRootDatum,dualBasedInvolution(tmp_d,d_rootDatum))
+    // dual fundamental fiber is dual fiber of most split Cartan
 
   , d_titsGroup(d_rootDatum,W,distinguished())
   , d_dualTitsGroup(d_dualRootDatum,W,dualDistinguished())
@@ -162,12 +163,13 @@ ComplexReductiveGroup::ComplexReductiveGroup
  (const RootDatum& rd, const WeightInvolution& tmp_d)
   : d_rootDatum(rd)
   , d_dualRootDatum(d_rootDatum,tags::DualTag())
-  , d_fundamental(d_rootDatum,tmp_d) // will also be fiber of cartan(0)
-  , d_dualFundamental(d_dualRootDatum,dualBasedInvolution(tmp_d,d_rootDatum))
-    // dual fundamental fiber is dual fiber of most split Cartan
 
   , my_W(new WeylGroup(d_rootDatum.cartanMatrix()))
   , W(*my_W) // owned when this constructor is used
+
+  , d_fundamental(d_rootDatum,tmp_d) // will also be fiber of cartan(0)
+  , d_dualFundamental(d_dualRootDatum,dualBasedInvolution(tmp_d,d_rootDatum))
+    // dual fundamental fiber is dual fiber of most split Cartan
 
   , d_titsGroup(d_rootDatum,W,distinguished())
   , d_dualTitsGroup(d_dualRootDatum,W,dualDistinguished())
@@ -391,14 +393,14 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
 					     tags::DualTag)
   : d_rootDatum(G.d_dualRootDatum)
   , d_dualRootDatum(G.d_rootDatum)
-  , d_fundamental(G.d_dualFundamental)
-  , d_dualFundamental(G.d_fundamental)
 
   , my_W(NULL), W(G.W) // not owned here, we depend on existence of |G|
 
+  , d_fundamental(G.d_dualFundamental)
+  , d_dualFundamental(G.d_fundamental)
+
   , d_titsGroup(G.d_dualTitsGroup,W)
   , d_dualTitsGroup(G.d_titsGroup,W)
-
   , root_twist(d_rootDatum.root_permutation(simple_twist()))
 
   , Cartan() // filled below
@@ -529,7 +531,7 @@ ComplexReductiveGroup::reflection(RootNbr alpha,
   quasisplit real form that grades all simple-imaginary roots (at the
   canonical twisted involution for this Cartan) as noncompact, it might not
   have the torus part that was stored as sample in |Cartan[cn].rep[0]| (where
-  $0$ is the internal |RealFormNbr| for the quasisplit form). Therefor we
+  $0$ is the internal |RealFormNbr| for the quasisplit form). Therefore we
   start by modifying the stored representative, by computing the grading
   |ref_gr| of the imaginary-simple roots the original choice |base| defines,
   looking up a representative adjoint fiber element |rep|, and interpreting it
@@ -942,6 +944,39 @@ ComplexReductiveGroup::global_KGB_size() const
   }
   return result;
 
+}
+
+Grading ComplexReductiveGroup::x0_grading(RealFormNbr rf) const
+{
+  const Fiber& fund_f= fundamental();
+  return fund_f.grading(fund_f.wrf_rep(rf));
+}
+
+cartanclass::square_class
+ComplexReductiveGroup::xi_square(RealFormNbr rf) const
+{ return fundamental().central_square_class(rf); }
+
+RealFormNbr
+ComplexReductiveGroup::square_class_repr(cartanclass::square_class csc) const
+{ return fundamental().realFormPartition().classRep(csc); }
+
+TorusPart ComplexReductiveGroup::grading_shift_repr(Grading diff) const
+{
+  const SmallSubquotient& fg = fundamental().fiberGroup();
+  const unsigned int f_rank = fg.dimension();
+  const unsigned int ssr = semisimpleRank();
+  BinaryMap fg2grading (ssr,f_rank);
+  for (weyl::Generator i=0; i<ssr; ++i)
+  {
+    SmallBitVector ai (rootDatum().simpleRoot(i));
+    for (unsigned int j=0; j<f_rank; ++j)
+      if (ai.dot(fg.fromBasis(SmallBitVector(f_rank,j))))
+	fg2grading.set(i,j);
+  }
+  const BinaryMap grading2fg = fg2grading.section();
+  const SmallBitVector v = grading2fg*SmallBitVector(diff,ssr);
+  assert((fg2grading*v).data()==diff);
+  return fg.fromBasis(v);
 }
 
 unsigned long

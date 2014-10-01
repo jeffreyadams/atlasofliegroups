@@ -89,6 +89,10 @@ Smith: (mat->mat,vec): Smith(M)= ( Smith_basis(M), inv_fact(M) ) (almost).
 invert: (mat->mat,int): invert(M)=inv,d such that M*inv=d*Id, with d minimal.
   The inverse matrix, represented as an integral numerator matrix inv, and a
   minimal positive common denominator d. Note: d does not mean determinant.
+mod2_section (mat->mat): find section (left/right/inverse) of binary matrix
+  The argument is reduced modulo 2 to a matrix A over Z/2Z; it returns a
+  matrix B such that ABA=A and BAB=B; it will be an inverse/left inverse/right
+  inverse of (over Z/2Z) whenever A is bijective/surjective/injective.
 
 subspace_normal: ([vec]->[vec],[vec],[vec],[int]) normalised modulo-2 basis
   Given a list of binary vectors, find a normalised basis for the subspace

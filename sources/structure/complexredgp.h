@@ -149,37 +149,29 @@ class ComplexReductiveGroup
   // The dual based root datum. It is also stored and constructed by us
   const RootDatum d_dualRootDatum;
 
-  /*!
-  \brief Fiber class for the fundamental Cartan subgroup.
-
-  The involution is delta, which is stored here. It permutes the simple roots.
-  */
-  Fiber d_fundamental;
-
-  /*!
-  \brief Fiber class for the fundamental Cartan in the dual group.
-
-  The fiber group here is the group of characters (i.e., the dual group)
-  of the component group of the quasisplit Cartan.
-  */
-  Fiber d_dualFundamental;
-
   const WeylGroup* my_W; // pointer to |W| in case we own |W|, or |NULL|
   const WeylGroup& W;    // possibly owned (via |my_W|) reference
 
-  /*!
-  \brief The Tits group of the based root datum, extended by an
-  involutive automorphism.
+  /*
+    Fiber class for the fundamental Cartan subgroup
+    The distinguished involution (permuting the simple roots) is stored here
+    so for construction it is convient to precede the |d_titsGroup| member
   */
+  Fiber d_fundamental;
+
+  /*
+    Fiber class for the fundamental Cartan in the dual group.
+    The fiber group here is the group of characters (i.e., the dual group)
+    of the component group of the quasisplit Cartan.
+  */
+  Fiber d_dualFundamental;
+
+  // Tits group of the based root datum, extended by an involutive automorphism
+  // this member also stores the |TwistedWeylGroup| (which refers to |W|)
   const TitsGroup d_titsGroup;
-
-  /*!
-  \brief The Tits group of the dual based root datum, extended by an
-  involutive automorphism.
-  */
+  // Tits group of the dual based root datum
   const TitsGroup d_dualTitsGroup;
-
-  //!\brief the permutation of the roots given by the based automorphism
+  // the permutation of the roots given by the based automorphism
   const Permutation root_twist;
 
 
@@ -197,20 +189,13 @@ class ComplexReductiveGroup
     C_info(const ComplexReductiveGroup& G, const TwistedInvolution twi,
 	   CartanNbr i); // index |i| of this Cartan used to dimension |below|
 
-  };
-
+  }; // |C_info|
   std::vector<C_info> Cartan;
 
-  /*!
-  \brief Partial order of Cartan subgroups.
-
-  This is the ordering by containment of H^theta up to conjugacy: (H,theta_1)
-  precedes (H,theta_2) if (H^theta_2)_0 is W-conjugate to a subtorus of
-  H^theta_1. Numbering of elements is as in the vector |Cartan|
-  */
+  // Partial order of Cartan subgroups.
   poset::Poset Cartan_poset;
 
-  //! Entry \#rf is the number of the most split Cartan for real form \#rf.
+  // list of the most split Cartan classes for each real form
   std::vector<CartanNbr> d_mostSplit;
 
   Cartan_orbits C_orb;
@@ -272,7 +257,11 @@ class ComplexReductiveGroup
   const Permutation& root_involution() const { return root_twist; }
   RootNbr twisted_root(RootNbr alpha) const { return root_twist[alpha]; }
 
-  // partial ordering of Cartan classes
+  /* partial ordering of Cartan classes
+     This is the ordering by containment of H^theta up to conjugacy:
+     (H,theta_1) precedes (H,theta_2) if (H^theta_2)_0 is W-conjugate to a
+     subtorus of H^theta_1. Numbering of elements is as in the vector |Cartan|
+  */
   const poset::Poset& Cartan_ordering() const { return Cartan_poset; }
 
   // the distinguished involution for G and for its dual group
@@ -348,6 +337,14 @@ class ComplexReductiveGroup
   { return KGB_size(rf,Cartan_set(rf)); }
   // the same limited to indicated Cartan classes only
   unsigned long KGB_size(RealFormNbr rf, const BitMap& Cartan_classes) const;
+
+  // grading of (imaginary) simple roots at first element of KGB for |rf|
+  Grading x0_grading(RealFormNbr rf) const;
+
+  cartanclass::square_class xi_square(RealFormNbr rf) const;
+  RealFormNbr square_class_repr(cartanclass::square_class csc) const;
+
+  TorusPart grading_shift_repr(Grading diff) const;
 
 // Information about a real form or dual real form at a given Cartan class
 
@@ -444,9 +441,6 @@ class ComplexReductiveGroup
 
   void map_real_forms(CartanNbr cn);      // set |Cartan[cn].real_labels|
   void map_dual_real_forms(CartanNbr cn); // set |Cartan[cn].dual_real_labels|
-
-  void correlateForms(CartanNbr cn);      // the old way to do the same things
-  void correlateDualForms(CartanNbr cn);  // now obsolete
 
 }; // |class ComplexReductiveGroup|
 

@@ -975,14 +975,14 @@ class template) into ours.
 
 @*1 First primitive types: integer, rational, string and Boolean values.
 %
-We derive the first ``primitive'' value types. For each type we define a
-corresponding auto-pointer type (whose name has the \&{\_ptr} suffix),
-since we shall often need to hold such values by pointers, and the risk of
-exceptions is ever present. Whenever the values get stored in a more permanent
-place (which includes being bound to an identifier, but also being places on
-the |execution_stack|), we shall in fact use smart pointers of the
-|shared_ptr| kind, and for the corresponding types we shall used
-the \&{shared\_} prefix.
+We derive the first ``primitive'' value types. Value are are generally
+accessed through shared pointers to constant values, so for each type we give
+a |typedef| for a corresponding |const| instance of the |shared_ptr| template,
+using the \&{shared\_} prefix. In some cases we need to construct values to be
+returned by first allocating and then setting a value, which only then (when
+being pushed onto the execution stack) becomes available for sharing; for the
+types where this applies we also |typedef| a non-|const| instance of the
+|shared_ptr| template, using the \&{own\_} prefix.
 
 @< Type definitions @>=
 
@@ -1013,7 +1013,6 @@ private:
   rat_value(const rat_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::unique_ptr<rat_value> rat_ptr;
 typedef std::shared_ptr<const rat_value> shared_rat;
 
 @ Here are two more; this is quite repetitive.
@@ -1032,7 +1031,6 @@ private:
   string_value(const string_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::unique_ptr<string_value> string_ptr;
 typedef std::shared_ptr<const string_value> shared_string;
 @)
 
@@ -1048,7 +1046,6 @@ private:
   bool_value(const bool_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::unique_ptr<bool_value> bool_ptr;
 typedef std::shared_ptr<const bool_value> shared_bool;
 
 @*1 Primitive types for vectors and matrices.
@@ -1093,7 +1090,6 @@ private:
   vector_value(const vector_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::unique_ptr<vector_value> vector_ptr;
 typedef std::shared_ptr<const vector_value> shared_vector;
 typedef std::shared_ptr<vector_value> own_vector;
 
@@ -1114,7 +1110,6 @@ private:
   matrix_value(const matrix_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::unique_ptr<matrix_value> matrix_ptr;
 typedef std::shared_ptr<const matrix_value> shared_matrix;
 typedef std::shared_ptr<matrix_value> own_matrix;
 @)
@@ -1134,7 +1129,6 @@ private:
   rational_vector_value(const rational_vector_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::unique_ptr<rational_vector_value> rational_vector_ptr;
 typedef std::shared_ptr<const rational_vector_value> shared_rational_vector;
 @)
 
@@ -2071,6 +2065,25 @@ void combine_rows_wrapper(expression_base::level l)
     push_value(std::move(m));
 }
 
+@ The following function is introduced to allow testing the
+|BinaryMap::section| method.
+
+@h "bitvector.h"
+
+@< Local function def... @>=
+void section_wrapper(expression_base::level l)
+{
+  shared_matrix m=get<matrix_value>();
+  BinaryMap A(m->val);
+  BinaryMap B=A.section();
+  own_matrix res = std::make_shared<matrix_value>(
+    int_Matrix(B.numRows(),B.numColumns()));
+  for (unsigned int j=B.numColumns(); j-->0;)
+    res->val.set_column(j,int_Vector(B.column(j)));
+  if (l!=expression_base::no_value)
+    push_value(std::move(res));
+}
+
 @ We must not forget to install what we have defined. The names of the
 arithmetic operators correspond to the ones used in the parser definition
 file \.{parser.y}.
@@ -2137,6 +2150,7 @@ install_function(vm_prod_wrapper,"*","(vec,mat->vec)");
 install_function(stack_rows_wrapper,"stack_rows","([vec]->mat)");
 install_function(combine_columns_wrapper,"#","(int,[vec]->mat)");
 install_function(combine_rows_wrapper,"^","(int,[vec]->mat)");
+install_function(section_wrapper,"mod2_inverse","(mat->mat)");
 
 @* Miscellaneous functions. This section defines functions of general nature
 that did not fit in comfortably elsewhere.
