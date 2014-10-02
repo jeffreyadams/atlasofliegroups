@@ -3,6 +3,7 @@
 
 <basic.rx
 <matrix.rx { for 'minor' (this dependency might be eliminated) }
+<misc.rx
 
 { M is an nxk matrix, columns of M define a Z-module W }
 
@@ -96,61 +97,61 @@ set projection_to_image (mat M) = mat:
 }
 
 set index_lattice(mat M)=int:
-let rv=product(inv_fact(M)) in 
+let rv=product(inv_fact(M)) in
 if rv=0 then error("lattice has infinite index") fi;rv
 
 
-{D=SMT weak Smith normal form, S,T are Z-invertible, D is diagonal 
+{D=SMT weak Smith normal form, S,T are Z-invertible, D is diagonal
 with nonzero entries first, but not assuming divisibiliy
 diagonalize(M)=(v,S,T), v->D->SMT=D}
 set weak_snf(mat M)=
-let (v,S,T)=diagonalize(M) in    
+let (v,S,T)=diagonalize(M) in
 let D=null(n_rows(S),n_columns(T))  in
 let ()=for i:#v do D[i,i]:=v[i] od in (S,D,T)
 
 {solve Dw=v where D pseudo-diagonal (non necessarily square), over Z, if possible}
 set diag_solve(mat D,vec v)=(vec, bool):
-let success=true in 
-let w=v in 
-let ()=for i:#v do 
-   if ((D[i,i]=0 and v[i] !=0) or (D[i,i]!=0 and not is_integer(v[i]/D[i,i]))) 
-   then success:=false else 
+let success=true in
+let w=v in
+let ()=for i:#v do
+   if ((D[i,i]=0 and v[i] !=0) or (D[i,i]!=0 and not is_integer(v[i]/D[i,i])))
+   then success:=false else
      w[i]:= if D[i,i] !=0 then rat_as_int(v[i]/D[i,i]) else 0 fi fi
         od in (w,success)
 
 set Q_diag_solve(mat D,[rat] v)=([rat],bool):
-let success=true in 
-let w=v in 
-let ()=for i:#v do 
-   if (D[i,i]=0 and v[i] !=0) 
-   then success:=false else 
+let success=true in
+let w=v in
+let ()=for i:#v do
+   if (D[i,i]=0 and v[i] !=0)
+   then success:=false else
      w[i]:= if D[i,i] !=0 then v[i]/D[i,i] else 0 fi fi
         od in (w,success)
 
 {solve Mw=v (over integers) maybe only works for M square}
 set solve(mat M,vec v)=(vec, bool):
-let (S,D,T)=weak_snf(M) in 
-let (diag,success)=diag_solve(D,S*v) in 
+let (S,D,T)=weak_snf(M) in
+let (diag,success)=diag_solve(D,S*v) in
 if (success=false) then (v,false) else (T*diag,true) fi
 
 
 set Q_solve(mat M, [rat] v)=([rat],bool):
-let (S,D,T)=weak_snf(M) in 
-let (diag,success)=Q_diag_solve(D,S*v) in 
+let (S,D,T)=weak_snf(M) in
+let (diag,success)=Q_diag_solve(D,S*v) in
 if (success=false) then (v,false) else (T*diag,true) fi
 
 
-set rank (mat M)=int:let (S,D,T)=weak_snf(M) in 
+set rank (mat M)=int:let (S,D,T)=weak_snf(M) in
 let rv=0 in for i:min(n_columns(D),n_rows(D)) do if (D[i,i]!=0) then  rv+:=1 fi od;rv
 
 {ratvec v is in Q-span of columns of M: rank([M, numerator(v)])=rank(M)}
 set in_Q_span(mat M, ratvec v)=let (w,d)=%v in  bool:rank(M#(mat:[w]))-rank(M)=0
 
 {product of non-zero invariant factors of M}
-set pseudo_det(mat M)=product(inv_fact(M)) 
+set pseudo_det(mat M)=product(inv_fact(M))
 
 {this replaces flawed command in lattice.rx}
-{vec v is in Z-span of columns of M: in_Q_span(M,v), 
+{vec v is in Z-span of columns of M: in_Q_span(M,v),
 and pseudo_det(M)=pseudo_det(M,v) where Det is product of (nonzero) invariant factors}
 set in_lattice(mat M, vec v)=
 in_Q_span(M,v) and pseudo_det(M)=pseudo_det(M#(mat:[v]))

@@ -1,5 +1,10 @@
-<sort
-<polynomial
+<sort.rx
+<polynomial.rx
+<extended_misc.rx
+<extended_types.rx
+<extended_cayley.rx
+<extended_cross.rx
+<extended.rx
 
 {parameters and extended parameters are parametrized by pairs (x,y) of KGB elements
 so given a list_of_pairs [(x_1,y_1),(x_2,y_2)...] we need to do lookups and simple list manipulation}
@@ -8,7 +13,7 @@ set =( ((KGBElt,KGBElt),(KGBElt, KGBElt)) ((x,y),(z,w)))=bool:x=z and y=w
 
 {look for pair (x,y) in array [(x_i,y_i)] (bool)}
 set find_pair( ((KGBElt,KGBElt),[(KGBElt, KGBElt)])(xy,xy_pairs))=bool:
-let rv=false in 
+let rv=false in
 let i=0 in
 while i<#xy_pairs do let zw=xy_pairs[i] in if xy=zw then rv:=true;i:=#xy_pairs else i:=i+1 fi od;rv
 
@@ -33,34 +38,34 @@ set index(Param p,[(KGBElt,KGBElt)] xy_pairs,ratvec central_shift)=int:index((x(
 {compute everything you get to by applying a single Cayley or cross}
 set neighbors((int,(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec))
 (j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift)))=
-let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in 
+let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in
 let type=ext_type(j,Ep) in
-if (type="1C+") then [ext_cross(j,Ep)] 
-elif (type="1C+") then [ext_cross(j,Ep)] 
-elif (type="1C-") then [ext_cross(j,Ep)] 
-elif (type="1i1") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]] 
+if (type="1C+") then [ext_cross(j,Ep)]
+elif (type="1C+") then [ext_cross(j,Ep)]
+elif (type="1C-") then [ext_cross(j,Ep)]
+elif (type="1i1") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
 elif (type="1i2f") then ext_Cayley(j,Ep)
-elif (type="1i2s") then [] 
-elif (type="1ic") then [] 
+elif (type="1i2s") then []
+elif (type="1ic") then []
 elif (type="1r1f") then ext_Cayley(j,Ep)
 elif (type="1r1s") then []
-elif (type="1r2") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]] 
-elif (type="1rn") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]] 
+elif (type="1r2") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
+elif (type="1rn") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
 elif (type="1r1s") then []
-elif (type="2C+") then [ext_cross(j,Ep)] 
-elif (type="2C-") then [ext_cross(j,Ep)] 
+elif (type="2C+") then [ext_cross(j,Ep)]
+elif (type="2C-") then [ext_cross(j,Ep)]
 elif (type="2Ci") then ext_Cayley(j,Ep)
 elif (type="2Cr") then ext_Cayley(j,Ep)
-elif (type="2i11") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]] 
+elif (type="2i11") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
 elif (type="2i12") then ext_cross(j,Ep)#ext_Cayley(j,Ep)
 elif (type="2i22") then ext_Cayley(j,Ep)
-elif (type="2r22") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]] 
-elif (type="2r21") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]] 
+elif (type="2r22") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
+elif (type="2r21") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
 elif (type="2r11") then ext_Cayley(j,Ep)
 elif (type="2rn") then []
 elif (type="2ic") then []
-elif (type="3C+") then [ext_cross(j,Ep)] 
-elif (type="3C-") then [ext_cross(j,Ep)] 
+elif (type="3C+") then [ext_cross(j,Ep)]
+elif (type="3C-") then [ext_cross(j,Ep)]
 elif (type="3Ci") then ext_Cayley(j,Ep)
 elif (type="3Cr") then ext_Cayley(j,Ep)
 elif (type="3i") then ext_Cayley(j,Ep)
@@ -94,8 +99,8 @@ set xy_sort([(KGBElt,KGBElt)] pairs)=x_sort(y_sort(pairs))
 {return [(x,y)] for the nodes connected to vertex by root j}
 set xy_neighbors((int,(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec))
 (j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift)))=[(KGBElt, KGBElt)]:
-let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in 
-let neighbors=neighbors(j,Ep) in 
+let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in
+let neighbors=neighbors(j,Ep) in
 for Eq in neighbors do (x(Eq),y(Eq)) od
 
 {xy_neighbors given by (j,delta,p,g)}
@@ -112,63 +117,83 @@ xy_neighbors(j, E(delta,gamma,x,g,y,central_shift))
 set xy_neighbors(int j,mat delta,ratvec gamma,ratvec g,[(KGBElt, KGBElt)] xy_pairs,ratvec central_shift)=[(KGBElt, KGBElt)]:
 let rv=xy_pairs in
  for (x,y) in xy_pairs do
- let neighbors=xy_neighbors(j,delta,gamma,x,g,y,central_shift) in 
+ let neighbors=xy_neighbors(j,delta,gamma,x,g,y,central_shift) in
   for (z,w) in neighbors do rv:=add_pair((z,w),rv)  od  od;rv
 
-{generate_subspace(i,j,delta,gamma,g,(x,y)) gives a Hecke invariant subspace 
-of space of extended parameters}
+{generate_subspace(i,j,delta,gamma,g,(x,y)) gives a Hecke invariant subspace
+ of space of extended parameters}
 {all nodes you can get to by applying Hecke operators T_i and T_j to given node}
-set generate_subspace( (int,int,mat,ratvec,ratvec,(KGBElt,KGBElt),ratvec)(j,k,delta,gamma,g,(x,y),central_shift))=
+set generate_subspace(
+  (int,int,mat,ratvec,ratvec,(KGBElt,KGBElt),ratvec)(j,k,delta,gamma,g,(x,y),central_shift))=
+  [(KGBElt,KGBElt)]:
 let done=false in
-let rv=[(x,y)] in 
+let rv=[(x,y)] in
 while not done do
-let n=#rv in 
-rv:=xy_neighbors(j,delta,gamma,g,rv,central_shift);
-rv:=xy_neighbors(k,delta,gamma,g,rv,central_shift);
-if (n=#rv) then done:=true fi od;xy_sort(rv)
+  let n=#rv in
+  rv:=xy_neighbors(j,delta,gamma,g,rv,central_shift);
+  rv:=xy_neighbors(k,delta,gamma,g,rv,central_shift);
+  if (n=#rv) then done:=true fi
+od; xy_sort(rv)
 
 {generate_subspace(i,j,E): usually called this way
-=generate_subspace(i,j,delta(E),gamma(E),g(E),(x(E),y(E)))}
-set generate_subspace((int,int,(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec))(i,j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift)))=
-let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in 
+ =generate_subspace(i,j,delta(E),gamma(E),g(E),(x(E),y(E)))}
+set generate_subspace(
+  (int,int,(InnerClass,mat,ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec))
+  (i,j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift)) )=
+  [(KGBElt,KGBElt)]:
+let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in
 generate_subspace((i,j,delta,gamma,g,(x(Ep),y(Ep)),central_shift))
 
 {same, but just a single Hecke operator}
-set generate_subspace( (int,mat,ratvec,ratvec,(KGBElt,KGBElt),ratvec)(j,delta,gamma,g,(x,y),central_shift))=generate_subspace(j,j,delta,gamma,g,(x,y),central_shift)
-set generate_subspace((int,(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec))(i,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift)))=
-let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in 
-generate_subspace(i,i,delta,gamma,g,(x(Ep),y(Ep)),central_shift)
+
+set generate_subspace(
+  (int,mat,ratvec,ratvec,(KGBElt,KGBElt),ratvec)(j,delta,gamma,g,(x,y),central_shift))=
+  [(KGBElt,KGBElt)]: generate_subspace(j,j,delta,gamma,g,(x,y),central_shift)
+
+set generate_subspace(
+  (int,(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec))
+  (i,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift)) )=
+  [(KGBElt,KGBElt)]:
+  let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in
+  generate_subspace(i,i,delta,gamma,g,(x(Ep),y(Ep)),central_shift)
 
 {decompose(i,j,delta,B,g) returns ([[(KGBElt,KGBElt)]],int,[int])
 first argument is an array of subspaces,
-each subspace is a subspace from generate_subspace, the union of the elemnents 
+each subspace is a subspace from generate_subspace, the union of the elemnents
 of these subspaces is all KGB pairs (x,y) in fixed(delta,B)
 int is total size of fixed(delta,B)
 [int] is the array of sizes of the subspaces}
 
-set decompose(int i, int j, mat delta, [Param] B, ratvec g,ratvec central_shift)=([[(KGBElt,KGBElt)]],int,[int]):
-let ()=prints("Computing fixed parameters in block of size ", #B) in 
-let B_0=fixed(delta,B) in 
-let ()=prints("Computed ", #B_0, " fixed parameters") in 
+set decompose(int i, int j, mat delta, [Param] B, ratvec g,ratvec central_shift)=
+  ([[(KGBElt,KGBElt)]],int,[int]):
+let ()=prints("Computing fixed parameters in block of size ", #B) in
+let B_0=fixed(delta,B) in
+let ()=prints("Computed ", #B_0, " fixed parameters") in
 let all=for p in B_0 do  (x(p),y(p,central_shift))  od in
-let ()=prints("computed basis of (x,y) pairs") in 
-let gamma=infinitesimal_character(B[0]) in 
-let (x_0,y_0)=all[0] in 
-let first_subspace=generate_subspace(i,j,E(delta,x_0,y_0,gamma,g,central_shift)) in 
+let ()=prints("computed basis of (x,y) pairs") in
+let gamma=infinitesimal_character(B[0]) in
+let (x_0,y_0)=all[0] in
+let first_subspace=generate_subspace(i,j,E(delta,x_0,y_0,gamma,g,central_shift)) in
 let done=first_subspace in
-let ()=prints("Computed first subspace, of dimension ", #first_subspace) in 
-let subspaces=[first_subspace] in 
+let ()=prints("Computed first subspace, of dimension ", #first_subspace) in
+let subspaces=[first_subspace] in
 let sizes=[#first_subspace] in
-let k=0 in 
-while #done <#all do 
- let (x,y)=all[k] in 
- if find_pair((x,y), done) then k:=k+1 else
- let subspace=generate_subspace(i,j,E(delta,x,y,gamma,g,central_shift)) in 
- let ()=prints("Computed subspace ", #subspaces, " generated by ", x, ", dual ", y, " of dimension ", #subspace) in 
- subspaces#:=subspace;sizes#:=#subspace;
- done#:=subspace  fi od;(subspaces,#B_0,sizes)
+let k=0 in
+while #done < #all
+do
+  let (x,y)=all[k] in
+  if find_pair((x,y), done) then k:=k+1
+  else
+    let subspace=generate_subspace(i,j,E(delta,x,y,gamma,g,central_shift)) in
+    let ()=prints("Computed subspace ", #subspaces,
+                  " generated by ", x, ", dual ", y, " of dimension ", #subspace) in
+    subspaces#:=subspace;
+    sizes#:=#subspace;
+    done#:=subspace
+  fi
+od;(subspaces,#B_0,sizes)
 
-{given E=E(x,y,lambda,l,tau,t,central_shift) and F=(x',y',lambda',tau',l't') related by 2i12 
+{given E=E(x,y,lambda,l,tau,t,central_shift) and F=(x',y',lambda',tau',l't') related by 2i12
 compute the sign: coefficient of pi(F) in  T_kappa(\pi(E))
 see "More on the 2i12, 2Ci and 1i cases" Proposition 1.13}
 set sign_2i12((int,
@@ -179,54 +204,54 @@ set sign_2i12((int,
 (ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F,central_shift_F)))=int:
 let E=(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E,central_shift_E) in
 let F=(ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F,central_shift_F) in
-let ic=ic(F) in 
-let alpha=simple_roots(ic)[j] in 
+let ic=ic(F) in
+let alpha=simple_roots(ic)[j] in
 let alpha_check=simple_coroots(ic)[j] in
-let delta=delta(E) in 
-let beta=delta*alpha in 
-let k=get_simple_number(ic,beta) in 
+let delta=delta(E) in
+let beta=delta*alpha in
+let k=get_simple_number(ic,beta) in
 let beta_check=simple_coroots(ic)[k] in
-let (p,q)=(parameter(E),parameter(F)) in 
+let (p,q)=(parameter(E),parameter(F)) in
 if not verify(E) then error("E is not valid")
 elif not verify(F) then error("F is not valid")
 elif not (ext_type(j,E)="2i12" and ext_type(j,F)="2r21")then error("Wrong types")
-elif not ( (q=Cayley_set(j,Cayley_set(k,p)[0])[0]) or (q=Cayley_set(j,Cayley_set(k,p)[0])[1])) then 
-error("q is not a 2i12 Cayley transform of p") 
-else 
+elif not ( (q=Cayley_set(j,Cayley_set(k,p)[0])[0]) or (q=Cayley_set(j,Cayley_set(k,p)[0])[1])) then
+error("q is not a 2i12 Cayley transform of p")
+else
 let l_test_1=in_lattice(oneplus(^theta_E),l_F-l_E) in
 let l_test_2=in_lattice(oneplus(^theta_E),l_F-l_E+alpha_check) in
 let lambda_test_1=in_lattice(oneplus(^omega_F),lambda_F-lambda_E) in
 let lambda_test_2=in_lattice(oneplus(^omega_F),alpha+lambda_F-lambda_E) in
 let kappa= if (l_test_2 and lambda_test_2) then -1 else 1 fi in
 {solve for sigma}
-let (sigma,valid)=solve(oneplus(^omega(F)),alpha-beta) in 
+let (sigma,valid)=solve(oneplus(^omega(F)),alpha-beta) in
 if not valid then error("can't solve for sigma sign_2i12") else
-let tau=tau_E in 
+let tau=tau_E in
 let tau_alpha_beta=tau*(alpha_check+beta_check) in
 let tau_0=[int]:ratvec_as_vec(tau+tau*beta_check*sigma-tau_alpha_beta/2*alpha) in
-let (s,valid)=solve(oneplus(^theta(E)),alpha_check-beta_check) in 
+let (s,valid)=solve(oneplus(^theta(E)),alpha_check-beta_check) in
 if not valid then error("can't solve for s in epsilon_t") else
-let t=t_F in 
+let t=t_F in
 let t_alpha_beta=t*(alpha+beta) in
 let t_0=[int]:ratvec_as_vec(t+t*beta*s-t_alpha_beta/2*alpha_check) in
 let E_new=
-if l_test_1 then 
-(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_F,omega_E,tau_0,t_0, central_shift_E) 
+if l_test_1 then
+(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_F,omega_E,tau_0,t_0, central_shift_E)
 elif l_test_2 then
-(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,[int]:l_F+alpha_check,omega_E,tau_0,[int]:t_0-s,central_shift_E) 
-else error("l_test_1 and l_test_2 both false") 
+(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,[int]:l_F+alpha_check,omega_E,tau_0,[int]:t_0-s,central_shift_E)
+else error("l_test_1 and l_test_2 both false")
 fi in
 let F_new=
-if lambda_test_1 then 
-(ic_F,delta_F,gamma_F,lambda_E,theta_F,g_F,l_F,omega_F,tau_0,t_0,central_shift_F) 
+if lambda_test_1 then
+(ic_F,delta_F,gamma_F,lambda_E,theta_F,g_F,l_F,omega_F,tau_0,t_0,central_shift_F)
 elif lambda_test_2 then
-(ic_F,delta_F,gamma_F,[int]:lambda_E+alpha,theta_F,g_F,l_F,omega_F,[int]:tau_0-sigma,t_0,central_shift_F) 
-else 
+(ic_F,delta_F,gamma_F,[int]:lambda_E+alpha,theta_F,g_F,l_F,omega_F,[int]:tau_0-sigma,t_0,central_shift_F)
+else
 prints(E, x(E), y(E), F, x(F), y(F));error("lambda_test_1 and lambda_test_2 both false") fi in
 let ()=if not verify(E_new) then error("E_new is not valid") fi in
 let ()=if not verify(F_new) then error("F_new is not valid") fi in
-let sign_E=sign(E,E_new) in 
-let sign_F=sign(F,F_new) in 
+let sign_E=sign(E,E_new) in
+let sign_F=sign(F,F_new) in
 let sign=sign_E*sign_F*kappa in
 let ()=prints("sign_E=", sign_E, ", sign_F=", sign_F, " kappa=", kappa, " sign=", sign) in
 sign fi fi fi
@@ -245,22 +270,22 @@ sign_2i12(j,F,E)
 {see "More on the 2i12, 2Ci and 1i cases" Section 2}
 set sign_2Ci((int,(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec))
 (j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift)))=int:
-let alpha=simple_roots(ic)[j] in 
-let beta=delta*alpha in 
-let k=get_simple_number(ic,beta) in 
+let alpha=simple_roots(ic)[j] in
+let beta=delta*alpha in
+let k=get_simple_number(ic,beta) in
 let alpha_check=simple_coroots(ic)[j] in
 let beta_check=simple_coroots(ic)[k] in
-let exponent=rat_as_int(tau*(alpha_check+beta_check)*(g*alpha-l*alpha-1)/2) in 
+let exponent=rat_as_int(tau*(alpha_check+beta_check)*(g*alpha-l*alpha-1)/2) in
 (-1)^exponent
 
 set sign_2Cr((int,(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec))
 (j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift)))=int:
-let alpha=simple_roots(ic)[j] in 
-let beta=delta*alpha in 
-let k=get_simple_number(ic,beta) in 
+let alpha=simple_roots(ic)[j] in
+let beta=delta*alpha in
+let k=get_simple_number(ic,beta) in
 let alpha_check=simple_coroots(ic)[j] in
 let beta_check=simple_coroots(ic)[k] in
-let exponent=rat_as_int((gamma*alpha_check-lambda*alpha_check-1)*(t*alpha+t*beta)/2) in 
+let exponent=rat_as_int((gamma*alpha_check-lambda*alpha_check-1)*(t*alpha+t*beta)/2) in
 (-1)^exponent
 
 set sign_1i1_cross((int,
@@ -271,29 +296,29 @@ set sign_1i1_cross((int,
 (ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F,central_shift_F)))=int:
 let E=(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E,central_shift_E) in
 let F=(ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F,central_shift_F) in
-let ic=ic(F) in 
-let alpha=simple_roots(ic)[j] in 
+let ic=ic(F) in
+let alpha=simple_roots(ic)[j] in
 let alpha_check=simple_coroots(ic)[j] in
-let delta=delta(E) in 
-let (p,q)=(parameter(E),parameter(F)) in 
+let delta=delta(E) in
+let (p,q)=(parameter(E),parameter(F)) in
 if not verify(E) then error("E is not valid")
 elif not verify(F) then error("F is not valid")
 elif not (ext_type(j,E)="1i1" and ext_type(j,F)="1i1")then error("Wrong types in sign_1i1_cross")
-elif not q=cross(j,p) then error("q is not cross action of p") 
-else 
+elif not q=cross(j,p) then error("q is not cross action of p")
+else
 let (sigma,valid)=solve(oneplus(^omega(E)),null(#alpha))  in
 if not valid then error("can't solve for sigma in sign_1i1_cross") else
-let new_tau_E=[int]:tau_E-tau_E*alpha_check*sigma in 
+let new_tau_E=[int]:tau_E-tau_E*alpha_check*sigma in
 let new_l_E=
 if is_even(rat_as_int(rat_as_int(g_E*alpha-l_E*alpha-1)/2)) then
-[int]:ratvec_as_vec(l_E+(g_E*alpha-l_E*alpha-1)*alpha_check/2) 
+[int]:ratvec_as_vec(l_E+(g_E*alpha-l_E*alpha-1)*alpha_check/2)
 else
 [int]:ratvec_as_vec(l_E+(g_E*alpha-l_E*alpha-1)*alpha_check/2)+alpha_check fi in
 let new_E=(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,new_l_E,omega_E,new_tau_E,t_E,central_shift_E) in
-let new_F=ext_cross(j,new_E) in 
-let sign_E=sign(E,new_E) in 
-let sign_F=sign(F,new_F) in 
-let ()=prints("signs in 1i1_cross: ", sign_E, ", ", sign_F, ", ", sign_E*sign_F) in 
+let new_F=ext_cross(j,new_E) in
+let sign_E=sign(E,new_E) in
+let sign_F=sign(F,new_F) in
+let ()=prints("signs in 1i1_cross: ", sign_E, ", ", sign_F, ", ", sign_E*sign_F) in
 sign_E*sign_F
 fi fi
 
@@ -305,29 +330,29 @@ set sign_1i1_Cayley((int,
 (ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F,central_shift_F)))=int:
 let E=(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E,central_shift_E) in
 let F=(ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F,central_shift_F) in
-let ic=ic(F) in 
-let alpha=simple_roots(ic)[j] in 
+let ic=ic(F) in
+let alpha=simple_roots(ic)[j] in
 let alpha_check=simple_coroots(ic)[j] in
-let delta=delta(E) in 
-let (p,q)=(parameter(E),parameter(F)) in 
+let delta=delta(E) in
+let (p,q)=(parameter(E),parameter(F)) in
 if not verify(E) then error("E is not valid")
 elif not verify(F) then error("F is not valid")
 elif not (ext_type(j,E)="1i1" and ext_type(j,F)="1r1f") then error("Wrong types in sign_1i1_Cayley")
-elif not q=Cayley(j,p) then error("q is not the Cayley transform of p") 
-else 
+elif not q=Cayley(j,p) then error("q is not the Cayley transform of p")
+else
 let (sigma,valid)=solve(oneplus(^omega(E)),null(#alpha))  in
 if not valid then error("can't solve for sigma in sign_1i1_cross") else
-let new_tau_E=[int]:tau_E-tau_E*alpha_check*sigma in 
+let new_tau_E=[int]:tau_E-tau_E*alpha_check*sigma in
 let new_l_E=
 if is_even(rat_as_int(rat_as_int(g_E*alpha-l_E*alpha-1)/2)) then
-[int]:ratvec_as_vec(l_E+(g_E*alpha-l_E*alpha-1)*alpha_check/2) 
+[int]:ratvec_as_vec(l_E+(g_E*alpha-l_E*alpha-1)*alpha_check/2)
 else
 [int]:ratvec_as_vec(l_E+(g_E*alpha-l_E*alpha-1)*alpha_check/2)+alpha_check fi in
 let new_E=(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,new_l_E,omega_E,new_tau_E,t_E,central_shift_E) in
-let new_F=ext_Cayley(j,new_E)[0] in 
+let new_F=ext_Cayley(j,new_E)[0] in
 {let ()=display(E) in let ()=display(new_E) in }
-let sign_E=sign(E,new_E) in 
-let sign_F=sign(F,new_F) in 
+let sign_E=sign(E,new_E) in
+let sign_F=sign(F,new_F) in
 {let ()=prints("signs in 1i1_cross: ", sign_E, ", ", sign_F, ", ", sign_E*sign_F) in }
 sign_E*sign_F
 fi fi
@@ -340,42 +365,42 @@ set sign_1r1f_Cayley((int,
 (ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F,central_shift_F)))=int:
 let E=(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E,central_shift_E) in
 let F=(ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F,central_shift_F) in
-sign_1i1_Cayley(j,F,E) 
+sign_1i1_Cayley(j,F,E)
 
-{compute matrix of twisted Hecke operator T_j on E(delta,gamma,x,g,y) in basis of 
+{compute matrix of twisted Hecke operator T_j on E(delta,gamma,x,g,y) in basis of
 basis of extended parameters {E_i=E(delta,gamma,x_i,g,y_i)}, assuming pair=(x,y) occurs in basis
 matrix of polynomials, see polynomials.rx}
 set hecke_row(int j, mat delta, ratvec gamma, ratvec g, (KGBElt,KGBElt) pair,[(KGBElt, KGBElt)] basis,ratvec central_shift)=
-let i=index(pair,basis) in 
-let n=#basis in 
-let R=zero_poly_row(n) in 
+let i=index(pair,basis) in
+let n=#basis in
+let R=zero_poly_row(n) in
 let (x,y)=pair in
 let E=E(delta,gamma,x,g,y,central_shift) in {note: E is the default, i.e. sgn(E)=1, however dual_sgn(E)=\pm1}
-let type=ext_type(j,E) in 
-let (,m)=%x in let (,n)=%y in 
+let type=ext_type(j,E) in
+let (,m)=%x in let (,n)=%y in
 if type="1C+" then
- let F=ext_cross(j,E) in 
+ let F=ext_cross(j,E) in
  let k=index(F,basis) in
  R:=update_row(R,k,sgn_poly(sign(F)));R
-elif type ="1C-" then 
- let F=ext_cross(j,E) in 
- let k=index(F,basis) in 
+elif type ="1C-" then
+ let F=ext_cross(j,E) in
+ let k=index(F,basis) in
  R:=update_row(R,k,sign(E)*q);
  R:=update_row(R,i,q-one);R
 elif type="1i1" then
  let E1=default(ext_cross(j,E))  in
- let F=default(ext_Cayley(j,E)[0]) in 
- let k=index(E1,basis) in 
- let m=index(F,basis) in 
- let sign_Cayley=sign_1i1_Cayley(j,E,F) in 
- let sign_cross=sign_1i1_cross(j,E,E1) in 
+ let F=default(ext_Cayley(j,E)[0]) in
+ let k=index(E1,basis) in
+ let m=index(F,basis) in
+ let sign_Cayley=sign_1i1_Cayley(j,E,F) in
+ let sign_cross=sign_1i1_cross(j,E,E1) in
  if sign_Cayley=-1 then prints("sign_1i1_Cayley=-1 in computing Hecke operator of type 1i1") fi;
  if sign_cross=-1 then prints("sign_1i1_cross=-1 in computing Hecke operator of type 1i1") fi;
  R:=update_row(R,k,sgn_poly(sign_cross));
  R:=update_row(R,m,sgn_poly(sign_Cayley));R
 elif type="1i2f" then
- let m0=index(ext_Cayley(j,E)[0],basis) in 
- let m1=index(ext_Cayley(j,E)[1],basis) in 
+ let m0=index(ext_Cayley(j,E)[0],basis) in
+ let m1=index(ext_Cayley(j,E)[1],basis) in
  R:=update_row(R,i,one);
  R:=update_row(R,m0,one);
  R:=update_row(R,m1,one);R
@@ -384,67 +409,67 @@ elif type="1i2s" then
 elif type="1ic" then
  R:=update_row(R,i,q);R
 elif type="1r1f" then
- let E0=default(ext_Cayley(j,E)[0]) in 
- let E1=default(ext_Cayley(j,E)[1]) in 
- let m0=index(E0,basis) in 
- let m1=index(E1,basis) in 
- let sign_Cayley_0=sign_1r1f_Cayley(j,E,E0) in 
- let sign_Cayley_1=sign_1r1f_Cayley(j,E,E1) in 
+ let E0=default(ext_Cayley(j,E)[0]) in
+ let E1=default(ext_Cayley(j,E)[1]) in
+ let m0=index(E0,basis) in
+ let m1=index(E1,basis) in
+ let sign_Cayley_0=sign_1r1f_Cayley(j,E,E0) in
+ let sign_Cayley_1=sign_1r1f_Cayley(j,E,E1) in
  if sign_Cayley_0=-1 then prints("sign_1r1f_Cayley_0=-1 in computing Hecke operator of type 1r1f") fi;
  if sign_Cayley_1=-1 then prints("sign_1r1f_Cayley_1=-1 in computing Hecke operator of type 1r1f") fi;
  R:=update_row(R,i,q-two);
  R:=update_row(R,m0,poly_product(sgn_poly(sign_Cayley_0),(q-one)));
  R:=update_row(R,m1,poly_product(sgn_poly(sign_Cayley_1),(q-one)));R
-elif type="1r1s" then 
+elif type="1r1s" then
  R:=update_row(R,i,q);R
-elif type="1r2" then 
- let E1=ext_cross(j,E) in 
- let k=index(E1,basis) in 
+elif type="1r2" then
+ let E1=ext_cross(j,E) in
+ let k=index(E1,basis) in
  let F=ext_Cayley(j,E)[0] in
- let m=index(F,basis) in 
+ let m=index(F,basis) in
  R:=update_row(R,i,q-one);
  R:=update_row(R,k,sgn_poly(-sign(E1)));
  R:=update_row(R,m,(q-one)*sign(F));R
-elif type="1rn" then 
+elif type="1rn" then
  R:=update_row(R,i,-one);R
-elif type="2C+" then 
- let F=ext_cross(j,E) in 
+elif type="2C+" then
+ let F=ext_cross(j,E) in
  let k=index(F,basis) in
  R:=update_row(R,k,sgn_poly(sign(F)));R
-elif type ="2C-" then 
- let F=ext_cross(j,E) in 
+elif type ="2C-" then
+ let F=ext_cross(j,E) in
  let k=index(F,basis) in
  R:=update_row(R,k,q2*sign(F));
  R:=update_row(R,i,q2-one);R
-elif type ="2Ci" then 
+elif type ="2Ci" then
  let F=ext_Cayley(j,E)[0] in
- let a=sign_2Ci(j,E) in 
- let b=sign(F) in 
- let c=a*b in 
- let m=index(F,basis) in 
- let ()=prints("2Ci signs for indices ", i, "->", m, " sign_2Ci(E):", a, ", sign(F):",b, " c:", c) in 
+ let a=sign_2Ci(j,E) in
+ let b=sign(F) in
+ let c=a*b in
+ let m=index(F,basis) in
+ let ()=prints("2Ci signs for indices ", i, "->", m, " sign_2Ci(E):", a, ", sign(F):",b, " c:", c) in
  R:=update_row(R,m,(q+one)*c);
  R:=update_row(R,i,q);R
-elif type ="2Cr" then 
+elif type ="2Cr" then
  {sign must equal the one from the 2Ci direction}
- let E0=default(ext_Cayley(j,E)[0]) in 
+ let E0=default(ext_Cayley(j,E)[0]) in
  let F0=ext_Cayley(j,E0)[0] in
- let a=sign_2Ci(j,E0) in 
- let b=sign(F0) in 
- let c=a*b in 
- let m=index(E0,basis) in 
- let ()=prints("2Cr signs for indices ", i, "->", m, " sign_2Ci(E0):", a, ", sign(F0):",b, " c:", c) in 
+ let a=sign_2Ci(j,E0) in
+ let b=sign(F0) in
+ let c=a*b in
+ let m=index(E0,basis) in
+ let ()=prints("2Cr signs for indices ", i, "->", m, " sign_2Ci(E0):", a, ", sign(F0):",b, " c:", c) in
  R:=update_row(R,m,(q2-q)*c);
  R:=update_row(R,i,q2-q-one);R
-elif type ="2i11" then 
+elif type ="2i11" then
  let E1=ext_cross(j,E) in
- let k=index(E1,basis) in 
- let F=ext_Cayley(j,E)[0] in 
- let m=index(F,basis) in 
+ let k=index(E1,basis) in
+ let F=ext_Cayley(j,E)[0] in
+ let m=index(F,basis) in
  R:=update_row(R,k,sgn_poly(sign(E1)));
  R:=update_row(R,m,sgn_poly(sign(F)));R
-elif type ="2i12" then 
- let cayley=ext_Cayley(j,E) in 
+elif type ="2i12" then
+ let cayley=ext_Cayley(j,E) in
  let F1=default(cayley[0]) in
  let F2=default(cayley[1]) in
  let sign_F1=sign_2i12(j,E,F1) in
@@ -452,27 +477,27 @@ elif type ="2i12" then
  let ()=prints("type 2i12  for parameter with index ", index(E,basis), " sign_F1:", sign_F1, ", sign_F2:", sign_F2) in
  R:=update_row(R,index(F1,basis),sgn_poly(sign_F1));
  R:=update_row(R,index(F2,basis),sgn_poly(sign_F2));
- R:=update_row(R,i,one);R 
-elif type ="2i22" then 
+ R:=update_row(R,i,one);R
+elif type ="2i22" then
  let F0=ext_Cayley(j,E)[0] in
  let F1=ext_Cayley(j,E)[1] in
- let m0=index(F0,basis) in 
- let m1=index(F1,basis) in 
+ let m0=index(F0,basis) in
+ let m1=index(F1,basis) in
  R:=update_row(R,m0,sgn_poly(sign(F0)));
  R:=update_row(R,m1,sgn_poly(sign(F1)));
- R:=update_row(R,i,one);R 
-elif type ="2r22" then 
- let E1=ext_cross(j,E) in 
- let k=index(E1,basis) in 
- let F=ext_Cayley(j,E)[0] in 
- let m=index(F,basis) in 
+ R:=update_row(R,i,one);R
+elif type ="2r22" then
+ let E1=ext_cross(j,E) in
+ let k=index(E1,basis) in
+ let F=ext_Cayley(j,E)[0] in
+ let m=index(F,basis) in
  R:=update_row(R,m,poly_product(sgn_poly(sign(F)),q2-one));
  R:=update_row(R,k,-sgn_poly(sign(E1)));
- R:=update_row(R,i,q2-one);R 
-elif type ="2r21" then 
- let ()=prints("type 2r21 for index ", index(E,basis)) in 
- let F=default(E) in 
- let cayley=ext_Cayley(j,F) in 
+ R:=update_row(R,i,q2-one);R
+elif type ="2r21" then
+ let ()=prints("type 2r21 for index ", index(E,basis)) in
+ let F=default(E) in
+ let cayley=ext_Cayley(j,F) in
  let E1=default(cayley[0]) in
  let E2=default(cayley[1]) in
  let sign_E1=sign_2r21(j,F,E1) in
@@ -480,48 +505,48 @@ elif type ="2r21" then
  let ()=prints("type 2r21 for parameter with index ", index(E,basis), " sign_E1:", sign_E1, ", sign_E2:", sign_E2) in
  R:=update_row(R,index(E1,basis),poly_product(sgn_poly(sign_E1),q2-one));
  R:=update_row(R,index(E2,basis),poly_product(sgn_poly(sign_E2),q2-one));
- R:=update_row(R,i,q2-[2]);R 
-elif type ="2r11" then 
- let F0=ext_Cayley(j,E)[0] in 
- let m0=index(F0,basis) in 
- let F1=ext_Cayley(j,E)[1] in 
- let m1=index(F1,basis) in 
+ R:=update_row(R,i,q2-[2]);R
+elif type ="2r11" then
+ let F0=ext_Cayley(j,E)[0] in
+ let m0=index(F0,basis) in
+ let F1=ext_Cayley(j,E)[1] in
+ let m1=index(F1,basis) in
  R:=update_row(R,m0,poly_product(sgn_poly(sign(F0)),q2-one));
  R:=update_row(R,m1,poly_product(sgn_poly(sign(F1)),q2-one));
- R:=update_row(R,i,q2-[2]);R 
-elif type ="2rn" then 
- R:=update_row(R,i,-one);R 
-elif type ="2ic" then 
- R:=update_row(R,i,q2);R 
+ R:=update_row(R,i,q2-[2]);R
+elif type ="2rn" then
+ R:=update_row(R,i,-one);R
+elif type ="2ic" then
+ R:=update_row(R,i,q2);R
 else R fi
 
 {row of matrix of action of Hecke operator}
 {hecke_row(j,E,basis)}
 set hecke_row((int,(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec),[(KGBElt,KGBElt)])
 (j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift),basis))=
-let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in 
+let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in
 hecke_row(j,delta,gamma,g,(x(E),y(E)),basis,central_shift)
 
 {hecke_matrix(j,delta,gamma,g,basis)}
 {compute matrix of T_j acting on basis}
 set hecke_matrix(int j, mat delta, ratvec gamma, ratvec g,[(KGBElt, KGBElt)] basis,ratvec central_shift)=
-let n=#basis in 
-let M=zero_poly_matrix(n) in 
-for i:n do 
- let (x,y)=basis[i] in 
- let E=E(delta,gamma,x,g,y,central_shift) in 
- let row=hecke_row(j,E,basis) in 
+let n=#basis in
+let M=zero_poly_matrix(n) in
+for i:n do
+ let (x,y)=basis[i] in
+ let E=E(delta,gamma,x,g,y,central_shift) in
+ let row=hecke_row(j,E,basis) in
  M[i]:=row
 od;M
 
 {quadratic(M,j) or quadratic(M,j,1)
-quadratic relation for matrix M, of length j=1,2,3; 
+quadratic relation for matrix M, of length j=1,2,3;
 quadrati(M,j,1) to see the resulting matrix, which should be 0}
 set quadratic([[[int]]] M, int length, int print)=bool:
-let n=#M in 
-let I=identity_poly_matrix(n) in 
-let Q=poly_times_matrix (power(q,length),I) in 
-let rv=(M+I)*(M-Q) in 
+let n=#M in
+let I=identity_poly_matrix(n) in
+let Q=poly_times_matrix (power(q,length),I) in
+let rv=(M+I)*(M-Q) in
 if (print !=0) then printPolyMatrix(rv) fi;is_zero(rv)
 
 set quadratic([[[int]]] M, int length)=quadratic(M,length,0)
@@ -535,7 +560,7 @@ if (length=2) then M*N-N*M
 elif (length=3) then M*N*M-N*M*N
 elif (length=4) then M*N*M*N-N*M*N*M
 elif (length=6) then M*N*M*N*M-N*M*N*M*N
-else error("go away") fi in 
+else error("go away") fi in
 if (print !=0) then printPolyMatrix(A) fi;is_zero(A)
 
 set braid([[[int]]] M,[[[int]]] N, int length)=bool:braid(M,N,length,0)
@@ -551,36 +576,36 @@ set modify(
 
 {test_hecke(i,j,delta,gamma,g,basis,central_shift): tests quadratic and braid relations for T_i,T_j acting on basis}
 set test_hecke(int i, int j, mat delta, ratvec gamma, ratvec g, [(KGBElt,KGBElt)] basis,ratvec central_shift)=bool:
-{get the inner class:} let (x_0,)=basis[0] in let rd=root_datum(real_form(x_0)) in 
-let M=hecke_matrix(i,delta,gamma,g,basis,central_shift) in 
-let N=hecke_matrix(j,delta,gamma,g,basis,central_shift) in 
+{get the inner class:} let (x_0,)=basis[0] in let rd=root_datum(real_form(x_0)) in
+let M=hecke_matrix(i,delta,gamma,g,basis,central_shift) in
+let N=hecke_matrix(j,delta,gamma,g,basis,central_shift) in
 let l_i=ext_length(rd, delta, i) in
 let l_j=ext_length(rd, delta, j) in
-let bond=simple_coroots(rd)[i]*simple_roots(rd)[j] in 
+let bond=simple_coroots(rd)[i]*simple_roots(rd)[j] in
 let m=int:
- if bond=0 then 2 
- else 
+ if bond=0 then 2
+ else
   if l_i=l_j then 3
-  elif ((l_i=2 and l_j=1) or (l_i=1 and l_j=2)) then 4 
+  elif ((l_i=2 and l_j=1) or (l_i=1 and l_j=2)) then 4
   elif ((l_i=3 and l_j=1) or (l_i=1 and l_j=3)) then 6
   else -1 fi fi
-in let quad_M=quadratic(M,l_i) 
-in let quad_N=quadratic(N,l_j) 
+in let quad_M=quadratic(M,l_i)
+in let quad_N=quadratic(N,l_j)
 in let braid=braid(M,N,m) in
 prints("quadratic relation for M of length ", l_i, ": ", quad_M);\
 prints("quadratic relation for N of length ", l_j, ": ", quad_N);\
 prints("braid relation for M,N with ", m, " terms on each side: ", braid); quad_M and quad_N and braid
 
 
-{test_hecke(i,j,delta,B,g): test quadratic and braid relations for T_i and T_j acting on 
+{test_hecke(i,j,delta,B,g): test quadratic and braid relations for T_i and T_j acting on
 all delta-fixed parameters of B}
 set test_hecke(int i, int j, mat delta, [Param] B, ratvec g,ratvec central_shift)=bool:
-let (bases,n,sizes)=decompose(i,j,delta,B,g,central_shift) in 
+let (bases,n,sizes)=decompose(i,j,delta,B,g,central_shift) in
 let ()=prints("computing on block of ", n, " fixed parameters in ", #sizes, " subspaces, of dimensions ", sizes) in
-let gamma=infinitesimal_character (B[0]) in 
+let gamma=infinitesimal_character (B[0]) in
 let results=for basis@k in bases do
 prints("subspace ", k, " of dimension ", sizes[k]);
-test_hecke(i,j,delta,gamma,g,basis,central_shift) od in 
+test_hecke(i,j,delta,gamma,g,basis,central_shift) od in
 let ()=print("doing with test_hecke") in
-let rv=true in 
+let rv=true in
 prints(results);for r in results do rv:=rv and r od;rv

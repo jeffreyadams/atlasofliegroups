@@ -1,3 +1,6 @@
+<groups.rx
+<representations.rx
+
 set G=PSO(5,5)
 set delta=distinguished_involution(G)
 set (B,)=block(trivial(G))

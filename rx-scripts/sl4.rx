@@ -1,3 +1,5 @@
+<groups.rx
+<representations.rx
 set G=SL(4,R)
 set delta=distinguished_involution(G)
 set (B,)=block(trivial(G))
