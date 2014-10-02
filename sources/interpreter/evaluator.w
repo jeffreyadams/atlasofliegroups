@@ -2555,8 +2555,10 @@ case conditional_expr:
       else
         th.reset(new voiding(std::move(th))),type = std::move(else_type);
     }
-    else if (type!=unknown_type and else_type!=unknown_type)
+    else if (type==unknown_type or else_type==unknown_type)
       // error exit is always OK
+      type.specialise(else_type); // but retain the more specific one in |type|
+    else
     {
       int cmp = is_close(type,else_type);
       if ((cmp&0x1)!=0) // \.{then} branch may convert to |else_type|
@@ -2612,8 +2614,10 @@ void while_expression::print(std::ostream& out) const
 
 @ Type checking for |while| loops has a few complications because possibly a
 row result must be produced from the loop body expression. If the context
-requires void type, we shall leave the body type undetermined, knowing that
-generation of a row value will be suppressed in these cases anyway. In all
+requires void type, we require the same for the body type, knowing that
+generation of a row value will be suppressed in these cases anyway (this is
+more flexible than leaving it undetermined, in which case conditionals in the
+loop body would be required to have branches of compatible types). In all
 other cases we proceed for the body expression as for the components of a row
 display (except that there is only one expression in this case).
 
@@ -2622,9 +2626,8 @@ case while_expr:
 { const w_loop& w=e.while_variant;
   expression_ptr c = convert_expr(w->condition,as_lvalue(bool_type.copy()));
   if (type==void_type)
-  { type_expr unknown;
-    expression_ptr result(new
-       while_expression(std::move(c),convert_expr(w->body, unknown)));
+  { expression_ptr result(new @|
+       while_expression(std::move(c),convert_expr(w->body, as_lvalue(void_type.copy()))));
     return expression_ptr(new voiding(std::move(result)));
   }
   else if (type.specialise(row_of_type))
@@ -2759,13 +2762,13 @@ case for_expr:
   @< Set |which| according to |in_type|, and set |bind| according to the
      identifiers contained in |f->id| @>
   type_expr body_type;
-    // if |type==void_type| then |body_type| remains undetermined
-  type_expr *btp=&body_type;
-  // either point to |body_type| or to |*type.component_type|
+  type_expr *btp=&body_type; // point to place to record body type
   const conversion_record* conv=nullptr;
-  if (type.specialise(row_of_type))
+  if (type==void_type)
+    btp=&type; // we can reuse this type; no risk of specialisation
+  else if (type.specialise(row_of_type))
     btp=type.component_type;
-  else if (type!=void_type and (conv=row_coercion(type,body_type))==nullptr)
+  else if ((conv=row_coercion(type,body_type))==nullptr)
     throw type_error(e,row_of_type.copy(),std::move(type));
   expression_ptr body(convert_expr (f->body,*btp));
 @/expression_ptr loop(new
@@ -2922,7 +2925,7 @@ loop body is standard.
   if (l==no_value)
     body->void_eval();
   else
-  {; body->eval();
+  {@; body->eval();
     result->val[i] = pop_value();
   }
 } // restore context upon destruction of |fr|
@@ -3013,13 +3016,13 @@ case cfor_expr:
 @)
   layer bind(1); bind.add(c->id,int_type.copy());
   type_expr body_type;
-    // if |type==void_type| then |body_type| remains undetermined
-  type_expr *btp=&body_type;
-  // either point to |body_type| or to |*type.component_type|
+  type_expr *btp=&body_type; // point to place to record body type
   const conversion_record* conv=nullptr;
-  if (type.specialise(row_of_type))
+  if (type==void_type)
+    btp=&type; // we can reuse this type; no risk of specialisation
+  else if (type.specialise(row_of_type))
     btp=type.component_type;
-  else if (type!=void_type and (conv=row_coercion(type,body_type))==nullptr)
+  else if ((conv=row_coercion(type,body_type))==nullptr)
     throw type_error(e,row_of_type.copy(),std::move(type));
   expression_ptr body(convert_expr (c->body,*btp));
 @/expression_ptr loop;
