@@ -1,4 +1,4 @@
-<basic
+<basic.rx
 
 { involution for torus with |a| compact, |b| complex, and |c| split factors }
 set torus_involution(int a,int b,int c) = mat:
@@ -7,8 +7,8 @@ set torus_involution(int a,int b,int c) = mat:
   in M
 
 set torus(int a,int b, int c)=RealForm:
-  let rd=root_datum([],[],a+2*b+c)
-  in real_form(inner_class(rd,torus_involution(a,b,c)),0)
+  let r=null(a+2*b+c,0)
+  in real_form(inner_class(root_datum(r,r),torus_involution(a,b,c)),0)
 
 set compact_torus(int k)=RealForm:torus(k,0,0)
 set complex_torus(int k)=RealForm:torus(0,k,0)

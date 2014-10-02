@@ -90,8 +90,9 @@ for i:n do M:=update_matrix_entry(M,i,i,[1]) od;M
 set scalar_poly_matrix(int n, int c)=[c]%identity_poly_matrix(n)
 set *(int c, [[[int]]] M)=[c]%M
 
-power: ([int] f,int n):[int]:[]
-power:= (([int] f,int n): if n>0 then strip(poly_product(f,power(f,n-1))) else [1] fi);
+set power =
+  let pow ([int] f,int n)= [int]:[] in
+  pow:= (([int] f,int n): [int]: if n>0 then strip(poly_product(f,pow(f,n-1))) else [1] fi)
 
 {equality of polynomials}
 set =([[[int]]] A,[[[int]]] B)=
