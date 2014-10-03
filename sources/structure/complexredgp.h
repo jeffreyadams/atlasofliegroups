@@ -49,12 +49,11 @@ namespace complexredgp {
 			     const RootSystem& rs,
 			     const TwistedWeylGroup& W);
 
-  RealFormNbr real_form_of // who claims this KGB element?
+  RealFormNbr strong_real_form_of // who claims this KGB element?
     (ComplexReductiveGroup& G,
-     TwistedInvolution tw /* by value */, const RatCoweight& grading_shift,
-     CartanNbr& cn, WeylWord& conj, cartanclass::AdjointFiberElt& rep // outputs
+     TwistedInvolution tw, const RatCoweight& torus_factor,
+     TorusElement& cocharacter // additional output
      );
-
 }
 
 /******** type definitions ***************************************************/
@@ -345,6 +344,9 @@ class ComplexReductiveGroup
   RealFormNbr square_class_repr(cartanclass::square_class csc) const;
 
   TorusPart grading_shift_repr(Grading diff) const;
+  TorusPart x0_torus_part(RealFormNbr rf) const;
+
+  RatCoweight base_grading_vector(RealFormNbr rf) const;
 
 // Information about a real form or dual real form at a given Cartan class
 

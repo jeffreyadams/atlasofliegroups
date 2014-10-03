@@ -113,7 +113,7 @@ set Levi (InnerClass ic,[int] S) = InnerClass: { just change the root datum }
 set real_Levi(KGBElt x) = RealForm:
   let theta = involution(x)
   then ic_M = inner_class(root_datum(simple_imaginary_subsystem(x)),theta)
-  then (,rf) = Cartan_class_real_form(ic_M,theta,torus_factor(x))
+  then rf = real_form(ic_M,theta,torus_factor(x))
   in rf
 
 set theta_stable_Levi (KGBElt x) = RealForm:

@@ -1,19 +1,3 @@
-
-/*!
-\file
-\brief Implementation for the class ComplexReductiveGroup.
-
-  The ComplexReductiveGroup class will play a central role in the
-  whole program.  Even though it is entirely defined by its based root
-  datum and an involutive automorphism of that datum, it has seemed
-  more natural to use this class to collect the wealth of
-  combinatorial data that the root datum gives rise to, and that will
-  serve as the basis for our description of the representation theory
-  of G. Note that the current state of the theory, and most notably
-  Vogan duality, makes it natural and necessary to consider all the
-  real forms of our complex group (in a given inner class) at once; so
-  that is another reason to not choose a real form a priori.
-*/
 /*
   This is complexredgp.cpp.
 
@@ -21,6 +5,21 @@
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
+*/
+
+
+/*
+  Implementation for the class ComplexReductiveGroup.
+
+  The ComplexReductiveGroup class will play a central role in the whole
+  program. Even though it is entirely defined by its based root datum and an
+  involutive automorphism of that datum, it has seemed more natural to use
+  this class to collect the wealth of combinatorial data that they give rise
+  to, and that will serve as the basis for our description of the
+  representation theory of a real group G. Note that the current state of the
+  theory, and most notably Vogan duality, makes it natural and necessary to
+  consider all the real forms of our complex group (in a given inner class) at
+  once; so that is another reason to not choose a real form a priori.
 */
 
 #include "complexredgp.h"
@@ -33,29 +32,14 @@
 
 /*****************************************************************************
 
-  The ComplexReductiveGroup class will play a central role in the whole
-  program; even though it is entirely defined by its root datum, it has
-  seemed more natural to use this class to collect the wealth of
-  combinatorial data that the root datum gives rise to, and that will
-  serve as the basis for our description of the representation theory
-  of G. Note that the current state of the theory, and most notably
-  Vogan duality, makes it natural and necessary to consider all the
-  real forms of our complex group (in a given inner class) at once;
-  so that is another reason to not choose a real form a priori.
+  This module, together with the cartanclass one, contains code for dealing
+  with conjugacy classes of Cartan subgroups, and real forms.
 
-  This module, together with the cartanclass one, contains code for
-  dealing with conjugacy classes of Cartan subgroups, and real
-  forms. In this version, we have de-emphasized the classification of
-  strong real forms, which is perhaps better treated as an
-  input-output issue (it can certainly be recovered with a moderate
-  effort from the data available here.) It appears that the data
-  recorded here is what's most relevant to representation theory.
-
-  The enumeration of real forms amounts to that of W^\delta- orbits in the
-  fundamental fiber of the one-sided parameter space for the adjoint group
-  (see the "combinatorics" paper on the Atlas website, or the forthcoming
-  "algorithms" paper by Jeff Adams and Fokko du Cloux); this is a very small
-  computation, depending only on the Lie algebra (|RootSystem| only).
+  The enumeration of weak real forms amounts to that of $W^\delta$-orbits in
+  the fundamental fiber of the one-sided parameter space for the adjoint group
+  (see the "combinatorics" paper on the Atlas website, or the "algorithms"
+  paper by Jeff Adams and Fokko du Cloux); this is a very small computation,
+  depending only on the Lie algebra (|RootSystem| only).
 
   The enumeration of conjugacy classes of Cartan subgroups, for the various
   real forms, is part of the enumeration of conjugacy classes of root data
@@ -979,6 +963,24 @@ TorusPart ComplexReductiveGroup::grading_shift_repr(Grading diff) const
   return fg.fromBasis(v);
 }
 
+TorusPart ComplexReductiveGroup::x0_torus_part(RealFormNbr rf) const
+{
+  Grading mine = x0_grading(rf);
+  Grading base = x0_grading(square_class_repr(xi_square(rf)));
+  return grading_shift_repr(mine^base); // a |TorusPart| for the difference
+}
+
+RatCoweight ComplexReductiveGroup::base_grading_vector(RealFormNbr rf) const
+{
+  const RootDatum& rd = rootDatum();
+  RatWeight result (rd.rank());
+  Grading gr = x0_grading(square_class_repr(xi_square(rf)));
+  gr.complement(semisimpleRank()); // take complement in set of simple roots
+  for (Grading::iterator it=gr.begin(); it(); ++it)
+    result += rd.fundamental_coweight(*it);
+  return result;
+}
+
 unsigned long
 ComplexReductiveGroup::block_size(RealFormNbr rf,
 				  RealFormNbr drf,
@@ -1251,9 +1253,15 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
    )
 {
   const GlobalTitsGroup gTg(G);
-  GlobalTitsElement x(TorusElement(torus_factor,false),tw);
-  const unsigned int r = G.semisimpleRank();
+  Cartan_orbits& i_tab = G.involution_table();
+  const Fiber& fund_f = G.fundamental();
+  const RootDatum& rd = G.rootDatum();
+
+  GlobalTitsElement x //  $\exp(\pi\ii torus_factor)$ gives |TorusElement|,
+    (TorusElement(torus_factor,false),tw);
   assert(gTg.is_valid(x)); // unless this holds, we cannot hope to succeed
+
+  const unsigned int r = G.semisimpleRank();
   { weyl::Generator s;
     while ((s=gTg.weylGroup().leftDescent(x.tw()))<r)
       if (gTg.hasTwistedCommutation(s,x.tw()))
@@ -1265,39 +1273,49 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
     assert (x.tw()==TwistedInvolution()); // and we are at fundamental fiber
   }
 
-  const InvolutionTable& i_tab = G.involution_table();
+  // find the grading of the simple-imaginary roots at |tw|
+  Grading gr;
+  {
+    i_tab.add(G,0); // generated involutions in fundamental Cartan class
+    InvolutionNbr inv = i_tab.nr(x.tw());
+    for (unsigned i=0; i<i_tab.imaginary_rank(inv); ++i)
+      gr.set(i,
+       not x.torus_part().negative_at(rd.root(i_tab.imaginary_basis(inv,i))));
+  }
 
-  KGB_elt_entry::Pooltype elt_pool;
-  HashTable<KGB_elt_entry,unsigned long> elt_hash(elt_pool);
-  { // get all elements at the fundamental fiber
+  // find weak real form, and the (simple) grading of its first KGB element
+  RealFormNbr wrf = fund_f.weakReal().class_of(fund_f.gradingRep(gr));
+  Grading ref_gr = G.x0_grading(wrf);
+
+  { // get distinguished element in the fundamental fiber
+    KGB_elt_entry::Pooltype elt_pool; // we need to generate them all
+    HashTable<KGB_elt_entry,unsigned long> elt_hash(elt_pool);
+    unsigned int min_match = -1;
     elt_hash.match(i_tab.x_pack(x)); // initial element
 
     for (size_t i=0; i<elt_hash.size(); ++i) // |elt_hash| grows during loop
       // generate using cross actions for twist-fixed (imaginary) simple roots
+    {
+      const GlobalTitsElement x = elt_hash[i].repr();
+      bool match_ref_gr=true; // whether |x| defines |ref_gr| on simple roots
       for (weyl::Generator s; s<r; ++s)
-	if (s==gTg.twisted(s))
-	  elt_hash.match(i_tab.x_pack(gTg.cross(s,elt_hash[i].repr())));
+	if (s==gTg.twisted(s)) // do only imaginary cross actions
+	{
+	  elt_hash.match(i_tab.x_pack(gTg.cross(s,x)));
+	  if (x.torus_part().negative_at(rd.simpleRoot(s))==ref_gr[s])
+	    match_ref_gr=false; // equality above means mismatch
+	}
+      if (match_ref_gr and
+	  (min_match==-1u or elt_hash[i].label()<elt_hash[min_match].label()))
+	min_match = i; // first or better element in fiber matching |ref_gr|
+    } // |for(i)|
+
+    assert(min_match!=-1u); // some element must match the grading!
+    strong_form_start = elt_hash[min_match].repr().torus_part();
   }
+  strong_form_start += G.x0_torus_part(wrf); // morally subtraction, but mod 2
 
-  // find a special element (with minimal |identity| value for |operator<|)
-  auto minit = elt_pool.begin();
-  for (auto it = ++elt_pool.begin(); it!=elt_pool.end(); ++it)
-    if (it->label() < minit->label())
-      minit = it;
-
-  strong_form_start = minit->repr().torus_part();
-
-  // find the grading of the simple-imaginary roots at |tw|
-  Grading gr;
-  {
-    InvolutionNbr inv = i_tab.nr(x.tw());
-    for (unsigned i=0; i<i_tab.imaginary_rank(inv); ++i)
-      gr.set(i,not strong_form_start.negative_at(G.rootDatum().root(i)));
-  }
-
-  // look up the grading
-  const Fiber& fund_f = G.fundamental();
-  return fund_f.weakReal().class_of(fund_f.gradingRep(gr)); // found real form
+  return wrf;
 
 } // |strong_real_form_of|
 

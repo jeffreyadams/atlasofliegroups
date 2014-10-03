@@ -739,7 +739,7 @@ RatCoweight KGB::base_grading_vector() const
 
 RatCoweight KGB::torus_part_global(KGBElt x) const
 {
-  RatWeight rw = base_grading_vector();
+  RatCoweight rw = base_grading_vector();
 
   RankFlags tp = torus_part(x).data();
   arithmetic::Numer_t d = rw.denominator();

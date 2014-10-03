@@ -2113,9 +2113,17 @@ explains why the copy constructor is protected rather than private.
 struct real_form_value : public value_base
 { const inner_class_value parent;
   RealReductiveGroup val;
+  const RatCoweight cocharacter;
 @)
   real_form_value(const inner_class_value& p,RealFormNbr f) @/
-  : parent(p), val(p.val,f), rt_p(NULL) @+{}
+  : parent(p), val(p.val,f)
+  , cocharacter(p.val.base_grading_vector(f))
+  , rt_p(NULL) @+{}
+  real_form_value
+    (const inner_class_value& p,RealFormNbr f, const RatCoweight& coch) @/
+  : parent(p), val(p.val,f)
+  , cocharacter(coch)
+  , rt_p(NULL) @+{}
 @)
   virtual void print(std::ostream& out) const;
   real_form_value* clone() const @+
@@ -2128,7 +2136,7 @@ struct real_form_value : public value_base
   ~real_form_value() @+{@; delete rt_p; }
 protected:
   real_form_value(const real_form_value& v)
-  : parent(v.parent), val(v.val), rt_p(v.rt_p) @+{}
+  : parent(v.parent), val(v.val), cocharacter(v.cocharacter), rt_p(v.rt_p) @+{}
 private:
   Rep_table* rt_p;
     // owned pointer, initially |NULL|, assigned at most once
@@ -2258,12 +2266,9 @@ imaginary-$\rho$ value (dependent on the involution) should be added to it.
 
 @< Local function def...@>=
 void base_grading_vector_wrapper(expression_base::level l)
-{ own_real_form rf= non_const_get<real_form_value>();
+{ shared_real_form rf= get<real_form_value>();
   if (l!=expression_base::no_value)
-  { const KGB& kgb=rf->kgb();
-    RatCoweight t = kgb.base_grading_vector();
-    push_value(std::make_shared<rational_vector_value>(t));
-  }
+    push_value(std::make_shared<rational_vector_value>(rf->cocharacter));
 }
 
 @ There is a partial ordering on the Cartan classes defined for a real form. A
@@ -2312,7 +2317,8 @@ void real_form_equals_wrapper(expression_base::level l)
   shared_real_form x = get<real_form_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<bool_value>(x->val==y->val));
+  push_value(std::make_shared<bool_value>(
+    x->val==y->val and x->cocharacter==y->cocharacter));
 }
 
 @*2 Dual real forms.
@@ -2488,13 +2494,13 @@ void most_split_Cartan_wrapper(expression_base::level l)
 
 @ It is useful to be able to compute a real form or Cartan class based on
 other information than their enumeration within an inner class. The \.{realex}
-function |Cartan_class_real_form| takes an inner class, a matrix giving an
+function |synthetic_real_form| takes an inner class, a matrix giving an
 involution, and a rational co-weight describing the grading of the imaginary
 roots, or more precisely the offset with respect to the grading that makes all
 simple-imaginary roots non-compact; it returns a pair consisting of the Cartan
 class for the involution and the real form associated there to the grading.
 
-@:Cartan_class_real_form@>
+@:synthetic_real_form@>
 
 @< Local function def...@>=
 TwistedInvolution twisted_from_involution
@@ -2517,27 +2523,25 @@ TwistedInvolution twisted_from_involution
   return G.weylGroup().element(ww);
 }
 
-void Cartan_class_real_form_wrapper(expression_base::level l)
+void synthetic_real_form_wrapper(expression_base::level l)
 { shared_rational_vector grading_shift = get<rational_vector_value>();
   shared_matrix theta = get<matrix_value>();
   shared_inner_class G = get<inner_class_value>();
   { Coweight num(grading_shift->val.numerator().begin(),
                  grading_shift->val.numerator().end());
     if (theta->val.right_prod(num)!=num)
-      throw std::runtime_error ("Grading coweight not fixed by involution");
-@.Grading coweight not fixed@>
+      throw std::runtime_error ("Torus factor not fixed by involution");
+@.Torus factors not fixed...@>
   }
 
   TwistedInvolution tw = twisted_from_involution(G->val,theta->val);
 
-  CartanNbr cn; WeylWord ww; cartanclass::AdjointFiberElt rep;
-  RealFormNbr rf = real_form_of(G->val,tw,grading_shift->val,cn,ww,rep);
-  if (l==expression_base::no_value)
-     return;
-  push_value(std::make_shared<Cartan_class_value>(*G,cn));
-  push_value(std::make_shared<real_form_value>(*G,rf));
-  if (l==expression_base::single_value)
-    wrap_tuple<2>();
+  TorusElement cocharacter(0); // dummy value to be replaced
+  RealFormNbr rf =
+    strong_real_form_of(G->val,tw,grading_shift->val,cocharacter);
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<real_form_value>
+      (*G,rf,cocharacter.log_pi(false)));
 }
 
 
@@ -2813,8 +2817,8 @@ install_function(rf_Cartan_class_wrapper,@|"Cartan_class"
 		,"(RealForm,int->CartanClass)");
 install_function(most_split_Cartan_wrapper,@|"most_split_Cartan"
 		,"(RealForm->CartanClass)");
-install_function(Cartan_class_real_form_wrapper,@|"Cartan_class_real_form"
-		,"(InnerClass,mat,ratvec->CartanClass,RealForm)");
+install_function(synthetic_real_form_wrapper,@|"real_form"
+		,"(InnerClass,mat,ratvec->RealForm)");
 install_function(Cartan_involution_wrapper,@|"involution","(CartanClass->mat)");
 install_function(Cartan_info_wrapper,@|"Cartan_info"
 		,"(CartanClass->(int,int,int),"
@@ -3029,10 +3033,14 @@ void root_status_wrapper(expression_base::level l)
   push_value(std::make_shared<int_value> (stat));
 }
 
-@ In order to ``synthesise'' a KGB element, one may specify a real form and a
-rational vector that defines a grading of the corresponding imaginary roots,
-in the same manner as for |Cartan_class_real_form| in section
-@#Cartan_class_real_form@> above.
+@ In order to ``synthesise'' a KGB element, one may specify a real form, an
+involution, and a rational weight that should be the |torus_factor| value.
+The latter defines a grading of the corresponding imaginary roots, in the same
+manner as for |synthetic_real_form| in section @#synthetic_real_form@> above,
+but in fact it ever completely describes the KGB element. In order for this to
+be possible, the |torus_factor| must be compatible with the |cocharacter|
+stored in the real form, but which should always be right if the real form was
+itself synthesised from the |torus_factor| value.
 
 @< Local function def...@>=
 void build_KGB_element_wrapper(expression_base::level l)
@@ -3043,15 +3051,17 @@ void build_KGB_element_wrapper(expression_base::level l)
   { Coweight num(grading_shift->val.numerator().begin(),
                  grading_shift->val.numerator().end());
     if (theta->val.right_prod(num)!=num)
-      throw std::runtime_error ("Grading coweight not fixed by involution");
-@.Grading coweight not fixed@>
+      throw std::runtime_error ("Torus factor not fixed by involution");
+@.Torus factor not fixed@>
   }
-  RatCoweight tv = grading_shift->val - rf->kgb().base_grading_vector();
+  RatCoweight tv = grading_shift->val - rf->cocharacter;
   if (tv.normalize().denominator()!=1)
-    throw std::runtime_error("Grading coweight not appropriate for real form");
+    throw std::runtime_error
+      ("Torus factor not in cocharacter coset of real form");
+@.Torus factor not in cocharacter...@>
 
   const ComplexReductiveGroup& G = rf->parent.val;
-  TorusPart t(tv.numerator());
+  TorusPart t(tv.numerator()); // reduce modulo $2$
   TwistedInvolution tw = twisted_from_involution(G,theta->val);
   TitsElt a (G.titsGroup(),t,tw);
 
@@ -3107,8 +3117,13 @@ void torus_factor_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   if (l!=expression_base::no_value)
   { const KGB& kgb=x->rf->kgb();
-    RatCoweight t = kgb.torus_part_global(x->val);
-    push_value(std::make_shared<rational_vector_value>(t));
+    TorusElement t = y_values::exp_pi(x->rf->cocharacter);
+    t += kgb.torus_part(x->val);
+    RatCoweight tf(t.log_pi(false)); // still needs to be made $\theta$-fixed
+    Ratvec_Numer_t num =
+      tf.numerator()+kgb.involution_matrix(x->val)*tf.numerator();
+    tf = RatCoweight(num,2*tf.denominator());
+    push_value(std::make_shared<rational_vector_value>(tf.normalize()));
   }
 }
 
@@ -3118,8 +3133,7 @@ pointers |x->rf| and |y->rf| to the |real_form_value| objects for equality,
 but to test their |val| fields (of type |RealReductiveGroup|) using the
 equality operator defined above, which test the |ComplexReductiveGroup|
 objects for identity, and real form numbers for equality. This distinction is
-important to make synthesised real forms (|Cartan_class_real_form|) first
-class citizens.
+important to make synthesised real forms first class citizens.
 
 @< Local function def...@>=
 void KGB_equals_wrapper(expression_base::level l)
@@ -3127,7 +3141,9 @@ void KGB_equals_wrapper(expression_base::level l)
   shared_KGB_elt x = get<KGB_elt_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<bool_value>(x->rf->val==y->rf->val and x->val==y->val));
+  push_value(std::make_shared<bool_value>(
+   @| x->rf->val==y->rf->val and x->rf->cocharacter==y->rf->cocharacter
+      and x->val==y->val));
 }
 
 @ Finally we install everything related to $K\backslash G/B$ elements.

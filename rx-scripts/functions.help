@@ -383,18 +383,18 @@ most_split_Cartan: (RealForm->CartanClass): most split Cartan class for form
   of its Cartan classes, so
     set most_split_Cartan(RealForm rf)=Cartan_class(rf,count_Cartans(rf)-1)
 
-Cartan_class_real_form: (InnerClass,mat,ratvec->CartanClass,RealForm):
-  Find Cartan class and real form defined by an involution and grading of
-  imaginary roots (as given by a rational coweight). With arguments (ic,M,v),
-  the matrix M should define an involution in the inner class, conjugate
-  under the Weyl group to the involution of one of its Cartan classes, which
-  is returned as first component by this function. The rational vector v,
-  which should satisfy v*M=v, defines a grading of imaginary roots \alpha for
-  M by the parity of < v+\check\rho_i , \alpha > where \check\rho_i is half
-  the sum of the positive imaginary coroots for M (its presence ensures that
-  v=0 is a valid, and grades all simple-imaginary roots as noncompact). This
-  grading selects a real form over which this Cartan is defined, which real
-  form is the second component of the result.
+real_form: (InnerClass,mat,ratvec->RealForm): real form from strong real form
+  Find real form defined by an involution and a torus factor. With arguments
+  (ic,M,v), the matrix M should define an involution in the inner class. The
+  rational vector v, which should satisfy v*M=v, defines a grading of
+  imaginary roots \alpha for M by the parity of < v+\check\rho_i , \alpha >
+  where \check\rho_i is half the sum of the positive imaginary coroots for M
+  (its presence ensures that v=0 is a valid, and grades all simple-imaginary
+  roots as noncompact). This grading selects a real form, which real form is
+  returned. This synthesized real form rf may be different from any one that
+  can be directly selected from the inner class, as can be seen from the
+  equality test and the base_grading_vector of the real form. This difference
+  is such that KGB_elt(rf,theta,v) will produce a valid KGB element.
 
 involution: (CartanClass->mat): weight lattice involution for Cartan class
 Cartan_info: (CartanClass->(int,int,int),vec,(int,int),(LieType,LieType,LieType)):

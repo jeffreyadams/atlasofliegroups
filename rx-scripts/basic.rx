@@ -358,9 +358,6 @@ set most_split_Cartan (InnerClass ic) = CartanClass:
   Cartan_class(ic,nr_of_Cartan_classes(ic)-1)
 { also most_split_Cartan@RealForm is built-in, but is not that of inner class }
 
-set Cartan_class (InnerClass ic, mat theta) = CartanClass:
-  let (cc,) = Cartan_class_real_form(ic,theta,ratvec:null(rank(ic))) in cc
-
 set split_rank (CartanClass cc) = int:
   let ((,C,s),,,) = Cartan_info(cc) in C+s
 set compact_rank (CartanClass cc) = int:
@@ -370,9 +367,6 @@ set compact_rank (CartanClass cc) = int:
 {				Real forms				}
 
 set != (RealForm f, RealForm g) = bool: not(f=g)
-
-set real_form ((InnerClass,mat,ratvec) all) = RealForm:
-  let (,rf) = Cartan_class_real_form(all) in rf
 
 set form_name (RealForm f) = string: form_names(f)[form_number(f)]
 
@@ -404,14 +398,17 @@ set # (KGBElt x) = let (,n) = %x in n
 set KGB (RealForm rf) = [KGBElt]: for i:KGB_size(rf) do KGB(rf,i) od
 
 set KGB_elt ((InnerClass, mat, ratvec) (,theta,v):all) = KGBElt:
-  let (,rf) = Cartan_class_real_form(all) { find real form within ic }
-  in KGB_elt(rf,theta,v)                  { find KGB element within rf }
+  let rf = real_form(all)   { find real form within ic }
+  in KGB_elt(rf,theta,v)    { find KGB element within rf }
 
 { NB: elements produced by the following function test unequal to any others }
 set KGB_elt (RootDatum rd, mat theta, ratvec v) = KGBElt:
-  let ic = inner_class(rd,theta)               { find the proper inner class }
-  then (,rf) = Cartan_class_real_form(ic,theta,v) { find real form within ic }
-  in KGB_elt(rf,theta,v)                        { find KGB element within rf }
+  let ic = inner_class(rd,theta)   { find the proper inner class }
+  then rf = real_form(ic,theta,v)  { find real form within ic }
+  in KGB_elt(rf,theta,v)           { find KGB element within rf }
+
+set Cartan_class (InnerClass ic, mat theta) = CartanClass:
+  Cartan_class(KGB_elt(ic,theta,ratvec:null(rank(ic))))
 
 set KGB_status_text (int i) = string: ["C-","ic","r ","nc","C+"][i]
 
