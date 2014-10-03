@@ -61,9 +61,7 @@ namespace complexredgp {
 
 namespace complexredgp {
 
-  /*!
-  \brief Complex reductive group endowed with an inner class of real
-  forms.
+/*   Complex reductive group endowed with an inner class of real forms.
 
   This class computes those aspects of the structure theory of (an inner class
   of) real reductive groups G(R) that will be needed to describe the Langlands
@@ -151,68 +149,53 @@ class ComplexReductiveGroup
   // The dual based root datum. It is also stored and constructed by us
   const RootDatum d_dualRootDatum;
 
-  /*!
-  \brief Fiber class for the fundamental Cartan subgroup.
-
-  The involution is delta, which is stored here. It permutes the simple roots.
-  */
-  Fiber d_fundamental;
-
-  /*!
-  \brief Fiber class for the fundamental Cartan in the dual group.
-
-  The fiber group here is the group of characters (i.e., the dual group)
-  of the component group of the quasisplit Cartan.
-  */
-  Fiber d_dualFundamental;
-
   const WeylGroup* my_W; // pointer to |W| in case we own |W|, or |NULL|
   const WeylGroup& W;    // possibly owned (via |my_W|) reference
 
-  /*!
-  \brief The Tits group of the based root datum, extended by an
-  involutive automorphism.
+  /*
+    Fiber class for the fundamental Cartan subgroup
+    The distinguished involution (permuting the simple roots) is stored here
+    so for construction it is convient to precede the |d_titsGroup| member
   */
+  Fiber d_fundamental;
+
+  /*
+    Fiber class for the fundamental Cartan in the dual group.
+    The fiber group here is the group of characters (i.e., the dual group)
+    of the component group of the quasisplit Cartan.
+  */
+  Fiber d_dualFundamental;
+
+  // Tits group of the based root datum, extended by an involutive automorphism
+  // this member also stores the |TwistedWeylGroup| (which refers to |W|)
   const TitsGroup d_titsGroup;
-
-  /*!
-  \brief The Tits group of the dual based root datum, extended by an
-  involutive automorphism.
-  */
+  // Tits group of the dual based root datum
   const TitsGroup d_dualTitsGroup;
-
-  //!\brief the permutation of the roots given by the based automorphism
+  // the permutation of the roots given by the based automorphism
   const Permutation root_twist;
 
-  // gradings of the set of all simple roots, for all real forms
-  typedef std::vector<RankFlags> form_reps;
 
   struct C_info
-  { TwistedInvolution tw;
+  { // gradings of the set of simple (co)roots, for all real forms
+    typedef std::vector<RankFlags> form_reps;
+
+    TwistedInvolution tw;
     BitMap real_forms,dual_real_forms; // mark present (dual) real forms
     form_reps rep,dual_rep; // gradings representing those (dual) real forms
     BitMap below; // numbers of Cartan classes below this in partial ordering
-    CartanClass* class_pt; //!< owned (by parent) pointer, might be NULL
-    // remaining fields are set only once |class_pt| has been made non-NULL
+    CartanClass Cc; // detailed information, basically |Fiber| and dual |Fiber|
     RealFormNbrList real_labels,dual_real_labels;
 
     C_info(const ComplexReductiveGroup& G, const TwistedInvolution twi,
 	   CartanNbr i); // index |i| of this Cartan used to dimension |below|
 
-  };
-
+  }; // |C_info|
   std::vector<C_info> Cartan;
 
-  /*!
-  \brief Partial order of Cartan subgroups.
-
-  This is the ordering by containment of H^theta up to conjugacy: (H,theta_1)
-  precedes (H,theta_2) if (H^theta_2)_0 is W-conjugate to a subtorus of
-  H^theta_1. Numbering of elements is as in the vector |Cartan|
-  */
+  // Partial order of Cartan subgroups.
   poset::Poset Cartan_poset;
 
-  //! Entry \#rf is the number of the most split Cartan for real form \#rf.
+  // list of the most split Cartan classes for each real form
   std::vector<CartanNbr> d_mostSplit;
 
   Cartan_orbits C_orb;
@@ -234,335 +217,230 @@ class ComplexReductiveGroup
 
   ~ComplexReductiveGroup();
 
-// accessors
+// Accessors
 
+// Attributes "inherited" from component objects
 
   const RootDatum& rootDatum() const { return d_rootDatum; }
   const RootDatum& dualRootDatum() const { return d_dualRootDatum; }
   const RootSystem& rootSystem() const {return d_rootDatum; } // base object
   const RootSystem& dualRootSystem() const {return d_dualRootDatum; } // base
-
-  const Cartan_orbits& involution_table () const { return C_orb; }
-
-
-/*!
-  \brief returns the rank of the group.
-*/
   size_t rank() const { return rootDatum().rank(); }
-
-//!\brief returns the semisimple rank of the group.
   size_t semisimpleRank() const { return rootSystem().rank(); }
+
+// Access to certain component objects themselves
 
   const WeylGroup& weylGroup() const { return W; }
   const TwistedWeylGroup& twistedWeylGroup() const
     { return d_titsGroup; } // in fact its base object
   const TwistedWeylGroup& dualTwistedWeylGroup() const
     { return d_dualTitsGroup; } // in fact its base object
+  const TitsGroup& titsGroup() const { return d_titsGroup; }
+  const TitsGroup& dualTitsGroup() const { return d_dualTitsGroup; }
+
+  // a general repository for conjugates of distinguished involution
+  const Cartan_orbits& involution_table () const { return C_orb; }
+
+  //  the fundamental fiber.
+  const Fiber& fundamental() const { return d_fundamental; }
+  //  the fundamental fiber for the dual group
+  const Fiber& dualFundamental() const { return d_dualFundamental; }
+
+
+// Attributes of the inner class as a whole
 
   Permutation simple_twist() const
     { return Permutation
 	(&twistedWeylGroup().twist()[0],
 	 &twistedWeylGroup().twist()[semisimpleRank()]); }
 
-  //!\brief returns a reference to the Tits group.
-  const TitsGroup& titsGroup() const { return d_titsGroup; }
+  const Permutation& root_involution() const { return root_twist; }
+  RootNbr twisted_root(RootNbr alpha) const { return root_twist[alpha]; }
 
-  //!\brief returns a reference to the dual Tits group.
-  const TitsGroup& dualTitsGroup() const { return d_dualTitsGroup; }
+  /* partial ordering of Cartan classes
+     This is the ordering by containment of H^theta up to conjugacy:
+     (H,theta_1) precedes (H,theta_2) if (H^theta_2)_0 is W-conjugate to a
+     subtorus of H^theta_1. Numbering of elements is as in the vector |Cartan|
+  */
+  const poset::Poset& Cartan_ordering() const { return Cartan_poset; }
 
-/*!
-  \brief Recover the matrix of the involution for the fundamental Cartan.
-
-  This is the one permuting the simple roots, the distinguished one among the
-  involutions in this inner class of G.
-*/
+  // the distinguished involution for G and for its dual group
   const WeightInvolution& distinguished() const
     { return fundamental().involution(); }
-
-/*!\brief
-  Matrix of involution for the fundamental Cartan in the dual group.
-
-  This is -w_0 times the transpose of the fundamental involution.
-*/
   const CoweightInvolution& dualDistinguished() const
     { return dualFundamental().involution(); }
 
-
-//!\brief returns the set of Cartan classes for the real form |rf|
-  BitMap Cartan_set(RealFormNbr rf) const;
-
-//!\brief returns the set of Cartan classes for the dual real form |drf|
-  BitMap dual_Cartan_set(RealFormNbr drf) const;
-
-
-//!\brief Returns the partial ordering of Cartan classes
-  const poset::Poset& Cartan_ordering() const { return Cartan_poset; }
-
-//!\brief matrix giving involution action of |tw| on weight lattice
-  WeightInvolution involutionMatrix(const TwistedInvolution& tw) const;
-
-  InvolutionData involution_data(const TwistedInvolution& tw) const
-  { return InvolutionData::build(rootSystem(),twistedWeylGroup(),tw); }
-
-/*!
-  \brief returns the fundamental fiber.
-
-  This is a technical data structure containing the data for the classification
-  of weak and strong real forms of G.
-*/
-  const Fiber& fundamental() const { return d_fundamental; }
-
-/*!
-  \brief returns the dual fundamental fiber.
-
-  This is a technical data structure containing the data for the classification
-  of weak and strong dual real forms of G.
-*/
-  const Fiber& dualFundamental() const { return d_dualFundamental; }
-
-//! \brief returns the number of conjugacy classes of Cartan subgroups.
+  // number of conjugacy classes of Cartan subgroups.
   CartanNbr numCartanClasses() const { return Cartan.size(); }
-
-
-//!\brief Returns the number of weak real forms of G.
+  // number of weak real forms of G.
   RealFormNbr numRealForms() const { return fundamental().numRealForms(); }
-
-//!\brief Returns the number of weak real forms of the dual group of G.
+  // number of weak real forms of the dual group of G.
   RealFormNbr numDualRealForms() const
   { return dualFundamental().numRealForms(); }
+  // total number of involutions for the inner class.
+  InvolutionNbr numInvolutions() const;
 
-/*!\brief
-  Returns the number of weak real forms of G for which Cartan \#cn is defined.
-*/
+  // size of a union of sets $K\backslash G/B$ for relevant strong real forms
+  unsigned long global_KGB_size() const;
+
+  // the (inner) number of the quasisplit real form.
+  RealFormNbr quasisplit() const { return RealFormNbr(0); }
+
+
+// Information about individual Cartan classes
+
+  // number of weak real forms of G over which this Cartan is defined.
   RealFormNbr numRealForms(CartanNbr cn) const
   { return Cartan[cn].real_forms.size(); }
-
-/*!\brief
-  Returns the number of weak real forms of the dual group for which the dual
-  of Cartan \#cn is defined.
-*/
+  // number of dual real forms over which the dual of this Cartan is defined
   RealFormNbr numDualRealForms(CartanNbr cn) const
   { return Cartan[cn].dual_real_forms.size(); }
 
+  // the precise sets over which (the dual of) this Cartan is defined
   const BitMap& real_forms(CartanNbr cn) const
   { return Cartan[cn].real_forms; }
   const BitMap& dual_real_forms(CartanNbr cn) const
   { return Cartan[cn].dual_real_forms; }
 
-//!\brief Returns the (inner) number of the quasisplit real form.
-  RealFormNbr quasisplit() const { return RealFormNbr(0); }
+  // a twisted involution representative of this Cartan class
+  const TwistedInvolution& involution_of_Cartan(CartanNbr cn) const
+    { return Cartan[cn].tw; }
 
-/*!
-  \brief Entry \#|rf| gives the most split Cartan for real form \#|rf|.
-*/
-  CartanNbr mostSplit(RealFormNbr rf) const
-    { return d_mostSplit[rf]; }
+  // remaining information is stored in |CartanClass| object
+  const CartanClass& cartan(CartanNbr cn) const { return Cartan[cn].Cc; }
 
-  const Permutation& root_involution() const { return root_twist; }
 
-  RootNbr twisted_root(RootNbr alpha) const
-    { return root_twist[alpha]; }
+// Information selected by subset of the Cartan classes
 
-/*! \brief Make |sigma| canonical and return Weyl group |w| element that
-    twisted conjugates the canonical representative back to |sigma|. Thus
-    after the call the involution corresponding to |sigma| satisfies:
+  // number of involutions for the indicated Cartans
+  InvolutionNbr numInvolutions(const BitMap& Cartan_classes) const;
+
+
+// Information about individual (weak) real forms or dual real forms
+
+  // the subset of Cartan classes defined over the real form |rf|
+  BitMap Cartan_set(RealFormNbr rf) const;
+
+  // the set of Cartan classes for the dual real form |drf|
+  BitMap dual_Cartan_set(RealFormNbr drf) const;
+
+  // the most split Cartan for this real form
+  CartanNbr mostSplit(RealFormNbr rf) const { return d_mostSplit[rf]; }
+
+  /* a set of noncompact imaginary roots at the distinguished involution
+     for a representative of this real form */
+  RootNbrSet noncompactRoots(RealFormNbr rf) const
+  { return fundamental().noncompactRoots(fundamental().wrf_rep(rf)); }
+
+  // the number of elements in K\\G/B for real form |rf|.
+  unsigned long KGB_size(RealFormNbr rf) const
+  { return KGB_size(rf,Cartan_set(rf)); }
+  // the same limited to indicated Cartan classes only
+  unsigned long KGB_size(RealFormNbr rf, const BitMap& Cartan_classes) const;
+
+  // grading of (imaginary) simple roots at first element of KGB for |rf|
+  Grading x0_grading(RealFormNbr rf) const;
+
+  cartanclass::square_class xi_square(RealFormNbr rf) const;
+  RealFormNbr square_class_repr(cartanclass::square_class csc) const;
+
+  TorusPart grading_shift_repr(Grading diff) const;
+
+// Information about a real form or dual real form at a given Cartan class
+
+  // size of the block defined by weak real form |rf| and dual real form| drf|
+  unsigned long block_size(RealFormNbr rf, RealFormNbr drf) const
+    { return block_size(rf,drf,Cartan_set(rf)& dual_Cartan_set(drf)); }
+  // the same limited to indicated Cartan classes only
+  unsigned long block_size(RealFormNbr rf, RealFormNbr drf,
+			   const BitMap& Cartan_classes) const;
+
+  // size of fibers in KGB set for |rf| over any involution in Cartan class |cn|
+  unsigned long fiberSize(RealFormNbr rf, CartanNbr cn) const;
+  unsigned long dualFiberSize(RealFormNbr drf, CartanNbr cn) const;
+
+  // real forms, vector indexed by parts in |cartan(n).fiber().weakReal()|
+  const RealFormNbrList& realFormLabels(CartanNbr cn) const
+  { return Cartan[cn].real_labels; }
+  // dual real forms, indexed by parts in |cartan(n).dual_fiber().weakReal()|
+  const RealFormNbrList& dualRealFormLabels(CartanNbr cn) const
+  { return Cartan[cn].dual_real_labels; }
+
+  // part in the |weakReal| partition at Cartan |cn| corresponding to |rf|
+  cartanclass::adjoint_fiber_orbit
+    real_form_part(RealFormNbr rf, CartanNbr cn) const
+  { return permutations::find_index(realFormLabels(cn),rf); }
+  cartanclass::adjoint_fiber_orbit
+    dual_real_form_part(RealFormNbr drf, CartanNbr cn) const
+  { return permutations::find_index(dualRealFormLabels(cn),drf); }
+
+  // adjoint fiber element in fiber of Cartan |cn|, representative of |rf|
+  cartanclass::AdjointFiberElt
+    representative(RealFormNbr rf, CartanNbr cn) const
+  { return cartan(cn).fiber().wrf_rep(real_form_part(rf,cn)); }
+  // adjoint fiber element in dual fiber of Cartan |cn|, representative of |drf|
+  cartanclass::AdjointFiberElt
+    dualRepresentative(RealFormNbr drf, CartanNbr cn) const
+  { return cartan(cn).dualFiber().wrf_rep(dual_real_form_part(drf,cn)); }
+
+
+// Information about individual twisted involutions
+
+  CartanNbr class_number(TwistedInvolution) const; // by value
+  Weight posRealRootSum(const TwistedInvolution&) const; // 2rho_{re}
+  Weight posImaginaryRootSum(const TwistedInvolution&) const; // 2rho_{im}
+
+  // matrix giving involution action of |tw| on weight lattice
+  WeightInvolution involutionMatrix(const TwistedInvolution& tw) const;
+
+  InvolutionData involution_data(const TwistedInvolution& tw) const
+  { return InvolutionData::build(rootSystem(),twistedWeylGroup(),tw); }
+
+  // apply involution action of |tw| on weight lattice to |v|
+  void twisted_act (const TwistedInvolution& tw,Weight& v) const;
+
+/* Make |sigma| canonical and return Weyl group |w| element that twisted
+   conjugates the canonical representative back to |sigma|. Thus after the
+   call the involution corresponding to |sigma| satisfies:
 
   (1) the sum of the positive real roots is dominant (call it $SR$)
   (2) in the subsystem of roots orthogonal to $SR$ (which contains all the
       imaginary roots), the sum of the imaginary roots (call it $SI$) is
-      dominant for the subsystem
+      dominant \emph{for the subsystem}
   (3) in the subsystem of roots orthogonal to both $SR$ and $SI$, the
       involution corresponding to twisted involution fixes (globally) the
       dominant chamber of the subsystem (it permutes its simple roots).
 */
   WeylWord canonicalize(TwistedInvolution& sigma, RankFlags gens) const;
-
-  inline
   WeylWord canonicalize(TwistedInvolution& sigma) const
-    { return canonicalize
-	(sigma,RankFlags(constants::lMask[semisimpleRank()]));
-    }
+  { return canonicalize(sigma,RankFlags(constants::lMask[semisimpleRank()])); }
 
 
-/*!\brief
-  (Representative) twisted involutions for each class of Cartan subgroup.
-*/
-  const TwistedInvolution& involution_of_Cartan(CartanNbr cn) const
-    { return Cartan[cn].tw; }
-  TwistedInvolution dual_involution_of_Cartan(CartanNbr cn) const
-    { return W.opposite(Cartan[cn].tw); }
+// Manipulators
 
-  CartanNbr class_number(TwistedInvolution) const;
+  Cartan_orbits& involution_table () { return C_orb; }
 
-/*!\brief
-  Returns the set of noncompact imaginary roots at the distinguished involution
-  for (the representative in the adjoint fiber of) the real form \#rf.
-*/
-  RootNbrSet noncompactRoots(RealFormNbr rf) const
-  {
-    return
-      fundamental().noncompactRoots(fundamental().weakReal().classRep(rf));
-  }
+// Auxiliary accessors
+ private:
 
-  Weight
-    posRealRootSum(const TwistedInvolution&) const;
+  void construct(); // does essential work, common to two constructors
 
-  Weight
-    posImaginaryRootSum(const TwistedInvolution&) const;
+  TwistedInvolution reflection(RootNbr rn,const TwistedInvolution& tw) const;
 
-//!\brief apply involution action of |tw| on weight lattice to |v|
-  void twisted_act
-    (const TwistedInvolution& tw,Weight& v) const;
+  // whether Cartan \#cn is defined over real form \#rf.
+  bool is_defined(RealFormNbr rf, CartanNbr cn) const
+  { return Cartan[cn].real_forms.isMember(rf); }
 
   // adjoint torus parts, in fundamental coweight basis, \emph{are} gradings
   TorusPart sample_torus_part(CartanNbr cn, RealFormNbr rf) const
   { return TorusPart(Cartan[cn].rep[rf],semisimpleRank()); }
-  TorusPart dual_sample_torus_part(CartanNbr cn, RealFormNbr drf)
-    const
+  TorusPart dual_sample_torus_part(CartanNbr cn, RealFormNbr drf) const
   { return TorusPart(Cartan[cn].dual_rep[drf],semisimpleRank()); }
 
+// Auxiliary manipulators
 
-// manipulators
-
-  Cartan_orbits& involution_table () { return C_orb; }
-
-/* The main manipulator is |cartan|, which ensures the |CartanClass| is
-   generated; most other manipulators are so because they call |cartan|
- */
-
-//!\brief Returns data for stable conjugacy class \#cn of Cartan subgroups.
-  const CartanClass& cartan(CartanNbr cn)
-  { if (Cartan[cn].class_pt==NULL)
-      add_Cartan(cn);
-    return *Cartan[cn].class_pt;
-  }
-
-/*!\brief
-  An element of the orbit in the adjoint fiber corresponding to |rf|
-  in the classification of weak real forms for cartan |\#cn|.
-  This amounts to searching for |rf| in |Cartan[cn].real_labels|.
-*/
-  cartanclass::AdjointFiberElt representative(RealFormNbr rf, CartanNbr cn)
-    { return cartan(cn).fiber().weakReal().classRep(real_form_part(rf,cn)); }
-
-/*!\brief
-  An element of the orbit in the adjoint dual fiber corresponding to |drf|
-  in the classification of dual weak real forms for cartan |\#cn|.
-  This amounts to searching for |drf| in |Cartan[cn].dual_real_labels|.
-*/
-  cartanclass::AdjointFiberElt dualRepresentative(RealFormNbr drf, CartanNbr cn)
-    { return cartan(cn).dualFiber().
-	weakReal().classRep(dual_real_form_part(drf,cn));
-    }
-
-/*!\brief
-  The size of the fiber orbits corresponding to strong real forms lying
-  over weak real form \#rf, in cartan \#cn (all orbits have the same size)
-
-  Explanation: this is the size of the orbits, for the shifted action of
-  the imaginary Weyl group, that correspond to rf in the classification of
-  strong real forms (they all have the same size.)
-
-  Precondition: Real form \#rf is defined for cartan \#cn
-*/
-  unsigned long fiberSize(RealFormNbr rf, CartanNbr cn);
-
-  unsigned long dualFiberSize(RealFormNbr, CartanNbr cn);
-
-/*!
-  \brief returns the number of involutions for the inner class.
-*/
-  InvolutionNbr numInvolutions();
-
-/*!
-  \brief returns the number of involutions for the indicated Cartans.
-*/
-  InvolutionNbr numInvolutions(const BitMap& Cartan_classes);
-
-  RootNbrSet noncompactPosRootSet(RealFormNbr, size_t);
-
-/*!
-  \brief returns the number of elements in K\\G/B for real form \#rf.
-
-  Explanation: this is exactly the number of elements in the one-sided
-  parameter set corresponding to any strong real form of G lying over rf.
-*/
-  unsigned long KGB_size(RealFormNbr rf,
-			 const BitMap& Cartan_classes);
-
-  unsigned long KGB_size(RealFormNbr rf)
-    { return KGB_size(rf,Cartan_set(rf)); }
-
-/*!
-  \brief returns the cardinality of the union of sets $K\backslash G/B$
-  for this inner class.
-*/
-  unsigned long global_KGB_size();
-/*!
-  \brief the size of the block defined by the weak real form rf
-  and the weak dual real form drf.
-*/
-  unsigned long block_size(RealFormNbr, RealFormNbr,
-			   const BitMap& Cartan_classes);
-
-  unsigned long block_size(RealFormNbr rf, RealFormNbr drf)
-    { return block_size(rf,drf,Cartan_set(rf)& dual_Cartan_set(drf)); }
-
-/*!
-  \brief returns the real form labels for cartan \#cn
-
-  More precisely, realFormLabels(cn)[i] is the (inner) number of the real form
-  that corresponds to part i of the partition cartan(n).fiber().weakReal()
-*/
-  const RealFormNbrList& realFormLabels(CartanNbr cn)
-  {
-    cartan(cn); // make sure that labels for Cartan |cn| are generated
-    return Cartan[cn].real_labels;
-  }
-
-/*!
-  \brief returns the dual real form labels for cartan \#cn
-*/
-  const RealFormNbrList& dualRealFormLabels(CartanNbr cn)
-  {
-    cartan(cn);// make sure that dual labels for Cartan |cn| are generated
-    return Cartan[cn].dual_real_labels;
-  }
-
-/*! get part in the |weakReal| partition of the fiber in Cartan \#cn
-    corresponding to real form |rf|
- */
-  cartanclass::adjoint_fiber_orbit real_form_part(RealFormNbr rf, CartanNbr cn)
-  { return permutations::find_index(realFormLabels(cn),rf); }
-
-/*! get part in the |weakReal| partition of the dual fiber in Cartan \#cn
-    corresponding to dual real form |drf|
- */
-  cartanclass::adjoint_fiber_orbit
-    dual_real_form_part(RealFormNbr drf, CartanNbr cn)
-  { return permutations::find_index(dualRealFormLabels(cn),drf); }
-
-
- private:
-// auxiliary accessors
-  void construct(); // does essential work, common to two constructors
-
-TwistedInvolution
-  reflection(RootNbr rn,const TwistedInvolution& tw) const;
-
-//!\brief Tells whether Cartan \#cn is defined in real form \#rf.
-bool is_defined(RealFormNbr rf, CartanNbr cn) const
-  { return Cartan[cn].real_forms.isMember(rf); }
-
-// auxiliary manipulators
-
-void add_Cartan(CartanNbr cn);
-
-void map_real_forms(CartanNbr cn);      // set |Cartan[cn].real_labels|
-void map_dual_real_forms(CartanNbr cn); // set |Cartan[cn].dual_real_labels|
-
-void correlateForms(CartanNbr cn);      // the old way to do the same things
-void correlateDualForms(CartanNbr cn);  // now obsolete
+  void map_real_forms(CartanNbr cn);      // set |Cartan[cn].real_labels|
+  void map_dual_real_forms(CartanNbr cn); // set |Cartan[cn].dual_real_labels|
 
 }; // |class ComplexReductiveGroup|
 

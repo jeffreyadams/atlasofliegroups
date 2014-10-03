@@ -108,7 +108,7 @@ return |NULL| to indicate that.
 @< Function definitions @>=
 extern "C"
 char* id_completion_func(const char* text, int state)
-{ static size_t l; static Hash_table::id_type i,n;
+{ static size_t l; static id_type i,n;
   if (state==0)
   { i=0; n=main_hash_table->nr_entries();
     l=std::strlen(text); // fix length for during search
@@ -159,8 +159,8 @@ class Lexical_analyser
 { enum states @+ { initial, normal, ended };
 @)BufferedInput& input;
   Hash_table& id_table;
-  Hash_table::id_type keyword_limit; // first non-keyword identifier
-  Hash_table::id_type type_limit; // first non-type identifier
+  id_type keyword_limit; // first non-keyword identifier
+  id_type type_limit; // first non-type identifier
   int nesting; // number of pending opening symbols
   char prevent_termination; // either |'\0'| or character requiring more input
   int comment_start, comment_end; // characters that start/end a comment
@@ -176,7 +176,7 @@ public:
   const char* scanned_file_name() const {@; return file_name.c_str(); }
 private:
   void skip_space();
-  char* scan_quoted_string();
+  std::string scan_quoted_string();
 };
 
 @ Since there is one lexical analyser object, and other parts of the program
@@ -321,41 +321,37 @@ void Lexical_analyser::skip_space(void)
 
 @ Another auxiliary method is used for scanning a quoted string; it should be
 called when an initial double-quote character has been recognised, and after
-scanning the string returns a pointer to the designated string (with quotes
-and escapes removed), null terminated and allocated by |new[]|. We currently
-use a simple model for strings. They should be contained in a single line, and
-the only escapes used are the doubling of double-quote characters. We copy the
-string while reducing doubled double-quote characters to single ones.
+scanning the string returns it (with quotes and escapes removed) as a
+|std::string| value. We currently use a simple model for strings. They should
+be contained in a single line, and the only escapes used are the doubling of
+double-quote characters. We copy the string while reducing doubled
+double-quote characters to single ones.
 
+@h <string>
 
 @< Definitions of class members @>=
-char* Lexical_analyser::scan_quoted_string()
-{ const char* start=input.point(),*end;
-  int nr_quotes=0; // number of escaped quotes
-  do
-  { char c;
-    do c=input.shift(); while (c!='"' && c!='\n' && c!='\0');
+std::string Lexical_analyser::scan_quoted_string()
+{ const char* start=input.point(); bool broken=false;
+  std::string result; char c;
+  while (true)
+  { for (c=input.shift(); c!='"' and c!='\n' and c!='\0'; c=input.shift())
+      result.push_back(c);
     if (c!='"')
-    { input.unshift(); end=input.point();
-      int l0,c0,l1,c1;
-      input.locate(start,l0,c0); input.locate(end,l1,c1);
-      input.show_range(cerr,l0,c0,l1,c1);
-      cerr << "Closing string denotation.\n";
-      break;
-    }
+      {@; broken=true; break; }
     else if ((c=input.shift())!='"')
-    {@; input.unshift(); end=input.point()-1; break; }
-    else
-      ++nr_quotes; // for doubled quotes, continue
-  } while (true);
-  size_t len=end-start-nr_quotes;
-  char* s=new char[len+1];
-  while (start<end) // copy characters, undoubling doubled quotes
-    if ((*s++=*start++)=='"')
-      ++start;
-  *s='\0'; return s-len;
+      break; // normal ending of string
+    result.push_back(c); // doubled quote; insert one copy and continue
+  }
+  input.unshift();
+  if (broken)
+  { const char* end=input.point();
+    int l0,c0,l1,c1;
+    input.locate(start,l0,c0); input.locate(end,l1,c1);
+    input.show_range(cerr,l0,c0,l1,c1);
+    cerr << "Closing string denotation.\n";
+  }
+  return result;
 }
-
 
 @*1 The main scanning routine.
 %
@@ -453,7 +449,7 @@ although this is probably desirable. However type names
     c=input.shift();
   while(isalpha(c) || isdigit(c) || c=='_');
   input.unshift();
-  Hash_table::id_type id_code=id_table.match(p,input.point()-p);
+  id_type id_code=id_table.match(p,input.point()-p);
   if (id_code>=type_limit)
   {@; valp->id_code=id_code; code=IDENT; }
   else if (id_code>=keyword_limit)
@@ -468,11 +464,12 @@ although this is probably desirable. However type names
       case WHILE:
       case FOR: ++nesting; input.push_prompt('G'); break;
       case IN: if (input.top_prompt()=='L')
-      {@; --nesting; input.pop_prompt(); prevent_termination='I'; }
+      @/{@; --nesting; input.pop_prompt(); prevent_termination='I'; }
       break;
       case END:
       case FI:
       case OD: --nesting; input.pop_prompt(); break;
+      case AND: case OR: case NOT: prevent_termination='~'; break;
       case WHATTYPE: prevent_termination='W'; break;
     }
   }
@@ -614,11 +611,11 @@ string.
 
 @< Read in |file_name| @>=
 if ((skip_space(),c=input.shift())=='"')
-@/{@; char* s=scan_quoted_string(); file_name=s; delete[] s; }
+  file_name=scan_quoted_string();
 else
 @/{@; file_name="";
     while (!std::isspace(c))
-    {@; file_name+=c; c=input.shift(); }
+    {@; file_name.push_back(c); c=input.shift(); }
     input.unshift();
 }
 

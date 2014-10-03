@@ -125,7 +125,7 @@ class InvolutionTable
   std::vector<BinaryMap> torus_simple_reflection;
 
  public:
-  InvolutionTable // contructor; starts without any involutions
+  InvolutionTable // constructor; starts without any involutions
     (const RootDatum& , const WeightInvolution&,  const TwistedWeylGroup&);
 
   //accessors

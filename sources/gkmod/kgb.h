@@ -217,6 +217,7 @@ struct KGB_elt_entry
   KGB_elt_entry (const RatWeight& f,
 		 const GlobalTitsElement& y);
   GlobalTitsElement repr() const;
+  RatWeight label () const { return fingerprint; }
 
 }; //  |struct KGB_elt_entry|
 
@@ -287,7 +288,7 @@ and in addition the Hasse diagram (set of all covering relations).
   BruhatOrder* d_bruhat;
 
   //! \brief Owned pointer to the based Tits group.
-  TitsCoset* d_base; // pointer, because constructed late by |generate|
+  TitsCoset* d_base; // pointer, because constructed late by constructor
 
  public:
 

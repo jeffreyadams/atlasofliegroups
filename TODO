@@ -11,8 +11,6 @@
 
 * Work on the realex program
 
- - Move code for blobal identifier tables from evaluator.w to global.w
-
  - See if syntax can allow (let i=3 in for k:i do print(k) od); without parens
 
  - Allow for declaring an input path, and (silent) default prelude
@@ -33,26 +31,51 @@
 
  - Allow multiple overloaded functions defined in a single 'set' statement
  - Allow recursion through a more intuitive syntax
- - See if functions without argument can still live in overload table
-   Currently they live in the table for ordinary variables, which can produce
-   some subtle asymmetry in their handling (notably their treatment changes
-   when a first overloaded instance is added). It would be preferable to treat
-   them as overloaded functions anyway, but to disable the voiding coercion in
-   argument positions of overloaded functions. Check possible complications.
 
- - See if overloads with empty row argument cannot be via '[*]' type
-   Currently, since any row type could match the argument expression '[]',
-   overloads differing only in the kind of row type are not allowed, lest a
-   potential call with uncast '[]' argument would be ambiguous. One could
-   imagine that such an argument would only match a '[*]' type specification
-   (which would in return only match that) so that multiple row overloads can
-   coexist, and the user still has control of how to handle the '[]' case.
+ - Add possibility to specify types with unknown components like '[*]'
+   This would notably allow define functions overloads with this type to match
+   (only) the argument expression '[]'. Currently this argument will never
+   match in overloading, since overloading does not perform type
+   specialisation (and if it did, '[]' could very well be ambiguous). Simply
+   allowing the user to specify types with unknown components would allow the
+   user to define what to do with argument expressions '[]'.
+
+ - Make balancing a general concept, also applied within row displays.
+
+ - Allow global variables with function value to be called if overload fails
+   Currently a global variable with function value cannot be called directly
+   at all if there are also overloads for it (one needs to say something like
+   'let f=f in f(x,y)' instead). It would be more natural to consider calling
+   the global function anyway if overload fails; the main difficulty seems
+   that this might cause confusing error messages for arguments that were
+   intended for an overloaded instance instead, but somehow fail to match.
+   Since this is rare, maybe instead just consider globals before overloading.
+
+ - Allow compound assignment for components: v[i]+:=1
+   The current simple rewriting scheme would give problems with side effects
+   from the index expression. Nonetheless this is so natural that it is a
+   nuisance to have it forbidden; maybe translate to 'let x=i in v[x]:=v[x]+1'
+
+ - Implement compound assignment directly
+   While 'v #:= x' (with vec v, int x) is easy to write (and common in loop
+   bodies), it is converted to 'v := v#x' which is not efficient: with 'v'
+   still shared when 'v#x' is evaluated, there is no chance of (at least on
+   some occasions) reusing the same memory. This could be possible if built-in
+   compound assignment were handled as a single operation (even though no user
+   defined function could do such a thing). This is most useful for
+   concatenation, but operations such as vector addition could also profit.
+   This point is maybe to be considered together with the previous point.
 
  - Allow loops executed in reverse order
    This generalises downto to for-in loops. Saying 'for e@i reverse in array
    do f(e,i) od' runs through elements of 'array' backwards, 'i' decreasing
    correspondingly; any row value built by loop is still constructed forward,
    so 'i' does not refer to position in built-up row in this case.
+
+ - Implement value gathering in loop using a list if size is not known
+   Currently all loops gather values in a vector; while loops (as well as
+   future loops using features that make size of resulting row unknown when
+   the loop is started) might do better gathering them in a list structure.
 
  - Premature exits: break from loop, return from function
  - Scoping in while loops: declarations of condition remain valid in body?

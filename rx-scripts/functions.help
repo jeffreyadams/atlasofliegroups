@@ -89,6 +89,10 @@ Smith: (mat->mat,vec): Smith(M)= ( Smith_basis(M), inv_fact(M) ) (almost).
 invert: (mat->mat,int): invert(M)=inv,d such that M*inv=d*Id, with d minimal.
   The inverse matrix, represented as an integral numerator matrix inv, and a
   minimal positive common denominator d. Note: d does not mean determinant.
+mod2_section (mat->mat): find section (left/right/inverse) of binary matrix
+  The argument is reduced modulo 2 to a matrix A over Z/2Z; it returns a
+  matrix B such that ABA=A and BAB=B; it will be an inverse/left inverse/right
+  inverse of (over Z/2Z) whenever A is bijective/surjective/injective.
 
 subspace_normal: ([vec]->[vec],[vec],[vec],[int]) normalised modulo-2 basis
   Given a list of binary vectors, find a normalised basis for the subspace
@@ -388,7 +392,7 @@ Cartan_class_real_form: (InnerClass,mat,ratvec->CartanClass,RealForm):
   which should satisfy v*M=v, defines a grading of imaginary roots \alpha for
   M by the parity of < v+\check\rho_i , \alpha > where \check\rho_i is half
   the sum of the positive imaginary coroots for M (its presence ensures that
-  v=0 is a valid, an grades all simple-imaginary roots as noncompact). This
+  v=0 is a valid, and grades all simple-imaginary roots as noncompact). This
   grading selects a real form over which this Cartan is defined, which real
   form is the second component of the result.
 
@@ -399,10 +403,10 @@ Cartan_info: (CartanClass->(int,int,int),vec,(int,int),(LieType,LieType,LieType)
   real forms for this Cartan class, for which see fiber_partition).
   The first triple of integers gives in order the number of compact (U(1)),
   complex (GL(1,C)), and split (GL(1,R)) factors of the real torus defined by
-  this Cartan class, the canonical twisted involution for the Cartan class, a
-  pair of integers formed of the number of distinct twisted involutions
-  defining this same Cartan class and the fiber size, and finally the types of
-  the imaginary, real, and complex root subsystems (note the order here).
+  this Cartan class. Follows the canonical twisted involution for the Cartan
+  class, a pair of integers giving the number of distinct twisted involutions
+  defining this same Cartan class and their fiber size, and finally the types
+  of the imaginary, real, and complex root subsystems (note the order here).
 
 real_forms: (CartanClass->[RealForm]): list of real forms with given Cartan
   Returns a list of the real forms for which this Cartan class occurs
@@ -465,12 +469,13 @@ torus_bits: (KGBElt->vec): torus part of KGB element as vector of 0,1 values
 KGB_elt: (RealForm,mat,ratvec): KGB element defined by rational coweight
   This function finds a KGB element x such that real_form(x), involution(x),
   and torus_factor(x) match the values (rf,M,v) given as arguments. The
-  interpretation and requirements for the (involution) matrix M and rational
-  (coweight) vector v are as for Cartan_class_real_form, and rf should be the
-  real form should returned (for this inner class) by that function. In fact v
-  defines more than just a grading; there is at most one KGB element x for rf
-  such that torus_factor(x) is congruent to v modulo the image of M^t+id,
-  which x is then returned (if no such x is found, an error is signalled)
+  interpretation for the (involution) matrix M and rational (coweight) vector
+  v are as for Cartan_class_real_form; moreover rf should be the real form
+  returned (for this inner class) by Cartan_class_real_form, and the
+  difference v-base_grading_vector(rf) must be an integer vector. There is
+  then at most one KGB element x for rf such that torus_factor(x) is congruent
+  to v modulo the image of M^t+id, which x is then returned by this function
+  (if no such x is found, then an error is signalled instead).
 
 operator =: (KGBElt,KGBElt): equality of elements of a same KGB set
 

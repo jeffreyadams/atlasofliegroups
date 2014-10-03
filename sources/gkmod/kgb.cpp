@@ -190,7 +190,7 @@ void KGB_base::add_element()
 // create structure incorporating all KGB structures for a given inner class
 global_KGB::global_KGB(ComplexReductiveGroup& G_C, bool dual_twist)
   : KGB_base(G_C,G_C.semisimpleRank())
-  , Tg(G) // construct global Tits group as subobject
+  , Tg(G_C) // construct global Tits group as subobject
   , elt()
 {
   G_C.involution_table().add(G_C,~ BitMap(G.numCartanClasses()));
@@ -234,7 +234,7 @@ global_KGB::global_KGB(ComplexReductiveGroup& G_C, bool dual_twist)
 global_KGB::global_KGB(ComplexReductiveGroup& G_C,
 		       const GlobalTitsElement& x, bool dual_twist)
   : KGB_base(G_C,G_C.semisimpleRank())
-  , Tg(G) // construct global Tits group as subobject
+  , Tg(G_C) // construct global Tits group as subobject
   , elt()
 {
   generate_involutions(G_C.numInvolutions());

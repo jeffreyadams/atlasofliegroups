@@ -1,0 +1,7 @@
+*.dvi
+*.log
+*.tex
+*.toc
+ctanglex
+cweavex
+cweave.c
