@@ -354,8 +354,8 @@ base_grading_vector: (RealForm->ratvec): Offset implicit in torus_bits values
   form are relative to an implicit "base grading" of the simple roots at the
   distinguished involution of the inner class. The complement of that grading
   is given by the parities of scalar products of the simple roots with the
-  rational vector produced by this function (the complement is taken so that
-  the quasisplit real form has a zero base grading vector).
+  delta-fixed rational vector produced by this function (the complement is
+  taken so that the quasisplit real form has a zero base grading vector).
 
 Cartan_order: (RealForm->mat): matrix describing ordering of Cartan classes
   The Cartan classes for a given real form form a partially ordered set; this
@@ -385,16 +385,22 @@ most_split_Cartan: (RealForm->CartanClass): most split Cartan class for form
 
 real_form: (InnerClass,mat,ratvec->RealForm): real form from strong real form
   Find real form defined by an involution and a torus factor. With arguments
-  (ic,M,v), the matrix M should define an involution in the inner class. The
-  rational vector v, which should satisfy v*M=v, defines a grading of
-  imaginary roots \alpha for M by the parity of < v+\check\rho_i , \alpha >
+  (ic,M,v), the matrix M should define an involution theta in the inner class.
+  The rational vector v, which should satisfy v*M=v, defines a torus element
+  \exp(\pi i v), and together with theta a strong involution representative.
+  The function returns the strong real form rf identified by that strong
+  involution; it may differ from real_form(ic,form_numner(rf)) as can be
+  inspected through base_grading_vector(rf) and the RealForm equality test
+  (this possible distinction is why the result is considered a strong real
+  form.) Notably the subsequent call KGB_elt(rf,theta,v) should always produce
+  a valid KGB element x. The grading of the imaginary roots alpha for theta
+  defined by this x will be given by the parity of < v+\check\rho_i, \alpha >,
   where \check\rho_i is half the sum of the positive imaginary coroots for M
-  (its presence ensures that v=0 is a valid, and grades all simple-imaginary
-  roots as noncompact). This grading selects a real form, which real form is
-  returned. This synthesized real form rf may be different from any one that
-  can be directly selected from the inner class, as can be seen from the
-  equality test and the base_grading_vector of the real form. This difference
-  is such that KGB_elt(rf,theta,v) will produce a valid KGB element.
+  (its presence in the formula ensures that v=0 is always valid, and grades
+  all simple-imaginary roots as noncompact). This grading is the most tangible
+  aspect of (theta,v), but only determines the weak real form, and may fail to
+  identify a unique KGB element x; this function and the mentioned instance of
+  KGB_elt are faithful beyond just reconstructing the correct grading.
 
 involution: (CartanClass->mat): weight lattice involution for Cartan class
 Cartan_info: (CartanClass->(int,int,int),vec,(int,int),(LieType,LieType,LieType)):

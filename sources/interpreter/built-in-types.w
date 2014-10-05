@@ -20,9 +20,7 @@
 
 \def\emph#1{{\it#1\/}}
 \def\Z{{\bf Z}}
-\def\lcm{\mathop{\rm lcm}}
-\let\eps=\varepsilon
-\def\rk{\mathop{\rm rk}}
+\def\ii{{\rm i}} % imaginary unit
 
 @* Built-in types.
 %
@@ -1101,7 +1099,7 @@ void fundamental_weight_wrapper(expression_base::level l)
   if (unsigned(i)>=rd->val.semisimpleRank())
     throw std::runtime_error("Invalid index "+str(i));
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rational_vector_value>
+    push_value(std::make_shared<rational_vector_value> @|
       (rd->val.fundamental_weight(i).normalize()));
 }
 @)
@@ -1111,7 +1109,7 @@ void fundamental_coweight_wrapper(expression_base::level l)
   if (unsigned(i)>=rd->val.semisimpleRank())
     throw std::runtime_error("Invalid index "+str(i));
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rational_vector_value>
+    push_value(std::make_shared<rational_vector_value> @|
       (rd->val.fundamental_coweight(i).normalize()));
 }
 
@@ -1327,8 +1325,8 @@ void classify_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   push_value(std::make_shared<int_value>(p.first)); // compact rank
-  push_value(std::make_shared<int_value>((M->val.numRows()-p.first-p.second)/2));
-    // Complex rank
+  push_value(std::make_shared<int_value>(
+   (M->val.numRows()-p.first-p.second)/2)); // C rank
   push_value(std::make_shared<int_value>(p.second)); // split rank
   if (l==expression_base::single_value)
     wrap_tuple<3>();
@@ -1340,17 +1338,21 @@ root datum, the question of stabilising that lattice is settled, but we must
 check that the matrix is indeed an involution, and that it gives an
 automorphism of the root datum. In fact we need an automorphism of the based
 root datum, but we will allow a conjugate of such an automorphism to be
-supplied as~$M$, and export thought the |ww| parameter a Weyl group element
-conjugates the based root datum automorphism to~$M$. While we are doing all
-this, we can also determine the Lie type of the root datum, the permutation
-possibly needed to map the standard (Bourbaki) ordering of that Dynkin diagram
-to the actual one, and the inner class letters corresponding to each of its
-factors. This is precisely the data stored in a |lietype::Layout| structure,
-which we shall compute here and then store in the constructed inner class.
-Given the amount of effort required below, one might wonder if this component
-of an inner class is really necessary, but its presence is essential to be
-able to associate real form names to internal data (namely gradings), so in
-the current set-up its computation cannot be avoided.
+supplied as~$M$, and export through the |ww| parameter a Weyl group element
+conjugates the based root datum automorphism to~$M$. If this succeeds, we
+shall have found an involution of the simple roots (a ``twist'') describing
+the inner class for the involution, and we return this value, which allows
+also using this function easily to test whether an involution is proper for a
+given inner class. After having done all this, we can also determine the Lie
+type of the root datum, the permutation possibly needed to map the standard
+(Bourbaki) ordering of that Dynkin diagram to the actual one, and the inner
+class letters corresponding to each of its factors. This is precisely the data
+stored in a |lietype::Layout| structure, so we provide as final argument a
+pointer |lo| to such a structure; if non null, those values will be computed
+and stored there. Given the amount of effort required below, one might wonder
+if recording a |Layout| in an inner class is really necessary, but its
+presence is essential to be able to associate real form names to internal data
+(namely gradings), so in the current set-up its computation cannot be avoided.
 
 The Lie type will in general be identical to that of the root datum (and in
 particular any torus factors will come at the end), but in case of Complex
@@ -1366,27 +1368,27 @@ however reuse the module that tests for being an involution here.
 @h "weyl.h"
 
 @< Local function def...@>=
-lietype::Layout check_involution
+weyl::Twist check_involution
  (const WeightInvolution& M, const RootDatum& rd,
-  WeylWord& ww)
- throw (std::bad_alloc, std::runtime_error)
+  WeylWord& ww, lietype::Layout* lo=nullptr)
 { size_t r=rd.rank(),s=rd.semisimpleRank();
   @< Check that |M| is an $r\times{r}$ matrix defining an involution @>
-@/Permutation p(s);
+@/weyl::Twist p;
   @< Set |ww| to the reversed Weyl group element needed to be applied after
   the action of |M| in order to map positive roots to positive roots, and |p|
   to the permutation of the simple roots so obtained; throw a |runtime_error|
   if |M| is not an automorphism of |rd| @>
-@/lietype::Layout result;
-@/LieType& type=result.d_type;
-  InnerClassType& inner_class=result.d_inner;
-  Permutation& pi=result.d_perm;
+  if (lo==nullptr)
+    return p; // if no details are asked for, we are done now
+@/LieType& type=lo->d_type;
+  InnerClassType& inner_class=lo->d_inner;
+  Permutation& pi=lo->d_perm;
   @< Compute the Lie type |type|, the inner class |inner_class|, and the
      permutation |pi| of the simple roots with respect to standard order for
      |type| @>
   if (r>s)
     @< Add type letters and inner class symbols for the central torus @>
-  return result;
+  return p;
 }
 
 @ That |M| is an automorphism means that the roots are permuted among
@@ -1596,7 +1598,7 @@ are indissoluble, we use references for the members |val|, |dual| and
 as a side effect generate |CartanClass| objects in the inner class, whence
 they are technically manipulators rather than accessors.
 
-The main constructor takes a auto-pointer to a |ComplexReductiveGroup| as
+The main constructor takes a unique-pointer to a |ComplexReductiveGroup| as
 argument, as a reminder that the caller gives up ownership of this pointer
 that should come from a call to~|new|; this pointer will henceforth be owned
 by the |inner_class_value| constructed, in shared ownership with any values
@@ -1641,7 +1643,6 @@ struct inner_class_value : public value_base
    // constructor of dual
 };
 @)
-typedef std::unique_ptr<inner_class_value> inner_class_ptr;
 typedef std::shared_ptr<const inner_class_value> shared_inner_class;
 
 @ Here are the copy constructor and the destructor.
@@ -1674,7 +1675,7 @@ construction of either of the interfaces should throw, the reference count
 variable itself will remain dangling), which means the problem cannot be
 solved either by reordering the data members (and therefore their
 initialisations). For |val| the problem does not arise because it is owned by
-an auto-pointer until the construction succeeds.
+a smart pointer until the construction succeeds.
 
 @< Function def...@>=
 inner_class_value::inner_class_value
@@ -1685,7 +1686,7 @@ inner_class_value::inner_class_value
 @/, ref_count(*new size_t(1))
 @/, rd_type(lo.d_type), ic_type(lo.d_inner)
 , interface(*g,lo), dual_interface(*g,lo,tags::DualTag())
- {@; g.release(); } // now that we own |g|, release the auto-pointer
+ {@; g.release(); } // now that we own |g|, release the unique-pointer
 
 @ We allow construction of a dual |inner_class_value|. Since it can share the
 two fields referring to objects of type |ComplexReductiveGroup|
@@ -1721,25 +1722,27 @@ void inner_class_value::print(std::ostream& out) const
       << (val.numDualRealForms()==1 ? "form" : "forms");
 }
 
-@ Our wrapper function builds a complex reductive group with an involution,
-testing its validity. The Weyl word |ww| that was needed in the test to make
-the involution into one of the based root datum must be applied to the matrix,
-since the test does not actually modify its matrix argument. Then the root
-datum is passed to a |ComplexReductiveGroup| constructor that the library
-provides specifically for this purpose, and which makes a copy of the root
-datum; the \.{atlas} program instead uses a constructor using a |PreRootDatum|
-that constructs the |RootDatum| directly into the |ComplexReductiveGroup|, but
-using that constructor here would be cumbersome and even less efficient then
-copying the existing root datum. Another wrapper |twisted_involution_wrapper|
-is similar, but also returns a second value, which is the twisted involution
-corresponding in the inner class to the given involution matrix.
+@ Here is the wrapper function for constructing an inner class using, and
+testing the validity of, an involution. The Weyl word |ww| that was needed in
+the test to make the involution into one of the based root datum must be
+applied to the matrix, since the test does not actually modify its matrix
+argument. (The |weyl::Twist| value returned by |check_involution| is only
+sufficient to determine the desired |M| in the semisimple case, so it cannot
+be used here.) Then the root datum and matrix are passed to a
+|ComplexReductiveGroup| constructor that the library provides specifically for
+this purpose, and which makes a copy of the root datum; the \.{atlas} program
+instead uses a constructor using a |PreRootDatum| that constructs the
+|RootDatum| directly into the |ComplexReductiveGroup|. Using that constructor
+here would be cumbersome and even less efficient then copying the existing
+root datum.
 
 @< Local function def...@>=
 void fix_involution_wrapper(expression_base::level l)
 { LatticeMatrix M(get<matrix_value>()->val); // safe use of temporary
   shared_root_datum rd(get<root_datum_value>());
   WeylWord ww;
-  lietype::Layout lo = check_involution(M,rd->val,ww);
+  lietype::Layout lo;
+  check_involution(M,rd->val,ww,&lo);
   if (l==expression_base::no_value)
     return;
 @)
@@ -1750,15 +1753,21 @@ void fix_involution_wrapper(expression_base::level l)
   push_value(std::make_shared<inner_class_value>(std::move(G),lo));
 }
 
+@ Another wrapper |twisted_involution_wrapper| is similar, but also returns a
+second value, which is the twisted involution corresponding in the inner class
+to the given involution matrix.
+
+@< Local function def...@>=
 void twisted_involution_wrapper(expression_base::level l)
 { LatticeMatrix M(get<matrix_value>()->val);
   shared_root_datum rd(get<root_datum_value>());
   WeylWord ww;
-  lietype::Layout lo = check_involution(M,rd->val,ww);
+  lietype::Layout lo;
+  check_involution(M,rd->val,ww,&lo);
   if (l==expression_base::no_value)
     return;
 @)
-  for (unsigned int i=ww.size(); i-->0;)
+  for (unsigned int i=0; i<ww.size(); ++i) // apply elements in generation order
     rd->val.simple_reflect(ww[i],M);
   std::unique_ptr<ComplexReductiveGroup>
     G(new ComplexReductiveGroup(rd->val,M));
@@ -2113,14 +2122,14 @@ explains why the copy constructor is protected rather than private.
 struct real_form_value : public value_base
 { const inner_class_value parent;
   RealReductiveGroup val;
-  const RatCoweight cocharacter;
+  const TorusElement cocharacter;
 @)
   real_form_value(const inner_class_value& p,RealFormNbr f) @/
   : parent(p), val(p.val,f)
-  , cocharacter(p.val.base_grading_vector(f))
+  , cocharacter(y_values::exp_pi(p.val.base_grading_vector(f)))
   , rt_p(NULL) @+{}
   real_form_value
-    (const inner_class_value& p,RealFormNbr f, const RatCoweight& coch) @/
+    (const inner_class_value& p,RealFormNbr f, const TorusElement& coch) @/
   : parent(p), val(p.val,f)
   , cocharacter(coch)
   , rt_p(NULL) @+{}
@@ -2142,12 +2151,11 @@ private:
     // owned pointer, initially |NULL|, assigned at most once
 };
 @)
-typedef std::unique_ptr<real_form_value> real_form_ptr;
 typedef std::shared_ptr<const real_form_value> shared_real_form;
 typedef std::shared_ptr<real_form_value> own_real_form;
 
 @ The methods |rc| and |rt| ensure a |Rep_table| value is constructed at
-|*rt_p|, and returns a reference. The value so obtained will serve to
+|*rt_p|, and return a reference. The value so obtained will serve to
 manipulate parameters for standard modules, for which we shall define a
 built-in type below. Storing the value here ensures that it will be shared
 between different parameters, and that it will live as long as those parameter
@@ -2247,8 +2255,7 @@ void count_Cartans_wrapper(expression_base::level l)
 }
 
 @ The size of the finite set $K\backslash G/B$ can be determined from the real
-form, (the necessary |CartanClass| objects will be automatically generated
-when doing so).
+form.
 
 @< Local function def...@>=
 void KGB_size_wrapper(expression_base::level l)
@@ -2268,7 +2275,8 @@ imaginary-$\rho$ value (dependent on the involution) should be added to it.
 void base_grading_vector_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rational_vector_value>(rf->cocharacter));
+    push_value(std::make_shared<rational_vector_value>
+      (rf->cocharacter.log_pi(false)));
 }
 
 @ There is a partial ordering on the Cartan classes defined for a real form. A
@@ -2295,11 +2303,12 @@ void Cartan_order_matrix_wrapper(expression_base::level l)
 
 @ Finally we make available an equality test for real forms. While this could
 easily be defined in the \.{realex} language itself (two real forms are equal
-if they belong to the same inner class, and their real form numbers are equal)
-it is useful to define a test here, since the test will also be used later in
-other equality tests (for KGB elements, or module parameters), where one
-should resist the temptation to test (by pointer equality) for identical
-|RealReductiveGroup| objects, which would be too strict.
+if they belong to the same inner class, their real form numbers and base
+grading vectors are equal) it is useful to define a test here, since the test
+will also be used later in other equality tests (for KGB elements, or module
+parameters), where one should resist the temptation to test (by pointer
+equality) for identical |RealReductiveGroup| objects, which would be too
+strict.
 
 @< Local function def...@>=
 
@@ -2360,6 +2369,54 @@ void dual_quasisplit_form_wrapper(expression_base::level l)
   push_value(std::make_shared<real_form_value>(G_check,G->dual.quasisplit()));
 }
 
+@*2 Synthetic real forms.
+%
+It is useful to be able to compute a real form based on other information than
+its index within its inner class, namely on a strong involution representative
+(involution and torus element). The \.{realex} function |synthetic_real_form|
+takes an inner class, a matrix giving an involution~$\theta$, and a
+$\theta$-stable rational coweight describing (through $l\mapsto\exp(\pi\ii
+l)$) torus element; it returns the corresponding real form, but in which a
+|cocharacter| value is stored deduced from $\exp(\pi\ii l)$ that identifies
+the strong real form, and may differ from the |cocharacter| value for the weak
+real form that could be obtained by selecting by number in the inner class.
+This difference notably allows the same strong involution representative to be
+subsequently used to specify a KGB element for this (strong) real form.
+
+@:synthetic_real_form@>
+
+@< Local function def...@>=
+TwistedInvolution twisted_from_involution
+  (const ComplexReductiveGroup& G, const WeightInvolution theta)
+{ const RootDatum& rd = G.rootDatum();
+  WeylWord ww;
+  if (check_involution(theta,rd,ww)!=G.twistedWeylGroup().twist())
+    throw std::runtime_error("Involution not in this inner class");
+  return G.weylGroup().element(ww);
+}
+@)
+void synthetic_real_form_wrapper(expression_base::level l)
+{ shared_rational_vector torus_factor = get<rational_vector_value>();
+  shared_matrix theta = get<matrix_value>();
+  shared_inner_class G = get<inner_class_value>();
+  const TwistedInvolution tw = twisted_from_involution(G->val,theta->val);
+  if (torus_factor->val.size()!=G->val.rank())
+    throw std::runtime_error ("Torus factor size mismatch");
+  { Coweight num(torus_factor->val.numerator().begin(),
+                 torus_factor->val.numerator().end());
+    if (theta->val.right_prod(num)!=num)
+      throw std::runtime_error ("Torus factor not fixed by involution");
+@.Torus factors not fixed...@>
+  }
+
+  TorusElement cocharacter(0); // dummy value to be replaced
+  RealFormNbr rf =
+    strong_real_form_of(G->val,tw,torus_factor->val,cocharacter);
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<real_form_value>(*G,rf,cocharacter));
+}
+
+
 @ Finally we install everything related to real forms.
 @< Install wrapper functions @>=
 install_function(real_form_wrapper,@|"real_form","(InnerClass,int->RealForm)");
@@ -2379,6 +2436,8 @@ install_function(dual_real_form_wrapper,@|"dual_real_form"
 				       ,"(InnerClass,int->RealForm)");
 install_function(dual_quasisplit_form_wrapper,@|"dual_quasisplit_form"
 		,"(InnerClass->RealForm)");
+install_function(synthetic_real_form_wrapper,@|"real_form"
+		,"(InnerClass,mat,ratvec->RealForm)");
 
 @*1 A type for Cartan classes.
 %
@@ -2418,7 +2477,6 @@ private:
   : parent(v.parent), number(v.number), val(v.val) @+{} // copy constructor
 };
 @)
-typedef std::unique_ptr<Cartan_class_value> Cartan_class_ptr;
 typedef std::shared_ptr<const Cartan_class_value> shared_Cartan_class;
 
 @ In the constructor we used to check that the Cartan class with the given
@@ -2490,58 +2548,6 @@ void most_split_Cartan_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<Cartan_class_value>(rf->parent,rf->val.mostSplit()));
-}
-
-@ It is useful to be able to compute a real form or Cartan class based on
-other information than their enumeration within an inner class. The \.{realex}
-function |synthetic_real_form| takes an inner class, a matrix giving an
-involution, and a rational co-weight describing the grading of the imaginary
-roots, or more precisely the offset with respect to the grading that makes all
-simple-imaginary roots non-compact; it returns a pair consisting of the Cartan
-class for the involution and the real form associated there to the grading.
-
-@:synthetic_real_form@>
-
-@< Local function def...@>=
-TwistedInvolution twisted_from_involution
-  (const ComplexReductiveGroup& G, const WeightInvolution theta)
-{ const RootDatum& rd = G.rootDatum();
-  unsigned int ssr =  rd.semisimpleRank();
-  RootNbrList Delta(ssr);
-  for (weyl::Generator i=0; i<ssr; ++i)
-  { Delta[i]=rd.rootNbr(theta*rd.simpleRoot(i));
-    if (Delta[i]==rd.numRoots()) // then image not found
-      throw std::runtime_error@|
-        ("Matrix maps simple root "+str(i)+" to non-root");
-  }
-  WeylWord ww = wrt_distinguished(rd,Delta);
-  for (weyl::Generator i=0; i<ssr; ++i)
-    if (Delta[i]!=G.twisted_root(rd.simpleRootNbr(i)))
-        // |Delta| should match distinguished involution
-      throw std::runtime_error@|
-        ("Matrix does not define a root datum automorphism");
-  return G.weylGroup().element(ww);
-}
-
-void synthetic_real_form_wrapper(expression_base::level l)
-{ shared_rational_vector grading_shift = get<rational_vector_value>();
-  shared_matrix theta = get<matrix_value>();
-  shared_inner_class G = get<inner_class_value>();
-  { Coweight num(grading_shift->val.numerator().begin(),
-                 grading_shift->val.numerator().end());
-    if (theta->val.right_prod(num)!=num)
-      throw std::runtime_error ("Torus factor not fixed by involution");
-@.Torus factors not fixed...@>
-  }
-
-  TwistedInvolution tw = twisted_from_involution(G->val,theta->val);
-
-  TorusElement cocharacter(0); // dummy value to be replaced
-  RealFormNbr rf =
-    strong_real_form_of(G->val,tw,grading_shift->val,cocharacter);
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<real_form_value>
-      (*G,rf,cocharacter.log_pi(false)));
 }
 
 
@@ -2817,8 +2823,6 @@ install_function(rf_Cartan_class_wrapper,@|"Cartan_class"
 		,"(RealForm,int->CartanClass)");
 install_function(most_split_Cartan_wrapper,@|"most_split_Cartan"
 		,"(RealForm->CartanClass)");
-install_function(synthetic_real_form_wrapper,@|"real_form"
-		,"(InnerClass,mat,ratvec->RealForm)");
 install_function(Cartan_involution_wrapper,@|"involution","(CartanClass->mat)");
 install_function(Cartan_info_wrapper,@|"Cartan_info"
 		,"(CartanClass->(int,int,int),"
@@ -3054,7 +3058,7 @@ void build_KGB_element_wrapper(expression_base::level l)
       throw std::runtime_error ("Torus factor not fixed by involution");
 @.Torus factor not fixed@>
   }
-  RatCoweight tv = grading_shift->val - rf->cocharacter;
+  RatCoweight tv = grading_shift->val - rf->cocharacter.log_pi(false);
   if (tv.normalize().denominator()!=1)
     throw std::runtime_error
       ("Torus factor not in cocharacter coset of real form");
@@ -3117,7 +3121,7 @@ void torus_factor_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   if (l!=expression_base::no_value)
   { const KGB& kgb=x->rf->kgb();
-    TorusElement t = y_values::exp_pi(x->rf->cocharacter);
+    TorusElement t = x->rf->cocharacter;
     t += kgb.torus_part(x->val);
     RatCoweight tf(t.log_pi(false)); // still needs to be made $\theta$-fixed
     Ratvec_Numer_t num =

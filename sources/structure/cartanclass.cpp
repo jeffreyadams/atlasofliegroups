@@ -346,7 +346,7 @@ Grading Fiber::makeBaseGrading
   apply to a root, it is enough to express that root in the simple root basis,
   and do the scalar product mod 2. Note that in contrast to |makeBaseGrading|
   above, and in spite of the reuse of the same names, we express in the (full)
-  simple root basis here, not on the simple-imaginary root basis.
+  simple root basis here, not in the simple-imaginary root basis.
 */
 GradingList Fiber::makeGradingShifts
   (std::vector<RootNbrSet>& all_shifts,const RootSystem& rs) const
@@ -712,7 +712,7 @@ RootNbrSet Fiber::noncompactRoots(AdjointFiberElt x) const
   return result;
 }
 
-// Return the compact imaginary roots for element |x\ in the adjoint fiber.
+// Return the compact imaginary roots for element |x| in the adjoint fiber.
 RootNbrSet Fiber::compactRoots(AdjointFiberElt x) const
 {
   RootNbrSet result = imaginaryRootSet();
