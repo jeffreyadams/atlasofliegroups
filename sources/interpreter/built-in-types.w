@@ -3125,7 +3125,7 @@ void torus_factor_wrapper(expression_base::level l)
     t += kgb.torus_part(x->val);
     RatCoweight tf(t.log_pi(false)); // still needs to be made $\theta$-fixed
     Ratvec_Numer_t num =
-      tf.numerator()+kgb.involution_matrix(x->val)*tf.numerator();
+      tf.numerator()+kgb.involution_matrix(x->val).right_prod(tf.numerator());
     tf = RatCoweight(num,2*tf.denominator());
     push_value(std::make_shared<rational_vector_value>(tf.normalize()));
   }
