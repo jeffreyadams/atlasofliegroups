@@ -253,6 +253,8 @@ class ComplexReductiveGroup
 	(&twistedWeylGroup().twist()[0],
 	 &twistedWeylGroup().twist()[semisimpleRank()]); }
 
+  RankFlags simple_roots_imaginary() const; // delta-fixed simple roots
+
   const Permutation& root_involution() const { return root_twist; }
   RootNbr twisted_root(RootNbr alpha) const { return root_twist[alpha]; }
 
@@ -337,8 +339,8 @@ class ComplexReductiveGroup
   // the same limited to indicated Cartan classes only
   unsigned long KGB_size(RealFormNbr rf, const BitMap& Cartan_classes) const;
 
-  // grading of (imaginary) simple roots at first element of KGB for |rf|
-  Grading x0_grading(RealFormNbr rf) const;
+  // compact simple roots ("grading shift") at first element of KGB for |rf|
+  RankFlags simple_roots_x0_compact(RealFormNbr rf) const;
 
   cartanclass::square_class xi_square(RealFormNbr rf) const;
   RealFormNbr square_class_repr(cartanclass::square_class csc) const;

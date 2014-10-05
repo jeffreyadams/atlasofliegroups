@@ -793,6 +793,15 @@ ComplexReductiveGroup::dualFiberSize(RealFormNbr rf, CartanNbr cn) const
 
 /******** accessors **********************************************************/
 
+RankFlags ComplexReductiveGroup::simple_roots_imaginary() const
+{
+  const Permutation twist = simple_twist();
+  RankFlags result;
+  for (weyl::Generator s=0; s<semisimpleRank(); ++s)
+    result.set(s,s==twist[s]);
+  return result;
+}
+
 BitMap
 ComplexReductiveGroup::Cartan_set(RealFormNbr rf) const
 {
@@ -930,10 +939,17 @@ ComplexReductiveGroup::global_KGB_size() const
 
 }
 
-Grading ComplexReductiveGroup::x0_grading(RealFormNbr rf) const
+Grading ComplexReductiveGroup::simple_roots_x0_compact(RealFormNbr rf) const
 {
   const Fiber& fund_f= fundamental();
-  return fund_f.grading(fund_f.wrf_rep(rf));
+  const SmallSubquotient& adfg = fund_f.adjointFiberGroup();
+  RankFlags rf_rep = RankFlags(fund_f.wrf_rep(rf));
+  SmallBitVector x_adj_coch = // in \emph{adjoint} cocharacter lattice modulo 2
+    adfg.fromBasis(SmallBitVector(rf_rep,fund_f.adjointFiberRank()));
+
+  // lifting adjoint fiber group elts just expands bits to delta-fixed places
+  assert(x_adj_coch.data() == rf_rep.unslice(simple_roots_imaginary()));
+  return x_adj_coch.data(); // each bit gives pairing with a simple root
 }
 
 cartanclass::square_class
@@ -944,18 +960,19 @@ RealFormNbr
 ComplexReductiveGroup::square_class_repr(cartanclass::square_class csc) const
 { return fundamental().realFormPartition().classRep(csc); }
 
+// here |diff| grades the simple roots, but only imaginary ones are involved
 TorusPart ComplexReductiveGroup::grading_shift_repr(Grading diff) const
 {
   const SmallSubquotient& fg = fundamental().fiberGroup();
   const unsigned int f_rank = fg.dimension();
   const unsigned int ssr = semisimpleRank();
   BinaryMap fg2grading (ssr,f_rank);
-  for (weyl::Generator i=0; i<ssr; ++i)
+  for (RankFlags::iterator it=simple_roots_imaginary().begin(); it(); ++it)
   {
+    const unsigned int i=*it;
     SmallBitVector ai (rootDatum().simpleRoot(i));
     for (unsigned int j=0; j<f_rank; ++j)
-      if (ai.dot(fg.fromBasis(SmallBitVector(f_rank,j))))
-	fg2grading.set(i,j);
+      fg2grading.set(i,j,ai.dot(fg.fromBasis(SmallBitVector(f_rank,j))));
   }
   const BinaryMap grading2fg = fg2grading.section();
   const SmallBitVector v = grading2fg*SmallBitVector(diff,ssr);
@@ -965,8 +982,8 @@ TorusPart ComplexReductiveGroup::grading_shift_repr(Grading diff) const
 
 TorusPart ComplexReductiveGroup::x0_torus_part(RealFormNbr rf) const
 {
-  Grading mine = x0_grading(rf);
-  Grading base = x0_grading(square_class_repr(xi_square(rf)));
+  Grading mine = simple_roots_x0_compact(rf);
+  Grading base = simple_roots_x0_compact(square_class_repr(xi_square(rf)));
   return grading_shift_repr(mine^base); // a |TorusPart| for the difference
 }
 
@@ -974,9 +991,8 @@ RatCoweight ComplexReductiveGroup::base_grading_vector(RealFormNbr rf) const
 {
   const RootDatum& rd = rootDatum();
   RatWeight result (rd.rank());
-  Grading gr = x0_grading(square_class_repr(xi_square(rf)));
-  gr.complement(semisimpleRank()); // take complement in set of simple roots
-  for (Grading::iterator it=gr.begin(); it(); ++it)
+  RankFlags cpct = simple_roots_x0_compact(square_class_repr(xi_square(rf)));
+  for (RankFlags::iterator it=cpct.begin(); it(); ++it)
     result += rd.fundamental_coweight(*it);
   return result;
 }
@@ -1285,7 +1301,7 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
 
   // find weak real form, and the (simple) grading of its first KGB element
   RealFormNbr wrf = fund_f.weakReal().class_of(fund_f.gradingRep(gr));
-  Grading ref_gr = G.x0_grading(wrf);
+  RankFlags ref = G.simple_roots_x0_compact(wrf);
 
   { // get distinguished element in the fundamental fiber
     KGB_elt_entry::Pooltype elt_pool; // we need to generate them all
@@ -1297,15 +1313,15 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
       // generate using cross actions for twist-fixed (imaginary) simple roots
     {
       const GlobalTitsElement x = elt_hash[i].repr();
-      bool match_ref_gr=true; // whether |x| defines |ref_gr| on simple roots
-      for (weyl::Generator s; s<r; ++s)
-	if (s==gTg.twisted(s)) // do only imaginary cross actions
-	{
-	  elt_hash.match(i_tab.x_pack(gTg.cross(s,x)));
-	  if (x.torus_part().negative_at(rd.simpleRoot(s))==ref_gr[s])
-	    match_ref_gr=false; // equality above means mismatch
-	}
-      if (match_ref_gr and
+      bool match_ref=true; // whether |x| defines |ref_gr| on simple roots
+      for (auto it=G.simple_roots_imaginary().begin(); it(); ++it)
+      {
+	const weyl::Generator s = *it;
+	elt_hash.match(i_tab.x_pack(gTg.cross(s,x)));
+	if (x.torus_part().negative_at(rd.simpleRoot(s))!=ref[s])
+	  match_ref=false;
+      }
+      if (match_ref and
 	  (min_match==-1u or elt_hash[i].label()<elt_hash[min_match].label()))
 	min_match = i; // first or better element in fiber matching |ref_gr|
     } // |for(i)|
