@@ -84,6 +84,8 @@ namespace {
   void branch_f();
   void qbranch_f();
   void srtest_f();
+  void testrun_f();
+  void exam_f();
 
   void X_f();
 
@@ -125,6 +127,10 @@ namespace {
 template<>
 void addTestCommands<commands::EmptymodeTag> (commands::CommandNode& mode)
 {
+  mode.add("testrun",testrun_f,
+	   "iterates over root data of given rank, calling examine",
+	   commands::use_tag);
+
   if (testMode == EmptyMode)
     mode.add("test",test_f,test_tag);
 }
@@ -174,6 +180,10 @@ void addTestCommands<commands::RealmodeTag> (commands::CommandNode& mode)
   mode.add("srtest",srtest_f,
 	   "gives information about a representation",commands::std_help);
 
+  mode.add("examine",exam_f,
+	   "tests whether x0 will change",commands::use_tag);
+
+
   if (testMode == RealMode)
     mode.add("test",test_f,test_tag);
 
@@ -210,6 +220,43 @@ namespace {
 
 
 // Empty mode functions
+
+bool examine(RealReductiveGroup& G);
+void testrun_f()
+{
+  unsigned long rank=interactive::get_bounded_int
+    (interactive::common_input(),"rank: ",constants::RANK_MAX+1);
+  std::cout << "Testing x0 torus bits.\n"; // adapt to |examine|
+  for (testrun::LieTypeIterator it(testrun::Semisimple,rank); it(); ++it)
+  {
+    std::cout<< *it << std::endl;
+    size_t count=0;
+    for (testrun::CoveringIterator cit(*it); cit(); ++cit)
+    {
+      if (count>0) std::cout << ',';
+      std::cout << ++count;
+      PreRootDatum prd = *cit;
+      WeightInvolution id(prd.rank()); // identity
+      ComplexReductiveGroup G(prd,id);
+      for (RealFormNbr rf=0; rf<G.numRealForms(); ++rf)
+      {
+	RealReductiveGroup G_R(G,rf);
+	if (not examine(G_R))
+	{
+	  lietype::InnerClassType ict; // need layout to convert form number
+	  for (size_t i=0; i<it->size(); ++i)
+	    ict.push_back('e');
+	  lietype::Layout lay(*it,ict);
+	  realform_io::Interface itf(G,lay);
+	  std::cout << " Failure at real form " << itf.out(rf) << std::endl;
+	}
+	std::cout << std::flush;
+      }
+    }
+    std::cout << '.' << std::endl;
+  }
+
+}
 
 
 // Main mode functions
@@ -779,17 +826,22 @@ void srtest_f()
 
 bool examine(RealReductiveGroup& G)
 {
-  const WeylGroup& W = G.weylGroup();
   const KGB& kgb=G.kgb();
-  size_t l = W.length(kgb.involution(0)),t;
-  for (size_t i=1; i<kgb.size(); ++i)
-    if ((t=W.length(kgb.involution(i)))<l)
-      return false;
-    else
-      l=t;
-  return true;
+  TorusPart t0 = kgb.torus_part(0);
+  TorusPart t1 = G.complexGroup().x0_torus_part(G.realForm());
+  return t0==t1;
 }
 
+void exam_f()
+{
+  RealReductiveGroup& G = commands::currentRealGroup();
+  if (examine(G))
+    std::cout << "x0 torus bits constistent with traditional ones";
+  else
+    std::cout << "x0 torus bits changed from " << G.kgb().torus_part(0)
+	      << " to " << G.complexGroup().x0_torus_part(G.realForm());
+  std::cout << std::endl;
+}
 
 
 TorusElement torus_part

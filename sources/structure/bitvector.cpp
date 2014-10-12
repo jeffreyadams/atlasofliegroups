@@ -200,15 +200,16 @@ void BitMatrix<dim>::apply(const I& first, const I& last, O out) const
   }
 }
 
-// Put in r the i-th row of the matrix.
-template<size_t dim> void BitMatrix<dim>::get_row(BitVector<dim>& r, size_t i)
-  const
+// The i-th row of the matrix.
+template<size_t dim>
+BitVector<dim> BitMatrix<dim>::row(size_t i) const
 {
   assert(d_columns<=dim);
-  r.resize(d_columns);
+  BitVector<dim> r(d_columns);
 
   for (size_t j = 0; j < d_columns; ++j)
     r.set(j,test(i,j));
+  return r;
 }
 
 
@@ -241,12 +242,13 @@ template<size_t dim> BitVectorList<dim> BitMatrix<dim>::kernel() const
     return result; // no unknowns, so there are no nontrivial solutions
 
   assert(numColumns()<=dim);
-  std::vector<BitVector<dim> > eqn(d_rows);
+  std::vector<BitVector<dim> > eqn;
+  eqn.reserve(d_rows);
 
   // get rows of the matrix into |eqn|
 
   for (size_t i = 0; i < d_rows; ++i)
-    get_row(eqn[i],i);
+    eqn.push_back(row(i));
 
   // normalize |eqn|
 

@@ -92,6 +92,7 @@ class TorusElement
   // manipulators
 
   TorusElement& operator+=(TorusPart v); // arg by value since it is small
+  TorusElement& reduce(); // reduce entires mod $2\Z$
 
   void simple_reflect(const PreRootDatum& prd, weyl::Generator s);
   void reflect(const RootDatum& rd, RootNbr alpha);

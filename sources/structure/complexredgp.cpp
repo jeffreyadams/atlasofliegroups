@@ -26,6 +26,7 @@
 
 #include <set>
 
+#include "lattice.h"
 #include "weyl.h"
 #include "kgb.h"
 
@@ -83,16 +84,12 @@ namespace complexredgp {
 			  const TwistedWeylGroup& W,
 			  const RootSystem& rs);
 
-} // |namespace complexredgp|
-
 
 /*****************************************************************************
 
         Chapter I -- The ComplexReductiveGroup class
 
 ******************************************************************************/
-
-namespace complexredgp {
 
 ComplexReductiveGroup::C_info::C_info
   (const ComplexReductiveGroup& G,const TwistedInvolution twi, CartanNbr i)
@@ -370,9 +367,7 @@ void ComplexReductiveGroup::construct() // common part of two constructors
   }
 } // |ComplexReductiveGroup::construct|
 
-/*!
-  \brief constructs the complex reductive group dual to G.
-*/
+// Construct the complex reductive group dual to G
 ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
 					     tags::DualTag)
   : d_rootDatum(G.d_dualRootDatum)
@@ -457,24 +452,18 @@ ComplexReductiveGroup::~ComplexReductiveGroup()
 
 // This should remain empty!
 
-} // namespace complexredgp
-
 /*****************************************************************************
 
         Chapter II --- private (auxiliary) methods for ComplexReductiveGroup
 
 ******************************************************************************/
 
-namespace complexredgp {
-
 /******** private accessors **************************************************/
 
-/*!
-  \brief Returns |tw| composed to the left with the reflection $s_\alpha$
-  corresponding to root $\alpha$
+/* Compose |tw| to the left with the reflection $s_\alpha$
 
   This is a twisted involution if $s_\alpha$ twisted-commutes with |tw|;
-  in practice root $\alpha$ will in fact be imaginary for |tw|
+  used in practice with even only with $\alpha$ imaginary for |tw|
 */
 TwistedInvolution
 ComplexReductiveGroup::reflection(RootNbr alpha,
@@ -596,152 +585,8 @@ void ComplexReductiveGroup::map_dual_real_forms(CartanNbr cn)
   Cartan[cn].dual_rep[0] = dual_base.data();
 } // |ComplexReductiveGroup::map_dual_real_forms|
 
-#if 0 // functions below are no longer used
-/*!
-  \brief Adds a new real form label list to d_realFormLabels.
 
-  This is called when a new |CartanClass| has just been constructed at index
-  |cn|. Then this function finds the labels corresponding to the real forms
-  for which this Cartan is defined (the labelling of real forms being defined
-  by the adjoint orbit picture in the fundamental fiber.)
-
-  Algorithm: the gradings of the imaginary root system corresponding to the
-  various real forms for which the new Cartan is defined are known. We find
-  a cross-action followed by a composite Cayley transform, taking the
-  fundamental Cartan to the new one. Then for each real form, we take a
-  representative grading, and compute a grading for the fundamental Cartan
-  transforming to it. This amounts to solving a system of linear equations
-  mod 2.
-*/
-void ComplexReductiveGroup::correlateForms(CartanNbr cn)
-{
-  const RootSystem& rs = rootDatum();
-  const TwistedWeylGroup& tW = twistedWeylGroup();
-  const Fiber& fundf = d_fundamental;
-  const Fiber& f = cartan(cn).fiber(); // fiber of this Cartan
-
-  const TwistedInvolution& ti = twistedInvolution(cn);
-
-  // find cayley part and cross part
-  RootNbrSet so;
-  WeylWord ww;
-  Cayley_and_cross_part(so,ww,ti,rs,tW);
-
-  assert(checkDecomposition(ti,ww,so,tW,rs));
-
-  const Partition& pi = f.weakReal();
-  RealFormNbrList rfl(f.numRealForms());
-
-  // transform gradings and correlate forms
-  for (size_t j = 0; j < rfl.size(); ++j)
-  {
-    unsigned long y = pi.classRep(j); //  orbit |j| has representative |y|
-    Grading gr=f.grading(y); // and |gr| is it's grading
-    RootNbrList rl = f.simpleImaginary(); // of the roots in |rl|
-
-    gradings::transform_grading(gr,rl,so,rs); // grade those roots at |fundf|
-    for (size_t i = 0; i < so.size(); ++i)
-      gr.set(rl.size()+i);        // make grading noncompact for roots in |so|
-    std::copy(so.begin(),so.end(),back_inserter(rl)); // extend |rl| with |so|
-    crossTransform(rl,ww,rs);  // apply cross part of |ti| to roots in |rl|
-
-    /* now |gr| grades the roots in |rl|,
-       which are imaginary for the fundamental fiber |fundf| */
-    for (size_t i = 0; i < rl.size(); ++i)
-      assert(fundf.imaginaryRootSet().isMember(rl[i]));
-
-    unsigned long x = makeRepresentative(gr,rl,fundf);
-    RealFormNbr rf = fundf.weakReal()(x); // look up representative
-    rfl[j] = rf;
-  }
-
-  Cartan[cn].real_labels = rfl;
-  assert(rfl[0]==quasisplit()); // adjoint base grading is always quasisplit
-}
-
-void ComplexReductiveGroup::correlateDualForms(CartanNbr cn)
-{
-  const RootSystem& rs = dualRootDatum();
-  const TwistedWeylGroup& tW = dualTwistedWeylGroup();
-  const Fiber& fundf = d_dualFundamental;
-  const Fiber& f = cartan(cn).dualFiber();
-
-  TwistedInvolution ti = dualTwistedInvolution(cn);
-
-
-  // find cayley part and cross part
-  RootNbrSet so;
-  WeylWord ww;
-  Cayley_and_cross_part(so,ww,ti,rs,tW); // computation is in dual setting!
-
-  assert(checkDecomposition(ti,ww,so,tW,rs));
-
-  const Partition& pi = f.weakReal();
-  RealFormNbrList rfl(f.numRealForms());
-
-  // transform gradings and correlate forms
-  for (size_t j=0; j<rfl.size(); ++j)
-  {
-    unsigned long y = pi.classRep(j);
-    Grading gr=f.grading(y);
-    RootNbrList rl = f.simpleImaginary();
-    gradings::transform_grading(gr,rl,so,rs);
-    for (size_t i=0; i<so.size(); ++i)
-      gr.set(rl.size()+i);
-    copy(so.begin(),so.end(),back_inserter(rl));
-    crossTransform(rl,ww,rs);
-
-// begin testing
-    /* now |gr| grades the roots in |rl|,
-       which are imaginary for the dual fundamental fiber |fundf| */
-    for (size_t i=0; i<rl.size(); ++i)
-      assert(fundf.imaginaryRootSet().isMember(rl[i]));
-// end testing
-
-    unsigned long x = makeRepresentative(gr,rl,fundf);
-    RealFormNbr rf = fundf.weakReal()(x);
-    rfl[j] = rf;
-  }
-
-  Cartan[cn].dual_real_labels = rfl;
-  assert(rfl[0]==0); // adjoint base grading is always quasisplit
-}
-
-/*!\brief
-  Checks whether |ti| decomposes as the composition of the cross-action
-  defined by |cross| followed by the Cayley transform defined by |Cayley|.
-*/
-bool checkDecomposition(const TwistedInvolution& ti,
-			const WeylWord& cross,
-			const RootNbrSet& Cayley,
-			const TwistedWeylGroup& W,
-			const RootSystem& rs)
-{
-  TwistedInvolution tw;
-
-  // cross action part
-  for (size_t i=0; i<cross.size(); ++i)
-    W.twistedConjugate(tw,cross[i]);
-
-  // cayley transform part
-  for (RootNbrSet::iterator it=Cayley.begin(); it(); ++it)
-  {
-    InvolutionData id(rs,W.simple_images(rs,tw));
-    assert(id.imaginary_roots().isMember(*it));
-    W.leftMult(tw,rs.reflectionWord(*it));
-  }
-
-  return tw == ti;
-}
-
-#endif // remainder is compiled again
-
-/*!
-  \brief Returns the size of the fiber orbits corresponding to the strong
-  real forms lying over (weak) real form \#rf, in cartan \#cn.
-
-  Precondition: Real form \#rf is defined for cartan \#cn.
-*/
+// The size of the fiber orbits of strong forms for |rf| in Cartan |cn|
 unsigned long
 ComplexReductiveGroup::fiberSize(RealFormNbr rf, CartanNbr cn) const
 {
@@ -824,9 +669,7 @@ ComplexReductiveGroup::dual_Cartan_set(RealFormNbr drf) const
   return support;
 }
 
-/*!
-  \brief Returns the total number of involutions (generating Cartans as needed)
-*/
+// The total number of involutions (generating Cartans as needed)
 InvolutionNbr ComplexReductiveGroup::numInvolutions() const
 {
   InvolutionNbr count = 0;
@@ -837,10 +680,7 @@ InvolutionNbr ComplexReductiveGroup::numInvolutions() const
   return count;
 }
 
-/*!
-  \brief Returns the total number of involutions corresponding to the
-  indicated set of Cartans.
-*/
+// The total number of involutions corresponding to the given set of Cartans
 InvolutionNbr ComplexReductiveGroup::numInvolutions
   (const BitMap& Cartan_classes) const
 {
@@ -860,31 +700,25 @@ ComplexReductiveGroup::involutionMatrix(const TwistedInvolution& tw)
   return rootDatum().matrix(weylGroup().word(tw.w())) * distinguished();
 }
 
-/*!
-\brief Sum of the real roots.
-*/
+// Sum of the real roots
 Weight
-  ComplexReductiveGroup::posRealRootSum(const TwistedInvolution& tw)
-  const
+ComplexReductiveGroup::posRealRootSum(const TwistedInvolution& tw) const
 {
   return rootDatum().twoRho(involution_data(tw).real_roots());
 }
 
-  /*!
-\brief Sum of the imaginary roots.
-  */
+// Sum of the imaginary roots.
 Weight
-  ComplexReductiveGroup::posImaginaryRootSum(const TwistedInvolution& tw)
-  const
+ComplexReductiveGroup::posImaginaryRootSum(const TwistedInvolution& tw) const
 {
   return rootDatum().twoRho(involution_data(tw).imaginary_roots());
 }
 
-/*! \brief Make |sigma| canonical and return Weyl group |w| element that
-    twisted conjugates the canonical representative back to original |sigma|.
+/* Make |sigma| canonical and return Weyl group |w| element that
+   twisted conjugates the canonical representative back to original |sigma|.
 
-    We find conjugating generators starting at the original `|sigma|' end, so
-    these form the letters of |w| from left (last applied) to right (first).
+   We find conjugating generators starting at the original `|sigma|' end, so
+   these form the letters of |w| from left (last applied) to right (first).
 */
 WeylWord // return value is conjugating element
 ComplexReductiveGroup::canonicalize
@@ -947,7 +781,7 @@ Grading ComplexReductiveGroup::simple_roots_x0_compact(RealFormNbr rf) const
   SmallBitVector x_adj_coch = // in \emph{adjoint} cocharacter lattice modulo 2
     adfg.fromBasis(SmallBitVector(rf_rep,fund_f.adjointFiberRank()));
 
-  // lifting adjoint fiber group elts just expands bits to delta-fixed places
+  // lifting adjoint fiber group elts just sends bits to delta-fixed places
   assert(x_adj_coch.data() == rf_rep.unslice(simple_roots_imaginary()));
   return x_adj_coch.data(); // each bit gives pairing with a simple root
 }
@@ -961,7 +795,7 @@ ComplexReductiveGroup::square_class_repr(cartanclass::square_class csc) const
 { return fundamental().realFormPartition().classRep(csc); }
 
 // here |diff| grades the simple roots, but only imaginary ones are involved
-TorusPart ComplexReductiveGroup::grading_shift_repr(Grading diff) const
+TorusPart ComplexReductiveGroup::grading_shift_repr (Grading diff) const
 {
   const SmallSubquotient& fg = fundamental().fiberGroup();
   const unsigned int f_rank = fg.dimension();
@@ -980,22 +814,122 @@ TorusPart ComplexReductiveGroup::grading_shift_repr(Grading diff) const
   return fg.fromBasis(v);
 }
 
-TorusPart ComplexReductiveGroup::x0_torus_part(RealFormNbr rf) const
+
+RatCoweight coch_representative(const RootDatum& rd, Grading compact_simple)
 {
-  Grading mine = simple_roots_x0_compact(rf);
-  Grading base = simple_roots_x0_compact(square_class_repr(xi_square(rf)));
-  return grading_shift_repr(mine^base); // a |TorusPart| for the difference
+  RatWeight result (rd.rank());
+  for (RankFlags::iterator it=compact_simple.begin(); it(); ++it)
+    result += rd.fundamental_coweight(*it);
+  return result;
 }
 
 RatCoweight ComplexReductiveGroup::base_grading_vector(RealFormNbr rf) const
 {
-  const RootDatum& rd = rootDatum();
-  RatWeight result (rd.rank());
   RankFlags cpct = simple_roots_x0_compact(square_class_repr(xi_square(rf)));
-  for (RankFlags::iterator it=cpct.begin(); it(); ++it)
-    result += rd.fundamental_coweight(*it);
+  return coch_representative(rootDatum(),cpct);
+}
+
+// an inverse operation to |coch_representative| composed with |exp_pi|
+Grading compact_simple(const RootDatum& rd, RankFlags imag, TorusElement coch)
+{
+  Grading result;
+  for (auto it=imag.begin(); it(); ++it)
+    result.set(*it,coch.negative_at(rd.simpleRoot(*it)));
   return result;
 }
+
+/* find all FiberElt values in strong class of |y| for |csc|, mapping to
+   |image| under |toAdjoint|, and return a list of |TorusPart| values that
+   represent their differences with |y|
+*/
+containers::sl_list<TorusPart> preimage
+(const Fiber& fund_f, const cartanclass::square_class csc,
+ const cartanclass::FiberElt y, const cartanclass::AdjointFiberElt image)
+{
+  const SmallSubquotient& fg = fund_f.fiberGroup();
+  const unsigned int f_rk = fund_f.fiberRank();
+  const Partition& pi = fund_f.fiber_partition(csc);
+  const cartanclass::fiber_orbit srf = pi.class_of(y);
+  containers::sl_list<TorusPart> result;
+  for (cartanclass::FiberElt i=pi.classRep(srf); i<pi.size(); ++i)
+    if (pi.class_of(i)==srf and fund_f.toAdjoint(i)==image)
+      result.push_back(fg.fromBasis(SmallBitVector(RankFlags(i^y),f_rk)));
+  return result;
+} // |preimage|
+
+// torus parts that remain in the fiber and do not affect any grading
+containers::sl_list<TorusPart>
+ComplexReductiveGroup::central_fiber(RealFormNbr rf) const
+{
+  const Fiber& fund_f= fundamental();
+  const cartanclass::square_class csc = fund_f.central_square_class(rf);
+  const Partition& pi = fund_f.fiber_partition(csc);
+
+  // find number of a fiber orbit that maps to our weak real form
+  cartanclass::fiber_orbit srf;
+  for (srf=0; srf<pi.classCount(); ++srf)
+    if (fund_f.toWeakReal(srf,csc)==rf)
+      break;
+
+  const cartanclass::FiberElt y = pi.classRep(srf);
+
+  return preimage(fund_f,csc,y,fund_f.toAdjoint(y));
+} // |ComplexReductiveGroup::central_fiber|
+
+// select |TorusPart| from list with minimal fingerprint for |coch|
+TorusPart minimum(const containers::sl_list<TorusPart>& cf,
+  const ComplexReductiveGroup& G, const TorusElement& coch)
+{
+  if (cf.size()==1) // trivial (but frequent) case, just return coch
+    return cf.front();
+
+  // compute fingerprinting matrix whose kernel annihilates fiber denominator
+  int_Matrix A = G.distinguished().transposed();
+  for (size_t i=0; i<A.numRows(); ++i)
+    A(i,i) += 1;
+  int_Matrix projector = lattice::row_saturate(A);
+  /* |projector| applies to |coch.log_pi(false)|, and the values in $\Q^k$
+      produced are to be interpreted in $(\Q/2\Z)^k$. But |coch| is only to be
+      shifted by elements of $H(2)$ from |cf|, giving integer vectors under
+      |projector|, so for comparison of those we may as well apply the "floor"
+      map $\Q/2\Z \to \Z/2\Z$ to the entries of the value so produced.
+  */
+  const RatCoweight coch_log = coch.log_pi(false);
+  const auto fingerprint = projector*coch_log.numerator();
+  const arithmetic::Numer_t d = coch_log.denominator();
+
+  SmallBitVector ref (fingerprint.size()); // will hold the "floor" values
+  for (unsigned int i=0; i<fingerprint.size(); ++i)
+    ref.set(i,fingerprint[i]%(2*d)/d!=0); // produce bit from floor
+
+  BinaryMap pr(projector);
+  auto it= cf.begin();
+  unsigned long v=(ref + pr*(*it)).data().to_ulong();
+  const TorusPart* min_p = &*it;
+  for (++it; it!=cf.end(); ++it)
+  {
+    const unsigned long val = (ref + pr*(*it)).data().to_ulong();
+    if (val<v)
+    {
+      v=val;
+      min_p=&*it;
+    }
+  }
+  return *min_p;
+}
+
+TorusPart ComplexReductiveGroup::x0_torus_part(RealFormNbr rf) const
+{
+  Grading base = simple_roots_x0_compact(square_class_repr(xi_square(rf)));
+  TorusElement coch = // corresponds to (square class) base grading vector
+    y_values::exp_pi(coch_representative(rootDatum(),base));
+  TorusPart t = grading_shift_repr(base^simple_roots_x0_compact(rf));
+  coch += t; // a candidate torus part for |x0|, based on grading only
+  return
+    t += minimum(central_fiber(rf),*this,coch); // to preferred orbit repr.tive
+}
+
+
 
 unsigned long
 ComplexReductiveGroup::block_size(RealFormNbr rf,
@@ -1025,16 +959,11 @@ void ComplexReductiveGroup::twisted_act
 }
 
 
-
-} // namespace complexredgp
-
 /*****************************************************************************
 
         Chapter IV -- Functions declared in complexredgp.h
 
 ******************************************************************************/
-
-namespace complexredgp {
 
 WeylWord canonicalize // return value conjugates element new |sigma| to old
   (TwistedInvolution& sigma,
@@ -1259,8 +1188,16 @@ RealFormNbr real_form_of // who claims this KGB element?
    'torus_factor' of some KGB element in the fiber over that involution. In
    fact the specified torus factor might belong to a different strong real
    form than the one that is implicitly used, so we allow this function to
-   export a torus part that should be added to some KGB element of the (weak)
-   real for returned in order to exacly match the given |torus_factor|.
+   export a cocharacter |strong_form_start| that should be used to produce
+   the base grading vector for this real form, rather than what the
+   |base_grading_vector| method produces based on grading alone. In realex the
+   synthetic real form function is based on this functionality.
+
+   We do insist that |strong_form_start| always produce the same grading (at
+   the initial KGB element) as |base_grading_vector| for its weak real form
+   does. Also we want any |tw,torus_factor| obtained from a KGB element for
+   for a synthetic real form to reproduce the same |strong_form_start| value,
+   which implies we must define an objective preference among candidates.
  */
 RealFormNbr strong_real_form_of // who claims this KGB element?
   (ComplexReductiveGroup& G,
@@ -1285,58 +1222,49 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
       else
 	gTg.cross_act(s,x);
 
+    x.torus_part().reduce();
     assert(gTg.is_valid(x)); // check that we still have a valid element
     assert (x.tw()==TwistedInvolution()); // and we are at fundamental fiber
   }
 
-  // find the grading of the simple-imaginary roots at |tw|
-  Grading gr;
-  {
-    i_tab.add(G,0); // generated involutions in fundamental Cartan class
-    InvolutionNbr inv = i_tab.nr(x.tw());
-    for (unsigned i=0; i<i_tab.imaginary_rank(inv); ++i)
-      gr.set(i,
-       not x.torus_part().negative_at(rd.root(i_tab.imaginary_basis(inv,i))));
-  }
 
-  // find weak real form, and the (simple) grading of its first KGB element
-  RealFormNbr wrf = fund_f.weakReal().class_of(fund_f.gradingRep(gr));
-  RankFlags ref = G.simple_roots_x0_compact(wrf);
+  RealFormNbr wrf; // the weak real form to return; find its value now:
+  // must do this using the grading of simple-imaginary roots defined by |x|
+  Grading gr; // grading of simple-imaginary roots
+  i_tab.add(G,0); // generate involutions in fundamental Cartan class
+  InvolutionNbr inv = i_tab.nr(x.tw()); // without doubt |inv==0|
+  for (unsigned i=0; i<i_tab.imaginary_rank(inv); ++i)
+    gr.set(i,
+      not x.torus_part().negative_at(rd.root(i_tab.imaginary_basis(inv,i))));
 
-  { // get distinguished element in the fundamental fiber
-    KGB_elt_entry::Pooltype elt_pool; // we need to generate them all
-    HashTable<KGB_elt_entry,unsigned long> elt_hash(elt_pool);
-    unsigned int min_match = -1;
-    elt_hash.match(i_tab.x_pack(x)); // initial element
+  // found the grading, get a corresponding adjoint fiber element, and |wrf|
+  cartanclass::AdjointFiberElt here = fund_f.gradingRep(gr);
+  wrf = fund_f.weakReal().class_of(here);
 
-    for (size_t i=0; i<elt_hash.size(); ++i) // |elt_hash| grows during loop
-      // generate using cross actions for twist-fixed (imaginary) simple roots
-    {
-      const GlobalTitsElement x = elt_hash[i].repr();
-      bool match_ref=true; // whether |x| defines |ref_gr| on simple roots
-      for (auto it=G.simple_roots_imaginary().begin(); it(); ++it)
-      {
-	const weyl::Generator s = *it;
-	elt_hash.match(i_tab.x_pack(gTg.cross(s,x)));
-	if (x.torus_part().negative_at(rd.simpleRoot(s))!=ref[s])
-	  match_ref=false;
-      }
-      if (match_ref and
-	  (min_match==-1u or elt_hash[i].label()<elt_hash[min_match].label()))
-	min_match = i; // first or better element in fiber matching |ref_gr|
-    } // |for(i)|
+  // to adjust the grading is subtle; our freedom depends on the square class
+  cartanclass::square_class csc = fund_f.central_square_class(wrf);
+  cartanclass::AdjointFiberElt goal = // element that gives x0 grading
+    fund_f.wrf_rep(wrf); // get elected (in fact first) representative of |wrf|
+  cartanclass::AdjointFiberElt base = fund_f.class_base(csc); // base of coset
 
-    assert(min_match!=-1u); // some element must match the grading!
-    strong_form_start = elt_hash[min_match].repr().torus_part();
-  }
-  strong_form_start += G.x0_torus_part(wrf); // morally subtraction, but mod 2
+  // to lift |here| to a |FiberElt|, must take it relative to coset base
+  const SmallBitVector diff(RankFlags(here^base),fund_f.adjointFiberRank());
+  cartanclass::FiberElt y = // get |toAdjoint|-preimage |FiberElt| of |diff|
+    (fund_f.toAdjoint().section()*diff).data().to_ulong();
+
+  // the orbit of |y| is a strong real form lying over |wrf|, stay within it
+
+  auto pre = // find shifts within fiber orbit of |y| that will move to |goal|
+    preimage(fund_f,csc,y,goal^base);
+
+  strong_form_start = x.torus_part() += minimum(pre,G,x.torus_part());
+
+  assert(compact_simple(rd,G.simple_roots_imaginary(),strong_form_start) ==
+	 G.simple_roots_x0_compact(wrf)); // check grading is as expected
 
   return wrf;
 
 } // |strong_real_form_of|
-
-} // namespace complexredgp
-
 
 /*****************************************************************************
 
@@ -1344,13 +1272,7 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
 
 ******************************************************************************/
 
-namespace complexredgp {
-
-/*!
-  \brief Cross-transforms the roots in |rl| according to |ww|.
-
-  NOTE: the cross-transformations of |ww| are done in right to left order.
-*/
+// Cross-transform the roots in |rl| according to |ww| (right to left)
 void crossTransform(RootNbrList& rl,
 		    const WeylWord& ww,
 		    const RootSystem& rs)
@@ -1359,8 +1281,7 @@ void crossTransform(RootNbrList& rl,
     rs.simple_root_permutation(ww[i]).renumber(rl);
 }
 
-/*!
-  \brief Returns an element |x| (interpreted as element of the adjoint fiber
+/* Returns an element |x| (interpreted as element of the adjoint fiber
   of |fundf|) such that it grades the elements in |rl| according to |gr|.
 
   The successive bits of |gr| give the desired grading of the successive roots
@@ -1400,6 +1321,145 @@ unsigned long makeRepresentative(const Grading& gr,
     throw std::runtime_error("Representative of impossible grading requested");
 }
 
+#if 0 // functions below are no longer used
+
+/* Add a new real form label list to d_realFormLabels.
+
+  This is called when a new |CartanClass| has just been constructed at index
+  |cn|. Then this function finds the labels corresponding to the real forms
+  for which this Cartan is defined (the labelling of real forms being defined
+  by the adjoint orbit picture in the fundamental fiber.)
+
+  Algorithm: the gradings of the imaginary root system corresponding to the
+  various real forms for which the new Cartan is defined are known. We find
+  a cross-action followed by a composite Cayley transform, taking the
+  fundamental Cartan to the new one. Then for each real form, we take a
+  representative grading, and compute a grading for the fundamental Cartan
+  transforming to it. This amounts to solving a system of linear equations
+  mod 2.
+*/
+void ComplexReductiveGroup::correlateForms(CartanNbr cn)
+{
+  const RootSystem& rs = rootDatum();
+  const TwistedWeylGroup& tW = twistedWeylGroup();
+  const Fiber& fundf = d_fundamental;
+  const Fiber& f = cartan(cn).fiber(); // fiber of this Cartan
+
+  const TwistedInvolution& ti = twistedInvolution(cn);
+
+  // find cayley part and cross part
+  RootNbrSet so;
+  WeylWord ww;
+  Cayley_and_cross_part(so,ww,ti,rs,tW);
+
+  assert(checkDecomposition(ti,ww,so,tW,rs));
+
+  const Partition& pi = f.weakReal();
+  RealFormNbrList rfl(f.numRealForms());
+
+  // transform gradings and correlate forms
+  for (size_t j = 0; j < rfl.size(); ++j)
+  {
+    unsigned long y = pi.classRep(j); //  orbit |j| has representative |y|
+    Grading gr=f.grading(y); // and |gr| is it's grading
+    RootNbrList rl = f.simpleImaginary(); // of the roots in |rl|
+
+    gradings::transform_grading(gr,rl,so,rs); // grade those roots at |fundf|
+    for (size_t i = 0; i < so.size(); ++i)
+      gr.set(rl.size()+i);        // make grading noncompact for roots in |so|
+    std::copy(so.begin(),so.end(),back_inserter(rl)); // extend |rl| with |so|
+    crossTransform(rl,ww,rs);  // apply cross part of |ti| to roots in |rl|
+
+    /* now |gr| grades the roots in |rl|,
+       which are imaginary for the fundamental fiber |fundf| */
+    for (size_t i = 0; i < rl.size(); ++i)
+      assert(fundf.imaginaryRootSet().isMember(rl[i]));
+
+    unsigned long x = makeRepresentative(gr,rl,fundf);
+    RealFormNbr rf = fundf.weakReal()(x); // look up representative
+    rfl[j] = rf;
+  }
+
+  Cartan[cn].real_labels = rfl;
+  assert(rfl[0]==quasisplit()); // adjoint base grading is always quasisplit
+} // |ComplexReductiveGroup::correlateForms|
+
+void ComplexReductiveGroup::correlateDualForms(CartanNbr cn)
+{
+  const RootSystem& rs = dualRootDatum();
+  const TwistedWeylGroup& tW = dualTwistedWeylGroup();
+  const Fiber& fundf = d_dualFundamental;
+  const Fiber& f = cartan(cn).dualFiber();
+
+  TwistedInvolution ti = dualTwistedInvolution(cn);
+
+
+  // find cayley part and cross part
+  RootNbrSet so;
+  WeylWord ww;
+  Cayley_and_cross_part(so,ww,ti,rs,tW); // computation is in dual setting!
+
+  assert(checkDecomposition(ti,ww,so,tW,rs));
+
+  const Partition& pi = f.weakReal();
+  RealFormNbrList rfl(f.numRealForms());
+
+  // transform gradings and correlate forms
+  for (size_t j=0; j<rfl.size(); ++j)
+  {
+    unsigned long y = pi.classRep(j);
+    Grading gr=f.grading(y);
+    RootNbrList rl = f.simpleImaginary();
+    gradings::transform_grading(gr,rl,so,rs);
+    for (size_t i=0; i<so.size(); ++i)
+      gr.set(rl.size()+i);
+    copy(so.begin(),so.end(),back_inserter(rl));
+    crossTransform(rl,ww,rs);
+
+// begin testing
+    /* now |gr| grades the roots in |rl|,
+       which are imaginary for the dual fundamental fiber |fundf| */
+    for (size_t i=0; i<rl.size(); ++i)
+      assert(fundf.imaginaryRootSet().isMember(rl[i]));
+// end testing
+
+    unsigned long x = makeRepresentative(gr,rl,fundf);
+    RealFormNbr rf = fundf.weakReal()(x);
+    rfl[j] = rf;
+  }
+
+  Cartan[cn].dual_real_labels = rfl;
+  assert(rfl[0]==0); // adjoint base grading is always quasisplit
+} // |ComplexReductiveGroup::correlateDualForms|
+
+/*
+  Check whether |ti| decomposes as the composition of the cross-action
+  defined by |cross| followed by the Cayley transform defined by |Cayley|.
+*/
+bool checkDecomposition(const TwistedInvolution& ti,
+			const WeylWord& cross,
+			const RootNbrSet& Cayley,
+			const TwistedWeylGroup& W,
+			const RootSystem& rs)
+{
+  TwistedInvolution tw;
+
+  // cross action part
+  for (size_t i=0; i<cross.size(); ++i)
+    W.twistedConjugate(tw,cross[i]);
+
+  // cayley transform part
+  for (RootNbrSet::iterator it=Cayley.begin(); it(); ++it)
+  {
+    InvolutionData id(rs,W.simple_images(rs,tw));
+    assert(id.imaginary_roots().isMember(*it));
+    W.leftMult(tw,rs.reflectionWord(*it));
+  }
+
+  return tw == ti;
+}
+
+#endif
 
 
 } // |namespace complexredgp|

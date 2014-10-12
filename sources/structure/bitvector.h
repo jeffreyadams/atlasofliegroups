@@ -141,10 +141,6 @@ template<size_t dim> class BitVector
  public:
 
   // constructors and destructors
-  BitVector()
-    : d_data(), d_size(0)
-    {}
-
   explicit BitVector(size_t n) // initialised to 0 in $Z/2Z$
     : d_data(), d_size(n)
     {}
@@ -373,10 +369,6 @@ template<size_t dim> class BitMatrix
  public:
 
 // constructors and destructors
-  BitMatrix()
-    : d_data(), d_rows(0), d_columns(0)
-    {}
-
   explicit BitMatrix(size_t n) // square matrix
     : d_data(n) // make |n| default constructed |BitSet|s as columns
     , d_rows(n)
@@ -396,6 +388,13 @@ template<size_t dim> class BitMatrix
   explicit BitMatrix(const std::vector<BitVector<dim> >&,  // set by columns
 		     unsigned short int num_rows);  // all of size |num_rows|
   explicit BitMatrix(const matrix::Matrix<int>& m); // set modulo 2
+
+  static BitMatrix identity(unsigned int n)
+  { BitMatrix M(n);
+    for (size_t i=0; i<n; ++i)
+      M.set(i,i);
+    return M;
+  }
 
 // copy and assignment (implicitly generated ones will do)
 
@@ -420,9 +419,7 @@ template<size_t dim> class BitMatrix
   size_t numColumns() const { return d_columns; } // the number of columns
   size_t numRows() const { return d_rows; } // the number of rows
 
-  void get_row(BitVector<dim>&, size_t) const;
-  BitVector<dim> row(size_t i) const
-  { BitVector<dim> result; get_row(result,i); return result; }
+  BitVector<dim> row(size_t i) const;
 
   //! Column $j$ of the BitMatrix, as a BitVector.
   BitVector<dim> column(size_t j) const

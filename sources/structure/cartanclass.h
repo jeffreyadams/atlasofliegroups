@@ -394,11 +394,11 @@ class Fiber {
   const StrongRealFormRep& strongRealForm(adjoint_fiber_orbit wrf) const
     { return d_strongRealFormReps[wrf]; }
 
-/* Natural linear map from fiber group to adjoint fiber group
-
-  This map is induced by the inclusion of the root lattice in the character
-  lattice
+/*
+  Natural linear map from fiber group to adjoint fiber group, induced by the
+  inclusion of the root lattice in the character lattice
 */
+  BinaryMap toAdjoint() const { return d_toAdjoint; }
   AdjointFiberElt toAdjoint(FiberElt) const;
 
 /* The class number in the weak real form partition of the strong real form

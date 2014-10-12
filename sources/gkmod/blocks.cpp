@@ -750,13 +750,14 @@ const InvolutionTable& param_block::involution_table() const
 nblock_help::nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
   : kgb(GR.kgb()), rd(subsys.parent_datum()), sub(subsys)
   , i_tab(GR.complexGroup().involution_table())
-  , dual_m_alpha(kgb.rank()), half_alpha()
+  , dual_m_alpha(), half_alpha()
 {
   assert(kgb.rank()==rd.semisimpleRank());
+  dual_m_alpha.reserve(kgb.rank());
   half_alpha.reserve(kgb.rank());
   for (weyl::Generator s=0; s<kgb.rank(); ++s)
   {
-    dual_m_alpha[s]=TorusPart(rd.simpleRoot(s));
+    dual_m_alpha.push_back(TorusPart(rd.simpleRoot(s)));
     half_alpha.push_back(TorusElement(RatWeight(rd.simpleRoot(s),2),false));
   }
 }

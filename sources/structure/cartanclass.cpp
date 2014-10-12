@@ -620,6 +620,7 @@ std::vector<Partition> Fiber::makeStrongReal (const RootDatum& rd) const
 
   GradingList gs(fiberRank());
 
+  // basically compute |L*d_toAdjoint| where rows of L are |d_gradingShift|
   for (size_t i = 0; i < gs.size(); ++i)
     gs[i]=bitvector::combination(d_gradingShift,d_toAdjoint.column(i).data());
 
@@ -651,10 +652,10 @@ std::vector<Partition> Fiber::makeStrongReal (const RootDatum& rd) const
 */
 std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
 {
-  SmallBitVectorList b(fiberRank());
+  SmallBitVectorList b; b.reserve(fiberRank());
 
-  for (size_t i = 0; i < b.size(); ++i)
-    b[i]=d_toAdjoint.column(i);
+  for (size_t j = 0; j < fiberRank(); ++j)
+    b.push_back(d_toAdjoint.column(j));
 
   std::vector<StrongRealFormRep> result(numRealForms());
 
@@ -751,9 +752,9 @@ AdjointFiberElt Fiber::gradingRep(const Grading& gr) const
   SmallBitVector target(gr,ir);
   target -= SmallBitVector(d_baseGrading,ir); // this complements gradings
 
-  SmallBitVectorList shifts(adjointFiberRank());
-  for (size_t i = 0; i < shifts.size(); ++i)
-    shifts[i]=SmallBitVector(d_gradingShift[i],ir);
+  SmallBitVectorList shifts; shifts.reserve(adjointFiberRank());
+  for (size_t i = 0; i < adjointFiberRank(); ++i)
+    shifts.push_back(SmallBitVector(d_gradingShift[i],ir));
 
   RankFlags result;
   if (combination_exists(shifts,target,result))

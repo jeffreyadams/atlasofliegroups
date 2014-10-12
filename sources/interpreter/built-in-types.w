@@ -2416,6 +2416,23 @@ void synthetic_real_form_wrapper(expression_base::level l)
     push_value(std::make_shared<real_form_value>(*G,rf,cocharacter));
 }
 
+@ This is to test the |ComplexReductiveGroup::central_fiber| method. It
+computes those torus parts in the fiber at the distinguished involution that
+both remain in the strong real form orbit and are central (do not affect any
+gradings).
+
+@< Local function def...@>=
+void central_fiber_wrapper(expression_base::level l)
+{ shared_real_form rf= get<real_form_value>();
+  auto cf = rf->parent.val.central_fiber(rf->val.realForm());
+  own_row result = std::make_shared<row_value>(cf.size());
+  if (l==expression_base::no_value)
+    return;
+  unsigned int i=0;
+  for (auto it=cf.begin(); it!=cf.end(); ++it, ++i)
+    result->val[i]= std::make_shared<vector_value>(int_Vector(*it));
+  push_value(result);
+}
 
 @ Finally we install everything related to real forms.
 @< Install wrapper functions @>=
@@ -2438,6 +2455,7 @@ install_function(dual_quasisplit_form_wrapper,@|"dual_quasisplit_form"
 		,"(InnerClass->RealForm)");
 install_function(synthetic_real_form_wrapper,@|"real_form"
 		,"(InnerClass,mat,ratvec->RealForm)");
+install_function(central_fiber_wrapper,"central_fiber","(RealForm->[vec])");
 
 @*1 A type for Cartan classes.
 %

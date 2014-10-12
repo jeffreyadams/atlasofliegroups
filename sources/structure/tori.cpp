@@ -221,7 +221,7 @@ SmallSubquotient dualPi0(const WeightInvolution& q)
   SmallBitVectorList plus2(plusBasis(q)); // mod 2: denominator subgroup
 
   BinaryMap i2(q);  // reduce modulo 2
-  BinaryMap id; identityMatrix(id,q.numRows());
+  auto id = BinaryMap::identity(q.numRows());
 
   i2 += id; // now |i2| is mod-2 image of |theta-1| (and also of |theta+1|)
 
@@ -378,7 +378,7 @@ void makeTopology(SmallSubquotient& cs, const RealTorus& T)
   SmallBitVectorList plus2(T.plusLattice()); // reduce mod 2
 
   BinaryMap i2(T.involution()); // reduce mod 2
-  BinaryMap id; identityMatrix(id,T.rank());
+  auto id = BinaryMap::identity(T.rank());
   i2 += id;
 
   SmallBitVectorList b=i2.kernel(); // kernel of |theta+1| mod 2, contains V_+

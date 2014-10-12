@@ -45,7 +45,16 @@ namespace testrun {
 
 namespace testrun {
 
-// base class for group iterators (currently nothing derived from it)
+// Dixit Fokko: base class for group iterators
+/*
+  It is unclear to me [MvL] what exactly this class was intended for. Visibly
+  an abstract base class, but currently nothing is derived from it, nor is
+  anything implemented. None of the iterators defined in the sequel have
+  |RealReductiveGroup| as value type, so it is not those that were intended to
+  be derived from |GroupIterator|. Maybe different kinds of iterators over
+  |RealReductiveGroup| were envisioned, based on restrictive criteria listed
+  in the |Category| enumeration. For now this is both useless and unused.
+ */
 
 class GroupIterator {
 

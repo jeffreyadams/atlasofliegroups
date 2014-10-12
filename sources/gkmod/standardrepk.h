@@ -167,7 +167,7 @@ class StandardRepK
 
 public:
 
-  StandardRepK() {} // so empty slots can be created
+ StandardRepK() : d_fiberElt(0) {} // so empty slots can be created
 
   void swap(const StandardRepK&);
 
@@ -211,6 +211,8 @@ struct Cartan_info
   // a chosen one from each pair of $\theta$-conjugate such simple roots
   RankFlags bi_ortho; // simple roots, and necessarily complex ones
   WeightList sum_coroots; // associated sums of 2 coroots
+
+  Cartan_info() : torsionProjector(0) {}
 
   const Weight& coroot_sum(size_t i) const
     { assert (bi_ortho[i]); return sum_coroots[bi_ortho.position(i)]; }

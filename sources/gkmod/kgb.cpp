@@ -640,7 +640,7 @@ KGB::KGB(RealReductiveGroup& GR,
   for (InvolutionNbr i=0; i<inv_pool.size(); ++i)
     Cartan.push_back(i_tab.Cartan_class(inv_pool[i]));
 
-  TorusPart shift;
+  TorusPart shift(G.rank());
   bool do_dual_twist = dual_twist and is_dual_twist_stable(GR,shift);
   if (do_dual_twist)
   {

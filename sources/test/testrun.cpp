@@ -243,8 +243,8 @@ namespace testrun {
 
 
 /*
-  Makes a TorusPartIterator that runs through all r-tuples in $B^r$. Since we
-  are assuming that $B$ is non-empty, we can safely dereference |B.begin()|
+  Makes a TorusPartIterator that runs through all r-tuples in $S^r$. Since we
+  are assuming that $S$ is non-empty, we can safely dereference |b.begin()|
   and set |d_done=false| initially
 */
 TorusPartIterator::
@@ -330,11 +330,11 @@ void TorusPartIterator::reset(const BitMap& qr)
   to consider quotients of products of a simply connected semisimple group $G$
   and a (central) torus $T=(\C^\times)^d$, by subgroups which intersect $T$
   trivially. Dually, they correspond to subgroups $D$ of $C x \Z^d$, where $C$
-  is the dual of the center of $G$ (i.e. the weight lattice of $G$ modulo the
-  root lattice), and $Z\^d$ is the character lattice of $T$, such that the
-  projection $D\to\Z^d$ is surjective. So we have to traverse the subgroups
-  $H$ of $C$, and for each enumerate homomorphisms $f:\Z^d\to C/H$ to the
-  quotient; the corresponding subgroup $D$ is given by
+  is the dual of the (finite) center of $G$ (i.e. the weight lattice of $G$
+  modulo its root lattice), and $Z\^d$ is the character lattice of $T$, such
+  that the projection $D\to\Z^d$ is surjective. So we have to traverse the
+  subgroups $H$ of $C$, and for each enumerate homomorphisms $f:\Z^d\to C/H$
+  to the corresponding quotient; the corresponding subgroup $D$ is given by
   $\{ (c,x)\in C\times \Z^d : (c mod H)=f(x) \}$
 
 ******************************************************************************/

@@ -110,21 +110,16 @@ class Partition
   bool operator== (const Partition& other) const
   { return d_class == other.d_class; }
 
-  /*!
-\brief Returns the number of classes in the partition.
-  */
+  // The number of classes in the partition
   unsigned long classCount() const { return d_classRep.size(); }
 
-  /*!
-  \brief Returns the number of an element belong to class \# c.
-  */
+  // An element belonging to class |c| (in fact the first such element)
   unsigned long classRep(unsigned long c) const { return d_classRep[c]; }
 
+  // The number of elements belonging to class |c|
   unsigned long classSize(unsigned long) const;
 
-  /*!
-  \brief Number of elements of the underlying set of the partition.
-   */
+  // Number of elements of the underlying set of the partition
   unsigned long size() const { return d_class.size(); }
 
   // an auxiliary class to turn a partition into function object for comparison

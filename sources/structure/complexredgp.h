@@ -350,6 +350,9 @@ class ComplexReductiveGroup
 
   RatCoweight base_grading_vector(RealFormNbr rf) const;
 
+  // torus parts that remain in the fiber and do not affect any grading
+  containers::sl_list<TorusPart> central_fiber(RealFormNbr rf) const;
+
 // Information about a real form or dual real form at a given Cartan class
 
   // size of the block defined by weak real form |rf| and dual real form| drf|

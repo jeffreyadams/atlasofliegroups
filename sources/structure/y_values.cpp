@@ -105,6 +105,16 @@ TorusElement& TorusElement::operator+=(TorusPart v)
   return *this;
 }
 
+TorusElement& TorusElement::reduce()
+{
+  arithmetic::Denom_t d=2u*repr.denominator();
+  Ratvec_Numer_t& num=repr.numerator();
+  for (size_t i=0; i<num.size(); ++i)
+    if (arithmetic::Denom_t(num[i])>=d) // avoid division if not necessary
+      num[i] = arithmetic::remainder(num[i],d);
+  return *this;
+}
+
 
 void TorusElement::simple_reflect(const PreRootDatum& prd, weyl::Generator s)
 { prd.simpleReflect(repr.numerator(),s); } // numerator is weight for |prd|

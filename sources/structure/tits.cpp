@@ -92,12 +92,13 @@ GlobalTitsGroup::GlobalTitsGroup(const ComplexReductiveGroup& G)
 		   G.rootDatum().endSimpleRoot()),
 	G.rootDatum().rank())
   , delta_tr(G.distinguished().transposed())
-  , alpha_v(G.semisimpleRank())
+  , alpha_v()
   , half_rho_v(G.rootDatum().dual_twoRho(),4)
   , square_class_gen(compute_square_classes(G))
 {
-  for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
-    alpha_v[i]=TorusPart(prd.simple_roots()[i]);
+  alpha_v.reserve(G.semisimpleRank());
+  for (size_t i=0; i<G.semisimpleRank(); ++i) // reduce vectors mod 2
+    alpha_v.push_back(TorusPart(prd.simple_roots()[i]));
 }
 
 WeightInvolution
@@ -431,15 +432,17 @@ TitsGroup::TitsGroup(const RootDatum& rd,
 		     const WeightInvolution& delta)
   : TwistedWeylGroup(W,weyl::make_twist(rd,delta))
   , d_rank(rd.rank())
-  , d_simpleRoot(rd.semisimpleRank())   // set number of vectors, but not yet
-  , d_simpleCoroot(rd.semisimpleRank()) // their size (which will be |d_rank|)
+  , d_simpleRoot()   // set number of vectors, but not yet
+  , d_simpleCoroot() // their size (which will be |d_rank|)
   , d_involution(delta.transposed())
   , dual_involution(rd.rank()) // set below
 {
+  d_simpleRoot.reserve(rd.semisimpleRank());
+  d_simpleCoroot.reserve(rd.semisimpleRank());
   for (size_t i = 0; i<rd.semisimpleRank(); ++i) // reduce vectors mod 2
   {
-    d_simpleRoot[i]  =TorusPart(rd.simpleRoot(i));
-    d_simpleCoroot[i]=TorusPart(rd.simpleCoroot(i));
+    d_simpleRoot.push_back(TorusPart(rd.simpleRoot(i)));
+    d_simpleCoroot.push_back(TorusPart(rd.simpleCoroot(i)));
   }
 
   // we could compute $w_0*d_invulution$ to give |dual_involution|
