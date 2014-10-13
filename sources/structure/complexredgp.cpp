@@ -1258,9 +1258,13 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
     preimage(fund_f,csc,y,goal^base);
 
   strong_form_start = x.torus_part() += minimum(pre,G,x.torus_part());
+  // now |x.torus_part| is what |torus_factor| should return at first KGB elt
 
-  assert(compact_simple(rd,G.simple_roots_imaginary(),strong_form_start) ==
+  assert(compact_simple(rd,G.simple_roots_imaginary(),x.torus_part()) ==
 	 G.simple_roots_x0_compact(wrf)); // check grading is as expected
+
+  // take into account the torus bits that will be stored at KGB element x0
+  strong_form_start += G.x0_torus_part(wrf); // morally subtraction, but mod 2
 
   return wrf;
 
