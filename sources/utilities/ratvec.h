@@ -106,6 +106,25 @@ template<typename C1, typename C2>
   RationalVector<C2> operator*
   (const matrix::Matrix<C1>& M, const RationalVector<C2>& v);
 
+template<typename C1, typename C2>
+  RationalVector<C2>& symmetrise
+  (const matrix::Matrix<C1>& M,RationalVector<C2>& v)
+{
+  v.numerator() += M*v.numerator();
+  return (v/=2).normalize();
+}
+
+template<typename C1, typename C2>
+  RationalVector<C2>& symmetrise
+  (RationalVector<C2>& v,const matrix::Matrix<C1>& M)
+{
+  v.numerator() += M.right_prod(v.numerator());
+  return (v/=2).normalize();
+}
+
+
+
+
 } // |namespace ratvec|
 } // |namespace atlas|
 #endif

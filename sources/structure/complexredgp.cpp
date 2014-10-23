@@ -84,6 +84,17 @@ namespace complexredgp {
 			  const TwistedWeylGroup& W,
 			  const RootSystem& rs);
 
+  // make from $(\Q/2\Z)^n$ to $(\Z/2\Z)^n$ taking floors of coefficients
+  SmallBitVector floor (Ratvec_Numer_t num, arithmetic::Numer_t d);
+
+  // select |TorusPart| from list with minimal fingerprint for |coch|
+  TorusPart minimum(const containers::sl_list<TorusPart>& cf,
+		    const ComplexReductiveGroup& G, const TorusElement& coch);
+
+  // replace |coch| by minimum representative modulo image |delta_plus_1|
+  void to_minimum_representative(TorusElement& coch,
+				 const WeightInvolution& delta);
+
 
 /*****************************************************************************
 
@@ -876,47 +887,7 @@ ComplexReductiveGroup::central_fiber(RealFormNbr rf) const
   return preimage(fund_f,csc,y,fund_f.toAdjoint(y));
 } // |ComplexReductiveGroup::central_fiber|
 
-// select |TorusPart| from list with minimal fingerprint for |coch|
-TorusPart minimum(const containers::sl_list<TorusPart>& cf,
-  const ComplexReductiveGroup& G, const TorusElement& coch)
-{
-  if (cf.size()==1) // trivial (but frequent) case, just return coch
-    return cf.front();
 
-  // compute fingerprinting matrix whose kernel annihilates fiber denominator
-  int_Matrix A = G.distinguished().transposed();
-  for (size_t i=0; i<A.numRows(); ++i)
-    A(i,i) += 1;
-  int_Matrix projector = lattice::row_saturate(A);
-  /* |projector| applies to |coch.log_pi(false)|, and the values in $\Q^k$
-      produced are to be interpreted in $(\Q/2\Z)^k$. But |coch| is only to be
-      shifted by elements of $H(2)$ from |cf|, giving integer vectors under
-      |projector|, so for comparison of those we may as well apply the "floor"
-      map $\Q/2\Z \to \Z/2\Z$ to the entries of the value so produced.
-  */
-  const RatCoweight coch_log = coch.log_pi(false);
-  const auto fingerprint = projector*coch_log.numerator();
-  const arithmetic::Numer_t d = coch_log.denominator();
-
-  SmallBitVector ref (fingerprint.size()); // will hold the "floor" values
-  for (unsigned int i=0; i<fingerprint.size(); ++i)
-    ref.set(i,fingerprint[i]%(2*d)/d!=0); // produce bit from floor
-
-  BinaryMap pr(projector);
-  auto it= cf.begin();
-  unsigned long v=(ref + pr*(*it)).data().to_ulong();
-  const TorusPart* min_p = &*it;
-  for (++it; it!=cf.end(); ++it)
-  {
-    const unsigned long val = (ref + pr*(*it)).data().to_ulong();
-    if (val<v)
-    {
-      v=val;
-      min_p=&*it;
-    }
-  }
-  return *min_p;
-}
 
 TorusPart ComplexReductiveGroup::x0_torus_part(RealFormNbr rf) const
 {
@@ -1265,6 +1236,7 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
 
   // take into account the torus bits that will be stored at KGB element x0
   strong_form_start += G.x0_torus_part(wrf); // morally subtraction, but mod 2
+  to_minimum_representative(strong_form_start,G.distinguished());
 
   return wrf;
 
@@ -1323,7 +1295,83 @@ unsigned long makeRepresentative(const Grading& gr,
     return x.to_ulong();
   else
     throw std::runtime_error("Representative of impossible grading requested");
+} // |makeRepresentative|
+
+
+// make from $(\Q/2\Z)^n$ to $(\Z/2\Z)^n$ taking floors of coefficients
+SmallBitVector floor (Ratvec_Numer_t num, arithmetic::Numer_t d)
+{
+  SmallBitVector result (num.size()); // will hold the "floor" values
+  for (unsigned int i=0; i<num.size(); ++i)
+    result.set(i,num[i]%(2*d)/d!=0); // produce bit from floor
+  return result;
 }
+
+
+// select |TorusPart| from list with minimal fingerprint for |coch|
+TorusPart minimum(const containers::sl_list<TorusPart>& cf,
+  const ComplexReductiveGroup& G, const TorusElement& coch)
+{
+  if (cf.size()==1) // trivial (but frequent) case, just return coch
+    return cf.front();
+
+  // compute fingerprinting matrix whose kernel annihilates fiber denominator
+  const int_Matrix A = G.distinguished().transposed()+1;
+  const int_Matrix projector = lattice::row_saturate(A);
+  /* |projector| applies to |coch.log_pi(false)|, and the values in $\Q^k$
+      produced are to be interpreted in $(\Q/2\Z)^k$. But |coch| is only to be
+      shifted by elements of $H(2)$ from |cf|, giving integer vectors under
+      |projector|, so for comparison of those we may as well apply the |floor|
+      map $\Q/2\Z \to \Z/2\Z$ to the entries of the value so produced.
+  */
+  const RatCoweight coch_log = coch.log_pi(false);
+  const SmallBitVector ref = // reference bitvector to which shifts are added
+    floor(projector*coch_log.numerator(),coch_log.denominator());
+
+  const BinaryMap pr(projector);
+  auto it= cf.begin();
+  unsigned long v=(ref + pr*(*it)).data().to_ulong();
+  TorusPart min = *it;
+  for (++it; it!=cf.end(); ++it)
+  {
+    const unsigned long val = (ref + pr*(*it)).data().to_ulong();
+    if (val<v)
+    {
+      v = val;
+      min = *it;
+    }
+  }
+  return min;
+} // |minimum|
+
+// replace |coch| by minimum representative modulo image |delta_plus_1|
+void to_minimum_representative(TorusElement& coch,
+			       const WeightInvolution& delta)
+{
+  coch.right_symmetrise(delta); // ensure a delta-fixed representative
+  BinaryMap A(delta.transposed()+1);
+  const SmallSubspace mod_space(A); // image space of mod 2 (delta^t+1)
+  const RatCoweight& coch_log = coch.as_Qmod2Z();
+  const SmallBitVector ref = // reference bitvector to which shifts are added
+    floor(coch_log.numerator(),coch_log.denominator());
+
+  unsigned long min = ref.data().to_ulong();
+  unsigned long min_i = 0;
+  const unsigned d = mod_space.dimension();
+  const unsigned long N=1ul<<d;
+  for (unsigned long i=1; i<N; ++i)
+  {
+    const SmallBitVector v(RankFlags(i),d);
+    const unsigned long val=(ref+mod_space.fromBasis(v)).data().to_ulong();
+    if (val<min)
+    {
+      min = val;
+      min_i = i;
+    }
+  }
+  coch += mod_space.fromBasis(SmallBitVector(RankFlags(min_i),d));
+}
+
 
 #if 0 // functions below are no longer used
 

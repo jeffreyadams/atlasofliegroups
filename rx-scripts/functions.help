@@ -352,10 +352,19 @@ KGB_size: (RealForm->int): size of the set K\G/B for this real form
 base_grading_vector: (RealForm->ratvec): Offset implicit in torus_bits values
   The binary vectors torus_bits for elements of the KGB associated to a real
   form are relative to an implicit "base grading" of the simple roots at the
-  distinguished involution of the inner class. The complement of that grading
-  is given by the parities of scalar products of the simple roots with the
-  delta-fixed rational vector produced by this function (the complement is
-  taken so that the quasisplit real form has a zero base grading vector).
+  distinguished involution of the inner class. One such grading is chosen for
+  each "square class" of real forms, real forms which are grouped together in
+  the output of print_strong_real for the fundamental Cartan, and the output
+  of the current function depends only on the square class. But for real forms
+  that are synthesized using the real_form@(InnerClass,mat,ratvec) instance,
+  the base_grading_vector records additional information, namely the square of
+  strong real form representative that was given (and which also will be the
+  square for every KGB element in the real form); thus such real forms can be
+  distinguished from other ones belonging to the same weak real form. The
+  mentioned grading can be obtained from the base grading vector as the
+  complement of the grading given by the parities of its scalar products with
+  the simple roots (the complement taken ensures that the quasisplit real form
+  can use a zero base grading vector). 
 
 Cartan_order: (RealForm->mat): matrix describing ordering of Cartan classes
   The Cartan classes for a given real form form a partially ordered set; this

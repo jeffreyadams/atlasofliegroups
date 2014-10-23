@@ -2274,9 +2274,11 @@ imaginary-$\rho$ value (dependent on the involution) should be added to it.
 @< Local function def...@>=
 void base_grading_vector_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<rational_vector_value>
-      (rf->cocharacter.log_pi(false)));
+  if (l==expression_base::no_value)
+    return;
+  RatCoweight t = rf->cocharacter.as_Qmod2Z(); // take a copy
+  push_value(std::make_shared<rational_vector_value>
+    (symmetrise(t,rf->parent.val.distinguished())));
 }
 
 @ There is a partial ordering on the Cartan classes defined for a real form. A
@@ -3137,16 +3139,14 @@ interpreted in $({\bf Q}/2{\bf Z})^n$.
 @< Local function def...@>=
 void torus_factor_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
-  if (l!=expression_base::no_value)
-  { const KGB& kgb=x->rf->kgb();
-    TorusElement t = x->rf->cocharacter;
-    t += kgb.torus_part(x->val);
-    RatCoweight tf(t.log_pi(false)); // still needs to be made $\theta$-fixed
-    Ratvec_Numer_t num =
-      tf.numerator()+kgb.involution_matrix(x->val).right_prod(tf.numerator());
-    tf = RatCoweight(num,2*tf.denominator());
-    push_value(std::make_shared<rational_vector_value>(tf.normalize()));
-  }
+  if (l==expression_base::no_value)
+    return;
+  const KGB& kgb=x->rf->kgb();
+  TorusElement t = x->rf->cocharacter;
+  t += kgb.torus_part(x->val);
+  RatCoweight tf = t.as_Qmod2Z(); // still needs to be made $\theta$-fixed
+  push_value(std::make_shared<rational_vector_value>
+     (symmetrise(tf,kgb.involution_matrix(x->val))));
 }
 
 @ Finally we make available, by popular request, the equality test. This is

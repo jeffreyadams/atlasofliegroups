@@ -37,6 +37,9 @@ template<typename C>
   void initBasis(std::vector<Vector<C> >& v, size_t n)
   { v=standard_basis<C>(n); }
 
+template<typename C>
+  PID_Matrix<C> operator+ (PID_Matrix<C> A, C c); // add scalar matrix
+
 }
 
 /******** type definitions ***************************************************/

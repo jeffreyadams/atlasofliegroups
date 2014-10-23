@@ -97,6 +97,11 @@ class TorusElement
   void simple_reflect(const PreRootDatum& prd, weyl::Generator s);
   void reflect(const RootDatum& rd, RootNbr alpha);
   void act_by(const  WeightInvolution& delta);
+
+  TorusElement& left_symmetrise(const WeightInvolution& delta)
+  { symmetrise(delta,repr); return this->reduce(); }
+  TorusElement& right_symmetrise(const WeightInvolution& delta)
+  { symmetrise(repr,delta); return this->reduce(); }
 }; // |class TorusElement|
 
 inline TorusElement exp_pi(const RatWeight& r) { return TorusElement(r,false); }
