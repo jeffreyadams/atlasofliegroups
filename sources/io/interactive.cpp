@@ -359,7 +359,8 @@ void getInteractive(PreRootDatum& d_prd,
   }
 
   // make new PreRootDatum
-  d_prd = PreRootDatum(lt,d_b);
+  d_prd = PreRootDatum(lt);
+  d_prd.quotient(LatticeMatrix(d_b,d_b.size()));
 
 } // |getInteractive(PreRootDatum&,...)|
 

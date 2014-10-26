@@ -208,10 +208,7 @@ quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
   are the numerators of the kernel generators, brought to a common denominator
   d, this amounts to setting S=Smith_Cartan(type) and (C,)=filter_units(S),
   and then returning the value replace_gen(S,C*ann_mod(M,d)).
-
-root_datum: (LieType,[ratvec]->RootDatum): root datum as entrered in Atlas.
-    set root_datum(LieType type,[ratvec] gens) =
-    root_datum(type,quotient_basis(type,gens))
+  This function is intended for use in constructing root data; see basic.rx
 
 simply_connected: (LieType->RootDatum): simply connected datum for given type.
   This gives the root datum for the "simply connected" group of the given
@@ -324,6 +321,7 @@ occurrence_matrix: (InnerClass->mat): real form-Cartan class incidence matrix
 dual_occurrence_matrix: (InnerClass->mat): dual real form-Cartan class matrix
   This is like occurrence_matrix, but with rows representing dual real forms
 
+
 real_form: (InnerClass,int->RealForm): select a real form from inner class.
   The result of form_names describes the valid range and names of real forms;
   this function actually constructs a real form from the list, selected by its
@@ -392,25 +390,6 @@ most_split_Cartan: (RealForm->CartanClass): most split Cartan class for form
   of its Cartan classes, so
     set most_split_Cartan(RealForm rf)=Cartan_class(rf,count_Cartans(rf)-1)
 
-real_form: (InnerClass,mat,ratvec->RealForm): real form from strong real form
-  Find real form defined by an involution and a torus factor. With arguments
-  (ic,M,v), the matrix M should define an involution theta in the inner class.
-  The rational vector v, which should satisfy v*M=v, defines a torus element
-  \exp(\pi i v), and together with theta a strong involution representative.
-  The function returns the strong real form rf identified by that strong
-  involution; it may differ from real_form(ic,form_numner(rf)) as can be
-  inspected through base_grading_vector(rf) and the RealForm equality test
-  (this possible distinction is why the result is considered a strong real
-  form.) Notably the subsequent call KGB_elt(rf,theta,v) should always produce
-  a valid KGB element x. The grading of the imaginary roots alpha for theta
-  defined by this x will be given by the parity of < v+\check\rho_i, \alpha >,
-  where \check\rho_i is half the sum of the positive imaginary coroots for M
-  (its presence in the formula ensures that v=0 is always valid, and grades
-  all simple-imaginary roots as noncompact). This grading is the most tangible
-  aspect of (theta,v), but only determines the weak real form, and may fail to
-  identify a unique KGB element x; this function and the mentioned instance of
-  KGB_elt are faithful beyond just reconstructing the correct grading.
-
 involution: (CartanClass->mat): weight lattice involution for Cartan class
 Cartan_info: (CartanClass->(int,int,int),vec,(int,int),(LieType,LieType,LieType)):
   Information about the Cartan class, essentially that given by the output of
@@ -444,6 +423,37 @@ fiber_partition: (CartanClass,RealForm->[int]): identifying part of fiber group
   defined by the Cartan class), whose elements are represented by numbers 0 to
   2^r-1; as the real form traverses all those for which this Cartan class
   occurs, the results of the function form a partition of that set of numbers.
+
+real_form: (InnerClass,mat,ratvec->RealForm): real form from strong real form
+  Synthesize a real form defined by an involution and a torus factor. With
+  arguments (ic,M,v), the matrix M should define an involution theta in the
+  inner class. The rational vector v, which should satisfy v*M=v, defines a
+  torus element \exp(\pi i v), and together with theta a strong involution
+  representative. The function returns the strong real form rf identified by
+  that strong involution. It may differ from real_form(ic,form_numner(rf)) as
+  can be inspected through base_grading_vector(rf) and the RealForm equality
+  test (this possible distinction is why the result is considered a strong
+  real form); this is why this real form is considered to be synthesized, not
+  selected. A subsequent call KGB_elt(rf,theta,v) should always produce a
+  valid KGB element x. The grading of the imaginary roots alpha for theta
+  defined by this x will be given by the parity of < v+\check\rho_i, \alpha >,
+  where \check\rho_i is half the sum of the positive imaginary coroots for M
+  (its presence in the formula ensures that v=0 is always valid, and grades
+  all simple-imaginary roots as noncompact). This grading is the most tangible
+  aspect of (theta,v), but only determines the weak real form, and may fail to
+  identify a unique KGB element x; this function and the mentioned instance of
+  KGB_elt are faithful beyond just reconstructing the correct grading.
+central_fiber: (RealForm->[vec]): Set of torus bits not affecting any gradings
+  These are binary vectors that can be added to |torus_bits| of KGB elements
+  in the fundamental fiber to get another KGB element giving the same status
+  (including compactness of imaginary roots) to every simple root; adding any
+  of these values to torus bits defines an automorphism of the KGB structure
+initial_torus_bits: (RealForm->vec) Torus bits for initial KGB element
+  This is a test function, computing what should be the torus bits of KGB(G,0)
+  independently of what is currently set in the implementation. They could
+  differ from reality by an element of |central_fiber(G)|. This function can
+  be removed once the same computation will actually replace the implemented
+  choice for the torus bits with which the KGB construction starts off.
 
 KGB: (RealFrom,int->KGBElt): select a KGB element x among those of a real form
   The call KGB(i,rf) selects the element in line i of the print_KGB(rf)

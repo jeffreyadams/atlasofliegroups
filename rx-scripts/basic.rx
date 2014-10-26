@@ -257,6 +257,9 @@ set - (ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
 set root_datum ([vec] simple_roots, [vec] simple_coroots, int r) = RootDatum:
   root_datum(r#simple_roots,r#simple_coroots)
 
+set root_datum (LieType t, [ratvec] gens) = RootDatum:
+  root_datum(t,quotient_basis(t,gens))
+
 { allow single kernel generator in root datum construction }
 set root_datum (LieType t, ratvec gen) = RootDatum: root_datum(t,[gen])
 

@@ -72,7 +72,7 @@ class PreRootDatum
 	       size_t rank)
     : d_roots(roots),d_coroots(coroots), d_rank(rank) {}
 
-  PreRootDatum(const LieType& lt, const WeightList&);
+  PreRootDatum(const LieType& lt);
 
   ~PreRootDatum() {}
 
@@ -101,7 +101,7 @@ class PreRootDatum
 
 // manipulators
   // replace by root datum for finite central quotient with weight |sublattice|
-  void quotient(const LatticeMatrix& sublattice) throw(std::runtime_error);
+  PreRootDatum& quotient(const LatticeMatrix& sublattice);
 
 };
 

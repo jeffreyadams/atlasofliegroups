@@ -501,8 +501,8 @@ root lattice; for those weights in the latter basis that already lie in the
 root lattice, the corresponding coweight is omitted, since there are no useful
 rational multiples of it anyway. This function computes appropriate integer
 linear combinations of the relevant subset of the adapted basis, corresponding
-to the given choice of kernel generators; it is the sublattice of the weight
-lattice they span that is ultimately of interest.
+to the given choice of kernel generators; it is the sublattice (of the weight
+lattice) that they span that is ultimately of interest.
 
 Let |S==Smith_Cartan(lt)| and $(C,v)=\\{filter\_units}(S)$, then we find a
 basis for the sub-lattice needed to build the root datum as follows. The
@@ -877,7 +877,8 @@ void root_datum_wrapper(expression_base::level l)
     ("Sub-lattice matrix should have size " @|
 @.Sub-lattice matrix should...@>
       +str(type->val.rank())+'x'+str(type->val.rank()));
-  PreRootDatum prd(type->val,lattice->val.columns());
+  PreRootDatum prd(type->val);
+  prd.quotient(lattice->val);
 @.Sub-lattice matrix must be square @>
 @.Sub-lattice does not contain root lattice@>
 @.Dependent lattice generators@>
@@ -886,11 +887,12 @@ void root_datum_wrapper(expression_base::level l)
 }
 
 @ While the previous function takes the sublattice to live in the weight
-lattice of the simply connected root datum of the given type, on may more
-generally wish to reduce to a full-rank sublattice of $X^*$ that contains the
-root lattice in any existing root datum. The following variant of root datum
+lattice of the simply connected root datum of the given type, one may more
+generally wish in any existing root datum to reduce to a full-rank sublattice
+of $X^*$ that contains the root lattice. The following variant of root datum
 construction does this. The call to the |quotient| method may throw the same
-errors (Dependent lattice generators, ) as the |PreRootDatum| constructor in the previous function.
+errors (\.{Dependent lattice generators}, or \.{Inexact integer division}) as
+the |PreRootDatum| constructor in the previous function.
 
 @< Local function definitions @>=
 void sublattice_root_datum_wrapper(expression_base::level l)
@@ -913,20 +915,6 @@ void sublattice_root_datum_wrapper(expression_base::level l)
 @.Dependent lattice generators@>
   if (l!=expression_base::no_value)
     push_value(std::make_shared<root_datum_value> @| (RootDatum(prd)));
-}
-
-@ There is the function |quotient_datum| that integrates |quotient_basis| into
-the construction of a root datum; the call |quotient_datum(lt,L)| is
-equivalent to |root\_datum(lt,quotient_basis(lt,L))|.
-
-@< Local function definitions @>=
-void quotient_datum_wrapper(expression_base::level l)
-{ shared_value L = pop_value();
-  shared_value lt= pop_value();
-  push_value(lt); // the Lie type, for call of $root\_datum$
-@/push_value(lt);
-  push_value(L); quotient_basis_wrapper(expression_base::single_value);
-@/root_datum_wrapper(l); // pass level parameter to final call
 }
 
 @ We define two more wrappers with only a Lie type as argument, for building
@@ -1208,8 +1196,6 @@ install_function(raw_root_datum_wrapper,@|"root_datum"
 install_function(root_datum_wrapper,@|"root_datum","(LieType,mat->RootDatum)");
 install_function(sublattice_root_datum_wrapper,@|"root_datum"
                 ,"(RootDatum,mat->RootDatum)");
-install_function(quotient_datum_wrapper
-		,@|"root_datum","(LieType,[ratvec]->RootDatum)");
 install_function(simply_connected_datum_wrapper
 		,@|"simply_connected","(LieType->RootDatum)");
 install_function(adjoint_datum_wrapper,@| "adjoint","(LieType->RootDatum)");
@@ -2170,7 +2156,7 @@ concrete need.
     {@; return *(rt_p==NULL ? rt_p=new Rep_table(val) : rt_p); }
 
 @ When printing a real form, we give the name by which it is known in the
-parent inner class, and provide some information about its connectedness.
+parent inner class, and provide some information about its connectivity.
 Since the names of the real forms are indexed by their outer number, but the
 real form itself stores its inner number, we must somewhat laboriously make
 the conversion here.
@@ -2418,7 +2404,8 @@ void synthetic_real_form_wrapper(expression_base::level l)
     push_value(std::make_shared<real_form_value>(*G,rf,cocharacter));
 }
 
-@ This is to test the |ComplexReductiveGroup::central_fiber| method. It
+@ This is to test the methods |ComplexReductiveGroup::central_fiber| and
+|ComplexReductiveGroup::x0_torus_part|. The function |central_fiber|
 computes those torus parts in the fiber at the distinguished involution that
 both remain in the strong real form orbit and are central (do not affect any
 gradings).
@@ -2426,15 +2413,24 @@ gradings).
 @< Local function def...@>=
 void central_fiber_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
-  auto cf = rf->parent.val.central_fiber(rf->val.realForm());
-  own_row result = std::make_shared<row_value>(cf.size());
   if (l==expression_base::no_value)
     return;
+  auto cf = rf->parent.val.central_fiber(rf->val.realForm());
+  own_row result = std::make_shared<row_value>(cf.size());
   unsigned int i=0;
   for (auto it=cf.begin(); it!=cf.end(); ++it, ++i)
     result->val[i]= std::make_shared<vector_value>(int_Vector(*it));
   push_value(result);
 }
+
+void initial_torus_bits_wrapper(expression_base::level l)
+{ shared_real_form rf= get<real_form_value>();
+  if (l==expression_base::no_value)
+    return;
+  push_value(std::make_shared<vector_value>
+    (int_Vector(rf->parent.val.x0_torus_part(rf->val.realForm()))));
+}
+
 
 @ Finally we install everything related to real forms.
 @< Install wrapper functions @>=
@@ -2458,6 +2454,8 @@ install_function(dual_quasisplit_form_wrapper,@|"dual_quasisplit_form"
 install_function(synthetic_real_form_wrapper,@|"real_form"
 		,"(InnerClass,mat,ratvec->RealForm)");
 install_function(central_fiber_wrapper,"central_fiber","(RealForm->[vec])");
+install_function(initial_torus_bits_wrapper,@|"initial_torus_bits"
+                ,"(RealForm->vec)");
 
 @*1 A type for Cartan classes.
 %

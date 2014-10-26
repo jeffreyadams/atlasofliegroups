@@ -230,11 +230,8 @@ void testrun_f()
   for (testrun::LieTypeIterator it(testrun::Semisimple,rank); it(); ++it)
   {
     std::cout<< *it << std::endl;
-    size_t count=0;
     for (testrun::CoveringIterator cit(*it); cit(); ++cit)
     {
-      if (count>0) std::cout << ',';
-      std::cout << ++count;
       PreRootDatum prd = *cit;
       WeightInvolution id(prd.rank()); // identity
       ComplexReductiveGroup G(prd,id);
@@ -243,6 +240,11 @@ void testrun_f()
 	RealReductiveGroup G_R(G,rf);
 	if (not examine(G_R))
 	{
+	  WeightList subattice_basis;
+	  cit.makeBasis(subattice_basis);
+	  basic_io::seqPrint(std::cout,
+			     subattice_basis.begin(),subattice_basis.end(),
+			     ", ","\n Sublattice basis: ","\n");
 	  lietype::InnerClassType ict; // need layout to convert form number
 	  for (size_t i=0; i<it->size(); ++i)
 	    ict.push_back('e');
@@ -843,26 +845,6 @@ void exam_f()
   std::cout << std::endl;
 }
 
-
-TorusElement torus_part
-  (const RootDatum& rd,
-   const WeightInvolution& theta,
-   const RatWeight& lambda, // discrete parameter
-   const RatWeight& gamma // infinitesimal char
-  )
-{
-  InvolutionData id(rd,theta);
-  Weight cumul(rd.rank(),0);
-  arithmetic::Numer_t n=gamma.denominator();
-  const Ratvec_Numer_t& v=gamma.numerator();
-  const RootNbrSet pos_real = id.real_roots() & rd.posRootSet();
-  for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
-    if (rd.coroot(*it).dot(v) %n !=0) // nonintegral
-      cumul+=rd.root(*it);
-  // now |cumul| is $2\rho_\Re(G)-2\rho_\Re(G(\gamma))$
-
-  return y_values::exp_pi(gamma-lambda+RatWeight(cumul,2));
-}
 
 void test_f()
 {

@@ -1324,7 +1324,7 @@ TorusPart minimum(const containers::sl_list<TorusPart>& cf,
       |projector|, so for comparison of those we may as well apply the |floor|
       map $\Q/2\Z \to \Z/2\Z$ to the entries of the value so produced.
   */
-  const RatCoweight coch_log = coch.log_pi(false);
+  const RatCoweight& coch_log = coch.as_Qmod2Z();
   const SmallBitVector ref = // reference bitvector to which shifts are added
     floor(projector*coch_log.numerator(),coch_log.denominator());
 

@@ -567,8 +567,8 @@ bool isElementaryAbelian(const std::vector<unsigned long>& c)
 }
 
 
-/*!
-  Synopsis: puts in qr a list of representatives of the cosets modulo B.
+/*
+  return a list of representatives of the cosets modulo B.
 
   Precondition: qr.capacity() = A.order();
 
@@ -577,19 +577,19 @@ bool isElementaryAbelian(const std::vector<unsigned long>& c)
 
   The efficiency depends on the efficiency of coset computations.
 */
-void quotReps(bitmap::BitMap& qr, const bitmap::BitMap& B,
-	      const FiniteAbelianGroup& A)
+bitmap::BitMap quotReps(const bitmap::BitMap& B, const FiniteAbelianGroup& A)
 {
+  bitmap::BitMap qr(A.order());
   qr.fill();
-  bitmap::BitMap::iterator qr_end = qr.end();
 
-  for (bitmap::BitMap::iterator it = qr.begin(); it != qr_end; ++it)
+  for (bitmap::BitMap::iterator it = qr.begin(); it(); ++it)
   {
     bitmap::BitMap c(A.order());
     coset(c,B,*it,A);
     c.remove(*it);
     qr.andnot(c);
   }
+  return qr;
 }
 
 
