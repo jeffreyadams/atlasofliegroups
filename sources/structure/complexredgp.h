@@ -54,6 +54,9 @@ namespace complexredgp {
      TwistedInvolution tw, const RatCoweight& torus_factor,
      TorusElement& cocharacter // additional output
      );
+
+  Grading square_class_grading(const ComplexReductiveGroup& G,
+			       cartanclass::square_class csc);
 }
 
 /******** type definitions ***************************************************/

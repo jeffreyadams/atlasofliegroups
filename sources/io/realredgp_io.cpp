@@ -185,8 +185,7 @@ std::ostream& printStrongReal(std::ostream& strm,
       RealFormNbr fund_wrf= rfl[wrf]; // lift weak real form to |fund|
       cartanclass::square_class f_csc=fund.central_square_class(fund_wrf);
       // having the square class number of the fundamental fiber, get grading
-      Grading base_grading =
-	tits::square_class_grading_offset(fund,f_csc,G_C.rootSystem());
+      Grading base_grading = square_class_grading(G_C,f_csc);
 
       RatWeight z (G_C.rank());
       for (Grading::iterator it=base_grading.begin(); it(); ++it)

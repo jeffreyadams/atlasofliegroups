@@ -1242,6 +1242,14 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
 
 } // |strong_real_form_of|
 
+
+Grading square_class_grading(const ComplexReductiveGroup& G,
+			     cartanclass::square_class csc)
+{
+  return G.simple_roots_x0_compact(G.square_class_repr(csc))
+    .complement(G.semisimpleRank());
+} // |square_class_grading|
+
 /*****************************************************************************
 
         Chapter V -- Local Functions

@@ -501,8 +501,7 @@ KGB::KGB(RealReductiveGroup& GR,
 
   if (Cartan_classes.isMember(0)) // full KGB construction
   {
-    const Grading gr = tits::square_class_grading_offset
-      (G_C.fundamental(),GR.square_class(),G_C.rootDatum());
+    const Grading gr = square_class_grading(G,GR.square_class());
     d_base = new TitsCoset(G_C,gr);
     TitsElt a (d_base->titsGroup(),G_C.x0_torus_part(GR.realForm()));
     i_tab.reduce(a); // probably unnecessary

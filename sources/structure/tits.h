@@ -39,12 +39,6 @@ namespace tits {
   // 2-subgroup by which each |TorusPart| at involution |inv| will be reduced
   SmallSubspace fiber_denom(const WeightInvolution& inv);
 
-  Grading
-  square_class_grading_offset(const Fiber& f,
-			      cartanclass::square_class csc,
-			      const RootSystem& rs);
-
-
 /******** type definitions **************************************************/
 
 

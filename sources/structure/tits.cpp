@@ -971,28 +971,9 @@ SmallSubspace fiber_denom(const WeightInvolution& theta)
   return SmallSubspace(A);
 }
 
-/*
-  Return the grading offset for the base real form of the square class (coset
-  in adjoint fiber group) |csc|; |fund| and |rs| are corresponding values.
-  |fund| must be a fundamental fiber, in order that restricting grading to
-  simple roots suffice to determine the real form, or even the square class
-*/
-Grading // of the simple roots
-square_class_grading_offset(const Fiber& fund,
-			    cartanclass::square_class csc,
-			    const RootSystem& rs)
-{
-  RootNbrSet rset = fund.compactRoots(fund.class_base(csc));
-  return cartanclass::restrictGrading(rset,rs.simpleRootList())// restrict
-    .complement(rs.rank()); // and complement with respec to the simple roots
-
-}
-
 EnrichedTitsGroup::EnrichedTitsGroup(const RealReductiveGroup& GR)
   : TitsCoset(GR.complexGroup(),
-	      square_class_grading_offset(GR.complexGroup().fundamental(),
-					  GR.square_class(),
-					  GR.rootDatum()))
+	      square_class_grading(GR.complexGroup(),GR.square_class()))
   , srf(GR.complexGroup().fundamental().strongRealForm(GR.realForm()))
 {}
 
