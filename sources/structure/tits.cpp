@@ -971,11 +971,12 @@ SmallSubspace fiber_denom(const WeightInvolution& theta)
   return SmallSubspace(A);
 }
 
-/*! \brief Returns the grading offset for the base real form of the square
- class (coset in adjoint fiber group) |csc|; |fund| and |rs| are corresponding
- values. |fund| must be a fundamental fiber, in order that restricting grading
- to simple roots suffice to determine the real form, or even the square class
- */
+/*
+  Return the grading offset for the base real form of the square class (coset
+  in adjoint fiber group) |csc|; |fund| and |rs| are corresponding values.
+  |fund| must be a fundamental fiber, in order that restricting grading to
+  simple roots suffice to determine the real form, or even the square class
+*/
 Grading // of the simple roots
 square_class_grading_offset(const Fiber& fund,
 			    cartanclass::square_class csc,
@@ -1023,7 +1024,7 @@ TitsElt EnrichedTitsGroup::backtrack_seed
   */
 
   // transform strong orthogonal set |Cayley| back to distinguished involution
-  RootNbrList Cayley(rset.begin(),rset.end()); // convert to |RootList|
+  RootNbrList Cayley(rset.begin(),rset.end()); // convert to |RootNbrList|
   for (size_t i=0; i<Cayley.size(); ++i)
     for (size_t j=cross.size(); j-->0; )
       G.rootDatum().simple_reflect_root(Cayley[i],cross[j]);
@@ -1042,7 +1043,7 @@ TitsElt EnrichedTitsGroup::backtrack_seed
   const Fiber& fund=G.fundamental();
   const Partition& srp = fund.fiber_partition(square());
   for (unsigned long x=0; x<srp.size(); ++x)
-    if (srp.class_of(x)==f_orbit())
+    if (srp.class_of(x)==f_orbit()) // test membership of strong real form
     {
       SmallBitVector v
 	(static_cast<RankFlags>(x),fund.fiberRank());

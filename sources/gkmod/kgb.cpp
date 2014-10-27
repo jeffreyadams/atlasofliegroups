@@ -499,6 +499,17 @@ KGB::KGB(RealReductiveGroup& GR,
   elt_pool.reserve(size);
   KGB_base::reserve(size);
 
+  if (Cartan_classes.isMember(0)) // full KGB construction
+  {
+    const Grading gr = tits::square_class_grading_offset
+      (G_C.fundamental(),GR.square_class(),G_C.rootDatum());
+    d_base = new TitsCoset(G_C,gr);
+    TitsElt a (d_base->titsGroup(),G_C.x0_torus_part(GR.realForm()));
+    i_tab.reduce(a); // probably unnecessary
+    elt_hash.match(a); // plant the seed
+    KGB_base::add_element(); // add additional info for initial element
+  }
+  else // partial KGB construction, more work to get initial element(s)
   {
     tits::EnrichedTitsGroup square_class_base(GR);
     d_base = new TitsCoset(square_class_base); // copy construct from base
