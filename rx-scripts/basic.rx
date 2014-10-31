@@ -397,6 +397,8 @@ set is_compatible (RealForm f, RealForm g) = bool:
 set != (KGBElt x,KGBElt y) = bool: not(x=y)
 set real_form (KGBElt x) = let (rf,) = %x in rf
 set # (KGBElt x) = let (,n) = %x in n
+set inner_class(KGBElt x)=InnerClass:inner_class(real_form(x))
+set inner_class(Param p)=InnerClass:inner_class(real_form(p))
 
 set KGB (RealForm rf) = [KGBElt]: for i:KGB_size(rf) do KGB(rf,i) od
 
