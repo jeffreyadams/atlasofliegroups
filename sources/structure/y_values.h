@@ -73,7 +73,7 @@ class TorusElement
   bool negative_at(const Coweight& alpha) const
   {
     // the following asserts internally that |evaluate_at(alpha)| is integer
-    return repr.scalarProduct(alpha)%2!=0; // true if evaluates to odd integer
+    return repr.dot(alpha)%2!=0; // true if evaluates to odd integer
   }
 
   // evaluation giving rational number modulo 2, represented in interval [0,2)
@@ -125,6 +125,8 @@ struct y_entry
 
 }; //  |struct y_entry|
 
+ // whether each simple root has integral evaluation on a torus element
+ bool is_central(const WeightList& simple_roots, const TorusElement& e);
 
 } // |namespace y_values|
 

@@ -99,7 +99,7 @@ template<typename C1>
   C1 Vector<C>::dot (const Vector<C1>& v) const
 {
   assert(base::size()==v.size());
-  C1 result= C(0);
+  C1 result= C1(0);
   for (size_t i=0; i<base::size(); ++i)
     result += (*this)[i] * v[i];
 

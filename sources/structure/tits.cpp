@@ -163,46 +163,25 @@ bool GlobalTitsGroup::has_central_square(GlobalTitsElement a) const
     return false;
 
   // now check if |a.t| is central, by scalar products with |simple.coroots()|
-  RatWeight rw = a.t.log_2pi();
-  for (weyl::Generator s=0; s<semisimple_rank(); ++s)
-    if (arithmetic::remainder(prd.simple_coroots()[s].dot(rw.numerator())
-			     ,rw.denominator())!=0)
-      return false;
-
-  return true;
+  return is_central(prd.simple_coroots(),a.t); // coroots since |prd| is dual
 }
 
 // Simplified form of the same condition. The simplification is valid
 // because whenever |a.t==id| (basepoint), it is ensured that |is_valid(a)|
 bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a) const
 {
-  const TorusElement t = a.torus_part()+theta_tr_times_torus(a);
-
-  // now check if |t| is central, by scalar products with |simple.coroots()|
-  RatWeight rw = t.log_2pi();
-  for (weyl::Generator s=0; s<semisimple_rank(); ++s)
-    if (arithmetic::remainder(prd.simple_coroots()[s].dot(rw.numerator())
-			    ,rw.denominator())!=0)
-      return false;
-
-  return true;
+  return is_central(prd.simple_coroots(),
+		    a.torus_part()+theta_tr_times_torus(a));
 }
 
  // weaker condition: square being central in subgroup
 bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a,
 			       const SubSystem& sub) const
 {
-  const TorusElement t = a.torus_part()+theta_tr_times_torus(a);
-
-  // now check if |t| is central, by scalar products with |simple.coroots()|
-  RatWeight rw = t.log_2pi();
+  WeightList alpha; alpha.reserve(sub.rank());
   for (weyl::Generator s=0; s<sub.rank(); ++s)
-    if (arithmetic::remainder(sub.parent_datum().coroot(sub.parent_nr_simple(s))
-			      .dot(rw.numerator())
-			      ,rw.denominator())!=0)
-      return false;
-
-  return true;
+    alpha.push_back(sub.parent_datum().coroot(sub.parent_nr_simple(s)));
+  return is_central(alpha,a.torus_part()+theta_tr_times_torus(a));
 }
 
 

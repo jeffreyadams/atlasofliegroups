@@ -160,11 +160,6 @@ class GlobalTitsGroup : public TwistedWeylGroup
   //!\brief Element m_\alpha of H(2) for simple coroot \#j.
   TorusPart m_alpha(size_t j) const { return alpha_v[j]; }
 
-  Weight parent_simple_root(weyl::Generator s) const
-  { return prd.simple_roots()[s]; }
-  Coweight parent_simple_coroot(weyl::Generator s) const
-  { return prd.simple_coroots()[s]; }
-
   // Reflection of |TorusElement|s defined by a twisted involution.
   // This matrix is negated-transposed w.r.t. |tw| (so |-delta_tr| if $tw=e$)
   WeightInvolution involution_matrix(const WeylElt& tw) const;

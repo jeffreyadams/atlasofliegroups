@@ -879,8 +879,8 @@ void root_datum_wrapper(expression_base::level l)
       +str(type->val.rank())+'x'+str(type->val.rank()));
   PreRootDatum prd(type->val);
   prd.quotient(lattice->val);
-@.Sub-lattice matrix must be square @>
-@.Sub-lattice does not contain root lattice@>
+@.Sub-lattice matrix must be square@>
+@.Sub-lattice does not contain...@>
 @.Dependent lattice generators@>
   if (l!=expression_base::no_value)
     push_value(std::make_shared<root_datum_value> @| (RootDatum(prd)));
@@ -910,8 +910,8 @@ void sublattice_root_datum_wrapper(expression_base::level l)
         (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
   PreRootDatum prd(simple_roots,simple_coroots,rd->val.rank());
   prd.quotient(lattice->val);
-@.Sub-lattice matrix must be square @>
-@.Sub-lattice does not contain root lattice@>
+@.Sub-lattice matrix must be square@>
+@.Sub-lattice does not contain...@>
 @.Dependent lattice generators@>
   if (l!=expression_base::no_value)
     push_value(std::make_shared<root_datum_value> @| (RootDatum(prd)));
@@ -2361,7 +2361,7 @@ void dual_quasisplit_form_wrapper(expression_base::level l)
 %
 It is useful to be able to compute a real form based on other information than
 its index within its inner class, namely on a strong involution representative
-(involution and torus element). The \.{realex} function |synthetic_real_form|
+(involution and torus element). The synthetic \.{realex} function |real_form|
 takes an inner class, a matrix giving an involution~$\theta$, and a
 $\theta$-stable rational coweight describing (through $l\mapsto\exp(\pi\ii
 l)$) torus element; it returns the corresponding real form, but in which a
@@ -2384,17 +2384,22 @@ TwistedInvolution twisted_from_involution
 }
 @)
 void synthetic_real_form_wrapper(expression_base::level l)
-{ shared_rational_vector torus_factor = get<rational_vector_value>();
+{ own_rational_vector torus_factor = get_own<rational_vector_value>();
   shared_matrix theta = get<matrix_value>();
   shared_inner_class G = get<inner_class_value>();
   const TwistedInvolution tw = twisted_from_involution(G->val,theta->val);
   if (torus_factor->val.size()!=G->val.rank())
     throw std::runtime_error ("Torus factor size mismatch");
-  { Coweight num(torus_factor->val.numerator().begin(),
-                 torus_factor->val.numerator().end());
-    if (theta->val.right_prod(num)!=num)
-      throw std::runtime_error ("Torus factor not fixed by involution");
-@.Torus factors not fixed...@>
+  {
+    Ratvec_Numer_t& num = torus_factor->val.numerator();
+    num += theta->val.right_prod(num);
+    TorusElement t(torus_factor->val,false); // working copy
+    const RootDatum& rd = G->val.rootDatum();
+    WeightList alpha(rd.beginSimpleRoot(),rd.endSimpleRoot());
+    if (not is_central(alpha,t))
+      throw std::runtime_error ("Not a valid strong involution");
+@.Not a valid strong...@>
+    torus_factor->val /= 2;
   }
 
   TorusElement cocharacter(0); // dummy value to be replaced
@@ -2404,8 +2409,8 @@ void synthetic_real_form_wrapper(expression_base::level l)
     push_value(std::make_shared<real_form_value>(*G,rf,cocharacter));
 }
 
-@ This is to test the methods |ComplexReductiveGroup::central_fiber| and
-|ComplexReductiveGroup::x0_torus_part|. The function |central_fiber|
+@ The methods |central_fiber| and |x0_torus_part| of |ComplexReductiveGroup|
+can be accessed using following functions. The function |central_fiber|
 computes those torus parts in the fiber at the distinguished involution that
 both remain in the strong real form orbit and are central (do not affect any
 gradings).
@@ -2427,7 +2432,7 @@ void initial_torus_bits_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<vector_value>
+  push_value(std::make_shared<vector_value> @|
     (int_Vector(rf->parent.val.x0_torus_part(rf->val.realForm()))));
 }
 
@@ -3056,27 +3061,29 @@ void root_status_wrapper(expression_base::level l)
 }
 
 @ In order to ``synthesise'' a KGB element, one may specify a real form, an
-involution, and a rational weight that should be the |torus_factor| value.
-The latter defines a grading of the corresponding imaginary roots, in the same
-manner as for |synthetic_real_form| in section @#synthetic_real_form@> above,
-but in fact it ever completely describes the KGB element. In order for this to
-be possible, the |torus_factor| must be compatible with the |cocharacter|
-stored in the real form, but which should always be right if the real form was
-itself synthesised from the |torus_factor| value.
+involution, and a rational weight that should be the |torus_factor| value. The
+latter defines a grading of the corresponding imaginary roots, in the same
+manner as for the synthetic |real_form| in section @#synthetic_real_form@>
+above, but in fact it ever completely describes the KGB element. In order for
+this to be possible, the |torus_factor| must be compatible with the
+|cocharacter| stored in the real form, but which should always be right if the
+real form was itself synthesised from the |torus_factor| value.
 
 @< Local function def...@>=
 void build_KGB_element_wrapper(expression_base::level l)
-{ shared_rational_vector grading_shift = get<rational_vector_value>();
+{ own_rational_vector torus_factor = get_own<rational_vector_value>();
   shared_matrix theta = get<matrix_value>();
   own_real_form rf = non_const_get<real_form_value>();
 
-  { Coweight num(grading_shift->val.numerator().begin(),
-                 grading_shift->val.numerator().end());
-    if (theta->val.right_prod(num)!=num)
-      throw std::runtime_error ("Torus factor not fixed by involution");
-@.Torus factor not fixed@>
+  if (torus_factor->val.size()!=rf->val.rank())
+    throw std::runtime_error ("Torus factor size mismatch");
+  { // make theta-fixed:
+    Ratvec_Numer_t& num = torus_factor->val.numerator();
+    num += theta->val.right_prod(num);
+    torus_factor->val /= 2;
   }
-  RatCoweight tv = grading_shift->val - rf->cocharacter.log_pi(false);
+
+  RatCoweight tv = torus_factor->val - rf->cocharacter.as_Qmod2Z();
   if (tv.normalize().denominator()!=1)
     throw std::runtime_error
       ("Torus factor not in cocharacter coset of real form");

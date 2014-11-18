@@ -362,7 +362,7 @@ base_grading_vector: (RealForm->ratvec): Offset implicit in torus_bits values
   mentioned grading can be obtained from the base grading vector as the
   complement of the grading given by the parities of its scalar products with
   the simple roots (the complement taken ensures that the quasisplit real form
-  can use a zero base grading vector). 
+  can use a zero base grading vector).
 
 Cartan_order: (RealForm->mat): matrix describing ordering of Cartan classes
   The Cartan classes for a given real form form a partially ordered set; this

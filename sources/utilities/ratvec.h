@@ -86,9 +86,9 @@ class RationalVector
   only for small denominators.
 */
   template <typename C1>
-    C scalarProduct(const matrix::Vector<C1>& w) const
+    C dot(const matrix::Vector<C1>& w) const
   {
-    return w.dot(d_num)/(C)d_denom;
+    return w.dot(d_num)/(C)d_denom; // order is imposed here by return type |C|
   }
 
 //manipulators

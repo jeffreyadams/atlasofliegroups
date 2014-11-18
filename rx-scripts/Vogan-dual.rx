@@ -1,0 +1,42 @@
+<basic.rx
+
+set parity(Param p,vec alpha_hat) = bool:
+  let x = x(p) then theta = involution(x)
+  in if alpha_hat*theta != -alpha_hat then error("root not real")
+     else let rat_wt= infinitesimal_character(p)-lambda(p)+rho_r(x)
+     in rat_as_int(alpha_hat * rat_wt) % 2 = 1
+     fi
+
+{ to compute y values over a block of parameters, precompute dual inner class }
+set dual_inner_class(Param p) = InnerClass:
+  let id = integrality_datum(real_form(p),infinitesimal_character(p))
+  in dual(inner_class(id,involution(x(p))))
+
+set y(Param p, InnerClass G_vee) = KGBElt:
+  let (x,lambda_rho,nu) = %p
+  then dual_theta = -^involution(x)
+  then grading_vector = infinitesimal_character(p) - lambda(p) + rho_r(x)
+  , dual_shift = sum(imaginary_poscoroots(G_vee,dual_theta))/2
+  in KGB_elt(G_vee,dual_theta,grading_vector-dual_shift)
+
+set y(Param p) = KGBElt: y(p,dual_inner_class(p))
+
+set dual_real_form (Param p) = RealForm: real_form(y(p))
+
+set %(rat x,int n) = rat: let (p,q)=%x in (p%(n*q))/q
+set %(ratvec v,int n) = ratvec: for x in v do x%n od
+
+set character(Param p) = ratvec:
+  let G=real_form(p),x=x(p)
+  then rd = root_datum(G), theta=involution(x)
+  then id = integrality_datum(rd,infinitesimal_character(p))
+  then rho_r_int = sum(real_posroots(id,theta))/2
+  in infinitesimal_character(p) - lambda(p) + rho_r(x) -rho_r_int + rho(id)
+
+set test1 (Param p) = [bool]:
+  let G_v=dual_inner_class(p) then drf = real_form(y(p,G_v))
+  in for q in block_of(p) do drf=real_form(y(q,G_v)) od
+
+set test2 (Param p) = [ratvec]:
+  let G_v=dual_inner_class(p) then drf = real_form(y(p,G_v))
+  in for q in block_of(p) do character(q)%1 od

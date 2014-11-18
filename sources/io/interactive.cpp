@@ -829,7 +829,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
     for (size_t i=0; i<i_tab.imaginary_rank(i_x); ++i)
     {
       RootNbr alpha = i_tab.imaginary_basis(i_x,i);
-      int v=-rho.scalarProduct(rd.coroot(alpha));
+      int v = -rho.dot(rd.coroot(alpha));
       if (kgb::status(kgb,x,rd,alpha)==gradings::Status::ImaginaryCompact)
 	++v; // imaginary compact root should not be singular
       std::cout	<< rd.coroot(alpha) << " (>=" << v << ')' << std::endl;

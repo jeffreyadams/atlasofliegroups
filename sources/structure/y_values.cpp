@@ -149,6 +149,18 @@ size_t y_entry::hashCode(size_t modulus) const
 bool y_entry::operator !=(const y_entry& y) const
 { return nr!=y.nr or fingerprint!=y.fingerprint; }
 
-} // namsepace
 
-} // namespace atlas
+bool is_central(const WeightList& alpha, const TorusElement& t)
+{
+  RatWeight rw = t.as_Qmod2Z();
+  arithmetic::Numer_t d = 2*rw.denominator();
+  for (weyl::Generator s=0; s<alpha.size(); ++s)
+    if (alpha[s].dot(rw.numerator())%d != 0) // see if division is exact
+      return false;
+
+  return true;
+}
+
+} // |namsepace y_values|
+
+} // |namespace atlas|

@@ -1130,6 +1130,7 @@ private:
 };
 @)
 typedef std::shared_ptr<const rational_vector_value> shared_rational_vector;
+typedef std::shared_ptr<rational_vector_value> own_rational_vector;
 @)
 
 @ To make a small but visible difference in printing between vectors and lists
