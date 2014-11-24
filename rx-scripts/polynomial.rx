@@ -114,3 +114,11 @@ set sgn_poly(int k)=if k<0 then -one elif k>0 then one else error("k=0 in sign_p
 set two=[int]:[2]
 set q=[int]:[0,1]
 set q2=[int]:[0,0,1]
+
+{compute PMP^{-1} where P is a permutation of [1,,,n] and M is a polynomial matrix}
+set poly_permute_basis([int] P, [[[int]]] A)=
+let m=#A in 
+let B=zero_poly_matrix(m) in 
+for i:m do for j:m do 
+   B:=update_matrix_entry(B,i,j,A[P[i]][P[j]]) od od;B
+

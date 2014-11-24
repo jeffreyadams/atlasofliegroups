@@ -1,18 +1,10 @@
 <hermitian.rx {loads lots of other necessary stuff}
 <my_lattice  {replacement for lattice.rx}
 
-{central_shift:
-this is a GLOBAL VARIABLE, which the user needs to set, the default is null(rank(G))
-a KGBElt constructed using KGB_elt should be interpreted as having torus
-part torus_factor(x)+central_shift
-This only plays a role on the dual side, in the KGB element y
-Even there, it is only used to construct a set {(x_i,y_i)} parametrizing the block}
-
 <extended_misc  {some supplementary functions}
 <extended_types  {types of extended parameters}
 <extended_cross  {cross action of extended parameters}
 <extended_cayley  {Cayley transforms of extended parameters}
-<central_shift
 {load hecke.rx at the end of this file}
 
 {references:
@@ -85,11 +77,11 @@ omega=involution(y)
 tau: solve (1-delta)lambda=(1+^omega)tau
 t:   solve (1-^delta)l=(1+^theta)t}
 
-set E(mat delta, ratvec gamma, KGBElt x, ratvec g, KGBElt y, ratvec central_shift)=
+set E(mat delta, ratvec gamma, KGBElt x, ratvec g, KGBElt y)=
 if (not dual(inner_class(real_form(x)))=inner_class(real_form(y))) then error("inner classes are not dual")
 elif not is_fixed(delta,x) then error("x is not fixed by delta")
 elif not is_fixed(^delta,y) then error("y is not fixed by ^delta")
-elif not is_integer(square(y,central_shift)-gamma) then error("y is not compatible with infinitesimal character gamma")
+elif not is_integer(square(y)-gamma) then error("y is not compatible with infinitesimal character gamma")
 elif not is_integer(square(x)-g) then error("x is not compatible with infinitesimal cocharacter g")
 else
  let l=[int]:ratvec_as_vec(g-2*actual_torus_factor(x)) in
@@ -99,42 +91,42 @@ else
 {NOTE ^theta=-omega}
  let (t,result)=solve(oneminus(omega),ratvec_as_vec(-oneminus(^delta)*l)) in
   if result=false then error("(1-^delta)l=(1+^theta)t has no integral solution") else
- let lambda=[int]:ratvec_as_vec(gamma-2*actual_torus_factor(y,central_shift)) in
+ let lambda=[int]:ratvec_as_vec(gamma-2*actual_torus_factor(y)) in
 { let lambda=[int]:ratvec_as_vec(gamma-torus_factor(y)) in}
  let (tau,result)=solve(oneminus(theta),ratvec_as_vec(-oneminus(delta)*lambda)) in
   if result=false then error("(1-delta)lambda=(1+theta)tau has no integral solution") else
-(inner_class(real_form(x)),delta,gamma,lambda,theta,g,l,omega,[int]: tau,[int]: t,central_shift) fi fi fi
+(inner_class(real_form(x)),delta,gamma,lambda,theta,g,l,omega,[int]: tau,[int]: t) fi fi fi
 
 {to make an extended parameter from (delta,p) you need the infinitesimal cocharacter also}
-set E(mat delta, Param p, ratvec g,ratvec central_shift)=E(delta, infinitesimal_character(p), x(p), g, y(p,central_shift),central_shift)
-set E(mat delta, KGBElt x, KGBElt y, ratvec gamma, ratvec g,ratvec central_shift)=E(delta,gamma,x,g,y,central_shift)
+set E(mat delta, Param p, ratvec g)=E(delta, infinitesimal_character(p), x(p), g, y(p))
+set E(mat delta, KGBElt x, KGBElt y, ratvec gamma, ratvec g)=E(delta,gamma,x,g,y)
 
 {assume delta=distinguished_involution(G)}
-set E(Param p, ratvec g,ratvec central_shift)=E(distinguished_involution(real_form(p)),p,g,central_shift)
+set E(Param p, ratvec g)=E(distinguished_involution(real_form(p)),p,g)
 
-set ic(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=ic
-set delta(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=delta
-set gamma(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=gamma
-set lambda(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=lambda
-set theta(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=theta
-set g(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=g
-set l(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=l
-set omega(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=omega
-set t(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=t
-set tau(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=tau
-set torus_factor(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=(gamma-lambda)/2
-set dual_torus_factor(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=(g-l)/2
-set nu(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=let a=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in nu(gamma,x(a))
+set ic(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=ic
+set delta(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=delta
+set gamma(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=gamma
+set lambda(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=lambda
+set theta(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=theta
+set g(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=g
+set l(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=l
+set omega(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=omega
+set t(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=t
+set tau(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=tau
+set torus_factor(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=(gamma-lambda)/2
+set dual_torus_factor(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=(g-l)/2
+set nu(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=let a=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in nu(gamma,x(a))
 
 {sign(E,F)=\pm 1 (or 0): \pm 1 tells whether the parameters for G are equivalent, or equivalent up to -1
 (or neither if 0). If E,F lie over the same ordinary parameter then sign(E,F)=\pm 1.
 The formula is the last line of Proposition 6.12 of PFTR.
 The i term of this formula is not symmetric in G and G^\vee, hence
 we also have dual_sign(E,F) }
-set sign(((InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec),
-(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec))((ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1,central_shift1),(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2,central_shift2)))=int:
-let E1=(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1,central_shift1) in
-let E2=(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2,central_shift2) in
+set sign(((InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int]),
+(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int]))((ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1),(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2)))=int:
+let E1=(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1) in
+let E2=(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2) in
 if not (ic1=ic2) then prints("inner classes are not equal");0
 elif not (delta1=delta2) then prints("involutions delta are not equal");0
 elif not (gamma1=gamma2) then prints("infinitesimal characters are not equal");0
@@ -147,9 +139,9 @@ else
 fi
 
 {dual_sign(E,F) see sign(E,F); dual_sign(E,F) tell whether the extended parameters for G^\vee defined by E,F are equivalent or not}
-set dual_sign(((InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec),(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec))((ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1,central_shift1),(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2,central_shift2)))=int:
-let E1=(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1,central_shift1) in
-let E2=(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2,central_shift2) in
+set dual_sign(((InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int]),(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int]))((ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1),(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2)))=int:
+let E1=(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1) in
+let E2=(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2) in
 if not (ic1=ic2) then prints("inner classes are not equal");0
 elif not (delta1=delta2) then prints("involutions delta are not equal");0
 elif not (gamma1=gamma2) then prints("infinitesimal characters are not equal");0
@@ -163,19 +155,19 @@ fi
 
 {default(F)=\pm F is the extended parameter constructed by atlas (by the function E) with the same image
 as F. So default(F)=E(delta,parameter(F),g(F))}
-set default(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=
-let F=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in E(delta,parameter(F),g,central_shift)
+set default(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=
+let F=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in E(delta,parameter(F),g)
 
 {sign (E)=sign(E,default(E))}
-set sign(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=int:let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in sign(Ep, default(Ep))
+set sign(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=int:let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in sign(Ep, default(Ep))
 
 {dual_sign (E)=dual_sign(E,default(E))}
-set dual_sign(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=int:
-let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in dual_sign(Ep, default(Ep))
+set dual_sign(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=int:
+let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in dual_sign(Ep, default(Ep))
 
-set =(((InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec),(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec))((ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1,central_sign1),(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2,central_sign2)))=
-let xp1=(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1,central_sign1) in
-let xp2=(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2,central_sign2) in
+set =(((InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int]),(InnerClass,mat, ratvec,[int],mat,ratvec,[int],mat,[int],[int]))((ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1),(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2)))=
+let xp1=(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1) in
+let xp2=(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2) in
 if not (ic1=ic2) then prints("inner classes are not equal");false
 elif not (delta1=delta2) then prints("involutions delta are not equal");false
 elif not (gamma1=gamma2) then prints("infinitesimal characters are not equal");false
@@ -201,14 +193,13 @@ let (B,)=block(trivial(G)) in ext_print_block(distinguished_involution(G),B)
 
 {for convenience
 usage: set (delta,B,g,shift)=ext_basic(G)
-shift is the central_shift, which is the 0 ratvec
 then you can run, for example
 test_hecke(0,1,delta,B,g,shift)}
-set ext_basic(RealForm G)=(distinguished_involution(G),trivial_block(G), rho_check(G),ratvec:null(rank(G)))
+set ext_basic(RealForm G)=(distinguished_involution(G),trivial_block(G), rho_check(G))
 
 {is_default(E)=1 if E is equivalent to the extended parameter constructed by the software,
 lying over p=p(E)}
-set is_default(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t,ratvec central_shift)=bool:
-let xp=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t,central_shift) in let xq=E(delta,gamma,x(xp),g, y(xp),central_shift) in xp=xq
+set is_default(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=bool:
+let xp=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in let xq=E(delta,gamma,x(xp),g, y(xp)) in xp=xq
 
 

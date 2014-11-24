@@ -14,7 +14,7 @@ let alphavee=simple_coroots(rd)[j] in
 if (alpha=beta) then 1 elif alphavee*beta=0 then 2 else 3 fi
 
 {E=extended parameter, ext_length(j,E)=ext_length(ic(E),delta(E),j)}
-set ext_length((int,(InnerClass,mat,ratvec,[int],mat,ratvec,[int],mat,[int],[int],rat,rat,ratvec))(j,(ic,delta,gamma,lambda,theta,g,l,omega,t,tau,central_shift)))=int:ext_length(ic,delta,j)
+set ext_length((int,(InnerClass,mat,ratvec,[int],mat,ratvec,[int],mat,[int],[int],rat,rat,ratvec))(j,(ic,delta,gamma,lambda,theta,g,l,omega,t,tau)))=int:ext_length(ic,delta,j)
 
 {ext_length has many cases, split cases by length}
 {ext_type_1(delta,j,p)=1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn}
@@ -78,10 +78,9 @@ elif l=2 then ext_type_2(delta,j,p)
 else ext_type_3(delta,j,p)  fi fi
 
 {E=extended parameter, ext_type(j,E)=ext_type(delta,j,parameter(E))}
-set ext_type((int,(InnerClass,mat,ratvec,[int],mat,ratvec,[int],mat,[int],[int],ratvec))(j,(ic,delta,gamma,lambda,theta,g,l,omega,t,tau,central_shift)))=string:
-ext_type(delta,j,parameter(ic,delta,gamma,lambda,theta,g,l,omega,t,tau,central_shift))
+set ext_type((int,(InnerClass,mat,ratvec,[int],mat,ratvec,[int],mat,[int],[int]))(j,(ic,delta,gamma,lambda,theta,g,l,omega,t,tau)))=string:ext_type(delta,j,parameter(ic,delta,gamma,lambda,theta,g,l,omega,t,tau))
 
 {E=extended parameter, ext_types=[ext_type(j,E)]}
-set ext_types(InnerClass ic, mat delta, ratvec gamma, [int] lambda, mat theta, ratvec g, [int] l, mat omega, [int] t, [int] tau,ratvec central_shift)=[string]:for j:ss_rank(ic) do ext_type(j,(ic,delta,gamma,lambda,theta,g,l,omega,t,tau,central_shift)) od
+set ext_types(InnerClass ic, mat delta, ratvec gamma, [int] lambda, mat theta, ratvec g, [int] l, mat omega, [int] t, [int] tau)=[string]:for j:ss_rank(ic) do ext_type(j,(ic,delta,gamma,lambda,theta,g,l,omega,t,tau)) od
 
 

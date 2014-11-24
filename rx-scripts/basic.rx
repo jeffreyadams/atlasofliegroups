@@ -54,7 +54,9 @@ set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
 set rat_as_int (rat r) = int:
   let (n,d)=%r in if d=1 then n else error("Not an integer") fi
 
-
+{remainder when dividing a rational by an integer}
+set %(rat x,int n) = rat: let (p,q)=%x in (p%(n*q))/q
+set %(ratvec v,int n) = ratvec: for x in v do x%n od
 
 {				Strings					}
 
@@ -201,6 +203,8 @@ set rows_with ((int->bool) p,mat m) = mat:
 { sum of columns of a matrix }
 set sum (mat m)= vec: m*ones(n_columns(m))
 
+set oneplus(mat M)=id_mat(n_columns(M))+M
+set oneminus(mat M)=id_mat(n_columns(M))-M
 
 {			    Rational vectors				}
 

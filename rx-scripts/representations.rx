@@ -1,9 +1,7 @@
 <misc.rx { for generate_all_subsets }
 <group_operations.rx { for is_split nad such }
 
-
 { some common representations }
-
 
 { finite dimensional with highest weight gamma in X^*
   param(last KGB element,lambda=gamma+rho,nu=gamma+rho)
@@ -13,9 +11,10 @@
 set finite_dimensional (RealForm G,vec gamma) = Param:
   param(KGB(G,KGB_size(G)-1),gamma,gamma+rho(G)) { +rho is implicit for param }
 
-
 { trivial representation of G, see finite_dimensional }
 set trivial(RealForm G) = Param: finite_dimensional(G,null(rank(G)))
+{get the trivial block}
+set trivial_block(RealForm G)=[Param]:block_of(trivial(G))
 
 set large_fundamental_series (RealForm G) = Param:
   if not(is_quasisplit(G)) then error("group is not quasisplit")

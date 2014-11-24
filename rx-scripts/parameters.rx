@@ -1,0 +1,67 @@
+{various ways of defining parameters}
+
+set actual_torus_factor(KGBElt x)= (torus_factor(x)+rho_check(real_form(x)))/2
+
+{compute xi^2 and test if it is central}
+{(e(v)sigma_w*xi_0)^2=e((1+^theta)v)e((1-^theta)rho^v/2)}
+{^theta since v,rho^v are  in x_*\otimes Q}
+
+set square(InnerClass ic,ratvec v,mat theta)=ratvec:oneplus(^theta)*v+oneminus(^theta)*rho_check(ic)/2
+set square(KGBElt x)=ratvec:square(real_form(x), actual_torus_factor(x), involution(x))
+set square_is_central(InnerClass ic,ratvec v,mat theta)=
+let rv=true in 
+for i:ss_rank(ic) do 
+let alpha=simple_roots(ic)[i] in 
+if  (not is_integer(alpha*square(ic,v,theta)))  then rv:=false;i:=ss_rank(ic) fi od;rv
+
+set parity(Param p,vec alpha_hat) = bool:
+  let x = x(p) then theta = involution(x)
+  in if alpha_hat*theta != -alpha_hat then error("root not real")
+     else let rat_wt= infinitesimal_character(p)-lambda(p)+rho_r(x)
+     in rat_as_int(alpha_hat * rat_wt) % 2 = 1
+     fi
+
+{ to compute y values over a block of parameters, precompute dual inner class }
+set dual_inner_class(Param p) = InnerClass:
+  let id = integrality_datum(real_form(p),infinitesimal_character(p))
+  in dual(inner_class(id,involution(x(p))))
+
+set y(Param p, InnerClass G_vee) = KGBElt:
+  let (x,lambda_rho,nu) = %p
+  then dual_theta = -^involution(x)
+  then grading_vector = infinitesimal_character(p) - lambda(p) + rho_r(x)
+  , dual_shift = sum(imaginary_poscoroots(G_vee,dual_theta))/2
+  in KGB_elt(G_vee,dual_theta,grading_vector-dual_shift)
+
+set y(Param p) = KGBElt: y(p,dual_inner_class(p))
+
+set lambda(ratvec gamma,KGBElt x,KGBElt y)=
+{if not (dual(inner_class(real_form(x)))=inner_class(real_form(y))) then error("real forms of x, y are not dual") }
+if (not involution(x)=-^involution(y)) then error("involutions of x and y are not dual") 
+else gamma-oneminus(involution(x))*torus_factor(y)/2 fi   {CHECK /2 HERE}
+
+{sometimes I don't have x, only theta_x, which is all I need}
+set lambda(ratvec gamma,mat theta,KGBElt y)=
+if (not theta=-^involution(y)) then error("theta and involution(y) are not dual") 
+else gamma-oneminus(theta)*torus_factor(y)/2 fi   {CHECK /2 HERE}
+
+set nu(ratvec gamma,KGBElt x)=oneminus(involution(x))*gamma/2
+set nu(ratvec gamma,KGBElt x,KGBElt y)=oneminus(involution(x))*gamma/2
+
+{make an appropriate choice of g 
+if y^2 is central then e(g)=x^2
+in general e(g)=x^2-rho_check(G)+rho_check(G(y^2))}
+set choose_g(KGBElt x, KGBElt y)=square(x)-rho_check(real_form(x))+rho_check(integrality_datum(real_form(x),square(y)))
+set choose_g(Param p)=choose_g(x(p),y(p))
+
+{gamma=infinitesimal character}
+set parameter(KGBElt x,KGBElt y,ratvec gamma)=parameter(x,lambda(gamma,x,y),nu(gamma,x)) 
+set parameter(KGBElt x, KGBElt y)=Param:parameter(x,y,choose_g(x,y))
+
+{this gives a parameter for the dual group with infinitesimal character g}
+{set dual_parameter(KGBElt x, KGBElt y,ratvec g)=parameter(y,x,g)
+set parameter_pair( KGBElt x, KGBElt y,ratvec gamma,ratvec g)=(parameter(x,y,gamma), dual_parameter(x,y,g))}
+
+{set dual(Param p, ratvec g))=dual_parameter(x(p),y(p), g)
+set dual([Param] B,ratvec g)=let (Bd,)=block(dual(B[0],g)) in Bd}
+

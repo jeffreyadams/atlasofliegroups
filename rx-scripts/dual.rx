@@ -1,0 +1,69 @@
+<polynomial.rx
+<parameters.rx 
+
+{define dual parameters given choice of infinitesimal cocharacter g
+{requires: y^2=e(g)
+use choose_g for a choice of g}}
+set dual(KGBElt x, KGBElt y,ratvec g)=parameter(y,x,g)
+
+set dual_parameter(KGBElt x,KGBElt y)=Param:parameter(y,x)
+set dual_parameter(KGBElt x,KGBElt y,ratvec g)=Param:parameter(y,x,g)
+set dual(Param p)=Param:dual_parameter(x(p),y(p))
+set dual(Param p, ratvec g)=dual_parameter(x(p),y(p),g)
+
+{also specify the dual inner class}
+set dual(Param p,InnerClass dual_inner_class)=Param:dual_parameter(x(p),y(p,dual_inner_class))
+set dual(Param p,ratvec g,InnerClass dual_inner_class)=Param:dual_parameter(x(p),y(p,dual_inner_class),g)
+
+{need to make sure these all are for the same RealForm}
+set dual([Param] B,ratvec g)=let dual_inner_class=dual_inner_class(B[0]) in 
+for i:#B  do dual(B[i],g,dual_inner_class) od
+
+set dual([Param] B)=dual(B,choose_g(B[0]))
+
+set dual_block(Param p, ratvec g)=let (B,)=block(p) in dual(B,g) 
+set dual_block(Param p)=let (B,)=block(p) in dual(B) 
+set dual_extended_parameter(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=(dual(ic),^delta,g,l,omega,gamma,lambda,theta,t,tau)
+
+set find([Param] P, Param p)=
+let rv=-1 in 
+let i=0 in 
+while i<#P do if (p=P[i]) then rv:=i;i:=#P else i:=i+1 fi od;rv
+
+{set perm=permutation(P,Q) =>
+ i^th entry gives index of P[i] in Q
+ P[i]=Q[perm[i]]}
+set permutation([Param] P, [Param] Q)=[int]:for i:#Q do find(Q,P[i]) od
+
+{matrix of P-polynomials for B, with signs if signs=true}
+set KL_block_polynomials([Param] B,bool signs)=
+let (block,n,Pmatrix,polynomials,stops,survivors,)=KL_block(B[0]) in 
+let m=n_rows(Pmatrix) in 
+let P=zero_poly_matrix(m) in 
+let ()=for i:m do
+ for j:m do
+  let length_difference = if signs then  length_diff(i,j,stops) else 0 fi in 
+  P:=update_matrix_entry(P,i,j,poly_product(sgn_poly((-1)^length_difference),polynomials[Pmatrix[i,j]]))
+ od
+od in
+let perm=permutation(B,block) in 
+let ()=prints("permutation:", perm) in 
+let ()=prints("P:", P) in 
+poly_permute_basis(perm,P)
+
+set dual(Param p)=parameter(y(p),x(p),choose_g(p))
+
+{not yet working in all cases due to an extra permutation that hasn't been taken care of}
+set test_duality(Param p)=
+let B=block_of(p) in 
+let B_dual=dual(B) in 
+let P=KL_block_polynomials(B,true) in 
+let Q=KL_block_polynomials(B_dual,false) in 
+let ()=prints("P=") in 
+let ()=printPolyMatrix(P) in
+let ()=prints("Q^t=") in 
+let ()=printPolyMatrix(transpose(Q)) in
+let R=P*transpose(Q) in 
+let rv=R=identity_poly_matrix(#P) in 
+if rv then prints("passed: P*Q^t=I") else
+prints("failed: P*Q^t=I");printPolyMatrix(P*transpose(Q)) fi;(P,transpose(Q),rv)
