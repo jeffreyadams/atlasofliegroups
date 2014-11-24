@@ -6,10 +6,11 @@
 use choose_g for a choice of g}}
 set dual(KGBElt x, KGBElt y,ratvec g)=parameter(y,x,g)
 
-set dual_parameter(KGBElt x,KGBElt y)=Param:parameter(y,x)
 set dual_parameter(KGBElt x,KGBElt y,ratvec g)=Param:parameter(y,x,g)
-set dual(Param p)=Param:dual_parameter(x(p),y(p))
+set dual_parameter(KGBElt x,KGBElt y)=Param:parameter(y,x,choose_g(x,y))
+{set dual(Param p)=Param:dual_parameter(x(p),y(p))}
 set dual(Param p, ratvec g)=dual_parameter(x(p),y(p),g)
+set dual(Param p)=dual_parameter(x(p),y(p))
 
 {also specify the dual inner class}
 set dual(Param p,InnerClass dual_inner_class)=Param:dual_parameter(x(p),y(p,dual_inner_class))
@@ -51,7 +52,7 @@ let ()=prints("permutation:", perm) in
 let ()=prints("P:", P) in 
 poly_permute_basis(perm,P)
 
-set dual(Param p)=parameter(y(p),x(p),choose_g(p))
+
 
 {not yet working in all cases due to an extra permutation that hasn't been taken care of}
 set test_duality(Param p)=

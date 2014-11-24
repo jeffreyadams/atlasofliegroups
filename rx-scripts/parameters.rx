@@ -8,6 +8,12 @@ set actual_torus_factor(KGBElt x)= (torus_factor(x)+rho_check(real_form(x)))/2
 
 set square(InnerClass ic,ratvec v,mat theta)=ratvec:oneplus(^theta)*v+oneminus(^theta)*rho_check(ic)/2
 set square(KGBElt x)=ratvec:square(real_form(x), actual_torus_factor(x), involution(x))
+
+{in duality, y is a KGBElt for G^\vee(gamma), but we need to compute its square
+as an element of G^\vee; the difference is in the rho-shift coming from the Tits group}
+set square(InnerClass ic,KGBElt x)=ratvec:square(ic,actual_torus_factor(x), involution(x))
+
+
 set square_is_central(InnerClass ic,ratvec v,mat theta)=
 let rv=true in 
 for i:ss_rank(ic) do 
@@ -51,7 +57,9 @@ set nu(ratvec gamma,KGBElt x,KGBElt y)=oneminus(involution(x))*gamma/2
 {make an appropriate choice of g 
 if y^2 is central then e(g)=x^2
 in general e(g)=x^2-rho_check(G)+rho_check(G(y^2))}
-set choose_g(KGBElt x, KGBElt y)=square(x)-rho_check(real_form(x))+rho_check(integrality_datum(real_form(x),square(y)))
+{dangerous bend: y^2 is computed in G^\vee not G^\vee(gamma)
+this explains: square(inner_class(dual_quasisplit_form(real_form(x))),y)}
+set choose_g(KGBElt x, KGBElt y)=square(x)-rho_check(real_form(x))+rho_check(integrality_datum(real_form(x),square(inner_class(dual_quasisplit_form(real_form(x))),y)))
 set choose_g(Param p)=choose_g(x(p),y(p))
 
 {gamma=infinitesimal character}
