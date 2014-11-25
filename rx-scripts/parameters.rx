@@ -1,6 +1,6 @@
 {various ways of defining parameters}
 
-set actual_torus_factor(KGBElt x)= (torus_factor(x)+rho_check(real_form(x)))/2
+set actual_torus_factor(KGBElt x)=ratvec:(torus_factor(x)+rho_check(real_form(x)))/2
 
 {compute xi^2 and test if it is central}
 {(e(v)sigma_w*xi_0)^2=e((1+^theta)v)e((1-^theta)rho^v/2)}
@@ -13,8 +13,7 @@ set square(KGBElt x)=ratvec:square(real_form(x), actual_torus_factor(x), involut
 as an element of G^\vee; the difference is in the rho-shift coming from the Tits group}
 set square(InnerClass ic,KGBElt x)=ratvec:square(ic,actual_torus_factor(x), involution(x))
 
-
-set square_is_central(InnerClass ic,ratvec v,mat theta)=
+set square_is_central(InnerClass ic,ratvec v,mat theta)=bool:
 let rv=true in 
 for i:ss_rank(ic) do 
 let alpha=simple_roots(ic)[i] in 
@@ -41,35 +40,45 @@ set y(Param p, InnerClass G_vee) = KGBElt:
 
 set y(Param p) = KGBElt: y(p,dual_inner_class(p))
 
-set lambda(ratvec gamma,KGBElt x,KGBElt y)=
-{if not (dual(inner_class(real_form(x)))=inner_class(real_form(y))) then error("real forms of x, y are not dual") }
+set lambda(ratvec gamma,KGBElt x,KGBElt y)=ratvec:
 if (not involution(x)=-^involution(y)) then error("involutions of x and y are not dual") 
-else gamma-oneminus(involution(x))*torus_factor(y)/2 fi   {CHECK /2 HERE}
+else gamma-oneminus(involution(x))*torus_factor(y)/2 fi
 
 {sometimes I don't have x, only theta_x, which is all I need}
 set lambda(ratvec gamma,mat theta,KGBElt y)=
 if (not theta=-^involution(y)) then error("theta and involution(y) are not dual") 
-else gamma-oneminus(theta)*torus_factor(y)/2 fi   {CHECK /2 HERE}
+else gamma-oneminus(theta)*torus_factor(y)/2 fi
 
-set nu(ratvec gamma,KGBElt x)=oneminus(involution(x))*gamma/2
-set nu(ratvec gamma,KGBElt x,KGBElt y)=oneminus(involution(x))*gamma/2
+set nu(ratvec gamma,KGBElt x)=ratvec:oneminus(involution(x))*gamma/2
+set nu(ratvec gamma,KGBElt x,KGBElt y)=ratvec:oneminus(involution(x))*gamma/2
+
+{sometimes gamma returned by y^2 is not regular, need to make it regular}
+set make_regular(RootDatum rd, ratvec v)=ratvec:
+for alpha@i in simple_coroots(rd) do
+ if alpha*v=0 then v+:=numer(fundamental_weight(rd,i)) fi 
+od;v
 
 {make an appropriate choice of g 
 if y^2 is central then e(g)=x^2
-in general e(g)=x^2-rho_check(G)+rho_check(G(y^2))}
-{dangerous bend: y^2 is computed in G^\vee not G^\vee(gamma)
-this explains: square(inner_class(dual_quasisplit_form(real_form(x))),y)}
-set choose_g(KGBElt x, KGBElt y)=square(x)-rho_check(real_form(x))+rho_check(integrality_datum(real_form(x),square(inner_class(dual_quasisplit_form(real_form(x))),y)))
-set choose_g(Param p)=choose_g(x(p),y(p))
+in general e(g)=x^2-rho_check(G)+rho(G^\vee(y^2))}
+{Note: y is a KGB element for G^vee(y^2), square(y) is correctly computed
+Also: rho(G^\vee(y^2))=rho(real_form(y))}
+set choose_g(KGBElt x, KGBElt y)=ratvec:
+let square_y=square(y) in
+{let ()=prints("square(x):", square(x)) in 
+let ()=prints("rho_check(G):", rho_check(real_form(x))) in
+let ()=prints("square(x)-rho_check(G):", square(x)-rho_check(real_form(x))) in 
+let ()=prints("square(y):", square_y) in 
+let ()=prints("rho':", rho(real_form(y))) in}
+let rv=square(x)-rho_check(real_form(x))+rho(real_form(y)) in make_regular(real_form(y),rv)
+
+set choose_g(Param p)=ratvec:choose_g(x(p),y(p))
 
 {gamma=infinitesimal character}
-set parameter(KGBElt x,KGBElt y,ratvec gamma)=parameter(x,lambda(gamma,x,y),nu(gamma,x)) 
+set parameter(KGBElt x,KGBElt y,ratvec gamma)=Param:parameter(x,lambda(gamma,x,y),nu(gamma,x)) 
 set parameter(KGBElt x, KGBElt y)=Param:parameter(x,y,choose_g(x,y))
 
 {this gives a parameter for the dual group with infinitesimal character g}
-{set dual_parameter(KGBElt x, KGBElt y,ratvec g)=parameter(y,x,g)
-set parameter_pair( KGBElt x, KGBElt y,ratvec gamma,ratvec g)=(parameter(x,y,gamma), dual_parameter(x,y,g))}
-
-{set dual(Param p, ratvec g))=dual_parameter(x(p),y(p), g)
-set dual([Param] B,ratvec g)=let (Bd,)=block(dual(B[0],g)) in Bd}
+{set dual_parameter(KGBElt x, KGBElt y,ratvec g)=Param:parameter(y,x,g)
+set parameter_pair( KGBElt x, KGBElt y,ratvec gamma,ratvec g)=(Param,Param):(parameter(x,y,gamma), dual_parameter(x,y,g))}
 

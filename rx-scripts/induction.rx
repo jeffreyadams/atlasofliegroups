@@ -1,13 +1,31 @@
-L{assume x_L is in KGB(L), where L was constructed using real_Levi(x_G)
-or theta_stable_Levi(x_G)}
+{induction from a general real parabolic}
+{L is a real Levi factor in G, having been constructed using real_Levi(x_G)}
+
+{KGB(L) embeds in KGB(G): x_L -> embed_KGB(x_L,G)}
 set embed_KGB(KGBElt x_L,RealForm G)=KGBElt:KGB_elt(G,involution(x_L), torus_factor(x_L))
 
-{assume p_L is a Param for L, where L was constructed L=real_Levi(x_G)
-simply take (x_L,lambda,nu) to (x_G,lambda_rho(G)-rho(L),nu) 
-where x_G=embed(x_L,G)}
+{Given a kgb element x, construct a set S of complex roots containing one representative
+of each pair (alpha,theta(alpha))}
+set makeS (KGBElt x)=[([int],bool)]:
+   let G=real_form(x) in let theta=involution(x) in
+   let pr=posroots(G) in let list=[([int],bool)]: for al in pr do (al,true) od in
+   for i:#list do let (al,b)=list[i] in if b then for j:#list do
+      let (beta,c)=list[j] in if beta=theta*al  or beta=-theta*al then
+      list[j]:=(beta,false) fi od fi od; list
+
+{construct the complex rho shift rho_S:=(1-theta)rho(S)}
+set rhoS (KGBElt x)=ratvec:
+     let theta=involution(x) in	let list=makeS(x) in
+     let (al,b)=list[0] in let Q=al-al in for (beta,b) in list do
+    if b then Q:=Q+beta-theta*beta fi od; 1/2*Q
+
+{parameters for L -> parameters for G: 
+p_L=(x_L,lambda,nu) -> p_G=(embed_KGB(x_L,G),lambda + appropriate rho-shift,nu)
+rho-shift is: rho_r(G)-rho_r(L)+(1-theta)(rho_S(G)-rho_S(L))
+Then Ind_L^G(I(p_L))=I(p_g)}
 set induce_standard(Param p_L,RealForm G)=Param:
-let L=real_form(x(p_L)) in 
-parameter(embed_KGB(x(p_L),G),lambda(p_L)+rho(G)-rho(L), nu(p_L)) 
+let L=real_form(x(p_L)) in let x_G=embed_KGB(x(p_L),G) in
+parameter(x_G,lambda(p_L)+rho_r(x_G)+rhoS(x_G)-rho_r(x(p_L))-rhoS(x(p_L)), nu(p_L)) 
 
 {write Ind(J) as a sum of standards for G}
 {write J(p_L)=sum_i a_i* I_L(p_i)
