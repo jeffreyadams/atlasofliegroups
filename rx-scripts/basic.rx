@@ -54,16 +54,14 @@ set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
 set rat_as_int (rat r) = int:
   let (n,d)=%r in if d=1 then n else error("Not an integer") fi
 
-{remainder when dividing a rational by an integer}
-set %(rat x,int n) = rat: let (p,q)=%x in (p%(n*q))/q
-set %(ratvec v,int n) = ratvec: for x in v do x%n od
-
 {				Strings					}
 
 set != ((string,string)p) = bool: not =p
 set > ((string,string)p) = bool: not <=p
 set >= (string x, string y) = bool: y<=x
 set < (string x, string y) = bool: y>x
+
+set new_line = ascii(10) { including this in a string passes to a new line }
 
 set + (string s,string t) = string: s # t { alias for concatenation }
 set * (string s, int n)= string: let r="" in (for i:n do r#:=s od; r)
@@ -203,19 +201,15 @@ set rows_with ((int->bool) p,mat m) = mat:
 { sum of columns of a matrix }
 set sum (mat m)= vec: m*ones(n_columns(m))
 
-set oneplus(mat M)=id_mat(n_columns(M))+M
-set oneminus(mat M)=id_mat(n_columns(M))-M
+set oneplus(mat M)= mat: 1+M
+set oneminus(mat M)= mat: 1-M
 
 {			    Rational vectors				}
 
 set numer (ratvec a) = vec: let (n,)=%a in n
 set denom (ratvec a) = int: let (,d)=%a in d
-set = (ratvec v,ratvec w) = bool: let (n,d)=%v, (m,e)=%w in e*n=d*m
-set - (ratvec v) = ratvec: let (n,d)=%v in (-n)/d
-set * (int m,ratvec v) = ratvec: let (n,d)=%v in m*n/d
-set * (rat r,ratvec v) = ratvec: let (n,d)=%r, (nv,dv)=%v in (n*nv)/(d*dv)
-set / (ratvec v,int m) = ratvec: let (n,d)=%v in n/(m*d)
-set / (ratvec v,rat r) = ratvec: let (nv,dv)=%v, (n,d)=%r in (d*nv)/(n*dv)
+set * (int i,ratvec v) = ratvec: v*i
+set * (rat r,ratvec v) = ratvec: v*r
 
 set * (ratvec v, mat m) = ratvec: (^m)*v { right multiply uses transpose }
 
@@ -499,7 +493,14 @@ set lambda(Param p) = ratvec: lambda_minus_rho(p)+rho(real_form(p))
 set nu (Param p) = ratvec: let (,,nu) =%p in nu
 
 { simulate coercion (KGBElt->RealForm) in some cases }
+set root_datum(Param p) = RootDatum: root_datum(real_form(p))
+set root_datum(ParamPol P) = RootDatum: root_datum(real_form(P))
+
 set involution (Param p)=involution(x(p))
+
+set integrality_datum(Param p)= RootDatum:
+  integrality_datum(root_datum(p),infinitesimal_character(p))
+
 
 { parameter(G,x,lambda,nu)=param(G,x,lambda-rho(G),nu), so you can enter
   lambda without the rho shift; lambda may have denominator 2 or be a vec }

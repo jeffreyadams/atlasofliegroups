@@ -17,9 +17,6 @@ set is_nonnegative (ratvec v)= bool: is_nonnegative(numer(v))
 { transform ParamPol into a list of (Split,Param) pairs; previously built-in }
 set %(ParamPol P) = [(Split,Param)]: for c@p in P do (c,p) od
 
-set root_datum(Param p) = RootDatum: root_datum(real_form(p))
-set root_datum(ParamPol P) = RootDatum: root_datum(real_form(P))
-
 set is_dominant(RootDatum rd, ratvec v) = bool:
   is_nonnegative(numer(v)*simple_coroots(rd))
 set is_regular(RootDatum rd,ratvec v)= bool: { tests all positive coroots }
@@ -32,10 +29,6 @@ set is_regular(Param p)=is_regular(real_form(p),infinitesimal_character(p))
 
 { make rho as a vector of integers if possible }
 set rho_as_vec (RootDatum r)= vec: ratvec_as_vec(rho(r))
-
-{ some data defined by a Param p }
-set integrality_datum(Param p)= RootDatum:
-  integrality_datum(root_datum(p),infinitesimal_character(p))
 
 { simpler syntax for param command: param(G,3,...) for param(KGB(G,3),...)  }
 set param(RealForm G,int k, vec lambda_rho,ratvec nu) = Param:

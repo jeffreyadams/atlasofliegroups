@@ -673,8 +673,17 @@ template<typename C>
 template<typename C>
   PID_Matrix<C> operator+ (PID_Matrix<C> A, C c) // add scalar matrix
 {
-  assert(A.numRows()==A.numColumns());
-  for (unsigned int i=A.numRows(); i-->0;)
+  unsigned int i=std::min(A.numRows(),A.numColumns());
+  while (i-->0)
+    A(i,i) += c;
+  return A;
+}
+
+template<typename C>
+  PID_Matrix<C>& operator+= (PID_Matrix<C>& A, C c) // |A=A+c|, avoiding copy
+{
+  unsigned int i=std::min(A.numRows(),A.numColumns());
+  while (i-->0)
     A(i,i) += c;
   return A;
 }
@@ -692,6 +701,7 @@ typedef polynomials::Polynomial<int> Pol;
 
 template std::vector<Vector<int> > standard_basis<int>(size_t n);
 template PID_Matrix<int> operator+(PID_Matrix<int>,int);
+template PID_Matrix<int>& operator+=(PID_Matrix<int>&,int);
 
 template class Vector<int>;           // the main instance used
 template class Vector<signed char>;   // used inside root data

@@ -2378,7 +2378,8 @@ TwistedInvolution twisted_from_involution
   (const ComplexReductiveGroup& G, const WeightInvolution theta)
 { const RootDatum& rd = G.rootDatum();
   WeylWord ww;
-  if (check_involution(theta,rd,ww)!=G.twistedWeylGroup().twist())
+  if (check_involution(theta,rd,ww)!=G.twistedWeylGroup().twist() @| or
+      rd.matrix(ww)*G.distinguished()!=theta)
     throw std::runtime_error("Involution not in this inner class");
   return G.weylGroup().element(ww);
 }

@@ -1014,6 +1014,7 @@ private:
 };
 @)
 typedef std::shared_ptr<const rat_value> shared_rat;
+typedef std::shared_ptr<rat_value> own_rat;
 
 @ Here are two more; this is quite repetitive.
 
@@ -1117,7 +1118,7 @@ struct rational_vector_value : public value_base
 { RatWeight val;
 @)
   explicit rational_vector_value(const RatWeight& v)
-   : val(v)@+{ val.normalize();}
+   : val(v) {@; val.normalize();}
   rational_vector_value(const int_Vector& v,int d)
    : val(v,d) @+ {@; val.normalize(); }
   ~rational_vector_value()@+ {}
@@ -1571,6 +1572,55 @@ void unfraction_wrapper(expression_base::level l)
   }
 }
 
+@ We define some arithmetic operations with a rational and integer operand,
+for efficiency.
+
+@< Local function definitions @>=
+void rat_plus_int_wrapper(expression_base::level l)
+{ int i=get<int_value>()->val;
+  own_rat q=get_own<rat_value>();
+  if (l==expression_base::no_value)
+    return;
+  q->val+=i;
+  push_value(q);
+}
+void rat_minus_int_wrapper(expression_base::level l)
+{ int i=get<int_value>()->val;
+  own_rat q=get_own<rat_value>();
+  if (l==expression_base::no_value)
+    return;
+  q->val-=i;
+  push_value(q);
+}
+void rat_times_int_wrapper(expression_base::level l)
+{ int i=get<int_value>()->val;
+  own_rat q=get_own<rat_value>();
+  if (l==expression_base::no_value)
+    return;
+  q->val*=i;
+  push_value(q);
+}
+void rat_divide_int_wrapper(expression_base::level l)
+{ int i=get<int_value>()->val;
+  own_rat q=get_own<rat_value>();
+  if (i==0)
+    throw std::runtime_error("Rational division by zero");
+  if (l==expression_base::no_value)
+    return;
+  q->val/=i;
+  push_value(q);
+}
+void rat_modulo_int_wrapper(expression_base::level l)
+{ int i=get<int_value>()->val;
+  own_rat q=get_own<rat_value>();
+  if (i==0)
+    throw std::runtime_error("Rational modulo zero");
+  if (l==expression_base::no_value)
+    return;
+  q->val%=i;
+  push_value(q);
+}
+
 @ We define arithmetic operations for rational numbers, made possible thanks to
 operator overloading.
 
@@ -1582,7 +1632,6 @@ void rat_plus_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rat_value>(i+j));
 }
-@)
 void rat_minus_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val;
   Rational i=get<rat_value>()->val;
@@ -1604,6 +1653,14 @@ void rat_divide_wrapper(expression_base::level l)
     throw std::runtime_error("Rational division by zero");
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rat_value>(i/j));
+}
+void rat_modulo_wrapper(expression_base::level l)
+{ Rational j=get<rat_value>()->val;
+  Rational i=get<rat_value>()->val;
+  if (j.numerator()==0)
+    throw std::runtime_error("Rational modulo zero");
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<rat_value>(i%j));
 }
 @)
 void rat_unary_minus_wrapper(expression_base::level l)
@@ -1771,7 +1828,7 @@ void string_to_ascii_wrapper(expression_base::level l)
 @)
 void ascii_char_wrapper(expression_base::level l)
 { int c=get<int_value>()->val;
-  if (c<' ' or c>'~')
+  if ((c<' ' and c!='\n') or c>'~')
     throw std::runtime_error("Value "+str(c)+" out of range");
   if (l!=expression_base::no_value)
     push_value(std::make_shared<string_value>(std::string(1,c)));
@@ -1873,6 +1930,20 @@ void vec_neq_wrapper(expression_base::level l)
     push_value(std::make_shared<bool_value>(i->val!=j->val));
 }
 @)
+void ratvec_eq_wrapper(expression_base::level l)
+{ shared_rational_vector j=get<rational_vector_value>();
+  shared_rational_vector i=get<rational_vector_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i->val==j->val));
+}
+@)
+void ratvec_neq_wrapper(expression_base::level l)
+{ shared_rational_vector j=get<rational_vector_value>();
+  shared_rational_vector i=get<rational_vector_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i->val!=j->val));
+}
+@)
 void mat_eq_wrapper(expression_base::level l)
 { shared_matrix j=get<matrix_value>(); shared_matrix i=get<matrix_value>();
   if (l!=expression_base::no_value)
@@ -1886,7 +1957,8 @@ void mat_neq_wrapper(expression_base::level l)
 }
 
 @ The function |vector_div_wrapper| produces a rational vector, for which we
-also provide addition and subtraction.
+also provide addition and subtraction of another rational vector, as well as
+multiplication and division by integers.
 
 @< Local function def... @>=
 void vector_div_wrapper(expression_base::level l)
@@ -1894,6 +1966,7 @@ void vector_div_wrapper(expression_base::level l)
   shared_vector v=get<vector_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value>(v->val,n));
+    // will throw if |n==0|
 }
 @)
 void ratvec_unfraction_wrapper(expression_base::level l)
@@ -1913,14 +1986,110 @@ void ratvec_plus_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value>(v0->val+v1->val));
 }
-@)
 void ratvec_minus_wrapper(expression_base::level l)
 { shared_rational_vector v1= get<rational_vector_value>();
   shared_rational_vector v0= get<rational_vector_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value>(v0->val-v1->val));
 }
+void ratvec_unary_minus_wrapper(expression_base::level l)
+{ shared_rational_vector v = get<rational_vector_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<rational_vector_value>(-v->val));
+}
+@)
+void ratvec_times_int_wrapper(expression_base::level l)
+{ int i= get<int_value>()->val;
+  own_rational_vector v= get_own<rational_vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  v->val *= i;
+  push_value(v);
+}
+void ratvec_divide_int_wrapper(expression_base::level l)
+{ int i= get<int_value>()->val;
+  own_rational_vector v= get_own<rational_vector_value>();
+  if (i==0)
+    throw std::runtime_error("Rational vector division by 0");
+  if (l==expression_base::no_value)
+    return;
+  v->val /= i;
+  push_value(v);
+}
+void ratvec_modulo_int_wrapper(expression_base::level l)
+{ int i= get<int_value>()->val;
+  own_rational_vector v= get_own<rational_vector_value>();
+  if (i==0)
+    throw std::runtime_error("Rational vector modulo 0");
+  if (l==expression_base::no_value)
+    return;
+  v->val %= i;
+  push_value(v);
+}
 
+@ We also provide multiplication and division of rational vectors by
+rationals, but no modulo operation.
+
+@< Local function def... @>=
+
+void ratvec_times_rat_wrapper(expression_base::level l)
+{ Rational r= get<rat_value>()->val;
+  own_rational_vector v= get_own<rational_vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  (v->val *= r).normalize();
+  push_value(v);
+}
+void ratvec_divide_rat_wrapper(expression_base::level l)
+{ Rational r= get<rat_value>()->val;
+  own_rational_vector v= get_own<rational_vector_value>();
+  if (r.numerator()==0)
+    throw std::runtime_error("Rational vector division by 0");
+  if (l==expression_base::no_value)
+    return;
+  (v->val /= r).normalize();
+  push_value(v);
+}
+
+@ Adding a multiple (usually with factor $1$ or $-1$) of the identity to a
+(square) matrix is frequently useful, so we provide additive operators between
+matrices and integers.
+
+@< Local function definitions @>=
+void mat_plus_int_wrapper(expression_base::level l)
+{ int i= get<int_value>()->val;
+  own_matrix m= get_own<matrix_value>();
+  if (l==expression_base::no_value)
+    return;
+  m->val += i;
+  push_value(m);
+}
+void mat_minus_int_wrapper(expression_base::level l)
+{ int i= get<int_value>()->val;
+  own_matrix m= get_own<matrix_value>();
+  if (l==expression_base::no_value)
+    return;
+  m->val += -i;
+  push_value(m);
+}
+@)
+void int_plus_mat_wrapper(expression_base::level l)
+{ own_matrix m= get_own<matrix_value>();
+  int i= get<int_value>()->val;
+  if (l==expression_base::no_value)
+    return;
+  m->val += i;
+  push_value(m);
+}
+void int_minus_mat_wrapper(expression_base::level l)
+{ own_matrix m= get_own<matrix_value>();
+  int i= get<int_value>()->val;
+  if (l==expression_base::no_value)
+    return;
+  m->val.negate();
+  m->val += i;
+  push_value(m);
+}
 
 @ Now the products between vector and/or matrices. We make the wrapper
 |mm_prod_wrapper| around matrix multiplication callable from other compilation
@@ -2101,10 +2270,16 @@ install_function(power_wrapper,"^","(int,int->int)");
 install_function(fraction_wrapper,"/","(int,int->rat)");
 install_function(unfraction_wrapper,"%","(rat->int,int)");
    // unary \% means ``break open''
+install_function(rat_plus_int_wrapper,"+","(rat,int->rat)");
+install_function(rat_minus_int_wrapper,"-","(rat,int->rat)");
+install_function(rat_times_int_wrapper,"*","(rat,int->rat)");
+install_function(rat_divide_int_wrapper,"/","(rat,int->rat)");
+install_function(rat_modulo_int_wrapper,"%","(rat,int->rat)");
 install_function(rat_plus_wrapper,"+","(rat,rat->rat)");
 install_function(rat_minus_wrapper,"-","(rat,rat->rat)");
 install_function(rat_times_wrapper,"*","(rat,rat->rat)");
 install_function(rat_divide_wrapper,"/","(rat,rat->rat)");
+install_function(rat_modulo_wrapper,"%","(rat,rat->rat)");
 install_function(rat_unary_minus_wrapper,"-","(rat->rat)");
 install_function(rat_inverse_wrapper,"/","(rat->rat)");
 install_function(rat_power_wrapper,"^","(rat,int->rat)");
@@ -2131,18 +2306,30 @@ install_function(ascii_char_wrapper,"ascii","(int->string)");
 install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
 install_function(matrix_bounds_wrapper,"#","(mat->int,int)");
+install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
+install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
+install_function(join_vectors_wrapper,"#","(vec,vec->vec)");
+install_function(error_wrapper,"error","(string->*)");
+install_function(vec_eq_wrapper,"=","(vec,vec->bool)");
+install_function(vec_neq_wrapper,"!=","(vec,vec->bool)");
+install_function(ratvec_eq_wrapper,"=","(ratvec,ratvec->bool)");
+install_function(ratvec_neq_wrapper,"!=","(ratvec,ratvec->bool)");
+install_function(mat_eq_wrapper,"=","(mat,mat->bool)");
+install_function(mat_neq_wrapper,"!=","(mat,mat->bool)");
 install_function(vector_div_wrapper,"/","(vec,int->ratvec)");
 install_function(ratvec_unfraction_wrapper,"%","(ratvec->vec,int)");
 install_function(ratvec_plus_wrapper,"+","(ratvec,ratvec->ratvec)");
 install_function(ratvec_minus_wrapper,"-","(ratvec,ratvec->ratvec)");
-install_function(error_wrapper,"error","(string->*)");
-install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
-install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
-install_function(join_vectors_wrapper,"#","(vec,vec->vec)");
-install_function(vec_eq_wrapper,"=","(vec,vec->bool)");
-install_function(vec_neq_wrapper,"!=","(vec,vec->bool)");
-install_function(mat_eq_wrapper,"=","(mat,mat->bool)");
-install_function(mat_neq_wrapper,"!=","(mat,mat->bool)");
+install_function(ratvec_unary_minus_wrapper,"-","(ratvec->ratvec)");
+install_function(ratvec_times_int_wrapper,"*","(ratvec,int->ratvec)");
+install_function(ratvec_divide_int_wrapper,"/","(ratvec,int->ratvec)");
+install_function(ratvec_modulo_int_wrapper,"%","(ratvec,int->ratvec)");
+install_function(ratvec_times_rat_wrapper,"*","(ratvec,rat->ratvec)");
+install_function(ratvec_divide_rat_wrapper,"/","(ratvec,rat->ratvec)");
+install_function(mat_plus_int_wrapper,"+","(mat,int->mat)");
+install_function(mat_minus_int_wrapper,"-","(mat,int->mat)");
+install_function(int_plus_mat_wrapper,"+","(int,mat->mat)");
+install_function(int_minus_mat_wrapper,"-","(int,mat->mat)");
 install_function(vv_prod_wrapper,"*","(vec,vec->int)");
 install_function(mrv_prod_wrapper,"*","(mat,ratvec->ratvec)");
 install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
@@ -2153,8 +2340,10 @@ install_function(combine_columns_wrapper,"#","(int,[vec]->mat)");
 install_function(combine_rows_wrapper,"^","(int,[vec]->mat)");
 install_function(section_wrapper,"mod2_inverse","(mat->mat)");
 
-@* Miscellaneous functions. This section defines functions of general nature
-that did not fit in comfortably elsewhere.
+@* Other functions for vectors and matrices.
+%
+This section defines addition functions for vectors and matrices, often
+specifically aimed at working with lattices.
 
 Null vectors and matrices are particularly useful as starting values. In
 addition, the latter can produce empty matrices without any (null) entries,

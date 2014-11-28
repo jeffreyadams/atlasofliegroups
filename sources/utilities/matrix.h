@@ -40,6 +40,9 @@ template<typename C>
 template<typename C>
   PID_Matrix<C> operator+ (PID_Matrix<C> A, C c); // add scalar matrix
 
+template<typename C>
+  PID_Matrix<C>& operator+= (PID_Matrix<C>& A, C c); // |A=A+c|, avoiding copy
+
 }
 
 /******** type definitions ***************************************************/

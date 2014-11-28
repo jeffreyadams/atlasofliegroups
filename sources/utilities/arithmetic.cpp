@@ -13,7 +13,8 @@
 
 #include "arithmetic.h"
 
-#include <stdexcept>
+#include <stdexcept> // some cases throw
+#include <cassert>   // but most just assert; user should test uncertain cases
 
 #include "constants.h"
 #include "arithmetic.h"
@@ -113,23 +114,32 @@ Rational& Rational::operator*=(Numer_t n)
   {
     if (n<0)
     { n=-n; num=-num; }
-    if (denom%n==0)
+    if (denom%n==0) // only case of exact division is simplified
       denom/=n;
     else
-      num*=n;
+      num*=n;  // otherwise just multiply numerator; no normalise
   }
   return *this;
 }
 
 Rational& Rational::operator/=(Numer_t n)
-{ if (n<0)
+{ assert(n!=0);
+  if (n<0)
   { n=-n; num=-num; }
-  if (num%n==0)
+  if (num%n==0) // only case of exact division is simplified
     num/=n;
   else
-    denom*=n;
+    denom*=n; // otherwise just multiply denominator; no normalise
   return *this;
 }
+
+Rational& Rational::operator%=(Numer_t n)
+{ assert(n!=0);
+  num = remainder(num,denom*abs(n));
+  return *this;
+}
+
+
 
 Rational Rational::operator+(Rational q) const
 {
@@ -151,12 +161,18 @@ Rational Rational::operator*(Rational q) const
 
 Rational Rational::operator/(Rational q) const
 {
+  assert(q.num!=0);
   if (q.num>0)
     return Rational(num*Numer_t(q.denom),denom*q.num).normalize();
-  else if (q.num==0)
-    throw std::domain_error("Rational division by 0");
   else
     return Rational(-num*Numer_t(q.denom),denom*-q.num).normalize();
+}
+
+Rational Rational::operator%(Rational q) const
+{
+  assert(q.num!=0);
+  return Rational(remainder(num*Numer_t(q.denom),denom*abs(q.num)),
+		  denom*q.denom).normalize();
 }
 
 Rational& Rational::power(int n)

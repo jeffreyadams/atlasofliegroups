@@ -85,11 +85,11 @@ RationalVector<C>& RationalVector<C>::operator*=(C n)
 template<typename C>
 RationalVector<C>& RationalVector<C>::operator/=(C n)
 {
+  assert(n!=0);
   if (n>0)
     d_denom*=arithmetic::Denom_t(n);
   else
   {
-    assert(n!=0);
     d_num=-d_num;
     d_denom*=arithmetic::Denom_t(-n);
   }
@@ -97,11 +97,36 @@ RationalVector<C>& RationalVector<C>::operator/=(C n)
 }
 
 template<typename C>
+RationalVector<C>& RationalVector<C>::operator%=(C n)
+{
+  assert(n!=0);
+  for (auto it=d_num.begin(); it!=d_num.end(); ++it)
+    *it = arithmetic::remainder(*it,d_denom*arithmetic::Denom_t(abs(n)));
+  return *this;
+}
+
+template<typename C>
+RationalVector<C>& RationalVector<C>::operator*=(const arithmetic::Rational& r)
+{ return (*this /= r.denominator()) *= r.numerator(); }
+
+template<typename C>
 RationalVector<C> RationalVector<C>::operator*(const arithmetic::Rational& r)
 const
 {
-  RationalVector result(*this);
-  return ((result *= r.numerator()) /= r.denominator()).normalize();
+  return RationalVector(d_num*r.numerator(),d_denom*r.denominator());
+}
+
+template<typename C>
+RationalVector<C>& RationalVector<C>::operator/=(const arithmetic::Rational& r)
+{ assert (r.numerator()!=0);
+  return (*this /= r.numerator()) *= r.denominator();
+}
+
+template<typename C>
+RationalVector<C> RationalVector<C>::operator/(const arithmetic::Rational& r)
+const
+{
+  return RationalVector(d_num*r.denominator(),d_denom*r.numerator());
 }
 
 template<typename C>

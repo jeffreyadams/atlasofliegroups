@@ -642,7 +642,7 @@ both kinds of applied identifier expressions.
 
 @< Type definitions @>=
 #define nothing_new_here {}
-  // patch for gcc 4.6, will become |=default| in \Cpp11
+  // patch for gcc 4.6, will become |@[@]=@[default@]| in \Cpp11
 
 struct identifier : public expression_base
 { id_type code;
