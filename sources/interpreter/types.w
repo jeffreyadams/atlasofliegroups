@@ -752,16 +752,24 @@ bool operator== (const type_expr& x,const type_expr& y)
 }
 
 @ Instead of using the constructors directly, we often use the constructing
-functions below. They all and return |type_ptr| values owning the constructed
-expression. They also take such smart pointers, or |type_list| values, as
-argument whenever the underlying pointer is to be directly inserted into the
-structure built. However for |mk_function_type| this is not the case, so
-instead of insisting that the caller hold a unique-pointer to the argument
+functions below. The versions with |mk| return |type_ptr| values owning the
+constructed expression. They also take such smart pointers, or |type_list|
+values, as argument whenever the underlying pointer is to be directly inserted
+into the structure built. However for |mk_function_type| this is not the case,
+so instead of insisting that the caller hold a unique-pointer to the argument
 types it suffices to hold a |type_expr| whose contents can be moved into the
 type to be constructed. If |t| is a |type_ptr| held by a client, it can pass
 |std::move(*t)| as argument to |mk_function_type|, which will move the
 contents of the node |t| points to into the function type, and after return
 the destructor of |t| will eventually delete the now empty node.
+
+The functions with |make| are wrappers that do the same thing, but undress the
+smart pointers in their interface to raw pointers; these functions
+should be used exclusively in the parser. In other words these raw pointers
+are owning, as if they were smart pointers, and in fact the functions convert
+their arguments into unique pointers right away, and produce their results by
+calling the |release| method of a unique pointer. This travesty is done just
+so that the parser only sees POD, types which it can put into a |union|.
 
 @< Declarations of exported functions @>=
 type_ptr mk_prim_type(primitive_tag p);
@@ -769,7 +777,7 @@ type_ptr mk_row_type(type_ptr&& c);
 type_ptr mk_tuple_type (type_list&& l);
 type_ptr mk_function_type(type_expr&& a, type_expr&& r);
 @)
-type_p make_prim_type(int p);
+type_p make_prim_type(unsigned int p);
 type_p make_row_type(type_p c);
 type_p make_tuple_type(raw_type_list l);
 type_p make_function_type(type_p a,type_p r);
@@ -777,20 +785,20 @@ type_p make_function_type(type_p a,type_p r);
 raw_type_list make_type_singleton(type_p raw);
 raw_type_list make_type_list(type_p t,raw_type_list l);
 
-@ The functions like |mk_prim| below simply wrap the call to the constructor
-into one of the operator |new|, and then capture of the resulting pointer into
-a |type_ptr| result. The functions like |make_prim| wraps these functions into
-a parser interface, which converts it arguments to unique pointers, and
-converts such pointers to raw pointers for the return value; these functions
-should be used exclusively in the parser. Using this setup it is ensured that
-all pointers are considered owning their target, implicitly so while being
-manipulated by the parser (it guarantees that every pointer placed on the
-parsing stack will be argument of an interface function exactly once, possibly
-some |destroy| function in case it pops symbols during error recovery.
+@ The functions like |mk_prim| below simply call the constructor in the
+context of the operator |new|, and then capture of the resulting (raw) pointer
+into a |type_ptr| result. The functions like |make_prim| wrap them for the
+parser interface, undressing the pointers to raw again. Using this setup it is
+ensured that all pointers are considered owning their target, implicitly so
+while being manipulated by the parser (which guarantees that every pointer
+placed on the parsing stack will be argument of an interface function exactly
+once, possibly some |destroy| function in case it pops symbols during error
+recovery).
 
 Note that we make a special provision that |mk_prim_type| will return an
 empty tuple type when called with the type name for |"void"|, although this is
-contrary to what the name of the function suggests.
+contrary to what the name of the function suggests. Indeed |"void"| should
+better be handled just like user-defined type abbreviations.
 
 @< Function definitions @>=
 type_ptr mk_prim_type(primitive_tag p)
@@ -809,7 +817,7 @@ type_ptr mk_function_type (type_expr&& a, type_expr&& r)
 {@; return type_ptr(new type_expr(std::move(a),std::move(r)));
 }
 @)
-type_p make_prim_type(int p)
+type_p make_prim_type(unsigned int p)
 {@; return mk_prim_type(static_cast<primitive_tag>(p)).release(); }
 
 type_p make_row_type(type_p c)

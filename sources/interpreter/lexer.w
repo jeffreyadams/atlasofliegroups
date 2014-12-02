@@ -437,11 +437,26 @@ int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
 }
 
 @ Everything that looks like an identifier is either that or a keyword, or a
-type name. In any case we start with looking it up in the table, and then the
-numeric value of the code returned will allow us to discriminate the
-possibilities. In this scanner we cannot yet handle multiple distinct keywords
-that should scan as the same category because of a similar syntactic role,
-although this is probably desirable. However type names
+type name. In any case we start with looking it up in the |id_table|, and then
+the numeric value of the code returned, which is determined by the order in
+which names were first entered into |id_table|, will allow us to discriminate
+the possibilities. All keywords get distinct code numbers, determined by their
+offset from the first keyword; this implies that we cannot handle multiple
+distinct keywords that scan as the same category because of a similar
+syntactic role. However type names for primitive types all get the same
+category |TYPE|, with the actual name stored in the token value
+|valp->type_code|. While user defined type names (abbreviations) are
+equivalent to primitive ones at the syntactic level, we give them a different
+category |TYPE_ID|, because the nature of the associated token value is
+different: the identifier code is stored, and finding the designated type
+will require looking it up in |global_id_table|. Distinguishing type
+identifiers from other identifiers at lexical analysis is also uses
+|global_id_table|: type identifiers are known in that table, but have a null
+pointer as value (unlike global identifiers that have been declared without
+initial value: there the associated values is a shared pointer to an empty
+slot (holding a null pointer) instead.
+
+@h "global.h" // need to inspect |global_id_table|
 
 @< Scan an identifier or a keyword @>=
 { const char* p=input.point@[()@]-1; // start of token
@@ -451,10 +466,15 @@ although this is probably desirable. However type names
   input.unshift();
   id_type id_code=id_table.match(p,input.point()-p);
   if (id_code>=type_limit)
-  {@; valp->id_code=id_code; code=IDENT; }
+  { valp->id_code=id_code;
+    if (global_id_table->is_defined_type(id_code))
+      code=TYPE_ID;
+    else
+      code=IDENT;
+  }
   else if (id_code>=keyword_limit)
   {@; valp->type_code=id_code-keyword_limit; code=TYPE; }
-  else
+  else // we have |id_code<keyword_limit|, so it is a keyword
   { code=QUIT+id_code;
     switch(code)
     {

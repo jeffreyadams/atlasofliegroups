@@ -12,6 +12,11 @@ $(realex_dir)/evaluator.cpp $(realex_dir)/evaluator.h: \
 $(realex_dir)/built-in-types.cpp $(realex_dir)/built-in-types.h: \
   $(realex_dir)/built-in-types.w
 
+$(realex_dir)/parser.tab.o: \
+ $(realex_dir)/parser.tab.h \
+ $(realex_dir)/parsetree.h \
+ $(realex_dir)/types.h
+
 $(realex_dir)/buffer.o: $(realex_dir)/buffer.cpp
 $(realex_dir)/buffer.o $(realex_dir)/buffer.tex: $(realex_dir)/buffer.h
 

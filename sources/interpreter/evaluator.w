@@ -1098,6 +1098,8 @@ explicitly at compile time, but they will not change once the tables are
 initialised; to avoid having to look them up in |main_hash_table| each time,
 we store each one in a static variable inside a dedicated local function.
 
+@h "lexer.h" // for |main_hash_table|
+
 @< Local function definitions @>=
 id_type equals_name()
 {@; static id_type name=main_hash_table->match_literal("=");

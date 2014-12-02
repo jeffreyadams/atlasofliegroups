@@ -29,7 +29,7 @@
 %}
 %union {
   int	val;	    /* For integral constants.	*/
-  short id_code;    /* For identifier codes  */
+  short id_code;    /* For identifier codes, or defined types  */
   struct { short id, priority; } oper; /* for operator symbols */
   atlas::interpreter::raw_form_stack ini_form;
   unsigned short type_code; /* For type names */
@@ -58,7 +58,7 @@
 %token <oper> OPERATOR '='
 %token <val> INT
 %token <expression> STRING '$'
-%token <id_code> IDENT
+%token <id_code> IDENT TYPE_ID
 %token TOFILE ADDTOFILE FROMFILE FORCEFROMFILE
 
 %token <type_code> TYPE
@@ -127,6 +127,7 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 		{ struct raw_id_pat id; id.kind=0x1; id.name=$1;
 		  global_set_identifier(id,$3,0); YYABORT; }
 	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3); YYABORT; }
+	| ':' IDENT '=' type '\n' { type_define_identifier($2,$4); YYABORT; }
 	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
 	| QUIET '\n'		{ *verbosity =0; YYABORT; } /* quiet mode */
 	| VERBOSE '\n'		{ *verbosity =1; YYABORT; } /* verbose mode */
@@ -324,6 +325,7 @@ id_specs_opt: id_specs
 ;
 
 type	: TYPE			  { $$=make_prim_type($1); }
+	| TYPE_ID      { $$=acquire(global_id_table->type_of($1)).release(); }
         | '(' type ')'            { $$=$2; }
 	| '(' type ARROW type ')' { $$=make_function_type($2,$4); }
 	| '(' types_opt ARROW type ')'

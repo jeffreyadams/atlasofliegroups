@@ -231,7 +231,7 @@ parser.tab.c parser.tab.h: parser.y
         do if cmp -s old_targets/$$i $$i;\
            then mv old_targets/$$i $$i; echo $$i unchanged;\
            fi done
-parser.tab.o: parser.tab.c parsetree.h
+parser.tab.o: parser.tab.c
 	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
 # miscellaneous dependencies (some already known), produced by hand for now

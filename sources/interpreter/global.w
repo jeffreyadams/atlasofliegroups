@@ -94,6 +94,19 @@ table, so we should arrange for shared ownership of that location. This
 explains that the |id_data| structure used for entries in the table holds a
 shared pointer to a shared pointer.
 
+This double level of pointers allows us to (ab)use this structure to hold two
+different levels of entries without value: either the |value| field can hold a
+shared pointer to a |shared_value| given by a null pointer, or the |value|
+field can itself be a null pointer. The former possibility is used for a
+declared but uninitialised identifier (the location pointed to by |value| will
+be mode to point to the value once one is assigned), while the latter is used
+for an identifier defined as abbreviation for a type (here we don't need any
+location reserved to store a future value). These special cases do not require
+any special provisions in the |id_data| class, as the main constructor can
+handle the case where |val| refers to a null pointer value (entered as
+|shared_share(nullptr)|, and the |value| method can return such a value.
+
+
 @< Type definitions @>=
 
 typedef std::shared_ptr<shared_value> shared_share;
@@ -106,21 +119,19 @@ public:
   void swap(id_data& x) @+ {@; val.swap(x.val); tp.swap(x.tp); }
   id_data& operator=(id_data&& x) = @[default@]; // no copy-and-swap needed
 @)
-  shared_share value() const @+{@; return val; }
+  const shared_share& value() const @+{@; return val; }
   const type_expr& type() const @+{@; return tp; }
   type_expr& type() @+{@; return tp; }
   // non-|const| reference; may be specialised by caller
 };
 
-@ We cannot store auto pointers in a table, so upon entering into the table we
-convert type pointers to ordinary pointers, and this is what |type_of| lookup
-will return (the table retains ownership); destruction of the type expressions
-referred to will be handled explicitly when the entry, or the table itself, is
-destructed.
+@ We shall use the class template |std::map| to implement the identifier
+table, and the above code needs some types defined elsewhere.
 
 @< Includes needed in the header file @>=
 #include <map>
-#include "lexer.h" // for the identifier hash table
+#include "parsetree.h" // for |id_type|
+#include "types.h" // for |shared_value|
 
 @~Overloading is not done in this table, so a simple associative table with
 the identifier as key is used.
@@ -135,11 +146,13 @@ public:
   Id_table() : table() @+{} // the default and only constructor
 @)
   void add(id_type id, shared_value v, type_expr&& t); // insertion
+  void add_type_def(id_type id, type_expr&& t); // insertion of type only
   bool remove(id_type id); // deletion
   shared_share address_of(id_type id); // locate
 @)
   bool present (id_type id) const
   @+{@; return table.find(id)!=table.end(); }
+  bool is_defined_type(id_type id) const; // whether |id| stands for a type
   const_type_p type_of(id_type id) const;
   // pure lookup, may return |nullptr|
   void specialise(id_type id,const type_expr& type);
@@ -161,7 +174,7 @@ identifier-data pair found, of which the data (of type |id_data|) is
 move-assigned from the argument of |add|. The latter assignment abandons the
 old |shared_value| (which may or may not destruct the value, depending on
 whether the old identifier is referred to from some lambda expression),
-resetting the pointer to it to point to a newly allocated one, and insert the
+resetting the pointer to it to point to a newly allocated one, and inserts the
 new type (destroying the previous).
 
 @< Global function def... @>=
@@ -170,11 +183,34 @@ void Id_table::add(id_type id, shared_value val, type_expr&& type)
 
   if (its.first==its.second) // no global identifier was previously known
     table.insert // better: |emplace_hint(its.first,id,@[...@])| with gcc 4.8
-      (its.first,std::make_pair(id,
-        id_data( std::make_shared<shared_value>(val), std::move(type) )));
+      (its.first,std::make_pair(id, id_data(
+       std::make_shared<shared_value>(std::move(val)), std::move(type) )));
   else // a global identifier was previously known
-    its.first->second =
-      id_data( std::make_shared<shared_value>(val), std::move(type) );
+    its.first->second = id_data(
+       std::make_shared<shared_value>(std::move(val)), std::move(type) );
+}
+
+@ Inserting a type definition is similar, but inserts a |shared_value| object
+holding a null pointer, produced by |shared_share(nullptr)| (this indeed binds
+to the rvalue reference parameter of the |id_data| constructor). The resulting
+|id_data| object will have |value()==nullptr|. The |is_defined_type| method
+tests this condition, for identifiers that are present in the table at all.
+
+@< Global function def... @>=
+void Id_table::add_type_def(id_type id, type_expr&& type)
+{ auto its = table.equal_range(id);
+
+  if (its.first==its.second) // no global identifier was previously known
+    table.insert // better: |emplace_hint(its.first,id,@[...@])| with gcc 4.8
+      (its.first,std::make_pair(id,
+         id_data(shared_share(nullptr),std::move(type) )));
+  else // a global identifier was previously known, replace it
+    its.first->second = id_data(shared_share(nullptr),std::move(type) );
+}
+@)
+bool Id_table::is_defined_type(id_type id) const
+{ map_type::const_iterator p = table.find(id);
+  return p!=table.end() and p->second.value()==nullptr;
 }
 
 @ The |remove| method removes an identifier if present, and returns whether
@@ -190,21 +226,18 @@ bool Id_table::remove(id_type id)
 
 @ In order to have a |const| look-up method for types, we must refrain from
 inserting into the table if the key is not found; we return a null pointer in
-that case. Nonetheless the version of |type_of| that will actually be used is
-the non-|const| one, since the resulting pointer (into the table itself) will
-in some cases be used to specialise the type found (and therefore the type
-associated globally to the identifier). This strange behaviour (global
-identifiers getting a more specific type by using them) is rare (it basically
-happens for values containing an empty list) but does not seem to endanger
-type-safety: the change is irreversible, and code referring to the identifier
-that type-checked without needing specialisation should not be affected by a
-later specialisation. But should the language be modified so as to forbid this
-behaviour, it should become possible to remove the manipulator version of
-|type_of|. On the other hand it is quite normal that |address_of| should be
-classified as a manipulator (even if technically it could have been marked
-|const| if its implementation had used a |const_iterator|), since the pointer
-returned will in many cases be used to modify the value (but not the type)
-stored for the identifier in question.
+that case. In addition we provide a manipulator |specialise| that allows to
+specialise the type associated globally to the identifier. This somewhat
+strange behaviour (global identifiers getting a more specific type by using
+them) is rare (it basically happens for values containing an empty list) but
+does not seem to endanger type-safety: the change is irreversible, and code
+referring to the identifier that type-checked without needing specialisation
+should not be affected by a later specialisation. The method |address_of| that
+is used to access the slot for the value associated to a global identifier is
+also morally a manipulator of the table, since the pointer returned will in
+many cases be used to modify that value (but not its type).
+
+@h "lexer.h" // for |main_hash_table|
 
 @< Global function def... @>=
 const_type_p Id_table::type_of(id_type id) const
@@ -239,13 +272,18 @@ the identifier at this point would cause the evaluator to raise an exception.
 
 void Id_table::print(std::ostream& out) const
 { for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
-  { out << main_hash_table->name_of(p->first) << ": " @|
-        << p->second.type() << ": ";
-    if (*p->second.value()==nullptr)
-      out << '*';
+  { out << main_hash_table->name_of(p->first);
+    const shared_share& v= p->second.value();
+    if (v==nullptr)
+      out << " = " << p->second.type();
     else
-      out << **p->second.value();
-    out << std::endl;
+    { out << ": " << p->second.type() << ": ";
+      if (*v==nullptr)
+        out << '*';
+      else
+        out << **p->second.value();
+     }
+     out << std::endl;
    }
 }
 
@@ -328,7 +366,7 @@ public:
    // number of distinct identifiers
   void print(std::ostream&) const;
 @) // manipulators
-  void add(id_type id, shared_value v, type_ptr t);
+  void add(id_type id, shared_value v, type_expr&& t);
    // insertion
   bool remove(id_type id, const type_expr& arg_t); //deletion
 };
@@ -354,9 +392,9 @@ is inserted before any strictly less specific overloaded instances.
 
 @< Global function def... @>=
 void overload_table::add
-  (id_type id, shared_value val, type_ptr tp)
-{ assert (tp->kind==function_type);
-  func_type type(std::move(*tp->func)); // steal the function type
+  (id_type id, shared_value val, type_expr&& t)
+{ assert (t.kind==function_type);
+  func_type type(std::move(*t.func)); // steal the function type
   auto its = table.equal_range(id);
   if (its.first==its.second) // a fresh overloaded identifier
   { its.first=table.insert // better: |emplace_hint| with gcc 4.8
@@ -596,15 +634,9 @@ type_expr analyse_types(const expr& e,expression_ptr& p)
 @*1 Operations other than evaluation of expressions.
 %
 This section will be devoted to some interactions between user and program
-that do not consist just of evaluating expressions. We shall need the types
-related to |type_expr|, which are defined in \.{types.h}, and those related
-|expr|, which are defined in \.{parsetree.h}
+that do not consist just of evaluating expressions.
 
-@< Includes needed... @>=
-#include "types.h"
-#include "parsetree.h"
-
-@ The function |global_set_identifier| handles introducing identifiers, either
+The function |global_set_identifier| handles introducing identifiers, either
 normal ones or overloaded instances of functions, using the \&{set} syntax.
 The function |global_declare_identifier| just introduces an identifier into
 the global (non-overloaded) table with a definite type, but does not provide a
@@ -619,6 +651,7 @@ void global_set_identifier(struct id_pat id, expr_p e, int overload);
 void global_declare_identifier(id_type id, type_p type);
 void global_forget_identifier(id_type id);
 void global_forget_overload(id_type id, type_p type);
+void type_define_identifier(id_type id, type_p type);
 void show_ids();
 void type_of_expr(expr_p e);
 void show_overloads(id_type id);
@@ -654,9 +687,10 @@ values.
 
 @< Global function definitions @>=
 void global_set_identifier(id_pat pat, expr_p raw, int overload)
-{ expr_ptr saf(raw); const expr& rhs(*raw);
+{ expr_ptr saf(raw); // ensure clean-up
+  const expr& rhs(*raw); // make |rhs| alias for pointed-to expression object
   size_t n_id=count_identifiers(pat);
-  static const char* phase_name[3] = {"type_check","evaluation","definition"};
+  static const char* phase_name[3] = {"type check","evaluation","definition"};
   int phase=0; // needs to be declared outside the |try|, is used in |catch|
   try
   { expression_ptr e;
@@ -731,7 +765,7 @@ to the very common singular case), before calling |global_id_table->add|.
     if (global_id_table->present(b[i].first))
       std::cout << " (overriding previous)";
     std::cout << ": " << b[i].second;
-    global_id_table->add(b[i].first,v[i],b[i].second.copy());
+    global_id_table->add(b[i].first,std::move(v[i]),std::move(b[i].second));
   }
 }
 
@@ -748,14 +782,16 @@ being thrown during type analysis; the |assert| statement below checks this
 exclusion. If the logic above were relaxed to allow such multiple definitions,
 one could introduce a loop below as in the ordinary definition case; then
 however error handling would also need adaptation, since a failed definition
-need no be the first one, and the previous ones would need to be either undone
-or not reported as failed.
+need not be the first one, and the previous ones would need to be either
+undone or not reported as failed.
 
 @< Add instance of identifier in |b[0]| with value in |v[0]| to
    |global_overload_table| @>=
 { assert(n_id=1);
   size_t old_n=global_overload_table->variants(b[0].first).size();
-  global_overload_table->add(b[0].first,v[0],acquire(&b[0].second));
+@/std::ostringstream type_string;
+  type_string<<b[0].second; // save string for type
+  global_overload_table->add@|(b[0].first,std::move(v[0]),std::move(b[0].second));
     // insert or replace table entry
   size_t n=global_overload_table->variants(b[0].first).size();
   if (n==old_n)
@@ -764,7 +800,8 @@ or not reported as failed.
     std::cout << "Defined ";
   else
     std::cout << "Added definition [" << n << "] of ";
-  std::cout << main_hash_table->name_of(b[0].first) << ": " << b[0].second;
+  std::cout << main_hash_table->name_of(b[0].first) << ": "
+            << type_string.str();
 }
 
 @ For readability of the output produced during input from auxiliary files, we
@@ -827,8 +864,10 @@ but undefined value.
 
 @< Global function definitions @>=
 void global_declare_identifier(id_type id, type_p t)
-{ value undef=nullptr;
-  global_id_table->add(id,shared_value(undef),t->copy());
+{ type_ptr saf(t); // ensure clean-up
+  type_expr& type=*t;
+  static const shared_value undef(nullptr);
+  global_id_table->add(id,undef,std::move(type));
   @< Emit indentation corresponding to the input level to |std::cout| @>
   std::cout << "Identifier " << main_hash_table->name_of(id)
             << " : " << *t << std::endl;
@@ -849,13 +888,43 @@ similar.
 
 @< Global function definitions @>=
 void global_forget_overload(id_type id, type_p t)
-{ const type_expr& type=*t;
+{ type_ptr saf(t); // ensure clean-up
+  const type_expr& type=*t;
   std::cout << "Definition of " << main_hash_table->name_of(id)
             << '@@' << type @|
             << (global_overload_table->remove(id,type)
                ? " forgotten"
                : " not known")
             << std::endl;
+}
+
+@ The following function is called when an identifier is defined as an
+abbreviation for a type.
+
+@< Global function definitions @>=
+void type_define_identifier(id_type id, type_p t)
+{ type_ptr saf(t); // ensure clean-up
+  type_expr& type=*t;
+  @< Test that |id| has no global definition or overloads;
+     if it does, report problem and |return| @>
+  @< Emit indentation corresponding to the input level to |std::cout| @>
+  std::cout << "Type name " << main_hash_table->name_of(id) @|
+            << " defined as " << type << std::endl;
+@/global_id_table->add_type_def(id,std::move(type));
+}
+
+@ Defining a type name would make any global identifier or overload of the same
+name inaccessible. Since this is probably not intended, we refuse to do this,
+and emit an error message instead when it is attempted..
+
+@< Test that |id| has no global definition or overloads... @>=
+{ const bool p = global_id_table->present(id);
+  if (p or not global_overload_table->variants(id).empty())
+  { std::cout << "Cannot define '" << main_hash_table->name_of(id) @|
+              << "' as a type; it is in use as " @|
+              << (p? "global variable" : "function") << std::endl;
+    return;
+  }
 }
 
 @ It is useful to print type information, either for a single expression or
@@ -1067,7 +1136,6 @@ values in ours.
 
 @< Includes needed in the header file @>=
 #include "atlas_types.h" // type declarations that are ``common knowledge''
-#include "types.h" // base types we derive from
 #include "matrix.h" // to make |int_Vector| and |int_Matrix| complete types
 #include "ratvec.h" // to make |RatWeight| a complete type
 
@@ -1433,7 +1501,7 @@ void install_function
   { print_name << '@@' << type->func->arg_type;
     own_value val = std::make_shared<builtin_value>(f,print_name.str());
     global_overload_table->add
-      (main_hash_table->match_literal(name),val,std::move(type));
+      (main_hash_table->match_literal(name),val,std::move(*type));
   }
 }
 
