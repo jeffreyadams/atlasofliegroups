@@ -905,11 +905,14 @@ abbreviation for a type.
 void type_define_identifier(id_type id, type_p t)
 { type_ptr saf(t); // ensure clean-up
   type_expr& type=*t;
-  @< Test that |id| has no global definition or overloads;
-     if it does, report problem and |return| @>
+  bool redefine = global_id_table->is_defined_type(id);
+  if (not redefine)
+    @< Test that |id| has no global definition or overloads;
+       if it does, report problem and |return| @>
   @< Emit indentation corresponding to the input level to |std::cout| @>
   std::cout << "Type name " << main_hash_table->name_of(id) @|
-            << " defined as " << type << std::endl;
+            << (redefine ? " redefined as " : " defined as ") << type 
+            << std::endl;
 @/global_id_table->add_type_def(id,std::move(type));
 }
 

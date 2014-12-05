@@ -110,6 +110,7 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	    YYABORT;
 	  }
 	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT; }
+	| FORGET TYPE_ID '\n'	{ global_forget_identifier($2); YYABORT; }
 	| SET operator '(' id_specs ')' '=' exp '\n'
 	  { struct raw_id_pat id; id.kind=0x1; id.name=$2.id;
 	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7),2);
@@ -128,6 +129,7 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 		  global_set_identifier(id,$3,0); YYABORT; }
 	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3); YYABORT; }
 	| ':' IDENT '=' type '\n' { type_define_identifier($2,$4); YYABORT; }
+	| ':' TYPE_ID '=' type '\n' { type_define_identifier($2,$4); YYABORT; }
 	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
 	| QUIET '\n'		{ *verbosity =0; YYABORT; } /* quiet mode */
 	| VERBOSE '\n'		{ *verbosity =1; YYABORT; } /* verbose mode */
