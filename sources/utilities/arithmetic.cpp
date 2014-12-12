@@ -13,6 +13,7 @@
 
 #include "arithmetic.h"
 
+#include <cstdlib>
 #include <stdexcept>
 
 #include "constants.h"
@@ -162,7 +163,7 @@ Rational Rational::operator/(Rational q) const
 Rational& Rational::power(int n)
 {
   normalize();
-  Denom_t numer=arithmetic::abs(num);
+  Denom_t numer=std::abs(num);
   if (n<0)
   { if (num==0)
       throw std::domain_error("Negative power of rational zero");

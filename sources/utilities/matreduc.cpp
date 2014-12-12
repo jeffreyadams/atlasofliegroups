@@ -8,6 +8,8 @@
 */
 #include "matreduc.h"
 
+#include <cstdlib>
+
 #include "bitmap.h"
 #include "matrix.h"
 #include "arithmetic.h"
@@ -178,7 +180,7 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
   matrix::PID_Matrix<C>(n).swap(col);
   std::vector<C> diagonal;
   if (n==0 or m==0) return diagonal; // take out these trivial cases
-  diagonal.reserve(arithmetic::min(m,n));
+  diagonal.reserve(std::min(m,n));
 
   int row_sign = 1, col_sign=1; // determinants of row/column operations
 

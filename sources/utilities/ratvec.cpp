@@ -12,6 +12,7 @@
 #include "ratvec.h"
 
 #include <cassert>
+#include <cstdlib> // for |std::abs|
 #include <stdexcept>
 #include <vector>
 
@@ -26,7 +27,7 @@ namespace ratvec {
 template<typename C>
 template<typename C1>
 RationalVector<C>::RationalVector(const  matrix::Vector<C1>& v, C d)
-  : d_num(v.begin(),v.end()), d_denom(arithmetic::abs(d))
+  : d_num(v.begin(),v.end()), d_denom(std::abs(d))
 { if (d<C(0)) d_num*=-C(1); }
 
 // the following implementation assumes |long| can hold cross products
@@ -115,7 +116,7 @@ RationalVector<C>& RationalVector<C>::normalize()
   for (size_t i=0; i<d_num.size(); ++i)
   {
     if (d_num[i]!=0)
-      d=arithmetic::gcd(d,arithmetic::abs(d_num[i]));
+      d=arithmetic::gcd(d,std::abs(d_num[i]));
     if (d==1)
       return *this;
   }

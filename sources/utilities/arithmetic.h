@@ -23,9 +23,6 @@ namespace atlas {
 namespace arithmetic {
 
 // operations without conversion for all integral types (all are inlined below)
-  template<typename I> I abs(I);
-  template<typename I> I min(I,I);
-  template<typename I> I max(I,I);
   template<typename I> I divide(I, Denom_t);
   template<typename I> Denom_t remainder(I, Denom_t);
   //  template<typename I> I factorial(I); // moved to the size module
@@ -144,14 +141,6 @@ std::ostream& operator<< (std::ostream& out, const Rational& frac);
 
 
 /******** inline function definitions ***************************************/
-
-// Return the absolute value/min/max, without changing the size
-template<typename I>
-  inline I abs(I a) { return a >= 0 ? a : -a; }
-template<typename I>
-  inline I min(I a,I b) { return a<b ? a : b; }
-template<typename I>
-  inline I max(I a,I b) { return a<b ? b : a; }
 
 /*! The result of |divide(a,b)| is the unique integer $q$ with $a = q.b + r$,
   and $0 \leq r < b$. Here the sign of |a| may be arbitrary, the requirement
