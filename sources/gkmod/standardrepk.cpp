@@ -21,7 +21,6 @@ StandardRepK and KhatContext.
 #include <deque>
 
 #include "tags.h"
-#include "arithmetic.h" // |abs|
 #include "matreduc.h"	// |adapted_basis|
 #include "polynomials.h"// for $q$-coefficents
 
@@ -294,7 +293,7 @@ SRK_context::height(const StandardRepK& sr) const
   level sum=0;
   for (rootdata::WRootIterator
 	 it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
-    sum +=arithmetic::abs(mu.dot(*it));
+    sum += std::abs(mu.dot(*it));
 
   return sum/2; // each |dot| above is even
 } // |SRK_context::height|
@@ -1132,7 +1131,7 @@ std::ostream& SRK_context::print(std::ostream& strm,const Char& ch) const
   for (Char::const_iterator it=ch.begin(); it!=ch.end(); ++it)
   {
     strm << (it->second>0 ? " + " : " - ");
-    long int ac=arithmetic::abs<long int>(it->second);
+    long int ac=std::abs(it->second);
     if (ac!=1)
       strm << ac << '*';
     print(strm,it->first);
@@ -1149,7 +1148,7 @@ std::ostream& SRK_context::print(std::ostream& strm,const q_Char& ch) const
     if (it->second.degree()==0)
     {
       strm << (it->second[0]>0 ? " + " : " - ");
-      long int ac=arithmetic::abs(it->second[0]);
+      long int ac=std::abs(it->second[0]);
       if (ac!=1)
 	strm << ac << '*';
     }
@@ -1616,7 +1615,7 @@ std::ostream& KhatContext::print(std::ostream& strm,
   for (combination::const_iterator it=ch.begin(); it!=ch.end(); ++it)
   {
     strm << (it->second>0 ? " + " : " - ");
-    long int ac=arithmetic::abs<long int>(it->second);
+    long int ac = std::abs(it->second);
     if (ac!=1)
       strm << ac << '*';
     if (brief)
@@ -1636,7 +1635,7 @@ std::ostream& qKhatContext::print
     if (it->second.degree()==0)
     {
       strm << (it->second[0]>0 ? " + " : " - ");
-      long int ac=arithmetic::abs(it->second[0]);
+      long int ac = std::abs(it->second[0]);
       if (ac!=1)
 	strm << ac << '*';
     }

@@ -1033,7 +1033,7 @@ void modulo_wrapper(expression_base::level l)
 { int  j=get<int_value>()->val; int i=get<int_value>()->val;
   if (j==0) throw std::runtime_error("Modulo zero");
   if (l!=expression_base::no_value)
-    push_value(new int_value(arithmetic::remainder(i,arithmetic::abs(j))));
+    push_value(new int_value(arithmetic::remainder(i,std::abs(j))));
 }
 @)
 void divmod_wrapper(expression_base::level l)
@@ -1042,7 +1042,7 @@ void divmod_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   { push_value(new int_value
      (j>0 ? arithmetic::divide(i,j) : -arithmetic::divide(i,-j)));
-    push_value(new int_value(arithmetic::remainder(i,arithmetic::abs(j))));
+    push_value(new int_value(arithmetic::remainder(i,std::abs(j))));
     if (l==expression_base::single_value)
       wrap_tuple(2);
   }
@@ -1057,7 +1057,7 @@ void unary_minus_wrapper(expression_base::level l)
 void power_wrapper(expression_base::level l)
 { static shared_int one(new int_value(1));
 @/int n=get<int_value>()->val; shared_int i=get<int_value>();
-  if (arithmetic::abs(i->val)!=1 and n<0)
+  if (std::abs(i->val)!=1 and n<0)
     throw std::runtime_error("Negative power of integer");
   if (l==expression_base::no_value)
     return;

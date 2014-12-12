@@ -3474,7 +3474,8 @@ method |split_int_value::print| cannot.
 @< Function def...@>=
 std::ostream& print (std::ostream& out, const Split_integer& val)
 {@;
-  return out << '(' << val.e() << (val.s()<0?'-':'+') << abs(val.s()) << "s)";
+  return out << '(' << val.e()
+             << (val.s()<0?'-':'+') << std::abs(val.s()) << "s)";
 }
 @)
 void split_int_value::print(std::ostream& out) const @+

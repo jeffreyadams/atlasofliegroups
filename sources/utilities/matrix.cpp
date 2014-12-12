@@ -489,7 +489,7 @@ void Matrix<C>::invert(C& d)
   if (diagonal.size()<n) // insufficient rank for inversion
   { d=C(0); return; } // record zero determinant, leave |*this| in diagonal
 
-  d=arithmetic::abs(diagonal[0]); // guaranteed to exist if we get here
+  d=std::abs(diagonal[0]); // guaranteed to exist if we get here
   for (size_t i=1; i<n; ++i)
     d=arithmetic::lcm(d,diagonal[i]); // other diagonal entries are positive
 

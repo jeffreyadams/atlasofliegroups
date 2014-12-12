@@ -306,7 +306,7 @@ RationalList Rep_context::reducibility_points(const StandardRepr& z) const
     {
       long lam_alpha = lam_rho.dot(rd.coroot(*it))+rd.colevel(*it);
       bool do_odd = (lam_alpha+two_rho_real.dot(rd.coroot(*it))/2)%2 ==0;
-      (do_odd ? &odds : &evens)->insert(std::make_pair(abs(num),0));
+      (do_odd ? &odds : &evens)->insert(std::make_pair(std::abs(num),0));
     }
   }
 
@@ -320,9 +320,9 @@ RationalList Rep_context::reducibility_points(const StandardRepr& z) const
     if (num!=0)
     {
       assert((vala+valb)%d==0); // since |\<\gamma,a+b>=\<\lambda,a+b>|
-      long lwb =abs(vala+valb)/d;
+      long lwb =std::abs(vala+valb)/d;
       std::pair<table::iterator,bool> trial =
-	(lwb%2==0 ? &evens : &odds)->insert(std::make_pair(abs(num),lwb));
+	(lwb%2==0 ? &evens : &odds)->insert(std::make_pair(std::abs(num),lwb));
       if (not trial.second and lwb<trial.first->second)
 	trial.first->second=lwb; // if not new, maybe lower the old bound value
     }

@@ -13,6 +13,7 @@
 #include <sstream>
 #include <cstdio>
 #include <cassert>
+#include <cstdlib>
 
 #include "arithmetic.h" // |lcm|
 #include "ratvec.h"	// |RatWeight|
@@ -351,7 +352,7 @@ LatticeMatrix makeOrthogonal
   // integrality requires multiple $d/\gcd(d,factor[j])$ of |result.col(j)|
   for (size_t j=0; j<factor.size(); ++j)
   {
-    long mult = arithmetic::div_gcd(d,arithmetic::abs(factor[j])); // multiplier
+    long mult = arithmetic::div_gcd(d,std::abs(factor[j])); // multiplier
     result.columnMultiply(j,mult);
   }
   return result;
