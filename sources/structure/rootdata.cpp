@@ -1051,7 +1051,7 @@ void RootDatum::fillStatus()
   d_status.set(IsAdjoint); // remains set only of all |factor|s are 1
 
   for (size_t i=0; i<factor.size(); ++i)
-    if (arithmetic::abs(factor[i]) != 1)
+    if (std::abs(factor[i]) != 1)
       d_status.reset(IsAdjoint);
 
   q = int_Matrix
@@ -1062,7 +1062,7 @@ void RootDatum::fillStatus()
   d_status.set(IsSimplyConnected); // remains set only of all |factor|s are 1
 
   for (size_t i=0; i<factor.size(); ++i)
-    if (arithmetic::abs(factor[i]) != 1)
+    if (std::abs(factor[i]) != 1)
       d_status.reset(IsSimplyConnected);
 }
 
@@ -1215,7 +1215,7 @@ RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma)
   std::set<arithmetic::Denom_t> products;
   for (size_t i=0; i<rd.numPosRoots(); ++i)
   {
-    arithmetic::Denom_t p = abs(rd.posCoroot(i).dot(gamma.numerator()));
+    arithmetic::Denom_t p = std::abs(rd.posCoroot(i).dot(gamma.numerator()));
     if (p!=0)
       products.insert(p);
   }
