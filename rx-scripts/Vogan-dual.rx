@@ -12,26 +12,60 @@ set dual_inner_class(Param p) = InnerClass:
   let id = integrality_datum(real_form(p),infinitesimal_character(p))
   in dual(inner_class(id,involution(x(p))))
 
+set rho_i ((RootDatum, mat) rd_theta) = ratvec:
+  sum(imaginary_poscoroots(rd_theta))/2
+
 set y(Param p, InnerClass G_vee) = KGBElt:
-  let (x,lambda_rho,nu) = %p
+  let x=x(p)
   then dual_theta = -^involution(x)
-  then grading_vector = infinitesimal_character(p) - lambda(p) + rho_r(x)
-  , dual_shift = sum(imaginary_poscoroots(G_vee,dual_theta))/2
-  in KGB_elt(G_vee,dual_theta,grading_vector-dual_shift)
+  , grading_vector = infinitesimal_character(p) - lambda(p) + rho_r(x)
+  in KGB_elt(G_vee,dual_theta,grading_vector-rho_i(G_vee,dual_theta))
 
+{ caution: these two functions build an inner class on the fly; if called
+  mutliple times even with the same argument, the results will be incompatible
+}
 set y(Param p) = KGBElt: y(p,dual_inner_class(p))
-
 set dual_real_form (Param p) = RealForm: real_form(y(p))
-
-set %(rat x,int n) = rat: let (p,q)=%x in (p%(n*q))/q
-set %(ratvec v,int n) = ratvec: for x in v do x%n od
 
 set character(Param p) = ratvec:
   let G=real_form(p),x=x(p)
   then rd = root_datum(G), theta=involution(x)
-  then id = integrality_datum(rd,infinitesimal_character(p))
-  then rho_r_int = sum(real_posroots(id,theta))/2
-  in infinitesimal_character(p) - lambda(p) + rho_r(x) -rho_r_int + rho(id)
+  then int_d = integrality_datum(rd,infinitesimal_character(p))
+  then rho_r_int = sum(real_posroots(int_d,theta))/2
+  in infinitesimal_character(p) - lambda(p) + rho_r(x) -rho_r_int + rho(int_d)
+
+set central_cocharacter (RealForm G) = ratvec:
+  (base_grading_vector(G) + rho_check(G))%1
+
+{ amount added to central_cocharacter(G) to get dual infinitesimal character }
+set dual_shift (RootDatum rd, ratvec gamma) = ratvec:
+  rho_check(integrality_datum(rd,gamma))-rho_check(rd)
+
+{ shift (up) a candidate dual infinitesimal character to strictly dominant }
+set shift_g_regular (RootDatum rd, ratvec g) = ratvec:
+  for alpha@i in simple_roots(rd)
+  do let (v,d) = %fundamental_coweight(rd,i)
+     in g +:= (1-ceil(g*alpha/d)) * v
+  od; g
+
+{ Finding the value lambda for the dual parameter to p is surprisingly simple.
+  Since imaginary roots are autimatically integral, there is no difference
+  of rho_i values to compensate for. The dual infinitesimal character is
+  central_cocharacter(G)+dual_shift(G,gamma), but here rho_check(G) cancels
+  out, giving base_grading_vector(G) + rho_check(integrality_datum(p)).
+}
+set dual_gamma (Param p) = ratvec:
+  let G = real_form(p), dual_rho = rho_check(integrality_datum(p))
+  in shift_g_regular(G,base_grading_vector(G) + dual_rho)
+
+set dual_lambda (Param p) = ratvec:
+  dual_gamma(p) - torus_factor(x(p))
+
+set check_dual_lambda (Param p) = bool:
+  dual_lambda(p)%1 = rho_check(integrality_datum(p))%1
+
+set dual (Param p, InnerClass dual_integral_class) = Param:
+  parameter( y(p,dual_integral_class), dual_lambda(p), dual_gamma(p) )
 
 set test1 (Param p) = [bool]:
   let G_v=dual_inner_class(p) then drf = real_form(y(p,G_v))

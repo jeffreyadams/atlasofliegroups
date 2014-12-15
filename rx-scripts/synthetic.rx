@@ -1,0 +1,135 @@
+<basic.rx
+<Vogan-dual.rx { for parity condition at arbitrary real coroots }
+
+{ using postive root indices allows using simple roots indices as well }
+set posroot_reflection(RootDatum rd, int r) = mat: { r indexes root }
+  1 - [posroots(rd)[r]] * ^[poscoroots(rd)[r]]
+
+{ find Weyl group element (matrix) making root simple & index of simple root }
+set make_simple (RootDatum rd, vec root) = (mat, int):
+  let r = semisimple_rank(rd), alpha=simple_roots(rd), alphav=simple_coroots(rd)
+  , busy = true, i=0, w=id_mat(rank(rd))
+  in while(busy)
+     do i:=0; while i<r and alphav[i]*root<=0 do i+:=1 od
+     ; if i=r then error("not a positive root")
+       elif root = alpha[i] then busy:=false
+       else let ref=posroot_reflection(rd,i) { actually a simple root here }
+         in root := ref*root; w := ref*w
+       fi
+     od; (w,i)
+
+set rho_check_i (RootDatum rd, mat theta) = ratvec:
+  sum(imaginary_poscoroots(rd,theta))/2
+
+set rho_r (RootDatum rd, mat theta) = ratvec:
+  sum(real_posroots(rd,theta))/2
+
+set grading_coweight (KGBElt x) = ratvec: torus_factor(x) + rho_check_i(x)
+
+{ alternative to KGB_elt that incorporates shift by rho_check_i }
+set make_KGB(RealForm G, mat theta, ratvec grading_cowt) = KGBElt:
+  KGB_elt(G,theta,grading_cowt - rho_check_i(G,theta))
+
+set cross (mat w, KGBElt x) = KGBElt:
+  let theta=involution(x), G=real_form(x), w1=inverse(w)
+  in make_KGB(G, w*theta*w1, grading_coweight(x)*w1 )
+
+set posroot_cross (int i, KGBElt x) = KGBElt:
+  cross(posroot_reflection(real_form(x),i),x)
+
+set posroot_Cayley (int i, KGBElt x) = KGBElt:
+  let G=real_form(x), theta0=involution(x)
+  then rd=root_datum(G)
+  then beta = posroots(rd)[i], theta3=posroot_reflection(rd,i)*theta0
+  then (w,s) = make_simple(rd,beta) { simple_roots(rd)[s] = w(beta) }
+  then w1=inverse(w)
+  then theta1 = w*theta0*w1 { involution for Cayley by simple_roots(rd)[s] }
+  then theta2 = posroot_reflection(rd,s)*theta1 { for simple imaginary Cayley }
+  then diff1 = rho_check_i(rd,theta1)*w - rho_check_i(rd,theta0)
+  ,    diff2 = rho_check_i(rd,theta2)*w - rho_check_i(rd,theta3)
+  in KGB_elt (G, theta3, torus_factor(x) + diff1 - diff2)
+
+set posroot_cross (int i, Param p) = Param:
+  let x0 = x(p), gamma = infinitesimal_character(p)
+  then rd = root_datum(real_form(x0))
+  , x1=posroot_cross(i,x0), grading_wt=gamma-lambda(p)+rho_r(x0)
+  then theta1= involution(x1), w=posroot_reflection(rd,i)
+  in parameter(x1, gamma - w*grading_wt + rho_r(rd,theta1), gamma)
+
+set posroot_Cayley (int i, Param p) = Param:
+  let x0=x(p), gamma=infinitesimal_character(p)
+  then G = real_form(x0), x3=posroot_Cayley(i,x0), theta0=involution(x0)
+  then rd=root_datum(G), theta3=involution(x3)
+  then ()= if denom(poscoroots(rd)[i]*gamma)!=1
+           then error("coroot is not integral for parameter")
+           fi
+  , id = integrality_datum(rd,gamma), beta=posroots(rd)[i]
+  then (w,s) = make_simple(id,beta)
+  then w1=inverse(w)
+  then theta1 = w*theta0*w1 { involution for Cayley by simple_roots(id)[s] }
+  then theta2 = posroot_reflection(id,s)*theta1 { for simple imaginary Cayley }
+  then diff1 = w1*rho_r(id,theta1) - rho_r(rd,theta0)
+  ,    diff2 = w1*rho_r(id,theta2) - rho_r(rd,theta3)
+  in parameter(x3,lambda(p) + diff1 - diff2, gamma)
+
+set posroot_inv_Cayley (int i, Param p) = Param:
+  let x0=x(p), gamma=infinitesimal_character(p)
+  then G = real_form(x0), x3=posroot_Cayley(i,x0), theta0=involution(x0)
+  then rd=root_datum(G), theta3=involution(x3)
+  then ()= if denom(poscoroots(rd)[i]*gamma)!=1
+           then error("coroot is not integral for parameter")
+           fi
+  , id = integrality_datum(rd,gamma), beta=posroots(rd)[i]
+  then (w,s) = make_simple(id,beta)
+  then w1=inverse(w)
+  then theta1 = w*theta0*w1 { involution for Cayley by simple_roots(id)[s] }
+  then theta2 = posroot_reflection(id,s)*theta1 { for simple imaginary Cayley }
+  then diff1 = w1*rho_r(id,theta1) - rho_r(rd,theta0)
+  ,    diff2 = w1*rho_r(id,theta2) - rho_r(rd,theta3)
+  then projection = (1-theta3) * (gamma-lambda(p) - diff1 + diff2) /2
+  in parameter(x3, gamma-projection, gamma)
+
+
+{ some visualisation procedures }
+
+set find ([Param] B, Param p) = int:
+  let i = #B-1 in while i>=0 and B[i]!=p do i-:=1 od; i
+
+set find_posroot (RootDatum rd, vec alpha) = int:
+  let pr=posroots(rd) then i = n_columns(pr)-1
+  in while i>=0 and pr[i]!=alpha do i-:=1 od; i
+
+set concat ([string] l,string a, string b, string c) = string:
+  let s = a then last=#l-1 in
+  for t@i in l do s#:= t # if i=last then c else b fi od; s
+
+set posroot_status (int i, Param p) = int:
+  let rd=RootDatum: real_form(p) then st=status(posroots(rd)[i],x(p)) in
+  if st<=1 or st=4 then st { complex and imaginary compact cases keep old code }
+  elif st=3 { imaginary non-compact }
+  then if posroot_cross(i,p)=p then 7 else 6 fi { types i2, i1 respectively }
+  elif not parity(p,poscoroots(rd)[i]) then 5 { real nonparity }
+  elif posroot_cross(i,p)=p then 2 else 3 { types r1, r2 respectively }
+  fi
+
+set new_block_line ([Param] B,int i) = string:
+begin let p=B[i]
+  then rd=root_datum(p), id = integrality_datum(p)
+  then i_simple = for alpha in simple_roots(id) do find_posroot(rd,alpha) od
+  then stats = for a in i_simple do posroot_status(a,p) od
+  then line = concat(for st in stats do block_status_text(st) od ,"[",",","]")
+  , v0(int alpha) = "(*,*)"
+  , vi1(int alpha) = "(" + find(B,posroot_Cayley(alpha,p)) + ",*)"
+  , vi2(int alpha) = let q=posroot_Cayley(alpha,p) in
+          "(" + find(B,q) + ","+ find(B,posroot_cross(alpha,q))+")"
+  , vr2(int alpha) = "(" + find(B,posroot_inv_Cayley(alpha,p)) + ",*)"
+  , vr1(int alpha) = let q=posroot_inv_Cayley(alpha,p) in
+          "(" + find(B,q) + ","+ find(B,posroot_cross(alpha,q))+")"
+  in for alpha in i_simple
+     do line #:= "  " + find(B,posroot_cross(alpha,p)) od
+  ; for alpha@i in i_simple
+     do line #:= "  " # [v0,v0,vr1,vr2,v0,v0,vi1,vi2][stats[i]](alpha) od
+; line
+end
+
+
