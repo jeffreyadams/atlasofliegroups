@@ -1,9 +1,12 @@
-# This Makefile serves only to make realex + source documentation by running
-# 'make' inside this directory; if you are just interested in compiling
-# realex, use run 'make realex' in the main atlas directory instead. In
-# particular if you want optimization, use that (where optimization is on by
-# default) rahter than this Makefile. As this file is used for development
-# work only, it unconditionally sets debugging on and optimization off.
+# This Makefile serves to make realex and possibly source documentation
+# running 'make' or 'make realex' in the main atlas directory will just use
+# this makefile to make the realex program (and its requisites of course)
+# Running 'make' from the current directory will in addition make the source
+# documentation (as first target, so that you can look at your typeset code in
+# the dvi file while it is being compiled, and when reading error messages).
+# In the latter case debugging is on, and optimization off, by default, but in
+# the former case (being invoked from the main atlas directory), the
+# compilation flavor that is set in that directory is passed on and used.
 
 # where we are
 realex_dir := .
@@ -30,11 +33,13 @@ CTANGLEFLAGS := ++ -p
 
 CWEBXMACROS := $(cwebx_dir)/cwebxmac.tex
 
-# these are used for C++ compilation and linking (debugging, no optimization)
-CXXFLAGS := -Wall -Wno-parentheses -Wno-deprecated-declarations -g \
-   $(INCLUDE_FLAGS)
+# these flags are necessary for compilation, and should not be altered
+CXXFLAGS := -c $(INCLUDE_FLAGS) -Wno-parentheses
 
-# our beloved C++ compiler
+# these flags set the compilation flavor (default: debugging, no optimization)
+CXXFLAVOR ?= -Wall -ggdb
+
+# our C++ compiler (call language version c++0x, for backward compatibility)
 CXX := g++ -std=c++0x
 
 CXXVERSION := $(shell g++ -dumpversion)
@@ -165,13 +170,9 @@ $(CWEAVE):
 
 # we do use the following pattern rules (explicit implicit rules, so to say)
 
-# static pattern rules giving the usual C++ compilation; C++11 for realex
-# we still call the language version c++0x, for backward compatibility
-$(c++objects): %.o: %.cpp
-	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
-
-$(atlas_objects): %.o: %.cpp
-	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+# static pattern rules giving the usual C++ compilation
+$(c++objects) $(atlas_objects): %.o: %.cpp
+	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
 # here we cannot use a static pattern rule, since there are multiple targets
 # C++ source and header files are made from CWEBx files (.w) with the ++ switch

@@ -1,7 +1,3 @@
-/*!
-\file
-\brief Class definitions and function declarations for BitVector.
-*/
 /*
   This is bitvector.h
 
@@ -28,8 +24,7 @@ namespace atlas {
 
 namespace bitvector {
 
-/*!
-  \brief Puts in |v| the $Z/2Z$-linear combination of the |BitVector|s of |b|
+/* Put in |v| the $Z/2Z$-linear combination of the |BitVector|s of |b|
   (each of size |n|) given by the bits of |e|.
 */
 template<size_t dim>
@@ -53,8 +48,8 @@ template<size_t dim>
 			  const BitVector<dim>& rhs,
 			  BitSet<dim>& c);
 
-/*!
-  \brief Either find a solution of the system of equations |eqn|, putting it
+/*
+  Either find a solution of the system of equations |eqn|, putting it
   into |sol| and returning |true|, or return |false| if no solition exists.
 
   Here |eqns| holds a system of equations, the last bit of each being
@@ -102,13 +97,11 @@ template<size_t dim>
   void spanAdd(std::vector<BitVector<dim> >&, std::vector<size_t>&,
 	       const BitVector<dim>&);
 
-} // namespace bitvector
 
 /******** type definitions **************************************************/
 
-namespace bitvector {
-  /*!
-  \brief The template class |BitVector<dim>| represents a number |size| with
+/*
+  The template class |BitVector<dim>| represents a number |size| with
   |0<=size<=dim|, and a vector in the (Z/2Z)-vector space (Z/2Z)^size.
 
   The software envisions dim between 0 and four times the machine word length
@@ -135,7 +128,7 @@ namespace bitvector {
   A |BitVector| should be thought of as a column vector. A |Bitmatrix| will in
   general act on it on the left, just like a |LatticeMatrix| on a |Weight|.
   This does not stop |BitVector|s from being used most for coweights modulo 2.
-  */
+*/
 
 template<size_t dim> class BitVector
 {
@@ -219,7 +212,7 @@ template<size_t dim> class BitVector
 
   bool nonZero() const { return d_data.any(); }
 
-  //! scalar product with value in $\Z/2$
+  // scalar product with value in $\Z/2$
   bool dot(const BitVector& v) const
   { return ((d_data & v.d_data).count()&1u)!=0; }
 
@@ -230,6 +223,14 @@ template<size_t dim> class BitVector
   // the destinction may sometimes be useful for documentation purposes
   BitVector operator- (const BitVector& v) const
   { BitVector<dim> result(*this); result-=v; return result; }
+
+  template<typename C>
+    explicit operator matrix::Vector<C>() const
+  { matrix::Vector<C> result(size());
+    for (unsigned int i=size(); i-->0;)
+      result[i]=d_data[i];
+    return result;
+  }
 
 // manipulators
 
@@ -331,46 +332,42 @@ template<size_t dim> class BitVectorList
 
 // note that the elements in d_data are the _column_ vectors of the matrix
 
-/*!
-\brief A matrix of d_rows rows and d_columns columns, with entries in Z/2Z.
+/*
+  A rectangular matrix with entries in Z/2Z.
 
-The number of rows d_rows should be less than or equal to dim, which
-in turn is envisioned to be at most four times the machine word size.
-The present implementation allows dim at most twice the machine word
-size, and what is used is dim equal to RANK_MAX (now 16).
+  The number of rows |d_rows| should be less than or equal to the template
+  parameter |dim|, which in turn is envisioned to be at most four times the
+  machine word size. The present |BitSet| implementation allows |dim| at most
+  twice the machine word size, and what is used is |dim| equal to |RANK_MAX|.
 
-At least when d_columns is less than or equal to dim, the matrix can
-act on the left on a BitVector of size d_columns; in this setting each
-column of the matrix is the image of one of the standard basis vectors
-in the domain.
+  At least when |d_columns<=dim|, the matrix can act on the left on a
+  |BitVector| of size |d_columns|; in this setting each column of the matrix
+  is the image of one of the standard basis vectors in the domain.
 
-What is stored in d_data, as BitSet's, are the d_column column vectors
-of the matrix.  Construction of a matrix is therefore most efficient
-when columns are added to it.
+  What is stored in |d_data|, as |BitSet|'s, are the column vectors of the
+  matrix. Construction of a matrix is therefore most efficient when columns
+  are added to it.
 
-Notice that the columns are BitSets and not BitVectors.  A BitVector
-is a larger data structure than a BitSet, including also an integer
-d_size saying how many of the available bits are significant.  In a
-BitMatrix this integer must be the same for all of the columns, so it
-is easier and safer to store it once for the whole BitMatrix, and also
-to modify it just once when the matrix is resized.
+  Notice that the columns are stored as |BitSets| and not |BitVectors|. A
+  |BitVector| is a larger data structure than a |BitSet|, including also an
+  integer |d_size| saying how many of the available bits are significant. In a
+  |BitMatrix| this integer must be the same for all of the columns, so it is
+  easier and safer to store it once for the whole |BitMatrix|, and also to
+  modify it just once when the matrix is resized.
 */
 template<size_t dim> class BitMatrix
 {
-  /*!
-  A vector of d_columns BitSet's (each of size d_rows), the columns of
-  the BitMatrix. Thus d_data.size()==d_columns at all times.
-  */
+/*
+  A vector of |d_columns| |BitSet| values (each to be thought of as a vector
+  of size |d_rows|), the columns of the |BitMatrix|. Thus
+  |d_data.size()==d_columns| at all times.
+*/
   std::vector<BitSet<dim> > d_data;
 
-  /*!
-  Number of rows of the BitMatrix. Cannot exceed template argument dim
-  */
+  // Number of rows of the BitMatrix. Cannot exceed template argument |dim|
   unsigned short int d_rows;
 
-  /*!
-  Number of columns of the BitMatrix. This field is redundant, see d_data.
-  */
+  // Number of columns of the BitMatrix. This field is redundant, see |d_data|.
   unsigned short int d_columns;
 
  public:
@@ -442,32 +439,27 @@ template<size_t dim> class BitMatrix
 
   BitMatrix& operator*= (const BitMatrix&);
 
-  /*!
- Adds the BitSet f as a new column at the end to the BitMatrix.
-  */
+  // Add |f| as a new column at the end to the |BitMatrix|.
   void addColumn(const BitSet<dim>& f) {
     d_data.push_back(f);
-    d_columns++;
+    ++d_columns;
   }
 
   void addColumn(const BitVector<dim>& c) {
     assert(c.size()==d_rows);
-    addColumn(c.data()); // call previous method, which does |d_columns++|
+    addColumn(c.data()); // call previous method, which does |++d_columns|
   }
 
-  /*!
- Adds the BitVector v to column j of the BitMatrix.
-  */
+  // Add the BitVector |v| to column |j| of the BitMatrix.
   void addToColumn(size_t j, const BitVector<dim>& v) {
     assert(v.size()==d_rows);
     d_data[j] ^= v.data();
   }
 
-  BitMatrix& invert();  // currently unused, but defined anyway
+  // matrix $B$ such that $ABA=A$, will be inverse if $A$ invertible
+  BitMatrix section() const;
 
-  /*!
-  Puts a 1 in row i and column j of the BitMatrix.
-  */
+  // Put a 1 in row |i| and column |j| of the |BitMatrix|.
   BitMatrix& set(size_t i, size_t j) {
     assert(i<d_rows);
     assert(j<d_columns);
@@ -493,21 +485,15 @@ template<size_t dim> class BitMatrix
   void reset();
 
 
-  /*!
-  Resizes the BitMatrix to an n by n square.
+  /* Resize the BitMatrix to an |n| by |n| square.
 
-  NOTE: it is the caller's responsibility to check that n does not
-  exceed dim.
+  NOTE: it is the caller's responsibility to check that |n<=dim|.
   */
-  void resize(size_t n) {
-    resize(n,n);
-  }
+  void resize(size_t n) { resize(n,n); }
 
   void resize(size_t m, size_t n);
 
-  /*!
-  Puts the BitSet data in column j of the BitMatrix.
-  */
+  // Puts |data| in column j of the BitMatrix.
   void setColumn(size_t j, const BitSet<dim>& data)
   {
     assert(j<d_columns);
@@ -516,12 +502,11 @@ template<size_t dim> class BitMatrix
 
   void swap(BitMatrix& m);
 
-  /*!
-  Transposes the BitMatrix
+/*
+  Transpose the BitMatrix
 
-  NOTE: it is the caller's responsibility to check that d_columns does
-  not exceed dim.
-  */
+  NOTE: it is the caller's responsibility to check that |d_columns<=dim|.
+*/
   BitMatrix& transpose();
 }; // |class BitMatrix|
 

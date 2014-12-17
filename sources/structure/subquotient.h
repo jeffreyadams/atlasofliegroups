@@ -84,6 +84,11 @@ template<size_t dim> class Subspace
   const size_t rank() const { return d_rank; }
   const BitSet<dim>& support() const { return d_support; }
 
+  // reverse-canonical basis of perpendicular subspace of dual
+  BitVectorList<dim> basis_perp () const;
+  BitSet<dim> support_perp () const // complement of |d_support|
+  { return BitSet<dim>(d_support).complement(rank()); } // copy and complement
+
   //! \brief Expresses |v| in the subspace basis.
   BitVector<dim> toBasis(BitVector<dim> v) // by-value
     const
@@ -193,42 +198,32 @@ BitSet<dim> d_rel_support;
 
 // accessors
 
-  /*!
-  \brief Dimension of the subquotient.
+  /* Dimension of the subquotient.
   */
   size_t dimension() const
     { return d_space.dimension() - d_subspace.dimension(); }
 
-  /*!
-  \brief Dimension of the ambient vector space in which the larger and smaller
+  /* Dimension of the ambient vector space in which the larger and smaller
   subspaces live.
   */
   size_t rank() const { return d_space.rank(); }
 
   const Subspace<dim>& space() const { return d_space; }       // numerator
-  const Subspace<dim>& subspace() const { return d_subspace; } // denominator
+  const Subspace<dim>& denominator() const { return d_subspace; }
 
   /* we call this |support| to the outside world, since it flags basis
     representatives for the quotient among the basis for |d_space| */
   const BitSet<dim>& support() const { return d_rel_support; }
 
-  /*!
-  \brief Cardinality of the subquotient: 2^dimension.
-  */
+  // Cardinality of the subquotient: 2^dimension.
   unsigned long size() const { return 1ul << dimension(); }
 
-  /*!
-    \brief Puts in |r| the canonical representative of |w| modulo |d_subspace|.
+  /* Replace by the canonical representative of |w| modulo |d_subspace|.
 
     It is assumed that |w| belongs to the "numerator" subspace |d_space|. Then
     all that needs to be done is reduce modulo the "denominator" |d_subspace|.
     The value remains in $(Z/2Z)^n$; see |toBasis| to express in subquotient.
   */
-  void representative(BitVector<dim>& r,
-		      const BitVector<dim>& w) const
-    { r=d_subspace.mod_image(w); }
-
-  // destructive version
   void mod_reduce(BitVector<dim>& w) const
     { d_subspace.mod_reduce(w); }
 
@@ -240,8 +235,7 @@ BitSet<dim> d_rel_support;
   BitSet<dim> significantBits() const
   { return d_space.support() - d_subspace.support(); }
 
-  /*!
-  \brief Expresses |v| in the subquotient basis.
+  /* Expresses |v| in the subquotient basis.
 
   It is assumed that |v| belongs to |d_space|.
 
@@ -266,9 +260,7 @@ BitSet<dim> d_rel_support;
     return result;
   }
 
-  /*!
-  \brief Interprets |v| in the subspace basis and returns external form
-  */
+  // interpret |v| in the subspace basis and return an external representative
   BitVector<dim> fromBasis(BitVector<dim> v) const // by-value
   {
     assert(v.size()==dimension());

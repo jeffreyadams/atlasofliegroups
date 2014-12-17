@@ -149,19 +149,22 @@ set \ (mat m,int d) = mat: map_on(m)((int e) int: e\d)
 { entrywise modulo }
 set % (mat m,int d) = mat: map_on(m)((int e) int: e%d)
 
+{ matrix exponentiation }
 set ^ =
-  let matrix_power (mat m,int n)= mat: m { dummy for recursion }
-  then () = matrix_power := { assign recusive function body }
+  let matrix_power (mat m,int n)= mat: m { dummy for recursion } in
+  begin matrix_power := { assign recursive function body }
     ( (mat m,int n): { we hall have n>0 }
       if n=1 then m
       else let (q,r)=n\%2 then mm=matrix_power(m,q) in
 	mm*if r=0 then mm else mm*m fi
       fi
     )
-  in { operator ^ = } (mat m,int n) mat:
-  if n>0 then matrix_power(m,n) elif n=0 then id_mat(n_rows(m))
-  else error("Negative matrix power "+n)
-  fi
+  ; ( { operator ^ = } (mat m,int n) mat:
+      if n>0 then matrix_power(m,n) elif n=0 then id_mat(n_rows(m))
+      else error("Negative matrix power "+n)
+      fi
+    )
+  end
 
 set inverse (mat M) = mat:
   let (inv,d)=invert(M) in
