@@ -251,8 +251,8 @@ semisimple_rank: (RootDatum->int) Rank of the root lattice of  this Lie type.
 nr_of_posroots: (RootDatum->int) Number of positive roots in the root datum.
 
 integrality_datum: (RootDatum,ratvec->RootDatum): integral coroots subdatum
-  Forms the root datum for the coroot subsystem of coroots that take an
-  integral value on the given ration vector.
+  Applied to (rd,gamma), forms the root datum whose coroots form the closed
+  subsystem of the coroots of rd that take an integral value on gamma.
 
 integrality_points: (RootDatum,ratvec->[rat]): fractions with integrality
   The call integrality_points(rd,lambda) returns the increasing list of
@@ -297,7 +297,7 @@ operator = : (InnerClass,InnerClass->bool): identity of inner classes
   in other words it will recognise ic=inner_class(real_form(ic,0)) as true,
   but any freshly built inner class tests unequal to anything preexisting
 distinguished_involution: (InnerClass->mat): involution of the inner class.
-  Extract the distinguised involution from the InnerClass value
+  Extract the distinguised involution of X^* that defines the inner class
 dual: (InnerClass->InnerClass): dual inner class for dual complex group
 
 nr_of_real_forms: (InnerClass->int): number of real forms in inner class
@@ -460,7 +460,7 @@ KGB: (RealFrom,int->KGBElt): select a KGB element x among those of a real form
   output.
 %: (KGBElt->RealForm,int): real form and number; inverse of KGB@(RealForm,int)
 Cartan_class: (KGBElt->CartanClass): the Cartan class for the KGB element
-involution: (KGBElt->mat): the involution associated to the KGB element
+involution: (KGBElt->mat): the involution of X^* associated to the KGB element
 length: (KGBElt->int): length of the element within its KGB set
 cross: (int,KGBElt->KGBElt): cross action for (generator,KGB element)
 Cayley: (int,KGBElt->KGBElt): Cayley transform for (generator,KGB element)
@@ -475,7 +475,7 @@ status: (int,KGBElt->int): status of generator on KGB element, scale 0..4
   3: imaginary non-compact, 4: Complex ascent
 status: (vec,KGBElt->int): status of any root on KGB element, scale 0..4
   The value status(alpha,x) gives the status of the root alpha at x; the
-  encoding of statusses is the same as for the function status@(int,KGBElt)
+  encoding of statuses is the same as for the function status@(int,KGBElt)
 
 twist: (KGBElt->KGBElt): twist of KGB element x, useful for Hermitian dual
   This is defined by conjugation of x by the distinguished involution delta
@@ -529,7 +529,8 @@ infinitesimal_character: (Param->ratvec): infinitesimal character of parameter
   gamma = ((1+theta)lambda+(1-theta)nu)/2. The meaning of the x component of
   the parameter is determined by its position relative to this representative
   gamma, so to find the x value uniquely associated to the representation for
-  thei parameter, one should apply the function dominant to it first
+  the parameter, one should apply the function 'dominant' to the parameter
+  first, after which the value of infinitesimal_character is indeed dominant
 is_standard: (Param->bool): whether parameter defines a standard module
   This is true whenever gamma is dominant relative to the imaginary roots
 is_zero: (Param->bool): whether parameter defines a zero standard module

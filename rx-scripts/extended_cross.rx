@@ -1,150 +1,151 @@
-<extended_types
+<basic.rx
+<extended_types.rx
 
-{debug ext_cross construction, shouldn't be necessary}
-set test_ext_cross((Param,[int],(InnerClass,mat,ratvec,[int],mat,ratvec,[int],mat,[int],[int]))
+{ debug ext_cross construction, shouldn't be necessary }
+set test_ext_cross((Param,[int],extended_param)
 (p,kappa,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
-let xq=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in 
-let valid=verify(xq) in 
- if ( valid=false) then error("xq is not valid");false else 
-let q=parameter(xq) in 
-let cross=cross(kappa,p) in 
-if (q=cross) then {prints("cross/ext_cross are consistent");}true 
+let xq=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in
+let valid=verify(xq) in
+ if ( valid=false) then error("xq is not valid");false else
+let q=parameter(xq) in
+let cross=cross(kappa,p) in
+if (q=cross) then {prints("cross/ext_cross are consistent");}true
 else prints("cross/ext_cross are not consistent: ", q, " ", cross); error(""); false fi  fi
 
 {extended cross action in length 1}
-set ext_cross_1((int,(InnerClass,mat,ratvec,[int],mat,ratvec,[int],mat,[int],[int]))(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
-let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in 
-let p=parameter(E) in 
+set ext_cross_1((int,extended_param)(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
+let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in
+let p=parameter(E) in
 let type=ext_type_1(delta,j,p) in {1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn}
 let alpha=simple_roots(ic)[j] in
-let alpha_check=simple_coroots(ic)[j] in       
-let s_alpha=simple_reflection(ic,j) in 
-let s_alpha_check=simple_reflection(dual(ic),j) in
+let alpha_check=simple_coroots(ic)[j] in
+let s_alpha=reflection(ic,j) in
+let s_alpha_check=reflection(dual(ic),j) in
 if ((type="1C+") or (type="1C-")) then
- let new_lambda=[int]:ratvec_as_vec(s_alpha*lambda+(gamma*alpha_check-1)*alpha) in
- let new_l=[int]:ratvec_as_vec(s_alpha_check*l+(g*alpha-1)*alpha_check) in 
+ let new_lambda=vec:ratvec_as_vec(s_alpha*lambda+(gamma*alpha_check-1)*alpha) in
+ let new_l=vec:ratvec_as_vec(s_alpha_check*l+(g*alpha-1)*alpha_check) in
  let new_theta=s_alpha*theta*inverse(s_alpha) in
- let new_omega=inverse(s_alpha_check)*omega*s_alpha_check in 
- let new_t=[int]:s_alpha*t in
- let new_tau=[int]:s_alpha_check*tau in
- let xq=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t) in 
+ let new_omega=inverse(s_alpha_check)*omega*s_alpha_check in
+ let new_t=vec:s_alpha*t in
+ let new_tau=vec:s_alpha_check*tau in
+ let xq=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t) in
  let ()=test_ext_cross(p,[j],xq) in xq
 elif (type="1i1") then
  let new_lambda=lambda in
- let new_l=[int]:l+alpha_check in 
+ let new_l=vec:l+alpha_check in
  let new_theta=s_alpha*theta*inverse(s_alpha) in
- let new_omega=inverse(s_alpha_check)*omega*s_alpha_check in 
+ let new_omega=inverse(s_alpha_check)*omega*s_alpha_check in
  let new_t=t in
  let new_tau=tau in
  let xq= (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t) in
 { let ()=test_ext_cross(p,[j],xq) in xq} xq
 elif (type="1r2") then
- let new_lambda=[int]:lambda+alpha in
- let new_l=l in 
+ let new_lambda=vec:lambda+alpha in
+ let new_l=l in
  let new_theta=s_alpha*theta*inverse(s_alpha) in
- let new_omega=inverse(s_alpha_check)*omega*s_alpha_check in 
- let new_t=t in 
+ let new_omega=inverse(s_alpha_check)*omega*s_alpha_check in
+ let new_t=t in
  let new_tau=tau in
  let xq= (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t) in
 { let ()=test_ext_cross(p,[j],xq) in }xq
-else 
+else
 E
 fi
 
 {extended cross action in length 2}
-set ext_cross_2((int,(InnerClass,mat,ratvec,[int],mat,ratvec,[int],mat,[int],[int]))(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
-let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in 
-let p=parameter(E) in 
+set ext_cross_2((int,extended_param)(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
+let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in
+let p=parameter(E) in
 let type=ext_type_2(delta,j,p) in {2C+,2C-,2Ci,2Cr,2i11,2i12,2i22,2r22,2r21,2r11,2rn,2ic}
-let alpha=simple_roots(ic)[j] in 
-let alpha_check=simple_coroots(ic)[j] in 
-let k=get_simple_number(ic,delta*alpha) in
-let beta=simple_roots(ic)[k] in 
-let beta_check=simple_coroots(ic)[k] in 
-let s_alpha=simple_reflection(ic,j) in 
-let s_alpha_check=simple_reflection(dual(ic),j) in
-let s_beta=simple_reflection(ic,k) in 
-let s_beta_check=simple_reflection(dual(ic),k) in
+let alpha=simple_roots(ic)[j] in
+let alpha_check=simple_coroots(ic)[j] in
+let k=lookup(delta*alpha,simple_roots(ic)) in
+let beta=simple_roots(ic)[k] in
+let beta_check=simple_coroots(ic)[k] in
+let s_alpha=reflection(ic,j) in
+let s_alpha_check=reflection(dual(ic),j) in
+let s_beta=reflection(ic,k) in
+let s_beta_check=reflection(dual(ic),k) in
 if ((type="2C+") or (type="2C-")) then
- let new_lambda=[int]:ratvec_as_vec(s_alpha*s_beta*lambda+(gamma*alpha_check-1)*(alpha+beta)) in
- let new_l=[int]:ratvec_as_vec(s_alpha_check*s_beta_check*l+(g*alpha-1)*(alpha_check+beta_check)) in
+ let new_lambda=vec:ratvec_as_vec(s_alpha*s_beta*lambda+(gamma*alpha_check-1)*(alpha+beta)) in
+ let new_l=vec:ratvec_as_vec(s_alpha_check*s_beta_check*l+(g*alpha-1)*(alpha_check+beta_check)) in
  let new_theta=s_alpha*s_beta*theta*inverse(s_beta)*inverse(s_alpha) in
  let new_omega=inverse(s_alpha_check)*inverse(s_beta_check)*omega*s_beta_check*s_alpha_check in
- let new_tau=[int]:s_alpha*s_beta*tau in
- let new_t=[int]:s_alpha_check*s_beta_check*t in
+ let new_tau=vec:s_alpha*s_beta*tau in
+ let new_t=vec:s_alpha_check*s_beta_check*t in
  let xq=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t) in
  let ()=test_ext_cross(p,[j,k],xq) in xq
 elif (type="2Ci") then
 {cross action not defined, but Cayley transform is!} E
 elif (type="2Cr") then
- let new_lambda=[int]:ratvec_as_vec(s_alpha*lambda+(gamma*alpha_check-1)*alpha) in
- let new_l=[int]:ratvec_as_vec(s_alpha_check*l+(g*alpha-1)*alpha_check) in
+ let new_lambda=vec:ratvec_as_vec(s_alpha*lambda+(gamma*alpha_check-1)*alpha) in
+ let new_l=vec:ratvec_as_vec(s_alpha_check*l+(g*alpha-1)*alpha_check) in
  let new_theta=s_alpha*theta*inverse(s_alpha) in
  let new_omega=inverse(s_alpha_check)*omega*s_alpha_check in
- let new_tau=[int]:ratvec_as_vec(s_alpha*tau+(lambda*alpha_check-gamma*alpha_check+1)*alpha) in
- let new_t=[int]:ratvec_as_vec(t-(t*alpha+t*beta)/2*alpha_check) in
+ let new_tau=vec:ratvec_as_vec(s_alpha*tau+(lambda*alpha_check-gamma*alpha_check+1)*alpha) in
+ let new_t=vec:ratvec_as_vec(t-(t*alpha+t*beta)/2*alpha_check) in
  let xq=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t) in
  let ()=test_ext_cross(p,[j],xq) in xq
 elif (type="2i11") then
  let new_lambda=lambda in
- let new_l=[int]:l+alpha_check+beta_check in
+ let new_l=vec:l+alpha_check+beta_check in
  let new_theta=s_alpha*s_beta*theta*inverse(s_beta)*inverse(s_alpha) in
  let new_omega=inverse(s_alpha_check)*inverse(s_beta_check)*omega*s_beta_check*s_alpha_check in
- let new_tau=[int]:tau in
- let new_t=[int]:t in
+ let new_tau=vec:tau in
+ let new_t=vec:t in
  let xq=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_t,new_tau) in
  let ()=test_ext_cross(p,[j],xq) in xq
 elif (type="2i12") then
  let new_lambda=lambda in
- let new_l=[int]:l+alpha_check in
+ let new_l=vec:l+alpha_check in
  let new_theta=s_alpha*s_beta*theta*inverse(s_beta)*inverse(s_alpha) in
  let new_omega=inverse(s_alpha_check)*inverse(s_beta_check)*omega*s_beta_check*s_alpha_check in
- let new_tau=[int]:tau in
- let (s,valid)=solve(oneplus(^theta),alpha_check-beta_check) in 
+ let new_tau=vec:tau in
+ let (s,valid)=solve(oneplus(^theta),alpha_check-beta_check) in
   let ()= if (not valid) then error("failure in cross action of type 2i12, solving for s") fi in
- let new_t=[int]:t-s in
+ let new_t=vec:t-s in
  let xq=
  (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t) in
  let ()=test_ext_cross(p,[j],xq) in xq
 elif (type="2r22") then
- let new_lambda=[int]:lambda+alpha+beta in
+ let new_lambda=vec:lambda+alpha+beta in
  let new_l=l in
  let new_theta=s_alpha*s_beta*theta*inverse(s_beta)*inverse(s_alpha) in
  let new_omega=inverse(s_alpha_check)*inverse(s_beta_check)*omega*s_beta_check*s_alpha_check in
- let new_tau=[int]:tau in
- let new_t=[int]:t in
+ let new_tau=vec:tau in
+ let new_t=vec:t in
  let xq=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t) in
  let ()=test_ext_cross(p,[j,k],xq) in xq
 elif (type="2r21") then
- let new_lambda=[int]:lambda+alpha in
+ let new_lambda=vec:lambda+alpha in
  let new_l=l in
  let new_theta=s_alpha*s_beta*theta*inverse(s_beta)*inverse(s_alpha) in
  let new_omega=inverse(s_alpha_check)*inverse(s_beta_check)*omega*s_beta_check*s_alpha_check in
- let (zeta,valid)=solve(oneplus(^omega),alpha-beta) in 
+ let (zeta,valid)=solve(oneplus(^omega),alpha-beta) in
   let ()= if (not valid) then error("failure in cross action of type 2r21, solving for zeta") fi in
- let new_tau=[int]:tau-zeta in
- let new_t=[int]:t in
+ let new_tau=vec:tau-zeta in
+ let new_t=vec:t in
  let xq=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t) in
  let ()=test_ext_cross(p,[j],xq) in xq
-else 
+else
 E
 fi
 
-  
+
 {extenteded cross action not yet defined}
-set ext_cross_3((int,(InnerClass,mat,ratvec,[int],mat,ratvec,[int],mat,[int],[int]))(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
-let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in 
-let p=parameter(E) in 
+set ext_cross_3((int,extended_param)(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
+let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in
+let p=parameter(E) in
 let type=ext_type_2(delta,j,p) in {2C+,2C-,2Ci,2Cr,2i11,2i12,2i22,2r22,2r21,2r11,2rn,2ic}
 E
 
 {ext_cross calls ext_cross_i}
-set ext_cross((int,(InnerClass,mat,ratvec,[int],mat,ratvec,[int],mat,[int],[int]))(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
+set ext_cross((int,extended_param)(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
 let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in
-let p=parameter(E) in 
+let p=parameter(E) in
 if (not is_fixed(delta,p)) then error("Parameter is not fixed by delta") else
-let l=ext_length(root_datum(p),delta,j) in 
-if l=1 then ext_cross_1(j,E) 
-elif l=2 then ext_cross_2(j,E) 
+let l=ext_length(root_datum(p),delta,j) in
+if l=1 then ext_cross_1(j,E)
+elif l=2 then ext_cross_2(j,E)
 else ext_cross_3(j,E) fi fi
 

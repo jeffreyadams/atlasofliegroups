@@ -123,6 +123,9 @@ set matrix ((int,int)(r,c),(int,int->int) f) = mat:
 set n_rows (mat m)= int: let (r,)=#m in r
 set n_columns (mat m)= int: let (,c)=#m in c
 
+set column (vec v) = mat:  [v] { interpret v as single column }
+set row (vec v)    = mat: ^[v] { interpret v as single row }
+
 set + (mat M,mat N)= mat:
   let (n,):sm = #M, sn = #N
   in if sm != sn then error("Size mismatch " + sm + ":" + sn)
@@ -198,6 +201,9 @@ set rows_with ((vec->bool) p,mat m) = mat:
 set rows_with ((int->bool) p,mat m) = mat:
   rows_with (((int,vec)(i,))bool: p(i),m)
 
+set lookup (vec v,mat m) = int:
+  let i=n_columns(m)-1 in while i>=0 and m[i]!=v do i-:=1 od; i
+
 { sum of columns of a matrix }
 set sum (mat m)= vec: m*ones(n_columns(m))
 
@@ -261,6 +267,9 @@ set root_datum (LieType t, [ratvec] gens) = RootDatum:
 { allow single kernel generator in root datum construction }
 set root_datum (LieType t, ratvec gen) = RootDatum: root_datum(t,[gen])
 
+set reflection (RootDatum rd, int i) = mat: { i indexes positive root/coroot }
+  1 - column(posroots(rd)[i])*row(poscoroots(rd)[i])
+
 set rho (RootDatum rd) = ratvec:
   let res= ratvec: null(rank(rd))
   in for i:semisimple_rank(rd) do res +:= fundamental_weight(rd,i) od; res
@@ -272,9 +281,12 @@ set rho_check (RootDatum rd) = ratvec: { rho(dual(rd)), but a bit faster }
 
 { see also rho_i@KGBElt and rho_r@KGBElt defined below }
 
+set is_positive_root (RootDatum rd,vec alpha) = bool: rho_check(rd)*alpha>0
+set is_positive_coroot (RootDatum rd,vec alphav) = bool: alphav*rho(rd)>0
+
 set singular_roots (RootDatum rd,ratvec v)=[int]:
-  let rv=[int]:[]
-  in for a@i in simple_coroots(rd) do if a*v=0 then rv:=rv#i fi od; rv
+  let rv=[int]:[] { cannot use columns_with: must find _indices_ of columns }
+  in for a@j in simple_coroots(rd) do if a*v=0 then rv:=rv#j fi od; rv
 
 set is_imaginary (mat theta) = (vec->bool): (vec alpha): theta*alpha=alpha
 set is_real      (mat theta) = (vec->bool): (vec alpha): theta*alpha=-alpha
@@ -310,9 +322,11 @@ set mod_central_torus (RootDatum rd) = RootDatum:
 set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
   root_datum(id_mat(semisimple_rank(rd)),Cartan_matrix(rd))
 
+{ from appropriate (subsystem) dual 2rho value, deduce test for being simple }
 set is_simple_for (vec dual_two_rho) = (vec->bool):
   (vec alpha): dual_two_rho*alpha=2
 
+{ get generating simple system from set of matching posroots and poscoroots }
 set simple_from_positive (mat posroots,mat poscoroots) = (mat,mat):
   ( columns_with(is_simple_for(sum(poscoroots)),posroots)
   , columns_with(is_simple_for(sum(posroots)),poscoroots)
@@ -542,6 +556,8 @@ set tau_bitset(Param p) = ((int->bool),int):
 set tau (Param p)            = [int]: list(tau_bitset(p))
 set tau_complement (Param p) = [int]: complement(tau_bitset(p))
 
+set lookup (Param p, [Param] block) = int:
+  let i=#block-1 in while i>=0 and block[i]!=p do i-:=1 od; i
 
 {		    Polynomials in module parameters			}
 
