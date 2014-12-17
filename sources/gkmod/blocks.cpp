@@ -621,7 +621,7 @@ RatWeight param_block::nu(BlockElt z) const
 // here the lift $t$ is normalised using |InvolutionTable::real_unique|
 Weight param_block::lambda_rho(BlockElt z) const
 {
-  RatWeight t =  y_rep(y(z)).log_pi(false);
+  RatWeight t =  y_rep(y(z)).log_pi(false); // take a copy
   InvolutionNbr i_x = rc.kgb().inv_nr(parent_x(z));
   involution_table().real_unique(i_x,t);
 
@@ -633,13 +633,13 @@ Weight param_block::lambda_rho(BlockElt z) const
 }
 
 // reconstruct $\lambda$ from $\gamma$ and the torus part $t$ of $y$ using the
-// formula $\lambda = \gamma - {1-\theta\over2}.\log{{t\over\pi\ii})$
+// formula $\lambda = \gamma - {1-\theta\over2}.\log({t\over\pi\ii})$
 // the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
 RatWeight param_block::lambda(BlockElt z) const
 {
   InvolutionNbr i_x = rc.kgb().inv_nr(parent_x(z));
   const WeightInvolution& theta = involution_table().matrix(i_x);
-  RatWeight t =  y_rep(y(z)).log_2pi();
+  RatWeight t =  y_rep(y(z)).log_2pi(); // implicit division by 2 here
   const Ratvec_Numer_t& num = t.numerator();
   return infin_char - RatWeight(num-theta*num,t.denominator());
 }

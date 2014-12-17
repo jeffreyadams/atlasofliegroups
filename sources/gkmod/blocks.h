@@ -364,13 +364,12 @@ class non_integral_block : public param_block
 {
 
   // A simple structure to pack a pair of already sequenced numbers (indices
-  // into the |info| field for some (future) block into a hashable value
-
+  // into the |info| field for some future block) into a hashable value
 
   block_hash z_hash; //  on |Block_base::info|
 
  public:
-  non_integral_block // rewritten constructor, for full block
+  non_integral_block // constructor for full block
     (const repr::Rep_context& rc,
      StandardRepr sr, // by value,since it will be made dominant before use
      BlockElt& entry_element	// set to block element matching input

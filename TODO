@@ -51,6 +51,9 @@
    intended for an overloaded instance instead, but somehow fail to match.
    Since this is rare, maybe instead just consider globals before overloading.
 
+ - For identifiers in function position of a call, only consider local
+   bindings (which will hide overloads) if those have function type.
+
  - Allow compound assignment for components: v[i]+:=1
    The current simple rewriting scheme would give problems with side effects
    from the index expression. Nonetheless this is so natural that it is a
