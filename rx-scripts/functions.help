@@ -4,6 +4,9 @@ operator ^ : (int,int->int): integer exponentiation (whenever result integral)
 operators \, % : (int,int->int): integer (Euclidian) division and remainder
 operator \% :(int,int->int,int): Euclidian division with remainder
 operators +, -, *, / : (rat,rat->rat): usual rational arithmetic operations
+operators +, -, *, / : (rat,int->rat): more efficient in applicable bcases
+operator % : (rat,int->rat): remainder after removing greatest integer multiple
+operator % : (rat,rat->rat): remainder after removing greatest integer multiple
 operator - : (rat->rat): rational unary minus
 operator / : (rat->rat): rational unary divide (in other words: inverse)
 operator ^ : (rat,int->rat): rational exponentiation (whenever result defined)
@@ -11,17 +14,23 @@ operator % : (rat->int,int): pair of numerator and denominator
 operator * : (mat,vec->vec): matrix-vector product.
 operator * : (mat,mat->mat): matrix-matrix product.
 operator * : (vec,mat->mat): vector-matrix product (vector is transposed)
-operator ^ : (mat->mat): (unary use of ^) matrix transpostion
+operator ^ : (mat->mat): (unary use of ^) matrix transposition
 operator ^ : (vec->mat): (unary use of ^) (transposed) vector as 1-line matrix
+operator +, -: (mat,int->mat): addition/subtraction of multiple of identity
+operator +, -: (int,mat->mat): addition/subtraction from multiple of identity
 operator / : (vec,int->ratvec): vector division giving rational vector
 operator % : (ratvec->vec,int): pair of numerator vector and denominator
 operators +, -: (ratvec,ratvec->ratvec): additive rational vector arithmetic
+operators *, /, %:  (ratvec,int->ratvec): scalar rational vector operations
+operators *, /:  (ratvec,rat->ratvec): scalar rational vector operations
+operator -: (ratvec->ratvec): unary minus of rational vectors
 
 operators >, >=, <, <=, =, != : (int,int->bool): usual relational operators
 operators >, >=, <, <=, =, != : (rat,rat->bool): usual relational operators
 operators =, != : (bool,bool->bool): Boolean equivalence, inequivalence (xor)
 operators =, <= : (string,string->bool): string equality and comparison
 operators =, != : (vec,vec->bool): vector equality and inequality
+operators =, != : (ratvec,ratvec->bool): rational vector equality, inequality
 operators =, != : (mat,mat->bool): matrix equality and inequality
 
 operator # : (string->int) : length of string
