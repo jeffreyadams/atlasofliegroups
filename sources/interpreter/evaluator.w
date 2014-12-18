@@ -2060,7 +2060,9 @@ checking), ignore the return type, and return a |voiding| of it.
 case lambda_expr:
 { const lambda& fun=e.lambda_variant;
   const id_pat& pat=fun->pattern;
-  const type_expr& arg_type=fun->parameter_type;
+  type_expr& arg_type=fun->parameter_type;
+  if (not arg_type.specialise(pattern_type(pat)))
+    throw expr_error(e,"Function argument pattern does not match its type");
 @/layer new_layer(count_identifiers(pat));
   thread_bindings(pat,arg_type,new_layer);
   if (type!=void_type)
