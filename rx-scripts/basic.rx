@@ -123,8 +123,8 @@ set matrix ((int,int)(r,c),(int,int->int) f) = mat:
 set n_rows (mat m)= int: let (r,)=#m in r
 set n_columns (mat m)= int: let (,c)=#m in c
 
-set column (vec v) = mat:  [v] { interpret v as single column }
-set row (vec v)    = mat: ^[v] { interpret v as single row }
+set column (vec v) = mat: [v] { interpret v as single column }
+set row (vec v)    = mat: ^v  { interpret v as single row }
 
 set + (mat M,mat N)= mat:
   let (n,):sm = #M, sn = #N

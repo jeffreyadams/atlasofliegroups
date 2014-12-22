@@ -44,8 +44,8 @@ set twist(mat delta,KGBElt x) = KGBElt:
 
 { action of delta on parameter }
 set twist(mat delta,Param p)=
-  let (x,lambda_rho,nu) = %p then y=twist(delta,x)
-  in parameter(y,delta*(lambda_rho+rho(real_form(x))),delta*nu)
+  let (x,lambda_rho,nu) = %p
+  in parameter(twist(delta,x),delta*(lambda_rho+rho(real_form(x))),delta*nu)
 
 set is_fixed (mat delta, Param p) = bool: p=twist(delta,p)
 set is_fixed (ratvec gamma, mat delta, KGBElt x,KGBElt y) = bool:
