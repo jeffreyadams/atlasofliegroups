@@ -1236,7 +1236,10 @@ wrapped up from the lists. In the former case, |fun->parameter_type| wants to
 have a pointer to an isolated |type_expr|, but the head of |type_l| is a
 |type_node| that contains a |type_expr| as its |t| field; making a (shallow)
 copy of that field is the easiest way to obtain an isolated |type_expr|. After
-the copy, destruction of |type_l| deletes the original |type_node|.
+the copy, destruction of |type_l| deletes the original |type_node|. In the
+latter case we apply list reversal here 
+
+
 
 @< Definitions of functions for the parser @>=
 expr mk_lambda_node(patlist&& pat_l, type_list&& type_l, expr& body)
@@ -1246,8 +1249,9 @@ expr mk_lambda_node(patlist&& pat_l, type_list&& type_l, expr& body)
     parameter_type = std::move(type_l.front());
   }
   else
-@/{@; pattern=id_pat(std::move(pat_l));
-    parameter_type=type_expr(std::move(type_l)); // make tuple type
+@/{ pat_l.reverse(); pattern=id_pat(std::move(pat_l));
+  @/type_l.reverse(); parameter_type=type_expr(std::move(type_l));
+  // make tuple type
   }
   return expr(lambda(new@| lambda_node
       {std::move(pattern),std::move(parameter_type),std::move(body)}));
