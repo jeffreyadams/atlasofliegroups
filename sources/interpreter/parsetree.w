@@ -538,13 +538,15 @@ argument expression; both are allowed to be arbitrary expressions, though the
 function is often an applied identifier, and the argument is often a tuple
 display.
 
+The moving constructor does what the braced initialiser-list syntax would do
+by default; it is present only for backward compatibility \.{gcc}~4.6.
+
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct application_node
 { expr fun; expr arg;
 @)
   application_node(expr&& fun, expr&& arg)
 @/: fun(std::move(fun)), arg(std::move(arg)) @+{}
-  // backward compatibility for gcc 4.6
 };
 
 @ The tag used for expressions that will invoke a built-in function is
@@ -918,18 +920,23 @@ struct id_pat
 
 @ The function |make_pattern_node| to build a node takes a modifiable
 reference to a structure |body| with the contents of the current node; in
-practice this is a local variable in the parser.
+practice this is a local variable in the parser. The argument names and order
+reflects the fact that patterns are often recognised by left-recursive rules,
+so that a new pattern is tacked onto an existing pattern list (the resulting
+list will need reversal when further integrated).
+
 @< Declarations for the parser @>=
-raw_patlist make_pattern_node(raw_patlist prev,raw_id_pat& body);
+raw_patlist make_pattern_node(raw_patlist prev,raw_id_pat& pattern);
 
-@ The function just assembles the pieces.
+@ With the mentioned proviso about order, the function implementation just
+assembles the pieces.
+
 @< Definitions of functions for the parser @>=
-raw_patlist make_pattern_node(raw_patlist prev,raw_id_pat& body)
-{@; patlist l(prev); l.push_front(id_pat(body)); return l.release(); }
+raw_patlist make_pattern_node(raw_patlist prev,raw_id_pat& pattern)
+{@; patlist l(prev); l.push_front(id_pat(pattern)); return l.release(); }
 
-@ Patterns also need cleaning
-up, which is what |destroy_pattern| and |destroy_id_pat| will handle, and
-reversal as handled by |reverse_patlist|.
+@ Patterns also need cleaning up, which is what |destroy_pattern| and
+|destroy_id_pat| will handle, and reversal as handled by |reverse_patlist|.
 
 @< Declarations for the parser @>=
 void destroy_pattern(raw_patlist p);
@@ -987,12 +994,14 @@ std::ostream& operator<< (std::ostream& out, const id_pat& p)
 %
 We now consider let-expressions, which introduce and bind local identifiers,
 which historically were a first step towards having user defined functions.
-Indeed a let-expression will be implemented as a user-defined function that is
-immediately called with the (tuple of) values bound in the let-expression. The
-reason to have had let expressions before user-defined functions was that it
-could be done before user-specified types were introduced in the language; in
-a let expression types of variables are deduced from the values provided,
-whereas function parameters need to have explicitly specified types.
+Indeed a let-expression used to be implemented as a user-defined function that
+were immediately called with the (tuple of) values bound in the
+let-expression (the implementation of let-expressions has been somewhat
+optimised since). The reason to have had let expressions before user-defined
+functions was that it could be done before user-specified types were
+introduced in the language; in a let expression types of variables are deduced
+from the values provided, whereas function parameters need to have explicitly
+specified types.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef std::unique_ptr<struct let_expr_node> let;
@@ -1005,6 +1014,9 @@ define a list type |let_list| for a list of bindings, and a structure
 |let_expr_node| for a complete let-expression, containing (the components of)
 only one binding, and containing in addition a body.
 
+The moving constructor does what the braced initialiser-list syntax would do
+by default; it is present only for backward compatibility \.{gcc}~4.6.
+
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct let_pair {@; id_pat pattern; expr val; };
 typedef containers::simple_list<let_pair> let_list;
@@ -1015,7 +1027,6 @@ struct let_expr_node
 @)
   let_expr_node(id_pat&& pattern, expr&& val, expr&& body)
 @/: pattern(std::move(pattern)), val(std::move(val)), body(std::move(body))@+{}
-  // backward compatibility for gcc 4.6
 };
 
 @ The tag used for let-expressions is |let_expr|.
@@ -1047,12 +1058,12 @@ raw_let_list append_let_node(raw_let_list prev, raw_let_list cur);
 expr_p make_let_expr_node(raw_let_list decls, expr_p body);
 
 @ The functions |make_let_node| and |append_let_node| build a list in reverse
-order, which makes the latter function a particularly simple one. In
-|make_let_expr_node| combines multiple declarations (that were separated by
-commas) to one, taking care to reverse the order at the same time so that the
-tuple of patterns being declared comes out in the same order as it was
-specified in the program. Fortunately it is actually easier to build a merged
-list in reverse order.
+order, which makes the latter function a particularly simple one. The purpose
+of |make_let_expr_node| is to combine multiple declarations (that were
+separated by commas) to one, taking care to reverse the order at the same time
+so that the tuple of patterns being declared comes out in the same order as it
+was specified in the program. Fortunately it is actually easier to build a
+merged list in reverse order.
 
 The argument |cur| for |append_let_node| is always the result of an
 application of |make_let_node|, so a list of length$~1$ This is just a trick
@@ -1137,22 +1148,25 @@ break;
 
 @*1 Types and user-defined functions.
 %
-One reason let-expressions were introduced before user-defined functions, is
-that it avoids to problem of having to specify types in the user program.
-Inevitably we have to deal with that though, since for a function definition
-there is no way to know the type of the arguments with certainty, unless the
-user specifies them (at least this is true if we want to allow such things as
-type coercion and function overloading to be possible, so that types cannot be
-deduced by analysis of the \emph{usage} of the parameters in the function
-only). Types are also an essential ingredient of casts.
+As was indicated above, let-expressions were introduced before user-defined
+functions because it avoids to problem of having to specify types in the user
+program. When defining function one does have to specify parameter types,
+since in this case there is no way to know those types with certainty: in an
+interactive program we cannot wait for \emph{usage} of the function to deduce
+the types of its parameters, and such things as type coercion and function
+overloading would make such type deduction doubtful even if it could be done).
+Types are also an essential ingredient of casts. Types have an elaborate
+(though straightforward) internal structure, and the necessary constructing
+functions like |make_tuple_type| are defined in the module \.{types.w} rather
+than here.
 
 When the parser was compiled as \Cee~code, we were forced to use void pointers
 in the parser, to masquerade for the actual pointers to \Cpp~types; numerous
 static casts were then used to get the proper pointer types from them. Now
 that this is no longer necessary, everything has been reformulated in terms of
 the actual pointer types. Something that remains (for now) is the avoidance of
-smart pointers for types in the parser, since other pointers for expressions
-that it handles are not smart pointers either.
+smart pointers for types while being handled in the parser, since other
+pointers for expressions that it handles are not smart pointers either.
 
 @< Includes needed... @>=
 #include "types.h"
@@ -1178,7 +1192,10 @@ void destroy_type_list(raw_type_list t)@+ {@; (type_list(t)); }
 typedef std::unique_ptr<struct lambda_node> lambda;
 
 @~It contains a pattern for the formal parameter(s), its type (a smart pointer
-defined in \.{types.w}), and an expression (the body of the function).
+defined in \.{types.w}), and an expression (the body of the function). The
+moving constructor does what the braced initialiser-list syntax would do by
+default; it is present only for backward compatibility \.{gcc}~4.6.
+
 
 @< Structure and typedef... @>=
 struct lambda_node
@@ -1187,7 +1204,6 @@ struct lambda_node
   lambda_node(id_pat&& pattern, type_expr&& type, expr&& body)
 @/: pattern(std::move(pattern))
   , parameter_type(std::move(type)), body(std::move(body))@+{}
-  // backward compatibility for gcc 4.6
 };
 
 @ The tag used for user-defined functions is |lambda_expr|.

@@ -38,6 +38,10 @@
   atlas::interpreter::raw_let_list decls; /* declarations in a LET expression */
   atlas::interpreter::raw_id_pat ip;
   struct {
+    atlas::interpreter::type_p type_pt;
+    atlas::interpreter::raw_id_pat ip;
+  } id_sp1;
+  struct {
     atlas::interpreter::raw_type_list typel;
     atlas::interpreter::raw_patlist patl;
   } id_sp;
@@ -89,6 +93,8 @@
 %destructor { destroy_type($$); } type
 %type <type_l> types types_opt
 %destructor { destroy_type_list($$); } types types_opt
+%type <id_sp1> id_spec
+%destructor { destroy_type($$.type_pt);destroy_id_pat($$.ip); } id_spec
 %type <id_sp> id_specs id_specs_opt
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); } id_specs id_specs_opt
 
@@ -312,13 +318,20 @@ pat_list: pattern_opt ',' pattern_opt
 	| pat_list ',' pattern_opt { $$=make_pattern_node($1,$3); }
 ;
 
-id_specs: type pattern
-	{ $$.typel=make_type_singleton($1);
-	  $$.patl=make_pattern_node(NULL,$2);
+id_spec: type pattern { $$.type_pt=$1; $$.ip=$2; }
+        | '(' id_specs ')'
+	{ $$.type_pt=make_tuple_type($2.typel);
+          $$.ip.kind=0x2; $$.ip.sublist=($2.patl);
 	}
-	| type pattern ',' id_specs
-	{ $$.typel=make_type_list($1,$4.typel);
-	  $$.patl=make_pattern_node($4.patl,$2);
+;
+
+id_specs: id_spec
+        { $$.typel=make_type_singleton($1.type_pt);
+	  $$.patl=make_pattern_node(NULL,$1.ip);
+	}
+	| id_spec ',' id_specs
+	{ $$.typel=make_type_list($1.type_pt,$3.typel);
+	  $$.patl=make_pattern_node($3.patl,$1.ip);
 	}
 ;
 
