@@ -1,125 +1,121 @@
 <basic.rx
 <kl.rx
 
+: poly = vec
+: poly_mat = [[poly]]
+
 {simple linear algebra over Z[q]}
-{[a_0,...,a_n]=a_0+a_1q+...+a_nq^n
- multiplication, addition, subtraction, scalar multiplication are defined}
+{ vector [a_0,...,a_n] represents polynomial a_0+a_1q+...+a_nq^n
+  multiplication, addition, subtraction, scalar multiplication defined below }
 
-set - ((vec,vec) (v,w):p)= vec:v+(-w) {in basic this is only allowed for vectors of the same length}
+set - (poly v,poly w) = poly: { use vector addition from kl.rx for subtraction }
+  v+-w {in basic.rx this was only allowed for vectors of the same length}
 
-{M=[[[int]]] is a polynomial matrix
- e.g.
-expr> set M=[[ [0,1], [0,0,1]], [[0], [1]]]
+{ M=poly_mat is a polynomial matrix; e.g.
+expr> set M= poly_mat: [[ [0,1], [0,0,1]], [[0], [1]]]
 expr> printPolyMatrix (M)
  +q +q^2
  0 +1
 }
 
-set printPolyMatrix([[[int]]] M)=void:
-let rv="" in
- let n=#M in
- for i:n do
-  let line="" in
-  let ()=for j:n do line+:=" "+stringPoly(M[i][j],"q") od in prints(line)
-od
+set printPolyMatrix(poly_mat M)=void:
+  let rv="", n=#M in
+    for i:n do
+      let line="" in
+      for j:n do line+:=" "+stringPoly(M[i][j],"q") od; prints(line)
+    od
 
-{make v, w same length}
-set normalize([int] v,[int] w)=
-let ()=if #v<#w then v:=v#null(#w-#v)
-elif #w<#v then w:=w#null(#v-#w) fi in (v,w)
+{ multiply two polynomials (slightly prefers g to be the smaller one) }
+set poly_product(poly f, poly g) = poly:
+  if #f=0 then f { avoid useless traversal of g, and avoid needing strip }
+  else let k=#g, s=null(0) in while (k-:=1)>=0 do s:= (0#s)+g[k]*f od; s
+  fi
 
-set plus([int] v,[int] w)=let (v,w)=normalize(v,w) in v+w
+set transpose(poly_mat M)=poly_mat: { sublists must be of equal length }
+  let n=#M in
+  if n=0 then M { not much we can do for an empty list }
+  else for j:#M[0] do for i:n do M[i][j] od od
+  fi
 
-{multiply two polynomials}
-set poly_product([int]  f,[int] g)=[int]:
-let (f,g)=normalize(f,g) in
-let n=#f in
-let N=2*n-1 in
-{let ()=prints("n=",n, " N=",N) in}
-let rv=[] in
-let rv=for m:N do let a=0 in {prints("m=",m);}for i:min(m,n-1)-max(0,m-n+1)+1 from max(0,m-n+1) do {prints("m:",m," i:",i);} a+:=f[i]*g[m-i] od;a od in strip(rv)
+{ multiply (dot product) of two vectors of polynomials }
+set vector_poly_product([poly] v,[poly] w) = poly:
+  let sum=null(0) in
+  for p@i in v do sum +:= poly_product(p,w[i]) od; strip(sum)
 
-set transpose([[[int]]] M)=[[[int]]]:
-let n=#M in
-for i:n do
- for j:n do M[j][i] od od
+{ multiply two matrices of polynomials; here operator * is unambiguous }
+set *(poly_mat A,poly_mat B) = poly_mat:
+  let n=#A, B=transpose(B) { best to rearrange B once and for all }
+  then m=#B
+  in for i:n do for j:m do vector_poly_product(A[i],B[j]) od od
 
-{multiply (dot product) of two vectors of polynomials}
-set vector_poly_product([[int]] v,[[int]] w)=[int]:
-let rv=[] in let ()=for i:#v do rv#:=poly_product(v[i],w[i]) od in let answer=null(#rv[0]) in
-let ()=for i:#rv  do answer:=plus(answer,rv[i]) od in [int]:strip(answer)
+{ add two vectors of polynomials, assumed of same length }
+set vector_poly_sum([poly] v,[poly] w) = [poly]:
+  if #v!=#w then error("length mismatch adding lists of polynomials")
+  else for p@i in v do strip(p+w[i]) od
+  fi
 
-{multiply two matrices of polynomials}
-set matrix_poly_product([[[int]]] A,[[[int]]] B)=[[[int]]]:
-let n=#A in
-let B=transpose(B) in
- for i:n do for j:n do vector_poly_product(A[i],B[j]) od od
+{ add matrices of the same size }
+set +(poly_mat A,poly_mat B)=poly_mat:
+  if #A!=#B then error("depth mismatch adding matrices of polynomials")
+  else for row@i in A do vector_poly_sum(row,B[i]) od
+  fi
 
-{use *for matrix_poly_product
- would like to use it elsewhere, but broadness cannot disambiguate}
-set *([[[int]]] A,[[[int]]] B)=[[[int]]]:matrix_poly_product(A,B)
+set poly_times_vector(poly f,[poly] v) = [poly]:
+  for p in v do poly_product(f,p) od
 
-{add two vectors of polynomials, of same length}
-set vector_poly_sum([[int]] v,[[int]] w)=[[int]]:
-if not #v=#w then error("cannot add vectors of polynomials of different length") else
-for i:#v do strip(v[i]+w[i]) od fi
+{ polynomial scalar times polynomial matrix }
+set *(poly f,poly_mat M) = poly_mat:
+  for row in M do poly_times_vector(f,row) od
+set *(int c, poly_mat M)=(poly:[c])*M
 
-{add matrices of the same size}
-set +([[[int]]] A,[[[int]]] B)=[[[int]]]:if not #A=#B then error("cannot add matrices of different size")
-else for i:#A do vector_poly_sum(A[i],B[i]) od fi
+ { set %(poly f,poly_mat M)=poly_mat:poly_times_matrix(f,M) }
+set -(poly_mat M) = poly_mat: for row in M do for p in row do -p od od
+set -(poly_mat A,poly_mat B) = poly_mat: A + -B
 
-set poly_times_vector([int] f,[[int]] v)=[[int]]:for i:#v do poly_product(f,v[i]) od
-set poly_times_matrix([int] f,[[[int]]] M)=[[[int]]]:for i:#M do poly_times_vector(f,M[i]) od
-{can't use *, broadness failing to  disambiguate again}
-set %([int] f,[[[int]]] M)=[[[int]]]:poly_times_matrix(f,M)
-set -([[[int]]] M)=[-1]%M
-set -([[[int]]] A,[[[int]]] B)=A+(-B)
+{ update one entry in a vector of polynomials and one row of a matrix }
+set update_row([poly] R, int j,poly v) = [poly]: R[j]:=v; R
+{ update one row of a matrix }
+set update_matrix_row(poly_mat M, int i, [poly] row)= poly_mat: M[i]:=row; M
+{ update one entry in a matrix }
+set update_matrix_entry(poly_mat M, int i, int j, poly v)= poly_mat:
+  let row=M[i] in row[j]:=v; M[i]:=row; M
 
-{update one entry in a vector of polynomials and one row of a matrix}
-set update_row([[int]] R, int j,[int] v)=R[j]:=v;R
-{update one row of a matrix}
-set update_matrix_row([[[int]]] M, int i, [[int]] row)=M[i]:=row;M
-{update one entry in a matrix}
-set update_matrix_entry([[[int]]] M, int i, int j, [int] v)=
-let row=M[i] in row[j]:=v;M[i]:=row;M
+set zero_poly_row(int n) = [poly]: for i:n do [] od
+set zero_poly_matrix(int n) = poly_mat: for i:n do zero_poly_row(n) od
+set scalar_poly_matrix(int n, int c)= poly_mat:
+  for i:n do for j:n do if i=j then [c] else [] fi od od
+set identity_poly_matrix(int n) = scalar_poly_matrix(n,1)
 
-set zero_poly_row(int n)=[[int]]:for i:n do [] od
-set zero_poly_matrix(int n)=[[[int]]]: for i:n do zero_poly_row(n) od
-set identity_poly_matrix(int n)=let M=zero_poly_matrix(n) in
-for i:n do M:=update_matrix_entry(M,i,i,[1]) od;M
-set scalar_poly_matrix(int n, int c)=[c]%identity_poly_matrix(n)
-set *(int c, [[[int]]] M)=[c]%M
+set +(poly_mat M, poly p) = poly_mat: { add polynomial scalar matrix }
+  for row@i in M  do for e@j in row do if i=j then e+p else e fi od od
+set -(poly_mat M, poly p) = poly_mat: M+-p
 
-set power =
-  let pow ([int] f,int n)= [int]:[] in
-  pow:= (([int] f,int n): [int]: if n>0 then strip(poly_product(f,pow(f,n-1))) else [1] fi)
+set ^(poly p,int n) = poly: { power of a polynomial }
+  if n=0 then [1]
+  else { no point in trying to do this by squaring, it is not faster }
+    let f=p in while (n-:=1)>0 do f:=poly_product(f,p) od; f
+  fi
 
-{equality of polynomials}
-set =([[[int]]] A,[[[int]]] B)=
-let n=#A in
-let m=#A[0] in
-let i=0 in
-let rv=true in
-while i<n do
- let j=0 in
- while j<m do if (not A[i][j]=B[i][j]) then i:=n;j:=m;rv:=false else j:=j+1 fi od;
-  i:=i+1 od;rv
+{ equality of polynomial matrices }
+set =(poly_mat A,poly_mat B) = bool:
+  all((int i):bool: let r=A[i],s=B[i] in all((int j): r[j]=s[j],#r),#A)
 
-{polynomial is 0}
-set is_zero([[[int]]] M)=M=zero_poly_matrix(#M)
+{ polynomial is 0 }
+set is_zero(poly_mat M)= bool:
+  all((int i):bool: let r=M[i] in all((int j): #r[j]=0,#r),#M)
 
 {for convenience}
-set one=[int]:[1]
-set sgn_poly(int k)=if k<0 then -one elif k>0 then one else error("k=0 in sign_poly function") fi
-set two=[int]:[2]
-set q=[int]:[0,1]
-set q2=[int]:[0,0,1]
-set evaluate_at_1([int] f)=sum(f)
+set one=poly: [1]
+set sgn_poly(int k) = poly:
+  [if k<0 then -1 elif k>0 then 1 else error("taking sign of 0") fi]
+set two=poly: [2]
+set q=poly: [0,1]
+set q2=poly: [0,0,1]
+set evaluate_at_1 = sum@poly
 
-{compute PMP^{-1} where P is a permutation of [1,,,n] and M is a polynomial matrix}
-set poly_permute_basis([int] P, [[[int]]] A)=
-let m=#A in 
-let B=zero_poly_matrix(m) in 
-for i:m do for j:m do 
-   B:=update_matrix_entry(B,i,j,A[P[i]][P[j]]) od od;B
+{ compute PMP^{-1} where P is a permutation of [1,,,n]
+  and M is a polynomial matrix
+}
+set poly_permute_basis(poly P, poly_mat A) = poly_mat: { P is permutation }
+  for i:#A do let row=A[P[i]] in for j:#row do row[P[j]] od od
 

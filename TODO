@@ -6,14 +6,18 @@
 
 * Work on the atlas program
 
- - correct bug with myterisous typeahead after bailing out with ?
+ - correct bug with mysterious typeahead after bailing out with ? (done?)
  - clean up the mess dealing with input (interface/input, io/interactive...)
 
 * Work on the realex program
 
+ - Have error take arguments like prints does
+
  - See if syntax can allow (let i=3 in for k:i do print(k) od); without parens
+ - Similarly for let block as final element of a sequence
 
  - Allow for declaring an input path, and (silent) default prelude
+ - Handle output from loading files differently
 
  - Allow Python-style slices of lists, vectors, matrices
  - Allow list-comprehension syntax like in Haskell (and Python?)
@@ -28,6 +32,7 @@
 
  - Mention file and line in non-syntax errors
  - Improve output of expressions
+ - Remember file and line of definition for lambda-expression values
 
  - Allow multiple overloaded functions defined in a single 'set' statement
  - Allow recursion through a more intuitive syntax

@@ -23,8 +23,6 @@ for i:#w downto 0 do rv:=simple_reflection(rd,w[i])*rv od;rv
 {action of Weyl word on ratvec}
 set action(RootDatum rd,[int] w,ratvec v)=ratvec:matrix(rd,w)*v
 
-set is_positive_root(RootDatum rd,vec v)=v*rho_check(rd)>0
-
 {assuming M is in W}
 set length(RootDatum rd, mat M)=int:
 let rv=0 in

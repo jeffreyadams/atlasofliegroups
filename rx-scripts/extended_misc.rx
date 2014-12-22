@@ -1,141 +1,179 @@
+<basic.rx
 <my_lattice {added functions, fixed function in_lattice}
-<tits.rx
-<parameters.rx 
+<parameters.rx { for parameter(x,y,gamma) }
 
-{some of the stuff at the top of this file really belongs elsewhere, but 
-is left here to avoid conflicts}
+{ some of the stuff at the top of this file really belongs elsewhere, but
+  is left here to avoid conflicts}
 
-{action of Weyl word on X_*\otimes Q }
+{ action of Weyl word on X_*\otimes Q }
 set co_action(RootDatum rd,[int] w,ratvec rv) = ratvec:
   let (v,den)=%rv in
-  for i:#w downto 0 do v:=^simple_reflection(rd,w[i])*v od; v/den
+  for i:#w downto 0 do v:=v*reflection(rd,w[i]) od; v/den
 
-{some variants of Cayley transforms}
+{ some variants of Cayley transforms }
 
-{inv_Cayley terminology is not necessary}
-set Cayley(int i,Param p)=if is_real(i,x(p)) then inv_Cayley(i,p) else (Cayley(i,p)) fi
-set Cayley(int i,KGBElt x)=if is_real(i,x) then inv_Cayley(i,x) else (Cayley(i,x)) fi
+{ inv_Cayley terminology is not necessary }
+set Cayley(int i,Param p) = Param:
+  if is_real(i,x(p)) then inv_Cayley(i,p) else Cayley(i,p) fi
+set Cayley(int i,KGBElt x) = KGBElt:
+  if is_real(i,x) then inv_Cayley(i,x) else Cayley(i,x) fi
 
-{Cayley transform as a set (actually an array, but the order doesn't matter)}
-set Cayley_set(int j,Param p)=
-let q1=Cayley(j,p) in if 
-(status_text(j,p)="i2" or status_text(j,p)="r1") then [q1,cross(j,q1)] else [q1] fi
+{ Cayley transform as a set (actually an array, but the order doesn't matter) }
+set Cayley_set(int j,Param p) = [Param]:
+  let q=Cayley(j,p) in
+  if status(j,p)%5=2 { r1 or i2 } then [q,cross(j,q)] else [q] fi
 
-{doubly iterated Cayley}
-set Cayley_set(int j, int k, Param p)=
-let rv=[] in 
-for q in Cayley_set(k,p) do 
- let a=Cayley_set(j,q) in 
-  for r in a do rv#:=r od od;rv
+{ doubly iterated Cayley }
+set Cayley_set(int j, int k, Param p) = [Param]:
+  let rv=[Param]: [] in
+  for q in Cayley_set(k,p) do rv #:=Cayley_set(j,q) od; rv
 
-{uniform syntax for single or iterated Cayley}
-set Cayley_set([int] kappa, Param p)=
-if #kappa=1 then Cayley_set(kappa[0],p) 
-elif #kappa=2 then Cayley_set(kappa[0],kappa[1],p) 
-else error("iterated Cayley only defined for 1 or 2 steps") fi
+{ uniform syntax for single or iterated Cayley }
+set Cayley_set([int] kappa, Param p) = [Param]:
+  if #kappa=1 then Cayley_set(kappa[0],p)
+  elif #kappa=2 then Cayley_set(kappa[0],kappa[1],p)
+  else error("iterated Cayley only defined for 1 or 2 steps")
+  fi
 
 set cross([int] s,KGBElt x)=for i:#s downto 0 do x:=cross(s[i],x) od;x
 set cross([int] s,Param p)=for i:#s downto 0 do p:=cross(s[i],p) od;p
 
-{in PFTR: z=i^<tau,(delta_0-1)l>(-1)^<lambda,t>
- PFTR:delta_0 is ^delta here}
-set log_z(mat delta, [int] lambda, [int] l, [int] tau,[int] t)=rat:-tau*oneminus(^delta)*l/4+lambda*t/2
-set log_zeta(mat delta, [int] lambda, [int] l, [int] tau,[int] t)=rat:-tau*oneminus(^delta)*l/4+tau*l/2
+{ action of delta on KGB }
+set twist(mat delta,KGBElt x) = KGBElt:
+  KGB_elt(real_form(x),delta*involution(x)*delta,torus_factor(x)*delta)
 
-set log_z(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=rat:
-log_z(delta,lambda,l,tau,t)
-
-set log_zeta(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=rat:
-log_zeta(delta,lambda,l,tau,t)
-
-{Stuff related to KGB}
-{KGB element x is represented by xi=t\sigma_w\xi_0
-{defition: e(v)=exp(2i\pi v)}
- t=e(v) for v in X_*\otimes Q
- in realex: torus_factor(x)=v/2-rho_check(G)/2 (NB: v is also divided by 2)
- I prefer to work with the "actual torus factor" v}
-
-
-
-{in_A(v,theta): test if e(v) is in A:=(H^{-theta})^0}
-{test: (1+theta)v in (1+theta)X_*, see definition of conjugator a few lines down in this file, 
-and the miscelanneous section of the EPiA}
-set in_A(ratvec v,mat theta)=bool:let M=id_mat(n_columns(theta))+theta in 
-let w=M*v in if not is_integer(w) then false else in_lattice(M,ratvec_as_vec(M*v)) fi
-
-{e(v_1)theta_1 is H-conjugate to e(v_2)theta_2
-implicit: e(v_i)theta_i=e(v_i)sigma_i*xi_0 (i=1,2) in same extended group for G
-test: theta_1=theta_2, e(v_1-v_2) is in A=(H^{\theta_1})^0}
-set is_equivalent(((ratvec, mat),(ratvec,mat))((v_1,theta_1),(v_2,theta_2)))=bool:theta_1=theta_2 and in_A(v_1-v_2,theta_1)
-
-
-
-set square_is_central(InnerClass ic,(ratvec,mat)(v,theta))=square_is_central(ic,v,theta)
-
-{action of delta on KGB}
-{if delta is the distinguished involution use the built-in command
-otherwise need to do a lookup}
-set twist(mat delta,KGBElt x)=KGBElt:
-let M=inverse(^delta)*^involution(x)*^delta in
-{let v=^delta*actual_torus_factor(x) in }
-let v=^delta*torus_factor(x) in 
-KGB_elt(real_form(x),M,v) 
-
+{ action of delta on parameter }
 set twist(mat delta,Param p)=
-let y=twist(delta,x(p)) in parameter(y,delta*lambda(p),delta*nu(p)) 
+  let (x,lambda_rho,nu) = %p
+  in parameter(twist(delta,x),delta*(lambda_rho+rho(real_form(x))),delta*nu)
 
-set lambda(InnerClass ic, [rat] gamma, mat delta, ratvec v,mat theta,KGBElt y, ratvec u,rat r)=lambda(gamma,theta,y)
+set is_fixed (mat delta, Param p) = bool: p=twist(delta,p)
+set is_fixed (ratvec gamma, mat delta, KGBElt x,KGBElt y) = bool:
+  is_fixed(delta,parameter(x,y,gamma))
+
+{ KGBElt is fixed by twist by matrix delta }
+set is_fixed (mat delta, KGBElt x) = bool: x=twist(delta,x)
+set is_fixed (mat delta, KGBElt x, KGBElt y) = bool:
+  is_fixed(delta,x) and is_fixed(^delta,y)
+
+{ Stuff related to KGB }
+{ KGB element x is represented by xi=t\sigma_w\xi_0
+  { defition: e(v)=exp(2i\pi v) }
+  t=e(v) for v in X_*\otimes Q
+  in realex: torus_factor(x)=v/2-rho_check(G)/2 (NB: v is also divided by 2)
+  I prefer to work with the "actual torus factor" v
+}
+
+: x_rep = (ratvec,mat)
+
+{ in_A(v,theta): test if e(v) is in A:=(H^{-theta})^0 }
+{ test: (1+theta)v in (1+theta)X_*, see definition of conjugator a few lines
+  down in this file, and the miscelanneous section of the EPiA }
+set in_A(x_rep(v,theta)) = bool:
+  let M=1+theta then w=M*v
+  in is_integer(w) and in_lattice(M,ratvec_as_vec(w))
+
+{ e(v_1)theta_1 is H-conjugate to e(v_2)theta_2
+  implicit: e(v_i)theta_i=e(v_i)sigma_i*xi_0 (i=1,2) in same extended group
+  for G
+  test: theta_1=theta_2, e(v_1-v_2) is in A=(H^{\theta_1})^0 }
+set is_equivalent(x_rep(v_1,theta_1),x_rep(v_2,theta_2)) = bool:
+  theta_1=theta_2 and in_A(v_1-v_2,theta_1)
+
+set square_is_central(InnerClass ic,x_rep(v,theta)) = bool:
+  square_is_central(ic,v,theta)
+
+{ unused ?
+set lambda(InnerClass ic,
+           ratvec gamma,
+           mat delta,
+           ratvec v,
+           mat theta,
+           KGBElt y,
+           ratvec u,
+           rat r) = ratvec: lambda(gamma,theta,y)
+}
+
+{ in PFTR: z=i^<tau,(delta_0-1)l>(-1)^<lambda,t>
+  PFTR:delta_0 is ^delta here }
+set log_z(mat delta, vec lambda, vec l, vec tau,vec t) = rat:
+  -tau*(1-^delta)*l/4+lambda*t/2
+set log_zeta(mat delta, vec lambda, vec l,vec tau,vec t) = rat:
+  -tau*(1-^delta)*l/4+tau*l/2
+
+: extended_param = (InnerClass,mat,ratvec,vec  ,mat,ratvec,vec,mat,vec,vec)
+  {                (ic       delta,gamma,lambda,theta,g,   l,omega,tau,t) }
+
+set ic     (extended_param(ic,,,,,,,,,))     = InnerClass: ic
+set delta  (extended_param(,delta,,,,,,,,))  = mat: delta
+set gamma  (extended_param(,,gamma,,,,,,,))  = ratvec: gamma
+set lambda (extended_param(,,,lambda,,,,,,)) = vec: lambda
+set theta  (extended_param(,,,,theta,,,,,))  = mat: theta
+set g      (extended_param(,,,,,g,,,,))      = ratvec: g
+set l      (extended_param(,,,,,,l,,,))      = vec: l
+set omega  (extended_param(,,,,,,,omega,,))  = mat: omega
+set tau    (extended_param(,,,,,,,,tau,))    = vec: tau
+set t      (extended_param(,,,,,,,,,t))      = vec: t
+
+set dual_parameter(extended_param
+      (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) = extended_param:
+  (dual(ic),^delta,g,l,omega,gamma,lambda,theta,t,tau)
+
+set log_z(extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = rat:
+  log_z(delta,lambda,l,tau,t)
+
+set log_zeta(extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = rat:
+  log_zeta(delta,lambda,l,tau,t)
 
 {compute x,y,parameter and dual parameter of an extended parameter}
 
-set y(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=KGBElt:KGB_elt(dual(ic),-theta,(gamma-lambda-rho(ic)))
+set y(extended_param
+      (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) = KGBElt:
+  KGB_elt(dual(ic),-theta,(gamma-lambda-rho(ic)))
 
-set x(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=KGBElt:KGB_elt(ic,^theta,(g-l-rho_check(ic)))
+set x (extended_param
+       (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) = KGBElt:
+  KGB_elt(ic,^theta,(g-l-rho_check(ic)))
 
+set parameter (extended_param (,,gamma,,,,,,,):a) = Param:
+  parameter(x(a),y(a),gamma)
 
-set parameter(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=Param:
-let a=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in parameter(x(a),y(a),gamma)
+{ for debugging:
+  test that an extended parameter satisfies the defining conditions }
+set verify (extended_param
+       (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) =
+  if not square_is_central(ic,(g-l)/2,theta)
+  then prints("xi^2 is not central"); false
+  elif delta*gamma!=gamma then prints("gamma is not delta-fixed"); false
+  elif g*delta!=g then prints("g is not ^delta-fixed"); false
+  elif delta*theta != theta*delta
+  then prints("involution is not fixed by delta"); false
+  elif omega!=-^theta
+  then prints("Cartan involutions are not compatible"); false
+  elif g*(1-theta)!=(l+rho_check(ic))*(1-theta)
+  then prints("(1-^theta)g\ne (1-^theta)(l+rho^v)"); false
+  elif gamma*(1-omega)!=(lambda+rho(ic))*(1-omega)
+  then prints("(1-^omega)gamma\ne (1-^omega)(lambda+rho)"); false
+  elif -l*(1-delta)!=t*(1+theta)
+  then prints("(^delta-1)l\ne (1+^theta)t"); false
+  elif -(1-delta)*lambda!=(1-theta)*tau
+  then prints("(delta-1)lambda\ne (1+^omega)tau"); false
+  else true fi
 
-set dual_parameter(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=(dual(ic),^delta,g,l,omega,gamma,lambda,theta,t,tau)
-
-set is_fixed(mat delta, Param p)=p=twist(delta,p)
-set is_fixed([rat] gamma, mat delta, KGBElt x,KGBElt y)=is_fixed(delta,parameter(x,y,gamma))
-
-{KGBElt is fixed by twist by matrix delta}
-set is_fixed(mat delta, KGBElt x)=x=twist(delta,x)
-
-set is_fixed(mat delta, KGBElt x, KGBElt y)=is_fixed(delta,x) and is_fixed(^delta,y)
-
-{for debugging = test that an extended parameter satisfies the defining conditions}
-set verify(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=
-let dual_ic=dual(ic) in 
-let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in 
-if (not square_is_central(ic,(g-l)/2,theta)) then prints("xi^2 is not central");false
-elif (not delta*gamma=gamma) then prints("gamma is not delta-fixed"); false
-elif (not ^delta*g=g) then prints("g is not ^delta-fixed"); false
-elif (not delta*theta = theta*delta) then prints("involution is not fixed by delta");false
-elif (not omega=-^theta) then prints("Cartan involutions are not compatible"); false
-elif (not oneminus(^theta)*g=oneminus(^theta)*(l+rho_check(ic))) then prints("(1-^theta)g\ne (1-^theta)(l+rho^v)"); false
-elif (not oneminus(^omega)*gamma=oneminus(^omega)*(lambda+rho(ic))) then prints("(1-^omega)gamma\ne (1-^omega)(lambda+rho)"); false
-elif (not -oneminus(^delta)*l=oneplus(^theta)*t) then prints("(^delta-1)l\ne (1+^theta)t"); false
-elif (not -oneminus(delta)*lambda=oneminus(theta)*tau) then prints("(delta-1)lambda\ne (1+^omega)tau"); false
-else true fi
-
-{fixed(delta,B)=array of parameters from B fixed by delta}
+{ fixed(delta,B): select array of parameters from B fixed by delta }
 set fixed(mat delta, [Param] B)=[Param]:
-let rv=[Param]:[] in for p in B do 
-if is_fixed(delta,p) then rv#:=p fi od;rv
+  let rv=[Param]:[] in for p in B do if is_fixed(delta,p) then rv#:=p fi od; rv
 
-{display(E): terse output of E}
-set display(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=void:
-(
-prints(" gamma=",gamma),
-prints("     g=",g),
-prints(""),
-prints("lambda=",lambda),
-prints("   tau=",tau),
-prints("     l=",l),
-prints("     t=",t)
+{ display(E): terse output of E }
+set display (extended_param (,,gamma,lambda,,g,l,,tau,t)) = void:
+( prints(" gamma=",gamma)
+; prints("     g=",g)
+; prints("")
+; prints("lambda=",lambda)
+; prints("   tau=",tau)
+; prints("     l=",l)
+; prints("     t=",t)
 )
 
-set display_one_line(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=void:prints(lambda,", ", tau, ", ", l, ", ", t, ", ")
+set display_one_line (extended_param (,,,lambda,,,l,,tau,t)) = void:
+  prints(lambda,", ", tau, ", ", l, ", ", t, ", ")

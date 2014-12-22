@@ -27,12 +27,13 @@ set y(Param p, InnerClass G_vee) = KGBElt:
 set y(Param p) = KGBElt: y(p,dual_inner_class(p))
 set dual_real_form (Param p) = RealForm: real_form(y(p))
 
-set character(Param p) = ratvec:
-  let G=real_form(p),x=x(p)
-  then rd = root_datum(G), theta=involution(x)
-  then int_d = integrality_datum(rd,infinitesimal_character(p))
-  then rho_r_int = sum(real_posroots(int_d,theta))/2
-  in infinitesimal_character(p) - lambda(p) + rho_r(x) -rho_r_int + rho(int_d)
+{ cocharacter for (dual) real_form of y(p); should be constant %1 across block }
+set character (Param p) = ratvec:
+  let G=real_form(p), x=x(p)
+  then int_d = integrality_datum(G,infinitesimal_character(p))
+  then rho_r_int = sum(real_posroots(int_d,involution(x)))/2
+  in ( infinitesimal_character(p) - lambda(p) + rho_r(x) { grading weight(x) }
+      -rho_r_int + rho(int_d) )%1   { convert to cocharacter g(real_form(y)) }
 
 set central_cocharacter (RealForm G) = ratvec:
   (base_grading_vector(G) + rho_check(G))%1
@@ -49,16 +50,23 @@ set shift_g_regular (RootDatum rd, ratvec g) = ratvec:
   od; g
 
 { Finding the value lambda for the dual parameter to p is surprisingly simple.
-  Since imaginary roots are autimatically integral, there is no difference
+  Since imaginary roots are automatically integral, there is no difference
   of rho_i values to compensate for. The dual infinitesimal character is
   central_cocharacter(G)+dual_shift(G,gamma), but here rho_check(G) cancels
   out, giving base_grading_vector(G) + rho_check(integrality_datum(p)).
 }
-set dual_gamma (Param p) = ratvec:
+
+ { integral coweight associated to KGB element: is lambda-rho on dual side }
+set ell(KGBElt x) = vec:
+  let G=real_form(x)
+  then (numer,denom) = %(base_grading_vector(G)-torus_factor(x))
+  in if denom=1 then numer else error("non-integral ell(x)") fi
+
+set dual_gamma (Param p) = ratvec: { we want this to be strictly dominant }
   let G = real_form(p), dual_rho = rho_check(integrality_datum(p))
   in shift_g_regular(G,base_grading_vector(G) + dual_rho)
 
-set dual_lambda (Param p) = ratvec:
+set dual_lambda (Param p) = ratvec: { is mod 2: ell(p)+rho(dual_inner_class) }
   dual_gamma(p) - torus_factor(x(p))
 
 set check_dual_lambda (Param p) = bool:
@@ -73,4 +81,4 @@ set test1 (Param p) = [bool]:
 
 set test2 (Param p) = [ratvec]:
   let G_v=dual_inner_class(p) then drf = real_form(y(p,G_v))
-  in for q in block_of(p) do character(q)%1 od
+  in for q in block_of(p) do character(q) od { should be constant gamma%1 }

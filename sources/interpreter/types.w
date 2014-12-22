@@ -783,7 +783,7 @@ type_p make_tuple_type(raw_type_list l);
 type_p make_function_type(type_p a,type_p r);
 @)
 raw_type_list make_type_singleton(type_p raw);
-raw_type_list make_type_list(type_p t,raw_type_list l);
+raw_type_list make_type_list(raw_type_list l,type_p t);
 
 @ The functions like |mk_prim| below simply call the constructor in the
 context of the operator |new|, and then capture of the resulting (raw) pointer
@@ -794,6 +794,10 @@ while being manipulated by the parser (which guarantees that every pointer
 placed on the parsing stack will be argument of an interface function exactly
 once, possibly some |destroy| function in case it pops symbols during error
 recovery).
+
+However, the function |make_tuple_type| also reverses the list of types it
+handles, to reflect the fact that the left-recursive grammar rules most easily
+construct their type lists in reverse order.
 
 Note that we make a special provision that |mk_prim_type| will return an
 empty tuple type when called with the type name for |"void"|, although this is
@@ -824,7 +828,9 @@ type_p make_row_type(type_p c)
 {@; return mk_row_type(type_ptr(c)).release(); }
 
 type_p make_tuple_type(raw_type_list l)
-{@; return mk_tuple_type(type_list(l)).release(); }
+{@; type_list result(l); result.reverse();
+    return mk_tuple_type(std::move(result)).release();
+}
 
 type_p make_function_type(type_p a,type_p r)
 {@; return
@@ -838,7 +844,7 @@ raw_type_list make_type_singleton(type_p t)
   return result.release();
 }
 
-raw_type_list make_type_list(type_p t,raw_type_list l)
+raw_type_list make_type_list(raw_type_list l,type_p t)
 { type_list tmp(l); // since |prefix| needs second argument an lvalue reference
   return prefix(std::move(*type_ptr(t)),tmp).release();
 }
