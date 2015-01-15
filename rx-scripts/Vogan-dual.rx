@@ -21,6 +21,10 @@ set y(Param p, InnerClass G_vee) = KGBElt:
   , grading_vector = infinitesimal_character(p) - lambda(p) + rho_r(x)
   in KGB_elt(G_vee,dual_theta,grading_vector-rho_i(G_vee,dual_theta))
 
+set your_y(Param p, InnerClass G_vee) = KGBElt:
+  let x=x(p) then dual_theta = -^involution(x)
+  in KGB_elt(G_vee,dual_theta,infinitesimal_character(p) - lambda(p))
+
 { caution: these two functions build an inner class on the fly; if called
   mutliple times even with the same argument, the results will be incompatible
 }
@@ -58,8 +62,7 @@ set shift_g_regular (RootDatum rd, ratvec g) = ratvec:
 
  { integral coweight associated to KGB element: is lambda-rho on dual side }
 set ell(KGBElt x) = vec:
-  let G=real_form(x)
-  then (numer,denom) = %(base_grading_vector(G)-torus_factor(x))
+  let (numer,denom) = %(base_grading_vector(real_form(x))-torus_factor(x))
   in if denom=1 then numer else error("non-integral ell(x)") fi
 
 set dual_gamma (Param p) = ratvec: { we want this to be strictly dominant }

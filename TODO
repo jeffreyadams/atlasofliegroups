@@ -19,6 +19,8 @@
  - Allow for declaring an input path, and (silent) default prelude
  - Handle output from loading files differently
 
+ - Make 'not' execute a built-in function
+ - Define unary =, /= operations for testing against 0, for various types
  - Allow Python-style slices of lists, vectors, matrices
  - Allow list-comprehension syntax like in Haskell (and Python?)
  - Integrate a bigint library to store realex int (and rat?) values; while

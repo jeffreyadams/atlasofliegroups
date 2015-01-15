@@ -1,5 +1,5 @@
 <basic.rx
-<my_lattice {added functions, fixed function in_lattice}
+<lattice { added functions, function in_lattice }
 <parameters.rx { for parameter(x,y,gamma) }
 
 { some of the stuff at the top of this file really belongs elsewhere, but
@@ -60,7 +60,7 @@ set is_fixed (mat delta, KGBElt x, KGBElt y) = bool:
 { KGB element x is represented by xi=t\sigma_w\xi_0
   { defition: e(v)=exp(2i\pi v) }
   t=e(v) for v in X_*\otimes Q
-  in realex: torus_factor(x)=v/2-rho_check(G)/2 (NB: v is also divided by 2)
+  in realex: torus_factor(x)=2*v-rho_check(G) (NB: v is multiplied by 2)
   I prefer to work with the "actual torus factor" v
 }
 
@@ -81,25 +81,14 @@ set is_equivalent(x_rep(v_1,theta_1),x_rep(v_2,theta_2)) = bool:
   theta_1=theta_2 and in_A(v_1-v_2,theta_1)
 
 set square_is_central(InnerClass ic,x_rep(v,theta)) = bool:
-  square_is_central(ic,v,theta)
-
-{ unused ?
-set lambda(InnerClass ic,
-           ratvec gamma,
-           mat delta,
-           ratvec v,
-           mat theta,
-           KGBElt y,
-           ratvec u,
-           rat r) = ratvec: lambda(gamma,theta,y)
-}
+  square_is_central(ic,v,theta) { defined in parameters.rx }
 
 { in PFTR: z=i^<tau,(delta_0-1)l>(-1)^<lambda,t>
   PFTR:delta_0 is ^delta here }
-set log_z(mat delta, vec lambda, vec l, vec tau,vec t) = rat:
-  -tau*(1-^delta)*l/4+lambda*t/2
-set log_zeta(mat delta, vec lambda, vec l,vec tau,vec t) = rat:
-  -tau*(1-^delta)*l/4+tau*l/2
+set log_z(mat delta, vec lambda, vec l, vec tau,vec t) = rat: { modulo 1 }
+  l*(delta-1)*tau/4+t*lambda/2
+set log_zeta(mat delta, vec lambda, vec l,vec tau,vec t) = rat: { modulo 1 }
+  l*(delta-1)*tau/4+l*tau/2
 
 : extended_param = (InnerClass,mat,ratvec,vec  ,mat,ratvec,vec,mat,vec,vec)
   {                (ic       delta,gamma,lambda,theta,g,   l,omega,tau,t) }

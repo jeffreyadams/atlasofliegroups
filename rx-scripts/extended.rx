@@ -1,8 +1,9 @@
-<hermitian.rx {loads lots of other necessary stuff}
-<my_lattice  {replacement for lattice.rx}
+<hermitian.rx { loads lots of other necessary stuff }
+<my_lattice  { replacement for lattice.rx }
 
-<extended_misc  {some supplementary functions}
-<extended_types  {types of extended parameters}
+<parameters.rx { for square(x) }
+<extended_misc  { basis for extended parameters }
+<extended_types  { types of extended parameters }
 <extended_cross  {cross action of extended parameters}
 <extended_cayley  {Cayley transforms of extended parameters}
 
@@ -79,13 +80,16 @@
 
 { main construction of extended parameters
   E: (ic,delta,gamma,x,g,y) -> (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
-  (ic,delta,gamma, lambda=gamma-2*actual_torus_factor(y)
+  (ic inner class,
+   delta involution of based root datum,
+   gamma a logarithm of square(y),
+   lambda=gamma-2*actual_torus_factor(y)
    theta=involution(x) (!!!)
-   g,
+   g a logarithm of square(x),
    l=g-2*actual_torus_factor(x)
-   omega=involution(y)
-  tau: solve (1-delta)*lambda = (1+^omega)tau
-  t:   solve l*(1-delta)      = t*(1+theta)
+   omega=involution(y) = -^theta
+   tau: solve (1-delta)*lambda = (1+^omega)tau
+   t:   solve l*(1-delta)      = t*(1+theta)
 }
 
 set E(mat delta, ratvec gamma, KGBElt x, ratvec g, KGBElt y) = extended_param:
@@ -94,16 +98,16 @@ set E(mat delta, ratvec gamma, KGBElt x, ratvec g, KGBElt y) = extended_param:
     then error("inner classes are not dual")
     elif not is_fixed(delta,x) then error("x is not fixed by delta")
     elif not is_fixed(^delta,y) then error("y is not fixed by ^delta")
-    elif not is_integer(square(y)-gamma)
+    elif square(y) != gamma%1
     then error("y is not compatible with infinitesimal character gamma")
-    elif not is_integer(square(x)-g)
+    elif square(x) != g%1
     then error("x is not compatible with infinitesimal cocharacter g")
     fi
   then l = ratvec_as_vec(g-2*actual_torus_factor(x))
   , theta=involution(x), omega=involution(y) { NOTE ^theta=-omega }
   , lambda = ratvec_as_vec(gamma-2*actual_torus_factor(y))
-  then (t,result1)=solve((1-omega),ratvec_as_vec(-(1-^delta)*l))
-  ,  (tau,result2)=solve((1-theta),ratvec_as_vec(-(1-delta)*lambda))
+  then (t,result1)=solve(1-omega,ratvec_as_vec(l*(delta-1)))
+  ,  (tau,result2)=solve(1-theta,ratvec_as_vec((delta-1)*lambda))
   in
   if result1=false
   then error("(1-^delta)l=(1+^theta)t has no integral solution")
@@ -112,14 +116,10 @@ set E(mat delta, ratvec gamma, KGBElt x, ratvec g, KGBElt y) = extended_param:
   else (inner_class(real_form(x)),delta,gamma,lambda,theta,g,l,omega,tau,t)
   fi
 
-{ to make an extended parameter from (delta,p), you need the infinitesimal
-  cocharacter also. However this only works in the integral parameter case,
-  since the function y@Param used here, defined in parameters.rx, does an
-  integrality-dependent shift that torus_facotr(y)->lambda above does not
-}
+{ in case of an integral parameter, we can deduce gamma and y from it }
 set E(mat delta, Param p, ratvec g) = extended_param:
   E(delta, infinitesimal_character(p), x(p), g, y(p))
-{ a curious permutation of the arguments w.r.t. the main deinition of E }
+{ a curious permutation of the arguments w.r.t. the main definition of E }
 set E(mat delta, KGBElt x, KGBElt y, ratvec gamma, ratvec g) = extended_param:
   E(delta,gamma,x,g,y)
 
@@ -127,11 +127,9 @@ set E(mat delta, KGBElt x, KGBElt y, ratvec gamma, ratvec g) = extended_param:
 set E(Param p, ratvec g) = extended_param:
   E(distinguished_involution(real_form(p)),p,g)
 
-{ NOT the value from the built-in function, which is a rational coweight; WHY? }
-set torus_factor(extended_param(,,gamma,lambda,,,,,,)) = ratvec:
+set torus_factor(extended_param(,,,,,g,l,,,)) = ratvec: (g-l)/2
+set dual_torus_factor(extended_param(,,gamma,lambda,,,,,,)) = ratvec:
   (gamma-lambda)/2
-set dual_torus_factor(extended_param(,,,,,g,l,,,)) = ratvec:
-  (g-l)/2
 set nu(extended_param e) = ratvec: nu(gamma(e),x(e))
 
 { sign(E,F)=\pm 1 (or 0): nonzero tells whether the parameters for G are

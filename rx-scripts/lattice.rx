@@ -18,9 +18,9 @@ set saturation_quotient_module_basis(mat M) = mat:
   let (B,cs) = adapted_basis(M) then l=#cs
   in columns_with ((int j)bool: j>=l,B)
 
-{ M is an n*k matrix whose columns span a rank m submodule W of V=Z^n
+{ M is an n*k matrix whose columns span a rank k submodule W of V=Z^n
   A is an n*n matrix preserving W
-  sub_matrix(M,W) is the m*m matrix giving the action of M on W,
+  sub_matrix(M,W) is the m*m matrix giving the action of A on W,
   using columns of M as basis
 }
 set sub_matrix(mat A,mat M) = mat:
@@ -92,3 +92,23 @@ set projection_to_image (mat M) = mat:
   in rows_with( (int i): i<d, inverse(P) )
 }
 
+set in_lattice(mat M, vec v) = bool: { whether v in image lattice of M }
+  let (ds,L,) = diagonalize(M) then d=#ds, target=L*v
+  in all ((int i): if i<d then target[i]%ds[i] else target[i] fi=0,#target)
+
+set solve_vec(mat M, vec v) = vec: { find integer solution to A*x=v }
+  let (ds,L,R) = diagonalize(M) then d=#ds
+  then target =
+    for c@i in L*v
+    do if i<d
+       then if c%ds[i]=0 then c\ds[i] else error("not in lattice") fi
+       elif c=0 then 0 else error("not in span")
+       fi
+    od
+  in R*(for i:d do target[i] od # null (n_rows(R)-d))
+
+set solve_ratvec(mat M, vec v) = ratvec: { find rational solution to A*x=v }
+  let (ds,L,R) = diagonalize(M) then d=#ds, target=L*v
+  in begin
+    for i:#target-d from d do if target[i]!=0 then error("not in span") fi od
+  ; columns_with((int j):j<d,R) * for i:d do target[i]/ds[i] od end

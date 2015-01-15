@@ -225,6 +225,9 @@ set * (ratvec v, ratvec w) = rat: let (nv,dv)=%v,(nw,dw)=%w in nv*nw/(dv*dw)
 set * (vec v, ratvec w) = rat: let (nw,dw)=%w in v*nw/dw { more efficient }
 { cannot also define: *(ratvec v, vec w) = rat: let (nv,dv)=%v in nv*w/dv }
 
+set * (mat A, ratvec w) = ratvec: let (nw,dw)=%w in A*nw/dw
+set * (ratvec w, mat A) = ratvec: let (nw,dw)=%w in nw*A/dw
+
 { make a rational vector into an integer one if possible }
 set ratvec_as_vec(ratvec v) = vec:
   let (w,d)=%v in if d=1 then w else error("Not an integer vector") fi
