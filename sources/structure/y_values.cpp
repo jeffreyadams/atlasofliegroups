@@ -24,7 +24,7 @@ namespace y_values {
 // For torus elements we keep numerator entries reduced modulo |2*d_denom|.
 // Note this invariant is not enforced in the (private) raw constructor.
 
-// make $\exp(2\pi i r)$, doing affectively *2, then reducing modulo $2X_*$
+// compute $\exp((two ? 2 : 1)\pi i r)$, then reduce modulo $2X_*$
 TorusElement::TorusElement(const RatWeight& r, bool two)
   : repr(r) // but possibly multiplied by 2 below
 { if (two)

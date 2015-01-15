@@ -2394,13 +2394,14 @@ void synthetic_real_form_wrapper(expression_base::level l)
   {
     Ratvec_Numer_t& num = torus_factor->val.numerator();
     num += theta->val.right_prod(num);
-    TorusElement t(torus_factor->val,false); // working copy
+      // make torus factor $\theta$-fixed, temporarily doubled
+    TorusElement t(torus_factor->val,false); // take a copy as |TorusElement|
     const RootDatum& rd = G->val.rootDatum();
     WeightList alpha(rd.beginSimpleRoot(),rd.endSimpleRoot());
-    if (not is_central(alpha,t))
+    if (not is_central(alpha,t)) // every root should now have even evaluation
       throw std::runtime_error ("Not a valid strong involution");
 @.Not a valid strong...@>
-    torus_factor->val /= 2;
+    torus_factor->val /= 2; // now $(1+\theta)/2$ is applied to |torus_factor|
   }
 
   TorusElement cocharacter(0); // dummy value to be replaced

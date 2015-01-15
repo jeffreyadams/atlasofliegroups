@@ -412,6 +412,7 @@ matrix::Vector<C> find_solution(const matrix::PID_Matrix<C>& A,
     if (b[i] != C(0))
       throw std::runtime_error("unsolvable system");
 
+  b.resize(col.numRows(),0); // adapt size in opposite sense to $A$
   col.apply_to(b); // finally reconstruct value of |x|
   return b;
 }
