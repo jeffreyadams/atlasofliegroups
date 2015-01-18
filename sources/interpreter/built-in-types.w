@@ -425,7 +425,7 @@ annihilator_modulo(const LatticeMatrix& M, arithmetic::Denom_t denominator)
   for (size_t i=0; i<lambda.size(); ++i)
     row.rowMultiply(i,arithmetic::div_gcd(denominator,lambda[i]));
 
-  return row.transposed();
+  return row.transpose();
 }
 
 @ The wrapper function is particularly simple.
@@ -2097,13 +2097,6 @@ fields. To remind us that the |parent| is not there to be changed by us, we
 declare it |const|. The object referred to may in fact undergo internal change
 however, via manipulators of the |val| field.
 
-We shall later derive from this structure, without adding data members, a
-structure to record dual real forms, which are constructed in the context of
-the same inner class, but where the |val| field is constructed for the dual
-group (and its dual inner class). In order to accommodate for that we provide
-an additional protected constructor that will be defined later; this also
-explains why the copy constructor is protected rather than private.
-
 @< Type definitions @>=
 struct real_form_value : public value_base
 { const inner_class_value parent;
@@ -2129,9 +2122,6 @@ struct real_form_value : public value_base
   const Rep_context& rc();
   Rep_table& rt();
   ~real_form_value() @+{@; delete rt_p; }
-protected:
-  real_form_value(const real_form_value& v)
-  : parent(v.parent), val(v.val), cocharacter(v.cocharacter), rt_p(v.rt_p) @+{}
 private:
   Rep_table* rt_p;
     // owned pointer, initially |NULL|, assigned at most once

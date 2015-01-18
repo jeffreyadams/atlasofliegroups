@@ -638,12 +638,8 @@ void mod_lattice_f()
 
   unsigned long cn=interactive::get_Cartan_class(G.Cartan_set());
 
-  WeightInvolution q = G.cartan(cn).involution();
-  for (size_t j = 0; j<q.numRows(); ++j)
-    q(j,j) -= 1;
-
   CoeffList factor;
-  int_Matrix b = matreduc::adapted_basis(q,factor);
+  int_Matrix b = matreduc::adapted_basis(G.cartan(cn).involution()-1,factor);
 
   RankFlags units, doubles;
   unsigned n1=0,n2=0;

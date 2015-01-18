@@ -697,9 +697,8 @@ bool KGB::is_dual_twist_stable
     rw += rd.fundamental_coweight(weylGroup().Chevalley_dual(*it));
   }
   // before requiring integrality, we need to mod out by equivalence
-  int_Matrix A = GR.complexGroup().distinguished().transposed();
-  for (unsigned int i=0; i<A.numRows(); ++i)
-    A(i,i) += 1;
+  int_Matrix A = GR.complexGroup().distinguished();
+  A.transpose() += 1;
   int_Matrix projector = lattice::row_saturate(A);
   projector.apply_to(rw.numerator()); // this may change the size of |rw|
   rw.normalize();

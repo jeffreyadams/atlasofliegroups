@@ -240,27 +240,10 @@ SmallSubquotient dualPi0(const WeightInvolution& q)
   Algorithm: the vectors e+i(e), when e runs through b, generate a lattice
   commensurate with the eigenspace.
 */
-void plusBasis(WeightList& pb,
-	       const WeightInvolution& i)
-
-/*!
-  Synopsis: puts in mb a basis for the +1 eigenspace of the involution;
-
-  Algorithm: the vectors e+i(e), when e runs through b, generate a lattice
-  commensurate with the eigenspace.
-*/
-
+void plusBasis(WeightList& pb, const WeightInvolution& inv)
 {
-  size_t n = i.numRows();
-
-  // put in q the matrix of vectors i(e)+e in the basis b
-
-  WeightInvolution q(i);
-  for (size_t i=0; i<n; ++i)
-    q(i,i) += 1;
-
   CoeffList factor;
-  int_Matrix b = matreduc::adapted_basis(q,factor);
+  int_Matrix b = matreduc::adapted_basis(inv+1,factor);
 
   size_t r=factor.size();
 
@@ -281,19 +264,10 @@ WeightList plusBasis(const WeightInvolution& i)
   Algorithm: the vectors e-i(e), when e runs through b, generate a lattice
   commensurate with the eigenspace.
 */
-void minusBasis(WeightList& mb,
-		const WeightInvolution& i)
+void minusBasis(WeightList& mb, const WeightInvolution& inv)
 {
-  size_t n = i.numRows();
-
-  // put in q the matrix of vectors i(e)-e in the basis b
-
-  WeightInvolution q(i);
-  for (size_t i=0; i<n; ++i)
-    q(i,i) -= 1;
-
   CoeffList factor;
-  int_Matrix b = matreduc::adapted_basis(q,factor);
+  int_Matrix b = matreduc::adapted_basis(inv-1,factor);
 
   size_t r=factor.size();
 
@@ -308,13 +282,13 @@ WeightList minusBasis(const WeightInvolution& i)
   WeightList result; minusBasis(result,i); return result;
 }
 
-/*!
-  Synopsis: writes in qm the matrix of the restriction of q to X_-.
+/*
+  Writes in qm the matrix of the restriction of q to X_-.
 
   Precondition: q commutes with the involution;
 */
 void minusMatrix(int_Matrix& qm,
-		 const int_Matrix& q, const RealTorus& t)
+		 const WeightInvolution& q, const RealTorus& t)
 {
   const WeightList& bm = t.minusLattice();
   int_Matrix(bm.size(),bm.size()).swap(qm);
@@ -330,8 +304,8 @@ void minusMatrix(int_Matrix& qm,
 }
 
 
-/*!
-  Synopsis: writes in qp the matrix of the restriction of q to X_+.
+/*
+  Writes in qp the matrix of the restriction of q to X_+.
 
   Precondition: q commutes with the involution;
 */
@@ -364,8 +338,8 @@ namespace tori {
 namespace {
 
 
-/*!
-  Synopsis: puts the subquotient V^tau/V_+ in cs.
+/*
+  Puts the subquotient V^tau/V_+ in cs.
 
   Explanation: V is X/2X; V_+ is the image of X_+ in V, similarly for V_-,
   and V^tau=V_+ + V_- is the kernel of the map induced by tau-1 on V.
@@ -387,8 +361,8 @@ void makeTopology(SmallSubquotient& cs, const RealTorus& T)
 }
 
 
-/*!
-  Synopsis: puts in mb a basis for the -1 eigenspace of the involution; puts
+/*
+  Puts in mb a basis for the -1 eigenspace of the involution; puts
   in tm the matrix of a projection onto X_-.
 
   The matrix tm is in terms of the standard basis of X, and the chosen basis
@@ -399,20 +373,10 @@ void makeTopology(SmallSubquotient& cs, const RealTorus& T)
   commensurate with the eigenspace. The basis adapted to this sublattice also
   yields the projection matrix, after inversion.
 */
-void fullMinusBasis(WeightList& mb,
-		    int_Matrix& tm,
-		    const WeightInvolution& i)
+void fullMinusBasis(WeightList& mb, int_Matrix& tm, const WeightInvolution& inv)
 {
-  size_t n = i.numRows();
-
-  // put in q the matrix of vectors i(e)-e in the basis b
-
-  WeightInvolution q(i);
-  for (size_t i=0; i<n; ++i)
-    q(i,i) -= 1;
-
   CoeffList factor;
-  int_Matrix b = matreduc::adapted_basis(q,factor);
+  int_Matrix b = matreduc::adapted_basis(inv-1,factor);
 
   size_t r=factor.size();
 
@@ -423,12 +387,12 @@ void fullMinusBasis(WeightList& mb,
 
   // make projection matrix
   // rows of projection matrix are the first rows of the inverse of |b|
-  tm = b.inverse().block(0,0,r,n);
+  tm = b.inverse().block(0,0,r,inv.numRows());
 }
 
 
-/*!
-  \brief puts in |pb| a basis for the +1 eigenlattice of the involution;
+/*
+  Puts in |pb| a basis for the +1 eigenlattice of the involution;
   puts in |tp| the matrix of a coordinate transformation from the standard
   basis to |pb|.
 
@@ -444,20 +408,10 @@ void fullMinusBasis(WeightList& mb,
   the standard basis to the Smith basis; retaining only the rows that give the
   initial coordinates we obtain the matrix |tp|.
 */
-void fullPlusBasis(WeightList& pb,
-		   int_Matrix& tp,
-		   const WeightInvolution& tau)
+void fullPlusBasis(WeightList& pb, int_Matrix& tp, const WeightInvolution& tau)
 {
-  size_t n = tau.numRows();
-
-  // put in q the matrix of vectors tau(e)+e in the basis b
-
-  WeightInvolution q(tau);
-  for (size_t i=0; i<n; ++i)
-    q(i,i) += 1;
-
   CoeffList factor;
-  int_Matrix b = matreduc::adapted_basis(q,factor);
+  int_Matrix b = matreduc::adapted_basis(tau+1,factor);
 
   size_t r=factor.size();
 
@@ -467,7 +421,7 @@ void fullPlusBasis(WeightList& pb,
     pb.push_back(b.column(j));
 
   // make coordinate transformation matrix
-  tp=b.inverse().block(0,0,r,n);
+  tp=b.inverse().block(0,0,r,tau.numRows());
 }
 
 } // |namespace|

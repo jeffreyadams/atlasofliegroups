@@ -433,7 +433,7 @@ PID_Matrix<C>& PID_Matrix<C>::operator/= (const C& c) throw (std::runtime_error)
   is not square; it could likely be done in-place, but the permutation is
   rather complicated!
 */
-template<typename C> void Matrix<C>::transpose()
+template<typename C> Matrix<C>& Matrix<C>::transpose()
 {
   if (base::numRows() == base::numColumns()) // matrix is square
   {
@@ -452,6 +452,7 @@ template<typename C> void Matrix<C>::transpose()
 
     this->swap(result);
   }
+  return *this;
 }
 
 

@@ -43,6 +43,12 @@ template<typename C>
 template<typename C>
   PID_Matrix<C>& operator+= (PID_Matrix<C>& A, C c); // |A=A+c|, avoiding copy
 
+template<typename C>
+  PID_Matrix<C> operator- (PID_Matrix<C> A, C c) { return A + -c; }
+
+template<typename C>
+  PID_Matrix<C>& operator-= (PID_Matrix<C>& A, C c) { return A += -c; }
+
 }
 
 /******** type definitions ***************************************************/
@@ -177,11 +183,9 @@ template<typename C> class Matrix : public Matrix_base<C>
     : base(begin,end,n_rows,tags::IteratorTag()) {}
 
 // accessors
-  Matrix<C> transposed() const
-    { Matrix<C> result(*this); result.transpose(); return result; }
+  Matrix<C> transposed() const { return Matrix<C>(*this).transpose(); }
   Matrix<C> negative_transposed() const
-    { Matrix<C> result(*this); result.negate(); result.transpose();
-      return result; }
+    { return Matrix<C>(*this).negate().transpose(); }
 
   template<typename C1> Vector<C1> operator* (const Vector<C1>&) const;
   template<typename C1> Vector<C1> right_prod(const Vector<C1>&) const;
@@ -202,8 +206,8 @@ template<typename C> class Matrix : public Matrix_base<C>
   Matrix<C>& leftMult (const Matrix<C>& P)
     { (P**this).swap(*this); return *this; }
 
-  void negate(){ base::d_data.negate(); }
-  void transpose();
+  Matrix<C>& negate() { base::d_data.negate(); return *this; }
+  Matrix<C>& transpose();
 
   // secondary manipulators
 
@@ -239,20 +243,6 @@ template<typename C> class PID_Matrix : public Matrix<C>
     : base(begin,end,n_rows,tags::IteratorTag()) {}
 
 // manipulators
-  PID_Matrix<C>& operator/= (const C& c) throw (std::runtime_error);
-
-  void invert();
-  void invert(C& d);
-
-// accessors
-  PID_Matrix<C> transposed() const
-    { PID_Matrix<C> result(*this); result.transpose(); return result; }
-  PID_Matrix<C> negative_transposed() const
-    { PID_Matrix<C> result(*this); result.negate(); result.transpose();
-      return result; }
-
-  using base::operator*;
-
   PID_Matrix<C>& operator+= (const Matrix<C>& M)
     { base::operator+=(M); return *this; }
   PID_Matrix<C>& operator-= (const Matrix<C>& M)
@@ -261,6 +251,22 @@ template<typename C> class PID_Matrix : public Matrix<C>
     { base::operator*(Q).swap(*this); return *this; }
   PID_Matrix<C>& leftMult (const Matrix<C>& P)
     { (P**this).swap(*this); return *this; }
+
+  PID_Matrix<C>& operator/= (const C& c) throw (std::runtime_error);
+
+  PID_Matrix<C>& negate() { base::negate(); return *this; }
+  PID_Matrix<C>& transpose() { base::transpose(); return *this; }
+
+  void invert();
+  void invert(C& d);
+
+// accessors
+  PID_Matrix<C> transposed() const
+    { return PID_Matrix<C>(*this).transpose(); }
+  PID_Matrix<C> negative_transposed() const
+    { return PID_Matrix<C>(*this).negate().transpose(); }
+
+  using base::operator*;
 
   PID_Matrix<C> operator* (const Matrix<C>& Q) const
   { PID_Matrix<C> res; base::operator*(Q).swap(res); return res; }
