@@ -207,23 +207,30 @@ InvolutionNbr InvolutionTable::add_involution
   std::vector<int> diagonal;
   int_Matrix B = matreduc::adapted_basis(A,diagonal); // matrix for lifting
   int_Matrix R = B.inverse(); // matrix that maps to adapted basis coordinates
-  R.block(0,0,diagonal.size(),R.numColumns()).swap(R); R*=A;
+  R.block(0,0,diagonal.size(),R.numColumns()).swap(R); // restrict to image |A|
+  R*=A; // now R is A followed by taking coordinates on adapted basis of image
   for (unsigned i=0; i<R.numRows(); ++i)
-    for (unsigned j=0; j<R.numColumns(); ++j)
-    {
-      assert (R(i,j)%diagonal[i]==0); // since $R=D(diagonal)*C^{-1}$
-      R(i,j)/=diagonal[i]; // don't need |arithmetic::divide|, division exact
-    }
+    if (diagonal[i]!=1)
+      for (unsigned j=0; j<R.numColumns(); ++j)
+      {
+	assert (R(i,j)%diagonal[i]==0); // since $R=D(diagonal)*C^{-1}$
+	R(i,j)/=diagonal[i]; // don't need |arithmetic::divide|, division exact
+      }
+  // now |R| gives coordinates on adapted basis scaled: basis of image lattice
+  // |R| is the matrix that will become |M_real|
 
   B.block(0,0,B.numRows(),diagonal.size()).swap(B);
   for (unsigned j=0; j<B.numColumns(); ++j)
-    B.columnMultiply(j,diagonal[j]);
-
-  A = lattice::row_saturate(A);
+    if (diagonal[j]!=1)
+      B.columnMultiply(j,diagonal[j]);
+  // restore relation |B*R==A| after scaling down rows of |R|
+  // |B| is the matrix that will become |lift_mat|
 
   unsigned int W_length=W.length(canonical);
   unsigned int length = (W_length+Cayleys.size())/2;
-  data.push_back(record(theta,InvolutionData(rd,theta),A,R,diagonal,B,
+  data.push_back(record(theta,InvolutionData(rd,theta),
+			lattice::row_saturate(A),
+			R,diagonal,B,
 			length,W_length,tits::fiber_denom(theta)));
   assert(data.size()==hash.size());
 
