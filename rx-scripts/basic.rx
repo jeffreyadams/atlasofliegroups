@@ -538,7 +538,7 @@ set is_non_parity (int s,Param p)=bool: is_real(s,x(p)) and inv_Cayley(s,p)=p
 set is_parity (int s,Param p)= bool: is_real(s,x(p)) and inv_Cayley(s,p)!=p
 
 set status (int s,Param p) = int: { enum: C-, ic, r1, r2, C+, rn, i1, i2 }
-  let st=status(s,x(p)) in
+  let st=status(posroots(integrality_datum(p))[s],x(p)) in
   if st<=1 or st=4 then st { complex and imaginary compact cases keep old code }
   elif st=3 then { imaginary non-compact } 5+imaginary_type(s,p)
   elif inv_Cayley(s,p)=p then { real non-parity } 5
