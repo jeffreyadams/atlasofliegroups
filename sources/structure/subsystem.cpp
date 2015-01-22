@@ -112,7 +112,7 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta,
   for (weyl::Generator i=0; i<rank(); ++i)
   {
     RootNbr image =
-      inv_map[rd.rootNbr(theta*rd.root(parent_nr_simple(i)))];
+      inv_map[rd.root_index(theta*rd.root(parent_nr_simple(i)))];
     assert(image < numRoots());  // |image| is number of image in subsystem
     Delta[i] = rootMinus(image); // |-theta| image of |root(i)|
   }
@@ -152,7 +152,7 @@ weyl::Twist SubSystem::parent_twist(const WeightInvolution& theta,
   for (weyl::Generator i=0; i<rank(); ++i)
   {
     RootNbr image =
-      inv_map[rd.rootNbr(theta*rd.root(parent_nr_simple(i)))];
+      inv_map[rd.root_index(theta*rd.root(parent_nr_simple(i)))];
     assert(image < numRoots());
     Delta[i] = image; // PLUS |theta| image of |root(i)|
   }

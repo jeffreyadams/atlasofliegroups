@@ -259,6 +259,13 @@ rank: (RootDatum->int) Rank of the weight lattice for this Lie type.
 semisimple_rank: (RootDatum->int) Rank of the root lattice of  this Lie type.
 nr_of_posroots: (RootDatum->int) Number of positive roots in the root datum.
 
+root_index: (RootDatum,vec->int): Index of root with respect to posroots
+coroot_index: (RootDatum,vec->int): Index of coroot with respect to poscoroots
+  These functions look up the vector in posroots(rd) or poscoroots(rd), and
+  return the index found shifted down by nr_of_posroots(rd), so that the
+  simple roots start at 0, and negative roots give a negative result. In case
+  the vector is not found at all, the value nr_of_posroots(rd) is returned.
+
 integrality_datum: (RootDatum,ratvec->RootDatum): integral coroots subdatum
   Applied to (rd,gamma), forms the root datum whose coroots form the closed
   subsystem of the coroots of rd that take an integral value on gamma.
@@ -471,20 +478,21 @@ KGB: (RealFrom,int->KGBElt): select a KGB element x among those of a real form
 Cartan_class: (KGBElt->CartanClass): the Cartan class for the KGB element
 involution: (KGBElt->mat): the involution of X^* associated to the KGB element
 length: (KGBElt->int): length of the element within its KGB set
-cross: (int,KGBElt->KGBElt): cross action for (generator,KGB element)
-Cayley: (int,KGBElt->KGBElt): Cayley transform for (generator,KGB element)
-  If (and only if) the transform is undefined it returns the same parameter
-inv_Cayley: (int,KGBElt->KGBElt): first inverse Cayley transform
-  If (and only if) the transform is undefined it returns the same parameter
-  Whether there is a second inverse Cayley transform can be found out by
-  applying cross action to the result; it either returns the same result,
-  which signifies a single-value inverse Cayley, or else the second value
 status: (int,KGBElt->int): status of generator on KGB element, scale 0..4
   Encoding 0: Complex descent, 1: imaginary compact, 2: real,
   3: imaginary non-compact, 4: Complex ascent
 status: (vec,KGBElt->int): status of any root on KGB element, scale 0..4
   The value status(alpha,x) gives the status of the root alpha at x; the
   encoding of statuses is the same as for the function status@(int,KGBElt)
+cross: (int,KGBElt->KGBElt): cross action for (posrootnr,KGB element)
+  Returns result of cross action by root reflection of the given KGB element
+Cayley: (int,KGBElt->KGBElt): Cayley transform for (posrootnr,KGB element)
+  Returns either the Cayley transform or an inverse Cayley transform of the
+  KGB element through the given positive root, or returns that element itself
+  when neither is defined. If defined, one can find which it is using status,
+  and whether there is a second inverse Cayley transform can be found out by
+  applying cross action to the result; it either returns the same result,
+  which signifies a single-value inverse Cayley, or else the second value
 
 twist: (KGBElt->KGBElt): twist of KGB element x, useful for Hermitian dual
   This is defined by conjugation of x by the distinguished involution delta

@@ -200,32 +200,37 @@ InvolutionNbr InvolutionTable::add_involution
     rd.reflect(*it,theta);
 
   int_Matrix A=theta; // will contain |id-theta|, later row-saturated
-  A.negate();
-  for (size_t i=0; i<A.numRows(); ++i)
-    ++A(i,i);
+  A.negate() += 1;
 
   // |R| will map $\lambda-\rho$ to reduced torus part coordinates
   // |B| will then map these coordinates (mod 2) through to $A*(\lambda-\rho)$
   std::vector<int> diagonal;
   int_Matrix B = matreduc::adapted_basis(A,diagonal); // matrix for lifting
   int_Matrix R = B.inverse(); // matrix that maps to adapted basis coordinates
-  R.block(0,0,diagonal.size(),R.numColumns()).swap(R); R*=A;
+  R.block(0,0,diagonal.size(),R.numColumns()).swap(R); // restrict to image |A|
+  R*=A; // now R is A followed by taking coordinates on adapted basis of image
   for (unsigned i=0; i<R.numRows(); ++i)
-    for (unsigned j=0; j<R.numColumns(); ++j)
-    {
-      assert (R(i,j)%diagonal[i]==0); // since $R=D(diagonal)*C^{-1}$
-      R(i,j)/=diagonal[i]; // don't need |arithmetic::divide|, division exact
-    }
+    if (diagonal[i]!=1)
+      for (unsigned j=0; j<R.numColumns(); ++j)
+      {
+	assert (R(i,j)%diagonal[i]==0); // since $R=D(diagonal)*C^{-1}$
+	R(i,j)/=diagonal[i]; // don't need |arithmetic::divide|, division exact
+      }
+  // now |R| gives coordinates on adapted basis scaled: basis of image lattice
+  // |R| is the matrix that will become |M_real|
 
   B.block(0,0,B.numRows(),diagonal.size()).swap(B);
   for (unsigned j=0; j<B.numColumns(); ++j)
-    B.columnMultiply(j,diagonal[j]);
-
-  A = lattice::row_saturate(A);
+    if (diagonal[j]!=1)
+      B.columnMultiply(j,diagonal[j]);
+  // restore relation |B*R==A| after scaling down rows of |R|
+  // |B| is the matrix that will become |lift_mat|
 
   unsigned int W_length=W.length(canonical);
   unsigned int length = (W_length+Cayleys.size())/2;
-  data.push_back(record(theta,InvolutionData(rd,theta),A,R,diagonal,B,
+  data.push_back(record(theta,InvolutionData(rd,theta),
+			lattice::row_saturate(A),
+			R,diagonal,B,
 			length,W_length,tits::fiber_denom(theta)));
   assert(data.size()==hash.size());
 
@@ -311,9 +316,8 @@ KGB_elt_entry InvolutionTable::x_pack(const GlobalTitsElement& x) const
   assert(i<hash.size());
   RatWeight wt = x.torus_part().log_2pi();
   // we need projector modulo kernel of |theta^tr+1|, cf. constructor
-  int_Matrix A = matrix(i).transposed();
-  for (size_t i=0; i<A.numRows(); ++i)
-    A(i,i) += 1;
+  int_Matrix A = matrix(i);
+  A.transpose() += 1;
   int_Matrix projector = lattice::row_saturate(A);
   Ratvec_Numer_t p = projector * wt.numerator();
 
@@ -335,9 +339,8 @@ InvolutionTable::x_equiv(const GlobalTitsElement& x0,
   RatWeight wt = x0.torus_part().log_2pi()-x1.torus_part().log_2pi();
 
   // we need projector modulo kernel of |theta^tr+1|, cf. constructor
-  int_Matrix A = matrix(i).transposed();
-  for (size_t i=0; i<A.numRows(); ++i)
-    A(i,i) += 1;
+  int_Matrix A = matrix(i);
+  A.transpose() += 1;
   int_Matrix projector = lattice::row_saturate(A);
   Ratvec_Numer_t p = projector * wt.numerator();
 
@@ -382,6 +385,7 @@ Weight InvolutionTable::unpack(InvolutionNbr inv, TorusPart y_part) const
 {
   const record& rec=data[inv];
   Weight result(rec.lift_mat.numRows(),0);
+  // set |result=left_mat*lift| where |lift| is the integer lift of |y_part|
   for (unsigned i=0; i<y_part.size(); ++i)
     if (y_part[i])
       result += rec.lift_mat.column(i);

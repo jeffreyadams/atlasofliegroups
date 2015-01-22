@@ -1,12 +1,12 @@
-<synthetic
-<Weylgroup  {for make_dominant}
-<translate
+<synthetic.rx
+<Weylgroup.rx  {for make_dominant}
+<translate.rx
 
 set get_posroot_number([int] v,RootDatum rd)=int:
-let i=0 in 
+let i=0 in
 let rv=-1 in
 for i:nr_of_posroots(rd) do
- if v=posroots(rd)[i] then rv:=i;i:=nr_of_posroots(rd) else i:=i+1 fi od;rv
+ if v=root(rd,i) then rv:=i;i:=nr_of_posroots(rd) else i:=i+1 fi od;rv
 
 {add sum of roots to v to make it dominant
 algorithm:
@@ -21,15 +21,15 @@ a_i=ceil(-<v,alpha^vee_i>/d)*denominator
 returns (new_v, new_v-v)}
 set make_dominant_using_roots(RootDatum rd, ratvec v)=
 if (is_dominant(rd,v)) then (v,v-v) else
-let (rv,)=make_dominant(rd,v) in 
+let (rv,)=make_dominant(rd,v) in
 if (is_integer(rv-v)) then (rv,rv-v) else
-let rv=v in 
-for i:semisimple_rank(rd) do 
- let fw=fundamental_weight(rd,i) in 
- let d=denom(fw) in 
- let ip=v*simple_coroots(rd)[i] in 
+let rv=v in
+for i:semisimple_rank(rd) do
+ let fw=fundamental_weight(rd,i) in
+ let d=denom(fw) in
+ let ip=v*coroot(rd,i) in
  if (ip<0) then
-   let b=ceil(-ip/d) in 
+   let b=ceil(-ip/d) in
    let a=b*d in
     rv+:=a*fw  fi od; (rv,rv-v) fi fi
 
@@ -75,37 +75,37 @@ set my_posroot_Cayley (int i, Param p) = Param:
   let x0=x(p), gamma=infinitesimal_character(p)
   then G = real_form(x0), x3=posroot_Cayley(i,x0), theta0=involution(x0)
   then rd=root_datum(G), theta3=involution(x3)
-  then ()= if denom(poscoroots(rd)[i]*gamma)!=1
+  then ()= if denom(coroot(rd,i)*gamma)!=1
            then error("coroot is not integral for parameter")
            fi
-  , id = integrality_datum(rd,gamma), beta=posroots(rd)[i]
+  , id = integrality_datum(rd,gamma), beta=root(rd,i)
   then (w,s) = make_simple(rd,beta)
 {  then ()=prints("w:", w) }
   then w1=inverse(w)
-  then theta1 = w*theta0*w1 { involution for Cayley by simple_roots(id)[s] }
+  then theta1 = w*theta0*w1 { involution for Cayley by root(id,s) }
   then theta2 = simple_reflection(rd,s)*theta1 { for simple imaginary Cayley }
-{  then ()=prints("theta1:", theta1) 
-  then ()=prints("theta2:", theta2) 
+{  then ()=prints("theta1:", theta1)
+  then ()=prints("theta2:", theta2)
   then ()=prints("theta3:", theta3) }
   then diff1 = w1*rho_r(rd,theta1) - rho_r(rd,theta0)
   ,    diff2 = w1*rho_r(rd,theta2) - rho_r(rd,theta3)
-{  in let ()=prints("diff1:", diff1) 
-  in let ()=prints("diff2:", diff2) 
+{  in let ()=prints("diff1:", diff1)
+  in let ()=prints("diff2:", diff2)
   in let ()=prints("new lambda:", lambda(p)+diff1-diff2) }
-  {need to translate to original infinitesimal character}  
-  in T(parameter(x3,lambda(p) + diff1 - diff2, gamma),infinitesimal_character(p)) 
+  {need to translate to original infinitesimal character}
+  in T(parameter(x3,lambda(p) + diff1 - diff2, gamma),infinitesimal_character(p))
 
 set my_posroot_inv_Cayley (int i, Param p) = Param:
   let x0=x(p), gamma=infinitesimal_character(p)
   then G = real_form(x0), x3=posroot_Cayley(i,x0), theta0=involution(x0)
   then rd=root_datum(G), theta3=involution(x3)
-  then ()= if denom(poscoroots(rd)[i]*gamma)!=1
+  then ()= if denom(coroot(rd,i)*gamma)!=1
            then error("coroot is not integral for parameter")
            fi
-  , id = integrality_datum(rd,gamma), beta=posroots(rd)[i]
+  , id = integrality_datum(rd,gamma), beta=root(rd,i)
   then (w,s) = make_simple(id,beta)
   then w1=inverse(w)
-  then theta1 = w*theta0*w1 { involution for Cayley by simple_roots(id)[s] }
+  then theta1 = w*theta0*w1 { involution for Cayley by root(id,s) }
   then theta2 = posroot_reflection(rd,s)*theta1 { for simple imaginary Cayley }
   then diff1 = w1*rho_r(rd,theta1) - rho_r(rd,theta0)
   ,    diff2 = w1*rho_r(rd,theta2) - rho_r(rd,theta3)
@@ -137,42 +137,42 @@ begin let p=B[i]
 end
 
 set test_cayleys(Param p)=void:
-let B=block_of(p) in 
-let simple_integral_roots=simple_roots(integrality_datum(p)) in 
-let G=real_form(p) in 
-let (result1,result2)=(true,true) in 
-for q@k in B do 
+let B=block_of(p) in
+let simple_integral_roots=simple_roots(integrality_datum(p)) in
+let G=real_form(p) in
+let (result1,result2)=(true,true) in
+for q@k in B do
  let ()=prints(k, " ", q) in
- for i:n_columns(simple_integral_roots) do 
-  let passed_posroot=true in 
-  let passed_my_posroot=true in 
+ for i:n_columns(simple_integral_roots) do
+  let passed_posroot=true in
+  let passed_my_posroot=true in
   let j=get_posroot_number(simple_integral_roots[i],G) in
   if (Cayley(i,q) != q) {Cayley is defined} then
-   let c1=Cayley(i,q) in 
-   let c2=posroot_Cayley(j,q) in 
-   let c3=my_posroot_Cayley(j,q) in 
+   let c1=Cayley(i,q) in
+   let c2=posroot_Cayley(j,q) in
+   let c3=my_posroot_Cayley(j,q) in
    let ()=if not (c2=c1 or c2=cross(i,c1)) then passed_posroot:=false;result1:=false fi in
    if not (c3=c1 or c3=cross(i,c1)) then passed_my_posroot:=false;result2:=false fi;
-   prints(passed_posroot,", ", passed_my_posroot) 
+   prints(passed_posroot,", ", passed_my_posroot)
      fi
  od
 od;prints("posroot:", result1);prints("my_posroot:", result2)
 
 set test_cayleys_2(Param p)=void:
-let B=block_of(p) in 
-let simple_integral_roots=simple_roots(integrality_datum(p)) in 
-let G=real_form(p) in 
+let B=block_of(p) in
+let simple_integral_roots=simple_roots(integrality_datum(p)) in
+let G=real_form(p) in
 let result=true in
-for q@k in B do 
+for q@k in B do
  let ()=prints(k, " ", q) in
- for i:n_columns(simple_integral_roots) do 
-  let passed_my_posroot=true in 
+ for i:n_columns(simple_integral_roots) do
+  let passed_my_posroot=true in
   let j=get_posroot_number(simple_integral_roots[i],G) in
   if (Cayley(i,q) != q) {Cayley is defined} then
-   let c1=Cayley(i,q) in 
-   let c2=my_posroot_Cayley(j,q) in 
+   let c1=Cayley(i,q) in
+   let c2=my_posroot_Cayley(j,q) in
    if not (c2=c1 or c2=cross(i,c1)) then passed_my_posroot:=false;result:=false fi;
-   prints(passed_my_posroot) 
+   prints(passed_my_posroot)
      fi
  od
 od;prints("my_posroot:", result)

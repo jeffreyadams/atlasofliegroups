@@ -4,7 +4,7 @@
 { debug ext_cross construction, shouldn't be necessary }
 set test_ext_cross(Param p, [int] kappa, extended_param xq) = void:
   let ()=if not verify(xq) then error("xq is not valid") fi
-  then q=parameter(xq), cross=cross(kappa,p)
+  then q=parameter(xq), cross=W_cross(kappa,p)
   in
   if q!=cross
   then prints("cross/ext_cross are not consistent: ",q," ",cross); error("")
@@ -18,8 +18,8 @@ set ext_cross_1(int j
   let p=parameter(E), rd=root_datum(ic)
   then type = string: {1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn}
     ext_type_1(delta,j,p)
-  , alpha=simple_roots(rd)[j]
-  , alpha_check=simple_coroots(rd)[j]
+  , alpha=root(rd,j)
+  , alpha_check=coroot(rd,j)
   then s_alpha    = 1 - column(alpha)*row(alpha_check)
   , s_alpha_check = 1 - column(alpha_check)*row(alpha) { = ^s_alpha }
   in

@@ -270,8 +270,22 @@ set root_datum (LieType t, [ratvec] gens) = RootDatum:
 { allow single kernel generator in root datum construction }
 set root_datum (LieType t, ratvec gen) = RootDatum: root_datum(t,[gen])
 
-set reflection (RootDatum rd, int i) = mat: { i indexes positive root/coroot }
-  1 - column(posroots(rd)[i])*row(poscoroots(rd)[i])
+set is_root((RootDatum,vec) (rd,):p) = bool:
+  root_index(p)<nr_of_posroots(rd)
+set is_coroot((RootDatum,vec) (rd,):p) = bool:
+  coroot_index(p)<nr_of_posroots(rd)
+set is_posroot((RootDatum,vec)(rd,):p) = bool:
+  let ri=root_index(p) in ri>=0 and ri<nr_of_posroots(rd)
+set is_coposroot((RootDatum,vec)(rd,):p) = bool:
+  let cri=coroot_index(p) in cri>=0 and cri<nr_of_posroots(rd)
+
+set posroot_index((RootDatum,vec)p) = int: { fold roots to positive }
+  let i=root_index(p) in if i<0 then -1-i else i fi
+set poscoroot_index((RootDatum,vec)p) = int: { fold coroots to positive }
+  let i=coroot_index(p) in if i<0 then -1-i else i fi
+
+set reflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
+  1 - column(root(rd,i))*row(coroot(rd,i))
 
 set rho (RootDatum rd) = ratvec:
   let res= ratvec: null(rank(rd))
@@ -286,6 +300,16 @@ set rho_check (RootDatum rd) = ratvec: { rho(dual(rd)), but a bit faster }
 
 set is_positive_root (RootDatum rd,vec alpha) = bool: rho_check(rd)*alpha>0
 set is_positive_coroot (RootDatum rd,vec alphav) = bool: alphav*rho(rd)>0
+
+set roots (RootDatum rd) = mat:
+  let npr=nr_of_posroots(rd)
+  in rank(rd)#for i:2*npr from -npr do root(rd,i) od
+set coroots (RootDatum rd) = mat:
+  let npr=nr_of_posroots(rd)
+  in rank(rd)#for i:2*npr from -npr do coroot(rd,i) od
+
+set root(RootDatum rd, vec alpha_v) = vec: root(rd,coroot_index(rd,alpha_v))
+set coroot(RootDatum rd, vec alpha) = vec: coroot(rd,root_index(rd,alpha))
 
 set singular_roots (RootDatum rd,ratvec v)=[int]:
   let rv=[int]:[] { cannot use columns_with: must find _indices_ of columns }
@@ -429,6 +453,12 @@ set KGB_elt (RootDatum rd, mat theta, ratvec v) = KGBElt:
 
 set Cartan_class (InnerClass ic, mat theta) = CartanClass:
   Cartan_class(KGB_elt(ic,theta,ratvec:null(rank(ic))))
+
+set status(vec alpha,KGBElt x) = int: status(root_index(real_form(x),alpha),x)
+set cross(vec alpha,KGBElt x) = KGBElt:
+  cross(root_index(real_form(x),alpha),x)
+set Cayley(vec alpha,KGBElt x) = KGBElt:
+  Cayley(root_index(real_form(x),alpha),x)
 
 set KGB_status_text (int i) = string: ["C-","ic","r ","nc","C+"][i]
 

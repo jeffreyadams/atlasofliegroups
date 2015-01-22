@@ -3,7 +3,7 @@
 
 { using postive root indices allows using simple roots indices as well }
 set posroot_reflection(RootDatum rd, int r) = mat: { r indexes root }
-  1 - [posroots(rd)[r]] * ^[poscoroots(rd)[r]]
+  1 - [root(rd,r)] * ^[coroot(rd,r)]
 
 { find Weyl group element (matrix) making root simple & index of simple root }
 set make_simple (RootDatum rd, vec root) = (mat, int):
@@ -40,10 +40,10 @@ set posroot_cross (int i, KGBElt x) = KGBElt:
 set posroot_Cayley (int i, KGBElt x) = KGBElt:
   let G=real_form(x), theta0=involution(x)
   then rd=root_datum(G)
-  then beta = posroots(rd)[i], theta3=posroot_reflection(rd,i)*theta0
-  then (w,s) = make_simple(rd,beta) { simple_roots(rd)[s] = w(beta) }
+  then beta = root(rd,i), theta3=posroot_reflection(rd,i)*theta0
+  then (w,s) = make_simple(rd,beta) { root(rd,s) = w(beta) }
   then w1=inverse(w)
-  then theta1 = w*theta0*w1 { involution for Cayley by simple_roots(rd)[s] }
+  then theta1 = w*theta0*w1 { involution for Cayley by root(rd,s) }
   then theta2 = posroot_reflection(rd,s)*theta1 { for simple imaginary Cayley }
   then diff1 = rho_check_i(rd,theta1)*w - rho_check_i(rd,theta0)
   ,    diff2 = rho_check_i(rd,theta2)*w - rho_check_i(rd,theta3)
@@ -60,13 +60,13 @@ set posroot_Cayley (int i, Param p) = Param:
   let x0=x(p), gamma=infinitesimal_character(p)
   then G = real_form(x0), x3=posroot_Cayley(i,x0), theta0=involution(x0)
   then rd=root_datum(G), theta3=involution(x3)
-  then ()= if denom(poscoroots(rd)[i]*gamma)!=1
+  then ()= if denom(coroot(rd,i)*gamma)!=1
            then error("coroot is not integral for parameter")
            fi
-  , id = integrality_datum(rd,gamma), beta=posroots(rd)[i]
+  , id = integrality_datum(rd,gamma), beta=root(rd,i)
   then (w,s) = make_simple(id,beta)
   then w1=inverse(w)
-  then theta1 = w*theta0*w1 { involution for Cayley by simple_roots(id)[s] }
+  then theta1 = w*theta0*w1 { involution for Cayley by root(id,s) }
   then theta2 = posroot_reflection(id,s)*theta1 { for simple imaginary Cayley }
   then diff1 = w1*rho_r(id,theta1) - rho_r(rd,theta0)
   ,    diff2 = w1*rho_r(id,theta2) - rho_r(rd,theta3)
@@ -76,13 +76,13 @@ set posroot_inv_Cayley (int i, Param p) = Param:
   let x0=x(p), gamma=infinitesimal_character(p)
   then G = real_form(x0), x3=posroot_Cayley(i,x0), theta0=involution(x0)
   then rd=root_datum(G), theta3=involution(x3)
-  then ()= if denom(poscoroots(rd)[i]*gamma)!=1
+  then ()= if denom(coroot(rd,i)*gamma)!=1
            then error("coroot is not integral for parameter")
            fi
-  , id = integrality_datum(rd,gamma), beta=posroots(rd)[i]
+  , id = integrality_datum(rd,gamma), beta=root(rd,i)
   then (w,s) = make_simple(id,beta)
   then w1=inverse(w)
-  then theta1 = w*theta0*w1 { involution for Cayley by simple_roots(id)[s] }
+  then theta1 = w*theta0*w1 { involution for Cayley by root(id,s) }
   then theta2 = posroot_reflection(id,s)*theta1 { for simple imaginary Cayley }
   then diff1 = w1*rho_r(id,theta1) - rho_r(rd,theta0)
   ,    diff2 = w1*rho_r(id,theta2) - rho_r(rd,theta3)
@@ -104,11 +104,11 @@ set concat ([string] l,string a, string b, string c) = string:
   for t@i in l do s#:= t # if i=last then c else b fi od; s
 
 set posroot_status (int i, Param p) = int:
-  let rd=RootDatum: real_form(p) then st=status(posroots(rd)[i],x(p)) in
+  let rd=RootDatum: real_form(p) then st=status(root(rd,i),x(p)) in
   if st<=1 or st=4 then st { complex and imaginary compact cases keep old code }
   elif st=3 { imaginary non-compact }
   then if posroot_cross(i,p)=p then 7 else 6 fi { types i2, i1 respectively }
-  elif not parity(p,poscoroots(rd)[i]) then 5 { real nonparity }
+  elif not parity(p,coroot(rd,i)) then 5 { real nonparity }
   elif posroot_cross(i,p)=p then 2 else 3 { types r1, r2 respectively }
   fi
 

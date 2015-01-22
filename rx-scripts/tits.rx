@@ -8,12 +8,12 @@ is useful in its own right}
 ([ratvec] v,mat theta) -> \exp(2i\pi v)\sigma_w\delta where \theta=w\delta}
 
 set simple_reflection (RootDatum rd, int s) = mat: { s indexes simple root }
-  id_mat(rank(rd))- [simple_roots(rd)[s]] * ^[simple_coroots(rd)[s]]
+  id_mat(rank(rd))- [root(rd,s)] * ^[coroot(rd,s)]
 
 set get_simple_number(RootDatum rd,vec alpha)=
 let rv=-1 in
 let i=0 in
-while i<ss_rank(rd) do  if alpha=simple_roots(rd)[i] then rv:=i;i:=ss_rank(rd) else i:=i+1 fi od;rv
+while i<ss_rank(rd) do  if alpha=root(rd,i) then rv:=i;i:=ss_rank(rd) else i:=i+1 fi od;rv
 
 {matrix of action of Weyl word}
 set matrix(RootDatum rd,[int] w)=mat:
@@ -31,12 +31,12 @@ for r in posroots(rd) do if (not is_positive_root(rd,M*r)) then rv+:=1 fi od;rv
 set left(RootDatum rd,int k,(ratvec,mat)(v,theta))=
 let r=simple_reflection(rd,k) in
 if (length(rd,r*theta)>length(rd,theta)) then (^r*v,r*theta) else
-let alpha_check=simple_coroots(rd)[k] in (^r*v+alpha_check/2,r*theta) fi
+let alpha_check=coroot(rd,k) in (^r*v+alpha_check/2,r*theta) fi
 
 set right(RootDatum rd,int k, (ratvec,mat)( v, theta))=
 let r=simple_reflection(rd,k) in
 if (length(rd,theta*r)>length(rd,theta)) then (v,theta*r) else
-let alpha_check=simple_coroots(rd)[k] in
+let alpha_check=coroot(rd,k) in
 (v+^theta*alpha_check/2,theta*r) fi  {CHECK the sign v-^r...}
 
 set left(RootDatum rd, [int] s,(ratvec,mat)(v,theta))=
@@ -54,7 +54,7 @@ set right(RootDatum rd, (ratvec,int)(w,k),(ratvec,mat)(v,theta))=
 let (u,phi)=right(rd,k,(v,theta)) in (u+^theta*w,phi)
 
 set conjugate(RootDatum rd, int k, (ratvec, mat)(v,theta))=
-let alpha_check=simple_coroots(rd)[k] in
+let alpha_check=coroot(rd,k) in
 right(rd,(alpha_check/2,k),left(rd,k,(v,theta)))
 
 set conjugate(RootDatum rd, [int] s, (ratvec, mat)(v,theta))=

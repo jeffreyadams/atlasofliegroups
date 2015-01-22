@@ -129,6 +129,8 @@ class KGB_base
     { return data[s][x].Cayley_image; }
   KGBEltPair inverseCayley(weyl::Generator s, KGBElt x) const
     { return data[s][x].inverse_Cayley_image; }
+  KGBElt any_Cayley(weyl::Generator s, KGBElt x) const
+    { return isDescent(s,x) ? inverseCayley(s,x).first : cayley(s,x); }
 
   KGBElt cross(const WeylWord& ww, KGBElt x) const;
   KGBElt cross(KGBElt x, const WeylWord& ww) const;
@@ -352,23 +354,13 @@ private:
 
 /* ****************** function definitions **************************** */
 
-// general cross action in (non simple) root
-// root is given as simple root + conjugating Weyl word to simple root
-KGBElt cross(const KGB_base& kgb, KGBElt x,
-	     weyl::Generator s, const WeylWord& ww);
+// general cross action in root $\alpha$
+KGBElt cross(const KGB_base& kgb, KGBElt x, RootNbr alpha);
 
-// general Cayley transform in (non simple) non-compact imaginary root
-// root is given as simple root + conjugating Weyl word to simple root
-KGBElt Cayley (const KGB_base& kgb, KGBElt x,
-	       weyl::Generator s, const WeylWord& ww);
+// general (inverse) Cayley transform in root $\alpha$ (nci or real)
+KGBElt any_Cayley (const KGB_base& kgb, KGBElt x, RootNbr alpha);
 
-// general inverse Cayley transform (choice) in (non simple) real root
-// root is given as simple root + conjugating Weyl word to simple root
-KGBElt inverse_Cayley (const KGB_base& kgb, KGBElt x,
-		       weyl::Generator s, const WeylWord& ww);
-
-gradings::Status::Value status(const KGB_base& kgb, KGBElt x,
-			       const RootSystem& rs, RootNbr alpha);
+gradings::Status::Value status(const KGB_base& kgb, KGBElt x, RootNbr alpha);
 
 } // |namespace kgb|
 

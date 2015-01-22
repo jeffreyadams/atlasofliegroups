@@ -15,8 +15,6 @@ set co_action(RootDatum rd,[int] w,ratvec rv) = ratvec:
 { inv_Cayley terminology is not necessary }
 set Cayley(int i,Param p) = Param:
   if is_real(i,x(p)) then inv_Cayley(i,p) else Cayley(i,p) fi
-set Cayley(int i,KGBElt x) = KGBElt:
-  if is_real(i,x) then inv_Cayley(i,x) else Cayley(i,x) fi
 
 { Cayley transform as a set (actually an array, but the order doesn't matter) }
 set Cayley_set(int j,Param p) = [Param]:
@@ -35,8 +33,8 @@ set Cayley_set([int] kappa, Param p) = [Param]:
   else error("iterated Cayley only defined for 1 or 2 steps")
   fi
 
-set cross([int] s,KGBElt x)=for i:#s downto 0 do x:=cross(s[i],x) od;x
-set cross([int] s,Param p)=for i:#s downto 0 do p:=cross(s[i],p) od;p
+set W_cross([int] s,KGBElt x)=for i:#s downto 0 do x:=cross(s[i],x) od;x
+set W_cross([int] s,Param p)=for i:#s downto 0 do p:=cross(s[i],p) od;p
 
 { action of delta on KGB }
 set twist(mat delta,KGBElt x) = KGBElt:

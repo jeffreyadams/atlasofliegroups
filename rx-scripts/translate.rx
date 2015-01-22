@@ -29,7 +29,7 @@ set T(ParamPol P, ratvec gamma_new)= ParamPol:
 { translate parameter p to simple root wall #k of the integral root system }
 set Psi(Param p,int k)= Param:
   let rd=integrality_datum(p), gamma=infinitesimal_character(p)
-  then coroot=simple_coroots(rd)[k]
+  then coroot=coroot(rd,k)
   then c=rat_as_int(coroot*gamma) { integrality assures this is integer }
   then shift=c*fundamental_weight(rd,k) { this will be -delta in T }
   in
@@ -50,7 +50,7 @@ set Psi(Param p,[int] v)= Param:
   then shift = ratvec: null(rank(rd))
   in
   for k in v { select components in fundamental weight basis for these k }
-  do shift +:= rat_as_int(simple_coroots(rd)[k]*gamma)*fundamental_weight(rd,k)
+  do shift +:= rat_as_int(coroot(rd,k)*gamma)*fundamental_weight(rd,k)
   od
 ; if not is_integer(shift) then error("cannot project to this subspace")
   else T(p,gamma-shift)
@@ -79,7 +79,7 @@ set Psi(ParamPol P,[int] v)= ParamPol:
 set root_in_pseudo_tau (Param p,int k)= bool:
   let rd=integrality_datum(p)
   then weight=
-    (simple_coroots(rd)[k]*infinitesimal_character(p))*fundamental_weight(rd,k)
+    (coroot(rd,k)*infinitesimal_character(p))*fundamental_weight(rd,k)
   in
   ( is_integer(weight) and is_zero(Psi(p,k))
     or not x(Psi(p,k))=x(make_finals(Psi(p,k))[0]) )

@@ -130,7 +130,7 @@ set generate_subspace(
 let done=false in
 let rv=[(x,y)] in
 while not done do
-  let n=#rv in 
+  let n=#rv in
   rv:=xy_neighbors(j,delta,gamma,g,rv);
   rv:=xy_neighbors(k,delta,gamma,g,rv);
   if (n=#rv) then done:=true fi
@@ -148,7 +148,7 @@ generate_subspace((i,j,delta,gamma,g,(x(Ep),y(Ep))))
 {same, but just a single Hecke operator}
 
 set generate_subspace(
-  (int,mat,ratvec,ratvec,(KGBElt,KGBElt),ratvec)(j,delta,gamma,g,(x,y)))=
+  int j, mat delta, ratvec gamma, ratvec g, (KGBElt x,KGBElt y)) =
   [(KGBElt,KGBElt)]: generate_subspace(j,j,delta,gamma,g,(x,y))
 
 set generate_subspace(
@@ -206,12 +206,12 @@ extended_param)
 let E=(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E) in
 let F=(ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F) in
 let ic=ic(F) in
-let alpha=simple_roots(ic)[j] in
-let alpha_check=simple_coroots(ic)[j] in
+let alpha=root(ic,j) in
+let alpha_check=coroot(ic,j) in
 let delta=delta(E) in
 let beta=delta*alpha in
 let k=lookup(beta,simple_roots(ic)) in
-let beta_check=simple_coroots(ic)[k] in
+let beta_check=coroot(ic,k) in
 let (p,q)=(parameter(E),parameter(F)) in
 if not verify(E) then error("E is not valid")
 elif not verify(F) then error("F is not valid")
@@ -271,21 +271,21 @@ sign_2i12(j,F,E)
 {see "More on the 2i12, 2Ci and 1i cases" Section 2}
 set sign_2Ci((int,extended_param)
 (j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=int:
-let alpha=simple_roots(ic)[j] in
+let alpha=root(ic,j) in
 let beta=delta*alpha in
 let k=lookup(beta,simple_roots(ic)) in
-let alpha_check=simple_coroots(ic)[j] in
-let beta_check=simple_coroots(ic)[k] in
+let alpha_check=coroot(ic,j) in
+let beta_check=coroot(ic,k) in
 let exponent=rat_as_int(tau*(alpha_check+beta_check)*(g*alpha-l*alpha-1)/2) in
 (-1)^exponent
 
 set sign_2Cr((int,extended_param)
 (j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=int:
-let alpha=simple_roots(ic)[j] in
+let alpha=root(ic,j) in
 let beta=delta*alpha in
 let k=lookup(beta,simple_roots(ic)) in
-let alpha_check=simple_coroots(ic)[j] in
-let beta_check=simple_coroots(ic)[k] in
+let alpha_check=coroot(ic,j) in
+let beta_check=coroot(ic,k) in
 let exponent=rat_as_int((gamma*alpha_check-lambda*alpha_check-1)*(t*alpha+t*beta)/2) in
 (-1)^exponent
 
@@ -298,8 +298,8 @@ extended_param)
 let E=(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E) in
 let F=(ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F) in
 let ic=ic(F) in
-let alpha=simple_roots(ic)[j] in
-let alpha_check=simple_coroots(ic)[j] in
+let alpha=root(ic,j) in
+let alpha_check=coroot(ic,j) in
 let delta=delta(E) in
 let (p,q)=(parameter(E),parameter(F)) in
 if not verify(E) then error("E is not valid")
@@ -332,8 +332,8 @@ extended_param)
 let E=(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E) in
 let F=(ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F) in
 let ic=ic(F) in
-let alpha=simple_roots(ic)[j] in
-let alpha_check=simple_coroots(ic)[j] in
+let alpha=root(ic,j) in
+let alpha_check=coroot(ic,j) in
 let delta=delta(E) in
 let (p,q)=(parameter(E),parameter(F)) in
 if not verify(E) then error("E is not valid")
@@ -580,7 +580,7 @@ let M=hecke_matrix(i,delta,gamma,g,basis) in
 let N=hecke_matrix(j,delta,gamma,g,basis) in
 let l_i=ext_length(rd, delta, i) in
 let l_j=ext_length(rd, delta, j) in
-let bond=simple_coroots(rd)[i]*simple_roots(rd)[j] in
+let bond=coroot(rd,i)*root(rd,j) in
 let m=int:
  if bond=0 then 2
  else

@@ -57,8 +57,9 @@ namespace atlas
 
 @ For a large part the declarations for the parser consist of the recursive
 definition of the type |expr|. While that used to be a POD type used directly
-on the parser stack, the inflexibility of this solution motivated changing
-this to placing row pointers
+on the parser stack, this solution was very inflexible; it was therefore
+replaced by one where |expr| is not so constrained, and raw pointers |expr_p|
+to it are what is placed on the parser stack.
 
 @< Declarations for the parser @>=
 @< Type declarations needed in definition of |struct expr@;| @>@;

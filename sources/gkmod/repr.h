@@ -30,24 +30,31 @@ namespace repr {
 
 /*
 We represent the parameter of a standard representation as a triplet
-$(x,\lambda,gamma)$, where |x| is an element of the set $K\\backslash G/B$ for
-our fixed real form, $\lambda$ is a character $\lambda$ of (the $\rho$-cover
-of) $H^{\theta_x}$, and $\gamma$ is a character of the complex Lie algebra
-$h$. The latter two values are related; $(1+\theta)\gamma=(1+\theta)\lambda$;
-the projection of $\gamma$ on the $+1$-eigenspace of $\theta_x$ is determined
-by this relation and is called the discrete part of $\gamma$. The difference
-with the discrete part, i.e., the projection of $\gamma$ on the
-$-1$-eigenspace, is called $\nu$, this is what we are adding with respect to
-the values encoded in |standardrepk::StandarRepK| values. The part of
-$\lambda$ that is independent of the discrete part of $\gamma$ is its "torsion
-part" (disconnected $H(R)_c$), which would be represented in the |Block|
-structure by the |TorusPart| component of the |TitsElt| of the dual
-KGB-element ($y$). In fact we convert it intenally to a |TorusPart| here too.
+$(x,\tilde\lambda,gamma)$, where |x| is an element of the set $K\\backslash
+G/B$ for our fixed real form (determining amongs others an involution $\thata$
+of $X^*$), $\tilde\lambda$ is a genuine character of the $\rho$-cover of
+$H^{\theta_x}$, and $\gamma$ is a character of the complex Lie algebra $h$.
+The latter two values are related; $(1+\theta)\gamma=(1+\theta)\lambda$, in
+other words $\gamma-\tilde\lambda$ is fixed by $-\theta$; the projection of
+$\gamma$ on the $+1$-eigenspace of $\theta$ is determined by this relation and
+is called the discrete part $\lamda_0$ of $\gamma$. The difference
+$\gamma-\lambda_0$, i.e., the projection of $\gamma$ on the $-1$-eigenspace,
+is called $\nu$. This component is what we are adding with respect to the
+values encoded in the |standardrepk::StandarRepK| type. The part of
+$\tilde\lambda$ that is independent of $lambda_0$ is its "torsion part"
+(disconnected $H(R)_c$), which would be represented in the |Block| structure
+by the |TorusPart| component of the |TitsElt| of the dual KGB-element ($y$).
+In fact we convert it intenally to a |TorusPart| here too. It repesents an
+element of the quotient of $X^* /2X^*$ by the image of $(X^*)^\theta$, which
+can be converted to the difference $\tilde\lambda-\lambda_0$ by the method
+|involutions::InvolutionTable::unpack|.
 
-Although $\gamma$ could in principle take any complex values compatible with
-$\lambda$, we shall only be interested in real values, and in fact record a
-rational value because all interesting phenomena take place at rational points.
+In principle $\gamma$ could take any complex values compatible with
+$\tildelambda$, but we shall only be interested in real values, and in fact
+record a rational value, because that is all we can do in an exact manner, and
+all interesting phenomena take place at rational infinitesimal character.
 */
+
 class StandardRepr
 {
   friend class Rep_context;

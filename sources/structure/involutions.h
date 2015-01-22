@@ -102,9 +102,9 @@ class InvolutionTable
     InvolutionData id; // stuff that does not involve weight coordinates
     WeightInvolution theta;
     int_Matrix projector; // for |y|, same kernel as |row_saturate(theta-id)|
-    int_Matrix M_real; // $1-\theta$ followed by expression in adapted basis
+    int_Matrix M_real; // $1-\theta$; then expression in scaled adapted basis
     int_Vector diagonal; // divisors for image of |M_real|
-    int_Matrix lift_mat; // section: satisfies |M_real*lift_mat==diag(diagonal)|
+    int_Matrix lift_mat; // section: satisfies |M_real*lift_mat==A|
     unsigned int length;
     unsigned int W_length;
     SmallSubspace mod_space; // for |x|

@@ -133,10 +133,7 @@ SRK_context::SRK_context(RealReductiveGroup &GR)
     const Fiber& f=G.cartan(*it).fiber();
     const WeightInvolution& theta = f.involution();
 
-    // put in $q$ the matrix of $\theta-1$
-    WeightInvolution q=theta;
-    for (size_t i=0; i<n; ++i)
-      q(i,i) -= 1;
+    const WeightInvolution q=theta-1;
 
     // find basis adapted to image of $\theta-1$
     CoeffList factor;
@@ -1869,8 +1866,7 @@ orth_projection(const RootDatum& rd, RankFlags gens,
   sub_Cartan.invert(denom); // invert and compute necessary denominator
 
   int_Matrix result(r,r,0); // set to identity scaled |denom|
-  for (size_t i=0; i<r; ++i)
-    result(i,i)=denom;
+  result += denom;
   result -= root_mat * sub_Cartan * coroot_mat;
   return result;
 }

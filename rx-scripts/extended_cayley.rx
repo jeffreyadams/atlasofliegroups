@@ -30,8 +30,8 @@ set ext_Cayley_1((int,extended_param)(j,(ic,delta,gamma,lambda,theta,g,l,omega,t
 let xp=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
   then p=parameter(xp)
   then type=ext_type_1(delta,j,p) in {1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn}
-let alpha=vec:simple_roots(ic)[j]
-  then alpha_check=vec:simple_coroots(ic)[j]
+let alpha=vec:root(ic,j)
+  then alpha_check=vec:coroot(ic,j)
   then ref=reflection(ic,j)
   then coref=reflection(dual(ic),j) in
 if (type="1i1") then
@@ -88,11 +88,11 @@ set ext_Cayley_2((int,extended_param)(j,(ic,delta,gamma,lambda,theta,g,l,omega,t
 let xp=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
   then p=parameter(xp)
   then type=ext_type_2(delta,j,p) in {2C+,2C-,2Ci,2Cr,2i11,2i12,2i22,2r22,2r21,2r11,2rn,2ic}
-let alpha=vec:simple_roots(ic)[j]
-  then alpha_check=vec:simple_coroots(ic)[j]
+let alpha=vec:root(ic,j)
+  then alpha_check=vec:coroot(ic,j)
   then k=lookup(delta*alpha,simple_roots(ic))
-  then beta=simple_roots(ic)[k]
-  then beta_check=simple_coroots(ic)[k]
+  then beta=root(ic,k)
+  then beta_check=coroot(ic,k)
   then s_alpha=reflection(ic,j)
   then s_alpha_check=reflection(dual(ic),j)
   then s_beta=reflection(ic,k)

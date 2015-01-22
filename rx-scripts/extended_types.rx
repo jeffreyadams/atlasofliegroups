@@ -10,8 +10,8 @@
 
 { ext_length(rd,delta,j)=1,2,3 }
 set ext_length (RootDatum rd,mat delta, int j) = int:
-  let alpha=simple_roots(rd)[j] then beta=delta*alpha in
-  if alpha=beta then 1 elif simple_coroots(rd)[j]*beta=0 then 2 else 3 fi
+  let alpha=root(rd,j) then beta=delta*alpha in
+  if alpha=beta then 1 elif coroot(rd,j)*beta=0 then 2 else 3 fi
 
 { E=extended parameter, ext_length(j,E) = ext_length(ic(E),delta(E),j) }
 set ext_length(int j, extended_param(ic,delta,,,,,,,,)) = int:
@@ -30,7 +30,7 @@ set ext_type_1(mat delta,int j,Param p)=string:
 {ext_type_2(delta,j,p)=2C+,2C-,2Ci,2Cr,2i11,2i12,2i22,2r22,2r21,2r11,2rn,2rc}
 set ext_type_2 (mat delta,int j,Param p) = string:
   let type=status_text(j,p), theta=involution(x(p)), rd=root_datum(p)
-  then alpha=simple_roots(rd)[j] then beta=delta*alpha
+  then alpha=root(rd,j) then beta=delta*alpha
   in
   if is_complex(j,x(p)) then
     if theta*alpha=beta then "2Ci"
@@ -52,7 +52,7 @@ set ext_type_2 (mat delta,int j,Param p) = string:
 { ext_type_e(delta,j,p)=3C+3C-,3Ci,3Cr,3i,3r,3rn,3ic }
 set ext_type_3 (mat delta,int j,Param p) = string:
   let type=status_text(j,p), theta=involution(x(p)), rd=root_datum(p)
-  then alpha=simple_roots(rd)[j] then beta=delta*alpha
+  then alpha=root(rd,j) then beta=delta*alpha
   in
   if is_complex(j,x(p)) then
     if theta*alpha=beta then "3Ci"
