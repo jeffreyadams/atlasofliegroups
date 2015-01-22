@@ -42,7 +42,7 @@ CoweightInvolution dualBasedInvolution
   (const WeightInvolution&, const RootDatum&);
 
 RootNbrSet makeOrthogonal(const RootNbrSet& o, const RootNbrSet& subsys,
-		       const RootSystem& rs);
+			  const RootSystem& rs);
 
 void toDistinguished(WeightInvolution&, const RootDatum&);
 
@@ -50,6 +50,13 @@ void toDistinguished(WeightInvolution&, const RootDatum&);
 // whose left-multiplication transforms returned |Delta| into original one
 WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta);
 
+// force root positive; unlike |rs.rt_abs(alpha)| does not shift positive roots
+void make_positive(const RootSystem& rs,RootNbr& alpha);
+
+// conjugate |alpha| to a simple root, returning right-conjugating word applied
+WeylWord conjugate_to_simple(const RootSystem& rs,RootNbr& alpha);
+
+// compute product of reflections in set of orthogonal roots
 WeightInvolution refl_prod(const RootNbrSet&, const RootDatum&);
 
 RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
@@ -130,8 +137,8 @@ class RootSystem
   int_Vector root_expr(RootNbr alpha) const;
   int_Vector coroot_expr(RootNbr alpha) const;
 
-  int level(RootNbr alpha) const; // equals |root(alpha).dot(dual_twoRho())|
-  int colevel(RootNbr alpha) const; // equals |coroot(alpha).(twoRho())|
+  int level(RootNbr alpha) const; // equals |root(alpha).dot(dual_twoRho())/2|
+  int colevel(RootNbr alpha) const; // equals |coroot(alpha).(twoRho())/2|
 
   // convert sequence of root numbers to expressions in the simple roots
   template <typename I, typename O>
@@ -418,7 +425,7 @@ use by accessors.
   const Weight& posRoot(size_t i) const
     { assert(i<numPosRoots()); return *(beginPosRoot()+i); }
 
-  RootNbr rootNbr(const Root& r) const
+  RootNbr root_index(const Root& r) const
     { return permutations::find_index(d_roots,r); }
 
 
@@ -430,6 +437,10 @@ use by accessors.
 
   const Coweight& posCoroot(size_t i) const
     { assert(i<numPosRoots()); return  *(beginPosCoroot()+i); }
+
+  RootNbr coroot_index(const Root& r) const
+    { return permutations::find_index(d_coroots,r); }
+
 
   // avoid inlining of the following to not depend on rational vector
   RatWeight fundamental_weight(weyl::Generator i) const;

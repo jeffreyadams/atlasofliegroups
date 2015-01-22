@@ -681,8 +681,8 @@ RootDatum::RootDatum(const PreRootDatum& prd)
 
 
 
-/*!
-\brief Constructs the root system dual to the given one.
+/*
+  Construct the root system dual to the given one.
 
   Since we do not use distinct types for weights and coweights, we can proceed
   by interchanging roots and coroots. The ordering of the roots corresponds to
@@ -858,7 +858,7 @@ Permutation RootDatum::rootPermutation(const WeightInvolution& q) const
   RootNbrList simple_image(semisimpleRank());
 
   for (weyl::Generator s=0; s<semisimpleRank(); ++s)
-    simple_image[s] = rootNbr(q*simpleRoot(s));
+    simple_image[s] = root_index(q*simpleRoot(s));
 
   return extend_to_roots(simple_image);
 }
@@ -1168,12 +1168,33 @@ WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta)
   return result;
 }
 
+void make_positive(const RootSystem& rs,RootNbr& alpha)
+{
+  if (not rs.isPosRoot(alpha))
+    alpha = rs.rootMinus(alpha);
+}
+
+// conjugate |alpha| to a simple root, returning right-conjugating word applied
+WeylWord conjugate_to_simple(const RootSystem& rs,RootNbr& alpha)
+{
+  make_positive(rs,alpha);
+  WeylWord result;
+  result.reserve(4*rs.rank()); // generous size that avoids reallocations
+  weyl::Generator s;
+  while (alpha!=rs.simpleRootNbr(s=rs.find_descent(alpha)))
+  {
+    result.push_back(s);
+    rs.simple_reflect_root(alpha,s);
+  }
+  return result;
+}
 
 
-/*! \brief Writes in q the matrix represented by the product of the
-reflections for the set of roots |rset|.
+/*
+  Return the matrix represented by the product of the
+  reflections for the set of roots |rset|.
 
-The roots must be mutiually orthogonal so that the order doesn't matter.
+  The roots must be mutually orthogonal so that the order doesn't matter.
 */
 WeightInvolution refl_prod(const RootNbrSet& rset, const RootDatum& rd)
 {

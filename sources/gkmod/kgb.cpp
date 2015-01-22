@@ -820,38 +820,39 @@ void KGB::fillBruhat()
 
 ******************************************************************************/
 
-// general cross action in (non simple) root
-// root is given as simple root + conjugating Weyl word to simple root
-KGBElt cross(const KGB_base& kgb, KGBElt x,
-	     weyl::Generator s, const WeylWord& ww)
+// general cross action in root $\alpha$
+KGBElt cross(const KGB_base& kgb, KGBElt x, RootNbr alpha)
 {
-  return kgb.cross(kgb.cross(s,kgb.cross(ww,x)),ww);
+  const RootSystem& rs = kgb.rootDatum();
+  const WeylWord ww = conjugate_to_simple(rs,alpha);
+  return kgb.cross(ww,kgb.cross(rs.simpleRootIndex(alpha),kgb.cross(x,ww)));
 }
 
-// general Cayley transform in (non simple) non-compact imaginary root
-// root is given as simple root + conjugating Weyl word to simple root
-KGBElt Cayley (const KGB_base& kgb, KGBElt x,
-	       weyl::Generator s, const WeylWord& ww)
+// general Cayley transform in root $\alpha$, non-compact imaginary
+KGBElt any_Cayley (const KGB_base& kgb, KGBElt x, RootNbr alpha)
 {
-  return kgb.cross(kgb.cayley(s,kgb.cross(ww,x)),ww);
+  const RootSystem& rs = kgb.rootDatum();
+  const WeylWord ww = conjugate_to_simple(rs,alpha);
+  weyl::Generator s=rs.simpleRootIndex(alpha);
+  x=kgb.cross(x,ww);
+  KGBElt Cx = kgb.any_Cayley(s,x);
+  if (Cx==UndefKGB)
+  {
+    std::string str (kgb.status(s,x)==gradings::Status::Complex
+		     ? "complex" : "imaginary compact");
+    throw std::runtime_error("Cayley transform by "+str+" root");
+  }
+  return kgb.cross(ww,Cx);
 }
 
-// general inverse Cayley transform (choice) in (non simple) real root
-// root is given as simple root + conjugating Weyl word to simple root
-KGBElt inverse_Cayley (const KGB_base& kgb, KGBElt x,
-		       weyl::Generator s, const WeylWord& ww)
-{
-  return kgb.cross(kgb.inverseCayley(s,kgb.cross(ww,x)).first,ww);
-}
 
 
 // status of |alpha| in |kgb|: conjugate to simple root follow cross actions
-gradings::Status::Value status(const KGB_base& kgb, KGBElt x,
-			       const RootSystem& rs, RootNbr alpha)
+gradings::Status::Value status(const KGB_base& kgb, KGBElt x, RootNbr alpha)
 {
+  const RootSystem& rs = kgb.rootDatum();
+  make_positive(rs,alpha);
   weyl::Generator s;
-  if (not rs.isPosRoot(alpha))
-    alpha = rs.rootMinus(alpha); // make |alpha| positive
 
   while (alpha!=rs.simpleRootNbr(s=rs.find_descent(alpha)))
   {

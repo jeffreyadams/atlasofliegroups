@@ -960,8 +960,40 @@ void adjoint_datum_wrapper(expression_base::level l)
 
 @*2 Functions operating on root data.
 %
-The following functions allow us to look at the simple roots and simple
-coroots stored in a root datum value, and at the associated Cartan matrix.
+The following functions allow us to look at individual simple roots and simple
+coroots stored in a root datum value. We adopt a convention that shifts root
+indices so that the simple (and positive) roots start at index~$0$, and such
+that negative roots have negative indices. This allows the same function to be
+used for producing simple, positive, or general roots. Since internally the
+full list of roots starts at index~$0$ with the most negative roots, we must
+apply a shift by the number of positive roots here.
+
+@< Local function definitions @>=
+void root_wrapper(expression_base::level l)
+{ int root_index = get<int_value>()->val;
+  shared_root_datum rd(get<root_datum_value>());
+  RootNbr npr = rd->val.numPosRoots();
+  RootNbr alpha = npr+root_index;
+  if (alpha>=2*npr)
+    throw std::runtime_error("Illegal root index "+str(root_index));
+  if (l!=expression_base::no_value)
+     push_value(std::make_shared<vector_value>(rd->val.root(alpha)));
+}
+void coroot_wrapper(expression_base::level l)
+{ int root_index = get<int_value>()->val;
+  shared_root_datum rd(get<root_datum_value>());
+  RootNbr npr = rd->val.numPosRoots();
+  RootNbr alpha = npr+root_index;
+  if (alpha>=2*npr)
+    throw std::runtime_error("Illegal coroot index "+str(root_index));
+  if (l!=expression_base::no_value)
+     push_value(std::make_shared<vector_value>(rd->val.coroot(alpha)));
+}
+
+@ We also allow access to the matrices of all simple or of all positive
+(co)roots, and to the Cartan matrix associated to the root datum. For all
+roots such access is rarely needed, and if so easily programmed, so we don't
+provide a built-in function for that.
 
 @< Local function definitions @>=
 void simple_roots_wrapper(expression_base::level l)
@@ -982,18 +1014,6 @@ void simple_coroots_wrapper(expression_base::level l)
   push_value(std::make_shared<matrix_value>(int_Matrix(scl,rd->val.rank())));
 }
 @)
-void datum_Cartan_wrapper(expression_base::level l)
-{ shared_root_datum rd(get<root_datum_value>());
-  if (l==expression_base::no_value)
-    return;
-  int_Matrix M = rd->val.cartanMatrix();
-  push_value(std::make_shared<matrix_value>(M));
-}
-
-@ We also allow access to all positive (co)roots, or all of them (positive or
-negative).
-
-@< Local function definitions @>=
 void positive_roots_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l==expression_base::no_value)
@@ -1013,25 +1033,17 @@ void positive_coroots_wrapper(expression_base::level l)
   push_value(std::make_shared<matrix_value>
     (int_Matrix(crl,rd->val.rank())));
 }
-void roots_wrapper(expression_base::level l)
-{ shared_root_datum rd(get<root_datum_value>());
-  if (l==expression_base::no_value)
-    return;
-  WeightList rl
-    (rd->val.beginRoot(),rd->val.endRoot());
-  push_value(std::make_shared<matrix_value>(int_Matrix(rl,rd->val.rank())));
-}
 @)
-void coroots_wrapper(expression_base::level l)
+void datum_Cartan_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l==expression_base::no_value)
     return;
-  WeightList crl
-    (rd->val.beginCoroot(),rd->val.endCoroot());
-  push_value(std::make_shared<matrix_value>(int_Matrix(crl,rd->val.rank())));
+  int_Matrix M = rd->val.cartanMatrix();
+  push_value(std::make_shared<matrix_value>(M));
 }
 
-@ Here are three important numeric attributes of root data.
+@ Here are some important numeric attributes of root data, and look-up
+functions for roots and coroots.
 
 @< Local function definitions @>=
 void rd_rank_wrapper(expression_base::level l)
@@ -1051,6 +1063,22 @@ void rd_nposroots_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>(rd->val.numPosRoots()));
 }
+@)
+void root_index_wrapper(expression_base::level l)
+{ shared_vector alpha = get<vector_value>();
+  shared_root_datum rd(get<root_datum_value>());
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>
+		(rd->val.root_index(alpha->val)-rd->val.numPosRoots()));
+}
+void coroot_index_wrapper(expression_base::level l)
+{ shared_vector alpha_v = get<vector_value>();
+  shared_root_datum rd(get<root_datum_value>());
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>
+		(rd->val.coroot_index(alpha_v->val)-rd->val.numPosRoots()));
+}
+
 
 @ It is useful to have bases for the sum of the root lattice and the
 coradical, and for the sum of the coroot lattice and the radical; the latter
@@ -1199,13 +1227,13 @@ install_function(sublattice_root_datum_wrapper,@|"root_datum"
 install_function(simply_connected_datum_wrapper
 		,@|"simply_connected","(LieType->RootDatum)");
 install_function(adjoint_datum_wrapper,@| "adjoint","(LieType->RootDatum)");
+install_function(root_wrapper,@|"root","(RootDatum,int->vec)");
+install_function(coroot_wrapper,@|"coroot","(RootDatum,int->vec)");
 install_function(simple_roots_wrapper,@|"simple_roots","(RootDatum->mat)");
 install_function(simple_coroots_wrapper,@|"simple_coroots","(RootDatum->mat)");
 install_function(positive_roots_wrapper,@| "posroots","(RootDatum->mat)");
 install_function(positive_coroots_wrapper,@| "poscoroots","(RootDatum->mat)");
 install_function(datum_Cartan_wrapper,@|"Cartan_matrix","(RootDatum->mat)");
-install_function(roots_wrapper,@|"roots","(RootDatum->mat)");
-install_function(coroots_wrapper,@|"coroots","(RootDatum->mat)");
 install_function(root_coradical_wrapper,@|"root_coradical","(RootDatum->mat)");
 install_function(coroot_radical_wrapper,@|"coroot_radical","(RootDatum->mat)");
 install_function(fundamental_weight_wrapper,@|
@@ -1220,8 +1248,9 @@ install_function(mod_central_torus_info_wrapper,@|
 install_function(rd_rank_wrapper,@|"rank","(RootDatum->int)");
 install_function(rd_semisimple_rank_wrapper@|
 		,"semisimple_rank","(RootDatum->int)");
-install_function(rd_nposroots_wrapper@|
-		,"nr_of_posroots","(RootDatum->int)");
+install_function(rd_nposroots_wrapper@|,"nr_of_posroots","(RootDatum->int)");
+install_function(root_index_wrapper@|,"root_index","(RootDatum,vec->int)");
+install_function(coroot_index_wrapper@|,"coroot_index","(RootDatum,vec->int)");
 install_function(integrality_datum_wrapper
                 ,@|"integrality_datum","(RootDatum,ratvec->RootDatum)");
 install_function(integrality_points_wrapper
@@ -1388,7 +1417,7 @@ permutation of its rows and columns.
 @< Set |ww| to the reversed Weyl group element...@>=
 { RootNbrList Delta(s);
   for (weyl::Generator i=0; i<s; ++i)
-  { Delta[i]=rd.rootNbr(M*rd.simpleRoot(i));
+  { Delta[i]=rd.root_index(M*rd.simpleRoot(i));
     if (Delta[i]==rd.numRoots()) // then image not found
       throw std::runtime_error@|
         ("Matrix maps simple root "+str(i)+" to non-root");
@@ -2932,7 +2961,8 @@ void KGB_Cartan_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<Cartan_class_value>(x->rf->parent,kgb.Cartan_class(x->val)));
+    push_value(std::make_shared<Cartan_class_value>
+      (x->rf->parent,kgb.Cartan_class(x->val)));
 }
 
 void KGB_involution_wrapper(expression_base::level l)
@@ -2940,7 +2970,8 @@ void KGB_involution_wrapper(expression_base::level l)
   const KGB& kgb=x->rf->kgb();
   const ComplexReductiveGroup& G=x->rf->val.complexGroup();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<matrix_value>(G.involutionMatrix(kgb.involution(x->val))));
+    push_value(std::make_shared<matrix_value>
+      (G.involutionMatrix(kgb.involution(x->val))));
 }
 
 void KGB_length_wrapper(expression_base::level l)
@@ -2955,101 +2986,94 @@ set, and we make them available as functions. The inverse Cayley transform may
 be double valued of which we only report the first one; the user can easily
 test whether it was double valued by applying cross action by the same
 generator to the result and testing whether it gives a new KGB element (which
-then is the other value of the Cayley transform).
+then is the other value of the Cayley transform). Therefore we define
+functions that are single-valued in all cases (for undefined cases we just
+return the argument KGB element). Given that, there is not much reason to
+distinguish forward and inverse Cayley transforms (which have disjoint domains
+of definition), so we combine them into one function |Cayley|.
 
 @< Local function def...@>=
+inline RootNbr get_reflection_index(int root_index, RootNbr n_posroots)
+{ RootNbr alpha= root_index<0 ? -1-root_index : root_index;
+  if (alpha>=n_posroots)
+    throw std::runtime_error ("Illegal reflection: "+str(root_index));
+  return alpha;
+}
+@)
 void KGB_cross_wrapper(expression_base::level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  int s = get<int_value>()->val;
-  if (static_cast<unsigned>(s)>=kgb.rank())
-    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+  RootNbr npr=kgb.rootDatum().numPosRoots();
+  RootNbr alpha = get_reflection_index(get<int_value>()->val,npr);
+@)
   if (l==expression_base::no_value)
     return;
-  x->val= kgb.cross(s,x->val); // do cross action
+  if (alpha<kgb.rank()) // do simple cross action
+    x->val= kgb.cross(alpha,x->val);
+  else // do non-simple cross action
+    x->val = cross(kgb,x->val,npr+alpha);
   push_value(x);
 }
 @)
 void KGB_Cayley_wrapper(expression_base::level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  int s = get<int_value>()->val;
-  if (static_cast<unsigned>(s)>=kgb.rank())
-    throw std::runtime_error ("Illegal simple reflection: "+str(s));
-  if (l==expression_base::no_value)
-    return;
-  if (kgb.cayley(s,x->val)!=UndefKGB) // when defined
-    x->val= kgb.cayley(s,x->val); // do Cayley transform
-  push_value(x);
-}
+  RootNbr npr=kgb.rootDatum().numPosRoots();
+  RootNbr alpha = get_reflection_index(get<int_value>()->val,npr);
 @)
-void KGB_inv_Cayley_wrapper(expression_base::level l)
-{ own_KGB_elt x = get_own<KGB_elt_value>();
-  const KGB& kgb=x->rf->kgb();
-  int s = get<int_value>()->val;
-  if (static_cast<unsigned>(s)>=kgb.rank())
-    throw std::runtime_error ("Illegal simple reflection: "+str(s));
   if (l==expression_base::no_value)
     return;
-  if (kgb.inverseCayley(s,x->val).first!=UndefKGB) // when defined, do first
-    x->val= kgb.inverseCayley(s,x->val).first; // inverse Cayley transform
+  if (alpha<kgb.rank())
+  {
+     KGBElt xv = kgb.any_Cayley(alpha,x->val);
+     if (xv!=UndefKGB)
+       x->val= xv; // when defined do Cayley transform
+  }
+  else // do (inverse) Cayley transform through arbitrary root
+  { try
+    {@; x->val= any_Cayley(kgb,x->val,npr+alpha); }
+    catch (std::runtime_error&) {}
+      // ignore undefined Cayley error, leave |x| unchanged
+  }
   push_value(x);
 }
 
-@ One also needs to be able find out the status of simple roots. Although
-somewhat low-level, the simplest thing is to export the
-|gradings::Status::Value| as an integer value. It seems however useful to
-change complex ascents from $0$ to $4$, so that the coding is 0:~Complex
-descent, 1:~imaginary compact, 2:~real, 3:~imaginary non-compact, 4:Complex
-ascent. This way a value $v$ is a descent if |v<3|, imaginary if |v%2==1|,
-Complex if |v%4==0|, Cayley transform defined if |v==3|.
+@ One also needs to be able find out the status of roots. Although somewhat
+low-level, the simplest thing is to export the |gradings::Status::Value| as an
+integer value. It seems however useful to change complex \emph{ascents} from
+$0$ to $4$, so that the coding is 0:~Complex descent, 1:~imaginary compact,
+2:~real, 3:~imaginary non-compact, 4:Complex ascent. This way a value $v$ is a
+descent if |v<3|, imaginary if |v%2==1|, Complex if |v%4==0|, Cayley transform
+defined if |v==3|.
 
 @< Local function def...@>=
 void KGB_status_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  int s = get<int_value>()->val;
-  if (static_cast<unsigned>(s)>=kgb.rank())
-    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+  RootNbr npr=kgb.rootDatum().numPosRoots();
+  RootNbr alpha = get_reflection_index(get<int_value>()->val,npr);
+@)
   if (l==expression_base::no_value)
     return;
-  unsigned stat=kgb.status(s,x->val);
-  push_value(std::make_shared<int_value>
-    (stat==0 and not kgb.isDescent(s,x->val) ? 4 : stat));
-}
-
-@ For a given KGB element, all imaginary roots are classified into compact and
-non-compact roots. While this could be deduced from other attributes of the
-element, this would be laborious and error-prone, so we supply this
-information as built-in function. The root is transmitted in coordinates
-rather than as index into the list of positive roots, as this avoids possible
-confusion about the interpretation of the index, and ambiguity with the
-previous instance of |status|; it is also more convenient in those cases where
-the root results from a computation (as opposed to selection from the list of
-roots).
-
-@< Local function def...@>=
-void root_status_wrapper(expression_base::level l)
-{ shared_KGB_elt x = get<KGB_elt_value>();
-  const KGB& kgb=x->rf->kgb();
-  const ComplexReductiveGroup& G=x->rf->parent.val;
-  const RootDatum& rd = G.rootDatum();
-  shared_vector alpha_vec = get<vector_value>();
-  RootNbr alpha = rd.rootNbr(alpha_vec->val);
-  if (alpha>=rd.numRoots())
-    throw std::runtime_error ("Vector is not a root");
-@.Vector is not a root@>
-  if (l==expression_base::no_value)
-    return;
-  unsigned stat=kgb::status(kgb,x->val, rd,alpha);
-  if (stat==0) // $\alpha$ is a complex root, check if it is an ascent
+  if (alpha<kgb.rank())
   {
-    RootNbr theta_alpha =
-      G.involution_table().root_involution(kgb.inv_nr(x->val),alpha);
-    if (rd.isPosRoot(alpha)==rd.isPosRoot(theta_alpha))
-      stat = 4; // set status to complex ascent
+    unsigned stat=kgb.status(alpha,x->val);
+    push_value(std::make_shared<int_value>
+      (stat==0 and not kgb.isDescent(alpha,x->val) ? 4 : stat));
   }
-  push_value(std::make_shared<int_value> (stat));
+  else
+  {
+    alpha += npr; // convert to general root number
+    unsigned stat=kgb::status(kgb,x->val,alpha);
+    if (stat==0) // $\alpha$ is a complex root, check if it is an ascent
+    {
+      RootNbr theta_alpha = kgb.complexGroup().involution_table().
+        root_involution(kgb.inv_nr(x->val),alpha);
+      if (kgb.rootDatum().isPosRoot(theta_alpha))
+       stat = 4; // set status to complex ascent
+    }
+    push_value(std::make_shared<int_value> (stat));
+  }
 }
 
 @ In order to ``synthesise'' a KGB element, one may specify a real form, an
@@ -3171,9 +3195,7 @@ install_function(KGB_elt_wrapper,@|"KGB","(RealForm,int->KGBElt)");
 install_function(decompose_KGB_wrapper,@|"%","(KGBElt->RealForm,int)");
 install_function(KGB_cross_wrapper,@|"cross","(int,KGBElt->KGBElt)");
 install_function(KGB_Cayley_wrapper,@|"Cayley","(int,KGBElt->KGBElt)");
-install_function(KGB_inv_Cayley_wrapper,@|"inv_Cayley","(int,KGBElt->KGBElt)");
 install_function(KGB_status_wrapper,@|"status","(int,KGBElt->int)");
-install_function(root_status_wrapper,@|"status","(vec,KGBElt->int)");
 install_function(build_KGB_element_wrapper,@|"KGB_elt"
 		,"(RealForm,mat,ratvec->KGBElt)");
 install_function(KGB_twist_wrapper,@|"twist","(KGBElt->KGBElt)");
@@ -3593,7 +3615,8 @@ void is_standard_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   RootNbr witness;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(p->rc().is_standard(p->val,witness)));
+    push_value(std::make_shared<bool_value>
+		(p->rc().is_standard(p->val,witness)));
 }
 
 void is_zero_wrapper(expression_base::level l)
@@ -3677,7 +3700,8 @@ void parameter_cross_wrapper(expression_base::level l)
     throw std::runtime_error
       ("Illegal simple reflection: "+str(s)+ ", should be <"+str(r));
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<module_parameter_value>(p->rf,p->rc().cross(s,p->val)));
+    push_value(std::make_shared<module_parameter_value>
+		(p->rf,p->rc().cross(s,p->val)));
 }
 @)
 void parameter_Cayley_wrapper(expression_base::level l)
@@ -3689,7 +3713,8 @@ void parameter_Cayley_wrapper(expression_base::level l)
     throw std::runtime_error
       ("Illegal simple reflection: "+str(s)+ ", should be <"+str(r));
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<module_parameter_value>(p->rf,p->rc().Cayley(s,p->val)));
+    push_value(std::make_shared<module_parameter_value>
+		(p->rf,p->rc().Cayley(s,p->val)));
 }
 
 void parameter_inv_Cayley_wrapper(expression_base::level l)
@@ -3701,7 +3726,8 @@ void parameter_inv_Cayley_wrapper(expression_base::level l)
     throw std::runtime_error
       ("Illegal simple reflection: "+str(s)+ ", should be <"+str(r));
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<module_parameter_value>(p->rf,p->rc().inv_Cayley(s,p->val)));
+    push_value(std::make_shared<module_parameter_value>
+		(p->rf,p->rc().inv_Cayley(s,p->val)));
 }
 
 @ One useful thing to be able to for parameters is to compute their twist by
@@ -3710,7 +3736,8 @@ the distinguished involution.
 void parameter_twist_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<module_parameter_value>(p->rf,p->rc().twist(p->val)));
+    push_value(std::make_shared<module_parameter_value>
+		(p->rf,p->rc().twist(p->val)));
 }
 
 @ The library can also compute orientation numbers for parameters.
