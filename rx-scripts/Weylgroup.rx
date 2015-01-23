@@ -39,5 +39,5 @@ set action(RootDatum rd,[int] w,ratvec rv) = ratvec:
   let (v,den)=%rv in
   for i:#w downto 0 do v:=simple_reflection(rd,w[i])*v od; v/den
 
-set cross([int] w,KGBElt x) = KGBElt:
+set W_cross([int] w,KGBElt x) = KGBElt:
   for i:#w downto 0 do x:=cross(w[i],x) od; x

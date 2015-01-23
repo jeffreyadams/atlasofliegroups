@@ -46,6 +46,9 @@ set denom (rat a) = let (,d)=%a in d
 set floor (rat a) = int: \ %a     { decompose, then integer division }
 set ceil  (rat a) = int: -\ %-a   { same, sandwiched in negations }
 
+set \((rat,int)p) = int: floor(/p)
+set \((rat,rat)p) = int: floor(/p)
+
 { these are mostly for ratvec arguments, but avoid coercing from vec }
 set floor ([rat] v) = vec: for a in v do floor(a) od
 set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
