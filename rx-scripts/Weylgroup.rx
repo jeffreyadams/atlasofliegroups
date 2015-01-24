@@ -1,5 +1,6 @@
 <misc.rx { for is_dominant }
 <Weyl.rx
+<lattice
 
 { move_towards_dominant(rd,v)=(s_i.v,i)
   where i is the first simple root negative on v }
@@ -26,6 +27,50 @@ set make_dominant (RootDatum rd, vec v) = (vec,[int]):
 set make_dominant(RootDatum rd,ratvec v)=(ratvec,[int]):
   let (v,denom)=%v then (v_dom,w)=make_dominant(rd,v) in (v_dom/denom,w)
 
+{make_simple_sequence and make_simple used to be in synthetic.rx}
+
+{ find Weyl group element ([int]) making root simple & index of simple root }
+set make_simple_sequence (RootDatum rd, vec root) = ([int], int):
+  let r = semisimple_rank(rd), alpha=simple_roots(rd), alphav=simple_coroots(rd)
+  , busy = true, i=0, w=[int]:[]
+  in while(busy)
+     do i:=0; while i<r and alphav[i]*root<=0 do i+:=1 od
+     ; if i=r then error("not a positive root")
+       elif root = alpha[i] then busy:=false
+       else let ref=posroot_reflection(rd,i) { actually a simple root here }
+         in root := ref*root; w := i#w
+       fi
+     od; (w,i)
+
+{ find Weyl group element (matrix) making root simple & index of simple root }
+set make_simple (RootDatum rd, vec root) = (mat, int):
+  let r = semisimple_rank(rd), alpha=simple_roots(rd), alphav=simple_coroots(rd)
+  , busy = true, i=0, w=id_mat(rank(rd))
+  in while(busy)
+     do i:=0; while i<r and alphav[i]*root<=0 do i+:=1 od
+     ; if i=r then error("not a positive root")
+       elif root = alpha[i] then busy:=false
+       else let ref=posroot_reflection(rd,i) { actually a simple root here }
+         in root := ref*root; w := ref*w
+       fi
+     od; (w,i)
+
+set make_dominant_using_roots(RootDatum rd, ratvec v)=(ratvec,vec):
+if (is_dominant(rd,v)) then (v,ratvec_as_vec(v-v)) else
+let (rv,)=make_dominant(rd,v) in 
+if (is_integer(rv-v) and in_lattice(simple_roots(rd),ratvec_as_vec(rv-v))) then (rv,ratvec_as_vec(rv-v)) else
+let k=0 in for i:ss_rank(rd) do  k:=max(k,ceil(-v*simple_coroots(rd)[i]/2)) od;
+(v+2*k*rho(rd),ratvec_as_vec(2*k*rho(rd)))  fi fi
+
+set make_dominant_using_roots(RootDatum rd, vec v)=(vec,vec):
+let (w,shift)=make_dominant_using_roots(rd,v) in (ratvec_as_vec(w),shift)
+
+{assume infinitesimal character gamma of p is integrally dominant
+ translate by sum of roots to make it dominant
+ return (new parameter, sum of roots)}
+set translate_to_dominant(Param p)=(Param,vec):
+let (new_gamma,shift)=make_dominant_using_roots(root_datum(p),infinitesimal_character(p)) in 
+(parameter(x(p),lambda(p)+shift,nu(p)+shift),shift)
 
 set inverse([int] w)=[int]: for i:#w downto 0 do w[i] od
 
@@ -39,5 +84,16 @@ set action(RootDatum rd,[int] w,ratvec rv) = ratvec:
   let (v,den)=%rv in
   for i:#w downto 0 do v:=simple_reflection(rd,w[i])*v od; v/den
 
-set W_cross([int] w,KGBElt x) = KGBElt:
+
+{cross conflicts with definition in basic.rx
+ change name to weyl_cross}
+set weyl_cross([int] w,KGBElt x) = KGBElt:
   for i:#w downto 0 do x:=cross(w[i],x) od; x
+
+{------------------------------integrally dominant routines-------------}
+
+set make_integrally_dominant(RootDatum rd,ratvec v)=(ratvec,[int]):
+make_dominant(integrality_datum(rd,v),v)
+
+set id_action(RootDatum rd,[int] w,ratvec v)=(ratvec,[int]):
+make_integrally_dominant(rd,action(rd,w,v))

@@ -290,10 +290,14 @@ set poscoroot_index((RootDatum,vec)p) = int: { fold coroots to positive }
 set reflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
   1 - column(root(rd,i))*row(coroot(rd,i))
 
+
 set rho (RootDatum rd) = ratvec:
   let res= ratvec: null(rank(rd))
   in for i:semisimple_rank(rd) do res +:= fundamental_weight(rd,i) od; res
 { this uses fewer additions than computing half sum of the positive roots }
+
+{ make rho as a vector of integers if possible }
+set rho_as_vec (RootDatum r)= vec: ratvec_as_vec(rho(r))
 
 set rho_check (RootDatum rd) = ratvec: { rho(dual(rd)), but a bit faster }
   let res= ratvec: null(rank(rd))
@@ -303,6 +307,10 @@ set rho_check (RootDatum rd) = ratvec: { rho(dual(rd)), but a bit faster }
 
 set is_positive_root (RootDatum rd,vec alpha) = bool: rho_check(rd)*alpha>0
 set is_positive_coroot (RootDatum rd,vec alphav) = bool: alphav*rho(rd)>0
+
+{reflection through an arbitrary root}
+set reflection(RootDatum rd, vec v)=mat:
+if not is_positive_root(rd,v) then v:=-v fi;reflection(rd,root_index(rd,v))
 
 set roots (RootDatum rd) = mat:
   let npr=nr_of_posroots(rd)
@@ -322,6 +330,8 @@ set is_imaginary (mat theta) = (vec->bool): (vec alpha): theta*alpha=alpha
 set is_real      (mat theta) = (vec->bool): (vec alpha): theta*alpha=-alpha
 set is_complex   (mat theta) = (vec->bool): (vec alpha):
   let ta = theta*alpha in ta!=alpha and ta!=-alpha
+
+
 
 set imaginary_roots (RootDatum rd, mat theta) = mat:
   columns_with(is_imaginary(theta),roots(rd))
@@ -361,6 +371,11 @@ set simple_from_positive (mat posroots,mat poscoroots) = (mat,mat):
   ( columns_with(is_simple_for(sum(poscoroots)),posroots)
   , columns_with(is_simple_for(sum(posroots)),poscoroots)
   )
+
+{ using postive root indices allows using simple roots indices as well }
+set posroot_reflection(RootDatum rd, int r) = mat: { r indexes root }
+  1 - [root(rd,r)] * ^[coroot(rd,r)]
+
 
 {				Inner classes				}
 
@@ -479,11 +494,13 @@ set is_descent ((int,KGBElt)p) = status(p)<3
 set is_ascent ((int,KGBElt)p) = status(p)>=3
 
 
+
 { status of general roots for a KGBElt (which here just represents its fiber) }
 
 set is_imaginary (KGBElt x) = (vec->bool): is_imaginary(involution(x))
 set is_real (KGBElt x)      = (vec->bool): is_real(involution(x))
 set is_complex (KGBElt x)   = (vec->bool): is_complex(involution(x))
+
 
 set imaginary_posroots (KGBElt x) = mat:
   imaginary_posroots(real_form(x),involution(x))
@@ -507,6 +524,10 @@ set is_noncompact (KGBElt x) = (vec->bool):
   let coweight = rho_check_i(x)+torus_factor(x)
   in (vec alpha) bool: rat_as_int(coweight*alpha)%2!=0
 
+set is_imaginary(vec v,KGBElt x)=bool:is_imaginary(x)(v)
+set is_real(vec v,KGBElt x)=bool:is_real(x)(v)
+set is_complex(vec v,KGBElt x)=bool:is_complex(x)(v)
+set is_compact(vec v,KGBElt x)=bool:is_compact(x)(v)
 
 {				Blocks					}
 
@@ -609,3 +630,10 @@ set - (ParamPol P) = ParamPol: (-1)*P
 set - (ParamPol P,Param p)=ParamPol:P+(-1)*virtual(p)
 set + (Param p,Param q)=ParamPol:virtual(p)+virtual(q)
 set - (Param p,Param q)=ParamPol:virtual(p)+(-1)*virtual(q)
+
+
+set find([[int]] list,[int] v)=int:
+ let i=#list-1 in while i>=0 and list[i]!=v do i-:=1 od;i
+
+set in_string_list(string s,[string] S)=bool:
+let rv=false,i=0 in for i:#S do if s=S[i] then i:=#S;rv:=true else i+:=1 fi od;rv

@@ -1,11 +1,13 @@
-<hermitian.rx { loads lots of other necessary stuff }
-<my_lattice  { replacement for lattice.rx }
-
+<basic
+<representations
+<lattice  
+<Weylgroup
 <parameters.rx { for square(x) }
 <extended_misc  { basis for extended parameters }
 <extended_types  { types of extended parameters }
 <extended_cross  {cross action of extended parameters}
 <extended_cayley  {Cayley transforms of extended parameters}
+{might also want to load nonintegral.rx}
 
 {       references:
   Parameters for Twisted Representations (Adams/Vogan)
@@ -91,7 +93,31 @@
    tau: solve (1-delta)*lambda = (1+^omega)tau
    t:   solve l*(1-delta)      = t*(1+theta)
 }
+{primary definition of E}
+{lambda in X^*+rho, typically lambda=lambda(p)}
+set E(mat delta, KGBElt x, ratvec gamma, ratvec g, ratvec lambda)=extended_param:
+  let () =
+    if not is_fixed(delta,x) then error("x is not fixed by delta")
+    elif not is_integer(square(x)-g)
+    then error("x is not compatible with infinitesimal cocharacter g")
+    fi
+    then theta=involution(x) 
+    then l=ratvec_as_vec( (g-(1+^theta)*torus_factor(x)/2-rho_check(real_form(x))))
+    { g-(1+^theta)(tf(x))=l+rho^v =>
+     (1-^theta)g = (1-^theta)(l+rho^v) as required above}
+    then omega=-^theta
+    then lambda_E=ratvec_as_vec(lambda-rho(real_form(x)))  {lambda_E in X^*}
+    then (t,result1)  =solve((1-omega),ratvec_as_vec(-(1-^delta)*l)),
+         (tau,result2)=solve((1-theta),ratvec_as_vec(-(1-delta)*lambda_E))
+  in
+  if result1=false
+  then error("(1-^delta)l=(1+^theta)t has no integral solution")
+  elif result2=false
+  then error("(1-delta)lambda=(1+theta)tau has no integral solution")
+  else (inner_class(real_form(x)),delta,gamma,lambda_E,theta,g,l,omega,tau,t)
+  fi  
 
+{this next definition is problematic in the nonintegral case, having to do with y}
 set E(mat delta, ratvec gamma, KGBElt x, ratvec g, KGBElt y) = extended_param:
   let () =
     if dual(inner_class(real_form(x)))!=inner_class(real_form(y))
@@ -123,9 +149,35 @@ set E(mat delta, Param p, ratvec g) = extended_param:
 set E(mat delta, KGBElt x, KGBElt y, ratvec gamma, ratvec g) = extended_param:
   E(delta,gamma,x,g,y)
 
-{ here we assume delta=distinguished_involution(G) }
-set E(Param p, ratvec g) = extended_param:
-  E(distinguished_involution(real_form(p)),p,g)
+set E(mat delta, Param p, ratvec g) = extended_param:E(delta,x(p), infinitesimal_character(p), g, lambda(p))
+
+{the natural choice of cocharacter for p
+ maybe shift_g_regular is not necessary?
+}
+set canonical_cocharacter(Param p)=
+let G=real_form(p) in 
+let g0=base_grading_vector(G)+rho_check(G)
+in shift_g_regular(G,g0) 
+
+{in the presence of \delta, g must be \delta-invariant
+maybe this is automatic, but just in case:
+}
+set canonical_cocharacter(Param p, mat delta)=
+let G=real_form(p) 
+then g0=base_grading_vector(G)+rho_check(G)
+then g1=(1+^delta)*g0/2 
+in shift_g_regular(G,g1)
+
+set E(mat delta, Param p) = extended_param:E(delta,p,canonical_cocharacter(p,delta))
+
+{g must satisfy: e(g)=x^2 and is ^delta-invariant}
+set E(mat delta, Param p, ratvec g) = extended_param:E(delta,p,g)
+
+{assume delta=distinguished_involution(G)}
+set E(Param p, ratvec g) = extended_param:E(distinguished_involution(real_form(p)),p,g)
+
+{assume delta=distinguished_involution(G), use canonical cocharacter}
+set E(Param p) = extended_param:let delta=distinguished_involution(real_form(p)) in E(delta,p)
 
 set torus_factor(extended_param(,,,,,g,l,,,)) = ratvec: (g-l)/2
 set dual_torus_factor(extended_param(,,gamma,lambda,,,,,,)) = ratvec:
@@ -139,7 +191,30 @@ set nu(extended_param e) = ratvec: nu(gamma(e),x(e))
   The i term of this formula is not symmetric in G and G^\vee, hence
   we also have dual_sign(E,F)
 }
+
 set sign(
+  extended_param(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1):E1,
+  extended_param(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2):E2
+ ) = int:
+  if   ic1!=ic2 then  0
+  elif delta1!=delta2 then 0
+  elif gamma1!=gamma2 then 0
+  elif g1!=g2 then 0
+  elif theta1!=theta2 then 0
+  elif omega1!=omega2 then 0  {redundant}
+  elif x(E1)!=x(E2) then 0
+  {to avoid trouble with construction of y, test conjugacy of e((gamma-lambda)/2)\ch\sigma_w\ch\xi_0 directly}
+  {elif not KGB_equal(y(E1),y(E2)) then 0}
+  elif not   (1+theta1)*((gamma1-lambda1)-(gamma2-lambda2))=null(#gamma1) then 0
+  else
+  let exp=rat_as_int(
+     (-l2*(1-delta1)*tau2
+      +l1*(1-delta1)*tau1
+     )/2 + (l2-l1)*tau1 + t2*(lambda2-lambda1)
+   ) in (-1)^exp
+fi
+
+set sign_verbose(
   extended_param(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1):E1,
   extended_param(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2):E2
  ) = int:
@@ -149,7 +224,10 @@ set sign(
   elif g1!=g2 then prints("infinitesimal cocharacters are not equal");0
   elif theta1!=theta2 then prints("involutions theta_1,theta_2 are not equal");0
   elif x(E1)!=x(E2) then prints("KGB elements x_1,x_2 are not equal");0
-  elif y(E1)!=y(E2) then prints("dual KGB elements y_1,y_2 are not equal");0
+{  elif y(E1)!=y(E2) then prints("dual KGB elements y_1,y_2 are not equal");0}
+  {to avoid trouble with construction of y, test conjugacy of e((gamma-lambda)/2)\ch\sigma_w\ch\xi_0 directly}
+  {elif not KGB_equal(y(E1),y(E2)) then prints("dual KGB elements y_1,y_2 are not equal");0}
+  elif not   (1+theta1)*((gamma1-lambda1)-(gamma2-lambda2))=null(#gamma1) then prints("gamma_i-lambda_i not conjugate");0
   else
   let exp=rat_as_int(
      (-l2*(1-delta1)*tau2
@@ -192,20 +270,33 @@ set dual_sign (extended_param Ep) =int: dual_sign(Ep,default(Ep))
 
 set = (extended_param xp1, extended_param xp2) = bool: sign(xp1,xp2)=1
 
+
 { print information about an extended block }
 set ext_print_block(mat delta, [Param] B) = void:
-  let G=real_form(B[0]) in
-  for p@i in B do
+  let G=real_form(B[0]),
+  gamma=infinitesimal_character(B[0]) 
+  then id=integrality_datum(G,gamma)
+  then ()=if  not is_integral(G,gamma) then 
+   prints("Infinitesimal character ", gamma, " is not integral.");
+   prints("integral root system: ", integrality_datum(G,gamma));
+   prints("integral-simple roots in the set of positive roots: ", for alpha in simple_roots(id) do find(posroots(G),alpha) od) 
+ fi in 
+   for p@i in B do
     if is_fixed(delta,p)
     then let types="" in
-      for s:ss_rank(G) do types+:=" "+ext_type(delta,s,p) od
+      for s:ss_rank(id) do types+:=" "+ext_type(delta,s,p) od
     ; prints(i, " ", types, ": ", p)
     fi
   od
 
-set ext_print_trivial_block (RealForm G) = void:
-  let (B,)=block(trivial(G))
-  in ext_print_block(distinguished_involution(G),B)
+set ext_print_block(mat delta,Param p)=void:ext_print_block(delta,block_of(p))
+set ext_print_block(Param p)=void:ext_print_block(distinguished_involution(real_form(p)),block_of(p))
+
+{for dyslexics}
+set print_ext_block(mat delta,[Param] B)=void:ext_print_block(delta,B)
+set print_ext_block(mat delta,Param p)=void:ext_print_block(delta,p)
+set print_ext_block(Param p)=void:ext_print_block(distinguished_involution(real_form(p)),p)
+
 
 { for convenience
  usage: set (delta,B,g) = ext_basic(G)
@@ -219,5 +310,22 @@ set ext_basic (RealForm G) = (mat,[Param],ratvec):
 }
 set is_default (extended_param(,delta,gamma,,,g,,,,):xp) = bool:
   xp=E(delta,gamma,x(xp),g,y(xp))
+
+set ext_block_of(mat delta, Param p, ratvec g)=[extended_param]:for p in fixed_block_of(delta,p) do E(delta,p,g) od
+
+set ext_block_of(mat delta, Param p)=[extended_param]:ext_block_of(delta,p,canonical_cocharacter(p,delta))
+
+set ext_block_of(Param p)=[extended_param]:ext_block_of(distinguished_involution(real_form(p)),p)
+
+
+
+set find([extended_param] list,extended_param E)=(int,int):
+let i=0 in 
+let rv=(-1,-1) in
+while i<#list do 
+let s=sign(E,list[i])  in
+if s=0 then i:=i+1 else rv:=(s,i);i:=#list fi od;rv
+
+set find(extended_param E,[extended_param] list)=(int,int):find(list,E)
 
 

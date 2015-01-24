@@ -26,14 +26,18 @@ set test_ext_cayley(Param p, int j, string ext_type, extended_param xq) = void:
      fi
 
 {extended Cayley transform of type 1*}
+{Cayley transform by j^th simple root of the *integral* roots
+ assuming it is also simple for G. See ext_Cayley(...) toward the bottom of this file}
 set ext_Cayley_1((int,extended_param)(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
-let xp=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
-  then p=parameter(xp)
+let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
+  then id=integrality_datum(ic,gamma) 
+  then p=parameter(E)
   then type=ext_type_1(delta,j,p) in {1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn}
-let alpha=vec:root(ic,j)
-  then alpha_check=vec:coroot(ic,j)
-  then ref=reflection(ic,j)
-  then coref=reflection(dual(ic),j) in
+  let alpha=vec:simple_roots(id)[j]
+{  then ()=prints("j=", j, " alpha=", alpha, " type=", type) }
+  then alpha_check=vec:simple_coroots(id)[j]
+  then ref=posroot_reflection(id,j)
+  then coref=posroot_reflection(dual(id),j) in
 if (type="1i1") then
  let new_lambda=lambda
   then new_l=vec:ratvec_as_vec(l+((g*alpha-l*alpha-1)/2)*alpha_check)
@@ -65,38 +69,46 @@ elif (type="1r1f") then
   then new_tau=tau
   then xq_1=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
   then xq_2=(ic,delta,gamma,new_lambda,new_theta,g,vec:new_l+alpha_check,new_omega,new_tau,new_t)
-  then ()=test_ext_cayley(p,j,"1r1f",xq_1)
-  then ()=test_ext_cayley(p,j,"1r1f",xq_2) in
+{  then ()=test_ext_cayley(p,j,"1r1f",xq_1)
+  then ()=test_ext_cayley(p,j,"1r1f",xq_2)} in
  [xq_1,xq_2]
 elif (type="1r2") then
+{  let ()=prints("alpha:", alpha) in}
  let new_lambda=vec:ratvec_as_vec(lambda+((gamma*alpha_check-lambda*alpha_check-1)/2)*alpha)
   then new_l=l
   then new_theta=ref*theta
   then new_omega=omega*coref
+{  then ()=prints("theta:", theta)
+  then ()=prints("new_theta:", new_theta, ", alphav:", alpha_check) 
+  then ()=prints("oneplus:", oneplus(^new_theta))}
   then (s,valid)=solve(oneplus(^new_theta),alpha_check)
   then ()= if (not valid) then error("failure in Cayley of type 1r2, solving for s") fi
   then new_t=vec:t-t*alpha*s
   then new_tau=tau
   then xq=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
-  then ()=test_ext_cayley(p,j,"1r2",xq) in [xq]
+  {then ()=test_ext_cayley(p,j,"1r2",xq)} in [xq]
 else
-[xp]
+[E]
 fi
 
 {extended Cayley transform of type 2*}
+{Cayley transform by j^th simple root of the *integral* roots
+ assuming it is also simple for G. See ext_Cayley(...) toward the bottom of this file}
 set ext_Cayley_2((int,extended_param)(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
-let xp=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
-  then p=parameter(xp)
+  let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
+  then id=integrality_datum(ic,gamma) 
+  then p=parameter(E)
   then type=ext_type_2(delta,j,p) in {2C+,2C-,2Ci,2Cr,2i11,2i12,2i22,2r22,2r21,2r11,2rn,2ic}
-let alpha=vec:root(ic,j)
-  then alpha_check=vec:coroot(ic,j)
-  then k=lookup(delta*alpha,simple_roots(ic))
-  then beta=root(ic,k)
-  then beta_check=coroot(ic,k)
-  then s_alpha=reflection(ic,j)
-  then s_alpha_check=reflection(dual(ic),j)
-  then s_beta=reflection(ic,k)
-  then s_beta_check=reflection(dual(ic),k) in
+{  let ()=prints("Cayley of type:", type) in}
+  let alpha=vec:simple_roots(id)[j]
+  then alpha_check=vec:simple_coroots(id)[j]
+  then beta=delta*alpha 
+  then k=root_index(id,beta)
+  then beta_check=simple_coroots(id)[k]
+  then s_alpha=reflection(ic,alpha)
+  then s_alpha_check=reflection(dual(ic),alpha_check)
+  then s_beta=reflection(ic,beta)
+  then s_beta_check=reflection(dual(ic),beta_check) in
 if (type="2Ci") then
  let new_lambda=vec:ratvec_as_vec(s_alpha*lambda+(gamma*alpha_check-1)*alpha)
   then new_l=vec:ratvec_as_vec(s_alpha_check*l+(g*alpha-1)*alpha_check)
@@ -105,7 +117,7 @@ if (type="2Ci") then
   then new_tau=vec:ratvec_as_vec(tau-(tau*alpha_check+tau*beta_check)/2*alpha)
   then new_t=vec:ratvec_as_vec(s_alpha_check*t+(l*alpha-g*alpha+1)*alpha_check)
   then xq= (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
-  then ()=test_ext_cayley(p,j,"2Ci",xq) in [xq]
+  {then ()=test_ext_cayley(p,j,"2Ci",xq)} in [xq]
 elif (type="2Cr") then
  let new_lambda=vec:ratvec_as_vec(s_alpha*lambda+(gamma*alpha_check-1)*alpha)
   then new_l=vec:ratvec_as_vec(s_alpha_check*l+(g*alpha-1)*alpha_check)
@@ -114,7 +126,7 @@ elif (type="2Cr") then
   then new_tau=vec:ratvec_as_vec(s_alpha*tau+(lambda*alpha_check-gamma*alpha_check+1)*alpha)
   then new_t=vec:ratvec_as_vec(t-(t*alpha+t*beta)/2*alpha_check)
   then xq=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
-  then ()=test_ext_cayley(p,j,"2Cr",xq) in [xq]
+{  then ()=test_ext_cayley(p,j,"2Cr",xq)} in [xq]
 elif (type="2i11") then {no examples checked yet}
  let new_lambda=lambda
   then new_l=vec:ratvec_as_vec(l+(g*alpha-l*alpha-1)/2*alpha_check+(g*beta-l*beta-1)/2*beta_check)
@@ -127,7 +139,7 @@ elif (type="2i11") then {no examples checked yet}
   let ()= if (not valid) then error("failure in Cayley of type 2i11, solving for zeta_beta") fi
   then new_tau=vec:t-tau*alpha*zeta_alpha-tau*beta*zeta_beta
   then xq=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
-  then ()=test_ext_cayley(p,j,"2i11",xq) in [xq]
+{  then ()=test_ext_cayley(p,j,"2i11",xq)} in [xq]
 elif (type="2i12") then
  let new_lambda=lambda
   then new_l=vec:ratvec_as_vec(l+(g*alpha-l*alpha-1)/2*alpha_check+(g*beta-l*beta-1)/2*beta_check)
@@ -139,21 +151,24 @@ elif (type="2i12") then
   let new_tau=vec:ratvec_as_vec(tau+tau*beta_check*sigma-(tau*alpha_check+tau*beta_check)/2*alpha)
   then xq_1=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
   then xq_2=(ic,delta,gamma,vec:new_lambda+alpha,new_theta,g,new_l,new_omega,vec:new_tau-sigma,new_t) in
-  let ()=test_ext_cayley(p,j,"2i22",xq_1) in
-  let ()=test_ext_cayley(p,j,"2i22",xq_2)  in [xq_1,xq_2]
+{  let ()=test_ext_cayley(p,j,"2i12",xq_1) in
+  let ()=test_ext_cayley(p,j,"2i12",xq_2)  in }
+[xq_1,xq_2]
 elif (type="2i22") then
- let ()=prints("extended Cayley transform of type 2i22")
-  then new_lambda_1=lambda
+{ let ()=prints("extended Cayley transform of type 2i22") in}
+  let new_lambda_1=lambda
   then new_lambda_2=lambda
   then new_tau=tau
   then ()= if is_even(tau*alpha_check) then
   new_lambda_1:=lambda;
   new_lambda_2:=lambda+alpha+beta;
+{  prints("even");}
   new_tau:=ratvec_as_vec(tau-tau*alpha_check/2*alpha-tau*beta_check/2*beta)
  else
   new_lambda_1:=lambda+alpha;
   new_lambda_2:=lambda+beta;
-  new_tau:=ratvec_as_vec(tau-tau*alpha_check/2*alpha-tau*beta_check/2*beta)
+{  prints("odd");}
+  new_tau:=ratvec_as_vec(tau-(tau*alpha_check+1)/2*alpha-(tau*beta_check-1)/2*beta)
  fi
   then new_tau=vec:new_tau
   then new_l=vec:ratvec_as_vec(l+(g*alpha-l*alpha-1)/2*alpha_check+(g*beta-l*beta-1)/2*beta_check)
@@ -162,22 +177,28 @@ elif (type="2i22") then
   then new_t=t
   then xq_1=(ic,delta,gamma,new_lambda_1,new_theta,g,new_l,new_omega,new_tau,new_t)
   then xq_2=(ic,delta,gamma,new_lambda_2,new_theta,g,new_l,new_omega,new_tau,new_t)
-  then ()=test_ext_cayley(p,j,"2i22",xq_1)
-  then ()=test_ext_cayley(p,j,"2i22",xq_2) in [xq_1,xq_2]
+{  then ()=test_ext_cayley(p,j,"2i22",xq_1)
+  then ()=test_ext_cayley(p,j,"2i22",xq_2) }in [xq_1,xq_2]
 elif (type="2r22") then
  let new_lambda=vec:ratvec_as_vec(lambda +(gamma*alpha_check-lambda*alpha_check-1)/2*alpha+(gamma*beta_check-lambda*beta_check-1)/2*beta)
   then new_l=l
   then new_theta=s_alpha*s_beta*theta
   then new_omega=omega*s_alpha_check*s_beta_check
   then new_tau=tau
+{  then ()=prints("s_alpha:", s_alpha)
+  then ()=prints("s_beta:", s_beta)
+  then ()=prints("alpha_check:", alpha_check) 
+  then ()=prints("beta_check:", beta_check) 
+  then ()=prints("new_theta: ", new_theta) }
   then (zeta_alpha_check,valid)=solve(oneplus(^new_theta),alpha_check) in
   let ()= if (not valid) then error("failure in Cayley of type 2r22, solving for (1+^theta)zeta=alpha_check") fi
   then (zeta_beta_check,valid)=solve(oneplus(^new_theta),beta_check) in
-  let ()= if (not valid) then error("failure in Cayley of type 2r22, solving for (1+theta)zeta=beta_check") fi
+  let ()= if (not valid) then error("failure in Cayley of type 2r22, solving for (1+^theta)zeta=beta_check") fi
   then new_t=vec:ratvec_as_vec(t-t*alpha*zeta_alpha_check-t*beta*zeta_beta_check)
   then xq=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
-  then ()=test_ext_cayley(p,j,"2r22",xq) in [xq]
+{  then ()=test_ext_cayley(p,j,"2r22",xq)} in [xq]
 elif (type="2r21") then
+{  let ()=prints("type 2r21") in }
  let new_lambda=vec:ratvec_as_vec(lambda +(gamma*alpha_check-lambda*alpha_check-1)/2*alpha+(gamma*beta_check-lambda*beta_check-1)/2*beta)
   then new_l=l
   then new_theta=s_alpha*s_beta*theta
@@ -188,11 +209,11 @@ elif (type="2r21") then
   then new_t=vec:ratvec_as_vec(t+t*beta*s-(t*alpha+t*beta)/2*alpha_check)
   then xq1=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
   then xq2=(ic,delta,gamma,new_lambda,new_theta,g,vec:new_l+alpha_check,new_omega,new_tau,vec:new_t-s)
-  then ()=test_ext_cayley(p,j,"2r21",xq1)
-  then ()=test_ext_cayley(p,j,"2r21",xq2) in [xq1,xq2]
+{  then ()=test_ext_cayley(p,j,"2r21",xq1)
+  then ()=test_ext_cayley(p,j,"2r21",xq2)} in [xq1,xq2]
 elif (type="2r11") then
- let ()=prints("extended Cayley transform of type 2r11")
-  then new_l_1=l
+{  let ()=prints("type 2r11") in }
+  let new_l_1=l
   then new_l_2=l
   then new_t=t
   then ()= if is_even(t*alpha) then
@@ -213,23 +234,46 @@ elif (type="2r11") then
 (ic,delta,gamma,new_lambda,new_theta,g,new_l_1,new_omega,new_tau,new_t),
 (ic,delta,gamma,new_lambda,new_theta,g,new_l_2,new_omega,new_tau,new_t)]
 else
-prints("Cayley transform of type ", type, " not defined");[xp]
+prints("Cayley transform of type ", type, " not defined");[E]
 fi
 
 {extended Cayley transform of type 3*: not implemented}
+{Cayley transform by j^th simple root of the *integral* roots
+ assuming it is also simple for G. See ext_Cayley(...) toward the bottom of this file}
 set ext_Cayley_3((int,extended_param)(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
-let xp=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
-  then p=parameter(xp)
+let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
+  then p=parameter(E)
   then type=ext_type_1(delta,j,p) in {3C+,3C-,3Ci,3Cr,3i,3r,3rn,3ic}
-prints("Cayley transform of type ", type, " not defined");[xp]
+prints("Cayley transform of type ", type, " not defined");[E]
 
-{extended Cayley transform of length 1,2,3, calls extended_Cayley_i}
+
+{Cayley transforms are always by integral roots 
+first define it for alpha G-simple (=>integral-simple)  
+then for general integral-simple (this is done in non-integral.rx)
+Cayley transform by j^th simple root of the *integral* roots
+assuming this root is G-simple}
+
 set ext_Cayley((int,extended_param)(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
-let xp=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
-  then p=parameter(xp) in
-if (not is_fixed(delta,p)) then error("Parameter is not fixed by delta") else
-let l=ext_length(root_datum(p),delta,j) in
-if l=1 then ext_Cayley_1(j,xp)
-elif l=2 then ext_Cayley_2(j,xp)
-else ext_Cayley_3(j,xp) fi fi
-
+let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
+then type=ext_type(j,E) 
+{then ()=prints("ext_Cayley, j=", j, ", " ,parameter(E)) }
+then cayley_types=["1i1","1i2f","1r1f","1r2","2Ci","2Cr","2i12","2i22","2r22","2r21","2r11","3Ci","3Cr","3i","3r"]
+in if not in_string_list(type,cayley_types) then prints("Cayley of type ", type,  " not defined");[E] else
+{ let ()=prints("extended Cayley transform of type ", type) in}
+ let p=parameter(E) in
+ if (not is_fixed(delta,p)) then error("Parameter is not fixed by delta") else
+  let rd=root_datum(p)
+  then id=integrality_datum(p) 
+  then alpha=simple_roots(id)[j] in
+  if is_simple_root(rd,alpha) then 
+    let l=ext_length(integrality_datum(p),delta,j) in
+    if l=1 then ext_Cayley_1(j,E)
+     elif l=2 then ext_Cayley_2(j,E)
+     elif l=3 then ext_Cayley_2(j,E)
+     else error("Give me a break") 
+    fi
+  else
+    error("root is integral-simple but not simple, need to load integral.rx to define ext_Cayley")  
+  fi
+ fi
+fi

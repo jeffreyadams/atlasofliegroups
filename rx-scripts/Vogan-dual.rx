@@ -1,12 +1,5 @@
 <basic.rx
 
-set parity(Param p,vec alpha_hat) = bool:
-  let x = x(p) then theta = involution(x)
-  in if alpha_hat*theta != -alpha_hat then error("root not real")
-     else let rat_wt= infinitesimal_character(p)-lambda(p)+rho_r(x)
-     in rat_as_int(alpha_hat * rat_wt) % 2 = 1
-     fi
-
 { to compute y values over a block of parameters, precompute dual inner class }
 set dual_inner_class(Param p) = InnerClass:
   let id = integrality_datum(real_form(p),infinitesimal_character(p))

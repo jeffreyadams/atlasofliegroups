@@ -107,6 +107,20 @@ set solve_vec(mat M, vec v) = vec: { find integer solution to A*x=v }
     od
   in R*(for i:d do target[i] od # null (n_rows(R)-d))
 
+{alternative version: return (vec,bool)}
+set solve(mat M, vec v) =(vec,bool): { find integer solution to A*x=v }
+  let (ds,L,R) = diagonalize(M) then d=#ds
+  then result=true
+  then target =
+    for c@i in L*v
+    do if i<d
+       then if c%ds[i]=0 then c\ds[i] else result:=false;0 fi
+       elif c=0 then 0 else result:=false;0
+       fi
+    od
+  in if result then (R*(for i:d do target[i] od # null (n_rows(R)-d)),true) else (v,false) fi
+
+
 set solve_ratvec(mat M, vec v) = ratvec: { find rational solution to A*x=v }
   let (ds,L,R) = diagonalize(M) then d=#ds, target=L*v
   in begin

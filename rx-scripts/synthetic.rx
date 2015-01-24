@@ -1,22 +1,10 @@
 <basic.rx
-<Vogan-dual.rx { for parity condition at arbitrary real coroots }
+<Weylgroup  
+<parameters
 
 { using postive root indices allows using simple roots indices as well }
 set posroot_reflection(RootDatum rd, int r) = mat: { r indexes root }
   1 - [root(rd,r)] * ^[coroot(rd,r)]
-
-{ find Weyl group element (matrix) making root simple & index of simple root }
-set make_simple (RootDatum rd, vec root) = (mat, int):
-  let r = semisimple_rank(rd), alpha=simple_roots(rd), alphav=simple_coroots(rd)
-  , busy = true, i=0, w=id_mat(rank(rd))
-  in while(busy)
-     do i:=0; while i<r and alphav[i]*root<=0 do i+:=1 od
-     ; if i=r then error("not a positive root")
-       elif root = alpha[i] then busy:=false
-       else let ref=posroot_reflection(rd,i) { actually a simple root here }
-         in root := ref*root; w := ref*w
-       fi
-     od; (w,i)
 
 set rho_check_i (RootDatum rd, mat theta) = ratvec:
   sum(imaginary_poscoroots(rd,theta))/2
@@ -30,12 +18,32 @@ set grading_coweight (KGBElt x) = ratvec: torus_factor(x) + rho_check_i(x)
 set make_KGB(RealForm G, mat theta, ratvec grading_cowt) = KGBElt:
   KGB_elt(G,theta,grading_cowt - rho_check_i(G,theta))
 
+{--------------------cross actions---------------------}
+
 set cross (mat w, KGBElt x) = KGBElt:
   let theta=involution(x), G=real_form(x), w1=inverse(w)
   in make_KGB(G, w*theta*w1, grading_coweight(x)*w1 )
 
 set posroot_cross (int i, KGBElt x) = KGBElt:
   cross(posroot_reflection(real_form(x),i),x)
+
+{cross action of element mat:w of Weyl group on parameters
+assuming integral infinitesimal character, otherwise see nonintegral.rx}
+{if w\in W(gamma) this is the usual cross action
+ if w\not\in W(gamma) this has different (dominant) infinitesimal character}
+{also w given by sequence of simple root reflections, or 
+ w=s_beta for beta an arbtirary positive root}
+set cross (mat w, Param p) = Param:
+  let x0 = x(p), gamma = infinitesimal_character(p)
+  then rd = root_datum(real_form(x0)),
+  x1=cross(w,x0), grading_wt=gamma-lambda(p)+rho_r(x0)
+  then theta1= involution(x1)
+  then (new_gamma,)=make_dominant_using_roots(rd, w*gamma)
+  then ()=prints("new_gamma=", new_gamma) 
+  in parameter(x1,new_gamma - w*grading_wt + rho_r(rd,theta1), new_gamma)
+
+
+{--------------------Cayley transforms-------------------}
 
 set posroot_Cayley (int i, KGBElt x) = KGBElt:
   let G=real_form(x), theta0=involution(x)

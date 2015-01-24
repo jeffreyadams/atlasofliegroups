@@ -97,3 +97,10 @@ set parameter_pair( KGBElt x, KGBElt y,ratvec gamma,ratvec g) = (Param,Param):
   (parameter(x,y,gamma), dual_parameter(x,y,g))
 }
 
+{copied from Vogan-dual.rx}
+{ shift (up) a candidate dual infinitesimal character to strictly dominant }
+set shift_g_regular (RootDatum rd, ratvec g) = ratvec:
+  for alpha@i in simple_roots(rd)
+  do let (v,d) = %fundamental_coweight(rd,i)
+     in g +:= (1-ceil(g*alpha/d)) * v
+  od; g

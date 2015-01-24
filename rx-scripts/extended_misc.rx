@@ -1,6 +1,7 @@
 <basic.rx
 <lattice { added functions, function in_lattice }
 <parameters.rx { for parameter(x,y,gamma) }
+<Weylgroup
 
 { some of the stuff at the top of this file really belongs elsewhere, but
   is left here to avoid conflicts}
@@ -102,6 +103,8 @@ set omega  (extended_param(,,,,,,,omega,,))  = mat: omega
 set tau    (extended_param(,,,,,,,,tau,))    = vec: tau
 set t      (extended_param(,,,,,,,,,t))      = vec: t
 
+set root_datum     (extended_param(ic,,,,,,,,,))     = RootDatum:root_datum(ic)
+
 set dual_parameter(extended_param
       (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) = extended_param:
   (dual(ic),^delta,g,l,omega,gamma,lambda,theta,t,tau)
@@ -118,12 +121,29 @@ set y(extended_param
       (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) = KGBElt:
   KGB_elt(dual(ic),-theta,(gamma-lambda-rho(ic)))
 
-set x (extended_param
-       (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) = KGBElt:
-  KGB_elt(ic,^theta,(g-l-rho_check(ic)))
+set x (extended_param (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) = KGBElt:
+  KGB_elt(ic,theta,(g-l-rho_check(ic)))
 
-set parameter (extended_param (,,gamma,,,,,,,):a) = Param:
-  parameter(x(a),y(a),gamma)
+{set parameter (extended_param (,,gamma,,,,,,,):a) = Param:
+  parameter(x(a),y(a),gamma)}
+{better: use (x,lambda,gamma)}
+set parameter (extended_param (,,gamma,lambda,,,,,,):a) = Param:
+  parameter(x(a),lambda+rho(real_form(x(a))),gamma)
+
+set integrality_datum(extended_param E)=integrality_datum(ic(E),gamma(E))
+
+{assume gamma(E) is integrally dominant
+ translate by sum of roots to make it dominant
+ return (new extended parameter, sum of roots)
+see nonintegral.rx}
+set translate_to_dominant(extended_param E)=(extended_param,vec):
+let (new_gamma,shift)=make_dominant_using_roots(root_datum(E),gamma(E)) in 
+(extended_param:(ic(E),delta(E),gamma(E)+shift,lambda(E)+shift,theta(E), g(E), l(E), omega(E),tau(E),t(E)),shift)
+
+set fixed_block_of(mat delta, Param p)=[Param]:
+let rv=[Param]:[] in 
+for p in block_of(p) do if twist(delta,p)=p then  rv#:=p fi od;rv
+
 
 { for debugging:
   test that an extended parameter satisfies the defining conditions }

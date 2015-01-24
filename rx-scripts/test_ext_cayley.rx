@@ -1,0 +1,27 @@
+<my
+<nonintegral
+set test_ext_cayley(mat delta, Param p,ratvec g,int i)=void:
+let b=block_of(p) 
+then eb=ext_block_of(delta,p,g) 
+in let rv=[] 
+in for E@j in eb do 
+ let F=ext_Cayley(i,E)[0] in
+ let (sign,index)=find(F,eb) in
+  rv#:=[j,sign,index]
+{  ;if (sign=1) then  prints("Result: cayley #",i," takes E #", j," to E # ",index) 
+  elif (sign=-1) then
+                    prints("Result: cayley #",i," takes E #", j," to -1*E # ",index) 
+  else prints("Result: i=", i, " j=", j,": not found") fi  }od;\
+prints("Cayley transform ", i, " takes exended parameters:");  for k:#rv do prints(rv[k][0], " to ", rv[k][1], "*", rv[k][2]) od
+
+set test_ext_cayley(mat delta, Param p,int i)=void:test_ext_cayley(delta,p,canonical_cocharacter(p,delta),i)
+
+set test_ext_cayley(Param p,int i)=void:test_ext_cayley(distinguished_involution(real_form(p)),p,canonical_cocharacter(p),i)
+
+set test_ext_cayley(RealForm G)=void:
+let p=spherical_principal_series(G,rho(G)/2) 
+then ()=prints("Testing spherical principal series at rho/2 for ", G) 
+then ()=print_block(p) 
+then ()=ext_print_block(p) 
+then n=ss_rank(integrality_datum(p))
+in for i:n do test_ext_cayley(p,i) od
