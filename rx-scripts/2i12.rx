@@ -1,0 +1,15 @@
+set rd=root_datum(Lie_type("A1.A1"),[[1/2,1/2]])
+set ic=inner_class(rd,"ss")
+set G=quasisplit_form(ic)
+set dual_rd=dual(rd)
+set dual_ic=dual(ic)
+set Gd=quasisplit_form(dual_ic)
+
+set delta=mat:[[1,2],[0,-1]]
+prints("delta: ", delta, "delta^2 ", delta^2)
+
+
+set p=trivial(G)
+set B=block_of(p)
+set EB=ext_block_of(p)
+
