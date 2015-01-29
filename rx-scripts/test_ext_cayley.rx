@@ -5,14 +5,11 @@ let b=block_of(p)
 then eb=ext_block_of(delta,p,g) 
 in let rv=[] 
 in for E@j in eb do 
- let F=ext_Cayley(i,E)[0] in
- let (sign,index)=find(F,eb) in
-  rv#:=[j,sign,index]
-{  ;if (sign=1) then  prints("Result: cayley #",i," takes E #", j," to E # ",index) 
-  elif (sign=-1) then
-                    prints("Result: cayley #",i," takes E #", j," to -1*E # ",index) 
-  else prints("Result: i=", i, " j=", j,": not found") fi  }od;\
-prints("Cayley transform ", i, " takes exended parameters:");  for k:#rv do prints(rv[k][0], " to ", rv[k][1], "*", rv[k][2]) od
+  let line=string:"c_"+ i+ ":E("+ j+ ") -> " in
+  let cE=ext_Cayley(i,E) in 
+  for F@k in cE  do 
+    let (sign,index)=find(F,eb) in
+    line+:=(if k=1 then " + " else"" fi)+sign+"*E("+index+")" od ;prints(line) od
 
 set test_ext_cayley(mat delta, Param p,int i)=void:test_ext_cayley(delta,p,canonical_cocharacter(p,delta),i)
 

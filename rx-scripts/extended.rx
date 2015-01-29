@@ -203,9 +203,11 @@ set sign(
   elif theta1!=theta2 then 0
   elif omega1!=omega2 then 0  {redundant}
   elif x(E1)!=x(E2) then 0
-  {to avoid trouble with construction of y, test conjugacy of e((gamma-lambda)/2)\ch\sigma_w\ch\xi_0 directly}
   {elif not KGB_equal(y(E1),y(E2)) then 0}
-  elif not   (1+theta1)*((gamma1-lambda1)-(gamma2-lambda2))=null(#gamma1) then 0
+  {to avoid trouble with construction of y, test conjugacy of e((gamma-lambda)/2)\ch\sigma_w\ch\xi_0 directly}
+  {see synthetic.rx:is_conjugate}
+  {to avoid trouble with construction of y, test conjugacy of e((gamma-lambda)/2)\ch\sigma_w\ch\xi_0 directly}
+  elif not is_conjugate((gamma1-lambda1)/2,(gamma2-lambda2)/2,-theta1) then 0
   else
   let exp=rat_as_int(
      (-l2*(1-delta1)*tau2
@@ -227,7 +229,7 @@ set sign_verbose(
 {  elif y(E1)!=y(E2) then prints("dual KGB elements y_1,y_2 are not equal");0}
   {to avoid trouble with construction of y, test conjugacy of e((gamma-lambda)/2)\ch\sigma_w\ch\xi_0 directly}
   {elif not KGB_equal(y(E1),y(E2)) then prints("dual KGB elements y_1,y_2 are not equal");0}
-  elif not   (1+theta1)*((gamma1-lambda1)-(gamma2-lambda2))=null(#gamma1) then prints("gamma_i-lambda_i not conjugate");0
+  elif not is_conjugate((gamma1-lambda1)/2,(gamma2-lambda2)/2,-theta1) then prints("gamma_i-lambda_i not conjugate");0
   else
   let exp=rat_as_int(
      (-l2*(1-delta1)*tau2
@@ -243,13 +245,15 @@ set dual_sign(
   extended_param(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1):E1,
   extended_param(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2):E2
  ) = int:
-  if   ic1!=ic2 then prints("inner classes are not equal");0
-  elif delta1!=delta2 then prints("involutions delta are not equal");0
-  elif gamma1!=gamma2 then prints("infinitesimal characters are not equal");0
-  elif g1!=g2 then prints("infinitesimal cocharacters are not equal");0
-  elif theta1!=theta2 then prints("involutions theta_1,theta_2 are not equal");0
-  elif x(E1)!=x(E2) then prints("KGB elements x_1,x_2 are not equal");0
-  elif y(E1)!=y(E2) then prints("dual KGB elements y_1,y_2 are not equal");0
+  if   ic1!=ic2 then 0
+  elif delta1!=delta2 then 0
+  elif gamma1!=gamma2 then 0
+  elif g1!=g2 then 0
+  elif theta1!=theta2 then 0
+  elif x(E1)!=x(E2) then 0
+  {elif y(E1)!=y(E2) then 0}
+  {to avoid trouble with construction of y, test conjugacy of e((gamma-lambda)/2)\ch\sigma_w\ch\xi_0 directly}
+  elif not is_conjugate((gamma1-lambda1)/2,(gamma2-lambda2)/2,-theta1) then 0
   else
     let exp=rat_as_int(
        (-t2*(1-delta1)*lambda2

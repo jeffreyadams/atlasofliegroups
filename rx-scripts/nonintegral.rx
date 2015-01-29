@@ -21,18 +21,27 @@ i.e. k>max{-<\gamma,\alpha^\vee>/2}
 set posroot_cross (int i, Param p) = Param:let w=posroot_reflection(root_datum(p),i) in cross(w,p)
 
 {cross action of element mat:w of Weyl group on parameters
-assuming integral infinitesimal character, otherwise see nonintegral.rx
+ non-integral case, see synthetic.rx for integral case
+ synthetic.rx loads first, then nonintegral.rx
+ this definition of cross calls the one in synthetic.rx
 if w\in W(gamma) this is the usual cross action
 if w\not\in W(gamma) this has different (dominant) infinitesimal character
 also w given by sequence of simple root reflections, or 
-w=s_beta for beta an arbtirary positive root
+w=s_beta for beta an arbitrary positive root
 }
 set cross (mat w, Param p) = Param:
-  let x0 = x(p), gamma = infinitesimal_character(p)
+  let x0 = x(p),
+  gamma = infinitesimal_character(p)  {gamma is dominant}
   then rd = root_datum(real_form(x0)),
-  x1=cross(w,x0), grading_wt=gamma-lambda(p)+rho_r(x0)
-  then theta1= involution(x1)
-  then (new_gamma,)=make_dominant_using_roots(rd, w*gamma)
+  x1=cross(w,x0), grading_wt=gamma-lambda(p)+rho_r(x0) {gamma(x1)=w*gamma is integrally-dominant}
+  then theta1= involution(x1) 
+  then (new_gamma,)=make_dominant_using_roots(rd, w*gamma)  
+  {w*gamma and new_gamma differ by a sum of roots, and are in the same integral Weyl chamber
+   new_gamma is dominant
+   this step is necessary because the software will apply equivalances to x1 to make gamma(x1) dominant, which 
+   we don't want
+   see Weyl_group.rx:make_dominant
+  }
   in parameter(x1,new_gamma - w*grading_wt + rho_r(rd,theta1), new_gamma)
 
 set cross([int] w,Param p)=Param:cross(w_matrix(root_datum(p),w),p)
@@ -40,7 +49,9 @@ set posroot_cross (int i, Param p) = Param:let w=posroot_reflection(root_datum(p
 
 { cross action on extended parameters }
 
-{cross action of w (matrix) \in W^delta}
+{cross action of w (matrix) \in W^delta
+this handles both integral and nonintegral cases
+ this definition is free standing, and does not call the one in extended_cross.rx}
 set ext_cross(mat w,extended_param E)=extended_param:
   if not w*delta(E)=delta(E)*w then error("w not in W^delta") else
   let ic=ic(E) then
@@ -71,6 +82,7 @@ set ext_cross(mat w,extended_param E)=extended_param:
 as opposed to simple, which might mean simple for the integral roots}
 
 {cross action of strongly simple root i, must be \delta_0-fixed}
+{note that this function does not call ext_cross(i,E) even when the root is integral}
 set strongly_simple_ext_cross(int i,extended_param E)=extended_param:
 let rd=root_datum(ic(E)) in ext_cross(simple_reflection(rd,i),E)
 
@@ -115,7 +127,7 @@ od;rv
 {extended Cayley transform of any length, and not necessarily simple
 Cayley transform by j^th simple root of the *integral* roots
 if this root is also simple for G, then call ext_Cayley_i(...)
-otherwise, call nonintegral.rx:posroot_ext_Cayley 
+<otherwise, call nonintegral.rx:posroot_ext_Cayley 
 (with the appropriate change in root number)
 }
 set ext_Cayley((int,extended_param)(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=

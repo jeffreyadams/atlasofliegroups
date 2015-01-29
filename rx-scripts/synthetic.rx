@@ -140,4 +140,11 @@ begin let p=B[i]
 ; line
 end
 
-
+{v\xi is conjugate to w\xi where \xi acts on H by theta
+condition: v-w\in (1-theta)X_Q+X, equivalent to
+ (1+theta)(v-w)\in (1-theta)X
+}
+set is_conjugate(ratvec v,ratvec w,mat theta)=bool:
+let z=(1+theta)*(v-w) in 
+if not is_integer(z) then false else
+in_lattice((1+theta),ratvec_as_vec(z)) fi

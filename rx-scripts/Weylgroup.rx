@@ -55,6 +55,14 @@ set make_simple (RootDatum rd, vec root) = (mat, int):
        fi
      od; (w,i)
 
+{gamma is integrally dominant, need to add a sum of roots to it
+to make it dominant; this does not change the integral Weyl chamber of gamma,
+so when acting on parameters it is another parameter with the same types of roots, 
+generating an isomorphic block
+this algorithm is crude: it adds a big enough multiple of 2\rho
+slightly better would be to add a sum of multiples of fundamental weights;
+with each multiple of a fund. weight. must be in the root lattice (not just Z^n)
+}
 set make_dominant_using_roots(RootDatum rd, ratvec v)=(ratvec,vec):
 if (is_dominant(rd,v)) then (v,ratvec_as_vec(v-v)) else
 let (rv,)=make_dominant(rd,v) in 
