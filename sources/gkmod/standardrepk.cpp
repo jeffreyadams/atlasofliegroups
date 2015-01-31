@@ -180,7 +180,7 @@ SRK_context::SRK_context(RealReductiveGroup &GR)
 	{
 	  RootNbr alpha = rd.simpleRootNbr(i);
 	  RootNbr beta= f.involution_image_of_root(alpha);
-	  assert (rd.isSimpleRoot(beta));
+	  assert (rd.is_simple_root(beta));
 	  if (not ci.bi_ortho[rd.simpleRootIndex(beta)]) // skip second of pair
 	  {
 	    ci.bi_ortho.set(i);
@@ -263,7 +263,7 @@ RawRep SRK_context::Levi_rep (Weight lambda, TitsElt a, RankFlags gens) const
     {
       assert(gens.test(ww[i])); // check that we only used elements in $W(L)$
       basedTitsGroup().basedTwistedConjugate(a,ww[i]);
-      rd.simpleReflect(lambda,ww[i]);
+      rd.simple_reflect(ww[i],lambda);
       lambda-=rd.simpleRoot(ww[i]); // make affine reflection fixing $-\rho$
     }
   }
@@ -500,7 +500,7 @@ SRK_context::theta_stable_parabolic
       // second priority give |alpha| and its $\theta$ image the same sign
       RootNbr beta= // image of |alpha| by $\theta$
 	rd.permuted_root(W.word(strong.w()),rd.simpleRootNbr(W.twisted(i)));
-      if (not rd.isPosRoot(beta) and beta!=rd.rootMinus(alpha))
+      if (not rd.is_posroot(beta) and beta!=rd.rootMinus(alpha))
 	break; // found |i| in this case as well
 
     } // for i
@@ -508,7 +508,7 @@ SRK_context::theta_stable_parabolic
     if (i<rd.semisimpleRank()) // then we found a reflection |i| to apply
     {
       basedTitsGroup().basedTwistedConjugate(strong,i);
-      rd.simpleReflect(dom,i);
+      rd.simple_reflect(i,dom);
       ww.push_back(i);
     }
     else break; // no simple roots give any improvement any more, so stop
@@ -605,7 +605,7 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
       {
 	size_t k=sub_inv[kgb().cross(*it,x)];
 	assert(k!=~0ul); // we ought to land in the subset
-	mu.push_back(rd.simpleReflection(mu[k],*it)); // $\rho$-centered
+	mu.push_back(rd.simple_reflection(*it,mu[k])); // $\rho$-centered
 	break;
       }
     }
@@ -679,7 +679,7 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
       else // complex root
       {
 	RootNbr beta=id.root_involution(alpha);
-	assert(rd.isPosRoot(beta));
+	assert(rd.is_posroot(beta));
 	A.set_to(alpha,beta>alpha); // add first of two complex roots
       }
     }
@@ -748,7 +748,7 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
       {
 	size_t k=sub_inv[kgb().cross(*it,x)];
 	assert(k!=~0ul); // we ought to land in the subset
-	mu.push_back(rd.simpleReflection(mu[k],*it)); // $\rho$-centered
+	mu.push_back(rd.simple_reflection(*it,mu[k])); // $\rho$-centered
 	break;
       }
     }
@@ -824,7 +824,7 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
       else // complex root
       {
 	RootNbr beta=id.root_involution(alpha);
-	assert(rd.isPosRoot(beta));
+	assert(rd.is_posroot(beta));
 	A.set_to(alpha,beta>alpha); // add first of two complex roots
       }
     }
@@ -876,7 +876,7 @@ SRK_context::HS_id(const StandardRepK& sr, RootNbr alpha) const
   const RootDatum& rd=rootDatum();
   TitsElt a=titsElt(sr);
   Weight lambda=lift(sr);
-  assert(rd.isPosRoot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
+  assert(rd.is_posroot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
 
   size_t i=0; // simple root index (value will be set in following loop)
   while (true) // we shall exit halfway when $\alpha=\alpha_i$
@@ -892,13 +892,13 @@ SRK_context::HS_id(const StandardRepK& sr, RootNbr alpha) const
 
     // otherwise$\alpha_i$ is complex for the involution |a.tw()|; reflect
     // all data by $s_i$, which decreases level of $\alpha$
-    rd.simple_reflect_root(alpha,i);
-    rd.simpleReflect(lambda,i);
+    rd.simple_reflect_root(i,alpha);
+    rd.simple_reflect(i,lambda);
     basedTitsGroup().basedTwistedConjugate(a,i);
     i=0; // and start over
   }
 
-  Weight mu=rd.simpleReflection(lambda,i);
+  Weight mu=rd.simple_reflection(i,lambda);
   if (basedTitsGroup().simple_grading(a,i))
   { // $\alpha_i$ is a non-compact imaginary simple root
     basedTitsGroup().basedTwistedConjugate(a,i); // adds $m_i$ to torus part
@@ -968,7 +968,7 @@ HechtSchmid
 SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
 {
   const RootDatum& rd=rootDatum();
-  assert(rd.isPosRoot(alpha)); // in fact it must be simple-real for |a.tw()|
+  assert(rd.is_posroot(alpha)); // in fact it must be simple-real for |a.tw()|
 
   TitsElt a=titsElt(sr);
 
@@ -989,7 +989,7 @@ SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
     for (weyl::Generator i=0; i<rd.semisimpleRank(); ++i)
       orth.set(i,tl.dot(rd.simpleCoroot(i))==0);
   }
-  assert(rd.isPosRoot(alpha)); // no real reflections; should still be positive
+  assert(rd.is_posroot(alpha)); // no real reflections; should still be positive
   assert(orth.any()); // since root $\alpha$ is in span
 
   // basis used is of $(1/2)X^*$, so scalar product with coroot always even
@@ -1016,7 +1016,7 @@ SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
       {
 	if (alpha!=rd.simpleRootNbr(i))
 	{ // reflect all data by $s_i$, decreases level of $\alpha$
-	  rd.simple_reflect_root(alpha,i);
+	  rd.simple_reflect_root(i,alpha);
 	  basedTitsGroup().basedTwistedConjugate(a,i);
 	  mod_space.apply(dual_reflection(i));
 	}
@@ -1049,7 +1049,7 @@ SRK_context::q_HS_id_eq(const StandardRepK& sr, RootNbr alpha) const
   const RootDatum& rd=rootDatum();
   TitsElt a=titsElt(sr);
   Weight lambda=lift(sr);
-  assert(rd.isPosRoot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
+  assert(rd.is_posroot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
 
   // the following test is easiest before we move to |alpha| simple situation
   bool type_II = info(sr.Cartan()).fiber_modulus.contains
@@ -1069,8 +1069,8 @@ SRK_context::q_HS_id_eq(const StandardRepK& sr, RootNbr alpha) const
     if (alpha==rd.simpleRootNbr(i)) break; // found it
 
     // otherwise reflect all data by $s_i$, which decreases level of $\alpha$
-    rd.simple_reflect_root(alpha,i);
-    rd.simpleReflect(lambda,i);
+    rd.simple_reflect_root(i,alpha);
+    rd.simple_reflect(i,lambda);
     basedTitsGroup().basedTwistedConjugate(a,i);
     i=0; // and start over
   }
@@ -1096,7 +1096,7 @@ SRK_context::q_HS_id_eq(const StandardRepK& sr, RootNbr alpha) const
   }
   else // $\alpha_i$ is a compact root; "easy" Hecht-Schmid identity
     // based twisted conjugation fixes the Tits element; just reflect weight
-    result -= q_Char(std_rep(rd.simpleReflection(lambda,i),a),
+    result -= q_Char(std_rep(rd.simple_reflection(i,lambda),a),
 		     q_CharCoeff(0,1)); // $q^0$
 
   print(std::cout << "Hecht-Schmid ",sr);

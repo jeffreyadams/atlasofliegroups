@@ -117,10 +117,10 @@ TorusElement& TorusElement::reduce()
 
 
 void TorusElement::simple_reflect(const PreRootDatum& prd, weyl::Generator s)
-{ prd.simpleReflect(repr.numerator(),s); } // numerator is weight for |prd|
+{ prd.simple_reflect(s,repr.numerator()); } // numerator is weight for |prd|
 
 void TorusElement::reflect(const RootDatum& rd, RootNbr alpha)
-{ rd.reflect(repr.numerator(),alpha); } // numerator is weight for |rd|
+{ rd.reflect(alpha,repr.numerator()); } // numerator is weight for |rd|
 
 void TorusElement::act_by(const WeightInvolution& delta)
 { delta.apply_to(repr.numerator()); }

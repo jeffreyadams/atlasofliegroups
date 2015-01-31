@@ -890,8 +890,8 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 	  std::cout << "Making dominant for "  << (real ? "real" : "complex")
 		    << " coroot " << alpha << std::endl;
 #endif
-          rd.simpleReflect(numer,s);
-          rd.simpleReflect(lambda_rho,s);
+          rd.simple_reflect(s,numer);
+          rd.simple_reflect(s,lambda_rho);
 	  if (not real) // center is $\rho$, but $\rho_r$ cancels if |real|
 	    lambda_rho -= rd.simpleRoot(s);
           x = kgb.cross(s,x);
@@ -904,7 +904,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 	  std::cout << "Applying complex descent for singular coroot "
 		    << alpha << std::endl;
 #endif
-          rd.simpleReflect(lambda_rho,s); lambda_rho -= rd.simpleRoot(s);
+          rd.simple_reflect(s,lambda_rho); lambda_rho -= rd.simpleRoot(s);
           x = kgb.cross(s,x);
 	  changed = true;
           break;

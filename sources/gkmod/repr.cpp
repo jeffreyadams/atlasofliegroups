@@ -262,8 +262,8 @@ void Rep_context::make_dominant(StandardRepr& z) const
 	  const RootNbr alpha = rd.simpleRootNbr(s);
 	  if (i_tab.imaginary_roots(i_x).isMember(alpha))
 	    throw std::runtime_error("Non standard parameter in make_dominant");
-          rd.simpleReflect(numer,s);
-          rd.simpleReflect(lr,s);
+          rd.simple_reflect(s,numer);
+          rd.simple_reflect(s,lr);
 	  if (not i_tab.real_roots(i_x).isMember(alpha)) // if |alpha| is real
 	    lr -= rd.simpleRoot(s); // then $\rho_r$ cancels $\rho$
           x = kgb().cross(s,x);

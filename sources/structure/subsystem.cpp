@@ -40,7 +40,7 @@ SubSystem::SubSystem(const RootDatum& parent,
     size_t count=0; weyl::Generator s;
     while (alpha!=rd.simpleRootNbr(s=rd.find_descent(alpha)))
     { // just count the reflections needed to make alpha simple
-      rd.simple_reflect_root(alpha,s);
+      rd.simple_reflect_root(s,alpha);
       ++count;
     }
 
@@ -49,7 +49,7 @@ SubSystem::SubSystem(const RootDatum& parent,
     sub_root[i].simple=sub_root[i].reflection[count]=s; // set middle letter
 
     size_t j=count; // redo search loop, now storing values
-    for (alpha=sub_sys[i]; j-->0; rd.simple_reflect_root(alpha,s))
+    for (alpha=sub_sys[i]; j-->0; rd.simple_reflect_root(s,alpha))
     {
       s=rd.find_descent(alpha);
       sub_root[i].to_simple[j]=s; // write |to_simple| word from right to left
@@ -63,7 +63,7 @@ SubSystem::SubSystem(const RootDatum& parent,
   {
     RootNbr alpha = posRootNbr(i); // root number in subsystem
     weyl::Generator s = find_descent(alpha);
-    simple_reflect_root(alpha,s);
+    simple_reflect_root(s,alpha);
     RootNbr beta = pos_map[posRootIndex(alpha)]; // in parent
     pos_map[i] = rd.permuted_root(sub_root[s].reflection,beta);
     inv_map[pos_map[i]] = posRootNbr(i);
@@ -87,7 +87,7 @@ SubSystem SubSystem::integral // pseudo contructor for integral system
 
 RootNbr SubSystem::parent_nr(RootNbr alpha) const
 {
-  return isPosRoot(alpha) ? pos_map[posRootIndex(alpha)]
+  return is_posroot(alpha) ? pos_map[posRootIndex(alpha)]
     : parent_datum().rootMinus(pos_map[numPosRoots()-1-alpha]) ;
 }
 

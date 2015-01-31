@@ -120,7 +120,7 @@ PreRootDatum& PreRootDatum::quotient(const LatticeMatrix& sublattice)
 }
 
 template<typename C>
-  void PreRootDatum::simpleReflect(matrix::Vector<C>& v, weyl::Generator s)
+void PreRootDatum::simple_reflect(weyl::Generator s,matrix::Vector<C>& v)
   const
 { v -= d_roots[s].scaled(d_coroots[s].dot(v)); }
 
@@ -156,8 +156,8 @@ void PreRootDatum::simple_reflect(LatticeMatrix& M,weyl::Generator s) const
 
 namespace prerootdata {
 
-template void PreRootDatum::simpleReflect
-  (matrix::Vector<arithmetic::Numer_t>& v, weyl::Generator s) const;
+template void PreRootDatum::simple_reflect
+  (weyl::Generator s,matrix::Vector<arithmetic::Numer_t>& v) const;
 
 } // |namespace prerootdata|
 

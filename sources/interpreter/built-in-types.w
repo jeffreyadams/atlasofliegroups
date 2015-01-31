@@ -1424,7 +1424,7 @@ permutation of its rows and columns.
   }
   ww = wrt_distinguished(rd,Delta);
   for (weyl::Generator i=0; i<s; ++i)
-    if (rd.isSimpleRoot(Delta[i])) // should have made every root simple
+    if (rd.is_simple_root(Delta[i])) // should have made every root simple
       p[i]=rd.simpleRootIndex(Delta[i]);
     else throw std::runtime_error
       ("Matrix does not define a root datum automorphism");
@@ -3069,7 +3069,7 @@ void KGB_status_wrapper(expression_base::level l)
     {
       RootNbr theta_alpha = kgb.complexGroup().involution_table().
         root_involution(kgb.inv_nr(x->val),alpha);
-      if (kgb.rootDatum().isPosRoot(theta_alpha))
+      if (kgb.rootDatum().is_posroot(theta_alpha))
        stat = 4; // set status to complex ascent
     }
     push_value(std::make_shared<int_value> (stat));

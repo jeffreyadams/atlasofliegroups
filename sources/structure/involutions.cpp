@@ -158,7 +158,7 @@ RootNbrList Cayley_roots(const TwistedInvolution& tw,
       const weyl::Generator s=~inv_ex[i];
       W.twistedConjugate(cross,s); // record cross action
       for (size_t i=0; i<result.size(); ++i)
-	rs.simple_reflect_root(result[i],s); // s-reflect the |result| roots
+	rs.simple_reflect_root(s,result[i]); // |s|-reflect the |result| roots
     }
 
   return result;
@@ -275,6 +275,13 @@ bool
 InvolutionTable::is_real_simple(InvolutionNbr n,weyl::Generator s) const
 { return real_roots(n).isMember(rd.simpleRootNbr(s)); }
 
+bool
+InvolutionTable::is_complex_descent(InvolutionNbr n,RootNbr alpha) const
+{ make_positive(rd,alpha); // test below assumes |alpha| itself is positive
+  return
+    complex_roots(n).isMember(alpha) and
+    not rd.is_posroot(root_involution(n,alpha));
+}
 
 bool InvolutionTable::equivalent
   (const TorusElement& t1, const TorusElement& t2, InvolutionNbr i) const
