@@ -251,7 +251,8 @@ class RootSystem
   // express sum of roots positive for |Delta| in fundamental weights
   matrix::Vector<int> pos_system_vec(const RootNbrList& Delta) const;
 
-  RootNbrList simpleBasis(RootNbrSet rs) const; // find simple basis for subsystem
+  // find simple basis for subsystem
+  RootNbrList simpleBasis(RootNbrSet rs) const;
 
   bool sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const;
   bool sumIsRoot(RootNbr alpha, RootNbr beta) const

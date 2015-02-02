@@ -573,6 +573,12 @@ inv_Cayley: (int,Param->Param): inverse Cayley transform
   If (and only if) the inverse transform is undefined it returns the same
   parameter. Find out possible second value of invere transform by applying
   cross action to the result, which either produces it or else fixes result
+cross: (vec,Param->Param): cross action for (root,parameter)
+Cayley: (vec,Param->Param): Cayley transform for (root,parameter)
+  These two functions should do the same as the three before, but taking the
+  root in coordinates, and combining the Cayley/inverse Cayley into one
+  function (whichever is defined is applied, or else the parameter returned).
+  The implementation is quite independent however, so comparison is useful.
 twist: (Param->Param): twist the parameter by the distinguihed involution
 orientation_nr: (Param->int): the orientation number
 reducibility_points: (Param->[rat]): the 0<t<=1 with I(x,lambda,t\nu) reducible

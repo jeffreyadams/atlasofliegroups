@@ -85,10 +85,12 @@ SubSystem SubSystem::integral // pseudo contructor for integral system
   return SubSystem(parent,parent.simpleBasis(int_roots));
 }
 
-RootNbr SubSystem::parent_nr(RootNbr alpha) const
+RootNbr SubSystem::to_parent(RootNbr alpha) const
 {
-  return is_posroot(alpha) ? pos_map[posRootIndex(alpha)]
-    : parent_datum().rootMinus(pos_map[numPosRoots()-1-alpha]) ;
+  RootNbr result = pos_map[rt_abs(alpha)];
+  if (not is_posroot(alpha))
+    result = parent_datum().rootMinus(result);
+  return result;
 }
 
 PreRootDatum SubSystem::pre_root_datum() const

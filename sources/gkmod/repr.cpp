@@ -11,6 +11,7 @@
 
 #include <map> // used in computing |reducibility_points|
 #include <iostream>
+#include "error.h"
 
 #include "arithmetic.h"
 #include "tits.h"
@@ -240,16 +241,64 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   return count;
 } // |orientation_number|
 
-void Rep_context::make_dominant(StandardRepr& z) const
+void Rep_context::W_act(const WeylWord& w,StandardRepr& z) const
 {
   const RootDatum& rd = rootDatum();
+  Weight lr = lambda_rho(z);
+  KGBElt& x = z.x_part;
+  Ratvec_Numer_t& numer = z.infinitesimal_char.numerator();
+
+  for (unsigned i=w.size(); i-->0; )
+  {
+    weyl::Generator s=w[i];
+    rd.simple_reflect(s,numer);
+    rd.simple_reflect(s,lr);
+    if (kgb().status(s,x)!=gradings::Status::Real) // center at $\rho-\rho_r$
+      lr -= rd.simpleRoot(s); // so unless |s| is real root compensate
+    x = kgb().cross(s,x);
+  }
+  z.y_bits = // reinsert $y$ bits component
+    complexGroup().involution_table().pack(kgb().inv_nr(x),lr);
+}
+
+void
+Rep_context::W_act(const WeylWord& w,StandardRepr& z,const SubSystem& subsys)
+  const
+{
+  const RootDatum& rd = rootDatum();
+  KGBElt& x= z.x_part;
+  InvolutionNbr i_x = kgb().inv_nr(x);
   const InvolutionTable& i_tab = complexGroup().involution_table();
+
+  // the following are non-|const|, and modified in the loop below
+  Weight lambda2_shifted = (lambda_rho(z)*=2)
+    + rd.twoRho() - rd.twoRho(i_tab.real_roots(i_x));
+  Ratvec_Numer_t& gamma_num = z.infinitesimal_char.numerator();
+
+  for (unsigned i=w.size(); i-->0; )
+  {
+    weyl::Generator s=w[i];
+    RootNbr alpha = subsys.parent_nr_simple(s);
+    rd.reflect(alpha,gamma_num);
+    x = kgb().cross(rd.reflectionWord(alpha),x);
+    i_x = kgb().inv_nr(x);
+    rd.reflect(alpha,lambda2_shifted);
+  }
+  lambda2_shifted -= rd.twoRho() - rd.twoRho(i_tab.real_roots(i_x)); // unshift
+  z.y_bits=i_tab.pack(i_x,lambda2_shifted/2);
+}
+
+WeylWord Rep_context::make_dominant(StandardRepr& z) const
+{
+  const RootDatum& rd = rootDatum();
 
   // the following are non-|const|, and modified in the loop below
   Weight lr = lambda_rho(z);
   KGBElt& x = z.x_part;
   Ratvec_Numer_t& numer = z.infinitesimal_char.numerator();
-  InvolutionNbr i_x = kgb().inv_nr(x);
+
+  WeylWord result;
+  result.reserve(rd.numPosRoots()); // enough to accommodate the WeylWord
 
   { weyl::Generator s;
     do
@@ -259,23 +308,72 @@ void Rep_context::make_dominant(StandardRepr& z) const
 	int v=rd.simpleCoroot(s).dot(numer);
         if (v<0 or (v==0 and kgb().isComplexDescent(s,x)))
         {
-	  const RootNbr alpha = rd.simpleRootNbr(s);
-	  if (i_tab.imaginary_roots(i_x).isMember(alpha))
-	    throw std::runtime_error("Non standard parameter in make_dominant");
+	  result.push_back(s);
           rd.simple_reflect(s,numer);
           rd.simple_reflect(s,lr);
-	  if (not i_tab.real_roots(i_x).isMember(alpha)) // if |alpha| is real
-	    lr -= rd.simpleRoot(s); // then $\rho_r$ cancels $\rho$
+	  switch (kgb().status(s,x))
+	  {
+	  case gradings::Status::ImaginaryCompact:
+	  case gradings::Status::ImaginaryNoncompact:
+	    throw std::runtime_error("Non standard parameter in make_dominant");
+	  case gradings::Status::Complex:
+	    lr -= rd.simpleRoot(s); // pivot around $\rho-\rho_r$
+	  case gradings::Status::Real: {} // no compensation for real roots
+	  }
           x = kgb().cross(s,x);
-	  i_x = kgb().inv_nr(x); // keep up with changing involution
-          break;
-        }
-      }
+	  break; // out of the loop |for(s)|
+        } // |if(v<0)|
+      } // |for(s)|
     }
     while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
   }
-  z.y_bits=i_tab.pack(i_x,lr);
+  z.y_bits=complexGroup().involution_table().pack(kgb().inv_nr(x),lr);
+  return result;
 } // |make_dominant|
+
+WeylWord
+Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
+{
+  const RootDatum& rd = rootDatum();
+  KGBElt& x= z.x_part;
+  InvolutionNbr i_x = kgb().inv_nr(x);
+  const InvolutionTable& i_tab = complexGroup().involution_table();
+
+  // the following are non-|const|, and modified in the loop below
+  Weight lambda2_shifted = (lambda_rho(z)*=2)
+    + rd.twoRho() - rd.twoRho(i_tab.real_roots(i_x));
+  Ratvec_Numer_t& gamma_num = z.infinitesimal_char.numerator();
+
+  WeylWord result;
+  result.reserve(subsys.numPosRoots()); // enough to accommodate the WeylWord
+
+  { weyl::Generator s;
+    do
+    {
+      for (s=0; s<subsys.rank(); ++s)
+      {
+	RootNbr alpha = subsys.parent_nr_simple(s);
+	arithmetic::Numer_t v=rd.coroot(alpha).dot(gamma_num);
+        if (v<0 or (v==0 and i_tab.is_complex_descent(i_x,alpha)))
+        {
+	  if (i_tab.imaginary_roots(i_x).isMember(alpha))
+	    throw std::runtime_error
+	      ("Cannot make non-standard parameter integrally dominant");
+	  result.push_back(s);
+	  gamma_num -= rd.root(alpha).scaled(v); // reflect |gamma| by |alpha|
+	  x = kgb().cross(rd.reflectionWord(alpha),x);
+	  i_x = kgb().inv_nr(x);
+          rd.reflect(alpha,lambda2_shifted);
+	  break; // out of the loop |for(s)|
+        } // |if(v<0)|
+      } // |for(s)|
+    }
+    while (s<subsys.rank()); // wait until inner loop runs to completion
+  }
+  lambda2_shifted -= rd.twoRho() - rd.twoRho(i_tab.real_roots(i_x)); // unshift
+  z.y_bits=i_tab.pack(i_x,lambda2_shifted/2);
+  return result;
+} // |make_dominant| (integrally)
 
 RationalList Rep_context::reducibility_points(const StandardRepr& z) const
 {
@@ -350,16 +448,53 @@ StandardRepr Rep_context::cross(weyl::Generator s, StandardRepr z) const
   blocks::nblock_help aux(realGroup(),subsys);
   blocks::nblock_elt src(z.x(),y_values::exp_pi(infin_char-lambda(z)));
   aux.cross_act(src,s);
-  RatWeight t =  src.y().log_pi(false);
+  const RatWeight& t =  src.y().as_Qmod2Z();
   // InvolutionNbr i_x = kgb().inv_nr(z.x());
   // no need to do |complexGroup().involution_table().real_unique(i_x,t)|
 
   RatWeight lr =  (infin_char - t - RatWeight(rd.twoRho(),2)).normalize();
-  assert(lr.denominator()==1);
-  return StandardRepr
-    (sr_gamma(src.x(),
-	      Weight(lr.numerator().begin(),lr.numerator().end()),
-	      infin_char));
+  assert(lr.denominator()==1); // we have reconstructed $\lambda-\rho \in X^*$
+  return sr_gamma(src.x(),
+		  Weight(lr.numerator().begin(),lr.numerator().end()), // mod 2
+		  infin_char);
+}
+
+StandardRepr Rep_context::cross(const Weight& alpha, StandardRepr z) const
+{
+  const RootDatum& rd = rootDatum();
+  KGBElt& x= z.x_part;
+  InvolutionNbr i_x = kgb().inv_nr(x);
+  const InvolutionTable& i_tab = complexGroup().involution_table();
+
+  const SubSystem& subsys = SubSystem::integral(rd,z.infinitesimal_char);
+  WeylWord w=make_dominant(z,subsys);
+  const RatWeight& infin_char=z.infinitesimal_char;
+
+  RootNbr rt = rd.root_index(alpha);
+  if (rt==rd.numRoots())
+    throw std::runtime_error("Not a root");
+  make_positive(rd,rt);
+  RootNbrSet posroots_sub = subsys.positive_roots();
+  if (not posroots_sub.isMember(rt))
+    throw std::runtime_error("Not an integral root");
+  rt=subsys.to_parent(subsys.permuted_root(subsys.from_parent(rt),w));
+
+  RatWeight lambda_shifted =
+    infin_char - lambda(z) + RatWeight(rd.twoRho(i_tab.real_roots(i_x)),2);
+  Ratvec_Numer_t& numer = lambda_shifted.numerator();
+
+  rd.reflect(rt,numer);
+  x = kgb().cross(rd.reflectionWord(rt),x);
+  i_x = kgb().inv_nr(x);
+
+  lambda_shifted += RatWeight(rd.twoRho()-rd.twoRho(i_tab.real_roots(i_x)),2);
+  lambda_shifted =  (infin_char - lambda_shifted).normalize();
+  assert(lambda_shifted.denominator()==1);
+
+  StandardRepr result =
+    sr_gamma(x,Weight(numer.begin(),numer.end()),infin_char);
+  W_act(w,result,subsys);
+  return result;
 }
 
 StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
@@ -377,10 +512,9 @@ StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
 
   RatWeight lr =  (infin_char - t - RatWeight(rd.twoRho(),2)).normalize();
   assert(lr.denominator()==1);
-  return StandardRepr
-    (sr_gamma(src.x(),
-	      Weight(lr.numerator().begin(),lr.numerator().end()),
-	      infin_char));
+  return sr_gamma(src.x(),
+		  Weight(lr.numerator().begin(),lr.numerator().end()), // mod 2
+		  infin_char);
 }
 
 StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
@@ -398,10 +532,74 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
 
   RatWeight lr =  (infin_char - t - RatWeight(rd.twoRho(),2)).normalize();
   assert(lr.denominator()==1);
-  return StandardRepr
-    (sr_gamma(src.x(),
-	      Weight(lr.numerator().begin(),lr.numerator().end()),
-	      infin_char));
+  return sr_gamma(src.x(),
+		  Weight(lr.numerator().begin(),lr.numerator().end()), // mod 2
+		  infin_char);
+}
+
+
+StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
+{
+  const RootDatum& rd = rootDatum();
+  const KGB& kgb = this->kgb();
+  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const SubSystem& subsys = SubSystem::integral(rd,z.infinitesimal_char);
+
+  WeylWord w=make_dominant(z,subsys);
+  KGBElt& x= z.x_part;
+  const Weight lr = lambda_rho(z); // use at end to build new parameter
+  const RatWeight& infin_char=z.infinitesimal_char; // constant from here on
+
+  RootNbr rt = rd.root_index(alpha);
+  if (rt==rd.numRoots())
+    throw std::runtime_error("Not a root");
+  make_positive(rd,rt);
+  const RootNbrSet posroots_sub = subsys.positive_roots();
+  if (not posroots_sub.isMember(rt))
+    throw std::runtime_error("Not an integral root");
+  rt=subsys.to_parent(subsys.permuted_root(subsys.from_parent(rt),w));
+
+  InvolutionNbr inv0= kgb.inv_nr(x);
+  RootNbr s=rt; // future simple root index, the one that |rt| conjugates to
+  WeylWord ww = conjugate_to_simple(i_tab.rd,s);
+  x = kgb.cross(x,ww);
+  InvolutionNbr inv1 = kgb.inv_nr(x);
+  switch (kgb.status(s,x))
+  {
+  case gradings::Status::ImaginaryNoncompact:
+    x = kgb.cayley(s,x); break;
+  case gradings::Status::Real:
+    { RatWeight parity_vector =
+	infin_char - lambda(z) + RatWeight(rd.twoRho(i_tab.real_roots(inv0)),2);
+      if (parity_vector.dot(rd.coroot(rt))%2==1) // then |rt| was parity
+      {	x = kgb.inverseCayley(s,x).first; // do inverse Cayley at |inv1|
+	break;
+      }
+      // else FALL THROUGH
+    }
+  case gradings::Status::ImaginaryCompact:
+  case gradings::Status::Complex:
+    throw error::Cayley_error();
+  }
+  InvolutionNbr inv2 = kgb.inv_nr(x);
+  x = kgb.cross(ww,x); // finally cross back
+  InvolutionNbr inv3 = kgb.inv_nr(x);
+
+  const RootNbrSet posroots = rd.posRootSet();
+  RootNbrSet d12 = (i_tab.real_roots(inv1)^i_tab.real_roots(inv2))&posroots;
+  // the following set is conceptually also filtered by posroots; done later
+  RootNbrSet d03 = i_tab.real_roots(inv0)^i_tab.real_roots(inv3);
+  for (auto it=d12.begin(); it(); ++it)
+    d03.flip(rd.permuted_root(ww,*it)); // transfer, mapping by $w$
+  d03 &= posroots; // set was conceptually negation-symmetric; get upper half
+
+  Weight rho_d(rd.rank(),0);
+  for (auto it=d03.begin(); it(); ++it)
+    rho_d += rd.root(*it);
+
+  z = sr_gamma(x,lr+rho_d,infin_char); // apply shift by |rho_d| to lambda
+  W_act(w,z); // move back to origingal infinitesimal character representative
+  return z;
 }
 
 StandardRepr Rep_context::twist(StandardRepr z) const
@@ -416,10 +614,9 @@ StandardRepr Rep_context::twist(StandardRepr z) const
   RatWeight lr =
     (infin_char - src.y().log_pi(false) - RatWeight(rd.twoRho(),2)).normalize();
   assert(lr.denominator()==1);
-  return StandardRepr
-    (sr_gamma(src.x(),
-	      Weight(lr.numerator().begin(),lr.numerator().end()),
-	      infin_char));
+  return sr_gamma(src.x(),
+		  Weight(lr.numerator().begin(),lr.numerator().end()), // mod 2
+		  infin_char);
 }
 
 Rep_context::compare Rep_context::repr_less() const

@@ -991,9 +991,8 @@ void coroot_wrapper(expression_base::level l)
 }
 
 @ We also allow access to the matrices of all simple or of all positive
-(co)roots, and to the Cartan matrix associated to the root datum. For all
-roots such access is rarely needed, and if so easily programmed, so we don't
-provide a built-in function for that.
+(co)roots. For all roots such access is rarely needed, and if so easily
+programmed, so we don't provide a built-in function for that.
 
 @< Local function definitions @>=
 void simple_roots_wrapper(expression_base::level l)
@@ -1033,7 +1032,11 @@ void positive_coroots_wrapper(expression_base::level l)
   push_value(std::make_shared<matrix_value>
     (int_Matrix(crl,rd->val.rank())));
 }
-@)
+
+@ Here are some important attributes of root data, and look-up
+functions for roots and coroots.
+
+@< Local function definitions @>=
 void datum_Cartan_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l==expression_base::no_value)
@@ -1041,11 +1044,7 @@ void datum_Cartan_wrapper(expression_base::level l)
   int_Matrix M = rd->val.cartanMatrix();
   push_value(std::make_shared<matrix_value>(M));
 }
-
-@ Here are some important numeric attributes of root data, and look-up
-functions for roots and coroots.
-
-@< Local function definitions @>=
+@)
 void rd_rank_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l!=expression_base::no_value)
@@ -3730,6 +3729,57 @@ void parameter_inv_Cayley_wrapper(expression_base::level l)
 		(p->rf,p->rc().inv_Cayley(s,p->val)));
 }
 
+@ The above (old) functions emulate the built-in non-integral block
+construction, and in doing so describe the root argument by index \emph{in the
+integral subsystem} which is potentially confusing, especially in the case
+where the infinitesimal character of the parameter is not dominant, since the
+integral subsystem is only fixed after transforming the parameter into an
+equivalent one with dominantinfinitesimal character. The below function
+implement a new approach, less confusing and more general, in which the root
+is specified in coordinates. Given the internal implementation, there is in
+fact little dealing with the integral subsystem at all, just a test that it
+contains the specified root (if not an error is thrown inside the method
+called; the error will not happen if |l==expression_base::no_value|, ehich is
+not quite correct).
+
+There is not much difference between integral roots that are simple for the
+subsystem and other roots, since what counts in the implementation of Cayley
+transforms is being simple for the whole system, and some conjugation is
+necessary to achieve that anyway. We also blur the distinction between forward
+and inverse Cayley transforms here, as the code will choose what to do
+(possibly nothing in undefined cases) depending on the arguments provided.
+That code will throw an |error::Cayley_error| in case the Cayley transform is
+undefined, but we catch that error here, and return the parameter unchanged;
+as long as users have no means to catch errors, this gives them the option to
+handle undefined Cayley transforms by testing the returned value.
+
+@h "error.h"
+@< Local function def...@>=
+
+void root_parameter_cross_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  shared_vector alpha = get<vector_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<module_parameter_value>
+		(p->rf,p->rc().cross(alpha->val,p->val)));
+}
+@)
+void root_parameter_Cayley_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  shared_vector alpha = get<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  try {
+    push_value(std::make_shared<module_parameter_value>
+		(p->rf,p->rc().any_Cayley(alpha->val,p->val)));
+  }
+  catch (error::Cayley_error& e) // ignore undefined Cayley transforms
+  {@;
+    push_value(p);
+  }
+}
+
+
 @ One useful thing to be able to for parameters is to compute their twist by
 the distinguished involution.
 @< Local function def...@>=
@@ -4047,6 +4097,8 @@ install_function(parameter_cross_wrapper,@|"cross" ,"(int,Param->Param)");
 install_function(parameter_Cayley_wrapper,@|"Cayley" ,"(int,Param->Param)");
 install_function(parameter_inv_Cayley_wrapper,@|"inv_Cayley"
                 ,"(int,Param->Param)");
+install_function(root_parameter_cross_wrapper,@|"cross" ,"(vec,Param->Param)");
+install_function(root_parameter_Cayley_wrapper,@|"Cayley" ,"(vec,Param->Param)");
 install_function(parameter_twist_wrapper,@|"twist" ,"(Param->Param)");
 install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(reducibility_points_wrapper,@|
