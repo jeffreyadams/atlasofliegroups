@@ -157,6 +157,9 @@ class RootSystem
   bool is_posroot(RootNbr alpha) const
   { return alpha>=numPosRoots(); } // second half
 
+  bool is_negroot(RootNbr alpha) const
+  { return alpha<numPosRoots(); } // first half
+
   RootNbr simpleRootNbr(weyl::Generator i) const
   { assert(i<rk);  return numPosRoots()+i; }
 

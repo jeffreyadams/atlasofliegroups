@@ -500,7 +500,7 @@ SRK_context::theta_stable_parabolic
       // second priority give |alpha| and its $\theta$ image the same sign
       RootNbr beta= // image of |alpha| by $\theta$
 	rd.permuted_root(W.word(strong.w()),rd.simpleRootNbr(W.twisted(i)));
-      if (not rd.is_posroot(beta) and beta!=rd.rootMinus(alpha))
+      if (rd.is_negroot(beta) and beta!=rd.rootMinus(alpha))
 	break; // found |i| in this case as well
 
     } // for i

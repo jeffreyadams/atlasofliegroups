@@ -88,7 +88,7 @@ SubSystem SubSystem::integral // pseudo contructor for integral system
 RootNbr SubSystem::to_parent(RootNbr alpha) const
 {
   RootNbr result = pos_map[rt_abs(alpha)];
-  if (not is_posroot(alpha))
+  if (is_negroot(alpha))
     result = parent_datum().rootMinus(result);
   return result;
 }

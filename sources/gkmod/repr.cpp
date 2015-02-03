@@ -563,7 +563,6 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   RootNbr s=rt; // future simple root index, the one that |rt| conjugates to
   WeylWord ww = conjugate_to_simple(i_tab.rd,s);
   x = kgb.cross(x,ww);
-  InvolutionNbr inv1 = kgb.inv_nr(x);
   switch (kgb.status(s,x))
   {
   case gradings::Status::ImaginaryNoncompact:
@@ -581,21 +580,15 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   case gradings::Status::Complex:
     throw error::Cayley_error();
   }
-  InvolutionNbr inv2 = kgb.inv_nr(x);
   x = kgb.cross(ww,x); // finally cross back
   InvolutionNbr inv3 = kgb.inv_nr(x);
 
-  const RootNbrSet posroots = rd.posRootSet();
-  RootNbrSet d12 = (i_tab.real_roots(inv1)^i_tab.real_roots(inv2))&posroots;
-  // the following set is conceptually also filtered by posroots; done later
-  RootNbrSet d03 = i_tab.real_roots(inv0)^i_tab.real_roots(inv3);
-  for (auto it=d12.begin(); it(); ++it)
-    d03.flip(rd.permuted_root(ww,*it)); // transfer, mapping by $w$
-  d03 &= posroots; // set was conceptually negation-symmetric; get upper half
-
   Weight rho_d(rd.rank(),0);
+  const RootNbrSet posroots = rd.posRootSet();
+  RootNbrSet d03 = (i_tab.real_roots(inv0)^i_tab.real_roots(inv3))&posroots;
   for (auto it=d03.begin(); it(); ++it)
-    rho_d += rd.root(*it);
+    if (rd.is_negroot(rd.permuted_root(*it,ww)))
+      rho_d += rd.root(*it);
 
   z = sr_gamma(x,lr+rho_d,infin_char); // apply shift by |rho_d| to lambda
   W_act(w,z); // move back to origingal infinitesimal character representative

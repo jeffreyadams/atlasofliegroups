@@ -1018,7 +1018,7 @@ WeylWord canonicalize // return value conjugates element new |sigma| to old
 	weyl::Generator s=*it;
 	RootNbr beta= // image of |rd.simpleRootNbr(s)| by $\theta$
 	  rd.permuted_root(W.word(sigma.w()),rd.simpleRootNbr(W.twisted(s)));
-	if (not rd.is_posroot(beta))
+	if (rd.is_negroot(beta))
 	{
 	  W.twistedConjugate(sigma,s); // adjust |sigma|
 	  ww.push_back(s);             // and add generator to |ww|

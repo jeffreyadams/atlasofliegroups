@@ -281,7 +281,7 @@ int_Vector RootSystem::root_expr(RootNbr alpha) const
 {
   RootNbr a=rt_abs(alpha);
   int_Vector expr(root(a).begin(),root(a).end());
-  if (not is_posroot(alpha))
+  if (is_negroot(alpha))
     expr *= -1;
   return expr;
 }
@@ -290,7 +290,7 @@ int_Vector RootSystem::coroot_expr(RootNbr alpha) const
 {
   RootNbr a=rt_abs(alpha);
   int_Vector expr(coroot(a).begin(),coroot(a).end());
-  if (not is_posroot(alpha))
+  if (is_negroot(alpha))
     expr *= -1;
   return expr;
 }
@@ -301,7 +301,7 @@ int RootSystem::level(RootNbr alpha) const
   int result=0;
   for (Byte_vector::const_iterator it=root(a).begin(); it!=root(a).end(); ++it)
     result += *it;
-  if (not is_posroot(alpha))
+  if (is_negroot(alpha))
     result *= -1;
   return result;
 }
@@ -313,7 +313,7 @@ int RootSystem::colevel(RootNbr alpha) const
   for (Byte_vector::const_iterator
 	 it=coroot(a).begin(); it!=coroot(a).end(); ++it)
     result += *it;
-  if (not is_posroot(alpha))
+  if (is_negroot(alpha))
     result *= -1;
   return result;
 }
@@ -584,7 +584,7 @@ bool RootSystem::sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const
     if (v==root(i))
     {
       gamma = posRootNbr(i);
-      if (not (alpha_less ? is_posroot(beta) : is_posroot(alpha)))
+      if (alpha_less ? is_negroot(beta) : is_negroot(alpha))
 	gamma = rootMinus(gamma); // take sign from that root that gave |a|
       return true;
     }
@@ -1170,7 +1170,7 @@ WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta)
 
 void make_positive(const RootSystem& rs,RootNbr& alpha)
 {
-  if (not rs.is_posroot(alpha))
+  if (rs.is_negroot(alpha))
     alpha = rs.rootMinus(alpha);
 }
 

@@ -280,7 +280,7 @@ InvolutionTable::is_complex_descent(InvolutionNbr n,RootNbr alpha) const
 { make_positive(rd,alpha); // test below assumes |alpha| itself is positive
   return
     complex_roots(n).isMember(alpha) and
-    not rd.is_posroot(root_involution(n,alpha));
+    rd.is_negroot(root_involution(n,alpha));
 }
 
 bool InvolutionTable::equivalent
