@@ -147,6 +147,7 @@ template<typename C> class Matrix_base
   bool operator== (const Matrix_base<C>&) const;
   bool operator!= (const Matrix_base<C>& m) const {return not(operator==(m)); }
 
+  bool is_zero() const; // whether all entries are zero
   bool isEmpty() const { return d_data.size() == 0; }
 // manipulators
   C& operator() (size_t i, size_t j) { return d_data[i*d_columns+j]; }

@@ -19,7 +19,7 @@
 % Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 \def\emph#1{{\it#1\/}}
-\def\Z{{\bf Z}}
+\def\Zee{{\bf Z}} % cwebx uses \Z and \ZZ itself
 \def\ii{{\rm i}} % imaginary unit
 
 @* Built-in types.
@@ -395,20 +395,20 @@ The function |annihilator_modulo| takes as argument an $m\times{n}$
 matrix~$M$, and an integer |d|. It returns a full rank (so invertible
 over~$\bf Q$) $m\times{m}$ matrix~|A| such that $A^t\cdot{M}$ is divisible
 by~$d$, and whose column span is maximal subject to this constraint: the
-columns of~$A$ span the full rank sub-lattice of $\Z^m$ of vectors $v$ such
-that $v^t\cdot{M}\in d\,\Z^n$. The fact that $d$ is called |denominator| below
-comes from the alternative interpretation that the transpose of~$A$ times the
-rational matrix $M/d$ gives an integral matrix as result.
+columns of~$A$ span the full rank sub-lattice of $\Zee^m$ of vectors $v$ such
+that $v^t\cdot{M}\in d\,\Zee^n$. The fact that $d$ is called |denominator|
+below comes from the alternative interpretation that the transpose of~$A$
+times the rational matrix $M/d$ gives an integral matrix as result.
 
 
 The algorithm is quite simple. After finding invertible matrices |row|, |col|
 such that $row*M*col$ is diagonal with non-zero diagonal entries given in
 $\lambda$ (and any zero diagonal entries trailing those), we know that any row
 of |row| with factor $\lambda_i$ is a linear form sending the image of $M$ to
-$\lambda_i\Z$, while any remaining rows of |row| (those without corresponding
-invariant factor) annihilate the image altogether. Then all that is needed it
-to multiply rows of~|row| of the first kind by $d/\gcd(d,\lambda_i)$ and
-transpose the result.
+$\lambda_i\Zee$, while any remaining rows of |row| (those without
+corresponding invariant factor) annihilate the image altogether. Then all that
+is needed it to multiply rows of~|row| of the first kind by
+$d/\gcd(d,\lambda_i)$ and transpose the result.
 
 @h "arithmetic.h"
 @h "lattice.h"
@@ -494,7 +494,7 @@ where each position either corresponds to a generator of a finite cyclic
 factor of order $d$ of the centre, with the rational entry $1/d$ in that
 position representing that generator, or to a central $1$-parameter subgroup
 (torus factor) of the centre with any rational entry in that position
-(interpreted modulo~$\Z$) describing an element (of finite order) of that
+(interpreted modulo~$\Zee$) describing an element (of finite order) of that
 subgroup. More precisely one is taking rational linear combinations of certain
 coweights in the dual basis to a basis of the weight lattice adapted to the
 root lattice; for those weights in the latter basis that already lie in the
@@ -572,7 +572,7 @@ the new denominator~|d|.
          +str(col[i])+'/'+str(denom[j])+" not a multiple of 1/"
          +str(v->val[i]));
       M(i,j) = arithmetic::remainder(col[i],denom[j]);
-      // ``mod $\Z$''; makes |M(i,j)| non-negative
+      // ``mod $\Zee$''; makes |M(i,j)| non-negative
     }
   }
 // loop must end and restart here so that computation of |d| will be complete
@@ -1848,9 +1848,9 @@ fail to give the desired involution, the use can always take recourse to
 
 The wrapper for |set_inner_class| below expresses the permutation matrix~$P$
 produced by |lietype::involution| on the basis of the lattice of the root
-datum~|rd|. That basis is already the canonical basis of $\Z^n$ used in~|rd|,
-so the difficulty is to find the basis~$b$ on which $P$ is expressed. If~|rd|
-was entered by the user as in the \.{atlas} program or in
+datum~|rd|. That basis is already the canonical basis of $\Zee^n$ used
+in~|rd|, so the difficulty is to find the basis~$b$ on which $P$ is expressed.
+If~|rd| was entered by the user as in the \.{atlas} program or in
 |root_datum_wrapper|, this was the canonical basis used until the
 |PreRootDatum| constructor expressed everything on the provided basis of a
 sub-lattice; we wish to recover the (integral) matrix~$M$ that specified the
@@ -2240,7 +2240,7 @@ void real_form_to_root_datum_coercion()
 
 @ Here is a function that gives information about the dual component group
 of a real reductive group: it returns the rank~$r$ such that the component
-group is isomorphic to $(\Z/2\Z)^r$.
+group is isomorphic to $(\Zee/2\Zee)^r$.
 
 @< Local function def...@>=
 void components_rank_wrapper(expression_base::level l)
@@ -2768,7 +2768,7 @@ void square_classes_wrapper(expression_base::level l)
 functionality of the Atlas command \.{gradings} that is implemented by
 |complexredgp_io::printGradings| and |cartan_io::printGradings|. It therefore
 takes, like |fiber_partition|, a Cartan class and a real form as parameter. Its
-output consist of a list of $\Z/2\Z$-gradings of each of the fiber group
+output consist of a list of $\Zee/2\Zee$-gradings of each of the fiber group
 elements in the part corresponding to the real form, where each grading is a
 sequence of bits corresponding to the simple imaginary roots.
 
@@ -2886,12 +2886,12 @@ made available internally through the |real_form_value::kgb| method. We wish
 to make available externally a number of functions that operate on (among
 other data) elements of this set; for instance each element determines an
 involution, corresponding imaginary and real subsystems of the root system,
-and a $\Z/2\Z$-grading of the imaginary root subsystem. It does not seem
+and a $\Zee/2\Zee$-grading of the imaginary root subsystem. It does not seem
 necessary to introduce a type for the set $K\backslash G/B$ (any function that
 needs it can take the corresponding real form as argument), but we do provide
 one for elements of that set (if desired the user can collect such elements in
-an array). These elements contain a pointer |rf | to the |real_form_value| they
-were generated from, and thereby to the associated set $K\backslash G/B$,
+an array). These elements contain a pointer |rf | to the |real_form_value|
+they were generated from, and thereby to the associated set $K\backslash G/B$,
 which allows operations relevant to the KGB element to be defined. Since this
 is a shared pointer, the |real_form_value| pointed to is guaranteed to exist
 as long as this |KGB_elt_value| does.
@@ -4119,7 +4119,7 @@ deformation formulas, the need arises to keep track of formal sums of
 standard modules with coefficients of a type that allows keeping track of the
 signatures of the modules. These coefficients, which we shall call split
 integers and give the type \.{Split} in \.{realex}, are elements of the group
-algebra over $\Z$ of a (cyclic) group of order~$2$.
+algebra over $\Zee$ of a (cyclic) group of order~$2$.
 
 @< Includes needed in the header file @>=
 #include "arithmetic.h"
@@ -4163,17 +4163,41 @@ std::ostream& print (std::ostream& out, const Split_integer& val)
 void split_int_value::print(std::ostream& out) const @+
 {@; interpreter::print(out,val); }
 
-@ Here are the basic arithmetic operations.
+@ Here are some basic relations and arithmetic operations.
 
 @< Local function definitions @>=
 
+void split_unary_eq_wrapper(expression_base::level l)
+{ Split_integer i=get<split_int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i.e()==0 and i.s()==0));
+}
+void split_unary_neq_wrapper(expression_base::level l)
+{ Split_integer i=get<split_int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i.s()!=0 or i.e()!=0));
+}
+@)
+void split_eq_wrapper(expression_base::level l)
+{ Split_integer j=get<split_int_value>()->val;
+  Split_integer i=get<split_int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i==j));
+}
+void split_neq_wrapper(expression_base::level l)
+{ Split_integer j=get<split_int_value>()->val;
+  Split_integer i=get<split_int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i!=j));
+}
+@)
 void split_plus_wrapper(expression_base::level l)
 { Split_integer j=get<split_int_value>()->val;
   own_split_int i=get_own<split_int_value>();
   if (l!=expression_base::no_value)
   {@; i->val+=j; push_value(i); }
 }
-@)
+
 void split_minus_wrapper(expression_base::level l)
 { Split_integer j=get<split_int_value>()->val;
   own_split_int i=get_own<split_int_value>();
@@ -4186,7 +4210,7 @@ void split_unary_minus_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {@; i->val.negate(); push_value(i); }
 }
-@)
+
 void split_times_wrapper(expression_base::level l)
 { Split_integer j=get<split_int_value>()->val;
   Split_integer i=get<split_int_value>()->val;
@@ -4261,10 +4285,10 @@ typedef std::shared_ptr<virtual_module_value> own_virtual_module;
 @ When printing a virtual module value, we traverse the |std::map| that is
 hidden in the |Free_Abelian| class template, and print individual terms using
 the auxiliary function that was defined above for printing parameter values.
-However when either all coefficients are integers or  coefficients are integer
+However when either all coefficients are integers or coefficients are integer
 multiples of~$s$, then we suppress the component that is always~$0$; this is
-particularly useful if polynomials are used to encode $\Z$-linear combinations
-of parameters.
+particularly useful if polynomials are used to encode $\Zee$-linear
+combinations of parameters.
 
 @h <iomanip> // for |std::setw|
 @< Function def...@>=
@@ -4296,8 +4320,12 @@ void virtual_module_value::print(std::ostream& out) const
 @ To start off a |virtual_module_value|, one usually takes an empty sum, but
 one needs to specify a real form to fill the |rf| field. The information
 allows us to extract the real form from a virtual module even if it is empty.
-We allow testing the number of terms of the sum, notably for testing the sum
-to be empty.
+We allow testing the number of terms of the sum, and directly testing whether
+the sum to be empty.
+
+Testing two virtual modules for equality is also implemented. This could be
+done by subtracting and then testing the result for being zero, but just
+traversing both in parallel and stopping once a difference is more efficient.
 
 @< Local function def...@>=
 void virtual_module_wrapper(expression_base::level l)
@@ -4319,12 +4347,54 @@ void virtual_module_size_wrapper(expression_base::level l)
     push_value(std::make_shared<int_value>(m->val.size()));
 }
 
-@ Here is function to extract the coefficient (multiplicity) of a given
-parameter in a virtual module. It is bound to the array subscription syntax,
-and therefor implemented as the |evaluate| method of the appropriate class
-derived from |subscr_base|.
+void virtual_module_unary_eq_wrapper(expression_base::level l)
+{ shared_virtual_module m = get<virtual_module_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(m->val.empty()));
+}
 
-@ In a subscription of a polynomial by a parameter, the arguments are not
+void virtual_module_unary_neq_wrapper(expression_base::level l)
+{ shared_virtual_module m = get<virtual_module_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(m->val.size()>0));
+}
+
+@)
+void virtual_module_eq_wrapper(expression_base::level l)
+{ shared_virtual_module n = get<virtual_module_value>();
+  shared_virtual_module m = get<virtual_module_value>();
+  if (l==expression_base::no_value)
+    return;
+  auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
+  for (; mit!=m->val.end() and nit!=n->val.end(); ++mit,++nit)
+    if (mit->first!=nit->first or mit->second!=nit->second)
+    @/{@;  push_value(std::make_shared<bool_value>(false));
+      return; }
+  push_value(std::make_shared<bool_value>
+      (mit==m->val.end() and nit==n->val.end()));
+}
+void virtual_module_neq_wrapper(expression_base::level l)
+{ shared_virtual_module n = get<virtual_module_value>();
+  shared_virtual_module m = get<virtual_module_value>();
+  if (l==expression_base::no_value)
+    return;
+  auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
+  for (; mit!=m->val.end() and nit!=n->val.end(); ++mit,++nit)
+    if (mit->first!=nit->first or mit->second!=nit->second)
+    @/{@;  push_value(std::make_shared<bool_value>(true));
+      return; }
+  push_value(std::make_shared<bool_value>
+    (mit!=m->val.end() or nit!=n->val.end()));
+}
+
+
+@ There is function to extract the coefficient (multiplicity) of a given
+parameter in a virtual module. However, it is bound to the array subscription
+syntax, and therefore does not have a wrapper function. Instead, it is
+implemented the \.{evaluator} module, as the |evaluate| method of the
+|module_coefficient| class derived from |subscr_base|.
+
+In a subscription of a polynomial by a parameter, the arguments are not
 initially on the stack, but come from evaluating the |array| and |index|
 fields of the |module_coefficient| expression.
 
@@ -4350,7 +4420,7 @@ void param_to_poly()
 }
 
 @ The main operations for virtual modules are addition and subtraction of
-parameters, or of other virtual modules.
+parameters to or from them.
 
 @< Local function def...@>=
 void add_module_wrapper(expression_base::level l)
@@ -4366,6 +4436,24 @@ void add_module_wrapper(expression_base::level l)
   }
 }
 
+void subtract_module_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  own_virtual_module accumulator = get_own<virtual_module_value>();
+@/test_standard(*p);
+  if (accumulator->rf!=p->rf)
+    throw std::runtime_error @|
+      ("Real form mismatch when subtracting standard module from a module");
+  if (l!=expression_base::no_value)
+  @/{@; accumulator->val-= p->rc().expand_final(p->val);
+    push_value(accumulator);
+  }
+}
+
+@ More generally than adding or subtracting, we can incorporate a term
+with specified coefficient.
+
+@< Local function def...@>=
+
 void add_module_term_wrapper(expression_base::level l)
 { push_tuple_components(); // second argument is a pair |(coef,p)|
   own_module_parameter p = get_own<module_parameter_value>();
@@ -4380,7 +4468,6 @@ void add_module_term_wrapper(expression_base::level l)
     push_value(accumulator);
   }
 }
-
 @ Although we initially envisioned allowing conversion from a list of terms to
 a virtual module, this could not be defined since it is not possible to know
 the real form in case the list of terms is empty (a conversion in the opposite
@@ -4426,9 +4513,19 @@ void add_virtual_modules_wrapper(expression_base::level l)
   if (accumulator->rf!=addend->rf)
     throw std::runtime_error @|("Real form mismatch when adding two modules");
   if (l!=expression_base::no_value)
-  { for (repr::SR_poly::const_iterator
-         it=addend->val.begin(); it!=addend->val.end(); ++it)
-      accumulator->val.add_term(it->first,it->second);
+  @/{@; accumulator->val += addend->val;
+    push_value(accumulator);
+  }
+}
+
+void subtract_virtual_modules_wrapper(expression_base::level l)
+{ own_virtual_module accumulator = get_own<virtual_module_value>();
+  shared_virtual_module subtrahend = get<virtual_module_value>();
+  if (accumulator->rf!=subtrahend->rf)
+    throw std::runtime_error @|
+      ("Real form mismatch when subtracting two modules");
+  if (l!=expression_base::no_value)
+  @/{@; accumulator->val -= subtrahend->val;
     push_value(accumulator);
   }
 }
@@ -4529,6 +4626,10 @@ void KL_sum_at_s_wrapper(expression_base::level l)
 
 @ Finally we install everything related to polynomials formed from parameters.
 @< Install wrapper functions @>=
+install_function(split_unary_eq_wrapper,@|"=","(Split->bool)");
+install_function(split_unary_neq_wrapper,@|"!=","(Split->bool)");
+install_function(split_eq_wrapper,@|"=","(Split,Split->bool)");
+install_function(split_neq_wrapper,@|"!=","(Split,Split->bool)");
 install_function(split_plus_wrapper,@|"+","(Split,Split->Split)");
 install_function(split_minus_wrapper,@|"-","(Split,Split->Split)");
 install_function(split_unary_minus_wrapper,@|"-","(Split->Split)");
@@ -4538,12 +4639,19 @@ install_function(virtual_module_wrapper,@|"null_module","(RealForm->ParamPol)");
 install_function(real_form_of_virtual_module_wrapper,@|"real_form"
 		,"(ParamPol->RealForm)");
 install_function(virtual_module_size_wrapper,@|"#","(ParamPol->int)");
+install_function(virtual_module_unary_eq_wrapper,@|"=","(ParamPol->bool)");
+install_function(virtual_module_unary_neq_wrapper,@|"!=","(ParamPol->bool)");
+install_function(virtual_module_eq_wrapper,@|"=","(ParamPol,ParamPol->bool)");
+install_function(virtual_module_neq_wrapper,@|"!=","(ParamPol,ParamPol->bool)");
 install_function(add_module_wrapper,@|"+","(ParamPol,Param->ParamPol)");
+install_function(subtract_module_wrapper,@|"-","(ParamPol,Param->ParamPol)");
 install_function(add_module_term_wrapper,@|"+"
 		,"(ParamPol,(Split,Param)->ParamPol)");
 install_function(add_module_termlist_wrapper,@|"+"
 		,"(ParamPol,[(Split,Param)]->ParamPol)");
 install_function(add_virtual_modules_wrapper,@|"+"
+		,"(ParamPol,ParamPol->ParamPol)");
+install_function(subtract_virtual_modules_wrapper,@|"-"
 		,"(ParamPol,ParamPol->ParamPol)");
 install_function(int_mult_virtual_module_wrapper,@|"*"
 		,"(int,ParamPol->ParamPol)");

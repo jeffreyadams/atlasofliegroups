@@ -144,7 +144,7 @@ class RootSystem
   // convert sequence of root numbers to expressions in the simple roots
   template <typename I, typename O>
     void toRootBasis(I, I, O) const;
-  // convert sequence of root numbers to expressions in subsystem simple roots
+  // convert sequence of root atlas/numbers to expressions in subsystem simple roots
   template <typename I, typename O>
     void toRootBasis(I, I, O, const RootNbrList&) const;
   // convert sequence of root numbers to expressions in subsystem simple weights

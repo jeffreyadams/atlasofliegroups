@@ -25,12 +25,18 @@ operators *, /, %:  (ratvec,int->ratvec): scalar rational vector operations
 operators *, /:  (ratvec,rat->ratvec): scalar rational vector operations
 operator -: (ratvec->ratvec): unary minus of rational vectors
 
+operators =, !=: (int->bool): test for equality/inequality against 0
 operators >, >=, <, <=, =, != : (int,int->bool): usual relational operators
+operators =, !=: (rat->bool): test for equality/inequality against 0/1
 operators >, >=, <, <=, =, != : (rat,rat->bool): usual relational operators
 operators =, != : (bool,bool->bool): Boolean equivalence, inequivalence (xor)
-operators =, <= : (string,string->bool): string equality and comparison
+operators =, !=: (string->bool): test for being (or not being) the empty string
+operators >, >=, <, <=, =, != : (string,string->bool): relational operators
+operators =, !=: (vec->bool): test for being (or not being) a zero vector
 operators =, != : (vec,vec->bool): vector equality and inequality
+operators =, !=: (ratvec->bool): test for being a (or not) zero rational vector
 operators =, != : (ratvec,ratvec->bool): rational vector equality, inequality
+operators =, !=: (mat->bool): test for being a (or not) zero matrix
 operators =, != : (mat,mat->bool): matrix equality and inequality
 
 operator # : (string->int) : length of string
@@ -614,6 +620,8 @@ partial_KL_block: (Param->[Param],mat,[vec],vec,vec,mat) partial KL_block
   superfluous second component of KL_block is omitted), but with the two vec
   components filtered so as to be indexed by the Bruhat interval indices only.
 
+operator =, !=: (Split->bool): test split integer against Split:(0,0)
+operator =, !=: (Split,Split->bool): equality/inequality of split integers
 operator +: (Split,Split->Split): addition of split integers
 operator -: (Split,Split->Split): subtraction of split integers
 operator -: (Split->Split): negation of a split integer
@@ -623,10 +631,12 @@ operator %: (Split,int,int): decomposition of split integer into components
 null_module: (RealForm->ParamPol): empty sum of parameters for the real form
 real_form: (ParamPol->RealForm): recover the real form from a ParamPol value
 operator #: (ParamPol->int): number of nonzero terms of the formal sum
-operator +: (ParamPol,Param->ParamPol): add parameter to formal sum
+operator =, !=: (ParamPol->bool): test virtual module for being zero
+operator =, !=: (ParamPol,ParamPol->bool): test virtual modules for equality
+operator +, -: (ParamPol,Param->ParamPol): add/subtract parameter to formal sum
 operator +: (ParamPol,(Split,Param)->ParamPol): add parameter with coefficient
 operator +: (ParamPol,[(Split,Param)]->ParamPol): add terms to formal sum
-operator +: (ParamPol,ParamPol->ParamPol): addition of formal sums
+operator +, -: (ParamPol,ParamPol->ParamPol): addition/subtraction formal sums
 operator *: (int,ParamPol->ParamPol): integer multiple of a formal sum
 operator *: (Split,ParamPol->ParamPol): split integer multiple of a formal sum
 
