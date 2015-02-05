@@ -6,41 +6,62 @@
 <extended_cross.rx
 <extended.rx
 
-{parameters and extended parameters are parametrized by pairs (x,y) of KGB elements
-so given a list_of_pairs [(x_1,y_1),(x_2,y_2)...] we need to do lookups and simple list manipulation}
+{parameters and extended parameters are parametrized by pairs (x,y) 
+ x is a KGB element and y is a *generalized* KGB element, y^2 not necessarily central
+see end of synthetic.rx for KGBElt_gen
+}
+ 
+{so given a list_of_pairs [(x_1,y_1),(x_2,y_2)...] we need to do lookups and simple list manipulation}
 {equality of pairs of KGB elements}
-set =( ((KGBElt,KGBElt),(KGBElt, KGBElt)) ((x,y),(z,w)))=bool:x=z and y=w
+set =( ((KGBElt,KGBElt_gen),(KGBElt, KGBElt_gen)) ((x,y),(z,w)))=bool:x=z and y=w
 
 {look for pair (x,y) in array [(x_i,y_i)] (bool)}
-set find_pair( ((KGBElt,KGBElt),[(KGBElt, KGBElt)])(xy,xy_pairs))=bool:
+set find_pair( ((KGBElt,KGBElt_gen),[(KGBElt, KGBElt_gen)])(xy,xy_pairs))=bool:
 let rv=false in
 let i=0 in
 while i<#xy_pairs do let zw=xy_pairs[i] in if xy=zw then rv:=true;i:=#xy_pairs else i:=i+1 fi od;rv
 
 {add pair (x,y) to list if not already there}
-set add_pair( ((KGBElt,KGBElt),[(KGBElt, KGBElt)])(xy,xy_pairs))=[(KGBElt,KGBElt)]:
+set add_pair( ((KGBElt,KGBElt_gen),[(KGBElt, KGBElt_gen)])(xy,xy_pairs))=[(KGBElt,KGBElt_gen)]:
 if find_pair (xy,xy_pairs) then xy_pairs else xy_pairs#xy fi
 
 {index((x,y,list_of_pairs):
 index of (x,y) in [(x_i,y_i)], return -1 if not found}
-set index(((KGBElt,KGBElt),[(KGBElt,KGBElt)])(xy,xy_pairs))=int:
+set index(((KGBElt,KGBElt_gen),[(KGBElt,KGBElt_gen)])(xy,xy_pairs))=int:
 let rv=-1 in
 let i=0 in
 while i<#xy_pairs do let zw=xy_pairs[i] in if xy=zw then rv:=i;i:=#xy_pairs else i:=i+1 fi od;rv
 
+set y_gen(extended_param(ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) = KGBElt_gen:
+{y_gen=(ic,^omega,psi), psi\in X^*(H)_Q=X_*(H^\vee)_Q is the normalized torus factor, and is ^omega-fixed
+NOTE: lambda \in X^*
+also: omega acts on X^*(H)=X_*(H^v), i.e. involution
+}
+(dual(ic),omega,(1+^omega)*(gamma-lambda-rho(ic))/2)
+
+set y_gen(Param p)=KGBElt_gen:
+let ic=inner_class(p) 
+then gamma=infinitesimal_character(p)
+then lambda=lambda(p)   {lambda in X^*(H)+\rho: NOT same as lambda in previous def of y_gen}
+then theta=involution(p) 
+then omega=-^theta 
+in (dual(ic),omega,(1+^omega)*(gamma-lambda)/2)
+
 {index(E,list_of_pairs)=index(x(E),y(E),list_of_pairs)}
-set index( (extended_param,[(KGBElt,KGBElt)])((ic,delta,gamma,lambda,theta,g,l,omega,tau,t),xy_pairs))=int:
-let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in index((x(Ep),y(Ep)),xy_pairs)
+set index( (extended_param,[(KGBElt,KGBElt_gen)])((ic,delta,gamma,lambda,theta,g,l,omega,tau,t),xy_pairs))=int:
+let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in index((x(Ep),y_gen(Ep)),xy_pairs)
 
-{index(p,list_of_pairs)=index(x(p),y(p),list_of_pairs)}
-set index(Param p,[(KGBElt,KGBElt)] xy_pairs)=int:index((x(p),y(p)),xy_pairs)
-
+{index(p,list_of_pairs)=index(x(p),y(p),list_of_pairs)
+not used
+set index(Param p,[(KGBElt,KGBElt_gen)] xy_pairs)=int:index((x(p),y_gen(p)),xy_pairs)
+}
 {compute everything you get to by applying a single Cayley or cross}
 set neighbors((int,extended_param)
-(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
+(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):Ep))=
 [extended_param]:
-let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in
+let ()=prints("Ep in neighbors:");display(Ep) in
 let type=ext_type(j,Ep) in
+let ()=prints("type in neighbors: ", type) in 
 if (type="1C+") then [ext_cross(j,Ep)]
 elif (type="1C+") then [ext_cross(j,Ep)]
 elif (type="1C-") then [ext_cross(j,Ep)]
@@ -83,82 +104,91 @@ set kgb_sort=([KGBElt]->[KGBElt]):
 kgb_sort_((KGBElt x) int: let (,n)=%x in n)
 
 {sort [(x1,y1),...] by number of x}
-set x_sort_(((KGBElt,KGBElt)->int) f)=([(KGBElt,KGBElt)] v) [(KGBElt,KGBElt)]:
+set x_sort_(((KGBElt,KGBElt_gen)->int) f)=([(KGBElt,KGBElt_gen)] v) [(KGBElt,KGBElt_gen)]:
   for index in inv_standardisation(for (x,y) in v do f(x,y) od) do v[index] od
-set x_sort=([(KGBElt,KGBElt)]->[(KGBElt,KGBElt)]):
-x_sort_((KGBElt x,KGBElt y) int: let (,n)=%x in n)
+set x_sort=([(KGBElt,KGBElt_gen)]->[(KGBElt,KGBElt_gen)]):
+x_sort_((KGBElt x,KGBElt_gen y) int: let (,n)=%x in n)
 
 {sort [(x1,y1),...] by number of y}
-set y_sort_(((KGBElt,KGBElt)->int) f)=([(KGBElt,KGBElt)] v) [(KGBElt,KGBElt)]:
+set y_sort_(((KGBElt,KGBElt_gen)->int) f)=([(KGBElt,KGBElt_gen)] v) [(KGBElt,KGBElt_gen)]:
   for index in inv_standardisation(for (x,y) in v do f(x,y) od) do v[index] od
-set y_sort=([(KGBElt,KGBElt)]->[(KGBElt,KGBElt)]):
-y_sort_((KGBElt x,KGBElt y) int: let (,n)=%y in n)
+{set y_sort=([(KGBElt,KGBElt_gen)]->[(KGBElt,KGBElt_gen)]):
+y_sort_((KGBElt x,KGBElt_gen y) int: let (,n)=%y in n)}{not defined for generalized garameters,
+since uses integer n attached to y
+}
 
-{sort [(x1,y1),...] by number of x, followed by number of y}
-set xy_sort([(KGBElt,KGBElt)] pairs)=x_sort(y_sort(pairs))
+{xy_sort [(x1,y1),...] by number of x, followed by number of y
+number of y not defined in generalized case}
+{set xy_sort([(KGBElt,KGBElt_gen)] pairs)=x_sort(y_sort(pairs))}
+set xy_sort([(KGBElt,KGBElt_gen)] pairs)=x_sort(pairs)
 
 {return [(x,y)] for the nodes connected to vertex by root j}
 set xy_neighbors((int,extended_param)
-(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=[(KGBElt, KGBElt)]:
-let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in
-let neighbors=neighbors(j,Ep) in
-for Eq in neighbors do (x(Eq),y(Eq)) od
+(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E))=[(KGBElt, KGBElt_gen)]:
+let neighbors=neighbors(j,E) in
+for F in neighbors do (x(F),y_gen(F)) od
 
 {xy_neighbors given by (j,delta,p,g)}
-set xy_neighbors(int j, mat delta,Param p, ratvec g)=[(KGBElt,KGBElt)]:xy_neighbors(j,E(delta,p,g))
+set xy_neighbors(int j, mat delta,Param p, ratvec g)=[(KGBElt,KGBElt_gen)]:xy_neighbors(j,E(delta,p,g))
 
 {block is parametrized by (x,y), so is the extended block (also need delta,gamma,g)
 (x,y) -> E(delta,x,y,gamma,g)}
 
 {xy_neighbors given by (j,delta,gamma,x,g,y)}
-set xy_neighbors(int j, mat delta, ratvec gamma, KGBElt x, ratvec g,KGBElt y)=[(KGBElt, KGBElt)]:
+{not used?}
+{set xy_neighbors(int j, mat delta, ratvec gamma, KGBElt x, ratvec g,KGBElt_gen y)=[(KGBElt, KGBElt_gen)]:
 xy_neighbors(j, E(delta,gamma,x,g,y))
+}
 
 {find xy neighbors of a list (j,delta,gamma,g,[(x1,y1),...]}
-set xy_neighbors(int j,mat delta,ratvec gamma,ratvec g,[(KGBElt, KGBElt)] xy_pairs)=[(KGBElt, KGBElt)]:
+set xy_neighbors(int j,mat delta,ratvec gamma,ratvec g,[(KGBElt, KGBElt_gen)] xy_pairs)=[(KGBElt, KGBElt_gen)]:
 let rv=xy_pairs in
  for (x,y) in xy_pairs do
- let neighbors=xy_neighbors(j,delta,gamma,x,g,y) in
+ let neighbors=xy_neighbors(j,E(delta,gamma,x,g,y)) in
   for (z,w) in neighbors do rv:=add_pair((z,w),rv)  od  od;rv
 
 {generate_subspace(i,j,delta,gamma,g,(x,y)) gives a Hecke invariant subspace
  of space of extended parameters}
 {all nodes you can get to by applying Hecke operators T_i and T_j to given node}
 set generate_subspace(
-  (int,int,mat,ratvec,ratvec,(KGBElt,KGBElt))(j,k,delta,gamma,g,(x,y)))=
-  [(KGBElt,KGBElt)]:
+  (int,int,mat,ratvec,ratvec,(KGBElt,KGBElt_gen))(j,k,delta,gamma,g,(x,y)))=
+  [(KGBElt,KGBElt_gen)]:
 let done=false in
 let rv=[(x,y)] in
 while not done do
   let n=#rv in
+{prints("CALLING xy_neighbors ", j, ", ", gamma, ", ", rv);}
   rv:=xy_neighbors(j,delta,gamma,g,rv);
+{prints("CALLING xy_neighbors ", k, ", ", gamma, ", ", rv);}
   rv:=xy_neighbors(k,delta,gamma,g,rv);
   if (n=#rv) then done:=true fi
-od; xy_sort(rv)
+{od; xy_sort(rv)}{y_sort, hence xy_sort, not defined in nonintegral case}
+od;x_sort(rv)
 
 {generate_subspace(i,j,E): usually called this way
- =generate_subspace(i,j,delta(E),gamma(E),g(E),(x(E),y(E)))}
+ =generate_subspace(i,j,delta(E),gamma(E),g(E),(x(E),y_gen(E)))
+}
 set generate_subspace(
   (int,int,extended_param)
   (i,j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) )=
-  [(KGBElt,KGBElt)]:
+  [(KGBElt,KGBElt_gen)]:
 let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in
-generate_subspace((i,j,delta,gamma,g,(x(Ep),y(Ep))))
+generate_subspace((i,j,delta,gamma,g,(x(Ep),y_gen(Ep))))
 
 {same, but just a single Hecke operator}
 
 set generate_subspace(
-  int j, mat delta, ratvec gamma, ratvec g, (KGBElt x,KGBElt y)) =
-  [(KGBElt,KGBElt)]: generate_subspace(j,j,delta,gamma,g,(x,y))
+  int j, mat delta, ratvec gamma, ratvec g, (KGBElt x,KGBElt_gen y)) =
+  [(KGBElt,KGBElt_gen)]: generate_subspace(j,j,delta,gamma,g,(x,y))
 
 set generate_subspace(
   (int,extended_param)
   (i,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) )=
-  [(KGBElt,KGBElt)]:
+  [(KGBElt,KGBElt_gen)]:
   let Ep=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in
-  generate_subspace(i,i,delta,gamma,g,(x(Ep),y(Ep)))
+  generate_subspace(i,i,delta,gamma,g,(x(Ep),y_gen(Ep)))
 
-{decompose(i,j,delta,B,g) returns ([[(KGBElt,KGBElt)]],int,[int])
+{decompose(i,j,delta,B,g) returns ([[(KGBElt,KGBElt_gen)]],int,[int])
 first argument is an array of subspaces,
 each subspace is a subspace from generate_subspace, the union of the elements
 of these subspaces is all KGB pairs (x,y) in fixed(delta,B)
@@ -166,15 +196,15 @@ int is total size of fixed(delta,B)
 [int] is the array of sizes of the subspaces}
 
 set decompose(int i, int j, mat delta, [Param] B, ratvec g)=
-  ([[(KGBElt,KGBElt)]],int,[int]):
+  ([[(KGBElt,KGBElt_gen)]],int,[int]):
 let ()=prints("Computing fixed parameters in block of size ", #B) in
 let B_0=fixed(delta,B) in
-let ()=prints("Computed ", #B_0, " fixed parameters") in
-let all=for p in B_0 do  (x(p),y(p))  od in
+ let ()=prints("Computed ", #B_0, " fixed parameters") in
+let all=for p in B_0 do  (x(p),y_gen(p))  od in
 let ()=prints("computed basis of (x,y) pairs") in
 let gamma=infinitesimal_character(B[0]) in
 let (x_0,y_0)=all[0] in
-let first_subspace=generate_subspace(i,j,E(delta,x_0,y_0,gamma,g)) in
+let first_subspace=generate_subspace(i,j,E(delta,gamma,x_0,g,y_0)) in
 let done=first_subspace in
 let ()=prints("Computed first subspace, of dimension ", #first_subspace) in
 let subspaces=[first_subspace] in
@@ -185,7 +215,7 @@ do
   let (x,y)=all[k] in
   if find_pair((x,y), done) then k:=k+1
   else
-    let subspace=generate_subspace(i,j,E(delta,x,y,gamma,g)) in
+    let subspace=generate_subspace(i,j,E(delta,gamma,x,g,y)) in
     let ()=prints("Computed subspace ", #subspaces,
                   " generated by ", x, ", dual ", y, " of dimension ", #subspace) in
     subspaces#:=subspace;
@@ -331,6 +361,8 @@ extended_param)
 (ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F)))=int:
 let E=(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E) in
 let F=(ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F) in
+let ()=prints("sign_1i1_Cayley");display(E);display(F) in
+let ()=prints("x(E):", x(E), "x(F):" , x(F)) in
 let ic=ic(F) in
 let alpha=root(ic,j) in
 let alpha_check=coroot(ic,j) in
@@ -371,14 +403,14 @@ sign_1i1_Cayley(j,F,E)
 {compute matrix of twisted Hecke operator T_j on E(delta,gamma,x,g,y) in basis of
 basis of extended parameters {E_i=E(delta,gamma,x_i,g,y_i)}, assuming pair=(x,y) occurs in basis
 matrix of polynomials, see polynomials.rx}
-set hecke_row(int j, mat delta, ratvec gamma, ratvec g, (KGBElt,KGBElt) pair,[(KGBElt, KGBElt)] basis)=
+set hecke_row(int j, mat delta, ratvec gamma, ratvec g, (KGBElt,KGBElt_gen) pair,[(KGBElt, KGBElt_gen)] basis)=
 let i=index(pair,basis) in
 let n=#basis in
 let R=zero_poly_row(n) in
 let (x,y)=pair in
 let E=E(delta,gamma,x,g,y) in {note: E is the default, i.e. sgn(E)=1, however dual_sgn(E)=\pm1}
 let type=ext_type(j,E) in
-let (,m)=%x in let (,n)=%y in
+{let (,m)=%x in let (,n)=%y in}
 if type="1C+" then
  let F=ext_cross(j,E) in
  let k=index(F,basis) in
@@ -397,6 +429,7 @@ elif type="1i1" then
  let sign_cross=sign_1i1_cross(j,E,E1) in
  if sign_Cayley=-1 then prints("sign_1i1_Cayley=-1 in computing Hecke operator of type 1i1") fi;
  if sign_cross=-1 then prints("sign_1i1_cross=-1 in computing Hecke operator of type 1i1") fi;
+ prints("R:", R, "k:", k," m:", m);
  R:=update_row(R,k,sgn_poly(sign_cross));
  R:=update_row(R,m,sgn_poly(sign_Cayley));R
 elif type="1i2f" then
@@ -523,14 +556,13 @@ else R fi
 
 {row of matrix of action of Hecke operator}
 {hecke_row(j,E,basis)}
-set hecke_row((int,extended_param,[(KGBElt,KGBElt)])
-(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t),basis))=
-let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t) in
-hecke_row(j,delta,gamma,g,(x(E),y(E)),basis)
+set hecke_row((int,extended_param,[(KGBElt,KGBElt_gen)])
+(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E,basis))=
+hecke_row(j,delta,gamma,g,(x(E),y_gen(E)),basis)
 
 {hecke_matrix(j,delta,gamma,g,basis)}
 {compute matrix of T_j acting on basis}
-set hecke_matrix(int j, mat delta, ratvec gamma, ratvec g,[(KGBElt, KGBElt)] basis)=
+set hecke_matrix(int j, mat delta, ratvec gamma, ratvec g,[(KGBElt, KGBElt_gen)] basis)=
 let n=#basis in
 let M=zero_poly_matrix(n) in
 for i:n do
@@ -574,20 +606,14 @@ vec,vec,vec,vec)((ic,delta,gamma,lambda_orig,theta,g,l_orig,omega,tau_org,t_orig
 {various tests of hecke relations}
 
 {test_hecke(i,j,delta,gamma,g,basis): tests quadratic and braid relations for T_i,T_j acting on basis}
-set test_hecke(int i, int j, mat delta, ratvec gamma, ratvec g, [(KGBElt,KGBElt)] basis)=bool:
+set test_hecke(int i, int j, mat delta, ratvec gamma, ratvec g, [(KGBElt,KGBElt_gen)] basis)=bool:
 {get the inner class:} let (x_0,)=basis[0] in let rd=root_datum(real_form(x_0)) in
 let M=hecke_matrix(i,delta,gamma,g,basis) in
 let N=hecke_matrix(j,delta,gamma,g,basis) in
+{see extended.rx for definition of folded_order=0,1,2,3}
+let m=folded_order(rd,delta,i,j) in
 let l_i=ext_length(rd, delta, i) in
-let l_j=ext_length(rd, delta, j) in
-let bond=coroot(rd,i)*root(rd,j) in
-let m=int:
- if bond=0 then 2
- else
-  if l_i=l_j then 3
-  elif ((l_i=2 and l_j=1) or (l_i=1 and l_j=2)) then 4
-  elif ((l_i=3 and l_j=1) or (l_i=1 and l_j=3)) then 6
-  else -1 fi fi
+let l_j=ext_length(rd, delta, j) 
 in let quad_M=quadratic(M,l_i)
 in let quad_N=quadratic(N,l_j)
 in let braid=braid(M,N,m) in

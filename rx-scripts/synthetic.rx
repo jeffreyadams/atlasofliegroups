@@ -140,11 +140,59 @@ begin let p=B[i]
 ; line
 end
 
-{v\xi is conjugate to w\xi where \xi acts on H by theta
+{v,w are unnormalized torus factors
+exp(2\pi i v)\xi is conjugate to exp(2\pi i w)\xi where \xi acts on H by theta
 condition: v-w\in (1-theta)X_Q+X, equivalent to
  (1+theta)(v-w)\in (1-theta)X
+Caution: when dealing with normalized torus factors need to divide by 2
+see is_conjugate(x,y) below
 }
 set is_conjugate(ratvec v,ratvec w,mat theta)=bool:
 let z=(1+theta)*(v-w) in 
 if not is_integer(z) then false else
 in_lattice((1+theta),ratvec_as_vec(z)) fi
+
+{  generalized KGB elements  }
+
+{KGBElt_gen(ic,theta,v)=exp(2\pi i v/2)\sigma_w\xi_0
+Recall (see parameters.rx)
+xi=exp(2\pi i*(torus_factor)/2)exp(rho^\vee/2)\sigma_w\xi_0}
+
+: KGBElt_gen=(InnerClass,mat,ratvec)
+set inner_class    (KGBElt_gen(ic,,))    = InnerClass: ic
+set involution     (KGBElt_gen(,theta,)) = mat:theta
+set torus_factor   (KGBElt_gen(,,t))     = ratvec:t
+set unnormalized_torus_factor   (KGBElt_gen(ic,,t))     =ratvec:(t+rho_check(ic))/2
+
+{Note: square_is_central(KGB_elt y) gives the correct answer
+=square_is_central(inner_class(y),involution(y), torus_factor(y))}
+{NB generalized KGB elements x,y are conjugate 
+<=> is_conjugate(torus_factor(x)/2,torus_factor(y)/2,theta)=true
+discussion of unnormalized_torus_factor in parameters.rx}
+
+set =(KGBElt_gen x,KGBElt_gen y)=bool:
+if not (inner_class(x)=inner_class(y) and involution(x)=involution(y)) then false
+else is_conjugate(torus_factor(x)/2,torus_factor(y)/2,involution(x)) fi
+
+
+
+
+set *(mat delta,KGBElt_gen(ic,theta,t))=(ic,delta*theta*delta,t*delta)
+
+set is_fixed(mat delta,KGBElt_gen y)=bool:y=delta*y
+
+{set is_fixed(mat delta,KGBElt_gen x)=bool:
+if not ^delta*involution(x)=involution(x)*^delta then false else
+is_conjugate(t(x), delta*t(x), ^theta(x)) fi}
+
+
+
+
+
+
+
+
+
+
+
+

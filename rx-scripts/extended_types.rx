@@ -20,7 +20,7 @@ set ext_length(int j, extended_param(ic,delta,,,,,,,,)) = int:
 { ext_length has many cases, split cases by length }
 { ext_type_1(delta,j,p)=1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn }
 { j=index of root in integral-simple roots (not all simple roots)}
-set ext_type_1(mat delta,int j,Param p)=string:
+set ext_type_1(mat delta,int j,Param p)=string:	
   let type = status_text(j,p) in
   if type="i2" or type ="r1"
   then

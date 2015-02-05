@@ -2,11 +2,13 @@
 <representations
 <lattice  
 <Weylgroup
+<synthetic  {for is_conjugate}
 <parameters.rx { for square(x) }
 <extended_misc  { basis for extended parameters }
 <extended_types  { types of extended parameters }
 <extended_cross  {cross action of extended parameters}
 <extended_cayley  {Cayley transforms of extended parameters}
+
 {might also want to load nonintegral.rx}
 
 {       references:
@@ -85,16 +87,18 @@
   (ic inner class,
    delta involution of based root datum,
    gamma a logarithm of square(y),
-   lambda=gamma-2*actual_torus_factor(y)
+   lambda=gamma-(torus_factor(y)+rho(ic))
    theta=involution(x) (!!!)
    g a logarithm of square(x),
-   l=g-2*actual_torus_factor(x)
+   l=g-(torus_factor(x)+rho_check(ic))
    omega=involution(y) = -^theta
    tau: solve (1-delta)*lambda = (1+^omega)tau
    t:   solve l*(1-delta)      = t*(1+theta)
 }
-{primary definition of E}
-{lambda in X^*+rho, typically lambda=lambda(p)}
+
+{primary definition of E: E(delta,x,gamma,g,lambda)
+lambda\in X^*+\rho
+}
 set E(mat delta, KGBElt x, ratvec gamma, ratvec g, ratvec lambda)=extended_param:
   let () =
     if not is_fixed(delta,x) then error("x is not fixed by delta")
@@ -102,7 +106,9 @@ set E(mat delta, KGBElt x, ratvec gamma, ratvec g, ratvec lambda)=extended_param
     then error("x is not compatible with infinitesimal cocharacter g")
     fi
     then theta=involution(x) 
-    then l=ratvec_as_vec( (g-(1+^theta)*torus_factor(x)/2-rho_check(real_form(x))))
+{    then l=ratvec_as_vec( (g-(1+^theta)*torus_factor(x)/2-rho_check(real_form(x))))}
+{torus_factor(x) is ^theta fixed}
+    then l=ratvec_as_vec(g-torus_factor(x)-rho_check(inner_class(x)))
     { g-(1+^theta)(tf(x))=l+rho^v =>
      (1-^theta)g = (1-^theta)(l+rho^v) as required above}
     then omega=-^theta
@@ -117,38 +123,38 @@ set E(mat delta, KGBElt x, ratvec gamma, ratvec g, ratvec lambda)=extended_param
   else (inner_class(real_form(x)),delta,gamma,lambda_E,theta,g,l,omega,tau,t)
   fi  
 
-{this next definition is problematic in the nonintegral case, having to do with y}
-set E(mat delta, ratvec gamma, KGBElt x, ratvec g, KGBElt y) = extended_param:
-  let () =
-    if dual(inner_class(real_form(x)))!=inner_class(real_form(y))
-    then error("inner classes are not dual")
-    elif not is_fixed(delta,x) then error("x is not fixed by delta")
-    elif not is_fixed(^delta,y) then error("y is not fixed by ^delta")
-    elif square(y) != gamma%1
-    then error("y is not compatible with infinitesimal character gamma")
-    elif square(x) != g%1
-    then error("x is not compatible with infinitesimal cocharacter g")
-    fi
-  then l = ratvec_as_vec(g-2*actual_torus_factor(x))
+{in the nonintegral case the next definition uses KGBElt_gen for y}
+
+set E(mat delta, ratvec gamma, KGBElt x, ratvec g, KGBElt_gen y) = extended_param:
+if dual(inner_class(x))!=inner_class(y)
+ then error("inner classes are not dual")
+ elif not is_fixed(delta,x) then error("x is not fixed by delta")
+ elif not is_fixed(^delta,y) then error("y is not fixed by ^delta")
+ elif square(y)%1 != gamma%1  {%1: mod(Z^n)}
+ then prints("square y:", square(y), "gamma:", gamma); error("y is not compatible with infinitesimal character gamma")
+ elif square(x)%1 != g%1
+  then error("x is not compatible with infinitesimal cocharacter g")
+else
+{then l=ratvec_as_vec( (g-(1+^theta)*torus_factor(x)/2-rho_check(real_form(x))))}
+{torus_factor(x) is ^theta fixed}
+{let ()=prints("in E:", gamma-torus_factor(y)-rho(inner_class(y))) in }
+{let ()=prints("torus_factor(y): ", torus_factor(y), " gamma: ", gamma, " rho(y): ", rho(inner_class(x))) in}
+let ()=prints("OK") in
+let l=ratvec_as_vec(g-torus_factor(x)-rho_check(inner_class(x)))
   , theta=involution(x), omega=involution(y) { NOTE ^theta=-omega }
-  , lambda = ratvec_as_vec(gamma-2*actual_torus_factor(y))
+  , lambda = ratvec_as_vec(gamma-torus_factor(y)-rho(inner_class(x)))
+{  in let ()=prints("lambda:", lambda) }
   then (t,result1)=solve(1-omega,ratvec_as_vec(l*(delta-1)))
   ,  (tau,result2)=solve(1-theta,ratvec_as_vec((delta-1)*lambda))
   in
-  if result1=false
-  then error("(1-^delta)l=(1+^theta)t has no integral solution")
-  elif result2=false
-  then error("(1-delta)lambda=(1+theta)tau has no integral solution")
-  else (inner_class(real_form(x)),delta,gamma,lambda,theta,g,l,omega,tau,t)
+  if result1=false    then error("(1-^delta)l=(1+^theta)t has no integral solution")
+   elif result2=false then error("(1-delta)lambda=(1+theta)tau has no integral solution")
+  else 
+   (inner_class(real_form(x)),delta,gamma,lambda,theta,g,l,omega,tau,t)
   fi
+fi
 
-{ in case of an integral parameter, we can deduce gamma and y from it }
-set E(mat delta, Param p, ratvec g) = extended_param:
-  E(delta, infinitesimal_character(p), x(p), g, y(p))
-{ a curious permutation of the arguments w.r.t. the main definition of E }
-set E(mat delta, KGBElt x, KGBElt y, ratvec gamma, ratvec g) = extended_param:
-  E(delta,gamma,x,g,y)
-
+{ in case of an integral parameter, we can deduce gamma, lambda from it }
 set E(mat delta, Param p, ratvec g) = extended_param:E(delta,x(p), infinitesimal_character(p), g, lambda(p))
 
 {the natural choice of cocharacter for p
@@ -206,7 +212,6 @@ set sign(
   {elif not KGB_equal(y(E1),y(E2)) then 0}
   {to avoid trouble with construction of y, test conjugacy of e((gamma-lambda)/2)\ch\sigma_w\ch\xi_0 directly}
   {see synthetic.rx:is_conjugate}
-  {to avoid trouble with construction of y, test conjugacy of e((gamma-lambda)/2)\ch\sigma_w\ch\xi_0 directly}
   elif not is_conjugate((gamma1-lambda1)/2,(gamma2-lambda2)/2,-theta1) then 0
   else
   let exp=rat_as_int(
@@ -266,8 +271,8 @@ fi
   function E) with the same image as F. So
   default(F)=E(delta,parameter(F),g(F))
 }
-set default(extended_param F) = extended_param:
-  E(delta(F),parameter(F),g(F))
+
+set default(extended_param F) = extended_param:E(delta(F),x(F),gamma(F),g(F),lambda(F)+rho(ic(F)))
 
 set      sign (extended_param Ep) =int:      sign(Ep,default(Ep))
 set dual_sign (extended_param Ep) =int: dual_sign(Ep,default(Ep))
@@ -301,27 +306,14 @@ set print_ext_block(mat delta,[Param] B)=void:ext_print_block(delta,B)
 set print_ext_block(mat delta,Param p)=void:ext_print_block(delta,p)
 set print_ext_block(Param p)=void:ext_print_block(distinguished_involution(real_form(p)),p)
 
-
-{ for convenience
- usage: set (delta,B,g) = ext_basic(G)
- then you can run, for example test_hecke(0,1,delta,B,g)
-}
-set ext_basic (RealForm G) = (mat,[Param],ratvec):
-  (distinguished_involution(G),trivial_block(G), rho_check(G))
-
 { is_default(E)=1 if E is equivalent to the extended parameter constructed
-  by the software, lying over p=p(E)
+  by the software lying over p=p(E)
 }
-set is_default (extended_param(,delta,gamma,,,g,,,,):xp) = bool:
-  xp=E(delta,gamma,x(xp),g,y(xp))
+set is_default (extended_param E)=bool:E=default(E)
 
 set ext_block_of(mat delta, Param p, ratvec g)=[extended_param]:for p in fixed_block_of(delta,p) do E(delta,p,g) od
-
 set ext_block_of(mat delta, Param p)=[extended_param]:ext_block_of(delta,p,canonical_cocharacter(p,delta))
-
 set ext_block_of(Param p)=[extended_param]:ext_block_of(distinguished_involution(real_form(p)),p)
-
-
 
 set find([extended_param] list,extended_param E)=(int,int):
 let i=0 in 
@@ -332,4 +324,33 @@ if s=0 then i:=i+1 else rv:=(s,i);i:=#list fi od;rv
 
 set find(extended_param E,[extended_param] list)=(int,int):find(list,E)
 
+{ for convenience
+ usage: set (delta,B,g) = ext_basic(G)
+ then you can run, for example test_hecke(0,1,delta,B,g)
+}
+set ext_basic (RealForm G) = (mat,[Param],ratvec):
+  (distinguished_involution(G),trivial_block(G), rho_check(G))
 
+{alpha,beta simple, delta distinguished
+ p(alpha), p(beta) images in folded root system
+ p(alpha)=(1+delta)alpha or alpha restricted to H^delta
+ <p(alpha),p(beta)^v>=2<(1+delta)alpha,beta^v>/<(1+delta)beta,beta^v>
+}
+
+set folded_bracket(RootDatum rd, mat delta, int i, int j)=int:
+let alpha=simple_roots(rd)[i],
+beta=simple_roots(rd)[j],
+betav=simple_coroots(rd)[j] in
+rat_as_int(2*((1+delta)*alpha*betav)/((1+delta)*beta*betav))
+
+set folded_m(RootDatum rd, mat delta, int i, int j)=int:
+folded_bracket(rd,delta,i,j)*folded_bracket(rd,delta,j,i)
+
+set folded_order(RootDatum rd, mat delta, int i, int j)=int:
+let m=folded_m(rd,delta,i,j) in 
+if m=0 then 2
+elif m=1 then 3
+elif m=2 then 4 
+elif m=3 then 6
+elif m=4 then 1
+else error("fundamental error in mathematics (folder_order)") fi

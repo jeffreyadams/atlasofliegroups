@@ -115,7 +115,7 @@ then (E2,shift)=translate_to_dominant(E1)
 then j=root_index(integrality_datum(E2),alpha)
 {then ()=prints("j=",j) }
 {then ()=prints("Cayley transform of type:", ext_type(j,E2))}
-then E3_array=ext_Cayley(j,E2)
+then E3_array=ext_Cayley_simple(j,E2)
 then rv=[] 
 in for i:#E3_array do 
  let E3=E3_array[i]
@@ -127,11 +127,12 @@ od;rv
 {extended Cayley transform of any length, and not necessarily simple
 Cayley transform by j^th simple root of the *integral* roots
 if this root is also simple for G, then call ext_Cayley_i(...)
-<otherwise, call nonintegral.rx:posroot_ext_Cayley 
+otherwise, call nonintegral.rx:posroot_ext_Cayley 
 (with the appropriate change in root number)
 }
 set ext_Cayley((int,extended_param)(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
 let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
+then ()=prints("ext_Cayley in nonintegral.rx with  E:");display(E)
 then type=ext_type(j,E) 
 {then ()=prints("ext_Cayley, j=", j, ", " ,parameter(E)) }
 then cayley_types=["1i1","1i2f","1r1f","1r2","2Ci","2Cr","2i12","2i22","2r22","2r21","2r11","3Ci","3Cr","3i","3r"]
@@ -142,7 +143,7 @@ in if not in_string_list(type,cayley_types) then {prints("Cayley of type ", type
   let rd=root_datum(p)
   then id=integrality_datum(p) 
   then alpha=simple_roots(id)[j] in
-  if is_simple_root(rd,alpha) then ext_Cayley(j,E)  {this calls the previous definition from extended_cayley.rx}
+  if is_simple_root(rd,alpha) then ext_Cayley_simple(j,E)  {this calls the previous definition from extended_cayley.rx}
   else
     let j=root_index(rd,alpha) in 
     posroot_ext_Cayley(j,E) 

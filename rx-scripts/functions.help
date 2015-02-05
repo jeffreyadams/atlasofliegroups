@@ -493,10 +493,8 @@ Cayley: (int,KGBElt->KGBElt): Cayley transform for (posrootnr,KGB element)
   and whether there is a second inverse Cayley transform can be found out by
   applying cross action to the result; it either returns the same result,
   which signifies a single-value inverse Cayley, or else the second value
-
 twist: (KGBElt->KGBElt): twist of KGB element x, useful for Hermitian dual
   This is defined by conjugation of x by the distinguished involution delta
-
 torus_factor: (KGBElt->ratvec): torus part of KGB element, twice that in print_X
   This is a \theta^t stable rational vector v with integral evaluations on
   all imaginary roots; interpreted modulo the image of 1+\theta^t acting

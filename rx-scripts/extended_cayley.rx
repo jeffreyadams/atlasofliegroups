@@ -47,7 +47,8 @@ if (type="1i1") then
   then (zeta, valid)=solve(oneplus(^new_omega),alpha)
   then ()= if (not valid) then error("failure in Cayley of type 1i1, solving for zeta") fi
   then new_tau=vec:tau-(tau*alpha_check)*zeta
-  then xq=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t) in [xq]
+  then xq=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t) in
+  let ()=prints("xq in ext_Cayley_1 type 1i1:", xq);verify(xq) in [xq]
 elif (type="1i2f") then
  let new_lambda=lambda
   then new_l=vec:ratvec_as_vec(l+((g*alpha-l*alpha-1)/2)*alpha_check)
@@ -249,12 +250,13 @@ prints("Cayley transform of type ", type, " not defined");[E]
 
 {Cayley transforms are always by integral roots 
 first define it for alpha G-simple (=>integral-simple)  
-then for general integral-simple (this is done in non-integral.rx)
+then for general integral-simple (this is done in nonintegral.rx)
 Cayley transform by j^th simple root of the *integral* roots
 assuming this root is G-simple}
 
-set ext_Cayley((int,extended_param)(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
+set ext_Cayley_simple((int,extended_param)(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
 let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
+then ()=prints("ext_Cayley in extended_cayley.rx with  E:");display(E)
 then type=ext_type(j,E) 
 {then ()=prints("ext_Cayley, j=", j, ", " ,parameter(E)) }
 then cayley_types=["1i1","1i2f","1r1f","1r2","2Ci","2Cr","2i12","2i22","2r22","2r21","2r11","3Ci","3Cr","3i","3r"]
@@ -273,7 +275,9 @@ in if not in_string_list(type,cayley_types) then prints("Cayley of type ", type,
      else error("Give me a break") 
     fi
   else
-    error("root is integral-simple but not simple, need to load integral.rx to define ext_Cayley")  
+    error("root is integral-simple but not simple, need to load nonintegral.rx to define ext_Cayley")  
   fi
  fi
 fi
+
+<<nonintegral.rx {to load ext_Cayley(i,E) in general case}

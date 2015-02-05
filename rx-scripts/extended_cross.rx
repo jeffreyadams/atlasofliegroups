@@ -23,7 +23,7 @@ set ext_cross_1(int j
   then s_alpha    = 1 - column(alpha)*row(alpha_check)
   , s_alpha_check = 1 - column(alpha_check)*row(alpha) { = ^s_alpha }
   in
-  let ()=prints("type:", type) in 
+{  let ()=prints("type:", type) in }
   if ((type="1C+") or (type="1C-")) then
     let new_lambda = { lambda +alpha*(alpha_check*(gamma-lambda)-1) }
         ratvec_as_vec(s_alpha*lambda+(alpha_check*gamma-1)*alpha)
@@ -125,7 +125,7 @@ set ext_cross_2(int j
          fi
     then xq=
       (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
-    in test_ext_cross(p,[j],xq); xq
+    in{ test_ext_cross(p,[j],xq);} xq
   elif (type="2r22") then
     let new_lambda=vec:lambda+alpha+beta
     , new_l = l
@@ -164,7 +164,7 @@ set ext_cross_3(int j,extended_param E) = extended_param:
 { ext_cross calls one of the ext_cross_i }
 set ext_cross(int j, extended_param (ic,delta,,,,,,,,):E) = extended_param:
   let p=parameter(E), l=ext_length(root_datum(ic),delta,j) in
-let ()=prints("length is:", l) in 
+{let ()=prints("length is:", l) in }
   if is_fixed(delta,p) then
     [ext_cross_1@(int,extended_param)
     ,ext_cross_2@(int,extended_param)

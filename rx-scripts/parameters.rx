@@ -3,26 +3,53 @@
 
 {various ways of defining parameters}
 
-set actual_torus_factor(KGBElt x)=ratvec:
-  (torus_factor(x)+rho_check(real_form(x)))/2
+{torus_factor, aka "normalized torus factor", is theta-fixed, 
+ xi=exp(2\pi i*(torus_factor)/2)exp(rho^\vee/2)\sigma_w\xi_0
+ note over 2 in exp terms, Marc writes e(x)=exp(2\pi ix/2)
+ xi=exp(2\pi i*(unnormalized_torus_factor))\sigma_w\xi_0
+ =>
+ unnormalized_torus_factor=(torus_factor+rho^\vee)/2
+ NOTE: (unnormalized_torus_factor-rho^vee/2) is theta-fixed (unnormalized_torus_factor is not theta-fixed)
+ torus_factor=2*unnormalized_torus_factor-rho^\vee
+ probably better not to use unnormalized_torus_factor
+}
+set unnormalized_torus_factor(KGBElt x)=ratvec:(torus_factor(x)+rho_check(real_form(x)))/2
 
 {compute xi^2 and test if it is central}
+{v is unnormalized torus factor}
 {(e(v)sigma_w*xi_0)^2=e((1+^theta)v)e((1-^theta)rho^v/2)}
 {^theta since v,rho^v are  in x_*\otimes Q}
 
-set square(InnerClass ic,ratvec v,mat theta)=ratvec:
-  v*(1+theta)+rho_check(ic)/2*(1-theta) { or: rho^v + (2*v-rho^v)*(1+theta)/2 }
+set square_unnormalized(InnerClass ic,mat theta,ratvec unnormalized_torus_factor)=ratvec:
+{this is formula when v= unnormalized_torus_factor
+ xi=exp(2\pi iv)\sigma_w\xi_0
+xi^2=exp(2\pi i[(1+^theta)*v+(1-^theta)*rho^v/2]
+    =v*(1+theta)+rho^v*(1-theta)/2
+    =rho^v + (2*v-rho^v)*(1+theta)/2
+}
+{(v*(1+theta)+rho_check(ic))%1 ??? }
+(unnormalized_torus_factor*(1+theta)+rho_check(ic)*(1-theta)/2)%1
+
+{unnormalized_torus_factor=(torus_factor+rho^vee)/2}
+set square_normalized(InnerClass ic,mat theta,ratvec torus_factor)=ratvec:
+square_unnormalized(ic,theta,(torus_factor+rho_check(ic))/2)
+
+set square(InnerClass ic,mat theta,ratvec normalized_torus_factor)=ratvec:
+square_normalized(ic,theta,normalized_torus_factor)
 
 set square (RealForm G) = ratvec: (base_grading_vector(G)+rho_check(G))%1
 set square(KGBElt x)=ratvec: square(real_form(x))
-  { used to be: square(real_form(x), actual_torus_factor(x), involution(x)) }
+{should equal square(inner_class(x), involution(x), torus_factor(x))}
+
 
 { in duality, y is a KGBElt for G^\vee(gamma), but we need to compute its
   square as an element of G^\vee; the difference is in the rho-shift coming
   from the difference between the Tits groups }
 
-set square_is_central(InnerClass ic,ratvec v,mat theta) = bool:
-  let sq = square(ic,v,theta), alpha = simple_roots(ic) in
+{v=(normalized) torus_factor: xi=exp(2\pi i v/2)exp(2\pi irho^v/2)\sigma_w\xi_0
+ so square_is_central(ic,theta(x),torus_factor(x)) should always be true for x a KGBElt}
+set square_is_central(InnerClass ic,mat theta,ratvec v) = bool:
+  let sq = square(ic,theta,v), alpha = simple_roots(ic) in
   all((int i)bool: is_integer(sq*alpha[i]),n_columns(alpha))
 
 set parity(Param p,vec alpha_hat) = bool: { parity condition }
@@ -45,7 +72,6 @@ set y(Param p, InnerClass G_vee) = KGBElt:
   in KGB_elt(G_vee,dual_theta,grading_vector-dual_shift)
 
 set y(Param p) = KGBElt: y(p,dual_inner_class(p))
-
 
 set lambda(ratvec gamma,mat theta,KGBElt y)= ratvec:
   if theta != -^involution(y) then error("incompatible involutions")
