@@ -182,6 +182,8 @@ class InvolutionTable
   bool is_imaginary_simple(InvolutionNbr n,weyl::Generator s) const;
   bool is_real_simple(InvolutionNbr n,weyl::Generator s) const;
 
+  bool is_complex_descent(InvolutionNbr n,RootNbr alpha) const;
+
   void reduce(TitsElt& a) const;
 
   bool equivalent(const TorusElement& t1, const TorusElement& t2,
@@ -201,7 +203,7 @@ class InvolutionTable
 
   // the following produces a light-weight function object calling |involution|
   class mapper
-    : public std::unary_function<InvolutionNbr,const weyl::TI_Entry& >
+  // : public std::unary_function<InvolutionNbr,const weyl::TI_Entry& >
   {
     const InvolutionTable& t;
   public:

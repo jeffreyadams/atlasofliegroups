@@ -257,6 +257,16 @@ bool Matrix_base<C>::operator== (const Matrix_base<C>& m) const
   return d_rows==m.d_rows and d_columns==m.d_columns and d_data==m.d_data;
 }
 
+template<typename C>
+bool Matrix_base<C>::is_zero () const
+{
+  const auto end=d_data.end();
+  for (auto it=d_data.begin(); it!=end; ++it)
+    if (*it!=C(0))
+      return false;
+  return true;
+}
+
 /*! \brief
 Applies the matrix to the vector w, and returns the result. It is assumed that
 the size of w is the number of columns; result size is the number of rows.

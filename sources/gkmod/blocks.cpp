@@ -845,7 +845,7 @@ void nblock_help::parent_down_Cayley(nblock_elt& z, weyl::Generator s) const
     return; // silently ignore, done for use from realex |inv_Cayley| function
 
   // on $y$ side just keep the same dual |TorusElement|, so nothing to do
-  // however, for non-parity roots, leave $x$ unchenged as well
+  // however, for non-parity roots, leave $x$ unchanged as well
   Rational r = z.yy.evaluate_at(rd.simpleCoroot(s)); // modulo $2\Z$
   if (r.numerator()%(2*r.denominator())==0) // then it is a parity root
     z.xx = cx; // move $x$ component of |z|
@@ -1026,7 +1026,7 @@ non_integral_block::non_integral_block
       // compute length change; only nonzero for complex roots; if so, if
       // $\theta(\alpha)$ positive, like $\alpha$, then go down (up for $x$)
       int d = i_tab.complex_roots(i_theta).isMember(alpha)
-	    ? rd.isPosRoot(i_tab.root_involution(i_theta,alpha)) ? -1 : 1
+	    ? rd.is_posroot(i_tab.root_involution(i_theta,alpha)) ? -1 : 1
 	    : 0 ;
       int length = this->length(next) + d;
       assert(length>=0); // if not, then starting point not minimal for length

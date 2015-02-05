@@ -609,7 +609,7 @@ template<typename C>
   {
     const WeylWord& xw = wordPiece(w,i);
     for (size_t j = xw.size(); j-->0; )
-      rd.simpleReflect(v,d_out[xw[j]]);
+      rd.simple_reflect(d_out[xw[j]],v);
   }
 }
 
@@ -636,7 +636,7 @@ template<typename C>
   {
     const WeylWord& xw = wordPiece(w,i);
     for (size_t j = xw.size(); j-->0; )
-      prd.simpleReflect(v,d_out[xw[j]]);
+      prd.simple_reflect(d_out[xw[j]],v);
   }
 }
 
@@ -667,7 +667,7 @@ void WeylGroup::inverse_act(const RootDatum& rd, const WeylElt& w, Weight& v)
   {
     const WeylWord& xw = wordPiece(w,i);
     for (size_t j=0; j<xw.size(); ++j )
-      rd.simpleReflect(v,d_out[xw[j]]);
+      rd.simple_reflect(d_out[xw[j]],v);
   }
 }
 

@@ -139,8 +139,18 @@ class Rep_context
   bool is_oriented(const StandardRepr& z, RootNbr alpha) const;
   unsigned int orientation_number(const StandardRepr& z) const;
 
+  // action by equivalence of parameters (not the cross action), changing gamma
+  void W_act(const WeylWord& w,StandardRepr& z) const;
+
+  // same, but interpreting the Weyl word in a subsystem
+  void W_act(const WeylWord& w,StandardRepr& z,const SubSystem& subsys) const;
+
   // prepare for |deform|: make |gamma| dominant, and as theta-stable as can be
-  void make_dominant(StandardRepr& z) const;
+  // return the sequence of Weyl generators that was applied (to the right)
+  WeylWord make_dominant(StandardRepr& z) const;
+
+  // make integrally dominant, with precomputed integral subsystem
+  WeylWord make_dominant(StandardRepr& z,const SubSystem& subsys) const;
 
   RationalList reducibility_points(const StandardRepr& z) const; // normalised
 
@@ -148,6 +158,9 @@ class Rep_context
   StandardRepr Cayley(weyl::Generator s, StandardRepr z) const;
   StandardRepr inv_Cayley(weyl::Generator s, StandardRepr z) const;
   StandardRepr twist(StandardRepr z) const;
+
+  StandardRepr cross(const Weight& alpha, StandardRepr z) const;
+  StandardRepr any_Cayley(const Weight& alpha, StandardRepr z) const;
 
   class compare
   { Coweight level_vec; // linear form to apply to |gamma| for ordering

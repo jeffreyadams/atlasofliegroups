@@ -297,15 +297,12 @@ bool GlobalTitsGroup::compact(const RootSystem& rs,
 			      GlobalTitsElement a)
   const
 {
-  if (not rs.isPosRoot(alpha))
-    alpha=rs.rootMinus(alpha);
-
-  assert(rs.isPosRoot(alpha));
+  make_positive(rs,alpha);
   weyl::Generator s; // declare outside loop, allow inspection of final value
   while (alpha!=rs.simpleRootNbr(s=rs.find_descent(alpha)))
   {
     cross_act(s,a);
-    rs.simple_reflect_root(alpha,s);
+    rs.simple_reflect_root(s,alpha);
   }
 
   return compact(s,a); // since now |alpha==rs.simpleRootNbr(s)|
@@ -711,15 +708,12 @@ TitsElt TitsCoset::twisted(const TitsElt& a) const
 
 bool TitsCoset::grading(TitsElt a, RootNbr alpha) const
 {
-  if (not rs.isPosRoot(alpha))
-    alpha=rs.rootMinus(alpha);
-
-  assert(rs.isPosRoot(alpha));
+  make_positive(rs,alpha);
   weyl::Generator s; // declare outside loop, allow inspection of final value
   while (alpha!=rs.simpleRootNbr(s=rs.find_descent(alpha)))
   {
     basedTwistedConjugate(a,s);
-    rs.simple_reflect_root(alpha,s);
+    rs.simple_reflect_root(s,alpha);
   }
 
   return simple_grading(a,s);
@@ -757,7 +751,7 @@ bool TitsCoset::grading(TitsElt a, RootNbr alpha) const
 
 bool TitsCoset::simple_imaginary_grading(TorusPart t, RootNbr alpha) const
 {
-  assert(rs.isPosRoot(alpha));
+  assert(rs.is_posroot(alpha));
 
   RankFlags re_mod2(rs.root_expr(alpha));
 
@@ -987,7 +981,7 @@ TitsElt EnrichedTitsGroup::backtrack_seed
   RootNbrList Cayley(rset.begin(),rset.end()); // convert to |RootNbrList|
   for (size_t i=0; i<Cayley.size(); ++i)
     for (size_t j=cross.size(); j-->0; )
-      G.rootDatum().simple_reflect_root(Cayley[i],cross[j]);
+      G.rootDatum().simple_reflect_root(cross[j],Cayley[i]);
 
   /* at this point we can get from the fundamental fiber to |tw| by first
      applying Cayley transforms in the strongly orthogonal set |Cayley|, and
