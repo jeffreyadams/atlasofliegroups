@@ -2541,7 +2541,7 @@ install_function(mrv_prod_wrapper,"*","(mat,ratvec->ratvec)");
 install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
 install_function(mm_prod_wrapper,"*","(mat,mat->mat)");
 install_function(vm_prod_wrapper,"*","(vec,mat->vec)");
-install_function(rvm_prod_wrapper,"*","(ratvec,mat->vec)");
+install_function(rvm_prod_wrapper,"*","(ratvec,mat->ratvec)");
 install_function(stack_rows_wrapper,"stack_rows","([vec]->mat)");
 install_function(combine_columns_wrapper,"#","(int,[vec]->mat)");
 install_function(combine_rows_wrapper,"^","(int,[vec]->mat)");

@@ -24,6 +24,8 @@ operators +, -: (ratvec,ratvec->ratvec): additive rational vector arithmetic
 operators *, /, %:  (ratvec,int->ratvec): scalar rational vector operations
 operators *, /:  (ratvec,rat->ratvec): scalar rational vector operations
 operator -: (ratvec->ratvec): unary minus of rational vectors
+operator *: "(mat,ratvec->ratvec): left-multiplication my matrix of ratvec
+operator *: "(ratvec,mat->ratvec): right-multiplication my matrix of ratvec
 
 operators =, !=: (int->bool): test for equality/inequality against 0
 operators >, >=, <, <=, =, != : (int,int->bool): usual relational operators
