@@ -54,6 +54,7 @@ WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta);
 void make_positive(const RootSystem& rs,RootNbr& alpha);
 
 // conjugate |alpha| to a simple root, returning right-conjugating word applied
+// afterwards |alpha| is shifted to become a \emph{simple} root index
 WeylWord conjugate_to_simple(const RootSystem& rs,RootNbr& alpha);
 
 // compute product of reflections in set of orthogonal roots
@@ -82,13 +83,13 @@ class RootSystem
     root_info(const Byte_vector& v)
     : root(v), dual(), descents(), ascents() {}
   };
-  struct root_compare; // necessary for sorting roots
+  struct root_compare; // auxilary type defined here for access reasons
 
   size_t rk; // rank of root system
 
   Byte_vector Cmat; // Cartan matrix in compressed format
 
-  std::vector<root_info> ri; //!< List of information about positive roots
+  std::vector<root_info> ri; // information about individual positive roots
 
   int_Vector two_rho_in_simple_roots;
 
@@ -150,11 +151,14 @@ class RootSystem
   template <typename I, typename O>
     void toSimpleWeights(I, I, O, const RootNbrList&) const;
 
-  bool isSimpleRoot(RootNbr alpha) const
+  bool is_simple_root(RootNbr alpha) const
   { return alpha-numPosRoots()<rk; } // this uses that |RootNbr| is unsigned
 
-  bool isPosRoot(RootNbr alpha) const
+  bool is_posroot(RootNbr alpha) const
   { return alpha>=numPosRoots(); } // second half
+
+  bool is_negroot(RootNbr alpha) const
+  { return alpha<numPosRoots(); } // first half
 
   RootNbr simpleRootNbr(weyl::Generator i) const
   { assert(i<rk);  return numPosRoots()+i; }
@@ -163,16 +167,16 @@ class RootSystem
   { assert(alpha<numPosRoots()); return numPosRoots()+alpha; }
 
   RootNbr simpleRootIndex(size_t alpha) const
-  { assert(isSimpleRoot(alpha));  return alpha-numPosRoots(); }
+  { assert(is_simple_root(alpha));  return alpha-numPosRoots(); }
 
   RootNbr posRootIndex(size_t alpha) const
-    { assert(isPosRoot(alpha)); return alpha-numPosRoots(); }
+  { assert(is_posroot(alpha)); return alpha-numPosRoots(); }
 
   RootNbr rootMinus(RootNbr alpha) const // roots are ordered symmetrically
   { return numRoots()-1-alpha; }
 
   RootNbr rt_abs(RootNbr alpha) const // offset of corresponding positive root
-  { return isPosRoot(alpha) ? alpha-numPosRoots() : numPosRoots()-1-alpha; }
+  { return is_posroot(alpha) ? alpha-numPosRoots() : numPosRoots()-1-alpha; }
 
 
   RootNbrSet simpleRootSet() const; // NOT for iteration over it; never used
@@ -189,12 +193,12 @@ class RootSystem
   RankFlags descent_set(RootNbr alpha) const
   {
     RootNbr a = rt_abs(alpha);
-    return isPosRoot(alpha) ? ri[a].descents : ri[a].ascents;
+    return is_posroot(alpha) ? ri[a].descents : ri[a].ascents;
   }
   RankFlags ascent_set(RootNbr alpha) const
   {
     RootNbr a = rt_abs(alpha);
-    return isPosRoot(alpha) ? ri[a].ascents : ri[a].descents;
+    return is_posroot(alpha) ? ri[a].ascents : ri[a].descents;
   }
 
   size_t find_descent(RootNbr alpha) const
@@ -206,23 +210,23 @@ class RootSystem
   bool is_ascent(weyl::Generator i, RootNbr alpha) const
   { return root_perm[i][alpha]>alpha; }
 
-  RootNbr simple_reflected_root(RootNbr r, weyl::Generator i) const
+  RootNbr simple_reflected_root(weyl::Generator i,RootNbr r) const
   { return simple_root_permutation(i)[r]; }
 
-  void simple_reflect_root(RootNbr& r, weyl::Generator i) const
+  void simple_reflect_root(weyl::Generator i,RootNbr& r) const
   { r=simple_root_permutation(i)[r]; }
 
   RootNbr permuted_root(const WeylWord& ww, RootNbr r) const
   {
     for (weyl::Generator i=ww.size(); i-->0; )
-      simple_reflect_root(r,ww[i]);
+      simple_reflect_root(ww[i],r);
     return r;
   }
 
   RootNbr permuted_root(RootNbr r,const WeylWord& ww) const
   {
     for (weyl::Generator i=0; i<ww.size(); ++i)
-      simple_reflect_root(r,ww[i]);
+      simple_reflect_root(ww[i],r);
     return r;
   }
 
@@ -250,7 +254,8 @@ class RootSystem
   // express sum of roots positive for |Delta| in fundamental weights
   matrix::Vector<int> pos_system_vec(const RootNbrList& Delta) const;
 
-  RootNbrList simpleBasis(RootNbrSet rs) const; // find simple basis for subsystem
+  // find simple basis for subsystem
+  RootNbrList simpleBasis(RootNbrSet rs) const;
 
   bool sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const;
   bool sumIsRoot(RootNbr alpha, RootNbr beta) const
@@ -486,7 +491,7 @@ use by accessors.
 
   //!\brief  Applies to |lambda| the reflection about root |alpha|.
   template<typename C>
-  void reflect(matrix::Vector<C>& lambda, RootNbr alpha) const
+    void reflect(RootNbr alpha,matrix::Vector<C>& lambda) const
   { lambda -= root(alpha).scaled(coroot(alpha).dot(lambda)); }
   //!\brief  Applies reflection about coroot |alpha| to a coweight
   template<typename C>
@@ -500,17 +505,17 @@ use by accessors.
   template<typename C>
     matrix::Vector<C>
     reflection(matrix::Vector<C> lambda, RootNbr alpha) const
-    { reflect(lambda,alpha); return lambda; }
+    { reflect(alpha,lambda); return lambda; }
   template<typename C>
   matrix::Vector<C>
     coreflection(matrix::Vector<C> co_lambda, RootNbr alpha) const
     { coreflect(co_lambda,alpha); return co_lambda; }
 
   template<typename C>
-  void simpleReflect(matrix::Vector<C>& v, weyl::Generator i) const
-    { reflect(v,simpleRootNbr(i)); }
+    void simple_reflect(weyl::Generator i,matrix::Vector<C>& v) const
+  { reflect(simpleRootNbr(i),v); }
   template<typename C>
-  void simpleCoreflect(matrix::Vector<C>& v, weyl::Generator i) const
+  void simple_coreflect(matrix::Vector<C>& v, weyl::Generator i) const
     { coreflect(v,simpleRootNbr(i)); }
 
   void simple_reflect(weyl::Generator i, LatticeMatrix& M) const
@@ -521,18 +526,18 @@ use by accessors.
 
   template<typename C>
     matrix::Vector<C>
-    simpleReflection(matrix::Vector<C> lambda, weyl::Generator i) const
-    { simpleReflect(lambda,i); return lambda; }
+    simple_reflection(weyl::Generator i,matrix::Vector<C> lambda) const
+    { simple_reflect(i,lambda); return lambda; }
   template<typename C>
     matrix::Vector<C>
-    simpleCoreflection(matrix::Vector<C> co_lambda, weyl::Generator i) const
-    { simpleCoreflect(co_lambda,i); return co_lambda; }
+    simple_coreflection(matrix::Vector<C> ell, weyl::Generator i) const
+    { simple_coreflect(ell,i); return ell; }
 
   WeylWord to_dominant(Weight lambda) const; // call by value
   void act(const WeylWord& ww,Weight& lambda) const
     {
       for (weyl::Generator i=ww.size(); i-->0; )
-	simpleReflect(lambda,ww[i]);
+	simple_reflect(ww[i],lambda);
     }
   Weight image_by(const WeylWord& ww,Weight lambda) const
     { act(ww,lambda); return lambda; }
@@ -541,30 +546,30 @@ use by accessors.
   void act_inverse(Weight& lambda,const WeylWord& ww) const
     {
       for (weyl::Generator i=0; i<ww.size(); ++i)
-	simpleReflect(lambda,ww[i]);
+	simple_reflect(ww[i],lambda);
     }
 
   Weight image_by_inverse(Weight lambda,const WeylWord& ww) const
     { act_inverse(lambda,ww); return lambda; }
 
 #if 0
-  void dual_act_inverse(const WeylWord& ww,Weight& lambda) const
+  void dual_act_inverse(const WeylWord& ww,Coweight& ell) const
     {
       for (weyl::Generator i=ww.size(); i-->0; )
-	simpleCoreflect(lambda,ww[i]);
+	simple_coreflect(ell,ww[i]);
     }
   Weight dual_image_by_inverse(const WeylWord& ww,Weight lambda) const
     { dual_act_inverse(ww,lambda); return lambda; }
 #endif
 
   // here the word |ww| is travered as in |act_inverse|, but coreflection used
-  void dual_act(Coweight& lambda,const WeylWord& ww) const
+  void dual_act(Coweight& ell,const WeylWord& ww) const
     {
       for (weyl::Generator i=0; i<ww.size(); ++i)
-	simpleCoreflect(lambda,ww[i]);
+	simple_coreflect(ell,ww[i]);
     }
-  Weight dual_image_by(Coweight lambda,const WeylWord& ww) const
-    { dual_act(lambda,ww); return lambda; }
+  Weight dual_image_by(Coweight ell,const WeylWord& ww) const
+    { dual_act(ell,ww); return ell; }
 
   // here any matrix permuting the roots is allowed, e.g., root_reflection(r)
   Permutation rootPermutation(const WeightInvolution& q) const;

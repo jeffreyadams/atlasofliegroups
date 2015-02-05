@@ -825,7 +825,7 @@ KGBElt cross(const KGB_base& kgb, KGBElt x, RootNbr alpha)
 {
   const RootSystem& rs = kgb.rootDatum();
   const WeylWord ww = conjugate_to_simple(rs,alpha);
-  return kgb.cross(ww,kgb.cross(rs.simpleRootIndex(alpha),kgb.cross(x,ww)));
+  return kgb.cross(ww,kgb.cross(alpha,kgb.cross(x,ww)));
 }
 
 // general Cayley transform in root $\alpha$, non-compact imaginary
@@ -833,12 +833,11 @@ KGBElt any_Cayley (const KGB_base& kgb, KGBElt x, RootNbr alpha)
 {
   const RootSystem& rs = kgb.rootDatum();
   const WeylWord ww = conjugate_to_simple(rs,alpha);
-  weyl::Generator s=rs.simpleRootIndex(alpha);
   x=kgb.cross(x,ww);
-  KGBElt Cx = kgb.any_Cayley(s,x);
+  KGBElt Cx = kgb.any_Cayley(alpha,x);
   if (Cx==UndefKGB)
   {
-    std::string str (kgb.status(s,x)==gradings::Status::Complex
+    std::string str (kgb.status(alpha,x)==gradings::Status::Complex
 		     ? "complex" : "imaginary compact");
     throw std::runtime_error("Cayley transform by "+str+" root");
   }
@@ -856,7 +855,7 @@ gradings::Status::Value status(const KGB_base& kgb, KGBElt x, RootNbr alpha)
 
   while (alpha!=rs.simpleRootNbr(s=rs.find_descent(alpha)))
   {
-    rs.simple_reflect_root(alpha,s);
+    rs.simple_reflect_root(s,alpha);
     x=kgb.cross(s,x);
   }
   return kgb.status(s,x);

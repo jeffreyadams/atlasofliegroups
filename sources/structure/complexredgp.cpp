@@ -223,7 +223,7 @@ void ComplexReductiveGroup::construct() // common part of two constructors
 	{
 	  conjugator.push_back(s);
 	  adj_Tg.basedTwistedConjugate(a,s);
-	  d_rootDatum.simple_reflect_root(alpha,s);
+	  d_rootDatum.simple_reflect_root(s,alpha);
 	}
 
 	// fix how test element at |Cartan[i].tw| grades original root $\alpha$
@@ -324,7 +324,7 @@ void ComplexReductiveGroup::construct() // common part of two constructors
 	  conjugator.push_back(j);
 	  dual_adj_Tg.basedTwistedConjugate(a,j);
 	  twistedWeylGroup().twistedConjugate(tw,j);
-	  d_rootDatum.simple_reflect_root(alpha,j);
+	  d_rootDatum.simple_reflect_root(j,alpha);
 	}
 
 	bool zero_grading = dual_adj_Tg.simple_grading(a,j);
@@ -972,8 +972,8 @@ WeylWord canonicalize // return value conjugates element new |sigma| to old
 	LatticeCoeff c=rrs.dot(rd.simpleCoroot(s));
 	if (c<0 or (c==0 and irs.dot(rd.simpleCoroot(s))<0))
 	{
-	  rd.reflect(rrs,rd.simpleRootNbr(s));   // apply $s_i$ to re-root sum
-	  rd.reflect(irs,rd.simpleRootNbr(s));   // apply $s_i$ to im-root sum
+	  rd.simple_reflect(s,rrs);   // apply $s_i$ to real-root sum
+	  rd.simple_reflect(s,irs);   // apply $s_i$ to iminary-root sum
 	  W.twistedConjugate(sigma,s); // adjust |sigma| accordingly
 	  ww.push_back(s);                 // and add generator to |ww|
 	  break;     // after this change, continue the |do|-|while| loop
@@ -1018,7 +1018,7 @@ WeylWord canonicalize // return value conjugates element new |sigma| to old
 	weyl::Generator s=*it;
 	RootNbr beta= // image of |rd.simpleRootNbr(s)| by $\theta$
 	  rd.permuted_root(W.word(sigma.w()),rd.simpleRootNbr(W.twisted(s)));
-	if (not rd.isPosRoot(beta))
+	if (rd.is_negroot(beta))
 	{
 	  W.twistedConjugate(sigma,s); // adjust |sigma|
 	  ww.push_back(s);             // and add generator to |ww|
@@ -1080,7 +1080,7 @@ void Cayley_and_cross_part(RootNbrSet& Cayley,
       W.twistedConjugate(tw,s); // and twisted-conjugate |tw|
       // and conjugate roots in |so|:
       for (size_t i=0; i<so.size(); ++i)
-	rs.simple_reflect_root(so[i],s); // replace root by reflection image
+	rs.simple_reflect_root(s,so[i]); // replace root by reflection image
     }
 
   assert(tw==ti);

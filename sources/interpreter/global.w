@@ -22,7 +22,7 @@
 \def\emph#1{{\it#1\/}}
 \def\foreign#1{{\sl#1\/}}
 \def\id{\mathop{\rm id}}
-\def\Z{{\bf Z}}
+\def\Zee{{\bf Z}} % cwebx uses \Z and \ZZ itself
 
 @* Outline.
 %
@@ -39,7 +39,7 @@ such as the introduction of new global identifiers. The second part is
 dedicated to some fundamental types, like integers, Booleans, strings, without
 which the programming language would be an empty shell (but types more
 specialised to the Atlas software are defined in another
-module, \.{built-in-types}. Finally there is a large section with basic
+module, \.{built-in-types}). Finally there is a large section with basic
 functions related to these types.
 
 @( global.h @>=
@@ -1756,9 +1756,26 @@ void rat_power_wrapper(expression_base::level l)
 
 @*1 Booleans.
 %
-Relational operators are of the same flavour.
+Relational operators are of the same flavour. In addition to the classical
+relations, we shall define unary versions of equality and inequality operators
+for those types that have one or more ``zero'' values to test against such a
+value. For integers this is not very useful, but for vectors matrices it
+avoids having to laboriously construct a null value of the correct dimension
+just to perform the test.
+
 @< Local function definitions @>=
 
+void int_unary_eq_wrapper(expression_base::level l)
+{ int i=get<int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i==0));
+}
+@)
+void int_unary_neq_wrapper(expression_base::level l)
+{ int i=get<int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i!=0));
+}
 void int_eq_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
@@ -1799,6 +1816,17 @@ void int_greatereq_wrapper(expression_base::level l)
 
 @< Local function definitions @>=
 
+void rat_unary_eq_wrapper(expression_base::level l)
+{ Rational i=get<rat_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i.numerator()==0));
+}
+@)
+void rat_unary_neq_wrapper(expression_base::level l)
+{ Rational i=get<rat_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i.numerator()!=0));
+}
 void rat_eq_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
@@ -1852,23 +1880,52 @@ void inequiv_wrapper(expression_base::level l)
 
 @*1 Strings.
 %
-The string type is intended mostly for preparing output to be printed, so few
-operations are defined for it. We define functions for comparing and
-for concatenating them, and one for converting integers to their string
-representation.
+The string type is intended mostly for preparing output to be printed. We
+define a full set of comparison operators, an operator for concatenating them,
+and one for converting integers to their string representation.
 
 @< Local function definitions @>=
 
+void string_unary_eq_wrapper(expression_base::level l)
+{ shared_string i=get<string_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i->val.empty()));
+}
+void string_unary_neq_wrapper(expression_base::level l)
+{ shared_string j=get<string_value>(); shared_string i=get<string_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i->val.size()>0));
+}
 void string_eq_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<bool_value>(i->val==j->val));
 }
+void string_neq_wrapper(expression_base::level l)
+{ shared_string j=get<string_value>(); shared_string i=get<string_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i->val!=j->val));
+}
 @)
+void string_less_wrapper(expression_base::level l)
+{ shared_string j=get<string_value>(); shared_string i=get<string_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i->val<j->val));
+}
 void string_leq_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<bool_value>(i->val<=j->val));
+}
+void string_greater_wrapper(expression_base::level l)
+{ shared_string j=get<string_value>(); shared_string i=get<string_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i->val>j->val));
+}
+void string_geq_wrapper(expression_base::level l)
+{ shared_string j=get<string_value>(); shared_string i=get<string_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i->val>=j->val));
 }
 @)
 void concatenate_wrapper(expression_base::level l)
@@ -1989,25 +2046,67 @@ We start with vector and matrix equality comparisons, which are quite similar
 to what we saw for rationals, for instance.
 
 @< Local function definitions @>=
+void vec_unary_eq_wrapper(expression_base::level l)
+{ shared_vector i=get<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  const auto end=i->val.end();
+  for (auto it=i->val.begin(); it!=end; ++it)
+    if (*it!=0)
+    {@; push_value(std::make_shared<bool_value>(false));
+      return; }
+  push_value(std::make_shared<bool_value>(true));
+}
+void vec_unary_neq_wrapper(expression_base::level l)
+{ shared_vector i=get<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  const auto end=i->val.end();
+  for (auto it=i->val.begin(); it!=end; ++it)
+    if (*it!=0)
+    {@; push_value(std::make_shared<bool_value>(true));
+      return; }
+  push_value(std::make_shared<bool_value>(false));
+}
 void vec_eq_wrapper(expression_base::level l)
 { shared_vector j=get<vector_value>(); shared_vector i=get<vector_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<bool_value>(i->val==j->val));
 }
-@)
 void vec_neq_wrapper(expression_base::level l)
 { shared_vector j=get<vector_value>(); shared_vector i=get<vector_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<bool_value>(i->val!=j->val));
 }
 @)
+void ratvec_unary_eq_wrapper(expression_base::level l)
+{ shared_rational_vector i=get<rational_vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  const auto end=i->val.numerator().end();
+  for (auto it=i->val.numerator().begin(); it!=end; ++it)
+    if (*it!=0)
+    {@; push_value(std::make_shared<bool_value>(false));
+      return; }
+  push_value(std::make_shared<bool_value>(true));
+}
+void ratvec_unary_neq_wrapper(expression_base::level l)
+{ shared_rational_vector i=get<rational_vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  const auto end=i->val.numerator().end();
+  for (auto it=i->val.numerator().begin(); it!=end; ++it)
+    if (*it!=0)
+    {@; push_value(std::make_shared<bool_value>(true));
+      return; }
+  push_value(std::make_shared<bool_value>(false));
+}
 void ratvec_eq_wrapper(expression_base::level l)
 { shared_rational_vector j=get<rational_vector_value>();
   shared_rational_vector i=get<rational_vector_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<bool_value>(i->val==j->val));
 }
-@)
 void ratvec_neq_wrapper(expression_base::level l)
 { shared_rational_vector j=get<rational_vector_value>();
   shared_rational_vector i=get<rational_vector_value>();
@@ -2015,12 +2114,21 @@ void ratvec_neq_wrapper(expression_base::level l)
     push_value(std::make_shared<bool_value>(i->val!=j->val));
 }
 @)
+void mat_unary_eq_wrapper(expression_base::level l)
+{ shared_matrix i=get<matrix_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i->val.is_zero()));
+}
+void mat_unary_neq_wrapper(expression_base::level l)
+{ shared_matrix i=get<matrix_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(not i->val.is_zero()));
+}
 void mat_eq_wrapper(expression_base::level l)
 { shared_matrix j=get<matrix_value>(); shared_matrix i=get<matrix_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<bool_value>(i->val==j->val));
 }
-@)
 void mat_neq_wrapper(expression_base::level l)
 { shared_matrix j=get<matrix_value>(); shared_matrix i=get<matrix_value>();
   if (l!=expression_base::no_value)
@@ -2232,6 +2340,17 @@ void vm_prod_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(std::make_shared<vector_value>(m->val.right_prod(v->val)));
 }
+@)
+void rvm_prod_wrapper(expression_base::level l)
+{ shared_matrix m=get<matrix_value>();
+  shared_rational_vector v=get<rational_vector_value>();
+  if (v->val.size()!=m->val.numRows())
+    throw std::runtime_error(std::string("Size mismatch ")@|
+     + str(v->val.size()) + ":" + str(m->val.numColumns()));
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<rational_vector_value>(v->val*m->val));
+}
+
 
 @ The function |stack_rows_wrapper| interprets a row of vectors as a ragged
 tableau, and returns the result as a matrix. It inherits functionality that
@@ -2354,12 +2473,16 @@ install_function(rat_modulo_wrapper,"%","(rat,rat->rat)");
 install_function(rat_unary_minus_wrapper,"-","(rat->rat)");
 install_function(rat_inverse_wrapper,"/","(rat->rat)");
 install_function(rat_power_wrapper,"^","(rat,int->rat)");
+install_function(int_unary_eq_wrapper,"=","(int->bool)");
+install_function(int_unary_neq_wrapper,"!=","(int->bool)");
 install_function(int_eq_wrapper,"=","(int,int->bool)");
 install_function(int_neq_wrapper,"!=","(int,int->bool)");
 install_function(int_less_wrapper,"<","(int,int->bool)");
 install_function(int_lesseq_wrapper,"<=","(int,int->bool)");
 install_function(int_greater_wrapper,">","(int,int->bool)");
 install_function(int_greatereq_wrapper,">=","(int,int->bool)");
+install_function(rat_unary_eq_wrapper,"=","(rat->bool)");
+install_function(rat_unary_neq_wrapper,"!=","(rat->bool)");
 install_function(rat_eq_wrapper,"=","(rat,rat->bool)");
 install_function(rat_neq_wrapper,"!=","(rat,rat->bool)");
 install_function(rat_less_wrapper,"<","(rat,rat->bool)");
@@ -2368,8 +2491,14 @@ install_function(rat_greater_wrapper,">","(rat,rat->bool)");
 install_function(rat_greatereq_wrapper,">=","(rat,rat->bool)");
 install_function(equiv_wrapper,"=","(bool,bool->bool)");
 install_function(inequiv_wrapper,"!=","(bool,bool->bool)");
+install_function(string_unary_eq_wrapper,"=","(string->bool)");
+install_function(string_unary_neq_wrapper,"!=","(string->bool)");
 install_function(string_eq_wrapper,"=","(string,string->bool)");
+install_function(string_neq_wrapper,"!=","(string,string->bool)");
+install_function(string_less_wrapper,"<","(string,string->bool)");
 install_function(string_leq_wrapper,"<=","(string,string->bool)");
+install_function(string_greater_wrapper,">","(string,string->bool)");
+install_function(string_geq_wrapper,">=","(string,string->bool)");
 install_function(concatenate_wrapper,"#","(string,string->string)");
 install_function(int_format_wrapper,"int_format","(int->string)");
 install_function(string_to_ascii_wrapper,"ascii","(string->int)");
@@ -2381,10 +2510,16 @@ install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
 install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
 install_function(join_vectors_wrapper,"#","(vec,vec->vec)");
 install_function(error_wrapper,"error","(string->*)");
+install_function(vec_unary_eq_wrapper,"=","(vec->bool)");
+install_function(vec_unary_neq_wrapper,"!=","(vec->bool)");
 install_function(vec_eq_wrapper,"=","(vec,vec->bool)");
 install_function(vec_neq_wrapper,"!=","(vec,vec->bool)");
+install_function(ratvec_unary_eq_wrapper,"=","(ratvec->bool)");
+install_function(ratvec_unary_neq_wrapper,"!=","(ratvec->bool)");
 install_function(ratvec_eq_wrapper,"=","(ratvec,ratvec->bool)");
 install_function(ratvec_neq_wrapper,"!=","(ratvec,ratvec->bool)");
+install_function(mat_unary_eq_wrapper,"=","(mat->bool)");
+install_function(mat_unary_neq_wrapper,"!=","(mat->bool)");
 install_function(mat_eq_wrapper,"=","(mat,mat->bool)");
 install_function(mat_neq_wrapper,"!=","(mat,mat->bool)");
 install_function(vector_div_wrapper,"/","(vec,int->ratvec)");
@@ -2406,6 +2541,7 @@ install_function(mrv_prod_wrapper,"*","(mat,ratvec->ratvec)");
 install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
 install_function(mm_prod_wrapper,"*","(mat,mat->mat)");
 install_function(vm_prod_wrapper,"*","(vec,mat->vec)");
+install_function(rvm_prod_wrapper,"*","(ratvec,mat->ratvec)");
 install_function(stack_rows_wrapper,"stack_rows","([vec]->mat)");
 install_function(combine_columns_wrapper,"#","(int,[vec]->mat)");
 install_function(combine_rows_wrapper,"^","(int,[vec]->mat)");
@@ -2635,9 +2771,9 @@ void invert_wrapper(expression_base::level l)
 }
 
 @ We define a function that makes available the normal form for basis of
-subspaces over the field $\Z/2\Z$. It is specifically intended to be usable
-with sets of generators that may not form a basis, and to provide feedback
-about expressions both for the normalised basis vectors returned, and
+subspaces over the field $\Zee/2\Zee$. It is specifically intended to be
+usable with sets of generators that may not form a basis, and to provide
+feedback about expressions both for the normalised basis vectors returned, and
 relations that show the excluded vectors to be dependent on the retained ones.
 
 @h "bitvector.h"

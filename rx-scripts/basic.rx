@@ -59,11 +59,6 @@ set rat_as_int (rat r) = int:
 
 {				Strings					}
 
-set != ((string,string)p) = bool: not =p
-set > ((string,string)p) = bool: not <=p
-set >= (string x, string y) = bool: y<=x
-set < (string x, string y) = bool: y>x
-
 set new_line = ascii(10) { including this in a string passes to a new line }
 
 set + (string s,string t) = string: s # t { alias for concatenation }
@@ -220,16 +215,11 @@ set denom (ratvec a) = int: let (,d)=%a in d
 set * (int i,ratvec v) = ratvec: v*i
 set * (rat r,ratvec v) = ratvec: v*r
 
-set * (ratvec v, mat m) = ratvec: (^m)*v { right multiply uses transpose }
-
 { extend built-in scalar product of vectors to rational vector case }
 set * (ratvec v, ratvec w) = rat: let (nv,dv)=%v,(nw,dw)=%w in nv*nw/(dv*dw)
 
 set * (vec v, ratvec w) = rat: let (nw,dw)=%w in v*nw/dw { more efficient }
 { cannot also define: *(ratvec v, vec w) = rat: let (nv,dv)=%v in nv*w/dv }
-
-set * (mat A, ratvec w) = ratvec: let (nw,dw)=%w in A*nw/dw
-set * (ratvec w, mat A) = ratvec: let (nw,dw)=%w in nw*A/dw
 
 { make a rational vector into an integer one if possible }
 set ratvec_as_vec(ratvec v) = vec:
@@ -238,9 +228,6 @@ set ratvec_as_vec(ratvec v) = vec:
 
 
 {			    Split integers				}
-
-set = (Split x,Split y) = %x = %y
-set != (Split x,Split y) = %x != %y
 
 set s = Split:(0,1)
 set + (Split x) = let (r,)=%x in r { real part }
@@ -618,13 +605,10 @@ set lookup (Param p, [Param] block) = int:
 
 {		    Polynomials in module parameters			}
 
-set - (ParamPol P,ParamPol Q) = ParamPol: P+(-1)*Q
-set = (ParamPol P,ParamPol Q) = bool: #(P-Q)=0
-set != (ParamPol P,ParamPol Q) = bool: #(P-Q)>0
-
 set null_module (ParamPol P)= 0*P { also handles null_module(Param) }
 
-set virtual(Param p) = ParamPol: p
+
+set virtual(Param p) = ParamPol: p { for making implicit conversion explcit }
 
 set - (ParamPol P) = ParamPol: (-1)*P
 set - (ParamPol P,Param p)=ParamPol:P+(-1)*virtual(p)
