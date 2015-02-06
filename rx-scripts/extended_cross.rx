@@ -162,7 +162,8 @@ set ext_cross_3(int j,extended_param E) = extended_param:
   in E { should be defined properly here! FIXME }
 
 { ext_cross calls one of the ext_cross_i }
-set ext_cross(int j, extended_param (ic,delta,,,,,,,,):E) = extended_param:
+{no longer used - see nonintegral.rx}
+set ext_cross_old(int j, extended_param (ic,delta,,,,,,,,):E) = extended_param:
   let p=parameter(E), l=ext_length(root_datum(ic),delta,j) in
 {let ()=prints("length is:", l) in }
   if is_fixed(delta,p) then

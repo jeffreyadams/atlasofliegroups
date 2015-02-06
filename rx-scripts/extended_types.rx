@@ -14,8 +14,8 @@ set ext_length (RootDatum rd,mat delta, int j) = int:
   if alpha=beta then 1 elif coroot(rd,j)*beta=0 then 2 else 3 fi
 
 { E=extended parameter, ext_length(j,E) = ext_length(ic(E),delta(E),j) }
-set ext_length(int j, extended_param(ic,delta,,,,,,,,)) = int:
-  ext_length(ic,delta,j)
+set ext_length(int j, extended_param E) = int:
+  ext_length(integrality_datum(E),delta(E),j)
 
 { ext_length has many cases, split cases by length }
 { ext_type_1(delta,j,p)=1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn }

@@ -44,8 +44,8 @@ set cross (mat w, Param p) = Param:
   }
   in parameter(x1,new_gamma - w*grading_wt + rho_r(rd,theta1), new_gamma)
 
-set cross([int] w,Param p)=Param:cross(w_matrix(root_datum(p),w),p)
-set posroot_cross (int i, Param p) = Param:let w=posroot_reflection(root_datum(p),i) in cross(w,p)
+{set cross([int] w,Param p)=Param:cross(w_matrix(root_datum(p),w),p)}
+{set posroot_cross (int i, Param p) = Param:let w=posroot_reflection(root_datum(p),i) in cross(w,p)}
 
 { cross action on extended parameters }
 
@@ -77,6 +77,27 @@ set ext_cross(mat w,extended_param E)=extended_param:
   t1=ratvec_as_vec(t1) 
   in (ic,delta(E),gamma1,lambda1,theta1,g, l1,omega1,tau1,t1) fi
 
+{now define ext_cross(i,E) to replace the one in extended_cross.rx
+ the root is simple_root(integrality_datum)[i]
+ make w= s, st, or sts in lengths 1,2,3, respectively}
+
+set ext_cross(int i, extended_param E)=
+let rd=root_datum(E) 
+then alpha=simple_roots(integrality_datum(E))[i]
+then s=reflection(rd,alpha),
+length=ext_length(i,E),
+type=ext_type(i,E)
+then ()=prints("ext_cross: length ", length, " type ", type) 
+then w=
+if length=1 then s
+else 
+let t=reflection(rd,delta(E)*alpha) in 
+if length=2 then s*t 
+elif length=3 then s*t*s else
+error("something wrong") fi fi in ext_cross(w,E) 
+
+
+
 
 {strongly simple: simple for all of G
 as opposed to simple, which might mean simple for the integral roots}
@@ -89,8 +110,7 @@ let rd=root_datum(ic(E)) in ext_cross(simple_reflection(rd,i),E)
 {cross action of product of strongly simple reflections,
 must give w\in W^{\delta_0}
 }
-set ext_cross([int] w,extended_param E)=extended_param:
-ext_cross(w_matrix(root_datum(E),w),E)
+set ext_cross([int] w,extended_param E)=extended_param:ext_cross(w_matrix(root_datum(E),w),E)
 
 {posroot i means i^th positive root in list of all positive roots,
 must be fixed by \delta_0

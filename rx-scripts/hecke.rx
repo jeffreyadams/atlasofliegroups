@@ -227,21 +227,16 @@ od;(subspaces,#B_0,sizes)
 {given E=E(x,y,lambda,l,tau,t) and F=(x',y',lambda',tau',l't') related by 2i12
 compute the sign: coefficient of pi(F) in  T_kappa(\pi(E))
 see "More on the 2i12, 2Ci and 1i cases" Proposition 1.13}
-set sign_2i12((int,
-extended_param,
-extended_param)
-(j,
-(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E),
-(ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F)))=int:
-let E=(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E) in
-let F=(ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F) in
-let ic=ic(F) in
-let alpha=root(ic,j) in
-let alpha_check=coroot(ic,j) in
-let delta=delta(E) in
-let beta=delta*alpha in
-let k=lookup(beta,simple_roots(ic)) in
-let beta_check=coroot(ic,k) in
+set sign_2i12((int,extended_param,extended_param)
+(j,E,F))=int:
+{(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E):E,
+(ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F):F))=int:}
+let id=integrality_datum(E) in
+let alpha=root(id,j) in
+let alpha_check=coroot(id,j) in
+let beta=delta(E)*alpha in
+let k=lookup(beta,simple_roots(id)) in
+let beta_check=coroot(id,k) in
 let (p,q)=(parameter(E),parameter(F)) in
 if not verify(E) then error("E is not valid")
 elif not verify(F) then error("F is not valid")
@@ -249,36 +244,36 @@ elif not (ext_type(j,E)="2i12" and ext_type(j,F)="2r21")then error("Wrong types"
 elif not ( (q=Cayley_set(j,Cayley_set(k,p)[0])[0]) or (q=Cayley_set(j,Cayley_set(k,p)[0])[1])) then
 error("q is not a 2i12 Cayley transform of p")
 else
-let l_test_1=in_lattice(oneplus(^theta_E),l_F-l_E) in
-let l_test_2=in_lattice(oneplus(^theta_E),l_F-l_E+alpha_check) in
-let lambda_test_1=in_lattice(oneplus(^omega_F),lambda_F-lambda_E) in
-let lambda_test_2=in_lattice(oneplus(^omega_F),alpha+lambda_F-lambda_E) in
+let l_test_1=in_lattice(oneplus(^theta(E)),l(F)-l(E)) in
+let l_test_2=in_lattice(oneplus(^theta(E)),l(F)-l(E)+alpha_check) in
+let lambda_test_1=in_lattice(oneplus(^omega(F)),lambda(F)-lambda(E)) in
+let lambda_test_2=in_lattice(oneplus(^omega(F)),alpha+lambda(F)-lambda(E)) in
 let kappa= if (l_test_2 and lambda_test_2) then -1 else 1 fi in
 {solve for sigma}
 let (sigma,valid)=solve(oneplus(^omega(F)),alpha-beta) in
 if not valid then error("can't solve for sigma sign_2i12") else
-let tau=tau_E in
+let tau=tau(E) in
 let tau_alpha_beta=tau*(alpha_check+beta_check) in
 let tau_0=vec:ratvec_as_vec(tau+tau*beta_check*sigma-tau_alpha_beta/2*alpha) in
 let (s,valid)=solve(oneplus(^theta(E)),alpha_check-beta_check) in
 if not valid then error("can't solve for s in epsilon_t") else
-let t=t_F in
+let t=t(F) in
 let t_alpha_beta=t*(alpha+beta) in
 let t_0=vec:ratvec_as_vec(t+t*beta*s-t_alpha_beta/2*alpha_check) in
 let E_new=
 if l_test_1 then
-(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_F,omega_E,tau_0,t_0)
+(ic(E),delta(E),gamma(E),lambda(E),theta(E),g(E),l(F),omega(E),tau_0,t_0)
 elif l_test_2 then
-(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,vec:l_F+alpha_check,omega_E,tau_0,vec:t_0-s)
+(ic(E),delta(E),gamma(E),lambda(E),theta(E),g(E),vec:l(F)+alpha_check,omega(E),tau_0,vec:t_0-s)
 else error("l_test_1 and l_test_2 both false")
 fi in
 let F_new=
 if lambda_test_1 then
-(ic_F,delta_F,gamma_F,lambda_E,theta_F,g_F,l_F,omega_F,tau_0,t_0)
+(ic(F),delta(F),gamma(F),lambda(E),theta(F),g(F),l(F),omega(F),tau_0,t_0)
 elif lambda_test_2 then
-(ic_F,delta_F,gamma_F,vec:lambda_E+alpha,theta_F,g_F,l_F,omega_F,vec:tau_0-sigma,t_0)
+(ic(F),delta(F),gamma(F),vec:lambda(E)+alpha,theta(F),g(F),l(F),omega(F),vec:tau_0-sigma,t_0)
 else
-prints(E, x(E), y(E), F, x(F), y(F));error("lambda_test_1 and lambda_test_2 both false") fi in
+prints(E, x(E), y_gen(E), F, x(F), y_gen(F));error("lambda_test_1 and lambda_test_2 both false") fi in
 let ()=if not verify(E_new) then error("E_new is not valid") fi in
 let ()=if not verify(F_new) then error("F_new is not valid") fi in
 let sign_E=sign(E,E_new) in
@@ -503,6 +498,7 @@ elif type ="2i11" then
  R:=update_row(R,k,sgn_poly(sign(E1)));
  R:=update_row(R,m,sgn_poly(sign(F)));R
 elif type ="2i12" then
+ let ()=prints("hecke_row type 2i12") in 
  let cayley=ext_Cayley(j,E) in
  let F1=default(cayley[0]) in
  let F2=default(cayley[1]) in
