@@ -139,7 +139,6 @@ else
 {torus_factor(x) is ^theta fixed}
 {let ()=prints("in E:", gamma-torus_factor(y)-rho(inner_class(y))) in }
 {let ()=prints("torus_factor(y): ", torus_factor(y), " gamma: ", gamma, " rho(y): ", rho(inner_class(x))) in}
-let ()=prints("OK") in
 let l=ratvec_as_vec(g-torus_factor(x)-rho_check(inner_class(x)))
   , theta=involution(x), omega=involution(y) { NOTE ^theta=-omega }
   , lambda = ratvec_as_vec(gamma-torus_factor(y)-rho(inner_class(x)))
@@ -352,5 +351,5 @@ if m=0 then 2
 elif m=1 then 3
 elif m=2 then 4 
 elif m=3 then 6
-elif m=4 then 1
+elif m=4 then 1  {case delta(root_i)=root_j}
 else error("fundamental error in mathematics (folder_order)") fi

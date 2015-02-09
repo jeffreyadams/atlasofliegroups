@@ -15,7 +15,7 @@ set test_ext_cross(Param p, [int] kappa, extended_param xq) = void:
 set ext_cross_1(int j
                ,extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E
                ) = extended_param:
-  let p=parameter(E), rd=root_datum(ic)
+  let p=parameter(E), rd=integrality_datum(E)
   then type = string: {1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn}
     ext_type_1(delta,j,p)
   , alpha=root(rd,j)
@@ -63,10 +63,11 @@ set ext_cross_1(int j
 set ext_cross_2(int j
                ,extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E
                ) = extended_param:
-  let p=parameter(E), rd=root_datum(ic)
+  let p=parameter(E), rd=integrality_datum(E)
   then type = string: { 2C+,2C-,2Ci,2Cr,2i11,2i12,2i22,2r22,2r21,2r11,2rn,2ic }
     ext_type_2(delta,j,p)
   , simples = simple_roots(rd), cosimples = simple_coroots(rd)
+{  then ()=prints("ext_cross_2 type is:", type) }
   then alpha=simples[j] , alpha_check=cosimples[j]
   then s_alpha    = 1 - column(alpha)*row(alpha_check)
   , s_alpha_check = 1 - column(alpha_check)*row(alpha) { = ^s_alpha }
@@ -103,7 +104,7 @@ set ext_cross_2(int j
       (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
     in test_ext_cross(p,[j],xq); xq
   elif (type="2i11") then
-    let ()=prints("type 2i11") in 
+{    let ()=prints("type 2i11") in }
     let new_lambda=lambda, new_l = l+alpha_check+beta_check
     , new_theta = s_ab*theta*s_beta*s_alpha
     , new_omega = s_ab_check*omega*s_ab_check
@@ -112,6 +113,8 @@ set ext_cross_2(int j
       (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_t,new_tau)
     in test_ext_cross(p,[j],xq); xq
   elif (type="2i12") then
+{    let ()=prints("TYPE 2i12") in }
+{    let ()=prints("alpha check:", alpha_check) in}
     let new_lambda=lambda
     , new_l = l+alpha_check
     , new_theta = s_ab*theta*s_beta*s_alpha
@@ -158,14 +161,15 @@ set ext_cross_2(int j
 { extenteded cross action not yet defined }
 set ext_cross_3(int j,extended_param E) = extended_param:
   let p=parameter(E) then type=ext_type_2(delta(E),j,p)
-  in let ()=prints("ext_cross_3") 
+{  in let ()=prints("ext_cross_3") }
   in E { should be defined properly here! FIXME }
-
-{ ext_cross calls one of the ext_cross_i }
-{no longer used - see nonintegral.rx}
-set ext_cross_old(int j, extended_param (ic,delta,,,,,,,,):E) = extended_param:
-  let p=parameter(E), l=ext_length(root_datum(ic),delta,j) in
-{let ()=prints("length is:", l) in }
+ 
+{ ext_cross calls one of the ext_cross_i 
+this command used to be called in all cases, replaced by nonintegral.rx:ext_cross
+except in special cases: types 2i11/2i12/2r22/2r21}
+set ext_cross_simple(int j, extended_param (ic,delta,,,,,,,,):E) = extended_param:
+  let p=parameter(E), l=ext_length(integrality_datum(E),delta,j) in
+{  let ()=prints("length is:", l) in }
   if is_fixed(delta,p) then
     [ext_cross_1@(int,extended_param)
     ,ext_cross_2@(int,extended_param)

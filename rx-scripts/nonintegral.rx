@@ -53,7 +53,8 @@ set cross (mat w, Param p) = Param:
 this handles both integral and nonintegral cases
  this definition is free standing, and does not call the one in extended_cross.rx}
 set ext_cross(mat w,extended_param E)=extended_param:
-  if not w*delta(E)=delta(E)*w then error("w not in W^delta") else
+{  if not w*delta(E)=delta(E)*w then error("w not in W^delta") else}
+  if false then error("w not in W^delta") else
   let ic=ic(E) then
   rd=root_datum(ic),
   x=x(E) then
@@ -76,26 +77,6 @@ set ext_cross(mat w,extended_param E)=extended_param:
 {  ()=prints("t1:", t1) then}
   t1=ratvec_as_vec(t1) 
   in (ic,delta(E),gamma1,lambda1,theta1,g, l1,omega1,tau1,t1) fi
-
-{now define ext_cross(i,E) to replace the one in extended_cross.rx
- the root is simple_root(integrality_datum)[i]
- make w= s, st, or sts in lengths 1,2,3, respectively}
-
-set ext_cross(int i, extended_param E)=
-let rd=root_datum(E) 
-then alpha=simple_roots(integrality_datum(E))[i]
-then s=reflection(rd,alpha),
-length=ext_length(i,E),
-type=ext_type(i,E)
-then ()=prints("ext_cross: length ", length, " type ", type) 
-then w=
-if length=1 then s
-else 
-let t=reflection(rd,delta(E)*alpha) in 
-if length=2 then s*t 
-elif length=3 then s*t*s else
-error("something wrong") fi fi in ext_cross(w,E) 
-
 
 
 
@@ -152,7 +133,7 @@ otherwise, call nonintegral.rx:posroot_ext_Cayley
 }
 set ext_Cayley((int,extended_param)(j,(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)))=
 let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
-then ()=prints("ext_Cayley in nonintegral.rx with  E:");display(E)
+{then ()=prints("ext_Cayley in nonintegral.rx with  E:");display(E)}
 then type=ext_type(j,E) 
 {then ()=prints("ext_Cayley, j=", j, ", " ,parameter(E)) }
 then cayley_types=["1i1","1i2f","1r1f","1r2","2Ci","2Cr","2i12","2i22","2r22","2r21","2r11","3Ci","3Cr","3i","3r"]
@@ -170,3 +151,52 @@ in if not in_string_list(type,cayley_types) then {prints("Cayley of type ", type
   fi
  fi
 fi
+
+
+set ext_cross_special(int i, extended_param E)=
+let special_types=["2i12","2i22", "2r21","2r12"] 
+then type=ext_type(i,E)
+in if not in_string_list(type,special_types) then 
+ prints("type: ",type);error("Looks like wrong type in ext_cross_special") else
+let rd=root_datum(E)  in
+ let alpha=simple_roots(integrality_datum(E))[i] in
+{then ()=prints("in ext_cross_special with i=", i, "root=", alpha) in}
+ if is_simple_root(rd,alpha) then
+ ext_cross_simple(i,E)  {this calls the previous definition from extended_cross.rx}
+else
+let j=root_index(root_datum(E),alpha) in 
+let (w,beta)=conjugate_to_simple_by_Wdelta(root_datum(E), delta(E), j)
+then E1=ext_cross(w,E)  
+then (E2,shift)=translate_to_dominant(E1)
+then i=root_index(integrality_datum(E2),beta)
+then E3=ext_cross_simple(i,E2)
+then E4=(ic(E3),delta(E3),gamma(E3)-shift,lambda(E3)-shift,theta(E3), g(E3), l(E3), omega(E3),tau(E3),t(E3)) 
+then E5=ext_cross(inverse(w),E4) 
+in E5 fi fi
+
+
+
+
+{now define ext_cross(i,E) to replace the one in extended_cross.rx
+ the root is simple_root(integrality_datum)[i]
+ make w= s, st, or sts in lengths 1,2,3, respectively}
+
+set ext_cross(int i, extended_param E)=
+let rd=root_datum(E) 
+then alpha=simple_roots(integrality_datum(E))[i]
+{then ()=prints("in ext_cross with i=", i, "root=", alpha) }
+then s=reflection(rd,alpha),
+length=ext_length(i,E),
+type=ext_type(i,E)
+{then ()=prints("ext_cross: length ", length, " type ", type) }
+in 
+if length=2 and not is_complex(alpha,x(E)) then ext_cross_special(i,E) 
+else
+let w=
+if length=1 then s
+else 
+let t=reflection(rd,delta(E)*alpha) in 
+if length=2 then  s*t
+elif length=3 then s*t*s else
+error("something wrong") fi fi in ext_cross(w,E)  fi
+
