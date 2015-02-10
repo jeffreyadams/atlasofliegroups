@@ -53,8 +53,7 @@ set cross (mat w, Param p) = Param:
 this handles both integral and nonintegral cases
  this definition is free standing, and does not call the one in extended_cross.rx}
 set ext_cross(mat w,extended_param E)=extended_param:
-{  if not w*delta(E)=delta(E)*w then error("w not in W^delta") else}
-  if false then error("w not in W^delta") else
+  if not w*delta(E)=delta(E)*w then error("w not in W^delta") else
   let ic=ic(E) then
   rd=root_datum(ic),
   x=x(E) then
@@ -67,7 +66,7 @@ set ext_cross(mat w,extended_param E)=extended_param:
   lambda1=ratvec_as_vec(lambda1),
   omega1=-^theta1,
   g=g(E) then	
-  l1=g-^w*(g-l(E))+(^w*rho_check(rd)-rho_check(rd)) -(^w*rho_check_i(x)+rho_check_i(rd,theta1)) then
+  l1=g-^w*(g-l(E))+(^w*rho_check(rd)-rho_check(rd)) -(^w*rho_check_i(x)-rho_check_i(rd,theta1)) then
 {  ()=prints("l1:", l1) then}
   l1=ratvec_as_vec(l1),
   tau1=^w*tau(E)-(^delta(E)-1)*(^w*rho_check_r(x)-rho_check_r(x1))/2 then
@@ -154,7 +153,7 @@ fi
 
 
 set ext_cross_special(int i, extended_param E)=
-let special_types=["2i12","2i22", "2r21","2r12"] 
+let special_types=["2i12","2i22", "2r21","2r22"] 
 then type=ext_type(i,E)
 in if not in_string_list(type,special_types) then 
  prints("type: ",type);error("Looks like wrong type in ext_cross_special") else
@@ -184,13 +183,13 @@ in E5 fi fi
 set ext_cross(int i, extended_param E)=
 let rd=root_datum(E) 
 then alpha=simple_roots(integrality_datum(E))[i]
-{then ()=prints("in ext_cross with i=", i, "root=", alpha) }
+{then ()=prints("in ext_cross with i=", i, "root=", alpha)}
 then s=reflection(rd,alpha),
 length=ext_length(i,E),
 type=ext_type(i,E)
 {then ()=prints("ext_cross: length ", length, " type ", type) }
 in 
-if length=2 and not is_complex(alpha,x(E)) then ext_cross_special(i,E) 
+if type="2i12" or type="2r21" then ext_cross_special(i,E) 
 else
 let w=
 if length=1 then s
@@ -198,5 +197,5 @@ else
 let t=reflection(rd,delta(E)*alpha) in 
 if length=2 then  s*t
 elif length=3 then s*t*s else
-error("something wrong") fi fi in ext_cross(w,E)  fi
+error("something wrong") fi fi in ext_cross(w,E) {w is a matrix}  fi
 
