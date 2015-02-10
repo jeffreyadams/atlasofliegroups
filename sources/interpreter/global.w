@@ -2426,7 +2426,10 @@ void combine_rows_wrapper(expression_base::level l)
 }
 
 @ The following function is introduced to allow testing the
-|BinaryMap::section| method.
+|BinaryMap::section| method. It computes for a given binary matrix~$A$ another
+matrix $B$ of transpose shape and such that $ABA=A$ and $BAB=B$, which is a
+convenient generalisation of the notion of inverse matrix, and which never
+fails to exist (though it may fail to be unique).
 
 @h "bitvector.h"
 
@@ -2545,7 +2548,7 @@ install_function(rvm_prod_wrapper,"*","(ratvec,mat->ratvec)");
 install_function(stack_rows_wrapper,"stack_rows","([vec]->mat)");
 install_function(combine_columns_wrapper,"#","(int,[vec]->mat)");
 install_function(combine_rows_wrapper,"^","(int,[vec]->mat)");
-install_function(section_wrapper,"mod2_inverse","(mat->mat)");
+install_function(section_wrapper,"mod2_section","(mat->mat)");
 
 @* Other functions for vectors and matrices.
 %
