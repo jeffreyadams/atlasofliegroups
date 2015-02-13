@@ -15,8 +15,8 @@ set dual_inner_class(Param p) = InnerClass:
 set rho_i ((RootDatum, mat) rd_theta) = ratvec:
   sum(imaginary_poscoroots(rd_theta))/2
 
-{ find integral coweight will correct grading for rational coweight v on
-  (simple-imaginary roots) columns alpha in isys. This means finding w such
+{ find integral coweight that will correct grading for rational coweight |v|
+  on (simple-imaginary roots) columns of |simples|. This means finding w such
   that < w , alpha > = < v , alpha > + 1 (mod 2) for all such roots alpha
 }
 set integral_shift(ratvec v, mat simples) = vec:
@@ -29,9 +29,11 @@ set integral_shift(ratvec v, mat simples) = vec:
 set y(Param p, InnerClass G_vee) = KGBElt:
   let x=x(p)
   then dual_theta = -^involution(x)
+  , rho_corr = rho(real_form(x))-rho_check(G_vee)
   then (simple_reals,) = simple_from_positive(imaginary_sys(G_vee,dual_theta))
-  , phi = infinitesimal_character(p) - lambda(p)
-  in KGB_elt(G_vee,dual_theta,phi+integral_shift(rho_r(x),simple_reals))
+  , phi = infinitesimal_character(p) - lambda(p) + rho_corr
+  in KGB_elt(G_vee,dual_theta
+            ,phi+integral_shift(rho_corr-rho_r(x),simple_reals))
 
 { caution: these two functions build an inner class on the fly; if called
   mutliple times even with the same argument, the results will be incompatible
