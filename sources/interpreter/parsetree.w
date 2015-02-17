@@ -3,13 +3,34 @@
 
 @* Building the parse tree.
 This is the program unit \.{parsetree} which produces the implementation file
-\.{parsetree.cpp} and the header file \.{parsetree.h}; the latter is read in
-by \&{\#include} from the \Cee-file \.{parser.tab.c} generated
-from \.{parser.y}. It used to be the case that this file was compiled by
-a \Cee\ compiler, and therefore produced functions with \Cee-language linking.
-As a consequence some jumping through hoops was necessary to cleanly integrate
-them into the \Cpp\ program. However it turns out to be possible to compile
-the file \.{parser.tab.c} by a \Cpp-compiler, which makes all linkage to be
+\.{parsetree.cpp} and two header files \.{parse\_types.h} and \.{parsetree.h}.
+The file \.{parse\_types.h} is read, using \&{\#include}, early in the
+file \.{parser.tab.c} generated from \.{parser.y}, so that the type |YYSTYPE|
+used on the parsing stack can be properly defined, while the
+file \.{parsetree.h} containing declarations of the functions defined here is
+read later. This separation is done mainly so that we can without circularity
+include \.{parser.tab.h} into \.{parsetree.h}, which requires
+including \.{parse\_types.h} first.
+
+@( parse_types.h @>=
+#ifndef PARSE_TYPES_H
+#define PARSE_TYPES_H
+@< Includes needed in \.{parse\_types.h} @>@;
+namespace atlas
+{
+  namespace interpreter
+  {
+@< Type declarations for the parser @>@;
+  }@;
+}@;
+#endif
+
+
+@ It used to be the case that this file was compiled by a \Cee\ compiler, and
+therefore produced functions with \Cee-language linking. As a consequence some
+jumping through hoops was necessary to cleanly integrate them into the \Cpp\
+program. However it turns out to be possible to compile the
+file \.{parser.tab.c} by a \Cpp-compiler, which makes all linkage to be
 for \Cpp, and removes any need for |extern "C"| declarations. For the moment
 these declarations are simply removed, and the structure of this file still
 carries a legacy of the original design.
@@ -25,14 +46,16 @@ declaration is separated for historic reasons only.
 #include <iostream>
 #include <memory>
 #include <string>
-@< Includes needed in \.{parsetree.h} @>@;
+
+#include "parse_types.h" // this must precede the next include
+#include "parser.tab.h" // because \.{parser.tab.h} does not look after itself
 namespace atlas
 {
   namespace interpreter
   {
-@< Declarations for the parser @>@;
+@< Declarations of functions for the parser @>@;
 
-@< Declaration of functions not for the parser @>@;
+@< Declarations of functions not for the parser @>@;
   }@;
 }@;
 
@@ -61,7 +84,7 @@ on the parser stack, this solution was very inflexible; it was therefore
 replaced by one where |expr| is not so constrained, and raw pointers |expr_p|
 to it are what is placed on the parser stack.
 
-@< Declarations for the parser @>=
+@< Type declarations for the parser @>=
 @< Type declarations needed in definition of |struct expr@;| @>@;
 
 enum expr_kind @+
@@ -76,7 +99,6 @@ typedef expr* expr_p; // raw pointer type for use on parser stack
 typedef std::unique_ptr<expr> expr_ptr;
 @)
 @< Structure and typedef declarations for types built upon |expr| @>@;
-@< Declarations of functions for the parser @>@;
 
 @ We start right away declaring |expr| as a |struct|, avoiding complaints that
 it is not declared.
@@ -157,7 +179,7 @@ this provides a useful test to see if what we have read in corresponds to what
 was typed, and this functionality will also be used in producing error
 messages.
 
-@< Declaration of functions not for the parser @>=
+@< Declarations of functions not for the parser @>=
 std::ostream& operator<< (std::ostream& out, const expr& e);
 
 @~The definitions of this instance of the operator~`|<<|' are also distributed
@@ -296,7 +318,7 @@ identifier names, which we lift out of that class by using a |typedef|.
 #include "buffer.h" // for |Hash_table|
 
 @~Then here is how we identify an applied identifier. Since this |typedef| is
-written to \.{parsetree.h}, all compilation units that include that file can
+written to \.{parse\_types.h}, all compilation units that include that file can
 also use it.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
@@ -368,7 +390,7 @@ We use expression lists in various contexts, so they will occur as variant
 of~|expr|.
 
 @< Includes needed... @>=
-#include "sl_list.h"
+#include "sl_list.h" // lists are used in parsing types
 
 @~Historically implementing these lists using the atlas class
 template |containers::simple_list| was the first time a non-POD variant of
@@ -509,7 +531,7 @@ nothing useful is provided, for instance for a missing else-branch. They are
 easy to build, but for recognising them later, it is useful to have a function
 at hand.
 
-@< Declaration of functions not for the parser @>=
+@< Declarations of functions not for the parser @>=
 bool is_empty(const expr& e);
 
 @~The implementation is of course straightforward.
@@ -786,7 +808,7 @@ start them out with a binary or unary operator, the principal one to extend
 with a new operand and binary operator, one to finish off the formula with
 a final operand, and of course one to clean up.
 
-@< Declarations for the parser @>=
+@< Declarations of functions for the parser @>=
 raw_form_stack start_formula (expr_p e, id_type op, int prio);
 raw_form_stack start_unary_formula (id_type op, int prio);
 raw_form_stack extend_formula (raw_form_stack pre, expr_p e,id_type op, int prio);
@@ -926,7 +948,7 @@ reflects the fact that patterns are often recognised by left-recursive rules,
 so that a new pattern is tacked onto an existing pattern list (the resulting
 list will need reversal when further integrated).
 
-@< Declarations for the parser @>=
+@< Declarations of functions for the parser @>=
 raw_patlist make_pattern_node(raw_patlist prev,raw_id_pat& pattern);
 
 @ With the mentioned proviso about order, the function implementation just
@@ -939,7 +961,7 @@ raw_patlist make_pattern_node(raw_patlist prev,raw_id_pat& pattern)
 @ Patterns also need cleaning up, which is what |destroy_pattern| and
 |destroy_id_pat| will handle, and reversal as handled by |reverse_patlist|.
 
-@< Declarations for the parser @>=
+@< Declarations of functions for the parser @>=
 void destroy_pattern(raw_patlist p);
 void destroy_id_pat(const raw_id_pat& p);
 raw_patlist reverse_patlist(raw_patlist p);
@@ -965,7 +987,7 @@ raw_patlist reverse_patlist(raw_patlist raw)
 @ We can provide a printing function, that can be used from within the one for
 |expr|.
 
-@< Declaration of functions not for the parser @>=
+@< Declarations of functions not for the parser @>=
 std::ostream& operator<< (std::ostream& out, const id_pat& p);
 
 @~Only parts whose presence is indicated in |kind| are printed. We take care
@@ -1170,7 +1192,7 @@ smart pointers for types while being handled in the parser, since other
 pointers for expressions that it handles are not smart pointers either.
 
 @< Includes needed... @>=
-#include "types.h"
+#include "types.h" // parsing types need |type_p| and such
 
 @ Most functionality for these types is given in \.{types.w}; we just need to
 say how to destroy them.

@@ -145,13 +145,13 @@ is envisaged, we shall define a class for it. The module \.{buffer} is used
 for the class |BufferedInput| as well as for the type |id_type| defined within
 that class. The file \.{parser.tab.h} contains definitions of |YYSTYPE| and
 |YYLTYPE| defined by the parser and used in the code below, but on its turn it
-uses (for other purposes) types defined in \.{parsetree.h} which therefore has
-to be loaded before it (we would like to have put an \&{\#include} of the
+uses (for other purposes) types defined in \.{parse\_types.h}, which therefore
+has to be loaded before it (we would like to have put an \&{\#include} of the
 file \.{parsetree.h} into \.{parser.tab.h} so that it need no be mentioned
 here, but we do not know if or how this could be arranged).
 
 @h "buffer.h"
-@h "parsetree.h"
+@h "parse_types.h"
 @h "parser.tab.h"
 
 @< Class declarations @>=

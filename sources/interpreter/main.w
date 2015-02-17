@@ -57,11 +57,11 @@ pointer types to types that will be defined in \.{types.h}.
 
 \point The file \.{parser.y} is the source for \.{bison}-generated the parser
 file \.{parser.tab.c}. The header file \.{parser.tab.h} includes nothing, but
-contains definitions depending on \.{parsetree.h} having been included.
+contains definitions depending on \.{parse\_types.h} having been included.
 
 \point The file \.{lexer.w} defines the lexical analyser class
 |Lexical_analyser| and the readline completion function |id_completion_func|.
-Its header file includes \.{buffer.h}, \.{parsetree.h} and \.{parser.tab.h}.
+Its header file includes \.{buffer.h}, \.{parse\_types.h} and \.{parser.tab.h}.
 
 \point The file \.{types.w} defines the main base classes for the evaluator,
 |type_expr| for representing (realex) types, |value_base| for dynamic values,
@@ -119,17 +119,18 @@ namespace { @< Local static data @>@; }@;
 the prototype of the lexical analyser (wrapper) function |yylex| is the one
 below. Curiously, the program~\.{bison} does not write this prototype to
 \.{parser.tab.h}, but it does write the definitions of the types |YYSTYPE| and
-|YYLTYPE| there; these require that \.{parsetree.h} be included first. We also
-declare ``{\tt\%parse-param \char`\{} |int* verbosity, expr_p* parsed_expr@;|
-{\tt\char`\}}'' in~\.{parser.y}, so that the parser itself, |yyparse|, takes
-an integer pointer as parameter, which it uses to signal special requests from
-the user (such as verbose output but also termination or output redirection),
-and a pointer to an expression, in which it writes the result of parsing.
+|YYLTYPE| there; these require that \.{parse\_types.h} be included first. We
+also declare ``{\tt\%parse-param \char`\{} |int* verbosity, expr_p*
+parsed_expr@;| {\tt\char`\}}'' in~\.{parser.y}, so that the parser itself,
+|yyparse|, takes an integer pointer as parameter, which it uses to signal
+special requests from the user (such as verbose output but also termination or
+output redirection), and a pointer to an expression, in which it writes the
+result of parsing.
 
 The definitions below used to start with |extern "C"|, but no longer do so
 since the parser is now compiled as a \Cpp\ program.
 
-@h "parsetree.h"
+@h "parse_types.h"
 @h "parser.tab.h"
 
 @< Declaration of interface to the parser @>=
