@@ -1248,7 +1248,8 @@ explicit expr(lambda&& fun)
 by the parser.
 
 @< Declarations of functions for the parser @>=
-expr_p make_lambda_node(raw_patlist pat_l, raw_type_list type_l, expr_p body);
+expr_p make_lambda_node(raw_patlist pat_l, raw_type_list type_l, expr_p body,
+ YYLTYPE& loc);
 
 @ There is a twist in building a lambda node, similar to what we saw for
 building let-expressions, in that for syntactic reasons the parser passes
@@ -1260,9 +1261,7 @@ have a pointer to an isolated |type_expr|, but the head of |type_l| is a
 |type_node| that contains a |type_expr| as its |t| field; making a (shallow)
 copy of that field is the easiest way to obtain an isolated |type_expr|. After
 the copy, destruction of |type_l| deletes the original |type_node|. In the
-latter case we apply list reversal here 
-
-
+latter case we apply list reversal here to both pattern list and type list.
 
 @< Definitions of functions for the parser @>=
 expr mk_lambda_node(patlist&& pat_l, type_list&& type_l, expr& body)
@@ -1279,7 +1278,8 @@ expr mk_lambda_node(patlist&& pat_l, type_list&& type_l, expr& body)
   return expr(lambda(new@| lambda_node
       {std::move(pattern),std::move(parameter_type),std::move(body)}));
 }
-expr_p make_lambda_node(raw_patlist p, raw_type_list tl, expr_p body)
+expr_p make_lambda_node(raw_patlist p, raw_type_list tl, expr_p body,
+ YYLTYPE& loc)
  {@;
    return new expr(mk_lambda_node(patlist(p),type_list(tl),*expr_ptr(body)));
  }

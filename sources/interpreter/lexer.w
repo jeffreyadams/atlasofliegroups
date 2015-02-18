@@ -436,7 +436,7 @@ int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
   return code;
 }
 
-@ Everything that looks like an identifier is either that or a keyword, or a
+@ Everything that looks like an identifier is either that, or a keyword, or a
 type name. In any case we start with looking it up in the |id_table|, and then
 the numeric value of the code returned, which is determined by the order in
 which names were first entered into |id_table|, will allow us to discriminate

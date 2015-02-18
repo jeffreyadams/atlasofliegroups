@@ -540,8 +540,8 @@ template<typename I> void BitMap::insert(I first, I last)
 }
 
 
-/*!
-  Synopsis: sets the capacity of the bitmap to n.
+/*
+  Set the capacity of the bitmap to |n|, shrinking |d_map| if possible
 
   Does not modify the contents up to the previous size, at least if n is
   larger. The new elements are initialized to zero.
@@ -556,6 +556,13 @@ void BitMap::set_capacity(unsigned long n)
   d_capacity = n;
 }
 
+// Add one more place to bitmap (amortised efficiently), set it to value |b|
+void BitMap::extend_capacity(bool b)
+{
+  if (d_capacity == (d_map.size()<<baseShift))
+    d_map.push_back(0); // allocate space; |std::vector| handles efficiency
+  set_to(d_capacity++,b);
+}
 
 /*!
   Synopsis: sets r bits from position n to the first r bits in a.

@@ -219,18 +219,18 @@ sure its header is included at the proper place.
 #include <cstring>
 
 @ Let's get that static class constant defined before we forget it, since a
-temporary may be need to be created when it is passed as |const id_type&|
-argument, so the value supplied at definition does not suffice. It is amazing
-how \Cpp\ makes it a pain to define a simple compile time constant. Note that
-the common |enum| trick won't work here, since |Hash_table::id_type| is a
-|short| type, so we definitely don't want |empty| to have type |int| in
-comparisons. The |static_cast| is necessary to ensure we use the |unsigned
-short| overload of the bitwise-complement operator |~|, because there is no
-such thing as a short integer denotation; thus we avoid a warning message
-about truncating a large unsigned constant to a shorter value, even though
-that is well-defined behaviour. (The perplexed reader might be reassured, or
-not, to learn that writing just |-1| as right hand side would also get the
-desired result, and without provoking any warning message.)
+temporary may be need to be created when it is passed as (constant) reference
+to |id_type| argument, so the value supplied at definition does not suffice.
+It is amazing how \Cpp\ makes it a pain to define a simple compile time
+constant. Note that the common |enum| trick won't work here, since
+|Hash_table::id_type| is a |short| type, so we definitely don't want |empty|
+to have type |int| in comparisons. The |static_cast| is necessary to ensure we
+use the |unsigned short| overload of the bitwise-complement operator |~|,
+because there is no such thing as a short integer denotation; thus we avoid a
+warning message about truncating a large unsigned constant to a shorter value,
+even though that is well-defined behaviour. (The perplexed reader might be
+reassured, or not, to learn that writing just |-1| as right hand side would
+also get the desired result, and without provoking any warning message.)
 
 @< Definitions of class members @>=
 
@@ -411,7 +411,6 @@ in more detail later.
 
 @< Class declarations @>=
 #include <iosfwd>
-@< Define |struct input_record@;| @>
 
 @~Here is the main part of the class definition, giving the principal user
 interface. The methods |shift|, |unshift|, |eol| and |getline| give the basic
@@ -429,6 +428,8 @@ class BufferedInput
 { typedef char* (*rl_type)(const char* );
      // |typedef| avoids inclusion of \.{readline} headers
   typedef void (*add_hist_type) (const char* );  // this one too
+  @< Define |struct input_record@;| @> // a local class
+
 @)
   @< Data members of |BufferedInput| @>@;
 @)
@@ -470,10 +471,13 @@ main program will make it point to the main input buffer once it is allocated.
 @< Definitions of static variables @>=
 BufferedInput* main_input_buffer=NULL;
 
-@ In our implementation we use the class |std::string|.
+@ In our implementation we use the classes |std::string| and |atlas::BitMap|.
 
 @< Includes needed in the header file @>=
 #include <string>
+#include "atlas_types.h" // for common |using| declarations
+#include "bitmap.h" // so that the type |BitMap| is complete
+
 
 @~At construction a |BufferedInput| object will fix a reference |base_stream|
 to the input stream to be used when no additional input files are open.
@@ -511,7 +515,8 @@ const add_hist_type add_hist; // history function
 unsigned long line_no; // current line number
 int cur_lines,prompt_length; // local variables
 std::vector<input_record> input_stack; // active input streams
-Hash_table input_files_seen;
+Hash_table input_files_seen; // files successfully opened at least once
+BitMap input_files_completed; // marks those files that were read without error
 std::istream* stream; // points to the current input stream
 
 @ There are two constructors, one for associating an input buffer to some
@@ -523,41 +528,42 @@ null pointer may also be passed explicitly in the second case to obtain this
 disabling. Constructing the class does not yet fetch a line.
 
 @< Definitions of class members @>=
-BufferedInput::BufferedInput (std::istream& s)@/
-:base_stream(s)
-,line_buffer()
-,p(NULL)
-,prompt(NULL)
-,prompt2(NULL)
-,def_ext(NULL)
-,temp_prompt(NULL)
-,@|readline(NULL)
-,add_hist(NULL)
-,line_no(1)
-,cur_lines(0)
-,input_stack()
-,input_files_seen()
-,stream(&base_stream)
-@+{}
-
+BufferedInput::BufferedInput (std::istream& s)
+@/:base_stream(s)
+@/,line_buffer()
+@/,p(NULL)
+@/,prompt(NULL)
+@/,prompt2(NULL)
+@/,def_ext(NULL)
+@/,temp_prompt(NULL)
+@/,@|readline(NULL)
+@/,add_hist(NULL)
+@/,line_no(1)
+@/,cur_lines(0)
+@/,input_stack()
+@/,input_files_seen()
+@/,input_files_completed()
+@/,stream(&base_stream)
+@/{}
+@)
 BufferedInput::BufferedInput
-(const char* pr, rl_type rl, add_hist_type ah,const char* pr2,const char*
-de)@/
-:base_stream(std::cin)
-,line_buffer()
-,p(NULL)
-,prompt(pr)
-,prompt2(pr2)
-,def_ext(de)
-,temp_prompt("")
-,@|readline(rl)
-,add_hist(ah)
-,line_no(1)
-,cur_lines(0)
-,input_stack()
-,input_files_seen()
-,stream(&base_stream)
-@+{}
+(const char* pr, rl_type rl, add_hist_type ah,const char* pr2,const char* de)
+@/:base_stream(std::cin)
+@/,line_buffer()
+@/,p(NULL)
+@/,prompt(pr)
+@/,prompt2(pr2)
+@/,def_ext(de)
+@/,temp_prompt("")
+@/,@|readline(rl)
+@/,add_hist(ah)
+@/,line_no(1)
+@/,cur_lines(0)
+@/,input_stack()
+@/,input_files_seen()
+@/,input_files_completed()
+@/,stream(&base_stream)
+@/{}
 
 
 @*1 Input from auxiliary files.
@@ -571,11 +577,11 @@ in the input buffer, as long as it is not interrupted). All this goes into an
 
 @< Define |struct input_record@;| @>=
 struct input_record
-{ std::string name; // the name of the file on which |stream| is opened
+{ Hash_table::id_type name; // identifies the file name for |stream|
   std::ifstream* stream; // pointer owned by parent object
   unsigned long line_no; // this refers to the older input stream!
 @)
-  input_record(const char* file_name, const char* def_ext, unsigned long line);
+  input_record(BufferedInput&, const char* file_name);
 };
 
 @ It would have been convenient if each |input_record| owned its own
@@ -619,10 +625,10 @@ the object continues to exist.
 @< Definitions of class members @>=
 void BufferedInput::pop_file()
 { line_no = input_stack.back().line_no;
-  std::cout << "Completely read file '" << input_stack.back().name
+  std::cout << "Completely read file '" @|
+            << input_files_seen.name_of(input_stack.back().name)
             << "'." << std::endl;
-  input_files_seen.match(input_stack.back().name.c_str(),
-                         input_stack.back().name.size()); // reading succeeded
+  input_files_completed.insert (input_stack.back().name); // reading succeeded
   delete input_stack.back().stream;
   input_stack.pop_back();
   stream= input_stack.empty() ? &base_stream : input_stack.back().stream;
@@ -630,9 +636,10 @@ void BufferedInput::pop_file()
 @)
 void BufferedInput::close_includes()
 { while (not input_stack.empty())
-  { std::cerr << "Abandoning reading of file '" << input_stack.back().name
+  { std::cerr << "Abandoning reading of file '" @|
+              << input_files_seen.name_of(input_stack.back().name) @|
               << "' at line " << line_no << std::endl;
-    line_no = input_stack.back().line_no;
+  @/line_no = input_stack.back().line_no;
     delete input_stack.back().stream;
     input_stack.pop_back();
   }
@@ -647,26 +654,35 @@ calling function to detect this condition and destroy the created record.
 However, in case the file is not open after constructing the |fstream|,
 presumably because the file was not found, we do a second attempt after
 extending the file name with |def_ext| (provided it was non-null). Since
-extending the string could throw an exception, we arrange for deleting the
-|ifstream| object in this case through an explicit |catch| clause. Because
-that data member |stream| follows |name|, the same problem cannot occur during
-initialisation of data members: if the |stream| field gets initialised at all,
-execution will certainly reach the body of the constructor, and so no memory
-leak is possible here.
+extending the string could (in unlikely cases) throw an exception, we arrange
+for deleting the |ifstream| object in this case through an explicit |catch|
+clause. Because that data member |stream| follows |name|, the same problem
+cannot occur during initialisation of data members: if the |stream| field gets
+initialised at all, execution will certainly reach the body of the
+constructor, and so no memory leak is possible here.
 
 @< Definitions of class members @>=
-input_record::input_record
-(const char* file_name, const char* def_ext,unsigned long line) :
- name(file_name), stream (new std::ifstream(file_name)), line_no(line)
+BufferedInput::input_record::input_record
+(BufferedInput& parent, const char* file_name)
+ : name(~0)
+ , stream (new std::ifstream(file_name))
+ , line_no(parent.line_no+parent.cur_lines) // record where reading will resume
+
 { try
-  {
-    if (def_ext!=NULL and not stream->is_open())
-    { long inx=name.size()-std::strlen(def_ext);
-      if (inx<0 or name.substr(inx)!=def_ext) // only add extension if absent
-      @/{@; name += def_ext;
-        stream->open(name.c_str());
+  { std::string buf; // declare here for lifetime
+    if (parent.def_ext!=NULL and not stream->is_open())
+    { buf = file_name;
+      long inx=buf.size()-std::strlen(parent.def_ext);
+      if (inx<0 or buf.substr(inx)!=parent.def_ext)
+        // only add extension if absent
+      { buf += parent.def_ext;
+        file_name=buf.c_str(); // henceforth name is extended
+        stream->open(file_name);
       }
     }
+    if (stream->is_open())
+       // once opening succeeds, record name in |input_files_seen|
+      name = parent.input_files_seen.match(file_name,std::strlen(file_name));
   }
   catch (...)
   {@; delete stream; throw; }
@@ -707,23 +723,29 @@ made by the caller.
 @< Definitions of class members @>=
 bool BufferedInput::push_file(const char* name, bool skip_seen)
 {
-  if (skip_seen and input_files_seen.knows(name))
+  if (skip_seen and input_files_seen.knows(name) @|
+      and input_files_completed.isMember(input_files_seen.match_literal(name)))
     return true;
-  input_stack.push_back(@|input_record(name,def_ext,line_no+cur_lines));
-  // record where reading will resume
-  if (input_stack.back().stream->good())
-  { const std::string& name_ext=input_stack.back().name; bool avoid=false;
-    for (unsigned i=input_stack.size()-1; i-->0; )
-      if (name_ext==input_stack[i].name)
-        avoid=true; // avoid recursive inclusion of active file
-    if (avoid or
-        (skip_seen and input_files_seen.knows(name_ext.c_str()))) // seen before
-    @/{@; delete input_stack.back().stream;
-      input_stack.pop_back();
-    } // close file and pop record
+  input_stack.push_back(@|input_record(*this,name));
+  if (input_stack.back().stream->is_open())
+  { bool skip=false;
+    const Hash_table::id_type file_nr = input_stack.back().name;
+    if (file_nr==input_files_completed.capacity()) // it wasn't seen before
+      input_files_completed.extend_capacity(false); // create new empty slot
+    else // old name; need to do some checks
+    { skip = skip_seen and input_files_completed.isMember(file_nr);
+      for (unsigned i=input_stack.size()-1; not skip and i-->0; )
+        if (file_nr==input_stack[i].name)
+          skip=true; // avoid recursive inclusion of active file
+    }
+    if (skip)
+    {@; delete input_stack.back().stream;
+          input_stack.pop_back();
+    }
     else
-    { std::cout << "Starting to read from file '" << input_stack.back().name
-             << "'." @| << std::endl;
+    { std::cout << "Starting to read from file '" @|
+            << input_files_seen.name_of(input_stack.back().name) @|
+            << "'." @| << std::endl;
     @/stream= input_stack.back().stream;
       line_no=1; // prepare to read from pushed file
       cur_lines=0;
@@ -731,8 +753,9 @@ bool BufferedInput::push_file(const char* name, bool skip_seen)
     }
     return true; // succeed whether or not a file was actually pushed
   }
-  else
-  { std::cerr << "failed to open input file '" << input_stack.back().name
+  else // opening file failed
+  { std::cerr << "failed to open input file '" @|
+              << input_files_seen.name_of(input_stack.back().name)
               << "'." << std::endl;
     delete input_stack.back().stream;
     input_stack.pop_back();
@@ -853,7 +876,9 @@ to |InputBuffer::getline| will fail, probably leading to program termination.
         std::cerr << (stream==&std::cin ? "on standard input" : "in main file")
                   << std::endl;
       else
-      { std::cerr << "in file '" << input_stack.back().name << '\'' << std::endl;
+      { std::cerr << "in file '" @|
+                  << input_files_seen.name_of(input_stack.back().name)
+                  << '\'' << std::endl;
 @/      pop_file(); popped=true;
       }
     }
@@ -992,7 +1017,9 @@ void BufferedInput::show_range
   { int pl=prompt_length; // offset of last line on the screen
     if (stream!=&std::cin or cur_lines>1)
     { if (not input_stack.empty())
-        out << "In input file '" << input_stack.back().name << "', ";
+        out << "In input file '" @|
+            << input_files_seen.name_of(input_stack.back().name)
+            << "', ";
       if (stream!=&std::cin)
         out << "line " << l0 << ":\n";
       out<<line_buffer; pl=0; // echo line in these cases
