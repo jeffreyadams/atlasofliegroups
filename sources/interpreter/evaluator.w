@@ -1847,17 +1847,22 @@ the bindings of the local variables that may occur as free identifiers in the
 function body (any used global variables can be bound at compile time, so they
 do not need any special consideration). Therefore the evaluation of a
 $\lambda$~expressions actually yields an intermediate value that is
-traditionally called a closure. It contains (a pointer to) the expression
-body, as well as the execution context current at the point the
-$\lambda$~expression is encountered.
+traditionally called a closure. It contains a shared pointer to the
+|lambda_struct| holding the function body, as well as the execution context
+current at the point the $\lambda$~expression is encountered. Sharing the
+|lambda_struct| among different closures obtained from the same
+$\lambda$-expression is efficient in terms of space, but would require double
+dereference upon evaluation. Since the latter occurs frequently, we speed up
+evaluation by also using a reference |body| directly to the function body.
 
 @< Type def... @>=
 struct closure_value : public value_base
 { shared_context context;
   shared_lambda p;
+  const expression_base& body; // shortcut to function body
 @)
   closure_value@|(const shared_context& c, const shared_lambda& l)
-  : context(c), p(l) @+{}
+  : context(c), p(l), body(*p->body) @+{}
   virtual ~ @[closure_value() nothing_new_here@];
   virtual void print(std::ostream& out) const;
   virtual closure_value* clone() const @+
@@ -1977,7 +1982,7 @@ currently however, none of these are possible yet.
   lambda_frame fr(f->p->param,f->context);
     // save context, create new one for |f|
   fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
-  f->p->body->evaluate(l); // call, passing evaluation level |l| to function body
+  f->body.evaluate(l); // call, passing evaluation level |l| to function body
 } // restore context upon destruction of |fr|
 
 @ For function overloads given by a user-defined function, we need a new
@@ -2041,7 +2046,7 @@ void overloaded_closure_call::evaluate(level l) const
   { lambda_frame fr(fun->p->param,fun->context);
     // save context, create new one for |fun|
     fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
-    fun->p->body->evaluate(l);
+    fun->body.evaluate(l);
     // call, passing evaluation level |l| to function body
   }
   catch (const std::exception& e)
