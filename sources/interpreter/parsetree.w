@@ -82,7 +82,11 @@ namespace atlas
 definition of the type |expr|. While that used to be a POD type used directly
 on the parser stack, this solution was very inflexible; it was therefore
 replaced by one where |expr| is not so constrained, and raw pointers |expr_p|
-to it are what is placed on the parser stack.
+to it are what is placed on the parser stack. Since the parser rarely needs to
+take apart parsing values, which would require dereferencing the pointer, it
+might be that just declaring |typedef struct expr* expr_p;| here would have
+sufficed, but we leave the detailed type definitions visible to the parser
+anyway.
 
 @< Type declarations for the parser @>=
 @< Type declarations needed in definition of |struct expr@;| @>@;
@@ -196,7 +200,7 @@ std::ostream& operator<< (std::ostream& out, const expr& e)
 
 
 @*1 Atomic expression. The simplest expressions are the ones consisting of
-just one symbol, namely the denotations (constants), applied identifier, and
+just one symbol, namely the denotations (constants), applied identifiers, and
 the symbol \.\$ referring to the last value computed.
 
 @*2 Denotations.
@@ -832,7 +836,7 @@ raw_form_stack start_unary_formula (id_type op, int prio)
 
 @ Extending a formula involves the priority comparisons and manipulations
 indicated above. It turns out |start_formula| could have been replaced by a
-call to |extend_formula| with |pre==NULL|. The second part of the condition in
+call to |extend_formula| with |pre==nullptr|. The second part of the condition in
 the while loop is short for |s.front().prio>prio or (s.front().prio==prio and
 prio%2==0)|.
 
@@ -1210,6 +1214,33 @@ void destroy_type(type_p t)@+ {@; (type_ptr(t)); }
 void destroy_type_list(raw_type_list t)@+ {@; (type_list(t)); }
   // recursive destruction
 
+@ In order to be able to track in which file a given user-defined function was
+defined, we shall include a record including the location of definition into
+the runtime values for such functions.
+
+@< Structure and typedef... @>=
+struct source_location
+{ unsigned int start_line;
+  unsigned short extent, first_col, last_col;
+  id_type file;
+};
+
+@ The following function computes a |source_location| structure, given the
+|YYLTYPE| structure that the parser computes. In addition to the information
+it provides, we need to get the file name from the |main_input_buffer|.
+
+@< Definitions of functions for the parser @>=
+source_location cur_loc(const YYLTYPE& loc)
+{
+  source_location result;
+  result.start_line = loc.first_line; // ``narrow'' to |unsigned int|
+  result.extent = loc.last_line-loc.first_line; // narrow to |unsigned short|
+  result.first_col = loc.first_column;
+  result.last_col = loc.last_column;
+  result.file = main_input_buffer->current_file();
+  return result;
+}
+
 @ For user-defined functions we shall use a structure |lambda_node|.
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef std::unique_ptr<struct lambda_node> lambda;
@@ -1223,10 +1254,15 @@ default; it is present only for backward compatibility \.{gcc}~4.6.
 @< Structure and typedef... @>=
 struct lambda_node
 { id_pat pattern; type_expr parameter_type; expr body;
+  source_location loc;
 @)
-  lambda_node(id_pat&& pattern, type_expr&& type, expr&& body)
+  lambda_node(id_pat&& pattern, type_expr&& type, expr&& body
+            , source_location&& loc)
 @/: pattern(std::move(pattern))
-  , parameter_type(std::move(type)), body(std::move(body))@+{}
+  , parameter_type(std::move(type))
+  , body(std::move(body))
+  , loc(std::move(loc))
+@+{}
 };
 
 @ The tag used for user-defined functions is |lambda_expr|.
@@ -1249,7 +1285,7 @@ by the parser.
 
 @< Declarations of functions for the parser @>=
 expr_p make_lambda_node(raw_patlist pat_l, raw_type_list type_l, expr_p body,
- YYLTYPE& loc);
+ const YYLTYPE& loc);
 
 @ There is a twist in building a lambda node, similar to what we saw for
 building let-expressions, in that for syntactic reasons the parser passes
@@ -1264,7 +1300,8 @@ the copy, destruction of |type_l| deletes the original |type_node|. In the
 latter case we apply list reversal here to both pattern list and type list.
 
 @< Definitions of functions for the parser @>=
-expr mk_lambda_node(patlist&& pat_l, type_list&& type_l, expr& body)
+expr mk_lambda_node(patlist&& pat_l, type_list&& type_l, expr& body,
+ const YYLTYPE& loc)
 { id_pat pattern; type_expr parameter_type;
   if (type_l.singleton())
 @/{@; pattern=std::move(pat_l.front());
@@ -1276,12 +1313,14 @@ expr mk_lambda_node(patlist&& pat_l, type_list&& type_l, expr& body)
   // make tuple type
   }
   return expr(lambda(new@| lambda_node
-      {std::move(pattern),std::move(parameter_type),std::move(body)}));
+      {std::move(pattern),std::move(parameter_type),std::move(body)
+      , cur_loc(loc)}));
 }
 expr_p make_lambda_node(raw_patlist p, raw_type_list tl, expr_p body,
- YYLTYPE& loc)
+ const YYLTYPE& loc)
  {@;
-   return new expr(mk_lambda_node(patlist(p),type_list(tl),*expr_ptr(body)));
+   return new expr(
+      mk_lambda_node(patlist(p),type_list(tl),*expr_ptr(body),loc));
  }
 
 @ Since |lambda| is a unique pointer, we must use move construction.

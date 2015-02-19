@@ -130,7 +130,7 @@ allocate a block.
 
 @< Definitions of class members @>=
 String_pool::String_pool(size_t b)
-: block_size(b),start(NULL),point(NULL),chars_left(0),prev(NULL)
+: block_size(b),start(nullptr),point(nullptr),chars_left(0),prev(nullptr)
 {}
 
 @ Whenever a identifier |str| of length |n| has to be stored in |pool|, we
@@ -143,7 +143,7 @@ char* String_pool::store(const char* s,size_t len)
 { size_t n= len>=block_size ? len+1 : block_size;
             // size of new block if needed
   if (len>=chars_left) // then the current block cannot store |s|, so allocate
-  { if (start!=NULL) // initial block needs no backing up
+  { if (start!=nullptr) // initial block needs no backing up
     { String_pool* p=new String_pool(block_size);
       p->prev=prev; p->start=start; // only these fields need backing up
       prev=p; // link to old blocks, needed for destruction
@@ -437,7 +437,7 @@ class BufferedInput
     BufferedInput (std::istream& s);
         // associate line buffer to raw input stream
     BufferedInput (const char* prompt
-                  , rl_type rl=NULL, add_hist_type=NULL @|
+                  , rl_type rl=nullptr, add_hist_type=nullptr @|
 		  , const char* prompt2="> "
                   , const char* def_ext=".rx"@|);
         // use |stdin|, maybe with readline
@@ -469,7 +469,7 @@ header file~\.{main.h}). We initialise this variable to the null pointer; the
 main program will make it point to the main input buffer once it is allocated.
 
 @< Definitions of static variables @>=
-BufferedInput* main_input_buffer=NULL;
+BufferedInput* main_input_buffer=nullptr;
 
 @ In our implementation we use the classes |std::string| and |atlas::BitMap|.
 
@@ -477,7 +477,7 @@ BufferedInput* main_input_buffer=NULL;
 #include <string>
 #include "atlas_types.h" // for common |using| declarations
 #include "bitmap.h" // so that the type |BitMap| is complete
-
+#include "sl_list.h" // used for stack of input files
 
 @~At construction a |BufferedInput| object will fix a reference |base_stream|
 to the input stream to be used when no additional input files are open.
@@ -514,7 +514,8 @@ const rl_type readline; // readline function
 const add_hist_type add_hist; // history function
 unsigned long line_no; // current line number
 int cur_lines,prompt_length; // local variables
-std::vector<input_record> input_stack; // active input streams
+containers::mirrored_sl_list<input_record> input_stack;
+ // active input streams
 Hash_table input_files_seen; // files successfully opened at least once
 BitMap input_files_completed; // marks those files that were read without error
 std::istream* stream; // points to the current input stream
@@ -522,7 +523,7 @@ std::istream* stream; // points to the current input stream
 @ There are two constructors, one for associating an input buffer to some
 (raw) |istream| object (which may represent a disk file or pipe), another for
 associating it to probably interactive input from |stdin|. A prompt and
-readline function only apply to the second case and are set to |NULL| in the
+readline function only apply to the second case and are set to |nullptr| in the
 first case, which will disable certain interactions when fetching new lines; a
 null pointer may also be passed explicitly in the second case to obtain this
 disabling. Constructing the class does not yet fetch a line.
@@ -531,13 +532,13 @@ disabling. Constructing the class does not yet fetch a line.
 BufferedInput::BufferedInput (std::istream& s)
 @/:base_stream(s)
 @/,line_buffer()
-@/,p(NULL)
-@/,prompt(NULL)
-@/,prompt2(NULL)
-@/,def_ext(NULL)
-@/,temp_prompt(NULL)
-@/,@|readline(NULL)
-@/,add_hist(NULL)
+@/,p(nullptr)
+@/,prompt(nullptr)
+@/,prompt2(nullptr)
+@/,def_ext(nullptr)
+@/,temp_prompt(nullptr)
+@/,@|readline(nullptr)
+@/,add_hist(nullptr)
 @/,line_no(1)
 @/,cur_lines(0)
 @/,input_stack()
@@ -550,7 +551,7 @@ BufferedInput::BufferedInput
 (const char* pr, rl_type rl, add_hist_type ah,const char* pr2,const char* de)
 @/:base_stream(std::cin)
 @/,line_buffer()
-@/,p(NULL)
+@/,p(nullptr)
 @/,prompt(pr)
 @/,prompt2(pr2)
 @/,def_ext(de)
@@ -583,6 +584,17 @@ struct input_record
 @)
   input_record(BufferedInput&, const char* file_name);
 };
+
+@ Often we need the number or name of the topmost file on the |input_stack|.
+
+@< Other methods of |BufferedInput| @>=
+Hash_table::id_type current_file() const
+{@; return input_stack.empty() ? Hash_table::empty : input_stack.back().name; }
+const char* name_of(Hash_table::id_type f) const
+{@; return
+   f==Hash_table::empty ? "<standard input>" : input_files_seen.name_of(f); }
+const char* cur_fname() const
+  @+{@; return name_of(current_file()); }
 
 @ It would have been convenient if each |input_record| owned its own
 |std::ifstream| pointer, so that its destructor could take care of deleting
@@ -625,9 +637,7 @@ the object continues to exist.
 @< Definitions of class members @>=
 void BufferedInput::pop_file()
 { line_no = input_stack.back().line_no;
-  std::cout << "Completely read file '" @|
-            << input_files_seen.name_of(input_stack.back().name)
-            << "'." << std::endl;
+  std::cout << "Completely read file '" << cur_fname() << "'." << std::endl;
   input_files_completed.insert (input_stack.back().name); // reading succeeded
   delete input_stack.back().stream;
   input_stack.pop_back();
@@ -636,8 +646,7 @@ void BufferedInput::pop_file()
 @)
 void BufferedInput::close_includes()
 { while (not input_stack.empty())
-  { std::cerr << "Abandoning reading of file '" @|
-              << input_files_seen.name_of(input_stack.back().name) @|
+  { std::cerr << "Abandoning reading of file '" << cur_fname() @|
               << "' at line " << line_no << std::endl;
   @/line_no = input_stack.back().line_no;
     delete input_stack.back().stream;
@@ -670,7 +679,7 @@ BufferedInput::input_record::input_record
 
 { try
   { std::string buf; // declare here for lifetime
-    if (parent.def_ext!=NULL and not stream->is_open())
+    if (parent.def_ext!=nullptr and not stream->is_open())
     { buf = file_name;
       long inx=buf.size()-std::strlen(parent.def_ext);
       if (inx<0 or buf.substr(inx)!=parent.def_ext)
@@ -734,8 +743,9 @@ bool BufferedInput::push_file(const char* name, bool skip_seen)
       input_files_completed.extend_capacity(false); // create new empty slot
     else // old name; need to do some checks
     { skip = skip_seen and input_files_completed.isMember(file_nr);
-      for (unsigned i=input_stack.size()-1; not skip and i-->0; )
-        if (file_nr==input_stack[i].name)
+      auto it=input_stack.cbegin();
+      while (not skip and not input_stack.at_end(++it))
+        if (file_nr==it->name)
           skip=true; // avoid recursive inclusion of active file
     }
     if (skip)
@@ -743,9 +753,8 @@ bool BufferedInput::push_file(const char* name, bool skip_seen)
           input_stack.pop_back();
     }
     else
-    { std::cout << "Starting to read from file '" @|
-            << input_files_seen.name_of(input_stack.back().name) @|
-            << "'." @| << std::endl;
+    { std::cout << "Starting to read from file '" << cur_fname()
+                << "'." << std::endl;
     @/stream= input_stack.back().stream;
       line_no=1; // prepare to read from pushed file
       cur_lines=0;
@@ -754,10 +763,9 @@ bool BufferedInput::push_file(const char* name, bool skip_seen)
     return true; // succeed whether or not a file was actually pushed
   }
   else // opening file failed
-  { std::cerr << "failed to open input file '" @|
-              << input_files_seen.name_of(input_stack.back().name)
+  { std::cerr << "failed to open input file '" << cur_fname()
               << "'." << std::endl;
-    delete input_stack.back().stream;
+  @/delete input_stack.back().stream;
     input_stack.pop_back();
 // no need to call |pop_file|: |stream|, |line_no| and |cur_lines| unchanged
     return false;
@@ -876,9 +884,7 @@ to |InputBuffer::getline| will fail, probably leading to program termination.
         std::cerr << (stream==&std::cin ? "on standard input" : "in main file")
                   << std::endl;
       else
-      { std::cerr << "in file '" @|
-                  << input_files_seen.name_of(input_stack.back().name)
-                  << '\'' << std::endl;
+      { std::cerr << "in file '" << cur_fname() << '\'' << std::endl;
 @/      pop_file(); popped=true;
       }
     }
@@ -912,18 +918,18 @@ error.
 @h <cstdlib>
 
 @< Read a line... @>=
-if (input_stack.empty() and prompt!=NULL)
+if (input_stack.empty() and prompt!=nullptr)
   // do only at top level, and only if prompt enabled
 { prompt_length= std::strlen(pr);
-  if (readline!=NULL) // skip calling 'readline' if no function is supplied
+  if (readline!=nullptr) // skip calling 'readline' if no function is supplied
   { char* l=readline(pr);
-    if (l==NULL) // then |readline| failed, flag end of file
+    if (l==nullptr) // then |readline| failed, flag end of file
     {@; line=""; stream->setstate(std::ios_base::eofbit);
       std::cout << "^D\n";
     }
     else
     @/{@; line=l;
-      if (add_hist!=NULL and *l!='\0')
+      if (add_hist!=nullptr and *l!='\0')
         add_hist(l);
       else
         std::free(l);
@@ -954,12 +960,12 @@ simple test before decrementing |p|.
 inline char BufferedInput::shift()
 { if (eol())
     if (not getline())
-      {@; p=NULL; return '\0'; } // signals file end
+      {@; p=nullptr; return '\0'; } // signals file end
   return *p++;
 }
 @)
 inline void BufferedInput::unshift()
-{@; if (p!=NULL and p>line_buffer.data())
+{@; if (p!=nullptr and p>line_buffer.data())
       --p;
 }
 
@@ -1017,9 +1023,7 @@ void BufferedInput::show_range
   { int pl=prompt_length; // offset of last line on the screen
     if (stream!=&std::cin or cur_lines>1)
     { if (not input_stack.empty())
-        out << "In input file '" @|
-            << input_files_seen.name_of(input_stack.back().name)
-            << "', ";
+        out << "In input file '" << cur_fname() << "', ";
       if (stream!=&std::cin)
         out << "line " << l0 << ":\n";
       out<<line_buffer; pl=0; // echo line in these cases

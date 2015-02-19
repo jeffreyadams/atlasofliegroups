@@ -1549,12 +1549,14 @@ is processed, at which time the let-expression could still exist (if held in a
 function body), so we cannot simply use a non-owned pointer.
 
 The top-level |id_pat| structure for the bound variable(s) will be stored in
- the |let_expression| itself. We might move it there from the |id_pat|
- produced by the parser and thereby steal a possible |sublist| field and
- further nodes accessible from it. However this would amputate that expression
- (which would be weird if the expression were printed in an error message), so
- instead doing a deep copy is a cleaner solution, and patterns are rarely very
- deep. The function |copy_id_pat| accomplishes making the copy.
+the |let_expression| itself. We might move it there from the |id_pat| produced
+by the parser and thereby steal a possible |sublist| field and further nodes
+accessible from it. However this would amputate that expression (which would
+be weird if the expression were printed in an error message), so instead doing
+a deep copy is a cleaner solution, and patterns are rarely very deep. The
+function |copy_id_pat| accomplishes making the copy. The implicit recursion of
+|copy_id_pat| is achieved by passing itself as final argument to
+|std::transform|; recursion terminates when |sublist.empty()| holds.
 
 @h <algorithm>
 @< Local function def... @>=
@@ -1772,24 +1774,33 @@ In contrast to let-expressions, a $\lambda$-expression can be evaluated one
 or more times, yielding ``closure'' values that need to refer to the pattern,
 and which might outlive the $\lambda$-expression, so appropriate duplication
 or sharing must be organised. We opt for sharing between the
-$\lambda$-expression and any closures obtained from it.
+$\lambda$-expression and any closures obtained from it. Since the evaluator
+handles expressions by reference to |expression_base|, one cannot achieve
+sharing directly to |lambda_expression|; instead we store a shared pointer to
+a structure with the necessary components.
+
+Since this is the kind
+of runtime value that will hold the result of a user function definition, we
+provide a field |loc| to record the source location.
 
 @< Type def... @>=
-typedef std::shared_ptr<id_pat> shared_pattern;
+struct lambda_struct
+{ id_pat param; @+ expression_ptr body; @+ source_location loc;
+  lambda_struct(id_pat&& param, expression_ptr&& body, source_location&& loc)
+  : param(std::move(param)), body(std::move(body)), loc(std::move(loc)) @+{}
+};
+typedef std::shared_ptr<lambda_struct> shared_lambda;
 
-@ Now we can define our $\lambda$-expression to use a |shared_pattern|; the
-body is also shared.
-
-@< Type def... @>=
 struct lambda_expression : public expression_base
-{ const shared_pattern param;
-  shared_expression body;
-@)
-  lambda_expression(const id_pat& p, expression_ptr&& b);
-  virtual ~@[lambda_expression() nothing_new_here@]; // subobjects do all the work
+{ shared_lambda p;
+  @)
+  lambda_expression(const id_pat& p, expression_ptr&& b, source_location&& loc);
+  virtual ~@[lambda_expression() nothing_new_here@];
+    // subobjects do all the work
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
+
 
 @ The main constructor cannot be inside the class definition, as it requires
 the local function |copy_id_pat|. It copies the pattern and creates a new
@@ -1802,9 +1813,10 @@ cloned.
 
 @< Function def... @>=
 inline
-lambda_expression::lambda_expression(const id_pat& p, expression_ptr&& b)
-: param(std::make_shared<id_pat>(copy_id_pat(p)))
-, body(b.release())
+lambda_expression::lambda_expression @|
+  (const id_pat& p, expression_ptr&& b, source_location&& loc)
+: p(std::make_shared<lambda_struct>
+     (copy_id_pat(p),std::move(b),std::move(loc)))
 @+{}
 
 @ To print an anonymous function, we print the parameter, enclosed in
@@ -1818,12 +1830,13 @@ system were extended with second order types (which would be quite useful),
 then this might no longer be true.
 
 @< Function definitions @>=
-void lambda_expression::print(std::ostream& out) const
-{ if ((param->kind&0x1)!=0)
-    out << '(' << *param << ')';
-  else out << *param;
-  out << ": " << *body;
+std::ostream& operator<<(std::ostream& out, const lambda_struct& l)
+{ if ((l.param.kind&0x1)!=0)
+    out << '(' << l.param << ')';
+@+else out << l.param;
+  return out << ": " << *l.body;
 }
+void lambda_expression::print(std::ostream& out) const @+{@; out << *p; }
 
 @* Closures, and the evaluation of $\lambda$-expressions.
 %
@@ -1832,7 +1845,7 @@ user-defined functions: their evaluation just returns the stored function
 body. However, this evaluation also captures the current execution context:
 the bindings of the local variables that may occur as free identifiers in the
 function body (any used global variables can be bound at compile time, so they
-d not need any special consideration). Therefore the evaluation of a
+do not need any special consideration). Therefore the evaluation of a
 $\lambda$~expressions actually yields an intermediate value that is
 traditionally called a closure. It contains (a pointer to) the expression
 body, as well as the execution context current at the point the
@@ -1841,34 +1854,35 @@ $\lambda$~expression is encountered.
 @< Type def... @>=
 struct closure_value : public value_base
 { shared_context context;
-  shared_pattern param;
-   // used in evaluation only to count arguments
-  shared_expression body;
+  shared_lambda p;
 @)
-  closure_value@|(const shared_context& c,
-                  const shared_pattern& p,
-                  const shared_expression& b)
-  : context(c), param(p), body(b) @+{}
+  closure_value@|(const shared_context& c, const shared_lambda& l)
+  : context(c), p(l) @+{}
   virtual ~ @[closure_value() nothing_new_here@];
   virtual void print(std::ostream& out) const;
   virtual closure_value* clone() const @+
-  {@; return new closure_value(context,param,body); }
+  {@; return new closure_value(context,p); }
   static const char* name() @+{@; return "closure"; }
 };
 typedef std::unique_ptr<closure_value> closure_ptr;
 typedef std::shared_ptr<const closure_value> shared_closure;
 
-@ For now a closure prints just like the |lambda_expression| from which it was
-obtained. One could imagine printing after this body ``where'' followed by the
-bindings held in the |c| field. Even better only the bindings for relevant
-(because referenced) identifiers could be printed. But it's not done yet.
+@ A closure prints the |lambda_expression| from which it was obtained, but we
+also print an indication of where the function was defined (this was not
+useful for |lambda_expression|, since these never get printed directly, only
+as part of printing a |closure_value|). One could imagine printing after this
+body ``where'' followed by the bindings held in the |c| field. Even better
+only the bindings for relevant (because referenced) identifiers could be
+printed. But it's not done yet.
 
 @< Function def... @>=
 void closure_value::print(std::ostream& out) const
-{ if ((param->kind&0x1)!=0)
-    out << '(' << *param << ')';
-  else out << *param;
-  out << ": " << *body;
+{ out << "Function defined at "
+      << main_input_buffer->name_of(p->loc.file) @|
+      << ':' << p->loc.start_line << ':' << p->loc.first_col << '-';
+  if (p->loc.extent>0)
+    out << p->loc.start_line+p->loc.extent << ':';
+  out << p->loc.last_col << std::endl << *p;
 }
 
 @ Evaluating a $\lambda$-expression just forms a closure using the current
@@ -1885,7 +1899,7 @@ kind of stack, in particular it cannot be embedded in the \Cpp\ runtime stack
 @< Function def... @>=
 void lambda_expression::evaluate(level l) const
 {@;if (l!=no_value)
-     push_value(std::make_shared<closure_value>(frame::current,param,body));
+     push_value(std::make_shared<closure_value>(frame::current,p));
 }
 
 @ Here a variation of the class |frame|; again the purpose is to have
@@ -1960,9 +1974,10 @@ currently however, none of these are possible yet.
 @< Call user-defined function |fun| with argument on |execution_stack| @>=
 { const closure_value* f=force<closure_value>(fun.get());
 @)
-  lambda_frame fr(*f->param,f->context); // save context, create new one for |f|
+  lambda_frame fr(f->p->param,f->context);
+    // save context, create new one for |f|
   fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
-  f->body->evaluate(l); // call, passing evaluation level |l| to function body
+  f->p->body->evaluate(l); // call, passing evaluation level |l| to function body
 } // restore context upon destruction of |fr|
 
 @ For function overloads given by a user-defined function, we need a new
@@ -2023,10 +2038,10 @@ the latter case) for producing the error trace.
 void overloaded_closure_call::evaluate(level l) const
 { argument->eval();
   try
-  { lambda_frame fr(*fun->param,fun->context);
+  { lambda_frame fr(fun->p->param,fun->context);
     // save context, create new one for |fun|
     fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
-    fun->body->evaluate(l);
+    fun->p->body->evaluate(l);
     // call, passing evaluation level |l| to function body
   }
   catch (const std::exception& e)
@@ -2072,12 +2087,13 @@ case lambda_expr:
                        type_expr(arg_type.copy(),unknown_type.copy()),
                        std::move(type));
     return expression_ptr(new @|
-      lambda_expression(pat, convert_expr(fun->body,type.func->result_type)));
+      lambda_expression(pat, convert_expr(fun->body,type.func->result_type)
+                       ,std::move(fun->loc)));
   }
   else
   { type_expr dummy; // unused result type
     expression_ptr result(new @|
-      lambda_expression(pat, convert_expr(fun->body,dummy)));
+      lambda_expression(pat,convert_expr(fun->body,dummy),std::move(fun->loc)));
     return expression_ptr(new voiding(std::move(result)));
   }
 }

@@ -1083,6 +1083,8 @@ template<typename T,typename Alloc = std::allocator<T> >
 
   // forward |push_back|, |back| and |pop_back| methods with name change
   void push_back(const T& val) { Base::push_front(val); }
+  void push_back(T&& val) { Base::push_front(std::move(val)); }
+  const T& back () const { return Base::front(); }
   T& back () { return Base::front(); }
   void pop_back () { return Base::pop_front(); }
 
@@ -1123,6 +1125,8 @@ template<typename T,typename Alloc = std::allocator<T> >
 
   // forward |push_back|, |back| and |pop_back| methods with name change
   void push_back (const T& val) { Base::push_front(val); }
+  void push_back(T&& val) { Base::push_front(std::move(val)); }
+  const T& back () const { return Base::front(); }
   T& back () { return Base::front(); }
   void pop_back () { return Base::pop_front(); }
 

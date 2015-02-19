@@ -71,7 +71,7 @@ extern Hash_table* main_hash_table;
 it point to the main hash table once it is allocated.
 
 @< Definitions of static variables @>=
-Hash_table* main_hash_table=NULL;
+Hash_table* main_hash_table=nullptr;
 
 @*1 Identifier completion.
 %
@@ -102,7 +102,7 @@ of our local loop. For this reason we increment |i| right away while picking
 its identifier from the hash table. Otherwise there are no other complications,
 except having to produce a string allocated by |malloc|, which |strdup| does
 for us. If our local loop terminates normally there are no more matches and we
-return |NULL| to indicate that.
+return |nullptr| to indicate that.
 
 @h <cstdlib>
 @< Function definitions @>=
@@ -120,7 +120,7 @@ char* id_completion_func(const char* text, int state)
     if (std::strncmp(text,s,l) == 0) // is |text| a prefix of |s|?
       return strdup(s);
   }
-  return NULL; /* if loop terminates, report failure */
+  return nullptr; /* if loop terminates, report failure */
 }
 
 @ The readline library needs to know where to break the input into completable
@@ -189,7 +189,7 @@ extern Lexical_analyser* lex;
 it point to the main hash table once it is allocated.
 
 @< Definitions of static variables @>=
-Lexical_analyser* lex=NULL;
+Lexical_analyser* lex=nullptr;
 
 
 @ Here is the constructor for the lexical analyser, which assumes that a
