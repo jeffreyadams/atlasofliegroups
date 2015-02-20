@@ -386,16 +386,41 @@ more appropriate starting values.
 type_expr last_type;
 shared_value last_value;
 
+@ In some occasions, a previously computed value can be captured in an
+expression (currently this applies to `\.\$', which captures the last computed
+value, and of operator casts, which capture a function value from the overload
+table). In those cases we shall use an expression type that is like
+|denotation| so that evaluation will give back the captured value; however for
+the purpose of printing (if this expression occurs inside a function body) it
+is undesirable to embark on printing the whole captured value, so we derive
+and override the |print| method.
+
+@<Type definitions @>=
+class capture_expression : public denotation
+{ std::string print_name;
+public:
+  capture_expression(const shared_value& v, const std::string& name)
+  : denotation(v), print_name(name) @+{}
+  virtual void print(std::ostream& out) const @+{@; out << print_name; }
+};
+
 @ Upon parsing `\.\$', an |expr| value with |kind==last_value_computed| is
 transmitted. Upon type-checking we capture the value in a |denotation|
 structure, which may or may not be evaluated soon after; even if the value
-gets captured in a function value, it will remain immutable.
+gets captured in a function value, it will remain immutable. For printing the
+expression so formed, we suppress the actual value, but record the type as
+stored in |last_type| at the time of type checking.
 
 @< Cases for type-checking and converting... @>=
 case last_value_computed:
-    return conform_types(last_type,type
-                        ,expression_ptr(new denotation(last_value))
-                        ,e);
+{ std::ostringstream o;
+  o << '(' << last_type << ":$)"; @q$@>
+@/return conform_types
+    (last_type
+    ,type
+    ,expression_ptr(new capture_expression(last_value,o.str()))
+    ,e);
+}
 
 @* Tuple displays.
 %
@@ -868,6 +893,8 @@ generic bindings, we test for them after the more specific ones fail. The
 details of these cases, like those of the actual construction of a call for a
 matching overloaded function, will be given later.
 
+@:resolve_overload@>
+
 @< Function definitions @>=
 expression_ptr resolve_overload
   (const expr& e,
@@ -1074,8 +1101,9 @@ case function_call:
   return conform_types(f_type.func->result_type,type,std::move(call),e);
 }
 
-@ The main work here has been relegated to |resolve_overload|; otherwise we
-just need to take care of the things mentioned in the module name.
+@ The main work here has been relegated to |resolve_overload| defined in
+section@#resolve_overload@>; otherwise we just need to take care of the things
+mentioned in the module name.
 
 The cases relegated to |resolve_overload| include calls of special operators
 like the size-of operator~`\#', even in case such an operator should not occur
@@ -1088,7 +1116,7 @@ in the overload table.
   { const overload_table::variant_list& variants
       = global_overload_table->variants(id);
     if (variants.size()>0 or is_special_operator(id))
-      return expression_ptr(resolve_overload(e,type,variants));
+      return resolve_overload(e,type,variants);
   }
 }
 
@@ -3170,20 +3198,25 @@ case op_cast_expr:
   if (is_special_operator(c->oper))
     @< Test special argument patterns, and on match |return| an appropriate
        denotation @>
-  for (size_t i=0; i<variants.size(); ++i)
+  size_t i;  std::ostringstream o;
+  for (i=0; i<variants.size(); ++i)
     if (variants[i].type().arg_type==ctype)
-    {
-      expression_ptr p(new denotation(variants[i].val));
-      const type_expr& res_t = variants[i].type().result_type;
-      if (functype_specialise(type,ctype,res_t))
-        return p;
-@/ // coercions never apply to values of function type, so just fail here
-      throw type_error(e,type_expr(ctype.copy(),res_t.copy()),std::move(type));
-    }
-  std::ostringstream o;
-  o << "Cannot resolve " << main_hash_table->name_of(c->oper) @|
-    << " at argument type " << ctype;
-  throw program_error(o.str());
+      break;
+  if (i==variants.size()) // nothing was found
+  {
+    o << "Cannot resolve " << main_hash_table->name_of(c->oper) @|
+       << " at argument type " << ctype;
+  @/throw program_error(o.str());
+  }
+  o << main_hash_table->name_of(c->oper) << '@@' << ctype;
+  expression_ptr p(new capture_expression(variants[i].val,o.str()));
+  const type_expr& res_t = variants[i].type().result_type;
+  if (functype_specialise(type,ctype,res_t))
+    return p;
+  else if (type==void_type)
+    return expression_ptr(new voiding(std::move(p)));
+  else throw
+      type_error(e,type_expr(ctype.copy(),res_t.copy()),std::move(type));
 }
 break;
 
