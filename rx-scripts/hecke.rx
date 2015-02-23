@@ -348,7 +348,7 @@ let (sigma,valid)=solve((1+^omega(E)),null(#alpha))  in
 if not valid then error("can't solve for sigma in sign_1i1_cross") else
 let new_tau_E=vec:tau_E-tau_E*alpha_check*sigma in
 let new_l_E=
-if is_even(rat_as_int(rat_as_int(g_E*alpha-l_E*alpha-1)/2)) then
+if is_even(rat_as_int((g_E*alpha-l_E*alpha-1)/2)) then
 vec:ratvec_as_vec(l_E+(g_E*alpha-l_E*alpha-1)*alpha_check/2)
 else
 vec:ratvec_as_vec(l_E+(g_E*alpha-l_E*alpha-1)*alpha_check/2)+alpha_check fi in
@@ -383,6 +383,7 @@ else
 let (sigma,valid)=solve((1+^omega(E)),null(#alpha))  in
 if not valid then error("can't solve for sigma in sign_1i1_cross") else
 let new_tau_E=vec:tau_E-tau_E*alpha_check*sigma in
+let ()=prints("integer?:", (g_E*alpha-l_E*alpha-1)/2) in
 let new_l_E=
 if is_even(rat_as_int(rat_as_int(g_E*alpha-l_E*alpha-1)/2)) then
 vec:ratvec_as_vec(l_E+(g_E*alpha-l_E*alpha-1)*alpha_check/2)

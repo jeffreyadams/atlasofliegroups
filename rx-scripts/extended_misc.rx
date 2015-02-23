@@ -138,10 +138,14 @@ set integrality_datum(extended_param E)=integrality_datum(ic(E),gamma(E))
 {assume gamma(E) is integrally dominant
  translate by sum of roots to make it dominant
  return (new extended parameter, sum of roots)
-see nonintegral.rx}
+see nonintegral.rx
+***should not need this any more, now that gamma is allowed to be integrally dominant 
+I've disabled make_dominant_using_roots and hence this function
+}
 set translate_to_dominant(extended_param E)=(extended_param,vec):
 let (new_gamma,shift)=make_dominant_using_roots(root_datum(E),gamma(E)) in 
 (extended_param:(ic(E),delta(E),gamma(E)+shift,lambda(E)+shift,theta(E), g(E), l(E), omega(E),tau(E),t(E)),shift)
+
 
 set fixed_block_of(mat delta, Param p)=[Param]:
 let rv=[Param]:[] in 
