@@ -340,6 +340,10 @@ set imaginary_poscoroots (RootDatum rd,mat theta) = mat:
   columns_with(is_imaginary(^theta),poscoroots(rd))
 set real_poscoroots (RootDatum rd,mat theta) = mat:
   columns_with(is_real(^theta),poscoroots(rd))
+set imaginary_sys ((RootDatum,mat)p) = (mat,mat):
+  (imaginary_posroots(p),imaginary_poscoroots(p))
+set real_sys ((RootDatum,mat)p) = (mat,mat):
+  (real_posroots(p),real_poscoroots(p))
 
 { the following funtions give but partial information; giving a more complete
   definition for InnerClass values requires more work (group_operations.rx) }
@@ -511,10 +515,16 @@ set is_noncompact (KGBElt x) = (vec->bool):
   let coweight = rho_check_i(x)+torus_factor(x)
   in (vec alpha) bool: rat_as_int(coweight*alpha)%2!=0
 
+
 set is_imaginary(vec v,KGBElt x)=bool:is_imaginary(x)(v)
 set is_real(vec v,KGBElt x)=bool:is_real(x)(v)
 set is_complex(vec v,KGBElt x)=bool:is_complex(x)(v)
 set is_compact(vec v,KGBElt x)=bool:is_compact(x)(v)
+
+set print_KGB(KGBElt x) = void:
+( prints(); prints("Element is number ",#x, " in following KGB set")
+; print_KGB(real_form(x)) )
+
 
 {				Blocks					}
 
@@ -542,7 +552,7 @@ set print_W_graph  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 
 set != (Param x,Param y) = bool: not(x=y)
 
-{ deforming |nu| (operand order voids conflicting with *@(int,ParamPol) ) }
+{ deforming |nu| (operand order avoids conflicting with *@(int,ParamPol) ) }
 set * (Param p,rat alpha) = let (x,lambda,nu)=%p in param(x,lambda,alpha*nu)
 
 set x (Param p) = KGBElt: let (x,,) =%p in x

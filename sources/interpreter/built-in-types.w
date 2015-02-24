@@ -32,10 +32,10 @@ are for the most part independent of that library.
 
 @h "built-in-types.h"
 
-@f lambda NULL
-@f pi NULL
-@f alpha NULL
-@f beta NULL
+@f lambda nullptr
+@f pi nullptr
+@f alpha nullptr
+@f beta nullptr
 
 @c
 namespace atlas { namespace interpreter {
@@ -1411,7 +1411,7 @@ to simple roots, the result is a diagram automorphism; this is tested by
 checking that the Cartan matrix is invariant under the corresponding
 permutation of its rows and columns.
 
-@f Delta NULL
+@f Delta nullptr
 
 @< Set |ww| to the reversed Weyl group element...@>=
 { RootNbrList Delta(s);
@@ -2134,12 +2134,12 @@ struct real_form_value : public value_base
   real_form_value(const inner_class_value& p,RealFormNbr f) @/
   : parent(p), val(p.val,f)
   , cocharacter(y_values::exp_pi(p.val.base_grading_vector(f)))
-  , rt_p(NULL) @+{}
+  , rt_p(nullptr) @+{}
   real_form_value
     (const inner_class_value& p,RealFormNbr f, const TorusElement& coch) @/
   : parent(p), val(p.val,f)
   , cocharacter(coch)
-  , rt_p(NULL) @+{}
+  , rt_p(nullptr) @+{}
 @)
   virtual void print(std::ostream& out) const;
   real_form_value* clone() const @+
@@ -2152,7 +2152,7 @@ struct real_form_value : public value_base
   ~real_form_value() @+{@; delete rt_p; }
 private:
   Rep_table* rt_p;
-    // owned pointer, initially |NULL|, assigned at most once
+    // owned pointer, initially |nullptr|, assigned at most once
 };
 @)
 typedef std::shared_ptr<const real_form_value> shared_real_form;
@@ -2169,9 +2169,9 @@ concrete need.
 
 @< Function def...@>=
   const Rep_context& real_form_value::rc()
-    {@; return *(rt_p==NULL ? rt_p=new Rep_table(val) : rt_p); }
+    {@; return *(rt_p==nullptr ? rt_p=new Rep_table(val) : rt_p); }
   Rep_table& real_form_value::rt()
-    {@; return *(rt_p==NULL ? rt_p=new Rep_table(val) : rt_p); }
+    {@; return *(rt_p==nullptr ? rt_p=new Rep_table(val) : rt_p); }
 
 @ When printing a real form, we give the name by which it is known in the
 parent inner class, and provide some information about its connectivity.
@@ -2772,7 +2772,7 @@ output consist of a list of $\Zee/2\Zee$-gradings of each of the fiber group
 elements in the part corresponding to the real form, where each grading is a
 sequence of bits corresponding to the simple imaginary roots.
 
-@f sigma NULL
+@f sigma nullptr
 
 @< Local function def...@>=
 void print_gradings_wrapper(expression_base::level l)
@@ -3518,7 +3518,7 @@ of such values first and then use that. The auxiliary function needs the
 |Rep_context|, so we pass that explicitly. Using the same name |print| for the
 auxiliary seems natural, but forces us to qualify upon calling.
 
-@f nu NULL
+@f nu nullptr
 
 @< Function def...@>=
 std::ostream& print

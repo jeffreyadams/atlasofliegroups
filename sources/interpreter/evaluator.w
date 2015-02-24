@@ -386,16 +386,41 @@ more appropriate starting values.
 type_expr last_type;
 shared_value last_value;
 
+@ In some occasions, a previously computed value can be captured in an
+expression (currently this applies to `\.\$', which captures the last computed
+value, and of operator casts, which capture a function value from the overload
+table). In those cases we shall use an expression type that is like
+|denotation| so that evaluation will give back the captured value; however for
+the purpose of printing (if this expression occurs inside a function body) it
+is undesirable to embark on printing the whole captured value, so we derive
+and override the |print| method.
+
+@<Type definitions @>=
+class capture_expression : public denotation
+{ std::string print_name;
+public:
+  capture_expression(const shared_value& v, const std::string& name)
+  : denotation(v), print_name(name) @+{}
+  virtual void print(std::ostream& out) const @+{@; out << print_name; }
+};
+
 @ Upon parsing `\.\$', an |expr| value with |kind==last_value_computed| is
 transmitted. Upon type-checking we capture the value in a |denotation|
 structure, which may or may not be evaluated soon after; even if the value
-gets captured in a function value, it will remain immutable.
+gets captured in a function value, it will remain immutable. For printing the
+expression so formed, we suppress the actual value, but record the type as
+stored in |last_type| at the time of type checking.
 
 @< Cases for type-checking and converting... @>=
 case last_value_computed:
-    return conform_types(last_type,type
-                        ,expression_ptr(new denotation(last_value))
-                        ,e);
+{ std::ostringstream o;
+  o << '(' << last_type << ":$)"; @q$@>
+@/return conform_types
+    (last_type
+    ,type
+    ,expression_ptr(new capture_expression(last_value,o.str()))
+    ,e);
+}
 
 @* Tuple displays.
 %
@@ -868,6 +893,8 @@ generic bindings, we test for them after the more specific ones fail. The
 details of these cases, like those of the actual construction of a call for a
 matching overloaded function, will be given later.
 
+@:resolve_overload@>
+
 @< Function definitions @>=
 expression_ptr resolve_overload
   (const expr& e,
@@ -1074,8 +1101,9 @@ case function_call:
   return conform_types(f_type.func->result_type,type,std::move(call),e);
 }
 
-@ The main work here has been relegated to |resolve_overload|; otherwise we
-just need to take care of the things mentioned in the module name.
+@ The main work here has been relegated to |resolve_overload| defined in
+section@#resolve_overload@>; otherwise we just need to take care of the things
+mentioned in the module name.
 
 The cases relegated to |resolve_overload| include calls of special operators
 like the size-of operator~`\#', even in case such an operator should not occur
@@ -1088,7 +1116,7 @@ in the overload table.
   { const overload_table::variant_list& variants
       = global_overload_table->variants(id);
     if (variants.size()>0 or is_special_operator(id))
-      return expression_ptr(resolve_overload(e,type,variants));
+      return resolve_overload(e,type,variants);
   }
 }
 
@@ -1549,12 +1577,14 @@ is processed, at which time the let-expression could still exist (if held in a
 function body), so we cannot simply use a non-owned pointer.
 
 The top-level |id_pat| structure for the bound variable(s) will be stored in
- the |let_expression| itself. We might move it there from the |id_pat|
- produced by the parser and thereby steal a possible |sublist| field and
- further nodes accessible from it. However this would amputate that expression
- (which would be weird if the expression were printed in an error message), so
- instead doing a deep copy is a cleaner solution, and patterns are rarely very
- deep. The function |copy_id_pat| accomplishes making the copy.
+the |let_expression| itself. We might move it there from the |id_pat| produced
+by the parser and thereby steal a possible |sublist| field and further nodes
+accessible from it. However this would amputate that expression (which would
+be weird if the expression were printed in an error message), so instead doing
+a deep copy is a cleaner solution, and patterns are rarely very deep. The
+function |copy_id_pat| accomplishes making the copy. The implicit recursion of
+|copy_id_pat| is achieved by passing itself as final argument to
+|std::transform|; recursion terminates when |sublist.empty()| holds.
 
 @h <algorithm>
 @< Local function def... @>=
@@ -1772,24 +1802,33 @@ In contrast to let-expressions, a $\lambda$-expression can be evaluated one
 or more times, yielding ``closure'' values that need to refer to the pattern,
 and which might outlive the $\lambda$-expression, so appropriate duplication
 or sharing must be organised. We opt for sharing between the
-$\lambda$-expression and any closures obtained from it.
+$\lambda$-expression and any closures obtained from it. Since the evaluator
+handles expressions by reference to |expression_base|, one cannot achieve
+sharing directly to |lambda_expression|; instead we store a shared pointer to
+a structure with the necessary components.
+
+Since this is the kind
+of runtime value that will hold the result of a user function definition, we
+provide a field |loc| to record the source location.
 
 @< Type def... @>=
-typedef std::shared_ptr<id_pat> shared_pattern;
+struct lambda_struct
+{ id_pat param; @+ expression_ptr body; @+ source_location loc;
+  lambda_struct(id_pat&& param, expression_ptr&& body, source_location&& loc)
+  : param(std::move(param)), body(std::move(body)), loc(std::move(loc)) @+{}
+};
+typedef std::shared_ptr<lambda_struct> shared_lambda;
 
-@ Now we can define our $\lambda$-expression to use a |shared_pattern|; the
-body is also shared.
-
-@< Type def... @>=
 struct lambda_expression : public expression_base
-{ const shared_pattern param;
-  shared_expression body;
-@)
-  lambda_expression(const id_pat& p, expression_ptr&& b);
-  virtual ~@[lambda_expression() nothing_new_here@]; // subobjects do all the work
+{ shared_lambda p;
+  @)
+  lambda_expression(const id_pat& p, expression_ptr&& b, source_location&& loc);
+  virtual ~@[lambda_expression() nothing_new_here@];
+    // subobjects do all the work
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
+
 
 @ The main constructor cannot be inside the class definition, as it requires
 the local function |copy_id_pat|. It copies the pattern and creates a new
@@ -1802,9 +1841,10 @@ cloned.
 
 @< Function def... @>=
 inline
-lambda_expression::lambda_expression(const id_pat& p, expression_ptr&& b)
-: param(std::make_shared<id_pat>(copy_id_pat(p)))
-, body(b.release())
+lambda_expression::lambda_expression @|
+  (const id_pat& p, expression_ptr&& b, source_location&& loc)
+: p(std::make_shared<lambda_struct>
+     (copy_id_pat(p),std::move(b),std::move(loc)))
 @+{}
 
 @ To print an anonymous function, we print the parameter, enclosed in
@@ -1818,12 +1858,13 @@ system were extended with second order types (which would be quite useful),
 then this might no longer be true.
 
 @< Function definitions @>=
-void lambda_expression::print(std::ostream& out) const
-{ if ((param->kind&0x1)!=0)
-    out << '(' << *param << ')';
-  else out << *param;
-  out << ": " << *body;
+std::ostream& operator<<(std::ostream& out, const lambda_struct& l)
+{ if ((l.param.kind&0x1)!=0)
+    out << '(' << l.param << ')';
+@+else out << l.param;
+  return out << ": " << *l.body;
 }
+void lambda_expression::print(std::ostream& out) const @+{@; out << *p; }
 
 @* Closures, and the evaluation of $\lambda$-expressions.
 %
@@ -1832,43 +1873,49 @@ user-defined functions: their evaluation just returns the stored function
 body. However, this evaluation also captures the current execution context:
 the bindings of the local variables that may occur as free identifiers in the
 function body (any used global variables can be bound at compile time, so they
-d not need any special consideration). Therefore the evaluation of a
+do not need any special consideration). Therefore the evaluation of a
 $\lambda$~expressions actually yields an intermediate value that is
-traditionally called a closure. It contains (a pointer to) the expression
-body, as well as the execution context current at the point the
-$\lambda$~expression is encountered.
+traditionally called a closure. It contains a shared pointer to the
+|lambda_struct| holding the function body, as well as the execution context
+current at the point the $\lambda$~expression is encountered. Sharing the
+|lambda_struct| among different closures obtained from the same
+$\lambda$-expression is efficient in terms of space, but would require double
+dereference upon evaluation. Since the latter occurs frequently, we speed up
+evaluation by also using a reference |body| directly to the function body.
 
 @< Type def... @>=
 struct closure_value : public value_base
 { shared_context context;
-  shared_pattern param;
-   // used in evaluation only to count arguments
-  shared_expression body;
+  shared_lambda p;
+  const expression_base& body; // shortcut to function body
 @)
-  closure_value@|(const shared_context& c,
-                  const shared_pattern& p,
-                  const shared_expression& b)
-  : context(c), param(p), body(b) @+{}
+  closure_value@|(const shared_context& c, const shared_lambda& l)
+  : context(c), p(l), body(*p->body) @+{}
   virtual ~ @[closure_value() nothing_new_here@];
   virtual void print(std::ostream& out) const;
   virtual closure_value* clone() const @+
-  {@; return new closure_value(context,param,body); }
+  {@; return new closure_value(context,p); }
   static const char* name() @+{@; return "closure"; }
 };
 typedef std::unique_ptr<closure_value> closure_ptr;
 typedef std::shared_ptr<const closure_value> shared_closure;
 
-@ For now a closure prints just like the |lambda_expression| from which it was
-obtained. One could imagine printing after this body ``where'' followed by the
-bindings held in the |c| field. Even better only the bindings for relevant
-(because referenced) identifiers could be printed. But it's not done yet.
+@ A closure prints the |lambda_expression| from which it was obtained, but we
+also print an indication of where the function was defined (this was not
+useful for |lambda_expression|, since these never get printed directly, only
+as part of printing a |closure_value|). One could imagine printing after this
+body ``where'' followed by the bindings held in the |c| field. Even better
+only the bindings for relevant (because referenced) identifiers could be
+printed. But it's not done yet.
 
 @< Function def... @>=
 void closure_value::print(std::ostream& out) const
-{ if ((param->kind&0x1)!=0)
-    out << '(' << *param << ')';
-  else out << *param;
-  out << ": " << *body;
+{ out << "Function defined at "
+      << main_input_buffer->name_of(p->loc.file) @|
+      << ':' << p->loc.start_line << ':' << p->loc.first_col << '-';
+  if (p->loc.extent>0)
+    out << p->loc.start_line+p->loc.extent << ':';
+  out << p->loc.last_col << std::endl << *p;
 }
 
 @ Evaluating a $\lambda$-expression just forms a closure using the current
@@ -1885,7 +1932,7 @@ kind of stack, in particular it cannot be embedded in the \Cpp\ runtime stack
 @< Function def... @>=
 void lambda_expression::evaluate(level l) const
 {@;if (l!=no_value)
-     push_value(std::make_shared<closure_value>(frame::current,param,body));
+     push_value(std::make_shared<closure_value>(frame::current,p));
 }
 
 @ Here a variation of the class |frame|; again the purpose is to have
@@ -1960,9 +2007,10 @@ currently however, none of these are possible yet.
 @< Call user-defined function |fun| with argument on |execution_stack| @>=
 { const closure_value* f=force<closure_value>(fun.get());
 @)
-  lambda_frame fr(*f->param,f->context); // save context, create new one for |f|
+  lambda_frame fr(f->p->param,f->context);
+    // save context, create new one for |f|
   fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
-  f->body->evaluate(l); // call, passing evaluation level |l| to function body
+  f->body.evaluate(l); // call, passing evaluation level |l| to function body
 } // restore context upon destruction of |fr|
 
 @ For function overloads given by a user-defined function, we need a new
@@ -2023,10 +2071,10 @@ the latter case) for producing the error trace.
 void overloaded_closure_call::evaluate(level l) const
 { argument->eval();
   try
-  { lambda_frame fr(*fun->param,fun->context);
+  { lambda_frame fr(fun->p->param,fun->context);
     // save context, create new one for |fun|
     fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
-    fun->body->evaluate(l);
+    fun->body.evaluate(l);
     // call, passing evaluation level |l| to function body
   }
   catch (const std::exception& e)
@@ -2072,12 +2120,13 @@ case lambda_expr:
                        type_expr(arg_type.copy(),unknown_type.copy()),
                        std::move(type));
     return expression_ptr(new @|
-      lambda_expression(pat, convert_expr(fun->body,type.func->result_type)));
+      lambda_expression(pat, convert_expr(fun->body,type.func->result_type)
+                       ,std::move(fun->loc)));
   }
   else
   { type_expr dummy; // unused result type
     expression_ptr result(new @|
-      lambda_expression(pat, convert_expr(fun->body,dummy)));
+      lambda_expression(pat,convert_expr(fun->body,dummy),std::move(fun->loc)));
     return expression_ptr(new voiding(std::move(result)));
   }
 }
@@ -3149,20 +3198,25 @@ case op_cast_expr:
   if (is_special_operator(c->oper))
     @< Test special argument patterns, and on match |return| an appropriate
        denotation @>
-  for (size_t i=0; i<variants.size(); ++i)
+  size_t i;  std::ostringstream o;
+  for (i=0; i<variants.size(); ++i)
     if (variants[i].type().arg_type==ctype)
-    {
-      expression_ptr p(new denotation(variants[i].val));
-      const type_expr& res_t = variants[i].type().result_type;
-      if (functype_specialise(type,ctype,res_t))
-        return p;
-@/ // coercions never apply to values of function type, so just fail here
-      throw type_error(e,type_expr(ctype.copy(),res_t.copy()),std::move(type));
-    }
-  std::ostringstream o;
-  o << "Cannot resolve " << main_hash_table->name_of(c->oper) @|
-    << " at argument type " << ctype;
-  throw program_error(o.str());
+      break;
+  if (i==variants.size()) // nothing was found
+  {
+    o << "Cannot resolve " << main_hash_table->name_of(c->oper) @|
+       << " at argument type " << ctype;
+  @/throw program_error(o.str());
+  }
+  o << main_hash_table->name_of(c->oper) << '@@' << ctype;
+  expression_ptr p(new capture_expression(variants[i].val,o.str()));
+  const type_expr& res_t = variants[i].type().result_type;
+  if (functype_specialise(type,ctype,res_t))
+    return p;
+  else if (type==void_type)
+    return expression_ptr(new voiding(std::move(p)));
+  else throw
+      type_error(e,type_expr(ctype.copy(),res_t.copy()),std::move(type));
 }
 break;
 

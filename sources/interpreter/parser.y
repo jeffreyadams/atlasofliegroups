@@ -112,14 +112,18 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| SET pattern '=' exp '\n' { global_set_identifier($2,$4,1); YYABORT; }
 	| SET IDENT '(' id_specs_opt ')' '=' exp '\n'
 	  { struct raw_id_pat id; id.kind=0x1; id.name=$2;
-	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7),1);
+	    global_set_identifier(id,
+				  make_lambda_node($4.patl,$4.typel,$7,@$),
+				  1);
 	    YYABORT;
 	  }
 	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT; }
 	| FORGET TYPE_ID '\n'	{ global_forget_identifier($2); YYABORT; }
 	| SET operator '(' id_specs ')' '=' exp '\n'
 	  { struct raw_id_pat id; id.kind=0x1; id.name=$2.id;
-	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7),2);
+	    global_set_identifier(id,
+				  make_lambda_node($4.patl,$4.typel,$7,@$),
+				  2);
 	    YYABORT;
 	  }
 	| SET operator '=' exp '\n'
@@ -152,13 +156,13 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 ;
 
 exp: LET lettail { $$=$2; }
-	| '(' ')' ':' exp { $$=make_lambda_node(NULL,NULL,$4); }
+| '(' ')' ':' exp { $$=make_lambda_node(NULL,NULL,$4,@$); }
 	| '(' id_specs ')' ':' exp
-	  { $$=make_lambda_node($2.patl,$2.typel,$5); }
+	{ $$=make_lambda_node($2.patl,$2.typel,$5,@$); }
 	| '(' ')' type ':' exp
-	  { $$=make_lambda_node(NULL,NULL,make_cast($3,$5)); }
+	{ $$=make_lambda_node(NULL,NULL,make_cast($3,$5),@$); }
 	| '(' id_specs ')' type ':' exp
-	  { $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6)); }
+	{ $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6),@$); }
         | type ':' exp	 { $$ = make_cast($1,$3); }
 	| quaternary NEXT exp { $$=make_sequence($1,$3,false); }
         | quaternary
@@ -175,7 +179,7 @@ declarations: declarations ',' declaration { $$ = append_let_node($1,$3); }
 declaration: pattern '=' exp { $$ = make_let_node($1,$3); }
         | IDENT '(' id_specs_opt ')' '=' exp
 	  { struct raw_id_pat p; p.kind=0x1; p.name=$1;
-	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6));
+	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6,@$));
 	  }
 ;
 

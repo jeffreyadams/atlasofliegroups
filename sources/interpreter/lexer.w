@@ -71,7 +71,7 @@ extern Hash_table* main_hash_table;
 it point to the main hash table once it is allocated.
 
 @< Definitions of static variables @>=
-Hash_table* main_hash_table=NULL;
+Hash_table* main_hash_table=nullptr;
 
 @*1 Identifier completion.
 %
@@ -102,7 +102,7 @@ of our local loop. For this reason we increment |i| right away while picking
 its identifier from the hash table. Otherwise there are no other complications,
 except having to produce a string allocated by |malloc|, which |strdup| does
 for us. If our local loop terminates normally there are no more matches and we
-return |NULL| to indicate that.
+return |nullptr| to indicate that.
 
 @h <cstdlib>
 @< Function definitions @>=
@@ -120,7 +120,7 @@ char* id_completion_func(const char* text, int state)
     if (std::strncmp(text,s,l) == 0) // is |text| a prefix of |s|?
       return strdup(s);
   }
-  return NULL; /* if loop terminates, report failure */
+  return nullptr; /* if loop terminates, report failure */
 }
 
 @ The readline library needs to know where to break the input into completable
@@ -145,13 +145,13 @@ is envisaged, we shall define a class for it. The module \.{buffer} is used
 for the class |BufferedInput| as well as for the type |id_type| defined within
 that class. The file \.{parser.tab.h} contains definitions of |YYSTYPE| and
 |YYLTYPE| defined by the parser and used in the code below, but on its turn it
-uses (for other purposes) types defined in \.{parsetree.h} which therefore has
-to be loaded before it (we would like to have put an \&{\#include} of the
+uses (for other purposes) types defined in \.{parse\_types.h}, which therefore
+has to be loaded before it (we would like to have put an \&{\#include} of the
 file \.{parsetree.h} into \.{parser.tab.h} so that it need no be mentioned
 here, but we do not know if or how this could be arranged).
 
 @h "buffer.h"
-@h "parsetree.h"
+@h "parse_types.h"
 @h "parser.tab.h"
 
 @< Class declarations @>=
@@ -189,7 +189,7 @@ extern Lexical_analyser* lex;
 it point to the main hash table once it is allocated.
 
 @< Definitions of static variables @>=
-Lexical_analyser* lex=NULL;
+Lexical_analyser* lex=nullptr;
 
 
 @ Here is the constructor for the lexical analyser, which assumes that a
@@ -436,7 +436,7 @@ int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
   return code;
 }
 
-@ Everything that looks like an identifier is either that or a keyword, or a
+@ Everything that looks like an identifier is either that, or a keyword, or a
 type name. In any case we start with looking it up in the |id_table|, and then
 the numeric value of the code returned, which is determined by the order in
 which names were first entered into |id_table|, will allow us to discriminate
