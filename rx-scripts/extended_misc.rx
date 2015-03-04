@@ -3,14 +3,6 @@
 <parameters.rx { for parameter(x,y,gamma) }
 <Weylgroup
 
-{ some of the stuff at the top of this file really belongs elsewhere, but
-  is left here to avoid conflicts}
-
-{ action of Weyl word on X_*\otimes Q }
-set co_action(RootDatum rd,[int] w,ratvec rv) = ratvec:
-  let (v,den)=%rv in
-  for i:#w downto 0 do v:=v*reflection(rd,w[i]) od; v/den
-
 
 {next two commands have been copied from Vogan-dual.rx}
 { shift (up) a candidate dual infinitesimal character to strictly dominant }
@@ -177,7 +169,6 @@ let (new_gamma,shift)=make_dominant_using_roots(root_datum(E),gamma(E)) in
 set fixed_block_of(mat delta, Param p)=[Param]:
 let rv=[Param]:[] in 
 for p in block_of(p) do if twist(delta,p)=p then  rv#:=p fi od;rv
-
 
 { for debugging:
   test that an extended parameter satisfies the defining conditions }

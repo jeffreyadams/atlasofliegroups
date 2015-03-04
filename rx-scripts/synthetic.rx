@@ -27,21 +27,18 @@ set cross (mat w, KGBElt x) = KGBElt:
 set posroot_cross (int i, KGBElt x) = KGBElt:
   cross(posroot_reflection(real_form(x),i),x)
 
-{cross action of element mat:w of Weyl group on parameters
-assuming integral infinitesimal character, otherwise see nonintegral.rx}
-{if w\in W(gamma) this is the usual cross action
- if w\not\in W(gamma) this has different (dominant) infinitesimal character}
-{also w given by sequence of simple root reflections, or 
- w=s_beta for beta an arbtirary positive root}
+{cross action of mat:w of Weyl group on parameters
+assuming integral infinitesimal character, otherwise see nonintegral.rx
+if w\in W(gamma) this is the usual cross action
+if w\not\in W(gamma) this has different (dominant) infinitesimal character
+}
 set cross (mat w, Param p) = Param:
   let x0 = x(p), gamma = infinitesimal_character(p)
   then rd = root_datum(real_form(x0)),
   x1=cross(w,x0), grading_wt=gamma-lambda(p)+rho_r(x0)
   then theta1= involution(x1)
   then (new_gamma,)=make_dominant_using_roots(rd, w*gamma)
-{  then ()=prints("new_gamma=", new_gamma) }
   in parameter(x1,new_gamma - w*grading_wt + rho_r(rd,theta1), new_gamma)
-
 
 {--------------------Cayley transforms-------------------}
 
@@ -97,7 +94,6 @@ set posroot_inv_Cayley (int i, Param p) = Param:
   then projection = (1-theta3) * (gamma-lambda(p) - diff1 + diff2) /2
   in parameter(x3, gamma-projection, gamma)
 
-
 { some visualisation procedures }
 
 set find ([Param] B, Param p) = int:
@@ -152,11 +148,12 @@ let z=(1+theta)*(v-w) in
 if not is_integer(z) then false else
 in_lattice((1+theta),ratvec_as_vec(z)) fi
 
-{  generalized KGB elements  }
+{  generalized KGB elements: x^2 not necessarily central }
 
 {KGBElt_gen(ic,theta,v)=exp(2\pi i v/2)\sigma_w\xi_0
 Recall (see parameters.rx)
-xi=exp(2\pi i*(torus_factor)/2)exp(rho^\vee/2)\sigma_w\xi_0}
+xi=exp(2\pi i*(torus_factor)/2)exp(rho^\vee/2)\sigma_w\xi_0
+}
 
 : KGBElt_gen=(InnerClass,mat,ratvec)
 set inner_class    (KGBElt_gen(ic,,))    = InnerClass: ic
@@ -165,30 +162,25 @@ set torus_factor   (KGBElt_gen(,,t))     = ratvec:t
 set unnormalized_torus_factor   (KGBElt_gen(ic,,t))     =ratvec:(t+rho_check(ic))/2
 
 {Note: square_is_central(KGB_elt y) gives the correct answer
-=square_is_central(inner_class(y),involution(y), torus_factor(y))}
-{NB generalized KGB elements x,y are conjugate 
+=square_is_central(inner_class(y),involution(y), torus_factor(y))
+square_is_central is defined in parameters.rx
+Note: generalized KGB elements x,y are conjugate 
 <=> is_conjugate(torus_factor(x)/2,torus_factor(y)/2,theta)=true
-discussion of unnormalized_torus_factor in parameters.rx}
+see discussion of unnormalized_torus_factor in parameters.rx
+}
 
 set =(KGBElt_gen x1,KGBElt_gen x2)=bool:
 if not (inner_class(x1)=inner_class(x2) and involution(x1)=involution(x2)) then false
 else is_conjugate(unnormalized_torus_factor(x1),unnormalized_torus_factor(x2),^involution(x1)) fi  
-{Dangerous bend: this formula appears to be right, with the 
+{
+Dangerous bend: this formula appears to be right, with the 
 unnormalized torus factors, no dividing by 2, and the transpose
-I'm not 100% sure this is right
+I'm not 100% sure this is correct
 }
 
-
-
-
-set *(mat delta,KGBElt_gen(ic,theta,t))=(ic,delta*theta*delta,t*delta)
+set *(mat delta,KGBElt_gen(ic,theta,t))=KGBElt_gen:(ic,delta*theta*delta,t*delta)
 
 set is_fixed(mat delta,KGBElt_gen y)=bool:y=delta*y
-
-{set is_fixed(mat delta,KGBElt_gen x)=bool:
-if not ^delta*involution(x)=involution(x)*^delta then false else
-is_conjugate(t(x), delta*t(x), ^theta(x)) fi}
-
 
 
 

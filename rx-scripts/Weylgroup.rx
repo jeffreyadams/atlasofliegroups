@@ -61,7 +61,7 @@ so when acting on parameters it is another parameter with the same types of root
 generating an isomorphic block
 this algorithm is crude: it adds a big enough multiple of 2\rho
 slightly better would be to add a sum of multiples of fundamental weights;
-with each multiple of a fund. weight. must be in the root lattice (not just Z^n)
+such that each multiple of a fund. weight. is in the root lattice (not just Z^n)
 }
 {
 I tried disabling this function but it is still needed
@@ -79,7 +79,8 @@ let (w,shift)=make_dominant_using_roots(rd,v) in (ratvec_as_vec(w),shift)
 
 {assume infinitesimal character gamma of p is integrally dominant
  translate by sum of roots to make it dominant
- return (new parameter, sum of roots)}
+ return (new parameter, sum of roots)
+}
 set translate_to_dominant(Param p)=(Param,vec):
 let (new_gamma,shift)=make_dominant_using_roots(root_datum(p),infinitesimal_character(p)) in 
 (parameter(x(p),lambda(p)+shift,nu(p)+shift),shift)
@@ -96,6 +97,10 @@ set action(RootDatum rd,[int] w,ratvec rv) = ratvec:
   let (v,den)=%rv in
   for i:#w downto 0 do v:=simple_reflection(rd,w[i])*v od; v/den
 
+{ action of Weyl word on X_*\otimes Q }
+set co_action(RootDatum rd,[int] w,ratvec rv) = ratvec:
+  let (v,den)=%rv in
+  for i:#w downto 0 do v:=v*reflection(rd,w[i]) od; v/den
 
 {cross conflicts with definition in basic.rx
  change name to weyl_cross}

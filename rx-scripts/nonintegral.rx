@@ -2,22 +2,7 @@
 <synthetic
 <extended
 
-{add sum of roots to v to make it dominant, also keep it delta-fixed
-returns (v+sum_of_roots,sum_of_roots)
-if dominant return (v,0)
-if w*v is dominant, and w*v-v is a sum of roots, return (w*v,w*v-v)
-otherwise, crude solution:
-add k\rho such that <v+2k\rho,\alpha^\vee>>0 all simple alpha,
-i.e. k>max{-<\gamma,\alpha^\vee>/2}
-}
 
-{ cross action by W, not just integral Weyl group W(gamma). See Weylgroup.rx}
-
-{cross action of element mat:w of W (not necessarily integral) on parameters}
-
-{if w\in W(gamma) this is the usual cross action
- if w\not\in W(gamma) this has different (dominant) infinitesimal character
-}
 set posroot_cross (int i, Param p) = Param:let w=posroot_reflection(root_datum(p),i) in cross(w,p)
 
 {cross action of element mat:w of Weyl group on parameters

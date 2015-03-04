@@ -269,4 +269,4 @@ in if not in_string_list(type,cayley_types) then prints("Cayley of type ", type,
  fi
 fi
 
-<<nonintegral.rx {to load ext_Cayley(i,E) in general case}
+<<nonintegral.rx {to load ext_Cayley(i,E) in general case; needs to be done in this order}

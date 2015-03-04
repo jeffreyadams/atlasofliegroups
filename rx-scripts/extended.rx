@@ -7,9 +7,7 @@
 <extended_misc  { basis for extended parameters }
 <extended_types  { types of extended parameters }
 <extended_cross  {cross action of extended parameters}
-<extended_cayley  {Cayley transforms of extended parameters}
-
-{might also want to load nonintegral.rx}
+<extended_cayley  {Cayley transforms of extended parameters, also loads nonintegral.rx}
 
 {       references:
   Parameters for Twisted Representations (Adams/Vogan)
@@ -123,7 +121,7 @@ set E(mat delta, KGBElt x, ratvec gamma, ratvec g, ratvec lambda)=extended_param
   else (inner_class(real_form(x)),delta,gamma,lambda_E,theta,g,l,omega,tau,t)
   fi  
 
-{in the nonintegral case the next definition uses KGBElt_gen for y}
+{in the nonintegral case the next definition uses KGBElt_gen for y, see synthetic.rx}
 
 set E(mat delta, ratvec gamma, KGBElt x, ratvec g, KGBElt_gen y) = extended_param:
 if dual(inner_class(x))!=inner_class(y)
@@ -135,14 +133,10 @@ if dual(inner_class(x))!=inner_class(y)
  elif square(x)%1 != g%1
   then error("x is not compatible with infinitesimal cocharacter g")
 else
-{then l=ratvec_as_vec( (g-(1+^theta)*torus_factor(x)/2-rho_check(real_form(x))))}
 {torus_factor(x) is ^theta fixed}
-{let ()=prints("in E:", gamma-torus_factor(y)-rho(inner_class(y))) in }
-{let ()=prints("torus_factor(y): ", torus_factor(y), " gamma: ", gamma, " rho(y): ", rho(inner_class(x))) in}
 let l=ratvec_as_vec(g-torus_factor(x)-rho_check(inner_class(x)))
   , theta=involution(x), omega=involution(y) { NOTE ^theta=-omega }
   , lambda = ratvec_as_vec(gamma-torus_factor(y)-rho(inner_class(x)))
-{  in let ()=prints("lambda:", lambda) }
   then (t,result1)=solve(1-omega,ratvec_as_vec(l*(delta-1)))
   ,  (tau,result2)=solve(1-theta,ratvec_as_vec((delta-1)*lambda))
   in
@@ -155,8 +149,6 @@ fi
 
 { in case of an integral parameter, we can deduce gamma, lambda from it }
 set E(mat delta, Param p, ratvec g) = extended_param:E(delta,x(p), infinitesimal_character(p), g, lambda(p))
-
-
 
 set E(mat delta, Param p) = extended_param:E(delta,p,canonical_g(p))
 
@@ -204,6 +196,12 @@ set sign(
      )/2 + (l2-l1)*tau1 + t2*(lambda2-lambda1)
    ) in (-1)^exp
 fi
+
+{for use in Cayley transforms: define sign(E,[F1,F2])=sign(E,F1)+sign(E,F2)=\pm 1
+(assuming sign(F1,F2)=0)
+This is mainly used when [F1,F2] is a double-valued Cayley}
+set sign(extended_param E,[extended_param] F)=int:sign(E,F[1])+sign(E,F[2])
+set sign([extended_param] E,extended_param F)=int:sign(E[1],F)+sign(E[2],F)
 
 set sign_verbose(
   extended_param(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1):E1,
@@ -256,13 +254,13 @@ fi
   default(F)=E(delta,parameter(F),g(F))
 }
 
+{default(F) is the extended parameter the software constructs above p=paramter(F)}
 set default(extended_param F) = extended_param:E(delta(F),x(F),gamma(F),g(F),lambda(F)+rho(ic(F)))
 
-set      sign (extended_param Ep) =int:      sign(Ep,default(Ep))
-set dual_sign (extended_param Ep) =int: dual_sign(Ep,default(Ep))
-
-set = (extended_param xp1, extended_param xp2) = bool: sign(xp1,xp2)=1
-
+set      sign (extended_param E) =int:      sign(E,default(E))
+set dual_sign (extended_param E) =int: dual_sign(E,default(E))
+set = (extended_param E, extended_param F) = bool: sign(E,F)=1
+set is_default (extended_param E)=bool:E=default(E)
 
 { print information about an extended block }
 set ext_print_block(mat delta, [Param] B) = void:
@@ -290,11 +288,6 @@ set print_ext_block(mat delta,[Param] B)=void:ext_print_block(delta,B)
 set print_ext_block(mat delta,Param p)=void:ext_print_block(delta,p)
 set print_ext_block(Param p)=void:ext_print_block(distinguished_involution(real_form(p)),p)
 
-{ is_default(E)=1 if E is equivalent to the extended parameter constructed
-  by the software lying over p=p(E)
-}
-set is_default (extended_param E)=bool:E=default(E)
-
 set ext_block_of(mat delta, Param p, ratvec g)=[extended_param]:for p in fixed_block_of(delta,p) do E(delta,p,g) od
 set ext_block_of(mat delta, Param p)=[extended_param]:ext_block_of(delta,p,canonical_g(p))
 set ext_block_of(Param p)=[extended_param]:ext_block_of(distinguished_involution(real_form(p)),p)
@@ -321,6 +314,7 @@ set ext_basic (RealForm G) = (mat,[Param],ratvec):
  <p(alpha),p(beta)^v>=2<(1+delta)alpha,beta^v>/<(1+delta)beta,beta^v>
 }
 
+{<alpha,beta^\vee> in the quotient root system}
 set folded_bracket(RootDatum rd, mat delta, int i, int j)=int:
 let alpha=simple_roots(rd)[i],
 beta=simple_roots(rd)[j],
