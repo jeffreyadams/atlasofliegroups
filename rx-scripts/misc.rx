@@ -14,8 +14,12 @@ set is_integer (ratvec v) = bool: denom(v)=1
 set is_positive (ratvec v) = bool: is_positive(numer(v))
 set is_nonnegative (ratvec v)= bool: is_nonnegative(numer(v))
 
-{ v is in X^*(H)_Q, test if <v,alpha^\vee>\in Z for all roots\alpha}
-set is_integral(RootDatum rd, ratvec v)=bool:is_integer(simple_coroots(rd)*v)
+{ v is in X^*(H)_Q, test if <v,alpha^\vee>\in Z for all roots\alpha
+simple_coroots has (rank) rows and (semisimple rank) columns
+v has size rank (not semisimple rank)}
+{set is_integral(RootDatum rd, ratvec v)=bool:is_integer(simple_coroots(rd)*v)}
+set is_integral(RootDatum rd, ratvec v)=bool:is_integer(v*simple_coroots(rd))
+
 
 { transform ParamPol into a list of (Split,Param) pairs; previously built-in }
 set %(ParamPol P) = [(Split,Param)]: for c@p in P do (c,p) od

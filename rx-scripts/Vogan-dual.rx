@@ -50,11 +50,13 @@ set dual_shift (RootDatum rd, ratvec gamma) = ratvec:
   rho_check(integrality_datum(rd,gamma))-rho_check(rd)
 
 { shift (up) a candidate dual infinitesimal character to strictly dominant }
+{moved to extended.rx
 set shift_g_regular (RootDatum rd, ratvec g) = ratvec:
   for alpha@i in simple_roots(rd)
   do let (v,d) = %fundamental_coweight(rd,i)
      in g +:= (1-ceil(g*alpha/d)) * v
   od; g
+}
 
 { Finding the value lambda for the dual parameter to p is surprisingly simple.
   Since imaginary roots are automatically integral, there is no difference
@@ -68,9 +70,11 @@ set ell(KGBElt x) = vec:
   let (numer,denom) = %(base_grading_vector(real_form(x))-torus_factor(x))
   in if denom=1 then numer else error("non-integral ell(x)") fi
 
-set dual_gamma (Param p) = ratvec: { we want this to be strictly dominant }
+{moved to extended_misc.rx}
+{set dual_gamma (Param p) = ratvec: { we want this to be strictly dominant }
   let G = real_form(p), dual_rho = rho_check(integrality_datum(p))
   in shift_g_regular(G,base_grading_vector(G) + dual_rho)
+}
 
 set dual_lambda (Param p) = ratvec: { is mod 2: ell(p)+rho(dual_inner_class) }
   dual_gamma(p) - torus_factor(x(p))
@@ -80,6 +84,8 @@ set check_dual_lambda (Param p) = bool:
 
 set dual (Param p, InnerClass dual_integral_class) = Param:
   parameter( y(p,dual_integral_class), dual_lambda(p), dual_gamma(p) )
+
+set dual(Param p)=Param:dual(p,dual_inner_class(p))
 
 set test1 (Param p) = [bool]:
   let G_v=dual_inner_class(p) then drf = real_form(y(p,G_v))

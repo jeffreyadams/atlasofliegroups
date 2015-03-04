@@ -62,17 +62,17 @@ generating an isomorphic block
 this algorithm is crude: it adds a big enough multiple of 2\rho
 slightly better would be to add a sum of multiples of fundamental weights;
 with each multiple of a fund. weight. must be in the root lattice (not just Z^n)
-***should not need this any more, now that gamma is allowed to be integrally dominant 
-disabled this function, so it returns (v,0)
 }
-set make_dominant_using_roots(RootDatum rd, ratvec v)=(ratvec,vec):(v, null(#v))
 {
+I tried disabling this function but it is still needed
+set make_dominant_using_roots(RootDatum rd, ratvec v)=(ratvec,vec):(v, null(#v))
+}
+set make_dominant_using_roots(RootDatum rd, ratvec v)=
 if (is_dominant(rd,v)) then (v,ratvec_as_vec(v-v)) else
 let (rv,)=make_dominant(rd,v) in 
 if (is_integer(rv-v) and in_lattice(simple_roots(rd),ratvec_as_vec(rv-v))) then (rv,ratvec_as_vec(rv-v)) else
 let k=0 in for i:ss_rank(rd) do  k:=max(k,ceil(-v*simple_coroots(rd)[i]/2)) od;
 (v+2*k*rho(rd),ratvec_as_vec(2*k*rho(rd)))  fi fi
-}
 
 set make_dominant_using_roots(RootDatum rd, vec v)=(vec,vec):
 let (w,shift)=make_dominant_using_roots(rd,v) in (ratvec_as_vec(w),shift)

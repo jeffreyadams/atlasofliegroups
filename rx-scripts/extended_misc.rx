@@ -11,6 +11,33 @@ set co_action(RootDatum rd,[int] w,ratvec rv) = ratvec:
   let (v,den)=%rv in
   for i:#w downto 0 do v:=v*reflection(rd,w[i]) od; v/den
 
+
+{next two commands have been copied from Vogan-dual.rx}
+{ shift (up) a candidate dual infinitesimal character to strictly dominant }
+set shift_g_regular (RootDatum rd, ratvec g) = ratvec:
+  for alpha@i in simple_roots(rd)
+  do let (v,d) = %fundamental_coweight(rd,i)
+     in g +:= (1-ceil(g*alpha/d)) * v
+  od; g
+
+{canonical_g(x) is a dominant regular element g such that e(g)=x^2
+this only depends on real_form(x)
+note: square(G)=(base_grading_vector(G)+rho_check(G))%1
+}
+{set canonical_g(RealForm G)=ratvec:shift_g_regular(G,square(G))}
+set canonical_g(RealForm G)=ratvec:base_grading_vector(G)+rho_check(G)
+set square (RealForm G) = ratvec: (base_grading_vector(G)+rho_check(G))%1
+
+set canonical_g(KGBElt x)=ratvec:canonical_g(real_form(x))
+set canonical_g(Param p)=ratvec:canonical_g(real_form(p))
+
+{dual_gamma(p) differs from canonical_g(p) by rho_check(integrality_datum(p))
+choice of infinitesimal character for integrality subgroup on the dual side
+}
+set dual_gamma (Param p) = ratvec: { we want this to be strictly dominant }
+  let G = real_form(p), dual_rho = rho_check(integrality_datum(p))
+  in shift_g_regular(G,base_grading_vector(G) + dual_rho)
+
 { some variants of Cayley transforms }
 
 { inv_Cayley terminology is not necessary }
@@ -140,7 +167,7 @@ set integrality_datum(extended_param E)=integrality_datum(ic(E),gamma(E))
  return (new extended parameter, sum of roots)
 see nonintegral.rx
 ***should not need this any more, now that gamma is allowed to be integrally dominant 
-I've disabled make_dominant_using_roots and hence this function
+I've disabled Weylgroup:make_dominant_using_roots and hence this function
 }
 set translate_to_dominant(extended_param E)=(extended_param,vec):
 let (new_gamma,shift)=make_dominant_using_roots(root_datum(E),gamma(E)) in 

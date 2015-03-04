@@ -1,19 +1,30 @@
+<extended.rx
 <polynomial.rx
 <parameters.rx 
+<Vogan-dual.rx  
 
-{define dual parameters given choice of infinitesimal cocharacter g
-{requires: y^2=e(g)
-use choose_g for a choice of g}}
-set dual(KGBElt x, KGBElt y,ratvec g)=Param:parameter(y,x,g)
+{some similar stuff to Vogan-dual.rx, also some extra functionality}
 
+{compare dual_gamma(Param p) in Vogan-dual.rx}
+{some dual stuff involving only (x,y)}
+set dual_gamma (KGBElt x,KGBElt y) = ratvec: 
+let G=real_form(x) then
+dual_rho=rho_check(integrality_datum(G,square(y))) 
+in shift_g_regular(G,base_grading_vector(G) + dual_rho)
+
+{also need version for y a generalized KGB element}
+set dual_gamma (KGBElt x,KGBElt_gen y) = ratvec: 
+let G=real_form(x) then
+dual_rho=rho_check(integrality_datum(G,square(y))) 
+in shift_g_regular(G,base_grading_vector(G) + dual_rho)
+
+
+set dual_parameter(KGBElt x,KGBElt y)=Param:parameter(y,x,dual_gamma(x,y))
+
+{choose infinitesimal cocharacter g yourself
+must satisfy y^2=e(g)
+}
 set dual_parameter(KGBElt x,KGBElt y,ratvec g)=Param:parameter(y,x,g)
-set dual_parameter(KGBElt x,KGBElt y)=Param:parameter(y,x,choose_g(x,y))
-set dual(Param p, ratvec g)=Param:dual_parameter(x(p),y(p),g)
-set dual(Param p)=Param:dual_parameter(x(p),y(p))
-
-{also specify the dual inner class}
-set dual(Param p,InnerClass dual_inner_class)=Param:dual_parameter(x(p),y(p,dual_inner_class))
-set dual(Param p,ratvec g,InnerClass dual_inner_class)=Param:dual_parameter(x(p),y(p,dual_inner_class),g)
 
 {-------------------------  dual of a block --------------------------}
 
@@ -33,11 +44,10 @@ each returns ([Param] B_vee,[int] permutation)
 B_vee is block for for G^vee(infinitesimal character)
 Vogan duality is B[i] -> B_vee(permutation[i])}
 
-{specify the dual infinitesimal character and inner class}
-set dual([Param] B, ratvec g, InnerClass dual_inner_class)=([Param],[int]):
-let q=dual(B[0],g,dual_inner_class) in 
+set dual([Param] B, InnerClass dual_inner_class)=([Param],[int]):
+let q=dual(B[0],dual_inner_class) in 
 let B_vee=block_of(q) in 
-let B_dual=for p in B do dual(p,g,dual_inner_class) od in
+let B_dual=for p in B do dual(p,dual_inner_class) od in
 {B_dual is in length *decreasing* order;
  B[i]->B_dual[i] is Vogan duality}
 let B_vee=block_of(q) in
@@ -46,11 +56,9 @@ let B_vee=block_of(q) in
 (B_vee,permutation(B_dual,B_vee))
 
 {don't specify the inner class and/or the dual infinitesimal character}
-set dual([Param] B,ratvec g)=([Param],[int]):dual(B,g,dual_inner_class(B[0]))
-set dual([Param] B,InnerClass dual_inner_class)=([Param],[int]):dual(B,choose_g(B[0]),dual_inner_class)
-set dual([Param] B)=([Param],[int]):dual(B, choose_g(B[0]), inner_class(dual(B[0])))
+set dual([Param] B)=([Param],[int]):dual(B,dual_inner_class(B[0]))
+set dual([Param] B,InnerClass dual_inner_class)=([Param],[int]):dual(B,dual_inner_class)
 
-set dual_block(Param p, ratvec g)=[Param]:block_of(dual(p,g))
 set dual_block(Param p)=[Param]:block_of(dual(p))
 
 set dual_extended_parameter(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=(dual(ic),^delta,g,l,omega,gamma,lambda,theta,t,tau)

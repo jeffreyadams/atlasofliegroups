@@ -156,18 +156,9 @@ fi
 { in case of an integral parameter, we can deduce gamma, lambda from it }
 set E(mat delta, Param p, ratvec g) = extended_param:E(delta,x(p), infinitesimal_character(p), g, lambda(p))
 
-{the natural choice of cocharacter for G
- maybe shift_G_regular is not necessary?
-}
 
-set canonical_cocharacter(RealForm G)=shift_g_regular(G,base_grading_vector(G)+rho_check(G))
 
-{in the presence of \delta, g must be \delta-invariant
-maybe this is automatic, but just in case:
-}
-set canonical_cocharacter(RealForm G,mat delta)=(1+^delta)*canonical_cocharacter(G)/2
-
-set E(mat delta, Param p) = extended_param:E(delta,p,canonical_cocharacter(real_form(p),delta))
+set E(mat delta, Param p) = extended_param:E(delta,p,canonical_g(p))
 
 {g must satisfy: e(g)=x^2 and is ^delta-invariant}
 set E(mat delta, Param p, ratvec g) = extended_param:E(delta,p,g)
@@ -305,7 +296,7 @@ set print_ext_block(Param p)=void:ext_print_block(distinguished_involution(real_
 set is_default (extended_param E)=bool:E=default(E)
 
 set ext_block_of(mat delta, Param p, ratvec g)=[extended_param]:for p in fixed_block_of(delta,p) do E(delta,p,g) od
-set ext_block_of(mat delta, Param p)=[extended_param]:ext_block_of(delta,p,canonical_cocharacter(real_form(p),delta))
+set ext_block_of(mat delta, Param p)=[extended_param]:ext_block_of(delta,p,canonical_g(p))
 set ext_block_of(Param p)=[extended_param]:ext_block_of(distinguished_involution(real_form(p)),p)
 
 set find([extended_param] list,extended_param E)=(int,int):

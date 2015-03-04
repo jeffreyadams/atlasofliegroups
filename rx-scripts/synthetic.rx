@@ -39,7 +39,7 @@ set cross (mat w, Param p) = Param:
   x1=cross(w,x0), grading_wt=gamma-lambda(p)+rho_r(x0)
   then theta1= involution(x1)
   then (new_gamma,)=make_dominant_using_roots(rd, w*gamma)
-  then ()=prints("new_gamma=", new_gamma) 
+{  then ()=prints("new_gamma=", new_gamma) }
   in parameter(x1,new_gamma - w*grading_wt + rho_r(rd,theta1), new_gamma)
 
 
@@ -170,9 +170,13 @@ set unnormalized_torus_factor   (KGBElt_gen(ic,,t))     =ratvec:(t+rho_check(ic)
 <=> is_conjugate(torus_factor(x)/2,torus_factor(y)/2,theta)=true
 discussion of unnormalized_torus_factor in parameters.rx}
 
-set =(KGBElt_gen x,KGBElt_gen y)=bool:
-if not (inner_class(x)=inner_class(y) and involution(x)=involution(y)) then false
-else is_conjugate(torus_factor(x)/2,torus_factor(y)/2,involution(x)) fi
+set =(KGBElt_gen x1,KGBElt_gen x2)=bool:
+if not (inner_class(x1)=inner_class(x2) and involution(x1)=involution(x2)) then false
+else is_conjugate(unnormalized_torus_factor(x1),unnormalized_torus_factor(x2),^involution(x1)) fi  
+{Dangerous bend: this formula appears to be right, with the 
+unnormalized torus factors, no dividing by 2, and the transpose
+I'm not 100% sure this is right
+}
 
 
 
@@ -184,11 +188,6 @@ set is_fixed(mat delta,KGBElt_gen y)=bool:y=delta*y
 {set is_fixed(mat delta,KGBElt_gen x)=bool:
 if not ^delta*involution(x)=involution(x)*^delta then false else
 is_conjugate(t(x), delta*t(x), ^theta(x)) fi}
-
-
-
-
-
 
 
 
