@@ -1,4 +1,5 @@
 <basic.rx
+<extended_misc.rx {for dual_gamma}
 
 { to compute y values over a block of parameters, precompute dual inner class }
 set dual_inner_class(Param p) = InnerClass:
@@ -18,8 +19,10 @@ set integral_shift(ratvec v, mat simples) = vec:
   in if (sol*simples)%2 = vals then sol
      else print(^simples,vals); error("no solution mod 2")
      fi
-
-set y(Param p, InnerClass G_vee) = KGBElt:
+{this fails for G=SL(5,R), p_0=spherical_principal_series(G,rho(G)/2), 
+b=block_of(p_0), p=b[1]
+}
+set y_alt(Param p, InnerClass G_vee) = KGBElt:
   let x=x(p)
   then dual_theta = -^involution(x)
   , rho_corr = rho(real_form(x))-rho_check(G_vee)
@@ -28,11 +31,12 @@ set y(Param p, InnerClass G_vee) = KGBElt:
   in KGB_elt(G_vee,dual_theta
             ,phi+integral_shift(rho_corr-rho_r(x),simple_reals))
 
+
 { caution: these two functions build an inner class on the fly; if called
   mutliple times even with the same argument, the results will be incompatible
 }
-set y(Param p) = KGBElt: y(p,dual_inner_class(p))
-set dual_real_form (Param p) = RealForm: real_form(y(p))
+set y_alt(Param p) = KGBElt: y_alt(p,dual_inner_class(p))
+set dual_real_form (Param p) = RealForm: real_form(y_alt(p))
 
 { cocharacter for (dual) real_form of y(p); should be constant %1 across block }
 set character (Param p) = ratvec:
@@ -82,15 +86,15 @@ set dual_lambda (Param p) = ratvec: { is mod 2: ell(p)+rho(dual_inner_class) }
 set check_dual_lambda (Param p) = bool:
   dual_lambda(p)%1 = rho_check(integrality_datum(p))%1
 
-set dual (Param p, InnerClass dual_integral_class) = Param:
-  parameter( y(p,dual_integral_class), dual_lambda(p), dual_gamma(p) )
+set dual_alt (Param p, InnerClass dual_integral_class) = Param:
+  parameter( y_alt(p,dual_integral_class), dual_lambda(p), dual_gamma(p) )
 
-set dual(Param p)=Param:dual(p,dual_inner_class(p))
+set dual_alt(Param p)=Param:dual_alt(p,dual_inner_class(p))
 
 set test1 (Param p) = [bool]:
-  let G_v=dual_inner_class(p) then drf = real_form(y(p,G_v))
-  in for q in block_of(p) do drf=real_form(y(q,G_v)) od
+  let G_v=dual_inner_class(p) then drf = real_form(y_alt(p,G_v))
+  in for q in block_of(p) do drf=real_form(y_alt(q,G_v)) od
 
 set test2 (Param p) = [ratvec]:
-  let G_v=dual_inner_class(p) then drf = real_form(y(p,G_v))
+  let G_v=dual_inner_class(p) then drf = real_form(y_alt(p,G_v))
   in for q in block_of(p) do character(q) od { should be constant gamma%1 }

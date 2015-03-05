@@ -21,6 +21,10 @@ in shift_g_regular(G,base_grading_vector(G) + dual_rho)
 
 set dual_parameter(KGBElt x,KGBElt y)=Param:parameter(y,x,dual_gamma(x,y))
 
+set dual (Param p, InnerClass dual_integral_class) = Param:
+  parameter( y(p,dual_integral_class), dual_lambda(p), dual_gamma(p) )
+set dual(Param p)=Param:dual(p,dual_inner_class(p))
+
 {choose infinitesimal cocharacter g yourself
 must satisfy y^2=e(g)
 }
