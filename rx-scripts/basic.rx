@@ -617,17 +617,13 @@ set lookup (Param p, [Param] block) = int:
 
 set null_module (ParamPol P)= 0*P { also handles null_module(Param) }
 
-
 set virtual(Param p) = ParamPol: p { for making implicit conversion explcit }
 
-set - (ParamPol P) = ParamPol: (-1)*P
-set - (ParamPol P,Param p)=ParamPol:P+(-1)*virtual(p)
-set + (Param p,Param q)=ParamPol:virtual(p)+virtual(q)
-set - (Param p,Param q)=ParamPol:virtual(p)+(-1)*virtual(q)
 
+{				Miscellaneous				}
 
 set find([[int]] list,[int] v)=int:
  let i=#list-1 in while i>=0 and list[i]!=v do i-:=1 od;i
 
 set in_string_list(string s,[string] S)=bool:
-let rv=false,i=0 in for i:#S do if s=S[i] then i:=#S;rv:=true else i+:=1 fi od;rv
+  let i=#S-1 in while i>=0 and S[i]!=s do i-:=1 od; i>=0
