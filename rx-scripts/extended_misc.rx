@@ -4,7 +4,7 @@
 <Weylgroup
 
 
-{next two commands have been copied from Vogan-dual.rx}
+{ the next command has been copied from Vogan-dual.rx }
 { shift (up) a candidate dual infinitesimal character to strictly dominant }
 set shift_g_regular (RootDatum rd, ratvec g) = ratvec:
   for alpha@i in simple_roots(rd)
@@ -12,19 +12,19 @@ set shift_g_regular (RootDatum rd, ratvec g) = ratvec:
      in g +:= (1-ceil(g*alpha/d)) * v
   od; g
 
-{canonical_g(x) is a dominant regular element g such that e(g)=x^2
-this only depends on real_form(x)
-note: square(G)=(base_grading_vector(G)+rho_check(G))%1
+{ canonical_g(x) is a dominant regular element g such that e(g)=x^2
+  this only depends on real_form(x)
+  note: square(G)=(base_grading_vector(G)+rho_check(G))%1
 }
-{set canonical_g(RealForm G)=ratvec:shift_g_regular(G,square(G))}
-set canonical_g(RealForm G)=ratvec:base_grading_vector(G)+rho_check(G)
+{set canonical_g(RealForm G)=ratvec: shift_g_regular(G,square(G))}
+set canonical_g(RealForm G) = ratvec: base_grading_vector(G)+rho_check(G)
 set square (RealForm G) = ratvec: (base_grading_vector(G)+rho_check(G))%1
 
-set canonical_g(KGBElt x)=ratvec:canonical_g(real_form(x))
-set canonical_g(Param p)=ratvec:canonical_g(real_form(p))
+set canonical_g(KGBElt x) = ratvec: canonical_g(real_form(x))
+set canonical_g(Param p) = ratvec: canonical_g(real_form(p))
 
-{dual_gamma(p) differs from canonical_g(p) by rho_check(integrality_datum(p))
-choice of infinitesimal character for integrality subgroup on the dual side
+{ dual_gamma(p) differs from canonical_g(p) by rho_check(integrality_datum(p))
+  choice of infinitesimal character for integrality subgroup on the dual side
 }
 set dual_gamma (Param p) = ratvec: { we want this to be strictly dominant }
   let G = real_form(p), dual_rho = rho_check(integrality_datum(p))
@@ -67,7 +67,7 @@ set twist(mat delta,Param p)=
   let (x,lambda_rho,nu) = %p
   in parameter(twist(delta,x),delta*(lambda_rho+rho(real_form(x))),delta*nu)
 
-set is_fixed (mat delta, Param p) = bool: 
+set is_fixed (mat delta, Param p) = bool:
 {let ()=prints("is_fixed p:", p) in} p=twist(delta,p)
 
 set is_fixed (ratvec gamma, mat delta, KGBElt x,KGBElt y) = bool:
@@ -75,7 +75,8 @@ set is_fixed (ratvec gamma, mat delta, KGBElt x,KGBElt y) = bool:
 
 { KGBElt is fixed by twist by matrix delta }
 set is_fixed (mat delta, KGBElt x) = bool: x=twist(delta,x)
-set is_fixed (mat delta, KGBElt x, KGBElt y) = bool:is_fixed(delta,x) and is_fixed(^delta,y)
+set is_fixed (mat delta, KGBElt x, KGBElt y) = bool:
+  is_fixed(delta,x) and is_fixed(^delta,y)
 
 { Stuff related to KGB }
 { KGB element x is represented by xi=t\sigma_w\xi_0
@@ -85,11 +86,12 @@ set is_fixed (mat delta, KGBElt x, KGBElt y) = bool:is_fixed(delta,x) and is_fix
   I prefer to work with the "actual torus factor" v
 }
 
-: x_rep = (ratvec,mat)
+: x_rep = (ratvec,mat) { represent x component by v (as above) and theta }
 
 { in_A(v,theta): test if e(v) is in A:=(H^{-theta})^0 }
 { test: (1+theta)v in (1+theta)X_*, see definition of conjugator a few lines
-  down in this file, and the miscelanneous section of the EPiA }
+  down in this file, and the miscellaneous section of the EPiA
+}
 set in_A(x_rep(v,theta)) = bool:
   let M=1+theta then w=M*v
   in is_integer(w) and in_lattice(M,ratvec_as_vec(w))
@@ -97,7 +99,8 @@ set in_A(x_rep(v,theta)) = bool:
 { e(v_1)theta_1 is H-conjugate to e(v_2)theta_2
   implicit: e(v_i)theta_i=e(v_i)sigma_i*xi_0 (i=1,2) in same extended group
   for G
-  test: theta_1=theta_2, e(v_1-v_2) is in A=(H^{\theta_1})^0 }
+  test: theta_1=theta_2, e(v_1-v_2) is in A=(H^{\theta_1})^0
+}
 set is_equivalent(x_rep(v_1,theta_1),x_rep(v_2,theta_2)) = bool:
   theta_1=theta_2 and in_A(v_1-v_2,theta_1)
 
@@ -105,7 +108,8 @@ set square_is_central(InnerClass ic,x_rep(v,theta)) = bool:
   square_is_central(ic,theta,v) { defined in parameters.rx }
 
 { in PFTR: z=i^<tau,(delta_0-1)l>(-1)^<lambda,t>
-  PFTR:delta_0 is ^delta here }
+  PFTR:delta_0 is ^delta here
+}
 set log_z(mat delta, vec lambda, vec l, vec tau,vec t) = rat: { modulo 1 }
   l*(delta-1)*tau/4+t*lambda/2
 set log_zeta(mat delta, vec lambda, vec l,vec tau,vec t) = rat: { modulo 1 }
@@ -139,42 +143,45 @@ set log_zeta(extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = rat:
 
 {compute x,y,parameter and dual parameter of an extended parameter}
 
-set y(extended_param
-      (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) = KGBElt:
+set y(extended_param (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = KGBElt:
   KGB_elt(dual(ic),-theta,(gamma-lambda-rho(ic)))
 
-set x (extended_param (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) = KGBElt:
+set x (extended_param (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = KGBElt:
   KGB_elt(ic,theta,(g-l-rho_check(ic)))
 
 {set parameter (extended_param (,,gamma,,,,,,,):a) = Param:
   parameter(x(a),y(a),gamma)}
-{better: use (x,lambda,gamma)}
+{ better: use (x,lambda,gamma)}
 set parameter (extended_param (,,gamma,lambda,,,,,,):a) = Param:
   parameter(x(a),lambda+rho(real_form(x(a))),gamma)
 
 set integrality_datum(extended_param E)=integrality_datum(ic(E),gamma(E))
 
-{assume gamma(E) is integrally dominant
- translate by sum of roots to make it dominant
- return (new extended parameter, sum of roots)
-see nonintegral.rx
-***should not need this any more, now that gamma is allowed to be integrally dominant 
-I've disabled Weylgroup:make_dominant_using_roots and hence this function
+{ assume gamma(E) is integrally dominant
+  translate by sum of roots to make it dominant
+  return (new extended parameter, sum of roots)
+  see nonintegral.rx
+  *** should not need this any more, now that gamma is allowed to be
+      integrally dominant
+  I've disabled Weylgroup:make_dominant_using_roots and hence this function
 }
-set translate_to_dominant(extended_param E)=(extended_param,vec):
-let (new_gamma,shift)=make_dominant_using_roots(root_datum(E),gamma(E)) in 
-(extended_param:(ic(E),delta(E),gamma(E)+shift,lambda(E)+shift,theta(E), g(E), l(E), omega(E),tau(E),t(E)),shift)
+set translate_to_dominant(extended_param
+    (ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E) = (extended_param,vec):
+  let (new_gamma,shift)=make_dominant_using_roots(root_datum(E),gamma)
+  in
+   ((ic,delta, gamma+shift,lambda+shift,theta, g,l,omega, tau,t)
+   ,shift)
 
 
 set fixed_block_of(mat delta, Param p)=[Param]:
-let rv=[Param]:[] in 
+let rv=[Param]:[] in
 for p in block_of(p) do if twist(delta,p)=p then  rv#:=p fi od;rv
 
 { for debugging:
   test that an extended parameter satisfies the defining conditions }
 set verify (extended_param
        (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) =
-{  if not square_is_central(ic,theta,(g-l-rho_check(ic))/2)}
+{ if not square_is_central(ic,theta,(g-l-rho_check(ic))/2) }
   if not square_is_central(ic,theta,(g-l-rho_check(ic)))
   then prints("xi^2 is not central"); false
   elif delta*gamma!=gamma then prints("gamma is not delta-fixed"); false
@@ -200,7 +207,7 @@ set fixed(mat delta, [Param] B)=[Param]:
 { display(E): terse output of E }
 set display (extended_param (,,gamma,lambda,,g,l,,tau,t):E) = void:
 ( prints("     x=", x(E))
-;prints(" gamma=",gamma)
+; prints(" gamma=",gamma)
 ; prints("     g=",g)
 ; prints("")
 ; prints("lambda=",lambda)
