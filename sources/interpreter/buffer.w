@@ -520,6 +520,13 @@ Hash_table input_files_seen; // files successfully opened at least once
 BitMap input_files_completed; // marks those files that were read without error
 std::istream* stream; // points to the current input stream
 
+@ A line is ended if |p| is either null (indicating an absence of any line
+buffered, as is initially the case), or points to a null character (the one
+terminating the line buffer, which always follows a newline character).
+
+@< Inline fun... @>=
+inline bool BufferedInput::eol() const @+{@; return p==nullptr or *p=='\0'; }
+
 @ There are two constructors, one for associating an input buffer to some
 (raw) |istream| object (which may represent a disk file or pipe), another for
 associating it to probably interactive input from |stdin|. A prompt and
@@ -656,8 +663,15 @@ void BufferedInput::close_includes()
 }
 
 @ Pushing a new input file requires constructing the new |input_record| on the
-stack. Opening the file will be done by the constructor of that record. If
-opening the file fails the constructor still succeeds; we leave it to the
+stack. Opening the file is done here by the constructor of that record. We
+also set |line_no| to
+the line number at which we shall resume reading the interrupted file, since
+switching back to that file will happen when we pop the record created here
+from the |input_stack|; this happens \emph{after} an attempt to read
+from the associated file failed, at which point incrementing the line number
+is already done, and won't be repeated.
+
+If opening the file fails the constructor still succeeds; we leave it to the
 calling function to detect this condition and destroy the created record.
 
 However, in case the file is not open after constructing the |fstream|,
@@ -704,30 +718,15 @@ that might be added by the |input_record| constructor if necessary, and we
 don't want to store file names that were unsuccessfully opened, so we postpone
 this test until the |input_record| is constructed. To limit the drawback that
 this strategy would lead us to open and then immediately close files in case
-they are skipped, we add an optimisation clause that avoids any work in case
-|name| exactly matches a file name previously opened; this should be an
-incentive to include the extension when including a file from another file. It
-can have a noticeable effect, but only in the weird case that a user first
-successfully reads a file without extension, then deletes it and again tries
-to load it without mentioning an extension; without the optimisation clause
-our implementation would in that case try to load the file name with
-extension, but in fact we won't do that.
+they are skipped, we add a short-cut that avoids any work in case |name|
+exactly matches a file name previously opened; this should be an incentive to
+include the extension when including a file from another file.
 
-The above constructor for |input_record| is then called with |line| equal to
-the line number at which we shall resume reading the interrupted file, since
-switching back to that file will happen after a future failing attempt to read
-from the file opened here; at that point advancing the line number has already
-taken place, and will not be repeated after popping the |input_stack|.
-
-Only if the new file stream is in |good| state after opening do we set to
-buffer |stream| member to it, and reset the line number to~1. In the contrary
-case we print an error message, destroy the stack record, and report failure.
-We eave it up to the caller to decide whether or not to abandon the currently
-open input file(s): when including a second file from an included file fails,
-it may not be very sensible to continue reading from the first included file,
-since its commands probably depended on those of the second file. However such
-considerations are not really appropriate at the buffer level, and should be
-made by the caller.
+If the file just pushed on the stack was not in fact successfully opened, we
+print an error message, destroy the stack record, and report failure. Even if
+opening the file succeeded we may decide not to read from it because this
+seems unnecessary or dangerous (endless input loops); in those cases the
+record will be immediately popped but the call reports success nonetheless.
 
 @< Definitions of class members @>=
 bool BufferedInput::push_file(const char* name, bool skip_seen)
@@ -737,34 +736,13 @@ bool BufferedInput::push_file(const char* name, bool skip_seen)
     return true;
   input_stack.push_back(@|input_record(*this,name));
   if (input_stack.back().stream->is_open())
-  { bool skip=false;
-    const Hash_table::id_type file_nr = input_stack.back().name;
-    if (file_nr==input_files_completed.capacity()) // it wasn't seen before
-      input_files_completed.extend_capacity(false); // create new empty slot
-    else // old name; need to do some checks
-    { skip = skip_seen and input_files_completed.isMember(file_nr);
-      auto it=input_stack.cbegin();
-      while (not skip and not input_stack.at_end(++it))
-        if (file_nr==it->name)
-          skip=true; // avoid recursive inclusion of active file
-    }
-    if (skip)
-    {@; delete input_stack.back().stream;
-          input_stack.pop_back();
-    }
-    else
-    { std::cout << "Starting to read from file '" << cur_fname()
-                << "'." << std::endl;
-    @/stream= input_stack.back().stream;
-      line_no=1; // prepare to read from pushed file
-      cur_lines=0;
-        // so we won't advance |line_no| when getting first line of new file
-    }
+  { @< In cases where reading from this file should be avoided,
+       pop its record from the |input_stack|;
+       otherwise prepare for reading from the new file @>
     return true; // succeed whether or not a file was actually pushed
   }
   else // opening file failed
-  { std::cerr << "failed to open input file '" << cur_fname()
-              << "'." << std::endl;
+  { std::cerr << "failed to open input file '" << name << "'." << std::endl;
   @/delete input_stack.back().stream;
     input_stack.pop_back();
 // no need to call |pop_file|: |stream|, |line_no| and |cur_lines| unchanged
@@ -772,13 +750,45 @@ bool BufferedInput::push_file(const char* name, bool skip_seen)
   }
 }
 
-@ A line is ended if |p| is either null (indicating an absence of any line
-buffered, as is initially the case), or points to a null character (the one
-terminating the line buffer, which always follows a newline character).
+@ The conditions that lead to silently popping a just successfully opened file
+are the presence of a file with the same name below it on the |input_stack| (a
+test necessary to avoid input loops), or both the |skip_seen| argument is set,
+and the file is marked as completely read in the |input_files_completed|
+bitmap. Although the conditions are tested here in the opposite order, |skip|
+is set to the ``or'' of both conditions in all cases.
 
-@< Inline fun... @>=
-inline bool BufferedInput::eol() const @+{@; return p==0 or *p=='\0'; }
+When the file is really going to be read from, this is reported to
+|std::cout|, and the member variable |stream| is set to
+|input_stack.back().stream| so that the next reading operation will be from
+the new file. We also take care to get the line numbering for the new file off
+to a good start.
 
+@< In cases where reading from this file should be avoided,... @>=
+{ bool skip=false;
+  const Hash_table::id_type file_nr = input_stack.back().name;
+  if (file_nr==input_files_completed.capacity()) // it wasn't seen before
+    input_files_completed.extend_capacity(false);
+       // add new empty slot to bitmap; may set it later
+  else // old name; need to do some checks
+  { skip = skip_seen and input_files_completed.isMember(file_nr);
+    auto it=input_stack.cbegin();
+    while (not skip and not input_stack.at_end(++it))
+      if (file_nr==it->name)
+        skip=true; // avoid recursive inclusion of active file
+  }
+  if (skip)
+  {@; delete input_stack.back().stream;
+        input_stack.pop_back();
+  }
+  else
+  { std::cout << "Starting to read from file '" << cur_fname()
+              << "'." << std::endl;
+  @/stream= input_stack.back().stream;
+    line_no=1; // prepare to read from pushed file
+    cur_lines=0;
+      // so we won't advance |line_no| when getting first line of new file
+  }
+}
 
 @ The member function |getline| is usually called at times when |eol()| would
 return |true| (otherwise some input will be discarded). This should only
