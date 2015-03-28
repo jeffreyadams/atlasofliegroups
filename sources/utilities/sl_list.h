@@ -532,7 +532,8 @@ size_t length (const simple_list<T,Alloc>& l)
 }
 
 template<typename T,typename Alloc>
-typename simple_list<T,Alloc>::const_iterator end (const simple_list<T,Alloc>& l)
+typename simple_list<T,Alloc>::const_iterator end
+  (const simple_list<T,Alloc>& l)
 {
   auto it=l.cbegin();
   while (not l.at_end(it))
@@ -541,7 +542,8 @@ typename simple_list<T,Alloc>::const_iterator end (const simple_list<T,Alloc>& l
 }
 
 template<typename T,typename Alloc>
-inline typename simple_list<T,Alloc>::const_iterator cend (const simple_list<T,Alloc>& l)
+typename simple_list<T,Alloc>::const_iterator cend
+  (const simple_list<T,Alloc>& l)
 { return end(l); }
 
 template<typename T,typename Alloc>
@@ -1035,7 +1037,7 @@ typename sl_list<T,Alloc>::const_iterator end (const sl_list<T,Alloc>& l)
 { return l.end(); }
 
 template<typename T,typename Alloc>
-inline typename sl_list<T,Alloc>::const_iterator cend (const sl_list<T,Alloc>& l)
+typename sl_list<T,Alloc>::const_iterator cend (const sl_list<T,Alloc>& l)
 { return end(l); }
 
 template<typename T,typename Alloc>
@@ -1055,8 +1057,9 @@ template<typename T,typename Alloc = std::allocator<T> >
   typedef sl_node<T, Alloc> node_type;
   typedef typename Alloc::template rebind<node_type>::other alloc_type;
 
-  // forward most constructors, but reverse order for initialised ones
   public:
+  // forward most constructors, but reverse order for initialised ones
+  // for this reason we cannot use perfect forwarding for the constructor
   mirrored_simple_list () : Base() {}
   explicit mirrored_simple_list (const Alloc& a) : Base(a) {}
   explicit mirrored_simple_list (Alloc&& a) : Base(std::move(a)) {}
@@ -1081,12 +1084,18 @@ template<typename T,typename Alloc = std::allocator<T> >
 			const alloc_type& a=alloc_type())
     : Base(n,x,a) {}
 
-  // forward |push_back|, |back| and |pop_back| methods with name change
-  void push_back(const T& val) { Base::push_front(val); }
-  void push_back(T&& val) { Base::push_front(std::move(val)); }
-  const T& back () const { return Base::front(); }
-  T& back () { return Base::front(); }
-  void pop_back () { return Base::pop_front(); }
+  // forward |push_front| method from |Base|, and its likes, as ...|back|
+  template<typename... Args> void push_back(Args&&... args)
+  { Base::push_front(std::forward<Args>(args)...); }
+  template<typename... Args> void pop_back(Args&&... args)
+  { Base::pop_front(std::forward<Args>(args)...); }
+  template<typename... Args> void emplace_back (Args&&... args)
+  { Base::emplace_front(std::forward<Args>(args)...); }
+
+  template<typename... Args> const T& back(Args&&... args) const
+  { return Base::front(std::forward<Args>(args)...); }
+  template<typename... Args>       T& back(Args&&... args)
+  { return Base::front(std::forward<Args>(args)...); }
 
 }; // |class mirrored_simple_list<T,Alloc>|
 
@@ -1123,16 +1132,26 @@ template<typename T,typename Alloc = std::allocator<T> >
 		    const alloc_type& a=alloc_type())
     : Base(n,x,a) {}
 
-  // forward |push_back|, |back| and |pop_back| methods with name change
-  void push_back (const T& val) { Base::push_front(val); }
-  void push_back(T&& val) { Base::push_front(std::move(val)); }
-  const T& back () const { return Base::front(); }
-  T& back () { return Base::front(); }
-  void pop_back () { return Base::pop_front(); }
+  // forward |push_front| method from |Base|, and its likes, as ...|back|
+  template<typename... Args> void push_back(Args&&... args)
+  { Base::push_front(std::forward<Args>(args)...); }
+  template<typename... Args> void pop_back(Args&&... args)
+  { Base::pop_front(std::forward<Args>(args)...); }
+  template<typename... Args> void emplace_back (Args&&... args)
+  { Base::emplace_front(std::forward<Args>(args)...); }
 
-  // while not needed for |std::stack|, provide renaming |push_front| too
-  typename Base::iterator push_front (const T& val)
-  { return Base::push_back(val); }
+  template<typename... Args> const T& back(Args&&... args) const
+  { return Base::front(std::forward<Args>(args)...); }
+  template<typename... Args>       T& back(Args&&... args)
+  { return Base::front(std::forward<Args>(args)...); }
+
+  // also rename all ...|back| methods from |Base| to ...|front|
+  template<typename... Args>
+    typename Base::iterator push_front (Args&&... args)
+  { return Base::push_back(std::forward<Args>(args)...); }
+  template<typename... Args>
+    typename Base::iterator emplace_front (Args&&... args)
+  { return Base::emplace_back(std::forward<Args>(args)...); }
 
 }; // |class mirrored_sl_list<T,Alloc>|
 
