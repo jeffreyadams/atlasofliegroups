@@ -2125,6 +2125,13 @@ fields. To remind us that the |parent| is not there to be changed by us, we
 declare it |const|. The object referred to may in fact undergo internal change
 however, via manipulators of the |val| field.
 
+The |cocharacter| field is a recent addition to the structure, allowing us to
+distinguish between several strong real forms associated to the same weak real
+form; see synthetic real forms below. We therefore provide two constructors:
+the first computes |cocharacter| from a grading giving the weak real form, and
+another where |cocharacter| is explicitly provided; it is used for synthetic
+real forms.
+
 @< Type definitions @>=
 struct real_form_value : public value_base
 { const inner_class_value parent;
@@ -2211,7 +2218,8 @@ void real_form_wrapper(expression_base::level l)
 void form_number_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(rf->parent.interface.out(rf->val.realForm())));
+    push_value(std::make_shared<int_value>@|
+      (rf->parent.interface.out(rf->val.realForm())));
 }
 @)
 void quasisplit_form_wrapper(expression_base::level l)
@@ -2270,19 +2278,34 @@ void KGB_size_wrapper(expression_base::level l)
 
 @ Here is a somewhat technical function that will facilitate working ``in
 coordinates'' with KGB elements for this real form. It returns a rational
-vector that determines the base grading for the real form, which is an offset
-that should be added to |torus_bits| values. It is defined so as to be zero
-for quasisplit real forms, so in order to compute gradings, the
-imaginary-$\rho$ value (dependent on the involution) should be added to it.
+coweight that determines the base grading for the real form, and which is an
+offset that will be added to |torus_bits| values when computing the
+|torus_factor| they represent. It is defined so that a zero value corresponds
+to a quasisplit real form, which proves the most useful base point. This does
+imply that a standard choice for the ``infinitesimal cocharacter'' for the
+real from must differ by ${}^\vee\!\rho$ from the value produced here (and the
+|cocharacter| field that stores it does not really have the right name).
+
+We take care to ensure that the coweight returned is dominant, while remaining
+in the coset of $2X_*$ defined by |rf->cocharacter| so that the torus element
+$\exp(\pi\ii t)$ giving the actual base grading is unaffected.
 
 @< Local function def...@>=
 void base_grading_vector_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
+  const ComplexReductiveGroup& G_C=rf->parent.val;
   if (l==expression_base::no_value)
     return;
   RatCoweight t = rf->cocharacter.as_Qmod2Z(); // take a copy
-  push_value(std::make_shared<rational_vector_value>
-    (symmetrise(t,rf->parent.val.distinguished())));
+  for (weyl::Generator s=0; s<G_C.semisimpleRank(); ++s)
+  { arithmetic::Numer_t v = G_C.rootDatum().simpleRoot(s).dot(t.numerator());
+      // integer
+    RatWeight omega = G_C.rootDatum().fundamental_coweight(s);
+    v = arithmetic::divide(v,t.denominator()*omega.denominator()*2)*2;
+      // round down to even
+    t -= omega.numerator()*v; // adjust to make |t| ``just dominant'' for |s|
+  }
+  push_value(std::make_shared<rational_vector_value>(t));
 }
 
 @ There is a partial ordering on the Cartan classes defined for a real form. A
@@ -2345,7 +2368,7 @@ errors (for instance when trying to make a block for a pair of real forms
 rather than for a real form and a dual real form) via the type system, rather
 than through a runtime check, did not in the end justify the additional
 complications this gave to studying the dual situation (and with explicit type
-conversion from real form to dual form and vice versa, mentioned type safety
+conversions from real form to dual form and vice versa, mentioned type safety
 was emptied of it substance).
 
 To make a dual real form, one provides an |inner_class_value| and a valid
@@ -2382,7 +2405,7 @@ its index within its inner class, namely on a strong involution representative
 (involution and torus element). The synthetic \.{realex} function |real_form|
 takes an inner class, a matrix giving an involution~$\theta$, and a
 $\theta$-stable rational coweight describing (through $l\mapsto\exp(\pi\ii
-l)$) torus element; it returns the corresponding real form, but in which a
+l)$) a torus element; it returns the corresponding real form, but in which a
 |cocharacter| value is stored deduced from $\exp(\pi\ii l)$ that identifies
 the strong real form, and may differ from the |cocharacter| value for the weak
 real form that could be obtained by selecting by number in the inner class.

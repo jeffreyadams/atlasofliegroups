@@ -73,6 +73,13 @@ class RationalVector
   RationalVector<C>& operator/=(C n);
   RationalVector<C>& operator%=(C n);
 
+  RationalVector<C>& operator+=(const V& v){ d_num += v*d_denom; return *this; }
+  RationalVector<C>& operator-=(const V& v){ d_num -= v*d_denom; return *this; }
+  RationalVector<C> operator+(const V& v) const
+  { return RationalVector<C>(*this)+= v; }
+  RationalVector<C> operator-(const V& v) const
+  { return RationalVector<C>(*this)-= v; }
+
   RationalVector<C>& operator*=(const arithmetic::Rational& r);
   RationalVector<C>& operator/=(const arithmetic::Rational& r);
   RationalVector<C> operator*(const arithmetic::Rational& r) const;
