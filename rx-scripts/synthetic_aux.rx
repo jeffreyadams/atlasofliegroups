@@ -36,7 +36,7 @@ set make_simple_sequence (RootDatum rd, vec root) = ([int], int):
      do i:=0; while i<r and alphav[i]*root<=0 do i+:=1 od
      ; if i=r then error("not a positive root")
        elif root = alpha[i] then busy:=false
-       else let ref=posroot_reflection(rd,i) { actually a simple root here }
+       else let ref=reflection(rd,i) { actually a simple root here }
          in root := ref*root; w := i#w
        fi
      od; (w,i)
@@ -45,7 +45,7 @@ set my_posroot_cross (int i, Param p) = Param:
   let x0 = x(p), gamma = infinitesimal_character(p)
   then rd = root_datum(real_form(x0))
   , x1=posroot_cross(i,x0), grading_wt=gamma-lambda(p)+rho_r(x0)
-  then theta1= involution(x1), w=posroot_reflection(rd,i)
+  then theta1= involution(x1), w=reflection(rd,i)
   then (new_gamma,)=make_dominant_using_roots(rd,reflection(rd,i)*gamma)
   in parameter(x1,new_gamma - w*grading_wt + rho_r(rd,theta1), new_gamma)
 
@@ -104,7 +104,7 @@ set my_posroot_inv_Cayley (int i, Param p) = Param:
   then (w,s) = make_simple(id,beta)
   then w1=inverse(w)
   then theta1 = w*theta0*w1 { involution for Cayley by root(id,s) }
-  then theta2 = posroot_reflection(rd,s)*theta1 { for simple imaginary Cayley }
+  then theta2 = reflection(rd,s)*theta1 { for simple imaginary Cayley }
   then diff1 = w1*rho_r(rd,theta1) - rho_r(rd,theta0)
   ,    diff2 = w1*rho_r(rd,theta2) - rho_r(rd,theta3)
 {  in let()=prints("diff1: ", diff1, " diff 2: "

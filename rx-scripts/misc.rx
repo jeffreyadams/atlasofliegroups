@@ -1,9 +1,6 @@
 <basic.rx
 
 { test if an integer is even, or a rational is an integer }
-set is_even (int i)    = bool: i%2=0
-set is_odd (int i)    = bool: i%2=1
-set is_integer (rat r) = bool: denom(r)=1
 set is_nonnegative (vec v) = bool:
   let n=#v-1 in while n>=0 and v[n]>=0 do n-:=1 od; n<0
 set is_positive (vec v) = bool:

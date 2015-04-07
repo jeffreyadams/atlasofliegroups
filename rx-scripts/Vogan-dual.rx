@@ -1,34 +1,69 @@
 <basic.rx
-<extended_misc.rx {for dual_gamma}
-
-{ to compute y values over a block of parameters, precompute dual inner class }
-set dual_inner_class(Param p) = InnerClass:
-  let id = integrality_datum(real_form(p),infinitesimal_character(p))
-  in dual(inner_class(id,involution(x(p))))
+<parameters.rx { for dual_inner_class }
+<extended_misc.rx {for shift_g_regular }
 
 set rho_i ((RootDatum, mat) rd_theta) = ratvec:
   sum(imaginary_poscoroots(rd_theta))/2
 
-{ find integral coweight that will correct grading for rational coweight |v|
-  on (simple-imaginary roots) columns of |simples|. This means finding w such
-  that < w , alpha > = < v , alpha > + 1 (mod 2) for all such roots alpha
+{ half sum of positive coroots for roots not integral on (torus element of) z }
+set rho_diff_integral (RootDatum rd, ratvec z) = ratvec:
+  rho_check(rd)-rho(integrality_datum(dual(rd),z))
+
+{ |rho_diff_integral(z)|, but made $\theta$-stable by a sum-of-roots shift.
+  Here |x| just serves to record |theta=involution(x)|; such |x| is easy to
+  build from |theta|, and |cross| is more efficient than matrix conjugation
+}
+set theta_stable_diff ((KGBElt, ratvec)(x,z):xz) = ratvec:
+  let rd = RootDatum: real_form(x)
+  then ssr1 = semisimple_rank(rd)-1
+  , tsd (KGBElt x,ratvec z) = ratvec:[] { recursive stub }
+  in (assert(all(for alpha in real_posroots(x) do denom(alpha*z)=1 od))
+     ; tsd :=
+      ((KGBElt x,ratvec z) ratvec:
+       let s=ssr1 { test simple reflections of being complex descents }
+       in while s>=0 and status(s,x)>0 do s-:=1 od
+       ; if s<0 then let res=rho_diff_integral(rd,z)
+         in assert (res*involution(x)=res,"unstable"); res
+         else let rs=reflection(rd,s) in tsd(cross(s,x),z*rs)*rs
+         fi
+      )
+     )(xz)
+
+{
+  When restricting to a centraliser subgroup, we shall need to correct a
+  potential torus factor |tf| with respect to the changed system of
+  imaginary roots. The final correction is computed by the |integral_shift| as
+  an integer vector, which moreover should be $\theta$-stable, so that
+  whatever correction is made will not change the square class that has been
+  fixed beforehand; the condition for which the correction is computed is to
+  get the proper grading on the simple-imaginary roots of the subsystem, which
+  are passed as |simples| argument. That grading undergoes two changes. Even
+  if |tf| remains valid it grades imaginary roots indirectly through an offset
+  $\rho_im$; this means we must compensate for the grading change implied for
+  the difference of the offset between full system and subsystem. Apart from
+  that, we may have (had to) to shift |tf| in order to get into the proper
+  (square class for the subsystem) coset. In order to compute the correction
+  we pass (not |tf| but) that shift made, minus to old $\rho_im$ as |v|; the
+  new $\rho_im$ value is implicit in |simples| and is not included in the
+  passed value of |v|. So we must find an (integral) vector |w| such that for
+  all roots alpha in |simples|: < w , alpha > = < v , alpha > + 1 (mod 2).
+  This condition being $\theta$-invariant, we hope the solution is as well.
 }
 set integral_shift(ratvec v, mat simples) = vec:
-  let vals = for x in ratvec_as_vec(v * simples) do 1-x%2 od { 1 for rho_im }
+  let vals = for x in ratvec_as_vec(v*simples) do 1-x%2 od { 1 for new rho_im }
   then sol = vals*mod2_section(simples)
-  in if (sol*simples)%2 = vals then sol
-     else print(^simples,vals); error("no solution mod 2")
-     fi
-{this fails for G=SL(5,R), p_0=spherical_principal_series(G,rho(G)/2), 
-b=block_of(p_0), p=b[1]
-}
-set y_alt(Param p, InnerClass G_vee) = KGBElt:
-  let x=x(p)
-  then dual_theta = -^involution(x)
-  , rho_corr = rho(real_form(x))-rho_check(G_vee)
-  then (simple_reals,) = simple_from_positive(imaginary_sys(G_vee,dual_theta))
-  , phi = infinitesimal_character(p) - lambda(p) + rho_corr
-  in KGB_elt(G_vee,dual_theta
+  in assert ((sol*simples)%2 = vals,"no solution mod 2"); sol
+
+set y_alt(Param p, InnerClass dual_int_ic) = KGBElt:
+  let x=x(p), dual_tf=infinitesimal_character(p) - lambda(p)
+  then dual_theta = -^involution(x)  { |dual_tf| is |dual_theta|-stable }
+  then dual_x = { elt that just represents |dual_theta| in full dual group }
+    KGB_elt(dual(inner_class(x)),dual_theta,null(#dual_tf))
+  then rho_corr { correct changing of rho_check implicit in dual_tf }
+    = theta_stable_diff(dual_x,dual_tf)
+  , (simple_reals,)= simple_from_positive(imaginary_sys(dual_int_ic,dual_theta))
+  then phi = dual_tf + rho_corr { dual_theta stable rep.ve of dual square }
+  in prints(dual_tf,rho_corr,phi); KGB_elt(dual_int_ic,dual_theta
             ,phi+integral_shift(rho_corr-rho_r(x),simple_reals))
 
 
@@ -53,15 +88,6 @@ set central_cocharacter (RealForm G) = ratvec:
 set dual_shift (RootDatum rd, ratvec gamma) = ratvec:
   rho_check(integrality_datum(rd,gamma))-rho_check(rd)
 
-{ shift (up) a candidate dual infinitesimal character to strictly dominant }
-{moved to extended.rx
-set shift_g_regular (RootDatum rd, ratvec g) = ratvec:
-  for alpha@i in simple_roots(rd)
-  do let (v,d) = %fundamental_coweight(rd,i)
-     in g +:= (1-ceil(g*alpha/d)) * v
-  od; g
-}
-
 { Finding the value lambda for the dual parameter to p is surprisingly simple.
   Since imaginary roots are automatically integral, there is no difference
   of rho_i values to compensate for. The dual infinitesimal character is
@@ -74,11 +100,9 @@ set ell(KGBElt x) = vec:
   let (numer,denom) = %(base_grading_vector(real_form(x))-torus_factor(x))
   in if denom=1 then numer else error("non-integral ell(x)") fi
 
-{moved to extended_misc.rx}
-{set dual_gamma (Param p) = ratvec: { we want this to be strictly dominant }
-  let G = real_form(p), dual_rho = rho_check(integrality_datum(p))
-  in shift_g_regular(G,base_grading_vector(G) + dual_rho)
-}
+set dual_gamma (Param p) = ratvec: { we want this to be strictly dominant }
+  let G = real_form(p) in
+  shift_g_regular(G,base_grading_vector(G) + rho_check(integrality_datum(p)))
 
 set dual_lambda (Param p) = ratvec: { is mod 2: ell(p)+rho(dual_inner_class) }
   dual_gamma(p) - torus_factor(x(p))

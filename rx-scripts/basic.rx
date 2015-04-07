@@ -4,6 +4,9 @@ set # (ratvec v)= int: let (n,)=%v in #n    { length }
 
 set ^ = !=@(bool,bool) { exclusive or }
 
+set assert(bool b,string message) = void: if not b then error(message) fi
+set assert(bool b) = void: assert(b,"assertion failed") { default message }
+
 { bitsets encoded as functions (int->bool) and upper bound limit }
 
 set list ((int->bool) filter, int limit) = [int]:
@@ -16,20 +19,27 @@ set complement ((int->bool) filter, int limit) = [int]:
 set count ((int->bool) filter, int limit) = int:
   let c=0 in for i:limit do if filter(i) then c+:=1 fi od; c
 
-set all ((int->bool) filter, int limit) = bool:
-  while limit-:=1; limit>=0 and filter(limit) do () od; limit<0
-set none ((int->bool) filter, int limit) = bool:
-  while limit-:=1; limit>=0 and not filter(limit) do () od; limit<0
+set all ([bool] p) = bool:
+  let i=#p-1 in while i>=0 and p[i] do i-:=1 od; i<0
+set none ([bool] p) = bool:
+  let i=#p-1 in while i>=0 and not p[i] do i-:=1 od; i<0
+set first ([bool] p) = int:
+  let i=#p-1 in while i>=0 and not p[i] do i-:=1 od; i
 
+set all (int limit,(int->bool) filter) = bool:
+  while limit-:=1; limit>=0 and filter(limit) do () od; limit<0
+set none (int limit,(int->bool) filter) = bool:
+  while limit-:=1; limit>=0 and not filter(limit) do () od; limit<0
+set first ( int limit,(int->bool) filter) = int:
+  while limit-:=1; limit>=0 and not filter(limit) do () od; limit
 
 {				Integers				}
 
-{ absolute value and sign of integer}
 set abs (int k)= int: if k<0 then -k else k fi
-set sign (int k)= int: if k<0 then -1 elif k=0 then 0 else 1 fi
+set sign (int k)= int: if k=0 then 0 else k\k fi
 
-set odd  (int n) = bool: n%2=1
-set even (int n) = bool: n%2=0
+set is_odd  (int n) = bool: n%2=1
+set is_even (int n) = bool: n%2=0
 
 set min (int k, int l) = int: if k<l then k else l fi
 set max (int k, int l) = int: if k<l then l else k fi
@@ -43,11 +53,13 @@ set != ((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0!=x1 or y0!=y1
 set numer (rat a) = let (n,)=%a in n
 set denom (rat a) = let (,d)=%a in d
 
+set is_integer (rat r) = bool: denom(r)=1
+
 set floor (rat a) = int: \ %a     { decompose, then integer division }
 set ceil  (rat a) = int: -\ %-a   { same, sandwiched in negations }
 
-set \((rat,int)p) = int: floor(/p)
-set \((rat,rat)p) = int: floor(/p)
+set \ ((rat,int)p) = int: floor(/p)
+set \ ((rat,rat)p) = int: floor(/p)
 
 { these are mostly for ratvec arguments, but avoid coercing from vec }
 set floor ([rat] v) = vec: for a in v do floor(a) od
@@ -221,7 +233,10 @@ set * (ratvec v, ratvec w) = rat: let (nv,dv)=%v,(nw,dw)=%w in nv*nw/(dv*dw)
 set * (vec v, ratvec w) = rat: let (nw,dw)=%w in v*nw/dw { more efficient }
 { cannot also define: *(ratvec v, vec w) = rat: let (nv,dv)=%v in nv*w/dv }
 
-{ make a rational vector into an integer one if possible }
+{ vector floor of quotient operation, makes vector from rational vector }
+set \ (ratvec v, int k) = vec: let (n,d)=%v in n\(k*d)
+
+{ do as |v\1| (or |\ %v|) would do, but protest if there would be a remainder }
 set ratvec_as_vec(ratvec v) = vec:
   let (w,d)=%v in if d=1 then w else error("Not an integer vector") fi
 
@@ -362,10 +377,6 @@ set simple_from_positive (mat posroots,mat poscoroots) = (mat,mat):
   ( columns_with(is_simple_for(sum(poscoroots)),posroots)
   , columns_with(is_simple_for(sum(posroots)),poscoroots)
   )
-
-{ using postive root indices allows using simple roots indices as well }
-set posroot_reflection(RootDatum rd, int r) = mat: { r indexes root }
-  1 - [root(rd,r)] * ^[coroot(rd,r)]
 
 
 {				Inner classes				}
@@ -548,6 +559,7 @@ set print_KL_list  ((RealForm,RealForm) p) = void: print_KL_list(block(p))
 set print_W_cells  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 set print_W_graph  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 
+
 {			    Module parameters				}
 
 set != (Param x,Param y) = bool: not(x=y)
@@ -580,21 +592,33 @@ set parameter (KGBElt x,ratvec lambda,ratvec nu) = Param:
 { get just the parameters from a block, just a shorcut to: (params,)=block(p) }
 set block_of (Param p) = [Param]: let (params,)=block(p) in params
 
-{ status of a parameter with respect of a Weyl generator s }
+{ status of parameter with respect to integrality generator s, or root alpha }
 
 set imaginary_type (int s, Param p) = int: if cross(s,p)=p then 2 else 1 fi
 set real_type (int s,Param p) = int: if cross(s,p)=p then 1 else 2 fi
 
-set is_non_parity (int s,Param p)=bool: is_real(s,x(p)) and inv_Cayley(s,p)=p
+set imaginary_type (vec alpha, Param p) = int:
+  if cross(alpha,p)=p then 2 else 1 fi
+set real_type (vec alpha, Param p) = int:
+  if cross(alpha,p)=p then 1 else 2 fi
+
+set is_nonparity (int s,Param p)=bool: is_real(s,x(p)) and inv_Cayley(s,p)=p
 set is_parity (int s,Param p)= bool: is_real(s,x(p)) and inv_Cayley(s,p)!=p
 
-set status (int s,Param p) = int: { enum: C-, ic, r1, r2, C+, rn, i1, i2 }
-  let st=status(posroots(integrality_datum(p))[s],x(p)) in
+set is_nonparity (vec alpha,Param p)=bool:
+  is_real(alpha,x(p)) and Cayley(alpha,p)=p
+set is_parity (vec alpha, int s,Param p)= bool:
+  is_real(alpha,x(p)) and Cayley(alpha,p)!=p
+
+set status (vec alpha,Param p) = int: { enum: C-, ic, r1, r2, C+, rn, i1, i2 }
+  let st=status(alpha,x(p)) in
   if st<=1 or st=4 then st { complex and imaginary compact cases keep old code }
-  elif st=3 then { imaginary non-compact } 5+imaginary_type(s,p)
-  elif inv_Cayley(s,p)=p then { real non-parity } 5
-  else 1+real_type(s,p)
+  elif st=3 then { imaginary non-compact } 5+imaginary_type(alpha,p)
+  elif Cayley(alpha,p)=p then { real non-parity } 5
+  else 1+real_type(alpha,p)
   fi
+
+set status (int s,Param p) = int: status(posroots(integrality_datum(p))[s],p)
 
 set block_status_text (int i) = string:
   ["C-","ic","r1","r2","C+","rn","i1","i2"][i]
@@ -603,12 +627,21 @@ set status_text (int s,Param p) = string: block_status_text(status(s,p))
 set status_texts(Param p) = [string]:
   for s:semisimple_rank(real_form(p)) do status_text(s,p) od
 
+set status_text ((vec,Param) ap) = string: block_status_text(status(ap))
+
+set parity_posroots (Param p) = mat: { set of positive real parity roots }
+  columns_with((vec alpha):status(alpha,p)!=5,real_posroots(x(p)))
+set nonparity_posroots (Param p) = mat: { positive real nonparity roots }
+  columns_with((vec alpha):status(alpha,p)=5,real_posroots(x(p)))
+
 set is_descent (int s,Param p) = bool: status(s,p)<4
 set tau_bitset(Param p) = ((int->bool),int):
   ((int s): is_descent(s,p), semisimple_rank(real_form(p)))
 
 set tau (Param p)            = [int]: list(tau_bitset(p))
 set tau_complement (Param p) = [int]: complement(tau_bitset(p))
+
+set is_descent ((vec,Param) ap) = bool: status(ap)<4
 
 set lookup (Param p, [Param] block) = int:
   let i=#block-1 in while i>=0 and block[i]!=p do i-:=1 od; i

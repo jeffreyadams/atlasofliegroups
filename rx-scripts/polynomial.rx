@@ -98,19 +98,19 @@ set ^(poly p,int n) = poly: { power of a polynomial }
 
 { equality of polynomial matrices }
 set =(poly_mat A,poly_mat B) = bool:
-  all((int i):bool: let r=A[i],s=B[i] in all((int j): r[j]=s[j],#r),#A)
+  all(#A, (int i): let r=A[i],s=B[i] in #r=#s and all(#r, (int j): r[j]=s[j] ))
 
-{ polynomial is 0 }
+{ polynomial matrix is 0 if all its entries are zero-length polynomials }
 set is_zero(poly_mat M)= bool:
-  all((int i):bool: let r=M[i] in all((int j): #r[j]=0,#r),#M)
+  all(#M, (int i): let r=M[i] in all(#r, (int j): =#r[j]) )
 
-{for convenience}
-set one=poly: [1]
-set sgn_poly(int k) = poly:
-  [if k<0 then -1 elif k>0 then 1 else error("taking sign of 0") fi]
-set two=poly: [2]
+{ for convenience }
+set one = poly: [1]
+set two = poly: [2]
 set q=poly: [0,1]
 set q2=poly: [0,0,1]
+set sgn_poly(int k) = poly:
+  [if k<0 then -1 elif k>0 then 1 else error("taking sign of 0") fi]
 set evaluate_at_1 = sum@poly
 
 { compute PMP^{-1} where P is a permutation of [1,,,n]
