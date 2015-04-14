@@ -73,6 +73,9 @@ public:
   Vector<C>& operator-= (const Vector<C>&);
   Vector<C>& operator*= (C);
   Vector<C>& negate (); // negates argument in place
+  template<typename I> Vector& add(I b, I e);
+  template<typename I> Vector& subtract(I b, I e);
+
 
   template<typename C1> C1 dot (const Vector<C1>& v) const;
   bool isZero() const;
