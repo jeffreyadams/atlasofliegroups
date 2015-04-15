@@ -360,7 +360,9 @@ Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
 	    throw std::runtime_error
 	      ("Cannot make non-standard parameter integrally dominant");
 	  result.push_back(s);
-	  gamma_num -= rd.root(alpha).scaled(v); // reflect |gamma| by |alpha|
+
+	  // reflect |gamma| by |alpha|
+	  gamma_num.subtract(rd.root(alpha).begin(),v);
 	  x = kgb().cross(rd.reflectionWord(alpha),x);
 	  i_x = kgb().inv_nr(x);
           rd.reflect(alpha,lambda2_shifted);
@@ -546,7 +548,7 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   const SubSystem& subsys = SubSystem::integral(rd,z.infinitesimal_char);
 
   WeylWord w=make_dominant(z,subsys);
-  KGBElt& x= z.x_part;
+  KGBElt x= z.x_part; // take a working copy; don't disturb |z|
   const Weight lr = lambda_rho(z); // use at end to build new parameter
   const RatWeight& infin_char=z.infinitesimal_char; // constant from here on
 
@@ -568,8 +570,9 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   case gradings::Status::ImaginaryNoncompact:
     x = kgb.cayley(s,x); break;
   case gradings::Status::Real:
-    { RatWeight parity_vector =
-	infin_char - lambda(z) + RatWeight(rd.twoRho(i_tab.real_roots(inv0)),2);
+    { Weight rho2_diff = rd.twoRho() - rd.twoRho(i_tab.real_roots(inv0));
+      RatWeight parity_vector =
+	infin_char - lr - RatWeight(std::move(rho2_diff),2);
       if (parity_vector.dot(rd.coroot(rt))%2==1) // then |rt| was parity
       {	x = kgb.inverseCayley(s,x).first; // do inverse Cayley at |inv1|
 	break;

@@ -154,6 +154,7 @@ class Rep_context
 
   RationalList reducibility_points(const StandardRepr& z) const; // normalised
 
+  // the following take |z| by value, modifying and in some cases returning it
   StandardRepr cross(weyl::Generator s, StandardRepr z) const;
   StandardRepr Cayley(weyl::Generator s, StandardRepr z) const;
   StandardRepr inv_Cayley(weyl::Generator s, StandardRepr z) const;

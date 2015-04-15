@@ -3757,7 +3757,7 @@ construction, and in doing so describe the root argument by index \emph{in the
 integral subsystem} which is potentially confusing, especially in the case
 where the infinitesimal character of the parameter is not dominant, since the
 integral subsystem is only fixed after transforming the parameter into an
-equivalent one with dominantinfinitesimal character. The below function
+equivalent one with dominant infinitesimal character. The below function
 implement a new approach, less confusing and more general, in which the root
 is specified in coordinates. Given the internal implementation, there is in
 fact little dealing with the integral subsystem at all, just a test that it

@@ -11,6 +11,8 @@
 
 * Work on the realex program
 
+ - Find alternative syntax for "verbose" and "quiet", liberating the keywords
+
  - Have error take arguments like prints does
 
  - See if syntax can allow (let i=3 in for k:i do print(k) od); without parens

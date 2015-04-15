@@ -473,7 +473,7 @@ SRK_context::theta_stable_parabolic
   const RootDatum& rd=rootDatum();
   const TwistedWeylGroup& W=twistedWeylGroup();
 
-  Weight dom=theta_lift(sr);
+  Weight dom=theta_lift(sr); // theta-stable weight, to be made dominant
   TitsElt strong=titsElt(sr);
 
   WeylWord ww; // conjugating element
@@ -485,31 +485,31 @@ SRK_context::theta_stable_parabolic
   */
   while (true) // loop will terminate if inner loop runs to completion
   {
-    weyl::Generator i;
-    for (i=0; i<rd.semisimpleRank(); ++i)
+    weyl::Generator s;
+    for (s=0; s<rd.semisimpleRank(); ++s)
     {
-      RootNbr alpha=rd.simpleRootNbr(i);
-      LatticeCoeff v=dom.dot(rd.simpleCoroot(i));
+      RootNbr alpha=rd.simpleRootNbr(s);
+      LatticeCoeff v=dom.dot(rd.simpleCoroot(s));
 
       if (v<0) // first priority: |dom| should be made dominant
-	break; // found value of |i| to use in conjugation/reflection
+	break; // found value of |s| to use in conjugation/reflection
       else if (v>0) continue; // don't touch |alpha| in this case
 
       // now |dom| is on reflection hyperplane for |alpha|
 
       // second priority give |alpha| and its $\theta$ image the same sign
       RootNbr beta= // image of |alpha| by $\theta$
-	rd.permuted_root(W.word(strong.w()),rd.simpleRootNbr(W.twisted(i)));
+	rd.permuted_root(W.word(strong.w()),rd.simpleRootNbr(W.twisted(s)));
       if (rd.is_negroot(beta) and beta!=rd.rootMinus(alpha))
-	break; // found |i| in this case as well
+	break; // found |s| in this case as well
 
-    } // for i
+    } // |for(s)|
 
-    if (i<rd.semisimpleRank()) // then we found a reflection |i| to apply
+    if (s<rd.semisimpleRank()) // then we found a reflection |s| to apply
     {
-      basedTitsGroup().basedTwistedConjugate(strong,i);
-      rd.simple_reflect(i,dom);
-      ww.push_back(i);
+      basedTitsGroup().basedTwistedConjugate(strong,s);
+      rd.simple_reflect(s,dom);
+      ww.push_back(s);
     }
     else break; // no simple roots give any improvement any more, so stop
   } // |while(true)|
