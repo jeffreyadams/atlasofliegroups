@@ -207,12 +207,8 @@ the appropriate expansion for these macros is the null pointer.
 
 @ After a basic initialisation, our main program constructs unique instances
 for various classes of the interpreter, and sets pointers to them so that
-various compilation units can access them. Then in a loop it calls the parser
-until it sets |verbosity<0|, which is done upon seeing the \.{quit} command.
-We call the |reset| method of the lexical scanner before calling the parser,
-which will discard any input that is left by a possible previous erroneous
-input. This also already fetches a new line of input, or abandons the program
-in case none can be obtained.
+various compilation units can access them. Then it executes the main command
+loop, from which normally only the \.{quit} command will make it exit.
 
 @h <unistd.h> // for |isatty|
 @< Main program @>=
@@ -240,31 +236,7 @@ int main(int argc, char** argv)
        << atlas::version::VERSION @| << ") of\n"
        << atlas::version::NAME << @| ". http://www.liegroups.org/\n";
 @)
-  last_value = shared_value (new tuple_value(0));
-  last_type = void_type.copy();
-   // |last_type| is a |type_ptr| defined in \.{evaluator.w}
-  while (ana.reset()) // get a fresh line for lexical analyser, or quit
-  { expr_p parse_tree;
-    int old_verbosity=verbosity;
-    ofstream redirect; // if opened, this will be closed at end of loop
-    if (yyparse(&parse_tree,&verbosity)!=0)
-      continue; // syntax error or non-expression
-    if (verbosity!=0) // then some special action was requested
-    { if (verbosity<0)
-        break; // \.{quit} command
-      if (verbosity==2 or verbosity==3)
-        // indicates output redirection was requested
-      { @< Open |redirect| to specified file, and if successful make
-        |output_stream| point to it; otherwise |continue| @>
-        verbosity=old_verbosity; // verbosity change was temporary
-      }
-      if (verbosity==1) //
-        cout << "Expression before type analysis: " << *parse_tree << endl;
-    }
-    @< Analyse types and then evaluate and print, or catch runtime or other
-       errors @>
-    output_stream= &cout; // reset output stream if it was changed
-  }
+  @< Enter the main command loop @>
   clear_history();
   // clean up (presumably disposes of the lines stored in history)
   cout << "Bye.\n";
@@ -328,6 +300,41 @@ the \.{NREADLINE} flag is set.
 
 #endif
 
+@ The command loop maintains two global variables that were defined
+in \.{evaluator.w}, namely |last_type| and |last_value|; these start off in a
+neutral state. In a loop we call the parser until it sets |verbosity<0|, which
+is done upon seeing the \.{quit} command. We call the |reset| method of the
+lexical scanner before calling the parser, which will discard any input that
+is left by a possible previous erroneous input. This also already fetches a
+new line of input, or abandons the program in case none can be obtained.
+
+@< Enter the main command loop @>=
+last_value = shared_value (new tuple_value(0));
+last_type = void_type.copy();
+ // |last_type| is a |type_ptr| defined in \.{evaluator.w}
+while (ana.reset()) // get a fresh line for lexical analyser, or quit
+{ expr_p parse_tree;
+  int old_verbosity=verbosity;
+  ofstream redirect; // if opened, this will be closed at end of loop
+  if (yyparse(&parse_tree,&verbosity)!=0)
+    continue; // syntax error or non-expression
+  if (verbosity!=0) // then some special action was requested
+  { if (verbosity<0)
+      break; // \.{quit} command
+    if (verbosity==2 or verbosity==3)
+      // indicates output redirection was requested
+    { @< Open |redirect| to specified file, and if successful make
+      |output_stream| point to it; otherwise |continue| @>
+      verbosity=old_verbosity; // verbosity change was temporary
+    }
+    if (verbosity==1) //
+      cout << "Expression before type analysis: " << *parse_tree << endl;
+  }
+  @< Analyse types and then evaluate and print, or catch runtime or other
+     errors @>
+  output_stream= &cout; // reset output stream if it was changed
+}
+
 @ If a type error is detected by |analyse_types|, then it will have signalled
 it and thrown a |runtime_error|; if that happens |type_OK| will remain |false|
 and the runtime error is silently caught. If the result is an empty tuple, we
@@ -340,33 +347,44 @@ suppress printing of the uninteresting value.
 { bool type_OK=false;
   try
   { expression_ptr e;
-    last_type=analyse_types(*parse_tree,e); // move assignment of a |type_expr|
+    type_expr found_type=analyse_types(*parse_tree,e);
     type_OK=true;
     if (verbosity>0)
       cout << "Type found: " << last_type << endl @|
 	   << "Converted expression: " << *e << endl;
     e->evaluate(expression_base::single_value);
+@)  // now that evaluation did not |throw|, we can record the predicted type
+    last_type = std::move(found_type);
     last_value=pop_value();
     static type_expr empty(empty_tuple());
     if (last_type!=empty)
       *output_stream << "Value: " << *last_value << endl;
     destroy_expr(parse_tree);
   }
-  catch (runtime_error& err)
-  { if (type_OK)
-      cerr << "Runtime error:\n  " << err.what() << "\nEvaluation aborted.";
-    else cerr << err.what();
-    cerr << std::endl;
-    reset_evaluator(); main_input_buffer->close_includes();
-  }
-  catch (logic_error& err)
-  { cerr << "Internal error: " << err.what() << ", evaluation aborted.\n";
-    reset_evaluator(); main_input_buffer->close_includes();
-  }
-  catch (exception& err)
-  { cerr << err.what() << ", evaluation aborted.\n";
-    reset_evaluator(); main_input_buffer->close_includes();
-  }
+  @< Various |catch| phrases for the main loop @>
+}
+
+@ We distinguish runtime errors (which are normal) from internal errors (which
+should not happen), and also |catch| and report any other error derived from
+|std::exception| that could be thrown. After any of these errors we close all
+open auxiliary input files; reporting where we were reading is done by the
+method |close_includes| defined in \.{buffer.w}.
+
+@< Various |catch| phrases for the main loop @>=
+catch (runtime_error& err)
+{ if (type_OK)
+    cerr << "Runtime error:\n  " << err.what() << "\nEvaluation aborted.";
+  else cerr << err.what();
+  cerr << std::endl;
+  reset_evaluator(); main_input_buffer->close_includes();
+}
+catch (logic_error& err)
+{ cerr << "Internal error: " << err.what() << ", evaluation aborted.\n";
+  reset_evaluator(); main_input_buffer->close_includes();
+}
+catch (exception& err)
+{ cerr << err.what() << ", evaluation aborted.\n";
+  reset_evaluator(); main_input_buffer->close_includes();
 }
 
 @ For the moment the only command line argument accepted is \.{-nr}, which
