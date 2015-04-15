@@ -75,10 +75,10 @@ class RationalVector
 
   template <typename C1>
     RationalVector& operator+=(const matrix::Vector<C1>& v)
-    { d_num += v.scaled(denominator()); return *this; }
+    { d_num.add(v.begin(),denominator()); return *this; }
   template <typename C1>
     RationalVector& operator-=(const matrix::Vector<C1>& v)
-    { d_num -= v.scaled(denominator()); return *this; }
+    { d_num.subtract(v.begin(),denominator()); return *this; }
 
   template <typename C1>
     RationalVector operator+(const matrix::Vector<C1>& v) const

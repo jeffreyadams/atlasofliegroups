@@ -360,7 +360,9 @@ Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
 	    throw std::runtime_error
 	      ("Cannot make non-standard parameter integrally dominant");
 	  result.push_back(s);
-	  gamma_num -= rd.root(alpha).scaled(v); // reflect |gamma| by |alpha|
+
+	  // reflect |gamma| by |alpha|
+	  gamma_num.subtract(rd.root(alpha).begin(),v);
 	  x = kgb().cross(rd.reflectionWord(alpha),x);
 	  i_x = kgb().inv_nr(x);
           rd.reflect(alpha,lambda2_shifted);

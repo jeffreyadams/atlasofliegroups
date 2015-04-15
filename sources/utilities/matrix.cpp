@@ -41,23 +41,34 @@ namespace matrix {
 
 ******************************************************************************/
 
-//! \brief Adds |v|.
+// Add |v| to |*this|
 template<typename C>
 Vector<C>& Vector<C>::operator+= (const Vector<C>& v)
 {
   assert(base::size()==v.size());
-  for (size_t i=0; i<base::size(); ++i)
-    (*this)[i] += v[i]; // one may write |base::operator[](i)| for |(*this)[i]|
+  auto p = v.begin();
+  for (auto it=base::begin(); it!=base::end(); ++it,++p)
+    *it += *p;
   return *this;
 }
 
-//! \brief Subtracts |v|.
+// Subtracts |v| from |*this|
 template<typename C>
 Vector<C>& Vector<C>::operator-= (const Vector<C>& v)
 {
   assert(base::size()==v.size());
-  for (size_t i=0; i<base::size(); ++i)
-    (*this)[i] -= v[i];
+  auto p = v.begin();
+  for (auto it=base::begin(); it!=base::end(); ++it,++p)
+    *it -= *p;
+  return *this;
+}
+
+template<typename C>
+template<typename I>
+Vector<C>& Vector<C>::add (I b, C c)
+{
+  for (auto it=base::begin(); it!=base::end(); ++it,++b)
+    *it += *b * c;
   return *this;
 }
 
@@ -65,13 +76,13 @@ Vector<C>& Vector<C>::operator-= (const Vector<C>& v)
 template<typename C>
 Vector<C>& Vector<C>::operator*= (C c)
 {
-  for (size_t i=0; i<base::size(); ++i)
-    (*this)[i] *= c;
+  for (auto it=base::begin(); it!=base::end(); ++it)
+    *it *= c;
   return *this;
 }
 
-/*! \brief Scalar divides by |c|
-
+/*
+  Scalar-divide by |c|
   All entries must allow exact division, if not a std::runtime_error is thrown
 */
 template<typename C>
@@ -79,7 +90,7 @@ Vector<C>& operator/= (Vector<C>& v,C c) throw (std::runtime_error)
 {
   if (c==C(0))
     throw std::runtime_error("Vector division by 0");
-  for (typename std::vector<C>::iterator it=v.begin(); it!=v.end(); ++it)
+  for (auto it=v.begin(); it!=v.end(); ++it)
     if (*it%c==C(0))
       *it/=c;
     else throw std::runtime_error("Inexact vector integer division");
@@ -89,8 +100,8 @@ Vector<C>& operator/= (Vector<C>& v,C c) throw (std::runtime_error)
 template<typename C>
 Vector<C>& Vector<C>::negate ()
 {
-  for (size_t i=0; i<base::size(); ++i)
-    (*this)[i] = -(*this)[i];
+  for (auto it=base::begin(); it!=base::end(); ++it)
+    *it = -*it;
   return *this;
 }
 
@@ -109,18 +120,31 @@ template<typename C1>
 template<typename C>
   bool Vector<C>::isZero() const
 {
-  for (size_t i=0; i<base::size(); ++i)
-    if ((*this)[i]!=C(0))
+  for (auto it=base::begin(); it!=base::end(); ++it)
+    if (*it!=C(0))
       return false;
   return true;
+}
+
+
+template<typename C>
+template<typename C1>
+Vector<C1> Vector<C>::scaled (C1 c) const
+{
+  Vector<C1> result(base::size());
+  auto p=result.begin();
+  for (auto it=base::begin(); it!=base::end(); ++p,++it)
+    *p = *it * c;
+  return result;
 }
 
 template<typename C>
   Matrix<C> Vector<C>::row_matrix() const
 {
   Matrix<C> result(1,base::size());
-  for (size_t j=0; j<base::size(); ++j)
-    result(0,j)=base::operator[](j);
+  auto p=base::begin();
+  for (size_t j=0; j<base::size(); ++j,++p)
+    result(0,j) = *p;
 
   return result;
 }
@@ -129,8 +153,9 @@ template<typename C>
   Matrix<C> Vector<C>::column_matrix() const
 {
   Matrix<C> result(base::size(),1);
-  for (size_t i=0; i<base::size(); ++i)
-    result(i,0)=base::operator[](i);
+  auto p=base::begin();
+  for (size_t i=0; i<base::size(); ++i,++p)
+    result(i,0) = *p;
 
   return result;
 }
@@ -208,11 +233,10 @@ void Matrix_base<C>::get_row(Vector<C>& v, size_t i) const
 {
   assert(i<d_rows);
   v.resize(d_columns);
-
-  for (size_t j = 0; j<d_columns; ++j)
-    v[j] = (*this)(i,j);
+  std::copy(at(i,0),at(i+1,0),&v[0] );
 }
-/*!
+
+/*
   Puts the j-th column of the matrix in v.
 */
 template<typename C>
@@ -267,9 +291,9 @@ bool Matrix_base<C>::is_zero () const
   return true;
 }
 
-/*! \brief
-Applies the matrix to the vector w, and returns the result. It is assumed that
-the size of w is the number of columns; result size is the number of rows.
+/*
+Apply the matrix to the vector |w|, and returns the result. It is assumed that
+the size of |w| is the number of columns; result size is the number of rows.
 */
 template<typename C>
 template<typename C1>
@@ -353,9 +377,7 @@ template<typename C>
   void Matrix_base<C>::set_row(size_t i, const Vector<C>& v)
 {
   assert(v.size()==d_columns);
-
-  for (size_t j=0; j<d_columns; ++j)
-    (*this)(i,j)=v[j];
+  std::copy(&v[0],&v[d_columns],at(i,0));
 }
 
 //! Puts v in the j-th column of the matrix
@@ -379,7 +401,7 @@ template<typename C>
   ++d_rows;
   d_data.resize(d_rows*d_columns,C(0));
 
-  std::copy(v.begin(),v.end(),&d_data[(d_rows-1)*d_columns]);
+  std::copy(v.begin(),v.end(),at(d_rows-1,0));
 }
 
 /*!
@@ -403,10 +425,7 @@ template<typename C>
   }
 }
 
-/*!
-  Incrementation by addition with m. It is assumed that m and *this
-  have the same size.
-*/
+// Add matrix |m| to |*this|; the matrices must have the same dimensions
 template<typename C>
 Matrix<C>& Matrix<C>::operator+= (const Matrix<C>& m)
 {
@@ -416,10 +435,7 @@ Matrix<C>& Matrix<C>::operator+= (const Matrix<C>& m)
   return *this;
 }
 
-/*!
-  Incrementation by subtraction of m. It is assumed that m and *this
-  have the same size.
-*/
+// Subtract matrix |m| to |*this|; the matrices must have the same dimensions
 template<typename C>
 Matrix<C>& Matrix<C>::operator-= (const Matrix<C>&  m)
 {
@@ -430,12 +446,17 @@ Matrix<C>& Matrix<C>::operator-= (const Matrix<C>&  m)
 }
 
 
-template<typename C>
-PID_Matrix<C>& PID_Matrix<C>::operator/= (const C& c) throw (std::runtime_error)
+template<typename C> Matrix<C> Matrix<C>::transposed() const
+#ifndef noexcept
+  & // though it makes no difference, must explicitly write lvalue ref-qualifier
+#endif
 {
-  if (c != C(1))
-    base::d_data /= c;
-  return *this;
+  Matrix<C> result(base::numColumns(),base::numRows());
+  auto p = base::d_data.begin();
+  for (size_t i=0; i<base::numRows(); ++i)
+    for (size_t j=0; j<base::numColumns(); ++j)
+      result(j,i) = *p++; // fill by column, read by row
+  return result;
 }
 
 /*!
@@ -446,22 +467,11 @@ PID_Matrix<C>& PID_Matrix<C>::operator/= (const C& c) throw (std::runtime_error)
 template<typename C> Matrix<C>& Matrix<C>::transpose()
 {
   if (base::numRows() == base::numColumns()) // matrix is square
-  {
     for (size_t j=0; j<base::numColumns(); ++j)
       for (size_t i = j+1; i<base::numRows(); ++i)
 	std::swap((*this)(i,j),(*this)(j,i));
-  }
-  else
-  {
-    // now matrix is not square; create a transposed copy
-    Matrix_base<C> result(base::numColumns(),base::numRows());
-
-    for (size_t i=0; i<base::numRows(); ++i)
-      for (size_t j=0; j<base::numColumns(); ++j)
-	result(j,i) = (*this)(i,j);
-
-    this->swap(result);
-  }
+  else // now matrix is not square; create a transposed copy
+    *this = transposed(); // move-assign from transposed copy
   return *this;
 }
 
@@ -470,10 +480,11 @@ template<typename C> Matrix<C>& Matrix<C>::transpose()
   Here we invert the matrix without catching the denominator. The intent
   is that it should be used for invertible matrices only.
 */
-template<typename C> void PID_Matrix<C>::invert()
+template<typename C> PID_Matrix<C>& PID_Matrix<C>::invert()
 {
   C d; invert(d);
   assert(d==C(1));
+  return *this;
 }
 
 /*!
@@ -491,18 +502,18 @@ template<typename C> void PID_Matrix<C>::invert()
 
 */
 template<typename C>
-void PID_Matrix<C>::invert(C& d)
+PID_Matrix<C>& PID_Matrix<C>::invert(C& d)
 {
   assert(base::numRows()==base::numColumns());
   size_t n=base::numRows();
   if (n==0) // do nothing to matrix, but set |d=1|
-  { d=C(1); return; }
+  { d=C(1); return *this; }
 
   PID_Matrix<C> row,col;    // for recording column operations
   std::vector<C> diagonal = matreduc::diagonalise(*this,row,col);
 
   if (diagonal.size()<n) // insufficient rank for inversion
-  { d=C(0); return; } // record zero determinant, leave |*this| in diagonal
+  { d=C(0); return *this; } // record zero determinant, leave |*this| unchanged
 
   d=std::abs(diagonal[0]); // guaranteed to exist if we get here
   for (size_t i=1; i<n; ++i)
@@ -516,7 +527,7 @@ void PID_Matrix<C>::invert(C& d)
       (*this)(i,j)=f*col(i,j);
   }
 
-  *this *= row;
+  return *this *= row;
 }
 
 /*!
@@ -545,12 +556,9 @@ template<typename C>
   assert(j0<=j1 and j1<=base::numColumns());
 
   PID_Matrix<C> result(i1-i0,j1-j0);
-  C* p = &result.d_data[0]; // writing pointer
+  C* p = result.at(0,0); // writing pointer
   for (size_t i=i0; i<i1; ++i)
-  {
-    const C* q = &(*this)(i,j0);
-    p = std::copy(q,q+result.numColumns(),p); // copy a row
-  }
+    p = std::copy(this->at(i,j0),this->at(i,j1),p); // copy row, advance
   return result;
 }
 
@@ -682,15 +690,6 @@ template<typename C>
 }
 
 template<typename C>
-  PID_Matrix<C> operator+ (PID_Matrix<C> A, C c) // add scalar matrix
-{
-  unsigned int i=std::min(A.numRows(),A.numColumns());
-  while (i-->0)
-    A(i,i) += c;
-  return A;
-}
-
-template<typename C>
   PID_Matrix<C>& operator+= (PID_Matrix<C>& A, C c) // |A=A+c|, avoiding copy
 {
   unsigned int i=std::min(A.numRows(),A.numColumns());
@@ -698,6 +697,7 @@ template<typename C>
     A(i,i) += c;
   return A;
 }
+
 
   /*
 
@@ -711,7 +711,6 @@ typedef polynomials::Polynomial<int> Pol;
 
 
 template std::vector<Vector<int> > standard_basis<int>(size_t n);
-template PID_Matrix<int> operator+(PID_Matrix<int>,int);
 template PID_Matrix<int>& operator+=(PID_Matrix<int>&,int);
 
 template class Vector<int>;           // the main instance used
@@ -724,6 +723,9 @@ template class Matrix_base<unsigned long>; // for |abelian::Endomorphism|
 template class PID_Matrix<int>;
 
 // template member instances
+template Vector<int>& Vector<int>::add(Vector<int>::const_iterator b,int c);
+template Vector<Num>& Vector<Num>::add(Vector<int>::const_iterator b,Num c);
+template Vector<Num>& Vector<Num>::add(Vector<Num>::const_iterator b,Num c);
 template int Vector<int>::dot(Vector<int> const&) const;
 template signed char
   Vector<signed char>::dot(const Vector<signed char>&) const;

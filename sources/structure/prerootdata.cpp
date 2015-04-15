@@ -122,7 +122,7 @@ PreRootDatum& PreRootDatum::quotient(const LatticeMatrix& sublattice)
 template<typename C>
 void PreRootDatum::simple_reflect(weyl::Generator s,matrix::Vector<C>& v)
   const
-{ v -= d_roots[s].scaled(d_coroots[s].dot(v)); }
+{ v.subtract(d_roots[s].begin(),d_coroots[s].dot(v)); }
 
 void PreRootDatum::simple_reflect(weyl::Generator s, LatticeMatrix& M) const
 {

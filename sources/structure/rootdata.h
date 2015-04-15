@@ -489,14 +489,14 @@ use by accessors.
   int cartan(weyl::Generator i, weyl::Generator j) const
     { return simpleRoot(i).dot(simpleCoroot(j)); }
 
-  //!\brief  Applies to |lambda| the reflection about root |alpha|.
+  // Apply reflection about root |alpha| to a weight |lambda|.
   template<typename C>
     void reflect(RootNbr alpha,matrix::Vector<C>& lambda) const
-  { lambda -= root(alpha).scaled(coroot(alpha).dot(lambda)); }
-  //!\brief  Applies reflection about coroot |alpha| to a coweight
+    { lambda.subtract(root(alpha).begin(),coroot(alpha).dot(lambda)); }
+  //  Apply reflection about coroot |alpha| to a coweight |co_lambda|
   template<typename C>
-  void coreflect(matrix::Vector<C>& co_lambda, RootNbr alpha) const
-  { co_lambda -= coroot(alpha).scaled(root(alpha).dot(co_lambda)); }
+    void coreflect(matrix::Vector<C>& co_lambda, RootNbr alpha) const
+    { co_lambda.subtract(coroot(alpha).begin(),root(alpha).dot(co_lambda)); }
 
   // on matrices we have left and right multiplication by reflection matrices
   void reflect(RootNbr alpha, LatticeMatrix& M) const;
