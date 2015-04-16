@@ -114,13 +114,13 @@ std::ostream& non_integral_block::print
   (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {
   const KGB& kgb = rc.kgb();
-  int xwidth = ioutils::digits(kgb.size()-1,10ul);
-  RatWeight ll=y_part(z);
+  unsigned int xwidth = ioutils::digits(kgb.size()-1,10ul);
+  unsigned int ysize = y_part(z).size();
 
   strm << (survives(z) ? '*' : ' ')
        << "(x=" << std::setw(xwidth) << parent_x(z)
-       << ",lam=rho+" << std::setw(2*ll.size()+3) << lambda_rho(z)
-       << ", nu=" << std::setw(2*ll.size()+5) << nu(z)
+       << ",lam=rho+" << std::setw(2*ysize+3) << lambda_rho(z)
+       << ", nu=" << std::setw(2*ysize+5) << nu(z)
        << ')' << std::setw(2) << "";
 
   const TwistedInvolution& ti = kgb.involution(parent_x(z));

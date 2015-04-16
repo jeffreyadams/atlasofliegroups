@@ -104,7 +104,7 @@ class InvolutionTable
     int_Matrix projector; // for |y|, same kernel as |row_saturate(theta-id)|
     int_Matrix M_real; // $1-\theta$; then expression in scaled adapted basis
     int_Vector diagonal; // divisors for image of |M_real|
-    int_Matrix lift_mat; // section: satisfies |M_real*lift_mat==A|
+    int_Matrix lift_mat; // section: satisfies |lift_mat*M_real==1-theta|
     unsigned int length;
     unsigned int W_length;
     SmallSubspace mod_space; // for |x|

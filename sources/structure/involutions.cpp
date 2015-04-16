@@ -207,7 +207,7 @@ InvolutionNbr InvolutionTable::add_involution
   std::vector<int> diagonal;
   int_Matrix B = matreduc::adapted_basis(A,diagonal); // matrix for lifting
   int_Matrix R = B.inverse(); // matrix that maps to adapted basis coordinates
-  R.block(0,0,diagonal.size(),R.numColumns()).swap(R); // restrict to image |A|
+  R=R.block(0,0,diagonal.size(),R.numColumns()); // restrict to image |A|
   R*=A; // now R is A followed by taking coordinates on adapted basis of image
   for (unsigned i=0; i<R.numRows(); ++i)
     if (diagonal[i]!=1)
@@ -219,7 +219,7 @@ InvolutionNbr InvolutionTable::add_involution
   // now |R| gives coordinates on adapted basis scaled: basis of image lattice
   // |R| is the matrix that will become |M_real|
 
-  B.block(0,0,B.numRows(),diagonal.size()).swap(B);
+  B=B.block(0,0,B.numRows(),diagonal.size());
   for (unsigned j=0; j<B.numColumns(); ++j)
     if (diagonal[j]!=1)
       B.columnMultiply(j,diagonal[j]);
@@ -376,7 +376,8 @@ void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const
   for (unsigned i=0; i<v.size(); ++i)
     v[i]= arithmetic::remainder(v[i],2*rec.diagonal[i]*y.denominator());
 
-  y.numerator()= rec.lift_mat * v; (y/=2).normalize();
+  y.numerator()= rec.lift_mat * v; // original |y| now "mapped to" |(1-theta)*y|
+  (y/=2).normalize(); // and this gets us back to the class of the original |y|
 }
 
 TorusPart InvolutionTable::pack(InvolutionNbr inv, const Weight& lambda_rho)
