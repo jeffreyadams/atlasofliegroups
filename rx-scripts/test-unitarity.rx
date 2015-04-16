@@ -24,20 +24,26 @@ set test([(Param,bool)] parameters)= bool:
 if new_test
 then
   for (p,answer)@i in parameters do
-    let (c_form,count)=
+    prints("Case ", i, " is ", p, ", should "
+          , if answer then "be" else "not be" fi, " unitary.")
+  ;(let (c_form,count)=
       let on_p=orientation_nr(p), P = null_module(rf)
       , KL_sum = KL_sum_at_s(p)
-      in for ev@q in KL_sum do
-      let fd=full_deform(q) in
-      let ()=prints(q,": ",#(reducibility_points(q))," ",#fd) in
-      P+:= ev*orientation_nr_term(on_p,q)*fd od
+      in
+        for ev@q in KL_sum
+        do let fd=full_deform(q) in
+          prints("Deformed ", q,": "
+                ,#(reducibility_points(q))," points, ",#fd, " terms.")
+        ; P+:= ev*orientation_nr_term(on_p,q)*fd
+	od
       ; (P,#KL_sum)
     then form=convert_cform_hermitian(c_form)
     then unitary=is_unitary(form)
     in
-    if unitary !=answer then rv:=false fi
-  ; prints(i, ", ",p, ", ", unitary, ", ", answer,
-           ", ", #(reducibility_points(p)),", ",count)
+      if unitary !=answer then rv:=false fi
+    ; prints("Found ", answer, ", statistics "
+            , #(reducibility_points(p)),", ",count)
+   )
   od
 ; prints("Result: ",if rv then "Passed" else "Failed" fi); rv
 else
@@ -82,11 +88,14 @@ set test2()=test(all_unitary(spherical_unipotent(split_form(G2))))
 set test3()=test(all_unitary(spherical_unipotent(Sp(6,R))))
 set test4()=
   let G2=quasisplit_form(inner_class(adjoint("G2"),"e"))
-  in test (for p@i in trivial_block(G2) do (p,i<5 or i=9) od)
+  then p=trivial(G2) then (B,t)=block(p)
+  in test (for p@i in B do (p,i<5 or i=t) od)
 
 { slightly longer, up to a few minutes }
 set test5()= test(all_unitary(spherical_unipotent(SO(5,4))))
-set test6()= test(for p@i in trivial_block(Sp(4,R)) do (p,i<7 or i=10) od)
+set test6()=
+  let p=trivial(Sp(4,R)) then (B,t)=block(p) in
+  test(for p@i in B do (p,i<7 or i=t) od)
 
 { first 49 of 59 spherical unitary parameters for F4 }
 set test7()= bool:
@@ -102,4 +111,4 @@ set test8()= bool:
 
 { trivial of F4 takes up to two hours }
 set test9()=bool:
-  let ()=prints("Testing trivial of F4") in is_unitary(trivial(split_form(F4)))
+  prints("Testing trivial of F4"); is_unitary(trivial(split_form(F4)))
