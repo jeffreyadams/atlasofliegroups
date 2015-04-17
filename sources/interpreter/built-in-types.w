@@ -3665,11 +3665,13 @@ useful to give the user an easy way to apply it explicitly.
 Testing for equivalence of parameters amounts to testing for equality after
 the parameters are made dominant (at least that claim was not contested at the
 time of writing this). We provide this test, which will be bound to the
-equality operator. Unlike earlier equality tests, we just require the
+equality operator. Unlike earlier equality tests, we \emph{require} the
 parameters to be associated to the same real form, giving a runtime error
-rather than returning false in that case; if some operation is used producing
-parameters that may of may not be associated to the same real form, then one
-should test those forms for equality before testing the parameters.
+(rather than returning false) if not; this avoids confusion if there were some
+subtle difference of real forms for otherwise similar parameters. If some
+operation is used to produce parameters that may of may not be associated to
+the same real form, then one should test those forms for equality before
+testing the parameters.
 
 @< Local function def...@>=
 void parameter_dominant_wrapper(expression_base::level l)
