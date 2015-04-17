@@ -111,7 +111,12 @@ it is not declared.
 struct expr;
 
 
-@ When default-constructing an |expr| we set its |kind| to |no_expr|.
+@ When default-constructing an |expr| (which happens rarely, but is
+occasionally used to have a local variable whose actual value will be set
+differently according to different branches of execution) we set its |kind| to
+|no_expr|, which will ensure proper behaviour (no action) when it gets
+assigned to, or destroyed.
+
 @< Methods of |expr| @>=
 expr() : kind(no_expr)@+{}
 ~expr(); // defined below using a large |switch| statement
@@ -124,7 +129,7 @@ parser when popping off tokens at syntax errors.
 @< Declarations of functions for the parser @>=
 void destroy_expr(expr_p e);
 
-@~The definition of |destroy_expr| just calls |delete|, which will invoke the
+@~The function |destroy_expr| just calls |delete|, which will invoke the
 destructor of the |expr| pointed to.
 
 @< Definitions of functions for the parser @>=
@@ -252,10 +257,10 @@ expr_p make_int_denotation (int val);
 expr_p make_bool_denotation(bool val);
 expr_p make_string_denotation(std::string&& val);
 
-@~The definition of these functions is quite trivial easy, as will be typical
+@~The definition of these functions is quite easy, as will be typical
 for node-building functions. However for Boolean denotations we abuse of the
 integer argument constructor and then correct the |kind| field of the
-result, so as to circumvent that that that a constructor with |bool|
+result, so as to circumvent the fact that a constructor with |bool|
 argument is not defined.
 
 @< Definitions of functions for the parser @>=
@@ -595,7 +600,7 @@ explicit expr(app&& fx)
  , call_variant(std::move(fx))
  @+{}
 
-@ To build an |application_node|, we combine the function identifier with an
+@ To build an |application_node|, we combine the function expression with an
 |expr_list| for the argument. The argument list will either be packed into a
 tuple, or if it has length$~1$ unpacked into a single expression.
 

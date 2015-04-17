@@ -182,11 +182,18 @@ $(c++objects) $(atlas_objects): %.o: %.cpp
                            else touch old_targets/$*.ccp; fi
 	@if [ -f $*.h ];   then mv $*.h old_targets;\
                            else touch old_targets/$*.h; fi
+	@if [ $* = parsetree ]; then \
+           if [ -f parse_types.h ]; then mv parse_types.h old_targets;\
+                                    else rm -f old_targets/parse_types.h; fi fi
 	$(CTANGLE) $(CTANGLEFLAGS) $<
 	@for i in $*.cpp $*.h;\
         do if cmp -s old_targets/$$i $$i;\
            then mv old_targets/$$i $$i; echo $$i unchanged;\
            fi done
+	@if [ $* = parsetree ]; then \
+           if cmp -s old_targets/parse_types.h parse_types.h;\
+           then mv old_targets/parse_types.h .; echo parse_types.h unchanged;\
+           fi fi
 
 # prevent remaking files under version control, unless .w file changed recently
 ../io/filekl.h ../io/filekl.cpp \
