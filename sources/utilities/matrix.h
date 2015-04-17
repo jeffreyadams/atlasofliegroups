@@ -84,7 +84,9 @@ public:
   template<typename C1> C1 dot (const Vector<C1>& v) const;
   bool isZero() const;
 
-#ifdef noexcept // that is, if compiler version is too old
+#if __GNUC__ < 4 || \
+  __GNUC__ == 4 && ( __GNUC_MINOR__ < 8 || \
+                     __GNUC_MINOR__ == 8 && __GNUC_PATCHLEVEL__ < 1)
   Vector operator+ (const Vector& v) const
     { Vector result(*this); return result +=v; }
   Vector operator- (const Vector&v) const
@@ -204,7 +206,8 @@ template<typename C> class Matrix : public Matrix_base<C>
   Matrix(const base& M) : base(M) {}
   Matrix(base&& M) : base(std::move(M)) {}
 
-#ifndef noexcept // that is, if compiler version is not too old
+#if __GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 8
+  // that is, if compiler version is sufficiently new
   using base::base; // inherit all constructors
 #else
   Matrix(size_t m, size_t n) : base(m,n) {}
@@ -222,7 +225,10 @@ template<typename C> class Matrix : public Matrix_base<C>
 // accessors
   // no non-destructive additive matrix operations; no need for them (yet?)
 
-#ifdef noexcept // that is, if compiler version is too old
+#if __GNUC__ < 4 || \
+  __GNUC__ == 4 && ( __GNUC_MINOR__ < 8 || \
+                     __GNUC_MINOR__ == 8 && __GNUC_PATCHLEVEL__ < 1)
+  // that is, if compiler version is too old
   Matrix transposed() const;
   Matrix negative_transposed() const { return transposed().negate(); }
 #else
@@ -279,7 +285,8 @@ template<typename C> class PID_Matrix : public Matrix<C>
   PID_Matrix(base&& M) : base(std::move(M)) {}
 
 // forward constructors to Matrix
-#ifndef noexcept // that is, if compiler version is not too old
+#if __GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 8
+  // that is, if compiler version is sufficiently new
   using base::base; // inherit all constructors
 #else
   PID_Matrix(size_t m, size_t n) : base(m,n) {}
@@ -314,7 +321,10 @@ template<typename C> class PID_Matrix : public Matrix<C>
   PID_Matrix& invert(C& d);
 
 // accessors
-#ifdef noexcept // that is, if compiler version is too old
+#if __GNUC__ < 4 || \
+  __GNUC__ == 4 && ( __GNUC_MINOR__ < 8 || \
+                     __GNUC_MINOR__ == 8 && _GNUC_PATCHLEVEL__ < 1)
+  // that is, if compiler version is too old
   PID_Matrix transposed() const  { return PID_Matrix(base::transposed()); }
   PID_Matrix negative_transposed() const
     { return PID_Matrix(base::negative_transposed()); }
