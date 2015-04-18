@@ -10,12 +10,17 @@ used on the parsing stack can be properly defined, while the
 file \.{parsetree.h} containing declarations of the functions defined here is
 read later. This separation is done mainly so that we can without circularity
 include \.{parser.tab.h} into \.{parsetree.h}, which requires
-including \.{parse\_types.h} first.
+including \.{parse\_types.h} first. We do need to pre-declare the type
+|YYLTYPE| that will be defined in \.{parser.tab.h}, but which is already
+referred to in the interfaces of classes defined in \.{parse\_types.h};
+moreover this has to be done outside any namespaces.
 
 @( parse_types.h @>=
 #ifndef PARSE_TYPES_H
 #define PARSE_TYPES_H
 @< Includes needed in \.{parse\_types.h} @>@;
+struct YYLTYPE; // pre-declare
+
 namespace atlas
 {
   namespace interpreter
@@ -250,31 +255,42 @@ producing an error that would be hard to diagnose.
    , str_denotation_variant(std::move(s)) @+{}
 
 @~For more explicit construction of these variants in a dynamically allocated
-|expr| object, we provide the functions below.
+|expr| object, we provide the functions below. Note that
+|make_string_denotation| untypically takes a pointer to a |std::string| as
+argument; this is because the value of a string token is maintained on the
+parser stack as a variant of a |union| and so cannot be a type with a
+nontrivial destructor (destruction being handled by explicit calls).
 
 @< Declarations of functions for the parser @>=
-expr_p make_int_denotation (int val);
-expr_p make_bool_denotation(bool val);
-expr_p make_string_denotation(std::string&& val);
+expr_p make_int_denotation (int val, const YYLTYPE& loc);
+expr_p make_bool_denotation(bool val, const YYLTYPE& loc);
+expr_p make_string_denotation(std::string* val_p, const YYLTYPE& loc);
 
-@~The definition of these functions is quite easy, as will be typical
-for node-building functions. However for Boolean denotations we abuse of the
-integer argument constructor and then correct the |kind| field of the
-result, so as to circumvent the fact that a constructor with |bool|
-argument is not defined.
+@~The definition of these functions is quite easy, as will be typical for
+node-building functions. However for Boolean denotations we abuse of the
+integer argument constructor and then correct the |kind| field of the result,
+so as to circumvent the fact that a constructor with |bool| argument is not
+defined. Also |make_string_denotation| takes care to call |delete| on the
+provided |val_p|, to the temporarily allocated variable gets cleaned up
+whenever a string token becomes an expression (the parser now only has to
+define clean-up action in case such a token gets popped in error recovery
+without ever becoming an expression).
 
 @< Definitions of functions for the parser @>=
-expr_p make_int_denotation (int val)
+expr_p make_int_denotation (int val, const YYLTYPE& loc)
 @+{@; return new expr(val); }
 
-expr_p make_bool_denotation(bool val)
+expr_p make_bool_denotation(bool val, const YYLTYPE& loc)
 {@; expr result (val ? 1 : 0);
   result.kind=boolean_denotation;
   return new expr(std::move(result));
 }
 
-expr_p make_string_denotation(std::string&& val)
- @+{@; return new expr(std::move(val)); }
+expr_p make_string_denotation(std::string* val_p, const YYLTYPE& loc)
+{@; expr_p result=new expr(std::move(*val_p));
+  delete val_p;
+  return result;
+}
 
 @ For integer and Boolean denotations there is nothing to destroy. For string
 denotations however we must destroy the |std::string| object. It was quite a
@@ -350,8 +366,8 @@ ambiguous with constructors already defined, we build these variants directly
 in the following functions.
 
 @< Declarations of functions for the parser @>=
-expr_p make_applied_identifier (id_type id);
-expr_p make_dollar();
+expr_p make_applied_identifier (id_type id, const YYLTYPE& loc);
+expr_p make_dollar(const YYLTYPE& loc);
 
 @~In spite of the absence of dedicated constructors, these function have
 rather simple definitions. We split off a function |mk_applied_identifier|
@@ -362,10 +378,10 @@ expr mk_applied_identifier (id_type id)
 {@; expr result; result.kind=applied_identifier;
   result.identifier_variant=id; return result;
 }
-expr_p make_applied_identifier (id_type id)
+expr_p make_applied_identifier (id_type id, const YYLTYPE& loc)
  {@; return new expr(mk_applied_identifier(id)); }
 
-expr_p make_dollar ()
+expr_p make_dollar (const YYLTYPE& loc)
 {@; expr_p result = new expr;
   result->kind=last_value_computed;
   return result;
@@ -446,8 +462,8 @@ displays.
 @< Declarations of functions for the parser @>=
 raw_expr_list make_exprlist_node(expr_p e, raw_expr_list l);
 raw_expr_list reverse_expr_list(raw_expr_list l);
-expr_p wrap_tuple_display(raw_expr_list l);
-expr_p wrap_list_display(raw_expr_list l);
+expr_p wrap_tuple_display(raw_expr_list l, const YYLTYPE& loc);
+expr_p wrap_list_display(raw_expr_list l, const YYLTYPE& loc);
 
 @~The function |reverse_expr_list| is easy as well. Of the two possible and
 equivalent list reversal paradigms, we use the ``hold the head'' style which
@@ -467,9 +483,9 @@ raw_expr_list make_exprlist_node(expr_p e, raw_expr_list raw)
 raw_expr_list reverse_expr_list(raw_expr_list raw)
 {@; expr_list l(raw); l.reverse(); return l.release(); }
 @)
-expr_p wrap_tuple_display(raw_expr_list l)
+expr_p wrap_tuple_display(raw_expr_list l, const YYLTYPE& loc)
 @+{@; return new expr(expr_list(l),true); }
-expr_p wrap_list_display(raw_expr_list l)
+expr_p wrap_list_display(raw_expr_list l, const YYLTYPE& loc)
 @+{@; return new expr(expr_list(l),false); }
 
 @ Destroying a tuple display or list display is easily defined.
@@ -605,7 +621,7 @@ explicit expr(app&& fx)
 tuple, or if it has length$~1$ unpacked into a single expression.
 
 @< Declarations of functions for the parser @>=
-expr_p make_application_node(expr_p f, raw_expr_list args);
+expr_p make_application_node(expr_p f, raw_expr_list args, const YYLTYPE& loc);
 
 @~Here for once there is some work to do. Since there are two cases to deal
 with, the argument expression is initially default-constructed, after which
@@ -623,7 +639,7 @@ expr mk_application_node(expr&& f, expr_list&& args)
     a->arg=expr(std::move(args),true); // make into an argument tuple
   return expr(std::move(a)); // move construct application expression
 }
-expr_p make_application_node(expr_p f, raw_expr_list args)
+expr_p make_application_node(expr_p f, raw_expr_list args, const YYLTYPE& loc)
  {@; expr_ptr ff(f);
    return new expr(mk_application_node(std::move(*f),expr_list(args))); }
 
@@ -669,8 +685,8 @@ expression or a tuple of two expressions. We provide two functions to
 facilitate those constructions.
 
 @< Declarations of functions for the parser @>=
-expr_p make_unary_call(id_type name, expr_p arg);
-expr_p make_binary_call(id_type name, expr_p x, expr_p y);
+expr_p make_unary_call(id_type name, expr_p arg, const YYLTYPE& loc);
+expr_p make_binary_call(id_type name, expr_p x, expr_p y, const YYLTYPE& loc);
 
 @~In the binary case, we must construct an argument list of two expressions.
 We were tempted to initialise |args| below using a two-element initialiser
@@ -686,7 +702,7 @@ expr mk_binary_call(id_type name, expr&& x, expr&& y)
   args.push_front(std::move(x));
   return mk_application_node(mk_applied_identifier(name),std::move(args));
 }
-expr_p make_binary_call(id_type name, expr_p x, expr_p y)
+expr_p make_binary_call(id_type name, expr_p x, expr_p y, const YYLTYPE& loc)
  {@;
    return new
      expr(mk_binary_call(name,std::move(*expr_ptr(x)),std::move(*expr_ptr(y))));
@@ -701,7 +717,7 @@ expr mk_unary_call(id_type name, expr&& arg)
   return expr(app(
       new application_node { mk_applied_identifier(name), std::move(arg) }));
 }
-expr_p make_unary_call(id_type name, expr_p a)
+expr_p make_unary_call(id_type name, expr_p a, const YYLTYPE& loc)
  {@; return new expr(mk_unary_call(name,std::move(*expr_ptr(a)))); }
 
 
@@ -821,7 +837,7 @@ a final operand, and of course one to clean up.
 raw_form_stack start_formula (expr_p e, id_type op, int prio);
 raw_form_stack start_unary_formula (id_type op, int prio);
 raw_form_stack extend_formula (raw_form_stack pre, expr_p e,id_type op, int prio);
-expr_p end_formula (raw_form_stack pre, expr_p e);
+expr_p end_formula (raw_form_stack pre, expr_p e, const YYLTYPE& loc);
 void destroy_formula(raw_form_stack s);
 
 @ Starting a formula simply creates an initial node, with a left operand in
@@ -878,7 +894,7 @@ can reuse the main part of the loop of |extend_formula|, with just a minor
 modification to make sure all nodes get cleaned up after use.
 
 @< Definitions of functions for the parser @>=
-expr_p end_formula (raw_form_stack pre, expr_p ep)
+expr_p end_formula (raw_form_stack pre, expr_p ep, const YYLTYPE& loc)
 { expr e(std::move(*expr_ptr (ep))); form_stack s(pre);
   while (not s.empty())
     @< Replace |e| by |op(left_subtree,e)|...@>
@@ -1081,13 +1097,13 @@ explicit expr(let&& declaration)
 @ For building let-expressions, three functions will be defined. The function
 |make_let_node| makes a list of one declaration, while |append_let_node|
 appends such a list |cur| (assured to be of length~$1$) to a previously
-constructed list |prev| of declaration; finally |make_let_expr_node| wraps up
+constructed list |prev| of declarations; finally |make_let_expr_node| wraps up
 an entire let-expression.
 
 @< Declarations of functions for the parser @>=
 raw_let_list make_let_node(raw_id_pat& pattern, expr_p val);
 raw_let_list append_let_node(raw_let_list prev, raw_let_list cur);
-expr_p make_let_expr_node(raw_let_list decls, expr_p body);
+expr_p make_let_expr_node(raw_let_list decls, expr_p body, const YYLTYPE& loc);
 
 @ The functions |make_let_node| and |append_let_node| build a list in reverse
 order, which makes the latter function a particularly simple one. The purpose
@@ -1135,7 +1151,7 @@ expr mk_let_expr_node(let_list&& decls, expr& body)
     { std::move(pattern), std::move(val),std::move(body) }));
 
 }
-expr_p make_let_expr_node(raw_let_list decls, expr_p body)
+expr_p make_let_expr_node(raw_let_list decls, expr_p body, const YYLTYPE& loc)
  {@; return new expr(mk_let_expr_node(let_list(decls),*expr_ptr(body)));
  }
 
@@ -1228,6 +1244,7 @@ struct source_location
 { unsigned int start_line;
   unsigned short extent, first_col, last_col;
   id_type file;
+  source_location(const YYLTYPE& loc);
 };
 
 @ The following function computes a |source_location| structure, given the
@@ -1235,25 +1252,21 @@ struct source_location
 it provides, we need to get the file name from the |main_input_buffer|.
 
 @< Definitions of functions for the parser @>=
-source_location cur_loc(const YYLTYPE& loc)
-{
-  source_location result;
-  result.start_line = loc.first_line; // ``narrow'' to |unsigned int|
-  result.extent = loc.last_line-loc.first_line; // narrow to |unsigned short|
-  result.first_col = loc.first_column;
-  result.last_col = loc.last_column;
-  result.file = main_input_buffer->current_file();
-  return result;
-}
+source_location::source_location(const YYLTYPE& loc)
+: start_line(loc.first_line) // ``narrow'' to |unsigned int|
+, extent(loc.last_line-loc.first_line) // narrow to |unsigned short|
+, first_col(loc.first_column)
+, last_col(loc.last_column) // these are narrowed too
+, file(main_input_buffer->current_file())
+{}
 
 @ For user-defined functions we shall use a structure |lambda_node|.
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef std::unique_ptr<struct lambda_node> lambda;
 
 @~It contains a pattern for the formal parameter(s), its type (a smart pointer
-defined in \.{types.w}), and an expression (the body of the function). The
-moving constructor does what the braced initialiser-list syntax would do by
-default; it is present only for backward compatibility \.{gcc}~4.6.
+defined in \.{types.w}), an expression (the body of the function), and finally
+the source location of the function.
 
 
 @< Structure and typedef... @>=
@@ -1262,11 +1275,11 @@ struct lambda_node
   source_location loc;
 @)
   lambda_node(id_pat&& pattern, type_expr&& type, expr&& body
-            , source_location&& loc)
-@/: pattern(std::move(pattern))
+             , const YYLTYPE& location)
+  @/: pattern(std::move(pattern))
   , parameter_type(std::move(type))
   , body(std::move(body))
-  , loc(std::move(loc))
+  , loc(location)
 @+{}
 };
 
@@ -1318,8 +1331,7 @@ expr mk_lambda_node(patlist&& pat_l, type_list&& type_l, expr& body,
   // make tuple type
   }
   return expr(lambda(new@| lambda_node
-      {std::move(pattern),std::move(parameter_type),std::move(body)
-      , cur_loc(loc)}));
+      (std::move(pattern),std::move(parameter_type),std::move(body), loc)));
 }
 expr_p make_lambda_node(raw_patlist p, raw_type_list tl, expr_p body,
  const YYLTYPE& loc)
@@ -1393,7 +1405,7 @@ explicit expr(cond&& conditional)
 
 @ To build an |conditional_node|, we define a function as usual.
 @< Declarations of functions for the parser @>=
-expr_p make_conditional_node(expr_p c, expr_p t, expr_p e);
+expr_p make_conditional_node(expr_p c, expr_p t, expr_p e, const YYLTYPE& loc);
 
 @~It is entirely straightforward.
 
@@ -1403,7 +1415,7 @@ expr mk_conditional_node(expr& c, expr& t, expr& e)
   return expr (cond (new @|
       conditional_node { std::move(c), std::move(t), std::move(e) }));
 }
-expr_p make_conditional_node(expr_p c, expr_p t, expr_p e)
+expr_p make_conditional_node(expr_p c, expr_p t, expr_p e, const YYLTYPE& loc)
 {@;
    return new expr(mk_conditional_node(*expr_ptr(c),*expr_ptr(t),*expr_ptr(e)));
 }
@@ -1515,9 +1527,10 @@ explicit expr(c_loop&& loop)
 more \\{make}-functions.
 
 @< Declarations of functions for the parser @>=
-expr_p make_while_node(expr_p c, expr_p b);
-expr_p make_for_node(raw_id_pat& id, expr_p ip, expr_p b);
-expr_p make_cfor_node(id_type id, expr_p count, expr_p bound, bool up, expr_p b);
+expr_p make_while_node(expr_p c, expr_p b, const YYLTYPE& loc);
+expr_p make_for_node(raw_id_pat& id, expr_p ip, expr_p b, const YYLTYPE& loc);
+expr_p make_cfor_node
+ (id_type id, expr_p count, expr_p bound, bool up, expr_p b, const YYLTYPE& loc);
 
 @ They are quite straightforward, as usual.
 
@@ -1526,7 +1539,7 @@ expr mk_while_node(expr& c, expr& b)
 {@;
   return expr (w_loop(new while_node { std::move(c), std::move(b)})) ;
 }
-expr_p make_while_node(expr_p c, expr_p b)
+expr_p make_while_node(expr_p c, expr_p b, const YYLTYPE& loc)
 {@; return new expr(mk_while_node(*expr_ptr(c),*expr_ptr(b))); }
 @)
 expr mk_for_node(id_pat&& id, expr& ip, expr& b)
@@ -1534,7 +1547,7 @@ expr mk_for_node(id_pat&& id, expr& ip, expr& b)
   return expr(f_loop(new
     for_node { std::move(id), std::move(ip), std::move(b) }));
 }
-expr_p make_for_node(raw_id_pat& id, expr_p ip, expr_p b)
+expr_p make_for_node(raw_id_pat& id, expr_p ip, expr_p b, const YYLTYPE& loc)
 {@;
    return new expr(mk_for_node(id_pat(id),*expr_ptr(ip),*expr_ptr(b)));
 }
@@ -1544,7 +1557,8 @@ expr mk_cfor_node(id_type id, expr& cnt, expr& bnd, bool up, expr& b)
   return expr (c_loop(new @|
    cfor_node { id, std::move(cnt),std::move(bnd),up,std::move(b) }));
 }
-expr_p make_cfor_node(id_type id, expr_p cnt, expr_p bnd, bool up, expr_p b)
+expr_p make_cfor_node(id_type id, expr_p cnt, expr_p bnd, bool up, expr_p b,
+   const YYLTYPE& loc)
 {@;
    return new
      expr(mk_cfor_node(id,*expr_ptr(cnt),*expr_ptr(bnd),up,*expr_ptr(b)));
@@ -1649,7 +1663,7 @@ explicit expr(sub&& s)
 part.
 
 @< Declarations of functions for the parser @>=
-expr_p make_subscription_node(expr_p a, expr_p i);
+expr_p make_subscription_node(expr_p a, expr_p i, const YYLTYPE& loc);
 
 @~This is straightforward, as usual.
 
@@ -1658,7 +1672,7 @@ expr mk_subscription_node(expr& a, expr& i)
 {@;
   return expr(sub(new subscription_node {std::move(a), std::move(i) }));
 }
-expr_p make_subscription_node(expr_p a, expr_p i)
+expr_p make_subscription_node(expr_p a, expr_p i, const YYLTYPE& loc)
 {@; return new expr(mk_subscription_node(*expr_ptr(a),*expr_ptr(i))); }
 @
 @< Cases for copying... @>=
@@ -1733,7 +1747,7 @@ explicit expr(cast&& c)
 @ Casts are built by |make_cast|.
 
 @< Declarations of functions for the parser @>=
-expr_p make_cast(type_p type, expr_p exp);
+expr_p make_cast(type_p type, expr_p exp, const YYLTYPE& loc);
 
 @~No surprises here.
 
@@ -1742,7 +1756,7 @@ expr mk_cast(type_expr& type, expr& exp)
 {@;
   return expr(cast(new cast_node { std::move(type), std::move(exp) }));
 }
-expr_p make_cast(type_p type, expr_p exp)
+expr_p make_cast(type_p type, expr_p exp, const YYLTYPE& loc)
 {@; return new expr(mk_cast(*type_ptr(type),*expr_ptr(exp))); }
 
 @
@@ -1803,7 +1817,7 @@ explicit expr(op_cast&& c)
 @ Casts are built by |make_cast|.
 
 @< Declarations of functions for the parser @>=
-expr_p make_op_cast(id_type name,type_p type);
+expr_p make_op_cast(id_type name,type_p type, const YYLTYPE& loc);
 
 @~No surprises here either.
 
@@ -1812,7 +1826,7 @@ expr mk_op_cast(id_type name,type_expr& type)
 {@;
   return expr(op_cast(new op_cast_node { name, std::move(type) }));
 }
-expr_p make_op_cast(id_type name,type_p type)
+expr_p make_op_cast(id_type name,type_p type, const YYLTYPE& loc)
 {@; return new expr(mk_op_cast(name,*type_ptr(type))); }
 
 @
@@ -1875,7 +1889,7 @@ explicit expr(assignment&& a)
 @ Assignment statements are built by |make_assignment|.
 
 @< Declarations of functions for the parser @>=
-expr_p make_assignment(id_type lhs, expr_p rhs);
+expr_p make_assignment(id_type lhs, expr_p rhs, const YYLTYPE& loc);
 
 @~It does what one would expect it to (except for those who expect their
 homework assignment made).
@@ -1885,7 +1899,7 @@ expr mk_assignment(id_type lhs, expr& rhs)
 {@;
   return expr(assignment(new assignment_node { lhs, std::move(rhs) }));
 }
-expr_p make_assignment(id_type lhs, expr_p rhs)
+expr_p make_assignment(id_type lhs, expr_p rhs, const YYLTYPE& loc)
 {@; return new expr(mk_assignment(lhs,*expr_ptr(rhs))); }
 
 @
@@ -1953,7 +1967,7 @@ generation the array and index will have already been combined before this
 function can be called.
 
 @< Declarations of functions for the parser @>=
-expr_p make_comp_ass(expr_p lhs, expr_p rhs);
+expr_p make_comp_ass(expr_p lhs, expr_p rhs, const YYLTYPE& loc);
 
 @~Here we have to take the left hand side apart a bit; the grammar ensures
 that |lhs| presents the necessary structure for this code to work.
@@ -1967,7 +1981,7 @@ expr mk_comp_ass(expr& lhs, expr& rhs)
   , std::move(rhs)
   }));
 }
-expr_p make_comp_ass(expr_p lhs, expr_p rhs)
+expr_p make_comp_ass(expr_p lhs, expr_p rhs, const YYLTYPE& loc)
 {@; return new expr(mk_comp_ass(*expr_ptr(lhs),*expr_ptr(rhs))); }
 
 @
@@ -2042,7 +2056,8 @@ explicit expr(sequence&& s)
 @ Sequences are built by |make_sequence|.
 
 @< Declarations of functions for the parser @>=
-expr_p make_sequence(expr_p first, expr_p last, bool forward);
+expr_p make_sequence
+  (expr_p first, expr_p last, bool forward, const YYLTYPE& loc);
 
 @~It does what one would expect it to.
 
@@ -2052,7 +2067,8 @@ expr mk_sequence(expr& first, expr& last, bool forward)
   return expr(sequence(new @|
     sequence_node { std::move(first), std::move(last), forward } ));
 }
-expr_p make_sequence(expr_p first, expr_p last, bool forward)
+expr_p make_sequence
+  (expr_p first, expr_p last, bool forward, const YYLTYPE& loc)
 {@; return new expr(mk_sequence(*expr_ptr(first),*expr_ptr(last),forward)); }
 
 @
