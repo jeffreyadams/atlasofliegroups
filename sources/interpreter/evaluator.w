@@ -368,7 +368,7 @@ case string_denotation:
   }
 case boolean_denotation:
   { expression_ptr d@|(new denotation
-        (std::make_shared<bool_value>(e.int_denotation_variant)));
+        (std::make_shared<bool_value>(e.bool_denotation_variant)));
     return conform_types(bool_type,type,std::move(d),e);
   }
 
@@ -1814,15 +1814,17 @@ provide a field |loc| to record the source location.
 @< Type def... @>=
 struct lambda_struct
 { id_pat param; @+ expression_ptr body; @+ source_location loc;
-  lambda_struct(id_pat&& param, expression_ptr&& body, source_location&& loc)
-  : param(std::move(param)), body(std::move(body)), loc(std::move(loc)) @+{}
+  lambda_struct
+      (id_pat&& param, expression_ptr&& body, const source_location& loc)
+  : param(std::move(param)), body(std::move(body)), loc(loc) @+{}
 };
 typedef std::shared_ptr<lambda_struct> shared_lambda;
 
 struct lambda_expression : public expression_base
 { shared_lambda p;
   @)
-  lambda_expression(const id_pat& p, expression_ptr&& b, source_location&& loc);
+  lambda_expression
+    (const id_pat& p, expression_ptr&& b, const source_location& loc);
   virtual ~@[lambda_expression() nothing_new_here@];
     // subobjects do all the work
   virtual void evaluate(level l) const;
@@ -1833,18 +1835,16 @@ struct lambda_expression : public expression_base
 @ The main constructor cannot be inside the class definition, as it requires
 the local function |copy_id_pat|. It copies the pattern and creates a new
 shared reference to the copy (further sharing will occur when the
-$\lambda$-expression is evaluated). For the body we create sharing as well,
-which is simpler since the passed unique-pointer already gives us ownership;
-however, we cannot however use |std::make_shared| since the object pointed to,
-of some class derived from |expression|, already exists, and should not be
-cloned.
+$\lambda$-expression is evaluated). The |loc| field is copy-constructed from
+the one passed, which resides in a |const|-qualified |expr| object produced by
+the parser; therefore moving is not an option here, and since this is plain
+data it wouldn't be more efficient anyway.
 
 @< Function def... @>=
 inline
 lambda_expression::lambda_expression @|
-  (const id_pat& p, expression_ptr&& b, source_location&& loc)
-: p(std::make_shared<lambda_struct>
-     (copy_id_pat(p),std::move(b),std::move(loc)))
+  (const id_pat& p, expression_ptr&& b, const source_location& loc)
+: p(std::make_shared<lambda_struct>(copy_id_pat(p),std::move(b),loc))
 @+{}
 
 @ To print an anonymous function, we print the parameter, enclosed in
@@ -2121,12 +2121,12 @@ case lambda_expr:
                        std::move(type));
     return expression_ptr(new @|
       lambda_expression(pat, convert_expr(fun->body,type.func->result_type)
-                       ,std::move(fun->loc)));
+                       ,std::move(e.loc)));
   }
   else
   { type_expr dummy; // unused result type
     expression_ptr result(new @|
-      lambda_expression(pat,convert_expr(fun->body,dummy),std::move(fun->loc)));
+      lambda_expression(pat,convert_expr(fun->body,dummy),std::move(e.loc)));
     return expression_ptr(new voiding(std::move(result)));
   }
 }

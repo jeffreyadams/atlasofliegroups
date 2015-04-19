@@ -224,12 +224,12 @@ secondary : formula
 
 formula : formula_start operand { $$=end_formula($1,$2,@$); }
 ;
-formula_start : operator       { $$=start_unary_formula($1.id,$1.priority); }
-	| comprim operator     { $$=start_formula($1,$2.id,$2.priority); }
+formula_start : operator       { $$=start_unary_formula($1.id,$1.priority,@1); }
+	| comprim operator     { $$=start_formula($1,$2.id,$2.priority,@2); }
 	| IDENT operator       { $$=start_formula
-	      (make_applied_identifier($1,@$),$2.id,$2.priority); }
+	      (make_applied_identifier($1,@$),$2.id,$2.priority,@2); }
 	| formula_start operand operator
-	  { $$=extend_formula($1,$2,$3.id,$3.priority); }
+	  { $$=extend_formula($1,$2,$3.id,$3.priority,@3); }
 ;
 
 

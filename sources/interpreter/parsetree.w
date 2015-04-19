@@ -101,6 +101,7 @@ enum expr_kind @+
 struct expr {
   expr_kind kind;
   union {@; @< Variants of the anonymous |union| in |expr| @>@; };
+  source_location loc;
 @)
   @< Methods of |expr| @>@;
 };
@@ -115,6 +116,49 @@ it is not declared.
 @< Type declarations needed in definition of |struct expr@;| @>=
 struct expr;
 
+@ To represent identifiers efficiently, and also file names, we shall use the
+type |Hash_table::id_type| (a small integer type) of indices into the table of
+identifier or of files names, which we lift out of that class by using a
+|typedef|.
+
+@< Includes needed... @>=
+#include "buffer.h" // for |Hash_table|
+
+@~Then here is how we identify an applied identifier. Since this |typedef| is
+written to \.{parse\_types.h}, all compilation units that include that file can
+also use it.
+
+@< Type declarations needed in definition of |struct expr@;| @>=
+typedef Hash_table::id_type id_type;
+
+@ In order to be able to track in which file a given user-defined function was
+defined, we shall include a record including the location of definition into
+the runtime values for such functions.
+
+@< Type declarations needed... @>=
+struct source_location
+{ unsigned int start_line;
+  unsigned short extent, first_col, last_col;
+  id_type file;
+  source_location(const YYLTYPE& loc);
+  source_location() : file(Hash_table::empty) @+{}
+   // sometimes we have no location
+  bool defined() const @+{@; return file!=Hash_table::empty; }
+};
+
+@ The following constructor computes a |source_location| structure, given the
+|YYLTYPE| structure that the parser computes. In addition to the information
+it provides, we need to get the file name from the |main_input_buffer|.
+
+@< Definitions of functions for the parser @>=
+source_location::source_location(const YYLTYPE& loc)
+: start_line(loc.first_line) // ``narrow'' to |unsigned int|
+, extent(loc.last_line-loc.first_line) // narrow to |unsigned short|
+, first_col(loc.first_column)
+, last_col(loc.last_column) // these are narrowed too
+, file(main_input_buffer->current_file())
+{}
+
 
 @ When default-constructing an |expr| (which happens rarely, but is
 occasionally used to have a local variable whose actual value will be set
@@ -123,7 +167,7 @@ differently according to different branches of execution) we set its |kind| to
 assigned to, or destroyed.
 
 @< Methods of |expr| @>=
-expr() : kind(no_expr)@+{}
+expr() : kind(no_expr), loc() @+{}
 ~expr(); // defined below using a large |switch| statement
 
 @ While we are defining functions to parse expressions, we shall also define a
@@ -219,17 +263,17 @@ We call simple constant expressions ``denotations''. There are recognised by
 the scanner, and either the scanner or the parser will build an appropriate
 node for them, which just stores the constant value denoted. For integer and
 Boolean denotations, the value itself will fit comfortably inside the |struct
-expr@;|, and moreover we can share a variant because the tag will tell whether
-to interpret it is integer or Boolean. For strings we store a |std::string|,
-which is more complicated than the |char*@[@]@;| that we used to store, but it
-is instructive for how the special member functions of |expr| should handle
-non-POD variants, which can neither be assigned to non-initialised memory
-without calling a constructor, nor be left in memory that will be reclaimed
-without calling a destructor.
+expr@;|. For strings we store a |std::string|, which is more complicated to
+handle than the |char*@[@]@;| that we used to store; it will provide a first
+example of how the special member functions of |expr| should handle non-POD
+variants, which can neither be assigned to non-initialised memory without
+calling a constructor, nor be left in memory that will be reclaimed without
+calling a destructor.
 
 @< Variants of ... @>=
 
 int int_denotation_variant;
+bool bool_denotation_variant;
 std::string str_denotation_variant;
 
 @~Each of the three types of denotation has a tag identifying it.
@@ -240,19 +284,23 @@ integer_denotation, string_denotation, boolean_denotation, @[@]
 @ For most of these variants there is a corresponding constructor that
 placement-constructs the constant value into that variant. For the integer and
 Boolean case we might alternatively have assigned to the field, but not for
-the string variant. In fact we decided to declare the Boolean constructor
-deleted, since it many types (like all pointer types) implicitly convert to
-|bool|, and if we had a Boolean constructor then an accidental use of such a
-type in an initialiser for |expr| would bind to that constructor, silently
-producing an error that would be hard to diagnose.
+the string variant. Constructors whose arguments ther than |loc| have easily
+convertible argument types like |int| or |bool| are given an additional tag
+argument to avoid accidentally invoking an unintended constructor. This
+removes in particular the danger of accidentally invoking the Boolean
+constructor by accidentally passing some unrelated type by pointer (which
+would implicitly convert to |bool|).
 
 @< Methods of |expr| @>=
-  explicit expr(int n)
-  : kind(integer_denotation), int_denotation_variant(n) @+{}
-  expr(bool b) = @[ delete @];
-  explicit expr(std::string&& s)
+  struct int_tag @+{}; @+
+  struct bool_tag @+{};
+  expr(int n, const YYLTYPE& loc, int_tag)
+@/: kind(integer_denotation), int_denotation_variant(n), loc(loc) @+{}
+  expr (bool b, const YYLTYPE& loc, bool_tag)
+@/: kind(boolean_denotation), bool_denotation_variant(b), loc(loc) @+{}
+  explicit expr(std::string&& s, const YYLTYPE& loc)
    : kind(string_denotation)
-   , str_denotation_variant(std::move(s)) @+{}
+   , str_denotation_variant(std::move(s)), loc(loc) @+{}
 
 @~For more explicit construction of these variants in a dynamically allocated
 |expr| object, we provide the functions below. Note that
@@ -278,16 +326,13 @@ without ever becoming an expression).
 
 @< Definitions of functions for the parser @>=
 expr_p make_int_denotation (int val, const YYLTYPE& loc)
-@+{@; return new expr(val); }
+{@; return new expr(val,loc,expr::int_tag()); }
 
 expr_p make_bool_denotation(bool val, const YYLTYPE& loc)
-{@; expr result (val ? 1 : 0);
-  result.kind=boolean_denotation;
-  return new expr(std::move(result));
-}
+{@; return new expr (val,loc,expr::bool_tag()); }
 
 expr_p make_string_denotation(std::string* val_p, const YYLTYPE& loc)
-{@; expr_p result=new expr(std::move(*val_p));
+{@; expr_p result=new expr(std::move(*val_p),loc);
   delete val_p;
   return result;
 }
@@ -306,51 +351,40 @@ case string_denotation:
   str_denotation_variant.~basic_string<char>(); break;
 
 @ In the |expr::set_from| method we change variants both in |*this| (which was
-|no_expr|) and in |other| (which was |no_expr|). This means that for non-POD
-type we must combine construction into a variant of |*this| and a destruction
-of that variant of |other|. We use move construction for efficiency, and it
-will probably leave an empty shell to be destructed, but this does not mean we
-can omit the destruction.
+|no_expr|) and in |other| (which will become |no_expr|). This means that for
+non-POD type we must combine construction into a variant of |*this| and a
+destruction of that variant of |other|. We use move construction for
+efficiency, and it will probably leave an empty shell to be destructed, but
+this does not mean we can omit the destruction.
 
 @< Cases for copying... @>=
   case integer_denotation:
-  case boolean_denotation:
     int_denotation_variant = other.int_denotation_variant; break;
+  case boolean_denotation:
+    bool_denotation_variant = other.bool_denotation_variant; break;
   case string_denotation:
     new (&str_denotation_variant)
     std::string(std::move(other.str_denotation_variant));
     other.str_denotation_variant.~basic_string<char>();
   break;
 
-@ To print an integer denotation we just print its variant field; for Boolean
-denotations we reproduce the keyword that gives the denotation, while for string
-denotations we print the stored string enclosed in quotes.
+@ To print an integer or Boolean denotation we just print its variant field;
+for Boolean denotations this requires making sure that the stream has its
+|boolalpha| status set, which we do on the fly here. For string denotations we
+print the stored string enclosed in quotes.
 
 @< Cases for printing... @>=
 case integer_denotation: out << e.int_denotation_variant; break;
 case boolean_denotation:
-  out << (e.int_denotation_variant!=0 ? "true" : "false"); break;
+   out << std::boolalpha << e.bool_denotation_variant; break;
 case string_denotation:
   out << '"' << e.str_denotation_variant << '"'; break;
 
 @*2 Applied identifiers, and the last value computed.
 %
-For representing applied identifiers, we shall use the type
-|Hash_table::id_type| (a small integer type) of indices into the table of
-identifier names, which we lift out of that class by using a |typedef|.
-
-@< Includes needed... @>=
-#include "buffer.h" // for |Hash_table|
-
-@~Then here is how we identify an applied identifier. Since this |typedef| is
-written to \.{parse\_types.h}, all compilation units that include that file can
-also use it.
-
-@< Type declarations needed in definition of |struct expr@;| @>=
-typedef Hash_table::id_type id_type;
-
-@~Their tag is |applied_identifier|. An expression that behaves somewhat
-similarly is `\.\$', which stands for the last value computed.
+For representing applied identifiers, we use the integer type |id_type|
+defined above. Their tag is |applied_identifier|. An expression that behaves
+somewhat similarly is `\.\$', which stands for the last value computed.
 
 @< Enumeration tags for |expr_kind| @>=
 applied_identifier,
@@ -361,31 +395,32 @@ at all.
 @< Variants of ... @>=
 id_type identifier_variant;
 
-@ Rather than having separate constructors for these variants, which would be
-ambiguous with constructors already defined, we build these variants directly
-in the following functions.
+@ We need new tags here to define new constructors, which for the rest are
+straightforward.
+
+@< Methods of |expr| @>=
+  struct identifier_tag @+{}; @+
+  struct dollar_tag @+{};
+  expr(id_type id, const YYLTYPE& loc, identifier_tag)
+@/: kind(applied_identifier), identifier_variant(id), loc(loc) @+{}
+  expr (const YYLTYPE& loc, dollar_tag)
+@/: kind(last_value_computed) @+{}
+
+@ As usual there are interface function to the parser.
 
 @< Declarations of functions for the parser @>=
 expr_p make_applied_identifier (id_type id, const YYLTYPE& loc);
 expr_p make_dollar(const YYLTYPE& loc);
 
 @~In spite of the absence of dedicated constructors, these function have
-rather simple definitions. We split off a function |mk_applied_identifier|
-that is like a constructor, because it will be serve again below.
+rather simple definitions.
 
 @< Definitions of functions for the parser @>=
-expr mk_applied_identifier (id_type id)
-{@; expr result; result.kind=applied_identifier;
-  result.identifier_variant=id; return result;
-}
 expr_p make_applied_identifier (id_type id, const YYLTYPE& loc)
- {@; return new expr(mk_applied_identifier(id)); }
+ {@; return new expr(id,loc,expr::identifier_tag()); }
 
 expr_p make_dollar (const YYLTYPE& loc)
-{@; expr_p result = new expr;
-  result->kind=last_value_computed;
-  return result;
-}
+{@; return new expr(loc,expr::dollar_tag()); }
 
 @~Like for integer and boolean denotations, there is nothing to destroy here.
 
@@ -442,9 +477,19 @@ tag to mark the distinction.
 
 @< Enumeration tags for |expr_kind| @>= tuple_display, list_display, @[@]
 
-@~We provide a constructor that serves both types of lists.
+@~We provide two constructors that serve both types of lists. Once location
+indication is included in every expression, the second one (without |loc|
+argument) should be redefined so as to extract the location information for
+the component expressions (this is intended for situations where the
+expression list does not correspond to an actual enclosed expression, for
+instance for the argument list of a binary operator actually written infix).
 
 @< Methods of |expr| @>=
+expr(expr_list&& nodes, bool is_tuple, const YYLTYPE& loc)
+ : kind(is_tuple ? tuple_display : list_display)
+ , sublist(std::move(nodes))
+ , loc(loc)
+ @+{}
 expr(expr_list&& nodes, bool is_tuple)
  : kind(is_tuple ? tuple_display : list_display)
  , sublist(std::move(nodes))
@@ -452,12 +497,12 @@ expr(expr_list&& nodes, bool is_tuple)
 
 @ To build an |exprlist_node|, we provide a function |make_exprlist_node| to
 combine an expression with a |raw_expr_list|. To start off the construction,
-one may use |raw_expr_list()| for the empty list. Often it will be practical
-to use right recursive grammar rule that build lists backwards (so |e| is
-actually to the right of |l|), so we provide
-a reversal function to get the proper ordering once the end of the list is
-reached. Finally we provide the wrapping function |wrap_expr_list| for list
-displays.
+one may use |raw_expr_list(nullptr)| for the empty list. Often it will be
+practical to use right recursive grammar rule that build lists backwards
+(which means the source expression corresponding to~|e| will actually be to
+the right of the one corresponding to~|l|), so we provide a reversal function
+to get the proper ordering once the end of the list is reached. Finally we
+provide the wrapping function |wrap_expr_list| for list displays.
 
 @< Declarations of functions for the parser @>=
 raw_expr_list make_exprlist_node(expr_p e, raw_expr_list l);
@@ -484,9 +529,9 @@ raw_expr_list reverse_expr_list(raw_expr_list raw)
 {@; expr_list l(raw); l.reverse(); return l.release(); }
 @)
 expr_p wrap_tuple_display(raw_expr_list l, const YYLTYPE& loc)
-@+{@; return new expr(expr_list(l),true); }
+{@; return new expr(expr_list(l),true,loc); }
 expr_p wrap_list_display(raw_expr_list l, const YYLTYPE& loc)
-@+{@; return new expr(expr_list(l),false); }
+{@; return new expr(expr_list(l),false,loc); }
 
 @ Destroying a tuple display or list display is easily defined.
 
@@ -505,8 +550,9 @@ void destroy_exprlist(raw_expr_list l);
 @~Its definition is easy; we convert the raw pointer from the parser into an
 |expr_list| then simply let it die, which cleans up the list. This is
 equivalent to calling |delete l| directly, but depends less on knowing
-implementation details. We enclose the case in additional parentheses to avoid
-interpreting it as a declaration.
+implementation details (though the fact that |expr_list| is just a smart
+pointer version of |raw_expr_list| is not really a secret). We enclose
+the case in additional parentheses to avoid interpreting it as a declaration.
 
 @< Definitions of functions for the parser @>=
 void destroy_exprlist(raw_expr_list l)
@@ -591,10 +637,10 @@ by default; it is present only for backward compatibility \.{gcc}~4.6.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct application_node
-{ expr fun; expr arg;
+{ expr fun; @+ expr arg;
 @)
   application_node(expr&& fun, expr&& arg)
-@/: fun(std::move(fun)), arg(std::move(arg)) @+{}
+  : fun(std::move(fun)), arg(std::move(arg)) @+{}
 };
 
 @ The tag used for expressions that will invoke a built-in function is
@@ -611,12 +657,13 @@ app call_variant;
 
 @ There is a constructor for building this variant.
 @< Methods of |expr| @>=
-explicit expr(app&& fx)
+expr(app&& fx, const YYLTYPE& loc)
  : kind(function_call)
  , call_variant(std::move(fx))
+ , loc(loc)
  @+{}
 
-@ To build an |application_node|, we combine the function expression with an
+@ Building an |application_node| combines the function expression with an
 |expr_list| for the argument. The argument list will either be packed into a
 tuple, or if it has length$~1$ unpacked into a single expression.
 
@@ -631,17 +678,15 @@ since binding a freshly constructed |expr| to the modifiable lvalue that
 |set_from| wants would require introducing a dummy name.
 
 @< Definitions of functions for the parser @>=
-expr mk_application_node(expr&& f, expr_list&& args)
-{ app a(new application_node @[{ std::move(f), expr() }@]);
+expr_p make_application_node(expr_p f, raw_expr_list r_args, const YYLTYPE& loc)
+{ expr_ptr ff(f); expr_list args(r_args);
+  app a(new application_node @[{ std::move(*ff), expr() }@]);
   if (args.singleton())
     a->arg.set_from(args.front());
   else
     a->arg=expr(std::move(args),true); // make into an argument tuple
-  return expr(std::move(a)); // move construct application expression
+  return new expr(std::move(a),loc); // move construct application expression
 }
-expr_p make_application_node(expr_p f, raw_expr_list args, const YYLTYPE& loc)
- {@; expr_ptr ff(f);
-   return new expr(mk_application_node(std::move(*f),expr_list(args))); }
 
 @ Destroying a smart pointer field just means calling its destructor.
 
@@ -681,8 +726,11 @@ break;
 
 @ We shall frequently need to form a function application where the function
 is accessed by an applied identifier and the argument is either a single
-expression or a tuple of two expressions. We provide two functions to
-facilitate those constructions.
+expression or a tuple of two expressions. The two functions below are however
+currently used only on specific occasions: |make_unary_call| to call matrix
+transposition in the by-row input syntax for matrices, and |make_binary_call|
+to call the binary operator in translating a compound assignment statement.
+Formulae will build the operator applications they involve directly.
 
 @< Declarations of functions for the parser @>=
 expr_p make_unary_call(id_type name, expr_p arg, const YYLTYPE& loc);
@@ -692,33 +740,31 @@ expr_p make_binary_call(id_type name, expr_p x, expr_p y, const YYLTYPE& loc);
 We were tempted to initialise |args| below using a two-element initialiser
 list, but initialiser lists are incompatible with move semantics. So instead
 we push the arguments in reverse order onto an expression list, and then make
-a function call by calling |mk_application_node| using that argument list.
+a function call using that argument list.
 
 @< Definitions of functions for the parser @>=
 
-expr mk_binary_call(id_type name, expr&& x, expr&& y)
-{ expr_list args;
-  args.push_front(std::move(y));
-  args.push_front(std::move(x));
-  return mk_application_node(mk_applied_identifier(name),std::move(args));
-}
 expr_p make_binary_call(id_type name, expr_p x, expr_p y, const YYLTYPE& loc)
- {@;
-   return new
-     expr(mk_binary_call(name,std::move(*expr_ptr(x)),std::move(*expr_ptr(y))));
- }
+{
+  expr_ptr xx(x), yy(y); // wrap in smart pointers for exception safety
+  expr_list args; // start with empty argument list
+  args.push_front(std::move(*yy));
+  args.push_front(std::move(*xx)); // build up lest back-to-front
+  app a(new application_node @|
+    @[{ expr(name,loc,expr::identifier_tag()), expr(std::move(args),true) }@]);
+  return new expr(std::move(a),loc); // move construct application expression
+}
 
 @~In the unary case we avoid making an argument list, constructing the
 function call directly.
 
 @< Definitions of functions for the parser @>=
-expr mk_unary_call(id_type name, expr&& arg)
-{@;
-  return expr(app(
-      new application_node { mk_applied_identifier(name), std::move(arg) }));
-}
 expr_p make_unary_call(id_type name, expr_p a, const YYLTYPE& loc)
- {@; return new expr(mk_unary_call(name,std::move(*expr_ptr(a)))); }
+{
+  expr_ptr aa(a); // wrap in smart pointer for exception safety
+  return new expr(app(new application_node(
+    expr(name,loc,expr::identifier_tag()),std::move(*aa))),loc);
+}
 
 
 @*1 Operators and priority.
@@ -823,7 +869,7 @@ the list of partial formulae, and need not be taken into account in the data
 structure of that list itself. So here is that structure:
 
 @< Structure and typedef declarations... @>=
-struct formula_node {@; expr left_subtree; id_type op; int prio; };
+struct formula_node {@; expr left_subtree; expr op_exp; int prio; };
 
 typedef containers::simple_list<formula_node> form_stack;
 typedef containers::sl_node<formula_node>* raw_form_stack;
@@ -834,41 +880,46 @@ with a new operand and binary operator, one to finish off the formula with
 a final operand, and of course one to clean up.
 
 @< Declarations of functions for the parser @>=
-raw_form_stack start_formula (expr_p e, id_type op, int prio);
-raw_form_stack start_unary_formula (id_type op, int prio);
-raw_form_stack extend_formula (raw_form_stack pre, expr_p e,id_type op, int prio);
+raw_form_stack start_formula
+  (expr_p e, id_type op, int prio, const YYLTYPE& loc);
+raw_form_stack start_unary_formula (id_type op, int prio, const YYLTYPE& loc);
+raw_form_stack extend_formula
+  (raw_form_stack pre, expr_p e,id_type op, int prio, const YYLTYPE& loc);
 expr_p end_formula (raw_form_stack pre, expr_p e, const YYLTYPE& loc);
 void destroy_formula(raw_form_stack s);
 
 @ Starting a formula simply creates an initial node, with a left operand in
 the case of a binary formula.
 @< Definitions of functions for the parser @>=
-raw_form_stack start_formula (expr_p e, id_type op, int prio)
+raw_form_stack start_formula (expr_p e, id_type op, int prio, const YYLTYPE& loc)
 { form_stack result;
-  result.push_front ( {std::move(*expr_ptr(e)), op, prio } );
+  result.push_front (
+   {std::move(*expr_ptr(e)), expr(op,loc,expr::identifier_tag()), prio } );
   return result.release();
 }
 @)
-raw_form_stack start_unary_formula (id_type op, int prio)
-{ form_stack result;
-  result.push_front ( { expr(), op, prio } ); // leave |left_subtree| empty
+raw_form_stack start_unary_formula (id_type op, int prio, const YYLTYPE& loc)
+{ form_stack result;    // leave |left_subtree| empty
+  result.push_front ( @|
+    { expr(), expr(op,loc,expr::identifier_tag()), prio } );
   return result.release();
 }
 
 @ Extending a formula involves the priority comparisons and manipulations
 indicated above. It turns out |start_formula| could have been replaced by a
-call to |extend_formula| with |pre==nullptr|. The second part of the condition in
-the while loop is short for |s.front().prio>prio or (s.front().prio==prio and
-prio%2==0)|.
+call to |extend_formula| with |pre==nullptr|. The second part of the condition
+in the while loop is short for |s.front().prio>prio or (s.front().prio==prio
+and prio%2==0)|.
 
 @< Definitions of functions for the parser @>=
 
-raw_form_stack extend_formula (raw_form_stack pre, expr_p ep,id_type op, int prio)
+raw_form_stack extend_formula
+  (raw_form_stack pre, expr_p ep,id_type op, int prio, const YYLTYPE& loc)
 { expr e(std::move(*expr_ptr (ep))); form_stack s(pre);
   while (not s.empty() and s.front().prio>=prio+prio%2)
     @< Replace |e| by |op(left_subtree,e)| where |op| and |left_subtree|
        come from popped |s.front()| @>
-  s.push_front({std::move(e),op,prio});
+  s.push_front({std::move(e),expr(op,loc,expr::identifier_tag()),prio});
   return s.release();
 }
 
@@ -878,13 +929,18 @@ create a node without left operand), but that fact is not used here. Only once
 the node is emptied do we pop it with |s.front()|.
 
 @< Replace |e| by |op(left_subtree,e)|...@>=
-{ if (s.front().left_subtree.kind==no_expr)
-    e = mk_unary_call(s.front().op,std::move(e));
-      // apply initial unary operator
+{ if (s.front().left_subtree.kind==no_expr) // apply initial unary operator
+    e = expr(app(new application_node
+          (std::move(s.front().op_exp),std::move(e))),loc);
   else
-    e = mk_binary_call(s.front().op
-                     ,std::move(s.front().left_subtree)
-                     ,std::move(e));
+  {
+    expr_list args; // start with empty argument list
+    args.push_front(std::move(e));
+    args.push_front(std::move(s.front().left_subtree));
+    app a(new application_node @|
+      @[{ std::move(s.front().op_exp), expr(std::move(args),true) }@]);
+    e= expr(std::move(a),loc); // move construct application expression
+  }
   s.pop_front();
 }
 
@@ -1089,9 +1145,10 @@ let let_variant;
 
 @ There is a constructor for building this variant.
 @< Methods of |expr| @>=
-explicit expr(let&& declaration)
+explicit expr(let&& declaration, const YYLTYPE& loc)
  : kind(let_expr)
  , let_variant(std::move(declaration))
+ , loc(loc)
  @+{}
 
 @ For building let-expressions, three functions will be defined. The function
@@ -1131,29 +1188,29 @@ raw_let_list append_let_node(raw_let_list prev, raw_let_list cur)
   return result.release();
  }
 @)
-expr mk_let_expr_node(let_list&& decls, expr& body)
-{ id_pat pattern; expr val;
+expr_p make_let_expr_node(raw_let_list d, expr_p b, const YYLTYPE& loc)
+{
+  let_list decls(d);
+  expr_ptr bb(b);
+  expr& body=*bb; // ensure exception safety
+  id_pat pattern; expr val;
   if (decls.singleton()) // single declaration
   @/{@; pattern=std::move(decls.front().pattern);
     val=std::move(decls.front().val);
   }
   else
-  { patlist patl;
-    val=expr(expr_list(),true); // make a tuple expression
+  { patlist patl; expr_list expl;
     for (auto it=decls.begin(); not decls.at_end(it); ++it)
       // zip open |decls|, reversing
     {@; patl.push_front(std::move(it->pattern));
-      val.sublist.push_front(std::move(it->val));
+      expl.push_front(std::move(it->val));
     }
     pattern = id_pat(std::move(patl));
+    val=expr(std::move(expl),true); // make a tuple expression
   }
-  return expr(let(new let_expr_node
-    { std::move(pattern), std::move(val),std::move(body) }));
-
+  return new expr @| (let(new let_expr_node
+    { std::move(pattern), std::move(val),std::move(body) }),loc);
 }
-expr_p make_let_expr_node(raw_let_list decls, expr_p body, const YYLTYPE& loc)
- {@; return new expr(mk_let_expr_node(let_list(decls),*expr_ptr(body)));
- }
 
 @ For the unique pointer |let|, copying is done just as was for |app| before.
 
@@ -1235,31 +1292,6 @@ void destroy_type(type_p t)@+ {@; (type_ptr(t)); }
 void destroy_type_list(raw_type_list t)@+ {@; (type_list(t)); }
   // recursive destruction
 
-@ In order to be able to track in which file a given user-defined function was
-defined, we shall include a record including the location of definition into
-the runtime values for such functions.
-
-@< Structure and typedef... @>=
-struct source_location
-{ unsigned int start_line;
-  unsigned short extent, first_col, last_col;
-  id_type file;
-  source_location(const YYLTYPE& loc);
-};
-
-@ The following function computes a |source_location| structure, given the
-|YYLTYPE| structure that the parser computes. In addition to the information
-it provides, we need to get the file name from the |main_input_buffer|.
-
-@< Definitions of functions for the parser @>=
-source_location::source_location(const YYLTYPE& loc)
-: start_line(loc.first_line) // ``narrow'' to |unsigned int|
-, extent(loc.last_line-loc.first_line) // narrow to |unsigned short|
-, first_col(loc.first_column)
-, last_col(loc.last_column) // these are narrowed too
-, file(main_input_buffer->current_file())
-{}
-
 @ For user-defined functions we shall use a structure |lambda_node|.
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef std::unique_ptr<struct lambda_node> lambda;
@@ -1272,14 +1304,11 @@ the source location of the function.
 @< Structure and typedef... @>=
 struct lambda_node
 { id_pat pattern; type_expr parameter_type; expr body;
-  source_location loc;
 @)
-  lambda_node(id_pat&& pattern, type_expr&& type, expr&& body
-             , const YYLTYPE& location)
+  lambda_node(id_pat&& pattern, type_expr&& type, expr&& body)
   @/: pattern(std::move(pattern))
   , parameter_type(std::move(type))
   , body(std::move(body))
-  , loc(location)
 @+{}
 };
 
@@ -1293,10 +1322,11 @@ lambda lambda_variant;
 
 @ There is a constructor for building lambda expressions.
 @< Methods of |expr| @>=
-explicit expr(lambda&& fun)
+explicit expr(lambda&& fun, const YYLTYPE& loc)
  : kind(lambda_expr)
  , lambda_variant(std::move(fun))
- @+{}
+ , loc(loc)
+@+{}
 
 @ There is as usual a function for constructing a node, to be called
 by the parser.
@@ -1318,9 +1348,14 @@ the copy, destruction of |type_l| deletes the original |type_node|. In the
 latter case we apply list reversal here to both pattern list and type list.
 
 @< Definitions of functions for the parser @>=
-expr mk_lambda_node(patlist&& pat_l, type_list&& type_l, expr& body,
+expr_p make_lambda_node(raw_patlist p, raw_type_list tl, expr_p b,
  const YYLTYPE& loc)
-{ id_pat pattern; type_expr parameter_type;
+{
+  patlist pat_l(p);
+  type_list type_l(tl);
+  expr_ptr body_p(b);
+  expr& body=*body_p; // safety
+  id_pat pattern; type_expr parameter_type;
   if (type_l.singleton())
 @/{@; pattern=std::move(pat_l.front());
     parameter_type = std::move(type_l.front());
@@ -1330,15 +1365,9 @@ expr mk_lambda_node(patlist&& pat_l, type_list&& type_l, expr& body,
   @/type_l.reverse(); parameter_type=type_expr(std::move(type_l));
   // make tuple type
   }
-  return expr(lambda(new@| lambda_node
-      (std::move(pattern),std::move(parameter_type),std::move(body), loc)));
+  return new expr(lambda(new@| lambda_node
+      (std::move(pattern),std::move(parameter_type),std::move(body))),loc);
 }
-expr_p make_lambda_node(raw_patlist p, raw_type_list tl, expr_p body,
- const YYLTYPE& loc)
- {@;
-   return new expr(
-      mk_lambda_node(patlist(p),type_list(tl),*expr_ptr(body),loc));
- }
 
 @ Since |lambda| is a unique pointer, we must use move construction.
 @< Cases for copying... @>=
@@ -1398,10 +1427,11 @@ cond if_variant;
 
 @ There is a constructor for building conditional expressions.
 @< Methods of |expr| @>=
-explicit expr(cond&& conditional)
+explicit expr(cond&& conditional, const YYLTYPE& loc)
  : kind(conditional_expr)
  , if_variant(std::move(conditional))
- @+{}
+ , loc(loc)
+@+{}
 
 @ To build an |conditional_node|, we define a function as usual.
 @< Declarations of functions for the parser @>=
@@ -1410,14 +1440,12 @@ expr_p make_conditional_node(expr_p c, expr_p t, expr_p e, const YYLTYPE& loc);
 @~It is entirely straightforward.
 
 @< Definitions of functions for the parser @>=
-expr mk_conditional_node(expr& c, expr& t, expr& e)
-{@;
-  return expr (cond (new @|
-      conditional_node { std::move(c), std::move(t), std::move(e) }));
-}
 expr_p make_conditional_node(expr_p c, expr_p t, expr_p e, const YYLTYPE& loc)
-{@;
-   return new expr(mk_conditional_node(*expr_ptr(c),*expr_ptr(t),*expr_ptr(e)));
+{
+  expr_ptr cc(c), tt(t), ee(e);
+  expr& cnd=*cc; expr& thn=*tt; expr& els=*ee;
+  return new expr(cond (new @|
+      conditional_node { std::move(cnd), std::move(thn), std::move(els) }),loc);
 }
 
 @ We follow the usual coding pattern for copying unique pointers.
@@ -1510,18 +1538,21 @@ c_loop cfor_variant;
 
 @ There is a constructor for building each type of loop expression.
 @< Methods of |expr| @>=
-explicit expr(w_loop&& loop)
+explicit expr(w_loop&& loop, const YYLTYPE& loc)
  : kind(while_expr)
  , while_variant(std::move(loop))
- @+{}
-explicit expr(f_loop&& loop)
+ , loc(loc)
+@+{}
+explicit expr(f_loop&& loop, const YYLTYPE& loc)
  : kind(for_expr)
  , for_variant(std::move(loop))
- @+{}
-explicit expr(c_loop&& loop)
+ , loc(loc)
+@+{}
+explicit expr(c_loop&& loop, const YYLTYPE& loc)
  : kind(cfor_expr)
  , cfor_variant(std::move(loop))
- @+{}
+ , loc(loc)
+@+{}
 
 @ To build a |while_node|, |for_node| or |cfor_node|, here are yet three
 more \\{make}-functions.
@@ -1535,33 +1566,29 @@ expr_p make_cfor_node
 @ They are quite straightforward, as usual.
 
 @< Definitions of functions for the parser @>=
-expr mk_while_node(expr& c, expr& b)
-{@;
-  return expr (w_loop(new while_node { std::move(c), std::move(b)})) ;
-}
 expr_p make_while_node(expr_p c, expr_p b, const YYLTYPE& loc)
-{@; return new expr(mk_while_node(*expr_ptr(c),*expr_ptr(b))); }
-@)
-expr mk_for_node(id_pat&& id, expr& ip, expr& b)
-{@;
-  return expr(f_loop(new
-    for_node { std::move(id), std::move(ip), std::move(b) }));
+{
+  expr_ptr cc(c), bb(b);
+  expr& cnd=*cc; expr& body=*bb;
+  return new expr(w_loop(new
+     while_node { std::move(cnd), std::move(body)}),loc) ;
 }
+@)
 expr_p make_for_node(raw_id_pat& id, expr_p ip, expr_p b, const YYLTYPE& loc)
-{@;
-   return new expr(mk_for_node(id_pat(id),*expr_ptr(ip),*expr_ptr(b)));
+{
+  id_pat ind(id); expr_ptr iip(ip), bb(b);
+  expr& in=*iip;  expr& body=*bb;
+  return new expr(f_loop(new @|
+    for_node { std::move(ind), std::move(in), std::move(body) }),loc);
 }
 @)
-expr mk_cfor_node(id_type id, expr& cnt, expr& bnd, bool up, expr& b)
-{@;
-  return expr (c_loop(new @|
-   cfor_node { id, std::move(cnt),std::move(bnd),up,std::move(b) }));
-}
-expr_p make_cfor_node(id_type id, expr_p cnt, expr_p bnd, bool up, expr_p b,
+expr_p make_cfor_node(id_type id, expr_p c, expr_p l, bool up, expr_p b,
    const YYLTYPE& loc)
-{@;
-   return new
-     expr(mk_cfor_node(id,*expr_ptr(cnt),*expr_ptr(bnd),up,*expr_ptr(b)));
+{
+  expr_ptr cc(c), ll(l), bb(b);
+  expr& cnt=*cc; expr& lim=*ll; expr& body=*bb;
+  return new expr (c_loop(new @|
+    cfor_node { id, std::move(cnt),std::move(lim),up,std::move(body) }),loc);
 }
 
 @ Again we apply the copying discipline for unique pointer variants.
@@ -1654,9 +1681,10 @@ sub subscription_variant;
 
 @ There is a constructor for building the new variant.
 @< Methods of |expr| @>=
-explicit expr(sub&& s)
+explicit expr(sub&& s, const YYLTYPE& loc)
  : kind(subscription)
  , subscription_variant(std::move(s))
+ , loc(loc)
  @+{}
 
 @ To build an |subscription_node|, we simply combine the array and the index
@@ -1668,12 +1696,12 @@ expr_p make_subscription_node(expr_p a, expr_p i, const YYLTYPE& loc);
 @~This is straightforward, as usual.
 
 @< Definitions of functions for the parser @>=
-expr mk_subscription_node(expr& a, expr& i)
-{@;
-  return expr(sub(new subscription_node {std::move(a), std::move(i) }));
-}
 expr_p make_subscription_node(expr_p a, expr_p i, const YYLTYPE& loc)
-{@; return new expr(mk_subscription_node(*expr_ptr(a),*expr_ptr(i))); }
+{ expr_ptr aa(a); expr_ptr ii(i);
+  expr& arr=*aa; expr& ind=*ii;
+  return new expr(sub(new
+     subscription_node {std::move(arr), std::move(ind) }),loc);
+}
 @
 @< Cases for copying... @>=
 case subscription:
@@ -1739,10 +1767,11 @@ cast cast_variant;
 
 @ There is a constructor for building the new variant.
 @< Methods of |expr| @>=
-explicit expr(cast&& c)
+explicit expr(cast&& c, const YYLTYPE& loc)
  : kind(cast_expr)
  , cast_variant(std::move(c))
- @+{}
+ , loc(loc)
+@+{}
 
 @ Casts are built by |make_cast|.
 
@@ -1752,12 +1781,12 @@ expr_p make_cast(type_p type, expr_p exp, const YYLTYPE& loc);
 @~No surprises here.
 
 @< Definitions of functions for the parser@>=
-expr mk_cast(type_expr& type, expr& exp)
-{@;
-  return expr(cast(new cast_node { std::move(type), std::move(exp) }));
+expr_p make_cast(type_p t, expr_p e, const YYLTYPE& loc)
+{
+  type_ptr tt(t); expr_ptr ee(e);
+  type_expr& type=*tt; expr& exp=*ee;
+  return new expr(cast(new cast_node { std::move(type), std::move(exp) }),loc);
 }
-expr_p make_cast(type_p type, expr_p exp, const YYLTYPE& loc)
-{@; return new expr(mk_cast(*type_ptr(type),*expr_ptr(exp))); }
 
 @
 @< Cases for copying... @>=
@@ -1809,10 +1838,11 @@ op_cast op_cast_variant;
 
 @ There is a constructor for building the new variant.
 @< Methods of |expr| @>=
-explicit expr(op_cast&& c)
+explicit expr(op_cast&& c, const YYLTYPE& loc)
  : kind(op_cast_expr)
  , op_cast_variant(std::move(c))
- @+{}
+ , loc(loc)
+@+{}
 
 @ Casts are built by |make_cast|.
 
@@ -1822,12 +1852,11 @@ expr_p make_op_cast(id_type name,type_p type, const YYLTYPE& loc);
 @~No surprises here either.
 
 @< Definitions of functions for the parser@>=
-expr mk_op_cast(id_type name,type_expr& type)
-{@;
-  return expr(op_cast(new op_cast_node { name, std::move(type) }));
+expr_p make_op_cast(id_type name,type_p t, const YYLTYPE& loc)
+{
+  type_ptr tt(t); type_expr& type=*tt;
+  return new expr(op_cast(new op_cast_node { name, std::move(type) }),loc);
 }
-expr_p make_op_cast(id_type name,type_p type, const YYLTYPE& loc)
-{@; return new expr(mk_op_cast(name,*type_ptr(type))); }
 
 @
 @< Cases for copying... @>=
@@ -1881,10 +1910,11 @@ assignment assign_variant;
 
 @ As always there is a constructor for building the new variant.
 @< Methods of |expr| @>=
-explicit expr(assignment&& a)
+explicit expr(assignment&& a, const YYLTYPE& loc)
  : kind(ass_stat)
  , assign_variant(std::move(a))
- @+{}
+ , loc(loc)
+@+{}
 
 @ Assignment statements are built by |make_assignment|.
 
@@ -1895,12 +1925,11 @@ expr_p make_assignment(id_type lhs, expr_p rhs, const YYLTYPE& loc);
 homework assignment made).
 
 @< Definitions of functions for the parser@>=
-expr mk_assignment(id_type lhs, expr& rhs)
-{@;
-  return expr(assignment(new assignment_node { lhs, std::move(rhs) }));
+expr_p make_assignment(id_type lhs, expr_p r, const YYLTYPE& loc)
+{
+  expr_ptr rr(r); expr& rhs=*rr;
+  return new expr(assignment(new assignment_node { lhs, std::move(rhs) }),loc);
 }
-expr_p make_assignment(id_type lhs, expr_p rhs, const YYLTYPE& loc)
-{@; return new expr(mk_assignment(lhs,*expr_ptr(rhs))); }
 
 @
 @< Cases for copying... @>=
@@ -1956,10 +1985,11 @@ comp_assignment comp_assign_variant;
 
 @ As always there is a constructor for building the new variant.
 @< Methods of |expr| @>=
-explicit expr(comp_assignment&& ca)
+explicit expr(comp_assignment&& ca, const YYLTYPE& loc)
  : kind(comp_ass_stat)
  , comp_assign_variant(std::move(ca))
- @+{}
+ , loc(loc)
+@+{}
 
 @ Assignment statements are built by |make_assignment|, which for once does
 not simply combine the expression components, because for reason of parser
@@ -1973,16 +2003,16 @@ expr_p make_comp_ass(expr_p lhs, expr_p rhs, const YYLTYPE& loc);
 that |lhs| presents the necessary structure for this code to work.
 
 @< Definitions of functions for the parser@>=
-expr mk_comp_ass(expr& lhs, expr& rhs)
-{ return expr(comp_assignment(new @|
+expr_p make_comp_ass(expr_p l, expr_p r, const YYLTYPE& loc)
+{
+  expr_ptr ll(l), rr(r); expr& lhs=*ll; expr& rhs=*rr;
+  return new expr(comp_assignment(new @|
   comp_assignment_node
   { lhs.subscription_variant->array.identifier_variant
   , std::move(lhs.subscription_variant->index)
   , std::move(rhs)
-  }));
+  }),loc);
 }
-expr_p make_comp_ass(expr_p lhs, expr_p rhs, const YYLTYPE& loc)
-{@; return new expr(mk_comp_ass(*expr_ptr(lhs),*expr_ptr(rhs))); }
 
 @
 @< Cases for copying... @>=
@@ -2048,10 +2078,11 @@ sequence sequence_variant;
 
 @ As always there is a constructor for building the new variant.
 @< Methods of |expr| @>=
-explicit expr(sequence&& s)
+explicit expr(sequence&& s, const YYLTYPE& loc)
  : kind(seq_expr)
  , sequence_variant(std::move(s))
- @+{}
+ , loc(loc)
+@+{}
 
 @ Sequences are built by |make_sequence|.
 
@@ -2062,14 +2093,13 @@ expr_p make_sequence
 @~It does what one would expect it to.
 
 @< Definitions of functions for the parser @>=
-expr mk_sequence(expr& first, expr& last, bool forward)
-{@;
-  return expr(sequence(new @|
-    sequence_node { std::move(first), std::move(last), forward } ));
-}
 expr_p make_sequence
-  (expr_p first, expr_p last, bool forward, const YYLTYPE& loc)
-{@; return new expr(mk_sequence(*expr_ptr(first),*expr_ptr(last),forward)); }
+  (expr_p f, expr_p l, bool forward, const YYLTYPE& loc)
+{
+  expr_ptr ff(f), ll(l); expr& first=*ff; expr& last=*ll;
+  return new expr(sequence(new @|
+    sequence_node { std::move(first), std::move(last), forward } ),loc);
+}
 
 @
 @< Cases for copying... @>=
