@@ -475,8 +475,14 @@ set Cartan_class (InnerClass ic, mat theta) = CartanClass:
   Cartan_class(KGB_elt(ic,theta,ratvec:null(rank(ic))))
 
 set status(vec alpha,KGBElt x) = int: status(root_index(real_form(x),alpha),x)
+{cross action of root alpha}
 set cross(vec alpha,KGBElt x) = KGBElt:
+  let ()=prints("cross alpha: ", alpha, "x: ", x) in 
   cross(root_index(real_form(x),alpha),x)
+{cross action of Weyl group element w}
+set cross_W(vec w,KGBElt x)=KGBElt:
+let ()=for i:#w downto 0 do x:=cross(w[i],x) od in x
+
 set Cayley(vec alpha,KGBElt x) = KGBElt:
   Cayley(root_index(real_form(x),alpha),x)
 
@@ -569,6 +575,13 @@ set print_KL_list  ((RealForm,RealForm) p) = void: print_KL_list(block(p))
 set print_W_cells  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 set print_W_graph  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 
+
+set imaginary_roots(KGBElt x) = mat:
+  columns_with(is_imaginary(x),roots(real_form(x)))
+set real_roots(KGBElt x) = mat:
+  columns_with(is_real(x),roots(real_form(x)))
+set complex_roots(KGBElt x) = mat:
+  columns_with(is_complex(x),roots(real_form(x)))
 
 {			    Module parameters				}
 
@@ -663,7 +676,8 @@ set lookup (Param p, [Param] block) = int:
 set null_module (ParamPol P)= 0*P { also handles null_module(Param) }
 
 set virtual(Param p) = ParamPol: p { for making implicit conversion explcit }
-
+set virtual([Param] params)=ParamPol: 
+let rv=null_module(real_form(params[0])) in for p in params do rv+:=virtual(p) od;rv
 
 {				Miscellaneous				}
 
@@ -672,3 +686,28 @@ set find([[int]] list,[int] v)=int:
 
 set in_string_list(string s,[string] S)=bool:
   let i=#S-1 in while i>=0 and S[i]!=s do i-:=1 od; i>=0
+
+
+
+
+set positive_imaginary_roots_and_coroots (RootDatum rd, mat theta) = (mat,mat):
+( let im_roots = [vec]: [],im_coroots=[vec]:[],roots=posroots(rd), coroots=poscoroots(rd) in
+  for alpha@i in roots do if theta*alpha = alpha then
+    (im_roots #:= alpha, im_coroots#:=coroots[i]) 
+  fi od
+; if #im_roots=0 then (null(rank(rd),0),null(rank(rd),0)) else (im_roots,im_coroots) fi
+)
+set positive_imaginary_roots_and_coroots (KGBElt x) = (mat,mat):positive_imaginary_roots_and_coroots (root_datum(real_form(x)),involution(x))
+
+set positive_real_roots_and_coroots (RootDatum rd, mat theta) = (mat,mat):
+( let im_roots = [vec]: [],im_coroots=[vec]:[],roots=posroots(rd), coroots=poscoroots(rd) in
+  for alpha@i in roots do if theta*alpha = -alpha then
+    (im_roots #:= alpha, im_coroots#:=coroots[i]) 
+  fi od
+; if #im_roots=0 then (null(rank(rd),0),null(rank(rd),0)) else (im_roots,im_coroots) fi
+)
+
+set positive_real_roots_and_coroots (KGBElt x) = (mat,mat):positive_real_roots_and_coroots (root_datum(real_form(x)),involution(x))
+
+set complex_roots(RootDatum rd,mat theta)=[vec]:let rv=[] in
+for alpha in posroots(rd) do if alpha != theta*alpha then rv#:=alpha fi od;rv

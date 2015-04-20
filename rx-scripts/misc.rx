@@ -40,7 +40,7 @@ set param(RealForm G,int k, vec lambda_rho,ratvec nu) = Param:
 
 { replace non-final parameter with [Param p] of final ones
   uses this feature of ParamPol, but ignores any coefficients }
-set make_finals (Param p)= [Param]: for c@q in ParamPol: p do q od
+set make_final (Param p)= [Param]: for c@q in ParamPol: p do q od
 
 { nicer display of Splits }
 set split_format (Split w) = string:
