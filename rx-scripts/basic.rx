@@ -687,9 +687,6 @@ set find([[int]] list,[int] v)=int:
 set in_string_list(string s,[string] S)=bool:
   let i=#S-1 in while i>=0 and S[i]!=s do i-:=1 od; i>=0
 
-
-
-
 set positive_imaginary_roots_and_coroots (RootDatum rd, mat theta) = (mat,mat):
 ( let im_roots = [vec]: [],im_coroots=[vec]:[],roots=posroots(rd), coroots=poscoroots(rd) in
   for alpha@i in roots do if theta*alpha = alpha then
@@ -699,6 +696,16 @@ set positive_imaginary_roots_and_coroots (RootDatum rd, mat theta) = (mat,mat):
 )
 set positive_imaginary_roots_and_coroots (KGBElt x) = (mat,mat):positive_imaginary_roots_and_coroots (root_datum(real_form(x)),involution(x))
 
+set imaginary_roots_and_coroots (RootDatum rd, mat theta) = (mat,mat):
+( let im_roots = [vec]: [],im_coroots=[vec]:[],roots=roots(rd), coroots=coroots(rd) in
+  for alpha@i in roots do if theta*alpha = alpha then
+    (im_roots #:= alpha, im_coroots#:=coroots[i]) 
+  fi od
+; if #im_roots=0 then (null(rank(rd),0),null(rank(rd),0)) else (im_roots,im_coroots) fi
+)
+set imaginary_roots_and_coroots (KGBElt x) = (mat,mat):imaginary_roots_and_coroots (root_datum(real_form(x)),involution(x))
+
+
 set positive_real_roots_and_coroots (RootDatum rd, mat theta) = (mat,mat):
 ( let im_roots = [vec]: [],im_coroots=[vec]:[],roots=posroots(rd), coroots=poscoroots(rd) in
   for alpha@i in roots do if theta*alpha = -alpha then
@@ -706,8 +713,22 @@ set positive_real_roots_and_coroots (RootDatum rd, mat theta) = (mat,mat):
   fi od
 ; if #im_roots=0 then (null(rank(rd),0),null(rank(rd),0)) else (im_roots,im_coroots) fi
 )
-
 set positive_real_roots_and_coroots (KGBElt x) = (mat,mat):positive_real_roots_and_coroots (root_datum(real_form(x)),involution(x))
+
+set real_roots_and_coroots (RootDatum rd, mat theta) = (mat,mat):
+( let im_roots = [vec]: [],im_coroots=[vec]:[],roots=posroots(rd), coroots=poscoroots(rd) in
+  for alpha@i in roots do if theta*alpha = -alpha then
+    (im_roots #:= alpha, im_coroots#:=coroots[i]) 
+  fi od
+; if #im_roots=0 then (null(rank(rd),0),null(rank(rd),0)) else (im_roots,im_coroots) fi
+)
+set real_roots_and_coroots (KGBElt x) = (mat,mat):real_roots_and_coroots (root_datum(real_form(x)),involution(x))
 
 set complex_roots(RootDatum rd,mat theta)=[vec]:let rv=[] in
 for alpha in posroots(rd) do if alpha != theta*alpha then rv#:=alpha fi od;rv
+
+{find integer in list, return index or -1 if not found}
+set find(int i,[int] list)=int:
+let done=false,j=0,rv=-1 in
+while (not done and j<#list) do
+ if list[j]=i then done:=true;rv:=j else j:=j+1 fi od;rv

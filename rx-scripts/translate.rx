@@ -72,7 +72,7 @@ set Psi(ParamPol P,[int] v)= ParamPol:
 
   root k of the integral roots is in pseudo-tau(p) if
   <gamma,alpha_k^v>*fund_weight is integral, and
-  Psi(p,k)=0 or its x(Psi(p,k)) gets changed by make_finals
+  Psi(p,k)=0 or its x(Psi(p,k)) gets changed by make_final
   (here Psi(p,k) is the translation of the standard module for p)
 }
 
@@ -82,7 +82,7 @@ set root_in_pseudo_tau (Param p,int k)= bool:
     (coroot(rd,k)*infinitesimal_character(p))*fundamental_weight(rd,k)
   in
   ( is_integer(weight) and is_zero(Psi(p,k))
-    or not x(Psi(p,k))=x(make_finals(Psi(p,k))[0]) )
+    or not x(Psi(p,k))=x(make_final(Psi(p,k))[0]) )
 
 { set of integers, defining a subset of the simple integral roots }
 set pseudo_tau (Param p)= [int]:

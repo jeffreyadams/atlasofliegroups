@@ -5,8 +5,11 @@
 {------------------tests for any root, not just simple--------------}
 
 set is_compact(vec alpha, KGBElt x)=bool:
-let (w,beta)=make_simple_sequence(root_datum(real_form(x)),alpha) in  {w.beta=alpha, beta is simple}
-is_compact(beta,cross_W(inverse(w),x))
+let rd=root_datum(real_form(x)) in 
+let ()=if not is_positive_root(rd,alpha) then alpha:=-alpha fi  in
+let (w,beta)=make_simple_sequence(rd,alpha) in  {w.beta=alpha, beta is simple}
+{is_compact(beta,cross_W(inverse(w),x))}
+is_compact(beta,cross_W(w,x))
 
 set is_noncompact(vec alpha,KGBElt x)=bool:is_imaginary(alpha,x) and not is_compact(alpha,x)
 
@@ -63,7 +66,7 @@ while not done and i<n_columns(roots) do if roots[i]=alpha then done:=true else 
 {G_K_roots_and_coroots
 G_K_roots: roots of K as elements of X^* (before restricting to X^*(T_K))
  assuming alpha complex >0 => theta(alpha)>0
- ueach compact imaginary root, and one of each complex pair {alpha,theta(alpha)}
+ each compact imaginary root, and one of each complex pair {alpha,theta(alpha)}
 G_K_coroots: set of elements of X_* (contained in image of X_*(T_K))
    each compact imaginary coroots
  alpha complex:
@@ -83,6 +86,7 @@ let G=real_form(x) in
 let delta=distinguished_involution(G) in
 let ()=if not involution(x)=delta then prints("Warning: x is not in fundamental fiber") fi in
 let (ir,icr)=positive_imaginary_roots_and_coroots(x) in
+{let (ir,icr)=imaginary_roots_and_coroots(x) in}
 let complex_roots_0=[vec]:complex_roots(x) in
 let complex_coroots_0=[vec]:complex_roots(dual(root_datum(G)),^delta) in
 {let ()=prints("complex_roots_0:", mat:complex_roots_0) in}
@@ -94,7 +98,7 @@ let complex_coroots=[vec]:[] in
  if need_root(complex_roots,delta*alpha) then
    (complex_roots#:=delta*alpha;complex_coroots#:=check(complex_roots_0,complex_coroots_0,delta*alpha)) fi) od in
 let roots=[] in
- let ()=for alpha in imaginary_roots(x)
+ let ()=for alpha in ir
  do if is_compact(alpha,x) then roots#:=alpha fi od in
  let ()=for i:#complex_roots\2 do roots#:=complex_roots[2*i] od in
 let coroots=[] in
@@ -166,9 +170,6 @@ set K_0(RealForm G)=RealForm:K_0(KGB(G,0))
 set rho_K(KGBElt x)=ratvec:rho(K_0(x))
 set rho_K(RealForm G)=ratvec:rho(K_0(G))
 {NOT USED
-
-
-
 {G_K_roots: roots of K as elements of X^* (before restricting to X^*(T_K))
  assuming alpha complex >0 => theta(alpha)>0
  returns each compact imaginary root, and one of each complex pair {alpha,theta(alpha)}}
