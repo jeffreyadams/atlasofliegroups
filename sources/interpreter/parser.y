@@ -192,9 +192,9 @@ quaternary: quaternary ';' tertiary { $$=make_sequence($1,$3,true,@$); }
 tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3,@$); }
 	| subscription BECOMES tertiary { $$ = make_comp_ass($1,$3,@$); }
 	| IDENT operator BECOMES tertiary
-	{ $$ = make_assignment($1,
-		make_binary_call($2.id,
-		  make_applied_identifier($1,@1),$4,@$),@$); }
+	  { $$ = make_assignment($1,
+		  make_binary_call($2.id,
+		    make_applied_identifier($1,@1),$4,@$,@2),@$); }
 	| or_expr
 ;
 
@@ -227,7 +227,7 @@ formula : formula_start operand { $$=end_formula($1,$2,@$); }
 formula_start : operator       { $$=start_unary_formula($1.id,$1.priority,@1); }
 	| comprim operator     { $$=start_formula($1,$2.id,$2.priority,@2); }
 	| IDENT operator       { $$=start_formula
-	      (make_applied_identifier($1,@$),$2.id,$2.priority,@2); }
+	      (make_applied_identifier($1,@1),$2.id,$2.priority,@2); }
 	| formula_start operand operator
 	  { $$=extend_formula($1,$2,$3.id,$3.priority,@3); }
 ;
@@ -235,13 +235,13 @@ formula_start : operator       { $$=start_unary_formula($1.id,$1.priority,@1); }
 
 operator : OPERATOR | '=';
 
-operand : operator operand { $$=make_unary_call($1.id,$2,@$); }
+operand : operator operand { $$=make_unary_call($1.id,$2,@$,@1); }
 	| primary
 ;
 
 
 primary: comprim
-	| IDENT { $$=make_applied_identifier($1,@$); }
+	| IDENT { $$=make_applied_identifier($1,@1); }
 ;
 comprim: subscription
 	| comprim '[' exp ']' { $$ = make_subscription_node($1,$3,@$); }
@@ -252,7 +252,7 @@ comprim: subscription
 	       ,@$) ;
 	  }
 	| primary '(' commalist_opt ')'
-		{ $$=make_application_node($1,reverse_expr_list($3),@$); }
+	{ $$=make_application_node($1,reverse_expr_list($3),@$,@2,@4); }
 	| INT { $$ = make_int_denotation($1,@$); }
 	| TRUE { $$ = make_bool_denotation(true,@$); }
 	| FALSE { $$ = make_bool_denotation(false,@$); }
@@ -285,7 +285,7 @@ comprim: subscription
 		(lookup_identifier("^"),
                  make_cast
                  (make_prim_type(5) /* |matrix_type| */
-		  ,wrap_list_display(reverse_expr_list($2),@$),@$),@$);
+		  ,wrap_list_display(reverse_expr_list($2),@$),@$),@$,@1);
 	  }
 	| '(' commalist ',' exp ')'
 	{ $$=wrap_tuple_display
@@ -296,10 +296,10 @@ comprim: subscription
 ;
 
 subscription: IDENT '[' exp ']'
-	  { $$ = make_subscription_node(make_applied_identifier($1,@$),$3,@$); }
+	  { $$ = make_subscription_node(make_applied_identifier($1,@1),$3,@$); }
 	| IDENT '[' commalist ',' exp ']'
 	  { $$=make_subscription_node
-	       (make_applied_identifier($1,@$),
+	       (make_applied_identifier($1,@1),
 		wrap_tuple_display
 		    (reverse_expr_list(make_exprlist_node($5,$3)),@$)
 	       ,@$) ;

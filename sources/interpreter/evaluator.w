@@ -819,13 +819,17 @@ case applied_identifier:
   const_type_p id_t; size_t i,j;
   const bool is_local=(id_t=layer::lookup(id,i,j))!=nullptr;
   if (not is_local and (id_t=global_id_table->type_of(id))==nullptr)
-    throw program_error  @|
-       (std::string("Undefined identifier ")
-	+main_hash_table->name_of(id));
+  {
+    std::ostringstream o;
+    o << "Undefined identifier " << main_hash_table->name_of(id);
+    if (e.loc.file!=Hash_table::empty)
+      o << ' ' << e.loc;
+    throw program_error (o.str());
+  }
 @.Undefined identifier@>
-  expression_ptr id_expr = is_local
+  expression_ptr id_expr = @| is_local
   ? expression_ptr(new local_identifier(id,i,j))
-@/: expression_ptr(new global_identifier(id));
+  : expression_ptr(new global_identifier(id));
   if (type.specialise(*id_t)) // then required type admits known identifier type
     { if (type!=*id_t)
       // usage has made type of identifier more specialised
@@ -1910,12 +1914,7 @@ printed. But it's not done yet.
 
 @< Function def... @>=
 void closure_value::print(std::ostream& out) const
-{ out << "Function defined at "
-      << main_input_buffer->name_of(p->loc.file) @|
-      << ':' << p->loc.start_line << ':' << p->loc.first_col << '-';
-  if (p->loc.extent>0)
-    out << p->loc.start_line+p->loc.extent << ':';
-  out << p->loc.last_col << std::endl << *p;
+{ out << "Function defined " << p->loc << std::endl << *p;
 }
 
 @ Evaluating a $\lambda$-expression just forms a closure using the current

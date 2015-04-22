@@ -140,11 +140,32 @@ struct source_location
 { unsigned int start_line;
   unsigned short extent, first_col, last_col;
   id_type file;
-  source_location(const YYLTYPE& loc);
-  source_location() : file(Hash_table::empty) @+{}
-   // sometimes we have no location
-  bool defined() const @+{@; return file!=Hash_table::empty; }
+  source_location(const YYLTYPE& loc); // construct from parser-provided data
+  source_location() : start_line(~0u) @+{}
+    // sometimes we have no location
+  source_location@|
+    (const source_location& left, const source_location& right);
+    // compute span
+  bool undefined() const @+{@; return start_line==~0u; }
 };
+
+@ Ultimately we shall want to print |source_location| values in human readable
+format.
+@< Declarations of functions not for the parser @>=
+std::ostream& operator<<(std::ostream& out, const source_location& sl);
+
+@ We try to produce a somewhat compact format in case of items contained in one
+source line.
+
+@< Definitions of functions not for the parser @>=
+std::ostream& operator<<(std::ostream& out, const source_location& sl)
+{
+  out << "at " << main_input_buffer->name_of(sl.file) @|
+      << ':' << sl.start_line << ':' << sl.first_col << '-';
+  if (sl.extent>0)
+    out << '-' << sl.start_line+sl.extent << ':';
+  return out << sl.last_col;
+}
 
 @ The following constructor computes a |source_location| structure, given the
 |YYLTYPE| structure that the parser computes. In addition to the information
@@ -159,6 +180,25 @@ source_location::source_location(const YYLTYPE& loc)
 , file(main_input_buffer->current_file())
 {}
 
+@ In some cases we need to compute a text range delimited by two
+subexpressions as the source location of an expression. In general these are
+virtual expressions not explicitly present in the source, but obtained by
+syntactic de-sugaring in the parser, like rewriting an infix operator as an
+application to a tuples expression formed of the operands.
+
+@< Definitions of functions for the parser @>=
+source_location::source_location
+  (const source_location& left, const source_location& right)
+@/: start_line(left.start_line)
+, extent(right.start_line-left.start_line+right.extent)
+@/, first_col(left.first_col), last_col(right.last_col)
+, file(left.file)
+{ // correct the above computations when one location was undefined
+  if (right.undefined())
+    *this = left;
+  else if (left.undefined())
+    *this = right;
+}
 
 @ When default-constructing an |expr| (which happens rarely, but is
 occasionally used to have a local variable whose actual value will be set
@@ -219,6 +259,7 @@ void expr::set_from (expr& other)
        @+ case no_expr: {}
     }
   other.kind = no_expr;
+  loc = other.loc;
 }
 @)
 expr::expr (expr&& other) : kind(no_expr) @+
@@ -298,7 +339,7 @@ would implicitly convert to |bool|).
 @/: kind(integer_denotation), int_denotation_variant(n), loc(loc) @+{}
   expr (bool b, const YYLTYPE& loc, bool_tag)
 @/: kind(boolean_denotation), bool_denotation_variant(b), loc(loc) @+{}
-  explicit expr(std::string&& s, const YYLTYPE& loc)
+  expr(std::string&& s, const YYLTYPE& loc)
    : kind(string_denotation)
    , str_denotation_variant(std::move(s)), loc(loc) @+{}
 
@@ -350,9 +391,9 @@ case integer_denotation: case boolean_denotation: break;
 case string_denotation:
   str_denotation_variant.~basic_string<char>(); break;
 
-@ In the |expr::set_from| method we change variants both in |*this| (which was
-|no_expr|) and in |other| (which will become |no_expr|). This means that for
-non-POD type we must combine construction into a variant of |*this| and a
+@ In the |expr::set_from| method we changed variants both in |*this| (which
+was |no_expr|) and in |other| (which will become |no_expr|). This means that
+for non-POD type we must combine construction into a variant of |*this| and a
 destruction of that variant of |other|. We use move construction for
 efficiency, and it will probably leave an empty shell to be destructed, but
 this does not mean we can omit the destruction.
@@ -477,23 +518,51 @@ tag to mark the distinction.
 
 @< Enumeration tags for |expr_kind| @>= tuple_display, list_display, @[@]
 
-@~We provide two constructors that serve both types of lists. Once location
-indication is included in every expression, the second one (without |loc|
-argument) should be redefined so as to extract the location information for
-the component expressions (this is intended for situations where the
+@~We provide constructors for both types of lists. Most constructors expect
+the parser to directly or indirectly (though an intermediately constructed
+|source_location| structure) provide source location information, but the
+final constructor (without |loc| argument) extracts the location information
+for the component expressions (this is intended for situations where the
 expression list does not correspond to an actual enclosed expression, for
-instance for the argument list of a binary operator actually written infix).
+instance combined right hand sides of parallel \&{let}-declarations).
 
 @< Methods of |expr| @>=
-expr(expr_list&& nodes, bool is_tuple, const YYLTYPE& loc)
- : kind(is_tuple ? tuple_display : list_display)
- , sublist(std::move(nodes))
- , loc(loc)
- @+{}
-expr(expr_list&& nodes, bool is_tuple)
- : kind(is_tuple ? tuple_display : list_display)
- , sublist(std::move(nodes))
- @+{}
+struct tuple_display_tag @+ {};@+ struct list_display_tag @+{};
+expr(expr_list&& nodes, tuple_display_tag, const YYLTYPE& loc)
+@/: kind(tuple_display)
+  , sublist(std::move(nodes))
+  , loc(loc)
+@+{}
+expr(expr_list&& nodes, list_display_tag, const YYLTYPE& loc)
+@/: kind(list_display)
+  , sublist(std::move(nodes))
+  , loc(loc)
+@+{}
+expr(expr_list&& nodes, tuple_display_tag, const source_location& loc)
+@/: kind(tuple_display)
+  , sublist(std::move(nodes))
+  , loc(loc)
+@+{}
+expr(expr_list&& nodes, tuple_display_tag);
+
+@ To determine the extent of a list of expressions, we try to find the first
+and the last ones, if any.
+
+@< Definitions of functions for the parser @>=
+expr::expr(expr_list&& nodes, tuple_display_tag)
+@/: kind(tuple_display)
+  , sublist(std::move(nodes)), loc()
+{ if (sublist.empty())
+    return; // cannot extract something from nothing
+  {
+    auto it=sublist.begin();
+    const source_location& left(it->loc);
+    while (not sublist.at_end(std::next(it)))
+      ++it;
+    loc = source_location(left,it->loc);
+  }
+}
+
 
 @ To build an |exprlist_node|, we provide a function |make_exprlist_node| to
 combine an expression with a |raw_expr_list|. To start off the construction,
@@ -529,9 +598,9 @@ raw_expr_list reverse_expr_list(raw_expr_list raw)
 {@; expr_list l(raw); l.reverse(); return l.release(); }
 @)
 expr_p wrap_tuple_display(raw_expr_list l, const YYLTYPE& loc)
-{@; return new expr(expr_list(l),true,loc); }
+{@; return new expr(expr_list(l),expr::tuple_display_tag(),loc); }
 expr_p wrap_list_display(raw_expr_list l, const YYLTYPE& loc)
-{@; return new expr(expr_list(l),false,loc); }
+{@; return new expr(expr_list(l),expr::list_display_tag(),loc); }
 
 @ Destroying a tuple display or list display is easily defined.
 
@@ -655,9 +724,19 @@ value is a function call.
 @< Variants of ... @>=
 app call_variant;
 
-@ There is a constructor for building this variant.
+@ Since function applications are generated both directly by the parser and
+indirectly inside parser action functions, where in the latter case an
+appropriate |source_location| is computed there, we define two constructors
+for building this variant, differing by the type through which they take the
+source location.
+
 @< Methods of |expr| @>=
 expr(app&& fx, const YYLTYPE& loc)
+ : kind(function_call)
+ , call_variant(std::move(fx))
+ , loc(loc)
+ @+{}
+expr(app&& fx, const source_location& loc)
  : kind(function_call)
  , call_variant(std::move(fx))
  , loc(loc)
@@ -665,10 +744,14 @@ expr(app&& fx, const YYLTYPE& loc)
 
 @ Building an |application_node| combines the function expression with an
 |expr_list| for the argument. The argument list will either be packed into a
-tuple, or if it has length$~1$ unpacked into a single expression.
+tuple, or if it has length$~1$ unpacked into a single expression. For tracing
+the location of the argument tuple, two additional locations will be provided
+by the parser, those of the left and right parentheses that delimit the
+argument list (and which are present even for an empty argument list).
 
 @< Declarations of functions for the parser @>=
-expr_p make_application_node(expr_p f, raw_expr_list args, const YYLTYPE& loc);
+expr_p make_application_node(expr_p f, raw_expr_list args,
+ const YYLTYPE& loc, const YYLTYPE& left, const YYLTYPE& right);
 
 @~Here for once there is some work to do. Since there are two cases to deal
 with, the argument expression is initially default-constructed, after which
@@ -678,13 +761,15 @@ since binding a freshly constructed |expr| to the modifiable lvalue that
 |set_from| wants would require introducing a dummy name.
 
 @< Definitions of functions for the parser @>=
-expr_p make_application_node(expr_p f, raw_expr_list r_args, const YYLTYPE& loc)
+expr_p make_application_node(expr_p f, raw_expr_list r_args,
+ const YYLTYPE& loc, const YYLTYPE& left, const YYLTYPE& right)
 { expr_ptr ff(f); expr_list args(r_args);
   app a(new application_node @[{ std::move(*ff), expr() }@]);
   if (args.singleton())
     a->arg.set_from(args.front());
   else
-    a->arg=expr(std::move(args),true); // make into an argument tuple
+    a->arg=expr(std::move(args),expr::tuple_display_tag(),@|
+      source_location(source_location(left),source_location(right)));
   return new expr(std::move(a),loc); // move construct application expression
 }
 
@@ -724,34 +809,41 @@ case function_call:
 }
 break;
 
-@ We shall frequently need to form a function application where the function
-is accessed by an applied identifier and the argument is either a single
-expression or a tuple of two expressions. The two functions below are however
-currently used only on specific occasions: |make_unary_call| to call matrix
-transposition in the by-row input syntax for matrices, and |make_binary_call|
-to call the binary operator in translating a compound assignment statement.
-Formulae will build the operator applications they involve directly.
+@ We shall need to form a function application where the function is accessed
+by an applied identifier and the argument is either a single expression or a
+tuple of two expressions. However formulae will mostly build the operator
+applications they involve by other means; they only call one of the functions
+defined here in case of a unary operator that follows a binary operator. The
+expression built contains the operator, for which no location information has
+yet been processed, so we provide a second location argument |op_loc| in which
+the parser can pass this information.
 
 @< Declarations of functions for the parser @>=
-expr_p make_unary_call(id_type name, expr_p arg, const YYLTYPE& loc);
-expr_p make_binary_call(id_type name, expr_p x, expr_p y, const YYLTYPE& loc);
+expr_p make_unary_call(id_type name, expr_p arg,
+   const YYLTYPE& loc, const YYLTYPE& op_loc);
+expr_p make_binary_call(id_type name, expr_p x, expr_p y,
+   const YYLTYPE& loc, const YYLTYPE& op_loc);
 
 @~In the binary case, we must construct an argument list of two expressions.
 We were tempted to initialise |args| below using a two-element initialiser
 list, but initialiser lists are incompatible with move semantics. So instead
 we push the arguments in reverse order onto an expression list, and then make
-a function call using that argument list.
+a function call using that argument list. The same reasons for manually
+constructing arguments lists will apply more often below.
 
 @< Definitions of functions for the parser @>=
 
-expr_p make_binary_call(id_type name, expr_p x, expr_p y, const YYLTYPE& loc)
+expr_p make_binary_call(id_type name, expr_p x, expr_p y,
+   const YYLTYPE& loc, const YYLTYPE& op_loc)
 {
   expr_ptr xx(x), yy(y); // wrap in smart pointers for exception safety
+  const source_location range(xx->loc,yy->loc); // extent of operands
   expr_list args; // start with empty argument list
   args.push_front(std::move(*yy));
   args.push_front(std::move(*xx)); // build up lest back-to-front
+  expr arg_pack(std::move(args),expr::tuple_display_tag(),range);
   app a(new application_node @|
-    @[{ expr(name,loc,expr::identifier_tag()), expr(std::move(args),true) }@]);
+    @[{ expr(name,op_loc,expr::identifier_tag()), std::move(arg_pack) }@]);
   return new expr(std::move(a),loc); // move construct application expression
 }
 
@@ -759,11 +851,12 @@ expr_p make_binary_call(id_type name, expr_p x, expr_p y, const YYLTYPE& loc)
 function call directly.
 
 @< Definitions of functions for the parser @>=
-expr_p make_unary_call(id_type name, expr_p a, const YYLTYPE& loc)
+expr_p make_unary_call(id_type name, expr_p a,
+   const YYLTYPE& loc, const YYLTYPE& op_loc)
 {
   expr_ptr aa(a); // wrap in smart pointer for exception safety
-  return new expr(app(new application_node(
-    expr(name,loc,expr::identifier_tag()),std::move(*aa))),loc);
+  return new expr(app(new @| application_node(
+    expr(name,op_loc,expr::identifier_tag()),std::move(*aa))),loc);
 }
 
 
@@ -881,27 +974,28 @@ a final operand, and of course one to clean up.
 
 @< Declarations of functions for the parser @>=
 raw_form_stack start_formula
-  (expr_p e, id_type op, int prio, const YYLTYPE& loc);
-raw_form_stack start_unary_formula (id_type op, int prio, const YYLTYPE& loc);
+  (expr_p e, id_type op, int prio, const YYLTYPE& op_loc);
+raw_form_stack start_unary_formula (id_type op, int prio, const YYLTYPE& op_loc);
 raw_form_stack extend_formula
-  (raw_form_stack pre, expr_p e,id_type op, int prio, const YYLTYPE& loc);
+  (raw_form_stack pre, expr_p e,id_type op, int prio, const YYLTYPE& op_loc);
 expr_p end_formula (raw_form_stack pre, expr_p e, const YYLTYPE& loc);
 void destroy_formula(raw_form_stack s);
 
 @ Starting a formula simply creates an initial node, with a left operand in
 the case of a binary formula.
 @< Definitions of functions for the parser @>=
-raw_form_stack start_formula (expr_p e, id_type op, int prio, const YYLTYPE& loc)
+raw_form_stack start_formula
+   (expr_p e, id_type op, int prio, const YYLTYPE& op_loc)
 { form_stack result;
   result.push_front (
-   {std::move(*expr_ptr(e)), expr(op,loc,expr::identifier_tag()), prio } );
+   {std::move(*expr_ptr(e)), expr(op,op_loc,expr::identifier_tag()), prio } );
   return result.release();
 }
 @)
-raw_form_stack start_unary_formula (id_type op, int prio, const YYLTYPE& loc)
+raw_form_stack start_unary_formula (id_type op, int prio, const YYLTYPE& op_loc)
 { form_stack result;    // leave |left_subtree| empty
   result.push_front ( @|
-    { expr(), expr(op,loc,expr::identifier_tag()), prio } );
+    { expr(), expr(op,op_loc,expr::identifier_tag()), prio } );
   return result.release();
 }
 
@@ -914,12 +1008,12 @@ and prio%2==0)|.
 @< Definitions of functions for the parser @>=
 
 raw_form_stack extend_formula
-  (raw_form_stack pre, expr_p ep,id_type op, int prio, const YYLTYPE& loc)
+  (raw_form_stack pre, expr_p ep,id_type op, int prio, const YYLTYPE& op_loc)
 { expr e(std::move(*expr_ptr (ep))); form_stack s(pre);
   while (not s.empty() and s.front().prio>=prio+prio%2)
-    @< Replace |e| by |op(left_subtree,e)| where |op| and |left_subtree|
+    @< Replace |e| by |oper(left_subtree,e)| where |oper| and |left_subtree|
        come from popped |s.front()| @>
-  s.push_front({std::move(e),expr(op,loc,expr::identifier_tag()),prio});
+  s.push_front({std::move(e),expr(op,op_loc,expr::identifier_tag()),prio});
   return s.release();
 }
 
@@ -928,18 +1022,25 @@ applies for the last node of the stack (since only |start_unary_formula| can
 create a node without left operand), but that fact is not used here. Only once
 the node is emptied do we pop it with |s.front()|.
 
-@< Replace |e| by |op(left_subtree,e)|...@>=
-{ if (s.front().left_subtree.kind==no_expr) // apply initial unary operator
+@< Replace |e| by |oper(left_subtree,e)|...@>=
+{ expr& lt = s.front().left_subtree;
+  if (lt.kind==no_expr) // apply initial unary operator
+  {
+    expr& oper = s.front().op_exp;
+    const source_location range(oper.loc,e.loc); // extent of operands
     e = expr(app(new application_node
-          (std::move(s.front().op_exp),std::move(e))),loc);
+          (std::move(oper),std::move(e))),range);
+  }
   else
   {
     expr_list args; // start with empty argument list
+    const source_location range(lt.loc,e.loc); // extent of operands
     args.push_front(std::move(e));
-    args.push_front(std::move(s.front().left_subtree));
+    args.push_front(std::move(lt));
+    expr arg_pack(std::move(args),expr::tuple_display_tag(),range);
     app a(new application_node @|
-      @[{ std::move(s.front().op_exp), expr(std::move(args),true) }@]);
-    e= expr(std::move(a),loc); // move construct application expression
+      @[{ std::move(s.front().op_exp), std::move(arg_pack) }@]);
+    e= expr(std::move(a),range); // move construct application expression
   }
   s.pop_front();
 }
@@ -953,7 +1054,7 @@ modification to make sure all nodes get cleaned up after use.
 expr_p end_formula (raw_form_stack pre, expr_p ep, const YYLTYPE& loc)
 { expr e(std::move(*expr_ptr (ep))); form_stack s(pre);
   while (not s.empty())
-    @< Replace |e| by |op(left_subtree,e)|...@>
+    @< Replace |e| by |oper(left_subtree,e)|...@>
   return new expr(std::move(e));
 }
 
@@ -1145,7 +1246,7 @@ let let_variant;
 
 @ There is a constructor for building this variant.
 @< Methods of |expr| @>=
-explicit expr(let&& declaration, const YYLTYPE& loc)
+expr(let&& declaration, const YYLTYPE& loc)
  : kind(let_expr)
  , let_variant(std::move(declaration))
  , loc(loc)
@@ -1206,7 +1307,8 @@ expr_p make_let_expr_node(raw_let_list d, expr_p b, const YYLTYPE& loc)
       expl.push_front(std::move(it->val));
     }
     pattern = id_pat(std::move(patl));
-    val=expr(std::move(expl),true); // make a tuple expression
+    val=expr(std::move(expl),expr::tuple_display_tag());
+      // make a tuple expression
   }
   return new expr @| (let(new let_expr_node
     { std::move(pattern), std::move(val),std::move(body) }),loc);
@@ -1322,7 +1424,7 @@ lambda lambda_variant;
 
 @ There is a constructor for building lambda expressions.
 @< Methods of |expr| @>=
-explicit expr(lambda&& fun, const YYLTYPE& loc)
+expr(lambda&& fun, const YYLTYPE& loc)
  : kind(lambda_expr)
  , lambda_variant(std::move(fun))
  , loc(loc)
@@ -1427,7 +1529,7 @@ cond if_variant;
 
 @ There is a constructor for building conditional expressions.
 @< Methods of |expr| @>=
-explicit expr(cond&& conditional, const YYLTYPE& loc)
+expr(cond&& conditional, const YYLTYPE& loc)
  : kind(conditional_expr)
  , if_variant(std::move(conditional))
  , loc(loc)
@@ -1444,7 +1546,7 @@ expr_p make_conditional_node(expr_p c, expr_p t, expr_p e, const YYLTYPE& loc)
 {
   expr_ptr cc(c), tt(t), ee(e);
   expr& cnd=*cc; expr& thn=*tt; expr& els=*ee;
-  return new expr(cond (new @|
+@/return new @| expr(cond (new @|
       conditional_node { std::move(cnd), std::move(thn), std::move(els) }),loc);
 }
 
@@ -1474,11 +1576,9 @@ break;
 
 @*2 Loops.
 %
-Loops are a cornerstone of any form of non-recursive programming. The two main
-flavours provided are traditional: |while| and |for| loops; the former provide
-open-ended iteration, while the latter fix the range of iteration at entry.
-However we provide a relative innovation by having both types deliver a value:
-this will be a row value with one entry for each iteration performed.
+Loops are a cornerstone of any form of non-recursive programming. The three
+flavours are |while| loops, and |for| loops iterating either over a row value,
+or over an integer range (counted |for|-loops).
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef std::unique_ptr<struct while_node> w_loop;
@@ -1538,17 +1638,17 @@ c_loop cfor_variant;
 
 @ There is a constructor for building each type of loop expression.
 @< Methods of |expr| @>=
-explicit expr(w_loop&& loop, const YYLTYPE& loc)
+expr(w_loop&& loop, const YYLTYPE& loc)
  : kind(while_expr)
  , while_variant(std::move(loop))
  , loc(loc)
 @+{}
-explicit expr(f_loop&& loop, const YYLTYPE& loc)
+expr(f_loop&& loop, const YYLTYPE& loc)
  : kind(for_expr)
  , for_variant(std::move(loop))
  , loc(loc)
 @+{}
-explicit expr(c_loop&& loop, const YYLTYPE& loc)
+expr(c_loop&& loop, const YYLTYPE& loc)
  : kind(cfor_expr)
  , cfor_variant(std::move(loop))
  , loc(loc)
@@ -1681,7 +1781,7 @@ sub subscription_variant;
 
 @ There is a constructor for building the new variant.
 @< Methods of |expr| @>=
-explicit expr(sub&& s, const YYLTYPE& loc)
+expr(sub&& s, const YYLTYPE& loc)
  : kind(subscription)
  , subscription_variant(std::move(s))
  , loc(loc)
@@ -1767,7 +1867,7 @@ cast cast_variant;
 
 @ There is a constructor for building the new variant.
 @< Methods of |expr| @>=
-explicit expr(cast&& c, const YYLTYPE& loc)
+expr(cast&& c, const YYLTYPE& loc)
  : kind(cast_expr)
  , cast_variant(std::move(c))
  , loc(loc)
@@ -1788,7 +1888,7 @@ expr_p make_cast(type_p t, expr_p e, const YYLTYPE& loc)
   return new expr(cast(new cast_node { std::move(type), std::move(exp) }),loc);
 }
 
-@
+@ Nor here.
 @< Cases for copying... @>=
 case cast_expr: new (&cast_variant) cast (std::move(other.cast_variant));
 break;
@@ -1838,13 +1938,13 @@ op_cast op_cast_variant;
 
 @ There is a constructor for building the new variant.
 @< Methods of |expr| @>=
-explicit expr(op_cast&& c, const YYLTYPE& loc)
+expr(op_cast&& c, const YYLTYPE& loc)
  : kind(op_cast_expr)
  , op_cast_variant(std::move(c))
  , loc(loc)
 @+{}
 
-@ Casts are built by |make_cast|.
+@ Operator casts are built by |make_op_cast|.
 
 @< Declarations of functions for the parser @>=
 expr_p make_op_cast(id_type name,type_p type, const YYLTYPE& loc);
@@ -1858,7 +1958,7 @@ expr_p make_op_cast(id_type name,type_p t, const YYLTYPE& loc)
   return new expr(op_cast(new op_cast_node { name, std::move(type) }),loc);
 }
 
-@
+@ Nor here.
 @< Cases for copying... @>=
 case op_cast_expr:
   new (&op_cast_variant) op_cast(std::move(other.op_cast_variant));
@@ -1910,7 +2010,7 @@ assignment assign_variant;
 
 @ As always there is a constructor for building the new variant.
 @< Methods of |expr| @>=
-explicit expr(assignment&& a, const YYLTYPE& loc)
+expr(assignment&& a, const YYLTYPE& loc)
  : kind(ass_stat)
  , assign_variant(std::move(a))
  , loc(loc)
@@ -1931,7 +2031,8 @@ expr_p make_assignment(id_type lhs, expr_p r, const YYLTYPE& loc)
   return new expr(assignment(new assignment_node { lhs, std::move(rhs) }),loc);
 }
 
-@
+@ Copy by placement-|new|, not really |new|.
+
 @< Cases for copying... @>=
 case ass_stat:
   new (&assign_variant) assignment(std::move(other.assign_variant));
@@ -1985,16 +2086,16 @@ comp_assignment comp_assign_variant;
 
 @ As always there is a constructor for building the new variant.
 @< Methods of |expr| @>=
-explicit expr(comp_assignment&& ca, const YYLTYPE& loc)
+expr(comp_assignment&& ca, const YYLTYPE& loc)
  : kind(comp_ass_stat)
  , comp_assign_variant(std::move(ca))
  , loc(loc)
 @+{}
 
-@ Assignment statements are built by |make_assignment|, which for once does
-not simply combine the expression components, because for reason of parser
-generation the array and index will have already been combined before this
-function can be called.
+@ Compound assignment statements are built by |make_comp_ass|, which for once
+does not simply combine the expression components, because for reason of
+parser generation the array and index will have already been combined before
+this function can be called.
 
 @< Declarations of functions for the parser @>=
 expr_p make_comp_ass(expr_p lhs, expr_p rhs, const YYLTYPE& loc);
@@ -2014,7 +2115,8 @@ expr_p make_comp_ass(expr_p l, expr_p r, const YYLTYPE& loc)
   }),loc);
 }
 
-@
+@ This is getting boring; fortunately we are almost done with the syntax.
+
 @< Cases for copying... @>=
 case comp_ass_stat:
   new (&comp_assign_variant)
@@ -2078,7 +2180,7 @@ sequence sequence_variant;
 
 @ As always there is a constructor for building the new variant.
 @< Methods of |expr| @>=
-explicit expr(sequence&& s, const YYLTYPE& loc)
+expr(sequence&& s, const YYLTYPE& loc)
  : kind(seq_expr)
  , sequence_variant(std::move(s))
  , loc(loc)
@@ -2101,7 +2203,8 @@ expr_p make_sequence
     sequence_node { std::move(first), std::move(last), forward } ),loc);
 }
 
-@
+@ Is this the final case? For now, it is!
+
 @< Cases for copying... @>=
 case seq_expr:
   new (&sequence_variant) sequence(std::move(other.sequence_variant));
