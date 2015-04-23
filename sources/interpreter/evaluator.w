@@ -236,9 +236,9 @@ void layer::add(id_type id,type_expr&& t)
   // traverse |variable| vector
     if (it->first==id)
       throw program_error @/
-       (std::string("Multiple binding of ")
+       (std::string("Multiple binding of '")
                     +main_hash_table->name_of(id)
-                    +" in same scope");
+                    +"' in same scope");
   variable.emplace_back( id, std::move(t) );
 }
 
@@ -728,7 +728,7 @@ possible in the language, we have to watch out for a (shared) null pointer at
 void global_identifier::evaluate(level l) const
 { if (address->get()==nullptr)
   { std::ostringstream o;
-    o << "Taking value of uninitialized variable " << name();
+    o << "Taking value of uninitialized variable '" << name() << '\'';
     throw std::runtime_error(o.str());
   }
   push_expanded(l,*address);
@@ -821,7 +821,7 @@ case applied_identifier:
   if (not is_local and (id_t=global_id_table->type_of(id))==nullptr)
   {
     std::ostringstream o;
-    o << "Undefined identifier " << main_hash_table->name_of(id);
+    o << "Undefined identifier '" << main_hash_table->name_of(id) << '\'';
     if (e.loc.file!=Hash_table::empty)
       o << ' ' << e.loc;
     throw program_error (o.str());
@@ -938,7 +938,7 @@ if (variants.size()==1)
   throw type_error(args,a_priori_type.copy(),variants[0].type().arg_type.copy());
 else
 { std::ostringstream o;
-  o << "Failed to match `"
+  o << "Failed to match '"
     << main_hash_table->name_of(id) @|
     << "' with argument type "
     << a_priori_type;
