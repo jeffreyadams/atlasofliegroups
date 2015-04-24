@@ -1,197 +1,135 @@
-<Weylgroup.rx  { needed for is_compact}
-<lattice.rx { needed for projection }
-<group_operations.rx { needed for quasicompact_from }
+<basic.rx
+<matrix.rx { for left_inverse }
 
-{------------------tests for any root, not just simple--------------}
+{---------------- tests for any root, not just simple  --------------}
 
-set is_compact(vec alpha, KGBElt x)=bool:
-let rd=root_datum(real_form(x)) in 
-let ()=if not is_positive_root(rd,alpha) then alpha:=-alpha fi  in
-let (w,beta)=make_simple_sequence(rd,alpha) in  {w.beta=alpha, beta is simple}
-{is_compact(beta,cross_W(inverse(w),x))}
-is_compact(beta,cross_W(w,x))
+{ this is mostly already done in basic.rx, just add imaginary test }
+set is_imaginary_compact(KGBElt x) = (vec->bool):
+  let p=is_imaginary(x), q=is_compact(x) { allow pre-computation for x }
+  in (vec alpha) bool: p(alpha) and q(alpha)
 
-set is_noncompact(vec alpha,KGBElt x)=bool:is_imaginary(alpha,x) and not is_compact(alpha,x)
+set is_imaginary_noncompact(KGBElt x) = (vec->bool):
+  let p=is_imaginary(x), q=is_noncompact(x)
+  in (vec alpha) bool: p(alpha) and q(alpha)
 
-set rho_ic(KGBElt x)=ratvec:
-let rv=[null(rank(real_form(x)))] in for alpha in posroots(real_form(x)) do
-if is_compact(alpha,x) then rv#:=alpha fi od;sum(rv)/2
 
-set rho_in(KGBElt x)=ratvec:rho_i(x)-rho_ic(x)
+set compact_roots(KGBElt x) = mat:
+  columns_with(is_compact(x),imaginary_posroots(x))
 
-set compact_roots(KGBElt x)=mat:let roots=imaginary_roots(x) in
-let rv=[] in for alpha in roots do if is_compact(alpha,x) then  rv#:=alpha fi od;if #rv=0 then null(rank(real_form(x)),0) else rv fi
+set rho_ic(KGBElt x) = ratvec: sum(compact_roots(x))/2
 
-{------------------matrices related to T_K\subset T--------------}
+set rho_in(KGBElt x) = ratvec:
+  sum(columns_with(is_noncompact(x),imaginary_posroots(x)))/2
 
-{matrix of projection X^*(T)->X^*(T_K) T_K=identity component of fundamental Cartan}
-set projection_to_K_matrix(RealForm G)=mat:
-let delta=distinguished_involution(G) in
-let N=id_mat(n_columns(delta))-delta in
-let  P=projection_mod_image(N) in P
-{was: let  (P,)=projection(N,null(rank(G))) in P
-should be? let  (P,)=projection_to _image(N,null(rank(G))) in P
+
+{ ------------------    matrices related to T_K\subset T  ------------------ }
+
+{ basis of cocharacter lattice of K_0, and matrix of theta^t+1 towards it:
+  returns a pair of matrices (B,M), sizes n*r and r*n where r is the rank
+  of K (and that of the +1 eigenspace of delta), such that 1+^delta=B*M
+}
+set cocharacter_lattice_K_info (InnerClass ic) = (mat,mat):
+  let rd = root_datum(ic) then r=rank(rd)
+  then (coefs,L,R) = diagonalize(id_mat(r)+^distinguished_involution(ic))
+  then rank_K = #coefs, Linv = inverse(L), Rinv_tr = ^inverse(R)
+  in ( columns_with((int j)bool: j<rank_K,Linv)
+     , r ^ for i:rank_K do coefs[i]*Rinv_tr[i] od
+     )
+
+{ matrix of projection X^*(T)-> X^*(T_K) where T is fundamental Cartan of G,
+  and T_K is identity component of fundamental Cartan of K }
+
+{ project modulo the -1 eigenspace of the distinguished involution }
+set projection_to_K_matrix (InnerClass ic) = mat:
+  let (inj,)=cocharacter_lattice_K_info(ic) in ^inj
+
+{ projection function that accepts rational vectors whose image is integral }
+set project_K (InnerClass ic,ratvec v)= vec:
+  ratvec_as_vec(projection_to_K_matrix(ic)*v)
+
+{ matrix of injection X_*(T_K)->X_*(T); image is a saturated sublattice }
+set injection_from_K_matrix(InnerClass ic) = mat:
+  let (inj,)=cocharacter_lattice_K_info(ic) in inj
+
+set rank_K (InnerClass ic) = int: n_columns(injection_from_K_matrix(ic))
+
+{ G_K_roots_and_coroots
+  Input: x in fundamental fiber, so theta permutes positive complex roots
+  Output:
+  ((G_K_roots: roots of K as elements of X^*(T_K) (proj is applied)
+     (all compact imaginary roots, and one of each complex theta-orbit)
+   ,G_K_coroots: coroots of K as elements of X_*(T_K) (restrict is applied)
+     (all compact imaginary coroots, for each complex theta-orbit the coweight
+      c.(1+^theta)(alpha^v); c= if <delta(alpha),alpha^v>=0 then 1 else 2 fi)
+   )
+  ,( injection(X_*(T_K)->X_*(T)), restriction (X_*(T)->X_*(T_K)) )
+  )
 }
 
-set project_K(RealForm G,ratvec v)=vec:ratvec_as_vec([rat]:projection_to_K_matrix(G)*v)
+set G_K_roots_and_coroots (KGBElt x) = ((mat,mat),(mat,mat)):
+  let ic = inner_class(real_form(x))
+  then (inj,delta_tr_plus_1) = cocharacter_lattice_K_info(ic)
+  , delta = distinguished_involution(ic), rd = root_datum(ic)
+  then proj = ^inj { weights }, restrict = left_inverse(inj) { coweights }
+  , proots = posroots(rd), pcroots = poscoroots(rd), r = rank(rd)
+  , is_ic  = is_imaginary_compact(x), is_C = is_complex(x) { predicates }
+  , ic_inx = [int]:[], C_inx = [int]:[] { list indices into proots/pcroots }
+  in begin
+    if involution(x)!=delta then error("x is not in fundamental fiber") fi
+  ; for alpha@j in proots
+    do if is_ic(alpha) then ic_inx #:= j
+       elif is_C(alpha) and { delta*alpha is not among the previous roots: }
+	(let beta=delta*alpha, i=#C_inx-1
+	 in while i>=0 and proots[C_inx[i]]!=beta do i-:=1 od; i<0)
+       then C_inx #:= j
+       fi
+    od
+  ; (( proj * r#for i in ic_inx#C_inx do proots[i] od
+     , (restrict * r#for i in ic_inx do pcroots[i] od)
+      #( delta_tr_plus_1 *
+         r#for i in C_inx do (1-pcroots[i]*delta*proots[i])*pcroots[i] od
+       )
+     )
+    ,(inj,restrict)
+    )
+  end
 
-{matrix of injection X_*(T_K)->X_*(T)}
-set injection_to_K_matrix(RealForm G)=mat:
-let delta=distinguished_involution(G) in
-let N=id_mat(n_columns(delta))-^delta in
-let Q=projection_to_image(kernel(N)) in Q
 
-{matrix used to compute inner product on X^*(T_K)}
-{need (temporary) rational matrix}
-set J(RealForm G)=mat:
-let (P,Q)=(projection_to_K_matrix(G),injection_to_K_matrix(G)) in
-let (d,L)=weak_left_inverse(^P) in
-{let ()=prints("d:", " L:", L, ", ", L*right_inverse(Q)) in}
-L*right_inverse(Q)
+{ extract simple roots, coroots by computing pairing with rho,rho^v }
+set G_K_simple_roots_and_coroots(KGBElt x) = (mat,mat):
+  let (pos_sys,)=G_K_roots_and_coroots(x) in simple_from_positive(pos_sys)
 
-set rank_K(RealForm G)=
-let delta=distinguished_involution(G) in
-let M=id_mat(rank(G))+delta in
-n_columns(M)-n_columns(kernel(M))
+set K_root_datum (KGBElt x) = RootDatum:
+  root_datum(G_K_simple_roots_and_coroots(x))
 
-{check if root is already on list}
-set need_root([vec] list,vec alpha)=bool:
-let (missing,i)=(true,0) in while i<#list do if list[i]=alpha then i:=#list;missing:=false else i:=i+1 fi od;missing
+set K_0 (KGBElt x) = RealForm:
+  let rd = K_root_datum(x)
+  in quasicompact_form(inner_class(rd,id_mat(rank(rd))))
 
-{check:roots->coroots}
-set check(mat roots,mat coroots, vec alpha)=vec:
-let (i,done)=(0,false) in
-while not done and i<n_columns(roots) do if roots[i]=alpha then done:=true else i:=i+1 fi od;coroots[i]
-
-{G_K_roots_and_coroots
-G_K_roots: roots of K as elements of X^* (before restricting to X^*(T_K))
- assuming alpha complex >0 => theta(alpha)>0
- each compact imaginary root, and one of each complex pair {alpha,theta(alpha)}
-G_K_coroots: set of elements of X_* (contained in image of X_*(T_K))
-   each compact imaginary coroots
- alpha complex:
-   <delta(alpha),alpha^v>=0  -> alpha^v +delta(alpha)^v
-   <delta(alpha),alpha^v>=-1 -> 2(alpha^v +delta(alpha)^v)
-first construct
-complex_roots_0: positive complex roots
-complex_coroots_0: positive complex coroots
-complex_roots: positive complex roots, arranged in alpha,delta(alpha) pairs
-complex_coroots: positive complex coroots, arrenged in alpha^v, (delta(alpha))^v pairs
-then
-roots: nci roots, together with one of each pair of complex roots
-coroots: {alpha^v|alpha nci}, together with each (1 or 2)*(alpha^v+delta(alpha)^v)
-}
-set G_K_roots_and_coroots(KGBElt x)=(mat,mat):
-let G=real_form(x) in
-let delta=distinguished_involution(G) in
-let ()=if not involution(x)=delta then prints("Warning: x is not in fundamental fiber") fi in
-let (ir,icr)=positive_imaginary_roots_and_coroots(x) in
-{let (ir,icr)=imaginary_roots_and_coroots(x) in}
-let complex_roots_0=[vec]:complex_roots(x) in
-let complex_coroots_0=[vec]:complex_roots(dual(root_datum(G)),^delta) in
-{let ()=prints("complex_roots_0:", mat:complex_roots_0) in}
-let complex_roots=[vec]:[] in
-let complex_coroots=[vec]:[] in
- let ()=for alpha in complex_roots_0 do
- (if need_root(complex_roots,alpha) then
-   (complex_roots#:=alpha;complex_coroots#:=check(complex_roots_0,complex_coroots_0,alpha)) fi;
- if need_root(complex_roots,delta*alpha) then
-   (complex_roots#:=delta*alpha;complex_coroots#:=check(complex_roots_0,complex_coroots_0,delta*alpha)) fi) od in
-let roots=[] in
- let ()=for alpha in ir
- do if is_compact(alpha,x) then roots#:=alpha fi od in
- let ()=for i:#complex_roots\2 do roots#:=complex_roots[2*i] od in
-let coroots=[] in
- let ()=for alpha@j in ir do if is_compact(alpha,x) then coroots#:=icr[j] fi od in
- let ()=for i:#complex_roots\2 do
-  let alpha=complex_roots[2*i] in
-  let delta_alpha=complex_roots[2*i+1] in
-{  let ()=prints("test:", delta_alpha=delta*alpha) in}
-  let  checkalpha=complex_coroots[2*i] in
-  if delta_alpha*(checkalpha)=0 then coroots#:=complex_coroots[2*i]+complex_coroots[2*i+1]
-   elif delta_alpha*(checkalpha)=-1 then  coroots#:=2*(complex_coroots[2*i]+complex_coroots[2*i+1]) fi od in
-{let ()=prints("ROOTS:", mat:roots, "COROOTS", mat:coroots) in}
-(roots,coroots)
-
-{extract simple roots, coroots by computing pairing with rho,rho^v}
-set simple_G_K_roots_and_coroots(KGBElt x)=(mat,mat):
-let (G_K_roots,G_K_coroots)=G_K_roots_and_coroots(x) in
-{let ()=prints("RR:", G_K_roots,",  and", G_K_coroots) in}
- let (tworho,tworhocheck)=(sum(G_K_roots),sum(G_K_coroots)) in
- let (simple_G_K_roots,simple_G_K_coroots)=([],[]) in
- for checkalpha@i in G_K_coroots do
-{ let ()=prints("ca:", checkalpha, ", ", checkalpha*tworho) in}
- if checkalpha*tworho=2 then
-   (simple_G_K_coroots#:=G_K_coroots[i];simple_G_K_roots#:=check(G_K_coroots,G_K_roots,checkalpha)) fi
-od;(simple_G_K_roots,simple_G_K_coroots)
-
-{extract simple roots, coroots by computing pairing with rho,rho^v
-weak: may be integral multiple of correct answer, due to weak_left_inverse
-this shows up in the matrix J; the consequence is that
-both simple_K_roots and simple_K_coroots may be an integral muliple of what they need to be
-see K_0_complete}
-set weak_simple_K_roots_and_coroots(KGBElt x)=(mat,mat,mat,int):
-let (simple_G_K_roots,simple_G_K_coroots)=simple_G_K_roots_and_coroots(x) in
-if n_columns(simple_G_K_roots)=0 then (null(rank(real_form(x)),0),null(rank(real_form(x)),0),null(0,0),0) else
-let P=projection_to_K_matrix(real_form(x)) in
-let simple_K_roots=projection_to_K_matrix(real_form(x))*simple_G_K_roots in
-let simple_K_coroots=mat:J(real_form(x))*injection_to_K_matrix(real_form(x))*simple_G_K_coroots in
-let (d,)=weak_left_inverse(P) in
-{the last two terms are for help in debugging, the last term should be d*Cartan matrix}
-(simple_K_roots,simple_K_coroots,^simple_K_roots*simple_K_coroots,d) fi
-
-{K_0_complete(x)=(A,B,C,D,K_0) where K_0 is the compact RealForm of a connected, complex group
-A,B,C,D are matrices, mainly for debugging
-user should only need K_0(x) which return only the last term
-issue with reduction of matrices:
-the matrices (A,B):simple roots and coroots of K_0, as returned by weak_simple_K_roots_and_coroots
-may be off by integral multiples
-need to replaced them by (C,D)=(A/m,B/n) for some m,n
-algorithm: let m,n be the GCD of the entries
-this works provided the (0,0) entry of ^C*D is 2 which is almost always the case,
-since this is a Cartan matrix, and this probably also has a \pm 1 entry
-one exception is type A_1: hoping this doesn't happen
-(in that case need to figure out which root datum to return)}
-set K_0_complete(KGBElt x)=(mat,mat,mat,mat,RealForm):
-let G=real_form(x) in
-let ()=if involution(x) != distinguished_involution(G) then prints("Warning: x is not in the distinguished fiber") fi in
-let (simple_G_K_roots,simple_G_K_coroots)=simple_G_K_roots_and_coroots(x) in
-let (simple_K_roots,simple_K_coroots,,)=weak_simple_K_roots_and_coroots(x) in
-{except in type  A_1 reduce simple_K_roots and simple_K_coroots}
-let ()=if n_columns(simple_K_roots)>1 then (simple_K_roots:=reduce(simple_K_roots),simple_K_coroots:=reduce(simple_K_coroots)) fi in
-let rd=root_datum(simple_K_roots,simple_K_coroots,rank_K(G)) in
-(simple_G_K_roots,simple_G_K_coroots,simple_K_roots,simple_K_coroots,quasicompact_form(inner_class(rd, id_mat (rank(rd)))))
-
-set K_0_complete(RealForm G)=(mat,mat,mat,mat,RealForm):K_0_complete(KGB(G,0))
-
-set K_0(KGBElt x)=RealForm:let (,,,,K)=K_0_complete(x) in K
-set K_0(RealForm G)=RealForm:K_0(KGB(G,0))
+set K_0(RealForm G) = RealForm: K_0(KGB(G,0))
 
 set rho_K(KGBElt x)=ratvec:rho(K_0(x))
 set rho_K(RealForm G)=ratvec:rho(K_0(G))
-{NOT USED
-{G_K_roots: roots of K as elements of X^* (before restricting to X^*(T_K))
- assuming alpha complex >0 => theta(alpha)>0
- returns each compact imaginary root, and one of each complex pair {alpha,theta(alpha)}}
-set G_K_roots(KGBElt x)=mat:
-let G=real_form(x) in
-let delta=distinguished_involution(G) in
-let ()=if not involution(x)=delta then prints("Warning: x is not in distinguished fiber") fi in
-let imaginary_roots=positive_imaginary_roots(x) in
-let complex_roots_0=[vec]:positive_complex_roots(x) in
-{let ()=prints("complex_roots_0:", mat:complex_roots_0) in}
-let complex_roots=[vec]:[] in
- let ()=for alpha in complex_roots_0 do
- (if need_root(complex_roots,alpha) then complex_roots#:=alpha fi;
- if need_root(complex_roots,delta*alpha) then complex_roots#:=delta*alpha fi) od in
-let roots=[] in
-{ let ()=prints("complex roots paired:", mat:complex_roots) in
- let ()=prints("delta*complex roots paired:", delta*complex_roots) in}
- let ()=for alpha in imaginary_roots do if is_compact(alpha,x) then roots#:=alpha fi od in
- let ()=for i:#complex_roots\2 do roots#:=complex_roots[2*i] od in
-roots
-set G_K_root(RealForm G)=mat:G_K_roots(KGB(G,0))
 
-
-
+{atlas outputs a K-type as 
+two_lambada@torus_bits#cartan_class
+this defines a final standard limit parameter
+p=(x,lambda) where 
+torus_factor(x)=base_grading(G)+torus_bits
+and involution(x) is the canonical involution of the cartan_class
+this function returns p
+the is (vec, vec, int), at the moment atlas Ktype_mat, branch and Ktypeform 
+return K-types in the format [ 2, 2,-2, 2 ]@(0,0,1,1)#4
+this needs to be converted to ([ 2, 2,-2, 2 ],[0,0,1,1],4) for input to convert_K_type
 }
+set convert_K_type(RealForm G,vec two_lambda, vec torus_bits, int cartan)=Param:
+let lambda=ratvec:two_lambda/2,
+torus_factor=base_grading_vector(G)+torus_bits,
+C=Cartan_class(G,cartan) then
+theta=involution(C) then
+x=KGB_elt(G,theta,torus_factor) in
+parameter(x,lambda,null(rank(G)))
+
+set convert_K_type(RealForm G,(vec two_lambda, vec torus_bits, int cartan))=Param:convert_K_type(G,two_lambda,torus_bits,cartan)
+
+

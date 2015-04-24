@@ -38,8 +38,11 @@ let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
   let alpha=vec:simple_roots(id)[j]
 {  then ()=prints("j=", j, " alpha=", alpha, " type=", type) }
   then alpha_check=vec:simple_coroots(id)[j]
-  then ref=posroot_reflection(id,j)
+{  then ref=posroot_reflection(id,j)
   then coref=posroot_reflection(dual(id),j) in
+}
+  then ref=reflection(id,j)
+  then coref=reflection(dual(id),j) in
 if (type="1i1") then
  let new_lambda=lambda
   then new_l=vec:ratvec_as_vec(l+((g*alpha-l*alpha-1)/2)*alpha_check)
