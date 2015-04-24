@@ -608,19 +608,24 @@ break; case '#': prevent_termination=c;
        valp->oper.priority = 8; // basic meaning is non-associative
 break;
 
-@ We hand to the parser a string denotation expression in |valp|, rather than
-the |(char *)| value returned by |scan_quoted_string()|, thus performing some
-work that is usually left to the parser. The reason for this is that it avoids
-having to extend union of possible token values with a variant for |(char *)|
-and to define a corresponding destructor for in case the parser should decide
-to drop the token because of a syntax error. In the current situation the
-token value is a (string denotation) expression, and its destruction is
-handled by |destroy_expr|.
+@ We hand to the parser a pointer to a dynamic variable move-constructed from
+the |std::string| value returned by |scan_quoted_string()|. For technical
+reasons having a |std::string| itself as token value is not practical (it
+would define a union member with non-trivial destructor, and though \Cpp\ will
+allow that if certain provisions are made, the parser generator which
+is \Cpp-agnostic does not make those provisions). There is only one parser
+action for |STRING| tokens, and it will turn the token value into a string
+denotation expression; the code below used to circumvent to problem by already
+performing this conversion inside the scanner, and letting the mentioned
+parser action be empty. The current solution, though a doing a bit of extra
+work, is cleaner. It was chosen so that the parser can pass a complete
+location description when the string denotation expression is built; when the
+current code is executed the start of the token is recorded in |locp|, but not
+yet its end. Also this is allows for possible future addition of parser rules
+involving |STRING|.
 
 @< Scan a string... @>=
-{@; valp->expression=make_string_denotation(scan_quoted_string());
-  code=STRING;
-}
+{@; valp->str = new std::string(scan_quoted_string()); code=STRING; }
 
 @ Since file names have a different lexical structure than identifiers, they
 are treated separately in the scanner; moreover since at most one file name

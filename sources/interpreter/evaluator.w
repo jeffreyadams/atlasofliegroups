@@ -236,9 +236,9 @@ void layer::add(id_type id,type_expr&& t)
   // traverse |variable| vector
     if (it->first==id)
       throw program_error @/
-       (std::string("Multiple binding of ")
+       (std::string("Multiple binding of '")
                     +main_hash_table->name_of(id)
-                    +" in same scope");
+                    +"' in same scope");
   variable.emplace_back( id, std::move(t) );
 }
 
@@ -368,7 +368,7 @@ case string_denotation:
   }
 case boolean_denotation:
   { expression_ptr d@|(new denotation
-        (std::make_shared<bool_value>(e.int_denotation_variant)));
+        (std::make_shared<bool_value>(e.bool_denotation_variant)));
     return conform_types(bool_type,type,std::move(d),e);
   }
 
@@ -728,7 +728,7 @@ possible in the language, we have to watch out for a (shared) null pointer at
 void global_identifier::evaluate(level l) const
 { if (address->get()==nullptr)
   { std::ostringstream o;
-    o << "Taking value of uninitialized variable " << name();
+    o << "Taking value of uninitialized variable '" << name() << '\'';
     throw std::runtime_error(o.str());
   }
   push_expanded(l,*address);
@@ -819,13 +819,17 @@ case applied_identifier:
   const_type_p id_t; size_t i,j;
   const bool is_local=(id_t=layer::lookup(id,i,j))!=nullptr;
   if (not is_local and (id_t=global_id_table->type_of(id))==nullptr)
-    throw program_error  @|
-       (std::string("Undefined identifier ")
-	+main_hash_table->name_of(id));
+  {
+    std::ostringstream o;
+    o << "Undefined identifier '" << main_hash_table->name_of(id) << '\'';
+    if (e.loc.file!=Hash_table::empty)
+      o << ' ' << e.loc;
+    throw program_error (o.str());
+  }
 @.Undefined identifier@>
-  expression_ptr id_expr = is_local
+  expression_ptr id_expr = @| is_local
   ? expression_ptr(new local_identifier(id,i,j))
-@/: expression_ptr(new global_identifier(id));
+  : expression_ptr(new global_identifier(id));
   if (type.specialise(*id_t)) // then required type admits known identifier type
     { if (type!=*id_t)
       // usage has made type of identifier more specialised
@@ -934,7 +938,7 @@ if (variants.size()==1)
   throw type_error(args,a_priori_type.copy(),variants[0].type().arg_type.copy());
 else
 { std::ostringstream o;
-  o << "Failed to match `"
+  o << "Failed to match '"
     << main_hash_table->name_of(id) @|
     << "' with argument type "
     << a_priori_type;
@@ -1814,15 +1818,17 @@ provide a field |loc| to record the source location.
 @< Type def... @>=
 struct lambda_struct
 { id_pat param; @+ expression_ptr body; @+ source_location loc;
-  lambda_struct(id_pat&& param, expression_ptr&& body, source_location&& loc)
-  : param(std::move(param)), body(std::move(body)), loc(std::move(loc)) @+{}
+  lambda_struct
+      (id_pat&& param, expression_ptr&& body, const source_location& loc)
+  : param(std::move(param)), body(std::move(body)), loc(loc) @+{}
 };
 typedef std::shared_ptr<lambda_struct> shared_lambda;
 
 struct lambda_expression : public expression_base
 { shared_lambda p;
   @)
-  lambda_expression(const id_pat& p, expression_ptr&& b, source_location&& loc);
+  lambda_expression
+    (const id_pat& p, expression_ptr&& b, const source_location& loc);
   virtual ~@[lambda_expression() nothing_new_here@];
     // subobjects do all the work
   virtual void evaluate(level l) const;
@@ -1833,18 +1839,16 @@ struct lambda_expression : public expression_base
 @ The main constructor cannot be inside the class definition, as it requires
 the local function |copy_id_pat|. It copies the pattern and creates a new
 shared reference to the copy (further sharing will occur when the
-$\lambda$-expression is evaluated). For the body we create sharing as well,
-which is simpler since the passed unique-pointer already gives us ownership;
-however, we cannot however use |std::make_shared| since the object pointed to,
-of some class derived from |expression|, already exists, and should not be
-cloned.
+$\lambda$-expression is evaluated). The |loc| field is copy-constructed from
+the one passed, which resides in a |const|-qualified |expr| object produced by
+the parser; therefore moving is not an option here, and since this is plain
+data it wouldn't be more efficient anyway.
 
 @< Function def... @>=
 inline
 lambda_expression::lambda_expression @|
-  (const id_pat& p, expression_ptr&& b, source_location&& loc)
-: p(std::make_shared<lambda_struct>
-     (copy_id_pat(p),std::move(b),std::move(loc)))
+  (const id_pat& p, expression_ptr&& b, const source_location& loc)
+: p(std::make_shared<lambda_struct>(copy_id_pat(p),std::move(b),loc))
 @+{}
 
 @ To print an anonymous function, we print the parameter, enclosed in
@@ -1910,12 +1914,7 @@ printed. But it's not done yet.
 
 @< Function def... @>=
 void closure_value::print(std::ostream& out) const
-{ out << "Function defined at "
-      << main_input_buffer->name_of(p->loc.file) @|
-      << ':' << p->loc.start_line << ':' << p->loc.first_col << '-';
-  if (p->loc.extent>0)
-    out << p->loc.start_line+p->loc.extent << ':';
-  out << p->loc.last_col << std::endl << *p;
+{ out << "Function defined " << p->loc << std::endl << *p;
 }
 
 @ Evaluating a $\lambda$-expression just forms a closure using the current
@@ -2121,12 +2120,12 @@ case lambda_expr:
                        std::move(type));
     return expression_ptr(new @|
       lambda_expression(pat, convert_expr(fun->body,type.func->result_type)
-                       ,std::move(fun->loc)));
+                       ,std::move(e.loc)));
   }
   else
   { type_expr dummy; // unused result type
     expression_ptr result(new @|
-      lambda_expression(pat,convert_expr(fun->body,dummy),std::move(fun->loc)));
+      lambda_expression(pat,convert_expr(fun->body,dummy),std::move(e.loc)));
     return expression_ptr(new voiding(std::move(result)));
   }
 }

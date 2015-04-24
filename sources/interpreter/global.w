@@ -608,22 +608,25 @@ point to really resume after an error.
 type_expr analyse_types(const expr& e,expression_ptr& p)
   throw(std::bad_alloc,std::runtime_error)
 { try
-  {@; type_expr type=unknown_type.copy();
+  { type_expr type; // this starts out as of |undetermined_type|
     p = convert_expr(e,type);
     return type;
   }
   catch (type_error& err)
-  { std::cerr << err.what() << ":\n  Subexpression " << err.offender << @|
-    " has wrong type: found " << err.actual << @|
-    " while " << err.required << " was needed.\n";
+  { std::cerr << "Error during analysis of expression " << e.loc << std::endl;
+    std::cerr << err.what() << ":\n  Subexpression " << err.offender
+@|            << ' ' << err.offender.loc
+@|            << "\n  has wrong type: found " << err.actual
+@|            << " while " << err.required << " was needed.\n";
 @.Subexpression has wrong type@>
   }
   catch (expr_error& err)
-  { std::cerr << "Error in expression " << err.offender << "\n  "
+  { std::cerr << "Error in expression "
+              << err.offender << ' ' << err.offender.loc << "\n  " @|
               << err.what() << std::endl;
   }
   catch (program_error& err)
-  {@; std::cerr << "Error during analysis of expression " << e << "\n  "
+  { std::cerr << "Error during analysis of expression " << e.loc << "\n  " @|
                 << err.what() << std::endl;
   }
   throw std::runtime_error("Type check failed");
@@ -840,7 +843,8 @@ catch (std::runtime_error& err)
     list_identifiers(pat,names);
     std::cerr << "  Identifier" << (n_id==1 ? "" : "s");
     for (size_t i=0; i<n_id; ++i)
-      std::cerr << (i==0 ? " " : ", ") << main_hash_table->name_of(names[i]);
+      std::cerr << (i==0 ? " '" : ", '")
+                << main_hash_table->name_of(names[i]) << '\'';
     std::cerr << " not " << (overload==0 ? "created." : "overloaded.")
               << std::endl;
   }
@@ -860,17 +864,20 @@ catch (std::exception& err)
 }
 
 @ The following function is called when an identifier is declared with type
-but undefined value.
+but undefined value. Note that we output a message \emph{before} actually
+entering the identifier into the table, since the latter moves the type value
+out of |type|, so it would be a bit more effort if we wanted to print the
+message afterwards.
 
 @< Global function definitions @>=
 void global_declare_identifier(id_type id, type_p t)
 { type_ptr saf(t); // ensure clean-up
   type_expr& type=*t;
+  @< Emit indentation corresponding to the input level to |std::cout| @>
+  std::cout << "Declaring identifier '" << main_hash_table->name_of(id)
+            << "': " << type << std::endl;
   static const shared_value undef(nullptr);
   global_id_table->add(id,undef,std::move(type));
-  @< Emit indentation corresponding to the input level to |std::cout| @>
-  std::cout << "Identifier " << main_hash_table->name_of(id)
-            << " : " << *t << std::endl;
 }
 
 @ Finally the user may wish to forget the value of an identifier, which the
@@ -878,8 +885,8 @@ following function achieves.
 
 @< Global function definitions @>=
 void global_forget_identifier(id_type id)
-{ std::cout << "Identifier " << main_hash_table->name_of(id)
-            << (global_id_table->remove(id) ? " forgotten" : " not known")
+{ std::cout << "Identifier '" << main_hash_table->name_of(id)
+            << (global_id_table->remove(id) ? "' forgotten" : "' not known")
             << std::endl;
 }
 
@@ -890,11 +897,11 @@ similar.
 void global_forget_overload(id_type id, type_p t)
 { type_ptr saf(t); // ensure clean-up
   const type_expr& type=*t;
-  std::cout << "Definition of " << main_hash_table->name_of(id)
+  std::cout << "Definition of '" << main_hash_table->name_of(id)
             << '@@' << type @|
             << (global_overload_table->remove(id,type)
-               ? " forgotten"
-               : " not known")
+               ? "' forgotten"
+               : "' not known")
             << std::endl;
 }
 
@@ -910,8 +917,8 @@ void type_define_identifier(id_type id, type_p t)
     @< Test that |id| has no global definition or overloads;
        if it does, report problem and |return| @>
   @< Emit indentation corresponding to the input level to |std::cout| @>
-  std::cout << "Type name " << main_hash_table->name_of(id) @|
-            << (redefine ? " redefined as " : " defined as ") << type 
+  std::cout << "Type name '" << main_hash_table->name_of(id) @|
+            << (redefine ? "' redefined as " : "' defined as ") << type 
             << std::endl;
 @/global_id_table->add_type_def(id,std::move(type));
 }
@@ -970,8 +977,8 @@ void show_overloads(id_type id)
 { const overload_table::variant_list& variants =
    global_overload_table->variants(id);
   *output_stream
-   << (variants.empty() ? "No overloads for " : "Overloaded instances of ") @|
-   << main_hash_table->name_of(id) << std::endl;
+   << (variants.empty() ? "No overloads for '" : "Overloaded instances of '")
+@| << main_hash_table->name_of(id) << '\'' << std::endl;
  for (size_t i=0; i<variants.size(); ++i)
    *output_stream << "  "
     << variants[i].type().arg_type << "->" << variants[i].type().result_type @|
