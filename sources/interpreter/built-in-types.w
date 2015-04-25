@@ -4581,6 +4581,58 @@ void split_mult_virtual_module_wrapper(expression_base::level l)
   }
 }
 
+@ The following function makes available in \.{realex} the functionality of
+the \.{branch} command in the \.{atlas} program.
+
+@h "standardrepk.h"
+
+@< Local function def...@>=
+void branch_wrapper(expression_base::level l)
+{ int h_diff = std::max(0,get<int_value>()->val);
+  shared_module_parameter p = get<module_parameter_value>();
+  const StandardRepr& rep = p->val;
+  const Rep_context rc = p->rc();
+  RealReductiveGroup& G=p->rf->val;
+  standardrepk::KhatContext khc(G);
+  standardrepk::StandardRepK repK =
+    khc.std_rep_rho_plus(rc.lambda_rho(rep),G.kgb().titsElt(rep.x()));
+  @< Check that representation |repK| is standard and final;
+     possibly |throw|  @>
+  standardrepk::combination c=khc.standardize(repK);
+  if (l==expression_base::no_value)
+    return;
+  repr::SR_poly accumulator(rc.repr_less()); // prepare for handling result
+  if (not c.empty())
+  { auto b=c.begin()->first;
+    standardrepk::level h=khc.height(b);
+    standardrepk::combination result=khc.branch(b,h+h_diff);
+    for (auto it=result.begin(); it!=result.end(); ++it)
+    {
+      StandardRepr sr = rc.sr(khc.rep_no(it->first),khc,RatWeight(rc.rank()));
+      accumulator.add_term(sr,Split_integer(it->second));
+    }
+  }
+  push_value(std::make_shared<virtual_module_value>(p->rf,accumulator));
+}
+
+@ The testing code uses the same condition as the \.{branch} command
+in \.{atlas} does.
+
+@< Check that representation |repK| is standard and final... @>=
+{ size_t witness; std::ostringstream o;
+  bool nonstand=not khc.isStandard(repK,witness);
+  if (nonstand or not khc.isFinal(repK,witness))
+  {
+    RootNbr simp_wit = nonstand ?
+      khc.fiber(repK).simpleImaginary(witness)
+    : khc.fiber(repK).simpleReal(witness);
+    khc.print(o << "Non-" << (nonstand? "standard" : "final")
+    << " representation ",repK)
+    @|  << " (witness "	<< khc.rootDatum().coroot(simp_wit) << ')';
+    throw std::runtime_error(o.str());
+    }
+}
+
 @ Here is our principal application of virtual modules.
 %
 Using the computation of non-integral blocks, we can compute a deformation
@@ -4594,19 +4646,18 @@ block.
 void deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p);
-  if (l!=expression_base::no_value)
-  {
-    non_integral_block block(p->rc(),p->val); // partial block construction
-    repr::SR_poly terms
-       = p->rt().deformation_terms(block,block.size()-1);
+  if (l==expression_base::no_value)
+    return;
+  non_integral_block block(p->rc(),p->val); // partial block construction
+  repr::SR_poly terms
+     = p->rt().deformation_terms(block,block.size()-1);
 
-    own_virtual_module acc = std::make_shared<virtual_module_value>
-      (p->rf, repr::SR_poly(p->rc().repr_less()));
-    for (repr::SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
-      acc->val.add_multiple(p->rc().expand_final(it->first),it->second);
+  own_virtual_module acc = std::make_shared<virtual_module_value>
+    (p->rf, repr::SR_poly(p->rc().repr_less()));
+  for (repr::SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
+    acc->val.add_multiple(p->rc().expand_final(it->first),it->second);
 
-    push_value(std::move(acc));
-  }
+  push_value(std::move(acc));
 }
 
 @ Here is a recursive form of this deformation, which stores intermediate
@@ -4682,6 +4733,7 @@ install_function(int_mult_virtual_module_wrapper,@|"*"
 		,"(int,ParamPol->ParamPol)");
 install_function(split_mult_virtual_module_wrapper,@|"*"
 		,"(Split,ParamPol->ParamPol)");
+install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");

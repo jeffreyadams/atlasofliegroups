@@ -647,6 +647,11 @@ operator +, -: (ParamPol,ParamPol->ParamPol): addition/subtraction formal sums
 operator *: (int,ParamPol->ParamPol): integer multiple of a formal sum
 operator *: (Split,ParamPol->ParamPol): split integer multiple of a formal sum
 
+branch: (Param,int->ParamPol): compute an initial part of the restriction to K
+  The parameter argument is interpreted as restricted to K (the nu component
+  is replaced by a zero vector), and the integer argument as a height
+  difference d (if negative it is replaced by 0); the part of the K types with
+  height <= level+d is returned, with level the height of the lowest K type.
 deform: (Param->ParamPol): compute deformation terms when nu decreases
   The non-integral block for the parameter and its KL polynomials are
   computed, from which the deformation terms involing other members of the
@@ -655,7 +660,7 @@ deform: (Param->ParamPol): compute deformation terms when nu decreases
 
 full_deform: (Param->ParamPol): perform deformation all the way to nu=0
   This is like deform, but recursively deforms all new terms produced as long
-  as they do not have nu=0; all terms in the reult therfore have nu=0
+  as they do not have nu=0; all terms in the result therefore have nu=0.
 
 KL_sum_at_s: (Param->ParamPol): signed sum of KL polynomials at s, fixed y
   Computes \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s].x where y is the block
