@@ -22,9 +22,9 @@ set saturation_quotient_module_basis(mat M) = mat:
   let (B,cs) = adapted_basis(M) then l=#cs
   in columns_with ((int j)bool: j>=l,B)
 
-{ M is an n*k matrix whose columns span a rank m submodule W of V=Z^n
+{ M is an n*k matrix whose columns span a rank k submodule W of V=Z^n
   A is an n*n matrix preserving W
-  sub_matrix(M,W) is the m*m matrix giving the action of M on W,
+  sub_matrix(M,W) is the k*k matrix giving the action of A on W,
   using columns of M as basis
 }
 set sub_matrix(mat A,mat M) = mat:
@@ -90,70 +90,68 @@ set projection_to_image (mat M) = mat:
   let (B,cs) = adapted_basis(M) then d=#cs
   in rows_with( (int i): i<d, inverse(B) )
 
-{ original code:
-  let sub=submodule_basis(M), quotient=saturation_quotient_module_basis(M)
-  then P= mat: sub#quotient
-  in rows_with( (int i): i<d, inverse(P) )
+set index_lattice (mat M) = int:
+  let index = abs(product(let (d,,)=diagonalize(M) in d))
+  in assert(index>0,"lattice has infinite index"); index
+
+{ D=SMT weak Smith normal form, S,T are Z-invertible, D is diagonal
+  with nonzero entries first, but not assuming divisibiliy; differs from
+  diagonalize(M) only by replacing list of factors containing "diagonal" matrix
 }
+set weak_snf (mat M) = (mat,mat,mat):
+  let (v,S,T)=diagonalize(M)
+  then D=null(n_rows(S),n_columns(T))
+  in for i:#v do D[i,i]:=v[i] od; (S,D,T)
 
-set index_lattice(mat M)=int:
-let rv=product(inv_fact(M)) in
-if rv=0 then error("lattice has infinite index") fi;rv
-
-
-{D=SMT weak Smith normal form, S,T are Z-invertible, D is diagonal
-with nonzero entries first, but not assuming divisibiliy
-diagonalize(M)=(v,S,T), v->D->SMT=D}
-set weak_snf(mat M)=
-let (v,S,T)=diagonalize(M) in
-let D=null(n_rows(S),n_columns(T))  in
-let ()=for i:#v do D[i,i]:=v[i] od in (S,D,T)
-
-{solve Dw=v where D pseudo-diagonal (non necessarily square), over Z, if possible}
+{ solve Dw=v over Z, where D is diagonal square, if possible }
 set diag_solve(mat D,vec v)=(vec, bool):
-let success=true in
-let w=v in
-let ()=for i:#v do
-   if ((D[i,i]=0 and v[i] !=0) or (D[i,i]!=0 and not is_integer(v[i]/D[i,i])))
-   then success:=false else
-     w[i]:= if D[i,i] !=0 then rat_as_int(v[i]/D[i,i]) else 0 fi fi
-        od in (w,success)
+  let success=true
+  then w =
+    for vi@i in v
+    do let Dii=D[i,i] in
+      if Dii=0 then success := vi=0; vi
+      else let (q,r)=vi\%Dii in success := r=0; q
+      fi
+    od
+  in (w,success)
 
-set Q_diag_solve(mat D,[rat] v)=([rat],bool):
-let success=true in
-let w=v in
-let ()=for i:#v do
-   if (D[i,i]=0 and v[i] !=0)
-   then success:=false else
-     w[i]:= if D[i,i] !=0 then v[i]/D[i,i] else 0 fi fi
-        od in (w,success)
+set Q_diag_solve(mat D,ratvec v) = (ratvec,bool):
+  let success=true
+  then w =
+    for vi@i in v
+    do let Dii=D[i,i] in
+      if Dii=0 then success := vi=0; vi
+      else vi/Dii
+      fi
+    od
+  in (w,success)
 
-{solve Mw=v (over integers) maybe only works for M square}
-set solve(mat M,vec v)=(vec, bool):
-let (S,D,T)=weak_snf(M) in
-let (diag,success)=diag_solve(D,S*v) in
-if (success=false) then (v,false) else (T*diag,true) fi
-
-
-set Q_solve(mat M, [rat] v)=([rat],bool):
-let (S,D,T)=weak_snf(M) in
-let (diag,success)=Q_diag_solve(D,S*v) in
-if (success=false) then (v,false) else (T*diag,true) fi
+{ solve Mw=v (over integers) maybe only works for M square }
+set solve(mat M,vec v) = (vec, bool):
+  let (S,D,T)=weak_snf(M)
+  then (diag,success)=diag_solve(D,S*v)
+  in (if success then T*diag else v fi, success)
 
 
-set rank (mat M)=int:let (S,D,T)=weak_snf(M) in
-let rv=0 in for i:min(n_columns(D),n_rows(D)) do if (D[i,i]!=0) then  rv+:=1 fi od;rv
+set Q_solve(mat M, ratvec v) = (ratvec,bool):
+  let (S,D,T)=weak_snf(M) then (diag,success)=Q_diag_solve(D,S*v)
+  in (if success then T*diag else v fi, success )
 
-{ratvec v is in Q-span of columns of M: rank([M, numerator(v)])=rank(M)}
-set in_Q_span(mat M, ratvec v)=let (w,d)=%v in  bool:rank(M#(mat:[w]))-rank(M)=0
+set rank (mat M) = int: { number of (nonzero) invariant factors of M }
+  let (ds,,)=diagonalize(M) in #ds
 
-{product of non-zero invariant factors of M}
-set pseudo_det(mat M)=product(inv_fact(M))
+{ ratvec v is in Q-span of columns of M: rank([M, numerator(v)])=rank(M) }
+set in_Q_span(mat M, ratvec v) = bool:
+  rank(M#column(numer(v)))=rank(M)
 
-{this replaces flawed command in lattice.rx}
-{vec v is in Z-span of columns of M: in_Q_span(M,v),
-and pseudo_det(M)=pseudo_det(M,v) where Det is product of (nonzero) invariant factors}
+{ product of non-zero invariant factors of M }
+set pseudo_det(mat M) = int: { the same as |index| above, but without error }
+  product(inv_fact(M))
+
+{ this replaces flawed command in lattice.rx }
+{ vec v is in Z-span of columns of M: in_Q_span(M,v), and
+  pseudo_det(M)=pseudo_det(M,v), the product of (nonzero) invariant factors}
 set in_lattice(mat M, vec v)=
-in_Q_span(M,v) and pseudo_det(M)=pseudo_det(M#(mat:[v]))
+  in_Q_span(M,v) and pseudo_det(M)=pseudo_det(M#(column(v)))
 
 
