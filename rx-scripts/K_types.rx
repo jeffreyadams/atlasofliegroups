@@ -1,0 +1,50 @@
+<sort
+set split_as_int(Split s)=int:
+let (a,b)=%s in if b!=0 then error("split is not an integer") fi;a
+
+set branch_std(Param p, int height)=ParamPol:
+let params=make_final(make_nu0(p)) then
+rv=null_module(p) in 
+for q in params do rv+:=branch(q,height) od;rv
+
+set branch_std(ParamPol P,int height)=ParamPol:
+let rv=null_module(real_form(P)) in
+for (a,p) in %P do rv+:=a*branch_std(p,height) od;rv
+
+set branch_irr(Param p, int height)=ParamPol:
+branch_std(character_formula(p),height)
+
+set print_K_irr(Param p,KGBElt x,int height)=void:
+let ktypes=sort_by_dimension(%branch_irr(p,height)) in 
+for (mult,q) in ktypes do 
+let hw=LKT_highest_weights(q,x)[0] in 
+prints(split_as_int(mult), "*", hw) od
+
+set print_K_irr(Param p,int height)=void:print_K_irr(p,KGB(real_form(p),0),height)
+
+set print_K_irr_long(Param p,KGBElt x,int height)=void:
+let ()=prints("rho_K=", rho_K(x)) then
+ktypes=sort_by_dimension(%branch_irr(p,height)) in 
+for (mult,q) in ktypes do 
+let hw=LKT_highest_weights(q,x)[0] in 
+prints(split_as_int(mult), "*", hw, " ", LKT_dimensions(q)[0]) od
+
+set print_K_irr_long(Param p,int height)=void:print_K_irr_long(p,KGB(real_form(p),0),height)
+
+set print_K_std(Param p,KGBElt x,int height)=void:
+let ktypes=sort_by_dimension(%branch_std(p,height)) in 
+for (mult,q) in ktypes do 
+let hw=LKT_highest_weights(q,x)[0] in 
+prints(split_as_int(mult), "*", hw) od
+
+set print_K_std(Param p,int height)=void:print_K_std(p,KGB(real_form(p),0),height)
+
+set print_K_std_long(Param p,KGBElt x,int height)=void:
+let ()=prints("rho_K=", rho_K(x)) then
+ktypes=sort_by_dimension(%branch_std(p,height)) in 
+for (mult,q) in ktypes do 
+let hw=LKT_highest_weights(q,x)[0] in 
+prints(split_as_int(mult), "*", hw, " ", LKT_dimensions(q)[0]) od
+
+set print_K_std_long(Param p,int height)=void:print_K_std_long(p,KGB(real_form(p),0),height)
+

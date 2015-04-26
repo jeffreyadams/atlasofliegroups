@@ -4605,7 +4605,8 @@ void branch_wrapper(expression_base::level l)
   if (not c.empty())
   { auto b=c.begin()->first;
     standardrepk::level h=khc.height(b);
-    standardrepk::combination result=khc.branch(b,h+h_diff);
+//    standardrepk::combination result=khc.branch(b,h+h_diff);
+    standardrepk::combination result=khc.branch(b,h_diff);  //compute up to absolute h_diff, not relative h+h_diff
     for (auto it=result.begin(); it!=result.end(); ++it)
     {
       StandardRepr sr = rc.sr(khc.rep_no(it->first),khc,RatWeight(rc.rank()));
