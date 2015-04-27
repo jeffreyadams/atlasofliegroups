@@ -70,12 +70,12 @@
 %token ARROW "->"
 %token BECOMES ":="
 
-%type <expression> exp quaternary tertiary lettail or_expr and_expr not_expr
+%type <expression> exp tertiary lettail or_expr and_expr not_expr
 %type <expression>  formula operand secondary primary iftail
 %type <expression> comprim subscription
 %type <ini_form> formula_start
 %type <oper> operator
-%destructor { destroy_expr ($$); } exp quaternary tertiary lettail or_expr
+%destructor { destroy_expr ($$); } exp tertiary lettail or_expr
 %destructor { destroy_expr ($$); } and_expr not_expr formula operand iftail
 %destructor { destroy_expr ($$); } secondary primary comprim subscription
 %destructor { destroy_formula($$); } formula_start
@@ -109,7 +109,7 @@
 input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| '\f'	   { YYABORT; } /* allow form feed as well at command level */
 	| exp '\n'		{ *parsed_expr=$1; }
-	| quaternary ';' '\n'
+	| tertiary ';' '\n'
 	  { *parsed_expr=make_sequence($1,wrap_tuple_display(NULL,@$),true,@$); }
 	| SET pattern '=' exp '\n' { global_set_identifier($2,$4,1); YYABORT; }
 	| SET IDENT '(' id_specs_opt ')' '=' exp '\n'
@@ -158,7 +158,7 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 ;
 
 exp: LET lettail { $$=$2; }
-| '(' ')' ':' exp { $$=make_lambda_node(NULL,NULL,$4,@$); }
+	| '(' ')' ':' exp { $$=make_lambda_node(NULL,NULL,$4,@$); }
 	| '(' id_specs ')' ':' exp
 	{ $$=make_lambda_node($2.patl,$2.typel,$5,@$); }
 	| '(' ')' type ':' exp
@@ -166,8 +166,9 @@ exp: LET lettail { $$=$2; }
 	| '(' id_specs ')' type ':' exp
 	{ $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6,@$),@$); }
         | type ':' exp	 { $$ = make_cast($1,$3,@$); }
-	| quaternary NEXT exp { $$=make_sequence($1,$3,false,@$); }
-        | quaternary
+	| tertiary ';' exp { $$=make_sequence($1,$3,true,@$); }
+        | tertiary NEXT exp { $$=make_sequence($1,$3,false,@$); }
+	| tertiary
 ;
 
 lettail : declarations IN exp { $$ = make_let_expr_node($1,$3,@$); }
@@ -183,10 +184,6 @@ declaration: pattern '=' exp { $$ = make_let_node($1,$3); }
 	  { struct raw_id_pat p; p.kind=0x1; p.name=$1;
 	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6,@$));
 	  }
-;
-
-quaternary: quaternary ';' tertiary { $$=make_sequence($1,$3,true,@$); }
-	| tertiary
 ;
 
 tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3,@$); }
