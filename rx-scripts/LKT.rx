@@ -36,7 +36,7 @@ let w=find_W_cross(x,y) in (y,action(root_datum(G),w,lambda))
 set move_finite_dimensional(KGBElt x,KGBElt y,Param p)=Param:
 let (,hw)=move_highest_weight(x,y,highest_weight(p)) in  finite_dimensional(K_0(real_form(y)),ratvec_as_vec(hw))
 
-{sum of the roots of K as an element of x^*
+{sum of the roots of K=K_x as an element of X^*
  x is assumed to be in the distinguished fiber, defining K
  in particular alpha complex >0 => theta(alpha)>0
 }
@@ -45,8 +45,7 @@ let ()=if not in_distinguished_fiber(x) then prints("Warning: x is not in distin
 let G=real_form(x) in 
 let rv=ratvec:null(rank(G)) in 
 for alpha in posroots(G) do 
-if is_compact(alpha,x) then rv+:=alpha 
-{elif is_complex(alpha,x) then rv+:=alpha/2 fi od;rv}
+if (is_imaginary(x)(alpha) and is_compact(alpha,x)) then rv+:=alpha 
 elif is_complex(alpha,x) then rv+:=alpha/2 fi od;rv  {since alpha and theta(alpha) have the same restriction}
 
 {x is assumed to be in the distinguished fiber, defining K
@@ -60,7 +59,7 @@ let G=real_form(x) in
 let rv=ratvec:null(rank(G)) in 
 for alpha in posroots(G) do 
 if is_real(alpha,y) then 
- if is_compact(alpha,x) then rv+:=alpha 
+ if (is_imaginary(x)(alpha) and is_compact(alpha,x)) then rv+:=alpha 
  elif is_complex(alpha,x) then rv+:=alpha/2 fi fi od;rv
 
 {lowest K-type of (limit of) discrete series on M}
