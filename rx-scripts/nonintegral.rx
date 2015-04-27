@@ -3,7 +3,8 @@
 <extended.rx
 
 
-set posroot_cross (int i, Param p) = Param:let w=reflection(root_datum(p),i) in cross(w,p)
+set posroot_cross (int i, Param p) = Param:
+  let w=reflection(root_datum(p),i) in cross(w,p)
 
 {cross action of element mat:w of Weyl group on parameters
  non-integral case, see synthetic.rx for integral case
@@ -68,7 +69,7 @@ as opposed to simple, which might mean simple for the integral roots}
 {cross action of strongly simple root i, must be \delta_0-fixed}
 {note that this function does not call ext_cross(i,E) even when the root is integral}
 set strongly_simple_ext_cross(int i,extended_param E)=extended_param:
-let rd=root_datum(ic(E)) in ext_cross(simple_reflection(rd,i),E)
+  let rd=root_datum(ic(E)) in ext_cross(reflection(rd,i),E)
 
 {cross action of product of strongly simple reflections,
 must give w\in W^{\delta_0}

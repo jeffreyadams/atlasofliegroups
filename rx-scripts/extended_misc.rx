@@ -1,16 +1,7 @@
 <basic.rx
 <lattice.rx { added functions, function in_lattice }
-<parameters.rx { for parameter(x,y,gamma), square_is_central }
-<Weylgroup.rx
-
-
-{ the next command has been copied from Vogan-dual.rx }
-{ shift (up) a candidate dual infinitesimal character to strictly dominant }
-set shift_g_regular (RootDatum rd, ratvec g) = ratvec:
-  for alpha@i in simple_roots(rd)
-  do let (v,d) = %fundamental_coweight(rd,i)
-     in g +:= (1-ceil(g*alpha/d)) * v
-  od; g
+<parameters.rx { for parameter(x,y,gamma), square, square_is_central }
+<Weylgroup.rx  { for make_dominant_using_roots }
 
 { canonical_g(x) returns a dominant regular element g such that e(g)=x^2
   This only depends on the real_form(x), in fact only on its square class
@@ -19,18 +10,27 @@ set shift_g_regular (RootDatum rd, ratvec g) = ratvec:
   canonical_g(RealForm G)= ratvec: shift_g_regular(G,square(G))
 }
 set canonical_g(RealForm G) = ratvec: base_grading_vector(G)+rho_check(G)
-set square (RealForm G) = ratvec: (base_grading_vector(G)+rho_check(G))%1
-
 set canonical_g(KGBElt x) = ratvec: canonical_g(real_form(x))
 set canonical_g(Param p)  = ratvec: canonical_g(real_form(p))
 
 { some variants of Cayley transforms }
 
-{ inv_Cayley terminology is not necessary }
-set Cayley(int i,Param p) = Param:
-  if is_real(i,x(p)) then inv_Cayley(i,p) else Cayley(i,p) fi
+{ use vector-based cross/Cayley when possible, obviates inv_Cayley }
+forget cross@(int,Param)
+forget Cayley@(int,Param)
+forget inv_Cayley@(int,Param)
 
-{ Cayley transform as a set (actually an array, but the order doesn't matter) }
+set cross(int s,Param p) = Param:
+  let alpha = simple_roots(
+    integrality_datum(real_form(p),infinitesimal_character(p)))
+  in cross(alpha[s],p)
+
+set Cayley(int s,Param p) = Param:
+  let alpha = simple_roots(
+    integrality_datum(real_form(p),infinitesimal_character(p)))
+  in Cayley(alpha[s],p)
+
+{ Cayley transform as a set (actually an array, but order doesn't matter) }
 set Cayley_set(int j,Param p) = [Param]:
   let q=Cayley(j,p) in
   if status(j,p)%5=2 { r1 or i2 } then [q,cross(j,q)] else [q] fi
@@ -52,12 +52,11 @@ set W_cross([int] s,KGBElt x) = for i:#s downto 0 do x:=cross(s[i],x) od;x
 set W_cross([int] s,Param p)  = for i:#s downto 0 do p:=cross(s[i],p) od;p
 
 { action of delta on KGB for general distinguished delta
- if delta=distinguished_involution(real_form(x)) then twist(delta,x)=twist(x)
+  if delta=distinguished_involution(real_form(x)) then twist(delta,x)=twist(x)
 }
 set twist(mat delta,KGBElt x) = KGBElt:
   KGB_elt(real_form(x),delta*involution(x)*delta,torus_factor(x)*delta)
 
-{ action of general distinguished delta on parameter }
 set twist(mat delta,Param p)=
   let (x,lambda_rho,nu) = %p
   in parameter(twist(delta,x),delta*(lambda_rho+rho(real_form(x))),delta*nu)
@@ -80,11 +79,11 @@ set is_fixed (mat delta, KGBElt x, KGBElt y) = bool:
   Jeff prefers to work with the "actual torus factor" v
 }
 
+
 : x_rep = (ratvec,mat) { represent x component by v (as above) and theta }
 
-{ in_A@x_rep: test if e(v) is in A:=(H^{-theta})^0 (validity test) }
-{ test: (1+theta)v in (1+theta)X_*, see definition of conjugator a few lines
-  down in this file, and the miscellaneous section of the EPiA
+{ in_A@x_rep: test if e(v) is in A:=(H^{-theta})^0 (validity test)
+  concretely: whether rational vector (1+theta)v lies in lattice (1+theta)X_*
 }
 set in_A(x_rep(v,theta)) = bool: let M=1+theta in in_lattice(M,M*v)
 
@@ -97,15 +96,8 @@ set is_equivalent(x_rep(v_1,theta_1),x_rep(v_2,theta_2)) = bool:
   theta_1=theta_2 and in_A(v_1-v_2,theta_1)
 
 set square_is_central(InnerClass ic,x_rep(v,theta)) = bool:
-  square_is_central(ic,theta,v) { defined in parameters.rx }
+  square_is_central(ic,theta,v) { use the function defined in parameters.rx }
 
-{ in PFTR: z=i^<tau,(delta_0-1)l>(-1)^<lambda,t>
-  PFTR:delta_0 is ^delta here
-}
-set log_z(mat delta, vec lambda, vec l, vec tau,vec t) = rat: { modulo 1 }
-  l*(delta-1)*tau/4+t*lambda/2
-set log_zeta(mat delta, vec lambda, vec l,vec tau,vec t) = rat: { modulo 1 }
-  l*(delta-1)*tau/4+l*tau/2
 
 : extended_param = (InnerClass,mat,ratvec,vec  ,mat,ratvec,vec,mat,vec,vec)
   {                (ic       delta,gamma,lambda,theta,g,   l,omega,tau,t) }
@@ -127,27 +119,39 @@ set dual_parameter(extended_param
       (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) = extended_param:
   (dual(ic),^delta,g,l,omega,gamma,lambda,theta,t,tau)
 
-set log_z(extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = rat:
+{ in PFTR: z=i^<tau,(delta_0-1)l>(-1)^<lambda,t>
+  PFTR:delta_0 is ^delta here
+}
+set log_z(mat delta, vec lambda, vec l, vec tau,vec t) = rat: { modulo 1 }
+  (l*(delta-1)*tau/2+t*lambda)/2 % 1
+set log_zeta(mat delta, vec lambda, vec l,vec tau,vec t) = rat: { modulo 1 }
+  (t*(delta-1)*lambda/2+l*tau)/2 % 1
+
+set log_z(extended_param(,delta,,lambda,,,l,,tau,t)) = rat:
   log_z(delta,lambda,l,tau,t)
 
-set log_zeta(extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = rat:
+set log_zeta(extended_param(,delta,,lambda,,,l,,tau,t)) = rat:
   log_zeta(delta,lambda,l,tau,t)
 
-{compute x,y,parameter and dual parameter of an extended parameter}
+{ compute x,y, the one-sided parameters of an extended parameter }
 
-set y(extended_param (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = KGBElt:
-  KGB_elt(dual(ic),-theta,(gamma-lambda-rho(ic)))
+set y(extended_param (ic,,gamma,lambda,,,,omega,,)) = KGBElt:
+  KGB_elt(dual(ic),omega,(gamma-lambda-rho(ic)))
 
-set x (extended_param (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = KGBElt:
+set x (extended_param (ic,,,,theta,g,l,,,)) = KGBElt:
   KGB_elt(ic,theta,(g-l-rho_check(ic)))
 
-{set parameter (extended_param (,,gamma,,,,,,,):a) = Param:
-  parameter(x(a),y(a),gamma)}
-{ better: use (x,lambda,gamma)}
-set parameter (extended_param (,,gamma,lambda,,,,,,):a) = Param:
-  parameter(x(a),lambda+rho(real_form(x(a))),gamma)
+{ recover ordinary Param value from extended_param; coul be defined as
+  set parameter (extended_param (,,gamma,,,,,,,):a) = Param:
+  parameter(x(a),y(a),gamma)
 
-set integrality_datum(extended_param E)=integrality_datum(ic(E),gamma(E))
+  actually this is better: use (x,lambda,gamma)
+}
+set parameter (extended_param (ic,,gamma,lambda,,,,,,):a) = Param:
+  param(x(a),lambda,gamma)
+
+set integrality_datum(extended_param (ic,,gamma,,,,,,,)) = RootDatum:
+  integrality_datum(ic,gamma)
 
 { assume gamma(E) is integrally dominant
   translate by sum of roots to make it dominant
@@ -159,42 +163,39 @@ set integrality_datum(extended_param E)=integrality_datum(ic(E),gamma(E))
 }
 set translate_to_dominant(extended_param
     (ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E) = (extended_param,vec):
-  let (new_gamma,shift)=make_dominant_using_roots(root_datum(E),gamma)
+  let (new_gamma,shift) = make_dominant_using_roots(root_datum(E),gamma)
   in
-   ((ic,delta, gamma+shift,lambda+shift,theta, g,l,omega, tau,t)
-   ,shift)
-
-
-set fixed_block_of(mat delta, Param p)=[Param]:
-let rv=[Param]:[] in
-for p in block_of(p) do if twist(delta,p)=p then  rv#:=p fi od;rv
+   ((ic,delta, gamma+shift,lambda+shift,theta, g,l,omega, tau,t) , shift)
 
 { for debugging:
   test that an extended parameter satisfies the defining conditions }
-set verify (extended_param
-       (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) =
-{ if not square_is_central(ic,theta,(g-l-rho_check(ic))/2) }
+set valid (extended_param
+       (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) = bool:
+begin let OK=false in
   if not square_is_central(ic,theta,(g-l-rho_check(ic)))
-  then prints("xi^2 is not central"); false
-  elif delta*gamma!=gamma then prints("gamma is not delta-fixed"); false
-  elif g*delta!=g then prints("g is not ^delta-fixed"); false
-  elif delta*theta != theta*delta
-  then prints("involution is not fixed by delta"); false
-  elif omega!=-^theta
-  then prints("Cartan involutions are not compatible"); false
-  elif g*(1-theta)!=(l+rho_check(ic))*(1-theta)
-  then prints("(1-^theta)g\ne (1-^theta)(l+rho^v)"); false
-  elif gamma*(1-omega)!=(lambda+rho(ic))*(1-omega)
-  then prints("(1-^omega)gamma\ne (1-^omega)(lambda+rho)"); false
-  elif -l*(1-delta)!=t*(1+theta)
-  then prints("(^delta-1)l\ne (1+^theta)t"); false
+  then prints("xi^2 is not central")
+  elif delta*gamma!=gamma then prints("gamma is not delta-fixed")
+  elif g*delta!=g then prints("g is not ^delta-fixed")
+  elif delta*theta!=theta*delta then prints("involution is not fixed by delta")
+  elif omega!=-^theta then prints("Cartan involutions are not compatible")
+  elif !=(g-l-rho_check(ic))*(1-theta)
+  then prints("(1-^theta)g\ne (1-^theta)(l+rho^v)")
+  elif =(gamma-lambda-rho(ic))*(1-omega)
+  then prints("(1-^omega)gamma\ne (1-^omega)(lambda+rho)")
+  elif -l*(1-delta)!=t*(1+theta) then prints("(^delta-1)l\ne (1+^theta)t")
   elif -(1-delta)*lambda!=(1-theta)*tau
-  then prints("(delta-1)lambda\ne (1+^omega)tau"); false
-  else true fi
+  then prints("(delta-1)lambda\ne (1+^omega)tau")
+  else OK:=true
+  fi
+; OK
+end
 
-{ fixed(delta,B): select array of parameters from B fixed by delta }
+{ select delta-fixed elements from B }
 set fixed(mat delta, [Param] B)=[Param]:
   let rv=[Param]:[] in for p in B do if is_fixed(delta,p) then rv#:=p fi od; rv
+
+{ select delta-fixed elements from block_of(p) }
+set fixed_block_of(mat delta, Param p) = [Param]: fixed(delta,block_of(p))
 
 { display(E): terse output of E }
 set display (extended_param (,,gamma,lambda,,g,l,,tau,t):E) = void:

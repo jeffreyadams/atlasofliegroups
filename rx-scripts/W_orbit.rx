@@ -1,9 +1,9 @@
-<misc
-<Weylgroup
-<array_search  {binary search in sorted arrays}
+<misc.rx
+<Weylgroup.rx
+<array_search.rx  {binary search in sorted arrays}
 
 {compute orbit of W(S).v: orbit of v under simple roots of S of root datum rd
-algorithm: keep three lists 
+algorithm: keep three lists
 Wreps=Wrepresentatives: list of elements of W
 orbit: final list of elements of orbit
 todo: intermediate list of pairs (w,u) where w.v=u)
@@ -14,11 +14,11 @@ recursively, set (w,u)=first entry of todo
 continue until todo is empty
 returns: (Wrepresentatives, orbit) where orbit is list of elements of orbit, and for each i Wrepresentatives[i].v=orbit[i]}
 set W_orbit_extra(RootDatum rd,[int] S,[int] v)=([[int]],[[int]]):
-let Wreps=[[int]]:[[]],orbit=[v], todo=[([],v)] in 
-while #todo>0 do 
+let Wreps=[[int]]:[[]],orbit=[v], todo=[([],v)] in
+while #todo>0 do
 ( let (w,a)=todo[0] in
- for i in S do  let b=[int]:simple_reflection(rd,i)*a in  let (inlist,loc)=in_list_reverse(orbit,b) in 
-   if not inlist then 
+ for i in S do  let b=[int]:reflection(rd,i)*a in  let (inlist,loc)=in_list_reverse(orbit,b) in
+   if not inlist then
     (Wreps:=insert_at(Wreps,i#w,loc), orbit:=insert_at(orbit,b,loc), todo:=todo#(i#w,b)) fi
  od,todo:=for i:#todo -1 from 1 do todo[i] od)  od;(Wreps,orbit)
 set W_orbit_extra(RealForm G,[int] S,[int] v)=([[int]],[[int]]):W_orbit_extra(root_datum(G),S,v)
@@ -45,11 +45,11 @@ set generate_W(RealForm G)=generate_W(root_datum(G))
 {orbit of <w_1,..,w_n> acting on v where w_i is an element of W (not necessarily a simple reflection)
  application: W^{\delta}-orbit of a root}
 set W_orbit_extra(RootDatum rd,[[int]] S,[int] v)=([[int]],[[int]]):
-let Wreps=[[int]]:[[]],orbit=[v], todo=[([int]:[],v)] in 
-while #todo>0 do 
+let Wreps=[[int]]:[[]],orbit=[v], todo=[([int]:[],v)] in
+while #todo>0 do
 ( let (w,a)=todo[0] in
- for x in S do  let b=[int]:ratvec_as_vec(action(rd,x,a)) in let (inlist,loc)=in_list_reverse(orbit,b) in 
-   if not inlist then 
+ for x in S do  let b=[int]:ratvec_as_vec(action(rd,x,a)) in let (inlist,loc)=in_list_reverse(orbit,b) in
+   if not inlist then
     (Wreps:=insert_at(Wreps,x#w,loc), orbit:=insert_at(orbit,b,loc), todo:=todo#(x#w,b)) fi
  od,todo:=for i:#todo -1 from 1 do todo[i] od)  od;(Wreps,orbit)
 set W_orbit_extra(RealForm G,[int] S,[int] v)=([[int]],[[int]]):W_orbit_extra(root_datum(G),S,v)
@@ -59,7 +59,7 @@ returns (true,[int]:x) or (false,[int]:[])}
 set conjugate_to(RootDatum rd, [[int]] S, [int] v,[int] w)=
 let (W_element,orbit_element)=W_orbit_extra(rd,S,v) then
 i=find(orbit_element,w) in
-if i>=0  then (true,W_element[i]) else (false,[int]:[]) fi 
+if i>=0  then (true,W_element[i]) else (false,[int]:[]) fi
 
 
 

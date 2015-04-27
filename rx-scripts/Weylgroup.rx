@@ -11,7 +11,7 @@ set non_dominant_index (RootDatum rd, vec v) = int:
 
 set move_towards_dominant (RootDatum rd, vec v)=(vec,int):
   let i = non_dominant_index(rd,v) in
-  (if i<0 then v else simple_reflection(rd,i)*v fi, i)
+  (if i<0 then v else reflection(rd,i)*v fi, i)
 
 
 { make_dominant(rd,v) returns (v_dom,w) where v_dom is dominant, v=w*v_dom
@@ -101,12 +101,12 @@ set inverse([int] w)=[int]: for i:#w downto 0 do w[i] od
 set w_long(RootDatum rd) = [int]: let (,w) = make_dominant(rd,-rho(rd)) in w
 
 set w_matrix(RootDatum rd, [int] w) = mat:
-  let M=id_mat(rank(rd)) in for j in w do M*:=simple_reflection(rd,j) od; M
+  let M=id_mat(rank(rd)) in for j in w do M*:=reflection(rd,j) od; M
 
 { action of Weyl word }
 set action(RootDatum rd,[int] w,ratvec rv) = ratvec:
   let (v,den)=%rv in
-  for i:#w downto 0 do v:=simple_reflection(rd,w[i])*v od; v/den
+  for i:#w downto 0 do v:=reflection(rd,w[i])*v od; v/den
 
 { action of Weyl word on X_*\otimes Q }
 set co_action(RootDatum rd,[int] w,ratvec rv) = ratvec:

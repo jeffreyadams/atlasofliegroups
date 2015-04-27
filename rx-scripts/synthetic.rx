@@ -179,7 +179,7 @@ set =(KGBElt_gen x1,KGBElt_gen x2) = bool:
 set *(mat delta,KGBElt_gen(ic,theta,t)) = KGBElt_gen:
   (ic,delta*theta*delta,t*delta)
 
-set is_fixed(mat delta,KGBElt_gen y)=bool:y=delta*y
+set is_fixed(mat delta,KGBElt_gen y) = bool: y = delta*y
 
 
 

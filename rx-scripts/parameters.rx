@@ -38,8 +38,7 @@ set square_normalized(InnerClass ic,mat theta,ratvec torus_factor) = ratvec:
 { for valid arguments one should have
   square(ic,theta,tf)=square(real_form(ic,theta,tf))
 }
-set square(InnerClass ic,mat theta,ratvec normalized_torus_factor) = ratvec:
-  square_normalized(ic,theta,normalized_torus_factor)
+set square = square_normalized@(InnerClass,mat,ratvec)
 set square2(InnerClass ic,mat theta,ratvec tf) = ratvec:
   (tf*(1+theta)+2*rho_check(ic))%2 { this should always be twice |square| }
 

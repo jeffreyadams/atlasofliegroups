@@ -1,10 +1,10 @@
-<K
-<cross_W_orbit
-<representations
-<hermitian
-<finite_dimensional
+<K.rx
+<cross_W_orbit.rx
+<representations.rx
+<hermitian.rx
+<finite_dimensional.rx
 
-{if p is a final tempered limit then there are no C- roots, these x's play a special role}
+{ if p is a final tempered limit then there are no C- roots, these x's play a special role}
 set no_Cminus_roots(KGBElt x)=bool: let rv=true in for type in status_texts(x) do if type="C-" then rv:=false fi od;rv
 
 {use complex cross actions to move to a fiber with no C- roots
@@ -16,19 +16,19 @@ let done=false,i=0 in let ()=while done=false do if status_text(i,x)="C-" then d
 
 {internal inductive function}
 make_no_Cminus_internal:(KGBElt->KGBElt)
-make_no_Cminus_internal:=((KGBElt x): 
+make_no_Cminus_internal:=((KGBElt x):
   if no_Cminus_roots(x) then x else let y=move_towards_no_Cminus(x) in make_no_Cminus_internal(y) fi)
 {actual function called by the user}
 set make_no_Cminus(KGBElt x)=make_no_Cminus_internal(x)
 
-{given (x,lambda): x in distinguished fiber, lambda in  X^* 
+{given (x,lambda): x in distinguished fiber, lambda in  X^*
 lambda restricted to H^\delta is the highest weight of a representation of K_x
 replace (x,lambda) with (y,mu) where mu is highest weight for K_y
 algorithm: find w\in W_G taking rho(K_x) to rho(K_y) using cross_W_orbit
 (x,lambda)->(y,w\lambda)
 }
 set move_highest_weight(KGBElt x,KGBElt y,ratvec lambda)=(KGBElt,ratvec):
-let G=real_form(x) in 
+let G=real_form(x) in
 let w=find_W_cross(x,y) in (y,action(root_datum(G),w,lambda))
 {let w=weyl_group_element(G,tworho_K(x),tworho_K(y)) }
 {(y,action(root_datum(G),w,lambda))}
@@ -42,10 +42,10 @@ let (,hw)=move_highest_weight(x,y,highest_weight(p)) in  finite_dimensional(K_0(
 }
 set tworho_K(KGBElt x)=ratvec:
 let ()=if not in_distinguished_fiber(x) then prints("Warning: x is not in distinguished fiber") fi in
-let G=real_form(x) in 
-let rv=ratvec:null(rank(G)) in 
-for alpha in posroots(G) do 
-if is_compact(alpha,x) then rv+:=alpha 
+let G=real_form(x) in
+let rv=ratvec:null(rank(G)) in
+for alpha in posroots(G) do
+if is_compact(alpha,x) then rv+:=alpha
 {elif is_complex(alpha,x) then rv+:=alpha/2 fi od;rv}
 elif is_complex(alpha,x) then rv+:=alpha/2 fi od;rv  {since alpha and theta(alpha) have the same restriction}
 
@@ -54,39 +54,39 @@ elif is_complex(alpha,x) then rv+:=alpha/2 fi od;rv  {since alpha and theta(alph
  returns sum of compact roots of centralizer of H^{\theta_y}, as an element of X^*
 }
 set tworho_Kr(KGBElt x, KGBElt y)=ratvec:
-let ()=if not in_distinguished_fiber(x) then prints("Warning: x is not in distinguished fiber") 
+let ()=if not in_distinguished_fiber(x) then prints("Warning: x is not in distinguished fiber")
 elif not no_Cminus_roots(y) then prints("Warning: not all complex roots for y are type C+") fi in
-let G=real_form(x) in 
-let rv=ratvec:null(rank(G)) in 
-for alpha in posroots(G) do 
-if is_real(alpha,y) then 
- if is_compact(alpha,x) then rv+:=alpha 
+let G=real_form(x) in
+let rv=ratvec:null(rank(G)) in
+for alpha in posroots(G) do
+if is_real(alpha,y) then
+ if is_compact(alpha,x) then rv+:=alpha
  elif is_complex(alpha,x) then rv+:=alpha/2 fi fi od;rv
 
 {lowest K-type of (limit of) discrete series on M}
 set M_LKT(Param p)=ratvec:
-let lambda=involution(x(p))*(infinitesimal_character(p)-nu(p)) in 
-let theta=distinguished_involution(real_form(p)) in 
-let N=id_mat(n_columns(theta))-theta in 
-let rho_i=rho_i(x(p)) in 
-let tworho_ic=2*rho_ic(x(p)) in 
+let lambda=involution(x(p))*(infinitesimal_character(p)-nu(p)) in
+let theta=distinguished_involution(real_form(p)) in
+let N=id_mat(n_columns(theta))-theta in
+let rho_i=rho_i(x(p)) in
+let tworho_ic=2*rho_ic(x(p)) in
 {let (,rv)=projection(N,ratvec_as_vec(lambda+rho_i-tworho_ic)) in rv}
 projection_mod_image(N)*ratvec_as_vec(lambda+rho_i-tworho_ic)
 
 
 {if all complex roots for x are of type C-, then conjecturally
 the torus parts of all elements in the fiber are a subset of those
-for the distinguished fiber. Mapping x to x_K in the distinguished fiber 
+for the distinguished fiber. Mapping x to x_K in the distinguished fiber
 gives the version of K=K_{x_K} appropriate to y
 aborts with an error if the conjecture is false for x
 }
 set map_into_distinguished_fiber(KGBElt x)=KGBElt:
 let ()=if not no_Cminus_roots(x) then error("Only defined if no C- roots") fi in
 let G=real_form(x) in
-let F=distinguished_fiber(G) in 
-let t=torus_factor(x) in 
+let F=distinguished_fiber(G) in
+let t=torus_factor(x) in
 let index=-1 in
-let ()=for j in F do if t=torus_factor(KGB(G,j)) then index:=j fi od in 
+let ()=for j in F do if t=torus_factor(KGB(G,j)) then index:=j fi od in
 if (index=-1) then prints("x:", x);error("the torus parts for the fiber over x do not embed in those for the distinguished fiber")  fi;KGB(G,index)
 
 {first use complex cross actions to move to a fiber with no C-roots}
@@ -101,24 +101,24 @@ set canonical_x_K(Param p)=KGBElt:canonical_x_K(x(p))
  returns mu_0\in X^*, \mu=restriction of mu_0 to H^theta_{x_K} and x_K defining K
 }
 set LKT_final_tempered_limit(Param p)=(KGBElt,ratvec,vec):
-if not nu(p)=null(rank(real_form(p))) then error("The parameter is not tempered") 
+if not nu(p)=null(rank(real_form(p))) then error("The parameter is not tempered")
 elif not is_final(p) then error("The parameter is not final") else
 let G=real_form(p) in
 let y=x(p) in
 let x_K=map_into_distinguished_fiber(y) in
-let L=L(y) in 
+let L=L(y) in
 let lambda=infinitesimal_character(p)-nu(p)  {=(1+\theta)\lambda/2} in
-let lambda=involution(y)*lambda in 
+let lambda=involution(y)*lambda in
 let mu_0=lambda+rho(G)-rho_r(y)-tworho_K(x_K)+tworho_Kr(x_K,y) in
 {let ()=prints("mu_0:", mu_0) in
-let ()=prints("lambda =", lambda) in 
-let ()=prints("L:", L) in 
+let ()=prints("lambda =", lambda) in
+let ()=prints("L:", L) in
 let ()=prints("theta:", involution(y)) in
 let ()=prints("rho: ", rho(G), ", rho_r: ", rho_r(y)) in
 let ()=prints("2*rho_K: ", tworho_K(x_K), ", 2*rho_Kr: ",  x_K, y,tworho_Kr(x_K,y)) in
 let ()=prints("mu_0: ", mu_0) in }
-let mu=project_K(G,mu_0) in 
-(x_K,mu_0,mu) fi 
+let mu=project_K(G,mu_0) in
+(x_K,mu_0,mu) fi
 
 {returns a list of highest weights of lowest K-types, each might be for a different (isomorphic) K_x
 algorithm: compute LKT_final_tempered_limit(q) for each q in make_final(make_nu0(p)
@@ -132,7 +132,7 @@ set LKT_raw(Param p,KGBElt x_K)=(KGBElt,[(ratvec,vec)]):
 let lkt=LKT_raw(p) in
 {let ()=prints("lkt: ", lkt) in }
 let rv=[] in
-for (x,mu_0,mu) in lkt do 
+for (x,mu_0,mu) in lkt do
 let (,mu_1)=move_highest_weight(x,x_K,mu_0) in rv#:=(mu_1,project_K(real_form(p),mu_1)) od ;(x_K,rv)
 
 {just the list of highest weights of lowest K-types, with respect to given x_K}
@@ -144,8 +144,8 @@ set LKT_highest_weights(Param p)=[vec]:LKT_highest_weights(p,canonical_x_K(p))
 
 {return list of lowest K-types as parameters for identity component of K_{x_K}}
 set LKT(Param p, KGBElt x_K)=[Param]:
-let weights=LKT_highest_weights(p,x_K) in 
-let K=K_0(x_K) in 
+let weights=LKT_highest_weights(p,x_K) in
+let K=K_0(x_K) in
 for lambda in weights do finite_dimensional(K,lambda) od
 set LKT(Param p)=[Param]:LKT(p,KGB(real_form(p),0))
 
@@ -164,47 +164,57 @@ set LKT_dimensions([Param] B)=[[int]]:for p in B do LKT_dimensions(p) od
 
 set print_LKT([Param] B, KGBElt x)=void:
  let G=real_form(B[0])  in
- let K_0=K_0(x) in 
+ let K_0=K_0(x) in
  let ()=prints("K_0: ", K_0) in
- let ()=prints("rho_K:", rho(K_0)) in 
- for p in B do let lkt=LKT(p) in  
- prints("");prints(p);prints(" Lowest K-types:");for pi in lkt do 
+ let ()=prints("rho_K:", rho(K_0)) in
+ for p in B do let lkt=LKT(p) in
+ prints("");prints(p);prints(" Lowest K-types:");for pi in lkt do
 prints(" ", pi, "  dim=", dimension(pi), " highest weight:", highest_weight(pi)) od  od
 set print_LKT([Param] B)=void:print_LKT(B,KGB(real_form(B[0]),0))
 set print_LKT(Param p, KGBElt x)=void:print_LKT([p],x)
 set print_LKT(Param p)=void:print_LKT([p])
 
-set test_LKT(RealForm G, KGBElt x)=void:
-for p in block_of(trivial(G)) do prints(p, ", ", LKT(p,x)) od
+set test_LKT (RealForm G, KGBElt x) = void:
+  for p in block_of(trivial(G)) do prints(p, ", ", LKT(p,x)) od
 set test_LKT(RealForm G)=test_LKT(G,KGB(G,0))
 
-set testps(RealForm G, KGBElt x)=void:
-(prints("Minimal K-types of all principal series of");prints(G);prints("K=",K_0(x));prints("rho_K=", rho(K_0(x)));
-for p in all_principal_series(G) do
- let lkt=LKT_highest_weights(p,x) in 
-{ prints(p,lkt);for mu in lkt do prints(fundamental_weight_coordinates(mu,x)) od od}
-prints("lambda=", lambda(p), "  tau=", tau(p), "  LKT: ", lkt, ",  dims:", LKT_dimensions(p,x)) od)
-set testps(RealForm G)=testps(G,KGB(G,0))
+set testps(RealForm G, KGBElt x) = void:
+begin begin prints("Minimal K-types of all principal series of")
+; prints(G); prints("K=",K_0(x)); prints("rho_K=", rho(K_0(x)))
+; for p in all_principal_series(G)
+  do let lkt=LKT_highest_weights(p,x) in
+{   prints(p,lkt)
+  ; for mu in lkt do prints(fundamental_weight_coordinates(mu,x)) od od
+}
+  prints("lambda=", lambda(p), "  tau=", tau(p), "  LKT: ", lkt, "
+        ,  dims:", LKT_dimensions(p,x))
+  od
+end
 
-set testpsdims(RealForm G)=for  p in all_principal_series(G) do prints(LKT_dimensions(p)) od
+set testps (RealForm G) = void: testps(G,KGB(G,0))
 
-{compute all lowest K-types of minimal principal series of split group
-algorithm: p -> make_final(make_nu0(p)) =list of (final tempered limit) parameters, some are repeated,
-make into a ParamPol=sum of distinct parameters with multiplicity, compute 
-unique LKT of each parameter occuring
+set testpsdims(RealForm G) = void:
+  for p in all_principal_series(G) do prints(LKT_dimensions(p)) od
+
+{ compute all lowest K-types of minimal principal series of split group
+  algorithm: p -> make_final(make_nu0(p))
+    =list of (final tempered limit) parameters, some are repeated,
+  make into a ParamPol=sum of distinct parameters with multiplicity,
+  compute unique LKT of each parameter occuring
 }
 
-set all_LKT_ps(RealForm G, KGBElt x)=void:
-let ()=prints("");prints("all LKT of principal series for") in
-let ()=prints(G) in
-let ()=prints("K=", K_0(x)) in 
-let ()=prints("rho_K=", rho(K_0(x))) in
-let ps=all_principal_series(G) in 
-let P=null_module(G) in 
-let ()=for p in ps do P+:=virtual(make_final(make_nu0(p))) od in
-let Q=%P in 
-let rv=[Param]:[] in
-let ()=for (,q) in Q do rv:=rv#LKT(q,x) od in 
-for p in rv do prints("K-type : ", highest_weight(p), "  dimension=", dimension(p)) od
-set all_LKT_ps(RealForm G)=void:all_LKT_ps(G,KGB(G,0))
+set all_LKT_ps(RealForm G, KGBElt x) = void:
+begin prints("");prints("all LKT of principal series for")
+; prints(G)
+; prints("K=", K_0(x))
+; prints("rho_K=", rho(K_0(x)))
+; let ps=all_principal_series(G)
+  then Q=(let P=null_module(G) in for p in ps do P+:=make_nu0(p) od; %P)
+  , rv=[Param]:[]
+  in for (,q) in Q do rv#:=LKT(q,x) od
+; for p in rv
+  do prints("K-type : ", highest_weight(p), "  dimension=", dimension(p)) od
+end
+
+set all_LKT_ps (RealForm G) = void: all_LKT_ps(G,KGB(G,0))
 

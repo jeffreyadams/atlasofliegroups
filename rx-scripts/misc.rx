@@ -31,9 +31,6 @@ set is_strictly_dominant(RootDatum rd, ratvec v) = bool:
 
 set is_regular(Param p)=is_regular(real_form(p),infinitesimal_character(p))
 
-{ make rho as a vector of integers if possible }
-set rho_as_vec (RootDatum r)= vec: ratvec_as_vec(rho(r))
-
 { simpler syntax for param command: param(G,3,...) for param(KGB(G,3),...)  }
 set param(RealForm G,int k, vec lambda_rho,ratvec nu) = Param:
   param(KGB(G,k),lambda_rho,nu)

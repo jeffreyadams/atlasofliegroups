@@ -50,7 +50,7 @@ set my_posroot_cross (int i, Param p) = Param:
   in parameter(x1,new_gamma - w*grading_wt + rho_r(rd,theta1), new_gamma)
 
 set simpleroot_cross (int i, KGBElt x) = KGBElt:
-  cross(simple_reflection(real_form(x),i),x)
+  cross(reflection(real_form(x),i),x)
 
 set simpleroot_cross([int] S,KGBElt x)=KGBElt:
 for j in reverse(S) do x:=simpleroot_cross(j,x) od;x
@@ -59,7 +59,7 @@ set my_simpleroot_cross (int i, Param p) = Param:
   let x0 = x(p), gamma = infinitesimal_character(p)
   then rd = root_datum(real_form(x0))
   , x1=simpleroot_cross(i,x0), grading_wt=gamma-lambda(p)+rho_r(x0)
-  then theta1= involution(x1), w=simple_reflection(rd,i)
+  then theta1= involution(x1), w=reflection(rd,i)
   then (new_gamma,)=make_dominant_using_roots(rd,reflection(rd,i)*gamma)
   in parameter(x1,new_gamma - w*grading_wt + rho_r(rd,theta1), new_gamma)
 
@@ -78,7 +78,7 @@ set my_posroot_Cayley (int i, Param p) = Param:
 {  then ()=prints("w:", w) }
   then w1=inverse(w)
   then theta1 = w*theta0*w1 { involution for Cayley by root(id,s) }
-  then theta2 = simple_reflection(rd,s)*theta1 { for simple imaginary Cayley }
+  then theta2 = reflection(rd,s)*theta1 { for simple imaginary Cayley }
 { then ()=prints("theta1:", theta1)
         ; prints("theta2:", theta2)
         ; prints("theta3:", theta3)

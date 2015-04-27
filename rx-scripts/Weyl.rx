@@ -1,14 +1,8 @@
 <basic.rx
 
-set simple_reflection (RootDatum rd, int s) = mat: { s indexes simple root }
-  1 - [root(rd,s)] * ^[coroot(rd,s)]
-
-set reflection (RootDatum rd, int alpha) = mat: { alpha indexes any root! }
-  1 - [root(rd,alpha)] * ^[coroot(rd,alpha)]
-
 set involution (InnerClass ic, [int] tw) = mat: { tw is a Weyl word }
 ( let rd = root_datum(ic), theta = distinguished_involution(ic)
-  in for i : #tw downto 0 do theta := simple_reflection(rd,tw[i])*theta od
+  in for i : #tw downto 0 do theta := reflection(rd,tw[i])*theta od
   ; theta
 )
 

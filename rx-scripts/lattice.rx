@@ -78,9 +78,9 @@ set projection_mod_image (mat M) = mat:
   in rows_with( (int i): i>=dim_sum, inverse(P) )
 }
 
-{ M is an nxk matrix whose columns span a submodule  W of V=Z^n
-  Projection to saturation of W, parallel to complement from adapted_basis(M)
-  Basis of image space: initial vectors of adapted_basis
+{ M is an nxk matrix whose columns span a submodule W of V=Z^n
+  Projection to saturation of W, parallel to complement from |adapted_basis(M)|
+  Basis of image space: initial vectors of |adapted_basis(M)|
 }
 set projection_to_image (mat M) = mat:
   let (B,cs) = adapted_basis(M) then d=#cs
