@@ -16,7 +16,6 @@
  - Have error take arguments like prints does
 
  - See if syntax can allow (let i=3 in for k:i do print(k) od); without parens
- - Similarly for let block as final element of a sequence
 
  - Allow for declaring an input path, and (silent) default prelude
  - Handle output from loading files differently

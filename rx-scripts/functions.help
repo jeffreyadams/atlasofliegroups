@@ -54,6 +54,7 @@ operator # : ([T],[T]->[T]) : concatenation of rows (T is any type)
 operator # : ([T],T->[T]) : append element to a row (T is any type)
 operator # : (T,[T]->[T]) : prepend element to a row (T is any type)
 
+stack_rows: ([vec]->mat) : make matrix by boxing rows, zero-extended if needed
 
 error: (string->*) : abort computation, reporting a runtime error
 
@@ -72,7 +73,7 @@ echelon: (mat->mat,[int]): make column echelon form, and return pivots as well
   This applies column operations, and possibly removal of null columns; the
   number of remaining columns is the rank. The result is a pair (M,s) with s
   increasing sequence, and M[i,j] is nonzero for i=s[j] and zero for i>s[j]
-diagonalise: (mat->vec,mat,mat): partial Smith reduction, without divisibility
+diagonalize: (mat->vec,mat,mat): partial Smith reduction, without divisibility
   Applies row and column operations to the matrix to obtain diagonal form;
   returns the list of non-zero diagonal entries (all except the first are
   assured to be positive), and the pair of determinant 1 integral matrices
