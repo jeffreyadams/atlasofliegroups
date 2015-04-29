@@ -112,8 +112,8 @@ mod2_section (mat->mat): find section (left/right/inverse) of binary matrix
   matrix B such that ABA=A and BAB=B; it will be an inverse/left inverse/right
   inverse of (over Z/2Z) whenever A is bijective/surjective/injective.
 
-subspace_normal: ([vec]->[vec],[vec],[vec],[int]) normalised modulo-2 basis
-  Given a list of binary vectors, find a normalised basis for the subspace
+subspace_normal: ([vec]->[vec],[vec],[vec],[int]) normalized modulo-2 basis
+  Given a list of binary vectors, find a normalized basis for the subspace
   they span, expressions for the basis vectors in terms of the given list, a
   basis for the relations between the vectors, an a list of pivot values. The
   argument is a list of n generators of size r whose components are
@@ -322,7 +322,7 @@ operator = : (InnerClass,InnerClass->bool): identity of inner classes
   in other words it will recognise ic=inner_class(real_form(ic,0)) as true,
   but any freshly built inner class tests unequal to anything preexisting
 distinguished_involution: (InnerClass->mat): involution of the inner class.
-  Extract the distinguised involution of X^* that defines the inner class
+  Extract the distinguished involution of X^* that defines the inner class
 dual: (InnerClass->InnerClass): dual inner class for dual complex group
 
 nr_of_real_forms: (InnerClass->int): number of real forms in inner class
@@ -391,7 +391,7 @@ base_grading_vector: (RealForm->ratvec): Offset implicit in torus_bits values
   by the function real_form@(InnerClass,mat,ratvec), the arguments of that
   call may determine a different value of z, in which case a different choice
   for c is made to match it. The choice of c then depends on z only; in
-  particular it will be the same for real forms synthesised using different
+  particular it will be the same for real forms synthesized using different
   strong involutions for the same real group, and such groups will test equal.
 
 Cartan_order: (RealForm->mat): matrix describing ordering of Cartan classes
