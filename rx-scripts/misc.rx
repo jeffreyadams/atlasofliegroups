@@ -1,35 +1,13 @@
 <basic.rx
 
 { test if an integer is even, or a rational is an integer }
-set is_nonnegative (vec v) = bool:
-  let n=#v-1 in while n>=0 and v[n]>=0 do n-:=1 od; n<0
-set is_positive (vec v) = bool:
-  let n=#v-1 in while n>=0 and v[n]>0 do n-:=1 od; n<0
+set is_nonnegative (vec v) = bool: >=v
+set is_positive (vec v) = bool: >v
 
 { test if a ratvec is in fact a vec (integers)}
 set is_integer (ratvec v) = bool: denom(v)=1
 set is_positive (ratvec v) = bool: is_positive(numer(v))
 set is_nonnegative (ratvec v)= bool: is_nonnegative(numer(v))
-
-{ v is in X^*(H)_Q, test if <v,alpha^\vee>\in Z for all roots\alpha
-simple_coroots has (rank) rows and (semisimple rank) columns
-v has size rank (not semisimple rank)}
-{set is_integral(RootDatum rd, ratvec v)=bool:is_integer(simple_coroots(rd)*v)}
-set is_integral(RootDatum rd, ratvec v)=bool:is_integer(v*simple_coroots(rd))
-
-
-{ transform ParamPol into a list of (Split,Param) pairs; previously built-in }
-set %(ParamPol P) = [(Split,Param)]: for c@p in P do (c,p) od
-
-set is_dominant(RootDatum rd, ratvec v) = bool:
-  is_nonnegative(numer(v)*simple_coroots(rd))
-set is_regular(RootDatum rd,ratvec v)= bool: { tests all positive coroots }
-  let w=numer(v)*poscoroots(rd), i=semisimple_rank(rd)-1
-  in while i>=0 and w[i]!=0 do i-:=1 od; i<0
-set is_strictly_dominant(RootDatum rd, ratvec v) = bool:
-  is_positive(numer(v)*simple_coroots(rd))
-
-set is_regular(Param p)=is_regular(real_form(p),infinitesimal_character(p))
 
 { simpler syntax for param command: param(G,3,...) for param(KGB(G,3),...)  }
 set param(RealForm G,int k, vec lambda_rho,ratvec nu) = Param:
@@ -62,16 +40,6 @@ set  #(Split w,int t)=let (a,b)=%w in int: a+t*b
 set  #(Split w,rat t)=let (a,b)=%w in rat: a+t*b
 set  #(ParamPol P,int t)= ParamPol: { with integer coefficiens }
   null_module(real_form(P)) +  for w@q in P do (w#t,q) od
-
-{ evaluate polynomial at split }
-set eval(vec v,Split w)= Split:
-  let sum=Split:0 in  for i:#v downto 0 do sum:= v[i] + w*sum od; sum
-
-set at_s(vec v) = Split: eval(v,s)
-
-{ evaluate polynomial at integer }
-set eval(vec v,int k) = int:
-  let sum=0 in  for i:#v downto 0 do sum:= v[i] + k*sum od; sum
 
 {properties of groups}
 

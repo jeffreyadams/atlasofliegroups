@@ -1,9 +1,8 @@
-<misc
-<Weylgroup
+<Weylgroup.rx
 
 {compute orbit of W(S).x: orbit of KGB element x
- under simple roots of S of root datum rd, 
-algorithm: keep three lists 
+ under simple roots of S of root datum rd,
+algorithm: keep three lists
 Wreps=Wrepresentatives: list of elements of W
 orbit: final list of elements of orbit
 todo: intermediate list of pairs (w,y) where w.x=y)
@@ -15,17 +14,17 @@ continue until todo is empty
 returns: (Wrepresentatives, orbit) where orbit is list of elements of orbit, and for each i Wrepresentatives[i].v=orbit[i]}
 
 set in_list([KGBElt] orbit,KGBElt x)=bool:
-let rv=false in 
+let rv=false in
 let i=0 in
 while i<#orbit do if x=orbit[i] then rv:=true;i:=#orbit else i:=i+1 fi od;rv
 
 set cross_W_orbit_extra([int] S,KGBElt x)=
-let rd=root_datum(real_form(x)) in 
-let Wreps=[[]],orbit=[x], todo=[([],x)] in 
-while #todo>0 do 
+let rd=root_datum(real_form(x)) in
+let Wreps=[[]],orbit=[x], todo=[([],x)] in
+while #todo>0 do
 ( let (w,a)=todo[0] in
- for i in S do  let b=cross(i,a) in  let inlist=in_list(orbit,b) in 
-   if not inlist then 
+ for i in S do  let b=cross(i,a) in  let inlist=in_list(orbit,b) in
+   if not inlist then
     (Wreps#:=i#w, orbit#:=b, todo#:=(i#w,b)) fi
  od,todo:=for i:#todo -1 from 1 do todo[i] od)  od;(Wreps,orbit)
 set cross_W_orbit_extra([int] S,KGBElt x)=cross_W_orbit_extra(S,x)
@@ -40,9 +39,9 @@ set cross_W_orbit(KGBElt x)=cross_W_orbit(for i:rank(real_form(x)) do i od,x)
 set cross_W_orbit_W_elements(KGBElt x)=let (W_elements,vectors)=cross_W_orbit_extra(for i:rank(real_form(x)) do i od,x) in W_elements
 
 set find_W_cross(KGBElt x,KGBElt y)=[int]:
-let (W_elements,orbit)=cross_W_orbit_extra(x) in 
-let rv=[-1] in 
-let i=0 in 
+let (W_elements,orbit)=cross_W_orbit_extra(x) in
+let rv=[-1] in
+let i=0 in
 while i<#orbit do  if orbit[i]=y then rv:=W_elements[i]; i:=#orbit else i:=i+1 fi od;rv
 
 

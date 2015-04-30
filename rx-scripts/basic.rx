@@ -4,8 +4,8 @@ set # (ratvec v)= int: let (n,)=%v in #n    { length }
 
 set ^ = !=@(bool,bool) { exclusive or }
 
-set assert(bool b,string message) = void: if not b then error(message) fi
-set assert(bool b) = void: assert(b,"assertion failed") { default message }
+set assert (bool b,string message) = void: if not b then error(message) fi
+set assert (bool b) = void: assert(b,"assertion failed") { default message }
 
 { bitsets encoded as functions (int->bool) and upper bound limit }
 
@@ -89,7 +89,7 @@ set + (string s, (int,int)(x,y)) = s + "(" + x + "," + y + ")"
 
 {				Vectors					}
 
-set vector(int n,(int->int)f) = vec: for i:n do f(i) od
+set vector (int n,(int->int)f) = vec: for i:n do f(i) od
 
 set ones (int n)= vec: for i:n do 1 od
 
@@ -123,6 +123,12 @@ set product (vec v)= let s=1 in for e in v do s*:=e od; s
 set reverse (vec v)= vec: for i:#v downto 0 do v[i] od
 set lower (int k,vec v)= vec: for i:k do v[i] od
 set upper (int k,vec v)= vec: for i:#v-k from k do v[i] od
+
+set >=(vec v) = bool:
+  let i=#v-1 in while i>=0 and v[i]>=0 do i-:=1 od; i<0
+set >(vec v) = bool: >=v and !=v
+set <=(vec v) = bool: >= -v
+set <(vec v) = bool: <= v and !=v
 
 set is_member (vec v) = (int->bool):
   let start = #v-1
@@ -227,14 +233,21 @@ set rows_with ((vec->bool) p,mat m) = mat:
 set rows_with ((int->bool) p,mat m) = mat:
   rows_with (((int,vec)(i,))bool: p(i),m)
 
+set >=(mat m) = bool:
+  let j=n_columns(m)-1 in while j>=0 and >=m[j] do j-:=1 od; j<0
+set >(mat m) = bool: { all columns are strictly positive }
+  let j=n_columns(m)-1 in while j>=0 and >m[j] do j-:=1 od; j<0
+set <=(mat m) = bool: >= -m
+set <(mat m) = bool: > -m
+
 set lookup (vec v,mat m) = int:
   let i=n_columns(m)-1 in while i>=0 and m[i]!=v do i-:=1 od; i
 
 { sum of columns of a matrix }
 set sum (mat m)= vec: m*ones(n_columns(m))
 
-set oneplus(mat M)= mat: 1+M
-set oneminus(mat M)= mat: 1-M
+set oneplus (mat M)= mat: 1+M
+set oneminus (mat M)= mat: 1-M
 
 {			    Rational vectors				}
 
@@ -253,7 +266,7 @@ set * (vec v, ratvec w) = rat: let (nw,dw)=%w in v*nw/dw { more efficient }
 set \ (ratvec v, int k) = vec: let (n,d)=%v in n\(k*d)
 
 { do as |v\1| (or |\ %v|) would do, but protest if there would be a remainder }
-set ratvec_as_vec(ratvec v) = vec:
+set ratvec_as_vec (ratvec v) = vec:
   let (w,d)=%v in if d=1 then w else error("Not an integer vector") fi
 
 
@@ -291,23 +304,23 @@ set root_datum (LieType t, [ratvec] gens) = RootDatum:
 { allow single kernel generator in root datum construction }
 set root_datum (LieType t, ratvec gen) = RootDatum: root_datum(t,[gen])
 
-set is_root((RootDatum,vec) (rd,):p) = bool:
+set is_root ((RootDatum,vec) (rd,):p) = bool:
   root_index(p)<nr_of_posroots(rd)
-set is_coroot((RootDatum,vec) (rd,):p) = bool:
+set is_coroot ((RootDatum,vec) (rd,):p) = bool:
   coroot_index(p)<nr_of_posroots(rd)
-set is_posroot((RootDatum,vec)(rd,):p) = bool:
+set is_posroot ((RootDatum,vec)(rd,):p) = bool:
   let ri=root_index(p) in ri>=0 and ri<nr_of_posroots(rd)
-set is_coposroot((RootDatum,vec)(rd,):p) = bool:
+set is_coposroot ((RootDatum,vec)(rd,):p) = bool:
   let cri=coroot_index(p) in cri>=0 and cri<nr_of_posroots(rd)
 
-set posroot_index((RootDatum,vec)p) = int: { fold roots to positive }
+set posroot_index ((RootDatum,vec)p) = int: { fold roots to positive }
   let i=root_index(p) in if i<0 then -1-i else i fi
-set poscoroot_index((RootDatum,vec)p) = int: { fold coroots to positive }
+set poscoroot_index ((RootDatum,vec)p) = int: { fold coroots to positive }
   let i=coroot_index(p) in if i<0 then -1-i else i fi
 
 set reflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
   1 - column(root(rd,i))*row(coroot(rd,i))
-set reflection(RootDatum rd, vec v) = mat: { specify root (not coroot) }
+set reflection (RootDatum rd, vec v) = mat: { specify root (not coroot) }
   reflection(rd,root_index(rd,v)) { works for any root }
 
 set rho (RootDatum rd) = ratvec:
@@ -335,8 +348,8 @@ set coroots (RootDatum rd) = mat:
   let npr=nr_of_posroots(rd)
   in rank(rd)#for i:2*npr from -npr do coroot(rd,i) od
 
-set root(RootDatum rd, vec alpha_v) = vec: root(rd,coroot_index(rd,alpha_v))
-set coroot(RootDatum rd, vec alpha) = vec: coroot(rd,root_index(rd,alpha))
+set root (RootDatum rd, vec alpha_v) = vec: root(rd,coroot_index(rd,alpha_v))
+set coroot (RootDatum rd, vec alpha) = vec: coroot(rd,root_index(rd,alpha))
 
 set singular_roots (RootDatum rd,ratvec v)=[int]:
   let rv=[int]:[] { cannot use columns_with: must find _indices_ of columns }
@@ -373,6 +386,16 @@ set imaginary_sys ((RootDatum,mat)p) = (mat,mat):
   (imaginary_posroots(p),imaginary_poscoroots(p))
 set real_sys ((RootDatum,mat)p) = (mat,mat):
   (real_posroots(p),real_poscoroots(p))
+
+set is_dominant (RootDatum rd, ratvec v) = bool:
+  >=(numer(v)*simple_coroots(rd))
+set is_strictly_dominant (RootDatum rd, ratvec v) = bool:
+  >(numer(v)*simple_coroots(rd))
+set is_regular (RootDatum rd,ratvec v)= bool: { tests all positive coroots }
+  all(for x in numer(v)*poscoroots(rd) do !=x od)
+set is_integral (RootDatum rd, ratvec v) = bool: { integral on all coroots }
+  =(v*simple_coroots(rd)%1)
+
 
 { the following funtions give but partial information; giving a more complete
   definition for InnerClass values requires more work (group_operations.rx) }
@@ -492,7 +515,7 @@ set status (vec alpha,KGBElt x) = int: status(root_index(real_form(x),alpha),x)
 
 set cross (vec alpha,KGBElt x) = KGBElt:
   cross(root_index(root_datum(x),alpha),x)
-set Cayley(vec alpha,KGBElt x) = KGBElt:
+set Cayley (vec alpha,KGBElt x) = KGBElt:
   Cayley(root_index(real_form(x),alpha),x)
 
 { cross action of Weyl group element; avoid name conflict cross@(vec,KGBElt) }
@@ -556,12 +579,12 @@ set compact_posroots (KGBElt x) = mat:
 set noncompact_posroots (KGBElt x) = mat:
   columns_with(is_noncompact(x),imaginary_posroots(x))
 
-set is_imaginary(vec v,KGBElt x)=bool:is_imaginary(x)(v)
-set is_real(vec v,KGBElt x)=bool:is_real(x)(v)
-set is_complex(vec v,KGBElt x)=bool:is_complex(x)(v)
-set is_compact(vec v,KGBElt x)=bool:is_compact(x)(v)
+set is_imaginary (vec v,KGBElt x)=bool:is_imaginary(x)(v)
+set is_real (vec v,KGBElt x)=bool:is_real(x)(v)
+set is_complex (vec v,KGBElt x)=bool:is_complex(x)(v)
+set is_compact (vec v,KGBElt x)=bool:is_compact(x)(v)
 
-set print_KGB(KGBElt x) = void:
+set print_KGB (KGBElt x) = void:
 ( prints(); prints("Element is number ",#x, " in following KGB set")
 ; print_KGB(real_form(x)) )
 
@@ -601,19 +624,25 @@ set * (Param p,rat alpha) = let (x,lambda,nu)=%p in param(x,lambda,alpha*nu)
 
 set x (Param p) = KGBElt: let (x,,) =%p in x
 set lambda_minus_rho (Param p) = vec: let (,lambda_rho,) =%p in lambda_rho
-set lambda(Param p) = ratvec: lambda_minus_rho(p)+rho(real_form(p))
+set lambda (Param p) = ratvec: lambda_minus_rho(p)+rho(real_form(p))
 set nu (Param p) = ratvec: let (,,nu) =%p in nu
 
 set involution (Param p)=involution(x(p))
 
-set integrality_datum(Param p)= RootDatum:
+set integrality_datum (Param p)= RootDatum:
   integrality_datum(root_datum(p),infinitesimal_character(p))
+
+set is_regular (Param p) = bool:
+  is_regular(root_datum(p),infinitesimal_character(p))
+
+set trivial (RealForm G) = Param: { parameter for the trivial representation }
+  param(KGB(G,KGB_size(G)-1),null(rank(G)),rho(G))
 
 { cross action of Weyl group element; avoid name conflict cross@(vec,Param) }
 set W_cross ([int] w,Param p) = Param:
   for i:#w downto 0 do p:=cross(w[i],p) od; p
 
-{ parameter(G,x,lambda,nu)=param(G,x,lambda-rho(G),nu), so you can enter
+{ parameter(G,x,lambda,nu)=param(KGB(G,x),lambda-rho(G),nu), so you can enter
   lambda without the rho shift; lambda may have denominator 2 or be a vec
 }
 set parameter (RealForm G,int x,ratvec lambda,ratvec nu) = Param:
@@ -656,7 +685,7 @@ set block_status_text (int i) = string:
   ["C-","ic","r1","r2","C+","rn","i1","i2"][i]
 
 set status_text (int s,Param p) = string: block_status_text(status(s,p))
-set status_texts(Param p) = [string]:
+set status_texts (Param p) = [string]:
   for s:semisimple_rank(real_form(p)) do status_text(s,p) od
 
 set status_text ((vec,Param) ap) = string: block_status_text(status(ap))
@@ -669,7 +698,7 @@ set nonparity_poscoroots (Param p) = mat: { positive real nonparity coroots }
   in columns_with((int i):status(alpha[i],p)=5,real_poscoroots)
 
 set is_descent (int s,Param p) = bool: status(s,p)<4
-set tau_bitset(Param p) = ((int->bool),int):
+set tau_bitset (Param p) = ((int->bool),int):
   ((int s): is_descent(s,p), semisimple_rank(real_form(p)))
 
 set tau (Param p)            = [int]: list(tau_bitset(p))
@@ -685,24 +714,24 @@ set lookup (Param p, [Param] block) = int:
 set null_module (ParamPol P)= 0*P { also handles null_module(Param) }
 
 { simulate coercion (KGBElt->RealForm) in some cases }
-set root_datum(ParamPol P) = RootDatum: real_form(P)
+set root_datum (ParamPol P) = RootDatum: real_form(P)
 
-set virtual(Param p) = ParamPol: p { for making implicit conversion explcit }
+set virtual (Param p) = ParamPol: p { for making implicit conversion explcit }
 
 { DON'T define
-  set virtual([Param] pp)=ParamPol: null_module(real_form(pp[0]))
+  set virtual ([Param] pp)=ParamPol: null_module(real_form(pp[0]))
   since it cannot be correctly defined when #pp=0
 }
 
 {				Miscellaneous				}
 
 { find index of item in list, or -1 if not found }
-set find(int it,[int] list) = int:
+set find (int it,[int] list) = int:
  let i=#list-1 in while i>=0 and list[i]!=it do i-:=1 od;i
-set find([[int]] list,[int] it)=int:
+set find ([[int]] list,[int] it)=int:
  let i=#list-1 in while i>=0 and list[i]!=it do i-:=1 od; i
 
-set in_string_list(string s,[string] S)=bool:
+set in_string_list (string s,[string] S)=bool:
   let i=#S-1 in while i>=0 and S[i]!=s do i-:=1 od; i>=0
 
 set positive_imaginary_roots_and_coroots = imaginary_sys@(RootDatum,mat)

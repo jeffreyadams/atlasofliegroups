@@ -1,34 +1,47 @@
-{list of all simple root systems of given rank}
-set all_simple_root_systems_given_rank(int rank)=[string]:
-if ((rank>8) or (rank=5)) then ["A"+rank,"B"+rank,"C"+rank,"D"+rank] elif
-(rank>5) then ["A"+rank,"B"+rank,"C"+rank,"D"+rank,"E"+rank] else
-let types_of_given_rank=[["A"],["A","B","G"],["A","B","C"],["A","B","C","D","F"]
-] in for type in types_of_given_rank[rank-1] do type+rank od fi
+<basic.rx
 
-{list of allowed inner classes for given simple type}
-{e.g. 
-all_inner_classes ("A2")
-Value: ["e","u"]}
-set all_inner_classes(string type_and_rank)=[string]:
-let (type,rank)=(type_and_rank[0],type_and_rank[1]) in
-if  ((type="A" and rank !="1") or (type="D") or (type="E" and rank="6")) then ["e","u"] else ["e"] fi
+{ list of all simple root systems of given rank }
+set all_simple_root_systems_given_rank(int rank) = [string]:
+  if rank>8 or rank=5 then ["A"+rank,"B"+rank,"C"+rank,"D"+rank]
+  elif rank>5 then ["A"+rank,"B"+rank,"C"+rank,"D"+rank,"E"+rank]
+  else let types=[[],["A"],["A","B","G"],["A","B","C"],["A","B","C","D","F"]]
+       in for type in types[rank] do type+rank od
+  fi
 
-{generalte list of all simple groups either simply connected "sc" or adjoint "ad" of given rank}
-set all_simple_given_isogeny_and_rank(string isogeny,int rank)=
-let rootsystems=all_simple_root_systems_given_rank(rank) in 
- let rv=[RealForm]:[] in 
-  for rs in rootsystems do 
-  let inner_classes=all_inner_classes(rs) in 
-   for ic in inner_classes do 
-    if (isogeny ="sc") then 
-     rv:=rv#real_forms(Cartan_class(inner_class(simply_connected (Lie_type (rs)),ic),0))  
-    elif (isogeny="ad") then
-          rv:=rv#real_forms(Cartan_class(inner_class(adjoint (Lie_type (rs)),ic),0))  
-   fi od od;rv
+{ list of allowed inner classes for given simple type, e.g.
+  all_inner_classes("A2")
+  Value: ["e","u"]
+}
+set all_inner_classes(string type_and_rank) = [string]:
+  let (type,rank)=(type_and_rank[0],type_and_rank[1]) in
+  if  type="A" and rank!="1" or type="D" or type="E" and rank="6"
+  then ["e","u"] else ["e"]
+  fi
 
-{all_simple("sc",k) or all_simple("ad",k)}
-set all_simple(string isogeny, int rank)=all_simple_given_isogeny_and_rank(isogeny,rank)
-set all_simple_simply_connected_rank(int rank)=all_simple("sc",rank)
-set all_simple_adjoint_rank(int rank)=all_simple("ad",rank)
+{ generalte list of all simple groups of given rank
+  either simply connected "sc" or adjoint "ad"
+}
+set all_simple_given_isogeny_and_rank(string isogeny,int rank) = [RealForm]:
+  let rootsystems=all_simple_root_systems_given_rank(rank), rv=[RealForm]:[]
+  , is_sc = isogeny ="sc" or (assert(isogeny="ad","unknown isogeny"); false)
+  in
+  for rs in rootsystems
+  do let lt=Lie_type (rs), inner_classes=all_inner_classes(rs)
+    then type = RootDatum:
+      if is_sc then simply_connected(lt) else adjoint(lt) fi
+    in
+      for ic in inner_classes
+      do rv#:=real_forms(Cartan_class(inner_class(type,ic),0))
+      od
+  od; rv
+
+{ more practical synonym }
+set all_simple = all_simple_given_isogeny_and_rank@(string,int)
+
+{ all_simple("sc",k) or all_simple("ad",k) }
+set all_simple_simply_connected_rank(int rank) = [RealForm]:
+  all_simple("sc",rank)
+set all_simple_adjoint_rank(int rank) = [RealForm]:
+  all_simple("ad",rank)
 
 

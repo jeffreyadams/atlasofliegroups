@@ -1,32 +1,42 @@
 <Wdelta.rx
 <synthetic.rx
+<extended_misc.rx   { for extended_param }
 <extended.rx
+<extended_cross.rx
+<extended_cayley.rx { for ext_Cayley_simple }
 
+{ only use ext_cross_simple from extended_cross.rx: }
+forget test_ext_cross@(Param,[int],extended_param)
+forget ext_cross_1@(int,extended_param)
+forget ext_cross_2@(int,extended_param)
+forget ext_cross_3@(int,extended_param)
 
 set posroot_cross (int i, Param p) = Param:
   let w=reflection(root_datum(p),i) in cross(w,p)
 
-{cross action of element mat:w of Weyl group on parameters
- non-integral case, see synthetic.rx for integral case
- synthetic.rx loads first, then nonintegral.rx
- this definition of cross calls the one in synthetic.rx
-if w\in W(gamma) this is the usual cross action
-if w\not\in W(gamma) this has different (dominant) infinitesimal character
-also w given by sequence of simple root reflections, or
-w=s_beta for beta an arbitrary positive root
+{ cross action of element mat:w of Weyl group on parameters
+  non-integral case, see synthetic.rx for integral case
+  synthetic.rx loads first, then nonintegral.rx
+  this definition of cross calls the one in synthetic.rx
+  if w\in W(gamma) this is the usual cross action
+  if w\not\in W(gamma) this has different (dominant) infinitesimal character
+  also w given by sequence of simple root reflections, or
+  w=s_beta for beta an arbitrary positive root
 }
 set cross (mat w, Param p) = Param:
   let x0 = x(p),
   gamma = infinitesimal_character(p)  {gamma is dominant}
-  then rd = root_datum(real_form(x0)),
-  x1=cross(w,x0), grading_wt=gamma-lambda(p)+rho_r(x0) {gamma(x1)=w*gamma is integrally-dominant}
+  then rd = root_datum(real_form(x0))
+  , x1=cross(w,x0) {gamma(x1)=w*gamma is integrally-dominant}
+  , grading_wt=gamma-lambda(p)+rho_r(x0)
   then theta1= involution(x1)
   then (new_gamma,)=make_dominant_using_roots(rd, w*gamma)
-  {w*gamma and new_gamma differ by a sum of roots, and are in the same integral Weyl chamber
-   new_gamma is dominant
-   this step is necessary because the software will apply equivalances to x1 to make gamma(x1) dominant, which
-   we don't want
-   see Weyl_group.rx:make_dominant
+  { w*gamma and new_gamma differ by a sum of roots, and are in the same
+    integral Weyl chamber
+    new_gamma is dominant
+    this step is necessary because the software will apply equivalances to x1
+    to make gamma(x1) dominant, which we don't want
+    see Weyl_group.rx:make_dominant
   }
   in parameter(x1,new_gamma - w*grading_wt + rho_r(rd,theta1), new_gamma)
 
@@ -59,7 +69,7 @@ set ext_cross(mat w,extended_param E)=extended_param:
   t1=u*t(E)-(delta(E)-1)*(u*rho_check_i(x)-rho_check_i(x1))/2 then
   t1=ratvec_as_vec(t1)
   in let rv=(ic,delta(E),gamma1,lambda1,theta1,g,l1,omega1,tau1,t1) in
-   if (not verify(rv)) then
+   if (not valid(rv)) then
     prints();prints("invalid parameter in ext_cross, w=", w);display(E);prints() fi;rv fi
 
 
@@ -93,10 +103,10 @@ set posroot_ext_Cayley(int i,extended_param E)=
 let (w,alpha)=conjugate_to_simple_by_Wdelta(root_datum(E), delta(E), i)
 {w*posroots(G)[i]=alpha is simple for G, w is in W^\delta}
 then E1=ext_cross(w,E)
-{then ()=prints("E1=");prints(verify(E1));display(E1)}
+{then ()=prints("E1=");prints(valid(E1));display(E1)}
 {then ()=prints("x(E1)=", x(E1))}
 then (E2,shift)=translate_to_dominant(E1)
-{then ()=prints("E2=");verify(E2);display(E2)}
+{then ()=prints("E2=");valid(E2);display(E2)}
 then j=root_index(integrality_datum(E2),alpha)
 {then ()=prints("j=",j) }
 {then ()=prints("Cayley transform of type:", ext_type(j,E2))}
@@ -154,9 +164,9 @@ let j=root_index(root_datum(E),alpha) in
 let (w,beta)=conjugate_to_simple_by_Wdelta(root_datum(E), delta(E), j)
 {then ()=prints("w=", w, " beta=", beta) }
 then E1=ext_cross(w,E)
-{then ()=prints("E1=");verify(E1);display(E1)}
+{then ()=prints("E1=");valid(E1);display(E1)}
 then (E2,shift)=translate_to_dominant(E1)
-{then ()=prints("E2=");verify(E2);display(E2)}
+{then ()=prints("E2=");valid(E2);display(E2)}
 then i=root_index(integrality_datum(E2),beta)
 {then ()=prints("i:", i)}
 then (E3,shift)=translate_to_dominant(E2)

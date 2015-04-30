@@ -26,4 +26,5 @@ set weak_left_inverse(mat A) = (int,mat): { left inverse after saturation }
   let (diag,L,R) = diagonalize(A) then r = #diag then less_r = (int j):j<r
   in ( product(diag), columns_with(less_r,R) * rows_with(less_r,L) )
 
-set reduce (mat M) = { factor out common divisor } mat: M\inv_fact(M)[0]
+set reduce (mat M) = { factor out common divisor } mat:
+  let inf=inv_fact(M) in if =#inf then M else M\inf[0] fi

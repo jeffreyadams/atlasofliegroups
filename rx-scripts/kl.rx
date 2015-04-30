@@ -1,6 +1,6 @@
 { KL stuff, including character formulas and composition series }
 
-<misc.rx
+<polynomial.rx { defines types poly, poly_mat }
 
 {
   Basic object: column of KL matrix (P-matrix), of polynomials,
@@ -51,22 +51,6 @@ set length_diff (int i,int j,vec stops) = int: length(j,stops)-length(i,stops)
   set length_diff (int i,int j,Param p)= int:
   let (,,,,stops,,)=KL_block(p) in length_diff(i,j,stops)
 }
-
-{ addition of vectors (overrides definition in basic.rx) to allow vectors of
-  possibly different lengths, implicitly extending on the right by zeros as
-  needed. This gives the right thing for coefficient vectors of polynomials. }
-set +(vec v,vec w)= vec:
-  let add_ext =
-    (vec v, vec w, int l_w) vec: { add w to v under assumption l_w=#w<=#v }
-      for vi@i in v do if i<l_w then vi+w[i] else vi fi od
-  , a=#v, b=#w
-  in add_ext(if a>=b then (v,w,b) else (w,v,a) fi)
-
-set strip (vec v) = vec: { reduce polynomial by dropping trailing zeros }
-( let k=#v in
-  while k>0 and v[k-1]=0 do k -:=1 od
-; if k=#v then v else for i:k do v[i] od fi
-)
 
 { special matrix multiplication: cumulation matrix * KL matrix ;
   for given i,j, returns i,j coordinate of this product, as a polynomial }
@@ -337,28 +321,6 @@ set composition_series (Param p) = ParamPol:
   if is_regular(p) then regular_composition_series(p)
   else singular_composition_series(p)
   fi
-
-{ some printing functions }
-
-{ make a printable string out of a polynomial and name of indeterminate,
-  for use in other print functions }
-set stringPoly (vec v, string q)= string:
-  if #(v:=strip(v))=0 then "0"
-  else
-    let rv="" in
-    for c@k in v do
-      if c!=0 then
-	let coef = if c<0 then "-" else "+" fi #
-            if abs(c)=1 and k>0 then "" else int_format(abs(c)) fi
-	,   term = if k>1 then q#"^"#int_format(k) elif k=0 then "" else q fi
-	in rv #:= coef#term
-      fi
-    od
-  ; rv
-  fi
-
-{ nice printing of a polynomial }
-set printPoly (vec v)= void: prints(stringPoly(v,"q"))
 
 { nice printing of a column of KL matrix of polynomials }
 set print_KL (Param p) = void:

@@ -1,66 +1,75 @@
-{binary search in sorted arrays, used by W_orbit.rx}
+{ binary search in sorted arrays, used by W_orbit.rx }
 
-{cutfirst entry from an array}
-set cut([int] a)=for i:#a -1 from 1 do a[i] od
+<basic  { for assert }
 
-{lexicographical order on equal length arrays of integers}
-less:([int],[int]->bool)
-less:=(([int] v,[int] w):
-if (#v != #w) then error("can't compare vectors of unequal length") 
-elif (v=w) then false 
-elif v[0]<w[0] then true 
-elif v[0]>w[0] then false
-else less(cut(v),cut(w)) fi);
-set <([int] v,[int] w)=bool:less(v,w)
+{ lexicographical order on equal length arrays of integers }
+set compare ([int] v, [int] w) = int:
+( let cmp=0, i=0, l=#v in
+  assert (#w=l,"can't compare vectors of unequal length")
+; while =cmp and i<l
+  do if v[i]!=w[i] then cmp:=if v[i]<w[i] then -1 else 1 fi fi
+  ; i+:=1
+  od
+; cmp
+)
 
-greater:([int],[int]->bool)
-greater:=(([int] v,[int] w):
-if (#v != #w) then error("can't compare vectors of unequal length") 
-elif (v=w) then false 
-elif v[0]>w[0] then true 
-elif v[0]<w[0] then false
-else greater(cut(v),cut(w)) fi);
-set >([int] v,[int] w)=bool:greater(v,w)
+set < ([int] v, [int] w) = bool: compare(v,w)<0
+set > ([int] v, [int] w) = bool: compare(v,w)>0
 
-{in_list(list,v)=(bool,int):
-(true,k): list[k]=v  (0<=k<=#k-1)
-(false,0): v<list[0]
-(false,k): list[k-1]<v<list[k] (0<=k<=#list-1)
-(false,#list): list[#list-1]<v
-precondition: list is strictly increasing}
-{}
-in_list:([[int]],[int],int->(bool,int))
-in_list:=(([[int]] list,[int] v,int loc):
-if #list=0 then (false,loc)
-else
- let k=(#list+1)\2 in
- if (v=list[k-1]) then (true,loc+k-1)
- elif (v<list[k-1]) then in_list(for i:k-1 do list[i] od,v,loc) 
- else  in_list(for i:#list-k from k do list[i] od,v,loc+k)  fi
-fi)
-set in_list([[int]] list,[int] v)=
-for i:#list-1 do if not(list[i]<list[i+1]) then error("list is not strictly decreasing") fi od;in_list(list,v,0)
+{ in_list(list,v) = (bool,int):
+  precondition: list is strictly increasing
+  results are one of
+  (true,k): list[k]=v  (0<=k<=#k-1)
+  (false,0): v<list[0]
+  (false,k): list[k-1]<v<list[k] (0<=k<=#list-1)
+  (false,#list): list[#list-1]<v
+}
+set in_list ([[int]] list,[int] v) = (bool,int):
+begin
+  for i:#list-1
+  do assert(list[i]<list[i+1],"list is not strictly increasing") od
+; let f ( ([[int]],[int],int) _) = (true,0) in
+  ( f:= ( ([[int]] list,[int] v,int loc) (bool,int):
+      if #list=0 then (false,loc)
+      else let k=(#list+1)\2 then cmp=compare(v,list[k-1]) in
+        if =cmp then (true,loc+k-1)
+        elif cmp<0
+        then f(for i:k-1 do list[i] od,v,loc)
+        else f(for i:#list-k from k do list[i] od,v,loc+k)
+        fi
+      fi
+   )) (list,v,0)
+end
 
-{in_list_reverse(list,v)=(bool,int):
-(true,k): list[k]=v  (0<=k<=#k-1)
-(false,0): v>list[0]
-(false,k): list[k-1]>v>list[k] (0<=k<=#list-1)
-(false,#list): list[#list-1]>v
-precondition: list is strictly decreasing}
-in_list_reverse:([[int]],[int],int->(bool,int))
-in_list_reverse:=(([[int]] list,[int] v,int loc):
-if #list=0 then (false,loc)
-else
- let k=(#list+1)\2 in
- if (v=list[k-1]) then (true,loc+k-1)
- elif (v>list[k-1]) then in_list_reverse(for i:k-1 do list[i] od,v,loc) 
- else  in_list_reverse(for i:#list-k from k do list[i] od,v,loc+k)  fi
-fi)
+{ in_list_reverse(list,v) = (bool,int):
+  precondition: list is strictly decreasing
+  results are one of
+  (true,k): list[k]=v  (0<=k<=#k-1)
+  (false,0): v>list[0]
+  (false,k): list[k-1]>v>list[k] (0<=k<=#list-1)
+  (false,#list): list[#list-1]>v
+}
+set in_list_reverse ([[int]] list,[int] v) = (bool,int):
+begin
+  for i:#list-1
+  do assert(list[i]>list[i+1],"list is not strictly decreasing") od
+; let f ( ([[int]],[int],int) _) = (true,0) in
+  ( f:= ( ([[int]] list,[int] v,int loc) (bool,int):
+      if #list=0 then (false,loc)
+      else let k=(#list+1)\2 then cmp=compare(v,list[k-1]) in
+        if =cmp then (true,loc+k-1)
+        elif cmp>0
+        then f(for i:k-1 do list[i] od,v,loc)
+        else f(for i:#list-k from k do list[i] od,v,loc+k)
+        fi
+      fi
+   )) (list,v,0)
+end
 
-set in_list_reverse([[int]] list,[int] v)=
-for i:#list-1 do if not(list[i]>list[i+1]) then error("list is not strictly decreasing") fi od;in_list_reverse(list,v,0)
-
-{insert_at(list,v,k) inserts v into position k of list, no assumptions about order}
-set insert_at([[int]] v,[int] w,int k)=[[int]]:(for i:k do v[i] od)#w#(for i:#v-k from k do v[i] od)
+{ insert_at(list,v,k) inserts v into position k of list,
+  no assumptions about order
+}
+set insert_at([[int]] v,[int] w,int k) = [[int]]:
+ for i:k do v[i] od # w # for i:#v-k from k do v[i] od
 
 

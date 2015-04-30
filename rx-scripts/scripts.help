@@ -1,0 +1,55 @@
+basic.rx		{ standard prelude of general utility functions }
+array_search.rx		{ binary search in integer arrays }
+matrix.rx		basic { get blocks from matrix, parital inverses }
+polynomial.rx		basic { polynomials and matrices with poly entries }
+generate_groups.rx	basic { list real forms by isogeny and rank }
+repK.rx                 basic { replacement work for standardrepk }
+---------------------------------------------------------------------------
+cross_W_orbit.rx	Weylgroup
+dual.rx			extended, polynomial, parameters, Vogan-dual
+extended_cayley.rx
+extended_cross.rx
+extended_misc.rx
+extended.rx
+extended_types.rx
+ext_signs.rx
+finite_dimensional.rx
+galois.rx
+group_operations.rx
+groups.rx
+hecke.rx
+hermitian.rx
+induction.rx
+induction_sp4.rx
+iterate_deform.rx
+kl.rx			polynomial, misc
+K.rx
+lattice.rx
+lietypes.rx
+LKT.rx
+misc.rx
+my.rx
+new_blocks.rx
+new_herm.rx
+new_kl.rx
+nilpotent.rx
+nonintegral.rx
+parameters.rx
+representations.rx
+sort.rx
+sp4.rx
+synthetic_aux.rx
+synthetic.rx
+test3.rx
+test_ext_cayley.rx
+test-unitarity.rx
+tits.rx
+torus.rx
+translate.rx
+twist.rx
+unitary.rx
+Vogan-dual.rx
+Wdelta.rx
+Weylgroup.rx
+Weyl.rx
+W_orbit.rx

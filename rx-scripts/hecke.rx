@@ -1,12 +1,16 @@
+<basic.rx
 <sort.rx
 <polynomial.rx
 <extended.rx
 
-{parameters and extended parameters are parametrized by pairs (x,y) 
+<extended_cayley.rx { for ext_Cayley }
+<nonintegral.rx { for ext_cross }
+
+{parameters and extended parameters are parametrized by pairs (x,y)
  x is a KGB element and y is a *generalized* KGB element, y^2 not necessarily central
 see end of synthetic.rx for KGBElt_gen
 }
- 
+
 {given a list_of_pairs [(x_1,y_1),(x_2,y_2)...] we need to do lookups and simple list manipulation}
 {equality of pairs of KGB elements}
 set =( ((KGBElt,KGBElt_gen),(KGBElt, KGBElt_gen)) ((x,y),(z,w)))=bool:x=z and y=w
@@ -36,11 +40,11 @@ also: omega acts on X^*(H)=X_*(H^v), i.e. involution
 (dual(ic),omega,(1+^omega)*(gamma-lambda-rho(ic))/2)
 
 set y_gen(Param p)=KGBElt_gen:
-let ic=inner_class(p) 
+let ic=inner_class(p)
 then gamma=infinitesimal_character(p)
 then lambda=lambda(p)   {lambda in X^*(H)+\rho: NOT same as lambda in previous def of y_gen}
-then theta=involution(p) 
-then omega=-^theta 
+then theta=involution(p)
+then omega=-^theta
 in (dual(ic),omega,(1+^omega)*(gamma-lambda)/2)
 
 {index(E,list_of_pairs)=index(x(E),y(E),list_of_pairs)}
@@ -212,7 +216,7 @@ do
   if find_pair((x,y), done) then k:=k+1
   else
     let subspace=generate_subspace(i,j,E(delta,gamma,x,g,y)) in
-    let ()=prints("Computed subspace ", #subspaces, " of dimension ", #subspace) in 
+    let ()=prints("Computed subspace ", #subspaces, " of dimension ", #subspace) in
     subspaces#:=subspace;
     sizes#:=#subspace;
     done#:=subspace
@@ -223,18 +227,18 @@ od;(subspaces,#B_0,sizes)
 compute the sign: coefficient of pi(F) in  T_kappa(\pi(E))
 using the new *conjectural* formula, for the old one see 2ign_2i12_old
 the conjecture is the following
-set s=sign(ext_Cayley(k,E)[0 or 1],F)   
-set t=sign(ext_Cayley(k,F)[0 or 1],E)   
+set s=sign(ext_Cayley(k,E)[0 or 1],F)
+set t=sign(ext_Cayley(k,F)[0 or 1],E)
 in each case the Cayleys of type 2i12/2r21 by root k
 are double valued, and one of them gives \pm the other argument
 then define
 sign_2i12(k,E,F)=1 if s=t=1 and -1 otherwise
 the idea is:
 there are 4 representations E_1,E_2 (more compact Cartan) and F_1,F_2 (more split)
-take these to be the default extended parameters 
+take these to be the default extended parameters
 for each pair (i,j) (i,j=1,2) there is a sign
 E_i --> F_j: whether \pm F_j occurs in the Cayley of E_i by root k (of type 2i12)
-and another sign 
+and another sign
 F_i --> E_j: whether \pm E_j occurs in the Cayley of F_i by root k (of type 2r21)
 
 typically 7 of these are +, and 1 is minus
@@ -251,64 +255,73 @@ set g((int,extended_param,extended_param)(j,E,F))=int:f(j,F,E)
 set sign_2i12((int,extended_param,extended_param)(j,E,F))=int:
  if (f(j,E,F)=1 and f(j,F,E)=1) then 1 else -1 fi
 
-{given E=E(x,y,lambda,l,tau,t) and F=(x',y',lambda',tau',l't') related by 2i12
-compute the sign: coefficient of pi(F) in  T_kappa(\pi(E))
-see "More on the 2i12, 2Ci and 1i cases" Proposition 1.13}
-set sign_2i12_old((int,extended_param,extended_param)
-(j,E,F))=int:
-{(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E):E,
-(ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F):F))=int:}
-let id=integrality_datum(E) in
-let alpha=root(id,j) in
-let alpha_check=coroot(id,j) in
-let beta=delta(E)*alpha in
-let ()=prints("sign_2i12 alpha,beta=", alpha, ", ", beta) in
-let k=lookup(beta,simple_roots(id)) in
-let beta_check=coroot(id,k) in
-let (p,q)=(parameter(E),parameter(F)) in
-if not verify(E) then error("E is not valid")
-elif not verify(F) then error("F is not valid")
-elif not (ext_type(j,E)="2i12" and ext_type(j,F)="2r21")then error("Wrong types")
-elif not ( (q=Cayley_set(j,Cayley_set(k,p)[0])[0]) or (q=Cayley_set(j,Cayley_set(k,p)[0])[1])) then
-error("q is not a 2i12 Cayley transform of p")
-else
-let l_test_1=in_lattice((1+^theta(E)),l(F)-l(E)) in
-let l_test_2=in_lattice((1+^theta(E)),l(F)-l(E)+alpha_check) in
-let lambda_test_1=in_lattice((1+^omega(F)),lambda(F)-lambda(E)) in
-let lambda_test_2=in_lattice((1+^omega(F)),alpha+lambda(F)-lambda(E)) in
-let kappa= if (l_test_2 and lambda_test_2) then -1 else 1 fi in
-{solve for sigma}
-let (sigma,valid)=solve((1+^omega(F)),alpha-beta) in
-if not valid then error("can't solve for sigma sign_2i12") else
-let tau=tau(E) in
-let tau_alpha_beta=tau*(alpha_check+beta_check) in
-let tau_0=vec:ratvec_as_vec(tau+tau*beta_check*sigma-tau_alpha_beta/2*alpha) in
-let (s,valid)=solve((1+^theta(E)),alpha_check-beta_check) in
-if not valid then error("can't solve for s in epsilon_t") else
-let t=t(F) in
-let t_alpha_beta=t*(alpha+beta) in
-let t_0=vec:ratvec_as_vec(t+t*beta*s-t_alpha_beta/2*alpha_check) in
-let E_new=
-if l_test_1 then
-(ic(E),delta(E),gamma(E),lambda(E),theta(E),g(E),l(F),omega(E),tau_0,t_0)
-elif l_test_2 then
-(ic(E),delta(E),gamma(E),lambda(E),theta(E),g(E),vec:l(F)+alpha_check,omega(E),tau_0,vec:t_0-s)
-else error("l_test_1 and l_test_2 both false")
-fi in
-let F_new=
-if lambda_test_1 then
-(ic(F),delta(F),gamma(F),lambda(E),theta(F),g(F),l(F),omega(F),tau_0,t_0)
-elif lambda_test_2 then
-(ic(F),delta(F),gamma(F),vec:lambda(E)+alpha,theta(F),g(F),l(F),omega(F),vec:tau_0-sigma,t_0)
-else
-prints(E, x(E), y_gen(E), F, x(F), y_gen(F));error("lambda_test_1 and lambda_test_2 both false") fi in
-let ()=if not verify(E_new) then error("E_new is not valid") fi in
-let ()=if not verify(F_new) then error("F_new is not valid") fi in
-let sign_E=sign(E,E_new) in
-let sign_F=sign(F,F_new) in
-let sign=sign_E*sign_F*kappa in
-let ()=prints("sign_E=", sign_E, ", sign_F=", sign_F, " kappa=", kappa, " sign=", sign) in
-sign fi fi fi
+{ given E=E(x,y,lambda,l,tau,t) and F=(x',y',lambda',tau',l't') related by 2i12
+  compute the sign: coefficient of pi(F) in  T_kappa(\pi(E))
+  see "More on the 2i12, 2Ci and 1i cases" Proposition 1.13
+}
+set sign_2i12_old (int j,extended_param E,extended_param F) = int:
+{ (ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E):E,
+  (ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F):F))=int:
+}
+begin
+  let id=integrality_datum(E) in
+  let alpha=root(id,j) in
+  let alpha_check=coroot(id,j) in
+  let beta=delta(E)*alpha in
+  prints("sign_2i12 alpha,beta=", alpha, ", ", beta)
+; let k=lookup(beta,simple_roots(id)) in
+  let beta_check=coroot(id,k) in
+  let (p,q)=(parameter(E),parameter(F)) in
+  assert(valid(E),"E is not valid")
+; assert(valid(F),"F is not valid")
+; assert(ext_type(j,E)="2i12" and ext_type(j,F)="2r21","Wrong types")
+; assert((q=Cayley_set(j,Cayley_set(k,p)[0])[0]) or
+         (q=Cayley_set(j,Cayley_set(k,p)[0])[1])
+        ,"q is not a 2i12 Cayley transform of p")
+; let l_test_1=in_lattice((1+^theta(E)),l(F)-l(E)) in
+  let l_test_2=in_lattice((1+^theta(E)),l(F)-l(E)+alpha_check) in
+  let lambda_test_1=in_lattice((1+^omega(F)),lambda(F)-lambda(E)) in
+  let lambda_test_2=in_lattice((1+^omega(F)),alpha+lambda(F)-lambda(E)) in
+  let kappa= if (l_test_2 and lambda_test_2) then -1 else 1 fi in
+  {solve for sigma}
+  let (sigma,OK)=solve((1+^omega(F)),alpha-beta) in
+  assert(OK,"can't solve for sigma sign_2i12")
+; let tau=tau(E) in
+  let tau_alpha_beta=tau*(alpha_check+beta_check) in
+  let tau_0= ratvec_as_vec(tau+tau*beta_check*sigma-tau_alpha_beta/2*alpha) in
+  let (s,OK)=solve((1+^theta(E)),alpha_check-beta_check) in
+  assert(OK,"can't solve for s in epsilon_t")
+; let t=t(F) in
+  let t_alpha_beta=t*(alpha+beta) in
+  let t_0=vec:ratvec_as_vec(t+t*beta*s-t_alpha_beta/2*alpha_check) in
+  let E_new=
+    if l_test_1
+    then (ic(E),delta(E),gamma(E),lambda(E),theta(E),g(E),l(F),omega(E)
+         ,tau_0,t_0)
+    elif l_test_2
+    then (ic(E),delta(E),gamma(E),lambda(E),theta(E),g(E),vec:l(F)+alpha_check
+         ,omega(E),tau_0,vec:t_0-s)
+    else error("l_test_1 and l_test_2 both false")
+    fi
+  then F_new=
+    if lambda_test_1
+    then (ic(F),delta(F),gamma(F),lambda(E),theta(F),g(F),l(F),omega(F)
+         ,tau_0,t_0)
+    elif lambda_test_2
+    then (ic(F),delta(F),gamma(F),vec:lambda(E)+alpha,theta(F),g(F),l(F)
+         ,omega(F),vec:tau_0-sigma,t_0)
+    else prints(E, x(E), y_gen(E), F, x(F), y_gen(F))
+    ; error("lambda_test_1 and lambda_test_2 both false") fi
+  in
+  assert(valid(E_new),"E_new is not valid")
+; assert(valid(F_new),"F_new is not valid")
+; let sign_E=sign(E,E_new) in
+  let sign_F=sign(F,F_new) in
+  let sign=sign_E*sign_F*kappa in
+  prints("sign_E=", sign_E, ", sign_F=", sign_F, " kappa=", kappa
+        , " sign=", sign)
+; sign
+end
 
 {sign_2r21(j,E,F) is defined to be sign_2i12(j,F,E)}
 set sign_2r21((int,
@@ -354,13 +367,13 @@ then alpha=root(ic,j) in
 let alpha_check=coroot(ic,j) in
 if not ext_type(j,E)="1i1"then error("Wrong type in signs_1i1")
 else
-let F=ext_Cayley(j,E)[0] in 
+let F=ext_Cayley(j,E)[0] in
 let (sigma,valid)=solve((1+^omega(F)),alpha)  in
 if not valid then error("can't solve for sigma in signs_1i1") else
 let new_tau_E=vec:tau_E-tau_E*alpha_check*sigma in
 let l_E_alpha=l_E*alpha in
 let new_l_E=
- if  is_even(l_E_alpha) then l_E-rat_as_int(l_E_alpha/2)*alpha_check 
+ if  is_even(l_E_alpha) then l_E-rat_as_int(l_E_alpha/2)*alpha_check
  else  l_E-rat_as_int((l_E_alpha-1)/2)*alpha_check fi in
 let new_E=(ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,new_l_E,omega_E,new_tau_E,t_E) then
 new_F=ext_Cayley(j,new_E) then
@@ -404,7 +417,7 @@ elif type ="1C-" then
  let F=ext_cross(j,E) in
  let k=index(F,basis) in
  R:=update_row(R,k,sign(E)*q);
- R:=update_row(R,i,q-one);R
+ R:=update_row(R,i,q-poly_1);R
 elif type="1i1" then
  let E1=default(ext_cross(j,E))  in
  let F=default(ext_Cayley(j,E)[0]) in
@@ -419,11 +432,11 @@ elif type="1i1" then
 elif type="1i2f" then
  let m0=index(ext_Cayley(j,E)[0],basis) in
  let m1=index(ext_Cayley(j,E)[1],basis) in
- R:=update_row(R,i,one);
- R:=update_row(R,m0,one);
- R:=update_row(R,m1,one);R
+ R:=update_row(R,i,poly_1);
+ R:=update_row(R,m0,poly_1);
+ R:=update_row(R,m1,poly_1);R
 elif type="1i2s" then
- R:=update_row(R,i,-one);R
+ R:=update_row(R,i,-poly_1);R
 elif type="1ic" then
  R:=update_row(R,i,q);R
 elif type="1r1f" then
@@ -435,9 +448,9 @@ elif type="1r1f" then
  let sign_Cayley_1=sign(ext_Cayley(j,E)[1]) in
  if sign_Cayley_0=-1 then prints("sign_1r1f_Cayley_0=-1 in computing Hecke operator of type 1r1f") fi;
  if sign_Cayley_1=-1 then prints("sign_1r1f_Cayley_1=-1 in computing Hecke operator of type 1r1f") fi;
- R:=update_row(R,i,q-two);
- R:=update_row(R,m0,poly_product(sgn_poly(sign_Cayley_0),(q-one)));
- R:=update_row(R,m1,poly_product(sgn_poly(sign_Cayley_1),(q-one)));R
+ R:=update_row(R,i,q-poly_2);
+ R:=update_row(R,m0,poly_product(sgn_poly(sign_Cayley_0),(q-poly_1)));
+ R:=update_row(R,m1,poly_product(sgn_poly(sign_Cayley_1),(q-poly_1)));R
 elif type="1r1s" then
  R:=update_row(R,i,q);R
 elif type="1r2" then
@@ -445,11 +458,11 @@ elif type="1r2" then
  let k=index(E1,basis) in
  let F=ext_Cayley(j,E)[0] in
  let m=index(F,basis) in
- R:=update_row(R,i,q-one);
+ R:=update_row(R,i,q-poly_1);
  R:=update_row(R,k,sgn_poly(-sign(E1)));
- R:=update_row(R,m,(q-one)*sign(F));R
+ R:=update_row(R,m,(q-poly_1)*sign(F));R
 elif type="1rn" then
- R:=update_row(R,i,-one);R
+ R:=update_row(R,i,-poly_1);R
 elif type="2C+" then
  let F=ext_cross(j,E) in
  let k=index(F,basis) in
@@ -458,7 +471,7 @@ elif type ="2C-" then
  let F=ext_cross(j,E) in
  let k=index(F,basis) in
  R:=update_row(R,k,q2*sign(F));
- R:=update_row(R,i,q2-one);R
+ R:=update_row(R,i,q2-poly_1);R
 elif type ="2Ci" then
  let F=ext_Cayley(j,E)[0] in
  let a=sign_2Ci(j,E) in
@@ -466,7 +479,7 @@ elif type ="2Ci" then
  let c=a*b in
  let m=index(F,basis) in
  let ()=prints("2Ci signs for indices ", i, "->", m, " sign_2Ci(E):", a, ", sign(F):",b, " c:", c) in
- R:=update_row(R,m,(q+one)*c);
+ R:=update_row(R,m,(q+poly_1)*c);
  R:=update_row(R,i,q);R
 elif type ="2Cr" then
  {sign must equal the one from the 2Ci direction}
@@ -478,7 +491,7 @@ elif type ="2Cr" then
  let m=index(E0,basis) in
  let ()=prints("2Cr signs for indices ", i, "->", m, " sign_2Ci(E0):", a, ", sign(F0):",b, " c:", c) in
  R:=update_row(R,m,(q2-q)*c);
- R:=update_row(R,i,q2-q-one);R
+ R:=update_row(R,i,q2-q-poly_1);R
 elif type ="2i11" then
  let E1=ext_cross(j,E) in
  let k=index(E1,basis) in
@@ -495,7 +508,7 @@ elif type ="2i12" then
  let ()=prints("type 2i12  for parameter with index ", index(E,basis), " sign_F1:", sign_F1, ", sign_F2:", sign_F2) in
  R:=update_row(R,index(F1,basis),sgn_poly(sign_F1));
  R:=update_row(R,index(F2,basis),sgn_poly(sign_F2));
- R:=update_row(R,i,one);R
+ R:=update_row(R,i,poly_1);R
 elif type ="2i22" then
  let F0=ext_Cayley(j,E)[0] in
  let F1=ext_Cayley(j,E)[1] in
@@ -503,15 +516,15 @@ elif type ="2i22" then
  let m1=index(F1,basis) in
  R:=update_row(R,m0,sgn_poly(sign(F0)));
  R:=update_row(R,m1,sgn_poly(sign(F1)));
- R:=update_row(R,i,one);R
+ R:=update_row(R,i,poly_1);R
 elif type ="2r22" then
  let E1=ext_cross(j,E) in
  let k=index(E1,basis) in
  let F=ext_Cayley(j,E)[0] in
  let m=index(F,basis) in
- R:=update_row(R,m,poly_product(sgn_poly(sign(F)),q2-one));
+ R:=update_row(R,m,poly_product(sgn_poly(sign(F)),q2-poly_1));
  R:=update_row(R,k,-sgn_poly(sign(E1)));
- R:=update_row(R,i,q2-one);R
+ R:=update_row(R,i,q2-poly_1);R
 elif type ="2r21" then
  let F=default(E) in
  let cayley=ext_Cayley(j,F) in
@@ -520,19 +533,19 @@ elif type ="2r21" then
  let sign_E1=sign_2r21(j,F,E1) in
  let sign_E2=sign_2r21(j,F,E2) in
  let ()=prints("type 2r21 for parameter with index ", index(E,basis), " sign_E1:", sign_E1, ", sign_E2:", sign_E2) in
- R:=update_row(R,index(E1,basis),poly_product(sgn_poly(sign_E1),q2-one));
- R:=update_row(R,index(E2,basis),poly_product(sgn_poly(sign_E2),q2-one));
+ R:=update_row(R,index(E1,basis),poly_product(sgn_poly(sign_E1),q2-poly_1));
+ R:=update_row(R,index(E2,basis),poly_product(sgn_poly(sign_E2),q2-poly_1));
  R:=update_row(R,i,q2-[2]);R
 elif type ="2r11" then
  let F0=ext_Cayley(j,E)[0] in
  let m0=index(F0,basis) in
  let F1=ext_Cayley(j,E)[1] in
  let m1=index(F1,basis) in
- R:=update_row(R,m0,poly_product(sgn_poly(sign(F0)),q2-one));
- R:=update_row(R,m1,poly_product(sgn_poly(sign(F1)),q2-one));
+ R:=update_row(R,m0,poly_product(sgn_poly(sign(F0)),q2-poly_1));
+ R:=update_row(R,m1,poly_product(sgn_poly(sign(F1)),q2-poly_1));
  R:=update_row(R,i,q2-[2]);R
 elif type ="2rn" then
- R:=update_row(R,i,-one);R
+ R:=update_row(R,i,-poly_1);R
 elif type ="2ic" then
  R:=update_row(R,i,q2);R
 else R fi
@@ -560,7 +573,7 @@ od;M
   quadrati(M,j,true) to see the resulting matrix, which should be 0
 }
 set quadratic(poly_mat M, int length, bool print)=bool:
-  let rv=(M+one)*(M-q^length) in
+  let rv=(M+poly_1)*(M-q^length) in
   if print then prints("M=");printPolyMatrix(M);prints(); printPolyMatrix(rv) fi; is_zero(rv)
 
 set quadratic(poly_mat M, int length)=quadratic(M,length,false)
@@ -592,7 +605,7 @@ vec,vec,vec,vec)((ic,delta,gamma,lambda_orig,theta,g,l_orig,omega,tau_org,t_orig
 {test_hecke(i,j,delta,gamma,g,basis): tests quadratic and braid relations for T_i,T_j acting on basis}
 set test_hecke(int i, int j, mat delta, ratvec gamma, ratvec g, [(KGBElt,KGBElt_gen)] basis)=bool:
 {get the inner class:} let (x_0,)=basis[0] in let rd=root_datum(real_form(x_0)) in
-let id=integrality_datum(rd,gamma) in 
+let id=integrality_datum(rd,gamma) in
 let M=hecke_matrix(i,delta,gamma,g,basis) in
 let N=hecke_matrix(j,delta,gamma,g,basis) in
 {see extended.rx for definition of folded_order=0,1,2,3}

@@ -11,14 +11,12 @@ set is_finite_dimensional(Param p) = bool:
 
 
 set fd_only (Param p) = Param:
-  if is_finite_dimensional(p) then p
-  else error("representation is not finite dimensional")
-  fi
+  assert(is_finite_dimensional(p),"representation is infinite dimensional"); p
 
 set complex_LKT(Param p) = vec:
-  let mu=involution(x(p))*lambda(p)+lambda(p)
+  let mu=(1+involution(x(p)))*lambda(p)
   then (rv,)=make_dominant(real_form(p),mu)
-  in ratvec_as_vec(for i:rank(real_form(p))\2 do rv[i] od)
+  in ratvec_as_vec(for i:rank(real_form(p))\2 do rv[i] od) { first half }
 
 { dimension of finite dimensional with given highest weight }
 set dimension(RootDatum rd, vec lambda_in) = int:
@@ -51,7 +49,8 @@ set fundamental_weight_coordinates (Param p) = vec:
 set testcomplex(RealForm G) = void:
   let t=trivial(G)
   then b=block_of(t), P=c_form_irreducible(t)
-  then rho_check = for i:rank(G)\2 do rho_check(G)[i] od,  Q=%P
+  then rho_check = for i:rank(G)\2 do rho_check(G)[i] od
+  , Q= for c@p in P do (c,p) od
   then (,last)=Q[#Q-1]
   then shift=complex_LKT(last)
   then ()=prints("rho_check= ", rho_check, "shift:", shift)

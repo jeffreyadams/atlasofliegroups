@@ -20,7 +20,7 @@ set ext_length(int j, extended_param E) = int:
 { ext_length has many cases, split cases by length }
 { ext_type_1(delta,j,p)=1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn }
 { j=index of root in integral-simple roots (not all simple roots)}
-set ext_type_1(mat delta,int j,Param p)=string:	
+set ext_type_1(mat delta,int j,Param p)=string:
   let type = status_text(j,p) in
   if type="i2" or type ="r1"
   then
@@ -31,8 +31,8 @@ set ext_type_1(mat delta,int j,Param p)=string:
 {ext_type_2(delta,j,p)=2C+,2C-,2Ci,2Cr,2i11,2i12,2i22,2r22,2r21,2r11,2rn,2rc}
 { j=index of root in integral-simple roots (not all simple roots)}
 set ext_type_2 (mat delta,int j,Param p) = string:
-  let type=status_text(j,p), theta=involution(x(p)), 
-  id=integrality_datum(p) 
+  let type=status_text(j,p), theta=involution(x(p)),
+  id=integrality_datum(p)
   then alpha=root(id,j) then beta=delta*alpha
   {need to use is_complex(alpha,x) not is_complex(j,x)}
   in
@@ -51,13 +51,13 @@ set ext_type_2 (mat delta,int j,Param p) = string:
   elif (status_text(j,p)="rn") then "2rn"
   elif (status_text(j,p)="r1") then "2r11"
   else let k = lookup(beta,simple_roots(id)) in
-    if status_text(k,inv_Cayley(j,p))="r1" then "2r21" else "2r22" fi
+    if status_text(k,Cayley(j,p))="r1" then "2r21" else "2r22" fi
   fi
 
 { ext_type_e(delta,j,p)=3C+3C-,3Ci,3Cr,3i,3r,3rn,3ic }
 { j=index of root in integral-simple roots (not all simple roots)}
 set ext_type_3 (mat delta,int j,Param p) = string:
-  let type=status_text(j,p), theta=involution(x(p)), 
+  let type=status_text(j,p), theta=involution(x(p)),
   id=root_datum(p)
   then alpha=root(id,j) then beta=delta*alpha
   {need to use is_complex(alpha,x) not is_complex(j,x)}
