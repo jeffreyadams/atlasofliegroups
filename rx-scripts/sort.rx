@@ -1,4 +1,5 @@
 <basic.rx
+<LKT.rx {for LKT_dimensions and height}
 
 set merge (vec a, vec b) = vec:
   if #a=0 then b
@@ -66,11 +67,11 @@ set sort_by_reducibility_pairs = ([(Param,bool)]->[(Param,bool)]):
 set sort_by_reducibility = ([Param]->[Param]):
   sort_by((Param p) int: #reducibility_points(p) )
 
-<LKT
-
 set sort_by(( (Split,Param)->int) f)=([(Split,Param)] v) [(Split,Param)]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 set sort_by_dimension=([(Split,Param)] -> [(Split,Param)]):
  sort_by((Split s,Param p) int: LKT_dimensions(p)[0])
 
+set sort_by_height=([(Split,Param)] -> [(Split,Param)]):
+ sort_by((Split s,Param p) int: height(p))

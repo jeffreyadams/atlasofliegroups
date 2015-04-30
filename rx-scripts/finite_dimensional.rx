@@ -30,8 +30,9 @@ set dimension(RootDatum rd, vec lambda_in) = int:
                ," to make it dominant")
       ; lambda_dominant
     fi
-  then rho=rho(rd), dim=1/1
-  in ( for a in poscoroots(rd) do dim*:=(lambda+rho)*a/(rho*a) od
+  then rho=rho(rd), dim=1/1 
+  in 
+( for a in poscoroots(rd) do dim*:=(lambda+rho)*a/(rho*a) od
      ; rat_as_int(dim) )
 
 set dimension(RealForm G, [int] lambda)=int: dimension(root_datum(G),lambda)

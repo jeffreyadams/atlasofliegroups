@@ -17,9 +17,19 @@ v has size rank (not semisimple rank)}
 {set is_integral(RootDatum rd, ratvec v)=bool:is_integer(simple_coroots(rd)*v)}
 set is_integral(RootDatum rd, ratvec v)=bool:is_integer(v*simple_coroots(rd))
 
+{integer_part and s_part of a ParamPol
+each is a ParamPol with integral coefficients
+P=integer_part(P)+s*s_part(P)
+}
 
 { transform ParamPol into a list of (Split,Param) pairs; previously built-in }
 set %(ParamPol P) = [(Split,Param)]: for c@p in P do (c,p) od
+
+set integer_part(ParamPol P)=ParamPol:
+let rv=null_module(P) in for (a,p) in %P do let (x,)=%a in rv+:=x*p od;rv
+
+set s_part(ParamPol P)=ParamPol:integer_part(s*P)
+set parts(ParamPol P)=(integer_part(P),s_part(P))
 
 set is_dominant(RootDatum rd, ratvec v) = bool:
   is_nonnegative(numer(v)*simple_coroots(rd))

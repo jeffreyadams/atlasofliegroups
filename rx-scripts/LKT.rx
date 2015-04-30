@@ -1,8 +1,14 @@
-<K
-<cross_W_orbit
-<representations
-<hermitian
-<finite_dimensional
+<K.rx
+<cross_W_orbit.rx
+<representations.rx
+<hermitian.rx
+<finite_dimensional.rx
+
+{height of a K-type}
+set height(Param p)=
+let mu=(1+involution(x(p)))*lambda(p) then
+sum=0 in
+for a in poscoroots(real_form(p)) do sum+:=abs(rat_as_int(mu*a)) od;sum
 
 {if p is a final tempered limit then there are no C- roots, these x's play a special role}
 set no_Cminus_roots(KGBElt x)=bool: let rv=true in for type in status_texts(x) do if type="C-" then rv:=false fi od;rv
@@ -28,8 +34,9 @@ algorithm: find w\in W_G taking rho(K_x) to rho(K_y) using cross_W_orbit
 (x,lambda)->(y,w\lambda)
 }
 set move_highest_weight(KGBElt x,KGBElt y,ratvec lambda)=(KGBElt,ratvec):
+if real_form(x) != real_form(y) then error("Real form mismatch in move_highest_weight") else
 let G=real_form(x) in 
-let w=find_W_cross(x,y) in (y,action(root_datum(G),w,lambda))
+let w=find_W_cross(x,y) in (y,action(root_datum(G),w,lambda)) fi
 {let w=weyl_group_element(G,tworho_K(x),tworho_K(y)) }
 {(y,action(root_datum(G),w,lambda))}
 
@@ -94,6 +101,10 @@ set strong_map_into_distinguished_fiber(KGBElt x)=KGBElt:map_into_distinguished_
 set canonical_x_K(KGBElt x)=KGBElt:strong_map_into_distinguished_fiber(x)
 set canonical_x_K(Param p)=KGBElt:canonical_x_K(x(p))
 
+{simplest definition: K-types are parametrized by final tempered limit parameters
+lowest_k_types(p): set nu=0, and apply make_final}
+set lowest_k_types(Param p)=[Param]:make_final(make_nu0(p))
+
 {this is the heart of the matter
  LKT of final tempered limit parameter, is unique
  K=K_{x_K} where x_K=map_into_distinguished_fiber(x(p))
@@ -120,19 +131,19 @@ let mu=project_K(G,mu_0) in
 (x_K,mu_0,mu) fi 
 
 {returns a list of highest weights of lowest K-types, each might be for a different (isomorphic) K_x
-algorithm: compute LKT_final_tempered_limit(q) for each q in make_final(make_nu0(p)
+algorithm: compute LKT_final_tempered_limit(q) for each q in lowest_k_types(p)
 LKT for q is with respect to canonical_x_K(q)
 }
 set LKT_raw(Param p)=[(KGBElt,ratvec,vec)]:
-let rv=[] in for q in make_final(make_nu0(p)) do rv#:=LKT_final_tempered_limit(q) od;rv
+let rv=[] in for q in lowest_k_types(p) do rv#:=LKT_final_tempered_limit(q) od;rv
 
 {move all highest weights to those for fixed K_x}
 set LKT_raw(Param p,KGBElt x_K)=(KGBElt,[(ratvec,vec)]):
 let lkt=LKT_raw(p) in
-{let ()=prints("lkt: ", lkt) in }
 let rv=[] in
 for (x,mu_0,mu) in lkt do 
-let (,mu_1)=move_highest_weight(x,x_K,mu_0) in rv#:=(mu_1,project_K(real_form(p),mu_1)) od ;(x_K,rv)
+let (,mu_1)=move_highest_weight(x,x_K,mu_0) in
+rv#:=(mu_1,project_K(real_form(p),mu_1)) od ;(x_K,rv)
 
 {just the list of highest weights of lowest K-types, with respect to given x_K}
 set LKT_highest_weights(Param p,KGBElt x_K)=[vec]:
@@ -146,11 +157,11 @@ set LKT(Param p, KGBElt x_K)=[Param]:
 let weights=LKT_highest_weights(p,x_K) in 
 let K=K_0(x_K) in 
 for lambda in weights do finite_dimensional(K,lambda) od
+
 set LKT(Param p)=[Param]:LKT(p,KGB(real_form(p),0))
 
 {use canonical_x_K(p) as default x_K}
 set LKT(Param p)=LKT(p,canonical_x_K(p))
-
 
 {mu is a highest weight for K_0=identity component of K_x
  returns fundamental weight coordinates
@@ -165,7 +176,7 @@ set print_LKT([Param] B, KGBElt x)=void:
  let G=real_form(B[0])  in
  let K_0=K_0(x) in 
  let ()=prints("K_0: ", K_0) in
- let ()=prints("rho_K:", rho(K_0)) in 
+{ let ()=prints("rho_K:", rho(K_0)) in }
  for p in B do let lkt=LKT(p) in  
  prints("");prints(p);prints(" Lowest K-types:");for pi in lkt do 
 prints(" ", pi, "  dim=", dimension(pi), " highest weight:", highest_weight(pi)) od  od
@@ -188,7 +199,7 @@ set testps(RealForm G)=testps(G,KGB(G,0))
 set testpsdims(RealForm G)=for  p in all_principal_series(G) do prints(LKT_dimensions(p)) od
 
 {compute all lowest K-types of minimal principal series of split group
-algorithm: p -> make_final(make_nu0(p)) =list of (final tempered limit) parameters, some are repeated,
+algorithm: p -> lowest_k_types(p)) =list of (final tempered limit) parameters, some are repeated,
 make into a ParamPol=sum of distinct parameters with multiplicity, compute 
 unique LKT of each parameter occuring
 }
@@ -200,7 +211,7 @@ let ()=prints("K=", K_0(x)) in
 let ()=prints("rho_K=", rho(K_0(x))) in
 let ps=all_principal_series(G) in 
 let P=null_module(G) in 
-let ()=for p in ps do P+:=virtual(make_final(make_nu0(p))) od in
+let ()=for p in ps do P+:=virtual(lowest_k_types(p)) od in
 let Q=%P in 
 let rv=[Param]:[] in
 let ()=for (,q) in Q do rv:=rv#LKT(q,x) od in 

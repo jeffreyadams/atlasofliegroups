@@ -69,6 +69,10 @@ set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
 set rat_as_int (rat r) = int:
   let (n,d)=%r in if d=1 then n else error("Not an integer") fi
 
+{make a split into an integer if possible }
+set split_as_int(Split s)=int:
+let (a,b)=%s in if b!=0 then error("split is not an integer") fi;a
+
 {				Strings					}
 
 set new_line = ascii(10) { including this in a string passes to a new line }
