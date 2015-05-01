@@ -277,6 +277,9 @@ set s = Split:(0,1)
 set + (Split x) = let (r,)=%x in r { real part }
 set ^ (Split x) = let (,y)=%x in y { s part }
 
+set s_to_1(Split x) = int: +%x        { let (a,b)=%x in +(a,b) }
+set s_to_minus_1(Split x) = int: -%x  { let (a,b)=%x in -(a,b) }
+
 set ^ = { exponentiation of split integers }
   let split_power (Split x,int n) = Split: x { dummy }
   then () = split_power := ((Split x,int n): { we shall have n>0 }
@@ -569,10 +572,10 @@ set rho_check_r (KGBElt x) = ratvec: sum(real_poscoroots(x))/2
 { status for a given KGBElt of general imaginary roots }
 set is_compact (KGBElt x) = (vec->bool):
   let coweight = rho_check_i(x)+torus_factor(x)
-  in (vec alpha) bool: rat_as_int(coweight*alpha)%2=0
+  in (vec alpha) bool: =(coweight*alpha)%2
 set is_noncompact (KGBElt x) = (vec->bool):
   let coweight = rho_check_i(x)+torus_factor(x)
-  in (vec alpha) bool: rat_as_int(coweight*alpha)%2!=0
+  in (vec alpha) bool: !=(coweight*alpha)%2
 
 set compact_posroots (KGBElt x) = mat:
   columns_with(is_compact(x),imaginary_posroots(x))
@@ -711,7 +714,10 @@ set lookup (Param p, [Param] block) = int:
 
 {		    Polynomials in module parameters			}
 
-set null_module (ParamPol P)= 0*P { also handles null_module(Param) }
+set null_module (ParamPol P) = ParamPol: 0*P { also handles null_module(Param) }
+
+set s_to_1 (ParamPol p)       = ParamPol: 0*p + for x@q in p do (+%x,q) od
+set s_to_minus_1 (ParamPol p) = ParamPol: 0*p + for x@q in p do (-%x,q) od
 
 { simulate coercion (KGBElt->RealForm) in some cases }
 set root_datum (ParamPol P) = RootDatum: real_form(P)

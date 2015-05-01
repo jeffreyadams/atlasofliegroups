@@ -1,9 +1,20 @@
 basic.rx		{ standard prelude of general utility functions }
+lietypes.rx		{ allow omitting quotes in "D4" and friends }
 array_search.rx		{ binary search in integer arrays }
+sort.rx			basic { merge sort integers, sort by statistic }
 matrix.rx		basic { get blocks from matrix, parital inverses }
 polynomial.rx		basic { polynomials and matrices with poly entries }
+groups.rx		basic { function for constructing groups by name }
 generate_groups.rx	basic { list real forms by isogeny and rank }
+iterate_deform.rx	basic { legacy implementation of deformation algorithm }
 repK.rx                 basic { replacement work for standardrepk }
+lattice.rx		basic, matrix { sublattice embeddings and quotients }
+K.rx			basic, matrix { embedding of compact root system }
+kl.rx			basic, polynomial { character/composition formulas }
+torus.rx		basic { construct torus by compact/complex/split ranks }
+group_operations.rx	basic, lattice, torus { torus, product, radical etc. }
+representations.rx	basic, misc, group_operations { various "series" }
+hermitian.rx		basic, representations, kl { unitarity test }
 ---------------------------------------------------------------------------
 cross_W_orbit.rx	Weylgroup
 dual.rx			extended, polynomial, parameters, Vogan-dual
@@ -15,28 +26,18 @@ extended_types.rx
 ext_signs.rx
 finite_dimensional.rx
 galois.rx
-group_operations.rx
-groups.rx
-hecke.rx
-hermitian.rx
+hecke.rx		basic, sort, polynomial, extended*, nonintegral
 induction.rx
 induction_sp4.rx
-iterate_deform.rx
-kl.rx			polynomial, misc
-K.rx
-lattice.rx
-lietypes.rx
 LKT.rx
 misc.rx
 my.rx
 new_blocks.rx
-new_herm.rx
-new_kl.rx
 nilpotent.rx
 nonintegral.rx
+old_hermitian.rx	representations, old_kl
+old_kl.rx		basic, polynomial
 parameters.rx
-representations.rx
-sort.rx
 sp4.rx
 synthetic_aux.rx
 synthetic.rx
@@ -44,7 +45,6 @@ test3.rx
 test_ext_cayley.rx
 test-unitarity.rx
 tits.rx
-torus.rx
 translate.rx
 twist.rx
 unitary.rx

@@ -1,22 +1,13 @@
-<misc.rx
-<representations.rx
+<basic.rx
+<representations.rx { for spherical_principal_series }
 <kl.rx
 
 { a variable used in this file; set to true for more output from functions }
 set hermitian_debug = false
 
-set -(ParamPol P,ParamPol Q) = ParamPol: P+(-1)*Q
-
-{ test equality of ParamPols }
-set =(ParamPol P,ParamPol Q) = bool: #(P-Q)=0
-
-{ order of operands in the next function avoids conflicting *@(int,ParamPol) }
-set *(Param p,rat alpha) = let (x,lambda,nu)=%p in param(x,lambda,alpha*nu)
-
-{set nu=0 in Param (x,lambda,nu) }
-set make_nu0 (Param p) = p*0
+{ set nu=0 in all terms of a ParamPol }
 set make_nu0 (ParamPol P)= ParamPol:
-  null_module(real_form(P)) + for w@p in P do (w,p*0) od
+  0*P + for w@p in P do (w,p*0) od
 
 { orientation_number_term(orientation_nr(p),q) =
   s^{[\ell_0(p)-\ell_0(q)]/2} which should be defined and gives 1 or s
@@ -25,7 +16,7 @@ set orientation_nr_term = (int,Param->Split):
   let err()=
     error("computing orientation number for odd difference of lengths")
   then act=[(->Split)]: [()Split:1,err,():s,err]
-  in (int on_p,Param q) Split: act[(on_p-orientation_nr(q))%4]()
+  in (int ori_nr_p,Param q) Split: act[(ori_nr_p-orientation_nr(q))%4]()
 
 { c_form_std:
   write c-invariant form on standard module in terms of standardrepks,
@@ -36,7 +27,7 @@ set c_form_std (Param p) = ParamPol:
 ; full_deform(p)
 )
 
-{ c_form_irreducible(y) returns a ParamPol of standardrepks
+{ c_form_irreducible_long(y) returns a ParamPol of standardrepks
   giving the c-invariant form on irreducible(y)
   formula used: when
     J(y)  =sum_x               (-1)^{ell(x)-ell(y)}P(x,y)(q=1)I(x)
@@ -49,43 +40,29 @@ set c_form_std (Param p) = ParamPol:
     I(x)_c given as combination of standards x' with nu(x')=0 by c_form_std(x)
   algorithm: compute the sum for J(y)_c, using signed_KL_col and c_form_std
 }
-
-
 set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)]):
-( let (block,kl,polys,stops,indices,cumulation)=partial_KL_block (p)
-  then klpolys=signed_KL_col(#block-1,kl,polys,stops,indices,cumulation)
-  , P=null_module(real_form(p)), on_p=orientation_nr(p)
-  , standards=[(Param,Split,ParamPol)]: []
+( let P = null_module(real_form(p)), standards = [(Param,Split,ParamPol)]: []
+  , ori_nr_p = orientation_nr(p)
   in
-  for i:#indices downto 0 do
-    let ev = at_s(klpolys[i]), q=block[indices[i]] in
-    if ev!=0 { this saves considerable time }
-    then
-      let form_on_standard=c_form_std(q)
-      , factor=ev*orientation_nr_term(on_p,q)
-      in P +:= factor*form_on_standard
-      ; standards #:= (q,factor,form_on_standard)
-    fi
+  for ev@q in KL_sum_at_s(p)
+  do
+    let form_on_standard = c_form_std(q)
+    ,   factor           = ev*orientation_nr_term(ori_nr_p,q)
+    in P +:= factor*form_on_standard; standards #:= (q,factor,form_on_standard)
   od
 ; (P,standards)
 )
 
-set KL_col(Param p)= ParamPol: { this is what built-in |KL_sum_at_s| does }
-  let (block,kl,polys,stops,indices,cumulation)=partial_KL_block (p)
-  then klpolys=signed_KL_col(#block-1,kl,polys,stops,indices,cumulation)
-  in null_module(real_form(p)) +
-     for i:#indices do (at_s(klpolys[i]),block[indices[i]]) od
-
 set c_form_irreducible (Param p)= ParamPol:
-( let on_p=orientation_nr(p), P = null_module(real_form(p))
-  in for ev@q in KL_sum_at_s(p)
-     do P+:= ev*orientation_nr_term(on_p,q)*full_deform(q) od
-  ; P
+( let ori_nr_p = orientation_nr(p), P = null_module(real_form(p)) in
+  for ev@q in KL_sum_at_s(p)
+  do P +:= ev*orientation_nr_term(ori_nr_p,q)*full_deform(q) od
+; P
 )
 
 set print_c_form_irreducible_long (Param p) = void:
-  let (f,b)=c_form_irreducible_long(p) in
-( for (q,coeff,Q) in b
+( let (f,b) = c_form_irreducible_long(p) in
+  for (q,coeff,Q) in b
   do prints("")
   ; prints("standard module: ",q)
   ; prints("coefficient: ",split_format(coeff))
@@ -97,14 +74,18 @@ set print_c_form_irreducible_long (Param p) = void:
 )
 
 { analyse }
-{ print one terms with "mixed" coefficient (a+bs), i.e., both a,b\ne 0 }
+
+{ print only terms with "mixed" coefficient (a+bs), i.e., both a,b\ne 0 }
 set mixed (Split w)= bool: let (a,b)=%w in a*b!=0
 set analyse (ParamPol P) = void:
-begin prints("Mixed terms:")
-; for w@p in P do if mixed(w) then
-    prints("(",split_format(w),")*",p,", ",infinitesimal_character(p))
-  fi od
-end
+( prints("Mixed terms:")
+; for w@p in P
+  do
+    if mixed(w)
+    then prints("(",split_format(w),")*",p,", ",infinitesimal_character(p))
+    fi
+  od
+)
 
 
 { ---------------------------------------- }
@@ -113,16 +94,15 @@ end
 { compute (lambda+rho) restricted to torus T }
 
 { lambda\in X^*+rho =>
-    one can define a parameter with this lambda, as param(x,lambda-rho,0)
-  then
-    infinitesimal_character(param(x,lambda-rho,0))=
-    (1+theta)lambda/2=lambda restricted to T-tilde
+    one can define a parameter with this lambda, as p=param(x,lambda-rho,0)
+  then infinitesimal_character(p)=(1+theta)lambda/2
+  which is lambda restricted to T-tilde
   apply this with lambda-rho=0, returns (1+theta)rho/2     (on T-tilde)
   apply this with lambda-rho,   return  (1+theta)lambda/2  (on T-tilde)
   then the sum is (1+theta)(lambda+rho)/2 on T
 }
 set lambda_plus_rho_res_T(KGBElt x,ratvec lambda) = ratvec:
-  let lpr=lambda+rho(real_form(x)) in (lpr+involution(x)*lpr)/2
+  (1+involution(x))*(lambda+rho(real_form(x)))/2
 
 { mu(p) is the value of the lowest K-type of p, evaluated at x(p) }
 { formula: < (1+theta_x)(lambda+rho)/2 , torus_factor(x)+rho^\vee > }
@@ -152,8 +132,8 @@ set print_hermitian_form_irreducible(Param p) = void:
 
 { nice output of Hermitian forms on list of parameters }
 set print_hermitian_form_irreducible([Param] P) = void:
-  for p in P do
-    prints("");prints("Hermitian form on irreducible: ",p)
+  for p in P
+  do prints("");prints("Hermitian form on irreducible: ",p)
   ; print_hermitian_form_irreducible(p)
   od
 
@@ -164,17 +144,17 @@ set print_hermitian_form_irreducible([Param] P) = void:
    \sum a_i I_i[nu=0]=\sum_j w_j[s=1]I_j
 }
 { set test_form (ParamPol P,Param p)=
-  if eval(P,1) = make_nu0(character_formula(p)) then
+  if evaluate_at_1(P) = make_nu0(character_formula(p)) then
     prints("Passed") else prints("Failed")
   fi
 }
 
 { assuming P is the ParamPol of the Hermitian
   form on an irreducible, is_unitary(P) tests
-  if it is unitary: <=> every Split w=a+bs has a=0, or all have b=0 }
-
+  if it is unitary: <=> every Split w=a+bs has a=0, or all have b=0
+}
 set is_unitary(ParamPol P)= bool:
-( let OK=true, no_coef_1=true, no_coef_s=true, list= for w in P do w od
+( let OK=true, no_coef_1=true, no_coef_s=true, list= for c in P do c od
   then i=#list
   in
   while OK and (i-:=1)>=0
@@ -185,11 +165,9 @@ set is_unitary(ParamPol P)= bool:
   od
 ; OK
 )
-{ body used to be:
-  let coeffs =for (w,) in %P do w od
-  then pos=for w in coeffs do let (x,)=%w in x od
-  ,    neg=for w in coeffs do let (,y)=%w in y od
-  in  pos=null(#pos) or neg=null(#neg)
+{ body could be:
+  let cs = for c@q in P do c od
+  in =for c in cs do +c od  or  =for c in cs do ^c od { all re or all im }
 }
 
 { compute Hermitian form on p, and report if it is unitary }
@@ -211,13 +189,13 @@ set test_line (Param p) = void:
 ; if #points=0
   then prints("entire line is irreducible and unitary"
        	     ,if is_final(p*0) then "" else " (nu=0 is not final)" fi)
-  else
-    let points=0#points in
-    if not points[#points-1]=1/1 then points:=points#1/1 fi
-  ; for i:#points-1 from 1 do
+  else points:=0#points { tack on initial zero }
+  ; if not points[#points-1]=1/1 then points:=points#(1/1) fi
+  ; for i:#points-1 from 1
+    do
       let t=(points[i]+points[i-1])/2
-      then q=param(x,lambda_minus_rho,t*nu)
-      then r=param(x,lambda_minus_rho,points[i]*nu)
+      then q=param(x,lambda_minus_rho,t*nu)         { mid point interval }
+      ,    r=param(x,lambda_minus_rho,points[i]*nu) { end point interval }
       in prints(t*nu,": ", is_unitary(q))
       ;  prints(points[i]*nu,": ", is_unitary(r))
     od

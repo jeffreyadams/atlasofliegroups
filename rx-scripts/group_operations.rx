@@ -1,4 +1,4 @@
-<misc.rx
+<basic.rx
 <lattice.rx { for (co)restrict_action }
 <torus.rx { for torus }
 
@@ -112,12 +112,14 @@ set Levi (InnerClass ic,[int] S) = InnerClass: { just change the root datum }
 { M=centralizer of A in H=TA, as a RealForm }
 set real_Levi(KGBElt x) = RealForm:
   let theta = involution(x)
-  then ic_M = inner_class(root_datum(simple_imaginary_subsystem(x)),theta)
+  then ic_M = inner_class(root_datum(simple_from_positive(imaginary_sys(x)))
+			 ,theta)
   then rf = real_form(ic_M,theta,torus_factor(x))
   in rf
 
 set theta_stable_Levi (KGBElt x) = RealForm:
-  let ic_L=inner_class(root_datum(simple_real_subsystem(x)), involution(x))
+  let ic_L=inner_class(root_datum(simple_from_positive(real_sys(x)))
+		      ,involution(x))
   in quasisplit_form(ic_L)
 
 set M = real_Levi@KGBElt { synonym }

@@ -17,22 +17,6 @@ set param(RealForm G,int k, vec lambda_rho,ratvec nu) = Param:
   uses this feature of ParamPol, but ignores any coefficients }
 set make_final (Param p)= [Param]: for c@q in ParamPol: p do q od
 
-{ nicer display of Splits }
-set split_format (Split w) = string:
-  let (a,b)=%w in
-  if a=0 and b!=0
-  then if abs(b)>1 then int_format(b) elif b=1 then "" else "-" fi #"s"
-  else int_format(a) #
-    if abs(b)>1 then if b<0 then "" else "+" fi #int_format(b)#"s"
-    elif b=0 then "" elif b=1 then "+s" else "-s"
-    fi
-  fi
-
-{ nice output of ParamPol:
-  split_format the coefficients, print terms in order of x }
-set pol_format (ParamPol P)= void:
-  for w@p in P
-  do prints("(",split_format(w),")*",p,", ",infinitesimal_character(p)) od
 
 { evaluate at s=t for t integer (or rational?): replace w=a+bs with a+bt }
 { would seem to make sense only if t^2=1, so if either t=1 or t=-1 }
@@ -60,10 +44,10 @@ set root_length(RootDatum rd,vec alpha) = int: rat_as_int(alpha*rho_check(rd))
 set is_simple_root(RootDatum rd,[int] alpha) = bool: root_length(rd,alpha)=1
 
 set simple_imaginary_subsystem (KGBElt x) = (mat,mat): { simple (co)roots }
-  simple_from_positive(imaginary_posroots(x),imaginary_poscoroots(x))
+  simple_from_positive(imaginary_sys(x))
 
 set simple_real_subsystem (KGBElt x) = (mat,mat): { simple (co)roots }
-  simple_from_positive(real_posroots(x),real_poscoroots(x))
+  simple_from_positive(real_sys(x))
 
 set split_rank(RealForm G) = int:
   let ((c,C,s),,,) = Cartan_info(most_split_Cartan(G)) in C+s
