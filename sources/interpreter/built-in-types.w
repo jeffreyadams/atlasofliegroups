@@ -3539,11 +3539,13 @@ $(x,\lambda,\nu)$ that defines it. Since we shall need to print |StandardRepr|
 values in other contexts as well, we shall define an auxiliary output function
 of such values first and then use that. The auxiliary function needs the
 |Rep_context|, so we pass that explicitly. Using the same name |print| for the
-auxiliary seems natural, but forces us to qualify upon calling.
+auxiliary function seems natural, but forces us to qualify it as
+|interpreter::print| when calling it from a method called |print|, to avoid
+being masked by an attempt at a recursive call.
 
 @f nu nullptr
 
-@< Function def...@>=
+@< Local function def...@>=
 std::ostream& print
   (std::ostream& out,const StandardRepr& val, const Rep_context& rc)
 { RootNbr witness; // dummy needed in call
@@ -3554,7 +3556,10 @@ std::ostream& print
       << rc.lambda(val) << ",nu="
       << rc.nu(val) << ')';
 }
-@)
+@ While that function was local (in the anonymous namespace), the virtual
+method |print| should not.
+
+@< Function definition... @>=
 void module_parameter_value::print(std::ostream& out) const
 {@; interpreter::print(out,val,rc()); }
 
@@ -4178,13 +4183,17 @@ typedef std::shared_ptr<split_int_value> own_split_int;
 of a bare |Split_integer| value, which can be used in situations where the
 method |split_int_value::print| cannot.
 
-@< Function def...@>=
+@< Local function def...@>=
 std::ostream& print (std::ostream& out, const Split_integer& val)
 {@;
   return out << '(' << val.e()
              << (val.s()<0?'-':'+') << std::abs(val.s()) << "s)";
 }
-@)
+@ Again the virtual method |print| must not be defined in the anonymous
+namespace.
+
+@< Function def... @>=
+
 void split_int_value::print(std::ostream& out) const @+
 {@; interpreter::print(out,val); }
 
@@ -4250,7 +4259,7 @@ split integers, and an explicit operator for converting back to a pair.
 
 void int_to_split_coercion()
 { int a=get<int_value>()->val;
-  push_value(std::make_shared<split_int_value>(Split_integer(a)));
+@/push_value(std::make_shared<split_int_value>(Split_integer(a)));
 }
 @)
 void pair_to_split_coercion()
@@ -4626,8 +4635,8 @@ since the parameter itself reported here might be final.
   if (not srkc.isFinal(sr,witness))
   { std::ostringstream os;
     RootNbr simp_wit = srkc.fiber(sr).simpleReal(witness);
-    p->print(os << "Non final restriction to K: ");
-    os << "\n  (witness "	<< srkc.rootDatum().coroot(simp_wit) << ')';
+    print(os << "Non final restriction to K: ",p->val,rc)
+    @| << "\n  (witness "	<< srkc.rootDatum().coroot(simp_wit) << ')';
     throw std::runtime_error(os.str());
   }
 }
@@ -4676,9 +4685,10 @@ void branch_wrapper(expression_base::level l)
     RootNbr simp_wit = nonstand ?
       khc.fiber(sr).simpleImaginary(witness)
     : khc.fiber(sr).simpleReal(witness);
-    p->print
-      (os << "Non " << (nonstand?"standard":"final") << "restriction to K: ");
-    os << "\n  (witness "	<< khc.rootDatum().coroot(simp_wit) << ')';
+    print
+      (os << "Non " << (nonstand?"standard":"final") << "restriction to K: "
+      ,p->val,rc)
+    @| << "\n  (witness "	<< khc.rootDatum().coroot(simp_wit) << ')';
     throw std::runtime_error(os.str());
   }
 }
