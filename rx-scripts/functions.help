@@ -648,11 +648,22 @@ operator +, -: (ParamPol,ParamPol->ParamPol): addition/subtraction formal sums
 operator *: (int,ParamPol->ParamPol): integer multiple of a formal sum
 operator *: (Split,ParamPol->ParamPol): split integer multiple of a formal sum
 
-branch: (Param,int->ParamPol): compute an initial part of the restriction to K
-  The parameter argument is interpreted as restricted to K (the nu component
-  is replaced by a zero vector), and the integer argument as a height
-  difference d (if negative it is replaced by 0); the part of the K types with
-  height <= level+d is returned, with level the height of the lowest K type.
+K_type_formula: (Param->ParamPol) Express K-type in terms of standardrepns|_K
+  The argument parameter is interpreted as giving an irreducible module; its
+  restriction to K is expressed as linear combination of restrictions to K of
+  standard representations, and a polynomial giving their parameters returned.
+branch: (Param,int->ParamPol) Find K-types of standardrepn up to given limit
+  The first argument is taken as standard representation, and is interpreted
+  as restricted to K (the nu component is replaced by a zero vector), while
+  the argument second is a bound on the height; the result should be
+  interpreted as linear combination of K-types, each standard final parameter
+  term standing for its lowest K-type.
+to_canonical: (Param->Param) Move parameter to canonical fiber (making nu=0)
+height: (Param->int) W-invariant height measure standardrepn restricted to K
+  This is the sum of absolute values of the scalar products of (1+theta)lambda
+  and the positive coroots; it ignores the nu component of the parameter.
+  This is the same function as used in branch to compare with the given limit.
+
 deform: (Param->ParamPol): compute deformation terms when nu decreases
   The non-integral block for the parameter and its KL polynomials are
   computed, from which the deformation terms involing other members of the
