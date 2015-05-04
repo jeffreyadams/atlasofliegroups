@@ -323,8 +323,8 @@ set poscoroot_index ((RootDatum,vec)p) = int: { fold coroots to positive }
 
 set reflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
   1 - column(root(rd,i))*row(coroot(rd,i))
-set reflection (RootDatum rd, vec v) = mat: { specify root (not coroot) }
-  reflection(rd,root_index(rd,v)) { works for any root }
+set reflection ((RootDatum,vec)(rd,):p) = mat: { specify root (not coroot) }
+  reflection(rd,root_index(p))
 
 set rho (RootDatum rd) = ratvec:
   let res= ratvec: null(rank(rd))
