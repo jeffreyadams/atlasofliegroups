@@ -480,11 +480,9 @@ use by accessors.
   int scalarProduct(const Weight& v, RootNbr j) const
     { return v.dot(coroot(j)); }
 
+  using RootSystem::isOrthogonal; // for the case of two RootNbr values
   bool isOrthogonal(const Weight& v, RootNbr j) const
     { return v.dot(coroot(j))==0; }
-
-  bool isOrthogonal(RootNbr alpha, RootNbr j) const
-    { return isOrthogonal(root(alpha),j); }
 
   int cartan(weyl::Generator i, weyl::Generator j) const
     { return simpleRoot(i).dot(simpleCoroot(j)); }

@@ -3102,7 +3102,7 @@ void KGB_status_wrapper(expression_base::level l)
 involution, and a rational weight that should be the |torus_factor| value. The
 latter defines a grading of the corresponding imaginary roots, in the same
 manner as for the synthetic |real_form| in section @#synthetic_real_form@>
-above, but in fact it ever completely describes the KGB element. In order for
+above, but in fact it even completely describes the KGB element. In order for
 this to be possible, the |torus_factor| must be compatible with the
 |cocharacter| stored in the real form, but which should always be right if the
 real form was itself synthesised from the |torus_factor| value.
@@ -3539,11 +3539,13 @@ $(x,\lambda,\nu)$ that defines it. Since we shall need to print |StandardRepr|
 values in other contexts as well, we shall define an auxiliary output function
 of such values first and then use that. The auxiliary function needs the
 |Rep_context|, so we pass that explicitly. Using the same name |print| for the
-auxiliary seems natural, but forces us to qualify upon calling.
+auxiliary function seems natural, but forces us to qualify it as
+|interpreter::print| when calling it from a method called |print|, to avoid
+being masked by an attempt at a recursive call.
 
 @f nu nullptr
 
-@< Function def...@>=
+@< Local function def...@>=
 std::ostream& print
   (std::ostream& out,const StandardRepr& val, const Rep_context& rc)
 { RootNbr witness; // dummy needed in call
@@ -3554,7 +3556,10 @@ std::ostream& print
       << rc.lambda(val) << ",nu="
       << rc.nu(val) << ')';
 }
-@)
+@ While that function was local (in the anonymous namespace), the virtual
+method |print| should not.
+
+@< Function definition... @>=
 void module_parameter_value::print(std::ostream& out) const
 {@; interpreter::print(out,val,rc()); }
 
@@ -4178,13 +4183,17 @@ typedef std::shared_ptr<split_int_value> own_split_int;
 of a bare |Split_integer| value, which can be used in situations where the
 method |split_int_value::print| cannot.
 
-@< Function def...@>=
+@< Local function def...@>=
 std::ostream& print (std::ostream& out, const Split_integer& val)
 {@;
   return out << '(' << val.e()
              << (val.s()<0?'-':'+') << std::abs(val.s()) << "s)";
 }
-@)
+@ Again the virtual method |print| must not be defined in the anonymous
+namespace.
+
+@< Function def... @>=
+
 void split_int_value::print(std::ostream& out) const @+
 {@; interpreter::print(out,val); }
 
@@ -4250,7 +4259,7 @@ split integers, and an explicit operator for converting back to a pair.
 
 void int_to_split_coercion()
 { int a=get<int_value>()->val;
-  push_value(std::make_shared<split_int_value>(Split_integer(a)));
+@/push_value(std::make_shared<split_int_value>(Split_integer(a)));
 }
 @)
 void pair_to_split_coercion()
@@ -4581,59 +4590,156 @@ void split_mult_virtual_module_wrapper(expression_base::level l)
   }
 }
 
-@ The following function makes available in \.{realex} the functionality of
-the \.{branch} command in the \.{atlas} program.
+@*2 Computing with $K$-types.
+The ``restriction to $K$'' component of the Atlas library has for a long time
+had an isolated existence, in part because the ``nonzero final standard
+$K$ parameters'' used to designate $K$-types is both hard to decipher and does
+not seem to relate easily to values used elsewhere. However, these parameters
+do in fact correspond to the subset of module pareters with $\nu=0$.
 
 @h "standardrepk.h"
 
 @< Local function def...@>=
+
+void K_type_formula_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  RealReductiveGroup& G = p->rf->val;
+  const Rep_context& rc = p->rc();
+  standardrepk::SRK_context srkc(G);
+  StandardRepK sr =
+    srkc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
+  @< Check that |sr| is final, and if not |throw| an error @>
+  standardrepk::Char formula = srkc.K_type_formula(sr).second;
+@)
+  if (l!=expression_base::no_value)
+  { RatWeight zero_nu(p->rf->val.rank());
+    own_virtual_module acc @|
+      (new virtual_module_value(p->rf, repr::SR_poly(p->rc().repr_less())));
+    for (standardrepk::Char::const_iterator
+           it=formula.begin(); it!=formula.end(); ++it)
+    {
+      StandardRepr term =  rc.sr(it->first,srkc,zero_nu);
+      repr::SR_poly contribution = rc.expand_final(term);
+      acc->val.add_multiple(contribution,Split_integer(it->second));
+    }
+    push_value(acc);
+  }
+}
+
+@ We must test the parameter for being final, or else the method
+|K_type_formula| will fail. The error message mentions restriction to $K$,
+since the parameter itself reported here might be final.
+
+@< Check that |sr| is final, and if not |throw| an error @>=
+{ size_t witness;
+  if (not srkc.isFinal(sr,witness))
+  { std::ostringstream os;
+    RootNbr simp_wit = srkc.fiber(sr).simpleReal(witness);
+    print(os << "Non final restriction to K: ",p->val,rc)
+    @| << "\n  (witness "	<< srkc.rootDatum().coroot(simp_wit) << ')';
+    throw std::runtime_error(os.str());
+  }
+}
+
+@ A main function is the actual branching to~$K$: decomposition of a standard
+final representation into $K$-types, up to a given limit.
+
+@< Local function def...@>=
 void branch_wrapper(expression_base::level l)
-{ int h_diff = std::max(0,get<int_value>()->val);
+{ int bound = get<int_value>()->val;
   shared_module_parameter p = get<module_parameter_value>();
-  const StandardRepr& rep = p->val;
   const Rep_context rc = p->rc();
   RealReductiveGroup& G=p->rf->val;
   standardrepk::KhatContext khc(G);
-  standardrepk::StandardRepK repK =
-    khc.std_rep_rho_plus(rc.lambda_rho(rep),G.kgb().titsElt(rep.x()));
-  @< Check that representation |repK| is standard and final;
-     possibly |throw|  @>
-  standardrepk::combination c=khc.standardize(repK);
+  StandardRepK sr=
+    khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
+  @< Check that |sr| is standard and final, and if not |throw| an error @>
+@)
   if (l==expression_base::no_value)
     return;
-  repr::SR_poly accumulator(rc.repr_less()); // prepare for handling result
-  if (not c.empty())
-  { auto b=c.begin()->first;
-    standardrepk::level h=khc.height(b);
-    standardrepk::combination result=khc.branch(b,h+h_diff);
-    for (auto it=result.begin(); it!=result.end(); ++it)
+  standardrepk::combination combo=khc.standardize(sr);
+  RatWeight zero_nu(G.rank());
+@/own_virtual_module acc @|
+    (new virtual_module_value(p->rf, repr::SR_poly(rc.repr_less())));
+  for (auto it=combo.begin(); it!=combo.end(); ++it) // loop runs once at most
+  {
+    standardrepk::combination chunk = khc.branch(it->first,bound);
+    for (auto jt=chunk.begin(); jt!=chunk.end(); ++jt)
     {
-      StandardRepr sr = rc.sr(khc.rep_no(it->first),khc,RatWeight(rc.rank()));
-      accumulator.add_term(sr,Split_integer(it->second));
+      StandardRepr sr = rc.sr(khc.rep_no(jt->first),khc,zero_nu);
+      acc->val.add_term(sr,Split_integer(it->second*jt->second));
     }
   }
-  push_value(std::make_shared<virtual_module_value>(p->rf,accumulator));
+  push_value(acc);
 }
 
-@ The testing code uses the same condition as the \.{branch} command
-in \.{atlas} does.
+@ We must test the parameter for being normal and final, or else the method
+|branch| will fail. The error message mentions restriction to $K$, since the
+``final'' status reported here may differ from that of the parameter itself.
 
-@< Check that representation |repK| is standard and final... @>=
-{ size_t witness; std::ostringstream o;
-  bool nonstand=not khc.isStandard(repK,witness);
-  if (nonstand or not khc.isFinal(repK,witness))
-  {
+@< Check that |sr| is standard and final, and if not |throw| an error @>=
+{ size_t witness;
+  bool nonstand=not khc.isStandard(sr,witness);
+  if (nonstand or not khc.isFinal(sr,witness))
+  { std::ostringstream os;
     RootNbr simp_wit = nonstand ?
-      khc.fiber(repK).simpleImaginary(witness)
-    : khc.fiber(repK).simpleReal(witness);
-    khc.print(o << "Non-" << (nonstand? "standard" : "final")
-    << " representation ",repK)
-    @|  << " (witness "	<< khc.rootDatum().coroot(simp_wit) << ')';
-    throw std::runtime_error(o.str());
-    }
+      khc.fiber(sr).simpleImaginary(witness)
+    : khc.fiber(sr).simpleReal(witness);
+    print
+      (os << "Non " << (nonstand?"standard":"final") << "restriction to K: "
+      ,p->val,rc)
+    @| << "\n  (witness "	<< khc.rootDatum().coroot(simp_wit) << ')';
+    throw std::runtime_error(os.str());
+  }
 }
 
-@ Here is our principal application of virtual modules.
+@ In the K-type code, standard representations restricted to $K$ are always
+given on the canonical twisted involution of their Cartan class. In order to
+be able to understand what a parameter will look like in this representation,
+we provide a function that performs a similar transformation of a parameter,
+ignoring its $\nu$ component. The operation simply consists of applying
+complex cross actions on~$x$ until it is canonical for its Cartan class, and
+applying the corresponding simple reflections to~$\lambda$.
+
+@< Local function def...@>=
+void to_canonical_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  const ComplexReductiveGroup& G=p->rf->val.complexGroup();
+  const KGB& kgb = p->rf->kgb();
+  const RootDatum& rd=G.rootDatum();
+@)
+  KGBElt x = p->val.x();
+  TwistedInvolution sigma = kgb.involution(x);
+  WeylWord w = G.canonicalize(sigma); // $x\times w$ lies over |sigma| canonical
+  Weight two_lambda = p->rc().lambda_rho(p->val)*2 + rd.twoRho();
+@)
+  x = kgb.cross(x,w);
+  assert(kgb.involution(x)==sigma);
+   // we should now be at canonical twisted involution
+  rd.act_inverse(two_lambda,w);
+  if (l!=expression_base::no_value)
+  { RatWeight zero_nu(p->rf->val.rank());
+    StandardRepr result = p->rc().sr(x,(two_lambda-rd.twoRho())/2,zero_nu);
+    push_value(std::make_shared<module_parameter_value>(p->rf,result));
+  }
+}
+
+@ Here is one more useful function: computing the height of a parameter
+(ignoring the $\nu$ component), as used in the |bound| argument to |branch|
+abouve.
+
+@< Local function def...@>=
+void srk_height_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  standardrepk::SRK_context srkc(p->rf->val);
+  TitsElt a=p->rf->kgb().titsElt(p->val.x());
+  StandardRepK sr=srkc.std_rep_rho_plus (p->rc().lambda_rho(p->val),a);
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(srkc.height(sr)));
+}
+
+@*2 Deformation formulas.
+Here is our principal application of virtual modules.
 %
 Using the computation of non-integral blocks, we can compute a deformation
 formula for the given parameter. This also involves computing Kazhdan-Lusztig
@@ -4733,7 +4839,10 @@ install_function(int_mult_virtual_module_wrapper,@|"*"
 		,"(int,ParamPol->ParamPol)");
 install_function(split_mult_virtual_module_wrapper,@|"*"
 		,"(Split,ParamPol->ParamPol)");
+install_function(K_type_formula_wrapper,@|"K_type_formula" ,"(Param->ParamPol)");
 install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
+install_function(to_canonical_wrapper,@|"to_canonical" ,"(Param->Param)");
+install_function(srk_height_wrapper,@|"height" ,"(Param->int)");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");

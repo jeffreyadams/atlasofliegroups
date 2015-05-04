@@ -112,8 +112,8 @@ mod2_section (mat->mat): find section (left/right/inverse) of binary matrix
   matrix B such that ABA=A and BAB=B; it will be an inverse/left inverse/right
   inverse of (over Z/2Z) whenever A is bijective/surjective/injective.
 
-subspace_normal: ([vec]->[vec],[vec],[vec],[int]) normalised modulo-2 basis
-  Given a list of binary vectors, find a normalised basis for the subspace
+subspace_normal: ([vec]->[vec],[vec],[vec],[int]) normalized modulo-2 basis
+  Given a list of binary vectors, find a normalized basis for the subspace
   they span, expressions for the basis vectors in terms of the given list, a
   basis for the relations between the vectors, an a list of pivot values. The
   argument is a list of n generators of size r whose components are
@@ -322,7 +322,7 @@ operator = : (InnerClass,InnerClass->bool): identity of inner classes
   in other words it will recognise ic=inner_class(real_form(ic,0)) as true,
   but any freshly built inner class tests unequal to anything preexisting
 distinguished_involution: (InnerClass->mat): involution of the inner class.
-  Extract the distinguised involution of X^* that defines the inner class
+  Extract the distinguished involution of X^* that defines the inner class
 dual: (InnerClass->InnerClass): dual inner class for dual complex group
 
 nr_of_real_forms: (InnerClass->int): number of real forms in inner class
@@ -391,7 +391,7 @@ base_grading_vector: (RealForm->ratvec): Offset implicit in torus_bits values
   by the function real_form@(InnerClass,mat,ratvec), the arguments of that
   call may determine a different value of z, in which case a different choice
   for c is made to match it. The choice of c then depends on z only; in
-  particular it will be the same for real forms synthesised using different
+  particular it will be the same for real forms synthesized using different
   strong involutions for the same real group, and such groups will test equal.
 
 Cartan_order: (RealForm->mat): matrix describing ordering of Cartan classes
@@ -646,11 +646,22 @@ operator +, -: (ParamPol,ParamPol->ParamPol): addition/subtraction formal sums
 operator *: (int,ParamPol->ParamPol): integer multiple of a formal sum
 operator *: (Split,ParamPol->ParamPol): split integer multiple of a formal sum
 
-branch: (Param,int->ParamPol): compute an initial part of the restriction to K
-  The parameter argument is interpreted as restricted to K (the nu component
-  is replaced by a zero vector), and the integer argument as a height
-  difference d (if negative it is replaced by 0); the part of the K types with
-  height <= level+d is returned, with level the height of the lowest K type.
+K_type_formula: (Param->ParamPol) Express K-type in terms of standardrepns|_K
+  The argument parameter is interpreted as giving an irreducible module; its
+  restriction to K is expressed as linear combination of restrictions to K of
+  standard representations, and a polynomial giving their parameters returned.
+branch: (Param,int->ParamPol) Find K-types of standardrepn up to given limit
+  The first argument is taken as standard representation, and is interpreted
+  as restricted to K (the nu component is replaced by a zero vector), while
+  the argument second is a bound on the height; the result should be
+  interpreted as linear combination of K-types, each standard final parameter
+  term standing for its lowest K-type.
+to_canonical: (Param->Param) Move parameter to canonical fiber (making nu=0)
+height: (Param->int) W-invariant height measure standardrepn restricted to K
+  This is the sum of absolute values of the scalar products of (1+theta)lambda
+  and the positive coroots; it ignores the nu component of the parameter.
+  This is the same function as used in branch to compare with the given limit.
+
 deform: (Param->ParamPol): compute deformation terms when nu decreases
   The non-integral block for the parameter and its KL polynomials are
   computed, from which the deformation terms involing other members of the
