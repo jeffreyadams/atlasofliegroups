@@ -200,7 +200,7 @@ Fiber::Fiber(const Fiber& other)
 
   This is the subquotient $V_+ + V_-/V_+$ as constructed by |tori::dualPi0|,
   but for $-\theta^t$. So the group is isomorphic to the +1 eigenspace of the
-  transpose involution $\theta^t$|, modulo the image of $\theta^t+1|, in other
+  transpose involution $\theta^t$, modulo the image of $\theta^t+1$, in other
   words it is $\Ker(\theta^t-1)/\Im(\theta^t+1)$, and it also isomorphic to
   the component group of the set of $-\theta$ fixed points of the Cartan $H$.
 

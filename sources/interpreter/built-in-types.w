@@ -3102,7 +3102,7 @@ void KGB_status_wrapper(expression_base::level l)
 involution, and a rational weight that should be the |torus_factor| value. The
 latter defines a grading of the corresponding imaginary roots, in the same
 manner as for the synthetic |real_form| in section @#synthetic_real_form@>
-above, but in fact it ever completely describes the KGB element. In order for
+above, but in fact it even completely describes the KGB element. In order for
 this to be possible, the |torus_factor| must be compatible with the
 |cocharacter| stored in the real form, but which should always be right if the
 real form was itself synthesised from the |torus_factor| value.
