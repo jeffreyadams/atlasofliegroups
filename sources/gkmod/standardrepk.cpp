@@ -177,7 +177,7 @@ SRK_context::SRK_context(RealReductiveGroup &GR)
       for (size_t i=0; i<rd.semisimpleRank(); ++i)
 	if (rd.isOrthogonal(real2rho,rd.simpleRootNbr(i)) and
 	    rd.isOrthogonal(imaginary2rho,rd.simpleRootNbr(i)))
-	{
+	{ // test coroot orthogonality
 	  RootNbr alpha = rd.simpleRootNbr(i);
 	  RootNbr beta= f.involution_image_of_root(alpha);
 	  assert (rd.is_simple_root(beta));
@@ -872,40 +872,29 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
 HechtSchmid
 SRK_context::HS_id(const StandardRepK& sr, RootNbr alpha) const
 {
-  HechtSchmid id(sr);
   const RootDatum& rd=rootDatum();
   TitsElt a=titsElt(sr);
-  Weight lambda=lift(sr);
+  Weight lambda=lift(sr); // is non-dominant for |alpha|, so |sr| is not normal
   assert(rd.is_posroot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
 
+  HechtSchmid id(sr); // start with |sr| on the left hand side
   size_t i=0; // simple root index (value will be set in following loop)
-  while (true) // we shall exit halfway when $\alpha=\alpha_i$
+  while (alpha!=rd.simpleRootNbr(i=rd.find_descent(alpha)))
   {
-    while (not rd.is_descent(i,alpha))
-    {
-      ++i;
-      assert(i<rd.semisimpleRank());
-    }
-    // now $\<\alpha,\alpha_i^\vee> > 0$ where $\alpha$ is simple-imaginary
-
-    if (alpha==rd.simpleRootNbr(i)) break; // found it
-
-    // otherwise$\alpha_i$ is complex for the involution |a.tw()|; reflect
-    // all data by $s_i$, which decreases level of $\alpha$
+    // now $\alpha_i$ is (not imaginary, so) complex for the involution
+    // |a.tw()|; reflect all data by $s_i$, which decreases level of $\alpha$
     rd.simple_reflect_root(i,alpha);
     rd.simple_reflect(i,lambda);
     basedTitsGroup().basedTwistedConjugate(a,i);
-    i=0; // and start over
   }
 
   Weight mu=rd.simple_reflection(i,lambda);
   if (basedTitsGroup().simple_grading(a,i))
-  { // $\alpha_i$ is a non-compact imaginary simple root
+  { // now $\alpha_i$ is a non-compact imaginary simple root
     basedTitsGroup().basedTwistedConjugate(a,i); // adds $m_i$ to torus part
     StandardRepK sr0= std_rep(mu, a);
     assert(sr.d_cartan==sr0.d_cartan);
-    id.add_lh(sr0);
-    // the change to |d_lambda| may involve both components
+    id.add_lh(sr0); // add |sr0| to |sr| as second LHS term; type II: are equal
 
     /* Now are equivalent:
        = |sr0.d_fiberElt==sr.d_fiberElt|
@@ -990,7 +979,7 @@ SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
       orth.set(i,tl.dot(rd.simpleCoroot(i))==0);
   }
   assert(rd.is_posroot(alpha)); // no real reflections; should still be positive
-  assert(orth.any()); // since root $\alpha$ is in span
+  assert(orth.any()); // since root $\alpha$ is in span of orth. simple roots
 
   // basis used is of $(1/2)X^*$, so scalar product with coroot always even
   assert(lambda.dot(rd.coroot(alpha))%4 == 0); // the non-final condition
@@ -1008,22 +997,14 @@ SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
   }
 
   // the following loop terminates because $\alpha$ is in span of |orth|
-  weyl::Generator i=~0; // becomes simple root index of $\alpha$
-  do
+  weyl::Generator i; // becomes simple root index of $\alpha$
+  while (alpha!=rd.simpleRootNbr(i=(rd.descent_set(alpha)&orth).firstBit()))
   {
-    for (RankFlags::iterator it=orth.begin(); it(); ++it)
-      if (rd.is_descent(i=*it,alpha))
-      {
-	if (alpha!=rd.simpleRootNbr(i))
-	{ // reflect all data by $s_i$, decreases level of $\alpha$
-	  rd.simple_reflect_root(i,alpha);
-	  basedTitsGroup().basedTwistedConjugate(a,i);
-	  mod_space.apply(dual_reflection(i));
-	}
-	break; // either terminate outer loop or restart iterator
-      }
+    rd.simple_reflect_root(i,alpha);
+    basedTitsGroup().basedTwistedConjugate(a,i);
+    rd.simple_reflect(i,lambda);
+    mod_space.apply(dual_reflection(i));
   }
-  while (alpha!=rd.simpleRootNbr(i));
 
   // one right term is obtained by undoing Cayley for |a|, with lifted |lambda|
   basedTitsGroup().inverse_Cayley_transform(a,i,mod_space);
@@ -1241,6 +1222,7 @@ combination KhatContext::standardize(const StandardRepK& sr)
     return equate(nonfinals.match(sr),result); // and add rule for |sr|
   } // if (isStandard(sr,witness))
 
+  // now |sr| is not Standard; apply a Hecht-Schmid identity
   HechtSchmid equation= HS_id(sr,fiber(sr).simpleImaginary(witness));
   assert(equation.n_lhs()==2); // all cases of |HS_id| produce 2-term lhs
 

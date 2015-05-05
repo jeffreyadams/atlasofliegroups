@@ -244,7 +244,7 @@ struct bitset_entry : public RankFlags
    Just one dynamic table is held, for projection matrices correponding to
    different subsets of simple roots; they serve to speed up the height
    computation. That computation is not a necessary part for the other
-   functionality of this class, but it allows height-trunction to be built
+   functionality of this class, but it allows height-truncation to be built
    into for instance |K_type_formula|, which speeds up simple cases a lot.
  */
 class SRK_context
