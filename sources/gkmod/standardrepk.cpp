@@ -979,7 +979,7 @@ SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
       orth.set(i,tl.dot(rd.simpleCoroot(i))==0);
   }
   assert(rd.is_posroot(alpha)); // no real reflections; should still be positive
-  assert(orth.any()); // since root $\alpha$ is in span
+  assert(orth.any()); // since root $\alpha$ is in span of orth. simple roots
 
   // basis used is of $(1/2)X^*$, so scalar product with coroot always even
   assert(lambda.dot(rd.coroot(alpha))%4 == 0); // the non-final condition
@@ -1007,6 +1007,7 @@ SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
 	{ // reflect all data by $s_i$, decreases level of $\alpha$
 	  rd.simple_reflect_root(i,alpha);
 	  basedTitsGroup().basedTwistedConjugate(a,i);
+	  rd.simple_reflect(i,lambda);
 	  mod_space.apply(dual_reflection(i));
 	}
 	break; // either terminate outer loop or restart iterator
