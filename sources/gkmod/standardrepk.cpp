@@ -979,7 +979,7 @@ SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
       orth.set(i,tl.dot(rd.simpleCoroot(i))==0);
   }
   assert(rd.is_posroot(alpha)); // no real reflections; should still be positive
-  assert(orth.any()); // since root $\alpha$ is in span
+  assert(orth.any()); // since root $\alpha$ is in span of orth. simple roots
 
   // basis used is of $(1/2)X^*$, so scalar product with coroot always even
   assert(lambda.dot(rd.coroot(alpha))%4 == 0); // the non-final condition
@@ -997,22 +997,14 @@ SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
   }
 
   // the following loop terminates because $\alpha$ is in span of |orth|
-  weyl::Generator i=~0; // becomes simple root index of $\alpha$
-  do
+  weyl::Generator i; // becomes simple root index of $\alpha$
+  while (alpha!=rd.simpleRootNbr(i=(rd.descent_set(alpha)&orth).firstBit()))
   {
-    for (RankFlags::iterator it=orth.begin(); it(); ++it)
-      if (rd.is_descent(i=*it,alpha))
-      {
-	if (alpha!=rd.simpleRootNbr(i))
-	{ // reflect all data by $s_i$, decreases level of $\alpha$
-	  rd.simple_reflect_root(i,alpha);
-	  basedTitsGroup().basedTwistedConjugate(a,i);
-	  mod_space.apply(dual_reflection(i));
-	}
-	break; // either terminate outer loop or restart iterator
-      }
+    rd.simple_reflect_root(i,alpha);
+    basedTitsGroup().basedTwistedConjugate(a,i);
+    rd.simple_reflect(i,lambda);
+    mod_space.apply(dual_reflection(i));
   }
-  while (alpha!=rd.simpleRootNbr(i));
 
   // one right term is obtained by undoing Cayley for |a|, with lifted |lambda|
   basedTitsGroup().inverse_Cayley_transform(a,i,mod_space);
