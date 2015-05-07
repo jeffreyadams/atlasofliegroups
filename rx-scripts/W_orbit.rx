@@ -1,65 +1,73 @@
-<misc.rx
+<basic.rx  { for assert, #@int,... }
 <Weylgroup.rx
-<array_search.rx  {binary search in sorted arrays}
 
-{compute orbit of W(S).v: orbit of v under simple roots of S of root datum rd
-algorithm: keep three lists
-Wreps=Wrepresentatives: list of elements of W
-orbit: final list of elements of orbit
-todo: intermediate list of pairs (w,u) where w.v=u)
-recursively, set (w,u)=first entry of todo
- apply each simple reflection j from S to u
- if s_j.u is not in orbit (as determined by the array_search::in_list function) add  s_j.u to orbit and (s_j*w,s_j.u) to todo
- delete (w,u) from todo
-continue until todo is empty
-returns: (Wrepresentatives, orbit) where orbit is list of elements of orbit, and for each i Wrepresentatives[i].v=orbit[i]}
-set W_orbit_extra(RootDatum rd,[int] S,[int] v)=([[int]],[[int]]):
-let Wreps=[[int]]:[[]],orbit=[v], todo=[([],v)] in
-while #todo>0 do
-( let (w,a)=todo[0] in
- for i in S do  let b=[int]:reflection(rd,i)*a in  let (inlist,loc)=in_list_reverse(orbit,b) in
-   if not inlist then
-    (Wreps:=insert_at(Wreps,i#w,loc), orbit:=insert_at(orbit,b,loc), todo:=todo#(i#w,b)) fi
- od,todo:=for i:#todo -1 from 1 do todo[i] od)  od;(Wreps,orbit)
-set W_orbit_extra(RealForm G,[int] S,[int] v)=([[int]],[[int]]):W_orbit_extra(root_datum(G),S,v)
+{ compute orbit of W(S).v: orbit of vector v under Weyl group
+  under simple roots of S of root datum rd,
 
-{just the W(S)-orbit W.v}
-set W_orbit(RootDatum rd,[int] S,[int] v)=[[int]]:let (W_elements,vectors)=W_orbit_extra(rd,S,v) in vectors
-set W_orbit(RealForm G,[int] S,[int] v)=[[int]]:W_orbit(root_datum(G),S,v)
+  algorithm: keep two lists and a counter
+  words: list of elements of W
+  orbit: list of vectors of orbit
+  done: number of pairs in the above for which successors have been computed
+  iteratively, set (w,y)= = (W_word,vec) pair at index done; advance done
+  apply each simple reflection j from S to y
+  if s_j.y is not in orbit
+    add  s_j.y to orbit and (s_j*w,s_j.y) to todo
+    delete (w,y) from todo
+  continue until todo is empty
 
-{just the subset of W(S) in bijection with to W(S).v}
-set W_orbit_W_elements(RootDatum rd,[int] S,[int] v)=[[int]]:let (W_elements,vectors)=W_orbit_extra(rd,S,v) in W_elements
-set W_orbit_W_elements(RealForm G,[int] S,[int] v)=[[int]]:W_orbit_W_elements(root_datum(G),S,v)
+  returns: where orbit is list of vectors of orbit,
+  and for each i one has act(rd,words[i],x)=orbit[i]
+}
 
-{assume S=all simple roots}
-set W_orbit_extra(RootDatum rd,[int] v)=([[int]],[[int]]):W_orbit_extra(rd,for i:rank(rd) do i od,v)
-set W_orbit(RootDatum rd,[int] v)=[[int]]:W_orbit(rd,for i:rank(rd) do i od,v)
-set W_orbit(RealForm G,[int] v)=[[int]]:W_orbit(root_datum(G),v)
-set W_orbit_W_elements(RootDatum rd,[int] v)=[[int]]:let (W_elements,vectors)=W_orbit_extra(rd,for i:rank(rd) do i od,v) in W_elements
-set W_orbit_W_elements(RealForm G,[int] v)=[[int]]:W_orbit_W_elements(root_datum(G),v)
+set generate ([(vec->vec)] S,vec v) = ([W_word],[vec]):
+  let words=[W_word]:[[]], orbit=[v], done=0
+  then absent (vec y) = bool:
+         let i=#orbit-1 in while i>=0 and y!=orbit[i] do i-:=1 od; i<0
+  in
+  while done<#orbit
+  do
+    let w = words[done], a=orbit[done] in
+    done+:=1
+  ; for f@i in S
+    do let b= f(a) in
+      if absent(b) then ( words #:= i#w, orbit #:= b ) fi
+    od
+  od; (words,orbit)
 
-{all Weyl group elements of W(rd) or W(G), in no particular order}
-set generate_W(RootDatum rd)=W_orbit_W_elements(rd,for i:rank(rd) do i od,ratvec_as_vec(2*rho(rd)))
-set generate_W(RealForm G)=generate_W(root_datum(G))
+set W_orbit_extra (RootDatum rd,[int] S,vec v) = ([W_word],[vec]):
+  generate(for i in S do (vec x) vec: reflect(rd,i,x) od, v)
 
-{orbit of <w_1,..,w_n> acting on v where w_i is an element of W (not necessarily a simple reflection)
- application: W^{\delta}-orbit of a root}
-set W_orbit_extra(RootDatum rd,[[int]] S,[int] v)=([[int]],[[int]]):
-let Wreps=[[int]]:[[]],orbit=[v], todo=[([int]:[],v)] in
-while #todo>0 do
-( let (w,a)=todo[0] in
- for x in S do  let b=[int]:ratvec_as_vec(action(rd,x,a)) in let (inlist,loc)=in_list_reverse(orbit,b) in
-   if not inlist then
-    (Wreps:=insert_at(Wreps,x#w,loc), orbit:=insert_at(orbit,b,loc), todo:=todo#(x#w,b)) fi
- od,todo:=for i:#todo -1 from 1 do todo[i] od)  od;(Wreps,orbit)
-set W_orbit_extra(RealForm G,[int] S,[int] v)=([[int]],[[int]]):W_orbit_extra(root_datum(G),S,v)
+{ just the W(S)-orbit W.v }
+set W_orbit((RootDatum,[int],vec) triple) = [vec]:
+  let (,orbit) = W_orbit_extra(triple) in orbit
 
-{find Weyl group element x in <S> taking v to w
-returns (true,[int]:x) or (false,[int]:[])}
-set conjugate_to(RootDatum rd, [[int]] S, [int] v,[int] w)=
-let (W_element,orbit_element)=W_orbit_extra(rd,S,v) then
-i=find(orbit_element,w) in
-if i>=0  then (true,W_element[i]) else (false,[int]:[]) fi
+{ just the coset representatives for the stabilizer of v }
+set W_orbit_W_elements((RootDatum,[int],vec) triple) = [W_word]:
+  let (W_elements,)=W_orbit_extra(triple) in W_elements
 
+{ assume S=all simple roots }
+set W_orbit_extra(RootDatum rd,vec v) = ([W_word],[vec]):
+  generate(for i:semisimple_rank(rd) do (vec x) vec: reflect(rd,i,x) od,v)
+set W_orbit((RootDatum,vec) pair) = [vec]:
+  let (,orbit) = W_orbit_extra(pair) in orbit
+set W_orbit_W_elements((RootDatum,vec) pair) = [W_word]:
+  let (W_elements,) = W_orbit_extra(pair) in W_elements
 
+{ all Weyl group elements of W(rd) or W(G), in no particular order }
+set generate_W (RootDatum rd) = [W_word]:
+  W_orbit_W_elements(rd,numer(rho(rd)))
 
+{ orbit of <w_1,..,w_n> acting on v where w_i is an element of W (W_word),
+  (not always a simple reflection). Use: for W^{\delta}-orbit of a root
+}
+set W_orbit_extra (RootDatum rd,[W_word] S,vec v) = ([W_word],[vec]):
+  generate(for g in S do (vec x) vec: act(rd,g,x) od, v)
+
+{ find Weyl group element x in <S> taking v to w
+  returns (true,x) or (false,null(0))
+}
+set conjugate_to(RootDatum rd, [W_word] S, vec v,vec w) = (bool,vec):
+( let (words,orbit) = W_orbit_extra(rd,S,v), i=0 in
+  while i>=0 and orbit[i]!=w do i-:=1 od
+; if i>=0 then (true,words[i]) else (false,null(0)) fi
+)

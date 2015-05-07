@@ -5,9 +5,9 @@
 { a variable used in this file; set to true for more output from functions }
 set hermitian_debug = false
 
-{ set nu=0 in all terms of a ParamPol }
-set make_nu0 (ParamPol P)= ParamPol:
-  0*P + for w@p in P do (w,p*0) od
+{ set nu=0 in a [Param] or in all terms of a ParamPol }
+set make_nu0 ([Param] P)  = [Param]:  for p in P do p*0 od
+set make_nu0 (ParamPol P) = ParamPol: 0*P + for w@p in P do (w,p*0) od
 
 { orientation_number_term(orientation_nr(p),q) =
   s^{[\ell_0(p)-\ell_0(q)]/2} which should be defined and gives 1 or s

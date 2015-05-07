@@ -1,57 +1,56 @@
+<basic.rx
 <Weylgroup.rx
 
-{compute orbit of W(S).x: orbit of KGB element x
- under simple roots of S of root datum rd,
-algorithm: keep three lists
-Wreps=Wrepresentatives: list of elements of W
-orbit: final list of elements of orbit
-todo: intermediate list of pairs (w,y) where w.x=y)
-recursively, set (w,y)=first entry of todo
- apply each simple reflection j from S to y
- if s_j.y is not in orbit (as determined by the in_list function) add  s_j.y to orbit and (s_j*w,s_j.y) to todo
- delete (w,y) from todo
-continue until todo is empty
-returns: (Wrepresentatives, orbit) where orbit is list of elements of orbit, and for each i Wrepresentatives[i].v=orbit[i]}
+{ compute orbit of W(S).x: orbit of KGB element x
+  under simple roots of S of root datum rd,
 
-set in_list([KGBElt] orbit,KGBElt x)=bool:
-let rv=false in
-let i=0 in
-while i<#orbit do if x=orbit[i] then rv:=true;i:=#orbit else i:=i+1 fi od;rv
+  algorithm: keep two lists and a counter
+  words: list of elements of W
+  orbit: list of elements of orbit
+  done: number of pairs in the above for which successors have been computed
+  iteratively, set (w,y) = (W_word,KGBElt) pair at index done; advance done
+  apply each simple reflection j from S to y
+  if s_j.y is not in orbit
+    add  s_j.y to orbit and (s_j*w,s_j.y) to arrays
+  continue until done = #orbit
 
-set cross_W_orbit_extra([int] S,KGBElt x)=
-let rd=root_datum(real_form(x)) in
-let Wreps=[[]],orbit=[x], todo=[([],x)] in
-while #todo>0 do
-( let (w,a)=todo[0] in
- for i in S do  let b=cross(i,a) in  let inlist=in_list(orbit,b) in
-   if not inlist then
-    (Wreps#:=i#w, orbit#:=b, todo#:=(i#w,b)) fi
- od,todo:=for i:#todo -1 from 1 do todo[i] od)  od;(Wreps,orbit)
-set cross_W_orbit_extra([int] S,KGBElt x)=cross_W_orbit_extra(S,x)
+  returns: (words, orbit) where orbit is list of elements of orbit,
+  and for each i one has W_cross(words[i],x)=orbit[i]
+}
 
-{just the W(S)-orbit W.x}
-set cross_W_orbit([int] S,KGBElt x)=let (W_elements,vectors)=cross_W_orbit_extra(S,x) in vectors
-set cross_W_orbit([int] S,KGBElt x)=cross_W_orbit(S,x)
+set cross_W_orbit_extra([int] S,KGBElt x) = ([W_word],[KGBElt]):
+  let rd = RootDatum: real_form(x), words = [W_word:[]], orbit= [x], done=0
+  then absent (KGBElt y) = bool:
+         let i=#orbit-1 in while i>=0 and y!=orbit[i] do i-:=1 od; i<0
+  in
+  while done<#orbit
+  do
+    let w = words[done], a=orbit[done] in
+    done+:=1
+  ; for i in S
+    do let b=cross(i,a) in
+      if absent(b) then ( words #:= i#w, orbit #:= b ) fi
+    od
+  od; (words,orbit)
 
-{assume S=all simple roots}
-set cross_W_orbit_extra(KGBElt x)=cross_W_orbit_extra(for i:ss_rank(real_form(x)) do i od,x)
-set cross_W_orbit(KGBElt x)=cross_W_orbit(for i:rank(real_form(x)) do i od,x)
-set cross_W_orbit_W_elements(KGBElt x)=let (W_elements,vectors)=cross_W_orbit_extra(for i:rank(real_form(x)) do i od,x) in W_elements
+{ just the W(S)-orbit W.x }
+set cross_W_orbit (([int],KGBElt) pair) = [KGBElt]:
+  let (,orbit) = cross_W_orbit_extra(pair) in orbit
 
-set find_W_cross(KGBElt x,KGBElt y)=[int]:
-let (W_elements,orbit)=cross_W_orbit_extra(x) in
-let rv=[-1] in
-let i=0 in
-while i<#orbit do  if orbit[i]=y then rv:=W_elements[i]; i:=#orbit else i:=i+1 fi od;rv
+{ assume S=all simple roots }
+set cross_W_orbit_extra(KGBElt x) = ([W_word],[KGBElt]):
+  cross_W_orbit_extra(#semisimple_rank(real_form(x)),x)
+set cross_W_orbit(KGBElt x) =
+  cross_W_orbit(#semisimple_rank(real_form(x)),x)
+set cross_W_orbit_W_elements(KGBElt x) = [W_word]:
+  let (words,) = cross_W_orbit_extra(#semisimple_rank(real_form(x)),x) in words
 
+set find_W_cross(KGBElt x,KGBElt y) = W_word:
+  let (words,orbit) = cross_W_orbit_extra(x) then i=#orbit-1 in
+  while i>=0 and y!=orbit[i] do i-:=1 od; if i<0 then [-1] else words[i] fi
 
-
-{just the subset of W(S) in bijection with to W(S).x}
-{set cross_W_orbit_W_elements([int] S,KGBElt x)=let (W_elements,)=cross_W_orbit_extra(S,x) in W_elements
-set cross_W_orbit_W_elements(RealForm G,[int] S,KGBElt x)=cross_W_orbit_W_elements(root_datum(G),S,x)}
-
-
-
-{all Weyl group elements of W(rd) or W(G), in no particular order}
-{set generate_W(RootDatum rd)=W_orbit_W_elements(rd,for i:rank(rd) do i od,ratvectovec(2*rho(rd)))
-set generate_W(RealForm G)=generate_W(root_datum(G))}
+{ just the subset of W(S) that applied to x gives a bijection to W(S).x }
+{
+  set cross_W_orbit_W_elements ([int] S,KGBElt x) = [W_word]:
+    let (words,)=cross_W_orbit_extra(S,x) in words
+}

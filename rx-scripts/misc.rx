@@ -5,7 +5,6 @@ set is_nonnegative (vec v) = bool: >=v
 set is_positive (vec v) = bool: >v
 
 { test if a ratvec is in fact a vec (integers)}
-set is_integer (ratvec v) = bool: denom(v)=1
 set is_positive (ratvec v) = bool: is_positive(numer(v))
 set is_nonnegative (ratvec v)= bool: is_nonnegative(numer(v))
 
