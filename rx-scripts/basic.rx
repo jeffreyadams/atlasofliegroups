@@ -271,8 +271,18 @@ set \ (ratvec v, int k) = vec: let (n,d)=%v in n\(k*d)
 
 { do as |v\1| (or |\ %v|) would do, but protest if there would be a remainder }
 set ratvec_as_vec (ratvec v) = vec:
-  let (w,d)=%v in if d=1 then w else error("Not an integer vector") fi
+  let (w,d)=%v in assert(d=1,"Not an integer vector"); w
 
+set reverse (ratvec v)= ratvec:     let (n,d)=%v in reverse(n)/d
+set lower (int k,ratvec v)= ratvec: let (n,d)=%v in lower(k,n)/d
+set upper (int k,ratvec v)= ratvec: let (n,d)=%v in upper(k,n)/d
+set drop_lower (int k,ratvec v)= ratvec: let (n,d)=%v in drop_lower(k,n)/d
+set drop_upper (int k,ratvec v)= ratvec: let (n,d)=%v in drop_upper(k,n)/d
+
+set >=(ratvec v) = bool: >=numer(v)
+set >(vec v) =     bool: > numer(v)
+set <=(vec v) =    bool: <=numer(v)
+set <(vec v) = bool:     < numer(v)
 
 
 {			    Split integers				}
@@ -343,7 +353,7 @@ set rho_check (RootDatum rd) = ratvec: { rho(dual(rd)), but a bit faster }
 set is_positive_root (RootDatum rd,vec alpha) = bool: rho_check(rd)*alpha>0
 set is_positive_coroot (RootDatum rd,vec alphav) = bool: alphav*rho(rd)>0
 
-
+{ having _all_ roots can be useful }
 set roots (RootDatum rd) = mat:
   let npr=nr_of_posroots(rd)
   in rank(rd)#for i:2*npr from -npr do root(rd,i) od
@@ -351,9 +361,11 @@ set coroots (RootDatum rd) = mat:
   let npr=nr_of_posroots(rd)
   in rank(rd)#for i:2*npr from -npr do coroot(rd,i) od
 
+{ the correspondence between roots and coroots }
 set root (RootDatum rd, vec alpha_v) = vec: root(rd,coroot_index(rd,alpha_v))
 set coroot (RootDatum rd, vec alpha) = vec: coroot(rd,root_index(rd,alpha))
 
+{ reflection action of roots }
 set reflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
   1 - column(root(rd,i))*row(coroot(rd,i))
 set reflection ((RootDatum,vec)(rd,):p) = mat: { specify root (not coroot) }
@@ -376,6 +388,7 @@ set is_real      (mat theta) = (vec->bool): (vec alpha): theta*alpha=-alpha
 set is_complex   (mat theta) = (vec->bool): (vec alpha):
   let ta = theta*alpha in ta!=alpha and ta!=-alpha
 
+{ these functions are just for convenience; posroot versions are more useful }
 set imaginary_roots (RootDatum rd, mat theta) = mat:
   columns_with(is_imaginary(theta),roots(rd))
 set real_roots (RootDatum rd, mat theta) = mat:
@@ -593,10 +606,10 @@ set compact_posroots (KGBElt x) = mat:
 set noncompact_posroots (KGBElt x) = mat:
   columns_with(is_noncompact(x),imaginary_posroots(x))
 
-set is_imaginary (vec v,KGBElt x)=bool:is_imaginary(x)(v)
-set is_real (vec v,KGBElt x)=bool:is_real(x)(v)
-set is_complex (vec v,KGBElt x)=bool:is_complex(x)(v)
-set is_compact (vec v,KGBElt x)=bool:is_compact(x)(v)
+set is_imaginary (vec v,KGBElt x) = bool: is_imaginary(x)(v)
+set is_real (vec v,KGBElt x) =      bool: is_real(x)(v)
+set is_complex (vec v,KGBElt x) =   bool: is_complex(x)(v)
+set is_compact (vec v,KGBElt x) =   bool: is_compact(x)(v)
 
 set print_KGB (KGBElt x) = void:
 ( prints(); prints("Element is number ",#x, " in following KGB set")
@@ -773,3 +786,5 @@ set real_roots_and_coroots (KGBElt x) = (mat,mat):
 
 set complex_posroots (RootDatum rd,mat theta) =  mat:
   columns_with(is_complex(theta),posroots(rd))
+set complex_posroots (KGBElt x) =  mat:
+  complex_posroots(root_datum(x),involution(x))

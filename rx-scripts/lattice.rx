@@ -9,9 +9,10 @@ set submodule_basis(mat M) = mat:
 { a basis representing the quotient by sublattice spanned by columns;
   tests that this sublattice is a direct factor, and throws an error if not }
 set quotient_module_basis(mat M) = mat:
-  let (B,cs) = adapted_basis(M) then l=#cs
-  then ()= if cs!=ones(l) then error("sublattice is not a direct factor") fi
-  in columns_with ((int j)bool: j>=l,B)
+( let (B,cs) = adapted_basis(M) then l=#cs in
+  assert(cs=ones(l),"sublattice is not a direct factor")
+; columns_with ((int j)bool: j>=l,B)
+)
 
 { a basis representing the quotient by saturation of sublattice, so no test }
 set saturation_quotient_module_basis(mat M) = mat:

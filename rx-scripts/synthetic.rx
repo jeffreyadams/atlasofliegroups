@@ -1,6 +1,8 @@
 <basic.rx
-<Weylgroup.rx
-<parameters.rx
+<Weylgroup.rx   { for make_simple@(RootDatum,vec) }
+<parameters.rx  { for parity }
+<lattice.rx     { for in_lattice }
+
 
 set rho_check_i (RootDatum rd, mat theta) = ratvec:
   sum(imaginary_poscoroots(rd,theta))/2
@@ -14,7 +16,7 @@ set grading_coweight (KGBElt x) = ratvec: torus_factor(x) + rho_check_i(x)
 set make_KGB(RealForm G, mat theta, ratvec grading_cowt) = KGBElt:
   KGB_elt(G,theta,grading_cowt - rho_check_i(G,theta))
 
-{--------------------cross actions---------------------}
+{				cross actions				}
 
 set cross (mat w, KGBElt x) = KGBElt:
   let theta=involution(x), G=real_form(x), w1=inverse(w)
@@ -23,6 +25,7 @@ set cross (mat w, KGBElt x) = KGBElt:
 set posroot_cross (int i, KGBElt x) = KGBElt:
   cross(reflection(real_form(x),i),x)
 
+{ the following function is unclear, and should be thrown out or changed
 { cross action of mat:w of Weyl group on parameters
   assuming integral infinitesimal character, otherwise see nonintegral.rx
   if w\in W(gamma) this is the usual cross action
@@ -30,20 +33,20 @@ set posroot_cross (int i, KGBElt x) = KGBElt:
 }
 set cross (mat w, Param p) = Param:
   let x0 = x(p), gamma = infinitesimal_character(p)
-  then rd = root_datum(real_form(x0)),
-  x1=cross(w,x0), grading_wt=gamma-lambda(p)+rho_r(x0)
+  then rd = RootDatm: real_form(x0)
+  , x1=cross(w,x0), grading_wt=gamma-lambda(p)+rho_r(x0)
   then theta1= involution(x1)
   then (new_gamma,)=make_dominant_using_roots(rd, w*gamma)
   in parameter(x1,new_gamma - w*grading_wt + rho_r(rd,theta1), new_gamma)
+}
 
-{--------------------Cayley transforms-------------------}
+{			     Cayley transforms				}
 
 set posroot_Cayley (int i, KGBElt x) = KGBElt:
   let G=real_form(x), theta0=involution(x)
   then rd=root_datum(G)
-  then beta = root(rd,i), theta3=reflection(rd,i)*theta0
-  then (w,s) = make_simple(rd,beta) { root(rd,s) = w(beta) }
-  then w1=inverse(w)
+  then (w,s) = make_simple(rd,root(rd,i)) { root(rd,s) = w(root(rd,i)) }
+  then w1=inverse(w), theta3=reflection(rd,i)*theta0
   then theta1 = w*theta0*w1 { involution for Cayley by root(rd,s) }
   then theta2 = reflection(rd,s)*theta1 { for simple imaginary Cayley }
   then diff1 = rho_check_i(rd,theta1)*w - rho_check_i(rd,theta0)

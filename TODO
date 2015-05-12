@@ -11,6 +11,9 @@
 
 * Work on the realex program
 
+ - Make %@Param deliver (x,lambda_rho,gamma) rather than (x,lambda_rho,nu)
+ - Make *(int,ParamPol) avoid duplicating ParamPol when int is zero
+
  - Find alternative syntax for "verbose" and "quiet", liberating the keywords
 
  - Have error take arguments like prints does

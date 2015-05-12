@@ -1,7 +1,7 @@
 { computing the twist of an external involution on a KGB set, and on a Block }
 
 <basic.rx
-<lattice.rx
+<lattice.rx { for restrict_action }
 
 set check (InnerClass ic, mat delta) = bool:
   let rd = root_datum(ic)

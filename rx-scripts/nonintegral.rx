@@ -12,7 +12,7 @@ forget ext_cross_2@(int,extended_param)
 forget ext_cross_3@(int,extended_param)
 
 set posroot_cross (int i, Param p) = Param:
-  let w=reflection(root_datum(p),i) in cross(w,p)
+  cross(posroots(root_datum(p))[i],p)
 
 { cross action of element mat:w of Weyl group on parameters
   non-integral case, see synthetic.rx for integral case

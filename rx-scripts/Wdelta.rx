@@ -1,23 +1,24 @@
-<Weylgroup
+<basic.rx
+<Weylgroup.rx
 <K.rx {for K_root_datum}
 
-{functions related to W^\delta}
+{ functions related to W^\delta }
 
-{make quotient root datum of rd by distinguished automorphism delta}
+{ make quotient root datum of rd by distinguished automorphism delta }
 
-set delta_fixed_root_datum(RootDatum rd,mat delta)=RootDatum:
-K_root_datum(KGB(quasicompact_form(inner_class(rd,delta)),0))
+set delta_fixed_root_datum (RootDatum rd,mat delta) = RootDatum:
+  K_root_datum(KGB(quasicompact_form(inner_class(rd,delta)),0))
 
-{given root alpha in R^delta, find set S (|S|=1 or 2) of roots for R 
+{given root alpha in R^delta, find set S (|S|=1 or 2) of roots for R
 restricting to alpha
 }
 set pullback_simple_roots(RootDatum rd,mat delta)=
-let P=projection_to_K_matrix(inner_class(rd,delta)) 
-then rd_delta=delta_fixed_root_datum(rd,delta) 
+let P=projection_to_K_matrix(inner_class(rd,delta))
+then rd_delta=delta_fixed_root_datum(rd,delta)
 then rv=[[int]]:[] in
 for alpha in simple_roots(rd_delta) do
- let roots=[int]:[] in 
- for beta@i in simple_roots(rd) do 
+ let roots=[int]:[] in
+ for beta@i in simple_roots(rd) do
   if P*beta=alpha then roots#:=i fi od;rv#:=roots od;rv
 
 {length of a single simple root or pair of simple roots
@@ -28,12 +29,12 @@ set length(RootDatum rd, int i)=1
 set length(RootDatum rd, int i,int j)=if simple_roots(rd)[i]*simple_coroots(rd)[j]=0 then 2 else 3 fi
 
 set pullback_Wdelta_to_W(RootDatum rd,mat delta,[int] S)=
-let pullback_of_roots=pullback_simple_roots(rd,delta) 
-then rv=[int]:[] 
-in for i in S do 
- let pullback=pullback_of_roots[i] in 
- if #pullback=1 then rv#:=pullback 
- elif length(rd, pullback[0],pullback[1])=2 then rv#:=pullback 
+let pullback_of_roots=pullback_simple_roots(rd,delta)
+then rv=[int]:[]
+in for i in S do
+ let pullback=pullback_of_roots[i] in
+ if #pullback=1 then rv#:=pullback
+ elif length(rd, pullback[0],pullback[1])=2 then rv#:=pullback
  else rv#:=[pullback[0],pullback[1],pullback[0]] fi od;rv
 
 {find [int]:w\in W^\delta taking any positive root to a simple root for rd
@@ -41,11 +42,11 @@ root in question is posroots(rd)[j]
 returns ([int]:w,int:k) where w*=posroots_roots(rd)[i]=simple_roots(rd)[k]
 }
 set conjugate_to_simple_by_Wdelta(RootDatum rd, mat delta, int j)=([int],vec):
-let alpha=posroots(rd)[j] 
-then rd_delta=delta_fixed_root_datum(rd,delta) 
-then P=projection_to_K_matrix(inner_class(rd,delta)) 
-then beta=P*alpha 
-then (w0,)=make_simple_sequence(rd_delta,beta) 
+let alpha=posroots(rd)[j]
+then rd_delta=delta_fixed_root_datum(rd,delta)
+then P=projection_to_K_matrix(inner_class(rd,delta))
+then beta=P*alpha
+then (w0,)=make_simple_sequence(rd_delta,beta)
 then w=pullback_Wdelta_to_W(rd,delta,w0) in
 (w, ratvec_as_vec(action(rd,w,alpha)))
 

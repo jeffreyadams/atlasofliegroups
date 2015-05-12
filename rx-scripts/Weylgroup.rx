@@ -19,34 +19,31 @@ set w_matrix(RootDatum rd, W_word w) = mat:
   , alpha = simple_roots(rd), alphav = simple_coroots(rd)
   in for s in w do M -:= M*column(alpha[s])*row(alphav[s]) od; M
 
-{ move_towards_dominant(rd,v)=(s_i.v,i)
-  where i is the last simple root negative on v, or (v,-1) if already dominant
-}
 set non_dominant_index (RootDatum rd, vec v) = int:
   let coords = v*simple_coroots(rd), i=semisimple_rank(rd)-1 in
   while i>=0 and coords[i]>=0 do i-:=1 od; i
-
-set move_towards_dominant (RootDatum rd, vec v) = (vec,int):
-  let i = non_dominant_index(rd,v) in
-  (if i<0 then v else reflection(rd,i)*v fi, i)
-
 
 { make_dominant(rd,v)
   returns (v_dom,w) where v_dom dominant and v=act(rd,w,v_dom)
 }
 set make_dominant (RootDatum rd, vec v) = (vec,W_word):
-  let i=0 then w =
-    while let (new_v,k)=move_towards_dominant(rd,v) in v:=new_v; (i:=k)>=0
-    do i od
+  let i=0
+  then w =while (i:=non_dominant_index(rd,v))>=0 do v:=reflect(rd,i,v); i od
   in (v,w)
 
 set make_dominant (RootDatum rd, ratvec v) = (ratvec,W_word):
   let (v,denom)=%v then (v_dom,w)=make_dominant(rd,v) in (v_dom/denom,w)
 
+{ often one just needs the dominant part, which can be done more efficiently }
+set dominant (RootDatum rd, vec v) = vec:
+  let i=0 in while (i:=non_dominant_index(rd,v))>=0 do v:=reflect(rd,i,v) od; v
+set dominant (RootDatum rd, ratvec v) = ratvec:
+  let (n,d)=%v in dominant(rd,n)/d
+
 { make_simple_sequence and make_simple used to be in synthetic.rx }
 
 { find Weyl group element (W_word) making root simple & index of simple root
-  with result (w,i) one has simple_roots(rd)[i] = act(rd,w,root)
+  with result (w,i) one has simple root(rd,i) = act(rd,w,root)
   note that w in in inverse position with respect to what make_dominant does
 }
 set make_simple_sequence (RootDatum rd, vec root) = (W_word, int):
