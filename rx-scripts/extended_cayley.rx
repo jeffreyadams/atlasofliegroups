@@ -33,9 +33,9 @@ let E=(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
   then id=integrality_datum(ic,gamma)
   then p=parameter(E)
   then type=ext_type_1(delta,j,p) in {1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn}
-  let alpha=vec:simple_roots(id)[j]
+  let alpha= root(id,j) { a simple root }
 {  then ()=prints("j=", j, " alpha=", alpha, " type=", type) }
-  then alpha_check=vec:simple_coroots(id)[j]
+  then alpha_check= coroot(id,j) { a simple coroot }
 {  then ref=posroot_reflection(id,j)
   then coref=posroot_reflection(dual(id),j) in
 }
@@ -95,11 +95,11 @@ set ext_Cayley_2((int,extended_param)(j,(ic,delta,gamma,lambda,theta,g,l,omega,t
   then p=parameter(E)
   then type=ext_type_2(delta,j,p) in {2C+,2C-,2Ci,2Cr,2i11,2i12,2i22,2r22,2r21,2r11,2rn,2ic}
 {  let ()=prints("Cayley of type:", type) in}
-  let alpha=vec:simple_roots(id)[j]
-  then alpha_check=vec:simple_coroots(id)[j]
+  let alpha = root(id,j) { a simple root }
+  then alpha_check = coroot(id,j) { a simple coroot }
   then beta=delta*alpha
   then k=root_index(id,beta)
-  then beta_check=simple_coroots(id)[k]
+  then beta_check=coroot(id,k)  { a simple coroot }
   then s_alpha=reflection(ic,alpha)
   then s_alpha_check=reflection(dual(ic),alpha_check)
   then s_beta=reflection(ic,beta)
@@ -256,7 +256,7 @@ in if not in_string_list(type,cayley_types) then prints("Cayley of type ", type,
  if (not is_fixed(delta,p)) then error("Parameter is not fixed by delta") else
   let rd=root_datum(p)
   then id=integrality_datum(p)
-  then alpha=simple_roots(id)[j] in
+  then alpha = root(id,j) {a simple root } in
   if is_simple_root(rd,alpha) then
     let l=ext_length(integrality_datum(p),delta,j) in
     if l=1 then ext_Cayley_1(j,E)

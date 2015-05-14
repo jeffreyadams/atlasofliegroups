@@ -48,14 +48,14 @@ set dominant (RootDatum rd, ratvec v) = ratvec:
 }
 set make_simple_sequence (RootDatum rd, vec root) = (W_word, int):
   let alpha = simple_roots(rd), alphav = simple_coroots(rd)
-  , r = semisimple_rank(rd), busy = true, i=0, w=W_word:[]
+  , r = semisimple_rank(rd), i=0, val=0, w=W_word:[]
   in
-  while(busy)
-  do let val=0 in i:=0; while i<r and (val:=alphav[i]*root)<=0 do i+:=1 od
-  ; if i=r then error("not a positive root")
-    elif root = alpha[i] then busy:=false
-    else root -:= alpha[i]*val; w := i#w
-    fi
+  while
+    i:=0; while i<r and (val:=alphav[i]*root)<=0 do i+:=1 od
+  ; assert(i<r,"not a positive root")
+  ; root != alpha[i]
+  do root -:= alpha[i]*val
+    ; w := i#w
   od; (w,i)
 
 { as  make_simple_sequence, but return Weyl group element in matrix form }
@@ -69,7 +69,7 @@ set make_simple (RootDatum rd, vec root) = (mat, int):
   this algorithm is crude: it adds a big enough multiple of 2*rho
 }
 set make_dominant_using_roots (RootDatum rd, ratvec v) = (ratvec,vec):
-  let diff = (2*rho(rd))\1 * { minimal factor >= 0 making v+diff dominant }
+  let diff = (2*rho(rd))\1 * { minimal scalar >= 0 making v+diff dominant: }
     ( let k=0 in
       for alpha_check in simple_coroots(rd)
       do k:=max(k,ceil(-v*alpha_check/2)) od

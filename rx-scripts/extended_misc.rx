@@ -100,7 +100,7 @@ set square_is_central(InnerClass ic,x_rep(v,theta)) = bool:
 
 
 : extended_param = (InnerClass,mat,ratvec,vec  ,mat,ratvec,vec,mat,vec,vec)
-  {                (ic       delta,gamma,lambda,theta,g,   l,omega,tau,t) }
+  {                (ic,      delta,gamma,lambda,theta,g,   l,omega,tau,t) }
 
 set ic     (extended_param(ic,,,,,,,,,))     = InnerClass: ic
 set delta  (extended_param(,delta,,,,,,,,))  = mat: delta

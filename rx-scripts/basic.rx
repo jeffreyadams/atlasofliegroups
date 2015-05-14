@@ -706,7 +706,8 @@ set status (vec alpha,Param p) = int: { enum: C-, ic, r1, r2, C+, rn, i1, i2 }
   else 1+real_type(alpha,p)
   fi
 
-set status (int s,Param p) = int: status(posroots(integrality_datum(p))[s],p)
+set status (int s,Param p) = int: { this is NOT related to status(s,x(p)) }
+  status(root(integrality_datum(p),s),p)
 
 set block_status_text (int i) = string:
   ["C-","ic","r1","r2","C+","rn","i1","i2"][i]

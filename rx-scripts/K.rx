@@ -23,22 +23,15 @@ set rho_in(KGBElt x) = ratvec:
 
 { ------------------    matrices related to T_K\subset T  ------------------ }
 
-{ bases of cocharacter lattice of K_0 (as rows), and reps of generators X^*(K)
-  returns a pair of matrices (B,M), sizes r*n and n*r where r is the rank
-  of K (and that of the +1 eigenspace of delta), such that M*B=1+delta, B*M=2I
+{ bases of cocharacter lattice of K_0 (as rows)
+  returns a matrix B of size r*n where r is the rank of K whose rows are
+  a basis of the +1 left-eigenspace delta
 
   One has B*delta=B; the matrix B can be viewed as a projection X^*->X^*(K),
   and right-multiplication by it (its transpose) as injection X_*(K)->X_*.
-
-  The matrix M is 2 times a section of B, mapping X^*(K)->(1+delta)X^*
 }
-set cocharacter_lattice_K_info (InnerClass ic) = (mat,mat):
-  let A=1+distinguished_involution(ic) then (coefs,,R) = diagonalize(A)
-  then initial = let rank_K = #coefs in (int j)bool: j<rank_K
-  in
-  ( rows_with(initial,inverse(R)) { rows: basis of +1 left-eigenspace delta }
-  , A * columns_with(initial,R) { columns span weights in image of 1+delta }
-  )
+set cocharacter_lattice_K (InnerClass ic) = mat:
+  eigen_lattice(^distinguished_involution(ic),1)
 
 { matrix of projection X^*(T)-> X^*(T_K) where T is fundamental Cartan of G,
   and T_K is identity component of fundamental Cartan of K
@@ -46,18 +39,18 @@ set cocharacter_lattice_K_info (InnerClass ic) = (mat,mat):
   project modulo the -1 eigenspace of the distinguished involution
 }
 set projection_to_K_matrix (InnerClass ic) = mat:
-  let (proj,)=cocharacter_lattice_K_info(ic) in proj
+  ^cocharacter_lattice_K(ic) { just the transpose of injection matrix }
 
 { projection function that accepts rational vectors whose image is integral }
 set project_K (InnerClass ic,ratvec v)= vec:
-  ratvec_as_vec(projection_to_K_matrix(ic)*v)
+  ratvec_as_vec(v*cocharacter_lattice_K(ic))
 
 { matrix of injection X_*(T_K)->X_*(T); image is a saturated sublattice }
-set injection_from_K_matrix(InnerClass ic) = mat:
-  let (proj,)=cocharacter_lattice_K_info(ic) in ^proj
+set injection_from_K_matrix = (InnerClass->mat):
+  cocharacter_lattice_K@InnerClass
 
 set rank_K (InnerClass ic) = int:
-  let (ds,,) = diagonalize(1+distinguished_involution(ic)) in #ds
+  let (c,C,)=classify_involution(distinguished_involution(ic)) in c+C
 
 { G_K_roots_and_coroots
   Input: x in fundamental fiber, so theta permutes positive complex roots
@@ -74,10 +67,10 @@ set rank_K (InnerClass ic) = int:
 }
 set G_K_roots_and_coroots (KGBElt x) = ((mat,mat),(mat,mat)):
   let ic = inner_class(real_form(x))
-  then (proj { cols: weights },M) = cocharacter_lattice_K_info(ic)
+  then inj = cocharacter_lattice_K(ic) { injection (X_*(T_K)->X_*(T)^\theta) }
   , delta = distinguished_involution(ic), rd = root_datum(ic)
-  then inj = ^proj  { injection (X_*(T_K)->X_*(T)^\theta) }
   then pull_back = left_inverse(inj) { columns are coweights in X_*(K) }
+  , proj = ^inj { projection X^*->X^*(K) }
   , proots = posroots(rd), pcroots = poscoroots(rd), r = rank(rd)
   , is_cpt  = is_compact(x) { predicate on imaginary roots }
   , ic_inx = [int]:[], C_inx = [int]:[] { list indices into proots/pcroots }
@@ -90,11 +83,12 @@ set G_K_roots_and_coroots (KGBElt x) = ((mat,mat),(mat,mat)):
        fi
     od
   ; (( proj * r#for i in ic_inx#C_inx do proots[i] od
-     , (pull_back * r#for i in ic_inx do pcroots[i] od)
-       # { for complex coroots apply 1+delta implicitly to recover the pair }
-       ( ^M * { maps v\in X_* to elt in X_*(K) with inj image v*(1+delta) }
-         r#for i in C_inx do pcroots[i]*(int: 1-pcroots[i]*delta*proots[i]) od
-         { the factor after int: is yet another way of expressing c above }
+     , pull_back *
+       (r#for i in ic_inx do pcroots[i] od)
+       # { concatenate matrices }
+       (r#for i in C_inx
+          do pcroots[i]*(1+delta)*(int: 1-pcroots[i]*delta*proots[i]) od
+          { the factor after int: is yet another way of expressing c above }
        )
      )
     ,(inj,pull_back) { in case somebody needs them; not actually used below }
@@ -122,7 +116,7 @@ set rho_K (RealForm G) = ratvec:rho(K_0(G))
 
 {	  conversion from restriction to K format to Param		}
 
-{ atlas outputs a K-type as two_lambada@torus_bits#cartan_class
+{ atlas outputs a K-type as two_lambda@torus_bits#cartan_class
   this defines a final standard limit parameter p=(x,lambda) where
   torus_factor(x)=base_grading(G)+torus_bits, and involution(x) is the
   canonical involution of the Cartan_class
@@ -136,6 +130,7 @@ set convert_K_type (RealForm G,vec two_lambda, vec torus_bits, int cartan) =
   , theta=involution(Cartan_class(G,cartan))
   in parameter(KGB_elt(G,theta,torus_factor),two_lambda/2,null(rank(G)))
 
+{ another version where the K-type specific part is grouped into a 3-tuple }
 set convert_K_type (RealForm G,(vec two_lambda, vec torus_bits, int cartan)) =
   Param:
   convert_K_type(G,two_lambda,torus_bits,cartan)
