@@ -3769,7 +3769,7 @@ implement a new approach, less confusing and more general, in which the root
 is specified in coordinates. Given the internal implementation, there is in
 fact little dealing with the integral subsystem at all, just a test that it
 contains the specified root (if not an error is thrown inside the method
-called; the error will not happen if |l==expression_base::no_value|, ehich is
+called; the error will not happen if |l==expression_base::no_value|, which is
 not quite correct).
 
 There is not much difference between integral roots that are simple for the
