@@ -1355,8 +1355,24 @@ not yet started executing would be confusing.
 @< Function definitions @>=
 void call_expression::evaluate(level l) const
 { function->eval(); @+ shared_value fun=pop_value();
-@/const builtin_value* f=dynamic_cast<const builtin_value*>(fun.get());
+@/size_t sp = execution_stack.size();
+  std::string arg_string;
+  const builtin_value* f=dynamic_cast<const builtin_value*>(fun.get());
   argument->evaluate(f==nullptr ? single_value : multi_value);
+  if (verbosity>0)
+  { std::ostringstream o;
+    if (f==nullptr or sp+1==execution_stack.size()) // get single argument
+      o << *execution_stack.back();
+    else // built-in with multiple arguments, gather them
+    { o << '(';
+      while(sp<execution_stack.size())
+    @/{@; o << *execution_stack[sp++];
+          o << (sp<execution_stack.size() ? ',' : ')');
+      }
+    }
+    arg_string = o.str();
+  }
+@)
   try
   { if (f==nullptr)
       @< Call user-defined function |fun| with argument on |execution_stack| @>
@@ -1398,17 +1414,16 @@ below so clumsy.)
 catch (const std::exception& e)
 { identifier* p=dynamic_cast<identifier*>(function.get());
   std::ostringstream o (e.what(),std::ios_base::ate); // append to |e.what()|
-  o << "\n(in call of ";
-  if (p==nullptr)
-    o << "anonymous function";  // no name
-  else o << p->name(); // named function
-  o  << ", ";
+  o << "\n(in call of " << (p==nullptr ?  "anonymous function" : p->name() )
+    << ", ";
   if (f!=nullptr) o<< "built-in";
   else // user-defined function
   {@; const closure_value* f=force<closure_value>(fun.get());
     o << "defined " << f->p->loc;
   }
   o << ')';
+  if (verbosity>0)
+    o << "\n  argument" << (arg_string[0]=='(' ? "s: " : ": ") << arg_string;
   const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
   if (l_err!=nullptr)
     throw std::logic_error(o.str());
@@ -1418,41 +1433,62 @@ catch (const std::exception& e)
 @*1 Evaluating overloaded built-in function calls.
 %
 Calling an overloaded built-in function calls the wrapper function after
-evaluating the argument(s). We provide the same trace of interrupted functions
-by temporarily catching errors as in the case of non-overloaded function
-calls, but here we need not test that the call was one of a named function.
+evaluating the argument(s) to the stack.
 
-@< Function definitions @>=
-void overloaded_builtin_call::evaluate(level l) const
-{ argument->multi_eval();
-  try
-  {@; (*f)(l); }
-  catch (const std::exception& e)
-  { std::ostringstream o (e.what(),std::ios_base::ate); // append to |e.what()|
-    o << "\n(in call of " << print_name << ' ' << loc @| << ", built-in)";
-    const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
-    if (l_err!=nullptr)
-      throw std::logic_error(o.str());
-    throw std::runtime_error(o.str());
-  }
-}
-
-@ For generic built-in functions like |print| we only change the fact that
+For generic built-in functions like |print|, we only change the fact that
 arguments are evaluated using |eval| to a single value on the stack.
 
 @< Function definitions @>=
-void generic_builtin_call::evaluate(level l) const
-{ argument->eval();
-  try
-  {@; (*f)(l); }
-  catch (const std::exception& e)
-  { std::ostringstream o (e.what(),std::ios_base::ate); // append to |e.what()|
-    o << "\n(in call of " << print_name << ' ' << loc @| << ", built-in)";
-    const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
-    if (l_err!=nullptr)
-      throw std::logic_error(o.str());
-    throw std::runtime_error(o.str());
+void overloaded_builtin_call::evaluate(level l) const
+{ size_t sp = execution_stack.size();
+  std::string arg_string;
+  argument->multi_eval();
+  if (verbosity>0) // then record argument(s) as string
+  { std::ostringstream o;
+    if (sp+1==execution_stack.size())
+      o << *execution_stack.back();
+    else
+    { o << '(';
+      while(sp<execution_stack.size())
+    @/{@; o << *execution_stack[sp++];
+          o << (sp<execution_stack.size() ? ',' : ')');
+      }
+    }
+    arg_string = o.str();
   }
+@)
+  @< Execute |(*f)(l)|, catching and re-throwing any errors, having extended
+     the message with a reference to built-in function |print_name| @>
+}
+
+void generic_builtin_call::evaluate(level l) const
+{ std::string arg_string;
+  argument->eval();
+  if (verbosity>0) // then record argument(s) as string
+  {@; std::ostringstream o;
+    o << *execution_stack.back();
+    arg_string = o.str();
+  }
+@)
+  @< Execute |(*f)(l)|, catching and re-throwing any errors...@>
+}
+
+@ Like for general function calls, we provide a trace of interrupted functions
+by temporarily catching errors. The main difference is that we need not test
+that the call was one of a named function, nor that it is built-in.
+
+@< Execute |(*f)(l)|, catching and re-throwing any errors...@>=
+try
+{@; (*f)(l); }
+catch (const std::exception& e)
+{ std::ostringstream o (e.what(),std::ios_base::ate); // append to |e.what()|
+  o << "\n(in call of " << print_name << ' ' << loc @| << ", built-in)";
+  if (verbosity>0)
+    o << "\n  argument" << (arg_string[0]=='(' ? "s: " : ": ") << arg_string;
+  const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
+  if (l_err!=nullptr)
+    throw std::logic_error(o.str());
+  throw std::runtime_error(o.str());
 }
 
 @*1 Some special wrapper functions.
@@ -2159,9 +2195,16 @@ are always in the latter case) for producing the error trace.
 @< Function definitions @>=
 void overloaded_closure_call::evaluate(level l) const
 { argument->eval();
+  std::string arg_string;
   try
   { lambda_frame fr(fun->p->param,fun->context);
-    // save context, create new one for |fun|
+    if (verbosity>0) // then record argument(s) as string
+    {@; std::ostringstream o;
+      o << *execution_stack.back();
+      arg_string = o.str();
+    }
+@)
+    // now save context, create new one for |fun|
     fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
     fun->body.evaluate(l);
     // call, passing evaluation level |l| to function body
@@ -2170,6 +2213,8 @@ void overloaded_closure_call::evaluate(level l) const
   { std::ostringstream o (e.what(),std::ios_base::ate); // append to |e.what()|
     o << "\n(in call of " << print_name << ' ' << loc @|
       << ", defined " << fun->p->loc <<')';
+    if (verbosity>0)
+      o << "\n  argument" << (arg_string[0]=='(' ? "s: " : ": ") << arg_string;
     const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
     if (l_err!=nullptr)
       throw std::logic_error(o.str());
