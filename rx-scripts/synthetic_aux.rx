@@ -23,8 +23,10 @@ set Wword_cross(W_word ww,KGBElt x)=KGBElt:
 
 { no need for special code  for the simple reflection case }
 
-{ The following differs from posroot_Cayley by final call of T only
-  Why is this necessary?
+{ The following differs from posroot_Cayley by final call of T only?
+  No, there was rho_r(id,..) in some places where rho_r(rd,..) was needed.
+  Ans also there is make_simple(rd,beta) here, but make_simple(id,beta) there
+  Why is the call to T necessary?ut make_simple(id,beta) there.
   Isn't final parameter(x3,..) already defined at infin. character gamma?
 }
 set my_posroot_Cayley (int i, Param p) = Param:
@@ -107,24 +109,26 @@ set test_cayleys (Param p) = void:
     od
   od; prints("posroot:", result1);prints("my_posroot:", result2)
 
+{ do the same test without using posroot_Cayley, which crased in some cases }
 set test_cayleys_2 (Param p) = void:
-  let B=block_of(p)
+  let G=real_form(p), B=block_of(p)
   , simple_integral_roots=simple_roots(integrality_datum(p))
-  , G=real_form(p)
+  then simple_indices = [int]:
+    for alpha in simple_integral_roots do root_index(G,alpha) od
   , result=true
   in
   for q@k in B do
     prints(k, " ", q)
-  ; for i:n_columns(simple_integral_roots) do
-      let passed_my_posroot=true
-      then j=root_index(G,simple_integral_roots[i])
+  ; for j@i in simple_indices
+    do
+      let c1=Cayley(i,q) { calls built-in (or new_blocks.rx substitute) }
       in
-      if Cayley(i,q) != q {Cayley is defined} then
-        let c1=Cayley(i,q), c2=my_posroot_Cayley(j,q) in
-        if c2!=c1 and c2!=cross(i,c1)
-        then passed_my_posroot:=false; result:=false
-        fi
-      ; prints(passed_my_posroot)
+      if c1 != q {Cayley is defined}
+      then
+        let c2 = my_posroot_Cayley(j,q)
+        then passed_my_posroot = c2=c1 or c2=cross(i,c1)
+        in if result then result:= passed_my_posroot fi { perform 'and' }
+        ;  prints(passed_my_posroot)
       fi
     od
   od; prints("my_posroot:", result)
