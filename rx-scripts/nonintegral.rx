@@ -65,7 +65,7 @@ set ext_cross(
   then theta1=involution(x1)
   , lambda1 = ratvec_as_vec(
     gamma1 - w*(gamma-lambda) + (w-1)*rho(rd) - (w*rho_r(x)-rho_r(x1)) )
-  then tau1 = ratvec_as_vec( { following is wrong: adds weight and coweight }
+  then tau1 = ratvec_as_vec( { following is wrong: add weight and coweight? }
     w*tau - (^delta-1)*(^w*rho_check_i(x)-rho_check_i(x1)/2) )
   then u = inverse(^w)
   then l1 = ratvec_as_vec(

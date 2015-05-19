@@ -13,7 +13,7 @@ set rho_r (RootDatum rd, mat theta) = ratvec:
 set grading_coweight (KGBElt x) = ratvec: torus_factor(x) + rho_check_i(x)
 
 { alternative to KGB_elt that incorporates shift by rho_check_i }
-set make_KGB(RealForm G, mat theta, ratvec grading_cowt) = KGBElt:
+set make_KGB (RealForm G, mat theta, ratvec grading_cowt) = KGBElt:
   KGB_elt(G,theta,grading_cowt - rho_check_i(G,theta))
 
 {				cross actions				}
@@ -31,21 +31,6 @@ set posroot_cross (int i, Param p) = Param:
   , x1=posroot_cross(i,x0), grading_wt=gamma-lambda(p)+rho_r(x0)
   then theta1= involution(x1), w=reflection(rd,i)
   in parameter(x1, gamma - w*grading_wt + rho_r(rd,theta1), gamma)
-
-{ the following function is unclear, and should be thrown out or changed
-{ cross action of mat:w of Weyl group on parameters
-  assuming integral infinitesimal character, otherwise see nonintegral.rx
-  if w\in W(gamma) this is the usual cross action
-  if w\not\in W(gamma) this has different (dominant) infinitesimal character
-}
-set cross (mat w, Param p) = Param:
-  let x0 = x(p), gamma = infinitesimal_character(p)
-  then rd = RootDatm: real_form(x0)
-  , x1=cross(w,x0), grading_wt=gamma-lambda(p)+rho_r(x0)
-  then theta1= involution(x1)
-  then (new_gamma,)=make_dominant_using_roots(rd, w*gamma)
-  in parameter(x1,new_gamma - w*grading_wt + rho_r(rd,theta1), new_gamma)
-}
 
 {			     Cayley transforms				}
 
@@ -150,7 +135,7 @@ end
   which equivalent to:   (1+theta)(v-w)\in (1+theta)X
   For normalized tourus factors, use (1+theta)*(v-w)/2 instead
 }
-set is_conjugate(ratvec v,ratvec w,mat theta) = bool:
+set is_conjugate (ratvec v,ratvec w,mat theta) = bool:
   let t1=1+theta in in_lattice(t1,t1*(v-w))
 
 {  generalized KGB elements: x^2 not necessarily central }
@@ -175,13 +160,15 @@ set unnormalized_torus_factor (KGBElt_gen(ic,,t)) = ratvec: (t+rho_check(ic))/2
   see discussion of unnormalized_torus_factor in parameters.rx
 }
 
-set =(KGBElt_gen x1,KGBElt_gen x2) = bool:
+set = (KGBElt_gen x1,KGBElt_gen x2) = bool:
   (   inner_class(x1)=inner_class(x2)
   and involution(x1)=involution(x2)
   and is_conjugate(unnormalized_torus_factor(x1)
 		  ,unnormalized_torus_factor(x2)
 		  ,^involution(x1))
   )
+set != ((KGBElt_gen,KGBElt_gen)p) = bool: not =p
+
 {
   Dangerous bend: this formula appears to be right, with the
   unnormalized torus factors, no dividing by 2, and the transpose
@@ -191,7 +178,7 @@ set =(KGBElt_gen x1,KGBElt_gen x2) = bool:
 set *(mat delta,KGBElt_gen(ic,theta,t)) = KGBElt_gen:
   (ic,delta*theta*delta,t*delta)
 
-set is_fixed(mat delta,KGBElt_gen y) = bool: y = delta*y
+set is_fixed (mat delta,KGBElt_gen y) = bool: y = delta*y
 
 
 

@@ -1,8 +1,9 @@
 <basic.rx
+<extended_misc.rx
 <extended_types.rx
 
 { debug ext_cross construction, shouldn't be necessary }
-set test_ext_cross(Param p, [int] kappa, extended_param xq) = void:
+set test_ext_cross (Param p, [int] kappa, extended_param xq) = void:
   let ()=if not valid(xq) then error("xq is not valid") fi
   then q=parameter(xq), cross=W_cross(kappa,p)
   in
@@ -104,7 +105,7 @@ set ext_cross_2(int j
       (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
     in test_ext_cross(p,[j],xq); xq
   elif (type="2i11") then
-{    let ()=prints("type 2i11") in }
+{   prints("type 2i11"); }
     let new_lambda=lambda, new_l = l+alpha_check+beta_check
     , new_theta = s_ab*theta*s_beta*s_alpha
     , new_omega = s_ab_check*omega*s_ab_check
@@ -113,22 +114,22 @@ set ext_cross_2(int j
       (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_t,new_tau)
     in test_ext_cross(p,[j],xq); xq
   elif (type="2i12") then
-{    let ()=prints("TYPE 2i12") in }
-{    let ()=prints("alpha check:", alpha_check) in}
+{   prints("TYPE 2i12"); }
+{   prints("alpha check:", alpha_check); }
     let new_lambda=lambda
     , new_l = l+alpha_check
     , new_theta = s_ab*theta*s_beta*s_alpha
     , new_omega = s_ab_check*omega*s_ab_check
     , new_tau = tau
-{    , new_t = let (s,valid) = solve(1+omega,alpha_check-beta_check)}
-{see Table 2 in twisted paper, case 2i12crx}
+{   , new_t = let (s,valid) = solve(1+omega,alpha_check-beta_check)}
+{ see Table 2 in twisted paper, case 2i12crx }
     , new_t = let (s,valid) = solve(1+^theta,alpha_check-beta_check)
       in if valid then t-s
          else error("failure in cross action of type 2i12, solving for s")
          fi
     then xq=
       (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
-    in{ test_ext_cross(p,[j],xq);} xq
+    in { test_ext_cross(p,[j],xq); } xq
   elif (type="2r22") then
     let new_lambda=vec:lambda+alpha+beta
     , new_l = l
@@ -144,8 +145,8 @@ set ext_cross_2(int j
     , new_l = l
     , new_theta = s_ab*theta*s_beta*s_alpha
     , new_omega = s_ab_check*omega*s_ab_check
-{    , new_tau = let (zeta,valid) = solve(1+theta,alpha-beta)}
-{see Table 2 in twisted paper, case 2r21crx}
+{    , new_tau = let (zeta,valid) = solve(1+theta,alpha-beta) }
+{ see Table 2 in twisted paper, case 2r21crx }
     , new_tau = let (zeta,valid) = solve(1+omega,alpha-beta)
       in if valid then tau-zeta
          else error("failure in cross action of type 2r21, solving for zeta")
@@ -161,18 +162,18 @@ set ext_cross_2(int j
 { extenteded cross action not yet defined }
 set ext_cross_3(int j,extended_param E) = extended_param:
   let p=parameter(E) then type=ext_type_2(delta(E),j,p)
-{  in let ()=prints("ext_cross_3") }
-  in E { should be defined properly here! FIXME }
- 
-{ ext_cross calls one of the ext_cross_i 
-this command used to be called in all cases, replaced by nonintegral.rx:ext_cross
-except in special cases: types 2i11/2i12/2r22/2r21}
-set ext_cross_simple(int j, extended_param (ic,delta,,,,,,,,):E) = extended_param:
-  let p=parameter(E), l=ext_length(integrality_datum(E),delta,j) in
-{  let ()=prints("length is:", l) in }
-  if is_fixed(delta,p) then
-    [ext_cross_1@(int,extended_param)
-    ,ext_cross_2@(int,extended_param)
-    ,ext_cross_3@(int,extended_param)] [l-1] (j,E)  {note: l-1 here}
-  else error("Parameter is not fixed by delta")
-  fi
+  in prints("ext_cross_3"); E { should be defined properly here! FIXME }
+
+{ ext_cross calls one of the ext_cross_i
+  this command used to be called in all cases, but is replaced by
+  nonintegral.rx:ext_cross
+  except in special cases: types 2i11/2i12/2r22/2r21 }
+set ext_cross_simple (int j, extended_param (ic,delta,,,,,,,,):E) =
+    extended_param:
+( let p=parameter(E), l=ext_length(integrality_datum(E),delta,j) in
+{ prints("length is:", l); }
+  assert(is_fixed(delta,p),"Parameter is not fixed by delta")
+; [ext_cross_1@(int,extended_param)
+  ,ext_cross_2@(int,extended_param)
+  ,ext_cross_3@(int,extended_param)] [l-1] (j,E)  { note the l-1 here }
+)

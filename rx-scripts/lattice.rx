@@ -3,19 +3,19 @@
 
 { M is an nxk matrix, columns of M define a Z-module W }
 
-set submodule_basis(mat M) = mat:
+set submodule_basis (mat M) = mat:
   let (B,cs) = adapted_basis(M) in n_rows(B) # for c@j in cs do c*B[j] od
 
 { a basis representing the quotient by sublattice spanned by columns;
   tests that this sublattice is a direct factor, and throws an error if not }
-set quotient_module_basis(mat M) = mat:
+set quotient_module_basis (mat M) = mat:
 ( let (B,cs) = adapted_basis(M) then l=#cs in
   assert(cs=ones(l),"sublattice is not a direct factor")
 ; columns_with ((int j)bool: j>=l,B)
 )
 
 { a basis representing the quotient by saturation of sublattice, so no test }
-set saturation_quotient_module_basis(mat M) = mat:
+set saturation_quotient_module_basis (mat M) = mat:
   let (B,cs) = adapted_basis(M) then l=#cs
   in columns_with ((int j)bool: j>=l,B)
 
@@ -24,7 +24,7 @@ set saturation_quotient_module_basis(mat M) = mat:
   sub_matrix(M,W) is the k*k matrix giving the action of A on W,
   using columns of M as basis
 }
-set sub_matrix(mat A,mat M) = mat:
+set sub_matrix (mat A,mat M) = mat:
   let P = M#kernel(^M) then (Pinverse,d) = invert(P)
   then Q = minor(Pinverse*A*P,n_columns(M)) { extract top-left k*k block }
   in assert(=Q%d,"lattice not fixed"); Q\d
@@ -59,7 +59,7 @@ set corestrict_action (mat A, mat M) = mat: ^restrict_action(^A,^M)
   quotient_matrix(M,W) is the matrix of M on V/W,
   using the basis from quotient_module_basis(M)
 }
-set quotient_matrix(mat M,mat A) = mat:
+set quotient_matrix (mat M,mat A) = mat:
   let P= submodule_basis(M)#quotient_module_basis(M), ncM=n_columns(M)
   then (Pinverse,d) = invert(P)
   then Q = minor(Pinverse*A*P,n_columns(A)-ncM,ncM)
@@ -98,18 +98,18 @@ set projection_to_image (mat M) = mat:
   - the remainder of y is unconstrained, take them to be 0
   - now x = R*y can be computed using only first d columns of R and target/D
 }
-set solve_ratvec(mat A, vec v) = ratvec:
+set solve_ratvec (mat A, vec v) = ratvec:
   let (ds,L,R) = diagonalize(A) then d=#ds, target=L*v
   in begin
     for i:#target-d from d do assert(=target[i],"not in span") od
   ; columns_with((int j):j<d,R) * for i:d do target[i]/ds[i] od end
 
-set in_lattice(mat M, ratvec v) = bool: { whether v in image lattice of M }
+set in_lattice (mat M, ratvec v) = bool: { whether v in image lattice of M }
   let (ds,L,) = diagonalize(M) then d=#ds, target=L*v
   in all(#target, (int i): =if i<d then target[i]%ds[i] else target[i] fi )
 
 { as |solve_ratvec| but for integer solutions; now divisions must be exact }
-set solve_vec(mat A, vec v) = vec: { find integer solution to A*x=v }
+set solve_vec (mat A, vec v) = vec: { find integer solution to A*x=v }
   let (ds,L,R) = diagonalize(A) then d=#ds
   then target =
     for c@i in L*v
@@ -121,7 +121,7 @@ set solve_vec(mat A, vec v) = vec: { find integer solution to A*x=v }
   in columns_with((int j):j<d,R) * for i:d do target[i] od
 
 { alternative version: avoid error, but return success status in result }
-set solve(mat A, vec v) = (vec,bool): { find integer solution to A*x=v }
+set solve (mat A, vec v) = (vec,bool): { find integer solution to A*x=v }
   let (ds,L,R) = diagonalize(A) then d=#ds, success=true
   then target =
     for c@i in L*v
@@ -131,4 +131,3 @@ set solve(mat A, vec v) = (vec,bool): { find integer solution to A*x=v }
        fi
     od
   in ( columns_with((int j):j<d,R) * for i:d do target[i] od , success )
-

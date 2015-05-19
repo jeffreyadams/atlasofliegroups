@@ -117,33 +117,33 @@ set make_regular (RootDatum rd, ratvec v) = ratvec:
 set choose_g (RealForm G, RootDatum dual_integral) = ratvec:
   make_regular(dual_integral,base_grading_vector(G)+rho(dual_integral))
 
-set choose_g(KGBElt x, KGBElt y)=ratvec:
+set choose_g (KGBElt x, KGBElt y)=ratvec:
 ( let Gx=real_form(x), Gy=real_form(y) { could have taken these as arguments }
   in
-{   prints("square(x):", square(Gx))
-  ; prints("rho_check(G):", rho_check(Gx))
-  ; prints("square(x)-rho_check(G):", square(Gx)-rho_check(Gx))
-  ; prints("square(y):", square(Gy))
-  ; prints("rho':", rho(Gy))
+{ prints("square(x):", square(Gx));
+  prints("rho_check(G):", rho_check(Gx));
+  prints("square(x)-rho_check(G):", square(Gx)-rho_check(Gx));
+  prints("square(y):", square(Gy));
+  prints("rho':", rho(Gy));
 }
   choose_g(Gx,root_datum(Gy))
 )
 
-set choose_g(Param p) = ratvec:
+set choose_g (Param p) = ratvec:
   choose_g(real_form(p),dual(integrality_datum(p)))
 
 { gamma=infinitesimal character to combine with x, found from real_form(y) }
-set parameter(KGBElt x,KGBElt y,ratvec gamma)=Param:
+set parameter (KGBElt x,KGBElt y,ratvec gamma)=Param:
   parameter(x,lambda(gamma,x,y),nu(gamma,x)) { final argument gamma would work }
 
 { the next function used to be wrong, with choose_g(x,y) instead }
-set parameter(KGBElt x, KGBElt y)=Param:
+set parameter (KGBElt x, KGBElt y)=Param:
   parameter(x,y,choose_g(y,x)) { computes gamma from real_form(y), x-dominant }
 
 {this gives a parameter for the dual group with infinitesimal character g}
 {
-  set dual_parameter(KGBElt x, KGBElt y,ratvec g) = Param: parameter(y,x,g)
-  set parameter_pair(KGBElt x, KGBElt y,ratvec gamma,ratvec g) = (Param,Param):
+  set dual_parameter (KGBElt x, KGBElt y,ratvec g) = Param: parameter(y,x,g)
+  set parameter_pair (KGBElt x, KGBElt y,ratvec gamma,ratvec g) = (Param,Param):
   (parameter(x,y,gamma), dual_parameter(x,y,g))
 }
 

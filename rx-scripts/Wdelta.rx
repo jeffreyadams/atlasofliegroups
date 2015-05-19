@@ -12,15 +12,15 @@ set delta_fixed_root_datum (InnerClass ic) = RootDatum:
 set delta_fixed_root_datum ((RootDatum,mat) pair) = RootDatum:
   delta_fixed_root_datum(inner_class(pair))
 
-{ given root alpha in R^delta, find set S of roots (one or two of them)
-  for R restricting to alpha
+{ Given root alpha in R^delta, find short Weyl word describing corresponding
+  reflection. Tabulate this for all simple reflections of R^delta
 }
 set translate_Wdelta_generators (InnerClass ic) = [[int]]:
   let P = projection_to_K_matrix(ic)
   , rd_delta=delta_fixed_root_datum(ic), rd = RootDatum: ic
   then word =[[int]]: for i:semisimple_rank(rd_delta) do [] od
   in
-  for beta@i in simple_roots(ic)
+  for beta@i in simple_roots(rd)
   do let j = root_index(rd_delta,P*beta) then wj = word[j] in
     word[j] :=
     if =#wj then [i]
@@ -30,7 +30,7 @@ set translate_Wdelta_generators (InnerClass ic) = [[int]]:
     fi
   od; word
 
-set translate_Wdelta_generators((RootDatum,mat) pair) =
+set translate_Wdelta_generators ((RootDatum,mat) pair) =
   translate_Wdelta_generators(inner_class(pair))
 
 { length of a single simple root or pair of simple roots

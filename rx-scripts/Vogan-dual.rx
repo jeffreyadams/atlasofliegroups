@@ -55,8 +55,8 @@ set theta_stable_diff ((KGBElt, ratvec)(x,z):xz) = ratvec:
 { given a $\theta$-fixed torus element, find a $\theta$-fixed logarithm }
 set fixed_lift (mat theta_1,ratvec z) = (ratvec,(vec,mat,mat)):
   let (image,denom) = %(z*theta_1), (d,L,R):dLR=diagonalize(theta_1)
-  then correction = assert(denom=1,"torus element is not fixed by involution")
-       ;  for e@i in image*R do if i<#d then e\d[i] else 0 fi od * L
+  then r=#d next assert(denom=1,"torus element is not fixed by involution")
+  then correction = for e@i in image*R do if i<r then e\d[i] else 0 fi od * L
   in assert(correction*theta_1=image,"no lift possible"); ( z-correction, dLR )
 
 {
@@ -136,7 +136,7 @@ set dual_alt (Param p, InnerClass dual_integral_class) = Param:
 { caution: these three functions build an inner class on the fly; if called
   multiple times even with the same argument, the results will be incompatible
 }
-set y_alt(Param p) = KGBElt: dual_KGB(p,dual_inner_class(p))
+set y_alt (Param p) = KGBElt: dual_KGB(p,dual_inner_class(p))
 set dual_real_form (Param p) = RealForm: real_form(y_alt(p))
 set dual_alt (Param p) = Param: dual_alt(p,dual_inner_class(p))
 

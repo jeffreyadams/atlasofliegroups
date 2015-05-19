@@ -280,9 +280,9 @@ set drop_lower (int k,ratvec v)= ratvec: let (n,d)=%v in drop_lower(k,n)/d
 set drop_upper (int k,ratvec v)= ratvec: let (n,d)=%v in drop_upper(k,n)/d
 
 set >=(ratvec v) = bool: >=numer(v)
-set >(vec v) =     bool: > numer(v)
-set <=(vec v) =    bool: <=numer(v)
-set <(vec v) = bool:     < numer(v)
+set > (ratvec v) = bool: > numer(v)
+set <=(ratvec v) = bool: <=numer(v)
+set < (ratvec v) = bool: < numer(v)
 
 
 {			    Split integers				}
@@ -291,8 +291,8 @@ set s = Split:(0,1)
 set + (Split x) = let (r,)=%x in r { real part }
 set ^ (Split x) = let (,y)=%x in y { s part }
 
-set s_to_1(Split x) = int: +%x        { let (a,b)=%x in +(a,b) }
-set s_to_minus_1(Split x) = int: -%x  { let (a,b)=%x in -(a,b) }
+set s_to_1 (Split x) = int: +%x        { let (a,b)=%x in +(a,b) }
+set s_to_minus_1 (Split x) = int: -%x  { let (a,b)=%x in -(a,b) }
 
 set ^ = { exponentiation of split integers }
   let split_power (Split x,int n) = Split: x { dummy }
@@ -306,7 +306,16 @@ set ^ = { exponentiation of split integers }
     else error("Negative power "+n+" of split integer")
     fi
 
-set - (ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
+{ nicer display of Splits }
+set split_format (Split w) = string:
+  let (a,b)=%w in
+  if a=0 and b!=0
+  then if abs(b)>1 then int_format(b) elif b=1 then "" else "-" fi #"s"
+  else int_format(a) #
+    if abs(b)>1 then if b<0 then "" else "+" fi #int_format(b)#"s"
+    elif b=0 then "" elif b=1 then "+s" else "-s"
+    fi
+  fi
 
 
 {				Root data 				}
@@ -350,8 +359,23 @@ set rho_check (RootDatum rd) = ratvec: { rho(dual(rd)), but a bit faster }
 
 { see also rho_i@KGBElt and rho_r@KGBElt defined below }
 
-set is_positive_root (RootDatum rd,vec alpha) = bool: rho_check(rd)*alpha>0
-set is_positive_coroot (RootDatum rd,vec alphav) = bool: alphav*rho(rd)>0
+set is_positive_root (RootDatum rd) = (vec->bool):
+  let rc = rho_check(rd) in (vec alpha) bool: rc*alpha>0
+set is_positive_coroot (RootDatum rd) = (vec->bool):
+  let rho = rho(rd) in (vec alphav) bool: alphav*rho>0
+set is_negative_root (RootDatum rd) = (vec->bool):
+  let rc = rho_check(rd) in (vec alpha) bool: rc*alpha<0
+set is_negative_coroot (RootDatum rd) = (vec->bool):
+  let rho = rho(rd) in (vec alphav) bool: alphav*rho<0
+
+set is_positive_root (RootDatum rd,vec alpha) = bool:
+  is_positive_root(rd)(alpha)
+set is_positive_coroot (RootDatum rd,vec alphav) = bool:
+  is_positive_coroot(rd)(alphav)
+set is_negative_root (RootDatum rd,vec alpha) = bool:
+  is_negative_root(rd)(alpha)
+set is_negative_coroot (RootDatum rd,vec alphav) = bool:
+  is_negative_coroot(rd)(alphav)
 
 { having _all_ roots can be useful }
 set roots (RootDatum rd) = mat:
@@ -376,8 +400,33 @@ set reflect (RootDatum rd, vec alpha, vec v) = vec: { reflection(rd,alpha)*v }
   v -:= alpha * (coroot(rd,alpha)*v)
 set coreflect (RootDatum rd, vec v, int i) = vec: { apply v*reflection(rd,i) }
   v -:= (v*root(rd,i)) * coroot(rd,i)
-set reflect (RootDatum rd, vec alpha, vec v) = vec: { v*reflection(rd,alpha) }
+set coreflect (RootDatum rd, vec v, vec alpha) = vec: { v*reflection(rd,alpha) }
   v -:= (v*alpha) * coroot(rd,alpha)
+
+set reflect (RootDatum rd, int i, ratvec v) = ratvec:
+  let (n,d) = %v in reflect(rd,i,n)/d
+set reflect (RootDatum rd, vec alpha, ratvec v) = ratvec:
+  let (n,d) = %v in reflect(rd,alpha,n)/d
+set coreflect (RootDatum rd, ratvec v, int i) = ratvec:
+  let (n,d) = %v in coreflect(rd,n,i)/d
+set coreflect (RootDatum rd, ratvec v, vec alpha) = ratvec:
+  let (n,d) = %v in coreflect(rd,n,alpha)/d
+
+{ in matrix version reflect becomes left_reflect and coreflect right_reflect }
+set left_reflect (RootDatum rd, int i, mat M) = mat: { reflection(rd,i)*M }
+  n_rows(M) # for v in M do reflect(rd,i,v) od
+set left_reflect (RootDatum rd, vec alpha, mat M) = mat:
+  left_reflect(rd,root_index(rd,alpha),M)
+set right_reflect (RootDatum rd, mat M, int i) = mat: { M*reflection(rd,i) }
+  n_columns(M) ^ for row in ^M do coreflect(rd,row,i) od
+set right_reflect (RootDatum rd, mat M, vec alpha) = mat:
+  right_reflect(rd,M,root_index(rd,alpha))
+
+set conjugate (RootDatum rd, int i, mat M) = mat: { r*M*r where r=reflection }
+  left_reflect(rd,i,right_reflect(rd,M,i))
+set conjugate (RootDatum rd, vec alpha, mat M) = mat:
+  conjugate(rd,root_index(rd,alpha),M)
+
 
 set singular_roots (RootDatum rd,ratvec v)=[int]:
   let rv=[int]:[] { cannot use columns_with: must find _indices_ of columns }
@@ -744,28 +793,36 @@ set null_module (ParamPol P) = ParamPol: 0*P { also handles null_module(Param) }
 set s_to_1 (ParamPol p)       = ParamPol: 0*p + for x@q in p do (+%x,q) od
 set s_to_minus_1 (ParamPol p) = ParamPol: 0*p + for x@q in p do (-%x,q) od
 
+{ counterpart to built-in +@(ParamPol,(Split,Param)) }
+set - (ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
+
 { simulate coercion (KGBElt->RealForm) in some cases }
 set root_datum (ParamPol P) = RootDatum: real_form(P)
 
 set virtual (Param p) = ParamPol: p { for making implicit conversion explcit }
+set virtual (RealForm G, [Param] ps) = ParamPol:
+  let one=Split:(1,0) in null_module(G)+for p in ps do (one,p) od
+{ DON'T define virtual ([Param] pp): cannot be correctly defined when #pp=0 }
 
-{ DON'T define
-  set virtual ([Param] pp)=ParamPol: null_module(real_form(pp[0]))
-  since it cannot be correctly defined when #pp=0
-}
+{ nice output of ParamPol: split_format the coefficients }
+set pol_format (ParamPol P)= void:
+  for w@p in P
+  do prints("(",split_format(w),")*",p,", ",infinitesimal_character(p)) od
+
+
 
 {				Miscellaneous				}
 
 { find index of item in list, or -1 if not found }
 set find (int it,[int] list) = int:
- let i=#list-1 in while i>=0 and list[i]!=it do i-:=1 od;i
-set find ([[int]] list,[int] it)=int:
  let i=#list-1 in while i>=0 and list[i]!=it do i-:=1 od; i
 
 set in_string_list (string s,[string] S)=bool:
   let i=#S-1 in while i>=0 and S[i]!=s do i-:=1 od; i>=0
 
 set positive_imaginary_roots_and_coroots = imaginary_sys@(RootDatum,mat)
+set positive_imaginary_roots_and_coroots = imaginary_sys@KGBElt
+
 set imaginary_roots_and_coroots ((RootDatum, mat)p) = (mat,mat):
   let (a,b)=imaginary_sys(p) in
    ( for j:n_columns(a) downto 0 do -a[j] od # a

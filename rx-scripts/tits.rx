@@ -1,77 +1,74 @@
 <basic.rx
 <Weylgroup.rx
 
-{ this file is not needed for the extended groups algorithm }
-
-{ an element of the (extended) Tits group is represented by
-  (ratvec v,mat theta) -> \exp(2i\pi v)\sigma_w\delta where \theta=w\delta
-  note that the inner class (defining delta) is implicit here
+{ An element in the delta-coset of the (extended) Tits group is represented by
+  (ratvec v,mat theta) -> \exp(2i\pi v)\sigma_w\delta where \theta=w\delta.
+  So v is a rational coweight taken modulo 1; theta need not be an invloution.
+  Note that \delta is incorporated into \theta (like into involution@KGBElt)
+  and that theta is defined as operating from left on X^*; for left action of
+  theta on v, use the transpose inverse (right-multiply v by inverse(theta)).
 }
 : Tits_elt = (ratvec,mat)
 
-set simple_reflection (RootDatum rd, int s) = mat: { s indexes simple root }
-  id_mat(rank(rd))- [root(rd,s)] * ^[coroot(rd,s)]
+set = (Tits_elt(v,theta),Tits_elt(u,eta)) = bool: =(v-u)%1 and theta=eta
+set != ((Tits_elt,Tits_elt)p) = bool: not =p
 
-set get_simple_number (RootDatum rd,vec alpha)=
-  let rv=-1, i=0 in
-  while i<semisimple_rank(rd)
-  do if alpha=root(rd,i) then rv:=i;i:=semisimple_rank(rd) else i:=i+1 fi od;rv
+{ left multiplication by sigma_s, where s must index a simple root }
+set left (RootDatum rd,int s,Tits_elt(v,theta)) = Tits_elt:
+  ( let v1 = coreflect(rd,v,s) { permute sigma_s e(v), so act by s on v } in
+    if lengthens(rd,s,theta) { valid even if theta=w.delta is not in W }
+    then v1
+    else v1+coroot(rd,s)/2 { second term represents m_s = sigma_s^2 }
+    fi % 1
+  , left_reflect(rd,s,theta)
+  )
 
-{ matrix of action of Weyl word }
-set matrix (RootDatum rd,W_word w)=mat:
-  let rv=id_mat(rank(rd)) in
-  for i:#w downto 0 do rv:=simple_reflection(rd,w[i])*rv od; rv
-
-{action of Weyl word on ratvec}
-set action (RootDatum rd,W_word w,ratvec v) = ratvec: matrix(rd,w)*v
-
-{ assuming M is in W }
-set length (RootDatum rd, mat M) = int:
-  let rv=0 in
-  for r in posroots(rd)
-  do if (not is_positive_root(rd,M*r)) then rv+:=1 fi od; rv
-
-{ left multiplication by \sigma_k, where k must index a simple root }
-set left (RootDatum rd,int k,Tits_elt(v,theta)) = Tits_elt:
-  let r=simple_reflection(rd,k) in
-  if (length(rd,r*theta)>length(rd,theta)) then (^r*v,r*theta) else
-  let alpha_check=coroot(rd,k) in (^r*v+alpha_check/2,r*theta) fi
-
-{ right multiplication by \sigma_k, where k must index a simple root }
-set right (RootDatum rd,int k, Tits_elt(v,theta)) = Tits_elt:
-  let r=simple_reflection(rd,k) in
-  if (length(rd,theta*r)>length(rd,theta)) then (v,theta*r)
-  else let alpha_check=coroot(rd,k) in
-   (v+^theta*alpha_check/2,theta*r)  {CHECK the sign v-^r...}
-  fi
+{ right multiplication by sigma_s, where s must index a simple root }
+set right (RootDatum rd, Tits_elt(v,theta), int s) = Tits_elt:
+  ( if lengthens(rd,theta,s) { again valid even if theta=w.delta not in W }
+    then v
+    else v+coroot(rd,s)*inverse(theta)/2 { got theta' m_s; permute factors }
+    fi % 1
+  , right_reflect(rd,theta,s)
+  )
 
 set left (RootDatum rd, W_word ww,Tits_elt xi) = Tits_elt:
-  for j:#ww downto 0 do xi:=left(rd,ww[j],xi) od; xi
+  for i:#ww downto 0 do xi:=left(rd,ww[i],xi) od; xi
 
-set right (RootDatum rd, W_word ww,Tits_elt xi) = Tits_elt:
-  for j:#ww downto 0 do xi:=right(rd,ww[j],xi) od; xi
+set right (RootDatum rd, Tits_elt xi, W_word ww) = Tits_elt:
+  for s in ww do xi:=right(rd,xi,s) od; xi
 
-{ left multiply by \exp(2i\pi w)\sigma_k }
-set left(RootDatum rd, (ratvec,int)(w,k), Tits_elt(v,theta)) = Tits_elt:
-  let (u,phi)=left(rd,k,(v,theta)) in (u+w,phi)
+{ left multiply by \exp(2i\pi v)\sigma_s }
+set left (RootDatum rd, (ratvec,int)(v,s), Tits_elt xi) = Tits_elt:
+  let (u,phi) = left(rd,s,xi) in ((u+v)%1,phi)
 
-{ right multiply by \exp(2i\pi w)\sigma_k }
-set right(RootDatum rd, (ratvec,int)(w,k), Tits_elt(v,theta)) = Tits_elt:
-  let (u,phi)=right(rd,k,(v,theta)) in (u+^theta*w,phi)
+{ right multiply by \exp(2i\pi v)\sigma_s }
+set right (RootDatum rd, Tits_elt(,theta):xi, (ratvec,int)(v,s)) = Tits_elt:
+  let (u,phi) = right(rd,xi,s) in ((v*inverse(theta)+u)%1,phi)
 
-set conjugate (RootDatum rd, int k, Tits_elt xi) = Tits_elt:
-  let alpha_check=coroot(rd,k) in
-  right(rd,(alpha_check/2,k),left(rd,k,xi))
+set conjugate (RootDatum rd, int s, Tits_elt xi) = Tits_elt:
+  let sigma_s_inv = (ratvec,int): (coroot(rd,s)/2,s) in
+  right(rd,left(rd,s,xi),sigma_s_inv)
 
 set conjugate (RootDatum rd, W_word ww, Tits_elt xi) = Tits_elt:
-  for j in reverse(ww)
-  do prints("conj:", j); xi:=conjugate(rd,j,xi) od; xi
+  for i in reverse(ww) do xi:=conjugate(rd,i,xi) od; xi
 
-{ inverse uses the bicycle lemma:
-  sigma_w*sigma_{w^{-1}}=exp(2\ pi i(rho^vee-wrho^vee)/2)
+{ in multiplication only one of the arguments should be in the delta-coset }
+set multiply (RootDatum rd, Tits_elt(v,theta), Tits_elt(u,eta)) = Tits_elt:
+  let tt1 = ^inverse(theta)
+  , neg_crs = columns_with(is_negative_coroot(rd),^inverse(eta)*poscoroots(rd))
+  in
+  ( ( v + tt1*u + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 ) % 1
+  , theta*eta
+  )
+
+{ inverse uses the bicycle (note the (2\-/2) structure) lemma:
+   sigma_w*sigma_{w^{-1}} = exp(2\pi i(rho^vee-rho^vee*w^{-1})/2)
+  whence
+   inverse(Tits_elt:(0,theta)) = Tits_elt:(rho_check*(theta-1)/2,inverse(theta))
+  (this formula remains valid with delta included in theta)
 }
 set inverse (RealForm G,Tits_elt(v,theta)) = Tits_elt:
-  (-v*theta-rho_check(G)/2+rho_check(G)*theta/2,theta)
-
-set = (Tits_elt(v,theta),Tits_elt(w,phi)) = bool: v=w and phi=theta
+  let theta_inv = inverse(theta) in
+  ( (-v*theta_inv - rho_check(G)*(theta_inv-1)/2) % 1, theta_inv)
 

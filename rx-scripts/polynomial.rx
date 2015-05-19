@@ -1,6 +1,7 @@
 <basic.rx
 
 : poly = vec
+{ poly: [a_0,...,a_n] represents the polynomial a_0+a_1q+...+a_nq^n }
 
 { addition of vectors (overrides definition in basic.rx) to allow vectors of
   possibly different lengths, implicitly extending on the right by zeros as
@@ -24,10 +25,6 @@ set strip (poly v) = poly: { reduce polynomial by dropping trailing zeros }
 ( let k=#v in while k>0 and v[k-1]=0 do k-:=1 od
 ; if k=#v then v else for i:k do v[i] od fi
 )
-
-{simple linear algebra over Z[q]}
-{ vector [a_0,...,a_n] represents polynomial a_0+a_1q+...+a_nq^n
-  multiplication, addition, subtraction, scalar multiplication defined below }
 
 { multiply two polynomials (slightly prefers g to be the smaller one) }
 set poly_product(poly f, poly g) = poly:
@@ -56,27 +53,12 @@ set eval(vec v,Split w)= Split:
 set at_s(vec v) = Split: eval(v,Split:(0,1))
 
 
-{ nicer display of Splits }
-set split_format (Split w) = string:
-  let (a,b)=%w in
-  if a=0 and b!=0
-  then if abs(b)>1 then int_format(b) elif b=1 then "" else "-" fi #"s"
-  else int_format(a) #
-    if abs(b)>1 then if b<0 then "" else "+" fi #int_format(b)#"s"
-    elif b=0 then "" elif b=1 then "+s" else "-s"
-    fi
-  fi
-
-{ nice output of ParamPol:
-  split_format the coefficients, print terms in order of x }
-set pol_format (ParamPol P)= void:
-  for w@p in P
-  do prints("(",split_format(w),")*",p,", ",infinitesimal_character(p)) od
-
-
 
 {			  Polynomial matrices				}
 
+{ polynomial matrices are grouped by row, unlike mat values that the realex
+  language implicitly (for loops, simple indexing) consideres by columns
+}
 : poly_mat = [[poly]]
 
 set transpose(poly_mat M)=poly_mat: { sublists must be of equal length }
@@ -90,7 +72,9 @@ set vector_poly_product([poly] v,[poly] w) = poly:
   let sum=null(0) in
   for p@i in v do sum +:= poly_product(p,w[i]) od; strip(sum)
 
-{ multiply two matrices of polynomials; here operator * is unambiguous }
+{ multiply two matrices of polynomials; here row-based representation really
+  makes a difference. Note that operator * is unambiguous here
+}
 set *(poly_mat A,poly_mat B) = poly_mat:
   let n=#A, B=transpose(B) { best to rearrange B once and for all }
   then m=#B
