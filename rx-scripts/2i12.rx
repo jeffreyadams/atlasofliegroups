@@ -1,0 +1,33 @@
+<my
+<extended
+<hecke
+<nonintegral
+set rd=root_datum(Lie_type("A1.A1"),[[1/2,1/2]])
+set ic=inner_class(rd,"ss")
+set G=quasisplit_form(ic)
+set dual_rd=dual(rd)
+set dual_ic=dual(ic)
+set Gd=quasisplit_form(dual_ic)
+
+set delta=mat:[[1,2],[0,-1]]
+prints("delta: ", delta, "delta^2 ", delta^2)
+
+
+
+set B=block_of(trivial(G))
+set EB=ext_block_of(delta,trivial(G))
+set E=EB[0]
+set p=parameter(E)
+set gamma=infinitesimal_character(p)
+set g=g(E)
+
+set x=x(p)
+set y=y(p)
+set id=integrality_datum(p)
+set y_gen=y_gen(p)
+set E=E(delta,gamma,x,g,y_gen)
+set (bases,n,sizes)=decompose(0,1,delta,B,g)
+set basis=bases[0]
+{test_hecke(0,1,delta,gamma,g,basis) }
+{hecke_row(0,E,basis)}
+

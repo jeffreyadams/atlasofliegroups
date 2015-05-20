@@ -2,21 +2,22 @@
 
 set merge (vec a, vec b) = vec:
   if #a=0 then b
-  else let (i,j)=(0,0)
-  in b#:=a[#a-1] { sentinel; when this becomes b[j] assures a is then emptied }
+  else let i=0,j=0
+  in b #:= a[#a-1] { sentinel; when this elt becomes b[j], then a is emptied }
   ; while i<#a or j+1<#b
     do if i<#a and a[i]<=b[j] then a[i] next i+:=1 else b[j] next j+:=1 fi
     od
   fi
 
 set sort = (vec->vec): { merge sort }
-  let ms (vec v, int l) = v
-  then ()= ms := ((vec v, int l):
+( let ms (vec v, int l) = v in
+  ms := ((vec v, int l):
     if l<3 then if l<2 or v[0]<=v[1] then v else [v[1],v[0]] fi
     else let half=l\2 in
       merge( ms(lower(half,v),half), ms(upper(half,v),l-half) )
     fi)
-  in { sort = } (vec v) vec: ms(v,#v)
+; { sort = } (vec v) vec: ms(v,#v)
+)
 
 set reverse_sort (vec v) = vec: reverse(sort(v))
 
@@ -24,7 +25,7 @@ set reverse_sort (vec v) = vec: reverse(sort(v))
 
 { stable-sorting permutation of a list of integers }
 set inv_standardisation = (vec->vec):
-  let merge([(int,int)] a, [(int,int)] b) = { merge based on first component }
+( let merge([(int,int)] a, [(int,int)] b) = { merge based on first component }
     if #a=0 then b
     else let (i,j)=(0,0)
     in b#:=a[#a-1] { sentinel }
@@ -37,7 +38,7 @@ set inv_standardisation = (vec->vec):
       od
     fi
   , ms ([(int,int)] v, int l) = v
-  then ()= ms:=                    { merge sort based on first component }
+  in ms:=                    { merge sort based on first component }
   ( ([(int,int)] v, int l):
     if l>=3
     then let h=l\2 then hh=l-h in
@@ -46,9 +47,10 @@ set inv_standardisation = (vec->vec):
     else { l=2 }
       let (x,):v0=v[0], (y,):v1=v[1] in if x<=y then v else [v1,v0] fi
     fi)
-  in { inv_standardisation = } (vec v) vec:
+; { inv_standardisation = } (vec v) vec:
     for (,org_i) in ms(for a@i in v do (a,i) od,#v) { attach index to entries }
     do org_i od { afterward just recover the permuted original indices }
+)
 
 set sort_by ((Param->int) f) = ([Param] v) [Param]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
@@ -59,7 +61,7 @@ set sort_by (((Param,bool)->int) f) = ([(Param,bool)] v) [(Param,bool)]:
 { and so forth for any type; this really should be second-order typed }
 
 { sort list of pairs [(Param,bool)] by #reducibility_points of Param }
-set sort_by_reducibility_pairs = ([(Param,bool)]->[(Param,bool)]):
+set sort_by_reducibility_points = ([(Param,bool)]->[(Param,bool)]):
   sort_by((Param p,bool x) int: #reducibility_points(p) )
 
 { sort list [Param] by #reducibility_points of Param }

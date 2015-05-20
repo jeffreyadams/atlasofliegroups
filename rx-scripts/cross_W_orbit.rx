@@ -1,0 +1,56 @@
+<basic.rx
+<Weylgroup.rx
+
+{ compute orbit of W(S).x: orbit of KGB element x
+  under simple roots of S of root datum rd,
+
+  algorithm: keep two lists and a counter
+  words: list of elements of W
+  orbit: list of elements of orbit
+  done: number of pairs in the above for which successors have been computed
+  iteratively, set (w,y) = (W_word,KGBElt) pair at index done; advance done
+  apply each simple reflection j from S to y
+  if s_j.y is not in orbit
+    add  s_j.y to orbit and (s_j*w,s_j.y) to arrays
+  continue until done = #orbit
+
+  returns: (words, orbit) where orbit is list of elements of orbit,
+  and for each i one has W_cross(words[i],x)=orbit[i]
+}
+
+set cross_W_orbit_extra([int] S,KGBElt x) = ([W_word],[KGBElt]):
+  let rd = RootDatum: real_form(x), words = [W_word:[]], orbit= [x], done=0
+  then absent (KGBElt y) = bool:
+         let i=#orbit-1 in while i>=0 and y!=orbit[i] do i-:=1 od; i<0
+  in
+  while done<#orbit
+  do
+    let w = words[done], a=orbit[done] in
+    done+:=1
+  ; for i in S
+    do let b=cross(i,a) in
+      if absent(b) then ( words #:= i#w, orbit #:= b ) fi
+    od
+  od; (words,orbit)
+
+{ just the W(S)-orbit W.x }
+set cross_W_orbit (([int],KGBElt) pair) = [KGBElt]:
+  let (,orbit) = cross_W_orbit_extra(pair) in orbit
+
+{ assume S=all simple roots }
+set cross_W_orbit_extra(KGBElt x) = ([W_word],[KGBElt]):
+  cross_W_orbit_extra(#semisimple_rank(real_form(x)),x)
+set cross_W_orbit(KGBElt x) =
+  cross_W_orbit(#semisimple_rank(real_form(x)),x)
+set cross_W_orbit_W_elements(KGBElt x) = [W_word]:
+  let (words,) = cross_W_orbit_extra(#semisimple_rank(real_form(x)),x) in words
+
+set find_W_cross(KGBElt x,KGBElt y) = W_word:
+  let (words,orbit) = cross_W_orbit_extra(x) then i=#orbit-1 in
+  while i>=0 and y!=orbit[i] do i-:=1 od; if i<0 then [-1] else words[i] fi
+
+{ just the subset of W(S) that applied to x gives a bijection to W(S).x }
+{
+  set cross_W_orbit_W_elements ([int] S,KGBElt x) = [W_word]:
+    let (words,)=cross_W_orbit_extra(S,x) in words
+}

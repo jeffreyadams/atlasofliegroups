@@ -1,9 +1,10 @@
 <basic.rx
+<extended_misc.rx
 <extended_types.rx
 
 { debug ext_cross construction, shouldn't be necessary }
-set test_ext_cross(Param p, [int] kappa, extended_param xq) = void:
-  let ()=if not verify(xq) then error("xq is not valid") fi
+set test_ext_cross (Param p, [int] kappa, extended_param xq) = void:
+  let ()=if not valid(xq) then error("xq is not valid") fi
   then q=parameter(xq), cross=W_cross(kappa,p)
   in
   if q!=cross
@@ -15,7 +16,7 @@ set test_ext_cross(Param p, [int] kappa, extended_param xq) = void:
 set ext_cross_1(int j
                ,extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E
                ) = extended_param:
-  let p=parameter(E), rd=root_datum(ic)
+  let p=parameter(E), rd=integrality_datum(E)
   then type = string: {1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn}
     ext_type_1(delta,j,p)
   , alpha=root(rd,j)
@@ -23,6 +24,7 @@ set ext_cross_1(int j
   then s_alpha    = 1 - column(alpha)*row(alpha_check)
   , s_alpha_check = 1 - column(alpha_check)*row(alpha) { = ^s_alpha }
   in
+{  let ()=prints("type:", type) in }
   if ((type="1C+") or (type="1C-")) then
     let new_lambda = { lambda +alpha*(alpha_check*(gamma-lambda)-1) }
         ratvec_as_vec(s_alpha*lambda+(alpha_check*gamma-1)*alpha)
@@ -62,10 +64,11 @@ set ext_cross_1(int j
 set ext_cross_2(int j
                ,extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E
                ) = extended_param:
-  let p=parameter(E), rd=root_datum(ic)
+  let p=parameter(E), rd=integrality_datum(E)
   then type = string: { 2C+,2C-,2Ci,2Cr,2i11,2i12,2i22,2r22,2r21,2r11,2rn,2ic }
     ext_type_2(delta,j,p)
   , simples = simple_roots(rd), cosimples = simple_coroots(rd)
+{  then ()=prints("ext_cross_2 type is:", type) }
   then alpha=simples[j] , alpha_check=cosimples[j]
   then s_alpha    = 1 - column(alpha)*row(alpha_check)
   , s_alpha_check = 1 - column(alpha_check)*row(alpha) { = ^s_alpha }
@@ -102,6 +105,7 @@ set ext_cross_2(int j
       (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
     in test_ext_cross(p,[j],xq); xq
   elif (type="2i11") then
+{   prints("type 2i11"); }
     let new_lambda=lambda, new_l = l+alpha_check+beta_check
     , new_theta = s_ab*theta*s_beta*s_alpha
     , new_omega = s_ab_check*omega*s_ab_check
@@ -110,18 +114,22 @@ set ext_cross_2(int j
       (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_t,new_tau)
     in test_ext_cross(p,[j],xq); xq
   elif (type="2i12") then
+{   prints("TYPE 2i12"); }
+{   prints("alpha check:", alpha_check); }
     let new_lambda=lambda
     , new_l = l+alpha_check
     , new_theta = s_ab*theta*s_beta*s_alpha
     , new_omega = s_ab_check*omega*s_ab_check
     , new_tau = tau
-    , new_t = let (s,valid) = solve(1+omega,alpha_check-beta_check)
+{   , new_t = let (s,valid) = solve(1+omega,alpha_check-beta_check)}
+{ see Table 2 in twisted paper, case 2i12crx }
+    , new_t = let (s,valid) = solve(1+^theta,alpha_check-beta_check)
       in if valid then t-s
          else error("failure in cross action of type 2i12, solving for s")
          fi
     then xq=
       (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
-    in test_ext_cross(p,[j],xq); xq
+    in { test_ext_cross(p,[j],xq); } xq
   elif (type="2r22") then
     let new_lambda=vec:lambda+alpha+beta
     , new_l = l
@@ -137,7 +145,9 @@ set ext_cross_2(int j
     , new_l = l
     , new_theta = s_ab*theta*s_beta*s_alpha
     , new_omega = s_ab_check*omega*s_ab_check
-    , new_tau = let (zeta,valid) = solve(1+theta,alpha-beta)
+{    , new_tau = let (zeta,valid) = solve(1+theta,alpha-beta) }
+{ see Table 2 in twisted paper, case 2r21crx }
+    , new_tau = let (zeta,valid) = solve(1+omega,alpha-beta)
       in if valid then tau-zeta
          else error("failure in cross action of type 2r21, solving for zeta")
          fi
@@ -152,14 +162,18 @@ set ext_cross_2(int j
 { extenteded cross action not yet defined }
 set ext_cross_3(int j,extended_param E) = extended_param:
   let p=parameter(E) then type=ext_type_2(delta(E),j,p)
-  in E { should be defined properly here! FIXME }
+  in prints("ext_cross_3"); E { should be defined properly here! FIXME }
 
-{ ext_cross calls one of the ext_cross_i }
-set ext_cross(int j, extended_param (ic,delta,,,,,,,,):E) = extended_param:
-  let p=parameter(E), l=ext_length(root_datum(ic),delta,j) in
-  if is_fixed(delta,p) then
-    [ext_cross_1@(int,extended_param)
-    ,ext_cross_2@(int,extended_param)
-    ,ext_cross_3@(int,extended_param)] [l] (j,E)
-  else error("Parameter is not fixed by delta")
-  fi
+{ ext_cross calls one of the ext_cross_i
+  this command used to be called in all cases, but is replaced by
+  nonintegral.rx:ext_cross
+  except in special cases: types 2i11/2i12/2r22/2r21 }
+set ext_cross_simple (int j, extended_param (ic,delta,,,,,,,,):E) =
+    extended_param:
+( let p=parameter(E), l=ext_length(integrality_datum(E),delta,j) in
+{ prints("length is:", l); }
+  assert(is_fixed(delta,p),"Parameter is not fixed by delta")
+; [ext_cross_1@(int,extended_param)
+  ,ext_cross_2@(int,extended_param)
+  ,ext_cross_3@(int,extended_param)] [l-1] (j,E)  { note the l-1 here }
+)

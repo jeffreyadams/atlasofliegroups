@@ -1,35 +1,65 @@
 <basic.rx
-<kl.rx
 
 : poly = vec
-: poly_mat = [[poly]]
+{ poly: [a_0,...,a_n] represents the polynomial a_0+a_1q+...+a_nq^n }
 
-{simple linear algebra over Z[q]}
-{ vector [a_0,...,a_n] represents polynomial a_0+a_1q+...+a_nq^n
-  multiplication, addition, subtraction, scalar multiplication defined below }
-
-set - (poly v,poly w) = poly: { use vector addition from kl.rx for subtraction }
-  v+-w {in basic.rx this was only allowed for vectors of the same length}
-
-{ M=poly_mat is a polynomial matrix; e.g.
-expr> set M= poly_mat: [[ [0,1], [0,0,1]], [[0], [1]]]
-expr> printPolyMatrix (M)
- +q +q^2
- 0 +1
+{ addition of vectors (overrides definition in basic.rx) to allow vectors of
+  possibly different lengths, implicitly extending on the right by zeros as
+  needed. This gives the right thing for coefficient vectors of polynomials.
 }
 
-set printPolyMatrix(poly_mat M)=void:
-  let rv="", n=#M in
-    for i:n do
-      let line="" in
-      for j:n do line+:=" "+stringPoly(M[i][j],"q") od; prints(line)
-    od
+forget +@(vec,vec)
+forget -@(vec,vec)
+
+set +(poly v,poly w)= poly:
+  let add_ext =
+    (poly v, poly w, int l_w) poly: { add w to v under assumption l_w=#w<=#v }
+      for vi@i in v do if i<l_w then vi+w[i] else vi fi od
+  , a=#v, b=#w
+  in add_ext(if a>=b then (v,w,b) else (w,v,a) fi)
+
+set - (poly v,poly w) = poly: { use previous vector addition for subtraction }
+  v+-w {in basic.rx this was only allowed for vectors of the same length}
+
+set strip (poly v) = poly: { reduce polynomial by dropping trailing zeros }
+( let k=#v in while k>0 and v[k-1]=0 do k-:=1 od
+; if k=#v then v else for i:k do v[i] od fi
+)
 
 { multiply two polynomials (slightly prefers g to be the smaller one) }
 set poly_product(poly f, poly g) = poly:
   if #f=0 then f { avoid useless traversal of g, and avoid needing strip }
   else let k=#g, s=null(0) in while (k-:=1)>=0 do s:= (0#s)+g[k]*f od; s
   fi
+
+{ for convenience }
+set poly_1 = poly: [1]
+set poly_2 = poly: [2]
+set q = poly: [0,1]
+set q2 = poly: [0,0,1]
+set sgn_poly (int k) = poly:
+  [if k<0 then -1 elif k>0 then 1 else error("taking sign of 0") fi]
+
+{ evaluate polynomial at integer }
+set evaluate_at_1 = sum@poly { most often we need this easy case }
+
+set eval (poly v,int k) = int:
+  let sum=0 in  for i:#v downto 0 do sum:= v[i] + k*sum od; sum
+
+{ evaluate polynomial at split }
+set eval(vec v,Split w)= Split:
+  let sum=Split:0 in  for i:#v downto 0 do sum:= v[i] + w*sum od; sum
+
+set at_s(vec v) = Split: eval(v,Split:(0,1))
+
+
+
+{			  Polynomial matrices				}
+
+{ polynomial matrices are grouped by row, unlike mat values that the realex
+  language implicitly (for loops, simple indexing) consideres by columns
+}
+: poly_mat = [[poly]]
 
 set transpose(poly_mat M)=poly_mat: { sublists must be of equal length }
   let n=#M in
@@ -42,7 +72,9 @@ set vector_poly_product([poly] v,[poly] w) = poly:
   let sum=null(0) in
   for p@i in v do sum +:= poly_product(p,w[i]) od; strip(sum)
 
-{ multiply two matrices of polynomials; here operator * is unambiguous }
+{ multiply two matrices of polynomials; here row-based representation really
+  makes a difference. Note that operator * is unambiguous here
+}
 set *(poly_mat A,poly_mat B) = poly_mat:
   let n=#A, B=transpose(B) { best to rearrange B once and for all }
   then m=#B
@@ -98,24 +130,51 @@ set ^(poly p,int n) = poly: { power of a polynomial }
 
 { equality of polynomial matrices }
 set =(poly_mat A,poly_mat B) = bool:
-  all((int i):bool: let r=A[i],s=B[i] in all((int j): r[j]=s[j],#r),#A)
+  all(#A, (int i): let r=A[i],s=B[i] in #r=#s and all(#r, (int j): r[j]=s[j] ))
 
-{ polynomial is 0 }
+{ polynomial matrix is 0 if all its entries are zero-length polynomials }
 set is_zero(poly_mat M)= bool:
-  all((int i):bool: let r=M[i] in all((int j): #r[j]=0,#r),#M)
-
-{for convenience}
-set one=poly: [1]
-set sgn_poly(int k) = poly:
-  [if k<0 then -1 elif k>0 then 1 else error("taking sign of 0") fi]
-set two=poly: [2]
-set q=poly: [0,1]
-set q2=poly: [0,0,1]
-set evaluate_at_1 = sum@poly
+  all(#M, (int i): let r=M[i] in all(#r, (int j): =#r[j]) )
 
 { compute PMP^{-1} where P is a permutation of [1,,,n]
   and M is a polynomial matrix
 }
 set poly_permute_basis(poly P, poly_mat A) = poly_mat: { P is permutation }
   for i:#A do let row=A[P[i]] in for j:#row do row[P[j]] od od
+
+{ some printing functions }
+
+{ make a printable string out of a polynomial and name of indeterminate,
+  for use in other print functions }
+set stringPoly (poly v, string q)= string:
+  if #(v:=strip(v))=0 then "0"
+  else
+    let rv="" in
+    for c@k in v do
+      if c!=0 then
+	let coef = if c<0 then "-" else "+" fi #
+            if abs(c)=1 and k>0 then "" else int_format(abs(c)) fi
+	,   term = if k>1 then q#"^"#int_format(k) elif k=0 then "" else q fi
+	in rv #:= coef#term
+      fi
+    od
+  ; rv
+  fi
+
+{ nice printing of a polynomial }
+set printPoly (poly v)= void: prints(stringPoly(v,"q"))
+
+{ M=poly_mat is a polynomial matrix; e.g.
+expr> set M= poly_mat: [[ [0,1], [0,0,1]], [[0], [1]]]
+expr> printPolyMatrix (M)
+ +q +q^2
+ 0 +1
+}
+
+set printPolyMatrix(poly_mat M)=void:
+  let rv="", n=#M in
+    for i:n do
+      let line="" in
+      for j:n do line+:=" "+stringPoly(M[i][j],"q") od; prints(line)
+    od
 

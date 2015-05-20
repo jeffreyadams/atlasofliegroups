@@ -1,0 +1,92 @@
+<basic.rx  { for assert, #@int,... }
+<Weylgroup.rx
+
+{
+  An optimised orbit generation procedure, which assumes that generators can
+  detect and eliminate (by returning a null vector instead) backwards or
+  stationary steps (in practice "forward" here means subtracting posroots)
+  and that the poset structure on the orbit is graded (as is true for the weak
+  order on W or on W/P for a parabolic subgroup P). This allows the orbit to
+  be partitioned into levels, with equality testing only within current level.
+
+  Arguments are a row S of generating maps (a null vector result means nothing
+  new generated; orbit generation never actually needs null vectors) and a
+  starting vector v, which is assumed dominant (whence the function name).
+
+  The algoritm is to generate parallel arrays of W_word and vec values, with a
+  counter |done| saying how many have been considered for successors, and a
+  marker |stop| saying where the newest level (where duplicates must be
+  avoided) starts.
+}
+set generate_from_dom ([(vec->vec)] S,vec v) = ([W_word],[vec]):
+  let words=[W_word]:[[]], orbit=[v], done=0, stop=1
+  then absent (vec y) = bool: { check down to last level marker }
+         let i=#orbit-1 in while i>=stop and y!=orbit[i] do i-:=1 od; i<stop
+  in
+  while done<#orbit
+  do  if done=stop then stop:=#orbit fi { hit end of level, define new level }
+  ; let w = words[done], a=orbit[done] in
+    done+:=1
+  ; for f@i in S
+    do let b= f(a) in
+      if !=b and absent(b) then ( words #:= i#w, orbit #:= b ) fi
+    od
+  od; (words,orbit)
+
+set W_orbit_extra (RootDatum rd,[int] S,vec v) = ([W_word],[vec]):
+  let gs = let alpha=simple_roots(rd), alphav=simple_coroots(rd) in
+           for i in S
+           do let a=alpha[i], av=alphav[i], zero=null(0)
+              in (vec x): let s=av*x in if s>0 then x-a*s else zero fi
+           od
+  in generate_from_dom(gs, let (d,)=make_dominant(rd,v) in d)
+
+{ just the W(S)-orbit W.v }
+set W_orbit((RootDatum,[int],vec) triple) = [vec]:
+  let (,orbit) = W_orbit_extra(triple) in orbit
+
+{ just the coset representatives for the stabilizer of v }
+set W_orbit_W_elements((RootDatum,[int],vec) triple) = [W_word]:
+  let (W_elements,)=W_orbit_extra(triple) in W_elements
+
+{ assume S=all simple roots }
+set W_orbit_extra(RootDatum rd,vec v) = ([W_word],[vec]):
+  W_orbit_extra(rd,#semisimple_rank(rd),v)
+set W_orbit((RootDatum,vec) pair) = [vec]:
+  let (,orbit) = W_orbit_extra(pair) in orbit
+set W_orbit_W_elements((RootDatum,vec) pair) = [W_word]:
+  let (W_elements,) = W_orbit_extra(pair) in W_elements
+
+{ all Weyl group elements of W(rd) or W(G), in no particular order }
+set generate_W (RootDatum rd) = [W_word]:
+  W_orbit_W_elements(rd,numer(rho(rd)))
+
+{ orbit of <w_1,..,w_n> acting on v where w_i is an element of W (W_word),
+  (not always a simple reflection). Use: for W^{\delta}-orbit of a root
+
+  here we must use a simplified version of generate_from_dom, using linear
+  search over the full orbit generated so for, because nothing is known about
+  how generators relate to dominance, or even that the generated DAG is graded
+}
+set generate ([(vec->vec)] S,vec v) = ([W_word],[vec]):
+  let words=[W_word]:[[]], orbit=[v], done=0
+  then absent (vec y) = bool: { check whole orbit }
+         let i=#orbit-1 in while i>=0 and y!=orbit[i] do i-:=1 od; i<0
+  in
+  while done<#orbit
+  do let w = words[done], a=orbit[done] in done+:=1
+  ; for f@i in S
+    do let b= f(a) in if absent(b) then ( words #:= i#w, orbit #:= b ) fi od
+  od; (words,orbit)
+
+set W_orbit_extra (RootDatum rd,[W_word] S,vec v) = ([W_word],[vec]):
+  generate(for g in S do (vec x) vec: act(rd,g,x) od, v)
+
+{ find Weyl group element x in <S> taking v to w
+  returns (true,x) or (false,null(0))
+}
+set conjugate_to(RootDatum rd, [W_word] S, vec v,vec w) = (bool,vec):
+( let (words,orbit) = W_orbit_extra(rd,S,v), i=0 in
+  while i>=0 and orbit[i]!=w do i-:=1 od
+; if i>=0 then (true,words[i]) else (false,null(0)) fi
+)

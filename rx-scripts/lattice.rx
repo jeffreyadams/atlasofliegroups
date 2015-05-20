@@ -3,30 +3,31 @@
 
 { M is an nxk matrix, columns of M define a Z-module W }
 
-set submodule_basis(mat M) = mat:
+set submodule_basis (mat M) = mat:
   let (B,cs) = adapted_basis(M) in n_rows(B) # for c@j in cs do c*B[j] od
 
 { a basis representing the quotient by sublattice spanned by columns;
   tests that this sublattice is a direct factor, and throws an error if not }
-set quotient_module_basis(mat M) = mat:
-  let (B,cs) = adapted_basis(M) then l=#cs
-  then ()= if cs!=ones(l) then error("sublattice is not a direct factor") fi
-  in columns_with ((int j)bool: j>=l,B)
+set quotient_module_basis (mat M) = mat:
+( let (B,cs) = adapted_basis(M) then l=#cs in
+  assert(cs=ones(l),"sublattice is not a direct factor")
+; columns_with ((int j)bool: j>=l,B)
+)
 
 { a basis representing the quotient by saturation of sublattice, so no test }
-set saturation_quotient_module_basis(mat M) = mat:
+set saturation_quotient_module_basis (mat M) = mat:
   let (B,cs) = adapted_basis(M) then l=#cs
   in columns_with ((int j)bool: j>=l,B)
 
 { M is an n*k matrix whose columns span a rank k submodule W of V=Z^n
   A is an n*n matrix preserving W
-  sub_matrix(M,W) is the m*m matrix giving the action of A on W,
+  sub_matrix(M,W) is the k*k matrix giving the action of A on W,
   using columns of M as basis
 }
-set sub_matrix(mat A,mat M) = mat:
+set sub_matrix (mat A,mat M) = mat:
   let P = M#kernel(^M) then (Pinverse,d) = invert(P)
-  then Q = minor(Pinverse*A*P,n_columns(M))
-  in if Q%d!=null(#Q) then error("lattice not fixed") else Q\d fi
+  then Q = minor(Pinverse*A*P,n_columns(M)) { extract top-left k*k block }
+  in assert(=Q%d,"lattice not fixed"); Q\d
 
 { assuming M injective and Im(A*M)\subset Im(A), find unique C with A*M=M*C }
 { using decomposition M = L^{-1} * D * R^{-1} (B,L invertible, D diagonal)
@@ -58,7 +59,7 @@ set corestrict_action (mat A, mat M) = mat: ^restrict_action(^A,^M)
   quotient_matrix(M,W) is the matrix of M on V/W,
   using the basis from quotient_module_basis(M)
 }
-set quotient_matrix(mat M,mat A) = mat:
+set quotient_matrix (mat M,mat A) = mat:
   let P= submodule_basis(M)#quotient_module_basis(M), ncM=n_columns(M)
   then (Pinverse,d) = invert(P)
   then Q = minor(Pinverse*A*P,n_columns(A)-ncM,ncM)
@@ -78,37 +79,55 @@ set projection_mod_image (mat M) = mat:
   in rows_with( (int i): i>=dim_sum, inverse(P) )
 }
 
-{ M is an nxk matrix whose columns span a submodule  W of V=Z^n
-  Projection to saturation of W, parallel to complement from adapted_basis(M)
-  Basis of image space: initial vectors of adapted_basis
+{ M is an nxk matrix whose columns span a submodule W of V=Z^n
+  Projection to saturation of W, parallel to complement from |adapted_basis(M)|
+  Basis of image space: initial vectors of |adapted_basis(M)|
 }
 set projection_to_image (mat M) = mat:
   let (B,cs) = adapted_basis(M) then d=#cs
   in rows_with( (int i): i<d, inverse(B) )
 
-{ original code:
-  let sub=submodule_basis(M), quotient=saturation_quotient_module_basis(M)
-  then P= mat: sub#quotient
-  in rows_with( (int i): i<d, inverse(P) )
+{ |solve_ratvec| finds a rational solution to linear equation A*x=v }
+{ method:
+  - write L*A*R = D using diagonalize, with L,R invertible matrices, D diagonal
+    (only the d nonzero diagonal entries of D are actually recorded)
+  - A*x = v is equivalent to L*A*x = L*v; call L*v the |target|
+  - set x = R*y for new unknown y; A*x = v is equivalent to L*A*R*y = target
+  - since L*A*R = D, it is necessary that |target| becomes zero after d entries
+  - the first d entries of y must be those of |target| divided by entries of D
+  - the remainder of y is unconstrained, take them to be 0
+  - now x = R*y can be computed using only first d columns of R and target/D
 }
+set solve_ratvec (mat A, vec v) = ratvec:
+  let (ds,L,R) = diagonalize(A) then d=#ds, target=L*v
+  in begin
+    for i:#target-d from d do assert(=target[i],"not in span") od
+  ; columns_with((int j):j<d,R) * for i:d do target[i]/ds[i] od end
 
-set in_lattice(mat M, vec v) = bool: { whether v in image lattice of M }
+set in_lattice (mat M, ratvec v) = bool: { whether v in image lattice of M }
   let (ds,L,) = diagonalize(M) then d=#ds, target=L*v
-  in all ((int i): if i<d then target[i]%ds[i] else target[i] fi=0,#target)
+  in all(#target, (int i): =if i<d then target[i]%ds[i] else target[i] fi )
 
-set solve_vec(mat M, vec v) = vec: { find integer solution to A*x=v }
-  let (ds,L,R) = diagonalize(M) then d=#ds
+{ as |solve_ratvec| but for integer solutions; now divisions must be exact }
+set solve_vec (mat A, vec v) = vec: { find integer solution to A*x=v }
+  let (ds,L,R) = diagonalize(A) then d=#ds
   then target =
     for c@i in L*v
     do if i<d
-       then if c%ds[i]=0 then c\ds[i] else error("not in lattice") fi
-       elif c=0 then 0 else error("not in span")
+       then let (q,r)=c\%ds[i] in assert(=r,"not in lattice"); q
+       else assert(=c,"not in span"); 0 { won't be used }
        fi
     od
-  in R*(for i:d do target[i] od # null (n_rows(R)-d))
+  in columns_with((int j):j<d,R) * for i:d do target[i] od
 
-set solve_ratvec(mat M, vec v) = ratvec: { find rational solution to A*x=v }
-  let (ds,L,R) = diagonalize(M) then d=#ds, target=L*v
-  in begin
-    for i:#target-d from d do if target[i]!=0 then error("not in span") fi od
-  ; columns_with((int j):j<d,R) * for i:d do target[i]/ds[i] od end
+{ alternative version: avoid error, but return success status in result }
+set solve (mat A, vec v) = (vec,bool): { find integer solution to A*x=v }
+  let (ds,L,R) = diagonalize(A) then d=#ds, success=true
+  then target =
+    for c@i in L*v
+    do if i<d
+       then let (q,r)=c\%ds[i] in if !=r then success:=false fi; q
+       else if !=c then success:=false fi; 0
+       fi
+    od
+  in ( columns_with((int j):j<d,R) * for i:d do target[i] od , success )

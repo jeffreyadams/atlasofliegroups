@@ -1,24 +1,23 @@
+{ Some functions for computing with Weyl words for twisted involutions }
+
 <basic.rx
 
-set simple_reflection (RootDatum rd, int s) = mat: { s indexes simple root }
-  1 - [root(rd,s)] * ^[coroot(rd,s)]
+: W_word = [int]
 
-set reflection (RootDatum rd, int alpha) = mat: { alpha indexes any root! }
-  1 - [root(rd,alpha)] * ^[coroot(rd,alpha)]
-
-set involution (InnerClass ic, [int] tw) = mat: { tw is a Weyl word }
+{ compute involution from twiseted involution Weyl word }
+set involution (InnerClass ic, W_word tw) = mat:
 ( let rd = root_datum(ic), theta = distinguished_involution(ic)
-  in for i : #tw downto 0 do theta := simple_reflection(rd,tw[i])*theta od
+  in for i : #tw downto 0 do theta := reflection(rd,tw[i])*theta od
   ; theta
 )
 
-set imaginary_roots (InnerClass ic, [int] tw) = mat:   { tw is a Weyl word }
+set imaginary_roots (InnerClass ic, W_word tw) = mat:
   imaginary_roots(ic,involution(ic,tw))
-set real_roots (InnerClass ic, [int] tw) = mat:        { tw is a Weyl word }
+set real_roots (InnerClass ic, W_word tw) = mat:
   real_roots(ic,involution(ic,tw))
-set imaginary_coroots (InnerClass ic, [int] tw) = mat: { tw is a Weyl word }
+set imaginary_coroots (InnerClass ic, W_word tw) = mat:
   imaginary_coroots(ic,involution(ic,tw))
-set real_coroots (InnerClass ic, [int] tw) = mat:      { tw is a Weyl word }
+set real_coroots (InnerClass ic, W_word tw) = mat:
   real_coroots(ic,involution(ic,tw))
 
 

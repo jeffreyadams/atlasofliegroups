@@ -1,0 +1,64 @@
+<basic.rx
+<K.rx          { for K_root_datum, K_0 }
+<Weylgroup.rx  { for make_simple_sequence }
+
+{ functions related to W^\delta }
+
+{ make quotient root datum of rd by distinguished automorphism delta }
+
+set delta_fixed_root_datum (InnerClass ic) = RootDatum:
+  K_root_datum(KGB(quasicompact_form(ic),0))
+
+set delta_fixed_root_datum ((RootDatum,mat) pair) = RootDatum:
+  delta_fixed_root_datum(inner_class(pair))
+
+{ Given root alpha in R^delta, find short Weyl word describing corresponding
+  reflection. Tabulate this for all simple reflections of R^delta
+}
+set translate_Wdelta_generators (InnerClass ic) = [[int]]:
+  let P = projection_to_K_matrix(ic)
+  , rd_delta=delta_fixed_root_datum(ic), rd = RootDatum: ic
+  then word =[[int]]: for i:semisimple_rank(rd_delta) do [] od
+  in
+  for beta@i in simple_roots(rd)
+  do let j = root_index(rd_delta,P*beta) then wj = word[j] in
+    word[j] :=
+    if =#wj then [i]
+    else assert(#wj=1,"more than two roots mapping to "+j)
+    ; let i0=wj[0] in
+      if =coroot(rd,i0)*root(rd,i) then [i0,i] else [i0,i,i0] fi
+    fi
+  od; word
+
+set translate_Wdelta_generators ((RootDatum,mat) pair) =
+  translate_Wdelta_generators(inner_class(pair))
+
+{ length of a single simple root or pair of simple roots
+  length(rd,alpha)=1
+  length {rd,alpha,beta}=2 if <alpha,beta^vee>=0 or 3 otherwise
+}
+set length (RootDatum rd, int i) = 1 { is this really useful? }
+set length (RootDatum rd, int i,int j) = int:
+  if =coroot(rd,j)*root(rd,i) then 2 else 3 fi
+
+set rewrite_word_Wdelta_to_W (InnerClass ic, W_word ww) = W_word:
+  let table= translate_Wdelta_generators(ic), trans=W_word:[]
+  in for i in ww do trans #:= table[i] od; trans
+
+set rewrite_word_Wdelta_to_W (RootDatum rd,mat delta,W_word ww) = W_word:
+  rewrite_word_Wdelta_to_W(inner_class(rd,delta), ww)
+
+{ find W_word:w \in W^\delta taking any positive root to a simple root for rd
+  root in question is root(rd,j)
+  returns (W_word:w1,vec: v) where v = w1 * root(rd,j); P*v= root(rd_delta,k)
+}
+set conjugate_to_simple_by_Wdelta (RootDatum rd, mat delta, int j) =
+  (W_word,vec):
+  let alpha = root(rd,j), rd_delta = delta_fixed_root_datum(rd,delta)
+  , P = projection_to_K_matrix(inner_class(rd,delta))
+  then beta = P*alpha
+  then (conjugator,k) = make_simple_sequence (rd_delta,beta)
+  then w = rewrite_word_Wdelta_to_W (rd,delta,conjugator)
+  then image_root = act(rd,w,alpha)
+  in assert(root(rd_delta,k)=P*image_root); (w, image_root)
+

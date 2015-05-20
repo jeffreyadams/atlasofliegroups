@@ -1,9 +1,8 @@
-<misc.rx
-<Weylgroup.rx
-<representations.rx
-<hermitian.rx
+<basic.rx
+<Weylgroup.rx { dominant }
+<hermitian.rx { c_form_irreducible }
 
-{ some special operations defined only for complex groups }
+{ this file contains some special operations defined only for complex groups }
 
 set is_finite_dimensional(Param p) = bool:
   let ssr = semisimple_rank(real_form(p))
@@ -11,59 +10,57 @@ set is_finite_dimensional(Param p) = bool:
 
 
 set fd_only (Param p) = Param:
-  if is_finite_dimensional(p) then p
-  else error("representation is not finite dimensional")
-  fi
-
-set complex_LKT(Param p) = vec:
-  let mu=involution(x(p))*lambda(p)+lambda(p)
-  then (rv,)=make_dominant(real_form(p),mu)
-  in ratvec_as_vec(for i:rank(real_form(p))\2 do rv[i] od)
+  assert(is_finite_dimensional(p),"representation is infinite dimensional"); p
 
 { dimension of finite dimensional with given highest weight }
-set dimension(RootDatum rd, vec lambda_in) = int:
+set dimension (RootDatum rd, vec lambda_in) = int:
   let lambda=
     if is_dominant(rd,lambda_in) then lambda_in
     else
-      let (lambda_dominant,)=make_dominant(rd,lambda_in)
+      let lambda_dominant = dominant(rd,lambda_in)
       in prints("Warning: changed ", lambda_in, ", to ", lambda_dominant
                ," to make it dominant")
       ; lambda_dominant
     fi
-  then rho=rho(rd), dim=1/1
-  in ( for a in poscoroots(rd) do dim*:=(lambda+rho)*a/(rho*a) od
-     ; rat_as_int(dim) )
-
-set dimension(RealForm G, [int] lambda)=int: dimension(root_datum(G),lambda)
+  then rho=rho(rd), dim=1/1 { now apply Weyl's dimension formula }
+  in for a in poscoroots(rd) do dim*:=(lambda+rho)*a/(rho*a) od; dim\1
 
 set highest_weight(Param p) = vec:
-  ratvec_as_vec(infinitesimal_character(fd_only(p)) - rho(real_form(p)))
+  ratvec_as_vec(infinitesimal_character(fd_only(p)) - rho(root_datum(p)))
 
 set dimension(Param p) = int:
   dimension(root_datum(p),highest_weight(p))
 
 set fundamental_weight_coordinates (Param p) = vec:
-  for a in simple_coroots(real_form(p)) do a*highest_weight(p) od
+  highest_weight(p)*simple_coroots(root_datum(p))
 
-{ set dimension_complex_Ktype(RealForm G,[int] lambda) = int:
-  weyl_dimension_formula(K_0(G),lambda) }
 
+{ this function depends on a complex root datum, with half-swapping involution }
+set complex_LKT (Param p) = vec:
+  let (rd,mu):pair = (root_datum(p),(1+involution(x(p)))*(lambda(p)\1))
+  then dom = dominant(pair)
+  in lower(#dom\2,dom) { first half }
+
+{ set dimension_complex_Ktype(RealForm G, vec lambda) = int:
+    dimension(K_0(G),lambda)
+}
 set testcomplex(RealForm G) = void:
-  let t=trivial(G)
+( let t=trivial(G)
   then b=block_of(t), P=c_form_irreducible(t)
-  then rho_check = for i:rank(G)\2 do rho_check(G)[i] od,  Q=%P
-  then (,last)=Q[#Q-1]
+  , rho_check = lower(rank(G)\2,rho_check(G))
+  then { get Param component of final term of P }
+    (,last)=let  Q = for c@p in P do (c,p) od in Q[#Q-1]
   then shift=complex_LKT(last)
-  then ()=prints("rho_check= ", rho_check, "shift:", shift)
-  ; for (w,p) in Q
-    do prints(complex_LKT(p), ", ", shift-complex_LKT(p), ", "
-             ,split_format(w), ", ", ((shift-complex_LKT(p))*rho_check))
-    od
-  ; prints("")
   in
-  for i:#b downto 0
+  prints("rho_check= ", rho_check, "shift: ", shift)
+; for w@p in P
+  do prints(complex_LKT(p), ", ", shift-complex_LKT(p), ", "
+           ,split_format(w), ", ", ((shift-complex_LKT(p))*rho_check))
+  od
+; prints("")
+; for i:#b downto 0
   do let p=b[i]
      in prints(complex_LKT(p), ", ", length(p), ", ", p, ", "
               ,twist(x(p))=x(p))
   od
-
+)

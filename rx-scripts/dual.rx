@@ -1,24 +1,39 @@
+<extended.rx
 <polynomial.rx
-<parameters.rx 
+<parameters.rx
+<Vogan-dual.rx
 
-{define dual parameters given choice of infinitesimal cocharacter g
-{requires: y^2=e(g)
-use choose_g for a choice of g}}
-set dual(KGBElt x, KGBElt y,ratvec g)=Param:parameter(y,x,g)
+{some similar stuff to Vogan-dual.rx, also some extra functionality}
 
+{ compare dual_gamma(Param p) in Vogan-dual.rx }
+{ some dual stuff involving only (x,y) }
+set dual_gamma (KGBElt x,KGBElt y) = ratvec:
+  let G=real_form(x)
+  then dual_rho=rho_check(integrality_datum(G,square(y)))
+  in shift_g_regular(G,base_grading_vector(G) + dual_rho)
+
+{ another version where y is a generalized KGB element }
+set dual_gamma (KGBElt x,KGBElt_gen y) = ratvec:
+  let G=real_form(x)
+  then dual_rho=rho_check(integrality_datum(G,square(y)))
+  in shift_g_regular(G,base_grading_vector(G) + dual_rho)
+
+
+set dual_parameter(KGBElt x,KGBElt y)=Param:parameter(y,x,dual_gamma(x,y))
+
+set dual (Param p, InnerClass dual_integral_class) = Param:
+  parameter( y(p,dual_integral_class), dual_lambda(p), dual_gamma(p) )
+set dual(Param p)=Param:dual(p,dual_inner_class(p))
+
+{choose infinitesimal cocharacter g yourself
+must satisfy y^2=e(g)
+}
 set dual_parameter(KGBElt x,KGBElt y,ratvec g)=Param:parameter(y,x,g)
-set dual_parameter(KGBElt x,KGBElt y)=Param:parameter(y,x,choose_g(x,y))
-set dual(Param p, ratvec g)=Param:dual_parameter(x(p),y(p),g)
-set dual(Param p)=Param:dual_parameter(x(p),y(p))
-
-{also specify the dual inner class}
-set dual(Param p,InnerClass dual_inner_class)=Param:dual_parameter(x(p),y(p,dual_inner_class))
-set dual(Param p,ratvec g,InnerClass dual_inner_class)=Param:dual_parameter(x(p),y(p,dual_inner_class),g)
 
 {-------------------------  dual of a block --------------------------}
 
 set find([Param] P, Param p)=
-let rv=-1 in let i=0 in 
+let rv=-1 in let i=0 in
 while i<#P do if (p=P[i]) then rv:=i;i:=#P else i:=i+1 fi od;rv
 
 {find permutation relating two lists of parameters
@@ -33,11 +48,10 @@ each returns ([Param] B_vee,[int] permutation)
 B_vee is block for for G^vee(infinitesimal character)
 Vogan duality is B[i] -> B_vee(permutation[i])}
 
-{specify the dual infinitesimal character and inner class}
-set dual([Param] B, ratvec g, InnerClass dual_inner_class)=([Param],[int]):
-let q=dual(B[0],g,dual_inner_class) in 
-let B_vee=block_of(q) in 
-let B_dual=for p in B do dual(p,g,dual_inner_class) od in
+set dual([Param] B, InnerClass dual_inner_class)=([Param],[int]):
+let q=dual(B[0],dual_inner_class) in
+let B_vee=block_of(q) in
+let B_dual=for p in B do dual(p,dual_inner_class) od in
 {B_dual is in length *decreasing* order;
  B[i]->B_dual[i] is Vogan duality}
 let B_vee=block_of(q) in
@@ -46,30 +60,28 @@ let B_vee=block_of(q) in
 (B_vee,permutation(B_dual,B_vee))
 
 {don't specify the inner class and/or the dual infinitesimal character}
-set dual([Param] B,ratvec g)=([Param],[int]):dual(B,g,dual_inner_class(B[0]))
-set dual([Param] B,InnerClass dual_inner_class)=([Param],[int]):dual(B,choose_g(B[0]),dual_inner_class)
-set dual([Param] B)=([Param],[int]):dual(B, choose_g(B[0]), inner_class(dual(B[0])))
+set dual([Param] B)=([Param],[int]):dual(B,dual_inner_class(B[0]))
+set dual([Param] B,InnerClass dual_inner_class)=([Param],[int]):dual(B,dual_inner_class)
 
-set dual_block(Param p, ratvec g)=[Param]:block_of(dual(p,g))
 set dual_block(Param p)=[Param]:block_of(dual(p))
 
 set dual_extended_parameter(InnerClass ic,mat delta,ratvec gamma,[int] lambda,mat theta,ratvec g,[int] l,mat omega,[int] tau,[int] t)=(dual(ic),^delta,g,l,omega,gamma,lambda,theta,t,tau)
 
 {matrix of P-polynomials for B, with signs if second argument is true}
-{usually B and then the block returned by KL_block should be identical to B, in the same order, 
+{usually B and then the block returned by KL_block should be identical to B, in the same order,
 so perm_B_block is the identity. In particular this should hold if B was constructed
 using block_of(). Otherwise perm_B_block might be nontrivial}
 set KL_block_polynomials([Param] B,bool signs)=
-let (block,n,Pmatrix,polynomials,stops,survivors,)=KL_block(B[0]) in 
-let m=n_rows(Pmatrix) in 
-let P=zero_poly_matrix(m) in 
+let (block,n,Pmatrix,polynomials,stops,survivors,)=KL_block(B[0]) in
+let m=n_rows(Pmatrix) in
+let P=zero_poly_matrix(m) in
 let ()=for i:m do
  for j:m do
-  let length_difference = if signs then  length_diff(i,j,stops) else 0 fi in 
+  let length_difference = if signs then  length_diff(i,j,stops) else 0 fi in
   P:=update_matrix_entry(P,i,j,poly_product(sgn_poly((-1)^length_difference),polynomials[Pmatrix[i,j]]))
  od
 od in
-let perm_B_block=permutation(B,block) in 
+let perm_B_block=permutation(B,block) in
 poly_permute_basis(perm_B_block,P)
 
 {define the P and Q polynomials
@@ -90,12 +102,12 @@ assuming B is in standard length increasing order: P and Q are  both upper trian
 }
 
 set KL_Q_polynomials([Param] B)=
-let (B_vee,perm)=dual(B) in 
-let Q_0=KL_block_polynomials(B_vee,false) in 
+let (B_vee,perm)=dual(B) in
+let Q_0=KL_block_polynomials(B_vee,false) in
 {Q_0 is upper triangular}
 let Q_1=poly_permute_basis(perm,Q_0) in
-{Q_1 (usually) lower triangular} 
-let Q=transpose(Q_1) {(usually) upper triangular} 
+{Q_1 (usually) lower triangular}
+let Q=transpose(Q_1) {(usually) upper triangular}
 in Q
 
 {in some cases this test fails because it is off by a permutation which I don't understand}
@@ -103,14 +115,14 @@ in Q
 {returns P,Q, and true/false;
 P*Q should be the identity}
 set test_duality(Param p)=
-let B=block_of(p) in 
-let P=KL_P_polynomials(B) in 
-let Q=KL_Q_polynomials(B) in 
-let ()=prints("P=") in 
+let B=block_of(p) in
+let P=KL_P_polynomials(B) in
+let Q=KL_Q_polynomials(B) in
+let ()=prints("P=") in
 let ()=printPolyMatrix(P) in
-let ()=prints("Q=") in 
+let ()=prints("Q=") in
 let ()=printPolyMatrix(Q) in
-let R=P*Q in 
-let rv= R=identity_poly_matrix(#P) in 
+let R=P*Q in
+let rv= R=identity_poly_matrix(#P) in
 if rv then prints("passed: P*Q=I") else
 prints("failed: P*Q=I");printPolyMatrix(R) fi;(P,Q,rv)
