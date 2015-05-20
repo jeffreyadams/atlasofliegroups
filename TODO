@@ -3,134 +3,140 @@
 
 * Work on the Atlas library
 - Incorporate the calculation of c-invariant forms into the library
+- Rewrite block construction using methods inspired by synthetic operations
+- Rewrite K type computations to use data type more compatible with Param
 
 * Work on the atlas program
 
- - correct bug with mysterious typeahead after bailing out with ? (done?)
- - clean up the mess dealing with input (interface/input, io/interactive...)
+- correct bug with mysterious typeahead after bailing out with ? (done?)
+- clean up the mess dealing with input (interface/input, io/interactive...)
 
 * Work on the realex program
 
- - Make %@Param deliver (x,lambda_rho,gamma) rather than (x,lambda_rho,nu)
- - Define +(vec,vec) to zero-extend by default (maybe under different name)
- - Make *(int,ParamPol) avoid duplicating ParamPol when int is zero
+- Make %@Param deliver (x,lambda_rho,gamma) rather than (x,lambda_rho,nu)
+- Define +(vec,vec) to zero-extend by default (maybe under different name)
+- Make *(int,ParamPol) avoid duplicating ParamPol when int is zero
 
- - Find alternative syntax for "verbose" and "quiet", liberating the keywords
+- Introduce a case statement (multi-way conditional based on integer value)
 
- - Have error take arguments like prints does
- - Let error traceback optionally (verbose mode) show argument values
- - Investigate if some tracing facilty (printing "let" values) is feasible
+- Find alternative syntax for "verbose" and "quiet", liberating the keywords
 
- - See if syntax can allow (let i=3 in for k:i do print(k) od); without parens
+- Have error take arguments like prints does
+- Let error traceback optionally (verbose mode) show argument values
+- Investigate if some tracing facilty (printing "let" values) is feasible
 
- - Allow for declaring an input path, and (silent) default prelude
- - Handle output from loading files differently
+- See if syntax can allow (let i=3 in for k:i do print(k) od); without parens
 
- - Make 'not' execute a built-in function
- - Define unary =, /= operations for testing against 0, for various types
- - Allow Python-style slices of lists, vectors, matrices
- - Allow list-comprehension syntax like in Haskell (and Python?)
- - Integrate a bigint library to store realex int (and rat?) values; while
-   attending that, signal overflow in arithmetic operations / conversions
+- Allow for declaring an input path, and (silent) default prelude
+- Handle output from loading files differently
+
+- Make 'not' execute a built-in function
+- Allow Python-style slices of lists, vectors, matrices; maybe transformations
+- Integrate a bigint library to store realex int (and rat?) values; while
+  attending that, signal overflow in arithmetic operations / conversions
 
 
- - Handle catching of a user interrupt
-   When a user types ^C, this should break off computation as soon as feasible
-   and return the realex prompt. This may be quite difficult to implement if
-   for interrupts happening while an atlas library function is executing.
+- Handle catching of a user interrupt
+  When a user types ^C, this should break off computation as soon as feasible
+  and return the realex prompt. This may be quite difficult to implement if
+  for interrupts happening while an atlas library function is executing.
 
- - Mention file and line in non-syntax errors
- - Improve output of expressions
- - Remember file and line of definition for lambda-expression values
+- Improve output of expressions
 
- - Allow multiple overloaded functions defined in a single 'set' statement
- - Allow recursion through a more intuitive syntax
+- Allow multiple overloaded functions defined in a single 'set' statement
+- Allow recursion through a more intuitive syntax
 
- - Add possibility to specify types with unknown components like '[*]'
-   This would notably allow define functions overloads with this type to match
-   (only) the argument expression '[]'. Currently this argument will never
-   match in overloading, since overloading does not perform type
-   specialisation (and if it did, '[]' could very well be ambiguous). Simply
-   allowing the user to specify types with unknown components would allow the
-   user to define what to do with argument expressions '[]'.
+- Make balancing a general concept, also applied within row displays.
 
- - Make balancing a general concept, also applied within row displays.
+- Add possibility to specify types with unknown components like '[*]'
+  This would notably allow define functions overloads with this type to match
+  (only) the argument expression '[]'. Currently this argument will never
+  match in overloading, since overloading does not perform type
+  specialisation (and if it did, '[]' could very well be ambiguous). Simply
+  allowing the user to specify types with unknown components would allow the
+  user to define what to do with argument expressions '[]'.
 
- - Allow global variables with function value to be called if overload fails
-   Currently a global variable with function value cannot be called directly
-   at all if there are also overloads for it (one needs to say something like
-   'let f=f in f(x,y)' instead). It would be more natural to consider calling
-   the global function anyway if overload fails; the main difficulty seems
-   that this might cause confusing error messages for arguments that were
-   intended for an overloaded instance instead, but somehow fail to match.
-   Since this is rare, maybe instead just consider globals before overloading.
+- Allow global variables with function value to be called if overload fails
+  Currently a global variable with function value cannot be called directly
+  at all if there are also overloads for it (one needs to say something like
+  'let f=f in f(x,y)' instead). It would be more natural to consider calling
+  the global function anyway if overload fails; the main difficulty seems
+  that this might cause confusing error messages for arguments that were
+  intended for an overloaded instance instead, but somehow fail to match.
+  Since this is rare, maybe instead just consider globals before overloading.
 
- - For identifiers in function position of a call, only consider local
-   bindings (which will hide overloads) if those have function type.
+- Related to previous point, remove exception for parameterless functions
+  that are not stored as overloads; make sure that voiding is not considered
+  in function argument positions.
 
- - Allow compound assignment for components: v[i]+:=1
-   The current simple rewriting scheme would give problems with side effects
-   from the index expression. Nonetheless this is so natural that it is a
-   nuisance to have it forbidden; maybe translate to 'let x=i in v[x]:=v[x]+1'
+- For identifiers in function position of a call, only consider local
+  bindings (which will hide overloads) if those have function type. This
+  allows continuing to use function 'x' after 'let x=x(p) in ...'.
 
- - Implement compound assignment directly
-   While 'v #:= x' (with vec v, int x) is easy to write (and common in loop
-   bodies), it is converted to 'v := v#x' which is not efficient: with 'v'
-   still shared when 'v#x' is evaluated, there is no chance of (at least on
-   some occasions) reusing the same memory. This could be possible if built-in
-   compound assignment were handled as a single operation (even though no user
-   defined function could do such a thing). This is most useful for
-   concatenation, but operations such as vector addition could also profit.
-   This point is maybe to be considered together with the previous point.
+- Allow compound assignment for components: v[i]+:=1
+  The current simple rewriting scheme would give problems with side effects
+  from the index expression. Nonetheless this is so natural that it is a
+  nuisance to have it forbidden; maybe translate to 'let x=i in v[x]:=v[x]+1'
 
- - Allow loops executed in reverse order
-   This generalises downto to for-in loops. Saying 'for e@i reverse in array
-   do f(e,i) od' runs through elements of 'array' backwards, 'i' decreasing
-   correspondingly; any row value built by loop is still constructed forward,
-   so 'i' does not refer to position in built-up row in this case.
+- Implement compound assignment directly
+  While 'v #:= x' (with vec v, int x) is easy to write (and common in loop
+  bodies), it is converted to 'v := v#x' which is not efficient: with 'v'
+  still shared when 'v#x' is evaluated, there is no chance of (at least on
+  some occasions) reusing the same memory. This could be possible if built-in
+  compound assignment were handled as a single operation (even though no user
+  defined function could do such a thing). This is most useful for
+  concatenation, but operations such as vector addition could also profit.
+  This point is maybe to be considered together with the previous point.
 
- - Implement value gathering in loop using a list if size is not known
-   Currently all loops gather values in a vector; while loops (as well as
-   future loops using features that make size of resulting row unknown when
-   the loop is started) might do better gathering them in a list structure.
+- Allow loops executed in reverse order
+  This generalises downto to for-in loops. Saying 'for e@i reverse in array
+  do f(e,i) od' runs through elements of 'array' backwards, 'i' decreasing
+  correspondingly; any row value built by loop is still constructed forward,
+  so 'i' does not refer to position in built-up row in this case.
 
- - Premature exits: break from loop, return from function
- - Scoping in while loops: declarations of condition remain valid in body?
-   The same question arises in conditional: if the condition is the result of
-   a complicated computation, could that computation define some local
-   variables that remain accessible in addition to the boolean condition?
-   However for the conditional one could start a 'let' block before the
-   conditional starts to keep variables in scope; for while this doesn't work.
+- Implement value gathering in loop using a sl_list if size is not known.
+  Currently all loops gather values in a std::vector; while loops (as well as
+  future loops using features that make size of resulting row unknown when
+  the loop is started) might do better gathering them in a list structure.
 
- - Allow skipping entries in value-producing loops; concatenating sub-rows.
-   When generating a row from a loop, not every iteration need contribute, and
-   nested loops might want to contribute to the same row, in a concatenated
-   fashion.
+- Allow list-comprehension syntax like in Haskell (and Python?)
 
- - Allow for array slices and maybe other row-transformations
- - Extend type system to deal with second-order types
- - Extend language with recursive types, as well as disjoint union types.
- - Allow encapsulation into user-defined types
+- Premature exits: break from loop, return from function
+- Scoping in while loops: declarations of condition remain valid in body?
+  The same question arises in conditional: if the condition is the result of
+  a complicated computation, could that computation define some local
+  variables that remain accessible in addition to the boolean condition?
+  However for the conditional one could start a 'let' block before the
+  conditional starts to keep variables in scope; for while this doesn't work.
 
- - Ensure that root data obtained from inner classes or beyond are shared
- - Avoid creating many identical |real_form_value| instances, by storing links
-   to those currently generated within an |inner_class_value| object
- - Check if efficiency features actually work as intended
-   For instance v[i]=k should usually avoid a copy of v being made. Also see
-   if something can be done to avoid duplication in a +:= x (probably not, as
-   one knows nothing about what + does). However, for v #:= x in a loop it
-   should be possible to avoid a new allocation for v at every iteration.
-  - Duplication avoiding in component assignment
-  - For loops in void context never build up any value.
+- Allow skipping entries in value-producing loops; concatenating sub-rows.
+  When generating a row from a loop, not every iteration need contribute, and
+  nested loops might want to contribute to the same row, in a concatenated
+  fashion.
+
+- Extend type system to deal with second-order types
+- Extend language with recursive types, as well as disjoint union types.
+- Allow encapsulation into user-defined types
+
+- Ensure that root data obtained from inner classes or beyond are shared
+- Avoid creating many identical |real_form_value| instances, by storing links
+  to those currently generated within an |inner_class_value| object
+- Check if efficiency features actually work as intended
+  For instance v[i]=k should usually avoid a copy of v being made. Also see
+  if something can be done to avoid duplication in a +:= x (probably not, as
+  one knows nothing about what + does). However, for v #:= x in a loop it
+  should be possible to avoid a new allocation for v at every iteration.
+- Duplication avoiding in component assignment
+- For loops in void context never build up any value.
 
 * Work on the realex scripts
-  - Complete the groups in groups.rx (types G,F); also avoid use of "s" etc.
-  - Study and rewrite Jeffs scripts to see what can be put into the library
+- Complete the groups in groups.rx (types G,F); also avoid use of "s" etc.
+- Study and rewrite Jeffs scripts to see what can be put into the library
 
 * Work on documentation
 
-* Work on makefiles, distribution and support programs
- - Change interpreter/Makefile so it does not remake io/fliekl.cpp and friends
- - Figure out how to avoid 'unrecognised typedef at line 367 of atlas_types.h'
- - Make cwebx messages mention file name, to 'make -jN' output comprehensible
- - Add some make targets for recording options as suggested by Nelson Beebe
+* Work on makefiles, distribution and support programs (cwebx)
+- Change interpreter/Makefile so it does not remake io/fliekl.cpp and friends
+- Figure out how to avoid 'unrecognised typedef at line 367 of atlas_types.h'
+- Make cwebx messages mention file name, to 'make -jN' output comprehensible
+- Add some make targets for recording options as suggested by Nelson Beebe
