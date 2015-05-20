@@ -73,7 +73,7 @@ set ext_type_3 (mat delta,int j,Param p) = string:
   else "3r"
   fi
 
-{ ext_type(delta,j,p)=ext_type_i(delta,j,p) where i=ext_length(G,delta,j)}
+{ ext_type(delta,j,p)=ext_type_i(delta,j,p) where i=ext_length(G,delta,j)
   j=index of root in integral-simple roots (not in all simple roots)
 }
 set ext_type (mat delta,int j,Param p) = string:

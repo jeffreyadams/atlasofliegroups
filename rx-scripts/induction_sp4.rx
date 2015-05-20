@@ -1,5 +1,9 @@
 {induction examples in Sp(4,R)}
 
+<basic.rx
+<groups.rx { for Sp }
+<group_operations.rx { for real_Levi }
+
 set G=Sp(4,R)
 set L_short=real_Levi(KGB(G,9)) {L_short has simple root (0,2)}
 set L_long=real_Levi(KGB(G,7))  {L_long has simple root (1,-1)}
