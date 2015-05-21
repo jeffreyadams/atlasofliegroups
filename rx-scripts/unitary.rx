@@ -1,5 +1,5 @@
 { representatives of the unitary facets for spherical F4 split
-  fundamental weight coordinates}
+  fundamental weight coordinates
   points from http://www.liegroups.org/dissemination/spherical/F4/report2
   Dynkin diagram is reversed, coordinates are flipped
   G=split_form("F4")

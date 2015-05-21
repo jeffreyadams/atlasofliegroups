@@ -54,8 +54,8 @@ set twist (mat delta,KGBElt x) = KGBElt:
   KGB_elt(real_form(x),delta*involution(x)*delta,torus_factor(x)*delta)
 
 set twist (mat delta,Param p)=
-  let (x,lambda_rho,nu) = %p
-  in parameter(twist(delta,x),delta*(lambda_rho+rho(real_form(x))),delta*nu)
+  let (x,lambda_rho,gamma) = %p
+  in parameter(twist(delta,x),delta*(lambda_rho+rho(real_form(x))),delta*gamma)
 
 set is_fixed (mat delta, Param p) = bool:
 { let ()=prints("is_fixed p:", p) in } p=twist(delta,p)

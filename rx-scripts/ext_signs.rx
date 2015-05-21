@@ -33,7 +33,10 @@ in SL(8,R) p=spherical_principal_series(G,rho(G)/4) you get 6 pluses and 2 minus
 }
 
 set sign_2i12((int,extended_param,extended_param)(j,E,F))=int:
- if sign(ext_Cayley(j,E),F)=1 and sign(ext_Cayley(j,F),E)=1 then 1 else -1 fi
+( let eC1=ext_Cayley(j,E), eC2=ext_Cayley(j,F) in
+  assert(#eC1=2 and #eC2=2)
+; if sign((eC1[0],eC1[1]),F)=1 and sign((eC2[0],eC2[1]),E)=1 then 1 else -1 fi
+)
 
 {old version, replaced by one above
 given E, F related by 2i12
