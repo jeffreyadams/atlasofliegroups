@@ -3599,13 +3599,20 @@ void module_parameter_wrapper(expression_base::level l)
       x->rf->rc().sr(x->val,lam_rho->val,nu->val)));
 }
 
-@ The following function, which we shall bind to the monadic operator `|%|',
-transforms a parameter value into a tuple of values that defines it. This
-tuple is not unique (since $\lambda$ is determined only modulo
-$(1-\theta_x)X^*$) and this function should make a unique choice. Whether that
-is really the case depends on the implementation of |StandardRepr|
-though; the current code, like the printing routine, just uses the methods to
-extract the components.
+@*2 Functions operating on module parameters.
+%
+The following function, which we shall bind to the monadic operator `|%|',
+transforms a parameter value into a triple of values $(x,\lambda-rho,\gamma)$
+that defines it, where $\gamma$ is taken to be (a representative of) the
+infinitesimal character. (This function used to produce $\nu$ as third
+component, but in practice obtaining the infinitesimal character directly
+turned out to often be more useful. If needed $\nu$ is easily computed as
+$\nu={1+\theta_x\over2}\gamma$; as the opposite conversion requires more work
+we had a separate function returning$~\gamma$ which is now superfluous.) The
+triple returned here is not unique, since $\lambda$ is determined only modulo
+$(1-\theta_x)X^*$, and this function should make a unique choice. That fact
+(and the choice made) are however hidden in the implementation of
+|StandardRepr|, of which we just call methods here.
 
 @< Local function def...@>=
 void unwrap_parameter_wrapper(expression_base::level l)
@@ -3613,22 +3620,14 @@ void unwrap_parameter_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   { push_value(std::make_shared<KGB_elt_value>(p->rf,p->val.x()));
     push_value(std::make_shared<vector_value>(p->rc().lambda_rho(p->val)));
-    push_value(std::make_shared<rational_vector_value>(p->rc().nu(p->val)));
+    push_value(std::make_shared<rational_vector_value>(p->val.gamma()));
     if (l==expression_base::single_value)
       wrap_tuple<3>();
   }
 }
 
-@*2 Functions operating on module parameters.
-A crucial attribute of module parameters is their infinitesimal character.
-
-@< Local function def...@>=
-void infinitesimal_character_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<rational_vector_value>(p->val.gamma()));
-}
 @)
+
 void real_form_of_parameter_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   if (l!=expression_base::no_value)
@@ -4114,8 +4113,6 @@ install_function(module_parameter_wrapper,@|"param"
                 ,"(KGBElt,vec,ratvec->Param)");
 install_function(unwrap_parameter_wrapper,@|"%"
                 ,"(Param->KGBElt,vec,ratvec)");
-install_function(infinitesimal_character_wrapper,@|"infinitesimal_character"
-                ,"(Param->ratvec)");
 install_function(real_form_of_parameter_wrapper,@|"real_form"
 		,"(Param->RealForm)");
 install_function(is_standard_wrapper,@|"is_standard" ,"(Param->bool)");

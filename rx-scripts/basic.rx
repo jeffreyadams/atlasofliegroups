@@ -696,12 +696,14 @@ set root_datum (Param p) = RootDatum: real_form(p)
 set inner_class (Param p) = InnerClass: real_form(p)
 
 { deforming |nu| (operand order avoids conflicting with *@(int,ParamPol) ) }
-set * (Param p,rat alpha) = let (x,lambda,nu)=%p in param(x,lambda,alpha*nu)
+set * (Param p,rat f) = Param: { multiplying the infinitesmal character works: }
+  let (x,lambda_rho,gamma)=%p in param(x,lambda_rho,gamma*f)
 
 set x (Param p) = KGBElt: let (x,,) =%p in x
 set lambda_minus_rho (Param p) = vec: let (,lambda_rho,) =%p in lambda_rho
 set lambda (Param p) = ratvec: lambda_minus_rho(p)+rho(real_form(p))
-set nu (Param p) = ratvec: let (,,nu) =%p in nu
+set infinitesimal_character (Param p) = ratvec: let (,,gamma) =%p in gamma
+set nu (Param p) = ratvec: let (x,,gamma) =%p in (1-involution(x))*gamma/2
 
 set involution (Param p)=involution(x(p))
 

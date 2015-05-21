@@ -102,9 +102,8 @@ set make_dominant_using_roots (RootDatum rd, vec v) = (vec,vec):
   return (new parameter, sum of roots)
 }
 set translate_to_dominant (Param p) = (Param,vec):
-  let (new_gamma,shift) =
-    make_dominant_using_roots(root_datum(p),infinitesimal_character(p))
-  , (x,lambda_rho,) = %p
+  let (x,lambda_rho,gamma) = %p
+  then  (new_gamma,shift) = make_dominant_using_roots(root_datum(p),gamma)
   in (param(x,lambda_rho+shift,new_gamma),shift)
 
 set w_long (RootDatum rd) = W_word: let (,w) = make_dominant(rd,-rho(rd)) in w
