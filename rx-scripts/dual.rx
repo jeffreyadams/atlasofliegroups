@@ -2,6 +2,15 @@
 <polynomial.rx
 <parameters.rx
 <Vogan-dual.rx
+{need length_diff, from old_kl.rx}
+set length(int i, vec stops) = int: { compute length=max{k:stops[k]<=i} }
+( let a=0, b=#stops { use binary search; invariant: a <= length < b }
+  in while a+1<b
+     do let avg=(a+b)\2 in if stops[avg]<=i then a:=avg else b:=avg fi
+     od
+; a
+)
+set length_diff (int i,int j,vec stops) = int: length(j,stops)-length(i,stops)
 
 {some similar stuff to Vogan-dual.rx, also some extra functionality}
 
@@ -22,7 +31,7 @@ set dual_gamma (KGBElt x,KGBElt_gen y) = ratvec:
 set dual_parameter(KGBElt x,KGBElt y)=Param:parameter(y,x,dual_gamma(x,y))
 
 set dual (Param p, InnerClass dual_integral_class) = Param:
-  parameter( y(p,dual_integral_class), dual_lambda(p), dual_gamma(p) )
+  parameter( y_alt(p,dual_integral_class), dual_lambda(p), dual_gamma(p) )
 set dual(Param p)=Param:dual(p,dual_inner_class(p))
 
 {choose infinitesimal cocharacter g yourself
