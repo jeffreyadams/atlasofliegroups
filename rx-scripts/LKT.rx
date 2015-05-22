@@ -4,6 +4,8 @@
 <K.rx    { K_0 }
 <sort.rx { inv_standardisation }
 
+{ height: (Param->int) of a K-type is now a built-in function }
+
 { if p is a final tempered limit then x(p) has no C- roots, these x's play a
   special role. Test this. Uses the circumstance that C- means status(i,x)=0.
 }
@@ -28,9 +30,13 @@ set make_no_Cminus (KGBElt x) = KGBElt: { repeat until stable }
   (x,lambda)->(y,w\lambda)
 }
 set move_weight (KGBElt x,KGBElt y,vec lambda) = (KGBElt,vec):
-  let G=real_form(x), w=find_W_cross(x,y) in (y,act(root_datum(G),w,lambda))
+( let G=real_form(x) in assert(real_form(y)=G,"Real form mismatch")
+; let w=find_W_cross(x,y) in (y,act(root_datum(G),w,lambda))
+)
 set move_weight (KGBElt x,KGBElt y,ratvec lambda) = (KGBElt,ratvec):
-  let G=real_form(x), w=find_W_cross(x,y) in (y,act(root_datum(G),w,lambda))
+( let G=real_form(x) in assert(real_form(y)=G,"Real form mismatch")
+; let w=find_W_cross(x,y) in (y,act(root_datum(G),w,lambda))
+)
 
 set move_finite_dimensional (KGBElt x,KGBElt y,Param p) = Param:
   let (,hw)=move_weight(x,y,highest_weight(p))
@@ -43,8 +49,7 @@ set move_finite_dimensional (KGBElt x,KGBElt y,Param p) = Param:
 set tworho_K (KGBElt x) = ratvec:
 ( if not in_distinguished_fiber(x)
   then prints("Warning: x is not in distinguished fiber") fi
-; let G=real_form(x) then rv=ratvec:null(rank(G)) in
-  sum(compact_posroots(x)) + sum(complex_posroots(x))/2
+; let G=real_form(x) in sum(compact_posroots(x)) + sum(complex_posroots(x))/2
 )
 
 { x is assumed to be in the distinguished fiber, defining K; y on any Cartan
@@ -56,7 +61,8 @@ set tworho_Kr (KGBElt x, KGBElt y) = ratvec:
 ( if not in_distinguished_fiber(x)
   then prints("Warning: x is not in distinguished fiber")
   elif not no_Cminus_roots(y)
-  then prints("Warning: not all complex roots for y are type C+") fi
+  then prints("Warning: not all complex roots for y are type C+")
+  fi
 ; let rpry = real_posroots(y), imx=is_imaginary(x), cpx=is_compact(x) in
   sum(columns_with((vec alpha): imx(alpha) and cpx(alpha),rpry)) +
   sum(columns_with(is_complex(x),rpry))/2
@@ -100,13 +106,26 @@ set strong_map_into_distinguished_fiber (KGBElt x) = KGBElt:
 set canonical_x_K (KGBElt x) = KGBElt: strong_map_into_distinguished_fiber(x)
 set canonical_x_K (Param p)  = KGBElt: canonical_x_K(x(p))
 
+{ simplest definition:
+  K-types are parametrized by final tempered limit parameters
+  lowest_k_types(p) are found by setting nu=0, and applying make_final
+}
+set lowest_k_types (Param p) = [Param]: make_final(p*0)
+set lowest_K_types_pol (Param p) = ParamPol: p*0 { conversion suffices }
+
+
 { this is the heart of the matter
   LKT of final tempered limit parameter, is unique
   K=K_{x_K} where x_K=map_into_distinguished_fiber(x(p))
   returns mu_0\in X^*, \mu=restriction of mu_0 to H^theta_{x_K}
   and x_K defining K
+
+  Represent K-type by (x_K,mu_0, image of mu_0 in X^*(K))
 }
-set LKT_final_tempered_limit (Param p) = (KGBElt,ratvec,vec):
+
+: K_type = (KGBElt,ratvec,vec)
+
+set LKT_final_tempered_limit (Param p) = K_type:
 ( assert(=nu(p),"The parameter is not tempered")
 ; assert(is_final(p),"The parameter is not final")
 ; let G=real_form(p), y=x(p)
@@ -128,17 +147,16 @@ set LKT_final_tempered_limit (Param p) = (KGBElt,ratvec,vec):
 { returns a list of highest weights of lowest K-types, each might be for a
   different (isomorphic) K_x
   algorithm:
-  compute LKT_final_tempered_limit(q) for each q in make_final(make_nu0(p)
+  compute LKT_final_tempered_limit(q) for each q in lowest_k_types(p)
   LKT for q is with respect to canonical_x_K(q)
 }
-set LKT_raw (Param p) = [(KGBElt,ratvec,vec)]:
-  for q in make_final(p*0) do LKT_final_tempered_limit(q) od
+set LKT_raw (Param p) = [K_type]:
+  for q in lowest_k_types(p) do LKT_final_tempered_limit(q) od
 
 { move all highest weights to those for fixed K_x }
 set LKT_raw (Param p,KGBElt x_K) = (KGBElt,[(ratvec,vec)]):
   ( x_K
   , for (x,mu_0,mu) in LKT_raw(p)
-    { or verbose version: let lkt= LKT_raw(p) in prints("lkt: ", lkt); lkt }
     do let (,mu_1) = move_weight(x,x_K,mu_0) in
       (mu_1,project_K(real_form(p),mu_1))
     od
@@ -177,7 +195,7 @@ set LKT_dimensions ([Param] B)= [[int]]: for p in B do LKT_dimensions(p) od
 set print_LKT ([Param] B, KGBElt x) = void:
 ( let G=real_form(B[0]), K_0=K_0(x) in
   prints("K_0: ", K_0)
-; prints("rho_K:", rho(K_0))
+{ ; prints("rho_K:", rho(K_0)) }
 ; for p in B
   do let lkt=LKT(p)
   in prints(""); prints(p); prints(" Lowest K-types:")
@@ -215,7 +233,7 @@ set testpsdims (RealForm G) = void:
   for p in all_principal_series(G) do prints(LKT_dimensions(p)) od
 
 { compute all lowest K-types of minimal principal series of split group
-  algorithm: p -> make_final(make_nu0(p))
+  algorithm: p -> lowest_k_types(p)
     =list of (final tempered limit) parameters, some are repeated,
   make into a ParamPol=sum of distinct parameters with multiplicity,
   compute unique LKT of each parameter occuring
@@ -236,9 +254,6 @@ set all_LKT_ps (RealForm G) = void: all_LKT_ps(G,KGB(G,0))
 
 
 {			    sorting by dimension			}
-
-set sort_by ( (Split,Param->int) f) = ([(Split,Param)] v) [(Split,Param)]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 set sort_by_dimension = ([(Split,Param)] -> [(Split,Param)]):
  sort_by( (Split s,Param p) int: LKT_dimensions(p)[0] )
