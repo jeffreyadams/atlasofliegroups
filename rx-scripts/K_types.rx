@@ -1,0 +1,108 @@
+<sort.rx
+
+set branch_std(Param p, int height_bound)=ParamPol:
+let params=make_final(make_nu0(p)) then
+rv=null_module(p) in 
+for q in params do rv+:=branch(q,height_bound) od;rv
+
+set branch_std(ParamPol P,int height_bound)=ParamPol:
+let rv=null_module(real_form(P)) in
+for (a,p) in %P do rv+:=a*branch_std(p,height_bound) od;rv
+
+set branch_irr(Param p, int height_bound)=ParamPol:
+branch_std(character_formula(p),height_bound)
+
+set branch_irr(ParamPol P,int height_bound)=ParamPol:
+let rv=null_module(real_form(P)) in
+for (a,p) in %P do rv+:=a*branch_irr(p,height_bound) od;rv
+
+set print_K_irr(ParamPol P,KGBElt x,int height_bound)=void:
+let ktypes=sort_by_height(%branch_irr(P,height_bound)) in 
+for (mult,q) in ktypes do 
+let hw=LKT_highest_weights(q,x)[0] in 
+prints(split_as_int(mult), "*", hw) od
+
+set print_K_irr(ParamPol P,int height_bound)=void:print_K_irr(P,KGB(real_form(P),0),height_bound)
+
+{K-types of sum of irreducibles P, up to given height_bound, sorted by height, the output
+includes multiplicity, highest weight (on the identity component of K), dimension and height}
+set print_K_irr_long(ParamPol P,KGBElt x,int height_bound)=void:
+let ktypes=sort_by_height(%branch_irr(P,height_bound)) in 
+for (mult,q) in ktypes do 
+let hw=LKT_highest_weights(q,x)[0] in 
+prints(split_as_int(mult), "*", hw, " ", LKT_dimensions(q)[0],  "    ", height(q)) od
+
+set print_K_irr_long(ParamPol P,int height_bound)=void:print_K_irr_long(P,KGB(real_form(P),0),height_bound)
+
+set print_K_irr(Param p,KGBElt x, int height_bound)=void:print_K_irr(ParamPol:p,x,height_bound)
+set print_K_irr(Param p, int height_bound)=void:print_K_irr(ParamPol:p,height_bound)
+set print_K_irr_long(Param p,KGBElt x, int height_bound)=void:print_K_irr_long(ParamPol:p,x,height_bound)
+set print_K_irr_long(Param p, int height_bound)=void:print_K_irr_long(ParamPol:p,height_bound)
+
+set print_K_std(ParamPol P,KGBElt x,int height_bound)=void:
+let ktypes=sort_by_height(%branch_std(P,height_bound)) in 
+for (mult,q) in ktypes do 
+let hw=LKT_highest_weights(q,x)[0] in 
+prints(split_as_int(mult), "*", hw) od
+
+set print_K_std(ParamPol P,int height_bound)=void:print_K_std(P,KGB(real_form(P),0),height_bound)
+
+{K-types of standard p, up to given height_bound, sorted by height, the output
+includes multiplicity, highest weight (on the identity component of K), dimension and height}
+set print_K_std_long(ParamPol P,KGBElt x,int height_bound)=void:
+let ()=prints("rho_K=", rho_K(x)) then
+ktypes=sort_by_height(%branch_std(P,height_bound)) in 
+for (mult,q) in ktypes do 
+let hw=LKT_highest_weights(q,x)[0] in 
+prints(split_as_int(mult), "*", hw, " ", LKT_dimensions(q)[0],  "    ", height(q)) od
+
+set print_K_std_long(ParamPol P,int height_bound)=void:print_K_std_long(P,KGB(real_form(P),0),height_bound)
+
+set print_K_std(Param p,KGBElt x, int height_bound)=void:print_K_std(ParamPol:p,x,height_bound)
+set print_K_std(Param p, int height_bound)=void:print_K_std(ParamPol:p,height_bound)
+set print_K_std_long(Param p,KGBElt x, int height_bound)=void:print_K_std_long(ParamPol:p,x,height_bound)
+set print_K_std_long(Param p, int height_bound)=void:print_K_std_long(ParamPol:p,height_bound)
+
+{multiplicity of K-type p_K in standard module p}
+set mult_std(Param p_K,Param p)=int:
+let ktypes=%branch_std(p,height(p_K)) in 
+let done=false in 
+let i=0 in 
+let rv=0 in 
+while (i<#ktypes and not done) do
+ let (a,q)=ktypes[i] in if q=p_K then done:=true;rv:=split_as_int(a) else i:=i+1 fi od;rv
+
+{multiplicity of K-type p_K in irr module p}
+set mult_irr(Param p_K,Param p)=int:
+let ktypes=%branch_irr(p,height(p_K)) in 
+let done=false in 
+let i=0 in 
+let rv=0 in 
+while (i<#ktypes and not done) do
+ let (a,q)=ktypes[i] in if q=p_K then done:=true;rv:=split_as_int(a) else i:=i+1 fi od;rv
+
+set K_signature_irr(Param p,int height_bound)=(ParamPol,ParamPol):
+let form=hermitian_form_irreducible(p) in 
+let (pos,neg)=parts(form) in 
+(branch_std(pos,height_bound),branch_std(neg,height_bound))
+
+set print_K_signature_irr(Param p,KGBElt x,int height_bound)=void:
+let form=hermitian_form_irreducible(p) in 
+let (P,Q)=parts(form) in 	       
+if #P=0 then prints("Positive part is empty") else prints("Positive part:");print_K_std_long(P,x,height_bound) fi;\
+if #Q=0 then prints("Negative part is empty") else prints("Negative part:");print_K_std_long(Q,x,height_bound) fi
+
+set print_K_signature_irr(Param p,int height_bound)=void:print_K_signature_irr(p,KGB(real_form(p),0),height_bound)
+
+set signed_mult(Param p_K,Param p)=(int,int):
+let (P,Q)=K_signature_irr(p,height(p_K)) in 
+let ktypes_P=%branch_std(P,height(p_K)) in 
+let ktypes_Q=%branch_std(Q,height(p_K)) in 
+let done=false in 
+let (pos,neg)=(0,0) in 
+(let i=0 in while (i<#ktypes_P and not done) do
+ let (a,q)=ktypes_P[i] in if q=p_K then done:=true;pos:=split_as_int(a) else i:=i+1 fi od,
+let done=false,j=0 in while (j<#ktypes_Q and not done) do
+ let (a,q)=ktypes_Q[j] in if q=p_K then done:=true;neg:=split_as_int(a) else j:=j+1 fi od);(pos,neg)
+
+
