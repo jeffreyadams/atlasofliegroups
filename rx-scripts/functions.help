@@ -282,7 +282,7 @@ integrality_datum: (RootDatum,ratvec->RootDatum): integral coroots subdatum
 integrality_points: (RootDatum,ratvec->[rat]): fractions with integrality
   The call integrality_points(rd,lambda) returns the increasing list of
   positive fractions f<=1 so f*lambda has more integrality than generically:
-  for some coroot alphav one has integral and nonzero value <f*lambda,alphav>.
+  for some coroot alphav one has integral and nonzero value <alphav,f*lambda>.
 
 classify_involution: (mat->int,int,int): determine type of lattice involution
   For any linear involution of Z^n, there is a basis consisting of certain

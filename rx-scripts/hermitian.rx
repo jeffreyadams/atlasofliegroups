@@ -180,9 +180,9 @@ set test_spherical_unitary(RealForm G,[ratvec] nus)= void:
   od
 
 set test_line (Param p) = void:
-( let (x,lambda_minus_rho,nu) = %p
+( let (x,lambda_minus_rho,gamma) = %p
   then points=reducibility_points(p)
-  ,   ipoints=integrality_points(root_datum(p),2*nu)
+  ,   ipoints=integrality_points(root_datum(p),2*nu(p))
   in prints("testing line through ", p)
 ; prints("reducibility points: ",points)
 ; prints("integrality points (for 2*nu): ",ipoints)
@@ -194,10 +194,10 @@ set test_line (Param p) = void:
   ; for i:#points-1 from 1
     do
       let t=(points[i]+points[i-1])/2
-      then q=param(x,lambda_minus_rho,t*nu)         { mid point interval }
-      ,    r=param(x,lambda_minus_rho,points[i]*nu) { end point interval }
-      in prints(t*nu,": ", is_unitary(q))
-      ;  prints(points[i]*nu,": ", is_unitary(r))
+      then q=param(x,lambda_minus_rho,gamma*t)         { mid point interval }
+      ,    r=param(x,lambda_minus_rho,gamma*points[i]) { end point interval }
+      in prints(nu(p)*t,": ", is_unitary(q))
+      ;  prints(nu(p)*points[i],": ", is_unitary(r))
     od
   fi
 )

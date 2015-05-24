@@ -17,8 +17,7 @@ set translate_debug=false
   if gamma or gamma_new is not dominant, no guarantees (but no test either)
 }
 set translate_by (Param p, vec shift) = Param:
-  let (x,lambda_rho,)=%p
-  in param(x,lambda_rho+shift,infinitesimal_character(p)+shift)
+  let (x,lambda_rho,gamma)=%p in param(x,lambda_rho+shift,gamma+shift)
 set T(Param p, ratvec gamma_new)= Param:
   translate_by(p,ratvec_as_vec(gamma_new-infinitesimal_character(p)))
 

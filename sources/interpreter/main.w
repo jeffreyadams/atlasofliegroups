@@ -350,7 +350,7 @@ suppress printing of the uninteresting value.
     type_expr found_type=analyse_types(*parse_tree,e);
     type_OK=true;
     if (verbosity>0)
-      cout << "Type found: " << last_type << endl @|
+      cout << "Type found: " << found_type << endl @|
 	   << "Converted expression: " << *e << endl;
     e->evaluate(expression_base::single_value);
 @)  // now that evaluation did not |throw|, we can record the predicted type

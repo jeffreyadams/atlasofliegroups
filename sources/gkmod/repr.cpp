@@ -556,7 +556,7 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
 
   InvolutionNbr inv0= kgb.inv_nr(x);
   RootNbr s=rt; // future simple root index, the one that |rt| conjugates to
-  WeylWord ww = conjugate_to_simple(i_tab.rd,s);
+  WeylWord ww = conjugate_to_simple(rd,s);
   x = kgb.cross(x,ww);
   switch (kgb.status(s,x))
   {
@@ -579,12 +579,12 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   x = kgb.cross(ww,x); // finally cross back
   InvolutionNbr inv3 = kgb.inv_nr(x);
 
-  Weight rho_d(rd.rank(),0);
+  Weight rho_d(rd.rank(),0); // difference of rho values
   const RootNbrSet posroots = rd.posRootSet();
   RootNbrSet d03 = (i_tab.real_roots(inv0)^i_tab.real_roots(inv3))&posroots;
   for (auto it=d03.begin(); it(); ++it)
     if (rd.is_negroot(rd.permuted_root(*it,ww)))
-      rho_d += rd.root(*it);
+      rho_d += rd.root(*it); // sum posroots changing "real" and (by w) "pos"
 
   z = sr_gamma(x,lr+rho_d,infin_char); // apply shift by |rho_d| to lambda
   W_act(w,z); // move back to origingal infinitesimal character representative

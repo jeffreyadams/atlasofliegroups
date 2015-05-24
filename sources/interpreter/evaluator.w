@@ -1023,21 +1023,23 @@ private:
 
 @ While syntactically more complicated than ordinary function calls, the call
 of overloaded functions is actually simpler at run time, because the function
-is necessarily referred to by an identifier instead of by an arbitrary
-expression, and overloading resolution results in a function \emph{value}
-rather than in the description of a location where the function can be found
-at run time. If that value happens to be a built-in function, the call will be
-translated into an |overloaded_builtin_call| rather than into a
-|call_expression|.
+is necessarily referred to by an identifier (or operator) instead of by an
+arbitrary expression, and overloading resolution results in a
+function \emph{value} rather than in the description of a location where the
+function can be found at run time. If that value happens to be a built-in
+function, the call will be translated into an |overloaded_builtin_call| rather
+than into a |call_expression|.
 
 @< Type definitions @>=
 struct overloaded_builtin_call : public expression_base
 { wrapper_function f;
   std::string print_name;
   expression_ptr argument;
+  source_location loc;
 @)
-  overloaded_builtin_call(wrapper_function v,const char* n,expression_ptr&& a)
-  : f(v), print_name(n), argument(a.release())@+ {}
+  overloaded_builtin_call(wrapper_function v,const char* n,expression_ptr&& a,
+    source_location loc)
+  : f(v), print_name(n), argument(a.release()), loc(loc)@+ {}
   virtual ~@[overloaded_builtin_call() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
@@ -1069,8 +1071,9 @@ an unexpanded argument on the execution stack. Therefore we derive a type from
 struct generic_builtin_call : public overloaded_builtin_call
 { typedef overloaded_builtin_call base;
 @)
-  generic_builtin_call(wrapper_function v,const char* n,expression_ptr&& a)
-  : base(v,n,std::move(a))@+ {}
+  generic_builtin_call(wrapper_function v,const char* n,expression_ptr&& a,
+    source_location loc)
+  : base(v,n,std::move(a),loc)@+ {}
   virtual void evaluate(level l) const;
 };
 
@@ -1174,8 +1177,8 @@ will still be accepted.
 { expression_ptr call;
   const builtin_value* f = dynamic_cast<const builtin_value*>(v.val.get());
   if (f!=nullptr)
-    call = expression_ptr (new @|
-      overloaded_builtin_call(f->val,f->print_name.c_str(),std::move(arg)));
+    call = expression_ptr (new @| overloaded_builtin_call
+      (f->val,f->print_name.c_str(),std::move(arg),e.loc));
   else
     @< Set |call| to the call of the user-defined function |v|
        with argument |arg| @>
@@ -1217,8 +1220,8 @@ below tests.
 @< If |id| is a special operator like size-of... @>=
 { if (id==size_of_name())
   { if (a_priori_type.kind==row_type)
-    { expression_ptr
-        call(new overloaded_builtin_call(sizeof_wrapper,"#",std::move(arg)));
+    { expression_ptr call(new @|
+        overloaded_builtin_call(sizeof_wrapper,"#",std::move(arg),e.loc));
       return conform_types(int_type,type,std::move(call),e);
     }
     else if (a_priori_type.kind!=undetermined_type and
@@ -1228,12 +1231,12 @@ below tests.
   }
   else if (id==print_name()) // this one always matches
   { expression_ptr call(new
-      generic_builtin_call(print_wrapper,"print",std::move(arg)));
+      generic_builtin_call(print_wrapper,"print",std::move(arg),e.loc));
     return conform_types(a_priori_type,type,std::move(call),e);
  }
   else if(id==prints_name()) // this always matches as well
   { expression_ptr call(new
-      generic_builtin_call(prints_wrapper,"prints",std::move(arg)));
+      generic_builtin_call(prints_wrapper,"prints",std::move(arg),e.loc));
     if (type.specialise(void_type))
       return call;
     throw type_error(e,void_type.copy(),std::move(type));
@@ -1276,13 +1279,13 @@ it) or the pair expression (by inserting a coercion).
   type_expr& arg_tp1 = *++a_priori_type.tupple.begin();
   if (arg_tp0.kind==row_type)
   { if (can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type)) // suffix
-    { expression_ptr call(new @|
-        overloaded_builtin_call (suffix_element_wrapper,"#",std::move(arg)));
+    { expression_ptr call(new @| overloaded_builtin_call
+        (suffix_element_wrapper,"#",std::move(arg),e.loc));
       return conform_types(arg_tp0,type,std::move(call),e);
     }
     if (arg_tp0==arg_tp1) // join
     { expression_ptr call(new @| overloaded_builtin_call
-        (join_rows_wrapper,"#",std::move(arg)));
+        (join_rows_wrapper,"#",std::move(arg),e.loc));
       return conform_types(arg_tp0,type,std::move(call),e);
     }
   }
@@ -1290,7 +1293,7 @@ it) or the pair expression (by inserting a coercion).
          can_coerce_arg(arg.get(),0,arg_tp0,*arg_tp1.component_type))
           // prefix
   { expression_ptr call(new @| overloaded_builtin_call
-      (prefix_element_wrapper,"#",std::move(arg)));
+      (prefix_element_wrapper,"#",std::move(arg),e.loc));
     return conform_types(arg_tp1,type,std::move(call),e);
   }
 }
@@ -1330,7 +1333,7 @@ bool can_coerce_arg
   return coerce(from,to,tup->component[i]);
 }
 
-@*1 Evaluating built-in function calls.
+@*1 Evaluating general function calls, the built-in case.
 %
 To evaluate a |call_expression| object, in which the function part can be any
 expression, we must evaluate this function part, and then dynamically test
@@ -1352,8 +1355,24 @@ not yet started executing would be confusing.
 @< Function definitions @>=
 void call_expression::evaluate(level l) const
 { function->eval(); @+ shared_value fun=pop_value();
-@/const builtin_value* f=dynamic_cast<const builtin_value*>(fun.get());
+@/size_t sp = execution_stack.size();
+  std::string arg_string;
+  const builtin_value* f=dynamic_cast<const builtin_value*>(fun.get());
   argument->evaluate(f==nullptr ? single_value : multi_value);
+  if (verbosity>0)
+  { std::ostringstream o;
+    if (f==nullptr or sp+1==execution_stack.size()) // get single argument
+      o << *execution_stack.back();
+    else // built-in with multiple arguments, gather them
+    { o << '(';
+      while(sp<execution_stack.size())
+    @/{@; o << *execution_stack[sp++];
+          o << (sp<execution_stack.size() ? ',' : ')');
+      }
+    }
+    arg_string = o.str();
+  }
+@)
   try
   { if (f==nullptr)
       @< Call user-defined function |fun| with argument on |execution_stack| @>
@@ -1394,56 +1413,82 @@ below so clumsy.)
 @< Catch-block for exceptions thrown within function calls @>=
 catch (const std::exception& e)
 { identifier* p=dynamic_cast<identifier*>(function.get());
-  if (p!=nullptr) // named function
-  {
-    const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
-    if (l_err!=nullptr)
-      throw std::logic_error
-        (std::string(e.what())+"\n(in call of "+p->name()+')');
-    throw std::runtime_error
-      (std::string(e.what())+"\n(in call of "+p->name()+')');
+  std::ostringstream o (e.what(),std::ios_base::ate); // append to |e.what()|
+  o << "\n(in call of " << (p==nullptr ?  "anonymous function" : p->name() )
+    << ", ";
+  if (f!=nullptr) o<< "built-in";
+  else // user-defined function
+  {@; const closure_value* f=force<closure_value>(fun.get());
+    o << "defined " << f->p->loc;
   }
-  throw; // for anonymous function calls, just rethrow the error unchanged
+  o << ')';
+  if (verbosity>0)
+    o << "\n  argument" << (arg_string[0]=='(' ? "s: " : ": ") << arg_string;
+  const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
+  if (l_err!=nullptr)
+    throw std::logic_error(o.str());
+  throw std::runtime_error(o.str());
 }
 
 @*1 Evaluating overloaded built-in function calls.
 %
 Calling an overloaded built-in function calls the wrapper function after
-evaluating the argument(s). We provide the same trace of interrupted functions
-by temporarily catching errors as in the case of non-overloaded function
-calls, but here we need not test that the call was one of a named function.
+evaluating the argument(s) to the stack.
 
-@< Function definitions @>=
-void overloaded_builtin_call::evaluate(level l) const
-{ argument->multi_eval();
-  try
-  {@; (*f)(l); }
-  catch (const std::exception& e)
-  { const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
-    if (l_err!=nullptr)
-      throw std::logic_error
-        (std::string(e.what())+"\n(in call of "+print_name+')');
-    throw std::runtime_error
-      (std::string(e.what())+"\n(in call of "+print_name+')');
-  }
-}
-
-@ For generic built-in functions like |print| we only change the fact that
+For generic built-in functions like |print|, we only change the fact that
 arguments are evaluated using |eval| to a single value on the stack.
 
 @< Function definitions @>=
-void generic_builtin_call::evaluate(level l) const
-{ argument->eval();
-  try
-  {@; (*f)(l); }
-  catch (const std::exception& e)
-  { const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
-    if (l_err!=nullptr)
-      throw std::logic_error
-        (std::string(e.what())+"\n(in call of "+print_name+')');
-    throw std::runtime_error
-      (std::string(e.what())+"\n(in call of "+print_name+')');
+void overloaded_builtin_call::evaluate(level l) const
+{ size_t sp = execution_stack.size();
+  std::string arg_string;
+  argument->multi_eval();
+  if (verbosity>0) // then record argument(s) as string
+  { std::ostringstream o;
+    if (sp+1==execution_stack.size())
+      o << *execution_stack.back();
+    else
+    { o << '(';
+      while(sp<execution_stack.size())
+    @/{@; o << *execution_stack[sp++];
+          o << (sp<execution_stack.size() ? ',' : ')');
+      }
+    }
+    arg_string = o.str();
   }
+@)
+  @< Execute |(*f)(l)|, catching and re-throwing any errors, having extended
+     the message with a reference to built-in function |print_name| @>
+}
+
+void generic_builtin_call::evaluate(level l) const
+{ std::string arg_string;
+  argument->eval();
+  if (verbosity>0) // then record argument(s) as string
+  {@; std::ostringstream o;
+    o << *execution_stack.back();
+    arg_string = o.str();
+  }
+@)
+  @< Execute |(*f)(l)|, catching and re-throwing any errors...@>
+}
+
+@ Like for general function calls, we provide a trace of interrupted functions
+by temporarily catching errors. The main difference is that we need not test
+that the call was one of a named function, nor that it is built-in.
+
+@< Execute |(*f)(l)|, catching and re-throwing any errors...@>=
+try
+{@; (*f)(l); }
+catch (const std::exception& e)
+{ std::ostringstream o (e.what(),std::ios_base::ate); // append to |e.what()|
+  o << "\n(in call of " << print_name << ' ' << loc @| << ", built-in)";
+  if (verbosity>0)
+    o << "\n  argument" << (arg_string[0]=='(' ? "s: " : ": ") << arg_string;
+  const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
+  if (l_err!=nullptr)
+    throw std::logic_error(o.str());
+  throw std::runtime_error(o.str());
 }
 
 @*1 Some special wrapper functions.
@@ -1823,7 +1868,7 @@ struct lambda_struct
   : param(std::move(param)), body(std::move(body)), loc(loc) @+{}
 };
 typedef std::shared_ptr<lambda_struct> shared_lambda;
-
+@)
 struct lambda_expression : public expression_base
 { shared_lambda p;
   @)
@@ -1870,7 +1915,59 @@ std::ostream& operator<<(std::ostream& out, const lambda_struct& l)
 }
 void lambda_expression::print(std::ostream& out) const @+{@; out << *p; }
 
-@* Closures, and the evaluation of $\lambda$-expressions.
+@ Handling of user-defined functions in type analysis is usually uneventful
+(apart from the analysis of its body, which can of course be arbitrarily
+complex), but still has to be done with some care to correctly handle rare
+circumstances.
+
+The main work here is to call |thread_bindings| to extract from the specified
+argument pattern the identifiers it contains, couple them to their specified
+types, and store the result in |new_layer|, to be used during the type-check
+and conversion of the function body. It is rare for a $\lambda$-expression to
+appear in a context that requires a specific type, but it can happen (the
+right hand side of an assignment for instance) and necessitates various tests
+in the code below. After conversion of the function body, no implicit
+conversions are ever needed (as there are none that ever apply to expressions
+of function type), so there is no point in calling |conform_types| at the end.
+However it is possible that the context requires a void type; like for
+denotations, this is silly (evaluation will have no side effect) but legal.
+So we handle both cases here, sharing code where possible.
+
+In non-void context we specialise the required |type| (often undetermined
+initially) to a function type with argument type the one given in the
+$\lambda$-expression (signalling a type error if a different type was
+expected), then we convert the function body in the new context, specialising
+the return type. In void context we do only the conversion (just for error
+checking), ignore the return type, and return a |voiding| of it.
+
+@< Cases for type-checking and converting... @>=
+case lambda_expr:
+{ const lambda& fun=e.lambda_variant;
+  const id_pat& pat=fun->pattern;
+  type_expr& arg_type=fun->parameter_type;
+  if (not arg_type.specialise(pattern_type(pat)))
+    throw expr_error(e,"Function argument pattern does not match its type");
+@/layer new_layer(count_identifiers(pat));
+  thread_bindings(pat,arg_type,new_layer);
+  if (type!=void_type)
+  { if (not (type.specialise(gen_func_type)
+             and type.func->arg_type.specialise(arg_type)))
+    @/throw type_error(e,
+                       type_expr(arg_type.copy(),unknown_type.copy()),
+                       std::move(type));
+    return expression_ptr(new @|
+      lambda_expression(pat, convert_expr(fun->body,type.func->result_type)
+                       ,std::move(e.loc)));
+  }
+  else
+  { type_expr dummy; // unused result type
+    expression_ptr result(new @|
+      lambda_expression(pat,convert_expr(fun->body,dummy),std::move(e.loc)));
+    return expression_ptr(new voiding(std::move(result)));
+  }
+}
+
+@* Closures.
 %
 In first approximation $\lambda$-expression are like denotations of
 user-defined functions: their evaluation just returns the stored function
@@ -1879,13 +1976,24 @@ the bindings of the local variables that may occur as free identifiers in the
 function body (any used global variables can be bound at compile time, so they
 do not need any special consideration). Therefore the evaluation of a
 $\lambda$~expressions actually yields an intermediate value that is
-traditionally called a closure. It contains a shared pointer to the
+traditionally called a closure. It contains a shared pointer~|p| to the
 |lambda_struct| holding the function body, as well as the execution context
-current at the point the $\lambda$~expression is encountered. Sharing the
-|lambda_struct| among different closures obtained from the same
+|context| that was current at the point in time the $\lambda$~expression was
+encountered.
+
+Sharing the |lambda_struct| among different closures obtained from the same
 $\lambda$-expression is efficient in terms of space, but would require double
 dereference upon evaluation. Since the latter occurs frequently, we speed up
 evaluation by also using a reference |body| directly to the function body.
+Note that closures are formed when the \emph{definition} of a user-defined
+function is processed, so this optimisation should make evaluation of globally
+defined functions a bit faster. For local functions, the closure is formed
+during the execution of the outer function, so the optimisation only helps if
+the closure formed will be called more than once; this is still probable,
+though there are usage patters (for instance simulating a case statement by
+selecting a closure from an array, and then calling it) for which local
+closures are actually executed less than once on average; in such cases we are
+actually wasting effort here.
 
 @< Type def... @>=
 struct closure_value : public value_base
@@ -1914,7 +2022,7 @@ printed. But it's not done yet.
 
 @< Function def... @>=
 void closure_value::print(std::ostream& out) const
-{ out << "Function defined " << p->loc << std::endl << *p;
+{@; out << "Function defined " << p->loc << std::endl << *p;
 }
 
 @ Evaluating a $\lambda$-expression just forms a closure using the current
@@ -1934,15 +2042,17 @@ void lambda_expression::evaluate(level l) const
      push_value(std::make_shared<closure_value>(frame::current,p));
 }
 
-@ Here a variation of the class |frame|; again the purpose is to have
-a constructor-destructor pair that temporarily suspends the current execution
-context, replacing it by a new one determined by the $\lambda$-expression
-parameter(s) on top of the execution context stored in the closure. Again
-instances of this class should be automatic variables, to ensure that they
-have nested lifetimes.
+@*1 Calling user-defined functions.
+%
+In order to implement calling of user-defined functions, we define a variation
+of the class |frame|. Again the purpose is to have a constructor-destructor
+pair that temporarily suspends the current execution context, replacing it by
+a new one determined by the parameter(s) of the $\lambda$-expression, on top
+of the execution context stored in the closure. Again instances of this class
+should be automatic variables, to ensure that they have nested lifetimes.
 
-Context switching is a crucial and recurrent step in the evaluation process,
-so we take care to not uselessly change the reference count of
+This context switching is a crucial and recurrent step in the evaluation
+process, so we take care to not uselessly change the reference count of
 |frame::current|. It is \emph{moved} into |saved| upon construction, and upon
 destruction moved back again to |frame::current|. In contrast to |frame|, the
 constructor here needs a try block for exception safety, as the call to
@@ -1953,7 +2063,11 @@ to move the pointer back explicitly in the |catch| block.
 
 If one tried to derive this class from |frame|, one would have to construct
 the base (which modifies |frame::current|) before doing anything else; this
-would make saving the value of |frame::current| problematic.
+would make saving the value of |frame::current| problematic. For that reason
+it is better to just repeat some of the things done for |frame| independently,
+similarly but with a few important changes. We do of course have to make use
+of the static member |frame::current| of that class, which is the whole point
+of defining the |lambda_frame| class.
 
 @< Local class definitions @>=
 class lambda_frame
@@ -1977,6 +2091,61 @@ public:
       thread_components(pattern,val,frame::current->back_inserter());
     }
 };
+
+@ In general a closure formed from a $\lambda$ expression can be handled in
+various ways (like being passed as argument, returned, stored) before being
+applied as a function, in which case the call is performed by
+|call_expression::evaluate| described above; the actual code this executes is
+given in section@# lambda evaluation @> below. However, in most cases the path
+from definition to call is more direct: the closure from a user-defined
+function is bound to an identifier (or operator) in the global overload table,
+and located during type checking of a call expression. As this special but
+frequent case can be handled more efficiently than by building a
+|call_expression|, we introduce a new |expression| type that is capable of
+directly storing a closure value.
+
+@< Type definitions @>=
+struct overloaded_closure_call : public expression_base
+{ shared_closure fun;
+  std::string print_name;
+  expression_ptr argument;
+  source_location loc;
+@)
+  overloaded_closure_call @|
+   (shared_closure f,const std::string& n,expression_ptr&& a
+   ,const source_location& loc)
+  : fun(f), print_name(n), argument(a.release()), loc(loc) @+ {}
+  virtual ~@[overloaded_closure_call() nothing_new_here@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ When printing it, we ignore the closure and use the overloaded function
+name.
+
+@< Function definitions @>=
+void overloaded_closure_call::print(std::ostream& out) const
+{ out << print_name;
+  if (dynamic_cast<tuple_expression*>(argument.get())!=nullptr)
+     out << *argument;
+  else out << '(' << *argument << ')';
+}
+
+@ The identification of this case is done inside |resolve_overload|, after
+testing that the value bound is not a built-in function. Since an |overload|
+table should hold only values of function type, we must have a |closure_value|
+if it was not a |builtin_value|.
+
+@< Set |call| to the call of the user-defined function |v|... @>=
+{ shared_closure fun = std::dynamic_pointer_cast<const closure_value>(v.val);
+  if (fun==nullptr)
+    throw std::logic_error("Overloaded value is not a function");
+  std::ostringstream name;
+  name << main_hash_table->name_of(id) << '@@' << v.type().arg_type;
+  call =
+    expression_ptr(new
+      overloaded_closure_call(fun,name.str(),std::move(arg),e.loc));
+}
 
 @ When calling a function in a non overloading manner, we come to the code
 below if it turns out not to be a built-in function. This code basically
@@ -2012,121 +2181,44 @@ currently however, none of these are possible yet.
   f->body.evaluate(l); // call, passing evaluation level |l| to function body
 } // restore context upon destruction of |fr|
 
-@ For function overloads given by a user-defined function, we need a new
-|expression| type which is capable of storing a closure value.
-
-@< Type definitions @>=
-struct overloaded_closure_call : public expression_base
-{ shared_closure fun;
-  std::string print_name;
-  expression_ptr argument;
-@)
-  overloaded_closure_call
-   (shared_closure f,const std::string& n,expression_ptr&& a)
-  : fun(f), print_name(n), argument(a.release())@+ {}
-  virtual ~@[overloaded_closure_call() nothing_new_here@];
-  virtual void evaluate(level l) const;
-  virtual void print(std::ostream& out) const;
-};
-
-@ When printing it, we ignore the closure and use the overloaded function
-name.
-
-@< Function definitions @>=
-void overloaded_closure_call::print(std::ostream& out) const
-{ out << print_name;
-  if (dynamic_cast<tuple_expression*>(argument.get())!=nullptr)
-     out << *argument;
-  else out << '(' << *argument << ')';
-}
-
-@ The identification of this case is done inside |resolve_overload|, after
-testing that the value bound is not a built-in function. Since an |overload|
-table should hold only values of function type, we must have a |closure_value|
-if it was not a |builtin_value|.
-
-@< Set |call| to the call of the user-defined function |v|... @>=
-{ shared_closure fun = std::dynamic_pointer_cast<const closure_value>(v.val);
-  if (fun==nullptr)
-    throw std::logic_error("Overloaded value is not a function");
-  std::ostringstream name;
-  name << main_hash_table->name_of(id) << '@@' << v.type().arg_type;
-  call =
-    expression_ptr(new overloaded_closure_call(fun,name.str(),std::move(arg)));
-}
-
 @ Evaluation of an overloaded function call bound to a closure consists of a
 simplified version of the part of |call_expression::evaluate| dedicated to
 closures (including the temporary catching of errors as defined in
 section@#Catch to trace back calls@> in order to produce a trace of
 interrupted function calls in the error message) together with the evaluation
-part of section@# lambda evaluation @>. The simplification consists of the
-fact that the closure is already evaluated and stored, and that in particular
-we don't have to distinguish dynamically between built-in functions and
-closures, nor between calls of anonymous or named functions (we are always in
-the latter case) for producing the error trace.
+part of section@# lambda evaluation @> just given. The simplification
+consists of the fact that the closure is already evaluated and stored, and
+that in particular we don't have to distinguish dynamically between built-in
+functions and closures, nor between calls of anonymous or named functions (we
+are always in the latter case) for producing the error trace.
 
 @< Function definitions @>=
 void overloaded_closure_call::evaluate(level l) const
 { argument->eval();
+  std::string arg_string;
   try
   { lambda_frame fr(fun->p->param,fun->context);
-    // save context, create new one for |fun|
+    if (verbosity>0) // then record argument(s) as string
+    {@; std::ostringstream o;
+      o << *execution_stack.back();
+      arg_string = o.str();
+    }
+@)
+    // now save context, create new one for |fun|
     fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
     fun->body.evaluate(l);
     // call, passing evaluation level |l| to function body
   }
   catch (const std::exception& e)
-  { const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
+  { std::ostringstream o (e.what(),std::ios_base::ate); // append to |e.what()|
+    o << "\n(in call of " << print_name << ' ' << loc @|
+      << ", defined " << fun->p->loc <<')';
+    if (verbosity>0)
+      o << "\n  argument" << (arg_string[0]=='(' ? "s: " : ": ") << arg_string;
+    const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
     if (l_err!=nullptr)
-      throw std::logic_error
-        (std::string(e.what())+"\n(in call of "+print_name+')');
-    throw std::runtime_error
-      (std::string(e.what())+"\n(in call of "+print_name+')');
-  }
-}
-
-@ Finally we describe the handling of user-defined functions in type analysis.
-A call to |thread_bindings| extracts from the specified pattern the
-identifiers it contains, couples them to their specified types, and stores the
-result in |new_layer|, for use during the type-check and conversion of the
-function body. No implicit conversions ever apply to values of function type,
-so there is no point in calling |conform_types| at the end. However it is
-possible that the context requires a void type; like for denotations, this is
-silly (evaluation will have no side effect) but legal. Therefore we handle
-both cases here, sharing code where possible.
-
-In non-void context we specialise the required |type| (often undetermined
-initially) to a function type with argument type the one given in the
-$\lambda$-expression (signalling a type error if a different type was
-expected), then we convert the function body in the new context, specialising
-the return type. In void context we do only the conversion (just for error
-checking), ignore the return type, and return a |voiding| of it.
-
-@< Cases for type-checking and converting... @>=
-case lambda_expr:
-{ const lambda& fun=e.lambda_variant;
-  const id_pat& pat=fun->pattern;
-  type_expr& arg_type=fun->parameter_type;
-  if (not arg_type.specialise(pattern_type(pat)))
-    throw expr_error(e,"Function argument pattern does not match its type");
-@/layer new_layer(count_identifiers(pat));
-  thread_bindings(pat,arg_type,new_layer);
-  if (type!=void_type)
-  { if (not (type.specialise(gen_func_type)
-             and type.func->arg_type.specialise(arg_type)))
-    @/throw type_error(e,
-                       type_expr(arg_type.copy(),unknown_type.copy()),
-                       std::move(type));
-    return expression_ptr(new @|
-      lambda_expression(pat, convert_expr(fun->body,type.func->result_type)
-                       ,std::move(e.loc)));
-  }
-  else
-  { type_expr dummy; // unused result type
-    expression_ptr result(new @|
-      lambda_expression(pat,convert_expr(fun->body,dummy),std::move(e.loc)));
-    return expression_ptr(new voiding(std::move(result)));
+      throw std::logic_error(o.str());
+    throw std::runtime_error(o.str());
   }
 }
 
