@@ -3602,17 +3602,17 @@ void module_parameter_wrapper(expression_base::level l)
 @*2 Functions operating on module parameters.
 %
 The following function, which we shall bind to the monadic operator `|%|',
-transforms a parameter value into a triple of values $(x,\lambda-rho,\gamma)$
+transforms a parameter value into a triple of values $(x,\lambda-\rho,\gamma)$
 that defines it, where $\gamma$ is taken to be (a representative of) the
 infinitesimal character. (This function used to produce $\nu$ as third
 component, but in practice obtaining the infinitesimal character directly
 turned out to often be more useful. If needed $\nu$ is easily computed as
-$\nu={1+\theta_x\over2}\gamma$; as the opposite conversion requires more work
+$\nu={1+\theta_x\over2}\gamma$; as the opposite conversion requires more work,
 we had a separate function returning$~\gamma$ which is now superfluous.) The
 triple returned here is not unique, since $\lambda$ is determined only modulo
-$(1-\theta_x)X^*$, and this function should make a unique choice. That fact
-(and the choice made) are however hidden in the implementation of
-|StandardRepr|, of which we just call methods here.
+$(1-\theta_x)X^*$, and this function should make a unique choice. But that
+fact (and the choice made) is hidden in the implementation of |StandardRepr|,
+of which we just call methods here.
 
 @< Local function def...@>=
 void unwrap_parameter_wrapper(expression_base::level l)
@@ -3664,18 +3664,24 @@ infinitesimal character is made dominant, and that possible singular (simple)
 complex descents are applied to the parameter, as the result of the block
 construction will only be mathematically meaningful under these circumstances.
 This operation is therefore applied automatically in several places, but it is
-useful to give the user an easy way to apply it explicitly.
+useful to give the user an easy way to apply it explicitly. (In fact integral
+dominance should be sufficient: only for those coroots with integral evaluation
+on~$\gamma$ should it be required that the evaluation be non-negative. But
+since making this concrete requires an overhaul of the entire block
+construction process, we stick to unqualified dominance for now.)
 
-Testing for equivalence of parameters amounts to testing for equality after
-the parameters are made dominant (at least that claim was not contested at the
-time of writing this). We provide this test, which will be bound to the
-equality operator. Unlike earlier equality tests, we \emph{require} the
-parameters to be associated to the same real form, giving a runtime error
-(rather than returning false) if not; this avoids confusion if there were some
-subtle difference of real forms for otherwise similar parameters. If some
-operation is used to produce parameters that may of may not be associated to
-the same real form, then one should test those forms for equality before
-testing the parameters.
+In accordance with their behaviour when incorporating virtual modules, the
+equality operator for parameters will test for \emph{equivalence} when both
+are standard; otherwise it tests strict equality. Equivalence of standard
+parameters amounts to testing for equality after the parameters are made
+dominant (at least that claim was not contested at the time of writing this).
+We provide this test, which will be bound to the equality operator. Unlike
+earlier equality tests, we \emph{require} the parameters to be associated to
+the same real form, giving a runtime error (rather than returning false) if
+not; this avoids confusion if there were some subtle difference of real forms
+for otherwise similar parameters. If some operation is used to produce
+parameters that may of may not be associated to the same real form, then one
+should test those forms for equality before testing the parameters.
 
 @< Local function def...@>=
 void parameter_dominant_wrapper(expression_base::level l)
@@ -3693,8 +3699,10 @@ void parameter_equivalent_wrapper(expression_base::level l)
     throw std::runtime_error @|
       ("Real form mismatch when testing equivalence");
   if (l!=expression_base::no_value)
-  { StandardRepr z0=p->val, z1=q->val; // copy
-    p->rc().make_dominant(z0); q->rc().make_dominant(z1);
+  { RootNbr witness;
+    StandardRepr z0=p->val, z1=q->val; // copy
+    if (p->rc().is_standard(z0,witness) and q->rc().is_standard(z1,witness))
+  @/{@; p->rc().make_dominant(z0); q->rc().make_dominant(z1); }
     push_value(std::make_shared<bool_value>(z0==z1));
   }
 }
@@ -3858,20 +3866,20 @@ The reference is of course not owned by |test_standard|. A similar test is
 |is_nonzero_final|.
 
 @< Local function def...@>=
-void test_standard(const module_parameter_value& p)
+void test_standard(const module_parameter_value& p, const char* descr)
 { RootNbr witness;
   if (p.rc().is_standard(p.val,witness))
     return;
-  std::ostringstream os; p.print(os);
+  std::ostringstream os; p.print(os << descr << ": ");
   os << "\nParameter not standard, negative on coroot #" << witness;
   throw std::runtime_error(os.str());
 }
 
-void test_nonzero_final(const module_parameter_value& p)
+void test_nonzero_final(const module_parameter_value& p, const char* descr)
 { RootNbr witness; bool zero=p.rc().is_zero(p.val,witness);
   if (not zero and p.rc().is_final(p.val,witness))
     return; // nothing to report
-  std::ostringstream os; p.print(os);
+  std::ostringstream os; p.print(os << descr << ": ");
 @/os << "\nParameter is " << (zero ? "zero" : "not final")
    @|  <<", as witnessed by coroot #" << witness;
   throw std::runtime_error(os.str());
@@ -3883,7 +3891,7 @@ from the \.{atlas} program for the \.{nblock} command.
 @< Local function def...@>=
 void print_n_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p);
+  test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
   non_integral_block block(p->rc(),p->val,init_index);
   *output_stream << "Parameter defines element " << init_index
@@ -3902,7 +3910,7 @@ block.
 @< Local function def...@>=
 void block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p);
+  test_standard(*p,"Cannot generate block");
   if (l!=expression_base::no_value)
   {
     BlockElt start; // will hold index in the block of the initial element
@@ -3934,7 +3942,7 @@ also construct a module parameter value for each element of |block|.
 @< Local function def...@>=
 void partial_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p);
+  test_standard(*p,"Cannot generate block");
   if (l!=expression_base::no_value)
   {
     non_integral_block block(p->rc(),p->val);
@@ -3946,7 +3954,7 @@ void partial_block_wrapper(expression_base::level l)
 @< Local function def...@>=
 void param_length_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p);
+  test_standard(*p,"Cannot determine block");
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>(p->rt().length(p->val)));
 }
@@ -3958,7 +3966,7 @@ that will be defined below.
 @< Local function def...@>=
 void KL_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p);
+  test_standard(*p,"Cannot generate block");
   if (l!=expression_base::no_value)
   {
     BlockElt start; // will hold index in the block of the initial element
@@ -4039,7 +4047,7 @@ element (and with what multiplicity).
 @< Local function def...@>=
 void partial_KL_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p);
+  test_standard(*p,"Cannot generate block");
   if (l!=expression_base::no_value)
   {
     non_integral_block block(p->rc(),p->val);
@@ -4280,12 +4288,19 @@ void from_split_wrapper(expression_base::level l)
 %
 The library provides a type |repr::SR_poly| in which such sums can be
 efficiently maintained. In order to use it we must have seen the header file
-for the module \.{free\_abelian} on which the implementation is based.
+for the module \.{free\_abelian} on which the implementation is based. While
+that class itself does not have such an invariant, the handling of these
+formal sums in \.{realex} will be such that all terms are ensured to have the
+predicates |is_standard| and |is_final| true, while |is_zero| is false, and to
+have a dominant representative $\gamma$ of the infinitesimal character. Only
+under such restriction can it be guaranteed that equivalent terms (which now
+must actually be equal) will always be combined, and the test for the sum
+being zero therefore mathematically correct.
 
 @< Includes needed in the header file @>=
 #include "free_abelian.h" // needed to make |repr::SR_poly| a complete type
 
-@ Like for KGB elements, we maintain a shared pointer to the real form value, so
+@~Like for KGB elements, we maintain a shared pointer to the real form value, so
 that it will be assured to survive as long as parameters for it exist.
 
 @< Type definitions @>=
@@ -4351,12 +4366,13 @@ void virtual_module_value::print(std::ostream& out) const
 @ To start off a |virtual_module_value|, one usually takes an empty sum, but
 one needs to specify a real form to fill the |rf| field. The information
 allows us to extract the real form from a virtual module even if it is empty.
-We allow testing the number of terms of the sum, and directly testing whether
-the sum to be empty.
+We allow testing the number of terms of the sum, and directly testing the sum
+to be empty.
 
 Testing two virtual modules for equality is also implemented. This could be
-done by subtracting and then testing the result for being zero, but just
-traversing both in parallel and stopping once a difference is more efficient.
+done by subtracting and then testing the result for being zero (empty), but it
+is more efficient to just traverse both in parallel and stop once a difference
+is found.
 
 @< Local function def...@>=
 void virtual_module_wrapper(expression_base::level l)
@@ -4419,7 +4435,23 @@ void virtual_module_neq_wrapper(expression_base::level l)
 }
 
 
-@ There is function to extract the coefficient (multiplicity) of a given
+@ We allow implicitly converting a parameter to a virtual module. This
+invokes conversion by the |Rep_context::expand_final| method to \emph{final}
+parameters (there can be zero, one, or more of them), to initiate the
+invariant that only standard nonzero final parameters with dominant $\gamma$
+can be stored in a |virtual_module_value| (the method calls |make_dominant|
+internally, so we don't have to do that here).
+
+@< Local function def...@>=
+void param_to_poly()
+{ shared_module_parameter p = get<module_parameter_value>();
+@/test_standard(*p,"Cannot convert to ParamPol");
+  const own_real_form& rf=p->rf;
+  push_value(std::make_shared<virtual_module_value> @|
+    (rf,rf->rc().expand_final(p->val)));
+}
+
+@ There also is function to extract the coefficient (multiplicity) of a given
 parameter in a virtual module. However, it is bound to the array subscription
 syntax, and therefore does not have a wrapper function. Instead, it is
 implemented the \.{evaluator} module, as the |evaluate| method of the
@@ -4435,19 +4467,16 @@ fields of the |module_coefficient| expression.
 void module_coefficient::evaluate(level l) const
 { shared_virtual_module m = (array->eval(),get<virtual_module_value>());
   shared_module_parameter p = (index->eval(),get<module_parameter_value>());
+  if (m->rf!=p->rf)
+    throw std::runtime_error @|
+      ("Real form mismatch when subscripting ParamPol value");
+  test_standard(*p,"In subscription of ParamPol value");
+  test_nonzero_final(*p,"In subscription of ParamPol value");
+@/// it is OK to do those tests before |make_dominant|
+  StandardRepr sr = p->val;
+  p->rc().make_dominant(sr);
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<split_int_value>(m->val[p->val]));
-}
-
-@ We also allow implicitly converting a parameter to a virtual module.
-
-@< Local function def...@>=
-void param_to_poly()
-{ shared_module_parameter p = get<module_parameter_value>();
-@/test_standard(*p);
-  const own_real_form& rf=p->rf;
-  push_value(std::make_shared<virtual_module_value> @|
-    (rf,rf->rc().expand_final(p->val)));
+    push_value(std::make_shared<split_int_value>(m->val[sr]));
 }
 
 @ The main operations for virtual modules are addition and subtraction of
@@ -4457,7 +4486,7 @@ parameters to or from them.
 void add_module_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   own_virtual_module accumulator = get_own<virtual_module_value>();
-@/test_standard(*p);
+@/test_standard(*p,"Cannot convert to term in ParamPol");
   if (accumulator->rf!=p->rf)
     throw std::runtime_error @|
       ("Real form mismatch when adding standard module to a module");
@@ -4470,7 +4499,7 @@ void add_module_wrapper(expression_base::level l)
 void subtract_module_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   own_virtual_module accumulator = get_own<virtual_module_value>();
-@/test_standard(*p);
+@/test_standard(*p,"Cannot convert to term in ParamPol");
   if (accumulator->rf!=p->rf)
     throw std::runtime_error @|
       ("Real form mismatch when subtracting standard module from a module");
@@ -4490,7 +4519,7 @@ void add_module_term_wrapper(expression_base::level l)
   own_module_parameter p = get_own<module_parameter_value>();
   Split_integer coef=get<split_int_value>()->val;
   own_virtual_module accumulator = get_own<virtual_module_value>();
-@/test_standard(*p);
+@/test_standard(*p,"Cannot convert to term in ParamPol");
   if (accumulator->rf!=p->rf)
     throw std::runtime_error @|
       ("Real form mismatch when adding a term to a module");
@@ -4515,7 +4544,7 @@ void add_module_termlist_wrapper(expression_base::level l)
       Split_integer coef=force<split_int_value>(t->val[0].get())->val;
       const module_parameter_value* p =
         force<module_parameter_value>(t->val[1].get());
-@/    test_standard(*p);
+@/    test_standard(*p,"Cannot convert to term in ParamPol");
       if (accumulator->rf!=p->rf)
         throw std::runtime_error @|
           ("Real form mismatch when adding terms to a module");
@@ -4526,17 +4555,7 @@ void add_module_termlist_wrapper(expression_base::level l)
 }
 
 @ Naturally we also want to define addition and scalar multiplication of
-virtual modules. Scalar multiplication potentially makes coefficients zero, in
-which case the corresponding terms need to be removed to preserve the
-invariant that no zero terms are stored in a virtual module. For integer
-multiplication we just need to check for multiplication by $0$ and destroy the
-whole module when this happens. However it is somewhat subtler for scalar
-multiplication by split integers, because these have zero divisors. Therefore
-we test each coefficient produced by multiplication in this case, and remove
-the term when the coefficient becomes zero. We must take care to advance the
-iterator ``manually'' before doing that, and as a consequence cannot as usual
-advance the iterator in the |for| clause.
-
+virtual modules.
 @< Local function... @>=
 void add_virtual_modules_wrapper(expression_base::level l)
 { own_virtual_module accumulator = get_own<virtual_module_value>();
@@ -4548,7 +4567,7 @@ void add_virtual_modules_wrapper(expression_base::level l)
     push_value(accumulator);
   }
 }
-
+@)
 void subtract_virtual_modules_wrapper(expression_base::level l)
 { own_virtual_module accumulator = get_own<virtual_module_value>();
   shared_virtual_module subtrahend = get<virtual_module_value>();
@@ -4560,17 +4579,55 @@ void subtract_virtual_modules_wrapper(expression_base::level l)
     push_value(accumulator);
   }
 }
-@)
+
+@ Scalar multiplication potentially makes coefficients zero, in which case the
+corresponding terms need to be removed to preserve the invariant that no zero
+terms are stored in a virtual module. For integer multiplication we just need
+to check for multiplication by $0$, and produce an empty module when this
+happens. Because the integer is not on the stack top, this requires a somewhat
+unusual manoeuvre. The case of multiplication by zero needs to be handled
+separately, since we cannot allow introducing terms with zero coefficients. It
+could have been handled more easily though, by testing the factor~|c| just
+before the |for| loop, and performing |m->erase()| instead if |c==0|; this is
+what we used to do. However that might involve duplicating the virtual module
+and then erasing the copy, which is inefficient, and now avoided. This might
+seem a rare case, but it is not really: often functions handling
+a \.{ParamPol} argument $P$ need to start with an empty module for the same real
+form; writing $0*P$ is quite a convenient way to achieve this.
+
+Matters are similar but somewhat subtler for scalar multiplication by split
+integers, because these have zero divisors. Therefore we need to
+test \emph{each} coefficient produced by multiplication in this case, and
+remove the term when the coefficient becomes zero. We must take care to
+advance the iterator ``manually'' before doing that, and as a consequence
+cannot as usual advance the iterator in the |for| clause. In this case we do
+not bother handling the case of an entirely zero split integer
+multiplier separately; that case \emph{is} rare, and the given code works
+correctly for it (albeit not in the fastest possible way).
+
+@< Local function... @>=
+
 void int_mult_virtual_module_wrapper(expression_base::level l)
-{ own_virtual_module m = get_own<virtual_module_value>();
-  int c = get<int_value>()->val;
-  if (l!=expression_base::no_value)
-  { if (c==0)
-      m->val.clear(); // avoid creating null terms into an |SR_poly|
-    else
-      for (repr::SR_poly::iterator it=m->val.begin(); it!=m->val.end(); ++it)
+{ int c =
+    force<int_value>(execution_stack[execution_stack.size()-2].get())->val;
+  // below top
+  if (c==0) // then do multiply by $0$ efficiently:
+  { shared_virtual_module m = get<virtual_module_value>();
+    pop_value();
+    if (l!=expression_base::no_value)
+    @/push_value@|(std::make_shared<virtual_module_value>
+        (m->rf,repr::SR_poly(m->rc().repr_less())));
+  }
+  else
+  { own_virtual_module m = get_own<virtual_module_value>();
+     // will modify our copy now
+    pop_value();
+    assert(c!=0); // we tested that above
+    if (l!=expression_base::no_value)
+    { for (repr::SR_poly::iterator it=m->val.begin(); it!=m->val.end(); ++it)
         it->second *= c;
-    push_value(m);
+      push_value(m);
+    }
   }
 }
 @)
@@ -4748,7 +4805,7 @@ block.
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p);
+  test_standard(*p,"Cannot compute deformation formula");
   if (l==expression_base::no_value)
     return;
   non_integral_block block(p->rc(),p->val); // partial block construction
@@ -4771,7 +4828,7 @@ it in a local variable of this wrapper function.
 @< Local function def...@>=
 void full_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p);
+  test_standard(*p,"Cannot compute deformation formula");
   if (l!=expression_base::no_value)
   {
     repr::SR_poly result = p->rt().deformation(p->val);
@@ -4792,8 +4849,8 @@ $$
 @< Local function def...@>=
 void KL_sum_at_s_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p);
-  test_nonzero_final(*p);
+  test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_nonzero_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   if (l!=expression_base::no_value)
   {
     repr::SR_poly result = p->rt().KL_column_at_s(p->val);
