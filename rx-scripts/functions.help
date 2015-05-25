@@ -1,4 +1,4 @@
-operators +, -, *: (int,int->int): usual integer arithmetic operations
+operators +, -, * : (int,int->int): usual integer arithmetic operations
 operator - : (int->int): integral unary minus
 operator ^ : (int,int->int): integer exponentiation (whenever result integral)
 operators \, % : (int,int->int): integer (Euclidian) division and remainder
@@ -11,34 +11,48 @@ operator - : (rat->rat): rational unary minus
 operator / : (rat->rat): rational unary divide (in other words: inverse)
 operator ^ : (rat,int->rat): rational exponentiation (whenever result defined)
 operator % : (rat->int,int): pair of numerator and denominator
+operators +, -: (vec,vec->vec): addition/subtraction of vectors of equal size
+operator - : (vec->vec): vector unary minus
+operator * : (vec,int->vec): scalar multiplication (note the operand order)
+operator \ : (vec,int->vec): scalar division, rounding down
+operator % : (vec,int->vec): remainder in scalar division
+operator * : (vec,vec->int): scalar product
+flex_add, flex_sub: (vec,vec->vec): variants of +,- adding/removing trailing 0's
+convolve: (vec,vec->vec): convolution product of vectors, removing trailing 0's
 operator * : (mat,vec->vec): matrix-vector product.
 operator * : (mat,mat->mat): matrix-matrix product.
 operator * : (vec,mat->mat): vector-matrix product (vector is transposed)
 operator ^ : (mat->mat): (unary use of ^) matrix transposition
 operator ^ : (vec->mat): (unary use of ^) (transposed) vector as 1-line matrix
-operator +, -: (mat,int->mat): addition/subtraction of multiple of identity
-operator +, -: (int,mat->mat): addition/subtraction from multiple of identity
+operator +, - : (mat,int->mat): addition/subtraction of multiple of identity
+operator +, - : (int,mat->mat): addition/subtraction from multiple of identity
 operator / : (vec,int->ratvec): vector division giving rational vector
 operator % : (ratvec->vec,int): pair of numerator vector and denominator
-operators +, -: (ratvec,ratvec->ratvec): additive rational vector arithmetic
-operators *, /, %:  (ratvec,int->ratvec): scalar rational vector operations
-operators *, /:  (ratvec,rat->ratvec): scalar rational vector operations
-operator -: (ratvec->ratvec): unary minus of rational vectors
-operator *: "(mat,ratvec->ratvec): left-multiplication my matrix of ratvec
-operator *: "(ratvec,mat->ratvec): right-multiplication my matrix of ratvec
+operators +, - : (ratvec,ratvec->ratvec): additive rational vector arithmetic
+operators *, /, % :  (ratvec,int->ratvec): scalar rational vector operations
+operators *, / :  (ratvec,rat->ratvec): scalar rational vector operations
+operator - : (ratvec->ratvec): unary minus of rational vectors
+operator * : "(mat,ratvec->ratvec): left-multiplication my matrix of ratvec
+operator * : "(ratvec,mat->ratvec): right-multiplication my matrix of ratvec
 
-operators =, !=: (int->bool): test for equality/inequality against 0
+operators =, != : (int->bool): test for equality/inequality against 0
+operators >=, > : (int->bool) : non-negative, positive (note op. on wrong side)
+operators <=, < : (int->bool) : non-positive, negative (note op. on wrong side)
 operators >, >=, <, <=, =, != : (int,int->bool): usual relational operators
-operators =, !=: (rat->bool): test for equality/inequality against 0/1
+operators =, != : (rat->bool): test for equality/inequality against 0/1
+operators >=, > : (rat->bool) : non-negative, positive (note op. on wrong side)
+operators <=, < : (rat->bool) : non-positive, negative (note op. on wrong side)
 operators >, >=, <, <=, =, != : (rat,rat->bool): usual relational operators
 operators =, != : (bool,bool->bool): Boolean equivalence, inequivalence (xor)
-operators =, !=: (string->bool): test for being (or not being) the empty string
+operators =, != : (string->bool): test for being (or not being) the empty string
 operators >, >=, <, <=, =, != : (string,string->bool): relational operators
-operators =, !=: (vec->bool): test for being (or not being) a zero vector
+operators =, != : (vec->bool): test for being (or not being) a zero vector
+operators >=, > : (vec->bool): test for all entries being non-negative/positive
 operators =, != : (vec,vec->bool): vector equality and inequality
-operators =, !=: (ratvec->bool): test for being a (or not) zero rational vector
+operators =, != : (ratvec->bool): test for being a (or not) zero rational vector
+operators >=, > : (ratvec->bool): test for all entries non-negative/positive
 operators =, != : (ratvec,ratvec->bool): rational vector equality, inequality
-operators =, !=: (mat->bool): test for being a (or not) zero matrix
+operators =, != : (mat->bool): test for being a (or not) zero matrix
 operators =, != : (mat,mat->bool): matrix equality and inequality
 
 operator # : (string->int) : length of string
@@ -145,8 +159,8 @@ Cartan_matrix_type: (mat->LieType,vec): type given by Cartan matrix.
 
 rank: (LieType->int) Rank of the weight lattice for this Lie type.
 semisimple_rank: (LieType->int) Rank of the root lattice of this Lie type.
-operator #: (LieType->int) Number of (simple or T1) factors in this Lie type
-operator %: (LieType->[LieType]) Expand into row of simple factors (or T1)
+operator # : (LieType->int) Number of (simple or T1) factors in this Lie type
+operator % : (LieType->[LieType]) Expand into row of simple factors (or T1)
 
 Smith_Cartan: (LieType->mat,vec): generators of weights modulo roots.
   Find a Smith basis for the weight lattice relative to the sublattice of
@@ -531,7 +545,7 @@ KGB_elt: (RealForm,mat,ratvec): KGB element defined by rational coweight
   to v modulo the image of M^t+id, which x is then returned by this function
   (if no such x is found, then an error is signalled instead).
 
-operator =: (KGBElt,KGBElt): equality of elements of a same KGB set
+operator = : (KGBElt,KGBElt): equality of elements of a same KGB set
 
 block: (RealForm,RealForm->Block): construct tradiational atlas block
 %: (Block->RealForm,RealForm): decompose block, inverse of 'block'
@@ -551,7 +565,7 @@ status: (int,Block,int->): status at a block element of a simple reflection
 
 
 param: (KGBElt,vec,ratvec->Param): form parameter from (x,lambda-rho,nu)
-operator %: (Param->KGBElt,vec,ratvec): recover (x,lambda-rho,nu) from param
+operator % : (Param->KGBElt,vec,ratvec): recover (x,lambda-rho,nu) from param
 real_form: (Param->RealForm): recover the real form from a Param value
 infinitesimal_character: (Param->ratvec): infinitesimal character of parameter
   This is actually a representative of the infinitesimal character, given by
@@ -572,7 +586,7 @@ is_final: (Param->bool): whether parameter defines a final standard module
 dominant: (Param->Param): make gamma dominant and do singular complex descents
   This brings the parameter p into standard form, in which it will appear when
   p occurs in a ParamPol (which also requires is_final(p) and not is_zero(p)).
-operator =: (Param,Param->bool): test equivalence of parameters
+operator = : (Param,Param->bool): test equivalence of parameters
   This is implemented by applying dominant and testing identity of all
   three components x, lambda (defined modulo (1-theta_x)X^*) and nu.
 cross: (int,Param->Param): cross action for (Weyl group generator,parameter)
@@ -626,25 +640,25 @@ partial_KL_block: (Param->[Param],mat,[vec],vec,vec,mat) partial KL_block
   superfluous second component of KL_block is omitted), but with the two vec
   components filtered so as to be indexed by the Bruhat interval indices only.
 
-operator =, !=: (Split->bool): test split integer against Split:(0,0)
-operator =, !=: (Split,Split->bool): equality/inequality of split integers
-operator +: (Split,Split->Split): addition of split integers
-operator -: (Split,Split->Split): subtraction of split integers
-operator -: (Split->Split): negation of a split integer
-operator *: (Split,Split->Split): multiplication of split integers
-operator %: (Split,int,int): decomposition of split integer into components
+operators =, != : (Split->bool): test split integer against Split:(0,0)
+operators =, != : (Split,Split->bool): equality/inequality of split integers
+operator + : (Split,Split->Split): addition of split integers
+operator - : (Split,Split->Split): subtraction of split integers
+operator - : (Split->Split): negation of a split integer
+operator * : (Split,Split->Split): multiplication of split integers
+operator % : (Split,int,int): decomposition of split integer into components
 
 null_module: (RealForm->ParamPol): empty sum of parameters for the real form
 real_form: (ParamPol->RealForm): recover the real form from a ParamPol value
-operator #: (ParamPol->int): number of nonzero terms of the formal sum
-operator =, !=: (ParamPol->bool): test virtual module for being zero
-operator =, !=: (ParamPol,ParamPol->bool): test virtual modules for equality
-operator +, -: (ParamPol,Param->ParamPol): add/subtract parameter to formal sum
-operator +: (ParamPol,(Split,Param)->ParamPol): add parameter with coefficient
-operator +: (ParamPol,[(Split,Param)]->ParamPol): add terms to formal sum
-operator +, -: (ParamPol,ParamPol->ParamPol): addition/subtraction formal sums
-operator *: (int,ParamPol->ParamPol): integer multiple of a formal sum
-operator *: (Split,ParamPol->ParamPol): split integer multiple of a formal sum
+operator # : (ParamPol->int): number of nonzero terms of the formal sum
+operators =, != : (ParamPol->bool): test virtual module for being zero
+operators =, != : (ParamPol,ParamPol->bool): test virtual modules for equality
+operator +, - : (ParamPol,Param->ParamPol): add/subtract parameter to formal sum
+operator + : (ParamPol,(Split,Param)->ParamPol): add parameter with coefficient
+operator + : (ParamPol,[(Split,Param)]->ParamPol): add terms to formal sum
+operators +, - : (ParamPol,ParamPol->ParamPol): addition/subtraction formal sums
+operator * : (int,ParamPol->ParamPol): integer multiple of a formal sum
+operator * : (Split,ParamPol->ParamPol): split integer multiple of a formal sum
 
 K_type_formula: (Param->ParamPol) Express K-type in terms of standardrepns|_K
   The argument parameter is interpreted as giving an irreducible module; its

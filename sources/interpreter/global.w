@@ -918,7 +918,7 @@ void type_define_identifier(id_type id, type_p t)
        if it does, report problem and |return| @>
   @< Emit indentation corresponding to the input level to |std::cout| @>
   std::cout << "Type name '" << main_hash_table->name_of(id) @|
-            << (redefine ? "' redefined as " : "' defined as ") << type 
+            << (redefine ? "' redefined as " : "' defined as ") << type
             << std::endl;
 @/global_id_table->add_type_def(id,std::move(type));
 }
@@ -1773,11 +1773,9 @@ void rat_power_wrapper(expression_base::level l)
 @*1 Booleans.
 %
 Relational operators are of the same flavour. In addition to the classical
-relations, we shall define unary versions of equality and inequality operators
-for those types that have one or more ``zero'' values to test against such a
-value. For integers this is not very useful, but for vectors matrices it
-avoids having to laboriously construct a null value of the correct dimension
-just to perform the test.
+relations, we shall define unary versions, testing against appropriate zero
+values. For integers this is just $0$, but for vectors matrices it
+avoids having to laboriously construct a null value of the correct dimension.
 
 @< Local function definitions @>=
 
@@ -1786,12 +1784,36 @@ void int_unary_eq_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(std::make_shared<bool_value>(i==0));
 }
-@)
 void int_unary_neq_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
     push_value(std::make_shared<bool_value>(i!=0));
 }
+void int_non_negative_wrapper(expression_base::level l)
+{ int i=get<int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i>=0));
+}
+void int_positive_wrapper(expression_base::level l)
+{ int i=get<int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i>0));
+}
+void int_non_positive_wrapper(expression_base::level l)
+{ int i=get<int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i<=0));
+}
+void int_negative_wrapper(expression_base::level l)
+{ int i=get<int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i<0));
+}
+
+@ Here are the traditional, binary, versions of the relations.
+
+@< Local function definitions @>=
+
 void int_eq_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
@@ -1828,7 +1850,7 @@ void int_greatereq_wrapper(expression_base::level l)
     push_value(std::make_shared<bool_value>(i>=j));
 }
 
-@ We do that again for rational numbers
+@ For the rational numbers as well we define unary relations.
 
 @< Local function definitions @>=
 
@@ -1837,12 +1859,37 @@ void rat_unary_eq_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(std::make_shared<bool_value>(i.numerator()==0));
 }
-@)
 void rat_unary_neq_wrapper(expression_base::level l)
 { Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
     push_value(std::make_shared<bool_value>(i.numerator()!=0));
 }
+void rat_non_negative_wrapper(expression_base::level l)
+{ Rational i=get<rat_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i.numerator()>=0));
+}
+void rat_positive_wrapper(expression_base::level l)
+{ Rational i=get<rat_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i.numerator()>0));
+}
+void rat_non_positive_wrapper(expression_base::level l)
+{ Rational i=get<rat_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i.numerator()<=0));
+}
+void rat_negative_wrapper(expression_base::level l)
+{ Rational i=get<rat_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<bool_value>(i.numerator()<0));
+}
+
+@ Here are the traditional, binary, versions of the relations for the
+rational numbers.
+
+@< Local function definitions @>=
+
 void rat_eq_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
@@ -2095,6 +2142,36 @@ void vec_neq_wrapper(expression_base::level l)
     push_value(std::make_shared<bool_value>(i->val!=j->val));
 }
 
+@ The following vector predicates test whether all coefficient are non
+negative respectively positive; they are less often useful than testing for
+zero, but can be useful testing (strict) dominance of a vector (after
+computing a vector of evaluations on coroots by a matrix multiplication). We
+don't do their negative counterparts, which can easily be defined using
+vector negation.
+
+@< Local function def... @>=
+
+void vec_non_negative_wrapper(expression_base::level l)
+{ shared_vector v = get<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  bool OK=true;
+  for (auto it=v->val.begin(); it!=v->val.end(); ++it)
+    if (*it<0)
+    {@; OK=false; break; }
+  push_value(std::make_shared<bool_value>(OK));
+}
+void vec_positive_wrapper(expression_base::level l)
+{ shared_vector v = get<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  bool OK=true;
+  for (auto it=v->val.begin(); it!=v->val.end(); ++it)
+    if (*it<=0)
+    {@; OK=false; break; }
+  push_value(std::make_shared<bool_value>(OK));
+}
+
 @ We continue similarly with rational vector equality comparisons.
 
 @< Local function definitions @>=
@@ -2132,6 +2209,31 @@ void ratvec_neq_wrapper(expression_base::level l)
   shared_rational_vector i=get<rational_vector_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<bool_value>(i->val!=j->val));
+}
+
+@ Like for vectors, we add dominance tests.
+
+@< Local function def... @>=
+
+void ratvec_non_negative_wrapper(expression_base::level l)
+{ shared_rational_vector v = get<rational_vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  bool OK=true;
+  for (auto it=v->val.numerator().begin(); it!=v->val.numerator().end(); ++it)
+    if (*it<0)
+    {@; OK=false; break; }
+  push_value(std::make_shared<bool_value>(OK));
+}
+void ratvec_positive_wrapper(expression_base::level l)
+{ shared_rational_vector v = get<rational_vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  bool OK=true;
+  for (auto it=v->val.numerator().begin(); it!=v->val.numerator().end(); ++it)
+    if (*it<=0)
+    {@; OK=false; break; }
+  push_value(std::make_shared<bool_value>(OK));
 }
 
 @ And here are matrix equality comparisons.
@@ -2236,6 +2338,161 @@ void vv_prod_wrapper(expression_base::level l)
     push_value(std::make_shared<int_value>(v->val.dot(w->val)));
 }
 
+@ Here is something slightly less boring. For implementing polynomial
+arithmetic, it is useful to have variants of vector addition and subtraction
+operations that do not require equal size arguments, but that adapt to the
+larger argument, assuming zero entries when they are absent. It is then also
+natural to remove trailing zeros.
+
+@< Local function def... @>=
+
+void flex_add_wrapper(expression_base::level l)
+{ shared_vector v1= get<vector_value>();
+  shared_vector v0= get<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  const int_Vector& V0=v0->val;
+  size_t i0=V0.size();
+@/const int_Vector& V1=v1->val;
+  size_t i1=V1.size();
+  while (i0>0 and V0[i0-1]==0)
+    --i0;
+  while (i1>0 and V1[i1-1]==0)
+    --i1;
+  if (i0==i1) // equal size case
+  { while (i0>0 and V0[i0-1]+V1[i0-1]==0)
+      --i0; // skip leading zeros in result
+    int_Vector result(i0);
+    while (i0-->0)
+      result[i0]=V0[i0]+V1[i0];
+    push_value(std::make_shared<vector_value>(std::move(result)));
+    return;
+  }
+  shared_vector& larger = *(i0>i1 ? &v0 : &v1); // unequal size case
+  if (larger.unique()) // then we can grab the larger vector
+  { own_vector result =
+      std::const_pointer_cast<vector_value>(std::move(larger));
+    if (i0>i1)
+    {
+      result->val.resize(i0);
+      while (i1-->0)
+        result->val[i1]+=V1[i1]; // add |V1| to result
+    }
+    else
+    {
+      result->val.resize(i1);
+      while (i0-->0)
+        result->val[i0]+=V0[i0]; // add |V0| to result
+    }
+    push_value(std::move(result));
+  }
+  else // we must allocate
+  {
+    int_Vector result(std::max(i0,i1));
+    while (i0>i1)
+      --i0,result[i0]=V0[i0]; // copy excess of |V0|
+    while (i1>i0)
+      --i1,result[i1]=V1[i1]; // copy excess of |V1|
+    while (i0-->0)
+      result[i0]=V0[i0]+V1[i0];
+    push_value(std::make_shared<vector_value>(std::move(result)));
+  }
+}
+
+@ There is a subtraction counterpart, which is similar but even more
+complicated due to its asymmetry.
+
+@< Local function def... @>=
+
+void flex_sub_wrapper(expression_base::level l)
+{ shared_vector v1= get<vector_value>();
+  shared_vector v0= get<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  const int_Vector& V0=v0->val;
+  size_t i0=V0.size();
+@/const int_Vector& V1=v1->val;
+  size_t i1=V1.size();
+  while (i0>0 and V0[i0-1]==0)
+    --i0;
+  while (i1>0 and V1[i1-1]==0)
+    --i1;
+  if (i0==i1) // equal size case
+  { while (i0>0 and V0[i0-1]==V1[i0-1])
+      --i0; // skip leading zeros in result
+    int_Vector result(i0);
+    while (i0-->0)
+      result[i0]=V0[i0]-V1[i0];
+    push_value(std::make_shared<vector_value>(std::move(result)));
+    return;
+  }
+  shared_vector& larger = *(i0>i1 ? &v0 : &v1); // unequal size case
+  if (larger.unique()) // then we can grab the larger vector
+  { own_vector result =
+      std::const_pointer_cast<vector_value>(std::move(larger));
+    if (i0>i1)
+    {
+      result->val.resize(i0);
+      while (i1-->0)
+        result->val[i1]-=V1[i1]; // subtract |V1| from result
+    }
+    else
+    {
+      result->val.resize(i1);
+      while (i1-->i0)
+        result->val[i1]=-result->val[i1]; // negate top part of result
+      while (i0-->0)
+        result->val[i0]=V0[i0]-result->val[i0]; // negate result, add |V0|
+    }
+    push_value(std::move(result));
+  }
+  else // we must allocate
+  {
+    int_Vector result(std::max(i0,i1));
+    while (i0>i1)
+      --i0,result[i0]=V0[i0]; // copy excess of |V0|
+    while (i1>i0)
+      --i1,result[i1]=-V1[i1]; // copy excess of |V1|, negated
+    while (i0-->0)
+      result[i0]=V0[i0]-V1[i0];
+    push_value(std::make_shared<vector_value>(std::move(result)));
+  }
+}
+
+@ While we are defining functions to help doing polynomial arithmetic, we
+might as well do multiplication too.
+
+@< Local function def... @>=
+
+void vector_convolve_wrapper(expression_base::level l)
+{ shared_vector v1= get<vector_value>();
+  shared_vector v0= get<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  const int_Vector& V0=v0->val;
+  size_t i0=V0.size();
+@/const int_Vector& V1=v1->val;
+  size_t i1=V1.size();
+  while (i0>0 and V0[i0-1]==0)
+    --i0;
+  while (i1>0 and V1[i1-1]==0)
+    --i1;
+  if (i0==0 or i1==0)
+@/{@; push_value(std::make_shared<vector_value>(int_Vector(0)));
+    return;
+  }
+  own_vector result = std::make_shared<vector_value>(int_Vector(i0+i1-1));
+  int_Vector& r = result->val;
+  size_t i=i0,j=0; int V1j=V1[0], V0l=V0[i0-1];
+  while (i-->0)
+    r[i] = V0[i]*V1j; // copy |V0|, multiplied by lowest (constant) term of |V1|
+  while (++j<i1)
+  { r[(i=i0-1)+j] = V0l*(V1j=V1[j]); // copy top term of |V0| times next of |V1|
+    while (i-->0)
+      r[i+j] += V0[i]*V1j; // add remainder of multiple of |V0|, shifted |j|
+  }
+  push_value(std::move(result));
+}
 
 @ The function |vector_div_wrapper| produces a rational vector, for which we
 also provide addition and subtraction of another rational vector, as well as
@@ -2572,6 +2829,10 @@ install_function(rat_inverse_wrapper,"/","(rat->rat)");
 install_function(rat_power_wrapper,"^","(rat,int->rat)");
 install_function(int_unary_eq_wrapper,"=","(int->bool)");
 install_function(int_unary_neq_wrapper,"!=","(int->bool)");
+install_function(int_non_negative_wrapper,">=","(int->bool)");
+install_function(int_positive_wrapper,">","(int->bool)");
+install_function(int_non_positive_wrapper,"<=","(int->bool)");
+install_function(int_negative_wrapper,"<","(int->bool)");
 install_function(int_eq_wrapper,"=","(int,int->bool)");
 install_function(int_neq_wrapper,"!=","(int,int->bool)");
 install_function(int_less_wrapper,"<","(int,int->bool)");
@@ -2580,6 +2841,10 @@ install_function(int_greater_wrapper,">","(int,int->bool)");
 install_function(int_greatereq_wrapper,">=","(int,int->bool)");
 install_function(rat_unary_eq_wrapper,"=","(rat->bool)");
 install_function(rat_unary_neq_wrapper,"!=","(rat->bool)");
+install_function(rat_non_negative_wrapper,">=","(rat->bool)");
+install_function(rat_positive_wrapper,">","(rat->bool)");
+install_function(rat_non_positive_wrapper,"<=","(rat->bool)");
+install_function(rat_negative_wrapper,"<","(rat->bool)");
 install_function(rat_eq_wrapper,"=","(rat,rat->bool)");
 install_function(rat_neq_wrapper,"!=","(rat,rat->bool)");
 install_function(rat_less_wrapper,"<","(rat,rat->bool)");
@@ -2611,8 +2876,12 @@ install_function(vec_unary_eq_wrapper,"=","(vec->bool)");
 install_function(vec_unary_neq_wrapper,"!=","(vec->bool)");
 install_function(vec_eq_wrapper,"=","(vec,vec->bool)");
 install_function(vec_neq_wrapper,"!=","(vec,vec->bool)");
+install_function(vec_non_negative_wrapper,">=","(vec->bool)");
+install_function(vec_positive_wrapper,">","(vec->bool)");
 install_function(ratvec_unary_eq_wrapper,"=","(ratvec->bool)");
 install_function(ratvec_unary_neq_wrapper,"!=","(ratvec->bool)");
+install_function(ratvec_non_negative_wrapper,">=","(ratvec->bool)");
+install_function(ratvec_positive_wrapper,">","(ratvec->bool)");
 install_function(ratvec_eq_wrapper,"=","(ratvec,ratvec->bool)");
 install_function(ratvec_neq_wrapper,"!=","(ratvec,ratvec->bool)");
 install_function(mat_unary_eq_wrapper,"=","(mat->bool)");
@@ -2640,6 +2909,9 @@ install_function(mat_minus_int_wrapper,"-","(mat,int->mat)");
 install_function(int_plus_mat_wrapper,"+","(int,mat->mat)");
 install_function(int_minus_mat_wrapper,"-","(int,mat->mat)");
 install_function(vv_prod_wrapper,"*","(vec,vec->int)");
+install_function(flex_add_wrapper,"flex_add","(vec,vec->vec)");
+install_function(flex_sub_wrapper,"flex_sub","(vec,vec->vec)");
+install_function(vector_convolve_wrapper,"convolve","(vec,vec->vec)");
 install_function(mrv_prod_wrapper,"*","(mat,ratvec->ratvec)");
 install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
 install_function(mm_prod_wrapper,"*","(mat,mat->mat)");

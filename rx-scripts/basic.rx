@@ -97,7 +97,7 @@ set ones (int n)= vec: for i:n do 1 od
 set gcd ([int] v)= int:
   let f=inv_fact(stack_rows([v])) in if #f=0 then 0 else f[0] fi
 
-{ scalar multiplication }
+{ scalar multiplication; is built-in for the preferred order vec*int }
 set * (int c,vec v) = vec: v*c
 
 { sum, product of entries }
@@ -110,11 +110,8 @@ set upper (int k,vec v)= vec: for i:k from #v-k do v[i] od
 set drop_lower (int k,vec v)= vec: for i:#v-k from k do v[i] od
 set drop_upper (int k,vec v)= vec: for i:#v-k do v[i] od
 
-set >=(vec v) = bool:
-  let i=#v-1 in while i>=0 and v[i]>=0 do i-:=1 od; i<0
-set >(vec v) = bool: >=v and !=v
-set <=(vec v) = bool: >= -v
-set <(vec v) = bool: <= v and !=v
+set <= (vec v) = bool: >= -v
+set <  (vec v) = bool: > -v
 
 set is_member (vec v) = (int->bool):
   let start = #v-1
@@ -263,10 +260,8 @@ set upper (int k,ratvec v)= ratvec: let (n,d)=%v in upper(k,n)/d
 set drop_lower (int k,ratvec v)= ratvec: let (n,d)=%v in drop_lower(k,n)/d
 set drop_upper (int k,ratvec v)= ratvec: let (n,d)=%v in drop_upper(k,n)/d
 
-set >=(ratvec v) = bool: >=numer(v)
-set > (ratvec v) = bool: > numer(v)
-set <=(ratvec v) = bool: <=numer(v)
-set < (ratvec v) = bool: < numer(v)
+set <= (ratvec v) = bool: <=numer(v)
+set <  (ratvec v) = bool: < numer(v)
 
 
 {			    Split integers				}

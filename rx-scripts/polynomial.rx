@@ -8,29 +8,19 @@
   needed. This gives the right thing for coefficient vectors of polynomials.
 }
 
+set fix_add = +@(vec,vec)
+set fix_sub = -@(vec,vec) { save fixed-length vector addition and subtraction }
 forget +@(vec,vec)
 forget -@(vec,vec)
 
-set +(poly v,poly w)= poly:
-  let add_ext =
-    (poly v, poly w, int l_w) poly: { add w to v under assumption l_w=#w<=#v }
-      for vi@i in v do if i<l_w then vi+w[i] else vi fi od
-  , a=#v, b=#w
-  in add_ext(if a>=b then (v,w,b) else (w,v,a) fi)
+set + = flex_add@(poly,poly)
+set - = flex_sub@(poly,poly)
 
-set - (poly v,poly w) = poly: { use previous vector addition for subtraction }
-  v+-w {in basic.rx this was only allowed for vectors of the same length}
+{ reduce polynomial by dropping trailing zeros }
+set strip (poly v) = poly: v + (poly:[])
 
-set strip (poly v) = poly: { reduce polynomial by dropping trailing zeros }
-( let k=#v in while k>0 and v[k-1]=0 do k-:=1 od
-; if k=#v then v else for i:k do v[i] od fi
-)
-
-{ multiply two polynomials (slightly prefers g to be the smaller one) }
-set poly_product(poly f, poly g) = poly:
-  if #f=0 then f { avoid useless traversal of g, and avoid needing strip }
-  else let k=#g, s=null(0) in while (k-:=1)>=0 do s:= (0#s)+g[k]*f od; s
-  fi
+{ multiply two polynomials }
+set poly_product = convolve@(poly,poly)
 
 { for convenience }
 set poly_1 = poly: [1]
