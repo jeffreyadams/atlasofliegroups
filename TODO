@@ -15,6 +15,9 @@
 
 - Define +(vec,vec) to zero-extend by default (maybe under different name)
 
+- Make conditionals return shared pointer to globla true and false values
+- Use move semantics string_value when possible
+
 - Introduce a case statement (multi-way conditional based on integer value)
 
 - Find alternative syntax for "verbose" and "quiet", liberating the keywords

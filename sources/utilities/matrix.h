@@ -75,6 +75,7 @@ public:
   Vector& operator-= (const Vector&);
   Vector& operator*= (C);
   Vector& negate (); // negates argument in place
+  Vector& negate_add (const Vector& y); // reversed -=, so *this = y - *this
 
   // the following two methods do not take an end iterator; count is |size()|
   template<typename I> Vector& add(I b,C c); // add |Vector(b,b+size())*c|
@@ -124,10 +125,13 @@ public:
 
 // these are external functions, to allow instantiating |Vector<Pol>|
 template<typename C>
-  Vector<C>& operator/= (Vector<C>& v, C c) throw (std::runtime_error);
+  Vector<C>& operator/= (Vector<C>& v, C c); // this division must be exact
 template<typename C>
-  Vector<C> operator/ (Vector<C> v,C c) throw (std::runtime_error)
-  { return v /= c; }
+  Vector<C>& divide (Vector<C>& v, C c); // this integer division rounds down
+template<typename C>
+  Vector<C>& operator%= (Vector<C>& v, C c);
+template<typename C>
+  Vector<C> operator/ (Vector<C> v,C c) { return v /= c; }
 
 
 template<typename C> class Matrix_base

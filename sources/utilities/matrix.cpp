@@ -63,6 +63,17 @@ Vector<C>& Vector<C>::operator-= (const Vector<C>& v)
   return *this;
 }
 
+// Subtracts |*this| from |v|, and sets |*this| to the result
+template<typename C>
+Vector<C>& Vector<C>::negate_add (const Vector<C>& v)
+{
+  assert(base::size()==v.size());
+  auto p = v.begin();
+  for (auto it=base::begin(); it!=base::end(); ++it,++p)
+    *it = *p - *it;
+  return *this;
+}
+
 template<typename C>
 template<typename I>
 Vector<C>& Vector<C>::add (I b, C c)
@@ -86,7 +97,7 @@ Vector<C>& Vector<C>::operator*= (C c)
   All entries must allow exact division, if not a std::runtime_error is thrown
 */
 template<typename C>
-Vector<C>& operator/= (Vector<C>& v,C c) throw (std::runtime_error)
+Vector<C>& operator/= (Vector<C>& v,C c)
 {
   if (c==C(0))
     throw std::runtime_error("Vector division by 0");
@@ -94,6 +105,28 @@ Vector<C>& operator/= (Vector<C>& v,C c) throw (std::runtime_error)
     if (*it%c==C(0))
       *it/=c;
     else throw std::runtime_error("Inexact vector integer division");
+  return v;
+}
+
+template<typename C>
+Vector<C>& divide (Vector<C>& v,C c)
+{
+  if (c==C(0))
+    throw std::runtime_error("Vector division by 0");
+  c=std::abs(c); // we must ensure |c>0| for |arithmetic::divide|
+  for (auto it=v.begin(); it!=v.end(); ++it)
+    *it = arithmetic::divide(*it,c);
+  return v;
+}
+
+template<typename C>
+Vector<C>& operator%= (Vector<C>& v,C c)
+{
+  if (c==C(0))
+    throw std::runtime_error("Vector taken modulo 0");
+  c=std::abs(c); // we must ensure |c>0| for |arithmetic::remainder|
+  for (auto it=v.begin(); it!=v.end(); ++it)
+    *it = arithmetic::remainder(*it,c);
   return v;
 }
 
@@ -734,6 +767,9 @@ template signed char
   Vector<signed char>::dot(const Vector<signed char>&) const;
 template Num Vector<int>::dot(Vector<Num> const&) const;
 
+template Vector<int>& operator/=(Vector<int>&,int);
+template Vector<int>& divide (Vector<int>&,int);
+template Vector<int>& operator%=(Vector<int>&,int);
 template Vector<Num>& operator/=(Vector<Num>&,Num);
 
 template Vector<int> Matrix<int>::operator*(Vector<int> const&) const;

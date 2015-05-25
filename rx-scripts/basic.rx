@@ -97,27 +97,11 @@ set ones (int n)= vec: for i:n do 1 od
 set gcd ([int] v)= int:
   let f=inv_fact(stack_rows([v])) in if #f=0 then 0 else f[0] fi
 
-set raw_add (vec v,vec w)= vec:  for e@i in v do e+w[i] od
-set raw_sub (vec v,vec w)= vec:  for e@i in v do e-w[i] od
-
-set + ((vec,vec) (v,w):p)= vec:
-  if #v != #w then error("Size mismatch " + #v + ":" + #w) else raw_add(p) fi
-set - ((vec,vec) (v,w):p)= vec:
-  if #v != #w then error("Size mismatch " + #v + ":" + #w) else raw_sub(p) fi
-
 { scalar multiplication }
-set * (int c,vec v) = vec: for e in v do c*e od
-set * (vec v,int c) = vec: for e in v do c*e od
-set - (vec w)= vec: for e in w do -e od
-
-{ integer division }
-set \ (vec v,int d) = vec: for x in v do x\d od
-
-{ entrywise modulo }
-set % (vec v,int d) = vec: for x in v do x%d od
+set * (int c,vec v) = vec: v*c
 
 { sum, product of entries }
-set sum (vec v)= let s=0 in for e in v do s+:=e od; s
+set sum (vec v)= (let one=1 in for x in v do one od) * v
 set product (vec v)= let s=1 in for e in v do s*:=e od; s
 
 set reverse (vec v)= vec: for i:#v downto 0 do v[i] od
@@ -152,12 +136,12 @@ set row (vec v)    = mat: ^v  { interpret v as single row }
 set + (mat M,mat N)= mat:
   let (n,):sm = #M, sn = #N
   in if sm != sn then error("Size mismatch " + sm + ":" + sn)
-     else n # for col@j in M do raw_add(col,N[j]) od
+     else n # for col@j in M do col+N[j] od
      fi
 set - (mat M,mat N)= mat:
   let (n,):sm = #M, sn = #N
   in if sm != sn then error("Size mismatch " + sm + ":" + sn)
-     else n # for col@j in M do raw_sub(col,N[j]) od
+     else n # for col@j in M do col-N[j] od
      fi
 
 { test all columns }

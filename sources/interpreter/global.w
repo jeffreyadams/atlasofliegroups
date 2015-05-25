@@ -1161,6 +1161,7 @@ struct vector_value : public value_base
 { int_Vector val;
 @)
   explicit vector_value(const std::vector<int>& v) : val(v) @+ {}
+  explicit vector_value(std::vector<int>&& v) : val(std::move(v)) @+ {}
   ~vector_value()@+ {}
   virtual void print(std::ostream& out) const;
   vector_value* clone() const @+{@; return new vector_value(*this); }
@@ -1181,6 +1182,7 @@ struct matrix_value : public value_base
 { int_Matrix val;
 @)
   explicit matrix_value(const int_Matrix& v) : val(v) @+ {}
+  explicit matrix_value(int_Matrix&& v) : val(std::move(v)) @+ {}
   ~matrix_value()@+ {}
   virtual void print(std::ostream& out) const;
   matrix_value* clone() const @+{@; return new matrix_value(*this); }
@@ -1197,8 +1199,12 @@ struct rational_vector_value : public value_base
 @)
   explicit rational_vector_value(const RatWeight& v)
    : val(v) {@; val.normalize();}
+  explicit rational_vector_value(RatWeight&& v)
+   : val(std::move(v)) {@; val.normalize();}
   rational_vector_value(const int_Vector& v,int d)
    : val(v,d) @+ {@; val.normalize(); }
+  rational_vector_value(int_Vector&& v,int d)
+   : val(std::move(v),d) @+ {@; val.normalize(); }
   ~rational_vector_value()@+ {}
   virtual void print(std::ostream& out) const;
   rational_vector_value* clone() const
@@ -1295,15 +1301,17 @@ void ratlist_ratvec_convert() // convert list of rationals to rational vector
   int_Vector numer(r->val.size()),denom(r->val.size());
   unsigned int d=1;
   for (size_t i=0; i<r->val.size(); ++i)
+  // collect numerators and denominators separately
   { Rational frac = force<rat_value>(r->val[i].get())->val;
     numer[i]=frac.numerator();
     denom[i]=frac.denominator();
-    d=arithmetic::lcm(d,denom[i]);
+    d=arithmetic::lcm(d,denom[i]); // and compute the least common denominator
   }
   for (size_t i=0; i<r->val.size(); ++i)
     numer[i]*= d/denom[i]; // adjust numerators to common denominator
 
-  push_value(std::make_shared<rational_vector_value>(numer,d)); // normalises
+  push_value(std::make_shared<rational_vector_value>(std::move(numer),d));
+  // normalises
 }
 @)
 void ratvec_ratlist_convert() // convert rational vector to list of rationals
@@ -1313,12 +1321,13 @@ void ratvec_ratlist_convert() // convert rational vector to list of rationals
   { Rational q(rv->val.numerator()[i],rv->val.denominator());
     result->val[i] = std::make_shared<rat_value>(q.normalize());
   }
-  push_value(std::move(result));
+  push_value(std::move(result)); // here |std::move| avoids ref-count updates
 }
 @)
 void vec_ratvec_convert() // convert vector to rational vector
-{ shared_vector v = get<vector_value>();
-  push_value(std::make_shared<rational_vector_value>(RatWeight(v->val,1)));
+{ own_vector v = get_own<vector_value>();
+  push_value(std::make_shared<rational_vector_value>@|
+    (RatWeight(std::move(v->val),1)));
 }
 
 @ The conversions into vectors or matrices use an auxiliary function
@@ -2049,7 +2058,7 @@ Atlas library, which is developed in much more detail in the compilation
 unit \.{built-in-types}. In fact we shall make some of these wrapper functions
 externally callable, so they can be directly used from that compilation unit.
 
-We start with vector and matrix equality comparisons, which are quite similar
+We start with vector equality comparisons, which are quite similar
 to what we saw for rationals, for instance.
 
 @< Local function definitions @>=
@@ -2085,7 +2094,11 @@ void vec_neq_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(std::make_shared<bool_value>(i->val!=j->val));
 }
-@)
+
+@ We continue similarly with rational vector equality comparisons.
+
+@< Local function definitions @>=
+
 void ratvec_unary_eq_wrapper(expression_base::level l)
 { shared_rational_vector i=get<rational_vector_value>();
   if (l==expression_base::no_value)
@@ -2120,7 +2133,11 @@ void ratvec_neq_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(std::make_shared<bool_value>(i->val!=j->val));
 }
-@)
+
+@ And here are matrix equality comparisons.
+
+@< Local function definitions @>=
+
 void mat_unary_eq_wrapper(expression_base::level l)
 { shared_matrix i=get<matrix_value>();
   if (l!=expression_base::no_value)
@@ -2142,6 +2159,84 @@ void mat_neq_wrapper(expression_base::level l)
     push_value(std::make_shared<bool_value>(i->val!=j->val));
 }
 
+@ While vector arithmetic operations can easily be implemented in
+the \.{realex} language, and this was actually done (with the exception of
+scalar and matrix products) for a long time, they certainly profit in terms of
+efficiency from being built-in.
+
+@< Local function def... @>=
+void check_size (size_t a, size_t b)
+{ if (a==b)
+    return;
+  std::ostringstream s; s<< "Size mismatch " << a << ":" << b;
+  throw std::runtime_error(s.str());
+}
+
+void vec_plus_wrapper(expression_base::level l)
+{ own_vector v1= get_own<vector_value>();
+  shared_vector v0= get<vector_value>();
+  check_size(v0->val.size(),v1->val.size());
+  if (l==expression_base::no_value)
+    return;
+  v1->val += v0->val;
+  push_value(std::move(v1));
+}
+void vec_minus_wrapper(expression_base::level l)
+{ own_vector v1= get_own<vector_value>();
+  shared_vector v0= get<vector_value>();
+  check_size(v0->val.size(),v1->val.size());
+  if (l==expression_base::no_value)
+    return;
+  v1->val.negate_add(v0->val);
+  push_value(std::move(v1));
+}
+
+void vec_unary_minus_wrapper(expression_base::level l)
+{ own_vector v = get_own<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  v->val.negate();
+  push_value(std::move(v));
+}
+@)
+void vec_times_int_wrapper(expression_base::level l)
+{ int i= get<int_value>()->val;
+  own_vector v= get_own<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  v->val *= i;
+  push_value(std::move(v));
+}
+void vec_divide_int_wrapper(expression_base::level l)
+{ int i= get<int_value>()->val;
+  own_vector v= get_own<vector_value>();
+  if (i==0)
+    throw std::runtime_error("Vector division by 0");
+  if (l==expression_base::no_value)
+    return;
+  divide(v->val,i);
+  push_value(std::move(v));
+}
+void vec_modulo_int_wrapper(expression_base::level l)
+{ int i= get<int_value>()->val;
+  own_vector v= get_own<vector_value>();
+  if (i==0)
+    throw std::runtime_error("Vector modulo 0");
+  if (l==expression_base::no_value)
+    return;
+  v->val %= i;
+  push_value(std::move(v));
+}
+@)
+void vv_prod_wrapper(expression_base::level l)
+{ shared_vector w=get<vector_value>();
+  shared_vector v=get<vector_value>();
+  check_size (v->val.size(),w->val.size());
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(v->val.dot(w->val)));
+}
+
+
 @ The function |vector_div_wrapper| produces a rational vector, for which we
 also provide addition and subtraction of another rational vector, as well as
 multiplication and division by integers.
@@ -2149,17 +2244,17 @@ multiplication and division by integers.
 @< Local function def... @>=
 void vector_div_wrapper(expression_base::level l)
 { int n=get<int_value>()->val;
-  shared_vector v=get<vector_value>();
+  own_vector v=get_own<vector_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rational_vector_value>(v->val,n));
-    // will throw if |n==0|
+    push_value@|(std::make_shared<rational_vector_value>
+      (std::move(v->val),n)); // throws if |n==0|
 }
 @)
 void ratvec_unfraction_wrapper(expression_base::level l)
 { shared_rational_vector v = get<rational_vector_value>();
   if (l!=expression_base::no_value)
   { Weight num(v->val.numerator().begin(),v->val.numerator().end()); // convert
-    push_value(std::make_shared<vector_value>(num));
+    push_value(std::make_shared<vector_value>(std::move(num)));
     push_value(std::make_shared<int_value>(v->val.denominator()));
     if (l==expression_base::single_value)
       wrap_tuple<2>();
@@ -2169,12 +2264,14 @@ void ratvec_unfraction_wrapper(expression_base::level l)
 void ratvec_plus_wrapper(expression_base::level l)
 { shared_rational_vector v1= get<rational_vector_value>();
   shared_rational_vector v0= get<rational_vector_value>();
+  check_size(v0->val.size(),v1->val.size());
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value>(v0->val+v1->val));
 }
 void ratvec_minus_wrapper(expression_base::level l)
 { shared_rational_vector v1= get<rational_vector_value>();
   shared_rational_vector v0= get<rational_vector_value>();
+  check_size(v0->val.size(),v1->val.size());
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value>(v0->val-v1->val));
 }
@@ -2324,16 +2421,6 @@ void mrv_prod_wrapper(expression_base::level l)
      + str(m->val.numColumns()) + ":" + str(v->val.size()));
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value>(m->val*v->val));
-}
-@)
-void vv_prod_wrapper(expression_base::level l)
-{ shared_vector w=get<vector_value>();
-  shared_vector v=get<vector_value>();
-  if (v->val.size()!=w->val.size())
-    throw std::runtime_error(std::string("Size mismatch ")@|
-     + str(v->val.size()) + ":" + str(w->val.size()));
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(v->val.dot(w->val)));
 }
 @)
 void vm_prod_wrapper(expression_base::level l)
@@ -2532,6 +2619,12 @@ install_function(mat_unary_eq_wrapper,"=","(mat->bool)");
 install_function(mat_unary_neq_wrapper,"!=","(mat->bool)");
 install_function(mat_eq_wrapper,"=","(mat,mat->bool)");
 install_function(mat_neq_wrapper,"!=","(mat,mat->bool)");
+install_function(vec_plus_wrapper,"+","(vec,vec->vec)");
+install_function(vec_minus_wrapper,"-","(vec,vec->vec)");
+install_function(vec_unary_minus_wrapper,"-","(vec->vec)");
+install_function(vec_times_int_wrapper,"*","(vec,int->vec)");
+install_function(vec_divide_int_wrapper,"\\","(vec,int->vec)");
+install_function(vec_modulo_int_wrapper,"%","(vec,int->vec)");
 install_function(vector_div_wrapper,"/","(vec,int->ratvec)");
 install_function(ratvec_unfraction_wrapper,"%","(ratvec->vec,int)");
 install_function(ratvec_plus_wrapper,"+","(ratvec,ratvec->ratvec)");
