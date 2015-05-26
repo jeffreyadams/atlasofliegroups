@@ -41,8 +41,11 @@ set cocharacter_lattice_K (InnerClass ic) = mat:
 set projection_to_K_matrix (InnerClass ic) = mat:
   ^cocharacter_lattice_K(ic) { just the transpose of injection matrix }
 
-{ projection function that accepts rational vectors whose image is integral }
+{ projection function X^* -> X^*(K)
+  it accepts rational vectors in X^*_\Q, provided their image is integral
+}
 set project_K (InnerClass ic,ratvec v)= vec:
+  { avoid transpose in projection_to_K_matrixI(ic)*v, but morally it is that: }
   ratvec_as_vec(v*cocharacter_lattice_K(ic))
 
 { matrix of injection X_*(T_K)->X_*(T); image is a saturated sublattice }

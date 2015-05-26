@@ -58,7 +58,22 @@ set sort_by ((Param->int) f) = ([Param] v) [Param]:
 set sort_by (((Param,bool)->int) f) = ([(Param,bool)] v) [(Param,bool)]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
+set sort_by ( (Split,Param->int) f) = ([(Split,Param)] v) [(Split,Param)]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
 { and so forth for any type; this really should be second-order typed }
+
+{ Here are example calls of the model functions above. They can be defined
+  here because reducibility_points and height are built-in functions (those
+  defined in basic.rx could also be used). If however you need to sort on a
+  custom attribute defined elsewhere, DON'T do so here (and don't include
+  modules to make that possible); rather call sort_by in the script where that
+  custom attribut is defined. (You might need to extend the above list of
+  models if a new value type is involved; that is OK and in fact recommended.)
+
+  For instance LKT.rx defines the attribute LKT_dimensions, and then defines
+  sort_by_dimension in a call of sort_by, whose argument used that attribute.
+}
 
 { sort list of pairs [(Param,bool)] by #reducibility_points of Param }
 set sort_by_reducibility_points = ([(Param,bool)]->[(Param,bool)]):
@@ -68,3 +83,9 @@ set sort_by_reducibility_points = ([(Param,bool)]->[(Param,bool)]):
 set sort_by_reducibility = ([Param]->[Param]):
   sort_by((Param p) int: #reducibility_points(p) )
 
+{ Sort list of parameters by height }
+set sort_by_height = ([Param] -> [Param]): sort_by( height@Param )
+
+{ Same for a list of parameters with a Split attached (ignored for sorting) }
+set sort_by_height = ([(Split,Param)] -> [(Split,Param)]):
+ sort_by( (Split s,Param p) int: height(p) )

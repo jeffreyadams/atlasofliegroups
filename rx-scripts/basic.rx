@@ -267,11 +267,14 @@ set <  (ratvec v) = bool: < numer(v)
 {			    Split integers				}
 
 set s = Split:(0,1)
-set + (Split x) = let (r,)=%x in r { real part }
-set ^ (Split x) = let (,y)=%x in y { s part }
+set + (Split x) = int: let (r,)=%x in r { real part }
+set ^ (Split x) = int: let (,y)=%x in y { s part }
 
 set s_to_1 (Split x) = int: +%x        { let (a,b)=%x in +(a,b) }
 set s_to_minus_1 (Split x) = int: -%x  { let (a,b)=%x in -(a,b) }
+
+set split_as_int (Split x) = int:
+  let (r,y)=%x in assert(=y,"split is not an integer"); r
 
 set ^ = { exponentiation of split integers }
   let split_power (Split x,int n) = Split: x { dummy }

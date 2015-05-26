@@ -140,11 +140,14 @@ set y_alt (Param p) = KGBElt: dual_KGB(p,dual_inner_class(p))
 set dual_real_form (Param p) = RealForm: real_form(y_alt(p))
 set dual_alt (Param p) = Param: dual_alt(p,dual_inner_class(p))
 
-set test1 (Param p) = [bool]:
+{ allow calling dual_KGB under the name y_alt }
+set y_alt = (Param,InnerClass->KGBElt):  dual_KGB@(Param,InnerClass)
+
+set test1 (Param p) = [bool]: { consistency of dual real form across block }
   let G_v=dual_inner_class(p) then drf = real_form(dual_KGB(p,G_v))
   in for q in block_of(p) do drf=real_form(dual_KGB(q,G_v)) od
 
-set test2 (Param p) = [bool]: { should be constant gamma%1 }
+set test2 (Param p) = [bool]: { consistency of cocharacter across block }
   let G_v=dual_inner_class(p), gamma1=infinitesimal_character(p)%1
   in for q in block_of(p)
      do central_cocharacter(real_form(dual_KGB(q,G_v)))=gamma1 od
