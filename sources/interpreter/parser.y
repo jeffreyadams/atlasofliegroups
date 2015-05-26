@@ -294,12 +294,13 @@ comprim: subscription
 
 subscription: IDENT '[' exp ']'
 	  { $$ = make_subscription_node(make_applied_identifier($1,@1),$3,@$); }
-	| IDENT '[' commalist ',' exp ']'
+	| IDENT '[' exp ',' exp ']'
 	  { $$=make_subscription_node
 	       (make_applied_identifier($1,@1),
 		wrap_tuple_display
-		    (reverse_expr_list(make_exprlist_node($5,$3)),@$)
-	       ,@$) ;
+		(make_exprlist_node($3,
+                   make_exprlist_node($5,raw_expr_list(nullptr))),@$)
+		,@$);
 	  }
 ;
 
