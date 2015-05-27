@@ -63,7 +63,7 @@ set recursive_deform (Param p) = (Param,ParamPol):
 	then acc= while inx>0 do deform(param(x,lambda,gamma*rp[inx-:=1])) od
 	in
 	  for terms@i in acc
-	  do let f = (): let a=rp[#rp-1-i]
+	  do let f = @: let a=rp[#rp-1-i]
 			 in back_trace(); prints(a,", ",(x,lambda,gamma*a)) in
 	    for k@q in terms
 	    do
@@ -74,7 +74,7 @@ set recursive_deform (Param p) = (Param,ParamPol):
 	; (param(x,lambda,null_wt(#gamma)),at_nu0)
       fi
     end
-  ) { value in parentheses is recursive |recd|; apply it: } (Split:1,p,():())
+  ) { value in parentheses is recursive |recd|; apply it: } (Split:1,p,@:())
 
 set rec_def (Param p) = (Param,ParamPol):
   if is_zero(p) or not is_final(p) then error("improper parameter")

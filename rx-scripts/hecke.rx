@@ -5,6 +5,7 @@
 
 <extended_cayley.rx { for ext_Cayley }
 <nonintegral.rx { for ext_cross }
+<polynomial.rx { for polynomial arithmetic }
 
 { parameters and extended parameters are parametrized by pairs (x,y)
   x is a KGB element and y is a *generalized* KGB element, y^2 not necessarily
@@ -365,6 +366,14 @@ end
   signs_1i1(j,F,E)
 }
 
+{ temporarily install polynomial arithemetic }
+forget +@(vec,vec)
+forget -@(vec,vec)
+forget *@(vec,vec)
+set + = flex_add@(vec,vec)
+set - = flex_sub@(vec,vec)
+set * = convolve@(vec,vec)
+
 { compute matrix of twisted Hecke operator T_j on E(delta,gamma,x,g,y) in basis
   of extended parameters {E_i=E(delta,gamma,x_i,g,y_i)}, assuming pair=(x,y)
   occurs in basis matrix of polynomials, see polynomials.rx
@@ -425,8 +434,8 @@ begin
     then prints("sign_1r1f_Cayley_1=-1 in computing Hecke operator")
     fi
   ; R:=update_row(R,i,q-poly_2)
-  ; R:=update_row(R,m0,poly_product(sgn_poly(sign_Cayley_0),(q-poly_1)))
-  ; R:=update_row(R,m1,poly_product(sgn_poly(sign_Cayley_1),(q-poly_1)))
+  ; R:=update_row(R,m0,sgn_poly(sign_Cayley_0)*(q-poly_1))
+  ; R:=update_row(R,m1,sgn_poly(sign_Cayley_1)*(q-poly_1))
   elif type="1r1s" then R:=update_row(R,i,q)
   elif type="1r2"
   then let E1=ext_cross(j,E) in
@@ -499,9 +508,9 @@ begin
     let k=index(E1,basis) in
     let F=ext_Cayley(j,E)[0] in
     let m=index(F,basis) in
-    R:=update_row(R,m,poly_product(sgn_poly(sign(F)),q2-poly_1));
+    R:=update_row(R,m,sgn_poly(sign(F))*(q2-poly_1));
     R:=update_row(R,k,-sgn_poly(sign(E1)));
-    R:=update_row(R,i,q2-poly_1);R
+    R:=update_row(R,i,q2-poly_1)
   elif type ="2r21"
   then let F=default(E) in
     let cayley=ext_Cayley(j,F) in
@@ -511,22 +520,30 @@ begin
     let sign_E2=sign_2r21(j,F,E2) in
     prints("type 2r21 for parameter with index ", index(E,basis)
           , " sign_E1:", sign_E1, ", sign_E2:", sign_E2)
-  ; R:=update_row(R,index(E1,basis),poly_product(sgn_poly(sign_E1),q2-poly_1))
-  ; R:=update_row(R,index(E2,basis),poly_product(sgn_poly(sign_E2),q2-poly_1))
-  ; R:=update_row(R,i,q2-[2])
+  ; R:=update_row(R,index(E1,basis),sgn_poly(sign_E1)*(q2-poly_1))
+  ; R:=update_row(R,index(E2,basis),sgn_poly(sign_E2)*(q2-poly_1))
+  ; R:=update_row(R,i,q2-poly_2)
   elif type ="2r11"
   then let F0=ext_Cayley(j,E)[0] in
     let m0=index(F0,basis) in
     let F1=ext_Cayley(j,E)[1] in
     let m1=index(F1,basis) in
-    R:=update_row(R,m0,poly_product(sgn_poly(sign(F0)),q2-poly_1))
-  ; R:=update_row(R,m1,poly_product(sgn_poly(sign(F1)),q2-poly_1))
-  ; R:=update_row(R,i,q2-[2])
+    R:=update_row(R,m0,sgn_poly(sign(F0))*(q2-poly_1))
+  ; R:=update_row(R,m1,sgn_poly(sign(F1))*(q2-poly_1))
+  ; R:=update_row(R,i,q2-poly_2)
   elif type ="2rn" then R:=update_row(R,i,-poly_1)
   elif type ="2ic" then R:=update_row(R,i,q2)
   else R
   fi
 end
+
+{ restore normal vector arithmetic }
+forget +@(vec,vec)
+forget -@(vec,vec)
+forget *@(vec,vec)
+set + = fix_add@(vec,vec)
+set - = fix_sub@(vec,vec)
+set * = dot_product@(vec,vec)
 
 { row of matrix of action of Hecke operator
   hecke_row(j,E,basis)

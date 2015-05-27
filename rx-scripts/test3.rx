@@ -1,8 +1,9 @@
-<my
-<extended
-<hecke
-<nonintegral
+<groups.rx
 set G=SL(4,R)
+
+<extended.rx
+<hecke.rx
+<nonintegral.rx
 set ps=spherical_principal_series(G,rho(G)/2)
 set B=block_of(ps)
 set EB=ext_block_of(ps)

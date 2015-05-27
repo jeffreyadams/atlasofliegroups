@@ -10,28 +10,21 @@
 
 set fix_add = +@(vec,vec)
 set fix_sub = -@(vec,vec) { save fixed-length vector addition and subtraction }
+set dot_product = *@(vec,vec) { and scalar product }
+
 forget +@(vec,vec)
 forget -@(vec,vec)
+forget *@(vec,vec)
 
 set + = flex_add@(poly,poly)
 set - = flex_sub@(poly,poly)
+set * = convolve@(vec,vec)
 
-{ reduce polynomial by dropping trailing zeros }
+{ reduce polynomial by dropping trailing zeros; shouldn't really be needed }
 set strip (poly v) = poly: v + (poly:[])
 
-{ multiply two polynomials }
-set poly_product = convolve@(poly,poly)
-
-{ for convenience }
-set poly_1 = poly: [1]
-set poly_2 = poly: [2]
-set q = poly: [0,1]
-set q2 = poly: [0,0,1]
-set sgn_poly (int k) = poly:
-  [if k<0 then -1 elif k>0 then 1 else error("taking sign of 0") fi]
-
 { evaluate polynomial at integer }
-set evaluate_at_1 = sum@poly { most often we need this easy case }
+set evaluate_at_1 = sum@poly { from basic.rx; most often we need this easy case }
 
 set eval (poly v,int k) = int:
   let sum=0 in  for i:#v downto 0 do sum:= v[i] + k*sum od; sum
@@ -57,42 +50,49 @@ set transpose(poly_mat M)=poly_mat: { sublists must be of equal length }
   else for j:#M[0] do for i:n do M[i][j] od od
   fi
 
-{ multiply (dot product) of two vectors of polynomials }
-set vector_poly_product([poly] v,[poly] w) = poly:
-  let sum=null(0) in
-  for p@i in v do sum +:= poly_product(p,w[i]) od; strip(sum)
+{ dot product of two vectors of polynomials (the name avoids *@(mat,mat)) }
+set dot_product([poly] v,[poly] w) = poly:
+  let sum=poly:[] in for p@i in v do sum +:= p*w[i] od; sum
 
 { multiply two matrices of polynomials; here row-based representation really
-  makes a difference. Note that operator * is unambiguous here
+  makes a difference. Note that using operator * is unambiguous here
 }
 set *(poly_mat A,poly_mat B) = poly_mat:
-  let n=#A, B=transpose(B) { best to rearrange B once and for all }
-  then m=#B
-  in for i:n do for j:m do vector_poly_product(A[i],B[j]) od od
+  let n=#A, B_tr=transpose(B) { best to rearrange B once and for all }
+  then m=#B_tr { number of rows of B_tr, or columns of B, and of result }
+  in for i:n do for j:m do dot_product(A[i],B_tr[j]) od od
 
-{ add two vectors of polynomials, assumed of same length }
-set vector_poly_sum([poly] v,[poly] w) = [poly]:
-  if #v!=#w then error("length mismatch adding lists of polynomials")
-  else for p@i in v do strip(p+w[i]) od
-  fi
+{ add lists of polynomials, assumed of same length (name avoids +@(mat,mat)) }
+set poly_list_add([poly] v,[poly] w) = [poly]:
+( assert(#v=#w,"length mismatch adding lists of polynomials")
+; for p@i in v do p+w[i] od
+)
+set poly_list_sub([poly] v,[poly] w) = [poly]:
+( assert(#v=#w,"length mismatch adding lists of polynomials")
+; for p@i in v do p-w[i] od
+)
 
-{ add matrices of the same size }
+set -(poly_mat M) = poly_mat: for row in M do for p in row do -p od od
+
+{ add or subtract matrices of the same size }
 set +(poly_mat A,poly_mat B)=poly_mat:
-  if #A!=#B then error("depth mismatch adding matrices of polynomials")
-  else for row@i in A do vector_poly_sum(row,B[i]) od
-  fi
+( assert(#A=#B,"number of rows mismatch adding matrices of polynomials")
+; for row@i in A do poly_list_add(row,B[i]) od
+)
+set -(poly_mat A,poly_mat B)=poly_mat:
+( assert(#A=#B,"number of rows mismatch adding matrices of polynomials")
+; for row@i in A do poly_list_sub(row,B[i]) od
+)
 
-set poly_times_vector(poly f,[poly] v) = [poly]:
-  for p in v do poly_product(f,p) od
+set scalar_multiply([poly] v,poly f) = [poly]:
+  for p in v do p*f od
 
 { polynomial scalar times polynomial matrix }
 set *(poly f,poly_mat M) = poly_mat:
-  for row in M do poly_times_vector(f,row) od
-set *(int c, poly_mat M)=(poly:[c])*M
-
- { set %(poly f,poly_mat M)=poly_mat:poly_times_matrix(f,M) }
-set -(poly_mat M) = poly_mat: for row in M do for p in row do -p od od
-set -(poly_mat A,poly_mat B) = poly_mat: A + -B
+  for row in M do scalar_multiply(row,f) od
+{ integer scalar case can be doen a bit more efficiently }
+set *(int c, poly_mat M) = poly_mat:
+  for row in M do for p in row do p*c { use the *@(vec,int) built-in } od od
 
 { update one entry in a vector of polynomials and one row of a matrix }
 set update_row([poly] R, int j,poly v) = [poly]: R[j]:=v; R
@@ -112,11 +112,13 @@ set +(poly_mat M, poly p) = poly_mat: { add polynomial scalar matrix }
   for row@i in M  do for e@j in row do if i=j then e+p else e fi od od
 set -(poly_mat M, poly p) = poly_mat: M+-p
 
-set ^(poly p,int n) = poly: { power of a polynomial }
-  if n=0 then [1]
-  else { no point in trying to do this by squaring, it is not faster }
-    let f=p in while (n-:=1)>0 do f:=poly_product(f,p) od; f
-  fi
+set ^ = (poly,int->poly): { power of a polynomial }
+  let one=poly:[1] { use local constant for efficiency } in
+  (poly p,int n) poly: { the actual powering function }
+    if n=0 then [1]
+    else { no point in trying to do this by repeated squaring: is not faster }
+      let f=p in while (n-:=1)>0 do f *:= p od; f
+    fi
 
 { equality of polynomial matrices }
 set =(poly_mat A,poly_mat B) = bool:
@@ -137,7 +139,7 @@ set poly_permute_basis(poly P, poly_mat A) = poly_mat: { P is permutation }
 { make a printable string out of a polynomial and name of indeterminate,
   for use in other print functions }
 set stringPoly (poly v, string q)= string:
-  if #(v:=strip(v))=0 then "0"
+  if =v then "0"
   else
     let rv="" in
     for c@k in v do
@@ -152,19 +154,35 @@ set stringPoly (poly v, string q)= string:
   fi
 
 { nice printing of a polynomial }
-set printPoly (poly v)= void: prints(stringPoly(v,"q"))
+set printPoly (poly v) = void: prints(stringPoly(v,"q"))
 
 { M=poly_mat is a polynomial matrix; e.g.
-expr> set M= poly_mat: [[ [0,1], [0,0,1]], [[0], [1]]]
-expr> printPolyMatrix (M)
- +q +q^2
- 0 +1
+  expr> set M= poly_mat: [[ [0,1], [0,0,1]], [[0], [1]]]
+  expr> printPolyMatrix (M)
+   +q +q^2
+   0 +1
 }
 
-set printPolyMatrix(poly_mat M)=void:
+set printPolyMatrix (poly_mat M) = void:
   let rv="", n=#M in
     for i:n do
       let line="" in
       for j:n do line+:=" "+stringPoly(M[i][j],"q") od; prints(line)
     od
+
+{ restore normal vector arithmetic }
+forget +@(vec,vec)
+forget -@(vec,vec)
+forget *@(vec,vec)
+set + = fix_add@(vec,vec)
+set - = fix_sub@(vec,vec)
+set * = dot_product@(vec,vec)
+
+{ for convenience }
+set poly_1 = poly: [1]
+set poly_2 = poly: [2]
+set q = poly: [0,1]
+set q2 = poly: [0,0,1]
+set sgn_poly (int k) = poly:
+  [if k<0 then -1 elif k>0 then 1 else error("taking sign of 0") fi]
 

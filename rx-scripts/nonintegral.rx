@@ -232,7 +232,7 @@ set ext_cross(int i, extended_param E, bool show) = extended_param:
   else
     let t=reflection(rd,delta(E)*alpha)
     then w = assert(length<=3,"something wrong"); { choose for length=1,2,3: }
-         [ (): s, (): s*t, (): s*t*s ] [length-1] ()
+         [ @: s, @: s*t, @: s*t*s ] [length-1] ()
     in ext_cross(mat: w,E)
   fi
 )

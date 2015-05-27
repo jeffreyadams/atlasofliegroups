@@ -96,7 +96,7 @@ set KL_block_polynomials ([Param] B,bool signs)=
     for j:m do
       let length_diff = if signs then length_diff(i,j,stops) else 0 fi in
       P:=update_matrix_entry(P,i,j,
-        poly_product(sgn_poly((-1)^length_diff),polynomials[Pmatrix[i,j]]))
+        convolve(sgn_poly((-1)^length_diff),polynomials[Pmatrix[i,j]]))
     od
   od
 ; let perm_B_block=permutation(B,block) in
@@ -108,7 +108,8 @@ set KL_block_polynomials ([Param] B,bool signs)=
   P,Q are upper triangular if B is in standard (increasing) order
   P: positive/negative integer coefficients
   Q: non-negative integer coefficients
-  P(1) is the multiplicity of a standard module in an irreducible (character formula)
+  P(1) is the multiplicity of a standard module in an irreducible
+    (character formula)
   Q(1) is the multiplicity of an irreducible module in a standard module
 }
 set KL_P_polynomials ([Param] B) = KL_block_polynomials(B,true)

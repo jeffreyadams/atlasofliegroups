@@ -15,7 +15,7 @@ set make_nu0 (ParamPol P) = ParamPol: 0*P + for w@p in P do (w,p*0) od
 set orientation_nr_term = (int,Param->Split):
   let err()=
     error("computing orientation number for odd difference of lengths")
-  then act=[(->Split)]: [()Split:1,err,():s,err]
+  then act=[(->Split)]: [@Split:1,err,@:s,err]
   in (int ori_nr_p,Param q) Split: act[(ori_nr_p-orientation_nr(q))%4]()
 
 { c_form_std:
