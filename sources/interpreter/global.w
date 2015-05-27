@@ -2964,8 +2964,8 @@ void transpose_vec_wrapper(expression_base::level l)
   }
 }
 
-@ The wrapper functions for matrix transposition and identity matrix are
-called from \.{built-in-types.w}.
+@ The wrappers for matrix transposition and identity matrix are called
+from \.{built-in-types.w}.
 
 @< Declarations of exported functions @>=
 void transpose_mat_wrapper (expression_base::level);

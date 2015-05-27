@@ -241,13 +241,6 @@ primary: comprim
 	| IDENT { $$=make_applied_identifier($1,@1); }
 ;
 comprim: subscription
-	| comprim '[' expr ']' { $$ = make_subscription_node($1,$3,@$); }
-	| comprim '[' commalist ',' expr ']'
-	  { $$=make_subscription_node
-	       ($1,wrap_tuple_display
-		(reverse_expr_list(make_exprlist_node($5,$3)),@$)
-	       ,@$) ;
-	  }
 	| primary '(' commalist_opt ')'
 	{ $$=make_application_node($1,reverse_expr_list($3),@$,@2,@4); }
 	| INT { $$ = make_int_denotation($1,@$); }
@@ -292,11 +285,10 @@ comprim: subscription
 	| IDENT '@' type    { $$=make_op_cast($1,$3,@$); }
 ;
 
-subscription: IDENT '[' expr ']'
-	  { $$ = make_subscription_node(make_applied_identifier($1,@1),$3,@$); }
-	| IDENT '[' expr ',' expr ']'
-	  { $$=make_subscription_node
-	       (make_applied_identifier($1,@1),
+subscription: primary '[' expr ']'
+	  { $$ = make_subscription_node($1,$3,@$); }
+	| primary '[' expr ',' expr ']'
+	  { $$=make_subscription_node($1,
 		wrap_tuple_display
 		(make_exprlist_node($3,
                    make_exprlist_node($5,raw_expr_list(nullptr))),@$)
