@@ -2335,13 +2335,12 @@ struct subscr_base : public expression_base
   virtual ~@[subscr_base() nothing_new_here@] ;
 @)
   virtual void print(std::ostream& out) const;
-  static bool indexable
+  static sub_type index_kind
   (const type_expr& aggr,
    const type_expr& index,
-         type_expr& subscr,
-         sub_type& kind);
-  static bool assignable(sub_type);
+         type_expr& subscr);
   static sub_type slice_kind(const type_expr& aggr);
+  static bool assignable(sub_type);
 };
 @)
 struct slice_base : public expression_base
@@ -2489,45 +2488,35 @@ case indicates that a ``parameter polynomial'' can be subscripted with a
 parameter to return a split integer result.
 
 @< Function def... @>=
-bool subscr_base::indexable
+subscr_base::sub_type subscr_base::index_kind
   (const type_expr& aggr,
    const type_expr& index,
-         type_expr& subscr,
-         sub_type& kind)
+         type_expr& subscr)
 { if (aggr.kind==primitive_type)
-  switch (aggr.prim)
-  {  default:
-  break; case vector_type: if (index==int_type)
-    {@; kind=vector_entry; return subscr.specialise(int_type);  }
-  break; case rational_vector_type: if(index==int_type)
-    {@; kind=ratvec_entry; return subscr.specialise(rat_type); }
-  break; case string_type: if(index==int_type)
-    {@; kind=string_char; return subscr.specialise(str_type); }
-  break; case matrix_type:
-    if (index==int_int_type)
-    {@; kind=matrix_entry; return subscr.specialise(int_type); }
-    else if (index==int_type)
-    {@; kind=matrix_column; return subscr.specialise(vec_type); }
-  break; case virtual_module_type: if (index==param_type)
-    {@; kind=mod_poly_term; return subscr.specialise(split_type); }
-  }
-  else if (aggr.kind==row_type and index==int_type)
-  @/{@; kind=row_entry;
-        return subscr.specialise(*aggr.component_type);
-  }
-  return false;
-}
-
-@ Some cases, although valid as subscriptions, do not allow a new value to be
-assigned to the component value (this holds for instance selecting a character
-from a string).
-
-@< Function def... @>=
-bool subscr_base::assignable(subscr_base::sub_type t)
-{ switch (t)
-  { case ratvec_entry: case string_char: case mod_poly_term: return false;
-    default: return true;
-  }
+    switch (aggr.prim)
+    {  default:
+    break; case vector_type:
+      if (index==int_type and subscr.specialise(int_type))
+        return vector_entry;
+    break; case rational_vector_type:
+      if (index==int_type and subscr.specialise(rat_type))
+        return ratvec_entry;
+    break; case string_type:
+      if (index==int_type and subscr.specialise(str_type))
+        return string_char;
+    break; case matrix_type:
+      if (index==int_int_type and subscr.specialise(int_type))
+        return matrix_entry;
+      else if (index==int_type and subscr.specialise(vec_type))
+        return matrix_column;
+    break; case virtual_module_type:
+      if (index==param_type and subscr.specialise(split_type))
+        return mod_poly_term;
+    }
+  else if (aggr.kind==row_type and index==int_type and
+           subscr.specialise(*aggr.component_type))
+         return row_entry;
+  return not_so;
 }
 @)
 subscr_base::sub_type subscr_base::slice_kind (const type_expr& aggr)
@@ -2542,6 +2531,19 @@ subscr_base::sub_type subscr_base::slice_kind (const type_expr& aggr)
   else if (aggr.kind==row_type)
     return row_entry;
   else return not_so;
+}
+
+@ Some cases, although valid as subscriptions, do not allow a new value to be
+assigned to the component value (this holds for instance selecting a character
+from a string).
+
+@< Function def... @>=
+bool subscr_base::assignable(subscr_base::sub_type t)
+{ switch (t)
+  { case ratvec_entry: case string_char: case mod_poly_term:
+    case not_so: return false;
+    default: return true;
+  }
 }
 
 
@@ -2568,40 +2570,35 @@ case subscription:
     = convert_expr(e.subscription_variant->array,array_type);
   expression_ptr index
     = convert_expr(e.subscription_variant->index,index_type);
-  subscr_base::sub_type kind;
   expression_ptr subscr;
-  if (subscr_base::indexable(array_type,index_type,subscr_type,kind))
-    switch (kind)
-    { case subscr_base::row_entry:
-      subscr.reset(new row_subscription(std::move(array),std::move(index)));
-    break;
-    case subscr_base::vector_entry:
-      subscr.reset(new vector_subscription(std::move(array),std::move(index)));
-    break;
-    case subscr_base::ratvec_entry:
-      subscr.reset(new ratvec_subscription(std::move(array),std::move(index)));
-    break;
-    case subscr_base::string_char:
-      subscr.reset(new string_subscription(std::move(array),std::move(index)));
-    break;
-    case subscr_base::matrix_entry:
-      subscr.reset(new matrix_subscription(std::move(array),std::move(index)));
-    break;
-    case subscr_base::matrix_column:
-      subscr.reset(new matrix_get_column(std::move(array),std::move(index)));
-    break;
-    case subscr_base::mod_poly_term:
-      subscr.reset(new module_coefficient(std::move(array),std::move(index)));
-    break;
-    case subscr_base::not_so: assert(false);
-    }
-  else
-  { std::ostringstream o;
+  switch (subscr_base::index_kind(array_type,index_type,subscr_type))
+  { case subscr_base::row_entry:
+    subscr.reset(new row_subscription(std::move(array),std::move(index)));
+  break;
+  case subscr_base::vector_entry:
+    subscr.reset(new vector_subscription(std::move(array),std::move(index)));
+  break;
+  case subscr_base::ratvec_entry:
+    subscr.reset(new ratvec_subscription(std::move(array),std::move(index)));
+  break;
+  case subscr_base::string_char:
+    subscr.reset(new string_subscription(std::move(array),std::move(index)));
+  break;
+  case subscr_base::matrix_entry:
+    subscr.reset(new matrix_subscription(std::move(array),std::move(index)));
+  break;
+  case subscr_base::matrix_column:
+    subscr.reset(new matrix_get_column(std::move(array),std::move(index)));
+  break;
+  case subscr_base::mod_poly_term:
+    subscr.reset(new module_coefficient(std::move(array),std::move(index)));
+  break;
+  case subscr_base::not_so:
+    std::ostringstream o;
     o << "Cannot subscript value of type " << array_type @|
       << " with index of type " << index_type;
     throw expr_error(e,o.str());
   }
-@)
   return conform_types(subscr_type,type,std::move(subscr),e);
 }
 
@@ -3193,28 +3190,28 @@ case for_expr:
 
 @ This type must be indexable by integers (so it is either a row-type or
 vector, matrix or string), or it must be a loop over the coefficients of a
-polynomial. The call to |subscr_base::indexable| will set |comp_type| to the
+polynomial. The call to |subscr_base::index_kind| will set |comp_type| to the
 component type resulting from such a subscription.
 
 @< Set |which| according to |in_type|, and set |bind| according to the
    identifiers contained in |f->id| @>=
 { type_expr comp_type; const type_expr* tp;
-  if (subscr_base::indexable(in_type,*(tp=&int_type),comp_type,which) @|
-   or subscr_base::indexable(in_type,*(tp=&param_type),comp_type,which))
-  { type_expr pt = pattern_type(f->id);
-    type_list it_comps;
-    it_comps.push_front(std::move(comp_type));
-    it_comps.push_front(type_expr(tp->copy()));
-    type_expr it_type(std::move(it_comps));
-    if (not pt.specialise(it_type))
-      throw expr_error(e,"Improper structure of loop variable pattern");
-    thread_bindings(f->id,it_type,bind);
-  }
-  else
+  which = subscr_base::index_kind(in_type,*(tp=&int_type),comp_type);
+  if (which==subscr_base::not_so)
+    which = subscr_base::index_kind(in_type,*(tp=&param_type),comp_type);
+  if (which==subscr_base::not_so)
   { std::ostringstream o;
     o << "Cannot iterate over value of type " << in_type;
     throw expr_error(e,o.str());
   }
+  type_expr pt = pattern_type(f->id);
+  type_list it_comps;
+  it_comps.push_front(std::move(comp_type));
+  it_comps.push_front(type_expr(tp->copy()));
+  type_expr it_type(std::move(it_comps));
+  if (not pt.specialise(it_type))
+    throw expr_error(e,"Improper structure of loop variable pattern");
+  thread_bindings(f->id,it_type,bind);
 }
 
 @ We can start evaluating the |in_part| regardless of |kind|, but for deducing
@@ -4035,27 +4032,25 @@ case comp_ass_stat:
 @)
   type_expr ind_t;
   expression_ptr i = convert_expr(index,ind_t);
-@/type_expr comp_t; subscr_base::sub_type kind;
-  if (subscr_base::indexable(*aggr_t,ind_t,comp_t,kind)
-      and subscr_base::assignable(kind))
-  { expression_ptr r = convert_expr(rhs,comp_t);
-    if (aggr_t->kind==row_type)
-      aggr_t->component_type->specialise(comp_t); // record type
-    if (is_local)
-      return conform_types(comp_t,type,expression_ptr(new @|
-        local_component_assignment(aggr,std::move(i),d,o,std::move(r),kind))
-      ,e);
-    else
-      return conform_types(comp_t,type,expression_ptr(new @|
-        global_component_assignment(aggr,std::move(i),std::move(r),kind))
-      ,e);
-  }
-  else
+@/type_expr comp_t;
+  subscr_base::sub_type kind=subscr_base::index_kind(*aggr_t,ind_t,comp_t);
+  if (not subscr_base::assignable(kind))
   { std::ostringstream o;
     o << "Cannot subscript value of type " << *aggr_t @|
       << " with index of type " << ind_t << " in assignment";
     throw expr_error(e,o.str());
   }
+  expression_ptr r = convert_expr(rhs,comp_t);
+  if (aggr_t->kind==row_type)
+    aggr_t->component_type->specialise(comp_t); // record type
+  if (is_local)
+    return conform_types(comp_t,type,expression_ptr(new @|
+      local_component_assignment(aggr,std::move(i),d,o,std::move(r),kind))
+    ,e);
+  else
+    return conform_types(comp_t,type,expression_ptr(new @|
+      global_component_assignment(aggr,std::move(i),std::move(r),kind))
+    ,e);
 }
 
 @* Index.
