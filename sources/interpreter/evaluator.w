@@ -1572,8 +1572,8 @@ void suffix_element_wrapper(expression_base::level l)
 { shared_value e=pop_value();
   own_row r=get_own<row_value>();
   if (l!=expression_base::no_value)
-  {@; r->val.push_back(e);
-    push_value(r);
+  {@; r->val.push_back(std::move(e));
+    push_value(std::move(r));
   }
 }
 @)
@@ -1582,7 +1582,7 @@ void prefix_element_wrapper(expression_base::level l)
   shared_value e=pop_value();
   if (l!=expression_base::no_value)
   {@; r->val.insert(r->val.begin(),e);
-    push_value(r);
+    push_value(std::move(r));
   }
 }
 @)
@@ -1592,7 +1592,7 @@ void join_rows_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   { own_row result = std::make_shared<row_value>(x->val.size()+y->val.size());
     std::copy(y->val.begin(),y->val.end(), @|
-     std::copy(x->val.begin(),x->val.end(),result->val.begin()));
+      std::copy(x->val.begin(),x->val.end(),result->val.begin()));
 @/  push_value(std::move(result));
   }
 
@@ -2306,7 +2306,7 @@ case seq_expr:
 }
 
 
-@* Array subscription.
+@* Array subscription and slicing.
 %
 We have seen expressions to build lists, and although vectors and matrices can
 be made out of them using coercions, we so far are not able to access their
@@ -2325,11 +2325,13 @@ is related to a type defined in \.{built-in-types}.
 struct subscr_base : public expression_base
 { enum sub_type
   { row_entry, vector_entry, ratvec_entry, string_char
-  , matrix_entry, matrix_column, mod_poly_term };
+  , matrix_entry, matrix_column, mod_poly_term, not_so };
   expression_ptr array, index; // the two parts of the subscription expression
 @)
   subscr_base(expression_ptr&& a, expression_ptr&& i)
-@/: array(a.release()),index(i.release()) @+{}
+@/: array(a.release())
+  , index(i.release())
+  @+{}
   virtual ~@[subscr_base() nothing_new_here@] ;
 @)
   virtual void print(std::ostream& out) const;
@@ -2339,6 +2341,20 @@ struct subscr_base : public expression_base
          type_expr& subscr,
          sub_type& kind);
   static bool assignable(sub_type);
+  static sub_type slice_kind(const type_expr& aggr);
+};
+@)
+struct slice_base : public expression_base
+{ expression_ptr array, lower,upper; // the three parts of the slice expression
+@)
+  slice_base(expression_ptr&& a, expression_ptr&& l, expression_ptr&& u)
+@/: array(a.release())
+  , lower(l.release())
+  , upper(u.release())
+  @+{}
+  virtual ~@[slice_base() nothing_new_here@] ;
+@)
+  void print(std::ostream& out, unsigned flags) const; // non |virtual|!
 };
 
 @ We derive a number of types from |subscr_base| which only differ by their
@@ -2378,8 +2394,8 @@ struct matrix_subscription : public subscr_base
   virtual void print(std::ostream& out) const;
 };
 @)
-struct matrix_slice : public subscr_base
-{ matrix_slice(expression_ptr&& a, expression_ptr&& j)
+struct matrix_get_column : public subscr_base
+{ matrix_get_column(expression_ptr&& a, expression_ptr&& j)
 @/: subscr_base(std::move(a),std::move(j)) @+{}
   virtual void evaluate(level l) const;
 };
@@ -2407,6 +2423,62 @@ void matrix_subscription::print(std::ostream& out) const
   if (p==nullptr) out << *array << '[' << *index << ']';
   else
     out << *array << '[' << *p->component[0] << ',' << *p->component[1] << ']';
+}
+
+@ We derive a number of types, templated over |unsigned|, from |slice_base|.
+The template value represents the optional reversals ($8$ possibilities). All
+of these differ only by their |evaluate| method.
+
+@< Type definitions @>=
+
+template <unsigned flags>
+struct row_slice : public slice_base
+{ row_slice(expression_ptr&& a, expression_ptr&& l,  expression_ptr&& u)
+@/: slice_base(std::move(a),std::move(l),std::move(u)) @+{}
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const
+  @+{@; slice_base::print(out,flags); }
+};
+
+@)
+template <unsigned flags>
+struct vector_slice : public slice_base
+{ vector_slice(expression_ptr&& a, expression_ptr&& l,  expression_ptr&& u)
+@/: slice_base(std::move(a),std::move(l),std::move(u)) @+{}
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const
+  @+{@; slice_base::print(out,flags); }
+};
+@)
+template <unsigned flags>
+struct ratvec_slice : public slice_base
+{ ratvec_slice(expression_ptr&& a, expression_ptr&& l,  expression_ptr&& u)
+@/: slice_base(std::move(a),std::move(l),std::move(u)) @+{}
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const
+  @+{@; slice_base::print(out,flags); }
+};
+@)
+template <unsigned flags>
+struct string_slice : public slice_base
+{ string_slice(expression_ptr&& a, expression_ptr&& l,  expression_ptr&& u)
+@/: slice_base(std::move(a),std::move(l),std::move(u)) @+{}
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const
+  @+{@; slice_base::print(out,flags); }
+};
+
+
+@ These slices are printed in the usual slicing syntax. The templated virtual
+|print| methods transform their template argument to a runtime value, and call
+the non |virtual| member |slice_base::print| with that value as second
+argument.
+
+@< Function definitions @>=
+void slice_base::print(std::ostream& out, unsigned flags) const
+{  out << *array << ((flags&1)==0 ? "[" : "~[")
+@|     << *lower << ((flags&2)==0 ? ":" : "~:")
+@|     << *upper << ((flags&4)==0 ? "]" : "~]");
 }
 
 @ It shall be useful to have a function recognising valid aggregate-index
@@ -2457,6 +2529,20 @@ bool subscr_base::assignable(subscr_base::sub_type t)
     default: return true;
   }
 }
+@)
+subscr_base::sub_type subscr_base::slice_kind (const type_expr& aggr)
+{ if (aggr.kind==primitive_type)
+    switch (aggr.prim)
+    {
+    case vector_type: return vector_entry;
+    case rational_vector_type: return ratvec_entry;
+    case string_type: return string_char;
+    default: return not_so;
+    }
+  else if (aggr.kind==row_type)
+    return row_entry;
+  else return not_so;
+}
 
 
 @ When encountering a subscription in |convert_expr|, we determine the types
@@ -2502,11 +2588,12 @@ case subscription:
       subscr.reset(new matrix_subscription(std::move(array),std::move(index)));
     break;
     case subscr_base::matrix_column:
-      subscr.reset(new matrix_slice(std::move(array),std::move(index)));
+      subscr.reset(new matrix_get_column(std::move(array),std::move(index)));
     break;
     case subscr_base::mod_poly_term:
       subscr.reset(new module_coefficient(std::move(array),std::move(index)));
     break;
+    case subscr_base::not_so: assert(false);
     }
   else
   { std::ostringstream o;
@@ -2516,6 +2603,67 @@ case subscription:
   }
 @)
   return conform_types(subscr_type,type,std::move(subscr),e);
+}
+
+@ We shall need to convert runtime values for |flags| to a template argument.
+This can basically only be done by listing all applicable values. This is a
+nice occasion to use a class template as argument to a template function.
+
+@< Local function definitions @>=
+template < @[ template < unsigned > class @+ slice @] >
+expression make_slice(unsigned flags
+  ,expression_ptr&& a, expression_ptr&& b, expression_ptr&& c)
+{ switch (flags)
+  {
+  case 0: return new slice<0>(std::move(a),std::move(b),std::move(c));
+  case 1: return new slice<1>(std::move(a),std::move(b),std::move(c));
+  case 2: return new slice<2>(std::move(a),std::move(b),std::move(c));
+  case 3: return new slice<3>(std::move(a),std::move(b),std::move(c));
+  case 4: return new slice<4>(std::move(a),std::move(b),std::move(c));
+  case 5: return new slice<5>(std::move(a),std::move(b),std::move(c));
+  case 6: return new slice<6>(std::move(a),std::move(b),std::move(c));
+  case 7: return new slice<7>(std::move(a),std::move(b),std::move(c));
+  default: assert(false); return(nullptr);
+  }
+}
+
+@ When encountering a slice in |convert_expr|, convert the array expression
+with the same type required by the context (since the slice will not change
+the type), and the bound expressions with integer type required. Then we look
+if array type is one that can be sliced at all, throwing an error if it cannot.
+
+@< Cases for type-checking and converting... @>=
+case slice:
+{ type_expr array_type; // initialised to |undetermined_type|
+  expression_ptr array = convert_expr(e.slice_variant->array,array_type);
+  expression_ptr lower =
+    convert_expr(e.slice_variant->lower,as_lvalue(int_type.copy()));
+  expression_ptr upper =
+    convert_expr(e.slice_variant->upper,as_lvalue(int_type.copy()));
+  expression_ptr subscr; const unsigned fl = e.slice_variant->flags.to_ulong();
+  switch (subscr_base::slice_kind(array_type))
+    { case subscr_base::row_entry: subscr.reset(
+    @| make_slice<row_slice>
+        (fl,std::move(array),std::move(lower),std::move(upper)));
+    break;
+    case subscr_base::vector_entry: subscr.reset(
+    @| make_slice<vector_slice>
+        (fl,std::move(array),std::move(lower),std::move(upper)));
+    break;
+    case subscr_base::ratvec_entry: subscr.reset(
+    @| make_slice<ratvec_slice>
+        (fl,std::move(array),std::move(lower),std::move(upper)));
+    break;
+    case subscr_base::string_char: subscr.reset(
+    @| make_slice<string_slice>
+        (fl,std::move(array),std::move(lower),std::move(upper)));
+    break;
+    default: std::ostringstream o;
+      o << "Cannot slice value of type " << array_type;
+      throw expr_error(e,o.str());
+    }
+@)
+  return conform_types(array_type,type,std::move(subscr),e);
 }
 
 
@@ -2570,8 +2718,8 @@ void string_subscription::evaluate(level l) const
     push_value(std::make_shared<string_value>(s->val.substr(i->val,1)));
 }
 
-@ And here are the cases for matrix indexing and slicing (extracting a
-column), which are just slightly more complicated.
+@ And here are the cases for matrix indexing and column selection, which are
+just slightly more complicated.
 
 @< Function definitions @>=
 void matrix_subscription::evaluate(level l) const
@@ -2589,7 +2737,7 @@ void matrix_subscription::evaluate(level l) const
     push_value(std::make_shared<int_value>(m->val(i->val,j->val)));
 }
 @)
-void matrix_slice::evaluate(level l) const
+void matrix_get_column::evaluate(level l) const
 { shared_int j=(index->eval(),get<int_value>());
   shared_matrix m=(array->eval(),get<matrix_value>());
   if (static_cast<unsigned int>(j->val)>=m->val.numColumns())
@@ -2598,6 +2746,127 @@ void matrix_slice::evaluate(level l) const
     push_value(std::make_shared<vector_value>(m->val.column(j->val)));
 }
 
+@ For slice these are template functions. This is where the actual reversals
+happen.
+@< Function definitions @>=
+void slice_range_error
+  (int lwb, int upb,int n,unsigned flags,const expression_base* e)
+{ std::ostringstream o;
+  if (upb>n)
+    if (lwb<0)
+      o << "both bounds " << lwb << ':' << upb;
+    else
+      o << "upper bound " << upb;
+  else
+    o << "lower bound " << lwb;
+  o << " out of range (should be ";
+  if (lwb<0)
+    o << ">=0" << (upb>n ? " respectively " : ")");
+  if (upb>n)
+    o << "<=" << n << ')';
+  e->print(o << " in slice ");
+  throw std::runtime_error(o.str());
+}
+@)
+template <unsigned flags>
+void row_slice<flags>::evaluate(level l) const
+{ int upb=(upper->eval(),get<int_value>()->val);
+  int lwb=(lower->eval(),get<int_value>()->val);
+  shared_row arr=(array->eval(),get<row_value>());
+  const auto& r = arr->val;
+  int n = r.size();
+  if ((flags&2)!=0)
+    lwb = n - lwb;
+  if ((flags&4)!=0)
+    upb = n - upb;
+  if (lwb<0 or upb>n)
+    slice_range_error(lwb,upb,n,flags,this);
+  if (lwb>=upb)
+  {@; push_value(std::make_shared<row_value>(0)); return; }
+  push_value( (flags&1)==0
+@|  ? std::make_shared<row_value>(r.begin()+lwb,r.begin()+upb)
+@|  : std::make_shared<row_value>(r.rbegin()+lwb,r.rbegin()+upb)
+    );
+}
+
+@ For vectors this is quite similar.
+@< Function definitions @>=
+
+template <unsigned flags>
+void vector_slice<flags>::evaluate(level l) const
+{ int upb=(upper->eval(),get<int_value>()->val);
+  int lwb=(lower->eval(),get<int_value>()->val);
+  shared_vector arr=(array->eval(),get<vector_value>());
+  const auto& r = arr->val;
+  int n = r.size();
+  if ((flags&2)!=0)
+    lwb = n - lwb;
+  if ((flags&4)!=0)
+    upb = n - upb;
+  if (lwb<0 or upb>n)
+    slice_range_error(lwb,upb,n,flags,this);
+  if (lwb>=upb)
+  {@; push_value(std::make_shared<vector_value>(int_Vector(0))); return; }
+  push_value( (flags&1)==0
+@|  ? std::make_shared<vector_value>(r.begin()+lwb,r.begin()+upb)
+@|  : std::make_shared<vector_value>(r.rbegin()+lwb,r.rbegin()+upb)
+    );
+}
+
+@ For rational vectors this is only slightly more complicated. We select from
+the numerator, and provide a common denominator; the |rational_vector_value|
+constructor takes care of normalising the result.
+
+@< Function definitions @>=
+
+template <unsigned flags>
+void ratvec_slice<flags>::evaluate(level l) const
+{ int upb=(upper->eval(),get<int_value>()->val);
+  int lwb=(lower->eval(),get<int_value>()->val);
+  shared_rational_vector arr=(array->eval(),get<rational_vector_value>());
+  const auto& r = arr->val.numerator();
+  int n = r.size();
+  if ((flags&2)!=0)
+    lwb = n - lwb;
+  if ((flags&4)!=0)
+    upb = n - upb;
+  if (lwb<0 or upb>n)
+    slice_range_error(lwb,upb,n,flags,this);
+  if (lwb>=upb)
+  {@; push_value(std::make_shared<rational_vector_value>(RatWeight(0)));
+      return; }
+  const int d=arr->val.denominator();
+  push_value( (flags&1)==0
+@|  ? std::make_shared<rational_vector_value>(r.begin()+lwb,r.begin()+upb,d)
+@|  : std::make_shared<rational_vector_value>(r.rbegin()+lwb,r.rbegin()+upb,d)
+    );
+}
+
+
+@ For strings it is quite easy too.
+@< Function definitions @>=
+
+template <unsigned flags>
+void string_slice<flags>::evaluate(level l) const
+{ int upb=(upper->eval(),get<int_value>()->val);
+  int lwb=(lower->eval(),get<int_value>()->val);
+  shared_string arr=(array->eval(),get<string_value>());
+  const auto& r = arr->val;
+  int n = r.size();
+  if ((flags&2)!=0)
+    lwb = n - lwb;
+  if ((flags&4)!=0)
+    upb = n - upb;
+  if (lwb<0 or upb>n)
+    slice_range_error(lwb,upb,n,flags,this);
+  if (lwb>=upb)
+  {@; push_value(std::make_shared<string_value>(std::string())); return; }
+  push_value
+    ((flags&1)==0
+@|  ? std::make_shared<string_value>(std::string(&r[lwb],&r[upb]))
+@|  : std::make_shared<string_value>(@|
+       std::string(r.rbegin()+lwb,r.rbegin()+upb)));
+}
 
 @* Control structures.
 %
@@ -2983,7 +3252,8 @@ possible by sharing a module between the various loop bodies.
 
 @< Evaluate the loop, dispatching the various possibilities for |kind|... @>=
 switch (kind)
-{ case subscr_base::row_entry:
+{ case subscr_base::not_so: assert(false); break;
+  case subscr_base::row_entry:
   { shared_row in_val = get<row_value>();
     size_t n=in_val->val.size();
     if (l!=no_value)

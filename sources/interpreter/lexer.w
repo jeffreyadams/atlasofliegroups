@@ -560,6 +560,11 @@ included before) respectively appending output redirection.
          else
            code= (input.unshift(),c);
          // currently unused; might some day be factorial operator
+  break; case '~':
+         if (input.shift()=='[') // recognise combination for parse reason
+         { code = TLSUB; ++nesting; input.push_prompt('['); }
+         else
+           code= (input.unshift(),c);
   break; @/@< Cases of arithmetic operators, ending with |break| @>
          case '\n': state=ended; // and {\bf fall through}.
          default: code=c;

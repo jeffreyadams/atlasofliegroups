@@ -1226,14 +1226,14 @@ template library.
 @~Since the actual values accessed will be of types derived from |value_base|,
 we must pass through a level of indirection, so we have a vector of pointers.
 We define these pointers to be |shared_value| pointers, so that the row takes
-(shared) ownership of its components without needing a explicit destructor.
+(shared) ownership of its components without needing an explicit destructor.
 This has the additional advantage over explicit ownership management that the
 copy constructor, needed for the |clone| method, can safely just
 copy-construct the vector of pointers: a possible exception thrown during the
 copy is guaranteed to clean up any pointers present in the vector (resetting
 their reference counts to their original values). Note also that
-default-constructed shared pointers are set to null pointers, so the
-constructor below, which already reserves space for |n| shared pointers, has
+default-constructed shared pointers are set to null pointers, so the first
+constructor below, which just reserves space for |n| shared pointers, has
 set them to exception-safe values while waiting for the slots to be filled.
 
 Of course ownership of pointers to |row_value| objects also needs to be
@@ -1249,6 +1249,8 @@ struct row_value : public value_base
 { std::vector<shared_value> val;
 @)
   explicit row_value(size_t n) : val(n) @+{} // start with |n| null pointers
+  template <typename I> row_value(I begin, I end) : val(begin,end)
+    @+{} // set from iterator range
   void print(std::ostream& out) const;
   size_t length() const @+{@; return val.size(); }
   row_value* clone() const @+{@; return new row_value(*this); }
@@ -1285,6 +1287,7 @@ class from |row_value|.
 @< Type definitions @>=
 struct tuple_value : public row_value
 { tuple_value(size_t n) : row_value(n) @+{}
+  template <typename I> tuple_value(I begin, I end) : row_value(begin,end) @+{}
   tuple_value* clone() const @+{@; return new tuple_value(*this); }
   void print(std::ostream& out) const;
   static const char* name() @+{@; return "tuple value"; }

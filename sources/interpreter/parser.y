@@ -69,15 +69,17 @@
 %token <type_code> TYPE
 %token ARROW "->"
 %token BECOMES ":="
+%token TLSUB "~["
 
 %type <expression> expr tertiary lettail or_expr and_expr not_expr
 %type <expression>  formula operand secondary primary iftail
-%type <expression> comprim subscription
+%type <expression> comprim subscription slice
 %type <ini_form> formula_start
 %type <oper> operator
+%type <val> tilde_opt
 %destructor { destroy_expr ($$); } expr tertiary lettail or_expr
 %destructor { destroy_expr ($$); } and_expr not_expr formula operand iftail
-%destructor { destroy_expr ($$); } secondary primary comprim subscription
+%destructor { destroy_expr ($$); } secondary primary comprim subscription slice
 %destructor { destroy_formula($$); } formula_start
 %destructor { delete $$; } STRING
 %type  <expression_list> commalist commalist_opt commabarlist
@@ -240,7 +242,7 @@ operand : operator operand { $$=make_unary_call($1.id,$2,@$,@1); }
 primary: comprim
 	| IDENT { $$=make_applied_identifier($1,@1); }
 ;
-comprim: subscription
+comprim: subscription | slice
 	| primary '(' commalist_opt ')'
 	{ $$=make_application_node($1,reverse_expr_list($3),@$,@2,@4); }
 	| INT { $$ = make_int_denotation($1,@$); }
@@ -285,6 +287,10 @@ comprim: subscription
 	| IDENT '@' type    { $$=make_op_cast($1,$3,@$); }
 ;
 
+tilde_opt : '~' { $$ = 1; }
+	| { $$ = 0; }
+;
+
 subscription: primary '[' expr ']'
 	  { $$ = make_subscription_node($1,$3,@$); }
 	| primary '[' expr ',' expr ']'
@@ -294,6 +300,12 @@ subscription: primary '[' expr ']'
                    make_exprlist_node($5,raw_expr_list(nullptr))),@$)
 		,@$);
           }
+;
+
+slice   : primary '[' expr tilde_opt ':' expr tilde_opt ']'
+	  { $$=make_slice_node($1,$3,$6,0+2*$4+4*$7,@$); }
+	| primary TLSUB expr tilde_opt ':' expr tilde_opt ']'
+	  { $$=make_slice_node($1,$3,$6,1+2*$4+4*$7,@$); }
 ;
 
 iftail	: expr THEN expr ELSE expr FI { $$=make_conditional_node($1,$3,$5,@$); }

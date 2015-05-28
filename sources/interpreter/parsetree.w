@@ -1746,15 +1746,23 @@ case cfor_expr:
 }
 break;
 
-@*1 Array subscriptions.
+@*1 Array subscriptions and slices.
 %
 We want to be able to select components from array structures (lists, vectors,
 matrices), so we define a subscription expression. If there are multiple
-indices, these can be realised as a subscription by a tuple expression, so we
-define only one type so subscription expression.
+indices, as in selecting a matrix entry, these can be realised as a
+subscription by a tuple expression, so we define only one type of subscription
+expression.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef std::unique_ptr<struct subscription_node> sub;
+typedef std::unique_ptr<struct slice_node> slc;
+
+@ We shall use a small |BitSet| value to record reversal attributes of slice
+expressions.
+
+@< Includes needed... @>=
+#include "bitset.h"
 
 @~In a subscription the array and the index(es) can syntactically be arbitrary
 expressions (although the latter should have as type integer, or a tuple of
@@ -1769,29 +1777,48 @@ struct subscription_node
   , index(std::move(index))@+{}
   // backward compatibility for gcc 4.6
 };
+struct slice_node
+{ expr array; expr lower,upper; BitSet<3> flags;
+@)
+  slice_node(expr&& array, expr&& lower, expr&& upper, unsigned flags)
+@/: array(std::move(array))
+  , lower(std::move(lower))
+  , upper(std::move(upper))
+  , flags(flags)
+  {}
+  // backward compatibility for gcc 4.6
+};
 
-@ Here is the tag used for subscriptions.
+@ Here is the tag used for subscriptions and slices.
 
-@< Enumeration tags for |expr_kind| @>= subscription, @[@]
+@< Enumeration tags for |expr_kind| @>= subscription, slice, @[@]
 
 @~And here is the corresponding variant of |expr|.
 
 @< Variants of ... @>=
 sub subscription_variant;
+slc slice_variant;
 
-@ There is a constructor for building the new variant.
+@ There are constructors for building the new variants.
 @< Methods of |expr| @>=
 expr(sub&& s, const YYLTYPE& loc)
  : kind(subscription)
  , subscription_variant(std::move(s))
  , loc(loc)
  @+{}
+expr(slc&& s, const YYLTYPE& loc)
+ : kind(slice)
+ , slice_variant(std::move(s))
+ , loc(loc)
+ @+{}
 
-@ To build an |subscription_node|, we simply combine the array and the index
-part.
+@ To build an |subscription_node| or |slice_node|, we simply combine the array
+and the index part.
 
 @< Declarations of functions for the parser @>=
 expr_p make_subscription_node(expr_p a, expr_p i, const YYLTYPE& loc);
+expr_p make_slice_node
+  (expr_p a, expr_p lower, expr_p upper, unsigned flags, const YYLTYPE& loc);
 
 @~This is straightforward, as usual.
 
@@ -1802,18 +1829,32 @@ expr_p make_subscription_node(expr_p a, expr_p i, const YYLTYPE& loc)
   return new expr(sub(new
      subscription_node {std::move(arr), std::move(ind) }),loc);
 }
-@
+expr_p make_slice_node
+  (expr_p a, expr_p lower, expr_p upper, unsigned flags, const YYLTYPE& loc)
+{ expr_ptr aa(a); expr_ptr ll(lower); expr_ptr uu(upper);
+@/expr& arr=*aa; expr& lo=*ll; expr& up=*uu;
+  return new expr(slc(new @|
+     slice_node {std::move(arr), std::move(lo), std::move(up), flags }),loc);
+}
+
+@ Another boring but inevitable section.
 @< Cases for copying... @>=
 case subscription:
   new (&subscription_variant) sub(std::move(other.subscription_variant));
 break;
+case slice:
+  new (&slice_variant) slc(std::move(other.slice_variant));
+break;
 
-@~Here we recursively destroy both subexpressions, and then the node for the
-subscription call itself.
+@~Here we recursively destroy the subexpressions, and then the node for the
+subscription or slice itself.
 
 @< Cases for destroying... @>=
 case subscription:
   subscription_variant.~sub();
+break;
+case slice:
+  slice_variant.~slc();
 break;
 
 @ To print a subscription, we just print the expression of the array, followed
@@ -1821,6 +1862,8 @@ by the expression for the index in brackets. As an exception, the case of a
 tuple display as index is handled separately, in order to avoid having
 parentheses directly inside the brackets.
 
+For slices, we print the expression with optional occurrences of \.{\char\~},
+governed by |flags|.
 @h "lexer.h"
 @< Cases for printing... @>=
 case subscription:
@@ -1832,6 +1875,13 @@ case subscription:
     for (auto it=i.sublist.begin(); not i.sublist.at_end(it); ++it)
       out << (it==i.sublist.begin() ? "" : ",") << *it;
   out << ']';
+}
+break;
+case slice:
+{ const slc& s=e.slice_variant;
+@/out << s->array << (s->flags.test(0) ? "~[" : "[") @|
+      << s->lower << (s->flags.test(1) ? "~:" : ":") @|
+      << s->upper << (s->flags.test(2) ? "~]" : "]");
 }
 break;
 

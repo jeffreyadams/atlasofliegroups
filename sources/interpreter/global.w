@@ -1103,6 +1103,7 @@ struct string_value : public value_base
 { std::string val;
 @)
   explicit string_value(const std::string& s) : val(s) @+ {}
+  template <typename I> string_value(I begin, I end) : val(begin,end) @+ {}
   ~string_value()@+ {}
   void print(std::ostream& out) const @+{@; out << '"' << val << '"'; }
   string_value* clone() const @+{@; return new string_value(*this); }
@@ -1112,7 +1113,8 @@ private:
 };
 @)
 typedef std::shared_ptr<const string_value> shared_string;
-@)
+typedef std::shared_ptr<string_value> own_string;
+ @)
 
 struct bool_value : public value_base
 { bool val;
@@ -1162,6 +1164,7 @@ struct vector_value : public value_base
 @)
   explicit vector_value(const std::vector<int>& v) : val(v) @+ {}
   explicit vector_value(std::vector<int>&& v) : val(std::move(v)) @+ {}
+  template <typename I> vector_value(I begin, I end) : val(begin,end) @+ {}
   ~vector_value()@+ {}
   virtual void print(std::ostream& out) const;
   vector_value* clone() const @+{@; return new vector_value(*this); }
@@ -1205,6 +1208,8 @@ struct rational_vector_value : public value_base
    : val(v,d) @+ {@; val.normalize(); }
   rational_vector_value(int_Vector&& v,int d)
    : val(std::move(v),d) @+ {@; val.normalize(); }
+  template <typename I> rational_vector_value(I begin, I end, int d)
+    : val(int_Vector(begin,end),d) @+ {@; val.normalize(); }
   ~rational_vector_value()@+ {}
   virtual void print(std::ostream& out) const;
   rational_vector_value* clone() const
