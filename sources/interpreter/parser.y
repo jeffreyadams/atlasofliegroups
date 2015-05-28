@@ -239,6 +239,10 @@ operand : operator operand { $$=make_unary_call($1.id,$2,@$,@1); }
 ;
 
 
+tilde_opt : '~' { $$ = 1; }
+	| { $$ = 0; }
+;
+
 primary: comprim
 	| IDENT { $$=make_applied_identifier($1,@1); }
 ;
@@ -252,22 +256,23 @@ comprim: subscription | slice
         | '$' { $$=make_dollar(@$); }
 	| IF iftail { $$=$2; }
 	| WHILE expr DO expr OD { $$=make_while_node($2,$4,@$); }
-	| FOR pattern IN expr DO expr OD
+	| FOR pattern IN expr tilde_opt DO expr tilde_opt OD
 	  { struct raw_id_pat p,x; p.kind=0x2; x.kind=0x0;
 	    p.sublist=make_pattern_node(make_pattern_node(NULL,$2),x);
-	    $$=make_for_node(p,$4,$6,@$);
+	    $$=make_for_node(p,$4,$7,$5+2*$8,@$);
 	  }
-	| FOR pattern '@' IDENT IN expr DO expr OD
+	| FOR pattern '@' IDENT IN expr tilde_opt DO expr tilde_opt OD
 	  { struct raw_id_pat p,i; p.kind=0x2; i.kind=0x1; i.name=$4;
 	    p.sublist=make_pattern_node(make_pattern_node(NULL,$2),i);
-	    $$=make_for_node(p,$6,$8,@$);
+	    $$=make_for_node(p,$6,$9,$7+2*$10,@$);
 	  }
-	| FOR IDENT ':' expr FROM expr DO expr OD
-	  { $$=make_cfor_node($2,$4,$6,true,$8,@$); }
-	| FOR IDENT ':' expr DOWNTO expr DO expr OD
-	  { $$=make_cfor_node($2,$4,$6,false,$8,@$); }
-	| FOR IDENT ':' expr DO expr OD
-	  { $$=make_cfor_node($2,$4,wrap_tuple_display(NULL,@$),true,$6,@$); }
+	| FOR IDENT ':' expr FROM expr tilde_opt DO expr tilde_opt OD
+	  { $$=make_cfor_node($2,$4,$6,true,$9,$7+2*$10,@$); }
+	| FOR IDENT ':' expr DOWNTO expr tilde_opt DO expr tilde_opt OD
+	  { $$=make_cfor_node($2,$4,$6,false,$9,$7+2*$10,@$); }
+	| FOR IDENT ':' expr tilde_opt DO expr tilde_opt OD
+	  { $$=make_cfor_node($2,$4,wrap_tuple_display(NULL,@$),true
+                             ,$7,$5+2*$8,@$); }
 	| '(' expr ')'	       { $$=$2; }
 	| BEGIN expr END	       { $$=$2; }
 	| '[' commalist_opt ']'
@@ -285,10 +290,6 @@ comprim: subscription | slice
 	}
 	| operator '@' type { $$=make_op_cast($1.id,$3,@$); }
 	| IDENT '@' type    { $$=make_op_cast($1,$3,@$); }
-;
-
-tilde_opt : '~' { $$ = 1; }
-	| { $$ = 0; }
 ;
 
 subscription: primary '[' expr ']'

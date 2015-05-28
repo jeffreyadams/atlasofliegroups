@@ -2321,6 +2321,13 @@ from it. This class also serves to host an enumeration type and some static
 methods that will serve later. We include a case here, |mod_poly_term|, that
 is related to a type defined in \.{built-in-types}.
 
+At the same time we shall define ``slices'', which differ from subscriptions
+in selecting a whole range of index values. The name is not really
+appropriate, as it more evokes subscripting at certain index positions while
+leaving other positions vary (an example would be selecting a row from
+a matrix); we don't (yet?) support that as a form of slicing, though selecting
+an entire column from a matrix is possible as a special form of subscripting.
+
 @< Type definitions @>=
 struct subscr_base : public expression_base
 { enum sub_type
@@ -3113,8 +3120,17 @@ this means strings), and iteration over the terms of a parameter polynomial
 for loop is the same for all these cases.
 
 @< Type def... @>=
-struct for_expression : public expression_base
-{ id_pat pattern; expression_ptr in_part, body; subscr_base::sub_type kind;
+struct for_base : public expression_base
+{ expression_ptr body; subscr_base::sub_type kind;
+  for_base (expression_ptr&& b, subscr_base::sub_type k)
+  : body(b.release()), kind(k) @+{}
+  virtual ~@[for_base() nothing_new_here@];
+  void print_body(std::ostream& out,unsigned flags) const;
+};
+
+template <unsigned flags>
+struct for_expression : public for_base
+{ id_pat pattern; expression_ptr in_part;
 @)
   for_expression
    (const id_pat& p, expression_ptr&& i, expression_ptr&& b
@@ -3124,29 +3140,57 @@ struct for_expression : public expression_base
   virtual void print(std::ostream& out) const;
 };
 
+@ We can handle the |flags|-dependent part of printing in the method
+|print_body|.
+
+@< Function definitions @>=
+
+void for_base::print_body(std::ostream& out,unsigned flags) const
+{@; out << ((flags&1)!=0 ? "~" : "") << " do " << *body
+      << ((flags&2)!=0 ? "~" : "") << " do ";
+}
+
 @ We could not inline the following constructor definition in the class
 declaration, as it uses the local function |copy_id_pat| that is not known in
 the header file, but otherwise it is quite straightforward.
 
 @< Function definitions @>=
-inline
-for_expression::for_expression@|
+template <unsigned flags>
+for_expression<flags>::for_expression@|
  (const id_pat& p, expression_ptr&& i, expression_ptr&& b
  ,subscr_base::sub_type k)
-   : pattern(copy_id_pat(p)), in_part(i.release()), body(b.release()), kind(k)
+   : for_base(std::move(b),k), pattern(copy_id_pat(p)), in_part(i.release())
   @+{}
 
 
-@ Printing a |for| expression is straightforward, taking not that the index
+@ Printing a |for| expression is straightforward, taking note that the index
 part is first in the pattern though written \emph{after} \.@@, and that it
 could be absent.
 
 @< Function definitions @>=
-void for_expression::print(std::ostream& out) const
+template <unsigned flags>
+void for_expression<flags>::print(std::ostream& out) const
 { out << " for " << *++pattern.sublist.begin();
     if (pattern.sublist.front().kind==0x1)
       out << '@@' << pattern.sublist.front();
-    out << " in " << *in_part << " do " << *body << " od ";
+  print_body(out << " in " << *in_part,flags);
+}
+
+@ As in |make_slice| above, we need to convert runtime values for |flags| to a
+template argument.
+
+@< Local function definitions @>=
+expression make_for_loop
+  (unsigned flags, const id_pat& id, expression_ptr&& i, expression_ptr&& b
+  ,subscr_base::sub_type t)
+{ switch (flags)
+  {
+  case 0: return new for_expression<0>(id,std::move(i),std::move(b),t);
+  case 1: return new for_expression<1>(id,std::move(i),std::move(b),t);
+  case 2: return new for_expression<2>(id,std::move(i),std::move(b),t);
+  case 3: return new for_expression<3>(id,std::move(i),std::move(b),t);
+  default: assert(false); return(nullptr);
+  }
 }
 
 @ Type checking is more complicated for |for| loops than for |while| loops,
@@ -3181,8 +3225,8 @@ case for_expr:
   else if ((conv=row_coercion(type,body_type))==nullptr)
     throw type_error(e,row_of_type.copy(),std::move(type));
   expression_ptr body(convert_expr (f->body,*btp));
-@/expression_ptr loop(new
-    for_expression(f->id,std::move(in_expr),std::move(body),which));
+@/expression_ptr loop(make_for_loop@|
+    (f->flags.to_ulong(),f->id,std::move(in_expr),std::move(body),which));
 @/return type==void_type ? expression_ptr(new voiding(std::move(loop)))
   : @| conv!=nullptr ? expression_ptr(new conversion(*conv,std::move(loop)))
   : @| std::move(loop) ;
@@ -3230,7 +3274,8 @@ that the closure should get to ``see'' changing values of variables during
 subsequent iterations.
 
 @< Function definitions @>=
-void for_expression::evaluate(level l) const
+template <unsigned flags>
+void for_expression<flags>::evaluate(level l) const
 { in_part->eval();
   own_tuple loop_var = std::make_shared<tuple_value>(2);
        // this is safe to re-use between iterations

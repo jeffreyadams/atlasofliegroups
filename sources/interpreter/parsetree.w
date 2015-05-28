@@ -1585,6 +1585,12 @@ typedef std::unique_ptr<struct while_node> w_loop;
 typedef std::unique_ptr<struct for_node> f_loop;
 typedef std::unique_ptr<struct cfor_node> c_loop;
 
+@ We shall use a small |BitSet| value to record reversal attributes of for
+loops and of slice expressions.
+
+@< Includes needed... @>=
+#include "bitset.h"
+
 @~A |while| loop has two elements: a condition (which determines whether an
 iteration will be undertaken), and a body (which contributes an entry to the
 result). A |for| loop has three parts, a pattern introducing variables, an
@@ -1603,24 +1609,25 @@ struct while_node
   // backward compatibility for gcc 4.6
 };
 struct for_node
-{ struct id_pat id; expr in_part; expr body;
+{ struct id_pat id; expr in_part; expr body; BitSet<2> flags;
 @)
-  for_node(id_pat&& id, expr&& in_part, expr&& body)
+  for_node(id_pat&& id, expr&& in_part, expr&& body, unsigned flags)
 @/: id(std::move(id))
   , in_part(std::move(in_part))
-  , body(std::move(body))@+{}
-  // backward compatibility for gcc 4.6
+  , body(std::move(body))
+  , flags(flags)@+{}
 };
 struct cfor_node
-{ id_type id; expr count; expr bound; bool up; expr body;
+{ id_type id; expr count; expr bound; bool up; expr body; BitSet<2> flags;
 @)
-  cfor_node(id_type id, expr&& count, expr&& bound, bool up, expr&& body)
+  cfor_node (id_type id, expr&& count, expr&& bound, bool up, expr&& body,
+             unsigned flags)
 @/: id(id)
   , count(std::move(count))
   , bound(std::move(bound))
   , up(up)
-  , body(std::move(body))@+{}
-  // backward compatibility for gcc 4.6
+  , body(std::move(body))
+  , flags(flags)@+{}
 };
 
 @ The tags used for these expressions are |while_expr|, |for_expr| and
@@ -1659,9 +1666,11 @@ more \\{make}-functions.
 
 @< Declarations of functions for the parser @>=
 expr_p make_while_node(expr_p c, expr_p b, const YYLTYPE& loc);
-expr_p make_for_node(raw_id_pat& id, expr_p ip, expr_p b, const YYLTYPE& loc);
+expr_p make_for_node
+  (raw_id_pat& id, expr_p ip, expr_p b, unsigned flags, const YYLTYPE& loc);
 expr_p make_cfor_node
- (id_type id, expr_p count, expr_p bound, bool up, expr_p b, const YYLTYPE& loc);
+ (id_type id, expr_p count, expr_p bound, bool up, expr_p b, unsigned flags,
+  const YYLTYPE& loc);
 
 @ They are quite straightforward, as usual.
 
@@ -1674,21 +1683,24 @@ expr_p make_while_node(expr_p c, expr_p b, const YYLTYPE& loc)
      while_node { std::move(cnd), std::move(body)}),loc) ;
 }
 @)
-expr_p make_for_node(raw_id_pat& id, expr_p ip, expr_p b, const YYLTYPE& loc)
+expr_p make_for_node
+  (raw_id_pat& id, expr_p ip, expr_p b, unsigned flags, const YYLTYPE& loc)
 {
   id_pat ind(id); expr_ptr iip(ip), bb(b);
   expr& in=*iip;  expr& body=*bb;
   return new expr(f_loop(new @|
-    for_node { std::move(ind), std::move(in), std::move(body) }),loc);
+    for_node { std::move(ind), std::move(in), std::move(body), flags }),loc);
 }
 @)
-expr_p make_cfor_node(id_type id, expr_p c, expr_p l, bool up, expr_p b,
+expr_p make_cfor_node
+  (id_type id, expr_p c, expr_p l, bool up, expr_p b, unsigned flags,
    const YYLTYPE& loc)
 {
   expr_ptr cc(c), ll(l), bb(b);
   expr& cnt=*cc; expr& lim=*ll; expr& body=*bb;
   return new expr (c_loop(new @|
-    cfor_node { id, std::move(cnt),std::move(lim),up,std::move(body) }),loc);
+    cfor_node
+      { id, std::move(cnt),std::move(lim),up,std::move(body),flags }),loc);
 }
 
 @ Again we apply the copying discipline for unique pointer variants.
@@ -1757,12 +1769,6 @@ expression.
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef std::unique_ptr<struct subscription_node> sub;
 typedef std::unique_ptr<struct slice_node> slc;
-
-@ We shall use a small |BitSet| value to record reversal attributes of slice
-expressions.
-
-@< Includes needed... @>=
-#include "bitset.h"
 
 @~In a subscription the array and the index(es) can syntactically be arbitrary
 expressions (although the latter should have as type integer, or a tuple of
