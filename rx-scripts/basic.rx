@@ -141,6 +141,15 @@ set - (mat M,mat N)= mat:
      else n # for col@j in M do col-N[j] od
      fi
 
+{ add a column to a matrix, which is not predefined as operator # }
+set # (mat m, vec v) = mat: n_rows(m) { require size match } # (([vec]:m)#v)
+set # (vec v, mat m) = mat: n_rows(m) { require size match } # (v#([vec]:m))
+
+{ add row to a matrix, which is similar; use operator ^ for it }
+set ^ (mat m, vec v) = mat: n_columns(m) ^ (([vec]:^m)#v)
+set ^ (vec v, mat m) = mat: n_columns(m) ^ (v#([vec]:^m))
+
+
 { test all columns }
 set all (mat M,(vec->bool) filter) = bool:
   let j=n_columns(M)-1 in while j>=0 and filter(M[j]) do j-:=1 od; j<0

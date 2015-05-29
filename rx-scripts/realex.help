@@ -171,7 +171,7 @@ performed. Its design is close to that of functional programming languages,
 but it does provide assignable variables and loops. (In fact, strict scoping
 rules (derived from the lambda-calculus) make it somewhat difficult to define
 functions recursively (a function must be defined before it is named, so its
-definition cannot refer to its name) which is unusual for a functional
+definition cannot refer to its own name) which is unusual for a functional
 programming language; recursion can however be achieved using assignment.)
 
 It is important to realize the distinction between creating names and
@@ -192,32 +192,37 @@ The language is strictly typed, so that type-correctness of expressions must
 be established before their evaluation is attempted. This means that most
 common errors are caught before execution starts, and error messages can be
 more meaningful by referring to the offending expression rather than to its
-value. Nonetheless, type checking is a complicated process, which could
-occasionally produce cryptic error messages. Most of the time the system can
-figure out the types from the expressions, so the user need not write them
-explicitly; however the types of arguments of user-defined functions must
-always be specified. Types are also used to allow overloading, which means
-that it is possible to give the same (natural) function or operator name to
-different operations; in each expression using these names, the type system
-then determines which instance is to be used. This applies in particular to
-user function definitions, so that binding of overloaded operators and
-functions is done statically (when the user defines the function rather than
-when it gets executed). Currently types are straightforward and therefore
-somewhat limited; this is quite sufficient for using the atlas functionality,
-though for advanced programming the set of possible types might need to be
-enlarged in the future.
+value. It can be hard to write a script that will load without any error
+message, but the correction cycle is fast (realex stops at the first error,
+with a detailed message pointing out the problem; fixing the problem and
+reloading (type uparrow, return) will usually run through to the next error,
+or the end of the file). Nonetheless, type checking is a complicated process,
+which in rare cases could produce hard to decipher error messages (but nothing
+compared to C++). Most of the time the system can figure out the types from
+the expressions, so the user need not write them explicitly; however the types
+of arguments of user-defined functions must always be specified. Types are
+also used to allow overloading, which means that it is possible to give the
+same (natural) function or operator name to different operations; in each
+expression using these names, the type system then determines which instance
+is to be used. This applies in particular to user function definitions, so
+that binding of overloaded operators and functions is done statically (when
+the user defines the function rather than when it gets executed). Currently
+types are straightforward and therefore somewhat limited; this is quite
+sufficient for using the atlas functionality, though for advanced programming
+the set of possible types might need to be enlarged in the future.
 
-The primitive data types currently available for values do not yet cover all
-those that the atlas library can handle, and for the types available (root
-data, inner classes, real forms, Cartan classes, KGB elements, parameters for
-(standard) modules and formal sums of those) not all reasonable functionality
-is implemented (for instance equality tests are sometimes missing). Some data
-types used internally (such as Weyl groups, polynomials) may appear in printed
-output but cannot be further manipulated. The programming language itself is
-fairly complete, with constructions like variables, loops and conditionals, as
-well as functions and operators (both built-in and user-defined), but
-certainly still leaves a large number of things to be improved.
-
+The primitive data types currently available for values cover almost all those
+that the atlas library can handle (root data, inner classes, real forms,
+Cartan classes, KGB elements, parameters for (standard) modules and formal
+sums of those; a notable exception is twisted involutions or Weyl group
+elements but working with representing matrices suffices). For the types
+available not all library functionality is available in realex, but this can
+sometimes be circumvented using a script. Some data types used internally
+(such as Weyl groups, polynomials) may appear in printed output but cannot be
+further manipulated. The programming language itself is fairly complete in
+functionality, with constructions like variables, loops and conditionals, as
+well as functions and operators (both built-in and user-defined); what is
+currently the most annoying limitation is the absence of second order typing.
 
 4 Types
 
@@ -1083,21 +1088,33 @@ To obtain a more traditional range [1,2,...,n], one may say
 
 For the reverse list [n-1,...,1,0] use
 
-  for i : n downto 0 do i od
+  for i : n ~do i od
 
 and the shifted reversed list [n,...,1] is produced by
 
-  for i : n downto 1 do i od
+  for i : n from 1 ~do i od
+
+(This used to be written as 'for i : n downto 1 do i od', but this syntax is
+redudant given the new more flexible tilde syntax, and is now deprecated.)
+
+As a general rule, if 'do' in a for loop is preceded by a tilde, then the
+iteration will be performed on the same set of values as before, but traversed
+in the opposite order. If a row is produced as value of the loop, it will
+still be the values of the loop bodies in the order of traversal. However
+preceding the final 'od' be a tilde assembles the values of the loop bodies in
+the order opposite to iteration. The two variants can be combined (traversing
+backwards, but assembling the result in the orignal increasing order), and
+apply also to versions of 'for' loops given below (but not to 'while' loops).
 
 As for the while loop, the body may be a sequence expression, and it with may
 have side effects, though it does not have to as the examples show. Currently
-assignments to the loop index are permitted, like they are to all identifiers;
-however they have no effect on the number of iterations, as the initial value
-of the loop index for each iteration is independent of its final value in the
-previous iteration. Indeed the implementation gives each iteration a separate
-copy of the loop index, appropriately initialized; this makes assignment to
-the index rather pointless, and it might become forbidden in the future (as it
-would potentially allow a somewhat more efficient implementation).
+assignments to the loop index (and more generally values prepared for the
+iterations in a for loop) are permitted, but this is discouragaged and will be
+discontinued. In any case such assignments have no effect on the number of
+iterations or on the values for which subsequent iterations are started: the
+latter are independent of its final value in the previous iteration. Indeed
+the implementation gives each iteration a separate copy of the loop index,
+appropriately initialized; this usually makes assignment to the index useless.
 
 Rather than counted iteration, it is often convenient to use iteration over an
 existing composite value. If V is a row value, or vector or matrix then
@@ -1138,28 +1155,33 @@ By the way the standard definitions in basic.rx allow replacing the expression
 'if i=j then 1 else 0 fi' by '#(i=j)', a realex version of the Iverson symbol.
 
 These for loops can iterate over every kind of composite value that allows
-subscription (but although one can obtain matrix entries directly by
+subscription (but although one can obtain matrix _entries_ directly by
 subscription, one cannot directly iterate over them; this requires two nested
 loops as the last example above illustrates). Thus one can loop over
 characters in a string (which for lack of a character type are turned into
 single-character strings), entries of a rational vector, or the (nonzero)
 terms of a 'ParamPol' value. In the latter case subscription of 'pol' is by a
 'Param' index 'p' returns its 'Split' coefficient as component 'pol[p]' (it
-will be '0+0s' if 'p' does not occur in 'pol'). With the index being at least
-as important as the component found for it, the corresponding for loop will
-usually take the form
+will be '0+0s' if 'p' does not occur in 'pol'). Since ParamPol only collects
+certain kinds of terms, there is a technical limitation to 'p' in this
+expression: it must be standard, final and nonzero; its representative of the
+infinitesimal character will be made dominant so as to detect any equivalent
+term in P. Iterating over a ParamPol, the index (Param) is at least as
+important as the coefficient (Split) found for it, the corresponding for loop
+will therefore usually take the form
 
   for c@p in pol do ... od
 
 where each time 'c' will be a nonzero 'Split' coefficient, and 'p' the
-corresponding 'Param' value. The order of traversal of the terms in the loop
-is determined by an ordering of 'Param' values that is fixed by realex but not
-easy to fully describe; however in most cases it ought not matter much. For
-the opposite operation of combining a collection of '(Split,Param)' values
-(possibly generated  by a loop) into a 'ParamPol' value, a built-in instance
-of '+' is provided. The collection is given as a row forming the right operand
-of '+', while the left operand is an initial 'ParamPol' tow which the terms
-are to be added; often this will take the form 'null_module(rf)+for ... od'.
+corresponding (standard final nonzero dominant) 'Param' value. The order of
+traversal of the terms in the loop is determined by an ordering of 'Param'
+values that is fixed by realex but not easy to fully describe; however in most
+cases it ought not matter much. For the opposite operation of combining a
+collection of '(Split,Param)' values (possibly generated by a loop) into a
+'ParamPol' value, a built-in instance of '+' is provided. The collection is
+given as a row forming the right operand of '+', while the left operand is an
+initial 'ParamPol' to which the terms are to be added; often this will take
+the form 'null_module(rf)+for ... od'.
 
 9 Recursion
 
@@ -1491,7 +1513,7 @@ A command starting with '<' or '<<' opens a subsidiary input file as described
 above; it should be followed just by the name of the file to include
 
 
-(b) Loose expressions: 'let', anonymous functions, casts
+(b) Quaternary expressions: 'let', anonymous functions, casts, sequences
 
 These are the expression types that end with another expression, without ever
 needing parentheses around that other expression; they are themselves loosely
@@ -1522,22 +1544,20 @@ implicit conversion may also apply to a cast itself (though this is rare);
 however a cast immediately following '=' in a definition will ensure that the
 entity defined (identifier or function body) will be of exactly that type.
 
-(c) Sequenced expressions (quaternary expressions).
-
 Sequenced expressions come in two kinds: they are sequences of expressions,
-separated either by 'next' or by ';'.
-
-A next-expression is as loosely bound as those of category (b) above: they
-consists of a quaternary level expression followed by 'next' and an general
-expression. The value of the next-expression is that of the expression before
-the (first) 'next' determines the value, but the expression after 'next' is
-evaluated for its side effects before that value is returned.
-
-Semicolon-separated sequenced expressions are the unique properly quaternary
-level expression type. They consist of a sequence of tertiary level
-expressions separated by semicolons; all expressions followed by a semicolon
-are evaluated in order for their side effects, after which the final
-expression is evaluated and its value returned as that of the whole construct.
+separated either by 'next' or by ';'. Both are as loosely bound as let
+expressions, function definitions and casts, which means that one can chain
+any sequence of 'let ... then .. in' and 'expression ;' or 'expression next'
+before a fina expression, without requiring parentheses (also function
+headings and casts can occur, but they usually only occur at the beginning or
+at the end of a chain). Both 'expr1 ; expr2' and 'expr1 next expr2' evaluate
+both expressions from left to right; with a (more usual) semicolon the value
+is that of expr2, while with the 'next' keyword it is the value of expr1. The
+purpose of next is to retain the current value of expr1 even though the later
+side effect of evaluating expr2 might modify the value of expr1. It is unusual
+to have more than one 'expression next' in the chain, but if one does, it is
+the first one that will determine the final value (if there are none, as is
+often the case, then the final expression produces the value of the clause).
 
 (d) Tertiary expressions: assignments.
 
@@ -1638,11 +1658,11 @@ if * then * fi		  	which abbreviates: if * then * else () fi)
 if * then * else * fi
 if * then * elif * then ... fi
 while * do * od
-for pattern in * do * od
-for pattern @ ident in * do * od
-for ident : * do * od
-for ident : * from * do * od
-for ident : * downto * do * od
+for pattern in * do * od        optionally with ~ before do and/or od
+for pattern @ ident in * do * od idem
+for ident : * do * od            idem (implicit 'from 0')
+for ident : * from * do * od     idem
+for ident : * downto * do * od  deprecated, means 'for ident : to * ~do * od'
 ( * )                           a parenthesized expression
 begin * end			which is equivalent to: ( * )
 ( * , * , ... )			which builds a tuple
