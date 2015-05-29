@@ -1777,12 +1777,12 @@ integers).
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct subscription_node
-{ expr array; expr index;
+{ expr array; expr index; bool reversed;
 @)
-  subscription_node(expr&& array, expr&& index)
+  subscription_node(expr&& array, expr&& index, bool reversed)
 @/: array(std::move(array))
-  , index(std::move(index))@+{}
-  // backward compatibility for gcc 4.6
+  , index(std::move(index))
+  , reversed(reversed)@+{}
 };
 struct slice_node
 { expr array; expr lower,upper; BitSet<3> flags;
@@ -1792,8 +1792,7 @@ struct slice_node
   , lower(std::move(lower))
   , upper(std::move(upper))
   , flags(flags)
-  {}
-  // backward compatibility for gcc 4.6
+  @+{}
 };
 
 @ Here is the tag used for subscriptions and slices.
@@ -1823,18 +1822,20 @@ expr(slc&& s, const YYLTYPE& loc)
 and the index part.
 
 @< Declarations of functions for the parser @>=
-expr_p make_subscription_node(expr_p a, expr_p i, const YYLTYPE& loc);
+expr_p make_subscription_node
+  (expr_p a, expr_p i, bool reversed, const YYLTYPE& loc);
 expr_p make_slice_node
   (expr_p a, expr_p lower, expr_p upper, unsigned flags, const YYLTYPE& loc);
 
 @~This is straightforward, as usual.
 
 @< Definitions of functions for the parser @>=
-expr_p make_subscription_node(expr_p a, expr_p i, const YYLTYPE& loc)
+expr_p make_subscription_node
+  (expr_p a, expr_p i, bool reversed, const YYLTYPE& loc)
 { expr_ptr aa(a); expr_ptr ii(i);
   expr& arr=*aa; expr& ind=*ii;
   return new expr(sub(new
-     subscription_node {std::move(arr), std::move(ind) }),loc);
+     subscription_node {std::move(arr), std::move(ind), reversed }),loc);
 }
 expr_p make_slice_node
   (expr_p a, expr_p lower, expr_p upper, unsigned flags, const YYLTYPE& loc)

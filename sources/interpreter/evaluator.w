@@ -2341,7 +2341,7 @@ struct subscr_base : public expression_base
   @+{}
   virtual ~@[subscr_base() nothing_new_here@] ;
 @)
-  virtual void print(std::ostream& out) const;
+  void print (std::ostream& out, bool reversed) const; // non |virtual|
   static sub_type index_kind
   (const type_expr& aggr,
    const type_expr& index,
@@ -2360,7 +2360,7 @@ struct slice_base : public expression_base
   @+{}
   virtual ~@[slice_base() nothing_new_here@] ;
 @)
-  void print(std::ostream& out, unsigned flags) const; // non |virtual|!
+  void print(std::ostream& out, unsigned flags) const; // non |virtual|
 };
 
 @ We derive a number of types from |subscr_base| which only differ by their
@@ -2368,68 +2368,68 @@ struct slice_base : public expression_base
 
 @< Type definitions @>=
 
+template <bool reversed>
 struct row_subscription : public subscr_base
 { row_subscription(expression_ptr&& a, expression_ptr&& i)
 @/: subscr_base(std::move(a),std::move(i)) @+{}
   virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const
+  @+{@; subscr_base::print(out,reversed); }
 };
 
 @)
+template <bool reversed>
 struct vector_subscription : public subscr_base
 { vector_subscription(expression_ptr&& a, expression_ptr&& i)
 @/: subscr_base(std::move(a),std::move(i)) @+{}
   virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const
+  @+{@; subscr_base::print(out,reversed); }
 };
 @)
+template <bool reversed>
 struct ratvec_subscription : public subscr_base
 { ratvec_subscription(expression_ptr&& a, expression_ptr&& i)
 @/: subscr_base(std::move(a),std::move(i)) @+{}
   virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const
+  @+{@; subscr_base::print(out,reversed); }
 };
 @)
+template <bool reversed>
 struct string_subscription : public subscr_base
 { string_subscription(expression_ptr&& a, expression_ptr&& i)
 @/: subscr_base(std::move(a),std::move(i)) @+{}
   virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const
+  @+{@; subscr_base::print(out,reversed); }
 };
 @)
+template <bool reversed>
 struct matrix_subscription : public subscr_base
 { matrix_subscription(expression_ptr&& a, expression_ptr&& ij)
 @/: subscr_base(std::move(a),std::move(ij)) @+{}
   virtual void evaluate(level l) const;
-  virtual void print(std::ostream& out) const;
+  virtual void print(std::ostream& out) const; // slightly more complicated
 };
 @)
+template <bool reversed>
 struct matrix_get_column : public subscr_base
 { matrix_get_column(expression_ptr&& a, expression_ptr&& j)
 @/: subscr_base(std::move(a),std::move(j)) @+{}
   virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const
+  @+{@; subscr_base::print(out,reversed); }
 };
 @)
 struct module_coefficient : public subscr_base
 { module_coefficient(expression_ptr&& pol, expression_ptr&& param)
 @/: subscr_base(std::move(pol),std::move(param)) @+{}
   virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const
+  @+{@; out << *array << '[' << ']'; }
 };
 
-
-@ These subscriptions are printed in the usual subscription syntax. For matrix
-subscriptions, where the index type is \.{(int,int)}, the index expression is
-quite likely to be a tuple display, in which case we suppress parentheses.
-Since we have passed the type check here, we know that any tuple display is
-necessarily a pair.
-
-@< Function definitions @>=
-void subscr_base::print(std::ostream& out) const
-{@; out << *array << '[' << *index << ']';
-}
-@)
-void matrix_subscription::print(std::ostream& out) const
-{ tuple_expression* p=dynamic_cast<tuple_expression*>(index.get());
-  if (p==nullptr) out << *array << '[' << *index << ']';
-  else
-    out << *array << '[' << *p->component[0] << ',' << *p->component[1] << ']';
-}
 
 @ We derive a number of types, templated over |unsigned|, from |slice_base|.
 The template value represents the optional reversals ($8$ possibilities). All
@@ -2475,12 +2475,29 @@ struct string_slice : public slice_base
 };
 
 
-@ These slices are printed in the usual slicing syntax. The templated virtual
+@ These subscriptions and slices are printed in the usual syntax. The templated virtual
 |print| methods transform their template argument to a runtime value, and call
 the non |virtual| member |slice_base::print| with that value as second
-argument.
+argument. For matrix
+subscriptions, where the index type is \.{(int,int)}, the index expression is
+quite likely to be a tuple display, in which case we suppress parentheses.
+Since we have passed the type check here, we know that any tuple display is
+necessarily a pair.
 
 @< Function definitions @>=
+void subscr_base::print(std::ostream& out,bool reversed) const
+{@; out << *array << (reversed ? "~[" : "[") << *index << ']';
+}
+@)
+template <bool reversed>
+void matrix_subscription<reversed>::print(std::ostream& out) const
+{ out  << *array << (reversed ? "~[" : "[");
+  tuple_expression* p=dynamic_cast<tuple_expression*>(index.get());
+  if (p==nullptr) out << *index << ']';
+  else
+    out << *p->component[0] << ',' << *p->component[1] << ']';
+}
+@)
 void slice_base::print(std::ostream& out, unsigned flags) const
 {  out << *array << ((flags&1)==0 ? "[" : "~[")
 @|     << *lower << ((flags&2)==0 ? ":" : "~:")
@@ -2504,13 +2521,13 @@ subscr_base::sub_type subscr_base::index_kind
     {  default:
     break; case vector_type:
       if (index==int_type and subscr.specialise(int_type))
-        return vector_entry;
+        return vector_entry; @+
     break; case rational_vector_type:
       if (index==int_type and subscr.specialise(rat_type))
-        return ratvec_entry;
+        return ratvec_entry; @+
     break; case string_type:
       if (index==int_type and subscr.specialise(str_type))
-        return string_char;
+        return string_char; @+
     break; case matrix_type:
       if (index==int_int_type and subscr.specialise(int_type))
         return matrix_entry;
@@ -2573,31 +2590,63 @@ expression that can never return (it cannot be evaluated without error).
 case subscription:
 { type_expr array_type, index_type, subscr_type;
     // all initialised to |undetermined_type|
-  expression_ptr array
-    = convert_expr(e.subscription_variant->array,array_type);
-  expression_ptr index
-    = convert_expr(e.subscription_variant->index,index_type);
+  auto& subsn = *e.subscription_variant;
+    // alias |struct| pointed to by the |unique_ptr|
+  expression_ptr array = convert_expr(subsn.array,array_type);
+  expression_ptr index = convert_expr(subsn.index,index_type);
   expression_ptr subscr;
   switch (subscr_base::index_kind(array_type,index_type,subscr_type))
   { case subscr_base::row_entry:
-    subscr.reset(new row_subscription(std::move(array),std::move(index)));
+    if (subsn.reversed)
+      subscr.reset(new
+        row_subscription<true>(std::move(array),std::move(index)));
+    else
+      subscr.reset(new
+        row_subscription<false>(std::move(array),std::move(index)));
   break;
   case subscr_base::vector_entry:
-    subscr.reset(new vector_subscription(std::move(array),std::move(index)));
+    if (subsn.reversed)
+      subscr.reset(new
+        vector_subscription<true>(std::move(array),std::move(index)));
+    else
+      subscr.reset(new
+        vector_subscription<false>(std::move(array),std::move(index)));
   break;
   case subscr_base::ratvec_entry:
-    subscr.reset(new ratvec_subscription(std::move(array),std::move(index)));
+    if (subsn.reversed)
+      subscr.reset(new
+        ratvec_subscription<true>(std::move(array),std::move(index)));
+    else
+      subscr.reset(new
+        ratvec_subscription<false>(std::move(array),std::move(index)));
   break;
   case subscr_base::string_char:
-    subscr.reset(new string_subscription(std::move(array),std::move(index)));
+    if (subsn.reversed)
+      subscr.reset(new
+        string_subscription<true>(std::move(array),std::move(index)));
+    else
+      subscr.reset(new
+        string_subscription<false>(std::move(array),std::move(index)));
   break;
   case subscr_base::matrix_entry:
-    subscr.reset(new matrix_subscription(std::move(array),std::move(index)));
+    if (subsn.reversed)
+      subscr.reset(new
+        matrix_subscription<true>(std::move(array),std::move(index)));
+    else
+      subscr.reset(new
+        matrix_subscription<false>(std::move(array),std::move(index)));
   break;
   case subscr_base::matrix_column:
-    subscr.reset(new matrix_get_column(std::move(array),std::move(index)));
+    if (subsn.reversed)
+      subscr.reset(new
+        matrix_get_column<true>(std::move(array),std::move(index)));
+    else
+      subscr.reset(new
+        matrix_get_column<false>(std::move(array),std::move(index)));
   break;
   case subscr_base::mod_poly_term:
+    if (subsn.reversed)
+      throw expr_error(e,"Cannot do reversed subscription of a ParamPol");
     subscr.reset(new module_coefficient(std::move(array),std::move(index)));
   break;
   case subscr_base::not_so:
@@ -2681,73 +2730,98 @@ quantity is transmitted however.
 @< Function definitions @>=
 inline std::string range_mess(int i,size_t n,const expression_base* e)
 { std::ostringstream o;
-  e->print(o << "index " << i << " out of range (<" << n
+  e->print(o << "index " << i << " out of range (0<= . <" << n
              << ") in subscription ");
   return o.str();
 }
 @)
-void row_subscription::evaluate(level l) const
-{ shared_int i=(index->eval(),get<int_value>());
+template <bool reversed>
+void row_subscription<reversed>::evaluate(level l) const
+{ int i=(index->eval(),get<int_value>()->val);
   shared_row r=(array->eval(),get<row_value>());
-  if (static_cast<unsigned int>(i->val)>=r->val.size())
-    throw std::runtime_error(range_mess(i->val,r->val.size(),this));
-  push_expanded(l,r->val[i->val]);
+  size_t n = r->val.size();
+  if (reversed)
+    i=n-1-i;
+  if (static_cast<unsigned int>(i)>=n)
+    throw std::runtime_error(range_mess(i,n,this));
+  push_expanded(l,r->val[i]);
 }
 @)
-void vector_subscription::evaluate(level l) const
-{ shared_int i=(index->eval(),get<int_value>());
+template <bool reversed>
+void vector_subscription<reversed>::evaluate(level l) const
+{ int i=(index->eval(),get<int_value>()->val);
   shared_vector v=(array->eval(),get<vector_value>());
-  if (static_cast<unsigned int>(i->val)>=v->val.size())
-    throw std::runtime_error(range_mess(i->val,v->val.size(),this));
+  size_t n = v->val.size();
+  if (reversed)
+    i=n-1-i;
+  if (static_cast<unsigned int>(i)>=n)
+    throw std::runtime_error(range_mess(i,n,this));
   if (l!=no_value)
-    push_value(std::make_shared<int_value>(v->val[i->val]));
+    push_value(std::make_shared<int_value>(v->val[i]));
 }
 @)
-void ratvec_subscription::evaluate(level l) const
-{ shared_int i=(index->eval(),get<int_value>());
+template <bool reversed>
+void ratvec_subscription<reversed>::evaluate(level l) const
+{ int i=(index->eval(),get<int_value>()->val);
   shared_rational_vector v=(array->eval(),get<rational_vector_value>());
-  if (static_cast<unsigned int>(i->val)>=v->val.size())
-    throw std::runtime_error(range_mess(i->val,v->val.size(),this));
+  size_t n = v->val.size();
+  if (reversed)
+    i=n-1-i;
+  if (static_cast<unsigned int>(i)>=n)
+    throw std::runtime_error(range_mess(i,n,this));
   if (l!=no_value)
     push_value(std::make_shared<rat_value>(Rational @|
-       (v->val.numerator()[i->val],v->val.denominator())));
+       (v->val.numerator()[i],v->val.denominator())));
 }
 @)
-void string_subscription::evaluate(level l) const
-{ shared_int i=(index->eval(),get<int_value>());
+template <bool reversed>
+void string_subscription<reversed>::evaluate(level l) const
+{ int i=(index->eval(),get<int_value>()->val);
   shared_string s=(array->eval(),get<string_value>());
-  if (static_cast<unsigned int>(i->val)>=s->val.size())
-    throw std::runtime_error(range_mess(i->val,s->val.size(),this));
+  size_t n = s->val.size();
+  if (reversed)
+    i=n-1-i;
+  if (static_cast<unsigned int>(i)>=n)
+    throw std::runtime_error(range_mess(i,n,this));
   if (l!=no_value)
-    push_value(std::make_shared<string_value>(s->val.substr(i->val,1)));
+    push_value(std::make_shared<string_value>(s->val.substr(i,1)));
 }
 
 @ And here are the cases for matrix indexing and column selection, which are
 just slightly more complicated.
 
 @< Function definitions @>=
-void matrix_subscription::evaluate(level l) const
+template <bool reversed>
+void matrix_subscription<reversed>::evaluate(level l) const
 { index->multi_eval(); @+
-  shared_int j=get<int_value>();
-  shared_int i=get<int_value>();
+  int j=get<int_value>()->val;
+  int i=get<int_value>()->val;
   shared_matrix m=(array->eval(),get<matrix_value>());
-  if (static_cast<unsigned int>(i->val)>=m->val.numRows())
+  size_t r = m->val.numRows();
+  size_t c = m->val.numColumns();
+  if (reversed)
+  {@;  i=r-1-i; j=c-1-j; }
+  if (static_cast<unsigned int>(i)>=r)
     throw std::runtime_error
-     ("initial "+range_mess(i->val,m->val.numRows(),this));
-  if (static_cast<unsigned int>(j->val)>=m->val.numColumns())
+     ("initial "+range_mess(i,r,this));
+  if (static_cast<unsigned int>(j)>=c)
     throw std::runtime_error
-     ("final "+range_mess(j->val,m->val.numColumns(),this));
+     ("final "+range_mess(j,c,this));
   if (l!=no_value)
-    push_value(std::make_shared<int_value>(m->val(i->val,j->val)));
+    push_value(std::make_shared<int_value>(m->val(i,j)));
 }
 @)
-void matrix_get_column::evaluate(level l) const
-{ shared_int j=(index->eval(),get<int_value>());
+template <bool reversed>
+void matrix_get_column<reversed>::evaluate(level l) const
+{ int j=(index->eval(),get<int_value>()->val);
   shared_matrix m=(array->eval(),get<matrix_value>());
-  if (static_cast<unsigned int>(j->val)>=m->val.numColumns())
-    throw std::runtime_error(range_mess(j->val,m->val.numColumns(),this));
+  size_t c = m->val.numColumns();
+  if (reversed)
+    j=c-1-j;
+  if (static_cast<unsigned int>(j)>=c)
+    throw std::runtime_error(range_mess(j,c,this));
   if (l!=no_value)
-    push_value(std::make_shared<vector_value>(m->val.column(j->val)));
+    push_value(std::make_shared<vector_value>(m->val.column(j)));
 }
 
 @ For slice these are template functions. This is where the actual reversals

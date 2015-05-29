@@ -293,13 +293,15 @@ comprim: subscription | slice
 ;
 
 subscription: primary '[' expr ']'
-	  { $$ = make_subscription_node($1,$3,@$); }
+	  { $$ = make_subscription_node($1,$3,false,@$); }
+	| primary TLSUB expr ']'
+	  { $$ = make_subscription_node($1,$3,true,@$); }
 	| primary '[' expr ',' expr ']'
 	  { $$=make_subscription_node($1,
 		wrap_tuple_display
 		(make_exprlist_node($3,
                    make_exprlist_node($5,raw_expr_list(nullptr))),@$)
-		,@$);
+		,false,@$);
           }
 ;
 
