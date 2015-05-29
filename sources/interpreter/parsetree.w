@@ -1618,14 +1618,13 @@ struct for_node
   , flags(flags)@+{}
 };
 struct cfor_node
-{ id_type id; expr count; expr bound; bool up; expr body; BitSet<2> flags;
+{ id_type id; expr count; expr bound; expr body; BitSet<2> flags;
 @)
-  cfor_node (id_type id, expr&& count, expr&& bound, bool up, expr&& body,
-             unsigned flags)
+  cfor_node
+     (id_type id, expr&& count, expr&& bound, expr&& body, unsigned flags)
 @/: id(id)
   , count(std::move(count))
   , bound(std::move(bound))
-  , up(up)
   , body(std::move(body))
   , flags(flags)@+{}
 };
@@ -1669,7 +1668,7 @@ expr_p make_while_node(expr_p c, expr_p b, const YYLTYPE& loc);
 expr_p make_for_node
   (raw_id_pat& id, expr_p ip, expr_p b, unsigned flags, const YYLTYPE& loc);
 expr_p make_cfor_node
- (id_type id, expr_p count, expr_p bound, bool up, expr_p b, unsigned flags,
+ (id_type id, expr_p count, expr_p bound, expr_p b, unsigned flags,
   const YYLTYPE& loc);
 
 @ They are quite straightforward, as usual.
@@ -1693,14 +1692,13 @@ expr_p make_for_node
 }
 @)
 expr_p make_cfor_node
-  (id_type id, expr_p c, expr_p l, bool up, expr_p b, unsigned flags,
+  (id_type id, expr_p c, expr_p l, expr_p b, unsigned flags,
    const YYLTYPE& loc)
 {
   expr_ptr cc(c), ll(l), bb(b);
   expr& cnt=*cc; expr& lim=*ll; expr& body=*bb;
   return new expr (c_loop(new @|
-    cfor_node
-      { id, std::move(cnt),std::move(lim),up,std::move(body),flags }),loc);
+    cfor_node { id, std::move(cnt),std::move(lim),std::move(body),flags }),loc);
 }
 
 @ Again we apply the copying discipline for unique pointer variants.
@@ -1746,15 +1744,18 @@ case for_expr:
 @/out << " for " << entry;
   if (index.kind==0x1)
     out << '@@' << index;
-  out << " in " << f->in_part << " do " << f->body << " od ";
+  out << " in " << f->in_part
+      << (f->flags[0] ? " ~do " : " do ") << f->body
+      << (f->flags[1] ? " ~od " : " od ");
 }
 break;
 case cfor_expr:
 { const c_loop& c=e.cfor_variant;
 @/out << " for " << main_hash_table->name_of(c->id) << ": " << c->count;
-  if (c->bound.kind!=tuple_display or c->bound.sublist.empty())
-    out << (c->up!=0 ? " from " : " downto ") << c->bound;
-  out << " do " << c->body << " od ";
+  if (c->bound.kind!=tuple_display or not c->bound.sublist.empty())
+    out << " from " << c->bound;
+  out << (c->flags[0] ? " ~do " : " do ") << c->body
+      << (c->flags[1] ? " ~od " : " od ");
 }
 break;
 
@@ -1885,9 +1886,9 @@ case subscription:
 break;
 case slice:
 { const slc& s=e.slice_variant;
-@/out << s->array << (s->flags.test(0) ? "~[" : "[") @|
-      << s->lower << (s->flags.test(1) ? "~:" : ":") @|
-      << s->upper << (s->flags.test(2) ? "~]" : "]");
+@/out << s->array << (s->flags[0] ? "~[" : "[") @|
+      << s->lower << (s->flags[1] ? "~:" : ":") @|
+      << s->upper << (s->flags[2] ? "~]" : "]");
 }
 break;
 

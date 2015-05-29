@@ -266,13 +266,13 @@ comprim: subscription | slice
 	    p.sublist=make_pattern_node(make_pattern_node(NULL,$2),i);
 	    $$=make_for_node(p,$6,$9,$7+2*$10,@$);
 	  }
-	| FOR IDENT ':' expr FROM expr tilde_opt DO expr tilde_opt OD
-	  { $$=make_cfor_node($2,$4,$6,true,$9,$7+2*$10,@$); }
-	| FOR IDENT ':' expr DOWNTO expr tilde_opt DO expr tilde_opt OD
-	  { $$=make_cfor_node($2,$4,$6,false,$9,$7+2*$10,@$); }
 	| FOR IDENT ':' expr tilde_opt DO expr tilde_opt OD
-	  { $$=make_cfor_node($2,$4,wrap_tuple_display(NULL,@$),true
+	  { $$=make_cfor_node($2,$4,wrap_tuple_display(NULL,@$)
                              ,$7,$5+2*$8,@$); }
+	| FOR IDENT ':' expr FROM expr tilde_opt DO expr tilde_opt OD
+	  { $$=make_cfor_node($2,$4,$6,$9,$7+2*$10,@$); }
+	| FOR IDENT ':' expr DOWNTO expr DO expr OD
+	  { $$=make_cfor_node($2,$4,$6,$8,1,@$); }
 	| '(' expr ')'	       { $$=$2; }
 	| BEGIN expr END	       { $$=$2; }
 	| '[' commalist_opt ']'

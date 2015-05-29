@@ -3537,28 +3537,16 @@ Next we consider counted |for| loops. Increasing and decreasing loops give
 distinct types.
 
 @< Type def... @>=
-struct inc_for_expression : public expression_base
-{ expression_ptr count, bound, body; id_type id;
+template <unsigned flags>
+struct counted_for_expression : public for_base
+{ expression_ptr count, bound; id_type id;
 @)
-  inc_for_expression@/
+  counted_for_expression
    (id_type i, expression_ptr&& cnt, expression_ptr&& bnd,
     expression_ptr&& b)
-  : count(cnt.release()),bound(bnd.release()),body(b.release()),id(i)
+  : for_base(std::move(b)), count(cnt.release()),bound(bnd.release()),id(i)
   @+{}
-  virtual ~@[inc_for_expression() nothing_new_here@];
-  virtual void evaluate(level l) const;
-  virtual void print(std::ostream& out) const;
-};
-
-struct dec_for_expression : public expression_base
-{ expression_ptr count, bound, body; id_type id;
-@)
-  dec_for_expression@/
-   (id_type i, expression_ptr&& cnt, expression_ptr&& bnd,
-    expression_ptr&& b)
-  : count(cnt.release()),bound(bnd.release()),body(b.release()),id(i)
-  @+{}
-  virtual ~@[dec_for_expression() nothing_new_here@];
+  virtual ~@[counted_for_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -3567,14 +3555,33 @@ struct dec_for_expression : public expression_base
 suppress ``\&{from}~0''.
 
 @< Function definitions @>=
-void inc_for_expression::print(std::ostream& out) const
-{ out << " for " << main_hash_table->name_of(id)  << ": " << *count @|
-      << " from " << *bound << " do " << *body << " od ";
+template <unsigned flags>
+void counted_for_expression<flags>::print(std::ostream& out) const
+{ print_body(out << " for " << main_hash_table->name_of(id)
+                 << ": " << *count @|
+                 << " from " << *bound, flags);
 }
-void dec_for_expression::print(std::ostream& out) const
-{ out << " for " << main_hash_table->name_of(id)  << " : " << *count @|
-      << " downto " << *bound << " do " << *body << " od ";
+
+@ As in |make_slice| and |make_for_loop| above, we need to convert runtime
+values for |flags|.
+
+@< Local function definitions @>=
+expression make_counted_loop (unsigned flags,
+ id_type id, @| expression_ptr&& count, expression_ptr&& bound, expression_ptr&& body)
+{ switch(flags)
+  {
+  case 0: return new @| counted_for_expression<0>
+    (id,std::move(count),std::move(bound),std::move(body));
+  case 1: return new @| counted_for_expression<1>
+    (id,std::move(count),std::move(bound),std::move(body));
+  case 2: return new @| counted_for_expression<2>
+    (id,std::move(count),std::move(bound),std::move(body));
+  case 3: return new @| counted_for_expression<3>
+    (id,std::move(count),std::move(bound),std::move(body));
+  default: assert(false); return(nullptr);
+  }
 }
+
 
 @ Type-checking counted |for| loops is rather like that of other |for| loops,
 but we must extend the context with the loop variable while processing the loop
@@ -3601,13 +3608,8 @@ case cfor_expr:
   else if ((conv=row_coercion(type,body_type))==nullptr)
     throw type_error(e,row_of_type.copy(),std::move(type));
   expression_ptr body(convert_expr (c->body,*btp));
-@/expression_ptr loop;
-  if (c->up)
-    loop.reset(new @| inc_for_expression
-      (c->id,std::move(count_expr),std::move(bound_expr),std::move(body)));
-  else
-    loop.reset(new @| dec_for_expression
-      (c->id,std::move(count_expr),std::move(bound_expr),std::move(body)));
+@/expression_ptr loop(make_counted_loop(c->flags.to_ulong(), @|
+      c->id,std::move(count_expr),std::move(bound_expr),std::move(body)));
   return type==void_type ? expression_ptr(new voiding(std::move(loop))) : @|
          conv!=nullptr ? expression_ptr(new conversion(*conv,std::move(loop)))
                        : @| std::move(loop);
@@ -3618,60 +3620,31 @@ case cfor_expr:
 |while| and |for| loops.
 
 @< Function definitions @>=
-void inc_for_expression::evaluate(level l) const
+template <unsigned flags>
+void counted_for_expression<flags>::evaluate(level l) const
 { int b=(bound->eval(),get<int_value>()->val);
   int c=(count->eval(),get<int_value>()->val);
   if (c<0)
     c=0; // no negative size result
+  if ((flags&1)==0)
+    b+=c-1; // so that |b-c| will start at original |b|, and increase as |c--|
 
   id_pat pattern(id,0x1,patlist(nullptr));
   if (l==no_value)
-  { c+=b;
-    for (int i=b; i<c; ++i)
+  { while (c-->0)
   @/{@; frame fr(pattern);
-      fr.bind(std::make_shared<int_value>(i));
+      fr.bind(std::make_shared<int_value>((flags&1)==0 ? b-c : b+c));
       body->void_eval();
     }
   }
   else
-  { own_row result = std::make_shared<row_value>(0); result->val.reserve(c);
-    c+=b;
-    for (int i=b; i<c; ++i)
+  { own_row result = std::make_shared<row_value>(c);
+    auto dst = &result->val[(flags&2)==0 ? 0 : c];
+    while (c-->0)
     { frame fr(pattern);
-      fr.bind(std::make_shared<int_value>(i));
+      fr.bind(std::make_shared<int_value>((flags&1)==0 ? b-c : b+c));
       body->eval();
-      result->val.push_back(pop_value());
-    }
-    push_value(std::move(result));
-  }
-}
-
-@ Downward loops are not much different, but they actually use a |while| loop.
-
-@< Function definitions @>=
-void dec_for_expression::evaluate(level l) const
-{ int b=(bound->eval(),get<int_value>()->val);
-  int i=(count->eval(),get<int_value>()->val);
-  if (i<0)
-    i=0; // no negative size result
-
-  id_pat pattern(id,0x1,patlist(nullptr));
-  if (l==no_value)
-  { i+=b;
-    while (i-->b)
-  @/{@; frame fr(pattern);
-      fr.bind(std::make_shared<int_value>(i));
-      body->void_eval();
-    }
-  }
-  else
-  { own_row result = std::make_shared<row_value>(0); result->val.reserve(i);
-    i+=b;
-    while (i-->b)
-    { frame fr(pattern);
-      fr.bind(std::make_shared<int_value>(i));
-      body->eval();
-      result->val.push_back(pop_value());
+      *((flags&2)==0? dst++:--dst) = pop_value();
     }
     push_value(std::move(result));
   }
