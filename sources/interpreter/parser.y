@@ -303,12 +303,33 @@ subscription: primary '[' expr ']'
                    make_exprlist_node($5,raw_expr_list(nullptr))),@$)
 		,false,@$);
           }
+	| primary TLSUB expr ',' expr ']'
+	  { $$=make_subscription_node($1,
+		wrap_tuple_display
+		(make_exprlist_node($3,
+                   make_exprlist_node($5,raw_expr_list(nullptr))),@$)
+		,true,@$);
+          }
 ;
 
 slice   : primary '[' expr tilde_opt ':' expr tilde_opt ']'
 	  { $$=make_slice_node($1,$3,$6,0+2*$4+4*$7,@$); }
+	| primary '[' ':' expr tilde_opt ']'
+	  { $$=make_slice_node($1,make_int_denotation(0,@3),$4,0+4*$5,@$); }
+	| primary '[' expr tilde_opt ':' ']'
+	  { $$=make_slice_node($1,$3,make_int_denotation(0,@6),0+2*$4+4,@$); }
+	| primary '[' ':' ']'
+	  { $$=make_slice_node($1,make_int_denotation(0,@3)
+                                 ,make_int_denotation(0,@4),0+4,@$); }
 	| primary TLSUB expr tilde_opt ':' expr tilde_opt ']'
 	  { $$=make_slice_node($1,$3,$6,1+2*$4+4*$7,@$); }
+	| primary TLSUB ':' expr tilde_opt ']'
+	  { $$=make_slice_node($1,make_int_denotation(0,@3),$4,1+4*$5,@$); }
+	| primary TLSUB expr tilde_opt ':' ']'
+	  { $$=make_slice_node($1,$3,make_int_denotation(0,@4),1+2*$4+4,@$); }
+	| primary TLSUB ':' ']'
+	  { $$=make_slice_node($1,make_int_denotation(0,@3)
+                                 ,make_int_denotation(0,@4),1+4,@$); }
 ;
 
 iftail	: expr THEN expr ELSE expr FI { $$=make_conditional_node($1,$3,$5,@$); }
