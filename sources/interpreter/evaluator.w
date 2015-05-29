@@ -3121,20 +3121,17 @@ for loop is the same for all these cases.
 
 @< Type def... @>=
 struct for_base : public expression_base
-{ expression_ptr body; subscr_base::sub_type kind;
-  for_base (expression_ptr&& b, subscr_base::sub_type k)
-  : body(b.release()), kind(k) @+{}
+{ expression_ptr body;
+  for_base (expression_ptr&& b) : body(b.release()) @+{}
   virtual ~@[for_base() nothing_new_here@];
-  void print_body(std::ostream& out,unsigned flags) const;
+  void print_body (std::ostream& out,unsigned flags) const;
 };
 
-template <unsigned flags>
+template <unsigned flags, subscr_base::sub_type kind>
 struct for_expression : public for_base
 { id_pat pattern; expression_ptr in_part;
 @)
-  for_expression
-   (const id_pat& p, expression_ptr&& i, expression_ptr&& b
-   , subscr_base::sub_type k);
+  for_expression (const id_pat& p, expression_ptr&& i, expression_ptr&& b);
   virtual ~@[for_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
@@ -3155,11 +3152,10 @@ declaration, as it uses the local function |copy_id_pat| that is not known in
 the header file, but otherwise it is quite straightforward.
 
 @< Function definitions @>=
-template <unsigned flags>
-for_expression<flags>::for_expression@|
- (const id_pat& p, expression_ptr&& i, expression_ptr&& b
- ,subscr_base::sub_type k)
-   : for_base(std::move(b),k), pattern(copy_id_pat(p)), in_part(i.release())
+template <unsigned flags, subscr_base::sub_type kind>
+for_expression<flags,kind>::for_expression@|
+ (const id_pat& p, expression_ptr&& i, expression_ptr&& b)
+   : for_base(std::move(b)), pattern(copy_id_pat(p)), in_part(i.release())
   @+{}
 
 
@@ -3168,27 +3164,104 @@ part is first in the pattern though written \emph{after} \.@@, and that it
 could be absent.
 
 @< Function definitions @>=
-template <unsigned flags>
-void for_expression<flags>::print(std::ostream& out) const
+template <unsigned flags, subscr_base::sub_type kind>
+void for_expression<flags,kind>::print(std::ostream& out) const
 { out << " for " << *++pattern.sublist.begin();
     if (pattern.sublist.front().kind==0x1)
       out << '@@' << pattern.sublist.front();
   print_body(out << " in " << *in_part,flags);
 }
 
-@ As in |make_slice| above, we need to convert runtime values for |flags| to a
-template argument.
+@ As in |make_slice| above, we need to convert runtime values for |flags| and
+the |sub_type t| to template arguments. This is quite boring, but is the price
+we have to pay to get selection at type-check time of an |evaluate| method
+for which the dynamic choice has been constant-folded away by the \Cpp\
+compiler.
 
 @< Local function definitions @>=
 expression make_for_loop
   (unsigned flags, const id_pat& id, expression_ptr&& i, expression_ptr&& b
   ,subscr_base::sub_type t)
-{ switch (flags)
+{ switch(t)
   {
-  case 0: return new for_expression<0>(id,std::move(i),std::move(b),t);
-  case 1: return new for_expression<1>(id,std::move(i),std::move(b),t);
-  case 2: return new for_expression<2>(id,std::move(i),std::move(b),t);
-  case 3: return new for_expression<3>(id,std::move(i),std::move(b),t);
+  case subscr_base::row_entry:
+    switch (flags)
+    {
+    case 0: return new for_expression<@[0,subscr_base::row_entry@]>
+      (id,std::move(i),std::move(b));
+    case 1: return new for_expression<@[1,subscr_base::row_entry@]>
+      (id,std::move(i),std::move(b));
+    case 2: return new for_expression<@[2,subscr_base::row_entry@]>
+      (id,std::move(i),std::move(b));
+    case 3: return new for_expression<@[3,subscr_base::row_entry@]>
+      (id,std::move(i),std::move(b));
+    default: assert(false); return(nullptr);
+    }
+  case subscr_base::vector_entry:
+    switch (flags)
+    {
+    case 0: return new for_expression<@[0,subscr_base::vector_entry@]>
+      (id,std::move(i),std::move(b));
+    case 1: return new for_expression<@[1,subscr_base::vector_entry@]>
+      (id,std::move(i),std::move(b));
+    case 2: return new for_expression<@[2,subscr_base::vector_entry@]>
+      (id,std::move(i),std::move(b));
+    case 3: return new for_expression<@[3,subscr_base::vector_entry@]>
+      (id,std::move(i),std::move(b));
+    default: assert(false); return(nullptr);
+    }
+  case subscr_base::ratvec_entry:
+    switch (flags)
+    {
+    case 0: return new for_expression<@[0,subscr_base::ratvec_entry@]>
+      (id,std::move(i),std::move(b));
+    case 1: return new for_expression<@[1,subscr_base::ratvec_entry@]>
+      (id,std::move(i),std::move(b));
+    case 2: return new for_expression<@[2,subscr_base::ratvec_entry@]>
+      (id,std::move(i),std::move(b));
+    case 3: return new for_expression<@[3,subscr_base::ratvec_entry@]>
+      (id,std::move(i),std::move(b));
+    default: assert(false); return(nullptr);
+    }
+  case subscr_base::string_char:
+    switch (flags)
+    {
+    case 0: return new for_expression<@[0,subscr_base::string_char@]>
+      (id,std::move(i),std::move(b));
+    case 1: return new for_expression<@[1,subscr_base::string_char@]>
+      (id,std::move(i),std::move(b));
+    case 2: return new for_expression<@[2,subscr_base::string_char@]>
+      (id,std::move(i),std::move(b));
+    case 3: return new for_expression<@[3,subscr_base::string_char@]>
+      (id,std::move(i),std::move(b));
+    default: assert(false); return(nullptr);
+    }
+  case subscr_base::matrix_column:
+    switch (flags)
+    {
+    case 0: return new for_expression<@[0,subscr_base::matrix_column@]>
+      (id,std::move(i),std::move(b));
+    case 1: return new for_expression<@[1,subscr_base::matrix_column@]>
+      (id,std::move(i),std::move(b));
+    case 2: return new for_expression<@[2,subscr_base::matrix_column@]>
+      (id,std::move(i),std::move(b));
+    case 3: return new for_expression<@[3,subscr_base::matrix_column@]>
+      (id,std::move(i),std::move(b));
+    default: assert(false); return(nullptr);
+    }
+  case subscr_base::mod_poly_term:
+    switch (flags)
+    {
+    case 0: return new for_expression<@[0,subscr_base::mod_poly_term@]>
+      (id,std::move(i),std::move(b));
+    case 1: return new for_expression<@[1,subscr_base::mod_poly_term@]>
+      (id,std::move(i),std::move(b));
+    case 2: return new for_expression<@[2,subscr_base::mod_poly_term@]>
+      (id,std::move(i),std::move(b));
+    case 3: return new for_expression<@[3,subscr_base::mod_poly_term@]>
+      (id,std::move(i),std::move(b));
+    default: assert(false); return(nullptr);
+    }
   default: assert(false); return(nullptr);
   }
 }
@@ -3258,7 +3331,18 @@ component type resulting from such a subscription.
   thread_bindings(f->id,it_type,bind);
 }
 
-@ We can start evaluating the |in_part| regardless of |kind|, but for deducing
+@ Now follows the code that actually implements various kinds of loops. It is
+templated both by |flags| indicating one of the $4$ reversal variants, and by
+|kind| indicating the kind of value looped over (row, vector, rational
+vector, string, matrix, parameter polynomial). This code is therefore compiled
+in many variations, and we hope that constant folding and elimination of dead
+code will reduce each instance to its specialised essence, which avoids
+making the choices such as the |switch| below at evaluation time. We shall try
+to reuse as much common source code among the variants as possible. This
+presentation seems to be preferable and easier to maintain than providing $24$
+explicit hand-specialised template instances.
+
+We can start evaluating the |in_part| regardless of |kind|, but for deducing
 the number of iterations we must already distinguish on |kind| to predict the
 type of the in-part. A |loop_var| pair of values is constructed that will
 temporarily contain the values of the loop index and loop component before
@@ -3269,13 +3353,13 @@ pointer itself will not be copied to the context, which explains why this pair
 has to be allocated just once for all iterations of the loop. However, the
 shared pointers that might get copied to the frame must be different on each
 iteration, because the body might get hold, through a closure evaluated in the
-loop body, of a copy of those pointers; in this case we deem it undesirable
+loop body, of a copy of those pointers; in this case it is undesirable
 that the closure should get to ``see'' changing values of variables during
 subsequent iterations.
 
 @< Function definitions @>=
-template <unsigned flags>
-void for_expression<flags>::evaluate(level l) const
+template <unsigned flags, subscr_base::sub_type kind>
+void for_expression<flags,kind>::evaluate(level l) const
 { in_part->eval();
   own_tuple loop_var = std::make_shared<tuple_value>(2);
        // this is safe to re-use between iterations
@@ -3294,17 +3378,22 @@ possible by sharing a module between the various loop bodies.
 
 @< Evaluate the loop, dispatching the various possibilities for |kind|... @>=
 switch (kind)
-{ case subscr_base::not_so: assert(false); break;
+{ case subscr_base::matrix_entry:; // excluded in type analysis
+  case subscr_base::not_so: assert(false);
+@/break;
   case subscr_base::row_entry:
   { shared_row in_val = get<row_value>();
     size_t n=in_val->val.size();
     if (l!=no_value)
       result = std::make_shared<row_value>(n);
-    for (size_t i=0; unsigned(i)<n; ++i)
-    { loop_var->val[1]=in_val->val[i]; // share the current row component
-      @< Set |loop_var->val[0]| to |i|, create a new |frame| for
+    size_t i= (flags&1)==0 ? 0 : n;
+    auto dst = &result->val[(flags&2)==0 ? 0 : n];
+    while (i!=((flags&1)==0 ? n : 0))
+    { loop_var->val[1]=in_val->val[(flags&1)==0 ? i : i-1];
+        // share the current row component
+      @< Set |loop_var->val[0]| to |i++| or to |--i|, create a new |frame| for
       |pattern| binding |loop_var|, and evaluate the |loop_body| in it;
-      maybe assign |result->val[i]| from it @>
+      maybe assign |*dst++| or |*--dst| from it @>
     }
   }
   @+break;
@@ -3313,9 +3402,12 @@ switch (kind)
     size_t n=in_val->val.size();
     if (l!=no_value)
       result = std::make_shared<row_value>(n);
-    for (size_t i=0; unsigned(i)<n; ++i)
-    { loop_var->val[1] = std::make_shared<int_value>(in_val->val[i]);
-      @< Set |loop_var->val[0]| to |i|,... @>
+    size_t i= (flags&1)==0 ? 0 : n;
+    auto dst = &result->val[(flags&2)==0 ? 0 : n];
+    while (i!=((flags&1)==0 ? n : 0))
+    { loop_var->val[1] = std::make_shared<int_value>
+        (in_val->val[(flags&1)==0 ? i : i-1]);
+      @< Set |loop_var->val[0]| to... @>
     }
   }
   @+break;
@@ -3324,39 +3416,48 @@ switch (kind)
     size_t n=in_val->val.size();
     if (l!=no_value)
       result = std::make_shared<row_value>(n);
-    for (size_t i=0; unsigned(i)<n; ++i)
-    { loop_var->val[1] = std::make_shared<rat_value>(Rational @|
-        (in_val->val.numerator()[i],in_val->val.denominator()));
-      @< Set |loop_var->val[0]| to |i|,... @>
+    size_t i= (flags&1)==0 ? 0 : n;
+    auto dst = &result->val[(flags&2)==0 ? 0 : n];
+    while (i!=((flags&1)==0 ? n : 0))
+    { loop_var->val[1] = std::make_shared<rat_value> @|
+      (Rational
+        (in_val->val.numerator()[(flags&1)==0 ? i : i-1]
+        ,in_val->val.denominator()));
+      @< Set |loop_var->val[0]| to... @>
     }
   }
-  break;
+  @+break;
   case subscr_base::string_char:
   { shared_string in_val = get<string_value>();
     size_t n=in_val->val.size();
     if (l!=no_value)
       result = std::make_shared<row_value>(n);
-    for (size_t i=0; unsigned(i)<n; ++i)
-    { loop_var->val[1] = std::make_shared<string_value>(in_val->val.substr(i,1));
-      @< Set |loop_var->val[0]| to |i|,... @>
+    size_t i= (flags&1)==0 ? 0 : n;
+    auto dst = &result->val[(flags&2)==0 ? 0 : n];
+    while (i!=((flags&1)==0 ? n : 0))
+    { loop_var->val[1] = std::make_shared<string_value>
+            (in_val->val.substr((flags&1)==0 ? i : i-1,1));
+      @< Set |loop_var->val[0]| to... @>
     }
   }
-  @+break;
+  break;
   case subscr_base::matrix_column:
   { shared_matrix in_val = get<matrix_value>();
     size_t n=in_val->val.numColumns();
     if (l!=no_value)
       result = std::make_shared<row_value>(n);
-    for (size_t i=0; unsigned(i)<n; ++i)
-    { loop_var->val[1] = std::make_shared<vector_value>(in_val->val.column(i));
-      @< Set |loop_var->val[0]| to |i|,... @>
+    size_t i= (flags&1)==0 ? 0 : n;
+    auto dst = &result->val[(flags&2)==0 ? 0 : n];
+    while (i!=((flags&1)==0 ? n : 0))
+    { loop_var->val[1] = std::make_shared<vector_value>
+        (in_val->val.column((flags&1)==0 ? i : i-1));
+      @< Set |loop_var->val[0]| to... @>
     }
   }
   @+break;
   case subscr_base::mod_poly_term:
   @< Perform a loop over the terms of a virtual module @>
   break;
-  case subscr_base::matrix_entry: break; // excluded in type analysis
 }
 
 
@@ -3373,8 +3474,8 @@ they were subsequently copied to overwrite the pointers in the same |context|
 object each time. Once these things have been handled, the evaluation of the
 loop body is standard.
 
-@< Set |loop_var->val[0]| to |i|,... @>=
-{ loop_var->val[0] = std::make_shared<int_value>(i);
+@< Set |loop_var->val[0]| to... @>=
+{ loop_var->val[0] = std::make_shared<int_value>((flags&1)==0 ? i++ : --i);
     // index; newly created each time
   frame fr (pattern);
   fr.bind(loop_var);
@@ -3382,34 +3483,53 @@ loop body is standard.
     body->void_eval();
   else
   {@; body->eval();
-    result->val[i] = pop_value();
+     *((flags&2)==0 ? dst++ : --dst) = pop_value();
   }
 } // restore context upon destruction of |fr|
 
 @ The loop over terms of a virtual module is slightly different, and since it
 handles values defined in the modules \.{built-in-types.w} we shall include
-its header file.
+its header file. We implement the $4$ reversal variants, even though it makes
+little sense unless the internal order of the terms in the polynomial (over
+which the user has no control) are meaningful to the user.
 
 @h "built-in-types.h"
 @< Perform a loop over the terms of a virtual module @>=
 { shared_virtual_module pol_val = get<virtual_module_value>();
-  size_t n=pol_val->val.size(),i=0;
+  size_t n=pol_val->val.size();
   if (l!=no_value)
     result = std::make_shared<row_value>(n);
-  for (auto it=pol_val->val.begin(); it!=pol_val->val.end(); ++it,++i)
-  { loop_var->val[0] =
-      std::make_shared<module_parameter_value>(pol_val->rf,it->first);
-    loop_var->val[1] = std::make_shared<split_int_value>(it->second);
-    frame fr(pattern);
-    fr.bind(loop_var);
-    if (l==no_value)
-      body->void_eval();
-    else
-    {@; body->eval();
-      result->val[i]=pop_value();
+
+  auto dst = &result->val[(flags&2)==0 ? 0 : n];
+  if ((flags&1)==0)
+    for (auto it=pol_val->val.cbegin(); it!=pol_val->val.cend(); ++it)
+    { loop_var->val[0] =
+        std::make_shared<module_parameter_value>(pol_val->rf,it->first);
+      loop_var->val[1] = std::make_shared<split_int_value>(it->second);
+      frame fr(pattern);
+      fr.bind(loop_var);
+      if (l==no_value)
+        body->void_eval();
+      else
+      {@; body->eval();
+        *((flags&2)==0 ? dst++ : --dst) = pop_value();
+      }
     }
-  } // restore context upon destruction of |fr|
-}
+  else
+    for (auto it=pol_val->val.crbegin(); it!=pol_val->val.crend(); ++it)
+    { loop_var->val[0] =
+        std::make_shared<module_parameter_value>(pol_val->rf,it->first);
+      loop_var->val[1] = std::make_shared<split_int_value>(it->second);
+      frame fr(pattern);
+      fr.bind(loop_var);
+      if (l==no_value)
+        body->void_eval();
+      else
+      {@; body->eval();
+        *((flags&2)==0 ? dst++ : --dst) = pop_value();
+      }
+    }
+} // restore context upon destruction of |fr|
 
 @*1 Counted loops.
 %
