@@ -3438,6 +3438,7 @@ void for_expression<flags,kind>::evaluate(level l) const
   own_tuple loop_var = std::make_shared<tuple_value>(2);
        // this is safe to re-use between iterations
   own_row result(nullptr);
+  shared_value* dst=nullptr;
   @< Evaluate the loop, dispatching the various possibilities for |kind|, and
   setting |result| @>
 
@@ -3457,11 +3458,12 @@ switch (kind)
 @/break;
   case subscr_base::row_entry:
   { shared_row in_val = get<row_value>();
-    size_t n=in_val->val.size();
-    if (l!=no_value)
-      result = std::make_shared<row_value>(n);
+  @/size_t n=in_val->val.size();
     size_t i= (flags&1)==0 ? 0 : n;
-    auto dst = &result->val[(flags&2)==0 ? 0 : n];
+    if (l!=no_value)
+  @/{@; result = std::make_shared<row_value>(n);
+      dst = &result->val[(flags&2)==0 ? 0 : n];
+    }
     while (i!=((flags&1)==0 ? n : 0))
     { loop_var->val[1]=in_val->val[(flags&1)==0 ? i : i-1];
         // share the current row component
@@ -3473,11 +3475,12 @@ switch (kind)
   @+break;
   case subscr_base::vector_entry:
   { shared_vector in_val = get<vector_value>();
-    size_t n=in_val->val.size();
-    if (l!=no_value)
-      result = std::make_shared<row_value>(n);
+  @/size_t n=in_val->val.size();
     size_t i= (flags&1)==0 ? 0 : n;
-    auto dst = &result->val[(flags&2)==0 ? 0 : n];
+    if (l!=no_value)
+  @/{@; result = std::make_shared<row_value>(n);
+      dst = &result->val[(flags&2)==0 ? 0 : n];
+    }
     while (i!=((flags&1)==0 ? n : 0))
     { loop_var->val[1] = std::make_shared<int_value>
         (in_val->val[(flags&1)==0 ? i : i-1]);
@@ -3487,11 +3490,12 @@ switch (kind)
   @+break;
   case subscr_base::ratvec_entry:
   { shared_rational_vector in_val = get<rational_vector_value>();
-    size_t n=in_val->val.size();
-    if (l!=no_value)
-      result = std::make_shared<row_value>(n);
+  @/size_t n=in_val->val.size();
     size_t i= (flags&1)==0 ? 0 : n;
-    auto dst = &result->val[(flags&2)==0 ? 0 : n];
+    if (l!=no_value)
+  @/{@; result = std::make_shared<row_value>(n);
+      dst = &result->val[(flags&2)==0 ? 0 : n];
+    }
     while (i!=((flags&1)==0 ? n : 0))
     { loop_var->val[1] = std::make_shared<rat_value> @|
       (Rational
@@ -3503,11 +3507,12 @@ switch (kind)
   @+break;
   case subscr_base::string_char:
   { shared_string in_val = get<string_value>();
-    size_t n=in_val->val.size();
-    if (l!=no_value)
-      result = std::make_shared<row_value>(n);
+  @/size_t n=in_val->val.size();
     size_t i= (flags&1)==0 ? 0 : n;
-    auto dst = &result->val[(flags&2)==0 ? 0 : n];
+    if (l!=no_value)
+  @/{@; result = std::make_shared<row_value>(n);
+      dst = &result->val[(flags&2)==0 ? 0 : n];
+    }
     while (i!=((flags&1)==0 ? n : 0))
     { loop_var->val[1] = std::make_shared<string_value>
             (in_val->val.substr((flags&1)==0 ? i : i-1,1));
@@ -3517,11 +3522,12 @@ switch (kind)
   break;
   case subscr_base::matrix_column:
   { shared_matrix in_val = get<matrix_value>();
-    size_t n=in_val->val.numColumns();
-    if (l!=no_value)
-      result = std::make_shared<row_value>(n);
+  @/size_t n=in_val->val.numColumns();
     size_t i= (flags&1)==0 ? 0 : n;
-    auto dst = &result->val[(flags&2)==0 ? 0 : n];
+    if (l!=no_value)
+  @/{@; result = std::make_shared<row_value>(n);
+      dst = &result->val[(flags&2)==0 ? 0 : n];
+    }
     while (i!=((flags&1)==0 ? n : 0))
     { loop_var->val[1] = std::make_shared<vector_value>
         (in_val->val.column((flags&1)==0 ? i : i-1));
@@ -3570,11 +3576,11 @@ which the user has no control) are meaningful to the user.
 @h "built-in-types.h"
 @< Perform a loop over the terms of a virtual module @>=
 { shared_virtual_module pol_val = get<virtual_module_value>();
-  size_t n=pol_val->val.size();
+@/size_t n=pol_val->val.size();
   if (l!=no_value)
-    result = std::make_shared<row_value>(n);
-
-  auto dst = &result->val[(flags&2)==0 ? 0 : n];
+@/{@; result = std::make_shared<row_value>(n);
+    dst = &result->val[(flags&2)==0 ? 0 : n];
+  }
   if ((flags&1)==0)
     for (auto it=pol_val->val.cbegin(); it!=pol_val->val.cend(); ++it)
     { loop_var->val[0] =
