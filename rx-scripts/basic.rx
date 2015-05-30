@@ -719,6 +719,12 @@ set parameter (RealForm G,int x,ratvec lambda,ratvec nu) = Param:
 set parameter (KGBElt x,ratvec lambda,ratvec nu) = Param:
   param(x,ratvec_as_vec(lambda-rho(real_form(x))),nu)
 
+{ set parameter ensuring (upon sucess) that the inf. char. is gamma }
+set parameter_gamma(KGBElt x, vec lambda, ratvec gamma) = Param:
+  let (G,nx)=%x, theta=involution(x) in
+  { ((1-theta)*lambda+(1+theta)*gamma)/2 = (1+theta)*(gamma-lambda)/2+lambda }
+  parameter(G,nx,(1+theta)*(gamma-lambda)/2+lambda,gamma)
+
 { get just the parameters from a block, just a shorcut to: (params,)=block(p) }
 set block_of (Param p) = [Param]: let (params,)=block(p) in params
 
@@ -737,7 +743,7 @@ set is_parity (int s,Param p)= bool: is_real(s,x(p)) and inv_Cayley(s,p)!=p
 
 set is_nonparity (vec alpha,Param p)=bool:
   is_real(alpha,x(p)) and Cayley(alpha,p)=p
-set is_parity (vec alpha, int s,Param p)= bool:
+set is_parity (vec alpha,Param p)= bool:
   is_real(alpha,x(p)) and Cayley(alpha,p)!=p
 
 set status (vec alpha,Param p) = int: { enum: C-, ic, r1, r2, C+, rn, i1, i2 }

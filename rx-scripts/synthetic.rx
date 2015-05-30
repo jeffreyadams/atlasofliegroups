@@ -83,6 +83,7 @@ set posroot_inv_Cayley (int i, Param p) = Param:
   in assert(=(1+theta0)*diff1,"non-real diff at 0")
 ;    assert(=(1+theta3)*diff2,"non-real diff at 3")
 ; let par(ratvec mu) = { use only torsion of mu; ensure infin.char.=gamma }
+    { use ((1-theta3)*mu+(1+theta3)*gamma)/2 = mu+(1+theta3)*(gamma-mu)/2 }
     parameter(x3,mu+(1+theta3)*(gamma-mu)/2,gamma)
   in par(lambda(p)+diff1-diff2)
 )
@@ -179,9 +180,3 @@ set *(mat delta,KGBElt_gen(ic,theta,t)) = KGBElt_gen:
   (ic,delta*theta*delta,t*delta)
 
 set is_fixed (mat delta,KGBElt_gen y) = bool: y = delta*y
-
-
-
-
-
-

@@ -552,6 +552,7 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   const RootNbrSet posroots_sub = subsys.positive_roots();
   if (not posroots_sub.isMember(rt))
     throw std::runtime_error("Not an integral root");
+  // apply the integrally-dominant-making $W$ element |w| (in |subsys|) to |rt|:
   rt=subsys.to_parent(subsys.permuted_root(subsys.from_parent(rt),w));
 
   InvolutionNbr inv0= kgb.inv_nr(x);
@@ -564,9 +565,9 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
     x = kgb.cayley(s,x); break;
   case gradings::Status::Real:
     { Weight rho2_diff = rd.twoRho() - rd.twoRho(i_tab.real_roots(inv0));
-      RatWeight parity_vector =
+      RatWeight parity_vector = // compute this at the \emph{original} x
 	infin_char - lr - RatWeight(std::move(rho2_diff),2);
-      if (parity_vector.dot(rd.coroot(rt))%2==1) // then |rt| was parity
+      if (parity_vector.dot(rd.coroot(rt))%2!=0) // then |rt| was parity
       {	x = kgb.inverseCayley(s,x).first; // do inverse Cayley at |inv1|
 	break;
       }
