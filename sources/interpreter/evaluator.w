@@ -1896,21 +1896,30 @@ lambda_expression::lambda_expression @|
 : p(std::make_shared<lambda_struct>(copy_id_pat(p),std::move(b),loc))
 @+{}
 
-@ To print an anonymous function, we print the parameter, enclosed in
-parentheses if the full parameter is named, followed by a colon and by the
-function body. The printed parameter list cannot include types with the
+@ To print an anonymous function, we print the parameter list, followed by a
+colon and by the function body. If the parameter list contains a name for the
+whole, as happens in particular when there is just a single parameter, then it
+must be enclosed in parentheses to resemble in the input syntax, but if it is
+an unnamed nonempty tuple then it will supply its own parentheses; this leaves
+the case of an empty parameter list, for which we reconstitute the input
+syntax~`\.@@'. The printed parameter list cannot include types with the
 current setup, as they are not explicitly stored after type analysis. It could
 be made possible to print types if a type were explicitly stored in the
-|lambda_expression| structure; at the time of writing this would seem
-possible because each function has to have a definite type, but if the type
-system were extended with second order types (which would be quite useful),
-then this might no longer be true.
+|lambda_expression| structure; at the time of writing this would seem possible
+because each function has to have a definite type, but if the type system were
+extended with second order types (which would be quite useful), then this
+might no longer be true. For now leaving out the types indicates to the
+(knowledgeable) user that a runtime value is being printed rather than just a
+syntax tree representing the user input (as happens in messages from the type
+checker).
 
 @< Function definitions @>=
 std::ostream& operator<<(std::ostream& out, const lambda_struct& l)
 { if ((l.param.kind&0x1)!=0)
     out << '(' << l.param << ')';
-@+else out << l.param;
+  else if ((l.param.kind&0x2)!=0 and not l.param.sublist.empty())
+    out << l.param;
+  else out << '@@';
   return out << ": " << *l.body;
 }
 void lambda_expression::print(std::ostream& out) const @+{@; out << *p; }

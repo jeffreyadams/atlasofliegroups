@@ -1574,6 +1574,68 @@ case conditional_expr:
 }
 break;
 
+@*2 Case statements.
+%
+For a long time the language had no multi-way branching expression at all.
+Currently we implement a \&{case} expression selecting based on an integer
+value, explicit branches being given for a finite segment of the possible
+values. No doubt with the later introduction of distinguished union type there
+will be a richer set of \&{case} expressions. For now they are just syntactic
+sugar, and the code below transforms the ingredients of an
+integer-based \&{case} expression into an equivalent expression that realises
+the multi-way branching by selection a function from a row pf function values.
+
+We define a function for constructing the expression as usual. For now there
+is no corresponding expression type, but we name it as if there were one, so
+that we can later just replace the body this function to change the
+implementation.
+
+@< Declarations of functions for the parser @>=
+expr_p make_int_case_node(expr_p selector, raw_expr_list ins, const YYLTYPE& loc);
+
+@ We shall need a variation of the |expr| constructor that builds its
+|lambda_variant|, because we want to duplicate (copy construct) an existing
+|source_location| rather than construct one from an |YYLTYPE| structure.
+
+@< Methods of |expr| @>=
+expr(lambda&& fun, const source_location& loc)
+ : kind(lambda_expr)
+ , lambda_variant(std::move(fun))
+ , loc(loc)
+@+{}
+
+@ This time the implementation is not straightforward. We convert the
+in-expressions to functions without arguments, collect them in a list
+expression, build a subscription (to be described later) using the (integer)
+selector expression, and finally build a call with that subscription as
+function part and an empty argument list.
+
+@< Definitions of functions for the parser @>=
+expr_p make_int_case_node(expr_p s, raw_expr_list i, const YYLTYPE& loc)
+{
+  expr_ptr ss(s); expr_list ins(i);
+  expr& selector=*ss;
+  for (auto it=ins.begin(); not ins.at_end(it); ++it)
+  { const source_location& it_loc = it->loc;
+    lambda f(new lambda_node(id_pat(patlist()),void_type.copy(),std::move(*it)));
+    *it=expr(std::move(f),it_loc);
+  }
+  expr arr(std::move(ins),expr::tuple_display_tag());
+    // abuse of this tuple constructor
+  arr.kind = list_display; // but then set the correct kind
+  sub select(new subscription_node(std::move(arr), std::move(selector),false));
+    // non reversed
+  expr fun(std::move(select),loc); // function part is this subscription
+  expr arg {@[expr_list(),expr::tuple_display_tag()@]};
+    // avoid most vexing parse!
+  app result(new application_node(std::move(fun),std::move(arg)));
+    // call after selecting
+  return new expr(std::move(result),loc);
+    // generate final |expr|, return pointer
+}
+
+
+
 @*2 Loops.
 %
 Loops are a cornerstone of any form of non-recursive programming. The three

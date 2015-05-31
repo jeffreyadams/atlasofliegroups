@@ -152,6 +152,7 @@ const char* keywords[] =
  ,"if","then","else","elif","fi"
  ,"and","or","not"
  ,"while","do","od","next","for","from","downto"
+ ,"case","esac"
  ,"true","false"
  ,"quiet","verbose"
  ,"whattype","showall","forget"
