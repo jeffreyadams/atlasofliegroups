@@ -49,12 +49,11 @@ might be a bit wasteful, but only system header files are concerned).
 
 @c
 #include "lexer.h"
-using namespace std; @/
 namespace atlas
 { namespace interpreter
    {
-@< Definitions of class members @>@;
 @< Function definitions @>@;
+@< Definitions of class members @>@;
 @< Definitions of static variables @>@;
    }@;
 }@;
@@ -100,9 +99,11 @@ prefix |text|. A tricky point is that once a partial match is found, we must
 increment the static iterator before returning, since that |return| jumps out
 of our local loop. For this reason we increment |i| right away while picking
 its identifier from the hash table. Otherwise there are no other complications,
-except having to produce a string allocated by |malloc|, which |strdup| does
-for us. If our local loop terminates normally there are no more matches and we
-return |nullptr| to indicate that.
+except having to produce a string allocated by |malloc|; this used to be done
+by calling |strdup|, but since that function appears not to be part of
+standard \Cpp\ at all, we do the duplication explicitly. If our local loop
+terminates normally there are no more matches and we return |nullptr| to
+indicate that circumstance.
 
 @h <cstdlib>
 @< Function definitions @>=
@@ -118,7 +119,11 @@ char* id_completion_func(const char* text, int state)
   { const char* s=main_hash_table->name_of(i++);
       // get stored identifier and increment loop
     if (std::strncmp(text,s,l) == 0) // is |text| a prefix of |s|?
-      return strdup(s);
+    { char* result=static_cast<char*>(std::malloc(std::strlen(s)+1));
+      if (result==nullptr)
+        @[throw std::bad_alloc()@];
+      return std::strcpy(result,s);
+    }
   }
   return nullptr; /* if loop terminates, report failure */
 }
@@ -133,10 +138,13 @@ extern char lexical_break_chars[];
 @~The following value reflects what the lexical analyser considers separating
 characters. The list contains those non-alphanumeric characters that are
 valid input characters, as implicitly defined by the |get_token| function
-below.
+below. The string |filename_break_chars| gives the more limited list of
+characters that are taken to mark the end of a file name (loosely
+characterised as characters unlikely to occur in file names).
 
 @< Definitions of static variables @>=
-char lexical_break_chars[] = " \t\n=<>+-*/\\%,;:()[]{}$@@\"|";
+char lexical_break_chars[] = " \t\n=<>+-*/\\%,;:()[]{}$@@\"|~";
+char filename_break_chars[] = " \t\n<>/\\;(){}$|"; @q$@>
 
 @* The lexical analyser class.
 %
@@ -171,8 +179,8 @@ public:
     (BufferedInput&, Hash_table&, const char**, const char** type_names);
   int get_token(YYSTYPE *valp, YYLTYPE* locp);
   bool reset(); // get clean slate, return |false| if |getline()| fails
-  void set_comment_delims (char c, char d) @+
-          {@; comment_start=c; comment_end=d; }
+  void set_comment_delims (char c, char d)
+          {@; assert(c!='\0' and d!='\0'); comment_start=c; comment_end=d; }
   const char* scanned_file_name() const {@; return file_name.c_str(); }
 private:
   void skip_space();
@@ -195,17 +203,18 @@ Lexical_analyser* lex=nullptr;
 @ Here is the constructor for the lexical analyser, which assumes that a
 buffered input object and an empty hash table object have been previously
 constructed, and are passed by reference. Currently it is called with a list
-of keyword strings as final parameter, which keywords will be installed into
-the hash table and determine the value of |keyword_limit|. There will probably
-be a need to further parametrise the lexical analyser, if we do not want to
-hard-code all lexical details into it (there is nothing wrong with that as
-long as there is only one object of this class, but the class concept invites
-us to envision some more flexible use). One such parametrisation is via the
-|comment_start| and |command_end| characters, that if set will automatically
-skip text enclosed between them (they may or may not be equal). In the unset
-state they are set to an integer that cannot match any |char| value; we would
-have like to use |EOF| defined in \.{ctype.h} here, but it is only guaranteed
-to be non-|(unsigned char)|, and since using the type |(unsigned char*)| is
+of keyword strings, and a list of predefined type names; both will be
+installed into the hash table and determine the values of |keyword_limit| and
+|type_limit|. There will probably be a need to further parametrise the lexical
+analyser, if we do not want to hard-code all lexical details into it (there is
+nothing wrong with that as long as there is only one object of this class, but
+the class concept invites us to envision some more flexible use). One such
+parametrisation is via the |comment_start| and |command_end| characters, that
+if set using |set_comment_delims| will automatically skip text enclosed
+between them (they may or may not be equal). In the unset state they are set
+to an integer that cannot match any |char| value; we would have like to use
+|EOF| defined in \.{ctype.h} here, but it is only guaranteed to be
+non-|(unsigned char)|, and since using the type |(unsigned char*)| is
 unwieldy, we use another value.
 
 @< Definitions of class members @>=
@@ -249,27 +258,25 @@ bool Lexical_analyser::reset()
 @ Skipping spaces is a rather common activity during scanning; it is performed
 by |skip_space|. When it is called, the first potential space character has
 been shifted in, and when it returns a non-space character is left in
-shifted-in position. Processing of newline-escaping backslashes and skipping
-comments is also performed by |skip_space|. If |comment_start| is set and
-|comment_end!='\n'|, then newlines will be skipped inside comments, but if
-|comment_end=='\n'| then a closing newline will be considered for the
-possibility of ending input. In the former case we change the input prompt by
-pushing the comment character to warn the user that no action has been
-performed. In case |prevent_termination| is set, that character is also pushed
-into the prompt for the duration of skipping spaces.
+shifted-in position. Skipping comments is also performed by |skip_space|. In
+spite of its name, this function does not unconditionally skip all spaces, so
+as to be able to catch some runaway constructions. Also the subtle decision
+mechanism to determine which newlines terminate a command kicks in here, in
+the |std::isspace(c)| branch below, although the actual control of this
+decision is distributed in the various pieces of code that maintain of the
+fields |prevent_termination| and |nesting|.
 
 In case end of input occurs one obtains |shift()=='\0'|, and for the end of an
 included file one obtains |shift()=='\f'|, a form-feed. If the former happens
-in the main loop of |skip_space| then we break from it like for any non-space
-character, and although the following |input.unshift()| does nothing, the
-value |'\0'| should reappear at the next call of |shift|. If end of input or a
-form-feed occurs during a comment, then the comment is terminated (with an
-error message) due to the explicit test, and the character that provoked this
-will be reconsidered so the end of file will not be masked by the comment it
-occurred inside.
+in the main loop of |skip_space|, then we break out of it like we do for any
+non-space character (the predicate |is_space| does not hold for the null
+character), and although the following |input.unshift()| does nothing, the
+value |'\0'| should reappear at the next call of |shift|.
 
 @h<cctype>
 @h<iostream>
+
+@s level x
 
 @< Definitions of class members @>=
 void Lexical_analyser::skip_space(void)
@@ -277,47 +284,71 @@ void Lexical_analyser::skip_space(void)
   do
   { char c=input.shift();
     if (std::isspace(c))
-    { if (c=='\n' and prevent_termination=='\0' and nesting==0
-          or c=='\f')
+     // ignore unless file ends, or a newline where a command could end
+  @/{@; if (c=='\f' or
+            c=='\n' and prevent_termination=='\0' and nesting==0)
         break;
-// newline not skipped if some command could end here, form feed never skipped
-      continue; // all other space is skipped
     }
-    if (c==comment_start)
-      if (comment_end=='\n' or comment_end==comment_start)
-      { do c=input.shift(); while (c!=comment_end && c!='\0');
-        input.unshift(); // reconsider newline character
-      }
-      else // skip comment, allowing for nested comment groups
-      { int level=1; int line; int column;
-        input.locate(input.point(),line,column); // maybe needed for reporting
-        input.push_prompt(comment_start);
-        do
-        {
-          do c=input.shift();
-          while (c!= comment_start and c!=comment_end and c!='\0' and c!='\f');
-          if (c=='\0' or c=='\f')
-          { std::cerr << "Comment that started on line " << line
-                      << ", column " << column @| << " is never closed.\n";
-          @/ input.unshift(); break;
-          // force out of comment loop, reconsider character
-          }
-          if (c==comment_start)
-          {@; ++level;
-            input.push_prompt(comment_start);
-          }
-          else
-          {@; --level;
-            input.pop_prompt();
-          } // |c==comment_end|
-        }
-        while (level>0);
-      }
-    else break; // non-space and non-comment character
+    else if (c==comment_start) @< Skip comment, possibly nested @>
+    else break;
+      // non-space and non-comment character (possibly |'\0'|): terminate
   } while(true);
   if (prevent_termination!='\0') input.pop_prompt();
   input.unshift(); // prepare to re-read character that ended space
 }
+
+@ If |comment_start| is set and |comment_end!='\n'|, then newlines will be
+skipped inside comments, but if |comment_end=='\n'| then a closing newline
+will be considered for the possibility of ending input. In the former case we
+change the input prompt by pushing the comment character to warn the user that
+no action has been performed. In case |prevent_termination| is set, that
+character is also pushed into the prompt for the duration of skipping spaces.
+
+If end of input or a form-feed occurs during a comment, then the comment is
+terminated (with an error message) due to the explicit test, and the character
+that provoked this will be reconsidered so the end of file will not be masked
+by the comment it occurred inside.
+
+@< Skip comment, possibly nested @>=
+{ int line, column;
+  input.locate(input.point(),line,column); // maybe needed for reporting
+  if (comment_end=='\n' or comment_end==comment_start)
+     // non nestable comment
+  { do c=input.shift();
+ @/ while (c!=comment_end and c!='\0' and c!='\f');
+    if (c!=comment_end)
+    { std::cerr << "Comment that started on line " << line
+                << ", column " << column @| << " is never closed.\n";
+    @/input.unshift(); // reconsider end of file
+    }
+    else if (comment_end=='\n')
+      input.unshift(); // reconsider newline character
+  }
+  else // skip comment, allowing for nested comment groups
+  { int level=1;
+    input.push_prompt(comment_start);
+    do
+    {
+      do c=input.shift(); @/ @q forced break fixes broken cweavex @>
+      while (c!= comment_start and c!=comment_end and c!='\0' and c!='\f');
+      if (c=='\0' or c=='\f')
+      { std::cerr << "Comment that started on line " << line
+                  << ", column " << column @| << " is never closed.\n";
+      @/ input.unshift(); break;
+      // force out of comment loop, reconsider character
+      }
+      if (c==comment_start)
+      {@; ++level;
+        input.push_prompt(comment_start);
+      }
+      else
+      {@; --level;
+        input.pop_prompt();
+      } // |c==comment_end|
+    }
+    while (level>0);
+  }
+} // after skipping the comment, skipping spaces (and comments) continues
 
 @ Another auxiliary method is used for scanning a quoted string; it should be
 called when an initial double-quote character has been recognised, and after
@@ -347,8 +378,8 @@ std::string Lexical_analyser::scan_quoted_string()
   { const char* end=input.point();
     int l0,c0,l1,c1;
     input.locate(start,l0,c0); input.locate(end,l1,c1);
-    input.show_range(cerr,l0,c0,l1,c1);
-    cerr << "Closing string denotation.\n";
+    input.show_range(std::cerr,l0,c0,l1,c1);
+    std::cerr << "Closing string denotation.\n";
   }
   return result;
 }
@@ -424,9 +455,9 @@ int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
   skip_space(); prevent_termination='\0';
   input.locate(input.point(),locp->first_line,locp->first_column);
   int code; char c=input.shift();
-  if (isalpha(c) or c=='_')
+  if (std::isalpha(c) or c=='_')
     @< Scan an identifier or a keyword @>
-  else if (isdigit(c))
+  else if (std::isdigit(c))
     @< Scan a number @>
   else
     @< Scan a token starting with a non alpha-numeric character @>
@@ -462,7 +493,7 @@ slot (holding a null pointer) instead.
 { const char* p=input.point@[()@]-1; // start of token
   do
     c=input.shift();
-  while(isalpha(c) || isdigit(c) || c=='_');
+  while(std::isalnum(c) || c=='_');
   input.unshift();
   id_type id_code=id_table.match(p,input.point()-p);
   if (id_code>=type_limit)
@@ -502,7 +533,7 @@ values.
 { const char* p=input.point@[()@]-1; // start of token
   do
     c=input.shift();
-  while(isdigit(c));
+  while(std::isdigit(c));
   input.unshift();
   const char* end=input.point();
   unsigned long val=*p++-'0'; @+  while (p<end) val=10*val+(*p++-'0');
@@ -560,18 +591,67 @@ included before) respectively appending output redirection.
          else
            code= (input.unshift(),c);
          // currently unused; might some day be factorial operator
-  break; case '~':
-         if (input.shift()=='[') // recognise combination for parse reason
-         { code = TLSUB; ++nesting; input.push_prompt('['); }
-         else
-           code= (input.unshift(),c);
+  break; case '~': @< Handle the |'~'| case, involving some look-ahead @>
   break; @/@< Cases of arithmetic operators, ending with |break| @>
          case '\n': state=ended; // and {\bf fall through}.
          default: code=c;
   }
 }
 
-@ Here are some cases split off to avoid the previous module getting too long.
+@ The tilde character was long unused, but was introduced in subscriptions and
+loops, where it can be places before certain punctuation tokens or the
+keywords \&{do} or \&{od} to indicate various kinds of reversals to be
+incorporated in the semantics of these expressions. While innocent looking,
+these syntactic extensions cause difficulties due to the limited one-token
+look-ahead the parser allows: in general it is clear what use of the tilde is
+intended by looking at the next token, but the parser needs to know this to
+know what is can allows for the \emph{preceding} expression, and cannot wait
+till seeing the next token. The basic problem involves the $a\,{\sim}[i]$
+syntax which could occur at the position of $j$ inside a $b[i:j{\sim}]$ slice;
+the presence of |'['| after the tilde influences the parsing rules for~$a$. We
+solve the dilemma by requiring |'~['| to appear as single unit (no space) and
+have the lexer transmit the combination as a single token |TLSUB| to the
+parser.
+
+Given that in these uses |'~'| is never followed by a token that could start a
+sub-formula , it seems reasonable to allow the character to, independently
+from these uses, also be used as operator symbol (where it always precedes a
+sub-formula; the only caveat to the user will be to separate by a space in
+case the operator should be applied to a list display). We can allow that, but
+unless the distinction between the two uses is made by the lexer, we again run
+into parsing problems, similar to the previous ones. So to find out whether
+this is a use of tilde as special symbol rather than as operator, we need to
+look at the next token from within the lexer, and see it if is one of |':'|,
+|']'|, or the keywords \&{do} or \&{od}. But we need to do that within the
+lexer, which can be done even though it is quite ugly. We use the fact that
+the input buffer allows us get a pointer~|p| to the next characters to be
+read, so we just test the various possibilities manually. The keyword cases
+are the hardest (we don't want to call |get_token| recursively to scan them,
+especially since we cannot contribute the token yet), but fortunately the
+keywords in question are not very long.
+
+@< Handle the |'~'| case, involving some look-ahead @>=
+if (input.shift()=='[') // recognise combination for parse reason
+{@; code = TLSUB; ++nesting; input.push_prompt('['); }
+else
+ // now see if, skipping spaces and comments, next can follow |'~'|
+{ input.unshift(); skip_space();
+   // for these cases we do allow intervening space, comments
+  const char* p = input.point();
+   // take a peek into the input buffer without advancing
+  if (*p==':' or *p==']' or
+ @|  (*p=='d' and p[1]=='o' or *p=='o' and p[1]=='d')
+   and @| not (p[2]=='_' or std::isalnum((unsigned char)p[2])))
+  @/ code=c; // return |'~'|
+  else
+  { code = OPERATOR;
+    valp->oper.id = id_table.match_literal("~");
+    valp->oper.priority = 8; // same precedence as \.{\#}
+  }
+}
+
+@ Here are some cases split off to avoid the module with the |switch| on |c|
+getting too long.
 
 @< Cases of arithmetic operators... @>=
     case '+': prevent_termination=code=c;
@@ -643,10 +723,10 @@ string.
 if ((skip_space(),c=input.shift())=='"')
   file_name=scan_quoted_string();
 else
-@/{@; file_name="";
-    while (!std::isspace(c))
-    {@; file_name.push_back(c); c=input.shift(); }
-    input.unshift();
+{ file_name="";
+  while (!std::isspace(c))
+  {@; file_name.push_back(c); c=input.shift(); }
+  input.unshift();
 }
 
 @* Index.
