@@ -706,7 +706,7 @@ void global_set_identifier(id_pat pat, expr_p raw, int overload)
 @)
     phase=1;
     layer b(n_id);
-    thread_bindings(pat,t,b); // match identifiers and their future types
+    thread_bindings(pat,t,b,false); // match identifiers and their future types
 
     std::vector<shared_value> v;
     v.reserve(n_id);

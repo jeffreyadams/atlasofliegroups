@@ -205,24 +205,27 @@ public:
   static list lexical_context; // the unique |layer::list| in existence
 private:
   vec variable;
+  BitMap constness;
 public:
   layer(const layer&) = @[delete@]; // no ordinary copy constructor
   layer& operator= (const layer&) = @[delete@]; // nor assignment operator
-  layer(size_t n) : variable()
+  layer(size_t n) : variable(), constness(n)
   @+{@; variable.reserve(n); lexical_context.push_front(this); }
   ~layer () @+{@; lexical_context.pop_front(); }
 @)
-  void add(id_type id,type_expr&& t);
+  void add(id_type id,type_expr&& t, bool is_const);
   static const_type_p lookup
-    (id_type id, size_t& depth, size_t& offset);
+    (id_type id, size_t& depth, size_t& offset, bool& is_const);
   static void specialise (size_t depth, size_t offset,const type_expr& t);
 @)
   std::pair<id_type,type_expr>& operator[] (size_t i)
   @+{@; return variable[i]; }
   vec::iterator begin() @+{@; return variable.begin(); }
   vec::iterator end() @+{@; return variable.end(); }
-  vec::const_iterator cbegin() @+{@; return variable.begin(); }
-  vec::const_iterator cend() @+{@; return variable.end(); }
+  vec::const_iterator cbegin() const @+{@; return variable.begin(); }
+  vec::const_iterator cend() const @+{@; return variable.end(); }
+  bool is_const (vec::const_iterator it) const
+  @+{@; return constness.isMember(it-cbegin()); }
 };
 
 
@@ -231,7 +234,7 @@ into the |layer| object. This is also a good place to check for the presence
 of identical identifiers.
 
 @< Function def... @>=
-void layer::add(id_type id,type_expr&& t)
+void layer::add(id_type id,type_expr&& t,bool is_const)
 { for (auto it=variable.begin(); it!=variable.end(); ++it)
   // traverse |variable| vector
     if (it->first==id)
@@ -239,6 +242,7 @@ void layer::add(id_type id,type_expr&& t)
        (std::string("Multiple binding of '")
                     +main_hash_table->name_of(id)
                     +"' in same scope");
+  constness.set_to(variable.size(),is_const);
   variable.emplace_back( id, std::move(t) );
 }
 
@@ -270,7 +274,7 @@ fact |specialise| can as well because pointers insulate const-ness.
 
 @< Function def... @>=
 const_type_p layer::lookup
-  (id_type id, size_t& depth, size_t& offset)
+  (id_type id, size_t& depth, size_t& offset, bool& is_const)
 { size_t i=0;
   for (auto range=lexical_context.cbegin(); not lexical_context.at_end(range);
        ++range,++i)
@@ -278,6 +282,7 @@ const_type_p layer::lookup
       if (it->first==id)
       {@; depth=i;
         offset=it-(*range)->begin();
+        is_const = (*range)->is_const(it);
         return &it->second;
       }
   return nullptr;
@@ -772,7 +777,7 @@ shared_context frame::current; // points to topmost current frame
 
 @ We derive the class of local identifiers from that of global ones, which
 takes care of its |print| method. The data stored are |depth| identifying a
-layer, and |offset| locating the proper values withing the layer.
+layer, and |offset| locating the proper values within the layer.
 
 @< Type definitions @>=
 class local_identifier : public identifier
@@ -816,8 +821,8 @@ can manage to exploit this to get false type predictions.
 @< Cases for type-checking and converting... @>=
 case applied_identifier:
 { const id_type id=e.identifier_variant;
-  const_type_p id_t; size_t i,j;
-  const bool is_local=(id_t=layer::lookup(id,i,j))!=nullptr;
+  const_type_p id_t; size_t i,j; bool is_const;
+  const bool is_local=(id_t=layer::lookup(id,i,j,is_const))!=nullptr;
   if (not is_local and (id_t=global_id_table->type_of(id))==nullptr)
   {
     std::ostringstream o;
@@ -1118,8 +1123,8 @@ in the overload table.
 
 @< Convert and |return| an overloaded function call... @>=
 { const id_type id =e.call_variant->fun.identifier_variant;
-  size_t i,j; // dummies; local binding not used here
-  if (layer::lookup(id,i,j)==nullptr) // not calling by local identifier
+  size_t i,j; bool b; // dummies; local binding not used here
+  if (layer::lookup(id,i,j,b)==nullptr) // not calling by local identifier
   { const overload_table::variant_list& variants
       = global_overload_table->variants(id);
     if (variants.size()>0 or is_special_operator(id))
@@ -1691,7 +1696,9 @@ similar structure.
 type_expr pattern_type(const id_pat& pat);
 size_t count_identifiers(const id_pat& pat);
 void list_identifiers(const id_pat& pat, std::vector<id_type>& d);
-void thread_bindings(const id_pat& pat,const type_expr& type, layer& dst);
+void thread_bindings(const id_pat& pat,const type_expr& type, layer& dst,
+  bool is_const
+);
 void thread_components
   (const id_pat& pat,const shared_value& val,
    std::back_insert_iterator<std::vector<shared_value> > dst);
@@ -1743,14 +1750,14 @@ pushing pairs onto a |layer|.
 
 @< Function definitions @>=
 void thread_bindings
-(const id_pat& pat,const type_expr& type, layer& dst)
-{ if ((pat.kind & 0x1)!=0) dst.add(pat.name,type.copy());
+(const id_pat& pat,const type_expr& type, layer& dst, bool is_const)
+{ if ((pat.kind & 0x1)!=0) dst.add(pat.name,type.copy(),is_const);
   if ((pat.kind & 0x2)!=0)
   { assert(type.kind==tuple_type);
     type_list::const_iterator t_it = type.tupple.begin();
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
-      thread_bindings(*p_it,*t_it,dst);
+      thread_bindings(*p_it,*t_it,dst,is_const);
   }
 }
 
@@ -1793,7 +1800,7 @@ case let_expr:
   type_expr decl_type=pattern_type(pat);
   expression_ptr arg = convert_expr(lexp->val,decl_type);
 @/layer new_layer(count_identifiers(pat));
-  thread_bindings(pat,decl_type,new_layer);
+  thread_bindings(pat,decl_type,new_layer,false);
   return expression_ptr(new @|
     let_expression(pat,std::move(arg),convert_expr(lexp->body,type)));
 }
@@ -1957,7 +1964,7 @@ case lambda_expr:
   if (not arg_type.specialise(pattern_type(pat)))
     throw expr_error(e,"Function argument pattern does not match its type");
 @/layer new_layer(count_identifiers(pat));
-  thread_bindings(pat,arg_type,new_layer);
+  thread_bindings(pat,arg_type,new_layer,false);
   if (type!=void_type)
   { if (not (type.specialise(gen_func_type)
              and type.func->arg_type.specialise(arg_type)))
@@ -3411,7 +3418,7 @@ component type resulting from such a subscription.
   type_expr it_type(std::move(it_comps));
   if (not pt.specialise(it_type))
     throw expr_error(e,"Improper structure of loop variable pattern");
-  thread_bindings(f->id,it_type,bind);
+  thread_bindings(f->id,it_type,bind,true);
 }
 
 @ Now follows the code that actually implements various kinds of loops. It is
@@ -3686,7 +3693,7 @@ case cfor_expr:
     ? expression_ptr(new denotation(zero))
     : convert_expr(c->bound,as_lvalue(int_type.copy())) ;
 @)
-  layer bind(1); bind.add(c->id,int_type.copy());
+  layer bind(1); bind.add(c->id,int_type.copy(),true); // add |id| as constant
   type_expr body_type;
   type_expr *btp=&body_type; // point to place to record body type
   const conversion_record* conv=nullptr;
@@ -3979,12 +3986,26 @@ assumed by the variable is recorded.
 case ass_stat:
 {
   id_type lhs=e.assign_variant->lhs;
-  const_type_p id_t; size_t i,j;
-  const bool is_local = (id_t=layer::lookup(lhs,i,j))!=nullptr;
+  const_type_p id_t; size_t i,j; bool is_const;
+  const bool is_local = (id_t=layer::lookup(lhs,i,j,is_const))!=nullptr;
   if (not is_local and (id_t=global_id_table->type_of(lhs))==nullptr)
-    throw program_error @| (std::string("Undefined identifier in assignment: ")
-          +main_hash_table->name_of(lhs));
-@.Undefined identifier in assignment@>
+  { std::ostringstream o;
+    o << "Undefined identifier '" << main_hash_table->name_of(lhs)
+      << "' in assignment " << e;
+    if (e.loc.file!=Hash_table::empty)
+      o << ' ' << e.loc;
+    throw program_error (o.str());
+   }
+@.Undefined identifier@>
+  if (is_local and is_const)
+  { std::ostringstream o;
+    o << "Name '" << main_hash_table->name_of(lhs)
+      << "' is constant in assignment " << e;
+    if (e.loc.file!=Hash_table::empty)
+      o << ' ' << e.loc;
+    throw program_error (o.str());
+  }
+@.Name is constant @>
 @)type_expr rhs_type = id_t->copy(); // provide a modifiable copy
   expression_ptr r(convert_expr(e.assign_variant->rhs,rhs_type));
   if (rhs_type!=*id_t)
@@ -4249,13 +4270,26 @@ case comp_ass_stat:
 { id_type aggr=e.comp_assign_variant->aggr;
   const expr& index=e.comp_assign_variant->index;
   const expr& rhs=e.comp_assign_variant->rhs;
-@/const_type_p aggr_t; size_t d,o;
-  bool is_local = (aggr_t=layer::lookup(aggr,d,o))!=nullptr;
+@/const_type_p aggr_t; size_t d,o; bool is_const;
+  bool is_local = (aggr_t=layer::lookup(aggr,d,o,is_const))!=nullptr;
   if (not is_local and (aggr_t=global_id_table->type_of(aggr))==nullptr)
-    throw program_error @|
-    (std::string("Undefined identifier in component assignment: ")
-     +main_hash_table->name_of(aggr));
-@.Undefined identifier in assignment@>
+  { std::ostringstream o;
+    o << "Undefined identifier '" << main_hash_table->name_of(aggr)
+      << "' in assignment " << e;
+    if (e.loc.file!=Hash_table::empty)
+      o << ' ' << e.loc;
+    throw program_error (o.str());
+   }
+@.Undefined identifier@>
+  if (is_local and is_const)
+  { std::ostringstream o;
+    o << "Name '" << main_hash_table->name_of(aggr)
+      << "' is constant in assignment " << e;
+    if (e.loc.file!=Hash_table::empty)
+      o << ' ' << e.loc;
+    throw program_error (o.str());
+  }
+@.Name is constant @>
 @)
   type_expr ind_t;
   expression_ptr i = convert_expr(index,ind_t);
