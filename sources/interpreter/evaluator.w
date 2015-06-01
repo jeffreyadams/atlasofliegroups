@@ -4099,6 +4099,7 @@ address of the aggregate to be modified and the type of component assignment
 to apply.
 
 @< Type definitions @>=
+template <bool reversed>
 struct component_assignment : public assignment_expr
 { expression_ptr index;
 @)
@@ -4114,31 +4115,37 @@ struct component_assignment : public assignment_expr
 
 @ Printing reassembles the subexpressions according to the input syntax.
 @< Function def...@>=
-void component_assignment::print(std::ostream& out) const
-{@; out << main_hash_table->name_of(lhs) << '[' << *index << "]:=" << *rhs; }
+template <bool reversed>
+void component_assignment<reversed>::print(std::ostream& out) const
+{@; out << main_hash_table->name_of(lhs) << (reversed ? "~[" : "[")
+        << *index << "]:=" << *rhs;
+}
 
 @ For global assignments, we need to have non-|const| access the location
 where the identifier is stored.
 
 @< Type definitions @>=
-class global_component_assignment : public component_assignment
-{ subscr_base::sub_type kind;
+template <bool reversed>
+class global_component_assignment : public component_assignment<reversed>
+{ typedef component_assignment<reversed> base;
+@)
+  subscr_base::sub_type kind;
   shared_share address;
 public:
   global_component_assignment
     (id_type a,expression_ptr&& i,expression_ptr&& r,
      subscr_base::sub_type k);
-  virtual void evaluate(level l) const;
+  virtual void evaluate(expression_base::level l) const;
 };
 
 @ The constructor for |global_component_assignment| stores the address of the
 aggregate object and the component kind.
 
 @< Function def... @>=
-global_component_assignment::global_component_assignment @|
-  (id_type a,expression_ptr&& i,expression_ptr&& r,
-   subscr_base::sub_type k)
-: component_assignment(a,std::move(i),std::move(r))
+template <bool reversed>
+global_component_assignment<reversed>::global_component_assignment @|
+  (id_type a,expression_ptr&& i,expression_ptr&& r, subscr_base::sub_type k)
+: base(a,std::move(i),std::move(r))
 , kind(k),address(global_id_table->address_of(a)) @+{}
 
 @ It is in evaluation that component assignments differ most from ordinary
@@ -4149,14 +4156,16 @@ fetching the value of a global variable, we must be aware of a possible
 undefined value in the variable.
 
 @< Function def... @>=
-void global_component_assignment::evaluate(level l) const
+template <bool reversed>
+void global_component_assignment<reversed>::evaluate(expression_base::level l)
+  const
 { if (address->get()==nullptr)
   { std::ostringstream o;
     o << "Assigning to component of uninitialized variable "
-      << main_hash_table->name_of(lhs);
+      << main_hash_table->name_of(this->lhs);
     throw std::runtime_error(o.str());
   }
-  assign(l,*address,kind);
+  base::assign(l,*address,kind);
 }
 
 @ The |assign| method, which will also be called for local component
@@ -4171,7 +4180,8 @@ Assignments to components of rational vectors and of strings will be
 forbidden, see module @#comp_ass_type_check@>.
 
 @< Function def... @>=
-void component_assignment::assign
+template <bool reversed>
+void component_assignment<reversed>::assign
   (level l,shared_value& aggregate, subscr_base::sub_type kind) const
 { rhs->eval();
   value loc=uniquify(aggregate);
@@ -4204,10 +4214,12 @@ the component assignment, possibly expanding a tuple in the process.
 @< Replace component at |index| in row |loc|... @>=
 { unsigned int i=(index->eval(),get<int_value>()->val);
   std::vector<shared_value>& a=force<row_value>(loc)->val;
-  if (i>=a.size())
+  size_t n=a.size();
+  if (i>=n)
     throw std::runtime_error(range_mess(i,a.size(),this));
-  a[i] = pop_value(); // assign non-expanded value
-  push_expanded(l,a[i]); // return value may need expansion, or be omitted
+  auto& ai = a[reversed ? n-1-i : i];
+  ai = pop_value(); // assign non-expanded value
+  push_expanded(l,ai); // return value may need expansion, or be omitted
 }
 
 @ For |vec_value| entry assignments the type of the aggregate object is
@@ -4218,15 +4230,16 @@ the component assignment expression is not used.
 @< Replace entry at |index| in vector |loc|... @>=
 { unsigned int i=(index->eval(),get<int_value>()->val);
   std::vector<int>& v=force<vector_value>(loc)->val;
-  if (i>=v.size())
+  size_t n=v.size();
+  if (i>=n)
     throw std::runtime_error(range_mess(i,v.size(),this));
-  v[i]= force<int_value>(execution_stack.back().get())->val;
+  v[reversed ? n-1-i : i]= force<int_value>(execution_stack.back().get())->val;
     // assign |int| from un-popped top
   if (l==no_value)
     execution_stack.pop_back(); // pop it anyway if result not needed
 }
 
-@ For |mat_value| entry assignments at |index| must be split into a pair of
+@ For matrix entry assignments at |index| must be split into a pair of
 indices, and there are two bound checks.
 
 @< Replace entry at |index| in matrix |loc|... @>=
@@ -4235,31 +4248,35 @@ indices, and there are two bound checks.
   unsigned int i=get<int_value>()->val;
 @/
   int_Matrix& m=force<matrix_value>(loc)->val;
-  if (i>=m.numRows())
+  size_t k=m.numRows(),l=m.numColumns();
+  if (i>=k)
     throw std::runtime_error(range_mess(i,m.numRows(),this));
-  if (j>=m.numColumns())
+  if (j>=l)
     throw std::runtime_error(range_mess(j,m.numColumns(),this));
-  m(i,j)= force<int_value>(execution_stack.back().get())->val;
+  m(reversed ? k-1-i : i,reversed ? l-1-j : j)=
+    force<int_value>(execution_stack.back().get())->val;
     // assign |int| from un-popped top
   if (l==no_value)
     execution_stack.pop_back(); // pop it anyway if result not needed
 }
 
-@ A |matrix_value| column assignment is like that of a vector entry, but we
-add a test for matching column length.
+@ A matrix column assignment is like that of a vector entry, but with a test
+for matching column length.
 
 @< Replace column at |index| in matrix |loc|... @>=
 { unsigned int j=(index->eval(),get<int_value>()->val);
   int_Matrix& m=force<matrix_value>(loc)->val;
 @/const int_Vector& v=force<vector_value>(execution_stack.back().get())->val;
     // don't pop
-  if (j>=m.numColumns())
+  size_t l=m.numColumns();
+  if (j>=l)
     throw std::runtime_error(range_mess(j,m.numColumns(),this));
   if (v.size()!=m.numRows())
     throw std::runtime_error
       (std::string("Cannot replace column of size ")+str(m.numRows())+
        " by one of size "+str(v.size()));
-  m.set_column(j,v); // copy value of |int_Vector| into the matrix
+  m.set_column(reversed ? l-j-1 : j,v);
+    // copy value of |int_Vector| into the matrix
   if (l==no_value)
     execution_stack.pop_back(); // pop the vector if result not needed
 }
@@ -4269,32 +4286,37 @@ identifier is stored, which as before is done by storing coordinates of the
 identifier in the execution context.
 
 @< Type definitions @>=
-class local_component_assignment : public component_assignment
-{ subscr_base::sub_type kind;
+template <bool reversed>
+class local_component_assignment : public component_assignment<reversed>
+{ typedef component_assignment<reversed> base;
+@)
+  subscr_base::sub_type kind;
   size_t depth, offset;
 public:
   local_component_assignment @|
    (id_type l, expression_ptr&& i,size_t d, size_t o,
     expression_ptr&& r, subscr_base::sub_type k);
-  virtual void evaluate(level l) const;
+  virtual void evaluate(expression_base::level l) const;
 };
 
 @ The constructor for |local_component_assignment| is straightforward, in
 spite of the number of arguments.
 
 @< Function def... @>=
-local_component_assignment::local_component_assignment
+template <bool reversed>
+local_component_assignment<reversed>::local_component_assignment
  (id_type l, expression_ptr&& i,size_t d, size_t o, expression_ptr&& r,
   subscr_base::sub_type k)
-: component_assignment(l,std::move(i),std::move(r))
-, kind(k), depth(d), offset(o) @+{}
+: base(l,std::move(i),std::move(r)), kind(k), depth(d), offset(o) @+{}
 
 @ The |evaluate| method locates the |shared_value| pointer of the aggregate,
 calls |assign| to do the work.
 
 @< Function def... @>=
-void local_component_assignment::evaluate(level l) const
-{@; assign(l,frame::current->elem(depth,offset),kind); }
+template <bool reversed>
+void local_component_assignment<reversed>::evaluate(expression_base::level l)
+  const
+{@; base::assign (l,frame::current->elem(depth,offset),kind); }
 
 @ Type-checking and converting component assignment statements follows the
 same lines as that of ordinary assignment statements, but must also
@@ -4351,14 +4373,22 @@ case comp_ass_stat:
   expression_ptr r = convert_expr(rhs,comp_t);
   if (aggr_t->kind==row_type)
     aggr_t->component_type->specialise(comp_t); // record type
+  expression_ptr p;
   if (is_local)
-    return conform_types(comp_t,type,expression_ptr(new @|
-      local_component_assignment(aggr,std::move(i),d,o,std::move(r),kind))
-    ,e);
+    if (e.comp_assign_variant->reversed)
+      p.reset(new local_component_assignment<true>
+        (aggr,std::move(i),d,o,std::move(r),kind));
+    else
+      p.reset(new local_component_assignment<false>
+        (aggr,std::move(i),d,o,std::move(r),kind));
   else
-    return conform_types(comp_t,type,expression_ptr(new @|
-      global_component_assignment(aggr,std::move(i),std::move(r),kind))
-    ,e);
+    if (e.comp_assign_variant->reversed)
+      p.reset(new global_component_assignment<true>
+        (aggr,std::move(i),std::move(r),kind));
+    else
+      p.reset(new global_component_assignment<false>
+        (aggr,std::move(i),std::move(r),kind));
+  return conform_types(comp_t,type,std::move(p),e);
 }
 
 @* Index.

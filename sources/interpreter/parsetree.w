@@ -2210,12 +2210,14 @@ index.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct comp_assignment_node
-{ id_type aggr; expr index; expr rhs;
+{ id_type aggr; expr index; expr rhs; bool reversed;
 @)
-  comp_assignment_node(id_type aggr, expr&& index, expr&& rhs)
+  comp_assignment_node(id_type aggr, expr&& index, expr&& rhs, bool reversed)
 @/: aggr(std::move(aggr))
   , index(std::move(index))
-  , rhs(std::move(rhs))@+{}
+  , rhs(std::move(rhs))
+  , reversed(reversed)
+  @+{}
   // backward compatibility for gcc 4.6
 };
 
@@ -2251,11 +2253,13 @@ that |lhs| presents the necessary structure for this code to work.
 expr_p make_comp_ass(expr_p l, expr_p r, const YYLTYPE& loc)
 {
   expr_ptr ll(l), rr(r); expr& lhs=*ll; expr& rhs=*rr;
-  return new expr(comp_assignment(new @|
-  comp_assignment_node
-  { lhs.subscription_variant->array.identifier_variant
-  , std::move(lhs.subscription_variant->index)
+  subscription_node& s = *lhs.subscription_variant;
+  return new expr(comp_assignment(new
+  comp_assignment_node @|
+  { s.array.identifier_variant
+@|, std::move(s.index)
   , std::move(rhs)
+  , s.reversed
   }),loc);
 }
 
@@ -2278,7 +2282,8 @@ break;
 @< Cases for printing... @>=
 case comp_ass_stat:
 {@; const comp_assignment& ass = e.comp_assign_variant;
-  out << main_hash_table->name_of(ass->aggr) << '[' << ass->index << "]:="
+  out << main_hash_table->name_of(ass->aggr)
+      << (ass->reversed ? "~[" : "[") << ass->index << "]:="
       << ass->rhs ;
 }
 break;
