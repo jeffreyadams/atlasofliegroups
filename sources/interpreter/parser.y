@@ -1,6 +1,6 @@
 %{
   /*
-   Copyright (C) 2006-2012 Marc van Leeuwen
+   Copyright (C) 2006-2015 Marc van Leeuwen
    This file is part of the Atlas of Lie Groups and Representations (the Atlas)
 
    This program is made available under the terms stated in the GNU
@@ -259,12 +259,12 @@ comprim: subscription | slice
 	| CASE expr IN commalist ESAC
 	  { $$=make_int_case_node($2,reverse_expr_list($4),@$); }
 	| WHILE expr DO expr OD { $$=make_while_node($2,$4,@$); }
-	| FOR pattern IN expr tilde_opt DO expr tilde_opt OD
+	| FOR pattern_opt IN expr tilde_opt DO expr tilde_opt OD
 	  { struct raw_id_pat p,x; p.kind=0x2; x.kind=0x0;
 	    p.sublist=make_pattern_node(make_pattern_node(nullptr,$2),x);
 	    $$=make_for_node(p,$4,$7,$5+2*$8,@$);
 	  }
-	| FOR pattern '@' IDENT IN expr tilde_opt DO expr tilde_opt OD
+	| FOR pattern_opt '@' IDENT IN expr tilde_opt DO expr tilde_opt OD
 	  { struct raw_id_pat p,i; p.kind=0x2; i.kind=0x1; i.name=$4;
 	    p.sublist=make_pattern_node(make_pattern_node(nullptr,$2),i);
 	    $$=make_for_node(p,$6,$9,$7+2*$10,@$);
@@ -274,6 +274,11 @@ comprim: subscription | slice
                              ,$7,$5+2*$8,@$); }
 	| FOR IDENT ':' expr FROM expr tilde_opt DO expr tilde_opt OD
 	  { $$=make_cfor_node($2,$4,$6,$9,$7+2*$10,@$); }
+	| FOR ':' expr DO expr tilde_opt OD
+	  { $$=make_cfor_node(-1,$3,wrap_tuple_display(nullptr,@$)
+                             ,$5,2*$6+4,@$); }
+	| FOR ':' expr FROM expr DO expr tilde_opt OD
+	  { $$=make_cfor_node(-1,$3,$5,$7,2*$8+4,@$); }
 	| FOR IDENT ':' expr DOWNTO expr DO expr OD
 	  { $$=make_cfor_node($2,$4,$6,$8,1,@$); }
 	| '(' expr ')'	       { $$=$2; }
@@ -342,9 +347,12 @@ iftail	: expr THEN expr ELSE expr FI { $$=make_conditional_node($1,$3,$5,@$); }
 ;
 
 pattern : IDENT		    { $$.kind=0x1; $$.name=$1; }
+	| '!' IDENT         { $$.kind=0x5; $$.name=$2; } // IDENT declared const
 	| '(' pat_list ')'  { $$.kind=0x2; $$.sublist=reverse_patlist($2); }
 	| '(' pat_list ')' ':' IDENT
 	    { $$.kind=0x3; $$.name=$5; $$.sublist=reverse_patlist($2);}
+	| '(' pat_list ')' ':' '!' IDENT
+	    { $$.kind=0x7; $$.name=$6; $$.sublist=reverse_patlist($2);}
 	| '(' ')' { $$.kind=0x2; $$.sublist=0; } /* allow throw-away value */
 ;
 

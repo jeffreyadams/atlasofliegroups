@@ -1,4 +1,4 @@
-% Copyright (C) 2006-2012 Marc van Leeuwen
+% Copyright (C) 2006-2015 Marc van Leeuwen
 % This file is part of the Atlas of Lie Groups and Representations (the Atlas)
 
 % This program is made available under the terms stated in the GNU
@@ -1519,8 +1519,8 @@ used than via a dedicated global variable.
 void print_wrapper(expression_base::level l)
 {
   *output_stream << *execution_stack.back() << std::endl;
-  if (l!=expression_base::single_value)
-    push_expanded(l,pop_value()); // remove and possibly expand value
+  if (l!=expression_base::single_value) // in |single_value| case we are done
+    push_expanded(l,pop_value()); // otherwise remove and possibly expand value
 }
 
 @ Sometimes the user may want to use a stripped version of the |print| output:
@@ -1638,7 +1638,8 @@ be weird if the expression were printed in an error message), so instead doing
 a deep copy is a cleaner solution, and patterns are rarely very deep. The
 function |copy_id_pat| accomplishes making the copy. The implicit recursion of
 |copy_id_pat| is achieved by passing itself as final argument to
-|std::transform|; recursion terminates when |sublist.empty()| holds.
+|std::transform|; recursion terminates when |sublist.empty()| holds. This is
+certainly a relative high on the coolness scale in implicit \Cpp\ programming.
 
 @h <algorithm>
 @< Local function def... @>=
@@ -1708,7 +1709,7 @@ corresponding type pattern; for instance $(x,,(f,):z)$:\\{whole} requires the
 type \.{(*,*,(*,*))}. These recursive functions construct such types.
 
 @< Function definitions @>=
-type_list pattern_list(const patlist& p)
+type_list pattern_list_types(const patlist& p)
 { dressed_type_list result;
   for (auto it = p.begin(); not p.at_end(it); ++it)
     result.push_back(pattern_type(*it));
@@ -1718,7 +1719,7 @@ type_list pattern_list(const patlist& p)
 type_expr pattern_type(const id_pat& pat)
 {@; return (pat.kind&0x2)==0
   ? unknown_type.copy()
-  : type_expr(pattern_list(pat.sublist));
+  : type_expr(pattern_list_types(pat.sublist));
 }
 
 @ Here we count the number or list the identifiers in a pattern. The latter
@@ -1746,12 +1747,15 @@ void list_identifiers(const id_pat& pat, std::vector<id_type>& d)
 }
 
 @ Here we do a similar traversal, using a type of the proper structure,
-pushing pairs onto a |layer|.
+pushing pairs onto a |layer|. The final argument |is_const| forces constness
+of all identifier bindings if set; otherwise the constness bit in |pat.kind|
+determines that of |pat.name|.
 
 @< Function definitions @>=
 void thread_bindings
 (const id_pat& pat,const type_expr& type, layer& dst, bool is_const)
-{ if ((pat.kind & 0x1)!=0) dst.add(pat.name,type.copy(),is_const);
+{ if ((pat.kind & 0x1)!=0)
+    dst.add(pat.name,type.copy(),is_const or (pat.kind & 0x4)!=0);
   if ((pat.kind & 0x2)!=0)
   { assert(type.kind==tuple_type);
     type_list::const_iterator t_it = type.tupple.begin();
@@ -1761,7 +1765,7 @@ void thread_bindings
   }
 }
 
-@ Finally, at runtime we shall perform a similar manipulation with an
+@ Finally, we shall perform a similar manipulation at runtime with an
 appropriate |shared_value|. This time we do use an output iterator. It happens
 that |*dst++ = val| below could be written simply |dst=val|, as the so omitted
 operators just return their arguments; however the given expression is more in
@@ -1777,9 +1781,9 @@ void thread_components
   if ((pat.kind & 0x2)!=0)
   { const tuple_value* t=force<tuple_value>(val.get());
     assert(t->val.size()==length(pat.sublist));
-    size_t i=0;
-    for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it,++i)
-      thread_components(*it,t->val[i],dst);
+    auto src = t->val.begin();
+    for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it,++src)
+      thread_components(*it,*src,dst);
   }
 }
 
@@ -1789,9 +1793,6 @@ bindings for those identifiers with the type found, and finally convert the
 body to the required type in the extended context. Note that the constructed
 |layer| is a local variable whose constructor pushes it onto the
 |layer::lexical_context| list, and whose destructor will pop it off.
-The |expression| obtained from converting the body is first turned into a
-|lambda_expression|, and then an application of that expression to the
-argument is produced and returned.
 
 @< Cases for type-checking and converting... @>=
 case let_expr:
@@ -1923,7 +1924,9 @@ checker).
 @< Function definitions @>=
 std::ostream& operator<<(std::ostream& out, const lambda_struct& l)
 { if ((l.param.kind&0x1)!=0)
-    out << '(' << l.param << ')';
+    if ((l.param.kind&0x4)!=0)
+      out << "(!" << l.param << ')';
+    else out << '(' << l.param << ')';
   else if ((l.param.kind&0x2)!=0 and not l.param.sublist.empty())
     out << l.param;
   else out << '@@';
@@ -2515,9 +2518,9 @@ void matrix_subscription<reversed>::print(std::ostream& out) const
 }
 @)
 void slice_base::print(std::ostream& out, unsigned flags) const
-{  out << *array << ((flags&1)==0 ? "[" : "~[")
-@|     << *lower << ((flags&2)==0 ? ":" : "~:")
-@|     << *upper << ((flags&4)==0 ? "]" : "~]");
+{  out << *array << ((flags&0x1)==0 ? "[" : "~[")
+@|     << *lower << ((flags&0x2)==0 ? ":" : "~:")
+@|     << *upper << ((flags&0x4)==0 ? "]" : "~]");
 }
 
 @ It shall be useful to have a function recognising valid aggregate-index
@@ -2869,15 +2872,15 @@ void row_slice<flags>::evaluate(level l) const
   shared_row arr=(array->eval(),get<row_value>());
   const auto& r = arr->val;
   int n = r.size();
-  if ((flags&2)!=0)
+  if ((flags&0x2)!=0)
     lwb = n - lwb;
-  if ((flags&4)!=0)
+  if ((flags&0x4)!=0)
     upb = n - upb;
   if (lwb<0 or upb>n)
     slice_range_error(lwb,upb,n,flags,this);
   if (lwb>=upb)
   {@; push_value(std::make_shared<row_value>(0)); return; }
-  push_value( (flags&1)==0
+  push_value( (flags&0x1)==0
 @|  ? std::make_shared<row_value>(r.begin()+lwb,r.begin()+upb)
 @|  : std::make_shared<row_value>(r.rbegin()+lwb,r.rbegin()+upb)
     );
@@ -2893,15 +2896,15 @@ void vector_slice<flags>::evaluate(level l) const
   shared_vector arr=(array->eval(),get<vector_value>());
   const auto& r = arr->val;
   int n = r.size();
-  if ((flags&2)!=0)
+  if ((flags&0x2)!=0)
     lwb = n - lwb;
-  if ((flags&4)!=0)
+  if ((flags&0x4)!=0)
     upb = n - upb;
   if (lwb<0 or upb>n)
     slice_range_error(lwb,upb,n,flags,this);
   if (lwb>=upb)
   {@; push_value(std::make_shared<vector_value>(int_Vector(0))); return; }
-  push_value( (flags&1)==0
+  push_value( (flags&0x1)==0
 @|  ? std::make_shared<vector_value>(r.begin()+lwb,r.begin()+upb)
 @|  : std::make_shared<vector_value>(r.rbegin()+lwb,r.rbegin()+upb)
     );
@@ -2920,9 +2923,9 @@ void ratvec_slice<flags>::evaluate(level l) const
   shared_rational_vector arr=(array->eval(),get<rational_vector_value>());
   const auto& r = arr->val.numerator();
   int n = r.size();
-  if ((flags&2)!=0)
+  if ((flags&0x2)!=0)
     lwb = n - lwb;
-  if ((flags&4)!=0)
+  if ((flags&0x4)!=0)
     upb = n - upb;
   if (lwb<0 or upb>n)
     slice_range_error(lwb,upb,n,flags,this);
@@ -2930,7 +2933,7 @@ void ratvec_slice<flags>::evaluate(level l) const
   {@; push_value(std::make_shared<rational_vector_value>(RatWeight(0)));
       return; }
   const int d=arr->val.denominator();
-  push_value( (flags&1)==0
+  push_value( (flags&0x1)==0
 @|  ? std::make_shared<rational_vector_value>(r.begin()+lwb,r.begin()+upb,d)
 @|  : std::make_shared<rational_vector_value>(r.rbegin()+lwb,r.rbegin()+upb,d)
     );
@@ -2947,16 +2950,16 @@ void string_slice<flags>::evaluate(level l) const
   shared_string arr=(array->eval(),get<string_value>());
   const auto& r = arr->val;
   int n = r.size();
-  if ((flags&2)!=0)
+  if ((flags&0x2)!=0)
     lwb = n - lwb;
-  if ((flags&4)!=0)
+  if ((flags&0x4)!=0)
     upb = n - upb;
   if (lwb<0 or upb>n)
     slice_range_error(lwb,upb,n,flags,this);
   if (lwb>=upb)
   {@; push_value(std::make_shared<string_value>(std::string())); return; }
   push_value
-    ((flags&1)==0
+    ((flags&0x1)==0
 @|  ? std::make_shared<string_value>(std::string(&r[lwb],&r[upb]))
 @|  : std::make_shared<string_value>(@|
        std::string(r.rbegin()+lwb,r.rbegin()+upb)));
@@ -3187,7 +3190,7 @@ void while_expression::evaluate(level l) const
 
 @*1 For loops.
 %
-Next we consider |for| loops over components of a value. They also have three
+Next we consider |for| loops over components of a value. They have three
 parts, an identifier pattern defining the loop variable(s), an in-part giving
 the object whose components are iterated over, and a body that may produce a
 new value for each component of the in-part. Due to the way |for_expressions|
@@ -3203,11 +3206,16 @@ and the head as second; this is adapted to the subsequent reversal that
 usually takes place when a pattern list is completed, but this reversal does
 not happen for the $2$-element list used for the patterns in for-loops.)
 
-Apart from iterating over any kind of row value, we allow iteration over
-vectors and matrices, non-row types which are indexable by integers (for now
-this means strings), and iteration over the terms of a parameter polynomial
+Apart from iterating over row value of any type, we allow iteration over
+vectors, rational vectors, strings, and matrix columns, the non-row types that
+are indexable by integers, and also over the terms of a parameter polynomial
 (representing isotypical components of a virtual module). The syntax of the
-for loop is the same for all these cases.
+for loop is the same for all these cases. However the constructed |expression|
+will be of a class templated on |kind| describing the kind of value iterated
+over, so that their |evaluate| methods will be specialised to that kind. We
+also template over the |flags| that indicate the reversal options (determined
+by by the precise syntax used), so that these get built into the evaluate
+method as well. Altogether we use $4\times6=24$ instances of |for_expression|.
 
 @< Type def... @>=
 struct for_base : public expression_base
@@ -3233,8 +3241,8 @@ struct for_expression : public for_base
 @< Function definitions @>=
 
 void for_base::print_body(std::ostream& out,unsigned flags) const
-{@; out << ((flags&1)!=0 ? "~" : "") << " do " << *body
-      << ((flags&2)!=0 ? "~" : "") << " do ";
+{@; out << ((flags&0x1)!=0 ? "~" : "") << " do " << *body
+      << ((flags&0x2)!=0 ? "~" : "") << " do ";
 }
 
 @ We could not inline the following constructor definition in the class
@@ -3418,7 +3426,7 @@ component type resulting from such a subscription.
   type_expr it_type(std::move(it_comps));
   if (not pt.specialise(it_type))
     throw expr_error(e,"Improper structure of loop variable pattern");
-  thread_bindings(f->id,it_type,bind,true);
+  thread_bindings(f->id,it_type,bind,true); // force all identifiers constant
 }
 
 @ Now follows the code that actually implements various kinds of loops. It is
@@ -3443,9 +3451,11 @@ pointer itself will not be copied to the context, which explains why this pair
 has to be allocated just once for all iterations of the loop. However, the
 shared pointers that might get copied to the frame must be different on each
 iteration, because the body might get hold, through a closure evaluated in the
-loop body, of a copy of those pointers; in this case it is undesirable
+loop body, of a copy of those pointers. In this case it is undesirable
 that the closure should get to ``see'' changing values of variables during
-subsequent iterations.
+subsequent iterations: in practice the closures would upon execution (after the
+loop has run) each just see the final value of the variables rather than that
+of the iteration in which the closure was formed.
 
 @< Function definitions @>=
 template <unsigned flags, subscr_base::sub_type kind>
@@ -3469,19 +3479,17 @@ possible by sharing a module between the various loop bodies.
 
 @< Evaluate the loop, dispatching the various possibilities for |kind|... @>=
 switch (kind)
-{ case subscr_base::matrix_entry:; // excluded in type analysis
-  case subscr_base::not_so: assert(false);
-@/break;
-  case subscr_base::row_entry:
+{
+case subscr_base::row_entry:
   { shared_row in_val = get<row_value>();
   @/size_t n=in_val->val.size();
-    size_t i= (flags&1)==0 ? 0 : n;
+    size_t i= (flags&0x1)==0 ? 0 : n;
     if (l!=no_value)
   @/{@; result = std::make_shared<row_value>(n);
-      dst = &result->val[(flags&2)==0 ? 0 : n];
+      dst = &result->val[(flags&0x2)==0 ? 0 : n];
     }
-    while (i!=((flags&1)==0 ? n : 0))
-    { loop_var->val[1]=in_val->val[(flags&1)==0 ? i : i-1];
+    while (i!=((flags&0x1)==0 ? n : 0))
+    { loop_var->val[1]=in_val->val[(flags&0x1)==0 ? i : i-1];
         // share the current row component
       @< Set |loop_var->val[0]| to |i++| or to |--i|, create a new |frame| for
       |pattern| binding |loop_var|, and evaluate the |loop_body| in it;
@@ -3489,99 +3497,101 @@ switch (kind)
     }
   }
   @+break;
-  case subscr_base::vector_entry:
+case subscr_base::vector_entry:
   { shared_vector in_val = get<vector_value>();
   @/size_t n=in_val->val.size();
-    size_t i= (flags&1)==0 ? 0 : n;
+    size_t i= (flags&0x1)==0 ? 0 : n;
     if (l!=no_value)
   @/{@; result = std::make_shared<row_value>(n);
-      dst = &result->val[(flags&2)==0 ? 0 : n];
+      dst = &result->val[(flags&0x2)==0 ? 0 : n];
     }
-    while (i!=((flags&1)==0 ? n : 0))
+    while (i!=((flags&0x1)==0 ? n : 0))
     { loop_var->val[1] = std::make_shared<int_value>
-        (in_val->val[(flags&1)==0 ? i : i-1]);
+        (in_val->val[(flags&0x1)==0 ? i : i-1]);
       @< Set |loop_var->val[0]| to... @>
     }
   }
   @+break;
-  case subscr_base::ratvec_entry:
+case subscr_base::ratvec_entry:
   { shared_rational_vector in_val = get<rational_vector_value>();
   @/size_t n=in_val->val.size();
-    size_t i= (flags&1)==0 ? 0 : n;
+    size_t i= (flags&0x1)==0 ? 0 : n;
     if (l!=no_value)
   @/{@; result = std::make_shared<row_value>(n);
-      dst = &result->val[(flags&2)==0 ? 0 : n];
+      dst = &result->val[(flags&0x2)==0 ? 0 : n];
     }
-    while (i!=((flags&1)==0 ? n : 0))
+    while (i!=((flags&0x1)==0 ? n : 0))
     { loop_var->val[1] = std::make_shared<rat_value> @|
       (Rational
-        (in_val->val.numerator()[(flags&1)==0 ? i : i-1]
+        (in_val->val.numerator()[(flags&0x1)==0 ? i : i-1]
         ,in_val->val.denominator()));
       @< Set |loop_var->val[0]| to... @>
     }
   }
   @+break;
-  case subscr_base::string_char:
+case subscr_base::string_char:
   { shared_string in_val = get<string_value>();
   @/size_t n=in_val->val.size();
-    size_t i= (flags&1)==0 ? 0 : n;
+    size_t i= (flags&0x1)==0 ? 0 : n;
     if (l!=no_value)
   @/{@; result = std::make_shared<row_value>(n);
-      dst = &result->val[(flags&2)==0 ? 0 : n];
+      dst = &result->val[(flags&0x2)==0 ? 0 : n];
     }
-    while (i!=((flags&1)==0 ? n : 0))
+    while (i!=((flags&0x1)==0 ? n : 0))
     { loop_var->val[1] = std::make_shared<string_value>
-            (in_val->val.substr((flags&1)==0 ? i : i-1,1));
-      @< Set |loop_var->val[0]| to... @>
-    }
-  }
-  break;
-  case subscr_base::matrix_column:
-  { shared_matrix in_val = get<matrix_value>();
-  @/size_t n=in_val->val.numColumns();
-    size_t i= (flags&1)==0 ? 0 : n;
-    if (l!=no_value)
-  @/{@; result = std::make_shared<row_value>(n);
-      dst = &result->val[(flags&2)==0 ? 0 : n];
-    }
-    while (i!=((flags&1)==0 ? n : 0))
-    { loop_var->val[1] = std::make_shared<vector_value>
-        (in_val->val.column((flags&1)==0 ? i : i-1));
+            (in_val->val.substr((flags&0x1)==0 ? i : i-1,1));
       @< Set |loop_var->val[0]| to... @>
     }
   }
   @+break;
-  case subscr_base::mod_poly_term:
+case subscr_base::matrix_column:
+  { shared_matrix in_val = get<matrix_value>();
+  @/size_t n=in_val->val.numColumns();
+    size_t i= (flags&0x1)==0 ? 0 : n;
+    if (l!=no_value)
+  @/{@; result = std::make_shared<row_value>(n);
+      dst = &result->val[(flags&0x2)==0 ? 0 : n];
+    }
+    while (i!=((flags&0x1)==0 ? n : 0))
+    { loop_var->val[1] = std::make_shared<vector_value>
+        (in_val->val.column((flags&0x1)==0 ? i : i-1));
+      @< Set |loop_var->val[0]| to... @>
+    }
+  }
+  @+break;
+case subscr_base::mod_poly_term:
   @< Perform a loop over the terms of a virtual module @>
   break;
-}
+case subscr_base::matrix_entry:; // excluded in type analysis
+case subscr_base::not_so: assert(false);
+  }
 
 
 @ We set the in-part component stored in |loop_var->val[1]| separately for the
 various values of |kind|, but |loop_var->val[0]| is always the (integral) loop
-index. Once initialised, |loop_var| is passed through the function
-|thread_components| to set up |loop_frame|, whose pointers are copied into a
-new |evaluation_context| that extends the initial |saved_context| to form the
-new execution context. Like for |loop_var->val[0]|, it is important that
-|frame::current| be set to point to a newly created node at each iteration,
-since any closure values in the loop body will incorporate its current
-instance; there would be no point in supplying fresh pointers in |loop_var| if
-they were subsequently copied to overwrite the pointers in the same |context|
+index. Once initialised, |loop_var| is passed by the method |frame::bind|
+through the function |thread_components| to set up |loop_frame|, whose
+constructor hash pushed it onto |frame::current| to form the new evaluation
+context. Like for |loop_var->val[0]|, it is important that |frame::current| be
+set to point to a newly created frame at each iteration, since any closure
+values in the loop body will incorporate its current instance by reference;
+there would be no point in supplying fresh pointers in |loop_var| if they were
+subsequently copied to overwrite the pointers in the same |evaluation_context|
 object each time. Once these things have been handled, the evaluation of the
 loop body is standard.
 
 @< Set |loop_var->val[0]| to... @>=
-{ loop_var->val[0] = std::make_shared<int_value>((flags&1)==0 ? i++ : --i);
+{ loop_var->val[0] = std::make_shared<int_value>((flags&0x1)==0 ? i++ : --i);
     // index; newly created each time
-  frame fr (pattern);
-  fr.bind(loop_var);
+  frame loop_frame (pattern);
+  loop_frame.bind(loop_var);
   if (l==no_value)
     body->void_eval();
   else
   {@; body->eval();
-     *((flags&2)==0 ? dst++ : --dst) = pop_value();
+     *((flags&0x2)==0 ? dst++ : --dst) = pop_value();
   }
-} // restore context upon destruction of |fr|
+} // restore context upon destruction of |loop_frame|
 
 @ The loop over terms of a virtual module is slightly different, and since it
 handles values defined in the modules \.{built-in-types.w} we shall include
@@ -3595,37 +3605,37 @@ which the user has no control) are meaningful to the user.
 @/size_t n=pol_val->val.size();
   if (l!=no_value)
 @/{@; result = std::make_shared<row_value>(n);
-    dst = &result->val[(flags&2)==0 ? 0 : n];
+    dst = &result->val[(flags&0x2)==0 ? 0 : n];
   }
-  if ((flags&1)==0)
+  if ((flags&0x1)==0)
     for (auto it=pol_val->val.cbegin(); it!=pol_val->val.cend(); ++it)
     { loop_var->val[0] =
         std::make_shared<module_parameter_value>(pol_val->rf,it->first);
       loop_var->val[1] = std::make_shared<split_int_value>(it->second);
-      frame fr(pattern);
-      fr.bind(loop_var);
+      frame loop_frame(pattern);
+      loop_frame.bind(loop_var);
       if (l==no_value)
         body->void_eval();
       else
       {@; body->eval();
-        *((flags&2)==0 ? dst++ : --dst) = pop_value();
+        *((flags&0x2)==0 ? dst++ : --dst) = pop_value();
       }
-    }
+    } // restore context upon destruction of |loop_frame|
   else
     for (auto it=pol_val->val.crbegin(); it!=pol_val->val.crend(); ++it)
     { loop_var->val[0] =
         std::make_shared<module_parameter_value>(pol_val->rf,it->first);
       loop_var->val[1] = std::make_shared<split_int_value>(it->second);
-      frame fr(pattern);
-      fr.bind(loop_var);
+      frame loop_frame(pattern);
+      loop_frame.bind(loop_var);
       if (l==no_value)
         body->void_eval();
       else
       {@; body->eval();
-        *((flags&2)==0 ? dst++ : --dst) = pop_value();
+        *((flags&0x2)==0 ? dst++ : --dst) = pop_value();
       }
-    }
-} // restore context upon destruction of |fr|
+    } // restore context upon destruction of |loop_frame|
+}
 
 @*1 Counted loops.
 %
@@ -3659,11 +3669,13 @@ void counted_for_expression<flags>::print(std::ostream& out) const
 }
 
 @ As in |make_slice| and |make_for_loop| above, we need to convert runtime
-values for |flags|.
+values for |flags|. This time there are $6$ template instances, since a loop
+index may be omitted (bit position $2$) but in that case it makes no sense to
+reverse the input sequence (and the syntax will not allow it).
 
 @< Local function definitions @>=
-expression make_counted_loop (unsigned flags,
- id_type id, @| expression_ptr&& count, expression_ptr&& bound, expression_ptr&& body)
+expression make_counted_loop (unsigned flags, id_type id, @|
+   expression_ptr&& count, expression_ptr&& bound, expression_ptr&& body)
 { switch(flags)
   {
   case 0: return new @| counted_for_expression<0>
@@ -3673,6 +3685,10 @@ expression make_counted_loop (unsigned flags,
   case 2: return new @| counted_for_expression<2>
     (id,std::move(count),std::move(bound),std::move(body));
   case 3: return new @| counted_for_expression<3>
+    (id,std::move(count),std::move(bound),std::move(body));
+   case 4: return new @| counted_for_expression<4>
+    (id,std::move(count),std::move(bound),std::move(body));
+  case 6: return new @| counted_for_expression<6>
     (id,std::move(count),std::move(bound),std::move(body));
   default: assert(false); return(nullptr);
   }
@@ -3693,7 +3709,6 @@ case cfor_expr:
     ? expression_ptr(new denotation(zero))
     : convert_expr(c->bound,as_lvalue(int_type.copy())) ;
 @)
-  layer bind(1); bind.add(c->id,int_type.copy(),true); // add |id| as constant
   type_expr body_type;
   type_expr *btp=&body_type; // point to place to record body type
   const conversion_record* conv=nullptr;
@@ -3703,13 +3718,25 @@ case cfor_expr:
     btp=type.component_type;
   else if ((conv=row_coercion(type,body_type))==nullptr)
     throw type_error(e,row_of_type.copy(),std::move(type));
-  expression_ptr body(convert_expr (c->body,*btp));
-@/expression_ptr loop(make_counted_loop(c->flags.to_ulong(), @|
+@)
+  if (c->flags[2]) // case of no loop variable; avoid introducing empty |layer|
+  { expression_ptr body(convert_expr (c->body,*btp));
+  @/expression_ptr loop(make_counted_loop(c->flags.to_ulong(), @|
       c->id,std::move(count_expr),std::move(bound_expr),std::move(body)));
   return type==void_type ? expression_ptr(new voiding(std::move(loop))) : @|
          conv!=nullptr ? expression_ptr(new conversion(*conv,std::move(loop)))
                        : @| std::move(loop);
-
+  }
+  else // case of a loop variable
+  { layer bind(1);
+    bind.add(c->id,int_type.copy(),true); // add |id| as constant
+    expression_ptr body(convert_expr (c->body,*btp));
+  @/expression_ptr loop(make_counted_loop(c->flags.to_ulong(), @|
+      c->id,std::move(count_expr),std::move(bound_expr),std::move(body)));
+    return type==void_type ? expression_ptr(new voiding(std::move(loop))) : @|
+         conv!=nullptr ? expression_ptr(new conversion(*conv,std::move(loop)))
+                       : @| std::move(loop);
+  }
 }
 
 @ Executing a loop is a simple variation of what we have seen before for
@@ -3722,27 +3749,44 @@ void counted_for_expression<flags>::evaluate(level l) const
   int c=(count->eval(),get<int_value>()->val);
   if (c<0)
     c=0; // no negative size result
-  if ((flags&1)==0)
+  if ((flags&0x1)==0)
     b+=c-1; // so that |b-c| will start at original |b|, and increase as |c--|
 
-  id_pat pattern(id,0x1,patlist(nullptr));
-  if (l==no_value)
-  { while (c-->0)
-  @/{@; frame fr(pattern);
-      fr.bind(std::make_shared<int_value>((flags&1)==0 ? b-c : b+c));
-      body->void_eval();
+  if ((flags&0x4)==0)
+  { id_pat pattern(id,0x1,patlist(nullptr));
+    if (l==no_value)
+    { while (c-->0)
+      { frame fr(pattern);
+        fr.bind(std::make_shared<int_value>((flags&0x1)==0 ? b-c : b+c));
+        body->void_eval();
+      }
+    }
+    else
+    { own_row result = std::make_shared<row_value>(c);
+      auto dst = &result->val[(flags&0x2)==0 ? 0 : c];
+      while (c-->0)
+      { frame fr(pattern);
+        fr.bind(std::make_shared<int_value>((flags&0x1)==0 ? b-c : b+c));
+        body->eval();
+        *((flags&0x2)==0? dst++:--dst) = pop_value();
+      }
+      push_value(std::move(result));
     }
   }
-  else
-  { own_row result = std::make_shared<row_value>(c);
-    auto dst = &result->val[(flags&2)==0 ? 0 : c];
-    while (c-->0)
-    { frame fr(pattern);
-      fr.bind(std::make_shared<int_value>((flags&1)==0 ? b-c : b+c));
-      body->eval();
-      *((flags&2)==0? dst++:--dst) = pop_value();
+  else // now there is no loop counter, and no |frame| should be created
+  { if (l==no_value)
+    { while (c-->0)
+        body->void_eval();
     }
-    push_value(std::move(result));
+    else
+    { own_row result = std::make_shared<row_value>(c);
+      auto dst = &result->val[(flags&0x2)==0 ? 0 : c];
+      while (c-->0)
+        {@; body->eval();
+        *((flags&0x2)==0? dst++:--dst) = pop_value();
+      }
+      push_value(std::move(result));
+    }
   }
 }
 
@@ -4143,7 +4187,7 @@ void component_assignment::assign
   @/@< Replace entry at |index| in matrix |loc| by value on stack @>
   @+break;
     case subscr_base::matrix_column:
-  @/@< Replace columns at |index| in matrix |loc| by value on stack @>
+  @/@< Replace column at |index| in matrix |loc| by value on stack @>
   @+break;
   default: {} // remaining cases are eliminated in type analysis
   }
@@ -4151,9 +4195,9 @@ void component_assignment::assign
 
 @ A |row_value| component assignment is the simplest kind. The variable |loc|
 holds a generic pointer, known to refer to a |row_value|. Since we need to
-access the vector of shared pointers, we use |force| to get ordinary pointer,
-and then select the |val| field. Then we do a bound check, and on success
-replace a component of the value held in |a| by the stack-top value.
+access the vector of shared pointers, we use |force| to get an ordinary
+pointer, and then select the |val| field. Then we do a bound check, and on
+success replace a component of the value held in |a| by the stack-top value.
 Afterwards, depending on |l|, we may put back the stack-top value as result of
 the component assignment, possibly expanding a tuple in the process.
 
@@ -4162,8 +4206,8 @@ the component assignment, possibly expanding a tuple in the process.
   std::vector<shared_value>& a=force<row_value>(loc)->val;
   if (i>=a.size())
     throw std::runtime_error(range_mess(i,a.size(),this));
-  a[i] = pop_value();
-  push_expanded(l,a[i]);
+  a[i] = pop_value(); // assign non-expanded value
+  push_expanded(l,a[i]); // return value may need expansion, or be omitted
 }
 
 @ For |vec_value| entry assignments the type of the aggregate object is
@@ -4177,8 +4221,9 @@ the component assignment expression is not used.
   if (i>=v.size())
     throw std::runtime_error(range_mess(i,v.size(),this));
   v[i]= force<int_value>(execution_stack.back().get())->val;
+    // assign |int| from un-popped top
   if (l==no_value)
-    execution_stack.pop_back();
+    execution_stack.pop_back(); // pop it anyway if result not needed
 }
 
 @ For |mat_value| entry assignments at |index| must be split into a pair of
@@ -4195,26 +4240,28 @@ indices, and there are two bound checks.
   if (j>=m.numColumns())
     throw std::runtime_error(range_mess(j,m.numColumns(),this));
   m(i,j)= force<int_value>(execution_stack.back().get())->val;
+    // assign |int| from un-popped top
   if (l==no_value)
-    execution_stack.pop_back();
+    execution_stack.pop_back(); // pop it anyway if result not needed
 }
 
 @ A |matrix_value| column assignment is like that of a vector entry, but we
 add a test for matching column length.
 
-@< Replace columns at |index| in matrix |loc|... @>=
+@< Replace column at |index| in matrix |loc|... @>=
 { unsigned int j=(index->eval(),get<int_value>()->val);
   int_Matrix& m=force<matrix_value>(loc)->val;
-  const int_Vector& v=force<vector_value>(execution_stack.back().get())->val;
+@/const int_Vector& v=force<vector_value>(execution_stack.back().get())->val;
+    // don't pop
   if (j>=m.numColumns())
     throw std::runtime_error(range_mess(j,m.numColumns(),this));
   if (v.size()!=m.numRows())
     throw std::runtime_error
       (std::string("Cannot replace column of size ")+str(m.numRows())+
        " by one of size "+str(v.size()));
-  m.set_column(j,v);
+  m.set_column(j,v); // copy value of |int_Vector| into the matrix
   if (l==no_value)
-    execution_stack.pop_back();
+    execution_stack.pop_back(); // pop the vector if result not needed
 }
 
 @ For local assignments we also need to access the location where the
@@ -4275,7 +4322,7 @@ case comp_ass_stat:
   if (not is_local and (aggr_t=global_id_table->type_of(aggr))==nullptr)
   { std::ostringstream o;
     o << "Undefined identifier '" << main_hash_table->name_of(aggr)
-      << "' in assignment " << e;
+    @|<< "' in assignment " << e;
     if (e.loc.file!=Hash_table::empty)
       o << ' ' << e.loc;
     throw program_error (o.str());

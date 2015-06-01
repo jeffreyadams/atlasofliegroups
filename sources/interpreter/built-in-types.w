@@ -1,4 +1,4 @@
-% Copyright (C) 2006-2012 Marc van Leeuwen
+% Copyright (C) 2006-2015 Marc van Leeuwen
 % This file is part of the Atlas of Lie Groups and Representations (the Atlas)
 
 % This program is made available under the terms stated in the GNU

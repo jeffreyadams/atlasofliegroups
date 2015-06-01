@@ -1,3 +1,23 @@
+% Copyright (C) 2006-2015 Marc van Leeuwen
+% This file is part of the Atlas of Lie Groups and Representations (the Atlas)
+
+% This program is made available under the terms stated in the GNU
+% General Public License (GPL), see http://www.gnu.org/licences/licence.html
+
+% The Atlas is free software; you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation; either version 2 of the License, or
+% (at your option) any later version.
+
+% The Atlas is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+
+% You should have received a copy of the GNU General Public License
+% along with the Atlas; if not, write to the Free Software
+% Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
 \def\emph#1{{\it#1\/}}
 \chardef\pow = `\^
 
@@ -1097,13 +1117,13 @@ typedef containers::sl_node<struct id_pat>* raw_patlist;
 struct raw_id_pat
 { id_type name;
   unsigned char kind;
-  // bits 0,1: whether pattern has a name, respectively sublist
+  // bits 0,1,2: whether pattern has a name, has sublist, is const
   raw_patlist sublist;
 };
 struct id_pat
 { id_type name;
   unsigned char kind;
-  // bits 0,1: whether pattern has a name, respectively sublist
+  // bits 0,1,2: whether pattern has a name, has sublist, is const
   patlist sublist;
 @)
   id_pat() :name(), kind(0x0), sublist() @+{}
@@ -1114,6 +1134,7 @@ struct id_pat
   id_pat (id_type n, unsigned char k, patlist&& l)
   : name(n), kind(k), sublist(std::move(l)) @+{}
   id_pat(patlist&& l): name(), kind(0x2),  sublist(std::move(l)) @+{}
+    // no name, no constness
 @)
   id_pat (const id_pat& x) = @[ delete @];
 @/id_pat (id_pat&& x) = @[ default @];
@@ -1124,7 +1145,7 @@ struct id_pat
 };
 
 @ The function |make_pattern_node| to build a node takes a modifiable
-reference to a structure |body| with the contents of the current node; in
+reference to a structure |pattern| with the contents of the current node; in
 practice this is a local variable in the parser. The argument names and order
 reflects the fact that patterns are often recognised by left-recursive rules,
 so that a new pattern is tacked onto an existing pattern list (the resulting
@@ -1188,8 +1209,10 @@ std::ostream& operator<< (std::ostream& out, const id_pat& p)
     }
     out << ')';
   }
-  if (p.kind==0x3) // both parts present
+  if ((p.kind&0x3)==0x3) // both parts present
     out << ':';
+  if ((p.kind&0x4)!=0) // identifier declared constant
+    out << '!';
   if ((p.kind & 0x1)!=0)
     out << main_hash_table->name_of(p.name);
   return out;
@@ -1617,7 +1640,8 @@ expr_p make_int_case_node(expr_p s, raw_expr_list i, const YYLTYPE& loc)
   expr& selector=*ss;
   for (auto it=ins.begin(); not ins.at_end(it); ++it)
   { const source_location& it_loc = it->loc;
-    lambda f(new lambda_node(id_pat(patlist()),void_type.copy(),std::move(*it)));
+    lambda f(new
+      lambda_node(id_pat(patlist()),void_type.copy(),std::move(*it)));
     *it=expr(std::move(f),it_loc);
   }
   expr arr(std::move(ins),expr::tuple_display_tag());
@@ -1663,7 +1687,7 @@ be distinguished by a boolean.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct while_node
-{ expr condition; expr body;
+{ expr condition; @+ expr body;
 @)
   while_node(expr&& condition, expr&& body)
 @/: condition(std::move(condition))
@@ -1671,7 +1695,7 @@ struct while_node
   // backward compatibility for gcc 4.6
 };
 struct for_node
-{ struct id_pat id; expr in_part; expr body; BitSet<2> flags;
+{ struct id_pat id; @+ expr in_part; @+ expr body; BitSet<2> flags;
 @)
   for_node(id_pat&& id, expr&& in_part, expr&& body, unsigned flags)
 @/: id(std::move(id))
@@ -1680,7 +1704,7 @@ struct for_node
   , flags(flags)@+{}
 };
 struct cfor_node
-{ id_type id; expr count; expr bound; expr body; BitSet<2> flags;
+{ id_type id; @+ expr count; @+ expr bound; @+ expr body; BitSet<3> flags;
 @)
   cfor_node
      (id_type id, expr&& count, expr&& bound, expr&& body, unsigned flags)
@@ -1802,12 +1826,12 @@ case for_expr:
 { const f_loop& f=e.for_variant;
   const patlist& pl = f->id.sublist;
 @/const id_pat& index = pl.front();
-  const id_pat& entry = *++pl.begin();
+  const id_pat& entry = *++pl.begin(); // |pl.size()==2|
 @/out << " for " << entry;
-  if (index.kind==0x1)
+  if ((index.kind&0x1)!=0)
     out << '@@' << index;
   out << " in " << f->in_part
-      << (f->flags[0] ? " ~do " : " do ") << f->body
+      << (f->flags[0] ? " ~do " : " do ") @| << f->body
       << (f->flags[1] ? " ~od " : " od ");
 }
 break;

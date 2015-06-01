@@ -1519,7 +1519,7 @@ cast do determine whether |v| actually is a tuple value or not.
 
 @< Function definitions @>=
 void push_expanded(expression_base::level l, const shared_value& v)
-{ if(l==expression_base::single_value)
+{ if (l==expression_base::single_value)
     push_value(v);
   else if (l==expression_base::multi_value)
   { shared_tuple p = std::dynamic_pointer_cast<const tuple_value>(v);
@@ -1529,7 +1529,7 @@ void push_expanded(expression_base::level l, const shared_value& v)
       for (size_t i=0; i<p->length(); ++i)
         push_value(p->val[i]); // push components
   }
-}
+} // if |l==expression_base::no_value| then do nothing
 
 @* Some useful function templates.
 %
