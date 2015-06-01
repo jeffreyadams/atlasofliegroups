@@ -73,13 +73,14 @@
 
 %type <expression> expr tertiary lettail or_expr and_expr not_expr
 %type <expression>  formula operand secondary primary iftail
-%type <expression> comprim subscription slice
+%type <expression> subscription slice comprim assignable_subsn ident_expr
 %type <ini_form> formula_start
 %type <oper> operator
 %type <val> tilde_opt
 %destructor { destroy_expr ($$); } expr tertiary lettail or_expr
 %destructor { destroy_expr ($$); } and_expr not_expr formula operand iftail
 %destructor { destroy_expr ($$); } secondary primary comprim subscription slice
+%destructor { destroy_expr ($$); } assignable_subsn ident_expr
 %destructor { destroy_formula($$); } formula_start
 %destructor { delete $$; } STRING
 %type  <expression_list> commalist commalist_opt commabarlist
@@ -190,7 +191,7 @@ declaration: pattern '=' expr { $$ = make_let_node($1,$3); }
 ;
 
 tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3,@$); }
-	| subscription BECOMES tertiary { $$ = make_comp_ass($1,$3,@$); }
+	| assignable_subsn BECOMES tertiary { $$ = make_comp_ass($1,$3,@$); }
 	| IDENT operator BECOMES tertiary
 	  { $$ = make_assignment($1,
 		  make_binary_call($2.id,
@@ -244,9 +245,9 @@ tilde_opt : '~' { $$ = 1; }
 	| { $$ = 0; }
 ;
 
-primary: comprim
-	| IDENT { $$=make_applied_identifier($1,@1); }
-;
+primary: comprim | ident_expr ;
+ident_expr : IDENT { $$=make_applied_identifier($1,@1); } ;
+
 comprim: subscription | slice
 	| primary '(' commalist_opt ')'
 	{ $$=make_application_node($1,reverse_expr_list($3),@$,@2,@4); }
@@ -300,18 +301,42 @@ comprim: subscription | slice
 	| IDENT '@' type    { $$=make_op_cast($1,$3,@$); }
 ;
 
-subscription: primary '[' expr ']'
+assignable_subsn:
+          IDENT '[' expr ']'
+	  { $$ = make_subscription_node
+		  (make_applied_identifier($1,@1),$3,false,@$); }
+	| IDENT TLSUB expr ']'
+	  { $$ = make_subscription_node
+		  (make_applied_identifier($1,@1),$3,true,@$); }
+	| IDENT '[' expr ',' expr ']'
+	  { $$=make_subscription_node(make_applied_identifier($1,@1),
+		wrap_tuple_display
+		(make_exprlist_node($3,
+                   make_exprlist_node($5,raw_expr_list(nullptr))),@$)
+		,false,@$);
+          }
+	| IDENT TLSUB expr ',' expr ']'
+	  { $$=make_subscription_node(make_applied_identifier($1,@1),
+		wrap_tuple_display
+		(make_exprlist_node($3,
+                   make_exprlist_node($5,raw_expr_list(nullptr))),@$)
+		,true,@$);
+          }
+;
+
+subscription: assignable_subsn
+	| comprim '[' expr ']'
 	  { $$ = make_subscription_node($1,$3,false,@$); }
-	| primary TLSUB expr ']'
+	| comprim TLSUB expr ']'
 	  { $$ = make_subscription_node($1,$3,true,@$); }
-	| primary '[' expr ',' expr ']'
+	| comprim '[' expr ',' expr ']'
 	  { $$=make_subscription_node($1,
 		wrap_tuple_display
 		(make_exprlist_node($3,
                    make_exprlist_node($5,raw_expr_list(nullptr))),@$)
 		,false,@$);
           }
-	| primary TLSUB expr ',' expr ']'
+	| comprim TLSUB expr ',' expr ']'
 	  { $$=make_subscription_node($1,
 		wrap_tuple_display
 		(make_exprlist_node($3,
@@ -320,22 +345,44 @@ subscription: primary '[' expr ']'
           }
 ;
 
-slice   : primary '[' expr tilde_opt ':' expr tilde_opt ']'
+slice   : IDENT '[' expr tilde_opt ':' expr tilde_opt ']'
+	  { $$=make_slice_node(make_applied_identifier($1,@1),$3,$6,0+2*$4+4*$7,@$); }
+	| IDENT '[' ':' expr tilde_opt ']'
+	  { $$=make_slice_node(make_applied_identifier($1,@1),make_int_denotation(0,@3),$4,0+4*$5,@$); }
+	| IDENT '[' expr tilde_opt ':' ']'
+	  { $$=make_slice_node(make_applied_identifier($1,@1),
+		  $3,make_int_denotation(0,@6),0+2*$4+4,@$); }
+	| IDENT '[' ':' ']'
+	  { $$=make_slice_node(make_applied_identifier($1,@1),
+		  make_int_denotation(0,@3),make_int_denotation(0,@4),0+4,@$); }
+	| IDENT TLSUB expr tilde_opt ':' expr tilde_opt ']'
+	  { $$=make_slice_node(make_applied_identifier($1,@1),
+		  $3,$6,1+2*$4+4*$7,@$); }
+	| IDENT TLSUB ':' expr tilde_opt ']'
+	  { $$=make_slice_node(make_applied_identifier($1,@1),
+		  make_int_denotation(0,@3),$4,1+4*$5,@$); }
+	| IDENT TLSUB expr tilde_opt ':' ']'
+	  { $$=make_slice_node(make_applied_identifier($1,@1),
+		  $3,make_int_denotation(0,@4),1+2*$4+4,@$); }
+	| IDENT TLSUB ':' ']'
+	  { $$=make_slice_node(make_applied_identifier($1,@1),
+		  make_int_denotation(0,@3),make_int_denotation(0,@4),1+4,@$); }
+        | comprim '[' expr tilde_opt ':' expr tilde_opt ']'
 	  { $$=make_slice_node($1,$3,$6,0+2*$4+4*$7,@$); }
-	| primary '[' ':' expr tilde_opt ']'
+	| comprim '[' ':' expr tilde_opt ']'
 	  { $$=make_slice_node($1,make_int_denotation(0,@3),$4,0+4*$5,@$); }
-	| primary '[' expr tilde_opt ':' ']'
+	| comprim '[' expr tilde_opt ':' ']'
 	  { $$=make_slice_node($1,$3,make_int_denotation(0,@6),0+2*$4+4,@$); }
-	| primary '[' ':' ']'
+	| comprim '[' ':' ']'
 	  { $$=make_slice_node($1,make_int_denotation(0,@3)
                                  ,make_int_denotation(0,@4),0+4,@$); }
-	| primary TLSUB expr tilde_opt ':' expr tilde_opt ']'
+	| comprim TLSUB expr tilde_opt ':' expr tilde_opt ']'
 	  { $$=make_slice_node($1,$3,$6,1+2*$4+4*$7,@$); }
-	| primary TLSUB ':' expr tilde_opt ']'
+	| comprim TLSUB ':' expr tilde_opt ']'
 	  { $$=make_slice_node($1,make_int_denotation(0,@3),$4,1+4*$5,@$); }
-	| primary TLSUB expr tilde_opt ':' ']'
+	| comprim TLSUB expr tilde_opt ':' ']'
 	  { $$=make_slice_node($1,$3,make_int_denotation(0,@4),1+2*$4+4,@$); }
-	| primary TLSUB ':' ']'
+	| comprim TLSUB ':' ']'
 	  { $$=make_slice_node($1,make_int_denotation(0,@3)
                                  ,make_int_denotation(0,@4),1+4,@$); }
 ;
