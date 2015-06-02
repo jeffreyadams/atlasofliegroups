@@ -2544,8 +2544,7 @@ void vector_convolve_wrapper(expression_base::level l)
 }
 
 @ The function |vector_div_wrapper| produces a rational vector, for which we
-also provide addition and subtraction of another rational vector, as well as
-multiplication and division by integers.
+also provide addition and subtraction of another rational vector.
 
 @< Local function def... @>=
 void vector_div_wrapper(expression_base::level l)
@@ -2586,7 +2585,11 @@ void ratvec_unary_minus_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value>(-v->val));
 }
-@)
+
+@ Here are multiplication and division of rational vectors by integers, and by
+rational numbers. The modulo operation is only provided for the integer case.
+
+@< Local function def... @>=
 void ratvec_times_int_wrapper(expression_base::level l)
 { int i= get<int_value>()->val;
   own_rational_vector v= get_own<rational_vector_value>();
@@ -2615,11 +2618,7 @@ void ratvec_modulo_int_wrapper(expression_base::level l)
   v->val %= i;
   push_value(v);
 }
-
-@ We also provide multiplication and division of rational vectors by
-rationals, but no modulo operation.
-
-@< Local function def... @>=
+@)
 
 void ratvec_times_rat_wrapper(expression_base::level l)
 { Rational r= get<rat_value>()->val;
@@ -2680,6 +2679,35 @@ void int_minus_mat_wrapper(expression_base::level l)
   push_value(m);
 }
 
+@ Matrix addition and subtraction were longtime provided as a user defined
+function; they are relatively little used, but nevertheless deserve to be
+built into the interpreter.
+
+@< Local function definitions @>=
+
+void mat_plus_mat_wrapper(expression_base::level l)
+{ own_matrix b= get_own<matrix_value>();
+  shared_matrix a= get<matrix_value>();
+  check_size(a->val.numRows(),b->val.numRows());
+  check_size(a->val.numColumns(),b->val.numColumns());
+  if (l==expression_base::no_value)
+    return;
+  b->val += a->val;
+  push_value(b);
+}
+
+void mat_minus_mat_wrapper(expression_base::level l)
+{
+  shared_matrix b= get<matrix_value>();
+  own_matrix a= get_own<matrix_value>();
+  check_size(a->val.numRows(),b->val.numRows());
+  check_size(a->val.numColumns(),b->val.numColumns());
+  if (l==expression_base::no_value)
+    return;
+  a->val -= b->val;
+  push_value(a);
+}
+
 @ Now the products between vector and/or matrices. We make the wrapper
 |mm_prod_wrapper| around matrix multiplication callable from other compilation
 units; for the other wrappers this is not necessary and the will be kept
@@ -2694,11 +2722,7 @@ they are to be popped from the stack in reverse order.
 void mm_prod_wrapper(expression_base::level l)
 { shared_matrix rf=get<matrix_value>(); // right factor
   shared_matrix lf=get<matrix_value>(); // left factor
-  if (lf->val.numColumns()!=rf->val.numRows())
-  { std::ostringstream s;
-    s<< "Size mismatch " << lf->val.numColumns() << ":" << rf->val.numRows();
-    throw std::runtime_error(s.str());
-  }
+  check_size(lf->val.numColumns(),rf->val.numRows());
   if (l!=expression_base::no_value)
     push_value(std::make_shared<matrix_value>(lf->val*rf->val));
 }
@@ -2961,6 +2985,8 @@ install_function(vv_prod_wrapper,"*","(vec,vec->int)");
 install_function(flex_add_wrapper,"flex_add","(vec,vec->vec)");
 install_function(flex_sub_wrapper,"flex_sub","(vec,vec->vec)");
 install_function(vector_convolve_wrapper,"convolve","(vec,vec->vec)");
+install_function(mat_plus_mat_wrapper,"+","(mat,mat->mat)");
+install_function(mat_minus_mat_wrapper,"-","(mat,mat->mat)");
 install_function(mrv_prod_wrapper,"*","(mat,ratvec->ratvec)");
 install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
 install_function(mm_prod_wrapper,"*","(mat,mat->mat)");

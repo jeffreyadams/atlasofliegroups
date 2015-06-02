@@ -130,17 +130,6 @@ set n_columns (mat m)= int: let (,c)=#m in c
 set column (vec v) = mat: [v] { interpret v as single column }
 set row (vec v)    = mat: ^v  { interpret v as single row }
 
-set + (mat M,mat N)= mat:
-  let (n,):sm = #M, sn = #N
-  in if sm != sn then error("Size mismatch " + sm + ":" + sn)
-     else n # for col@j in M do col+N[j] od
-     fi
-set - (mat M,mat N)= mat:
-  let (n,):sm = #M, sn = #N
-  in if sm != sn then error("Size mismatch " + sm + ":" + sn)
-     else n # for col@j in M do col-N[j] od
-     fi
-
 { add a column to a matrix, which is not predefined as operator # }
 set # (mat m, vec v) = mat: n_rows(m) { require size match } # (([vec]:m)#v)
 set # (vec v, mat m) = mat: n_rows(m) { require size match } # (v#([vec]:m))
