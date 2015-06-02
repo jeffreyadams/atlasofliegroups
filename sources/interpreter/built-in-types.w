@@ -4397,13 +4397,13 @@ void virtual_module_size_wrapper(expression_base::level l)
 void virtual_module_unary_eq_wrapper(expression_base::level l)
 { shared_virtual_module m = get<virtual_module_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(m->val.empty()));
+    push_value(std::make_shared<bool_value>(m->val.empty()));
 }
 
 void virtual_module_unary_neq_wrapper(expression_base::level l)
 { shared_virtual_module m = get<virtual_module_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(m->val.size()>0));
+    push_value(std::make_shared<bool_value>(m->val.size()>0));
 }
 
 @)
