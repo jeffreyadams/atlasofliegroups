@@ -197,6 +197,8 @@ holding a null pointer, produced by |shared_share(nullptr)| (this indeed binds
 to the rvalue reference parameter of the |id_data| constructor). The resulting
 |id_data| object will have |value()==nullptr|. The |is_defined_type| method
 tests this condition, for identifiers that are present in the table at all.
+Type definitions will be formally marked as constant (the final |true|
+argument) but this has no consequences, since types cannot be assigned anyway.
 
 @< Global function def... @>=
 void Id_table::add_type_def(id_type id, type_expr&& type)
@@ -212,7 +214,7 @@ void Id_table::add_type_def(id_type id, type_expr&& type)
 @)
 bool Id_table::is_defined_type(id_type id) const
 { map_type::const_iterator p = table.find(id);
-  return p!=table.end() and p->second.value()==nullptr;
+@/ return p!=table.end() and p->second.value()==nullptr;
 }
 
 @ The |remove| method removes an identifier if present, and returns whether
@@ -655,7 +657,7 @@ about the state of the global tables (but invoking |type_of_expr| will
 actually go through the full type analysis and conversion process).
 
 @< Declarations of exported functions @>=
-void global_set_identifier(struct id_pat id, expr_p e, int overload);
+void global_set_identifier(const struct raw_id_pat& id, expr_p e, int overload);
 void global_declare_identifier(id_type id, type_p type);
 void global_forget_identifier(id_type id);
 void global_forget_overload(id_type id, type_p type);
@@ -694,8 +696,9 @@ provide some feedback to the user we report any types assigned, but not the
 values.
 
 @< Global function definitions @>=
-void global_set_identifier(id_pat pat, expr_p raw, int overload)
-{ expr_ptr saf(raw); // ensure clean-up
+void global_set_identifier(const raw_id_pat &raw_pat, expr_p raw, int overload)
+{ id_pat pat(raw_pat);
+  expr_ptr saf(raw); // ensure clean-up
   const expr& rhs(*raw); // make |rhs| alias for pointed-to expression object
   size_t n_id=count_identifiers(pat);
   static const char* phase_name[3] = {"type check","evaluation","definition"};
@@ -747,10 +750,12 @@ setting it to~$0$ is attempted.
 @< Set |overload=0| if type |t| is not an appropriate function type @>=
 { bool clear = t.kind!=function_type;
     // cannot overload with a non-function value
-  if (not clear)
+  if (not clear) // so we do have a function type
   { type_expr& arg=t.func->arg_type;
   @/clear = arg.kind==tuple_type and arg.tupple.empty();
      // nor parameterless functions
+    if (clear) // if we move parameterless function to identifier table
+      pat.kind |= 0x4; // then mark the definition as constant
   }
   if (clear and overload==2) // inappropriate function type with operator
   { std::string which(t.kind==function_type ? "parameterless " : "non-");
@@ -771,9 +776,15 @@ to the very common singular case), before calling |global_id_table->add|.
   for (auto it=b.begin(); it!=b.end(); ++it, ++v_it)
   { std::cout << (it==b.begin() ? n_id==1 ? " " : "s " : ", ") @|
               << main_hash_table->name_of(it->first);
-    if (global_id_table->present(it->first))
-      std::cout << " (overriding previous)";
     std::cout << ": " << it->second;
+    if (global_id_table->present(it->first))
+    { bool is_const;
+      std::cout << " (hiding previous one of type "
+             @| << *global_id_table->type_of(it->first,is_const);
+      if (is_const)
+        std::cout << " (constant)";
+      std::cout << ')';
+    }
     global_id_table->add
       (it->first,std::move(*v_it),std::move(it->second),b.is_const(it));
   }
@@ -786,9 +797,9 @@ that here the |add| method may throw because of a conflict of a new definition
 with an existing one; we therefore do not print anything before the |add|
 method has successfully completed. Multiple overloaded definitions in a
 single \&{set} statement are excluded by the fact that a tuple type for the
-defining expression will cause setting |overload=0|, so that we are prevented
-from coming here either by that assignment or by a pattern mismatch error
-being thrown during type analysis; the |assert| statement below checks this
+defining expression will cause setting |overload=0|; that assignment together
+with a pattern check during type analysis will prevent us from coming here
+with multiple identifiers, and the |assert| statement below checks this
 exclusion. If the logic above were relaxed to allow such multiple definitions,
 one could introduce a loop below as in the ordinary definition case; then
 however error handling would also need adaptation, since a failed definition

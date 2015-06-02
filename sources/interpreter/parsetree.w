@@ -1127,7 +1127,7 @@ struct id_pat
   patlist sublist;
 @)
   id_pat() :name(), kind(0x0), sublist() @+{}
-  id_pat(const raw_id_pat& x)
+  explicit id_pat(const raw_id_pat& x)
   @/ : name(x.name), kind(x.kind)
   , sublist((kind & 0x2)==0 ? nullptr : x.sublist)
   @+{}
@@ -1508,12 +1508,17 @@ break;
 
 @ Because of the above transformations, lambda expressions are printed with
 all parameter types grouped into one tuple (unless there was exactly one
-parameter).
+parameter). In case of no parameters at all, we don not print |"(() ())"| but
+rather "@".
 
 @< Cases for printing... @>=
 case lambda_expr:
 { const lambda& fun=e.lambda_variant;
-  out << '(' << fun->parameter_type << ' ' << fun->pattern << "):" << fun->body;
+  if (fun->parameter_type==void_type)
+    out << '@@';
+  else
+    out << '(' << fun->parameter_type << ' ' << fun->pattern << ')';
+  out << ':' << fun->body;
 }
 break;
 

@@ -357,8 +357,7 @@ suppress printing of the uninteresting value.
 @)  // now that evaluation did not |throw|, we can record the predicted type
     last_type = std::move(found_type);
     last_value=pop_value();
-    static type_expr empty(empty_tuple());
-    if (last_type!=empty)
+    if (last_type!=void_type)
       *output_stream << "Value: " << *last_value << endl;
     destroy_expr(parse_tree);
   }
