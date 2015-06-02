@@ -111,10 +111,10 @@ handle the case where |val| refers to a null pointer value (entered as
 
 typedef std::shared_ptr<shared_value> shared_share;
 class id_data
-{ shared_share val; @+ type_expr tp;
+{ shared_share val; @+ type_expr tp; @+ bool is_constant;
 public:
-  id_data(shared_share&& val,type_expr&& t)
-  : val(std::move(val)), tp(std::move(t)) @+{}
+  id_data(shared_share&& val,type_expr&& t,bool is_const)
+  : val(std::move(val)), tp(std::move(t)), is_constant(is_const) @+{}
   id_data @[(id_data&& x) = default@];
   void swap(id_data& x) @+ {@; val.swap(x.val); tp.swap(x.tp); }
   id_data& operator=(id_data&& x) = @[default@]; // no copy-and-swap needed
@@ -123,6 +123,7 @@ public:
   const type_expr& type() const @+{@; return tp; }
   type_expr& type() @+{@; return tp; }
   // non-|const| reference; may be specialised by caller
+  bool is_const() const @+{@; return is_constant; }
 };
 
 @ We shall use the class template |std::map| to implement the identifier
@@ -145,7 +146,7 @@ public:
   Id_table& operator=(const Id_table&) = @[ delete @];
   Id_table() : table() @+{} // the default and only constructor
 @)
-  void add(id_type id, shared_value v, type_expr&& t); // insertion
+  void add(id_type id, shared_value v, type_expr&& t, bool is_const); // insertion
   void add_type_def(id_type id, type_expr&& t); // insertion of type only
   bool remove(id_type id); // deletion
   shared_share address_of(id_type id); // locate
@@ -153,7 +154,7 @@ public:
   bool present (id_type id) const
   @+{@; return table.find(id)!=table.end(); }
   bool is_defined_type(id_type id) const; // whether |id| stands for a type
-  const_type_p type_of(id_type id) const;
+  const_type_p type_of(id_type id,bool& is_const) const;
   // pure lookup, may return |nullptr|
   void specialise(id_type id,const type_expr& type);
   // specialise type stored for identifier
@@ -178,16 +179,17 @@ resetting the pointer to it to point to a newly allocated one, and inserts the
 new type (destroying the previous).
 
 @< Global function def... @>=
-void Id_table::add(id_type id, shared_value val, type_expr&& type)
+void Id_table::add(id_type id, shared_value val, type_expr&& type, bool is_const)
 { auto its = table.equal_range(id);
 
   if (its.first==its.second) // no global identifier was previously known
     table.insert // better: |emplace_hint(its.first,id,@[...@])| with gcc 4.8
-      (its.first,std::make_pair(id, id_data(
-       std::make_shared<shared_value>(std::move(val)), std::move(type) )));
+      (its.first,std::make_pair(id, id_data @|
+        (std::make_shared<shared_value>(std::move(val)),
+         std::move(type), is_const )));
   else // a global identifier was previously known
     its.first->second = id_data(
-       std::make_shared<shared_value>(std::move(val)), std::move(type) );
+      std::make_shared<shared_value>(std::move(val)), std::move(type), is_const);
 }
 
 @ Inserting a type definition is similar, but inserts a |shared_value| object
@@ -203,9 +205,9 @@ void Id_table::add_type_def(id_type id, type_expr&& type)
   if (its.first==its.second) // no global identifier was previously known
     table.insert // better: |emplace_hint(its.first,id,@[...@])| with gcc 4.8
       (its.first,std::make_pair(id,
-         id_data(shared_share(nullptr),std::move(type) )));
+         id_data(shared_share(nullptr),std::move(type),true)));
   else // a global identifier was previously known, replace it
-    its.first->second = id_data(shared_share(nullptr),std::move(type) );
+    its.first->second = id_data(shared_share(nullptr),std::move(type),true);
 }
 @)
 bool Id_table::is_defined_type(id_type id) const
@@ -240,9 +242,12 @@ many cases be used to modify that value (but not its type).
 @h "lexer.h" // for |main_hash_table|
 
 @< Global function def... @>=
-const_type_p Id_table::type_of(id_type id) const
-{@; map_type::const_iterator p=table.find(id);
-  return p==table.end() ? nullptr : &p->second.type();
+const_type_p Id_table::type_of(id_type id,bool& is_const) const
+{ map_type::const_iterator p=table.find(id);
+  if (p==table.end())
+    return nullptr;
+  is_const=p->second.is_const();
+  return &p->second.type();
 }
 void Id_table::specialise(id_type id,const type_expr& type)
 {@; map_type::iterator p=table.find(id);
@@ -762,13 +767,15 @@ to the very common singular case), before calling |global_id_table->add|.
    |global_id_table| @>=
 { if (n_id>0)
     std::cout << "Identifier";
-  for (size_t i=0; i<n_id; ++i)
-  { std::cout << (i==0 ? n_id==1 ? " " : "s " : ", ") @|
-              << main_hash_table->name_of(b[i].first);
-    if (global_id_table->present(b[i].first))
+  auto v_it = v.begin();
+  for (auto it=b.begin(); it!=b.end(); ++it, ++v_it)
+  { std::cout << (it==b.begin() ? n_id==1 ? " " : "s " : ", ") @|
+              << main_hash_table->name_of(it->first);
+    if (global_id_table->present(it->first))
       std::cout << " (overriding previous)";
-    std::cout << ": " << b[i].second;
-    global_id_table->add(b[i].first,std::move(v[i]),std::move(b[i].second));
+    std::cout << ": " << it->second;
+    global_id_table->add
+      (it->first,std::move(*v_it),std::move(it->second),b.is_const(it));
   }
 }
 
@@ -877,7 +884,7 @@ void global_declare_identifier(id_type id, type_p t)
   std::cout << "Declaring identifier '" << main_hash_table->name_of(id)
             << "': " << type << std::endl;
   static const shared_value undef(nullptr);
-  global_id_table->add(id,undef,std::move(type));
+  global_id_table->add(id,undef,std::move(type),false);
 }
 
 @ Finally the user may wish to forget the value of an identifier, which the
@@ -1519,7 +1526,7 @@ void install_function
   if (type->func->arg_type==void_type)
   { own_value val = std::make_shared<builtin_value>(f,print_name.str());
     global_id_table->add
-      (main_hash_table->match_literal(name),val,std::move(*type));
+      (main_hash_table->match_literal(name),val,std::move(*type),true);
   }
   else
   { print_name << '@@' << type->func->arg_type;

@@ -434,7 +434,8 @@ id_specs_opt: id_specs
 ;
 
 type	: TYPE			  { $$=make_prim_type($1); }
-	| TYPE_ID      { $$=acquire(global_id_table->type_of($1)).release(); }
+	| TYPE_ID
+	  { bool c; $$=acquire(global_id_table->type_of($1,c)).release(); }
         | '(' type ')'            { $$=$2; }
 	| '(' type ARROW type ')' { $$=make_function_type($2,$4); }
 	| '(' types_opt ARROW type ')'

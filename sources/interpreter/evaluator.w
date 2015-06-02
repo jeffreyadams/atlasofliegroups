@@ -823,7 +823,7 @@ case applied_identifier:
 { const id_type id=e.identifier_variant;
   const_type_p id_t; size_t i,j; bool is_const;
   const bool is_local=(id_t=layer::lookup(id,i,j,is_const))!=nullptr;
-  if (not is_local and (id_t=global_id_table->type_of(id))==nullptr)
+  if (not is_local and (id_t=global_id_table->type_of(id,is_const))==nullptr)
   {
     std::ostringstream o;
     o << "Undefined identifier '" << main_hash_table->name_of(id) << '\'';
@@ -4007,6 +4007,27 @@ void local_assignment::evaluate(level l) const
   push_expanded(l,dest);
 }
 
+@ Here are some simple functions that will be called for errors both in simple
+assignments and component assignments.
+
+@< Local function definitions @>=
+void report_undefined (id_type id,const expr& e,const char* where)
+{ std::ostringstream o;
+  o << "Undefined identifier '" << main_hash_table->name_of(id)
+  @|<< "' in " << where << ' ' << e;
+  if (e.loc.file!=Hash_table::empty)
+    o << ' ' << e.loc;
+  throw program_error (o.str());
+}
+@)
+void report_constant_modified (id_type id,const expr& e,const char* where)
+{ std::ostringstream o;
+  o << "Name '" << main_hash_table->name_of(id)
+    << "' is constant in " << where << ' ' << e;
+  if (e.loc.file!=Hash_table::empty)
+    o << ' ' << e.loc;
+  throw program_error (o.str());
+}
 
 @ Converting assignment statements follows the same lines as for applied
 identifiers, as far as discriminating between local and global is concerned.
@@ -4032,25 +4053,14 @@ case ass_stat:
   id_type lhs=e.assign_variant->lhs;
   const_type_p id_t; size_t i,j; bool is_const;
   const bool is_local = (id_t=layer::lookup(lhs,i,j,is_const))!=nullptr;
-  if (not is_local and (id_t=global_id_table->type_of(lhs))==nullptr)
-  { std::ostringstream o;
-    o << "Undefined identifier '" << main_hash_table->name_of(lhs)
-      << "' in assignment " << e;
-    if (e.loc.file!=Hash_table::empty)
-      o << ' ' << e.loc;
-    throw program_error (o.str());
-   }
+  if (not is_local and (id_t=global_id_table->type_of(lhs,is_const))==nullptr)
+    report_undefined(lhs,e,"assignment");
 @.Undefined identifier@>
-  if (is_local and is_const)
-  { std::ostringstream o;
-    o << "Name '" << main_hash_table->name_of(lhs)
-      << "' is constant in assignment " << e;
-    if (e.loc.file!=Hash_table::empty)
-      o << ' ' << e.loc;
-    throw program_error (o.str());
-  }
+  if (is_const)
+    report_constant_modified(lhs,e,"assignment");
 @.Name is constant @>
-@)type_expr rhs_type = id_t->copy(); // provide a modifiable copy
+@)
+  type_expr rhs_type = id_t->copy(); // provide a modifiable copy
   expression_ptr r(convert_expr(e.assign_variant->rhs,rhs_type));
   if (rhs_type!=*id_t)
     // assignment will specialise identifier, record to which type it does
@@ -4341,23 +4351,11 @@ case comp_ass_stat:
   const expr& rhs=e.comp_assign_variant->rhs;
 @/const_type_p aggr_t; size_t d,o; bool is_const;
   bool is_local = (aggr_t=layer::lookup(aggr,d,o,is_const))!=nullptr;
-  if (not is_local and (aggr_t=global_id_table->type_of(aggr))==nullptr)
-  { std::ostringstream o;
-    o << "Undefined identifier '" << main_hash_table->name_of(aggr)
-    @|<< "' in assignment " << e;
-    if (e.loc.file!=Hash_table::empty)
-      o << ' ' << e.loc;
-    throw program_error (o.str());
-   }
+  if (not is_local and (aggr_t=global_id_table->type_of(aggr,is_const))==nullptr)
+    report_undefined(aggr,e,"component assignment");
 @.Undefined identifier@>
-  if (is_local and is_const)
-  { std::ostringstream o;
-    o << "Name '" << main_hash_table->name_of(aggr)
-      << "' is constant in assignment " << e;
-    if (e.loc.file!=Hash_table::empty)
-      o << ' ' << e.loc;
-    throw program_error (o.str());
-  }
+  if (is_const)
+    report_constant_modified(aggr,e,"component assignment");
 @.Name is constant @>
 @)
   type_expr ind_t;
