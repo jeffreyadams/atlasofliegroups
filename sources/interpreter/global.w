@@ -2871,9 +2871,7 @@ void section_wrapper(expression_base::level l)
     push_value(std::move(res));
 }
 
-@ We must not forget to install what we have defined. The names of the
-arithmetic operators correspond to the ones used in the parser definition
-file \.{parser.y}.
+@ We must not forget to install what we have defined.
 
 @< Initialise... @>=
 install_function(plus_wrapper,"+","(int,int->int)");
@@ -2999,7 +2997,7 @@ install_function(section_wrapper,"mod2_section","(mat->mat)");
 
 @* Other functions for vectors and matrices.
 %
-This section defines addition functions for vectors and matrices, often
+This section defines additional functions for vectors and matrices, often
 specifically aimed at working with lattices.
 
 Null vectors and matrices are particularly useful as starting values. In
@@ -3017,17 +3015,17 @@ to local values in smart pointers; for values popped from the stack this would
 in fact be hard to avoid.
 
 @< Local function definitions @>=
-void null_vec_wrapper(expression_base::level lev)
-{ int l=get<int_value>()->val;
-  if (lev!=expression_base::no_value)
-    push_value(std::make_shared<vector_value>(int_Vector(std::abs(l),0)));
+void null_vec_wrapper(expression_base::level l)
+{ int n=get<int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value>(int_Vector(std::max(n,0),0)));
 }
-@) void null_mat_wrapper(expression_base::level lev)
-{ int l=get<int_value>()->val;
-  int k=get<int_value>()->val;
-  if (lev!=expression_base::no_value)
+@) void null_mat_wrapper(expression_base::level l)
+{ int n=get<int_value>()->val;
+  int m=get<int_value>()->val;
+  if (l!=expression_base::no_value)
     push_value(std::make_shared<matrix_value>
-      (int_Matrix(std::abs(k),std::abs(l),0)));
+      (int_Matrix(std::max(m,0),std::max(n,0),0)));
 }
 void transpose_vec_wrapper(expression_base::level l)
 { shared_vector v=get<vector_value>();
@@ -3060,7 +3058,7 @@ void id_mat_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
     push_value(std::make_shared<matrix_value>
-      (int_Matrix(std::abs(i)))); // identity
+      (int_Matrix(std::max(i,0)))); // identity
 }
 
 @ We also define |diagonal_wrapper|, a slight generalisation of
@@ -3072,7 +3070,7 @@ void diagonal_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   size_t n=d->val.size();
-  own_matrix m = std::make_shared<matrix_value>(int_Matrix(n));
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,n,0));
   for (size_t i=0; i<n; ++i)
     m->val(i,i)=d->val[i];
   push_value(std::move(m));
@@ -3232,35 +3230,41 @@ relations that show the excluded vectors to be dependent on the retained ones.
 void subspace_normal_wrapper(expression_base::level l)
 {
   typedef BitVector<64> bitvec;
-  shared_row generators=get<row_value>();
-  unsigned int n_gens = generators->val.size();
-  unsigned int rank = n_gens=0 ? 0 :
-    force<vector_value>(generators->val[0].get())->val.size();
-  if (rank>64)
-    throw std::runtime_error("Rank too large to handle "+str(rank));
+  shared_matrix generators=get<matrix_value>();
+  unsigned int n_gens = generators->val.numColumns();
+  unsigned int dim = generators->val.numRows();
+  if (dim>64)
+    throw std::runtime_error("Dimension too large: "+str(dim)+">64");
   if (n_gens>64)
-    throw std::runtime_error ("Too many generators to handle "+str(n_gens));
+    throw std::runtime_error ("Too many generators: "+str(n_gens)+">64");
 @)
   std::vector<bitvec> basis, combination;
+    // |basis[j]| will be initialised from column $j$ of |generators|
   std::vector<unsigned int> pivot; // |pivot[i]| is bit position for |basis[i]|
   std::vector<unsigned int> pivoter;
     // generator |pivoter[i]| led to |basis[i]|
-  basis.reserve(rank); pivot.reserve(rank); pivoter.reserve(rank);
+  { unsigned max_rank=std::min(n_gens,dim); // |basis| cannot exceed this size
+    basis.reserve(max_rank); pivot.reserve(max_rank); pivoter.reserve(max_rank);
+  }
   bitvector::initBasis(combination,n_gens);
+    // express (still virtual) |basis| elements in |generators|
 @)
   @< Transform columns from |generators| to reduced column echelon form in
      |basis|, storing pivot rows in |pivot|, and recording indices of
-     generators that were independent in |pivoter| @>
+     generators that were found to be independent in |pivoter| @>
 
-  if (l!=expression_base::no_value)
+  if (l==expression_base::no_value)
+    return;
+
   @< Push as results the basis found, the corresponding combinations of
      original generators, the relations produced by unused generators, and the
      list of pivot positions @>
-
+  if (l==expression_base::single_value)
+    wrap_tuple<4>();
 }
 
 @ We maintain a |basis| constructed so far, in reduced column echelon form but
-for not a necessarily increasing sequence of |pivot| positions, and an
+for a not necessarily increasing sequence of |pivot| positions, and an
 increasing list |pivoter| telling for each basis element from which original
 generator it was obtained, and therefore which index into |combination| gives
 the expression of that basis element in the original generators. The entries
@@ -3268,83 +3272,68 @@ of |combination| not indexed by |pivoter| hold independent expressions that
 give the zero vector.
 
 @< Transform columns from |generators| to reduced column echelon form... @>=
-for (unsigned int i=0; i<n_gens; ++i)
-{ const vector_value* p=force<vector_value>(generators->val[i].get());
-  if (p->val.size()!=rank)
-    throw std::runtime_error
-          ("Generator vector of wrong size "+str(p->val.size()));
-  bitvec v(p->val); // reduce modulo $2$
-  for (unsigned int j=0; j<basis.size(); ++j)
-    if (v[pivot[j]])
+for (unsigned int j=0; j<n_gens; ++j)
+{ bitvec v(generators->val.column(j)); // reduce modulo $2$
+  for (unsigned int l=0; l<basis.size(); ++l)
+    if (v[pivot[l]])
     {@;
-       v -= basis[j];
-       combination[i] -= combination[pivoter[j]];
+       v -= basis[l];
+       combination[j] -= combination[pivoter[l]];
     }
   if (v.nonZero())
   {
     unsigned int piv = v.firstBit(); // new pivot
-    for (unsigned int j=0; j<basis.size(); ++j)
-    if (basis[j][piv])
-    {@;
-       basis[j] -= v;
-       combination[pivoter[j]] -= combination[i];
-    }
+    for (unsigned int l=0; l<basis.size(); ++l)
+      if (basis[l][piv])
+      {@;
+         basis[l] -= v;
+         combination[pivoter[l]] -= combination[j];
+      }
     basis.push_back(v);
-    pivoter.push_back(i);
+    pivoter.push_back(j);
     pivot.push_back(piv);
   }
 }
 
-@ We return four rows of objects, constructing them in one loop over the
-indices of the original generators. At index $i$ we either have a
-corresponding basis element, whose index in the basis will be currently $k$,
-but which will be moved to position $\pi(k)$ according to the relative size of
-|pivot[k]|, or it will no in which case we collect the corresponding
-|combination[i]| that expresses a relation among the original generators.
+@ We return four values, namely three matrices and a list of integers
+(pivots). All of then are constructed in a single loop over the
+indices of the original generators. At index $j$ we either have a
+corresponding basis element, whose index in the basis will be currently $l$,
+but which will be moved to position $\pi(l)$ according to the relative size of
+|pivot[l]|, or it will not, in which case we collect the corresponding
+|combination[j]| that expresses a relation among the original generators.
 
 @h "permutations.h"
 
 @< Push as results the basis found, ... @>=
-{ Permutation pi = permutations::standardization(pivot,n_gens);
-  own_row basis_r = std::make_shared<row_value>(basis.size());
-  own_row combin_r = std::make_shared<row_value>(basis.size());
-  own_row relations = std::make_shared<row_value>(n_gens-basis.size());
-  own_row pivot_r = std::make_shared<row_value>(basis.size());
-  unsigned int k=0;
-  for (unsigned int i=0; i<n_gens; ++i)
-    if (k<basis.size() and i==pivoter[k])
-    { unsigned d = pi[k]; // destination position
-      { own_vector vv = std::make_shared<vector_value>(int_Vector(rank,0));
-        basis_r->val[d]=vv; // store |vv| converted to |shared_value|
-        int_Vector& v = vv->val; // then use underlying vector to set the value
-        for (bitvec::base_set::iterator it=basis[k].data().begin(); it(); ++it)
-          v[*it]=1;
-      }
-      { own_vector vv = std::make_shared<vector_value>(int_Vector(n_gens,0));
-        combin_r->val[d]=vv;
-        int_Vector& v = vv->val;
-        for (bitvec::base_set::iterator
-             it=combination[i].data().begin(); it(); ++it)
-          v[*it]=1;
-      }
-      pivot_r->val[d] = std::make_shared<int_value>(pivot[k]);
-      ++k;
+{ Permutation pi = permutations::standardization(pivot,dim);
+    // relative positions of pivots
+  unsigned rank=basis.size(); // dimension of the subspace
+  int_Matrix basis_m(dim,rank,0);
+  int_Matrix combin_m(n_gens,rank,0);
+  int_Matrix relations_m(n_gens,n_gens-rank);
+  own_row pivot_r = std::make_shared<row_value>(rank);
+  unsigned int l=0; // number of basis vectors copied so far, current index
+  for (unsigned int j=0; j<n_gens; ++j)
+    if (l<rank and j==pivoter[l])
+    { unsigned d = pi[l]; // destination position
+      for (auto it=basis[l].data().begin(); it(); ++it)
+        basis_m(*it,d) = 1;
+      for (auto it= combination[j].data().begin(); it(); ++it)
+        combin_m(*it,d) = 1;
+      pivot_r->val[d] = std::make_shared<int_value>(pivot[l]);
+      ++l;
     }
     else
-    { own_vector vv = std::make_shared<vector_value>(int_Vector(n_gens,0));
-      relations->val[i-k] = vv;
-      int_Vector& v = vv->val;
-      for (bitvec::base_set::iterator
-           it=combination[i].data().begin(); it(); ++it)
-      v[*it]=1;
+    { unsigned d = j-l;
+      for (auto it= combination[j].data().begin(); it(); ++it)
+        relations_m(*it,d) = 1;
     }
-  assert (k==basis.size());
-@/push_value(std::move(basis_r));
-  push_value(std::move(combin_r));
-  push_value(std::move(relations));
+  assert (l==rank);
+@/push_value(std::make_shared<matrix_value>(std::move(basis_m)));
+  push_value(std::make_shared<matrix_value>(std::move(combin_m)));
+  push_value(std::make_shared<matrix_value>(std::move(relations_m)));
   push_value(std::move(pivot_r));
-  if (l==expression_base::single_value)
-    wrap_tuple<4>();
 }
 
 @ Once more we need to install what was defined.
@@ -3366,7 +3355,7 @@ install_function(Smith_basis_wrapper,"Smith_basis","(mat->mat)");
 install_function(Smith_wrapper,"Smith","(mat->mat,vec)");
 install_function(invert_wrapper,"invert","(mat->mat,int)");
 install_function(subspace_normal_wrapper,@|
-   "subspace_normal","([vec]->[vec],[vec],[vec],[int])");
+   "subspace_normal","(mat->mat,mat,mat,[int])");
 @* Index.
 
 % Local IspellDict: british

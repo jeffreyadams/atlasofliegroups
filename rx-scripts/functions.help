@@ -19,8 +19,9 @@ operator % : (vec,int->vec): remainder in scalar division
 operator * : (vec,vec->int): scalar product
 flex_add, flex_sub: (vec,vec->vec): variants of +,- adding/removing trailing 0's
 convolve: (vec,vec->vec): convolution product of vectors, removing trailing 0's
-operator * : (mat,vec->vec): matrix-vector product.
-operator * : (mat,mat->mat): matrix-matrix product.
+operators +, -: (mat,mat->mat): matrix addition and subtraction
+operator * : (mat,vec->vec): matrix-vector product
+operator * : (mat,mat->mat): matrix-matrix product
 operator * : (vec,mat->mat): vector-matrix product (vector is transposed)
 operator ^ : (mat->mat): (unary use of ^) matrix transposition
 operator ^ : (vec->mat): (unary use of ^) (transposed) vector as 1-line matrix
@@ -126,11 +127,13 @@ mod2_section (mat->mat): find section (left/right/inverse) of binary matrix
   matrix B such that ABA=A and BAB=B; it will be an inverse/left inverse/right
   inverse of (over Z/2Z) whenever A is bijective/surjective/injective.
 
-subspace_normal: ([vec]->[vec],[vec],[vec],[int]) normalized modulo-2 basis
-  Given a list of binary vectors, find a normalized basis for the subspace
+subspace_normal: (mat->mat,mat,mat,[int]) normalized modulo-2 basis
+  Given a sequence of binary vectors, namely the reduction modulo 2 of the
+  columns of the argument matrix, find a normalized basis for the subspace
   they span, expressions for the basis vectors in terms of the given list, a
-  basis for the relations between the vectors, an a list of pivot values. The
-  argument is a list of n generators of size r whose components are
+  basis for the relations between the vectors, an a list of pivot values (all
+  lists of binary vectors are obtained as the columns of one result matrix).
+  The argument is a list of n generators of size r whose components are
   interpreted modulo 2, the first output component is a reduced echelon basis,
   consisting of d binary vectors of size r where d is the dimension of the
   subspace, the next component has d binary vectors of size n, giving the
