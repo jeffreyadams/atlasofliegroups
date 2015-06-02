@@ -115,14 +115,7 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| tertiary ';' '\n'
 	  { *parsed_expr=
             make_sequence($1,wrap_tuple_display(nullptr,@$),true,@$); }
-	| SET pattern '=' expr '\n' { global_set_identifier($2,$4,1); YYABORT; }
-	| SET IDENT '(' id_specs_opt ')' '=' expr '\n'
-	  { struct raw_id_pat id; id.kind=0x1; id.name=$2;
-	    global_set_identifier(id,
-				  make_lambda_node($4.patl,$4.typel,$7,@$),
-				  1);
-	    YYABORT;
-	  }
+	| SET declarations '\n' { global_set_identifiers($2); YYABORT; }
 	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT; }
 	| FORGET TYPE_ID '\n'	{ global_forget_identifier($2); YYABORT; }
 	| SET operator '(' id_specs ')' '=' expr '\n'

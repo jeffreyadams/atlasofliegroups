@@ -1275,16 +1275,19 @@ expr(let&& declaration, const YYLTYPE& loc)
  , loc(loc)
  @+{}
 
-@ For building let-expressions, three functions will be defined. The function
+@ For building let-expressions, four functions will be defined. The function
 |make_let_node| makes a list of one declaration, while |append_let_node|
 appends such a list |cur| (assured to be of length~$1$) to a previously
 constructed list |prev| of declarations; finally |make_let_expr_node| wraps up
-an entire let-expression.
+an entire let-expression. The latter will uses an auxiliary |zip_decls| to do
+the main work, which function can then also be used when processing
+(global) \&{set} definitions, which do not have any |body|.
 
 @< Declarations of functions for the parser @>=
 raw_let_list make_let_node(raw_id_pat& pattern, expr_p val);
 raw_let_list append_let_node(raw_let_list prev, raw_let_list cur);
 expr_p make_let_expr_node(raw_let_list decls, expr_p body, const YYLTYPE& loc);
+std::pair<id_pat,expr> zip_decls(raw_let_list decls);
 
 @ The functions |make_let_node| and |append_let_node| build a list in reverse
 order, which makes the latter function a particularly simple one. The purpose
@@ -1295,9 +1298,9 @@ was specified in the program. Fortunately it is actually easier to build a
 merged list in reverse order.
 
 The argument |cur| for |append_let_node| is always the result of an
-application of |make_let_node|, so a list of length$~1$ This is just a trick
-to avoid having to deal with yet another type (corresponding to a |let_pair|,
-but demoted to POD) in the parser.
+application of |make_let_node|, so it is a list of length$~1$. Using this is
+just a trick to avoid having to deal with yet another type (corresponding to a
+|let_pair|, but demoted to POD) in the parser.
 
 @< Definitions of functions for the parser @>=
 raw_let_list make_let_node(raw_id_pat& pattern, expr_p val)
@@ -1312,12 +1315,10 @@ raw_let_list append_let_node(raw_let_list prev, raw_let_list cur)
   return result.release();
  }
 @)
-expr_p make_let_expr_node(raw_let_list d, expr_p b, const YYLTYPE& loc)
-{
-  let_list decls(d);
-  expr_ptr bb(b);
-  expr& body=*bb; // ensure exception safety
-  id_pat pattern; expr val;
+std::pair<id_pat,expr> zip_decls(raw_let_list d)
+{ let_list decls(d);
+  std::pair<id_pat,expr> result;
+  id_pat& pattern=result.first; expr& val=result.second;
   if (decls.singleton()) // single declaration
   @/{@; pattern=std::move(decls.front().pattern);
     val=std::move(decls.front().val);
@@ -1333,8 +1334,16 @@ expr_p make_let_expr_node(raw_let_list d, expr_p b, const YYLTYPE& loc)
     val=expr(std::move(expl),expr::tuple_display_tag());
       // make a tuple expression
   }
-  return new expr @| (let(new let_expr_node
-    { std::move(pattern), std::move(val),std::move(body) }),loc);
+  return result;
+}
+expr_p make_let_expr_node(raw_let_list d, expr_p b, const YYLTYPE& loc)
+{
+  expr_ptr bb(b);
+  expr& body=*bb; // ensure exception safety
+  auto pat_expr = zip_decls(d);
+@/return new expr (let(new  @| let_expr_node
+  { std::move(pat_expr.first), std::move(pat_expr.second),std::move(body) })
+  ,loc);
 }
 
 @ For the unique pointer |let|, copying is done just as was for |app| before.

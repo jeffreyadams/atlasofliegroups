@@ -648,6 +648,7 @@ that do not consist just of evaluating expressions.
 
 The function |global_set_identifier| handles introducing identifiers, either
 normal ones or overloaded instances of functions, using the \&{set} syntax.
+It has a variant for multiple declarations |global_set_identifiers|.
 The function |global_declare_identifier| just introduces an identifier into
 the global (non-overloaded) table with a definite type, but does not provide a
 value (it will then have to be assigned to before it can be validly used).
@@ -658,6 +659,7 @@ actually go through the full type analysis and conversion process).
 
 @< Declarations of exported functions @>=
 void global_set_identifier(const struct raw_id_pat& id, expr_p e, int overload);
+void global_set_identifiers(const raw_let_list& d);
 void global_declare_identifier(id_type id, type_p type);
 void global_forget_identifier(id_type id);
 void global_forget_overload(id_type id, type_p type);
@@ -667,11 +669,36 @@ void type_of_expr(expr_p e);
 void show_overloads(id_type id);
 
 @ Global identifiers can be introduced (or modified) by the function
-|global_set_identifier|. We allow (in the \&{set} syntax) the same
-possibilities in a global identifier definition as in a local one (the \&{let}
-syntax), so we take an |id_pat| as argument. We also handle definitions of
-overloaded function instances in case the parameter |overload| is nonzero. In
-a change from our initial implementation, that parameter set by the parser
+|global_set_identifiers|, handling the \&{set} syntax with the same
+possibilities as for local definitions (the \&{let}
+syntax); therefore it takes a |raw_let_list| as argument. Some other syntactic
+forms (operator definition, syntax using |':'|) can only handle one identifier
+at a time, and invokes the |global_set_identifier| function. The latter case
+sometimes forbids or requires a definition to the overload table; the argument
+|overload| specifies the options permitted ($0$ means no overloading, $2$
+requires overloading, and $1$ allows both).
+
+The local function |do_global_set| defined below does most of the work for
+the ``global set'' twins, for all the syntactic variations allowed. All that
+happens here is preparing an |id_pat| and an |expr|, either by wrapping the
+given arguments in non-raw types, or by calling |zip_decls| defined
+in the module \.{parsetree.w}, which does the same work as for \&{let}
+expressions.
+
+@< Global function definitions @>=
+void global_set_identifier(const raw_id_pat &raw_pat, expr_p raw, int overload)
+{@; do_global_set(id_pat(raw_pat),*expr_ptr(raw),overload); } // ensure clean-up
+@)
+void global_set_identifiers(const raw_let_list& d)
+{ std::pair<id_pat,expr> pat_expr = zip_decls(d);
+  do_global_set(std::move(pat_expr.first),pat_expr.second,1);
+}
+
+@ The function |do_global_set| takes |id_pat| by rvalue reference just to be
+able to clobber the value prepared by the caller without taking a copy; we do
+not intend to actually move from the argument.
+
+In a change from our initial implementation, that parameter set by the parser
 allows overloading but does not force it. Allowing the parameter to be cleared
 here then actually serves to allow more cases to be handled using the overload
 table, since the parser will now set |overload>0| more freely. Indeed the
@@ -695,12 +722,10 @@ catches and reports errors) rather than calling |convert_expr| directly. To
 provide some feedback to the user we report any types assigned, but not the
 values.
 
-@< Global function definitions @>=
-void global_set_identifier(const raw_id_pat &raw_pat, expr_p raw, int overload)
-{ id_pat pat(raw_pat);
-  expr_ptr saf(raw); // ensure clean-up
-  const expr& rhs(*raw); // make |rhs| alias for pointed-to expression object
-  size_t n_id=count_identifiers(pat);
+
+@< Local function definitions @>=
+void do_global_set(id_pat&& pat, const expr& rhs, int overload)
+{ size_t n_id=count_identifiers(pat);
   static const char* phase_name[3] = {"type check","evaluation","definition"};
   int phase=0; // needs to be declared outside the |try|, is used in |catch|
   try
@@ -735,6 +760,7 @@ void global_set_identifier(const raw_id_pat &raw_pat, expr_p raw, int overload)
   }
   @< Catch block for errors thrown during a global identifier definition @>
 }
+
 
 @ When |overload>0|, choosing whether the definition enters into the overload
 table or into the global identifier table is determined by the type of the
