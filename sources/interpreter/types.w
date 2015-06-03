@@ -2034,9 +2034,10 @@ for type \.{(int,int)} as well as for type \.{(rat,rat}). Note that the
 conversion does not necessarily apply at the outer level, since the
 expressions could be tuple or row displays, with coercions being applied to
 individual component expressions; for instance there exists nested displays of
-type \.{([vec],[int])} that can be converted to type \.{([[int]],[rat])}
-or \.{(mat,ratvec)}. So our relation will be a partial order, and compatible
-with tuple and row formation: $x_i\leq y_i$ for all~$i$ implies
+\foreign{a priori} type \.{([vec],[int])} that can be converted either to
+type \.{([[int]],[rat])} or to \.{(mat,ratvec)} if the context so requires .
+So our relation will be a partial order, and compatible with tuple and row
+formation: $x_i\leq y_i$ for all~$i$ implies
 $(x_1,\ldots,x_n)\leq(y_1,\ldots,y_n)$ as well as $[x_1]\leq[y_1]$.
 
 Therefore |is_close| returns a value composed of 3~bits: one indicating
@@ -2051,17 +2052,18 @@ and \.{rat}), |0x6| is the opposite relation, and |0x7| means both types can
 be converted to each other (like \.{vec} and \.{[int]}, or any case of equal
 types).
 
-For types $t_1$ and~$t_2$ which do not admit a relative priority, we want to
-disallow simultaneous overloading with arguments types $t_1$ and~$t_2$ if any
-expression given as argument could be converted to either of them. Deciding
-the existence of such an expression would require study of all available
-language constructs, but the situation is somewhat simplified by the fact
-that, for efficiency reasons, overloading resolution is not done using the
-complete argument expression, but only using its type. In fact matching will
-be done using calls to the very function |is_close| we are discussing here,
-testing the bit for conversion towards the required argument type; this
-provides us with an opportunity to adjust rules for possible type conversions
-of arguments at the same time as defining the exclusion rules.
+For types $t_1$ and~$t_2$ which do not admit a relative priority of one over
+the other to be established, we shall disallow simultaneous overloading with
+arguments types $t_1$ and~$t_2$ if any expression given as argument could be
+converted to either of them. Deciding the existence of such an expression
+would require study of all available language constructs, but the situation is
+somewhat simplified by the fact that, for efficiency reasons, overloading
+resolution is not done using the complete argument expression, but only using
+its type. In fact matching will be done using calls to the very function
+|is_close| we are discussing here, testing the bit for conversion towards the
+required argument type; this provides us with an opportunity to adjust rules
+for possible type conversions of arguments at the same time as defining the
+exclusion rules.
 
 Empty row displays, or more precisely arguments of type~\.{[*]}, pose a
 difficulty: they would be valid in any context requiring a specific row type,
@@ -2069,7 +2071,7 @@ so if we stipulated that one may write \.{[]} to designate an empty row
 operand of any row type, then |is_close| would have to consider all row types
 close to each other (and therefore mutually exclusive for overloading). This
 used to be the convention adopted, but it was found to be rather restrictive
-in use, so the rules were change to state that an un-cast expression \.{[]}
+in use, so the rules were changed to state that an un-cast expression \.{[]}
 will not match overload instances of specific row types; it might match an
 parameter of specified type \.{[*]} (once we allow that as type expression),
 and such a parameter could \emph{only} take an empty list corresponding
@@ -2083,13 +2085,13 @@ type in its place (overloading does not perform type specialisation).
 
 
 @ So here is the (recursive) definition of the relation |is_close|. Equal
-types are always close, while undetermined types behave as convertible to any
-type. A primitive type is in the relation |is_close| to another type only if
-it is identical or if there is a direct conversion between the types, as
-decided by~|coerce|. Two row types are always in the relation |is_close|, and
-two tuple types are so if they have the same number of component types, and if
-each pair of corresponding component types is (recursively) in the relation
-|is_close|.
+types are always close, while undetermined types are not convertible to any
+other type. A primitive type is in the relation |is_close| to another type
+only if it is identical or if there is a direct conversion between the types,
+as decided by~|coerce|. Two row types are in the relation |is_close| if their
+component types are, and two tuple types are so if they have the same number
+of component types, and if each pair of corresponding component types is
+(recursively) in the relation |is_close|.
 
 The above applies to the most significant of the three bits used in the result
 of the function |is_close|. The two other bits indicate whether, by applying

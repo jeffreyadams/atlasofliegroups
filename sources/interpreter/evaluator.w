@@ -854,16 +854,13 @@ case applied_identifier:
 @*1 Resolution of operator and function overloading.
 %
 While the simple mechanism of identifier identification given above suffices
-for many purposes, it would be very restrictive in case of operators (since it
+for values, it would be very restrictive in case of operators (since it
 allows only one function, with fixed argument types, to be bound globally to
-an operator symbol identifier), and to a somewhat lesser measure (since one
-could vary the identifier name according to the argument types) for functions.
-So we definitely want to allow operator overloading (defining the same
+an operator symbol identifier), and to a somewhat lesser measure for functions.
+We definitely want to allow operator overloading (defining the same
 operator for different combinations of argument types), and with such a
 mechanism in place, it is easy to allow function overloading as well, which
-will for instance allow the intuitive convention of simply naming built-in
-functions after the mathematical meaning of the result they compute, even if
-such a result can be computed from different sets of input data.
+turns out to be very convenient.
 
 We shall call |resolve_overload| from the case for function applications in
 |convert_expr|, after testing that overloads exist. So we can pass the
@@ -882,18 +879,22 @@ inefficient expression analysis. So instead we now first try to find a
 matching variant, using an \foreign{a priori} type of the operand(s). This
 implies that the operand must be correctly typed without the benefit of a
 known result type, but the type found need not be an exact match with the one
-specified in the variant. Our matching condition is that |is_close| should
-hold, with the bit set that indicates a possible conversion from
-|a_priori_type| to the operand type for which the variant is defined.
-Coercions may need to be inserted in the operand expression, and since that
-expression could be arbitrarily complex, inserting coercions explicitly after
-the fact would be very hard to program. We choose the easier approach to cast
-away the converted expression once the matching variant is found, and to redo
-the analysis with the now known result type so that coercions get inserted
-during conversion. But then we again risk exponential time (although with
-powers of~2 rather than powers of the number of variants); since probably
-coercions will not be needed at all levels, we mitigate this risk by not
-redoing any work in case of an exact match.
+specified in the variant. Unless the specified type is void (the empty tuple),
+our matching condition is that |is_close| should hold, with the bit set that
+indicates a possible conversion from |a_priori_type| to the specified operand
+type. If the specified type is void, we require an exact match, in order to
+not have parameterless functions accept and void any arguments that failed to
+match other instances, which would just mask programming errors.
+
+An inexact match might be made to match by inserting coercions into the
+operand expression; however they might not apply on the outside but on
+components of the argument expression. We choose to do this by throwing away
+the converted expression once a tentative match is found, and to redo the
+analysis with the now known result type so that coercions get inserted during
+conversion. But then we again risk exponential time (although with powers of~2
+rather than powers of the number of variants); since probably coercions will
+not be needed at all levels, we mitigate this risk by not redoing any work in
+case of an exact match.
 
 Apart from those in |variants|, we also test for certain argument types that
 will match without being in any table; for instance the size-of operator~`\#'
@@ -912,21 +913,25 @@ expression_ptr resolve_overload
 { const expr& args = e.call_variant->arg;
   type_expr a_priori_type;
   expression_ptr arg = convert_expr(args,a_priori_type);
-    // get \foreign{a priori} types once
+    // get \foreign{a priori} type or argument
   id_type id =  e.call_variant->fun.identifier_variant;
   @< If |id| is a special operator like size-of and it matches
   |a_priori_type|, |return| a call |id(args)| @>
   for (auto it=variants.begin(); it!=variants.end(); ++it)
   { const overload_data& v=*it;
-    if ((is_close(a_priori_type,v.type().arg_type)&0x1)!=0)
+    bool match = a_priori_type==v.type().arg_type;
+    if (not match and v.type().arg_type!=void_type)
+    {
+      if ((is_close(a_priori_type,v.type().arg_type)&0x1)!=0)
       // could first convert to second?
-    { if (a_priori_type!=v.type().arg_type)
       { type_expr arg_t = v.type().arg_type.copy(); // need a modifiable value
         arg=convert_expr(args,arg_t); // redo conversion
+        match=true;
       }
+    }
+    if (match)
       @< Return a call of variant |v| with argument |arg|, or |throw| if
          result type mismatches |type| @>
-    }
   }
 
   @< Complain about failing overload resolution @>
@@ -1098,7 +1103,7 @@ result type, and build a converted function call~|call|. Finally (and this is
 done by |conform_types|) we test if the required type matches the return type
 (in which case we simply return~|call|), or if the return type can be coerced
 to it (in which case we return |call| as transformed by |coerce|); if neither
-is possible we throw a~|type_error|.
+is possible |conform_types| will throw a~|type_error|.
 
 @< Cases for type-checking and converting... @>=
 case function_call:

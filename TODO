@@ -64,10 +64,6 @@
   intended for an overloaded instance instead, but somehow fail to match.
   Since this is rare, maybe instead just consider globals before overloading.
 
-- Related to previous point, remove exception for parameterless functions
-  that are not stored as overloads; make sure that voiding is not considered
-  in function argument positions.
-
 - For identifiers in function position of a call, only consider local
   bindings (which will hide overloads) if those have function type. This
   allows continuing to use function 'x' after 'let x=x(p) in ...'.

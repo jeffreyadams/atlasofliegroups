@@ -735,7 +735,8 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload)
       @< Report that type |t| of |rhs| does not have required structure,
          and |throw| @>
     if (overload!=0)
-      @< Set |overload=0| if type |t| is not an appropriate function type @>
+      @< Set |overload=0| if type |t| is not a function type, or |throw|
+         if |overload==2| @>
 @)
     phase=1;
     layer b(n_id);
@@ -773,23 +774,15 @@ the parser will pass |overload==2| in this case, signalling that it must not
 be cleared to~$0$, but rather result in an error message in cases where
 setting it to~$0$ is attempted.
 
-@< Set |overload=0| if type |t| is not an appropriate function type @>=
-{ bool clear = t.kind!=function_type;
-    // cannot overload with a non-function value
-  if (not clear) // so we do have a function type
-  { type_expr& arg=t.func->arg_type;
-  @/clear = arg.kind==tuple_type and arg.tupple.empty();
-     // nor parameterless functions
-    if (clear) // if we move parameterless function to identifier table
-      pat.kind |= 0x4; // then mark the definition as constant
-  }
-  if (clear and overload==2) // inappropriate function type with operator
-  { std::string which(t.kind==function_type ? "parameterless " : "non-");
-    throw std::runtime_error
-      ("Cannot set operator to a "+which+"function value");
-  }
-  if (clear)
+@< Set |overload=0| if type |t| is not a function type... @>=
+{ if (t.kind!=function_type) // cannot overload with a non-function value
+  { if (overload==2)
+  // an operator; it can \emph{only} be overloaded, so this case is an error
+      throw std::runtime_error
+        ("Cannot set operator to a non function value");
     overload=0;
+     // but in other cases just go to the global identifier table instead
+  }
 }
 
 @ For identifier definitions we print their names and types (paying attention
