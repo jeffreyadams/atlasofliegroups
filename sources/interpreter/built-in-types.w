@@ -4445,7 +4445,7 @@ internally, so we don't have to do that here).
 @< Local function def...@>=
 void param_to_poly()
 { shared_module_parameter p = get<module_parameter_value>();
-@/test_standard(*p,"Cannot convert to ParamPol");
+@/test_standard(*p,"Cannot convert non standard Param to ParamPol");
   const own_real_form& rf=p->rf;
   push_value(std::make_shared<virtual_module_value> @|
     (rf,rf->rc().expand_final(p->val)));
@@ -4486,7 +4486,7 @@ parameters to or from them.
 void add_module_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   own_virtual_module accumulator = get_own<virtual_module_value>();
-@/test_standard(*p,"Cannot convert to term in ParamPol");
+@/test_standard(*p,"Cannot convert non standard Param to term in ParamPol");
   if (accumulator->rf!=p->rf)
     throw std::runtime_error @|
       ("Real form mismatch when adding standard module to a module");
@@ -4519,7 +4519,7 @@ void add_module_term_wrapper(expression_base::level l)
   own_module_parameter p = get_own<module_parameter_value>();
   Split_integer coef=get<split_int_value>()->val;
   own_virtual_module accumulator = get_own<virtual_module_value>();
-@/test_standard(*p,"Cannot convert to term in ParamPol");
+@/test_standard(*p,"Cannot convert non standard Param to term in ParamPol");
   if (accumulator->rf!=p->rf)
     throw std::runtime_error @|
       ("Real form mismatch when adding a term to a module");
@@ -4544,7 +4544,7 @@ void add_module_termlist_wrapper(expression_base::level l)
       Split_integer coef=force<split_int_value>(t->val[0].get())->val;
       const module_parameter_value* p =
         force<module_parameter_value>(t->val[1].get());
-@/    test_standard(*p,"Cannot convert to term in ParamPol");
+@/    test_standard(*p,"Cannot convert non standard Param to term in ParamPol");
       if (accumulator->rf!=p->rf)
         throw std::runtime_error @|
           ("Real form mismatch when adding terms to a module");
@@ -4558,7 +4558,8 @@ void add_module_termlist_wrapper(expression_base::level l)
 virtual modules.
 @< Local function... @>=
 void add_virtual_modules_wrapper(expression_base::level l)
-{ own_virtual_module accumulator = get_own<virtual_module_value>();
+{
+  own_virtual_module accumulator = get_own<virtual_module_value>();
   shared_virtual_module addend = get<virtual_module_value>();
   if (accumulator->rf!=addend->rf)
     throw std::runtime_error @|("Real form mismatch when adding two modules");
@@ -4569,8 +4570,9 @@ void add_virtual_modules_wrapper(expression_base::level l)
 }
 @)
 void subtract_virtual_modules_wrapper(expression_base::level l)
-{ own_virtual_module accumulator = get_own<virtual_module_value>();
+{
   shared_virtual_module subtrahend = get<virtual_module_value>();
+  own_virtual_module accumulator = get_own<virtual_module_value>();
   if (accumulator->rf!=subtrahend->rf)
     throw std::runtime_error @|
       ("Real form mismatch when subtracting two modules");

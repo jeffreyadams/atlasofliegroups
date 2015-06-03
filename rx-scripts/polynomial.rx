@@ -178,11 +178,9 @@ set + = fix_add@(vec,vec)
 set - = fix_sub@(vec,vec)
 set * = dot_product@(vec,vec)
 
-{ for convenience }
-set poly_1 = poly: [1]
-set poly_2 = poly: [2]
-set q = poly: [0,1]
-set q2 = poly: [0,0,1]
+{ for convenience, the ! means these are constant definitions }
+set !poly_0 = poly:[], !poly_1 = poly:[1], !poly_2 = poly: [2]
+set !q = poly: [0,1], !q2 = poly: [0,0,1]
 set sgn_poly (int k) = poly:
   [if k<0 then -1 elif k>0 then 1 else error("taking sign of 0") fi]
 
