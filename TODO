@@ -13,11 +13,10 @@
 
 * Work on the realex program
 
+- Allow realex to preload modules from the command line
 - Make conditionals return shared pointer to global true and false values
 - Use move semantics string_value when possible
 - Allow slicing from matrices (avoiding conversion to and from [vec])
-
-- Introduce a case statement (multi-way conditional based on integer value)
 
 - Find alternative syntax for "verbose" and "quiet", liberating the keywords
 
@@ -30,7 +29,8 @@
 - Handle output from loading files differently
 
 - Make 'not' execute a built-in function
-- Allow Python-style slices of lists, vectors, matrices; maybe transformations
+- Add a leading_term function (ParamPol->Param)
+
 - Integrate a bigint library to store realex int (and rat?) values; while
   attending that, signal overflow in arithmetic operations / conversions
 

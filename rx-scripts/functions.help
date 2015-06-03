@@ -130,9 +130,10 @@ mod2_section (mat->mat): find section (left/right/inverse) of binary matrix
 subspace_normal: (mat->mat,mat,mat,[int]) normalized modulo-2 basis
   Given a sequence of binary vectors, namely the reduction modulo 2 of the
   columns of the argument matrix, find a normalized basis for the subspace
-  they span, expressions for the basis vectors in terms of the given list, a
-  basis for the relations between the vectors, an a list of pivot values (all
-  lists of binary vectors are obtained as the columns of one result matrix).
+  they span (a matrix in reduced column echelon form without zero columns),
+  and also expressions for the basis vectors in terms of the given list, a
+  basis for the relations between the vectors, and a list of pivot values
+  (each list given as a matrix with the specified vectors as its columns).
   The argument is a list of n generators of size r whose components are
   interpreted modulo 2, the first output component is a reduced echelon basis,
   consisting of d binary vectors of size r where d is the dimension of the
@@ -370,6 +371,7 @@ real_form: (InnerClass,int->RealForm): select a real form from inner class.
   position (starting from 0). The list is always the same for a given inner
   class (independent of other computations), unlike the list of Cartan classes
   for a real form as discussed below
+inner_class: (RealForm->InnerClass): inner class containing the form
 form_number: (RealForm->int): index of the real form in its inner class
 
 quasisplit_form: (InnerClass->RealForm): quasisplit form for the inner class

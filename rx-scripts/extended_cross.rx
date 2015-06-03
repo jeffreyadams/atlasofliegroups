@@ -69,13 +69,13 @@ set ext_cross_2(int j
     ext_type_2(delta,j,p)
   , simples = simple_roots(rd), cosimples = simple_coroots(rd)
 {  then ()=prints("ext_cross_2 type is:", type) }
-  then alpha=simples[j] , alpha_check=cosimples[j]
-  then s_alpha    = 1 - column(alpha)*row(alpha_check)
-  , s_alpha_check = 1 - column(alpha_check)*row(alpha) { = ^s_alpha }
-  , k=lookup(delta*alpha,simples)
-  then beta=simples[k], beta_check=cosimples[k]
-  then s_beta    = 1 - column(beta)*row(beta_check)
-  , s_beta_check = 1 - column(beta_check)*row(beta) { = ^s_beta }
+  then alpha=root(rd,j) , alpha_check=coroot(rd,j)
+  , s_alpha       = reflection(rd,j)
+  , s_alpha_check = coreflection(rd,j) { = ^s_alpha }
+  then (k,beta,beta_check) = { avoid staggering 3 more let-levels }
+    let b = delta*alpha then k=root_index(rd,b) in (k,b,coroot(rd,k))
+  then s_beta    = reflection(rd,k)
+  , s_beta_check = coreflection(rd,k) { = ^s_beta }
   then s_ab = s_alpha*s_beta { = s_beta*s_alpha }
   then s_ab_check = { s_beta_check*s_alpha_check=s_alpha_check*s_beta_check }
      ^s_ab

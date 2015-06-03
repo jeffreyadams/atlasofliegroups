@@ -255,14 +255,14 @@ begin
   let alpha_check=coroot(id,j) in
   let beta=delta(E)*alpha in
   prints("sign_2i12 alpha,beta=", alpha, ", ", beta)
-; let k=lookup(beta,simple_roots(id)) in
+; let k=root_index(id,beta) in
   let beta_check=coroot(id,k) in
   let (p,q)=(parameter(E),parameter(F)) in
   assert(valid(E),"E is not valid")
 ; assert(valid(F),"F is not valid")
 ; assert(ext_type(j,E)="2i12" and ext_type(j,F)="2r21","Wrong types")
-; assert((q=Cayley_set(j,Cayley_set(k,p)[0])[0]) or
-         (q=Cayley_set(j,Cayley_set(k,p)[0])[1])
+; assert(q=Cayley_set(j,Cayley_set(k,p)[0])[0] or
+         q=Cayley_set(j,Cayley_set(k,p)[0])[1]
         ,"q is not a 2i12 Cayley transform of p")
 ; let l_test_1=in_lattice((1+^theta(E)),l(F)-l(E)) in
   let l_test_2=in_lattice((1+^theta(E)),l(F)-l(E)+alpha_check) in
@@ -315,7 +315,7 @@ set sign_2r21(int j, extended_param E, extended_param F) =int:
 
 { see "More on the 2i12, 2Ci and 1i cases" Section 2 }
 set sign_2Ci (
-    int j,extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E) = int:
+    int j,extended_param(,delta,,,,g,l,,tau,):E) = int:
   let id=integrality_datum(E)
   then alpha=root(id,j), alpha_check=coroot(id,j)
   then beta=delta*alpha then beta_check=coroot(id,beta)
@@ -341,8 +341,8 @@ set signs_1i1(
 begin
   assert(ext_type(j,E)="1i1","Wrong type in signs_1i1")
 ; let alpha=root(ic,j), alpha_check=coroot(ic,j), F=ext_Cayley(j,E)[0]
-  then (sigma,valid) = solve((1+^omega(F)),alpha)  in
-  assert(valid,"can't solve for sigma in signs_1i1")
+  then (sigma,OK) = solve((1+^omega(F)),alpha)  in
+  assert(OK,"can't solve for sigma in signs_1i1")
 ; let new_tau_E = vec: tau_E-(alpha_check*tau_E)*sigma
   , l_E_alpha = l_E*alpha
   then new_l_E=
@@ -363,7 +363,7 @@ end
 
 { not needed?
   set signs_1r1f(int j, extended_param E, extended_param F) = int:
-  signs_1i1(j,F,E)
+    signs_1i1(j,F,E)
 }
 
 { temporarily install polynomial arithemetic }

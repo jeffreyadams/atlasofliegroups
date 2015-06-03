@@ -4,7 +4,7 @@ unitary.rx		{ tables: lists of unitary facets for F4, D4, E7 }
 new_blocks.rx		{ substitute "block" versions using new technology }
 sp4.rx			{ some functions facilitating experiments with sp4 }
 sort.rx			basic { merge sort integers, sort by statistic }
-matrix.rx		basic { get blocks from matrix, parital inverses }
+matrix.rx		basic { get blocks from matrix, partial inverses }
 polynomial.rx		basic { polynomials and matrices with poly entries }
 Weyl.rx			basic { define W_word and a few functions using it }
 groups.rx		basic { function for constructing groups by name }
@@ -13,6 +13,8 @@ nilpotent.rx		basic { list complex nilp. orbits; tables for G2-E8 }
 parameters.rx		basic { attributes of and functions for Param values }
 iterate_deform.rx	basic { legacy implementation of deformation algorithm }
 torus.rx		basic { construct torus by compact/complex/split ranks }
+galois.rx		basic, groups, generate_groups
+			{ count conn. components and real forms in square class }
 lattice.rx		basic, matrix { sublattice embeddings and quotients }
 twist.rx		basic, lattice { twist by a distinguished involution }
 group_operations.rx	basic, torus, lattice { torus, product, radical etc. }
@@ -46,7 +48,6 @@ hecke.rx		basic, sort, polynomial, extended*, nonintegral
 ---------------------------------------------------------------------------
 dual.rx			extended, polynomial, parameters, Vogan-dual
 ext_signs.rx
-galois.rx
 induction.rx
 induction_sp4.rx
 misc.rx

@@ -4,11 +4,11 @@
 
 { debug ext_cayley construction, shouldn't be needed }
 set test_ext_cayley (Param p, int j, string ext_type, extended_param E) = void:
-  assert(valid(E),"E is not valid"); ()
-{ I'm not sure how the rest of this should work
-  then q=parameter(E)
-  , k()  { only needed if length=2,3 }
-   = let sr=simple_roots(integrality_datum(E)) in lookup(delta(E)*sr[j],sr)
+( assert(valid(E),"E is not valid")
+{ I'm not sure how the rest of this should work, therefore it is comment only
+; let q=parameter(E)
+  , k() = { companion index, only needed if length=2,3 }
+   let id=integrality_datum(E) in root_index(id,delta(E)*root(id,j))
   then Cayleys = [Param]:
     if ext_type="1i1" or ext_type="1i2f" or ext_type="1r1f" or ext_type="1r2"
     then Cayley_set(j,p)
@@ -26,6 +26,7 @@ set test_ext_cayley (Param p, int j, string ext_type, extended_param E) = void:
   ; prints("p=", p); prints("q=", q); error("")
   fi
 }
+)
 
 { extended Cayley transform of type 1* }
 { Cayley transform by j^th simple root of the *integral* roots

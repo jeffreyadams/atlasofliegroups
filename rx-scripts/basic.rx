@@ -66,7 +66,7 @@ set ceil  (rat a) = int: -\ %-a   { same, sandwiched in negations }
 set \ ((rat,int)p) = int: floor(/p)
 set \ ((rat,rat)p) = int: floor(/p)
 
-{ these are mostly for ratvec arguments, but avoid coercing from vec }
+{ these are mostly for ratvec arguments, but [rat] refuses coercion from vec }
 set floor ([rat] v) = vec: for a in v do floor(a) od
 set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
 
@@ -79,7 +79,15 @@ set rat_as_int (rat r) = int:
 set new_line = ascii(10) { including this in a string passes to a new line }
 
 set + (string s,string t) = string: s # t { alias for concatenation }
-set * (string s, int n)= string: let r="" in (for i:n do r#:=s od; r)
+set * = (string,int->string): { repeat string; use recursive doubling }
+  let rep(string s,int n) = string: s in
+  begin rep:=((string s,int n) string:
+      if n=1 then s
+      else let (q,r)=n\%2 then half=rep(s,q) in
+        half # if =r then half else half#s fi
+      fi)
+  ; (string s,int n) string: if <=n then "" else rep(s,n) fi
+  end
 
 set + (string s, int i)= string: s # int_format(i)
 set + (int i, string s)= string: int_format(i) # s
@@ -104,20 +112,20 @@ set * (int c,vec v) = vec: v*c
 set sum (vec v)= (let one=1 in for x in v do one od) * v
 set product (vec v)= let s=1 in for e in v do s*:=e od; s
 
-set reverse (vec v)= vec: for i:#v downto 0 do v[i] od
-set lower (int k,vec v)= vec: for i:k do v[i] od
-set upper (int k,vec v)= vec: for i:k from #v-k do v[i] od
-set drop_lower (int k,vec v)= vec: for i:#v-k from k do v[i] od
-set drop_upper (int k,vec v)= vec: for i:#v-k do v[i] od
+set reverse (vec v)= vec: v~[:]
+set lower (int k,vec v)= vec: v[:k]
+set upper (int k,vec v)= vec: v[k~:]
+set drop_lower (int k,vec v)= vec: v[k:]
+set drop_upper (int k,vec v)= vec: v[:k~]
 
-set <= (vec v) = bool: >= -v
-set <  (vec v) = bool: > -v
+set <= (vec v) = bool: >= -v { anti-dominance (in fundamental weight coords) }
+set <  (vec v) = bool: > -v  { strict anti-dominance }
 
-set is_member (vec v) = (int->bool):
-  let start = #v-1
+set is_member ([int] v) = (int->bool):
+  let start = #v-1 { pre-computation might be more efficient }
   in (int val)bool: let i=start in while i>=0 and v[i]!=val do i-:=1 od; i>=0
 
-set contains (int val) = (vec->bool): (vec v)bool: is_member(v)(val)
+set contains (int val) = ([int]->bool): ([int] v)bool: is_member(v)(val)
 
 {				Matrices				}
 
@@ -138,6 +146,10 @@ set # (vec v, mat m) = mat: n_rows(m) { require size match } # (v#([vec]:m))
 set ^ (mat m, vec v) = mat: n_columns(m) ^ (([vec]:^m)#v)
 set ^ (vec v, mat m) = mat: n_columns(m) ^ (v#([vec]:^m))
 
+set # (mat A, mat B) = mat: { concatenate horizontally, must have same depth }
+   n_rows(B)#(([vec]:A)#([vec]:B))
+set ^ (mat A, mat B) = mat: { concatenate vertically, must have same width }
+   n_columns(B) ^ (([vec]:^A)#([vec]:^B))
 
 { test all columns }
 set all (mat M,(vec->bool) filter) = bool:
@@ -169,17 +181,21 @@ set % (mat m,int d) = mat: map_on(m)((int e) int: e%d)
 set ^ =
   let matrix_power (mat m,int n)= mat: m { dummy for recursion } in
   begin matrix_power := { assign recursive function body }
-    ( (mat m,int n): { we hall have n>0 }
+    ( (mat m,int n): { we shall have n>0 }
       if n=1 then m
       else let (q,r)=n\%2 then mm=matrix_power(m,q) in
 	mm*if r=0 then mm else mm*m fi
       fi
     )
-  ; ( { operator ^ = } (mat m,int n) mat:
-      if n>0 then matrix_power(m,n) elif n=0 then id_mat(n_rows(m))
-      else error("Negative matrix power "+n)
+  ; (mat m,int n) mat: { the actual operator ^ :}
+      assert(=#m,"Non square matrix in exponentiation")
+    ; if n>0 then matrix_power(m,n) elif n=0 then id_mat(n_rows(m))
+      else let (m1,d)=invert(m) in
+        if d=1 then matrix_power(m1,-n)
+        elif d=0 then error("Negative power of singular matrix")
+        else error("Negative power of matrix not invertible over Z")
+        fi
       fi
-    )
   end
 
 set inverse (mat M) = mat:
@@ -187,16 +203,12 @@ set inverse (mat M) = mat:
   if d=1 then inv else error("Matrix not invertible over the integers") fi
 
 set det (mat M) = int:
-  let (diag,,)=diagonalize(M), (n,):shape = #M
-  then () = if != shape then error("Determinant of non-square matrix") fi
-  in
-    if #diag<n then 0 { there is at least one zero on the diagonal }
-    else product(diag) { otherwise multiply out }
-    fi
-
-{ surprisingly coercion allows, and does not provide, the following overload }
-set # (mat A, mat B) = mat: { concatenate horizontally, must have same depth }
-   n_rows(B)#(([vec]:A)#([vec]:B))
+( let (diag,,)=diagonalize(M), (n,):shape = #M in
+  assert(=shape,"Determinant of non-square matrix")
+; if #diag<n then 0 { there is at least one zero on the diagonal }
+  else product(diag) { otherwise multiply out }
+  fi
+)
 
 set columns_with ((int,vec->bool) p,mat m) = mat:
   let res = [vec]: [] in
@@ -214,26 +226,27 @@ set rows_with ((vec->bool) p,mat m) = mat:
 set rows_with ((int->bool) p,mat m) = mat:
   rows_with (((int,vec)(i,))bool: p(i),m)
 
-set >=(mat m) = bool:
+set >=(mat m) = bool: { test for having non-negative entries only }
   let j=n_columns(m)-1 in while j>=0 and >=m[j] do j-:=1 od; j<0
 set >(mat m) = bool: { all columns are strictly positive }
   let j=n_columns(m)-1 in while j>=0 and >m[j] do j-:=1 od; j<0
 set <=(mat m) = bool: >= -m
 set <(mat m) = bool: > -m
 
-set lookup (vec v,mat m) = int:
+set lookup_column (vec v,mat m) = int:
   let i=n_columns(m)-1 in while i>=0 and m[i]!=v do i-:=1 od; i
+set lookup_row (vec v,mat m) = int:
+  lookup_column(v,^m)
 
-{ sum of columns of a matrix }
+{ sum of columns of a matrix; this is so neat, avoid calling it sum_columns }
 set sum (mat m)= vec: m*ones(n_columns(m))
-
-set oneplus (mat M)= mat: 1+M
-set oneminus (mat M)= mat: 1-M
 
 {			    Rational vectors				}
 
 set numer (ratvec a) = vec: let (n,)=%a in n
 set denom (ratvec a) = int: let (,d)=%a in d
+
+{ allow scalar multiplication form left; from right it is built-in }
 set * (int i,ratvec v) = ratvec: v*i
 set * (rat r,ratvec v) = ratvec: v*r
 
@@ -243,7 +256,7 @@ set is_integer (ratvec v) = bool: let (,d)=%v in d=1 { equivalently =(v%1) }
 set * (ratvec v, ratvec w) = rat: let (nv,dv)=%v,(nw,dw)=%w in nv*nw/(dv*dw)
 
 set * (vec v, ratvec w) = rat: let (nw,dw)=%w in v*nw/dw { more efficient }
-{ cannot also define: *(ratvec v, vec w) = rat: let (nv,dv)=%v in nv*w/dv }
+{ one cannot also define: *(ratvec v, vec w) = rat: let (nv,dv)=%v in nv*w/dv }
 
 { vector floor of quotient operation, makes vector from rational vector }
 set \ (ratvec v, int k) = vec: let (n,d)=%v in n\(k*d)
@@ -252,11 +265,11 @@ set \ (ratvec v, int k) = vec: let (n,d)=%v in n\(k*d)
 set ratvec_as_vec (ratvec v) = vec:
   let (w,d)=%v in assert(d=1,"Not an integer vector"); w
 
-set reverse (ratvec v)= ratvec:     let (n,d)=%v in reverse(n)/d
-set lower (int k,ratvec v)= ratvec: let (n,d)=%v in lower(k,n)/d
-set upper (int k,ratvec v)= ratvec: let (n,d)=%v in upper(k,n)/d
-set drop_lower (int k,ratvec v)= ratvec: let (n,d)=%v in drop_lower(k,n)/d
-set drop_upper (int k,ratvec v)= ratvec: let (n,d)=%v in drop_upper(k,n)/d
+set reverse (ratvec v)= ratvec: v~[:]
+set lower (int k,ratvec v)= ratvec: v[:k]
+set upper (int k,ratvec v)= ratvec: v[k~:]
+set drop_lower (int k,ratvec v)= ratvec: v[k:]
+set drop_upper (int k,ratvec v)= ratvec: v[:k~]
 
 set <= (ratvec v) = bool: <=numer(v)
 set <  (ratvec v) = bool: < numer(v)
@@ -264,27 +277,19 @@ set <  (ratvec v) = bool: < numer(v)
 
 {			    Split integers				}
 
-set s = Split:(0,1)
-set + (Split x) = int: let (r,)=%x in r { real part }
-set ^ (Split x) = int: let (,y)=%x in y { s part }
+set !s = Split:(0,1) { ! means it is a constant }
+
+set int_part (Split x) = int: let (r,)=%x in r
+set s_part (Split x) = int: let (,y)=%x in y { s part }
+{ the names of the synonym operators are mysterious, but maybe it is convenient }
+set + = int_part@Split
+set ^ =   s_part@Split
 
 set s_to_1 (Split x) = int: +%x        { let (a,b)=%x in +(a,b) }
 set s_to_minus_1 (Split x) = int: -%x  { let (a,b)=%x in -(a,b) }
 
 set split_as_int (Split x) = int:
   let (r,y)=%x in assert(=y,"split is not an integer"); r
-
-set ^ = { exponentiation of split integers }
-  let split_power (Split x,int n) = Split: x { dummy }
-  then () = split_power := ((Split x,int n): { we shall have n>0 }
-    if n=1 then x
-    else let (q,r)=n\%2 then y=split_power(x,q) in y*if r=0 then y else x*y fi
-    fi)
-  in { set ^ = } (Split x,int n): Split:
-    if n>0 then split_power(x,n) elif n=0 then Split:(1,0)
-    elif let (a,b)=%x in abs(a)+abs(b)=1 then if n%2=0 then 1 else x fi
-    else error("Negative power "+n+" of split integer")
-    fi
 
 { nicer display of Splits }
 set split_format (Split w) = string:
@@ -296,6 +301,19 @@ set split_format (Split w) = string:
     elif b=0 then "" elif b=1 then "+s" else "-s"
     fi
   fi
+
+set ^ = { exponentiation of split integers }
+  let split_power (Split x,int n) = Split: x { dummy }
+  then () = split_power := ((Split x,int n): { we shall have n>0 }
+    if n=1 then x
+    else let (q,r)=n\%2 then y=split_power(x,q) in y*if r=0 then y else x*y fi
+    fi)
+  in { set ^ = } (Split x,int n): Split:
+    if n>0 then split_power(x,n) elif n=0 then Split:(1,0)
+    elif let (a,b)=%x in abs(a)+abs(b)=1 { cases of invertible (unit) Split }
+    then if n%2=0 then 1 else x fi { all of which are square roots of +1 }
+    else error("Negative power "+n+" of split integer "+split_format(x))
+    fi
 
 
 {				Root data 				}
@@ -310,6 +328,7 @@ set root_datum (LieType t, [ratvec] gens) = RootDatum:
 { allow single kernel generator in root datum construction }
 set root_datum (LieType t, ratvec gen) = RootDatum: root_datum(t,[gen])
 
+{ the following uses that root_index(rd,v)=nr_of_posroots(rd) for a non-root v }
 set is_root ((RootDatum,vec) (rd,):p) = bool:
   root_index(p)<nr_of_posroots(rd)
 set is_coroot ((RootDatum,vec) (rd,):p) = bool:
@@ -374,6 +393,10 @@ set reflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
   1 - column(root(rd,i))*row(coroot(rd,i))
 set reflection ((RootDatum,vec)(rd,):p) = mat: { specify root (not coroot) }
   reflection(rd,root_index(p))
+set coreflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
+  1 - column(coroot(rd,i))*row(root(rd,i))
+set coreflection ((RootDatum,vec)(rd,):p) = mat: { specify root (not coroot) }
+  coreflection(rd,root_index(p))
 set reflect (RootDatum rd, int i, vec v) = vec: { apply reflection(rd,i)*v }
   v -:= root(rd,i) * (coroot(rd,i)*v) { more efficient than matrix multiply }
 set reflect (RootDatum rd, vec alpha, vec v) = vec: { reflection(rd,alpha)*v }
@@ -408,7 +431,7 @@ set conjugate (RootDatum rd, vec alpha, mat M) = mat:
   conjugate(rd,root_index(rd,alpha),M)
 
 
-set singular_roots (RootDatum rd,ratvec v)=[int]:
+set singular_simple_indices (RootDatum rd,ratvec v) = [int]:
   let rv=[int]:[] { cannot use columns_with: must find _indices_ of columns }
   in for a@j in simple_coroots(rd) do if a*v=0 then rv:=rv#j fi od; rv
 
@@ -453,8 +476,9 @@ set is_integral (RootDatum rd, ratvec v) = bool: { integral on all coroots }
   =(v*simple_coroots(rd)%1)
 
 
-{ the following funtions give but partial information; giving a more complete
-  definition for InnerClass values requires more work (group_operations.rx) }
+{ the following functions give but partial information; giving a more complete
+  definition for InnerClass values needs more work (see group_operations.rx)
+}
 set derived (RootDatum rd) = RootDatum: let (d,)=derived_info(rd) in d
 set mod_central_torus (RootDatum rd) = RootDatum:
   let (d,)=mod_central_torus_info(rd) in d
@@ -675,6 +699,9 @@ set != (Param x,Param y) = bool: not(x=y)
 set root_datum (Param p) = RootDatum: real_form(p)
 set inner_class (Param p) = InnerClass: real_form(p)
 
+set null_module (Param p) = ParamPol:
+  null_module(real_form(p)) { avoid using ParamPol version below, could throw }
+
 { deforming |nu| (operand order avoids conflicting with *@(int,ParamPol) ) }
 set * (Param p,rat f) = Param: { multiplying the infinitesmal character works: }
   let (x,lambda_rho,gamma)=%p in param(x,lambda_rho,gamma*f)
@@ -747,7 +774,7 @@ set status (int s,Param p) = int: { this is NOT related to status(s,x(p)) }
   status(root(integrality_datum(p),s),p)
 
 set block_status_text (int i) = string:
-  ["C-","ic","r1","r2","C+","rn","i1","i2"][i]
+  case i in "C-","ic","r1","r2","C+","rn","i1","i2" esac
 
 set status_text (int s,Param p) = string: block_status_text(status(s,p))
 set status_texts (Param p) = [string]:
@@ -776,7 +803,7 @@ set lookup (Param p, [Param] block) = int:
 
 {		    Polynomials in module parameters			}
 
-set null_module (ParamPol P) = ParamPol: 0*P { also handles null_module(Param) }
+set null_module (ParamPol P) = ParamPol: 0*P
 
 set s_to_1 (ParamPol p)       = ParamPol: 0*p + for x@q in p do (+%x,q) od
 set s_to_minus_1 (ParamPol p) = ParamPol: 0*p + for x@q in p do (-%x,q) od
