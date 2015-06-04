@@ -1547,13 +1547,17 @@ same syntactic obligations for the caller; this avoids one transfer of
 ownership, doing so only when the pointer is converted to a |shared_ptr| in
 the code below. Finally it was realised that there is no advantage to first
 creating a unique pointer, so we now always create a shared pointer for values
-that will be pushed onto the stack; this could be a pointer-to-non-const to a
-type derived from |value_base|, which upon passing to |push_value| will be
-converted to a |shared_value| by the appropriate constructor of the
-|shared_ptr| template (very conveniently, this constructor is not marked as
-|explicit|). The shared pointer version of |push_value| can take its argument
-as a constant lvalue reference (since it does not need to modify the pointer,
-just the reference count), or as rvalue reference.
+that will be pushed onto the stack using the |std::make_shared| template
+function. This can either be in the argument expression of |push_value|, in
+cases where the object pushed can be constructed in place to its definite
+value, or earlier (the result of |std::make_shared| being held by shared
+pointer to non~|const|, that is, convertible to |own_value|) if the
+constructed object needs modification before being pushed. In both cases the
+rvalue reference version of |push_value| will be used (in the latter case by
+wrapping the |own_value| in |std::move|), which avoids any manipulation of
+reference counts; the constant lvalue reference case is used only in the rare
+cases (as in |push_tuple_components| above) where a pre-existing
+|shared_value| not held in a local variable is being pushed.
 
 @: Push execution stack @>
 

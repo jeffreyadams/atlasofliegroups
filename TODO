@@ -15,7 +15,6 @@
 
 - Allow realex to preload modules from the command line
 - Make conditionals return shared pointer to global true and false values
-- Use move semantics string_value when possible
 - Allow slicing from matrices (avoiding conversion to and from [vec])
 
 - Find alternative syntax for "verbose" and "quiet", liberating the keywords

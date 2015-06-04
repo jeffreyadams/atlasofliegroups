@@ -1140,6 +1140,7 @@ struct string_value : public value_base
 { std::string val;
 @)
   explicit string_value(const std::string& s) : val(s) @+ {}
+  explicit string_value(std::string&& s) : val(std::move(s)) @+ {}
   template <typename I> string_value(I begin, I end) : val(begin,end) @+ {}
   ~string_value()@+ {}
   void print(std::ostream& out) const @+{@; out << '"' << val << '"'; }
