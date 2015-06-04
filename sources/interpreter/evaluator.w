@@ -2497,16 +2497,24 @@ struct string_slice : public slice_base
   virtual void print(std::ostream& out) const
   @+{@; slice_base::print(out,flags); }
 };
+@)
+template <unsigned flags>
+struct matrix_slice : public slice_base
+{ matrix_slice(expression_ptr&& a, expression_ptr&& l,  expression_ptr&& u)
+@/: slice_base(std::move(a),std::move(l),std::move(u)) @+{}
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const
+  @+{@; slice_base::print(out,flags); }
+};
 
 
-@ These subscriptions and slices are printed in the usual syntax. The templated virtual
-|print| methods transform their template argument to a runtime value, and call
-the non |virtual| member |slice_base::print| with that value as second
-argument. For matrix
-subscriptions, where the index type is \.{(int,int)}, the index expression is
-quite likely to be a tuple display, in which case we suppress parentheses.
-Since we have passed the type check here, we know that any tuple display is
-necessarily a pair.
+@ These subscriptions and slices are printed in the usual syntax. The
+templated virtual |print| methods transform their template argument to a
+runtime value, and call the non |virtual| member |slice_base::print| with that
+value as second argument. For matrix subscriptions, where the index type
+is \.{(int,int)}, the index expression is quite likely to be a tuple display,
+in which case we suppress parentheses. Since we have passed the type check
+here, we know that any tuple display is necessarily a pair.
 
 @< Function definitions @>=
 void subscr_base::print(std::ostream& out,bool reversed) const
@@ -2574,6 +2582,7 @@ subscr_base::sub_type subscr_base::slice_kind (const type_expr& aggr)
     case vector_type: return vector_entry;
     case rational_vector_type: return ratvec_entry;
     case string_type: return string_char;
+    case matrix_type: return matrix_column;
     default: return not_so;
     }
   else if (aggr.kind==row_type)
@@ -2619,73 +2628,90 @@ case subscription:
   expression_ptr array = convert_expr(subsn.array,array_type);
   expression_ptr index = convert_expr(subsn.index,index_type);
   expression_ptr subscr;
-  switch (subscr_base::index_kind(array_type,index_type,subscr_type))
-  { case subscr_base::row_entry:
-    if (subsn.reversed)
-      subscr.reset(new
-        row_subscription<true>(std::move(array),std::move(index)));
-    else
-      subscr.reset(new
-        row_subscription<false>(std::move(array),std::move(index)));
-  break;
-  case subscr_base::vector_entry:
-    if (subsn.reversed)
-      subscr.reset(new
-        vector_subscription<true>(std::move(array),std::move(index)));
-    else
-      subscr.reset(new
-        vector_subscription<false>(std::move(array),std::move(index)));
-  break;
-  case subscr_base::ratvec_entry:
-    if (subsn.reversed)
-      subscr.reset(new
-        ratvec_subscription<true>(std::move(array),std::move(index)));
-    else
-      subscr.reset(new
-        ratvec_subscription<false>(std::move(array),std::move(index)));
-  break;
-  case subscr_base::string_char:
-    if (subsn.reversed)
-      subscr.reset(new
-        string_subscription<true>(std::move(array),std::move(index)));
-    else
-      subscr.reset(new
-        string_subscription<false>(std::move(array),std::move(index)));
-  break;
-  case subscr_base::matrix_entry:
-    if (subsn.reversed)
-      subscr.reset(new
-        matrix_subscription<true>(std::move(array),std::move(index)));
-    else
-      subscr.reset(new
-        matrix_subscription<false>(std::move(array),std::move(index)));
-  break;
-  case subscr_base::matrix_column:
-    if (subsn.reversed)
-      subscr.reset(new
-        matrix_get_column<true>(std::move(array),std::move(index)));
-    else
-      subscr.reset(new
-        matrix_get_column<false>(std::move(array),std::move(index)));
-  break;
-  case subscr_base::mod_poly_term:
-    if (subsn.reversed)
-      throw expr_error(e,"Cannot do reversed subscription of a ParamPol");
-    subscr.reset(new module_coefficient(std::move(array),std::move(index)));
-  break;
-  case subscr_base::not_so:
-    std::ostringstream o;
-    o << "Cannot subscript value of type " << array_type @|
-      << " with index of type " << index_type;
-    throw expr_error(e,o.str());
-  }
+  @< Set |subscr| to a pointer to a subscription of a kind determined by
+     |array_type|, |index_type| while setting |subscr_type|, and holding
+     pointers moved from |array| and |index|, or |throw| an error @>
   return conform_types(subscr_type,type,std::move(subscr),e);
 }
 
-@ We shall need to convert runtime values for |flags| to a template argument.
-This can basically only be done by listing all applicable values. This is a
-nice occasion to use a class template as argument to a template function.
+@ This is a large |switch| statement (the first of several) that is required to
+separately and explicitly specify each class template instance that our
+program uses (there are $13$ of them here).
 
+The decision whether the subscription is allowed, and what will be the
+resulting |subscr_type| are made by the static method |subscr_base::index_kind|.
+
+@< Set |subscr| to a pointer to a subscription of a kind determined by...@>=
+switch (subscr_base::index_kind(array_type,index_type,subscr_type))
+{ case subscr_base::row_entry:
+  if (subsn.reversed)
+    subscr.reset(new
+      row_subscription<true>(std::move(array),std::move(index)));
+  else
+    subscr.reset(new
+      row_subscription<false>(std::move(array),std::move(index)));
+break;
+case subscr_base::vector_entry:
+  if (subsn.reversed)
+    subscr.reset(new
+      vector_subscription<true>(std::move(array),std::move(index)));
+  else
+    subscr.reset(new
+      vector_subscription<false>(std::move(array),std::move(index)));
+break;
+case subscr_base::ratvec_entry:
+  if (subsn.reversed)
+    subscr.reset(new
+      ratvec_subscription<true>(std::move(array),std::move(index)));
+  else
+    subscr.reset(new
+      ratvec_subscription<false>(std::move(array),std::move(index)));
+break;
+case subscr_base::string_char:
+  if (subsn.reversed)
+    subscr.reset(new
+      string_subscription<true>(std::move(array),std::move(index)));
+  else
+    subscr.reset(new
+      string_subscription<false>(std::move(array),std::move(index)));
+break;
+case subscr_base::matrix_entry:
+  if (subsn.reversed)
+    subscr.reset(new
+      matrix_subscription<true>(std::move(array),std::move(index)));
+  else
+    subscr.reset(new
+      matrix_subscription<false>(std::move(array),std::move(index)));
+break;
+case subscr_base::matrix_column:
+  if (subsn.reversed)
+    subscr.reset(new
+      matrix_get_column<true>(std::move(array),std::move(index)));
+  else
+    subscr.reset(new
+      matrix_get_column<false>(std::move(array),std::move(index)));
+break;
+case subscr_base::mod_poly_term:
+  if (subsn.reversed)
+    throw expr_error(e,"Cannot do reversed subscription of a ParamPol");
+  subscr.reset(new module_coefficient(std::move(array),std::move(index)));
+break;
+case subscr_base::not_so:
+  std::ostringstream o;
+  o << "Cannot subscript value of type " << array_type @|
+    << " with index of type " << index_type;
+  throw expr_error(e,o.str());
+}
+
+@ For slices we shall similarly need $5$ kinds of slice each with $8$ values
+of the template parameter |flags| for $40$ classes in all. Convert a runtime
+values |flags| a template argument (which must be a compile time constant) can
+basically only be done by listing all applicable values. To avoid extreme
+repetitiveness, we use for this a function that is itself templated over the
+class template that takes |flags| as template argument; there will be $5$
+different such class templates used in calls of |make_slice|.
+
+@s slice int
 @< Local function definitions @>=
 template < @[ template < unsigned > class @+ slice @] >
 expression make_slice(unsigned flags
@@ -2704,7 +2730,7 @@ expression make_slice(unsigned flags
   }
 }
 
-@ When encountering a slice in |convert_expr|, convert the array expression
+@ When encountering a slice in |convert_expr|, we convert the array expression
 with the same type required by the context (since the slice will not change
 the type), and the bound expressions with integer type required. Then we look
 if array type is one that can be sliced at all, throwing an error if it cannot.
@@ -2733,6 +2759,10 @@ case slice:
     break;
     case subscr_base::string_char: subscr.reset(
     @| make_slice<string_slice>
+        (fl,std::move(array),std::move(lower),std::move(upper)));
+    break;
+    case subscr_base::matrix_column: subscr.reset(
+    @| make_slice<matrix_slice>
         (fl,std::move(array),std::move(lower),std::move(upper)));
     break;
     default: std::ostringstream o;
@@ -2968,6 +2998,36 @@ void string_slice<flags>::evaluate(level l) const
 @|  ? std::make_shared<string_value>(std::string(&r[lwb],&r[upb]))
 @|  : std::make_shared<string_value>(@|
        std::string(r.rbegin()+lwb,r.rbegin()+upb)));
+}
+
+@ And here is the version for matrices. Here we cannot use reverse iterators,
+but it is not hard to do the right thing using the integer indices |lwb|,
+|upb| directly.
+
+@< Function definitions @>=
+
+template <unsigned flags>
+void matrix_slice<flags>::evaluate(level l) const
+{ int upb=(upper->eval(),get<int_value>()->val);
+  int lwb=(lower->eval(),get<int_value>()->val);
+  shared_matrix mat=(array->eval(),get<matrix_value>());
+  const auto& m = mat->val;
+  int n = m.numColumns();
+  if ((flags&0x2)!=0)
+    lwb = n - lwb;
+  if ((flags&0x4)!=0)
+    upb = n - upb;
+  if (lwb<0 or upb>n)
+    slice_range_error(lwb,upb,n,flags,this);
+  if (lwb>=upb)
+@/{@; push_value(std::make_shared<matrix_value>(int_Matrix(m.numRows(),0)));
+      return; }
+  own_matrix result =
+    std::make_shared<matrix_value>(int_Matrix(m.numRows(),upb-lwb));
+  auto& r = result->val;
+  for (unsigned int j=0; lwb<upb; ++j)
+    r.set_column(j,m.column((flags&0x1)==0 ? lwb++ : n - ++lwb));
+  push_value(std::move(result));
 }
 
 @* Control structures.
