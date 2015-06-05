@@ -71,13 +71,13 @@
 %token BECOMES ":="
 %token TLSUB "~["
 
-%type <expression> expr tertiary lettail or_expr and_expr not_expr
+%type <expression> expr expr_opt tertiary lettail or_expr and_expr not_expr
 %type <expression>  formula operand secondary primary iftail
 %type <expression> subscription slice comprim assignable_subsn ident_expr
 %type <ini_form> formula_start
 %type <oper> operator
 %type <val> tilde_opt
-%destructor { destroy_expr ($$); } expr tertiary lettail or_expr
+%destructor { destroy_expr ($$); } expr expr_opt tertiary lettail or_expr
 %destructor { destroy_expr ($$); } and_expr not_expr formula operand iftail
 %destructor { destroy_expr ($$); } secondary primary comprim subscription slice
 %destructor { destroy_expr ($$); } assignable_subsn ident_expr
@@ -281,7 +281,7 @@ comprim: subscription | slice
 		{ $$=wrap_list_display(reverse_expr_list($2),@$); }
 	| '[' commabarlist ']'
 	  { $$=make_unary_call
-		(lookup_identifier("^"),
+		(lookup_identifier("transpose "),
                  make_cast
                  (make_prim_type(5) /* |matrix_type| */
 		  ,wrap_list_display(reverse_expr_list($2),@$),@$),@$,@1);
@@ -338,46 +338,88 @@ subscription: assignable_subsn
           }
 ;
 
-slice   : IDENT '[' expr tilde_opt ':' expr tilde_opt ']'
-	  { $$=make_slice_node(make_applied_identifier($1,@1),$3,$6,0+2*$4+4*$7,@$); }
-	| IDENT '[' ':' expr tilde_opt ']'
-	  { $$=make_slice_node(make_applied_identifier($1,@1),make_int_denotation(0,@3),$4,0+4*$5,@$); }
-	| IDENT '[' expr tilde_opt ':' ']'
-	  { $$=make_slice_node(make_applied_identifier($1,@1),
-		  $3,make_int_denotation(0,@6),0+2*$4+4,@$); }
-	| IDENT '[' ':' ']'
-	  { $$=make_slice_node(make_applied_identifier($1,@1),
-		  make_int_denotation(0,@3),make_int_denotation(0,@4),0+4,@$); }
-	| IDENT TLSUB expr tilde_opt ':' expr tilde_opt ']'
-	  { $$=make_slice_node(make_applied_identifier($1,@1),
-		  $3,$6,1+2*$4+4*$7,@$); }
-	| IDENT TLSUB ':' expr tilde_opt ']'
-	  { $$=make_slice_node(make_applied_identifier($1,@1),
-		  make_int_denotation(0,@3),$4,1+4*$5,@$); }
-	| IDENT TLSUB expr tilde_opt ':' ']'
-	  { $$=make_slice_node(make_applied_identifier($1,@1),
-		  $3,make_int_denotation(0,@4),1+2*$4+4,@$); }
-	| IDENT TLSUB ':' ']'
-	  { $$=make_slice_node(make_applied_identifier($1,@1),
-		  make_int_denotation(0,@3),make_int_denotation(0,@4),1+4,@$); }
-        | comprim '[' expr tilde_opt ':' expr tilde_opt ']'
-	  { $$=make_slice_node($1,$3,$6,0+2*$4+4*$7,@$); }
-	| comprim '[' ':' expr tilde_opt ']'
-	  { $$=make_slice_node($1,make_int_denotation(0,@3),$4,0+4*$5,@$); }
-	| comprim '[' expr tilde_opt ':' ']'
-	  { $$=make_slice_node($1,$3,make_int_denotation(0,@6),0+2*$4+4,@$); }
-	| comprim '[' ':' ']'
-	  { $$=make_slice_node($1,make_int_denotation(0,@3)
-                                 ,make_int_denotation(0,@4),0+4,@$); }
-	| comprim TLSUB expr tilde_opt ':' expr tilde_opt ']'
-	  { $$=make_slice_node($1,$3,$6,1+2*$4+4*$7,@$); }
-	| comprim TLSUB ':' expr tilde_opt ']'
-	  { $$=make_slice_node($1,make_int_denotation(0,@3),$4,1+4*$5,@$); }
-	| comprim TLSUB expr tilde_opt ':' ']'
-	  { $$=make_slice_node($1,$3,make_int_denotation(0,@4),1+2*$4+4,@$); }
-	| comprim TLSUB ':' ']'
-	  { $$=make_slice_node($1,make_int_denotation(0,@3)
-                                 ,make_int_denotation(0,@4),1+4,@$); }
+expr_opt : expr | { $$=nullptr; } ;
+
+slice   : IDENT '[' expr_opt tilde_opt ':' expr_opt tilde_opt ']'
+	  { unsigned l_rev = $3==nullptr ? 0x0 : $4*0x2;
+            unsigned u_rev = $6==nullptr ? 0x4 : $7*0x4;
+            $$=make_slice_node(
+	         make_applied_identifier($1,@1),
+                 $3==nullptr ? make_int_denotation(0,@3) : $3,
+		 $6==nullptr ? make_int_denotation(0,@6) : $6,
+		 l_rev^u_rev,@$);
+          }
+        | comprim '[' expr_opt tilde_opt ':' expr_opt tilde_opt ']'
+	  { unsigned l_rev = $3==nullptr ? 0x0 : $4*0x2;
+            unsigned u_rev = $6==nullptr ? 0x4 : $7*0x4;
+            $$=make_slice_node( $1,
+                 $3==nullptr ? make_int_denotation(0,@3) : $3,
+		 $6==nullptr ? make_int_denotation(0,@6) : $6,
+		 l_rev^u_rev,@$);
+          }
+	| IDENT TLSUB expr_opt tilde_opt ':' expr_opt tilde_opt ']'
+	  { unsigned l_rev = $3==nullptr ? 0x0 : $4*0x2;
+            unsigned u_rev = $6==nullptr ? 0x4 : $7*0x4;
+            $$=make_slice_node(
+	         make_applied_identifier($1,@1),
+                 $3==nullptr ? make_int_denotation(0,@3) : $3,
+		 $6==nullptr ? make_int_denotation(0,@6) : $6,
+		 0x1^l_rev^u_rev,@$);
+          }
+	| comprim TLSUB expr_opt tilde_opt ':' expr_opt tilde_opt ']'
+	  { unsigned l_rev = $3==nullptr ? 0x0 : $4*0x2;
+            unsigned u_rev = $6==nullptr ? 0x4 : $7*0x4;
+            $$=make_slice_node( $1,
+                 $3==nullptr ? make_int_denotation(0,@3) : $3,
+		 $6==nullptr ? make_int_denotation(0,@6) : $6,
+		 0x1^l_rev^u_rev,@$);
+          }
+	| IDENT '[' expr_opt tilde_opt ':' expr_opt tilde_opt
+	        ',' expr_opt tilde_opt ':' expr_opt tilde_opt ']'
+	  { unsigned r_l_rev =  $3==nullptr ? 0x0  :  $4*0x2;
+	    unsigned r_u_rev =  $6==nullptr ? 0x4  :  $7*0x4;
+	    unsigned c_l_rev =  $9==nullptr ? 0x0  : $10*0x10;
+	    unsigned c_u_rev = $12==nullptr ? 0x20 : $13*0x20;
+	    auto arg = raw_expr_list(nullptr);
+	    arg = make_exprlist_node
+	      ($12==nullptr ? make_int_denotation(0,@12) : $12,arg);
+	    arg = make_exprlist_node
+	      ($9==nullptr ? make_int_denotation(0,@9) : $9,arg);
+	    arg = make_exprlist_node
+	      ($6==nullptr ? make_int_denotation(0,@6) : $6,arg);
+	    arg = make_exprlist_node
+	      ($3==nullptr ? make_int_denotation(0,@3) : $3,arg);
+	    arg = make_exprlist_node
+	      (make_cast(make_prim_type(5),make_applied_identifier($1,@1),@1),
+	       arg);
+	    arg = make_exprlist_node
+	      (make_int_denotation(r_l_rev^r_u_rev^c_l_rev^c_u_rev,@$),arg);
+	    auto arg_tup=wrap_tuple_display(arg,@$);
+	    $$ =
+	      make_unary_call(lookup_identifier("matrix slicer"),arg_tup,@$,@2);
+	  }
+	| comprim '[' expr_opt tilde_opt ':' expr_opt tilde_opt
+	          ',' expr_opt tilde_opt ':' expr_opt tilde_opt ']'
+	  { unsigned r_l_rev =  $3==nullptr ? 0x0  :  $4*0x2;
+	    unsigned r_u_rev =  $6==nullptr ? 0x4  :  $7*0x4;
+	    unsigned c_l_rev =  $9==nullptr ? 0x0  : $10*0x10;
+	    unsigned c_u_rev = $12==nullptr ? 0x20 : $13*0x20;
+	    auto arg = raw_expr_list(nullptr);
+	    arg = make_exprlist_node
+	      ($12==nullptr ? make_int_denotation(0,@12) : $12,arg);
+	    arg = make_exprlist_node
+	      ($9==nullptr ? make_int_denotation(0,@9) : $9,arg);
+	    arg = make_exprlist_node
+	      ($6==nullptr ? make_int_denotation(0,@6) : $6,arg);
+	    arg = make_exprlist_node
+	      ($3==nullptr ? make_int_denotation(0,@3) : $3,arg);
+	    arg = make_exprlist_node(make_cast(make_prim_type(5),$1,@1),arg);
+	    arg = make_exprlist_node
+	      (make_int_denotation(r_l_rev^r_u_rev^c_l_rev^c_u_rev,@$),arg);
+	    auto arg_tup=wrap_tuple_display(arg,@$);
+	    $$ =
+	      make_unary_call(lookup_identifier("matrix slicer"),arg_tup,@$,@2);
+	  }
 ;
 
 iftail	: expr THEN expr ELSE expr FI { $$=make_conditional_node($1,$3,$5,@$); }

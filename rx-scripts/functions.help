@@ -84,6 +84,19 @@ null: (int,int->mat): null matrix with given number of rows and columns
 id_mat: (int->mat): identity matrix of given size.
 diagonal: (vec->mat): square diagonal matrix with given diagonal entries.
 
+swiss_matrix_knife: (int,mat,int,int,int,int->mat): slice and dice a matrix
+  This function selects a block from a matrix, and depending on the options in
+  its first argument can apply a number of transformations on the fly. The
+  basic call swiss_matrix_knife(0,A,i,k,j,l) returns the block A[i:k,j:l] (and
+  is in fact used behind the scenes to implement that syntax). The first
+  (integer) argument specifies 8 options (its value is taken modulo 2^8=256)
+  as follows. Bits 0,1,2 modify row indexing: setting bit 0 reverses the rows
+  before selecting, and bits 1,2 when set specify that i respectively k count
+  from the end (they are subtracted from the number of rows before being
+  used). Similarly bits 3,4,5 modify column indexing. Bit 6 when set specifies
+  that the resulting block is transposed, and bit 7 when set indicates that
+  all entries of the resulting matrix are negated (they are multiplied by -1).
+
 echelon: (mat->mat,[int]): make column echelon form, and return pivots as well
   This applies column operations, and possibly removal of null columns; the
   number of remaining columns is the rank. The result is a pair (M,s) with s

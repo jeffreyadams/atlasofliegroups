@@ -598,15 +598,15 @@ included before) respectively appending output redirection.
   }
 }
 
-@ The tilde character was long unused, but was introduced in subscriptions and
-loops, where it can be places before certain punctuation tokens or the
-keywords \&{do} or \&{od} to indicate various kinds of reversals to be
+@ The tilde character was long unused, but was introduced in subscriptions,
+slices and loops, where it can be placed before certain punctuation tokens or
+the keywords \&{do} or \&{od} to indicate various kinds of reversals to be
 incorporated in the semantics of these expressions. While innocent looking,
 these syntactic extensions cause difficulties due to the limited one-token
 look-ahead the parser allows: in general it is clear what use of the tilde is
 intended by looking at the next token, but the parser needs to know this to
 know what is can allows for the \emph{preceding} expression, and cannot wait
-till seeing the next token. The basic problem involves the $a\,{\sim}[i]$
+until seeing the next token. The basic problem involves the $a\,{\sim}[i]$
 syntax which could occur at the position of $j$ inside a $b[i:j{\sim}]$ slice;
 the presence of |'['| after the tilde influences the parsing rules for~$a$. We
 solve the dilemma by requiring |'~['| to appear as single unit (no space) and
@@ -614,7 +614,7 @@ have the lexer transmit the combination as a single token |TLSUB| to the
 parser.
 
 Given that in these uses |'~'| is never followed by a token that could start a
-sub-formula , it seems reasonable to allow the character to, independently
+sub-formula, it seems reasonable to allow the character to, independently
 from these uses, also be used as operator symbol (where it always precedes a
 sub-formula; the only caveat to the user will be to separate by a space in
 case the operator should be applied to a list display). We can allow that, but
@@ -622,8 +622,8 @@ unless the distinction between the two uses is made by the lexer, we again run
 into parsing problems, similar to the previous ones. So to find out whether
 this is a use of tilde as special symbol rather than as operator, we need to
 look at the next token from within the lexer, and see it if is one of |':'|,
-|']'|, or the keywords \&{do} or \&{od}. But we need to do that within the
-lexer, which can be done even though it is quite ugly. We use the fact that
+|']'|, |','|, or the keywords \&{do} or \&{od}. But we need to do that within
+the lexer, which can be done even though it is quite ugly. We use the fact that
 the input buffer allows us get a pointer~|p| to the next characters to be
 read, so we just test the various possibilities manually. The keyword cases
 are the hardest (we don't want to call |get_token| recursively to scan them,
@@ -639,7 +639,7 @@ else
    // for these cases we do allow intervening space, comments
   const char* p = input.point();
    // take a peek into the input buffer without advancing
-  if (*p==':' or *p==']' or
+  if (*p==':' or *p==']' or *p==',' or
  @|  (*p=='d' and p[1]=='o' or *p=='o' and p[1]=='d')
    and @| not (p[2]=='_' or std::isalnum((unsigned char)p[2])))
   @/ code=c; // return |'~'|

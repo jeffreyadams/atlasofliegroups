@@ -2148,6 +2148,7 @@ Atlas library, which is developed in much more detail in the compilation
 unit \.{built-in-types}. In fact we shall make some of these wrapper functions
 externally callable, so they can be directly used from that compilation unit.
 
+@*2 Predicates and relations.
 We start with vector equality comparisons, which are quite similar
 to what we saw for rationals, for instance.
 
@@ -2304,10 +2305,12 @@ void mat_neq_wrapper(expression_base::level l)
     push_value(std::make_shared<bool_value>(i->val!=j->val));
 }
 
-@ While vector arithmetic operations can easily be implemented in
-the \.{realex} language, and this was actually done (with the exception of
-scalar and matrix products) for a long time, they certainly profit in terms of
-efficiency from being built-in.
+@*2 Vector arithmetic.
+%
+While vector arithmetic operations can easily be implemented in the \.{realex}
+language, and this was actually done (with the exception of scalar and matrix
+products) for a long time, they certainly profit in terms of efficiency from
+being built-in.
 
 @< Local function def... @>=
 void check_size (size_t a, size_t b)
@@ -2537,7 +2540,9 @@ void vector_convolve_wrapper(expression_base::level l)
   push_value(std::move(result));
 }
 
-@ The function |vector_div_wrapper| produces a rational vector, for which we
+@*2 Rational vector arithmetic.
+%
+The function |vector_div_wrapper| produces a rational vector, for which we
 also provide addition and subtraction of another rational vector.
 
 @< Local function def... @>=
@@ -2633,7 +2638,9 @@ void ratvec_divide_rat_wrapper(expression_base::level l)
   push_value(v);
 }
 
-@ Adding a multiple (usually with factor $1$ or $-1$) of the identity to a
+@*2 Matrix arithmetic.
+%
+Adding a multiple (usually with factor $1$ or $-1$) of the identity to a
 (square) matrix is frequently useful, so we provide additive operators between
 matrices and integers.
 
@@ -2770,101 +2777,6 @@ void rvm_prod_wrapper(expression_base::level l)
 }
 
 
-@ The function |stack_rows_wrapper| interprets a row of vectors as a ragged
-tableau, and returns the result as a matrix. It inherits functionality that
-used to be (in a transposed form) applied when implicitly converting lists of
-vectors into matrices, namely to compute the maximum of the lengths of the
-vectors and zero-extending the other rows to that length. As a consequence
-an empty list of vectors gives a $0\times0$ matrix, something that turned out
-to be usually undesirable for an implicit conversion; however here is seems
-not very problematic.
-
-@< Local function def... @>=
-void stack_rows_wrapper(expression_base::level l)
-{ shared_row r = get<row_value>();
-  size_t n = r->val.size();
-  std::vector<const int_Vector*> row(n);
-  size_t width=0; // maximal length of vectors
-  for(size_t i=0; i<n; ++i)
-  { row[i] = & force<vector_value>(r->val[i].get())->val;
-    if (row[i]->size()>width)
-      width=row[i]->size();
-  }
-
-  if (l==expression_base::no_value)
-    return;
-
-  own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,width,0));
-  for(size_t i=0; i<n; ++i)
-    for (size_t j=0; j<row[i]->size(); ++j)
-      m->val(i,j)=(*row[i])[j];
-  push_value(std::move(m));
-}
-
-@ Here is the preferred way to combine columns to a matrix, explicitly
-providing a desired number of rows.
-
-@< Local function def... @>=
-void combine_columns_wrapper(expression_base::level l)
-{ shared_row r = get<row_value>();
-  int n = get<int_value>()->val;
-  if (n<0)
-    throw std::runtime_error("Negative number "+str(n)+" of rows requested");
-@.Negative number of rows@>
-  own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
-  for(size_t j=0; j<r->val.size(); ++j)
-  { const int_Vector& col = force<vector_value>(r->val[j].get())->val;
-    if (col.size()!=size_t(n))
-      throw std::runtime_error("Column "+str(j)+" size "+str(col.size())@|
-          +" does not match specified size "+str(n));
-@.Column size does not match@>
-    m->val.set_column(j,col);
-  }
-  if (l!=expression_base::no_value)
-    push_value(std::move(m));
-}
-@)
-void combine_rows_wrapper(expression_base::level l)
-{ shared_row r =get<row_value>();
-  int n = get<int_value>()->val;
-  if (n<0)
-    throw std::runtime_error("Negative number "+str(n)+" of columns requested");
-@.Negative number of columns@>
-  own_matrix m = std::make_shared<matrix_value>(int_Matrix(r->val.size(),n));
-  for(size_t i=0; i<r->val.size(); ++i)
-  { const int_Vector& row = force<vector_value>(r->val[i].get())->val;
-    if (row.size()!=size_t(n))
-      throw std::runtime_error("Row "+str(i)+" size "+str(row.size())@|
-          +" does not match specified size "+str(n));
-@.Row size does not match@>
-    m->val.set_row(i,row);
-  }
-  if (l!=expression_base::no_value)
-    push_value(std::move(m));
-}
-
-@ The following function is introduced to allow testing the
-|BinaryMap::section| method. It computes for a given binary matrix~$A$ another
-matrix $B$ of transpose shape and such that $ABA=A$ and $BAB=B$, which is a
-convenient generalisation of the notion of inverse matrix, and which never
-fails to exist (though it may fail to be unique).
-
-@h "bitvector.h"
-
-@< Local function def... @>=
-void section_wrapper(expression_base::level l)
-{
-  shared_matrix m=get<matrix_value>();
-  BinaryMap A(m->val);
-  BinaryMap B=A.section();
-  own_matrix res = std::make_shared<matrix_value>(
-    int_Matrix(B.numRows(),B.numColumns()));
-  for (unsigned int j=B.numColumns(); j-->0;)
-    res->val.set_column(j,int_Vector(B.column(j)));
-  if (l!=expression_base::no_value)
-    push_value(std::move(res));
-}
-
 @ We must not forget to install what we have defined.
 
 @< Initialise... @>=
@@ -2984,12 +2896,8 @@ install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
 install_function(mm_prod_wrapper,"*","(mat,mat->mat)");
 install_function(vm_prod_wrapper,"*","(vec,mat->vec)");
 install_function(rvm_prod_wrapper,"*","(ratvec,mat->ratvec)");
-install_function(stack_rows_wrapper,"stack_rows","([vec]->mat)");
-install_function(combine_columns_wrapper,"#","(int,[vec]->mat)");
-install_function(combine_rows_wrapper,"^","(int,[vec]->mat)");
-install_function(section_wrapper,"mod2_section","(mat->mat)");
 
-@* Other functions for vectors and matrices.
+@*1 Other wrapper functions for vectors and matrices.
 %
 This section defines additional functions for vectors and matrices, often
 specifically aimed at working with lattices.
@@ -3070,7 +2978,219 @@ void diagonal_wrapper(expression_base::level l)
   push_value(std::move(m));
 }
 
-@ Here is the column echelon function.
+@ The function |stack_rows_wrapper| interprets a row of vectors as a ragged
+tableau, and returns the result as a matrix. It inherits functionality that
+used to be (in a transposed form) applied when implicitly converting lists of
+vectors into matrices, namely to compute the maximum of the lengths of the
+vectors and zero-extending the other rows to that length. As a consequence
+an empty list of vectors gives a $0\times0$ matrix, something that turned out
+to be usually undesirable for an implicit conversion; however here is seems
+not very problematic.
+
+@< Local function def... @>=
+void stack_rows_wrapper(expression_base::level l)
+{ shared_row r = get<row_value>();
+  size_t n = r->val.size();
+  std::vector<const int_Vector*> row(n);
+  size_t width=0; // maximal length of vectors
+  for(size_t i=0; i<n; ++i)
+  { row[i] = & force<vector_value>(r->val[i].get())->val;
+    if (row[i]->size()>width)
+      width=row[i]->size();
+  }
+
+  if (l==expression_base::no_value)
+    return;
+
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,width,0));
+  for(size_t i=0; i<n; ++i)
+    for (size_t j=0; j<row[i]->size(); ++j)
+      m->val(i,j)=(*row[i])[j];
+  push_value(std::move(m));
+}
+
+@ Here is the preferred way to combine columns to a matrix, explicitly
+providing a desired number of rows.
+
+@< Local function def... @>=
+void combine_columns_wrapper(expression_base::level l)
+{ shared_row r = get<row_value>();
+  int n = get<int_value>()->val;
+  if (n<0)
+    throw std::runtime_error("Negative number "+str(n)+" of rows requested");
+@.Negative number of rows@>
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
+  for(size_t j=0; j<r->val.size(); ++j)
+  { const int_Vector& col = force<vector_value>(r->val[j].get())->val;
+    if (col.size()!=size_t(n))
+      throw std::runtime_error("Column "+str(j)+" size "+str(col.size())@|
+          +" does not match specified size "+str(n));
+@.Column size does not match@>
+    m->val.set_column(j,col);
+  }
+  if (l!=expression_base::no_value)
+    push_value(std::move(m));
+}
+@)
+void combine_rows_wrapper(expression_base::level l)
+{ shared_row r =get<row_value>();
+  int n = get<int_value>()->val;
+  if (n<0)
+    throw std::runtime_error("Negative number "+str(n)+" of columns requested");
+@.Negative number of columns@>
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(r->val.size(),n));
+  for(size_t i=0; i<r->val.size(); ++i)
+  { const int_Vector& row = force<vector_value>(r->val[i].get())->val;
+    if (row.size()!=size_t(n))
+      throw std::runtime_error("Row "+str(i)+" size "+str(row.size())@|
+          +" does not match specified size "+str(n));
+@.Row size does not match@>
+    m->val.set_row(i,row);
+  }
+  if (l!=expression_base::no_value)
+    push_value(std::move(m));
+}
+
+@ We shall define a function to perform all kinds of operations at once on a
+matrix, selecting ranges of rows and columns, possibly reversing one or both,
+and also possibly applying transposition or negation on the fly. The workhorse
+will be the following function, templated over the transposition and
+negation options.
+
+@< Local function def... @>=
+
+template <bool transpose, bool negate>
+void transform_copy
+  (unsigned flags,
+   const int_Matrix& src, @|
+   int lwb_r, int upb_r,
+   int lwb_c, int upb_c,
+   int_Matrix& dst)
+{ if ((flags&0x1)==0) // no reversal of rows
+  { if ((flags&0x2)==0) // no reversal of rows or columns
+      for (int i=0, k=lwb_r; k<upb_r; ++i, ++k)
+	for (int j=0, l=lwb_c; l<upb_c; ++j, ++l)
+	  *(transpose ? &dst(j,i) : &dst(i,j)) = (negate ? -1 : 1) * src(k,l);
+    else // reversal of columns only
+      for (int i=0, k=lwb_r; k<upb_r; ++i, ++k)
+	for (int j=0, l=upb_c; l-->lwb_c; ++j)
+	  *(transpose ? &dst(j,i) : &dst(i,j)) = (negate ? -1 : 1) * src(k,l);
+  }
+  else // reversal of rows
+  { if ((flags&0x2)==0) // reversal of rows only
+      for (int i=0, k=upb_r; k-->lwb_r; ++i)
+	for (int j=0, l=lwb_c; l<upb_c; ++j, ++l)
+	  *(transpose ? &dst(j,i) : &dst(i,j)) = (negate ? -1 : 1) * src(k,l);
+    else // reversal of rows and columns
+      for (int i=0, k=upb_r; k-->lwb_r; ++i)
+	for (int j=0, l=upb_c; l-->lwb_c; ++j)
+	  *(transpose ? &dst(j,i) : &dst(i,j)) = (negate ? -1 : 1) * src(k,l);
+  }
+}
+
+@ And here is the outer function, whose name is inspired by Swiss army knives,
+that will call one of the four template instances. It takes as first parameter
+a |BitSet| of $8$ bits: bit~$0,1,2$ control the row indexing as in a slice:
+reversed, lower bound negated, upper bound negated, where negated means
+subtracted from the corresponding dimension (here the number of rows).
+Similarly bits~$3,4,5$ control the column indexing, bit~$6$ indicates
+transposition and bit~$7$ negation of the individual entries.
+
+@< Local function def... @>=
+
+void swiss_matrix_knife_wrapper(expression_base::level lev)
+{ int l = get<int_value>()->val;
+  int j = get<int_value>()->val;
+  int k = get<int_value>()->val;
+  int i = get<int_value>()->val;
+  shared_matrix src = get<matrix_value>();
+  const int_Matrix& A = src->val;
+  BitSet<8> flags (get<int_value>()->val);
+@)
+  int m = A.numRows(); int n= A.numColumns();
+  int lwb_r = flags[1] ? m-i : i;
+  int upb_r = flags[2] ? m-k : k;
+  int lwb_c = flags[4] ? n-j : j;
+  int upb_c = flags[5] ? n-l : l;
+  if (lwb_r<0 or upb_r>m or lwb_c<0 or upb_c>n)
+    @< Throw |std::error| reporting an error in the specified range @>
+@)
+  if (lev==expression_base::no_value)
+    return;
+  @< Declare and compute the dimensions |r_size|, |c_size| of the result @>
+  own_matrix result(std::make_shared<matrix_value>(int_Matrix(r_size,c_size)));
+  unsigned rev_flags = static_cast<unsigned>(flags[0])*0x1
+                     ^ static_cast<unsigned>(flags[3])*0x2;
+  @< Call instance |transform_copy<@[flags[6],flags[7]@]>| with arguments
+  |rev_flags|, |A|, |lwb_r|, |upb_r|, |lwb_c|, |upb_c|, and |result->val| @>
+
+  push_value(std::move(result));
+}
+
+@ We try to be specific about which bounds were out of range.
+
+@< Throw |std::error| reporting an error in the specified range @>=
+{ std::ostringstream o;
+  o << "Range exceeds bounds: ";
+  if (lwb_r<0 or upb_r>m)
+    if (upb_r>m)
+      if (lwb_r<0)
+        o << "both row bounds " << lwb_r << ':' << upb_r;
+      else
+        o << "upper row bound " << upb_r;
+    else
+      o << "lower row bound " << lwb_r;
+  if ((lwb_r<0 or upb_r>m) and (lwb_c<0 or upb_c>n))
+    o << " and ";
+  if (lwb_c<0 or upb_c>n)
+    if (upb_c>n)
+      if (lwb_c<0)
+        o << "both column bounds " << lwb_c << ':' << upb_c;
+      else
+        o << "upper column bound " << upb_c;
+    else
+      o << "lower column bound " << lwb_c;
+  o << " out of range, actual bounds 0:" << m << ", 0:" << n;
+  throw std::runtime_error(o.str());
+}
+
+@ We ensure the dimensions of the result are non negative, and adapted to
+optional transposition.
+
+@< Declare and compute the dimensions |r_size|, |c_size| of the result @>=
+if (lwb_r>upb_r)
+  upb_r = lwb_r;
+if (lwb_c>upb_c)
+  upb_c = lwb_c;
+unsigned r_size = upb_r - lwb_r;
+unsigned c_size = upb_c - lwb_c;
+if (flags[6]) // transpose
+  std::swap(r_size,c_size);
+
+@ Here we must explicitly test |flags[6],flags[7]| to provide constant
+template arguments.
+
+@< Call instance |transform_copy<@[flags[6],flags[7]@]>|... @>=
+if (flags[6])
+{ if (flags[7])
+    transform_copy<@[true,true@]>
+      (rev_flags,A,lwb_r,upb_r,lwb_c,upb_c,result->val);
+  else
+    transform_copy<@[true,false@]>
+      (rev_flags,A,lwb_r,upb_r,lwb_c,upb_c,result->val);
+}
+else
+{ if (flags[7])
+    transform_copy<@[false,true@]>
+      (rev_flags,A,lwb_r,upb_r,lwb_c,upb_c,result->val);
+  else
+    transform_copy<@[false,false@]>
+      (rev_flags,A,lwb_r,upb_r,lwb_c,upb_c,result->val);
+}
+
+@ We continue with some more specialised mathematical functions. Here is the
+column echelon function.
+
 @h "matreduc.h"
 @h "bitmap.h"
 
@@ -3212,6 +3332,28 @@ void invert_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
+@ The following function is introduced to allow testing the
+|BinaryMap::section| method. It computes for a given binary matrix~$A$ another
+matrix $B$ of transpose shape and such that $ABA=A$ and $BAB=B$, which is a
+convenient generalisation of the notion of inverse matrix, and which never
+fails to exist (though it may fail to be unique).
+
+@h "bitvector.h"
+
+@< Local function def... @>=
+void section_wrapper(expression_base::level l)
+{
+  shared_matrix m=get<matrix_value>();
+  BinaryMap A(m->val);
+  BinaryMap B=A.section();
+  own_matrix res = std::make_shared<matrix_value>(
+    int_Matrix(B.numRows(),B.numColumns()));
+  for (unsigned int j=B.numColumns(); j-->0;)
+    res->val.set_column(j,int_Vector(B.column(j)));
+  if (l!=expression_base::no_value)
+    push_value(std::move(res));
+}
+
 @ We define a function that makes available the normal form for basis of
 subspaces over the field $\Zee/2\Zee$. It is specifically intended to be
 usable with sets of generators that may not form a basis, and to provide
@@ -3330,14 +3472,29 @@ but which will be moved to position $\pi(l)$ according to the relative size of
   push_value(std::move(pivot_r));
 }
 
-@ Once more we need to install what was defined.
+@ Once more we need to install what was defined. In two cases we install a
+wrapper function a second time under a name that will be directly accessed
+from the parser to implement certain syntax, but which the user cannot access,
+and therefore cannot redefine or forget.
+
 @< Initialise... @>=
 install_function(null_vec_wrapper,"null","(int->vec)");
 install_function(null_mat_wrapper,"null","(int,int->mat)");
 install_function(transpose_vec_wrapper,"^","(vec->mat)");
 install_function(transpose_mat_wrapper,"^","(mat->mat)");
+  // install as operator
+install_function(transpose_mat_wrapper,@|"transpose ","(mat->mat)");
+  // use of space in the name makes this copy untouchable
 install_function(id_mat_wrapper,"id_mat","(int->mat)");
 install_function(diagonal_wrapper,"diagonal","(vec->mat)");
+install_function(stack_rows_wrapper,"stack_rows","([vec]->mat)");
+install_function(combine_columns_wrapper,"#","(int,[vec]->mat)");
+install_function(combine_rows_wrapper,"^","(int,[vec]->mat)");
+install_function(swiss_matrix_knife_wrapper@|,"swiss_matrix_knife"
+    ,"(int,mat,int,int,int,int->mat)");
+install_function(swiss_matrix_knife_wrapper@|,"matrix slicer"
+    ,"(int,mat,int,int,int,int->mat)"); // space make an untouchable copy
+@)
 install_function(echelon_wrapper,"echelon","(mat->mat,[int])");
 install_function(diagonalize_wrapper,"diagonalize","(mat->vec,mat,mat)");
 install_function(adapted_basis_wrapper,"adapted_basis","(mat->mat,vec)");
@@ -3348,6 +3505,7 @@ install_function(invfact_wrapper,"inv_fact","(mat->vec)");
 install_function(Smith_basis_wrapper,"Smith_basis","(mat->mat)");
 install_function(Smith_wrapper,"Smith","(mat->mat,vec)");
 install_function(invert_wrapper,"invert","(mat->mat,int)");
+install_function(section_wrapper,"mod2_section","(mat->mat)");
 install_function(subspace_normal_wrapper,@|
    "subspace_normal","(mat->mat,mat,mat,[int])");
 @* Index.

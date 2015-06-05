@@ -12,23 +12,14 @@ Cartan class,...) these parameters can be defined by expressions in 'realex'.
 As a consequence such parameters can be more flexibly handled, results of
 computations can be reused, and scripting and programming become possible.
 
-To compile realex, you need the latest release of the 'cwebx' system, unless
-the output files produced by 'cwebx' were already included in your copy of the
-atlas sources; check the presence in atlas/sources/interpreter of the files
-{buffer,built-in-types,evaluator,lexer,main,parsetree,types} with extensions
-.cpp and (except for main) .h to see if this is the case. If these files do
-not exist, get 'cwebx' by clicking on the indicated link at
-
-http://www-math.univ-poitiers.fr/~maavl/CWEBx/
-
-unpack in some directory, type make, then make sure that the resulting
-programs 'ctanglex' and 'cweavex' are in your $PATH (possibly by making
-symbolic links to them from your ~/bin directory, if you use one), and that
-the macro file cwebxmac.tex is in some place where TeX will find it (check
-your $TEXINPUTS environment variable; a quick solution is to copy the file to
-this atlas/sources/interpreter directory). Once these tools are in place, the
-'make' facility will automatically invoke them to create all the files
-mentioned above when they are needed.
+To compile realex, you need a recent release of the 'cwebx' system, which is
+included in the Atlas distribution. It contains tools to turn the "literate"
+sources, {buffer,built-in-types,evaluator,global,lexer,main,parsetree,types}
+with extension .w, into compilable files (extensions .cpp and (except for
+main) .h) and source documentation files (extension .dvi). Normally the 'make'
+facility will automatically invoke the tools to create all the files mentioned
+above when they are needed (if you run make in job-server mode, with the -j
+switch, it sometimes fails, but without that switch compilation should work).
 
 Apart from that, you need tools like (GNU) 'make', 'bison', and a compiler
 like 'g++' which you already need to compile the atlas program (but contrary
@@ -195,7 +186,7 @@ more meaningful by referring to the offending expression rather than to its
 value. It can be hard to write a script that will load without any error
 message, but the correction cycle is fast (realex stops at the first error,
 with a detailed message pointing out the problem; fixing the problem and
-reloading (type uparrow, return) will usually run through to the next error,
+reloading (type up-arrow, return) will usually run through to the next error,
 or the end of the file). Nonetheless, type checking is a complicated process,
 which in rare cases could produce hard to decipher error messages (but nothing
 compared to C++). Most of the time the system can figure out the types from
@@ -345,23 +336,70 @@ and user-defined functions, provided they all have the same (function) type).
 
 Array values can be constructed by enclosing a comma-separated lists of
 component expressions (all of the same type) in brackets, as in [1,-4,3*6],
-which is called a row display. If 'v' is an identifier holding an array value,
-its individual components can be accessed by subscripting, as in 'v[i]' (in
-fact 'v' could be replaced here by any row-valued expression, although
-computing such a value just to retain one of its component seems wasteful).
+which is called a row display (the given one will be printed as [1,-4,18]).
+
+If 'v' is an identifier, or more generally an expression, whose value is an
+array, then the individual components can of the array can be accessed by
+subscripting, as in 'v[i]'. Interpretation of the index always starts from 0:
+the first element of v is v[0], and the last is v[#v-1]. However, one can also
+index counting from the end by prefixing the '[' by '~', so the last element
+is also v~[0], and the before-last v~[1] and so on. One can also select
+multiple elements at once (combined into a new array value) using a "slice",
+specifying the a lower and an upper bound separated by ':'. Each should be
+thought of as indicating a separation between two elements, namely between the
+one at the given index and at an index one less; the slice then selects all
+elements between the lower separator and the upper separator. This means that
+in a v[a:b] includes the element v[a] but excludes v[b], and therefore selects
+b-a elements in all. In case a>=b the slice returns an empty array of the same
+type as v (having a=b is normal, having a>b is allowed but rarely useful). It
+is an error if the lower bound is negative, or if the upper bound exceeds the
+size of the array. Individual bounds in a range can also be counted from the
+end by appending a '~', in which case they indicate the separation after (that
+is, closer to the end) then the element the index would reversely select. As a
+convenience a completely omitted lower bound means 0 (from the beginning) and
+an omitted upper bound means 0~ (up to the end). Finally one can (like for
+subscription) select from the reverses array by prefixing the '[' by '~'.
+
+Here are some examples of various uses of slices
+
+  v[0:3]  or v[:3]    -- the first 3 elements of v
+  v[3:0~] or v[3:]    -- everything except the first 3 elements of v
+  v[2~:0~] or v[2~:]  -- the last 2 elements of v
+  v[0:2~]  or v[:2~]  -- everything except the last 2 elements of v
+  v[i:k]              -- the elements [v[i],v[i+1],...,v[k-1]
+  v[i:k~]             -- all of v except its first i and its last k elements
+  v~[0:0~] or v~[:]   -- all of v in reverse order
+  v~[4:0~] or v~[4:]  -- all of v except the last 4 elements, in reverse order
+  v~[0:5~] or v~[:5~] -- all of v except the first 5 elements, in reverse order
+  v~[i:k]             -- the k-i elements [v[n-1-i],...,v[n-k-1],v[n-k]] (n=#v)
+  v~[k~:i~]           -- the k-i elements [v[k-1],...,v[i+1],v[i]]
+
+While vectors, rational vectors, matrices and strings are not realex arrays
+(they are instead members of primitive types), they do behave like arrays for
+the purpose of selection; the result is respectively an integer, rational
+number, vector (column of the matrix) or a one-character string (the selection
+can also cause an error, if the index is out of bounds).
 
 If instead of brackets of a row display one uses parentheses to enclose a
 sequence of expressions, then a tuple rather than an array is formed (except
 in case there is exactly one expression in the sequence: then parentheses just
-imply grouping as used for instance to override operator precedence). Such a
-"tuple display" can be used as a function argument without additional
-parentheses, so for instance 'f(x,y)' applies the function 'f' to a 2-tuple
-with components 'x' and 'y'. But one is not obliged to write a tuple display
-for function arguments; for instance after 'set z=(3,4)' the variable 'z'
+imply grouping as used for instance to override operator precedence). Tuples
+differs from array in that there elements are not required to have the same
+type, and (therefore) cannot be selected by position. In fact the type of a
+tuples expression explicitly specifies the type of the component at each
+position, and since the type checker insists that all expressions have a type,
+it is not possible to work with a tuple not having a fixed number of
+components (unlike arrays, which can well be of varying length). Tuple
+displays are frequently used to pack the arguments of a function (officially
+every function takes a single argument, but very often it is of tuple type).
+So for instance 'f(x,y)' applies the function 'f' to a 2-tuple with components
+'x' and 'y'. But one is not obliged to write a tuple display as argument of a
+function expecting a tuple; for instance after 'set z=(3,4)' the variable 'z'
 holds a 2-tuple, and (the same instance of) 'f' may also be called as 'f(z)'.
-One could even for instance multiply the components of 'z' by writing '*z';
-indeed the expression '3*4' is transformed by the parser into '*(3,4)', and
-(currently) this form is also used in error messages, for instance in
+One could even for instance multiply the components of 'z' by writing '*z'
+(giving 12 in the example); indeed the expression '3*4' is transformed by the
+parser into '*(3,4)', and (currently) this form is also used in error
+messages, for instance in
 
   expr> GL(10/2)
   Type error:
@@ -1095,7 +1133,7 @@ and the shifted reversed list [n,...,1] is produced by
   for i : n from 1 ~do i od
 
 (This used to be written as 'for i : n downto 1 do i od', but this syntax is
-redudant given the new more flexible tilde syntax, and is now deprecated.)
+redundant given the new more flexible tilde syntax, and is now deprecated.)
 
 As a general rule, if 'do' in a for loop is preceded by a tilde, then the
 iteration will be performed on the same set of values as before, but traversed
@@ -1103,13 +1141,13 @@ in the opposite order. If a row is produced as value of the loop, it will
 still be the values of the loop bodies in the order of traversal. However
 preceding the final 'od' be a tilde assembles the values of the loop bodies in
 the order opposite to iteration. The two variants can be combined (traversing
-backwards, but assembling the result in the orignal increasing order), and
+backwards, but assembling the result in the original increasing order), and
 apply also to versions of 'for' loops given below (but not to 'while' loops).
 
 As for the while loop, the body may be a sequence expression, and it with may
 have side effects, though it does not have to as the examples show. Currently
 assignments to the loop index (and more generally values prepared for the
-iterations in a for loop) are permitted, but this is discouragaged and will be
+iterations in a for loop) are permitted, but this is discouraged and will be
 discontinued. In any case such assignments have no effect on the number of
 iterations or on the values for which subsequent iterations are started: the
 latter are independent of its final value in the previous iteration. Indeed
@@ -1548,7 +1586,7 @@ Sequenced expressions come in two kinds: they are sequences of expressions,
 separated either by 'next' or by ';'. Both are as loosely bound as let
 expressions, function definitions and casts, which means that one can chain
 any sequence of 'let ... then .. in' and 'expression ;' or 'expression next'
-before a fina expression, without requiring parentheses (also function
+before a final expression, without requiring parentheses (also function
 headings and casts can occur, but they usually only occur at the beginning or
 at the end of a chain). Both 'expr1 ; expr2' and 'expr1 next expr2' evaluate
 both expressions from left to right; with a (more usual) semicolon the value
