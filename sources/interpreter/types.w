@@ -298,7 +298,11 @@ struct type_expr
   union
   { primitive_tag prim; // when |kind==primitive|
     type_p component_type; // when |kind==row_type|
-    type_list tupple; // when |kind==tuple_type|
+#ifdef incompletecpp11
+    raw_type_list tupple; // when |kind==tuple_type|
+#else
+   type_list tupple; // when |kind==tuple_type|
+#endif
     func_type* func; // when |kind==function_type|
   };
 @)
@@ -387,7 +391,12 @@ constructor, and is easily implemented since |type_expr| has a move
 constructor.
 @< Function definitions @>=
 type_expr::type_expr(type_list&& l) noexcept
-  : kind(tuple_type), tupple(std::move(l))
+  : kind(tuple_type)
+#ifdef incompletecpp11
+  , tupple(l.release())
+#else
+  , tupple(std::move(l))
+#endif
   @+{}
 
 @ Instead of a regular copy constructor, which would have to make a deep copy
@@ -439,11 +448,23 @@ where |insert| can be used to add node (note that the class template
 @h <algorithm>
 
 @< Placement-construct a deep copy of |tupple| into |result.tupple| @>=
+#ifdef incompletecpp11
+{ raw_type_list src=tupple;
+  type_list dst; type_list::iterator oit = dst.begin();
+  while (src!=nullptr)
+  {@;
+    dst.insert(oit,src->contents);
+    ++oit; src=src->next.get();
+  }
+  result.tupple = dst.release(); // incorporate and transfer ownership
+}
+#else
 { new (&result.tupple) @[type_list@]; // construct empty object
   auto oit = result.tupple.begin();
   for (auto it = tupple.begin(); not tupple.at_end(it); ++it,++oit)
     result.tupple.insert(oit,it->copy());
 }
+#endif
 
 @ The method |clear|, doing the work for the destructor, must similarly clean
 up afterwards, with the recursion again being implicit. We set |kind =
@@ -494,7 +515,11 @@ void type_expr::set_from(type_expr&& p) noexcept
     case primitive_type: prim=p.prim; break;
     case row_type: component_type=p.component_type; break;
     case function_type: func=p.func; break;
+#ifdef incompletecpp11
+    case tuple_type: tupple = p.tupple; break;
+#else
     case tuple_type: new (&tupple) type_list(std::move(p.tupple)); break;
+#endif
   }
   p.kind=undetermined_type;
   // detach descendants, so |p.clear()| will destroy top-level only
@@ -507,7 +532,11 @@ type_expr::type_expr(type_expr&& x) noexcept // move constructor
     case primitive_type: prim=x.prim; break;
     case row_type: component_type=x.component_type; break;
     case function_type: func=x.func; break;
+#ifdef incompletecpp11
+    case tuple_type: tupple = x.tupple; break;
+#else
     case tuple_type: new(&tupple) type_list(std::move(x.tupple)); break;
+#endif
   }
   x.kind=undetermined_type;
   // detach descendants, so destructor of |x| will do nothing
@@ -593,8 +622,13 @@ bool type_expr::specialise(const type_expr& pattern)
 
 @< Try to specialise types in |tupple| to those in |pattern.tupple|... @>=
 {
+#ifdef incompletecpp11
+  wtl_iterator it0(tupple);
+  wtl_const_iterator it1(pattern.tupple);
+#else
   auto it0=tupple.begin();
   auto it1=pattern.tupple.begin();
+#endif
   while (not it0.at_end() and not it1.at_end() and it0->specialise(*it1))
     @/{@; ++it0; ++it1; }
   return it0.at_end() and it1.at_end();
@@ -631,8 +665,13 @@ component.
 @< Find out and |return| whether we can specialise the types in |tupple| to
    those in |pattern.tupple| @>=
 {
+#ifdef incompletecpp11
+  wtl_const_iterator it0(tupple);
+  wtl_const_iterator it1(pattern.tupple);
+#else
   auto it0=tupple.begin();
   auto it1=pattern.tupple.begin();
+#endif
   while (not it0.at_end() and not it1.at_end()
          and it0->can_specialise(*it1))
     @/{@; ++it0; ++it1; }
@@ -673,8 +712,18 @@ struct func_type
 @)
   func_type(type_expr&& a, type_expr&& r)
 @/ : arg_type(std::move(a)), result_type(std::move(r)) @+{}
+#ifdef incompletecpp11
+  func_type(func_type&& f)
+  : arg_type(std::move(f.arg_type)), result_type(std::move(f.result_type))
+  @+{}
+  func_type& operator=(func_type&& f)
+  { arg_type = std::move(f.arg_type); result_type = std::move(f.result_type);
+    return *this;
+  }
+#else
   func_type(func_type&& f) = @[default@]; // move constructor
   func_type& operator=(func_type&& f) = @[default@]; // move assignment
+#endif
   func_type copy() const // in lieu of a copy contructor
   {@; return func_type(arg_type.copy(),result_type.copy()); }
 };
@@ -766,8 +815,13 @@ bool operator== (const type_expr& x,const type_expr& y)
 @< Find out and |return| whether all types in |x.tupple| are equal to those in
   |y.tupple| @>=
 {
+#ifdef incompletecpp11
+  wtl_const_iterator it0(x.tupple);
+  wtl_const_iterator it1(y.tupple);
+#else
   auto it0=x.tupple.begin();
   auto it1=y.tupple.begin();
+#endif
   while (not it0.at_end() and not it1.at_end()
          and *it0==*it1)
     @/{@; ++it0; ++it1; }
@@ -2152,7 +2206,12 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
   if (x.kind!=tuple_type)
     return 0x0; // non-aggregate types are only close if equal
   unsigned int flags=0x7; // now we have two tuple types; compare components
+#ifdef incompletecpp11
+  wtl_const_iterator it0(x.tupple);
+  wtl_const_iterator it1(y.tupple);
+#else
   auto it0=x.tupple.begin(), it1=y.tupple.begin();
+#endif
   while (not it0.at_end() and not it1.at_end() @|
          and (flags&=is_close(*it0,*it1))!=0)
   @/{@; ++it0; ++it1; }
@@ -2183,7 +2242,9 @@ class program_error : public std::exception
 { std::string message;
 public:
   explicit program_error(const std::string& s) : message(s) @+{}
-  ~program_error () noexcept @+{} // backward compatibility for gcc 4.6
+#ifdef incompletecpp11
+  ~program_error () throw() @+{} // backward compatibility for gcc 4.6
+#endif
   const char* what() const throw() @+{@; return message.c_str(); }
 };
 
@@ -2212,6 +2273,9 @@ struct expr_error : public program_error
 @)
   expr_error (const expr& e,const std::string& s) throw()
     : program_error(s),offender(e) @+{}
+#ifdef incompletecpp11
+  ~expr_error() throw() @+{}
+#endif
 };
 
 @ We derive from |expr_error| an even more specific exception type
@@ -2229,7 +2293,14 @@ struct type_error : public expr_error
   type_error (const expr& e, type_expr&& a, type_expr&& r) noexcept @/
     : expr_error(e,"Type error") @|
       ,actual(std::move(a)),required(std::move(r)) @+{}
+#ifdef incompletecpp11
+  type_error@[(type_error&& e)
+  : expr_error(std::move(e))
+  , actual(std::move(e.actual)), required(std::move(e.required)) @+{}
+  ~type_error () throw() @+{}
+#else
   type_error@[(type_error&& e) = default@];
+#endif
 };
 
 @* Enumeration of primitive types.

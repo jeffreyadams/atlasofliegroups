@@ -221,7 +221,11 @@ template<size_t dim> class BitVector
   { BitVector<dim> result(*this); result-=v; return result; }
 
   template<typename C>
+#ifdef incompletecpp11
+    operator matrix::Vector<C>() const
+#else
     explicit operator matrix::Vector<C>() const
+#endif
   { matrix::Vector<C> result(size());
     for (unsigned int i=size(); i-->0;)
       result[i]=d_data[i];

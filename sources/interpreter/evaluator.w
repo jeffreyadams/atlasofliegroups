@@ -446,7 +446,16 @@ component expressions. After type-checking, they are given by a
 struct tuple_expression : public expression_base
 { std::vector<expression_ptr> component;
 @)
+#ifdef incompletecpp11
+  explicit tuple_expression(size_t n) : component()
+    // avoid copying result of single |expression_ptr()|
+  { component.reserve(n);
+    while (n-->0)
+      component.push_back(expression_ptr());
+  }
+#else
   explicit tuple_expression(size_t n) : component(n) @+{}
+#endif
    // always start out with null pointers
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
@@ -1291,8 +1300,13 @@ it) or the pair expression (by inserting a coercion).
 
 @< Recognise and return 2-argument versions of `\#'... @>=
 {
-  type_expr& arg_tp0 = a_priori_type.tupple.front();
-  type_expr& arg_tp1 = *std::next(a_priori_type.tupple.begin());
+#ifdef incompletecpp11
+    type_expr& arg_tp0 = a_priori_type.tupple->contents;
+    type_expr& arg_tp1 = a_priori_type.tupple->next->contents;
+#else
+    type_expr& arg_tp0 = a_priori_type.tupple.front();
+    type_expr& arg_tp1 = *std::next(a_priori_type.tupple.begin());
+#endif
   if (arg_tp0.kind==row_type)
   { if (can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type)) // suffix
     { expression_ptr call(new @| overloaded_builtin_call
@@ -1769,7 +1783,11 @@ void thread_bindings
     dst.add(pat.name,type.copy(),is_const or (pat.kind & 0x4)!=0);
   if ((pat.kind & 0x2)!=0)
   { assert(type.kind==tuple_type);
+#ifdef incompletecpp11
+    wtl_const_iterator t_it(type.tupple);
+#else
     type_list::const_iterator t_it = type.tupple.begin();
+#endif
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
       thread_bindings(*p_it,*t_it,dst,is_const);
@@ -3962,8 +3980,13 @@ match is found here, there can still be one in the overload table.
   }
   else if (ctype.specialise(pair_type))
   {
+#ifdef incompletecpp11
+    type_expr& arg_tp0 = ctype.tupple->contents;
+    type_expr& arg_tp1 = ctype.tupple->next->contents;
+#else
     type_expr& arg_tp0 = ctype.tupple.front();
     type_expr& arg_tp1 = *std::next(ctype.tupple.begin());
+#endif
     if (arg_tp0.kind==row_type)
     { if (arg_tp0==arg_tp1)
       { if (functype_specialise(type,ctype,arg_tp0))

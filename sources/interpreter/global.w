@@ -115,8 +115,17 @@ class id_data
 public:
   id_data(shared_share&& val,type_expr&& t,bool is_const)
   : val(std::move(val)), tp(std::move(t)), is_constant(is_const) @+{}
+#ifdef incompletecpp11
+  id_data (id_data&& x)
+  : val(std::move(x.val)), tp(std::move(x.tp)), is_constant(x.is_constant)@+{}
+  id_data& operator=(id_data&& x)
+  { val = std::move(x.val); tp = std::move(x.tp); is_constant = x.is_constant;
+    return *this;
+  }
+#else
   id_data @[(id_data&& x) = default@];
   id_data& operator=(id_data&& x) = @[default@]; // no copy-and-swap needed
+#endif
   void swap(id_data& x) @+ {@; val.swap(x.val); tp.swap(x.tp); }
 @)
   const shared_share& value() const @+{@; return val; }
@@ -333,9 +342,16 @@ struct overload_data
 public:
   overload_data(shared_value&& val,func_type&& t)
   : val(std::move(val)), tp(std::move(t)) @+{}
+#ifdef incompletecpp11
+  overload_data(overload_data&& x)
+  : val(std::move(x.val)), tp(std::move(x.tp)) @+{}
+  overload_data& operator=(overload_data&& x)
+  { val = std::move(x.val); tp = std::move(x.tp); return *this; }
+#else
   overload_data @[(overload_data&& x) = default@];
   overload_data& operator=(overload_data&& x)
    = @[default@]; // no copy-and-swap needed
+#endif
 @)
   shared_value value() const @+{@; return val; }
   const func_type& type() const @+{@; return tp; }
