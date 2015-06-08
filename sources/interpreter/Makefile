@@ -42,7 +42,7 @@ CXXFLAVOR ?= -Wall -ggdb
 # our C++ compiler (call language version c++0x, for backward compatibility)
 CXX := g++ -std=c++0x
 
-CXXVERSION := $(shell g++ -dumpversion)
+CXXVERSION := $(shell $(CXX) -dumpversion)
 CXXVERSIONOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.6)
 
 ifeq "$(CXXVERSIONOLD)" "1"
