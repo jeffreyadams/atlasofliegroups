@@ -488,8 +488,12 @@ case tuple_display:
   comp.reserve(length(e.sublist));
   bool tuple_expected = type.specialise(tup);
   // whether |type| is a tuple of correct size
-  type_list::iterator tl_it = (tuple_expected ? &type : &tup)->tupple.begin();
-  auto it=e.sublist.begin();
+#ifdef incompletecpp11
+  wtl_iterator tl_it (tuple_expected ? type.tupple : tup.tupple);
+#else
+  auto tl_it = (tuple_expected ? &type.tupple : &tup.tupple)->begin();
+#endif
+  wel_const_iterator it(e.sublist);
   while (not it.at_end())
     comp.push_back(convert_expr(*it,*tl_it)), ++it,++tl_it;
   if (tuple_expected or coerce(tup,type,result))
@@ -599,7 +603,7 @@ into it whenever |convert_expr| has converted a subexpression.
 case list_display:
 { std::unique_ptr<list_expression> result (new list_expression(0));
   result->component.reserve(length(e.sublist));
-  auto it=e.sublist.begin();
+  wel_const_iterator it(e.sublist);
   if (type==void_type)
   { type_expr target; // initially undetermined common component type
     for (; not it.at_end(); ++it)

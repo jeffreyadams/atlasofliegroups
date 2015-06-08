@@ -46,7 +46,7 @@ CXXVERSION := $(shell g++ -dumpversion)
 CXXVERSIONOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.6)
 
 ifeq "$(CXXVERSIONOLD)" "1"
-  CXXFLAGS += -Dnoexcept= -Dnullptr=0
+  CXXFLAGS += -Dincompletecpp11 -Dnoexcept= -Dconstexpr= -Dnullptr=0
 endif
 
 

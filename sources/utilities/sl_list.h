@@ -40,8 +40,17 @@ template <typename Alloc> struct allocator_deleter
   constexpr allocator_deleter ()  = default;
   allocator_deleter (const allocator_deleter&) = default;
   void operator() (pointer p)
-  { this->destroy(std::addressof(*p));
+  {
+#ifdef incompletecpp11
+    if (p!=pointer())
+    {
+      this->destroy(&*p);
+      this->deallocate(p,1);
+    }
+#else
+    this->destroy(std::addressof(*p));
     this->deallocate(p,1);
+#endif
   }
 };
 
@@ -56,7 +65,11 @@ template <typename Alloc, typename... Args>
   pointer qq = a.allocate(1);
   try
   {
+#ifdef incompletecpp11
+    value_type* q=&*qq; // this ought not throw
+#else
     value_type* q=std::addressof(*qq); // this ought not throw
+#endif
     a.construct(q,std::forward<Args>(args)...);
     return q;
   }

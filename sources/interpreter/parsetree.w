@@ -335,7 +335,11 @@ calling a destructor.
 
 int int_denotation_variant;
 bool bool_denotation_variant;
+#ifdef incompletecpp11
+const char* str_denotation_variant;
+#else
 std::string str_denotation_variant;
+#endif
 
 @~Each of the three types of denotation has a tag identifying it.
 
@@ -361,7 +365,12 @@ would implicitly convert to |bool|).
 @/: kind(boolean_denotation), bool_denotation_variant(b), loc(loc) @+{}
   expr(std::string&& s, const YYLTYPE& loc)
    : kind(string_denotation)
-   , str_denotation_variant(std::move(s)), loc(loc) @+{}
+#ifdef incompletecpp11
+   , str_denotation_variant(std::strcpy(new char[s.size()+1],s.c_str()))
+#else
+   , str_denotation_variant(std::move(s))
+#endif
+   , loc(loc) @+{}
 
 @~For more explicit construction of these variants in a dynamically allocated
 |expr| object, we provide the functions below. Note that
@@ -407,7 +416,11 @@ the look-up of the destructor fails.
 @< Cases for destroying... @>=
 case integer_denotation: case boolean_denotation: break;
 case string_denotation:
+#ifdef incompletecpp11
+  delete[](str_denotation_variant); break;
+#else
   str_denotation_variant.~basic_string<char>(); break;
+#endif
 
 @ In the |expr::set_from| method we changed variants both in |*this| (which
 was |no_expr|) and in |other| (which will become |no_expr|). This means that
@@ -422,9 +435,14 @@ this does not mean we can omit the destruction.
   case boolean_denotation:
     bool_denotation_variant = other.bool_denotation_variant; break;
   case string_denotation:
+#ifdef incompletecpp11
+    str_denotation_variant = other.str_denotation_variant;
+    other.str_denotation_variant=nullptr;
+#else
     new (&str_denotation_variant)
     std::string(std::move(other.str_denotation_variant));
     other.str_denotation_variant.~basic_string<char>();
+#endif
   break;
 
 @ To print an integer or Boolean denotation we just print its variant field;
@@ -520,12 +538,16 @@ substantial refactoring of the code to make this possible and safe.
 typedef containers::simple_list<expr> expr_list;
 typedef containers::sl_node<expr>* raw_expr_list;
   // raw counterpart for use by parser
+@)
+typedef containers::weak_sl_list_const_iterator<expr> wel_const_iterator;
+typedef containers::weak_sl_list_iterator<expr> wel_iterator;
+  // wel = weak expression list
 
 @ Any syntactic category whose parsing value is a list of expressions will use
 the variant |sublist|.
 
 @< Variants of ... @>=
-expr_list sublist;
+raw_expr_list sublist;
 
 @~There are two such syntactic categories: tuple displays and list displays,
 which are written with parentheses respectively with square brackets.
@@ -548,17 +570,17 @@ instance combined right hand sides of parallel \&{let}-declarations).
 struct tuple_display_tag @+ {};@+ struct list_display_tag @+{};
 expr(expr_list&& nodes, tuple_display_tag, const YYLTYPE& loc)
 @/: kind(tuple_display)
-  , sublist(std::move(nodes))
+  , sublist(nodes.release())
   , loc(loc)
 @+{}
 expr(expr_list&& nodes, list_display_tag, const YYLTYPE& loc)
 @/: kind(list_display)
-  , sublist(std::move(nodes))
+  , sublist(nodes.release())
   , loc(loc)
 @+{}
 expr(expr_list&& nodes, tuple_display_tag, const source_location& loc)
 @/: kind(tuple_display)
-  , sublist(std::move(nodes))
+  , sublist(nodes.release())
   , loc(loc)
 @+{}
 expr(expr_list&& nodes, tuple_display_tag);
@@ -569,11 +591,13 @@ and the last ones, if any.
 @< Definitions of functions for the parser @>=
 expr::expr(expr_list&& nodes, tuple_display_tag)
 @/: kind(tuple_display)
-  , sublist(std::move(nodes)), loc()
-{ if (sublist.empty())
+  , sublist(nodes.release())
+  , loc()
+{
+  if (sublist==nullptr)
     return; // cannot extract something from nothing
-  const source_location& left(sublist.front().loc);
-  auto it =sublist.begin();
+  const source_location& left(sublist->contents.loc);
+  wel_const_iterator it(sublist);
   while (not std::next(it).at_end())
     ++it;
   loc = source_location(left,it->loc);
@@ -622,8 +646,7 @@ expr_p wrap_list_display(raw_expr_list l, const YYLTYPE& loc)
 
 @< Cases for destroying... @>=
   case tuple_display:
-  case list_display: sublist.~expr_list();
-break;
+  case list_display: delete(sublist); break;
 
 @ Destroying lists of expressions will also be done via a function callable
 from the parser, as it may need to discard tokens holding such lists; these
@@ -645,41 +668,43 @@ void destroy_exprlist(raw_expr_list l)
 
 @ Copying can be obtained by move construction followed by destruction of
 (what remains of) the original value. For raw pointers simply assigning
-|sublist=other.sublist| would also work, but non POD types like |expr_list|
-this is the only proper way to proceed, even though in this particular case it
-can be seen that destructing a list after emptying it by move-constructing out
-of it is in fact a no-op.
+|sublist=other.sublist| works, but for non POD types like |expr_list| this is
+the only proper way to proceed, even though in this particular case it can be
+seen that destructing a list after emptying it by move-constructing out of it
+is in fact a no-op.
 
 @< Cases for copying... @>=
   case tuple_display:
-  case list_display:
-  @/new (&sublist) expr_list (std::move(other.sublist));
-    other.sublist.~expr_list();
-  break;
+  case list_display: sublist = other.sublist; other.sublist=nullptr; break;
+
 
 @ Printing tuple displays and list displays is entirely similar, using
 parentheses in the former case and brackets in the latter..
 
 @< Cases for printing... @>=
 case tuple_display:
-{ const expr_list& l=e.sublist;
-  if (l.empty())
+{
+  const raw_expr_list l=e.sublist;
+  wel_const_iterator it(l);
+  if (it.at_end())
     out << "()";
   else
-  { out << '(' << l.front();
-    for (auto it=l.begin(); not l.at_end(++it); )
+  { out << '(' << *it;
+    while (not (++it).at_end())
       out << ',' << *it;
     out << ')';
   }
 }
 break;
 case list_display:
-{ const expr_list& l=e.sublist;
-  if (l.empty())
+{
+  const raw_expr_list l=e.sublist;
+  wel_const_iterator it(l);
+  if (it.at_end())
     out << "[]";
   else
-  { out << '[' << l.front();
-    for (auto it=l.begin(); not l.at_end(++it); )
+  { out << '[' << *it;
+    while (not (++it).at_end())
       out << ',' << *it;
     out << ']';
   }
@@ -698,7 +723,7 @@ bool is_empty(const expr& e);
 
 @< Definitions of functions not for the parser @>=
 bool is_empty(const expr& e)
-@+{@; return e.kind==tuple_display and e.sublist.empty(); }
+  {@; return e.kind==tuple_display and e.sublist==nullptr; }
 
 @*1 Function applications.
 %
@@ -713,7 +738,7 @@ already have types with move semantics, it seems that similarly making all
 variants have it is the less confusing solution.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef std::unique_ptr<struct application_node> app;
+typedef struct application_node* app;
 
 @~Since \.{realex} has tuples, we convene that every function call takes just
 one argument. So we define an |application_node| to contain a function and an
@@ -796,9 +821,7 @@ expr_p make_application_node(expr_p f, raw_expr_list r_args,
 @ Destroying a smart pointer field just means calling its destructor.
 
 @< Cases for destroying... @>=
-case function_call:
-  call_variant.~app();
-break;
+case function_call: delete call_variant; break;
 
 @ A |unique_ptr| should not be moved by writing
 |call_variant=std::move(other.call_variant)| since this would attempt to apply
@@ -1007,14 +1030,14 @@ the case of a binary formula.
 raw_form_stack start_formula
    (expr_p e, id_type op, int prio, const YYLTYPE& op_loc)
 { form_stack result;
-  result.push_front (
+  result.push_front ( formula_node @|
    {std::move(*expr_ptr(e)), expr(op,op_loc,expr::identifier_tag()), prio } );
   return result.release();
 }
 @)
 raw_form_stack start_unary_formula (id_type op, int prio, const YYLTYPE& op_loc)
 { form_stack result;    // leave |left_subtree| empty
-  result.push_front ( @|
+  result.push_front ( formula_node @|
     { expr(), expr(op,op_loc,expr::identifier_tag()), prio } );
   return result.release();
 }
@@ -1033,7 +1056,8 @@ raw_form_stack extend_formula
   while (not s.empty() and s.front().prio>=prio+prio%2)
     @< Replace |e| by |oper(left_subtree,e)| where |oper| and |left_subtree|
        come from popped |s.front()| @>
-  s.push_front({std::move(e),expr(op,op_loc,expr::identifier_tag()),prio});
+  s.push_front(formula_node @|
+     {std::move(e),expr(op,op_loc,expr::identifier_tag()),prio});
   return s.release();
 }
 
@@ -1094,7 +1118,7 @@ options apply recursively, and in addition the identifier may be suppressed
 altogether, to allow such partial tagging of components as \\{ident}:$(,,z)$.
 To accommodate such possibilities we introduce the following recursive types.
 Our grammar allows for a pattern $()$ (but not $()$:\\{ident}), in which case
-|sublist==nullptr| even though |kind ==0x2|; it turned out that the
+|sublist.empty()| holds, even though |kind ==0x2|; it turned out that the
 possibility to bind no identifiers at all (while providing a void value) has
 its uses. However patterns of the form $(x)$, which would give a sublist of
 length~$1$, will be forbidden: they would be confusing since $1$-tuples do not
@@ -1138,8 +1162,17 @@ struct id_pat
 @)
   id_pat (const id_pat& x) = @[ delete @];
 @/id_pat& operator=(const id_pat& x) = @[ delete @];
+#ifdef incompletecpp11
+  id_pat (id_pat&& x)
+  : name(x.name), kind(x.kind), sublist(std::move(x.sublist)) @+{}
+@/id_pat& operator=(id_pat&& x)
+  { name = x.name; kind = x.kind; sublist = std::move(x.sublist);
+    return *this;
+  }
+#else
 @/id_pat (id_pat&& x) = @[ default @];
 @/id_pat& operator=(id_pat&& x) = @[ default @];
+#endif
   raw_id_pat release()
   @+{@; return { name, kind, sublist.release() }; }
 };
@@ -1204,7 +1237,7 @@ std::ostream& operator<< (std::ostream& out, const id_pat& p)
     if (not p.sublist.empty())
     { auto it = p.sublist.begin();
       out << *it;
-      for ( ++it ; not p.sublist.at_end(it); ++it)
+      while (not (++it).at_end())
         out << ',' << *it;
     }
     out << ')';
@@ -1232,7 +1265,7 @@ from the values provided, whereas function parameters need to have explicitly
 specified types.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef std::unique_ptr<struct let_expr_node> let;
+typedef struct let_expr_node* let;
 
 @~After parsing, let-expression will have a single let-binding followed by a
 body giving the value to be returned. During parsing however, we may form
@@ -1246,7 +1279,15 @@ The moving constructor does what the braced initialiser-list syntax would do
 by default; it is present only for backward compatibility \.{gcc}~4.6.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct let_pair {@; id_pat pattern; expr val; };
+struct let_pair { id_pat pattern; expr val;
+#ifdef incompletecpp11
+  let_pair (id_pat&& p, expr&& v)
+  : pattern(std::move(p)), val(std::move(v)) @+{}
+  let_pair (let_pair&& x)
+  : pattern(std::move(x.pattern)), val(std::move(x.val)) @+{}
+#else
+#endif
+};
 typedef containers::simple_list<let_pair> let_list;
 typedef containers::sl_node<let_pair>* raw_let_list;
 @)
@@ -1305,7 +1346,7 @@ just a trick to avoid having to deal with yet another type (corresponding to a
 @< Definitions of functions for the parser @>=
 raw_let_list make_let_node(raw_id_pat& pattern, expr_p val)
 { let_list result;
-  result.push_front ( { id_pat(pattern), std::move(*expr_ptr(val)) } );
+  result.push_front ( let_pair { id_pat(pattern), std::move(*expr_ptr(val)) } );
   return result.release();
 }
 
@@ -1358,8 +1399,7 @@ is |let| smart pointers that get built into |expr| values. As for all
 variants of |expr|, calling the destructor must be done explicitly.
 
 @< Cases for destroying... @>=
-case let_expr: let_variant.~let();
-break;
+case let_expr: delete let_variant; break;
 
 @ Destroying lists of declarations will be done in a function callable from the
 parser, like |destroy_exprlist|.
@@ -1428,7 +1468,7 @@ void destroy_type_list(raw_type_list t)@+ {@; (type_list(t)); }
 
 @ For user-defined functions we shall use a structure |lambda_node|.
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef std::unique_ptr<struct lambda_node> lambda;
+typedef struct lambda_node* lambda;
 
 @~It contains a pattern for the formal parameter(s), its type (a smart pointer
 defined in \.{types.w}), an expression (the body of the function), and finally
@@ -1512,8 +1552,7 @@ break;
 done correctly by the implicit destructions provoked by calling |delete|.
 
 @< Cases for destroying... @>=
-case lambda_expr: lambda_variant.~lambda();
-break;
+case lambda_expr: delete lambda_variant; break;
 
 @ Because of the above transformations, lambda expressions are printed with
 all parameter types grouped into one tuple (unless there was exactly one
@@ -1538,7 +1577,7 @@ break;
 Of course we need if-then-else expressions.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef std::unique_ptr<struct conditional_node> cond;
+typedef struct conditional_node* cond;
 
 @~The parser handles \&{elif} constructions, so we only need to handle the
 basic two-branch case.
@@ -1597,9 +1636,7 @@ break;
 automatic.
 
 @< Cases for destroying... @>=
-case conditional_expr:
-  if_variant.~cond();
-break;
+case conditional_expr: delete if_variant; break;
 
 @ To print a conditional expression at parser level, we shall not
 reconstruct \&{elif} constructions.
@@ -1681,9 +1718,9 @@ flavours are |while| loops, and |for| loops iterating either over a row value,
 or over an integer range (counted |for|-loops).
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef std::unique_ptr<struct while_node> w_loop;
-typedef std::unique_ptr<struct for_node> f_loop;
-typedef std::unique_ptr<struct cfor_node> c_loop;
+typedef struct while_node* w_loop;
+typedef struct for_node* f_loop;
+typedef struct cfor_node* c_loop;
 
 @ We shall use a small |BitSet| value to record reversal attributes of for
 loops and of slice expressions.
@@ -1817,15 +1854,9 @@ expr_p make_cfor_node
 other kinds.
 
 @< Cases for destroying... @>=
-case while_expr:
-  while_variant.~w_loop();
-break;
-case for_expr:
-  for_variant.~f_loop();
-break;
-case cfor_expr:
-  cfor_variant.~c_loop();
-break;
+case while_expr: delete while_variant; break;
+case for_expr: delete for_variant; break;
+case cfor_expr: delete cfor_variant; break;
 
 @ To print a |while| or |for| expression at parser level, we reproduce the
 input syntax.
@@ -1868,8 +1899,8 @@ subscription by a tuple expression, so we define only one type of subscription
 expression.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef std::unique_ptr<struct subscription_node> sub;
-typedef std::unique_ptr<struct slice_node> slc;
+typedef struct subscription_node* sub;
+typedef struct slice_node* slc;
 
 @~In a subscription the array and the index(es) can syntactically be arbitrary
 expressions (although the latter should have as type integer, or a tuple of
@@ -1958,12 +1989,8 @@ break;
 subscription or slice itself.
 
 @< Cases for destroying... @>=
-case subscription:
-  subscription_variant.~sub();
-break;
-case slice:
-  slice_variant.~slc();
-break;
+case subscription: delete subscription_variant; break;
+case slice: delete slice_variant; break;
 
 @ To print a subscription, we just print the expression of the array, followed
 by the expression for the index in brackets. As an exception, the case of a
@@ -1981,9 +2008,9 @@ case subscription:
   if (i.kind!=tuple_display) out << i;
   else
   {
-    const auto& il = i.sublist;
-    out << il.front();
-    for (auto it=il.begin(); not il.at_end(++it); )
+    wel_const_iterator it (i.sublist);
+    out << *it;
+    while (not (++it).at_end())
       out << ',' << *it;
  }
   out << ']';
@@ -2003,7 +2030,7 @@ These are very simple expressions consisting of a type and an expression,
 which is forced to be of that type.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef std::unique_ptr<struct cast_node> cast;
+typedef struct cast_node* cast;
 
 @~The type contained in the cast is represented by a void pointer, for the
 known reasons.
@@ -2058,9 +2085,7 @@ break;
 @ Eventually we want to rid ourselves from the cast.
 
 @< Cases for destroying... @>=
-case cast_expr:
-  cast_variant.~cast();
-break;
+case cast_expr: delete cast_variant; break;
 @ Printing cast expressions follows their input syntax.
 
 @< Cases for printing... @>=
@@ -2074,7 +2099,7 @@ break;
 operator symbol.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef std::unique_ptr<struct op_cast_node> op_cast;
+typedef struct op_cast_node* op_cast;
 
 @~We store an (operator) identifier and a type, as before represented by a
 void pointer.
@@ -2129,9 +2154,7 @@ break;
 @ Eventually we want to rid ourselves from the operator cast.
 
 @< Cases for destroying... @>=
-case op_cast_expr:
-  op_cast_variant.~op_cast();
-break;
+case op_cast_expr: delete op_cast_variant; break;
 
 @ Printing operator cast expressions follows their input syntax.
 
@@ -2147,7 +2170,7 @@ break;
 Simple assignment statements are quite simple as expressions.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef std::unique_ptr<struct assignment_node> assignment;
+typedef struct assignment_node* assignment;
 
 @~In a simple assignment the left hand side is just an identifier.
 
@@ -2203,9 +2226,7 @@ break;
 @ What is made must eventually be unmade (even assignments).
 
 @< Cases for destroying... @>=
-case ass_stat:
-  assign_variant.~assignment();
-break;
+case ass_stat: delete assign_variant; break;
 
 @ Printing assignment statements is absolutely straightforward.
 
@@ -2221,7 +2242,7 @@ break;
 We have special expressions for assignments to a component.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef std::unique_ptr<struct comp_assignment_node> comp_assignment;
+typedef struct comp_assignment_node* comp_assignment;
 
 @~In a component assignment has for the left hand side an identifier and an
 index.
@@ -2292,9 +2313,7 @@ break;
 @~Destruction one the other hand is as straightforward as usual.
 
 @< Cases for destroying... @>=
-case comp_ass_stat:
-  comp_assign_variant.~comp_assignment();
-break;
+case comp_ass_stat: delete comp_assign_variant; break;
 @ Printing component assignment statements follow the input syntax.
 
 @< Cases for printing... @>=
@@ -2312,7 +2331,7 @@ Having assignments statements, it is logical to be able to build a sequence of
 expressions (statements) as well, retaining the value only of the final one.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef std::unique_ptr<struct sequence_node> sequence;
+typedef struct sequence_node* sequence;
 
 @~Since control structures and let-expressions tend to break up long chains,
 we do not expect their average length to be very great. So we build up
@@ -2380,9 +2399,7 @@ break;
 @ Finally sequence nodes need destruction, like everything else.
 
 @< Cases for destroying... @>=
-case seq_expr:
-  sequence_variant.~sequence();
-break;
+case seq_expr: delete sequence_variant; break;
 
 @ Printing sequences is absolutely straightforward.
 

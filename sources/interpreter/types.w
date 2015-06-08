@@ -177,6 +177,9 @@ container type.
 typedef containers::simple_list<type_expr> type_list;
 typedef atlas::containers::sl_node<type_expr>* raw_type_list;
 typedef containers::sl_list<type_expr> dressed_type_list;
+typedef containers::weak_sl_list_const_iterator<type_expr> wtl_const_iterator;
+typedef containers::weak_sl_list_iterator<type_expr> wtl_iterator;
+  // wel = weak type list
 
 @ Since types and type lists own their trees, their copy constructors must
 make a deep copy. The class |type_expr| will provide no copy constructor but
