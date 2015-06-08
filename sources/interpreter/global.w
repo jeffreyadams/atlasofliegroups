@@ -116,8 +116,8 @@ public:
   id_data(shared_share&& val,type_expr&& t,bool is_const)
   : val(std::move(val)), tp(std::move(t)), is_constant(is_const) @+{}
   id_data @[(id_data&& x) = default@];
-  void swap(id_data& x) @+ {@; val.swap(x.val); tp.swap(x.tp); }
   id_data& operator=(id_data&& x) = @[default@]; // no copy-and-swap needed
+  void swap(id_data& x) @+ {@; val.swap(x.val); tp.swap(x.tp); }
 @)
   const shared_share& value() const @+{@; return val; }
   const type_expr& type() const @+{@; return tp; }
@@ -207,9 +207,9 @@ void Id_table::add_type_def(id_type id, type_expr&& type)
   if (its.first==its.second) // no global identifier was previously known
     table.insert // better: |emplace_hint(its.first,id,@[...@])| with gcc 4.8
       (its.first,std::make_pair(id,
-         id_data(shared_share(nullptr),std::move(type),true)));
+         id_data(shared_share(),std::move(type),true)));
   else // a global identifier was previously known, replace it
-    its.first->second = id_data(shared_share(nullptr),std::move(type),true);
+    its.first->second = id_data(shared_share(),std::move(type),true);
 }
 @)
 bool Id_table::is_defined_type(id_type id) const
@@ -334,7 +334,8 @@ public:
   overload_data(shared_value&& val,func_type&& t)
   : val(std::move(val)), tp(std::move(t)) @+{}
   overload_data @[(overload_data&& x) = default@];
-  overload_data& operator=(overload_data&& x) = @[default@]; // no copy-and-swap needed
+  overload_data& operator=(overload_data&& x)
+   = @[default@]; // no copy-and-swap needed
 @)
   shared_value value() const @+{@; return val; }
   const func_type& type() const @+{@; return tp; }
@@ -913,8 +914,8 @@ void global_declare_identifier(id_type id, type_p t)
   @< Emit indentation corresponding to the input level to |std::cout| @>
   std::cout << "Declaring identifier '" << main_hash_table->name_of(id)
             << "': " << type << std::endl;
-  static const shared_value undef(nullptr);
-  global_id_table->add(id,undef,std::move(type),false);
+  static const shared_value undefined_value; // holds a null pointer
+  global_id_table->add(id,undefined_value,std::move(type),false);
 }
 
 @ Finally the user may wish to forget the value of an identifier, which the

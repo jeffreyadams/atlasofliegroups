@@ -120,6 +120,7 @@ public:
   bool operator==(const self& x) const { return link_loc == x.link_loc; }
   bool operator!=(const self& x) const { return link_loc != x.link_loc; }
 
+  bool at_end () const { return *link_loc==nullptr; }
 }; // |struct sl_list_const_iterator| template
 
 
@@ -152,6 +153,74 @@ private: // friend classes may do the following conversion:
   explicit sl_list_iterator(const Base& cit) // explicit removal of constness
   : Base(cit) {} // there's really nothing to it
 }; // |struct sl_list_iterator| template
+
+template<typename T, typename Alloc = std::allocator<T> >
+  struct weak_sl_list_const_iterator
+  : public std::iterator<std::forward_iterator_tag, T>
+{
+  typedef const sl_node<T,Alloc>* link_type; // here: a raw pointer
+
+private:
+  typedef weak_sl_list_const_iterator<T,Alloc> self;
+
+  // data
+  link_type link; // contents copied from some link field
+
+public:
+  // constructors
+  weak_sl_list_const_iterator() : link(nullptr) {} // default iterator: end
+  explicit weak_sl_list_const_iterator(link_type p): link(p) {}
+
+  // contents access methods; return |const| ptr/ref for |const_iterator|
+  const T& operator*() const { return link->contents; }
+  const T* operator->() const { return &link->contents; }
+
+  self operator++() { link = link->next.get(); return *this; }
+  self operator++(int) // post-increment
+  { self tmp=*this; link = link->next.get(); return tmp; }
+
+  // equality testing methods
+  bool operator==(const self& x) const { return link == x.link; }
+  bool operator!=(const self& x) const { return link != x.link; }
+
+  bool at_end () const { return link==nullptr; }
+}; // |struct weak_sl_list_const_iterator| template
+
+
+template<typename T,typename Alloc = std::allocator<T> >
+struct weak_sl_list_iterator
+  : public std::iterator<std::forward_iterator_tag, T>
+{
+  typedef sl_node<T,Alloc>* link_type; // here: a raw pointer
+
+ private:
+  typedef weak_sl_list_const_iterator<T,Alloc> const_self;
+  typedef weak_sl_list_iterator<T,Alloc> self;
+
+  // data
+  link_type link; // contents copied from some link field
+
+public:
+  // constructors
+  weak_sl_list_iterator() : link(nullptr) {}
+  // default iterator: end
+  explicit weak_sl_list_iterator(link_type p): link(p) {}
+
+  // contents access methods;  return non-const ref/ptr
+  T& operator*() const { return link->contents; }
+  T* operator->() const { return &link->contents; }
+
+  self operator++() { link = link->next.get(); return *this; }
+  self operator++(int) // post-increment
+  { self tmp=*this; link = link->next.get(); return tmp; }
+
+  // equality testing methods
+  bool operator==(const self& x) const { return link == x.link; }
+  bool operator!=(const self& x) const { return link != x.link; }
+
+  bool at_end () const { return link==nullptr; }
+  operator const_self () const { return const_self(link); }
+}; // |struct weak_sl_list_iterator| template
 
 
 
@@ -527,6 +596,16 @@ size_t length (const simple_list<T,Alloc>& l)
 {
   size_t result=0;
   for (auto it=l.begin(); not l.at_end(it); ++it)
+    ++result;
+  return result;
+}
+
+// allow the alternative of using a raw pointer for the length
+template<typename T,typename Alloc>
+size_t length (const sl_node<T,Alloc>* l)
+{
+  size_t result=0;
+  for (; l!=nullptr; l=l->next.get())
     ++result;
   return result;
 }

@@ -312,7 +312,7 @@ expression_ptr convert_expr(const expr& e, type_expr& type)
    |type|, all of which either |return| or |throw| a |type_error| @>
    case no_expr: assert(false);
   }
-  return nullptr; // keep compiler happy
+  return expression_ptr(nullptr); // keep compiler happy
 }
 
 @* Denotations.
@@ -488,10 +488,10 @@ case tuple_display:
   comp.reserve(length(e.sublist));
   bool tuple_expected = type.specialise(tup);
   // whether |type| is a tuple of correct size
-  type_list::iterator tl_it =
-    (tuple_expected ? &type : &tup)->tupple.begin();
-  for (auto it=e.sublist.begin(); not e.sublist.at_end(it); ++it,++tl_it)
-    comp.push_back(convert_expr(*it,*tl_it));
+  type_list::iterator tl_it = (tuple_expected ? &type : &tup)->tupple.begin();
+  auto it=e.sublist.begin();
+  while (not it.at_end())
+    comp.push_back(convert_expr(*it,*tl_it)), ++it,++tl_it;
   if (tuple_expected or coerce(tup,type,result))
       return result;
   throw type_error(e,tup.copy(),std::move(type));
@@ -599,15 +599,16 @@ into it whenever |convert_expr| has converted a subexpression.
 case list_display:
 { std::unique_ptr<list_expression> result (new list_expression(0));
   result->component.reserve(length(e.sublist));
+  auto it=e.sublist.begin();
   if (type==void_type)
   { type_expr target; // initially undetermined common component type
-    for (auto it=e.sublist.begin(); not e.sublist.at_end(it); ++it)
+    for (; not it.at_end(); ++it)
       result->component.push_back(convert_expr(*it,target));
     return expression_ptr(new voiding(std::move(result)));
     // and forget |target|
   }
   else if (type.specialise(row_of_type))
-  { for (auto it=e.sublist.begin(); not e.sublist.at_end(it); ++it)
+  { for (; not it.at_end(); ++it)
       result->component.push_back(convert_expr(*it,*type.component_type));
     return std::move(result);
   }
@@ -635,7 +636,7 @@ list display.
   // no conversion was found; there's nothing left but to report an error
     throw type_error(e,row_of_type.copy(),std::move(type));
 @)
-  for (auto it=e.sublist.begin(); not e.sublist.at_end(it); ++it)
+  for (; not it.at_end(); ++it)
     result->component.push_back(convert_expr(*it,comp_type));
   return expression_ptr(new
     conversion(*conv,expression_ptr(std::move(result))));
@@ -1285,8 +1286,9 @@ if) it returns |true| it may have modified the component type (by specialising
 it) or the pair expression (by inserting a coercion).
 
 @< Recognise and return 2-argument versions of `\#'... @>=
-{ type_expr& arg_tp0 = *a_priori_type.tupple.begin();
-  type_expr& arg_tp1 = *++a_priori_type.tupple.begin();
+{
+  type_expr& arg_tp0 = a_priori_type.tupple.front();
+  type_expr& arg_tp1 = *std::next(a_priori_type.tupple.begin());
   if (arg_tp0.kind==row_type)
   { if (can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type)) // suffix
     { expression_ptr call(new @| overloaded_builtin_call
@@ -3528,7 +3530,7 @@ void for_expression<flags,kind>::evaluate(level l) const
 { in_part->eval();
   own_tuple loop_var = std::make_shared<tuple_value>(2);
        // this is safe to re-use between iterations
-  own_row result(nullptr);
+  own_row result;
   shared_value* dst=nullptr;
   @< Evaluate the loop, dispatching the various possibilities for |kind|, and
   setting |result| @>
@@ -3818,7 +3820,7 @@ void counted_for_expression<flags>::evaluate(level l) const
     b+=c-1; // so that |b-c| will start at original |b|, and increase as |c--|
 
   if ((flags&0x4)==0)
-  { id_pat pattern(id,0x1,patlist(nullptr));
+  { id_pat pattern(id,0x1,patlist());
     if (l==no_value)
     { while (c-->0)
       { frame fr(pattern);
@@ -3955,8 +3957,9 @@ match is found here, there can still be one in the overload table.
     throw type_error(e,ctype.copy(),std::move(type));
   }
   else if (ctype.specialise(pair_type))
-  { type_expr& arg_tp0 = *ctype.tupple.begin();
-    type_expr& arg_tp1 = *++ctype.tupple.begin();
+  {
+    type_expr& arg_tp0 = ctype.tupple.front();
+    type_expr& arg_tp1 = *std::next(ctype.tupple.begin());
     if (arg_tp0.kind==row_type)
     { if (arg_tp0==arg_tp1)
       { if (functype_specialise(type,ctype,arg_tp0))

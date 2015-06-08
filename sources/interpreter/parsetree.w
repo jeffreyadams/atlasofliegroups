@@ -376,14 +376,12 @@ expr_p make_bool_denotation(bool val, const YYLTYPE& loc);
 expr_p make_string_denotation(std::string* val_p, const YYLTYPE& loc);
 
 @~The definition of these functions is quite easy, as will be typical for
-node-building functions. However for Boolean denotations we abuse of the
-integer argument constructor and then correct the |kind| field of the result,
-so as to circumvent the fact that a constructor with |bool| argument is not
-defined. Also |make_string_denotation| takes care to call |delete| on the
-provided |val_p|, to the temporarily allocated variable gets cleaned up
-whenever a string token becomes an expression (the parser now only has to
-define clean-up action in case such a token gets popped in error recovery
-without ever becoming an expression).
+node-building functions. Since the parser stack only contains plain types, the
+argument to |make_string_denotation| is a raw pointer to |std::string|, which
+it takes care to call |delete|, so that the temporarily allocated variable
+gets cleaned up whenever a string token becomes an expression (the parser now
+only has to define clean-up action in case such a token gets popped in error
+recovery without ever becoming an expression).
 
 @< Definitions of functions for the parser @>=
 expr_p make_int_denotation (int val, const YYLTYPE& loc)
@@ -401,8 +399,8 @@ expr_p make_string_denotation(std::string* val_p, const YYLTYPE& loc)
 @ For integer and Boolean denotations there is nothing to destroy. For string
 denotations however we must destroy the |std::string| object. It was quite a
 puzzle to find the right syntax for that, because of what is essentially a bug
-in \.{gcc}, namely with |string| in place of |basic_string| the look-up of the
-destructor fails.
+in \.{gcc}, namely with |string| in place of |basic_string<char>|,
+the look-up of the destructor fails.
 
 @s basic_string string
 
@@ -574,13 +572,11 @@ expr::expr(expr_list&& nodes, tuple_display_tag)
   , sublist(std::move(nodes)), loc()
 { if (sublist.empty())
     return; // cannot extract something from nothing
-  {
-    auto it=sublist.begin();
-    const source_location& left(it->loc);
-    while (not sublist.at_end(std::next(it)))
-      ++it;
-    loc = source_location(left,it->loc);
-  }
+  const source_location& left(sublist.front().loc);
+  auto it =sublist.begin();
+  while (not std::next(it).at_end())
+    ++it;
+  loc = source_location(left,it->loc);
 }
 
 
@@ -667,20 +663,24 @@ parentheses in the former case and brackets in the latter..
 @< Cases for printing... @>=
 case tuple_display:
 { const expr_list& l=e.sublist;
-  if (l.empty()) out << "()";
+  if (l.empty())
+    out << "()";
   else
-  { for (auto it=l.begin(); not l.at_end(it); ++it)
-      out << (it==l.begin() ? '(' : ',') << *it;
+  { out << '(' << l.front();
+    for (auto it=l.begin(); not l.at_end(++it); )
+      out << ',' << *it;
     out << ')';
   }
 }
 break;
 case list_display:
 { const expr_list& l=e.sublist;
-  if (l.empty()) out << "[]";
+  if (l.empty())
+    out << "[]";
   else
-  { for (auto it=l.begin(); not l.at_end(it); ++it)
-      out << (it==l.begin() ? '[' : ',') << *it;
+  { out << '[' << l.front();
+    for (auto it=l.begin(); not l.at_end(++it); )
+      out << ',' << *it;
     out << ']';
   }
 }
@@ -1137,8 +1137,8 @@ struct id_pat
     // no name, no constness
 @)
   id_pat (const id_pat& x) = @[ delete @];
-@/id_pat (id_pat&& x) = @[ default @];
 @/id_pat& operator=(const id_pat& x) = @[ delete @];
+@/id_pat (id_pat&& x) = @[ default @];
 @/id_pat& operator=(id_pat&& x) = @[ default @];
   raw_id_pat release()
   @+{@; return { name, kind, sublist.release() }; }
@@ -1852,7 +1852,7 @@ break;
 case cfor_expr:
 { const c_loop& c=e.cfor_variant;
 @/out << " for " << main_hash_table->name_of(c->id) << ": " << c->count;
-  if (c->bound.kind!=tuple_display or not c->bound.sublist.empty())
+  if (not is_empty(c->bound))
     out << " from " << c->bound;
   out << (c->flags[0] ? " ~do " : " do ") << c->body
       << (c->flags[1] ? " ~od " : " od ");
@@ -1980,8 +1980,12 @@ case subscription:
   out << s->array << '[';
   if (i.kind!=tuple_display) out << i;
   else
-    for (auto it=i.sublist.begin(); not i.sublist.at_end(it); ++it)
-      out << (it==i.sublist.begin() ? "" : ",") << *it;
+  {
+    const auto& il = i.sublist;
+    out << il.front();
+    for (auto it=il.begin(); not il.at_end(++it); )
+      out << ',' << *it;
+ }
   out << ']';
 }
 break;

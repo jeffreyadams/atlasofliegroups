@@ -422,16 +422,16 @@ type_expr type_expr::copy() const
 @ First off, as the module name says we must make sure a valid object is
 constructed into the field |result.tupple|, because we default constructed
 |result| with no variant active. We cannot use a copy constructor of
-|type_list| to do this, because since |type_expr| has a deleted copy
-constructor, |type_list| has no copy constructor either (more precisely, the
-class template declares such a constructor, but an attempt to use it will not
-compile because of the missing |type_expr| has no copy constructor). We must
-instead construct an empty shell first and then fill it, applying the |copy|
-method for all members of the list |tupple|. This is achieved by first
-default constructing |result.tupple|, and then adding fields, keeping an
-(output) iterator |oit| pointing at the end of the list, where |insert| can be
-used to add node (note that the class template |simple_list| defines no method
-|end|, as this would be expensive is used like |end| methods usually are).
+|type_list| to do this, because although the class template declares such a
+constructor, an attempt to use it will not compile because of a missing
+|type_expr| copy constructor. We must instead create a duplicate list,
+applying the |copy| method for all members of the list accessed from |tupple|,
+and then placement-construct that list into the |tupple| field. This is
+achieved by first default constructing |result.tupple|, and then adding
+fields, keeping an (output) iterator |oit| pointing at the end of the list,
+where |insert| can be used to add node (note that the class template
+|simple_list| defines no method |end|, as this would be expensive if used like
+|end| methods usually are).
 
 @h <algorithm>
 
@@ -459,21 +459,27 @@ void type_expr::clear() noexcept
 { switch (kind)
   { case undetermined_type: case primitive_type: break;
     case row_type: delete component_type; break;
+#ifdef incompletecpp11
+    case tuple_type: delete tupple; break;
+#else
     case tuple_type: tupple.~type_list(); break;
+#endif
     case function_type: delete func; break;
   }
   kind = undetermined_type;
 }
 
 @ The method |set_from| makes a shallow copy of the structure; it implements
- move semantics. Correspondingly it takes as argument another |type_expr| by
- modifiable rvalue reference. The contents of its top-level structure will be
- moved to the current |type_expr| using move assignment where applicable, and
- then set to a empty |undetermined_type| value, which effectively detaches any
- possible descendants from it. This operation requires that |type_expr|
- previously had |kind==undetermined_type|. We test this condition using an
- |assert| statement (rather than throwing |std::logic_error|) to honour the
- |noexcept| specification.
+move semantics. Correspondingly it takes as argument another |type_expr| by
+modifiable rvalue reference. The contents of its top-level structure will be
+moved to the current |type_expr| using move assignment where applicable, and
+then set to a empty |undetermined_type| value, which effectively detaches any
+possible descendants from it. This operation requires that |type_expr|
+previously had |kind==undetermined_type|. We test this condition using an
+|assert| statement (rather than throwing |std::logic_error|) to honour the
+|noexcept| specification.
+
+The moving copy constructor is nearly identical to the |set_from| method.
 
 @h <stdexcept>
 @< Function definitions @>=
@@ -580,20 +586,17 @@ bool type_expr::specialise(const type_expr& pattern)
   }
 }
 
-@ For tuples, specialisation is done component by component. We check
-beforehand that the lengths of the lists match, without which there is no hope
-of finding a proper specialisation.
+@ For tuples, specialisation is done component by component.
 
 @< Try to specialise types in |tupple| to those in |pattern.tupple|... @>=
-{ auto l0=tupple.begin();
-  auto l1=pattern.tupple.begin();
-  while (not tupple.at_end(l0) and not pattern.tupple.at_end(l1)
-         and l0->specialise(*l1))
-    @/{@; ++l0; ++l1; }
-  return tupple.at_end(l0) and pattern.tupple.at_end(l1);
+{
+  auto it0=tupple.begin();
+  auto it1=pattern.tupple.begin();
+  while (not it0.at_end() and not it1.at_end() and it0->specialise(*it1))
+    @/{@; ++it0; ++it1; }
+  return it0.at_end() and it1.at_end();
   // whether both lists terminated
 }
-
 
 @ Here is the definition of the accessor |can_specialise|, which is quite
 similar.
@@ -613,15 +616,25 @@ bool type_expr::can_specialise(const type_expr& pattern) const
       return func->arg_type.can_specialise(pattern.func->arg_type) @|
          and func->result_type.can_specialise(pattern.func->result_type);
     case tuple_type:
-    { auto l0=tupple.begin(), l1=pattern.tupple.begin();
-      while (not tupple.at_end(l0) and not pattern.tupple.at_end(l1)
-             and l0->can_specialise(*l1))
-      @/{@; ++l0; ++l1; }
-      return tupple.at_end(l0) and pattern.tupple.at_end(l1);
-      // whether both lists terminated
-    }
+      @< Find out and |return| whether we can specialise the types in |tupple|
+         to those in |pattern.tupple| @>
     default: return true; // to keep the compiler happy, cannot be reached
   }
+}
+
+@ For tuples, the test for possible specialisation is done component by
+component.
+
+@< Find out and |return| whether we can specialise the types in |tupple| to
+   those in |pattern.tupple| @>=
+{
+  auto it0=tupple.begin();
+  auto it1=pattern.tupple.begin();
+  while (not it0.at_end() and not it1.at_end()
+         and it0->can_specialise(*it1))
+    @/{@; ++it0; ++it1; }
+  return it0.at_end() and it1.at_end();
+  // whether both lists terminated
 }
 
 @ The constructor for function types cannot be defined inside the structure
@@ -738,17 +751,25 @@ bool operator== (const type_expr& x,const type_expr& y)
   @\case undetermined_type: return true;
     case primitive_type: return x.prim==y.prim;
     case row_type: return *x.component_type==*y.component_type;
-    case tuple_type:
-    { auto it0=x.tupple.begin(), it1=y.tupple.begin();
-      while (not x.tupple.at_end(it0) and not y.tupple.at_end(it1)
-             and *it0==*it1)
-      @/{@; ++it0; ++it1; }
-      return x.tupple.at_end(it0) and y.tupple.at_end(it1);
-    }
+    case tuple_type: @< Find out and |return| whether all types in |x.tupple|
+    are equal to those in |y.tupple| @>
     case function_type:
       return x.func->arg_type==y.func->arg_type
 	 and x.func->result_type==y.func->result_type;
   }
+}
+
+@ This module has a familiar structure.
+@< Find out and |return| whether all types in |x.tupple| are equal to those in
+  |y.tupple| @>=
+{
+  auto it0=x.tupple.begin();
+  auto it1=y.tupple.begin();
+  while (not it0.at_end() and not it1.at_end()
+         and *it0==*it1)
+    @/{@; ++it0; ++it1; }
+  return it0.at_end() and it1.at_end();
+  // whether both lists terminated
 }
 
 @ Instead of using the constructors directly, we often use the constructing
@@ -898,7 +919,7 @@ type_expr scan_type(const char*& s)
 type_expr mk_type_expr(const char* s)
 { const char* orig=s;
   try
-  {@; return type_expr(scan_type(s)); }
+  {@; return scan_type(s); }
   catch (std::logic_error e)
   { std::cerr << e.what() << "; original string: '" << orig @|
               << "' text remaining: '" << s << "'\n";
@@ -988,9 +1009,9 @@ dressed_type_list scan_type_list(const char*& s)
 many characters as the type name has, and the fact that no alphanumeric
 character follows, so that a longer type name will not match a prefix of it.
 
-In this module we use the fact lather the order in the list |prim_names|
-matches that in the enumeration type |primitive_tag|, by casting the integer
-index into the former list to an element of that enumeration.
+In this module we use the fact that the order in the list |prim_names| matches
+that in the enumeration type |primitive_tag|, by casting the integer index
+into the former list to an element of that enumeration.
 
 @h <cstring> // |strlen|, |strncmp|
 @h <cctype> // |isalpha|
@@ -2127,12 +2148,12 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
     return is_close(*x.component_type,*y.component_type);
   if (x.kind!=tuple_type)
     return 0x0; // non-aggregate types are only close if equal
+  unsigned int flags=0x7; // now we have two tuple types; compare components
   auto it0=x.tupple.begin(), it1=y.tupple.begin();
-  unsigned int flags=0x7;
-  while (not x.tupple.at_end(it0) and not y.tupple.at_end(it1) @|
+  while (not it0.at_end() and not it1.at_end() @|
          and (flags&=is_close(*it0,*it1))!=0)
   @/{@; ++it0; ++it1; }
-  return x.tupple.at_end(it0) and y.tupple.at_end(it1) ? flags : 0x0;
+  return it0.at_end() and it1.at_end() ? flags : 0x0;
 }
 
 @* Error values.
