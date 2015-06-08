@@ -334,9 +334,12 @@ will henceforth be treated just like a built-in function of that type would be
 (and one can in fact for instance form an array that contains both built-in
 and user-defined functions, provided they all have the same (function) type).
 
+* Array displays, selection and slicing
+
 Array values can be constructed by enclosing a comma-separated lists of
 component expressions (all of the same type) in brackets, as in [1,-4,3*6],
 which is called a row display (the given one will be printed as [1,-4,18]).
+They are also implicitly constructed by loops, as will be described later.
 
 If 'v' is an identifier, or more generally an expression, whose value is an
 array, then the individual components can of the array can be accessed by
@@ -378,7 +381,42 @@ While vectors, rational vectors, matrices and strings are not realex arrays
 (they are instead members of primitive types), they do behave like arrays for
 the purpose of selection; the result is respectively an integer, rational
 number, vector (column of the matrix) or a one-character string (the selection
-can also cause an error, if the index is out of bounds).
+can also cause an error, if the index is out of bounds). They can also be used
+in slicing, in which case they return a value of the same type as what was
+selected from. For instance "reverse me!"~[:] gives "!em esrever" and
+id_mat(6)[1:2~] returns
+
+    | 0, 0, 0 |
+    | 1, 0, 0 |
+    | 0, 1, 0 |
+    | 0, 0, 1 |
+    | 0, 0, 0 |
+    | 0, 0, 0 |
+
+For individual entries of a matrix, one can provide row and column index at
+once (in that order), separated by a comma as in A[i,j] (this actually indexes
+A by a tuple of type (int,int), as in A[(i,j)]). One can apply reverse
+indexing provided it applies to both indexes, as in A~[0,0] for the bottom
+right entry. Slicing applies somewhat differently in case of matrices (unless
+it involves a single integer range, in which case a range of columns is
+selected). The general form is A[i:k,j:l] where each of the bounds i,k,j,l may
+be followed by '~' (but not 'A'; this syntax allows no global reversal). This
+selects a block of 'A' with the interpretation above for each of the ranges.
+For more general slicing of matrices (with optional reversal of row and/or
+columns, transposition, and negation of individual entries, realex provides a
+built-in function swiss_matrix_knife (the A[i:k,j:l] syntax in fact uses it).
+
+Finally there is selection if ParamPol values, which can be seen as
+associative arrays mapping certain Param values to Split coefficients, by
+Param values used as index: for a ParamPol P and a Pram value q, the
+subscription P[q] returns the coefficient of q in P (or Split:0 if no term q
+is present). There is a technical restriction to this use due to the fact that
+terms in ParamPol can only involve so-called standard parameters, and these
+are automatically expanded to nonzero final parameters; therefore P[q] gives
+an error unless q is standard, nonzero and final. There is no such thing as
+reversal in associative arrays, so the syntax P~[q] is not allowed here.
+
+* Tuple displays and pattern matching
 
 If instead of brackets of a row display one uses parentheses to enclose a
 sequence of expressions, then a tuple rather than an array is formed (except
@@ -657,7 +695,7 @@ For modifying an existing variable, global or local, the assignment operator
 expression evaluation. For instance, a function returning a list of numbers
 1,...,n may be written as follows (while-loops are explained later)
 
-  expr> set first(int n) = let i=0 in while i<n do i:=i+1 od
+  expr> set first (int n) = let i=0 in while i<n do i:=i+1 od
   Defined first: (int->[int])
 
 Here the part 'let i=0 in' serves to introduce 'i' as a variable, whose value
@@ -668,28 +706,50 @@ languages.) Any identifier can be used as a variable, including one introduced
 as a function argument; for instance for a decreasing list n-1,...,1,0 one
 could write
 
-  expr> set first_downwards(int n) = while (n:=n-1)>=0 do n od
+  expr> set first_downwards (int n) = while (n:=n-1)>=0 do n od
   Defined first_downwards: (int->[int])
 
-For identifiers holding a list, vector or matrix, one can also assign to
-individual entries, as in 'v[i]:=x' or 'm[i,j]=0'. Such assignments are
-implemented in such a way that there is never any effect of sharing (parts of)
-composite values between different identifiers; for instance after 'let v=w in
-v[i]:=x; v', the value of 'w' remains unmodified. By the same token, a
-function that assigns to the names of its arguments, whether they are simple
-or composite values, will never thereby modify the actual arguments in the
-caller. For instance the assignment to its argument in the above function
-'first_downwards' does not have any affect for callers of this function, who
-do not know about the identifier 'n' in 'first_downwards', or of its use.
+For identifiers holding an array, vector or matrix, one can also assign to
+individual entries, as in 'v[i]:=x' or 'm[i,j]=i+j'; for matrices one can also
+assign to a whole column, provided the vector that replaces it has the correct
+size; for instance m[i]:=m[i]+m[j]*2 adds column j of m twice to its column i.
 
-If the purpose of a function is to modify an argument value, the modified
-value must be passed back as a return value, and the caller can do with it as
-she likes (which includes ignoring it). On the other hand the body of a
-(possibly local) function may assign to any identifiers valid (in scope) at
-its point of definition, including those introduced outside of the function
-itself. The basic and general rule is that an assignment only affects the
-identifier that it explicitly names (where a component assignment names the
-entire value selected from, so 'm[i,j]=0' modifies 'm' and nothing else).
+It is important to note that (unlike many programming languages) realex does
+not distinguish between values and objects. In other words two different names
+can never have any intimate relation (sharing an object) to each other, so
+assigning to one name will have no effect on the value associated to the other
+name. Therefore evaluating 'let vi=v[i] in vi:=3' does not have the same
+effect as evaluating v[i]:=3, as this would suppose that assigning to vi
+changes the (vector) value associated to v. Instead the value of the local
+name vi is assigned to just before that name disappears, so there is no side
+effect at all and the expression (it just returns 3), which then is rather
+pointless. By the same token calling functions is conceptually strictly by
+value (even if the implementation often avoids duplicating values); a function
+is allowed to assign to the names of its arguments, but this has no effect for
+the caller. For instance the assignment to its argument in the above function
+'first_downwards' does not have any affect for callers of this function, who
+do not know about the identifier 'n' in 'first_downwards', or of its use. To
+pass information back from function to its caller, use the return value(s).
+
+As a consequence of this principle, an assignment like v[i]:=x is really an
+assignment to the name v; this value is replaced by a value differing only at
+index i from the value it previously held.
+
+(There is one way a function f can alter values of names of its caller g, but
+this requires that f be defined as a local function inside the body of g. Now
+f can, apart from its own parameters and local variables, can also "see" the
+names of g that are accessible at the point where f is defined, and just like
+any subexpression of the body of g, the body of f can assign to those names.)
+
+In some cases it is desirable to introduce a name, but to forbid any form of
+assignment to that name; for instance if the value of a global variable is
+used inside a function, it can be important to ensure that the value obtained
+is that at the time the function was defined. Such constant names can be
+introduced by prefixing the name by '!', as in 'set !s = Split:(0,1)' (this
+applies to local names as well as to global ones, and to function parameters,
+and also to components of a pattern matching a tuple value). Names introduced
+locally in loops (as described below) are automatically considered constant in
+this sense, since assigning to them has little effect and is usually an error.
 
 As a convenience one can write 'x +:= y' instead of 'x := x + y', and
 similarly for any operator in the place of '+', so in the above examples one

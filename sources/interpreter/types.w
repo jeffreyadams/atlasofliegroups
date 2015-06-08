@@ -451,7 +451,7 @@ where |insert| can be used to add node (note that the class template
 {
 #ifdef incompletecpp11
   wtl_const_iterator it(tupple);
-  type_list dst; 
+  type_list dst;
 #else
   type_list& dst = result.tupple;
   new (&dst) @[type_list@]; // construct empty object
@@ -747,11 +747,24 @@ task a bit.
 
 @< Function definitions @>=
 
-std::ostream& operator<<(std::ostream& out, const type_list& l)
-{ for (auto it=l.begin(); not l.at_end(it); ++it)
-    out << *it << ( l.at_end(std::next(it)) ? "" : "," );
+#ifdef incompletecpp11
+std::ostream& operator<<(std::ostream& out, const raw_type_list& l)
+{ wtl_const_iterator it(l);
+  if (not it.at_end())
+    while (out << *it, not (++it).at_end())
+      out << ',';
   return out;
 }
+#else
+std::ostream& operator<<(std::ostream& out, const type_list& l)
+{ auto it=l.begin();
+  if (not it.at_end())
+    while (out << *it, not (++it).at_end())
+      out << ',';
+  return out;
+}
+#endif
+
 std::ostream& operator<<(std::ostream& out, const func_type& f)
 {
   out << '(';
