@@ -3225,8 +3225,8 @@ case while_expr:
 { const w_loop& w=e.while_variant;
   expression_ptr c = convert_expr(w->condition,as_lvalue(bool_type.copy()));
   if (type==void_type)
-  { expression_ptr result(new @|
-       while_expression(std::move(c),convert_expr(w->body, as_lvalue(void_type.copy()))));
+  { expression_ptr result(new @| while_expression
+      (std::move(c),convert_expr(w->body, as_lvalue(void_type.copy()))));
     return expression_ptr(new voiding(std::move(result)));
   }
   else if (type.specialise(row_of_type))
@@ -3330,8 +3330,8 @@ struct for_expression : public for_base
 @< Function definitions @>=
 
 void for_base::print_body(std::ostream& out,unsigned flags) const
-{@; out << ((flags&0x1)!=0 ? "~" : "") << " do " << *body
-      << ((flags&0x2)!=0 ? "~" : "") << " do ";
+{@; out << ((flags&0x1)!=0 ? "~do" : "do")  << *body
+      << ((flags&0x2)!=0 ? "~od" : "od");
 }
 
 @ We could not inline the following constructor definition in the class
@@ -4287,7 +4287,7 @@ forbidden, see module @#comp_ass_type_check@>.
 @< Function def... @>=
 template <bool reversed>
 void component_assignment<reversed>::assign
-  (level l,shared_value& aggregate, subscr_base::sub_type kind) const
+  (level lev,shared_value& aggregate, subscr_base::sub_type kind) const
 { rhs->eval();
   value loc=uniquify(aggregate);
     // simple pointer to modifiable value from shared pointer
@@ -4324,7 +4324,7 @@ the component assignment, possibly expanding a tuple in the process.
     throw std::runtime_error(range_mess(i,a.size(),this));
   auto& ai = a[reversed ? n-1-i : i];
   ai = pop_value(); // assign non-expanded value
-  push_expanded(l,ai); // return value may need expansion, or be omitted
+  push_expanded(lev,ai); // return value may need expansion, or be omitted
 }
 
 @ For |vec_value| entry assignments the type of the aggregate object is
@@ -4340,7 +4340,7 @@ the component assignment expression is not used.
     throw std::runtime_error(range_mess(i,v.size(),this));
   v[reversed ? n-1-i : i]= force<int_value>(execution_stack.back().get())->val;
     // assign |int| from un-popped top
-  if (l==no_value)
+  if (lev==no_value)
     execution_stack.pop_back(); // pop it anyway if result not needed
 }
 
@@ -4361,7 +4361,7 @@ indices, and there are two bound checks.
   m(reversed ? k-1-i : i,reversed ? l-1-j : j)=
     force<int_value>(execution_stack.back().get())->val;
     // assign |int| from un-popped top
-  if (l==no_value)
+  if (lev==no_value)
     execution_stack.pop_back(); // pop it anyway if result not needed
 }
 
@@ -4382,7 +4382,7 @@ for matching column length.
        " by one of size "+str(v.size()));
   m.set_column(reversed ? l-j-1 : j,v);
     // copy value of |int_Vector| into the matrix
-  if (l==no_value)
+  if (lev==no_value)
     execution_stack.pop_back(); // pop the vector if result not needed
 }
 
@@ -4399,7 +4399,7 @@ class local_component_assignment : public component_assignment<reversed>
   size_t depth, offset;
 public:
   local_component_assignment @|
-   (id_type l, expression_ptr&& i,size_t d, size_t o,
+   (id_type arr, expression_ptr&& i,size_t d, size_t o,
     expression_ptr&& r, subscr_base::sub_type k);
   virtual void evaluate(expression_base::level l) const;
 };
@@ -4410,9 +4410,9 @@ spite of the number of arguments.
 @< Function def... @>=
 template <bool reversed>
 local_component_assignment<reversed>::local_component_assignment
- (id_type l, expression_ptr&& i,size_t d, size_t o, expression_ptr&& r,
+ (id_type arr, expression_ptr&& i,size_t d, size_t o, expression_ptr&& r,
   subscr_base::sub_type k)
-: base(l,std::move(i),std::move(r)), kind(k), depth(d), offset(o) @+{}
+: base(arr,std::move(i),std::move(r)), kind(k), depth(d), offset(o) @+{}
 
 @ The |evaluate| method locates the |shared_value| pointer of the aggregate,
 calls |assign| to do the work.
