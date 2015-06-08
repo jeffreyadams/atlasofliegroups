@@ -448,23 +448,21 @@ where |insert| can be used to add node (note that the class template
 @h <algorithm>
 
 @< Placement-construct a deep copy of |tupple| into |result.tupple| @>=
+{
 #ifdef incompletecpp11
-{ raw_type_list src=tupple;
-  type_list dst; type_list::iterator oit = dst.begin();
-  while (src!=nullptr)
-  {@;
-    dst.insert(oit,src->contents);
-    ++oit; src=src->next.get();
-  }
-  result.tupple = dst.release(); // incorporate and transfer ownership
-}
+  wtl_const_iterator it(tupple);
+  type_list dst; 
 #else
-{ new (&result.tupple) @[type_list@]; // construct empty object
-  auto oit = result.tupple.begin();
-  for (auto it = tupple.begin(); not tupple.at_end(it); ++it,++oit)
-    result.tupple.insert(oit,it->copy());
-}
+  type_list& dst = result.tupple;
+  new (&dst) @[type_list@]; // construct empty object
+  auto it = tupple.begin();
 #endif
+  for (type_list::iterator oit = dst.begin(); not it.at_end(); ++it,++oit)
+    dst.insert(oit,it->copy());
+#ifdef incompletecpp11
+  result.tupple = dst.release(); // incorporate and transfer ownership
+#endif
+}
 
 @ The method |clear|, doing the work for the destructor, must similarly clean
 up afterwards, with the recursion again being implicit. We set |kind =
