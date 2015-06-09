@@ -281,10 +281,27 @@ the |type_expr|, thus avoiding an additional level of selection to
 access them.
 
 The field name |tupple| was chose because when working with a program
-involving some |unique_pre| instance, the \.{gdb} debugger cannot access any
+involving some |unique_ptr| instance, the \.{gdb} debugger cannot access any
 variable or field named |tuple|; the was reported as bug~17098
 on \.{sourceware.org/bugzilla}. Awaiting resolution of the bug, circumvent it
 by using a voluntary misspelling of the name.
+
+The field |tupple| used to be (after inclusion of the
+|containers::simple_list| class template in Atlas, which coincided with the
+migration to the \Cpp11 standard) of type |type_list|. Having variant members
+of a |union| with nontrivial special member functions is allowed in \Cpp11,
+although it remains the programmer's responsibility to explicitly call
+constructors and destructors as those variants come and go. Currently this is
+changed to |raw_type_list|; the main difference is that the variant can now be
+initiated by simple assignment rather than placement |new|, and at termination
+requires a call of |delete| for the raw pointer rather than an explicit
+destructor call for the |type_list| object. This step backwards to raw
+pointers is therefore mostly a simplification, but there is one real drawback
+of not having a true |type_list| object: it is now impossible to create a
+|type_list::iterator| (or its |const| relative) to iterate over the type lists
+in tuple types. It turns out however that most of the time weak iterators
+(which do not allow for insertion of deletion of nodes) are sufficient, which
+is why the |raw_type_list| solution is now chosen.
 
 There is one restriction on types that is not visible in the definition below,
 namely that the list of types referred to by the |tupple| field cannot have
@@ -298,11 +315,7 @@ struct type_expr
   union
   { primitive_tag prim; // when |kind==primitive|
     type_p component_type; // when |kind==row_type|
-#ifdef incompletecpp11
     raw_type_list tupple; // when |kind==tuple_type|
-#else
-   type_list tupple; // when |kind==tuple_type|
-#endif
     func_type* func; // when |kind==function_type|
   };
 @)
@@ -358,12 +371,16 @@ explicit type_expr(dressed_type_list&& l) noexcept; // tuple types
 inline type_expr(type_expr&& arg, type_expr&& result) noexcept;
  // for function types
 @)
+#ifdef incompletecpp11
+type_expr(const type_expr& t) = @[delete@];
+type_expr& operator=(const type_expr& t) = @[delete@];
+#endif
 type_expr(type_expr&& t) noexcept; // move constructor
+type_expr& operator=(type_expr&& t) noexcept; // do move assignment only
 void clear() noexcept;
   // resets to undefined state, cleaning up owned pointers
 ~type_expr() noexcept @+{@; clear(); }
   // that is all explcitly needed for destruction
-type_expr& operator=(type_expr&& t) noexcept; // do move assignment only
 void swap(type_expr& t) noexcept;
 @)
 type_expr copy() const; // in lieu of deep copy constructor
@@ -392,11 +409,7 @@ constructor.
 @< Function definitions @>=
 type_expr::type_expr(type_list&& l) noexcept
   : kind(tuple_type)
-#ifdef incompletecpp11
   , tupple(l.release())
-#else
-  , tupple(std::move(l))
-#endif
   @+{}
 
 @ Instead of a regular copy constructor, which would have to make a deep copy
@@ -445,23 +458,22 @@ where |insert| can be used to add node (note that the class template
 |simple_list| defines no method |end|, as this would be expensive if used like
 |end| methods usually are).
 
+This is the one place where we need to cater for the fact that we cannot
+create a e|type_list::iterator| for the |tupple| field, which is a raw
+pointer. Instead we create an initially empty |type_list dst@;| and make an
+iterator for it; after creating the nodes of the list, the |type_list| is
+demoted to |raw_type_list| by calling its |release| method, which raw
+pointer is assigned to |result.tupple|.
+
 @h <algorithm>
 
 @< Placement-construct a deep copy of |tupple| into |result.tupple| @>=
 {
-#ifdef incompletecpp11
   wtl_const_iterator it(tupple);
   type_list dst;
-#else
-  type_list& dst = result.tupple;
-  new (&dst) @[type_list@]; // construct empty object
-  auto it = tupple.begin();
-#endif
   for (type_list::iterator oit = dst.begin(); not it.at_end(); ++it,++oit)
     dst.insert(oit,it->copy());
-#ifdef incompletecpp11
   result.tupple = dst.release(); // incorporate and transfer ownership
-#endif
 }
 
 @ The method |clear|, doing the work for the destructor, must similarly clean
@@ -481,11 +493,7 @@ void type_expr::clear() noexcept
 { switch (kind)
   { case undetermined_type: case primitive_type: break;
     case row_type: delete component_type; break;
-#ifdef incompletecpp11
     case tuple_type: delete tupple; break;
-#else
-    case tuple_type: tupple.~type_list(); break;
-#endif
     case function_type: delete func; break;
   }
   kind = undetermined_type;
@@ -513,11 +521,7 @@ void type_expr::set_from(type_expr&& p) noexcept
     case primitive_type: prim=p.prim; break;
     case row_type: component_type=p.component_type; break;
     case function_type: func=p.func; break;
-#ifdef incompletecpp11
     case tuple_type: tupple = p.tupple; break;
-#else
-    case tuple_type: new (&tupple) type_list(std::move(p.tupple)); break;
-#endif
   }
   p.kind=undetermined_type;
   // detach descendants, so |p.clear()| will destroy top-level only
@@ -530,11 +534,7 @@ type_expr::type_expr(type_expr&& x) noexcept // move constructor
     case primitive_type: prim=x.prim; break;
     case row_type: component_type=x.component_type; break;
     case function_type: func=x.func; break;
-#ifdef incompletecpp11
     case tuple_type: tupple = x.tupple; break;
-#else
-    case tuple_type: new(&tupple) type_list(std::move(x.tupple)); break;
-#endif
   }
   x.kind=undetermined_type;
   // detach descendants, so destructor of |x| will do nothing
@@ -620,13 +620,8 @@ bool type_expr::specialise(const type_expr& pattern)
 
 @< Try to specialise types in |tupple| to those in |pattern.tupple|... @>=
 {
-#ifdef incompletecpp11
   wtl_iterator it0(tupple);
   wtl_const_iterator it1(pattern.tupple);
-#else
-  auto it0=tupple.begin();
-  auto it1=pattern.tupple.begin();
-#endif
   while (not it0.at_end() and not it1.at_end() and it0->specialise(*it1))
     @/{@; ++it0; ++it1; }
   return it0.at_end() and it1.at_end();
@@ -663,13 +658,8 @@ component.
 @< Find out and |return| whether we can specialise the types in |tupple| to
    those in |pattern.tupple| @>=
 {
-#ifdef incompletecpp11
   wtl_const_iterator it0(tupple);
   wtl_const_iterator it1(pattern.tupple);
-#else
-  auto it0=tupple.begin();
-  auto it1=pattern.tupple.begin();
-#endif
   while (not it0.at_end() and not it1.at_end()
          and it0->can_specialise(*it1))
     @/{@; ++it0; ++it1; }
@@ -711,6 +701,8 @@ struct func_type
   func_type(type_expr&& a, type_expr&& r)
 @/ : arg_type(std::move(a)), result_type(std::move(r)) @+{}
 #ifdef incompletecpp11
+  func_type(const func_type& f) = @[delete@];
+  func_type& operator=(const func_type& f) = @[delete@];
   func_type(func_type&& f)
   : arg_type(std::move(f.arg_type)), result_type(std::move(f.result_type))
   @+{}
@@ -747,7 +739,6 @@ task a bit.
 
 @< Function definitions @>=
 
-#ifdef incompletecpp11
 std::ostream& operator<<(std::ostream& out, const raw_type_list& l)
 { wtl_const_iterator it(l);
   if (not it.at_end())
@@ -755,15 +746,6 @@ std::ostream& operator<<(std::ostream& out, const raw_type_list& l)
       out << ',';
   return out;
 }
-#else
-std::ostream& operator<<(std::ostream& out, const type_list& l)
-{ auto it=l.begin();
-  if (not it.at_end())
-    while (out << *it, not (++it).at_end())
-      out << ',';
-  return out;
-}
-#endif
 
 std::ostream& operator<<(std::ostream& out, const func_type& f)
 {
@@ -826,13 +808,8 @@ bool operator== (const type_expr& x,const type_expr& y)
 @< Find out and |return| whether all types in |x.tupple| are equal to those in
   |y.tupple| @>=
 {
-#ifdef incompletecpp11
   wtl_const_iterator it0(x.tupple);
   wtl_const_iterator it1(y.tupple);
-#else
-  auto it0=x.tupple.begin();
-  auto it1=y.tupple.begin();
-#endif
   while (not it0.at_end() and not it1.at_end()
          and *it0==*it1)
     @/{@; ++it0; ++it1; }
@@ -2217,12 +2194,8 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
   if (x.kind!=tuple_type)
     return 0x0; // non-aggregate types are only close if equal
   unsigned int flags=0x7; // now we have two tuple types; compare components
-#ifdef incompletecpp11
   wtl_const_iterator it0(x.tupple);
   wtl_const_iterator it1(y.tupple);
-#else
-  auto it0=x.tupple.begin(), it1=y.tupple.begin();
-#endif
   while (not it0.at_end() and not it1.at_end() @|
          and (flags&=is_close(*it0,*it1))!=0)
   @/{@; ++it0; ++it1; }
@@ -2254,7 +2227,9 @@ class program_error : public std::exception
 public:
   explicit program_error(const std::string& s) : message(s) @+{}
 #ifdef incompletecpp11
-  ~program_error () throw() @+{} // backward compatibility for gcc 4.6
+  ~program_error () throw() @+{} // backward compatibility for gcc 4.4
+#else
+  ~program_error () noexcept @+{} // backward compatibility for gcc 4.6
 #endif
   const char* what() const throw() @+{@; return message.c_str(); }
 };

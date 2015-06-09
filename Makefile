@@ -135,9 +135,13 @@ endif
 CXX = g++ -std=c++0x
 
 CXXVERSION := $(shell $(CXX) -dumpversion)
-CXXVERSIONOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.6)
+CXXVERSIONOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.8)
+CXXVERSIONVERYOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.6)
 
 ifeq "$(CXXVERSIONOLD)" "1"
+  CXXFLAVOR += -Dincompletecpp11
+endif
+ifeq "$(CXXVERSIONVERYOLD)" "1"
   CXXFLAVOR += -Dincompletecpp11 -Dnoexcept= -Dconstexpr= -Dnullptr=0
 endif
 

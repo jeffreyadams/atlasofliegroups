@@ -1281,10 +1281,12 @@ by default; it is present only for backward compatibility \.{gcc}~4.6.
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct let_pair { id_pat pattern; expr val;
 #ifdef incompletecpp11
-  let_pair (id_pat&& p, expr&& v)
-  : pattern(std::move(p)), val(std::move(v)) @+{}
+  let_pair (const let_pair&) = @[delete@];
+  let_pair& operator=(const let_pair&) = @[delete@];
   let_pair (let_pair&& x)
   : pattern(std::move(x.pattern)), val(std::move(x.val)) @+{}
+  let_pair (id_pat&& p, expr&& v)
+  : pattern(std::move(p)), val(std::move(v)) @+{}
 #else
 #endif
 };

@@ -43,12 +43,15 @@ CXXFLAVOR ?= -Wall -ggdb
 CXX := g++ -std=c++0x
 
 CXXVERSION := $(shell $(CXX) -dumpversion)
-CXXVERSIONOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.6)
+CXXVERSIONOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.8)
+CXXVERSIONVERYOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.6)
 
 ifeq "$(CXXVERSIONOLD)" "1"
-  CXXFLAGS += -Dincompletecpp11 -Dnoexcept= -Dconstexpr= -Dnullptr=0
+  CXXFLAVOR += -Dincompletecpp11
 endif
-
+ifeq "$(CXXVERSIONVERYOLD)" "1"
+  CXXFLAVOR += -Dincompletecpp11 -Dnoexcept= -Dconstexpr= -Dnullptr=0
+endif
 
 # only the atlas object files listed below are used
 atlas_objects := $(sources_dir)/structure/prerootdata.o \
@@ -239,7 +242,7 @@ parser.tab.c parser.tab.h: parser.y
            then mv old_targets/$$i $$i; echo $$i unchanged;\
            fi done
 parser.tab.o: parser.tab.c
-	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
 # miscellaneous dependencies (some already known), produced by hand for now
 # these are also included from the main atlas makefile

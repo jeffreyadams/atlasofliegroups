@@ -106,6 +106,13 @@ any special provisions in the |id_data| class, as the main constructor can
 handle the case where |val| refers to a null pointer value (entered as
 |shared_share(nullptr)|, and the |value| method can return such a value.
 
+When support for \Cpp11 is incomplete, we have to live with the fact that the
+|insert| methods only take a constant lvalue argument, which implies the value
+type must be copy-constructible. That means that here its second component,
+|id_data| must have a copy constructor. But we only use this for inserting an
+empty slot that will immediately be overwritten, so for formal compliance we
+provide a default constructor to build the empty slot and a copy constructor
+that will allow copying (only) an empty slot.
 
 @< Type definitions @>=
 
@@ -116,10 +123,15 @@ public:
   id_data(shared_share&& val,type_expr&& t,bool is_const)
   : val(std::move(val)), tp(std::move(t)), is_constant(is_const) @+{}
 #ifdef incompletecpp11
+  id_data () : val(), tp(), is_constant(false) @+{}
+    // we \emph{must} have a default constructor
+  id_data (const id_data& x) : val(), tp(), is_constant(false) @+{}
+   // and allow copying such value
+  id_data& operator= (const id_data& x) = @[delete@];
   id_data (id_data&& x)
   : val(std::move(x.val)), tp(std::move(x.tp)), is_constant(x.is_constant)@+{}
   id_data& operator=(id_data&& x)
-  { val = std::move(x.val); tp = std::move(x.tp); is_constant = x.is_constant;
+  @/{@; val = std::move(x.val); tp = std::move(x.tp); is_constant = x.is_constant;
     return *this;
   }
 #else
@@ -192,13 +204,21 @@ void Id_table::add(id_type id, shared_value val, type_expr&& type, bool is_const
 { auto its = table.equal_range(id);
 
   if (its.first==its.second) // no global identifier was previously known
-    table.insert // better: |emplace_hint(its.first,id,@[...@])| with gcc 4.8
-      (its.first,std::make_pair(id, id_data @|
-        (std::make_shared<shared_value>(std::move(val)),
-         std::move(type), is_const )));
+#ifdef incompletecpp11
+  {
+    auto it = table.insert(its.first,std::make_pair(id,id_data()));
+      // create a slot
+    it->second = id_data @|
+          (std::make_shared<shared_value>(std::move(val))
+          , std::move(type), is_const );
+  }
+#else
+  table.emplace_hint(its.first,id, id_data @|
+   (std::make_shared<shared_value>(std::move(val)),std::move(type),is_const));
+#endif
   else // a global identifier was previously known
     its.first->second = id_data(
-      std::make_shared<shared_value>(std::move(val)), std::move(type), is_const);
+      std::make_shared<shared_value>(std::move(val)), std::move(type),is_const);
 }
 
 @ Inserting a type definition is similar, but inserts a |shared_value| object
@@ -214,9 +234,16 @@ void Id_table::add_type_def(id_type id, type_expr&& type)
 { auto its = table.equal_range(id);
 
   if (its.first==its.second) // no global identifier was previously known
-    table.insert // better: |emplace_hint(its.first,id,@[...@])| with gcc 4.8
-      (its.first,std::make_pair(id,
-         id_data(shared_share(),std::move(type),true)));
+#ifdef incompletecpp11
+  {
+    auto it = table.insert(its.first,std::make_pair(id,id_data()));
+      // create a slot
+    it->second = id_data (shared_share(),std::move(type),true);
+      // and fill it with |type| only
+  }
+#else
+  table.emplace_hint(its.first,id,id_data(shared_share(),std::move(type),true));
+#endif
   else // a global identifier was previously known, replace it
     its.first->second = id_data(shared_share(),std::move(type),true);
 }
@@ -343,10 +370,12 @@ public:
   overload_data(shared_value&& val,func_type&& t)
   : val(std::move(val)), tp(std::move(t)) @+{}
 #ifdef incompletecpp11
+  overload_data (const overload_data& x) = @[delete@];
+  overload_data& operator=(const overload_data& x) = @[delete@];
   overload_data(overload_data&& x)
   : val(std::move(x.val)), tp(std::move(x.tp)) @+{}
   overload_data& operator=(overload_data&& x)
-  { val = std::move(x.val); tp = std::move(x.tp); return *this; }
+  @/{@; val = std::move(x.val); tp = std::move(x.tp); return *this; }
 #else
   overload_data @[(overload_data&& x) = default@];
   overload_data& operator=(overload_data&& x)
@@ -371,12 +400,34 @@ definition for an identifier. The |variants| method will signal absence of an
 identifier by returning an empty list of variants, and no separate test for
 this condition is provided.
 
+Without full support for \Cpp11, we are again faced by the requirement of
+having a copy constructor for (the second component of)
+|map_type::value_type|. The class |std::vector<overload_data>| does not have
+such a constructor because |overload_data| does not, so without full support
+for \Cpp11 we derive a class whose main utility is that it provides a default
+and a copy constructor, the latter in fact being just another way to create an
+empty value; it does check though that it is not asked to duplicate a
+non-empty vector.
+
 @< Type definitions @>=
 
 class overload_table
 {
 public:
+#ifdef incompletecpp11
+  class variant_list : public std::vector<overload_data>
+  { typedef std::vector<overload_data> Base;
+  public:
+    variant_list() : @[Base()@] @+ {}
+    variant_list (const variant_list& x)
+      // \emph{required} copy constructor, for empty vectors only
+    : @[Base()@] @+{@; assert(x.size()==0); }
+    variant_list (variant_list&& x) : Base(std::move(x)) @+{}
+    variant_list& operator=(const variant_list& x)=@[delete@];
+  };
+#else
   typedef std::vector<overload_data> variant_list;
+#endif
   typedef std::map<id_type,variant_list> map_type;
 private:
   map_type table;
@@ -421,9 +472,15 @@ void overload_table::add
   func_type type(std::move(*t.func)); // steal the function type
   auto its = table.equal_range(id);
   if (its.first==its.second) // a fresh overloaded identifier
-  { its.first=table.insert // better: |emplace_hint| with gcc 4.8
+  {
+#ifdef incompletecpp11
+    auto it=table.insert
       (its.first,std::make_pair(id, variant_list()));
-    its.first->second.push_back(
+#else
+    auto it=table.emplace_hint(its.first,id,variant_list())
+;
+#endif
+    it->second.push_back(
       overload_data( std::move(val), std::move(type)) );
   }
   else
