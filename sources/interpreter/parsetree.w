@@ -1192,7 +1192,7 @@ struct id_pat
   id_pat (id_pat&& x)
   : name(x.name), kind(x.kind), sublist(std::move(x.sublist)) @+{}
 @/id_pat& operator=(id_pat&& x)
-  { name = x.name; kind = x.kind; sublist = std::move(x.sublist);
+  @/{@; name = x.name; kind = x.kind; sublist = std::move(x.sublist);
     return *this;
   }
 #else

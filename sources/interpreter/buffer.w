@@ -60,11 +60,12 @@ control to the file active at the point they were opened.
 
 namespace atlas
 { namespace interpreter
- {
-@< Class declarations @>@;
-@< Inline function definitions @>@;
-@< Declarations of static variables @>@;
- }@;
+  {
+    @< Class declarations @>@;
+    @< Inline function definitions @>@;
+    @< Declarations of static variables @>@;
+    @< Declarations functions used but defined elsewhere @>@;
+  }@;
 }@;
 #endif
 
@@ -643,6 +644,17 @@ const char* name_of(Hash_table::id_type f) const
 const char* cur_fname() const
   @+{@; return name_of(current_file()); }
 
+@ When opening files, we shall look them up in a list of places, this search
+path being specified by the user. For each of these places in turn, we shall
+prefix the given file name with a string. How this string is stored and
+recovered does not concern us here; it is defined elsewhere (in fact
+in \.{main.w}). We shall just use the following functions that tell how many
+path components there are, and give access to each component.
+
+@< Declarations functions used but defined elsewhere @>=
+unsigned int input_path_size();
+const std::string& input_path_component(unsigned int i);
+
 @ Pushing a new input file requires constructing the new |input_record| on the
 stack, which will be done in place (the record is ``emplaced''). Opening the
 file is done during member initialisation by the constructor of that record.
@@ -662,24 +674,28 @@ of |name|).
 @< Definitions of class members @>=
 BufferedInput::input_record::input_record
 (BufferedInput& parent, const char* file_name)
-@/: f_stream(file_name) // this tries to open the file
+@/: f_stream() // this tries to open the file
   , name(~0)
   , line_no(parent.line_no+parent.cur_lines) // record where reading will resume
 
-{ std::string buf; // declare here for lifetime
-  if (parent.def_ext!=nullptr and not f_stream.is_open())
-  { buf = file_name;
-    long inx=buf.size()-std::strlen(parent.def_ext);
-    if (inx<0 or buf.substr(inx)!=parent.def_ext)
-      // only add extension if absent
-    { buf += parent.def_ext;
-      file_name=buf.c_str(); // henceforth name is extended
-      f_stream.open(file_name); // try to reopen |stream| with extended name
+{ unsigned int path_size = input_path_size();
+  for (unsigned int i=0; i<=path_size; ++i)
+  { std::string pathname(i<path_size ? input_path_component(i) : std::string());
+    pathname += file_name;
+    f_stream.open(pathname);
+    if (not f_stream.is_open() and parent.def_ext!=nullptr)
+    { long inx=pathname.size()-std::strlen(parent.def_ext);
+      if (inx<0 or pathname.substr(inx)!=parent.def_ext)
+        // only add extension if absent
+        f_stream.open(pathname+= parent.def_ext);
+          // try to reopen |stream| with extended name
+    }
+    if (f_stream.is_open())
+       // once opening succeeds, record name in |input_files_seen|
+    {@;name = parent.input_files_seen.match(pathname.c_str(),pathname.size());
+      return;
     }
   }
-  if (f_stream.is_open())
-     // once opening succeeds, record name in |input_files_seen|
-    name = parent.input_files_seen.match(file_name,std::strlen(file_name));
 }
 
 @ If |push_file| is called with |skip_seen==true|, this means it should not

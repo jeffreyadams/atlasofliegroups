@@ -203,7 +203,7 @@ new type (destroying the previous).
 void Id_table::add(id_type id, shared_value val, type_expr&& type, bool is_const)
 { auto its = table.equal_range(id);
 
-  if (its.first==its.second) // no global identifier was previously known
+  if (its.first==its.second) @[ // no global identifier was previously known
 #ifdef incompletecpp11
   {
     auto it = table.insert(its.first,std::make_pair(id,id_data()));
@@ -216,6 +216,7 @@ void Id_table::add(id_type id, shared_value val, type_expr&& type, bool is_const
   table.emplace_hint(its.first,id, id_data @|
    (std::make_shared<shared_value>(std::move(val)),std::move(type),is_const));
 #endif
+  @]@;
   else // a global identifier was previously known
     its.first->second = id_data(
       std::make_shared<shared_value>(std::move(val)), std::move(type),is_const);
@@ -772,11 +773,11 @@ void global_set_identifiers(const raw_let_list& d)
 able to clobber the value prepared by the caller without taking a copy; we do
 not intend to actually move from the argument.
 
-In a change from our initial implementation, that parameter set by the parser
-allows overloading but does not force it. Allowing the parameter to be cleared
-here then actually serves to allow more cases to be handled using the overload
-table, since the parser will now set |overload>0| more freely. Indeed the
-parser currently passes |overload==0| only when the
+In a change from our initial implementation, that parameter (which is set by
+the parser) can allow overloading without forcing it. Allowing the parameter
+to be cleared here then actually serves to allow more cases to be handled
+using the overload table, since the parser will now set |overload>0| more
+freely. Indeed the parser currently passes |overload==0| only when the
 ``\\{identifier}\.:\\{value}'' syntax is used to introduce a new identifier.
 
 However, the code below sets |overload=0| also whenever the defining

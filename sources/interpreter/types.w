@@ -1191,7 +1191,7 @@ type_expr unknown_tuple(size_t n)
   return type_expr(std::move(tl));
 }
 
-@* Dynamically typed values.
+@* Run-time values.
 %
 Now we shall consider runtime values. As we mentioned before, the interpreter
 must access values via generic pointers in order to be able to manipulate them

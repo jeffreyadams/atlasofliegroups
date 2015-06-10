@@ -74,10 +74,10 @@ classes only).
 encapsulate types of the Atlas library, and their interface functions. Its
 header file includes \.{types.h} and many headers from the Atlas library.
 
-\point The file \.{global.w} other primitive types less related to Atlas, like
-integers, rationals, matrices. Also some global aspects of the interpreter
-like operating the global identifier tables. Its
-header file includes \.{types.h} and some headers from the Atlas library.
+\point The file \.{global.w} defines other primitive types less intimately
+related to Atlas, like integers, rationals, matrices. Also some global aspects
+of the interpreter like operating the global identifier tables. Its header
+file includes \.{types.h} and some headers from the Atlas library.
 
 \point The file \.{evaluator.w} Defines the realex type-checker and the
 evaluator proper. It defines many classes derived from |expression_base|. Its
@@ -112,7 +112,9 @@ dependency on the readline library.
 
 @< Declaration of interface to the parser @>@;
 namespace { @< Local static data @>@; }@;
-@< Definitions of local functions @>@;
+@< Definitions of global namespace functions @>@;
+namespace atlas { namespace interpreter {@< Definitions of other functions @>@;
+}@;}@;
 @< Main program @>
 
 @ Since the file \.{parser.y} declares \.{\%pure-parser} and \.{\%locations},
@@ -165,7 +167,7 @@ third arguments to |yyerror| are those passed to |yyparse|, even though they
 are not used in |yyerror|. In |yyerror| we close any open include files, as
 continuing to execute their commands is undesirable.
 
-@< Definitions of local functions @>=
+@< Definitions of global namespace functions @>=
 
 int yylex(YYSTYPE *valp, YYLTYPE *locp)
 {@; return atlas::interpreter::lex->get_token(valp,locp); }
@@ -244,6 +246,14 @@ int main(int argc, char** argv)
   return 0;
 }
 
+@ We shall use a variable that holds a copy of the input path, even if the
+user should manage to forget or hide the user variable introduced below to
+hold it.
+
+@h "global.h" // defines |shared_share|
+@< Local static data @>=
+static atlas::interpreter::shared_share input_path_pointer;
+
 @ Here are several calls necessary to get various parts of this program off to
 a good start, starting with the history and readline libraries, and setting a
 comment convention. Initialising the constants in the Atlas library is no
@@ -254,19 +264,40 @@ functions.
 @h "built-in-types.h"
 @h "constants.h"
 @< Initialise various parts of the program @>=
-@< Initialise the \.{readline} library interface @>
-
+{
+  @< Initialise the \.{readline} library interface @>
 @)ana.set_comment_delims('{','}');
 @)initialise_evaluator(); initialise_builtin_types();
+@)static const shared_value empty_row = std::make_shared<row_value>(0);
+  id_type ip_id = main_hash_table->match_literal("input_path");
+@/global_id_table->add@|(ip_id
+                       ,empty_row, mk_type_expr("[string]"), false);
+  input_path_pointer = global_id_table->address_of(ip_id);
+}
 
-@ The function |id_completion_func| define in the \.{lexer} module will not be
-plugged directly into the readline completion mechanism, but instead we
+@ We can now define the functions that are used in \.{buffer.w} to access the
+input path.
+
+@< Definitions of other functions @>=
+
+unsigned int input_path_size()
+{ const row_value* path = force<row_value>(input_path_pointer->get());
+@/return path->val.size();
+}
+const std::string& input_path_component(unsigned int i)
+{ const row_value* path = force<row_value>(input_path_pointer->get());
+  const string_value* dir = force<string_value>(path->val[i].get());
+@/return dir->val;
+}
+
+@ The function |id_completion_func| defined in the \.{lexer} module will not
+be plugged directly into the readline completion mechanism, but instead we
 provide an alternative function for generating matches, which may pass the
 above function to |rl_completion_matches| when it deems the situation
 appropriate, or else returns |nullptr| to indicate that the default function,
 completing on file names, should be used instead.
 
-@< Definitions of local functions @>=
+@< Definitions of global namespace functions @>=
 #ifndef NREADLINE
 extern "C" char** do_completion(const char* text, int start, int end)
 {
@@ -364,6 +395,23 @@ suppress printing of the uninteresting value.
   @< Various |catch| phrases for the main loop @>
 }
 
+
+@ The |std::ofstream| object was already created earlier in the main loop,
+but it will only be opened if we come here. If this fails then we report it
+directly and |continue| to the next iteration of the main loop, which is more
+practical at this point than throwing and catching an error.
+
+@< Open |redirect| to specified file... @>=
+{ redirect.open(ana.scanned_file_name() ,ios_base::out |
+     (verbosity==2 ? ios_base::trunc : ios_base::@;app));
+  if (redirect.is_open())
+    output_stream = &redirect;
+  else
+  {@; cerr << "Failed to open " << ana.scanned_file_name() << endl;
+    continue;
+  }
+}
+
 @ We distinguish runtime errors (which are normal) from internal errors (which
 should not happen), and also |catch| and report any other error derived from
 |std::exception| that could be thrown. After any of these errors we close all
@@ -393,23 +441,6 @@ indicates to not use the readline and history library in the input buffer.
 @h <cstring>
 @< Handle command line arguments @>=
 bool use_readline = argc<2 or std::strcmp(argv[1],"-nr")!=0;
-
-
-@ The |std::ofstream| object was already created earlier in the main loop,
-but it will only be opened if we come here. If this fails then we report it
-directly and |continue| to the next iteration of the main loop, which is more
-practical at this point than throwing and catching an error.
-
-@< Open |redirect| to specified file... @>=
-{ redirect.open(ana.scanned_file_name() ,ios_base::out |
-     (verbosity==2 ? ios_base::trunc : ios_base::@;app));
-  if (redirect.is_open())
-    output_stream = &redirect;
-  else
-  {@; cerr << "Failed to open " << ana.scanned_file_name() << endl;
-    continue;
-  }
-}
 
 @* Index.
 

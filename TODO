@@ -38,6 +38,7 @@
   and return the realex prompt. This may be quite difficult to implement if
   for interrupts happening while an atlas library function is executing.
 
+- make empty tuple type print as 'void'
 - Improve output of expressions
 
 - Allow multiple overloaded functions defined in a single 'set' statement
@@ -81,12 +82,6 @@
   concatenation, but operations such as vector addition could also profit.
   This point is maybe to be considered together with the previous point.
 
-- Allow loops executed in reverse order
-  This generalises downto to for-in loops. Saying 'for e@i reverse in array
-  do f(e,i) od' runs through elements of 'array' backwards, 'i' decreasing
-  correspondingly; any row value built by loop is still constructed forward,
-  so 'i' does not refer to position in built-up row in this case.
-
 - Implement value gathering in loop using a sl_list if size is not known.
   Currently all loops gather values in a std::vector; while loops (as well as
   future loops using features that make size of resulting row unknown when
@@ -114,6 +109,7 @@
 - Ensure that root data obtained from inner classes or beyond are shared
 - Avoid creating many identical |real_form_value| instances, by storing links
   to those currently generated within an |inner_class_value| object
+- Check whether nested voiding in loops is necessary, maybe do only outer one
 - Check if efficiency features actually work as intended
   For instance v[i]=k should usually avoid a copy of v being made. Also see
   if something can be done to avoid duplication in a +:= x (probably not, as
@@ -124,9 +120,10 @@
 
 * Work on the realex scripts
 - Complete the groups in groups.rx (types G,F); also avoid use of "s" etc.
-- Study and rewrite Jeffs scripts to see what can be put into the library
 
 * Work on documentation
+
+- Write a tutorial on the realex languge, in bottom-up style
 
 * Work on makefiles, distribution and support programs (cwebx)
 - Change interpreter/Makefile so it does not remake io/fliekl.cpp and friends
