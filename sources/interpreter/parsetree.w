@@ -1005,12 +1005,14 @@ surprise that \.{x\pow-y\pow2} parses as $x^{(-y)^2}$.
 
 @ The data type necessary to store these intermediate data during priority
 resolutions is a dynamic list of triples subtree-operator-priority. We use a
-|simple_list|, which is thought to have its |front| on the right. To implement
-the above solution for unary operators, we allow for the very first pending
-operator to not have any left subtree; the expression is left of type
-|no_expr|, which can be tested to detect the end of the list.
+|mirrored_simple_list|, which is a list re-looked so that its head appears at
+|back|, like for |std::stack|. That head represents the rightmost part of the
+formula seen do far. To implement the above solution for unary operators, we
+allow for the very first pending operator (at the tail of the list) to not
+have any left subtree; the expression is left of type |no_expr|, which can be
+tested to detect the end of the list.
 
-All nodes will be directly constructed in place, through |emplace_front|, so we
+All nodes will be directly constructed in place, through |emplace_back|, so we
 declare a simple moving constructor. For compilers with incomplete \Cpp11
 support we explicitly delete the copy constructor assignment to prevent bad
 surprises (though the current code would not be affected by their presence).
@@ -1019,11 +1021,9 @@ Even a moving constructor is not needed.
 Postfix operators are quite rare in mathematics (the factorial exclamation
 mark is the clearest example, though certain exponential notations like the
 derivative prime could be considered as postfix operators as well) and more
-importantly seem to invariably have infinite priority, so the could be handled
-in the parser without dynamic priority comparisons. And even if such
-comparisons were needed, they could be handled by a new function operating in
-the list of partial formulae, and need not be taken into account in the data
-structure of that list itself. So here is that structure:
+importantly seem to invariably have infinite priority, so they could be
+handled in the parser without dynamic priority comparisons. So here is that
+structure:
 
 @< Structure and typedef declarations... @>=
 struct formula_node @/{@; expr left_subtree; expr op_exp; int prio;
@@ -1035,7 +1035,7 @@ formula_node(expr&& l,expr&& o, int prio)
 #endif
 };
 
-typedef containers::simple_list<formula_node> form_stack;
+typedef containers::mirrored_simple_list<formula_node> form_stack;
 typedef containers::sl_node<formula_node>* raw_form_stack;
 
 @ We define the following functions operating on partial formulae: two to
@@ -1058,14 +1058,14 @@ the case of a binary formula.
 raw_form_stack start_formula
    (expr_p e, id_type op, int prio, const YYLTYPE& op_loc)
 { form_stack result;
-  result.emplace_front (
+  result.emplace_back (
    std::move(*expr_ptr(e)), expr(op,op_loc,expr::identifier_tag()), prio );
   return result.release();
 }
 @)
 raw_form_stack start_unary_formula (id_type op, int prio, const YYLTYPE& op_loc)
 { form_stack result;    // leave |left_subtree| empty
-  result.emplace_front (expr(), expr(op,op_loc,expr::identifier_tag()), prio );
+  result.emplace_back (expr(), expr(op,op_loc,expr::identifier_tag()), prio );
 @/  return result.release();
 }
 
@@ -1083,14 +1083,14 @@ raw_form_stack extend_formula
   while (not s.empty() and s.front().prio>=prio+prio%2)
     @< Replace |e| by |oper(left_subtree,e)| where |oper| and |left_subtree|
        come from popped |s.front()| @>
-  s.emplace_front(std::move(e),expr(op,op_loc,expr::identifier_tag()),prio);
+  s.emplace_back(std::move(e),expr(op,op_loc,expr::identifier_tag()),prio);
   return s.release();
 }
 
 @ Here we make either a unary or a binary operator call. The unary case only
 applies for the last node of the stack (since only |start_unary_formula| can
 create a node without left operand), but that fact is not used here. Only once
-the node is emptied do we pop it with |s.pop_front()|.
+the node is emptied do we pop it with |s.pop_back()|.
 
 @< Replace |e| by |oper(left_subtree,e)|...@>=
 { expr& lt = s.front().left_subtree;
@@ -1112,7 +1112,7 @@ the node is emptied do we pop it with |s.pop_front()|.
       ( std::move(s.front().op_exp), std::move(arg_pack) ));
     e= expr(std::move(a),range); // move construct application expression
   }
-  s.pop_front();
+  s.pop_back();
 }
 
 @ Wrapping up a formula is similar to the initial part of |extend_formula|,

@@ -1158,6 +1158,10 @@ template<typename T,typename Alloc = std::allocator<T> >
 
   mirrored_simple_list (const Base& x) // lift base object to derived class
     : Base(x) {}
+  mirrored_simple_list (Base&& x) // lift base object to derived class
+  : Base(std::move(x)) {}
+  mirrored_simple_list (sl_node<T, Alloc>* raw_list) // acquire from raw pointer
+  : Base(raw_list) {}
   // compiler-generated copy constructor and assignment should be OK
 
   template<typename InputIt, typename = typename std::enable_if<
@@ -1206,6 +1210,10 @@ template<typename T,typename Alloc = std::allocator<T> >
   explicit mirrored_sl_list (Alloc&& a) : Base(std::move(a)) {}
   mirrored_sl_list (const Base& x) // lift base object to derived class
     : Base(x) {}
+  mirrored_sl_list (Base&& x) // lift base object to derived class
+  : Base(std::move(x)) {}
+  mirrored_sl_list (sl_node<T, Alloc>* raw_list) // acquire from raw pointer
+  : Base(raw_list) {}
   // compiler-generated copy constructor and assignment should be OK
 
   template<typename InputIt, typename = typename std::enable_if<
