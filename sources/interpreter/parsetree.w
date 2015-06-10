@@ -226,8 +226,23 @@ differently according to different branches of execution) we set its |kind| to
 |no_expr|, which will ensure proper behaviour (no action) when it gets
 assigned to, or destroyed.
 
+We don't have a copy constructor or copy assignment operator, because we
+always want to use move semantics for expressions. In full \Cpp11 this
+circumstance would be implicitly deduced from the explicit declaration of a
+move constructor and move assignment operator, but older compiler versions
+would implicitly declare a copy constructor or copy assignment operator if we
+didn't declare them deleted. Since those implicitly defined functions do not
+do the right thing, this would lead to insidious errors where for
+instance a copy constructor gets inserted in a |return| statement (which
+moreover one would have expected to be elided) and the corresponding
+destruction of the local variable leaves the actual (copied) return value
+with dangling pointers. Whence the explicit |delete| declarations below, which
+do no harm even if they were implicitly assumed.
+
 @< Methods of |expr| @>=
 expr() : kind(no_expr), loc() @+{}
+expr(const expr& x) = @[delete@];
+expr& operator=(const expr& x) = @[delete@];
 ~expr(); // defined below using a large |switch| statement
 
 @ While we are defining functions to parse expressions, we shall also define a
@@ -990,10 +1005,16 @@ surprise that \.{x\pow-y\pow2} parses as $x^{(-y)^2}$.
 
 @ The data type necessary to store these intermediate data during priority
 resolutions is a dynamic list of triples subtree-operator-priority. We use a
-|simple_list|, which is though to have it |front| on the right. To implement
+|simple_list|, which is thought to have its |front| on the right. To implement
 the above solution for unary operators, we allow for the very first pending
 operator to not have any left subtree; the expression is left of type
 |no_expr|, which can be tested to detect the end of the list.
+
+All nodes will be directly constructed in place, through |emplace_front|, so we
+declare a simple moving constructor. For compilers with incomplete \Cpp11
+support we explicitly delete the copy constructor assignment to prevent bad
+surprises (though the current code would not be affected by their presence).
+Even a moving constructor is not needed.
 
 Postfix operators are quite rare in mathematics (the factorial exclamation
 mark is the clearest example, though certain exponential notations like the
@@ -1005,7 +1026,14 @@ the list of partial formulae, and need not be taken into account in the data
 structure of that list itself. So here is that structure:
 
 @< Structure and typedef declarations... @>=
-struct formula_node {@; expr left_subtree; expr op_exp; int prio; };
+struct formula_node @/{@; expr left_subtree; expr op_exp; int prio;
+formula_node(expr&& l,expr&& o, int prio)
+ : left_subtree(std::move(l)), op_exp(std::move(o)), prio(prio) @+{}
+#ifdef incompletecpp11
+@/formula_node(const formula_node& x) = @[delete@];
+@/formula_node operator=(const formula_node& x) = @[delete@];
+#endif
+};
 
 typedef containers::simple_list<formula_node> form_stack;
 typedef containers::sl_node<formula_node>* raw_form_stack;
@@ -1030,16 +1058,15 @@ the case of a binary formula.
 raw_form_stack start_formula
    (expr_p e, id_type op, int prio, const YYLTYPE& op_loc)
 { form_stack result;
-  result.push_front ( formula_node @|
-   {std::move(*expr_ptr(e)), expr(op,op_loc,expr::identifier_tag()), prio } );
+  result.emplace_front (
+   std::move(*expr_ptr(e)), expr(op,op_loc,expr::identifier_tag()), prio );
   return result.release();
 }
 @)
 raw_form_stack start_unary_formula (id_type op, int prio, const YYLTYPE& op_loc)
 { form_stack result;    // leave |left_subtree| empty
-  result.push_front ( formula_node @|
-    { expr(), expr(op,op_loc,expr::identifier_tag()), prio } );
-  return result.release();
+  result.emplace_front (expr(), expr(op,op_loc,expr::identifier_tag()), prio );
+@/  return result.release();
 }
 
 @ Extending a formula involves the priority comparisons and manipulations
@@ -1056,15 +1083,14 @@ raw_form_stack extend_formula
   while (not s.empty() and s.front().prio>=prio+prio%2)
     @< Replace |e| by |oper(left_subtree,e)| where |oper| and |left_subtree|
        come from popped |s.front()| @>
-  s.push_front(formula_node @|
-     {std::move(e),expr(op,op_loc,expr::identifier_tag()),prio});
+  s.emplace_front(std::move(e),expr(op,op_loc,expr::identifier_tag()),prio);
   return s.release();
 }
 
 @ Here we make either a unary or a binary operator call. The unary case only
 applies for the last node of the stack (since only |start_unary_formula| can
 create a node without left operand), but that fact is not used here. Only once
-the node is emptied do we pop it with |s.front()|.
+the node is emptied do we pop it with |s.pop_front()|.
 
 @< Replace |e| by |oper(left_subtree,e)|...@>=
 { expr& lt = s.front().left_subtree;
@@ -1083,7 +1109,7 @@ the node is emptied do we pop it with |s.front()|.
     args.push_front(std::move(lt));
     expr arg_pack(std::move(args),expr::tuple_display_tag(),range);
     app a(new application_node @|
-      @[{ std::move(s.front().op_exp), std::move(arg_pack) }@]);
+      ( std::move(s.front().op_exp), std::move(arg_pack) ));
     e= expr(std::move(a),range); // move construct application expression
   }
   s.pop_front();
