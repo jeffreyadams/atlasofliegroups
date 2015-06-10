@@ -208,9 +208,11 @@ the appropriate expansion for these macros is the null pointer.
 #include <readline/history.h>
 #endif
 
-@ After a basic initialisation, our main program constructs unique instances
+@ Our main program constructs unique instances
 for various classes of the interpreter, and sets pointers to them so that
-various compilation units can access them. Then it executes the main command
+various compilation units can access them. Then it processes command line
+arguments and does some more declarations that can depend on them.
+Finally it executes the main command
 loop, from which normally only the \.{quit} command will make it exit.
 
 @h <unistd.h> // for |isatty|
@@ -219,19 +221,22 @@ loop, from which normally only the \.{quit} command will make it exit.
 int main(int argc, char** argv)
 { using namespace std; using namespace atlas::interpreter;
 @)
-  @< Handle command line arguments @>
 
-@/BufferedInput input_buffer(isatty(STDIN_FILENO) ? "expr> " : nullptr
-                            ,use_readline ? readline : nullptr
-			    ,use_readline ? add_history : nullptr);
-  main_input_buffer= &input_buffer;
 @/Hash_table hash; main_hash_table= &hash;
-@/Lexical_analyser ana(input_buffer,hash,keywords,prim_names); lex=&ana;
 @/Id_table main_table; @+ global_id_table=&main_table;
 @/overload_table main_overload_table;
  @+ global_overload_table=&main_overload_table;
 @)
-  @< Initialise various parts of the program @>
+  bool use_readline=true;
+  @< Other local variables of |main| @>
+  @< Handle command line arguments @>
+@/BufferedInput input_buffer(isatty(STDIN_FILENO) ? "expr> " : nullptr
+                            ,use_readline ? readline : nullptr
+			    ,use_readline ? add_history : nullptr);
+  main_input_buffer= &input_buffer;
+@/Lexical_analyser ana(input_buffer,hash,keywords,prim_names); lex=&ana;
+@/@< Initialise various parts of the program @>
+  @< Enter system variables into |global_id_table| @>
 @)
   cout << "This is 'realex', version " realex_version " (compiled on " @|
        << atlas::version::COMPILEDATE @| <<
@@ -246,13 +251,39 @@ int main(int argc, char** argv)
   return 0;
 }
 
-@ We shall use a variable that holds a copy of the input path, even if the
-user should manage to forget or hide the user variable introduced below to
-hold it.
+@ When reading command line arguments, some options may specify a search path,
+any non-option arguments will considered to be file names (forming the
+``prelude''). We shall gather both in lists of strings.
+
+@< Other local variables of |main| @>=
+std::vector<const char*> paths,prelude_filenames;
+paths.reserve(argc-1); prelude_filenames.reserve(argc-1);
+
+@ The strings in |paths| will initialise a ``system variable'' created below
+(a variable the user can assign to, and which is inspected whenever files are
+opened). We shall use a static variable that gives access to its value. It
+continues to do so even if the user should manage to forget or hide the user
+variable introduced below to hold it.
 
 @h "global.h" // defines |shared_share|
 @< Local static data @>=
 static atlas::interpreter::shared_share input_path_pointer;
+
+@ Here we create the system variable called |input_path|; it is a list of
+strings.
+
+@< Enter system variables into |global_id_table| @>=
+{
+  own_value input_path = std::make_shared<row_value>(paths.size());
+  id_type ip_id = main_hash_table->match_literal("input_path");
+  auto& dst = force<row_value>(input_path.get())->val;
+  auto oit = dst.begin();
+  for (auto it=paths.begin(); it!=paths.end(); ++it)
+    *oit++ = make_shared<string_value>(std::string(*it));
+@/global_id_table->add@|(ip_id
+                       ,input_path, mk_type_expr("[string]"), false);
+  input_path_pointer = global_id_table->address_of(ip_id);
+}
 
 @ Here are several calls necessary to get various parts of this program off to
 a good start, starting with the history and readline libraries, and setting a
@@ -264,16 +295,9 @@ functions.
 @h "built-in-types.h"
 @h "constants.h"
 @< Initialise various parts of the program @>=
-{
   @< Initialise the \.{readline} library interface @>
 @)ana.set_comment_delims('{','}');
 @)initialise_evaluator(); initialise_builtin_types();
-@)static const shared_value empty_row = std::make_shared<row_value>(0);
-  id_type ip_id = main_hash_table->match_literal("input_path");
-@/global_id_table->add@|(ip_id
-                       ,empty_row, mk_type_expr("[string]"), false);
-  input_path_pointer = global_id_table->address_of(ip_id);
-}
 
 @ We can now define the functions that are used in \.{buffer.w} to access the
 input path.
@@ -439,8 +463,18 @@ catch (exception& err)
 indicates to not use the readline and history library in the input buffer.
 
 @h <cstring>
+
 @< Handle command line arguments @>=
-bool use_readline = argc<2 or std::strcmp(argv[1],"-nr")!=0;
+while (*++argv!=nullptr)
+{ static const char* const path_opt = "--path=";
+  static const size_t pol = std::strlen(path_opt);
+  std::string arg(*argv);
+  if (arg=="--no-readline")
+    {@; use_readline = false; continue; }
+  if (arg.substr(0,pol)==path_opt)
+     paths.push_back(&(*argv)[pol]);
+  else prelude_filenames.push_back(*argv);
+}
 
 @* Index.
 
