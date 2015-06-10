@@ -109,35 +109,40 @@ set Levi (InnerClass ic,[int] S) = InnerClass: { just change the root datum }
 { ------------------Levi factor of real parabolic----------- }
 
 
-{ M=centralizer of A in H=TA, as a RealForm (cuspidal parabolic)}
+{ M=centralizer of A in H=TA, as a RealForm (cuspidal parabolic) }
 set real_Levi(KGBElt x) = RealForm:
   let theta = involution(x)
   then ic_M = inner_class(root_datum(simple_from_positive(imaginary_sys(x)))
 			 ,theta)
-  then rf = real_form(ic_M,theta,torus_factor(x))
-  in rf
+  in real_form(ic_M,theta,torus_factor(x))
 
-{Real Levi defined by set of simple roots, and theta_x}
-set real_Levi_from_simple(RealForm G,[int] simpleroot_numbers,KGBElt x) = RealForm:
-  let theta = involution(x) then
-  (posroots,poscoroots)=(posroots(G),poscoroots(G)) then
-  roots=for i in simpleroot_numbers do posroots[i] od then
-  coroots=for i in simpleroot_numbers do poscoroots[i] od then
-  ()=  prints(mat:roots,mat:coroots) then
-  ic_M = inner_class(root_datum(roots,coroots),theta)
-  then rf = real_form(ic_M,theta,torus_factor(x))
-  in rf
+{ Levi factors of general real parabolic }
 
-{Real Levi defined by set of positive roots, and theta_x}
-set real_Levi_from_positive(RealForm G,[int] posroot_numbers,KGBElt x) = RealForm:
-  let theta = involution(x) then
-  (posroots,poscoroots)=(posroots(G),poscoroots(G)) then
-  roots=for i in posroot_numbers do posroots[i] od then
-  coroots=for i in posroot_numbers do poscoroots[i] od then
-  ()=  prints(mat:roots,mat:coroots) then
-  ic_M = inner_class(root_datum(simple_from_positive(roots,coroots)),theta)
-  then rf = real_form(ic_M,theta,torus_factor(x))
-  in rf
+{ Real Levi defined by set of root indices for its simple system, and x }
+set real_Levi_from_simple(
+    RealForm G,[int] simpleroot_numbers,KGBElt x,bool show) =  RealForm:
+  let theta = involution(x), rd=RootDatum: G
+  then roots = rank(rd) # for i in simpleroot_numbers do root(rd,i) od
+  , coroots  = rank(rd) # for i in simpleroot_numbers do coroot(rd,i) od
+  then new_rd = root_datum(
+       	      	  if show then print(roots,coroots) else (roots,coroots) fi)
+  in real_form(inner_class(new_rd,theta),theta,torus_factor(x))
+
+set real_Levi_from_simple(RealForm G,[int] inx,KGBElt x) = RealForm:
+  real_Levi_from_simple(G,inx,x,false)
+
+{ Real Levi defined by set of root indices for its positive system, and x }
+set real_Levi_from_positive(
+  RealForm G,[int] posroot_numbers,KGBElt x, bool show) = RealForm:
+  let theta = involution(x), rd=RootDatum: G
+  then roots = rank(rd) # for i in posroot_numbers do root(rd,i) od
+  , coroots  = rank(rd) # for i in posroot_numbers do coroot(rd,i) od
+  then new_rd = root_datum(simple_from_positive(
+              	  if show then print(roots,coroots) else (roots,coroots) fi))
+  in real_form(inner_class(new_rd,theta),theta,torus_factor(x))
+
+set real_Levi_from_positive(RealForm G,[int] inx,KGBElt x) = RealForm:
+  real_Levi_from_positive(G,inx,x,false)
 
 set theta_stable_Levi (KGBElt x) = RealForm:
   let ic_L=inner_class(root_datum(simple_from_positive(real_sys(x)))
@@ -147,31 +152,6 @@ set theta_stable_Levi (KGBElt x) = RealForm:
 set M = real_Levi@KGBElt { synonym }
 
 set L = theta_stable_Levi@KGBElt { synonym }
-
-{Levi factors of general real parabolic}
-
-{specify a set of simple roots}
-set real_Levi_from_simple(RealForm G,[int] simpleroot_numbers,KGBElt x) = RealForm:
-  let theta = involution(x) then
-  (posroots,poscoroots)=(posroots(G),poscoroots(G)) then
-  roots=for i in simpleroot_numbers do posroots[i] od then
-  coroots=for i in simpleroot_numbers do poscoroots[i] od then
-  ()=  prints(mat:roots,mat:coroots) then
-  ic_M = inner_class(root_datum(roots,coroots),theta)
-  then rf = real_form(ic_M,theta,torus_factor(x))
-  in rf
-
-{specify a set of positive roots}
-set real_Levi_from_positive(RealForm G,[int] posroot_numbers,KGBElt x) = RealForm:
-  let theta = involution(x) then
-  (posroots,poscoroots)=(posroots(G),poscoroots(G)) then
-  roots=for i in posroot_numbers do posroots[i] od then
-  coroots=for i in posroot_numbers do poscoroots[i] od then
-  ()=  prints(mat:roots,mat:coroots) then
-  ic_M = inner_class(root_datum(simple_from_positive(roots,coroots)),theta)
-  then rf = real_form(ic_M,theta,torus_factor(x))
-  in rf
-
 
 { ----------------tests for classes of groups---------------- }
 
