@@ -219,7 +219,7 @@ loop, from which normally only the \.{quit} command will make it exit.
 @< Main program @>=
 
 int main(int argc, char** argv)
-{ using namespace std; using namespace atlas::interpreter;
+{ using namespace atlas::interpreter;
 @)
 
 @/Hash_table hash; main_hash_table= &hash;
@@ -238,8 +238,9 @@ int main(int argc, char** argv)
 @/@< Initialise various parts of the program @>
   @< Enter system variables into |global_id_table| @>
 @)
-  cout << "This is 'realex', version " realex_version " (compiled on " @|
-       << atlas::version::COMPILEDATE @| <<
+  @< Silently read in the files from |prelude_filenames| @>
+  std::cout << "This is 'realex', version " realex_version " (compiled on " @|
+            << atlas::version::COMPILEDATE @| <<
 ").\nIt is the programmable interpreter interface to the library (version " @|
        << atlas::version::VERSION @| << ") of\n"
        << atlas::version::NAME << @| ". http://www.liegroups.org/\n";
@@ -247,7 +248,7 @@ int main(int argc, char** argv)
   @< Enter the main command loop @>
   clear_history();
   // clean up (presumably disposes of the lines stored in history)
-  cout << "Bye.\n";
+  std::cout << "Bye.\n";
   return 0;
 }
 
@@ -267,22 +268,29 @@ variable introduced below to hold it.
 
 @h "global.h" // defines |shared_share|
 @< Local static data @>=
-static atlas::interpreter::shared_share input_path_pointer;
+static atlas::interpreter::shared_share input_path_pointer,prelude_log_pointer;
 
-@ Here we create the system variable called |input_path|; it is a list of
-strings.
+@ Here we create the system variables called |input_path| and |prelude_log|;
+both are lists of strings, the latter a constant one.
 
 @< Enter system variables into |global_id_table| @>=
 {
   own_value input_path = std::make_shared<row_value>(paths.size());
   id_type ip_id = main_hash_table->match_literal("input_path");
-  auto& dst = force<row_value>(input_path.get())->val;
-  auto oit = dst.begin();
+  auto oit = force<row_value>(input_path.get())->val.begin();
   for (auto it=paths.begin(); it!=paths.end(); ++it)
-    *oit++ = make_shared<string_value>(std::string(*it));
+    *oit++ = std::make_shared<string_value>(std::string(*it)+'/');
 @/global_id_table->add@|(ip_id
                        ,input_path, mk_type_expr("[string]"), false);
   input_path_pointer = global_id_table->address_of(ip_id);
+@)
+  own_value prelude_log = std::make_shared<row_value>(0); // start out empty
+  id_type pl_id = main_hash_table->match_literal("prelude_log");
+  auto& logs = force<row_value>(input_path.get())->val;
+  logs.reserve(prelude_filenames.size());
+@/global_id_table->add@|(pl_id
+                       ,prelude_log, mk_type_expr("[string]"), true);
+  prelude_log_pointer = global_id_table->address_of(pl_id);
 }
 
 @ Here are several calls necessary to get various parts of this program off to
@@ -371,9 +379,10 @@ last_type = void_type.copy();
 while (ana.reset()) // get a fresh line for lexical analyser, or quit
 { expr_p parse_tree;
   int old_verbosity=verbosity;
-  ofstream redirect; // if opened, this will be closed at end of loop
+  std::ofstream redirect; // if opened, this will be closed at end of loop
   if (yyparse(&parse_tree,&verbosity)!=0)
-    continue; // syntax error or non-expression
+     // syntax error (inputs are closed) or non-expression
+    continue;
   if (verbosity!=0) // then some special action was requested
   { if (verbosity<0)
       break; // \.{quit} command
@@ -384,11 +393,12 @@ while (ana.reset()) // get a fresh line for lexical analyser, or quit
       verbosity=old_verbosity; // verbosity change was temporary
     }
     if (verbosity==1) //
-      cout << "Expression before type analysis: " << *parse_tree << endl;
+      std::cout << "Expression before type analysis: " << *parse_tree
+                << std::endl;
   }
   @< Analyse types and then evaluate and print, or catch runtime or other
      errors @>
-  output_stream= &cout; // reset output stream if it was changed
+  output_stream= &std::cout; // reset output stream if it was changed
 }
 
 @ If a type error is detected by |analyse_types|, then it will have signalled
@@ -406,19 +416,78 @@ suppress printing of the uninteresting value.
     type_expr found_type=analyse_types(*parse_tree,e);
     type_OK=true;
     if (verbosity>0)
-      cout << "Type found: " << found_type << endl @|
-	   << "Converted expression: " << *e << endl;
+      std::cout << "Type found: " << found_type << std::endl @|
+	        << "Converted expression: " << *e << std::endl;
     e->evaluate(expression_base::single_value);
 @)  // now that evaluation did not |throw|, we can record the predicted type
     last_type = std::move(found_type);
     last_value=pop_value();
     if (last_type!=void_type)
-      *output_stream << "Value: " << *last_value << endl;
+      *output_stream << "Value: " << *last_value << std::endl;
     destroy_expr(parse_tree);
   }
   @< Various |catch| phrases for the main loop @>
 }
 
+@ Before entering that main loop, we do a simplified version of the command
+loop to read in the prelude files. We do not accept anything that changes
+|verbosity| (like trying to call \.{quit}) during the prelude, do not maintain
+a last value, and in case of type or runtime errors complain more succinctly
+than in the main loop. All non-error output goes to a component of the
+|prelude_log| user variable. This is mainly due to the assignment
+|output_stream = &log_stream;| and the fact that functions in \.{global.w} use
+this pointer; the \.{set} commands that form the essence of prelude files
+return a nonzero value from |yyparse|, so in practice most of the code below
+is rarely executed.
+
+Errors will break from the inner loop simply by popping the open include
+file(s) from |main_input_buffer|. We do not attempt to break from the outer
+loop upon an error, as this circumstance is rather hard to detect: any error
+has already been reported on |std::cerr|, and leaves a situation not very
+different from successfully completing reading the file.
+
+@< Silently read in the files from |prelude_filenames| @>=
+for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
+{ std::ostringstream log_stream; output_stream = &log_stream;
+  main_input_buffer->push_file(*it,true);
+    // set up to read |fname|, unless already done
+  while (main_input_buffer->include_depth()>0) // go on until file ends
+  { if (not ana.reset())
+    { std::cerr << "Internal error, getline fails reading " << *it
+                  << std::endl;
+      return EXIT_FAILURE;
+    }
+    expr_p parse_tree;
+    if (yyparse(&parse_tree,&verbosity)!=0)
+      continue; // if a syntax error was signalled input has been closed
+    if (verbosity!=0)
+    { std::cerr << "Cannot "
+                << (verbosity<0 ? "quit" :
+                    verbosity==1 ? "set verbose" : "redirect output")
+                         << " during prelude.\n";
+      verbosity=0; main_input_buffer->close_includes();
+    }
+    else
+    { try
+      { expression_ptr e; type_expr found_type=analyse_types(*parse_tree,e);
+        e->evaluate(expression_base::single_value);
+        if (found_type!=void_type)
+          log_stream << "Value: " << pop_value();
+        else
+          pop_value(); // don't forget to cast away that void value
+      }
+      catch (std::exception& err)
+      { std::cerr << err.what() << std::endl;
+        reset_evaluator(); main_input_buffer->close_includes();
+      }
+    }
+    destroy_expr(parse_tree);
+  }
+  value pl_val = uniquify(*prelude_log_pointer);
+  row_value* logs = force<row_value>(pl_val);
+  logs->val.emplace_back(std::make_shared<string_value>(log_stream.str()));
+  output_stream = &std::cout;
+}
 
 @ The |std::ofstream| object was already created earlier in the main loop,
 but it will only be opened if we come here. If this fails then we report it
@@ -426,12 +495,12 @@ directly and |continue| to the next iteration of the main loop, which is more
 practical at this point than throwing and catching an error.
 
 @< Open |redirect| to specified file... @>=
-{ redirect.open(ana.scanned_file_name() ,ios_base::out |
-     (verbosity==2 ? ios_base::trunc : ios_base::@;app));
+{ redirect.open(ana.scanned_file_name() ,std::ios_base::out |
+     (verbosity==2 ? std::ios_base::trunc : std::ios_base::@;app));
   if (redirect.is_open())
     output_stream = &redirect;
   else
-  {@; cerr << "Failed to open " << ana.scanned_file_name() << endl;
+  {@; std::cerr << "Failed to open " << ana.scanned_file_name() << std::endl;
     continue;
   }
 }
@@ -443,19 +512,19 @@ open auxiliary input files; reporting where we were reading is done by the
 method |close_includes| defined in \.{buffer.w}.
 
 @< Various |catch| phrases for the main loop @>=
-catch (runtime_error& err)
+catch (std::runtime_error& err)
 { if (type_OK)
-    cerr << "Runtime error:\n  " << err.what() << "\nEvaluation aborted.";
-  else cerr << err.what();
-  cerr << std::endl;
+    std::cerr << "Runtime error:\n  " << err.what() << "\nEvaluation aborted.";
+  else std::cerr << err.what();
+  std::cerr << std::endl;
   reset_evaluator(); main_input_buffer->close_includes();
 }
-catch (logic_error& err)
-{ cerr << "Internal error: " << err.what() << ", evaluation aborted.\n";
+catch (std::logic_error& err)
+{ std::cerr << "Internal error: " << err.what() << ", evaluation aborted.\n";
   reset_evaluator(); main_input_buffer->close_includes();
 }
-catch (exception& err)
-{ cerr << err.what() << ", evaluation aborted.\n";
+catch (std::exception& err)
+{ std::cerr << err.what() << ", evaluation aborted.\n";
   reset_evaluator(); main_input_buffer->close_includes();
 }
 

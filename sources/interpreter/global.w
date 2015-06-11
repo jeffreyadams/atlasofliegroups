@@ -743,6 +743,20 @@ void show_ids();
 void type_of_expr(expr_p e);
 void show_overloads(id_type id);
 
+@ These functions produce a brief report of what they did, for which they use
+the pointer variable |output_stream|, so that it can be redirected during the
+prelude. The same pointer is also used for all normal output from the
+evaluator, and can for that purpose also be redirected on a per-command basis.
+
+@< Declarations of global variables @>=
+extern std::ostream* output_stream;
+
+@ The |output_stream| will normally point to |std::cout|, but the pointer
+may be assigned to in the main program, which causes output redirection.
+
+@< Global variable definitions @>=
+std::ostream* output_stream= &std::cout;
+
 @ Global identifiers can be introduced (or modified) by the function
 |global_set_identifiers|, handling the \&{set} syntax with the same
 possibilities as for local definitions (the \&{let}
@@ -824,7 +838,7 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload)
      // associate values with identifiers
 @)
     phase=2;
-    @< Emit indentation corresponding to the input level to |std::cout| @>
+    @< Emit indentation corresponding to the input level to |*output_stream| @>
     if (overload==0)
       @< Add instance of identifiers in |b| with values in |v| to
          |global_id_table| @>
@@ -832,7 +846,7 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload)
       @< Add instance of identifier in |b[0]| with value in |v[0]| to
          |global_overload_table| @>
 
-    std::cout << std::endl;
+    *output_stream << std::endl;
   }
   @< Catch block for errors thrown during a global identifier definition @>
 }
@@ -865,19 +879,19 @@ to the very common singular case), before calling |global_id_table->add|.
 @< Add instance of identifiers in |b| with values in |v| to
    |global_id_table| @>=
 { if (n_id>0)
-    std::cout << "Identifier";
+    *output_stream << "Identifier";
   auto v_it = v.begin();
   for (auto it=b.begin(); it!=b.end(); ++it, ++v_it)
-  { std::cout << (it==b.begin() ? n_id==1 ? " " : "s " : ", ") @|
+  { *output_stream << (it==b.begin() ? n_id==1 ? " " : "s " : ", ") @|
               << main_hash_table->name_of(it->first);
-    std::cout << ": " << it->second;
+    *output_stream << ": " << it->second;
     if (global_id_table->present(it->first))
     { bool is_const;
-      std::cout << " (hiding previous one of type "
+      *output_stream << " (hiding previous one of type "
              @| << *global_id_table->type_of(it->first,is_const);
       if (is_const)
-        std::cout << " (constant)";
-      std::cout << ')';
+        *output_stream << " (constant)";
+      *output_stream << ')';
     }
     global_id_table->add
       (it->first,std::move(*v_it),std::move(it->second),b.is_const(it));
@@ -910,12 +924,12 @@ undone or not reported as failed.
     // insert or replace table entry
   size_t n=global_overload_table->variants(b[0].first).size();
   if (n==old_n)
-    std::cout << "Redefined ";
+    *output_stream << "Redefined ";
   else if (n==1)
-    std::cout << "Defined ";
+    *output_stream << "Defined ";
   else
-    std::cout << "Added definition [" << n << "] of ";
-  std::cout << main_hash_table->name_of(b[0].first) << ": "
+    *output_stream << "Added definition [" << n << "] of ";
+  *output_stream << main_hash_table->name_of(b[0].first) << ": "
             << type_string.str();
 }
 
@@ -923,9 +937,9 @@ undone or not reported as failed.
 emit two spaces for every current input level. The required information is
 available from the |main_input_buffer|.
 
-@< Emit indentation corresponding to the input level to |std::cout| @>=
+@< Emit indentation corresponding to the input level to |*output_stream| @>=
 { unsigned int input_level = main_input_buffer->include_depth();
-  std::cout << std::setw(2*input_level) << "";
+  *output_stream << std::setw(2*input_level) << "";
 }
 
 @ When the right hand side type does not match the requested pattern, we throw
@@ -985,8 +999,8 @@ message afterwards.
 void global_declare_identifier(id_type id, type_p t)
 { type_ptr saf(t); // ensure clean-up
   type_expr& type=*t;
-  @< Emit indentation corresponding to the input level to |std::cout| @>
-  std::cout << "Declaring identifier '" << main_hash_table->name_of(id)
+  @< Emit indentation corresponding to the input level to |*output_stream| @>
+  *output_stream << "Declaring identifier '" << main_hash_table->name_of(id)
             << "': " << type << std::endl;
   static const shared_value undefined_value; // holds a null pointer
   global_id_table->add(id,undefined_value,std::move(type),false);
@@ -997,7 +1011,7 @@ following function achieves.
 
 @< Global function definitions @>=
 void global_forget_identifier(id_type id)
-{ std::cout << "Identifier '" << main_hash_table->name_of(id)
+{ *output_stream << "Identifier '" << main_hash_table->name_of(id)
             << (global_id_table->remove(id) ? "' forgotten" : "' not known")
             << std::endl;
 }
@@ -1009,7 +1023,7 @@ similar.
 void global_forget_overload(id_type id, type_p t)
 { type_ptr saf(t); // ensure clean-up
   const type_expr& type=*t;
-  std::cout << "Definition of '" << main_hash_table->name_of(id)
+  *output_stream << "Definition of '" << main_hash_table->name_of(id)
             << '@@' << type @|
             << (global_overload_table->remove(id,type)
                ? "' forgotten"
@@ -1028,8 +1042,8 @@ void type_define_identifier(id_type id, type_p t)
   if (not redefine)
     @< Test that |id| has no global definition or overloads;
        if it does, report problem and |return| @>
-  @< Emit indentation corresponding to the input level to |std::cout| @>
-  std::cout << "Type name '" << main_hash_table->name_of(id) @|
+  @< Emit indentation corresponding to the input level to |*output_stream| @>
+  *output_stream << "Type name '" << main_hash_table->name_of(id) @|
             << (redefine ? "' redefined as " : "' defined as ") << type
             << std::endl;
 @/global_id_table->add_type_def(id,std::move(type));
@@ -1042,7 +1056,7 @@ and emit an error message instead when it is attempted..
 @< Test that |id| has no global definition or overloads... @>=
 { const bool p = global_id_table->present(id);
   if (p or not global_overload_table->variants(id).empty())
-  { std::cout << "Cannot define '" << main_hash_table->name_of(id) @|
+  { *output_stream << "Cannot define '" << main_hash_table->name_of(id) @|
               << "' as a type; it is in use as " @|
               << (p? "global variable" : "function") << std::endl;
     return;
@@ -1050,24 +1064,13 @@ and emit an error message instead when it is attempted..
 }
 
 @ It is useful to print type information, either for a single expression or
-for all identifiers in the table. We here define and export the pointer
-variable that is used for all normal output from the evaluator.
-
-@< Declarations of global variables @>=
-extern std::ostream* output_stream;
-
-@ The |output_stream| will normally point to |std::cout|, but the pointer
-may be assigned to in the main program, which causes output redirection.
-
-@< Global variable definitions @>=
-std::ostream* output_stream= &std::cout;
-
-@ The function |type_of_expr| prints the type of a single expression, without
-evaluating it. Since we allow arbitrary expressions, we must cater for the
-possibility of failing type analysis, in which case |analyse_types|, after
-catching it, will re-throw a |std::runtime_error|. By in fact catching and
-reporting any |std::exception| that may be thrown, we also ensure ourselves
-against unlikely events like |bad_alloc|.
+for all identifiers in the table. The function |type_of_expr| prints the type
+of a single expression, without evaluating it. Since we allow arbitrary
+expressions, we must cater for the possibility of failing type analysis, in
+which case |analyse_types|, after catching it, will re-throw a
+|std::runtime_error|. By in fact catching and reporting any |std::exception|
+that may be thrown, we also ensure ourselves against unlikely events like
+|bad_alloc|.
 
 @< Global function definitions @>=
 void type_of_expr(expr_p raw)

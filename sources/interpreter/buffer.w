@@ -614,10 +614,13 @@ struct input_record
 from the stack; then the |stream| is set to the previous input stream. When
 |close_includes| is called all auxiliary input files are closed.
 
+@h "global.h" // for |output_stream|
+
 @< Definitions of class members @>=
 void BufferedInput::pop_file()
 { line_no = input_stack.back().line_no;
-  std::cout << "Completely read file '" << cur_fname() << "'." << std::endl;
+  *output_stream << "Completely read file '" << cur_fname() << "'."
+                 << std::endl;
   input_files_completed.insert (input_stack.back().name); // reading succeeded
   input_stack.pop_back(); // also closes the current file
   stream= input_stack.empty() ? &base_stream : &input_stack.back().f_stream;
@@ -745,7 +748,7 @@ bitmap. Although the conditions are tested here in the opposite order, |skip|
 is set to the logical ``or'' of both conditions in all cases.
 
 When the file is really going to be read from, this is reported to
-|std::cout|, and the member variable |stream| made to point to
+|*output_stream|, and the member variable |stream| made to point to
 |input_stack.back().f_stream| so that the next reading operation will be from
 the new file. We also take care to get the line numbering for the new file off
 to a good start.
@@ -766,8 +769,8 @@ to a good start.
   if (skip)
     input_stack.pop_back(); // silently skip including the file
   else
-  { std::cout << "Starting to read from file '" << cur_fname()
-              << "'." << std::endl;
+  { *output_stream << "Starting to read from file '" << cur_fname()
+                   << "'." << std::endl;
   @/stream= &input_stack.back().f_stream;
     line_no=1; // prepare to read from pushed file
     cur_lines=0;
