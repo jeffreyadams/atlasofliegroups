@@ -1675,14 +1675,16 @@ void times_wrapper(expression_base::level l)
     push_value(std::make_shared<int_value>(i*j));
 }
 
-@ We take the occasion of defining a division operation to repair the integer
-division operation |operator/| built into \Cpp, which is traditionally broken
-for negative dividends. This is done by using |arithmetic::divide| that
-handles such cases correctly (rounding the quotient systematically downwards).
-Since |arithmetic::divide| takes an unsigned second argument, we handle the
-case of a negative divisor ourselves. Incidentally, this Euclidean division
-operation will be bound to the operator ``$\backslash$'', because ``$/$'' is
-used to form rational numbers.
+@ Euclidean division operation will be bound to the operator ``$\backslash$'',
+because ``$/$'' is used to form rational numbers. We take the occasion of
+defining a division operation to repair the integer division operation
+|operator/| built into \Cpp, which is traditionally broken for negative
+dividends. This is done by using |arithmetic::divide| that handles such cases
+correctly (rounding the quotient systematically downwards). Since
+|arithmetic::divide| takes an unsigned second argument, we handle the case of
+a negative divisor ourselves. We do so by stipulating $a\backslash(-b)$ as
+$-(a\backslash b)$. (Another option is to define $a\backslash(-b)$ as
+$(-a)\backslash b$; the jury is still out on which one is preferable.)
 
 @< Local function definitions @>=
 void divide_wrapper(expression_base::level l)
@@ -2665,6 +2667,9 @@ void ratvec_unary_minus_wrapper(expression_base::level l)
 
 @ Here are multiplication and division of rational vectors by integers, and by
 rational numbers. The modulo operation is only provided for the integer case.
+All operations must normalise the result, since the library operations do not
+do this automatically, with the exception of the modulo operation which cannot
+lead to a smaller denominator since it effectively adds an integer vector.
 
 @< Local function def... @>=
 void ratvec_times_int_wrapper(expression_base::level l)
@@ -2672,7 +2677,7 @@ void ratvec_times_int_wrapper(expression_base::level l)
   own_rational_vector v= get_own<rational_vector_value>();
   if (l==expression_base::no_value)
     return;
-  v->val *= i;
+  (v->val *= i).normalize();
   push_value(v);
 }
 void ratvec_divide_int_wrapper(expression_base::level l)
@@ -2682,7 +2687,7 @@ void ratvec_divide_int_wrapper(expression_base::level l)
     throw std::runtime_error("Rational vector division by 0");
   if (l==expression_base::no_value)
     return;
-  v->val /= i;
+  (v->val /= i).normalize();
   push_value(v);
 }
 void ratvec_modulo_int_wrapper(expression_base::level l)

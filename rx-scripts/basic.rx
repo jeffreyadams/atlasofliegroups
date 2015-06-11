@@ -40,8 +40,8 @@ set last (int limit,(int->bool) filter) = int:
 
 {				Integers				}
 
-set abs (int k)= int: if k<0 then -k else k fi
-set sign (int k)= int: if k=0 then 0 else k\k fi
+set abs (int k)= int: if <k then -k else k fi
+set sign (int k)= int: if >k then 1 elif <k then -1 else 0 fi
 
 set is_odd  (int n) = bool: n%2=1
 set is_even (int n) = bool: n%2=0
@@ -59,6 +59,7 @@ set numer (rat a) = let (n,)=%a in n
 set denom (rat a) = let (,d)=%a in d
 
 set is_integer (rat r) = bool: denom(r)=1
+set sign (rat a)= int: sign(numer(a)) { denominator is always positive }
 
 set floor (rat a) = int: \ %a     { decompose, then integer division }
 set ceil  (rat a) = int: -\ %-a   { same, sandwiched in negations }
@@ -69,6 +70,7 @@ set \ ((rat,rat)p) = int: floor(/p)
 { these are mostly for ratvec arguments, but [rat] refuses coercion from vec }
 set floor ([rat] v) = vec: for a in v do floor(a) od
 set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
+
 
 { make a rational into an integer if possible }
 set rat_as_int (rat r) = int:

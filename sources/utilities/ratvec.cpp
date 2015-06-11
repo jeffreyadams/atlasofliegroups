@@ -64,7 +64,7 @@ RationalVector<C> RationalVector<C>::operator+(const RationalVector<C>& v)
 }
 
 // rational vectors are not guaranteed on lowest terms
-// however if multiplication can be by cancellation it is done that way
+// however if multiplication can be done by cancellation, it is done that way
 template<typename C>
 RationalVector<C>& RationalVector<C>::operator*=(C n)
 {
@@ -83,6 +83,7 @@ RationalVector<C>& RationalVector<C>::operator*=(C n)
 
 // division takes signed argument to avoid catastrophic surprises: if ever a
 // negative argument were passed, implicit conversion to unsigned would be fatal
+// like multiplication, this function does not guarantee a normalized result
 template<typename C>
 RationalVector<C>& RationalVector<C>::operator/=(C n)
 {
@@ -92,7 +93,7 @@ RationalVector<C>& RationalVector<C>::operator/=(C n)
   else
   {
     d_num=-d_num;
-    d_denom*=arithmetic::Denom_t(-n);
+    d_denom*=-arithmetic::Denom_t(n); // safe to convert to unsigned, negate
   }
   return *this;
 }
