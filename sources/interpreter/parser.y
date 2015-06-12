@@ -22,8 +22,9 @@
   */
 
 
-  #include <stdio.h>
+#include <iostream>
 #include "parsetree.h"  // types and functions used to construct nodes
+#include "lexer.h"  // pointer |lex| to lexical analyser
 #include "evaluator.h" // action functions invoked from within the parser
   using namespace atlas::interpreter; // to allow simplifying action code
 %}
@@ -59,8 +60,8 @@
 
 %token QUIT SET LET IN BEGIN END IF THEN ELSE ELIF FI AND OR NOT
 %token WHILE DO OD NEXT FOR FROM DOWNTO CASE ESAC
-%token TRUE FALSE QUIET VERBOSE WHATTYPE SHOWALL FORGET
-%token <oper> OPERATOR '='
+%token TRUE FALSE WHATTYPE SHOWALL FORGET
+%token <oper> OPERATOR OPERATOR_BECOMES '='
 %token <val> INT
 %token <str> STRING
 %token <id_code> IDENT TYPE_ID
@@ -140,8 +141,15 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| ':' IDENT '=' type '\n' { type_define_identifier($2,$4); YYABORT; }
 	| ':' TYPE_ID '=' type '\n' { type_define_identifier($2,$4); YYABORT; }
 	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
-	| QUIET '\n'		{ *verbosity =0; YYABORT; } /* quiet mode */
-	| VERBOSE '\n'		{ *verbosity =1; YYABORT; } /* verbose mode */
+	| SET IDENT // set an option; option identifiers have lowest codes
+          { unsigned n=$2-lex->first_identifier();
+            if (n<2)
+              *verbosity=n; // |quiet| gives 0, and |verbose| gives 1
+            else
+	      std::cerr << '\'' << main_hash_table->name_of($2)
+                        << "' is not something one can set" << std::endl;
+            YYABORT;
+	  }
 	| TOFILE expr '\n'	{ *parsed_expr=$2; *verbosity=2; }
 	| ADDTOFILE expr '\n'	{ *parsed_expr=$2; *verbosity=3; }
 	| FROMFILE '\n'		{ include_file(1); YYABORT; } /* include file */
@@ -185,10 +193,12 @@ declaration: pattern '=' expr { $$ = make_let_node($1,$3); }
 
 tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3,@$); }
 	| assignable_subsn BECOMES tertiary { $$ = make_comp_ass($1,$3,@$); }
-	| IDENT operator BECOMES tertiary
+	| IDENT OPERATOR_BECOMES tertiary
 	  { $$ = make_assignment($1,
 		  make_binary_call($2.id,
-		    make_applied_identifier($1,@1),$4,@$,@2),@$); }
+		    make_applied_identifier($1,@1),$3,@$,@2),@$); }
+	| assignable_subsn OPERATOR_BECOMES tertiary
+	  { $$ = make_comp_upd_ass($1,$2.id,$3,@$,@2); }
 	| or_expr
 ;
 

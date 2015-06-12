@@ -117,71 +117,6 @@ namespace atlas { namespace interpreter {@< Definitions of other functions @>@;
 }@;}@;
 @< Main program @>
 
-@ Since the file \.{parser.y} declares \.{\%pure-parser} and \.{\%locations},
-the prototype of the lexical analyser (wrapper) function |yylex| is the one
-below. Curiously, the program~\.{bison} does not write this prototype to
-\.{parser.tab.h}, but it does write the definitions of the types |YYSTYPE| and
-|YYLTYPE| there; these require that \.{parse\_types.h} be included first. We
-also declare ``{\tt\%parse-param \char`\{} |int* verbosity, expr_p*
-parsed_expr@;| {\tt\char`\}}'' in~\.{parser.y}, so that the parser itself,
-|yyparse|, takes an integer pointer as parameter, which it uses to signal
-special requests from the user (such as verbose output but also termination or
-output redirection), and a pointer to an expression, in which it writes the
-result of parsing.
-
-The definitions below used to start with |extern "C"|, but no longer do so
-since the parser is now compiled as a \Cpp\ program.
-
-@h "parse_types.h"
-@h "parser.tab.h"
-
-@< Declaration of interface to the parser @>=
-
-int yylex (YYSTYPE *, YYLTYPE *);
-@/int yyparse( atlas::interpreter::expr_p* parsed_expr, int* verbosity );
-
-@ Here is an array that declares the keywords that the lexical scanner is to
-recognise, terminated by a null pointer. Currently the lexical analyser adds
-the offset of the keyword in this list to |QUIT|, so the recognition depends
-on the fact that |"quit"| is the first keyword, and that they are listed below
-in the same order as in the \.{\%token} declarations in \.{parser.y}.
-
-@< Local static data @>=
-
-const char* keywords[] =
- {"quit"
- ,"set","let","in","begin","end"
- ,"if","then","else","elif","fi"
- ,"and","or","not"
- ,"while","do","od","next","for","from","downto"
- ,"case","esac"
- ,"true","false"
- ,"quiet","verbose"
- ,"whattype","showall","forget"
- ,nullptr};
-
-@ Here are the wrapper function for the lexical analyser and the error
-reporting function, which are necessary because the parser cannot directly
-call a class method. The prototypes are imposed, in particular the second and
-third arguments to |yyerror| are those passed to |yyparse|, even though they
-are not used in |yyerror|. In |yyerror| we close any open include files, as
-continuing to execute their commands is undesirable.
-
-@< Definitions of global namespace functions @>=
-
-int yylex(YYSTYPE *valp, YYLTYPE *locp)
-{@; return atlas::interpreter::lex->get_token(valp,locp); }
-@)
-
-void yyerror (YYLTYPE* locp, atlas::interpreter::expr_p* ,int* ,char const *s)
-{ atlas::interpreter::main_input_buffer->show_range@|
-  (std::cerr,
-   locp->first_line, locp->first_column,
-   locp->last_line,  locp->last_column);
-  std::cerr << s << std::endl;
-  atlas::interpreter::main_input_buffer->close_includes();
-}
-
 @ Here are some header files which need to be included for this main program.
 As we discussed above, the inclusion of header files for the readline
 libraries is made dependent on the flag |NREADLINE|. In case the flag is set,
@@ -207,6 +142,136 @@ the appropriate expansion for these macros is the null pointer.
 #include <readline/readline.h>
 #include <readline/history.h>
 #endif
+
+@ Since the file \.{parser.y} declares \.{\%pure-parser} and \.{\%locations},
+the prototype of the lexical analyser (wrapper) function |yylex| is the one
+below. Curiously, the program~\.{bison} does not write this prototype to
+\.{parser.tab.h}, but it does write the definitions of the types |YYSTYPE| and
+|YYLTYPE| there; these require that \.{parse\_types.h} be included first. We
+also declare ``{\tt\%parse-param \char`\{} |int* verbosity, expr_p*
+parsed_expr@;| {\tt\char`\}}'' in~\.{parser.y}, so that the parser itself,
+|yyparse|, takes an integer pointer as parameter, which it uses to signal
+special requests from the user (such as verbose output but also termination or
+output redirection), and a pointer to an expression, in which it writes the
+result of parsing.
+
+The definitions below used to start with |extern "C"|, but no longer do so
+since the parser is now compiled as a \Cpp\ program.
+
+@h "parse_types.h"
+@h "parser.tab.h"
+
+@< Declaration of interface to the parser @>=
+
+int yylex (YYSTYPE *, YYLTYPE *);
+@/int yyparse( atlas::interpreter::expr_p* parsed_expr, int* verbosity );
+
+@ Here are the wrapper function for the lexical analyser and the error
+reporting function, which are necessary because the parser cannot directly
+call a class method. The prototypes are imposed, in particular the second and
+third arguments to |yyerror| are those passed to |yyparse|, even though they
+are not used in |yyerror|. In |yyerror| we close any open include files, as
+continuing to execute their commands is undesirable.
+
+@< Definitions of global namespace functions @>=
+
+int yylex(YYSTYPE *valp, YYLTYPE *locp)
+{@; return atlas::interpreter::lex->get_token(valp,locp); }
+@)
+
+void yyerror (YYLTYPE* locp, atlas::interpreter::expr_p* ,int* ,char const *s)
+{ atlas::interpreter::main_input_buffer->show_range@|
+  (std::cerr,
+   locp->first_line, locp->first_column,
+   locp->last_line,  locp->last_column);
+  std::cerr << s << std::endl;
+  atlas::interpreter::main_input_buffer->close_includes();
+}
+
+@ The function |id_completion_func| defined in the \.{lexer} module will not
+be plugged directly into the readline completion mechanism, but instead we
+provide an alternative function for generating matches, which may pass the
+above function to |rl_completion_matches| when it deems the situation
+appropriate, or else returns |nullptr| to indicate that the default function,
+completing on file names, should be used instead.
+
+@< Definitions of global namespace functions @>=
+#ifndef NREADLINE
+extern "C" char** do_completion(const char* text, int start, int end)
+{
+  if (start>0)
+  { int i; char c; bool need_file=false;
+    for (i=0; i<start; ++i)
+      if (std::isspace(c=rl_line_buffer[i]))
+        continue; // ignore space characters
+      else if (c=='<' or c=='>')
+        need_file=true;
+      else
+        break;
+
+    if (need_file and i==start)
+       // the text is preceded by one or more copies of \.<, \.>
+      return nullptr; // signal that file name completion should be used
+  }
+  rl_attempted_completion_over = true;
+    // don't try file name completion if we get here
+  return rl_completion_matches(text,atlas::interpreter::id_completion_func);
+}
+#endif
+
+@ The code concerning the \.{readline} library is excluded in cas
+the \.{NREADLINE} flag is set.
+
+@< Initialise the \.{readline} library interface @>=
+#ifndef NREADLINE
+  using_history();
+  rl_completer_word_break_characters = lexical_break_chars;
+  rl_attempted_completion_function = do_completion; // set up input completion
+
+#endif
+
+@ Here is an array that declares the keywords that the lexical scanner is to
+recognise, terminated by a null pointer. Currently the lexical analyser adds
+the offset of the keyword in this list to |QUIT|, so the recognition depends
+on the fact that |"quit"| is the first keyword, and that they are listed below
+in the same order as in the \.{\%token} declarations in \.{parser.y}.
+
+@< Local static data @>=
+
+const char* keywords[] =
+ {"quit"
+ ,"set","let","in","begin","end"
+ ,"if","then","else","elif","fi"
+ ,"and","or","not"
+ ,"while","do","od","next","for","from","downto"
+ ,"case","esac"
+ ,"true","false"
+ ,"whattype","showall","forget"
+ ,nullptr};
+
+@ Here are several calls necessary to get various parts of this program off to
+a good start, starting with the history and readline libraries, and setting a
+comment convention. Initialising the constants in the Atlas library is no
+longer necessary, as it is done automatically before |main| is called. Our own
+compilation units do require explicit calling of their initialisation
+functions. The identifiers |quiet| and |verbose| are no longer keywords (as
+they used to be) and are instead recognised only in the special
+commands \.{set quiet} and \.{set verbose}; to this end the parser uses their
+numeric identifier codes. To ensure that they are respectively at offsets
+$0,1$ of |ana.first_identifier()|, we look up these names before any other
+identifiers are introduced, notably before |initialise_evaluator| and
+|initialise_builtin_types| are called to define built-in operators and
+functions.
+
+@h "built-in-types.h"
+@h "constants.h"
+@< Initialise various parts of the program @>=
+  @< Initialise the \.{readline} library interface @>
+@)main_hash_table->match_literal("quiet");
+  main_hash_table->match_literal("verbose");
+  // these must be the very first identifiers
+  ana.set_comment_delims('{','}');
+@)initialise_evaluator(); initialise_builtin_types();
 
 @ Our main program constructs unique instances
 for various classes of the interpreter, and sets pointers to them so that
@@ -270,6 +335,27 @@ variable introduced below to hold it.
 @< Local static data @>=
 static atlas::interpreter::shared_share input_path_pointer,prelude_log_pointer;
 
+@ Apart from the \.{--no-readline} option to switch off the readline functions
+(which might be useful when input comes from a file), the program accepts
+options that set the search path for scripts, and a number of scripts that
+form the ``prelude''. The readline option must be read early to influence the
+constructor of the lexical analyser, but the other options are just stored
+away here for later processing.
+
+@h <cstring>
+
+@< Handle command line arguments @>=
+while (*++argv!=nullptr)
+{ static const char* const path_opt = "--path=";
+  static const size_t pol = std::strlen(path_opt);
+  std::string arg(*argv);
+  if (arg=="--no-readline")
+    {@; use_readline = false; continue; }
+  if (arg.substr(0,pol)==path_opt)
+     paths.push_back(&(*argv)[pol]);
+  else prelude_filenames.push_back(*argv);
+}
+
 @ Here we create the system variables called |input_path| and |prelude_log|;
 both are lists of strings, the latter a constant one.
 
@@ -293,20 +379,6 @@ both are lists of strings, the latter a constant one.
   prelude_log_pointer = global_id_table->address_of(pl_id);
 }
 
-@ Here are several calls necessary to get various parts of this program off to
-a good start, starting with the history and readline libraries, and setting a
-comment convention. Initialising the constants in the Atlas library is no
-longer necessary, as it is done automatically before |main| is called. Our own
-compilation units do require explicit calling of their initialisation
-functions.
-
-@h "built-in-types.h"
-@h "constants.h"
-@< Initialise various parts of the program @>=
-  @< Initialise the \.{readline} library interface @>
-@)ana.set_comment_delims('{','}');
-@)initialise_evaluator(); initialise_builtin_types();
-
 @ We can now define the functions that are used in \.{buffer.w} to access the
 input path.
 
@@ -321,48 +393,6 @@ const std::string& input_path_component(unsigned int i)
   const string_value* dir = force<string_value>(path->val[i].get());
 @/return dir->val;
 }
-
-@ The function |id_completion_func| defined in the \.{lexer} module will not
-be plugged directly into the readline completion mechanism, but instead we
-provide an alternative function for generating matches, which may pass the
-above function to |rl_completion_matches| when it deems the situation
-appropriate, or else returns |nullptr| to indicate that the default function,
-completing on file names, should be used instead.
-
-@< Definitions of global namespace functions @>=
-#ifndef NREADLINE
-extern "C" char** do_completion(const char* text, int start, int end)
-{
-  if (start>0)
-  { int i; char c; bool need_file=false;
-    for (i=0; i<start; ++i)
-      if (std::isspace(c=rl_line_buffer[i]))
-        continue; // ignore space characters
-      else if (c=='<' or c=='>')
-        need_file=true;
-      else
-        break;
-
-    if (need_file and i==start)
-       // the text is preceded by one or more copies of \.<, \.>
-      return nullptr; // signal that file name completion should be used
-  }
-  rl_attempted_completion_over = true;
-    // don't try file name completion if we get here
-  return rl_completion_matches(text,atlas::interpreter::id_completion_func);
-}
-#endif
-
-@ The code concerning the \.{readline} library is excluded in cas
-the \.{NREADLINE} flag is set.
-
-@< Initialise the \.{readline} library interface @>=
-#ifndef NREADLINE
-  using_history();
-  rl_completer_word_break_characters = lexical_break_chars;
-  rl_attempted_completion_function = do_completion; // set up input completion
-
-#endif
 
 @ The command loop maintains two global variables that were defined
 in \.{evaluator.w}, namely |last_type| and |last_value|; these start off in a
@@ -526,23 +556,6 @@ catch (std::logic_error& err)
 catch (std::exception& err)
 { std::cerr << err.what() << ", evaluation aborted.\n";
   reset_evaluator(); main_input_buffer->close_includes();
-}
-
-@ For the moment the only command line argument accepted is \.{-nr}, which
-indicates to not use the readline and history library in the input buffer.
-
-@h <cstring>
-
-@< Handle command line arguments @>=
-while (*++argv!=nullptr)
-{ static const char* const path_opt = "--path=";
-  static const size_t pol = std::strlen(path_opt);
-  std::string arg(*argv);
-  if (arg=="--no-readline")
-    {@; use_readline = false; continue; }
-  if (arg.substr(0,pol)==path_opt)
-     paths.push_back(&(*argv)[pol]);
-  else prelude_filenames.push_back(*argv);
 }
 
 @* Index.

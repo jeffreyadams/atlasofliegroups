@@ -181,10 +181,12 @@ public:
   bool reset(); // get clean slate, return |false| if |getline()| fails
   void set_comment_delims (char c, char d)
           {@; assert(c!='\0' and d!='\0'); comment_start=c; comment_end=d; }
-  const char* scanned_file_name() const {@; return file_name.c_str(); }
+  const char* scanned_file_name() const @+{@; return file_name.c_str(); }
+  id_type first_identifier() const @+{@; return type_limit; }
 private:
-  void skip_space();
-  std::string scan_quoted_string();
+  void skip_space() const;
+  bool becomes_follows();
+  std::string scan_quoted_string() const;
 };
 
 @ Since there is one lexical analyser object, and other parts of the program
@@ -279,7 +281,7 @@ value |'\0'| should reappear at the next call of |shift|.
 @s level x
 
 @< Definitions of class members @>=
-void Lexical_analyser::skip_space(void)
+void Lexical_analyser::skip_space() const
 { if (prevent_termination!='\0') input.push_prompt(prevent_termination);
   do
   { char c=input.shift();
@@ -361,7 +363,7 @@ double-quote characters to single ones.
 @h <string>
 
 @< Definitions of class members @>=
-std::string Lexical_analyser::scan_quoted_string()
+std::string Lexical_analyser::scan_quoted_string() const
 { const char* start=input.point(); bool broken=false;
   std::string result; char c;
   while (true)
@@ -540,6 +542,26 @@ values.
   valp->val=val; code=INT;
 }
 
+@ For reasons of limited look-ahead in the parser, certain operator symbols
+will be contracted with a possible following |":="| into a single token during
+lexical analysis. The function |becomes_follows| will be called to perform the
+necessary look-ahead, possibly include the token |":="| and report whether it
+did find it. While unlikely, we do allow spaces or comments to intervene
+between the operator and the becomes, so as to cover our tracks for this
+lexical hack.
+
+@< Definitions of class members @>=
+bool Lexical_analyser::becomes_follows ()
+{ skip_space(); // allow intervening space, comments
+  const char* p = input.point();
+   // take a peek into the input buffer without advancing
+  if (*p==':' and *++p=='=') // then indeed |":="| follows our operator
+  { input.shift(); input.shift(); // gobble up the symbol |":="|
+    prevent_termination = ':'; return true;
+  }
+  return false;
+}
+
 @ After splitting off the alphanumeric characters, the scanner plunges into a
 large switch on the value of the look-ahead character~|c|. We increase and
 decrease nesting on obvious grouping characters, and for certain characters we
@@ -568,25 +590,27 @@ included before) respectively appending output redirection.
            @+ break;
          }
          prevent_termination=c;
-         code = OPERATOR; valp->oper.priority=2;
+         valp->oper.priority=2;
          if (input.shift()=='=')
            valp->oper.id=id_table.match_literal(c=='<' ? "<=" : ">=");
          else
            {@; input.unshift();
                valp->oper.id=id_table.match_literal(c=='<' ? "<" : ">");
            }
+         code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
   break; case ':': prevent_termination=c;
     code = input.shift()=='=' ? BECOMES  : (input.unshift(),c);
   break; case '=':
          valp->oper.id = id_table.match_literal("=");
          valp->oper.priority = 2; // in case
-	 prevent_termination=code=c;
+	 prevent_termination=c;
+	 code = becomes_follows() ? OPERATOR_BECOMES : '=';
   break; case '!':
          if (input.shift()=='=')
-         { code = OPERATOR;
-           valp->oper.id = id_table.match_literal("!=");
+         { valp->oper.id = id_table.match_literal("!=");
            valp->oper.priority = 2;
            prevent_termination='=';
+           code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
          }
          else
            code= (input.unshift(),c);
@@ -635,7 +659,7 @@ if (input.shift()=='[') // recognise combination for parse reason
 {@; code = TLSUB; ++nesting; input.push_prompt('['); }
 else
  // now see if, skipping spaces and comments, next can follow |'~'|
-{ input.unshift(); skip_space();
+{ input.unshift(); prevent_termination='~'; skip_space();
    // for these cases we do allow intervening space, comments
   const char* p = input.point();
    // take a peek into the input buffer without advancing
@@ -644,9 +668,9 @@ else
    and @| not (p[2]=='_' or std::isalnum((unsigned char)p[2])))
   @/ code=c; // return |'~'|
   else
-  { code = OPERATOR;
-    valp->oper.id = id_table.match_literal("~");
+  { valp->oper.id = id_table.match_literal("~");
     valp->oper.priority = 8; // same precedence as \.{\#}
+    code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
   }
 }
 
@@ -655,25 +679,25 @@ getting too long.
 
 @< Cases of arithmetic operators... @>=
     case '+': prevent_termination=code=c;
-       code = OPERATOR;
        valp->oper.id = id_table.match_literal("+");
        valp->oper.priority = 4;
+       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '-': prevent_termination=c;
        if (input.shift()=='>')
           code= ARROW;
        else
        { input.unshift();
-         code = OPERATOR;
          valp->oper.id = id_table.match_literal("-");
          valp->oper.priority = 4;
+         code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
        }
 break; case '*': case '%': case '/': prevent_termination=c;
        code = OPERATOR;
        valp->oper.id =
           id_table.match_literal(c=='*' ? "*" : c=='%' ? "%" : "/");
        valp->oper.priority = 6;
+       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '\\':
-       code = OPERATOR;
        valp->oper.priority = 6;
        if (input.shift()=='%')
        @/{@; prevent_termination='%';
@@ -683,14 +707,15 @@ break; case '\\':
        {@; input.unshift();
          valp->oper.id = id_table.match_literal("\\");
        }
+       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '^': prevent_termination=c;
-       code = OPERATOR;
        valp->oper.id = id_table.match_literal("^");
        valp->oper.priority = 7; // exponentiation is right-associative
+       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '#': prevent_termination=c;
-       code = OPERATOR;
        valp->oper.id = id_table.match_literal("#");
        valp->oper.priority = 8; // basic meaning is non-associative
+       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break;
 
 @ We hand to the parser a pointer to a dynamic variable move-constructed from

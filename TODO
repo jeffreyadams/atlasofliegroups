@@ -13,18 +13,12 @@
 
 * Work on the realex program
 
-- Allow realex to preload modules from the command line
 - Make conditionals return shared pointer to global true and false values
-
-- Find alternative syntax for "verbose" and "quiet", liberating the keywords
 
 - Have error take arguments like prints does
 - Investigate if some tracing facilty (printing "let" values) is feasible
 
 - See if syntax can allow (let i=3 in for k:i do print(k) od); without parens
-
-- Allow for declaring an input path, and (silent) default prelude
-- Handle output from loading files differently
 
 - Make 'not' execute a built-in function
 - Add a leading_term function (ParamPol->Param)
@@ -38,7 +32,6 @@
   and return the realex prompt. This may be quite difficult to implement if
   for interrupts happening while an atlas library function is executing.
 
-- make empty tuple type print as 'void'
 - Improve output of expressions
 
 - Allow multiple overloaded functions defined in a single 'set' statement
@@ -67,11 +60,6 @@
   bindings (which will hide overloads) if those have function type. This
   allows continuing to use function 'x' after 'let x=x(p) in ...'.
 
-- Allow compound assignment for components: v[i]+:=1
-  The current simple rewriting scheme would give problems with side effects
-  from the index expression. Nonetheless this is so natural that it is a
-  nuisance to have it forbidden; maybe translate to 'let x=i in v[x]:=v[x]+1'
-
 - Implement compound assignment directly
   While 'v #:= x' (with vec v, int x) is easy to write (and common in loop
   bodies), it is converted to 'v := v#x' which is not efficient: with 'v'
@@ -80,7 +68,6 @@
   compound assignment were handled as a single operation (even though no user
   defined function could do such a thing). This is most useful for
   concatenation, but operations such as vector addition could also profit.
-  This point is maybe to be considered together with the previous point.
 
 - Implement value gathering in loop using a sl_list if size is not known.
   Currently all loops gather values in a std::vector; while loops (as well as

@@ -163,8 +163,7 @@ This happens because |delete| calls the destructor for the |String_pool|
 object pointed to by its argument |prev| before freeing its memory.
 
 @< Definitions of class members @>=
-String_pool::~String_pool(void)
-@+{@; delete prev; delete[] start; }
+String_pool::~String_pool() @+{@; delete prev; delete[] start; }
 
 @*1 Hash tables.
 %

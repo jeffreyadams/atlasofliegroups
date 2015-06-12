@@ -1964,9 +1964,15 @@ struct slice_node
 sub subscription_variant;
 slc slice_variant;
 
-@ There are constructors for building the new variants.
+@ There are constructors for building the new variants. For the furst one a
+variation will be useful too.
 @< Methods of |expr| @>=
 expr(sub&& s, const YYLTYPE& loc)
+ : kind(subscription)
+ , subscription_variant(std::move(s))
+ , loc(loc)
+ @+{}
+expr(sub&& s, const source_location& loc)
  : kind(subscription)
  , subscription_variant(std::move(s))
  , loc(loc)
@@ -2308,10 +2314,13 @@ expr(comp_assignment&& ca, const YYLTYPE& loc)
 @ Compound assignment statements are built by |make_comp_ass|, which for once
 does not simply combine the expression components, because for reason of
 parser generation the array and index will have already been combined before
-this function can be called.
+this function can be called. There is also |make_comp_upd_ass| for the
+operator-assign form of component assignments, as in $v[i]\mathrel+:=a$.
 
 @< Declarations of functions for the parser @>=
 expr_p make_comp_ass(expr_p lhs, expr_p rhs, const YYLTYPE& loc);
+expr_p make_comp_upd_ass(expr_p lhs, id_type op, expr_p rhs,
+   const YYLTYPE& loc,  const YYLTYPE& op_loc);
 
 @~Here we have to take the left hand side apart a bit; the grammar ensures
 that |lhs| presents the necessary structure for this code to work.
@@ -2320,7 +2329,9 @@ that |lhs| presents the necessary structure for this code to work.
 expr_p make_comp_ass(expr_p l, expr_p r, const YYLTYPE& loc)
 {
   expr_ptr ll(l), rr(r); expr& lhs=*ll; expr& rhs=*rr;
+  assert(lhs.kind==subscription); // grammar ensures this
   subscription_node& s = *lhs.subscription_variant;
+  assert(s.array.kind==applied_identifier); // grammar ensures this
   return new expr(comp_assignment(new
   comp_assignment_node @|
   { s.array.identifier_variant
@@ -2328,6 +2339,44 @@ expr_p make_comp_ass(expr_p l, expr_p r, const YYLTYPE& loc)
   , std::move(rhs)
   , s.reversed
   }),loc);
+}
+
+@ This variation is somewhat complicated both at input (for the same reason as
+|make_comp_ass|) and the output side, because $v[I]\mathrel\star:= E$ is
+translated into essentially ``\&{let}~$\$=I$~\&{in}~$v[\$]:=v[\$]\star E$'',
+where $\$$ is a local variable (introduced to avoid evaluating $I$ twice) that
+cannot conflict with $v$ or any names used in the expression $E$.
+
+In doing everything by hand (except for some constructions done by
+|make_binary_call|), this code gives an idea of the amount of work that the
+parser actions go through in handling even relatively simple expressions.
+
+@< Definitions of functions for the parser@>=
+expr_p make_comp_upd_ass(expr_p l, id_type op, expr_p r,
+   const YYLTYPE& loc, const YYLTYPE& op_loc)
+{
+  expr_ptr ll(l), rr(r); expr& lhs=*ll;
+  assert(lhs.kind==subscription); // grammar ensures this
+  subscription_node& s = *lhs.subscription_variant;
+  assert(s.array.kind==applied_identifier); // grammar ensures this
+  id_type array_name=s.array.identifier_variant;
+      // save before move from |s.array|
+  id_type hidden=lookup_identifier("$");@q$@>
+  id_pat v(hidden,0x1,patlist());
+  expr_ptr subs(new expr (sub(new subscription_node@|
+    (std::move(s.array)
+    ,expr(hidden,loc,expr::identifier_tag())
+    ,s.reversed
+    )),lhs.loc));
+  expr_ptr formula(make_binary_call(op,subs.release(),rr.release(),loc,op_loc));
+  comp_assignment_node comp_ass
+     (array_name
+     ,expr(hidden,loc,expr::identifier_tag())
+     ,std::move(*formula)
+     ,s.reversed);
+  expr body(comp_assignment(new comp_assignment_node(std::move(comp_ass))),loc);
+  return new expr(let(new let_expr_node @|
+    (std::move(v),std::move(s.index),std::move(body))),loc);
 }
 
 @ This is getting boring; fortunately we are almost done with the syntax.

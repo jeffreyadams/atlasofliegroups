@@ -767,7 +767,10 @@ std::ostream& operator<<(std::ostream& out, const type_expr& t)
     case primitive_type: out << prim_names[t.prim]; break;
     case row_type: out << '[' << *t.component_type << ']'; break;
     case tuple_type:
-      out << '(' << t.tupple << ')' ;
+      if (t.tupple==nullptr)
+        out << "void";
+      else
+        out << '(' << t.tupple << ')' ;
     break;
     case function_type: out << *t.func;
     break;
