@@ -1,0 +1,51 @@
+<LKT {for no_Cminus_roots}
+
+{routines for constructing theta-stable Levis and parabolics}
+
+{utility: need to know if all roots in a list are positive}
+set test_roots_all_positive(RootDatum rd, [vec] roots)=bool:
+let rv=true,i=0 in
+while rv  and i<#roots do if not is_positive_root(rd,roots[i]) then rv:=false else i:=i+1 fi od;rv
+
+{
+returns the list of roots of the nilpotent algebra u(x,v) 
+a root is in u(x,v) iff <(1+theta_x)v,alpha^\vee>>0
+this set is automatically theta_x-stable
+v should be weakly dominant, and all complex roots should be C+ for x
+if so, then u(x,v) is guaranteed to be contained in n (the standard positive roots)
+otherwise it might still be ok, so return a warning but don't fail
+}  
+set u(KGBElt x, ratvec v)=[vec]:
+let G=real_form(x) then
+()=if not no_Cminus_roots(x) then prints("warning: some roots are of type C-") fi then
+()=if not is_dominant(G,v) then   prints("warning: argument is not weakly dominant") fi in
+let theta=involution(x) then
+w=(1+theta)*v then
+u_roots=[] in
+for i:nr_of_posroots(G)  do
+ let alpha_check=poscoroots(G)[i] then
+ alpha=posroots(G)[i] then
+ c=w*alpha_check in 
+ if c!=0 then u_roots#:=sign(c)*alpha fi od;\
+ if not test_roots_all_positive(G,u_roots) then prints("warning: u is not contained in n") fi; u_roots
+
+{similar to u(x,v), except now it returns the RealForm L(x,v)}
+set L(KGBElt x, ratvec v)=RealForm:
+let G=real_form(x) then
+()=if not no_Cminus_roots(x) then prints("warning: some roots are of type C-") fi then
+()=if not is_dominant(G,v) then   prints("warning: argument is not weakly dominant") fi in
+let theta=involution(x) then
+w=(1+theta)*v then
+(l_roots,l_coroots)=([],[]) in 
+let ()=for i:nr_of_posroots(G)  do
+ let alpha_check=poscoroots(G)[i] then
+ alpha=posroots(G)[i] then
+ c=w*alpha_check in 
+ if c=0 then l_roots#:=alpha;l_coroots#:=alpha_check fi od then
+ic_L=inner_class(root_datum(simple_from_positive(l_roots,l_coroots)),theta) in real_form(ic_L,theta,torus_factor(x))
+
+{return both RealForm: L(x,v) and [vec]: u(x,v)}
+set theta_stable_q(KGBElt x,ratvec v)=(RealForm,[vec]):(L(x,v),u(x,v))
+
+set rho_u(KGBElt x, ratvec v)=ratvec:sum(u(x,v))
+set rho_L(KGBElt x, ratvec v)=ratvec:rho(L(x,v))
