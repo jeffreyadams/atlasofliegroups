@@ -468,6 +468,7 @@ set imaginary_sys ((RootDatum,mat)p) = (mat,mat):
 set real_sys ((RootDatum,mat)p) = (mat,mat):
   (real_posroots(p),real_poscoroots(p))
 
+{ returns whether v is a weakly dominant weight for rd }
 set is_dominant (RootDatum rd, ratvec v) = bool:
   >=(numer(v)*simple_coroots(rd))
 set is_strictly_dominant (RootDatum rd, ratvec v) = bool:
