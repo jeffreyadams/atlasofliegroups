@@ -18,8 +18,6 @@
 - Have error take arguments like prints does
 - Investigate if some tracing facilty (printing "let" values) is feasible
 
-- See if syntax can allow (let i=3 in for k:i do print(k) od); without parens
-
 - Make 'not' execute a built-in function
 - Add a leading_term function (ParamPol->Param)
 

@@ -113,9 +113,6 @@
 input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| '\f'	   { YYABORT; } /* allow form feed as well at command level */
 	| expr '\n'		{ *parsed_expr=$1; }
-	| tertiary ';' '\n'
-	  { *parsed_expr=
-            make_sequence($1,wrap_tuple_display(nullptr,@$),true,@$); }
 	| SET declarations '\n' { global_set_identifiers($2); YYABORT; }
 	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT; }
 	| FORGET TYPE_ID '\n'	{ global_forget_identifier($2); YYABORT; }

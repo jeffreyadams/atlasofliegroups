@@ -580,6 +580,7 @@ included before) respectively appending output redirection.
   break; case ')':
          case '}':
          case ']': --nesting; input.pop_prompt(); code=c;
+  break; case ';': code=prevent_termination=c;
   break; case '<':
          case '>':
          if (state==initial)
