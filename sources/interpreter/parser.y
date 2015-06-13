@@ -61,7 +61,7 @@
 %token QUIT SET LET IN BEGIN END IF THEN ELSE ELIF FI AND OR NOT
 %token WHILE DO OD NEXT FOR FROM DOWNTO CASE ESAC
 %token TRUE FALSE WHATTYPE SHOWALL FORGET
-%token <oper> OPERATOR OPERATOR_BECOMES '='
+%token <oper> OPERATOR OPERATOR_BECOMES '=' '*'
 %token <val> INT
 %token <str> STRING
 %token <id_code> IDENT TYPE_ID
@@ -95,8 +95,8 @@
 %destructor { destroy_id_pat($$); } pattern pattern_opt
 %type <pl> pat_list
 %destructor { destroy_pattern($$); } pat_list
-%type <type_pt> type
-%destructor { destroy_type($$); } type
+%type <type_pt> nostar_type type
+%destructor { destroy_type($$); } nostar_type type
 %type <type_l> types types_opt
 %destructor { destroy_type_list($$); } types types_opt
 %type <id_sp1> id_spec
@@ -234,7 +234,7 @@ formula_start : operator       { $$=start_unary_formula($1.id,$1.priority,@1); }
 ;
 
 
-operator : OPERATOR | '=';
+operator : OPERATOR | '=' | '*' ;
 
 operand : operator operand { $$=make_unary_call($1.id,$2,@$,@1); }
 	| primary
@@ -454,7 +454,7 @@ pat_list: pattern_opt ',' pattern_opt
 	| pat_list ',' pattern_opt { $$=make_pattern_node($1,$3); }
 ;
 
-id_spec: type pattern { $$.type_pt=$1; $$.ip=$2; }
+id_spec: nostar_type pattern { $$.type_pt=$1; $$.ip=$2; }
         | '(' id_specs ')'
 	{ $$.type_pt=make_tuple_type($2.typel);
           $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
@@ -475,22 +475,27 @@ id_specs_opt: id_specs
 	| /* empty */ { $$.typel=nullptr; $$.patl=nullptr; }
 ;
 
-type	: TYPE			  { $$=make_prim_type($1); }
+nostar_type : TYPE	{ $$=make_prim_type($1); }
 	| TYPE_ID
 	  { bool c; $$=acquire(global_id_table->type_of($1,c)).release(); }
-        | '(' type ')'            { $$=$2; }
+        | '(' type ')'	{ $$=$2; }
 	| '(' type ARROW type ')' { $$=make_function_type($2,$4); }
 	| '(' types_opt ARROW type ')'
-			  { $$=make_function_type(make_tuple_type($2),$4); }
+			{ $$=make_function_type(make_tuple_type($2),$4); }
 	| '(' type ARROW types_opt ')'
-			  { $$=make_function_type($2,make_tuple_type($4)); }
+			{ $$=make_function_type($2,make_tuple_type($4)); }
 	| '(' types_opt ARROW types_opt ')'
 	   { $$=make_function_type(make_tuple_type($2),make_tuple_type($4)); }
-	| '[' type ']'		  { $$=make_row_type($2); }
-	| '(' types ')'		  { $$=make_tuple_type($2); }
+	| '[' type ']'	{ $$=make_row_type($2); }
+	| '(' types ')'	{ $$=make_tuple_type($2); }
 ;
 
-types	: type ',' type	 { $$=make_type_list(make_type_singleton($1),$3); }
+type : nostar_type
+	| '*' { $$=new type_expr;}
+;
+
+types	: type ',' type
+	  { $$=make_type_list(make_type_singleton($1),$3); }
 	| types ',' type { $$=make_type_list($1,$3); }
 ;
 

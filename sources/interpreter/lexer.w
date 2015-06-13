@@ -692,10 +692,14 @@ break; case '-': prevent_termination=c;
          valp->oper.priority = 4;
          code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
        }
-break; case '*': case '%': case '/': prevent_termination=c;
-       code = OPERATOR;
+break; case '*': prevent_termination=c;
        valp->oper.id =
           id_table.match_literal(c=='*' ? "*" : c=='%' ? "%" : "/");
+       valp->oper.priority = 6;
+       code = becomes_follows() ? OPERATOR_BECOMES : c;
+break; case '%': case '/': prevent_termination=c;
+       valp->oper.id =
+          id_table.match_literal(c=='%' ? "%" : "/");
        valp->oper.priority = 6;
        code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '\\':

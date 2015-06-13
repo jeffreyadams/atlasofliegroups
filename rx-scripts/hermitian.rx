@@ -113,7 +113,7 @@ set mu(Param p) = rat:
 set convert_cform_hermitian (ParamPol P)= ParamPol:
   if #P=0 then P { since we cannot select a term for a null polynomial }
   else
-    let a_mu = mu( for w@p in P do p od [0] ) { mu of the first term }
+    let a_mu = mu(first_param(P))
     in null_module(real_form(P)) +
       for w@p in P do (s^(rat_as_int(mu(p)-a_mu))*w,p) od
   fi

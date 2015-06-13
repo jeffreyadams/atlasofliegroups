@@ -3317,8 +3317,8 @@ struct for_expression : public for_base
 @< Function definitions @>=
 
 void for_base::print_body(std::ostream& out,unsigned flags) const
-{@; out << ((flags&0x1)!=0 ? "~do" : "do")  << *body
-      << ((flags&0x2)!=0 ? "~od" : "od");
+{@; out << ((flags&0x1)!=0 ? " ~do " : " do ")  << *body
+        << ((flags&0x2)!=0 ? " ~od " : " od ");
 }
 
 @ We could not inline the following constructor definition in the class

@@ -520,7 +520,7 @@ set print_Cartan_info (CartanClass cc) = void:
     prints("compact: ",cr,", complex: ",Cr,", split: ",sr)
   ; (let str = "canonical twisted involution: " in
        if #ww=0 then str #:= "e"
-       else str +:= ww[0]+1; for i : #ww-1 from 1 do str #:= ","+(ww[i]+1) od
+       else for s@i in ww do if =i then str +:= s+1 else str #:= ","+(s+1) fi od
        fi
      ; prints(str)
     )
@@ -803,9 +803,13 @@ set is_descent ((vec,Param) ap) = bool: status(ap)<4
 set lookup (Param p, [Param] block) = int:
   let i=#block-1 in while i>=0 and block[i]!=p do i-:=1 od; i
 
+
+
 {		    Polynomials in module parameters			}
 
 set null_module (ParamPol P) = ParamPol: 0*P
+set first_param (ParamPol P) = Param: let (,p)=first_term(P) in p
+set last_param (ParamPol P)  = Param: let (,p)=last_term(P) in p
 
 set s_to_1 (ParamPol p)       = ParamPol: 0*p + for x@q in p do (+%x,q) od
 set s_to_minus_1 (ParamPol p) = ParamPol: 0*p + for x@q in p do (-%x,q) od
