@@ -4615,6 +4615,7 @@ void int_mult_virtual_module_wrapper(expression_base::level l)
   // below top
   if (c==0) // then do multiply by $0$ efficiently:
   { shared_virtual_module m = get<virtual_module_value>();
+      // |m| is needed for |m->rc()|
     pop_value();
     if (l!=expression_base::no_value)
     @/push_value@|(std::make_shared<virtual_module_value>
@@ -4644,6 +4645,37 @@ void split_mult_virtual_module_wrapper(expression_base::level l)
       else ++it;
     push_value(m);
   }
+}
+
+@ For a nonzero virtual module, it is useful to be able to select a component
+that is present without looping over all terms. The most useful choice it the
+final term, be we allow taking the first term as well.
+
+@< Local function... @>=
+void last_term_wrapper (expression_base::level l)
+{ shared_virtual_module m = get<virtual_module_value>();
+  if (l==expression_base::no_value)
+    return;
+  if (m->val.empty())
+    throw std::runtime_error("Empty module has no last term");
+  const auto& term = *m->val.rbegin();
+  push_value(std::make_shared<split_int_value>(term.second));
+  push_value(std::make_shared<module_parameter_value>(m->rf,term.first));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+@)
+void first_term_wrapper (expression_base::level l)
+{ shared_virtual_module m = get<virtual_module_value>();
+  if (l==expression_base::no_value)
+    return;
+  if (m->val.empty())
+    throw std::runtime_error("Empty module has no last term");
+  const auto& term = *m->val.begin();
+  push_value(std::make_shared<split_int_value>(term.second));
+  push_value(std::make_shared<module_parameter_value>(m->rf,term.first));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
 }
 
 @*2 Computing with $K$-types.
@@ -4895,6 +4927,8 @@ install_function(int_mult_virtual_module_wrapper,@|"*"
 		,"(int,ParamPol->ParamPol)");
 install_function(split_mult_virtual_module_wrapper,@|"*"
 		,"(Split,ParamPol->ParamPol)");
+install_function(last_term_wrapper,"last_term","(ParamPol->Split,Param)");
+install_function(first_term_wrapper,"first_term","(ParamPol->Split,Param)");
 install_function(K_type_formula_wrapper,@|"K_type_formula" ,"(Param->ParamPol)");
 install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
 install_function(to_canonical_wrapper,@|"to_canonical" ,"(Param->Param)");

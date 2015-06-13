@@ -19,7 +19,6 @@
 - Investigate if some tracing facilty (printing "let" values) is feasible
 
 - Make 'not' execute a built-in function
-- Add a leading_term function (ParamPol->Param)
 
 - Integrate a bigint library to store realex int (and rat?) values; while
   attending that, signal overflow in arithmetic operations / conversions

@@ -677,6 +677,8 @@ operator + : (ParamPol,[(Split,Param)]->ParamPol): add terms to formal sum
 operators +, - : (ParamPol,ParamPol->ParamPol): addition/subtraction formal sums
 operator * : (int,ParamPol->ParamPol): integer multiple of a formal sum
 operator * : (Split,ParamPol->ParamPol): split integer multiple of a formal sum
+last_term: (ParamPol->Split,Param): highest term (for #x(p)) of non-empty module
+first_term: (ParamPol->Split,Param): lowest term (for #x(p)) of non-empty module
 
 K_type_formula: (Param->ParamPol) Express K-type in terms of standardrepns|_K
   The argument parameter is interpreted as giving an irreducible module; its
