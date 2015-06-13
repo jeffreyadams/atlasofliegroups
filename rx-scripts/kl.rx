@@ -32,21 +32,11 @@ set character_formula (Param p) = ParamPol: s_to_1(KL_sum_at_s(p))
 { composition series }
 
 set composition_series (Param p) = ParamPol:
-( let block = partial_block(p), result = null_module(real_form(p))
-  , acc = ParamPol: p
-  in
-  for q in block ~ { reverse traversal for killing leading terms }
-  do
-    for c@final in ParamPol: q ~ { expand q into finals, treat each of them }
-    do
-      let coef = c*acc[final] in
-      if !=coef
-      then
-        result +:= (coef,final); acc -:= coef*character_formula(final)
-      fi
-    od
+( let acc = ParamPol: p, result = null_module(p) in
+  while !=acc { non null module }
+  do let (coef,final):term=last_term(acc) in
+    result +:= term; acc -:= coef*character_formula(final)
   od
-; assert(=acc,"Internal error: Failed to completely decompose module")
 ; result
 )
 
