@@ -182,7 +182,7 @@ Rational& Rational::power(int n)
   Denom_t numer=std::abs(num);
   if (n<0)
   { if (num==0)
-      throw std::domain_error("Negative power of rational zero");
+      throw std::runtime_error("Negative power of rational zero");
     std::swap(numer,denom); n=-n;
   }
   numer = arithmetic::power(numer,n); denom = arithmetic::power(denom,n);

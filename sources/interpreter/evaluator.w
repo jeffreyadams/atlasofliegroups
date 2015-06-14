@@ -744,7 +744,7 @@ void global_identifier::evaluate(level l) const
 { if (address->get()==nullptr)
   { std::ostringstream o;
     o << "Taking value of uninitialized variable '" << name() << '\'';
-    throw std::runtime_error(o.str());
+    throw runtime_error(o.str());
   }
   push_expanded(l,*address);
 }
@@ -1403,52 +1403,74 @@ void call_expression::evaluate(level l) const
   @< Catch-block for exceptions thrown within function calls @>
 }
 
-@ Although we catch all |std::exception| errors thrown during the execution of
-a function call, we only report it if the function was referred to by an
-identifier, for otherwise the message would become too messy. Even though the
-test whether the |function| field of our |call_expression| is an identifier is
-done using a |dynamic_cast| during evaluation, this is a syntactic and
-therefore unchanging property of the call expression (we could have added a
-Boolean field to record it for instance). Having an identifier as |function|
-in a |call_expression| is a rare circumstance, as most function calls will
-translate to an |overloaded_builtin_call| or an |overloaded_closure_call|, to
-be treated later. Currently however recursive function calls necessarily
-involve a general |call_expression|; also they may give rise to multiple
-identical trace-back lines.
+@ We shall in various catch blocks have to append information to the message,
+which the function |extend_message| facilitates. It is called with both an
+|expression| designating the function expression before evaluation
+(typically pointing to an |identifier| object, though it could point to any
+kind of expression), and the |value| resulting from evaluating that
+expression (pointing to either a |builtin_value| or a |closure_value|).
 
-In the mentioned case we append a line with the function name to the error
-string, and re-throw the error. The result is a trace-back of interrupted
-named function calls, from inner to outer. Manipulating the error string can
-only done by constructing a new error object (the base class |std::exception|
-also provides no means to modify the error string), and it can only be done
-for certain derived error classes. Of the types possible here, namely
-|std::runtime_error|, |std::logic_error| and |std::bad_alloc|, the last cannot
-be re-raised with a different error string, so we re-throw it as
-|std::runtime_error|. We do maintain the distinction between a |logic_error|
-and a |runtime_error|, using a dynamic cast. (It is unclear why the standard
-exception classes were designed in such a way as to make doing what is done
-below so clumsy.)
+We append a line with the function name to the error string, and re-throw the
+error. The result is a trace-back of interrupted named function calls, from
+inner to outer. It is because of these operations that we prefer our error
+classes with modifiable message to the standard ones like
+|std::runtime_error|.
+
+@< Local fun... @>=
+void extend_message
+  (error_base& e,const expression_base* function, const value_base* fun,
+   const std::string& arg)
+{ std::ostringstream o;
+  auto bif_p=dynamic_cast<const overloaded_builtin_call*>(function);
+  auto clf_p=dynamic_cast<const overloaded_closure_call*>(function);
+  auto id_p=dynamic_cast<const identifier*>(function);
+  o << "\n(in call of "
+    << ( bif_p!=nullptr ? bif_p->print_name
+       : clf_p!=nullptr ? clf_p->print_name
+       : id_p!=nullptr ? id_p->name() : "anonymous function"
+       )
+    << ", ";
+  auto f=dynamic_cast<const closure_value*>(fun);
+  if (f==nullptr)
+     o << "built-in";
+  else o << "defined " << f->p->loc;
+  o << ')';
+  if (verbosity>0)
+    o << "\n  argument" << (arg[0]=='(' ? "s: " : ": ") << arg;
+  e.message.append(o.str());
+}
+
+@ We catch all |error_base| errors thrown during the execution of a function
+call. Even though the test whether the |function| field of our
+|call_expression| is an identifier is done using a |dynamic_cast| during
+evaluation, this is a syntactic and therefore unchanging property of the call
+expression (we could have added a Boolean field to record it for instance).
+Having an identifier as |function| in a |call_expression| is a rare
+circumstance, as most function calls will translate to an
+|overloaded_builtin_call| or an |overloaded_closure_call|, to be treated
+later. Currently however recursive function calls necessarily involve a
+general |call_expression|; also they may give rise to multiple identical
+trace-back lines.
+
+Of the types possible here, namely |runtime_error|, |logic_error|,
+|std::runtime_error| (for errors thrown by the Atlas library) and
+|std::bad_alloc|, the latter two do not have a modifiable message field, and
+|std::bad_alloc| cannot even be re-raised at all with a provided error string.
+Therefore we re-brand all exceptions derived from |std::exception| but not
+from our |error_base| as |runtime_error|, throwing the latter after setting
+its message field correctly.
 
 @:Catch to trace back calls@>
 
 @< Catch-block for exceptions thrown within function calls @>=
-catch (const std::exception& e)
-{ identifier* p=dynamic_cast<identifier*>(function.get());
-  std::ostringstream o (e.what(),std::ios_base::ate); // append to |e.what()|
-  o << "\n(in call of " << (p==nullptr ?  "anonymous function" : p->name() )
-    << ", ";
-  if (f!=nullptr) o<< "built-in";
-  else // user-defined function
-  {@; const closure_value* f=force<closure_value>(fun.get());
-    o << "defined " << f->p->loc;
-  }
-  o << ')';
-  if (verbosity>0)
-    o << "\n  argument" << (arg_string[0]=='(' ? "s: " : ": ") << arg_string;
-  const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
-  if (l_err!=nullptr)
-    throw std::logic_error(o.str());
-  throw std::runtime_error(o.str());
+catch (error_base& e)
+{@; extend_message(e,function.get(),fun.get(),arg_string);
+  throw;
+}
+catch (const std::exception e)
+{ runtime_error new_error(e.what());
+  extend_message(new_error,function.get(),fun.get(),arg_string);
+  throw new_error;
 }
 
 @*1 Evaluating overloaded built-in function calls.
@@ -1495,21 +1517,25 @@ void generic_builtin_call::evaluate(level l) const
 }
 
 @ Like for general function calls, we provide a trace of interrupted functions
-by temporarily catching errors. The main difference is that we need not test
-that the call was one of a named function, nor that it is built-in.
+by temporarily catching errors. Although we know that we have an
+|overloaded_builtin_call| which directly stores a function pointer so that
+it not really has any |value| obtained by evaluating the function expression,
+we can use |extend_message| by passing it |this| as |function| and |nullptr|
+as |fun| (which will cause its final dynamic cast to keep a null pointer, and
+therefore print \.{built in} a source location). Again we convert any
+|std::exception| not derived from our |error_base| into a |runtime_error|.
 
 @< Execute |(*f)(l)|, catching and re-throwing any errors...@>=
 try
 {@; (*f)(l); }
-catch (const std::exception& e)
-{ std::ostringstream o (e.what(),std::ios_base::ate); // append to |e.what()|
-  o << "\n(in call of " << print_name << ' ' << loc @| << ", built-in)";
-  if (verbosity>0)
-    o << "\n  argument" << (arg_string[0]=='(' ? "s: " : ": ") << arg_string;
-  const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
-  if (l_err!=nullptr)
-    throw std::logic_error(o.str());
-  throw std::runtime_error(o.str());
+catch (error_base& e)
+{@; extend_message(e,this,nullptr,arg_string);
+  throw;
+}
+catch (const std::exception e)
+{ runtime_error new_error(e.what());
+  extend_message(new_error,this,nullptr,arg_string);
+  throw new_error;
 }
 
 @*1 Some special wrapper functions.
@@ -2184,7 +2210,7 @@ if it was not a |builtin_value|.
 @< Set |call| to the call of the user-defined function |v|... @>=
 { shared_closure fun = std::dynamic_pointer_cast<const closure_value>(v.val);
   if (fun==nullptr)
-    throw std::logic_error("Overloaded value is not a function");
+    throw logic_error("Overloaded value is not a function");
   std::ostringstream name;
   name << main_hash_table->name_of(id) << '@@' << v.type().arg_type;
   call =
@@ -2254,16 +2280,14 @@ void overloaded_closure_call::evaluate(level l) const
     fun->body.evaluate(l);
     // call, passing evaluation level |l| to function body
   }
-  catch (user_interrupt&) @+{@; throw; } // don't alter user interrupt
-  catch (const std::exception& e)
-  { std::ostringstream o (e.what(),std::ios_base::ate); // append to |e.what()|
-    o << "\n(in call of " << print_name << ' ' << loc @|
-      << ", defined " << fun->p->loc <<')';
-    if (verbosity>0)
-      o << "\n  argument" << (arg_string[0]=='(' ? "s: " : ": ") << arg_string;
-    if (dynamic_cast<const std::logic_error*>(&e)!=nullptr)
-      throw std::logic_error(o.str());
-    throw std::runtime_error(o.str());
+  catch (error_base& e)
+  {@; extend_message(e,this,fun.get(),arg_string);
+    throw;
+  }
+  catch (const std::exception e)
+  { runtime_error new_error(e.what());
+    extend_message(new_error,this,fun.get(),arg_string);
+    throw new_error;
   }
 }
 
@@ -2818,7 +2842,7 @@ void row_subscription<reversed>::evaluate(level l) const
   if (reversed)
     i=n-1-i;
   if (static_cast<unsigned int>(i)>=n)
-    throw std::runtime_error(range_mess(i,n,this));
+    throw runtime_error(range_mess(i,n,this));
   push_expanded(l,r->val[i]);
 }
 @)
@@ -2830,7 +2854,7 @@ void vector_subscription<reversed>::evaluate(level l) const
   if (reversed)
     i=n-1-i;
   if (static_cast<unsigned int>(i)>=n)
-    throw std::runtime_error(range_mess(i,n,this));
+    throw runtime_error(range_mess(i,n,this));
   if (l!=no_value)
     push_value(std::make_shared<int_value>(v->val[i]));
 }
@@ -2843,7 +2867,7 @@ void ratvec_subscription<reversed>::evaluate(level l) const
   if (reversed)
     i=n-1-i;
   if (static_cast<unsigned int>(i)>=n)
-    throw std::runtime_error(range_mess(i,n,this));
+    throw runtime_error(range_mess(i,n,this));
   if (l!=no_value)
     push_value(std::make_shared<rat_value>(Rational @|
        (v->val.numerator()[i],v->val.denominator())));
@@ -2857,7 +2881,7 @@ void string_subscription<reversed>::evaluate(level l) const
   if (reversed)
     i=n-1-i;
   if (static_cast<unsigned int>(i)>=n)
-    throw std::runtime_error(range_mess(i,n,this));
+    throw runtime_error(range_mess(i,n,this));
   if (l!=no_value)
     push_value(std::make_shared<string_value>(s->val.substr(i,1)));
 }
@@ -2877,10 +2901,10 @@ void matrix_subscription<reversed>::evaluate(level l) const
   if (reversed)
   {@;  i=r-1-i; j=c-1-j; }
   if (static_cast<unsigned int>(i)>=r)
-    throw std::runtime_error
+    throw runtime_error
      ("initial "+range_mess(i,r,this));
   if (static_cast<unsigned int>(j)>=c)
-    throw std::runtime_error
+    throw runtime_error
      ("final "+range_mess(j,c,this));
   if (l!=no_value)
     push_value(std::make_shared<int_value>(m->val(i,j)));
@@ -2894,7 +2918,7 @@ void matrix_get_column<reversed>::evaluate(level l) const
   if (reversed)
     j=c-1-j;
   if (static_cast<unsigned int>(j)>=c)
-    throw std::runtime_error(range_mess(j,c,this));
+    throw runtime_error(range_mess(j,c,this));
   if (l!=no_value)
     push_value(std::make_shared<vector_value>(m->val.column(j)));
 }
@@ -2918,7 +2942,7 @@ void slice_range_error
   if (upb>n)
     o << "<=" << n << ')';
   e->print(o << " in slice ");
-  throw std::runtime_error(o.str());
+  throw runtime_error(o.str());
 }
 @)
 template <unsigned flags>
@@ -3254,20 +3278,30 @@ component type as for list displays, in section@#list display conversion@>.
 
 
 @ Of course evaluating is what most distinguishes loops from conditionals.
-There are few surprises: if no value is asked for we simple perform a |while|-loop at the \Cpp~level (applying |void_eval| to the body expression), and
-otherwise we also do a |while|-loop, but use |eval| to produce a value on
+There are few surprises: if no value is asked for we simple perform a
+|while|-loop at the \Cpp~level (applying |void_eval| to the body expression),
+and otherwise we also do a |while|-loop, but use |eval| to produce a value on
 |execution_stack| each time around, popping it off and pushing it onto a
 |row_value| value that will ultimately become the value of the loop.
+
+Since |while|-loops can run indefinitely and don't necessarily involve calls to
+user-defined functions (where a test is done too), we put a test of the user
+interrupt flag in the body of the evaluation of any |while|-loop.
 
 @< Function definitions @>=
 void while_expression::evaluate(level l) const
 { if (l==no_value)
     while (condition->eval(),get<bool_value>()->val)
-       body->void_eval();
+    { if (interrupt_flag!=0)
+        throw user_interrupt();
+      body->void_eval();
+    }
   else
   { own_row result = std::make_shared<row_value>(0);
     while (condition->eval(),get<bool_value>()->val)
-  @/{@; body->eval();
+    { if (interrupt_flag!=0)
+        throw user_interrupt();
+      body->eval();
       result->val.push_back(pop_value());
     }
     push_value(std::move(result));
@@ -4260,7 +4294,7 @@ void global_component_assignment<reversed>::evaluate(expression_base::level l)
   { std::ostringstream o;
     o << "Assigning to component of uninitialized variable "
       << main_hash_table->name_of(this->lhs);
-    throw std::runtime_error(o.str());
+    throw runtime_error(o.str());
   }
   base::assign(l,*address,kind);
 }
@@ -4313,7 +4347,7 @@ the component assignment, possibly expanding a tuple in the process.
   std::vector<shared_value>& a=force<row_value>(loc)->val;
   size_t n=a.size();
   if (i>=n)
-    throw std::runtime_error(range_mess(i,a.size(),this));
+    throw runtime_error(range_mess(i,a.size(),this));
   auto& ai = a[reversed ? n-1-i : i];
   ai = pop_value(); // assign non-expanded value
   push_expanded(lev,ai); // return value may need expansion, or be omitted
@@ -4329,7 +4363,7 @@ the component assignment expression is not used.
   std::vector<int>& v=force<vector_value>(loc)->val;
   size_t n=v.size();
   if (i>=n)
-    throw std::runtime_error(range_mess(i,v.size(),this));
+    throw runtime_error(range_mess(i,v.size(),this));
   v[reversed ? n-1-i : i]= force<int_value>(execution_stack.back().get())->val;
     // assign |int| from un-popped top
   if (lev==no_value)
@@ -4347,9 +4381,9 @@ indices, and there are two bound checks.
   int_Matrix& m=force<matrix_value>(loc)->val;
   size_t k=m.numRows(),l=m.numColumns();
   if (i>=k)
-    throw std::runtime_error(range_mess(i,m.numRows(),this));
+    throw runtime_error(range_mess(i,m.numRows(),this));
   if (j>=l)
-    throw std::runtime_error(range_mess(j,m.numColumns(),this));
+    throw runtime_error(range_mess(j,m.numColumns(),this));
   m(reversed ? k-1-i : i,reversed ? l-1-j : j)=
     force<int_value>(execution_stack.back().get())->val;
     // assign |int| from un-popped top
@@ -4367,9 +4401,9 @@ for matching column length.
     // don't pop
   size_t l=m.numColumns();
   if (j>=l)
-    throw std::runtime_error(range_mess(j,m.numColumns(),this));
+    throw runtime_error(range_mess(j,m.numColumns(),this));
   if (v.size()!=m.numRows())
-    throw std::runtime_error
+    throw runtime_error
       (std::string("Cannot replace column of size ")+str(m.numRows())+
        " by one of size "+str(v.size()));
   m.set_column(reversed ? l-j-1 : j,v);

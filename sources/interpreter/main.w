@@ -556,24 +556,24 @@ practical at this point than throwing and catching an error.
 
 @ We distinguish runtime errors (which are normal) from internal errors (which
 should not happen), and also |catch| and report any other error derived from
-|std::exception| that could be thrown. After any of these errors we close all
+|error_base| that could be thrown. After any of these errors we close all
 open auxiliary input files; reporting where we were reading is done by the
 method |close_includes| defined in \.{buffer.w}.
 
 @< Various |catch| phrases for the main loop @>=
-catch (std::runtime_error& err)
+catch (const runtime_error& err)
 { if (type_OK)
     std::cerr << "Runtime error:\n  " << err.what() << "\nEvaluation aborted.";
   else std::cerr << err.what();
   std::cerr << std::endl;
   reset_evaluator(); main_input_buffer->close_includes();
 }
-catch (std::logic_error& err)
-{ std::cerr << "Internal error: " << err.what() << ", evaluation aborted.\n";
+catch (const logic_error& err)
+{ std::cerr << "Internal error: " << err.what() << "\nEvaluation aborted.\n";
   reset_evaluator(); main_input_buffer->close_includes();
 }
-catch (std::exception& err)
-{ std::cerr << err.what() << ", evaluation aborted.\n";
+catch (const std::exception& err)
+{ std::cerr << err.what() << "\nEvaluation aborted.\n";
   reset_evaluator(); main_input_buffer->close_includes();
 }
 

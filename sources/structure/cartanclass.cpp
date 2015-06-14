@@ -16,7 +16,7 @@
 #include <set>
 #include <utility>
 #include <stdexcept>
-#include <string>     // used inplicitly in throwing errors
+#include <string>     // used implicitly in throwing errors
 
 #include "tags.h"
 #include "size.h"	// used in orbit size computation

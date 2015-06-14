@@ -300,7 +300,7 @@ shared_value Id_table::value_of(id_type id) const
 shared_share Id_table::address_of(id_type id)
 { map_type::iterator p=table.find(id);
   if (p==table.end())
-    throw std::logic_error @|
+    throw logic_error @|
     (std::string("Identifier without table entry:")
      +main_hash_table->name_of(id));
 @.Identifier without value@>
@@ -561,7 +561,7 @@ encountered so that the user will hopefully able to understand.
 indicates the last possible position (before any broader match). It should not
 be possible (by transitivity of convertibility) that any narrower match comes
 after any broader match, so we insist that |lwb>upb| always, and throw a
-|std::logic_error| in case it should fail. Having passed this test, we insert
+|logic_error| in case it should fail. Having passed this test, we insert
 the new overload into the vector |slot| at position |upb|, the last possible
 one.
 
@@ -573,7 +573,7 @@ a strong exception guarantee.
 
 @< Insert |val| and |type| after |lwb| and before |upb| @>=
 if (lwb>upb)
-  throw std::logic_error("Conflicting order of related overload types");
+  throw logic_error("Conflicting order of related overload types");
 else
 { slot.insert // better use |emplace| with gcc 4.8
   (slot.begin()+upb,overload_data(std::move(val),std::move(type)));
@@ -671,15 +671,14 @@ done via |analyse_types|, which takes care of catching any exceptions thrown,
 and printing error messages.
 
 @< Declarations of exported functions @>=
-type_expr analyse_types(const expr& e,expression_ptr& p)
-   throw(std::bad_alloc,std::runtime_error);
+type_expr analyse_types(const expr& e,expression_ptr& p);
 
 @~The function |analyse_types| switches the roles of the output parameter
 |type| of |convert_expr| and its return value: the former becomes the return
 value and the latter is assigned to the output parameter~|p|. The initial
 value of |type| passed to |convert_expr| is a completely unknown type. Since
 we cannot return any type from |analyse_types| in the presence of errors, we
-map these errors to |std::runtime_error| after printing their error message;
+map these errors to |runtime_error| after printing their error message;
 that error is an exception for which the code that calls us will have to
 provide a handler anyway, and which handler will serve as a more practical
 point to really resume after an error.
@@ -688,7 +687,6 @@ point to really resume after an error.
 
 @< Global function definitions @>=
 type_expr analyse_types(const expr& e,expression_ptr& p)
-  throw(std::bad_alloc,std::runtime_error)
 { try
   { type_expr type; // this starts out as of |undetermined_type|
     p = convert_expr(e,type);
@@ -711,7 +709,7 @@ type_expr analyse_types(const expr& e,expression_ptr& p)
   { std::cerr << "Error during analysis of expression " << e.loc << "\n  " @|
                 << err.what() << std::endl;
   }
-  throw std::runtime_error("Type check failed");
+  throw runtime_error("Type check failed");
 @.Type check failed@>
 }
 
@@ -867,7 +865,7 @@ setting it to~$0$ is attempted.
 { if (t.kind!=function_type) // cannot overload with a non-function value
   { if (overload==2)
   // an operator; it can \emph{only} be overloaded, so this case is an error
-      throw std::runtime_error
+      throw runtime_error
         ("Cannot set operator to a non function value");
     overload=0;
      // but in other cases just go to the global identifier table instead
@@ -952,17 +950,17 @@ pattern using |pattern_type| to do this.
   o << "Type " << t @|
     << " of right hand side does not match required pattern "
     << pattern_type(pat);
-  throw std::runtime_error(o.str());
+  throw runtime_error(o.str());
 }
 
-@ A |std::runtime_error| may be thrown either during type check, matching with
+@ A |runtime_error| may be thrown either during type check, matching with
 the identifier pattern, or evaluation; we catch all those cases here. Whether
 or not an error is caught, the pattern |pat| and the expression |rhs| should
 not be destroyed here, since the parser which aborts after calling this
 function should do that while clearing its parsing stack.
 
 @< Catch block for errors thrown during a global identifier definition @>=
-catch (std::runtime_error& err)
+catch (runtime_error& err)
 { std::cerr << err.what() << '\n';
   if (n_id>0)
   { std::vector<id_type> names; names.reserve(n_id);
@@ -976,13 +974,13 @@ catch (std::runtime_error& err)
   }
   reset_evaluator(); main_input_buffer->close_includes();
 }
-catch (std::logic_error& err)
+catch (logic_error& err)
 { std::cerr << "Unexpected error: " << err.what() << ", " @|
             << phase_name[phase]
             << " aborted.\n";
 @/reset_evaluator(); main_input_buffer->close_includes();
 }
-catch (std::exception& err)
+catch (error_base& err)
 { std::cerr << err.what() << ", "
             << phase_name[phase]
             << " aborted.\n";
@@ -1068,7 +1066,7 @@ for all identifiers in the table. The function |type_of_expr| prints the type
 of a single expression, without evaluating it. Since we allow arbitrary
 expressions, we must cater for the possibility of failing type analysis, in
 which case |analyse_types|, after catching it, will re-throw a
-|std::runtime_error|. By in fact catching and reporting any |std::exception|
+|runtime_error|. By in fact catching and reporting any |std::exception|
 that may be thrown, we also ensure ourselves against unlikely events like
 |bad_alloc|.
 
@@ -1509,14 +1507,14 @@ rows rather than by columns).
 void veclist_matrix_convert()
 { shared_row r = get<row_value>();
   if (r->val.size()==0)
-    throw std::runtime_error("Cannot convert empty list of vectors to matrix");
+    throw runtime_error("Cannot convert empty list of vectors to matrix");
 @.Cannot convert empty list of vectors@>
   size_t n = force<vector_value>(r->val[0].get())->val.size();
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
   for(size_t j=0; j<r->val.size(); ++j)
   { const int_Vector& col = force<vector_value>(r->val[j].get())->val;
     if (col.size()!=n)
-      throw std::runtime_error("Vector sizes differ in conversion to matrix");
+      throw runtime_error("Vector sizes differ in conversion to matrix");
 @.Vector sizes differ in conversion@>
     m->val.set_column(j,col);
   }
@@ -1530,14 +1528,14 @@ integer to matrix. We also give it prudent characteristics.
 void intlistlist_matrix_convert()
 { shared_row r = get<row_value>();
   if (r->val.size()==0)
-    throw std::runtime_error("Cannot convert empty list of lists to matrix");
+    throw runtime_error("Cannot convert empty list of lists to matrix");
 @.Cannot convert empty list of lists@>
   size_t n = force<vector_value>(r->val[0].get())->val.size();
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
   for(size_t j=0; j<r->val.size(); ++j)
   { int_Vector col = row_to_weight(*force<row_value>(r->val[j].get()));
     if (col.size()!=n)
-      throw std::runtime_error("List sizes differ in conversion to matrix");
+      throw runtime_error("List sizes differ in conversion to matrix");
 @.List differ in conversion@>
     m->val.set_column(j,col);
   }
@@ -1630,7 +1628,7 @@ void install_function
 { type_ptr type = mk_type(type_string);
   std::ostringstream print_name; print_name<<name;
   if (type->kind!=function_type)
-    throw std::logic_error
+    throw logic_error
      ("Built-in with non-function type: "+print_name.str());
   if (type->func->arg_type==void_type)
   { own_value val = std::make_shared<builtin_value>(f,print_name.str());
@@ -1689,7 +1687,7 @@ $(-a)\backslash b$; the jury is still out on which one is preferable.)
 @< Local function definitions @>=
 void divide_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
-  if (j==0) throw std::runtime_error("Division by zero");
+  if (j==0) throw runtime_error("Division by zero");
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>
      (j>0 ? arithmetic::divide(i,j) : -arithmetic::divide(i,-j)));
@@ -1702,7 +1700,7 @@ power operation (defined whenever the result is integer).
 @< Local function definitions @>=
 void modulo_wrapper(expression_base::level l)
 { int  j=get<int_value>()->val; int i=get<int_value>()->val;
-  if (j==0) throw std::runtime_error("Modulo zero");
+  if (j==0) throw runtime_error("Modulo zero");
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>
       (arithmetic::remainder(i,std::abs(j))));
@@ -1710,7 +1708,7 @@ void modulo_wrapper(expression_base::level l)
 @)
 void divmod_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
-  if (j==0) throw std::runtime_error("DivMod by zero");
+  if (j==0) throw runtime_error("DivMod by zero");
   if (l!=expression_base::no_value)
   { push_value(std::make_shared<int_value>
      (j>0 ? arithmetic::divide(i,j) : -arithmetic::divide(i,-j)));
@@ -1732,7 +1730,7 @@ void power_wrapper(expression_base::level l)
   static shared_int minus_one  = std::make_shared<int_value>(-1);
 @/int n=get<int_value>()->val; int i=get<int_value>()->val;
   if (std::abs(i)!=1 and n<0)
-    throw std::runtime_error("Negative power of integer");
+    throw runtime_error("Negative power of integer");
   if (l==expression_base::no_value)
     return;
 @)
@@ -1765,7 +1763,7 @@ respectively |unsigned long long int|).
 
 void fraction_wrapper(expression_base::level l)
 { int d=get<int_value>()->val; int n=get<int_value>()->val;
-  if (d==0) throw std::runtime_error("fraction with zero denominator");
+  if (d==0) throw runtime_error("fraction with zero denominator");
   if (d<0) {@; d=-d; n=-n; } // ensure denominator is positive
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rat_value>(Rational(n,d)));
@@ -1814,7 +1812,7 @@ void rat_divide_int_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   own_rat q=get_own<rat_value>();
   if (i==0)
-    throw std::runtime_error("Rational division by zero");
+    throw runtime_error("Rational division by zero");
   if (l==expression_base::no_value)
     return;
   q->val/=i;
@@ -1824,7 +1822,7 @@ void rat_modulo_int_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   own_rat q=get_own<rat_value>();
   if (i==0)
-    throw std::runtime_error("Rational modulo zero");
+    throw runtime_error("Rational modulo zero");
   if (l==expression_base::no_value)
     return;
   q->val%=i;
@@ -1860,7 +1858,7 @@ void rat_divide_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val;
   Rational i=get<rat_value>()->val;
   if (j.numerator()==0)
-    throw std::runtime_error("Rational division by zero");
+    throw runtime_error("Rational division by zero");
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rat_value>(i/j));
 }
@@ -1868,7 +1866,7 @@ void rat_modulo_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val;
   Rational i=get<rat_value>()->val;
   if (j.numerator()==0)
-    throw std::runtime_error("Rational modulo zero");
+    throw runtime_error("Rational modulo zero");
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rat_value>(i%j));
 }
@@ -1881,14 +1879,14 @@ void rat_unary_minus_wrapper(expression_base::level l)
 void rat_inverse_wrapper(expression_base::level l)
 {@; Rational i=get<rat_value>()->val;
   if (i.numerator()==0)
-    throw std::runtime_error("Inverse of zero");
+    throw runtime_error("Inverse of zero");
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rat_value>(Rational(1)/i)); }
 @)
 void rat_power_wrapper(expression_base::level l)
 { int n=get<int_value>()->val; Rational b=get<rat_value>()->val;
   if (b.numerator()==0 and n<0)
-    throw std::runtime_error("Negative power of zero");
+    throw runtime_error("Negative power of zero");
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rat_value>(b.power(n)));
 }
@@ -2143,7 +2141,7 @@ void string_to_ascii_wrapper(expression_base::level l)
 void ascii_char_wrapper(expression_base::level l)
 { int c=get<int_value>()->val;
   if ((c<' ' and c!='\n') or c>'~')
-    throw std::runtime_error("Value "+str(c)+" out of range");
+    throw runtime_error("Value "+str(c)+" out of range");
   if (l!=expression_base::no_value)
     push_value(std::make_shared<string_value>(std::string(1,c)));
 }
@@ -2217,7 +2215,7 @@ computation with an error message.
 
 @< Local function definitions @>=
 void error_wrapper(expression_base::level l)
-{@; throw std::runtime_error(get<string_value>()->val); }
+{@; throw runtime_error(get<string_value>()->val); }
 
 @*1 Vectors and matrices.
 %
@@ -2397,7 +2395,7 @@ void check_size (size_t a, size_t b)
 { if (a==b)
     return;
   std::ostringstream s; s<< "Size mismatch " << a << ":" << b;
-  throw std::runtime_error(s.str());
+  throw runtime_error(s.str());
 }
 
 void vec_plus_wrapper(expression_base::level l)
@@ -2439,7 +2437,7 @@ void vec_divide_int_wrapper(expression_base::level l)
 { int i= get<int_value>()->val;
   own_vector v= get_own<vector_value>();
   if (i==0)
-    throw std::runtime_error("Vector division by 0");
+    throw runtime_error("Vector division by 0");
   if (l==expression_base::no_value)
     return;
   divide(v->val,i);
@@ -2449,7 +2447,7 @@ void vec_modulo_int_wrapper(expression_base::level l)
 { int i= get<int_value>()->val;
   own_vector v= get_own<vector_value>();
   if (i==0)
-    throw std::runtime_error("Vector modulo 0");
+    throw runtime_error("Vector modulo 0");
   if (l==expression_base::no_value)
     return;
   v->val %= i;
@@ -2684,7 +2682,7 @@ void ratvec_divide_int_wrapper(expression_base::level l)
 { int i= get<int_value>()->val;
   own_rational_vector v= get_own<rational_vector_value>();
   if (i==0)
-    throw std::runtime_error("Rational vector division by 0");
+    throw runtime_error("Rational vector division by 0");
   if (l==expression_base::no_value)
     return;
   (v->val /= i).normalize();
@@ -2694,7 +2692,7 @@ void ratvec_modulo_int_wrapper(expression_base::level l)
 { int i= get<int_value>()->val;
   own_rational_vector v= get_own<rational_vector_value>();
   if (i==0)
-    throw std::runtime_error("Rational vector modulo 0");
+    throw runtime_error("Rational vector modulo 0");
   if (l==expression_base::no_value)
     return;
   v->val %= i;
@@ -2714,7 +2712,7 @@ void ratvec_divide_rat_wrapper(expression_base::level l)
 { Rational r= get<rat_value>()->val;
   own_rational_vector v= get_own<rational_vector_value>();
   if (r.numerator()==0)
-    throw std::runtime_error("Rational vector division by 0");
+    throw runtime_error("Rational vector division by 0");
   if (l==expression_base::no_value)
     return;
   (v->val /= r).normalize();
@@ -2821,7 +2819,7 @@ void mv_prod_wrapper(expression_base::level l)
 { shared_vector v=get<vector_value>();
   shared_matrix m=get<matrix_value>();
   if (m->val.numColumns()!=v->val.size())
-    throw std::runtime_error(std::string("Size mismatch ")@|
+    throw runtime_error(std::string("Size mismatch ")@|
      + str(m->val.numColumns()) + ":" + str(v->val.size()));
   if (l!=expression_base::no_value)
     push_value(std::make_shared<vector_value>(m->val*v->val));
@@ -2831,7 +2829,7 @@ void mrv_prod_wrapper(expression_base::level l)
 { shared_rational_vector v=get<rational_vector_value>();
   shared_matrix m=get<matrix_value>();
   if (m->val.numColumns()!=v->val.size())
-    throw std::runtime_error(std::string("Size mismatch ")@|
+    throw runtime_error(std::string("Size mismatch ")@|
      + str(m->val.numColumns()) + ":" + str(v->val.size()));
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value>(m->val*v->val));
@@ -2843,7 +2841,7 @@ void vm_prod_wrapper(expression_base::level l)
   if (v->val.size()!=m->val.numRows())
   { std::ostringstream s;
     s<< "Size mismatch " << v->val.size() << ":" << m->val.numRows();
-    throw std::runtime_error(s.str());
+    throw runtime_error(s.str());
   }
   if (l!=expression_base::no_value)
     push_value(std::make_shared<vector_value>(m->val.right_prod(v->val)));
@@ -2853,7 +2851,7 @@ void rvm_prod_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   shared_rational_vector v=get<rational_vector_value>();
   if (v->val.size()!=m->val.numRows())
-    throw std::runtime_error(std::string("Size mismatch ")@|
+    throw runtime_error(std::string("Size mismatch ")@|
      + str(v->val.size()) + ":" + str(m->val.numColumns()));
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value>(v->val*m->val));
@@ -3100,13 +3098,13 @@ void combine_columns_wrapper(expression_base::level l)
 { shared_row r = get<row_value>();
   int n = get<int_value>()->val;
   if (n<0)
-    throw std::runtime_error("Negative number "+str(n)+" of rows requested");
+    throw runtime_error("Negative number "+str(n)+" of rows requested");
 @.Negative number of rows@>
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
   for(size_t j=0; j<r->val.size(); ++j)
   { const int_Vector& col = force<vector_value>(r->val[j].get())->val;
     if (col.size()!=size_t(n))
-      throw std::runtime_error("Column "+str(j)+" size "+str(col.size())@|
+      throw runtime_error("Column "+str(j)+" size "+str(col.size())@|
           +" does not match specified size "+str(n));
 @.Column size does not match@>
     m->val.set_column(j,col);
@@ -3119,13 +3117,13 @@ void combine_rows_wrapper(expression_base::level l)
 { shared_row r =get<row_value>();
   int n = get<int_value>()->val;
   if (n<0)
-    throw std::runtime_error("Negative number "+str(n)+" of columns requested");
+    throw runtime_error("Negative number "+str(n)+" of columns requested");
 @.Negative number of columns@>
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(r->val.size(),n));
   for(size_t i=0; i<r->val.size(); ++i)
   { const int_Vector& row = force<vector_value>(r->val[i].get())->val;
     if (row.size()!=size_t(n))
-      throw std::runtime_error("Row "+str(i)+" size "+str(row.size())@|
+      throw runtime_error("Row "+str(i)+" size "+str(row.size())@|
           +" does not match specified size "+str(n));
 @.Row size does not match@>
     m->val.set_row(i,row);
@@ -3234,7 +3232,7 @@ void swiss_matrix_knife_wrapper(expression_base::level lev)
     else
       o << "lower column bound " << lwb_c;
   o << " out of range, actual bounds 0:" << m << ", 0:" << n;
-  throw std::runtime_error(o.str());
+  throw runtime_error(o.str());
 }
 
 @ We ensure the dimensions of the result are non negative, and adapted to
@@ -3404,7 +3402,7 @@ void invert_wrapper(expression_base::level l)
   { std::ostringstream s;
     s<< "Cannot invert a " @|
      << m->val.numRows() << "x" << m->val.numColumns() << " matrix";
-    throw std::runtime_error(s.str());
+    throw runtime_error(s.str());
   }
   if (l==expression_base::no_value)
     return;
@@ -3453,9 +3451,9 @@ void subspace_normal_wrapper(expression_base::level l)
   unsigned int n_gens = generators->val.numColumns();
   unsigned int dim = generators->val.numRows();
   if (dim>64)
-    throw std::runtime_error("Dimension too large: "+str(dim)+">64");
+    throw runtime_error("Dimension too large: "+str(dim)+">64");
   if (n_gens>64)
-    throw std::runtime_error ("Too many generators: "+str(n_gens)+">64");
+    throw runtime_error ("Too many generators: "+str(n_gens)+">64");
 @)
   std::vector<bitvec> basis, combination;
     // |basis[j]| will be initialised from column $j$ of |generators|

@@ -394,7 +394,6 @@ matrix::PID_Matrix<C> Smith_basis(const matrix::PID_Matrix<C>& M,
 template<typename C> // find a solution |x| for |A*x==b|
 matrix::Vector<C> find_solution(const matrix::PID_Matrix<C>& A,
 				matrix::Vector<C> b)
-  throw (std::runtime_error)
 {
   matrix::PID_Matrix<C> row,col;
   std::vector<C> diagonal = diagonalise(A,row,col); // $R*A*C=D$ diagonal
