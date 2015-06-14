@@ -188,6 +188,14 @@ void yyerror (YYLTYPE* locp, atlas::interpreter::expr_p* ,int* ,char const *s)
   atlas::interpreter::main_input_buffer->close_includes();
 }
 
+@ We have a user interrupt handler that simple raises |interrupt_flag| and
+returns. It must be declares |extern "C"|.
+
+@< Definitions of global namespace functions @>=
+
+extern "C" void sigint_handler (int)
+@+{@; atlas::interpreter::interrupt_flag=1; }
+
 @ The function |id_completion_func| defined in the \.{lexer} module will not
 be plugged directly into the readline completion mechanism, but instead we
 provide an alternative function for generating matches, which may pass the
@@ -249,29 +257,37 @@ const char* keywords[] =
  ,"whattype","showall","forget"
  ,nullptr};
 
+@ After installing keywords in the lexical analyser, some more preparation is
+needed. The identifiers |quiet| and |verbose| that used to be keywords are now
+instead recognised only in the special commands \.{set quiet} and \.{set
+verbose}; to this end the parser uses their numeric identifier codes. To
+ensure that they are respectively at offsets $0,1$ of
+|ana.first_identifier()|, we look up these names before any other identifiers
+are introduced, notably before |initialise_evaluator| and
+|initialise_builtin_types| are called to define built-in operators and
+functions.
+
+@< Prepare the lexical analyser... @>=
+main_hash_table->match_literal("quiet");
+main_hash_table->match_literal("verbose");
+// these must be the very first identifiers
+ana.set_comment_delims('{','}');
+
 @ Here are several calls necessary to get various parts of this program off to
 a good start, starting with the history and readline libraries, and setting a
 comment convention. Initialising the constants in the Atlas library is no
 longer necessary, as it is done automatically before |main| is called. Our own
 compilation units do require explicit calling of their initialisation
-functions. The identifiers |quiet| and |verbose| are no longer keywords (as
-they used to be) and are instead recognised only in the special
-commands \.{set quiet} and \.{set verbose}; to this end the parser uses their
-numeric identifier codes. To ensure that they are respectively at offsets
-$0,1$ of |ana.first_identifier()|, we look up these names before any other
-identifiers are introduced, notably before |initialise_evaluator| and
-|initialise_builtin_types| are called to define built-in operators and
 functions.
 
+@h <csignal>
 @h "built-in-types.h"
-@h "constants.h"
+
 @< Initialise various parts of the program @>=
   @< Initialise the \.{readline} library interface @>
-@)main_hash_table->match_literal("quiet");
-  main_hash_table->match_literal("verbose");
-  // these must be the very first identifiers
-  ana.set_comment_delims('{','}');
-@)initialise_evaluator(); initialise_builtin_types();
+  signal(SIGINT,sigint_handler); // install handler for user interrupt
+  initialise_evaluator();
+  initialise_builtin_types();
 
 @ Our main program constructs unique instances
 for various classes of the interpreter, and sets pointers to them so that
@@ -300,6 +316,7 @@ int main(int argc, char** argv)
 			    ,use_readline ? add_history : nullptr);
   main_input_buffer= &input_buffer;
 @/Lexical_analyser ana(input_buffer,hash,keywords,prim_names); lex=&ana;
+  @< Prepare the lexical analyser |ana| after construction and before use @>
 @/@< Initialise various parts of the program @>
   @< Enter system variables into |global_id_table| @>
 @)
@@ -311,6 +328,7 @@ int main(int argc, char** argv)
        << atlas::version::NAME << @| ". http://www.liegroups.org/\n";
 @)
   @< Enter the main command loop @>
+  signal(SIGINT,SIG_DFL); // reinstall default signal handler
   clear_history();
   // clean up (presumably disposes of the lines stored in history)
   std::cout << "Bye.\n";
@@ -426,6 +444,7 @@ while (ana.reset()) // get a fresh line for lexical analyser, or quit
       std::cout << "Expression before type analysis: " << *parse_tree
                 << std::endl;
   }
+  interrupt_flag=0; // clear interrupt before starting evaluation
   @< Analyse types and then evaluate and print, or catch runtime or other
      errors @>
   output_stream= &std::cout; // reset output stream if it was changed

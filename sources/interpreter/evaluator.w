@@ -2096,6 +2096,14 @@ constructor here needs a try block for exception safety, as the call to
 since the destructor would in this scenario \emph{not} be called, we then need
 to move the pointer back explicitly in the |catch| block.
 
+Since a |lambda_frame::bind| is called every time a user defined function is
+called, this is a convenient point to check whether the signal handler has set
+the interrupt flag, and to bail out if it did. (Choosing the points to do this
+test is a somewhat delicate matter. One wants to do it at points that are
+regularly encountered during evaluation, but not so frequently that the
+checks incur a serious performance penalty. Just the test here does not
+provide an absolute guarantee of rapid detection of a signalled interrupt.)
+
 If one tried to derive this class from |frame|, one would have to construct
 the base (which modifies |frame::current|) before doing anything else; this
 would make saving the value of |frame::current| problematic. For that reason
@@ -2122,7 +2130,9 @@ public:
   ~lambda_frame() @+{@; frame::current = std::move(saved); }
 @)
   void bind (const shared_value& val)
-    { frame::current->reserve(count_identifiers(pattern));
+    { if (interrupt_flag!=0)
+        throw user_interrupt();
+      frame::current->reserve(count_identifiers(pattern));
       thread_components(pattern,val,frame::current->back_inserter());
     }
 };
@@ -2244,14 +2254,14 @@ void overloaded_closure_call::evaluate(level l) const
     fun->body.evaluate(l);
     // call, passing evaluation level |l| to function body
   }
+  catch (user_interrupt&) @+{@; throw; } // don't alter user interrupt
   catch (const std::exception& e)
   { std::ostringstream o (e.what(),std::ios_base::ate); // append to |e.what()|
     o << "\n(in call of " << print_name << ' ' << loc @|
       << ", defined " << fun->p->loc <<')';
     if (verbosity>0)
       o << "\n  argument" << (arg_string[0]=='(' ? "s: " : ": ") << arg_string;
-    const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
-    if (l_err!=nullptr)
+    if (dynamic_cast<const std::logic_error*>(&e)!=nullptr)
       throw std::logic_error(o.str());
     throw std::runtime_error(o.str());
   }

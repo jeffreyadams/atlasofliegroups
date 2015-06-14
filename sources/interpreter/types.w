@@ -2292,6 +2292,37 @@ struct type_error : public expr_error
 #endif
 };
 
+@ When a user interrupts the computation, we wish to return to the main
+interpreter loop. To that end we shall at certain points in the program check
+the status of a flag that the signal handler sets, and if it is raised call an
+error.
+
+@< Includes... @>=
+#include <csignal>
+
+@~The flag must be a global variable, and we choose the traditional type
+for it (even though our program currently does not use threads).
+
+@< Declarations of global variables @>=
+
+extern volatile std::sig_atomic_t interrupt_flag;
+
+@~We shall define the variable right away, although our compilation unit does
+not use it.
+
+@<Global variable definitions @>=
+
+volatile std::sig_atomic_t interrupt_flag=0;
+
+@~When raised we shall call the following simple error value, with which no
+data is associated.
+
+@< Type definitions @>=
+
+class user_interrupt : public std::exception {
+const char* what() const throw() @+{@; return "User interrupt"; }
+};
+
 @* Enumeration of primitive types.
 %
 The precise list of primitive types is of minor importance for the design of
