@@ -661,7 +661,7 @@ expr_p wrap_list_display(raw_expr_list l, const YYLTYPE& loc)
 
 @< Cases for destroying... @>=
   case tuple_display:
-  case list_display: delete(sublist); break;
+  case list_display: delete sublist; break;
 
 @ Destroying lists of expressions will also be done via a function callable
 from the parser, as it may need to discard tokens holding such lists; these
@@ -681,12 +681,12 @@ the case in additional parentheses to avoid interpreting it as a declaration.
 void destroy_exprlist(raw_expr_list l)
 @+{@; (expr_list(l)); }
 
-@ Copying can be obtained by move construction followed by destruction of
-(what remains of) the original value. For raw pointers simply assigning
-|sublist=other.sublist| works, but for non POD types like |expr_list| this is
-the only proper way to proceed, even though in this particular case it can be
-seen that destructing a list after emptying it by move-constructing out of it
-is in fact a no-op.
+@ In general copying can be obtained by move construction followed by
+destruction of (what remains of) the original value. However for raw pointers
+simply assigning |sublist=other.sublist| works. We do not bother to assign
+|nullptr| to |other.sublist|, since immediately after executing the code below
+we shall set |other.kind=no_expr| which effectively forgets the remaining raw
+pointer.
 
 @< Cases for copying... @>=
   case tuple_display:
@@ -743,14 +743,12 @@ bool is_empty(const expr& e)
 @*1 Function applications.
 %
 Another recursive type of expression is the function application. Since it
-will hold two subexpressions, we must use a pointer when including it as
-variant of |expr|. We use a smart pointer, though in principle there is not
-much point in doing that for a variant field in a |union| (the variant does
-not benefit from automatic destruction, so the destructor |expr::~expr| must
-still explicitly call the destructor for the variant, where it would otherwise
-have directly called |delete| for the pointer). However, since some variants
-already have types with move semantics, it seems that similarly making all
-variants have it is the less confusing solution.
+will store two sub-expressions by value, we must use a pointer when including
+it as variant of |expr|. We use a raw pointer, as there is not much point in
+having a smart pointer as a variant field in a |union|: the variant does not
+benefit from automatic destruction, so the destructor |expr::~expr| would
+still have to explicitly call the destructor for the variant; with a raw
+pointer it will just directly called |delete| for the pointer.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct application_node* app;
@@ -833,20 +831,16 @@ expr_p make_application_node(expr_p f, raw_expr_list r_args,
   return new expr(std::move(a),loc); // move construct application expression
 }
 
-@ Destroying a smart pointer field just means calling its destructor.
+@ Destroying a raw pointer field just means calling |delete| on it.
 
 @< Cases for destroying... @>=
 case function_call: delete call_variant; break;
 
-@ A |unique_ptr| should not be moved by writing
-|call_variant=std::move(other.call_variant)| since this would attempt to apply
-delete to the uninitialised ``previous value'' of |call_variant|. On the other
-hand we know that afterwards |other.call_variant| holds a null pointer, so we
-do not bother to call its destructor.
+@ As before, copying a raw pointer is simple.
 
 @< Cases for copying... @>=
    case function_call:
- @/ new (&call_variant) app(std::move(other.call_variant)); break;
+ @/ call_variant=other.call_variant; break;
 
 @ To print a function call, we print the function and a tuple display for the
  arguments, even if there is only one. The function part will also be enclosed
@@ -1415,11 +1409,11 @@ expr_p make_let_expr_node(raw_let_list d, expr_p b, const YYLTYPE& loc)
   ,loc);
 }
 
-@ For the unique pointer |let|, copying is done just as was for |app| before.
+@ For the raw pointer |let|, copying is done by assignment, as before.
 
 @< Cases for copying... @>=
  case let_expr:
-   new (&let_variant) let(std::move(other.let_variant));
+   let_variant=other.let_variant;
  break;
 
 @~While |let_list| is only handled at the outermost level during parsing, it
@@ -1571,9 +1565,9 @@ expr_p make_lambda_node(raw_patlist p, raw_type_list tl, expr_p b,
       (std::move(pattern),std::move(parameter_type),std::move(body))),loc);
 }
 
-@ Since |lambda| is a unique pointer, we must use move construction.
+@ Since |lambda| is a raw pointer, we can just assign.
 @< Cases for copying... @>=
-case lambda_expr: new (&lambda_variant) lambda(std::move(other.lambda_variant));
+case lambda_expr: lambda_variant=other.lambda_variant;
 break;
 
 @ And we must of course take care of destroying lambda expressions, which is
@@ -1654,10 +1648,10 @@ expr_p make_conditional_node(expr_p c, expr_p t, expr_p e, const YYLTYPE& loc)
       conditional_node { std::move(cnd), std::move(thn), std::move(els) }),loc);
 }
 
-@ We follow the usual coding pattern for copying unique pointers.
+@ We follow the usual coding pattern for copying raw pointers.
 @< Cases for copying... @>=
 case conditional_expr:
-  new (&if_variant) cond(std::move(other.if_variant));
+  if_variant=other.if_variant;
 break;
 
 @~Again we just need to activate the variant destructor, the rest is
@@ -1866,25 +1860,19 @@ expr_p make_cfor_node
     cfor_node { id, std::move(cnt),std::move(lim),std::move(body),flags }),loc);
 }
 
-@ Again we apply the copying discipline for unique pointer variants.
+@ Again we apply assignment for raw pointer variants.
 @< Cases for copying... @>=
-  case while_expr:
-    new(&while_variant) w_loop(std::move(other.while_variant));
-  break;
-  case for_expr:
-    new(&for_variant) f_loop(std::move(other.for_variant));
-  break;
-  case cfor_expr:
-     new(&cfor_variant) c_loop(std::move(other.cfor_variant));
-  break;
+  case while_expr: while_variant=other.while_variant; break;
+  case for_expr:   for_variant=other.for_variant;     break;
+  case cfor_expr:  cfor_variant=other.cfor_variant;   break;
 
 @~Cleaning up is exactly like that for conditional expressions, or indeed most
 other kinds.
 
 @< Cases for destroying... @>=
 case while_expr: delete while_variant; break;
-case for_expr: delete for_variant; break;
-case cfor_expr: delete cfor_variant; break;
+case for_expr:   delete for_variant;   break;
+case cfor_expr:  delete cfor_variant;  break;
 
 @ To print a |while| or |for| expression at parser level, we reproduce the
 input syntax.
@@ -2012,12 +2000,8 @@ expr_p make_slice_node
 
 @ Another boring but inevitable section.
 @< Cases for copying... @>=
-case subscription:
-  new (&subscription_variant) sub(std::move(other.subscription_variant));
-break;
-case slice:
-  new (&slice_variant) slc(std::move(other.slice_variant));
-break;
+case subscription: subscription_variant=other.subscription_variant; break;
+case slice:        slice_variant       =other.slice_variant;        break;
 
 @~Here we recursively destroy the subexpressions, and then the node for the
 subscription or slice itself.
@@ -2113,7 +2097,7 @@ expr_p make_cast(type_p t, expr_p e, const YYLTYPE& loc)
 
 @ Nor here.
 @< Cases for copying... @>=
-case cast_expr: new (&cast_variant) cast (std::move(other.cast_variant));
+case cast_expr: cast_variant=other.cast_variant;
 break;
 
 @ Eventually we want to rid ourselves from the cast.
@@ -2181,9 +2165,7 @@ expr_p make_op_cast(id_type name,type_p t, const YYLTYPE& loc)
 
 @ Nor here.
 @< Cases for copying... @>=
-case op_cast_expr:
-  new (&op_cast_variant) op_cast(std::move(other.op_cast_variant));
-break;
+case op_cast_expr: op_cast_variant=other.op_cast_variant; break;
 
 @ Eventually we want to rid ourselves from the operator cast.
 
@@ -2250,12 +2232,10 @@ expr_p make_assignment(id_type lhs, expr_p r, const YYLTYPE& loc)
   return new expr(assignment(new assignment_node { lhs, std::move(rhs) }),loc);
 }
 
-@ Copy by placement-|new|, not really |new|.
+@ Copy by assignment of raw pointers, not really |new|.
 
 @< Cases for copying... @>=
-case ass_stat:
-  new (&assign_variant) assignment(std::move(other.assign_variant));
-break;
+case ass_stat: assign_variant=other.assign_variant; break;
 
 @ What is made must eventually be unmade (even assignments).
 
@@ -2382,9 +2362,7 @@ expr_p make_comp_upd_ass(expr_p l, id_type op, expr_p r,
 @ This is getting boring; fortunately we are almost done with the syntax.
 
 @< Cases for copying... @>=
-case comp_ass_stat:
-  new (&comp_assign_variant)
-  comp_assignment(std::move(other.comp_assign_variant));
+case comp_ass_stat: comp_assign_variant=other.comp_assign_variant;
 break;
 
 @~Destruction one the other hand is as straightforward as usual.
@@ -2469,9 +2447,7 @@ expr_p make_sequence
 @ Is this the final case? For now, it is!
 
 @< Cases for copying... @>=
-case seq_expr:
-  new (&sequence_variant) sequence(std::move(other.sequence_variant));
-break;
+case seq_expr: sequence_variant=other.sequence_variant; break;
 
 @ Finally sequence nodes need destruction, like everything else.
 
