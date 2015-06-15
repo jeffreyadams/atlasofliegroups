@@ -19,6 +19,8 @@ set w_matrix (RootDatum rd, W_word w) = mat:
   , alpha = simple_roots(rd), alphav = simple_coroots(rd)
   in for s in w do M -:= M*column(alpha[s])*row(alphav[s]) od; M
 
+set equal(RootDatum rd, W_word w, W_word u)=bool: w_matrix(rd,w)=w_matrix(rd,u)
+
 set non_dominant_index (RootDatum rd, vec v) = int:
   let coords = v*simple_coroots(rd), i=semisimple_rank(rd)-1 in
   while i>=0 and coords[i]>=0 do i-:=1 od; i
@@ -51,6 +53,8 @@ set word (RootDatum rd, mat M) = W_word:
 { rather than length(rd,M) = #word(rd,M), the following is simpler }
 set length (RootDatum rd, mat M) = int:
   n_columns(columns_with(is_negative_root(rd),M*posroots(rd)))
+
+set length(RootDatum rd, W_word w)=int:length(rd,w_matrix(rd,w))
 
 { whether multiplication by simple reflection lengthens or shortens M }
 set lengthens (RootDatum rd, mat M, int s) = bool: { for right multiplication }
@@ -119,3 +123,13 @@ set make_integrally_dominant (RootDatum rd,ratvec v) = (ratvec,W_word):
 { act by Weyl group element w, then make result integrally dominant }
 set int_dom_act (RootDatum rd,W_word w,ratvec v) = ratvec:
   let (new_v,) = make_integrally_dominant(rd,act(rd,w,v)) in new_v
+
+{------------------------basic group operations---------------------}
+
+set left_mult(RootDatum rd, int i,W_word w)=i#w
+set right_mult(RootDatum rd, int i,W_word w)=w#i
+set conjugate(RootDatum rd, int i, W_word w)=i#w#i
+set conjugate(RootDatum rd, int i, W_word w)=i#w#i
+
+set multiply(RootDatum rd, W_word w, W_word u)=w#u
+set conjugate(RootDatum rd, W_word w, W_word u)=w#u#inverse(w)

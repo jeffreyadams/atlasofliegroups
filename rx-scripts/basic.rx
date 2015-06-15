@@ -243,6 +243,12 @@ set lookup_row (vec v,mat m) = int:
 { sum of columns of a matrix; this is so neat, avoid calling it sum_columns }
 set sum (mat m)= vec: m*ones(n_columns(m))
 
+{order of a matrix, hangs unless finite}
+set order(mat M)=int:
+let (N,order,n,done)=(M,1,n_rows(M),false) in
+while not done do
+ if N=id_mat(n) then done:=true  else  N:=M*N; order:=order+1 fi od;order
+
 {			    Rational vectors				}
 
 set numer (ratvec a) = vec: let (n,)=%a in n
@@ -570,6 +576,7 @@ set is_compatible (RealForm f, RealForm g) = bool:
   then oc = occurrence_matrix(ic)*^dual_occurrence_matrix(ic)
   in inner_class(g)=dual(ic) and oc[form_number(f),form_number(g)]>0
 
+set is_compact(RealForm G)=involution(KGB(G,KGB_size(G)-1))=id_mat(rank(G))
 
 {			       KGB elements				}
 
