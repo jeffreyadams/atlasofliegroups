@@ -18,31 +18,15 @@
 - Have error take arguments like prints does
 - Investigate if some tracing facilty (printing "let" values) is feasible
 
-- Make 'not' execute a built-in function
-
 - Integrate a bigint library to store realex int (and rat?) values; while
   attending that, signal overflow in arithmetic operations / conversions
 
 
-- Handle catching of a user interrupt
-  When a user types ^C, this should break off computation as soon as feasible
-  and return the realex prompt. This may be quite difficult to implement if
-  for interrupts happening while an atlas library function is executing.
-
 - Improve output of expressions
 
 - Allow multiple overloaded functions defined in a single 'set' statement
-- Allow recursion through a more intuitive syntax
 
 - Make balancing a general concept, also applied within row displays.
-
-- Add possibility to specify types with unknown components like '[*]'
-  This would notably allow define functions overloads with this type to match
-  (only) the argument expression '[]'. Currently this argument will never
-  match in overloading, since overloading does not perform type
-  specialisation (and if it did, '[]' could very well be ambiguous). Simply
-  allowing the user to specify types with unknown components would allow the
-  user to define what to do with argument expressions '[]'.
 
 - Allow global variables with function value to be called if overload fails
   Currently a global variable with function value cannot be called directly

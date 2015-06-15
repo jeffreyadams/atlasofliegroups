@@ -472,15 +472,18 @@ case boolean_denotation:
 case string_denotation:
   out << '"' << e.str_denotation_variant << '"'; break;
 
-@*2 Applied identifiers, and the last value computed.
+@*2 Applied identifiers, the last value computed, die.
 %
 For representing applied identifiers, we use the integer type |id_type|
 defined above. Their tag is |applied_identifier|. An expression that behaves
 somewhat similarly is `\.\$', which stands for the last value computed.
+Finally we have an expression \&{die} that can be used as a typeless dummy
+whose evaluation signals an error.
 
 @< Enumeration tags for |expr_kind| @>=
 applied_identifier,
-last_value_computed, @[@]
+last_value_computed,
+die_expr, @[@]
 
 @ For identifiers we just store their code; for |last_value_computed| nothing
 at all.
@@ -493,16 +496,20 @@ straightforward.
 @< Methods of |expr| @>=
   struct identifier_tag @+{}; @+
   struct dollar_tag @+{};
+  struct die_tag @+{};
   expr(id_type id, const YYLTYPE& loc, identifier_tag)
 @/: kind(applied_identifier), identifier_variant(id), loc(loc) @+{}
   expr (const YYLTYPE& loc, dollar_tag)
-@/: kind(last_value_computed) @+{}
+  : kind(last_value_computed) @+{}
+  expr (const YYLTYPE& loc, die_tag)
+  : kind(die_expr) @+{}
 
 @ As usual there are interface function to the parser.
 
 @< Declarations of functions for the parser @>=
 expr_p make_applied_identifier (id_type id, const YYLTYPE& loc);
 expr_p make_dollar(const YYLTYPE& loc);
+expr_p make_die(const YYLTYPE& loc);
 
 @~In spite of the absence of dedicated constructors, these function have
 rather simple definitions.
@@ -512,20 +519,23 @@ expr_p make_applied_identifier (id_type id, const YYLTYPE& loc)
  {@; return new expr(id,loc,expr::identifier_tag()); }
 
 expr_p make_dollar (const YYLTYPE& loc)
-{@; return new expr(loc,expr::dollar_tag()); }
+@+{@; return new expr(loc,expr::dollar_tag()); }
+expr_p make_die (const YYLTYPE& loc)
+@+{@; return new expr(loc,expr::die_tag()); }
 
 @~Like for integer and boolean denotations, there is nothing to destroy here.
 
 @< Cases for destroying... @>=
 case applied_identifier:
-case last_value_computed: break;
+case last_value_computed:
+case die_expr: break;
 
 @ Having a POD type variant, copying an applied identifier can be done by
 assignment.
 
 @< Cases for copying... @>=
 case applied_identifier: identifier_variant=other.identifier_variant; break;
-case last_value_computed: break;
+case last_value_computed: case die_expr: break;
 
 @~To print an applied identifier, we look it up in the main hash table. We
 print \.\$ as the user wrote it.
@@ -535,6 +545,7 @@ case applied_identifier:
   out << main_hash_table->name_of(e.identifier_variant);
 break;
 case last_value_computed: out << '$'; @q$@> break;
+case die_expr: out << " die "; break;
 
 @*1 Expression lists.
 %
@@ -907,10 +918,73 @@ expr_p make_unary_call(id_type name, expr_p a,
    const YYLTYPE& loc, const YYLTYPE& op_loc)
 {
   expr_ptr aa(a); // wrap in smart pointer for exception safety
-  return new expr(app(new @| application_node(
-    expr(name,op_loc,expr::identifier_tag()),std::move(*aa))),loc);
+  return new expr(new @| application_node(
+    expr(name,op_loc,expr::identifier_tag()),std::move(*aa)),loc);
 }
 
+@*2 Boolean negation.
+
+It used to be the case that a Boolean negation ``|not E|'' was converted inside
+the parser to the equivalent conditional expression ``|if E| \&{then} |false@;
+else true@;|~\&{fi}'', similarly to the way the Boolean operations |and| and
+|or| still are translated (which ensures their ``lazy'' evaluation). For |not|
+it is however more efficient to translate into the call of a simple built-in
+negation function. We therefore define an expression type for Boolean
+negation.
+
+Since there is just an |expr| to store in a negation node, we won't define a
+node type, but just store a raw pointer to |expr|. The tag used for these
+nodes is |negation_expr|.
+
+@< Enumeration tags for |expr_kind| @>=
+negation_expr, @[@]
+
+@ And there is of course a variant of |expr_union| for negations.
+@< Variants of ... @>=
+expr* negation_variant;
+
+@ There is a constructor for building the new variant.
+@< Methods of |expr| @>=
+struct negate_tag @+{}; @+
+expr(expr* p, const YYLTYPE& loc,negate_tag)
+ : kind(negation_expr)
+ , negation_variant(p)
+ , loc(loc)
+@+{}
+
+@ The parser builds negations by calling |make_negation|.
+
+@< Declarations of functions for the parser @>=
+expr_p make_negation(expr_p exp, const YYLTYPE& loc);
+
+@~For once, the fact that the parser gives us a raw pointer to the argument
+expression is directly useful: we store the pointer right away into a new
+|expr| value, with no need to copy and clean up the |expr| pointed to. The day
+that we shall be able to modify the parser to pass around the |expr| values it
+constructs by value rather than by pointer, this function will become more
+complicated where all the others become simpler.
+
+@< Definitions of functions for the parser@>=
+expr_p make_negation(expr_p e, const YYLTYPE& loc)
+@/{@;
+  return new expr(e,loc,expr::negate_tag());
+}
+
+@ Here too things are simplified: we can just copy the raw pointer.
+@< Cases for copying... @>=
+case negation_expr: negation_variant=other.negation_variant;
+break;
+
+@ Eventually we want to rid ourselves from the cast.
+
+@< Cases for destroying... @>=
+case negation_expr: delete negation_variant; break;
+
+@ Printing cast expressions follows their input syntax.
+
+@< Cases for printing... @>=
+case negation_expr: out << " not " << *e.negation_variant;
+break;
 
 @*1 Operators and priority.
 %
@@ -1092,8 +1166,7 @@ the node is emptied do we pop it with |s.pop_back()|.
   {
     expr& oper = s.front().op_exp;
     const source_location range(oper.loc,e.loc); // extent of operands
-    e = expr(app(new application_node
-          (std::move(oper),std::move(e))),range);
+    e = expr(new application_node(std::move(oper),std::move(e)),range);
   }
   else
   {
@@ -1404,8 +1477,8 @@ expr_p make_let_expr_node(raw_let_list d, expr_p b, const YYLTYPE& loc)
   expr_ptr bb(b);
   expr& body=*bb; // ensure exception safety
   auto pat_expr = zip_decls(d);
-@/return new expr (let(new  @| let_expr_node
-  { std::move(pat_expr.first), std::move(pat_expr.second),std::move(body) })
+@/return new expr (new  @| let_expr_node
+  { std::move(pat_expr.first), std::move(pat_expr.second),std::move(body) }
   ,loc);
 }
 
@@ -1578,8 +1651,9 @@ case lambda_expr: delete lambda_variant; break;
 
 @ Because of the above transformations, lambda expressions are printed with
 all parameter types grouped into one tuple (unless there was exactly one
-parameter). In case of no parameters at all, we don not print |"(() ())"| but
-rather "@".
+parameter). In case of no parameters at all, we do not print |"(() ())"| but
+rather |"@@"| (which though unrelated of other uses of .\\'@@ is easy to get
+used to).
 
 @< Cases for printing... @>=
 case lambda_expr:
@@ -1644,8 +1718,8 @@ expr_p make_conditional_node(expr_p c, expr_p t, expr_p e, const YYLTYPE& loc)
 {
   expr_ptr cc(c), tt(t), ee(e);
   expr& cnd=*cc; expr& thn=*tt; expr& els=*ee;
-@/return new @| expr(cond (new @|
-      conditional_node { std::move(cnd), std::move(thn), std::move(els) }),loc);
+@/return new @| expr(new @|
+      conditional_node { std::move(cnd), std::move(thn), std::move(els) },loc);
 }
 
 @ We follow the usual coding pattern for copying raw pointers.
@@ -1837,8 +1911,7 @@ expr_p make_while_node(expr_p c, expr_p b, const YYLTYPE& loc)
 {
   expr_ptr cc(c), bb(b);
   expr& cnd=*cc; expr& body=*bb;
-  return new expr(w_loop(new
-     while_node { std::move(cnd), std::move(body)}),loc) ;
+  return new expr(new while_node { std::move(cnd), std::move(body)},loc) ;
 }
 @)
 expr_p make_for_node
@@ -1846,8 +1919,8 @@ expr_p make_for_node
 {
   id_pat ind(id); expr_ptr iip(ip), bb(b);
   expr& in=*iip;  expr& body=*bb;
-  return new expr(f_loop(new @|
-    for_node { std::move(ind), std::move(in), std::move(body), flags }),loc);
+  return new expr(new @|
+    for_node { std::move(ind), std::move(in), std::move(body), flags },loc);
 }
 @)
 expr_p make_cfor_node
@@ -1856,8 +1929,8 @@ expr_p make_cfor_node
 {
   expr_ptr cc(c), ll(l), bb(b);
   expr& cnt=*cc; expr& lim=*ll; expr& body=*bb;
-  return new expr (c_loop(new @|
-    cfor_node { id, std::move(cnt),std::move(lim),std::move(body),flags }),loc);
+  return new expr (new @|
+    cfor_node { id, std::move(cnt),std::move(lim),std::move(body),flags },loc);
 }
 
 @ Again we apply assignment for raw pointer variants.
@@ -1987,15 +2060,15 @@ expr_p make_subscription_node
   (expr_p a, expr_p i, bool reversed, const YYLTYPE& loc)
 { expr_ptr aa(a); expr_ptr ii(i);
   expr& arr=*aa; expr& ind=*ii;
-  return new expr(sub(new
-     subscription_node {std::move(arr), std::move(ind), reversed }),loc);
+  return new expr(new
+     subscription_node {std::move(arr), std::move(ind), reversed },loc);
 }
 expr_p make_slice_node
   (expr_p a, expr_p lower, expr_p upper, unsigned flags, const YYLTYPE& loc)
 { expr_ptr aa(a); expr_ptr ll(lower); expr_ptr uu(upper);
 @/expr& arr=*aa; expr& lo=*ll; expr& up=*uu;
-  return new expr(slc(new @|
-     slice_node {std::move(arr), std::move(lo), std::move(up), flags }),loc);
+  return new expr(new @|
+     slice_node {std::move(arr), std::move(lo), std::move(up), flags },loc);
 }
 
 @ Another boring but inevitable section.
@@ -2044,14 +2117,13 @@ break;
 
 @*1 Cast expressions.
 %S
-These are very simple expressions consisting of a type and an expression,
-which is forced to be of that type.
+These are a way to force an expression to get a specified type (provided that
+type analysis succeeds with that target type).
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct cast_node* cast;
 
-@~The type contained in the cast is represented by a void pointer, for the
-known reasons.
+@~The corresponding node type stores both type and expression.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct cast_node
@@ -2092,7 +2164,7 @@ expr_p make_cast(type_p t, expr_p e, const YYLTYPE& loc)
 {
   type_ptr tt(t); expr_ptr ee(e);
   type_expr& type=*tt; expr& exp=*ee;
-  return new expr(cast(new cast_node { std::move(type), std::move(exp) }),loc);
+  return new expr(new cast_node { std::move(type), std::move(exp) },loc);
 }
 
 @ Nor here.
@@ -2160,7 +2232,7 @@ expr_p make_op_cast(id_type name,type_p type, const YYLTYPE& loc);
 expr_p make_op_cast(id_type name,type_p t, const YYLTYPE& loc)
 {
   type_ptr tt(t); type_expr& type=*tt;
-  return new expr(op_cast(new op_cast_node { name, std::move(type) }),loc);
+  return new expr(new op_cast_node { name, std::move(type) },loc);
 }
 
 @ Nor here.
@@ -2229,7 +2301,7 @@ homework assignment made).
 expr_p make_assignment(id_type lhs, expr_p r, const YYLTYPE& loc)
 {
   expr_ptr rr(r); expr& rhs=*rr;
-  return new expr(assignment(new assignment_node { lhs, std::move(rhs) }),loc);
+  return new expr(new assignment_node { lhs, std::move(rhs) },loc);
 }
 
 @ Copy by assignment of raw pointers, not really |new|.
@@ -2343,20 +2415,20 @@ expr_p make_comp_upd_ass(expr_p l, id_type op, expr_p r,
       // save before move from |s.array|
   id_type hidden=lookup_identifier("$");@q$@>
   id_pat v(hidden,0x1,patlist());
-  expr_ptr subs(new expr (sub(new subscription_node@|
+  expr_ptr subs(new expr (new subscription_node@|
     (std::move(s.array)
     ,expr(hidden,loc,expr::identifier_tag())
     ,s.reversed
-    )),lhs.loc));
+    ),lhs.loc));
   expr_ptr formula(make_binary_call(op,subs.release(),rr.release(),loc,op_loc));
-  comp_assignment_node comp_ass
+  comp_assignment_node comp_ass @|
      (array_name
      ,expr(hidden,loc,expr::identifier_tag())
      ,std::move(*formula)
      ,s.reversed);
-  expr body(comp_assignment(new comp_assignment_node(std::move(comp_ass))),loc);
-  return new expr(let(new let_expr_node @|
-    (std::move(v),std::move(s.index),std::move(body))),loc);
+  expr body(new comp_assignment_node(std::move(comp_ass)),loc);
+  return new expr(new let_expr_node @|
+    (std::move(v),std::move(s.index),std::move(body)),loc);
 }
 
 @ This is getting boring; fortunately we are almost done with the syntax.
@@ -2379,6 +2451,50 @@ case comp_ass_stat:
       << ass->rhs ;
 }
 break;
+
+@*1 Recursive function expressions.
+%
+The basic \.{realex} language is not
+friendly for recursion, since identifiers defined in a local or global
+definition only come into scope after the body of the definition. The fact
+that recursive functions can nonetheless be defined is due to the possibility
+to call functions from a variable, where a runtime assignment to the variable
+ensures that the by the time it gets called, it refers to the very function
+(body) that contains the call. We provide syntactic sugar to make this easier
+for the user; this being so, no new kind of |expr| is needed to implement it.
+
+@< Declarations of functions for the parser @>=
+expr_p make_recfun(id_type f, expr_p d,
+   const YYLTYPE& loc, const YYLTYPE& f_loc);
+
+@ The \&{rec\_fun} syntax requires a function name $f$ and a definition |def|
+which, apart from specifying its argument type(s)~$A$ as usual, also specifies
+an explicit result type~$R$; this is represented as having a body that is a
+cast to~$R$. We shall translate this into ``\&{let} $f=(A~.)
+R:$~\&{die} \&{in} $(f:=\\{def})$'' where the dot designates an empty
+identifier pattern (the \&{die} must be wrapped in a function to prevent the
+evaluation of \&{let} from blowing up).
+
+@< Definitions of functions for the parser@>=
+expr_p make_recfun(id_type f, expr_p d,
+   const YYLTYPE& loc, const YYLTYPE& f_loc)
+{
+  expr_ptr dd(d); expr& definition=*dd;
+  assert(definition.kind==lambda_expr); // grammar ensures this
+  lambda_node& lam = *definition.lambda_variant;
+  assert(lam.body.kind==cast_expr); // grammar ensures this
+  cast_node& body = *lam.body.cast_variant;
+  expr die_expr(f_loc,expr::die_tag());
+  expr dummy_body (new cast_node(body.type.copy(),std::move(die_expr)),f_loc);
+  expr dummy_f
+   (new lambda_node@|(id_pat(),lam.parameter_type.copy(),std::move(dummy_body))
+    ,loc);
+  expr rec_assign (new assignment_node(f,std::move(definition)),loc);
+  id_pat v(f,0x1,patlist());
+  return new expr(new let_expr_node @|
+    (std::move(v),std::move(dummy_f),std::move(rec_assign)),loc);
+}
+
 
 @*1 Sequence statements.
 %
@@ -2440,8 +2556,8 @@ expr_p make_sequence
   (expr_p f, expr_p l, bool forward, const YYLTYPE& loc)
 {
   expr_ptr ff(f), ll(l); expr& first=*ff; expr& last=*ll;
-  return new expr(sequence(new @|
-    sequence_node { std::move(first), std::move(last), forward } ),loc);
+  return new expr(new @|
+    sequence_node { std::move(first), std::move(last), forward } ,loc);
 }
 
 @ Is this the final case? For now, it is!

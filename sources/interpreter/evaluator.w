@@ -315,15 +315,15 @@ expression_ptr convert_expr(const expr& e, type_expr& type)
   return expression_ptr(nullptr); // keep compiler happy
 }
 
-@* Denotations.
+@* Denotations, capturing values in a program.
 %
-Let us define a first class derived from |expression_base|, which is
-|denotation|; it simply stores a |value|, which it returns upon evaluation.
-The value may be passed by constant reference or by rvalue reference to
-|shared_ptr|; in the former case it creates an additional sharing, and in the
-latter case ownership is transferred upon construction of the |denoted_value|
-field. The latter case will notably apply in case the argument expression is
-the result of calling |std::make_shared|.
+A first class derived from |expression_base|, called |denotation|, simply
+stores a known |value|, which it returns upon evaluation. The value may be
+passed by constant reference or by rvalue reference to |shared_ptr|; in the
+former case it creates an additional sharing, and in the latter case ownership
+is transferred upon construction of the |denoted_value| field. The latter case
+will notably apply in case the argument expression is the result of calling
+|std::make_shared|.
 
 Since the |denotation| object stores a (constant, shared) value inside it, the
 evaluation simply consists of copying the pointer to the |execution_stack|.
@@ -427,6 +427,41 @@ case last_value_computed:
     ,e);
 }
 
+@*1 The suicidal expression.
+%
+In some cases, notably for facilitating recursive definitions, it is useful to
+have a placeholder expression \&{die} that will assume any type the context
+requires (we even allow an undetermined type, although in its application to
+recursion the type will always be defined). The evaluation of this placeholder
+is not intended, and trying to evaluate is throws a runtime error; for this
+reason the expression is written \&{die}. One could require that a function
+call returns \&{true} by writing ``$f(...)$~\&{or die}''.
+
+These expressions must be representable at runtime, so we define an empty
+shell for them.
+
+@< Type definitions @>=
+struct shell : public expression_base
+{
+virtual void evaluate (level l) const;
+virtual void print(std::ostream& out) const @+{@; out << " die "; }
+};
+
+@ As said above, attempting to evaluate a |shell| is suicidal.
+
+@< Function definitions @>=
+void shell::evaluate (level l) const
+{ throw runtime_error("I die"); // |shell| explodes
+}
+
+@ The main point of \&{die} is not trying to evaluate, but allowing it to
+pass type checking successfully. It does so trivially.
+
+@< Cases for type-checking and converting... @>=
+case die_expr:
+{@; return expression_ptr(new shell());
+}
+
 @* Tuple displays.
 %
 Tuples are sequences of values of non-uniform type, usually short and with a
@@ -503,7 +538,7 @@ case tuple_display:
     comp.push_back(convert_expr(*it,*tl_it)), ++it,++tl_it;
   if (tuple_expected or coerce(tup,type,result))
       return result;
-  throw type_error(e,tup.copy(),std::move(type));
+  throw type_error(e,std::move(tup),std::move(type));
 }
 
 @*1 Evaluating tuple displays.
@@ -3098,6 +3133,40 @@ programming. We provide the conditional expression as unique selection
 statement, and a large variety of iterative statements. Somewhat unusual is
 the fact that all control structures are expressions that may yield a value;
 in the case of loop statements, a value of ``row-of'' type is returned.
+
+@*1 The Boolean negation.
+%
+Though not really a control structure, Boolean negation is mostly used in
+conjunction with control structures. We shall translated them into calls of a
+built-in function, so no new expression type is needed. On the other hand we
+shall need a |shared_value| pointing to the |builtin_value| for the negation
+function. We declare it here; it will be set by the main program to point at
+the proper field in the overload table, after installing its contents.
+
+@< Declarations of global variables @>=
+
+extern std::shared_ptr<const builtin_value> boolean_negate_builtin;
+
+@~What has been declared must be defined.
+
+@< Global variable definitions @>=
+
+std::shared_ptr<const builtin_value> boolean_negate_builtin;
+
+@ The type check is easy; the argument must be of |bool| type (or convertible
+to it, but nothing else it) and so must (become) the required |type|.
+
+@< Cases for type-checking and converting... @>=
+case negation_expr:
+{ type_expr b=bool_type.copy();
+   expression_ptr arg = convert_expr(*e.negation_variant,b);
+  if (not type.specialise(b)) // |not| preserves the |bool| type
+    throw type_error(e,std::move(b),std::move(type));
+  return expression_ptr(new overloaded_builtin_call
+     (boolean_negate_builtin->val,"{!@@bool}",std::move(arg),e.loc));
+}
+
+
 
 @*1 Conditional expressions.
 %

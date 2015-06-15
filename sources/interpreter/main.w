@@ -252,8 +252,8 @@ const char* keywords[] =
  ,"if","then","else","elif","fi"
  ,"and","or","not"
  ,"while","do","od","next","for","from","downto"
- ,"case","esac"
- ,"true","false"
+ ,"case","esac", "rec_fun"
+ ,"true","false", "die"
  ,"whattype","showall","forget"
  ,nullptr};
 
@@ -288,6 +288,17 @@ functions.
   signal(SIGINT,sigint_handler); // install handler for user interrupt
   initialise_evaluator();
   initialise_builtin_types();
+  { id_type shriek = main_hash_table->match_literal("!");
+    const auto& variants = global_overload_table->variants(shriek);
+    for (auto it=variants.begin(); it!=variants.end(); ++it)
+      if (it->type().arg_type==bool_type)
+      { boolean_negate_builtin =
+          std::dynamic_pointer_cast<const builtin_value>(it->val);
+         break;
+      }
+    assert(boolean_negate_builtin.get()!=nullptr);
+  }
+
 
 @ Our main program constructs unique instances
 for various classes of the interpreter, and sets pointers to them so that

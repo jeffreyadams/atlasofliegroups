@@ -59,8 +59,8 @@
 %error-verbose
 
 %token QUIT SET LET IN BEGIN END IF THEN ELSE ELIF FI AND OR NOT
-%token WHILE DO OD NEXT FOR FROM DOWNTO CASE ESAC
-%token TRUE FALSE WHATTYPE SHOWALL FORGET
+%token WHILE DO OD NEXT FOR FROM DOWNTO CASE ESAC REC_FUN
+%token TRUE FALSE DIE WHATTYPE SHOWALL FORGET
 %token <oper> OPERATOR OPERATOR_BECOMES '=' '*'
 %token <val> INT
 %token <str> STRING
@@ -167,6 +167,10 @@ expr    : LET lettail { $$=$2; }
 	  { $$=make_lambda_node($2.patl,$2.typel,$5,@$); }
 	| '(' id_specs ')' type ':' expr
 	  { $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6,@$),@$); }
+        | REC_FUN IDENT '(' id_specs ')' type ':' expr
+	  { auto l=make_lambda_node($4.patl,$4.typel,make_cast($6,$8,@8),@$);
+            $$ = make_recfun($2,l,@$,@2);
+          }
         | type ':' expr { $$ = make_cast($1,$3,@$); }
 	| tertiary ';' expr { $$=make_sequence($1,$3,true,@$); }
         | tertiary NEXT expr { $$=make_sequence($1,$3,false,@$); }
@@ -211,9 +215,7 @@ and_expr: and_expr AND not_expr
 	| not_expr
 ;
 
-not_expr: NOT secondary
-	  { $$ = make_conditional_node($2,make_bool_denotation(false,@$),
-					  make_bool_denotation(true,@$),@$); }
+not_expr: NOT not_expr { $$ = make_negation($2,@$); }
 	| secondary
 ;
 
@@ -299,6 +301,7 @@ comprim: subscription | slice
 	}
 	| operator '@' type { $$=make_op_cast($1.id,$3,@$); }
 	| IDENT '@' type    { $$=make_op_cast($1,$3,@$); }
+	| DIE { $$= make_die(@$); }
 ;
 
 assignable_subsn:
