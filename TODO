@@ -15,7 +15,6 @@
 
 - Make conditionals return shared pointer to global true and false values
 
-- Have error take arguments like prints does
 - Investigate if some tracing facilty (printing "let" values) is feasible
 
 - Integrate a bigint library to store realex int (and rat?) values; while

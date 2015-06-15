@@ -1208,11 +1208,16 @@ id_type prints_name()
 {@; static id_type name=main_hash_table->match_literal("prints");
   return name;
 }
+id_type error_name()
+{@; static id_type name=main_hash_table->match_literal("error");
+  return name;
+}
 @)
 inline bool is_special_operator(id_type id)
 {@; return id==size_of_name()
         or id==print_name()
-        or id==prints_name(); }
+        or id==prints_name()
+        or id==error_name(); }
 
 @ For overloaded function calls, once the overloading is resolved, we proceed
 in a similar fashion to non-overloaded calls, except that there is no function
@@ -1270,7 +1275,8 @@ we could possibly do about it here.
 
 In the case of |prints|, the context must either expect or accept a void
 result, which is the condition that the call |type.specialise(void_type)|
-below tests.
+below tests. The case of |error| is like |prints| for its arguments, but will
+not return, so nothing at all is demanded of the context type.
 
 @< If |id| is a special operator like size-of... @>=
 { if (id==size_of_name())
@@ -1295,6 +1301,10 @@ below tests.
     if (type.specialise(void_type))
       return call;
     throw type_error(e,void_type.copy(),std::move(type));
+  }
+  else if(id==error_name()) // this always matches as well
+  { return expression_ptr(new
+      generic_builtin_call(error_wrapper,"error",std::move(arg),e.loc));
   }
 }
 
@@ -1605,7 +1615,8 @@ no quotes in case of a string value, or no parentheses or commas in case of a
 tuple value (so that a single statement can chain several texts on the same
 line). The |prints_wrapper| does this down to the level of omitting quotes in
 individual argument strings, using dynamic casts to determine the case that
-applies.
+applies. The function |error| does the same, but collects the output into a
+string which it then throws as |runtime_error|.
 
 @< Local function definitions @>=
 void prints_wrapper(expression_base::level l)
@@ -1631,6 +1642,15 @@ void prints_wrapper(expression_base::level l)
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // don't forget to return a value if asked for
 }
+
+void error_wrapper(expression_base::level l)
+{ auto save = output_stream;
+  std::ostringstream o; output_stream=&o;
+  prints_wrapper(expression_base::no_value);
+  output_stream=save;
+  throw runtime_error(o.str());
+}
+
 
 @ The generic size-of wrapper is used to find the length of any ``row-of''
 value. Finding sizes of other objects like vectors, matrices, polynomials,

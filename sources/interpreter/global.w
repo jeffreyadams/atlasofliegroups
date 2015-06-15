@@ -2209,13 +2209,6 @@ void join_vectors_wrapper(expression_base::level l)
 
 }
 
-@ Finally, as last function of general utility, one that breaks off
-computation with an error message.
-
-@< Local function definitions @>=
-void error_wrapper(expression_base::level l)
-{@; throw runtime_error(get<string_value>()->val); }
-
 @*1 Vectors and matrices.
 %
 We now define a few functions, to really exercise something, even if it is
@@ -2929,7 +2922,6 @@ install_function(matrix_bounds_wrapper,"#","(mat->int,int)");
 install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
 install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
 install_function(join_vectors_wrapper,"#","(vec,vec->vec)");
-install_function(error_wrapper,"error","(string->*)");
 install_function(vec_unary_eq_wrapper,"=","(vec->bool)");
 install_function(vec_unary_neq_wrapper,"!=","(vec->bool)");
 install_function(vec_eq_wrapper,"=","(vec,vec->bool)");
