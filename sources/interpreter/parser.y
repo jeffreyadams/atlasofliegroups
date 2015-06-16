@@ -72,13 +72,13 @@
 %token BECOMES ":="
 %token TLSUB "~["
 
-%type <expression> expr expr_opt tertiary lettail or_expr and_expr not_expr
-%type <expression>  formula operand secondary primary iftail
+%type <expression> expr expr_opt tertiary cast lettail or_expr and_expr
+%type <expression> not_expr formula operand secondary primary iftail
 %type <expression> subscription slice comprim assignable_subsn ident_expr
 %type <ini_form> formula_start
 %type <oper> operator
 %type <val> tilde_opt
-%destructor { destroy_expr ($$); } expr expr_opt tertiary lettail or_expr
+%destructor { destroy_expr ($$); } expr expr_opt tertiary cast lettail or_expr
 %destructor { destroy_expr ($$); } and_expr not_expr formula operand iftail
 %destructor { destroy_expr ($$); } secondary primary comprim subscription slice
 %destructor { destroy_expr ($$); } assignable_subsn ident_expr
@@ -161,21 +161,22 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 
 expr    : LET lettail { $$=$2; }
 	| '@' ':' expr { $$=make_lambda_node(nullptr,nullptr,$3,@$); }
-	| '@' type ':' expr
-	  { $$=make_lambda_node(nullptr,nullptr,make_cast($2,$4,@$),@$); }
+	| '@' cast     { $$=make_lambda_node(nullptr,nullptr,$2,@$); }
 	| '(' id_specs ')' ':' expr
 	  { $$=make_lambda_node($2.patl,$2.typel,$5,@$); }
-	| '(' id_specs ')' type ':' expr
-	  { $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6,@$),@$); }
-        | REC_FUN IDENT '(' id_specs ')' type ':' expr
-	  { auto l=make_lambda_node($4.patl,$4.typel,make_cast($6,$8,@8),@$);
+	| '(' id_specs ')' cast
+	  { $$=make_lambda_node($2.patl,$2.typel,$4,@$); }
+        | REC_FUN IDENT '(' id_specs_opt ')' cast
+	  { auto l=make_lambda_node($4.patl,$4.typel,$6,@$);
             $$ = make_recfun($2,l,@$,@2);
           }
-        | type ':' expr { $$ = make_cast($1,$3,@$); }
+        | cast
 	| tertiary ';' expr { $$=make_sequence($1,$3,true,@$); }
         | tertiary NEXT expr { $$=make_sequence($1,$3,false,@$); }
 	| tertiary
 ;
+
+cast	: type ':' expr { $$ = make_cast($1,$3,@$); }
 
 lettail : declarations IN expr { $$ = make_let_expr_node($1,$3,@$); }
 	| declarations THEN lettail  { $$ = make_let_expr_node($1,$3,@$); }
@@ -189,6 +190,12 @@ declaration: pattern '=' expr { $$ = make_let_node($1,$3); }
         | IDENT '(' id_specs_opt ')' '=' expr
 	  { struct raw_id_pat p; p.kind=0x1; p.name=$1;
 	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6,@$));
+	  }
+        | REC_FUN IDENT '(' id_specs_opt ')' '=' cast
+	  { auto l = make_lambda_node($4.patl,$4.typel,$7,@$);
+	    auto f = make_recfun($2,l,@$,@2);
+	    struct raw_id_pat p; p.kind=0x1; p.name=$2; // use $2 again
+	    $$ = make_let_node(p,f);
 	  }
 ;
 
