@@ -2,11 +2,12 @@
 
 <basic.rx
 
-: W_word = [int]
+: W_word = (RootDatum,[int])
 
 { compute involution from twiseted involution Weyl word }
 set involution (InnerClass ic, W_word tw) = mat:
-( let rd = root_datum(ic), theta = distinguished_involution(ic)
+( let rd = root_datum(ic), 
+  (,tw)=tw,theta = distinguished_involution(ic)
   in for i : #tw downto 0 do theta := reflection(rd,tw[i])*theta od
   ; theta
 )

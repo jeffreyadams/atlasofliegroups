@@ -18,8 +18,8 @@
   marker |stop| saying where the newest level (where duplicates must be
   avoided) starts.
 }
-set generate_from_dom ([(vec->vec)] S,vec v) = ([W_word],[vec]):
-  let words=[W_word]:[[]], orbit=[v], done=0, stop=1
+set generate_from_dom ([(vec->vec)] S,vec v) = ([[int]],[vec]):
+  let words=[[int]]:[[]], orbit=[v], done=0, stop=1
   then absent (vec y) = bool: { check down to last level marker }
          let i=#orbit-1 in while i>=stop and y!=orbit[i] do i-:=1 od; i<stop
   in
@@ -33,13 +33,17 @@ set generate_from_dom ([(vec->vec)] S,vec v) = ([W_word],[vec]):
     od
   od; (words,orbit)
 
+{same as previous but return ([W_word],[vec])}
+set generate_from_dom (RootDatum rd,[(vec->vec)] S,vec v) = ([W_word],[vec]):
+let (words,orbit)=generate_from_dom(S,v) in (for w in words do (rd,w) od,orbit)
+
 set W_orbit_extra (RootDatum rd,[int] S,vec v) = ([W_word],[vec]):
   let gs = let alpha=simple_roots(rd), alphav=simple_coroots(rd) in
            for i in S
            do let a=alpha[i], av=alphav[i], zero=null(0)
               in (vec x): let s=av*x in if s>0 then x-a*s else zero fi
            od
-  in generate_from_dom(gs, let (d,)=make_dominant(rd,v) in d)
+  in generate_from_dom(rd,gs, let (d,)=make_dominant(rd,v) in d)
 
 { just the W(S)-orbit W.v }
 set W_orbit((RootDatum,[int],vec) triple) = [vec]:
@@ -68,8 +72,8 @@ set generate_W (RootDatum rd) = [W_word]:
   search over the full orbit generated so for, because nothing is known about
   how generators relate to dominance, or even that the generated DAG is graded
 }
-set generate ([(vec->vec)] S,vec v) = ([W_word],[vec]):
-  let words=[W_word]:[[]], orbit=[v], done=0
+set generate ([(vec->vec)] S,vec v) = ([[int]],[vec]):
+  let words=[[int]]:[[]], orbit=[v], done=0
   then absent (vec y) = bool: { check whole orbit }
          let i=#orbit-1 in while i>=0 and y!=orbit[i] do i-:=1 od; i<0
   in
@@ -79,14 +83,21 @@ set generate ([(vec->vec)] S,vec v) = ([W_word],[vec]):
     do let b= f(a) in if absent(b) then ( words #:= i#w, orbit #:= b ) fi od
   od; (words,orbit)
 
-set W_orbit_extra (RootDatum rd,[W_word] S,vec v) = ([W_word],[vec]):
-  generate(for g in S do (vec x) vec: act(rd,g,x) od, v)
+{same as previous but return ([W_Word],[vec])}
+set generate (RootDatum rd,[(vec->vec)] S,vec v) = ([W_word],[vec]):
+let (words,orbit)=generate(S,v) in (for w in words do (rd,w) od,orbit)
+
+set W_orbit_extra ([W_word] S,vec v) = ([W_word],[vec]):
+  let (rd,)=S[0] in 
+  generate(rd,for (,g) in S do (vec x) vec: act((rd,g),x) od, v)
 
 { find Weyl group element x in <S> taking v to w
   returns (true,x) or (false,null(0))
 }
-set conjugate_to(RootDatum rd, [W_word] S, vec v,vec w) = (bool,vec):
-( let (words,orbit) = W_orbit_extra(rd,S,v), i=0 in
+
+{test if u.v=w for some W_word u, return (true,u) or (false, (rd,[])}
+set conjugate_to([W_word] S, vec v,vec w) = (bool,W_word):
+( let (words,orbit) = W_orbit_extra(S,v), i=0 in
   while i>=0 and orbit[i]!=w do i-:=1 od
-; if i>=0 then (true,words[i]) else (false,null(0)) fi
+; if i>=0 then (true,words[i]) else (false,W_word:(let (rd,)=S[0] in rd,null(0))) fi
 )

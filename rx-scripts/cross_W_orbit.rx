@@ -19,17 +19,17 @@
 }
 
 set cross_W_orbit_extra([int] S,KGBElt x) = ([W_word],[KGBElt]):
-  let rd = RootDatum: real_form(x), words = [W_word:[]], orbit= [x], done=0
+  let rd = RootDatum: real_form(x) then words = [W_word:(rd,[])], orbit= [x], done=0
   then absent (KGBElt y) = bool:
          let i=#orbit-1 in while i>=0 and y!=orbit[i] do i-:=1 od; i<0
   in
   while done<#orbit
   do
-    let w = words[done], a=orbit[done] in
+    let (,w) = words[done], a=orbit[done] in
     done+:=1
   ; for i in S
     do let b=cross(i,a) in
-      if absent(b) then ( words #:= i#w, orbit #:= b ) fi
+      if absent(b) then ( words #:= (rd,i#w), orbit #:= b ) fi
     od
   od; (words,orbit)
 
@@ -47,7 +47,7 @@ set cross_W_orbit_W_elements(KGBElt x) = [W_word]:
 
 set find_W_cross(KGBElt x,KGBElt y) = W_word:
   let (words,orbit) = cross_W_orbit_extra(x) then i=#orbit-1 in
-  while i>=0 and y!=orbit[i] do i-:=1 od; if i<0 then [-1] else words[i] fi
+  while i>=0 and y!=orbit[i] do i-:=1 od; if i<0 then (real_form(x),[-1]) else words[i] fi
 
 { just the subset of W(S) that applied to x gives a bijection to W(S).x }
 {

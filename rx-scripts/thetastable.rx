@@ -1,4 +1,5 @@
 <LKT {for no_Cminus_roots}
+<induction_plus.rx
 
 {routines for constructing theta-stable Levis and parabolics}
 
@@ -35,17 +36,36 @@ let G=real_form(x) then
 ()=if not no_Cminus_roots(x) then prints("warning: some roots are of type C-") fi then
 ()=if not is_dominant(G,v) then   prints("warning: argument is not weakly dominant") fi in
 let theta=involution(x) then
-w=(1+theta)*v then
-(l_roots,l_coroots)=([],[]) in 
+w=(1+theta)*v in
+let (l_roots,l_coroots)=([vec]:[],[vec]:[]) in
 let ()=for i:nr_of_posroots(G)  do
  let alpha_check=poscoroots(G)[i] then
  alpha=posroots(G)[i] then
  c=w*alpha_check in 
  if c=0 then l_roots#:=alpha;l_coroots#:=alpha_check fi od then
-ic_L=inner_class(root_datum(simple_from_positive(l_roots,l_coroots)),theta) in real_form(ic_L,theta,torus_factor(x))
+ simple_roots_and_coroots=
+ if #l_roots=0 then simple_from_positive(null(rank(G),0),null(rank(G),0)) 
+  else simple_from_positive(l_roots,l_coroots) fi then
+ rd=root_datum(simple_roots_and_coroots) then
+ ic=inner_class(rd,theta) in
+ real_form(ic,theta,torus_factor(x)) 
+
 
 {return both RealForm: L(x,v) and [vec]: u(x,v)}
 set theta_stable_q(KGBElt x,ratvec v)=(RealForm,[vec]):(L(x,v),u(x,v))
 
-set rho_u(KGBElt x, ratvec v)=ratvec:sum(u(x,v))
+set rho_u(KGBElt x, ratvec v)=let roots=u(x,v) in if #roots=0 then null(rank(real_form(x))) else ratvec:sum(roots)/2 fi
 set rho_L(KGBElt x, ratvec v)=ratvec:rho(L(x,v))
+
+{---------------------------some representations------------------------------------}
+
+set Aq(KGBElt x_in,vec v)=ParamPol:
+let G=real_form(x_in) then
+(v_new,w)=make_dominant(G,v) then
+x_new=W_cross(w,x_in) then
+(L,u)=theta_stable_q(x_new,v_new) then
+()=prints("L:", L, "v_new:", v_new,"xn:", x_new, "w:", w) then
+t_L=trivial(L) in
+{pi_L=parameter(x(t_L),lambda(t_L),nu(t_L)) in }
+theta_induce_irreducible(t_L,G)
+

@@ -31,11 +31,11 @@ set make_no_Cminus (KGBElt x) = KGBElt: { repeat until stable }
 }
 set move_weight (KGBElt x,KGBElt y,vec lambda) = (KGBElt,vec):
 ( let G=real_form(x) in assert(real_form(y)=G,"Real form mismatch")
-; let w=find_W_cross(x,y) in (y,act(root_datum(G),w,lambda))
+; let w=find_W_cross(x,y) in (y,act(w,lambda))
 )
 set move_weight (KGBElt x,KGBElt y,ratvec lambda) = (KGBElt,ratvec):
 ( let G=real_form(x) in assert(real_form(y)=G,"Real form mismatch")
-; let w=find_W_cross(x,y) in (y,act(root_datum(G),w,lambda))
+; let w=find_W_cross(x,y) in (y,act(w,lambda))
 )
 
 set move_finite_dimensional (KGBElt x,KGBElt y,Param p) = Param:

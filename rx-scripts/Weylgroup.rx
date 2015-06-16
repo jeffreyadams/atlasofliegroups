@@ -2,24 +2,27 @@
 <Weyl.rx
 
 { action of Weyl word }
-set act (RootDatum rd, W_word w, vec v) = vec:
+set act (W_word w, vec v) = vec:
+  let (rd,w)=w in 
   let alpha = simple_roots(rd), alphav = simple_coroots(rd) in
   for i:#w downto 0 do let wi=w[i] in v -:= alpha[wi]*(alphav[wi]*v) od; v
 
-set act (RootDatum rd,W_word w,ratvec rv) = ratvec:
-  let (v,den)=%rv in act(rd,w,v)/den
+set act (W_word w,ratvec rv) = ratvec:
+  let (v,den)=%rv in act(w,v)/den
 
 { action of Weyl word on X_*\otimes Q }
-set co_act (RootDatum rd,ratvec rcv,W_word w) = ratvec:
+set co_act (ratvec rcv,W_word w) = ratvec:
+  let (rd,w)=w in
   let alpha = simple_roots(rd), alphav = simple_coroots(rd) in
   for wi in w do rcv -:= (rcv*alpha[wi])*alphav[wi] od; rcv
 
-set w_matrix (RootDatum rd, W_word w) = mat:
+set w_matrix (W_word w) = mat:
+  let (rd,w)=w in
   let M=id_mat(rank(rd))
   , alpha = simple_roots(rd), alphav = simple_coroots(rd)
   in for s in w do M -:= M*column(alpha[s])*row(alphav[s]) od; M
 
-set equal(RootDatum rd, W_word w, W_word u)=bool: w_matrix(rd,w)=w_matrix(rd,u)
+set equal(W_word w, W_word u)=bool:w_matrix(w)=w_matrix(u)
 
 set non_dominant_index (RootDatum rd, vec v) = int:
   let coords = v*simple_coroots(rd), i=semisimple_rank(rd)-1 in
@@ -31,7 +34,7 @@ set non_dominant_index (RootDatum rd, vec v) = int:
 set make_dominant (RootDatum rd, vec v) = (vec,W_word):
   let i=0
   then w =while (i:=non_dominant_index(rd,v))>=0 do v:=reflect(rd,i,v); i od
-  in (v,w)
+  in (v,(rd,w))
 
 set make_dominant (RootDatum rd, ratvec v) = (ratvec,W_word):
   let (v,denom)=%v then (v_dom,w)=make_dominant(rd,v) in (v_dom/denom,w)
@@ -43,18 +46,18 @@ set dominant (RootDatum rd, ratvec v) = ratvec:
   let (n,d)=%v in dominant(rd,n)/d
 
 set inverse (W_word w) = W_word: { like reverse, but without converting to vec }
-  for i:#w downto 0 do w[i] od
+  let (rd,w)=w in (rd,for i:#w downto 0 do w[i] od)
 
 { find some Weyl word (not lexicographically first) acting by the matrix M }
 set word (RootDatum rd, mat M) = W_word:
   let (,w) = make_dominant(rd,M*rho(rd)) then w1= inverse(w)
-  in assert(w_matrix(rd,w1)=M,"Not the action of any Weyl group element"); w1
+  in assert(w_matrix(w1)=M,"Not the action of any Weyl group element"); w1
 
 { rather than length(rd,M) = #word(rd,M), the following is simpler }
 set length (RootDatum rd, mat M) = int:
   n_columns(columns_with(is_negative_root(rd),M*posroots(rd)))
 
-set length(RootDatum rd, W_word w)=int:length(rd,w_matrix(rd,w))
+set length(W_word w)=int:let (rd,w)=w in length(rd,w_matrix(rd,w))
 
 { whether multiplication by simple reflection lengthens or shortens M }
 set lengthens (RootDatum rd, mat M, int s) = bool: { for right multiplication }
@@ -70,7 +73,7 @@ set lengthens (RootDatum rd, int s, mat M) = bool: { for left multiplication }
 }
 set make_simple_sequence (RootDatum rd, vec root) = (W_word, int):
   let alpha = simple_roots(rd), alphav = simple_coroots(rd)
-  , r = semisimple_rank(rd), i=0, val=0, w=W_word:[]
+  , r = semisimple_rank(rd), i=0, val=0, w=[int]:[]
   in
   while
     i:=0; while i<r and (val:=alphav[i]*root)<=0 do i+:=1 od
@@ -78,11 +81,11 @@ set make_simple_sequence (RootDatum rd, vec root) = (W_word, int):
   ; root != alpha[i]
   do root -:= alpha[i]*val
     ; w := i#w
-  od; (w,i)
+  od; ((rd,w),i)
 
 { as  make_simple_sequence, but return Weyl group element in matrix form }
 set make_simple (RootDatum rd, vec root) = (mat, int):
-  let (w,i) = make_simple_sequence(rd,root) in (w_matrix(rd,w),i)
+  let (w,i) = make_simple_sequence(rd,root) in (w_matrix(w),i)
 
 { gamma is integrally dominant, need to add a sum of roots to it to make it
   dominant; this does not change the integral Weyl chamber of gamma,
@@ -121,15 +124,18 @@ set make_integrally_dominant (RootDatum rd,ratvec v) = (ratvec,W_word):
   make_dominant(integrality_datum(rd,v),v)
 
 { act by Weyl group element w, then make result integrally dominant }
-set int_dom_act (RootDatum rd,W_word w,ratvec v) = ratvec:
-  let (new_v,) = make_integrally_dominant(rd,act(rd,w,v)) in new_v
+set int_dom_act (W_word w,ratvec v) = ratvec:
+  let (rd,)=w in 
+  let (new_v,) = make_integrally_dominant(rd,act(w,v)) in new_v
 
 {------------------------basic group operations---------------------}
 
-set left_mult(RootDatum rd, int i,W_word w)=i#w
-set right_mult(RootDatum rd, int i,W_word w)=w#i
-set conjugate(RootDatum rd, int i, W_word w)=i#w#i
-set conjugate(RootDatum rd, int i, W_word w)=i#w#i
+set left_mult(int i,W_word w)=let (,w)=w in i#w
+set right_mult(int i,W_word w)=let (,w)=w in w#i
+set conjugate(int i, W_word w)=let (,w)=w in i#w#i
+set conjugate(int i, W_word w)=let (,w)=w in i#w#i
 
-set multiply(RootDatum rd, W_word w, W_word u)=w#u
-set conjugate(RootDatum rd, W_word w, W_word u)=w#u#inverse(w)
+set multiply(W_word w, W_word u)=let (rd,w)=w,(,u)=u in (rd,w#u)
+set *(W_word w,W_word u)=W_word:multiply(w,u)
+
+set conjugate(W_word w, W_word u)=w*u*inverse(w)

@@ -258,6 +258,13 @@ set denom (ratvec a) = int: let (,d)=%a in d
 set * (int i,ratvec v) = ratvec: v*i
 set * (rat r,ratvec v) = ratvec: v*r
 
+{multiply (rectangular) rational matrix times a rational vector
+ mxn matrix M is given as an m-array of n-ratvecs
+ v is an m-ratvec, result is an m-ratvec}
+set * ([ratvec] M,ratvec v)= 
+if #M!=#v then error("size mismatch") else 
+let rv=ratvec:null(#M[0]) in for i:#v do rv+:=v[i]*M[i] od;rv fi
+
 set is_integer (ratvec v) = bool: let (,d)=%v in d=1 { equivalently =(v%1) }
 
 { extend built-in scalar product of vectors to rational vector case }
@@ -504,6 +511,7 @@ set simple_from_positive (mat posroots,mat poscoroots) = (mat,mat):
   , columns_with(is_simple_for(sum(posroots)),poscoroots)
   )
 
+set fundamental_weights(RootDatum rd)=[ratvec]:for i:semisimple_rank(rd) do fundamental_weight(rd,i) od
 
 {				Inner classes				}
 
@@ -611,6 +619,9 @@ set Cayley (vec alpha,KGBElt x) = KGBElt:
 { cross action of Weyl group element; avoid name conflict cross@(vec,KGBElt) }
 set W_cross ([int] w,KGBElt x) = KGBElt:
   for i:#w downto 0 do x:=cross(w[i],x) od; x
+{ also for w a W_word}
+set W_cross (W_word w,KGBElt x) = KGBElt: let (,w)=w in W_cross(w,x)
+
 
 set KGB_status_text (int i) = string: ["C-","ic","r ","nc","C+"][i]
 
@@ -838,6 +849,16 @@ set pol_format (ParamPol P)= void:
   for w@p in P
   do prints("(",split_format(w),")*",p,", ",infinitesimal_character(p)) od
 
+{
+infinitesimal_characters@ParamPol: array of infinitesimal characters
+define infinitesimal character@ParamPol: common infinitesimal character of all terms, or error
+}
+set infinitesimal_characters(ParamPol P)=[ratvec]:for c@p in P do infinitesimal_character(p) od
+set infinitesimal_character(ParamPol P)=ratvec:let rv=let (,p)=first_term(P) in infinitesimal_character(p) in
+for c@p in P do  if infinitesimal_character(p) != rv then error("not all terms have same infinitesimal character") fi od;rv
+
+set Parameter(ParamPol P,int i)=Param:(for c@p in P do p od)[i]
+set coefficient(ParamPol P,int i)=Split:(for c@p in P do c od)[i]
 
 
 {				Miscellaneous				}
