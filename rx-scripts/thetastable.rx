@@ -62,7 +62,7 @@ set rho_L(KGBElt x, ratvec v)=ratvec:rho(L(x,v))
 set Aq(KGBElt x_in,vec v)=ParamPol:
 let G=real_form(x_in) then
 (v_new,w)=make_dominant(G,v) then
-x_new=W_cross(w,x_in) then
+x_new=W_cross(let (,u)=w in u,x_in) then
 (L,u)=theta_stable_q(x_new,v_new) then
 ()=prints("L:", L, "v_new:", v_new,"xn:", x_new, "w:", w) then
 t_L=trivial(L) in

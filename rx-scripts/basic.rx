@@ -619,9 +619,6 @@ set Cayley (vec alpha,KGBElt x) = KGBElt:
 { cross action of Weyl group element; avoid name conflict cross@(vec,KGBElt) }
 set W_cross ([int] w,KGBElt x) = KGBElt:
   for i:#w downto 0 do x:=cross(w[i],x) od; x
-{ also for w a W_word}
-set W_cross (W_word w,KGBElt x) = KGBElt: let (,w)=w in W_cross(w,x)
-
 
 set KGB_status_text (int i) = string: ["C-","ic","r ","nc","C+"][i]
 
