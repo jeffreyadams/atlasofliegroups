@@ -241,7 +241,7 @@ do no harm even if they were implicitly assumed.
 
 @< Methods of |expr| @>=
 expr() : kind(no_expr), loc() @+{}
-expr(const expr& x) = @[delete@];
+@/expr(const expr& x) = @[delete@];
 expr& operator=(const expr& x) = @[delete@];
 ~expr(); // defined below using a large |switch| statement
 
@@ -275,16 +275,25 @@ expr::~expr()
   }
 }
 
-@ We define a move constructor and move assignment; our first purpose is to
-eliminate the need for copying as much as possible by detecting now forbidden
-copy constructions and assignments hidden in the code.
+@ We define a move constructor and move assignment, a (rarely sued) |swap|
+method. Our first purpose in defining these was to eliminate the need for
+copying as much as possible by detecting now forbidden copy constructions and
+assignments hidden in the code.
 
 @< Methods of |expr| @>=
 void set_from (expr& other);
 expr (expr&& other);
 void operator= (expr&& other);
+void swap (expr& other);
 
-@ We do not assume that |expr| is trivially copyable, so copying requires case distinction.
+@ We do not assume that |expr| is trivially copyable, even though most
+variants (and all in case the macro |incompletecpp1| is defined) are raw
+pointers. Therefore copying requires a large case distinction (which will turn
+out to be very boring). The move constructor and assignment and |swap| method
+are easy to define in terms of |set_from|. However move assignment does
+involve a subtle point: it could be that |other| is a subexpression of the old
+value of |*this|, and it is necessary to move-construct it to a temporary
+variable in order to prevent if from destruction when calling |this->~expr|.
 
 @< Definitions of functions not for... @>=
 void expr::set_from (expr& other)
@@ -303,9 +312,16 @@ expr::expr (expr&& other) : kind(no_expr) @+
 void expr::operator= (expr&& other)
 {@;
   if (this!=&other)
-  {@; this->~expr();
-    set_from(other);
+  { expr tmp(std::move(other)); // move |other| out of destruction's way
+    this->~expr(); // now destruct old value
+    set_from(tmp);
   }
+}
+@)
+void expr::swap (expr& other)
+{@; expr tmp(std::move(*this));
+  set_from(other);
+  other.set_from(tmp);
 }
 
 @ In parallel, we also define a function to print the expressions once parsed;

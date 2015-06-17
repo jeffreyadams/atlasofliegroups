@@ -3208,7 +3208,42 @@ case negation_expr:
      (boolean_negate_builtin->val,"{!@@bool}",std::move(arg),e.loc));
 }
 
+@ Often however a Boolean negation can be eliminated entirely from the
+translated program by changing the syntax tree. For instance if present as
+outermost operation in the condition of a conditional expression, then it
+suffices to interchange the two branches to achieve the effect of the
+negation. To help make such simplifications, here is a function that detects
+and removes a top level negation from an expression, and returns whether it
+found one. (The caller cannot afford ignoring the return value, since the
+expression has already been (potentially) modified when this function
+returns.) Although it is unlikely to find multiple directly nested
+negations, it cost us very little to handle that case as well, so we do.
 
+The memory management is somewhat subtle here, but is handled inside the
+move-assignment operator for |expr|, which we had to rewrite when this code
+was added (previously it did not handle this specific case correctly). In case
+a negation was found, we shall copy a subexpression of~|e| to~|e|. This
+requires moving the (top-level) value to be copied to a temporary variable
+(while marking the original as having become |no_expr|) before destructing the
+old value of~|e|, lest the value to be copied be thrown away in the process of
+recursive destruction. This is similar to how move-assignment of
+|std::unique_ptr| instances ensures the proper timing (releasing the pointer
+to be assigned to a temporary raw pointer before destructing the old value of
+the pointer being assigned to) in case of recursive structures linked by such
+smart pointers. But we could not use that here, since in |expr| the links are
+raw pointers to structures containing |expr| fields: our caller does not hold
+any pointer pointing directly to the argument~|e| it passes, so we cannot
+operate merely by changing some pointers.
+
+@< Local function definitions @>=
+
+bool was_negated (expr& e)
+{ bool negative=false; expr_p p=&e;
+  while (p->kind==negation_expr)
+  @/{@; negative=not negative; p=p->negation_variant; }
+  e=std::move(*p); // will do nothing if |p=&e|
+  return negative;
+}
 
 @*1 Conditional expressions.
 %
@@ -3270,7 +3305,9 @@ also be applied for instance between the expressions in a list display.
 
 @< Cases for type-checking and converting... @>=
 case conditional_expr:
-{ expression_ptr c  =
+{ if (was_negated(e.if_variant->condition)) // eliminate negated conditions
+    e.if_variant->then_branch.swap(e.if_variant->else_branch);
+  expression_ptr c  =
     convert_expr(e.if_variant->condition,as_lvalue(bool_type.copy()));
   type_expr else_type(type.copy());
   // make a copy so as to treat branches similarly
