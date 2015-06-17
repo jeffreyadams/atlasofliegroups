@@ -13,6 +13,8 @@
 
 * Work on the realex program
 
+- Change readline completion to use only global functions and variables
+
 - Make conditionals return shared pointer to global true and false values
 
 - Investigate if some tracing facilty (printing "let" values) is feasible

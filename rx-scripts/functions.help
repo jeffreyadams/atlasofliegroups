@@ -71,9 +71,10 @@ operator # : (T,[T]->[T]) : prepend element to a row (T is any type)
 
 stack_rows: ([vec]->mat) : make matrix by boxing rows, zero-extended if needed
 
-error: (string->*) : abort computation, reporting a runtime error
+error: (*->*) : abort computation, reporting a runtime error
 
 int_format: (int->string): representation of integer as digit string
+to_string:(*,...->string): concatenate string representations of arguments
 print: (*->*): print value, followed by newline; return same value
 prints: (*,...->): print values raw (no quotes or commas) followed by newline
 ascii: (string->int): ASCII code of initial character, or -1 if string empty

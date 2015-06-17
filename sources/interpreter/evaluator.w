@@ -1204,6 +1204,10 @@ id_type print_name()
 {@; static id_type name=main_hash_table->match_literal("print");
   return name;
 }
+id_type to_string_name()
+{@; static id_type name=main_hash_table->match_literal("to_string");
+  return name;
+}
 id_type prints_name()
 {@; static id_type name=main_hash_table->match_literal("prints");
   return name;
@@ -1216,6 +1220,7 @@ id_type error_name()
 inline bool is_special_operator(id_type id)
 {@; return id==size_of_name()
         or id==print_name()
+        or id==to_string_name()
         or id==prints_name()
         or id==error_name(); }
 
@@ -1295,6 +1300,13 @@ not return, so nothing at all is demanded of the context type.
       generic_builtin_call(print_wrapper,"print",std::move(arg),e.loc));
     return conform_types(a_priori_type,type,std::move(call),e);
  }
+  else if(id==to_string_name()) // this always matches as well
+  { expression_ptr call(new
+      generic_builtin_call(to_string_wrapper,"to_string",std::move(arg),e.loc));
+    if (type.specialise(str_type))
+      return call;
+    throw type_error(e,str_type.copy(),std::move(type));
+  }
   else if(id==prints_name()) // this always matches as well
   { expression_ptr call(new
       generic_builtin_call(prints_wrapper,"prints",std::move(arg),e.loc));
@@ -1619,35 +1631,45 @@ applies. The function |error| does the same, but collects the output into a
 string which it then throws as |runtime_error|.
 
 @< Local function definitions @>=
-void prints_wrapper(expression_base::level l)
+std::ostream& to_string_aux(std::ostream& o, expression_base::level l)
 { shared_value v=pop_value();
+@)
   const string_value* s=dynamic_cast<const string_value*>(v.get());
   if (s!=nullptr)
-    *output_stream << s->val << std::endl;
+    o << s->val; // single string without quotes
   else
   { const tuple_value* t=dynamic_cast<const tuple_value*>(v.get());
     if (t!=nullptr)
     { for (auto it=t->val.begin(); it!=t->val.end(); ++it)
       { s=dynamic_cast<const string_value*>(it->get());
         if (s!=nullptr)
-	  *output_stream << s->val;
+	  o << s->val; // string components without quotes
         else
-           *output_stream << *it->get();
+           o << *it->get(); // treat non-string tuple components as |print|
       }
-      *output_stream << std::endl;
     }
     else
-      *output_stream << *v << std::endl; // just like |print| in other cases
+      o << *v; // output like |print| unless string or tuple
   }
+  return o;
+}
+
+void to_string_wrapper(expression_base::level l)
+{ std::ostringstream o;
+  to_string_aux(o,l);
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<string_value>(o.str()));
+}
+
+void prints_wrapper(expression_base::level l)
+{ to_string_aux(*output_stream,l) << std::endl;
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // don't forget to return a value if asked for
 }
 
 void error_wrapper(expression_base::level l)
-{ auto save = output_stream;
-  std::ostringstream o; output_stream=&o;
-  prints_wrapper(expression_base::no_value);
-  output_stream=save;
+{ std::ostringstream o;
+  to_string_aux(o,l);
   throw runtime_error(o.str());
 }
 
@@ -4065,10 +4087,11 @@ case op_cast_expr:
 }
 break;
 
-@ For our special operators, |print|, |prints| we select their wrapper
-function here always, since they accept any argument type. We signal an error
-only if the context requires a type that cannot be specialised the type of
-operator found. For $\#$ the situation will be slightly more complicated.
+@ For our special operators, |print|, |prints|, |to_string|, |error|, we
+select their wrapper function here always, since they accept any argument
+type. We signal an error only if the context requires a type that cannot be
+specialised the type of operator found. For $\#$ the situation will be
+slightly more complicated.
 
 @< Test special argument patterns... @>=
 { if (c->oper==print_name())
@@ -4080,6 +4103,16 @@ operator found. For $\#$ the situation will be slightly more complicated.
   { if (functype_specialise(type,ctype,void_type))
     return expression_ptr(new @| denotation
       (std::make_shared<builtin_value>(prints_wrapper,"prints")));
+  }
+  else if (c->oper==to_string_name())
+  { if (functype_specialise(type,ctype,str_type))
+    return expression_ptr(new @| denotation
+      (std::make_shared<builtin_value>(prints_wrapper,"to_string")));
+  }
+  else if (c->oper==error_name())
+  { if (functype_specialise(type,ctype,unknown_type))
+    return expression_ptr(new @| denotation
+      (std::make_shared<builtin_value>(prints_wrapper,"error")));
   }
   else if (c->oper==size_of_name())
     @< Select the proper instance of the \.\# operator,
