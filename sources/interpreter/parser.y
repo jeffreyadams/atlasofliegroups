@@ -138,7 +138,7 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| ':' IDENT '=' type '\n' { type_define_identifier($2,$4); YYABORT; }
 	| ':' TYPE_ID '=' type '\n' { type_define_identifier($2,$4); YYABORT; }
 	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
-	| SET IDENT // set an option; option identifiers have lowest codes
+	| SET IDENT '\n' // set an option; option identifiers have lowest codes
           { unsigned n=$2-lex->first_identifier();
             if (n<2)
               *verbosity=n; // |quiet| gives 0, and |verbose| gives 1

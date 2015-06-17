@@ -243,11 +243,11 @@ set lookup_row (vec v,mat m) = int:
 { sum of columns of a matrix; this is so neat, avoid calling it sum_columns }
 set sum (mat m)= vec: m*ones(n_columns(m))
 
-{order of a matrix, hangs unless finite}
-set order(mat M)=int:
-let (N,order,n,done)=(M,1,n_rows(M),false) in
-while not done do
- if N=id_mat(n) then done:=true  else  N:=M*N; order:=order+1 fi od;order
+{ order of a matrix, hangs unless finite }
+set order (mat !M) = int:
+  let (n,):p =#M in assert(=p,"Matrix is not square");
+  let N=M, order=1, I=id_mat(n) in
+  while N!=I do N *:= M; order+:=1 od; order
 
 {			    Rational vectors				}
 
@@ -258,12 +258,15 @@ set denom (ratvec a) = int: let (,d)=%a in d
 set * (int i,ratvec v) = ratvec: v*i
 set * (rat r,ratvec v) = ratvec: v*r
 
-{multiply (rectangular) rational matrix times a rational vector
- mxn matrix M is given as an m-array of n-ratvecs
- v is an m-ratvec, result is an m-ratvec}
-set * ([ratvec] M,ratvec v)= 
-if #M!=#v then error("size mismatch") else 
-let rv=ratvec:null(#M[0]) in for i:#v do rv+:=v[i]*M[i] od;rv fi
+{ multiply rational matrix represented as list of columns by a rational vector
+  the m*n matrix M is given as a list of n ratvec values of size m
+  v is a ratvec of size n, the result is a ratvec of size m
+}
+set * ([ratvec] M,ratvec v) = ratvec:
+  let m=#M { number of columns } in
+  assert(!=m { cannot handle empty matrix } and m=#v,"size mismatch");
+  let result = null(#M[0])/1 in for col@j in M do result +:= col*v[j] od;
+  result
 
 set is_integer (ratvec v) = bool: let (,d)=%v in d=1 { equivalently =(v%1) }
 
@@ -511,7 +514,8 @@ set simple_from_positive (mat posroots,mat poscoroots) = (mat,mat):
   , columns_with(is_simple_for(sum(posroots)),poscoroots)
   )
 
-set fundamental_weights(RootDatum rd)=[ratvec]:for i:semisimple_rank(rd) do fundamental_weight(rd,i) od
+set fundamental_weights (RootDatum rd) = [ratvec]:
+  for i:semisimple_rank(rd) do fundamental_weight(rd,i) od
 
 {				Inner classes				}
 
@@ -584,7 +588,8 @@ set is_compatible (RealForm f, RealForm g) = bool:
   then oc = occurrence_matrix(ic)*^dual_occurrence_matrix(ic)
   in inner_class(g)=dual(ic) and oc[form_number(f),form_number(g)]>0
 
-set is_compact(RealForm G)=involution(KGB(G,KGB_size(G)-1))=id_mat(rank(G))
+set is_compact (RealForm G) = bool: { real form 0 in equal rank inner class }
+  involution(KGB(G,KGB_size(G)-1)) = id_mat(rank(G))
 
 {			       KGB elements				}
 
@@ -846,14 +851,25 @@ set pol_format (ParamPol P)= void:
   for w@p in P
   do prints("(",split_format(w),")*",p,", ",infinitesimal_character(p)) od
 
-{
-infinitesimal_characters@ParamPol: array of infinitesimal characters
-define infinitesimal character@ParamPol: common infinitesimal character of all terms, or error
-}
-set infinitesimal_characters(ParamPol P)=[ratvec]:for c@p in P do infinitesimal_character(p) od
-set infinitesimal_character(ParamPol P)=ratvec:let rv=let (,p)=first_term(P) in infinitesimal_character(p) in
-for c@p in P do  if infinitesimal_character(p) != rv then error("not all terms have same infinitesimal character") fi od;rv
+{ find what should be unique infintesimal character shared by all terms }
+set infinitesimal_character(ParamPol P) = ratvec:
+  assert(!=P,"empty polynomial has no infinitesimal character");
+  let (,,gamma)=%first_param(P) in
+  for @p in P
+  do assert(infinitesimal_character(p)=gamma
+           ,"infinitesimal character not unique")
+  od; gamma
 
+{ more generally, groups terms into different ParamPol, by value of gamma }
+set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
+  let M = [(ratvec,ParamPol)]:[]
+  then insert ((Split,Param)(,p):term ) = void: { insert into M }
+    let inserted=false, gamma=infinitesimal_character(p) in
+    for (key,P)@i in M
+    do if key=gamma then M[i]:=(key,P+term); inserted:=true fi
+    od
+  ; if not inserted then M #:= (gamma,ParamPol: p) fi
+  in for c@p in P do insert(c,p) od; M
 
 {				Miscellaneous				}
 
@@ -891,8 +907,9 @@ set complex_posroots (RootDatum rd,mat theta) =  mat:
 set complex_posroots (KGBElt x) =  mat:
   complex_posroots(root_datum(x),involution(x))
 
-{for user convenience; a ParamPol is an associative array ParamPol->Split
-the i^th term of a ParamPol is not reliable, but useful in user interactions}
-
-set monomial(ParamPol P,int i)=Param:(for c@p in P do p od)[i]
-
+{ for user convenience; a ParamPol is an associative array ParamPol->Split
+  so selecting its monomials (Param values) by position is not reliable, but
+  allowing so is useful in user sessions to pick terms from a computed result
+}
+set monomials(ParamPol P) = [Param]: for c@p in P do p od
+set monomial(ParamPol P,int i) = Param: monomials(P)[i]

@@ -3,7 +3,8 @@
 <W_orbit.rx
 
 { An element in the delta-coset of the (extended) Tits group is represented by
-  (RootDatum rdratvec v,mat theta) -> \exp(2i\pi v)\sigma_w\delta where \theta=w\delta.
+  (RootDatum rd,ratvec v,mat theta) representing \exp(2i\pi v)\sigma_w\delta
+  where \theta=w\delta.
   So v is a rational coweight taken modulo 1; theta need not be an invloution.
   Note that \delta is incorporated into \theta (like into involution@KGBElt)
   and that theta is defined as operating from left on X^*; for left action of
@@ -15,7 +16,7 @@ set root_datum(Tits_elt(rd,v,theta))=RootDatum:rd
 set torus_factor(Tits_elt(rd,v,theta))=ratvec:v
 set involution(Tits_elt(rd,v,theta))=mat:theta
 
-{equality test assumes the root data agree}
+{ equality test assumes the root data agree }
 set = (Tits_elt(rd,v,theta),Tits_elt(rd_1,u,eta)) = bool: =(v-u)%1 and theta=eta
 set != ((Tits_elt,Tits_elt)p) = bool: not =p
 
