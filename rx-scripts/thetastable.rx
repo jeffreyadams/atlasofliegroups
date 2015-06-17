@@ -59,13 +59,51 @@ set rho_L(KGBElt x, ratvec v)=ratvec:rho(L(x,v))
 
 {---------------------------some representations------------------------------------}
 
-set Aq(KGBElt x_in,vec v)=ParamPol:
+{Note: theta_induce_irreducible(pi_L,G) has infinitesimal character 
+infinitesimal character(pi_L)+rho(u)}
+
+{
+Aq(x,lambda,lambda_q) defined as follows
+if lambda_q is weakly dominant set q=q(x,\lambda_q)
+apply derived functor to one dimensional lambda-rho(u) of L
+(lambda+rho(L))-rho(u)+rho(u)=lambda+rho_L
+REQUIRE: lamda-rho(L)\in X^*
+for example, equal rank, x on compact Cartan Aq(x,rho(G),rho(G))
+is a discrete series with infinitesimal character rho(G)
+if lambda_q isn't weakly dominant define Aq(x,lambda,lambda_q)=Aq(wx,w\lambda,w\lambda_q)
+where w\lambda_q is weakly dominant
+}
+
+{first defined Aq as a ParamPol, in case it isn't irreducible}
+set Aq_param_pol(KGBElt x_in,ratvec lambda_in, ratvec lambda_q)=ParamPol:
 let G=real_form(x_in) then
-(v_new,w)=make_dominant(G,v) then
-x_new=W_cross(let (,u)=w in u,x_in) then
-(L,u)=theta_stable_q(x_new,v_new) then
-()=prints("L:", L, "v_new:", v_new,"xn:", x_new, "w:", w) then
-t_L=trivial(L) in
-{pi_L=parameter(x(t_L),lambda(t_L),nu(t_L)) in }
-theta_induce_irreducible(t_L,G)
+{find w making lambda_q (or lambda_in?) weakly dominant}
+{(lambda_in_new,w)=make_dominant(G,lambda_in) then}
+(lambda_q_new,w)=make_dominant(G,lambda_q) then
+x_new=W_cross(inverse(w),x_in) then
+{lambda_q_new=act(w,lambda_q) then}
+lambda_in_new=act(inverse(w),lambda_in) then
+(L,u)=theta_stable_q(x_new,lambda_q_new) then
+t_L=trivial(L) then
+pi_L=parameter(x(t_L),lambda(t_L)+lambda_in_new-rho_u(x_new,lambda_q_new),nu(t_L)) in 
+theta_induce_irreducible(pi_L,G) 
+
+set Aq(KGBElt x_in,ratvec lambda_in, ratvec lambda_q)=Param:
+let P=Aq_param_pol(x_in,lambda_in,lambda_q) then
+P=%P in 
+if #P>1 then error("Aq is not irreducible. Use Aq_param_pol(x,lambda) instead")  else
+let (c,p)=P[0] in 
+ if c!=1 then error("Aq has multiplicity. Use Aq_param_pol(x,lambda) instead") 
+else p fi fi
+
+{if not provided, assume lambda_q=lambda}
+set Aq(KGBElt x,ratvec lambda_in)=Param:Aq(x,lambda_in,lambda_in)
+
+{specify G, and not x, to use x=KGB(G,0)}
+
+set Aq(RealForm G,ratvec lambda_in, ratvec lambda_q)=Param:Aq(KGB(G)[0],lambda_in,lambda_q)
+set Aq(RealForm G,ratvec lambda_in)=Param:Aq(G,lambda_in,lambda_in)
+
+
+
 

@@ -854,9 +854,6 @@ set infinitesimal_characters(ParamPol P)=[ratvec]:for c@p in P do infinitesimal_
 set infinitesimal_character(ParamPol P)=ratvec:let rv=let (,p)=first_term(P) in infinitesimal_character(p) in
 for c@p in P do  if infinitesimal_character(p) != rv then error("not all terms have same infinitesimal character") fi od;rv
 
-set Parameter(ParamPol P,int i)=Param:(for c@p in P do p od)[i]
-set coefficient(ParamPol P,int i)=Split:(for c@p in P do c od)[i]
-
 
 {				Miscellaneous				}
 
@@ -893,3 +890,9 @@ set complex_posroots (RootDatum rd,mat theta) =  mat:
   columns_with(is_complex(theta),posroots(rd))
 set complex_posroots (KGBElt x) =  mat:
   complex_posroots(root_datum(x),involution(x))
+
+{for user convenience; a ParamPol is an associative array ParamPol->Split
+the i^th term of a ParamPol is not reliable, but useful in user interactions}
+
+set monomial(ParamPol P,int i)=Param:(for c@p in P do p od)[i]
+

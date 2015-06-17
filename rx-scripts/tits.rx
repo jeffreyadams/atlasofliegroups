@@ -47,10 +47,10 @@ set right (Tits_elt(rd,v,theta), int s) = Tits_elt:
 
 {multiplication by canonical lift of W_word}
 set left (W_word ww,Tits_elt xi) = Tits_elt:
-  for i:#ww downto 0 do xi:=left(ww[i],xi) od; xi
+  let (,ww)=ww in for i:#ww downto 0 do xi:=left(ww[i],xi) od; xi
 
 set right (Tits_elt xi, W_word ww) = Tits_elt:
-  for s in ww do xi:=right(xi,s) od; xi
+  let (,ww)=ww in for s in ww do xi:=right(xi,s) od; xi
 
 { left multiply by torus factor \exp(2i\pi v)\sigma_s }
 set left ((ratvec,int)(v,s), Tits_elt xi) = Tits_elt:
@@ -66,7 +66,7 @@ set conjugate (int s, Tits_elt(rd,,):xi) = Tits_elt:
   right(left(s,xi),sigma_s_inv)
 
 set conjugate (W_word ww, Tits_elt xi) = Tits_elt:
-  for i in reverse(ww) do xi:=conjugate(i,xi) od; xi
+  let (,ww)=ww in for i in reverse(ww) do xi:=conjugate(i,xi) od; xi
 
 { in multiplication only one of the arguments should be in the delta-coset }
 set multiply (Tits_elt(rd,v,theta), Tits_elt(,u,eta)) = Tits_elt:
@@ -90,10 +90,10 @@ set inverse (Tits_elt(rd,v,theta)) = Tits_elt:
   (rd, (-v*theta_inv - rho_check(rd)*(theta_inv-1)/2) % 1, theta_inv)
 
 {canonical lift of Weyl group element to Tits group}
-set lift(RootDatum rd, W_word w)=Tits_elt:left(w,tits_identity(rd))
+set lift(W_word w)=Tits_elt:left(w,tits_identity(root_datum(w)))
 
 {canonical lift of Weyl group element to \delta-twisted Tits group}
-set lift(RootDatum rd,mat delta, W_word w)=Tits_elt:left(w,tits_delta(rd,delta))
+set lift(mat delta, W_word w)=Tits_elt:left(w,tits_delta(root_datum(w),delta))
 set lift(RealForm G, W_word w)=Tits_elt:left(w,tits_delta(G))
 
 
@@ -106,6 +106,6 @@ else xi:=inverse(xi);
  let rv=xi in for i:n-1 do rv:=xi*rv od;rv  fi
 
 {order of W_word, uses basic:order(mat M)}
-set order(RootDatum rd, W_word w)=int:order(w_matrix(rd,w))
+set order(W_word w)=int:order(w_matrix(w))
 
 
