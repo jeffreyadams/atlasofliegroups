@@ -7,9 +7,12 @@ distr_subdirs="messages sources rx-scripts"
 distr_files="COPYRIGHT LICENSE README CHANGES"
 distr_all_src="error interface io utilities structure gkmod test stand-alone"
 dirs_with_cweb="interpreter stand-alone io"  # directories containing *.w files
-rx_files="basic groups misc kl iterate_deform hermitian unitary translate \
- lietypes test det sp4 my nilpotent sort"
-
+rx_files="basic groups parameters K K_types LKT Weyl Weylgroup W_orbit \
+cross_W_orbit dual finite_dimensional galois generate_groups group_operations \
+hermitian induction iterate_deform kl lattice matrix nilpotent nonintegral \
+polynomial representations sort tits torus translate twist unitary \
+test_unitarity misc my"
+help_files="README.rx-scripts examples" # files *.help are also included
 
 echo Building $distr
 
@@ -18,9 +21,10 @@ for sd in $distr_subdirs ; do mkdir $distr/$sd; done
 for f in $distr_files ; do ln -s $here/$f $distr; done
 ln -s $here/distr_INSTALL $distr/INSTALL
 ln -s $here/distr_Makefile $distr/Makefile
+ln -s $here/getversion.pl $distr
 ln -s $here/messages/* $distr/messages/
 for f in $rx_files ; do ln -s $here/rx-scripts/$f.rx $distr/rx-scripts ; done
-ln -s $here/rx-scripts/examples $distr/rx-scripts/
+for f in $help_files ; do ln -s $here/rx-scripts/$f $distr/rx-scripts ; done
 ln -s $here/rx-scripts/*.help $distr/rx-scripts/
 ln -s $here/doc/modules $distr/
 for sd in sources/*; do mkdir $distr/$sd; done

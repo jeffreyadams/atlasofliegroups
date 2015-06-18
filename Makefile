@@ -10,26 +10,28 @@ INSTALL = /usr/bin/install
 # will be moved after successfull compilation
 
 # BINDIR is where a symbolic link or shell script 'atlas' calling to the
-# executable, and a symbolic link 'realex' will be placed; provided this
-# directory is in the search path, you can then execute unsing atlas, realex
+# executable, and shell script 'realex' will be placed; provided this
+# directory is in the search path, you can then call atlas, realex from anywhere
+
+# However when BINDIR is INSTALLDIR one cannot have those shell scripts since
+# they would be at the same place as the executable to call; since both default
+# to the current directory, you are advised to set at least BINDIR explicitly.
+# INSTALLDIR only needs to be changed if the current directory is temporary
 
 # In a single-user situation, you might want something like this:
 #   INSTALLDIR := /home/fokko/myatlas
 #   BINDIR     := /home/fokko/bin
 
-# In a multi-user situation, you might want this (requires root):
+# In a multi-user situation, you might want this (requires root privilege):
 #   INSTALLDIR := /usr/local/atlas
 #   BINDIR     := /usr/local/bin
 
-# The default: use the current directory, binaries in parent subdirectory bin
+# The default: use current directoty for both
 INSTALLDIR := $(shell pwd)
-BINDIR := $(INSTALLDIR)/../bin
+BINDIR := $(shell pwd)
 
+version := $(shell ./getversion.pl)
 
-#Don't edit below this line, with the possible exception of rl_libs
-###############################
-
-version = $(shell perl getversion.pl)
 messagedir := $(INSTALLDIR)/messages/
 cweb_dir := cwebx
 sources_dir := sources
@@ -50,7 +52,7 @@ atlas_objects := $(atlas_sources:%.cpp=%.o)
 includedirs := $(addprefix -Isources/,$(atlas_dirs))
 realex_includes := $(addprefix -Isources/,$(realex_dirs))
 
-# for the interpreter (realex sans the atlas library) sources are *.w files
+# for the interpreter (realex sans the Atlas library) sources are *.w files
 interpreter_cwebs := $(wildcard sources/interpreter/*.w)
 interpreter_cweb_objects := $(interpreter_cwebs:%.w=%.o)
 interpreter_objects := $(interpreter_cweb_objects) \
@@ -61,7 +63,7 @@ interpreter_made_files := $(interpreter_cwebs:%.w=%.cpp) \
 non_realex_objects := sources/io/interactive%.o \
     sources/interface/%.o sources/test/%.o \
     sources/io/poset.o sources/utilities/abelian.o sources/gkmod/kgp.o
-realex_objects := $(interpreter_objects)  \
+realex_objects := $(interpreter_objects) \
     $(filter-out $(non_realex_objects),$(atlas_objects))
 
 objects := $(atlas_objects) $(interpreter_objects)
@@ -93,13 +95,10 @@ atlas_flags :=
 # these flags are necessary for compilation, and should not be altered
 CXXFLAGS  = -c $(includedirs)
 
-# these flags set the compilation flavor (default: normal)
-CXXFLAVOR ?= $(nflags)
-
 # to select another flavor, set optimize=true, debug=true or profile=true
-# when calling make (as in "make optimize=true") or set the flavor as an
+# when calling make (as in "make optimize=true") or set CXXFLAVOR as an
 # environment variable (only the first flavor set in above list takes effect)
-# alternatively, you can set CXXFLAVOR="explicit options" to override
+# alternatively, you can do "make CXXFLAVOR='explicit options'" to specify
 
 ifeq ($(optimize),true)
       CXXFLAVOR := $(oflags)
@@ -109,6 +108,8 @@ ifeq ($(debug),true)
 else
 ifeq ($(profile),true)
       CXXFLAVOR := $(pflags)
+else # use value from environment or command line, or defualt to normal
+CXXFLAVOR ?= $(nflags)
 endif
 endif
 endif
@@ -131,7 +132,8 @@ ifeq ($(verbose),true)
     atlas_flags += -DVERBOSE
 endif
 
-# the default compiler
+# the compiler to use, including language switch
+# some C++11 support needed (rvalue references, shared_ptr) but g++-4.4 suffices
 CXX = g++ -std=c++0x
 
 CXXVERSION := $(shell $(CXX) -dumpversion)
@@ -142,7 +144,7 @@ ifeq "$(CXXVERSIONOLD)" "1"
   CXXFLAVOR += -Dincompletecpp11
 endif
 ifeq "$(CXXVERSIONVERYOLD)" "1"
-  CXXFLAVOR += -Dincompletecpp11 -Dnoexcept= -Dconstexpr= -Dnullptr=0
+  CXXFLAVOR += -Dnoexcept= -Dconstexpr= -Dnullptr=0
 endif
 
 
@@ -163,7 +165,7 @@ LDFLAGS := $(rl_libs)
 # we use no suffix rules
 .SUFFIXES:
 
-.PHONY: all install distribution
+.PHONY: all install version distribution
 
 # The default target is 'all', which builds the executable 'atlas', and 'realex'
 all: atlas realex
@@ -218,16 +220,16 @@ sources/interpreter/parser.tab.o: \
 $(dependencies) : %.d : %.cpp
 	$(CXX) $(includedirs) -MM -MF $@ -MT "$*.o $*.d" $*.cpp
 
-# now include all the files constructed by the previous rule
-# this defines the dependencies, found by the preprocessor scanning #include
-# directives, for all object files of the atlas
-# make will automatically remake any of $(dependencies) if necessary
+# now include all the files constructed by the previous rule; this defines
+# the dependencies, found by the preprocessor scanning #include directives,
+# so for all object files of the atlas, 'make' will automatically remake
+# any of $(dependencies) if necessary. But 'veryclean' target should skip this
 
 ifneq ($(MAKECMDGOALS),veryclean)
 include $(dependencies)
 endif
 
-include sources/interpreter/dependencies
+include sources/interpreter/dependencies # these are manually maintained for now
 
 install: atlas realex
 ifneq ($(INSTALLDIR),$(shell pwd))
@@ -235,24 +237,26 @@ ifneq ($(INSTALLDIR),$(shell pwd))
 	$(INSTALL) -d $(INSTALLDIR)/www
 	$(INSTALL) -d $(INSTALLDIR)/messages $(INSTALLDIR)/rx-scripts
 	$(INSTALL) -m 644 LICENSE COPYRIGHT README $(INSTALLDIR)
-	$(INSTALL) rx-scripts/*.help $(INSTALLDIR)
 	$(INSTALL) -p atlas realex $(INSTALLDIR)
 	$(INSTALL) -m 644 www/*html $(INSTALLDIR)/www/
 	$(INSTALL) -m 644 messages/*.help $(INSTALLDIR)/messages/
-	$(INSTALL) -m 644 messages/*intro_mess $(INSTALLDIR)/messages/
+	$(INSTALL) -m 644 messages/intro_mess $(INSTALLDIR)/messages/
 	$(INSTALL) -m 644 rx-scripts/* $(INSTALLDIR)/rx-scripts/
 endif
 ifneq ($(BINDIR),$(INSTALLDIR))
 	mkdir -p $(BINDIR)
 	@if test -h $(BINDIR)/atlas; then rm -f $(BINDIR)/atlas; fi
 	@if test -h $(BINDIR)/realex; then rm -f $(BINDIR)/realex; fi
-ifeq ($(INSTALLDIR),$(shell pwd))
-	ln -s $(INSTALLDIR)/atlas $(BINDIR)/atlas # make symbolic link
-else
-	echo "#!/bin/sh\n$(INSTALLDIR)/atlas $(INSTALLDIR)/messages/" \
+ifeq ($(INSTALLDIR),$(shell pwd)) # then compiled-in message path can be used
+	ln -s $(INSTALLDIR)/atlas $(BINDIR)/atlas # so just make symbolic link
+else # we need to tell atlas to search its messages where they have been moved
+	echo "#!/bin/sh\nexec $(INSTALLDIR)/atlas $(INSTALLDIR)/messages/" \
 	 >$(BINDIR)/atlas; chmod a+x $(BINDIR)/atlas
 endif
-	ln -s $(INSTALLDIR)/realex $(BINDIR)/realex
+# whenever BINDIR is not INSTALLDIR, we can put a shell script as bin/realex
+# like for atlas, this ensures the search path is properly set
+	echo "#!/bin/sh\n$(INSTALLDIR)/realex --path=n$(INSTALLDIR)/rx-scripts \
+          basic.rx "$@" >$(BINDIR)/realex; chmod a+x $(BINDIR)/realex
 endif
 
 version:
@@ -261,20 +265,22 @@ version:
 distribution:
 	bash make_distribution.sh $(version)
 
-.PHONY: mostlyclean clean veryclean show
+.PHONY: mostlyclean clean veryclean showobjects
 mostlyclean:
-	$(RM) -f $(objects) $(interpreter_made_files) \
-            sources/interpreter/parser.tab.* *~ *.out junk
+	$(RM) -f $(objects) $(interpreter_made_files) *~ *.out junk
 
 clean: mostlyclean
 	$(RM) -f atlas realex
 
 veryclean: clean
-	$(RM) -f sources/*/*.d
+	$(RM) -f sources/*/*.d cwebx/*.o cwebx/ctangle cwebx/cweave
 
 $(cweb_dir)/ctanglex: \
-  $(cweb_dir)/common.h $(cweb_dir)/ctangle.c $(cweb_dir)/ctangle.c
+  $(cweb_dir)/common.h $(cweb_dir)/ctangle.h $(cweb_dir)/ctangle.c
 	cd $(cweb_dir) && $(MAKE) ctanglex
+$(cweb_dir)/cweavex: \
+  $(cweb_dir)/common.h $(cweb_dir)/cweave.h $(cweb_dir)/cweave.c
+	cd $(cweb_dir) && $(MAKE) cweavex
 
 showobjects:
 	@echo $(objects)
