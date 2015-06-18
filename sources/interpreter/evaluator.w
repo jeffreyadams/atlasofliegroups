@@ -3362,22 +3362,62 @@ void conditional_expression::evaluate(level l) const
 Next we consider |while| loops, which have two parts.
 
 @< Type def... @>=
-struct while_expression : public expression_base
-{ expression_ptr condition, body;
+struct loop_base : public expression_base
+{ expression_ptr body;
+  loop_base (expression_ptr&& b) : body(b.release()) @+{}
+  virtual ~@[loop_base() nothing_new_here@];
+  void print_body (std::ostream& out,unsigned flags) const;
+};
+
+@)
+template<unsigned flags>
+struct while_expression : public loop_base
+{ expression_ptr condition;
 @)
   while_expression(expression_ptr&& c,expression_ptr&& b)
-   : condition(c.release()),body(b.release())
+   : loop_base(std::move(b)),condition(c.release())
   @+{}
   virtual ~@[while_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
 
-@ Printing a |while| expression is straightforward.
+@ We can handle the |flags|-dependent part of printing in the method
+|print_body|. The part involving the bit |0x1| will serve for other kinds of
+loops than |while| loops.
 
 @< Function definitions @>=
-void while_expression::print(std::ostream& out) const
-{@; out << " while " <<  *condition << " do " << *body << " od ";
+
+void loop_base::print_body(std::ostream& out,unsigned flags) const
+{@; out << ((flags&0x1)!=0 ? " ~do " : " do ")  << *body
+        << ((flags&0x2)!=0 ? " ~od " : " od ");
+}
+
+@ In printing a |while| expression, the bit |0x1| controls the initial keyword
+printed.
+
+@< Function definitions @>=
+template<unsigned flags>
+void while_expression<flags>::print(std::ostream& out) const
+{@; print_body
+     (out << ((flags&0x1)!=0 ? " until " : " while ") <<  *condition
+     , flags&0x2);
+}
+
+@ The following function helps instantiating the class template, selecting a
+constant template parameter equal to |flags|.
+
+@< Local function def... @>=
+expression make_while_loop
+  (unsigned flags,expression_ptr&& condition,expression_ptr&& body)
+{ switch(flags)
+  {
+  case 0: return new while_expression<0>(std::move(condition),std::move(body));
+  case 1: return new while_expression<1>(std::move(condition),std::move(body));
+  case 2: return new while_expression<2>(std::move(condition),std::move(body));
+  case 3: return new while_expression<3>(std::move(condition),std::move(body));
+  default: assert(false); return nullptr;
+  }
 }
 
 @ Type checking for |while| loops has a few complications because possibly a
@@ -3392,15 +3432,18 @@ display (except that there is only one expression in this case).
 @< Cases for type-checking and converting... @>=
 case while_expr:
 { const w_loop& w=e.while_variant;
+  if (was_negated(w->condition))
+    w->flags.set(0); // this makes an ``until-loop''
   expression_ptr c = convert_expr(w->condition,as_lvalue(bool_type.copy()));
   if (type==void_type)
-  { expression_ptr result(new @| while_expression
-      (std::move(c),convert_expr(w->body, as_lvalue(void_type.copy()))));
+  { expression_ptr result(make_while_loop @| (w->flags.to_ulong(),
+       std::move(c),convert_expr(w->body, as_lvalue(void_type.copy()))));
     return expression_ptr(new voiding(std::move(result)));
   }
   else if (type.specialise(row_of_type))
   { expression_ptr b = convert_expr(w->body, *type.component_type);
-    return expression_ptr (new while_expression(std::move(c),std::move(b)));
+    return expression_ptr (make_while_loop @|
+       (w->flags.to_ulong(),std::move(c),std::move(b)));
   }
   else
   @< If |type| can be converted from some row-of type, check |w->body|
@@ -3420,8 +3463,8 @@ component type as for list displays, in section@#list display conversion@>.
   if (conv==nullptr)
     throw type_error(e,row_of_type.copy(),std::move(type));
 @)
-  return expression_ptr(new conversion(*conv, expression_ptr
-    (new while_expression(std::move(c),convert_expr(w->body,comp_type)))));
+  return expression_ptr(new conversion(*conv, expression_ptr(make_while_loop @|
+       (w->flags.to_ulong(),std::move(c),convert_expr(w->body,comp_type)))));
 }
 
 
@@ -3437,21 +3480,25 @@ user-defined functions (where a test is done too), we put a test of the user
 interrupt flag in the body of the evaluation of any |while|-loop.
 
 @< Function definitions @>=
-void while_expression::evaluate(level l) const
+template<unsigned flags>
+void while_expression<flags>::evaluate(level l) const
 { if (l==no_value)
-    while (condition->eval(),get<bool_value>()->val)
+    while (condition->eval(),get<bool_value>()->val==((flags&0x1)==0))
     { if (interrupt_flag!=0)
         throw user_interrupt();
       body->void_eval();
     }
   else
   { own_row result = std::make_shared<row_value>(0);
-    while (condition->eval(),get<bool_value>()->val)
+    auto& dst = result->val;
+    while (condition->eval(),get<bool_value>()->val==((flags&0x1)==0))
     { if (interrupt_flag!=0)
         throw user_interrupt();
       body->eval();
-      result->val.push_back(pop_value());
+      dst.push_back(pop_value());
     }
+    if ((flags&0x2)!=0)
+      std::reverse(dst.begin(),dst.end());
     push_value(std::move(result));
   }
 }
@@ -3486,15 +3533,8 @@ by by the precise syntax used), so that these get built into the evaluate
 method as well. Altogether we use $4\times6=24$ instances of |for_expression|.
 
 @< Type def... @>=
-struct for_base : public expression_base
-{ expression_ptr body;
-  for_base (expression_ptr&& b) : body(b.release()) @+{}
-  virtual ~@[for_base() nothing_new_here@];
-  void print_body (std::ostream& out,unsigned flags) const;
-};
-
 template <unsigned flags, subscr_base::sub_type kind>
-struct for_expression : public for_base
+struct for_expression : public loop_base
 { id_pat pattern; expression_ptr in_part;
 @)
   for_expression (const id_pat& p, expression_ptr&& i, expression_ptr&& b);
@@ -3502,16 +3542,6 @@ struct for_expression : public for_base
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
-
-@ We can handle the |flags|-dependent part of printing in the method
-|print_body|.
-
-@< Function definitions @>=
-
-void for_base::print_body(std::ostream& out,unsigned flags) const
-{@; out << ((flags&0x1)!=0 ? " ~do " : " do ")  << *body
-        << ((flags&0x2)!=0 ? " ~od " : " od ");
-}
 
 @ We could not inline the following constructor definition in the class
 declaration, as it uses the local function |copy_id_pat| that is not known in
@@ -3521,7 +3551,7 @@ the header file, but otherwise it is quite straightforward.
 template <unsigned flags, subscr_base::sub_type kind>
 for_expression<flags,kind>::for_expression@|
  (const id_pat& p, expression_ptr&& i, expression_ptr&& b)
-   : for_base(std::move(b)), pattern(copy_id_pat(p)), in_part(i.release())
+   : loop_base(std::move(b)), pattern(copy_id_pat(p)), in_part(i.release())
   @+{}
 
 
@@ -3907,18 +3937,17 @@ which the user has no control) are meaningful to the user.
 
 @*1 Counted loops.
 %
-Next we consider counted |for| loops. Increasing and decreasing loops give
-distinct types.
+Next we consider counted |for| loops.
 
 @< Type def... @>=
 template <unsigned flags>
-struct counted_for_expression : public for_base
+struct counted_for_expression : public loop_base
 { expression_ptr count, bound; id_type id;
 @)
   counted_for_expression
    (id_type i, expression_ptr&& cnt, expression_ptr&& bnd,
     expression_ptr&& b)
-  : for_base(std::move(b)), count(cnt.release()),bound(bnd.release()),id(i)
+  : loop_base(std::move(b)), count(cnt.release()),bound(bnd.release()),id(i)
   @+{}
   virtual ~@[counted_for_expression() nothing_new_here@];
   virtual void evaluate(level l) const;

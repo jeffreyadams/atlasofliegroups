@@ -268,7 +268,7 @@ comprim: subscription | slice
 	| IF iftail { $$=$2; }
 	| CASE expr IN commalist ESAC
 	  { $$=make_int_case_node($2,reverse_expr_list($4),@$); }
-	| WHILE expr DO expr OD { $$=make_while_node($2,$4,@$); }
+	| WHILE expr DO expr tilde_opt OD { $$=make_while_node($2,$4,2*$5,@$); }
 	| FOR pattern_opt IN expr tilde_opt DO expr tilde_opt OD
 	  { struct raw_id_pat p,x; p.kind=0x2; x.kind=0x0;
 	    p.sublist=make_pattern_node(make_pattern_node(nullptr,$2),x);

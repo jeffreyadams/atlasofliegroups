@@ -1847,25 +1847,34 @@ loops and of slice expressions.
 @< Includes needed... @>=
 #include "bitset.h"
 
-@~A |while| loop has two elements: a condition (which determines whether an
+@~A |while| loop has two parts: a condition (which determines whether an
 iteration will be undertaken), and a body (which contributes an entry to the
-result). A |for| loop has three parts, a pattern introducing variables, an
+result). A |for| loop has three parts: a pattern introducing variables, an
 expression iterated over (the in-part) and the loop body. A counted |for| loop
-(the simple version of |for| loop) has four parts (an identifier, a count, a
-lower bound and a body) and two variants (increasing and decreasing) which can
-be distinguished by a boolean.
+(the simple version of |for| loop) has four parts: an identifier, a count, a
+lower bound and a body. Apart from this there are some flags to record static
+Boolean attributes of loops: for a |while| loop $2$ bits telling whether the
+condition is negated and whether the resulting row should be reversed; for a
+|for| loop $2$ buts telling whether object should be traversed in reverse and
+whether the resulting row should be reversed, and for counted for loops $3$
+bits, the first tow having the same meaning as for |for| loops (the ``object
+traversed'' being a sequence of consecutive integers) and a third bit telling
+whether the loop index is absent.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct while_node
 { expr condition; @+ expr body;
+  BitSet<2> flags;
 @)
-  while_node(expr&& condition, expr&& body)
+  while_node(expr&& condition, expr&& body, unsigned flags)
 @/: condition(std::move(condition))
-  , body(std::move(body))@+{}
+  , body(std::move(body))
+  , flags(flags)@+{}
   // backward compatibility for gcc 4.6
 };
 struct for_node
-{ struct id_pat id; @+ expr in_part; @+ expr body; BitSet<2> flags;
+{ struct id_pat id; @+ expr in_part; @+ expr body;
+  BitSet<2> flags;
 @)
   for_node(id_pat&& id, expr&& in_part, expr&& body, unsigned flags)
 @/: id(std::move(id))
@@ -1874,7 +1883,8 @@ struct for_node
   , flags(flags)@+{}
 };
 struct cfor_node
-{ id_type id; @+ expr count; @+ expr bound; @+ expr body; BitSet<3> flags;
+{ id_type id; @+ expr count; @+ expr bound; @+ expr body;
+  BitSet<3> flags;
 @)
   cfor_node
      (id_type id, expr&& count, expr&& bound, expr&& body, unsigned flags)
@@ -1920,7 +1930,7 @@ expr(c_loop&& loop, const YYLTYPE& loc)
 more \\{make}-functions.
 
 @< Declarations of functions for the parser @>=
-expr_p make_while_node(expr_p c, expr_p b, const YYLTYPE& loc);
+expr_p make_while_node(expr_p c, expr_p b, unsigned flags, const YYLTYPE& loc);
 expr_p make_for_node
   (raw_id_pat& id, expr_p ip, expr_p b, unsigned flags, const YYLTYPE& loc);
 expr_p make_cfor_node
@@ -1930,11 +1940,11 @@ expr_p make_cfor_node
 @ They are quite straightforward, as usual.
 
 @< Definitions of functions for the parser @>=
-expr_p make_while_node(expr_p c, expr_p b, const YYLTYPE& loc)
+expr_p make_while_node(expr_p c, expr_p b, unsigned flags, const YYLTYPE& loc)
 {
   expr_ptr cc(c), bb(b);
   expr& cnd=*cc; expr& body=*bb;
-  return new expr(new while_node { std::move(cnd), std::move(body)},loc) ;
+  return new expr(new while_node { std::move(cnd), std::move(body), flags},loc) ;
 }
 @)
 expr_p make_for_node
