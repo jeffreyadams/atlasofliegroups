@@ -38,6 +38,8 @@ set first (int limit,(int->bool) filter) = int:
 set last (int limit,(int->bool) filter) = int:
   while limit-:=1; limit>=0 and not filter(limit) do () od; limit
 
+
+
 {				Integers				}
 
 set abs (int k)= int: if <k then -k else k fi
@@ -51,6 +53,7 @@ set max (int k, int l) = int: if k<l then l else k fi
 
 set =  ((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0=x1 and y0=y1
 set != ((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0!=x1 or y0!=y1
+
 
 
 {			    Rational numbers				}
@@ -76,6 +79,8 @@ set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
 set rat_as_int (rat r) = int:
   let (n,d)=%r in if d=1 then n else error("Not an integer") fi
 
+
+
 {				Strings					}
 
 set new_line = ascii(10) { including this in a string passes to a new line }
@@ -95,6 +100,7 @@ set + (string s, int i)= string: s # int_format(i)
 set + (int i, string s)= string: int_format(i) # s
 
 set + (string s, (int,int)(x,y)) = s + "(" + x + "," + y + ")"
+
 
 
 {				Vectors					}
@@ -129,8 +135,11 @@ set is_member ([int] v) = (int->bool):
 
 set contains (int val) = ([int]->bool): ([int] v)bool: is_member(v)(val)
 
+
+
 {				Matrices				}
 
+{ matrix defined by its dimension and expression for general entry }
 set matrix ((int,int)(r,c),(int,int->int) f) = mat:
   r#for j:c do for i:r do f(i,j) od od
 
@@ -139,6 +148,9 @@ set n_columns (mat m)= int: let (,c)=#m in c
 
 set column (vec v) = mat: [v] { interpret v as single column }
 set row (vec v)    = mat: ^v  { interpret v as single row }
+
+{ test matrix against a multiple of the identity }
+set = (mat m,int k) = bool: =(m-k)
 
 { add a column to a matrix, which is not predefined as operator # }
 set # (mat m, vec v) = mat: n_rows(m) { require size match } # (([vec]:m)#v)
@@ -171,7 +183,8 @@ set map_on (mat m) = ((int->int)->mat):
 
 { scalar multiplication }
 set * (int c,mat m) = mat: map_on(m)((int e) int: c*e)
-set - (mat m)= mat: map_on(m)(-@int)
+set - (mat m)= mat: { transform 36+128=164: 128 means negate entries }
+  swiss_matrix_knife(164,m,0,0,0,0)
 
 { integer division }
 set \ (mat m,int d) = mat: map_on(m)((int e) int: e\d)
@@ -249,6 +262,8 @@ set order (mat !M) = int:
   let N=M, order=1, I=id_mat(n) in
   while N!=I do N *:= M; order+:=1 od; order
 
+
+
 {			    Rational vectors				}
 
 set numer (ratvec a) = vec: let (n,)=%a in n
@@ -291,6 +306,7 @@ set drop_upper (int k,ratvec v)= ratvec: v[:k~]
 
 set <= (ratvec v) = bool: <=numer(v)
 set <  (ratvec v) = bool: < numer(v)
+
 
 
 {			    Split integers				}
@@ -394,13 +410,14 @@ set is_negative_root (RootDatum rd,vec alpha) = bool:
 set is_negative_coroot (RootDatum rd,vec alphav) = bool:
   is_negative_coroot(rd)(alphav)
 
+set negative_system (mat posroots) = { the missing half of the root system }
+  swiss_matrix_knife(172,posroots,0,0,0,0) { 172= 36+8+128: reverse cols,neg }
+
 { having _all_ roots can be useful }
 set roots (RootDatum rd) = mat:
-  let npr=nr_of_posroots(rd)
-  in rank(rd)#for i:2*npr from -npr do root(rd,i) od
+  let pr=posroots(rd) in negative_system(pr)#pr
 set coroots (RootDatum rd) = mat:
-  let npr=nr_of_posroots(rd)
-  in rank(rd)#for i:2*npr from -npr do coroot(rd,i) od
+  let pcr=poscoroots(rd) in negative_system(pcr)#pcr
 
 { the correspondence between roots and coroots }
 set root (RootDatum rd, vec alpha_v) = vec: root(rd,coroot_index(rd,alpha_v))
@@ -517,6 +534,8 @@ set simple_from_positive (mat posroots,mat poscoroots) = (mat,mat):
 set fundamental_weights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_weight(rd,i) od
 
+
+
 {				Inner classes				}
 
 set != (InnerClass x,InnerClass y) = bool: not(x=y)
@@ -589,7 +608,9 @@ set is_compatible (RealForm f, RealForm g) = bool:
   in inner_class(g)=dual(ic) and oc[form_number(f),form_number(g)]>0
 
 set is_compact (RealForm G) = bool: { real form 0 in equal rank inner class }
-  involution(KGB(G,KGB_size(G)-1)) = id_mat(rank(G))
+  KGB_size(G)=1 and distinguished_involution(G)=1
+
+
 
 {			       KGB elements				}
 
@@ -884,10 +905,7 @@ set positive_imaginary_roots_and_coroots = imaginary_sys@(RootDatum,mat)
 set positive_imaginary_roots_and_coroots = imaginary_sys@KGBElt
 
 set imaginary_roots_and_coroots ((RootDatum, mat)p) = (mat,mat):
-  let (a,b)=imaginary_sys(p) in
-   ( for j:n_columns(a) downto 0 do -a[j] od # a
-   , for j:n_columns(b) downto 0 do -b[j] od # b
-   )
+  let (a,b)=imaginary_sys(p) in (negative_system(a)#a,negative_system(b)#b)
 set imaginary_roots_and_coroots (KGBElt x) = (mat,mat):
   imaginary_roots_and_coroots (root_datum(real_form(x)),involution(x))
 
@@ -895,10 +913,7 @@ set positive_real_roots_and_coroots = real_sys@(RootDatum,mat)
 set positive_real_roots_and_coroots = real_sys@KGBElt
 
 set real_roots_and_coroots ((RootDatum, mat)p) = (mat,mat):
-  let (a,b)=real_sys(p) in
-   ( for j:n_columns(a) downto 0 do -a[j] od # a
-   , for j:n_columns(b) downto 0 do -b[j] od # b
-   )
+  let (a,b)=real_sys(p) in (negative_system(a)#a,negative_system(b)#b)
 set real_roots_and_coroots (KGBElt x) = (mat,mat):
   real_roots_and_coroots (root_datum(real_form(x)),involution(x))
 
