@@ -14,6 +14,7 @@
 * Work on the realex program
 
 - Change readline completion to use only global functions and variables
+- When input is redirected from a file, return EXIT_SUCCESS on clean run only
 
 - Make conditionals return shared pointer to global true and false values
 
@@ -95,6 +96,9 @@
 - Write a tutorial on the realex languge, in bottom-up style
 
 * Work on makefiles, distribution and support programs (cwebx)
+- Finally get dependencies for realex header files correct
+- change name of parser.y to parser.ypp, and adapt all Makefiles
+- make sure "make distrubution" produces soemthing that causes no trouble
 - Change interpreter/Makefile so it does not remake io/fliekl.cpp and friends
 - Figure out how to avoid 'unrecognised typedef at line 367 of atlas_types.h'
 - Make cweavex format a 2-line "do x; while(y);" with cirrect indentation

@@ -9,9 +9,9 @@ INSTALL = /usr/bin/install
 # INSTALLDIR is where the executables atlas, realex and the messages directory
 # will be moved after successfull compilation
 
-# BINDIR is where a symbolic link or shell script 'atlas' calling to the
-# executable, and shell script 'realex' will be placed; provided this
-# directory is in the search path, you can then call atlas, realex from anywhere
+# BINDIR is where a symbolic link to the 'atlas' executable will be created,
+# and shell script executing 'realex' will be placed; provided this directory
+# is in the search path, you can then call atlas, realex from anywhere
 
 # However when BINDIR is INSTALLDIR one cannot have those shell scripts since
 # they would be at the same place as the executable to call; since both default
@@ -39,8 +39,8 @@ realex_dir := sources/interpreter
 
 # atlas_dirs contains subdirectories of 'atlas/sources' that need compilation
 # realex_dirs are where the object files for realex are situated
-atlas_dirs := utilities error structure gkmod io interface test
-realex_dirs := utilities structure gkmod error io interpreter
+atlas_dirs  := utilities structure gkmod io error interface test
+realex_dirs := utilities structure gkmod io error interpreter
 
 # atlas_sources contains a list of the source files (i.e., the .cpp files)
 atlas_sources := $(wildcard $(atlas_dirs:%=sources/%/*.cpp))
@@ -49,7 +49,7 @@ atlas_sources := $(wildcard $(atlas_dirs:%=sources/%/*.cpp))
 atlas_objects := $(atlas_sources:%.cpp=%.o)
 
 # headers are searched in the all directories containing source files
-includedirs := $(addprefix -Isources/,$(atlas_dirs))
+atlas_includes := $(addprefix -Isources/,$(atlas_dirs))
 realex_includes := $(addprefix -Isources/,$(realex_dirs))
 
 # for the interpreter (realex sans the Atlas library) sources are *.w files
@@ -76,9 +76,6 @@ dependencies := $(atlas_objects:%.o=%.d)
 # compiler flags
 # whenever changing the setting of these flags, do 'make clean' first
 
-# the following variable contains compilation "flavor", added to CXXFLAGS
-export CXXFLAVOR
-
 # the following are predefined flavors for the compiler flags:
 # normal (nflags)
 # optimizing (oflags)
@@ -89,11 +86,12 @@ oflags := -Wall -O3 -DNDEBUG
 gflags := -Wall -ggdb
 pflags := -Wall -pg -O -DNREADLINE
 
-# create flags specific for atlas (not used realex; for that see its Makefile)
-atlas_flags :=
 
-# these flags are necessary for compilation, and should not be altered
-CXXFLAGS  = -c $(includedirs)
+# these flags are necessary for compilation, the -c should not be altered
+CXXFLAGS  = -c $(CXXFLAVOR)
+
+# additional flags specific for atlas (realex specifics are in its own Makefile)
+atlas_flags = $(atlas_includes)
 
 # to select another flavor, set optimize=true, debug=true or profile=true
 # when calling make (as in "make optimize=true") or set CXXFLAVOR as an
@@ -108,11 +106,14 @@ ifeq ($(debug),true)
 else
 ifeq ($(profile),true)
       CXXFLAVOR := $(pflags)
-else # use value from environment or command line, or defualt to normal
+else # use value from environment or command line, or default to normal
 CXXFLAVOR ?= $(nflags)
 endif
 endif
 endif
+
+# Now the CXXFLAVOR is defined in all cases, we can safely mark it for export
+export CXXFLAVOR
 
 # suppress readline by setting readline=false
 # and/or make more verbose by setting verbose=true
@@ -122,10 +123,15 @@ ifeq ($(readline),false)
     rl_libs =
 else
     rl_libs ?= -lreadline
+endif
 
-# to override this, either define and export a shell variable 'rl_libs'
-# or set LDFLAGS when calling make. For instance for readline on the Mac do:
-# $ make LDFLAGS="-lreadline.5 -lcurses"
+# To override this define and export a shell variable 'rl_libs', for instance
+# for readline on the Mac give the command: make rl_libs="-lreadline.5 -lcurses"
+# Any value of LDFLAGS set in the environment is also included in $(LDFLAGS)
+ifdef LDFLAGS
+    LDFLAGS := $(LDFLAGS) $(rl_libs)
+else
+    LDFLAGS := $(rl_libs)
 endif
 
 ifeq ($(verbose),true)
@@ -146,15 +152,6 @@ endif
 ifeq "$(CXXVERSIONVERYOLD)" "1"
   CXXFLAVOR += -Dnoexcept= -Dconstexpr= -Dnullptr=0
 endif
-
-
-# give compiler=icc argument to make to use the intel compiler
-ifdef compiler
-    CXX = $(compiler)
-endif
-
-LDFLAGS := $(rl_libs)
-
 
 
 # RULES follow below
@@ -188,17 +185,16 @@ endif
 # rules, but only apply to the files listed before the first colon
 
 $(filter-out sources/interface/io.o,$(atlas_objects)) : %.o : %.cpp
-	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(atlas_flags) -o $*.o $*.cpp
+	$(CXX) $(CXXFLAGS) $(atlas_flags) -o $*.o $*.cpp
 
 # the $(messagedir) variable is only needed for the compilation of io.cpp
 sources/interface/io.o : sources/interface/io.cpp
-	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(atlas_flags) \
-          -DMESSAGE_DIR_MACRO=\"$(messagedir)\" -o $@ $<
+	$(CXX) $(CXXFLAGS) $(atlas_flags) -DMESSAGE_DIR_MACRO=\"$(messagedir)\" -o $@ $<
 
 
 # for files proper to realex, the build is defined inside sources/interpreter
 
-realex: $(cweb_dir)/ctanglex $(realex_objects)
+realex: $(cweb_dir)/ctanglex $(interpreter_made_files) $(realex_objects)
 	cd sources/interpreter && $(MAKE) ../../realex
 
 $(interpreter_made_files):
@@ -212,13 +208,14 @@ sources/interpreter/parser.tab.c sources/interpreter/parser.tab.h: \
   sources/interpreter/parser.y
 	cd sources/interpreter && $(MAKE) $(subst sources/interpreter/,,$@)
 
+# bison produces a file with extension .c, nonetheless it too needs $(CXX)
 sources/interpreter/parser.tab.o: \
   sources/interpreter/parser.tab.c sources/interpreter/parsetree.h
 	cd sources/interpreter && $(MAKE) parser.tab.o
 
 # generate files that describe which .o files depend on which other (.h) files
 $(dependencies) : %.d : %.cpp
-	$(CXX) $(includedirs) -MM -MF $@ -MT "$*.o $*.d" $*.cpp
+	$(CXX) $(atlas_includes) -MM -MF $@ -MT "$*.o $*.d" $*.cpp
 
 # now include all the files constructed by the previous rule; this defines
 # the dependencies, found by the preprocessor scanning #include directives,
@@ -247,16 +244,10 @@ ifneq ($(BINDIR),$(INSTALLDIR))
 	mkdir -p $(BINDIR)
 	@if test -h $(BINDIR)/atlas; then rm -f $(BINDIR)/atlas; fi
 	@if test -h $(BINDIR)/realex; then rm -f $(BINDIR)/realex; fi
-ifeq ($(INSTALLDIR),$(shell pwd)) # then compiled-in message path can be used
-	ln -s $(INSTALLDIR)/atlas $(BINDIR)/atlas # so just make symbolic link
-else # we need to tell atlas to search its messages where they have been moved
-	echo "#!/bin/sh\nexec $(INSTALLDIR)/atlas $(INSTALLDIR)/messages/" \
-	 >$(BINDIR)/atlas; chmod a+x $(BINDIR)/atlas
-endif
+	ln -s $(INSTALLDIR)/atlas $(BINDIR)/atlas # make symbolic link
 # whenever BINDIR is not INSTALLDIR, we can put a shell script as bin/realex
-# like for atlas, this ensures the search path is properly set
-	echo "#!/bin/sh\n$(INSTALLDIR)/realex --path=n$(INSTALLDIR)/rx-scripts \
-          basic.rx "$@" >$(BINDIR)/realex; chmod a+x $(BINDIR)/realex
+# which ensures the search path will be properly set (no compiled-in path here)
+	echo '#!/bin/sh\n$(INSTALLDIR)/realex --path=$(INSTALLDIR)/rx-scripts basic.rx "$$@"' >$(BINDIR)/realex; chmod a+x $(BINDIR)/realex
 endif
 
 version:
@@ -275,11 +266,9 @@ clean: mostlyclean
 veryclean: clean
 	$(RM) -f sources/*/*.d cwebx/*.o cwebx/ctangle cwebx/cweave
 
-$(cweb_dir)/ctanglex: \
-  $(cweb_dir)/common.h $(cweb_dir)/ctangle.h $(cweb_dir)/ctangle.c
+$(cweb_dir)/ctanglex: $(cweb_dir)/common.h $(cweb_dir)/ctangle.c
 	cd $(cweb_dir) && $(MAKE) ctanglex
-$(cweb_dir)/cweavex: \
-  $(cweb_dir)/common.h $(cweb_dir)/cweave.h $(cweb_dir)/cweave.c
+$(cweb_dir)/cweavex: $(cweb_dir)/common.h $(cweb_dir)/cweave.c
 	cd $(cweb_dir) && $(MAKE) cweavex
 
 showobjects:

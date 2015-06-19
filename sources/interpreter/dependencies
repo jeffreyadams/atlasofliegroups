@@ -274,5 +274,5 @@ $(realex_dir)/main.o $(realex_dir)/main.tex: \
  $(sources_dir)/structure/y_values.h \
  $(sources_dir)/gkmod/kgb.h \
  $(sources_dir)/gkmod/repr.h \
- $(sources_dir)/interface/version.h \
+ $(sources_dir)/version.h \
  $(sources_dir)/io/realform_io.h

@@ -131,7 +131,7 @@ the appropriate expansion for these macros is the null pointer.
 
 @h "buffer.h"
 @h "lexer.h"
-@h "version.h"
+@h "../version.h"
 
 @< Conditionally include the header files for the readline library @>=
 #ifdef NREADLINE
