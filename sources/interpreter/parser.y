@@ -71,6 +71,7 @@
 %token ARROW "->"
 %token BECOMES ":="
 %token TLSUB "~["
+%token END_OF_FILE
 
 %type <expression> expr expr_opt tertiary cast lettail or_expr and_expr
 %type <expression> not_expr formula operand secondary primary iftail
@@ -111,7 +112,8 @@
 %%
 
 input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
-	| '\f'	   { YYABORT; } /* allow form feed as well at command level */
+	| END_OF_FILE
+            { YYABORT; } /* ignore end-of-file seen at command level too */
 	| expr '\n'		{ *parsed_expr=$1; }
 	| SET declarations '\n' { global_set_identifiers($2); YYABORT; }
 	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT; }

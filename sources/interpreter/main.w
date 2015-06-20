@@ -109,7 +109,7 @@ dependency on the readline library.
 
 @c
 
-@< Conditionally include the header files for the readline library @>
+@< Conditionally include some header files @>
 
 @< Declaration of interface to the parser @>@;
 namespace { @< Local static data @>@; }@;
@@ -117,32 +117,6 @@ namespace { @< Local static data @>@; }@;
 namespace atlas { namespace interpreter {@< Definitions of other functions @>@;
 }@;}@;
 @< Main program @>
-
-@ Here are some header files which need to be included for this main program.
-As we discussed above, the inclusion of header files for the readline
-libraries is made dependent on the flag |NREADLINE|. In case the flag is set,
-we define the few symbols used from the readline library as macros, so that
-the code using them can be compiled without needing additional \&{\#ifdef}
-lines. It turns out that |getline| and |add_history| are not used in calls,
-but rather passed as function pointers to the |BufferedInput| constructor, so
-the appropriate expansion for these macros is the null pointer.
-
-@h <iostream>
-@h <fstream>
-
-@h "buffer.h"
-@h "lexer.h"
-@h "../version.h"
-
-@< Conditionally include the header files for the readline library @>=
-#ifdef NREADLINE
-#define readline nullptr
-#define add_history nullptr
-#define clear_history()
-#else
-#include <readline/readline.h>
-#include <readline/history.h>
-#endif
 
 @ Since the file \.{parser.y} declares \.{\%pure-parser} and \.{\%locations},
 the prototype of the lexical analyser (wrapper) function |yylex| is the one
@@ -196,6 +170,42 @@ returns. It must be declared |extern "C"|.
 
 extern "C" void sigint_handler (int)
 @+{@; atlas::interpreter::interrupt_flag=1; }
+
+@ Here are some header files which need to be included for this main program.
+As we discussed above, the inclusion of header files for the readline
+libraries is made dependent on the flag |NREADLINE|. In case the flag is set,
+we define the few symbols used from the readline library as macros, so that
+the code using them can be compiled without needing additional \&{\#ifdef}
+lines. It turns out that |getline| and |add_history| are not used in calls,
+but rather passed as function pointers to the |BufferedInput| constructor, so
+the appropriate expansion for these macros is the null pointer.
+
+Similarly we make the inclusion of \.{unistd.h} dependent on the |NOT_UNIX|
+not being defined.
+
+@h <iostream>
+@h <fstream>
+
+@h "buffer.h"
+@h "lexer.h"
+@h "../version.h"
+
+@< Conditionally include some header files @>=
+#ifdef NREADLINE
+#define readline nullptr
+#define add_history nullptr
+#define clear_history()
+#else
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
+#ifdef NOT_UNIX
+#define isatty() true // if we cannot find out, guess it is ``yes''
+#define chdir()
+#else
+#include <unistd.h>
+#endif
+
 
 @ Here is an array that declares the keywords that the lexical scanner is to
 recognise, terminated by a null pointer. Currently the lexical analyser adds
@@ -273,7 +283,6 @@ arguments and does some more declarations that can depend on them.
 Finally it executes the main command
 loop, from which normally only the \.{quit} command will make it exit.
 
-@h <unistd.h> // for |isatty|
 @< Main program @>=
 
 int main(int argc, char** argv)
@@ -288,7 +297,7 @@ int main(int argc, char** argv)
   bool use_readline=true;
   @< Other local variables of |main| @>
   @< Handle command line arguments @>
-@/BufferedInput input_buffer(isatty(STDIN_FILENO) ? "expr> " : nullptr
+@/BufferedInput input_buffer(isatty(STDIN_FILENO) ? "rx> " : nullptr
                             ,use_readline ? readline : nullptr
 			    ,use_readline ? add_history : nullptr);
   main_input_buffer= &input_buffer;
@@ -306,15 +315,14 @@ int main(int argc, char** argv)
 @)
   @< Enter the main command loop @>
   signal(SIGINT,SIG_DFL); // reinstall default signal handler
-  clear_history();
-  // clean up (presumably disposes of the lines stored in history)
+  @< Finalise  various parts of the program @>
   std::cout << "Bye.\n";
   return 0;
 }
 
 @ When reading command line arguments, some options may specify a search path,
 any non-option arguments will considered to be file names (forming the
-``prelude''). We shall gather both in lists of strings.
+``prelude''). We shall gather both in lists of \Cee-strings.
 
 @< Other local variables of |main| @>=
 std::vector<const char*> paths,prelude_filenames;
@@ -324,11 +332,17 @@ paths.reserve(argc-1); prelude_filenames.reserve(argc-1);
 (a variable the user can assign to, and which is inspected whenever files are
 opened). We shall use a static variable that gives access to its value. It
 continues to do so even if the user should manage to forget or hide the user
-variable introduced below to hold it.
+variable introduced below to hold it. We shall also keep a pointer to the
+initial working directory name and to the first path specified, in order to
+be able to perform the somewhat messy filename completion manoeuvres below.
 
 @h "global.h" // defines |shared_share|
 @< Local static data @>=
 static atlas::interpreter::shared_share input_path_pointer,prelude_log_pointer;
+#ifndef NOT_UNIX
+const char* working_directory_name=nullptr;
+const char* first_path = nullptr;
+#endif
 
 @ Apart from the \.{--no-readline} option to switch off the readline functions
 (which might be useful when input comes from a file), the program accepts
@@ -352,10 +366,12 @@ while (*++argv!=nullptr)
 }
 
 @ Here we create the system variables called |input_path| and |prelude_log|;
-both are lists of strings, the latter a constant one.
+both are lists of strings, the latter a constant one. This is also a
+convenient time to test and record the first path specified (which has to wait
+until other initialisations have been done), but we defer the details.
 
 @< Enter system variables into |global_id_table| @>=
-{
+{ @< Record the first specified path, if it was a directory @>
   own_value input_path = std::make_shared<row_value>(paths.size());
   id_type ip_id = main_hash_table->match_literal("input_path");
   auto oit = force<row_value>(input_path.get())->val.begin();
@@ -389,6 +405,25 @@ const std::string& input_path_component(unsigned int i)
 @/return dir->val;
 }
 
+@ At start up we recorded the working directory, so that we can now easily
+test whether a first specified path is actually a directory, by just trying to
+change directory to it (which is all we shall do with the value later); if
+this succeeds we immediately set it back, but we record the path in this case
+for later use.
+
+@< Record the first specified path, if it was a directory @>=
+#ifndef NOT_UNIX
+if (paths.size()>0)
+{ if (chdir(paths[0])==0) // see if we can \.{cd} there
+  { chdir(working_directory_name); // but if so switch back
+    first_path=paths[0]; // record that this is a valid directory
+  }
+  else
+    std::cerr << "Warning: specified path '" << paths[0] @|
+              << "' is not a directory." << std::endl;
+}
+#endif
+
 @ The command loop maintains two global variables that were defined
 in \.{evaluator.w}, namely |last_type| and |last_value|; these start off in a
 neutral state. In a loop we call the parser until it sets |verbosity<0|, which
@@ -402,7 +437,8 @@ last_value = shared_value (new tuple_value(0));
 last_type = void_type.copy();
  // |last_type| is a |type_ptr| defined in \.{evaluator.w}
 while (ana.reset()) // get a fresh line for lexical analyser, or quit
-{ expr_p parse_tree;
+{ @< Undo temporary trickery aimed at |readline| filename completion @>
+  expr_p parse_tree;
   int old_verbosity=verbosity;
   std::ofstream redirect; // if opened, this will be closed at end of loop
   if (yyparse(&parse_tree,&verbosity)!=0)
@@ -619,21 +655,27 @@ char* id_completion_func(const char* text, int state)
 }
 
 @ The readline library needs to know where to break the input into words that
-may be completed. The following value reflects what the lexical analyser
-considers separating characters. The list contains those non-alphanumeric
-characters that are valid input characters, as implicitly defined by the
-|get_token| method of |Lexical_analyser|. This choice will affect file name
-completion as well, but in an indirect way: an incomplete name that can be
-uniquely extended to a file name will be so, independently of whether or not
-the additional characters appear in |lexical_break_chars|, but this completion
-will only be activated if none of the characters in the initial incomplete
-file name do appear in that collection: in the contrary case, |readline| will
-decide that only a final part needs to be completed, and that even before our
-program get the opportunity to tell it that the lexical context indicates that
-file name completion is to be attempted.
+may be completed. The value |lexical_break_chars| reflects what our lexical
+analyser considers separating characters: the list contains those
+non-alphanumeric characters that are valid input characters, as implicitly
+defined by the |get_token| method of |Lexical_analyser|. This choice will
+affect file name completion as well, because |readline| will not include any
+of those characters in the partial match it wants to complete; even if we
+decide to ask for file name completion after all, it will not extend its
+partial match to the left with characters like `\.-' that are not special in
+file names, though it will in that case consider any characters it finds in
+actual file names when it performs the completion (to the right). Therefore
+typing more can be worse: adding characters that are actually part of the
+intended file name can in fact thwart file name completion. This is awkward,
+but the only way to avoid this would be to build our knowledge about when
+completion should be for file names rather than for identifiers \emph{into}
+the function bound to the completion key (tab), rather than leave it at its
+default binding |rl_complete| as we do. Once |readline| calls one of our
+functions (in our case |do_completion| defined below), it is too late to
+adjust the |text| it selected to be completed.
 
 @< Local static data @>=
-char lexical_break_chars[] = " \t\n=<>+-*/\\%,;:()[]{}$@@\"|~";
+char lexical_break_chars[] = " \t\n=<>+-*/\\%,;:()[]{}#!?$@@\"|~";
 
 @ The above function |id_completion_func| will not be plugged directly into
 the readline completion mechanism, but instead we provide an alternative
@@ -642,29 +684,43 @@ function for generating matches, which may pass our function to
 returns |nullptr| to indicate that the default function, completing on file
 names, should be used instead.
 
-This function is called with |text| pointing to the line typed so far, and
-with the part at positions from |start| up to |end| is the sub-string that
-readline wants to complete. We decide by looking at the part before |start|
-whether we should interpret that part as a partial file name.
+This function is called with |text| pointing to the partial string to be
+completed, which is at positions from |start| up to |end| in the buffer
+|rl_line_buffer|. We decide by looking at the part before |start| whether we
+should interpret that part as a partial file name, and if so in which
+directory we should look: if only characters \.<, \.> and spaces precede the
+string, then we ask for file name completion, and since input will most likely
+come from the directory in |first_path|, if any was specified, we temporarily
+change directory there if only and at least one characters \.< was present. In
+the more common case where file name completion is not called for, we call the
+readline function |rl_completion_matches| with |text| to get us a list of
+possible completions, which it does by calling our |id_completion_func|
+repeatedly, and we pass the pointer to the list of completions back to our
+caller (which is probably some |readline| action function).
 
 @< Definitions of global namespace functions @>=
 #ifndef NREADLINE
 extern "C" char** do_completion(const char* text, int start, int end)
 {
-  if (start>0)
-   // not a file name if sub-string starts at the beginning of |text|
-  { int i; char c; bool need_file=false;
+  if (atlas::interpreter::lex->is_initial() and start>0)
+   // could be a file name
+  { int i; char c; bool need_file=false; bool in=true;
     for (i=0; i<start; ++i)
       if (std::isspace(c=rl_line_buffer[i]))
         continue; // ignore space characters
-      else if (c=='<' or c=='>')
+      else if (c=='<')
         need_file=true;
+      else if (c=='>')
+        need_file=true,in=false;
       else
         break; // any other preceding characters make it not a file name
 
     if (need_file and i==start)
        // the sub-string is preceded by one or more copies of \.<, \.>
-      return nullptr; // signal that file name completion should be used
+    { chdir(in and first_path!=nullptr? first_path : working_directory_name);
+         // make |readline| think this is the \.{CWD}
+      return nullptr; // and signal that file name completion should be used
+    }
   }
   rl_attempted_completion_over = true;
     // don't try file name completion if we get here
@@ -673,8 +729,32 @@ extern "C" char** do_completion(const char* text, int start, int end)
 }
 #endif
 
-@ The code concerning the \.{readline} library is excluded in case
-the \.{NREADLINE} flag is set.
+@ In order to trick |readline| into doing file name completion for a
+non-current directory, we need to save the true current working directory name
+in order to temporarily change directory and afterwards change back.
+
+At start up, we capture the current directory name.
+
+@< Initialise the \.{readline} library interface @>=
+#ifndef NOT_UNIX
+working_directory_name = get_current_dir_name();
+#endif
+
+@ After the lexical scanner is reset (and therefore |readline| certainly has
+returned) and before parsing starts, we ensure any temporary change to the
+current working directory are undone. Thus none of the true I/O actions will
+notice the temporary change of working directory.
+
+@< Undo temporary trickery aimed at |readline| filename completion @>=
+#ifndef NOT_UNIX
+chdir(working_directory_name); // reset to true working directory
+#endif
+
+
+@ The \.{readline} library requires setting the variable
+|rl_completer_word_break_characters|, and by setting the function pointer
+|rl_attempted_completion_function|, we hook our functionality into the
+|readline| machinery.
 
 @< Initialise the \.{readline} library interface @>=
 #ifndef NREADLINE
@@ -685,6 +765,17 @@ the \.{NREADLINE} flag is set.
 
 #endif
 
+@ Just to be proper, we clear out our history and |malloc|ed variable when
+terminating the program.
+
+@< Finalise  various parts of the program @>=
+#ifndef NREADLINE
+  clear_history();
+   // clean up (presumably disposes of the lines stored in history)
+#endif
+#ifndef NOT_UNIX
+  free((void*)working_directory_name);
+#endif
 
 @* Index.
 

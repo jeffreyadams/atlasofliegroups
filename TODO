@@ -13,6 +13,8 @@
 
 * Work on the realex program
 
+- Find out why typing ^D at a continuation line makes realex segfault
+
 - When input is redirected from a file, return EXIT_SUCCESS on clean run only
 
 - Make conditionals return shared pointer to global true and false values

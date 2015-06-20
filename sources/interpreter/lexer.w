@@ -107,6 +107,7 @@ public:
           {@; assert(c!='\0' and d!='\0'); comment_start=c; comment_end=d; }
   const char* scanned_file_name() const @+{@; return file_name.c_str(); }
   id_type first_identifier() const @+{@; return type_limit; }
+  bool is_initial () const {@; return state==initial; }
 private:
   void skip_space() const;
   bool becomes_follows();
@@ -192,12 +193,14 @@ the |std::isspace(c)| branch below, although the actual control of this
 decision is distributed in the various pieces of code that maintain of the
 fields |prevent_termination| and |nesting|.
 
-In case end of input occurs one obtains |shift()=='\0'|, and for the end of an
-included file one obtains |shift()=='\f'|, a form-feed. If the former happens
-in the main loop of |skip_space|, then we break out of it like we do for any
-non-space character (the predicate |is_space| does not hold for the null
-character), and although the following |input.unshift()| does nothing, the
-value |'\0'| should reappear at the next call of |shift|.
+In case end of input occurs one obtains |shift()=='\0'| from the input buffer,
+and for the end of an included file it passes |shift()=='\f'|, a form-feed. If
+the former happens in the main loop of |skip_space|, then we break out of it
+like we do for any non-space character (the predicate |is_space| does not hold
+for the null character), and although the following |input.unshift()| does
+nothing, the value |'\0'| should reappear at the next call of |shift|. We
+explicitly do not skip |'\f'|: like a non-ignored |'\n'| we leave it in the
+input, where the main scanning method |get_token| will reconsider it.
 
 @h<cctype>
 @h<iostream>
@@ -541,6 +544,7 @@ included before) respectively appending output redirection.
            code= (input.unshift(),c);
          // currently unused; might some day be factorial operator
   break; case '~': @< Handle the |'~'| case, involving some look-ahead @>
+  break; case '\f': code=END_OF_FILE; // tell the parser a file ended
   break; @/@< Cases of arithmetic operators, ending with |break| @>
          case '\n': state=ended; // and {\bf fall through}.
          default: code=c;
