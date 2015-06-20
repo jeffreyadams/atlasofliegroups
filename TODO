@@ -13,8 +13,6 @@
 
 * Work on the realex program
 
-- Find out why typing ^D at a continuation line makes realex segfault
-
 - When input is redirected from a file, return EXIT_SUCCESS on clean run only
 
 - Make conditionals return shared pointer to global true and false values
@@ -30,6 +28,10 @@
 - Allow multiple overloaded functions defined in a single 'set' statement
 
 - Make balancing a general concept, also applied within row displays.
+  This probably requires discovering a priori type in a separate bottom-up
+  pass over the |expr| value (maybe inserting casts to record what it found)
+  which approach would also help making overload resolution more efficient
+- Check whether nested voiding in loops is necessary, maybe do only outer one
 
 - Allow global variables with function value to be called if overload fails
   Currently a global variable with function value cannot be called directly
@@ -40,8 +42,8 @@
   intended for an overloaded instance instead, but somehow fail to match.
   Since this is rare, maybe instead just consider globals before overloading.
 
-- For identifiers in function position of a call, only consider local
-  bindings (which will hide overloads) if those have function type. This
+- For identifiers in function position of a call, only consider the local
+  binding (which will hide overloads) if it has function type. This
   allows continuing to use function 'x' after 'let x=x(p) in ...'.
 
 - Implement compound assignment directly
@@ -80,14 +82,11 @@
 - Ensure that root data obtained from inner classes or beyond are shared
 - Avoid creating many identical |real_form_value| instances, by storing links
   to those currently generated within an |inner_class_value| object
-- Check whether nested voiding in loops is necessary, maybe do only outer one
 - Check if efficiency features actually work as intended
   For instance v[i]=k should usually avoid a copy of v being made. Also see
   if something can be done to avoid duplication in a +:= x (probably not, as
   one knows nothing about what + does). However, for v #:= x in a loop it
   should be possible to avoid a new allocation for v at every iteration.
-- Duplication avoiding in component assignment
-- For loops in void context never build up any value.
 
 * Work on the realex scripts
 - Complete the groups in groups.rx (types G,F); also avoid use of "s" etc.
@@ -97,11 +96,8 @@
 - Write a tutorial on the realex languge, in bottom-up style
 
 * Work on makefiles, distribution and support programs (cwebx)
-- Finally get dependencies for realex header files correct
 - change name of parser.y to parser.ypp, and adapt all Makefiles
-- make sure "make distrubution" produces soemthing that causes no trouble
-- Change interpreter/Makefile so it does not remake io/fliekl.cpp and friends
-- Figure out how to avoid 'unrecognised typedef at line 367 of atlas_types.h'
-- Make cweavex format a 2-line "do x; while(y);" with cirrect indentation
+- Figure out how to avoid 'unrecognised typedefs' all the time
+- Make cweavex format a 2-line "do x; while(y);" with correct indentation
 - Make cwebx messages mention file name, to 'make -jN' output comprehensible
 - Add some make targets for recording options as suggested by Nelson Beebe

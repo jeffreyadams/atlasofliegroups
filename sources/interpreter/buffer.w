@@ -843,7 +843,7 @@ bool BufferedInput::getline()
   }
   while(go_on);
   line_buffer.push_back(popped ? '\f' :'\n');
-     // add suppressed newline, or form feed if file was popped
+     // add suppressed newline, or end-of-file indication
   p=line_buffer.data();
 @/return true;
   // delay reporting end of input if anything was read at all
@@ -971,21 +971,21 @@ inline void BufferedInput::unshift()
 
 @*1 Secondary buffer methods.
 %
-The |BufferedInput| class provides some methods
-that are not directly related to scanning tokens, but provide handles to
-manage information that is directly related to the input process. First of
-all, we provide a method |include_depth| to find out the number of currently
-open additional input files. Then we provide the method |point| to obtain a
-pointer into the current line buffer, which will be useful to isolate a token
-without reassembling it character by character. The method |set_line_no| can
-be used to set the internal line counter. The user method |locate| works in
-the opposite direction as |point|: it provides the line and column number of a
-pointer~|p| into |line_buffer|.
+The |BufferedInput| class provides some methods that are not directly related
+to scanning tokens, but provide handles to manage information that is directly
+related to the input process. First of all, we provide a method
+|include_depth| to find out the number of currently open additional input
+files. Then we provide the method |point| to obtain a pointer into the current
+line buffer, which will be useful to isolate a token without reassembling it
+character by character. We ensure that it will not return |nullptr|,
+redirecting it |line_buffer.c_str()| in that case, which will point to a null
+character. The method |set_line_no| can be used to set the internal line
+counter. The user method |locate| works in the opposite direction as |point|:
+it provides the line and column number of a pointer~|p| into |line_buffer|.
 
 @< Other methods of |BufferedInput| @>=
 unsigned int include_depth() const @+{@; return input_stack.size(); }
-const char* point() const @+
-{@;return p;} // points at next char in line buffer
+const char* point() const @+ {@;return p==nullptr ? line_buffer.c_str(): p;}
 void set_line_no (unsigned long l) @+
 {@; line_no=l; }
 void locate (const char* p, int& line, int& column) const;
