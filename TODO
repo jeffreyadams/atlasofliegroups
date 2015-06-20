@@ -13,7 +13,6 @@
 
 * Work on the realex program
 
-- Change readline completion to use only global functions and variables
 - When input is redirected from a file, return EXIT_SUCCESS on clean run only
 
 - Make conditionals return shared pointer to global true and false values

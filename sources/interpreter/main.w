@@ -19,6 +19,7 @@
 % Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
+\def\emph#1{{\it#1\/}}
 \def\point{\item{$\bullet$}}
 
 @* Introduction to the {\tt realex} interpreter.
@@ -189,54 +190,12 @@ void yyerror (YYLTYPE* locp, atlas::interpreter::expr_p* ,int* ,char const *s)
 }
 
 @ We have a user interrupt handler that simple raises |interrupt_flag| and
-returns. It must be declares |extern "C"|.
+returns. It must be declared |extern "C"|.
 
 @< Definitions of global namespace functions @>=
 
 extern "C" void sigint_handler (int)
 @+{@; atlas::interpreter::interrupt_flag=1; }
-
-@ The function |id_completion_func| defined in the \.{lexer} module will not
-be plugged directly into the readline completion mechanism, but instead we
-provide an alternative function for generating matches, which may pass the
-above function to |rl_completion_matches| when it deems the situation
-appropriate, or else returns |nullptr| to indicate that the default function,
-completing on file names, should be used instead.
-
-@< Definitions of global namespace functions @>=
-#ifndef NREADLINE
-extern "C" char** do_completion(const char* text, int start, int end)
-{
-  if (start>0)
-  { int i; char c; bool need_file=false;
-    for (i=0; i<start; ++i)
-      if (std::isspace(c=rl_line_buffer[i]))
-        continue; // ignore space characters
-      else if (c=='<' or c=='>')
-        need_file=true;
-      else
-        break;
-
-    if (need_file and i==start)
-       // the text is preceded by one or more copies of \.<, \.>
-      return nullptr; // signal that file name completion should be used
-  }
-  rl_attempted_completion_over = true;
-    // don't try file name completion if we get here
-  return rl_completion_matches(text,atlas::interpreter::id_completion_func);
-}
-#endif
-
-@ The code concerning the \.{readline} library is excluded in cas
-the \.{NREADLINE} flag is set.
-
-@< Initialise the \.{readline} library interface @>=
-#ifndef NREADLINE
-  using_history();
-  rl_completer_word_break_characters = lexical_break_chars;
-  rl_attempted_completion_function = do_completion; // set up input completion
-
-#endif
 
 @ Here is an array that declares the keywords that the lexical scanner is to
 recognise, terminated by a null pointer. Currently the lexical analyser adds
@@ -257,7 +216,7 @@ const char* keywords[] =
  ,"whattype","showall","forget"
  ,nullptr};
 
-@ After installing keywords in the lexical analyser, some more preparation is
+@~After installing keywords in the lexical analyser, some more preparation is
 needed. The identifiers |quiet| and |verbose| that used to be keywords are now
 instead recognised only in the special commands \.{set quiet} and \.{set
 verbose}; to this end the parser uses their numeric identifier codes. To
@@ -280,6 +239,12 @@ longer necessary, as it is done automatically before |main| is called. Our own
 compilation units do require explicit calling of their initialisation
 functions.
 
+The looking up of the ``operator''~\.! overloaded at |bool| is done here to
+initialise the static variable |boolean_negate_builtin| that the evaluator
+declares, and uses to implement the |not| operation (in places where it
+cannot, as it can in the conditions of |if| or |while| clauses,
+be eliminated).
+
 @h <csignal>
 @h "built-in-types.h"
 
@@ -288,11 +253,12 @@ functions.
   signal(SIGINT,sigint_handler); // install handler for user interrupt
   initialise_evaluator();
   initialise_builtin_types();
+@)
   { id_type shriek = main_hash_table->match_literal("!");
     const auto& variants = global_overload_table->variants(shriek);
     for (auto it=variants.begin(); it!=variants.end(); ++it)
       if (it->type().arg_type==bool_type)
-      { boolean_negate_builtin =
+      @/{@; boolean_negate_builtin =
           std::dynamic_pointer_cast<const builtin_value>(it->val);
          break;
       }
@@ -489,7 +455,9 @@ suppress printing of the uninteresting value.
   @< Various |catch| phrases for the main loop @>
 }
 
-@ Before entering that main loop, we do a simplified version of the command
+@*1 Reading in the prelude files.
+%
+Before entering that main loop, we do a simplified version of the command
 loop to read in the prelude files. We do not accept anything that changes
 |verbosity| (like trying to call \.{quit}) during the prelude, do not maintain
 a last value, and in case of type or runtime errors complain more succinctly
@@ -587,6 +555,136 @@ catch (const std::exception& err)
 { std::cerr << err.what() << "\nEvaluation aborted.\n";
   reset_evaluator(); main_input_buffer->close_includes();
 }
+
+@*1 Identifier completion.
+%
+We define a completion function |id_completion_func| that will be used by the
+\.{readline} library. The completion function will be called from the
+|readline| function, which is itself probably called by
+|BufferedInput::getline|, if the user asks for it by hitting the ``tab'' key.
+The function prototype is dictated by the \.{readline} library.
+
+The completion function will find identifiers matching the given prefix that
+are currently either known in the overload or global identifier tables, or
+have such a low code that they are keywords or predefined types. All such
+identifiers are known in |main_hash_table|, so that is what our primary loop
+is over, but upon finding a partial match we test the stated conditions. Those
+additional tests (which were not done until version 0.9 of \.{realex})
+prevent names of local identifiers of functions loaded and accidentally typed
+erroneous identifiers to ``pollute the completion space''.
+
+The completion function has some strange characteristics that are dictated by
+the \.{readline} library. It must perform a loop that is actually
+started \emph{outside} the function body, so the only possible way to keep
+track of the loop state is using static variables. The |state| parameter
+signals (by being~|0|) when a new loop starts, so in that case it is time to
+(re-)initialise the static variables. A part of the loop can be picked up
+inside the function body, namely the search for the next match to the supplied
+prefix |text|. A tricky point is that once a partial match is found, we must
+increment the static iterator before returning, since that |return| jumps out
+of our local loop. For this reason we increment |i| right away while picking
+its identifier from the hash table. Otherwise there are no other
+complications, except having to produce a string allocated by |malloc|; this
+used to be done by calling |strdup|, but since that function appears not to be
+part of standard \Cpp\ at all, we do the duplication explicitly. If our local
+loop terminates normally there are no more matches and we return |nullptr| to
+indicate that circumstance.
+
+@h <cstdlib>
+@< Definitions of global namespace functions @>=
+extern "C"
+char* id_completion_func(const char* text, int state)
+{ using namespace atlas::interpreter;
+  static size_t l; static id_type i,n;
+  if (state==0)
+  { i=0; n=main_hash_table->nr_entries();
+    l=std::strlen(text); // fix length for during search
+  }
+  while (i<n)
+    // |i| is initialised above when |state==0|, and incremented below
+  { id_type id=i++; // take next identifier code and increment
+    const char* s=main_hash_table->name_of(id);
+      // get stored identifier and increment loop
+    if (std::strncmp(text,s,l) == 0 // is |text| a prefix of |s|?
+      and (id<lex->first_identifier() @| or
+          not global_overload_table->variants(id).empty() @| or
+          global_id_table->present(id)))
+    { char* result=static_cast<char*>(std::malloc(std::strlen(s)+1));
+      if (result==nullptr)
+        @[throw std::bad_alloc()@];
+      return std::strcpy(result,s);
+    }
+  }
+  return nullptr; /* if loop terminates, report failure */
+}
+
+@ The readline library needs to know where to break the input into words that
+may be completed. The following value reflects what the lexical analyser
+considers separating characters. The list contains those non-alphanumeric
+characters that are valid input characters, as implicitly defined by the
+|get_token| method of |Lexical_analyser|. This choice will affect file name
+completion as well, but in an indirect way: an incomplete name that can be
+uniquely extended to a file name will be so, independently of whether or not
+the additional characters appear in |lexical_break_chars|, but this completion
+will only be activated if none of the characters in the initial incomplete
+file name do appear in that collection: in the contrary case, |readline| will
+decide that only a final part needs to be completed, and that even before our
+program get the opportunity to tell it that the lexical context indicates that
+file name completion is to be attempted.
+
+@< Local static data @>=
+char lexical_break_chars[] = " \t\n=<>+-*/\\%,;:()[]{}$@@\"|~";
+
+@ The above function |id_completion_func| will not be plugged directly into
+the readline completion mechanism, but instead we provide an alternative
+function for generating matches, which may pass our function to
+|rl_completion_matches| when it deems the situation appropriate, or else
+returns |nullptr| to indicate that the default function, completing on file
+names, should be used instead.
+
+This function is called with |text| pointing to the line typed so far, and
+with the part at positions from |start| up to |end| is the sub-string that
+readline wants to complete. We decide by looking at the part before |start|
+whether we should interpret that part as a partial file name.
+
+@< Definitions of global namespace functions @>=
+#ifndef NREADLINE
+extern "C" char** do_completion(const char* text, int start, int end)
+{
+  if (start>0)
+   // not a file name if sub-string starts at the beginning of |text|
+  { int i; char c; bool need_file=false;
+    for (i=0; i<start; ++i)
+      if (std::isspace(c=rl_line_buffer[i]))
+        continue; // ignore space characters
+      else if (c=='<' or c=='>')
+        need_file=true;
+      else
+        break; // any other preceding characters make it not a file name
+
+    if (need_file and i==start)
+       // the sub-string is preceded by one or more copies of \.<, \.>
+      return nullptr; // signal that file name completion should be used
+  }
+  rl_attempted_completion_over = true;
+    // don't try file name completion if we get here
+  return rl_completion_matches(text,id_completion_func);
+    // but make |readline| call our function
+}
+#endif
+
+@ The code concerning the \.{readline} library is excluded in case
+the \.{NREADLINE} flag is set.
+
+@< Initialise the \.{readline} library interface @>=
+#ifndef NREADLINE
+  rl_readline_name="realex"; // for users who want to customise |readline|
+  using_history();
+  rl_completer_word_break_characters = lexical_break_chars;
+  rl_attempted_completion_function = do_completion; // set up input completion
+
+#endif
+
 
 @* Index.
 
