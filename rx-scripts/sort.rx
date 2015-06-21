@@ -1,68 +1,95 @@
 <basic.rx
 
-set merge (vec a, vec b) = vec:
-  if #a=0 then b
-  else let (i,j)=(0,0)
-  in b#:=a[#a-1] { sentinel; when this becomes b[j] assures a is then emptied }
-  ; while i<#a or j+1<#b
-    do if i<#a and a[i]<=b[j] then a[i] next i+:=1 else b[j] next j+:=1 fi
+set merge ([int] a, [int] b) = [int]: { merge weakly increasing lists }
+  let na=#a in
+  if na=0 then b
+  else let i=0, j=0, nb=#b { original length of b }
+  in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
+  ; while i<na or j<nb { run until i=na and j=nb=#b-1 }
+    do if i<na and a[i]<=b[j] then a[i] next i+:=1 else b[j] next j+:=1 fi
     od
   fi
 
-set sort = (vec->vec): { merge sort }
-  let ms (vec v, int l) = v
-  then ()= ms := ((vec v, int l):
-    if l<3 then if l<2 or v[0]<=v[1] then v else [v[1],v[0]] fi
-    else let half=l\2 in
-      merge( ms(lower(half,v),half), ms(upper(half,v),l-half) )
+set sort = ([int]->[int]): { merge sort }
+( let ms ([int] v, int l) = v { stub } in
+  ms := (([int] v, int l): { invariant includes l=#v }
+    if l<3 then if l=2 and v[0]>v[1] then v~[:] { swap } else v fi
+    else let half=l\2 in merge( ms(v[:half],half), ms(v[half:],l-half) )
     fi)
-  in { sort = } (vec v) vec: ms(v,#v)
+; ([int] v) [int]: ms(v,#v) { the actual body of sort }
+)
 
-set reverse_sort (vec v) = vec: reverse(sort(v))
+set reverse_sort ([int] v) = [int]: sort(v)~[:]
 
 { the following helps stable-sorting of anything according to a statistic }
 
-{ stable-sorting permutation of a list of integers }
-set inv_standardisation = (vec->vec):
-  let merge([(int,int)] a, [(int,int)] b) = { merge based on first component }
-    if #a=0 then b
-    else let (i,j)=(0,0)
-    in b#:=a[#a-1] { sentinel }
-    ; while i<#a or j+1<#b
+{ stable-sorting permutation of a list of integers (analogous, but independent)
+  permutation of #v whose inverse is the standardisation of v (combinatorics)
+}
+set inv_standardisation = ([int]->[int]):
+( let merge([(int,int)] a, [(int,int)] b) = { merge based on first component }
+    let na=#a in
+    if na=0 then b
+    else let i=0, j=0, nb=#b { original length of b }
+    in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
+    ; while i<na or j<nb { run until i=na and j=nb=#b-1 }
       do
-        if i=#a then b[j] next j+:=1
-        else let (x,):ai=a[i], (y,):bj=b[j] in
-          if x<=y then ai next i+:=1 else bj next j+:=1 fi
-	fi
+        if i=na then b[j] next j+:=1
+        else
+          let (x,):ai=a[i], (y,):bj=b[j] { x,y are sort keys, ai,bj elements }
+          in if x<=y then ai next i+:=1 else bj next j+:=1 fi
+        fi
       od
     fi
-  , ms ([(int,int)] v, int l) = v
-  then ()= ms:=                    { merge sort based on first component }
-  ( ([(int,int)] v, int l):
-    if l>=3
-    then let h=l\2 then hh=l-h in
-      merge(ms(for i:h do v[i] od,h),ms(for i:hh from h do v[i] od,hh))
-    elif l<2 then v
-    else { l=2 }
-      let (x,):v0=v[0], (y,):v1=v[1] in if x<=y then v else [v1,v0] fi
-    fi)
-  in { inv_standardisation = } (vec v) vec:
+  , ms ([(int,int)] v, int l) = v { recusive stub }
+  in ms:=                    { merge sort based on first component }
+  begin
+    ([(int,int)] v, int l) [(int,int)]:
+    if l>=3 then let h=l\2 in merge(ms(v[:h],h),ms(v[h:],l-h))
+    elif l=2 and (let (x,)=v[0], (y,)=v[1] in x>y) then v~[:] { swap }
+    else v { either l=1 or v sorted }
+    fi
+  end
+; ([int] v) [int]: { actual body of inv_standardisation }
     for (,org_i) in ms(for a@i in v do (a,i) od,#v) { attach index to entries }
     do org_i od { afterward just recover the permuted original indices }
+)
 
+{ inv_standardisation tells order of indices to select from origal for sorting }
 set sort_by ((Param->int) f) = ([Param] v) [Param]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 set sort_by (((Param,bool)->int) f) = ([(Param,bool)] v) [(Param,bool)]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
+set sort_by ( (Split,Param->int) f) = ([(Split,Param)] v) [(Split,Param)]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
 { and so forth for any type; this really should be second-order typed }
 
+{ Here are example calls of the model functions above. They can be defined
+  here because reducibility_points and height are built-in functions (those
+  defined in basic.rx could also be used). If however you need to sort on a
+  custom attribute defined elsewhere, DON'T do so here (and don't include
+  modules to make that possible); rather call sort_by in the script where that
+  custom attribut is defined. (You might need to extend the above list of
+  models if a new value type is involved; that is OK and in fact recommended.)
+
+  For instance LKT.rx defines the attribute LKT_dimensions, and then defines
+  sort_by_dimension in a call of sort_by, whose argument used that attribute.
+}
+
 { sort list of pairs [(Param,bool)] by #reducibility_points of Param }
-set sort_by_reducibility_pairs = ([(Param,bool)]->[(Param,bool)]):
+set sort_by_reducibility_points = ([(Param,bool)]->[(Param,bool)]):
   sort_by((Param p,bool x) int: #reducibility_points(p) )
 
 { sort list [Param] by #reducibility_points of Param }
 set sort_by_reducibility = ([Param]->[Param]):
   sort_by((Param p) int: #reducibility_points(p) )
 
+{ Sort list of parameters by height }
+set sort_by_height = ([Param] -> [Param]): sort_by( height@Param )
+
+{ Same for a list of parameters with a Split attached (ignored for sorting) }
+set sort_by_height = ([(Split,Param)] -> [(Split,Param)]):
+ sort_by( (Split s,Param p) int: height(p) )

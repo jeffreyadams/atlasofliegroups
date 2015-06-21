@@ -1,4 +1,4 @@
-% Copyright (C) 2006 Marc van Leeuwen
+% Copyright (C) 2006-2015 Marc van Leeuwen
 % This file is part of the Atlas of Lie Groups and Representations (the Atlas)
 
 % This program is made available under the terms stated in the GNU
@@ -37,7 +37,6 @@ this file. In this module all include files are needed in the header file.
 namespace atlas { namespace interpreter {
 
 @< Class declarations @>@;
-@< Declarations of exported functions @>@;
 @< Declarations of static variables @>@;
 
 }@; }@;
@@ -49,12 +48,10 @@ might be a bit wasteful, but only system header files are concerned).
 
 @c
 #include "lexer.h"
-using namespace std; @/
 namespace atlas
 { namespace interpreter
    {
 @< Definitions of class members @>@;
-@< Function definitions @>@;
 @< Definitions of static variables @>@;
    }@;
 }@;
@@ -71,72 +68,7 @@ extern Hash_table* main_hash_table;
 it point to the main hash table once it is allocated.
 
 @< Definitions of static variables @>=
-Hash_table* main_hash_table=NULL;
-
-@*1 Identifier completion.
-%
-We define a completion function |id_completion_func| that will be used by the
-\.{readline} library. The definition is done here since it deals with the hash
-table, but strictly speaking this has nothing to do with lexical analysis. The
-completion function will be installed in the main program, and it will be
-called from the |readline| function (which is probably called by
-|BufferedInput::getline|) if the user asks for it. The function prototype is
-dictated by the \.{readline} library.
-
-@< Declarations of exported functions @>=
-extern "C" char* id_completion_func(const char* text, int state);
-
-@~The completion function will find and identifiers currently present in the
-main hash table. This includes keywords, built-in functions and identifiers
-introduced by the user, the latter possibly even by error (which is possibly
-annoying for those who make many typos). It has some strange characteristics
-that are dictated by the \.{readline} library. It must perform a loop that is
-actually started \emph{outside} the function body, so the only possible way to
-keep track of the loop state is using static variables. The |state| parameter
-signals (by being~|0|) when a new loop starts, so in that case it is time to
-(re-)initialise the static variables. A part of the loop can be picked up
-inside the function body, namely the search for the next match to the supplied
-prefix |text|. A tricky point is that once a partial match is found, we must
-increment the static iterator before returning, since that |return| jumps out
-of our local loop. For this reason we increment |i| right away while picking
-its identifier from the hash table. Otherwise there are no other complications,
-except having to produce a string allocated by |malloc|, which |strdup| does
-for us. If our local loop terminates normally there are no more matches and we
-return |NULL| to indicate that.
-
-@h <cstdlib>
-@< Function definitions @>=
-extern "C"
-char* id_completion_func(const char* text, int state)
-{ static size_t l; static Hash_table::id_type i,n;
-  if (state==0)
-  { i=0; n=main_hash_table->nr_entries();
-    l=std::strlen(text); // fix length for during search
-  }
-  while (i<n)
-    // |i| is initialised above when |state==0|, and incremented below
-  { const char* s=main_hash_table->name_of(i++);
-      // get stored identifier and increment loop
-    if (std::strncmp(text,s,l) == 0) // is |text| a prefix of |s|?
-      return strdup(s);
-  }
-  return NULL; /* if loop terminates, report failure */
-}
-
-@ The readline library needs to know where to break the input into completable
-words. The string of characters that serve as word boundaries will be defined
-here, and installed in the main program.
-
-@< Declarations of static variables @>=
-extern char lexical_break_chars[];
-
-@~The following value reflects what the lexical analyser considers separating
-characters. The list contains those non-alphanumeric characters that are
-valid input characters, as implicitly defined by the |get_token| function
-below.
-
-@< Definitions of static variables @>=
-char lexical_break_chars[] = " \t\n=<>+-*/\\%,;:()[]{}$@@\"|";
+Hash_table* main_hash_table=nullptr;
 
 @* The lexical analyser class.
 %
@@ -145,13 +77,13 @@ is envisaged, we shall define a class for it. The module \.{buffer} is used
 for the class |BufferedInput| as well as for the type |id_type| defined within
 that class. The file \.{parser.tab.h} contains definitions of |YYSTYPE| and
 |YYLTYPE| defined by the parser and used in the code below, but on its turn it
-uses (for other purposes) types defined in \.{parsetree.h} which therefore has
-to be loaded before it (we would like to have put an \&{\#include} of the
+uses (for other purposes) types defined in \.{parse\_types.h}, which therefore
+has to be loaded before it (we would like to have put an \&{\#include} of the
 file \.{parsetree.h} into \.{parser.tab.h} so that it need no be mentioned
 here, but we do not know if or how this could be arranged).
 
 @h "buffer.h"
-@h "parsetree.h"
+@h "parse_types.h"
 @h "parser.tab.h"
 
 @< Class declarations @>=
@@ -159,8 +91,8 @@ class Lexical_analyser
 { enum states @+ { initial, normal, ended };
 @)BufferedInput& input;
   Hash_table& id_table;
-  Hash_table::id_type keyword_limit; // first non-keyword identifier
-  Hash_table::id_type type_limit; // first non-type identifier
+  id_type keyword_limit; // first non-keyword identifier
+  id_type type_limit; // first non-type identifier
   int nesting; // number of pending opening symbols
   char prevent_termination; // either |'\0'| or character requiring more input
   int comment_start, comment_end; // characters that start/end a comment
@@ -171,12 +103,15 @@ public:
     (BufferedInput&, Hash_table&, const char**, const char** type_names);
   int get_token(YYSTYPE *valp, YYLTYPE* locp);
   bool reset(); // get clean slate, return |false| if |getline()| fails
-  void set_comment_delims (char c, char d) @+
-          {@; comment_start=c; comment_end=d; }
-  const char* scanned_file_name() const {@; return file_name.c_str(); }
+  void set_comment_delims (char c, char d)
+          {@; assert(c!='\0' and d!='\0'); comment_start=c; comment_end=d; }
+  const char* scanned_file_name() const @+{@; return file_name.c_str(); }
+  id_type first_identifier() const @+{@; return type_limit; }
+  bool is_initial () const {@; return state==initial; }
 private:
-  void skip_space();
-  char* scan_quoted_string();
+  void skip_space() const;
+  bool becomes_follows();
+  std::string scan_quoted_string() const;
 };
 
 @ Since there is one lexical analyser object, and other parts of the program
@@ -189,23 +124,24 @@ extern Lexical_analyser* lex;
 it point to the main hash table once it is allocated.
 
 @< Definitions of static variables @>=
-Lexical_analyser* lex=NULL;
+Lexical_analyser* lex=nullptr;
 
 
 @ Here is the constructor for the lexical analyser, which assumes that a
 buffered input object and an empty hash table object have been previously
 constructed, and are passed by reference. Currently it is called with a list
-of keyword strings as final parameter, which keywords will be installed into
-the hash table and determine the value of |keyword_limit|. There will probably
-be a need to further parametrise the lexical analyser, if we do not want to
-hard-code all lexical details into it (there is nothing wrong with that as
-long as there is only one object of this class, but the class concept invites
-us to envision some more flexible use). One such parametrisation is via the
-|comment_start| and |command_end| characters, that if set will automatically
-skip text enclosed between them (they may or may not be equal). In the unset
-state they are set to an integer that cannot match any |char| value; we would
-have like to use |EOF| defined in \.{ctype.h} here, but it is only guaranteed
-to be non-|(unsigned char)|, and since using the type |(unsigned char*)| is
+of keyword strings, and a list of predefined type names; both will be
+installed into the hash table and determine the values of |keyword_limit| and
+|type_limit|. There will probably be a need to further parametrise the lexical
+analyser, if we do not want to hard-code all lexical details into it (there is
+nothing wrong with that as long as there is only one object of this class, but
+the class concept invites us to envision some more flexible use). One such
+parametrisation is via the |comment_start| and |command_end| characters, that
+if set using |set_comment_delims| will automatically skip text enclosed
+between them (they may or may not be equal). In the unset state they are set
+to an integer that cannot match any |char| value; we would have like to use
+|EOF| defined in \.{ctype.h} here, but it is only guaranteed to be
+non-|(unsigned char)|, and since using the type |(unsigned char*)| is
 unwieldy, we use another value.
 
 @< Definitions of class members @>=
@@ -249,113 +185,133 @@ bool Lexical_analyser::reset()
 @ Skipping spaces is a rather common activity during scanning; it is performed
 by |skip_space|. When it is called, the first potential space character has
 been shifted in, and when it returns a non-space character is left in
-shifted-in position. Processing of newline-escaping backslashes and skipping
-comments is also performed by |skip_space|. If |comment_start| is set and
-|comment_end!='\n'|, then newlines will be skipped inside comments, but if
-|comment_end=='\n'| then a closing newline will be considered for the
-possibility of ending input. In the former case we change the input prompt by
-pushing the comment character to warn the user that no action has been
-performed. In case |prevent_termination| is set, that character is also pushed
-into the prompt for the duration of skipping spaces.
+shifted-in position. Skipping comments is also performed by |skip_space|. In
+spite of its name, this function does not unconditionally skip all spaces, so
+as to be able to catch some runaway constructions. Also the subtle decision
+mechanism to determine which newlines terminate a command kicks in here, in
+the |std::isspace(c)| branch below, although the actual control of this
+decision is distributed in the various pieces of code that maintain of the
+fields |prevent_termination| and |nesting|.
 
-In case end of input occurs one obtains |shift()=='\0'|, and for the end of an
-included file one obtains |shift()=='\f'|, a form-feed. If the former happens
-in the main loop of |skip_space| then we break from it like for any non-space
-character, and although the following |input.unshift()| does nothing, the
-value |'\0'| should reappear at the next call of |shift|. If end of input or a
-form-feed occurs during a comment, then the comment is terminated (with an
-error message) due to the explicit test, and the character that provoked this
-will be reconsidered so the end of file will not be masked by the comment it
-occurred inside.
+In case end of input occurs one obtains |shift()=='\0'| from the input buffer,
+and for the end of an included file it passes |shift()=='\f'|, a form-feed. If
+the former happens in the main loop of |skip_space|, then we break out of it
+like we do for any non-space character (the predicate |is_space| does not hold
+for the null character), and although the following |input.unshift()| does
+nothing, the value |'\0'| should reappear at the next call of |shift|. We
+explicitly do not skip |'\f'|: like a non-ignored |'\n'| we leave it in the
+input, where the main scanning method |get_token| will reconsider it.
 
 @h<cctype>
 @h<iostream>
 
+@s level x
+
 @< Definitions of class members @>=
-void Lexical_analyser::skip_space(void)
+void Lexical_analyser::skip_space() const
 { if (prevent_termination!='\0') input.push_prompt(prevent_termination);
   do
   { char c=input.shift();
     if (std::isspace(c))
-    { if (c=='\n' and prevent_termination=='\0' and nesting==0
-          or c=='\f')
+     // ignore unless file ends, or a newline where a command could end
+  @/{@; if (c=='\f' or
+            c=='\n' and prevent_termination=='\0' and nesting==0)
         break;
-// newline not skipped if some command could end here, form feed never skipped
-      continue; // all other space is skipped
     }
-    if (c==comment_start)
-      if (comment_end=='\n' or comment_end==comment_start)
-      { do c=input.shift(); while (c!=comment_end && c!='\0');
-        input.unshift(); // reconsider newline character
-      }
-      else // skip comment, allowing for nested comment groups
-      { int level=1; int line; int column;
-        input.locate(input.point(),line,column); // maybe needed for reporting
-        input.push_prompt(comment_start);
-        do
-        {
-          do c=input.shift();
-          while (c!= comment_start and c!=comment_end and c!='\0' and c!='\f');
-          if (c=='\0' or c=='\f')
-          { std::cerr << "Comment that started on line " << line
-                      << ", column " << column @| << " is never closed.\n";
-          @/ input.unshift(); break;
-          // force out of comment loop, reconsider character
-          }
-          if (c==comment_start)
-          {@; ++level;
-            input.push_prompt(comment_start);
-          }
-          else
-          {@; --level;
-            input.pop_prompt();
-          } // |c==comment_end|
-        }
-        while (level>0);
-      }
-    else break; // non-space and non-comment character
+    else if (c==comment_start) @< Skip comment, possibly nested @>
+    else break;
+      // non-space and non-comment character (possibly |'\0'|): terminate
   } while(true);
   if (prevent_termination!='\0') input.pop_prompt();
   input.unshift(); // prepare to re-read character that ended space
 }
 
+@ If |comment_start| is set and |comment_end!='\n'|, then newlines will be
+skipped inside comments, but if |comment_end=='\n'| then a closing newline
+will be considered for the possibility of ending input. In the former case we
+change the input prompt by pushing the comment character to warn the user that
+no action has been performed. In case |prevent_termination| is set, that
+character is also pushed into the prompt for the duration of skipping spaces.
+
+If end of input or a form-feed occurs during a comment, then the comment is
+terminated (with an error message) due to the explicit test, and the character
+that provoked this will be reconsidered so the end of file will not be masked
+by the comment it occurred inside.
+
+@< Skip comment, possibly nested @>=
+{ int line, column;
+  input.locate(input.point(),line,column); // maybe needed for reporting
+  if (comment_end=='\n' or comment_end==comment_start)
+     // non nestable comment
+  { do c=input.shift();
+ @/ while (c!=comment_end and c!='\0' and c!='\f');
+    if (c!=comment_end)
+    { std::cerr << "Comment that started on line " << line
+                << ", column " << column @| << " is never closed.\n";
+    @/input.unshift(); // reconsider end of file
+    }
+    else if (comment_end=='\n')
+      input.unshift(); // reconsider newline character
+  }
+  else // skip comment, allowing for nested comment groups
+  { int level=1;
+    input.push_prompt(comment_start);
+    do
+    {
+      do c=input.shift(); @/ @q forced break fixes broken cweavex @>
+      while (c!= comment_start and c!=comment_end and c!='\0' and c!='\f');
+      if (c=='\0' or c=='\f')
+      { std::cerr << "Comment that started on line " << line
+                  << ", column " << column @| << " is never closed.\n";
+      @/ input.unshift(); break;
+      // force out of comment loop, reconsider character
+      }
+      if (c==comment_start)
+      {@; ++level;
+        input.push_prompt(comment_start);
+      }
+      else
+      {@; --level;
+        input.pop_prompt();
+      } // |c==comment_end|
+    }
+    while (level>0);
+  }
+} // after skipping the comment, skipping spaces (and comments) continues
+
 @ Another auxiliary method is used for scanning a quoted string; it should be
 called when an initial double-quote character has been recognised, and after
-scanning the string returns a pointer to the designated string (with quotes
-and escapes removed), null terminated and allocated by |new[]|. We currently
-use a simple model for strings. They should be contained in a single line, and
-the only escapes used are the doubling of double-quote characters. We copy the
-string while reducing doubled double-quote characters to single ones.
+scanning the string returns it (with quotes and escapes removed) as a
+|std::string| value. We currently use a simple model for strings. They should
+be contained in a single line, and the only escapes used are the doubling of
+double-quote characters. We copy the string while reducing doubled
+double-quote characters to single ones.
 
+@h <string>
 
 @< Definitions of class members @>=
-char* Lexical_analyser::scan_quoted_string()
-{ const char* start=input.point(),*end;
-  int nr_quotes=0; // number of escaped quotes
-  do
-  { char c;
-    do c=input.shift(); while (c!='"' && c!='\n' && c!='\0');
+std::string Lexical_analyser::scan_quoted_string() const
+{ const char* start=input.point(); bool broken=false;
+  std::string result; char c;
+  while (true)
+  { for (c=input.shift(); c!='"' and c!='\n' and c!='\0'; c=input.shift())
+      result.push_back(c);
     if (c!='"')
-    { input.unshift(); end=input.point();
-      int l0,c0,l1,c1;
-      input.locate(start,l0,c0); input.locate(end,l1,c1);
-      input.show_range(cerr,l0,c0,l1,c1);
-      cerr << "Closing string denotation.\n";
-      break;
-    }
+      {@; broken=true; break; }
     else if ((c=input.shift())!='"')
-    {@; input.unshift(); end=input.point()-1; break; }
-    else
-      ++nr_quotes; // for doubled quotes, continue
-  } while (true);
-  size_t len=end-start-nr_quotes;
-  char* s=new char[len+1];
-  while (start<end) // copy characters, undoubling doubled quotes
-    if ((*s++=*start++)=='"')
-      ++start;
-  *s='\0'; return s-len;
+      break; // normal ending of string
+    result.push_back(c); // doubled quote; insert one copy and continue
+  }
+  input.unshift();
+  if (broken)
+  { const char* end=input.point();
+    int l0,c0,l1,c1;
+    input.locate(start,l0,c0); input.locate(end,l1,c1);
+    input.show_range(std::cerr,l0,c0,l1,c1);
+    std::cerr << "Closing string denotation.\n";
+  }
+  return result;
 }
-
 
 @*1 The main scanning routine.
 %
@@ -428,9 +384,9 @@ int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
   skip_space(); prevent_termination='\0';
   input.locate(input.point(),locp->first_line,locp->first_column);
   int code; char c=input.shift();
-  if (isalpha(c) or c=='_')
+  if (std::isalpha(c) or c=='_')
     @< Scan an identifier or a keyword @>
-  else if (isdigit(c))
+  else if (std::isdigit(c))
     @< Scan a number @>
   else
     @< Scan a token starting with a non alpha-numeric character @>
@@ -440,25 +396,45 @@ int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
   return code;
 }
 
-@ Everything that looks like an identifier is either that or a keyword, or a
-type name. In any case we start with looking it up in the table, and then the
-numeric value of the code returned will allow us to discriminate the
-possibilities. In this scanner we cannot yet handle multiple distinct keywords
-that should scan as the same category because of a similar syntactic role,
-although this is probably desirable. However type names
+@ Everything that looks like an identifier is either that, or a keyword, or a
+type name. In any case we start with looking it up in the |id_table|, and then
+the numeric value of the code returned, which is determined by the order in
+which names were first entered into |id_table|, will allow us to discriminate
+the possibilities. All keywords get distinct code numbers, determined by their
+offset from the first keyword; this implies that we cannot handle multiple
+distinct keywords that scan as the same category because of a similar
+syntactic role. However type names for primitive types all get the same
+category |TYPE|, with the actual name stored in the token value
+|valp->type_code|. While user defined type names (abbreviations) are
+equivalent to primitive ones at the syntactic level, we give them a different
+category |TYPE_ID|, because the nature of the associated token value is
+different: the identifier code is stored, and finding the designated type
+will require looking it up in |global_id_table|. Distinguishing type
+identifiers from other identifiers at lexical analysis is also uses
+|global_id_table|: type identifiers are known in that table, but have a null
+pointer as value (unlike global identifiers that have been declared without
+initial value: there the associated values is a shared pointer to an empty
+slot (holding a null pointer) instead.
+
+@h "global.h" // need to inspect |global_id_table|
 
 @< Scan an identifier or a keyword @>=
 { const char* p=input.point@[()@]-1; // start of token
   do
     c=input.shift();
-  while(isalpha(c) || isdigit(c) || c=='_');
+  while(std::isalnum(c) || c=='_');
   input.unshift();
-  Hash_table::id_type id_code=id_table.match(p,input.point()-p);
+  id_type id_code=id_table.match(p,input.point()-p);
   if (id_code>=type_limit)
-  {@; valp->id_code=id_code; code=IDENT; }
+  { valp->id_code=id_code;
+    if (global_id_table->is_defined_type(id_code))
+      code=TYPE_ID;
+    else
+      code=IDENT;
+  }
   else if (id_code>=keyword_limit)
   {@; valp->type_code=id_code-keyword_limit; code=TYPE; }
-  else
+  else // we have |id_code<keyword_limit|, so it is a keyword
   { code=QUIT+id_code;
     switch(code)
     {
@@ -468,11 +444,12 @@ although this is probably desirable. However type names
       case WHILE:
       case FOR: ++nesting; input.push_prompt('G'); break;
       case IN: if (input.top_prompt()=='L')
-      {@; --nesting; input.pop_prompt(); prevent_termination='I'; }
+      @/{@; --nesting; input.pop_prompt(); prevent_termination='I'; }
       break;
       case END:
       case FI:
       case OD: --nesting; input.pop_prompt(); break;
+      case AND: case OR: case NOT: prevent_termination='~'; break;
       case WHATTYPE: prevent_termination='W'; break;
     }
   }
@@ -485,11 +462,31 @@ values.
 { const char* p=input.point@[()@]-1; // start of token
   do
     c=input.shift();
-  while(isdigit(c));
+  while(std::isdigit(c));
   input.unshift();
   const char* end=input.point();
   unsigned long val=*p++-'0'; @+  while (p<end) val=10*val+(*p++-'0');
   valp->val=val; code=INT;
+}
+
+@ For reasons of limited look-ahead in the parser, certain operator symbols
+will be contracted with a possible following |":="| into a single token during
+lexical analysis. The function |becomes_follows| will be called to perform the
+necessary look-ahead, possibly include the token |":="| and report whether it
+did find it. While unlikely, we do allow spaces or comments to intervene
+between the operator and the becomes, so as to cover our tracks for this
+lexical hack.
+
+@< Definitions of class members @>=
+bool Lexical_analyser::becomes_follows ()
+{ skip_space(); // allow intervening space, comments
+  const char* p = input.point();
+   // take a peek into the input buffer without advancing
+  if (*p==':' and *++p=='=') // then indeed |":="| follows our operator
+  { input.shift(); input.shift(); // gobble up the symbol |":="|
+    prevent_termination = ':'; return true;
+  }
+  return false;
 }
 
 @ After splitting off the alphanumeric characters, the scanner plunges into a
@@ -510,6 +507,7 @@ included before) respectively appending output redirection.
   break; case ')':
          case '}':
          case ']': --nesting; input.pop_prompt(); code=c;
+  break; case ';': code=prevent_termination=c;
   break; case '<':
          case '>':
          if (state==initial)
@@ -520,58 +518,119 @@ included before) respectively appending output redirection.
            @+ break;
          }
          prevent_termination=c;
-         code = OPERATOR; valp->oper.priority=2;
+         valp->oper.priority=2;
          if (input.shift()=='=')
            valp->oper.id=id_table.match_literal(c=='<' ? "<=" : ">=");
          else
            {@; input.unshift();
                valp->oper.id=id_table.match_literal(c=='<' ? "<" : ">");
            }
+         code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
   break; case ':': prevent_termination=c;
     code = input.shift()=='=' ? BECOMES  : (input.unshift(),c);
   break; case '=':
          valp->oper.id = id_table.match_literal("=");
          valp->oper.priority = 2; // in case
-	 prevent_termination=code=c;
+	 prevent_termination=c;
+	 code = becomes_follows() ? OPERATOR_BECOMES : '=';
   break; case '!':
          if (input.shift()=='=')
-         { code = OPERATOR;
-           valp->oper.id = id_table.match_literal("!=");
+         { valp->oper.id = id_table.match_literal("!=");
            valp->oper.priority = 2;
            prevent_termination='=';
+           code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
          }
          else
            code= (input.unshift(),c);
          // currently unused; might some day be factorial operator
+  break; case '~': @< Handle the |'~'| case, involving some look-ahead @>
+  break; case '\f': code=END_OF_FILE; // tell the parser a file ended
   break; @/@< Cases of arithmetic operators, ending with |break| @>
          case '\n': state=ended; // and {\bf fall through}.
          default: code=c;
   }
 }
 
-@ Here are some cases split off to avoid the previous module getting too long.
+@ The tilde character was long unused, but was introduced in subscriptions,
+slices and loops, where it can be placed before certain punctuation tokens or
+the keywords \&{do} or \&{od} to indicate various kinds of reversals to be
+incorporated in the semantics of these expressions. While innocent looking,
+these syntactic extensions cause difficulties due to the limited one-token
+look-ahead the parser allows: in general it is clear what use of the tilde is
+intended by looking at the next token, but the parser needs to know this to
+know what is can allows for the \emph{preceding} expression, and cannot wait
+until seeing the next token. The basic problem involves the $a\,{\sim}[i]$
+syntax which could occur at the position of $j$ inside a $b[i:j{\sim}]$ slice;
+the presence of |'['| after the tilde influences the parsing rules for~$a$. We
+solve the dilemma by requiring |'~['| to appear as single unit (no space) and
+have the lexer transmit the combination as a single token |TLSUB| to the
+parser.
+
+Given that in these uses |'~'| is never followed by a token that could start a
+sub-formula, it seems reasonable to allow the character to, independently
+from these uses, also be used as operator symbol (where it always precedes a
+sub-formula; the only caveat to the user will be to separate by a space in
+case the operator should be applied to a list display). We can allow that, but
+unless the distinction between the two uses is made by the lexer, we again run
+into parsing problems, similar to the previous ones. So to find out whether
+this is a use of tilde as special symbol rather than as operator, we need to
+look at the next token from within the lexer, and see it if is one of |':'|,
+|']'|, |','|, or the keywords \&{do} or \&{od}. But we need to do that within
+the lexer, which can be done even though it is quite ugly. We use the fact that
+the input buffer allows us get a pointer~|p| to the next characters to be
+read, so we just test the various possibilities manually. The keyword cases
+are the hardest (we don't want to call |get_token| recursively to scan them,
+especially since we cannot contribute the token yet), but fortunately the
+keywords in question are not very long.
+
+@< Handle the |'~'| case, involving some look-ahead @>=
+if (input.shift()=='[') // recognise combination for parse reason
+{@; code = TLSUB; ++nesting; input.push_prompt('['); }
+else
+ // now see if, skipping spaces and comments, next can follow |'~'|
+{ input.unshift(); prevent_termination='~'; skip_space();
+   // for these cases we do allow intervening space, comments
+  const char* p = input.point();
+   // take a peek into the input buffer without advancing
+  if (*p==':' or *p==']' or *p==',' or
+ @|  (*p=='d' and p[1]=='o' or *p=='o' and p[1]=='d')
+   and @| not (p[2]=='_' or std::isalnum((unsigned char)p[2])))
+  @/ code=c; // return |'~'|
+  else
+  { valp->oper.id = id_table.match_literal("~");
+    valp->oper.priority = 8; // same precedence as \.{\#}
+    code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
+  }
+}
+
+@ Here are some cases split off to avoid the module with the |switch| on |c|
+getting too long.
 
 @< Cases of arithmetic operators... @>=
     case '+': prevent_termination=code=c;
-       code = OPERATOR;
        valp->oper.id = id_table.match_literal("+");
        valp->oper.priority = 4;
+       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '-': prevent_termination=c;
        if (input.shift()=='>')
           code= ARROW;
        else
        { input.unshift();
-         code = OPERATOR;
          valp->oper.id = id_table.match_literal("-");
          valp->oper.priority = 4;
+         code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
        }
-break; case '*': case '%': case '/': prevent_termination=c;
-       code = OPERATOR;
+break; case '*': prevent_termination=c;
        valp->oper.id =
           id_table.match_literal(c=='*' ? "*" : c=='%' ? "%" : "/");
        valp->oper.priority = 6;
+       code = becomes_follows() ? OPERATOR_BECOMES : c;
+break; case '%': case '/': prevent_termination=c;
+       valp->oper.id =
+          id_table.match_literal(c=='%' ? "%" : "/");
+       valp->oper.priority = 6;
+       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '\\':
-       code = OPERATOR;
        valp->oper.priority = 6;
        if (input.shift()=='%')
        @/{@; prevent_termination='%';
@@ -581,29 +640,35 @@ break; case '\\':
        {@; input.unshift();
          valp->oper.id = id_table.match_literal("\\");
        }
+       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '^': prevent_termination=c;
-       code = OPERATOR;
        valp->oper.id = id_table.match_literal("^");
        valp->oper.priority = 7; // exponentiation is right-associative
+       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '#': prevent_termination=c;
-       code = OPERATOR;
        valp->oper.id = id_table.match_literal("#");
        valp->oper.priority = 8; // basic meaning is non-associative
+       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break;
 
-@ We hand to the parser a string denotation expression in |valp|, rather than
-the |(char *)| value returned by |scan_quoted_string()|, thus performing some
-work that is usually left to the parser. The reason for this is that it avoids
-having to extend union of possible token values with a variant for |(char *)|
-and to define a corresponding destructor for in case the parser should decide
-to drop the token because of a syntax error. In the current situation the
-token value is a (string denotation) expression, and its destruction is
-handled by |destroy_expr|.
+@ We hand to the parser a pointer to a dynamic variable move-constructed from
+the |std::string| value returned by |scan_quoted_string()|. For technical
+reasons having a |std::string| itself as token value is not practical (it
+would define a union member with non-trivial destructor, and though \Cpp\ will
+allow that if certain provisions are made, the parser generator which
+is \Cpp-agnostic does not make those provisions). There is only one parser
+action for |STRING| tokens, and it will turn the token value into a string
+denotation expression; the code below used to circumvent to problem by already
+performing this conversion inside the scanner, and letting the mentioned
+parser action be empty. The current solution, though a doing a bit of extra
+work, is cleaner. It was chosen so that the parser can pass a complete
+location description when the string denotation expression is built; when the
+current code is executed the start of the token is recorded in |locp|, but not
+yet its end. Also this is allows for possible future addition of parser rules
+involving |STRING|.
 
 @< Scan a string... @>=
-{@; valp->expression=make_string_denotation(scan_quoted_string());
-  code=STRING;
-}
+{@; valp->str = new std::string(scan_quoted_string()); code=STRING; }
 
 @ Since file names have a different lexical structure than identifiers, they
 are treated separately in the scanner; moreover since at most one file name
@@ -614,12 +679,12 @@ string.
 
 @< Read in |file_name| @>=
 if ((skip_space(),c=input.shift())=='"')
-@/{@; char* s=scan_quoted_string(); file_name=s; delete[] s; }
+  file_name=scan_quoted_string();
 else
-@/{@; file_name="";
-    while (!std::isspace(c))
-    {@; file_name+=c; c=input.shift(); }
-    input.unshift();
+{ file_name="";
+  while (!std::isspace(c))
+  {@; file_name.push_back(c); c=input.shift(); }
+  input.unshift();
 }
 
 @* Index.

@@ -385,7 +385,7 @@ WeylElt WeylGroup::inverse(const WeylElt& w) const
 void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w) const
 {
   std::set<WeylElt> found;
-  std::stack<WeylElt,containers::mirrored_sl_list<WeylElt> > toDo;
+  std::stack<WeylElt,containers::mirrored_simple_list<WeylElt> > toDo;
 
   found.insert(w);
   toDo.push(w);
@@ -609,7 +609,7 @@ template<typename C>
   {
     const WeylWord& xw = wordPiece(w,i);
     for (size_t j = xw.size(); j-->0; )
-      rd.simpleReflect(v,d_out[xw[j]]);
+      rd.simple_reflect(d_out[xw[j]],v);
   }
 }
 
@@ -636,7 +636,7 @@ template<typename C>
   {
     const WeylWord& xw = wordPiece(w,i);
     for (size_t j = xw.size(); j-->0; )
-      prd.simpleReflect(v,d_out[xw[j]]);
+      prd.simple_reflect(d_out[xw[j]],v);
   }
 }
 
@@ -667,7 +667,7 @@ void WeylGroup::inverse_act(const RootDatum& rd, const WeylElt& w, Weight& v)
   {
     const WeylWord& xw = wordPiece(w,i);
     for (size_t j=0; j<xw.size(); ++j )
-      rd.simpleReflect(v,d_out[xw[j]]);
+      rd.simple_reflect(d_out[xw[j]],v);
   }
 }
 
@@ -761,7 +761,8 @@ void TwistedWeylGroup::twistedConjugacyClass
   const
 {
   std::set<TwistedInvolution> found;
-  std::stack<TwistedInvolution> toDo;
+  std::stack<TwistedInvolution,
+	     containers::mirrored_simple_list<TwistedInvolution> > toDo;
 
   found.insert(tw);
   toDo.push(tw);
@@ -1216,7 +1217,7 @@ Twist make_twist(const RootDatum& rd, const WeightInvolution& d)
   RootNbrList simple_image(rd.semisimpleRank());
 
   for (size_t i = 0; i<simple_image.size(); ++i)
-    simple_image[i] = rd.rootNbr(d*rd.simpleRoot(i));
+    simple_image[i] = rd.root_index(d*rd.simpleRoot(i));
 
   rootdata::wrt_distinguished(rd,simple_image); // and forget the Weyl element
 

@@ -41,8 +41,7 @@ RealReductiveGroup::RealReductiveGroup
   , d_realForm(rf)
   , d_connectivity() // wait for most split torus to be constructed below
   , d_Tg(new // allocate private copy
-	 TitsCoset(G_C,tits::square_class_grading_offset
-			 (G_C.fundamental(),square_class(),G_C.rootDatum())))
+	 TitsCoset(G_C,square_class_grading(G_C,square_class())))
   , kgb_ptr(NULL)
   , dual_kgb_ptr(NULL)
   , d_status()

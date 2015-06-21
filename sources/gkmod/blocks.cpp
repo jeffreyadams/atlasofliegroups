@@ -621,7 +621,7 @@ RatWeight param_block::nu(BlockElt z) const
 // here the lift $t$ is normalised using |InvolutionTable::real_unique|
 Weight param_block::lambda_rho(BlockElt z) const
 {
-  RatWeight t =  y_rep(y(z)).log_pi(false);
+  RatWeight t =  y_rep(y(z)).log_pi(false); // take a copy
   InvolutionNbr i_x = rc.kgb().inv_nr(parent_x(z));
   involution_table().real_unique(i_x,t);
 
@@ -633,13 +633,13 @@ Weight param_block::lambda_rho(BlockElt z) const
 }
 
 // reconstruct $\lambda$ from $\gamma$ and the torus part $t$ of $y$ using the
-// formula $\lambda = \gamma - {1-\theta\over2}.\log{{t\over\pi\ii})$
+// formula $\lambda = \gamma - {1-\theta\over2}.\log({t\over\pi\ii})$
 // the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
 RatWeight param_block::lambda(BlockElt z) const
 {
   InvolutionNbr i_x = rc.kgb().inv_nr(parent_x(z));
   const WeightInvolution& theta = involution_table().matrix(i_x);
-  RatWeight t =  y_rep(y(z)).log_2pi();
+  RatWeight t =  y_rep(y(z)).log_2pi(); // implicit division by 2 here
   const Ratvec_Numer_t& num = t.numerator();
   return infin_char - RatWeight(num-theta*num,t.denominator());
 }
@@ -750,13 +750,14 @@ const InvolutionTable& param_block::involution_table() const
 nblock_help::nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
   : kgb(GR.kgb()), rd(subsys.parent_datum()), sub(subsys)
   , i_tab(GR.complexGroup().involution_table())
-  , dual_m_alpha(kgb.rank()), half_alpha()
+  , dual_m_alpha(), half_alpha()
 {
   assert(kgb.rank()==rd.semisimpleRank());
+  dual_m_alpha.reserve(kgb.rank());
   half_alpha.reserve(kgb.rank());
   for (weyl::Generator s=0; s<kgb.rank(); ++s)
   {
-    dual_m_alpha[s]=TorusPart(rd.simpleRoot(s));
+    dual_m_alpha.push_back(TorusPart(rd.simpleRoot(s)));
     half_alpha.push_back(TorusElement(RatWeight(rd.simpleRoot(s),2),false));
   }
 }
@@ -844,7 +845,7 @@ void nblock_help::parent_down_Cayley(nblock_elt& z, weyl::Generator s) const
     return; // silently ignore, done for use from realex |inv_Cayley| function
 
   // on $y$ side just keep the same dual |TorusElement|, so nothing to do
-  // however, for non-parity roots, leave $x$ unchenged as well
+  // however, for non-parity roots, leave $x$ unchanged as well
   Rational r = z.yy.evaluate_at(rd.simpleCoroot(s)); // modulo $2\Z$
   if (r.numerator()%(2*r.denominator())==0) // then it is a parity root
     z.xx = cx; // move $x$ component of |z|
@@ -1025,7 +1026,7 @@ non_integral_block::non_integral_block
       // compute length change; only nonzero for complex roots; if so, if
       // $\theta(\alpha)$ positive, like $\alpha$, then go down (up for $x$)
       int d = i_tab.complex_roots(i_theta).isMember(alpha)
-	    ? rd.isPosRoot(i_tab.root_involution(i_theta,alpha)) ? -1 : 1
+	    ? rd.is_posroot(i_tab.root_involution(i_theta,alpha)) ? -1 : 1
 	    : 0 ;
       int length = this->length(next) + d;
       assert(length>=0); // if not, then starting point not minimal for length

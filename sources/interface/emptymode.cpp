@@ -19,7 +19,7 @@
 
 #include "mainmode.h"
 #include "test.h"
-#include "version.h"
+#include "../version.h"
 
 /****************************************************************************
 

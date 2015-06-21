@@ -23,7 +23,7 @@ set Cartan_entry (int type, int r,int i, int j) = int:
 set Cartan_matrix (int type, int r) = mat:
   r#for j:r do for i:r do Cartan_entry(type,r,i,j) od od
 
-set Lie_type((int,int) p) = LieType:
+set Lie_type ((int,int) p) = LieType:
   let (type,) = Cartan_matrix_type(Cartan_matrix(p)) in type
 
 set block_repeat (mat m, int n) = mat:
@@ -33,7 +33,7 @@ set block_repeat (mat m, int n) = mat:
   in result
 
 { complex group for |rd| (the group viewed as a real form of doubled type) }
-set complex(RootDatum rd) = RealForm:
+set complex (RootDatum rd) = RealForm:
   let r = rank(rd)
   then C_inv=null(2*r,2*r)
   then rd_C = root_datum(block_repeat(simple_roots(rd),2)
@@ -61,9 +61,9 @@ set SL_coroots (int n) = mat:
 set SL_roots (int n) = mat:
   matrix((n-1,n-1),(int i, int j) int: #(i=j)-#(i=j+1)+#(j=n-2))
 
-set GL(int n) = RootDatum: let r=GL_roots(n) in root_datum(r,r)
-set SL(int n) = RootDatum: root_datum(SL_roots(n),SL_coroots(n))
-set PSL(int n)= RootDatum: root_datum(SL_coroots(n),SL_roots(n))
+set GL (int n) = RootDatum: let r=GL_roots(n) in root_datum(r,r)
+set SL (int n) = RootDatum: root_datum(SL_roots(n),SL_coroots(n))
+set PSL (int n)= RootDatum: root_datum(SL_coroots(n),SL_roots(n))
 
 { roots and coroots in nice coordinates for roots in types B,C,D }
 
@@ -82,15 +82,15 @@ set type_D_roots (int n) = mat:
 
 { type C root data }
 
-set Sp(int n) = RootDatum:
+set Sp (int n) = RootDatum:
   let (m,r) = n\%2 then ()= if r=1 then error("Odd symplectic datum") fi
   in root_datum(type_C_roots(m),type_B_roots(m))
 
-set PSp(int n) = RootDatum: { same as adjoint(Sp(n)) }
+set PSp (int n) = RootDatum: { same as adjoint(Sp(n)) }
   let (m,r) = n\%2 then ()= if r=1 then error("Odd symplectic datum") fi
   in root_datum(id_mat(m),^type_C_roots(m)*type_B_roots(m))
 
-set GSp(int n) = RootDatum:
+set GSp (int n) = RootDatum:
   let (m,r) = n\%2 then ()= if r=1 then error("Odd symplectic datum") fi
   , type = LieType:
      if m>1 then "C" elif m=1 then "A" else "T" fi+int_format(m)+".T1"
@@ -99,13 +99,13 @@ set GSp(int n) = RootDatum:
 { type B/D root data }
 
 { use the standard basis for SO(n) }
-set SO(int n)= RootDatum:
+set SO (int n)= RootDatum:
   let (m,r)=n\%2 in
   if r=1 then root_datum(type_B_roots(m),type_C_roots(m))
   else let r=type_D_roots(m) in root_datum(r,r)
   fi
 
-set SO_Lie_type(int n) = LieType: { same as Lie_type(SO(n)) }
+set SO_Lie_type (int n) = LieType: { same as Lie_type(SO(n)) }
   if n>6 then let (m,r)=n\%2 in if r=0 then "D" else "B" fi + int_format(m)
   elif n=1 then ""
   elif n=2 then "T1"
@@ -114,88 +114,92 @@ set SO_Lie_type(int n) = LieType: { same as Lie_type(SO(n)) }
   elif n=6 then "A3" else "B3"
   fi
 
-set Spin(int n) = RootDatum: simply_connected(SO_Lie_type(n))
-set PSO(int n)  = RootDatum: adjoint(SO_Lie_type(n))
+set Spin (int n) = RootDatum: simply_connected(SO_Lie_type(n))
+set PSO (int n)  = RootDatum: adjoint(SO_Lie_type(n))
 
 { real forms }
 
 { type A real forms }
 
 { here rd should be SL(p+q) or PSL(p+q) }
-set SU(int p,int q, RootDatum rd) = RealForm:
+set SU (int p,int q, RootDatum rd) = RealForm:
   let n=p+q then ic = inner_class(rd,if n>1 then "c" else "" fi)
   in real_form(ic,min(p,q))
 
-set SU(int p,int q)= RealForm: SU(p,q,SL(p+q))
-set PSU(int p,int q)= RealForm:SU(p,q,PSL(p+q))
-set SU(int n) = RealForm: SU(n,0)
-set PSU(int n) = RealForm: PSU(n,0)
+set SU (int p,int q)= RealForm: SU(p,q,SL(p+q))
+set PSU (int p,int q)= RealForm:SU(p,q,PSL(p+q))
+set SU (int n) = RealForm: SU(n,0)
+set PSU (int n) = RealForm: PSU(n,0)
 
 { U(p,q), no isogenies in this case }
-set U(int p,int q) = RealForm:
+set U (int p,int q) = RealForm:
   real_form(inner_class(GL(p+q),id_mat(p+q)),min(p,q))
 
-set SL_R(int n)  = RealForm: quasisplit_form(inner_class(SL(n),-id_mat(n-1)))
-set PSL_R(int n) = RealForm: quasisplit_form(inner_class(PSL(n),-id_mat(n-1)))
-set PGL_R(int n) = RealForm: PSL_R(n)
+set SL_R (int n)  = RealForm: quasisplit_form(inner_class(SL(n),-id_mat(n-1)))
+set PSL_R (int n) = RealForm: quasisplit_form(inner_class(PSL(n),-id_mat(n-1)))
+set PGL_R (int n) = RealForm: PSL_R(n)
 
-set SL_C(int n)  = RealForm: complex(SL(n))
-set PSL_C(int n) = RealForm: complex(PSL(n))
-set PGL_C(int n) = RealForm: PSL_C(n)
+set SL_C (int n)  = RealForm: complex(SL(n))
+set PSL_C (int n) = RealForm: complex(PSL(n))
+set PGL_C (int n) = RealForm: PSL_C(n)
 
-set SL_H(int n)  = RealForm: quasicompact_form(inner_class(SL(2*n),"s"))
-set PSL_H(int n) = RealForm: quasicompact_form(inner_class(PSL(2*n),"s"))
-set PGL_H(int n) = RealForm: PSL_H(n)
+set SL_H (int n)  = RealForm: quasicompact_form(inner_class(SL(2*n),"s"))
+set PSL_H (int n) = RealForm: quasicompact_form(inner_class(PSL(2*n),"s"))
+set PGL_H (int n) = RealForm: PSL_H(n)
 
-set GL_R(int n) = RealForm: quasisplit_form(inner_class(GL(n),-id_mat(n)))
-set GL_C(int n) = RealForm: complex(GL(n))
-set GL_H(int n) = RealForm: error("gl(n,H) is not yet implemented")
+set GL_R (int n) = RealForm: quasisplit_form(inner_class(GL(n),-id_mat(n)))
+set GL_C (int n) = RealForm: complex(GL(n))
+set GL_H (int n) = RealForm: error("gl(n,H) is not yet implemented")
 
 {complex and quaternionic groups of type A}
 
 { to allow alternate syntax: for instance Sp(4,R) instead of Sp_R(4) }
-set (R,C,H)=("R","C","H")
+set !R="R", !C="C", !H="H" { ! means they are constants }
 
-set by_field((int->RealForm) f_R,(int->RealForm) f_C,(int->RealForm) f_H) =
-(string K): if K=R then f_R elif K=C then f_C elif K=H then f_H
-                   else error("unknown field "+K)
-                   fi
+set by_field ((int->RealForm) f_R,(int->RealForm) f_C,(int->RealForm) f_H) =
+    (string->(int->RealForm)):
+  (string K) (int->RealForm):
+    if   K=R then f_R
+    elif K=C then f_C
+    elif K=H then f_H
+    else error("unknown field "+K)
+    fi
 
-set SL(int n, string K) = by_field (SL_R@int,SL_C@int,SL_H@int) (K)(n)
-set GL(int n, string K) = by_field (GL_R@int,GL_C@int,GL_H@int) (K)(n)
-set PSL(int n, string K) = by_field (PSL_R@int,PSL_C@int,PSL_H@int) (K)(n)
-set PGL(int n, string K) = PSL(n,K)
+set SL (int n, string K) = by_field (SL_R@int,SL_C@int,SL_H@int) (K)(n)
+set GL (int n, string K) = by_field (GL_R@int,GL_C@int,GL_H@int) (K)(n)
+set PSL (int n, string K) = by_field (PSL_R@int,PSL_C@int,PSL_H@int) (K)(n)
+set PGL (int n, string K) = PSL(n,K)
 
 { type C real forms }
 
 { split real forms; the calls to Sp(n), PSp(n), GSp(n) will catch odd n }
-set Sp_R(int n) = RealForm: quasisplit_form(inner_class(Sp(n),id_mat(n\2)))
-set PSp_R(int n)= RealForm: quasisplit_form(inner_class(PSp(n),-id_mat(n\2)))
-set GSp_R(int n)= RealForm: quasisplit_form(inner_class(GSp(n),-id_mat(n\2+1)))
+set Sp_R (int n) = RealForm: quasisplit_form(inner_class(Sp(n),id_mat(n\2)))
+set PSp_R (int n)= RealForm: quasisplit_form(inner_class(PSp(n),-id_mat(n\2)))
+set GSp_R (int n)= RealForm: quasisplit_form(inner_class(GSp(n),-id_mat(n\2+1)))
 
 { Sp(p,q) }
 
-set Sp(int p,int q)=real_form(inner_class(Sp(2*(p+q)),"e"),min(p,q))
-set PSp(int p,int q)=real_form(inner_class(PSp(2*(p+q)),"e"),min(p,q))
+set Sp (int p,int q)=real_form(inner_class(Sp(2*(p+q)),"e"),min(p,q))
+set PSp (int p,int q)=real_form(inner_class(PSp(2*(p+q)),"e"),min(p,q))
 
 { complex and quaternionic real forms }
 
-set Sp_C(int n) = complex(Sp(n)) { |Sp| will test |n| even }
-set Sp_H(int n) = RealForm: error("Sp(n,H) is not yet implemented")
+set Sp_C (int n) = complex(Sp(n)) { |Sp| will test |n| even }
+set Sp_H (int n) = RealForm: error("Sp(n,H) is not yet implemented")
 
-set PSp_C(int n) = complex(PSp(n)) { |Sp| will test |n| even }
-set PSp_H(int n) = RealForm: error("PSp(n,H) is not yet implemented")
+set PSp_C (int n) = complex(PSp(n)) { |Sp| will test |n| even }
+set PSp_H (int n) = RealForm: error("PSp(n,H) is not yet implemented")
 
-set GSp_C(int n) = complex(GSp(n)) { |Sp| will test |n| even }
-set GSp_H(int n) = RealForm: error("PSp(n,H) is not yet implemented")
+set GSp_C (int n) = complex(GSp(n)) { |Sp| will test |n| even }
+set GSp_H (int n) = RealForm: error("PSp(n,H) is not yet implemented")
 
-set Sp(int n, string K) = by_field (Sp_R@int,Sp_C@int,Sp_H@int) (K)(n)
-set PSp(int n, string K) = by_field (PSp_R@int,PSp_C@int,PSp_H@int) (K)(n)
-set GSp(int n, string K) = by_field (GSp_R@int,GSp_C@int,GSp_H@int) (K)(n)
+set Sp (int n, string K) = by_field (Sp_R@int,Sp_C@int,Sp_H@int) (K)(n)
+set PSp (int n, string K) = by_field (PSp_R@int,PSp_C@int,PSp_H@int) (K)(n)
+set GSp (int n, string K) = by_field (GSp_R@int,GSp_C@int,GSp_H@int) (K)(n)
 
 { type B/D real forms }
 
-set SO_inner_class(int p,int q) = string:
+set SO_inner_class (int p,int q) = string:
   if p+q=1 then ""
   elif p+q=4 then if p%2=0 then "ee" else "C" fi
   elif p%2=1 and q%2=1 then
@@ -204,7 +208,7 @@ set SO_inner_class(int p,int q) = string:
   fi
 
 
-set SO_real_form_number(int p,int q) = int:
+set SO_real_form_number (int p,int q) = int:
 let n=p+q, (p,q) = if p<q then (q,p) else (p,q) fi { make q the smallest one }
 in  if n<=2 then 0        { inner classes without noncompact form, SO(2)=T1 }
     elif n%2=1 then q     { type B_{n\2} }
@@ -214,12 +218,12 @@ in  if n<=2 then 0        { inner classes without noncompact form, SO(2)=T1 }
     else q\2+2            { type D_{n\2}even, equal rank, more split forms }
     fi
 
-set SO(int p,int q,RootDatum rd) = RealForm:
+set SO (int p,int q,RootDatum rd) = RealForm:
   real_form(inner_class(rd,SO_inner_class(p,q)),SO_real_form_number(p,q))
 
-set Spin(int p,int q) = RealForm: SO(p,q,Spin(p+q))
-set SO(int p,int q)   = RealForm: SO(p,q,SO(p+q))
-set PSO(int p,int q)  = RealForm: SO(p,q,PSO(p+q))
+set Spin (int p,int q) = RealForm: SO(p,q,Spin(p+q))
+set SO (int p,int q)   = RealForm: SO(p,q,SO(p+q))
+set PSO (int p,int q)  = RealForm: SO(p,q,PSO(p+q))
 
 { exceptional groups }
 
@@ -257,11 +261,11 @@ set E7_D6A1 = real_form(E7_ic_e,2)
 set E7_s = real_form(E7_ic_e,3)
 set E7_A7 = real_form(E7_ic_e,3)
 
-set E8_ic = let ic=inner_class("T0",[],""), first=true in ():
+set E8_ic = let ic=inner_class("T0",[ratvec]:[],""), first=true in @:
   if first then ic:=inner_class(simply_connected("E8"),"e") next first:=false
   else ic
   fi
 
-set E8_c() = real_form(E8_ic(),0)
-set E8_q() = real_form(E8_ic(),1)
-set E8_s() = real_form(E8_ic(),2)
+set E8_c () = real_form(E8_ic(),0)
+set E8_q () = real_form(E8_ic(),1)
+set E8_s () = real_form(E8_ic(),2)

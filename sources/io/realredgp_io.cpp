@@ -122,7 +122,7 @@ std::ostream& printCartanOrder(std::ostream& strm,
   Precondition: cartan #cn is defined for this real form.
 */
 std::ostream& printRealWeyl(std::ostream& strm,
-			    RealReductiveGroup& G_R,
+			    RealReductiveGroup& G_R, // modifiable for |cartan|
 			    size_t cn)
 {
   ComplexReductiveGroup& G_C = G_R.complexGroup();
@@ -185,8 +185,7 @@ std::ostream& printStrongReal(std::ostream& strm,
       RealFormNbr fund_wrf= rfl[wrf]; // lift weak real form to |fund|
       cartanclass::square_class f_csc=fund.central_square_class(fund_wrf);
       // having the square class number of the fundamental fiber, get grading
-      Grading base_grading =
-	tits::square_class_grading_offset(fund,f_csc,G_C.rootSystem());
+      Grading base_grading = square_class_grading(G_C,f_csc);
 
       RatWeight z (G_C.rank());
       for (Grading::iterator it=base_grading.begin(); it(); ++it)

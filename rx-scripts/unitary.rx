@@ -1,9 +1,10 @@
-{representatives of the unitary facets for spherical F4 split}
-{fundamental weight coordinates}
-{points from http://www.liegroups.org/dissemination/spherical/F4/report2}
-{Dynkin diagram is reversed, coordinates are flipped}
-{set G=split_form("F4")}
-{sorted in increasing order of #reducibility_points}
+{ representatives of the unitary facets for spherical F4 split
+  fundamental weight coordinates
+  points from http://www.liegroups.org/dissemination/spherical/F4/report2
+  Dynkin diagram is reversed, coordinates are flipped
+  G=split_form("F4")
+  sorted in increasing order of #reducibility_points
+}
 set F4_spherical_unitary= [ratvec]:
 [[0,0,0,0],
  [0,0,0,1]/2,
@@ -66,8 +67,9 @@ set F4_spherical_unitary= [ratvec]:
  [1,1,1,1]/1]
 
 {representatives of spherical unitary parameters for SO(4,4),
- standard coordinates, rho=(3,2,1,0)}
-{set G=so(4,4)}
+ standard coordinates, rho=(3,2,1,0)
+ G=so(4,4)
+}
 set D4_spherical_unitary= [ratvec]:
 [[0,0,0,0],
  [7/8,1/4,1/4,0],
@@ -103,9 +105,9 @@ set D4_spherical_unitary= [ratvec]:
  [7/8,7/8,1/8,-1/8],
  [1,1/4,0,0]]
 
-{representatives of unitary facets for spherical unitary of E7
-from http://www.liegroups.org/dissemination/spherical/E7/report2
-sorted by increasing #reducibility_points
+{ representatives of unitary facets for spherical unitary of E7
+  from http://www.liegroups.org/dissemination/spherical/E7/report2
+  sorted by increasing #reducibility_points
 }
 set E7_spherical_unitary= [ratvec]: [
 [0,0,0,0,0,0,0],

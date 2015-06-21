@@ -40,19 +40,22 @@ set get_type(RealForm G) = int: get_type(root_datum(G))
   appending a part 1, the second by increasing the final part if possible
 }
 set partitions =
-  let part (int n) = [[int]]:[]
+( let part (int n) = [[int]]:[]
   in part :=
-  ((int n):
-    let rv=[[int]]:[] in
-    if n=1 then rv:=[[1]]
-    else
-      for p in part(n-1)
-      do let l=#p-1 then last=p[l] in
-        rv #:= p#1
-      ; if l=0 or p[l-1]>last then p[l]:=last+1; rv #:= p fi
-      od
-    fi
-  ; rv)
+    begin (int n):
+      let rv=[[int]]:[] in
+      if n=1 then rv:=[[1]]
+      else
+	for p in part(n-1)
+	do let l=#p-1 then last=p~[0] in
+	  rv #:= p#1 { add partition formed by extending by 1 }
+	; if #p=1 or p~[1]>last then rv #:= (let c=p in c[#p-1]:=last+1; c) fi
+	od
+      fi
+    ; rv
+    end
+; (int n) [[int]]: if n>0 then part(n) elif n=0 then [[]] else [] fi
+)
 
 { write a partition as a sequence of multiplicities
   including a leading 0 so that rv[i] is the multiplicity of i

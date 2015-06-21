@@ -1,14 +1,3 @@
-/*!
-\file
-\brief Declarations and definitions for templates for BitVector.
-
-This is a vector in the first d_size coordinates of the vector space
-(Z/2Z)^dim over the two-element field.  The software envisions dim
-between 0 and four times the machine word length (precisely, four
-times the constant longBits, which is the number of bits in an
-unsigned long integer).
-
-*/
 /*
   This is bitvector.cpp
 
@@ -17,6 +6,11 @@ unsigned long integer).
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
+*/
+
+/* Declarations and definitions for templates for BitVector.
+
+  A vector in the first d_size coordinates of the vector space $(Z/2Z)^dim$
 */
 
 #include <algorithm>
@@ -53,8 +47,8 @@ BitVector<dim>::BitVector(const matrix::Vector<C>& v) // reduce mod 2
 }
 
 
-/*!
-\brief Adds b to the bitvector (as the last coordinate), increasing the
+/*
+  Add |b| to the bitvector (as the last coordinate), increasing the
   size by one.
 
   It is the user's responsibility to make sure that the |size| does not exceed
@@ -72,7 +66,7 @@ template<size_t dim> BitVector<dim>& BitVector<dim>::pushBack(bool b)
   return *this;
 }
 
-/*! \brief Extracts the bits flagged by |t|, and packs their value into
+/* Extracts the bits flagged by |t|, and packs their value into
   consecutive positions; resets the size to the number of bits so packed.
 
   This is value is useful to transform an element known to lie in a subspace
@@ -105,7 +99,7 @@ void BitVector<dim>::slice(const BitSet<dim>& t)
   d_size = c; // new size equals (counted) number of sliced out bits
 }
 
-/*! \brief Undoes the effect of |slice|, inserting zero bits where needed.
+/* Undoes the effect of |slice|, inserting zero bits where needed.
 
   This cannot be used to undo the use of |slice| to express a vector on a
   subspace basis (you need to form a linear combination of the basis for
@@ -135,8 +129,8 @@ void BitVector<dim>::unslice(BitSet<dim> t,size_t new_size)
 
 namespace bitvector {
 
-/*!
-  Constructs the matrix whose columns are given by the vectors in |b|.
+/*
+  Construct the matrix whose columns are given by the vectors in |b|.
 
   NOTE : it is assumed that all the vectors in |b| have the same size.
 */
@@ -174,8 +168,8 @@ BitMatrix<dim>::BitMatrix(const matrix::Matrix<int>& m) // set modulo 2
 
 /******** accessors *********************************************************/
 
-/*!
-  \brief Applies our |BitMatrix| to |source| and returns the result
+/*
+  Applies our |BitMatrix| to |source| and returns the result
 
   It is assumed that |d_columns| is equal to |source.size()|. The result size
   will be set from |d_rows|.
@@ -189,8 +183,8 @@ BitVector<dim> BitMatrix<dim>::operator*(const BitVector<dim>& source) const
   return result;
 }
 
-/*!
-  \brief A pipe-dream version of apply.
+/*
+  A pipe-dream version of apply.
 
   We assume that |I| is an InputIterator with value-type |BitVector<dim>|, and
   |O| an OutputIterator with the same value-type. Then we apply our matrix to
@@ -206,24 +200,20 @@ void BitMatrix<dim>::apply(const I& first, const I& last, O out) const
   }
 }
 
-/*!
-  Puts in r the i-th row of the matrix.
-*/
-
-template<size_t dim> void BitMatrix<dim>::get_row(BitVector<dim>& r, size_t i)
-  const
+// The i-th row of the matrix.
+template<size_t dim>
+BitVector<dim> BitMatrix<dim>::row(size_t i) const
 {
   assert(d_columns<=dim);
-  r.resize(d_columns);
+  BitVector<dim> r(d_columns);
 
   for (size_t j = 0; j < d_columns; ++j)
     r.set(j,test(i,j));
+  return r;
 }
 
 
-/*!
-  \brief Puts in |b| a basis of the image of the matrix.
-*/
+// Put in |b| a basis of the image of the matrix.
 template<size_t dim>
 BitVectorList<dim> BitMatrix<dim>::image() const
 {
@@ -237,7 +227,7 @@ BitVectorList<dim> BitMatrix<dim>::image() const
 }
 
 
-/*! \brief Puts in |b| an echelon basis for the kernel of the matrix (but not
+/* Puts in |b| an echelon basis for the kernel of the matrix (but not
   the canonical basis of that subspace; it is echelon from high to low bit
   positions).
 
@@ -252,12 +242,13 @@ template<size_t dim> BitVectorList<dim> BitMatrix<dim>::kernel() const
     return result; // no unknowns, so there are no nontrivial solutions
 
   assert(numColumns()<=dim);
-  std::vector<BitVector<dim> > eqn(d_rows);
+  std::vector<BitVector<dim> > eqn;
+  eqn.reserve(d_rows);
 
   // get rows of the matrix into |eqn|
 
   for (size_t i = 0; i < d_rows; ++i)
-    get_row(eqn[i],i);
+    eqn.push_back(row(i));
 
   // normalize |eqn|
 
@@ -294,10 +285,10 @@ template<size_t dim> BitVectorList<dim> BitMatrix<dim>::kernel() const
 /******** manipulators *******************************************************/
 
 
-/*!
-  \brief Increment *this by adding m.
+/*
+  Increment |*this| by adding |m|.
 
-  Precondition: m has the same size as the current matrix.
+  Precondition: |m| has the same size as the current matrix.
 */
 template<size_t dim>
 BitMatrix<dim>& BitMatrix<dim>::operator+= (const BitMatrix<dim>& m)
@@ -311,8 +302,8 @@ BitMatrix<dim>& BitMatrix<dim>::operator+= (const BitMatrix<dim>& m)
 }
 
 
-/*!
-  \brief Right multiply our BitMatrix by |m|.
+/*
+  Right multiply our BitMatrix by |m|.
 
   As in apply, this can be done rather efficently by computing a whole column
   at a time.
@@ -337,11 +328,11 @@ BitMatrix<dim>& BitMatrix<dim>::operator*= (const BitMatrix<dim>& m)
 }
 
 
-/*!
-  \brief Replaces the current matrix by its inverse.
-
-  It is the caller's responsibility to make sure that m is in fact
-  invertible (in particular, that it is square).
+/*
+  For a given matrix $A$, return a solution to $ABA=A$. This always exists,
+  and will be the inverse of $A$ in case $A$ is invertible. In case $A$ is
+  surjective $B$ will be a left inverse (or section) of $A$ (whence the name)
+  while if $A$ is injective it will be a right inverse.
 
   For the algorithm, we use the normalSpanAdd function. We start out with
   a matrix of size (2r,c) (if r,c is the size of our original matrix)
@@ -353,59 +344,69 @@ BitMatrix<dim>& BitMatrix<dim>::operator*= (const BitMatrix<dim>& m)
   conversion functions don't seem to be forthcoming, we work with a pair
   of matrices, and just copy the code from normalSpanAdd.
 */
-template<size_t dim> BitMatrix<dim>& BitMatrix<dim>::invert()
+template<size_t dim> BitMatrix<dim> BitMatrix<dim>::section() const
 {
-  assert(d_rows==d_columns);
-  BitMatrix<dim> inv(d_columns); // square bitmatrix
 
-  for (size_t j = 0; j < d_columns; ++j)
-    inv.set(j,j);
+  std::vector<BitSet<dim> > basis (d_columns,BitSet<dim>()); // square matrix
+    for (unsigned int i = 0; i<d_columns; ++i)
+      basis[i].set(i); // standard basis is starting point
 
-  std::vector<size_t> f;
+  std::vector<BitSet<dim> > col(d_data); // copy columns of our matrix
 
-  for (size_t k = 0; k < d_columns; ++k) // add column k
+  BitSet<dim> pivots; // when $r$ is set some column has a pivot in row $r$
+  unsigned int pivot_col[dim]; // column number having pivot in row $r$
+
+  for (unsigned int k=0; k<d_columns; ++k)
   {
+    const BitSet<dim> col_k = col[k];
+    if (col_k.none())
+      continue; // |k| will not be stored in |pivot_col|, the column ignored
 
-    for (size_t j = 0; j < k; ++j)
-      if (d_data[k][f[j]]) // then set bit f[j] of column k to zero
+    const unsigned pivot = col_k.firstBit();
+    pivots.set(pivot);
+    pivot_col[pivot]=k;
+
+    const BitSet<dim> b_k = basis[k];
+
+    // clear previous (pivot) columns in position |n|
+    for (auto it=pivots.begin(); it() and *it<pivot; ++it)
+    {
+      const unsigned int j = pivot_col[*it];
+      if (col[j].test(pivot))
       {
-	d_data[k] ^= d_data[j];
-	inv.d_data[k] ^= inv.d_data[j];
+	col[j] ^= col_k;
+	basis[j] ^= b_k;
       }
+    }
 
-    // now find f[k] and adjust the basis by clearing that bit in other columns
-
-    if (d_data[k].none())
-      throw std::runtime_error("Non invertible binary matrix");
-    size_t n = d_data[k].firstBit(); // this will be f[k]
-
-    for (size_t j = 0; j < k; ++j)
-      if (d_data[j][n])
+    // clear subsequent columns in position |pivot|
+    for (unsigned int j=k+1; j<d_columns; ++j)
+      if (col[j].test(pivot))
       {
-	d_data[j] ^= d_data[k];
-	inv.d_data[j] ^= inv.d_data[k];
+	col[j] ^= col_k;
+	basis[j] ^= b_k;
       }
-
-    f.push_back(n);
   }
 
-  // write the appropriate column-permutation of inv in the current matrix
+  BitMatrix<dim> B(d_columns,d_rows); // transpose shaped zero bitmatrix
 
-  for (size_t j = 0; j < d_rows; ++j)
-    d_data[f[j]] = inv.d_data[j];
+  for (auto it=pivots.begin(); it(); ++it)
+    B.setColumn(*it,basis[pivot_col[*it]]);
 
-  return *this;
+  // remainder of |B| remains zero
+
+  return B;
 }
 
 
-//! \brief Resets the matrix to zero.
+// Reset the matrix to zero.
 template<size_t dim> void BitMatrix<dim>::reset()
 {
   for (unsigned long j = 0; j < d_data.size(); ++j)
     d_data[j].reset();
 }
 
-//! \brief Resizes the matrix to |m| rows, |n| columns, leaving data around
+// Resize the matrix to |m| rows, |n| columns, leaving data around
 template<size_t dim> void BitMatrix<dim>::resize(size_t m, size_t n)
 {
   assert(m<=dim);
@@ -422,7 +423,7 @@ template<size_t dim> void BitMatrix<dim>::swap(BitMatrix<dim>& m)
   std::swap(d_columns,m.d_columns);
 }
 
-//! \brief Transposes the matrix.
+// Transpose the matrix.
 template<size_t dim> BitMatrix<dim>& BitMatrix<dim>::transpose()
 {
   BitMatrix<dim> result(d_columns,d_rows);

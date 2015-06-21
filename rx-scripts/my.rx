@@ -5,26 +5,25 @@
 <groups.rx { this also loads basic.rx }
 
 { loading hermitian.rx, which recursively also loads misc,iterate_deform,kl }
-<hermitian.rx
+{<hermitian.rx}
 
-<unitary.rx {some unitary parameters}
+{<unitary.rx {some unitary parameters}}
 
 { you could also load translate.rx, but it's not necessary for the code below }
 {<translate.rx}
 
-{ some representations you might be working with }
-set t=trivial(SL(2,R))
-
+{ some representations and groups you might be working with }
+{set t=trivial(SL(2,R))
+{
 set G=Sp(4,R)
 set blockG=trivial_block(G)
 set tG=trivial(G)
 set dsG=blockG[0]
-
 set H=split_form(F4)
 set pH=spherical_principal_series(H,[0,1,0,2]/6)
-
 set G2ad=quasisplit_form(inner_class(adjoint("G2"),"e"))
 set tG2ad=trivial(G2ad)
-set pG2ad=spherical_principal_series(G2ad,[3,2]/3)
-
+set pG2ad=spherical_principal_series(G2ad,[3,2]/3)}
+}
 { put personal personal definitions here }
+{<dual}

@@ -9,28 +9,35 @@ INSTALL = /usr/bin/install
 # INSTALLDIR is where the executables atlas, realex and the messages directory
 # will be moved after successfull compilation
 
-# BINDIR is where a symbolic link or shell script 'atlas' calling to the
-# executable, and a symbolic link 'realex' will be placed; provided this
-# directory is in the search path, you can then execute unsing atlas, realex
+# BINDIR is where a symbolic link to the 'atlas' executable will be created,
+# and shell script executing 'realex' will be placed; provided this directory
+# is in the search path, you can then call atlas, realex from anywhere
+
+# However when BINDIR is INSTALLDIR one cannot have those shell scripts since
+# they would be at the same place as the executable to call; since both default
+# to the current directory, you are advised to set at least BINDIR explicitly.
+# INSTALLDIR only needs to be changed if the current directory is temporary
 
 # In a single-user situation, you might want something like this:
 #   INSTALLDIR := /home/fokko/myatlas
 #   BINDIR     := /home/fokko/bin
 
-# In a multi-user situation, you might want this (requires root):
+# In a multi-user situation, you might want this (requires root privilege):
 #   INSTALLDIR := /usr/local/atlas
 #   BINDIR     := /usr/local/bin
 
-# The default: use the current directory, binaries in parent subdirectory bin
+# The default: use current directoty for both
 INSTALLDIR := $(shell pwd)
-BINDIR := $(INSTALLDIR)/../bin
+BINDIR := $(shell pwd)
+
+version := $(shell ./getversion.pl)
 
 messagedir := $(INSTALLDIR)/messages/
 
 # atlas_dirs contains subdirectories of 'atlas/sources' that need compilation
 # realex_dirs are where the object files for realex are situated
-atlas_dirs := utilities error structure gkmod io interface test
-realex_dirs := utilities structure gkmod error io interpreter
+atlas_dirs  := utilities structure gkmod io error interface test
+realex_dirs := utilities structure gkmod io error interpreter
 
 # atlas_sources contains a list of the source files (i.e., the .cpp files)
 atlas_sources := $(wildcard $(atlas_dirs:%=sources/%/*.cpp))
@@ -39,15 +46,15 @@ atlas_sources := $(wildcard $(atlas_dirs:%=sources/%/*.cpp))
 atlas_objects := $(atlas_sources:%.cpp=%.o)
 
 # headers are searched in the all directories containing source files
-includedirs := $(addprefix -Isources/,$(atlas_dirs))
+atlas_includes := $(addprefix -Isources/,$(atlas_dirs))
 realex_includes := $(addprefix -Isources/,$(realex_dirs))
 
 interpreter_objects := $(patsubst %.cpp,%.o, \
-    $(wildcard sources/interpreter/*.cpp))
+    $(wildcard sources/interpreter/*.cpp)) sources/interpreter/parser.tab.o
 non_realex_objects := sources/io/interactive%.o \
     sources/interface/%.o sources/test/%.o \
     sources/io/poset.o sources/utilities/abelian.o sources/gkmod/kgp.o
-realex_objects := $(interpreter_objects) sources/interpreter/parser.tab.o \
+realex_objects := $(interpreter_objects) \
     $(filter-out $(non_realex_objects),$(atlas_objects))
 
 objects := $(atlas_objects) $(interpreter_objects)
@@ -60,32 +67,30 @@ objects := $(atlas_objects) $(interpreter_objects)
 # optimizing (oflags)
 # development with debugging (gflags)
 # profiling (pflags)
-nflags := -c $(includedirs) -Wall -DNDEBUG
-oflags := -c $(includedirs) -Wall -O3 -DNDEBUG
-gflags := -c $(includedirs) -Wall -ggdb
-pflags := -c $(includedirs) -Wall -pg -O -DNREADLINE
+nflags := -Wall -DNDEBUG
+oflags := -Wall -O3 -DNDEBUG
+gflags := -Wall -ggdb
 
-# create flags specific for atlas and realex
-atlas_flags :=
-realex_flags := -Wno-parentheses
 
-# the default setting in the faster branch is optimizing
-cflags ?= $(oflags)
+# these flags are necessary for compilation, the -c should not be altered
+CXXFLAGS  = -c $(CXXFLAVOR)
 
-# to select another flavor, set optimize=true, debug=true or profile=true
-# when calling make (as in "make optimize=true") or set the flavor as an
+# additional flags specific for atlas and realex
+atlas_flags = $(atlas_includes)
+realex_flags = -Wno-parentheses $(realex_includes)
+
+# to select another flavor, set optimize=false or (stronger) debug=true
+# when calling make (as in "make optimize=false") or set CXXFLAVOR as an
 # environment variable (only the first flavor set in above list takes effect)
-# alternatively, you can set cflags="explicit options" to override
+# alternatively, you can do "make CXXFLAVOR='explicit options'" to specify
 
-ifeq ($(optimize),true)
-      cflags := $(oflags)
+ifeq ($(optimize),false)
+      CXXFLAVOR := $(nflags)
 else
 ifeq ($(debug),true)
-      cflags := $(gflags)
-else
-ifeq ($(profile),true)
-      cflags := $(pflags)
-endif
+      CXXFLAVOR := $(gflags)
+else # use value from environment or command line, or default to optimising
+CXXFLAVOR ?= $(oflags)
 endif
 endif
 
@@ -93,30 +98,39 @@ endif
 # and/or make more verbose by setting verbose=true
 
 ifeq ($(readline),false)
-    cflags += -DNREADLINE
+    CXXFLAVOR += -DNREADLINE
     rl_libs =
 else
     rl_libs ?= -lreadline
+endif
 
-# to override this, either define and export a shell variable 'rl_libs'
-# or set LDFLAGS when calling make. For instance for readline on the Mac do:
-# $ make LDFLAGS="-lreadline.5 -lcurses"
+# To override this define and export a shell variable 'rl_libs', for instance
+# for readline on the Mac give the command: make rl_libs="-lreadline.5 -lcurses"
+# Any value of LDFLAGS set in the environment is also included in $(LDFLAGS)
+ifdef LDFLAGS
+    LDFLAGS := $(LDFLAGS) $(rl_libs)
+else
+    LDFLAGS := $(rl_libs)
 endif
 
 ifeq ($(verbose),true)
     atlas_flags += -DVERBOSE
 endif
 
-# the default compiler
-CXX = g++
+# the compiler to use, including language switch
+# some C++11 support needed (rvalue references, shared_ptr) but g++-4.4 suffices
+CXX = g++ -std=c++0x
 
-# give compiler=icc argument to make to use the intel compiler
-ifdef compiler
-    CXX = $(compiler)
+CXXVERSION := $(shell $(CXX) -dumpversion)
+CXXVERSIONOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.8)
+CXXVERSIONVERYOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.6)
+
+ifeq "$(CXXVERSIONOLD)" "1"
+  CXXFLAVOR += -Dincompletecpp11
 endif
-
-LDFLAGS := $(rl_libs)
-
+ifeq "$(CXXVERSIONVERYOLD)" "1"
+  CXXFLAVOR += -Dnoexcept= -Dconstexpr= -Dnullptr=0
+endif
 
 
 # RULES follow below
@@ -127,7 +141,7 @@ LDFLAGS := $(rl_libs)
 # we use no suffix rules
 .SUFFIXES:
 
-.PHONY: all
+.PHONY: all install version
 
 # The default target is 'all', which builds the executable 'atlas', and 'realex'
 all: atlas realex
@@ -137,61 +151,60 @@ all: atlas realex
 # string it prints will be that of the last recompilation.
 sources/interface/emptymode.o: $(atlas_sources)
 
-# For profiling not only 'cflags' used in compiling is modified, but linking
-# also is different
 atlas: $(atlas_objects)
-ifeq ($(profile),true)
-	$(CXX) -pg -o atlas $(atlas_objects) $(LDFLAGS)
-else
 	$(CXX) -o atlas $(atlas_objects) $(LDFLAGS)
-endif
 
 realex: $(realex_objects)
-	$(CXX) -o realex $(realex_includes) $(realex_objects) $(LDFLAGS)
+	$(CXX) -o realex $(realex_objects) $(LDFLAGS)
 
-# The following rules are static pattern rules: they are like implicit rules,
-# but only apply to the files listed in their targets
+# Rules with two colons are static pattern rules: they are like implicit
+# rules, but only apply to the files listed before the first colon
 
 $(filter-out sources/interface/io.o,$(atlas_objects)) : %.o : %.cpp
-	$(CXX) $(cflags) $(atlas_flags) -o $*.o $*.cpp
-sources/interface/io.o : sources/interface/io.cpp
-	$(CXX) $(cflags) $(atlas_flags) -DMESSAGE_DIR_MACRO=\"$(messagedir)\" \
-	  -o sources/interface/io.o sources/interface/io.cpp
-$(interpreter_objects) : %.o : %.cpp
-	$(CXX) $(cflags) $(realex_flags) -o $*.o $*.cpp
+	$(CXX) $(CXXFLAGS) $(atlas_flags) -o $*.o $*.cpp
 
+# the $(messagedir) variable is only needed for the compilation of io.cpp
+sources/interface/io.o : sources/interface/io.cpp
+	$(CXX) $(CXXFLAGS) $(atlas_flags) -DMESSAGE_DIR_MACRO=\"$(messagedir)\" -o $@ $<
+
+# for the interpreter replace $(atlas_flags) by $(realex_flags)
+$(filter-out sources/interpreter/parser.tab.o,$(interpreter_objects)) :\
+  %.o : %.cpp
+	$(CXX) $(CXXFLAGS) $(realex_flags) -o $*.o $*.cpp
+# bison produces a file with extension .c, nonetheless it too needs $(CXX)
 sources/interpreter/parser.tab.o: \
   sources/interpreter/parser.tab.c sources/interpreter/parsetree.h
-	$(CC) -c -g -Wall $(CFLAGS) $(CPPFLAGS) -o $@ $<
+	$(CXX) $(CXXFLAGS) $(realex_flags) -o $@ $<
 
 install: atlas realex
 ifneq ($(INSTALLDIR),$(shell pwd))
 	@echo "Installing directories and files in $(INSTALLDIR)"
 	$(INSTALL) -d $(INSTALLDIR)/messages $(INSTALLDIR)/rx-scripts
-	$(INSTALL) -m 644 LICENSE COPYRIGHT README *.help $(INSTALLDIR)
+	$(INSTALL) -m 644 LICENSE COPYRIGHT README $(INSTALLDIR)
 	$(INSTALL) -p atlas realex $(INSTALLDIR)
-	$(INSTALL) -m 644 messages/* $(INSTALLDIR)/messages/
+	$(INSTALL) -m 644 messages/*.help $(INSTALLDIR)/messages/
+	$(INSTALL) -m 644 messages/intro_mess $(INSTALLDIR)/messages/
 	$(INSTALL) -m 644 rx-scripts/* $(INSTALLDIR)/rx-scripts/
 endif
 ifneq ($(BINDIR),$(INSTALLDIR))
 	mkdir -p $(BINDIR)
 	@if test -h $(BINDIR)/atlas; then rm -f $(BINDIR)/atlas; fi
 	@if test -h $(BINDIR)/realex; then rm -f $(BINDIR)/realex; fi
-ifeq ($(INSTALLDIR),$(shell pwd))
 	ln -s $(INSTALLDIR)/atlas $(BINDIR)/atlas # make symbolic link
-else
-	echo "#!/bin/sh\n$(INSTALLDIR)/atlas $(INSTALLDIR)/messages/" \
-	 >$(BINDIR)/atlas; chmod a+x $(BINDIR)/atlas
-endif
-	ln -s $(INSTALLDIR)/realex $(BINDIR)/realex
+# whenever BINDIR is not INSTALLDIR, we can put a shell script as bin/realex
+# which ensures the search path will be properly set (no compiled-in path here)
+	echo '#!/bin/sh\n$(INSTALLDIR)/realex --path=$(INSTALLDIR)/rx-scripts basic.rx "$$@"' >$(BINDIR)/realex; chmod a+x $(BINDIR)/realex
 endif
 
-.PHONY: mostlyclean clean
+version:
+	@echo $(version)
+
+.PHONY: mostlyclean clean showobjects
 mostlyclean:
-	rm -f $(objects)
+	$(RM) -f $(objects)
 
 clean: mostlyclean
-	rm -f atlas realex
+	$(RM) -f atlas realex
 
 # distribution version of atlas uses a frozen set of dependencies
 

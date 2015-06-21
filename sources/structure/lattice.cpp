@@ -139,24 +139,16 @@ LatticeMatrix kernel(const LatticeMatrix& M)
   return C.block(0,c,n,n); // last |n-c| columns, which span $C.\ker(D)$
 }
 
-LatticeMatrix eigen_lattice
-  (LatticeMatrix M, LatticeCoeff lambda)
+LatticeMatrix eigen_lattice (LatticeMatrix M, LatticeCoeff lambda)
 {
-  size_t n=M.numRows();
-  assert(n==M.numColumns());
-
-  while (n-->0)
-    M(n,n)-=lambda;
-
-  return kernel(M);
+  return kernel(M-=lambda);
 }
 
 LatticeMatrix row_saturate(const LatticeMatrix& M)
 {
   size_t n= M.numColumns(); // dimension of space to which |M| can be applied
   CoeffList factor;
-  LatticeMatrix b =
-    matreduc::adapted_basis(M.transposed(),factor);
+  LatticeMatrix b = matreduc::adapted_basis(M.transposed(),factor);
 
   size_t c=factor.size(); // rank of M (codimension of kernel)
 

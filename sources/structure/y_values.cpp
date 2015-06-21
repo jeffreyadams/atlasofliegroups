@@ -24,7 +24,7 @@ namespace y_values {
 // For torus elements we keep numerator entries reduced modulo |2*d_denom|.
 // Note this invariant is not enforced in the (private) raw constructor.
 
-// make $\exp(2\pi i r)$, doing affectively *2, then reducing modulo $2X_*$
+// compute $\exp((two ? 2 : 1)\pi i r)$, then reduce modulo $2X_*$
 TorusElement::TorusElement(const RatWeight& r, bool two)
   : repr(r) // but possibly multiplied by 2 below
 { if (two)
@@ -47,6 +47,17 @@ RatWeight TorusElement::log_2pi() const
   Ratvec_Numer_t numer = repr.numerator(); // copy
   arithmetic::Denom_t d = 2u*repr.denominator(); // make result mod Z, not 2Z
   return RatWeight(numer,d).normalize();
+}
+
+// evaluation giving rational number modulo 2
+Rational TorusElement::evaluate_at (const SmallBitVector& alpha) const
+{
+  assert(alpha.size()==rank());
+  arithmetic::Denom_t d = repr.denominator();
+  arithmetic::Numer_t s = 0;
+  for (auto it=alpha.data().begin(); it(); ++it)
+    s += repr.numerator()[*it];
+  return Rational(arithmetic::remainder(s,d+d),d);
 }
 
 // evaluation giving rational number modulo 2
@@ -94,12 +105,22 @@ TorusElement& TorusElement::operator+=(TorusPart v)
   return *this;
 }
 
+TorusElement& TorusElement::reduce()
+{
+  arithmetic::Denom_t d=2u*repr.denominator();
+  Ratvec_Numer_t& num=repr.numerator();
+  for (size_t i=0; i<num.size(); ++i)
+    if (arithmetic::Denom_t(num[i])>=d) // avoid division if not necessary
+      num[i] = arithmetic::remainder(num[i],d);
+  return *this;
+}
+
 
 void TorusElement::simple_reflect(const PreRootDatum& prd, weyl::Generator s)
-{ prd.simpleReflect(repr.numerator(),s); } // numerator is weight for |prd|
+{ prd.simple_reflect(s,repr.numerator()); } // numerator is weight for |prd|
 
 void TorusElement::reflect(const RootDatum& rd, RootNbr alpha)
-{ rd.reflect(repr.numerator(),alpha); } // numerator is weight for |rd|
+{ rd.reflect(alpha,repr.numerator()); } // numerator is weight for |rd|
 
 void TorusElement::act_by(const WeightInvolution& delta)
 { delta.apply_to(repr.numerator()); }
@@ -128,6 +149,18 @@ size_t y_entry::hashCode(size_t modulus) const
 bool y_entry::operator !=(const y_entry& y) const
 { return nr!=y.nr or fingerprint!=y.fingerprint; }
 
-} // namsepace
 
-} // namespace atlas
+bool is_central(const WeightList& alpha, const TorusElement& t)
+{
+  RatWeight rw = t.as_Qmod2Z();
+  arithmetic::Numer_t d = 2*rw.denominator();
+  for (weyl::Generator s=0; s<alpha.size(); ++s)
+    if (alpha[s].dot(rw.numerator())%d != 0) // see if division is exact
+      return false;
+
+  return true;
+}
+
+} // |namsepace y_values|
+
+} // |namespace atlas|

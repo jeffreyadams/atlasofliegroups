@@ -359,7 +359,8 @@ void getInteractive(PreRootDatum& d_prd,
   }
 
   // make new PreRootDatum
-  d_prd = PreRootDatum(lt,d_b);
+  d_prd = PreRootDatum(lt);
+  d_prd.quotient(LatticeMatrix(d_b,d_b.size()));
 
 } // |getInteractive(PreRootDatum&,...)|
 
@@ -828,8 +829,8 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
     for (size_t i=0; i<i_tab.imaginary_rank(i_x); ++i)
     {
       RootNbr alpha = i_tab.imaginary_basis(i_x,i);
-      int v=-rho.scalarProduct(rd.coroot(alpha));
-      if (kgb::status(kgb,x,rd,alpha)==gradings::Status::ImaginaryCompact)
+      int v = -rho.dot(rd.coroot(alpha));
+      if (kgb::status(kgb,x,alpha)==gradings::Status::ImaginaryCompact)
 	++v; // imaginary compact root should not be singular
       std::cout	<< rd.coroot(alpha) << " (>=" << v << ')' << std::endl;
     }
@@ -846,7 +847,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 	RootNbr alpha = i_tab.imaginary_basis(i_x,i);
 	int v = l.dot(rd.coroot(alpha));
 	bool compact =
-	  kgb::status(kgb,x,rd,alpha)==gradings::Status::ImaginaryCompact;
+	  kgb::status(kgb,x,alpha)==gradings::Status::ImaginaryCompact;
 	if (v<0 or (v==0 and compact))
 	{
 	  std::cout << (v<0 ? "Non-dominant for"
@@ -889,8 +890,8 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 	  std::cout << "Making dominant for "  << (real ? "real" : "complex")
 		    << " coroot " << alpha << std::endl;
 #endif
-          rd.simpleReflect(numer,s);
-          rd.simpleReflect(lambda_rho,s);
+          rd.simple_reflect(s,numer);
+          rd.simple_reflect(s,lambda_rho);
 	  if (not real) // center is $\rho$, but $\rho_r$ cancels if |real|
 	    lambda_rho -= rd.simpleRoot(s);
           x = kgb.cross(s,x);
@@ -903,7 +904,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 	  std::cout << "Applying complex descent for singular coroot "
 		    << alpha << std::endl;
 #endif
-          rd.simpleReflect(lambda_rho,s); lambda_rho -= rd.simpleRoot(s);
+          rd.simple_reflect(s,lambda_rho); lambda_rho -= rd.simpleRoot(s);
           x = kgb.cross(s,x);
 	  changed = true;
           break;

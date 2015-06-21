@@ -72,7 +72,8 @@ public:
   Rational operator+(Rational q) const;
   Rational operator-(Rational q) const;
   Rational operator*(Rational q) const;
-  Rational operator/(Rational q) const;
+  Rational operator/(Rational q) const; // assumes $q\neq0$, will not throw
+  Rational operator%(Rational q) const; // assumes $q\neq0$, will not throw
 
   Rational& operator=(Rational q)
     { num=q.num; denom=q.denom; return normalize(); }
@@ -81,11 +82,14 @@ public:
   Rational& operator-=(Rational q) { return operator=(operator-(q)); }
   Rational& operator*=(Rational q) { return operator=(operator*(q)); }
   Rational& operator/=(Rational q) { return operator=(operator/(q)); }
+  Rational& operator%=(Rational q) { return operator=(operator%(q)); }
 
+  // assignment operators with integers have efficient implemementations
   Rational& operator+=(Numer_t n);
   Rational& operator-=(Numer_t n);
   Rational& operator*=(Numer_t n);
-  Rational& operator/=(Numer_t n);
+  Rational& operator/=(Numer_t n); // assumes $n\neq0$, will not throw
+  Rational& operator%=(Numer_t n); // assumes $n\neq0$, will not throw
 
   // these definitions must use |denominator()| to ensure signed comparison
   bool operator==(Rational q) const

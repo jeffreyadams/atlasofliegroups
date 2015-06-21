@@ -1,21 +1,19 @@
 <misc.rx { for generate_all_subsets }
-<group_operations.rx { for is_split nad such }
-
+<group_operations.rx { for is_split and such }
 
 { some common representations }
 
-
-{ finite dimensional with highest weight gamma in X^*
-  param(last KGB element,lambda=gamma+rho,nu=gamma+rho)
+{ finite dimensional with highest weight lambda_rho in X^*
+  param(last KGB element,lambda=lambda_rho+rho,nu=lambda_rho+rho)
   consequently every simple root is in the tau-invariant,
-  and the infinitesimal character is gamma+rho }
+  and the infinitesimal character is lambda_rho+rho
+}
 
-set finite_dimensional (RealForm G,vec gamma) = Param:
-  param(KGB(G,KGB_size(G)-1),gamma,gamma+rho(G)) { +rho is implicit for param }
+set finite_dimensional (RealForm G,vec lambda_rho) = Param:
+  param(KGB(G,KGB_size(G)-1),lambda_rho,lambda_rho+rho(G))
 
-
-{ trivial representation of G, see finite_dimensional }
-set trivial(RealForm G) = Param: finite_dimensional(G,null(rank(G)))
+{ the trivial block }
+set trivial_block(RealForm G)=[Param]:block_of(trivial(G))
 
 set large_fundamental_series (RealForm G) = Param:
   if not(is_quasisplit(G)) then error("group is not quasisplit")
@@ -30,9 +28,6 @@ set large_discrete_series (RealForm G) = Param:
 { spherical principal series of split group; assuming G is split }
 set spherical_principal_series (RealForm G, ratvec nu) = Param:
   param(KGB(G,KGB_size(G)-1),null(rank(G)),nu)
-
-{ returns [Param] list of parameters in block of trivial }
-set trivial_block(RealForm G) = [Param]: block_of(trivial(G))
 
 set sc_split_only(RealForm G) = RealForm:
   if not is_split(G) then error("Group must be split")

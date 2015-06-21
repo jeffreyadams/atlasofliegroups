@@ -1,17 +1,17 @@
-<basic
+<basic.rx
 
 { involution for torus with |a| compact, |b| complex, and |c| split factors }
-set torus_involution(int a,int b,int c) = mat:
+set torus_involution (int a,int b,int c) = mat:
   let M=diagonal(ones(a)#null(2*b)#-ones(c))
-  then () = for i in for i:b do a+2*i od do M[i,i+1]:=1; M[i+1,i]:=1 od
-  in M
+  in for i in for i:b do a+2*i od do M[i,i+1]:=1; M[i+1,i]:=1 od; M
 
-set torus(int a,int b, int c)=RealForm:
-  let rd=root_datum([],[],a+2*b+c)
-  in real_form(inner_class(rd,torus_involution(a,b,c)),0)
+set torus (int a,int b, int c) = RealForm:
+  let r=null(a+2*b+c,0)
+  in real_form(inner_class(root_datum(r,r),torus_involution(a,b,c)),0)
 
-set compact_torus(int k)=RealForm:torus(k,0,0)
-set complex_torus(int k)=RealForm:torus(0,k,0)
-set split_torus(int k)=RealForm:torus(0,0,k)
+set compact_torus (int k) = RealForm:torus(k,0,0)
+set complex_torus (int k) = RealForm:torus(0,k,0)
+set split_torus (int k)   = RealForm:torus(0,0,k)
 
-set torus(CartanClass C)=RealForm:let (type,,,)=Cartan_info(C) in torus(type)
+set torus(CartanClass C) = RealForm:
+  let (type,,,)=Cartan_info(C) in torus(type)

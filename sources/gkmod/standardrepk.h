@@ -167,7 +167,7 @@ class StandardRepK
 
 public:
 
-  StandardRepK() {} // so empty slots can be created
+ StandardRepK() : d_fiberElt(0) {} // so empty slots can be created
 
   void swap(const StandardRepK&);
 
@@ -212,6 +212,8 @@ struct Cartan_info
   RankFlags bi_ortho; // simple roots, and necessarily complex ones
   WeightList sum_coroots; // associated sums of 2 coroots
 
+  Cartan_info() : torsionProjector(0) {}
+
   const Weight& coroot_sum(size_t i) const
     { assert (bi_ortho[i]); return sum_coroots[bi_ortho.position(i)]; }
 
@@ -242,7 +244,7 @@ struct bitset_entry : public RankFlags
    Just one dynamic table is held, for projection matrices correponding to
    different subsets of simple roots; they serve to speed up the height
    computation. That computation is not a necessary part for the other
-   functionality of this class, but it allows height-trunction to be built
+   functionality of this class, but it allows height-truncation to be built
    into for instance |K_type_formula|, which speeds up simple cases a lot.
  */
 class SRK_context

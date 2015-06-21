@@ -358,7 +358,7 @@ LatticeMatrix makeOrthogonal (const RatWeightList& rwl, size_t r)
 
 
 /*
-  Synposis: prints the center of the simply connected group.
+  Print the center of the simply connected group.
 
   Precondition: u contains the necessary data: the orders of a natural set of
   generators for the center of the derived group, and a zero for each torus
@@ -368,10 +368,10 @@ std::ostream& printCenter(std::ostream& strm, const CoeffList& u)
 {
   for (size_t i=0; i<u.size(); ++i)
   {
-    if (u[i])
-      strm << "Z/" << u[i];
-    else
+    if (u[i]==0)
       strm << "Q/Z";
+    else
+      strm << "Z/" << u[i];
     if (i<u.size()-1)
       strm << ".";
   }

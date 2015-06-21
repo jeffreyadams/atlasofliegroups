@@ -3,7 +3,8 @@ $(realex_dir)/buffer.cpp $(realex_dir)/buffer.h: \
   $(realex_dir)/buffer.w
 $(realex_dir)/lexer.cpp $(realex_dir)/lexer.h: \
   $(realex_dir)/lexer.w
-$(realex_dir)/parsetree.cpp $(realex_dir)/parsetree.h: \
+$(realex_dir)/parsetree.cpp \
+  $(realex_dir)/parse_types.h $(realex_dir)/parsetree.h: \
   $(realex_dir)/parsetree.w
 $(realex_dir)/types.cpp $(realex_dir)/types.h: \
   $(realex_dir)/types.w
@@ -12,33 +13,43 @@ $(realex_dir)/evaluator.cpp $(realex_dir)/evaluator.h: \
 $(realex_dir)/built-in-types.cpp $(realex_dir)/built-in-types.h: \
   $(realex_dir)/built-in-types.w
 
+$(realex_dir)/parser.tab.o: \
+ $(realex_dir)/parsetree.h \
+ $(realex_dir)/parse_types.h \
+ $(realex_dir)/parser.tab.h \
+ $(realex_dir)/types.h
+
 $(realex_dir)/buffer.o: $(realex_dir)/buffer.cpp
 $(realex_dir)/buffer.o $(realex_dir)/buffer.tex: $(realex_dir)/buffer.h
 
 $(realex_dir)/parsetree.o: $(realex_dir)/parsetree.cpp
 $(realex_dir)/parsetree.o $(realex_dir)/parsetree.tex: \
  $(realex_dir)/parsetree.h \
+ $(realex_dir)/parse_types.h \
+ $(realex_dir)/parser.tab.h \
+ $(sources_dir)/utilities/sl_list.h \
+ $(realex_dir)/types.h \
  $(realex_dir)/lexer.h \
- $(realex_dir)/buffer.h \
- $(realex_dir)/parser.tab.h
+ $(realex_dir)/buffer.h
 
 $(realex_dir)/lexer.o: $(realex_dir)/lexer.cpp
 $(realex_dir)/lexer.o $(realex_dir)/lexer.tex: \
  $(realex_dir)/lexer.h \
  $(realex_dir)/buffer.h \
  $(realex_dir)/parsetree.h \
+ $(realex_dir)/parse_types.h \
  $(realex_dir)/parser.tab.h
-
-$(realex_dir)/types.o: $(realex_dir)/types.cpp
-$(realex_dir)/types.o $(realex_dir)/types.tex: \
- $(realex_dir)/types.h \
- $(realex_dir)/parsetree.h
 
 $(realex_dir)/global.o: $(realex_dir)/global.cpp
 $(realex_dir)/global.o $(realex_dir)/global.tex: \
  $(realex_dir)/global.h \
- $(realex_dir)/types.h $(realex_dir)/parsetree.h $(realex_dir)/buffer.h \
- $(realex_dir)/evaluator.h $(realex_dir)/lexer.h $(realex_dir)/parser.tab.h \
+ $(realex_dir)/types.h \
+ $(realex_dir)/parsetree.h \
+ $(realex_dir)/parse_types.h \
+ $(realex_dir)/parser.tab.h \
+ $(realex_dir)/buffer.h \
+ $(realex_dir)/evaluator.h \
+ $(realex_dir)/lexer.h \
  $(sources_dir)/utilities/arithmetic.h \
  $(sources_dir)/utilities/arithmetic_fwd.h \
  $(sources_dir)/structure/atlas_types.h \
@@ -69,9 +80,10 @@ $(realex_dir)/evaluator.o $(realex_dir)/evaluator.tex : \
  $(realex_dir)/evaluator.h \
  $(realex_dir)/types.h \
  $(realex_dir)/parsetree.h \
+ $(realex_dir)/parse_types.h \
+ $(realex_dir)/parser.tab.h \
  $(realex_dir)/buffer.h \
  $(realex_dir)/lexer.h \
- $(realex_dir)/parser.tab.h \
  $(realex_dir)/global.h \
  $(realex_dir)/built-in-types.h \
  $(sources_dir)/utilities/arithmetic.h \
@@ -129,11 +141,12 @@ $(realex_dir)/built-in-types.o $(realex_dir)/built-in-types.tex: \
  $(realex_dir)/built-in-types.h \
  $(realex_dir)/types.h \
  $(realex_dir)/parsetree.h \
+ $(realex_dir)/parse_types.h \
+ $(realex_dir)/parser.tab.h \
  $(realex_dir)/buffer.h \
  $(realex_dir)/global.h \
  $(realex_dir)/evaluator.h \
  $(realex_dir)/lexer.h \
- $(realex_dir)/parser.tab.h \
  $(sources_dir)/utilities/arithmetic.h \
  $(sources_dir)/utilities/arithmetic_fwd.h \
  $(sources_dir)/utilities/bitmap.h \
@@ -209,9 +222,11 @@ $(realex_dir)/main.o $(realex_dir)/main.tex: \
  $(realex_dir)/buffer.h \
  $(realex_dir)/built-in-types.h \
  $(realex_dir)/evaluator.h \
+ $(realex_dir)/global.h \
  $(realex_dir)/lexer.h \
- $(realex_dir)/parser.tab.h \
  $(realex_dir)/parsetree.h \
+ $(realex_dir)/parser.tab.h \
+ $(realex_dir)/parse_types.h \
  $(realex_dir)/types.h \
  $(sources_dir)/utilities/arithmetic.h \
  $(sources_dir)/utilities/arithmetic_fwd.h \
@@ -259,5 +274,5 @@ $(realex_dir)/main.o $(realex_dir)/main.tex: \
  $(sources_dir)/structure/y_values.h \
  $(sources_dir)/gkmod/kgb.h \
  $(sources_dir)/gkmod/repr.h \
- $(sources_dir)/interface/version.h \
+ $(sources_dir)/version.h \
  $(sources_dir)/io/realform_io.h

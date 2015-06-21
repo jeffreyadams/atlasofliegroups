@@ -190,7 +190,7 @@ void KGB_base::add_element()
 // create structure incorporating all KGB structures for a given inner class
 global_KGB::global_KGB(ComplexReductiveGroup& G_C, bool dual_twist)
   : KGB_base(G_C,G_C.semisimpleRank())
-  , Tg(G) // construct global Tits group as subobject
+  , Tg(G_C) // construct global Tits group as subobject
   , elt()
 {
   G_C.involution_table().add(G_C,~ BitMap(G.numCartanClasses()));
@@ -234,7 +234,7 @@ global_KGB::global_KGB(ComplexReductiveGroup& G_C, bool dual_twist)
 global_KGB::global_KGB(ComplexReductiveGroup& G_C,
 		       const GlobalTitsElement& x, bool dual_twist)
   : KGB_base(G_C,G_C.semisimpleRank())
-  , Tg(G) // construct global Tits group as subobject
+  , Tg(G_C) // construct global Tits group as subobject
   , elt()
 {
   generate_involutions(G_C.numInvolutions());
@@ -499,6 +499,16 @@ KGB::KGB(RealReductiveGroup& GR,
   elt_pool.reserve(size);
   KGB_base::reserve(size);
 
+  if (Cartan_classes.isMember(0)) // full KGB construction
+  {
+    const Grading gr = square_class_grading(G,GR.square_class());
+    d_base = new TitsCoset(G_C,gr);
+    TitsElt a (d_base->titsGroup(),G_C.x0_torus_part(GR.realForm()));
+    i_tab.reduce(a); // probably unnecessary
+    elt_hash.match(a); // plant the seed
+    KGB_base::add_element(); // add additional info for initial element
+  }
+  else // partial KGB construction, more work to get initial element(s)
   {
     tits::EnrichedTitsGroup square_class_base(GR);
     d_base = new TitsCoset(square_class_base); // copy construct from base
@@ -640,7 +650,7 @@ KGB::KGB(RealReductiveGroup& GR,
   for (InvolutionNbr i=0; i<inv_pool.size(); ++i)
     Cartan.push_back(i_tab.Cartan_class(inv_pool[i]));
 
-  TorusPart shift;
+  TorusPart shift(G.rank());
   bool do_dual_twist = dual_twist and is_dual_twist_stable(GR,shift);
   if (do_dual_twist)
   {
@@ -687,9 +697,8 @@ bool KGB::is_dual_twist_stable
     rw += rd.fundamental_coweight(weylGroup().Chevalley_dual(*it));
   }
   // before requiring integrality, we need to mod out by equivalence
-  int_Matrix A = GR.complexGroup().distinguished().transposed();
-  for (unsigned int i=0; i<A.numRows(); ++i)
-    A(i,i) += 1;
+  int_Matrix A = GR.complexGroup().distinguished();
+  A.transpose() += 1;
   int_Matrix projector = lattice::row_saturate(A);
   projector.apply_to(rw.numerator()); // this may change the size of |rw|
   rw.normalize();
@@ -739,7 +748,7 @@ RatCoweight KGB::base_grading_vector() const
 
 RatCoweight KGB::torus_part_global(KGBElt x) const
 {
-  RatWeight rw = base_grading_vector();
+  RatCoweight rw = base_grading_vector();
 
   RankFlags tp = torus_part(x).data();
   arithmetic::Numer_t d = rw.denominator();
@@ -811,42 +820,42 @@ void KGB::fillBruhat()
 
 ******************************************************************************/
 
-// general cross action in (non simple) root
-// root is given as simple root + conjugating Weyl word to simple root
-KGBElt cross(const KGB_base& kgb, KGBElt x,
-	     weyl::Generator s, const WeylWord& ww)
+// general cross action in root $\alpha$
+KGBElt cross(const KGB_base& kgb, KGBElt x, RootNbr alpha)
 {
-  return kgb.cross(kgb.cross(s,kgb.cross(ww,x)),ww);
+  const RootSystem& rs = kgb.rootDatum();
+  const WeylWord ww = conjugate_to_simple(rs,alpha);
+  return kgb.cross(ww,kgb.cross(alpha,kgb.cross(x,ww)));
 }
 
-// general Cayley transform in (non simple) non-compact imaginary root
-// root is given as simple root + conjugating Weyl word to simple root
-KGBElt Cayley (const KGB_base& kgb, KGBElt x,
-	       weyl::Generator s, const WeylWord& ww)
+// general Cayley transform in root $\alpha$, non-compact imaginary
+KGBElt any_Cayley (const KGB_base& kgb, KGBElt x, RootNbr alpha)
 {
-  return kgb.cross(kgb.cayley(s,kgb.cross(ww,x)),ww);
+  const RootSystem& rs = kgb.rootDatum();
+  const WeylWord ww = conjugate_to_simple(rs,alpha);
+  x=kgb.cross(x,ww);
+  KGBElt Cx = kgb.any_Cayley(alpha,x);
+  if (Cx==UndefKGB)
+  {
+    std::string str (kgb.status(alpha,x)==gradings::Status::Complex
+		     ? "complex" : "imaginary compact");
+    throw std::runtime_error("Cayley transform by "+str+" root");
+  }
+  return kgb.cross(ww,Cx);
 }
 
-// general inverse Cayley transform (choice) in (non simple) real root
-// root is given as simple root + conjugating Weyl word to simple root
-KGBElt inverse_Cayley (const KGB_base& kgb, KGBElt x,
-		       weyl::Generator s, const WeylWord& ww)
-{
-  return kgb.cross(kgb.inverseCayley(s,kgb.cross(ww,x)).first,ww);
-}
 
 
 // status of |alpha| in |kgb|: conjugate to simple root follow cross actions
-gradings::Status::Value status(const KGB_base& kgb, KGBElt x,
-			       const RootSystem& rs, RootNbr alpha)
+gradings::Status::Value status(const KGB_base& kgb, KGBElt x, RootNbr alpha)
 {
+  const RootSystem& rs = kgb.rootDatum();
+  make_positive(rs,alpha);
   weyl::Generator s;
-  if (not rs.isPosRoot(alpha))
-    alpha = rs.rootMinus(alpha); // make |alpha| positive
 
   while (alpha!=rs.simpleRootNbr(s=rs.find_descent(alpha)))
   {
-    rs.simple_reflect_root(alpha,s);
+    rs.simple_reflect_root(s,alpha);
     x=kgb.cross(s,x);
   }
   return kgb.status(s,x);

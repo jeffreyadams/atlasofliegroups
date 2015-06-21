@@ -281,7 +281,7 @@ int_Vector RootSystem::root_expr(RootNbr alpha) const
 {
   RootNbr a=rt_abs(alpha);
   int_Vector expr(root(a).begin(),root(a).end());
-  if (not isPosRoot(alpha))
+  if (is_negroot(alpha))
     expr *= -1;
   return expr;
 }
@@ -290,7 +290,7 @@ int_Vector RootSystem::coroot_expr(RootNbr alpha) const
 {
   RootNbr a=rt_abs(alpha);
   int_Vector expr(coroot(a).begin(),coroot(a).end());
-  if (not isPosRoot(alpha))
+  if (is_negroot(alpha))
     expr *= -1;
   return expr;
 }
@@ -301,7 +301,7 @@ int RootSystem::level(RootNbr alpha) const
   int result=0;
   for (Byte_vector::const_iterator it=root(a).begin(); it!=root(a).end(); ++it)
     result += *it;
-  if (not isPosRoot(alpha))
+  if (is_negroot(alpha))
     result *= -1;
   return result;
 }
@@ -313,7 +313,7 @@ int RootSystem::colevel(RootNbr alpha) const
   for (Byte_vector::const_iterator
 	 it=coroot(a).begin(); it!=coroot(a).end(); ++it)
     result += *it;
-  if (not isPosRoot(alpha))
+  if (is_negroot(alpha))
     result *= -1;
   return result;
 }
@@ -453,7 +453,7 @@ RootSystem::bracket(RootNbr alpha, RootNbr beta) const // $\<\alpha,\beta^\vee>$
     for (size_t j=0; j<rk; ++j)
       c += row[i]*Cartan_entry(i,j)*col[j];
 
-  return isPosRoot(alpha)!=isPosRoot(beta) ? -c : c;
+  return is_posroot(alpha)!=is_posroot(beta) ? -c : c;
 }
 
 Permutation
@@ -477,8 +477,8 @@ RootSystem::extend_to_roots(const RootNbrList& simple_image) const
   {
     unsigned int i = ri[alpha-numPosRoots()].descents.firstBit();
     assert(i<rk);
-    RootNbr beta = simple_reflected_root(alpha,i);
-    assert(isPosRoot(beta) and beta<alpha);
+    RootNbr beta = simple_reflected_root(i,alpha);
+    assert(is_posroot(beta) and beta<alpha);
     result[alpha] = root_perm[image_reflection[i]][result[beta]];
   }
 
@@ -500,11 +500,11 @@ RootSystem::root_permutation(const Permutation& twist) const
   return extend_to_roots(simple_image);
 }
 
-WeylWord RootSystem::reflectionWord(RootNbr r) const
+WeylWord RootSystem::reflectionWord(RootNbr alpha) const
 {
-  RootNbr alpha = isPosRoot(r) ? r : rootMinus(r); // make |alpha| positive
+  make_positive(*this,alpha);
 
-  WeylWord result;
+  WeylWord result; result.reserve(numPosRoots());
 
   while (alpha>=rk+numPosRoots()) // alpha positive but not simple
   {
@@ -512,7 +512,6 @@ WeylWord RootSystem::reflectionWord(RootNbr r) const
     result.push_back(i);
     alpha = root_perm[i][alpha];
   }
-  result.reserve(2*result.size()+1);
   result.push_back(alpha-numPosRoots()); // central reflection
   for (size_t i=result.size()-1; i-->0;) // trace back to do conjugation
     result.push_back(result[i]);
@@ -550,7 +549,7 @@ RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
       RootNbr gamma = root_perm[alpha-numPosRoots()][beta];
       if (gamma<beta) // positive dot product
       {
-	if (isPosRoot(gamma)) // beta can be made less positive, so it cannot
+	if (is_posroot(gamma)) // beta can be made less positive, so it cannot
 	  candidates.remove(beta); // be simple; remove it if it was candidate
 	else
 	{ // reflection in alpha makes some other root (beta) negative, so
@@ -572,20 +571,21 @@ bool RootSystem::sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const
   RootNbr a = rt_abs(alpha);
   RootNbr b = rt_abs(beta);
 
-  bool alpha_less = root_compare()(root(a),root(b));
+  bool alpha_less = root_compare()(root(a),root(b)); // ordering among posroots
   if (alpha_less) // compare actual levels
     std::swap(a,b); // ensure |a| is higher root
 
   Byte_vector v =
-    isPosRoot(alpha)^isPosRoot(beta)
-    ? alpha_less ? root(b) - root(a) : root(a) - root(b)
-    : root(a) + root(b);
+    is_posroot(alpha)==is_posroot(beta)
+    ? root(a) + root(b)
+    : root(a) - root(b);
 
-  for (RootNbr i=0; i<ri.size(); ++i) // no ordering can be assumed
+  for (RootNbr i=0; i<numPosRoots(); ++i) // search positive roots for |v|
     if (v==root(i))
     {
-      gamma = isPosRoot(alpha_less ? beta : alpha)
-	? i+numPosRoots() : numPosRoots()-1-i;
+      gamma = posRootNbr(i);
+      if (alpha_less ? is_negroot(beta) : is_negroot(alpha))
+	gamma = rootMinus(gamma); // take sign from that root that gave |a|
       return true;
     }
 
@@ -681,8 +681,8 @@ RootDatum::RootDatum(const PreRootDatum& prd)
 
 
 
-/*!
-\brief Constructs the root system dual to the given one.
+/*
+  Construct the root system dual to the given one.
 
   Since we do not use distinct types for weights and coweights, we can proceed
   by interchanging roots and coroots. The ordering of the roots corresponds to
@@ -858,7 +858,7 @@ Permutation RootDatum::rootPermutation(const WeightInvolution& q) const
   RootNbrList simple_image(semisimpleRank());
 
   for (weyl::Generator s=0; s<semisimpleRank(); ++s)
-    simple_image[s] = rootNbr(q*simpleRoot(s));
+    simple_image[s] = root_index(q*simpleRoot(s));
 
   return extend_to_roots(simple_image);
 }
@@ -920,7 +920,7 @@ Weight RootDatum::twoRho(const RootNbrList& rl) const
   Weight result(rank(),0);
 
   for (size_t i = 0; i < rl.size(); ++i)
-    if (isPosRoot(rl[i]))
+    if (is_posroot(rl[i]))
       result += root(rl[i]);
 
   return result;
@@ -937,7 +937,7 @@ Weight RootDatum::twoRho(const RootNbrSet& rs) const
   Weight result(rank(),0);
 
   for (RootNbrSet::iterator i = rs.begin(); i(); ++i)
-    if (isPosRoot(*i))
+    if (is_posroot(*i))
       result += root(*i);
 
   return result;
@@ -949,7 +949,7 @@ Coweight RootDatum::dual_twoRho(const RootNbrList& rl) const
   Coweight result(rank(),0);
 
   for (size_t i = 0; i < rl.size(); ++i)
-    if (isPosRoot(rl[i]))
+    if (is_posroot(rl[i]))
       result += coroot(rl[i]);
 
   return result;
@@ -960,7 +960,7 @@ Coweight RootDatum::dual_twoRho(const RootNbrSet& rs) const
   Coweight result(rank(),0);
 
   for (RootNbrSet::iterator i = rs.begin(); i(); ++i)
-    if (isPosRoot(*i))
+    if (is_posroot(*i))
       result += coroot(*i);
 
   return result;
@@ -983,7 +983,7 @@ WeylWord RootDatum::to_dominant(Weight v) const
       if (v.dot(simpleCoroot(i)) < 0)
       {
 	result.push_back(i);
-	simpleReflect(v,i);
+	simple_reflect(i,v);
 	break;
       }
   while (i<semisimpleRank());
@@ -1168,12 +1168,35 @@ WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta)
   return result;
 }
 
+void make_positive(const RootSystem& rs,RootNbr& alpha)
+{
+  if (rs.is_negroot(alpha))
+    alpha = rs.rootMinus(alpha);
+}
+
+// conjugate |alpha| to a simple root, returning right-conjugating word applied
+// afterwards |alpha| is shifted to become a \emph{simple} root index
+WeylWord conjugate_to_simple(const RootSystem& rs,RootNbr& alpha)
+{
+  make_positive(rs,alpha);
+  WeylWord result;
+  result.reserve(4*rs.rank()); // generous size that avoids reallocations
+  weyl::Generator s;
+  while (alpha!=rs.simpleRootNbr(s=rs.find_descent(alpha)))
+  {
+    result.push_back(s);
+    rs.simple_reflect_root(s,alpha);
+  }
+  alpha=s; // alpha takes on simple root numbering from now on!
+  return result;
+}
 
 
-/*! \brief Writes in q the matrix represented by the product of the
-reflections for the set of roots |rset|.
+/*
+  Return the matrix represented by the product of the
+  reflections for the set of roots |rset|.
 
-The roots must be mutiually orthogonal so that the order doesn't matter.
+  The roots must be mutually orthogonal so that the order doesn't matter.
 */
 WeightInvolution refl_prod(const RootNbrSet& rset, const RootDatum& rd)
 {
@@ -1208,9 +1231,8 @@ unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma)
   return rd.simpleBasis(int_roots).size();
 }
 
-RationalList integrality_points(const RootDatum& rd, RatWeight& gamma)
+RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma)
 {
-  gamma.normalize();
   arithmetic::Denom_t d = gamma.denominator(); // unsigned type is safe here
 
   std::set<arithmetic::Denom_t> products;

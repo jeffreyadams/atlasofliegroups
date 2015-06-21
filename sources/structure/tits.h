@@ -39,12 +39,6 @@ namespace tits {
   // 2-subgroup by which each |TorusPart| at involution |inv| will be reduced
   SmallSubspace fiber_denom(const WeightInvolution& inv);
 
-  Grading
-  square_class_grading_offset(const Fiber& f,
-			      cartanclass::square_class csc,
-			      const RootSystem& rs);
-
-
 /******** type definitions **************************************************/
 
 
@@ -160,17 +154,11 @@ class GlobalTitsGroup : public TwistedWeylGroup
   // accessors
   size_t semisimple_rank() const { return alpha_v.size(); }
   size_t rank() const { return prd.rank(); }
-  const RatWeight& torus_part_offset () const
-  { return half_rho_v; }
-  //  { return RatWeight(root_datum.dual_twoRho(),4); }
+  const RatCoweight& torus_part_offset () const { return half_rho_v; }
+  //  { return RatCoweight(root_datum.dual_twoRho(),4); }
 
   //!\brief Element m_\alpha of H(2) for simple coroot \#j.
   TorusPart m_alpha(size_t j) const { return alpha_v[j]; }
-
-  Weight parent_simple_root(weyl::Generator s) const
-  { return prd.simple_roots()[s]; }
-  Coweight parent_simple_coroot(weyl::Generator s) const
-  { return prd.simple_coroots()[s]; }
 
   // Reflection of |TorusElement|s defined by a twisted involution.
   // This matrix is negated-transposed w.r.t. |tw| (so |-delta_tr| if $tw=e$)
@@ -240,6 +228,8 @@ class GlobalTitsGroup : public TwistedWeylGroup
   int cross_act(weyl::Generator s, GlobalTitsElement& a) const;
   int cross_act(const WeylWord& w, GlobalTitsElement& a) const;
   int cross_act(GlobalTitsElement& a,const WeylWord& w) const;
+  GlobalTitsElement cross(weyl::Generator s, GlobalTitsElement a) const
+  { cross_act(s,a); return a; }
   GlobalTitsElement cross(const WeylWord& w, GlobalTitsElement a) const
   { cross_act(w,a); return a; }
   GlobalTitsElement cross(GlobalTitsElement a, const WeylWord& w) const

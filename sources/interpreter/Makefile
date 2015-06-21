@@ -1,9 +1,12 @@
-# This Makefile serves only to make realex + source documentation by running
-# 'make' inside this directory; if you are just interested in compiling
-# realex, use run 'make realex' in the main atlas directory instead. In
-# particular if you want optimization, use that (where optimization is on by
-# default) rahter than this Makefile. As this file is used for development
-# work only, it unconditionally sets debugging on and optimization off.
+# This Makefile serves to make realex and possibly source documentation
+# running 'make' or 'make realex' in the main atlas directory will just use
+# this makefile to make the realex program (and its requisites of course)
+# Running 'make' from the current directory will in addition make the source
+# documentation (as first target, so that you can look at your typeset code in
+# the dvi file while it is being compiled, and when reading error messages).
+# In the latter case debugging is on, and optimization off, by default, but in
+# the former case (being invoked from the main atlas directory), the
+# compilation flavor that is set in that directory is passed on and used.
 
 # where we are
 realex_dir := .
@@ -20,33 +23,35 @@ ATLAS_DIRS := utilities structure gkmod error io interface
 # this variable is used both by g++, and by cweavex needing the trailing slash
 INCLUDE_FLAGS := $(ATLAS_DIRS:%=-I$(sources_dir)/%/)
 
-# please make sure cweavex and ctanglex refer to the executables of the latest
-# version of CWEBx, see http://www-math.univ-poitiers.fr/~maavl/CWEBx
-# the ++ flags make them expect C++ rather than C
-
 CTANGLE := $(cwebx_dir)/ctanglex
 CWEAVE := $(cwebx_dir)/cweavex
 
 # these are the optional flags for CWEBx, modify them according to your taste
+# do no omit flags ++ (expect C++ rather than C) and $(INCLUDE_FLAGS)
 CWEAVEFLAGS  := ++ -p +mde $(INCLUDE_FLAGS)
 CTANGLEFLAGS := ++ -p
 
 CWEBXMACROS := $(cwebx_dir)/cwebxmac.tex
 
-# these are used for C++ compilation and linking (debugging, no optimization)
-CXXFLAGS := -Wall -Wno-parentheses -Wno-deprecated-declarations -g \
-   $(INCLUDE_FLAGS)
+# these flags are necessary for compilation, and should not be altered
+CXXFLAGS := -c $(INCLUDE_FLAGS) -Wno-parentheses
 
-# our beloved C++ compiler
-CXX := g++
+# these flags set the compilation flavor (default: debugging, no optimization)
+CXXFLAVOR ?= -Wall -ggdb
 
-CXXVERSION := $(shell g++ -dumpversion)
-CXXVERSIONOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.6)
+# our C++ compiler (call language version c++0x, for backward compatibility)
+CXX := g++ -std=c++0x
+
+CXXVERSION := $(shell $(CXX) -dumpversion)
+CXXVERSIONOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.8)
+CXXVERSIONVERYOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.6)
 
 ifeq "$(CXXVERSIONOLD)" "1"
-  CXXFLAGS += -Dnoexcept= -Dnullptr=0
+  CXXFLAVOR += -Dincompletecpp11
 endif
-
+ifeq "$(CXXVERSIONVERYOLD)" "1"
+  CXXFLAVOR += -Dnoexcept= -Dconstexpr= -Dnullptr=0
+endif
 
 # only the atlas object files listed below are used
 atlas_objects := $(sources_dir)/structure/prerootdata.o \
@@ -108,7 +113,8 @@ atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/structure/y_values.o \
  $(sources_dir)/gkmod/ext_block.o
 
-cwebx_sources := $(wildcard *.w)
+cwebx_sources :=  buffer.w parsetree.w lexer.w \
+  types.w global.w evaluator.w built-in-types.w main.w
 
 c++files      := $(cwebx_sources:%.w=%.cpp)
 c++objects    := $(c++files:%.cpp=%.o)
@@ -146,15 +152,15 @@ LDFLAGS := $(rl_libs)
 
 all:	headers dvifiles ../../realex
 
-# 'make clean' all derived files, but the executable program isn't here
+# 'make clean' removes all derived files, but the executable program isn't here
 clean:
 	$(RM) -f *.o *.log *.toc $(webtexfiles) *.dvi *~ *.cpp *.c *.h
 	$(RM) cwebxmac.tex
 
 # 'make compilable' prepares everything for compilation
-compilable: clean
+compilable: clean # remove existing .cpp flies, to regerenate without #line
 	$(MAKE) CTANGLEFLAGS=-pl parser.tab.c $(c++files) $(webtexfiles)
-	cp $(CWEBXMACROS) .
+	cp $(CWEBXMACROS) . # get the macros file here, so TeX applies cleanly
 
 $(CTANGLE):
 	cd $(cwebx_dir) && $(MAKE) ctanglex
@@ -167,30 +173,41 @@ $(CWEAVE):
 
 # we do use the following pattern rules (explicit implicit rules, so to say)
 
-# static pattern rules giving the usual C++ compilation; C++11 for realex
-# we still call the language version c++0x, for backward compatibility
-$(c++objects): %.o: %.cpp
-	$(CXX) -std=c++0x -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+# static pattern rules giving the usual C++ compilation
+$(c++objects) $(atlas_objects): %.o: %.cpp
+	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
-$(atlas_objects): %.o: %.cpp
-	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+# for running ctanglex we cannot use a static pattern rule, since there are
+# multiple targets: the C++ source and the corresponding header file(s) are
+# made from CWEBx files (.w) by a single run of ctangles (with the ++ switch)
 
-# here we cannot use a static pattern rule, since there are multiple targets
-# C++ source and header files are made from CWEBx files (.w) with the ++ switch
-# we add manipulations to preserve the date of existing and unchanged targets
+# For a long time we added manipulations here to preserve the date of existing
+# and unchanged targets, to prevent remaking nearly everything whenever any .w
+# file was modified, because the remakes the .h file(s). The mechanism is
+# commented out now however, as while it works reasonably for a seqential
+# make, it cases trouble when make is runn with --jobs set to more than 1
+# The basic problem is that targets are temporily removed, so other makes fail
 %.cpp %.h: %.w
-	@if [ -f $*.cpp ]; then mv $*.cpp old_targets;\
-                           else touch old_targets/$*.ccp; fi
-	@if [ -f $*.h ];   then mv $*.h old_targets;\
-                           else touch old_targets/$*.h; fi
+#	@if [ -f $*.cpp ]; then mv $*.cpp old_targets;\
+#                           else touch old_targets/$*.ccp; fi
+#	@if [ -f $*.h ];   then mv $*.h old_targets;\
+#                           else touch old_targets/$*.h; fi
+#	@if [ $* = parsetree ]; then \
+#           if [ -f parse_types.h ]; then mv parse_types.h old_targets;\
+#                                    else rm -f old_targets/parse_types.h; fi fi
 	$(CTANGLE) $(CTANGLEFLAGS) $<
-	@for i in $*.cpp $*.h;\
-        do if cmp -s old_targets/$$i $$i;\
-           then mv old_targets/$$i $$i; echo $$i unchanged;\
-           fi done
+#	@for i in $*.cpp $*.h;\
+#        do if cmp -s old_targets/$$i $$i;\
+#           then mv old_targets/$$i $$i; echo $$i unchanged;\
+#           fi done
+#	@if [ $* = parsetree ]; then \
+#           if cmp -s old_targets/parse_types.h parse_types.h;\
+#           then mv old_targets/parse_types.h .; echo parse_types.h unchanged;\
+#           fi fi
 
-# prevent remaking files that are under CVS, unless .w file changed recently
-../utilities/filekl.h ../utilities/filekl.cpp ../utilities/filekl_in.h ../utilities/filekl_in.cpp : ../utilities/filekl.w ;
+# remaking these Atlas files is unneeded: they are also under version control
+# but above pattern rule matches; so provide an empty rule to prevent remaking
+../io/filekl.h ../io/filekl.cpp ../io/filekl_in.h ../io/filekl_in.cpp : ;
 
 # TeX files are also made from CWEBx files (.w) with the ++ switch, by cweavex
 %.tex: %.w
@@ -221,14 +238,19 @@ endif
 
 # the parser is produced by bison, and compiled using the C++ compiler
 parser.tab.c parser.tab.h: parser.y
+#	@if [ -f parser.tab.c ]; then mv parser.tab.c old_targets;\
+#                                 else touch old_targets/parser.tab.c; fi
+#	@if [ -f parser.tab.h ]; then mv parser.tab.h old_targets;\
+#                                 else touch old_targets/$*.h; fi
 	bison -d parser.y
-parser.tab.o: parser.tab.c parsetree.h
-	$(CXX) -std=c++0x -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+#	@for i in parser.tab.c parser.tab.h;\
+#        do if cmp -s old_targets/$$i $$i;\
+#           then mv old_targets/$$i $$i; echo $$i unchanged;\
+#           fi done
+parser.tab.o: parser.tab.c
+	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
 # miscellaneous dependencies (some already known), produced by hand for now
 # these are also included from the main atlas makefile
 
 include dependencies
-
-show:
-	@echo $(CXX) version $(CXXVERSION) old? $(CXXVERSIONOLD)

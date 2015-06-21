@@ -72,7 +72,7 @@ class PreRootDatum
 	       size_t rank)
     : d_roots(roots),d_coroots(coroots), d_rank(rank) {}
 
-  PreRootDatum(const LieType& lt, const WeightList&);
+  PreRootDatum(const LieType& lt);
 
   ~PreRootDatum() {}
 
@@ -95,13 +95,13 @@ class PreRootDatum
   int_Matrix Cartan_matrix() const;
 
   template<typename C>
-    void simpleReflect(matrix::Vector<C>& v, weyl::Generator i) const;
+    void simple_reflect(weyl::Generator i,matrix::Vector<C>& v) const;
   void simple_reflect(weyl::Generator i, LatticeMatrix& M) const;
   void simple_reflect(LatticeMatrix& M,weyl::Generator i) const;
 
 // manipulators
   // replace by root datum for finite central quotient with weight |sublattice|
-  void quotient(const LatticeMatrix& sublattice) throw(std::runtime_error);
+  PreRootDatum& quotient(const LatticeMatrix& sublattice);
 
 };
 

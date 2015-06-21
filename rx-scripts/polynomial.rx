@@ -1,0 +1,186 @@
+<basic.rx
+
+: poly = vec
+{ poly: [a_0,...,a_n] represents the polynomial a_0+a_1q+...+a_nq^n }
+
+{ addition of vectors (overrides definition in basic.rx) to allow vectors of
+  possibly different lengths, implicitly extending on the right by zeros as
+  needed. This gives the right thing for coefficient vectors of polynomials.
+}
+
+set fix_add = +@(vec,vec)
+set fix_sub = -@(vec,vec) { save fixed-length vector addition and subtraction }
+set dot_product = *@(vec,vec) { and scalar product }
+
+forget +@(vec,vec)
+forget -@(vec,vec)
+forget *@(vec,vec)
+
+set + = flex_add@(poly,poly)
+set - = flex_sub@(poly,poly)
+set * = convolve@(vec,vec)
+
+{ reduce polynomial by dropping trailing zeros; shouldn't really be needed }
+set strip (poly v) = poly: v + (poly:[])
+
+{ evaluate polynomial at integer }
+set evaluate_at_1 = sum@poly { from basic.rx; most often we need this easy case }
+
+set eval (poly v,int k) = int:
+  let sum=0 in  for i:#v downto 0 do sum:= v[i] + k*sum od; sum
+
+{ evaluate polynomial at split }
+set eval(vec v,Split w)= Split:
+  let sum=Split:0 in  for i:#v downto 0 do sum:= v[i] + w*sum od; sum
+
+set at_s(vec v) = Split: eval(v,Split:(0,1))
+
+
+
+{			  Polynomial matrices				}
+
+{ polynomial matrices are grouped by row, unlike mat values that the realex
+  language implicitly (for loops, simple indexing) consideres by columns
+}
+: poly_mat = [[poly]]
+
+set transpose(poly_mat M)=poly_mat: { sublists must be of equal length }
+  let n=#M in
+  if n=0 then M { not much we can do for an empty list }
+  else for j:#M[0] do for i:n do M[i][j] od od
+  fi
+
+{ dot product of two vectors of polynomials (the name avoids *@(mat,mat)) }
+set dot_product([poly] v,[poly] w) = poly:
+  let sum=poly:[] in for p@i in v do sum +:= p*w[i] od; sum
+
+{ multiply two matrices of polynomials; here row-based representation really
+  makes a difference. Note that using operator * is unambiguous here
+}
+set *(poly_mat A,poly_mat B) = poly_mat:
+  let n=#A, B_tr=transpose(B) { best to rearrange B once and for all }
+  then m=#B_tr { number of rows of B_tr, or columns of B, and of result }
+  in for i:n do for j:m do dot_product(A[i],B_tr[j]) od od
+
+{ add lists of polynomials, assumed of same length (name avoids +@(mat,mat)) }
+set poly_list_add([poly] v,[poly] w) = [poly]:
+( assert(#v=#w,"length mismatch adding lists of polynomials")
+; for p@i in v do p+w[i] od
+)
+set poly_list_sub([poly] v,[poly] w) = [poly]:
+( assert(#v=#w,"length mismatch adding lists of polynomials")
+; for p@i in v do p-w[i] od
+)
+
+set -(poly_mat M) = poly_mat: for row in M do for p in row do -p od od
+
+{ add or subtract matrices of the same size }
+set +(poly_mat A,poly_mat B)=poly_mat:
+( assert(#A=#B,"number of rows mismatch adding matrices of polynomials")
+; for row@i in A do poly_list_add(row,B[i]) od
+)
+set -(poly_mat A,poly_mat B)=poly_mat:
+( assert(#A=#B,"number of rows mismatch adding matrices of polynomials")
+; for row@i in A do poly_list_sub(row,B[i]) od
+)
+
+set scalar_multiply([poly] v,poly f) = [poly]:
+  for p in v do p*f od
+
+{ polynomial scalar times polynomial matrix }
+set *(poly f,poly_mat M) = poly_mat:
+  for row in M do scalar_multiply(row,f) od
+{ integer scalar case can be doen a bit more efficiently }
+set *(int c, poly_mat M) = poly_mat:
+  for row in M do for p in row do p*c { use the *@(vec,int) built-in } od od
+
+{ update one entry in a vector of polynomials and one row of a matrix }
+set update_row([poly] R, int j,poly v) = [poly]: R[j]:=v; R
+{ update one row of a matrix }
+set update_matrix_row(poly_mat M, int i, [poly] row)= poly_mat: M[i]:=row; M
+{ update one entry in a matrix }
+set update_matrix_entry(poly_mat M, int i, int j, poly v)= poly_mat:
+  let row=M[i] in row[j]:=v; M[i]:=row; M
+
+set zero_poly_row(int n) = [poly]: for i:n do [] od
+set zero_poly_matrix(int n) = poly_mat: for i:n do zero_poly_row(n) od
+set scalar_poly_matrix(int n, int c)= poly_mat:
+  for i:n do for j:n do if i=j then [c] else [] fi od od
+set identity_poly_matrix(int n) = scalar_poly_matrix(n,1)
+
+set +(poly_mat M, poly p) = poly_mat: { add polynomial scalar matrix }
+  for row@i in M  do for e@j in row do if i=j then e+p else e fi od od
+set -(poly_mat M, poly p) = poly_mat: M+-p
+
+set ^ = (poly,int->poly): { power of a polynomial }
+  let one=poly:[1] { use local constant for efficiency } in
+  (poly p,int n) poly: { the actual powering function }
+    if n=0 then [1]
+    else { no point in trying to do this by repeated squaring: is not faster }
+      let f=p in while (n-:=1)>0 do f *:= p od; f
+    fi
+
+{ equality of polynomial matrices }
+set =(poly_mat A,poly_mat B) = bool:
+  all(#A, (int i): let r=A[i],s=B[i] in #r=#s and all(#r, (int j): r[j]=s[j] ))
+
+{ polynomial matrix is 0 if all its entries are zero-length polynomials }
+set is_zero(poly_mat M)= bool:
+  all(#M, (int i): let r=M[i] in all(#r, (int j): =#r[j]) )
+
+{ compute PMP^{-1} where P is a permutation of [1,,,n]
+  and M is a polynomial matrix
+}
+set poly_permute_basis(poly P, poly_mat A) = poly_mat: { P is permutation }
+  for i:#A do let row=A[P[i]] in for j:#row do row[P[j]] od od
+
+{ some printing functions }
+
+{ make a printable string out of a polynomial and name of indeterminate,
+  for use in other print functions }
+set stringPoly (poly v, string q)= string:
+  if =v then "0"
+  else
+    let rv="" in
+    for c@k in v do
+      if c!=0 then
+	let coef = if c<0 then "-" else "+" fi #
+            if abs(c)=1 and k>0 then "" else int_format(abs(c)) fi
+	,   term = if k>1 then q#"^"#int_format(k) elif k=0 then "" else q fi
+	in rv #:= coef#term
+      fi
+    od
+  ; rv
+  fi
+
+{ nice printing of a polynomial }
+set printPoly (poly v) = void: prints(stringPoly(v,"q"))
+
+{ M=poly_mat is a polynomial matrix; e.g.
+  expr> set M= poly_mat: [[ [0,1], [0,0,1]], [[0], [1]]]
+  expr> printPolyMatrix (M)
+   +q +q^2
+   0 +1
+}
+
+set printPolyMatrix (poly_mat M) = void:
+  let rv="", n=#M in
+    for i:n do
+      let line="" in
+      for j:n do line+:=" "+stringPoly(M[i][j],"q") od; prints(line)
+    od
+
+{ restore normal vector arithmetic }
+forget +@(vec,vec)
+forget -@(vec,vec)
+forget *@(vec,vec)
+set + = fix_add@(vec,vec)
+set - = fix_sub@(vec,vec)
+set * = dot_product@(vec,vec)
+
+{ for convenience, the ! means these are constant definitions }
+set !poly_0 = poly:[], !poly_1 = poly:[1], !poly_2 = poly: [2]
+set !q = poly: [0,1], !q2 = poly: [0,0,1]
+set sgn_poly (int k) = poly:
+  [if k<0 then -1 elif k>0 then 1 else error("taking sign of 0") fi]
+

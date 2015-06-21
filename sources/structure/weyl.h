@@ -58,6 +58,15 @@ namespace weyl {
       { std::memset(d,~0,sizeof(d)); }
     Generator& operator[] (size_t i) { return d[i]; }
     const Generator& operator[] (size_t i) const { return d[i]; }
+
+    bool operator!=(const Twist& y) const
+    { for (unsigned i=0; i<constants::RANK_MAX; ++i)
+	if (d[i]!=y.d[i])
+	  return true;
+      return false;
+    }
+    bool operator==(const Twist& y) const { return not operator!=(y); }
+
   };
 
 

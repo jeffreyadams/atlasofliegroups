@@ -79,7 +79,8 @@ class SubSystem : public RootSystem // new system, subsytem of dual
   RootNbr parent_nr_simple(weyl::Generator s) const
   { return pos_map[s]; }
 
-  RootNbr parent_nr(RootNbr alpha) const;
+  RootNbr to_parent(RootNbr alpha) const; // |pos_map| with some shifting
+  RootNbr from_parent(RootNbr alpha) const { return inv_map[alpha]; }
 
   weyl::Generator simple(weyl::Generator s) const
   { return sub_root[s].simple; } // parent simple root conjugated to |sub.s|
@@ -98,8 +99,6 @@ class SubSystem : public RootSystem // new system, subsytem of dual
 
   RootNbrSet positive_roots() const; // for subsystem only
   InvolutionData involution_data (const WeightInvolution& theta) const;
-
-  Grading induced(Grading base_grading) const;
 
 }; // |class SubSystem|
 
@@ -125,6 +124,8 @@ class SubSystemWithGroup : public SubSystem
 
   const WeylGroup& Weyl_group() const { return sub_W; }
 }; // |class SubSystemWithGroup|
+
+
 
 } // |namespace subsystem|
 

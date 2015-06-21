@@ -1,0 +1,53 @@
+<LKT.rx
+
+{ a few vector manipulations }
+set left (vec v) = vec: v[:#v\2]
+set right (vec v)= vec: v[#v\2:]
+set left (ratvec v)  = ratvec: v[:#v\2]
+set right (ratvec v) = ratvec: v[#v\2:]
+
+set concatenate (ratvec v,ratvec w) = ratvec: ([rat]:v)#([rat]:w)
+
+{ upper right-hand corner of square matrix
+  application: in a complex group, theta is of the form
+  (0    w)
+  (w^-1 0)
+  upper_right_corner(theta) gives the matrix of w
+}
+set up_right_corner (mat M) = mat:
+  let (,n):p=#M then (h,r)=n\%2 in
+  assert(=p,"matrix is not square"); assert(=r,"odd size matrix"); M[:h,h:]
+
+set left_w (KGBElt x) = mat: { assumes inner_class(x) is complex }
+  up_right_corner(involution(x))
+
+{ extremal weight of LKT of parameter p of G complex
+  formula: lambda_L+w*lambda_R
+}
+set mu (Param p) = vec:
+  let lambda=lambda(p), w=left_w(x(p)) in
+  ratvec_as_vec(left(lambda)+w*right(lambda))
+
+{ A-parameter of parameter of G complex
+  formula: nu_L-w*nu_R
+}
+set nu_C (Param p) = ratvec:
+  let nu=nu(p), w=left_w(x(p)) in { inverse(w)*left(nu)-right(nu) }
+  left(nu)-w*right(nu)
+
+set gamma_L (Param p) = ratvec: (mu(p)+nu_C(p))/2
+set gamma_R (Param p) = ratvec: (mu(p)-nu_C(p))/2
+
+{ define a parameter of G complex by (gamma_L,gamma_R)
+  assumption: gamma_L+gamma_R in X^*
+}
+set gparameter (RealForm G,ratvec gamma_L, ratvec gamma_R) = Param:
+  let n=#gamma_L
+  then lambda = ratvec_as_vec(gamma_L+gamma_R)#null(n)
+  then nu = concatenate((gamma_L-gamma_R)/2, (gamma_R-gamma_L)/2)
+  in parameter(KGB(G,0),lambda,nu)
+
+{ define a parameter of aG complex by (mu,nu) }
+set mparameter (RealForm G, vec mu, ratvec nu) = Param:
+  parameter(KGB(G,0), mu#null(#mu), concatenate(nu/2,-nu/2))
+

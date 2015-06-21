@@ -1,6 +1,14 @@
-/*!
-\file
-\brief Definitions for the type of a real or complex reductive Lie algebra.
+/*
+  This is lietype.cpp.
+
+  Copyright (C) 2004,2005 Fokko du Cloux
+  part of the Atlas of Lie Groups and Representations
+
+  For license information see the LICENSE file
+*/
+
+/*
+  Definitions for the type of a real or complex reductive Lie algebra.
 
   A complex reductive Lie algebra is simply the product of a number of simple
   complex Lie algebras, and a torus; the simple factors can be of types A-G,
@@ -30,14 +38,6 @@
   complex factors. This representation is only for input/output purposes;
   internally, we work only with the Cartan matrix and the Cartan involution.
 
-*/
-/*
-  This is lietype.cpp.
-
-  Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Lie Groups and Representations
-
-  For license information see the LICENSE file
 */
 
 #include <cassert>
@@ -460,7 +460,6 @@ bool checkRank(const TypeLetter& x, size_t l)
   Precondition: validity if |lo.d_inner| has been checked
 */
 WeightInvolution involution(const Layout& lo)
-  throw (std::runtime_error,std::bad_alloc)
 {
   const LieType& lt = lo.d_type;
   const InnerClassType& ic = lo.d_inner;

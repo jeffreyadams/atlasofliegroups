@@ -1,0 +1,15 @@
+*.dvi
+*.log
+*.tex
+*.toc
+Euler-201
+Euler-201.cpp
+KLread
+Poincare
+coef-merge
+lights-off
+linear
+lists
+matrix-merge
+matstat
+polstat

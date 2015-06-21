@@ -1,0 +1,79 @@
+<basic.rx
+<kl.rx { for character_formula }
+<groups.rx { for Sp }
+<group_operations.rx { for real_Levi }
+
+{induction from a general real parabolic}
+{L is a real Levi factor in G, having been constructed using real_Levi(x_G)}
+
+{KGB(L) embeds in KGB(G): x_L -> embed_KGB(x_L,G)}
+set embed_KGB(KGBElt x_L,RealForm G)=KGBElt:KGB_elt(G,involution(x_L), torus_factor(x_L))
+
+{Given a kgb element x, construct a set S of complex roots containing one representative
+of each pair (alpha,theta(alpha))}
+set makeS (KGBElt x)=[([int],bool)]:
+   let G=real_form(x) in let theta=involution(x) in
+   let pr=posroots(G) in let list=[([int],bool)]: for al in pr do (al,true) od in
+   for i:#list do let (al,b)=list[i] in if b then for j:#list do
+      let (beta,c)=list[j] in if beta=theta*al  or beta=-theta*al then
+      list[j]:=(beta,false) fi od fi od; list
+
+{construct the complex rho shift rho_S:=(1-theta)rho(S)}
+set rhoS (KGBElt x)=ratvec:
+     let theta=involution(x) in	let list=makeS(x) in
+     let (al,b)=list[0] in let Q=al-al in for (beta,b) in list do
+    if b then Q:=Q+beta-theta*beta fi od; 1/2*Q
+
+{parameters for L -> parameters for G:
+p_L=(x_L,lambda,nu) -> p_G=(embed_KGB(x_L,G),lambda + appropriate rho-shift,nu)
+rho-shift is: rho_r(G)-rho_r(L)+(1-theta)(rho_S(G)-rho_S(L))
+Then Ind_L^G(I(p_L))=I(p_g)}
+set induce_standard(Param p_L,RealForm G)=Param:
+let L=real_form(x(p_L)) in let x_G=embed_KGB(x(p_L),G) in
+parameter(x_G,lambda(p_L)+rho_r(x_G)+rhoS(x_G)-rho_r(x(p_L))-rhoS(x(p_L)), nu(p_L))
+
+{write Ind(J) as a sum of standards for G}
+{write J(p_L)=sum_i a_i* I_L(p_i)
+compute sum_i a_i*induce_standard(I_L(p_i))
+probably won't use this function much, it is mainly used in induced_irreducible}
+set induce_irreducible_as_sum_of_standards(Param p_L, RealForm G)=
+let cf=character_formula(p_L) in
+let rv=null_module(G) in
+for coeff@p in cf do rv+:=coeff*induce_standard(p,G) od;rv
+
+{write Ind(J) as a sum of irreducibles for G
+use composition series to convert induce_irreducible_as_sum_of_irreducibles
+then convert to sum of irreducibles using composition_series()}
+set induce_irreducible(Param p_L, RealForm G)=
+let cf=induce_irreducible_as_sum_of_standards(p_L,G) in
+let rv=null_module(G) in
+for coeff@p in cf do rv+:=coeff*composition_series(p) od;rv
+
+{examples in Sp(4,R)}
+set G=Sp(4,R)
+set L_short=real_Levi(KGB(G,9)) {L_short has simple root (0,2)}
+set L_long=real_Levi(KGB(G,7))  {L has simple root (1,-1)}
+
+{principal series Ind_{SL(2),GL(1)}PS(nu_SL2,epsilon_SL2)x(nu_GL1,epsilon_GL1)
+is reducible <=>nu_SL=epsilon_SL2, in which case it has dimension nu_SL2+1
++1 is due to rho-shift}
+set p_long((rat,int)(nu_GL1,epsilon_GL1),(rat,int)(nu_SL2,epsilon_SL2))=
+parameter(KGB(L_long,2),[epsilon_GL1,epsilon_SL2],[nu_GL1,nu_SL2])
+
+{principal series Ind_{GL(2)}(PS_GL2(nu_1,nu_2),(epsilon_1,epsilon_2))
+=Ind_{GL(1)^2}((nu_1,epsilon_1),(nu_1,epsilon_1))
+is finite dimensional <=> nu_1-nu_2=1+epsilon_1-epsilon_2(mod 2)
+dimension is |nu_1-nu_2|
+(+1 is due to rho=[1,-1]/2)
+central character on GL(1) in (nu_1+nu_2,epsilon_1+epsilon_2)
+infinitesimal character is (nu_1,nu_2) in usual coordinates
+}
+set p_short((rat,rat)(nu_1,nu_2),(int,int)(epsilon_1,epsilon_2))=
+parameter(KGB(L_short,1),[epsilon_1,epsilon_2]+[1,-1]/2,[nu_1,nu_2])
+
+{examples from the Sp(4) induction notes}
+{p_long((nu_GL1,epsilon_GL1),(nu_SL2,epsilon_SL2)}
+set p_1=p_long((2,0),(1,1))  {Ind(triv\otimes \chi_{+,2} page 1}
+set p_2=p_long((1,0),(2,1))  {(irr spherical, inf. char. 2)\otimes\chi_{+,1)}, page 2}
+set p_3=p_long((2,1),(1,0))  {(irr non spherical at rho)\otimes\chi_{(-,2)},  page 3}
+set p_4=p_long((1,1),(2,2))   {(2-dim.)\otimes\chi_{(-,1)},  page 3}

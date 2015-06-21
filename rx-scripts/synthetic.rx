@@ -1,0 +1,182 @@
+<basic.rx
+<Weylgroup.rx   { for make_simple@(RootDatum,vec) }
+<parameters.rx  { for parity }
+<lattice.rx     { for in_lattice }
+
+
+set rho_check_i (RootDatum rd, mat theta) = ratvec:
+  sum(imaginary_poscoroots(rd,theta))/2
+
+set rho_r (RootDatum rd, mat theta) = ratvec:
+  sum(real_posroots(rd,theta))/2
+
+set grading_coweight (KGBElt x) = ratvec: torus_factor(x) + rho_check_i(x)
+
+{ alternative to KGB_elt that incorporates shift by rho_check_i }
+set make_KGB (RealForm G, mat theta, ratvec grading_cowt) = KGBElt:
+  KGB_elt(G,theta,grading_cowt - rho_check_i(G,theta))
+
+{				cross actions				}
+
+set cross (mat w, KGBElt x) = KGBElt:
+  let theta=involution(x), G=real_form(x), w1=inverse(w)
+  in make_KGB(G, w*theta*w1, grading_coweight(x)*w1 )
+
+set posroot_cross (int i, KGBElt x) = KGBElt:
+  cross(reflection(real_form(x),i),x)
+
+set posroot_cross (int i, Param p) = Param:
+  let x0 = x(p), gamma = infinitesimal_character(p)
+  then rd = root_datum(real_form(x0))
+  , x1=posroot_cross(i,x0), grading_wt=gamma-lambda(p)+rho_r(x0)
+  then theta1= involution(x1), w=reflection(rd,i)
+  in parameter(x1, gamma - w*grading_wt + rho_r(rd,theta1), gamma)
+
+{			     Cayley transforms				}
+
+set posroot_Cayley (int i, KGBElt x) = KGBElt:
+( let G=real_form(x), theta0=involution(x) then rd=RootDatum: G
+  then r= reflection(rd,i) then theta3=r*theta0
+  in
+  if theta3=theta0*r { imaginary or real }
+  then
+    let  (w,s) = make_simple(rd,root(rd,i)) { root(rd,s) = w(root(rd,i)) }
+    then w1=inverse(w)
+    then theta1 = w*theta0*w1 { involution for Cayley by root(rd,s) }
+    then theta2 = reflection(rd,s)*theta1 { for simple imaginary Cayley }
+    then diff1 = rho_check_i(rd,theta1)*w - rho_check_i(rd,theta0)
+    ,    diff2 = rho_check_i(rd,theta2)*w - rho_check_i(rd,theta3)
+    in KGB_elt (G, theta3, torus_factor(x) + diff1 - diff2)
+  else x { complex reflection: Cayley not defined, return x unchanged }
+  fi
+)
+
+set posroot_Cayley (int i, Param p) = Param:
+( let x0=x(p), gamma=infinitesimal_character(p)
+  then G = real_form(x0), x3=posroot_Cayley(i,x0), theta0=involution(x0)
+  then rd=root_datum(G), theta3=involution(x3)
+  in assert(denom(coroot(rd,i)*gamma)=1
+           ,"coroot is not integral for parameter"
+           )
+; let  (w,s) = make_simple(rd,root(rd,i))
+  then w1 = inverse(w)
+  then theta1 = w*theta0*w1 { involution before Cayley by simple root(id,s) }
+  then theta2 = reflection(rd,s)*theta1 { after that imaginary simple Cayley }
+  then diff1 = w1*rho_r(rd,theta1) - rho_r(rd,theta0)
+  ,    diff2 = w1*rho_r(rd,theta2) - rho_r(rd,theta3)
+  in parameter(x3,lambda(p) + diff1 - diff2, gamma)
+)
+
+set posroot_inv_Cayley (int i, Param p) = Param:
+( let x0=x(p), gamma=infinitesimal_character(p)
+  then G = real_form(x0), x3=posroot_Cayley(i,x0), theta0=involution(x0)
+  then rd=root_datum(G), theta3=involution(x3)
+  in assert(denom(coroot(rd,i)*gamma)=1
+           ,"coroot is not integral for parameter"
+           )
+; let (w,s) = make_simple(rd,root(rd,i))
+  then w1=inverse(w)
+  then theta1 = w*theta0*w1 { involution before Cayley by simple root(rd,s) }
+  then theta2 = reflection(rd,s)*theta1 { after that imaginary simple Cayley }
+  then diff1 = w1*rho_r(rd,theta1) - rho_r(rd,theta0)
+  ,    diff2 = w1*rho_r(rd,theta2) - rho_r(rd,theta3)
+  in assert(=(1+theta0)*diff1,"non-real diff at 0")
+;    assert(=(1+theta3)*diff2,"non-real diff at 3")
+; let par(ratvec mu) = { use only torsion of mu; ensure infin.char.=gamma }
+    { use ((1-theta3)*mu+(1+theta3)*gamma)/2 = mu+(1+theta3)*(gamma-mu)/2 }
+    parameter(x3,mu+(1+theta3)*(gamma-mu)/2,gamma)
+  in par(lambda(p)+diff1-diff2)
+)
+
+{ some visualisation procedures }
+
+set find ([Param] B, Param p) = int:
+  let i = #B-1 in while i>=0 and B[i]!=p do i-:=1 od; i
+
+set find_posroot (RootDatum rd, vec alpha) = int:
+  let pr=posroots(rd) then i = n_columns(pr)-1
+  in while i>=0 and pr[i]!=alpha do i-:=1 od; i
+
+set concat ([string] l,string a, string b, string c) = string:
+  let s = a then last=#l-1 in
+  for t@i in l do s#:= t # if i=last then c else b fi od; s
+
+set posroot_status (int i, Param p) = int:
+  let rd=RootDatum: real_form(p) then st=status(root(rd,i),x(p)) in
+  if st<=1 or st=4 then st { complex and imaginary compact cases keep old code }
+  elif st=3 { imaginary non-compact }
+  then if posroot_cross(i,p)=p then 7 else 6 fi { types i2, i1 respectively }
+  elif not parity(p,coroot(rd,i)) then 5 { real nonparity }
+  elif posroot_cross(i,p)=p then 2 else 3 { types r1, r2 respectively }
+  fi
+
+set new_block_line ([Param] B,int i) = string:
+begin let p=B[i]
+  then rd=root_datum(p), id = integrality_datum(p)
+  then i_simple = for alpha in simple_roots(id) do find_posroot(rd,alpha) od
+  then stats = for a in i_simple do posroot_status(a,p) od
+  then line = concat(for st in stats do block_status_text(st) od ,"[",",","]")
+  , v0(int alpha) = "(*,*)"
+  , vi1(int alpha) = "(" + find(B,posroot_Cayley(alpha,p)) + ",*)"
+  , vi2(int alpha) = let q=posroot_Cayley(alpha,p) in
+          "(" + find(B,q) + ","+ find(B,posroot_cross(alpha,q))+")"
+  , vr2(int alpha) = "(" + find(B,posroot_inv_Cayley(alpha,p)) + ",*)"
+  , vr1(int alpha) = let q=posroot_inv_Cayley(alpha,p) in
+          "(" + find(B,q) + ","+ find(B,posroot_cross(alpha,q))+")"
+  in for alpha in i_simple
+     do line #:= "  " + find(B,posroot_cross(alpha,p)) od
+  ; for alpha@i in i_simple
+     do line #:= "  " # [v0,v0,vr1,vr2,v0,v0,vi1,vi2][stats[i]](alpha) od
+; line
+end
+
+{ the following function supposes v,w are unnormalized torus factors
+  exp(2i\pi v)\xi is conjugate to exp(2i\pi w)\xi where \xi acts on H by theta
+  condition:             v-w\in (1-theta)X_Q+X,
+  which equivalent to:   (1+theta)(v-w)\in (1+theta)X
+  For normalized tourus factors, use (1+theta)*(v-w)/2 instead
+}
+set is_conjugate (ratvec v,ratvec w,mat theta) = bool:
+  let t1=1+theta in in_lattice(t1,t1*(v-w))
+
+{  generalized KGB elements: x^2 not necessarily central }
+
+{ KGBElt_gen:(ic,theta,v) represents exp(i\pi v)\sigma_w\xi_0
+  Recall (see parameters.rx)
+  xi=exp(\pi i*torus_factor)exp(i\pi rho^\vee)\sigma_w\xi_0
+}
+
+: KGBElt_gen = (InnerClass,mat,ratvec)
+
+set inner_class    (KGBElt_gen(ic,,))    = InnerClass: ic
+set involution     (KGBElt_gen(,theta,)) = mat: theta
+set torus_factor   (KGBElt_gen(,,t))     = ratvec: t
+set unnormalized_torus_factor (KGBElt_gen(ic,,t)) = ratvec: (t+rho_check(ic))/2
+
+{ Note: square_is_central(KGB_elt y) gives the correct answer
+  =square_is_central(inner_class(y),involution(y), torus_factor(y))
+  square_is_central is defined in parameters.rx
+  Note: generalized KGB elements x,y are conjugate
+  <=> is_conjugate(torus_factor(x)/2,torus_factor(y)/2,theta)=true
+  see discussion of unnormalized_torus_factor in parameters.rx
+}
+
+set = (KGBElt_gen x1,KGBElt_gen x2) = bool:
+  (   inner_class(x1)=inner_class(x2)
+  and involution(x1)=involution(x2)
+  and is_conjugate(unnormalized_torus_factor(x1)
+		  ,unnormalized_torus_factor(x2)
+		  ,^involution(x1))
+  )
+set != ((KGBElt_gen,KGBElt_gen)p) = bool: not =p
+
+{
+  Dangerous bend: this formula appears to be right, with the
+  unnormalized torus factors, no dividing by 2, and the transpose
+  I'm not 100% sure this is correct
+}
+
+set *(mat delta,KGBElt_gen(ic,theta,t)) = KGBElt_gen:
+  (ic,delta*theta*delta,t*delta)
+
+set is_fixed (mat delta,KGBElt_gen y) = bool: y = delta*y

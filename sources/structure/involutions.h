@@ -102,9 +102,9 @@ class InvolutionTable
     InvolutionData id; // stuff that does not involve weight coordinates
     WeightInvolution theta;
     int_Matrix projector; // for |y|, same kernel as |row_saturate(theta-id)|
-    int_Matrix M_real; // $1-\theta$ followed by expression in adapted basis
+    int_Matrix M_real; // $1-\theta$; then expression in scaled adapted basis
     int_Vector diagonal; // divisors for image of |M_real|
-    int_Matrix lift_mat; // section: satisfies |M_real*lift_mat==diag(diagonal)|
+    int_Matrix lift_mat; // section: satisfies |lift_mat*M_real==1-theta|
     unsigned int length;
     unsigned int W_length;
     SmallSubspace mod_space; // for |x|
@@ -125,7 +125,7 @@ class InvolutionTable
   std::vector<BinaryMap> torus_simple_reflection;
 
  public:
-  InvolutionTable // contructor; starts without any involutions
+  InvolutionTable // constructor; starts without any involutions
     (const RootDatum& , const WeightInvolution&,  const TwistedWeylGroup&);
 
   //accessors
@@ -182,6 +182,8 @@ class InvolutionTable
   bool is_imaginary_simple(InvolutionNbr n,weyl::Generator s) const;
   bool is_real_simple(InvolutionNbr n,weyl::Generator s) const;
 
+  bool is_complex_descent(InvolutionNbr n,RootNbr alpha) const;
+
   void reduce(TitsElt& a) const;
 
   bool equivalent(const TorusElement& t1, const TorusElement& t2,
@@ -201,7 +203,7 @@ class InvolutionTable
 
   // the following produces a light-weight function object calling |involution|
   class mapper
-    : public std::unary_function<InvolutionNbr,const weyl::TI_Entry& >
+  // : public std::unary_function<InvolutionNbr,const weyl::TI_Entry& >
   {
     const InvolutionTable& t;
   public:
