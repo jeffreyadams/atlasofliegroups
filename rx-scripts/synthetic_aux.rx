@@ -1,6 +1,5 @@
 <synthetic.rx
-<Weyl.rx       { type W_word }
-<Weylgroup.rx  { for make_dominant and friends }
+<Weylgroup.rx  { for type W_word, make_dominant and friends }
 <translate.rx  { for T@(Param,ratvec) }
 
 { this function differs from posroot_cross@(int,Param) in synthetic.rx only
