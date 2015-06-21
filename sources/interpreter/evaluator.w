@@ -1136,25 +1136,26 @@ struct generic_builtin_call : public overloaded_builtin_call
 %
 When we type-check a function call, we must expect the function part to be any
 type of expression. However, when it is a single identifier (possibly operator
-symbol) that is not locally bound, and for which overloads are defined, then
-we attempt overload resolution (and in this case we ignore any value possibly
-present in the global identifier table). In all other cases, the function
-expression determines its own type, and once this is known, its argument and
-result types can be used to help converting the argument expression and the
-call expression itself. Thus in such cases we first get the type of the
-expression in the function position, requiring only that it be a function
-type, then type-check and convert the argument expression using the obtained
-result type, and build a converted function call~|call|. Finally (and this is
-done by |conform_types|) we test if the required type matches the return type
-(in which case we simply return~|call|), or if the return type can be coerced
-to it (in which case we return |call| as transformed by |coerce|); if neither
-is possible |conform_types| will throw a~|type_error|.
+symbol) that is not locally bound with function type, and for which overloads
+are defined, then we attempt overload resolution (and in this case we ignore
+any value possibly present in the global identifier table). In all other
+cases, the function expression determines its own type, and once this is
+known, its argument and result types can be used to help converting the
+argument expression and the call expression itself. Thus in such cases we
+first get the type of the expression in the function position, requiring only
+that it be a function type, then type-check and convert the argument
+expression using the obtained result type, and build a converted function
+call~|call|. Finally (and this is done by |conform_types|) we test if the
+required type matches the return type (in which case we simply return~|call|),
+or if the return type can be coerced to it (in which case we return |call| as
+transformed by |coerce|); if neither is possible |conform_types| will throw
+a~|type_error|.
 
 @< Cases for type-checking and converting... @>=
 case function_call:
 { if (e.call_variant->fun.kind==applied_identifier)
     @< Convert and |return| an overloaded function call if
-    |e.call_variant->fun| is not a local identifier and is known in
+    |e.call_variant->fun| is not a local function identifier and is known in
     |global_overload_table| @>
   type_expr f_type=gen_func_type.copy(); // start with generic function type
   expression_ptr fun = convert_expr(e.call_variant->fun,f_type);
@@ -1174,7 +1175,9 @@ in the overload table.
 @< Convert and |return| an overloaded function call... @>=
 { const id_type id =e.call_variant->fun.identifier_variant;
   size_t i,j; bool b; // dummies; local binding not used here
-  if (layer::lookup(id,i,j,b)==nullptr) // not calling by local identifier
+  auto local_type_p=layer::lookup(id,i,j,b);
+  if (local_type_p==nullptr or local_type_p->kind!=function_type)
+ // not calling by local identifier
   { const overload_table::variant_list& variants
       = global_overload_table->variants(id);
     if (variants.size()>0 or is_special_operator(id))

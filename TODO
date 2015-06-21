@@ -33,19 +33,6 @@
   which approach would also help making overload resolution more efficient
 - Check whether nested voiding in loops is necessary, maybe do only outer one
 
-- Allow global variables with function value to be called if overload fails
-  Currently a global variable with function value cannot be called directly
-  at all if there are also overloads for it (one needs to say something like
-  'let f=f in f(x,y)' instead). It would be more natural to consider calling
-  the global function anyway if overload fails; the main difficulty seems
-  that this might cause confusing error messages for arguments that were
-  intended for an overloaded instance instead, but somehow fail to match.
-  Since this is rare, maybe instead just consider globals before overloading.
-
-- For identifiers in function position of a call, only consider the local
-  binding (which will hide overloads) if it has function type. This
-  allows continuing to use function 'x' after 'let x=x(p) in ...'.
-
 - Implement compound assignment directly
   While 'v #:= x' (with vec v, int x) is easy to write (and common in loop
   bodies), it is converted to 'v := v#x' which is not efficient: with 'v'
