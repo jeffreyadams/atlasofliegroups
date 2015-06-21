@@ -116,6 +116,7 @@ namespace { @< Local static data @>@; }@;
 @< Definitions of global namespace functions @>@;
 namespace atlas { namespace interpreter {@< Definitions of other functions @>@;
 }@;}@;
+@/
 @< Main program @>
 
 @ Since the file \.{parser.y} declares \.{\%pure-parser} and \.{\%locations},
@@ -161,6 +162,7 @@ void yyerror (YYLTYPE* locp, atlas::interpreter::expr_p* ,int* ,char const *s)
    locp->last_line,  locp->last_column);
   std::cerr << s << std::endl;
   atlas::interpreter::main_input_buffer->close_includes();
+@/atlas::interpreter::clean=false;
 }
 
 @ We have a user interrupt handler that simple raises |interrupt_flag| and
@@ -317,7 +319,7 @@ int main(int argc, char** argv)
   signal(SIGINT,SIG_DFL); // reinstall default signal handler
   @< Finalise  various parts of the program @>
   std::cout << "Bye.\n";
-  return 0;
+  return clean ? EXIT_SUCCESS : EXIT_FAILURE ;
 }
 
 @ When reading command line arguments, some options may specify a search path,
@@ -543,6 +545,7 @@ for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
       catch (std::exception& err)
       { std::cerr << err.what() << std::endl;
         reset_evaluator(); main_input_buffer->close_includes();
+      @/clean=false;
       }
     }
     destroy_expr(parse_tree);
@@ -581,14 +584,17 @@ catch (const runtime_error& err)
     std::cerr << "Runtime error:\n  " << err.what() << "\nEvaluation aborted.";
   else std::cerr << err.what();
   std::cerr << std::endl;
+@/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
 catch (const logic_error& err)
 { std::cerr << "Internal error: " << err.what() << "\nEvaluation aborted.\n";
+@/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
 catch (const std::exception& err)
 { std::cerr << err.what() << "\nEvaluation aborted.\n";
+@/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
 

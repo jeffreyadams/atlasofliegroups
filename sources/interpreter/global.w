@@ -953,6 +953,17 @@ pattern using |pattern_type| to do this.
   throw runtime_error(o.str());
 }
 
+@ We shall use the following static variable to signal
+that errors were encountered.
+
+@< Declarations of global variables @>=
+extern bool clean;
+
+@~We start out cleanly
+
+@< Global variable definitions @>=
+bool clean=true;
+
 @ A |runtime_error| may be thrown either during type check, matching with
 the identifier pattern, or evaluation; we catch all those cases here. Whether
 or not an error is caught, the pattern |pat| and the expression |rhs| should
@@ -972,19 +983,22 @@ catch (runtime_error& err)
     std::cerr << " not " << (overload==0 ? "created." : "overloaded.")
               << std::endl;
   }
+@/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
 catch (logic_error& err)
 { std::cerr << "Unexpected error: " << err.what() << ", " @|
             << phase_name[phase]
             << " aborted.\n";
-@/reset_evaluator(); main_input_buffer->close_includes();
+@/clean=false;
+  reset_evaluator(); main_input_buffer->close_includes();
 }
 catch (error_base& err)
 { std::cerr << err.what() << ", "
             << phase_name[phase]
             << " aborted.\n";
-@/reset_evaluator(); main_input_buffer->close_includes();
+@/clean=false;
+  reset_evaluator(); main_input_buffer->close_includes();
 }
 
 @ The following function is called when an identifier is declared with type
@@ -1010,7 +1024,7 @@ following function achieves.
 @< Global function definitions @>=
 void global_forget_identifier(id_type id)
 { *output_stream << "Identifier '" << main_hash_table->name_of(id)
-            << (global_id_table->remove(id) ? "' forgotten" : "' not known")
+       @|   << (global_id_table->remove(id) ? "' forgotten" : "' not known")
             << std::endl;
 }
 
