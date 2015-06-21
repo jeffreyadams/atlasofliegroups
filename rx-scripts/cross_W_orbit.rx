@@ -1,3 +1,4 @@
+
 <basic.rx
 <Weylgroup.rx
 
@@ -19,19 +20,19 @@
 }
 
 set cross_W_orbit_extra([int] S,KGBElt x) = ([W_word],[KGBElt]):
-  let rd = RootDatum: real_form(x) then words = [W_word:(rd,[])], orbit= [x], done=0
+  let rd = RootDatum: real_form(x), words = [[int]:[]], orbit= [x], done=0
   then absent (KGBElt y) = bool:
          let i=#orbit-1 in while i>=0 and y!=orbit[i] do i-:=1 od; i<0
   in
   while done<#orbit
   do
-    let (,w) = words[done], a=orbit[done] in
+    let w = words[done], a=orbit[done] in
     done+:=1
   ; for i in S
     do let b=cross(i,a) in
-      if absent(b) then ( words #:= (rd,i#w), orbit #:= b ) fi
+      if absent(b) then ( words #:= i#w, orbit #:= b ) fi
     od
-  od; (words,orbit)
+  od; (for w in words do (rd,w) od,orbit)
 
 { just the W(S)-orbit W.x }
 set cross_W_orbit (([int],KGBElt) pair) = [KGBElt]:
@@ -45,9 +46,11 @@ set cross_W_orbit(KGBElt x) =
 set cross_W_orbit_W_elements(KGBElt x) = [W_word]:
   let (words,) = cross_W_orbit_extra(#semisimple_rank(real_form(x)),x) in words
 
+{ find Weyl word sending |x| to |y|, or return (rd,[-1]) to signal failure }
 set find_W_cross(KGBElt x,KGBElt y) = W_word:
-  let (words,orbit) = cross_W_orbit_extra(x) then i=#orbit-1 in
-  while i>=0 and y!=orbit[i] do i-:=1 od; if i<0 then (real_form(x),[-1]) else words[i] fi
+  let (wwords,orbit) = cross_W_orbit_extra(x) then i=#orbit-1 in
+  while >=i and y!=orbit[i] do i-:=1 od;
+  if >=i then wwords[i] else { fail: } (real_form(x),[-1]) fi
 
 { just the subset of W(S) that applied to x gives a bijection to W(S).x }
 {

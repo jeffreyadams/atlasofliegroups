@@ -13,20 +13,20 @@ set old_block = block@Param
 forget block@Param
 
 set cross(int s,Param p) = Param:
-  let alpha = simple_roots(
-    integrality_datum(real_form(p),infinitesimal_character(p)))
+  let (,,gamma)=%p
+  then alpha = simple_roots( integrality_datum(real_form(p),gamma) )
   in cross(alpha[s],p)
 
 set Cayley(int s,Param p) = Param:
-  let alpha = simple_roots(
-    integrality_datum(real_form(p),infinitesimal_character(p)))
+  let (,,gamma)=%p
+  then alpha = simple_roots( integrality_datum(real_form(p),gamma) )
   in Cayley(alpha[s],p)
 
 set inv_Cayley = Cayley@(int,Param)
 
 set block(Param p) = ([Param],int):
-  let G=real_form(p)
-  then sr = simple_roots(integrality_datum(G,infinitesimal_character(p)))
+  let G=real_form(p), (,,gamma)=%p
+  then sr = simple_roots(integrality_datum(G,gamma))
   then tab = [[Param]]: for i:KGB_size(G) do [] od
   , queue = [p], done=0, x(Param q)= KGBElt: let (x,,)=%q in x
   then record (Param q) = void:
