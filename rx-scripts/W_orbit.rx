@@ -33,33 +33,36 @@ set generate_from_dom ([(vec->vec)] S,vec v) = ([[int]],[vec]):
     od
   od; (words,orbit)
 
-{same as previous but return ([W_word],[vec])}
+{ same as previous, but add supplied |rd| to make words into |W_word| values }
 set generate_from_dom (RootDatum rd,[(vec->vec)] S,vec v) = ([W_word],[vec]):
-let (words,orbit)=generate_from_dom(S,v) in (for w in words do (rd,w) od,orbit)
+  let (words,orbit)=generate_from_dom(S,v) in
+  (for w in words do (rd,w) od,orbit)
 
-set W_orbit_extra (RootDatum rd,[int] S,vec v) = ([W_word],[vec]):
-  let gs = let alpha=simple_roots(rd), alphav=simple_coroots(rd) in
-           for i in S
-           do let a=alpha[i], av=alphav[i], zero=null(0)
+{ for a root datum |rd|, we can build generators from set |S| of root indices
+  also ensure |v| is made dominant for |rd|, which is what generators require
+}
+set generate_from_dom (RootDatum rd,[int] S,vec v) = ([W_word],[vec]):
+  let gs = for i in S
+           do let !a=root(rd,i), !av=coroot(rd,i), !zero=null(0)
               in (vec x): let s=av*x in if s>0 then x-a*s else zero fi
            od
-  in generate_from_dom(rd,gs, let (d,)=make_dominant(rd,v) in d)
+  in generate_from_dom(rd, gs, dominant(rd,v))
 
 { just the W(S)-orbit W.v }
 set W_orbit((RootDatum,[int],vec) triple) = [vec]:
-  let (,orbit) = W_orbit_extra(triple) in orbit
+  let (,orbit) = generate_from_dom(triple) in orbit
 
 { just the coset representatives for the stabilizer of v }
 set W_orbit_W_elements((RootDatum,[int],vec) triple) = [W_word]:
-  let (W_elements,)=W_orbit_extra(triple) in W_elements
+  let (W_elements,)=generate_from_dom(triple) in W_elements
 
 { assume S=all simple roots }
-set W_orbit_extra(RootDatum rd,vec v) = ([W_word],[vec]):
-  W_orbit_extra(rd,#semisimple_rank(rd),v)
+set generate_from_dom(RootDatum rd,vec v) = ([W_word],[vec]):
+  generate_from_dom(rd,#semisimple_rank(rd),v)
 set W_orbit((RootDatum,vec) pair) = [vec]:
-  let (,orbit) = W_orbit_extra(pair) in orbit
+  let (,orbit) = generate_from_dom(pair) in orbit
 set W_orbit_W_elements((RootDatum,vec) pair) = [W_word]:
-  let (W_elements,) = W_orbit_extra(pair) in W_elements
+  let (W_elements,) = generate_from_dom(pair) in W_elements
 
 { all Weyl group elements of W(rd) or W(G), in no particular order }
 set generate_W (RootDatum rd) = [W_word]:
@@ -83,21 +86,19 @@ set generate ([(vec->vec)] S,vec v) = ([[int]],[vec]):
     do let b= f(a) in if absent(b) then ( words #:= i#w, orbit #:= b ) fi od
   od; (words,orbit)
 
-{same as previous but return ([W_Word],[vec])}
-set generate (RootDatum rd,[(vec->vec)] S,vec v) = ([W_word],[vec]):
-let (words,orbit)=generate(S,v) in (for w in words do (rd,w) od,orbit)
-
-set W_orbit_extra ([W_word] S,vec v) = ([W_word],[vec]):
-  let (rd,)=S[0] in 
-  generate(rd,for (,g) in S do (vec x) vec: act((rd,g),x) od, v)
-
-{ find Weyl group element x in <S> taking v to w
-  returns (true,x) or (false,null(0))
+{ We cannot make a [W_word]-producing variant of |generate|, as there is
+  no way to synthesise a root datum for which the supplied set of Weyl
+  _words_ forms a set of simple generators (even in case one should exist).
+  The root datum in the supplied W_word values is NOT such a root datum
 }
 
-{test if u.v=w for some W_word u, return (true,u) or (false, (rd,[])}
-set conjugate_to([W_word] S, vec v,vec w) = (bool,W_word):
-( let (words,orbit) = W_orbit_extra(S,v), i=0 in
-  while i>=0 and orbit[i]!=w do i-:=1 od
-; if i>=0 then (true,words[i]) else (false,W_word:(let (rd,)=S[0] in rd,null(0))) fi
-)
+set generate ([W_word] S,vec v) = ([[int]],[vec]):
+  generate(for g in S do (vec x) vec: act(g,x) od, v)
+
+{ find a word w over <S> (not a W_word) whose action sends v to w
+  returns either (true,w) or (false,[])
+}
+set conjugate_to([W_word] S, vec v,vec w) = (bool,[int]):
+  let (words,orbit) = generate(S,v), i=0 in
+  while >=i and orbit[i]!=w do i-:=1 od;
+  if >=i then (true,words[i]) else (false,[]) fi

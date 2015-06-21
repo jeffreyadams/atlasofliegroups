@@ -4,7 +4,7 @@
 
 { functions related to W^\delta }
 
-{ make quotient root datum of rd by distinguished automorphism delta }
+{ make quotient root datum of |rd| by distinguished automorphism delta }
 
 set delta_fixed_root_datum (InnerClass ic) = RootDatum:
   K_root_datum(KGB(quasicompact_form(ic),0))
@@ -12,8 +12,8 @@ set delta_fixed_root_datum (InnerClass ic) = RootDatum:
 set delta_fixed_root_datum ((RootDatum,mat) pair) = RootDatum:
   delta_fixed_root_datum(inner_class(pair))
 
-{ Given root alpha in R^delta, find short Weyl word describing corresponding
-  reflection. Tabulate this for all simple reflections of R^delta
+{ Given root |alpha| in R^delta, find (short) Weyl word describing
+  corresponding reflection; tabulate for all simple reflections of R^delta
 }
 set translate_Wdelta_generators (InnerClass ic) = [[int]]:
   let P = projection_to_K_matrix(ic)
@@ -41,7 +41,7 @@ set length (RootDatum rd, int i) = 1 { is this really useful? }
 set length (RootDatum rd, int i,int j) = int:
   if =coroot(rd,j)*root(rd,i) then 2 else 3 fi
 
-set rewrite_word_Wdelta_to_W (InnerClass ic, W_word({match ic},w)) = W_word:
+set rewrite_word_Wdelta_to_W (InnerClass ic, W_word({rd_delta},w)) = W_word:
   let table= translate_Wdelta_generators(ic), trans= [int]: [] in
   for s in w do trans #:= table[s] { concatenate } od;
   (RootDatum:ic,trans)
@@ -55,11 +55,11 @@ set rewrite_word_Wdelta_to_W (RootDatum rd,mat delta,W_word ww) = W_word:
 }
 set conjugate_to_simple_by_Wdelta (RootDatum rd, mat delta, int j) =
   (W_word{ for rd },vec{ image of root(rd,j) }):
-  let alpha = root(rd,j), rd_delta = delta_fixed_root_datum(rd,delta)
-  , P = projection_to_K_matrix(inner_class(rd,delta))
+  let alpha = root(rd,j), ic = inner_class(rd,delta)
+  then rd_delta = delta_fixed_root_datum(ic)
+  , P = projection_to_K_matrix(ic)
   then beta = P*alpha { a root for rd_delta }
   then (conjugator,k) = make_simple_sequence(rd_delta,beta)
-  then ww = rewrite_word_Wdelta_to_W (rd,delta,conjugator)
+  then ww = rewrite_word_Wdelta_to_W(ic,conjugator)
   then image_root = act(ww,alpha)
   in assert(root(rd_delta,k)=P*image_root); (ww, image_root)
-
