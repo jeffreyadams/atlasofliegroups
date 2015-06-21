@@ -30,7 +30,7 @@ set translate_Wdelta_generators (InnerClass ic) = [[int]]:
     fi
   od; word
 
-set translate_Wdelta_generators ((RootDatum,mat) pair) =
+set translate_Wdelta_generators ((RootDatum,mat) pair) = [[int]]:
   translate_Wdelta_generators(inner_class(pair))
 
 { length of a single simple root or pair of simple roots
@@ -41,24 +41,25 @@ set length (RootDatum rd, int i) = 1 { is this really useful? }
 set length (RootDatum rd, int i,int j) = int:
   if =coroot(rd,j)*root(rd,i) then 2 else 3 fi
 
-set rewrite_word_Wdelta_to_W (InnerClass ic, W_word ww) = W_word:
-  let table= translate_Wdelta_generators(ic), trans=W_word:[]
-  in for i in ww do trans #:= table[i] od; trans
+set rewrite_word_Wdelta_to_W (InnerClass ic, W_word({match ic},w)) = W_word:
+  let table= translate_Wdelta_generators(ic), trans= [int]: [] in
+  for s in w do trans #:= table[s] { concatenate } od;
+  (RootDatum:ic,trans)
 
 set rewrite_word_Wdelta_to_W (RootDatum rd,mat delta,W_word ww) = W_word:
   rewrite_word_Wdelta_to_W(inner_class(rd,delta), ww)
 
-{ find W_word:w \in W^\delta taking any positive root to a simple root for rd
-  root in question is root(rd,j)
+{ find W_word:w \in W^\delta taking any positive root to a simple root for |rd|
+  root in question is |root(rd,j)|
   returns (W_word:w1,vec: v) where v = w1 * root(rd,j); P*v= root(rd_delta,k)
 }
 set conjugate_to_simple_by_Wdelta (RootDatum rd, mat delta, int j) =
-  (W_word,vec):
+  (W_word{ for rd },vec{ image of root(rd,j) }):
   let alpha = root(rd,j), rd_delta = delta_fixed_root_datum(rd,delta)
   , P = projection_to_K_matrix(inner_class(rd,delta))
-  then beta = P*alpha
-  then (conjugator,k) = make_simple_sequence (rd_delta,beta)
-  then w = rewrite_word_Wdelta_to_W (rd,delta,conjugator)
-  then image_root = act(rd,w,alpha)
-  in assert(root(rd_delta,k)=P*image_root); (w, image_root)
+  then beta = P*alpha { a root for rd_delta }
+  then (conjugator,k) = make_simple_sequence(rd_delta,beta)
+  then ww = rewrite_word_Wdelta_to_W (rd,delta,conjugator)
+  then image_root = act(ww,alpha)
+  in assert(root(rd_delta,k)=P*image_root); (ww, image_root)
 

@@ -18,10 +18,10 @@ set my_posroot_cross (int i, Param p) = Param:
 set simpleroot_cross = (int,KGBElt->KGBElt): { we could use builtin cross }
   posroot_cross@(int,KGBElt) { but this uses the "synthetic" version }
 
-set Wword_cross(W_word ww,KGBElt x)=KGBElt:
-  for j in reverse(ww) do x:=simpleroot_cross(j,x) od;x
+set Wword_cross(W_word(rd,w),KGBElt x)=KGBElt:
+  for s in w { reverse: } ~ do x:=simpleroot_cross(s,x) od; x
 
-{ no need for special code  for the simple reflection case }
+{ no need for special code for the simple reflection case }
 
 { The following differs from posroot_Cayley by final call of T only?
   No, there was rho_r(id,..) in some places where rho_r(rd,..) was needed.

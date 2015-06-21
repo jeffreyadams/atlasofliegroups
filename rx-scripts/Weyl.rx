@@ -4,16 +4,15 @@
 
 : W_word = (RootDatum,[int])
 
-set root_datum(W_word w)=let (rd,)=w in rd
-set length(W_word w)=let (,w)=w in #w
+set root_datum (W_word(rd,)) = RootDatum: rd
+set word (W_word(,w))        = [int]:  w
+set # (W_word(,w))           = int: #w { non reduced length of word }
 
-{ compute involution from twiseted involution Weyl word }
-set involution (InnerClass ic, W_word tw) = mat:
-( let rd = root_datum(ic), 
-  (,tw)=tw,theta = distinguished_involution(ic)
-  in for i : #tw downto 0 do theta := reflection(rd,tw[i])*theta od
-  ; theta
-)
+{ compute involution from twisted involution Weyl word }
+set involution (InnerClass ic, W_word({should be rd from ic},w)) = mat:
+  let rd = root_datum(ic), theta = distinguished_involution(ic) in
+  for s in w { reverse: } ~ do theta := reflection(rd,s)*theta od;
+  theta
 
 set imaginary_roots (InnerClass ic, W_word tw) = mat:
   imaginary_roots(ic,involution(ic,tw))
@@ -24,5 +23,5 @@ set imaginary_coroots (InnerClass ic, W_word tw) = mat:
 set real_coroots (InnerClass ic, W_word tw) = mat:
   real_coroots(ic,involution(ic,tw))
 
-{now that W_word is defined, need version of basic:rx:W_cross@([int],KGBElt)}
-set W_cross(W_word w, KGBElt x)=KGBElt:let (,v)=w in W_cross(v,x)
+{ for cross action on KGBElt values, we can use the RootDatum of the latter }
+set W_cross (W_word({should be rd of x},w), KGBElt x) = KGBElt:  W_cross(w,x)
