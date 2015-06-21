@@ -149,8 +149,7 @@ Layout() : d_type(), d_inner(), d_perm() {} // needed in realex
   bool checkRank(const TypeLetter&, size_t);
 
   // involution (permutation) matrix for possibly renumbered Dynkin diagram
-  WeightInvolution involution(const Layout& lo)
-    throw (std::runtime_error,std::bad_alloc);
+  WeightInvolution involution(const Layout& lo);
 
   // permutation matrix for |ict| in simply connected |lt|, Bourbaki order
   WeightInvolution involution(const LieType& lt,

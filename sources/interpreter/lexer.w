@@ -37,7 +37,6 @@ this file. In this module all include files are needed in the header file.
 namespace atlas { namespace interpreter {
 
 @< Class declarations @>@;
-@< Declarations of exported functions @>@;
 @< Declarations of static variables @>@;
 
 }@; }@;
@@ -52,7 +51,6 @@ might be a bit wasteful, but only system header files are concerned).
 namespace atlas
 { namespace interpreter
    {
-@< Function definitions @>@;
 @< Definitions of class members @>@;
 @< Definitions of static variables @>@;
    }@;
@@ -71,80 +69,6 @@ it point to the main hash table once it is allocated.
 
 @< Definitions of static variables @>=
 Hash_table* main_hash_table=nullptr;
-
-@*1 Identifier completion.
-%
-We define a completion function |id_completion_func| that will be used by the
-\.{readline} library. The definition is done here since it deals with the hash
-table, but strictly speaking this has nothing to do with lexical analysis. The
-completion function will be installed in the main program, and it will be
-called from the |readline| function (which is probably called by
-|BufferedInput::getline|) if the user asks for it. The function prototype is
-dictated by the \.{readline} library.
-
-@< Declarations of exported functions @>=
-extern "C" char* id_completion_func(const char* text, int state);
-
-@~The completion function will find and identifiers currently present in the
-main hash table. This includes keywords, built-in functions and identifiers
-introduced by the user, the latter possibly even by error (which is possibly
-annoying for those who make many typos). It has some strange characteristics
-that are dictated by the \.{readline} library. It must perform a loop that is
-actually started \emph{outside} the function body, so the only possible way to
-keep track of the loop state is using static variables. The |state| parameter
-signals (by being~|0|) when a new loop starts, so in that case it is time to
-(re-)initialise the static variables. A part of the loop can be picked up
-inside the function body, namely the search for the next match to the supplied
-prefix |text|. A tricky point is that once a partial match is found, we must
-increment the static iterator before returning, since that |return| jumps out
-of our local loop. For this reason we increment |i| right away while picking
-its identifier from the hash table. Otherwise there are no other complications,
-except having to produce a string allocated by |malloc|; this used to be done
-by calling |strdup|, but since that function appears not to be part of
-standard \Cpp\ at all, we do the duplication explicitly. If our local loop
-terminates normally there are no more matches and we return |nullptr| to
-indicate that circumstance.
-
-@h <cstdlib>
-@< Function definitions @>=
-extern "C"
-char* id_completion_func(const char* text, int state)
-{ static size_t l; static id_type i,n;
-  if (state==0)
-  { i=0; n=main_hash_table->nr_entries();
-    l=std::strlen(text); // fix length for during search
-  }
-  while (i<n)
-    // |i| is initialised above when |state==0|, and incremented below
-  { const char* s=main_hash_table->name_of(i++);
-      // get stored identifier and increment loop
-    if (std::strncmp(text,s,l) == 0) // is |text| a prefix of |s|?
-    { char* result=static_cast<char*>(std::malloc(std::strlen(s)+1));
-      if (result==nullptr)
-        @[throw std::bad_alloc()@];
-      return std::strcpy(result,s);
-    }
-  }
-  return nullptr; /* if loop terminates, report failure */
-}
-
-@ The readline library needs to know where to break the input into completable
-words. The string of characters that serve as word boundaries will be defined
-here, and installed in the main program.
-
-@< Declarations of static variables @>=
-extern char lexical_break_chars[];
-
-@~The following value reflects what the lexical analyser considers separating
-characters. The list contains those non-alphanumeric characters that are
-valid input characters, as implicitly defined by the |get_token| function
-below. The string |filename_break_chars| gives the more limited list of
-characters that are taken to mark the end of a file name (loosely
-characterised as characters unlikely to occur in file names).
-
-@< Definitions of static variables @>=
-char lexical_break_chars[] = " \t\n=<>+-*/\\%,;:()[]{}$@@\"|~";
-char filename_break_chars[] = " \t\n<>/\\;(){}$|"; @q$@>
 
 @* The lexical analyser class.
 %
@@ -183,6 +107,7 @@ public:
           {@; assert(c!='\0' and d!='\0'); comment_start=c; comment_end=d; }
   const char* scanned_file_name() const @+{@; return file_name.c_str(); }
   id_type first_identifier() const @+{@; return type_limit; }
+  bool is_initial () const {@; return state==initial; }
 private:
   void skip_space() const;
   bool becomes_follows();
@@ -268,12 +193,14 @@ the |std::isspace(c)| branch below, although the actual control of this
 decision is distributed in the various pieces of code that maintain of the
 fields |prevent_termination| and |nesting|.
 
-In case end of input occurs one obtains |shift()=='\0'|, and for the end of an
-included file one obtains |shift()=='\f'|, a form-feed. If the former happens
-in the main loop of |skip_space|, then we break out of it like we do for any
-non-space character (the predicate |is_space| does not hold for the null
-character), and although the following |input.unshift()| does nothing, the
-value |'\0'| should reappear at the next call of |shift|.
+In case end of input occurs one obtains |shift()=='\0'| from the input buffer,
+and for the end of an included file it passes |shift()=='\f'|, a form-feed. If
+the former happens in the main loop of |skip_space|, then we break out of it
+like we do for any non-space character (the predicate |is_space| does not hold
+for the null character), and although the following |input.unshift()| does
+nothing, the value |'\0'| should reappear at the next call of |shift|. We
+explicitly do not skip |'\f'|: like a non-ignored |'\n'| we leave it in the
+input, where the main scanning method |get_token| will reconsider it.
 
 @h<cctype>
 @h<iostream>
@@ -617,6 +544,7 @@ included before) respectively appending output redirection.
            code= (input.unshift(),c);
          // currently unused; might some day be factorial operator
   break; case '~': @< Handle the |'~'| case, involving some look-ahead @>
+  break; case '\f': code=END_OF_FILE; // tell the parser a file ended
   break; @/@< Cases of arithmetic operators, ending with |break| @>
          case '\n': state=ended; // and {\bf fall through}.
          default: code=c;

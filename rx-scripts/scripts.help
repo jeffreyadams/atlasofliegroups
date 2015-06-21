@@ -14,7 +14,7 @@ parameters.rx		basic { attributes of and functions for Param values }
 iterate_deform.rx	basic { legacy implementation of deformation algorithm }
 torus.rx		basic { construct torus by compact/complex/split ranks }
 galois.rx		basic, groups, generate_groups
-			{ count conn. components and real forms in square class }
+			{ count conn. components, real forms in square class }
 lattice.rx		basic, matrix { sublattice embeddings and quotients }
 twist.rx		basic, lattice { twist by a distinguished involution }
 group_operations.rx	basic, torus, lattice { torus, product, radical etc. }

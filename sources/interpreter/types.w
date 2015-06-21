@@ -506,7 +506,7 @@ moved to the current |type_expr| using move assignment where applicable, and
 then set to a empty |undetermined_type| value, which effectively detaches any
 possible descendants from it. This operation requires that |type_expr|
 previously had |kind==undetermined_type|. We test this condition using an
-|assert| statement (rather than throwing |std::logic_error|) to honour the
+|assert| statement (rather than throwing |logic_error|) to honour the
 |noexcept| specification.
 
 The moving copy constructor is nearly identical to the |set_from| method.
@@ -947,7 +947,7 @@ as argument) while also doing error reporting, and |mk_type| is just a
 wrapper around |mk_type_expr| that converts the result from a |type_expr| to
 a smart pointer to (a freshly allocated instance of) such. Currently the
 function |mk_type_expr| is called only during the start-up phase
-of \.{realex}, and if an error encountered (of type |std::logic_error|, since
+of \.{realex}, and if an error encountered (of type |logic_error|, since
 it indicates an error in the \.{realex} program itself), printing of the error
 message will be followed by termination of the program.
 
@@ -968,7 +968,7 @@ type_expr mk_type_expr(const char* s)
 { const char* orig=s;
   try
   {@; return scan_type(s); }
-  catch (std::logic_error e)
+  catch (logic_error e)
   { std::cerr << e.what() << "; original string: '" << orig @|
               << "' text remaining: '" << s << "'\n";
     throw@[@];
@@ -987,7 +987,7 @@ The only subtle point is that did not advance the pointer |s| when testing for
 
 @< Scan and |return| a row type, or |throw| a |logic_error| @>=
 { type_expr comp=scan_type(++s);
-  if (*s++!=']') throw std::logic_error("Missing ']' in type");
+  if (*s++!=']') throw logic_error("Missing ']' in type");
     return type_expr(type_ptr(new type_expr(std::move(comp))));
 }
 
@@ -1020,7 +1020,7 @@ deleted, but its contents has been moved out by then.
 { dressed_type_list l0=scan_type_list(++s), l1;
   bool is_tuple=*s==')';
   if (*s=='-' and *++s=='>') l1=scan_type_list(++s);
-  if (*s!=')') throw std::logic_error("Missing ')' in type");
+  if (*s!=')') throw logic_error("Missing ')' in type");
    @+ else ++s;
   type_expr a =
     l0.size()==1
@@ -1075,7 +1075,7 @@ into the former list to an element of that enumeration.
       return type_expr(tag); // otherwise this is a true primitive type
     }
   }
-  throw std::logic_error("Type unrecognised");
+  throw logic_error("Type unrecognised");
 }
 
 @*1 Predefined type expressions.
@@ -1654,7 +1654,7 @@ inline shared_value pop_value()
 @ Most often the result of calling |pop_value| must be dynamically cast to the
 type it is known to have (by the type check that was passed); should such a
 cast fail, this reveals a flaw of our type system, so we throw a
-|std::logic_error|. The function template |get| with explicitly provided type
+|logic_error|. The function template |get| with explicitly provided type
 serves for this purpose; it returns a shared pointer (because values on the
 stack are shared pointers) of the proper kind.
 
@@ -1665,17 +1665,17 @@ internal tables that will \emph{benefit} other shareholders), and
 @< Template and inline function definitions @>=
 
 template <typename D> // |D| is a type derived from |value_base|
- inline std::shared_ptr<const D> get() throw(std::logic_error)
+ inline std::shared_ptr<const D> get() throw(logic_error)
 { std::shared_ptr<const D> p=std::dynamic_pointer_cast<const D>(pop_value());
   if (p.get()==nullptr)
-    throw std::logic_error(std::string("Argument is no ")+D::name());
+    throw logic_error(std::string("Argument is no ")+D::name());
   return p;
 }
 @.Argument is no ...@>
 
 @)
 template <typename D> // |D| is a type derived from |value_base|
-  inline std::shared_ptr<D> non_const_get() throw(std::logic_error)
+  inline std::shared_ptr<D> non_const_get() throw(logic_error)
 {@; return std::const_pointer_cast<D>(get<D>()); }
 
 @ Here is a function template similar to |get|, that applies in situations
@@ -1696,18 +1696,18 @@ second one that is selected.
 
 @< Template and inline function definitions @>=
 template <typename D> // |D| is a type derived from |value_base|
- D* force(value v) throw(std::logic_error)
+ D* force(value v) throw(logic_error)
 { D* p=dynamic_cast<D*>(v);
   if (p==nullptr) throw
-    std::logic_error(std::string("forced value is no ")+D::name());
+    logic_error(std::string("forced value is no ")+D::name());
   return p;
 }
 @)
 template <typename D> // |D| is a type derived from |value_base|
-const D* force(const value_base* v) throw(std::logic_error)
+const D* force(const value_base* v) throw(logic_error)
 { const D* p=dynamic_cast<const D*>(v);
   if (p==nullptr) throw
-    std::logic_error(std::string("forced value is no ")+D::name());
+    logic_error(std::string("forced value is no ")+D::name());
   return p;
 }
 
@@ -1739,7 +1739,7 @@ be) the unique owner.
 
 @< Template and inline function def... @>=
 template <typename D> // |D| is a type derived from |value_base|
-  std::shared_ptr<D> get_own() throw(std::logic_error)
+  std::shared_ptr<D> get_own() throw(logic_error)
 { std::shared_ptr<const D> p=get<D>();
   if (p.unique())
     return std::const_pointer_cast<D>(p);
@@ -2208,33 +2208,57 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
 @* Error values.
 %
 Before we describe evaluation of expressions we must realise that evaluation
-can cause runtime errors. The evaluator may throw exceptions due to
-inconsistency of our (rather than the user's) program, which are classified as
-|std::logic_error|. It may also throw exceptions due to errors not caught by
-the type checker in the user input, such as size mismatch in matrix
-operations; in such cases it will throw |std::runtime_error|. These standard
-exception types will be used without any type derivation.
+can cause runtime errors.
 
 @< Includes needed in \.{types.h} @>=
 #include <stdexcept>
 
-@ We first derive a general exception class |program_error| from
-|std::exception|, used for all errors other than runtime errors. It
-encompasses all kind of error of the input detected before evaluation starts
-by static analysis; for instance the use of undefined variables falls in this
-category. The derived class just stores an error message string.
+@ We use classes derived from |std::exception| and similar standard ones like
+|std::runtime_error|, but we define our own local hierarchy, with
+|atlas::interpreter::error_base| as base class. The main reason to do this is
+to have a centralised error message to which exception handlers have write
+access, so that it is possible to extend the error message and then re-throw
+the same error object. The simplest way to allow this is to give public access
+to that string member, so we make this a |struct| rather than a |class|.
 
 @< Type definitions @>=
-class program_error : public std::exception
+struct error_base : public std::exception
 { std::string message;
-public:
-  explicit program_error(const std::string& s) : message(s) @+{}
+  explicit error_base(const std::string& s) : message(s) @+{}
 #ifdef incompletecpp11
-  ~program_error () throw() @+{} // backward compatibility for gcc 4.4
-#else
-  ~program_error () noexcept @+{} // backward compatibility for gcc 4.6
+  ~error_base () throw() @+{} // backward compatibility for gcc 4.4
 #endif
   const char* what() const throw() @+{@; return message.c_str(); }
+};
+
+@ We classify errors into three classes: those due to inconsistency of our
+(rather than the user's) program are classified |logic_error|, those arising
+during the analysis of the user program are are classified |program_error|,
+and those not caught by analysis but during evaluation are classified
+|runtime_error|. The  first and last are similar to exceptions of the same
+name in the |std| namespace, but they are not derived from those exception
+classes.
+
+@< Type definitions @>=
+struct logic_error : public error_base
+{ explicit logic_error(const std::string& s) : error_base(s) @+{}
+#ifdef incompletecpp11
+  ~logic_error () throw() @+{} // backward compatibility for gcc 4.4
+#endif
+};
+@)
+struct program_error : public error_base
+{ explicit program_error(const std::string& s) : error_base(s) @+{}
+#ifdef incompletecpp11
+  ~program_error () throw() @+{} // backward compatibility for gcc 4.4
+#endif
+};
+@)
+struct runtime_error : public error_base
+{ explicit runtime_error(const std::string& s) : error_base(s) @+{}
+#ifdef incompletecpp11
+  ~runtime_error () throw() @+{} // backward compatibility for gcc 4.4
+#endif
 };
 
 @ We derive from |program_error| an exception type |expr_error| that stores in
@@ -2289,6 +2313,40 @@ struct type_error : public expr_error
   ~type_error () throw() @+{}
 #else
   type_error@[(type_error&& e) = default@];
+#endif
+};
+
+@ When a user interrupts the computation, we wish to return to the main
+interpreter loop. To that end we shall at certain points in the program check
+the status of a flag that the signal handler sets, and if it is raised call an
+error.
+
+@< Includes... @>=
+#include <csignal>
+
+@~The flag must be a global variable, and we choose the traditional type
+for it (even though our program currently does not use threads).
+
+@< Declarations of global variables @>=
+
+extern volatile std::sig_atomic_t interrupt_flag;
+
+@~We shall define the variable right away, although our compilation unit does
+not use it.
+
+@<Global variable definitions @>=
+
+volatile std::sig_atomic_t interrupt_flag=0;
+
+@~When raised we shall call the following simple error value, with which no
+data is associated.
+
+@< Type definitions @>=
+
+struct user_interrupt : public error_base {
+  user_interrupt() : error_base("User interrupt") @+{}
+#ifdef incompletecpp11
+  ~user_interrupt() throw() @+{}
 #endif
 };
 

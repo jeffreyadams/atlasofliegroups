@@ -6,11 +6,11 @@ set sort_by_height (ParamPol P) = [(Split,Param)]:
   sort_by_height(for c@p in P do (c,p) od)
 
 set branch_std (Param p, int bound) = ParamPol:
-  let sum=0*p in for c@q in ParamPol: p*0 do
-  sum+:= c*branch(q,bound) od; sum
+  let sum=0*p in
+  for c@q in ParamPol: p*(rat:0) do sum+:= c*branch(q,bound) od; sum
 
 set branch_std (ParamPol P,int bound) = ParamPol:
-  let sum=0*P in for c@p in P do sum +:= c*branch_std(p,bound) od; sum
+  let sum=0*P in for c@p in P*(rat:0) do sum +:= c*branch(p,bound) od; sum
 
 set branch_irr (Param p, int bound) = ParamPol:
   branch_std(character_formula(p),bound)

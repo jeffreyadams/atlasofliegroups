@@ -853,11 +853,14 @@ set null_module (ParamPol P) = ParamPol: 0*P
 set first_param (ParamPol P) = Param: let (,p)=first_term(P) in p
 set last_param (ParamPol P)  = Param: let (,p)=last_term(P) in p
 
-set s_to_1 (ParamPol p)       = ParamPol: 0*p + for x@q in p do (+%x,q) od
-set s_to_minus_1 (ParamPol p) = ParamPol: 0*p + for x@q in p do (-%x,q) od
+set s_to_1 (ParamPol P)       = ParamPol: 0*P + for x@q in P do (+%x,q) od
+set s_to_minus_1 (ParamPol P) = ParamPol: 0*P + for x@q in P do (-%x,q) od
 
 { counterpart to built-in +@(ParamPol,(Split,Param)) }
 set - (ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
+
+{ deform a whole ParamPol, by deforming all individual terms }
+set * (ParamPol P, rat f) = ParamPol: 0*P + for c@q in P do (c,q*f) od
 
 { simulate coercion (KGBElt->RealForm) in some cases }
 set root_datum (ParamPol P) = RootDatum: real_form(P)

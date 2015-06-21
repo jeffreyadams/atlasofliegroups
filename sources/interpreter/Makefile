@@ -27,7 +27,7 @@ CTANGLE := $(cwebx_dir)/ctanglex
 CWEAVE := $(cwebx_dir)/cweavex
 
 # these are the optional flags for CWEBx, modify them according to your taste
-# do no imit flags ++ (expect C++ rather than C) and $(INCLUDE_FLAGS)
+# do no omit flags ++ (expect C++ rather than C) and $(INCLUDE_FLAGS)
 CWEAVEFLAGS  := ++ -p +mde $(INCLUDE_FLAGS)
 CTANGLEFLAGS := ++ -p
 
@@ -50,7 +50,7 @@ ifeq "$(CXXVERSIONOLD)" "1"
   CXXFLAVOR += -Dincompletecpp11
 endif
 ifeq "$(CXXVERSIONVERYOLD)" "1"
-  CXXFLAVOR += -Dincompletecpp11 -Dnoexcept= -Dconstexpr= -Dnullptr=0
+  CXXFLAVOR += -Dnoexcept= -Dconstexpr= -Dnullptr=0
 endif
 
 # only the atlas object files listed below are used
@@ -152,15 +152,15 @@ LDFLAGS := $(rl_libs)
 
 all:	headers dvifiles ../../realex
 
-# 'make clean' all derived files, but the executable program isn't here
+# 'make clean' removes all derived files, but the executable program isn't here
 clean:
 	$(RM) -f *.o *.log *.toc $(webtexfiles) *.dvi *~ *.cpp *.c *.h
 	$(RM) cwebxmac.tex
 
 # 'make compilable' prepares everything for compilation
-compilable: clean
+compilable: clean # remove existing .cpp flies, to regerenate without #line
 	$(MAKE) CTANGLEFLAGS=-pl parser.tab.c $(c++files) $(webtexfiles)
-	cp $(CWEBXMACROS) .
+	cp $(CWEBXMACROS) . # get the macros file here, so TeX applies cleanly
 
 $(CTANGLE):
 	cd $(cwebx_dir) && $(MAKE) ctanglex
@@ -177,31 +177,37 @@ $(CWEAVE):
 $(c++objects) $(atlas_objects): %.o: %.cpp
 	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
-# here we cannot use a static pattern rule, since there are multiple targets
-# C++ source and header files are made from CWEBx files (.w) with the ++ switch
-# we add manipulations to preserve the date of existing and unchanged targets
-%.cpp %.h: %.w
-	@if [ -f $*.cpp ]; then mv $*.cpp old_targets;\
-                           else touch old_targets/$*.ccp; fi
-	@if [ -f $*.h ];   then mv $*.h old_targets;\
-                           else touch old_targets/$*.h; fi
-	@if [ $* = parsetree ]; then \
-           if [ -f parse_types.h ]; then mv parse_types.h old_targets;\
-                                    else rm -f old_targets/parse_types.h; fi fi
-	$(CTANGLE) $(CTANGLEFLAGS) $<
-	@for i in $*.cpp $*.h;\
-        do if cmp -s old_targets/$$i $$i;\
-           then mv old_targets/$$i $$i; echo $$i unchanged;\
-           fi done
-	@if [ $* = parsetree ]; then \
-           if cmp -s old_targets/parse_types.h parse_types.h;\
-           then mv old_targets/parse_types.h .; echo parse_types.h unchanged;\
-           fi fi
+# for running ctanglex we cannot use a static pattern rule, since there are
+# multiple targets: the C++ source and the corresponding header file(s) are
+# made from CWEBx files (.w) by a single run of ctangles (with the ++ switch)
 
-# prevent remaking files under version control, unless .w file changed recently
-../io/filekl.h ../io/filekl.cpp \
-  ../io/filekl_in.h ../io/filekl_in.cpp : ../io/filekl.w
-	cd ../io && $(CTANGLE) $(CTANGLEFLAGS) -l filekl.w
+# For a long time we added manipulations here to preserve the date of existing
+# and unchanged targets, to prevent remaking nearly everything whenever any .w
+# file was modified, because the remakes the .h file(s). The mechanism is
+# commented out now however, as while it works reasonably for a seqential
+# make, it cases trouble when make is runn with --jobs set to more than 1
+# The basic problem is that targets are temporily removed, so other makes fail
+%.cpp %.h: %.w
+#	@if [ -f $*.cpp ]; then mv $*.cpp old_targets;\
+#                           else touch old_targets/$*.ccp; fi
+#	@if [ -f $*.h ];   then mv $*.h old_targets;\
+#                           else touch old_targets/$*.h; fi
+#	@if [ $* = parsetree ]; then \
+#           if [ -f parse_types.h ]; then mv parse_types.h old_targets;\
+#                                    else rm -f old_targets/parse_types.h; fi fi
+	$(CTANGLE) $(CTANGLEFLAGS) $<
+#	@for i in $*.cpp $*.h;\
+#        do if cmp -s old_targets/$$i $$i;\
+#           then mv old_targets/$$i $$i; echo $$i unchanged;\
+#           fi done
+#	@if [ $* = parsetree ]; then \
+#           if cmp -s old_targets/parse_types.h parse_types.h;\
+#           then mv old_targets/parse_types.h .; echo parse_types.h unchanged;\
+#           fi fi
+
+# remaking these Atlas files is unneeded: they are also under version control
+# but above pattern rule matches; so provide an empty rule to prevent remaking
+../io/filekl.h ../io/filekl.cpp ../io/filekl_in.h ../io/filekl_in.cpp : ;
 
 # TeX files are also made from CWEBx files (.w) with the ++ switch, by cweavex
 %.tex: %.w
@@ -232,15 +238,15 @@ endif
 
 # the parser is produced by bison, and compiled using the C++ compiler
 parser.tab.c parser.tab.h: parser.y
-	@if [ -f parser.tab.c ]; then mv parser.tab.c old_targets;\
-                                 else touch old_targets/parser.tab.c; fi
-	@if [ -f parser.tab.h ]; then mv parser.tab.h old_targets;\
-                                 else touch old_targets/$*.h; fi
+#	@if [ -f parser.tab.c ]; then mv parser.tab.c old_targets;\
+#                                 else touch old_targets/parser.tab.c; fi
+#	@if [ -f parser.tab.h ]; then mv parser.tab.h old_targets;\
+#                                 else touch old_targets/$*.h; fi
 	bison -d parser.y
-	@for i in parser.tab.c parser.tab.h;\
-        do if cmp -s old_targets/$$i $$i;\
-           then mv old_targets/$$i $$i; echo $$i unchanged;\
-           fi done
+#	@for i in parser.tab.c parser.tab.h;\
+#        do if cmp -s old_targets/$$i $$i;\
+#           then mv old_targets/$$i $$i; echo $$i unchanged;\
+#           fi done
 parser.tab.o: parser.tab.c
 	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 

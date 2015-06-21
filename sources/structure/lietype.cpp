@@ -460,7 +460,6 @@ bool checkRank(const TypeLetter& x, size_t l)
   Precondition: validity if |lo.d_inner| has been checked
 */
 WeightInvolution involution(const Layout& lo)
-  throw (std::runtime_error,std::bad_alloc)
 {
   const LieType& lt = lo.d_type;
   const InnerClassType& ic = lo.d_inner;

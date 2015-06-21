@@ -120,8 +120,7 @@ struct Lie_type_value : public value_base
   Lie_type_value* clone() const @+{@; return new Lie_type_value(*this); }
   static const char* name() @+{@; return "Lie type"; }
 @)
-  void add_simple_factor (char,size_t)
-    throw(std::bad_alloc,std::runtime_error); // grow
+  void add_simple_factor (char,size_t); // grow
 private:
   Lie_type_value(const Lie_type_value& v) : val(v.val) @+{}
     // copy constructor, used by |clone|
@@ -148,24 +147,23 @@ latter on input, so we do that here.
 
 @< Function definitions @>=
 void Lie_type_value::add_simple_factor (char c,size_t rank)
-   throw(std::bad_alloc,std::runtime_error)
 { static const std::string types=lietype::typeLetters; // |"ABCDEFGT"|
   size_t t=types.find(c);
   if (t==std::string::npos)
-    throw std::runtime_error(std::string("Invalid type letter '")+c+'\'');
+    throw runtime_error(std::string("Invalid type letter '")+c+'\'');
 @.Invalid type letter@>
   const size_t r=constants::RANK_MAX;
 @/static const size_t lwb[]={1,2,2,4,6,4,2,0};
   static const size_t upb[]={r,r,r,r,8,4,2,r};
   if (rank<lwb[t])
-    throw std::runtime_error("Too small rank "+str(rank)+" for Lie type "+c);
+    throw runtime_error("Too small rank "+str(rank)+" for Lie type "+c);
 @.Too small rank@>
   if (rank>upb[t])
     if (upb[t]!=r)
-      throw std::runtime_error("Too large rank "+str(rank)+" for Lie type "+c);
+      throw runtime_error("Too large rank "+str(rank)+" for Lie type "+c);
 @.Too large rank@>
     else
-      throw std::runtime_error @|
+      throw runtime_error @|
       ("Rank "+str(rank)+" exceeds implementation limit "+str(r));
 @.Rank exceeds implementation limit@>
   if (c=='T')
@@ -192,20 +190,19 @@ inline std::istream& skip_punctuation(std::istream &is)
 }
 @)
 void Lie_type_wrapper(expression_base::level l)
-   throw(std::bad_alloc,std::runtime_error)
 { std::istringstream is(get<string_value>()->val);
   own_Lie_type result = std::make_shared<Lie_type_value>();
   size_t total_rank=0; char c;
   while (skip_punctuation(is)>>c) // i.e., until |not is.good()|
   { size_t rank;
     if (is.peek()=='-' or not (is>>rank)) // explicitly forbid minus sign
-      throw std::runtime_error
+      throw runtime_error
        ("Error in type string '"+is.str()+"' for Lie type");
 @.Error in type string@>
     result->add_simple_factor(c,rank);
       // this may |throw| a |runtime_error| as well
     if ((total_rank+=rank)>constants::RANK_MAX)
-      throw std::runtime_error
+      throw runtime_error
       ("Total rank exceeds implementation limit "+str(constants::RANK_MAX));
 @.Total rank exceeds...@>
   }
@@ -367,7 +364,7 @@ void filter_units_wrapper (expression_base::level l)
   own_matrix basis=get_own<matrix_value>();
   unsigned int n=basis->val.numColumns();
   if (inv_f->val.size()>n)
-    throw std::runtime_error @|("Too many factors: "+
+    throw runtime_error @|("Too many factors: "+
 @.Too many factors@>
       str(inv_f->val.size()) + " for " +str(n)+ " columns");
   if (l==expression_base::no_value)
@@ -460,12 +457,12 @@ void replace_gen_wrapper (expression_base::level l)
   own_matrix generators=get_own<matrix_value>();
   unsigned int n=generators->val.numColumns();
   if (inv_f->val.size()>n)
-    throw std::runtime_error @|("Too many factors: "+
+    throw runtime_error @|("Too many factors: "+
 @.Too many factors@>
       str(inv_f->val.size()) + " for " +str(n)+ " columns");
 @)
   if (new_generators->val.numRows()!=generators->val.numRows())
-    throw std::runtime_error("Column lengths do not match");
+    throw runtime_error("Column lengths do not match");
 @.Column lengths do not match@>
 @)
   size_t k=0; // index to replacement generators
@@ -473,13 +470,13 @@ void replace_gen_wrapper (expression_base::level l)
     if (j>=inv_f->val.size() or inv_f->val[j]!=1)
        // replace column |j| by |k| from |new_generators|
     { if (k>=new_generators->val.numColumns())
-        throw std::runtime_error ("Not enough replacement columns");
+        throw runtime_error ("Not enough replacement columns");
 @.Not enough replacement columns@>
       generators->val.set_column(j,new_generators->val.column(k));
       ++k;
     }
   if (k<new_generators->val.numColumns())
-        throw std::runtime_error ("Too many replacement columns");
+        throw runtime_error ("Too many replacement columns");
 @.Too many replacement columns@>
   if (l!=expression_base::no_value)
     push_value(generators);
@@ -559,7 +556,7 @@ the new denominator~|d|.
     d=arithmetic::lcm(d,denom[j]);
 
     if (gen.size()!=v->val.size())
-      throw std::runtime_error@|
+      throw runtime_error@|
         ("Length mismatch for generator "+str(j) +": "@|
 @.Length mismatch...@>
         +str(gen.size()) + ':' + str(v->val.size()));
@@ -567,7 +564,7 @@ the new denominator~|d|.
     Weight col(gen.numerator().begin(),gen.numerator().end()); // convert
     for (size_t i=0; i<v->val.size(); ++i)
     { if (v->val[i]*col[i]%gen.denominator()!=0) // must use signed arithmetic!!
-	throw std::runtime_error("Improper generator entry: "
+	throw runtime_error("Improper generator entry: "
 @.Improper generator entry@>
          +str(col[i])+'/'+str(denom[j])+" not a multiple of 1/"
          +str(v->val[i]));
@@ -606,7 +603,6 @@ case of problems.
 @< Local function definitions @>=
 InnerClassType transform_inner_class_type
   (const char* s, const LieType& lt)
-throw (std::bad_alloc, std::runtime_error)
 { static const std::string types(lietype::innerClassLetters);
     // |"Ccesu"|
   InnerClassType result; // initially empty
@@ -617,7 +613,7 @@ throw (std::bad_alloc, std::runtime_error)
     @< Test the inner class letter |c|, and either push a corresponding type
        letter onto |result| while advancing~|i| by the appropriate amount, or
        throw a |runtime_error| @>
-  if (i< lt.size()) throw std::runtime_error("Too few inner class symbols");
+  if (i< lt.size()) throw runtime_error("Too few inner class symbols");
 @.Too few inner class symbols@>
   return result;
 }
@@ -630,13 +626,13 @@ minus identity, which in some cases equals |'c'|, and similarly |'u'| meaning
 ``unequal rank'' is often equal to |'s'|; these cases are detailed later.
 
 @< Test the inner class letter... @>=
-{ if (types.find(c) == std::string::npos) throw std::runtime_error@|
+{ if (types.find(c) == std::string::npos) throw runtime_error@|
     (std::string("Unknown inner class symbol `")+c+"'");
-  if (i>= lt.size()) throw std::runtime_error("Too many inner class symbols");
+  if (i>= lt.size()) throw runtime_error("Too many inner class symbols");
 @.Too many inner class symbols@>
   lietype::TypeLetter t = lt[i].type(); size_t r=lt[i].rank();
   if (c=='C') // complex inner class, which requires two equal simple factors
-  { if (i+1>=lt.size() or lt[i+1]!=lt[i]) throw std::runtime_error @|
+  { if (i+1>=lt.size() or lt[i+1]!=lt[i]) throw runtime_error @|
       ("Complex inner class needs two identical consecutive types");
 @.Complex inner class needs...@>
     result.push_back('C');
@@ -677,7 +673,7 @@ letter |'u'| corresponds to a type of the form~$D_{2n}$.
 @< Test and possibly transform... @>=
 { if (t=='D') result.push_back(r%2==0 ? 'u' : 's');
   else if (t=='A' and r>=2 or t=='E' and r==6 or t=='T') result.push_back('s');
-  else throw std::runtime_error @|
+  else throw runtime_error @|
     (std::string("Unequal rank class is meaningless for type ")+t+str(r));
 @.Unequal rank class is meaningless...@>
 }
@@ -723,7 +719,7 @@ void based_involution_wrapper(expression_base::level l)
 @)
   size_t r=type->val.rank();
   if (basis->val.numRows()!=r or basis->val.numRows()!=r)
-    throw std::runtime_error @|
+    throw runtime_error @|
     ("Basis should be given by "+str(r)+'x'+str(r)+" matrix");
 @.Basis should be given...@>
 @)
@@ -732,7 +728,7 @@ void based_involution_wrapper(expression_base::level l)
   try
   {@; push_value(std::make_shared<matrix_value>(inv.on_basis(basis->val.columns()))); }
   catch (std::runtime_error&) // relabel |"Inexact integer division"|
-  {@; throw std::runtime_error
+  {@; throw runtime_error
       ("Inner class is not compatible with given lattice");
 @.Inner class not compatible...@>
   }
@@ -830,7 +826,7 @@ void raw_root_datum_wrapper(expression_base::level l)
 
   if (simple_coroots->val.numRows()!=nr @| or
       simple_coroots->val.numColumns()!=nc)
-    throw std::runtime_error
+    throw runtime_error
     ("Sizes (" +str(nr)+ "," +str(nc) +"),("+
       str(simple_coroots->val.numRows()) +","+
       str(simple_coroots->val.numColumns()) +
@@ -852,7 +848,7 @@ void raw_root_datum_wrapper(expression_base::level l)
   }
   catch (error::CartanError)
 @/{@;
-    throw std::runtime_error("System of (co)roots has invalid Cartan matrix");
+    throw runtime_error("System of (co)roots has invalid Cartan matrix");
 }
 @.System of (co)roots has invalid...@>
   if (l!=expression_base::no_value)
@@ -865,7 +861,7 @@ of the desired weight lattice as a sub-lattice of the lattice of weights
 associated to the simply connected group of the type given. The given weights
 should be independent and span at least the root lattice associated to the
 type. Failure of either condition will cause the |PreRootDatum| constructor to
-throw a |std::runtime_error|.
+throw a |runtime_error|.
 
 @< Local function definitions @>=
 void root_datum_wrapper(expression_base::level l)
@@ -873,7 +869,7 @@ void root_datum_wrapper(expression_base::level l)
   shared_Lie_type type=get<Lie_type_value>();
   if (lattice->val.numRows()!=lattice->val.numColumns() @| or
       lattice->val.numRows()!=type->val.rank())
-    throw std::runtime_error
+    throw runtime_error
     ("Sub-lattice matrix should have size " @|
 @.Sub-lattice matrix should...@>
       +str(type->val.rank())+'x'+str(type->val.rank()));
@@ -900,7 +896,7 @@ void sublattice_root_datum_wrapper(expression_base::level l)
   shared_root_datum rd=get<root_datum_value>();
   if (lattice->val.numRows()!=lattice->val.numColumns() @| or
       lattice->val.numRows()!=rd->val.rank())
-    throw std::runtime_error
+    throw runtime_error
     ("Sub-lattice matrix should have size " @|
 @.Sub-lattice matrix should...@>
       +str(rd->val.rank())+'x'+str(rd->val.rank()));
@@ -975,7 +971,7 @@ void root_wrapper(expression_base::level l)
   RootNbr npr = rd->val.numPosRoots();
   RootNbr alpha = npr+root_index;
   if (alpha>=2*npr)
-    throw std::runtime_error("Illegal root index "+str(root_index));
+    throw runtime_error("Illegal root index "+str(root_index));
   if (l!=expression_base::no_value)
      push_value(std::make_shared<vector_value>(rd->val.root(alpha)));
 }
@@ -985,7 +981,7 @@ void coroot_wrapper(expression_base::level l)
   RootNbr npr = rd->val.numPosRoots();
   RootNbr alpha = npr+root_index;
   if (alpha>=2*npr)
-    throw std::runtime_error("Illegal coroot index "+str(root_index));
+    throw runtime_error("Illegal coroot index "+str(root_index));
   if (l!=expression_base::no_value)
      push_value(std::make_shared<vector_value>(rd->val.coroot(alpha)));
 }
@@ -1112,7 +1108,7 @@ void fundamental_weight_wrapper(expression_base::level l)
 { int i= get<int_value>()->val;
   shared_root_datum rd(get<root_datum_value>());
   if (unsigned(i)>=rd->val.semisimpleRank())
-    throw std::runtime_error("Invalid index "+str(i));
+    throw runtime_error("Invalid index "+str(i));
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value> @|
       (rd->val.fundamental_weight(i).normalize()));
@@ -1122,7 +1118,7 @@ void fundamental_coweight_wrapper(expression_base::level l)
 { int i= get<int_value>()->val;
   shared_root_datum rd(get<root_datum_value>());
   if (unsigned(i)>=rd->val.semisimpleRank())
-    throw std::runtime_error("Invalid index "+str(i));
+    throw runtime_error("Invalid index "+str(i));
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value> @|
       (rd->val.fundamental_coweight(i).normalize()));
@@ -1180,7 +1176,7 @@ void integrality_datum_wrapper(expression_base::level l)
   { std::ostringstream o;
     o << "Length " << lambda->val.size()
       << " of rational vector differs from rank " << rd->val.rank();
-    throw std::runtime_error(o.str());
+    throw runtime_error(o.str());
 @.Length of rational vector...@>
   }
   if (l!=expression_base::no_value)
@@ -1199,7 +1195,7 @@ void integrality_points_wrapper(expression_base::level l)
   { std::ostringstream o;
     o << "Length " << lambda->val.size()
       << " of rational vector differs from rank " << rd->val.rank();
-    throw std::runtime_error(o.str());
+    throw runtime_error(o.str());
 @.Length of rational vector...@>
   }
   if (l==expression_base::no_value)
@@ -1303,7 +1299,6 @@ rank).
 @< Local function def...@>=
 std::pair<size_t,size_t> classify_involution
   (const WeightInvolution& M)
-throw (std::bad_alloc, std::runtime_error)
 { size_t r=M.numRows();
   @< Check that |M| is an $r\times{r}$ matrix defining an involution @>
   tori::RealTorus Tor(M);
@@ -1318,12 +1313,12 @@ induces an involutive permutation of the roots; however even there it is not
 redundant in the presence of a torus part.
 
 @< Check that |M| is an $r\times{r}$ matrix defining an involution @>=
-{ if (M.numRows()!=r or M.numColumns()!=r) throw std::runtime_error
+{ if (M.numRows()!=r or M.numColumns()!=r) throw runtime_error
     ("Involution should be a "+str(r)+"x"+str(r)+" matrix, got a "
 @.Involution should be...@>
      +str(M.numRows())+"x"+str(M.numColumns())+" matrix");
   WeightInvolution Id(r),Q(M*M);
-  if (Q!=Id) throw std::runtime_error
+  if (Q!=Id) throw runtime_error
       ("Given transformation is not an involution");
 @.Given transformation...@>
 }
@@ -1418,19 +1413,19 @@ permutation of its rows and columns.
   for (weyl::Generator i=0; i<s; ++i)
   { Delta[i]=rd.root_index(M*rd.simpleRoot(i));
     if (Delta[i]==rd.numRoots()) // then image not found
-      throw std::runtime_error@|
+      throw runtime_error@|
         ("Matrix maps simple root "+str(i)+" to non-root");
   }
   ww = wrt_distinguished(rd,Delta);
   for (weyl::Generator i=0; i<s; ++i)
     if (rd.is_simple_root(Delta[i])) // should have made every root simple
       p[i]=rd.simpleRootIndex(Delta[i]);
-    else throw std::runtime_error
+    else throw runtime_error
       ("Matrix does not define a root datum automorphism");
 @.Matrix does not define...@>
   for (weyl::Generator i=0; i<s; ++i)
     for (weyl::Generator j=0; j<s; ++j)
-      if (rd.cartan(p[i],p[j])!=rd.cartan(i,j)) throw std::runtime_error@|
+      if (rd.cartan(p[i],p[j])!=rd.cartan(i,j)) throw runtime_error@|
       ("Matrix does not define a root datum automorphism");
 }
 
@@ -1521,7 +1516,7 @@ it at its moved-down place.
     else
       j+=type[k].second;
   if (k==type.size())
-    throw std::logic_error("Non matching Complex factor");
+    throw logic_error("Non matching Complex factor");
 @.Non matching Complex factor@>
 
 #ifndef NDEBUG
@@ -1873,7 +1868,7 @@ to |dynkin::Lie_type| deduces |lt| and~|pi|, and we record the given inner
 class type~|ict|. Then we find |M=transpose_mat(coroot_radical(rd))|, call
 |lietype::involution| to produce an involution for |lt| and~|pi|, express it
 as~|inv| on the basis~$M$, and finally call |fix_involution(rd,inv)| to
-produce the result. The |on_basis| method may throw a |std::runtime_error|
+produce the result. The |on_basis| method may throw a |runtime_error|
 when the involution does not stabilise the sub-lattice; we catch this error
 and re-throw with a more explicit error indication.
 
@@ -1907,7 +1902,7 @@ void set_inner_class_wrapper(expression_base::level l)
        (lietype::involution(lo).on_basis(M->val.columns())));
   }
   catch (std::runtime_error&) // relabel inexact division error
-  {@; throw std::runtime_error @|
+  {@; throw runtime_error @|
     ("Inner class is not compatible with root datum");
 @.Inner class is not compatible...@>
   }
@@ -2209,7 +2204,7 @@ void real_form_wrapper(expression_base::level l)
 { shared_int i(get<int_value>());
   shared_inner_class G = get<inner_class_value>();
   if (size_t(i->val)>=G->val.numRealForms())
-    throw std::runtime_error ("Illegal real form number: "+str(i->val));
+    throw runtime_error ("Illegal real form number: "+str(i->val));
 @.Illegal real form number@>
   if (l!=expression_base::no_value)
     push_value(std::make_shared<real_form_value>(*G,G->interface.in(i->val)));
@@ -2380,7 +2375,7 @@ void dual_real_form_wrapper(expression_base::level l)
 { shared_int i(get<int_value>());
   shared_inner_class G = get<inner_class_value>();
   if (size_t(i->val)>=G->val.numDualRealForms())
-    throw std::runtime_error ("Illegal dual real form number: "+str(i->val));
+    throw runtime_error ("Illegal dual real form number: "+str(i->val));
 @.Illegal dual real form number@>
   if (l==expression_base::no_value)
     return;
@@ -2421,7 +2416,7 @@ TwistedInvolution twisted_from_involution
   WeylWord ww;
   if (check_involution(theta,rd,ww)!=G.twistedWeylGroup().twist() @| or
       rd.matrix(ww)*G.distinguished()!=theta)
-    throw std::runtime_error("Involution not in this inner class");
+    throw runtime_error("Involution not in this inner class");
   return G.weylGroup().element(ww);
 }
 @)
@@ -2431,7 +2426,7 @@ void synthetic_real_form_wrapper(expression_base::level l)
   shared_inner_class G = get<inner_class_value>();
   const TwistedInvolution tw = twisted_from_involution(G->val,theta->val);
   if (torus_factor->val.size()!=G->val.rank())
-    throw std::runtime_error ("Torus factor size mismatch");
+    throw runtime_error ("Torus factor size mismatch");
   {
     Ratvec_Numer_t& num = torus_factor->val.numerator();
     num += theta->val.right_prod(num);
@@ -2440,7 +2435,7 @@ void synthetic_real_form_wrapper(expression_base::level l)
     const RootDatum& rd = G->val.rootDatum();
     WeightList alpha(rd.beginSimpleRoot(),rd.endSimpleRoot());
     if (not is_central(alpha,t)) // every root should now have even evaluation
-      throw std::runtime_error ("Not a valid strong involution");
+      throw runtime_error ("Not a valid strong involution");
 @.Not a valid strong...@>
     torus_factor->val /= 2; // now $(1+\theta)/2$ is applied to |torus_factor|
   }
@@ -2576,7 +2571,7 @@ void ic_Cartan_class_wrapper(expression_base::level l)
 { shared_int i(get<int_value>());
   shared_inner_class ic = get<inner_class_value>();
   if (size_t(i->val)>=ic->val.numCartanClasses())
-    throw std::runtime_error ("Illegal Cartan class number: "+str(i->val)
+    throw runtime_error ("Illegal Cartan class number: "+str(i->val)
 @.Illegal Cartan class number@>
     +", this inner class only has "+str(ic->val.numCartanClasses())
     +" of them");
@@ -2594,7 +2589,7 @@ void rf_Cartan_class_wrapper(expression_base::level l)
 { shared_int i(get<int_value>());
   shared_real_form rf= get<real_form_value>();
   if (size_t(i->val)>=rf->val.numCartan())
-    throw std::runtime_error ("Illegal Cartan class number: "+str(i->val)
+    throw runtime_error ("Illegal Cartan class number: "+str(i->val)
 @.Illegal Cartan class number@>
     +", this real form only has "+str(rf->val.numCartan())+" of them");
   BitMap cs=rf->val.Cartan_set();
@@ -2741,12 +2736,12 @@ void fiber_partition_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
   shared_Cartan_class cc(get<Cartan_class_value>());
   if (&rf->parent.val!=&cc->parent.val)
-    throw std::runtime_error
+    throw runtime_error
     ("Inner class mismatch between real form and Cartan class");
 @.Inner class mismatch...@>
   BitMap b(cc->parent.val.Cartan_set(rf->val.realForm()));
   if (!b.isMember(cc->number))
-    throw std::runtime_error
+    throw runtime_error
     ("Cartan class not defined for this real form");
 @.Cartan class not defined@>
   if (l==expression_base::no_value)
@@ -2802,12 +2797,12 @@ void print_gradings_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
 @/shared_Cartan_class cc(get<Cartan_class_value>());
   if (&rf->parent.val!=&cc->parent.val)
-    throw std::runtime_error
+    throw runtime_error
     ("Inner class mismatch between real form and Cartan class");
 @.Inner class mismatch...@>
   BitMap b(cc->parent.val.Cartan_set(rf->val.realForm()));
   if (!b.isMember(cc->number))
-    throw std::runtime_error ("Cartan class not defined for this real form");
+    throw runtime_error ("Cartan class not defined for this real form");
 @.Cartan class not defined...@>
 @)
   const Partition& pi = cc->val.fiber().weakReal();
@@ -2955,7 +2950,7 @@ void KGB_elt_wrapper(expression_base::level l)
 { int i = get<int_value>()->val;
   own_real_form rf= non_const_get<real_form_value>();
   if (size_t(i)>=rf->val.KGB_size())
-    throw std::runtime_error ("Inexistent KGB element: "+str(i));
+    throw runtime_error ("Inexistent KGB element: "+str(i));
 @.Inexistent KGB element@>
   if (l!=expression_base::no_value)
     push_value(std::make_shared<KGB_elt_value>(rf,i));
@@ -3018,7 +3013,7 @@ of definition), so we combine them into one function |Cayley|.
 inline RootNbr get_reflection_index(int root_index, RootNbr n_posroots)
 { RootNbr alpha= root_index<0 ? -1-root_index : root_index;
   if (alpha>=n_posroots)
-    throw std::runtime_error ("Illegal reflection: "+str(root_index));
+    throw runtime_error ("Illegal reflection: "+str(root_index));
   return alpha;
 }
 @)
@@ -3114,7 +3109,7 @@ void build_KGB_element_wrapper(expression_base::level l)
   own_real_form rf = non_const_get<real_form_value>();
 
   if (torus_factor->val.size()!=rf->val.rank())
-    throw std::runtime_error ("Torus factor size mismatch");
+    throw runtime_error ("Torus factor size mismatch");
   { // make theta-fixed:
     Ratvec_Numer_t& num = torus_factor->val.numerator();
     num += theta->val.right_prod(num);
@@ -3123,7 +3118,7 @@ void build_KGB_element_wrapper(expression_base::level l)
 
   RatCoweight tv = torus_factor->val - rf->cocharacter.as_Qmod2Z();
   if (tv.normalize().denominator()!=1)
-    throw std::runtime_error
+    throw runtime_error
       ("Torus factor not in cocharacter coset of real form");
 @.Torus factor not in cocharacter...@>
 
@@ -3134,7 +3129,7 @@ void build_KGB_element_wrapper(expression_base::level l)
 
   KGBElt x = rf->kgb().lookup(a);
   if (x== rf->kgb().size())
-    throw std::runtime_error("KGB element not present");
+    throw runtime_error("KGB element not present");
 
   if (l==expression_base::no_value)
     return;
@@ -3301,12 +3296,12 @@ void Fokko_block_wrapper(expression_base::level l)
   own_real_form rf=non_const_get<real_form_value>();
 @)
   if (&rf->parent.dual!=&drf->parent.val)
-    throw std::runtime_error @|
+    throw runtime_error @|
     ("Inner class mismatch between real form and dual real form");
 @.Inner class mismatch...@>
   BitMap b(rf->parent.val.dual_Cartan_set(drf->val.realForm()));
   if (not b.isMember(rf->val.mostSplit()))
-    throw std::runtime_error @|
+    throw runtime_error @|
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
   if (l!=expression_base::no_value)
@@ -3345,7 +3340,7 @@ void block_element_wrapper(expression_base::level l)
   shared_Block b = get<Block_value>();
   BlockElt z = i->val; // extract value unsigned
   if (z>=b->val.size())
-    throw std::runtime_error
+    throw runtime_error
       ("Block element " +str(z) + " out of range (<" + str(b->val.size())+")");
   if (l==expression_base::no_value)
     return;
@@ -3373,15 +3368,15 @@ void block_index_wrapper(expression_base::level l)
   shared_KGB_elt x = get<KGB_elt_value>();
   shared_Block b = get<Block_value>();
   if (&b->rf->parent.val!=&x->rf->parent.val)
-    throw std::runtime_error ("Real form not in inner class of block");
+    throw runtime_error ("Real form not in inner class of block");
   if (&b->rf->parent.val!=&y->rf->parent.dual)
-    throw std::runtime_error ("Dual real form not in inner class of block");
+    throw runtime_error ("Dual real form not in inner class of block");
   const KGB& kgb = b->rf->kgb(); const KGB& dual_kgb = b->dual_rf->kgb();
   const TwistedWeylGroup& tw = kgb.twistedWeylGroup();
   const TwistedWeylGroup& dual_tw = dual_kgb.twistedWeylGroup();
   if (blocks::dual_involution(kgb.involution(x->val),tw,dual_tw)
       != dual_kgb.involution(y->val))
-    throw std::runtime_error ("Fiber mismatch KGB and dual KGB elements");
+    throw runtime_error ("Fiber mismatch KGB and dual KGB elements");
 
   BlockElt z = b->val.element(x->val,y->val);
 
@@ -3409,9 +3404,9 @@ void block_status_wrapper(expression_base::level l)
   shared_Block b = get<Block_value>();
   unsigned int s = get<int_value>()->val;
   if (s>=b->rf->val.semisimpleRank())
-    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+    throw runtime_error ("Illegal simple reflection: "+str(s));
   if (i>=b->val.size())
-    throw std::runtime_error
+    throw runtime_error
       ("Block element " +str(i) + " out of range (<" + str(b->val.size())+")");
   if (l==expression_base::no_value)
     return;
@@ -3431,9 +3426,9 @@ void block_cross_wrapper(expression_base::level l)
   shared_Block b = get<Block_value>();
   unsigned int s = get<int_value>()->val;
   if (s>=b->rf->val.semisimpleRank())
-    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+    throw runtime_error ("Illegal simple reflection: "+str(s));
   if (i>=b->val.size())
-    throw std::runtime_error
+    throw runtime_error
       ("Block element " +str(i) + " out of range (<" + str(b->val.size())+")");
   if (l==expression_base::no_value)
     return;
@@ -3445,9 +3440,9 @@ void block_Cayley_wrapper(expression_base::level l)
   shared_Block b = get<Block_value>();
   unsigned int s = get<int_value>()->val;
   if (s>=b->rf->val.semisimpleRank())
-    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+    throw runtime_error ("Illegal simple reflection: "+str(s));
   if (static_cast<unsigned int>(i->val) >= b->val.size())
-    throw std::runtime_error
+    throw runtime_error
       ("Block element " +str(i) + " out of range (<" + str(b->val.size())+")");
   if (l==expression_base::no_value)
     return;
@@ -3463,9 +3458,9 @@ void block_inverse_Cayley_wrapper(expression_base::level l)
   shared_Block b = get<Block_value>();
   unsigned int s = get<int_value>()->val;
   if (s>=b->rf->val.semisimpleRank())
-    throw std::runtime_error ("Illegal simple reflection: "+str(s));
+    throw runtime_error ("Illegal simple reflection: "+str(s));
   if (static_cast<unsigned int>(i->val) >= b->val.size())
-    throw std::runtime_error
+    throw runtime_error
       ("Block element " +str(i) + " out of range (<" + str(b->val.size())+")");
   if (l==expression_base::no_value)
     return;
@@ -3590,7 +3585,7 @@ void module_parameter_wrapper(expression_base::level l)
   shared_KGB_elt x = get<KGB_elt_value>();
   if (nu->val.size()!=lam_rho->val.size()
       or nu->val.size()!=x->rf->val.rank())
-    throw std::runtime_error ("Rank mismatch: ("
+    throw runtime_error ("Rank mismatch: ("
         +str(x->rf->val.rank())+","
 	+str(lam_rho->val.size())+","+str(nu->val.size())+")");
 @.Rank mismatch@>
@@ -3696,7 +3691,7 @@ void parameter_equivalent_wrapper(expression_base::level l)
 { shared_module_parameter q = get<module_parameter_value>();
   shared_module_parameter p = get<module_parameter_value>();
   if (p->rf->val!=q->rf->val)
-    throw std::runtime_error @|
+    throw runtime_error @|
       ("Real form mismatch when testing equivalence");
   if (l!=expression_base::no_value)
   { RootNbr witness;
@@ -3733,7 +3728,7 @@ void parameter_cross_wrapper(expression_base::level l)
   unsigned int r =
     rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
-    throw std::runtime_error
+    throw runtime_error
       ("Illegal simple reflection: "+str(s)+ ", should be <"+str(r));
   if (l!=expression_base::no_value)
     push_value(std::make_shared<module_parameter_value>
@@ -3746,7 +3741,7 @@ void parameter_Cayley_wrapper(expression_base::level l)
   unsigned int r =
     rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
-    throw std::runtime_error
+    throw runtime_error
       ("Illegal simple reflection: "+str(s)+ ", should be <"+str(r));
   if (l!=expression_base::no_value)
     push_value(std::make_shared<module_parameter_value>
@@ -3759,7 +3754,7 @@ void parameter_inv_Cayley_wrapper(expression_base::level l)
   unsigned int r =
     rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
-    throw std::runtime_error
+    throw runtime_error
       ("Illegal simple reflection: "+str(s)+ ", should be <"+str(r));
   if (l!=expression_base::no_value)
     push_value(std::make_shared<module_parameter_value>
@@ -3872,7 +3867,7 @@ void test_standard(const module_parameter_value& p, const char* descr)
     return;
   std::ostringstream os; p.print(os << descr << ": ");
   os << "\nParameter not standard, negative on coroot #" << witness;
-  throw std::runtime_error(os.str());
+  throw runtime_error(os.str());
 }
 
 void test_nonzero_final(const module_parameter_value& p, const char* descr)
@@ -3882,7 +3877,7 @@ void test_nonzero_final(const module_parameter_value& p, const char* descr)
   std::ostringstream os; p.print(os << descr << ": ");
 @/os << "\nParameter is " << (zero ? "zero" : "not final")
    @|  <<", as witnessed by coroot #" << witness;
-  throw std::runtime_error(os.str());
+  throw runtime_error(os.str());
 }
 
 @ Here is the first block generating function, which just reproduces to output
@@ -4468,7 +4463,7 @@ void module_coefficient::evaluate(level l) const
 { shared_virtual_module m = (array->eval(),get<virtual_module_value>());
   shared_module_parameter p = (index->eval(),get<module_parameter_value>());
   if (m->rf!=p->rf)
-    throw std::runtime_error @|
+    throw runtime_error @|
       ("Real form mismatch when subscripting ParamPol value");
   test_standard(*p,"In subscription of ParamPol value");
   test_nonzero_final(*p,"In subscription of ParamPol value");
@@ -4488,7 +4483,7 @@ void add_module_wrapper(expression_base::level l)
   own_virtual_module accumulator = get_own<virtual_module_value>();
 @/test_standard(*p,"Cannot convert non standard Param to term in ParamPol");
   if (accumulator->rf!=p->rf)
-    throw std::runtime_error @|
+    throw runtime_error @|
       ("Real form mismatch when adding standard module to a module");
   if (l!=expression_base::no_value)
   @/{@; accumulator->val+= p->rc().expand_final(p->val);
@@ -4501,7 +4496,7 @@ void subtract_module_wrapper(expression_base::level l)
   own_virtual_module accumulator = get_own<virtual_module_value>();
 @/test_standard(*p,"Cannot convert to term in ParamPol");
   if (accumulator->rf!=p->rf)
-    throw std::runtime_error @|
+    throw runtime_error @|
       ("Real form mismatch when subtracting standard module from a module");
   if (l!=expression_base::no_value)
   @/{@; accumulator->val-= p->rc().expand_final(p->val);
@@ -4521,7 +4516,7 @@ void add_module_term_wrapper(expression_base::level l)
   own_virtual_module accumulator = get_own<virtual_module_value>();
 @/test_standard(*p,"Cannot convert non standard Param to term in ParamPol");
   if (accumulator->rf!=p->rf)
-    throw std::runtime_error @|
+    throw runtime_error @|
       ("Real form mismatch when adding a term to a module");
   if (l!=expression_base::no_value)
   @/{@; accumulator->val.add_multiple(p->rc().expand_final(p->val),coef);
@@ -4546,7 +4541,7 @@ void add_module_termlist_wrapper(expression_base::level l)
         force<module_parameter_value>(t->val[1].get());
 @/    test_standard(*p,"Cannot convert non standard Param to term in ParamPol");
       if (accumulator->rf!=p->rf)
-        throw std::runtime_error @|
+        throw runtime_error @|
           ("Real form mismatch when adding terms to a module");
       accumulator->val.add_multiple(p->rc().expand_final(p->val),coef);
      }
@@ -4562,7 +4557,7 @@ void add_virtual_modules_wrapper(expression_base::level l)
   own_virtual_module accumulator = get_own<virtual_module_value>();
   shared_virtual_module addend = get<virtual_module_value>();
   if (accumulator->rf!=addend->rf)
-    throw std::runtime_error @|("Real form mismatch when adding two modules");
+    throw runtime_error @|("Real form mismatch when adding two modules");
   if (l!=expression_base::no_value)
   @/{@; accumulator->val += addend->val;
     push_value(accumulator);
@@ -4574,7 +4569,7 @@ void subtract_virtual_modules_wrapper(expression_base::level l)
   shared_virtual_module subtrahend = get<virtual_module_value>();
   own_virtual_module accumulator = get_own<virtual_module_value>();
   if (accumulator->rf!=subtrahend->rf)
-    throw std::runtime_error @|
+    throw runtime_error @|
       ("Real form mismatch when subtracting two modules");
   if (l!=expression_base::no_value)
   @/{@; accumulator->val -= subtrahend->val;
@@ -4657,7 +4652,7 @@ void last_term_wrapper (expression_base::level l)
   if (l==expression_base::no_value)
     return;
   if (m->val.empty())
-    throw std::runtime_error("Empty module has no last term");
+    throw runtime_error("Empty module has no last term");
   const auto& term = *m->val.rbegin();
   push_value(std::make_shared<split_int_value>(term.second));
   push_value(std::make_shared<module_parameter_value>(m->rf,term.first));
@@ -4670,7 +4665,7 @@ void first_term_wrapper (expression_base::level l)
   if (l==expression_base::no_value)
     return;
   if (m->val.empty())
-    throw std::runtime_error("Empty module has no last term");
+    throw runtime_error("Empty module has no first term");
   const auto& term = *m->val.begin();
   push_value(std::make_shared<split_int_value>(term.second));
   push_value(std::make_shared<module_parameter_value>(m->rf,term.first));
@@ -4725,7 +4720,7 @@ since the parameter itself reported here might be final.
     RootNbr simp_wit = srkc.fiber(sr).simpleReal(witness);
     print(os << "Non final restriction to K: ",p->val,rc)
     @| << "\n  (witness "	<< srkc.rootDatum().coroot(simp_wit) << ')';
-    throw std::runtime_error(os.str());
+    throw runtime_error(os.str());
   }
 }
 
@@ -4777,7 +4772,7 @@ void branch_wrapper(expression_base::level l)
       (os << "Non " << (nonstand?"standard":"final") << "restriction to K: "
       ,p->val,rc)
     @| << "\n  (witness "	<< khc.rootDatum().coroot(simp_wit) << ')';
-    throw std::runtime_error(os.str());
+    throw runtime_error(os.str());
   }
 }
 
@@ -5039,12 +5034,12 @@ void print_realweyl_wrapper(expression_base::level l)
   own_real_form rf= non_const_get<real_form_value>();
 @)
   if (&rf->parent.val!=&cc->parent.val)
-    throw std::runtime_error @|
+    throw runtime_error @|
     ("Inner class mismatch between arguments");
 @.Inner class mismatch...@>
   BitMap b(rf->parent.val.Cartan_set(rf->val.realForm()));
   if (not b.isMember(cc->number))
-    throw std::runtime_error @|
+    throw runtime_error @|
     ("Cartan class not defined for real form");
 @.Cartan class not defined...@>
 @)
