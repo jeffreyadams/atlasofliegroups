@@ -58,7 +58,8 @@ interpreter_cweb_objects := $(interpreter_cwebs:%.w=%.o)
 interpreter_objects := $(interpreter_cweb_objects) \
     sources/interpreter/parser.tab.o
 interpreter_made_files := $(interpreter_cwebs:%.w=%.cpp) \
-    $(filter-out %main.h,$(interpreter_cwebs:%.w=%.h))
+    $(filter-out %main.h,$(interpreter_cwebs:%.w=%.h)) \
+    sources/interpreter/parser.tab.h sources/interpreter/parser.tab.c
 # the following variable is a list of patterns, not files!
 non_realex_objects := sources/io/interactive%.o \
     sources/interface/%.o sources/test/%.o \
@@ -197,7 +198,7 @@ sources/interface/io.o : sources/interface/io.cpp
 realex: $(cweb_dir)/ctanglex $(interpreter_made_files) $(realex_objects)
 	cd sources/interpreter && $(MAKE) ../../realex
 
-$(interpreter_made_files):
+$(filter-out sources/interpreter/parser.tab.%,$(interpreter_made_files)):
 	cd sources/interpreter && $(MAKE) $(subst sources/interpreter/,,$@)
 
 $(filter-out sources/interpreter/parser.tab.o,$(interpreter_objects)) :\
@@ -258,13 +259,14 @@ distribution:
 
 .PHONY: mostlyclean clean veryclean showobjects
 mostlyclean:
-	$(RM) -f $(objects) $(interpreter_made_files) *~ *.out junk
+	$(RM) -f $(objects) $(interpreter_made_files) *~ */*~ sources/*/*~ \
+           sources/*/*.tex sources/*/*.dvi sources/*/*.log sources/*/*.toc
 
 clean: mostlyclean
 	$(RM) -f atlas realex
 
 veryclean: clean
-	$(RM) -f sources/*/*.d cwebx/*.o cwebx/ctangle cwebx/cweave
+	$(RM) -f sources/*/*.d cwebx/*.o cwebx/ctanglex cwebx/cweavex \
 
 $(cweb_dir)/ctanglex: $(cweb_dir)/common.h $(cweb_dir)/ctangle.c
 	cd $(cweb_dir) && $(MAKE) ctanglex
