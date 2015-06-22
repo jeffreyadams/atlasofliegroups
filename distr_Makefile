@@ -186,13 +186,15 @@ ifneq ($(INSTALLDIR),$(shell pwd))
 	$(INSTALL) -m 644 rx-scripts/* $(INSTALLDIR)/rx-scripts/
 endif
 ifneq ($(BINDIR),$(INSTALLDIR))
-	mkdir -p $(BINDIR)
+ifneq ($(BINDIR),$(shell pwd))
+	$(INSTALL) -d $(BINDIR)
 	@if test -h $(BINDIR)/atlas; then rm -f $(BINDIR)/atlas; fi
-	@if test -h $(BINDIR)/realex; then rm -f $(BINDIR)/realex; fi
+	@if test -e $(BINDIR)/realex; then rm -f $(BINDIR)/realex; fi
 	ln -s $(INSTALLDIR)/atlas $(BINDIR)/atlas # make symbolic link
-# whenever BINDIR is not INSTALLDIR, we can put a shell script as bin/realex
+# since BINDIR is not INSTALLDIR, we can put a shell script as bin/realex
 # which ensures the search path will be properly set (no compiled-in path here)
 	echo '#!/bin/sh\n$(INSTALLDIR)/realex --path=$(INSTALLDIR)/rx-scripts basic.rx "$$@"' >$(BINDIR)/realex; chmod a+x $(BINDIR)/realex
+endif
 endif
 
 version:

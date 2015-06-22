@@ -1,5 +1,7 @@
 #!/bin/bash
 
+shopt -s nullglob # don't give us those stupid files named '*'.something
+
 here=$(pwd)
 version=$1
 distr=atlas_$version
@@ -31,10 +33,11 @@ ln -s $here/rx-scripts/*.help $distr/rx-scripts/
 ln -s $here/doc/modules $distr/
 for sd in $distr_all_src
   do mkdir $distr/sources/$sd
-     ln -s $here/sources/$sd/*.{h,cpp} $distr/sources/$sd/
+     # the following command uses ln -t so that empty expansion at end is
+     # just an error (which we shut up), rather than an unintended form of ln
+     ln -s -t $distr/sources/$sd/ $here/sources/$sd/*.{h,cpp} 2>/dev/null
   done
 ln -s $here/sources/interface/input*readline.c $distr/sources/interface/
-rm $distr/sources/stand-alone/'*'.h # a dangling link of this name was created!
 
 for sd in $dirs_with_cweb
 do pushd $distr/sources/$sd >/dev/null

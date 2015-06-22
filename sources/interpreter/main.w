@@ -420,7 +420,8 @@ for later use.
 if (paths.size()>0)
 { if (working_directory_name!=nullptr and chdir(paths[0])==0)
    // see if we can \.{cd} there
-  { chdir(working_directory_name); // but if so switch back
+  { if (chdir(working_directory_name)!=0) // but if so switch back
+      return EXIT_FAILURE; // in the unlikely case that we cannot, just give up
     first_path=paths[0]; // record that this is a valid directory
   }
   else
@@ -726,8 +727,9 @@ extern "C" char** do_completion(const char* text, int start, int end)
 
     if (working_directory_name!=nullptr and need_file and i==start)
        // the sub-string is preceded by one or more copies of \.<, \.>
-    { chdir(in and first_path!=nullptr? first_path : working_directory_name);
-         // make |readline| think this is the \.{CWD}
+    { static_cast<void> // pretend we inspect the result, in fact ignore failure
+      (chdir(in and first_path!=nullptr ? first_path : working_directory_name));
+         // temporary \.{cd}
       return nullptr; // and signal that file name completion should be used
     }
   }
@@ -762,7 +764,8 @@ notice the temporary change of working directory.
 @< Undo temporary trickery aimed at |readline| filename completion @>=
 #ifndef NOT_UNIX
 if (working_directory_name!=nullptr)
-  chdir(working_directory_name); // reset to true working directory
+  static_cast<void> // pretend we inspect the result, in fact ignore failure
+      (chdir(working_directory_name)); // reset to true working directory
 #endif
 
 
