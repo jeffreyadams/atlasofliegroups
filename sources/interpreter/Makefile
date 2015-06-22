@@ -210,7 +210,7 @@ $(c++objects) $(atlas_objects): %.o: %.cpp
 ../io/filekl.h ../io/filekl.cpp ../io/filekl_in.h ../io/filekl_in.cpp : ;
 
 # TeX files are also made from CWEBx files (.w) with the ++ switch, by cweavex
-%.tex: %.w
+%.tex: %.w $(CWEAVE)
 	$(CWEAVE) $(CWEAVEFLAGS) $<
 
 # and DVI files are made from TeX files of course
@@ -232,9 +232,6 @@ $(dvifiles): $(CWEAVE)
 # stands for Rewritten Expression-based Atlas of Lie groups EXecutable
 ../../realex: $(objects)
 	$(CXX) -o $@ $^ $(LDFLAGS)
-ifeq (,$(findstring t,$(MAKEFLAGS))) # unless a flag -t was given
-	$(MAKE) -t $@ # now that build succeeds mark everything as up-to-date
-endif
 
 # the parser is produced by bison, and compiled using the C++ compiler
 parser.tab.c parser.tab.h: parser.y

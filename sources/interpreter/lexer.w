@@ -631,6 +631,7 @@ break; case '%': case '/': prevent_termination=c;
        valp->oper.priority = 6;
        code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '\\':
+       prevent_termination=c;
        valp->oper.priority = 6;
        if (input.shift()=='%')
        @/{@; prevent_termination='%';

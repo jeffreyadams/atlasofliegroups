@@ -83,7 +83,7 @@ set rat_as_int (rat r) = int:
 
 {				Strings					}
 
-set new_line = ascii(10) { including this in a string passes to a new line }
+set !new_line = ascii(10) { including this in a string passes to a new line }
 
 set + (string s,string t) = string: s # t { alias for concatenation }
 set * = (string,int->string): { repeat string; use recursive doubling }

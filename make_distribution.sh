@@ -7,7 +7,7 @@ distr_subdirs="messages sources rx-scripts"
 distr_files="COPYRIGHT LICENSE README CHANGES"
 distr_all_src="error interface io utilities structure gkmod test stand-alone interpreter"
 dirs_with_cweb="interpreter stand-alone io"  # directories containing *.w files
-rx_files="basic groups parameters K K_types LKT Weyl Weylgroup W_orbit \
+rx_files="basic groups parameters K K_types LKT Weylgroup W_orbit \
 cross_W_orbit dual finite_dimensional galois generate_groups group_operations \
 hermitian induction iterate_deform kl lattice matrix nilpotent nonintegral \
 polynomial representations sort tits torus translate twist unitary \
