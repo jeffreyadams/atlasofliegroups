@@ -120,7 +120,7 @@ c++files      := $(cwebx_sources:%.w=%.cpp)
 c++objects    := $(c++files:%.cpp=%.o)
 webtexfiles   := $(cwebx_sources:%.w=%.tex)
 
-headers := $(filter-out main.h,$(c++files:%.cpp=%.h)) parser.tab.h
+headers := $(filter-out main.h,$(c++files:%.cpp=%.h)) parser.tab.h parse_tree.h
 
 dvifiles := $(cwebx_sources:%.w=%.dvi)
 
@@ -187,7 +187,7 @@ $(c++objects) $(atlas_objects): %.o: %.cpp
 # commented out now however, as while it works reasonably for a seqential
 # make, it cases trouble when make is runn with --jobs set to more than 1
 # The basic problem is that targets are temporily removed, so other makes fail
-%.cpp %.h: %.w
+%.cpp %.h: %.w $(CTANGLE)
 #	@if [ -f $*.cpp ]; then mv $*.cpp old_targets;\
 #                           else touch old_targets/$*.ccp; fi
 #	@if [ -f $*.h ];   then mv $*.h old_targets;\
@@ -204,6 +204,9 @@ $(c++objects) $(atlas_objects): %.o: %.cpp
 #           if cmp -s old_targets/parse_types.h parse_types.h;\
 #           then mv old_targets/parse_types.h .; echo parse_types.h unchanged;\
 #           fi fi
+
+parse_types.h: parsetree.w $(CTANGLE)
+	$(CTANGLE) $(CTANGLEFLAGS) parsetree.w
 
 # remaking these Atlas files is unneeded: they are also under version control
 # but above pattern rule matches; so provide an empty rule to prevent remaking

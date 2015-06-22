@@ -59,6 +59,7 @@ interpreter_objects := $(interpreter_cweb_objects) \
     sources/interpreter/parser.tab.o
 interpreter_made_files := $(interpreter_cwebs:%.w=%.cpp) \
     $(filter-out %main.h,$(interpreter_cwebs:%.w=%.h)) \
+    sources/interpreter/parse_types.h \
     sources/interpreter/parser.tab.h sources/interpreter/parser.tab.c
 # the following variable is a list of patterns, not files!
 non_realex_objects := sources/io/interactive%.o \

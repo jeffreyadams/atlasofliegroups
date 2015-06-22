@@ -69,11 +69,11 @@ the essential programs and data separately from the sources in that directory
 'atlas' and 'realex' in the specified directory (actually a symbolic link and
 a short shell script invoking the programs in INSTALLDIR). The default for
 both INSTALLDIR and BINDIR is the current directory, but leaving both so, the
-call 'make install' does nothing. It is advised to at least make INSTALLDIR
-and BINDIR different, allowing 'make' to create the shell script BINDIR/realex
-that executes the binary INSTALLDIR/realex with some hidden arguments; these
-ensure loading a small "standard prelude" of predefined functions and setting
-a search path for further realex scripts that you might want to load manually.
+call 'make install' does nothing. It is advised to change at least BINDIR from
+the default, allowing 'make' to create the shell script BINDIR/realex that
+executes the binary INSTALLDIR/realex with some hidden arguments; these ensure
+loading a small "standard prelude" of predefined functions and setting a
+search path for further realex scripts that you might want to load manually.
 
 If specified, INSTALLDIR should probably be a not yet existing subdirectory
 with 'atlas' in its name to keep things together, as the programs and
