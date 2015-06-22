@@ -249,7 +249,7 @@ ifneq ($(BINDIR),$(INSTALLDIR))
 	ln -s $(INSTALLDIR)/atlas $(BINDIR)/atlas # make symbolic link
 # whenever BINDIR is not INSTALLDIR, we can put a shell script as bin/realex
 # which ensures the search path will be properly set (no compiled-in path here)
-	echo '#!/bin/sh\n$(INSTALLDIR)/realex --path=$(INSTALLDIR)/rx-scripts basic.rx "$$@"' >$(BINDIR)/realex; chmod a+x $(BINDIR)/realex
+	echo '#!/bin/sh\nexec $(INSTALLDIR)/realex --path=$(INSTALLDIR)/rx-scripts basic.rx "$$@"' >$(BINDIR)/realex; chmod a+x $(BINDIR)/realex
 endif
 
 version:
