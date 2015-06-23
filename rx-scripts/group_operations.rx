@@ -38,13 +38,12 @@ set *(InnerClass ic1,InnerClass ic2) = InnerClass:
     block_matrix(distinguished_involution(ic1),distinguished_involution(ic2))
   in inner_class(root_datum(ic1)*root_datum(ic2),di)
 
-set real_form (InnerClass ic, string name) = RealForm:
-  let fn = form_names(ic) then i=#fn-1
-  then () = while i>=0 and fn[i]!=name do i-:=1 od
-  in if i<0 then error("unknown real form") else real_form(ic,i) fi
-
 set * (RealForm G,RealForm H) = RealForm:
-  real_form(inner_class(G)*inner_class(H), form_name(G) + "." + form_name(H))
+  let xG=KGB(G,0), xH=KGB(H,0) in
+  real_form(inner_class(G)*inner_class(H)
+           ,block_matrix(involution(xG),involution(xH))
+           ,torus_factor(xG)#torus_factor(xH)
+           )
 
 
 { ----------------radical, i.e. maximal central torus---------------- }
