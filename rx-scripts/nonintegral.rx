@@ -115,7 +115,7 @@ set ext_cross ([int] w, extended_param E) = extended_param:
 }
 set posroot_ext_Cayley (int i,extended_param E, bool show) = [extended_param]:
 ( if show then prints("posroot_ext_Cayley i=", i);display(E) fi
-; let (w,alpha) = conjugate_to_simple_by_Wdelta(root_datum(E), delta(E), i)
+; let ((,w),alpha) = conjugate_to_simple_by_Wdelta(root_datum(E), delta(E), i)
 { w*root(G,i)=alpha is simple for G, w is in W^\delta }
   then E1=ext_cross(w,E)
   in if show then prints("E1=");prints(valid(E1)); display(E1)
@@ -132,7 +132,7 @@ set posroot_ext_Cayley (int i,extended_param E, bool show) = [extended_param]:
   do let E3 = E3_array[i]
     then E4 = (ic(E3),delta(E3),gamma(E3)-shift,lambda(E3)-shift,theta(E3)
                                ,g(E3), l(E3), omega(E3),tau(E3),t(E3) )
-    in ext_cross(inverse(w),E4)
+    in ext_cross(w~[:],E4)
   od
 )
 
@@ -196,7 +196,8 @@ set ext_cross_special (int i, extended_param E, bool show) = extended_param:
      ext_cross_simple(i,E)
   else let j=root_index(root_datum(E),alpha) in
     if show then prints("j=", j) fi
-  ; let (w,beta) = conjugate_to_simple_by_Wdelta(root_datum(E), delta(E), j) in
+  ; let ((,w),beta) =
+      conjugate_to_simple_by_Wdelta(root_datum(E), delta(E), j) in
     if show then prints("w=", w, " beta=", beta) fi
   ; let E1=ext_cross(w,E) in
     if show then prints("E1="); valid(E1); display(E1) fi
@@ -208,7 +209,7 @@ set ext_cross_special (int i, extended_param E, bool show) = extended_param:
     then E4 =
        (ic(E3),delta(E3), gamma(E3)-shift, lambda(E3)-shift, theta(E3)
                         , g(E3), l(E3), omega(E3), tau(E3), t(E3))
-    in ext_cross(inverse(w),E4)
+    in ext_cross(w~[:],E4)
   fi
 )
 
