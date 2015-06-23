@@ -1084,9 +1084,12 @@ can however be suppressed by adding ';()' at the end of the command.)
 8 Control structures
 
 As control structures, the realex language currently provides sequenced
-expressions, conditional expressions and various kinds of loops. Each of them
-can deliver values (which is somewhat unusual in the case of loops), though
-they can also serve more conventionally for selecting/iterating actions.
+expressions, conditional and case expressions and various kinds of loops. Each
+of them optionally deliver values (which is somewhat unusual in the case of
+loops), though they can also serve more conventionally for selecting/iterating
+actions.
+
+* Sequenced expressions
 
 Sequenced expressions are simply sequences of expressions separated by
 semicolons; together they form a new expression, whose evaluation consists of
@@ -1100,25 +1103,32 @@ to suppress the construction of any (components of) values that are destined
 to be immediately voided, evaluating in those cases only for side effects;
 this can be particularly relevant for the values of function calls and loops.
 
-One might consider ';' as an operator with very low precedence (lower than
-assignment) that evaluates its operands in order and returns the value of the
-rightmost one. Occasionally useful (especially in loops) is its variant
-written as the keyword 'next', that also evaluates its operands from left to
-right, but returns the value of the leftmost one. This in 'e1; e2; e3 next e4'
-all expressions are evaluated in order, and the value of 'e3' is returned.
-Given their semantics, the associativity of ';' and of 'next' is irrelevant.
-But in weird cases it is relevant that the precedence of 'next' is lower even
-than that of ';' (so 'e1; e2 next e3; e4 next e5' returns the value of 'e2').
+One might consider ';' as an associative operator with very low precedence
+(lower than assignment, and on the same level as 'let': if the final operand
+starts with 'let' it need not be parenthesized) that evaluates its operands in
+order and returns the value of the rightmost one. Occasionally useful
+(especially in loops) is its variant written as the keyword 'next', that also
+evaluates its operands (usually just two of them) from left to right, but
+returns the value of the leftmost one. Thus in 'e1; e2; e3 next e4' all
+expressions are evaluated in order, and the value of 'e3' is returned. Both
+forms have the same precedence and associate to the right (as 'let' requires
+them to), which implies that in cases like 'e1; e2 next e3; e4 next e5', the
+value will be that of the expression before the first 'next' (i.e., 'e2');
+clearly such multiple use of 'next' is rather pointless.
 
-Because sequenced expressions have such low precedence (only function bodies
-and local declarations 'let ... in ...' bind, to the right, even more loosely;
-for instance in 'let x=3 in x:=2*x; x+3' the reach of the local declaration
-includes the final expression 'x+3'), they may need grouping in certain
-contexts. This is needed when the are used as operands, but not when used in
-conditionals and loops, since those contain their own closing symbols. One can
-always achieve grouping using parentheses, but the keywords 'begin' and 'end'
-can be used as alternative, and they may be more readable when used for
-enclosing sequenced expressions.
+Being at the same precedence level means that the scope of a 'let' is not
+terminated by a following semicolon: in 'let x=3 in x:=2*x; x+3' the final 'x'
+is still in scope. On the other hand expression with a semicolon always need
+parentheses when used as operands. They do not need them in function
+arguments, as there the parentheses and commas provide sufficient grouping; so
+'f(x;y,z)' is OK though maybe more readable when written as '(x;f(y,z))'. Such
+usage is rare, but the same goes for control structures like conditionals and
+loops: these all provide their own closing symbols, so that semicolons can be
+freely used inside those. Whether or not necessary, it can be useful to group
+large sequences of expressions separated by semicolon with the keywords
+'begin' and 'end', as a more readable equivalent alternative to parentheses.
+
+* Conditional expressions and case expressions
 
 Conditional expressions take the form
 
@@ -1135,23 +1145,41 @@ for a simple 2-way branch, or a more elaborate multi-way branch
 
 The else branch may be omitted, the implied branch then being void: 'else ()'.
 
-The expressions after 'then' and 'else' should all have the same type that
-will become the type of the conditional expression, or they should be
-implicitly convertible to a common type. Type analysis tries to cleverly guess
-that common type, and in particular if any of the branches has void type, then
-all non-void branches will be voided. Should this fail to guess the intended
-type (with type analysis reporting "Could not find common type for branches"),
-then the user can always make the desired (possibly void) type explicit, by
-casting the whole conditional expression to it; this has the same effect as
-casting all branches to that type.
+If the selection is determined by an integral expression 'I' with values in the
+range 0,1,...,n-1 (for instance the result of a reduction modulo n), then the
+multi-way branching is better done using a case-expressions, of the form
+
+  case I
+  in E_0
+  , E_1
+  , ...
+  , E_{n-1}
+  esac
+
+In the conditional expression, the branches after 'then' and 'else' should all
+have the same type that will become the type of the conditional expression, or
+they should be implicitly convertible to a common type. Type analysis tries to
+cleverly guess that common type, and in particular if any of the branches has
+void type, then all non-void branches will be voided (any value is ignored).
+Should realex fail to guess the intended type (with type analysis reporting
+"Could not find common type for branches"), then one can always make the type
+desired (possibly void) explicit, by casting the whole conditional expression
+to it. Casting 'T: if .. then E0 elif .. then E1 else E2 fi' is equivalent to
+casting all branches: if .. then T:E0 elif .. then T:E1 else T:e2 fi'.
 
 The conditions (after 'if' or 'elif') must be expressions of type 'bool'. For
 such expressions one can use logical connectives 'or', 'and' and 'not'. These
 behave like operators with precedences just above that of assignment (and
 increasing in the order given); they are however handled in the parser, which
 will for instance transform 'x and y' into 'if x then y else false fi'. In
-particular 'or' and 'and' only evaluate their second operand if the first
-operand is not decisive, and the user cannot redefine or overload them.
+particular 'or' and 'and' short-circuit: they only evaluate their second
+operand if the first operand is not decisive. The user cannot redefine or
+overload these operators. Usage of 'not' in conditions has no runtime cost, as
+realex will rewrite internally to an equivalent expression without 'not'.
+
+* Loops
+
+** While loops
 
 Loops come in various flavors, each one returning a row value with one
 component for each iteration of the loop (however for loops in voided context,
@@ -1179,6 +1207,8 @@ expression sequenced by 'next' can be used. So for instance the variation
 
 produces the row [0,1,...,n-1].
 
+** Counted for loops
+
 The remaining loops are 'for' loops, which determine the number of iterations
 at the beginning rather than dynamically. Their syntax is somewhat unusual, in
 that it does not specify the starting and ending values of the iteration, but
@@ -1205,44 +1235,33 @@ To obtain a more traditional range [1,2,...,n], one may say
 
   for i : n from 1 do i od .
 
-For the reverse list [n-1,...,1,0] use
+For the reverse list [n-1,...,1,0] use '~' as in
 
-  for i : n ~do i od
+  for i : n ~ do i od
 
 and the shifted reversed list [n,...,1] is produced by
 
-  for i : n from 1 ~do i od
+  for i : n from 1 ~ do i od
 
 (This used to be written as 'for i : n downto 1 do i od', but this syntax is
 redundant given the new more flexible tilde syntax, and is now deprecated.)
 
-As a general rule, if 'do' in a for loop is preceded by a tilde, then the
-iteration will be performed on the same set of values as before, but traversed
-in the opposite order. If a row is produced as value of the loop, it will
-still be the values of the loop bodies in the order of traversal. However
-preceding the final 'od' be a tilde assembles the values of the loop bodies in
-the order opposite to iteration. The two variants can be combined (traversing
-backwards, but assembling the result in the original increasing order), and
-apply also to versions of 'for' loops given below (but not to 'while' loops).
+If something is just to be repeated n times, the loop index can be omitted:
 
-As for the while loop, the body may be a sequence expression, and it with may
-have side effects, though it does not have to as the examples show. Currently
-assignments to the loop index (and more generally values prepared for the
-iterations in a for loop) are permitted, but this is discouraged and will be
-discontinued. In any case such assignments have no effect on the number of
-iterations or on the values for which subsequent iterations are started: the
-latter are independent of its final value in the previous iteration. Indeed
-the implementation gives each iteration a separate copy of the loop index,
-appropriately initialized; this usually makes assignment to the index useless.
+  for :n do 1 od { generate a list of n ones }
+
+** Iteration over composite values
 
 Rather than counted iteration, it is often convenient to use iteration over an
-existing composite value. If V is a row value, or vector or matrix then
+existing composite value. If V is a row value, or vector, rational vector
+string or matrix then
 
   for e in V do ... od
 
-iterates over the components of V (for a matrix these components are its
-columns), setting e to such a component before evaluating the loop body. For
-instance, one can produce the scalar multiple by 3 of a vector V using
+iterates over the components of V (for a string these components are
+one-character strings; for a matrix they are its columns), setting e to such a
+component before evaluating the loop body. For instance, one can produce the
+scalar multiple by 3 of a vector V using
 
   vec: for e in V do 3*e od
 
@@ -1261,12 +1280,14 @@ vector. These value-returning loops are quite flexible, for instance
 
 produces an m*n matrix with unit diagonal entries and zeroes elsewhere. Of
 course the case m=n of the identity matrix is most common, be we allowed
-distinct values of m and n to stress that the column-oriented convention (in
-this case not of the loops themselves, but of the implicit conversion to
-'mat', which conventions are of course chosen compatibly) forces the outer
-loop to be over the columns and the inner loop to be over the rows. To add
-such a matrix to an existing matrix M it suffices to write (with again columns
-being traversed in the outer loop and rows in the inner loop):
+distinct values of m and n to stress that the column-oriented conventions
+force the outer loop to be over the columns and the inner loop to be over the
+rows. (In this case the relevant convention is not one associated to the loops
+themselves, but the one for the implicit conversion of a row of integer lists
+to a value of type 'mat'; but all these conventions are "column-oriented" for
+compatibility.) To add such a matrix to an existing matrix M it suffices to
+write (with again columns being traversed in the outer loop and rows in the
+inner loop):
 
   for col@j in M do for entry@i in col do entry+if i=j then 1 else 0 fi od od
 
@@ -1278,29 +1299,65 @@ subscription (but although one can obtain matrix _entries_ directly by
 subscription, one cannot directly iterate over them; this requires two nested
 loops as the last example above illustrates). Thus one can loop over
 characters in a string (which for lack of a character type are turned into
-single-character strings), entries of a rational vector, or the (nonzero)
-terms of a 'ParamPol' value. In the latter case subscription of 'pol' is by a
-'Param' index 'p' returns its 'Split' coefficient as component 'pol[p]' (it
-will be '0+0s' if 'p' does not occur in 'pol'). Since ParamPol only collects
-certain kinds of terms, there is a technical limitation to 'p' in this
-expression: it must be standard, final and nonzero; its representative of the
-infinitesimal character will be made dominant so as to detect any equivalent
-term in P. Iterating over a ParamPol, the index (Param) is at least as
-important as the coefficient (Split) found for it, the corresponding for loop
-will therefore usually take the form
+single-character strings), entries of a rational vector.
+
+One can also loop over the (nonzero) terms of a 'ParamPol' value, which is
+convenient though somewhat special. One should think of a 'ParamPol' not as a
+list of terms (there is no absolute meaning to the order in which terms are
+presented) but as an association of coefficients (of type 'Split') to values
+of type 'Param' (which values have been made standard, nonzero, and final in
+order for the association to be mathematically meaningful; they also have
+their infinitesimal character representative made dominant so that terms with
+equivalent Param values will combine). This is reflected by allowing the
+coefficient associated in the ParamPol 'pol' to the Param value 'p' to be
+written as 'pol[p]'. Then iterating over a 'pol', a term with Param 'p' and
+coefficient 'c' is presented as a component 'c' stored at index 'p'. Therefore
+a loop over such terms will take the form
 
   for c@p in pol do ... od
 
-where each time 'c' will be a nonzero 'Split' coefficient, and 'p' the
-corresponding (standard final nonzero dominant) 'Param' value. The order of
-traversal of the terms in the loop is determined by an ordering of 'Param'
+During execution, each time 'c' will be a nonzero 'Split' coefficient, and 'p'
+the corresponding (standard final nonzero dominant) 'Param' value. The order
+of traversal of the terms in the loop is determined by an ordering of 'Param'
 values that is fixed by realex but not easy to fully describe; however in most
-cases it ought not matter much. For the opposite operation of combining a
-collection of '(Split,Param)' values (possibly generated by a loop) into a
-'ParamPol' value, a built-in instance of '+' is provided. The collection is
-given as a row forming the right operand of '+', while the left operand is an
-initial 'ParamPol' to which the terms are to be added; often this will take
-the form 'null_module(rf)+for ... od'.
+cases it ought not matter much. (This does imply that the value of this loop,
+in which the values of the loop bodies have been ordered by traversal order,
+is only rarely useful; it could be for instance if the values are then passed
+through a commutative operation, or are being sorted afterwards.) For the
+opposite operation of combining a collection of '(Split,Param)' values
+(possibly generated by a loop) into a 'ParamPol' value, a built-in instance of
+'+' is provided. The collection is given as a row forming the right operand of
+'+', while the left operand is an initial 'ParamPol' to which the terms are to
+be added; often this will take the form 'null_module(rf)+for ... od'.
+
+** Reversal variants in loops
+
+As a general rule, if 'do' in a for loop is preceded by a tilde, then the
+iteration will be performed on the same set of values as before, but traversed
+in the opposite order. If a row is produced as value of the loop, it will
+still be the values of the loop bodies in the order of traversal. However
+preceding the final 'od' be a tilde assembles the values of the loop bodies in
+the order opposite to iteration. The two variants can be combined (traversing
+backwards, but assembling the result in the original increasing order), and
+apply also to versions of 'for' loops given below (the second variant also
+applies to 'while' loops; not the first variant, which is meaningless there).
+
+Like for the while loop, the body may be a sequence expression, and it may
+have side effects. However, assignments to the variables introduced in the
+loop (index and/or value of iteration) are forbidden. This is so because it
+would usually mask an error: once the heading of a loop is processed, there is
+no way to alter the number of iterations (in particular the expressions for
+bounds or array iterated over are evaluated just once), and assignment to the
+loop index suggests that the user tries to do so anyway. (In rare cases where
+one really needs a modified version of an iteration value, copy it to a local
+variable and modify that.) In fact the loop variables are distinct for each
+iteration: if one captures them in functions, each one stays at its initial
+value; so to create a list of functions that add respectively 1,3,6, doing
+
+  functions := for x in [1,3,6] do (int n): n+x od
+
+has the desired effect (functions[1] adds 3, not the "final value" 6 of 'x').
+
 
 9 Recursion
 
@@ -1317,8 +1374,8 @@ name at its (function) definition. The only restriction is that the return
 type must be explicitly specified (while it is option for ordinary functions);
 failing to do so after rec_fun will result in a syntax error.
 
-Here is the classical (but silly, as a loop would do as well) example of the
-factorial function:
+Here is the classical (but silly, as using a loop would do quite as well)
+example of the factorial function 'fac':
 
   rx> set rec_fun fac (int n) = int: { return type int is specified }
     if n<=0 then 1 else n*fac(n-1) fi
@@ -1329,7 +1386,7 @@ factorial function:
 However, in practice it is often better to achieve recursion locally rather
 than directly for the function defined by 'set', as this will allow the latter
 to do some preliminary things that are not to be repeated at each recursive
-call. For instance it in the above definition one wants to signal negative
+call. For instance if in the above definition one wants to signal negative
 arguments as errors rather than returning the (mathematically meaningless)
 value 1 for them, this can be done as follows (the example also shows that the
 recursive function need not have the same name as the global one
@@ -1358,6 +1415,7 @@ this gives the following (optimal though maybe not optimally readable) style:
       if n<0 then error("factorial of negative number ",n," is not defined")
       else f(n) { call the recursive function }
       fi
+
 
 10 Splitting commands across lines
 
