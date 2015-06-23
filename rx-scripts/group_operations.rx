@@ -45,7 +45,6 @@ set * (RealForm G,RealForm H) = RealForm:
            ,torus_factor(xG)#torus_factor(xH)
            )
 
-
 { ----------------radical, i.e. maximal central torus---------------- }
 
 set radical (RootDatum rd) = RootDatum:

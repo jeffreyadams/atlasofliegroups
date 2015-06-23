@@ -26,6 +26,9 @@
 { ------------------------------------------------------------------- }
 
 set character_formula (Param p) = ParamPol: s_to_1(KL_sum_at_s(p))
+set character_formula (ParamPol P)=ParamPol: 
+let result=null_module(P) in 
+for c@p in P do result+:=c*character_formula(p) od;result
 
 { ------------------------------------------------------------------- }
 
@@ -39,6 +42,10 @@ set composition_series (Param p) = ParamPol:
   od
 ; result
 )
+
+set composition_series(ParamPol P)= ParamPol:
+let result=null_module(P) in 
+for c@p in P do result+:=c*composition_series(p) od;result
 
 set tabulate_at_1 ([Param] block, (Param->ParamPol) f) = mat:
   for y in block { y determines a column of the result }
