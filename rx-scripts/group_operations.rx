@@ -43,8 +43,21 @@ set real_form (InnerClass ic, string name) = RealForm:
   then () = while i>=0 and fn[i]!=name do i-:=1 od
   in if i<0 then error("unknown real form") else real_form(ic,i) fi
 
+
+
+{this works badly, replace it with synthetic version
 set * (RealForm G,RealForm H) = RealForm:
   real_form(inner_class(G)*inner_class(H), form_name(G) + "." + form_name(H))
+}
+
+{synthetic version,  build GxH using real_form(ic,theta,v)}
+set *(RealForm G,RealForm H)=
+let ic=inner_class(G)*inner_class(H) then
+x=KGB(G,0) then
+y=KGB(H,0) then
+theta=block_matrix(involution(x),involution(y)) then
+v=torus_factor(x)#torus_factor(y) in 
+real_form(ic,theta,v)
 
 
 { ----------------radical, i.e. maximal central torus---------------- }
