@@ -273,6 +273,9 @@ set denom (ratvec a) = int: let (,d)=%a in d
 set * (int i,ratvec v) = ratvec: v*i
 set * (rat r,ratvec v) = ratvec: v*r
 
+{ concatenate ratvec values: use conversion to and from [rat] }
+set #(ratvec a,ratvec b) = ratvec: #([rat]:a,[rat]:b)
+
 { multiply rational matrix represented as list of columns by a rational vector
   the m*n matrix M is given as a list of n ratvec values of size m
   v is a ratvec of size n, the result is a ratvec of size m
