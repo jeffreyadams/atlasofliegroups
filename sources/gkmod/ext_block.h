@@ -5,7 +5,7 @@
 /*
   This is ext_block.h
 
-  Copyright (C) 2013 Marc van Leeuwen
+  Copyright (C) 2013-2015 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -21,10 +21,35 @@
 #include <set>
 
 #include "blocks.h" // for the structure |ext_gen|
+#include "realredgp.h"
 
 namespace atlas {
 
 namespace ext_block {
+
+class extended_context // holds values that remain fixed across ext. block
+{
+  RealReductiveGroup& G_R; // I'd love inheritance, but need the reference
+  WeightInvolution d_delta;
+  RatWeight d_gamma; // representative of infinitesimal character
+  RatCoweight d_g; // chosen lift of the common square for the square class
+
+ public:
+  extended_context
+    ( RealReductiveGroup& G_R
+    , WeightInvolution&& delta
+    , const RatWeight& gamma
+    , const RatCoweight& g
+    )
+    : G_R(G_R), d_delta(std::move(delta)), d_gamma(gamma), d_g(g) {}
+
+  const ComplexReductiveGroup& complexGroup () const
+  { return G_R.complexGroup(); }
+  RealReductiveGroup& realGroup () const { return G_R; }
+  const WeightInvolution& delta () const { return d_delta; }
+  const RatWeight& gamma() const { return d_gamma; }
+  const RatCoweight& g() const { return d_g; }
+}; // |extended_context|
 
 
 // type defintions
@@ -86,6 +111,21 @@ int generator_length(DescValue v);
 
 DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
 			BlockElt& first_link);
+
+class extended_param // detailed parameter data; as defined by Jeff & David
+{
+  const extended_context& ec;
+  TwistedInvolution tw; // implicitly defines $\theta$
+  Coweight l; // together with |tw| gives |GlobalTitsElement|, but also lifts
+  Weight lambda_rho; // lift of that value in a |StandardRepr|
+  Weight tau; // a solution to $(1-\theta)*\tau=(\delta-1)\lambda_\rho$
+  Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
+ public:
+  extended_param
+    (const extended_context& ec, KGBElt x, const Weight& lambda_rho);
+
+}; // |extended_param|
+
 
 typedef Polynomial<int> Pol;
 

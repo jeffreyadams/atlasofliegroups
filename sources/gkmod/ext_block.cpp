@@ -12,11 +12,14 @@
 #include <cassert>
 #include <vector>
 
+#include "complexredgp.h"
+#include "kgb.h"
 #include "blocks.h"
 #include "weyl.h"
 
 #include "bitmap.h"
 #include "polynomials.h"
+#include "matreduc.h"
 /*
   For an extended group, the block structure is more complicated than an
   ordinary block, because each link in fact represents a local part of the
@@ -130,6 +133,27 @@ BlockElt extended_block::element(BlockElt zz) const
   while (n<size() and z(n)<zz)
     ++n;
   return n;
+}
+
+extended_param::extended_param
+(const extended_context& ec, KGBElt x, const Weight& lambda_rho)
+  : ec(ec)
+  , tw(ec.realGroup().kgb().involution(x))
+  , l() // too complicated to set here
+  , lambda_rho(lambda_rho)
+  , tau(matreduc::find_solution(1-ec.complexGroup().matrix(tw),
+			       (ec.delta()-1)*lambda_rho))
+  , t(0) // later
+{ RealReductiveGroup& G_R = ec.realGroup();
+  ComplexReductiveGroup& G = G_R.complexGroup();
+  RatCoweight bgv=G_R.kgb().base_grading_vector();
+  Coweight t_bits (G_R.kgb().torus_part(x));
+  RatCoweight result ((bgv+t_bits)*G.matrix(tw)+t_bits-bgv);
+  (result/=2).normalize();
+  assert(result.denominator()==1);
+  l.assign(result.numerator().begin(),result.numerator().end());
+  t=matreduc::find_solution(1-G.matrix(tw).transposed(),
+			    (ec.delta()-1).right_prod(l));
 }
 
 
