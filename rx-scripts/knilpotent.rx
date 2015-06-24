@@ -1,13 +1,120 @@
 <Weylgroup.rx
 <coherent.rx
+<thetastable.rx
 
-set standardize(Param p)=
+{implementation of parts of Letter to Atlas II: nilpotent orbits}
+{convert a possibly non-standard parameter into a linear combination of standard ones} 
+set standardize(Param p)=ParamPol:
 if is_standard(p) then ParamPol:p else
 let i_root_system=root_datum(simple_imaginary_subsystem(x(p))) then
 lambda=lambda(p) then
 (lambda_dom,w)=make_dominant(i_root_system,lambda) then
 p_dom=parameter(x(p), act(inverse(w),lambda(p)), nu(p))
 in coherent_std(w,p_dom) fi
+
+set standardize(ParamPol P)=ParamPol:
+let rv=null_module(P) in for c@p in P do rv+:=c*standardize(p) od;rv
+
+{delete one term from a list, put these in basic.rx}
+set delete([int] v, int k)=[int]:v[:k]#v[(#v-k-1)~:]
+set delete([vec] v, int k)=[vec]:v[:k]#v[(#v-k-1)~:]
+set delete([ratvec] v, int k)=[ratvec]:v[:k]#v[(#v-k-1)~:]
+set delete([[ratvec]] v, int k)=[[ratvec]]:v[:k]#v[(#v-k-1)~:]
+
+{return index of alpha in list of roots}
+set find([vec] roots,vec alpha)=int:
+let done=false,rv=-1,i=0 in
+while done=false and i<#roots do
+ if roots[i]=alpha then done:=true;rv:=i else i:=i+1 fi od;rv
+
+{given x a theta_x-stable set of roots R, return subset of R
+consisting of each imaginary root alpha\in R, and one of each pair
+alpha,theta(alpha)
+if R isn't theta-stable this will fail}
+set extract_roots(KGBElt x, [vec] roots)=[vec]:
+let theta=involution(x) then
+rv=[] in 
+while #roots>0 do 
+ let alpha=roots[0] in 
+ rv#:=alpha;
+ roots:=delete(roots,0); 
+  if theta*alpha != alpha then roots:=delete(roots, find(roots,theta*alpha))  fi od;rv
+
+{roots of H in s[1]
+ s = -1 eigenspace of theta_x
+ s[1] = 1 H-eigenspace of H on s
+}
+set s_one_roots(KGBElt x, ratvec H)=
+let theta=involution(x) in 
+if theta*H != H then error("H is not theta-fixed") else
+let roots=[] then
+()=for alpha in posroots(real_form(x)) do
+ if H*alpha=1 or H*alpha=-1 then roots#:=alpha fi od in roots fi
+
+{restriction of s_one_roots to Lie(H)^{theta_x}
+ each pair (alpha,theta(alpha)) contributes 
+ a single root restriction(alpha)=restriction(theta(alpha)), 
+ corresponding to the single vector X_\alpha-\theta(X_\alpha) in s[1]
+}
+set s_one_roots_restricted(KGBElt x,ratvec H)=[ratvec]:
+let roots=s_one_roots(x,H) in
+roots:=extract_roots(x,roots);
+for alpha in roots do (1+involution(x))*alpha/2 od
+
+
+{generate all subsets of [ratvec], modified from misc.rx}
+set generate_all_subsets([ratvec] S) = [[ratvec]]:
+  let len=#S
+  , gen (int i) = [[ratvec]]: [] { recursive stub; genee subset of S[i:] }
+  in
+  ( gen :=
+    ((int i):
+      if i=len then [[]]
+      else let r=gen(i+1) in r # for x in r do S[i]#x od
+      fi)
+  )(0)
+
+{all subset of the restrictions of the roots of s[1] to Lie(H)^{\theta_x}
+ see Knilpotent paper, Corollary 7.3(6)}
+set subsets(KGBElt x,ratvec H)=[[ratvec]]:
+let roots=s_one_roots_restricted(x,H) in delete(generate_all_subsets(roots),0) {don't want empty subset}
+
+set sum([ratvec] list)=if #list=0 then null(0) else let v=ratvec:null(#list[0]) in for w in list do v+:=w od; v fi
+
+set rho_shifts(KGBElt x,ratvec H)=[(ratvec,int)]:
+let S=subsets(x,H) in [(ratvec:null(rank(real_form(x))),0)]#for v in S do (sum(v),#v) od
+
+{this implements the algorithm of Proposition 7.3(6)
+p_L must be a standard final limit parameter for L (i.e. an L\cap K-type)
+}
+set mu(KGBElt x, ratvec H, Param p_L)=
+if not (is_standard(p_L)) then error("p_L is not standard") 
+elif not (is_final(p_L)) then error("p_L is not final") 
+elif  (is_zero(p_L)) then error("p_L is zero") 
+else
+let G=real_form(x) then
+rv=null_module(G) then
+rhoshifts=rho_shifts(x,H) then
+P_L=K_type_formula(p_L) then
+()=prints("p_L: ", p_L);
+prints("K-type formula on L: ", P_L);
+prints("terms in sum:") then
+ ()=for c@p in P_L do
+  for (shift,j) in rhoshifts do   
+   let ()=prints("j=",j," shift=",shift);
+   prints("c=",split_as_int(c));
+   prints("parameter on L:", p) in 
+   let q=parameter(x(p),lambda(p)-shift,nu(p)) in 
+   let ()=prints("shifted param on L:", q) then
+   r=theta_induce_standard(q,G) in 
+   prints("parameter on G:", r);
+   rv+:=(-1)^j*c*standardize(r) od od in rv fi
+ 
+
+
+
+
+
 
 
 
