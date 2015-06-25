@@ -206,8 +206,9 @@ class Rep_table : public Rep_context
   SR_poly deformation(const StandardRepr& z);
 
  private:
-  void add_block(param_block& block, const BlockEltList& survivors);
+  void add_block(param_block& block, BlockEltList& survivors);
   // here |block| is non-|const| as the method generates KL polynomials in it
+  // and |survivors| is non-|const| because the method computes and exports it
 
 }; // |Rep_table|
 

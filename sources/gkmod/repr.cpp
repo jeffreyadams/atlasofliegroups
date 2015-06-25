@@ -687,17 +687,25 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
   else return SR_poly(z,repr_less());
 } // |Rep_context::expand_final|
 
-void Rep_table::add_block(param_block& block, const BlockEltList& survivors)
+void Rep_table::add_block(param_block& block, BlockEltList& survivors)
 {
+  survivors.reserve(block.size());
+  for (BlockElt x=0; x<block.size(); ++x)
+    if (block.survives(x))
+      survivors.push_back(x);
+
   unsigned long old_size = hash.size();
   BlockEltList new_survivors;
 
   // fill the |hash| table for new surviving parameters in this block
-  for (BlockElt i=0; i<survivors.size(); ++i)
-    if (hash.match(sr(block,survivors[i]))>=old_size)
-      new_survivors.push_back(survivors[i]);
+  for (BlockEltList::const_iterator
+	 it=survivors.begin(); it!=survivors.end(); ++it)
+    if (hash.match(sr(block,*it))>=old_size)
+      new_survivors.push_back(*it);
 
-  assert(new_survivors.size()>0); // at least top element should be new
+  assert(hash.size()==old_size+new_survivors.size()); // only new surv. added
+  if (new_survivors.empty())
+    return; // nothing left to do, but we have computed |survivors| for caller
 
   lengths.resize(hash.size());
   KL_list.resize(hash.size(),SR_poly(repr_less())); // new slots, init empty
@@ -738,6 +746,7 @@ void Rep_table::add_block(param_block& block, const BlockEltList& survivors)
       if (eval!=Split_integer(0))
       {
 	unsigned long z_index = old_size+(it-new_survivors.begin());
+	assert(hash.find(sr(block,z))==z_index);
 	SR_poly& dest = KL_list[z_index];
 	if (lengths[z_index]%2!=parity)
 	  eval.negate(); // incorporate sign for length difference
@@ -773,10 +782,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr z) // must be nonzero and final
   if (hash_index==hash.empty) // previously unknown parameter
   {
     non_integral_block block(*this,z);
-    BlockEltList survivors; survivors.reserve(block.size());
-    for (BlockElt x=0; x<block.size(); ++x)
-      if (block.survives(x))
-	survivors.push_back(x);
+    BlockEltList survivors;
     add_block(block,survivors);
 
     hash_index=hash.find(z);
@@ -792,19 +798,19 @@ SR_poly Rep_table::deformation_terms (param_block& block,BlockElt entry_elem)
   if (not block.survives(entry_elem) or block.length(entry_elem)==0)
     return result; // easy cases, null result
 
-  // count number of survivors of length strictly less than any occurring length
-  std::vector<unsigned int> n_surv_length_less(block.length(0),0);
-  BlockEltList survivors; survivors.reserve(block.size());
-  for (BlockElt x=0; x<block.size(); ++x)
-  {
-    if (block.length(x)==n_surv_length_less.size())
-      n_surv_length_less.push_back(survivors.size());
-    if (block.survives(x))
-      survivors.push_back(x);
-  }
+  BlockEltList survivors;
+  add_block(block,survivors); // computes survivors, and add anything new
 
-  if (hash.find(sr(block,entry_elem))==hash.empty) // previously unknown
-    add_block(block,survivors);
+  // count number of survivors of length strictly less than any occurring length
+  std::vector<unsigned int> n_surv_length_less
+    (block.length(survivors.back())+1); // slots for lengths |<=| largest length
+  { // compute |n_surv_length_less| values
+    unsigned int l=0;  n_surv_length_less[l]=0;
+    for (BlockEltList::const_iterator
+	   it=survivors.begin(); it!=survivors.end(); ++it)
+      while (l<block.length(*it))
+	n_surv_length_less[++l] = it-survivors.begin();
+  }
 
   assert(hash.find(sr(block,entry_elem))!=hash.empty); // should be known now
 
