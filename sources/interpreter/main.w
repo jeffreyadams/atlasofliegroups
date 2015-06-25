@@ -342,6 +342,8 @@ be able to perform the somewhat messy filename completion manoeuvres below.
 @< Local static data @>=
 static atlas::interpreter::shared_share input_path_pointer,prelude_log_pointer;
 #ifndef NOT_UNIX
+enum { cwd_size = 0x1000 };
+char cwd_buffer[cwd_size]; // since only |getcwd| is standard, fix a buffer
 const char* working_directory_name=nullptr;
 const char* first_path = nullptr;
 #endif
@@ -416,8 +418,10 @@ for later use.
 @< Record the first specified path, if it was a directory @>=
 #ifndef NOT_UNIX
 if (paths.size()>0)
-{ if (chdir(paths[0])==0) // see if we can \.{cd} there
-  { chdir(working_directory_name); // but if so switch back
+{ if (working_directory_name!=nullptr and chdir(paths[0])==0)
+   // see if we can \.{cd} there
+  { if (chdir(working_directory_name)!=0) // but if so switch back
+      return EXIT_FAILURE; // in the unlikely case that we cannot, just give up
     first_path=paths[0]; // record that this is a valid directory
   }
   else
@@ -721,10 +725,11 @@ extern "C" char** do_completion(const char* text, int start, int end)
       else
         break; // any other preceding characters make it not a file name
 
-    if (need_file and i==start)
+    if (working_directory_name!=nullptr and need_file and i==start)
        // the sub-string is preceded by one or more copies of \.<, \.>
-    { chdir(in and first_path!=nullptr? first_path : working_directory_name);
-         // make |readline| think this is the \.{CWD}
+    { static_cast<void> // pretend we inspect the result, in fact ignore failure
+      (chdir(in and first_path!=nullptr ? first_path : working_directory_name));
+         // temporary \.{cd}
       return nullptr; // and signal that file name completion should be used
     }
   }
@@ -736,14 +741,19 @@ extern "C" char** do_completion(const char* text, int start, int end)
 #endif
 
 @ In order to trick |readline| into doing file name completion for a
-non-current directory, we need to save the true current working directory name
-in order to temporarily change directory and afterwards change back.
+non-current directory, we apply a truly horrible trick: we save the true
+current working directory name in order to temporarily change directory and
+afterwards change back.
 
-At start up, we capture the current directory name.
+At start up, we capture the current directory name. Since the only
+sufficiently standard function |getcwd| to get the directory name will only
+work with a fixed size buffer, our program has to cope with the remote
+possibility that the call below sets |working_directory_name =nullptr| for
+lack of space in the buffer.
 
 @< Initialise the \.{readline} library interface @>=
 #ifndef NOT_UNIX
-working_directory_name = get_current_dir_name();
+working_directory_name = getcwd(cwd_buffer,cwd_size);
 #endif
 
 @ After the lexical scanner is reset (and therefore |readline| certainly has
@@ -753,7 +763,9 @@ notice the temporary change of working directory.
 
 @< Undo temporary trickery aimed at |readline| filename completion @>=
 #ifndef NOT_UNIX
-chdir(working_directory_name); // reset to true working directory
+if (working_directory_name!=nullptr)
+  static_cast<void> // pretend we inspect the result, in fact ignore failure
+      (chdir(working_directory_name)); // reset to true working directory
 #endif
 
 
@@ -778,9 +790,6 @@ terminating the program.
 #ifndef NREADLINE
   clear_history();
    // clean up (presumably disposes of the lines stored in history)
-#endif
-#ifndef NOT_UNIX
-  free((void*)working_directory_name);
 #endif
 
 @* Index.

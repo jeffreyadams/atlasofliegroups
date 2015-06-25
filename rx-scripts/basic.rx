@@ -83,7 +83,7 @@ set rat_as_int (rat r) = int:
 
 {				Strings					}
 
-set new_line = ascii(10) { including this in a string passes to a new line }
+set !new_line = ascii(10) { including this in a string passes to a new line }
 
 set + (string s,string t) = string: s # t { alias for concatenation }
 set * = (string,int->string): { repeat string; use recursive doubling }
@@ -273,6 +273,9 @@ set denom (ratvec a) = int: let (,d)=%a in d
 set * (int i,ratvec v) = ratvec: v*i
 set * (rat r,ratvec v) = ratvec: v*r
 
+{ concatenate ratvec values: use conversion to and from [rat] }
+set #(ratvec a,ratvec b) = ratvec: #([rat]:a,[rat]:b)
+
 { multiply rational matrix represented as list of columns by a rational vector
   the m*n matrix M is given as a list of n ratvec values of size m
   v is a ratvec of size n, the result is a ratvec of size m
@@ -307,13 +310,6 @@ set drop_upper (int k,ratvec v)= ratvec: v[:k~]
 set <= (ratvec v) = bool: <=numer(v)
 set <  (ratvec v) = bool: < numer(v)
 
-{concatenation of rational vectors}
-set #(ratvec v,ratvec w)=
-let (num_v,denom_v)=%v then
-(num_w,denom_w)=%w then
-temp=[int]:[] in
-for i:#num_v do temp#:=num_v[i]*denom_w od;
-for i:#num_w do temp#:=num_w[i]*denom_v od;ratvec:temp/(denom_v*denom_w) 
 
 
 {			    Split integers				}

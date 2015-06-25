@@ -546,9 +546,9 @@ encountered so that the user will hopefully able to understand.
 @< Report conflict of attempted overload for |id| with previous one in
   |slot[i]| @>=
 { std::ostringstream o;
-  o << "Cannot overload `" << main_hash_table->name_of(id) << "', " @|
+  o << "Cannot overload `" << main_hash_table->name_of(id) << "': " @|
        "previous type " << slot[i].type().arg_type
-    << " is too close to "@| << type.arg_type
+    << "\nis too close to "@| << type.arg_type
     << ",\nmaking overloading potentially ambiguous." @|
        " Broadness cannot disambiguate,\nas "
     << (cmp==0x4 ? "neither" :"either") @|
