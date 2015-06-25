@@ -13,9 +13,10 @@
 #include <vector>
 
 #include "complexredgp.h"
+#include "weyl.h"
 #include "kgb.h"
 #include "blocks.h"
-#include "weyl.h"
+#include "repr.h"
 
 #include "bitmap.h"
 #include "polynomials.h"
@@ -135,8 +136,38 @@ BlockElt extended_block::element(BlockElt zz) const
   return n;
 }
 
-extended_param::extended_param
-(const extended_context& ec, KGBElt x, const Weight& lambda_rho)
+context::context
+  (repr::Rep_context& rc, WeightInvolution delta, const RatWeight& gamma)
+    : d_rc(rc), d_delta(std::move(delta)), d_gamma(gamma)
+    , d_g(rc.kgb().base_grading_vector()-
+	  RatCoweight(rc.rootDatum().dual_twoRho(),2))
+{}
+
+
+param::param (const context& ec, const StandardRepr& sr)
+  : ec(ec)
+  , tw(ec.rc().kgb().involution(sr.x()))
+  , l() // too complicated to set here
+  , lambda_rho(ec.rc().lambda_rho(sr))
+  , tau(matreduc::find_solution(1-ec.complexGroup().matrix(tw),
+				(ec.delta()-1)*lambda_rho))
+  , t(0) // later
+{ RealReductiveGroup& G_R = rc().realGroup();
+  ComplexReductiveGroup& G = G_R.complexGroup();
+  if (sr.gamma()!=ec.gamma())
+    throw std::runtime_error("Infinitesimal character mismatch");
+
+  RatCoweight bgv=rc().kgb().base_grading_vector();
+  Coweight t_bits (rc().kgb().torus_part(sr.x()));
+  const WeightInvolution& theta = G.matrix(tw);
+  RatCoweight result ((bgv+t_bits)*theta+t_bits-bgv);
+  (result/=2).normalize();
+  assert(result.denominator()==1);
+  l.assign(result.numerator().begin(),result.numerator().end());
+  t=matreduc::find_solution(1-theta.transposed(),(ec.delta()-1).right_prod(l));
+}
+
+param::param (const context& ec, KGBElt x, const Weight& lambda_rho)
   : ec(ec)
   , tw(ec.realGroup().kgb().involution(x))
   , l() // too complicated to set here
