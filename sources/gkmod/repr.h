@@ -168,7 +168,7 @@ class Rep_context
     compare (const Coweight& lv) : level_vec(lv) {}
 
     bool operator()(const StandardRepr& r,const StandardRepr& s) const;
-  };
+  }; // |compare|
 
   compare repr_less() const;
 
@@ -188,8 +188,8 @@ class Rep_table : public Rep_context
   std::vector<StandardRepr> pool;
   HashTable<StandardRepr,unsigned long> hash;
   std::vector<unsigned short int> lengths;
-  std::vector<SR_poly> KL_list;
-  std::vector<SR_poly> def_formula;
+  std::vector<SR_poly> KL_list; // indexed by |hash| values for |StandardRepr|s
+  std::vector<SR_poly> def_formula; // idem
 
  public:
   Rep_table(RealReductiveGroup &G)

@@ -634,7 +634,7 @@ void KLContext::recursionRow(std::vector<KLPol>& klv,
 
   Precondtion: |klv| already contains, for all $x$ that are primitive w.r.t.
   |y| in increasing order, the terms in $P_{x,y}$ corresponding to
-  $c_s.c_{y1}$, whery |y1| is $s.y$ if |s| is a complex descent, and |y1| is
+  $c_s.c_{y'}$, whery |y'| is $s.y$ if |s| is a complex descent, and |y'| is
   an inverse Cayley transform of |y| if |s| is real type I.
   The mu-table and KL-table have been filled in for elements of length < l(y).
 
@@ -647,12 +647,18 @@ void KLContext::recursionRow(std::vector<KLPol>& klv,
   |y|, and for $c_{y}+c_{s.y}$ when |s| is real type II; however it plays no
   part in this function that only subtracts $\mu$-terms.
 
+  The element $y'$ is called |sy| in the code below.
+
   We construct a loop over |z| first, before traversing |klv| (the test for
-  $z<sy$ is absent, but $\mu(z,sy)\neq0$ implies $z<sy$ (by convention
-  mu(y,y)=0, in any case no coefficient for |sy| is stored in |d_mu[sy]|, and
-  moreover $z=sy$ would be rejected by the descent condition). The chosen loop
-  order allows fetching $\mu(z,y1)$ only once, and terminating the scan of
-  |klv| once its values |x| become too large to produce a non-zero $P_{x,z}$.
+  $z<sy$ is absent, but $\mu(z,sy)\neq0$ implies $z<sy$ (strict, as mu(sy,sy)
+  is 0; in any case no coefficient for |sy| is stored in |d_mu[sy]|, and
+  moreover $z=sy$ would be rejected by the descent condition). The choix have
+  the out loop over $z$ and the inner loop over $x$ (i.e., over |klv|) allows
+  fetching $\mu(z,sy)$ only once, and terminating each scan of |klv| once its
+  values |x| become too large to produce a non-zero $P_{x,z}$. (In fact we
+  stop once $l(x)=l(z)$, and separately consider the case $x=z$.) Either
+  direction of the loop on $z$ would work, but taking it decreasing is more
+  natural; we keep track of the index |zi| at which $x=z$ occurs, if it does.
 
   Elements of length at least $l(sy)=l(y)-1$ on the list |e| are always
   rejected, so the tail of |e| never reached.
@@ -668,26 +674,33 @@ void KLContext::muCorrection(std::vector<KLPol>& klv,
   const MuRow& mrow = d_mu[sy];
   size_t l_y = length(y);
 
+  size_t zi=e.size(); // should satisfy |e[zi]==z| whenever such |zi| exists
+
   size_t j; // define outside for error reporting
   try {
-    for (size_t i = 0; i<mrow.size(); ++i)
+    for (size_t i = mrow.size(); i-->0; ) // loop over |z| decreasing from |sy|
     {
       BlockElt z = mrow[i].first;
-      size_t l_z = length(z);
-
       DescentStatus::Value v = descentValue(s,z);
       if (not DescentStatus::isDescent(v))
 	continue;
+
+      size_t l_z = length(z);
+      while (zi>0 and e[zi-1]>=z)
+	--zi; // ensure |e[k]>=z| if and only if |k>=iz|
 
       MuCoeff mu = mrow[i].second; // mu!=MuCoeff(0)
 
       polynomials::Degree d = (l_y-l_z)/2; // power of q used in the loops below
 
+      assert( zi==e.size() or e[zi]>z or
+	      (klv[zi].degree()==d and klv[zi][d]==mu) );
+
       if (mu==MuCoeff(1)) // avoid useless multiplication by 1 if possible
 	for (j = 0; j < e.size(); ++j)
 	{
 	  BlockElt x = e[j];
-	  if (length(x) > l_z) break; // once reached, no more terms for |z|
+	  if (length(x) >= l_z) break; // once reached, $x=z$ is only case left
 
 	  KLPolRef pol = klPol(x,z);
 	  klv[j].safeSubtract(pol,d); // subtract q^d.P_{x,z} from klv[j]
@@ -696,11 +709,17 @@ void KLContext::muCorrection(std::vector<KLPol>& klv,
 	for (j = 0; j < e.size(); ++j)
 	{
 	  BlockElt x = e[j];
-	  if (length(x) > l_z) break; // once reached, no more terms for |z|
+	  if (length(x) >= l_z) break; // once reached, $x=z$ is only case left
 
 	  KLPolRef pol = klPol(x,z);
 	  klv[j].safeSubtract(pol,d,mu); // subtract q^d.mu.P_{x,z} from klv[j]
 	} // for {j)
+
+      if (zi<e.size() and e[zi]==z) // handle final term |x==z|
+      {
+	assert( klv[zi].degree()==d and klv[zi][d]==mu );
+	klv[zi].safeSubtract(KLPol(d,mu)); // subtract off the term $mu.q^d$
+      }
 
     } // for (i)
   }
@@ -718,7 +737,7 @@ void KLContext::muCorrection(std::vector<KLPol>& klv,
   least all the extremal values $x$ for $y$, and at most for all primitive
   values $x$ for $y$. So when $x=er[i]$ then $P_{x,y}=klv[i]$. In practice
   |er| will contain either all extremal elements (when called from
-  |directRecursion|) or all primitive elements (for |newRecursion|).
+  |recursionRow|) or all primitive elements (for |newRecursionRow|).
 
   This function writes out these data to |d_prim[y]| and |d_kl[y]|,
   transformed as follows: (1) rather than storing polynomials from |klv| (or
@@ -869,8 +888,8 @@ size_t KLContext::remove_zeros(const KLRow& klv,
   presence of $P_{s.x,y}$, because that term can be computed on the fly.
 
   The sum involving mu, produced by |muNewFormula|, has terms involving
-  $P_{x,z}\mu(z,y}$, so when doing a downward loop over |x| it pays to keep
-  track of the |x| with nonzero $\mu(x,y)$.
+  $P_{x,u}\mu(u,y}$, so when doing a downward loop over |x| it pays to keep
+  track of the previous |u| with nonzero $\mu(u,y)$.
 
   This code gets executed for |y| that are of minimal length, in which case
   it only contributes $P_{y,y}=1$; the |while| loop will be executed 0 times.

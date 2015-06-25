@@ -144,7 +144,7 @@ class extended_block
 
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
 
-  // Look up element by |x|, |y| coordinates
+  // Look up element by its index in |parent| (if that did define an element)
   BlockElt element(BlockElt z) const; // partial inverse of method |z|
 
   const DescValue descent_type(weyl::Generator s, BlockElt n) const

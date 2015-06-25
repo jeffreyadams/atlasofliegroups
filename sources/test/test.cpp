@@ -850,7 +850,6 @@ void test_f()
 // Block mode functions
 
 
-
 } // |namespace|
 
 
