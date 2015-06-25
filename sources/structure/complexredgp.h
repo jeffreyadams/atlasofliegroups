@@ -115,22 +115,24 @@ namespace complexredgp {
   In addition to describing the set of Cartan classes, this class provides
   access (via the |Cartan| array) to data for each individual one of them, and
   (via |Cartan_poset|) to the partial order relation between them. The
-  structure |C_info| of the elements of the |Cartan| array refelcts a design
-  decision that may seem somewhat questionable in retrospect: while most of
-  the information about Cartan classes is stored in the |Fiber| structure
-  defined in the \.{cartanclass} module, generating those is postponed until
-  after the construction of the |ComplexReductiveGroup| instance. This means
-  that real forms, which are identified as orbits in the adjoint fiber group,
-  are generated without access to the object describing that fiber group (a
-  subquotient of a vector space over the $2$-element field); instead the
-  action is preformed by an "adjoint" instance of the Tits group (of which
-  another instance will serve for generation of KGB elements). What is stored
-  in |Cartan| is minimal information derived from this generation: a single
-  torus part |rep| of an adjoint Tits group element for each real form over
-  which the Cartan class is defined. This design decision explains the
-  elaborate jumping through hoops that is necessary to populate the Cartans
-  with real forms and to identify the real forms at different Cartan classes
-  (all this becomes much more natural for the generation of KGB elements).
+  structure |C_info| contains the imporatant |CartanClass| field |Cc|, which
+  holds most of the information about the Cartan class (in two |Fiber|
+  structures, an ordinary and dual fiber, see the \.{cartanclass} module);
+  this information is generated for all Cartan classes upon construction of
+  the |ComplexReductiveGroup|. The remaining fields of |C_info| reflect an
+  old and now reverted design decision, in which only a pointer to a
+  |CartanClass| was held, which was intially null and "filled" on demand. This
+  meant that real forms, which are identified as orbits in the adjoint fiber
+  group, were generated without access to the |CartanClass| information. In
+  fact, although that information is now available right away, the real forms
+  are still genrated without using that information. Instead an "adjoint"
+  instance of the Tits group (of which another instance will serve similalrly
+  for generation of KGB elements) is used to find elements representing the
+  real form at each of its Cartan classes. The other fields of |C_info| store
+  minimal information derived from this generation: a single torus part |rep|
+  of an adjoint Tits group element for each real form over which the Cartan
+  class is defined, a dual counterpart |dual_rep|, and some complementary
+  information to help identify real forms across different Cartans.
 
   For the partial order relation, let |tau_i| be involutions acting on the
   complex torus |H| for various classes of Cartan subgroups; (H,tau_1) is
@@ -200,12 +202,8 @@ class ComplexReductiveGroup
   // list of the most split Cartan classes for each real form
   std::vector<CartanNbr> d_mostSplit;
 
+  // a general repository for involutions, organised by conjugacy class
   Cartan_orbits C_orb;
-
-// copy, assignement and swap are forbidden, and should not be implemented
-  ComplexReductiveGroup(const ComplexReductiveGroup&);
-  ComplexReductiveGroup& operator= (const ComplexReductiveGroup&);
-  void swap(ComplexReductiveGroup& G);
 
  public:
 // constructors and destructors
@@ -216,6 +214,12 @@ class ComplexReductiveGroup
 			const WeightInvolution&);
 
   ComplexReductiveGroup(const ComplexReductiveGroup&, tags::DualTag);
+
+// copy, assignment and swap are not needed, and therefore forbidden
+  ComplexReductiveGroup(const ComplexReductiveGroup&) = delete;
+  ComplexReductiveGroup& operator= (const ComplexReductiveGroup&) = delete;
+  void swap(ComplexReductiveGroup& G) = delete;
+
 
   ~ComplexReductiveGroup();
 
@@ -240,7 +244,7 @@ class ComplexReductiveGroup
   const TitsGroup& titsGroup() const { return d_titsGroup; }
   const TitsGroup& dualTitsGroup() const { return d_dualTitsGroup; }
 
-  // a general repository for conjugates of distinguished involution
+  // a general repository for involutions, organised by conjugacy class
   const Cartan_orbits& involution_table () const { return C_orb; }
 
   //  the fundamental fiber.
@@ -428,7 +432,7 @@ class ComplexReductiveGroup
 
 // Manipulators
 
-  Cartan_orbits& involution_table () { return C_orb; }
+  void generate_Cartan_orbit (CartanNbr i) { C_orb.add(*this,i); }
 
 // Auxiliary accessors
  private:

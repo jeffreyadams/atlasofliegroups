@@ -193,7 +193,11 @@ global_KGB::global_KGB(ComplexReductiveGroup& G_C, bool dual_twist)
   , Tg(G_C) // construct global Tits group as subobject
   , elt()
 {
-  G_C.involution_table().add(G_C,~ BitMap(G.numCartanClasses()));
+  // fill the entire involution table of |G_C|:
+  for (CartanNbr i=0; i<G_C.numCartanClasses(); ++i)
+    G_C.generate_Cartan_orbit(i);
+
+  // generate all involutions in generation order into our |inv_pool|
   generate_involutions(G_C.numInvolutions());
 
   size_t size = G_C.global_KGB_size();
@@ -240,10 +244,12 @@ global_KGB::global_KGB(ComplexReductiveGroup& G_C,
   generate_involutions(G_C.numInvolutions());
   assert(Tg.is_valid(x)); // unless this holds, we cannot hope to succeed
 
-  Cartan_orbits& i_tab = G_C.involution_table();
   const RootDatum& rd = G.rootDatum();
 
-  i_tab.add(G_C,~ BitMap(G.numCartanClasses())); // generate all
+  for (CartanNbr i=0; i<G_C.numCartanClasses(); ++i)
+    G_C.generate_Cartan_orbit(i);
+
+  const Cartan_orbits& i_tab = G_C.involution_table();
 
   GlobalTitsElement a=x; // start at an element that we certainly want
   weyl::Generator s;
@@ -488,8 +494,10 @@ KGB::KGB(RealReductiveGroup& GR,
   }
 
   // make sure |G| has information about involutions for |Cartan_classes|
-  Cartan_orbits& i_tab = G_C.involution_table();
-  i_tab.add(G_C,Cartan_classes);
+  const Cartan_orbits& i_tab = G_C.involution_table();
+
+  for (auto it=Cartan_classes.begin(); it(); ++it)
+    G_C.generate_Cartan_orbit(*it);
 
   tits::TE_Entry::Pooltype elt_pool; // of size |size()|
   HashTable<tits::TE_Entry,KGBElt> elt_hash(elt_pool);
@@ -499,7 +507,8 @@ KGB::KGB(RealReductiveGroup& GR,
   elt_pool.reserve(size);
   KGB_base::reserve(size);
 
-  if (Cartan_classes.isMember(0)) // full KGB construction
+  // check if we are being called to do a full or small KGB construction
+  if (Cartan_classes.isMember(0)) // start from fundamental Cartan: do full KGB
   {
     const Grading gr = square_class_grading(G,GR.square_class());
     d_base = new TitsCoset(G_C,gr);
@@ -508,8 +517,8 @@ KGB::KGB(RealReductiveGroup& GR,
     elt_hash.match(a); // plant the seed
     KGB_base::add_element(); // add additional info for initial element
   }
-  else // partial KGB construction, more work to get initial element(s)
-  {
+  else // partial KGB construction; needs more work to get initial element(s)
+  { // warning: might find different seeds than occur in full KGB constuction
     tits::EnrichedTitsGroup square_class_base(GR);
     d_base = new TitsCoset(square_class_base); // copy construct from base
     RealFormNbr rf=GR.realForm();
@@ -604,12 +613,13 @@ KGB::KGB(RealReductiveGroup& GR,
   { // first sort involutions
 
     std::vector<InvolutionNbr> invs;
-    invs.reserve(size); // first use needs less
+    invs.reserve(size); // for second use; first use below needs less than this
 
     for (BitMap::iterator it=Cartan_classes.begin(); it(); ++it)
       for (InvolutionNbr i=i_tab[*it].start; i<i_tab[*it].end(); ++i)
 	invs.push_back(i);
 
+    // sort involutions length: Weyl length; internal number
     std::stable_sort(invs.begin(),invs.end(),i_tab.less());
 
     inv_pool.reserve(invs.size());
@@ -617,10 +627,12 @@ KGB::KGB(RealReductiveGroup& GR,
 		   i_tab.as_map()); // fill |inv_pool| according to |invs|
     inv_hash.reconstruct(); // now |inv_hash| numbers in sorted order
 
-    invs.clear();
+    invs.clear(); // prepare to refill |invs| now as indexed by elements |x|
     for (KGBElt x=0; x<size; ++x) // list involution indices; cannot yet use
       invs.push_back(inv_hash.find(elt_pool[x].tw())); // |involution(x)| !
 
+    // record order |a1| of traversing the |x| by increasing |involution|, and
+    // write to |first_of_tau| the boundaries of involution classes of |x|
     a1 = permutations::standardization(invs,inv_pool.size(),&first_of_tau);
   }
 
@@ -630,7 +642,7 @@ KGB::KGB(RealReductiveGroup& GR,
   for (weyl::Generator s=0; s<rank; ++s)
   {
     std::vector<KGBfields>& ds = data[s];
-    a.pull_back(ds).swap(ds); // permute all the links for |s|
+    ds=a.pull_back(ds); // permute all the links for |s| (mode assign |vector|)
     for (KGBElt x=0; x<size; ++x) // now renumber internally through |a1|
     {
       KGBfields& dsx = ds[x];
@@ -640,7 +652,7 @@ KGB::KGB(RealReductiveGroup& GR,
     }
   }
 
-  a.pull_back(info).swap(info); // similarly permute |info|, no renumbering
+  info=a.pull_back(info); // similarly permute |info|, no renumbering
 
   left_torus_part.reserve(size);
   for (KGBElt x=0; x<size; ++x) // pull back through |a| while constructing

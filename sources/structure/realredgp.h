@@ -68,6 +68,8 @@ class RealReductiveGroup
 
 // accessors
   const ComplexReductiveGroup& complexGroup() const { return d_complexGroup; }
+  // following method forces |const| result, compare with |cbegin| methods
+  const ComplexReductiveGroup& ccomplexGroup() const { return d_complexGroup; }
   RealFormNbr realForm() const { return d_realForm; }
   const RootDatum& rootDatum() const;
   const TitsCoset& basedTitsGroup() const { return *d_Tg; }

@@ -109,7 +109,7 @@ ComplexReductiveGroup::C_info::C_info
   , rep(G.numRealForms()),        dual_rep(G.numDualRealForms())
   , below(i)
   , Cc(CartanClass(G.rootDatum(),G.dualRootDatum(),
-		   G.involutionMatrix(tw)))
+		   G.involutionMatrix(tw))) // generate fiber and dual fiber
   , real_labels(), dual_real_labels() // these start out emtpy
   {}
 
@@ -140,9 +140,10 @@ ComplexReductiveGroup::ComplexReductiveGroup
   , Cartan_poset() // poset is extended and populated below
   , d_mostSplit(numRealForms(),0) // values 0 may be increased below
 
-  , C_orb(d_rootDatum,distinguished(),d_titsGroup)// don't store ref to |tmp_d|!
+  // DON'T use |tmp_d| as involution below: would store a dangling reference!
+  , C_orb(d_rootDatum,distinguished(),d_titsGroup) // set up bare table
 {
-  construct();
+  construct(); // set up |Cartan| data, but only resizes |C_orb|
 }
 
 /*
@@ -171,9 +172,10 @@ ComplexReductiveGroup::ComplexReductiveGroup
   , Cartan_poset() // poset is extended and populated below
   , d_mostSplit(numRealForms(),0) // values 0 may be increased below
 
-  , C_orb(d_rootDatum,distinguished(),d_titsGroup)// don't store ref to |tmp_d|!
+  // DON'T use |tmp_d| as involution below: would store a dangling reference!
+  , C_orb(d_rootDatum,distinguished(),d_titsGroup) // set up bare table
 {
-  construct();
+  construct(); // set up |Cartan| data, but only resizes |C_orb|
 }
 
 void ComplexReductiveGroup::construct() // common part of two constructors
@@ -190,12 +192,12 @@ void ComplexReductiveGroup::construct() // common part of two constructors
 	Cartan[0].rep[i]=              // in |adj_Tg|, a torus part is a
 	  cartanclass::restrictGrading // |Grading| of simple roots, where
 	  (f.compactRoots(weak_real.classRep(i)), // compact ones need bit set
-	   d_rootDatum.simpleRootList()); // flipping base (noncompact) grading
+	   d_rootDatum.simpleRootList()); // to flip base (noncompact) grading
       }
     }
 
     const TitsCoset adj_Tg(*this);     // based adjoint Tits group
-    const TitsGroup& Tg=adj_Tg.titsGroup(); // same, forgetting base
+    const TitsGroup& Tg=adj_Tg.titsGroup(); // same, forgetting "based" stuff
 
     for (CartanNbr i=0; i<Cartan.size(); ++i) // |Cartan| grows as loop advances
     {
@@ -207,6 +209,8 @@ void ComplexReductiveGroup::construct() // common part of two constructors
       InvolutionData id =
 	InvolutionData::build(d_rootDatum,d_titsGroup,Cartan[i].tw);
       RootNbrSet pos_im = id.imaginary_roots() & d_rootDatum.posRootSet();
+
+      // try to generate new Cartans above current: do Cayleys by |pos_im|
       for (RootNbrSet::iterator it=pos_im.begin(); it(); ++it)
       {
 	RootNbr alpha=*it;
@@ -266,11 +270,11 @@ void ComplexReductiveGroup::construct() // common part of two constructors
 	    out_rep=Tg.left_torus_part(x).data(); // unpack, store torus part
 	    d_mostSplit[rf]=ii; // the last such assignment for |rf| sticks
 	  }
-	} // for (rf)
-      } // for (alpha)
+	} // |for (rf)|
+      } // |for (alpha)|; new Cartans above |Cartan[i]| are now found
     } // |for (i<Cartan.size())|
 
-    C_orb.set_size(Cartan.size());
+    C_orb.set_size(Cartan.size()); // dimension |C_orb|, but leave it at that
   } // task 1 (Cartan class generation)
 
   { // task 2: fill remainder of all |Cartan[i]|: |dual_real_forms|, |dual_rep|
@@ -369,7 +373,7 @@ void ComplexReductiveGroup::construct() // common part of two constructors
 
   } // task 2
 
-  { // task 3: fill the |CartanClass*| components of each Cartan[i]
+  { // task 3: set fields |real_labels|, |dual_real_labels| in each Cartan[i]
     for (CartanNbr cn=0; cn<Cartan.size(); ++cn)
     {
       map_real_forms(cn);      // used to be |correlateForms(cn);|
@@ -1177,7 +1181,7 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
    )
 {
   const GlobalTitsGroup gTg(G);
-  Cartan_orbits& i_tab = G.involution_table();
+  const Cartan_orbits& i_tab = G.involution_table();
   const Fiber& fund_f = G.fundamental();
   const RootDatum& rd = G.rootDatum();
 
@@ -1202,7 +1206,7 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
   RealFormNbr wrf; // the weak real form to return; find its value now:
   // must do this using the grading of simple-imaginary roots defined by |x|
   Grading gr; // grading of simple-imaginary roots
-  i_tab.add(G,0); // generate involutions in fundamental Cartan class
+  G.generate_Cartan_orbit(0); // generate involutions in class of fundamental
   InvolutionNbr inv = i_tab.nr(x.tw()); // without doubt |inv==0|
   for (unsigned i=0; i<i_tab.imaginary_rank(inv); ++i)
     gr.set(i,

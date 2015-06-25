@@ -24,12 +24,12 @@
 #include "subquotient.h" // containment of |SmallSubspace|
 
 /* The purpose of this module is to provide a central registry of (twisted)
-   invlulutions, in the form of a hash table to encode them by numbers, and
+   involutions, in the form of a hash table to encode them by numbers, and
    supplementary information in the form of a table indexed by those numbers.
    This information, which includes root classification and the (somewhat
    voluminous) involution matrix, is generated as soon a an involution is
    registered here, which happens for whole twisted conjugacy classes at a
-   time through a call to |Cartan_orbits::add| defined below. If user code
+   time, through a call to |Cartan_orbits::add| defined below. If user code
    should need additional information associated involutions, it might define
    an array indexed by |InvolutionNbr|; but currently this happens nowhere.
  */
@@ -255,7 +255,6 @@ public:
 
   void set_size(CartanNbr n_Cartans); // resize once number of Cartans is known
   void add(ComplexReductiveGroup& G, CartanNbr cn);
-  void add(ComplexReductiveGroup& G, const BitMap& Cartan_classes);
 
 // accessors
 
@@ -276,7 +275,8 @@ public:
     const Cartan_orbits& t;
   public:
   comparer(const Cartan_orbits* o) : t(*o) {}
-    bool operator() (InvolutionNbr i, InvolutionNbr j) const; // whether |i<j|
+    // whether involution |i| less than |j| by length; Weyl length; |i<j|
+    bool operator() (InvolutionNbr i, InvolutionNbr j) const;
   };
   comparer less() const { return comparer(this); }
 

@@ -82,7 +82,7 @@ class KGB_base
   std::vector<std::vector<KGBfields> > data; // first index: simple reflection
   std::vector<EltInfo> info; // per element information
 
-  //!\brief tables to map twisted involutions to their sequence number
+  // tables to map twisted involutions to their sequence number
   weyl::TI_Entry::Pooltype inv_pool;
   HashTable<weyl::TI_Entry,unsigned int> inv_hash;
 
