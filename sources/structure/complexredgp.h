@@ -57,6 +57,19 @@ namespace complexredgp {
 
   Grading square_class_grading(const ComplexReductiveGroup& G,
 			       cartanclass::square_class csc);
+
+
+  // apply involution action of |tw| on weight lattice to |v|
+  void twisted_act
+    (const ComplexReductiveGroup& G, const TwistedInvolution& tw,Weight& v);
+  void twisted_act
+    (const ComplexReductiveGroup& G, const TwistedInvolution& tw,RatWeight& v);
+
+  void twisted_act
+    (const ComplexReductiveGroup& G,Weight& v, const TwistedInvolution& tw);
+  void twisted_act
+    (const ComplexReductiveGroup& G,RatWeight& v, const TwistedInvolution& tw);
+
 }
 
 /******** type definitions ***************************************************/
@@ -409,9 +422,6 @@ class ComplexReductiveGroup
 
   InvolutionData involution_data(const TwistedInvolution& tw) const
   { return InvolutionData::build(rootSystem(),twistedWeylGroup(),tw); }
-
-  // apply involution action of |tw| on weight lattice to |v|
-  void twisted_act (const TwistedInvolution& tw,Weight& v) const;
 
 /* Make |sigma| canonical and return Weyl group |w| element that twisted
    conjugates the canonical representative back to |sigma|. Thus after the

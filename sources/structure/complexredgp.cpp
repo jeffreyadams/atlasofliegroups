@@ -923,15 +923,6 @@ ComplexReductiveGroup::block_size(RealFormNbr rf,
 
 }
 
-/*!
-\brief Modify |v| through through involution associated to |tw|
-*/
-void ComplexReductiveGroup::twisted_act
-  (const TwistedInvolution& tw,Weight& v) const
-{
-  distinguished().apply_to(v);
-  weylGroup().act(rootDatum(),tw.w(),v);
-}
 
 
 /*****************************************************************************
@@ -1382,6 +1373,32 @@ void to_minimum_representative(TorusElement& coch,
     }
   }
   coch += mod_space.fromBasis(SmallBitVector(RankFlags(min_i),d));
+}
+
+// Modify |v| through through involution associated to |tw|
+void twisted_act
+  (const ComplexReductiveGroup& G, const TwistedInvolution& tw,Weight& v)
+{
+  G.involution_table().matrix(tw).apply_to(v);
+}
+
+void twisted_act
+  (const ComplexReductiveGroup& G, const TwistedInvolution& tw,RatWeight& v)
+{
+  G.involution_table().matrix(tw).apply_to(v.numerator());
+}
+
+// Modify |v| through through involution associated to |tw|
+void twisted_act
+  (const ComplexReductiveGroup& G,Weight& v, const TwistedInvolution& tw)
+{
+  G.involution_table().matrix(tw).right_mult(v);
+}
+
+void twisted_act
+  (const ComplexReductiveGroup& G,RatWeight& v, const TwistedInvolution& tw)
+{
+  G.involution_table().matrix(tw).right_mult(v.numerator());
 }
 
 
