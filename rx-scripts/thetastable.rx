@@ -68,6 +68,10 @@ if lambda_q is weakly dominant set q=q(x,\lambda_q)
 apply derived functor to one dimensional lambda-rho(u) of L
 (lambda+rho(L))-rho(u)+rho(u)=lambda+rho_L
 REQUIRE: lamda-rho(L)\in X^*
+Aq(x,lambda,lambda_q) has infinitesimal character lambda+rho_L,
+thus lambdma has infinitesimal character lambda+rho_L for L, goes to a
+infinitesimal character lambda+rho_L for G; i.e.
+Aq takes infinitesimal character gamma_L to SAME infinitesimal character for G
 for example, equal rank, x on compact Cartan Aq(x,rho(G),rho(G))
 is a discrete series with infinitesimal character rho(G)
 if lambda_q isn't weakly dominant define Aq(x,lambda,lambda_q)=Aq(wx,w\lambda,w\lambda_q)
@@ -86,6 +90,7 @@ lambda_in_new=act(inverse(w),lambda_in) then
 (L,u)=theta_stable_q(x_new,lambda_q_new) then
 t_L=trivial(L) then
 pi_L=parameter(x(t_L),lambda(t_L)+lambda_in_new-rho_u(x_new,lambda_q_new),nu(t_L)) in 
+let ()=prints("in Aq, p_L=", pi_L) in 
 theta_induce_irreducible(pi_L,G) 
 
 set Aq(KGBElt x_in,ratvec lambda_in, ratvec lambda_q)=Param:
@@ -104,6 +109,17 @@ set Aq(KGBElt x,ratvec lambda_in)=Param:Aq(x,lambda_in,lambda_in)
 set Aq(RealForm G,ratvec lambda_in, ratvec lambda_q)=Param:Aq(KGB(G)[0],lambda_in,lambda_q)
 set Aq(RealForm G,ratvec lambda_in)=Param:Aq(G,lambda_in,lambda_in)
 
+{Good/Fair
+condition on roots of u
+theta_induce(pi_L,G)
+gamma_L -> gamma_G=gamma_L+rho_u
+good: <gamma_L-rho_L,alpha^vee> \ge 0
+fair: <gamma_L-rho_L+rho_u,alpha^vee> \ge 0
 
-
-
+Aq(x,lambda,lambda_q):
+gamma_L=lambda+rho_L
+gamma_L -> gamma_G=gamma_L
+Aq(x,lambda)=theta_induce(x,lambda-rho_u)
+good: <lambda-rho_u,alpha^vee>>0
+fair: <lambda,alpha^vee>>0
+}

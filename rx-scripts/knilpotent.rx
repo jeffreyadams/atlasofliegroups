@@ -3,17 +3,6 @@
 <thetastable.rx
 
 {implementation of parts of Letter to Atlas II: nilpotent orbits}
-{convert a possibly non-standard parameter into a linear combination of standard ones} 
-set standardize(Param p)=ParamPol:
-if is_standard(p) then ParamPol:p else
-let i_root_system=root_datum(simple_imaginary_subsystem(x(p))) then
-lambda=lambda(p) then
-(lambda_dom,w)=make_dominant(i_root_system,lambda) then
-p_dom=parameter(x(p), act(inverse(w),lambda(p)), nu(p))
-in coherent_std(w,p_dom) fi
-
-set standardize(ParamPol P)=ParamPol:
-let rv=null_module(P) in for c@p in P do rv+:=c*standardize(p) od;rv
 
 {delete one term from a list, put these in basic.rx}
 set delete([int] v, int k)=[int]:v[:k]#v[(#v-k-1)~:]
@@ -37,8 +26,10 @@ rv=[] in
 while #roots>0 do 
  let alpha=roots[0] in 
  rv#:=alpha;
- roots:=delete(roots,0); 
-  if theta*alpha != alpha then roots:=delete(roots, find(roots,theta*alpha))  fi od;rv
+ roots:=delete(roots,0);
+  if theta*alpha != alpha then
+   let  index=find(roots,theta*alpha) in if (index=-1) then error("set of roots is not theta-stable") else 
+      roots:=delete(roots, find(roots,theta*alpha))  fi fi od;rv 
 
 {roots of H in s[1]
  s = -1 eigenspace of theta_x
@@ -109,12 +100,27 @@ prints("terms in sum:") then
    r=theta_induce_standard(q,G) in 
    prints("parameter on G:", r);
    rv+:=(-1)^j*c*standardize(r) od od in rv fi
- 
+
+{need sorting by a function taking rational values} 
+set K_norm(Param p)=rat:
+if nu(p) != null(rank(real_form(p))) then prints("K_norm of parameter with nu != 0") fi;lambda(p)*lambda(p)
+
+set K_norm(Split s,Param p)=rat:K_norm(p)
+
+set sort([rat] v)=[rat]:let (num,denom)=%v in sort(num)/denom
+set inv_standardisation([rat] v)=let (num,)=%v in inv_standardisation(num)
+
+set sort_by ((Param->rat) f) = ([Param] v) [Param]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set sort_by (((Split,Param)->rat) f) = ([(Split,Param)] v) [(Split,Param)]:
+  for index in inv_standardisation(for (c,p) in v do f(c,p) od) do v[index] od
 
 
+{ Sort list of parameters by K_norm }
+set sort_by_K_norm = ([Param] -> [Param]): sort_by( K_norm@Param )
 
+set sort_by_K_norm = ([(Split,Param)] -> [(Split,Param)]): sort_by(K_norm@(Split,Param))
 
-
-
-
-
+set print_by_K_norm(ParamPol P)=let result=sort_by_K_norm(for c@p in P do (c,p) od) in 
+for (c,p) in result do prints(split_as_int(c),"*",p, " ", K_norm(p)) od
