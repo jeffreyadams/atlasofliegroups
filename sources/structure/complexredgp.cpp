@@ -109,7 +109,7 @@ ComplexReductiveGroup::C_info::C_info
   , rep(G.numRealForms()),        dual_rep(G.numDualRealForms())
   , below(i)
   , Cc(CartanClass(G.rootDatum(),G.dualRootDatum(),
-		   G.involutionMatrix(tw))) // generate fiber and dual fiber
+		   G.compute_matrix(tw))) // generate fiber and dual fiber
   , real_labels(), dual_real_labels() // these start out emtpy
   {}
 
@@ -707,10 +707,8 @@ InvolutionNbr ComplexReductiveGroup::numInvolutions
   return count;
 }
 
-
 WeightInvolution
-ComplexReductiveGroup::involutionMatrix(const TwistedInvolution& tw)
-  const
+ComplexReductiveGroup::compute_matrix(const TwistedInvolution& tw)  const
 {
   return rootDatum().matrix(weylGroup().word(tw.w())) * distinguished();
 }
