@@ -2,6 +2,19 @@
 <kl.rx { for character_formula }
 <groups.rx { for Sp }
 <group_operations.rx { for real_Levi }
+<coherent.rx {needed for standardize}
+
+{convert a possibly non-standard parameter into a linear combination of standard ones} 
+set standardize(Param p)=ParamPol:
+if is_standard(p) then ParamPol:p else
+let i_root_system=root_datum(simple_imaginary_subsystem(x(p))) then
+lambda=lambda(p) then
+(lambda_dom,w)=make_dominant(i_root_system,lambda) then
+p_dom=parameter(x(p), act(inverse(w),lambda(p)), nu(p))
+in coherent_std(w,p_dom) fi
+
+set standardize(ParamPol P)=ParamPol:
+let rv=null_module(P) in for c@p in P do rv+:=c*standardize(p) od;rv
 
 {induction from a general real parabolic}
 {L is a real Levi factor in G, having been constructed using real_Levi(x_G)}
@@ -42,9 +55,10 @@ parameter(x_G,lambda(p_L)+rho_r(x_G)+rhoS(x_G)-rho_r(x(p_L))-rhoS(x(p_L)), nu(p_
 p_L=(x_L,lambda,nu) -> p_G=(embed_KGB(x_L,G),lambda + appropriate rho-shift,nu)
 rho-shift is: rho_i(G)-rho_i(L)+(1+theta)(rho_S(G)-rho_S(L))
 Then Ind_L^G(I(p_L))=I(p_g)}
-set theta_induce_standard(Param p_L,RealForm G)=Param:
-let L=real_form(x(p_L)) in let x_G=embed_KGB(x(p_L),G) in
-parameter(x_G,lambda(p_L)+rho_i(x_G)+theta_rhoS(x_G)-rho_i(x(p_L))-theta_rhoS(x(p_L)), nu(p_L))
+set theta_induce_standard(Param p_L,RealForm G)=ParamPol:
+let L=real_form(x(p_L)) in let x_G=embed_KGB(x(p_L),G) then
+p_G=parameter(x_G,lambda(p_L)+rho_i(x_G)+theta_rhoS(x_G)-rho_i(x(p_L))-theta_rhoS(x(p_L)), nu(p_L)) in 
+prints("p_L: ", p_L);prints("p_G before standardization: ", p_G); standardize(p_G)
 
 {write Ind(J) as a sum of standards for G}
 {write J(p_L)=sum_i a_i* I_L(p_i)
@@ -79,5 +93,6 @@ set theta_induce_irreducible(Param p_L, RealForm G)=
 let cf=theta_induce_irreducible_as_sum_of_standards(p_L,G) in
 let rv=null_module(G) in
 for coeff@p in cf do rv+:=coeff*composition_series(p) od;rv
+
 
 
