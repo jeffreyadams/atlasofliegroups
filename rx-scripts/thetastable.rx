@@ -8,6 +8,8 @@ set test_roots_all_positive(RootDatum rd, [vec] roots)=bool:
 let rv=true,i=0 in
 while rv  and i<#roots do if not is_positive_root(rd,roots[i]) then rv:=false else i:=i+1 fi od;rv
 
+
+
 {
 returns the list of roots of the nilpotent algebra u(x,v) 
 a root is in u(x,v) iff <(1+theta_x)v,alpha^\vee>>0
@@ -109,17 +111,70 @@ set Aq(KGBElt x,ratvec lambda_in)=Param:Aq(x,lambda_in,lambda_in)
 set Aq(RealForm G,ratvec lambda_in, ratvec lambda_q)=Param:Aq(KGB(G)[0],lambda_in,lambda_q)
 set Aq(RealForm G,ratvec lambda_in)=Param:Aq(G,lambda_in,lambda_in)
 
+
+{----------------------Good/Fair conditions------------------}
+
 {Good/Fair
 condition on roots of u
 theta_induce(pi_L,G)
 gamma_L -> gamma_G=gamma_L+rho_u
-good: <gamma_L-rho_L,alpha^vee> \ge 0
-fair: <gamma_L-rho_L+rho_u,alpha^vee> \ge 0
+good: <gamma_L+rho_u,alpha^vee> > 0
+fair: <gamma_L-rho_L+rho_u,alpha^vee> > 0
 
 Aq(x,lambda,lambda_q):
 gamma_L=lambda+rho_L
-gamma_L -> gamma_G=gamma_L
+gamma_L -> gamma_G=gamma_L = lambda+rho_L
 Aq(x,lambda)=theta_induce(x,lambda-rho_u)
-good: <lambda-rho_u,alpha^vee>>0
-fair: <lambda,alpha^vee>>0
+good: <lambda+rho_L,alpha^vee> > 0
+fair: <lambda,alpha^vee> > 0
 }
+
+set is_good(Param p_L,RealForm G)=bool:
+let L=real_form(p_L) then
+rho_u=rho(G)-rho(L) in
+is_strictly_dominant(G,infinitesimal_character(p_L)+rho_u)
+
+set is_weakly_good(Param p_L,RealForm G)=bool:
+let L=real_form(p_L) then
+rho_u=rho(G)-rho(L) in
+is_dominant(G,infinitesimal_character(p_L)+rho_u)
+
+set is_fair(Param p_L,RealForm G)=bool:
+let L=real_form(p_L) then
+rho_u=rho(G)-rho(L) in
+is_strictly_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
+
+set is_weakly_fair(Param p_L,RealForm G)=bool:
+let L=real_form(p_L) then
+rho_u=rho(G)-rho(L) in
+is_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
+
+set is_good(KGBElt x,ratvec lambda_in,ratvec lambda_q)=bool:
+let L=L(x,lambda_q) in 
+is_strictly_dominant(real_form(x),lambda_in+rho(L))
+
+set is_weakly_good(KGBElt x,ratvec lambda_in,ratvec lambda_q)=bool:
+let L=L(x,lambda_q) in 
+is_dominant(real_form(x),lambda_in+rho(L))
+
+set is_fair(KGBElt x,ratvec lambda_in,ratvec lambda_q)=bool:
+is_strictly_dominant(real_form(x),lambda_in)
+
+set is_weakly_fair(KGBElt x,ratvec lambda_in,ratvec lambda_q)=bool:
+is_dominant(real_form(x),lambda_in)
+
+set goodness(Param p_L,RealForm G)=void:
+if is_good(p_L,G) then prints("Good") 
+elif is_weakly_good(p_L,G) then prints("Weakly good") 
+elif is_fair(p_L,G) then prints("Fair") 
+elif is_weakly_fair(p_L,G) then prints("Weakly fair")  else
+prints("None") fi
+
+set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q)=void:
+if is_good(x,lambda_in,lambda_q) then prints("Good") 
+elif is_weakly_good(x,lambda_in,lambda_q) then prints("Weakly good") 
+elif is_fair(x,lambda_in,lambda_q) then prints("Fair") 
+elif is_weakly_fair(x,lambda_in,lambda_q) then prints("Weakly fair")  else
+prints("None") fi
+
+

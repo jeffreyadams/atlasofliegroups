@@ -57,8 +57,13 @@ rho-shift is: rho_i(G)-rho_i(L)+(1+theta)(rho_S(G)-rho_S(L))
 Then Ind_L^G(I(p_L))=I(p_g)}
 set theta_induce_standard(Param p_L,RealForm G)=ParamPol:
 let L=real_form(x(p_L)) in let x_G=embed_KGB(x(p_L),G) then
-p_G=parameter(x_G,lambda(p_L)+rho_i(x_G)+theta_rhoS(x_G)-rho_i(x(p_L))-theta_rhoS(x(p_L)), nu(p_L)) in 
-prints("p_L: ", p_L);prints("p_G before standardization: ", p_G); standardize(p_G)
+p_G=parameter(x_G,lambda(p_L)+rho_i(x_G)+theta_rhoS(x_G)-rho_i(x(p_L))-theta_rhoS(x(p_L)), nu(p_L)) then
+p_G_standardized=standardize(p_G) then
+()=prints();prints("p_L: ", p_L) in 
+if (is_standard(p_G)) then 
+ prints("p_G is standard: ", p_G)
+else
+ prints("p_G before standardization: ", p_G);prints("p_G standardized :", p_G_standardized) fi ; standardize(p_G)
 
 {write Ind(J) as a sum of standards for G}
 {write J(p_L)=sum_i a_i* I_L(p_i)
