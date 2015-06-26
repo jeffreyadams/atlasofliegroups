@@ -20,6 +20,7 @@ representing orbits of K on G/B.
 
 #include "gradings.h"	// containment in |KGBEltInfo|
 #include "hashtable.h"	// containment in |KGB_base|
+#include "complexredgp.h" // access to involution table
 #include "weyl.h"       // |weyl::TI_Entry::Pooltype|
 #include "tits.h"       // containment |GlobalTitsGroup|
 #include "y_values.h"   // containment |TorusElement|
@@ -54,6 +55,8 @@ namespace kgb {
 class KGB_base
 {
  protected: // available during construction from derived classes
+  typedef unsigned int inv_index; // internal sequence number of involutions
+
   const ComplexReductiveGroup& G; // hold a reference for convenience
 
   // per KGB element information
@@ -82,9 +85,9 @@ class KGB_base
   std::vector<std::vector<KGBfields> > data; // first index: simple reflection
   std::vector<EltInfo> info; // per element information
 
-  // tables to map twisted involutions to their sequence number
-  weyl::TI_Entry::Pooltype inv_pool;
-  HashTable<weyl::TI_Entry,unsigned int> inv_hash;
+  // tables defining local (generation) ordering of involutions
+  std::vector<InvolutionNbr> inv_nrs; // |inv_index| means index into |inv_nrs|
+  std::vector<inv_index> inv_loc; // parital inverse, indexed |InvolutionNbr|
 
   //!\brief to help find range of elements with fixed twisted involution
   std::vector<KGBElt> first_of_tau; // size: |numInvolutions()+1|
@@ -96,19 +99,18 @@ class KGB_base
   : G(GC)
   , data(ss_rank)
   , info()
-  , inv_pool(), inv_hash(inv_pool)
+  , inv_nrs(), inv_loc()
   , first_of_tau()
   {}
 
 
  public:
   KGB_base (const KGB_base& org) // copy contructor
-    : G(org.G) // share
-    , data(org.data)
-    , info(org.info)
-    , inv_pool(org.inv_pool) // copy
-    , inv_hash(inv_pool) // reconstruct, using our own |pool|
-    , first_of_tau(org.first_of_tau)
+  : G(org.G) // share
+  , data(org.data)
+  , info(org.info)
+  , inv_nrs(org.inv_nrs), inv_loc(org.inv_loc)
+  , first_of_tau(org.first_of_tau)
   {}
 
   virtual ~KGB_base(){} // maybe overly cautious; no |KGB_base*| is intended
@@ -116,7 +118,7 @@ class KGB_base
 
   size_t rank() const { return data.size(); } // number of simple reflections
   size_t size() const { return info.size(); } // number of KGB elements
-  unsigned int nr_involutions() const { return inv_pool.size(); }
+  inv_index nr_involutions() const { return inv_nrs.size(); }
 
   const ComplexReductiveGroup& complexGroup() const { return G; }
   const RootDatum& rootDatum() const;
@@ -135,17 +137,21 @@ class KGB_base
   KGBElt cross(const WeylWord& ww, KGBElt x) const;
   KGBElt cross(KGBElt x, const WeylWord& ww) const;
 
-  unsigned int length(KGBElt x) const;
+  unsigned int length(KGBElt x) const
+  { return G.involution_table().length(inv_nr(x));}
 
   KGBElt Hermitian_dual(KGBElt x) const { return info[x].dual; }
 
-  const TwistedInvolution& nth_involution(unsigned int n) const
-  { return inv_pool[n]; } // useful mostly in traversing all our involutions
+  // a method useful mostly for traversing all our involutions
+  const TwistedInvolution& nth_involution(inv_index n) const
+  { return G.involution_table().involution(inv_nrs[n]); }
 
   const TwistedInvolution& involution(KGBElt x) const // after construction only
-  { return inv_pool[involution_index(x)]; } // the one associated to |x|
+  { return nth_involution(involution_index(x)); } // the one associated to |x|
 
-  const WeightInvolution & involution_matrix(KGBElt x) const;
+  const WeightInvolution & involution_matrix(KGBElt x) const
+  { return G.involution_table().matrix(inv_nr(x)); }
+
   InvolutionNbr inv_nr(KGBElt x) const; // external number (within inner class)
 
   const DescentSet& descent(KGBElt x) const { return info[x].desc; }
@@ -184,11 +190,14 @@ class KGB_base
   virtual std::ostream& print(std::ostream& strm, KGBElt x) const
   { return strm; }
 
- private: // this internal index of involution is only visible to methods above
+ private: // this internal index of involution is only usable by methods above
+
+  // find involution index |i| such that |inv_nrs[i]| is involution of |x|
   InvolutionNbr involution_index(KGBElt x) const
+  // look up index first element if |first_of_tau| greater than |x|; then -1
   { return std::upper_bound(first_of_tau.begin(),first_of_tau.end(),x)
       -first_of_tau.begin() -1;
-  }
+  } // returns |i| where |first_of_tau(i)<=x| and this fails for |i+1|;
 
  protected:
   void reserve (size_t n); // prepare for generating |n| elements
@@ -277,7 +286,7 @@ class KGB : public KGB_base
 
   enum State { BruhatConstructed, NumStates };
 
-  std::vector<unsigned int> Cartan; ///< records Cartan classes of elements
+  std::vector<inv_index> Cartan; ///< records Cartan classes of involutions
 
   std::vector<TorusPart> left_torus_part; // of size |size()|
   BitSet<NumStates> d_state;
