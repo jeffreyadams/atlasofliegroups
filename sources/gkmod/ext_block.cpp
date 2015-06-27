@@ -144,48 +144,97 @@ context::context
 {}
 
 
-param::param (const context& ec, const StandardRepr& sr)
-  : ec(ec)
-  , tw(ec.rc().kgb().involution(sr.x()))
-  , l() // too complicated to set here
-  , lambda_rho(ec.rc().lambda_rho(sr))
-  , tau(matreduc::find_solution(1-ec.complexGroup().matrix(tw),
-				(ec.delta()-1)*lambda_rho))
-  , t(0) // later
-{ RealReductiveGroup& G_R = rc().realGroup();
-  ComplexReductiveGroup& G = G_R.complexGroup();
-  if (sr.gamma()!=ec.gamma())
-    throw std::runtime_error("Infinitesimal character mismatch");
-
-  RatCoweight bgv=rc().kgb().base_grading_vector();
-  Coweight t_bits (rc().kgb().torus_part(sr.x()));
-  const WeightInvolution& theta = G.matrix(tw);
-  RatCoweight result ((bgv+t_bits)*theta+t_bits-bgv);
-  (result/=2).normalize();
+Coweight ell (const KGB& kgb, KGBElt x)
+{ const RatCoweight bgv=kgb.base_grading_vector();
+  const Coweight t_bits (kgb.torus_part(x)); // lift from bitvector to vector
+  RatCoweight result=bgv-t_bits;
+  twisted_act(kgb.complexGroup(),result,kgb.involution(x));
+  result += t_bits;
+  result -= bgv;
+  result /= 2;
+  result.normalize();
   assert(result.denominator()==1);
-  l.assign(result.numerator().begin(),result.numerator().end());
-  t=matreduc::find_solution(1-theta.transposed(),(ec.delta()-1).right_prod(l));
+  return Coweight(result.numerator().begin(),result.numerator().end());
 }
+
+param::param (const context& ec, const StandardRepr& sr)
+  : ctxt(ec)
+  , tw(ec.rc().kgb().involution(sr.x()))
+  , l(ell(ec.realGroup().kgb(),sr.x()))
+  , lambda_rho(ec.rc().lambda_rho(sr))
+  , tau(matreduc::find_solution(1-theta(),(delta()-1)*lambda_rho))
+  , t(matreduc::find_solution(1-theta().transposed(),(delta()-1).right_prod(l)))
+{}
 
 param::param (const context& ec, KGBElt x, const Weight& lambda_rho)
-  : ec(ec)
+  : ctxt(ec)
   , tw(ec.realGroup().kgb().involution(x))
-  , l() // too complicated to set here
+  , l(ell(ec.realGroup().kgb(),x))
   , lambda_rho(lambda_rho)
-  , tau(matreduc::find_solution(1-ec.complexGroup().matrix(tw),
-			       (ec.delta()-1)*lambda_rho))
-  , t(0) // later
-{ RealReductiveGroup& G_R = ec.realGroup();
-  ComplexReductiveGroup& G = G_R.complexGroup();
-  RatCoweight bgv=G_R.kgb().base_grading_vector();
-  Coweight t_bits (G_R.kgb().torus_part(x));
-  RatCoweight result ((bgv+t_bits)*G.matrix(tw)+t_bits-bgv);
-  (result/=2).normalize();
-  assert(result.denominator()==1);
-  l.assign(result.numerator().begin(),result.numerator().end());
-  t=matreduc::find_solution(1-G.matrix(tw).transposed(),
-			    (ec.delta()-1).right_prod(l));
+  , tau(matreduc::find_solution(1-theta(),(delta()-1)*lambda_rho))
+  , t(matreduc::find_solution(1-theta().transposed(),(delta()-1).right_prod(l)))
+{}
+
+bool in_L_image(Weight beta,WeightInvolution&& A)
+{ int_Matrix L,R;
+  auto inv_fact = matreduc::diagonalise(A,L,R);
+  int_Vector image = L*beta;
+
+  unsigned i;
+  for (i=0; i<inv_fact.size(); ++i)
+    if (image[i]%inv_fact[i]!=0)
+      return false;
+  for (/* continue with |i| */ ; i<image.size(); ++i)
+    if (image[i]!=0)
+      return false;
+  return true;
 }
+
+bool in_R_image(WeightInvolution&& A,Coweight b)
+{ int_Matrix L,R;
+  auto inv_fact = matreduc::diagonalise(A,L,R);
+  int_Vector image = R.right_prod(b);
+
+  unsigned i;
+  for (i=0; i<inv_fact.size(); ++i)
+    if (image[i]%inv_fact[i]!=0)
+      return false;
+  for (/* continue with |i| */ ; i<image.size(); ++i)
+    if (image[i]!=0)
+      return false;
+  return true;
+}
+
+// whether |E| and |F| lie over equivalent |StandrdRepr| values
+bool same_standard_reps (const param& E, const param& F)
+{
+  if (&E.ctxt!=&F.ctxt)
+  { if (&E.ctxt.complexGroup()!=&F.ctxt.complexGroup())
+      throw std::runtime_error
+	("Comparing extended parameters from different inner classes");
+    if (E.delta()!=F.delta()
+	or E.ctxt.g()!=F.ctxt.g()
+	or E.ctxt.gamma()!=F.ctxt.gamma())
+      return false;
+  } // otherwise the might still be a match, so fall through
+  return E.theta()==F.theta()
+    and in_R_image(E.theta()+1,E.l-F.l)
+    and in_L_image(E.lambda_rho-F.lambda_rho,E.theta()+1);
+}
+// this implements (comparison using) the formula from Propodition 16 in
+// "Parameters for twisted repressentations" (with $\delta-1=-(1-\delta)$
+bool signs_differ (const param& E, const param& F)
+{
+  const WeightInvolution& delta = E.delta();
+  Weight kappa1=E.tau, kappa2=F.tau;
+  kappa1 -= delta*kappa1;
+  kappa2 -= delta*kappa2;
+  int i_exp = E.l.dot(kappa1) - F.l.dot(kappa2);
+  assert (i_exp%2==0);
+  int n1_exp = (F.l-E.l).dot(E.tau) + F.t.dot(F.lambda_rho-E.lambda_rho);
+  return (i_exp/2+n1_exp)%2!=0;
+}
+
 
 
 bool extended_block::toggle_edge(BlockElt x,BlockElt y, bool verbose)

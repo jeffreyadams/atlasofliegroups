@@ -21,6 +21,7 @@
 #include <set>
 
 #include "blocks.h" // for the structure |ext_gen|
+#include "complexredgp.h"
 #include "realredgp.h"
 #include "repr.h" // allows using |Rep_context| methods in this file
 
@@ -109,23 +110,31 @@ class context // holds values that remain fixed across extended block
   const RatCoweight& g() const { return d_g; }
 }; // |context|
 
-class param // detailed parameter data; as defined by Jeff & David
+// detailed parameter data; as defined by Jeff & David
+struct param // prefer |struct| with |const| members for ease of access
 {
-  const context& ec;
-  TwistedInvolution tw; // implicitly defines $\theta$
-  Coweight l; // together with |tw| gives |GlobalTitsElement|, but also lifts
-  Weight lambda_rho; // lift of that value in a |StandardRepr|
-  Weight tau; // a solution to $(1-\theta)*\tau=(\delta-1)\lambda_\rho$
-  Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
- public:
-  param (const context& ec, const StandardRepr& sr);
-  param
-    (const context& ec, KGBElt x, const Weight& lambda_rho);
+  const context& ctxt;
+  const TwistedInvolution tw; // implicitly defines $\theta$
 
-  const repr::Rep_context rc() const { return ec.rc(); }
+  const Coweight l; // with |tw| gives a |GlobalTitsElement|; lifts its |t|
+  const Weight lambda_rho; // lift of that value in a |StandardRepr|
+  const Weight tau; // a solution to $(1-\theta)*\tau=(\delta-1)\lambda_\rho$
+  const Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
+
+  param (const context& ec, const StandardRepr& sr);
+  param (const context& ec, KGBElt x, const Weight& lambda_rho);
+
+  const repr::Rep_context rc() const { return ctxt.rc(); }
+  const WeightInvolution& delta () const { return ctxt.delta(); }
+  const WeightInvolution& theta () const
+    { return ctxt.complexGroup().matrix(tw); }
 
 }; // |param|
 
+// whether |E| and |F| lie over equivalent |StandrdRepr| values
+bool same_standard_reps (const param& E, const param& F);
+// whether |E| and |F| give opposite sign, assuming |same_standard_reps(E,F)|
+bool signs_differ (const param& E, const param& F);
 
 typedef Polynomial<int> Pol;
 

@@ -101,7 +101,7 @@ begin let ic = inner_class(x), theta = involution(x) in
 ; assert(is_integer(square(x)-g)
         ,"x is not compatible with infinitesimal cocharacter g")
 ; assert(is_integer(lambda-rho(ic)),"lambda is not in the correct X^*-coset")
-{ let l = ratvec_as_vec( g-torus_factor(x)*(1+theta)*/2-rho_check(real_form(x)) )
+{ l = ratvec_as_vec( g-torus_factor(x)*(1+theta)*/2-rho_check(real_form(x)) )
   but this is simplified because torus_factor(x) is ^theta fixed
 }
 ; let l = (g-torus_factor(x)-rho_check(ic))\1 { convert to vec }
@@ -166,7 +166,8 @@ set nu (extended_param e) = ratvec: nu(gamma(e),x(e))
 { sign(E,F)=\pm 1 (or 0): nonzero tells whether the parameters for G are
   equivalent up to sign, and gives that sign.
   If E,F lie over the same ordinary parameter then sign(E,F)=\pm 1.
-  The formula is the last line of Proposition 6.12 of PFTR.
+  The formula is the last line of Proposition 6.10 (Proposition 16 in the
+  final version) of "Parameters for twisted repressentations".
   The i term of this formula is not symmetric in G and G^\vee, hence
   we also have dual_sign(E,F)
 }
