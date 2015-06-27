@@ -179,7 +179,7 @@ begin let OK=false { pessimist: avoids having to set this in many branches } in
   elif !=(gamma-lambda-rho(ic))*(1-omega)
   then prints("(1-^omega)gamma\ne (1-^omega)(lambda+rho)")
   elif -l*(1-delta)!=t*(1+theta) then prints("(^delta-1)l\ne (1+^theta)t")
-  elif -(1-delta)*lambda!=(1-theta)*tau
+  elif -(1-delta)*lambda!=(1-theta)*tau { recall that -theta=^omega }
   then prints("(delta-1)lambda\ne (1+^omega)tau")
   else OK:=true
   fi

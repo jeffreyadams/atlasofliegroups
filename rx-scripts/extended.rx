@@ -250,12 +250,12 @@ set dual_sign (
 }
 set sign (extended_param E,(extended_param F1,extended_param F2)) = int:
   sign(E,F1)+sign(E,F2)
-set sign ((extended_param E1,extended_param E2),extended_param F)=int:
+set sign ((extended_param E1,extended_param E2),extended_param F) = int:
   sign(E1,F)+sign(E2,F)
 
 { default(F)=\pm F is the extended parameter constructed by atlas }
-set default (extended_param F) = extended_param:
-  E(delta(F),x(F),gamma(F),g(F),lambda(F)+rho(ic(F)))
+set default (extended_param(ic,delta,gamma,lambda,,g,,,,):F) = extended_param:
+  E(delta,x(F){ <- extended_misc, uses (ic,theta,g,l) },gamma,g,lambda+rho(ic))
 
 set      sign (extended_param E) =int:      sign(E,default(E))
 set dual_sign (extended_param E) =int: dual_sign(E,default(E))

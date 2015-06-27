@@ -131,6 +131,8 @@ struct param // prefer |struct| with |const| members for ease of access
 
 }; // |param|
 
+KGBElt x(const param& E); // reconstruct |E|
+
 // whether |E| and |F| lie over equivalent |StandrdRepr| values
 bool same_standard_reps (const param& E, const param& F);
 // whether |E| and |F| give opposite sign, assuming |same_standard_reps(E,F)|

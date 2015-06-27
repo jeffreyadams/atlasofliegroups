@@ -143,14 +143,15 @@ context::context
 	  RatCoweight(rc.rootDatum().dual_twoRho(),2))
 {}
 
-
+// compute |bgv-(bgv+t_bits)*(1+theta)/2 == (bgv-t_bits-(bgv+t_bits)*theta)/2|
 Coweight ell (const KGB& kgb, KGBElt x)
 { const RatCoweight bgv=kgb.base_grading_vector();
   const Coweight t_bits (kgb.torus_part(x)); // lift from bitvector to vector
-  RatCoweight result=bgv-t_bits;
+  RatCoweight result=bgv+t_bits;
   twisted_act(kgb.complexGroup(),result,kgb.involution(x));
-  result += t_bits;
-  result -= bgv;
+  result.numerator().negate();
+  result += bgv;
+  result -= t_bits;
   result /= 2;
   result.normalize();
   assert(result.denominator()==1);
@@ -221,8 +222,16 @@ bool same_standard_reps (const param& E, const param& F)
     and in_R_image(E.theta()+1,E.l-F.l)
     and in_L_image(E.lambda_rho-F.lambda_rho,E.theta()+1);
 }
+
+KGBElt x(const param& E)
+{ TorusPart tp(E.l);
+  TitsElt a(E.ctxt.complexGroup().titsGroup(),tp,E.tw);
+  return E.rc().kgb().lookup(a);
+}
+
 // this implements (comparison using) the formula from Propodition 16 in
 // "Parameters for twisted repressentations" (with $\delta-1=-(1-\delta)$
+// the relation is symmetric in |E|, |F|, although not obviously so
 bool signs_differ (const param& E, const param& F)
 {
   const WeightInvolution& delta = E.delta();
@@ -235,7 +244,15 @@ bool signs_differ (const param& E, const param& F)
   return (i_exp/2+n1_exp)%2!=0;
 }
 
+bool sign_differs_with_one_of (const param& E, const param& F1, const param& F2)
+{ return
+    same_standard_reps(E,F1) ? signs_differ(E,F1)
+    : same_standard_reps(E,F2) ? signs_differ(E,F2)
+    : throw std::runtime_error("Neither candidate has same standard repn");
+}
 
+bool is_default (const param& E)
+{ return not signs_differ(E,param(E.ctxt,x(E),E.lambda_rho)); }
 
 bool extended_block::toggle_edge(BlockElt x,BlockElt y, bool verbose)
 {
