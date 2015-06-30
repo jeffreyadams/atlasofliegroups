@@ -14,12 +14,13 @@
 #include "error.h"
 
 #include "arithmetic.h"
-#include "tits.h"
+#include "matreduc.h"
 
+#include "tits.h"
 #include "kgb.h"	// various methods
 #include "blocks.h"	// |dual_involution|
 #include "standardrepk.h"// |KhatContext| methods
-#include "subsystem.h"
+#include "subsystem.h" // |SubSystem| methods
 
 #include "kl.h"
 
@@ -55,6 +56,14 @@ StandardRepr Rep_context::sr_gamma
   (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const
 {
   const InvolutionTable& i_tab = complexGroup().involution_table();
+#ifndef NDEBUG // check that constructor below builds a valid StandardRepr
+  int_Matrix theta1 = kgb().involution_matrix(x)+1;
+  RatWeight g_r = gamma - RatWeight(rootDatum().twoRho(),2); // $\gamma-\rho$
+  Weight image (g_r.numerator().begin(),g_r.numerator().end()); // convert
+  // |gamma| is compatible with |x| if neither of next two lines throws
+  image = theta1*image/int(g_r.denominator()); // division must be exact
+  matreduc::find_solution(theta1,image); // solution must exist
+#endif
   return StandardRepr(x, i_tab.pack(kgb().inv_nr(x),lambda_rho), gamma);
 }
 
