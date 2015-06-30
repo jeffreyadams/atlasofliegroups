@@ -461,35 +461,28 @@ StandardRepr Rep_context::cross(const Weight& alpha, StandardRepr z) const
   InvolutionNbr i_x = kgb().inv_nr(x);
   const InvolutionTable& i_tab = complexGroup().involution_table();
 
-  const SubSystem& subsys = SubSystem::integral(rd,z.infinitesimal_char);
-  WeylWord w=make_dominant(z,subsys);
-  const RatWeight& infin_char=z.infinitesimal_char;
-
+  const RatWeight& gamma=z.infinitesimal_char; // integrally dominant
   RootNbr rt = rd.root_index(alpha);
   if (rt==rd.numRoots())
     throw std::runtime_error("Not a root");
-  make_positive(rd,rt);
-  RootNbrSet posroots_sub = subsys.positive_roots();
-  if (not posroots_sub.isMember(rt))
+  // the following test ensures that our final |assert| below won't fail
+  if (rd.coroot(rt).dot(gamma.numerator())%gamma.denominator()!=0)
     throw std::runtime_error("Not an integral root");
-  rt=subsys.to_parent(subsys.permuted_root(subsys.from_parent(rt),w));
 
   RatWeight lambda_shifted =
-    infin_char - lambda(z) + RatWeight(rd.twoRho(i_tab.real_roots(i_x)),2);
-  Ratvec_Numer_t& numer = lambda_shifted.numerator();
+    gamma - lambda(z) + RatWeight(rd.twoRho(i_tab.real_roots(i_x)),2);
+  Ratvec_Numer_t& lambda_numer = lambda_shifted.numerator();
 
-  rd.reflect(rt,numer);
+  rd.reflect(rt,lambda_numer);
   x = kgb().cross(rd.reflectionWord(rt),x);
   i_x = kgb().inv_nr(x);
 
+  // the addition of $\rho$ below is because |sr_gamma| takes $\lambda-\rho$
   lambda_shifted += RatWeight(rd.twoRho()-rd.twoRho(i_tab.real_roots(i_x)),2);
-  lambda_shifted =  (infin_char - lambda_shifted).normalize();
+  lambda_shifted =  (gamma - lambda_shifted).normalize();
   assert(lambda_shifted.denominator()==1);
 
-  StandardRepr result =
-    sr_gamma(x,Weight(numer.begin(),numer.end()),infin_char);
-  W_act(w,result,subsys);
-  return result;
+  return sr_gamma(x,Weight(lambda_numer.begin(),lambda_numer.end()),gamma);
 }
 
 StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
