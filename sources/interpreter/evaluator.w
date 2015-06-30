@@ -1527,7 +1527,7 @@ catch (error_base& e)
 {@; extend_message(e,function.get(),fun.get(),arg_string);
   throw;
 }
-catch (const std::exception e)
+catch (const std::exception& e)
 { runtime_error new_error(e.what());
   extend_message(new_error,function.get(),fun.get(),arg_string);
   throw new_error;
@@ -1592,7 +1592,7 @@ catch (error_base& e)
 {@; extend_message(e,this,nullptr,arg_string);
   throw;
 }
-catch (const std::exception e)
+catch (const std::exception& e)
 { runtime_error new_error(e.what());
   extend_message(new_error,this,nullptr,arg_string);
   throw new_error;
@@ -2364,7 +2364,7 @@ void overloaded_closure_call::evaluate(level l) const
   {@; extend_message(e,this,fun.get(),arg_string);
     throw;
   }
-  catch (const std::exception e)
+  catch (const std::exception& e)
   { runtime_error new_error(e.what());
     extend_message(new_error,this,fun.get(),arg_string);
     throw new_error;
