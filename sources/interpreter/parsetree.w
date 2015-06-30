@@ -2302,7 +2302,13 @@ struct assignment_node
   assignment_node(id_type lhs, expr&& rhs)
 @/: lhs(lhs)
   , rhs(std::move(rhs))@+{}
-  // backward compatibility for gcc 4.6
+#ifdef incompletecpp11
+  assignment_node(const assignment_node& x) = @[delete@];
+  assignment_node(assignment_node&& x)
+@/: lhs(x.lhs)
+  , rhs(std::move(x.rhs))
+  @+{}
+#endif
 };
 
 @ The tag used for assignment statements is |ass_stat|.
@@ -2371,12 +2377,20 @@ struct comp_assignment_node
 { id_type aggr; expr index; expr rhs; bool reversed;
 @)
   comp_assignment_node(id_type aggr, expr&& index, expr&& rhs, bool reversed)
-@/: aggr(std::move(aggr))
+@/: aggr(aggr)
   , index(std::move(index))
   , rhs(std::move(rhs))
   , reversed(reversed)
   @+{}
-  // backward compatibility for gcc 4.6
+#ifdef incompletecpp11
+  comp_assignment_node(const comp_assignment_node& x) = @[delete@];
+  comp_assignment_node(comp_assignment_node&& x)
+@/: aggr(x.aggr)
+  , index(std::move(x.index))
+  , rhs(std::move(x.rhs))
+  , reversed(x.reversed)
+  @+{}
+#endif
 };
 
 @ The tag used for assignment statements is |comp_ass_stat|.
