@@ -9,8 +9,6 @@
 { if p is a final tempered limit then x(p) has no C- roots, these x's play a
   special role. Test this. Uses the circumstance that C- means status(i,x)=0.
 }
-set no_Cminus_roots (KGBElt x) = bool:
-  none(semisimple_rank(real_form(x)), (int i)bool: =status(i,x))
 
 { use complex cross actions to move to a fiber with no C- roots
   inductive step is move_towards_no_Cminus. Note: =status(i,x) means C-

@@ -1,14 +1,6 @@
-<LKT {for no_Cminus_roots}
-<induction_plus.rx
+<induction.rx
 
 {routines for constructing theta-stable Levis and parabolics}
-
-{utility: need to know if all roots in a list are positive}
-set test_roots_all_positive(RootDatum rd, [vec] roots)=bool:
-let rv=true,i=0 in
-while rv  and i<#roots do if not is_positive_root(rd,roots[i]) then rv:=false else i:=i+1 fi od;rv
-
-
 
 {
 returns the list of roots of the nilpotent algebra u(x,v) 
@@ -30,7 +22,7 @@ for i:nr_of_posroots(G)  do
  alpha=posroots(G)[i] then
  c=w*alpha_check in 
  if c!=0 then u_roots#:=sign(c)*alpha fi od;\
- if not test_roots_all_positive(G,u_roots) then prints("warning: u is not contained in n") fi; u_roots
+ if not all_positive_roots(G,u_roots) then prints("warning: u is not contained in n") fi; u_roots
 
 {similar to u(x,v), except now it returns the RealForm L(x,v)}
 set L(KGBElt x, ratvec v)=RealForm:
