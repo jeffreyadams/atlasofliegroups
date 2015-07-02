@@ -49,9 +49,9 @@ for (coeff,p) in %P do N:=N+coeff*coherent_std_reg(k,p) od;N
 
 {DANGEROUS BEND
 all version of coherent continuation action are anti-homomorphisms
-(u*w).p=u^{-1}.(w^{-1}.p)
+(u*w).p=w*(u*p)
 for example
-coherent_std_reg(w*u,p)=coherent_std_reg(inverse(u),coherent_std_reg(inverse(w),p))
+coherent_std_reg(w*u,p)=coherent_std_reg(u,coherent_std_reg(w,p))
 this ultimately comes down to the inverse on pages 460-461 of Vogan's big green book
 }
 
