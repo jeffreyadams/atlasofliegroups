@@ -1,4 +1,5 @@
 <induction.rx
+<finite_dimensional.rx {for is_finite_dimensional}
 
 {routines for constructing theta-stable Levis and parabolics}
 
@@ -111,6 +112,7 @@ condition on roots of u
 theta_induce(pi_L,G)
 gamma_L -> gamma_G=gamma_L+rho_u
 good: <gamma_L+rho_u,alpha^vee> > 0
+weakly good: <gamma_L+rho_u,alpha^vee> \ge 0
 fair: <gamma_L-rho_L+rho_u,alpha^vee> > 0
 
 Aq(x,lambda,lambda_q):
@@ -119,6 +121,13 @@ gamma_L -> gamma_G=gamma_L = lambda+rho_L
 Aq(x,lambda)=theta_induce(x,lambda-rho_u)
 good: <lambda+rho_L,alpha^vee> > 0
 fair: <lambda,alpha^vee> > 0
+weakly fair: <lambda,alpha^vee> \ge 0
+
+theta_induce(pi_L,G) = Euler-Poincare characteristic of cohomological induction functor
+fair => vanishing outside middle degree => honest representation 
+weakly fair: same implication
+NB: <gamma_L-rho_L_rho_U,alpha^vee> >= 0 does NOT imply vanishing (in general) if pi_L is not one dimensional
+hence "weakly fair" is only defined if pi_L is finite dimensional
 }
 
 set is_good(Param p_L,RealForm G)=bool:
@@ -136,10 +145,11 @@ let L=real_form(p_L) then
 rho_u=rho(G)-rho(L) in
 is_strictly_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
 
+{weakly fair only defined if pi_L is finite dimensional}
 set is_weakly_fair(Param p_L,RealForm G)=bool:
 let L=real_form(p_L) then
 rho_u=rho(G)-rho(L) in
-is_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
+is_finite_dimensional(p_L) and is_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
 
 set is_good(KGBElt x,ratvec lambda_in,ratvec lambda_q)=bool:
 let L=L(x,lambda_q) in 
