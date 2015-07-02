@@ -1,11 +1,16 @@
 <basic.rx
-<extended_misc.rx
+<extended_misc.rx { for the type |extended_param| }
 
 {
   types of extended parameters:
   1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn
   2C+,2C-,2Ci,2Cr,2i11,2i12,2i22,2r22,2r21,2r11,2rn,2rc
   3C+,3C-,3Ci,3Cr,3i,3r,3rn,3ic
+
+  In this module no effort is done to handle cases more efficiently by numeric
+  encoding, so types are simply short strings. Similarly we use |status_text|
+  from basic.rx rather than the numeric codes from built-in |status|, for
+  readbility.
 }
 
 { ext_length(rd,delta,j)=1,2,3 }
@@ -17,32 +22,31 @@ set ext_length (RootDatum rd,mat delta, int j) = int:
 set ext_length(int j, extended_param E) = int:
   ext_length(integrality_datum(E),delta(E),j)
 
-{ ext_length has many cases, split cases by length }
+{ ext_type has many cases, split cases by length }
 { ext_type_1(delta,j,p)=1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn }
 { j=index of root in integral-simple roots (not all simple roots)}
 set ext_type_1(mat delta,int j,Param p)=string:
   let type = status_text(j,p) in
   if type="i2" or type ="r1"
-  then
-    let q=Cayley(j,p) in
-    if is_fixed(delta,q) then type+:="f" else type+:="s" fi
-  fi; 1+type
+  then to_string(1,type,if is_fixed(delta,Cayley(j,p)) then "f" else "s" fi)
+  else to_string(1,type)
+  fi
 
 { ext_type_2(delta,j,p)=2C+,2C-,2Ci,2Cr,2i11,2i12,2i22,2r22,2r21,2r11,2rn,2rc
   j=index of root in integral-simple roots (not in all simple roots)
 }
 set ext_type_2 (mat delta,int j,Param p) = string:
-  let type=status_text(j,p), theta=involution(x(p)),
-  id=integrality_datum(p)
+  let type=status_text(j,p), x=x(p)
+  then theta=involution(x(p)), id=integrality_datum(p)
   then alpha=root(id,j) then beta=delta*alpha
   { need to use is_complex(alpha,x) not is_complex(j,x) }
   in
-  if is_complex(x(p))(alpha) then
+  if is_complex(x)(alpha) then
     if theta*alpha=beta then "2Ci"
     elif theta*alpha=-beta then "2Cr"
     else 2+type
     fi
-  elif is_imaginary(alpha,x(p)) then
+  elif is_imaginary(alpha,x) then
     if status_text(j,p)="ic" then "2ic"
     elif status_text(j,p)="i2" then "2i22"
     else let k = root_index(id,beta) in
@@ -77,13 +81,14 @@ set ext_type_3 (mat delta,int j,Param p) = string:
   j=index of root in integral-simple roots (not in all simple roots)
 }
 set ext_type (mat delta,int j,Param p) = string:
-{  if is_fixed(delta,p) then let l=ext_length(root_datum(p),delta,j) in}
-  if is_fixed(delta,p) then let l=ext_length(integrality_datum(p),delta,j) in
-    if l=1 then ext_type_1(delta,j,p)
-    elif l=2 then ext_type_2(delta,j,p)
-    else ext_type_3(delta,j,p)
-    fi
-  else ""
+  if is_fixed(delta,p)
+  then
+    case ext_length(integrality_datum(p),delta,j)-1 { case statement from 0 }
+    in ext_type_1(delta,j,p)
+    ,  ext_type_2(delta,j,p)
+    ,  ext_type_3(delta,j,p)
+    esac
+  else "" { fail quietly }
   fi
 
 { E=extended parameter, ext_type(j,E)=ext_type(delta,j,parameter(E))

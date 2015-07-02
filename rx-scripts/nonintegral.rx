@@ -19,20 +19,27 @@ set posroot_cross (int i, Param p) = Param:
 }
 
 { cross action of element mat:w of Weyl group on parameters
-  non-integral case, see synthetic.rx for integral case
-  synthetic.rx loads first, then nonintegral.rx
-  this definition of cross@(mat,Param) calls cross@(mat,KGBElt) in synthetic.rx
+  non-integral case, see extended_cross.rx for integral case which
+  script is loaded first, before the body of the current script this
+  definition of cross@(mat,Param) calls cross@(mat,KGBElt) in synthetic.rx
+
+  Compare this function to posroot_cross@(int,KGBElt) from synthetic.rx
+  the main difference if that |w| is applied to |gamma| here, whereas for
+  integral cross actions (and Cayley transforms) |gamma| is unchanged.
+  The call of |make_dominant_using_roots| is just a consequence of the change
+  to |gamma|, performed for the somewhat doubtful reasons indicated below.
+
   if w\in W(gamma) this is the usual cross action
   if w\not\in W(gamma) this has different (dominant) infinitesimal character
   also w given by sequence of simple root reflections, or
   w=s_beta for beta an arbitrary positive root
 }
 set cross (mat w, Param p) = Param:
-  let x0 = x(p), gamma = infinitesimal_character(p)  { gamma is dominant }
+  let (x0,,gamma) = %p { gamma is (assumend to be?) dominant }
   then rd = root_datum(real_form(x0))
-  , x1=cross(w,x0) { gamma(x1)=w*gamma is integrally-dominant }
+  , x1=cross(w,x0) { apply matrix cross action on KGBElt, from synthetic.rx }
+  { the provided w will be such that gamma(x1)=w*gamma is integrally-dominant }
   , grading_wt=gamma-lambda(p)+rho_r(x0)
-  then theta1= involution(x1)
   then (new_gamma,)=make_dominant_using_roots(rd, w*gamma)
   { w*gamma and new_gamma differ by a sum of roots, and are in the same
     integral Weyl chamber
@@ -41,7 +48,7 @@ set cross (mat w, Param p) = Param:
     to make gamma(x1) dominant, which we don't want
     see Weyl_group.rx:make_dominant
   }
-  in parameter(x1,new_gamma - w*grading_wt + rho_r(rd,theta1), new_gamma)
+  in parameter(x1,new_gamma - w*grading_wt + rho_r(x1), new_gamma)
 
 {
   set cross ([int] w,Param p) = Param: cross(w_matrix(root_datum(p),w),p)
@@ -51,36 +58,57 @@ set cross (mat w, Param p) = Param:
 
 { cross action on extended parameters }
 
-{ cross action of w (matrix) \in W^delta
-  this handles both integral and nonintegral cases
-  this definition is free standing, and does not call the one in
+{ Cross action of w (matrix) on an extended parameter E
+  Precondition: gamma integrally dominant, w in W^delta is such that w*gamma is
+  (still standard:) positive on all positive imaginary coroots for cross(w,x)
+  Does a cross action for the "integral part of w", and equivalence for the
+  remaining part (mix of true cross action and equivalence of parameters).
+  At the parameter level (x,lambda_rho,gamma), this first maps to the
+  equivalent parameter (x1,lambda_rho1,w*gamma) where x1=cross(w,x) and
+  lambda_rho1=w*lambda_rho+w*rho-r-w*rho_r(x)+rho_r(x1); then if w' in
+  W(gamma) is such that w'w*gamma is again integrally dominant, applies cross
+  action by the inverse of w', which gives a parameter equivalent to
+  (x1,lambda_rho2,w'w*gamma), where lambda_rho2=lambda_rho1+w'w*gamma-w*gamma).
+  [The latter uses alternative description of cross action:
+  cross(w,(x,lr,gamma)) =equiv= (x,lr+w^{-1}*gamma-gamma,w^{-1}*gamma) ]
+
+  This explains the expression for lambda2 below
+
+  For the expression for tau1, the relation to satisfy is
+  (1-theta1)*tau1 = (1-delta)*lambda2, and for this the terms w*rho-rho and
+  gamma2-gamma1 in lambda2 can be ignored, as delta commutes with w and fixes
+  each of rho, gamma1, gamma2. The contribution (delta-1)*rho_r_shift/2 will
+  then give the term rho_r_shift in lambda1 (but is it obviously a vec value?)
+
+  The value for l is easy to deduce from x(E) (the more explicit expression
+  gien in a comment can be found be expanding the computation of x(E)) and the
+  necessary correction to t is similar (but dual) to that of tau
+
+  Contrary to ext_cross_special below, this does not call ext_cross@
      extended_cross.rx
 }
 set ext_cross(
   mat w,extended_param(ic,delta,gamma,lambda,theta,g,l,,tau,t):E) =
-  extended_param:
-( assert(w*delta=delta*w,"w not in W^delta")
-; let rd=root_datum(ic), x=x(E)
-  then x1=cross(w,x), (gamma1,) = make_integrally_dominant(rd, w*gamma)
-  then theta1=involution(x1)
-  , lambda1 = ratvec_as_vec(
-    gamma1 - w*(gamma-lambda) + (w-1)*rho(rd) - (w*rho_r(x)-rho_r(x1)) )
-  then tau1 = ratvec_as_vec( { following is wrong: add weight and coweight? }
-    w*tau - (^delta-1)*(^w*rho_check_i(x)-rho_check_i(x1)/2) )
-  then u = inverse(^w)
-  then l1 = ratvec_as_vec(
-    g - u*(g-l)  + (u-1)*rho_check(rd) - (u*rho_check_i(x)-rho_check_i(x1)) )
-  then t1 = ratvec_as_vec( { now it's delta that is wrong; should be ^delta? }
-    u*t - (delta-1)*(u*rho_check_i(x)-rho_check_i(x1))/2 )
-  then rv = extended_param:
-     (ic,delta,gamma1,lambda1,theta1,g,l1,-^theta1,tau1,t1)
+    extended_param:
+  assert(w*delta=delta*w,"w not in W^delta");
+  let rd=root_datum(ic), x=x(E), w1= inverse(w), gamma1=w*gamma
+  then rho=rho(rd), x1=cross(w,x) { call cross@(mat,KGBElt) from synthetic.rx }
+  , (gamma2,) = make_integrally_dominant(rd,gamma1)
+  then rho_r_shift = w*rho_r(x)-rho_r(x1), theta1=involution(x1)
+  then lambda2 =
+    let lambda1 = w*lambda + (w*rho-rho-rho_r_shift)\1
+    in  lambda1 + ratvec_as_vec(gamma2 - gamma1)
+  , tau1 = w*tau - ratvec_as_vec( (delta-1)*rho_r_shift/2 )
+  , l1 = ratvec_as_vec(g-rho_check(rd)-torus_factor(x1))
+  { l*w1 + ( (g-rho_check(rd))*(1-w1)-(rho_check_i(x)*w1-rho_check_i(x1)) )\1 }
+  , t1 = t*w1 - ratvec_as_vec( (rho_check_i(x)*w1-rho_check_i(x1))*(delta-1)/2 )
+  then result =
+     extended_param:(ic,delta,gamma2,lambda2,theta1,g,l1,-^theta1,tau1,t1)
   in
-  if (not valid(rv))
-  then prints(new_line+"invalid parameter in ext_cross, w=",w)
-  ; display(E); prints()
+  if not valid(result)
+  then error(new_line+"invalid parameter in ext_cross, w=",w,format(E))
+  else result
   fi
-; rv
-)
 
 { posroot i means i^th positive root in list of all positive roots,
   must be fixed by \delta_0
@@ -91,10 +119,8 @@ set posroot_ext_cross (int i, extended_param E) = extended_param:
 { strongly simple: simple for all of G
   as opposed to simple, which might mean simple for the integral roots
 }
-{ cross action of strongly simple root i, must be \delta_0-fixed
-  note that this function does not call ext_cross(i,E) even when the root
-  happens to be integral
-}
+
+{ cross action of strongly simple root i, must be \delta_0-fixed }
 set strongly_simple_ext_cross = (int,extended_param->extended_param):
   posroot_ext_cross@(int,extended_param) { simple/positive roots share index }
 
@@ -103,81 +129,6 @@ set strongly_simple_ext_cross = (int,extended_param->extended_param):
 }
 set ext_cross ([int] w, extended_param E) = extended_param:
   ext_cross(w_matrix(root_datum(E),w),E)
-
-
-{ extended Cayley transform by roots(G,i)
-  must be integral, of type (?)
-  find w\in W^\delta so that w\kappa is simple
-  return inverse(w)\times c_{w\kappa}( w\times E)
-  1i1,1i2s,1i1f,1r2;
-  2Ci,2Cr, 2i11, 2i12, 2i12f,2i22, 2r22, 2r21f, 2r11;
-  3Ci,3Cr,3i,3r
-}
-set posroot_ext_Cayley (int i,extended_param E, bool show) = [extended_param]:
-( if show then prints("posroot_ext_Cayley i=", i);display(E) fi
-; let ((,w),alpha) = conjugate_to_simple_by_Wdelta(root_datum(E), delta(E), i)
-{ w*root(G,i)=alpha is simple for G, w is in W^\delta }
-  then E1=ext_cross(w,E)
-  in if show then prints("E1=");prints(valid(E1)); display(E1)
-             ; prints("x(E1)=", x(E1))
-             fi
-; let (E2,shift) = translate_to_dominant(E1)
-  in if show then prints("E2=");valid(E2);display(E2) fi
-; let j = root_index(integrality_datum(E2),alpha)
-  in if show then prints("j=",j)
-             ; prints("Cayley transform of type:", ext_type(j,E2))
-             fi
-; let E3_array = [extended_param]: ext_Cayley_simple(j,E2) in
-  for i:#E3_array
-  do let E3 = E3_array[i]
-    then E4 = (ic(E3),delta(E3),gamma(E3)-shift,lambda(E3)-shift,theta(E3)
-                               ,g(E3), l(E3), omega(E3),tau(E3),t(E3) )
-    in ext_cross(w~[:],E4)
-  od
-)
-
-set posroot_ext_Cayley (int i,extended_param E) = [extended_param]:
-  posroot_ext_Cayley(i,E,false)
-
-{ extended Cayley transform of any length, and not necessarily simple
-  Cayley transform by j^th simple root of the *integral* roots
-  if this root is also simple for G, then call ext_Cayley_i(...)
-  otherwise, call nonintegral.rx:posroot_ext_Cayley
-  (with the appropriate change in root number)
-}
-set ext_Cayley (
-  int j, extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E
-  , bool show) =
-  [extended_param]:
-( if show then prints("ext_Cayley in nonintegral.rx with  E:");display(E) fi
-; let type=ext_type(j,E) in
-  if show then prints("ext_Cayley, j=", j, ", " ,parameter(E)) fi
-; let cayley_types =
-    ["1i1","1i2f","1r1f"
-    ,"1r2","2Ci","2Cr","2i12","2i22","2r22","2r21","2r11"
-    ,"3Ci","3Cr","3i","3r"]
-  in
-  if not in_string_list(type,cayley_types)
-  then if show then prints("Cayley of type ", type,  " not defined") fi; [E]
-  else if show then prints
-        ("nonintegral:ext_Cayley:extended Cayley transform of type ", type)
-       fi
-  fi
-; let p=parameter(E) in
-  assert(is_fixed(delta,p),"Parameter is not fixed by delta")
-; let rd=root_datum(p), id=integrality_datum(p)
-  then alpha = root(id,j) { a simple root of the integral subsystem } in
-  if is_simple_root(rd,alpha)
-  then { call ext_Cayley_simple@(int,extended_param) from extended_cayley.rx }
-     ext_Cayley_simple(j,E)
-  else
-    let j = root_index(rd,alpha) in
-    posroot_ext_Cayley(j,E)
-  fi
-)
-
-set ext_Cayley (int j, extended_param E) = [extended_param]:
-  ext_Cayley(j,E,false)
 
 set ext_cross_special (int i, extended_param E, bool show) = extended_param:
 ( if show then prints("ext_cross_special with ", i); display(E) fi
@@ -192,21 +143,23 @@ set ext_cross_special (int i, extended_param E, bool show) = extended_param:
   in
   if show then prints("in ext_cross_special with i=", i, "root=", alpha) fi
 ; if is_simple_root(rd,alpha)
-  then { call  ext_cross_simple@(int,extended_param) from extended_cross.rx}
+  then { call ext_cross_simple@(int,extended_param) from extended_cross.rx }
      ext_cross_simple(i,E)
   else let j=root_index(root_datum(E),alpha) in
-    if show then prints("j=", j) fi
-  ; let ((,w),beta) =
+    if show then prints("j=", j) fi;
+    let ((,w),beta) =
       conjugate_to_simple_by_Wdelta(root_datum(E), delta(E), j) in
-    if show then prints("w=", w, " beta=", beta) fi
-  ; let E1=ext_cross(w,E) in
-    if show then prints("E1="); valid(E1); display(E1) fi
-  ; let (E2,shift)=translate_to_dominant(E1) in
-    if show then prints("E2="); valid(E2); display(E2) fi
-  ; let i=root_index(integrality_datum(E2),beta) in
-    if show then prints("i:", i) fi
-  ; let (E3,shift) = translate_to_dominant(E2)
-    then E4 =
+    if show then prints("w=", w, " beta=", beta) fi;
+    let E1=ext_cross(w,E) { use the function defined above to move to simple }
+    then (E2,shift)=translate_to_dominant(E1) { from extended_misc.rx }
+    then i=root_index(integrality_datum(E2),beta) in
+    if show
+    then prints("E1="); valid(E1) { print any anomalies }; display(E1)
+    ;    prints("E2="); valid(E2) { print any anomalies }; display(E2)
+    ;    prints("i:", i)
+    fi;
+    let E3 = ext_cross_simple(i,E2)
+    then E4 = { undo shift from translate_to_dominant }
        (ic(E3),delta(E3), gamma(E3)-shift, lambda(E3)-shift, theta(E3)
                         , g(E3), l(E3), omega(E3), tau(E3), t(E3))
     in ext_cross(w~[:],E4)
@@ -232,10 +185,90 @@ set ext_cross(int i, extended_param E, bool show) = extended_param:
   then ext_cross_special(i,E)
   else
     let t=reflection(rd,delta(E)*alpha)
-    then w = assert(length<=3,"something wrong"); { choose for length=1,2,3: }
-         [ @: s, @: s*t, @: s*t*s ] [length-1] ()
+    then w = assert(length<=3,"something wrong") { choose for length=1,2,3: }
+    	     ; case length-1 in s, s*t, s*t*s esac
     in ext_cross(mat: w,E)
   fi
 )
 
 set ext_cross(int i, extended_param E)= extended_param: ext_cross(i,E,false)
+
+
+
+{ extended Cayley transform by roots(G,i)
+  must be integral, of type (?)
+  find w\in W^\delta so that w\kappa is simple
+  return inverse(w)\times c_{w\kappa}( w\times E)
+  1i1,1i2s,1i1f,1r2;
+  2Ci,2Cr, 2i11, 2i12, 2i12f,2i22, 2r22, 2r21f, 2r11;
+  3Ci,3Cr,3i,3r
+}
+set posroot_ext_Cayley (int i,extended_param E, bool show) = [extended_param]:
+( if show then prints("posroot_ext_Cayley i=", i);display(E) fi
+; let ((,w),alpha) = conjugate_to_simple_by_Wdelta(root_datum(E), delta(E), i)
+{ w*root(G,i)=alpha is simple for G, w is in W^\delta }
+  then E1=ext_cross(w,E)
+  then (E2,shift) = translate_to_dominant(E1)
+  then j = root_index(integrality_datum(E2),alpha)
+  in
+  if show
+  then prints("E1=") ; prints(valid(E1)); display(E1)
+  ;    prints("x(E1)=", x(E1))
+  ;    prints("E2=") ; valid(E2); display(E2)
+  ;    prints("j=",j); prints("Cayley transform of type:", ext_type(j,E2))
+  fi
+; for E3 in [extended_param]: ext_Cayley_simple(j,E2)
+  do let E4 = (ic(E3),delta(E3),gamma(E3)-shift,lambda(E3)-shift,theta(E3)
+                               ,g(E3), l(E3), omega(E3),tau(E3),t(E3) )
+     in ext_cross(w~[:],E4)
+  od
+)
+
+set posroot_ext_Cayley (int i,extended_param E) = [extended_param]:
+  posroot_ext_Cayley(i,E,false)
+
+{ extended Cayley transform of any length, and not necessarily simple
+  Cayley transform by j^th simple root of the *integral* roots
+  if this root is also simple for G, then call ext_Cayley(...)
+  otherwise, call nonintegral.rx:posroot_ext_Cayley
+  (with the appropriate change in root number)
+}
+set ext_Cayley (
+    int j, extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E
+  , bool show) =
+    [extended_param]:
+( let type=ext_type(j,E)
+  , cayley_types =
+    [ "1i1", "1i2f", "1r1f", "1r2"
+    , "2Ci", "2Cr" , "2i12", "2i22", "2r22", "2r21", "2r11"
+    , "3Ci", "3Cr" , "3i"  , "3r"
+    ]
+  then do_Cayley = in_string_list(type,cayley_types)
+  in
+  if show
+  then prints("ext_Cayley in nonintegral.rx with  E:",format(E))
+  ;    prints("ext_Cayley, j=", j, ", " ,parameter(E))
+  fi
+; if not do_Cayley
+  then if show then prints("Cayley of type ", type,  " not defined") fi; [E]
+  else
+    if show then prints
+        ("nonintegral:ext_Cayley:extended Cayley transform of type ", type)
+    fi
+  ; let p=parameter(E) in
+    assert(is_fixed(delta,p),"Parameter is not fixed by delta")
+  ; let rd=root_datum(p), id=integrality_datum(p)
+    then alpha = root(id,j) { a simple root of the integral subsystem }
+    in
+      if is_simple_root(rd,alpha)
+      then { call ext_Cayley_simple@(int,extended_param), extended_cayley.rx }
+	ext_Cayley_simple(j,E)
+      else { call posroot_ext_Cayley@(int,extended_param) defined above }
+	posroot_ext_Cayley(root_index(rd,alpha),E)
+      fi
+  fi
+)
+
+set ext_Cayley (int j, extended_param E) = [extended_param]:
+  ext_Cayley(j,E,false)
+

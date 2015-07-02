@@ -2,67 +2,56 @@
 <extended_misc.rx
 <extended_types.rx
 
-{ debug ext_cross construction, shouldn't be necessary }
-set test_ext_cross (Param p, [int] kappa, extended_param xq) = void:
-  let ()=if not valid(xq) then error("xq is not valid") fi
-  then q=parameter(xq), cross=W_cross(kappa,p)
-  in
-  if q!=cross
-  then prints("cross/ext_cross are not consistent: ",q," ",cross); error("")
-{ else prints("cross/ext_cross are consistent") }
-  fi
+{ this script defines the cross action by roots from the integrality datum
+  associated to the (infinitsimal character of the) extended parameter in
+  question, selected by (positive) root index in that integrality_datum
+}
+
+{ check that extended parameter |E| lies over cross image by |kappa| of |p| }
+set test_ext_cross (Param p, {Weyl word} [int] kappa, extended_param E) = void:
+  assert(valid(E),"Invalid extended parameter");
+  let q=parameter(E), cross=W_cross(kappa,p) in
+  if q!=cross then error("cross/ext_cross are not consistent: ",q," ",cross) fi
 
 { extended cross action in length 1 }
-set ext_cross_1(int j
-               ,extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E
+set ext_cross_1( int j
+               , extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E
                ) = extended_param:
-  let p=parameter(E), rd=integrality_datum(E)
-  then type = string: {1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn}
-    ext_type_1(delta,j,p)
-  , alpha=root(rd,j)
-  , alpha_check=coroot(rd,j)
+  let p=parameter(E)
+  , (alpha, alpha_check) =
+      let id=integrality_datum(ic,gamma) { DO NOT USE RootDatum:ic } in
+      (root(id,j), coroot(id,j))
   then s_alpha    = 1 - column(alpha)*row(alpha_check)
   , s_alpha_check = 1 - column(alpha_check)*row(alpha) { = ^s_alpha }
+  , ac_gamma = rat_as_int(alpha_check*gamma) { integral by construction }
+  , g_alpha  = rat_as_int(g*alpha) { always integral by definition of g }
+  , type = string: { one of: 1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn }
+	     ext_type_1(delta,j,p)
   in
-{  let ()=prints("type:", type) in }
-  if ((type="1C+") or (type="1C-")) then
-    let new_lambda = { lambda +alpha*(alpha_check*(gamma-lambda)-1) }
-        ratvec_as_vec(s_alpha*lambda+(alpha_check*gamma-1)*alpha)
-    , new_l = { l + ((g-l)*alpha-1)*alpha_check }
-        ratvec_as_vec(s_alpha_check*l+(g*alpha-1)*alpha_check)
-    , new_theta = s_alpha*theta*s_alpha
-    , new_omega = s_alpha_check*omega*s_alpha_check
-    , new_t = s_alpha*t
-    , new_tau= tau*s_alpha
-    then xq =
-      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
-    in { test_ext_cross(p,[j],xq); } xq
-  elif (type="1i1") then
-    let new_lambda=lambda
-    , new_l=l+alpha_check
-    , new_theta=s_alpha*theta*s_alpha
-    , new_omega=s_alpha_check*omega*s_alpha_check
-    , new_t=t
-    , new_tau=tau
-    then xq=
-      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
-    in { test_ext_cross(p,[j],xq); } xq
-  elif (type="1r2") then
-    let new_lambda=lambda+alpha
-    then new_l=l
-    then new_theta=s_alpha*theta*inverse(s_alpha)
-    then new_omega=inverse(s_alpha_check)*omega*s_alpha_check
-    then new_t=t
-    then new_tau=tau
-    then xq=
-      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
-    in { test_ext_cross(p,[j],xq); } xq
-  else E
-  fi
+{ prints("type:", type); }
+  let xq =
+    if ((type="1C+") or (type="1C-"))
+    then
+      let new_lambda = { lambda +alpha* (<alpha_check, gamma-lambda>-1) }
+	  s_alpha*lambda + alpha*(ac_gamma-1)
+      , new_l = { l + (<g-l, alpha>-1)*alpha_check }
+	  l*s_alpha + (g_alpha-1)*alpha_check
+      , new_theta = s_alpha*theta*s_alpha
+      , new_omega = s_alpha_check*omega*s_alpha_check
+      , new_t = s_alpha*t
+      , new_tau= tau*s_alpha
+      in (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
+    elif (type="1i1")
+    then (ic,delta,gamma,lambda,theta,g, l+alpha_check ,omega,tau,t)
+    elif (type="1r2")
+    then (ic,delta,gamma, lambda+alpha ,theta,g,l,omega,tau,t)
+    else E { trivial cross action for types 1i2f,1i2s,1ic,1r1f,1r1s,1rn }
+    fi
+  in { test_ext_cross(p,[j],xq); } xq
 
-{extended cross action in length 2}
-set ext_cross_2(int j
-               ,extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E
+{ extended cross action in length 2 }
+set ext_cross_2( int j
+               , extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E
                ) = extended_param:
   let p=parameter(E), rd=integrality_datum(E)
   then type = string: { 2C+,2C-,2Ci,2Cr,2i11,2i12,2i22,2r22,2r21,2r11,2rn,2ic }
@@ -159,21 +148,25 @@ set ext_cross_2(int j
   fi
 
 
-{ extenteded cross action not yet defined }
+{ extenteded cross action not yet defined for length 3 cases }
 set ext_cross_3(int j,extended_param E) = extended_param:
-  let p=parameter(E) then type=ext_type_2(delta(E),j,p)
+  let p=parameter(E) then type=ext_type_3(delta(E),j,p)
   in prints("ext_cross_3"); E { should be defined properly here! FIXME }
 
-{ ext_cross calls one of the ext_cross_i
-  this command used to be called in all cases, but is replaced by
-  nonintegral.rx:ext_cross
-  except in special cases: types 2i11/2i12/2r22/2r21 }
+{ ext_cross_simple calls one of the ext_cross_i; it supposes that the
+  root(integrality_datum(E),j) is actually among simple_roots(RootDatum(ic(E)).
+  This function used to be called in all cases, but now it is called by
+  nonintegral.rx:ext_cross@(int,extended_param) only in special cases (and
+  after moving to a simple root), namely for types 2i11, 2i12, 2r22, and 2r21.
+}
 set ext_cross_simple (int j, extended_param (ic,delta,,,,,,,,):E) =
     extended_param:
 ( let p=parameter(E), l=ext_length(integrality_datum(E),delta,j) in
 { prints("length is:", l); }
   assert(is_fixed(delta,p),"Parameter is not fixed by delta")
-; [ext_cross_1@(int,extended_param)
-  ,ext_cross_2@(int,extended_param)
-  ,ext_cross_3@(int,extended_param)] [l-1] (j,E)  { note the l-1 here }
+; case l-1 { case statement requires value from 0 }
+  in ext_cross_1(j,E)
+  ,  ext_cross_2(j,E)
+  ,  ext_cross_3(j,E)
+  esac
 )
