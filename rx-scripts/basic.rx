@@ -943,3 +943,10 @@ set complex_posroots (KGBElt x) =  mat:
 }
 set monomials(ParamPol P) = [Param]: for c@p in P do p od
 set monomial(ParamPol P,int i) = Param: monomials(P)[i]
+
+{delete one term from a list}
+set delete([int] v, int k)=[int]:v[:k]#v[k+1:]
+set delete([vec] v, int k)=[vec]:v[:k]#v[k+1:]
+set delete([ratvec] v, int k)=[ratvec]:v[:k]#v[k+1:]
+set delete([[ratvec]] v, int k)=[[ratvec]]:v[:k]#v[k+1:]
+

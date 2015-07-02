@@ -47,12 +47,24 @@ set coherent_std_reg(int k,ParamPol P)=ParamPol:
 let N=null_module(real_form(P)) in
 for (coeff,p) in %P do N:=N+coeff*coherent_std_reg(k,p) od;N
 
+{DANGEROUS BEND
+all version of coherent continuation action are anti-homomorphisms
+(u*w).p=u^{-1}.(w^{-1}.p)
+for example
+coherent_std_reg(w*u,p)=coherent_std_reg(inverse(u),coherent_std_reg(inverse(w),p))
+this ultimately comes down to the inverse on pages 460-461 of Vogan's big green book
+}
+
 {coherent continuation action of Weyl group on Param in basis of standards
 regular case
 }
 set coherent_std_reg(vec v,Param p)=ParamPol:
 let N=null_module(real_form(p))+p in 
-for k: #v downto 0 do N:=coherent_std_reg(v[k],N) od;N
+{see the dangerous bend above; this applies [a1,a2,...,an] in 
+the order an.(... a2.(a1.*))
+this applies to all other invocations of coherent_*
+}
+for k: #v do N:=coherent_std_reg(v[k],N) od;N
 
 {in singular case, move to regular infinitesimal character, 
 apply w, and move back
@@ -88,7 +100,8 @@ for (coeff,p) in %P do N:=N+coeff*coherent_std(k,p) od;N
 
 {coherent continuation action of Weyl group on ParamPol, basis of standards}
 set coherent_std(vec v,ParamPol P)=ParamPol:
-let N=P in for k: #v downto 0  do N:=coherent_std(v[k],N) od;N
+{let N=P in for k: #v downto 0  do N:=coherent_std(v[k],N) od;N}
+let N=P in for k: #v  do N:=coherent_std(v[k],N) od;N
 
 set coherent_std(W_word v,Param p)=ParamPol:coherent_std(word(v),p)
 set coherent_std(W_word v,ParamPol P)=ParamPol:coherent_std(word(v),P)
