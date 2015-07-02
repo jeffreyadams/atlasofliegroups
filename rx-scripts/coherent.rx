@@ -26,31 +26,72 @@ let N=p in for k: #v downto 0  do N:=cross(v[k],N) od;N
 {------------coherent continuation in basis of standards------------}
 
 {coherent continuation action of simple root on Param in basis of standards}
-set coherent_std(int k,Param p)=ParamPol:
+
+{
+regular infinitesimal character case is easier
+user will usually will not need to call this function
+}
+set coherent_std_reg(int k,Param p)=ParamPol:
+if not is_regular(p) then error("infinitesimal character is not regular") else
 let (x,,)=%p then
 type=status(k,x) then
 N=null_module(real_form(p)) in
 if type=1 then N-virtual(p) {compact imaginary}
 elif type=3 then N+nci_Cayley(k,p)-virtual(cross(k,p)) {non-compact imaginary}
-else N+cross(k,p)  {complex or real} fi
+else N+cross(k,p)  {complex or real} fi fi
 
-{coherent continuation action of simple root on ParamPol, basis of standards}
+{coherent continuation action of simple root on ParamPol in basis of standards
+regular case
+}
+set coherent_std_reg(int k,ParamPol P)=ParamPol:
+let N=null_module(real_form(P)) in
+for (coeff,p) in %P do N:=N+coeff*coherent_std_reg(k,p) od;N
+
+{coherent continuation action of Weyl group on Param in basis of standards
+regular case
+}
+set coherent_std_reg(vec v,Param p)=ParamPol:
+let N=null_module(real_form(p))+p in 
+for k: #v downto 0 do N:=coherent_std_reg(v[k],N) od;N
+
+{in singular case, move to regular infinitesimal character, 
+apply w, and move back
+Dangerous Bend (example):
+G=Sp(6,R)
+p=parameter(KGB(G,3,[3,2,2],[0,0,0])
+Value: zero parameter (x=3,lambda=[3,2,2]/1,nu=[0,0,0]/1)
+the root e2-e3 is compact, so this limit of DS is zero
+however its coherent continuation is not zero
+rx> coherent_std(0,p)
+-1*final parameter (x=4,lambda=[3,2,2]/1,nu=[0,0,0]/1)
+1*final parameter (x=9,lambda=[3,2,2]/1,nu=[1,-1,0]/2)
+}
+
+{action of simple root on parameter,  basis of standards}
+set coherent_std(int k,Param p)=ParamPol:
+if is_regular(p) then coherent_std_reg(k,p) else
+let gamma=infinitesimal_character(p) then
+p_reg=T(p,gamma+rho(real_form(p)))  in
+T(coherent_std_reg(k,p_reg),gamma) fi
+
+{coherent continuation action of Weyl group element on ParamPol, basis of standards}
+set coherent_std(vec v,Param p)=ParamPol:
+if is_regular(p) then coherent_std_reg(v,p) else
+let gamma=infinitesimal_character(p) then
+p_reg=T(p,gamma+rho(real_form(p)))  in
+T(coherent_std_reg(v,p_reg),gamma) fi
+
+{coherent continuation action of simple root on ParamPol in basis of standards}
 set coherent_std(int k,ParamPol P)=ParamPol:
 let N=null_module(real_form(P)) in
 for (coeff,p) in %P do N:=N+coeff*coherent_std(k,p) od;N
 
-{coherent continuation action of Weyl group on Param in basis of standards}
-set coherent_std(vec v,Param p)=ParamPol:
-let N=null_module(real_form(p))+p in 
-for k: #v downto 0  do N:=coherent_std(v[k],N) od;N
-
-{coherent continuation action of Weyl group on ParamPol in basis of standards}
+{coherent continuation action of Weyl group on ParamPol, basis of standards}
 set coherent_std(vec v,ParamPol P)=ParamPol:
 let N=P in for k: #v downto 0  do N:=coherent_std(v[k],N) od;N
 
 set coherent_std(W_word v,Param p)=ParamPol:coherent_std(word(v),p)
 set coherent_std(W_word v,ParamPol P)=ParamPol:coherent_std(word(v),P)
-
 
 {------------coherent continuation in basis of irreducibles------------}
 
@@ -70,7 +111,7 @@ set coherent_irr([int] v,ParamPol P)=ParamPol:composition_series(coherent_std(v,
 {these are "module" definitions, which aren't currently implemented 
  see the modules branch
  commented out remainder of file}
-{
+{  
 set coherent(int k,(Param,string)(p,type))=(ParamPol,string):
 if (type=std) then (coherent_std(k,p),type)
 elif (type=irr) then (composition_series(coherent_std(k,character_formula(p))),type)
@@ -145,5 +186,4 @@ let S=[int]:for i:rank(root_datum(P)) do i od in skew_symmetrize_coherent(S,(P,t
 {same as previous, applied to standard or irreducible}
 set skew_symmetrize_coherent([int] S,(Param,string)(p,type))=skew_symmetrize_coherent(S,(virtual(p),type))
 set skew_symmetrize_coherent((Param,string)(p,type))=skew_symmetrize_coherent(virtual(p),type)
-
-}
+}}

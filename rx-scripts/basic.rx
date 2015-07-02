@@ -402,6 +402,7 @@ set rho_check (RootDatum rd) = ratvec: { rho(dual(rd)), but a bit faster }
 
 { see also rho_i@KGBElt and rho_r@KGBElt defined below }
 
+{these functions assume vec is a root/coroot}
 set is_positive_root (RootDatum rd) = (vec->bool):
   let rc = rho_check(rd) in (vec alpha) bool: rc*alpha>0
 set is_positive_coroot (RootDatum rd) = (vec->bool):
@@ -419,6 +420,12 @@ set is_negative_root (RootDatum rd,vec alpha) = bool:
   is_negative_root(rd)(alpha)
 set is_negative_coroot (RootDatum rd,vec alphav) = bool:
   is_negative_coroot(rd)(alphav)
+
+set all_positive_roots(RootDatum rd, [vec] roots)=bool:
+all(semisimple_rank(rd), (int i)bool: is_positive_root(rd,roots[i]))
+
+set all_positive_coroots(RootDatum rd, [vec] coroots)=bool:
+all(semisimple_rank(rd), (int i)bool: is_positive_coroot(rd,coroots[i]))
 
 set negative_system (mat posroots) = { the missing half of the root system }
   swiss_matrix_knife(172,posroots,0,0,0,0) { 172= 36+8+128: reverse cols,neg }
@@ -722,6 +729,8 @@ set print_KGB (KGBElt x) = void:
 ( prints(); prints("Element is number ",#x, " in following KGB set")
 ; print_KGB(real_form(x)) )
 
+set no_Cminus_roots (KGBElt x) = bool:
+  none(semisimple_rank(real_form(x)), (int i)bool: =status(i,x))
 
 {				Blocks					}
 

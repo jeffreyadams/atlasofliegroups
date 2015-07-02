@@ -50,6 +50,9 @@ set make_dominant (RootDatum rd, vec v) = (vec,W_word):
 set make_dominant (RootDatum rd, ratvec v) = (ratvec,W_word):
   let (v,denom)=%v then (v_dom,w)=make_dominant(rd,v) in (v_dom/denom,w)
 
+{ rho(rootDatum rd) is in basic.rx; need rho(rd,v) is in an any chamber:}
+set rho(RootDatum rd, ratvec v)=let (v_dom,w)=make_dominant(rd,v) in act(w, rho(rd))
+
 set w_long (RootDatum rd) = W_word:
   let (,ww) = make_dominant(rd,-rho(rd)) in ww
 
