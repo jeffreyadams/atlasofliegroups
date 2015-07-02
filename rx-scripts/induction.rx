@@ -1,6 +1,6 @@
 {this file replaces earlier induction_plus.rx}
 {real and theta-stable parabolic induction from general parabolic}
-set verbose=false
+set verbose=true
 <basic.rx
 <kl.rx { for character_formula }
 <coherent.rx {for standardize}
@@ -81,7 +81,7 @@ let i_root_system=root_datum(simple_imaginary_subsystem(x(p))) then
 lambda=lambda(p) then
 (lambda_dom,w)=make_dominant(i_root_system,lambda) then
 p_dom=parameter(x(p), act(inverse(w),lambda(p)), nu(p))
-in coherent_std_imaginary(inverse(w),p_dom) fi
+in coherent_std_imaginary(w,p_dom) fi
 
 set standardize(ParamPol P)=ParamPol:
 let rv=null_module(P) in for c@p in P do rv+:=c*standardize(p) od;rv
@@ -118,9 +118,10 @@ compute sum_i a_i*theta_induce_standard(I_L(p_i))
 probably won't use this function much, it is mainly used in theta_induce_irreducible}
 set theta_induce_irreducible_as_sum_of_standards(Param p_L, RealForm G)=
 let cf=character_formula(p_L) in
-{let ()=prints("p_L:",p_L) in 
-let ()=prints("Character formula for p_L:") in 
-let ()=prints(cf) in }
+let ()=if verbose then 
+prints("p_L:",p_L);
+prints("Character formula for p_L:");
+prints(cf) fi in
 let rv=null_module(G) in
 for coeff@p in cf do 
 let new=theta_induce_standard(p,G) in 

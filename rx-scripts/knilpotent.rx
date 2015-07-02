@@ -1,14 +1,8 @@
 <Weylgroup.rx
 <coherent.rx
 <thetastable.rx
-
+<sort.rx
 {implementation of parts of Letter to Atlas II: nilpotent orbits}
-
-{delete one term from a list, put these in basic.rx}
-set delete([int] v, int k)=[int]:v[:k]#v[(#v-k-1)~:]
-set delete([vec] v, int k)=[vec]:v[:k]#v[(#v-k-1)~:]
-set delete([ratvec] v, int k)=[ratvec]:v[:k]#v[(#v-k-1)~:]
-set delete([[ratvec]] v, int k)=[[ratvec]]:v[:k]#v[(#v-k-1)~:]
 
 {return index of alpha in list of roots}
 set find([vec] roots,vec alpha)=int:
