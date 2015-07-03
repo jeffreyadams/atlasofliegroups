@@ -69,6 +69,12 @@ set Psi(ParamPol P,ratvec gamma,[int] v)= ParamPol:
   then shift = - sum( rank(id) # for k in v  do to_wall(id,k,gamma) od )
   in null_module(real_form(P)) + for w@q in P do (w,translate_by(q,shift)) od
 
+set T_irr(ParamPol P,ratvec v)=
+composition_series(T(character_formula(P),v))
+
+set Psi_irr(ParamPol P,int k)=
+composition_series(Psi(character_formula(P),k))
+
 { the "pseudo-tau" invariant }
 { this is a subset of simple integral roots such that:
   1) one can translate to this wall (i.e., the requisite translation is in X^*)
