@@ -187,5 +187,5 @@ template <typename Count>
 	mu.tally(multiplicity(i));
       return mu;
     }
-} // namespace tally
-} // namespace atlas
+} // |namespace tally|
+} // |namespace atlas|

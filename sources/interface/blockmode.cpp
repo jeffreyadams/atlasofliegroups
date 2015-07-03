@@ -536,7 +536,7 @@ void wcells_f()
 
 
 
-} // namespace
+} // |namespace|
 
 } // |namespace commands|
 

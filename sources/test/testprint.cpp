@@ -202,6 +202,6 @@ std::ostream& printComponents(std::ostream& strm,
   return strm;
 }
 
-} // namespace testprint
+} // |namespace testprint|
 
-} // namespace atlas
+} // |namespace atlas|

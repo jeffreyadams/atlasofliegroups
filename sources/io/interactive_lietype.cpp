@@ -310,7 +310,7 @@ void readLieType(LieType& lt, input::InputBuffer& buf)
   buf.unget(); // put final character read back
 }
 
-} // namespace interactive_lietype
+} // |namespace interactive_lietype|
 
 /*****************************************************************************
 
@@ -338,6 +338,6 @@ void ignoreSimpleLieType(input::InputBuffer& buf)
   buf >> l;
 }
 
-} // namespace
+} // |namespace|
 
-} // namespace atlas
+} // |namespace atlas|

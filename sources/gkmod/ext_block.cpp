@@ -655,6 +655,6 @@ Pol extended_block::T_coef(weyl::Generator s, BlockElt sx, BlockElt x) const
   return result;
 } // |extended_block::T_coef|
 
-} // namespace ext_block
+} // |namespace ext_block|
 
-} // namespace atlas
+} // |namespace atlas|

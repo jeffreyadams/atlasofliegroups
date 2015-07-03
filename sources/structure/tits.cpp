@@ -1037,7 +1037,7 @@ found:
   return result;  // result should be reduced immediatly by caller
 } // |EnrichedTitsGroup::backtrack_seed|
 
-} // namespace tits
+} // |namespace tits|
 
 
-} // namespace atlas
+} // |namespace atlas|

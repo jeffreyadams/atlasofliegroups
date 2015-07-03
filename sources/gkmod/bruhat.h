@@ -88,8 +88,8 @@ only if i < j.
 
 }; // class BruhatOrder
 
-} // namespace bruhat
+} // |namespace bruhat|
 
-} // namespace atlas
+} // |namespace atlas|
 
 #endif

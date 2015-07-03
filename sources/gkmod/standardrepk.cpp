@@ -1851,7 +1851,7 @@ orth_projection(const RootDatum& rd, RankFlags gens,
   return result;
 }
 
-} // namespace
+} // |namespace|
 
 
-} // namespace atlas
+} // |namespace atlas|

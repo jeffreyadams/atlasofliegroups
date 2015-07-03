@@ -32,7 +32,7 @@ namespace {
   void fillLengthLess
     (std::vector<BlockElt>&, const Block_base&);
 
-} // namespace
+} // |namespace|
 
 /*****************************************************************************
 
@@ -229,7 +229,7 @@ void KLSupport::fillDownsets()
 
 }
 
-} // namespace klsupport
+} // |namespace klsupport|
 
 /*****************************************************************************
 
@@ -264,4 +264,4 @@ void fillLengthLess
 
 } // namsespace
 
-} // namespace atlas
+} // |namespace atlas|

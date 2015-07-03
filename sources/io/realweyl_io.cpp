@@ -199,6 +199,6 @@ std::ostream& printDualRealWeyl(std::ostream& strm,
 }
 
 
-} // namespace realweyl_io
+} // |namespace realweyl_io|
 
-} // namespace atlas
+} // |namespace atlas|

@@ -489,4 +489,4 @@ size_t Cartan_orbits::total_size(const BitMap& Cartan_classes) const
 
 } // namsepace
 
-} // namespace atlas
+} // |namespace atlas|

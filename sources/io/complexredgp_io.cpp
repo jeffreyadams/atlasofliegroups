@@ -58,7 +58,7 @@ void Interface::swap(Interface& other)
   d_dualRealFormInterface.swap(other.d_dualRealFormInterface);
 }
 
-} // namespace complexredgp_io
+} // |namespace complexredgp_io|
 
 /*****************************************************************************
 

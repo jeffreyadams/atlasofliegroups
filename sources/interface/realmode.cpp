@@ -423,8 +423,8 @@ void KGB_h()
 }
 
 
-} // namespace
+} // |namespace|
 
 } // |namespace commands|
 
-} // namespace atlas
+} // |namespace atlas|

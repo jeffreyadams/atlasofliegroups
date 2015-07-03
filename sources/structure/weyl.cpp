@@ -1024,7 +1024,7 @@ WeightInvolution TwistedWeylGroup::involution_matrix
   return WeightInvolution(b,b.size());
 }
 
-} // namespace weyl
+} // |namespace weyl|
 
 
 /*****************************************************************************
@@ -1197,7 +1197,7 @@ size_t TI_Entry::hashCode(size_t modulus) const
   return hash & (modulus-1);
 }
 
-} // namespace weyl
+} // |namespace weyl|
 
 /*****************************************************************************
 
@@ -1325,7 +1325,7 @@ void fillCoxMatrix(int_Matrix& cox,
 
 //				Template instantiation
 
-} // namespace
+} // |namespace|
 
 namespace weyl {
 
@@ -1336,4 +1336,4 @@ void WeylGroup::act
 
 }
 
-} // namespace atlas
+} // |namespace atlas|

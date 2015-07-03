@@ -122,7 +122,7 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
 
 }
 
-} // namespace wgraph
+} // |namespace wgraph|
 
 /*****************************************************************************
 

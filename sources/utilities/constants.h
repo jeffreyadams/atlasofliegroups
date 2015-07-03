@@ -61,6 +61,6 @@ private: // trickery to ensure initialization is performed exactly once
   static const constants dummy; // a |static| variable can be of own class!
 }; // struct constants
 
-} // namespace atlas
+} // |namespace atlas|
 
 #endif
