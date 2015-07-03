@@ -161,4 +161,4 @@ template void PreRootDatum::simple_reflect
 
 } // |namespace prerootdata|
 
-} // namespace atlas
+} // |namespace atlas|

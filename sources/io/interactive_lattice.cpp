@@ -215,7 +215,7 @@ int getLattice(const CoeffList& root_invf, WeightList& root_lattice_basis)
   return 0; // normal exit
 }
 
-} // namespace interactive_lattice
+} // |namespace interactive_lattice|
 
 /*****************************************************************************
 

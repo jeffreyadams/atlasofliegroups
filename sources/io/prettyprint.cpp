@@ -405,6 +405,6 @@ template std::ostream& printMatrix
    const matrix::Matrix_base<Polynomial<int> >&,
    unsigned long);
 
-} // namespace prettyprint
+} // |namespace prettyprint|
 
-} // namespace atlas
+} // |namespace atlas|

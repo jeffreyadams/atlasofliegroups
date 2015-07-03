@@ -299,6 +299,6 @@ void makeDotFile
   strm << "}" << std::endl;
 }
 
-} // namespace kgb_io
+} // |namespace kgb_io|
 
-} // namespace atlas
+} // |namespace atlas|

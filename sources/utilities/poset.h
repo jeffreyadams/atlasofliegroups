@@ -172,8 +172,8 @@ Poset::Poset(const std::vector<C>& hasse)
 }
 
 
-} // namespace poset
+} // |namespace poset|
 
-} // namespace atlas
+} // |namespace atlas|
 
 #endif

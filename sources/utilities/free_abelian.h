@@ -113,9 +113,9 @@ template<typename T, typename C=long int, typename Compare=std::less<T> >
 }; // |class Monoid_Ring|
 
 
-} // namespace free_abelian
+} // |namespace free_abelian|
 
-} // namespace atlas
+} // |namespace atlas|
 
 #include "free_abelian_def.h"
 

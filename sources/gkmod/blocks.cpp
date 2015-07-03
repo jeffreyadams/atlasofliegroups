@@ -127,9 +127,9 @@ DescentStatus descents(KGBElt x, KGBElt y,
 std::vector<set::EltList> makeHasse(const Block_base&);
 
 
-} // namespace
+} // |namespace|
 
-} // namespace blocks
+} // |namespace blocks|
 
 /*****************************************************************************
 
@@ -1774,6 +1774,6 @@ DynkinDiagram folded
 BitMap common_Cartans(RealReductiveGroup& GR, RealReductiveGroup& dGR)
 { return GR.Cartan_set() & GR.complexGroup().dual_Cartan_set(dGR.realForm()); }
 
-} // namespace blocks
+} // |namespace blocks|
 
-} // namespace atlas
+} // |namespace atlas|

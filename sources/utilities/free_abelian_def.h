@@ -101,5 +101,5 @@ Monoid_Ring<T,C,Compare>
   return result;
 }
 
-  } // namespace free_abelian
-} // namespace atlas
+  } // |namespace free_abelian|
+} // |namespace atlas|

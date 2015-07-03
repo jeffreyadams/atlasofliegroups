@@ -168,6 +168,6 @@ std::ostream& printGradings(std::ostream& strm, const Fiber& f,
   return strm;
 }
 
-} // namespace cartan_io
+} // |namespace cartan_io|
 
-} // namespace atlas
+} // |namespace atlas|

@@ -476,6 +476,6 @@ std::ostream& print_KL(std::ostream& f, param_block& block, BlockElt z)
   return f;
 }
 
-} // namespace block_io|
+} // |namespace block_io||
 
-} // namespace atlas|
+} // |namespace atlas||

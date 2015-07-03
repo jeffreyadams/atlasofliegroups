@@ -86,9 +86,9 @@ void put_int (unsigned int val, std::ostream& out);
 void write_bytes(unsigned int n, unsigned long long val, std::ostream& out);
 
 
-} // namespace basic_io
+} // |namespace basic_io|
 
-} // namespace atlas
+} // |namespace atlas|
 
 #include "basic_io_def.h"
 

@@ -937,7 +937,7 @@ void makeHasse(std::vector<set::EltList>& Hasse, const KGB_base& kgb)
 
 }
 
-} // namespace
+} // |namespace|
 
-} // namespace kgb
-} // namespace atlas
+} // |namespace kgb|
+} // |namespace atlas|

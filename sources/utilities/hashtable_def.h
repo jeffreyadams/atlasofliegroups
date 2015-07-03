@@ -110,5 +110,5 @@ template <class Entry, typename Number>
     return d_hash[h];
   }
 
-} // namespace hashtable
-} // namespace atlas
+} // |namespace hashtable|
+} // |namespace atlas|

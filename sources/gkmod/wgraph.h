@@ -139,8 +139,8 @@ class DecomposedWGraph
 
 }; // |class DecomposedWGraph|
 
-} // namespace wgraph
+} // |namespace wgraph|
 
-} // namespace atlas
+} // |namespace atlas|
 
 #endif

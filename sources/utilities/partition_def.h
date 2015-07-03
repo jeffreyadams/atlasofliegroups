@@ -105,6 +105,6 @@ template<typename F> // class F serving as function object (ul,ul)->ul
   return result;
 }
 
-} // namespace partition
+} // |namespace partition|
 
-} // namespace atlas
+} // |namespace atlas|

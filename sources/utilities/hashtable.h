@@ -114,8 +114,8 @@ class HashTable
 
 }; // class HashTable
 
-} // namespace hashtable
-} // namespace atlas
+} // |namespace hashtable|
+} // |namespace atlas|
 
 #include "hashtable_def.h"
 

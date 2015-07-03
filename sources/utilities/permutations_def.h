@@ -78,6 +78,6 @@ template<typename T> void Permutation::permute(std::vector<T>& v) const
     }
 }
 
-} // namespace permutations
+} // |namespace permutations|
 
-} // namespace atlas
+} // |namespace atlas|
