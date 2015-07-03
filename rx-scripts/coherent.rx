@@ -120,6 +120,15 @@ set coherent_irr(int k,ParamPol P)=ParamPol:composition_series(coherent_std(k,ch
 {coherent continuation of Weyl group element on ParamPol in basis of irreducibles}
 set coherent_irr([int] v,ParamPol P)=ParamPol:composition_series(coherent_std(v,character_formula(P)))
 
+{---------------------------coherent families-------------------------------}
+
+set coherent_family_irr(ParamPol P, ratvec v)=ParamPol:
+if is_dominant(root_datum(P),v) then T_irr(P,v)
+else let (v_dominant,w)=make_dominant(root_datum(P),v) in 
+let (,u)=w in 
+{coherent_irr(u,T_irr(P,v_dominant)) fi}
+T_irr(coherent_irr(u,P),act(inverse(w),v)) fi
+
 {------------coherent continuation on standards OR irreducibles ------------}
 {these are "module" definitions, which aren't currently implemented 
  see the modules branch
