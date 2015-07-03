@@ -90,7 +90,7 @@ T(coherent_std_reg(k,p_reg),gamma) fi
 set coherent_std(vec v,Param p)=ParamPol:
 if is_regular(p) then coherent_std_reg(v,p) else
 let gamma=infinitesimal_character(p) then
-p_reg=T(p,gamma+rho(real_form(p)))  in
+p_reg=T(p,gamma+2*rho(real_form(p)))  in
 T(coherent_std_reg(v,p_reg),gamma) fi
 
 {coherent continuation action of simple root on ParamPol in basis of standards}
