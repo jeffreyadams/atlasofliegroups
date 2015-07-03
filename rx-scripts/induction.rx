@@ -1,6 +1,6 @@
 {this file replaces earlier induction_plus.rx}
 {real and theta-stable parabolic induction from general parabolic}
-set verbose=true
+set verbose=false
 <basic.rx
 <kl.rx { for character_formula }
 <coherent.rx {for standardize}
@@ -80,8 +80,8 @@ if is_standard(p) then ParamPol:p else
 let i_root_system=root_datum(simple_imaginary_subsystem(x(p))) then
 lambda=lambda(p) then
 (lambda_dom,w)=make_dominant(i_root_system,lambda) then
-p_dom=parameter(x(p), act(inverse(w),lambda(p)), nu(p))
-in coherent_std_imaginary(w,p_dom) fi
+p_dom=parameter(x(p), act(inverse(w),lambda(p)), nu(p)) in
+coherent_std_imaginary(w,p_dom) fi
 
 set standardize(ParamPol P)=ParamPol:
 let rv=null_module(P) in for c@p in P do rv+:=c*standardize(p) od;rv
@@ -125,7 +125,6 @@ prints(cf) fi in
 let rv=null_module(G) in
 for coeff@p in cf do 
 let new=theta_induce_standard(p,G) in 
-{prints("");prints("adding: ", new);prints("");}
 rv+:=coeff*new od;
 if verbose then prints("induced as sum of standards:", rv) fi;rv
 
