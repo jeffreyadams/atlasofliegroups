@@ -138,9 +138,12 @@ BlockElt extended_block::element(BlockElt zz) const
 
 context::context
   (repr::Rep_context& rc, WeightInvolution delta, const RatWeight& gamma)
-    : d_rc(rc), d_delta(std::move(delta)), d_gamma(gamma)
+    : d_rc(rc)
+    , d_delta(std::move(delta)), d_gamma(gamma)
     , d_g(rc.kgb().base_grading_vector()-
 	  RatCoweight(rc.rootDatum().dual_twoRho(),2))
+    , integr_datum(integrality_datum(rc.rootDatum(),gamma))
+    , sub(SubSystem::integral(rc.rootDatum(),gamma))
 {}
 
 // compute |bgv-(bgv+t_bits)*(1+theta)/2 == (bgv-t_bits-(bgv+t_bits)*theta)/2|
@@ -603,6 +606,75 @@ DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
   } // |switch (p.type)|
   assert(false); return one_complex_ascent; // keep compiler happy
 } // |extended_type|
+
+param complex_cross(ext_gen p, const param& E)
+{ TwistedInvolution tw=E.tw;
+  auto &tW = E.rc().twistedWeylGroup(); // caution: |p| refers to integr. datum
+  Weight lambda_rho = E.lambda_rho, tau=E.tau;
+  Coweight l=E.l, t=E.t;
+  const RootDatum& id = E.ctxt.id();
+  for (unsigned i=p.w_tau.size(); i-->0; )
+  { weyl::Generator s=p.w_tau[i]; // generator for integrality datum
+    tW.twistedConjugate(E.ctxt.subsys().reflection(s),tw);
+    id.reflect(s,lambda_rho);
+    lambda_rho += id.root(s)*(E.ctxt.gamma().dot(id.coroot(s))-1);
+    id.coreflect(l,s);
+    l += id.coroot(s)*(E.ctxt.g().dot(id.root(s))-1);
+    // tau, t
+  }
+  return param(E.ctxt, tw,
+	       std::move(lambda_rho), std::move(tau),
+	       std::move(l), std::move(t));
+}
+
+DescValue type (const param& E, ext_gen p, std::vector<param>& links)
+{
+  DescValue result;
+  const TwistedWeylGroup& tW = E.rc().twistedWeylGroup();
+  const InvolutionTable& i_tab = E.rc().complexGroup().involution_table();
+  const RootDatum& rd = E.rc().rootDatum();
+  const RootDatum& integr_datum = E.ctxt.id();
+  const SubSystem& subs = E.ctxt.subsys();
+  InvolutionNbr theta = i_tab.nr(E.tw);
+  switch (p.type)
+  {
+  case ext_gen::one:
+    { Weight alpha = integr_datum.root(p.s0);
+      Coweight alpha_v = integr_datum.coroot(p.s0);
+      InvolutionNbr n_alpha = subs.parent_nr_simple(p.s0);
+      InvolutionNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
+
+      if (theta_alpha==n_alpha) // imaginary case
+      {}
+      else if (theta_alpha==rd.rootMinus(n_alpha)) // real case
+      { const RatWeight parity_weight = E.ctxt.gamma() - E.lambda_rho -
+	  RatWeight(rd.twoRho()-rd.twoRho(i_tab.real_roots(theta)),2);
+	if (parity_weight.dot(integr_datum.coroot(p.s0))%2==0) // nonparity
+	  result = one_real_nonparity; // no link added here
+	else // parity
+	  if (matreduc::has_solution(i_tab.matrix(theta)-1,alpha)) // type 1
+	  { // now find out if the (inverse) Cayley transforms are delta-fixed
+	  }
+	  else // real type 2
+	  {
+	    result = one_real_single;
+	    // links.push_back(ext_Cayley(alpha,E))
+	  }
+      }
+      else // complex root
+      { result = rd.is_posroot(theta_alpha)
+	  ? one_complex_ascent : one_complex_descent ;
+	links.push_back(complex_cross(p,E));
+      }
+    }
+    break;
+  case ext_gen::two:
+    break;
+  case ext_gen::three:
+    break;
+  }
+  return result;
+}
 
 extended_block::extended_block
   (const Block_base& block,const TwistedWeylGroup& W)

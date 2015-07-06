@@ -502,7 +502,7 @@ use by accessors.
 
   template<typename C>
     matrix::Vector<C>
-    reflection(matrix::Vector<C> lambda, RootNbr alpha) const
+    reflection(RootNbr alpha,matrix::Vector<C> lambda) const
     { reflect(alpha,lambda); return lambda; }
   template<typename C>
   matrix::Vector<C>
@@ -585,8 +585,8 @@ use by accessors.
   // express coroot in basis of simple coroots
   int_Vector inSimpleCoroots(RootNbr alpha) const { return coroot_expr(alpha); }
 
-  Weight twoRho(const RootNbrList&) const;
-  Weight twoRho(const RootNbrSet&) const;
+  Weight twoRho(const RootNbrList&) const; // sum of the \emph{positive} members
+  Weight twoRho(RootNbrSet) const; // by value; sum of the positive members
   Coweight dual_twoRho(const RootNbrList&) const;
   Coweight dual_twoRho(const RootNbrSet&) const;
 

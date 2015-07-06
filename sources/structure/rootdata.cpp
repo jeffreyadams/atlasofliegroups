@@ -889,7 +889,7 @@ WeightInvolution RootDatum::root_reflection(RootNbr alpha) const
 
 WeylWord RootDatum::reflectionWord(RootNbr alpha) const
 {
-  return to_dominant(reflection(twoRho(),alpha));
+  return to_dominant(reflection(alpha,twoRho()));
 }
 
 
@@ -926,19 +926,18 @@ Weight RootDatum::twoRho(const RootNbrList& rl) const
   return result;
 }
 
-/*!
-\brief Returns the sum of the positive roots in rs.
+/* Returns the sum of the positive roots in rs.
 
   Precondition: rs holds the roots in a sub-rootsystem of the root system of
-  rd;
+  rd, or possibly only the positive roots in such a subsystem
 */
-Weight RootDatum::twoRho(const RootNbrSet& rs) const
+Weight RootDatum::twoRho(RootNbrSet rs) const
 {
   Weight result(rank(),0);
+  rs &= posRootSet();
 
   for (RootNbrSet::iterator i = rs.begin(); i(); ++i)
-    if (is_posroot(*i))
-      result += root(*i);
+    result += root(*i);
 
   return result;
 }

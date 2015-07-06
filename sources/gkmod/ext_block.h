@@ -23,6 +23,7 @@
 #include "blocks.h" // for the structure |ext_gen|
 #include "complexredgp.h"
 #include "realredgp.h"
+#include "subsystem.h" // for inclusion of |SubSystem| field
 #include "repr.h" // allows using |Rep_context| methods in this file
 
 namespace atlas {
@@ -96,12 +97,16 @@ class context // holds values that remain fixed across extended block
   WeightInvolution d_delta;
   RatWeight d_gamma; // representative of infinitesimal character
   RatCoweight d_g; // chosen lift of the common square for the square class
+  RootDatum integr_datum; // intgrality datum
+  SubSystem sub;
 
  public:
   context
     (repr::Rep_context& rc, WeightInvolution delta, const RatWeight& gamma);
 
   const repr::Rep_context& rc () const { return d_rc; }
+  const RootDatum& id() const { return integr_datum; }
+  const SubSystem& subsys() const { return sub; }
   RealReductiveGroup& realGroup () const { return d_rc.realGroup(); }
   const ComplexReductiveGroup& complexGroup () const
     { return realGroup().complexGroup(); }
@@ -123,6 +128,20 @@ struct param // prefer |struct| with |const| members for ease of access
 
   param (const context& ec, const StandardRepr& sr);
   param (const context& ec, KGBElt x, const Weight& lambda_rho);
+  param (const context& ec, const TwistedInvolution& tw,
+	 Weight lambda_rho, Weight tau, Coweight l, Coweight t)
+  : ctxt(ec), tw(tw)
+  , l(std::move(l))
+  , lambda_rho(std::move(lambda_rho)), tau(std::move(tau))
+  , t(std::move(t))
+  {}
+
+  param (param&& p)
+  : ctxt(p.ctxt), tw(std::move(p.tw))
+  , l(std::move(p.l))
+  , lambda_rho(std::move(p.lambda_rho)), tau(std::move(p.tau))
+  , t(std::move(p.t))
+  {}
 
   const repr::Rep_context rc() const { return ctxt.rc(); }
   const WeightInvolution& delta () const { return ctxt.delta(); }
@@ -130,6 +149,8 @@ struct param // prefer |struct| with |const| members for ease of access
     { return ctxt.complexGroup().matrix(tw); }
 
 }; // |param|
+
+DescValue type (const param& E, ext_gen p, std::vector<param>& links);
 
 KGBElt x(const param& E); // reconstruct |E|
 
@@ -212,7 +233,7 @@ class extended_block
   BlockEltPair Cayleys(weyl::Generator s, BlockElt n) const;
   BlockEltPair inverse_Cayleys(weyl::Generator s, BlockElt n) const;
 
-  // whether link for |s| from |x| to |y| has a signe flip attached
+  // whether link for |s| from |x| to |y| has a sign flip attached
   int epsilon(weyl::Generator s, BlockElt x, BlockElt y) const;
 
   // coefficient of neighbour |sx| for $s$ in action $(T_s+1)*a_x$

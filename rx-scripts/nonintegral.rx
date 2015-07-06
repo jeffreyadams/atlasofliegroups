@@ -120,10 +120,6 @@ set posroot_ext_cross (int i, extended_param E) = extended_param:
   as opposed to simple, which might mean simple for the integral roots
 }
 
-{ cross action of strongly simple root i, must be \delta_0-fixed }
-set strongly_simple_ext_cross = (int,extended_param->extended_param):
-  posroot_ext_cross@(int,extended_param) { simple/positive roots share index }
-
 { cross action of product of strongly simple reflections,
   must give w\in W^{\delta_0}
 }

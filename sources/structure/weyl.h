@@ -719,7 +719,7 @@ public:
     int d = W.leftMult(w,s);
     return d+W.mult(w,d_twist[s]);
   }
-  int twistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
+  int twistedConjugate(const WeylWord& ww,TwistedInvolution& tw) const
   {
     int d=0;
     for (size_t i=ww.size(); i-->0; )
