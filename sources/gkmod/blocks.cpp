@@ -865,7 +865,7 @@ void nblock_help::do_down_Cayley (nblock_elt& z, weyl::Generator s) const
 void nblock_help::twist(nblock_elt& z) const
 {
   z.xx = kgb.Hermitian_dual(z.xx);
-  z.yy.act_by(i_tab.delta);
+  z.yy.act_by(i_tab.delta); // apply matrix |i_tab.delta| to |RatWeight z.yy|
 }
 
 

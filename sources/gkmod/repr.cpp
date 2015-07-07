@@ -534,6 +534,25 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
 		  infin_char);
 }
 
+/* compute shift in |lambda| component of parameter for Cayley transform
+   by  non-simple root $\alpha$, from involutions |theta_down| to |theta_up|,
+   where |ww| right-conjugates root $\alpha$ to some simple root $\beta$
+
+   Sum of positve roots changing real status, and becoming negative at $\beta$
+*/
+Weight Cayley_shift (const ComplexReductiveGroup& G,
+		     InvolutionNbr theta_down, InvolutionNbr theta_up,
+		     WeylWord to_simple)
+{ const RootDatum& rd=G.rootDatum();
+  const InvolutionTable& i_tab = G.involution_table();
+  RootNbrSet new_real_posroots =
+    (i_tab.real_roots(theta_up)^i_tab.real_roots(theta_down))&rd.posRootSet();
+  Weight shift(rd.rank(),0); // difference of rho values
+  for (auto it=new_real_posroots.begin(); it(); ++it)
+    if (rd.is_negroot(rd.permuted_root(*it,to_simple)))
+      shift += rd.root(*it); // sum posroots changing "real" and (by w) "pos"
+  return shift;
+}
 
 StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
 {
@@ -544,7 +563,7 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
 
   WeylWord w=make_dominant(z,subsys);
   KGBElt x= z.x_part; // take a working copy; don't disturb |z|
-  const Weight lr = lambda_rho(z); // use at end to build new parameter
+  Weight lr = lambda_rho(z); // use at end to build new parameter
   const RatWeight& infin_char=z.infinitesimal_char; // constant from here on
 
   RootNbr rt = rd.root_index(alpha);
@@ -580,16 +599,10 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
     throw error::Cayley_error();
   }
   x = kgb.cross(ww,x); // finally cross back
-  InvolutionNbr inv3 = kgb.inv_nr(x);
 
-  Weight rho_d(rd.rank(),0); // difference of rho values
-  const RootNbrSet posroots = rd.posRootSet();
-  RootNbrSet d03 = (i_tab.real_roots(inv0)^i_tab.real_roots(inv3))&posroots;
-  for (auto it=d03.begin(); it(); ++it)
-    if (rd.is_negroot(rd.permuted_root(*it,ww)))
-      rho_d += rd.root(*it); // sum posroots changing "real" and (by w) "pos"
+  lr += Cayley_shift(complexGroup(),inv0,kgb.inv_nr(x),ww); // apply shift
+  z = sr_gamma(x,lr,infin_char);
 
-  z = sr_gamma(x,lr+rho_d,infin_char); // apply shift by |rho_d| to lambda
   W_act(w,z); // move back to origingal infinitesimal character representative
   return z;
 }

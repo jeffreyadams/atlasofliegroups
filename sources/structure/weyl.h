@@ -708,8 +708,8 @@ public:
   std::vector<ext_gen> twist_orbits () const;
   Twist dual_twist() const; // the twist for the dual twisted Weyl group
 
-  /*!
-     Twisted conjugates element |tw| by the generator |s|:
+  /*
+     Twisted conjugate element |tw| by the generator |s|:
      $tw:=s.tw.\delta(s)$. Returns length change, in $\{-2,0,2\}$. For
      consistency, these functions should have |s| resp. |ww| as first argument
    */

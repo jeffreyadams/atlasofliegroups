@@ -620,17 +620,19 @@ param complex_cross(ext_gen p, const param& E)
     lambda_rho += id.root(s)*(E.ctxt.gamma().dot(id.coroot(s))-1);
     id.coreflect(l,s);
     l += id.coroot(s)*(E.ctxt.g().dot(id.root(s))-1);
-    // tau, t
+    // the correction terms to |lambda_rho|, |l| are killed by |delta-1|
+    id.reflect(s,tau); // so for |tau| and |t| we can just ignore them
+    id.coreflect(t,s); // (at least this is true in the length 1 case)
   }
   return param(E.ctxt, tw,
 	       std::move(lambda_rho), std::move(tau),
 	       std::move(l), std::move(t));
 }
 
-DescValue type (const param& E, ext_gen p, std::vector<param>& links)
+DescValue type (const param& E, ext_gen p, std::vector<param>& cross_links)
 {
   DescValue result;
-  const TwistedWeylGroup& tW = E.rc().twistedWeylGroup();
+  const WeylGroup& W = E.rc().weylGroup();
   const InvolutionTable& i_tab = E.rc().complexGroup().involution_table();
   const RootDatum& rd = E.rc().rootDatum();
   const RootDatum& integr_datum = E.ctxt.id();
@@ -639,32 +641,57 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
   switch (p.type)
   {
   case ext_gen::one:
-    { Weight alpha = integr_datum.root(p.s0);
-      Coweight alpha_v = integr_datum.coroot(p.s0);
-      InvolutionNbr n_alpha = subs.parent_nr_simple(p.s0);
-      InvolutionNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
+    { const Weight& alpha = integr_datum.root(p.s0);
+      const Coweight& alpha_v = integr_datum.coroot(p.s0);
+      RootNbr n_alpha = subs.parent_nr_simple(p.s0);
+      RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
 
       if (theta_alpha==n_alpha) // imaginary case
-      {}
+      { const RatCoweight grading_coweight = E.ctxt.g() - E.l -
+	  RatCoweight(rd.dual_twoRho()
+		      -rd.dual_twoRho(i_tab.imaginary_roots(theta)),2);
+	if (grading_coweight.dot(alpha)%2==0) // compact
+	  result= one_imaginary_compact;
+	else // noncompact
+	  if (matreduc::has_solution
+	      (i_tab.matrix(theta).transposed()+1, alpha_v)) // type 2
+	  {// now find out if the Cayley transforms are delta-fixed
+	    TwistedInvolution new_tw = W.prod(E.tw,subs.reflection(p.s0));
+	    WeylWord ww = subs.to_simple(p.s0);
+	    std::reverse(ww.begin(),ww.end()); // awkward, for |Cayley_shift|
+            Weight new_lambda = E.lambda_rho + repr::Cayley_shift
+	      (E.rc().complexGroup(),i_tab.nr(E.tw),i_tab.nr(new_tw),ww);
+	    new_lambda -= E.ctxt.delta()*new_lambda; // change by $\delta$
+	    result = // was |new_lambda| |delta|-fixed mod $(1-\theta')X^*$?
+	      matreduc::has_solution(i_tab.matrix(new_tw)-1,
+				     std::move(new_lambda))
+	      ? one_imaginary_pair_fixed : one_imaginary_pair_switched;
+	  }
+	  else // type 1
+	  {
+	    result = one_imaginary_single;
+	    // cross_links.push_back(ext_cross(alpha,E);
+	  }
+      }
       else if (theta_alpha==rd.rootMinus(n_alpha)) // real case
       { const RatWeight parity_weight = E.ctxt.gamma() - E.lambda_rho -
 	  RatWeight(rd.twoRho()-rd.twoRho(i_tab.real_roots(theta)),2);
-	if (parity_weight.dot(integr_datum.coroot(p.s0))%2==0) // nonparity
+	if (parity_weight.dot(alpha_v)%2==0) // nonparity
 	  result = one_real_nonparity; // no link added here
 	else // parity
 	  if (matreduc::has_solution(i_tab.matrix(theta)-1,alpha)) // type 1
-	  { // now find out if the (inverse) Cayley transforms are delta-fixed
+	  { // now find out if the inverse Cayley transforms are delta-fixed
 	  }
 	  else // real type 2
 	  {
 	    result = one_real_single;
-	    // links.push_back(ext_Cayley(alpha,E))
+	    // cross_links.push_back(ext_cross(alpha,E))
 	  }
       }
       else // complex root
       { result = rd.is_posroot(theta_alpha)
 	  ? one_complex_ascent : one_complex_descent ;
-	links.push_back(complex_cross(p,E));
+	cross_links.push_back(complex_cross(p,E));
       }
     }
     break;

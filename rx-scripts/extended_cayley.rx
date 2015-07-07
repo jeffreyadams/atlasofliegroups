@@ -48,7 +48,7 @@ begin
   in
   if (type="1i1")
   then let new_lambda=lambda
-    then new_l = ratvec_as_vec(l + (rat:((g-l)*alpha-1))*alpha_check/2)
+    then new_l = l + ratvec_as_vec((rat:((g-l)*alpha-1)/2)*alpha_check)
     , new_theta=ref*theta
     , new_omega=omega*coref
     , new_t=t
