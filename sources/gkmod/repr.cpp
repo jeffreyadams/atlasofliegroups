@@ -536,7 +536,7 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
 
 /* compute shift in |lambda| component of parameter for Cayley transform
    by  non-simple root $\alpha$, from involutions |theta_down| to |theta_up|,
-   where |ww| right-conjugates root $\alpha$ to some simple root $\beta$
+   where |ww| left-conjugates root $\alpha$ to some simple root $\beta$
 
    Sum of positve roots changing real status, and becoming negative at $\beta$
 */
@@ -549,7 +549,7 @@ Weight Cayley_shift (const ComplexReductiveGroup& G,
     (i_tab.real_roots(theta_up)^i_tab.real_roots(theta_down))&rd.posRootSet();
   Weight shift(rd.rank(),0); // difference of rho values
   for (auto it=new_real_posroots.begin(); it(); ++it)
-    if (rd.is_negroot(rd.permuted_root(*it,to_simple)))
+    if (rd.is_negroot(rd.permuted_root(to_simple,*it)))
       shift += rd.root(*it); // sum posroots changing "real" and (by w) "pos"
   return shift;
 }
@@ -561,35 +561,36 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   const InvolutionTable& i_tab = complexGroup().involution_table();
   const SubSystem& subsys = SubSystem::integral(rd,z.infinitesimal_char);
 
+  // prepare: move to a situation with integrally dominant infinitesimal char.
   WeylWord w=make_dominant(z,subsys);
   KGBElt x= z.x_part; // take a working copy; don't disturb |z|
   Weight lr = lambda_rho(z); // use at end to build new parameter
   const RatWeight& infin_char=z.infinitesimal_char; // constant from here on
 
-  RootNbr rt = rd.root_index(alpha);
-  if (rt==rd.numRoots())
-    throw std::runtime_error("Not a root");
-  make_positive(rd,rt);
-  const RootNbrSet posroots_sub = subsys.positive_roots();
-  if (not posroots_sub.isMember(rt))
+  // check the root argument, and if OK make the corresponding move to above
+  RootNbr rt = subsys.from_parent(rd.root_index(alpha)); // |subsys| numbering
+  if (rt == ~ RootNbr(0)) // either not a root at all or not in subsystem
     throw std::runtime_error("Not an integral root");
   // apply the integrally-dominant-making $W$ element |w| (in |subsys|) to |rt|:
-  rt=subsys.to_parent(subsys.permuted_root(subsys.from_parent(rt),w));
+  rt = subsys.permuted_root(rt,w); // now we've got the root to do Cayley by
+  rt = subsys.rt_abs(rt); // henceforth interpret as index of a positive root
 
+  // now do the Cayley transform proper
   InvolutionNbr inv0= kgb.inv_nr(x);
-  RootNbr s=rt; // future simple root index, the one that |rt| conjugates to
-  WeylWord ww = conjugate_to_simple(rd,s);
-  x = kgb.cross(x,ww);
+  weyl::Generator s=subsys.simple(rt);
+  WeylWord ww = subsys.to_simple(rt);
+  x = kgb.cross(ww,x);
   switch (kgb.status(s,x))
   {
   case gradings::Status::ImaginaryNoncompact:
     x = kgb.cayley(s,x); break;
-  case gradings::Status::Real:
+  case gradings::Status::Real: // find out (at inv0) whether root is parity
     { Weight rho2_diff = rd.twoRho() - rd.twoRho(i_tab.real_roots(inv0));
       RatWeight parity_vector = // compute this at the \emph{original} x
 	infin_char - lr - RatWeight(std::move(rho2_diff),2);
-      if (parity_vector.dot(rd.coroot(rt))%2!=0) // then |rt| was parity
-      {	x = kgb.inverseCayley(s,x).first; // do inverse Cayley at |inv1|
+      if (parity_vector.dot(rd.coroot(subsys.to_parent(rt)))%2!=0)
+      { // then |rt| was parity
+	x = kgb.inverseCayley(s,x).first; // do inverse Cayley at |inv1|
 	break;
       }
       // else FALL THROUGH
@@ -598,7 +599,7 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   case gradings::Status::Complex:
     throw error::Cayley_error();
   }
-  x = kgb.cross(ww,x); // finally cross back
+  x = kgb.cross(x,ww); // finally cross back
 
   lr += Cayley_shift(complexGroup(),inv0,kgb.inv_nr(x),ww); // apply shift
   z = sr_gamma(x,lr,infin_char);
