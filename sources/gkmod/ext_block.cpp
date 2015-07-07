@@ -658,17 +658,18 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& cross_links)
 	  {// now find out if the Cayley transforms are delta-fixed
 	    const TwistedInvolution new_tw = W.prod(E.tw,subs.reflection(p.s0));
 	    const WeylWord ww = subs.to_simple(p.s0);
-            const Weight new_lambda = E.lambda_rho + repr::Cayley_shift
+            const Weight new_lambda_rho = E.lambda_rho + repr::Cayley_shift
 	      (E.rc().complexGroup(),i_tab.nr(E.tw),i_tab.nr(new_tw),ww);
 	    result = // is |new_lambda| |delta|-fixed modulo $(1-\theta')X^*$?
 	      matreduc::has_solution(i_tab.matrix(new_tw)-1,
-				     (E.ctxt.delta()-1)*new_lambda)
+				     (E.ctxt.delta()-1)*new_lambda_rho)
 	      ? one_imaginary_pair_fixed : one_imaginary_pair_switched;
 	  }
 	  else // type 1
 	  {
 	    result = one_imaginary_single;
-	    // cross_links.push_back(ext_cross(alpha,E);
+	    cross_links.push_back(param
+	        (E.ctxt,E.tw,E.lambda_rho,E.tau, E.l+alpha_v, E.t));
 	  }
       }
       else if (theta_alpha==rd.rootMinus(n_alpha)) // real case
@@ -679,11 +680,20 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& cross_links)
 	else // parity
 	  if (matreduc::has_solution(i_tab.matrix(theta)-1,alpha)) // type 1
 	  { // now find out if the inverse Cayley transforms are delta-fixed
+	    const TwistedInvolution new_tw = W.prod(E.tw,subs.reflection(p.s0));
+	    const WeylWord ww = subs.to_simple(p.s0);
+            const Weight new_l = E.l + repr::dual_Cayley_shift
+	      (E.rc().complexGroup(),i_tab.nr(new_tw),i_tab.nr(E.tw),ww);
+	    result = // is |new_lambda| |delta|-fixed modulo $(1-\theta')X^*$?
+	      matreduc::has_solution(i_tab.matrix(new_tw).transposed()-1,
+				     (E.ctxt.delta()-1).right_prod(new_l))
+	      ? one_real_pair_fixed : one_real_pair_switched;
 	  }
 	  else // real type 2
 	  {
 	    result = one_real_single;
-	    // cross_links.push_back(ext_cross(alpha,E))
+	    cross_links.push_back(param
+	        (E.ctxt,E.tw, E.lambda_rho+alpha ,E.tau,E.l,E.t));
 	  }
       }
       else // complex root

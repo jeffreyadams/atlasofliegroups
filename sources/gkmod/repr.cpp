@@ -535,7 +535,7 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
 }
 
 /* compute shift in |lambda| component of parameter for Cayley transform
-   by  non-simple root $\alpha$, from involutions |theta_down| to |theta_up|,
+   by a non-simple root $\alpha$, from involutions |theta_down| to |theta_up|,
    where |ww| left-conjugates root $\alpha$ to some simple root $\beta$
 
    Sum of positve roots changing real status, and becoming negative at $\beta$
@@ -547,10 +547,31 @@ Weight Cayley_shift (const ComplexReductiveGroup& G,
   const InvolutionTable& i_tab = G.involution_table();
   RootNbrSet new_real_posroots =
     (i_tab.real_roots(theta_up)^i_tab.real_roots(theta_down))&rd.posRootSet();
-  Weight shift(rd.rank(),0); // difference of rho values
+  Weight shift(rd.rank(),0); // difference of $\rho$ values
   for (auto it=new_real_posroots.begin(); it(); ++it)
     if (rd.is_negroot(rd.permuted_root(to_simple,*it)))
       shift += rd.root(*it); // sum posroots changing "real" and (by w) "pos"
+  return shift;
+}
+
+/* compute shift in |l| component of parameter for Cayley transform
+   by a non-simple root $\alpha$, from involutions |theta_down| to |theta_up|,
+   where |ww| left-conjugates root $\alpha$ to some simple root $\beta$
+
+   Sum of poscoroots changing imaginary status, and becoming negative at $\beta$
+*/
+Coweight dual_Cayley_shift (const ComplexReductiveGroup& G,
+			    InvolutionNbr theta_down, InvolutionNbr theta_up,
+			    WeylWord to_simple)
+{ const RootDatum& rd=G.rootDatum();
+  const InvolutionTable& i_tab = G.involution_table();
+  RootNbrSet new_imaginary_posroots =
+    (i_tab.imaginary_roots(theta_up)^i_tab.imaginary_roots(theta_down))
+    &rd.posRootSet();
+  Coweight shift(rd.rank(),0); // difference of $\check\rho$ values
+  for (auto it=new_imaginary_posroots.begin(); it(); ++it)
+    if (rd.is_negroot(rd.permuted_root(to_simple,*it)))
+      shift += rd.coroot(*it); // sum poscoroots changing "imaginary" and "pos"
   return shift;
 }
 

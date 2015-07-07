@@ -219,6 +219,10 @@ class Rep_table : public Rep_context
 Weight Cayley_shift (const ComplexReductiveGroup& G,
 		     InvolutionNbr theta_down, InvolutionNbr theta_up,
 		     WeylWord to_simple);
+// compute shift in $l$ component involved in non-simple Cayley
+Coweight dual_Cayley_shift (const ComplexReductiveGroup& G,
+			    InvolutionNbr theta_down, InvolutionNbr theta_up,
+			    WeylWord to_simple);
 
 } // |namespace repr|
 
