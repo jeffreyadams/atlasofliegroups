@@ -46,23 +46,27 @@ parameter(x_G,lambda(p_L)+rho_r(x_G)+rhoS(x_G)-rho_r(x(p_L))-rhoS(x(p_L)), nu(p_
 set induce_standard(ParamPol P,RealForm G)=ParamPol:
 let rv=null_module(G) in for c@p in P do rv+:=c*induce_standard(p,G) od;rv
 
-{given a standard module for G, find one for real Levi M which maps to it}
+{given p and an arbitrary Levi factor M, try to write p as induce_standard(p_M,G)}
 set inverse_induce_standard(Param p, RealForm M)=
 let x_G=x(p) then
 x_M=inverse_embed_KGB(x(p),M)  in
 parameter(x_M,lambda(p)-rho_r(x_G)-rhoS(x_G)+rho_r(x_M)+rhoS(x_M),nu(p)) 
 
-{default: M=Cent(A) where H=TA is the Cartan of p}
-set inverse_induce_standard(Param p)=inverse_induce_standard(p,M(x(p)))
+{
+write a parameter p as induce_standard(p_M,G) where M is cuspidal,
+and p_M is a relative limit of discrete series of M
+returns (M,p_M)
+}
+set cuspidal_data(Param p)=let p_M=inverse_induce_standard(p,M(x(p))) in (real_form(p_M),p_M)
 
 {coherent continuation just using the imaginary roots
- this is done by p -> p_M=inverse_induce_standard(p) 
+ this is done by p -> p_M=cuspidal_data(p) 
                    -> induce_standard(w.p_M)
  used in standardize@Param
 }
 set coherent_std_imaginary(W_word w,Param p)=
 let M=M(x(p)) then
-p_M=inverse_induce_standard(p,M) in
+(,p_M)=cuspidal_data(p) in
 induce_standard(coherent_std(w,p_M),real_form(p))
 
 {convert a possibly non-standard parameter into a linear combination of standard ones} 

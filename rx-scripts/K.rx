@@ -31,7 +31,10 @@ set rho_in(KGBElt x) = ratvec:
   and right-multiplication by it (its transpose) as injection X_*(K)->X_*.
 }
 set cocharacter_lattice_K (InnerClass ic) = mat:
-  eigen_lattice(^distinguished_involution(ic),1)
+  let delta=distinguished_involution(ic) in 
+  if delta=id_mat(rank(ic)) then delta 
+  {eigen_lattice(identity) is not necessarily the identity; using identity gives nicest coordinates}
+  else eigen_lattice(^distinguished_involution(ic),1) fi
 
 { matrix of projection X^*(T)-> X^*(T_K) where T is fundamental Cartan of G,
   and T_K is identity component of fundamental Cartan of K
