@@ -1,10 +1,13 @@
 <basic.rx
 <matrix.rx { for 'minor' (this dependency might be eliminated) }
 
-{ M is an nxk matrix, columns of M define a Z-module W }
-
+{ M is an nxk matrix, columns of M define a Z-module W=image(M)\subset Z^n }
 set submodule_basis (mat M) = mat:
   let (B,cs) = adapted_basis(M) in n_rows(B) # for c@j in cs do c*B[j] od
+
+{ columns are a Q-basis of image(M)}
+set Q_submodule_basis (mat M) = mat:
+  let (B,cs) = adapted_basis(M) in n_rows(B) # for c@j in cs do B[j] od
 
 { a basis representing the quotient by sublattice spanned by columns;
   tests that this sublattice is a direct factor, and throws an error if not }
@@ -18,6 +21,42 @@ set quotient_module_basis (mat M) = mat:
 set saturation_quotient_module_basis (mat M) = mat:
   let (B,cs) = adapted_basis(M) then l=#cs
   in columns_with ((int j)bool: j>=l,B)
+{this is a Q-basis of the quotient}
+set Q_quotient_module_basis (mat M) = mat:saturation_quotient_module_basis(M)
+
+{ Projection of v onto V/W parallel to W in basis from adapted_basis
+  Basis of image space: projection of Q_quotient_module_basis(M)
+}
+set projection_mod_image (mat M) = mat:
+  let (B,cs) = adapted_basis(M) then d=#cs
+  in rows_with( (int i): i>=d, inverse(B) ) { coordinates on final part basis }
+
+
+
+{ M is an nxk matrix whose columns span a submodule W of V=Z^n
+  Projection to saturation of W, parallel to complement from |adapted_basis(M)|
+  Basis of image space: initial vectors of |adapted_basis(M)|, i.e. Q_submodule_basis(M)
+}
+set projection_to_image (mat M) = mat:
+  let (B,cs) = adapted_basis(M) then d=#cs
+  in rows_with( (int i): i<d, inverse(B) )
+
+set projection_to_image (mat M, ratvec v) = ratvec:
+Q_submodule_basis(M)*projection_to_image(M)*v
+
+{M is an nxk matrix whose columns span a submodule W of V=Q^n
+ V=(V/W)\oplus W 
+ basis of W = first k columns of adapted_basis(M)
+ basis of (V/W)\subset V = saturation_quotient_module_basis(M)
+                         = last n-k columns of adapted_basis(M)
+ decompose(M,w)=(u,v) according to this decomposition
+} 
+set decompose(mat M,ratvec v)=
+let A=projection_to_image(M) then
+B=projection_mod_image(M) then
+(C,w)=adapted_basis(M) in 
+let D=C[0:#w] in (D*A*v,saturation_quotient_module_basis(M)*B*v)
+
 
 { M is an n*k matrix whose columns span a rank k submodule W of V=Z^n
   A is an n*n matrix preserving W
@@ -65,27 +104,6 @@ set quotient_matrix (mat M,mat A) = mat:
   then Q = minor(Pinverse*A*P,n_columns(A)-ncM,ncM)
   in Q\d
 
-{ M is an nxk matrix whose columns span a submodule W of V=Z^n
-  Projection of v onto V/W parallel to W in basis from adapted_basis
-  Basis of image space: projection of final vectors of adapted_basis
-}
-set projection_mod_image (mat M) = mat:
-  let (B,cs) = adapted_basis(M) then d=#cs
-  in rows_with( (int i): i>=d, inverse(B) ) { coordinates on final part basis }
-
-{ original code:
-  let sub = submodule_basis(M), quotient = saturation_quotient_module_basis(M)
-  then P = mat: sub#quotient, dim_sum = n_columns(sub)
-  in rows_with( (int i): i>=dim_sum, inverse(P) )
-}
-
-{ M is an nxk matrix whose columns span a submodule W of V=Z^n
-  Projection to saturation of W, parallel to complement from |adapted_basis(M)|
-  Basis of image space: initial vectors of |adapted_basis(M)|
-}
-set projection_to_image (mat M) = mat:
-  let (B,cs) = adapted_basis(M) then d=#cs
-  in rows_with( (int i): i<d, inverse(B) )
 
 { |solve_ratvec| finds a rational solution to linear equation A*x=v }
 { method:
