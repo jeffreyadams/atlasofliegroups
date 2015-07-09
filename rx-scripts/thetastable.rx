@@ -25,6 +25,10 @@ for i:nr_of_posroots(G)  do
  if c!=0 then u_roots#:=sign(c)*alpha fi od;\
  if not all_positive_roots(G,u_roots) then prints("warning: u is not contained in n") fi; u_roots
 
+set u(KGBElt x)=[vec]:
+let rv=[vec]:[] in
+for alpha in posroots(real_form(x)) do if not is_real(alpha,x) then rv#:=alpha fi od;rv
+
 {similar to u(x,v), except now it returns the RealForm L(x,v)}
 set L(KGBElt x, ratvec v)=RealForm:
 let G=real_form(x) then
@@ -47,7 +51,9 @@ let ()=for i:nr_of_posroots(G)  do
 
 
 {return both RealForm: L(x,v) and [vec]: u(x,v)}
-set theta_stable_q(KGBElt x,ratvec v)=(RealForm,[vec]):(L(x,v),u(x,v))
+set theta_stable_q(KGBElt x,ratvec v)=(KGBElt,RealForm,[vec]):(x,L(x,v),u(x,v))
+set theta_stable_q(KGBElt x)=(KGBElt,RealForm,[vec]):(x,L(x),u(x))
+
 
 set rho_u(KGBElt x, ratvec v)=let roots=u(x,v) in if #roots=0 then null(rank(real_form(x))) else ratvec:sum(roots)/2 fi
 set rho_L(KGBElt x, ratvec v)=ratvec:rho(L(x,v))
@@ -82,9 +88,10 @@ let G=real_form(x_in) then
 x_new=W_cross(inverse(w),x_in) then
 {lambda_q_new=act(w,lambda_q) then}
 lambda_in_new=act(inverse(w),lambda_in) then
-(L,u)=theta_stable_q(x_new,lambda_q_new) then
+(x_new,L,u)=theta_stable_q(x_new,lambda_q_new) then
 t_L=trivial(L) then
-pi_L=parameter(x(t_L),lambda(t_L)+lambda_in_new-rho_u(x_new,lambda_q_new),nu(t_L)) in 
+{pi_L=parameter(x(t_L),lambda(t_L)+lambda_in_new-rho_u(x_new,lambda_q_new),nu(t_L)) in }{this was apparently wrong}
+pi_L=parameter(x(t_L),lambda(t_L)+lambda_in_new-rho_u(x_new,lambda_q_new),nu(t_L)+lambda_in_new-rho_u(x_new,lambda_q_new)) in
 let ()=prints("in Aq, p_L=", pi_L) in 
 theta_induce_irreducible(pi_L,G) 
 
