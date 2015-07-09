@@ -72,7 +72,7 @@ let S=subsets(x,H) in [(ratvec:null(rank(real_form(x))),0)]#for v in S do (sum(v
 {this implements the algorithm of Proposition 7.3(6)
 p_L must be a standard final limit parameter for L (i.e. an L\cap K-type)
 }
-set mu(KGBElt x, ratvec H, Param p_L)=
+set mu(KGBElt x, ratvec H, Param p_L)=ParamPol:
 if not (is_standard(p_L)) then error("p_L is not standard") 
 elif not (is_final(p_L)) then error("p_L is not final") 
 elif  (is_zero(p_L)) then error("p_L is zero") 
@@ -91,30 +91,42 @@ prints("terms in sum:") then
    prints("parameter on L:", p) in 
    let q=parameter(x(p),lambda(p)-shift,nu(p)) in 
    let ()=prints("shifted param on L:", q) then
-   r=theta_induce_standard(q,G) in 
-   prints("parameter on G:", r);
-   rv+:=(-1)^j*c*standardize(r) od od in rv fi
+   r_1=theta_induce_standard(q,G) then
+   ()=prints("theta_induced parameter on G before standardization:", r_1) then
+   r_2=standardize(r_1) then
+   ()=prints("theta_induced parameter on G standardized:", r_2) then
+   r_3=standardize(r_2)*0 {set nu=0} then
+   ()=prints("theta_induced parameter on G at nu=0:", r_3) in
+   rv+:=(-1)^j*c*r_3 od od in rv fi
 
 {need sorting by a function taking rational values} 
-set K_norm(Param p)=rat:
-if nu(p) != null(rank(real_form(p))) then prints("K_norm of parameter with nu != 0") fi;lambda(p)*lambda(p)
+set K_norm(Param p)=int:
+if nu(p) != null(rank(real_form(p))) then prints("K_norm of parameter with nu != 0") fi;
+rat_as_int(nondegenerate_invariant_form(real_form(p),lambda(p),lambda(p)))
 
 set K_norm(Split s,Param p)=rat:K_norm(p)
 
 set sort([rat] v)=[rat]:let (num,denom)=%v in sort(num)/denom
 set inv_standardisation([rat] v)=let (num,)=%v in inv_standardisation(num)
 
-set sort_by ((Param->rat) f) = ([Param] v) [Param]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-set sort_by (((Split,Param)->rat) f) = ([(Split,Param)] v) [(Split,Param)]:
-  for index in inv_standardisation(for (c,p) in v do f(c,p) od) do v[index] od
-
-
 { Sort list of parameters by K_norm }
 set sort_by_K_norm = ([Param] -> [Param]): sort_by( K_norm@Param )
-
 set sort_by_K_norm = ([(Split,Param)] -> [(Split,Param)]): sort_by(K_norm@(Split,Param))
 
 set print_by_K_norm(ParamPol P)=let result=sort_by_K_norm(for c@p in P do (c,p) od) in 
 for (c,p) in result do prints(split_as_int(c),"*",p, " ", K_norm(p)) od
+
+set highest_K_norm(ParamPol P)=int:
+let rv=int:0 in
+for p in monomials(P) do let m=K_norm(p) in if m>rv then rv:=m fi od;rv
+
+set highest_terms(ParamPol P)=ParamPol:
+let max=highest_K_norm(P) then
+rv=null_module(real_form(P)) in 
+for c@p in P do if K_norm(p)=max then rv+:=c*p fi od;rv
+
+set all_K_norms(ParamPol P)=[int]:
+let rv=[int]:[] in
+for c@p in P do rv#:=K_norm(p) od;sort(rv)
+
+

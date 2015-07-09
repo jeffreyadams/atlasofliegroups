@@ -1,6 +1,6 @@
 {this file replaces earlier induction_plus.rx}
 {real and theta-stable parabolic induction from general parabolic}
-set verbose=false
+set verbose=true
 <basic.rx
 <kl.rx { for character_formula }
 <coherent.rx {for standardize}
@@ -99,6 +99,7 @@ might not be standard for G (outside of good range), so apply standardize
 set theta_induce_standard(Param p_L,RealForm G)=ParamPol:
 let L=real_form(x(p_L)) in let x_G=embed_KGB(x(p_L),G) then
 p_G=parameter(x_G,lambda(p_L)+rho_i(x_G)+theta_rhoS(x_G)-rho_i(x(p_L))-theta_rhoS(x(p_L)), nu(p_L)) then
+()=if verbose then prints("p_G before standardization:", p_G) fi then
 p_G_standardized=standardize(p_G) then
 ()=if verbose then prints("p_L: ", p_L) fi in 
 if (is_standard(p_G)) then 

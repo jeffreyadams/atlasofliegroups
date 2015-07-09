@@ -1,4 +1,5 @@
-<group_operations
+<group_operations.rx
+<lattice.rx
 
 {center Z and dual Z_hat of complex group or real form}
 {
@@ -27,6 +28,18 @@ print_Z(RootDatum rd) and print_Z(RealForm G) give human-understandable descript
 
 {Q-basis of Lie algebra of radical of complex group}
 set lie_radical(RootDatum rd)=[vec]:kernel(^simple_roots(rd))
+
+{ss_part(rd,v)=projection of v\in X^*\otimes Q onto derived group}
+set ss_part(RootDatum rd, ratvec v)=ratvec:
+let n=rank(rd) then
+fw=fundamental_weights(rd) then
+rv=ratvec:null(n) in
+for i:semisimple_rank(rd) do 
+let scalar=v*simple_coroots(rd)[i] in
+rv+:=scalar*fw[i] od;rv
+
+{lie_radical_part(rd,v)=projection of v\in X^*\otimes Q onto center}
+set lie_radical_part(RootDatum rd, ratvec v)=ratvec:v-ss_part(rd,v)
 
 {Q-basis of Lie algebra of split part of radical of complex group}
 set lie_split_radical(RealForm G)=[vec]:
@@ -150,3 +163,4 @@ else
  if #ss_part>0 then  prints("finite part of center: ",ss_part_string) else
  prints("center has no finite part") fi
 fi
+
