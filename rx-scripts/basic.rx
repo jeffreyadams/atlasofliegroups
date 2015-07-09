@@ -550,6 +550,8 @@ set simple_from_positive (mat posroots,mat poscoroots) = (mat,mat):
 
 set fundamental_weights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_weight(rd,i) od
+set fundamental_coweights (RootDatum rd) = [ratvec]:
+  for i:semisimple_rank(rd) do fundamental_coweight(rd,i) od
 
 
 
