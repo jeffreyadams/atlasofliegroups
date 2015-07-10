@@ -140,8 +140,7 @@ context::context
   (repr::Rep_context& rc, WeightInvolution delta, const RatWeight& gamma)
     : d_rc(rc)
     , d_delta(std::move(delta)), d_gamma(gamma)
-    , d_g(rc.kgb().base_grading_vector()-
-	  RatCoweight(rc.rootDatum().dual_twoRho(),2))
+    , d_g(rc.kgb().base_grading_vector()-rho_check(rc.rootDatum()))
     , integr_datum(integrality_datum(rc.rootDatum(),gamma))
     , sub(SubSystem::integral(rc.rootDatum(),gamma))
 {}
@@ -614,48 +613,47 @@ param complex_cross(ext_gen p, const param& E)
 
   TwistedInvolution tw=E.tw;
   InvolutionNbr theta = i_tab.nr(tw);
-  RatWeight parity_weight = E.ctxt.gamma() - E.lambda_rho -
-    RatWeight(rd.twoRho()-rd.twoRho(i_tab.real_roots(theta)),2);
-  Weight rho2_real = rd.twoRho(i_tab.real_roots(theta));
-  RatCoweight grading_coweight = E.ctxt.g() - E.l -
-    RatCoweight(rd.dual_twoRho()
-		-rd.dual_twoRho(i_tab.imaginary_roots(theta)),2);
-  Coweight rho_check2_im = rd.dual_twoRho(i_tab.imaginary_roots(theta));
-  auto& pwn = parity_weight.numerator();
-  auto& cwn = grading_coweight.numerator();
+  const RatWeight gamma_rho = E.ctxt.gamma() - rho(rd);
+  RatWeight gamma_lambda =  gamma_rho - E.lambda_rho;
+  auto& ga_la_num = gamma_lambda.numerator();
+  Weight rho_r_shift = rd.twoRho(i_tab.real_roots(theta));
+
+  const RatCoweight g_rho_check = E.ctxt.g() - rho_check(rd);
+  RatCoweight torus_factor =  g_rho_check - E.l;
+  auto& tf_num = torus_factor.numerator();
+  Coweight dual_rho_im_shift = rd.dual_twoRho(i_tab.imaginary_roots(theta));
+
   Weight tau=E.tau;
   Coweight t=E.t;
   const RootDatum& id = E.ctxt.id();
   for (unsigned i=p.w_tau.size(); i-->0; )
   { weyl::Generator s=p.w_tau[i]; // generator for integrality datum
     tW.twistedConjugate(E.ctxt.subsys().reflection(s),tw);
-    id.reflect(s,pwn);
-    id.reflect(s,rho2_real);
+    id.reflect(s,ga_la_num);
+    id.reflect(s,rho_r_shift);
     id.reflect(s,tau);
-    id.coreflect(cwn,s);
+    id.coreflect(tf_num,s);
     id.coreflect(t,s);
-    id.coreflect(rho_check2_im,s);
+    id.coreflect(dual_rho_im_shift,s);
   }
-  RatWeight lr_ratvec = E.ctxt.gamma() - parity_weight -
-    RatWeight(rd.twoRho()-rd.twoRho(i_tab.real_roots(i_tab.nr(tw))),2);
-  lr_ratvec.normalize();
+  RatWeight lr_ratvec = (gamma_rho - gamma_lambda).normalize();
   assert(lr_ratvec.denominator()==1);
   Weight lambda_rho(lr_ratvec.numerator().begin(),
-		    lr_ratvec.numerator().end());
-  Weight tau_corr = (rd.twoRho(i_tab.real_roots(i_tab.nr(tw)))-rho2_real)/2;
-  tau_corr = ((E.ctxt.delta()-1)*tau_corr)/2;
-  RatWeight l_ratvec = E.ctxt.g() - grading_coweight -
-    RatWeight(rd.dual_twoRho()
-	      -rd.dual_twoRho(i_tab.imaginary_roots(i_tab.nr(tw))),2);
-  l_ratvec.normalize();
+		    lr_ratvec.numerator().end()); // convert to |Weight|
+  rho_r_shift -= rd.twoRho(i_tab.real_roots(i_tab.nr(tw)));
+  rho_r_shift/=2; // now it is just a sum of (real) roots
+  Weight tau_corr = ((E.ctxt.delta()-1)*rho_r_shift)/2; // hope it divides
+
+  RatWeight l_ratvec = (g_rho_check - torus_factor).normalize();
   assert(l_ratvec.denominator()==1);
   Coweight l(l_ratvec.numerator().begin(), l_ratvec.numerator().end());
-  Coweight t_corr = (rd.twoRho(i_tab.real_roots(i_tab.nr(tw)))-rho2_real)/2;
-  t_corr = ((E.ctxt.delta()-1).right_prod(tau_corr))/2;
+  dual_rho_im_shift -= rd.dual_twoRho(i_tab.imaginary_roots(i_tab.nr(tw)));
+  dual_rho_im_shift/=2; // now it is just a sum of (imaginary) coroots
+  Coweight t_corr = ((E.ctxt.delta()-1).right_prod(dual_rho_im_shift))/2;
 
   return param(E.ctxt, tw,
-	       std::move(lambda_rho), tau+tau_corr,
-	       std::move(l), t+t_corr);
+	       lambda_rho-rho_r_shift, tau+tau_corr,
+	       l-dual_rho_im_shift, t+t_corr);
 }
 
 DescValue type (const param& E, ext_gen p, std::vector<param>& cross_links)

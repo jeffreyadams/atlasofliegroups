@@ -625,9 +625,7 @@ Weight param_block::lambda_rho(BlockElt z) const
   InvolutionNbr i_x = rc.kgb().inv_nr(parent_x(z));
   involution_table().real_unique(i_x,t);
 
-  RatWeight lr =
-    (infin_char - t - RatWeight(realGroup().rootDatum().twoRho(),2))
-    .normalize();
+  RatWeight lr =(infin_char - t - rho(realGroup().rootDatum())).normalize();
   assert(lr.denominator()==1);
   return Weight(lr.numerator().begin(),lr.numerator().end());
 }

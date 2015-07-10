@@ -58,7 +58,7 @@ StandardRepr Rep_context::sr_gamma
   const InvolutionTable& i_tab = complexGroup().involution_table();
 #ifndef NDEBUG // check that constructor below builds a valid StandardRepr
   int_Matrix theta1 = kgb().involution_matrix(x)+1;
-  RatWeight g_r = gamma - RatWeight(rootDatum().twoRho(),2); // $\gamma-\rho$
+  RatWeight g_r = gamma - rho(rootDatum());
   Weight image (g_r.numerator().begin(),g_r.numerator().end()); // convert
   // |gamma| is compatible with |x| if neither of next two lines throws
   image = theta1*image/int(g_r.denominator()); // division must be exact
@@ -71,7 +71,7 @@ RatWeight Rep_context::gamma
   (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
 {
   const InvolutionTable& i_tab = complexGroup().involution_table();
-  const RatWeight lambda(lambda_rho*2+rootDatum().twoRho(),2);
+  const RatWeight lambda = rho(rootDatum())+lambda_rho;
   const RatWeight diff = lambda - nu;
   const RatWeight theta_diff(i_tab.matrix(kgb().inv_nr(x))*diff.numerator(),
 			     diff.denominator()); // theta(lambda-nu)
@@ -104,7 +104,7 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
   const InvolutionTable& i_tab = complexGroup().involution_table();
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
-  const RatWeight gamma_rho = z.gamma() - RatWeight(rootDatum().twoRho(),2);
+  const RatWeight gamma_rho = z.gamma() - rho(rootDatum());
   Ratvec_Numer_t im_part2 = gamma_rho.numerator()+theta*gamma_rho.numerator();
   im_part2 /= gamma_rho.denominator(); // exact: $(1+\theta)(\lambda-\rho)$
   Weight i2(im_part2.begin(),im_part2.end()); // convert to |Weight|
@@ -114,8 +114,8 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
 // return $\lambda \in \rho+X^*$ as half-integer rational vector
 RatWeight Rep_context::lambda(const StandardRepr& z) const
 {
-  const Weight num = lambda_rho(z) * 2 + rootDatum().twoRho();
-  return RatWeight(num,2).normalize();
+  RatWeight result(rho(rootDatum()));
+  return result.normalize()+lambda_rho(z);
 }
 
 RatWeight Rep_context::nu(const StandardRepr& z) const
@@ -456,7 +456,7 @@ StandardRepr Rep_context::cross(weyl::Generator s, StandardRepr z) const
   // InvolutionNbr i_x = kgb().inv_nr(z.x());
   // no need to do |complexGroup().involution_table().real_unique(i_x,t)|
 
-  RatWeight lr =  (infin_char - t - RatWeight(rd.twoRho(),2)).normalize();
+  RatWeight lr =  (infin_char - t - rho(rd)).normalize();
   assert(lr.denominator()==1); // we have reconstructed $\lambda-\rho \in X^*$
   return sr_gamma(src.x(),
 		  Weight(lr.numerator().begin(),lr.numerator().end()), // mod 2
@@ -507,7 +507,7 @@ StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
   // InvolutionNbr i_x = kgb().inv_nr(z.x());
   // no need to do |complexGroup().involution_table().real_unique(i_x,t)|
 
-  RatWeight lr =  (infin_char - t - RatWeight(rd.twoRho(),2)).normalize();
+  RatWeight lr =  (infin_char - t - rho(rd)).normalize();
   assert(lr.denominator()==1);
   return sr_gamma(src.x(),
 		  Weight(lr.numerator().begin(),lr.numerator().end()), // mod 2
@@ -527,7 +527,7 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
   // InvolutionNbr i_x = kgb().inv_nr(z.x());
   // no need to do |complexGroup().involution_table().real_unique(i_x,t)|
 
-  RatWeight lr =  (infin_char - t - RatWeight(rd.twoRho(),2)).normalize();
+  RatWeight lr =  (infin_char - t - rho(rd)).normalize();
   assert(lr.denominator()==1);
   return sr_gamma(src.x(),
 		  Weight(lr.numerator().begin(),lr.numerator().end()), // mod 2
@@ -639,7 +639,7 @@ StandardRepr Rep_context::twist(StandardRepr z) const
   blocks::nblock_elt src(z.x(),y_values::exp_pi(infin_char-lambda(z)));
   aux.twist(src);
   RatWeight lr =
-    (infin_char - src.y().log_pi(false) - RatWeight(rd.twoRho(),2)).normalize();
+    (infin_char - src.y().log_pi(false) - rho(rd)).normalize();
   assert(lr.denominator()==1);
   return sr_gamma(src.x(),
 		  Weight(lr.numerator().begin(),lr.numerator().end()), // mod 2

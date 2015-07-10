@@ -818,8 +818,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
   // second step: get imaginary-dominant lambda
-  RatWeight rho(rd.twoRho(),2);
-  std::cout << "rho = " << rho.normalize() << std::endl;
+  std::cout << "rho = " << rho(rd).normalize() << std::endl;
   if (i_tab.imaginary_rank(i_x)>0)
   {
     std::cout << "NEED, on following imaginary coroot"
@@ -829,7 +828,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
     for (size_t i=0; i<i_tab.imaginary_rank(i_x); ++i)
     {
       RootNbr alpha = i_tab.imaginary_basis(i_x,i);
-      int v = -rho.dot(rd.coroot(alpha));
+      int v = -rd.colevel(alpha); // |rd.coroot(alpha).dot(rho())|
       if (kgb::status(kgb,x,alpha)==gradings::Status::ImaginaryCompact)
 	++v; // imaginary compact root should not be singular
       std::cout	<< rd.coroot(alpha) << " (>=" << v << ')' << std::endl;
@@ -918,7 +917,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
       std::cout << "Parameter modified to: ";
 
     std::cout << "x="<< x << ", lambda="
-	      << RatWeight(lambda_rho*2+rd.twoRho(),2).normalize()
+	      << rho(rd).normalize()+lambda_rho
 	      << ", gamma=" << gamma << '.' << std::endl;
 
     const RootNbrList& simple_real = i_tab.real_basis(kgb.inv_nr(x));

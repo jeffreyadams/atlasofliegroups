@@ -1073,6 +1073,10 @@ void RootDatum::fillStatus()
 
 ******************************************************************************/
 
+RatWeight rho (const RootDatum& rd) { return RatWeight(rd.twoRho(),2); }
+RatCoweight rho_check (const RootDatum& rd)
+  { return RatCoweight(rd.dual_twoRho(),2); }
+
 
 /*!
 \brief Returns matrix of dual involution of the one given by |q|
