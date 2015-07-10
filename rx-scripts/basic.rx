@@ -647,7 +647,7 @@ set Cayley (vec alpha,KGBElt x) = KGBElt:
 
 { cross action of Weyl group element; avoid name conflict cross@(vec,KGBElt) }
 set W_cross ([int] w,KGBElt x) = KGBElt:
-  for i:#w downto 0 do x:=cross(w[i],x) od; x
+  for s in w ~ do x:=cross(s,x) od; x
 
 set KGB_status_text (int i) = string: ["C-","ic","r ","nc","C+"][i]
 
@@ -772,7 +772,7 @@ set trivial (RealForm G) = Param: { parameter for the trivial representation }
 
 { cross action of Weyl group element; avoid name conflict cross@(vec,Param) }
 set W_cross ([int] w,Param p) = Param:
-  for i:#w downto 0 do p:=cross(w[i],p) od; p
+  for s in w ~ do p:=cross(s,p) od; p
 
 { parameter(G,x,lambda,nu)=param(KGB(G,x),lambda-rho(G),nu), so you can enter
   lambda without the rho shift; lambda may have denominator 2 or be a vec
