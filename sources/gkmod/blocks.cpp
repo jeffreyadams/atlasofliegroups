@@ -87,6 +87,17 @@
 	   |         /   \                                     /   \
       (   s^x   ,   y     y' )     Real Type II (twice)     s^z_1  s^z_2
 
+  When $\alpha,\alpha^\vee$ are the root and coroot for |s|, the involution of
+  $X^*$ at the more compact Cartan is $\theta$ and at the more split Cartan
+  $\theta'=s_\alpha*\theta$, then on has equivalences
+
+    \alpha^\vee\notin X_*(1+\theta) \iff \alpha\in(1-\theta')X^* \iff type 1
+
+    \alpha^\vee\in X_*(1+\theta) \iff \alpha\notin(1-\theta')X^* \iff type 2
+
+  Moreover  $\<\alpha^\vee, (X^*)^\theta> = n\Z$  in type $n\in\{1,2\}$ and
+  also  $< (X_*)^{-\theta'}, \alpha > = (2/n)\Z$  in type $n\in\{1,2\}$
+
   If |s| is imaginary compact for the involution, it will be real and not in
   the image of the Cayley transform for the dual involution. No Cayley
   transorm will be defined for the |x| coordinate, and no inverse Cayley

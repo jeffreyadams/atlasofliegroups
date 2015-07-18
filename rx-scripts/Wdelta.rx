@@ -52,6 +52,8 @@ set rewrite_word_Wdelta_to_W (RootDatum rd,mat delta,W_word ww) = W_word:
 { find W_word:w \in W^\delta taking any positive root to a simple root for |rd|
   root in question is |root(rd,j)|
   returns (W_word:w1,vec: v) where v = w1 * root(rd,j); P*v= root(rd_delta,k)
+  and where P projects weight lattice from rd to that of rd_delta, and k is
+  the index of a simple root in rd_delta
 }
 set conjugate_to_simple_by_Wdelta (RootDatum rd, mat delta, int j) =
   (W_word{ for rd },vec{ image of root(rd,j) }):
