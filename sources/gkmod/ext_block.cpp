@@ -656,7 +656,49 @@ param complex_cross(ext_gen p, const param& E)
 	       l-dual_rho_im_shift, t+t_corr);
 }
 
-DescValue type (const param& E, ext_gen p, std::vector<param>& cross_links)
+
+WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
+{ const RootDatum& rd = ctxt.complexGroup().rootDatum();
+  std::vector<weyl::Generator> delta (rd.semisimpleRank());
+  std::vector<bool> is_length_3 (delta.size());
+  for (weyl::Generator s=0; s<delta.size(); ++s)
+  { weyl::Generator t =
+      rd.simpleRootNbr(rd.root_index(ctxt.delta()*rd.simpleRoot(s)));
+    delta[s]=t;
+    if (s==t)
+      is_length_3[s]=false;
+    else
+    { delta[t]=s;
+      is_length_3[s] = rd.cartan(s,t)<0;
+    }
+  }
+
+  weyl::Generator s; WeylWord result;
+  while (alpha!=rd.simpleRootNbr(s=rd.find_descent(alpha)))
+  { result.push_back(s); // this will be used in most cases
+    rd.simple_reflect_root(s,alpha);
+    if (is_length_3[s])
+    { // check for "sum of swapped non-commuting roots" case
+      if (alpha==rd.simpleRootNbr(delta[s])) // ended up in problematic A2 case
+      { rd.simple_reflect_root(s,alpha); // back up to sum of simple roots
+	result.pop_back(); // drop last letter from word
+	break; // and give up
+      }
+      // otherwise complete conjugation by |w_tau| for the orbit |s|,|delta[s]|
+      result.push_back(delta[s]); // middle generator
+      rd.simple_reflect_root(delta[s],alpha);
+    }
+    if (delta[s]!=s) // final gernerator for cases of length 2,3
+    { result.push_back(delta[s]);
+      rd.simple_reflect_root(delta[s],alpha);
+    }
+
+  }
+  std::reverse(result.begin(),result.end());
+  return result;
+}
+
+DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 {
   DescValue result;
   const TwistedWeylGroup& tW = E.rc().twistedWeylGroup();
@@ -664,41 +706,80 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& cross_links)
   const RootDatum& rd = E.rc().rootDatum();
   const RootDatum& integr_datum = E.ctxt.id();
   const SubSystem& subs = E.ctxt.subsys();
-  InvolutionNbr theta = i_tab.nr(E.tw);
+  const InvolutionNbr theta = i_tab.nr(E.tw);
+  const WeightInvolution delta_1 = E.ctxt.delta()-1;
   switch (p.type)
   {
   case ext_gen::one:
     { const Weight& alpha = integr_datum.root(p.s0);
       const Coweight& alpha_v = integr_datum.coroot(p.s0);
-      RootNbr n_alpha = subs.parent_nr_simple(p.s0);
-      RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
+      const RootNbr n_alpha = subs.parent_nr_simple(p.s0);
+      const RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
 
       if (theta_alpha==n_alpha) // imaginary case
-      { const RatCoweight grading_coweight = E.ctxt.g() - E.l -
-	  RatCoweight(rd.dual_twoRho()
-		      -rd.dual_twoRho(i_tab.imaginary_roots(theta)),2);
-	if (grading_coweight.dot(alpha)%2==0) // compact
-	  result= one_imaginary_compact;
-	else // noncompact
-	  if (matreduc::has_solution
-	      (i_tab.matrix(theta).transposed()+1, alpha_v)) // type 2
-	  {// now find out if the Cayley transforms are delta-fixed
-	    const TwistedInvolution new_tw= tW.prod(E.tw,subs.reflection(p.s0));
-	    const WeylWord ww = subs.to_simple(p.s0);
-            const Weight new_lambda_rho = E.lambda_rho + repr::Cayley_shift
-	      (E.rc().complexGroup(),i_tab.nr(E.tw),i_tab.nr(new_tw),ww);
-	    result = // is |new_lambda| |delta|-fixed modulo $(1-\theta')X^*$?
-	      matreduc::has_solution(i_tab.matrix(new_tw)-1,
-				     (E.ctxt.delta()-1)*new_lambda_rho)
-	      ? one_imaginary_pair_fixed : one_imaginary_pair_switched;
-	  }
-	  else // type 1
-	  {
+      { // first find out if the simply-integral root $\alpha$ is compact
+	int tf_alpha = (E.ctxt.g() - E.l).dot(alpha)-rd.level(n_alpha);
+	if (tf_alpha%2!=0) // then $\alpha$ is compact
+	  return one_imaginary_compact; // quit here, do not collect \$200
+
+	// noncompact case
+	const TwistedInvolution new_tw= tW.prod(E.tw,subs.reflection(p.s0));
+	const WeightInvolution& th_1 = i_tab.matrix(new_tw)-1;
+
+	// our first worry is: can $W^\delta$ action make $\alpha$ simple?
+	RootNbr alpha_simple = n_alpha;
+	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	if (rd.is_simple_root(alpha_simple)) // succeeded conjugation
+	{ const Weight rho_r_shift = repr::Cayley_shift
+	    (E.rc().complexGroup(),theta,i_tab.nr(new_tw),ww);
+	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
+
+	  // now distinguish type 1 and type 2
+	  if (matreduc::has_solution(th_1,alpha))
+	  { // type 1, so extended type is 1i1
 	    result = one_imaginary_single;
-	    cross_links.push_back(param
-	        (E.ctxt,E.tw,E.lambda_rho,E.tau, E.l+alpha_v, E.t));
-	  }
-      }
+
+	    Weight diff = // called $\sigma$ in table 2 of [Ptr]
+	      matreduc::find_solution(th_1,alpha); // all solutions equivalent
+
+	    links.push_back(param // Cayley link
+			    (E.ctxt,E.tw,
+			     E.lambda_rho+ rho_r_shift,
+			     E.tau+diff*alpha_v.dot(E.tau),
+			     E.l+alpha_v*(tf_alpha/2),
+			     E.t
+			     ));
+	    links.push_back(param // cross link
+			    (E.ctxt,E.tw,E.lambda_rho,E.tau, E.l+alpha_v, E.t));
+	  } // end type 1
+	  else
+	  { // type 2; still need to distinguish 1i2f and 1i2s
+	    int tau_coef = alpha_v.dot(E.tau); // $\tau_\alpha$ of table 2
+
+	    // now find out if the Cayley transforms are delta-fixed
+	    if (tau_coef%2==0) // so one can project $\tau\to\alpha^\perp$
+	    { // case 1i2f
+	      result = one_imaginary_pair_fixed;
+	      links.push_back(param // Cayley link
+			      (E.ctxt,E.tw,
+			       E.lambda_rho+ rho_r_shift,
+			       E.tau - alpha*(tau_coef/2),
+			       E.l+alpha_v*(tf_alpha/2),
+			       E.t
+			       ));
+	    }
+	    else // could not project $\tau$, so it is 1i2s situation
+	    { // no spurious $\tau'$ since $\<\alpha^\vee,(X^*)^\theta>=2\Z$:
+	      assert(not matreduc::has_solution(th_1, delta_1*E.lambda_rho));
+	      result = one_imaginary_pair_switched;
+	    }
+	  } // end of type 2, W^\delta conjugates case
+	}
+	else // cannot conjugate using W^\delta here
+	{
+	  // ww =
+	}
+      } // end of imaginary case
       else if (theta_alpha==rd.rootMinus(n_alpha)) // real case
       { const RatWeight parity_weight = E.ctxt.gamma() - E.lambda_rho -
 	  RatWeight(rd.twoRho()-rd.twoRho(i_tab.real_roots(theta)),2);
@@ -710,23 +791,23 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& cross_links)
 	    const TwistedInvolution new_tw= tW.prod(E.tw,subs.reflection(p.s0));
 	    const WeylWord ww = subs.to_simple(p.s0);
             const Weight new_l = E.l + repr::dual_Cayley_shift
-	      (E.rc().complexGroup(),i_tab.nr(new_tw),i_tab.nr(E.tw),ww);
+	      (E.rc().complexGroup(),i_tab.nr(new_tw),theta,ww);
 	    result = // is |new_lambda| |delta|-fixed modulo $(1-\theta')X^*$?
 	      matreduc::has_solution(i_tab.matrix(new_tw).transposed()-1,
-				     (E.ctxt.delta()-1).right_prod(new_l))
+				     delta_1.right_prod(new_l))
 	      ? one_real_pair_fixed : one_real_pair_switched;
 	  }
 	  else // real type 2
 	  {
 	    result = one_real_single;
-	    cross_links.push_back(param
+	    links.push_back(param
 	        (E.ctxt,E.tw, E.lambda_rho+alpha ,E.tau,E.l,E.t));
 	  }
       }
       else // complex case
       { result = rd.is_posroot(theta_alpha)
 	  ? one_complex_ascent : one_complex_descent ;
-	cross_links.push_back(complex_cross(p,E));
+	links.push_back(complex_cross(p,E));
       }
     }
     break;
@@ -759,7 +840,7 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& cross_links)
 	    else // case 2i11
 	    {
 	      result = two_imaginary_single_single;
-	      cross_links.push_back(param
+	      links.push_back(param
 		(E.ctxt,E.tw,E.lambda_rho,E.tau, E.l+alpha_v+beta_v, E.t));
 	    }
 	}
@@ -783,7 +864,7 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& cross_links)
 	    else // case 2r22
 	    {
 	      result = two_real_single_single;
-	      cross_links.push_back(param
+	      links.push_back(param
 	        (E.ctxt,E.tw, E.lambda_rho+alpha+beta ,E.tau,E.l,E.t));
 	    }
 	}
@@ -801,6 +882,7 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& cross_links)
 	{
 	  result = rd.is_posroot(theta_alpha)
 	    ? two_complex_ascent : two_complex_descent;
+	  links.push_back(complex_cross(p,E));
 	}
       }
     }

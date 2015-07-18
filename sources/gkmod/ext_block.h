@@ -150,6 +150,16 @@ struct param // prefer |struct| with |const| members for ease of access
 
 }; // |param|
 
+/* Try to conjugate |alpha| by product of folded-generators for the (full)
+   root system of |c| to a simple root, and return the right-conjugating word
+   that was applied. This may fail, if after some conjugation one ends up with
+   the long root of a nontrivially folded A2 subsystem (in which case there
+   cannot be any solution because |alpha| is fixed by the involution but none
+   of the simple roots in its component of the root system is). In this case
+   |alpha| is left as that non simple root, the the result conjugates to it.
+ */
+WeylWord fixed_conjugate_simple (const context& c, RootNbr& alpha);
+
 DescValue type (const param& E, ext_gen p, std::vector<param>& links);
 
 KGBElt x(const param& E); // reconstruct |E|
