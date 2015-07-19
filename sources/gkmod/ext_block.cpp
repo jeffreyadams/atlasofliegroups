@@ -726,81 +726,151 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	const TwistedInvolution new_tw= tW.prod(E.tw,subs.reflection(p.s0));
 	const WeightInvolution& th_1 = i_tab.matrix(new_tw)-1;
 
-	// our first worry is: can $W^\delta$ action make $\alpha$ simple?
+	int tau_coef = alpha_v.dot(E.tau); // $\tau_\alpha$ of table 2
+
+	// try to make $\alpha$ simple by conjugating by $W^\delta$
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
-	if (rd.is_simple_root(alpha_simple)) // succeeded conjugation
-	{ const Weight rho_r_shift = repr::Cayley_shift
-	    (E.rc().complexGroup(),theta,i_tab.nr(new_tw),ww);
-	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
+	const Weight rho_r_shift = repr::Cayley_shift
+	  (E.rc().complexGroup(),theta,i_tab.nr(new_tw),ww);
+	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
-	  // now distinguish type 1 and type 2
-	  if (matreduc::has_solution(th_1,alpha))
-	  { // type 1, so extended type is 1i1
-	    result = one_imaginary_single;
-
-	    Weight diff = // called $\sigma$ in table 2 of [Ptr]
-	      matreduc::find_solution(th_1,alpha); // all solutions equivalent
-
-	    links.push_back(param // Cayley link
-			    (E.ctxt,E.tw,
-			     E.lambda_rho+ rho_r_shift,
-			     E.tau+diff*alpha_v.dot(E.tau),
-			     E.l+alpha_v*(tf_alpha/2),
-			     E.t
-			     ));
-	    links.push_back(param // cross link
-			    (E.ctxt,E.tw,E.lambda_rho,E.tau, E.l+alpha_v, E.t));
-	  } // end type 1
-	  else
-	  { // type 2; still need to distinguish 1i2f and 1i2s
-	    int tau_coef = alpha_v.dot(E.tau); // $\tau_\alpha$ of table 2
-
-	    // now find out if the Cayley transforms are delta-fixed
-	    if (tau_coef%2==0) // so one can project $\tau\to\alpha^\perp$
-	    { // case 1i2f
-	      result = one_imaginary_pair_fixed;
-	      links.push_back(param // Cayley link
-			      (E.ctxt,E.tw,
-			       E.lambda_rho+ rho_r_shift,
-			       E.tau - alpha*(tau_coef/2),
-			       E.l+alpha_v*(tf_alpha/2),
-			       E.t
-			       ));
-	    }
-	    else // could not project $\tau$, so it is 1i2s situation
-	    { // no spurious $\tau'$ since $\<\alpha^\vee,(X^*)^\theta>=2\Z$:
-	      assert(not matreduc::has_solution(th_1, delta_1*E.lambda_rho));
-	      result = one_imaginary_pair_switched;
-	    }
-	  } // end of type 2, W^\delta conjugates case
-	}
-	else // cannot conjugate using W^\delta here
+	Weight first; // maybe a root with |(1-delta)*first==alpha|
+	if (rd.is_simple_root(alpha_simple))
+	  first = Weight(rd.rank(),0); // effectively not used in this case
+	else
 	{
-	  // ww =
-	}
+	  --tau_coef; // parity change and decrease both relevant
+	  weyl::Generator s = // first switched root index
+	    rd.find_descent(alpha_simple);
+	  first = // corresponding root summand, conjugated back
+	      rd.root(rd.permuted_root(rd.simpleRootNbr(s),ww));
+	} // with this set-up, |alpha_simple| needs no more inspection
+
+	// now separate cases; based on type 1/2 first
+	if (matreduc::has_solution(th_1,alpha))
+	{ // type 1, so extended type is 1i1
+	  result = one_imaginary_single;
+
+	  Weight diff = // called $-\sigma$ in table 2 of [Ptr] (NOTE MINUS)
+	      matreduc::find_solution(th_1,alpha); // solutions equivalent ?
+	  links.push_back(param // Cayley link
+			  (E.ctxt,new_tw,
+			   E.lambda_rho + first + rho_r_shift,
+			   E.tau + diff*tau_coef - first,
+			   E.l+alpha_v*(tf_alpha/2),
+			   E.t
+			   ));
+	  links.push_back(param // cross link
+			  (E.ctxt,E.tw,E.lambda_rho,E.tau, E.l+alpha_v, E.t));
+	} // end of type 1 case
+	else
+	{ // type 2; now we need to distinguish 1i2f and 1i2s
+
+	  if (tau_coef%2!=0) // was set up so that this means: switched
+	  { // no spurious $\tau'$ since $\<\alpha^\vee,(X^*)^\theta>=2\Z$:
+	    assert(not matreduc::has_solution
+		   (th_1, delta_1*(E.lambda_rho+rho_r_shift)));
+	    return one_imaginary_pair_switched; // case 1i2s
+	  }
+	  result = one_imaginary_pair_fixed;  // what remains is case 1i2f
+
+	  links.push_back(param // first Cayley link
+			  (E.ctxt,new_tw,
+			   E.lambda_rho + first + rho_r_shift,
+			   E.tau - alpha*(tau_coef/2) - first,
+			   E.l+alpha_v*(tf_alpha/2),
+			   E.t
+			   ));
+	  links.push_back(param // second Cayley link
+			  (E.ctxt,new_tw,
+			   E.lambda_rho + first + rho_r_shift + alpha,
+			   E.tau - alpha*(tau_coef/2) - first,
+			   E.l+alpha_v*(tf_alpha/2),
+			   E.t
+			   ));
+	} // end of type 2 case
       } // end of imaginary case
       else if (theta_alpha==rd.rootMinus(n_alpha)) // real case
-      { const RatWeight parity_weight = E.ctxt.gamma() - E.lambda_rho -
-	  RatWeight(rd.twoRho()-rd.twoRho(i_tab.real_roots(theta)),2);
-	if (parity_weight.dot(alpha_v)%2==0) // nonparity
-	  result = one_real_nonparity; // no link added here
-	else // parity
-	  if (matreduc::has_solution(i_tab.matrix(theta)-1,alpha)) // type 1
-	  { // now find out if the inverse Cayley transforms are delta-fixed
-	    const TwistedInvolution new_tw= tW.prod(E.tw,subs.reflection(p.s0));
-	    const WeylWord ww = subs.to_simple(p.s0);
-            const Weight new_l = E.l + repr::dual_Cayley_shift
-	      (E.rc().complexGroup(),i_tab.nr(new_tw),theta,ww);
-	    result = // is |new_lambda| |delta|-fixed modulo $(1-\theta')X^*$?
-	      matreduc::has_solution(i_tab.matrix(new_tw).transposed()-1,
-				     delta_1.right_prod(new_l))
-	      ? one_real_pair_fixed : one_real_pair_switched;
-	  }
+      { // the folowing is coherehnt with using |Cayley_shift|, but easier
+	const int parity_n = (E.ctxt.gamma() - E.lambda_rho).dot(alpha_v)
+	  - rd.colevel(n_alpha) // <alpha_v,rho>
+	  + rd.twoRho(i_tab.real_roots(theta)).dot(alpha_v)/2;
+	if (parity_n%2==0) // nonparity
+	   return one_real_nonparity; // no link added here
+
+	const WeightInvolution& th_1 = i_tab.matrix(E.tw)-1; // at more split
+	bool type1 = matreduc::has_solution(th_1,alpha);
+
+	const TwistedInvolution new_tw= tW.prod(E.tw,subs.reflection(p.s0));
+
+	RootNbr alpha_simple = n_alpha;
+	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+
+	const Weight rho_r_shift = repr::Cayley_shift
+	  (E.rc().complexGroup(),i_tab.nr(new_tw),theta,ww);
+	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+
+	Weight new_lambda_rho = E.lambda_rho-rho_r_shift;
+	Weight tau_correction;
+	if (rd.is_simple_root(alpha_simple))
+	  tau_correction = Weight(rd.rank(),0); // no correction needed here
+	{
+	  weyl::Generator s = // first switched root index
+	    rd.find_descent(alpha_simple);
+	  Weight first = // corresponding root summand, conjugated back
+	    rd.root(rd.permuted_root(rd.simpleRootNbr(s),ww));
+	  new_lambda_rho -= first; // final, non-delta-fixed contribution
+
+	  if (type1)
+	    // $(1-\theta)(s+f)=(\delta-1)*(-f)$ when $(\theta-1)s=\alpha$
+	    tau_correction = matreduc::find_solution(th_1,alpha)+first;
+	  else // type 2; now |matrix(new_tw)*first==delta*first| (second root)
+	    tau_correction = first; // since $(1-\theta)f = (\delta-1)*(-f)$
+	  assert((i_tab.matrix(new_tw)-1)*tau_correction==delta_1*-first);
+	}
+	{ int d = // amount by which $\gamma-\tilde\lambda$ needs correction
+	    (E.ctxt.gamma()-new_lambda_rho).dot(alpha_v)- rd.colevel(n_alpha);
+	  assert(d%2==0); // parity condition says this
+	  new_lambda_rho -= alpha*(d/2); // project to correct $\tilde\lambda$
+	}
+
+	int t_alpha = E.t.dot(alpha);
+	if (type1)
+	  { // now distinguish 1r1f and 1r1s
+	    if (t_alpha%2!=0)
+	      return one_real_pair_switched;
+	    result = one_real_pair_fixed; // what remains is case 1r1f
+	    Coweight new_t = E.t - alpha_v*(t_alpha/2);
+	    links.push_back(param // first Cayley link
+			    (E.ctxt,new_tw,
+			     new_lambda_rho,
+			     E.tau + tau_correction,
+			     E.l,
+			     new_t
+			     ));
+	    links.push_back(param // second Cayley link
+			    (E.ctxt,new_tw,
+			     new_lambda_rho,
+			     E.tau + tau_correction,
+			     E.l + alpha_v,
+			     new_t
+			     ));
+	  } // end of real type 1 case
 	  else // real type 2
 	  {
 	    result = one_real_single;
-	    links.push_back(param
+	    Coweight diff = // called $s$ in table 2 of [Ptr]
+	      matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
+				      alpha_v);
+	    links.push_back(param // Cayley link
+			    (E.ctxt,new_tw,
+			     new_lambda_rho,
+			     E.tau + tau_correction,
+			     E.l,
+			     E.t - diff*t_alpha
+			     ));
+	    links.push_back(param // cross link
 	        (E.ctxt,E.tw, E.lambda_rho+alpha ,E.tau,E.l,E.t));
 	  }
       }
