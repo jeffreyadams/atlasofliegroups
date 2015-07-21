@@ -536,43 +536,20 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
 
 /* compute shift in |lambda| component of parameter for Cayley transform
    by a non-simple root $\alpha$, from involutions |theta_down| to |theta_up|,
-   where |ww| left-conjugates root $\alpha$ to some simple root $\beta$
+   where |to_simple| left-conjugates root $\alpha$ to some simple root $\beta$
 
    Sum of positve roots changing real status, and becoming negative at $\beta$
 */
 Weight Cayley_shift (const ComplexReductiveGroup& G,
-		     InvolutionNbr theta_down, InvolutionNbr theta_up,
+		     InvolutionNbr theta_upstairs, // at the more split Cartan
 		     WeylWord to_simple)
 { const RootDatum& rd=G.rootDatum();
   const InvolutionTable& i_tab = G.involution_table();
-  RootNbrSet new_real_posroots =
-    (i_tab.real_roots(theta_up)^i_tab.real_roots(theta_down))&rd.posRootSet();
-  Weight shift(rd.rank(),0); // difference of $\rho$ values
-  for (auto it=new_real_posroots.begin(); it(); ++it)
-    if (rd.is_negroot(rd.permuted_root(to_simple,*it)))
-      shift += rd.root(*it); // sum posroots changing "real" and (by w) "pos"
-  return shift;
-}
-
-/* compute shift in |l| component of parameter for Cayley transform
-   by a non-simple root $\alpha$, from involutions |theta_down| to |theta_up|,
-   where |ww| left-conjugates root $\alpha$ to some simple root $\beta$
-
-   Sum of poscoroots changing imaginary status, and becoming negative at $\beta$
-*/
-Coweight dual_Cayley_shift (const ComplexReductiveGroup& G,
-			    InvolutionNbr theta_down, InvolutionNbr theta_up,
-			    WeylWord to_simple)
-{ const RootDatum& rd=G.rootDatum();
-  const InvolutionTable& i_tab = G.involution_table();
-  RootNbrSet new_imaginary_posroots =
-    (i_tab.imaginary_roots(theta_up)^i_tab.imaginary_roots(theta_down))
-    &rd.posRootSet();
-  Coweight shift(rd.rank(),0); // difference of $\check\rho$ values
-  for (auto it=new_imaginary_posroots.begin(); it(); ++it)
-    if (rd.is_negroot(rd.permuted_root(to_simple,*it)))
-      shift += rd.coroot(*it); // sum poscoroots changing "imaginary" and "pos"
-  return shift;
+  RootNbrSet S = pos_to_neg(rd,to_simple) & i_tab.real_roots(theta_upstairs);
+  Weight sum(rd.rank(),0); // difference of $\rho$ values
+  for (auto it=S.begin(); it(); ++it)
+    sum += rd.root(*it); // sum real posroots upstairs that |to_simple| negates
+  return sum;
 }
 
 StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
@@ -597,6 +574,7 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   rt = subsys.rt_abs(rt); // henceforth interpret as index of a positive root
 
   // now do the Cayley transform proper
+  bool ascent; // whether forward Cayley
   InvolutionNbr inv0= kgb.inv_nr(x);
   weyl::Generator s=subsys.simple(rt);
   WeylWord ww = subsys.to_simple(rt);
@@ -604,7 +582,7 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   switch (kgb.status(s,x))
   {
   case gradings::Status::ImaginaryNoncompact:
-    x = kgb.cayley(s,x); break;
+    x = kgb.cayley(s,x); ascent=true; break;
   case gradings::Status::Real: // find out (at inv0) whether root is parity
     { Weight rho2_diff = rd.twoRho() - rd.twoRho(i_tab.real_roots(inv0));
       RatWeight parity_vector = // compute this at the \emph{original} x
@@ -612,6 +590,7 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
       if (parity_vector.dot(rd.coroot(subsys.to_parent(rt)))%2!=0)
       { // then |rt| was parity
 	x = kgb.inverseCayley(s,x).first; // do inverse Cayley at |inv1|
+	ascent=false;
 	break;
       }
       // else FALL THROUGH
@@ -622,7 +601,8 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   }
   x = kgb.cross(x,ww); // finally cross back
 
-  lr += Cayley_shift(complexGroup(),inv0,kgb.inv_nr(x),ww); // apply shift
+  lr += // apply shift depending on distance from being simply-real upstairs
+    Cayley_shift(complexGroup(),ascent ? kgb.inv_nr(x) : inv0,ww);
   z = sr_gamma(x,lr,infin_char);
 
   W_act(w,z); // move back to origingal infinitesimal character representative

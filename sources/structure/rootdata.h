@@ -60,6 +60,9 @@ void make_positive(const RootSystem& rs,RootNbr& alpha);
 // afterwards |alpha| is shifted to become a \emph{simple} root index
 WeylWord conjugate_to_simple(const RootSystem& rs,RootNbr& alpha);
 
+// set of positive roots sent to negative by |w| (whose sum is $(1-w^{-1})\rho$)
+RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w);
+
 // compute product of reflections in set of orthogonal roots
 WeightInvolution refl_prod(const RootNbrSet&, const RootDatum&);
 

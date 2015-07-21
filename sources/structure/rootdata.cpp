@@ -1194,6 +1194,33 @@ WeylWord conjugate_to_simple(const RootSystem& rs,RootNbr& alpha)
   return result;
 }
 
+// set of positive roots made negative by left multiplication by |w|
+// form L to R letter s: either: reflect by by $\alpha_s$, which posroot toggle
+RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w)
+{ RootNbr npos = rs.numPosRoots();
+  std::vector<Permutation> pos_perm_simple;
+  pos_perm_simple.reserve(rs.rank());
+  for (unsigned i=0; i<rs.rank(); ++i)
+  { const Permutation& p = rs.simple_root_permutation(i);
+    pos_perm_simple.push_back(Permutation(npos));
+    for (RootNbr j=0; j<npos; ++j)
+      if (j==i) pos_perm_simple.back()[j]=i; // make |j| itself a fixed point
+      else pos_perm_simple.back()[j]=rs.posRootIndex(p[rs.posRootNbr(j)]);
+  }
+
+  RootNbrSet current(npos), tmp(npos);
+  for (auto it=w.begin(); it!=w.end(); ++it)
+  { tmp.reset(); // clear out all old bits
+    Permutation& p=pos_perm_simple[*it]; // a positive root permutation
+    for (auto root_it=current.begin(); root_it(); ++root_it)
+      tmp.insert(p[*root_it]); // apply permutation to the subset of roots
+    tmp.flip(*it); // flip status of simple root for current letter of |w|
+    current=tmp;
+  }
+
+  current.set_capacity(rs.numRoots()); // double the size
+  return current <<= npos; // shift to root (rather than posroot) numbers
+}
 
 /*
   Return the matrix represented by the product of the

@@ -37,7 +37,7 @@ struct Permutation
     typedef std::vector<unsigned long> Base;
     Permutation() : Base() {}                       // empty
     Permutation(unsigned long n) : Base(n) {}       // dimensioned only
-    Permutation(unsigned long n, int unsused);      // identity
+    Permutation(unsigned long n, int unused);       // identity
     Permutation(const Permutation& pi, int unused); // inverse
     template<typename I> Permutation(I b,I e) : Base(b,e) {} // range copy
 

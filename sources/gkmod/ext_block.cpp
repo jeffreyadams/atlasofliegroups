@@ -732,7 +732,7 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	const Weight rho_r_shift = repr::Cayley_shift
-	  (E.rc().complexGroup(),theta,i_tab.nr(new_tw),ww);
+	  (E.rc().complexGroup(),i_tab.nr(new_tw),ww);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	Weight first; // maybe a root with |(1-delta)*first==alpha|
@@ -807,8 +807,8 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 
-	const Weight rho_r_shift = repr::Cayley_shift
-	  (E.rc().complexGroup(),i_tab.nr(new_tw),theta,ww);
+	const Weight rho_r_shift =
+	  repr::Cayley_shift(E.rc().complexGroup(),theta,ww);
 	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
 	Weight new_lambda_rho = E.lambda_rho-rho_r_shift;
