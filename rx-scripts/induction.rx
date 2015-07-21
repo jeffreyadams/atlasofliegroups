@@ -4,12 +4,19 @@ set verbose=true
 <basic.rx
 <kl.rx { for character_formula }
 <coherent.rx {for standardize}
+<synthetic.rx {for unnormalized_torus_factor}
 
 {induction from a general real parabolic}
 {L is a real Levi factor in G, having been constructed using real_Levi(x_G)}
 
-{KGB(L) embeds in KGB(G): x_L -> embed_KGB(x_L,G)}
-set embed_KGB(KGBElt x_L,RealForm G)=KGBElt:KGB_elt(G,involution(x_L), torus_factor(x_L))
+{KGB(L) embeds in KGB(G): x_L -> embed_KGB(x_L,G)
+The torus factor 
+}
+set embed_KGB(KGBElt x_L,RealForm G)=
+let i=0,done=false,theta_L=involution(x_L),utf_L=unnormalized_torus_factor(x_L) in 
+while i<#KGB(G) and not done do
+ let x=KGB(G,i) in if involution(x)=theta_L then
+  if is_conjugate(unnormalized_torus_factor(x),utf_L,theta_L) then done:=true;KGB(G,i) else i:=i+1 fi else i:=i+1 fi od;x_L
 
 {given KGB elemnt of G, find one for M which maps to it}
 set inverse_embed_KGB(KGBElt x_G,RealForm M)=KGBElt:KGB_elt(M,involution(x_G), torus_factor(x_G))
