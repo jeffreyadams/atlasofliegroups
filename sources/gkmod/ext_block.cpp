@@ -663,7 +663,7 @@ WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
   std::vector<bool> is_length_3 (delta.size());
   for (weyl::Generator s=0; s<delta.size(); ++s)
   { weyl::Generator t =
-      rd.simpleRootNbr(rd.root_index(ctxt.delta()*rd.simpleRoot(s)));
+      rd.simpleRootIndex(rd.root_index(ctxt.delta()*rd.simpleRoot(s)));
     delta[s]=t;
     if (s==t)
       is_length_3[s]=false;
@@ -673,26 +673,30 @@ WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
     }
   }
 
-  weyl::Generator s; WeylWord result;
-  while (alpha!=rd.simpleRootNbr(s=rd.find_descent(alpha)))
-  { result.push_back(s); // this will be used in most cases
+  RootNbr delta_alpha = rd.root_index(ctxt.delta()*rd.root(alpha));
+  WeylWord result;
+  while (true) // termination condition after definition of |s| (readability)
+  {
+    weyl::Generator s =
+      rd.descent_set(alpha).andnot(rd.ascent_set(delta_alpha)).firstBit();
+    if (alpha==rd.simpleRootNbr(s) or
+	(is_length_3[s] and //"sum of swapped non-commuting roots" case:
+	 rd.simple_reflected_root(s,alpha)==rd.simpleRootNbr(delta[s])))
+      break;
+    result.push_back(s);
     rd.simple_reflect_root(s,alpha);
-    if (is_length_3[s])
-    { // check for "sum of swapped non-commuting roots" case
-      if (alpha==rd.simpleRootNbr(delta[s])) // ended up in problematic A2 case
-      { rd.simple_reflect_root(s,alpha); // back up to sum of simple roots
-	result.pop_back(); // drop last letter from word
-	break; // and give up
-      }
-      // otherwise complete conjugation by |w_tau| for the orbit |s|,|delta[s]|
-      result.push_back(delta[s]); // middle generator
-      rd.simple_reflect_root(delta[s],alpha);
-    }
-    if (delta[s]!=s) // final gernerator for cases of length 2,3
+    rd.simple_reflect_root(delta[s],delta_alpha);
+    if (delta[s]!=s) // second gernerator for cases of length 2,3
     { result.push_back(delta[s]);
       rd.simple_reflect_root(delta[s],alpha);
+      rd.simple_reflect_root(s,delta_alpha);
+      if (is_length_3[s])
+      { // final generator for cases of length 3
+	result.push_back(s);
+	rd.simple_reflect_root(s,alpha);
+	rd.simple_reflect_root(delta[s],delta_alpha);
+      }
     }
-
   }
   std::reverse(result.begin(),result.end());
   return result;
