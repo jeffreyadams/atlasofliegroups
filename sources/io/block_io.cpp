@@ -221,10 +221,12 @@ const char* descent_code(DescValue v)
   case two_semi_real: return "2Cr ";
   case two_imaginary_single_single: return "2i11";
   case two_real_double_double: return "2r11";
-  case two_imaginary_single_double: return "2i12";
-  case two_real_single_double: return "2r21";
+  case two_imaginary_single_double_fixed: return "2i12f";
+  case two_real_single_double_fixed: return "2r21f";
   case two_imaginary_double_double: return "2i22";
   case two_real_single_single: return "2r22";
+  case two_imaginary_single_double_switched: return "2i12s";
+  case two_real_single_double_switched: return "2r21s";
   case two_real_nonparity: return "2rn ";
   case two_imaginary_compact: return "2ic ";
 

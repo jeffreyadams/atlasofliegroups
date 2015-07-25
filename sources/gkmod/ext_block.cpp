@@ -47,7 +47,7 @@ bool has_double_image(DescValue v)
   static unsigned long mask =
        1ul << one_real_pair_fixed         | 1ul << one_imaginary_pair_fixed
     |  1ul << two_real_double_double      | 1ul << two_imaginary_double_double
-    |  1ul << two_imaginary_single_double | 1ul << two_real_single_double;
+    |  1ul << two_imaginary_single_double_fixed | 1ul << two_real_single_double_fixed;
 
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
@@ -104,7 +104,7 @@ bool is_like_type_2(DescValue v)
 bool has_quadruple(DescValue v)
 {
   static const unsigned long mask =
-    1ul << two_imaginary_single_double | 1ul << two_real_single_double;
+    1ul << two_imaginary_single_double_fixed | 1ul << two_real_single_double_fixed;
 
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
@@ -279,10 +279,10 @@ void extended_block::order_quad
   x = element(x); y=element(y); // decipher user friendly numbering
   p = element(p); q=element(q);
   assert (x!=UndefBlock and y!=UndefBlock and p!=UndefBlock and q!=UndefBlock);
-  assert (descent_type(s-1,x)==two_imaginary_single_double);
-  assert (descent_type(s-1,y)==two_imaginary_single_double);
-  assert (descent_type(s-1,p)==two_real_single_double);
-  assert (descent_type(s-1,q)==two_real_single_double);
+  assert (descent_type(s-1,x)==two_imaginary_single_double_fixed);
+  assert (descent_type(s-1,y)==two_imaginary_single_double_fixed);
+  assert (descent_type(s-1,p)==two_real_single_double_fixed);
+  assert (descent_type(s-1,q)==two_real_single_double_fixed);
   const BlockEltPair xy(x,y);
   const BlockEltPair pq(p,q);
   std::vector<block_fields>& data_s = data[s-1];
@@ -317,7 +317,7 @@ BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
 
     // cases with back-and-forth cross actions
   case two_semi_imaginary: case two_semi_real:
-  case two_imaginary_single_double: case two_real_single_double:
+  case two_imaginary_single_double_fixed: case two_real_single_double_fixed:
   case three_semi_imaginary: case three_real_semi:
   case three_imaginary_semi: case three_semi_real:
     return n;
@@ -485,7 +485,7 @@ DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
 	return two_imaginary_single_single; // really just a guess
       assert(block.Hermitian_dual(link)==link);
       return block.descentValue(p.s0,link)==DescentStatus::RealTypeI
-	? two_imaginary_single_single : two_imaginary_single_double;
+	? two_imaginary_single_single : two_imaginary_single_double_fixed;
     case DescentStatus::RealTypeII:
       link=block.inverseCayley(p.s0,z).first;
       if (link==UndefBlock)
@@ -495,7 +495,7 @@ DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
 	return two_real_single_single; // really just a guess
       assert(block.Hermitian_dual(link)==link);
       return block.descentValue(p.s0,link)==DescentStatus::ImaginaryTypeII
-	? two_real_single_single : two_real_single_double;
+	? two_real_single_single : two_real_single_double_fixed;
     case DescentStatus::ImaginaryTypeII:
       link=block.cayley(p.s0,z).first;
       if (link==UndefBlock)
@@ -728,9 +728,9 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 
 	// noncompact case
 	const TwistedInvolution new_tw= tW.prod(E.tw,subs.reflection(p.s0));
-	const WeightInvolution& th_1 = i_tab.matrix(new_tw)-1;
+	const WeightInvolution th_1 = i_tab.matrix(new_tw)-1;
 
-	int tau_coef = alpha_v.dot(E.tau); // $\tau_\alpha$ of table 2
+	int tau_coef = alpha_v.dot(E.tau); // initially $\tau_\alpha$ of table 2
 
 	// try to make $\alpha$ simple by conjugating by $W^\delta$
 	RootNbr alpha_simple = n_alpha;
@@ -894,30 +894,94 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
       const Coweight& beta_v = integr_datum.coroot(p.s1);
       // RootNbr n_beta = subs.parent_nr_simple(p.s1);
       // RootNbr theta_beta = i_tab.root_involution(theta,n_beta);
+
+
       if (theta_alpha==n_alpha) //imaginary case
-      { const RatCoweight grading_coweight = E.ctxt.g() - E.l -
-	  RatCoweight(rd.dual_twoRho()
-		      -rd.dual_twoRho(i_tab.imaginary_roots(theta)),2);
-	if (grading_coweight.dot(alpha)%2==0) // compact
-	  result=two_imaginary_compact;
-	else // noncompact
-	{ CoweightInvolution theta1_t = i_tab.matrix(theta).transposed()+1;
-	  if (matreduc::has_solution(theta1_t, alpha_v)) // type 2
-	  {
-	    result = two_imaginary_double_double;
-	  }
-	  else // type 1
-	    if (matreduc::has_solution(theta1_t, alpha_v+beta_v))
-	    { // |cross(alpha,E) == cross(beta,E)|, so case 2i12
-	      result = two_imaginary_single_double;
-	    }
-	    else // case 2i11
-	    {
-	      result = two_imaginary_single_single;
-	      links.push_back(param
-		(E.ctxt,E.tw,E.lambda_rho,E.tau, E.l+alpha_v+beta_v, E.t));
-	    }
+      { // first find out if the simply-integral root $\alpha$ is compact
+	int tf_alpha = (E.ctxt.g() - E.l).dot(alpha)-rd.level(n_alpha);
+	int tf_beta = (E.ctxt.g() - E.l).dot(beta)-rd.level(n_alpha);
+	if (tf_alpha%2!=0) // then $\alpha$ is compact
+	  return two_imaginary_compact;
+
+	// noncompact case
+	const TwistedInvolution new_tw =
+	  tW.prod(tW.prod(E.tw,subs.reflection(p.s0)),subs.reflection(p.s1));
+	// make $\alpha$ simple by conjugating by $W^\delta$
+	RootNbr alpha_simple = n_alpha;
+	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	const Weight rho_r_shift = repr::Cayley_shift
+	  (E.rc().complexGroup(),i_tab.nr(new_tw),ww);
+	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
+	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
+
+	int at = alpha_v.dot(E.tau); int bt = beta_v.dot(E.tau);
+	const WeightInvolution th_1 = i_tab.matrix(new_tw)-1;
+	  i_tab.matrix(tW.prod(E.tw,subs.reflection(p.s1)))-1;
+
+	if (matreduc::has_solution(th_1,alpha)) // then type 2i11
+	{ result = two_imaginary_single_single;
+	  Weight s = matreduc::find_solution(th_1,alpha*at+beta*bt);
+	  links.push_back(param // Cayley link
+			  (E.ctxt, new_tw,
+			   E.lambda_rho + rho_r_shift,
+			   E.tau + s,
+			   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
+			   E.t
+			   ));
+	  links.push_back(param // cross link
+			  (E.ctxt,E.tw,
+			   E.lambda_rho,E.tau, E.l+alpha_v+beta_v, E.t));
 	}
+	else if (matreduc::has_solution(th_1,alpha+beta)) // case 2i12
+	{
+	  if ((at+bt)%2!=0)
+	    return two_imaginary_single_double_switched; // 2i12s
+	  result = two_imaginary_single_double_fixed; // 2i12f
+	  int m =  unsigned(at)%2; // safe modular reduction
+	  Weight s = matreduc::find_solution(th_1,alpha*(at-1+m)+beta*(bt+1-m));
+	  links.push_back(param // first Cayley link
+			  (E.ctxt, new_tw,
+			   E.lambda_rho + rho_r_shift + alpha*m,
+			   E.tau + alpha*((at-m)/2) + beta*((bt-m)/2),
+			   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
+			   E.t
+			   ));
+	  links.push_back(param // second Cayley link
+			  (E.ctxt, new_tw,
+			   E.lambda_rho + rho_r_shift + alpha*(1-m),
+			   E.tau + s,
+			   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
+			   E.t
+			   ));
+	  links.push_back(param // cross link
+			  (E.ctxt,E.tw,
+			   E.lambda_rho,E.tau, E.l+alpha_v+beta_v, E.t));
+	}
+	else
+	{ // type 2i22
+	  result = two_imaginary_double_double;
+	  // $\alpha^\vee$ and $\beta^\vee$ are even on $(X^*)^\theta$ and
+	  // $(1-\delta)\tau\in(X^*)^\theta+2X^*$ so $<(av-bv),\tau>$ is even
+	  assert((at-bt)%2==0);
+	  int m =  unsigned(at)%2; // safe modular reduction
+	  links.push_back(param // first Cayley link
+			  (E.ctxt, new_tw,
+			   E.lambda_rho + alpha*m + rho_r_shift,
+			   E.tau - alpha*((at+m)/2) - beta*((bt-m)/2),
+			   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
+			   E.t
+			   ));
+	  links.push_back(param // second Cayley link
+			  (E.ctxt,new_tw,
+			   E.lambda_rho + alpha*(m-1) + beta + rho_r_shift,
+			   E.tau - alpha*((at-m)/2) - beta*((bt+m)/2),
+			   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
+			   E.t
+			   ));
+	  links.push_back(param // false cross action link
+			  (E.ctxt,E.tw, E.lambda_rho + alpha + beta,
+			   E.tau,E.l,E.t));
+	} // end type 2i22 case
       }
       else if (theta_alpha==rd.rootMinus(n_alpha)) // real case
       { const RatWeight parity_weight = E.ctxt.gamma() - E.lambda_rho -
@@ -933,7 +997,7 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	  else // real type 2
 	    if (matreduc::has_solution(theta_1,alpha+beta))
 	    { // |cross(alpha,E) == cross(beta,E)|, so case 2r21
-	      result = two_real_single_double;
+	      result = two_real_single_double_fixed;
 	    }
 	    else // case 2r22
 	    {
@@ -1046,8 +1110,8 @@ extended_block::extended_block
 	}
 	break;
 
-      case two_imaginary_single_double:
-      case two_real_single_double: // find second Cayley image, which is
+      case two_imaginary_single_double_fixed:
+      case two_real_single_double_fixed: // find second Cayley image, which is
 	second = parent.cross(parent.orbit(s).s0,link); // parent cross link
 	assert(parent.cross(parent.orbit(s).s1,link)==second); // (either gen)
 	if (link>second) // to make sure ordering is same for a twin pair

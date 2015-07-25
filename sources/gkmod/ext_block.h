@@ -53,10 +53,12 @@ enum DescValue // every even/odd pair is one of associated ascent and descent
   two_semi_real,                // identical complex descents
   two_imaginary_single_single,  // commuting single-valued Cayleys
   two_real_double_double, // commuting double-valued inverse Cayleys (2-valued)
-  two_imaginary_single_double,  // single-valued Cayleys become double-valued
-  two_real_single_double, // single-valued inverse Cayleys become double-valued
+  two_imaginary_single_double_fixed,  // single-valued Cayleys become double
+  two_real_single_double_fixed, // single-valued inverse Cayleys become double
   two_imaginary_double_double,  // commuting double-valued Cayleys (2-valued)
-  two_real_single_single, // commuting single-valued inverse Cayleys
+  two_real_single_single,	// commuting single-valued inverse Cayleys
+  two_imaginary_single_double_switched,  // 2i12, twist-switched images
+  two_real_single_double_switched,	 // 2r12, twist-switched images
   two_real_nonparity,
   two_imaginary_compact,
 
