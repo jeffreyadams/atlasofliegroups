@@ -2405,14 +2405,19 @@ void dual_quasisplit_form_wrapper(expression_base::level l)
 It is useful to be able to compute a real form based on other information than
 its index within its inner class, namely on a strong involution representative
 (involution and torus element). The synthetic \.{realex} function |real_form|
-takes an inner class, a matrix giving an involution~$\theta$, and a
-$\theta$-stable rational coweight describing (through $l\mapsto\exp(\pi\ii
-l)$) a torus element; it returns the corresponding real form, but in which a
-|cocharacter| value is stored deduced from $\exp(\pi\ii l)$ that identifies
-the strong real form, and may differ from the |cocharacter| value for the weak
-real form that could be obtained by selecting by number in the inner class.
-This difference notably allows the same strong involution representative to be
-subsequently used to specify a KGB element for this (strong) real form.
+takes an inner class, a matrix giving an involution~$\theta$, and a rational
+coweight~$t$. After projecting $t$ to the $+1$ eigenspace of~$\theta$ to make
+it $\theta$-stable, it describes (through $\exp_{-1}:l\mapsto\exp(\pi\ii l)$)
+a torus element; the square of this element should be central (meaning in
+coordinates that all simple roots have integral evaluation on the projected
+rational vector; in the code below the doubled projection is made first, and
+evaluations must be even). If this test succeeds, the function then returns
+the corresponding real form, but in which a |cocharacter| value is stored
+deduced from the torus element that identifies the strong real form, and may
+differ from the |cocharacter| value for the weak real form that could be
+obtained by selecting by number in the inner class. This difference notably
+allows the same strong involution representative to be subsequently used to
+specify a KGB element for this (strong) real form.
 
 @:synthetic_real_form@>
 
@@ -2438,7 +2443,8 @@ void synthetic_real_form_wrapper(expression_base::level l)
     Ratvec_Numer_t& num = torus_factor->val.numerator();
     num += theta->val.right_prod(num);
       // make torus factor $\theta$-fixed, temporarily doubled
-    TorusElement t(torus_factor->val,false); // take a copy as |TorusElement|
+    TorusElement t(torus_factor->val,false);
+      // take a copy as |TorusElement|, using $\exp_{-1}$
     const RootDatum& rd = G->val.rootDatum();
     WeightList alpha(rd.beginSimpleRoot(),rd.endSimpleRoot());
     if (not is_central(alpha,t)) // every root should now have even evaluation
