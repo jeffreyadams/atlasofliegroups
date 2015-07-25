@@ -1400,9 +1400,12 @@ weyl::Twist check_involution
   return p;
 }
 
-@ That |M| is an automorphism means that the roots are permuted among
-each other, and that after applying the Weyl group action to map simple roots
-to simple roots, the result is a diagram automorphism; this is tested by
+@ That |M| is an automorphism means that the roots are permuted among each
+other, that the coroots are (under right multiplication) also permuted among
+each other (this is not implied by the first condition if the root datum is
+not semisimple; when it does hold, the permutation is necessarily the same),
+and that after applying the Weyl group action to map simple roots to simple
+roots, the result is a diagram automorphism. This final condition is tested by
 checking that the Cartan matrix is invariant under the corresponding
 permutation of its rows and columns.
 
@@ -1415,6 +1418,10 @@ permutation of its rows and columns.
     if (Delta[i]==rd.numRoots()) // then image not found
       throw runtime_error@|
         ("Matrix maps simple root "+str(i)+" to non-root");
+    if (M.right_prod(rd.simpleCoroot(i))!=rd.coroot(Delta[i]))
+      throw runtime_error@|
+        ("Matrix does not map simple coroot "+str(i)
+        @|+" to coroot "+str(Delta[i]-rd.numPosRoots()));
   }
   ww = wrt_distinguished(rd,Delta);
   for (weyl::Generator i=0; i<s; ++i)
