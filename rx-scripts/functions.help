@@ -116,7 +116,7 @@ eigen_lattice: (mat,int->mat): eigen-lattice of matrix (at integer eigenvalue)
   eigen_lattice(M,lambda) = kernel(M-lambda*id_mat(n)), where #M=(n,n)
 row_saturate: (mat->mat): keep same kernel, but row-span saturated sublattice
   Interpreting rows of the matrix as linear forms, this transforms the system
-  into an equivalent one, and whose Z-linear application is made surjective.
+  into an equivalent one, and whose Z-linear map is made to be surjective.
   In other words, the rows are made linearly independent, and the sublattice
   they generate saturated: if an integer multiple of v is in it, then so is v.
 
@@ -490,22 +490,26 @@ fiber_partition: (CartanClass,RealForm->[int]): identifying part of fiber group
 real_form: (InnerClass,mat,ratvec->RealForm): real form from strong real form
   Synthesize a real form defined by an involution and a torus factor. With
   arguments (ic,M,v), the matrix M should define an involution theta in the
-  inner class. The rational vector v, which should satisfy v*M=v, defines a
-  torus element \exp(\pi i v), and together with theta a strong involution
-  representative. The function returns the strong real form rf identified by
-  that strong involution. It may differ from real_form(ic,form_numner(rf)) as
-  can be inspected through base_grading_vector(rf) and the RealForm equality
-  test (this possible distinction is why the result is considered a strong
-  real form); this is why this real form is considered to be synthesized, not
-  selected. A subsequent call KGB_elt(rf,theta,v) should always produce a
-  valid KGB element x. The grading of the imaginary roots alpha for theta
-  defined by this x will be given by the parity of < v+\check\rho_i, \alpha >,
-  where \check\rho_i is half the sum of the positive imaginary coroots for M
-  (its presence in the formula ensures that v=0 is always valid, and grades
-  all simple-imaginary roots as noncompact). This grading is the most tangible
-  aspect of (theta,v), but only determines the weak real form, and may fail to
-  identify a unique KGB element x; this function and the mentioned instance of
-  KGB_elt are faithful beyond just reconstructing the correct grading.
+  inner class. The rational vector v, after being made right M-fixed by right
+  multiplication by (M+1)/2, defines a torus element \exp(\pi i v) whose
+  square must be central, which means that v*alpha must be integral for all
+  (simple) roots alpha. If this holds then theta and torus_factor v together
+  define a strong involution representative. The function returns the strong
+  real form rf identified by that strong involution. It may differ from
+  real_form(ic,form_number(rf)), the standard version of this weak real form;
+  the difference can be seen through the value of base_grading_vector(rf), and
+  in the RealForm equality test (because of this distinction, one may consider
+  the result to represent a strong real form). Real forms produced by this
+  function are said to be synthesized (rather than selected). A subsequent
+  call KGB_elt(rf,theta,v) should always produce a valid KGB element x. The
+  grading of the imaginary roots alpha for theta defined by this x will be
+  given by the parity of < v+\check\rho_i, \alpha >, where \check\rho_i is
+  half the sum of the positive imaginary coroots for M (its presence in the
+  formula ensures that v=0 is always valid, and grades all simple-imaginary
+  roots as noncompact). This grading is the most tangible aspect of (theta,v),
+  but only determines the weak real form, and may fail to identify a unique
+  KGB element x; this function and the mentioned instance of KGB_elt are
+  faithful beyond just reconstructing the correct grading.
 central_fiber: (RealForm->[vec]): Set of torus bits not affecting any gradings
   These are binary vectors that can be added to |torus_bits| of KGB elements
   in the fundamental fiber to get another KGB element giving the same status
@@ -557,12 +561,12 @@ KGB_elt: (RealForm,mat,ratvec): KGB element defined by rational coweight
   This function finds a KGB element x such that real_form(x), involution(x),
   and torus_factor(x) match the values (rf,M,v) given as arguments. The
   interpretation for the (involution) matrix M and rational (coweight) vector
-  v are as for Cartan_class_real_form; moreover rf should be the real form
-  returned (for this inner class) by Cartan_class_real_form, and the
+  v are as for real_form@(InnerClass,mat,ratvec); moreover rf should be the
+  real form returned (for this inner class) by real_form(ic,M,v), and the
   difference v-base_grading_vector(rf) must be an integer vector. There is
   then at most one KGB element x for rf such that torus_factor(x) is congruent
-  to v modulo the image of M^t+id, which x is then returned by this function
-  (if no such x is found, then an error is signalled instead).
+  to v modulo the image of ^M+1 (i.e., M+1 applied on right), which x is then
+  returned by this function (if no such x is found, then an error is signaled).
 
 operator = : (KGBElt,KGBElt): equality of elements of a same KGB set
 
