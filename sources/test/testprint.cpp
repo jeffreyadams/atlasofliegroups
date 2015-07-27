@@ -86,7 +86,7 @@ std::ostream& print(std::ostream& strm, const RootDatum& rd)
 
   if (not rd.isSemisimple()) { // print radical and coradical bases
     strm << "radical basis :" << std::endl;
-    CoweightList r_rad(rd.beginRadical(),rd.endRadical());
+    CoweightList r_rad(rd.beginRadical(),rd.endRadical()); // generate list
     prettyprint::printBasis(strm,r_rad) << std::endl;
 
     strm << "coradical basis :" << std::endl;
@@ -95,15 +95,13 @@ std::ostream& print(std::ostream& strm, const RootDatum& rd)
   }
 
   strm << "positive roots :" << std::endl;
-  WeightList r_pr(rd.beginPosRoot(),rd.endPosRoot());
-  const WeightList& r_prr=r_pr; // save instantiations of |seqPrint|
-  basic_io::seqPrint(strm,r_prr.begin(),r_prr.end(),"\n","","")
+  WeightList r_pr(rd.beginPosRoot(),rd.endPosRoot()); // generate actual roots
+  basic_io::seqPrint(strm,r_pr.cbegin(),r_pr.cend(),"\n","","")
     << std::endl << std::endl;
 
   strm << "positive coroots :" << std::endl;
-  CoweightList r_pcr(rd.beginPosCoroot(),rd.endPosCoroot());
-  const CoweightList& r_pcrr=r_pr; // save instantiations of |seqPrint|
-  basic_io::seqPrint(strm,r_pcrr.begin(),r_pcrr.end(),"\n","","")
+  CoweightList r_pcr(rd.beginPosCoroot(),rd.endPosCoroot()); // generate coroots
+  basic_io::seqPrint(strm,r_pcr.cbegin(),r_pcr.cend(),"\n","","")
     << std::endl << std::endl;
 
   return strm;
