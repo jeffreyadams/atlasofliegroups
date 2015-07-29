@@ -15,7 +15,9 @@ The torus factor
 set embed_KGB(KGBElt x_L,RealForm G)=
 let i=0,done=false,theta_L=involution(x_L),utf_L=unnormalized_torus_factor(x_L) in 
 while i<#KGB(G) and not done do
- let x=KGB(G,i) in if involution(x)=theta_L then
+  let x=KGB(G,i) in 
+ if involution(x)=theta_L then
+  let ()= prints(i, "  ", involution(x),involution(KGB(G,i))) in 
   if is_conjugate(unnormalized_torus_factor(x),utf_L,theta_L) then done:=true;KGB(G,i) else i:=i+1 fi else i:=i+1 fi od;x_L
 
 {given KGB elemnt of G, find one for M which maps to it}
