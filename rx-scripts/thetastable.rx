@@ -28,6 +28,68 @@ for i:nr_of_posroots(G)  do
 set u(KGBElt x)=[vec]:
 let rv=[vec]:[] in
 for alpha in posroots(real_form(x)) do if not is_real(alpha,x) then rv#:=alpha fi od;rv
+{-----------}
+set dim_u_cap_k(KGBElt x, ratvec H)=
+let u=u(x,H) then
+(number_compact,number_complex)=(0,0) then
+()=for v in u do if is_compact(v,x) then number_compact+:=1 
+elif is_complex(v,x) then number_complex+:=1 fi od  in rat:number_compact+number_complex/2
+
+set dim_u_cap_k(KGBElt x)=
+let u=u(x) then
+(number_compact,number_complex)=(0,0) then
+()=for v in u do if is_compact(v,x) then number_compact+:=1 
+elif is_complex(v,x) then number_complex+:=1 fi od  in rat:number_compact+number_complex/2
+
+set dim_u_cap_p(KGBElt x, ratvec H)=
+let u=u(x,H) then
+(number_noncompact,number_complex)=(0,0) then
+()=for v in u do if is_noncompact(x)(v) then number_noncompact+:=1 
+elif is_complex(v,x) then number_complex+:=1 fi od  in rat:number_noncompact+number_complex/2
+
+set dim_u_cap_p(KGBElt x)=
+let u=u(x) then
+(number_noncompact,number_complex)=(0,0) then
+()=for v in u do if is_noncompact(x)(v) then number_noncompact+:=1 
+elif is_complex(v,x) then number_complex+:=1 fi od  in rat:number_noncompact+number_complex/2
+{-----------}
+set dim_u_cap_k_2(KGBElt x, ratvec H)=
+let u=u(x,H) then
+(number_compact,number_complex)=(0,0) then
+()=for v in u do if v*H=2 then if 
+  is_compact(v,x) then number_compact+:=1 
+  elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat:number_compact+number_complex/2
+
+{-----------}
+set dim_u_cap_k_ge2(KGBElt x, ratvec H)=
+let u=u(x,H) then
+(number_compact,number_complex)=(0,0) then
+()=for v in u do if v*H>=2 then if 
+  is_compact(v,x) then number_compact+:=1 
+  elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat:number_compact+number_complex/2
+
+set dim_u_cap_p_ge2(KGBElt x, ratvec H)=
+let u=u(x,H) then
+(number_noncompact,number_complex)=(0,0) then
+()=for v in u do  if v*H>=2 then  if is_noncompact(x)(v) then number_noncompact+:=1 
+elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat:number_noncompact+number_complex/2
+
+{-----------}
+set dim_u_cap_k_1(KGBElt x, ratvec H)=
+let u=u(x,H) then
+(number_compact,number_complex)=(0,0) then
+()=for v in u do if v*H=1 then if 
+  is_compact(v,x) then number_compact+:=1 
+  elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat:number_compact+number_complex/2
+
+
+set dim_u_cap_p_1(KGBElt x, ratvec H)=
+let u=u(x,H) then
+(number_noncompact,number_complex)=(0,0) then
+()=for v in u do  if v*H=1 then  if is_noncompact(x)(v) then number_noncompact+:=1 
+elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat:number_noncompact+number_complex/2
+
+set dim_u(KGBElt x,ratvec H)=#u(x,H)
 
 {similar to u(x,v), except now it returns the RealForm L(x,v)}
 set L(KGBElt x, ratvec v)=RealForm:
@@ -111,6 +173,34 @@ set Aq(KGBElt x,ratvec lambda_in)=Param:Aq(x,lambda_in,lambda_in)
 set Aq(RealForm G,ratvec lambda_in, ratvec lambda_q)=Param:Aq(KGB(G)[0],lambda_in,lambda_q)
 set Aq(RealForm G,ratvec lambda_in)=Param:Aq(G,lambda_in,lambda_in)
 
+{  ----------------------   inverse theta-stable induction   ------------------------------------------}
+
+set inverse_theta_induce_standard(Param p, RealForm L)=
+let x_G=x(p) then
+x_L=inverse_embed_KGB(x_G,L) in
+parameter(x_L,lambda(p)-rho_i(x_G)-theta_rhoS(x_G)+rho_i(x_L)+theta_rhoS(x_L),nu(p))
+
+set is_lambda_dominant(Param p)=bool:let rd=root_datum(p) then lam=lambda(p) in
+prints("lambda+theta(lambda)=",lam+involution(x(p))*lam); is_dominant(rd,lam+involution(x(p))*lam)
+
+set make_lambda_dominant(Param p)= let rd=root_datum(p) in
+let lam_a=lambda(p)+involution(x(p))*lambda(p) in
+let (lam_new,w)=make_dominant(rd,lam_a) in
+let W=w_matrix(w) in let W_inv=w_matrix(inverse(w)) in 
+let x=KGB_elt(real_form(p),W*involution(x(p))*W_inv,act((w),torus_factor(x(p))))
+in (w,x,act((w),lambda(p)),act((w),nu(p)),L(x,lam_new)) 
+
+set theta_stable_data(Param p)=
+if is_lambda_dominant(p) then
+let p_L=inverse_theta_induce_standard(p,L(x(p),lambda(p))) 
+in (real_form(p_L),p_L)
+else
+let (w,x,lam,nu,L)=make_lambda_dominant(p) in let x_L=inverse_embed_KGB(x,L) in
+let p_L=parameter(x_L,lam-rho_i(x)-theta_rhoS(x)+rho_i(x_L)+theta_rhoS(x_L),nu)
+in (L,p_L) 
+fi
+
+
 
 {----------------------Good/Fair conditions------------------}
 
@@ -185,5 +275,8 @@ elif is_weakly_good(x,lambda_in,lambda_q) then prints("Weakly good")
 elif is_fair(x,lambda_in,lambda_q) then prints("Fair") 
 elif is_weakly_fair(x,lambda_in,lambda_q) then prints("Weakly fair")  else
 prints("None") fi
+
+
+
 
 

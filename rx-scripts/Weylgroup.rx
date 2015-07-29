@@ -63,10 +63,19 @@ set dominant (RootDatum rd, vec v) = vec:
 set dominant (RootDatum rd, ratvec v) = ratvec:
   let (n,d)=%v in dominant(rd,n)/d
 
-{ find some Weyl word (not lexicographically first) acting by the matrix M }
+{off by inverse, original code:
 set word (RootDatum rd, mat M) = W_word:
   let (,ww) = make_dominant(rd,M*rho(rd)) then ww1 = inverse(ww)
   in assert(w_matrix(ww1)=M,"Not the action of any Weyl group element"); ww1
+}
+
+{ find some Weyl word (not lexicographically first) acting by the matrix M }
+set word (RootDatum rd, mat M) = W_word:
+  let (,ww) = make_dominant(rd,M*rho(rd)) 
+  in assert(w_matrix(ww)=M,"Not the action of any Weyl group element"); ww
+
+{ find some Weyl word w so that w*delta acts by the matrix M }
+set word (RootDatum rd,mat delta, mat M) = W_word:word(rd,delta*M)
 
 { rather than length(rd,M) = #word(rd,M), the following is simpler }
 set length (RootDatum rd, mat M) = int: { count positive roots made negative: }
