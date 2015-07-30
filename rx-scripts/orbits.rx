@@ -53,7 +53,6 @@ dim_u_cap_k_1=dim_u_cap_k_1(x,H) in
 rat_as_int(dim_K-dim_L_K-dim_u_cap_k_1) fi
 }
 
-
 set sort_u([int] v)=[int]:
 if #v=0 then [] else
 let w=sort(v) then
