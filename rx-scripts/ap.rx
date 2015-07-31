@@ -1,0 +1,46 @@
+{ap.rx}
+
+<groups.rx
+<hermitian.rx
+<thetastable.rx
+<K
+<K_types
+
+set inverse_theta_induce_standard(Param p, RealForm L)=
+let x_G=x(p) then
+x_L=inverse_embed_KGB(x_G,L) in
+parameter(x_L,lambda(p)-rho_i(x_G)-theta_rhoS(x_G)+rho_i(x_L)+theta_rhoS(x_L),nu(p))
+
+{check whether the (1+theta)lambda(p) is dominant}
+set is_lambda_dominant(Param p)=bool:let rd=root_datum(p) then lam=lambda(p) in
+prints("lambda+theta(lambda)=",lam+involution(x(p))*lam); is_dominant(rd,lam+involution(x(p))*lam)
+
+{perform one step towards making (1+theta)*lambda(p) dominant through a C- root reflection} 
+set move_towards_lambda_dominant (KGBElt x, ratvec lam, ratvec nu) = (KGBElt,ratvec,ratvec):
+  let rd=root_datum(x) in let theta=involution(x) in
+  let i=last(semisimple_rank(real_form(x)), (int i)bool: 
+  status(i,x)=0 and (1+theta)*lam*simple_coroots(rd)[i]<0) in
+  if i<0 then (x,lam,nu) else (cross(i,x),act((rd,[i]),lam),act((rd,[i]),nu)) fi
+
+set make_lambda_dominant (KGBElt x, ratvec lam, ratvec nu) = (KGBElt,ratvec,ratvec): { repeat until stable }
+let i=0 in let lim=2*semisimple_rank(real_form(x)) in
+while not is_dominant(root_datum(x),(1+involution(x))*lam) and i<lim do 
+let (z,l,n)=move_towards_lambda_dominant(x,lam,nu) in (x:=z; lam:=l; nu:=n; i+:=1) od; 
+if i=lim then prints("Lambda can not be made dominant.", "i=",i) fi;(x,lam,nu)
+
+{find x, lambda, and nu so that the parameter defined by them is equivalent to p; also
+compute the theta stable Levi defined by x and lambda - this is the classification Levi}
+set make_lambda_dominant(Param p)= 
+let (x,lam_new,nu_new)=make_lambda_dominant(x(p),lambda(p),nu(p)) in
+let q=parameter(x,lam_new,nu_new) in prints("Now lambda=",lam_new," lambda+theta(lambda)=",lam_new+involution(x)*lam_new,"  q=p:",q=p);
+(x,lam_new,nu_new,L(x,lam_new)) 
+
+set theta_stable_data(Param p)=
+if is_lambda_dominant(p) then
+let p_L=inverse_theta_induce_standard(p,L(x(p),lambda(p))) 
+in (real_form(p_L),p_L)
+else
+let (x,lam,nu,L)=make_lambda_dominant(p) in let x_L=inverse_embed_KGB(x,L) in
+let p_L=parameter(x_L,lam-rho_i(x)-theta_rhoS(x)+rho_i(x_L)+theta_rhoS(x_L),nu)
+in (L,p_L) 
+fi
