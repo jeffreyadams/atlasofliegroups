@@ -37,13 +37,6 @@ set make_classification_L(Param p)=
   let (x,lam_new,nu_new)=make_one_plus_theta_lambda_dominant(x(p),lambda(p),nu(p)) in
   L(x,lam_new) 
 
-set theta_stable_data(Param p)=
-if not is_lambda_dominant(p) then 
-p:=make_one_plus_theta_lambda_dominant(p) fi;
-p:=make_no_Cminus(p); prints("Final lambda=", lambda(p),"; (1+theta)lambda= ",(1+involution(x(p)))*lambda(p));
-let p_L=inverse_theta_induce_standard(p,L(x(p),lambda(p)))
-in (real_form(p_L),p_L)
-
 set move_towards_no_Cminus (KGBElt x, ratvec lam, ratvec nu) = let rd=root_datum(x) in
   let i=last(semisimple_rank(real_form(x)), (int i)bool: =status(i,x)) in
   if i<0 then (x,lam,nu)  else (cross(i,x),act((rd,[i]),lam),act((rd,[i]),nu)) fi
@@ -54,6 +47,13 @@ set make_no_Cminus (KGBElt x, ratvec lam,ratvec nu) =  { repeat until stable }
 
 set make_no_Cminus (Param p) = let (x,lam,nu)=make_no_Cminus(x(p),lambda(p),nu(p)) in
    parameter (x,lam,nu)
+
+set theta_stable_data(Param p)=
+if not is_lambda_dominant(p) then
+p:=make_one_plus_theta_lambda_dominant(p) fi;
+p:=make_no_Cminus(p); prints("Final lambda=", lambda(p),"; (1+theta)lambda= ",(1+involution(x(p)))*lambda(p));
+let p_L=inverse_theta_induce_standard(p,L(x(p),lambda(p)))
+in (real_form(p_L),p_L)
 
 set theta_stable_data_split(Param p)=
 if not is_lambda_dominant(p) then
