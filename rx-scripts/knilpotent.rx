@@ -104,12 +104,12 @@ set K_norm(Param p)=int:
 if nu(p) != null(rank(real_form(p))) then prints("K_norm of parameter with nu != 0") fi;
 rat_as_int(nondegenerate_invariant_form(real_form(p),lambda(p),lambda(p)))
 
-set K_norm(Split s,Param p)=rat:K_norm(p)
+set K_norm(Split s,Param p)=int:K_norm(p)
 
 set sort([rat] v)=[rat]:let (num,denom)=%v in sort(num)/denom
 set inv_standardisation([rat] v)=let (num,)=%v in inv_standardisation(num)
 
-set sort_by ((Param->rat) f) = ([Param] v) [Param]:
+{set sort_by ((Param->rat) f) = ([Param] v) [Param]:
 for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 set sort_by (((Split,Param)->rat) f) = ([(Split,Param)] v) [(Split,Param)]:
@@ -117,8 +117,9 @@ set sort_by (((Split,Param)->rat) f) = ([(Split,Param)] v) [(Split,Param)]:
 
 set sort_by (((Split,Param)->rat) f) = ([(Split,Param)] v) [(Split,Param)]:
   for index in inv_standardisation(for (c,p) in v do f(c,p) od) do v[index] od
-
+}
 { Sort list of parameters by K_norm }
+
 set sort_by_K_norm = ([Param] -> [Param]): sort_by( K_norm@Param )
 set sort_by_K_norm = ([(Split,Param)] -> [(Split,Param)]): sort_by(K_norm@(Split,Param))
 

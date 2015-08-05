@@ -67,11 +67,19 @@ set KGP_numbers(RealForm G,[int] P) =[[int]]:let ec=KGP(G,P) in for c in ec do f
 {test if y\in K\G/P is closed: <=> length(first element)=0}
 set is_closed([KGBElt] y,[int] P)=bool:length(min(y))=0
 
-{test if y\in K\G/P is theta-stable: <=> closed and 
-alpha simple, not in P => alpha is imaginary C+ for max(y)
+{test if set of simple roots is delta stable}
+set is_stable(InnerClass ic,[int] P)=bool:
+let Q=for i in P do root_index(ic,distinguished_involution(ic)*simple_roots(ic)[i]) od in
+sort(P)=sort(Q) 
+
+{test if y\in K\G/P is theta-stable: <=>
+1) P is delta stable (delta=distinguished involution of G)
+2) y is closed and 
+3) alpha simple, not in P => alpha is imaginary or C+ for (wrt x=max(y))
 }
 set is_theta_stable([KGBElt] y,[int] P)=bool:
 let x=max(y) in 
+is_stable(real_form(x),P) and
 is_closed(y,P) and
 all( for j in complement(semisimple_rank(real_form(x)),P) do
  let s=status(j,x) in s=1 or s=3 or s=4 od ) 
@@ -88,6 +96,10 @@ all=generate_all_subsets(for i:n do i od) then
 rv=[]  in
 for P in all do (P,theta_stable_parabolics(G,P)) od
 { let rv_P=[KGBElt]:[] in  for y in KGP(G,P) do if is_theta_stable(y,P) then rv_P#:=max(y) fi od;rv#:=(P,rv_P) od;rv}
+
+set Levi([int] P,KGBElt x)=real_form(Levi(real_form(x),P),involution(x),torus_factor(x))
+
+
 
 set print_all_theta_stable_parabolics(RealForm G)=void:
 let total=0 in for (P,v) in all_theta_stable_parabolics(G) do
