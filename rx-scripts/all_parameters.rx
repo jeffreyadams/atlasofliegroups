@@ -11,14 +11,6 @@ set sum(ratvec v)=rat:sum(numer(v))/denom(v)
 {write v as a linear combination of columns of A}
 set solve_in_lattice([vec] A, vec v)=vec:solve_vec(mat:A,v)
 
-{not used, maybe useful somewhere
-set all_vectors_given_sum(int n,int Sum)=[[int]]:
-if n=0 then [[]] elif
-n=1 then [[Sum]] else
-let S=parallelogram(n-1,Sum) in 
-for v in S do v#(Sum-sum(v)) od fi
-}
-
 {A: nxm matrix, columns are a basis of a Z-module V of rank m
  M: nxr matrix, columns span a submodule of V
  returns mxr matrix C, column i gives column i of M as a sum of columns of A
@@ -185,7 +177,7 @@ parameter(x(p),lambda(p)+v,nu(p)) od
  use parallelogram to find 
  all mu=\sum a_i lambda_i such that 
  <mu,rho^vee>=sum a_i*c_i<=N
-}
+3) d\mu restricted to the center is trivial
 set all_dominant_norm_less_than(RootDatum rd, int N)=[[int]]:
 let f=fundamental_weights(rd) then
 n=#f then
@@ -200,7 +192,8 @@ if is_integer(u) then rv#:=ratvec_as_vec(u) fi od;rv
 return all mu dominant satisfying:
 1) mu in X^* 
 2) <mu,rho^vee> <= N 
-3) 2*mu-(1+theta)rho \in (1+delta)X^* (same as in (1+theta)X^*)
+3) mu-(1+theta)rho \in (1+delta)X^* (same as in (1+theta)X^*)
+4) 
 }
 set all_dominant_in_image_oneplustheta_norm_less_than(RootDatum rd, mat theta,int N)=[[int]]:
 let rv=[[int]]:[] in
