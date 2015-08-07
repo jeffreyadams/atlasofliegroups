@@ -152,11 +152,9 @@ set real_Levi (KGBElt x,ratvec v) = RealForm:
 
 set theta_stable_Levi (KGBElt x) = RealForm:
   let ic_L=inner_class(root_datum(simple_from_positive(real_sys(x)))
-		      ,involution(x))
-  in quasisplit_form(ic_L)
+		      ,involution(x)) in quasisplit_form(ic_L)
 
 set M = real_Levi@KGBElt { synonym }
-
 set L = theta_stable_Levi@KGBElt { synonym }
 
 { ----------------tests for classes of groups---------------- }
