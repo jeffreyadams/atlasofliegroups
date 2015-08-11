@@ -744,7 +744,7 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	  first = Weight(rd.rank(),0); // effectively not used in this case
 	else
 	{
-	  --tau_coef; // parity change and decrease both relevant
+	  --tau_coef; // the parity change and decrease are both relevant
 	  weyl::Generator s = // first switched root index
 	    rd.find_descent(alpha_simple);
 	  first = // corresponding root summand, conjugated back
@@ -817,7 +817,7 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	  repr::Cayley_shift(E.rc().complexGroup(),theta,ww);
 	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
-	Weight new_lambda_rho = E.lambda_rho-rho_r_shift;
+	Weight new_lambda_rho = E.lambda_rho + alpha*(parity_n/2) -rho_r_shift;
 	Weight tau_correction;
 	if (rd.is_simple_root(alpha_simple))
 	  tau_correction = Weight(rd.rank(),0); // no correction needed here
@@ -1080,18 +1080,30 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	}
       }
       else // complex case
-      { TwistedInvolution tw = E.tw;
-	tW.twistedConjugate(tw,p.s0);
-	tW.twistedConjugate(tw,p.s1);
-	if (tw==E.tw) // twisted commutation with |s0.s1|
-	{
-	  result = rd.is_posroot(theta_alpha)
-	    ? two_semi_imaginary : two_semi_real;
+      { const bool ascent = rd.is_posroot(theta_alpha);
+	const RootNbr n_beta = subs.parent_nr_simple(p.s1);
+	TwistedInvolution new_tw = tW.twistedConjugated(E.tw,p.s0);
+	if (theta_alpha == (ascent ? n_beta : rd.rootMinus(n_beta)))
+	{ // twisted commutation with |s0.s1|: 2Ci or 2Cr
+	  assert (new_tw == tW.twistedConjugated(E.tw,p.s1));
+	  result = ascent ? two_semi_imaginary : two_semi_real;
+
+	  const int f =
+	    (E.ctxt.gamma() - E.lambda_rho).dot(alpha_v) - rd.colevel(n_alpha);
+	  const int dual_f = (E.ctxt.g() - E.l).dot(alpha) - rd.level(n_alpha);
+	  const Weight new_lambda_rho = E.lambda_rho + alpha*f;
+	  const Weight new_tau =
+	    rd.reflection(n_alpha,E.tau) + alpha*(ascent ? f : -f);
+	  const Coweight new_l = E.l + alpha_v*dual_f;
+          const Coweight new_t =
+	    rd.coreflection(E.t,n_alpha) + alpha_v*(ascent ? -dual_f : dual_f);
+	  links.push_back(param (E.ctxt, new_tw, // Cayley link
+				 new_lambda_rho, new_tau, new_l, new_t));
 	}
 	else // twisted non-commutation with |s0.s1|
 	{
-	  result = rd.is_posroot(theta_alpha)
-	    ? two_complex_ascent : two_complex_descent;
+	  tW.twistedConjugate(new_tw,p.s1);
+	  result = ascent ? two_complex_ascent : two_complex_descent;
 	  links.push_back(complex_cross(p,E));
 	}
       }
