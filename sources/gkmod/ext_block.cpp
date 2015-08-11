@@ -307,12 +307,14 @@ BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
 
     // zero valued Cayleys have trivial cross actions
   case one_real_nonparity: case one_imaginary_compact:
+  case one_imaginary_pair_switched: case one_real_pair_switched:
   case two_real_nonparity: case two_imaginary_compact:
+  case two_imaginary_single_double_switched:
+  case two_real_single_double_switched:
   case three_real_nonparity: case three_imaginary_compact:
 
     // double valued Cayleys also have trivial cross actions
-  case one_real_pair_fixed: case one_real_pair_switched:
-  case one_imaginary_pair_fixed: case one_imaginary_pair_switched:
+  case one_real_pair_fixed: case one_imaginary_pair_fixed:
   case two_real_double_double: case two_imaginary_double_double:
 
     // cases with back-and-forth cross actions
@@ -1001,7 +1003,16 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	const TwistedInvolution new_tw =
 	  tW.prod(tW.prod(E.tw,subs.reflection(p.s0)),subs.reflection(p.s1));
 
-	Weight new_lambda_rho = E.lambda_rho; // FIXME with nonintegral shift
+	RootNbr alpha_simple = n_alpha;
+	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	assert(rd.is_simple_root(alpha_simple)); // no complications here
+
+	const Weight rho_r_shift =
+	  repr::Cayley_shift(E.rc().complexGroup(),theta,ww);
+	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+
+	Weight new_lambda_rho = E.lambda_rho - rho_r_shift;
+
 	{ int da = // $\alpha$ correction coefficient for $\gamma-\tilde\lambda$
 	    (E.ctxt.gamma()-new_lambda_rho).dot(alpha_v)- rd.colevel(n_alpha);
 	  int db = // $\beta correction coefficient for $\gamma-\tilde\lambda$
