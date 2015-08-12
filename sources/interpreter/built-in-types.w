@@ -4693,6 +4693,14 @@ $K$ parameters'' used to designate $K$-types is both hard to decipher and does
 not seem to relate easily to values used elsewhere. However, these parameters
 do in fact correspond to the subset of module pareters with $\nu=0$.
 
+The function |K_type_formula| converts its parameter to a |StandardRepK|
+value~|sr|, for which it calls the method |SRK_context::K_type_formula|. Since
+the terms of that formula are not necessarily standard, one needs to pass each
+term though |KhatContext::standardize|; finally, to incorporate the resulting
+terms into a |virtual_module|, they need to be passed through
+|Rep_context::expand_final|. One must not forget to multiply the small integer
+coefficients that these two methods produce.
+
 @h "standardrepk.h"
 
 @< Local function def...@>=
@@ -4701,25 +4709,28 @@ void K_type_formula_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   RealReductiveGroup& G = p->rf->val;
   const Rep_context& rc = p->rc();
-  standardrepk::SRK_context srkc(G);
+  standardrepk::KhatContext khc(G);
   StandardRepK sr =
-    srkc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
+    khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
   @< Check that |sr| is final, and if not |throw| an error @>
-  standardrepk::Char formula = srkc.K_type_formula(sr).second;
+  if (l==expression_base::no_value)
+    return;
 @)
-  if (l!=expression_base::no_value)
-  { RatWeight zero_nu(p->rf->val.rank());
-    own_virtual_module acc @|
-      (new virtual_module_value(p->rf, repr::SR_poly(p->rc().repr_less())));
-    for (standardrepk::Char::const_iterator
-           it=formula.begin(); it!=formula.end(); ++it)
+  const standardrepk::Char formula = khc.K_type_formula(sr).second;
+  const RatWeight zero_nu(p->rf->val.rank());
+@/own_virtual_module acc @|
+    (new virtual_module_value(p->rf, repr::SR_poly(p->rc().repr_less())));
+  for (auto it=formula.begin(); it!=formula.end(); ++it)
+  {
+    standardrepk::combination st=khc.standardize(it->first);
+    for (auto stit=st.cbegin(); stit!=st.cend(); ++stit)
     {
-      StandardRepr term =  rc.sr(it->first,srkc,zero_nu);
-      repr::SR_poly contribution = rc.expand_final(term);
-      acc->val.add_multiple(contribution,Split_integer(it->second));
+      StandardRepr term =  rc.sr(khc.rep_no(stit->first),khc,zero_nu);
+      acc->val.add_multiple(rc.expand_final(term),
+                            Split_integer(it->second*stit->second));
     }
-    push_value(acc);
   }
+  push_value(acc);
 }
 
 @ We must test the parameter for being final, or else the method
@@ -4728,11 +4739,11 @@ since the parameter itself reported here might be final.
 
 @< Check that |sr| is final, and if not |throw| an error @>=
 { size_t witness;
-  if (not srkc.isFinal(sr,witness))
+  if (not khc.isFinal(sr,witness))
   { std::ostringstream os;
-    RootNbr simp_wit = srkc.fiber(sr).simpleReal(witness);
+    RootNbr simp_wit = khc.fiber(sr).simpleReal(witness);
     print(os << "Non final restriction to K: ",p->val,rc)
-    @| << "\n  (witness "	<< srkc.rootDatum().coroot(simp_wit) << ')';
+    @| << "\n  (witness "	<< khc.rootDatum().coroot(simp_wit) << ')';
     throw runtime_error(os.str());
   }
 }
