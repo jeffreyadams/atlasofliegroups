@@ -1074,8 +1074,12 @@ void RootDatum::fillStatus()
 ******************************************************************************/
 
 RatWeight rho (const RootDatum& rd) { return RatWeight(rd.twoRho(),2); }
+RatWeight rho (const RootDatum& rd, RootNbrSet sub_posroots)
+  { return RatWeight(rd.twoRho(sub_posroots),2); }
 RatCoweight rho_check (const RootDatum& rd)
   { return RatCoweight(rd.dual_twoRho(),2); }
+RatCoweight rho_check (const RootDatum& rd, RootNbrSet sub_posroots)
+  { return RatCoweight(rd.dual_twoRho(sub_posroots),2); }
 
 
 /*!

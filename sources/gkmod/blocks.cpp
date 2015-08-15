@@ -89,7 +89,7 @@
 
   When $\alpha,\alpha^\vee$ are the root and coroot for |s|, the involution of
   $X^*$ at the more compact Cartan is $\theta$ and at the more split Cartan
-  $\theta'=s_\alpha*\theta$, then on has equivalences
+  $\theta'=s_\alpha*\theta$, then one has equivalences
 
     \alpha^\vee\notin X_*(1+\theta) \iff \alpha\in(1-\theta')X^* \iff type 1
 

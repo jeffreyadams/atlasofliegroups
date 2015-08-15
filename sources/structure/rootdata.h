@@ -39,7 +39,9 @@ namespace atlas {
 namespace rootdata {
 
 RatWeight rho (const RootDatum& rd);
+RatWeight rho (const RootDatum& rd,RootNbrSet sub_posroots);
 RatCoweight rho_check (const RootDatum& rd);
+ RatCoweight rho_check (const RootDatum& rd,RootNbrSet sub_posroots);
 
 CoweightInvolution dualBasedInvolution
   (const WeightInvolution&, const RootDatum&);

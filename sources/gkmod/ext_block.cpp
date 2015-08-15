@@ -900,7 +900,7 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
       // RootNbr n_beta = subs.parent_nr_simple(p.s1);
       // RootNbr theta_beta = i_tab.root_involution(theta,n_beta);
 
-      if (theta_alpha==n_alpha) //imaginary case
+      if (theta_alpha==n_alpha) // imaginary case
       { // first find out if the simply-integral root $\alpha$ is compact
 	int tf_alpha = (E.ctxt.g() - E.l).dot(alpha)-rd.level(n_alpha);
 	int tf_beta = (E.ctxt.g() - E.l).dot(beta)-rd.level(n_alpha);
@@ -921,7 +921,6 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 
 	int at = alpha_v.dot(E.tau); int bt = beta_v.dot(E.tau);
 	const WeightInvolution th_1 = i_tab.matrix(new_tw)-1;
-	  i_tab.matrix(tW.prod(E.tw,subs.reflection(p.s1)))-1;
 
 	if (matreduc::has_solution(th_1,alpha)) // then type 2i11
 	{ result = two_imaginary_single_single;
@@ -1093,10 +1092,10 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
       else // complex case
       { const bool ascent = rd.is_posroot(theta_alpha);
 	const RootNbr n_beta = subs.parent_nr_simple(p.s1);
-	TwistedInvolution new_tw = tW.twistedConjugated(E.tw,p.s0);
 	if (theta_alpha == (ascent ? n_beta : rd.rootMinus(n_beta)))
 	{ // twisted commutation with |s0.s1|: 2Ci or 2Cr
-	  assert (new_tw == tW.twistedConjugated(E.tw,p.s1));
+	  TwistedInvolution new_tw = E.tw;
+	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
 	  result = ascent ? two_semi_imaginary : two_semi_real;
 
 	  const int f =
@@ -1113,7 +1112,6 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	}
 	else // twisted non-commutation with |s0.s1|
 	{
-	  tW.twistedConjugate(new_tw,p.s1);
 	  result = ascent ? two_complex_ascent : two_complex_descent;
 	  links.push_back(complex_cross(p,E));
 	}
@@ -1121,6 +1119,112 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
     }
     break;
   case ext_gen::three:
+    { const Weight& alpha = integr_datum.root(p.s0);
+      const Coweight& alpha_v = integr_datum.coroot(p.s0);
+      RootNbr n_alpha = subs.parent_nr_simple(p.s0);
+      RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
+      const Weight& beta = integr_datum.root(p.s1);
+      const Coweight& beta_v = integr_datum.coroot(p.s1);
+
+      RootNbr n_kappa =integr_datum.simple_reflected_root
+	 (p.s1, integr_datum.simpleRootNbr(p.s0));
+      WeylWord s_kappa = subs.reflection(integr_datum.posRootIndex(n_kappa));
+
+      const Weight& kappa = integr_datum.root(n_kappa);
+      const Coweight& kappa_v = integr_datum.coroot(n_kappa);
+
+      const TwistedInvolution new_tw = tW.prod(E.tw,s_kappa); // when applicable
+
+      if (theta_alpha==n_alpha) // length 3 imaginary case
+      { // first find out if the simply-integral root $\alpha$ is compact
+	int tf_alpha = (E.ctxt.g() - E.l).dot(alpha)-rd.level(n_alpha);
+	int tf_beta = (E.ctxt.g() - E.l).dot(beta)-rd.level(n_alpha);
+	assert((tf_alpha-tf_beta)%2==0); // same compactness
+	if (tf_alpha%2!=0) // then $\alpha$ and $\beta$ are compact
+	  return three_imaginary_compact;
+
+	// length 3 noncompact case
+	result = three_imaginary_semi;
+
+	RootNbr alpha_simple = n_alpha;
+	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	const Weight rho_r_shift = repr::Cayley_shift
+	  (E.rc().complexGroup(),i_tab.nr(new_tw),ww);
+	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
+	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
+
+	const Weight new_tau = E.tau - alpha*kappa_v.dot(E.tau);
+ 	const Coweight new_l = E.l + kappa_v*((tf_alpha+tf_beta)/2);
+	links.push_back(param // Cayley link
+			(E.ctxt, new_tw,
+			 E.lambda_rho + rho_r_shift, new_tau, new_l, E.t));
+      }
+      else if (theta_alpha==rd.rootMinus(n_alpha)) // length 3 real case
+      { // the part |gr_part| is unchanged when replacing |alpha| by |beta|:
+	const int gr_part = E.ctxt.gamma().dot(alpha_v) - rd.colevel(n_alpha);
+	const int parity_n = gr_part
+          + (rho(rd,i_tab.real_roots(theta))- E.lambda_rho).dot(alpha_v);
+	assert(E.lambda_rho.dot(alpha_v-beta_v)%2==0); // same parity for beta
+	if (parity_n%2==0) // nonparity
+	  return three_real_nonparity; // no link added here
+
+	RootNbr alpha_simple = n_alpha;
+	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	assert(rd.is_simple_root(alpha_simple)); // no complications here
+
+	const Weight rho_r_shift =
+	  repr::Cayley_shift(E.rc().complexGroup(),theta,ww);
+	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+
+	Weight new_lambda_rho = E.lambda_rho - rho_r_shift
+	  + kappa*(gr_part+kappa_v.dot(E.lambda_rho)/2) ;
+	links.push_back(param // Cayley link
+			(E.ctxt, new_tw,
+			 new_lambda_rho,E.tau, E.l,E.t-alpha_v*kappa.dot(E.t)));
+      }
+      else // length 3 complex case
+      { const bool ascent = rd.is_posroot(theta_alpha);
+	const RootNbr n_beta = subs.parent_nr_simple(p.s1);
+	if (theta_alpha == (ascent ? n_beta : rd.rootMinus(n_beta)))
+	{ // reflection by |alpha+beta| twisted commutes with |E.tw|: 3Ci or 3Cr
+	  result = ascent ? three_semi_imaginary : three_semi_real;
+
+	  RootNbr alpha_simple = n_alpha;
+	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	  assert(rd.is_simple_root(alpha_simple)); // no complications here
+
+	  const Weight rho_r_shift =
+	    repr::Cayley_shift(E.rc().complexGroup(),theta,ww);
+	  assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+
+	  int tf_alpha = (E.ctxt.g() - E.l).dot(alpha) - rd.level(n_alpha);
+	  int dtf_alpha =
+	    (E.ctxt.gamma() - E.lambda_rho).dot(alpha_v) - rd.colevel(n_alpha);
+	  Weight new_lambda_rho = E.lambda_rho + rho_r_shift; // for now
+
+	  if (ascent) // 3Ci
+	    links.push_back(param // Cayley link
+			    (E.ctxt, new_tw,
+			     dtf_alpha%2==0 ? new_lambda_rho
+			      : new_lambda_rho + kappa,
+			     E.tau - kappa*(kappa_v.dot(E.tau)/2),
+			     E.l + kappa_v*tf_alpha,
+			     E.t));
+	  else // 3Cr
+	    links.push_back(param // Cayley link
+			    (E.ctxt, new_tw,
+			     new_lambda_rho + kappa*dtf_alpha, E.tau,
+			     tf_alpha%2==0 ? E.l : E.l+kappa_v,
+			     E.t - kappa_v*(kappa.dot(E.t)/2)));
+
+	}
+	else // twisted non-commutation: 3C+ or 3C-
+	{
+	  result = ascent ? three_complex_ascent : three_complex_descent;
+	  links.push_back(complex_cross(p,E));
+	}
+      }
+    }
     break;
   }
   return result;
