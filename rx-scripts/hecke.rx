@@ -7,14 +7,14 @@
 <nonintegral.rx { for ext_cross }
 <polynomial.rx { for polynomial arithmetic }
 
-{ parameters and extended parameters are parametrized by pairs (x,y)
+{ Parameters and extended parameters are parametrized by pairs (x,y)
   x is a KGB element and y is a *generalized* KGB element, y^2 not necessarily
-  central see end of synthetic.rx for KGBElt_gen
+  central. See end of synthetic.rx for KGBElt_gen
 }
 : KGB_pair = (KGBElt, KGBElt_gen)
 
 { given a list_of_pairs [(x_1,y_1),(x_2,y_2)...] we need to do lookups and
- simple list manipulation
+  simple list manipulation
 }
 
 { equality of pairs of KGB elements }
@@ -35,19 +35,19 @@ set find_pair( (KGB_pair,[KGB_pair]) p) = bool:
 set add_pair( KGB_pair xy, [KGB_pair] xy_pairs) = [KGB_pair]:
   if index(xy,xy_pairs)>=0 then xy_pairs else xy_pairs#xy fi
 
-{ y_gen=(ic,^omega,psi), psi\in X^*(H)_Q=X_*(H^\vee)_Q is the normalized torus
-  factor, and is ^omega-fixed
-  NOTE: lambda \in X^*, also: omega acts on X^*(H)=X_*(H^v), i.e. involution
+{ y_gen=(ic,omega,psi), psi\in X^*(H)_Q is dual torus factor, made to be
+  omega-fixed. Compare definition to x@entended_param from extended_misc.rx,
+  which implies that torus_factor(x(E))=(g-l-rho_check(ic))*(1+theta)/2
 }
-set y_gen(extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) =
-  KGBElt_gen:
-(dual(ic),omega,(gamma-lambda-rho(ic))*(1+omega)/2)
+set y_gen(extended_param(ic,,gamma,lambda,,,,omega,,)) = KGBElt_gen:
+  (dual(ic),omega,(gamma-lambda-rho(ic))*(1+omega)/2)
 
+{ this computes y_gen(E@(mat,Param,ratvec)(.,p,.)) without the unused stuff }
 set y_gen (Param p) = KGBElt_gen:
-  let ic=inner_class(p), gamma=infinitesimal_character(p), (x,lambda,)=%p
-    { lambda in X^*(H)+\rho: NOT same as lambda in previous def of y_gen }
-  then omega=-^involution(x)
-  in (dual(ic),omega,(gamma-lambda)*(1+omega)/2)
+  let ic=inner_class(p), (x,lambda_rho,gamma)=%p { vec lambda_rho: lambda of E }
+  then theta=involution(x)
+  { dual tf : gamma-lambda(p) ($-\theta$-fixed) where lambda(p)=lambda_rho+rho }
+  in (dual(ic),-^theta,gamma-(lambda_rho+rho(ic)))
 
 { index(E,list_of_pairs) = index(x(E),y(E),list_of_pairs) }
 set index( extended_param Ep, [KGB_pair] xy_pairs) = int:

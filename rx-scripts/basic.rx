@@ -794,7 +794,7 @@ set parameter (KGBElt x,ratvec lambda,ratvec nu) = Param:
   param(x,ratvec_as_vec(lambda-rho(real_form(x))),nu)
 
 { set parameter ensuring (upon sucess) that the inf. char. is gamma }
-set parameter_gamma(KGBElt x, vec lambda, ratvec gamma) = Param:
+set parameter_gamma(KGBElt x, ratvec lambda, ratvec gamma) = Param:
   let (G,nx)=%x, theta=involution(x) in
   { ((1-theta)*lambda+(1+theta)*gamma)/2 = (1+theta)*(gamma-lambda)/2+lambda }
   parameter(G,nx,(1+theta)*(gamma-lambda)/2+lambda,gamma)

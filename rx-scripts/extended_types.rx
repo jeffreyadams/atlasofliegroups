@@ -93,5 +93,6 @@ set ext_type(int j,extended_param E) = string:
   ext_type(delta(E),j,parameter(E))
 
 { E=extended parameter, ext_types=[ext_type(j,E)] }
-set ext_types(extended_param E) = [string]:
-  for j:semisimple_rank(ic(E)) do ext_type(j,E) od
+set ext_types(extended_param (ic,delta,,,,,,,,):E) = [string]:
+  let p=parameter(E) in
+  for j:semisimple_rank(integrality_datum(p)) do ext_type(delta,j,p) od
