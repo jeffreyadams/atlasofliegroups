@@ -195,7 +195,7 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
       if (i==m) // then column is zero
       {
 	if (d == --n) // decrease column count
-	  break; // if colmn was in last non-zero position, quit outer loop
+	  break; // if column was in last non-zero position, quit outer loop
 	M.swapColumns(d,n); // now matrix is zero from column |n| on
 	col.swapColumns(d,n);
 	col_sign = -col_sign;
