@@ -403,9 +403,17 @@ such that $row*M*col$ is diagonal with non-zero diagonal entries given in
 $\lambda$ (and any zero diagonal entries trailing those), we know that any row
 of |row| with factor $\lambda_i$ is a linear form sending the image of $M$ to
 $\lambda_i\Zee$, while any remaining rows of |row| (those without
-corresponding invariant factor) annihilate the image altogether. Then all that
+corresponding diagonal entry) annihilate the image altogether. Then all that
 is needed it to multiply rows of~|row| of the first kind by
 $d/\gcd(d,\lambda_i)$ and transpose the result.
+
+There is a subtlety though, that |matreduc::diagonalise| will not ensure that
+the last coefficient in the list is positive, as it prefers to ensure that the
+base change matrices |row| and |col| that it sets have determinant~$1$ (a
+detail that does not interest us here, but the function does not know that),
+which may necessitate a negate last coefficient. Since the call to
+|arithmetic::div_gcd| implicitly converts its second argument to unsigned, it
+is imperative that we take the absolute value of the final coefficient.
 
 @h "arithmetic.h"
 @h "lattice.h"
@@ -418,6 +426,8 @@ annihilator_modulo(const LatticeMatrix& M, arithmetic::Denom_t denominator)
 
 { int_Matrix row,col;
   CoeffList lambda = matreduc::diagonalise(M,row,col);
+  if (not lambda.empty())
+    lambda.back()=std::abs(lambda.back()); // ensure positive for |div_gcd|
 
   for (size_t i=0; i<lambda.size(); ++i)
     row.rowMultiply(i,arithmetic::div_gcd(denominator,lambda[i]));
