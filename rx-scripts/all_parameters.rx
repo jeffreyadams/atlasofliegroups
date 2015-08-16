@@ -1,5 +1,6 @@
 <ap.rx
 <kgp.rx
+<K_norm.rx
 
 {some stuff at the top of this file should be moved elsewhere}
 
@@ -55,6 +56,7 @@ all [int]:a[a_0,...a_{n-1}] with 0\le a_i integral and
 application: c_i=<i^th fundamental weight,rho^vee>
 }
 set parallelogram(int n, [rat] c,int Sum)=[[int]]:let
+{let ()=prints("parallelogram with ", n, c, Sum) then}
 rec_fun f([[int]] partial, int n,[rat] c,int Sum)=[[int]]:
 if #partial=0 then let start=[[int]]:[] in for i:floor(Sum/c[0])+1 do start#:=[i] od; f(start,n,c,Sum)
 elif #partial[0]=n then partial else
@@ -68,16 +70,7 @@ in f([[int]]:[],n,c,Sum)
 set dlambda(KGBElt x,ratvec v)=ratvec:(1+involution(x))*v/2
 set dlambda(Param p)=ratvec:dlambda(x(p),lambda(p))
 
-{K_norm@Param
- p=(x,lambda,nu)
- K_norm(p)= <d\lambda,2rho^vee> 
-          = <(1+theta_x)lambda/2,2rho^vee> 
-          = <(1+theta_x)lambda,rho^vee> \in Z
- to see this is an integer: up to integer can replace theta_x with distinguished involution delta
- <(1+delta)lambda,rho^vee>=<lambda,2rho^vee> \in Z since lambda\in X^*+rho\subset weights,
-and 2rho^vee is a sum of coroots
-}
-set K_norm(Param p)=int:let q=make_dlambda_dominant(p) in rat_as_int((1+involution(x(q)))*lambda(q)*rho_check(real_form(q)))
+
 
 set is_in_one_plus_delta(mat delta,ratvec v)=bool:is_integer(v) and in_lattice(1+delta,ratvec_as_vec(v))
 
@@ -167,25 +160,34 @@ let p=make_K_parameter(x(p),dlambda(p)) in
 for v in all_lambda_differential_0(x(p)) do 
 parameter(x(p),lambda(p)+v,nu(p)) od
 
-{all_dominant_norm_less_than@(RootDatum,int):
- note: mu will be 2*d\lambda=(1+theta)lambda so 
+{all_dominant_norm_less_than@(InnerClass,ratvec,int):
+ note: mu will be 2*d\lambda=(1+theta)lambda 
  returns mu dominant such that
 1) mu\in X^*
-2) <d\lambda,2*rho^v>=<mu,rho^vee> = <=N
- set lambda_i=i^th fundamental weight
- set [rat]:c =[c_1,...,c_{n-1}] where c_i=<lambda_i,rho^vee>
+2) <mu,v> = <=N
+ Note: default is v=rho_check(G), so condition is
+ <d\lambda,2*rho^v>=<mu,rho^vee> = <=N
+ in applications: mu is for L, a subgroup of G, and v=rho_check(G)
+ algorithm:
+ set [lambda_1,...,lambda_{m-1}]=fundamental weights
+ set [lambda_m,...,lambda_{n-1}]=lie_compact_radical_hat(G):
+  this is a Z-basis of compact part of radical (see center.rx)
+ [lambda_1,...,lambda_{n-1}] is Z-basis we want
+ set [rat]:c =[c_1,...,c_{n-1}] where c_i=<lambda_i,v>
  use parallelogram to find 
  all mu=\sum a_i lambda_i such that 
- <mu,rho^vee>=sum a_i*c_i<=N
+ <mu,v>=sum a_i*c_i<=N
 3) d\mu restricted to the center is trivial
-set all_dominant_norm_less_than(RootDatum rd, int N)=[[int]]:
-let f=fundamental_weights(rd) then
-n=#f then
-r=rho_check(rd) then
-c=[rat]:for i:#f do f[i]*r od in  
+}
+set all_dominant_norm_less_than(InnerClass ic, ratvec v,int N)=[[int]]:
+let f=fundamental_weights(ic) then
+g=lie_compact_radical_hat(ic) then
+basis=f#for w in g do ratvec:w od  then
+n=#basis then
+c=[rat]:for i:n do basis[i]*v od in  
 let v=parallelogram(n,c,N) in 
 let rv=[[int]]:[] in 
-for w in v do let u=ratvec:null(rank(rd)) in for i:#w do u+:=w[i]*f[i] od; 
+for w in v do let u=ratvec:null(rank(ic)) in for i:#w do u+:=w[i]*basis[i] od; 
 if is_integer(u) then rv#:=ratvec_as_vec(u) fi od;rv
 
 {mu will be d\lambda=(1+theta)lambda/2 => 2*mu\in X^*
@@ -195,16 +197,16 @@ return all mu dominant satisfying:
 3) mu-(1+theta)rho \in (1+delta)X^* (same as in (1+theta)X^*)
 4) 
 }
-set all_dominant_in_image_oneplustheta_norm_less_than(RootDatum rd, mat theta,int N)=[[int]]:
+set all_dominant_in_image_oneplustheta_norm_less_than(InnerClass ic, mat theta,ratvec v,int N)=[[int]]:
 let rv=[[int]]:[] in
-for mu in all_dominant_norm_less_than(rd,N) do
- if in_lattice(1+theta,mu-(1+theta)*rho(rd)) then rv#:=mu fi od;rv
+for mu in all_dominant_norm_less_than(ic,v,N) do
+ if in_lattice(1+theta,mu-(1+theta)*rho(ic)) then rv#:=mu fi od;rv
 
-set all_K_parameters_norm_less_than(KGBElt x, int N)=[Param]:
-let rd=root_datum(x),theta=involution(x) then
-mus=all_dominant_in_image_oneplustheta_norm_less_than(rd,theta,N) then
+set all_K_parameters_norm_less_than(KGBElt x, ratvec v,int N)=[Param]:
+let ic=inner_class(x),theta=involution(x) then
+mus=all_dominant_in_image_oneplustheta_norm_less_than(ic,theta,v,N) then
 rv=[Param]:[] in 
-for mu in mus do rv#:=make_all_K_parameters(x,mu) od;rv
+for mu in mus do  rv#:=make_all_K_parameters(x,mu) od;rv
 
 set all_rel_split_theta_stable_parabolics(RealForm G)=[RealForm]:
 let parabolics=all_theta_stable_parabolics(G) then
@@ -212,15 +214,30 @@ rel_split_parabolics=[] in
 for (P,v) in parabolics do for x in v do 
  let L=Levi(P,x) in if is_relatively_split(L) then rel_split_parabolics#:=L fi od od;rel_split_parabolics
 
-set all_K_parameters_norm_less_than(RealForm G, int N)=
+set all_K_parameters_norm_less_than(RealForm G, ratvec v,int N)=
 let parabolics=all_rel_split_theta_stable_parabolics(G) then
 parameters=[Param]:[] in 
 for L in parabolics do let x_L=KGB(L,KGB_size(L)-1) then
-x=embed_KGB(x_L,G) in parameters#:=all_K_parameters_norm_less_than(x,N) od;
+x=embed_KGB(x_L,G) in parameters#:=all_K_parameters_norm_less_than(x,v,N) od;
 let rv=null_module(G) in for p in parameters do rv+:=p od;sort_by_K_norm(monomials(rv))
 
-set print_all_K_parameters_norm_less_than(RealForm G, int N)=void:
-for p in sort_by_K_norm(all_K_parameters_norm_less_than(G,N)) do prints(p, " ", K_norm(p)) od
+set K_parameter_string(Param p)=
+if is_integer(lambda(p)) then 
+to_string("(x=",number(x(p)),",lambda=",ratvec_as_vec(lambda(p)),")") else
+to_string("(x=",number(x(p)),",lambda=", lambda(p),")") fi
+
+set print_K_parameter(Param p)=void:prints(K_parameter_string(p))
+set print_K_parameter(ParamPol P)=void:
+for (c,p) in %P do prints(split_as_int(c),"*", K_parameter_string(p)) od
+
+set print_K_parameter_long(Param p)=void:prints(K_parameter_string(p), " ", K_norm(p))
+set print_K_parameter_long(ParamPol P)=void:
+for (c,p) in %P do prints(split_as_int(c),"*", K_parameter_string(p), "  ", K_norm(p)) od
+
+
+set print_all_K_parameters_norm_less_than(RealForm G, ratvec v,int N)=void:
+for p in sort_by_K_norm(all_K_parameters_norm_less_than(G,v,N)) do prints(p, " ", K_norm(p)) od
+
 
 
 

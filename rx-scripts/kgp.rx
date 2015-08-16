@@ -1,5 +1,6 @@
-<orbits.rx {for sort_u}
-
+<misc.rx
+<sort.rx
+<group_operations.rx
 
 {K orbits on G/P
 P is a set of simple roots
@@ -79,8 +80,8 @@ set KGP(RealForm G,[int] P)=[KGPElt]:
 for x in maximal_in_partial_order(G,P) do (P,equivalence_class_of(x,P)) od
 
 {sometimes convenient to just keep the numbers, although this loses the information of what G is}
-set KGP_numbers(RealForm G,[int] P) =[([int],[int])]:let kgp=KGP(G,P) in for (,S) in kgp do 
-(P,for x in S do number(x) od) od 
+set KGP_numbers(RealForm G,[int] P) =[[int]]:let kgp=KGP(G,P) in for (,S) in kgp do 
+for x in S do number(x) od od 
 
 {test if y\in K\G/P is closed: <=> length(first element)=0}
 set is_closed(KGPElt x)=bool:length(min(kgb(x)))=0
@@ -123,7 +124,9 @@ rv=[KGPElt]:[] in
 for P in all do 
 for y in theta_stable_parabolics(G,P)  do rv#:=y od od;rv
 
-{ let rv_P=[KGBElt]:[] in  for y in KGP(G,P) do if is_theta_stable(y,P) then rv_P#:=max(y) fi od;rv#:=(P,rv_P) od;rv}
+set all_theta_stable_parabolics_type(RealForm G,[int] P)=[[KGBElt]]:
+let rv=[[KGBElt]]:[] in 
+for (Q,kgp) in all_theta_stable_parabolics(G) do if P=Q then rv#:=kgp fi od;rv
 
 set Levi([int] P,KGBElt x)=real_form(Levi(real_form(x),P),involution(x),torus_factor(x))
 

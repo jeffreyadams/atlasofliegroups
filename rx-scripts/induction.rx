@@ -1,6 +1,6 @@
 {this file replaces earlier induction_plus.rx}
 {real and theta-stable parabolic induction from general parabolic}
-set verbose=true
+set verbose=false
 <basic.rx
 <kl.rx { for character_formula }
 <coherent.rx {for standardize}

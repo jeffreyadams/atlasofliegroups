@@ -6,10 +6,6 @@ let done=false,rv=-1,i=0 in
 while done=false and i<#vectors do
  if vectors[i]=v then done:=true;rv:=i else i:=i+1 fi od;rv
 
-set flatten([[int]] v)=
-let rv=[int]:[] in
-for a in v do for b in a do rv#:=b od od;rv
-
 {
 set W_mod_WK(KGBElt x)=[W_word]:cross_W_orbit_W_elements(x)
 set W_mod_WK(RealForm G)=[W_word]:cross_W_orbit_W_elements(KGB(G,0))

@@ -958,4 +958,5 @@ set delete([int] v, int k)=[int]:v[:k]#v[k+1:]
 set delete([vec] v, int k)=[vec]:v[:k]#v[k+1:]
 set delete([ratvec] v, int k)=[ratvec]:v[:k]#v[k+1:]
 set delete([[ratvec]] v, int k)=[[ratvec]]:v[:k]#v[k+1:]
+set delete([ParamPol] P, int k)=[ParamPol]:P[:k]#P[k+1:]
 

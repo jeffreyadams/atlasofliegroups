@@ -1,0 +1,77 @@
+<complex_nilpotent_orbits.rx
+<knilpotent.rx
+
+:RealNilpotent=(KGBElt,vec)
+
+set x(RealNilpotent O)=KGBElt:let (x,)=O in x
+set H(RealNilpotent O)=vec:let (,H)=O in H
+
+set dim_nilpotent(RealNilpotent O)=int:dim_nilpotent(real_form(x(O)),H(O))
+
+set complex_nilpotent(RealNilpotent (x,H))=(root_datum(x),H)
+set diagram(RealNilpotent O)=diagram(complex_nilpotent(O))
+set semisimple_element(RealNilpotent (,H))=H
+set real_form(RealNilpotent (x,))=real_form(x)
+
+set zero_roots(RootDatum rd,vec v)=let rv=[] in for a@i in simple_roots (rd) do if a*v=0 then rv#:=i fi od;rv
+set delete([(KGBElt,vec)] P, int k)=[(KGBElt,vec)]:P[:k]#P[k+1:]
+
+set real_nilpotent_orbits(RealForm G,int N)=([(KGBElt,vec)],[[ParamPol]]):
+let x_0=KGB(G,0) then 
+theta=distinguished_involution(G) then
+all_complex_H=[vec]:[]  then
+()=for (H,) in all_H(G) do if ^theta*H=H  then all_complex_H#:=H fi od then
+all_x_H_pairs=[(KGBElt,vec)]:[] then
+()= for H in all_complex_H do
+  let P=zero_roots(G,H) then
+  parabolics=all_theta_stable_parabolics_type(G,P) then
+  kgb_elements=for Q in parabolics do Q[0] od then
+  ()=for x in kgb_elements do all_x_H_pairs#:=(x,H) od in 1
+od in let
+(x,H)=all_x_H_pairs[0]  then
+L=L(x,H) then
+params=all_K_parameters_norm_less_than(L,rho_check(G),N) then
+mus=[ParamPol]:[] in
+let ()=for p in params do 
+ let m=mu(x,H,p) in 
+ let max=maximal_K_norm(m) in 
+ if max<N then mus#:=m  fi od then
+valid_x_H_pairs_start=[(x,H)] then
+mus_start=[mus] then
+todo_start=delete(all_x_H_pairs,0) in
+{let ()=prints("todostart:", todo_start) in}
+let rec_fun f([(KGBElt,vec)] valid_x_H_pairs,[(KGBElt,vec)] todo, [[ParamPol]] mus)=([(KGBElt,vec)],[[ParamPol]]):
+if #todo=0 then (valid_x_H_pairs,mus) else
+let (x,H)=todo[0] then
+todo=delete(todo,0) then
+new_mu=mu(x,H) in 
+let ()=prints("Computed new_mu using ", x, "  H=",H) in
+let ()=prints("K_norm of new_mu", maximal_K_norm(new_mu)) in
+let ()=prints("going to in_span with", for a in mus do #a od) in
+let (inspan,R,S)=in_span(mus,new_mu) 
+in if inspan then
+prints("not valid:", H);
+prints("looked for:", new_mu);
+prints("S:",S)
+{for P@i in R do prints("i:",i,"P:",P, " ", maximal_K_norm(P)) od}
+else
+{prints("found new pair (x,H):", x, " ", H);}
+valid_x_H_pairs#:=(x,H);
+let L=L(x,H) in let
+ params=all_K_parameters_norm_less_than(L,rho_check(G),N) in
+ let new_mus=[ParamPol]:[] in 
+ for p in params do
+ let m=mu(x,H,p) in 
+ let max=maximal_K_norm(m) in 
+{ let ()=prints("max=",max) in}
+{ if maximal_K_norm(m)<=N then new_mus#:=m fi od ;}
+ new_mus#:=mu(x,H,p) od ;
+ mus#:=new_mus fi;
+f(valid_x_H_pairs,todo,mus) fi
+in f(valid_x_H_pairs_start,todo_start,mus_start)
+
+set print_real_nilpotent_orbits(RealForm G, int N)=void:
+prints("x  H  diagram   dimension");
+let (orbits,mus)=real_nilpotent_orbits(G,N) in 
+for O in orbits do prints(number(x(O)), " ", semisimple_element(O), " ", diagram(O),  "  ", dim_nilpotent(O)) od
+

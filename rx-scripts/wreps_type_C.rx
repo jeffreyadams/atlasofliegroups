@@ -1,7 +1,8 @@
 <basic.rx
 <sort.rx
 <nilpotent.rx
-<orbits.rx
+<complex_nilpotent_orbits.rx
+<partitions.rx
 {type C}
 {
 three kinds of objects
@@ -18,8 +19,8 @@ every symbol is equivalent to a unique one with a=b+1 and at most one 0
 }
 
 : Orbit=[int]   {partition for type C, all odd rows have even multiplicity}
-: Symbol=[[int]]  {must have 2 parts, other conditions above}
-: Wrep  =([int],[int])  {|p|+|q|=n}
+: Symbol=[[int]]  {must have 2 parts: [f,g], other conditions above}
+: Wrep  =([int],[int])  {pair of partitions; |p|+|q|=n}
 
 {use equivalence relation on symbols to get one with at most one 0}
 set normalize([int] v)=[int]:let 
@@ -77,7 +78,6 @@ F_G=sort(F#G)  then
 H=F_G - for i:#F_G  do i od in let K=reverse(H) then
 rv=[int]:[] in  for c in K do if c>0 then rv#:=c fi od;rv
 
-
 {Wrep to Symbol}
 set symbol(Wrep sigma)=Symbol:
 let (p,q)=sigma then
@@ -94,6 +94,16 @@ set =(Wrep  a,Wrep b)=bool: let (a1,a2)=a then (b1,b2)=b in a1=b1 and a2=b2
 {equality of symbols (not equivalence)}
 set symbols_equal(Symbol a,Symbol b)=bool:a[0]=b[0] and a[1]=b[1]
 
+set dimension(Wrep sigma)=int:
+let (p,q)=sigma in dim_rep(p)*dim_rep(q)*rat_as_int(fac(size(p)+size(q))/(fac(size(p))*fac(size(q))))
+
+set all_reps_C(int n)=
+let rv=[Wrep]:[] in
+for r:n+1 do 
+ for p in partitions(r) do
+  for q in partitions(n-r) do 
+   rv#:=(p,q) od od od;rv
+
 {a (normalized) symbol is special if f_0<=g_0<= f_1...}
 set is_special(Symbol S)=bool:
 let f=S[0], g=S[1] in 
@@ -109,9 +119,6 @@ set special_star(Wrep sigma)=string:if is_special(sigma) then "*" else "" fi
 set symbols(RootDatum rd)=[Symbol]:for P in nilpotent_orbits(rd) do symbol(P) od
 set wreps(RootDatum rd)=[Wrep]:for P in nilpotent_orbits(rd) do wrep(P) od
 
-{transpose of a partition}
-set transpose([int] P)=[int]:
-if #P=0 then [] else for i:P[0] do  last(#P, (int j)bool:P[j]>i)+1 od fi
 
 {given a cell C, get list of tau invariants from it
  then construct the Levi set of C:
