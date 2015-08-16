@@ -23,7 +23,7 @@ set move_towards_dlambda_dominant (KGBElt x, ratvec lam, ratvec nu) = (KGBElt,ra
   if i<0 then (x,lam,nu) else (cross(i,x),act((rd,[i]),lam),act((rd,[i]),nu)) fi
 
 set make_dlambda_dominant (KGBElt x, ratvec lam, ratvec nu) = (KGBElt,ratvec,ratvec): { repeat until stable }
-let i=0 in let lim=2*semisimple_rank(real_form(x)) in
+let i=0 in let lim=1+2*semisimple_rank(real_form(x)) in
 while not is_dominant(root_datum(x),(1+involution(x))*lam) and i<lim do 
 let (z,l,n)=move_towards_dlambda_dominant(x,lam,nu) in (x:=z; lam:=l; nu:=n; i+:=1) od;
 {prints("Now lambda= ",lam,"; (1+theta)lambda= ",(1+involution(x))*lam); }

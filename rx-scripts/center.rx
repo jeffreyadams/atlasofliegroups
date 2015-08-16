@@ -75,11 +75,11 @@ let M=(1-delta)*lie_radical_hat(G) then
 if #v=0 then [] else  A[0:#v]  fi fi
 
 {Z-basis of dual of compact part of radical of complex group}
-set lie_compact_radical_hat(RealForm G)=[vec]:
-let delta=distinguished_involution(G) then
-lieradicalhat=lie_radical_hat(G) in
+set lie_compact_radical_hat(InnerClass ic)=[vec]:
+let delta=distinguished_involution(ic) then
+lieradicalhat=lie_radical_hat(ic) in
  if #lieradicalhat=0 then [] else
-let M=(1+delta)*lie_radical_hat(G) then
+let M=(1+delta)*lie_radical_hat(ic) then
 (A,v)=adapted_basis(M) in
 if #v=0 then [] else  A[0:#v]  fi fi
 

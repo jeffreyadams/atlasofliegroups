@@ -1,7 +1,10 @@
+<lietypes.rx
 <Weylgroup.rx
 <coherent.rx
 <thetastable.rx
 <sort.rx
+<all_parameters.rx
+<complex_nilpotent_orbits.rx
 {implementation of parts of Letter to Atlas II: nilpotent orbits}
 
 {return index of alpha in list of roots}
@@ -31,7 +34,7 @@ while #roots>0 do
 }
 set s_one_roots(KGBElt x, ratvec H)=
 let theta=involution(x) in 
-if theta*H != H then error("H is not theta-fixed") else
+if ^theta*H != H then error("H is not ^theta-fixed") else
 let roots=[] then
 ()=for alpha in posroots(real_form(x)) do
  if H*alpha=1 or H*alpha=-1 then roots#:=alpha fi od in roots fi
@@ -70,7 +73,7 @@ set rho_shifts(KGBElt x,ratvec H)=[(ratvec,int)]:
 let S=subsets(x,H) in [(ratvec:null(rank(real_form(x))),0)]#for v in S do (sum(v),#v) od
 
 {this implements the algorithm of Proposition 7.3(6)
-p_L must be a standard final limit parameter for L (i.e. an L\cap K-type)
+p_L must be a standard final limit parameter for L=L(x,H) (i.e. an L\cap K-type)
 }
 set mu(KGBElt x, ratvec H, Param p_L)=ParamPol:
 if not (is_standard(p_L)) then error("p_L is not standard") 
@@ -81,62 +84,176 @@ let G=real_form(x) then
 rv=null_module(G) then
 rhoshifts=rho_shifts(x,H) then
 P_L=K_type_formula(p_L) then
-()=prints("p_L: ", p_L);
-prints("K-type formula on L: ", P_L);
-prints("terms in sum:") then
+{()=prints("p_L: ", p_L);
+{prints("K-type formula on L: ", P_L);}
+{prints("terms in sum:") then }}
  ()=for c@p in P_L do
   for (shift,j) in rhoshifts do   
-   let ()=prints("j=",j," shift=",shift);
-   prints("c=",split_as_int(c));
-   prints("parameter on L:", p) in 
-   let q=parameter(x(p),lambda(p)-shift,nu(p)) in 
-   let ()=prints("shifted param on L:", q) then
+{   let ()=prints("j=",j," shift=",shift);}
+{   prints("c=",split_as_int(c));}
+{   prints("parameter on L:", p) in }
+   let q=parameter(x(p),lambda(p)-shift,nu(p)) then
+{  ()=prints("shifted param on L:", q) then }
    r_1=theta_induce_standard(q,G) then
-   ()=prints("theta_induced parameter on G before standardization:", r_1) then
+{   ()=prints("theta_induced parameter on G before standardization:", r_1) then}
    r_2=standardize(r_1) then
-   ()=prints("theta_induced parameter on G standardized:", r_2) then
-   r_3=standardize(r_2)*0 {set nu=0} then
-   ()=prints("theta_induced parameter on G at nu=0:", r_3) in
+{   ()=prints("theta_induced parameter on G standardized:", r_2) then}
+   r_3=standardize(r_2)*0 {set nu=0} in
+{  let ()=prints("theta_induced parameter on G at nu=0:", r_3) in }
    rv+:=(-1)^j*c*r_3 od od in rv fi
 
-{need sorting by a function taking rational values} 
-set K_norm(Param p)=int:
-if nu(p) != null(rank(real_form(p))) then prints("K_norm of parameter with nu != 0") fi;
-rat_as_int(nondegenerate_invariant_form(real_form(p),lambda(p),lambda(p)))
+set mu(KGBElt x, vec H)=ParamPol:mu(x,H,trivial(L(x,H)))
 
-set K_norm(Split s,Param p)=int:K_norm(p)
-
-set sort([rat] v)=[rat]:let (num,denom)=%v in sort(num)/denom
-set inv_standardisation([rat] v)=let (num,)=%v in inv_standardisation(num)
-
-{set sort_by ((Param->rat) f) = ([Param] v) [Param]:
-for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-set sort_by (((Split,Param)->rat) f) = ([(Split,Param)] v) [(Split,Param)]:
- for index in inv_standardisation(for (c,p) in v do f(c,p) od) do v[index] od
-
-set sort_by (((Split,Param)->rat) f) = ([(Split,Param)] v) [(Split,Param)]:
-  for index in inv_standardisation(for (c,p) in v do f(c,p) od) do v[index] od
+{x_L must be a KGB element for L(x,H)
+then p_L=parameter(x_L,lambda_L,0) -> mu(x,H,p_L)
 }
-{ Sort list of parameters by K_norm }
+set mu(KGBElt x,vec H,KGBElt x_L, ratvec lambda_L)=ParamPol:
+let p_L=parameter(x_L, lambda_L,null(rank(real_form(x_L)))) in mu(x,H,p_L)
 
-set sort_by_K_norm = ([Param] -> [Param]): sort_by( K_norm@Param )
-set sort_by_K_norm = ([(Split,Param)] -> [(Split,Param)]): sort_by(K_norm@(Split,Param))
+{assume ParamPol has integral (not split) coefficients}
+set vector([Param] list,ParamPol P)=(bool,vec):
+let v=null(#list) in
+let found=true in
+for (c,p) in %P do let 
+i=find(list,p) in if i=-1 then found:=false else v[i]+:=split_as_int(c) fi od;(found,v)
 
-set print_by_K_norm(ParamPol P)=let result=sort_by_K_norm(for c@p in P do (c,p) od) in 
-for (c,p) in result do prints(split_as_int(c),"*",p, " ", K_norm(p)) od
+{given list=[P_1,...,P_n] of ParamPols
+test if P=\sum a_i P_i
+}
 
-set highest_K_norm(ParamPol P)=int:
-let rv=int:0 in
-for p in monomials(P) do let m=K_norm(p) in if m>rv then rv:=m fi od;rv
+{list of ParamPols -> list of distinct parameters occuring
+careful: don't let terms cancel!
+}
+set monomials([ParamPol] list)=[Param]:
+let sum_list=null_module(real_form(list[0])) in
+for P in list do 
+ for c@p in P do sum_list+:=p od od;monomials(sum_list)
 
-set highest_terms(ParamPol P)=ParamPol:
-let max=highest_K_norm(P) then
-rv=null_module(real_form(P)) in 
-for c@p in P do if K_norm(p)=max then rv+:=c*p fi od;rv
 
-set all_K_norms(ParamPol P)=[int]:
-let rv=[int]:[] in
-for c@p in P do rv#:=K_norm(p) od;sort(rv)
+{given ParamPols Q_1,...,Q_n and P test if 
+P=\sum a_i Q_i
+Q_i and P are assumed to have integer coefficients
+return true/false, and [ParamPol] R,[int] S so that 
+P=sum S[i]*R[i]
+}
+set in_span([ParamPol] list,ParamPol P)=(bool,[ParamPol],[int]):
+{let ()=prints("in_span with:");for a in list do prints(a) od; prints("P=",P) in}
+if #list=0 then (false,[ParamPol]:[],[int]:[]) else
+let basis=monomials(list) then
+{()=prints("basis:", basis) then}
+pairs=for Q in list do  {prints("Q=",Q);} vector(basis,Q) od in
+let M=mat:for (,w) in pairs do w od then
+(valid,T)=vector(basis,P) in 
+{let ()=prints("valid:", valid, "T=",T) in}
+{let ()=prints("vector is possibly valid:",valid) in}
+if valid then 
+ let (v,success)=solve(M,T) in 
+ if (success) then 
+  let ()=prints("success", v) in
+  let ()=for i:#v do if v[i]!=0 then 
+    prints("column ",i,":", M[i]); 
+    for j:#(M[i]) do if M[i][j]!=0 then prints(basis[j], " ", K_norm(basis[j])) fi od fi od in
+  {let R=[ParamPol]:[] then
+  S=[int]:[] then
+  ()=for i:#v do 
+    if v[i]!=0 then
+       let column=M[i] in 
+       let pols=[ParamPol]:[] in
+       let ()=for j:#column do if column[j]!=0 then (S#:=v[j],pols#:=column[j]*basis[j]) fi  od in
+       R#:=pols fi
+  od in }(true,[ParamPol]:[],[int]:[]) 
+ else (false,[ParamPol]:[],[int]:[]) fi 
+else (false,[],[])  fi fi
 
+set in_span_alt([ParamPol] list,ParamPol P)=
+let basis=monomials(list) then
+{()=prints("basis:", basis) then}
+pairs=for Q in list do  {prints("Q=",Q);} vector(basis,Q) od in
+let M=mat:for (,w) in pairs do w od then
+(valid,T)=vector(basis,P) in 
+{let ()=prints("vector is possibly valid:",valid) in}
+if valid then 
+prints("M=",M);
+prints("T=",T);
+let inlattice=in_lattice(M,T) in prints("solved in_lattice:",inlattice);(basis,M,T,inlattice)
+else prints("can't find vector at all");(basis,M,T,false) fi    
+
+{convenient to define in_span([[ParamPol]] list,ParamPol P)=
+in_span( flatten the list,P)
+}
+set in_span([[ParamPol]] list_of_lists,ParamPol P)=(bool,[ParamPol],[int]):
+let list=[ParamPol]:[] in 
+let ()=for new_list in list_of_lists do list#:=new_list od in
+in_span(list,P)
+
+
+{given (x,H,n) compute span of all mu(x,H,p_L) for K_norm(p_L)<=n}
+set all_mu(KGBElt x,ratvec H,int bound)=
+let rv=[Param]:[] then
+P=null_module(real_form(x)) then
+params_L=all_K_parameters_norm_less_than(L(x,H),rho_check(real_form(x)),bound) in
+for p_L in params_L do {prints("ADDING", mu(x,H,p_L));}P+:=mu(x,H,p_L) od;monomials(P)
+
+set all_H_smaller(KGBElt x,ratvec H)=
+let rd=root_datum(x) then
+allH=all_H(real_form(x)) then
+length_H=invariant_form(dual(rd),H,H) then
+smaller_H=[] in for (X,) in allH do if invariant_form(dual(rd),X,X)<length_H 
+ then smaller_H#:=X fi od;smaller_H
+
+set all_mu_smaller(KGBElt x, ratvec H, int bound)=[ParamPol]:
+let G=real_form(x) then
+smallerH=all_H_smaller(x,H) then
+rv=[ParamPol]:[] in
+for h in smallerH do 
+  let L=L(x,h) in 
+  for p_L in all_K_parameters_norm_less_than(L,rho_check(real_form(x)),bound) 
+  do prints(); prints("ADDING:",h, " ",  L, " ", p_L, " ", mu(x,h,p_L));rv#:=mu(x,h,p_L) od od;rv
+
+{term_contained(P,Q)=int:N if:
+P=\sum a_i p_i
+Q=N(\sum a_i p_i) + other terms for some integer N
+In other words, let #P be the number of terms in P, 
+return N <=>  #(Q-NP)=#Q-#P, otherwise returns 0
+}
+set term_contained(ParamPol P,ParamPol Q)=int:
+let 
+(c_p,p)=(%P)[0] then
+params_Q=for (,q) in %Q do q od then
+N=rat:0 then
+k=find(params_Q,p) in
+if k=-1 then 0 else
+ let (c_q,)=(%Q)[k] in
+ N:=split_as_int(c_q)/split_as_int(c_p);
+ if not is_integer(N) then 0
+ else let diff=Q-rat_as_int(N)*P in 
+ if #(monomials(diff))=#monomials(Q)-#monomials(P) then rat_as_int(N) else 0 fi fi fi
+
+set reduce_mu(KGBElt x,ratvec H,Param p_L)=ParamPol:
+let mu=mu(x,H,p_L) then
+()=prints("mu=",mu) then
+bound=maximal_K_norm(mu) then
+()=prints("bound=",bound) then
+smaller=all_mu_smaller(x,H,bound) then
+()=prints("all_mu_smaller:");
+for mu in smaller do print_K_parameter(mu) od then
+rec_fun f(ParamPol Q,[ParamPol] smaller_mu)=ParamPol:
+let ()=prints();prints("trying to reduce:");
+print_K_parameter(Q) in
+if #smaller_mu=0 then
+prints("Done reducing:");
+print_K_parameter(Q);prints();Q else
+let P=prints("using smaller_mu=");
+print_K_parameter(smaller_mu[0]);smaller_mu[0] then
+N=term_contained(leading_terms(P),leading_terms(Q)) in
+if N=0 then 
+prints("No reduction");f(Q,delete(smaller_mu,0)) else
+prints("REDUCTION FOUND");prints("after reduction:");
+print_K_parameter(Q-N*P);f(Q-N*P,smaller)  fi fi in f(mu,smaller)
+
+set reduce_mu(KGBElt x,ratvec H,KGBElt x_L,ratvec lambda_L)=ParamPol:
+let p_L=parameter(x_L,lambda_L,null(rank(real_form(x_L)))) in reduce_mu(x,H,p_L)
+
+set leading_reduce_mu(KGBElt x,ratvec H,Param p_L)=ParamPol:leading_terms(reduce_mu(x,H,p_L))
+set leading_reduce_mu(KGBElt x,ratvec H,KGBElt x_L,ratvec lambda_L)=ParamPol:leading_terms(reduce_mu(x,H,x_L,lambda_L))
 
