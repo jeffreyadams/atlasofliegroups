@@ -41,7 +41,7 @@ set restrict_action (mat A, mat M) = mat:
   then A1Dtr = l ^ for d@j in ds do d*A1[j] od { one has #A1Dtr=(r,l) }
   , A2tr= [vec]:[] { collects r vectors of size r } , zero=null(r)
   then () =
-     for i: l { collect first r rows of A1, scaled; test remaining row are 0 }
+     for i: l { collect first r rows of A1, scaled; test remaining rows are 0 }
      do if i<r
         then
           if A1Dtr[i]%ds[i]=zero then  A2tr #:=  A1Dtr[i]\ds[i]
