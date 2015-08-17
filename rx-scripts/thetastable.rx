@@ -1,3 +1,4 @@
+{thetastable.rx}
 <induction.rx
 <finite_dimensional.rx {for is_finite_dimensional}
 
@@ -12,12 +13,10 @@ if so, then u(x,v) is guaranteed to be contained in n (the standard positive roo
 otherwise it might still be ok, so return a warning but don't fail
 }  
 set u(KGBElt x, ratvec v)=[vec]:
-let G=real_form(x) then
+let G=real_form(x) in let theta=involution(x) in let w=(1+theta)*v then
 ()=if not no_Cminus_roots(x) then prints("warning: some roots are of type C-") fi then
-()=if not is_dominant(G,v) then   prints("warning: argument is not weakly dominant") fi in
-let theta=involution(x) then
-w=(1+theta)*v then
-u_roots=[] in
+()=if not is_dominant(G,w) then   prints("warning: argument is not weakly dominant") fi in
+let u_roots=[] in
 for i:nr_of_posroots(G)  do
  let alpha_check=poscoroots(G)[i] then
  alpha=posroots(G)[i] then
@@ -93,11 +92,9 @@ set dim_u(KGBElt x,ratvec H)=#u(x,H)
 
 {similar to u(x,v), except now it returns the RealForm L(x,v)}
 set L(KGBElt x, ratvec v)=RealForm:
-let G=real_form(x) then
+let G=real_form(x) in let theta=involution(x) in let w=(1+theta)*v  then
 ()=if not no_Cminus_roots(x) then prints("warning: some roots are of type C-") fi then
-()=if not is_dominant(G,v) then   prints("warning: argument is not weakly dominant") fi in
-let theta=involution(x) then
-w=(1+theta)*v in
+()=if not is_dominant(G,w) then   prints("warning: argument is not weakly dominant") fi in
 let (l_roots,l_coroots)=([vec]:[],[vec]:[]) in
 let ()=for i:nr_of_posroots(G)  do
  let alpha_check=poscoroots(G)[i] then
@@ -178,7 +175,7 @@ set Aq(RealForm G,ratvec lambda_in)=Param:Aq(G,lambda_in,lambda_in)
 set inverse_theta_induce_standard(Param p, RealForm L)=
 let x_G=x(p) then
 x_L=inverse_embed_KGB(x_G,L) in
-parameter(x_L,lambda(p)-rho_i(x_G)-theta_rhoS(x_G)+rho_i(x_L)+theta_rhoS(x_L),nu(p))
+parameter(x_L,lambda(p)-rho(real_form(p))+rho_r(x_G)+rho(L)-rho_r(x_L),nu(p))
 
 set is_lambda_dominant(Param p)=bool:let rd=root_datum(p) then lam=lambda(p) in
 prints("lambda+theta(lambda)=",lam+involution(x(p))*lam); is_dominant(rd,lam+involution(x(p))*lam)
@@ -196,7 +193,7 @@ let p_L=inverse_theta_induce_standard(p,L(x(p),lambda(p)))
 in (real_form(p_L),p_L)
 else
 let (w,x,lam,nu,L)=make_lambda_dominant(p) in let x_L=inverse_embed_KGB(x,L) in
-let p_L=parameter(x_L,lam-rho_i(x)-theta_rhoS(x)+rho_i(x_L)+theta_rhoS(x_L),nu)
+let p_L=parameter(x_L,lam-rho(real_form(p))+rho_r(x)+rho(L)-rho_r(x_L),nu)
 in (L,p_L) 
 fi
 
