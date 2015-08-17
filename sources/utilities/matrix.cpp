@@ -113,9 +113,14 @@ Vector<C>& divide (Vector<C>& v,C c)
 {
   if (c==C(0))
     throw std::runtime_error("Vector division by 0");
-  c=std::abs(c); // we must ensure |c>0| for |arithmetic::divide|
-  for (auto it=v.begin(); it!=v.end(); ++it)
-    *it = arithmetic::divide(*it,c);
+  if (c>C(0))
+    for (auto it=v.begin(); it!=v.end(); ++it)
+      *it = arithmetic::divide(*it,c);
+  else
+  { c = -c; // we must ensure |c>0| for |arithmetic::divide|
+    for (auto it=v.begin(); it!=v.end(); ++it)
+      *it = -arithmetic::divide(*it,c);
+  }
   return v;
 }
 
