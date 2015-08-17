@@ -3,7 +3,7 @@
 <coherent.rx
 <thetastable.rx
 <sort.rx
-<all_parameters.rx
+<all_Kparameters.rx
 <complex_nilpotent_orbits.rx
 {implementation of parts of Letter to Atlas II: nilpotent orbits}
 
@@ -75,15 +75,15 @@ let S=subsets(x,H) in [(ratvec:null(rank(real_form(x))),0)]#for v in S do (sum(v
 {this implements the algorithm of Proposition 7.3(6)
 p_L must be a standard final limit parameter for L=L(x,H) (i.e. an L\cap K-type)
 }
-set mu(KGBElt x, ratvec H, Param p_L)=ParamPol:
-if not (is_standard(p_L)) then error("p_L is not standard") 
-elif not (is_final(p_L)) then error("p_L is not final") 
-elif  (is_zero(p_L)) then error("p_L is zero") 
+set mu(KGBElt x, ratvec H, KParam p_L)=KParamPol:
+if not (is_standard(parameter(p_L))) then error("p_L is not standard") 
+elif not (is_final(parameter(p_L))) then error("p_L is not final") 
+elif  (is_zero(parameter(p_L))) then error("p_L is zero") 
 else
 let G=real_form(x) then
 rv=null_module(G) then
 rhoshifts=rho_shifts(x,H) then
-P_L=K_type_formula(p_L) then
+P_L=K_type_formula(parameter(p_L)) then
 {()=prints("p_L: ", p_L);
 {prints("K-type formula on L: ", P_L);}
 {prints("terms in sum:") then }}
@@ -102,22 +102,26 @@ P_L=K_type_formula(p_L) then
 {  let ()=prints("theta_induced parameter on G at nu=0:", r_3) in }
    rv+:=(-1)^j*c*r_3 od od in rv fi
 
-set mu(KGBElt x, vec H)=ParamPol:mu(x,H,trivial(L(x,H)))
+set mu(KGBElt x, vec H)=KParamPol:mu(x,H,Kparameter(trivial(L(x,H))))
 
 {x_L must be a KGB element for L(x,H)
 then p_L=parameter(x_L,lambda_L,0) -> mu(x,H,p_L)
 }
-set mu(KGBElt x,vec H,KGBElt x_L, ratvec lambda_L)=ParamPol:
-let p_L=parameter(x_L, lambda_L,null(rank(real_form(x_L)))) in mu(x,H,p_L)
+set mu(KGBElt x,vec H,KGBElt x_L, ratvec lambda_L)=KParamPol:
+let p_L=KParam:(x_L, lambda_L) in mu(x,H,p_L)
 
 {assume ParamPol has integral (not split) coefficients}
 set vector([Param] list,ParamPol P)=(bool,vec):
-let v=null(#list) in
-let found=true in
+let v=null(#list) then
+found=true in
 for (c,p) in %P do let 
 i=find(list,p) in if i=-1 then found:=false else v[i]+:=split_as_int(c) fi od;(found,v)
 
-{given list=[P_1,...,P_n] of ParamPols
+{assume ParamPol has integral (not split) coefficients}
+set vector([KParam] list,KParamPol P)=(bool,vec):
+vector(for q in list do parameter(q) od,P)
+
+{given list=[P_1,...,P_n] of KParamPols
 test if P=\sum a_i P_i
 }
 
@@ -136,9 +140,9 @@ Q_i and P are assumed to have integer coefficients
 return true/false, and [ParamPol] R,[int] S so that 
 P=sum S[i]*R[i]
 }
-set in_span([ParamPol] list,ParamPol P)=(bool,[ParamPol],[int]):
+set in_span([KParamPol] list,KParamPol P)=(bool,[KParamPol],[int]):
 {let ()=prints("in_span with:");for a in list do prints(a) od; prints("P=",P) in}
-if #list=0 then (false,[ParamPol]:[],[int]:[]) else
+if #list=0 then (false,[KParamPol]:[],[int]:[]) else
 let basis=monomials(list) then
 {()=prints("basis:", basis) then}
 pairs=for Q in list do  {prints("Q=",Q);} vector(basis,Q) od in
@@ -152,17 +156,17 @@ if valid then
   let ()=prints("success", v) in
   let ()=for i:#v do if v[i]!=0 then 
     prints("column ",i,":", M[i]); 
-    for j:#(M[i]) do if M[i][j]!=0 then prints(basis[j], " ", K_norm(basis[j])) fi od fi od in
-  {let R=[ParamPol]:[] then
+    for j:#(M[i]) do if M[i][j]!=0 then prints(basis[j], " ", K_norm(Kparameter(basis[j]))) fi od fi od in
+  {let R=[KParamPol]:[] then
   S=[int]:[] then
   ()=for i:#v do 
     if v[i]!=0 then
        let column=M[i] in 
-       let pols=[ParamPol]:[] in
+       let pols=[KParamPol]:[] in
        let ()=for j:#column do if column[j]!=0 then (S#:=v[j],pols#:=column[j]*basis[j]) fi  od in
        R#:=pols fi
-  od in }(true,[ParamPol]:[],[int]:[]) 
- else (false,[ParamPol]:[],[int]:[]) fi 
+  od in }(true,[KParamPol]:[],[int]:[]) 
+ else (false,[KParamPol]:[],[int]:[]) fi 
 else (false,[],[])  fi fi
 
 set in_span_alt([ParamPol] list,ParamPol P)=
@@ -229,7 +233,7 @@ if k=-1 then 0 else
  else let diff=Q-rat_as_int(N)*P in 
  if #(monomials(diff))=#monomials(Q)-#monomials(P) then rat_as_int(N) else 0 fi fi fi
 
-set reduce_mu(KGBElt x,ratvec H,Param p_L)=ParamPol:
+set reduce_mu(KGBElt x,ratvec H,KParam p_L)=KParamPol:
 let mu=mu(x,H,p_L) then
 ()=prints("mu=",mu) then
 bound=maximal_K_norm(mu) then
@@ -251,9 +255,9 @@ prints("No reduction");f(Q,delete(smaller_mu,0)) else
 prints("REDUCTION FOUND");prints("after reduction:");
 print_K_parameter(Q-N*P);f(Q-N*P,smaller)  fi fi in f(mu,smaller)
 
-set reduce_mu(KGBElt x,ratvec H,KGBElt x_L,ratvec lambda_L)=ParamPol:
-let p_L=parameter(x_L,lambda_L,null(rank(real_form(x_L)))) in reduce_mu(x,H,p_L)
+set reduce_mu(KGBElt x,ratvec H,KGBElt x_L,ratvec lambda_L)=KParamPol:
+let p_L=KParam:(x_L,lambda_L) in reduce_mu(x,H,p_L)
 
-set leading_reduce_mu(KGBElt x,ratvec H,Param p_L)=ParamPol:leading_terms(reduce_mu(x,H,p_L))
+set leading_reduce_mu(KGBElt x,ratvec H,KParam p_L)=KParamPol:leading_terms(reduce_mu(x,H,p_L))
 set leading_reduce_mu(KGBElt x,ratvec H,KGBElt x_L,ratvec lambda_L)=ParamPol:leading_terms(reduce_mu(x,H,x_L,lambda_L))
 

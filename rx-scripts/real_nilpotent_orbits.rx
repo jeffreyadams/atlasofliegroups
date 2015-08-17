@@ -16,7 +16,7 @@ set real_form(RealNilpotent (x,))=real_form(x)
 set zero_roots(RootDatum rd,vec v)=let rv=[] in for a@i in simple_roots (rd) do if a*v=0 then rv#:=i fi od;rv
 set delete([(KGBElt,vec)] P, int k)=[(KGBElt,vec)]:P[:k]#P[k+1:]
 
-set real_nilpotent_orbits(RealForm G,int N)=([(KGBElt,vec)],[[ParamPol]]):
+set real_nilpotent_orbits(RealForm G,int N)=([(KGBElt,vec)],[[KParamPol]]):
 let x_0=KGB(G,0) then 
 theta=distinguished_involution(G) then
 all_complex_H=[vec]:[]  then
@@ -30,9 +30,9 @@ all_x_H_pairs=[(KGBElt,vec)]:[] then
 od in let
 (x,H)=all_x_H_pairs[0]  then
 L=L(x,H) then
-params=all_K_parameters_norm_less_than(L,rho_check(G),N) then
-mus=[ParamPol]:[] in
-let ()=for p in params do 
+Kparams=all_K_parameters_norm_less_than(L,rho_check(G),N) then
+mus=[KParamPol]:[] in
+let ()=for p in Kparams do 
  let m=mu(x,H,p) in 
  let max=maximal_K_norm(m) in 
  if max<N then mus#:=m  fi od then
@@ -40,7 +40,7 @@ valid_x_H_pairs_start=[(x,H)] then
 mus_start=[mus] then
 todo_start=delete(all_x_H_pairs,0) in
 {let ()=prints("todostart:", todo_start) in}
-let rec_fun f([(KGBElt,vec)] valid_x_H_pairs,[(KGBElt,vec)] todo, [[ParamPol]] mus)=([(KGBElt,vec)],[[ParamPol]]):
+let rec_fun f([(KGBElt,vec)] valid_x_H_pairs,[(KGBElt,vec)] todo, [[KParamPol]] mus)=([(KGBElt,vec)],[[KParamPol]]):
 if #todo=0 then (valid_x_H_pairs,mus) else
 let (x,H)=todo[0] then
 todo=delete(todo,0) then
@@ -59,7 +59,7 @@ else
 valid_x_H_pairs#:=(x,H);
 let L=L(x,H) in let
  params=all_K_parameters_norm_less_than(L,rho_check(G),N) in
- let new_mus=[ParamPol]:[] in 
+ let new_mus=[KParamPol]:[] in 
  for p in params do
  let m=mu(x,H,p) in 
  let max=maximal_K_norm(m) in 
