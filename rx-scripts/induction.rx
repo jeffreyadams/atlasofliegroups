@@ -1,3 +1,4 @@
+{induction.rx}
 {this file replaces earlier induction_plus.rx}
 {real and theta-stable parabolic induction from general parabolic}
 set verbose=false
@@ -23,33 +24,26 @@ while i<#KGB(G) and not done do
 {KGB(L) embeds in KGB(G): x_L -> embed_KGB(x_L,G)}
 set embed_KGB(KGBElt x_L,RealForm G)=KGBElt:KGB_elt(G,involution(x_L), torus_factor(x_L))
 
-{given KGB elemnt of G, find one for M which maps to it}
+{given KGB element of G, find one for M which maps to it}
 set inverse_embed_KGB(KGBElt x_G,RealForm M)=KGBElt:KGB_elt(M,involution(x_G), torus_factor(x_G))
 
 {Given a KGB element x, construct a set S of complex roots containing one representative
-of each pair (alpha,theta(alpha))}
+of each quadruple (\pm alpha,\pm theta(alpha))}
 set makeS (KGBElt x)=[([int],bool)]:
    let G=real_form(x) in let theta=involution(x) in
    let pr=posroots(G) in let list=[([int],bool)]: for al in pr do (al,true) od in
    for i:#list do let (al,b)=list[i] in if b then for j:#list do
       let (beta,c)=list[j] in if beta=theta*al  or beta=-theta*al then
       list[j]:=(beta,false) fi od fi od; list
-
 {construct the complex rho shift rho_S:=(1-theta)rho(S)}
 set rhoS (KGBElt x)=ratvec:
      let theta=involution(x) in	let list=makeS(x) in
      let (r,c)=#theta in let Q=null(r) in for (beta,b) in list do
     if b then Q:=Q+beta-theta*beta fi od; 1/2*Q
 
-{construct the complex rho shift theta_rho_S:=(1+theta)rho(S)}
-set theta_rhoS (KGBElt x)=ratvec:
-     let theta=involution(x) in let list=makeS(x) in
-     let (r,c)=#theta in let Q=null(r) in for (beta,b) in list do
-    if b then Q:=Q+beta+theta*beta fi od; 1/2*Q
-
 {parameters for real Levi L -> parameters for G:
 p_L=(x_L,lambda,nu) -> p_G=(embed_KGB(x_L,G),lambda + appropriate rho-shift,nu)
-rho-shift is: rho_r(G)-rho_r(L)+(1-theta)(rho_S(G)-rho_S(L))
+rho-shift is: rho_r(G)-rho_r(L)+rho_S(G)-rho_S(L)
 Then Ind_L^G(I(p_L))=I(p_g)}
 set induce_standard(Param p_L,RealForm G)=Param:
 let L=real_form(x(p_L)) in let x_G=embed_KGB(x(p_L),G) in
@@ -104,13 +98,13 @@ let rv=null_module(P) in for c@p in P do rv+:=c*standardize(p) od;rv
 
 {parameters for theta stable Levi L -> parameters for G:
 p_L=(x_L,lambda,nu) -> p_G=(embed_KGB(x_L,G),lambda + appropriate rho-shift,nu)
-rho-shift is: rho_i(G)-rho_i(L)+(1+theta)(rho_S(G)-rho_S(L))
+rho-shift is: rho_i(G)-rho_i(L)+rho_complex(G)-rho_complex(L)=rho(G)-rho_r(G)-rho(L)+rho_r(L).
 Then p_G=Ind_L^G(I(p_L))=I(p_g)
 might not be standard for G (outside of good range), so apply standardize
 }
 set theta_induce_standard(Param p_L,RealForm G)=ParamPol:
 let L=real_form(x(p_L)) in let x_G=embed_KGB(x(p_L),G) then
-p_G=parameter(x_G,lambda(p_L)+rho_i(x_G)+theta_rhoS(x_G)-rho_i(x(p_L))-theta_rhoS(x(p_L)), nu(p_L)) then
+p_G=parameter(x_G,lambda(p_L)+rho(G)-rho_r(x_G)-rho(L)+rho_r(x(p_L)), nu(p_L)) then
 ()=if verbose then prints("p_G before standardization:", p_G) fi then
 p_G_standardized=standardize(p_G) then
 ()=if verbose then prints("p_L: ", p_L) fi in 

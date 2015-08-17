@@ -9,7 +9,7 @@
 set inverse_theta_induce_standard(Param p, RealForm L)=
 let x_G=x(p) then
 x_L=inverse_embed_KGB(x_G,L) in
-parameter(x_L,lambda(p)-rho_i(x_G)-theta_rhoS(x_G)+rho_i(x_L)+theta_rhoS(x_L),nu(p))
+parameter(x_L,lambda(p)-rho(real_form(p))+rho_r(x_G)+rho(L)-rho_r(x_L),nu(p))
 
 {check whether the (1+theta)lambda(p) is dominant}
 set is_lambda_dominant(Param p)=bool:let rd=root_datum(p) then lam=lambda(p) in
