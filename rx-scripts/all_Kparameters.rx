@@ -5,7 +5,15 @@
 {some stuff at the top of this file should be moved elsewhere}
 
 {reduce [Param] by combining equivalent parameters; returns a list of inequivalent parameters}
-set reduce(RealForm G,[Param] parameters)=monomials(virtual(G,parameters))
+set reduce([Param] parameters)=[Param]:
+if #parameters=0 then [Param]:[] else 
+monomials(virtual(real_form(parameters[0]),parameters)) fi
+
+{to reduce a list of KParams, convert to list of parameters, reduce, then convert back}
+set reduce([KParam] Kparameters)=[KParam]:
+let parameters=for kp in Kparameters do parameter(kp) od then
+r=reduce(parameters) in
+for p in r do Kparameter(p) od
 
 set sum(ratvec v)=rat:sum(numer(v))/denom(v)
 
@@ -67,10 +75,8 @@ for i:#partial do
   rv#:=partial[i]#j od od;f(rv,n,c,Sum)  fi 
 in f([[int]]:[],n,c,Sum)
 
-set dlambda(KGBElt x,ratvec v)=ratvec:(1+involution(x))*v/2
-set dlambda(Param p)=ratvec:dlambda(x(p),lambda(p))
-
-
+set dlambda(KParam p)=ratvec:(1+involution(x(p)))*lambda(p)/2
+set dlambda(Param p)=ratvec:dlambda(Kparameter(p))
 
 set is_in_one_plus_delta(mat delta,ratvec v)=bool:is_integer(v) and in_lattice(1+delta,ratvec_as_vec(v))
 
@@ -131,16 +137,16 @@ assert(is_integer(mu),"mu is not integral");
 assert(in_lattice(1+theta, ratvec_as_vec(mu-(1+theta)*rho(G))),"mu-(1+theta)rho is not in (1+theta)X^*");
 let lambda_0=solve_vec(1+theta,ratvec_as_vec(mu-(1+involution(x))*rho(G))) in lambda_0+rho(G)
 
+{mu is (1+theta)lambda/2, need to solve for lambda}
 set make_K_parameter(KGBElt x,ratvec mu)=Param:
 parameter(x,find_lambda(x,mu),null(rank(real_form(x))))
 
-set make_all_K_parameters(KGBElt x,ratvec mu)=[Param]:
+set make_all_K_parameters(KGBElt x,ratvec mu)=[KParam]:
 let p=make_K_parameter(x,mu) in 
-for v in all_lambda_differential_0(x) do 
-parameter(x(p),lambda(p)+v,null(rank(real_form(p)))) od
+for v in all_lambda_differential_0(x) do (x(p),lambda(p)+v) od
 
 {all K parameters with same dlambda as p}
-set make_all_K_parameters(Param p)=[Param]:make_all_K_parameters(x(p), dlambda(p))
+set make_all_K_parameters(KParam p)=[KParam]:make_all_K_parameters(x(p), dlambda(p))
 
 {all parameters with given infinitesimal character}
 set all_parameters_gamma(RealForm G,ratvec gamma)=[Param]:
@@ -151,14 +157,12 @@ for x in KGB(G) do
  let mu=(1+theta)*gamma in
  let K_params=make_all_K_parameters(x,mu) in
  for p in K_params do params#:=parameter(x(p),lambda(p),nu) od od ;
- reduce(G,params)  {keep only 1 from each equivalence class}
+ reduce(params)  {keep only 1 from each equivalence class}
 
 
 {all actual parameters with same dlambda as p, same nu}
 set all_parameters(Param p)=[Param]:
-let p=make_K_parameter(x(p),dlambda(p)) in 
-for v in all_lambda_differential_0(x(p)) do 
-parameter(x(p),lambda(p)+v,nu(p)) od
+for v in all_lambda_differential_0(x(p)) do parameter(x(p),lambda(p)+v,nu(p)) od
 
 {all_dominant_norm_less_than@(InnerClass,ratvec,int):
  note: mu will be 2*d\lambda=(1+theta)lambda 
@@ -202,10 +206,10 @@ let rv=[[int]]:[] in
 for mu in all_dominant_norm_less_than(ic,v,N) do
  if in_lattice(1+theta,mu-(1+theta)*rho(ic)) then rv#:=mu fi od;rv
 
-set all_K_parameters_norm_less_than(KGBElt x, ratvec v,int N)=[Param]:
+set all_K_parameters_norm_less_than(KGBElt x, ratvec v,int N)=[KParam]:
 let ic=inner_class(x),theta=involution(x) then
 mus=all_dominant_in_image_oneplustheta_norm_less_than(ic,theta,v,N) then
-rv=[Param]:[] in 
+rv=[KParam]:[] in 
 for mu in mus do  rv#:=make_all_K_parameters(x,mu) od;rv
 
 set all_rel_split_theta_stable_parabolics(RealForm G)=[RealForm]:
@@ -214,25 +218,29 @@ rel_split_parabolics=[] in
 for (P,v) in parabolics do for x in v do 
  let L=Levi(P,x) in if is_relatively_split(L) then rel_split_parabolics#:=L fi od od;rel_split_parabolics
 
-set all_K_parameters_norm_less_than(RealForm G, ratvec v,int N)=
+set all_K_parameters_norm_less_than(RealForm G, ratvec v,int N)=[KParam]:
 let parabolics=all_rel_split_theta_stable_parabolics(G) then
-parameters=[Param]:[] in 
+Kparameters=[KParam]:[] in 
 for L in parabolics do let x_L=KGB(L,KGB_size(L)-1) then
-x=embed_KGB(x_L,G) in parameters#:=all_K_parameters_norm_less_than(x,v,N) od;
-let rv=null_module(G) in for p in parameters do rv+:=p od;sort_by_K_norm(monomials(rv))
+x=embed_KGB(x_L,G) in 
+Kparameters#:=all_K_parameters_norm_less_than(x,v,N) od;
+let rv=null_module(G) in for p in Kparameters do  rv+:=parameter(p) od;
+sort_by_K_norm(for q in monomials(rv) do Kparameter(q) od)
 
-set K_parameter_string(Param p)=
+set K_parameter_string(KParam p)=
 if is_integer(lambda(p)) then 
 to_string("(x=",number(x(p)),",lambda=",ratvec_as_vec(lambda(p)),")") else
 to_string("(x=",number(x(p)),",lambda=", lambda(p),")") fi
 
-set print_K_parameter(Param p)=void:prints(K_parameter_string(p))
-set print_K_parameter(ParamPol P)=void:
-for (c,p) in %P do prints(split_as_int(c),"*", K_parameter_string(p)) od
+set print_K_parameter(KParam p)=void:prints(K_parameter_string(p))
 
-set print_K_parameter_long(Param p)=void:prints(K_parameter_string(p), " ", K_norm(p))
-set print_K_parameter_long(ParamPol P)=void:
-for (c,p) in %P do prints(split_as_int(c),"*", K_parameter_string(p), "  ", K_norm(p)) od
+
+set print_K_parameter(ParamPol P)=void:
+for (c,p) in %P do prints(split_as_int(c),"*", K_parameter_string(Kparameter(p))) od
+
+set print_K_parameter_long(KParam p)=void:prints(K_parameter_string(p), " ", K_norm(p))
+set print_K_parameter_long(KParamPol P)=void:
+for (c,p) in %P do prints(split_as_int(c),"*", K_parameter_string(Kparameter(p)), "  ", K_norm(Kparameter(p))) od
 
 
 set print_all_K_parameters_norm_less_than(RealForm G, ratvec v,int N)=void:
