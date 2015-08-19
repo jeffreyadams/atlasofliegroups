@@ -704,6 +704,15 @@ WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
   return result;
 }
 
+// for real Cayley transforms, $\lambda$ needs $\rho_r$ shift, then projection;
+// so compute scalar product of alpha check with dual torus factor plus shift
+int level_a (const param& E, const Weight& shift, RootNbr alpha)
+{
+  const RootDatum& rd = E.rc().rootDatum();
+  return (E.ctxt.gamma() - E.lambda_rho + shift).dot(rd.coroot(alpha))
+    - rd.colevel(alpha); // final term $<\alpha^\vee,\rho>$
+}
+
 DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 {
   DescValue result;
@@ -722,7 +731,7 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
       const RootNbr n_alpha = subs.parent_nr_simple(p.s0);
       const RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
 
-      if (theta_alpha==n_alpha) // imaginary case
+      if (theta_alpha==n_alpha) // length 1 imaginary case
       { // first find out if the simply-integral root $\alpha$ is compact
 	int tf_alpha = (E.ctxt.g() - E.l).dot(alpha)-rd.level(n_alpha);
 	if (tf_alpha%2!=0) // then $\alpha$ is compact
@@ -796,22 +805,10 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 			   E.t
 			   ));
 	} // end of type 2 case
-      } // end of imaginary case
+      } // end of length 1 imaginary case
 
-      else if (theta_alpha==rd.rootMinus(n_alpha)) // real case
-      { // the folowing is coherent with using |Cayley_shift|, but easier
-	const int parity_n = (E.ctxt.gamma() - E.lambda_rho).dot(alpha_v)
-	  - rd.colevel(n_alpha) // <alpha_v,rho>
-	  + rd.twoRho(i_tab.real_roots(theta)).dot(alpha_v)/2;
-	if (parity_n%2==0) // nonparity
-	   return one_real_nonparity; // no link added here
-
-	const WeightInvolution& th_1 = i_tab.matrix(E.tw)-1; // upstairs
-	bool type1 = matreduc::has_solution(th_1,alpha);
-
-	const TwistedInvolution new_tw = // downstairs
-	  tW.prod(E.tw,subs.reflection(p.s0));
-
+      else if (theta_alpha==rd.rootMinus(n_alpha)) // length 1 real case
+      {
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 
@@ -819,7 +816,21 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	  repr::Cayley_shift(E.rc().complexGroup(),theta,ww);
 	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
-	Weight new_lambda_rho = E.lambda_rho + alpha*(parity_n/2) -rho_r_shift;
+	const int level = level_a(E,rho_r_shift,n_alpha);
+
+	if (level%2!=0) // nonparity
+	   return one_real_nonparity; // no link added here
+
+	const TwistedInvolution new_tw = // downstairs
+	  tW.prod(E.tw,subs.reflection(p.s0));
+
+	Weight new_lambda_rho = E.lambda_rho-rho_r_shift + alpha*(level/2);
+	assert((E.ctxt.gamma()-new_lambda_rho).dot(alpha_v)
+	       ==rd.colevel(n_alpha)); // check that |level_a| did its work
+
+	const WeightInvolution& th_1 = i_tab.matrix(E.tw)-1; // upstairs
+	bool type1 = matreduc::has_solution(th_1,alpha);
+
 	Weight tau_correction;
 	if (rd.is_simple_root(alpha_simple))
 	  tau_correction = Weight(rd.rank(),0); // no correction needed here
@@ -837,32 +848,23 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	    tau_correction = first; // since $(1-\theta)f = (\delta-1)*(-f)$
 	  assert((i_tab.matrix(new_tw)-1)*tau_correction==delta_1*-first);
 	}
-	{ int d = // amount by which $\gamma-\tilde\lambda$ needs correction
-	    (E.ctxt.gamma()-new_lambda_rho).dot(alpha_v)- rd.colevel(n_alpha);
-	  assert(d%2==0); // parity condition says this
-	  new_lambda_rho -= alpha*(d/2); // project to correct $\tilde\lambda$
-	}
 
-	int t_alpha = E.t.dot(alpha);
+	const int t_alpha = E.t.dot(alpha);
 	if (type1)
 	  { // now distinguish 1r1f and 1r1s
-	    if (t_alpha%2!=0)
+	    if (t_alpha%2!=0) // no effect |alpha_simple|, unlike 1i2 cases
 	      return one_real_pair_switched;
 	    result = one_real_pair_fixed; // what remains is case 1r1f
-	    Coweight new_t = E.t - alpha_v*(t_alpha/2);
+	    const Coweight new_t = E.t - alpha_v*(t_alpha/2);
 	    links.push_back(param // first Cayley link
 			    (E.ctxt,new_tw,
-			     new_lambda_rho,
-			     E.tau + tau_correction,
-			     E.l,
-			     new_t
+			     new_lambda_rho, E.tau + tau_correction,
+			     E.l, new_t
 			     ));
 	    links.push_back(param // second Cayley link
 			    (E.ctxt,new_tw,
-			     new_lambda_rho,
-			     E.tau + tau_correction,
-			     E.l + alpha_v,
-			     new_t
+			     new_lambda_rho, E.tau + tau_correction,
+			     E.l + alpha_v, new_t
 			     ));
 	  } // end of real type 1 case
 	  else // real type 2
@@ -882,7 +884,7 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	        (E.ctxt,E.tw, E.lambda_rho+alpha ,E.tau,E.l,E.t));
 	  }
       }
-      else // complex case
+      else // length 1 complex case
       { result = rd.is_posroot(theta_alpha)
 	  ? one_complex_ascent : one_complex_descent ;
 	links.push_back(complex_cross(p,E));
@@ -897,10 +899,10 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
       RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
       const Weight& beta = integr_datum.root(p.s1);
       const Coweight& beta_v = integr_datum.coroot(p.s1);
-      // RootNbr n_beta = subs.parent_nr_simple(p.s1);
+      RootNbr n_beta = subs.parent_nr_simple(p.s1);
       // RootNbr theta_beta = i_tab.root_involution(theta,n_beta);
 
-      if (theta_alpha==n_alpha) // imaginary case
+      if (theta_alpha==n_alpha) // length 2 imaginary case
       { // first find out if the simply-integral root $\alpha$ is compact
 	int tf_alpha = (E.ctxt.g() - E.l).dot(alpha)-rd.level(n_alpha);
 	int tf_beta = (E.ctxt.g() - E.l).dot(beta)-rd.level(n_alpha);
@@ -991,17 +993,8 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	} // end type 2i22 case
       }
 
-      else if (theta_alpha==rd.rootMinus(n_alpha)) // real case
-      { // the folowing is coherent with using |Cayley_shift|, but easier
-	const int parity_n = (E.ctxt.gamma() - E.lambda_rho).dot(alpha_v)
-	  - rd.colevel(n_alpha) // <alpha_v,rho>
-	  + rd.twoRho(i_tab.real_roots(theta)).dot(alpha_v)/2;
-	if (parity_n%2==0) // nonparity
-	   return two_real_nonparity; // no link added here
-	WeightInvolution theta_1 = i_tab.matrix(theta)-1; // upstairs
-	const TwistedInvolution new_tw =
-	  tW.prod(tW.prod(E.tw,subs.reflection(p.s0)),subs.reflection(p.s1));
-
+      else if (theta_alpha==rd.rootMinus(n_alpha)) // length 2 real case
+      {
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
@@ -1010,17 +1003,20 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	  repr::Cayley_shift(E.rc().complexGroup(),theta,ww);
 	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
-	Weight new_lambda_rho = E.lambda_rho - rho_r_shift;
+	const int a_level = level_a(E,rho_r_shift,n_alpha);
 
-	{ int da = // $\alpha$ correction coefficient for $\gamma-\tilde\lambda$
-	    (E.ctxt.gamma()-new_lambda_rho).dot(alpha_v)- rd.colevel(n_alpha);
-	  int db = // $\beta correction coefficient for $\gamma-\tilde\lambda$
-	    (E.ctxt.gamma()-new_lambda_rho).dot(beta_v)- rd.colevel(n_alpha);
-	  assert(da%2==0); // parity condition for $\alpha$ says this
-	  assert(db%2==0); // parity condition for $\beta$ says this
-	  new_lambda_rho -= alpha*(da/2); // project to correct $\tilde\lambda$
-	  new_lambda_rho -= beta*(db/2);  // project to correct $\tilde\lambda$
-	}
+	if (a_level%2!=0) // nonparity
+	   return two_real_nonparity; // no link added here
+
+	const int b_level = level_a(E,rho_r_shift,n_beta);
+	assert(b_level%2==0); // since |a_level| and |b_level| have same parity
+
+	WeightInvolution theta_1 = i_tab.matrix(theta)-1; // upstairs
+	const TwistedInvolution new_tw =
+	  tW.prod(tW.prod(E.tw,subs.reflection(p.s0)),subs.reflection(p.s1));
+
+	const Weight new_lambda_rho = E.lambda_rho-rho_r_shift
+	  + alpha*(a_level/2) + beta*(b_level/2);
 
 	int ta = E.t.dot(alpha); int tb = E.t.dot(beta);
 
@@ -1089,9 +1085,8 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 			   E.lambda_rho+alpha+beta ,E.tau,E.l,E.t));
 	}
       }
-      else // complex case
+      else // length 2 complex case
       { const bool ascent = rd.is_posroot(theta_alpha);
-	const RootNbr n_beta = subs.parent_nr_simple(p.s1);
 	if (theta_alpha == (ascent ? n_beta : rd.rootMinus(n_beta)))
 	{ // twisted commutation with |s0.s1|: 2Ci or 2Cr
 	  TwistedInvolution new_tw = E.tw;
@@ -1124,7 +1119,7 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
       RootNbr n_alpha = subs.parent_nr_simple(p.s0);
       RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
       const Weight& beta = integr_datum.root(p.s1);
-      const Coweight& beta_v = integr_datum.coroot(p.s1);
+      RootNbr n_beta = subs.parent_nr_simple(p.s1);
 
       RootNbr n_kappa =integr_datum.simple_reflected_root
 	 (p.s1, integr_datum.simpleRootNbr(p.s0));
@@ -1143,7 +1138,7 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	if (tf_alpha%2!=0) // then $\alpha$ and $\beta$ are compact
 	  return three_imaginary_compact;
 
-	// length 3 noncompact case
+	// noncompact case
 	result = three_imaginary_semi;
 
 	RootNbr alpha_simple = n_alpha;
@@ -1160,14 +1155,7 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 			 E.lambda_rho + rho_r_shift, new_tau, new_l, E.t));
       }
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 3 real case
-      { // the part |gr_part| is unchanged when replacing |alpha| by |beta|:
-	const int gr_part = E.ctxt.gamma().dot(alpha_v) - rd.colevel(n_alpha);
-	const int parity_n = gr_part
-          + (rho(rd,i_tab.real_roots(theta))- E.lambda_rho).dot(alpha_v);
-	assert(E.lambda_rho.dot(alpha_v-beta_v)%2==0); // same parity for beta
-	if (parity_n%2==0) // nonparity
-	  return three_real_nonparity; // no link added here
-
+      {
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
@@ -1176,8 +1164,16 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	  repr::Cayley_shift(E.rc().complexGroup(),theta,ww);
 	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
-	Weight new_lambda_rho = E.lambda_rho - rho_r_shift
-	  + kappa*(gr_part+kappa_v.dot(E.lambda_rho)/2) ;
+	const int a_level = level_a(E,rho_r_shift,n_alpha);
+
+	if (a_level%2!=0) // nonparity
+	   return three_real_nonparity; // no link added here
+
+	const int b_level = level_a(E,rho_r_shift,n_beta);
+	assert(b_level%2==0); // since |a_level| and |b_level| have same parity
+
+	const Weight new_lambda_rho =
+	  E.lambda_rho-rho_r_shift + kappa*((a_level+b_level)/2);
 	links.push_back(param // Cayley link
 			(E.ctxt, new_tw,
 			 new_lambda_rho,E.tau, E.l,E.t-alpha_v*kappa.dot(E.t)));
