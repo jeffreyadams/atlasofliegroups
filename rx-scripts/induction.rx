@@ -33,7 +33,7 @@ positive representative of each quadruple (\pm alpha,\pm theta(alpha))
 }
 
 set makeS (mat theta,RootDatum rd)=[[int]]:
-   let pr=posroots(G) in let list=[([int],bool)]: for al in pr do (al,true) od in
+   let pr=posroots(rd) in let list=[([int],bool)]: for al in pr do (al,true) od in
    for i:#list do let (al,b)=list[i] in if b then for j:#list do
       let (beta,c)=list[j] in if beta=theta*al  or beta=-theta*al then
       list[j]:=(beta,false) fi od fi od;
