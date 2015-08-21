@@ -310,7 +310,7 @@ GeneratorError checkGenerator(input::InputBuffer& buf, size_t& r,
   order in the torus (more precisely, their order divides their denominator.)
   So "orthogonal" means having integral pairing with the rational vector.
 
-  Algorithm: collect in |m| all the denominator vectors after bringing
+  Algorithm: collect in |m| all the numerator vectors after bringing
   everything to a common denominator |d|; then we have the problem of finding
   a basis for the lattice on the dual side that under pairing takes all those
   vectors into $d.\Z$. Write $row.m.col=D$ with |row| and |col| invertible
