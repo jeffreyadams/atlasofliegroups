@@ -428,9 +428,7 @@ template<typename C>
     (*this)(i,j)=v[i];
 }
 
-/*!
-  Adds |v| as new row to the matrix. Entries being stored by row, this is easy
-*/
+// Add |v| as new row to the matrix. Entries being stored by row, this is easy
 template<typename C>
   void Matrix_base<C>::add_row(const Vector<C>& v)
 {
@@ -442,9 +440,7 @@ template<typename C>
   std::copy(v.begin(),v.end(),at(d_rows-1,0));
 }
 
-/*!
-  Adds |v| as new column to the matrix. This is harder than adding a row
-*/
+// Add |v| as new column to the matrix. This is harder than adding a row
 template<typename C>
   void Matrix_base<C>::add_column(const Vector<C>& v)
 {
@@ -462,6 +458,30 @@ template<typename C>
       *--dst = *--src;
   }
 }
+
+// fill |dst| with submatrix starting at offsets |k,l|
+template<typename C>
+  void Matrix_base<C>::get_block
+       (Matrix_base<C>& dst, unsigned k, unsigned l) const
+{
+  const size_t k_end=k+dst.numRows(), l_end=l+dst.numColumns();
+  assert(k_end<=numRows() and l_end<=numColumns());
+  auto p=dst.at(0,0);
+  for (size_t i=k; i<k_end; ++i)
+    p=std::copy(this->at(i,l),this->at(i,l_end),p);
+}
+
+// fill submatrix starting at offsets |k,l| from |src|
+template<typename C>
+  void Matrix_base<C>::set_block
+       (unsigned k, unsigned l, const Matrix_base<C>& src)
+{
+  const size_t r=src.numRows(), c=src.numColumns();
+  assert(k+r<=numRows() and l+c<=numColumns());
+  for (size_t i=0; i<r; ++i)
+    std::copy(src.at(i,0),src.at(i+1,0),this->at(k+i,l));
+}
+
 
 // Add matrix |m| to |*this|; the matrices must have the same dimensions
 template<typename C>

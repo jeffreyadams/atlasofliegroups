@@ -452,9 +452,47 @@ bool checkRank(const TypeLetter& x, size_t l)
   }
 }
 
+WeightInvolution simple_involution(const SimpleLieType& slt, simple_ict tp)
+{
+  unsigned r=slt.rank();
+  WeightInvolution result
+    (tp==simple_ict::complex ? 2*r : r); // start with identity
+  if (tp==simple_ict::complex)
+    for (unsigned i=0; i<r; ++i)
+    {
+      std::swap(result(i,i),result(i,i+r));
+      std::swap(result(i+r,i),result(i+r,i+r));
+    }
+  else if (tp==simple_ict::unequal_rank)
+    switch (slt.type())
+    {
+    case 'A': // antidiagonal matrix
+      assert(r>1);
+      for (unsigned i=0; 2*i<r-1; ++i)
+      {
+	std::swap(result(i,i),result(i,r-1-i));
+	std::swap(result(r-1-i,i),result(r-1-i,r-1-i));
+      }
+      break;
+    case 'B': case 'C': case 'F': case 'G': default:
+      assert(false); break;
+    case 'D':
+      std::swap(result(r-2,r-2),result(r-2,r-1));
+      std::swap(result(r-1,r-2),result(r-1,r-1));
+      break;
+    case 'E':
+      assert(r==6);
+      std::swap(result(0,0),result(0,5));
+      std::swap(result(5,0),result(5,5));
+      std::swap(result(2,2),result(2,4));
+      std::swap(result(4,2),result(4,4));
+      break;
+    }
+  return result;
+}
 
-/*!
-  Synopsis: constructs the fundamental involution for the Lie type lt and the
+/*
+  Construct the fundamental involution for the Lie type lt and the
   inner class ic, in the weight basis for the simply connected group.
 
   Precondition: validity if |lo.d_inner| has been checked
@@ -467,7 +505,7 @@ WeightInvolution involution(const Layout& lo)
 
   WeightInvolution result(lt.rank(),lt.rank(),0);
 
-  size_t r = 0;   // position in flattened Dynkin diagram; index to |pi|
+  size_t r = 0;   // position in flattened Dynkin diagram; an index into |pi|
   size_t pos = 0; // position in |lt|
 
   for (size_t j=0; j<ic.size(); ++j) // |r|,|pos| are also advanced, near end
@@ -536,9 +574,8 @@ WeightInvolution involution(const Layout& lo)
 }
 
 WeightInvolution involution(const LieType& lt,
-				       const InnerClassType& ict)
-{ return involution(Layout(lt,ict)); // default to identity permutation
-}
+			    const InnerClassType& ict)
+{ return involution(Layout(lt,ict)); }
 
 } // |namespace lietype|
 

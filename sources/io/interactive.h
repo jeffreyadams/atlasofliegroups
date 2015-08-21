@@ -35,63 +35,51 @@ namespace ioutils {
 
 namespace interactive {
 
-  std::string getFileName(const std::string& prompt)
-    throw(error::InputError);
+  // most of these functions may |throw error::InputError|, however exception
+  // specifications are not given (we don't claim absence of other exceptions)
+  std::string getFileName(const std::string& prompt);
 
   bool open_binary_file(std::ofstream& block_out,const std::string& prompt);
 
+  bool get_yes_or_no(const char* prompt);
+
   void bitMapPrompt(std::string&, const char*, const BitMap&);
 
-  size_t get_Cartan_class(const BitMap& cs) throw(error::InputError);
+  size_t get_Cartan_class(const BitMap& cs);
 
-  void get_group_type(ComplexReductiveGroup*&, complexredgp_io::Interface*&)
-    throw(error::InputError);
+  void get_group_type
+    (ComplexReductiveGroup*&, complexredgp_io::Interface*&, WeightList& basis);
 
-  void getInteractive(LieType&) throw(error::InputError);
+  void getInteractive(LieType&);
 
-  void getInteractive(PreRootDatum&,
-		      WeightList&,
-		      const LieType&) throw(error::InputError);
+  void getInteractive(PreRootDatum&, WeightList&, const LieType&);
   WeightInvolution
-    getInnerClass(lietype::Layout& lo, const WeightList& basis)
-    throw(error::InputError);
-  void getInteractive(InnerClassType&, const LieType&)
-    throw(error::InputError);
+    getInnerClass(lietype::Layout& lo, const WeightList& basis);
+  void getInteractive(InnerClassType&, const LieType&);
 
-  RealFormNbr get_real_form(complexredgp_io::Interface&)
-    throw(error::InputError);
+  RealFormNbr get_real_form(complexredgp_io::Interface&);
 
   RealFormNbr get_dual_real_form(complexredgp_io::Interface&,
-				 RealFormNbr rf)
-    throw(error::InputError);
+				 RealFormNbr rf);
 
 
   unsigned long get_bounded_int(input::InputBuffer& ib,
 				const char* prompt,
-				unsigned long limit)
-    throw(error::InputError);
+				unsigned long limit);
 
   unsigned long get_int_in_set(const char* prompt,
 			       const BitMap& choices,
-			       input::InputBuffer* linep = 0)
-    throw(error::InputError);
+			       input::InputBuffer* linep = 0);
 
-  Weight get_weight(input::InputBuffer& ib,
-				  const char* prompt,
-				  size_t rank)
-    throw(error::InputError);
+  Weight get_weight(input::InputBuffer& ib, const char* prompt, size_t rank);
 
-  RatWeight get_ratweight(input::InputBuffer& ib,
-					const char* prompt,
-					size_t rank)
-    throw(error::InputError);
+  RatWeight get_ratweight
+    (input::InputBuffer& ib, const char* prompt, size_t rank);
 
   standardrepk::StandardRepK get_standardrep
-    (const standardrepk::SRK_context& c)
-    throw(error::InputError);
+    (const standardrepk::SRK_context& c);
 
-  StandardRepr get_repr(const Rep_context& c)
-    throw(error::InputError);
+  StandardRepr get_repr(const Rep_context& c);
 
   input::InputBuffer& common_input();
   input::InputBuffer& sr_input();
@@ -99,11 +87,13 @@ namespace interactive {
   SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 				   KGBElt& x,
 				   Weight& lambda_rho,
-				   RatWeight& gamma)
-    throw(error::InputError);
+				   RatWeight& gamma);
 
-  void getInteractive(atlas::Parabolic &psg, size_t rank)
-    throw(error::InputError);
+  void getInteractive(atlas::Parabolic &psg, size_t rank);
+
+// get second distinguished involution that commutes with the inner class one
+  WeightInvolution get_commuting_involution
+    (const lietype::Layout& lo, const WeightList& basis);
 
 }
 
@@ -117,7 +107,7 @@ class OutputFile
   std::ostream* d_stream;
   bool d_foutput;
  public:
-  OutputFile() throw(error::InputError);
+  OutputFile();
   ~OutputFile();
   template<typename T> std::ostream& operator<< (const T& arg)
     {return *d_stream << arg;}
@@ -131,8 +121,7 @@ class InputFile {
  public:
   InputFile(std::string prompt,
             std::ios_base::openmode mode
-	      =std::ios_base::in | std::ios_base::binary)
-    throw(error::InputError);
+	      =std::ios_base::in | std::ios_base::binary);
   ~InputFile();
   operator std::ifstream& () {return *d_stream;}
 };

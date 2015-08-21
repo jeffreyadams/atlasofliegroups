@@ -80,8 +80,9 @@ namespace {
   void help_f();
 
   // local variables
-  // these have been changed to pointers to avoid swapping of G_C
+  // most of these have been changed to pointers to avoid swapping of G_C
 
+  WeightList lattice_basis; // allows mapping Lie type info to complex group
   ComplexReductiveGroup* G_C_pointer=NULL;
   ComplexReductiveGroup* dual_G_C_pointer=NULL;
   complexredgp_io::Interface* G_I_pointer=NULL;
@@ -143,7 +144,7 @@ namespace {
 void main_mode_entry() throw(EntryError)
 {
   try {
-    interactive::get_group_type(G_C_pointer,G_I_pointer);
+    interactive::get_group_type(G_C_pointer,G_I_pointer,lattice_basis);
   }
   catch(error::InputError& e) {
     e("complex group not set");
@@ -154,7 +155,7 @@ void main_mode_entry() throw(EntryError)
 // function only called from |exitMode|
 void main_mode_exit()
 {
-  replaceComplexGroup(NULL,NULL);
+  replaceComplexGroup(NULL,NULL); lattice_basis.clear();
 }
 
 } // |namespace|
@@ -401,7 +402,7 @@ void type_f()
   {
     ComplexReductiveGroup* G;
     complexredgp_io::Interface* I;
-    interactive::get_group_type(G,I);
+    interactive::get_group_type(G,I,lattice_basis);
     replaceComplexGroup(G,I);
     drop_to(main_mode); // drop invalidated descendant modes if called from them
   }
