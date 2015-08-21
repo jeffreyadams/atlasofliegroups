@@ -5,7 +5,8 @@
 <sort.rx
 <all_Kparameters.rx
 <complex_nilpotent_orbits.rx
-set kn_verbose=false
+<K_norm.rx
+set kn_verbose=true
 set kn_very_verbose=false
 {implementation of parts of Letter to Atlas II: nilpotent orbits}
 
@@ -74,40 +75,62 @@ set sum([ratvec] list)=if #list=0 then null(0) else let v=ratvec:null(#list[0]) 
 set rho_shifts(KGBElt x,ratvec H)=[(ratvec,int)]:
 let S=subsets(x,H) in [(ratvec:null(rank(real_form(x))),0)]#for v in S do (sum(v),#v) od
 
+set rho_u_cap_s(KGBElt x,ratvec H)=ratvec:
+let L=L(x,H) then
+x_L=inverse_embed_KGB(x,L) in rho_s(x)-rho_s(x_L)
+
 {this implements the algorithm of Proposition 7.3(6)
 p_L must be a standard final limit parameter for L=L(x,H) (i.e. an L\cap K-type)
+this includes the new shift by -2rho(u\cap p)
 }
 set mu(KGBElt x, ratvec H, KParam p_L)=KParamPol:
-if not (is_standard(parameter(p_L))) then error("p_L is not standard") 
-elif not (is_final(parameter(p_L))) then error("p_L is not final") 
-elif  (is_zero(parameter(p_L))) then error("p_L is zero") 
+if (is_zero(parameter(p_L))) then error("p_L is zero") 
+elif  not (is_standard(parameter(p_L))) then error("p_L is not standard") 
+elif not (is_final(parameter(p_L))) then error("p_L is not final")    
 else
-let G=real_form(x) then
-rv=null_module(G) then
-rhoshifts=rho_shifts(x,H) then
-P_L=K_type_formula(parameter(p_L)) then
+let ()=if verbose then prints("mu(p_L) with p_L=", p_L) fi then
+G=real_form(x) then
+x_L=x(p_L) then
+fixed_shift=-2*(rho_s(embed_KGB(x_L,G))-rho_s(x_L)) then
+
+()=if kn_verbose then prints("fixed_shift=", fixed_shift) fi then
+p_L=KParam:(x(p_L),lambda(p_L)+fixed_shift)  then
+()=if kn_verbose then prints("L=", real_form(x(p_L)), " computing mu(p_L), p_L=", p_L) fi then
+rv=null_module(G) in let
+rhoshifts=rho_shifts(x,H) in let
+P_L=K_type_formula(parameter(p_L)) in let
 ()=if kn_verbose then
-prints("p_L: ", p_L);
+prints("K_norm(p_L)=", K_norm(p_L));
 prints("K-type formula on L: ", P_L);
 prints("terms in sum:") fi then 
- ()=for c@p_L in P_L do
-   let fixed_shift=- ( 2*rho_s(x)-2*rho_s(x(p_L))) then
+ ()=for c@p_L in P_L do let
   ()=if kn_verbose then prints("computing term ", p_L) fi in
   for (shift,j) in rhoshifts do   
     let ()=if kn_very_verbose then prints("j=",j," shift=",shift);
    prints("c=",split_as_int(c));
    prints("parameter on L:", p_L) fi in 
-   let q=parameter(x(p_L),lambda(p_L)-shift+fixed_shift,nu(p_L)) then
-  ()=if kn_very_verbose then prints("shifted param on L:", q) fi then 
+   let q=parameter(x(p_L),lambda(p_L)-shift,nu(p_L)) then
+  ()=if kn_very_verbose then prints("shifted param on L:", q, " with K_norm=", K_norm(q)) fi then 
    r_1=theta_induce_standard(q,G) then
-   ()=if kn_very_verbose then prints("theta_induced parameter on G before standardization:", r_1) fi then
-   r_2=standardize(r_1) then
-   ()=if kn_very_verbose then prints("theta_induced parameter on G standardized:", r_2) fi then
-   r_3=standardize(r_2)*0 {set nu=0} in
+   ()=if kn_verbose then prints("induced: ", r_1," of K_norm ", K_norm(r_1)) fi then
+   ()=if kn_verbose then prints("K_norm of induced: ", K_norm(r_1)) fi then
+{    ()=if kn_verbose then prints("K_norm on G before standardization: ", K_norm(r_1)) fi then}
+{   ()=if kn_very_verbose then prints("theta_induced parameter on G before standardization:", r_1) fi then}
+{   r_2=standardize(r_1) then}
+{   ()=if kn_very_verbose then prints("theta_induced parameter on G standardized:", r_2) fi then}
+{   r_3=standardize(r_2)*0 {set nu=0} in}
+    r_3=r_1*0 in
   let ()=if kn_very_verbose then prints("theta_induced parameter on G at nu=0:", r_3) fi in 
    rv+:=(-1)^j*c*r_3 od od in rv fi
 
-set mu(KGBElt x, vec H)=KParamPol:mu(x,H,Kparameter(trivial(L(x,H))))
+set mu (KGBElt x,ratvec H)=mu(x,H,Kparameter(trivial(L(x,H))))
+
+set mu_old(KGBElt x, ratvec H, KParam p_L)=KParamPol:
+let x_L=x(p_L) then
+shift=-2*(rho_s(embed_KGB(x_L,real_form(x)))-rho_s(x_L)) then
+(y,lambda)=p_L in mu(x,H, (y, lambda+shift))
+
+set mu_old (KGBElt x,ratvec H)=mu_old(x,H,Kparameter(trivial(L(x,H))))
 
 {x_L must be a KGB element for L(x,H)
 then p_L=parameter(x_L,lambda_L,0) -> mu(x,H,p_L)

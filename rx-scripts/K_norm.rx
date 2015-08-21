@@ -1,5 +1,4 @@
 <ap.rx
-
 :KParam=(KGBElt,ratvec)
 :KParamPol=ParamPol   {I don't see a convenient way to define a different type for KParamPol}
 
