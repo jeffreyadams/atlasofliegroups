@@ -64,6 +64,8 @@ set denom (rat a) = let (,d)=%a in d
 set is_integer (rat r) = bool: denom(r)=1
 set sign (rat a)= int: sign(numer(a)) { denominator is always positive }
 
+set abs(rat a)=rat: sign(a)*a
+
 set floor (rat a) = int: \ %a     { decompose, then integer division }
 set ceil  (rat a) = int: -\ %-a   { same, sandwiched in negations }
 
