@@ -1,7 +1,7 @@
 {induction.rx}
 {this file replaces earlier induction_plus.rx}
 {real and theta-stable parabolic induction from general parabolic}
-set verbose=false
+set verbose=true
 <basic.rx
 <K.rx {for rho_K}
 <kl.rx { for character_formula }
@@ -28,32 +28,29 @@ set embed_KGB(KGBElt x_L,RealForm G)=KGBElt:KGB_elt(G,involution(x_L), torus_fac
 {given KGB element of G, find one for M which maps to it}
 set inverse_embed_KGB(KGBElt x_G,RealForm M)=KGBElt:KGB_elt(M,involution(x_G), torus_factor(x_G))
 
-{Given a KGB element x, construct a set S of complex roots containing one 
+{Given an involution theta, construct a set S of complex roots containing one 
 positive representative of each quadruple (\pm alpha,\pm theta(alpha))
 }
-set makeS (KGBElt x)=[[int]]:
-   let G=real_form(x) in let theta=involution(x) in
+
+set makeS (mat theta,RootDatum rd)=[[int]]:
    let pr=posroots(G) in let list=[([int],bool)]: for al in pr do (al,true) od in
    for i:#list do let (al,b)=list[i] in if b then for j:#list do
       let (beta,c)=list[j] in if beta=theta*al  or beta=-theta*al then
       list[j]:=(beta,false) fi od fi od;
       let rv=[[int]]:[] in for (a,b) in list do if b then rv#:=a fi od;rv
+set makeS(KGBElt x)=[[int]]:makeS(involution(x),root_datum(x))
 
 {rho_S=1/2 sum of roots in S}
-set rho_S(KGBElt x)=let rv=null(rank(root_datum(x))) in 
-for alpha in makeS(x) do rv+:=alpha od;rv/2
+set rho_S(mat theta,RootDatum rd)=ratvec:let rv=null(rank(rd)) in 
+for alpha in makeS(theta,rd) do rv+:=alpha od;rv/2
 
-{don't need this
-set rhoS (KGBElt x)=ratvec:
-     let theta=involution(x) in	let list=makeS(x) in
-     let (r,c)=#theta in let Q=null(r) in for (beta,b) in list do
-    if b then Q:=Q+(1-theta)*beta fi od; 1/2*Q
-}
+set rho_S(KGBElt x)=ratvec:rho_S(involution(x),root_datum(x))
 
 {rho_k(x)=one-half the sum of the positive roots of h in k,
  2rho_k(x) is in X^*(H), but is really only well defined modulo (1-theta)X^*
  assuming all complex roots are type C+
 }
+
 set rho_k(KGBElt x)=ratvec:assert(no_Cminus_roots(x), "rho_k only defined if all complex roots are type C+");rho_ic(x)+rho_S(x)
 set rho_s(KGBElt x)=ratvec:assert(no_Cminus_roots(x), "rho_s only defined if all complex roots are type C+");rho_in(x)+rho_r(x)+rho_S(x)
 
@@ -125,16 +122,25 @@ Then p_G=Ind_L^G(I(p_L))=I(p_g)
 might not be standard for G (outside of good range), so apply standardize
 }
 set theta_induce_standard(Param p_L,RealForm G)=ParamPol:
-let L=real_form(x(p_L)) in let x_G=embed_KGB(x(p_L),G) then
-p_G=parameter(x_G,lambda(p_L)+rho(G)-rho_r(x_G)-rho(L)+rho_r(x(p_L)), nu(p_L)) then
+let L=real_form(x(p_L)) then
+x_G=embed_KGB(x(p_L),G) then
+shift=rho(G)-rho(L) then
+()=if verbose then prints("theta_induce_standard of parameter on L: ", p_L) fi then
+()=if verbose then prints("shift: ", shift) fi then
+{p_G=parameter(x_G,lambda(p_L)+rho(G)-rho_r(x_G)-rho(L)+rho_r(x(p_L)), nu(p_L)) then}
+p_G=parameter(x_G,lambda(p_L)+shift,nu(p_L)) then
 ()=if verbose then prints("p_G before standardization:", p_G) fi then
-p_G_standardized=standardize(p_G) then
-()=if verbose then prints("p_L: ", p_L) fi in 
+{()=if verbose then prints("K_norm(p_G) before standardization:", K_norm(p_G)) fi then}
+p_G_standardized=standardize(p_G) in
 if (is_standard(p_G)) then 
  if verbose then prints("p_G is standard: ", p_G, standardize(p_G)) fi
 else
+ let p_G=standardize(p_G) in
  if verbose then
- prints("p_G standardized:", p_G_standardized) fi fi; p_G_standardized
+  prints("p_G standardized:", p_G)
+{  prints("K_norm(p_G standardized):", K_norm(p_G));}
+{  prints("K_norms of terms of p_G: ", for q in monomials(p_G) do K_norma(q) od ) fi}
+ fi fi ;p_G
 
 {write Ind(J) as a sum of standards for G}
 {write J(p_L)=sum_i a_i* I_L(p_i)
