@@ -99,7 +99,8 @@ let (l_roots,l_coroots)=([vec]:[],[vec]:[]) in
 let ()=for i:nr_of_posroots(G)  do
  let alpha_check=poscoroots(G)[i] then
  alpha=posroots(G)[i] then
- c=w*alpha_check in 
+{ c=w*alpha_check in }
+ c=w*alpha in 
  if c=0 then l_roots#:=alpha;l_coroots#:=alpha_check fi od then
  simple_roots_and_coroots=
  if #l_roots=0 then simple_from_positive(null(rank(G),0),null(rank(G),0)) 

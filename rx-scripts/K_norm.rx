@@ -9,9 +9,9 @@ set lambda(KParam p)=let (,lambda)=p in lambda
 set Kparameter(Param p)=KParam:(x(p),lambda(p))
 set parameter(KParam p)=Param:parameter(x(p),lambda(p),null(rank(root_datum(x(p)))))
 
-{K_norm@KParam
+{old_K_norm@KParam
  p=(x,lambda)
- K_norm(p)= <d\lambda,2rho^vee> 
+ old_K_norm(p)= <d\lambda,2rho^vee> 
           = <(1+theta_x)lambda/2,2rho^vee> 
           = <(1+theta_x)lambda,rho^vee> \in Z
  to see this is an integer: up to integer can replace theta_x with distinguished involution delta
@@ -21,29 +21,55 @@ and 2rho^vee is a sum of coroots
 need variant of this where rho_check is replaced by an arbitrary ratvec:v
 application: L is a subgroup of G, p is a parameter for L, and v=rho_check(G)
 Assuming no cpt torus in the center of G, number of parameters of L of bounded 
-K_norm(p,rho_check(G)) is finite
+old_K_norm(p,rho_check(G)) is finite
 
 For purposes of sorting it is helpful to proceed as follows. Define:
-K_norm(ratvec v)=(Param->int)
-K_norm(KParam p)=K_norm(rho_check)(p)
+old_K_norm(ratvec v)=(Param->int)
+old_K_norm(KParam p)=old_K_norm(rho_check)(p)
 
-Note: do *not* define K_norm(Param p)=K_norm(Kparameter(p))
+Note: should not define old_K_norm(Param p)=old_K_norm(Kparameter(p))
 if p is a KParam, sometimes convert it to a Param (to apply various functions to it), and
-need the K_Norm; however usually K_norm@Param is a mistake
+need the K_Norm; however usually old_K_norm@Param is a mistake
+but do it for convenience
 }
 
 {primary definition
-K_norm(v) is a function taking a Kparam to an integer
+old_K_norm(v) is a function taking a Kparam to an integer
 }
-set K_norm(ratvec v)=(KParam->int):(KParam p):
+set old_K_norm(ratvec v)=(KParam->int):(KParam p):
 let p=parameter(p) then
 q=make_dlambda_dominant(p) 
 in rat_as_int((1+involution(x(q)))*lambda(q)*v)
 
 {for convenience write this a different way:}
+set old_K_norm(ratvec v,KParam p)=old_K_norm(v)(p)
+set old_K_norm(ratvec v,Param p)=old_K_norm(v)(Kparameter(p))
+{also define old_K_norm(v) of  (Split,Param)}
+set old_K_norm(ratvec v,Split s,KParam p)=int:old_K_norm(v)(p)
+set old_K_norm(ratvec v,Split s,Param p)=int:old_K_norm(v)(Kparameter(p))
+
+
+{new definition of K_norm: take absolute value of each term}
+set K_norm(ratvec v)=(KParam->int):(KParam p):
+let p=parameter(p) then
+mu=(1+involution(x(p)))*lambda(p) then
+rv=rat:0 in 
+for alpha in poscoroots(real_form(p)) do  rv+:=abs(alpha*mu) od;
+rat_as_int(rv/2)
+
 set K_norm(ratvec v,KParam p)=K_norm(v)(p)
+set K_norm(ratvec v,Param p)=K_norm(v)(Kparameter(p))
 {also define K_norm(v) of  (Split,Param)}
 set K_norm(ratvec v,Split s,KParam p)=int:K_norm(v)(p)
+set K_norm(ratvec v,Split s,Param p)=int:K_norm(v)(Kparameter(p))
+
+set K_norm(KParam p)=int:K_norm(rho_check(real_form(x(p))))(p)
+
+set K_norm(Param p)=K_norm(Kparameter(p))
+
+set K_norm(Split s,KParam p)=int:K_norm(p)
+
+
 
 {sort [Param] by K_norm(v)}
 set sort_by_K_norm(ratvec v) = ([KParam] -> [KParam]): sort_by( K_norm(v))
@@ -61,12 +87,18 @@ for (c,p) in result do prints(split_as_int(c),"*",p, " ", K_norm(v)(p)) od
 
 set print_by_K_norm(ratvec v,KParamPol P)=void:print_by_K_norm(v)(P)
 
-set maximal_K_norm(ratvec v)=(KParamPol->int):(KParamPol P):
+{set K_norm(ratvec v)=(KParamPol->int):(KParamPol P):
+let rv=int:0 in
+for p in monomials(P) do let m=K_norm(v)(Kparameter(p)) in if m>rv then rv:=m fi od;rv
+}
+
+{K_norm of P is the max of K_norm(terms)}
+set K_norm(ratvec v,KParamPol P)=int:
 let rv=int:0 in
 for p in monomials(P) do let m=K_norm(v)(Kparameter(p)) in if m>rv then rv:=m fi od;rv
 
 set leading_terms(ratvec v)=(KParamPol->KParamPol):(KParamPol P):
-let max=maximal_K_norm(v)(P) then
+let max=K_norm(v,P) then
 rv=null_module(real_form(P)) in 
 for c@p in P do if K_norm(v)(Kparameter(p))=max then rv+:=c*p fi od;rv
 
@@ -76,15 +108,14 @@ for c@p in P do rv#:=K_norm(v)(Kparameter(p)) od;sort(rv)
 
 {  default versions: v=rho_check }
 
-set K_norm(KParam p)=int:K_norm(rho_check(real_form(x(p))))(p)
-set K_norm(Split s,KParam p)=int:K_norm(p)
+
 
 set sort_by_K_norm = ([KParam] -> [KParam]): sort_by( K_norm@KParam )
 set sort_by_K_norm = ([(Split,KParam)] -> [(Split,KParam)]): sort_by(K_norm@(Split,KParam))
 
 set print_by_K_norm(KParamPol P)=void:print_by_K_norm(rho_check(real_form(P)),P)
 
-set maximal_K_norm(KParamPol P)=int:maximal_K_norm(rho_check(real_form(P)))(P)
+set K_norm(KParamPol P)=int:K_norm(rho_check(real_form(P)),P)
 
 set leading_terms(KParamPol P)=KParamPol:leading_terms(rho_check(real_form(P)))(P)
 
