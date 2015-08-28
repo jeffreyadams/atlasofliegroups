@@ -190,15 +190,12 @@ for i:#strings-1 do strings[i]:=strings[i]+1 od;
 set is_max([[int]] taus,[int] tau)=bool:
 all(for j:#taus do not tau<taus[j] od)
 
-{find [int] tau in [[int]] taus, return index i or -1 if not found}
-set find([int] tau,[[int]] taus)=int:let i=first(#taus,(int i)bool: taus[i]=tau) in i
-
 {maximal tau sets only, non multiplicity}
 set max_only([[int]] taus)=[[int]]:
 let rv=[[int]]:[] in
 for tau in taus do if is_max(taus,tau) then 
 {add it unless it is there already}
-if (find(tau,rv)) =-1 then rv#:=tau fi fi od;rv
+if (find(rv,tau)) =-1 then rv#:=tau fi fi od;rv
 
 set Levi_signature(int rank,[[int]] tau_invariants)=([[int]],[(int,[int])]):
 {if #tau_invariants=0 or #tau_invariants[0]=0 then ([[rank]],[(int,[int])]:[]) else}

@@ -164,9 +164,10 @@ set L = theta_stable_Levi@KGBElt { synonym }
 set is_equal_rank(RealForm G) = bool: split_rank(fundamental_Cartan(G))=0
 
 set is_split(RealForm G) = bool: rank(G)=split_rank(G)
-set is_relatively_split(RealForm G) = bool: semisimple_rank(G)=split_rank(G)
 
-
+{set is_relatively_split(RealForm G) = bool: is_split(derived(G))}
+set is_relatively_split(RealForm G) = bool:
+ split_rank(G)=split_rank(radical(G))+semisimple_rank(G)
 
 set is_quasisplit (RealForm G) = bool: form_number(G)=nr_of_real_forms(G)-1
 set is_quasicompact (RealForm G) = bool: form_number(G)=0

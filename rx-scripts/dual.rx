@@ -41,10 +41,6 @@ set dual_parameter (KGBElt x,KGBElt y,ratvec g) = Param: parameter(y,x,g)
 
 {-------------------------  dual of a block --------------------------}
 
-set find ([Param] P, Param p)=
-  let rv=-1 in let i=0 in
-  while i<#P do if (p=P[i]) then rv:=i;i:=#P else i:=i+1 fi od;rv
-
 { find permutation relating two lists of parameters
   perm=permutation(B1,B2) =>
    i^th entry gives index of B1[i] in B2

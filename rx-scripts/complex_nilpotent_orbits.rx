@@ -220,7 +220,7 @@ let allq=[all_q(G)[i]] then
 answer=for q in allq do (q,max_only(find_H(q)))  od in  output(answer);answer
 
 {containment order}
-set <= ([int] a,[int] b)=all(for i:#a do find(a[i],b)!=-1 od)
+set <= ([int] a,[int] b)=all(for i:#a do find(b,a[i])!=-1 od)
 set <([int] a,[int] b)=sort(a) != sort(b) and a<=b
 
 set  principal_block(RealForm G)=Block:block(G,dual_quasisplit_form(G))

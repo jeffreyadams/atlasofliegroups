@@ -63,9 +63,9 @@ all [int]:a[a_0,...a_{n-1}] with 0\le a_i integral and
 \sum_i a_i*c_i\le Sum
 application: c_i=<i^th fundamental weight,rho^vee>
 }
-set parallelogram(int n, [rat] c,int Sum)=[[int]]:let
+set parallelogram(int n, [rat] c,int Sum)=[[int]]:
 {let ()=prints("parallelogram with ", n, c, Sum) then}
-rec_fun f([[int]] partial, int n,[rat] c,int Sum)=[[int]]:
+let rec_fun f([[int]] partial, int n,[rat] c,int Sum)=[[int]]:
 if #partial=0 then let start=[[int]]:[] in for i:floor(Sum/c[0])+1 do start#:=[i] od; f(start,n,c,Sum)
 elif #partial[0]=n then partial else
 let rv=[[int]]:[] in 
@@ -181,7 +181,7 @@ for v in all_lambda_differential_0(x(p)) do parameter(x(p),lambda(p)+v,nu(p)) od
  use parallelogram to find 
  all mu=\sum a_i lambda_i such that 
  <mu,v>=sum a_i*c_i<=N
-3) d\mu restricted to the center is trivial
+3) d\mu restricted to the center is trivial 
 }
 set all_dominant_norm_less_than(InnerClass ic, ratvec v,int N)=[[int]]:
 let f=fundamental_weights(ic) then

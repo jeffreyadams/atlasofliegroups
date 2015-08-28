@@ -918,10 +918,6 @@ set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
 
 {				Miscellaneous				}
 
-{ find index of item in list, or -1 if not found }
-set find (int it,[int] list) = int:
- let i=#list-1 in while >=i and list[i]!=it do i-:=1 od; i
-
 set in_string_list (string s,[string] S)=bool:
   let i=#S-1 in while >=i and S[i]!=s do i-:=1 od; >=i
 
@@ -958,5 +954,23 @@ set delete([int] v, int k)=[int]:v[:k]#v[k+1:]
 set delete([vec] v, int k)=[vec]:v[:k]#v[k+1:]
 set delete([ratvec] v, int k)=[ratvec]:v[:k]#v[k+1:]
 set delete([[ratvec]] v, int k)=[[ratvec]]:v[:k]#v[k+1:]
+set delete([[vec]] v, int k)=[[vec]]:v[:k]#v[k+1:]
 set delete([ParamPol] P, int k)=[ParamPol]:P[:k]#P[k+1:]
+
+{   		      Miscellaneous find functions				}
+
+{ find index of item in list, or -1 if not found }
+
+set find([int] v, int k)=int:first(#v, (int i)bool:v[i]=k)
+set find([Param] P,Param p)=int:first(#P,(int i)bool:P[i]=p)
+set find([KGBElt] S,KGBElt x)=int:first(#S,(int i)bool:S[i]=x)
+
+{used to find root v in list of roots S:}
+set find([[int]] S,[int] v)=int:first(#S,(int i)bool:S[i]=v)
+
+{need different name to avoid disambiguation problem}
+set find_vec([vec] S,vec v)=int:first(#S,(int i)bool:S[i]=v)
+
+
+
 
