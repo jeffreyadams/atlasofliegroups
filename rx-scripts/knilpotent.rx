@@ -6,15 +6,10 @@
 <all_Kparameters.rx
 <complex_nilpotent_orbits.rx
 <K_norm.rx
-set kn_verbose=true
+set kn_verbose=false
 set kn_very_verbose=false
 {implementation of parts of Letter to Atlas II: nilpotent orbits}
 
-{return index of alpha in list of roots}
-set find([vec] roots,vec alpha)=int:
-let done=false,rv=-1,i=0 in
-while done=false and i<#roots do
- if roots[i]=alpha then done:=true;rv:=i else i:=i+1 fi od;rv
 
 {given x a theta_x-stable set of roots R, return subset of R
 consisting of each imaginary root alpha\in R, and one of each pair
@@ -28,35 +23,35 @@ while #roots>0 do
  rv#:=alpha;
  roots:=delete(roots,0);
   if theta*alpha != alpha then
-   let  index=find(roots,theta*alpha) in if (index=-1) then error("set of roots is not theta-stable") else 
-      roots:=delete(roots, find(roots,theta*alpha))  fi fi od;rv 
+   let  index=find_vec(roots,theta*alpha) in if (index=-1) then error("set of roots is not theta-stable") else 
+      roots:=delete(roots, find_vec(roots,theta*alpha))  fi fi od;rv 
 
 {roots of H in s[1]
  s = -1 eigenspace of theta_x
  s[1] = 1 H-eigenspace of H on s
 }
-set s_one_roots(KGBElt x, ratvec H)=
+set s_one_roots(KGBElt x, ratvec H)=[vec]:
 let theta=involution(x) in 
 if ^theta*H != H then error("H is not ^theta-fixed") else
 let roots=[] then
 ()=for alpha in posroots(real_form(x)) do
  if H*alpha=1 or H*alpha=-1 then roots#:=alpha fi od in roots fi
 
-{restriction of s_one_roots to Lie(H)^{theta_x}
+{restriction of s_one_roots to H^{theta_x}
  each pair (alpha,theta(alpha)) contributes 
  a single root restriction(alpha)=restriction(theta(alpha)), 
  corresponding to the single vector X_\alpha-\theta(X_\alpha) in s[1]
+ characters of H^theta are elements of X^*/(1-theta)X^*
 }
-set s_one_roots_restricted(KGBElt x,ratvec H)=[ratvec]:
+set s_one_roots_restricted(KGBElt x,ratvec H)=[vec]:
 let roots=s_one_roots(x,H) in
-roots:=extract_roots(x,roots);
-for alpha in roots do (1+involution(x))*alpha/2 od
-
+roots:=extract_roots(x,roots)
+{for alpha in roots do (1+involution(x))*alpha/2 od NO?}
 
 {generate all subsets of [ratvec], modified from misc.rx}
-set generate_all_subsets([ratvec] S) = [[ratvec]]:
+set generate_all_subsets([vec] S) = [[vec]]:
   let len=#S
-  , gen (int i) = [[ratvec]]: [] { recursive stub; genee subset of S[i:] }
+  , gen (int i) = [[vec]]: [] { recursive stub; genee subset of S[i:] }
   in
   ( gen :=
     ((int i):
@@ -67,34 +62,85 @@ set generate_all_subsets([ratvec] S) = [[ratvec]]:
 
 {all subset of the restrictions of the roots of s[1] to Lie(H)^{\theta_x}
  see Knilpotent paper, Corollary 7.3(6)}
-set subsets(KGBElt x,ratvec H)=[[ratvec]]:
-let roots=s_one_roots_restricted(x,H) in delete(generate_all_subsets(roots),0) {don't want empty subset}
+set subsets(KGBElt x,ratvec H)=[[vec]]:
+let roots=s_one_roots_restricted(x,H) in 
+delete(generate_all_subsets(roots),0) {don't want empty subset}
 
 set sum([ratvec] list)=if #list=0 then null(0) else let v=ratvec:null(#list[0]) in for w in list do v+:=w od; v fi
 
-set rho_shifts(KGBElt x,ratvec H)=[(ratvec,int)]:
-let S=subsets(x,H) in [(ratvec:null(rank(real_form(x))),0)]#for v in S do (sum(v),#v) od
+set rho_shifts(KGBElt x,ratvec H)=[(vec,int)]:
+let S=subsets(x,H) in [(vec:null(rank(real_form(x))),0)]#for v in S do (sum(v),#v) od
+
+
+
 
 set rho_u_cap_s(KGBElt x,ratvec H)=ratvec:
 let L=L(x,H) then
 x_L=inverse_embed_KGB(x,L) in rho_s(x)-rho_s(x_L)
 
+{need to twist L\cap K type by (one dimension L\cap K-type) -2rho(u\cap s)
+ an L\cap K type is given by standard,final,limit parameter for L
+ 2rho(u\cap s) is not typically one-dimensional for L
+ algorithm:
+ given std,final,limit parameter p for L <-> L\cap K-type tau
+ compute k_type_formula for p
+ for each term (x,lambda,nu) in k_type_formula, 
+  replace with (x,lambda+shift,nu+shift)
+  shift is the "appropriate" -2*rho(u\cap s):
+  let mu=2*rho_u_cap_s(x_0,H) where x_0=KGB(L,0)
+  this is the "basic" shift
+  if x is in the fundamental fiber for L, then x=wx_0, and the shift is w*mu
+  for any x, the shift is by w where canonical_x_K(p)=wx_0
+  the resulting term might not be standard, so apply standardize
+ take the composition series of the resulting ParamPol
+ set nu=0 in all terms
+ let q be the (unique?) parameter occuring of minimal height (K_norm)
+ this is the std final limit parameter for the L\cap K-type tau+2*rho(u\cap s)
+}
+set twist_by_minus_2rho_u_cap_s(KGBElt x,ratvec H,int kgb_number_L,ratvec lambda_L)=
+(KParam,(ParamPol,[vec],[vec],[int])):
+{(answer,(debugging information)}
+let ()=if kn_verbose then prints("twist with: x=", x, " H= ", H, "x= ", kgb_number_L, " lambda_L= ", lambda_L) fi then
+L=L(x,H) then
+x_0=KGB(L,0) then
+mu=2*rho_u_cap_s(x,H) then
+{()=prints("rho(u\cap s)=",mu) then}
+x_L=KGB(L,kgb_number_L) then
+p_L=parameter(x_L,lambda_L,null(rank(L))) then
+{()=prints("p_L:", p_L) then}
+k_type_formula=K_type_formula(p_L) then
+d=null_module(L) then 
+(welements,kgb)=cross_W_orbit_extra(x_0) then
+()=for c@p in k_type_formula do 
+ let x=canonical_x_K(p) then
+ i=find(kgb,x) then
+ w=welements[i] then 
+ shift=act(w,mu) in
+{ let ()=prints("p: ", p, " w: ", " shift: ",shift, " l+s: ", lambda(p)-shift) in}
+ d+:=c*standardize(parameter(x(p), lambda(p)-shift,nu(p)-shift)) od then
+{ ()=prints("d: ", d) then}
+ cs=composition_series(d)*0 then
+{ ()=prints("cs= ", cs) then}
+{ ()=for p in monomials(cs) do prints(height(p), " ", LKT_highest_weights(p,KGB(L,0)), " ", LKT_dimensions(p)) od then}
+ m=sort_by_height(monomials(cs)) in 
+(Kparameter(m[0]),(cs,LKT_highest_weights(p_L,KGB(L,0)),LKT_highest_weights(m[0],KGB(L,0)), LKT_dimensions(m[0])))
+
+
 {this implements the algorithm of Proposition 7.3(6)
 p_L must be a standard final limit parameter for L=L(x,H) (i.e. an L\cap K-type)
 this includes the new shift by -2rho(u\cap p)
 }
-set mu(KGBElt x, ratvec H, KParam p_L)=KParamPol:
-if (is_zero(parameter(p_L))) then error("p_L is zero") 
-elif  not (is_standard(parameter(p_L))) then error("p_L is not standard") 
-elif not (is_final(parameter(p_L))) then error("p_L is not final")    
+set mu(KGBElt x, ratvec H, int kgb_number_L, ratvec lambda_L)=KParamPol:
+let L=L(x,H) then
+p_L_0=KParam:(KGB(L,kgb_number_L),lambda_L) in
+if (is_zero(parameter(p_L_0))) then error("p_L_0 is zero") 
+elif  not (is_standard(parameter(p_L_0))) then error("p_L_0 is not standard") 
+elif not (is_final(parameter(p_L_0))) then error("p_L_0 is not final")    
 else
-let ()=if verbose then prints("mu(p_L) with p_L=", p_L) fi then
+let ()=if kn_verbose then prints("mu(p_L_0) with p_L_0=", p_L_0) fi then
+(p_L,debug)=twist_by_minus_2rho_u_cap_s(x,H,number(x(p_L_0)),lambda(p_L_0)) then
 G=real_form(x) then
 x_L=x(p_L) then
-fixed_shift=-2*(rho_s(embed_KGB(x_L,G))-rho_s(x_L)) then
-
-()=if kn_verbose then prints("fixed_shift=", fixed_shift) fi then
-p_L=KParam:(x(p_L),lambda(p_L)+fixed_shift)  then
 ()=if kn_verbose then prints("L=", real_form(x(p_L)), " computing mu(p_L), p_L=", p_L) fi then
 rv=null_module(G) in let
 rhoshifts=rho_shifts(x,H) in let
@@ -123,20 +169,24 @@ prints("terms in sum:") fi then
   let ()=if kn_very_verbose then prints("theta_induced parameter on G at nu=0:", r_3) fi in 
    rv+:=(-1)^j*c*r_3 od od in rv fi
 
+set mu(KGBElt x, ratvec H, KParam p_L)=KParamPol:mu(x,H,number(x(p_L)),lambda(p_L))
+
 set mu (KGBElt x,ratvec H)=mu(x,H,Kparameter(trivial(L(x,H))))
 
+
+{
 set mu_old(KGBElt x, ratvec H, KParam p_L)=KParamPol:
 let x_L=x(p_L) then
 shift=-2*(rho_s(embed_KGB(x_L,real_form(x)))-rho_s(x_L)) then
 (y,lambda)=p_L in mu(x,H, (y, lambda+shift))
 
 set mu_old (KGBElt x,ratvec H)=mu_old(x,H,Kparameter(trivial(L(x,H))))
-
+}
 {x_L must be a KGB element for L(x,H)
 then p_L=parameter(x_L,lambda_L,0) -> mu(x,H,p_L)
 }
 set mu(KGBElt x,vec H,KGBElt x_L, ratvec lambda_L)=KParamPol:
-let p_L=KParam:(x_L, lambda_L) in mu(x,H,p_L)
+mu(x,H,number(x_L),lambda_L)
 
 {assume ParamPol has integral (not split) coefficients}
 set vector([Param] list,ParamPol P)=(bool,vec):
@@ -277,14 +327,14 @@ if k=-1 then 0 else
  else let diff=Q-rat_as_int(N)*P in 
  if #(monomials(diff))=#monomials(Q)-#monomials(P) then rat_as_int(N) else 0 fi fi fi
 
-set reduce_mu(KGBElt x,ratvec H,KParam p_L)=KParamPol:
+set reduce_mu(KGBElt x,ratvec H,KParam p_L,[ParamPol] smaller)=(KParamPol,KParamPol):
 let mu=mu(x,H,p_L) then
 ()=prints("mu=",mu) then
 G=real_form(x) then
 {bound=K_norm(mu)-rat_as_int(2*rho(G)*rho_check(G)) then}
-bound=K_norm(mu) then
+bound=2*K_norm(mu) then
 ()=prints("bound=",bound) then
-smaller=all_mu_smaller(x,H,bound) then
+{smaller=all_mu_smaller(x,H,bound) then}
 ()=prints("all_mu_smaller:") then
 ()=for mu in smaller do print_K_parameter(mu);prints(K_norm(mu)) od in
 let rec_fun f(ParamPol Q,[ParamPol] smaller_mu)=ParamPol:
@@ -299,11 +349,27 @@ N=term_contained(leading_terms(P),leading_terms(Q)) in
 if N=0 then 
 {prints("No reduction");}f(Q,delete(smaller_mu,0)) else
 prints("REDUCTION FOUND");prints("after reduction:");
-{print_K_parameter(Q-N*P);}f(Q-N*P,smaller)  fi fi in f(mu,smaller)
+{print_K_parameter(Q-N*P);}f(Q-N*P,smaller)  fi fi in (mu,f(mu,smaller))
 
-set reduce_mu(KGBElt x,ratvec H,KGBElt x_L,ratvec lambda_L)=KParamPol:
+set reduce_mu(KGBElt x,ratvec H,KParam p_L)=(KParamPol,KParamPol):
+let mu=mu(x,H,p_L) then
+G=real_form(x) then
+bound=2*K_norm(mu) in reduce_mu(x,H,p_L,all_mu_smaller(x,H,bound))
+
+set reduce_mu(KGBElt x,ratvec H, int k, ratvec lambda_L,[ParamPol] smaller)=(KParamPol,KParamPol):
+let L=L(x,H) in reduce_mu(x,H,KParam:(KGB(L,k),lambda_L),smaller)
+
+set reduce_mu(KGBElt x,ratvec H, int k, ratvec lambda_L)=(KParamPol,KParamPol):
+let L=L(x,H) in reduce_mu(x,H,KParam:(KGB(L,k),lambda_L))
+
+
+
+set reduce_mu(KGBElt x,ratvec H,KGBElt x_L,ratvec lambda_L)=(KParamPol,KParamPol):
 let p_L=KParam:(x_L,lambda_L) in reduce_mu(x,H,p_L)
 
-set leading_reduce_mu(KGBElt x,ratvec H,KParam p_L)=KParamPol:leading_terms(reduce_mu(x,H,p_L))
-set leading_reduce_mu(KGBElt x,ratvec H,KGBElt x_L,ratvec lambda_L)=ParamPol:leading_terms(reduce_mu(x,H,x_L,lambda_L))
+set leading_reduce_mu(KGBElt x,ratvec H,KParam p_L)=(KParamPol,KParamPol):let (m,r)=reduce_mu(x,H,p_L) in 
+(m,leading_terms(r))
+
+set leading_reduce_mu(KGBElt x,ratvec H,KGBElt x_L,ratvec lambda_L)=(KParamPol,KParamPol):let (m,r)=reduce_mu(x,H,x_L,lambda_L) in 
+(m,leading_terms(r))
 

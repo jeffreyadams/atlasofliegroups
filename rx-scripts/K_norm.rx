@@ -62,13 +62,10 @@ set K_norm(ratvec v,Param p)=K_norm(v)(Kparameter(p))
 set K_norm(ratvec v,Split s,KParam p)=int:K_norm(v)(p)
 set K_norm(ratvec v,Split s,Param p)=int:K_norm(v)(Kparameter(p))
 
+{this is the same as the 2*(built-in function height)}
 set K_norm(KParam p)=int:K_norm(rho_check(real_form(x(p))))(p)
-
 set K_norm(Param p)=K_norm(Kparameter(p))
-
 set K_norm(Split s,KParam p)=int:K_norm(p)
-
-
 
 {sort [Param] by K_norm(v)}
 set sort_by_K_norm(ratvec v) = ([KParam] -> [KParam]): sort_by( K_norm(v))
@@ -95,6 +92,9 @@ for p in monomials(P) do let m=K_norm(v)(Kparameter(p)) in if m>rv then rv:=m fi
 set K_norm(ratvec v,KParamPol P)=int:
 let rv=int:0 in
 for p in monomials(P) do let m=K_norm(v)(Kparameter(p)) in if m>rv then rv:=m fi od;rv
+
+set K_norms(ratvec v,KParamPol P)=[int]:for p in monomials(P) do K_norm(v,p) od
+set K_norms(KParamPol P)=[int]:for p in monomials(P) do K_norm(rho_check(real_form(P)),p) od
 
 set leading_terms(ratvec v)=(KParamPol->KParamPol):(KParamPol P):
 let max=K_norm(v,P) then

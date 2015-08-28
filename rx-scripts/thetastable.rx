@@ -6,16 +6,16 @@
 
 {
 returns the list of roots of the nilpotent algebra u(x,v) 
-a root is in u(x,v) iff <(1+theta_x)v,alpha^\vee>>0
+a root is in u(x,v) iff <(1+^theta_x)v,alpha^\vee>>0
 this set is automatically theta_x-stable
 v should be weakly dominant, and all complex roots should be C+ for x
 if so, then u(x,v) is guaranteed to be contained in n (the standard positive roots)
 otherwise it might still be ok, so return a warning but don't fail
 }  
 set u(KGBElt x, ratvec v)=[vec]:
-let G=real_form(x) in let theta=involution(x) in let w=(1+theta)*v then
-()=if not no_Cminus_roots(x) then prints("warning: some roots are of type C-") fi then
-()=if not is_dominant(G,w) then   prints("warning: argument is not weakly dominant") fi in
+let G=real_form(x) in let theta=involution(x) in let w=(1+^theta)*v then
+()=if not no_Cminus_roots(x) then prints("warning: some roots are of type C-") fi in 
+{let ()=if not is_dominant(G,w) then   prints("warning: argument is not weakly dominant") fi in}
 let u_roots=[] in
 for i:nr_of_posroots(G)  do
  let alpha_check=poscoroots(G)[i] then
@@ -92,9 +92,9 @@ set dim_u(KGBElt x,ratvec H)=#u(x,H)
 
 {similar to u(x,v), except now it returns the RealForm L(x,v)}
 set L(KGBElt x, ratvec v)=RealForm:
-let G=real_form(x) in let theta=involution(x) in let w=(1+theta)*v  then
-()=if not no_Cminus_roots(x) then prints("warning: some roots are of type C-") fi then
-()=if not is_dominant(G,w) then   prints("warning: argument is not weakly dominant") fi in
+let G=real_form(x) in let theta=involution(x) in let w=(1+^theta)*v  then
+()=if not no_Cminus_roots(x) then prints("warning: some roots are of type C-") fi in
+{let ()=if not is_dominant(G,w) then   prints("warning: argument is not weakly dominant") fi in}
 let (l_roots,l_coroots)=([vec]:[],[vec]:[]) in
 let ()=for i:nr_of_posroots(G)  do
  let alpha_check=poscoroots(G)[i] then

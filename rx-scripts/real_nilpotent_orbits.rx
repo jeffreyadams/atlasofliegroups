@@ -1,5 +1,6 @@
 <complex_nilpotent_orbits.rx
 <knilpotent.rx
+set real_verbose=false
 
 :RealNilpotent=(KGBElt,vec)
 
@@ -29,18 +30,18 @@ L=L(x,H) then
 Kparams=all_K_parameters_norm_less_than(L,rho_check(G),N) then
 mus=[(KGBElt,vec,Param,KParamPol)]:[] in
 let ()=for p in Kparams do 
- let ()=prints("K_norm of p:", K_norm(rho_check(G),p)) in
+{ let ()=prints("K_norm of p:", K_norm(rho_check(G),p)) in}
  let m=mu(x,H,p) in 
  let max=K_norm(m) in 
- let ()=prints("maximal K_norm of m:", max) in 
+{ let ()=prints("maximal K_norm of m:", max) in }
  let (x_L,lambda_L)=p in 
  let p_L=parameter(x_L,lambda_L) in 
  if max<multiplier*N then mus#:=(x,H,p_L,m) fi od then
 valid_x_H_pairs_start=[(x,H)] then
-()=prints("knorms of mus:");prints(for (,,,mu) in mus do K_norm(mu) od) then
+{()=prints("knorms of mus:");prints(for (,,,mu) in mus do K_norm(mu) od) then}
 mus_start=mus then
 todo_start=delete(all_x_H_pairs,0) in
-let ()=prints("todostart:", todo_start) in
+{let ()=prints("todostart:", todo_start) in}
 let rec_fun f([(KGBElt,vec)] valid_x_H_pairs,
 [(KGBElt,vec)] todo,
 [(KGBElt,vec,Param,KParamPol)] mus,
@@ -48,19 +49,20 @@ let rec_fun f([(KGBElt,vec)] valid_x_H_pairs,
 ([(KGBElt,vec)], 
  [(KGBElt, vec,Param,KParamPol)], 
 [((KGBElt,vec),[(KGBElt,vec,Param,KParamPol)],[int],[int])]):
-let ()=prints("in function f with:", mus, "todo= ", todo) in
+{let ()=prints("in function f with:", mus, "todo= ", todo) in}
 if #todo=0 then (valid_x_H_pairs,mus,not_valid) else
 let (x,H)=todo[0] then
+()=if real_verbose then prints();prints("Doing (x,H)=(", number(x), ",",H,")") fi then
 todo=delete(todo,0) then
 new_mu=mu(x,H) in 
-let ()=prints("Computed new_mu using ", x, "  H=",H) in
-let ()=prints("K_norm of new_mu", K_norm(new_mu)) in
+{let ()=prints("Computed new_mu using ", x, "  H=",H) in}
+{let ()=prints("K_norm of new_mu", K_norm(new_mu)) in}
 let mus_only = for (,,,mu) in mus do mu od in
-let ()=prints("SIZE OF MUS:", #mus_only) in
+{let ()=prints("SIZE OF MUS:", #mus_only) in}
 let (inspan,new_R,new_S,new_T)=in_span(mus_only,new_mu) 
 in if inspan then
 prints("not valid:", x, H, " ", diagram(G,H));
-prints("looked for:", new_mu);
+{prints("looked for:", new_mu);}
 let new_quads=[] in 
 let ()=for j:#new_T do if new_T[j]!=0 then 
 new_quads#:=mus[j] fi od in
@@ -70,15 +72,15 @@ valid_x_H_pairs#:=(x,H);
 let ()=prints("valid:",x,H, " ", diagram(G,H)) in
 let L=L(x,H) in let
  params=all_K_parameters_norm_less_than(L,rho_check(G),N) in
- let ()=prints("got new params ",#params) in
+{ let ()=prints("got new params ",#params) in}
  let new_mus=[(KGBElt,vec,Param,KParamPol)]:[] in
  for p in params do
- let ()=prints("computing mu of ",p, " for ", real_form(parameter(p)),  " of norm ", K_norm(p)) in
+{ let ()=prints("computing mu of ",p, " for ", real_form(parameter(p)),  " of norm ", K_norm(p)) in}
  let m=mu(x,H,p) in 
  let max=K_norm(m) in 
- let ()=prints("max=",max) in
+{ let ()=prints("max=",max) in}
  if K_norm(m)<=multiplier*N then
-   let ()=prints("added mu:", x, " ", H, " ", p) in
+{   let ()=prints("added mu:", x, " ", H, " ", p) in}
    let (x_L,lambda_L)=p in let p_L=parameter(x_L,lambda_L) in
  new_mus#:=(x,H,p_L,m) fi od;
  mus#:=new_mus fi;

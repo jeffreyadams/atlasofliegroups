@@ -32,7 +32,7 @@ set complement(int n,[int] P)=[int]:
 let rv=for i:n do i od in for j in reverse_sort(P) do  rv:=delete(rv,j) od;rv
 
 {add i to list if (and only if) it is new}
-set add_new(int i,[int] list)=[int]: if find(i,list)=-1 then list#i else list fi 
+set add_new(int i,[int] list)=[int]: if find(list,i)=-1 then list#i else list fi 
 
 {elements above x one step in the partial order given by ascents in P}
 set up_neighbors(KGBElt x,[int] P)=[int]:

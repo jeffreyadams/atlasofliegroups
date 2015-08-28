@@ -17,10 +17,10 @@ set dimension (RootDatum rd, vec lambda_in) = int:
   let lambda=
     if is_dominant(rd,lambda_in) then lambda_in
     else
-      let lambda_dominant = dominant(rd,lambda_in)
-      in prints("Warning: changed ", lambda_in, ", to ", lambda_dominant
-               ," to make it dominant")
-      ; lambda_dominant
+      let lambda_dominant = dominant(rd,lambda_in) in 
+     { prints("Warning: changed ", lambda_in, ", to ", lambda_dominant
+               ," to make it dominant");}
+       lambda_dominant
     fi
   then rho=rho(rd), dim=1/1 { now apply Weyl's dimension formula }
   in for a in poscoroots(rd) do dim*:=(lambda+rho)*a/(rho*a) od; dim\1

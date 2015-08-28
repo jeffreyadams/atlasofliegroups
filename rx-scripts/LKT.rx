@@ -89,7 +89,7 @@ set M_LKT (Param p) = ratvec:
   KGB_elt(G,theta(x),torus_bits(x))=KGB_elt(G,theta(x),torus_bits(x_f)) for some x_f in the fundamental fiber
   this differs from the same identity for torus_factor because
   torus_factor(x)=(1+^theta(x))(torus_bits(x)+base_grading_vector)
-  the (1+^theta(x)) terms messes this up. And example is G=SO(6,2), x=KGB(G,11), which 
+  the (1+^theta(x)) terms messes this up. An example is G=SO(6,2), x=KGB(G,11), which 
   should map to KGB(G,5)
 }
 
@@ -117,9 +117,9 @@ set canonical_x_K (Param p)  = KGBElt: canonical_x_K(x(p))
 
 { simplest definition:
   K-types are parametrized by final tempered limit parameters
-  lowest_k_types(p) are found by setting nu=0, and applying make_final
+  lowest_K_types(p) are found by setting nu=0, and applying make_final
 }
-set lowest_k_types (Param p) = [Param]: make_final(p*0)
+set lowest_K_types (Param p) = [Param]: make_final(p*0)
 set lowest_K_types_pol (Param p) = ParamPol: p*0 { conversion suffices }
 
 
@@ -155,11 +155,11 @@ set LKT_final_tempered_limit (Param p) = K_type:
 { returns a list of highest weights of lowest K-types, each might be for a
   different (isomorphic) K_x
   algorithm:
-  compute LKT_final_tempered_limit(q) for each q in lowest_k_types(p)
+  compute LKT_final_tempered_limit(q) for each q in lowest_K_types(p)
   LKT for q is with respect to canonical_x_K(q)
 }
 set LKT_raw (Param p) = [K_type]:
-  for q in lowest_k_types(p) do LKT_final_tempered_limit(q) od
+  for q in lowest_K_types(p) do LKT_final_tempered_limit(q) od
 
 { move all highest weights to those for fixed K_x }
 set LKT_raw (Param p,KGBElt x_K) = (KGBElt,[(ratvec,vec)]):
@@ -241,7 +241,7 @@ set testpsdims (RealForm G) = void:
   for p in all_principal_series(G) do prints(LKT_dimensions(p)) od
 
 { compute all lowest K-types of minimal principal series of split group
-  algorithm: p -> lowest_k_types(p)
+  algorithm: p -> lowest_K_types(p)
     =list of (final tempered limit) parameters, some are repeated,
   make into a ParamPol=sum of distinct parameters with multiplicity,
   compute unique LKT of each parameter occuring

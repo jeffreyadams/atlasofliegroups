@@ -90,9 +90,6 @@ set posroot_inv_Cayley (int i, Param p) = Param:
 
 { some visualisation procedures }
 
-set find ([Param] B, Param p) = int:
-  let i = #B-1 in while i>=0 and B[i]!=p do i-:=1 od; i
-
 set find_posroot (RootDatum rd, vec alpha) = int:
   let pr=posroots(rd) then i = n_columns(pr)-1
   in while i>=0 and pr[i]!=alpha do i-:=1 od; i
