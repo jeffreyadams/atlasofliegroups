@@ -426,7 +426,7 @@ BlockEltList extended_block::down_set(BlockElt n) const
   return result;
 }
 
-DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
+DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 			BlockElt& link)
 {
   switch (p.type)
@@ -608,6 +608,139 @@ DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
   assert(false); return one_complex_ascent; // keep compiler happy
 } // |extended_type|
 
+// the following function assumes a full block, and precomputed |fixed_points|
+DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
+			BlockElt& link, const BitMap& fixed_points)
+{
+  switch (p.type)
+  {
+  case ext_gen::one:
+    switch (block.descentValue(p.s0,z))
+    {
+    case DescentStatus::ComplexAscent:
+      return link=block.cross(p.s0,z), one_complex_ascent;
+    case DescentStatus::ComplexDescent:
+      return link=block.cross(p.s0,z), one_complex_descent;
+    case DescentStatus::RealNonparity:
+      return link=UndefBlock, one_real_nonparity;
+    case DescentStatus::ImaginaryCompact:
+      return link=UndefBlock, one_imaginary_compact;
+    case DescentStatus::ImaginaryTypeI:
+      return link=block.cayley(p.s0,z).first, one_imaginary_single;
+    case DescentStatus::RealTypeII:
+      return link=block.inverseCayley(p.s0,z).first, one_real_single;
+    case DescentStatus::ImaginaryTypeII:
+      { const BlockElt t=block.cayley(p.s0,z).first;
+	if (fixed_points.isMember(t))
+	  return link=t, one_imaginary_pair_fixed;
+	return link=UndefBlock, one_imaginary_pair_switched;
+      }
+    case DescentStatus::RealTypeI:
+      { const BlockElt t=block.inverseCayley(p.s0,z).first;
+	if (fixed_points.isMember(t))
+	  return link=t, one_real_pair_fixed;
+	return link=UndefBlock, one_real_pair_switched;
+      }
+    }
+  case ext_gen::two:
+    switch (block.descentValue(p.s0,z))
+    {
+    case DescentStatus::ComplexAscent:
+      { const BlockElt t=block.cross(p.s0,z);
+	if (t==block.cross(p.s1,z))
+	  return link=t, two_semi_imaginary;
+	return link=block.cross(p.s1,t),  two_complex_ascent;
+      }
+    case DescentStatus::ComplexDescent:
+     { const BlockElt t=block.cross(p.s0,z);
+	if (t==block.cross(p.s1,z))
+	  return link=t, two_semi_real;
+	return link=block.cross(p.s1,t), two_complex_descent;
+     }
+    case DescentStatus::RealNonparity:
+      return link=UndefBlock, two_real_nonparity;
+    case DescentStatus::ImaginaryCompact:
+      return link=UndefBlock, two_imaginary_compact;
+    case DescentStatus::ImaginaryTypeI:
+      { const BlockElt t=block.cayley(p.s0,z).first;
+        if (block.descentValue(p.s1,t)==DescentStatus::ImaginaryTypeI)
+	  return link=block.cayley(p.s1,t).first, two_imaginary_single_single;
+        return fixed_points.isMember(link=block.cayley(p.s1,t).first)
+	  ? two_imaginary_single_double_fixed
+	  : (link=UndefBlock, two_imaginary_single_double_switched);
+      }
+    case DescentStatus::RealTypeII:
+      { const BlockElt t=block.inverseCayley(p.s0,z).first;
+	if (block.descentValue(p.s1,t)==DescentStatus::ImaginaryTypeII)
+	  return link=block.inverseCayley(p.s1,t).first,two_real_single_single;
+	return fixed_points.isMember(link=block.inverseCayley(p.s1,t).first)
+	  ? two_real_single_double_fixed
+	  : (link=UndefBlock, two_real_single_double_switched);
+      }
+    case DescentStatus::ImaginaryTypeII:
+      link=block.cayley(p.s1,block.cayley(p.s0,z).first).first;
+      if (not fixed_points.isMember(link))
+	link=block.cross(p.s0,link), assert(fixed_points.isMember(link));
+      return two_imaginary_double_double;
+    case DescentStatus::RealTypeI:
+      link=block.inverseCayley(p.s1,block.inverseCayley(p.s0,z).first).first;
+      if (not fixed_points.isMember(link))
+	link=block.cross(p.s0,link), assert(fixed_points.isMember(link));
+      return two_real_double_double;
+    }
+  case ext_gen::three:
+    switch (block.descentValue(p.s0,z))
+    {
+    case DescentStatus::RealNonparity:
+      return link=UndefBlock, three_real_nonparity;
+    case DescentStatus::ImaginaryCompact:
+      return link=UndefBlock, three_imaginary_compact;
+    case DescentStatus::ComplexAscent:
+      { const BlockElt t=block.cross(p.s0,z);
+	if (t==block.cross(p.s1,t))
+	{
+	  assert(block.descentValue(p.s1,t)==DescentStatus::ImaginaryTypeII);
+	  link=block.cayley(p.s1,t).first;
+	  if (not fixed_points.isMember(link))
+	    link=block.cross(p.s0,link), assert(fixed_points.isMember(link));
+	  return three_semi_imaginary;
+	}
+	link=block.cross(p.s0,block.cross(p.s1,t));
+	assert(fixed_points.isMember(link));
+	return three_complex_ascent;
+      }
+    case DescentStatus::ComplexDescent:
+      link=block.cross(p.s0,z);
+      { const BlockElt t=block.cross(p.s0,z);
+	if (t==block.cross(p.s1,t))
+	{
+	  assert(block.descentValue(p.s1,t)==DescentStatus::RealTypeI);
+	  link=block.inverseCayley(p.s1,link).first;
+	  if (not fixed_points.isMember(link))
+	    link=block.cross(p.s0,link), assert(fixed_points.isMember(link));
+	  return three_semi_real;
+	}
+	link=block.cross(p.s0,block.cross(p.s1,link));
+	assert(fixed_points.isMember(link));
+	return three_complex_descent;
+      }
+    case DescentStatus::ImaginaryTypeI:
+      link=block.cross(p.s1,block.cayley(p.s0,z).first);
+      assert(link==block.cross(p.s0,block.cayley(p.s1,z).first));
+      assert(fixed_points.isMember(link));
+      return three_imaginary_semi;
+    case DescentStatus::RealTypeII:
+      link=block.cross(p.s1,block.inverseCayley(p.s0,z).first);
+      assert(link==block.cross(p.s0,block.inverseCayley(p.s1,z).first));
+      assert(fixed_points.isMember(link));
+      return three_real_semi;
+    case DescentStatus::ImaginaryTypeII: case DescentStatus::RealTypeI:
+      assert(false); // these cases should never occur
+    }
+  } // |switch (p.type)|
+  assert(false); return one_complex_ascent; // keep compiler happy
+} // |extended_type|
+
 param complex_cross(ext_gen p, const param& E)
 { const RootDatum& rd = E.rc().rootDatum();
   const InvolutionTable& i_tab = E.rc().complexGroup().involution_table();
@@ -768,7 +901,7 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	  result = one_imaginary_single;
 
 	  Weight diff = // called $-\sigma$ in table 2 of [Ptr] (NOTE MINUS)
-	      matreduc::find_solution(th_1,alpha); // solutions equivalent ?
+	      matreduc::find_solution(th_1,alpha); // solutions are equivalent
 	  links.push_back(param // Cayley link
 			  (E.ctxt,new_tw,
 			   E.lambda_rho + first + rho_r_shift,
@@ -1224,13 +1357,43 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
     break;
   }
   return result;
+} // |type|
+
+KGBElt twisted (const KGB& kgb, KGBElt x,
+		const WeightInvolution& delta, const weyl::Twist& twist)
+{
+  RatCoweight g_rho_l = kgb.torus_part_global(x);
+  delta.right_mult(g_rho_l.numerator());
+  const RatCoweight diff = (g_rho_l - kgb.base_grading_vector()).normalize();
+  if (diff.denominator()!=1)
+    return UndefKGB;
+
+  TorusPart delta_t(diff.numerator());
+
+  const WeylGroup& W = kgb.complexGroup().weylGroup();
+  TitsElt te = kgb.titsElt(x);
+  WeylElt delta_w = W.translation(te.w(),twist);
+  TitsElt delta_te (kgb.complexGroup().titsGroup(),delta_t,delta_w);
+  return kgb.lookup(delta_te);
+}
+
+// involution for dual KGB is just $\delta$ transposed, no factor $-w_0$ here
+// both |kgb| adn |dual_kgb| must be knwon to be twist-stable
+BlockElt twisted (const Block& block,
+		  const KGB& kgb, const KGB& dual_kgb, // all are needed
+		  BlockElt z,
+		  const WeightInvolution& delta,
+		  const weyl::Twist& twist)
+{ return block.element
+    (twisted(kgb,block.x(z),delta,twist),
+     twisted(dual_kgb,block.y(z),delta.transposed(),twist));
 }
 
 extended_block::extended_block
   (const Block_base& block,const TwistedWeylGroup& W)
   : parent(block)
   , tW(W)
-  , folded(blocks::folded(block.Dynkin(),block.fold_orbits()))
+  , folded(block.fold_orbits(),block.Dynkin())
   , info()
   , data(parent.folded_rank())
   , l_start(parent.length(parent.size()-1)+2)
@@ -1339,7 +1502,158 @@ extended_block::extended_block
 	dest.second = child_nr[second];
     }
   } // |for(n)|
-} // |extended_block::extended_block|
+} // |extended_block::extended_block| (with inner twist)
+
+
+ext_block::ext_block
+  (const ComplexReductiveGroup& G,
+   const Block& block,
+   const KGB& kgb, const KGB& dual_kgb, // all are needed
+   const WeightInvolution& delta)
+  : parent(block)
+  , orbits(fold_orbits(G.rootDatum(),delta))
+  , folded(orbits,block.Dynkin())
+  , info()
+  , data(orbits.size()) // create that many empty vectors
+  , flipped_edges()
+{
+  unsigned int folded_rank = orbits.size();
+
+  std::vector<BlockElt> child_nr(parent.size(),UndefBlock);
+  std::vector<BlockElt> parent_nr;
+  BitMap fixed_points(parent.size());
+
+  { // compute |child_nr| and |parent_nr| tables
+    weyl::Twist twist(orbits);
+
+    if (twisted(kgb,0,delta,twist)==UndefKGB and
+	twisted(dual_kgb,0,delta.transposed(),twist)==UndefKGB)
+      return; // if one or other not delta-stable, leave |size==0| and quit
+
+    for (BlockElt z=0; z<parent.size(); ++z)
+    {
+      BlockElt tz = twisted(block,kgb,dual_kgb,z,delta,twist);
+      if (tz==z)
+      {
+	fixed_points.insert(z);
+	child_nr[z]=parent_nr.size();
+	parent_nr.push_back(z);
+      }
+    }
+  }
+
+  info.reserve(parent_nr.size());  // reserve size of (smaller) extended block
+  for (weyl::Generator s=0; s<folded_rank; ++s)
+    data[s].reserve(parent_nr.size()); // same for each |data[s]|.
+
+  for (BlockElt n=0; n<parent_nr.size(); ++n)
+  {
+    BlockElt z=parent_nr[n];
+    info.push_back(elt_info(z));
+    for (weyl::Generator oi=0; oi<orbits.size(); ++oi)
+    {
+      const weyl::Generator s = orbits[oi].s0, t=orbits[oi].s1;
+      BlockElt link, second = UndefBlock; // these index parent block elements
+      DescValue type = extended_type(block,z,orbits[oi],link,fixed_points);
+      data[oi].push_back(block_fields(type)); // create entry
+
+      if (link==UndefBlock)
+	continue; // |s| done for imaginary compact and real nonparity cases
+
+      if (is_descent(type)) // then set or check length from predecessor
+      {
+	if (info.back().length==0)
+	  info.back().length=info[child_nr[link]].length+1;
+	else
+	  assert(info.back().length==info[child_nr[link]].length+1);
+      }
+
+      // now maybe set |second|, depending on case
+      switch (type)
+      {
+      default: break;
+
+      case one_imaginary_single:
+      case one_real_single: // in these cases: parent cross neighbour for |s|
+	second = parent.cross(s,z);
+	break;
+
+      case one_real_pair_fixed:
+      case one_imaginary_pair_fixed: // in these cases get second Cayley image
+	second = parent.cross(s,link);
+	break;
+
+      case two_imaginary_single_single:
+      case two_real_single_single: // here: double cross neighbour for |s|
+	second = parent.cross(t,parent.cross(s,z));
+	assert(second==parent.cross(s,parent.cross(t,z)));
+	break;
+
+      case two_imaginary_single_double_fixed:
+      case two_real_single_double_fixed: // find second Cayley image, which is
+	second = parent.cross(s,link); // parent cross link
+	assert(second==parent.cross(t,link)); // (for either generator)
+	if (link>second) // to make sure ordering is same for a twin pair
+	  std::swap(link,second); // we order both by block number (for now)
+	break;
+
+      case two_imaginary_double_double:
+      case two_real_double_double: // find second Cayley image
+	second = parent.cross(t,parent.cross(s,link));
+	assert(second==parent.cross(s,parent.cross(t,link)));
+	break;
+      } // |switch(type)|
+
+      // enter translations of |link| and |second| to child block numbering
+      BlockEltPair& dest = data[oi].back().links;
+      dest.first=child_nr[link];
+      if (second!=UndefBlock)
+	dest.second = child_nr[second];
+    }
+  } // |for(n)|
+} // |ext_block::ext_block|
+
+BlockElt ext_block::cross(weyl::Generator s, BlockElt n) const
+{
+  switch (descent_type(s,n))
+  {
+  case one_complex_ascent:
+  case one_complex_descent:
+  case two_complex_ascent:
+  case two_complex_descent:
+  case three_complex_ascent:
+  case three_complex_descent:
+    return data[s][n].links.first;
+
+    // zero valued Cayleys have trivial cross actions
+  case one_real_nonparity: case one_imaginary_compact:
+  case one_imaginary_pair_switched: case one_real_pair_switched:
+  case two_real_nonparity: case two_imaginary_compact:
+  case two_imaginary_single_double_switched:
+  case two_real_single_double_switched:
+  case three_real_nonparity: case three_imaginary_compact:
+
+    // double valued Cayleys also have trivial cross actions
+  case one_real_pair_fixed: case one_imaginary_pair_fixed:
+  case two_real_double_double: case two_imaginary_double_double:
+
+    // cases with back-and-forth cross actions
+  case two_semi_imaginary: case two_semi_real:
+  case two_imaginary_single_double_fixed: case two_real_single_double_fixed:
+  case three_semi_imaginary: case three_real_semi:
+  case three_imaginary_semi: case three_semi_real:
+    return n;
+
+    // some single valued extended Cayleys use second link for cross action
+  case one_imaginary_single:
+  case one_real_single:
+  case two_imaginary_single_single:
+  case two_real_single_single:
+    return data[s][n].links.second;
+
+  }
+  assert(false); return UndefBlock; // keep compiler happy
+} // |ext_block::cross|
 
 // coefficient of neighbour |sx| for $s$ in action $(T_s+1)*a_x$
 Pol extended_block::T_coef(weyl::Generator s, BlockElt sx, BlockElt x) const

@@ -375,7 +375,7 @@ InnerClassType dual_type(InnerClassType ict, const LieType& lt)
 
    The dual inner class contains (as non-based root datum involution) the
    negated transpose of the distinguished involution of the inner class. This
-   amounts to interchanging inner class types 'c' and 's'. for complex ('C')
+   amounts to interchanging inner class types 'c' and 's'. For complex ('C')
    inner classes we currently do nothing, although if the Lie type is XX where
    -1 is not in the Weyl group of X (i.e., such that 's' is not 'c' for X),
    then the negated transpose distinguished involution is not in the "same"
@@ -487,6 +487,9 @@ WeightInvolution simple_involution(const SimpleLieType& slt, simple_ict tp)
       std::swap(result(2,2),result(2,4));
       std::swap(result(4,2),result(4,4));
       break;
+    case 'T':
+      assert(r==1);
+      result(0,0)=-1;
     }
   return result;
 }

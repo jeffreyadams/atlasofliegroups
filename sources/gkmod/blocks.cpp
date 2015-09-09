@@ -195,7 +195,8 @@ Block_base::Block_base(const Block_base& b) // copy constructor, unused
 
 Block_base::~Block_base() { delete d_bruhat; delete klc_ptr; }
 
-/*!\brief Look up element by |x|, |y| coordinates
+/*
+  Look up element by |x|, |y| coordinates
 
   Precondition: |x| and |y| should be compatible: such a block element exists
 
@@ -1748,37 +1749,6 @@ std::vector<BlockElt> dual_map(const Block_base& b, const Block_base& dual_b)
   return result;
 }
 
-// build Dynkin diagram resulting from folding by diagram involution |fold|
-DynkinDiagram folded
-  (const DynkinDiagram& diag, const std::vector<ext_gen>& orbit)
-{
-  unsigned n=orbit.size();
-  // we can only build complete Dynkin diagrams, so compute the Cartan matrix
-  int_Matrix Cartan(n,n,0);
-  for (unsigned int i=0; i<n; ++i)
-  {
-    Cartan(i,i) = 2;
-    RankFlags neighbours = diag.star(orbit[i].s0);
-    if (orbit[i].length()>1)
-      neighbours |= diag.star(orbit[i].s1);
-    for (unsigned j=n; --j>i;)
-      if (neighbours[orbit[j].s0])
-      {
-	int d=orbit[i].length()-orbit[j].length();
-	if (d==0)
-	{
-	  Cartan(i,j)=diag.Cartan_entry(i,j); // for same type orbits just
-	  Cartan(j,i)=diag.Cartan_entry(j,i); // copy Cartan matrix entry
-	}
-	else // unequal type, mark $-2$ when first index is longer than second
-	{
-	  Cartan(i,j)=d>0 ? -2 : -1;
-	  Cartan(j,i)=d<0 ? -2 : -1;
-	}
-      }
-  }
-  return DynkinDiagram(Cartan);
-} // |folded|
 
 BitMap common_Cartans(RealReductiveGroup& GR, RealReductiveGroup& dGR)
 { return GR.Cartan_set() & GR.complexGroup().dual_Cartan_set(dGR.realForm()); }

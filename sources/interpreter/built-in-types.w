@@ -3152,7 +3152,7 @@ void build_KGB_element_wrapper(expression_base::level l)
   TitsElt a (G.titsGroup(),t,tw);
 
   KGBElt x = rf->kgb().lookup(a);
-  if (x== rf->kgb().size())
+  if (x==UndefKGB)
     throw runtime_error("KGB element not present");
 
   if (l==expression_base::no_value)
@@ -3380,7 +3380,7 @@ void block_element_wrapper(expression_base::level l)
 @ The inverse operation of decomposing a block element into a KGB element and
 a dual KGB element is also useful. While one could construct the containing
 |Block| value from the given values |x|, |y|, this function is probably most
-used repeatedly with a fixed known lock, so it is more efficient to require
+used repeatedly with a fixed known block, so it is more efficient to require
 that such a block be passed as a parameter. Much of the effort here goes into
 testing that the parameters supplied are coherent with each other; after this,
 the method |Block::element| does the actual work of looking up the pair

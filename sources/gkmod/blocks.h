@@ -22,7 +22,8 @@
 #include "atlas_types.h"
 #include "tits.h"	// representative of $y$ in |non_integral_block|
 #include "descents.h"	// inline methods
-#include "dynkin.h"     // DynkinDiagram
+#include "lietype.h"    // |ext_gen|;
+#include "dynkin.h"     // |DynkinDiagram|
 
 namespace atlas {
 
@@ -42,29 +43,11 @@ namespace blocks {
 
   BitMap common_Cartans(RealReductiveGroup& GR,	RealReductiveGroup& dGR);
 
-  struct ext_gen; // defined below, represents fold-orbit of Weyl generators
   DynkinDiagram folded // produced folded version of diagram, given orbits
-    (const DynkinDiagram& diag, const std::vector<ext_gen>& orbits);
+    (const DynkinDiagram& diag, const ext_gens& orbits);
 
 
 /******** type definitions **************************************************/
-
-struct ext_gen // generator of extended Weyl group
-{
-  enum { one, two, three } type;
-  weyl::Generator s0,s1;
-  WeylWord w_tau;
-
-  explicit ext_gen (weyl::Generator s)
-    : type(one), s0(s), s1(~0), w_tau() { w_tau.push_back(s); }
-  ext_gen (bool commute, weyl::Generator s, weyl::Generator t)
-  : type(commute ? two : three), s0(s), s1(t)
-  { w_tau.push_back(s);  w_tau.push_back(t);
-    if (not commute) w_tau.push_back(s);
-  }
-
-  int length() const { return type+1; }
-};
 
 // The class |BlockBase| serves external functionality, not block construction
 class Block_base
@@ -100,7 +83,7 @@ class Block_base
 
   std::vector<EltInfo> info; // its size defines the size of the block
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
-  std::vector<ext_gen> orbits;
+  ext_gens orbits;
 
   // map KGB element |x| to the first block element |z| with |this->x(z)>=x|
   // this vector may remain empty if |element| virtual methodis redefined
@@ -137,13 +120,13 @@ class Block_base
 
   const DynkinDiagram& Dynkin() const { return dd; }
   ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
-  const std::vector<ext_gen>& fold_orbits() const { return orbits; }
+  const ext_gens& fold_orbits() const { return orbits; }
 
   KGBElt x(BlockElt z) const { assert(z<size()); return info[z].x; }
   KGBElt y(BlockElt z) const { assert(z<size()); return info[z].y; }
 
-  // Look up element by |x|, |y| coordinates
-  virtual BlockElt element(KGBElt x,KGBElt y) const;
+  // Look up element by |x|, |y| coordinates, assumed to exist
+  BlockElt element(KGBElt x,KGBElt y) const;
 
   size_t length(BlockElt z) const { return info[z].length; }
 
@@ -379,8 +362,11 @@ class non_integral_block : public param_block
     (const repr::Rep_context& rc,
      StandardRepr sr); // by value,since it will be made dominant before use
 
+  // this non-virtually overrides the |Block_base::element| method
+  BlockElt element(KGBElt x,KGBElt y) const; // redefined using |z_hash|
+
+
   // virtual methods
-  virtual BlockElt element(KGBElt x,KGBElt y) const; // redefined using |z_hash|
   virtual std::ostream& print // defined in block_io.cpp
     (std::ostream& strm, BlockElt z,bool as_invol_expr) const;
 

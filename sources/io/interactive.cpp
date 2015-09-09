@@ -259,7 +259,7 @@ size_t get_Cartan_class(const BitMap& cs)
 void get_group_type
   (ComplexReductiveGroup*& pG,
    complexredgp_io::Interface*& pI,
-   WeightList& basis)
+   lietype::Layout& layout, WeightList& basis) // export these two
 {
   // first get the Lie type
   LieType lt; getInteractive(lt);  // may throw an InputError
@@ -277,6 +277,7 @@ void get_group_type
   // commit (unless |RootDatum(prd)| should throw: then nothing is changed)
   pG=new ComplexReductiveGroup(prd,inv);
   pI=new complexredgp_io::Interface(*pG,lo);
+  layout = lo;
   basis = std::move(b);
   // the latter constructor also constructs two realform interfaces in *pI
 }
@@ -1096,7 +1097,7 @@ WeightInvolution get_commuting_involution
     WeightInvolution theta =
       lietype::simple_involution(slt,simple_ict::unequal_rank);
     delta.set_block(k,k,theta);
-    if (icf[*it].get().kind==simple_ict::complex);
+    if (icf[*it].get().kind==simple_ict::complex)
       delta.set_block(k+r,k+r,theta);
   }
   for (auto it=internal_swap.begin(); it(); ++it)
@@ -1118,7 +1119,7 @@ WeightInvolution get_commuting_involution
 	    << " give a new 'type' command\nwith different"
 	    << " kernel generators in order to do that)" << std::endl;
   throw error::InputError();
-}
+} // |get_commuting_involution|
 
 
 /*

@@ -27,6 +27,8 @@ namespace commands {
   extern commands::CommandTree& main_mode; // defined in commands.cpp
   ComplexReductiveGroup& currentComplexGroup();
   ComplexReductiveGroup& current_dual_group();
+  const lietype::Layout& current_layout();
+  const WeightList& current_lattice_basis();
   complexredgp_io::Interface& currentComplexInterface();
   void replaceComplexGroup(ComplexReductiveGroup*
 			   ,complexredgp_io::Interface*);

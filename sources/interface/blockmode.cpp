@@ -72,6 +72,7 @@ namespace {
   void blockstabilizer_f();
   void blocktwist_f();
   void extblock_f();
+  void gextblock_f();
   void klbasis_f();
   void kllist_f();
   void primkl_f();
@@ -130,7 +131,9 @@ CommandNode blockNode()
   result.add("blockstabilizer",blockstabilizer_f,
 	     "print the real Weyl group for the block",std_help);
   result.add("blocktwist",blocktwist_f,"shows twist orbits on block");
-  result.add("extblock",extblock_f,"prints block for extended group");
+  result.add("extblock",extblock_f,
+	     "prints block for group extended by inner class involution");
+  result.add("gextblock",gextblock_f,"prints block for general extended group");
   result.add("klbasis",klbasis_f,
 	     "prints the KL basis for the Hecke module",std_help);
   result.add("kllist",kllist_f,
@@ -446,6 +449,18 @@ void extblock_f()
 {
   ext_block::extended_block eblock(currentBlock(),
 				   currentComplexGroup().twistedWeylGroup());
+  ioutils::OutputFile file;
+  eblock.print_to(file);
+}
+
+void gextblock_f()
+{
+  WeightInvolution delta = interactive::get_commuting_involution
+    (commands::current_layout(), commands::current_lattice_basis());
+  ext_block::ext_block eblock(currentComplexGroup(), currentBlock(),
+			      currentRealGroup().kgb(),
+			      currentDualRealGroup().kgb(),
+			      delta);
   ioutils::OutputFile file;
   eblock.print_to(file);
 }

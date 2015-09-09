@@ -200,44 +200,102 @@ std::ostream& extended_block::print_to (std::ostream& strm) const
   return strm;
 } // |print_to|
 
+std::ostream& ext_block::print_to (std::ostream& strm) const
+{
+  if (size()==0)
+    return strm << "Empty extended block (block is not twist-stable)."
+		<< std::endl;
+  // compute maximal width of entry
+  int width = ioutils::digits(z(size()-1),10ul);
+  int lwidth = ioutils::digits(length(size()-1),10ul);
+
+  const int pad = 2;
+
+  for (BlockElt n=0; n<size(); ++n)
+  {
+    // print parent entry number
+    strm << std::setw(width) << z(n);
+
+    // print length
+    strm << std::setw(lwidth+pad) << length(n) << std::setw(pad) << "";
+
+    // print descents types
+    if (rank()==0)
+      strm << '[';
+    else
+      for (weyl::Generator s=0; s<rank(); ++s)
+	strm << (s==0 ? '[' : ',') << descent_code(descent_type(s,n));
+    strm << ']';
+
+    // print cross actions
+    for (weyl::Generator s = 0; s < rank(); ++s)
+    {
+      strm << std::setw(width+pad);
+      if (cross(s,n)==UndefBlock) strm << '*';
+      else strm << z(cross(s,n));
+    }
+    strm << std::setw(pad+1) << "";
+
+    // print Cayley transforms
+    for (size_t s = 0; s < rank(); ++s)
+    {
+      strm << '(' << std::setw(width);
+      if (is_complex(descent_type(s,n)) or data[s][n].links.first==UndefBlock)
+	strm << '*';
+      else strm << z(data[s][n].links.first);
+      strm << ',' << std::setw(width);
+      if (has_double_image(descent_type(s,n))
+	  and data[s][n].links.second!=UndefBlock)
+	strm << z(data[s][n].links.second);
+      else
+	strm << '*';
+      strm << ')' << std::setw(pad) << "";
+    }
+
+    strm << std::endl;
+  } // |for (n)|
+
+  return strm;
+} // |print_to|
+
 const char* descent_code(DescValue v)
 {
   switch(v)
   {
-  case one_complex_ascent: return "1C+ ";
-  case one_complex_descent: return "1C- ";
-  case one_imaginary_single: return "1i1 ";
-  case one_real_pair_fixed: return "1r1f";
-  case one_imaginary_pair_fixed: return "1i2f";
-  case one_real_single: return "1r2 ";
-  case one_imaginary_pair_switched: return "1i2s";
-  case one_real_pair_switched: return "1r1s";
-  case one_real_nonparity: return "1rn ";
-  case one_imaginary_compact: return "1ic ";
+  case one_complex_ascent: return "1C+  ";
+  case one_complex_descent: return "1C-  ";
+  case one_imaginary_single: return "1i1  ";
+  case one_real_pair_fixed: return "1r1f ";
+  case one_imaginary_pair_fixed: return "1i2f ";
+  case one_real_single: return "1r2  ";
+  case one_imaginary_pair_switched: return "1i2s ";
+  case one_real_pair_switched: return "1r1s ";
+  case one_real_nonparity: return "1rn  ";
+  case one_imaginary_compact: return "1ic  ";
 
-  case two_complex_ascent: return "2C+ ";
-  case two_complex_descent: return "2C- ";
-  case two_semi_imaginary: return "2Ci ";
-  case two_semi_real: return "2Cr ";
-  case two_imaginary_single_single: return "2i11";
-  case two_real_double_double: return "2r11";
+  case two_complex_ascent: return "2C+  ";
+  case two_complex_descent: return "2C-  ";
+  case two_semi_imaginary: return "2Ci  ";
+  case two_semi_real: return "2Cr  ";
+  case two_imaginary_single_single: return "2i11 ";
+  case two_real_double_double: return "2r11 ";
   case two_imaginary_single_double_fixed: return "2i12f";
   case two_real_single_double_fixed: return "2r21f";
-  case two_imaginary_double_double: return "2i22";
-  case two_real_single_single: return "2r22";
+  case two_imaginary_double_double: return "2i22 ";
+  case two_real_single_single: return "2r22 ";
   case two_imaginary_single_double_switched: return "2i12s";
   case two_real_single_double_switched: return "2r21s";
-  case two_real_nonparity: return "2rn ";
-  case two_imaginary_compact: return "2ic ";
+  case two_real_nonparity: return "2rn  ";
+  case two_imaginary_compact: return "2ic  ";
 
-  case three_complex_ascent: return "3C+ ";
-  case three_complex_descent: return "3C- ";
-  case three_semi_imaginary: return "3Ci ";
-  case three_real_semi: return "3r  ";
-  case three_imaginary_semi: return "3i  ";
-  case three_semi_real: return "3Cr ";
-  case three_real_nonparity: return "3rn ";
-  case three_imaginary_compact: return "3ic ";
+  case three_complex_ascent: return "3C+  ";
+  case three_complex_descent: return "3C-  ";
+  case three_semi_imaginary: return "3Ci  ";
+  case three_real_semi: return "3r   ";
+  case three_imaginary_semi: return "3i   ";
+  case three_semi_real: return "3Cr  ";
+  case three_real_nonparity: return "3rn  ";
+  case three_imaginary_compact: return "3ic  ";
   }
   assert(false); return NULL;
 }

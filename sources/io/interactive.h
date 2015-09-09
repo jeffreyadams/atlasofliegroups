@@ -48,7 +48,8 @@ namespace interactive {
   size_t get_Cartan_class(const BitMap& cs);
 
   void get_group_type
-    (ComplexReductiveGroup*&, complexredgp_io::Interface*&, WeightList& basis);
+    (ComplexReductiveGroup*&, complexredgp_io::Interface*&,
+     lietype::Layout& layout, WeightList& basis);
 
   void getInteractive(LieType&);
 

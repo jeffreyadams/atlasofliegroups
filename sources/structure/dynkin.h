@@ -92,7 +92,8 @@ class DynkinDiagram {
 
   DynkinDiagram() {}
   explicit DynkinDiagram(const int_Matrix& Cartan);
-  DynkinDiagram(const RankFlags& selection, const DynkinDiagram& d);
+  DynkinDiagram(const RankFlags& selection, const DynkinDiagram& d); // extract
+  DynkinDiagram(const ext_gens& orbits, const DynkinDiagram& d); // folded
 
   ~DynkinDiagram() {}
 

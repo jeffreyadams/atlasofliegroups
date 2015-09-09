@@ -1,6 +1,5 @@
-/*!
-\file
-  \brief Implementation of the RootDatum class.
+/*
+  Implementation of the RootDatum class and related functions.
 
   What we call a root datum in this program is what is usually called
   a based root datum.
@@ -42,7 +41,8 @@
 
 #include "arithmetic.h"
 
-#include "lietype.h"	// value returned from |LieType| method
+#include "lietype.h"	// value returned from |LieType| method, |ext_gen|
+
 #include "dynkin.h"
 #include "lattice.h"
 #include "bitmap.h"  // for root sets
@@ -85,6 +85,8 @@
 
 namespace atlas {
 
+namespace rootdata {
+
 
 /*****************************************************************************
 
@@ -105,8 +107,6 @@ namespace atlas {
   full rank of our fundamental lattice containing Q.
 
 ******************************************************************************/
-
-namespace rootdata {
 
 struct RootSystem::root_compare
 {
@@ -1082,10 +1082,12 @@ RatCoweight rho_check (const RootDatum& rd, RootNbrSet sub_posroots)
   { return RatCoweight(rd.dual_twoRho(sub_posroots),2); }
 
 
-/*!
-\brief Returns matrix of dual involution of the one given by |q|
+/*
+  Return matrix of dual fundamental involution related to fundamental |q|
 
-  Precondition: |q| is an involution of |rd| as a _based_ root datum
+  Precondition: |q| is an involution of |rd| as a _based_ root datum .
+  Note that |rd| is not the dual root datum, although the result will be a
+  based involution for that dual datum
 
   Postcondition: result is an involution of the based root datum dual to |rd|
 
@@ -1286,16 +1288,33 @@ RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma)
   return RationalList(fracs.begin(),fracs.end());
 }
 
-} // |namespace rootdata|
+ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution delta)
+{
+  ext_gens result;
+  const Permutation pi = rd.rootPermutation(delta);
+  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+  {
+    RootNbr alpha=rd.simpleRootNbr(s);
+    if (pi[alpha]==alpha)
+      result.push_back(ext_gen(s));
+    else if (pi[alpha]>alpha)
+    {
+      if (rd.is_simple_root(pi[alpha]))
+	result.push_back(ext_gen(rd.isOrthogonal(alpha,pi[alpha]),
+				 s,rd.simpleRootIndex(pi[alpha])));
+      else
+	throw std::runtime_error("Not a distinguished involution");
+    }
+  }
+  return result;
+}
+
 
 /*****************************************************************************
 
                 Chapter III -- Auxiliary methods.
 
 ******************************************************************************/
-
-namespace rootdata {
-
 
 
 // a class for making a compare object for indices, backwards lexicographic

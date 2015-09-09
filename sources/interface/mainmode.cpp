@@ -12,6 +12,7 @@
 #include "commands.h"
 #include "test.h"     // to absorb test commands
 
+#include "lietype.h"
 #include "basic_io.h"
 #include "complexredgp.h"
 #include "complexredgp_io.h"
@@ -82,6 +83,7 @@ namespace {
   // local variables
   // most of these have been changed to pointers to avoid swapping of G_C
 
+  lietype::Layout layout;
   WeightList lattice_basis; // allows mapping Lie type info to complex group
   ComplexReductiveGroup* G_C_pointer=NULL;
   ComplexReductiveGroup* dual_G_C_pointer=NULL;
@@ -109,6 +111,10 @@ ComplexReductiveGroup& current_dual_group()
       (currentComplexGroup(), tags::DualTag());
   return *dual_G_C_pointer;
 }
+
+
+const lietype::Layout& current_layout() { return layout; }
+const WeightList& current_lattice_basis() { return lattice_basis; }
 
 complexredgp_io::Interface& currentComplexInterface()
 {
@@ -144,7 +150,7 @@ namespace {
 void main_mode_entry() throw(EntryError)
 {
   try {
-    interactive::get_group_type(G_C_pointer,G_I_pointer,lattice_basis);
+    interactive::get_group_type(G_C_pointer,G_I_pointer,layout,lattice_basis);
   }
   catch(error::InputError& e) {
     e("complex group not set");
@@ -402,7 +408,7 @@ void type_f()
   {
     ComplexReductiveGroup* G;
     complexredgp_io::Interface* I;
-    interactive::get_group_type(G,I,lattice_basis);
+    interactive::get_group_type(G,I,layout,lattice_basis);
     replaceComplexGroup(G,I);
     drop_to(main_mode); // drop invalidated descendant modes if called from them
   }

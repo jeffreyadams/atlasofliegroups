@@ -72,6 +72,8 @@ RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
 RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
 
+ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution delta);
+
 } // |namespace rootdata|
 
 /******** type definitions **************************************************/
