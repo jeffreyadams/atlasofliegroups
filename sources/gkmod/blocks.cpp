@@ -755,7 +755,13 @@ const ComplexReductiveGroup& param_block::complexGroup() const
 const InvolutionTable& param_block::involution_table() const
   { return complexGroup().involution_table(); }
 
-
+BlockElt param_block::lookup(KGBElt parent_x, const TorusElement& y_rep)
+{
+  const y_entry ye =
+    involution_table().pack(y_rep,realGroup().kgb().inv_nr(parent_x));
+  KGBElt y = y_hash.find(ye);
+  return element(x_of[parent_x],y);
+}
 
 nblock_help::nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
   : kgb(GR.kgb()), rd(subsys.parent_datum()), sub(subsys)
