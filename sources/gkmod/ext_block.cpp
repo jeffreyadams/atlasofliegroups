@@ -671,7 +671,7 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
       }
     case DescentStatus::RealTypeII:
       { const BlockElt t=block.inverseCayley(p.s0,z).first;
-	if (block.descentValue(p.s1,t)==DescentStatus::ImaginaryTypeII)
+	if (block.descentValue(p.s1,t)==DescentStatus::RealTypeII)
 	  return link=block.inverseCayley(p.s1,t).first,two_real_single_single;
 	return fixed_points.isMember(link=block.inverseCayley(p.s1,t).first)
 	  ? two_real_single_double_fixed
@@ -1517,11 +1517,7 @@ ext_block::ext_block
   , data(orbits.size()) // create that many empty vectors
   , flipped_edges()
 {
-  unsigned int folded_rank = orbits.size();
-
-  std::vector<BlockElt> child_nr(parent.size(),UndefBlock);
-  std::vector<BlockElt> parent_nr;
-  BitMap fixed_points(parent.size());
+  BitMap fixed_points(block.size());
 
   { // compute |child_nr| and |parent_nr| tables
     weyl::Twist twist(orbits);
@@ -1530,15 +1526,27 @@ ext_block::ext_block
 	twisted(dual_kgb,0,delta.transposed(),twist)==UndefKGB)
       return; // if one or other not delta-stable, leave |size==0| and quit
 
-    for (BlockElt z=0; z<parent.size(); ++z)
+    for (BlockElt z=0; z<block.size(); ++z)
     {
       BlockElt tz = twisted(block,kgb,dual_kgb,z,delta,twist);
       if (tz==z)
-      {
 	fixed_points.insert(z);
-	child_nr[z]=parent_nr.size();
-	parent_nr.push_back(z);
-      }
+    }
+  }
+
+  complete_construction(fixed_points);
+}
+
+void ext_block::complete_construction(const BitMap& fixed_points)
+{
+  unsigned int folded_rank = orbits.size();
+  std::vector<BlockElt> child_nr(parent.size(),UndefBlock);
+  std::vector<BlockElt> parent_nr(fixed_points.size());
+  { KGBElt x=0;
+    for (auto it=fixed_points.begin(); it(); ++it,++x)
+    {
+      parent_nr[x]=*it;
+      child_nr[*it]=x;
     }
   }
 
@@ -1554,7 +1562,7 @@ ext_block::ext_block
     {
       const weyl::Generator s = orbits[oi].s0, t=orbits[oi].s1;
       BlockElt link, second = UndefBlock; // these index parent block elements
-      DescValue type = extended_type(block,z,orbits[oi],link,fixed_points);
+      DescValue type = extended_type(parent,z,orbits[oi],link,fixed_points);
       data[oi].push_back(block_fields(type)); // create entry
 
       if (link==UndefBlock)

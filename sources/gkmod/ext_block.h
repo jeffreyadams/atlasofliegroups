@@ -281,6 +281,9 @@ class ext_block
   // print whole block to stream (name chosen to avoid masking by |print|)
   std::ostream& print_to(std::ostream& strm) const; // defined in |block_io|
 
+private:
+  void complete_construction(const BitMap& fixed_points);
+
 }; // |class ext_block|
 
 
