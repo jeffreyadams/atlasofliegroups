@@ -755,7 +755,7 @@ const ComplexReductiveGroup& param_block::complexGroup() const
 const InvolutionTable& param_block::involution_table() const
   { return complexGroup().involution_table(); }
 
-BlockElt param_block::lookup(KGBElt parent_x, const TorusElement& y_rep)
+BlockElt param_block::lookup(KGBElt parent_x, const TorusElement& y_rep) const
 {
   const y_entry ye =
     involution_table().pack(y_rep,realGroup().kgb().inv_nr(parent_x));

@@ -125,8 +125,8 @@ class Block_base
   KGBElt x(BlockElt z) const { assert(z<size()); return info[z].x; }
   KGBElt y(BlockElt z) const { assert(z<size()); return info[z].y; }
 
-  // Look up element by |x|, |y| coordinates, assumed to exist
-  BlockElt element(KGBElt x,KGBElt y) const;
+  // Look up element by |x|, |y| coordinates
+  virtual BlockElt element(KGBElt x,KGBElt y) const;
 
   size_t length(BlockElt z) const { return info[z].length; }
 
@@ -324,7 +324,7 @@ class param_block : public Block_base // blocks of parameters
   const RatWeight& gamma() const { return infin_char; }
   KGBElt parent_x(BlockElt z) const { return kgb_nr_of[x(z)]; }
   const TorusElement& y_rep(KGBElt y) const { return y_pool[y].repr(); }
-  BlockElt lookup(KGBElt parent_x, const TorusElement& y_rep);
+  BlockElt lookup(KGBElt parent_x, const TorusElement& y_rep) const;
 
   RatWeight nu(BlockElt z) const; // "real" projection of |infin_char|
   Weight lambda_rho(BlockElt z) const; // reconstruct from y value
@@ -363,11 +363,8 @@ class non_integral_block : public param_block
     (const repr::Rep_context& rc,
      StandardRepr sr); // by value,since it will be made dominant before use
 
-  // this non-virtually overrides the |Block_base::element| method
-  BlockElt element(KGBElt x,KGBElt y) const; // redefined using |z_hash|
-
-
   // virtual methods
+  virtual BlockElt element(KGBElt x,KGBElt y) const; // redefined using |z_hash|
   virtual std::ostream& print // defined in block_io.cpp
     (std::ostream& strm, BlockElt z,bool as_invol_expr) const;
 

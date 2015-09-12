@@ -65,6 +65,7 @@ namespace commands {
   void blockorder_f();
   void blocktwist_f();
   void extblock_f();
+  void gextblock_f();
   void deform_f();
   void kl_f();
   void klbasis_f();
@@ -106,6 +107,7 @@ CommandNode reprNode()
   result.add("blockorder",blockorder_f,"second");
   result.add("blocktwist",blocktwist_f,"second");
   result.add("extblock",extblock_f,"second");
+  result.add("gextblock",gextblock_f,"second");
   result.add("deform",deform_f,"computes deformation terms",std_help);
   result.add("kl",kl_f,
 	     "computes KL polynomials in character formula for this parameter",
@@ -327,8 +329,21 @@ void blocktwist_f()
 
 void extblock_f()
 {
+  ensure_full_block();
   ext_block::extended_block eblock(current_param_block(),
 				   currentComplexGroup().twistedWeylGroup());
+  ioutils::OutputFile file;
+  eblock.print_to(file);
+}
+
+void gextblock_f()
+{
+  ensure_full_block();
+  WeightInvolution delta = interactive::get_commuting_involution
+    (commands::current_layout(), commands::current_lattice_basis());
+
+  ext_block::ext_block eblock(currentComplexGroup(),current_param_block(),
+			      currentRealGroup().kgb(),delta);
   ioutils::OutputFile file;
   eblock.print_to(file);
 }

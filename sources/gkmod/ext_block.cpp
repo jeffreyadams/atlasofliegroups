@@ -1389,6 +1389,19 @@ BlockElt twisted (const Block& block,
      twisted(dual_kgb,block.y(z),delta.transposed(),twist));
 }
 
+BlockElt twisted (const param_block& block, const KGB& kgb,
+		  BlockElt z,
+		  const WeightInvolution& delta,
+		  const weyl::Twist& twist)
+{
+  KGBElt x = block.parent_x(z);
+  TorusElement y = block.y_rep(block.y(z));
+  KGBElt xx= twisted(kgb,x,delta,twist);
+  y.act_by(delta);
+  BlockElt result=block.lookup(xx,y);
+  return result;
+}
+
 extended_block::extended_block
   (const Block_base& block,const TwistedWeylGroup& W)
   : parent(block)
@@ -1522,13 +1535,44 @@ ext_block::ext_block
   { // compute |child_nr| and |parent_nr| tables
     weyl::Twist twist(orbits);
 
-    if (twisted(kgb,0,delta,twist)==UndefKGB and
+    if (twisted(kgb,0,delta,twist)==UndefKGB or
 	twisted(dual_kgb,0,delta.transposed(),twist)==UndefKGB)
       return; // if one or other not delta-stable, leave |size==0| and quit
 
     for (BlockElt z=0; z<block.size(); ++z)
     {
       BlockElt tz = twisted(block,kgb,dual_kgb,z,delta,twist);
+      if (tz==z)
+	fixed_points.insert(z);
+    }
+  }
+
+  complete_construction(fixed_points);
+}
+
+ext_block::ext_block
+  (const ComplexReductiveGroup& G,
+   const param_block& block, const KGB& kgb,
+   const WeightInvolution& delta)
+  : parent(block)
+  , orbits(fold_orbits(G.rootDatum(),delta))
+  , folded(orbits,block.Dynkin())
+  , info()
+  , data(orbits.size()) // create that many empty vectors
+  , flipped_edges()
+{
+  BitMap fixed_points(block.size());
+
+  { // compute |child_nr| and |parent_nr| tables
+    weyl::Twist twist(orbits);
+
+    if (twisted(kgb,0,delta,twist)==UndefKGB or
+	twisted(block,kgb,0,delta,twist)==UndefBlock)
+      return; // if one or other not delta-stable, leave |size==0| and quit
+
+    for (BlockElt z=0; z<block.size(); ++z)
+    {
+      BlockElt tz = twisted(block,kgb,z,delta,twist);
       if (tz==z)
 	fixed_points.insert(z);
     }
