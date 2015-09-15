@@ -61,9 +61,9 @@ class Block_base
   EltInfo(KGBElt xx,KGBElt yy,DescentStatus dd, unsigned short ll)
   : x(xx),y(yy),descent(dd),length(ll), dual(UndefBlock) {}
 
-  // sometimes leave |descent| and maybe |ll| (which |hashCode| ignores) unset
-  EltInfo(KGBElt xx,KGBElt yy, unsigned short ll=0)
-  : x(xx),y(yy),descent(),length(ll), dual(UndefBlock) {}
+  // sometimes leave |descent| and |ll| (which |hashCode| ignores) blank
+  EltInfo(KGBElt xx,KGBElt yy)
+  : x(xx),y(yy),descent(),length(0), dual(UndefBlock) {}
 
   // methods that will allow building a hashtable with |info| as pool
     typedef std::vector<EltInfo> Pooltype;
@@ -158,6 +158,7 @@ class Block_base
   bool isWeakDescent(weyl::Generator s, BlockElt z) const
     { return DescentStatus::isDescent(descentValue(s,z)); }
 
+  // the following indicate existence of ascending/descending link
   bool isStrictAscent(weyl::Generator, BlockElt) const;
   bool isStrictDescent(weyl::Generator, BlockElt) const;
   weyl::Generator firstStrictDescent(BlockElt z) const;
@@ -186,7 +187,7 @@ class Block_base
 
  protected:
   // order block by increasing value of |x(z)|, adapting tables accoringly
-  // also sets |first_z_of_x| to record the places where |x(z)| changes
+  // also sets lengths, and |first_z_of_x| recording where |x(z)| changes
   KGBElt sort_by_x();
   void compute_first_zs(); // set |first_z_of_x| according to |x| values
 
@@ -352,7 +353,7 @@ class param_block : public Block_base // blocks of parameters
 
   RatWeight y_part(BlockElt z) const; // raw torus part info, normalized
 
-  BlockElt lookup(KGBElt parent_x, const TorusElement& y_rep) const;
+  BlockElt lookup(KGBElt x, const TorusElement& y_rep) const;
 
   // virtual methods
   virtual KGBElt xsize() const { return x(size()-1)+1; } // we're sorted by |x|
@@ -368,7 +369,7 @@ class param_block : public Block_base // blocks of parameters
   BlockElt earlier(KGBElt x,KGBElt y) const // find already constructed element
   { return z_hash.find(block_elt_entry(x,y)); } // used during construction
 
-  void add_z(KGBElt x,KGBElt y, unsigned short l);
+  void add_z(KGBElt x,KGBElt y);
 
 }; // |class param_block|
 

@@ -229,8 +229,8 @@ BlockElt Block_base::length_first(size_t l) const
 }
 
 
-/*!
-  \brief Tells if s is a strict ascent generator for z.
+/*
+  Tells if s is a strict ascent generator for z.
 
   Explanation: this means that descentValue(s,z) is one of ComplexAscent,
   ImaginaryTypeI or ImaginaryTypeII.
@@ -242,8 +242,8 @@ bool Block_base::isStrictAscent(weyl::Generator s, BlockElt z) const
     and v!=DescentStatus::RealNonparity;
 }
 
-/*!
-  \brief Tells if s is a strict descent generator for z.
+/*
+  Tells if s is a strict descent generator for z.
 
   Explanation: this means that descentValue(s,z) is one of ComplexDescent,
   RealTypeI or RealTypeII.
@@ -255,9 +255,9 @@ bool Block_base::isStrictDescent(weyl::Generator s, BlockElt z) const
     and v!=DescentStatus::ImaginaryCompact;
 }
 
-/*!
-  \brief Returns the first descent for z (the number of a simple root) that is
-not imaginary compact, or rank() if there is no such descent.
+/*
+  Returns the first descent for z (the number of a simple root) that is
+  not imaginary compact, or rank() if there is no such descent.
 */
 weyl::Generator Block_base::firstStrictDescent(BlockElt z) const
 {
@@ -268,9 +268,9 @@ weyl::Generator Block_base::firstStrictDescent(BlockElt z) const
   return rank(); // signal nothing was found
 }
 
-/*!
-  \brief Returns the first descent for z (the number of a simple root) that is
-either complex or real type I; if there is no such descent returns |rank()|
+/*
+ Returns the first descent for z (the number of a simple root) that is either
+ complex or real type I; if there is no such descent returns |rank()|
 */
 weyl::Generator Block_base::firstStrictGoodDescent(BlockElt z) const
 {
@@ -300,12 +300,12 @@ KGBElt Block_base::sort_by_x()
 
   info = pi.pull_back(info); // permute |info|, move-assign
 
-  // now adapt |data| tables, assumed to be already computed
+  // now adapt |data| tables, assumed to be already computed, and set lengths
   for (weyl::Generator s=0; s<rank(); ++s)
   {
     std::vector<block_fields>& tab_s = data[s];
     tab_s = pi.pull_back(tab_s); // permute fields of |data[s]|
-    for (BlockElt z=0; z<size(); ++z) // finally update cross and Cayley links
+    for (BlockElt z=0; z<size(); ++z) // and update cross and Cayley links
     {
       tab_s[z].cross_image=pi_inv[tab_s[z].cross_image];
       BlockEltPair& p=tab_s[z].Cayley_image;
@@ -315,8 +315,22 @@ KGBElt Block_base::sort_by_x()
 	if (p.second!=UndefBlock)
 	  p.second=pi_inv[p.second];
       }
-    }
-  }
+    } // |for z|
+  } // |for s|
+
+  // now all links are correct, deduce length information from them
+  for (BlockElt z=0; z<size(); ++z) // must be te outer loop here
+    for (weyl::Generator s=0; s<rank(); ++s)
+      if (isStrictDescent(s,z)) // compute length from below if possible
+      {
+	BlockElt sz = descentValue(s,z)==DescentStatus::ComplexDescent
+	  ? cross(s,z) : inverseCayley(s,z).first;
+	if (info[z].length==0)
+	  info[z].length=info[sz].length+1;
+	else
+	  assert(info[z].length==info[sz].length+1); // cannot change nonzero
+      }
+
 
   return x_lim;
 } // |Block_base::sort_by_x|
@@ -878,10 +892,10 @@ y_entry nblock_help::pack_y(const nblock_elt& z) const
 }
 
 
-void param_block::add_z(KGBElt x,KGBElt y, unsigned short l)
+void param_block::add_z(KGBElt x,KGBElt y)
 {
   size_t old_size=info.size();
-  BlockElt z=z_hash.match(block_elt_entry(x,y,l));
+  BlockElt z=z_hash.match(block_elt_entry(x,y));
   assert(z==old_size);
   assert(z+1==info.size());
   ndebug_use(old_size);
@@ -978,7 +992,7 @@ param_block::param_block
       data[s].reserve(y_hash.size());
 
     for (size_t i=0; i<y_hash.size(); ++i)
-      add_z(x0,i,0); // length is on dual side
+      add_z(x0,i); // length is on dual side
 
   } // end of step 3
 
@@ -1018,16 +1032,7 @@ param_block::param_block
       std::vector<block_fields>& tab_s = data[s];
       tab_s.resize(info.size()); // ensure enough slots for now
 
-      const RootNbr alpha=sub.parent_nr_simple(s); // root currently considered
       unsigned int y_start=y_hash.size(); // new |y|s numbered from here up
-
-      // compute length change; only nonzero for complex roots; if so, then
-      // if $\theta(\alpha)$ positive, like $\alpha$: go down (up for $x$)
-      int d = i_tab.complex_roots(i_theta).isMember(alpha)
-	    ? rd.is_posroot(i_tab.root_involution(i_theta,alpha)) ? -1 : 1
-	    : 0 ;
-      int length = this->length(next) + d;
-      assert(length>=0); // if not, then starting point not minimal for length
 
       nblock_elt sample(first_x,y_hash[ys[0]].repr());
       aux.cross_act(sample,s);
@@ -1065,7 +1070,7 @@ param_block::param_block
 	  {
 	    tab_s[base_z+j].cross_image = info.size(); // link to new element
 
-	    add_z(s_x_n,cross_ys[j],length);
+	    add_z(s_x_n,cross_ys[j]);
 	    // same |x| neighbour throughout loop, but |y| neighbour varies
 	  } // |for(j)|
 	  // |d_first_z_of_x.push_back(info.size())| would mark end of R-packet
@@ -1123,7 +1128,6 @@ param_block::param_block
 	{
 	  KGBEltPair Cayleys = kgb.inverseCayley(sub.simple(s),conj_n);
 	  KGBElt ctx1 = kgb.cross(Cayleys.first,sub.to_simple(s));
-	  length = this->length(next)+1; // length always increases here
 
 	  if (i==0)
 	  { // |do_Cayley| is independent of |x|; if so, do in first R-packet:
@@ -1166,7 +1170,7 @@ param_block::param_block
 	      // then generate corrsponding part of block, combining (x,y)'s
 	      for (auto it=orbit.begin(); it(); ++it)
 		for (unsigned int y=y_start; y<y_hash.size(); ++y)
-		  add_z(*it,y,length);
+		  add_z(*it,y);
 
 	      // finallly make sure that Cayley links slots exist for code below
 	      tab_s.resize(info.size());
@@ -1200,12 +1204,6 @@ param_block::param_block
     } // |for(s)|
   } // |for (next<queue[qi])|
   // end of step 4
-
-  // correct |length| fields for the reverse order construction that was used
-  { size_t max_l=length(size()-1);
-    for (BlockElt z=0; z<size(); ++z)
-      info[z].length = max_l-length(z);
-  }
 
   sort_by_x(); // reorder block by increasing value of |x|
   z_hash.reconstruct(); // adapt to permutation of the block
@@ -1252,7 +1250,7 @@ struct partial_nblock_help : public nblock_help
   { return z_hash.find(z_entry); }
 
   BlockElt lookup(KGBElt x,KGBElt y) const
-  { return lookup(block_elt_entry(x,y,0)); }
+  { return lookup(block_elt_entry(x,y)); }
 
   BlockElt lookup(const nblock_elt& z) const
   { KGBElt y = y_hash.find(pack_y(z));
@@ -1363,9 +1361,7 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
 
   // finally we can add |z| to |z_hash|, after all its Bruhat-predecessors
   assert(z_hash.size()==predecessors.size());
-  BlockElt res = z_hash.match
-    (block_elt_entry(z.x(),y_hash.match(pack_y(z)),
-		     pred.size()==0 ? 0 : length(pred[0])+1));
+  BlockElt res = z_hash.match(block_elt_entry(z.x(),y_hash.match(pack_y(z))));
   assert(res==predecessors.size()); // |z| must have been added just now
   predecessors.push_back(pred); // store list of elements covered by |z|
   return res;
@@ -1413,7 +1409,7 @@ param_block::param_block
   // allocate link fields with |UndefBlock| entries
   data.assign(our_rank,std::vector<block_fields>(size));
 
-  { // sort |info| by |x| value
+  { // sort |info| by |x| value; cannot call |sort_by_x| as |data| not yet set
     KGBEltList xs(info.size()); // gather vector of |x| values over the block
     for (size_t i=0; i<info.size(); ++i)
       xs[i]=info[i].x;
@@ -1437,7 +1433,7 @@ param_block::param_block
       nblock_elt cur = aux.get(i); // element |z| as |nblock_elt|
 
       KGBElt conj_x = aux.conj_in_x(s,z.x);
-      if (kgb.isDescent(sub.simple(s),conj_x))
+      if (kgb.isDescent(sub.simple(s),conj_x)) // complex descent or real
       {
 	if (kgb.status(sub.simple(s),conj_x)==gradings::Status::Complex)
 	{
@@ -1445,7 +1441,10 @@ param_block::param_block
 	  BlockElt sz = aux.lookup(cur);
 	  assert(sz!=aux.z_hash.empty); // should be in generated partial block
 	  tab_s[i].cross_image = sz; tab_s[sz].cross_image = i;
-	  assert(aux.length(sz)+1==length(i));
+	  if (length(i)==0) // not yet set
+	    info[i].length=aux.length(sz)+1; // set it
+	  else
+	    assert(length(i)==aux.length(sz)+1); // test it
 	  desc_z.set(s,DescentStatus::ComplexDescent);
 	  assert(descentValue(s,sz)==DescentStatus::ComplexAscent);
 	}
@@ -1462,8 +1461,12 @@ param_block::param_block
 	  {
 	    aux.do_down_Cayley(cur,s);
 	    BlockElt sz = aux.lookup(cur);
-	    assert(aux.length(sz)+1==length(i));
 	    tab_s[i].Cayley_image.first = sz; // first inverse Cayley
+	    if (length(i)==0) // not yet set
+	      info[i].length=aux.length(sz)+1; // set it
+	    else
+	      assert(length(i)==aux.length(sz)+1); // test it
+
 	    if (kgb.isDoubleCayleyImage(sub.simple(s),conj_x)) // real type 1
 	    {
 	      desc_z.set(s,DescentStatus::RealTypeI);
