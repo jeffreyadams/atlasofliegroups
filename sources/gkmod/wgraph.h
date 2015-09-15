@@ -12,10 +12,11 @@
 
 #include <iostream>
 
+#include "atlas_types.h" // must be included before any utility headers are
+
 #include "bitset.h"	// inlines
 #include "graph.h"	// containment
 
-#include "atlas_types.h"
 
 namespace atlas {
 

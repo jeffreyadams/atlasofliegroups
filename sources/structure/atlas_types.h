@@ -28,6 +28,9 @@
 
 #include <vector>
 #include <functional> // for |std::less|
+#include <stack> // for our specialisation below
+#include <queue> // for our specialisation below
+
 
 #include "constants.h"
 
@@ -49,7 +52,7 @@ namespace atlas {
    were simply replaced by this file, avoiding duplication, but the utilities
    modules have the ambition of being reusable independently of the rest of
    the atlas library. In fact this file should always be included in any atlas
-   header file other than from the utilitites subdierectory, and alway before
+   header file other than from the utilitites subdirectory, and alway before
    any header files from that subdirectory, so the definitions here will be
    the only ones seen when compiling the atlas library.
  */
@@ -68,6 +71,32 @@ namespace atlas {
 
   namespace bitmap { class BitMap; }
   using bitmap::BitMap;
+
+  namespace containers {
+
+  template<typename T,typename Alloc = std::allocator<T> >
+    class simple_list;
+  template<typename T,typename Alloc = std::allocator<T> >
+    class sl_list;
+
+  template<typename T, typename Alloc = std::allocator<T> >
+    struct sl_list_const_iterator;
+  template<typename T,typename Alloc = std::allocator<T> >
+    class sl_list_iterator;
+
+  template<typename T,typename Alloc = std::allocator<T> >
+    class mirrored_simple_list;
+
+  template<typename T,typename Alloc = std::allocator<T> >
+    class mirrored_sl_list;
+
+  template<typename T,typename Alloc = std::allocator<T> >
+    using stack = std::stack<T, mirrored_simple_list<T,Alloc> >;
+
+  template<typename T,typename Alloc = std::allocator<T> >
+    using queue = std::queue<T, sl_list<T,Alloc> >;
+
+  } // |namespace cantainers|
 
   namespace arithmetic {
     typedef long long int Numer_t;
@@ -139,6 +168,7 @@ namespace atlas {
 #define SET_H
 #define BITSET_FWD_H
 #define BITMAP_FWD_H
+#define SL_LIST_FWD_H
 #define ARITHMETIC_FWD_H
 #define MATRIX_FWD_H
 #define RATVEC_FWD_H

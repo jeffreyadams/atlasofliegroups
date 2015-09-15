@@ -286,6 +286,8 @@ weyl::Generator Block_base::firstStrictGoodDescent(BlockElt z) const
 KGBElt Block_base::renumber_x(const std::vector<KGBElt>& new_x)
 {
   KGBElt x_lim=0; // high-water mark for |new_x| values
+
+  // rewrite |x| field for all block element as their |new_x| image
   for (BlockElt z=0; z<size(); ++z)
   {
     KGBElt xx=new_x[x(z)];
@@ -294,22 +296,22 @@ KGBElt Block_base::renumber_x(const std::vector<KGBElt>& new_x)
     info[z].x = xx;
   }
 
-  KGBEltList xs(info.size());
+  KGBEltList xs(info.size()); // gather vector of |x| values over the block
   for (size_t i=0; i<info.size(); ++i)
     xs[i]=info[i].x;
 
-  Permutation pi_inv = // assigns |z| to its new place
+  Permutation pi_inv = // assigns each block element |z| to its new place
     permutations::standardization(xs,x_lim,&d_first_z_of_x);
 
   Permutation pi(pi_inv,-1); // assigns to new place its original one
 
-  pi.pull_back(info).swap(info);
+  info = pi.pull_back(info); // permute |info| and move-assign to itself
 
   for (weyl::Generator s=0; s<rank(); ++s)
   {
     std::vector<block_fields>& tab_s = data[s];
-    pi.pull_back(tab_s).swap(tab_s); // permute fields of |data[s]|
-    for (BlockElt z=0; z<size(); ++z)
+    tab_s = pi.pull_back(tab_s); // permute fields of |data[s]|
+    for (BlockElt z=0; z<size(); ++z) // finally update cross and Cayley links
     {
       tab_s[z].cross_image=pi_inv[tab_s[z].cross_image];
       BlockEltPair& p=tab_s[z].Cayley_image;
@@ -612,12 +614,21 @@ param_block::param_block(const Rep_context& rc0, unsigned int rank)
   , rc(rc0)
   , infin_char(0) // don't set yet
   , singular() // idem
-  , kgb_nr_of()
-  , x_of(rc.kgb().size(),UndefKGB)
+  , kgb_nr_of(rc.kgb().size())
+  , x_of(rc.kgb().size())
   , y_pool()
   , y_hash(y_pool)
-{}
+{ // translating from internal |x| to parent |x| nontrivially seems useless
+  for (KGBElt x=0; x<rc.kgb().size(); ++x)
+    kgb_nr_of[x]=x_of[x]=x;
+}
 
+RealReductiveGroup& param_block::realGroup() const
+  { return rc.realGroup(); }
+const ComplexReductiveGroup& param_block::complexGroup() const
+  { return rc.realGroup().complexGroup(); }
+const InvolutionTable& param_block::involution_table() const
+  { return complexGroup().involution_table(); }
 const TwistedInvolution& param_block::involution(BlockElt z) const
 { return rc.kgb().involution(parent_x(z)); }
 
@@ -713,7 +724,6 @@ void param_block::compute_duals(const ComplexReductiveGroup& G,
 				const SubSystem& rs)
 {
   const WeightInvolution& delta = G.distinguished();
-  const InvolutionTable& i_tab = G.involution_table();
 
   if (delta*infin_char==infin_char) // for stable blocks compute |delta|-action
   {
@@ -738,22 +748,16 @@ void param_block::compute_duals(const ComplexReductiveGroup& G,
     {
       KGBElt parent_x = kgb_nr_of[x(z)];
       KGBElt dual_x = rc.kgb().Hermitian_dual(parent_x);
-      assert(y_hash[y(z)].nr==rc.kgb().inv_nr(parent_x)); // check coherence
-      TorusElement t = y_hash[y(z)].t_rep;
-      t = y_values::exp_pi(delta*t.log_pi(false)); // twist |t| by |delta|
-      KGBElt dual_y = y_hash.find(i_tab.pack(t,rc.kgb().inv_nr(dual_x)));
-      if (dual_y!=y_hash.empty)
-	info[z].dual = element(x_of[dual_x],dual_y);
+      if (dual_x!=UndefKGB)
+      {
+	assert(y_hash[y(z)].nr==rc.kgb().inv_nr(parent_x)); // check coherence
+	TorusElement t = y_hash[y(z)].t_rep;
+	t.act_by(delta); // twist |t| by |delta|
+	info[z].dual = lookup(dual_x,t);
+      }
     }
   }
 } // |param_block::compute_duals|
-
-RealReductiveGroup& param_block::realGroup() const
-  { return rc.realGroup(); }
-const ComplexReductiveGroup& param_block::complexGroup() const
-  { return rc.realGroup().complexGroup(); }
-const InvolutionTable& param_block::involution_table() const
-  { return complexGroup().involution_table(); }
 
 BlockElt param_block::lookup(KGBElt parent_x, const TorusElement& y_rep) const
 {
@@ -941,24 +945,24 @@ non_integral_block::non_integral_block
   // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
   const KGBElt x_org = sr.x();
   const nblock_elt org(x_org,y_values::exp_pi(infin_char-rc.lambda(sr)));
+  nblock_elt z_start = org; // working copy
 
   // step 2: move up toward the most split fiber for the current real form
   { // modify |x| and |y|, ascending for |x|, descending for |y|
-    nblock_elt z = org;
     weyl::Generator s;
     do
       for(s=0; s<our_rank; ++s)
       {
-	KGBElt xx=kgb.cross(sub.to_simple(s),z.x());
+	KGBElt xx=kgb.cross(sub.to_simple(s),z_start.x());
 	weyl::Generator ss=sub.simple(s);
 	if (kgb.isAscent(ss,xx))
 	{
 	  if (kgb.status(ss,xx)==gradings::Status::Complex)
-	    aux.cross_act(z,s);
+	    aux.cross_act(z_start,s);
 	  else // imaginary noncompact
 	  {
 	    assert(kgb.status(ss,xx) == gradings::Status::ImaginaryNoncompact);
-	    aux.do_up_Cayley(z,s);
+	    aux.do_up_Cayley(z_start,s);
 	  }
 	  break;
 	} // |if(isDescent)|
@@ -967,14 +971,12 @@ non_integral_block::non_integral_block
 
     // DON'T assert(x+1==kgb.size()); fails e.g. in complex groups, empty |sub|
 
-    kgb_nr_of.push_back(z.x()); // save obtained value for |x|
-    x_of[z.x()]=0; // and the parent KGB element |x| will get renumbered 0
-    y_hash.match(aux.pack_y(z)); // save obtained value for |y|
+    y_hash.match(aux.pack_y(z_start)); // save obtained value for |y|
   } // end of step 2
 
   // step 3: generate imaginary fiber-orbit of |y|'s (|x| is unaffected)
   {
-    const KGBElt x0 = kgb_nr_of[0];
+    const KGBElt x0 = z_start.x();
     const InvolutionNbr theta0 = kgb.inv_nr(x0);
 
     // generating reflections are by subsystem real roots for |theta|
@@ -998,9 +1000,8 @@ non_integral_block::non_integral_block
       data[s].reserve(y_hash.size());
 
     for (size_t i=0; i<y_hash.size(); ++i)
-      add_z(0,i,0); // length is on dual side
+      add_z(x_of[x0],i,0); // length is on dual side
 
-    // we leave |first_z_of_x| empty, |compute_first_zs()| would set 2 values
   } // end of step 3
 
   // step 4: generate packets for successive involutions
@@ -1009,6 +1010,9 @@ non_integral_block::non_integral_block
   std::vector<KGBElt> ys; ys.reserve(0x100); // enough for |1<<RANK_MAX|
   std::vector<KGBElt> cross_ys(ys.size()); cross_ys.reserve(0x100);
   std::vector<KGBElt> Cayley_ys(ys.size()); Cayley_ys.reserve(0x100);
+
+  BitMap x_seen(kgb.size());
+  x_seen.insert(z_start.x()); // the only value of |x| seen so far
 
   size_t qi=0; // index into queue
 
@@ -1039,8 +1043,8 @@ non_integral_block::non_integral_block
       const RootNbr alpha=sub.parent_nr_simple(s); // root currently considered
       unsigned int y_start=y_hash.size(); // new |y|s numbered from here up
 
-      // compute length change; only nonzero for complex roots; if so, if
-      // $\theta(\alpha)$ positive, like $\alpha$, then go down (up for $x$)
+      // compute length change; only nonzero for complex roots; if so, then
+      // if $\theta(\alpha)$ positive, like $\alpha$: go down (up for $x$)
       int d = i_tab.complex_roots(i_theta).isMember(alpha)
 	    ? rd.is_posroot(i_tab.root_involution(i_theta,alpha)) ? -1 : 1
 	    : 0 ;
@@ -1051,7 +1055,7 @@ non_integral_block::non_integral_block
       aux.cross_act(sample,s);
       bool new_cross = // whether cross action discovers unseen involution
 	y_hash.find(aux.pack_y(sample)) == y_hash.empty;
-      assert(new_cross == (x_of[sample.x()]==(unsigned int)~0));
+      assert(x_seen.isMember(sample.x()) == not new_cross);
       // cross action gives a fresh |x| coordinate iff it gives fresh |y|
 
       cross_ys.clear(); Cayley_ys.clear();
@@ -1067,19 +1071,18 @@ non_integral_block::non_integral_block
 	}
       } // compute values |cross_ys|
 
-      for (unsigned int i=0; i<nr_x; ++i)
+      for (unsigned int i=0; i<nr_x; ++i) // |i| counts R-packets for involution
       {
 	BlockElt base_z = next+i*nr_y; // first element of R-packet
-	KGBElt n = parent_x(base_z);
+	KGBElt n = parent_x(base_z); // |n| is (parent) |x| value for R-packet
 	KGBElt s_x_n = kgb.cross(sub.reflection(s),n); // don't need |y| here
-	assert (new_cross == (x_of[s_x_n]==(unsigned int)~0));
+	assert (x_seen.isMember(s_x_n) == (not new_cross));
 	// cross action on |n| gives a fresh value iff it did for the |ys|
 
 	// set the cross links for this |n| and all corresponding |ys|
 	if (new_cross) // add a new R-packet
 	{
-	  x_of[s_x_n] = kgb_nr_of.size(); // install a new |x| value that
-	  kgb_nr_of.push_back(s_x_n); // corresponds to parent element |s_x_n|
+	  x_seen.insert(s_x_n); // record the new |x| value
 	  for (unsigned int j=0; j<nr_y; ++j)
 	  {
 	    tab_s[base_z+j].cross_image = info.size(); // link to new element
@@ -1108,7 +1111,7 @@ non_integral_block::non_integral_block
 	  break;
 	case gradings::Status::ImaginaryCompact:
 	  for (unsigned int j=0; j<nr_y; ++j)
-	      info[base_z+j].descent.set(s,DescentStatus::ImaginaryCompact);
+	    info[base_z+j].descent.set(s,DescentStatus::ImaginaryCompact);
 	  break;
 	case gradings::Status::ImaginaryNoncompact:
 	  if (kgb.cross(sub.simple(s),conj_n)!=conj_n)
@@ -1121,7 +1124,7 @@ non_integral_block::non_integral_block
 	case gradings::Status::Real: // now status depends on |y|
 	  for (unsigned int j=0; j<nr_y; ++j)
 	  {
-	    nblock_elt z(n,y_hash[ys[j]].repr());
+	    nblock_elt z(n,y_hash[ys[j]].repr()); // element non-conjugated
 	    if (aux.is_real_nonparity(z,s))
 	      info[base_z+j].descent.set(s,DescentStatus::RealNonparity);
 	    else
@@ -1145,11 +1148,10 @@ non_integral_block::non_integral_block
 	  length = this->length(next)+1; // length always increases here
 
 	  if (i==0)
-	  { // |do_Cayley| is independent of |x|, if so, do first time:
+	  { // |do_Cayley| is independent of |x|; if so, do in first R-packet:
 	    assert(y_hash.size()==y_start); // nothing created by cross actions
-	    KGBElt x_start = kgb_nr_of.size();
 
-	    bool new_Cayley = (x_of[ctx1]==(unsigned int)~0);
+	    bool new_Cayley = not x_seen.isMember(ctx1);
 
 	    // independent of new creation, fill |Cayley_ys|, extend |y_hash|
 	    for (unsigned int j=0; j<nr_y; ++j)
@@ -1162,42 +1164,39 @@ non_integral_block::non_integral_block
 
 	    if (new_Cayley) // then we need to create new R-packets
 	    {
-	      // first create the set of |x| values giving R-packets
-	      x_of[ctx1] = x_start; // create |x| for the first new R-packet
-	      kgb_nr_of.push_back(ctx1);
-
 	      // complete fiber of x's over new involution using
 	      // subsystem imaginary cross actions
               RootNbrSet pos_imag = // subsystem positive imaginary roots
 		sub.positive_roots() & i_tab.imaginary_roots(kgb.inv_nr(ctx1));
 	      RootNbrList ib = rd.simpleBasis(pos_imag);
-	      for (size_t k=x_start; k<kgb_nr_of.size(); ++k) // grows
-	      {
-		KGBElt cur_x = kgb_nr_of[k];
-		for (size_t r=0; r<ib.size(); ++r)
-		{
-		  KGBElt new_x = kgb.cross(rd.reflectionWord(ib[r]),cur_x);
-		  if (x_of[new_x] == (unsigned int)~0)
+	      auto orbit = BitMap{kgb.size()};
+	      orbit.insert(ctx1);
+	      { auto todo = containers::queue<KGBElt> {}; // no list init
+		todo.push(ctx1); // so manually insert
+		do
+		{ KGBElt cur_x = todo.front(); todo.pop();
+		  for (size_t r=0; r<ib.size(); ++r)
 		  {
-		    x_of[new_x] = kgb_nr_of.size();
-		    kgb_nr_of.push_back(new_x);
-		  }
-		} // |for(r)|
-	      } // |for (k)|
-
+		    KGBElt new_x = kgb.cross(rd.reflectionWord(ib[r]),cur_x);
+		    if (not orbit.isMember(new_x))
+		      orbit.insert(new_x), todo.push(new_x);
+		  } // |for(r)|
+		}
+		while (not todo.empty());
+	      }
+	      x_seen |= orbit;
 	      // then generate corrsponding part of block, combining (x,y)'s
-	      for (size_t k=x_start; k<kgb_nr_of.size(); ++k)
+	      for (auto it=orbit.begin(); it(); ++it)
 		for (unsigned int y=y_start; y<y_hash.size(); ++y)
-		  add_z(k,y,length);
-	        // again we could (and used to) mark end of R-packet here
-	      // |for(k)|
+		  add_z(x_of[*it],y,length);
+
 	      // finallly make sure that Cayley links slots exist for code below
 	      tab_s.resize(info.size());
 	    } // |if (new_Cayley)|: finished creating new R-packets
 	  } // |if (i==0)|: finished work for first |x| when some |y| is parity
 
 	  // now in all cases make links using |element| lookup
-	  for (unsigned int j=0,p=0; j<nr_y; ++j) // |p counts parity |y|s only
+	  for (unsigned int j=0,p=0; j<nr_y; ++j) // |p| counts parity |y|s only
 	    if (descentValue(s,base_z+j)!=DescentStatus::RealNonparity)
 	    {
 	      KGBElt cty=Cayley_ys[p++]; // unique Cayley transform of |y|
@@ -1207,7 +1206,7 @@ non_integral_block::non_integral_block
 	      if (Cayleys.second!=UndefKGB) // then double valued (type1)
 	      {
 		KGBElt ctx2 = kgb.cross(Cayleys.second,sub.to_simple(s));
-		assert (x_of[ctx2]!=(unsigned int)~0);
+		assert (x_seen.isMember(ctx2));
 		target = element(x_of[ctx2],cty);
 		tab_s[base_z+j].Cayley_image.second = target;
 		first_free_slot(tab_s[target].Cayley_image) = base_z+j;
@@ -1224,31 +1223,16 @@ non_integral_block::non_integral_block
   } // |for (next<queue[qi])|
   // end of step 4
 
-  // correct for reverse order construction
+  // correct |length| fields for the reverse order construction that was used
   { size_t max_l=length(size()-1);
     for (BlockElt z=0; z<size(); ++z)
       info[z].length = max_l-length(z);
   }
 
-  { // renumber the |x| values by (now) increasing length, and reorder block
-    std::vector<KGBElt> new_x;
-    { KGBElt stop=xsize(); // we shall reunmber the |x| values
-      new_x.reserve(stop);
-      for (unsigned i=0; i<queue.size(); ++i) // do involution packets in order
-      {
-	KGBElt start=queue[i]<info.size() ? xsize()-x(queue[i]) : 0;
-	for (KGBElt j=start; j<stop; ++j) // do |x| values in a packet
-	  new_x.push_back(j); // allocate slice of new values, lower than before
-	stop=start; // next slice will stop where this one started
-      }
-    }
-
-    renumber_x(new_x); // does the actual renumbering, and reordering of block
-    Permutation pi(new_x.begin(),new_x.end());
-    pi.permute(kgb_nr_of);
-    pi.renumber(x_of,UndefKGB); // renumber, leaving |UndefKGB| as is
-
-    z_hash.reconstruct(); // adapt to permutation and remapped |x| values
+  {
+    std::vector<KGBElt>& new_x=x_of; // that's just an identity map
+    renumber_x(new_x); // reorder block by increasing value of (unchanged) |x|
+    z_hash.reconstruct(); // adapt to permutation of the block
   }
 
   compute_duals(G,sub); // finally compute Hermitian duals
@@ -1260,7 +1244,7 @@ non_integral_block::non_integral_block
 
 
 
-
+// a derived class whose main additional method computes a Bruhat order ideal
 struct partial_nblock_help : public nblock_help
 {
   y_part_hash& y_hash; // will reference a field of |param_block|
@@ -1284,7 +1268,7 @@ struct partial_nblock_help : public nblock_help
 
   unsigned int length(BlockElt z_inx) const { return z_hash[z_inx].length; }
 
-  nblock_elt get(BlockElt z_inx) const
+  nblock_elt get(BlockElt z_inx) const // convert block index to |nblock_elt|
   {
     const block_elt_entry& e=z_hash[z_inx];
     return nblock_elt(e.x,y_hash[e.y].repr());
@@ -1302,7 +1286,7 @@ struct partial_nblock_help : public nblock_help
     else return lookup(z.x(),y);
   }
 
-  BlockElt nblock_below (const nblock_elt& z);
+  BlockElt nblock_below (const nblock_elt& z); // the main method
 
 }; // |class partial_nblock_help|
 
@@ -1317,6 +1301,7 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
   }
 
   BlockEltList pred; // will hold list of elements covered by z
+  // invariant: |nblock_below| has been called for every element in |pred|
 
   weyl::Generator s; // a complex or real type 1 descent, if such exists
 
@@ -1372,7 +1357,7 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
   else // add all |s|-ascents for elements covered by |sz|
     for (BlockElt i=0; i<predecessors[sz_inx].size(); ++i)
     {
-      nblock_elt c = get(predecessors[sz_inx][i]);
+      nblock_elt c = get(predecessors[sz_inx][i]); // convert from |BlockElt|
       KGBElt conj_x= conj_in_x(s,c.x());
       switch (kgb.status(sub.simple(s),conj_x))
       {
@@ -1393,7 +1378,7 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
 
 	  if (type_2)
 	  {
-	    cross_act(c,s); // this should change: we are in type 2
+	    cross_act(c,s); // this changes |c| since we are in type 2
 	    pred.push_back(nblock_below(c));
 	  }
 	}
@@ -1439,43 +1424,46 @@ non_integral_block::non_integral_block
   const KGBElt x_org = sr.x();
   const nblock_elt org(x_org,y_values::exp_pi(infin_char-rc.lambda(sr)));
 
-  BlockElt last=aux.nblock_below(org); // generate partial block in |aux|
-
-  {
-    std::vector<unsigned int> len(size());
-    for (BlockElt z=0; z<size(); ++z)
-      len[z]=length(z);
-    Permutation pi = permutations::standardization(len,len[last]+1);
-    pi.permute(info);
-    z_hash.reconstruct(); // adapt to permutation of entries
-  }
+  // generate partial block in |aux|
+  BlockElt last=aux.nblock_below(org); // this fills |y_hash| and |z_hash|
 
   size_t size= last+1;
   assert(info.size()==size); // |info| should have obtained precisely this size
 
-  data.assign(our_rank,std::vector<block_fields>(size)); // |UndefBlock| entries
+  // allocate link fields with |UndefBlock| entries
+  data.assign(our_rank,std::vector<block_fields>(size));
 
+  { // sort |info| by |x| value
+    KGBEltList xs(info.size()); // gather vector of |x| values over the block
+    for (size_t i=0; i<info.size(); ++i)
+      xs[i]=info[i].x;
+
+    auto stzn = // assigns each block element |z| to its new place
+      permutations::standardization(xs,x_org+1,&d_first_z_of_x);
+
+    info = Permutation(stzn,-1).pull_back(info); // permute |info|
+    z_hash.reconstruct(); // adapt to permutation of the block
+  }
+
+  // compute all links for all elements in partial block, by increasing length
   for (BlockElt i=0; i<size; ++i)
   {
     const block_elt_entry& z=z_hash[i];
-
-    KGBElt x = z.x;
-    x_of[x]=x; // record presence of |x|, |kgb_nr_of| remains empty for now
 
     DescentStatus& desc_z = info[i].descent;
     for (weyl::Generator s=0; s<our_rank; ++s)
     {
       std::vector<block_fields>& tab_s = data[s];
-      nblock_elt cur = aux.get(i);
+      nblock_elt cur = aux.get(i); // element |z| as |nblock_elt|
 
-      KGBElt conj_x = aux.conj_in_x(s,x);
+      KGBElt conj_x = aux.conj_in_x(s,z.x);
       if (kgb.isDescent(sub.simple(s),conj_x))
       {
 	if (kgb.status(sub.simple(s),conj_x)==gradings::Status::Complex)
 	{
 	  aux.cross_act(cur,s);
 	  BlockElt sz = aux.lookup(cur);
-	  assert(sz!=aux.z_hash.empty);
+	  assert(sz!=aux.z_hash.empty); // should be in generated partial block
 	  tab_s[i].cross_image = sz; tab_s[sz].cross_image = i;
 	  assert(aux.length(sz)+1==length(i));
 	  desc_z.set(s,DescentStatus::ComplexDescent);
@@ -1553,10 +1541,25 @@ non_integral_block::non_integral_block
     } // |for(s)|
   } // |for(i)|
 
-  kgb_nr_of.assign(&x_of[0],&x_of[x_org+1]); // copy identity map with holes
   compute_duals(complexGroup(),sub);
 
 } // |non_integral_block::non_integral_block|, partial version
+
+
+void non_integral_block::reorder()
+{
+  // do two-level bucket sort, on |length| (outer) and on |parent_x| (inner)
+  std::vector<unsigned int> v(size());
+  const auto length_limit = length(size()-1)+1;
+  for (BlockElt z=0; z<size(); ++z)
+    v[z]=parent_x(z);
+  permutations::standardization(v,x_of.size()).permute(info);
+  for (BlockElt z=0; z<size(); ++z)
+    v[z]=length(z); // length is obtained from the permuted |info| array
+  permutations::standardization(v,length_limit).permute(info);
+  z_hash.reconstruct(); // adapt to permutation of entries
+  compute_first_zs();
+}
 
 RatWeight non_integral_block::y_part(BlockElt z) const
 {

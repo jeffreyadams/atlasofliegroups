@@ -1,6 +1,5 @@
-/*!
-\file
-\brief Class definition and function declarations for class Block.
+/*
+   Class definition and function declarations for block-related classes
 */
 /*
   This is blocks.h
@@ -185,7 +184,8 @@ class Block_base
 
  protected:
   // a method to straighten out blocks generated in some non standard order
-  // renumber |x| through |new_x|, then order increasingly, set |first_z_of_x|
+  // renumber |x| through |new_x|, then order block by increasing (new) x
+  // also sets |first_z_of_x| to record the places where |x| changes
   KGBElt renumber_x(const std::vector<KGBElt>& new_x);
   void compute_first_zs(); // set |first_z_of_x| according to |x| values
 
@@ -373,6 +373,7 @@ class non_integral_block : public param_block
 
  private:
   void add_z(KGBElt x,KGBElt y, unsigned short l);
+  void reorder(); // sort block elements and set |d_first_z_of_x| field
 
 }; // |class non_integral_block|
 

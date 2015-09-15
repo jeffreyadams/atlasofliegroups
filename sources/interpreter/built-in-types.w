@@ -88,6 +88,7 @@ implementation, but we avoid including its header into out header file.
 @h "global.h"
 
 @< Includes needed in the header file @>=
+#include "atlas_types.h" // must be very first \.{atlas} include
 #include "types.h"
 
 @*1 Lie types.
@@ -96,7 +97,6 @@ Our first chapter concerns Lie types, as indicated by strings like
 library.
 
 @< Includes needed in the header file @>=
-#include "atlas_types.h"
 #include <stdexcept>
 #include "lietype.h"
 

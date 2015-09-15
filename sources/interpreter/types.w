@@ -107,7 +107,7 @@ of a quite different nature than that of the main mathematical library.
 
 @< Includes needed in \.{types.h} @>=
 #include <memory> // for |std::unique_ptr|, |std::shared_ptr|
-#include "sl_list.h" // for singly linked lists
+#include "atlas_types.h" // for utilities (like |sl_list|); must come first
 
 @* Types to represent types.
 %
@@ -167,11 +167,16 @@ We also need type lists as building block for types (for instance for the
 arguments of a function). These used to be defined in a similar manner to
 types themselves, but since an STL-compatible singly-linked list container
 class templates |simple_list| and |sl_list| was added to the Atlas utilities
-library, these were used to replace the implementation of type lists. The
-former is built into the structure itself, the latter which is mode flexible
-but requires more space for the class instance itself is occasionally used for
-temporary variables. This provide a good test for the usability of the new
-container type.
+library, these were used to replace the implementation of type lists.
+
+@< Includes needed in \.{types.h} @>=
+#include "sl_list.h" // for internals of the |sl_list| class template
+
+@ The class template |simple_list| is built into the structure itself, while
+|sl_list|, which is mode flexible but requires more space at the head of the
+list (the class |sl_list<type_expr>| itself), is occasionally used for
+temporary variables. This provides a good test for the usability of the new
+container type, which so far it has passed gracefully.
 
 @< Type definitions @>=
 typedef containers::simple_list<type_expr> type_list;

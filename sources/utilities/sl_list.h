@@ -11,6 +11,8 @@
 #ifndef SL_LIST_H /* guard against multiple inclusions */
 #define SL_LIST_H
 
+#include "sl_list_fwd.h"
+
 #include <cstddef>
 #include <cstdlib>
 #include <memory>
@@ -24,9 +26,9 @@ namespace atlas {
 
 namespace containers {
 
-template<typename T,typename Alloc = std::allocator<T> >
+template<typename T,typename Alloc>
   class simple_list;
-template<typename T,typename Alloc = std::allocator<T> >
+template<typename T,typename Alloc>
   class sl_list;
 
 // when Alloc is not std::allocator, we need a deleter class for |unique_ptr|
@@ -97,7 +99,7 @@ sl_node(T&& contents) : next(nullptr), contents(std::move(contents)) {}
   : next(nullptr), contents(std::forward<Args>(args)...) {}
 }; // |class sl_node| template
 
-template<typename T, typename Alloc = std::allocator<T> >
+template<typename T, typename Alloc>
   struct sl_list_const_iterator
   : public std::iterator<std::forward_iterator_tag, T>
 {
@@ -137,7 +139,7 @@ public:
 }; // |struct sl_list_const_iterator| template
 
 
-template<typename T,typename Alloc = std::allocator<T> >
+template<typename T,typename Alloc>
 class sl_list_iterator : public sl_list_const_iterator<T,Alloc>
 {
   friend class simple_list<T,Alloc>;
@@ -1141,7 +1143,7 @@ template<typename T,typename Alloc>
   void swap(sl_list<T,Alloc>& x, sl_list<T,Alloc>& y) { x.swap(y); }
 
 
-template<typename T,typename Alloc = std::allocator<T> >
+template<typename T,typename Alloc>
   class mirrored_simple_list // trivial adapter, to allow use with |std::stack|
   : public simple_list<T,Alloc>
 {
@@ -1195,7 +1197,7 @@ template<typename T,typename Alloc = std::allocator<T> >
 
 }; // |class mirrored_simple_list<T,Alloc>|
 
-template<typename T,typename Alloc = std::allocator<T> >
+template<typename T,typename Alloc>
   class mirrored_sl_list // trivial adapter, to allow use with |std::stack|
   : public sl_list<T,Alloc>
 {
