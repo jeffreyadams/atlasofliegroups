@@ -394,12 +394,10 @@ namespace atlas {
     class Block_base;
     class Block;
     class param_block;
-    class non_integral_block;
   }
   using blocks::Block_base;
   using blocks::Block;
   using blocks::param_block;
-  using blocks::non_integral_block;
   typedef unsigned int BlockElt;
   typedef std::vector<BlockElt> BlockEltList;
   typedef std::pair<BlockElt,BlockElt> BlockEltPair;

@@ -130,7 +130,7 @@ param_block& current_param_block()
   if (state==noblock) // we have entered reprmode without setting block
   {
     block_pointer = // partial block default
-      new non_integral_block(currentRepTable(),*sr);
+      new param_block(currentRepTable(),*sr);
     state=partial_block;
     entry_z = block_pointer->size()-1;
   }
@@ -266,9 +266,7 @@ void nblock_f()
     delete WGr_pointer; WGr_pointer=NULL;
     delete block_pointer; // destroy installed block first
     block_pointer =
-      new non_integral_block(currentRepContext(),
-			     currentStandardRepr(),
-			     entry_z);
+      new param_block(currentRepContext(),currentStandardRepr(),entry_z);
     state=nblock;
   }
   block_f();
@@ -281,9 +279,7 @@ void ensure_full_block()
     delete WGr_pointer; WGr_pointer=NULL;
     delete block_pointer; // destroy installed block first
     block_pointer =
-      new non_integral_block(currentRepContext(),
-			     currentStandardRepr(),
-			     entry_z);
+      new param_block(currentRepContext(),currentStandardRepr(),entry_z);
     state=nblock;
   }
 }
@@ -295,8 +291,7 @@ void partial_block_f()
     delete WGr_pointer; WGr_pointer=NULL;
     delete block_pointer; // destroy installed block first
     block_pointer =
-      new non_integral_block(currentRepContext(),
-			     currentStandardRepr());
+      new param_block(currentRepContext(),currentStandardRepr());
     state=partial_block;
     entry_z = current_param_block().size()-1;
   }

@@ -1057,7 +1057,7 @@ WeightInvolution get_commuting_involution
       {
 	std::cout << "On fixed factor " << it->first << ' ';
 	internal_swap.set(*jt,
-			  get_yes_or_no("does delta (like xi) swap factors"));
+		  get_yes_or_no("does delta (like xi) swap the two parts"));
 	if (has_involution(slt))
 	{
 	  std::cout << "On that complex factor, ";

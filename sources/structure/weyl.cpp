@@ -1199,6 +1199,7 @@ Transducer::Transducer(const int_Matrix& c, size_t r)
 // extract |Twist| information from a list of "extended generators"
 Twist::Twist(const ext_gens& orbits)
 {
+  std::fill_n(&d[0],constants::RANK_MAX,Generator(~0));
   for (auto it=orbits.begin(); it!=orbits.end(); ++it)
     if (it->length()==1)
       d[it->s0]=it->s0;

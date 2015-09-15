@@ -110,7 +110,7 @@ std::ostream& Block::print
   return strm ;
 }
 
-std::ostream& non_integral_block::print
+std::ostream& param_block::print
   (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {
   const KGB& kgb = rc.kgb();

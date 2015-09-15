@@ -29,7 +29,7 @@
 #include "kgb.h"
 #include "weyl.h"
 #include "kl.h"		// destruction
-#include "repr.h" // use of |StandardRepr| in |non_integral_block| constructor
+#include "repr.h" // use of |StandardRepr| in |param_block| constructor
 
 /*
   Our task in the traditional setup (the constructor for |Block|) is fairly
@@ -603,15 +603,6 @@ void Block::compute_supports()
 
 
 
-param_block::param_block(const Rep_context& rc0, unsigned int rank)
-  : Block_base(rank)
-  , rc(rc0)
-  , infin_char(0) // don't set yet
-  , singular() // idem
-  , y_pool()
-  , y_hash(y_pool)
-{}
-
 RealReductiveGroup& param_block::realGroup() const
   { return rc.realGroup(); }
 const ComplexReductiveGroup& param_block::complexGroup() const
@@ -749,10 +740,9 @@ void param_block::compute_duals(const ComplexReductiveGroup& G,
 
 BlockElt param_block::lookup(KGBElt x, const TorusElement& y_rep) const
 {
-  const y_entry ye =
-    involution_table().pack(y_rep,realGroup().kgb().inv_nr(x));
-  KGBElt y = y_hash.find(ye);
-  return element(x,y); // TODO: avoid this virtual method call
+  const KGBElt y =
+    y_hash.find(involution_table().pack(y_rep,realGroup().kgb().inv_nr(x)));
+  return earlier(x,y);
 }
 
 nblock_help::nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
@@ -888,12 +878,7 @@ y_entry nblock_help::pack_y(const nblock_elt& z) const
 }
 
 
-BlockElt non_integral_block::element(KGBElt x,KGBElt y) const
-{
-  return z_hash.find(block_elt_entry(x,y,0)); // length ignored in search
-}
-
-void non_integral_block::add_z(KGBElt x,KGBElt y, unsigned short l)
+void param_block::add_z(KGBElt x,KGBElt y, unsigned short l)
 {
   size_t old_size=info.size();
   BlockElt z=z_hash.match(block_elt_entry(x,y,l));
@@ -903,12 +888,17 @@ void non_integral_block::add_z(KGBElt x,KGBElt y, unsigned short l)
   ndebug_use(z);
 }
 
-non_integral_block::non_integral_block
+param_block::param_block
   (const Rep_context& rc,
    StandardRepr sr,             // by value; made dominant internally
    BlockElt& entry_element	// set to block element matching input
   )
-  : param_block(rc,rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
+  : Block_base(rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
+  , rc(rc)
+  , infin_char(0) // don't set yet
+  , singular() // idem
+  , y_pool()
+  , y_hash(y_pool)
   , z_hash(info)
 {
   const ComplexReductiveGroup& G = complexGroup();
@@ -932,8 +922,8 @@ non_integral_block::non_integral_block
 
   // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
   const KGBElt x_org = sr.x();
-  const nblock_elt org(x_org,y_values::exp_pi(infin_char-rc.lambda(sr)));
-  nblock_elt z_start = org; // working copy
+  const TorusElement y_org = y_values::exp_pi(infin_char-rc.lambda(sr));
+  auto z_start = nblock_elt(x_org,y_org); // working copy
 
   // step 2: move up toward the most split fiber for the current real form
   { // modify |x| and |y|, ascending for |x|, descending for |y|
@@ -1082,8 +1072,7 @@ non_integral_block::non_integral_block
 	} // |if(new_cross)|
 	else // install cross links to previously existing elements
 	  for (unsigned int j=0; j<nr_y; ++j)
-	    tab_s[base_z+j].cross_image
-	      = element(s_x_n,cross_ys[j]); // TODO remove this virtual call
+	    tab_s[base_z+j].cross_image = earlier(s_x_n,cross_ys[j]);
 
 	// compute component |s| of |info[z].descent|, this |n|, all |y|s
 	KGBElt conj_n = kgb.cross(sub.to_simple(s),n); // conjugate
@@ -1189,14 +1178,14 @@ non_integral_block::non_integral_block
 	    if (descentValue(s,base_z+j)!=DescentStatus::RealNonparity)
 	    {
 	      KGBElt cty=Cayley_ys[p++]; // unique Cayley transform of |y|
-	      BlockElt target = element(ctx1,cty); // TODO etc.
+	      BlockElt target = earlier(ctx1,cty);
 	      tab_s[base_z+j].Cayley_image.first = target;
 	      first_free_slot(tab_s[target].Cayley_image) = base_z+j;
 	      if (Cayleys.second!=UndefKGB) // then double valued (type1)
 	      {
 		KGBElt ctx2 = kgb.cross(Cayleys.second,sub.to_simple(s));
 		assert (x_seen.isMember(ctx2));
-		target = element(ctx2,cty); // TODO remove this virtual call
+		target = earlier(ctx2,cty);
 		tab_s[base_z+j].Cayley_image.second = target;
 		first_free_slot(tab_s[target].Cayley_image) = base_z+j;
 	      }
@@ -1224,9 +1213,9 @@ non_integral_block::non_integral_block
   compute_duals(G,sub); // finally compute Hermitian duals
 
   // and look up which element matches the original input
-  entry_element = element(x_org,y_hash.find(aux.pack_y(org))); // TODO etc.
+  entry_element = lookup(x_org,y_org);
 
-} // |non_integral_block::non_integral_block|, full block version
+} // |param_block::param_block|, full block version
 
 
 
@@ -1234,7 +1223,7 @@ non_integral_block::non_integral_block
 struct partial_nblock_help : public nblock_help
 {
   y_part_hash& y_hash; // will reference a field of |param_block|
-  block_hash& z_hash;  // will reference a field of |non_integral_block|
+  block_hash& z_hash;  // will reference a field of |param_block|
 
   std::vector<BlockEltList> predecessors; // a list of predecessors for each z
 
@@ -1384,9 +1373,14 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
 
 
 // alternative constructor, for interval below |sr|
-non_integral_block::non_integral_block
+param_block::param_block
 (const Rep_context& rc, StandardRepr sr) // by value; made dominant internally
-  : param_block(rc,rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
+  : Block_base(rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
+  , rc(rc)
+  , infin_char(0) // don't set yet
+  , singular() // idem
+  , y_pool()
+  , y_hash(y_pool)
   , z_hash(info)
 {
   const RootDatum& rd = complexGroup().rootDatum();
@@ -1529,10 +1523,10 @@ non_integral_block::non_integral_block
 
   compute_duals(complexGroup(),sub);
 
-} // |non_integral_block::non_integral_block|, partial block version
+} // |param_block::param_block|, partial block version
 
 
-RatWeight non_integral_block::y_part(BlockElt z) const
+RatWeight param_block::y_part(BlockElt z) const
 {
   RatWeight t =  y_rep(y(z)).log_pi(false);
   InvolutionNbr i_x = rc.kgb().inv_nr(x(z));

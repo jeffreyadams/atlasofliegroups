@@ -782,7 +782,7 @@ unsigned int Rep_table::length(StandardRepr z)
     return lengths[hash_index];
 
   // otherwise do it the hard way, constructing a block up to |z|
-  non_integral_block block(*this,z); // compute partial block
+  param_block block(*this,z); // compute partial block
   return block.length(block.size()-1);
 }
 
@@ -798,7 +798,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr z) // must be nonzero and final
   unsigned long hash_index=hash.find(z);
   if (hash_index==hash.empty) // previously unknown parameter
   {
-    non_integral_block block(*this,z);
+    param_block block(*this,z);
     BlockEltList survivors;
     add_block(block,survivors);
 
@@ -902,7 +902,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   {
     Rational r=rp[i];
     const StandardRepr zi = sr(z.x(),lam_rho,nu_z*r);
-    non_integral_block b(*this,zi);
+    param_block b(*this,zi);
     const SR_poly terms = deformation_terms(b,b.size()-1);
     for (SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
       result.add_multiple(deformation(it->first),it->second); // recursion

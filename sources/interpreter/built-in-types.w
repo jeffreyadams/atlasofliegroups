@@ -3912,7 +3912,7 @@ void print_n_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
-  non_integral_block block(p->rc(),p->val,init_index);
+  param_block block(p->rc(),p->val,init_index);
   *output_stream << "Parameter defines element " << init_index
                @|<< " of the following block:" << std::endl;
   block.print_to(*output_stream,true);
@@ -3933,7 +3933,7 @@ void block_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {
     BlockElt start; // will hold index in the block of the initial element
-    non_integral_block block(p->rc(),p->val,start);
+    param_block block(p->rc(),p->val,start);
     @< Push a list of parameter values for the elements of |block| @>
     push_value(std::make_shared<int_value>(start));
     if (l==expression_base::single_value)
@@ -3964,7 +3964,7 @@ void partial_block_wrapper(expression_base::level l)
   test_standard(*p,"Cannot generate block");
   if (l!=expression_base::no_value)
   {
-    non_integral_block block(p->rc(),p->val);
+    param_block block(p->rc(),p->val);
     @< Push a list of parameter values for the elements of |block| @>
   }
 }
@@ -3989,7 +3989,7 @@ void KL_block_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {
     BlockElt start; // will hold index in the block of the initial element
-    non_integral_block block(p->rc(),p->val,start);
+    param_block block(p->rc(),p->val,start);
     @< Push a list of parameter values for the elements of |block| @>
     push_value(std::make_shared<int_value>(start));
     const kl::KLContext& klc = block.klc(block.size()-1,false);
@@ -4069,7 +4069,7 @@ void partial_KL_block_wrapper(expression_base::level l)
   test_standard(*p,"Cannot generate block");
   if (l!=expression_base::no_value)
   {
-    non_integral_block block(p->rc(),p->val);
+    param_block block(p->rc(),p->val);
     @< Push a list of parameter values for the elements of |block| @>
 
     const kl::KLContext& klc = block.klc(block.size()-1,false);
@@ -4872,7 +4872,7 @@ void deform_wrapper(expression_base::level l)
   test_standard(*p,"Cannot compute deformation formula");
   if (l==expression_base::no_value)
     return;
-  non_integral_block block(p->rc(),p->val); // partial block construction
+  param_block block(p->rc(),p->val); // partial block construction
   repr::SR_poly terms
      = p->rt().deformation_terms(block,block.size()-1);
 
