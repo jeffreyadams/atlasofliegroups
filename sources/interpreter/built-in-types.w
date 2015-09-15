@@ -3949,7 +3949,7 @@ also construct a module parameter value for each element of |block|.
   const RatWeight& gamma=block.gamma();
   for (BlockElt z=0; z<block.size(); ++z)
   { StandardRepr block_elt_param =
-      p->rc().sr(block.parent_x(z),block.lambda_rho(z),gamma);
+      p->rc().sr(block.x(z),block.lambda_rho(z),gamma);
     param_list->val[z] =
 	std::make_shared<module_parameter_value>(p->rf,block_elt_param);
   }

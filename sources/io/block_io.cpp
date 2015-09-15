@@ -118,12 +118,12 @@ std::ostream& non_integral_block::print
   unsigned int ysize = y_part(z).size();
 
   strm << (survives(z) ? '*' : ' ')
-       << "(x=" << std::setw(xwidth) << parent_x(z)
+       << "(x=" << std::setw(xwidth) << x(z)
        << ",lam=rho+" << std::setw(2*ysize+3) << lambda_rho(z)
        << ", nu=" << std::setw(2*ysize+5) << nu(z)
        << ')' << std::setw(2) << "";
 
-  const TwistedInvolution& ti = kgb.involution(parent_x(z));
+  const TwistedInvolution& ti = kgb.involution(x(z));
   const TwistedWeylGroup& tW = kgb.twistedWeylGroup();
   // print root datum involution
   if (as_invol_expr) prettyprint::printInvolution(strm,ti,tW);

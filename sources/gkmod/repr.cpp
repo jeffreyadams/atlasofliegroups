@@ -95,7 +95,7 @@ StandardRepr
 StandardRepr Rep_context::sr(const param_block& b, BlockElt i) const
 {
   assert(i<b.size());
-  return sr_gamma(b.parent_x(i),b.lambda_rho(i),b.gamma());
+  return sr_gamma(b.x(i),b.lambda_rho(i),b.gamma());
 }
 
 Weight Rep_context::lambda_rho(const StandardRepr& z) const

@@ -1394,7 +1394,7 @@ BlockElt twisted (const param_block& block, const KGB& kgb,
 		  const WeightInvolution& delta,
 		  const weyl::Twist& twist)
 {
-  KGBElt x = block.parent_x(z);
+  KGBElt x = block.x(z);
   TorusElement y = block.y_rep(block.y(z));
   KGBElt xx= twisted(kgb,x,delta,twist);
   y.act_by(delta);

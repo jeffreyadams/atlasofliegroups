@@ -183,10 +183,9 @@ class Block_base
   { fill_klc(last_y,verbose); return *klc_ptr; }
 
  protected:
-  // a method to straighten out blocks generated in some non standard order
-  // renumber |x| through |new_x|, then order block by increasing (new) x
-  // also sets |first_z_of_x| to record the places where |x| changes
-  KGBElt renumber_x(const std::vector<KGBElt>& new_x);
+  // order block by increasing value of |x(z)|, adapting tables accoringly
+  // also sets |first_z_of_x| to record the places where |x(z)| changes
+  KGBElt sort_by_x();
   void compute_first_zs(); // set |first_z_of_x| according to |x| values
 
  private:
@@ -304,11 +303,8 @@ class param_block : public Block_base // blocks of parameters
   RatWeight infin_char; // infinitesimal character
   RankFlags singular; // flags simple roots for which |infin_char| is singular
 
-  std::vector<KGBElt> kgb_nr_of; // maps child |x| numbers to parent |kgb|
-  std::vector<KGBElt> x_of;      // inverse mapping, partial
-
   y_entry::Pooltype y_pool;
-  y_part_hash y_hash;
+  y_part_hash y_hash; // hash table allows storing |y| parts by index
 
   param_block(const Rep_context& rc, unsigned int rank);
 
@@ -322,7 +318,6 @@ class param_block : public Block_base // blocks of parameters
   RealReductiveGroup& realGroup() const;
 
   const RatWeight& gamma() const { return infin_char; }
-  KGBElt parent_x(BlockElt z) const { return kgb_nr_of[x(z)]; }
   const TorusElement& y_rep(KGBElt y) const { return y_pool[y].repr(); }
   BlockElt lookup(KGBElt parent_x, const TorusElement& y_rep) const;
 
@@ -334,8 +329,8 @@ class param_block : public Block_base // blocks of parameters
   BlockEltList survivors_below(BlockElt z) const; // expression for $I(z)$
 
   // virtual methods
-  virtual KGBElt xsize() const { return kgb_nr_of.size(); } // child |x| range
-  virtual KGBElt ysize() const { return y_hash.size(); }    // child |y| range
+  virtual KGBElt xsize() const { return x(size()-1)+1; } // we're sorted by |x|
+  virtual KGBElt ysize() const { return y_hash.size(); } // child |y| range
   virtual const TwistedInvolution& involution(BlockElt z) const; // from |kgb|
 
 }; // |class param_block|
@@ -373,7 +368,6 @@ class non_integral_block : public param_block
 
  private:
   void add_z(KGBElt x,KGBElt y, unsigned short l);
-  void reorder(); // sort block elements and set |d_first_z_of_x| field
 
 }; // |class non_integral_block|
 
