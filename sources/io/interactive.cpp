@@ -14,6 +14,7 @@
 #include <fstream>
 #include <string>
 #include <functional> // for |std::reference|
+#include <cstring>
 
 #include "prerootdata.h"
 #include "kgb.h"	// |KGB|
@@ -954,7 +955,26 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 
 struct inner_class_factor
 { SimpleLieType factor; lietype::simple_ict kind;
-  inner_class_factor(SimpleLieType t): factor(t) {} // |kind| set afterwards
+  inner_class_factor(SimpleLieType slt,lietype::TypeLetter l)
+  : factor(slt)
+  { using lietype::simple_ict;
+    if (l=='c' or l=='e')
+      kind=simple_ict::equal_rank;
+    else if (l=='C')
+      kind=simple_ict::complex;
+    else if (l=='u')
+      kind=simple_ict::equal_rank;
+    else if (l=='s')
+    { if (slt==SimpleLieType{'A',1} or
+	  std::strchr("TADE",slt.first)==nullptr)
+	kind=simple_ict::equal_rank;
+      else if (slt.first!='D')
+	kind=simple_ict::unequal_rank;
+      else kind= slt.second%2==0
+	     ? simple_ict::equal_rank : simple_ict::unequal_rank;
+    }
+    else assert(false);
+  }
 };
 
 bool operator== (const inner_class_factor& a, inner_class_factor& b)
@@ -1005,14 +1025,9 @@ WeightInvolution get_commuting_involution
   const SimpleLieType* p= &lo.d_type[0];
   for (unsigned k=0; k<lo.d_inner.size(); ++k)
   { const lietype::TypeLetter ict=lo.d_inner[k];
-    inner_class_factor cur(*p++);
-    if (ict=='c')
-      cur.kind=simple_ict::equal_rank;
-    else if (ict=='u' or ict=='s')
-      cur.kind=simple_ict::unequal_rank;
-    else if (ict=='C')
-    { cur.kind=simple_ict::complex;
-      assert(*p==cur.factor);
+    inner_class_factor cur(*p++,ict);
+    if (ict=='C')
+    { assert(*p==cur.factor); // next factor must be identical
       ++p; // extra increment to skip duplicated simple type
     }
 

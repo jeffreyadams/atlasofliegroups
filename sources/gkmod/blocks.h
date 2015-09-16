@@ -121,7 +121,7 @@ class Block_base
 
   const DynkinDiagram& Dynkin() const { return dd; }
   ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
-  const ext_gens& fold_orbits() const { return orbits; }
+  const ext_gens& inner_fold_orbits() const { return orbits; }
 
   KGBElt x(BlockElt z) const { assert(z<size()); return info[z].x; }
   KGBElt y(BlockElt z) const { assert(z<size()); return info[z].y; }
@@ -301,10 +301,9 @@ typedef HashTable<y_entry,KGBElt> y_part_hash;
 typedef Block_base::EltInfo block_elt_entry;
 typedef HashTable<block_elt_entry,BlockElt> block_hash;
 
-// |param_block| is intermediate between |Block_base| and |non_integral_block|
-class param_block : public Block_base // blocks of parameters
+// a class for blocks of (possibly non integral) parameters
+class param_block : public Block_base
 {
- protected: // everything that is here serves derived classes only
   const Rep_context& rc; // accesses many things, including KGB set for x
 
   RatWeight infin_char; // infinitesimal character
@@ -336,7 +335,8 @@ class param_block : public Block_base // blocks of parameters
   void compute_duals(const ComplexReductiveGroup& G,const SubSystem& rs);
 
  public:
-  // "inherited" accessors
+  // accessors that get values via |rc|
+  const RootDatum& rootDatum() const;
   const ComplexReductiveGroup& complexGroup() const;
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& realGroup() const;
@@ -355,12 +355,13 @@ class param_block : public Block_base // blocks of parameters
 
   BlockElt lookup(KGBElt x, const TorusElement& y_rep) const;
 
+  ext_gens fold_orbits(const WeightInvolution& delta) const;
+
   // virtual methods
   virtual KGBElt xsize() const { return x(size()-1)+1; } // we're sorted by |x|
   virtual KGBElt ysize() const { return y_hash.size(); } // child |y| range
   virtual const TwistedInvolution& involution(BlockElt z) const; // from |kgb|
 
-  // virtual methods
   virtual std::ostream& print // defined in block_io.cpp
     (std::ostream& strm, BlockElt z,bool as_invol_expr) const;
 

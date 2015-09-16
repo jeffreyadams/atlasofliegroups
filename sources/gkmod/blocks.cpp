@@ -623,6 +623,8 @@ const ComplexReductiveGroup& param_block::complexGroup() const
   { return rc.realGroup().complexGroup(); }
 const InvolutionTable& param_block::involution_table() const
   { return complexGroup().involution_table(); }
+const RootDatum& param_block::rootDatum() const
+  { return complexGroup().rootDatum(); }
 const TwistedInvolution& param_block::involution(BlockElt z) const
 { return rc.kgb().involution(x(z)); }
 
@@ -758,6 +760,13 @@ BlockElt param_block::lookup(KGBElt x, const TorusElement& y_rep) const
     y_hash.find(involution_table().pack(y_rep,realGroup().kgb().inv_nr(x)));
   return earlier(x,y);
 }
+
+ext_gens param_block::fold_orbits(const WeightInvolution& delta) const
+{
+  const auto sub = integrality_datum(complexGroup().rootDatum(),infin_char);
+  return rootdata::fold_orbits(sub,delta);
+}
+
 
 nblock_help::nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
   : kgb(GR.kgb()), rd(subsys.parent_datum()), sub(subsys)

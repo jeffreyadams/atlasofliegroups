@@ -1402,11 +1402,11 @@ BlockElt twisted (const param_block& block, const KGB& kgb,
   return result;
 }
 
-extended_block::extended_block
+extended_block::extended_block // for the inner class twist only
   (const Block_base& block,const TwistedWeylGroup& W)
   : parent(block)
   , tW(W)
-  , folded(block.fold_orbits(),block.Dynkin())
+  , folded(block.inner_fold_orbits(),block.Dynkin())
   , info()
   , data(parent.folded_rank())
   , l_start(parent.length(parent.size()-1)+2)
@@ -1518,7 +1518,7 @@ extended_block::extended_block
 } // |extended_block::extended_block| (with inner twist)
 
 
-ext_block::ext_block
+ext_block::ext_block // for external twist; old style blocks
   (const ComplexReductiveGroup& G,
    const Block& block,
    const KGB& kgb, const KGB& dual_kgb, // all are needed
@@ -1550,12 +1550,12 @@ ext_block::ext_block
   complete_construction(fixed_points);
 }
 
-ext_block::ext_block
+ext_block::ext_block // for an external twist
   (const ComplexReductiveGroup& G,
    const param_block& block, const KGB& kgb,
    const WeightInvolution& delta)
   : parent(block)
-  , orbits(fold_orbits(G.rootDatum(),delta))
+  , orbits(block.fold_orbits(delta))
   , folded(orbits,block.Dynkin())
   , info()
   , data(orbits.size()) // create that many empty vectors
@@ -1563,8 +1563,9 @@ ext_block::ext_block
 {
   BitMap fixed_points(block.size());
 
-  { // compute |child_nr| and |parent_nr| tables
-    weyl::Twist twist(orbits);
+  { // compute the delta-fixe points of the block
+    // the following is NOT |twist(orbits)|, which would be for subsystem
+    weyl::Twist twist(fold_orbits(block.rootDatum(),delta));
 
     if (twisted(kgb,0,delta,twist)==UndefKGB or
 	twisted(block,kgb,0,delta,twist)==UndefBlock)
