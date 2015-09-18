@@ -29,7 +29,8 @@ std::ostream& Mod2_System::equation::print(std::ostream& f) const
   return f;
 }
 
-unsigned long Mod2_System::size() const { return pivot_index.size(); }
+  unsigned long Mod2_System::size() const // the (current) number of unknowns
+{ return pivot_index.size(); }
 
 unsigned long Mod2_System::extend(unsigned int n)
 {
@@ -46,6 +47,7 @@ template <typename I> // input iterator with unsigned value type
     return false; // an already inconsistent system remains so
   bitmap::BitMap lhs(size(),begin,end); // convert iterators to bitmap
 
+  // now new equation is given by |lhs| and |rhs|; reduce it w.r.t. old ones:
   for (unsigned int i=0; i<eqn.size(); ++i)
     if (lhs.isMember(eqn[i].lhs[0]))
       rhs += eliminate(i,lhs);
@@ -53,13 +55,15 @@ template <typename I> // input iterator with unsigned value type
   if (lhs.empty() and rhs%2==0)
     return true; // we've ended up with a trivial equation, don't add it!
 
-  unsigned long our_index = eqn.size();
-  eqn.push_back(equation(rhs));
+  unsigned long our_index = eqn.size(); // the number of the new equation
+  eqn.push_back(equation(rhs)); // push equation with for now empty LHS
   equation& eq = eqn.back();
-  eq.lhs.assign(lhs.begin(),lhs.end());
   if (eq.lhs.empty())
-    return false; // we have just added an inconsistent equation
-  pivot_index[eq.lhs[0]] = our_index;
+    return false; // we're done, and have just added an inconsistent equation
+
+  eq.lhs.assign(lhs.begin(),lhs.end()); // else fill in LHS from the |BitMap|
+
+  pivot_index[eq.lhs[0]] = our_index; // we are the pivot for column |lhs[0]|
   return true;
 }
 
@@ -145,20 +149,26 @@ std::vector<bitmap::BitMap> Mod2_System::solution_basis()
   result.reserve(dimension());
   static const unsigned long absent = ~0ul;
   std::vector<unsigned long> result_inx(size(),absent);
-  for (unsigned long i=0; i<size(); ++i)
-    if (pivot_index[i]==no_pivot)
+  for (unsigned long j=0; j<size(); ++j)
+    if (pivot_index[j]==no_pivot) // non pivot column gives solution generator
     {
-      result_inx[i] = result.size();
+      result_inx[j] = result.size(); // map pivot column to generator index
       result.push_back(bitmap::BitMap(size()));
-      result.back().insert(i);
+      result.back().insert(j); // start off with standard basis vector $e_j$
     }
+
+  // then use equations to solve the values of pivot column unknowns
   for (unsigned long i=0; i<eqn.size(); ++i)
-    for (unsigned long j=1; j<eqn[i].lhs.size(); ++j)
+  { const auto& lhs = eqn[i].lhs; // |eqn| will solve unknown |lhs[0]|
+    for (auto it=lhs.begin()+1; it!=lhs.end(); ++it)
+      // traverse the column numbers of non-pivot unit coefficients in |lhs|
     {
-      unsigned long k = result_inx[eqn[i].lhs[j]];
-      assert(k!=absent and result[k].isMember(eqn[i].lhs[j]));
-      result[k].insert(eqn[i].lhs[0]);
+      unsigned long k = result_inx[*it]; // find generator corr.ing to column
+      assert(k!=absent // after reduction nonzero coef implies non-pivot column
+	     and result[k].isMember(*it)); // and generator has own index set
+      result[k].insert(lhs[0]); // mark that generator has |lhs[0]| nonzero
     }
+  }
 
   return result;
 } // |Mod2_System::solution_basis|
