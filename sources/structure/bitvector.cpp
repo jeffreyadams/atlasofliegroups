@@ -334,64 +334,76 @@ BitMatrix<dim>& BitMatrix<dim>::operator*= (const BitMatrix<dim>& m)
   surjective $B$ will be a left inverse (or section) of $A$ (whence the name)
   while if $A$ is injective it will be a right inverse.
 
-  For the algorithm, we use the normalSpanAdd function. We start out with
-  a matrix of size (2r,c) (if r,c is the size of our original matrix)
-  containing the identity matrix below the given one. Then we apply
-  normalSpanAdd; at the end, the upper part of our matrix is (some permutattion
-  of) the identity. Setting it right will finish the job.
+  Let $A$ be a $r\times c$ matrix. We initialise a new matrix $B$ to the
+  identity matrix of size $c$, and let another matrix $M$ to $A$; the
+  invariant will be that $M=A.B$. We perform in parallel column operations to
+  $M$ and to $B$, transforming the latter into one in which each nonzero
+  column has a "pivot" entry that is the unique nonzero entry of its row, as
+  follows. For each column of $B$ in order a nonzero pivot is chosen if
+  possible and, then cleared out of the remainder of its row.
 
-  Actually, since this would require working with BitMatrix<2*dim>, and since
-  conversion functions don't seem to be forthcoming, we work with a pair
-  of matrices, and just copy the code from normalSpanAdd.
+  At the end the nonzero columns of $M$ have become standard basis vectors of
+  $(Z/2Z)^r$; the corresponding column of $B$ (its preimage by $A$) is moved
+  to the appropriate column of $B$ (its remaining columns are zero).
 */
 template<size_t dim> BitMatrix<dim> BitMatrix<dim>::section() const
 {
 
   std::vector<BitSet<dim> > basis (d_columns,BitSet<dim>()); // square matrix
     for (unsigned int i = 0; i<d_columns; ++i)
-      basis[i].set(i); // standard basis is starting point
+      basis[i].set(i); // init: $n\times n$ identity matrix, for |n==d_columns|
 
   std::vector<BitSet<dim> > col(d_data); // copy columns of our matrix
 
-  BitSet<dim> pivots; // when $r$ is set some column has a pivot in row $r$
+  BitSet<dim> pivots; // $r$ will be set if some column has its pivot in row $r$
   unsigned int pivot_col[dim]; // column number having pivot in row $r$
 
   for (unsigned int k=0; k<d_columns; ++k)
   {
     const BitSet<dim> col_k = col[k];
-    if (col_k.none())
-      continue; // |k| will not be stored in |pivot_col|, the column ignored
+    if (col_k.none()) // then |k| will not be stored in |pivot_col| at all
+      continue; // we'll forget about |col_k|, and |basis[k]| remains as it is
 
-    const unsigned pivot = col_k.firstBit();
-    pivots.set(pivot);
-    pivot_col[pivot]=k;
+    const unsigned cur_pivot = col_k.firstBit(); // row in which pivot is found
+    pivots.set(cur_pivot); // mark this row as a pivot row
+    pivot_col[cur_pivot]=k; // associate current column |k| to row |pivot|
 
-    const BitSet<dim> b_k = basis[k];
+    const auto b_k = basis[k]; // basis vector to be added to some others
 
-    // clear previous (pivot) columns in position |n|
-    for (auto it=pivots.begin(); it() and *it<pivot; ++it)
+    // ensure that existing pivot columns get zero entry at inr |cur_pivot|
+    for (auto it=pivots.begin(); // traverse previous pivot rows
+	 it() and *it<cur_pivot; // consider only rows with pivot above ours
+	 ++it)
     {
-      const unsigned int j = pivot_col[*it];
-      if (col[j].test(pivot))
+      const unsigned int j = pivot_col[*it]; // column where that row has pivot
+      if (col[j].test(cur_pivot)) // see if that column nonzero at |cur_pivot|
       {
-	col[j] ^= col_k;
-	basis[j] ^= b_k;
+	col[j] ^= col_k; // if so clear out the entry using our column |col_k|
+	basis[j] ^= b_k; // and let the basis matrix follow suit
       }
     }
 
-    // clear subsequent columns in position |pivot|
+    // also clear row |cur_pivot| in (yet) non-pivot columns: those beyond |k|
     for (unsigned int j=k+1; j<d_columns; ++j)
-      if (col[j].test(pivot))
+      if (col[j].test(cur_pivot))
       {
 	col[j] ^= col_k;
 	basis[j] ^= b_k;
       }
+    // now $j=k$ is the unique index for which |col[j].test(cur_pivot)| holds
   }
 
+/* at this point, the number of pivots equals the rank $r$ of $A$, and if $P$
+   is the row-selection matrix for |pivots|, ten $A'=P.A$ is surjective. We
+   shall take a right-inverse $B'$ of $A'$, and put $B=B'.P$. From the fact
+   that $A'.B'=I_r$ it follws that $B.A.B=B$, and from $\ker(A)=\ker(A')$ it
+   can be deduced that $A.B.A=A$. By construction, column $j$ of $B$ is
+   nonzero only if |pivots.test(j)| holds, and |basis[pivot_col[j]]| will do.
+ */
   BitMatrix<dim> B(d_columns,d_rows); // transpose shaped zero bitmatrix
 
-  for (auto it=pivots.begin(); it(); ++it)
-    B.setColumn(*it,basis[pivot_col[*it]]);
+  for (auto it=pivots.begin(); it(); ++it) // for |r| member of |pivots|
+    B.setColumn(*it,basis[pivot_col[*it]]); // store pre-image of $e_r$
 
   // remainder of |B| remains zero
 

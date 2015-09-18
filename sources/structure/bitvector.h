@@ -336,9 +336,8 @@ template<size_t dim> class BitVectorList
   A rectangular matrix with entries in Z/2Z.
 
   The number of rows |d_rows| should be less than or equal to the template
-  parameter |dim|, which in turn is envisioned to be at most four times the
-  machine word size. The present |BitSet| implementation allows |dim| at most
-  twice the machine word size, and what is used is |dim| equal to |RANK_MAX|.
+  parameter |dim|. The present |BitSet| implementation allows |dim| at most
+  twice the machine word size, and what is used is the case |dim==RANK_MAX|.
 
   At least when |d_columns<=dim|, the matrix can act on the left on a
   |BitVector| of size |d_columns|; in this setting each column of the matrix
