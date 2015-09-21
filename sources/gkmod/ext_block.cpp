@@ -137,10 +137,10 @@ BlockElt extended_block::element(BlockElt zz) const
 }
 
 context::context
-  (repr::Rep_context& rc, WeightInvolution delta, const RatWeight& gamma)
+  (const repr::Rep_context& rc, WeightInvolution delta, const RatWeight& gamma)
     : d_rc(rc)
     , d_delta(std::move(delta)), d_gamma(gamma)
-    , d_g(rc.kgb().base_grading_vector()-rho_check(rc.rootDatum()))
+    , d_g(rc.kgb().base_grading_vector()+rho_check(rc.rootDatum()))
     , integr_datum(integrality_datum(rc.rootDatum(),gamma))
     , sub(SubSystem::integral(rc.rootDatum(),gamma))
 {}
@@ -150,7 +150,7 @@ Coweight ell (const KGB& kgb, KGBElt x)
 { const RatCoweight bgv=kgb.base_grading_vector();
   const Coweight t_bits (kgb.torus_part(x)); // lift from bitvector to vector
   RatCoweight result=bgv+t_bits;
-  twisted_act(kgb.complexGroup(),result,kgb.involution(x));
+  kgb.involution_matrix(x).right_mult(result.numerator());
   result.numerator().negate();
   result += bgv;
   result -= t_bits;
@@ -180,7 +180,7 @@ param::param (const context& ec, KGBElt x, const Weight& lambda_rho)
 
 bool in_L_image(Weight beta,WeightInvolution&& A)
 { int_Matrix L,R;
-  auto inv_fact = matreduc::diagonalise(A,L,R);
+  auto inv_fact = matreduc::diagonalise(std::move(A),L,R);
   int_Vector image = L*beta;
 
   unsigned i;
@@ -195,7 +195,7 @@ bool in_L_image(Weight beta,WeightInvolution&& A)
 
 bool in_R_image(WeightInvolution&& A,Coweight b)
 { int_Matrix L,R;
-  auto inv_fact = matreduc::diagonalise(A,L,R);
+  auto inv_fact = matreduc::diagonalise(std::move(A),L,R);
   int_Vector image = R.right_prod(b);
 
   unsigned i;
@@ -219,10 +219,10 @@ bool same_standard_reps (const param& E, const param& F)
 	or E.ctxt.g()!=F.ctxt.g()
 	or E.ctxt.gamma()!=F.ctxt.gamma())
       return false;
-  } // otherwise the might still be a match, so fall through
+  } // otherwise there might still be a match, so fall through
   return E.theta()==F.theta()
     and in_R_image(E.theta()+1,E.l-F.l)
-    and in_L_image(E.lambda_rho-F.lambda_rho,E.theta()+1);
+    and in_L_image(E.lambda_rho-F.lambda_rho,E.theta()-1);
 }
 
 KGBElt x(const param& E)
@@ -846,7 +846,7 @@ int level_a (const param& E, const Weight& shift, RootNbr alpha)
     - rd.colevel(alpha); // final term $<\alpha^\vee,\rho>$
 }
 
-DescValue type (const param& E, ext_gen p, std::vector<param>& links)
+DescValue type (const param& E, const ext_gen& p, std::vector<param>& links)
 {
   DescValue result;
   const TwistedWeylGroup& tW = E.rc().twistedWeylGroup();
@@ -859,8 +859,8 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
   switch (p.type)
   {
   case ext_gen::one:
-    { const Weight& alpha = integr_datum.root(p.s0);
-      const Coweight& alpha_v = integr_datum.coroot(p.s0);
+    { const Weight& alpha = integr_datum.simpleRoot(p.s0);
+      const Coweight& alpha_v = integr_datum.simpleCoroot(p.s0);
       const RootNbr n_alpha = subs.parent_nr_simple(p.s0);
       const RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
 
@@ -967,6 +967,7 @@ DescValue type (const param& E, ext_gen p, std::vector<param>& links)
 	Weight tau_correction;
 	if (rd.is_simple_root(alpha_simple))
 	  tau_correction = Weight(rd.rank(),0); // no correction needed here
+	else
 	{
 	  weyl::Generator s = // first switched root index
 	    rd.find_descent(alpha_simple);
@@ -1526,6 +1527,7 @@ ext_block::ext_block // for external twist; old style blocks
   : parent(block)
   , orbits(fold_orbits(G.rootDatum(),delta))
   , folded(orbits,block.Dynkin())
+  , d_delta(delta)
   , info()
   , data(orbits.size()) // create that many empty vectors
   , flipped_edges()
@@ -1557,6 +1559,7 @@ ext_block::ext_block // for an external twist
   : parent(block)
   , orbits(block.fold_orbits(delta))
   , folded(orbits,block.Dynkin())
+  , d_delta(delta)
   , info()
   , data(orbits.size()) // create that many empty vectors
   , flipped_edges()
@@ -1707,6 +1710,145 @@ BlockElt ext_block::cross(weyl::Generator s, BlockElt n) const
   }
   assert(false); return UndefBlock; // keep compiler happy
 } // |ext_block::cross|
+
+BlockElt ext_block::some_scent(weyl::Generator s, BlockElt n) const
+{
+  const BlockElt c = data[s][n].links.first;
+  assert(c!=UndefBlock);
+  return c;
+}
+
+BlockEltPair ext_block::Cayleys(weyl::Generator s, BlockElt n) const
+{
+  const DescValue type = descent_type(s,n);
+  if (has_double_image(type))
+    return data[s][n].links;
+  if (is_complex(type) or is_like_compact(type) or is_like_nonparity(type))
+    return {UndefBlock,UndefBlock};
+  return {data[s][n].links.first,UndefBlock};
+}
+
+
+
+// check validity, by comparing with results found using extended paraemters
+bool check(const ext_block eb, const param_block& block)
+{
+  context ctxt (block.context(),eb.delta(),block.gamma());
+  std::vector<param> links;
+  for (BlockElt n=0; n<eb.size(); ++n)
+  { auto z=eb.z(n);
+    param E(ctxt,block.x(z),block.lambda_rho(z));
+    for (weyl::Generator s=0; s<eb.rank(); ++s)
+    { ext_gen p=eb.orbit(s);
+      links.clear();
+      auto tp = type(E,p,links);
+      if (tp!=eb.descent_type(s,n))
+	return false;
+
+      switch (tp)
+      {
+      case one_imaginary_pair_switched: case one_real_pair_switched:
+      case one_real_nonparity: case one_imaginary_compact:
+      case two_imaginary_single_double_switched:
+      case two_real_single_double_switched:
+      case two_real_nonparity: case two_imaginary_compact:
+      case three_real_nonparity: case three_imaginary_compact:
+	assert(links.empty()); break;
+      case one_complex_ascent: case one_complex_descent:
+      case two_complex_ascent: case two_complex_descent:
+      case three_complex_ascent: case three_complex_descent:
+	{ assert(links.size()==1);
+	  BlockElt m=eb.cross(s,n);
+	  BlockElt cz = eb.z(m); // corresponding element of block
+	  param F(ctxt,block.x(cz),block.lambda_rho(cz));
+	  assert(same_standard_reps(links[0],F));
+	  if (signs_differ(links[0],F))
+	    std::cout << "Flip at cross link " << unsigned{s} << " from " << z
+		      << " to " << cz << '.' << std::endl;
+	} break;
+      case one_imaginary_single: case one_real_single:
+	{ assert(links.size()==2);
+	  BlockElt m=eb.some_scent(s,n); // the unique (inverse) Cayley
+	  BlockElt Cz = eb.z(m); // corresponding element of block
+	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
+	  assert(same_standard_reps(links[0],F));
+	  if (signs_differ(links[0],F))
+	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
+		      << " to " << Cz << '.' << std::endl;
+	  m=eb.cross(s,n); BlockElt cz = eb.z(m);
+	  param Fc(ctxt,block.x(cz),block.lambda_rho(cz));
+	  assert(same_standard_reps(links[1],Fc));
+	  if (signs_differ(links[1],Fc))
+	    std::cout << "Flip at cross link " << unsigned{s} << " from " << z
+		      << " to " << cz << '.' << std::endl;
+	} break;
+      case two_semi_imaginary: case two_semi_real:
+      case two_imaginary_single_single: case two_real_single_single:
+      case three_semi_imaginary: case three_real_semi:
+      case three_imaginary_semi: case three_semi_real:
+	{ assert(links.size()==1);
+	  BlockElt m=eb.some_scent(s,n); // the unique (inverse) Cayley
+	  BlockElt Cz = eb.z(m); // corresponding element of block
+	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
+	  assert(same_standard_reps(links[0],F));
+	  if (signs_differ(links[0],F))
+	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
+		      << " to " << Cz << '.' << std::endl;
+	} break;
+      case one_imaginary_pair_fixed: case one_real_pair_fixed:
+      case two_imaginary_double_double: case two_real_double_double:
+	{ assert(links.size()==2);
+	  BlockEltPair m=eb.Cayleys(s,n);
+	  BlockElt Cz0 = eb.z(m.first); BlockElt Cz1= eb.z(m.second);
+	  param F0(ctxt,block.x(Cz0),block.lambda_rho(Cz0));
+	  param F1(ctxt,block.x(Cz1),block.lambda_rho(Cz1));
+	  bool straight=same_standard_reps(links[0],F0);
+	  if (straight)
+	    assert(same_standard_reps(links[1],F1));
+	  else // it must be crossed
+	    assert(same_standard_reps(links[0],F1) and
+		   same_standard_reps(links[1],F0));
+	  unsigned iF0 = straight ? 0 : 1; // |links| index that pairs with |F0|
+	  if (signs_differ(links[iF0],F0))
+	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
+		      << " to " << Cz0 << '.' << std::endl;
+	  if (signs_differ(links[1-iF0],F1))
+	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
+		      << " to " << Cz1 << '.' << std::endl;
+	} break;
+      case two_imaginary_single_double_fixed: case two_real_single_double_fixed:
+	{ assert(links.size()==3);
+	  BlockEltPair m=eb.Cayleys(s,n);
+	  BlockElt Cz0 = eb.z(m.first); BlockElt Cz1= eb.z(m.second);
+	  param F0(ctxt,block.x(Cz0),block.lambda_rho(Cz0));
+	  param F1(ctxt,block.x(Cz1),block.lambda_rho(Cz1));
+	  bool straight=same_standard_reps(links[0],F0);
+	  if (straight)
+	    assert(same_standard_reps(links[1],F1));
+	  else // it must be crossed
+	    assert(same_standard_reps(links[0],F1) and
+		   same_standard_reps(links[1],F0));
+	  auto iF0 = unsigned{straight}; // |links| index that pairs with |F0|
+	  if (signs_differ(links[iF0],F0))
+	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
+		      << " to " << Cz0 << '.' << std::endl;
+	  if (signs_differ(links[1-iF0],F1))
+	    std::cout << "Flip at Cayles link " << unsigned{s} << " from " << z
+		      << " to " << Cz1 << '.' << std::endl;
+	  // check the false cross link
+	  m = eb.Cayleys(s,m.first);
+	  BlockElt fcz = m.first==n ? m.second : m.first;
+	  param F(ctxt,block.x(fcz),block.lambda_rho(fcz));
+	  assert(same_standard_reps(links[2],F));
+	  if (signs_differ(links[2],F))
+	    std::cout << "Flip at false cross link " << unsigned{s}
+		      << " from " << z << " to " << fcz << '.' << std::endl;
+	} break;
+      } // |switch(tp)|
+    } // |for(s)|
+  } // |for(n)|
+  return true;
+}
 
 // coefficient of neighbour |sx| for $s$ in action $(T_s+1)*a_x$
 Pol extended_block::T_coef(weyl::Generator s, BlockElt sx, BlockElt x) const

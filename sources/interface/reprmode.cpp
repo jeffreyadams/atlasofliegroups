@@ -337,10 +337,17 @@ void gextblock_f()
   WeightInvolution delta = interactive::get_commuting_involution
     (commands::current_layout(), commands::current_lattice_basis());
 
-  ext_block::ext_block eblock(currentComplexGroup(),current_param_block(),
+  auto& block = current_param_block();
+  ext_block::ext_block eblock(currentComplexGroup(),block,
 			      currentRealGroup().kgb(),delta);
-  ioutils::OutputFile file;
-  eblock.print_to(file);
+  if (check(eblock,block))
+  {
+    std::cout << "Extended block structure checked successfully." << std::endl;
+    ioutils::OutputFile file;
+    eblock.print_to(file);
+  }
+  else
+    std::cout << "Extended block structure check failed." << std::endl;
 }
 
 void kl_f()

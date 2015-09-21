@@ -174,7 +174,7 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
 			   matrix::PID_Matrix<C>& col)
 {
   size_t m=M.numRows();
-  size_t n=M.numColumns(); // in fact start of known null columns
+  size_t n=M.numColumns(); // |n| will become: start of known null columns
 
   matrix::PID_Matrix<C>(m).swap(row); // initialise |row| to identity matrix
   matrix::PID_Matrix<C>(n).swap(col);

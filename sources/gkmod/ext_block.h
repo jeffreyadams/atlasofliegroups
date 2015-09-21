@@ -214,9 +214,11 @@ class ext_block
   block_fields(DescValue t) : type(t),links(UndefBlock,UndefBlock) {}
   };
 
-  const Block_base& parent;
-  ext_gens orbits;
-  const DynkinDiagram folded;
+  const Block_base& parent; // block, maybe non-intg. where we are fixed points
+  ext_gens orbits; // $\delta$-orbits of generators for the parent block
+  const DynkinDiagram folded; // diagram defined on those orbits
+
+  WeightInvolution d_delta;
 
   std::vector<elt_info> info; // its size defines the size of the block
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
@@ -236,19 +238,15 @@ class ext_block
 
 // manipulators
 
-  void patch_signs(); // automatic correction of edge signs
-  void order_quad // make 2i12/2r21 quadruple have minus for |y|--|q| edge
-    (BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s, bool verbose=true);
-  bool // return new value; true means edge was flipped to minus
-    toggle_edge(BlockElt x,BlockElt y, bool verbose=true);
 
 // accessors
 
-  size_t rank() const { return data.size(); }
+  size_t rank() const { return orbits.size(); }
   size_t size() const { return info.size(); }
 
-  ext_gen orbit(weyl::Generator s) const { return parent.orbit(s); }
+  ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
   const DynkinDiagram& Dynkin() const { return folded; }
+  const WeightInvolution& delta() const { return d_delta; }
 
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
 
@@ -261,12 +259,14 @@ class ext_block
   size_t length(BlockElt n) const { return info[n].length; }
   size_t l(BlockElt y, BlockElt x) const { return length(y)-length(x); }
 
+  // the following three function return ascents or descents as appropriate
   BlockElt cross(weyl::Generator s, BlockElt n) const;
   BlockElt Cayley(weyl::Generator s, BlockElt n) const; // just one or none
-  BlockElt inverse_Cayley(weyl::Generator s, BlockElt n) const; // one or none
+  BlockEltPair Cayleys(weyl::Generator s, BlockElt n) const; // must be two
 
-  BlockEltPair Cayleys(weyl::Generator s, BlockElt n) const;
-  BlockEltPair inverse_Cayleys(weyl::Generator s, BlockElt n) const;
+  // some of the above: an (a/de)scent of |n| in block; assumed to exist
+  BlockElt some_scent(weyl::Generator s, BlockElt n) const;
+
 
   // whether link for |s| from |x| to |y| has a sign flip attached
   int epsilon(weyl::Generator s, BlockElt x, BlockElt y) const;
@@ -276,8 +276,6 @@ class ext_block
 
   BlockEltList down_set(BlockElt y) const;
 
-  // an (a/de)scent of |n| in block; assumed to exist
-  BlockElt some_scent(weyl::Generator s, BlockElt n) const;
   // here all elements reached by a link are added to |l|, (a/de)scent first
   void add_neighbours(BlockEltList& dst, weyl::Generator s, BlockElt n) const;
 
@@ -295,7 +293,7 @@ private:
 
 class context // holds values that remain fixed across extended block
 {
-  repr::Rep_context& d_rc;
+  const repr::Rep_context& d_rc;
   WeightInvolution d_delta;
   RatWeight d_gamma; // representative of infinitesimal character
   RatCoweight d_g; // chosen lift of the common square for the square class
@@ -304,7 +302,9 @@ class context // holds values that remain fixed across extended block
 
  public:
   context
-    (repr::Rep_context& rc, WeightInvolution delta, const RatWeight& gamma);
+    (const repr::Rep_context& rc,
+     WeightInvolution delta, // by value
+     const RatWeight& gamma);
 
   const repr::Rep_context& rc () const { return d_rc; }
   const RootDatum& id() const { return integr_datum; }
@@ -370,7 +370,9 @@ bool same_standard_reps (const param& E, const param& F);
 bool signs_differ (const param& E, const param& F);
 
 // find out type of extended parameters, and push its neighbours onto |links|
-DescValue type (const param& E, ext_gen p, std::vector<param>& links);
+DescValue type (const param& E, const ext_gen& p, std::vector<param>& links);
+
+bool check(const ext_block eb, const param_block& block);
 
 } // |namespace ext_block|
 
