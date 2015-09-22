@@ -741,6 +741,16 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
   assert(false); return one_complex_ascent; // keep compiler happy
 } // |extended_type|
 
+/*
+  An auxiliary routine to compute extended parameters across complex links.
+  The situation is complicated by the fact that the cross action is by a
+  generator of the folded integral system, so already to compute the cross
+  action at the level of involutions involves "unfolding" the generator to a
+  |length<=3| word in the integral generators, and then translating those
+  integrally-simple reflections into a word on the simple generators. As a
+  consequence many simple reflections for the full root datum can be involved,
+  and it is not sure that all of them will be complex.
+ */
 param complex_cross(ext_gen p, const param& E)
 { const RootDatum& rd = E.rc().rootDatum();
   const InvolutionTable& i_tab = E.rc().complexGroup().involution_table();
@@ -764,14 +774,14 @@ param complex_cross(ext_gen p, const param& E)
   for (unsigned i=p.w_tau.size(); i-->0; )
   { weyl::Generator s=p.w_tau[i]; // generator for integrality datum
     tW.twistedConjugate(E.ctxt.subsys().reflection(s),tw);
-    id.reflect(s,ga_la_num);
-    id.reflect(s,rho_r_shift);
-    id.reflect(s,tau);
-    id.coreflect(tf_num,s);
-    id.coreflect(t,s);
-    id.coreflect(dual_rho_im_shift,s);
+    id.simple_reflect(s,ga_la_num);
+    id.simple_reflect(s,rho_r_shift);
+    id.simple_reflect(s,tau);
+    id.simple_coreflect(tf_num,s);
+    id.simple_coreflect(t,s);
+    id.simple_coreflect(dual_rho_im_shift,s);
   }
-  RatWeight lr_ratvec = (gamma_rho - gamma_lambda).normalize();
+  const RatWeight lr_ratvec = (gamma_rho - gamma_lambda).normalize();
   assert(lr_ratvec.denominator()==1);
   Weight lambda_rho(lr_ratvec.numerator().begin(),
 		    lr_ratvec.numerator().end()); // convert to |Weight|
@@ -779,7 +789,7 @@ param complex_cross(ext_gen p, const param& E)
   rho_r_shift/=2; // now it is just a sum of (real) roots
   Weight tau_corr = ((E.ctxt.delta()-1)*rho_r_shift)/2; // hope it divides
 
-  RatWeight l_ratvec = (g_rho_check - torus_factor).normalize();
+  const RatWeight l_ratvec = (g_rho_check - torus_factor).normalize();
   assert(l_ratvec.denominator()==1);
   Coweight l(l_ratvec.numerator().begin(), l_ratvec.numerator().end());
   dual_rho_im_shift -= rd.dual_twoRho(i_tab.imaginary_roots(i_tab.nr(tw)));
@@ -789,13 +799,15 @@ param complex_cross(ext_gen p, const param& E)
   return param(E.ctxt, tw,
 	       lambda_rho-rho_r_shift, tau+tau_corr,
 	       l-dual_rho_im_shift, t+t_corr);
-}
+} // |complex_cross|
 
 
 WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
 { const RootDatum& rd = ctxt.complexGroup().rootDatum();
   std::vector<weyl::Generator> delta (rd.semisimpleRank());
   std::vector<bool> is_length_3 (delta.size());
+
+  // tabulate action of |delta| on simple roots
   for (weyl::Generator s=0; s<delta.size(); ++s)
   { weyl::Generator t =
       rd.simpleRootIndex(rd.root_index(ctxt.delta()*rd.simpleRoot(s)));
@@ -810,18 +822,18 @@ WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
 
   RootNbr delta_alpha = rd.root_index(ctxt.delta()*rd.root(alpha));
   WeylWord result;
-  while (true) // termination condition after definition of |s| (readability)
+  while (not rd.is_simple_root(alpha)) // also |break| halfway is possible
   {
     weyl::Generator s =
       rd.descent_set(alpha).andnot(rd.ascent_set(delta_alpha)).firstBit();
-    if (alpha==rd.simpleRootNbr(s) or
-	(is_length_3[s] and //"sum of swapped non-commuting roots" case:
-	 rd.simple_reflected_root(s,alpha)==rd.simpleRootNbr(delta[s])))
+    assert(s<rd.semisimpleRank()); // exists for positive non-simple roots
+    if (is_length_3[s] and //"sum of swapped non-commuting roots" case:
+	rd.simple_reflected_root(s,alpha)==rd.simpleRootNbr(delta[s]))
       break;
     result.push_back(s);
     rd.simple_reflect_root(s,alpha);
     rd.simple_reflect_root(delta[s],delta_alpha);
-    if (delta[s]!=s) // second gernerator for cases of length 2,3
+    if (delta[s]!=s) // second generator for cases of length 2,3
     { result.push_back(delta[s]);
       rd.simple_reflect_root(delta[s],alpha);
       rd.simple_reflect_root(s,delta_alpha);
@@ -835,7 +847,7 @@ WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
   }
   std::reverse(result.begin(),result.end());
   return result;
-}
+} // |fixed_conjugate_simple|
 
 // for real Cayley transforms, $\lambda$ needs $\rho_r$ shift, then projection;
 // so compute scalar product of alpha check with dual torus factor plus shift
@@ -871,7 +883,7 @@ DescValue type (const param& E, const ext_gen& p, std::vector<param>& links)
 	  return one_imaginary_compact; // quit here, do not collect \$200
 
 	// noncompact case
-	const TwistedInvolution new_tw= tW.prod(E.tw,subs.reflection(p.s0));
+	const TwistedInvolution new_tw= tW.prod(subs.reflection(p.s0),E.tw);
 	const WeightInvolution th_1 = i_tab.matrix(new_tw)-1; // upstairs
 
 	int tau_coef = alpha_v.dot(E.tau); // initially $\tau_\alpha$ of table 2
@@ -955,7 +967,7 @@ DescValue type (const param& E, const ext_gen& p, std::vector<param>& links)
 	   return one_real_nonparity; // no link added here
 
 	const TwistedInvolution new_tw = // downstairs
-	  tW.prod(E.tw,subs.reflection(p.s0));
+	  tW.prod(subs.reflection(p.s0),E.tw);
 
 	Weight new_lambda_rho = E.lambda_rho-rho_r_shift + alpha*(level/2);
 	assert((E.ctxt.gamma()-new_lambda_rho).dot(alpha_v)
@@ -1027,12 +1039,12 @@ DescValue type (const param& E, const ext_gen& p, std::vector<param>& links)
     break;
 
   case ext_gen::two:
-    { const Weight& alpha = integr_datum.root(p.s0);
-      const Coweight& alpha_v = integr_datum.coroot(p.s0);
+    { const Weight& alpha = integr_datum.simpleRoot(p.s0);
+      const Coweight& alpha_v = integr_datum.simpleCoroot(p.s0);
       RootNbr n_alpha = subs.parent_nr_simple(p.s0);
       RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
-      const Weight& beta = integr_datum.root(p.s1);
-      const Coweight& beta_v = integr_datum.coroot(p.s1);
+      const Weight& beta = integr_datum.simpleRoot(p.s1);
+      const Coweight& beta_v = integr_datum.simpleCoroot(p.s1);
       RootNbr n_beta = subs.parent_nr_simple(p.s1);
       // RootNbr theta_beta = i_tab.root_involution(theta,n_beta);
 
@@ -1046,7 +1058,7 @@ DescValue type (const param& E, const ext_gen& p, std::vector<param>& links)
 
 	// noncompact case
 	const TwistedInvolution new_tw =
-	  tW.prod(tW.prod(E.tw,subs.reflection(p.s0)),subs.reflection(p.s1));
+	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
 	// make $\alpha$ simple by conjugating by $W^\delta$
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
@@ -1147,7 +1159,7 @@ DescValue type (const param& E, const ext_gen& p, std::vector<param>& links)
 
 	WeightInvolution theta_1 = i_tab.matrix(theta)-1; // upstairs
 	const TwistedInvolution new_tw =
-	  tW.prod(tW.prod(E.tw,subs.reflection(p.s0)),subs.reflection(p.s1));
+	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
 
 	const Weight new_lambda_rho = E.lambda_rho-rho_r_shift
 	  + alpha*(a_level/2) + beta*(b_level/2);
@@ -1223,9 +1235,10 @@ DescValue type (const param& E, const ext_gen& p, std::vector<param>& links)
       { const bool ascent = rd.is_posroot(theta_alpha);
 	if (theta_alpha == (ascent ? n_beta : rd.rootMinus(n_beta)))
 	{ // twisted commutation with |s0.s1|: 2Ci or 2Cr
+	  result = ascent ? two_semi_imaginary : two_semi_real;
+
 	  TwistedInvolution new_tw = E.tw;
 	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
-	  result = ascent ? two_semi_imaginary : two_semi_real;
 
 	  const int f =
 	    (E.ctxt.gamma() - E.lambda_rho).dot(alpha_v) - rd.colevel(n_alpha);
@@ -1248,11 +1261,11 @@ DescValue type (const param& E, const ext_gen& p, std::vector<param>& links)
     }
     break;
   case ext_gen::three:
-    { const Weight& alpha = integr_datum.root(p.s0);
-      const Coweight& alpha_v = integr_datum.coroot(p.s0);
+    { const Weight& alpha = integr_datum.simpleRoot(p.s0);
+      const Coweight& alpha_v = integr_datum.simpleCoroot(p.s0);
       RootNbr n_alpha = subs.parent_nr_simple(p.s0);
       RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
-      const Weight& beta = integr_datum.root(p.s1);
+      const Weight& beta = integr_datum.simpleRoot(p.s1);
       RootNbr n_beta = subs.parent_nr_simple(p.s1);
 
       RootNbr n_kappa =integr_datum.simple_reflected_root
@@ -1262,7 +1275,7 @@ DescValue type (const param& E, const ext_gen& p, std::vector<param>& links)
       const Weight& kappa = integr_datum.root(n_kappa);
       const Coweight& kappa_v = integr_datum.coroot(n_kappa);
 
-      const TwistedInvolution new_tw = tW.prod(E.tw,s_kappa); // when applicable
+      const TwistedInvolution new_tw = tW.prod(s_kappa,E.tw); // when applicable
 
       if (theta_alpha==n_alpha) // length 3 imaginary case
       { // first find out if the simply-integral root $\alpha$ is compact
@@ -1302,6 +1315,9 @@ DescValue type (const param& E, const ext_gen& p, std::vector<param>& links)
 
 	if (a_level%2!=0) // nonparity
 	   return three_real_nonparity; // no link added here
+
+	// parity case
+	result = three_real_semi;
 
 	const int b_level = level_a(E,rho_r_shift,n_beta);
 	assert(b_level%2==0); // since |a_level| and |b_level| have same parity

@@ -934,7 +934,7 @@ Weight RootDatum::twoRho(const RootNbrList& rl) const
 Weight RootDatum::twoRho(RootNbrSet rs) const
 {
   Weight result(rank(),0);
-  rs &= posRootSet();
+  rs &= posRootSet(); // limit to positive roots in the subset
 
   for (RootNbrSet::iterator i = rs.begin(); i(); ++i)
     result += root(*i);
@@ -954,13 +954,13 @@ Coweight RootDatum::dual_twoRho(const RootNbrList& rl) const
   return result;
 }
 
-Coweight RootDatum::dual_twoRho(const RootNbrSet& rs) const
+Coweight RootDatum::dual_twoRho(RootNbrSet rs) const
 {
   Coweight result(rank(),0);
+  rs &= posRootSet(); // limit to positive roots in the subset
 
   for (RootNbrSet::iterator i = rs.begin(); i(); ++i)
-    if (is_posroot(*i))
-      result += coroot(*i);
+    result += coroot(*i);
 
   return result;
 }
@@ -1074,11 +1074,11 @@ void RootDatum::fillStatus()
 ******************************************************************************/
 
 RatWeight rho (const RootDatum& rd) { return RatWeight(rd.twoRho(),2); }
-RatWeight rho (const RootDatum& rd, RootNbrSet sub_posroots)
+RatWeight rho (const RootDatum& rd, const RootNbrSet& sub_posroots)
   { return RatWeight(rd.twoRho(sub_posroots),2); }
 RatCoweight rho_check (const RootDatum& rd)
   { return RatCoweight(rd.dual_twoRho(),2); }
-RatCoweight rho_check (const RootDatum& rd, RootNbrSet sub_posroots)
+RatCoweight rho_check (const RootDatum& rd, const RootNbrSet& sub_posroots)
   { return RatCoweight(rd.dual_twoRho(sub_posroots),2); }
 
 

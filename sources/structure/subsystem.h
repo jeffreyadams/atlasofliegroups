@@ -83,17 +83,17 @@ class SubSystem : public RootSystem // new system, subsytem of dual
   RootNbr from_parent(RootNbr alpha) const { return inv_map[alpha]; }
 
   weyl::Generator simple(unsigned int n) const
-  { assert(n<numPosRoots()); // n must be a positive root number for subsystem
+  { assert(n<numPosRoots()); // n must be a positive-root index for subsystem
     return sub_root[n].simple; // parent simple root conjugated to |sub.s|
   }
 
   const WeylWord& to_simple(unsigned int n) const
-  { assert(n<numPosRoots()); // n must be a positive root number for subsystem
+  { assert(n<numPosRoots()); // n must be a positive-root index for subsystem
     return sub_root[n].to_simple; // parent conjugating word for |simple(s)|
   }
 
   const WeylWord& reflection(unsigned int n) const
-  { assert(n<numPosRoots()); // n must be a positive root number for subsystem
+  { assert(n<numPosRoots()); // n must be a positive-root index for subsystem
     return sub_root[n].reflection; // parent reflection corresponding to |s|
   }
 

@@ -39,9 +39,9 @@ namespace atlas {
 namespace rootdata {
 
 RatWeight rho (const RootDatum& rd);
-RatWeight rho (const RootDatum& rd,RootNbrSet sub_posroots);
+RatWeight rho (const RootDatum& rd,const RootNbrSet& sub_posroots);
 RatCoweight rho_check (const RootDatum& rd);
- RatCoweight rho_check (const RootDatum& rd,RootNbrSet sub_posroots);
+ RatCoweight rho_check (const RootDatum& rd,const RootNbrSet& sub_posroots);
 
 CoweightInvolution dualBasedInvolution
   (const WeightInvolution&, const RootDatum&);
@@ -265,7 +265,7 @@ class RootSystem
   matrix::Vector<int> pos_system_vec(const RootNbrList& Delta) const;
 
   // find simple basis for subsystem
-  RootNbrList simpleBasis(RootNbrSet rs) const;
+  RootNbrList simpleBasis(RootNbrSet rs) const; // by value
 
   bool sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const;
   bool sumIsRoot(RootNbr alpha, RootNbr beta) const
@@ -598,7 +598,7 @@ use by accessors.
   Weight twoRho(const RootNbrList&) const; // sum of the \emph{positive} members
   Weight twoRho(RootNbrSet) const; // by value; sum of the positive members
   Coweight dual_twoRho(const RootNbrList&) const;
-  Coweight dual_twoRho(const RootNbrSet&) const;
+  Coweight dual_twoRho(RootNbrSet) const; // by value
 
 
   WeylWord word_of_inverse_matrix(const WeightInvolution&)
