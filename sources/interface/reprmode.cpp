@@ -338,6 +338,12 @@ void gextblock_f()
     (commands::current_layout(), commands::current_lattice_basis());
 
   auto& block = current_param_block();
+  if (not ((delta-1)*block.gamma().numerator()).isZero())
+  {
+    std::cout << "Chosen delta does not fix gamma=" << block.gamma()
+	      << " for the current block." << std::endl;
+    return;
+  }
   ext_block::ext_block eblock(currentComplexGroup(),block,
 			      currentRealGroup().kgb(),delta);
   if (check(eblock,block))

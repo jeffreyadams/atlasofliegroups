@@ -848,8 +848,8 @@ void RootDatum::reflect(LatticeMatrix& M,RootNbr alpha) const
 }
 
 
-/*!
-\brief Returns the permutation of the roots induced by |q|.
+/*
+  Return the permutation of the roots induced by |q|.
 
   Precondition: |q| permutes the roots;
 */
@@ -858,20 +858,17 @@ Permutation RootDatum::rootPermutation(const WeightInvolution& q) const
   RootNbrList simple_image(semisimpleRank());
 
   for (weyl::Generator s=0; s<semisimpleRank(); ++s)
-    simple_image[s] = root_index(q*simpleRoot(s));
+  { auto image = root_index(q*simpleRoot(s));
+    assert(image<numRoots());
+    simple_image[s] = image;
+  }
 
   return extend_to_roots(simple_image);
 }
 
 
 
-/*!
-\brief Returns the reflection for root \#alpha.
-
-  NOTE: this is not intended for heavy use. If that is envisioned, it would be
-  better to construct the matrices once and for all and return const
-  references.
-*/
+// Return the reflection for root number |alpha|.
 WeightInvolution RootDatum::root_reflection(RootNbr alpha) const
 {
   LatticeMatrix result(d_rank); // identity

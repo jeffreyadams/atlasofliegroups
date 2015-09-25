@@ -160,14 +160,31 @@ Coweight ell (const KGB& kgb, KGBElt x)
   return Coweight(result.numerator().begin(),result.numerator().end());
 }
 
+
+void validate(const param& E)
+{
+  const auto& i_tab = E.rc().complexGroup().involution_table();
+  const auto& rd = E.rc().complexGroup().rootDatum();
+  const auto& theta = i_tab.matrix(E.tw);
+  const auto& delta = E.ctxt.delta();
+  assert(delta*theta==theta*delta);
+  assert((delta-1)*E.lambda_rho==(1-theta)*E.tau);
+  assert((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t));
+  assert(((E.ctxt.g()-E.l-rho_check(rd))*(1-theta)).numerator().isZero());
+  assert(((theta+1)*(E.ctxt.gamma()-E.lambda_rho-rho(rd)))
+	 .numerator().isZero());
+}
+
 param::param (const context& ec, const StandardRepr& sr)
   : ctxt(ec)
   , tw(ec.rc().kgb().involution(sr.x()))
   , l(ell(ec.realGroup().kgb(),sr.x()))
   , lambda_rho(ec.rc().lambda_rho(sr))
   , tau(matreduc::find_solution(1-theta(),(delta()-1)*lambda_rho))
-  , t(matreduc::find_solution(1-theta().transposed(),(delta()-1).right_prod(l)))
-{}
+  , t(matreduc::find_solution(theta().transposed()+1,(delta()-1).right_prod(l)))
+{
+  validate(*this);
+}
 
 param::param (const context& ec, KGBElt x, const Weight& lambda_rho)
   : ctxt(ec)
@@ -175,8 +192,20 @@ param::param (const context& ec, KGBElt x, const Weight& lambda_rho)
   , l(ell(ec.realGroup().kgb(),x))
   , lambda_rho(lambda_rho)
   , tau(matreduc::find_solution(1-theta(),(delta()-1)*lambda_rho))
-  , t(matreduc::find_solution(1-theta().transposed(),(delta()-1).right_prod(l)))
-{}
+  , t(matreduc::find_solution(theta().transposed()+1,(delta()-1).right_prod(l)))
+{
+  validate(*this);
+}
+
+param::param (const context& ec, const TwistedInvolution& tw,
+	 Weight lambda_rho, Weight tau, Coweight l, Coweight t)
+  : ctxt(ec), tw(tw)
+  , l(std::move(l))
+  , lambda_rho(std::move(lambda_rho)), tau(std::move(tau))
+  , t(std::move(t))
+{
+  validate(*this);
+}
 
 bool in_L_image(Weight beta,WeightInvolution&& A)
 { int_Matrix L,R;
@@ -1089,22 +1118,23 @@ DescValue type (const param& E, const ext_gen& p, std::vector<param>& links)
 	  if ((at+bt)%2!=0)
 	    return two_imaginary_single_double_switched; // 2i12s
 	  result = two_imaginary_single_double_fixed; // 2i12f
-	  int m =  unsigned(at)%2; // safe modular reduction
+	  const int m =  unsigned(at)%2; // safe modular reduction
+          const int mm=1-m;
 
 	  // one of the $\tau$ requires upstairs solution for an odd-odd pair:
 	  const Weight sigma =
-	    matreduc::find_solution(th_1,alpha*(at-1+m)+beta*(bt+1-m));
+	    matreduc::find_solution(th_1,alpha*(at+mm)+beta*(bt-mm));
 
 	  // first Cayley link will be the one that does not need |sigma|
 	  links.push_back(param // first Cayley link
 			  (E.ctxt, new_tw,
 			   E.lambda_rho + rho_r_shift + alpha*m,
-			   E.tau - alpha*((at-m)/2) - beta*((bt-m)/2),
+			   E.tau - alpha*((at+m)/2) - beta*((bt-m)/2),
 			   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t
 			   ));
 	  links.push_back(param // second Cayley link
 			  (E.ctxt, new_tw,
-			   E.lambda_rho + rho_r_shift + alpha*(1-m),
+			   E.lambda_rho + rho_r_shift + alpha*mm,
 			   E.tau + sigma,
 			   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t
 			   ));
@@ -1114,14 +1144,14 @@ DescValue type (const param& E, const ext_gen& p, std::vector<param>& links)
 	  links.push_back(param // false cross action link
 			  (E.ctxt,E.tw,
 			   E.lambda_rho,E.tau, E.l+alpha_v, E.t+s));
-	}
+	} // end of case 2i12f
 	else
 	{ // type 2i22
 	  result = two_imaginary_double_double;
 	  // $\alpha^\vee$ and $\beta^\vee$ are even on $(X^*)^\theta$ and
 	  // $(1-\delta)\tau\in(X^*)^\theta+2X^*$ so $<av-bv,\tau>$ is even
 	  assert((at-bt)%2==0);
-	  int m =  unsigned(at)%2; // safe modular reduction
+	  int m =  static_cast<unsigned int>(at)%2; // safe modular reduction
 	  links.push_back(param // first Cayley link
 			  (E.ctxt, new_tw,
 			   E.lambda_rho + alpha*m + rho_r_shift,
@@ -1131,7 +1161,7 @@ DescValue type (const param& E, const ext_gen& p, std::vector<param>& links)
 			   ));
 	  links.push_back(param // second Cayley link
 			  (E.ctxt,new_tw,
-			   E.lambda_rho + alpha*(m-1) + beta + rho_r_shift,
+			   E.lambda_rho + alpha*(1-m) + beta + rho_r_shift,
 			   E.tau - alpha*((at-m)/2) - beta*((bt+m)/2),
 			   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
 			   E.t
@@ -1172,7 +1202,7 @@ DescValue type (const param& E, const ext_gen& p, std::vector<param>& links)
 	  // $\alpha$ and $\beta$ are even on $(X_*)^{-\theta'}$ and
 	  // $t(1-\delta)\in(X_*)^{-\theta'}+2X_*$ so $<t,alpha-beta>$ is even
 	  assert((ta-tb)%2==0);
-	  int m =  unsigned(ta)%2;
+	  int m =  static_cast<unsigned int>(ta)%2;
 	  links.push_back(param // first Cayley link
 			  (E.ctxt, new_tw,
 			   new_lambda_rho, E.tau,
@@ -1182,40 +1212,41 @@ DescValue type (const param& E, const ext_gen& p, std::vector<param>& links)
 	  links.push_back(param // second Cayley link
 			  (E.ctxt,new_tw,
 			   new_lambda_rho, E.tau,
-			   E.l+alpha_v*(m-1)+beta_v,
+			   E.l+alpha_v*(1-m)+beta_v,
 			   E.t - alpha_v*((ta-m)/2)+beta_v*((tb+m)/2)
 			   ));
 	} // end 2r11 case
 	else if (matreduc::has_solution(theta_1,alpha+beta))
 	{ // type 2r21
 	  if ((ta+tb)%2!=0)
-	    return two_real_single_double_switched;
-	  result = two_real_single_double_fixed;
-	  int m =  unsigned(ta)%2;
+	    return two_real_single_double_switched; // 2r21s
+	  result = two_real_single_double_fixed; // 2r21f
+	  const int m =  static_cast<unsigned int>(ta)%2;
+	  const int mm=1-m;
 
-	  // one of the $t requires downstairs solution for an odd-odd pair:
+	  // one of the $t$ requires downstairs solution for an odd-odd pair:
 	  const Coweight s =
 	    matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
-				    alpha_v*(ta-1+m)+beta_v*(tb+1-m));
+				    alpha_v*(ta+mm)+beta_v*(tb-mm));
 
 	  // first Cayley link will be the one that does not need |sigma|
 	  links.push_back(param // first Cayley link
 			  (E.ctxt, new_tw,
 			   new_lambda_rho, E.tau,
 			   E.l+alpha_v*m,
-			   E.t - alpha_v*((ta-m)/2) - beta_v*((tb-m)/2)
+			   E.t - alpha_v*((ta+m)/2) - beta_v*((tb-m)/2)
 			   ));
 	  links.push_back(param // second Cayley link
 			  (E.ctxt, new_tw,
 			   new_lambda_rho, E.tau,
-			   E.l+alpha_v*(1-m),
+			   E.l+alpha_v*mm,
 			   E.t - s
 			   ));
 	  const Weight sigma = matreduc::find_solution(theta_1,alpha-beta);
 	  links.push_back(param // false cross action link
 			  (E.ctxt,E.tw,
 			   E.lambda_rho+alpha,E.tau+sigma, E.l, E.t));
-	}
+	} // end of case 2r21f
 	else // case 2r22
 	{ result = two_real_single_single;
 	  const Coweight s =
@@ -1783,6 +1814,7 @@ bool check(const ext_block eb, const param_block& block)
 		      << " to " << cz << '.' << std::endl;
 	} break;
       case one_imaginary_single: case one_real_single:
+      case two_imaginary_single_single: case two_real_single_single:
 	{ assert(links.size()==2);
 	  BlockElt m=eb.some_scent(s,n); // the unique (inverse) Cayley
 	  BlockElt Cz = eb.z(m); // corresponding element of block
@@ -1799,7 +1831,6 @@ bool check(const ext_block eb, const param_block& block)
 		      << " to " << cz << '.' << std::endl;
 	} break;
       case two_semi_imaginary: case two_semi_real:
-      case two_imaginary_single_single: case two_real_single_single:
       case three_semi_imaginary: case three_real_semi:
       case three_imaginary_semi: case three_semi_real:
 	{ assert(links.size()==1);
@@ -1844,16 +1875,17 @@ bool check(const ext_block eb, const param_block& block)
 	  else // it must be crossed
 	    assert(same_standard_reps(links[0],F1) and
 		   same_standard_reps(links[1],F0));
-	  auto iF0 = unsigned{straight}; // |links| index that pairs with |F0|
+	  unsigned iF0 = straight ? 0 : 1; // |links| index that pairs with |F0|
 	  if (signs_differ(links[iF0],F0))
 	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
 		      << " to " << Cz0 << '.' << std::endl;
 	  if (signs_differ(links[1-iF0],F1))
-	    std::cout << "Flip at Cayles link " << unsigned{s} << " from " << z
+	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
 		      << " to " << Cz1 << '.' << std::endl;
 	  // check the false cross link
 	  m = eb.Cayleys(s,m.first);
-	  BlockElt fcz = m.first==n ? m.second : m.first;
+	  BlockElt fcz = eb.z(m.first==n ? m.second : m.first);
+	  assert(fcz==block.cross(p.s0,z) and fcz==block.cross(p.s1,z));
 	  param F(ctxt,block.x(fcz),block.lambda_rho(fcz));
 	  assert(same_standard_reps(links[2],F));
 	  if (signs_differ(links[2],F))

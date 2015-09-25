@@ -763,6 +763,7 @@ BlockElt param_block::lookup(KGBElt x, const TorusElement& y_rep) const
 
 ext_gens param_block::fold_orbits(const WeightInvolution& delta) const
 {
+  assert(delta*gamma().numerator()==gamma().numerator());
   const auto sub = integrality_datum(complexGroup().rootDatum(),infin_char);
   return rootdata::fold_orbits(sub,delta);
 }

@@ -331,12 +331,7 @@ struct param // prefer |struct| with |const| members for ease of access
   param (const context& ec, const StandardRepr& sr);
   param (const context& ec, KGBElt x, const Weight& lambda_rho);
   param (const context& ec, const TwistedInvolution& tw,
-	 Weight lambda_rho, Weight tau, Coweight l, Coweight t)
-  : ctxt(ec), tw(tw)
-  , l(std::move(l))
-  , lambda_rho(std::move(lambda_rho)), tau(std::move(tau))
-  , t(std::move(t))
-  {}
+	 Weight lambda_rho, Weight tau, Coweight l, Coweight t);
 
   param (param&& p)
   : ctxt(p.ctxt), tw(std::move(p.tw))
