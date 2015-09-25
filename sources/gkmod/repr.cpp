@@ -571,13 +571,17 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
     throw std::runtime_error("Not an integral root");
   // apply the integrally-dominant-making $W$ element |w| (in |subsys|) to |rt|:
   rt = subsys.permuted_root(rt,w); // now we've got the root to do Cayley by
-  rt = subsys.rt_abs(rt); // henceforth interpret as index of a positive root
+  const RootNbr n_alpha = subsys.to_parent(rt); // for modified |alpha|
+
+  rt = subsys.rt_abs(rt); // interpret as index of a positive root
+  weyl::Generator s=subsys.simple(rt);
+  WeylWord ww = subsys.to_simple(rt);
+  // neither |alpha| nor |rt| will be used beyond thus point
 
   // now do the Cayley transform proper
   bool ascent; // whether forward Cayley
-  InvolutionNbr inv0= kgb.inv_nr(x);
-  weyl::Generator s=subsys.simple(rt);
-  WeylWord ww = subsys.to_simple(rt);
+  const InvolutionNbr inv0= kgb.inv_nr(x); // initial involution
+
   x = kgb.cross(ww,x);
   switch (kgb.status(s,x))
   {
@@ -587,8 +591,8 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
     { Weight rho2_diff = rd.twoRho() - rd.twoRho(i_tab.real_roots(inv0));
       RatWeight parity_vector = // compute this at the \emph{original} x
 	infin_char - lr - RatWeight(std::move(rho2_diff),2);
-      if (parity_vector.dot(rd.coroot(subsys.to_parent(rt)))%2!=0)
-      { // then |rt| was parity
+      if (parity_vector.dot(rd.coroot(n_alpha))%2!=0)
+      { // then |alpha| was parity
 	x = kgb.inverseCayley(s,x).first; // do inverse Cayley at |inv1|
 	ascent=false;
 	break;
