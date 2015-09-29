@@ -35,11 +35,12 @@ namespace arithmetic {
 
 
 /*!
-  The classical Euclidian algorithm. It is assumed that b > 0;
+  The classical Euclidian algorithm for positive (indeed unsigned) numbers.
+  It is assumed that |b != 0|, but |a| might be zero.
 */
 Denom_t unsigned_gcd(Denom_t a, Denom_t b)
 {
-  do
+  do // a double-exit loop
     if ((a %= b)==0)
       return b;
   while ((b %= a)!=0);
@@ -115,28 +116,26 @@ Rational& Rational::operator*=(Numer_t n)
   {
     if (n<0)
     { n=-n; num=-num; }
-    if (denom%n==0) // only case of exact division is simplified
-      denom/=n;
-    else
-      num*=n;  // otherwise just multiply numerator; no normalise
+    Numer_t d = unsigned_gcd(denom,n);
+    denom/=d;
+    num *= static_cast<Numer_t>(n/d); // |n| implicitly converted to unsiged
   }
-  return *this;
+  return *this; // result will be normalised if |this| was
 }
 
 Rational& Rational::operator/=(Numer_t n)
 { assert(n!=0);
   if (n<0)
   { n=-n; num=-num; }
-  if (num%n==0) // only case of exact division is simplified
-    num/=n;
-  else
-    denom*=n; // otherwise just multiply denominator; no normalise
-  return *this;
+  Numer_t d = unsigned_gcd(std::abs(num),n);
+  num/=d;
+  denom *= n/d; // |n| implicitly converted to unsigned here
+  return *this; // result will be normalised if |this| was
 }
 
 Rational& Rational::operator%=(Numer_t n)
 { assert(n!=0);
-  num = remainder(num,denom*abs(n));
+  num = remainder(num,denom*std::abs(n));
   return *this;
 }
 
@@ -172,7 +171,7 @@ Rational Rational::operator/(Rational q) const
 Rational Rational::operator%(Rational q) const
 {
   assert(q.num!=0);
-  return Rational(remainder(num*Numer_t(q.denom),denom*abs(q.num)),
+  return Rational(remainder(num*Numer_t(q.denom),denom*std::abs(q.num)),
 		  denom*q.denom).normalize();
 }
 
