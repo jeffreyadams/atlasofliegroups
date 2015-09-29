@@ -170,21 +170,23 @@ template<typename I>
 inline Denom_t divide (Denom_t a, Denom_t b)
   { return a/b; } // unsigned division is OK in this case
 
-/*!
-  Synopsis: returns the remainder of the division of a by b.
+/*
+  Return the remainder of the division of |a| (signed) by |b| (unsigned).
 
   The point is to allow |I| to be a signed type, and avoid the catastrophic
   implicit conversion to unsigned when using the '%' operation. Also corrects
   the deficiency of 'signed modulo' by always returning the unique number |r|
   in [0,m[ such that $a = q.b + r$, in other words with |q=divide(a,b)| above.
 
-  NOTE: For $a<0$ one should \emph{not} return |m - (-a % b)|; this fails when
+  NOTE: For $a<0$ one should \emph{not} return |b - (-a % b)|; this fails when
   $b$ divides $a$. However replacing |-| by |~|, which maps $a\mapsto-1-a$
   and satifies |~(q*b+r)==~q*b+(b+~r)|, the result is always correct.
 */
 template<typename I>
   inline Denom_t remainder(I a, Denom_t b)
-  { return a >= 0 ? a%b : b+~(~a%b); } // conversions to unsigned are safe here
+  { return a >= 0 ? a%b // safe implicit conversion to unsigned here
+      : b+~(~static_cast<Denom_t>(a)%b); // safe explicit conversion here
+  }
 
   inline Denom_t div_gcd (Denom_t d, Denom_t a) { return d/unsigned_gcd(a,d); }
 
