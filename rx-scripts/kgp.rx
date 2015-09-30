@@ -57,7 +57,6 @@ set min([KGBElt] y)=sort(y)[0]
 set max([KGBElt] y)=sort(y)[#sort(y)-1]
 
 set S(KGPElt y)=[int]:let (S,)=y in S
-set x(KGPElt y)=KGBElt:maximal(y) 
 set root_datum(KGPElt y)=let (,x)=y in root_datum(x)
 set real_form(KGPElt y)=let (,x)=y in real_form(x)
 
@@ -99,6 +98,7 @@ let rec_fun f([int] S,KGBElt x)=KGBElt:
 if is_maximal_in_partial_order(S,x) then x else f(S,KGB(real_form(x),up_neighbors(S,x)[0])) fi in f(S,x)
 
 set canonical_representative(KGPElt y)=(S(y),maximal(y))
+set x(KGPElt y)=KGBElt:maximal(y) 
 
 {equivalence class of KGB element in partial order defined by S}
 set equivalence_class_of(KGPElt y)=[KGBElt]:

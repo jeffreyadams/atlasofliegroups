@@ -1,0 +1,74 @@
+rx> set G=Sp(4,R)
+Identifier G: RealForm
+rx> set kgp=KGP(G,[0])  {K-conjugacy classes of parabolics with Levi factor root #0}
+Identifier kgp: [([int],KGBElt)]
+rx> for P in kgp do prints(P, " ", equivalence_class_of (P)) od
+([0],KGB element #2) [KGB element #2]
+([0],KGB element #3) [KGB element #3]
+([0],KGB element #4) [KGB element #0,KGB element #1,KGB element #4]
+([0],KGB element #7) [KGB element #5,KGB element #7]
+([0],KGB element #8) [KGB element #6,KGB element #8]
+([0],KGB element #10) [KGB element #9,KGB element #10]
+Value: [(),(),(),(),(),()]
+rx> set P=kgp[2]
+Identifier P: ([int],KGBElt) (hiding previous one of type ([int],KGBElt))
+rx> P
+Value: ([0],KGB element #4)
+rx> Levi(P)
+Value: connected quasisplit real group with Lie algebra 'sl(2,R).u(1)'
+rx> is_parabolic_theta_stable (P)
+Value: true
+rx> set t=trivial(Levi(P))
+Identifier t: Param
+rx> t
+Value: final parameter (x=2,lambda=[1,-1]/2,nu=[1,-1]/2)
+rx> set p=induce_standard (t,P,G)   
+{specify the parabolic, this will be theta-stable or real parabolic induction as appropriate}
+theta_induce_standard of parameter on L: final parameter (x=2,lambda=[1,-1]/2,nu=[1,-1]/2)
+shift: [ 3, 3 ]/2
+p_G before standardization:final parameter (x=4,lambda=[2,1]/1,nu=[1,-1]/2)
+p_G is standard: final parameter (x=4,lambda=[2,1]/1,nu=[1,-1]/2)
+1*final parameter (x=4,lambda=[2,1]/1,nu=[1,-1]/2)
+Identifier p: ParamPol
+rx> p
+Value: 
+1*final parameter (x=4,lambda=[2,1]/1,nu=[1,-1]/2)
+rx> theta_induce_standard (t,G)   {don't need to specify the parabolic}
+theta_induce_standard of parameter on L: final parameter (x=2,lambda=[1,-1]/2,nu=[1,-1]/2)
+shift: [ 3, 3 ]/2
+p_G before standardization:final parameter (x=4,lambda=[2,1]/1,nu=[1,-1]/2)
+p_G is standard: final parameter (x=4,lambda=[2,1]/1,nu=[1,-1]/2)
+1*final parameter (x=4,lambda=[2,1]/1,nu=[1,-1]/2)
+Value: 
+1*final parameter (x=4,lambda=[2,1]/1,nu=[1,-1]/2)
+rx> 
+rx> for P in kgp do prints(P, " ", is_parabolic_theta_stable (P)) od
+([0],KGB element #2) true
+([0],KGB element #3) true
+([0],KGB element #4) true
+([0],KGB element #7) false
+([0],KGB element #8) false
+([0],KGB element #10) false
+Value: [(),(),(),(),(),()]
+rx> for P in kgp do prints(P, " ", is_parabolic_real (P)) od
+([0],KGB element #2) false
+([0],KGB element #3) false
+([0],KGB element #4) false
+([0],KGB element #7) false
+([0],KGB element #8) false
+([0],KGB element #10) true
+Value: [(),(),(),(),(),()]
+rx> set Q=kgp[5]
+Identifier Q: ([int],KGBElt)
+rx> Q   {this is a real parabolic}
+Value: ([0],KGB element #10)
+rx> set M=Levi(Q)
+Identifier M: RealForm
+rx> M
+Value: disconnected split real group with Lie algebra 'sl(2,R).gl(1,R)'
+rx> set tM=trivial(M)
+Identifier tM: Param
+rx> induce_standard (tM,Q,G)  {ordinary parabolic induction}
+Value: 
+1*final parameter (x=10,lambda=[2,1]/1,nu=[1,1]/2)
+rx> 
