@@ -86,7 +86,7 @@ composition_series(Psi(character_formula(P),k))
 
   root k of the integral roots is in pseudo-tau(p) if
   <gamma,alpha_k^v>*fund_weight is integral, and
-  Psi(p,k)=0 or its x(Psi(p,k)) gets changed by make_final
+  Psi(p,k)=0 or its x(Psi(p,k)) gets changed by finalize
   (here Psi(p,k) is the translation of the standard module for p)
 }
 

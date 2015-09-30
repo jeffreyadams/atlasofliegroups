@@ -1,4 +1,4 @@
-<ap.rx
+{<ap.rx}
 <kgp.rx
 <K_norm.rx
 
@@ -74,9 +74,6 @@ for i:#partial do
   in   for j:max do 
   rv#:=partial[i]#j od od;f(rv,n,c,Sum)  fi 
 in f([[int]]:[],n,c,Sum)
-
-set dlambda(KParam p)=ratvec:(1+involution(x(p)))*lambda(p)/2
-set dlambda(Param p)=ratvec:dlambda(Kparameter(p))
 
 set is_in_one_plus_delta(mat delta,ratvec v)=bool:is_integer(v) and in_lattice(1+delta,ratvec_as_vec(v))
 
@@ -212,12 +209,11 @@ mus=all_dominant_in_image_oneplustheta_norm_less_than(ic,theta,v,N) then
 rv=[KParam]:[] in 
 for mu in mus do  rv#:=make_all_K_parameters(x,mu) od;rv
 
-set all_rel_split_theta_stable_parabolics(RealForm G)=[RealForm]:
-let parabolics=all_theta_stable_parabolics(G) then
-rel_split_parabolics=[] in
-for (P,v) in parabolics do for x in v do 
- let L=Levi(P,x) in if is_relatively_split(L) then rel_split_parabolics#:=L fi od od;rel_split_parabolics
-
+set all_rel_split_theta_stable_parabolics(RealForm G)=[Parabolic]:
+let parabolics=theta_stable_parabolics(G) then
+rv=[] in for P in parabolics do if is_relatively_split(Levi(P)) then
+rv#:=P fi  od;rv
+{
 set all_K_parameters_norm_less_than(RealForm G, ratvec v,int N)=[KParam]:
 let parabolics=all_rel_split_theta_stable_parabolics(G) then
 Kparameters=[KParam]:[] in 
@@ -252,3 +248,4 @@ for p in sort_by_K_norm(all_K_parameters_norm_less_than(G,v,N)) do prints(p, " "
 
 
 
+}

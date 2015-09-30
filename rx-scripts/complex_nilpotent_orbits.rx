@@ -78,9 +78,6 @@ rv=[Param]:[] in
 for p in b do 
  if all (for k in support(x(p)) do is_descent(k,p) od) then rv#:=p fi  od;rv
 
-set all_q(RealForm G)= [(KGBElt, RealForm,[vec])]:
-for p in blocku(G) do theta_stable_q(x(p)) od
-
 set sort_by (((vec, rat)-> rat) f)=([(vec,rat)] v) [(vec,rat)]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
@@ -151,10 +148,13 @@ sort_by((ratvec H,[vec] v) int:#v)
 
 
 {find H which work for given q=q(x,H)=(L,u)}
-set find_H((KGBElt x,RealForm L,[vec] u))=[(vec,[vec])]:
+set find_H(Parabolic P)=[(vec,[vec])]:
+{set find_H((KGBElt x,RealForm L,[vec] u))=[(vec,[vec])]:}
 let rv=[] then
+x=x(P) then
+L=Levi(P) then
 u_p=[] in
-let ()=for alpha in u do if is_noncompact(x)(alpha) then u_p#:=alpha fi od in
+let ()=for alpha in u(P) do if is_noncompact(x)(alpha) then u_p#:=alpha fi od in
 {let ()=prints("u_p:", u_p) in}
 for (H,) in all_H(real_form(x)) do
 {prints("H=", H, ", ", rho(L), ", ", H*rho(L));}if (^involution(x)*H=H and H*rho(L)=0 and 
@@ -175,16 +175,17 @@ for (H,vectors) in arg do if #vectors=max then rv#:=(H,vectors) fi od;rv else [(
     let done=false,i=0 in 
       while not done and i<#u_p do if H*u[i]=2 then done:=true;rv#:=(H,u_p[i]) else i:=i+1 fi od fi od ;rv
 }
-
-set output([((KGBElt,RealForm,[vec]),[(vec,[vec])])] answer)=
+{
+set output([(Parabolic,[(vec,[vec])])] answer)=
 let rv=[] in 
 let rv_summary=[] in
-let ((x,,),) =answer[0] in 
-let rd=root_datum(x) in 
-for (q,pairs) in answer do 
-let (x,L,u)=q in prints();prints("x=", x);prints("L=",L);prints("u=",u);
-for (H,vectors) in pairs do prints("H:", H, " dimension: ", dim_nilpotent(rd,H));prints("vectors: ", vectors); rv#:=(H,vectors) od ;rv_summary#:=(q,#pairs)od;
-prints("summary:");
+let (P,) =answer[0] in 
+let rd=root_datum(P) in 
+for (Q,pairs) in answer do 
+let (S,x)=Q in let ()=prints();prints("Q: x=", x);prints("L=",Levi(Q));prints("u=",u(Q)) in 
+{let ()=for (H,vectors) in pairs do prints("H:", H, " dimension: ", dim_nilpotent(rd,H));prints("vectors: ", vectors);rv#:=(H,vectors) od}
+rv_summary#:=(Q,#pairs)  od
+;prints("summary:");
 {for ((x,L,u),s)@i in rv_summary do }
 for ((x,L,u),pairs)@i in answer do 
 prints();prints("parabolic #", i);prints(x);prints(L);prints("u=", u, "  dim(u): ", #u);prints("Number of H:",#pairs);
@@ -209,7 +210,7 @@ for (H,vectors) in pairs do prints("H:", H, " dimension: ", dim_nilpotent(rd,H))
 
 
 set run(RealForm G)=
-let allq=all_q(G) then answer=for q in allq do (q,find_H(q))  od in  output(answer);answer
+let allq=theta_stable_parabolics(G) then answer=for q in allq do (q,find_H(q))  od in  output(answer);answer
 
 set run_max_only(RealForm G)=
 let allq=all_q(G) then
@@ -218,7 +219,7 @@ answer=for q in allq do (q,max_only(find_H(q)))  od in  output(answer);answer
 set run_max_only(RealForm G,int i)=
 let allq=[all_q(G)[i]] then
 answer=for q in allq do (q,max_only(find_H(q)))  od in  output(answer);answer
-
+}
 {containment order}
 set <= ([int] a,[int] b)=all(for i:#a do find(b,a[i])!=-1 od)
 set <([int] a,[int] b)=sort(a) != sort(b) and a<=b

@@ -32,8 +32,6 @@ set equal (W_word w, W_word u) = bool: w_matrix(w)=w_matrix(u)
 
 set inverse (W_word(rd,w)) = W_word: { reverse w component } (rd,w~[:])
 
-
-
 {		--- using W to make values dominant ---			}
 
 set non_dominant_index (RootDatum rd, vec v) = int:
@@ -62,12 +60,6 @@ set dominant (RootDatum rd, vec v) = vec:
   let i=0 in while (i:=non_dominant_index(rd,v))>=0 do v:=reflect(rd,i,v) od; v
 set dominant (RootDatum rd, ratvec v) = ratvec:
   let (n,d)=%v in dominant(rd,n)/d
-
-{off by inverse, original code:
-set word (RootDatum rd, mat M) = W_word:
-  let (,ww) = make_dominant(rd,M*rho(rd)) then ww1 = inverse(ww)
-  in assert(w_matrix(ww1)=M,"Not the action of any Weyl group element"); ww1
-}
 
 { find some Weyl word (not lexicographically first) acting by the matrix M }
 set word (RootDatum rd, mat M) = W_word:
@@ -162,13 +154,6 @@ set * = multiply@(W_word,W_word)
 set conjugate (W_word(rd,v), W_word({ assume rd too },w)) = W_word:
    (rd, v#w#v~[:])
 
-
-
-{ for cross action on KGBElt values, we can use the RootDatum of the latter }
-set W_cross (W_word({should be rd of x},w), KGBElt x) = KGBElt:  W_cross(w,x)
-
-
-
 { Some basic functions for when a Weyl word represents a twisted involution }
 
 { compute involution from twisted involution Weyl word }
@@ -202,3 +187,4 @@ let z=lie_radical_part(rd,v) in invariant_form(rd,v,w)+z*z
 {W-invariant form on X_*\otimes Q}
 set co_invariant_form(RootDatum rd)=mat:let M=posroots(rd) in M*^M
 set co_invariant_form(RootDatum rd, ratvec v, ratvec w)=let M=co_invariant_form(rd) in v*M*w
+

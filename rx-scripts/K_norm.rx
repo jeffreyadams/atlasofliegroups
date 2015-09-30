@@ -1,54 +1,6 @@
-<ap.rx
-:KParam=(KGBElt,ratvec)
-:KParamPol=ParamPol   {I don't see a convenient way to define a different type for KParamPol}
+<K_parameters.rx
 
-set x(KParam p)=let (x,)=p in x
-set lambda(KParam p)=let (,lambda)=p in lambda
-
-set Kparameter(Param p)=KParam:(x(p),lambda(p))
-set parameter(KParam p)=Param:parameter(x(p),lambda(p),null(rank(root_datum(x(p)))))
-
-{old_K_norm@KParam
- p=(x,lambda)
- old_K_norm(p)= <d\lambda,2rho^vee> 
-          = <(1+theta_x)lambda/2,2rho^vee> 
-          = <(1+theta_x)lambda,rho^vee> \in Z
- to see this is an integer: up to integer can replace theta_x with distinguished involution delta
- <(1+delta)lambda,rho^vee>=<lambda,2rho^vee> \in Z since lambda\in X^*+rho\subset weights,
-and 2rho^vee is a sum of coroots
-
-need variant of this where rho_check is replaced by an arbitrary ratvec:v
-application: L is a subgroup of G, p is a parameter for L, and v=rho_check(G)
-Assuming no cpt torus in the center of G, number of parameters of L of bounded 
-old_K_norm(p,rho_check(G)) is finite
-
-For purposes of sorting it is helpful to proceed as follows. Define:
-old_K_norm(ratvec v)=(Param->int)
-old_K_norm(KParam p)=old_K_norm(rho_check)(p)
-
-Note: should not define old_K_norm(Param p)=old_K_norm(Kparameter(p))
-if p is a KParam, sometimes convert it to a Param (to apply various functions to it), and
-need the K_Norm; however usually old_K_norm@Param is a mistake
-but do it for convenience
-}
-
-{primary definition
-old_K_norm(v) is a function taking a Kparam to an integer
-}
-set old_K_norm(ratvec v)=(KParam->int):(KParam p):
-let p=parameter(p) then
-q=make_dlambda_dominant(p) 
-in rat_as_int((1+involution(x(q)))*lambda(q)*v)
-
-{for convenience write this a different way:}
-set old_K_norm(ratvec v,KParam p)=old_K_norm(v)(p)
-set old_K_norm(ratvec v,Param p)=old_K_norm(v)(Kparameter(p))
-{also define old_K_norm(v) of  (Split,Param)}
-set old_K_norm(ratvec v,Split s,KParam p)=int:old_K_norm(v)(p)
-set old_K_norm(ratvec v,Split s,Param p)=int:old_K_norm(v)(Kparameter(p))
-
-
-{new definition of K_norm: take absolute value of each term}
+{K_norm@(KParam,ratvec) is closely related to height@Param, see down a few lines}
 set K_norm(ratvec v)=(KParam->int):(KParam p):
 let p=parameter(p) then
 mu=(1+involution(x(p)))*lambda(p) then
@@ -62,7 +14,10 @@ set K_norm(ratvec v,Param p)=K_norm(v)(Kparameter(p))
 set K_norm(ratvec v,Split s,KParam p)=int:K_norm(v)(p)
 set K_norm(ratvec v,Split s,Param p)=int:K_norm(v)(Kparameter(p))
 
-{this is the same as the 2*(built-in function height)}
+{height(Param->int) is defined, indepdent of nu, 
+ K_norm(Kparam->int) is essentially (height@Param)/2
+ precisely: K_norm(KParam kp)=height(parameter(kp))/2
+}
 set K_norm(KParam p)=int:K_norm(rho_check(real_form(x(p))))(p)
 set K_norm(Param p)=K_norm(Kparameter(p))
 set K_norm(Split s,KParam p)=int:K_norm(p)
@@ -106,8 +61,6 @@ let rv=[int]:[] in
 for c@p in P do rv#:=K_norm(v)(Kparameter(p)) od;sort(rv)
 
 {  default versions: v=rho_check }
-
-
 
 set sort_by_K_norm = ([KParam] -> [KParam]): sort_by( K_norm@KParam )
 set sort_by_K_norm = ([(Split,KParam)] -> [(Split,KParam)]): sort_by(K_norm@(Split,KParam))

@@ -3,8 +3,8 @@
 <groups.rx
 <hermitian.rx
 <thetastable.rx
-<K
-<K_types
+<K.rx
+<K_types.rx
 
 set inverse_theta_induce_standard(Param p, RealForm L)=
 let x_G=x(p) then
