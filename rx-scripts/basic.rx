@@ -424,10 +424,10 @@ set is_negative_coroot (RootDatum rd,vec alphav) = bool:
   is_negative_coroot(rd)(alphav)
 
 set all_positive_roots(RootDatum rd, [vec] roots)=bool:
-all(semisimple_rank(rd), (int i)bool: is_positive_root(rd,roots[i]))
+if #roots=0 then true else all(semisimple_rank(rd), (int i)bool: is_positive_root(rd,roots[i])) fi
 
 set all_positive_coroots(RootDatum rd, [vec] coroots)=bool:
-all(semisimple_rank(rd), (int i)bool: is_positive_coroot(rd,coroots[i]))
+if #coroots=0 then true else all(semisimple_rank(rd), (int i)bool: is_positive_coroot(rd,coroots[i])) fi
 
 set negative_system (mat posroots) = { the missing half of the root system }
   swiss_matrix_knife(172,posroots,0,0,0,0) { 172= 36+8+128: reverse cols,neg }
@@ -664,8 +664,10 @@ set Cayley (vec alpha,KGBElt x) = KGBElt:
   Cayley(root_index(real_form(x),alpha),x)
 
 { cross action of Weyl group element; avoid name conflict cross@(vec,KGBElt) }
+{ move this to Weylgroup_aux.rx and rename it
 set W_cross ([int] w,KGBElt x) = KGBElt:
-  for i:#w downto 0 do x:=cross(w[i],x) od; x
+for i:#w downto 0 do x:=cross(w[i],x) od; x
+}
 
 set KGB_status_text (int i) = string: ["C-","ic","r ","nc","C+"][i]
 
@@ -716,13 +718,14 @@ set rho_r(mat theta,RootDatum rd)=ratvec:sum(real_posroots(rd,theta))/2
 set rho_check_i(mat theta,RootDatum rd)=ratvec:sum(imaginary_poscoroots(rd,theta))/2
 set rho_check_r(mat theta,RootDatum rd)=ratvec:sum(real_poscoroots(rd,theta))/2
 
-{ status for a given KGBElt of general imaginary roots }
+{ compact/noncompact status for a given KGBElt of general imaginary roots }
+{false if the root is not imaginary}
 set is_compact (KGBElt x) = (vec->bool):
   let coweight = rho_check_i(x)+torus_factor(x)
-  in (vec alpha) bool: =(coweight*alpha)%2
+  in (vec alpha) bool: is_imaginary(x)(alpha) and =(coweight*alpha)%2
 set is_noncompact (KGBElt x) = (vec->bool):
   let coweight = rho_check_i(x)+torus_factor(x)
-  in (vec alpha) bool: !=(coweight*alpha)%2
+  in (vec alpha) bool: is_imaginary(x)(alpha) and !=(coweight*alpha)%2
 
 set compact_posroots (KGBElt x) = mat:
   columns_with(is_compact(x),imaginary_posroots(x))
@@ -740,6 +743,8 @@ set print_KGB (KGBElt x) = void:
 
 set no_Cminus_roots (KGBElt x) = bool:
   none(semisimple_rank(real_form(x)), (int i)bool: =status(i,x))
+set no_Cplus_roots (KGBElt x) = bool:
+  none(semisimple_rank(real_form(x)), (int i)bool: status(i,x)=4)
 
 {				Blocks					}
 
@@ -794,10 +799,6 @@ set is_regular (Param p) = bool:
 
 set trivial (RealForm G) = Param: { parameter for the trivial representation }
   param(KGB(G,KGB_size(G)-1),null(rank(G)),rho(G))
-
-{ cross action of Weyl group element; avoid name conflict cross@(vec,Param) }
-set W_cross ([int] w,Param p) = Param:
-  for i:#w downto 0 do p:=cross(w[i],p) od; p
 
 { parameter(G,x,lambda,nu)=param(KGB(G,x),lambda-rho(G),nu), so you can enter
   lambda without the rho shift; lambda may have denominator 2 or be a vec

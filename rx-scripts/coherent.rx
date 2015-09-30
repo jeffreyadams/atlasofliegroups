@@ -209,3 +209,5 @@ let S=[int]:for i:rank(root_datum(P)) do i od in skew_symmetrize_coherent(S,(P,t
 set skew_symmetrize_coherent([int] S,(Param,string)(p,type))=skew_symmetrize_coherent(S,(virtual(p),type))
 set skew_symmetrize_coherent((Param,string)(p,type))=skew_symmetrize_coherent(virtual(p),type)
 }}
+
+

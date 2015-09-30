@@ -26,7 +26,7 @@ set param(RealForm G,int k, vec lambda_rho,ratvec nu) = Param:
 
 { replace non-final parameter with [Param p] of final ones
   uses this feature of ParamPol, but ignores any coefficients }
-set make_final (Param p)= [Param]: for c@q in ParamPol: p do q od
+set finalize (Param p)= [Param]: for c@q in ParamPol: p do q od
 
 { evaluate at s=t for t integer (or rational?): replace w=a+bs with a+bt }
 { would seem to make sense only if t^2=1, so if either t=1 or t=-1 }

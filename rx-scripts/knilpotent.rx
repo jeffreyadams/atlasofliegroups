@@ -6,8 +6,8 @@
 <all_Kparameters.rx
 <complex_nilpotent_orbits.rx
 <K_norm.rx
-set kn_verbose=false
-set kn_very_verbose=false
+set kn_verbose=true
+set kn_very_verbose=true
 {implementation of parts of Letter to Atlas II: nilpotent orbits}
 
 
@@ -141,6 +141,8 @@ let ()=if kn_verbose then prints("mu(p_L_0) with p_L_0=", p_L_0) fi then
 (p_L,debug)=twist_by_minus_2rho_u_cap_s(x,H,number(x(p_L_0)),lambda(p_L_0)) then
 G=real_form(x) then
 x_L=x(p_L) then
+()=if kn_verbose then prints("untwisted p_L_0:", p_L_0) fi then
+()=if kn_verbose then prints("twisted p_L:", p_L) fi then
 ()=if kn_verbose then prints("L=", real_form(x(p_L)), " computing mu(p_L), p_L=", p_L) fi then
 rv=null_module(G) in let
 rhoshifts=rho_shifts(x,H) in let
@@ -295,7 +297,7 @@ smaller_H=[] in for (X,) in allH do if invariant_form(dual(rd),X,X)<length_H
 
 set all_mu_smaller(KGBElt x, ratvec H, int bound)=[ParamPol]:
 let G=real_form(x) then
-()=prints("in all_mu_smaller with ", x, " ", H, " ", bound) then
+{()=prints("in all_mu_smaller with ", x, " ", H, " ", bound) then}
 smallerH=all_H_smaller(x,H) then
 rv=[ParamPol]:[] in
 for h in smallerH do 
@@ -329,14 +331,14 @@ if k=-1 then 0 else
 
 set reduce_mu(KGBElt x,ratvec H,KParam p_L,[ParamPol] smaller)=(KParamPol,KParamPol):
 let mu=mu(x,H,p_L) then
-()=prints("mu=",mu) then
+{()=prints("mu=",mu) then}
 G=real_form(x) then
 {bound=K_norm(mu)-rat_as_int(2*rho(G)*rho_check(G)) then}
-bound=2*K_norm(mu) then
-()=prints("bound=",bound) then
+bound=2*K_norm(mu) in
+{()=prints("bound=",bound) then}
 {smaller=all_mu_smaller(x,H,bound) then}
-()=prints("all_mu_smaller:") then
-()=for mu in smaller do print_K_parameter(mu);prints(K_norm(mu)) od in
+{()=prints("all_mu_smaller:") then}
+{()=for mu in smaller do print_K_parameter(mu);prints(K_norm(mu)) od in}
 let rec_fun f(ParamPol Q,[ParamPol] smaller_mu)=ParamPol:
 {let ()=prints();prints("trying to reduce:");
 print_K_parameter(Q) in}
@@ -348,7 +350,7 @@ print_K_parameter(smaller_mu[0]);}smaller_mu[0] then
 N=term_contained(leading_terms(P),leading_terms(Q)) in
 if N=0 then 
 {prints("No reduction");}f(Q,delete(smaller_mu,0)) else
-prints("REDUCTION FOUND");prints("after reduction:");
+{prints("REDUCTION FOUND");prints("after reduction:");}
 {print_K_parameter(Q-N*P);}f(Q-N*P,smaller)  fi fi in (mu,f(mu,smaller))
 
 set reduce_mu(KGBElt x,ratvec H,KParam p_L)=(KParamPol,KParamPol):

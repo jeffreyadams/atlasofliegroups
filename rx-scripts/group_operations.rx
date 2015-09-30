@@ -94,69 +94,8 @@ set adjoint(RealForm G)=
   , tf = torus_factor(KGB(G,0))*simple_roots(root_datum(G)) { to adjoint }
   in real_form(adj_ic,distinguished_involution(adj_ic),tf)
 
-{ ----------------real Levi factors---------------- }
-
-set Levi (RootDatum rd, (int->bool) select) = RootDatum:
-  root_datum(columns_with(select,simple_roots(rd))
-            ,columns_with(select,simple_coroots(rd)))
-
-set Levi (RootDatum rd,[int] S) = Levi (rd,is_member(S))
-
-set Levi (InnerClass ic,[int] S) = InnerClass: { just change the root datum }
-  inner_class(Levi(root_datum(ic),is_member(S)),distinguished_involution(ic))
-
-{ ------------------Levi factor of real parabolic----------- }
-
-
-{ M=centralizer of A in H=TA, as a RealForm (cuspidal parabolic) }
-set real_Levi(KGBElt x) = RealForm:
-  let theta = involution(x)
-  then ic_M = inner_class(root_datum(simple_from_positive(imaginary_sys(x)))
-			 ,theta)
-  in real_form(ic_M,theta,torus_factor(x))
-
-{ Levi factors of general real parabolic }
-
-{ Real Levi defined by set of root indices for its simple system, and x }
-set real_Levi_from_simple(
-    RealForm G,[int] simpleroot_numbers,KGBElt x,bool show) =  RealForm:
-  let theta = involution(x), rd=RootDatum: G
-  then roots = rank(rd) # for i in simpleroot_numbers do root(rd,i) od
-  , coroots  = rank(rd) # for i in simpleroot_numbers do coroot(rd,i) od
-  then new_rd = root_datum(
-       	      	  if show then print(roots,coroots) else (roots,coroots) fi)
-  in real_form(inner_class(new_rd,theta),theta,torus_factor(x))
-
-set real_Levi_from_simple(RealForm G,[int] inx,KGBElt x) = RealForm:
-  real_Levi_from_simple(G,inx,x,false)
-
-{ Real Levi defined by set of root indices for its positive system, and x }
-set real_Levi_from_positive(
-  RealForm G,[int] posroot_numbers,KGBElt x, bool show) = RealForm:
-  let theta = involution(x), rd=RootDatum: G
-  then roots = rank(rd) # for i in posroot_numbers do root(rd,i) od
-  , coroots  = rank(rd) # for i in posroot_numbers do coroot(rd,i) od
-  then new_rd = root_datum(simple_from_positive(
-              	  if show then print(roots,coroots) else (roots,coroots) fi))
-  in real_form(inner_class(new_rd,theta),theta,torus_factor(x))
-
-set real_Levi_from_positive(RealForm G,[int] inx,KGBElt x) = RealForm:
-  real_Levi_from_positive(G,inx,x,false)
-
-{ M=centralizer of (1-theta_x)v }
-set real_Levi (KGBElt x,ratvec v) = RealForm:
-  let theta=involution(x) then w=(1-theta)*v, rd=RootDatum:real_form(x)
-  then poscoroots = columns_with( (vec alphav): =alphav*w, poscoroots(rd))
-  then posroots = rank(rd) # for alphav in poscoroots do root(rd,alphav) od
-  then rd_M=root_datum(simple_from_positive(posroots,poscoroots))
-  in real_form(inner_class(rd_M,theta),theta,torus_factor(x))
-
-set theta_stable_Levi (KGBElt x) = RealForm:
-  let ic_L=inner_class(root_datum(simple_from_positive(real_sys(x)))
-		      ,involution(x)) in quasisplit_form(ic_L)
-
-set M = real_Levi@KGBElt { synonym }
-set L = theta_stable_Levi@KGBElt { synonym }
+{ ----------------Levi factors--------------}
+{moved to parabolics.rx}
 
 { ----------------tests for classes of groups---------------- }
 

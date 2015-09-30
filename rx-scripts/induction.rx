@@ -1,17 +1,17 @@
 {induction.rx}
-{this file replaces earlier induction_plus.rx}
-{real and theta-stable parabolic induction from general parabolic}
-set verbose=false
+{parabolic induction from real and theta-stable parabolics}
+set verbose=true
 <basic.rx
 <K.rx {for rho_K}
+<parabolics.rx
 <kl.rx { for character_formula }
-<coherent.rx {for standardize}
+<coherent.rx 
 <synthetic.rx {for unnormalized_torus_factor}
 
-{induction from a general real parabolic}
-{L is a real Levi factor in G, having been constructed using real_Levi(x_G)}
+{L is a theta-stable Levi factor in G}
 
 {KGB(L) embeds in KGB(G): x_L -> embed_KGB(x_L,G)}
+{this is a failed attempt to fix bug in embed_KGB}
 set my_embed_KGB(KGBElt x_L,RealForm G)=
 let i=0,done=false,theta_L=involution(x_L),utf_L=unnormalized_torus_factor(x_L) in 
 while i<#KGB(G) and not done do
@@ -25,6 +25,8 @@ set embed_KGB(KGBElt x_L,RealForm G)=KGBElt:KGB_elt(G,involution(x_L), torus_fac
 
 {given KGB element of G, find one for M which maps to it}
 set inverse_embed_KGB(KGBElt x_G,RealForm M)=KGBElt:KGB_elt(M,involution(x_G), torus_factor(x_G))
+
+{---------------- various rho-shifts -----------------}
 
 {Given an involution theta, construct a set S of complex roots containing one 
 positive representative of each quadruple (\pm alpha,\pm theta(alpha))
@@ -43,7 +45,6 @@ set rho_S(mat theta,RootDatum rd)=ratvec:let rv=null(rank(rd)) in
 for alpha in makeS(theta,rd) do rv+:=alpha od;rv/2
 
 set rho_S(KGBElt x)=ratvec:rho_S(involution(x),root_datum(x))
-
 
 {subset of makeS, those alpha>0 such that theta(alpha)>0}
 set makeS_typeCplus(mat theta, RootDatum rd)=[[int]]:
@@ -64,11 +65,13 @@ set rho_S_typeCplus(KGBElt x)=ratvec:rho_S_typeCplus(involution(x),root_datum(x)
 set rho_k(KGBElt x)=ratvec:rho_ic(x)+rho_S_typeCplus(x)
 set rho_s(KGBElt x)=ratvec:rho_in(x)+rho_r(x)+rho_S_typeCplus(x)
 
-{parameters for real Levi L -> parameters for G:
+{--------------------- real parabolic induction -------------------}
+
+{parameters for real Levi L -> parameters for G
 p_L=(x_L,lambda,nu) -> p_G=(embed_KGB(x_L,G),lambda + appropriate rho-shift,nu)
 rho-shift is: rho_r(G)-rho_r(L)+(1-theta)(rho_S(G)-rho_S(L))
 Then Ind_L^G(I(p_L))=I(p_g)}
-set induce_standard(Param p_L,RealForm G)=Param:
+set real_induce_standard(Param p_L,RealForm G)=Param:
 let L=real_form(x(p_L)) then
 x_L=x(p_L) then
 x_G=embed_KGB(x_L,G) then 
@@ -76,32 +79,47 @@ theta=involution(x_G) then
 shift=rho_r(x_G)-rho_r(x_L)+(1-theta)*(rho_S(x_G)-rho_S(x_L)) in
 parameter(x_G,lambda(p_L)+shift,  nu(p_L))
 
-set induce_standard(ParamPol P,RealForm G)=ParamPol:
-let rv=null_module(G) in for c@p in P do rv+:=c*induce_standard(p,G) od;rv
+set real_induce_standard(ParamPol P,RealForm G)=ParamPol:
+let rv=null_module(G) in for c@p in P do rv+:=c*real_induce_standard(p,G) od;rv
 
-{given p and an arbitrary Levi factor M, try to write p as induce_standard(p_M,G)}
-set inverse_induce_standard(Param p, RealForm M)=
-let x_G=x(p) then
+{write Ind(J) as a sum of standards for G}
+{write J(p_L)=sum_i a_i* I_L(p_i)
+compute sum_i a_i*real_induce_standard(I_L(p_i))
+probably won't use this function much, it is mainly used in induced_irreducible}
+set real_induce_irreducible_as_sum_of_standards(Param p_L, RealForm G)=
+let cf=character_formula(p_L) in
+let rv=null_module(G) in
+for coeff@p in cf do rv+:=coeff*real_induce_standard(p,G) od;rv
+
+{  ----------------------   cuspidal data   -----------------------------}
+
+set cuspidal_data(Param p)=
+let p=make_no_Cplus(p) then
+x_G=x(p) then
+P=real_parabolic(x_G) then
+M=Levi(P) then
 theta=involution(x_G) then
 x_M=inverse_embed_KGB(x_G,M)  in
-parameter(x_M,lambda(p)-rho_r(x_G)+rho_r(x_M)-(1-theta)*(rho_S(x_G)-rho_S(x_M)),nu(p))
+(P,parameter(x_M,lambda(p)-rho_r(x_G)+rho_r(x_M)-(1-theta)*(rho_S(x_G)-rho_S(x_M)),nu(p)))
 
-{
-write a parameter p as induce_standard(p_M,G) where M is cuspidal,
-and p_M is a relative limit of discrete series of M
-returns (M,p_M)
-}
-set cuspidal_data(Param p)=let p_M=inverse_induce_standard(p,M(x(p))) in (real_form(p_M),p_M)
+{  ----------------------   theta-stable data   -----------------------------}
 
-{coherent continuation just using the imaginary roots
- this is done by p -> p_M=cuspidal_data(p) 
-                   -> induce_standard(w.p_M)
- used in standardize@Param
-}
+set theta_stable_data(Param p)=
+let p=make_no_Cminus(p) then
+x_G=x(p) then
+P=theta_stable_parabolic(x_G) then
+L=Levi(P) then
+theta=involution(x_G) then
+x_L=inverse_embed_KGB(x_G,L)  in
+(P,parameter(x_L,lambda(p)-rho(real_form(p))+rho_r(x(p))+rho(L)-rho_r(x_L),nu(p)))
+
+{---------------------standardize-----------------------------------------}
+{need real parabolic induction to define standardize (uses cuspidal_data)}
+
 set coherent_std_imaginary(W_word w,Param p)=
-let M=M(x(p)) then
+let M=real_Levi(x(p)) then
 (,p_M)=cuspidal_data(p) in
-induce_standard(coherent_std(w,p_M),real_form(p))
+real_induce_standard(coherent_std(w,p_M),real_form(p))
 
 {convert a possibly non-standard parameter into a linear combination of standard ones} 
 {algorithm:
@@ -123,6 +141,7 @@ coherent_std_imaginary(w,p_dom) fi
 
 set standardize(ParamPol P)=ParamPol:
 let rv=null_module(P) in for c@p in P do rv+:=c*standardize(p) od;rv
+{--------------------- theta-stable parabolic induction -------------------}
 
 {parameters for theta stable Levi L -> parameters for G:
 p_L=(x_L,lambda,nu) -> p_G=(embed_KGB(x_L,G),lambda + appropriate rho-shift,nu)
@@ -154,15 +173,6 @@ else
 {  prints("K_norms of terms of p_G: ", for q in monomials(p_G) do K_norma(q) od ) fi}
  fi fi ;p_G_standardized
 
-{write Ind(J) as a sum of standards for G}
-{write J(p_L)=sum_i a_i* I_L(p_i)
-compute sum_i a_i*induce_standard(I_L(p_i))
-probably won't use this function much, it is mainly used in induced_irreducible}
-set induce_irreducible_as_sum_of_standards(Param p_L, RealForm G)=
-let cf=character_formula(p_L) in
-let rv=null_module(G) in
-for coeff@p in cf do rv+:=coeff*induce_standard(p,G) od;rv
-
 {write theta-stable-Ind(J) as a sum of standards for G}
 {write J(p_L)=sum_i a_i* I_L(p_i)
 compute sum_i a_i*theta_induce_standard(I_L(p_i))
@@ -182,8 +192,8 @@ if verbose then prints("induced as sum of standards:", rv) fi;rv
 {write Ind(J) as a sum of irreducibles for G
 use composition series to convert induce_irreducible_as_sum_of_irreducibles
 then convert to sum of irreducibles using composition_series()}
-set induce_irreducible(Param p_L, RealForm G)=
-let cf=induce_irreducible_as_sum_of_standards(p_L,G) in
+set theta_induce_irreducible(Param p_L, RealForm G)=
+let cf=theta_induce_irreducible_as_sum_of_standards(p_L,G) in
 let rv=null_module(G) in
 for coeff@p in cf do rv+:=coeff*composition_series(p) od;rv
 
@@ -194,5 +204,12 @@ let rv=null_module(G) in
 for coeff@p in cf do rv+:=coeff*composition_series(p) od;
 if verbose then prints("induced as sum of irreducibles: ", rv) fi;rv
 
+{------------------- combined real and theta-stable induction---------------}
 
+set induce_standard(Param p_L,Parabolic P,RealForm G)=ParamPol:
+assert(is_parabolic_real(P) or is_parabolic_theta_stable(P),"Induction only defined for real or theta-stable parabolics");
+if is_parabolic_real(P) then ParamPol:real_induce_standard(p_L,G) 
+else  theta_induce_standard(p_L,G) fi
 
+set induce_standard(ParamPol pol,Parabolic P,RealForm G)=ParamPol:
+let rv=null_module(G) in for c@p in pol do rv+:=c*induce_standard(p,P,G) od;rv

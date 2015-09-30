@@ -1,122 +1,93 @@
-{thetastable.rx}
 <induction.rx
 <finite_dimensional.rx {for is_finite_dimensional}
 
-{routines for constructing theta-stable Levis and parabolics}
+{basic functions are in parabolics.rx
+ these are some additional functions related to theta-stable parabolics
+
+from parabolics.rx:
+Parabolic:([int] P,KGBElt x)
+theta_stable_parabolic(KGBElt x) returns a theta-stable parabolic provided all complex roots of x are type C-
+parabolic(ratvec lambda,KGBElt x)= returns a theta-stable parabolic if \theta_x(lambda)=lambda
+and all x-complex roots are type C-
+}
 
 {
-returns the list of roots of the nilpotent algebra u(x,v) 
-a root is in u(x,v) iff <(1+^theta_x)v,alpha^\vee>>0
-this set is automatically theta_x-stable
-v should be weakly dominant, and all complex roots should be C+ for x
-if so, then u(x,v) is guaranteed to be contained in n (the standard positive roots)
-otherwise it might still be ok, so return a warning but don't fail
+P=LU, return roots in U
+a root is in U iff it is positive and not in L
+these are the positive roots in G which are positive on (1+^theta_x)*rho_check(G)
 }  
-set u(KGBElt x, ratvec v)=[vec]:
-let G=real_form(x) in let theta=involution(x) in let w=(1+^theta)*v then
-()=if not no_Cminus_roots(x) then prints("warning: some roots are of type C-") fi in 
-{let ()=if not is_dominant(G,w) then   prints("warning: argument is not weakly dominant") fi in}
-let u_roots=[] in
-for i:nr_of_posroots(G)  do
- let alpha_check=poscoroots(G)[i] then
- alpha=posroots(G)[i] then
- c=w*alpha_check in 
- if c!=0 then u_roots#:=sign(c)*alpha fi od;\
- if not all_positive_roots(G,u_roots) then prints("warning: u is not contained in n") fi; u_roots
+set u(Parabolic P)=[vec]:
+let (S,x)=P then
+u_roots=assert(is_parabolic_theta_stable(P),"parabolic is not theta-stable");[vec]:[] then
+gamma_vee=(1+^involution(x))*rho_check(root_datum(x)) in
+for alpha in posroots(root_datum(x)) do if alpha*gamma_vee>0 then u_roots#:=alpha fi od;u_roots
 
-set u(KGBElt x)=[vec]:
-let rv=[vec]:[] in
-for alpha in posroots(real_form(x)) do if not is_real(alpha,x) then rv#:=alpha fi od;rv
-{-----------}
-set dim_u_cap_k(KGBElt x, ratvec H)=
-let u=u(x,H) then
+set u(KGBElt x)=[vec]:u(theta_stable_parabolic(x))
+
+set rho_u_cx(Parabolic P)=ratvec:
+assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+let rv=ratvec:null(rank(root_datum(P))) then
+x=x(P) in
+for alpha in u(P) do if is_complex(alpha,x) then rv+:=alpha fi od;rv/2
+
+set dim_u_cap_k(Parabolic P)=int:
+let u=u(P) then
+(S,x)=P then
 (number_compact,number_complex)=(0,0) then
 ()=for v in u do if is_compact(v,x) then number_compact+:=1 
-elif is_complex(v,x) then number_complex+:=1 fi od  in rat:number_compact+number_complex/2
+elif is_complex(v,x) then number_complex+:=1 fi od  in rat_as_int(number_compact+number_complex/2)
 
-set dim_u_cap_k(KGBElt x)=
-let u=u(x) then
-(number_compact,number_complex)=(0,0) then
-()=for v in u do if is_compact(v,x) then number_compact+:=1 
-elif is_complex(v,x) then number_complex+:=1 fi od  in rat:number_compact+number_complex/2
+set dim_u_cap_k(KGBElt x)=int:dim_u_cap_k(theta_stable_parabolic(x))
 
-set dim_u_cap_p(KGBElt x, ratvec H)=
-let u=u(x,H) then
+set dim_u_cap_p(Parabolic P)=int:
+let u=u(P) then
+(S,x)=P then
 (number_noncompact,number_complex)=(0,0) then
 ()=for v in u do if is_noncompact(x)(v) then number_noncompact+:=1 
-elif is_complex(v,x) then number_complex+:=1 fi od  in rat:number_noncompact+number_complex/2
+elif is_complex(v,x) then number_complex+:=1 fi od  in rat_as_int(number_noncompact+number_complex/2)
 
-set dim_u_cap_p(KGBElt x)=
-let u=u(x) then
-(number_noncompact,number_complex)=(0,0) then
-()=for v in u do if is_noncompact(x)(v) then number_noncompact+:=1 
-elif is_complex(v,x) then number_complex+:=1 fi od  in rat:number_noncompact+number_complex/2
-{-----------}
-set dim_u_cap_k_2(KGBElt x, ratvec H)=
-let u=u(x,H) then
+set dim_u_cap_p(KGBElt x)=int:dim_u_cap_p(theta_stable_parabolic(x))
+set dim_u_cap_p(ratvec lambda,KGBElt x)=int:dim_u_cap_p(parabolic(lambda,x))
+
+set dim_u_cap_k_2(Parabolic P,ratvec H)=int:
+let u=u(P) then
+(S,x)=P then
 (number_compact,number_complex)=(0,0) then
 ()=for v in u do if v*H=2 then if 
   is_compact(v,x) then number_compact+:=1 
-  elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat:number_compact+number_complex/2
+  elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat_as_int(number_compact+number_complex/2)
 
-{-----------}
-set dim_u_cap_k_ge2(KGBElt x, ratvec H)=
-let u=u(x,H) then
+set dim_u_cap_k_ge2(Parabolic P,ratvec H)=int:
+let u=u(P) then
+(S,x)=P then
 (number_compact,number_complex)=(0,0) then
 ()=for v in u do if v*H>=2 then if 
   is_compact(v,x) then number_compact+:=1 
-  elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat:number_compact+number_complex/2
+  elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat_as_int(number_compact+number_complex/2)
 
-set dim_u_cap_p_ge2(KGBElt x, ratvec H)=
-let u=u(x,H) then
+set dim_u_cap_p_ge2(Parabolic P,ratvec H)=int:
+let u=u(P) then
+(S,x)=P then
 (number_noncompact,number_complex)=(0,0) then
 ()=for v in u do  if v*H>=2 then  if is_noncompact(x)(v) then number_noncompact+:=1 
-elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat:number_noncompact+number_complex/2
+elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat_as_int(number_noncompact+number_complex/2)
 
-{-----------}
-set dim_u_cap_k_1(KGBElt x, ratvec H)=
-let u=u(x,H) then
+set dim_u_cap_k_1(Parabolic P,ratvec H)=
+let u=u(P) then
+(S,x)=P then
 (number_compact,number_complex)=(0,0) then
 ()=for v in u do if v*H=1 then if 
   is_compact(v,x) then number_compact+:=1 
   elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat:number_compact+number_complex/2
 
-
-set dim_u_cap_p_1(KGBElt x, ratvec H)=
-let u=u(x,H) then
+set dim_u_cap_p_1(Parabolic P, ratvec H)=
+let u=u(P) then
+(S,x)=P then
 (number_noncompact,number_complex)=(0,0) then
 ()=for v in u do  if v*H=1 then  if is_noncompact(x)(v) then number_noncompact+:=1 
-elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat:number_noncompact+number_complex/2
+elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat_as_int(number_noncompact+number_complex/2)
 
-set dim_u(KGBElt x,ratvec H)=#u(x,H)
-
-{similar to u(x,v), except now it returns the RealForm L(x,v)}
-set L(KGBElt x, ratvec v)=RealForm:
-let G=real_form(x) in let theta=involution(x) in let w=(1+^theta)*v  then
-()=if not no_Cminus_roots(x) then prints("warning: some roots are of type C-") fi in
-{let ()=if not is_dominant(G,w) then   prints("warning: argument is not weakly dominant") fi in}
-let (l_roots,l_coroots)=([vec]:[],[vec]:[]) in
-let ()=for i:nr_of_posroots(G)  do
- let alpha_check=poscoroots(G)[i] then
- alpha=posroots(G)[i] then
-{ c=w*alpha_check in }
- c=w*alpha in 
- if c=0 then l_roots#:=alpha;l_coroots#:=alpha_check fi od then
- simple_roots_and_coroots=
- if #l_roots=0 then simple_from_positive(null(rank(G),0),null(rank(G),0)) 
-  else simple_from_positive(l_roots,l_coroots) fi then
- rd=root_datum(simple_roots_and_coroots) then
- ic=inner_class(rd,theta) in
- real_form(ic,theta,torus_factor(x)) 
-
-
-{return both RealForm: L(x,v) and [vec]: u(x,v)}
-set theta_stable_q(KGBElt x,ratvec v)=(KGBElt,RealForm,[vec]):(x,L(x,v),u(x,v))
-set theta_stable_q(KGBElt x)=(KGBElt,RealForm,[vec]):(x,L(x),u(x))
-
-
-set rho_u(KGBElt x, ratvec v)=let roots=u(x,v) in if #roots=0 then null(rank(real_form(x))) else ratvec:sum(roots)/2 fi
-set rho_L(KGBElt x, ratvec v)=ratvec:rho(L(x,v))
+set dim_u(ratvec H,KGBElt x)=#u(H,x)
 
 {---------------------------some representations------------------------------------}
 
@@ -145,13 +116,14 @@ let G=real_form(x_in) then
 {find w making lambda_q (or lambda_in?) weakly dominant}
 {(lambda_in_new,w)=make_dominant(G,lambda_in) then}
 (lambda_q_new,w)=make_dominant(G,lambda_q) then
-x_new=W_cross(inverse(w),x_in) then
+x_new=cross(inverse(w),x_in) then
 {lambda_q_new=act(w,lambda_q) then}
 lambda_in_new=act(inverse(w),lambda_in) then
-(x_new,L,u)=theta_stable_q(x_new,lambda_q_new) then
+P=parabolic(lambda_q_new,x_new) then
+L=Levi(P) then
 t_L=trivial(L) then
-{pi_L=parameter(x(t_L),lambda(t_L)+lambda_in_new-rho_u(x_new,lambda_q_new),nu(t_L)) in }{this was apparently wrong}
-pi_L=parameter(x(t_L),lambda(t_L)+lambda_in_new-rho_u(x_new,lambda_q_new),nu(t_L)+lambda_in_new-rho_u(x_new,lambda_q_new)) in
+{pi_L=parameter(x(t_L),lambda(t_L)+lambda_in_new-rho_u(lambda_q_new,x_new),nu(t_L)) in }{this was apparently wrong}
+pi_L=parameter(x(t_L),lambda(t_L)+lambda_in_new-rho_u(lambda_q_new,x_new),nu(t_L)+lambda_in_new-rho_u(lambda_q_new,x_new)) in
 let ()=prints("in Aq, p_L=", pi_L) in 
 theta_induce_irreducible(pi_L,G) 
 
@@ -171,32 +143,6 @@ set Aq(KGBElt x,ratvec lambda_in)=Param:Aq(x,lambda_in,lambda_in)
 set Aq(RealForm G,ratvec lambda_in, ratvec lambda_q)=Param:Aq(KGB(G)[0],lambda_in,lambda_q)
 set Aq(RealForm G,ratvec lambda_in)=Param:Aq(G,lambda_in,lambda_in)
 
-{  ----------------------   inverse theta-stable induction   ------------------------------------------}
-
-set inverse_theta_induce_standard(Param p, RealForm L)=
-let x_G=x(p) then
-x_L=inverse_embed_KGB(x_G,L) in
-parameter(x_L,lambda(p)-rho(real_form(p))+rho_r(x_G)+rho(L)-rho_r(x_L),nu(p))
-
-set is_lambda_dominant(Param p)=bool:let rd=root_datum(p) then lam=lambda(p) in
-prints("lambda+theta(lambda)=",lam+involution(x(p))*lam); is_dominant(rd,lam+involution(x(p))*lam)
-
-set make_lambda_dominant(Param p)= let rd=root_datum(p) in
-let lam_a=lambda(p)+involution(x(p))*lambda(p) in
-let (lam_new,w)=make_dominant(rd,lam_a) in
-let W=w_matrix(w) in let W_inv=w_matrix(inverse(w)) in 
-let x=KGB_elt(real_form(p),W*involution(x(p))*W_inv,act((w),torus_factor(x(p))))
-in (w,x,act((w),lambda(p)),act((w),nu(p)),L(x,lam_new)) 
-
-set theta_stable_data(Param p)=
-if is_lambda_dominant(p) then
-let p_L=inverse_theta_induce_standard(p,L(x(p),lambda(p))) 
-in (real_form(p_L),p_L)
-else
-let (w,x,lam,nu,L)=make_lambda_dominant(p) in let x_L=inverse_embed_KGB(x,L) in
-let p_L=parameter(x_L,lam-rho(real_form(p))+rho_r(x)+rho(L)-rho_r(x_L),nu)
-in (L,p_L) 
-fi
 
 
 
@@ -247,12 +193,11 @@ rho_u=rho(G)-rho(L) in
 is_finite_dimensional(p_L) and dimension(p_L)=1 and is_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
 
 set is_good(KGBElt x,ratvec lambda_in,ratvec lambda_q)=bool:
-let L=L(x,lambda_q) in 
+let L=Levi(lambda_q,x) in 
 is_strictly_dominant(real_form(x),lambda_in+rho(L))
 
 set is_weakly_good(KGBElt x,ratvec lambda_in,ratvec lambda_q)=bool:
-let L=L(x,lambda_q) in 
-is_dominant(real_form(x),lambda_in+rho(L))
+let L=Levi(lambda_q,x) in is_dominant(root_datum(x),lambda_in+rho(L))
 
 set is_fair(KGBElt x,ratvec lambda_in,ratvec lambda_q)=bool:
 is_strictly_dominant(real_form(x),lambda_in)

@@ -15,7 +15,7 @@
   continue until done = #orbit
 
   returns: (words, orbit) where orbit is list of elements of orbit,
-  and for each i one has W_cross(words[i],x)=orbit[i]
+  and for each i one has cross(words[i],x)=orbit[i]
 }
 
 set cross_W_orbit_extra([int] S,KGBElt x) = ([W_word],[KGBElt]):
