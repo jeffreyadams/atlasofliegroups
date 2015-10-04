@@ -887,7 +887,8 @@ int level_a (const param& E, const Weight& shift, RootNbr alpha)
     - rd.colevel(alpha); // final term $<\alpha^\vee,\rho>$
 }
 
-DescValue type (const param& E, const ext_gen& p, std::vector<param>& links)
+DescValue type (const param& E, const ext_gen& p,
+		containers::sl_list<param>& links)
 {
   DescValue result;
   const TwistedWeylGroup& tW = E.rc().twistedWeylGroup();
@@ -1781,7 +1782,7 @@ BlockEltPair ext_block::Cayleys(weyl::Generator s, BlockElt n) const
 bool check(const ext_block eb, const param_block& block)
 {
   context ctxt (block.context(),eb.delta(),block.gamma());
-  std::vector<param> links;
+  containers::sl_list<param> links;
   for (BlockElt n=0; n<eb.size(); ++n)
   { auto z=eb.z(n);
     param E(ctxt,block.x(z),block.lambda_rho(z));
@@ -1791,6 +1792,8 @@ bool check(const ext_block eb, const param_block& block)
       auto tp = type(E,p,links);
       if (tp!=eb.descent_type(s,n))
 	return false;
+
+      auto it = links.begin();
 
       switch (tp)
       {
@@ -1808,8 +1811,8 @@ bool check(const ext_block eb, const param_block& block)
 	  BlockElt m=eb.cross(s,n);
 	  BlockElt cz = eb.z(m); // corresponding element of block
 	  param F(ctxt,block.x(cz),block.lambda_rho(cz));
-	  assert(same_standard_reps(links[0],F));
-	  if (signs_differ(links[0],F))
+	  assert(same_standard_reps(*it,F));
+	  if (signs_differ(*it,F))
 	    std::cout << "Flip at cross link " << unsigned{s} << " from " << z
 		      << " to " << cz << '.' << std::endl;
 	} break;
@@ -1819,14 +1822,15 @@ bool check(const ext_block eb, const param_block& block)
 	  BlockElt m=eb.some_scent(s,n); // the unique (inverse) Cayley
 	  BlockElt Cz = eb.z(m); // corresponding element of block
 	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
-	  assert(same_standard_reps(links[0],F));
-	  if (signs_differ(links[0],F))
+	  assert(same_standard_reps(*it,F));
+	  if (signs_differ(*it,F))
 	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
 		      << " to " << Cz << '.' << std::endl;
+	  ++it;
 	  m=eb.cross(s,n); BlockElt cz = eb.z(m);
 	  param Fc(ctxt,block.x(cz),block.lambda_rho(cz));
-	  assert(same_standard_reps(links[1],Fc));
-	  if (signs_differ(links[1],Fc))
+	  assert(same_standard_reps(*it,Fc));
+	  if (signs_differ(*it,Fc))
 	    std::cout << "Flip at cross link " << unsigned{s} << " from " << z
 		      << " to " << cz << '.' << std::endl;
 	} break;
@@ -1837,8 +1841,8 @@ bool check(const ext_block eb, const param_block& block)
 	  BlockElt m=eb.some_scent(s,n); // the unique (inverse) Cayley
 	  BlockElt Cz = eb.z(m); // corresponding element of block
 	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
-	  assert(same_standard_reps(links[0],F));
-	  if (signs_differ(links[0],F))
+	  assert(same_standard_reps(*it,F));
+	  if (signs_differ(*it,F))
 	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
 		      << " to " << Cz << '.' << std::endl;
 	} break;
@@ -1849,17 +1853,17 @@ bool check(const ext_block eb, const param_block& block)
 	  BlockElt Cz0 = eb.z(m.first); BlockElt Cz1= eb.z(m.second);
 	  param F0(ctxt,block.x(Cz0),block.lambda_rho(Cz0));
 	  param F1(ctxt,block.x(Cz1),block.lambda_rho(Cz1));
-	  bool straight=same_standard_reps(links[0],F0);
+	  bool straight=same_standard_reps(*it,F0);
 	  if (straight)
-	    assert(same_standard_reps(links[1],F1));
+	    assert(same_standard_reps(*std::next(it),F1));
 	  else // it must be crossed
-	    assert(same_standard_reps(links[0],F1) and
-		   same_standard_reps(links[1],F0));
+	    assert(same_standard_reps(*it,F1) and
+		   same_standard_reps(*std::next(it),F0));
 	  unsigned iF0 = straight ? 0 : 1; // |links| index that pairs with |F0|
-	  if (signs_differ(links[iF0],F0))
+	  if (signs_differ(*std::next(it,iF0),F0))
 	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
 		      << " to " << Cz0 << '.' << std::endl;
-	  if (signs_differ(links[1-iF0],F1))
+	  if (signs_differ(*std::next(it,1-iF0),F1))
 	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
 		      << " to " << Cz1 << '.' << std::endl;
 	} break;
@@ -1869,26 +1873,27 @@ bool check(const ext_block eb, const param_block& block)
 	  BlockElt Cz0 = eb.z(m.first); BlockElt Cz1= eb.z(m.second);
 	  param F0(ctxt,block.x(Cz0),block.lambda_rho(Cz0));
 	  param F1(ctxt,block.x(Cz1),block.lambda_rho(Cz1));
-	  bool straight=same_standard_reps(links[0],F0);
+	  bool straight=same_standard_reps(*it,F0);
 	  if (straight)
-	    assert(same_standard_reps(links[1],F1));
+	    assert(same_standard_reps(*std::next(it),F1));
 	  else // it must be crossed
-	    assert(same_standard_reps(links[0],F1) and
-		   same_standard_reps(links[1],F0));
+	    assert(same_standard_reps(*it,F1) and
+		   same_standard_reps(*std::next(it),F0));
 	  unsigned iF0 = straight ? 0 : 1; // |links| index that pairs with |F0|
-	  if (signs_differ(links[iF0],F0))
+	  if (signs_differ(*std::next(it,iF0),F0))
 	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
 		      << " to " << Cz0 << '.' << std::endl;
-	  if (signs_differ(links[1-iF0],F1))
+	  if (signs_differ(*std::next(it,1-iF0),F1))
 	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
 		      << " to " << Cz1 << '.' << std::endl;
 	  // check the false cross link
+	  std::advance(it,2);
 	  m = eb.Cayleys(s,m.first);
 	  BlockElt fcz = eb.z(m.first==n ? m.second : m.first);
 	  assert(fcz==block.cross(p.s0,z) and fcz==block.cross(p.s1,z));
 	  param F(ctxt,block.x(fcz),block.lambda_rho(fcz));
-	  assert(same_standard_reps(links[2],F));
-	  if (signs_differ(links[2],F))
+	  assert(same_standard_reps(*it,F));
+	  if (signs_differ(*it,F))
 	    std::cout << "Flip at false cross link " << unsigned{s}
 		      << " from " << z << " to " << fcz << '.' << std::endl;
 	} break;

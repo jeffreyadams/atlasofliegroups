@@ -91,10 +91,31 @@ namespace atlas {
     class mirrored_sl_list;
 
   template<typename T,typename Alloc = std::allocator<T> >
+#ifndef incompletecpp11
     using stack = std::stack<T, mirrored_simple_list<T,Alloc> >;
+#else
+  struct stack : public std::stack<T, mirrored_simple_list<T,Alloc> >
+  {
+    template <typename... Args>
+      stack(Args&&... args)
+      : std::stack<T, mirrored_simple_list<T,Alloc> >
+	(std::forward<Args>(args)...)
+    {}
+  }; // |struct stack|
+#endif
 
   template<typename T,typename Alloc = std::allocator<T> >
+#ifndef incompletecpp11
     using queue = std::queue<T, sl_list<T,Alloc> >;
+#else
+  struct queue : public std::queue<T, sl_list<T,Alloc> >
+  {
+    template <typename... Args>
+      queue(Args&&... args)
+      : std::queue<T, sl_list<T,Alloc> > (std::forward<Args>(args)...)
+    {}
+  }; // |struct stack|
+#endif
 
   } // |namespace cantainers|
 

@@ -365,7 +365,8 @@ bool same_standard_reps (const param& E, const param& F);
 bool signs_differ (const param& E, const param& F);
 
 // find out type of extended parameters, and push its neighbours onto |links|
-DescValue type (const param& E, const ext_gen& p, std::vector<param>& links);
+DescValue type (const param& E, const ext_gen& p,
+		containers::sl_list<param>& links);
 
 bool check(const ext_block eb, const param_block& block);
 

@@ -13,7 +13,6 @@
 #include <sstream>
 #include <fstream>
 #include <string>
-#include <functional> // for |std::reference|
 #include <cstring>
 
 #include "prerootdata.h"
@@ -1017,8 +1016,9 @@ WeightInvolution get_commuting_involution
   // first collect inner class factors and group equal ones among them
   containers::sl_list< std::pair<inner_class_factor,RankFlags> > type;
 
+  typedef const inner_class_factor* icf_ref;
   // map index to the inner class factor corresponding to it
-  std::vector< std::reference_wrapper<inner_class_factor> > icf;
+  std::vector<icf_ref> icf;
 
   using lietype::simple_ict;
 
@@ -1035,13 +1035,13 @@ WeightInvolution get_commuting_involution
     for ( ; not type.at_end(it); ++it)
       if (it->first==cur)
       { it->second.set(k); // record that this index has thes same type
-	icf.push_back(it->first); // for location
+	icf.push_back(&it->first); // for location
 	break;
       }
     if (type.at_end(it)) // no match among previous entries of |type|
     { auto last=type.push_back(std::make_pair(cur,RankFlags()));
       last->second.set(k); // and record this index as occupied by it
-      icf.push_back(last->first); // for location
+      icf.push_back(&last->first); // for location
     }
   } // |for(k)|
 
@@ -1093,13 +1093,13 @@ WeightInvolution get_commuting_involution
   unsigned r=0; // cumulated rank of inner class factors
   std::vector<unsigned> offset(lo.d_inner.size());
   for (unsigned i=0; i<offset.size(); ++i)
-    offset[i]=r, r+=rank(icf[i]);
+    offset[i]=r, r+=rank(*icf[i]);
   WeightInvolution delta (r); // strart with identity matrix
 
   for (auto it=swaps.begin(); it!=swaps.end(); ++it)
   {
     unsigned left=offset[it->first], right=offset[it->second];
-    unsigned r=rank(icf[it->first]);
+    unsigned r=rank(*icf[it->first]);
     while (r-->0)
       delta.swapColumns(left+r,right+r);
   }
@@ -1107,19 +1107,19 @@ WeightInvolution get_commuting_involution
   for (auto it=nontrivial.begin(); it(); ++it)
   {
     unsigned k = offset[*it];
-    const SimpleLieType& slt = icf[*it].get().factor;
+    const SimpleLieType& slt = icf[*it]->factor;
     const unsigned r = slt.rank();
     WeightInvolution theta =
       lietype::simple_involution(slt,simple_ict::unequal_rank);
     delta.set_block(k,k,theta);
-    if (icf[*it].get().kind==simple_ict::complex)
+    if (icf[*it]->kind==simple_ict::complex)
       delta.set_block(k+r,k+r,theta);
   }
   for (auto it=internal_swap.begin(); it(); ++it)
   {
     unsigned k = offset[*it];
-    assert(icf[*it].get().kind==simple_ict::complex);
-    const SimpleLieType& slt = icf[*it].get().factor;
+    assert(icf[*it]->kind==simple_ict::complex);
+    const SimpleLieType& slt = icf[*it]->factor;
     const unsigned r = slt.rank();
     for (unsigned j=k; j<k+r; ++j)
       delta.swapColumns(j,j+r);
