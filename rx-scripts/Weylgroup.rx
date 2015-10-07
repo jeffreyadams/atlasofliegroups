@@ -10,7 +10,7 @@ set word (W_word(,w))        = [int]:  w
 set # (W_word(,w))           = int: #w { non reduced length of word }
 
 
-{ action of Weyl word }
+{ action of Weyl word on X^*\otimes Q}
 set act (W_word(rd,w), vec v) = vec:
   let alpha = simple_roots(rd), alphav = simple_coroots(rd) in
   for i:#w downto 0 do let wi=w[i] in v -:= alpha[wi]*(alphav[wi]*v) od; v
@@ -31,6 +31,8 @@ set w_matrix (W_word(rd,w)) = mat:
 set equal (W_word w, W_word u) = bool: w_matrix(w)=w_matrix(u)
 
 set inverse (W_word(rd,w)) = W_word: { reverse w component } (rd,w~[:])
+
+set cross(W_word(rd,w),KGBElt x)=KGBElt:cross(w,x)
 
 {		--- using W to make values dominant ---			}
 
