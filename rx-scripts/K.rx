@@ -20,16 +20,22 @@ set rho_in(KGBElt x) = ratvec:
   sum(columns_with(is_noncompact(x),imaginary_posroots(x)))/2
 
 
-{ ------------------    matrices related to T_K\subset T  ------------------ }
+{ ------------------    matrices related to T_{K_0}\subset H  ------------------ }
 
-{ bases of cocharacter lattice of K_0 (as columns)
+{ T_{K_0}=(H^delta)_0 \subset T_K=H^delta \subset H 
+  T_{K_0} is a torus \subset T_K abelian (possibly disconnected)
+  X^*(T_{K_0})= X^*/(X^*)^{-delta}
+  X^*(T_K)    = X^*/(1-delta)X^*
+  see W_K.rx 
+ 
+  K_0=identity component of K, with Cartan subgroup T_{K_0}
+  B=basis of X_*(T_{K_0}) (as columns) = cocharacter lattice for (K_0,T_{K_0})
   returns a matrix B with rank(K_0) columns, rank(ic) rows
   columns are a basis of the +1 left-eigenspace delta
 
   This matrix B satisfies ^delta*B=B
-  Set T_K=identity component of T^\delta=Cartan subgroup of K_0
-  left multiplication by ^B is projection X^*(T)  -> X^*(T_K) = X^*(T)/X^*(T)^{-delta}
-  left multiplication by  B is injection  X_*(T_K)-> X_*(T)   [^delta*v=v for v in image]
+  left multiplication by ^B is projection X^*(H)  -> X^*(T_{K_0}) = X^*(H)/X^*(H)^{-delta}
+  left multiplication by  B is injection  X_*(T_{K_0})-> X_*(H)   [^delta*v=v for v in image]
 }
 
 set cocharacter_lattice_K (InnerClass ic) = mat:
@@ -50,33 +56,33 @@ set cocharacter_lattice_K (KGBElt x)= mat:
   {eigen_lattice(identity) is not necessarily the identity; using identity gives nicest coordinates}
   else eigen_lattice(^theta,1) fi
 
-{ matrix of projection X^*(T)-> X^*(T_K)=X^*(T)/X^*(T)^{-theta_x}
+{ matrix of projection X^*(H)-> X^*(T_{K_0})=X^*(H)/X^*(H)^{-theta_x}
   project modulo the -1 eigenspace of the distinguished involution (or theta_x)
 }
 set projection_to_K_matrix (InnerClass ic) = mat:^cocharacter_lattice_K(ic) 
 set projection_to_K_matrix (KGBElt x)      = mat: ^cocharacter_lattice_K(x) 
 
-{ projection function X^*(T) -> X^*(T_K)
+{ projection function X^*(H) -> X^*(T_{K_0})
   this accepts a rational vector in X^*_\Q, provided its image is integral
   avoid transpose in projection_to_K_matrixI(ic)*v, but morally it is that
 }
 set project_K (InnerClass ic,ratvec v)= vec: ratvec_as_vec(v*cocharacter_lattice_K(ic))
 set project_K (KGBElt x,ratvec v)     = vec:ratvec_as_vec(v*cocharacter_lattice_K(x))
 
-{ matrix of injection X_*(T_K)->X_*(T); image is the saturated sublattice X_*(T)^theta}
+{ matrix of injection X_*(T_{K_0})->X_*(H); image is the saturated sublattice X_*(H)^theta}
 set injection_from_K_matrix = (InnerClass->mat):cocharacter_lattice_K@InnerClass
 set injection_from_K_matrix = (KGBElt->mat):cocharacter_lattice_K@KGBElt
 
-{injection function X_*(T_K) -> X_*(T))}
+{injection function X_*(T_{K_0}) -> X_*(H))}
 set inject_K (InnerClass ic,ratvec v)= vec: ratvec_as_vec(injection_from_K_matrix(ic)*v)
 set inject_K (KGBElt x,ratvec v)     = vec:ratvec_as_vec(injection_from_K_matrix(x)*v)
 
-{injection X^*(T_K) -> X^*(T)^delta_Q   (denominator can be 2)
+{injection X^*(T_{K_0}) -> X^*(H)^delta_Q   (denominator can be 2)
  B=cocharacter_lattice_K(x)
- left mult by ^B is surjection X^*(T) --> X^*(T_K)
- restriction to X^*(T)^delta is _not_ necessarily surjective, for example when T(R)=complex torus
- rightinverse(^B): X^*(T_K)-> X^*(T), not necessarily X^*(T)^delta
- v -> w=(1+delta)/2*rightinverse(B)*v is in X^*(T)^delta\otimes 1/2, 
+ left mult by ^B is surjection X^*(H) --> X^*(T_{K_0})
+ restriction to X^*(H)^delta is _not_ necessarily surjective, for example when T(R)=complex torus
+ rightinverse(^B): X^*(T_{K_0})-> X^*(H), not necessarily X^*(H)^delta
+ v -> w=(1+delta)/2*rightinverse(B)*v is in X^*(H)^delta\otimes 1/2, 
  satisfies ^B*w=v
  application: map (\frak t_K)^* \hookrightarrow \frak t^*, used in the Vogan algorithm, see project.rx
 }
@@ -89,22 +95,22 @@ set rank_K (InnerClass ic) = int: let (c,C,)=classify_involution(distinguished_i
   Input: x in distinguished fiber, so theta=delta permutes positive complex roots
   Output: ((G_K_roots,G_K_coroots),(injection matrix,pull_back matrix)
   
-  G_K_roots: posroots of K as elements of X^*(T)
+  G_K_roots: posroots of K as elements of X^*(H)
     from all compact imaginary posroots, and one of each complex theta-orbit
-  G_K_coroots: poscoroots of K as elements of X_*(T)^{delta}
+  G_K_coroots: poscoroots of K as elements of X_*(H)^{delta}
      from compact imaginary poscoroots 
      and for each complex theta-orbit, the coweight c.(alpha^v)(1+theta) 
        c=1 if  <delta(alpha),alpha^\vee>=0
        c=2 if  otherwise (<,>=\pm 1)
-  injection matrix: X_*(T_K) ->  X_*(T)^{^delta} (isomorphism)
-  pull_back matrix: X_*(T)^{^delta} -> X_*(T_K)  (isomorphism)
+  injection matrix: X_*(T_{K_0}) ->  X_*(H)^{^delta} (isomorphism)
+  pull_back matrix: X_*(H)^{^delta} -> X_*(T_{K_0})  (isomorphism)
 }
 set G_K_roots_and_coroots_raw(KGBElt x) = ((mat,mat),(mat,mat)):
   let ic = inner_class(real_form(x))
-  then inj = cocharacter_lattice_K(ic) { isomorphism (X_*(T_K)->X_*(T)^\delta) }
+  then inj = cocharacter_lattice_K(ic) { isomorphism (X_*(T_{K_0})->X_*(H)^\delta) }
   , delta = distinguished_involution(ic), rd = root_datum(ic)
-  then pull_back = left_inverse(inj) { columns are coweights in X_*(T_K) }
-  , proj = ^inj { projection X^*->X^*(T_K) }
+  then pull_back = left_inverse(inj) { columns are coweights in X_*(T_{K_0}) }
+  , proj = ^inj { projection X^*->X^*(T_{K_0}) }
   , proots = posroots(rd), pcroots = poscoroots(rd), r = rank(rd)
   , is_cpt  = is_compact(x) { predicate on imaginary roots }
   , ic_inx = [int]:[], C_inx = [int]:[] { list indices into proots/pcroots }
@@ -129,8 +135,8 @@ set G_K_roots_and_coroots_raw(KGBElt x) = ((mat,mat),(mat,mat)):
     )
   end
 
-{apply projection: X^*(T) -> X^*(T_K) to roots (projection=^inj)
-       pull_back:  X_*(T_K) -> X_*(T) (isomorphism to X_*(T)^delta
+{apply projection: X^*(H) -> X^*(T_{K_0}) to roots (projection=^inj)
+       pull_back:  X_*(T_{K_0}) -> X_*(H) (isomorphism to X_*(H)^delta
 }
 set G_K_roots_and_coroots(KGBElt x) = (mat,mat):
 let ((roots,coroots),(inj,pullback))=G_K_roots_and_coroots_raw(x) in (^inj*roots,pullback*coroots)
@@ -147,10 +153,10 @@ set K_0 (KGBElt x) = RealForm: let rd = K_root_datum(x) in quasicompact_form(inn
 set K_0 (RealForm G) = RealForm: K_0(KGB(G,0))
 
 {x is required to bein the distinguished fiber}
-set rho_K (KGBElt x) = ratvec:rho(K_0(x))   {in X^*(T_K)}
+set rho_K (KGBElt x) = ratvec:rho(K_0(x))   {in X^*(T_{K_0})}
 set rho_K (RealForm G) = ratvec:rho(K_0(G))
 
-set rho_c (KGBElt x) = ratvec:coinject_from_K(x,rho_K(x)) {as an element of (X^*(T)^delta_Q}
+set rho_c (KGBElt x) = ratvec:coinject_from_K(x,rho_K(x)) {as an element of (X^*(H)^delta_Q}
 set rho_c (RealForm G) = ratvec:rho_c(KGB(G,0))
 
 set tworho_c(KGBElt x)= ratvec:2*rho_c(x) {not necessarily a vec}

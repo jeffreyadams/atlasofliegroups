@@ -126,14 +126,19 @@ set is_closed(KGPElt y)=bool:let eq=equivalence_class_of(y) in length(min(eq))=0
 
 set KGP_elt([int] P,KGBElt x)=KGPElt:(P,x)
 
-set KGP_elt(ratvec v,KGBElt x)=KGPElt:
-let G=real_form(x),P=[int]:[] in
-assert(is_dominant(G,v),"v is not dominant");
-for a@i in simple_roots(G) do if a*v=0 then P#:=i fi od;
-KGP_elt(P,x)
+{parabolic determined by lambda q(lambda)=l(lambda)+u(lambda)}
+set KGP_elt(ratvec lambda,KGBElt x)=KGPElt:
+let rd=root_datum(x) then
+{()=prints("lambda=",lambda) then}
+P=[int]:[]  then
+(lambda_dom,w)=make_dominant(rd,lambda) then
+{()=prints("w=",w) then}
+y=cross(inverse(w),x) in
+for a@i in simple_roots(rd) do if a*lambda_dom=0 then P#:=i fi od;
+KGP_elt(P,y)
 
-set parabolic([int] P,KGBElt x)=Parabolic:KGP_elt(P,x)
-set parabolic(ratvec v,KGBElt x)=Parabolic:KGP_elt(v,x)
+set parabolic([int] P,KGBElt x)=Parabolic:KGP_elt(P,x)  {simple roots P}
+set parabolic(ratvec lambda,KGBElt x)=Parabolic:KGP_elt(lambda,x) {lambda in \h^*}
 
 {test y in K\G/P_S is open: <=> last element of y is last element of KGB}
 set is_open(KGPElt y)=bool:let eq=equivalence_class_of(y) then
