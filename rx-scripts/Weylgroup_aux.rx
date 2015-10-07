@@ -1,0 +1,40 @@
+<Weylgroup.rx
+
+{miscellaneous routines related to the Weyl group}
+
+{ use complex cross actions to move a KGBElt to a fiber with no C- roots
+  inductive step is move_towards_no_Cminus. Note: =status(i,x) means C-
+  also return simple reflection used
+}
+set move_towards_no_Cminus (KGBElt x) = (KGBElt,int):
+  let i=last(semisimple_rank(real_form(x)), (int i)bool: =status(i,x)) in
+  if i<0 then (x,-1) else (cross(i,x),i) fi
+
+set make_no_Cminus (KGBElt x) = (KGBElt,W_word): { repeat until stable }
+let rec_fun f(KGBElt x,W_word w)=(KGBElt,W_word):
+ let (y,t)=move_towards_no_Cminus(x) in 
+  if x=y then (x,w) else f(y,left_mult(t,w)) fi in f(x,W_word:(real_form(x),[]))
+
+{similarly with C+}
+set move_towards_no_Cplus (KGBElt x) = (KGBElt,int):
+  let i=last(semisimple_rank(real_form(x)), (int i)bool: status(i,x)=4) in
+  if i<0 then (x,-1) else (cross(i,x),i) fi
+
+set make_no_Cplus (KGBElt x) = (KGBElt,W_word): { repeat until stable }
+let rec_fun f(KGBElt x,W_word w)=(KGBElt,W_word):
+ let (y,t)=move_towards_no_Cplus(x) in 
+  if x=y then (x,w) else f(y,left_mult(t,w)) fi in f(x,W_word:(real_form(x),[]))
+
+{apply make_no_Cplus/minus to parameters also}
+set make_no_Cminus(Param p)=Param:
+let (y,w)=make_no_Cminus(x(p)) in parameter(y,act(w,lambda(p)),act(w,nu(p)))
+
+set make_no_Cplus(Param p)=Param:
+let (y,w)=make_no_Cplus(x(p)) in parameter(y,act(w,lambda(p)),act(w,nu(p)))
+
+{these definitions moved from W_cross in basic.rx,
+ don't need change to W_cross to avoid conflict with cross([int] alpha,*)
+}
+set cross(W_word w,KGBElt x)=KGBElt:  let (,w)=w in for i:#w downto 0 do x:=cross(w[i],x) od; x
+set cross (W_word w,Param p) = Param: let (,w)=w in  for i:#w downto 0 do p:=cross(w[i],p) od; p
+
