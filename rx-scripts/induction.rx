@@ -91,6 +91,15 @@ let cf=character_formula(p_L) in
 let rv=null_module(G) in
 for coeff@p in cf do rv+:=coeff*real_induce_standard(p,G) od;rv
 
+{write Ind(J) as a sum of irreducibles for G
+use composition series to convert induce_irreducible_as_sum_of_irreducibles
+then convert to sum of irreducibles using composition_series()}
+set real_induce_irreducible(Param p_L, RealForm G)=
+let cf=real_induce_irreducible_as_sum_of_standards(p_L,G) in
+let rv=null_module(G) in 
+for coeff@p in cf do rv+:=coeff*composition_series(p) od; rv
+
+
 {  ----------------------   cuspidal data   -----------------------------}
 
 set cuspidal_data(Param p)=
@@ -190,20 +199,13 @@ let new=theta_induce_standard(p,G) in
 rv+:=coeff*new od;
 if verbose then prints("induced as sum of standards:", rv) fi;rv
 
-{write Ind(J) as a sum of irreducibles for G
-use composition series to convert induce_irreducible_as_sum_of_irreducibles
-then convert to sum of irreducibles using composition_series()}
-set theta_induce_irreducible(Param p_L, RealForm G)=
-let cf=theta_induce_irreducible_as_sum_of_standards(p_L,G) in
-let rv=null_module(G) in
-for coeff@p in cf do rv+:=coeff*composition_series(p) od;rv
-
-{write theta-induce_irreducible(p_L,G) as a sum of irreducibles}
+{write theta-stable-Ind(J) as a sum of irreducibles}
 set theta_induce_irreducible(Param p_L, RealForm G)=
 let cf=theta_induce_irreducible_as_sum_of_standards(p_L,G) in
 let rv=null_module(G) in
 for coeff@p in cf do rv+:=coeff*composition_series(p) od;
 if verbose then prints("induced as sum of irreducibles: ", rv) fi;rv
+
 
 {------------------- combined real and theta-stable induction---------------}
 

@@ -1,3 +1,4 @@
+{thetastable.rx}
 <induction.rx
 <finite_dimensional.rx {for is_finite_dimensional}
 <canonical_x_K.rx
