@@ -1,13 +1,9 @@
 <K_parameters.rx
-<Weylgroup_aux.rx
+<thetastable.rx
 <cross_W_orbit.rx { find_W_cross }
-<finite_dimensional.rx { highest_weight, finite_dimensional }
-<K.rx    { K_0 }
-<sort.rx { inv_standardisation }
 <W_K.rx {make_strongly_dominant}
-<induction.rx {rho_S}
 
-set LKT_verbose=true
+set LKT_verbose=false
 
 {Three ways of parametrizing K-types
 
@@ -34,7 +30,8 @@ mu is in X^*, viewed as a weight of T_K=H^delta
 X^*(T_K)=X^*/(1-delta)X^*
 equivalence includes modding out by (1-delta)X^*, see function = below
 }
-:KHighestWeight = (KGBElt,[int])   
+{:KHighestWeight = (KGBElt,[int])   }
+:KHighestWeight = (KGBElt,vec)   
 
 { given (x,lambda): x in distinguished fiber, lambda in  X^*
   lambda restricted to H^\delta is the highest weight of a representation of K_x
@@ -46,6 +43,7 @@ set move_weight (KGBElt x,KGBElt y,vec lambda) = (KGBElt,vec):
 ( let G=real_form(x) in assert(real_form(y)=G,"Real form mismatch")
 ; let w=find_W_cross(x,y) in (y,act(w,lambda))
 )
+
 set move_weight (KGBElt x,KGBElt y,ratvec lambda) = (KGBElt,ratvec):
 ( let G=real_form(x) in assert(real_form(y)=G,"Real form mismatch")
 ; let w=find_W_cross(x,y) in (y,act(w,lambda))
@@ -128,43 +126,6 @@ set M_LKT (Param p) = ratvec:
   in projection_mod_image(1-delta)*ratvec_as_vec(lambda+rho_i-tworho_ic)
 
 
-{ if all complex roots for x are of type C+, then conjecturally
-  the torus parts (torus_factor) of all elements in the fiber are a subset of those
-  for the distinguished fiber:
-  KGB_elt(G,theta(x),torus_bits(x))=KGB_elt(G,theta(x),torus_bits(x_f)) for some x_f in the fundamental fiber
-  Mapping x to x_K in the distinguished fiber
-  gives the version of K=K_{x_K} appropriate to y
-  aborts with an error if the conjecture is false for x
- 
-  Note: this is false, but may be true with torus_bits in place of torus_factor:
-  KGB_elt(G,theta(x),torus_bits(x))=KGB_elt(G,theta(x),torus_bits(x_f)) for some x_f in the fundamental fiber
-  this differs from the same identity for torus_factor because
-  torus_factor(x)=(1+^theta(x))(torus_bits(x)+base_grading_vector)
-  the (1+^theta(x)) terms messes this up. An example is G=SO(6,2), x=KGB(G,11), which 
-  should map to KGB(G,5)
-}
-
-set map_into_distinguished_fiber (KGBElt x)=KGBElt:
-begin assert(no_Cminus_roots(x),"Only defined if no C- roots")
-; let G=real_form(x) then F=distinguished_fiber(G)
-  then index=#F-1, t=torus_factor(x), tb=torus_bits(x)
-  in
-{  while index>=0 and t!=torus_factor(KGB(G,F[index])) do index-:=1 od}
-  while  index>=0 and tb!= torus_bits(KGB(G,F[index])) do index-:=1 od
-; if index<0
-  then prints("x:", x)
-  ; error("the torus parts for the fiber over x" +
-          " do not embed in those for the distinguished fiber")
-  fi
-; KGB(G,F[index])
-end
-
-{ first use complex cross actions to move to a fiber with no C-roots }
-set strong_map_into_distinguished_fiber (KGBElt x) = KGBElt:
-  let (y,)=make_no_Cminus(x) in map_into_distinguished_fiber(y)
-
-set canonical_x_K (KGBElt x) = KGBElt: strong_map_into_distinguished_fiber(x)
-set canonical_x_K (Param p)  = KGBElt: canonical_x_K(x(p))
 
 {---------------- LKT in terms of KParams----------------}
 { simplest definition:
@@ -175,51 +136,68 @@ set LKT (Param p) = [KParam]: for q in finalize(p*0) do Kparameter(q) od
 
 
 {---------------- LKT in terms of highest weights for K_#----------------}
-{K_#=H^delta K_0, if K_# \ne K this loses some information}
-{ this is the heart of the matter
-  uses [Knapp, Minimal K-type Formula, Theorem 1]
-  LKT of final tempered limit parameter is unique
-  K=K_{x_K} where x_K=map_into_distinguished_fiber(x(p))
-  for this to work you need to normalize p so that x(p) has only C+ roots
-  K-type is a pair (x_K,mu) where 
-   x_K is in the distinguished fiber
-   mu\in X^* is the "highest weight"
-  T_K:=H^\delta is the "small" Cartan subgroup of K; the map from 
-  mu is viewed as an element of X^*/(1-\delta)X^*\simeq X^*(T_K)
-  the map from  K-types to highest weights is not necessarily injective 
-   (for this you need a "large" Cartan subgroup, which may be nonabelian)  
-  see W_K.rx
-}
-set LKT_highest_weight_final_tempered_limit (Param p) = KHighestWeight:
-( assert(=nu(p),"The parameter is not tempered");
-  assert(is_final(p),"The parameter is not final");
-  prints("p=", p);
-  let p=make_no_Cminus(p) then {equivalent parameter}
-  ()=prints("new p=", p) then
-   y=x(p) then
-  x_K=map_into_distinguished_fiber(y) then
-{  lambda=infinitesimal_character(p)-nu(p) {=(1+\theta)\lambda/2} then}
-  mu=lambda(p)+rho(root_datum(y))-rho_r(y)-tworho_K(x_K)+tworho_Kr(x_K,y) then
-  ()=if LKT_verbose  then 
-prints("lambda(p) =", lambda(p));
-prints("theta:", involution(y));
-prints("rho: ", rho(real_form(y)), ", rho_r: ", rho_r(y));
-prints("tworho_K(x_K): ", tworho_K(x_K), ", tworho_Kr(x_K,y): ",  tworho_Kr(x_K,y), " ",  x_K, "  ",  y);
-prints("mu= ", mu) fi in
-(x_K, ratvec_as_vec(mu))
-)
 
-{ returns [KHighestWeight] 
-  algorithm:
-  compute LKT_highest_weight_final_tempered_limit(q) for each q in LKT(p)
+{algorithm:
+1) if G is relatively split, Cartan is (relatively) split, all roots in the tau-invariant,
+   this is the "G-spherical" case of KHatHowe, section 8
+2) if p is final standard limit tempered, it has a unique LKT, use theta_stable_data to 
+   write p as cohomologically induced from a relatively split L
+3) apply 2) to all terms of finalize(p*0)
 }
-set LKT_highest_weights (Param p) = [KHighestWeight]:
-  for q in LKT(p) do LKT_highest_weight_final_tempered_limit(parameter(q)) od
+set is_split_spherical(Param p)=bool:
+assert(is_final(p), "parameter is not final");
+if not is_relatively_split(real_form(p)) then false elif
+number(x(p)) != KGB_size(real_form(p))-1 then false else
+all(for alpha_check in simple_coroots(root_datum(p)) do is_even(rat_as_int(  (lambda(p)-rho(root_datum(p)))  *alpha_check)) od) fi
 
-{if p=(x,lambda) is a KParam, parameter(p)=(x,lambda,0), should have a unique LKT}
-set LKT_highest_weight (KParam p) =KHighestWeight:
-let highest_weights=LKT_highest_weights(parameter(p)) in
-assert(#highest_weights=1,"LKT_highest_weights has more than one term");highest_weights[0]
+set is_split_spherical(KParam p)=bool:is_split_spherical(parameter(p))
+
+set LKT_highest_weight_split_spherical(KParam p)=KHighestWeight:
+assert(is_split_spherical(p), "p is not a spherical rep of a split group");
+let x=x(p) then
+lambda=lambda(p) then
+rd=root_datum(x) then
+fcw=fundamental_coweights(rd) then
+rv=ratvec:lambda(p)-rho(rd) in
+for alpha@i in simple_roots(rd) do rv-:=rv*fcw[i]*alpha od;(KGB(real_form(x),0),ratvec_as_vec(rv))
+
+set LKT_highest_weight_split_spherical(Param p)=KHighestWeight:LKT_highest_weight_split_spherical(Kparameter(p*0))
+
+set LKT_highest_weight_split_spherical(KParam p,KGBElt x_K)=KHighestWeight:
+let (x,mu)=LKT_highest_weight_split_spherical(p) in move_weight(x,x_K,mu)
+
+set LKT_highest_weight_split_spherical(Param p,KGBElt x_K)=KHighestWeight:
+let (x,mu)=LKT_highest_weight_split_spherical(p) in move_weight(x,x_K,mu)
+
+set LKT_highest_weight(KParam p)=KHighestWeight:
+assert(is_final(parameter(p)),"parameter is not final");
+let p=make_no_Cminus(p) in
+let (Q,pL)=theta_stable_data(parameter(p)) then
+(x_L,mu_L)=LKT_highest_weight_split_spherical(pL) then 
+x_G=canonical_x_K(x(p)) then
+mu_G=mu_L+2*rho_u_cap_s(Q)  then
+{this might be a ratvec, denominator 1/2, by restriction it defines a character of T_{K_0}
+need to replace mu_G\in 1/2X^*theta with mu_G_integral\in X^*
+so that restriction take  mu_G_integral to mu_G restricted to T_{K_0}
+}
+mu_K=project_K(x_G,mu_G) then
+mu_G_integral=ratvec_as_vec(mu_K*left_inverse(injection_from_K_matrix(x_G))) in
+{prints("L=", Levi(Q));
+prints("pL=", pL);
+prints("mu_L=", mu_L);
+prints("rho_u_cap_s:=", rho_u_cap_s(Q));
+prints("rho_u_cap_k:=", rho_u_cap_k(Q));
+prints("mu_G=", mu_G);}
+(x_G,mu_G_integral)
+
+set LKT_highest_weight(KParam p,KGBElt x_K)=KHighestWeight:
+let (x,mu)=LKT_highest_weight(p) in move_weight(x,x_K,mu)
+
+set LKT_highest_weights(Param p)=[KHighestWeight]:
+for q in finalize(p*0) do LKT_highest_weight(Kparameter(q)) od
+
+set LKT_highest_weights (Param p,KGBElt x_K) = [KHighestWeight]:
+  for (x,mu) in LKT_highest_weights(p) do  move_weight(x,x_K,mu) od
 
 {although LKT is unique, allow call using plural weights}
 set LKT_highest_weights(KParam p) =KHighestWeight:LKT_highest_weight(p)
@@ -227,6 +205,16 @@ set LKT_highest_weights(KParam p) =KHighestWeight:LKT_highest_weight(p)
 { just list the highest weights of lowest K-types, with respect to given x_K }
 set LKT_highest_weights (Param p,KGBElt x_K) = [vec]:
   for (x,mu) in LKT_highest_weights(p)  do let (,mu_1)= move_weight(x,x_K,mu) in mu_1 od
+
+
+set test([Param] params)=void:
+for p in params do let
+pf=finalize(p*0) in
+for q in pf do 
+let (Q,pL)=theta_stable_data(q) in 
+prints();prints("q=",q);prints("L:", Levi(Q));prints(q);prints(LKT_highest_weight_split_spherical(pL)) od od
+
+
 
 {---------------- LKT as parameter for the identity component of K----------------}
 
@@ -328,3 +316,114 @@ set testpsdims (RealForm G) = void:
 
 set sort_by_dimension = ([(Split,Param)] -> [(Split,Param)]):
  sort_by( (Split s,Param p) int: LKT_dimensions(p)[0] )
+
+{-----------------------Vogan algorithm---------------------}
+
+{project vector mu on dominant cone (spanned by positive sums of fundamental coweights)
+ algorithm from KHatHowe Section 13, modification of BGB Proposition 5.3.3
+ used in map from highest weights to LKT below
+}
+
+set centralizer(KGBElt x,ratvec v)=
+assert(^involution(x)*v=v, "v is not theta-stable");
+let rd=root_datum(x) then
+pr=posroots(rd) then
+pcr=poscoroots(rd) then
+(roots,coroots)=([vec]:[],[vec]:[]) then
+()=for alpha@i in pr do 
+ if alpha*v=0 then roots#:=pr[i];coroots#:=pcr[i] fi od then
+ subrd=if #roots !=0 then 
+  root_datum(simple_from_positive(roots,coroots)) 
+ else 
+  root_datum([vec]:[],[vec]:[],rank(rd)) fi in 
+ (KGB_elt(subrd,involution(x),torus_factor(x)),subrd)
+
+set find_nci_root(KGBElt x)=
+let rd=root_datum(x) then
+sr=simple_roots(rd) then
+j=first(rank(rd), (int i)bool:(is_noncompact(x)(sr[i]))) in 
+if j !=-1 then j else 
+let j=first(rank(rd),
+  (int i)bool:(is_complex(i,x) 
+   and sr[i]*^involution(x)*simple_coroots(rd)[i]=-1   {<alpha,theta(alpha^vee)>=-1}
+   and is_noncompact(x)(sr[i]+involution(x)*sr[i]))) in 
+   root_index(rd,sr[j]+involution(x)*sr[j]) fi
+
+{(x,mu) is a KHighestWeight (see top of this file)
+ x in the distinguished fiber, theta_x=delta
+ mu\in X^*, viewed modulo (1-delta)X^*
+in (X^*)^delta project it to X^*(T_K) where T_K=identity component of H^delta}
+{(x,mu) equivalent to (wx,w\mu) so WLOG mu is G-dominant}
+
+
+{This is the Vogan algorithm, version in khatHowe Section 13,
+which is a slight modification of BGB Proposition 5.3.3
+given (x,mu) -> mu+2rho_K(x) -> choose positive chamber for G -> mu+2rho_K(x)-rho
+ project on given dominant chamber
+ }
+set project_on_dominant_cone(KGBElt x, ratvec mu)=(KGBElt,ratvec,ratvec):
+let rd=root_datum(x) then
+mu=(1+involution(x))*mu/2 then
+(mu_1,w)=make_dominant(rd,mu) then
+x_1=cross(inverse(w),x) in 
+{let ()=prints("mu_1:", mu_1);
+prints("x_1: ", x_1) in }
+{Note: tworho_K_fixed(x) (above) is in (\h^*)^theta, while rho_K(x) is in \t^*, need the former}
+let mu_2=mu_1+tworho_K_fixed(x_1) in
+{let ()=prints("mu_2:", mu_2) in}
+let (,y)=make_dominant(rd,mu_2) in
+let x_2=cross(inverse(y),x_1) in
+{let ()=prints("y=", y) in}
+{let ()=prints("x_2=", x_2) in}
+let rho=act(y,rho(rd)) then
+mu_3=mu_2-rho in
+{let ()=prints("mu_3=", mu_3) in}
+let rec_fun f(KGBElt x, ratvec mu_3_orig,ratvec tau)=(KGBElt,ratvec,ratvec):
+let rd=root_datum(x) in
+{let ()=prints();prints("f with: ", x, " ", real_form(x), " tau= ", tau) in
+let ()=prints("rd:", rd) in
+let ()=prints("tau=",tau) in
+}
+if is_dominant(rd,tau) then  (x_2,mu_3_orig,tau) else
+let j=find_nci_root(x) then
+{()=prints("beta=", posroots(rd)[j]) then}
+new_tau=tau-poscoroots(rd)[j]*tau*posroots(rd)[j]/2 then
+(sub_x,sub_rd)=centralizer(x,poscoroots(rd)[j]) in
+f(sub_x,mu_3_orig,new_tau) fi in f(x_1,mu_3,mu_3)
+
+set project_on_dominant_cone(KGBElt x, [int] mu)=(KGBElt,ratvec,ratvec):project_on_dominant_cone(x,ratvec:mu)
+
+
+{uses the Vogan algorithm, see project.rx}
+
+
+{-----------------------map from highest weights to LKT---------------------}
+
+set highest_weight_to_parabolic(KHighestWeight (x,mu))=
+let rd=root_datum(x) then
+(y,mu_3_orig,lambda)=project_on_dominant_cone(x,mu) then
+diff=lambda-mu_3_orig then
+S=[int]:[] in
+let ()=for i:ss_rank(rd) do if fundamental_coweight(rd,i)*diff>0 then S#:=i fi od
+in parabolic(S,y) 
+
+set highest_weight_to_K_type(KHighestWeight(x,mu))=[KParam]:
+let (y,mu_3_orig,dlambda)=project_on_dominant_cone(x,mu) then
+Q=highest_weight_to_parabolic(x,mu) then  {Q is theta-stable}
+L=Levi(Q) then
+pl=parameter(KGB(L,#KGB(L)-1), dlambda-rho_u(Q)+rho_l(Q), null(#dlambda))  in
+{let ()=prints("Q=",Q);prints("L= ", L);prints("dlambda=" , dlambda,  "  pl=", pl) in}
+for ql in finalize(pl) do
+Kparameter(last_param(induce_standard(ql,Q,real_form(x)))) od 
+
+set test(KHighestWeight mu)=[bool]:
+let ktypes=highest_weight_to_K_type(mu) then
+rv=[bool]:[] in
+for p in ktypes do
+let lkthw=LKT_highest_weights(p) in
+rv#:=(lkthw=mu);
+prints("p=",p);
+prints("LKT_highest_weights of p:",lkthw);
+prints("mu=", mu);
+prints("mu=LKT(p): ",lkthw=mu)
+  od;rv
