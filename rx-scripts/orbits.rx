@@ -75,9 +75,6 @@ rv=[Param]:[] in
 for p in b do 
  if all (for k in support(x(p)) do is_descent(k,p) od) then rv#:=p fi  od;rv
 
-set all_q(RealForm G)= [(KGBElt, RealForm,[vec])]:
-for p in blocku(G) do theta_stable_q(x(p)) od
-
 set sort_by (((vec, rat)-> rat) f)=([(vec,rat)] v) [(vec,rat)]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
@@ -204,20 +201,20 @@ for (q,pairs) in answer do
 let (x,L,u)=q in prints();prints("x=", x);prints("L=",L);prints("u=",u);
 for (H,vectors) in pairs do prints("H:", H, " dimension: ", dim_nilpotent(rd,H)) od od
 
-
+{
 set run(RealForm G)=
-let allq=all_q(G) then answer=for q in allq do (q,find_H(q))  od in  output(answer);answer
+let allq=theta_stable_parabolics(G) then answer=for q in allq do (q,find_H(q))  od in  output(answer);answer
 
 set run_max_only(RealForm G)=
-let allq=all_q(G) then
+let allq=theta_stable_parabolics(G) then
 answer=for q in allq do (q,max_only(find_H(q)))  od in  output(answer);answer
 
 set run_max_only(RealForm G,int i)=
-let allq=[all_q(G)[i]] then
+let allq=[theta_stable_parabolics(G)[i]] then
 answer=for q in allq do (q,max_only(find_H(q)))  od in  output(answer);answer
-
+}
 {containment order}
-set <= ([int] a,[int] b)=all(for i:#a do find(a[i],b)!=-1 od)
+set <= ([int] a,[int] b)=all(for i:#a do find(b,a[i])!=-1 od)
 set <([int] a,[int] b)=sort(a) != sort(b) and a<=b
 
 set  principal_block(RealForm G)=Block:block(G,dual_quasisplit_form(G))

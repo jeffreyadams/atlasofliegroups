@@ -1,6 +1,6 @@
 {induction.rx}
 {parabolic induction from real and theta-stable parabolics}
-set verbose=false
+set verbose=true
 <basic.rx
 <K.rx {for rho_K}
 <parabolics.rx
@@ -153,6 +153,7 @@ let rv=null_module(P) in for c@p in P do rv+:=c*standardize(p) od;rv
 {--------------------- theta-stable parabolic induction -------------------}
 
 {parameters for theta stable Levi L -> parameters for G:
+infinitesimal character=infinitesimal character(pi_L)+rho(u)
 p_L=(x_L,lambda,nu) -> p_G=(embed_KGB(x_L,G),lambda + appropriate rho-shift,nu)
 rho-shift is: rho_i(G)-rho_i(L)+rho_complex(G)-rho_complex(L)=rho(G)-rho_r(G)-rho(L)+rho_r(L).
 Since q is theta stable rho_r(G)-rho_r(L)=0 so the shift is rho(G)-rho(L)=rho(u)

@@ -111,6 +111,8 @@ while #to_do>0 do
  for i in new do rv:=add_new(i,rv);to_do:=add_new(i,to_do) od;
  to_do:=delete(to_do,0) od;for i in sort(rv) do KGB(G,i) od 
 
+{minimal element from equivalence class (unlike x_max, not unique)}
+set x_min(KGPElt P)=min(equivalence_class_of(P))
 
 {set of KGP elements (P,S), S=[KGBElt] is an equivalence class
 KGP(G,P) is in bijection with K\G/P}
@@ -119,6 +121,7 @@ for x in maximal_in_partial_order(G,P) do (P,x) od
 
 {sometimes convenient to just keep the numbers, although this loses the information of what G is}
 set KGP_numbers(RealForm G,[int] S) =[int]:for (,x) in KGP(G,S) do number(x) od
+
 
 
 {test y in K\G/P_S is closed: <=> length(first element)=0}
