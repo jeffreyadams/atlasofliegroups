@@ -1,4 +1,4 @@
-{thetastable.rx}
+{thetastable.rx 10/14/15}
 <induction.rx
 <finite_dimensional.rx {for is_finite_dimensional}
 <canonical_x_K.rx
@@ -123,9 +123,9 @@ Aq(x,lambda,lambda_q) defined as follows
 if lambda_q is weakly dominant set q=q(x,\lambda_q)
 apply derived functor to one dimensional lambda-rho(u) of L
 (lambda+rho(L))-rho(u)+rho(u)=lambda+rho_L
-REQUIRE: lamda-rho(L)\in X^*
+REQUIRE: lambda-rho(u)\in X^*
 Aq(x,lambda,lambda_q) has infinitesimal character lambda+rho_L,
-thus lambdma has infinitesimal character lambda+rho_L for L, goes to a
+thus lambda has infinitesimal character lambda+rho_L for L, goes to a
 infinitesimal character lambda+rho_L for G; i.e.
 Aq takes infinitesimal character gamma_L to SAME infinitesimal character for G
 for example, equal rank, x on compact Cartan Aq(x,rho(G),rho(G))
@@ -137,8 +137,7 @@ where w\lambda_q is weakly dominant
 {first defined Aq as a ParamPol, in case it isn't irreducible}
 set Aq_param_pol(KGBElt x_in,ratvec lambda_in, ratvec lambda_q)=ParamPol:
 let G=real_form(x_in) then
-{find w making lambda_q (or lambda_in?) weakly dominant}
-{(lambda_in_new,w)=make_dominant(G,lambda_in) then}
+{find w making lambda_q weakly dominant}
 (lambda_q_new,w)=make_dominant(G,lambda_q) then
 x_new=cross(inverse(w),x_in) then
 {lambda_q_new=act(w,lambda_q) then}
@@ -146,8 +145,7 @@ lambda_in_new=act(inverse(w),lambda_in) then
 P=parabolic(lambda_q_new,x_new) then
 L=Levi(P) then
 t_L=trivial(L) then
-{pi_L=parameter(x(t_L),lambda(t_L)+lambda_in_new-rho_u(lambda_q_new,x_new),nu(t_L)) in }{this was apparently wrong}
-pi_L=parameter(x(t_L),lambda(t_L)+lambda_in_new-rho_u(lambda_q_new,x_new),nu(t_L)+lambda_in_new-rho_u(lambda_q_new,x_new)) in
+pi_L=parameter(x(t_L),lambda(t_L)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new)),nu(t_L)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))) in
 let ()=prints("in Aq, p_L=", pi_L) in 
 theta_induce_irreducible(pi_L,G) 
 
