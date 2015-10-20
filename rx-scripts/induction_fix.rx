@@ -154,7 +154,7 @@ let i_root_system=root_datum(simple_imaginary_subsystem(x(p))) then
 lambda=lambda(p) then
 (lambda_dom,w)=make_dominant(i_root_system,lambda) then
 p_dom=parameter(x(p), act(inverse(w),lambda(p)), nu(p)) in
-coherent_std_imaginary(lambda,p_dom) fi
+coherent_std_imaginary(w,p_dom) fi
 
 set standardize(ParamPol P)=ParamPol:
 let rv=null_module(P) in for c@p in P do rv+:=c*standardize(p) od;rv
