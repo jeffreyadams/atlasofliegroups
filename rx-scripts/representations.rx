@@ -3,14 +3,21 @@
 
 { some common representations }
 
-{ finite dimensional with highest weight lambda_rho in X^*
-  param(last KGB element,lambda=lambda_rho+rho,nu=lambda_rho+rho)
+{ finite dimensional with highest weight gamma in X^*
+  param(last KGB element,lambda=gamma+rho,nu=gamma+rho)
   consequently every simple root is in the tau-invariant,
-  and the infinitesimal character is lambda_rho+rho
+  and the infinitesimal character is gamma+rho
 }
 
-set finite_dimensional (RealForm G,vec lambda_rho) = Param:
-  param(KGB(G,KGB_size(G)-1),lambda_rho,lambda_rho+rho(G))
+set finite_dimensional (RealForm G,vec gamma) = Param:
+  param(KGB(G,KGB_size(G)-1),gamma,gamma+rho(G))
+
+set finite_dimension_fundamental_weight_coordinates(RealForm G,vec tau)=Param:
+let fw=fundamental_weights(G) then 
+rv=ratvec:null(rank(G)) then
+()=for i:#tau do rv+:=tau[i]*fw[i] od  in
+assert(is_integer(rv), "weight is not integral");
+finite_dimensional(G,ratvec_as_vec(rv))
 
 { the trivial block }
 set trivial_block(RealForm G)=[Param]:block_of(trivial(G))

@@ -15,6 +15,8 @@
 
 set x(KParam p)=let (x,)=p in x
 set lambda(KParam p)=let (,lambda)=p in lambda
+set root_datum(KParam p)=root_datum(x(p))
+set real_form(KParam p)=real_form(x(p))
 
 set dlambda(KParam p)=ratvec:(1+involution(x(p)))*lambda(p)/2
 set dlambda(Param p)=ratvec:(1+involution(x(p)))*lambda(p)/2
