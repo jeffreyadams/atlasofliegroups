@@ -8,21 +8,12 @@
 
 from parabolics.rx:
 Parabolic:([int] P,KGBElt x)
-theta_stable_parabolic(KGBElt x) returns a theta-stable parabolic provided all complex roots of x are type C-
+theta_stable_parabolic(KGBElt x) returns a theta-stable parabolic provided all complex roots of x are type C+
 parabolic(ratvec lambda,KGBElt x)= returns a theta-stable parabolic if \theta_x(lambda)=lambda
-and all x-complex roots are type C-
+and all x-complex roots are type C+
 }
 
-{
-P=LU, return roots in U
-a root is in U iff it is positive and not in L
-these are the positive roots in G which are positive on (1+^theta_x)*rho_check(G)
-}  
-set u(Parabolic P)=[vec]:
-let (S,x)=P then
-u_roots=assert(is_parabolic_theta_stable(P),"parabolic is not theta-stable");[vec]:[] then
-gamma_vee=(1+^involution(x))*rho_check(root_datum(x)) in
-for alpha in posroots(root_datum(x)) do if alpha*gamma_vee>0 then u_roots#:=alpha fi od;u_roots
+{set u(Parabolic P)=[vec]:... was broken; removed, use function in parabolics.rx}
 
 set u(KGBElt x)=[vec]:u(theta_stable_parabolic(x))
 
@@ -39,7 +30,7 @@ set rho_u_cx(Parabolic P)=ratvec:
 assert(is_parabolic_theta_stable(P),"P is not theta-stable");
 let rv=ratvec:null(rank(root_datum(P))) then
 x=x_min(P) in  {use the most compact Cartan in L}
-for alpha in u(P) do if is_complex(alpha,x) then rv+:=alpha fi od;rv/4
+for alpha in u(P) do if is_complex(alpha,x) then rv+:=alpha fi od;rv/2
 
 {\rho_u_ic(P) is in \t^* as a subset of \h^*}
 set rho_u_ic(Parabolic P)=ratvec:

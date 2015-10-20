@@ -1,4 +1,4 @@
-{induction.rx AP10/18/2015}
+{induction_fix.rx AP10/20/2015}
 {parabolic induction from real and theta-stable parabolics}
 set verbose=true
 <basic.rx
@@ -125,16 +125,17 @@ x_L=inverse_embed_KGB(x_G,L)  in
 {---------------------standardize-----------------------------------------}
 {need real parabolic induction to define standardize (uses cuspidal_data)}
 
-{set coherent_std_imaginary(W_word w,Param p)=
-let M=real_Levi(x(p)) then
-(,p_M)=cuspidal_data(p) in
-real_induce_standard(coherent_std(w,p_M),real_form(p))}
+set coherent_std_imaginary(W_word w,Param p)=
+let (,p_M)=cuspidal_data(p) in
+real_induce_standard(coherent_std(w,p_M),real_form(p))
 
-set coherent_std_imaginary(ratvec lam, Param p)=
+{set coherent_std_imaginary(ratvec lam, Param p)=
 let (P,p_M)=cuspidal_data(p) in
 let M=Levi(P) in let rd_M=root_datum(M) in
-let (,w)=make_dominant(rd_M,lam) in
-real_induce_standard(coherent_std(w,p_M),real_form(p))
+let (lam_new,w)=make_dominant(rd_M,lam) in
+if lam_new!=lambda(p) then prints("HERE IS A PROBLEM!!!!!!!") fi;
+real_induce_standard(coherent_std(w,p_M),real_form(p))}
+
 
 {convert a possibly non-standard parameter into a linear combination of standard ones} 
 {algorithm:
@@ -148,11 +149,12 @@ this should be w on p_dom, need to fix definition of coherent continuation actio
 }
 set standardize(Param p)=ParamPol:
 if is_standard(p) then ParamPol:p else
+let p=make_no_Cplus(p) in
 let i_root_system=root_datum(simple_imaginary_subsystem(x(p))) then
 lambda=lambda(p) then
 (lambda_dom,w)=make_dominant(i_root_system,lambda) then
 p_dom=parameter(x(p), act(inverse(w),lambda(p)), nu(p)) in
-coherent_std_imaginary(lambda,p_dom) fi
+coherent_std_imaginary(w,p_dom) fi
 
 set standardize(ParamPol P)=ParamPol:
 let rv=null_module(P) in for c@p in P do rv+:=c*standardize(p) od;rv

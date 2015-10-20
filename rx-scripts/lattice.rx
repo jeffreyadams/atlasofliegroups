@@ -149,3 +149,14 @@ set solve (mat A, vec v) = (vec,bool): { find integer solution to A*x=v }
        fi
     od
   in ( columns_with((int j):j<d,R) * for i:d do target[i] od , success )
+
+{A: nxm matrix, columns are a basis of a Z-module V of rank m
+ M: nxr matrix, columns span a submodule of V
+ returns mxr matrix C, column i gives column i of M as a sum of columns of A
+ i.e. A*C=M
+}
+
+{write v as a linear combination of columns of A}
+set solve_in_lattice([vec] A, vec v)=vec:solve_vec(mat:A,v)
+
+set submodule_basis(mat A,mat M)=mat:for v in M do solve_in_lattice(A,v) od

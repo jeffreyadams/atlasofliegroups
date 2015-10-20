@@ -5,7 +5,9 @@
 
 set LKT_verbose=false
 
-{Three ways of parametrizing K-types
+{See top of K.rx for some notation
+In particular T_{K_0}\subset T_K \subset H
+Three ways of parametrizing K-types
 
 1. KParam: (x,lambda) 
    this is a final standard limit tempered parameter
@@ -132,8 +134,9 @@ set M_LKT (Param p) = ratvec:
   K-types are parametrized by final tempered limit parameters
   lowest_K_types(p) are found by setting nu=0, and applying finalize
 }
-set LKT (Param p) = [KParam]: for q in finalize(p*0) do Kparameter(q) od
-
+set LKTs (Param p) = [KParam]: for q in finalize(p*0) do Kparameter(q) od
+set LKT (Param p) = KParam: let lkts=LKTs(p) in 
+assert(#lkts=1,"More than one LKT; use LKTs");lkts[0]
 
 {---------------- LKT in terms of highest weights for K_#----------------}
 
@@ -157,9 +160,11 @@ assert(is_split_spherical(p), "p is not a spherical rep of a split group");
 let x=x(p) then
 lambda=lambda(p) then
 rd=root_datum(x) then
-fcw=fundamental_coweights(rd) then
-rv=ratvec:lambda(p)-rho(rd) in
-for alpha@i in simple_roots(rd) do rv-:=rv*fcw[i]*alpha od;(KGB(real_form(x),0),ratvec_as_vec(rv))
+fw=fundamental_weights(rd) then
+mu=ratvec:lambda(p)-rho(rd) then
+()=for alpha_check@i in simple_coroots(rd) do mu-:=mu*alpha_check*fw[i] od then
+()=assert(all(for alpha_check in simple_coroots(rd) do mu*alpha_check=0 od),"error, mu isn't orthogonal to all roots") in 
+(KGB(real_form(x),0),ratvec_as_vec(mu))
 
 set LKT_highest_weight_split_spherical(Param p)=KHighestWeight:LKT_highest_weight_split_spherical(Kparameter(p*0))
 
@@ -178,33 +183,41 @@ x_G=canonical_x_K(x(p)) then
 mu_G=mu_L+2*rho_u_cap_s(Q)  then
 {this might be a ratvec, denominator 1/2, by restriction it defines a character of T_{K_0}
 need to replace mu_G\in 1/2X^*theta with mu_G_integral\in X^*
-so that restriction take  mu_G_integral to mu_G restricted to T_{K_0}
+so that restriction takes mu_G_integral to mu_G restricted to T_{K_0}
 }
 mu_K=project_K(x_G,mu_G) then
-mu_G_integral=ratvec_as_vec(mu_K*left_inverse(injection_from_K_matrix(x_G))) in
-{prints("L=", Levi(Q));
+mu_G_integral=mu_K*left_inverse(injection_from_K_matrix(x_G)) in
+prints("L=", Levi(Q));
 prints("pL=", pL);
+prints("mu_K=", mu_K);
 prints("mu_L=", mu_L);
 prints("rho_u_cap_s:=", rho_u_cap_s(Q));
 prints("rho_u_cap_k:=", rho_u_cap_k(Q));
-prints("mu_G=", mu_G);}
+prints("mu_G=", mu_G);
 (x_G,mu_G_integral)
 
+{LKT of KParam is unique}
 set LKT_highest_weight(KParam p,KGBElt x_K)=KHighestWeight:
 let (x,mu)=LKT_highest_weight(p) in move_weight(x,x_K,mu)
 
+{LKT of Param is not neccessarily unique}
 set LKT_highest_weights(Param p)=[KHighestWeight]:
 for q in finalize(p*0) do LKT_highest_weight(Kparameter(q)) od
 
+{return single LKT of Param if it is unique}
+set LKT_highest_weight(Param p)=KHighestWeight:
+let lkts=LKT_highest_weights(p) in 
+assert(#lkts=1,"LKT is not unique, use LKT_highest_weights");lkts[0]
+
 set LKT_highest_weights (Param p,KGBElt x_K) = [KHighestWeight]:
-  for (x,mu) in LKT_highest_weights(p) do  move_weight(x,x_K,mu) od
+  for (x,mu) in LKT_highest_weights(p) do move_weight(x,x_K,mu) od
 
 {although LKT is unique, allow call using plural weights}
 set LKT_highest_weights(KParam p) =KHighestWeight:LKT_highest_weight(p)
 
 { just list the highest weights of lowest K-types, with respect to given x_K }
-set LKT_highest_weights (Param p,KGBElt x_K) = [vec]:
-  for (x,mu) in LKT_highest_weights(p)  do let (,mu_1)= move_weight(x,x_K,mu) in mu_1 od
+{set LKT_highest_weights (Param p,KGBElt x_K) = [vec]:
+  for (x,mu) in LKT_highest_weights(p)  do let (,mu_1)= move_weight(x,x_K,mu) in mu_1 od}
 
 
 set test([Param] params)=void:
@@ -216,20 +229,6 @@ prints();prints("q=",q);prints("L:", Levi(Q));prints(q);prints(LKT_highest_weigh
 
 
 
-{---------------- LKT as parameter for the identity component of K----------------}
-
-set LKT_K0(Param p,KGBElt x_K)=[Param]:
-  let K=K_0(x_K) in
-  for lambda in LKT_highest_weights(p,x_K) do finite_dimensional(K,lambda) od
-
-{ mu is a highest weight for K_0=identity component of K_x
-  returns fundamental weight coordinates
-}
-set fundamental_weight_coordinates (vec mu, KGBElt x) = vec:mu*simple_coroots(K_0(x))
-
-set LKT_dimensions (Param p, KGBElt x_K) = [int]:for pi in LKT_K0(p,x_K) do dimension(pi) od
-set LKT_dimensions (Param p) = [int]:   LKT_dimensions(p,KGB(real_form(p),0))
-set LKT_dimensions ([Param] B)= [[int]]: for p in B do LKT_dimensions(p) od
 
 {-----------------------equality of KHighestWeights------------}
 
@@ -264,13 +263,13 @@ else
  in_lattice((1-involution(x_0)),mu_3-tau_3) fi fi
 
 {-----------------printing and other auxiliary routines -------------}
- 
+{ 
 set print_LKT ([Param] B, KGBElt x_K) = void:
 ( let G=real_form(B[0]), K_0=K_0(x_K) in
   prints("K_0: ", K_0)
 { ; prints("rho_K:", rho(K_0)) }
 ; for p in B
-  do let lkt=LKT_K0(p,x_K)
+  do let lkt=LKT_K0(x_K,p)
   in prints(""); prints(p); prints(" Lowest K-types:")
   ; for pi in lkt
     do prints(" ", pi, "  dim=", dimension(pi)
@@ -282,10 +281,10 @@ set print_LKT ([Param] B, KGBElt x_K) = void:
 set print_LKT ([Param] B) = void: print_LKT(B,KGB(real_form(B[0]),0))
 set print_LKT (Param p, KGBElt x_K) = void: print_LKT([p],x_K)
 set print_LKT (Param p) = void: print_LKT([p])
-
+}
 set test_LKT (RealForm G) = void:
   for p in block_of(trivial(G)) do prints(p, ", ", LKT(p)) od
-
+{
 set testps (RealForm G, KGBElt x) = void:
 begin prints("Minimal K-types of all principal series of")
 ; prints(G); prints("K=",K_0(x)); prints("rho_K=", rho(K_0(x)))
@@ -310,120 +309,9 @@ set testpsdims (RealForm G) = void:
  v make into a ParamPol=sum of distinct parameters with multiplicity,
   compute unique LKT of each parameter occuring
 }
-
-
-{			    sorting by dimension			}
-
-set sort_by_dimension = ([(Split,Param)] -> [(Split,Param)]):
- sort_by( (Split s,Param p) int: LKT_dimensions(p)[0] )
-
-{-----------------------Vogan algorithm---------------------}
-
-{project vector mu on dominant cone (spanned by positive sums of fundamental coweights)
- algorithm from KHatHowe Section 13, modification of BGB Proposition 5.3.3
- used in map from highest weights to LKT below
 }
 
-set centralizer(KGBElt x,ratvec v)=
-assert(^involution(x)*v=v, "v is not theta-stable");
-let rd=root_datum(x) then
-pr=posroots(rd) then
-pcr=poscoroots(rd) then
-(roots,coroots)=([vec]:[],[vec]:[]) then
-()=for alpha@i in pr do 
- if alpha*v=0 then roots#:=pr[i];coroots#:=pcr[i] fi od then
- subrd=if #roots !=0 then 
-  root_datum(simple_from_positive(roots,coroots)) 
- else 
-  root_datum([vec]:[],[vec]:[],rank(rd)) fi in 
- (KGB_elt(subrd,involution(x),torus_factor(x)),subrd)
-
-set find_nci_root(KGBElt x)=
-let rd=root_datum(x) then
-sr=simple_roots(rd) then
-j=first(rank(rd), (int i)bool:(is_noncompact(x)(sr[i]))) in 
-if j !=-1 then j else 
-let j=first(rank(rd),
-  (int i)bool:(is_complex(i,x) 
-   and sr[i]*^involution(x)*simple_coroots(rd)[i]=-1   {<alpha,theta(alpha^vee)>=-1}
-   and is_noncompact(x)(sr[i]+involution(x)*sr[i]))) in 
-   root_index(rd,sr[j]+involution(x)*sr[j]) fi
-
-{(x,mu) is a KHighestWeight (see top of this file)
- x in the distinguished fiber, theta_x=delta
- mu\in X^*, viewed modulo (1-delta)X^*
-in (X^*)^delta project it to X^*(T_K) where T_K=identity component of H^delta}
-{(x,mu) equivalent to (wx,w\mu) so WLOG mu is G-dominant}
 
 
-{This is the Vogan algorithm, version in khatHowe Section 13,
-which is a slight modification of BGB Proposition 5.3.3
-given (x,mu) -> mu+2rho_K(x) -> choose positive chamber for G -> mu+2rho_K(x)-rho
- project on given dominant chamber
- }
-set project_on_dominant_cone(KGBElt x, ratvec mu)=(KGBElt,ratvec,ratvec):
-let rd=root_datum(x) then
-mu=(1+involution(x))*mu/2 then
-(mu_1,w)=make_dominant(rd,mu) then
-x_1=cross(inverse(w),x) in 
-{let ()=prints("mu_1:", mu_1);
-prints("x_1: ", x_1) in }
-{Note: tworho_K_fixed(x) (above) is in (\h^*)^theta, while rho_K(x) is in \t^*, need the former}
-let mu_2=mu_1+tworho_K_fixed(x_1) in
-{let ()=prints("mu_2:", mu_2) in}
-let (,y)=make_dominant(rd,mu_2) in
-let x_2=cross(inverse(y),x_1) in
-{let ()=prints("y=", y) in}
-{let ()=prints("x_2=", x_2) in}
-let rho=act(y,rho(rd)) then
-mu_3=mu_2-rho in
-{let ()=prints("mu_3=", mu_3) in}
-let rec_fun f(KGBElt x, ratvec mu_3_orig,ratvec tau)=(KGBElt,ratvec,ratvec):
-let rd=root_datum(x) in
-{let ()=prints();prints("f with: ", x, " ", real_form(x), " tau= ", tau) in
-let ()=prints("rd:", rd) in
-let ()=prints("tau=",tau) in
-}
-if is_dominant(rd,tau) then  (x_2,mu_3_orig,tau) else
-let j=find_nci_root(x) then
-{()=prints("beta=", posroots(rd)[j]) then}
-new_tau=tau-poscoroots(rd)[j]*tau*posroots(rd)[j]/2 then
-(sub_x,sub_rd)=centralizer(x,poscoroots(rd)[j]) in
-f(sub_x,mu_3_orig,new_tau) fi in f(x_1,mu_3,mu_3)
-
-set project_on_dominant_cone(KGBElt x, [int] mu)=(KGBElt,ratvec,ratvec):project_on_dominant_cone(x,ratvec:mu)
 
 
-{uses the Vogan algorithm, see project.rx}
-
-
-{-----------------------map from highest weights to LKT---------------------}
-
-set highest_weight_to_parabolic(KHighestWeight (x,mu))=
-let rd=root_datum(x) then
-(y,mu_3_orig,lambda)=project_on_dominant_cone(x,mu) then
-diff=lambda-mu_3_orig then
-S=[int]:[] in
-let ()=for i:ss_rank(rd) do if fundamental_coweight(rd,i)*diff>0 then S#:=i fi od
-in parabolic(S,y) 
-
-set highest_weight_to_K_type(KHighestWeight(x,mu))=[KParam]:
-let (y,mu_3_orig,dlambda)=project_on_dominant_cone(x,mu) then
-Q=highest_weight_to_parabolic(x,mu) then  {Q is theta-stable}
-L=Levi(Q) then
-pl=parameter(KGB(L,#KGB(L)-1), dlambda-rho_u(Q)+rho_l(Q), null(#dlambda))  in
-{let ()=prints("Q=",Q);prints("L= ", L);prints("dlambda=" , dlambda,  "  pl=", pl) in}
-for ql in finalize(pl) do
-Kparameter(last_param(induce_standard(ql,Q,real_form(x)))) od 
-
-set test(KHighestWeight mu)=[bool]:
-let ktypes=highest_weight_to_K_type(mu) then
-rv=[bool]:[] in
-for p in ktypes do
-let lkthw=LKT_highest_weights(p) in
-rv#:=(lkthw=mu);
-prints("p=",p);
-prints("LKT_highest_weights of p:",lkthw);
-prints("mu=", mu);
-prints("mu=LKT(p): ",lkthw=mu)
-  od;rv
