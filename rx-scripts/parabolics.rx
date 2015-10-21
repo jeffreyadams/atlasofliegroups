@@ -1,3 +1,4 @@
+{parabolics.rx 10/21/15}
 <kgp.rx
 <Weylgroup_aux.rx 
 
@@ -84,7 +85,7 @@ set rho_l(Parabolic P)=ratvec:rho(Levi(P))
 set u(Parabolic P)=[vec]:
 let rho_u=rho_u(P) then
 rv=[vec]:[] in
-for alpha in poscoroots(root_datum(P)) do if alpha*rho_u>0 then rv#:=alpha fi od;rv
+for alpha in posroots(root_datum(P)) do if alpha*rho_u>0 then rv#:=alpha fi od;rv
 
 {--------------------alternative method---------------}
 {it is convenient to be able to define a parabolic in terms of a semisimple element}
