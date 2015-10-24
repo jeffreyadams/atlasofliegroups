@@ -1,6 +1,6 @@
 {induction_fix.rx AP10/20/2015}
 {parabolic induction from real and theta-stable parabolics}
-set verbose=true
+set verbose=false
 <basic.rx
 <K.rx {for rho_K}
 <parabolics.rx
@@ -216,11 +216,26 @@ if verbose then prints("induced as sum of irreducibles: ", rv) fi;rv
 
 
 {------------------- combined real and theta-stable induction---------------}
+{induce_standard(p_L,P,G)=induce_standard( (x_L,lambda_L,nu_L), (S,x), G)
+ in the theta-stable case may need to use action of Weyl group
+ ** (S,x) is the standard parabolic only if x=x_min(P) (up to W_L)
+ otherwise, need to apply coherent continuation (or something...)
+ in application to highest_weight_to_K_type (in LKT_aux.rx) it appears
+ we can arrange before calling induce_standard that this holds
+ for now throw an error if this fails
+}
 
 set induce_standard(Param p_L,Parabolic P,RealForm G)=ParamPol:
 assert(is_parabolic_real(P) or is_parabolic_theta_stable(P),"Induction only defined for real or theta-stable parabolics");
 if is_parabolic_real(P) then ParamPol:real_induce_standard(p_L,G) 
-else  theta_induce_standard(p_L,G) fi
+else 
+ let L=Levi(P) then
+ (S,)=P then
+ x_P=x_min(P) then
+ x_G=embed_KGB(x(p_L),G) in
+ assert((S,x_G)=(S,x_P),"x(p_L) and x(P) don't agree up to W_L");
+ theta_induce_standard( p_L,G) fi
+
 
 set induce_standard(ParamPol pol,Parabolic P,RealForm G)=ParamPol:
 let rv=null_module(G) in for c@p in pol do rv+:=c*induce_standard(p,P,G) od;rv

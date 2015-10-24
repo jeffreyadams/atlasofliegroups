@@ -57,13 +57,17 @@ given (x,mu) -> mu+2rho_K(x) -> choose positive chamber for G -> mu+2rho_K(x)-rh
  }
 set project_on_dominant_cone(KGBElt x, ratvec mu)=(KGBElt,ratvec,ratvec):
 let rd=root_datum(x) then
-mu=(1+involution(x))*mu/2 then
-(mu_1,w)=make_dominant(rd,mu) then
-x_1=cross(inverse(w),x) in 
-let ()=prints("mu_1:", mu_1);
-prints("x_1: ", x_1) in 
+{mu=(1+involution(x))*mu/2 then}
+{(mu_1,w)=make_dominant(rd,mu) then}
+{x_1=cross(inverse(w),x) then}
+x_1=x then
+mu_1=mu then
+()=prints("mu:", mu);
+prints("x: ", x);
+prints("mu_1:", mu_1);
+prints("x_1: ", x_1) then
 {Note: tworho_K_fixed(x) (above) is in (\h^*)^theta, while rho_K(x) is in \t^*, need the former}
-let mu_2=mu_1+tworho_K_fixed(x_1) in
+mu_2=mu_1+tworho_K_fixed(x_1) in
 let ()=prints("mu_2:", mu_2) in
 let (,y)=make_dominant(rd,mu_2) in
 let x_2=cross(inverse(y),x_1) in
@@ -77,13 +81,15 @@ let rd=root_datum(x) in
 let ()=prints();prints("f with: ", x, " ", real_form(x), " tau= ", tau) in
 let ()=prints("rd:", rd) in
 let ()=prints("tau=",tau) in
-let ()=prints("x=",x) in
-if is_dominant(rd,tau) then  (x_2,mu_3_orig,tau) else
+let ()=prints("x=",x, "on real form:", real_form(x)) in
+if is_dominant(rd,act(inverse(y),tau)) then  
+{(x_1,mu_3_orig,tau) else}
+(cross(inverse(y),x_1),act(inverse(y),mu_3), act(inverse(y),tau)) else
 let j=find_nci_root(x,tau) then
-()=prints("got root: ", j, ", ", posroots(rd)[j]) then
-()=prints("beta=", posroots(rd)[j]) then
+{()=prints("got root: ", j, ", ", posroots(rd)[j]) then}
+{()=prints("beta=", posroots(rd)[j]) then}
 new_tau=tau-poscoroots(rd)[j]*tau*posroots(rd)[j]/2 then
-()=prints("new_tau=",new_tau) then
+{()=prints("new_tau=",new_tau) then}
 (sub_x,sub_rd)=centralizer(x,poscoroots(rd)[j]) in
 f(sub_x,mu_3_orig,new_tau) fi in f(x_1,mu_3,mu_3)
 
@@ -153,29 +159,34 @@ in parabolic(S,y)
  1) G-spherical case: mu\in X^*/(1-delta)X^*, satisfying <mu,\alpha^\vee>=0 
     for all alpha in Delta(G,T_{K_0})<
 }
-set fix(KHighestWeight mu)=KHighestWeight:
+set fix(KHighestWeight mu,KGBElt x_Q)=KHighestWeight:
 let (x,tau)=mu then
-i_root_system=root_datum(simple_imaginary_subsystem(x)) in
-let (tau_dom,w)=make_dominant(i_root_system,tau) in 
-(cross(inverse(w),x),tau_dom)
+w=find_W_cross(x,x_Q) in
+(cross(w,x),act(w,tau))
 
 set highest_weight_to_K_types(KHighestWeight mu)=[KParam]:
-let mu=fix(mu) in
-let ()=assert(mu=fix(mu),"error: mu\ne fix(mu)") in
-let (x,mu)=mu in
-let (y,mu_3_orig,dlambda)=project_on_dominant_cone(x,mu) then
-Q=highest_weight_to_parabolic(x,mu) then  {Q is theta-stable}
+let ()=prints("highest_weight_to_K_types with:", mu) in
+let (y,mu_3_orig,dlambda)=project_on_dominant_cone(mu) then
+Q=highest_weight_to_parabolic(mu) then  {Q is theta-stable}
+x_Q=x_min(Q) then 
+()=prints("x_Q=", x_Q) then
+mu=fix(mu,x_Q) then
+(x,tau)=mu then
+()=prints("fixed mu:", mu) in
+let ()=assert(mu=fix(mu,x_Q),"error: mu\ne fix(mu)") then
 L=Levi(Q) then  {L is relatively split}
+()=prints("Q=", Q) then
 ()=prints("mu:", mu) then
 ()=prints("dlambda:", dlambda) then
 ()=prints("L=", L) then
 ()=prints("rho_u_cap_s(Q)", rho_u_cap_s(Q)) then
 ()=prints("rho_l(Q)", rho_l(Q)) then
-()=prints("arg:", mu-2*rho_u_cap_s(Q)+rho_l(Q)) then
+()=prints("arg:", tau-2*rho_u_cap_s(Q)+rho_l(Q)) then
 ()=assert(is_relatively_split(L),"L is not relatively split") then
-pL=parameter(KGB(L,#KGB(L)-1), mu-2*rho_u_cap_s(Q)+rho_l(Q), null(#dlambda))  then
+pL=parameter(KGB(L,#KGB(L)-1), tau-2*rho_u_cap_s(Q)+rho_l(Q), null(#dlambda))  then
 pL=finalize(pL) then
 ()=prints("pL:", pL) then
+()=prints("Q=:", Q) then
 rv=[KParam]:[] then
 ()=assert(#pL=1,"finalized parameter has more than one term")  then
 all_pL=all_G_spherical_same_differential(pL[0]) in
@@ -241,3 +252,4 @@ set LKT_dimensions ([Param] B)= [[int]]: for p in B do LKT_dimensions(p) od
 
 set sort_by_dimension = ([(Split,Param)] -> [(Split,Param)]):
  sort_by( (Split s,Param p) int: LKT_dimensions(p)[0] )
+
