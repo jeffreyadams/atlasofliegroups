@@ -1,6 +1,6 @@
 <K_parameters.rx
-<thetastable.rx
 <cross_W_orbit.rx { find_W_cross }
+<thetastable.rx
 <W_K.rx {make_strongly_dominant}
 
 set LKT_verbose=false

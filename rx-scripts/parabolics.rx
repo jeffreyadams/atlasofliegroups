@@ -79,6 +79,18 @@ is_open(P) and
 all( for j in complement(semisimple_rank(real_form(x_max)),S) do 
 let s=status(j,x_max) in s=0 or s=2 od ) 
 
+{------------  unipotent radical of P ------------------}
+{see K.pdf, Section 4
+P=(S,x)
+if x=x_0:=KGB(G,0) then P is the standard parabolic P_S with simple roots S, 
+and u(P) is contained in the basic Borel
+in general P=(S,x) -> gP_Sg^{-1} where gxg^{-1}=x_0
+if the G-orbit of P is closed, equivalently L contains the fundamental Cartan, 
+we can replace x with x=x_min(P) which is on the fundamental Cartan
+and then find w so that w*x=x_0
+}
+
+
 set rho_u(Parabolic P)=ratvec:rho(real_form(P)) - rho(Levi(P))
 set rho_l(Parabolic P)=ratvec:rho(Levi(P))
 
