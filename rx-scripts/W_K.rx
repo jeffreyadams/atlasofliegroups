@@ -59,7 +59,8 @@ x must be in distinguished fiber, and make 2rho_c G-dominant
 set small_Levi(KGBElt x)=RealForm:
 assert(in_distinguished_fiber(x),"x is not in distinguished fiber");
 assert(is_dominant(real_form(x),tworho_c(x)),"x does not make 2rho_c dominant");
-Levi_from_lambda(tworho_c(x),x)
+{Levi_from_lambda(tworho_c(x),x)}
+Levi(parabolic(tworho_c(x),x))
 
 {utility function, a coroot beta^\vee of L=small_Levi(x) is in X_*(H)^delta, 
 which is the image of X_*(T_K) \hookrightarrow X_*(H)
@@ -100,7 +101,6 @@ let W_c_perp=W_c_perp(x) then
 rv=[(RootDatum,[int])]:[] in 
 {need to change to numbering for G}
 for w in W_c_perp do if cross(convert_W_word(w,root_datum(x)),x)=x then rv#:=w fi od;rv
-
 {W_K(x)=(W_K(K_0,T_{K_0}), R_K_dom(x))}
 set W_K(KGBElt x)=(RootDatum,[(RootDatum,[int])]):(K_root_datum(x),R_K_dom(x))
 
@@ -166,20 +166,12 @@ m_2=w_matrix(w_2) then
 {mu is in X^*(T_{K_0})
  make it K_0-dominant, and compute stabilizer in R_K_dom
 }
-set R_K_dom_mu(KGBElt x,ratvec mu)=
+set R_K_dom_mu(KGBElt x,ratvec mu)=[W_word]:
 let (K_0,R_K_dom)=W_K(x) then
 (mu_1,)=make_dominant(K_0,mu) then
 rv=[W_word]:[] in
 for w in R_K_dom do
  if factor_action(x,w)*mu_1=mu_1 then rv#:=w fi od;rv
-
-set number_extensions(KGBElt x,ratvec mu)=int:#R_K_dom_mu(x,mu)
-set dimension_extensions(KGBElt x,ratvec mu)=int:rat_as_int(#R_K_dom(x)/#R_K_dom_mu(x,mu))
-
-set fund_weight_to_atlas(KGBElt x,ratvec mu)=ratvec:
-let fw=fundamental_weights(K_0(x)) then
-rv=ratvec:null(rank_K(real_form(x))) in
-for i:#mu do rv+:=mu[i]*fw[i] od;rv
 
 {set extract_mod2_basis([vec])=[vec]:}
 

@@ -111,7 +111,7 @@ set SO_Lie_type (int n) = LieType: { same as Lie_type(SO(n)) }
   elif n=2 then "T1"
   elif n=3 then "A1"
   elif n=4 then "A1.A1"
-  elif n=6 then "A3" else "B3"
+  elif n=6 then "A3" else "B2"
   fi
 
 set Spin (int n) = RootDatum: simply_connected(SO_Lie_type(n))

@@ -54,7 +54,7 @@ struct constants
   /*! Implementation bound on rank of reductive group, used to allow working
       with fixed-size bit-arrays or char-arrays. Should (probably) be a power
       of 2, not exceeding 128 (assumption in Weyl group implementation). */
-  static const size_t RANK_MAX = 16;
+  static const size_t RANK_MAX = 32;
 
 private: // trickery to ensure initialization is performed exactly once
   static constants init();

@@ -12,7 +12,7 @@
 set finite_dimensional (RealForm G,vec gamma) = Param:
   param(KGB(G,KGB_size(G)-1),gamma,gamma+rho(G))
 
-set finite_dimension_fundamental_weight_coordinates(RealForm G,vec tau)=Param:
+set finite_dimensional_fundamental_weight_coordinates(RealForm G,vec tau)=Param:
 let fw=fundamental_weights(G) then 
 rv=ratvec:null(rank(G)) then
 ()=for i:#tau do rv+:=tau[i]*fw[i] od  in
