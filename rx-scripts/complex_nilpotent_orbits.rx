@@ -3,6 +3,8 @@
 <thetastable.rx
 <sort.rx
 
+{ComplexNilpotent: (RootDatum rd,vec H) where [H,X,Y] is a Lie triple and orbit=G.X}
+
 :ComplexNilpotent=(RootDatum,vec)
 
 {root_datum@ComplexNilpotent is too close to root_datum@(RootDatum,[int]) in Weylgroup.rx}
@@ -154,7 +156,7 @@ let rv=[] then
 x=x(P) then
 L=Levi(P) then
 u_p=[] in
-let ()=for alpha in u(P) do if is_noncompact(x)(alpha) then u_p#:=alpha fi od in
+let ()=for alpha in nilrad(P) do if is_noncompact(x)(alpha) then u_p#:=alpha fi od in
 {let ()=prints("u_p:", u_p) in}
 for (H,) in all_H(real_form(x)) do
 {prints("H=", H, ", ", rho(L), ", ", H*rho(L));}if (^involution(x)*H=H and H*rho(L)=0 and 

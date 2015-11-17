@@ -15,7 +15,7 @@ and all x-complex roots are type C+
 
 {set u(Parabolic P)=[vec]:... was broken; removed, use function in parabolics.rx}
 
-set u(KGBElt x)=[vec]:u(theta_stable_parabolic(x))
+set u(KGBElt x)=[vec]:nilrad(theta_stable_parabolic(x))
 
 set rho_l(Parabolic P)=rho(Levi(P))
 set rho_u(Parabolic P)=rho(root_datum(P))-rho_l(P)
@@ -30,7 +30,7 @@ set rho_u_cx(Parabolic P)=ratvec:
 assert(is_parabolic_theta_stable(P),"P is not theta-stable");
 let rv=ratvec:null(rank(root_datum(P))) then
 x=x_min(P) in  {use the most compact Cartan in L}
-for alpha in u(P) do if is_complex(alpha,x) then rv+:=alpha fi od;rv/2
+for alpha in nilrad(P) do if is_complex(alpha,x) then rv+:=alpha fi od;rv/2
 
 {2*rho_u_cx(P) is not necessarily in X^*
  2*rho_u_cx_alt(P) \in X^*, same restriction to T_K0, i.e. same image modulo (1-delta)X^*
@@ -47,9 +47,9 @@ theta=involution(x) in ratvec_as_vec(2*rho_S(theta,rd)-2*rho_S(theta,rd_L))
 set rho_u_ic(Parabolic P)=ratvec:
 assert(is_parabolic_theta_stable(P),"P is not theta-stable");
 let rv=ratvec:null(rank(root_datum(P))) then
-{x=x_min(P) in}
-x=canonical_x_K(maximal(P)) in
-for alpha in u(P) do if is_compact(alpha,x) then rv+:=alpha fi od;rv/2
+x=x_min(P) in {???}
+{x=canonical_x_K(maximal(P)) in ???}
+for alpha in nilrad(P) do if is_compact(alpha,x) then rv+:=alpha fi od;rv/2
 
 {rho_u_cap_k(P)\in \t^* as element of \h^*
 need 2*rho_u_cap_k(P)\in X^*, restricting to correct element of X^*(T_K0)=X^*/)(X^*)^{-delta}
@@ -68,7 +68,7 @@ set two_rho_u_cap_s(Parabolic P)=vec:ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k_a
 
 
 set dim_u_cap_k(Parabolic P)=int:
-let u=u(P) then
+let u=nilrad(P) then
 (S,x)=P then
 (number_compact,number_complex)=(0,0) then
 ()=for v in u do if is_compact(v,x) then number_compact+:=1 
@@ -77,7 +77,7 @@ elif is_complex(v,x) then number_complex+:=1 fi od  in rat_as_int(number_compact
 set dim_u_cap_k(KGBElt x)=int:dim_u_cap_k(theta_stable_parabolic(x))
 
 set dim_u_cap_p(Parabolic P)=int:
-let u=u(P) then
+let u=nilrad(P) then
 x=x_min(P) then
 (number_noncompact,number_complex)=(0,0) then
 ()=for v in u do if is_noncompact(x)(v) then number_noncompact+:=1 
@@ -87,7 +87,7 @@ set dim_u_cap_p(KGBElt x)=int:dim_u_cap_p(theta_stable_parabolic(x))
 set dim_u_cap_p(ratvec lambda,KGBElt x)=int:dim_u_cap_p(parabolic(lambda,x))
 
 set dim_u_cap_k_2(Parabolic P,ratvec H)=int:
-let u=u(P) then
+let u=nilrad(P) then
 x=x_min(P) then
 (number_compact,number_complex)=(0,0) then
 ()=for v in u do if v*H=2 then if 
@@ -95,7 +95,7 @@ x=x_min(P) then
   elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat_as_int(number_compact+number_complex/2)
 
 set dim_u_cap_k_ge2(Parabolic P,ratvec H)=int:
-let u=u(P) then
+let u=nilrad(P) then
 x=x_min(P) then
 (number_compact,number_complex)=(0,0) then
 ()=for v in u do if v*H>=2 then if 
@@ -103,14 +103,14 @@ x=x_min(P) then
   elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat_as_int(number_compact+number_complex/2)
 
 set dim_u_cap_p_ge2(Parabolic P,ratvec H)=int:
-let u=u(P) then
+let u=nilrad(P) then
 x=x_min(P) then
 (number_noncompact,number_complex)=(0,0) then
 ()=for v in u do  if v*H>=2 then  if is_noncompact(x)(v) then number_noncompact+:=1 
 elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat_as_int(number_noncompact+number_complex/2)
 
 set dim_u_cap_k_1(Parabolic P,ratvec H)=
-let u=u(P) then
+let u=nilrad(P) then
 x=x_min(P) then
 (number_compact,number_complex)=(0,0) then
 ()=for v in u do if v*H=1 then if 
@@ -118,13 +118,13 @@ x=x_min(P) then
   elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat:number_compact+number_complex/2
 
 set dim_u_cap_p_1(Parabolic P, ratvec H)=
-let u=u(P) then
+let u=nilrad(P) then
 x=x_min(P) then
 (number_noncompact,number_complex)=(0,0) then
 ()=for v in u do  if v*H=1 then  if is_noncompact(x)(v) then number_noncompact+:=1 
 elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat_as_int(number_noncompact+number_complex/2)
 
-set dim_u(ratvec H,KGBElt x)=#u(H,x)
+set dim_u(ratvec H,KGBElt x)=#nilrad(H,x)
 
 {---------------------------some representations------------------------------------}
 

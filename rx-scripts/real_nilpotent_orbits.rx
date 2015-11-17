@@ -2,6 +2,9 @@
 <knilpotent.rx
 set real_verbose=false
 
+{ComplexNilpotent is (RootDatum rd,vec H)
+ RealNilpotent is (KGBElt x,vec H) where theta_x(H)=H
+}
 :RealNilpotent=(KGBElt,vec)
 
 set x(RealNilpotent O)=KGBElt:let (x,)=O in x
@@ -26,7 +29,7 @@ let x_0=KGB(G,0) then
 not_valid=[((),[(KGBElt,vec,Param,KParamPol)]:[],[int]:[])] then
 theta=distinguished_involution(G) then
 (x,H)=all_x_H_pairs[0]  then
-L=L(x,H) then
+L=Levi_alt(H,x) then
 Kparams=all_K_parameters_norm_less_than(L,rho_check(G),N) then
 mus=[(KGBElt,vec,Param,KParamPol)]:[] in
 let ()=for p in Kparams do 
@@ -70,7 +73,7 @@ not_valid#:=((x,H),new_quads,new_S,new_T)
 else
 valid_x_H_pairs#:=(x,H);
 let ()=prints("valid:",x,H, " ", diagram(G,H)) in
-let L=L(x,H) in let
+let L=Levi_alt(H,x) in let
  params=all_K_parameters_norm_less_than(L,rho_check(G),N) in
 { let ()=prints("got new params ",#params) in}
  let new_mus=[(KGBElt,vec,Param,KParamPol)]:[] in

@@ -1,12 +1,13 @@
 {induction_fix.rx AP10/20/2015}
 {parabolic induction from real and theta-stable parabolics}
-set verbose=false
+set verbose=true
 <basic.rx
 <K.rx {for rho_K}
 <parabolics.rx
 <kl.rx { for character_formula }
 <coherent.rx 
 <synthetic.rx {for unnormalized_torus_factor}
+<K_norm.rx
 
 {L is a theta-stable Levi factor in G}
 
@@ -173,23 +174,23 @@ let L=real_form(x(p_L)) then
 x_G=embed_KGB(x(p_L),G) then
 shift=rho(G)-rho(L) then
 ()=if verbose then prints("theta_induce_standard of parameter on L: ", p_L) fi then
-()=if verbose then prints("shift: ", shift) fi then
+()=if verbose then prints("shift (rho_G-rho_L): ", shift) fi then
 {p_G=parameter(x_G,lambda(p_L)+rho(G)-rho_r(x_G)-rho(L)+rho_r(x(p_L)), nu(p_L)) then}
 p_G=parameter(x_G,lambda(p_L)+shift,nu(p_L)) then
 ()=if verbose then prints("p_G before standardization:", p_G) fi then
-{()=if verbose then prints("K_norm(p_G) before standardization:", K_norm(p_G)) fi then}
-p_G_standardized=null_module(G) in 
-if (is_standard(p_G)) then 
+()=if verbose then prints("K_norm(p_G) before standardization:", K_norm(p_G*0)) fi then
+p_G_standardized=null_module(G) then
+()=if (is_standard(p_G)) then 
  p_G_standardized:=(ParamPol:p_G);
  if verbose then prints("p_G is standard: ", p_G, standardize(p_G)) fi
 else
  let ()=if verbose then prints("Need to standardize:", p_G) fi in
  p_G_standardized:=standardize(p_G);
  if verbose then
-  prints("p_G standardized:", p_G_standardized)
-{  prints("K_norm(p_G standardized):", K_norm(p_G));}
-{  prints("K_norms of terms of p_G: ", for q in monomials(p_G) do K_norma(q) od ) fi}
- fi fi ;p_G_standardized
+ prints("p_G standardized:", p_G_standardized) fi
+{ prints("K_norm(p_G standardized):", K_norm(p_G)} fi
+{ prints("K_norms of terms of p_G: ", for q in monomials(p_G) do K_norm(q) od ) fi }
+in p_G_standardized
 
 {write theta-stable-Ind(J) as a sum of standards for G}
 {write J(p_L)=sum_i a_i* I_L(p_i)
@@ -235,6 +236,19 @@ else
  x_G=embed_KGB(x(p_L),G) in
  assert((S,x_G)=(S,x_P),"x(p_L) and x(P) don't agree up to W_L");
  theta_induce_standard( p_L,G) fi
+
+set induce_irreducible(Param p_L,Parabolic P,RealForm G)=ParamPol:
+assert(is_parabolic_real(P) or is_parabolic_theta_stable(P),"Induction only defined for real or theta-stable parabolics");
+if is_parabolic_real(P) then ParamPol:real_induce_irreducible(p_L,G) 
+else 
+ let L=Levi(P) then
+ (S,)=P then
+ x_P=x_min(P) then
+ x_G=embed_KGB(x(p_L),G) in
+ assert((S,x_G)=(S,x_P),"x(p_L) and x(P) don't agree up to W_L");
+ theta_induce_irreducible( p_L,G) fi
+
+
 
 
 set induce_standard(ParamPol pol,Parabolic P,RealForm G)=ParamPol:
