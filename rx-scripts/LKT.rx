@@ -264,7 +264,7 @@ set fundamental_weight_coordinates (vec mu, KGBElt x) = vec:mu*simple_coroots(K_
 set K_highest_weight_from_fundamental_weights(KGBElt x,vec tau)=
 let K_0=K_0(x) then
 fw=fundamental_weights_K_H(x) then
-weight=ratvec:null(rank(real_form(x))) then
+weight=ratvec:null(ss_rank(real_form(x))) then
 ()=for i:#tau do weight+:=tau[i]*fw[i] od in
 assert(is_integer(weight),"Weight is not integral");(x,ratvec_as_vec(weight))
 
