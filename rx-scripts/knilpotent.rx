@@ -7,8 +7,8 @@
 <complex_nilpotent_orbits.rx
 <K_norm.rx
 <LKT_aux.rx
-set kn_verbose=true
-set kn_very_verbose=true
+set kn_verbose=false
+set kn_very_verbose=false
 {implementation of parts of Letter to Atlas II: nilpotent orbits}
 
 {given x a theta_x-stable set of roots R, return subset of R
@@ -128,9 +128,9 @@ mu=2*rho_u_cap_s(x,H) then
 ()=prints("rho(u\cap s)=",mu) then
 x_L=KGB(L,kgb_number_L) then
 p_L=parameter(x_L,lambda_L,null(rank(L))) then
-{()=prints("p_L:", p_L) then}
+()=prints("p_L:", p_L) then
 k_type_formula=K_type_formula(p_L) then 
-{()=prints("k_type_formula:", k_type_formula) then}
+()=prints("k_type_formula:", k_type_formula) then
 d=null_module(L) then 
 (welements,kgb)=cross_W_orbit_extra(x_0) then
 ()=for c@p in k_type_formula do 
@@ -139,17 +139,17 @@ d=null_module(L) then
  i=find(kgb,x) then
  w=welements[i] then 
 {this shift involving KGB(L,0) is probably a 
- mistake, a holdover fp rom when parabolics weren't 
+ mistake, a holdover from when parabolics weren't 
  defined correctly}   
 { shift=act(w,mu) in}
  shift=mu in
-{ let ()=prints("p: ", p, " w: ", w, " shift: ",shift, " l+s: ", lambda(p)-shift) then}
-{ ()=prints("shifted: ",parameter(x(p), lambda(p)-shift,nu(p)-shift)) then}
-{ ()=prints("stdized: ",standardize(parameter(x(p), lambda(p)-shift,nu(p)-shift))) in}
+ let ()=prints("p: ", p, " w: ", w, " shift: ",shift, " l+s: ", lambda(p)-shift) then
+ ()=prints("shifted: ",parameter(x(p), lambda(p)-shift,nu(p)-shift)) then
+ ()=prints("stdized: ",standardize(parameter(x(p), lambda(p)-shift,nu(p)-shift))) in
  d+:=c*standardize(parameter(x(p), lambda(p)-shift,nu(p)-shift)) od then
-{ ()=prints("d: ", d) then}
+ ()=prints("d: ", d) then
  cs=composition_series(d)*0 then
-{ ()=prints("cs= ", cs) then}
+ ()=prints("cs= ", cs) then
 { ()=for p in monomials(cs) do prints(height(p), " ", LKT_highest_weights(p,KGB(L,0)), " ", LKT_dimensions(p)) od then}
 m=sort_by_height(monomials(cs)) in
 {()=prints("m=",m) in}
