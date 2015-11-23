@@ -177,7 +177,9 @@ assert(is_final(parameter(p)),"parameter is not final");
 let p=make_no_Cminus(p) in
 let (Q,pL)=theta_stable_data(parameter(p)) then
 (x_L,mu_L)=LKT_highest_weight_split_spherical(pL) then 
-x_G=canonical_x_K(x(p)) then
+{x_G=canonical_x_K(x(p)) then}
+x_G=x_min(Q) then
+{()=prints("x_G=",x_G) then}
 {mu_G=mu_L+2*rho_u_cap_s(Q)  then}
 {need version of 2*rho_u_cap_s(Q) which is integral, see thetastable.rx}
 mu_G=mu_L+two_rho_u_cap_s(Q)  then

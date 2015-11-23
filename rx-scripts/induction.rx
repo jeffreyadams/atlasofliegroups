@@ -1,6 +1,6 @@
 {induction_fix.rx AP10/20/2015}
 {parabolic induction from real and theta-stable parabolics}
-set verbose=true
+set verbose=false
 <basic.rx
 <K.rx {for rho_K}
 <parabolics.rx
