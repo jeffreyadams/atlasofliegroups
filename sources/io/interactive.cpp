@@ -962,7 +962,7 @@ struct inner_class_factor
     else if (l=='C')
       kind=simple_ict::complex;
     else if (l=='u')
-      kind=simple_ict::equal_rank;
+      kind=simple_ict::unequal_rank;
     else if (l=='s')
     { if (slt==SimpleLieType{'A',1} or
 	  std::strchr("TADE",slt.first)==nullptr)
