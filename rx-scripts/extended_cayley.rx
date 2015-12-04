@@ -263,7 +263,6 @@ begin
          ,ratvec_as_vec(t-(t*alpha+1)/2*alpha_check-(t*beta-1)/2*beta_check)
          ,ratvec_as_vec(t-(t*alpha-1)/2*alpha_check-(t*beta+1)/2*beta_check))
     fi
-    then new_t=new_t
     then new_lambda=ratvec_as_vec
       ( lambda + (gamma*alpha_check-lambda*alpha_check-1)/2*alpha
                + (gamma*beta_check-lambda*beta_check-1)/2*beta )
