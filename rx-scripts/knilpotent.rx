@@ -125,12 +125,12 @@ let ()=if kn_verbose then prints("twist with: x=", x, " H= ", H, "x= ", kgb_numb
 L=Levi_alt(H,x) then
 x_0=KGB(L,0) then
 mu=2*rho_u_cap_s(x,H) then
-()=prints("rho(u\cap s)=",mu) then
+{()=prints("rho(u\cap s)=",mu) then}
 x_L=KGB(L,kgb_number_L) then
 p_L=parameter(x_L,lambda_L,null(rank(L))) then
-()=prints("p_L:", p_L) then
+{()=prints("p_L:", p_L) then}
 k_type_formula=K_type_formula(p_L) then 
-()=prints("k_type_formula:", k_type_formula) then
+{()=prints("k_type_formula:", k_type_formula) then}
 d=null_module(L) then 
 (welements,kgb)=cross_W_orbit_extra(x_0) then
 ()=for c@p in k_type_formula do 
@@ -143,13 +143,13 @@ d=null_module(L) then
  defined correctly}   
 { shift=act(w,mu) in}
  shift=mu in
- let ()=prints("p: ", p, " w: ", w, " shift: ",shift, " l+s: ", lambda(p)-shift) then
- ()=prints("shifted: ",parameter(x(p), lambda(p)-shift,nu(p)-shift)) then
- ()=prints("stdized: ",standardize(parameter(x(p), lambda(p)-shift,nu(p)-shift))) in
+{ let ()=prints("p: ", p, " w: ", w, " shift: ",shift, " l+s: ", lambda(p)-shift) then}
+{ ()=prints("shifted: ",parameter(x(p), lambda(p)-shift,nu(p)-shift)) then
+ ()=prints("stdized: ",standardize(parameter(x(p), lambda(p)-shift,nu(p)-shift))) in}
  d+:=c*standardize(parameter(x(p), lambda(p)-shift,nu(p)-shift)) od then
- ()=prints("d: ", d) then
+{ ()=prints("d: ", d) then}
  cs=composition_series(d)*0 then
- ()=prints("cs= ", cs) then
+{ ()=prints("cs= ", cs) then}
 { ()=for p in monomials(cs) do prints(height(p), " ", LKT_highest_weights(p,KGB(L,0)), " ", LKT_dimensions(p)) od then}
 m=sort_by_height(monomials(cs)) in
 {()=prints("m=",m) in}
@@ -239,9 +239,26 @@ mu(x,H,number(x_L),lambda_L)
 {assume ParamPol has integral (not split) coefficients}
 set vector([Param] list,ParamPol P)=(bool,vec):
 let v=null(#list) then
+()=for p@i in list do 
+let coeff=split_as_int(P[p]) in
+v[i]:=coeff;
+P:=P-coeff*p od 
+then
+found = (#P=0) in (found,v)
+{set vector([Param] list,ParamPol P)=(bool,vec):
+let v=null(#list) then
+()=for p@i in list do coeff=P[p] then
+v[i]=coeff then
+P:=P-coeff*p od 
+then
+found = (#P=0) in (found,v)
+}
+
+
+{let v=null(#list) then
 found=true in
 for (c,p) in %P do let 
-i=find(list,p) in if i=-1 then found:=false else v[i]+:=split_as_int(c) fi od;(found,v)
+i=find(list,p) in if i=-1 then found:=false else v[i]+:=split_as_int(c) fi od;(found,v)}
 
 {assume ParamPol has integral (not split) coefficients}
 set vector([KParam] list,KParamPol P)=(bool,vec):
