@@ -170,8 +170,8 @@ x_Q=x_min(Q) then
 {()=prints("x_Q=", x_Q) then}
 mu=fix(mu,x_Q) then
 (x,tau)=mu then
-{()=prints("fixed mu:", mu) then}
-{let ()=assert(mu=fix(mu,x_Q),"error: mu\ne fix(mu)") then}
+{()=prints("fixed mu:", mu) in}
+()=assert(mu=fix(mu,x_Q),"error: mu\ne fix(mu)") then
 L=Levi(Q) then  {L is relatively split}
 {()=prints("Q=", Q) then
 ()=prints("mu:", mu) then

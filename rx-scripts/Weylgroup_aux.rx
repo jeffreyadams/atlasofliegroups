@@ -38,3 +38,21 @@ let (y,w)=make_no_Cplus(x(p)) in parameter(y,act(w,lambda(p)),act(w,nu(p)))
 set cross(W_word w,KGBElt x)=KGBElt:  let (,w)=w in for i:#w downto 0 do x:=cross(w[i],x) od; x
 set cross (W_word w,Param p) = Param: let (,w)=w in  for i:#w downto 0 do p:=cross(w[i],p) od; p
 
+set reduce(W_word w)=W_word:
+let m=w_matrix(w) then
+rd=root_datum(w) then
+n=rank(rd) in
+word(root_datum(w), id_mat(n), w_matrix(w))
+
+
+{ Weyl group element raised to an integer power }
+set ^(W_word !w, int n) = W_word:
+  if   >n then let result=w in for :n-1 do result*:=w od; reduce(result)
+  elif <n then let !w1=inverse(w) then result=w1 in
+          for :n-1 do result*:=w1 od; reduce(result)
+  else (root_datum(w),[]) 
+  fi
+
+set is_elliptic(W_word w)=bool: det(1-w_matrix(w)) !=0
+set is_regular(W_word w)=bool:length(w)*order(w)=2*nr_of_posroots(root_datum(w))
+

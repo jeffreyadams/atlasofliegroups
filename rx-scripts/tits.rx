@@ -93,7 +93,8 @@ set * = multiply@(Tits_elt,Tits_elt)
 }
 set inverse (Tits_elt(rd,v,theta)) = Tits_elt:
   let theta_inv = inverse(theta) in
-  (rd, (-v*theta_inv - rho_check(rd)*(theta_inv-1)/2) % 1, theta_inv)
+  {Note: ^theta since acting on torus elements:}
+  (rd, (-v*^theta_inv - rho_check(rd)*(^theta_inv-1)/2) % 1, theta_inv)
 
 { canonical lift of Weyl group element, assumed reduced, to Tits group }
 set lift (W_word w) = Tits_elt: left(w,tits_identity(root_datum(w)))
@@ -112,7 +113,9 @@ set ^(Tits_elt !xi, int n) = Tits_elt:
   else tits_identity(root_datum(xi))
   fi
 
-{ order of W_word, uses order@mat from basic.rx }
-set order (W_word w) = int: order(w_matrix(w))
-
-
+set order(Tits_elt xi)=int:
+let id=tits_identity(root_datum(xi)) then
+(,,m)=xi then
+d=order(m) in
+if xi^d=id then d 
+elif xi^(2*d)=id then 2*d else prints("ERROR");-1 fi

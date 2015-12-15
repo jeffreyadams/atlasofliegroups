@@ -1,0 +1,55 @@
+<tits.rx
+<Weylgroup_aux.rx
+<W_orbit.rx
+{ compute conjugacy class of w, based on cross_W_orbit.rx
+
+  returns: (words, class) where class is list of elements of the conjugacy class,
+  and for each i one has words[i]*x*words[i]^{-1}=class[i]
+}
+
+set conjugacy_class_extra(W_word x)=([W_word],[W_word]):
+let rd=root_datum(x) then
+S=for i:semisimple_rank(rd) do i od then
+words = [[int]:[]], orbit= [x], done=0
+  then absent (W_word y) = first(#orbit, (int i)bool:equal(y,orbit[i]))<0
+{         let i=#orbit-1 in while i>=0 and not equal(y,orbit[i]) do i-:=1 od; i<0}
+  in
+  while done<#orbit
+  do
+    let w = words[done], a=orbit[done] in
+    done+:=1
+  ; for i in S
+    do let b=reduce(conjugate(i,a)) in
+      if absent(b) then ( words #:= i#w, orbit #:= b ) fi
+    od
+  od; (for w in words do (rd,w) od,orbit)
+
+set conjugacy_class(W_word x)=[W_word]:let (,b)=conjugacy_class_extra(x) in b
+set size_of_conjugacy_class(W_word x)=int:#conjugacy_class(x)
+
+set order([W_word] class)=order(class[0])
+
+set delete(W_word w, [W_word] W)=[W_word]:
+let j=first(#W, (int i)bool:equal(w,W[i])) in if j=-1 then W else delete(W,j) fi 
+
+set conjugacy_classes(RootDatum rd)=[[W_word]]:
+let rv=[[W_word]]:[] then
+W=generate_W(rd) then
+order_W=#W then
+total([[W_word]] classes)=int: sum(for class in classes do #class od) in 
+while total(rv)<order_W do 
+ let w=W[0] then
+ C=conjugacy_class(w) then
+ ()=prints("C:", w, " ", #C) in
+ rv#:=C;
+ for y in C do W:=delete(y,W) od 
+od;rv
+
+
+
+
+
+
+
+
+
