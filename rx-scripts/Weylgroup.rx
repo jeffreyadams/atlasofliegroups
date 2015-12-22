@@ -1,4 +1,5 @@
 <basic.rx
+<center.rx {for lie_radical}
 
 { Functions for computing with Weyl words }
 
@@ -9,7 +10,7 @@ set word (W_word(,w))        = [int]:  w
 set # (W_word(,w))           = int: #w { non reduced length of word }
 
 
-{ action of Weyl word }
+{ action of Weyl word on X^*\otimes Q}
 set act (W_word(rd,w), vec v) = vec:
   let alpha = simple_roots(rd), alphav = simple_coroots(rd) in
   for i:#w downto 0 do let wi=w[i] in v -:= alpha[wi]*(alphav[wi]*v) od; v
@@ -31,7 +32,7 @@ set equal (W_word w, W_word u) = bool: w_matrix(w)=w_matrix(u)
 
 set inverse (W_word(rd,w)) = W_word: { reverse w component } (rd,w~[:])
 
-
+set cross(W_word(rd,w),KGBElt x)=KGBElt:cross(w,x)
 
 {		--- using W to make values dominant ---			}
 
@@ -50,6 +51,9 @@ set make_dominant (RootDatum rd, vec v) = (vec,W_word):
 set make_dominant (RootDatum rd, ratvec v) = (ratvec,W_word):
   let (v,denom)=%v then (v_dom,w)=make_dominant(rd,v) in (v_dom/denom,w)
 
+{ rho(rootDatum rd) is in basic.rx; need rho(rd,v) is in an any chamber:}
+set rho(RootDatum rd, ratvec v)=let (v_dom,w)=make_dominant(rd,v) in act(w, rho(rd))
+
 set w_long (RootDatum rd) = W_word:
   let (,ww) = make_dominant(rd,-rho(rd)) in ww
 
@@ -61,8 +65,11 @@ set dominant (RootDatum rd, ratvec v) = ratvec:
 
 { find some Weyl word (not lexicographically first) acting by the matrix M }
 set word (RootDatum rd, mat M) = W_word:
-  let (,ww) = make_dominant(rd,M*rho(rd)) then ww1 = inverse(ww)
-  in assert(w_matrix(ww1)=M,"Not the action of any Weyl group element"); ww1
+  let (,ww) = make_dominant(rd,M*rho(rd)) 
+  in assert(w_matrix(ww)=M,"Not the action of any Weyl group element"); ww
+
+{ find some Weyl word w so that w*delta acts by the matrix M }
+set word (RootDatum rd,mat delta, mat M) = W_word:word(rd,delta*M)
 
 { rather than length(rd,M) = #word(rd,M), the following is simpler }
 set length (RootDatum rd, mat M) = int: { count positive roots made negative: }
@@ -149,13 +156,6 @@ set * = multiply@(W_word,W_word)
 set conjugate (W_word(rd,v), W_word({ assume rd too },w)) = W_word:
    (rd, v#w#v~[:])
 
-
-
-{ for cross action on KGBElt values, we can use the RootDatum of the latter }
-set W_cross (W_word({should be rd of x},w), KGBElt x) = KGBElt:  W_cross(w,x)
-
-
-
 { Some basic functions for when a Weyl word represents a twisted involution }
 
 { compute involution from twisted involution Weyl word }
@@ -172,3 +172,26 @@ set imaginary_coroots (InnerClass ic, W_word tw) = mat:
   imaginary_coroots(ic,involution(ic,tw))
 set real_coroots (InnerClass ic, W_word tw) = mat:
   real_coroots(ic,involution(ic,tw))
+
+{  invariants forms on X^* and X_*  }
+
+{matrix of the W-invariant form on X^*\otimes Q
+ (gamma,lambda)=\sum <gamma,alpha^v><lambda,alpha^v>
+ sum over positive coroots
+ the radical of the form is the center
+}
+set invariant_form(RootDatum rd)=mat:let M=poscoroots(rd) in M*^M
+set invariant_form(RootDatum rd, ratvec v, ratvec w)=let M=invariant_form(rd) in v*M*w
+
+set nondegenerate_invariant_form(RootDatum rd, ratvec v,ratvec w)=
+let z=lie_radical_part(rd,v) in invariant_form(rd,v,w)+z*z
+
+{W-invariant form on X_*\otimes Q}
+set co_invariant_form(RootDatum rd)=mat:let M=posroots(rd) in M*^M
+set co_invariant_form(RootDatum rd, ratvec v, ratvec w)=let M=co_invariant_form(rd) in v*M*w
+
+set delete([W_word] W, int k)=[W_word]:W[:k]#W[k+1:]
+
+{ order of W_word, uses order@mat from basic.rx }
+set order (W_word w) = int: order(w_matrix(w))
+

@@ -1,0 +1,166 @@
+<group_operations.rx
+<lattice.rx
+
+{center Z and dual Z_hat of complex group or real form}
+{
+dual of center of complex group (i.e. RootDatum) is
+P/X^*  (weight lattice modulo character lattice)
+
+dual of center of RealForm is
+Z^=(Z_c)^ x (Z_s)^
+ Z_c=compact part of Z
+ Z_s=vector component of Z
+(Z_s)^ is a Q-vector space
+(Z_c)^ further decomposes Z^n x (finite part)
+ Z^n = dual of identity component Z_{c,0} of Z_c
+ finite part = dual of (Z_c/Z_{c,0}) = two-group
+caution: (Z_{c,0},Z_s) is the identity component of the 
+radical(G(C)), which is a complex torus. If there is a split factor, 
+then this gives a Z/2Z in Z_f
+parametrize Z_hat as [dual of finite_part,(dual of Z_{c,0}, dual of Z_s)]
+dual of finite part: [(int d, vec v)]: v has order d
+dual of Z_{c,0}: Z-basis of X^*(Z_{c,0})
+dual of Z_s: Q-basis of dual of Z_s (Q-vector space)
+
+it isn't as easy to give explicit generators for the center
+print_Z(RootDatum rd) and print_Z(RealForm G) give human-understandable descriptions
+}
+
+{Q-basis of Lie algebra of radical of complex group}
+set lie_radical(RootDatum rd)=[vec]:kernel(^simple_roots(rd))
+
+{ss_part(rd,v)=projection of v\in X^*\otimes Q onto derived group}
+set ss_part(RootDatum rd, ratvec v)=ratvec:
+let n=rank(rd) then
+fw=fundamental_weights(rd) then
+rv=ratvec:null(n) in
+for i:semisimple_rank(rd) do 
+let scalar=v*simple_coroots(rd)[i] in
+rv+:=scalar*fw[i] od;rv
+
+{lie_radical_part(rd,v)=projection of v\in X^*\otimes Q onto center}
+set lie_radical_part(RootDatum rd, ratvec v)=ratvec:v-ss_part(rd,v)
+
+{Q-basis of Lie algebra of split part of radical of complex group}
+set lie_split_radical(RealForm G)=[vec]:
+let delta=distinguished_involution(G) then
+lieradical=lie_radical(G) in
+{need next line because lie_radical(rd) is [vec], empty result cannot 
+ be converted into mat
+}
+ if #lieradical=0 then [] else
+let M=(1-delta)*lie_radical(G) then
+(A,v)=adapted_basis(M) in A[0:#v] fi
+
+{Q-basis of Lie algebra of compact part of radical of complex group}
+set lie_compact_radical(RealForm G)=[vec]:
+let delta=distinguished_involution(G) then
+lieradical=lie_radical(G) in
+ if #lieradical=0 then [] else
+let M=(1+delta)*lie_radical(G) then
+(A,v)=adapted_basis(M) in A[0:#v] fi
+
+{Q-basis of dual of radical of complex group}
+set lie_radical_hat(RootDatum rd)=[vec]:kernel(^simple_coroots(rd))
+
+{Q-basis of dual of split part of radical of complex group}
+set lie_split_radical_hat(RealForm G)=[vec]:
+let delta=distinguished_involution(G) then
+lieradicalhat=lie_radical_hat(G) in
+{ if #lieradicalhat=0 then [null(0)] else}
+ if #lieradicalhat=0 then [] else
+let M=(1-delta)*lie_radical_hat(G) then
+(A,v)=adapted_basis(M) in
+{if #v=0 then [null(0)] else  A[0:#v]  fi fi}
+if #v=0 then [] else  A[0:#v]  fi fi
+
+{Z-basis of dual of compact part of radical of complex group}
+set lie_compact_radical_hat(InnerClass ic)=[vec]:
+let delta=distinguished_involution(ic) then
+lieradicalhat=lie_radical_hat(ic) in
+ if #lieradicalhat=0 then [] else
+let M=(1+delta)*lie_radical_hat(ic) then
+(A,v)=adapted_basis(M) in
+if #v=0 then [] else  A[0:#v]  fi fi
+
+{
+dual of center of complex group G
+return value: (ss_part,radical)
+ss_part is the center of G/radical(G)
+ss_part=[(int,vec)]
+(d,v): v\in X^*, generator of order d
+radical=[vec] is a Q-basis of the dual of the Lie algebra of the radical
+[v1,...,vk]: basis of (R^\vee)^\perp
+where R^\vee is the coroots, and perp is taken in X^*\otimes Q
+}
+set Z_hat(RootDatum rd)=([(int,vec)],[vec]):
+let M=simple_roots(rd) then
+(A,v)=Smith(M) then 
+rv=[] in
+{let ()=prints("M=",M);prints("A=",A);prints("v=",v) in}
+for i:#v do if v[i]>1 then rv#:=(v[i], A[i]) fi od; (rv,lie_radical(rd))
+
+{
+dual of center of real form G
+return value: (finite_part,(compact_radical,split_radical))
+
+finite_part=[(int,vec)]
+(d,v): v\in X^*, generator of order d
+radical 
+compact_radical:
+[vec]:[v1,...,vk]: basis of [(R^\vee)^\perp]^{delta}
+where R^\vee is the coroots, and perp is taken in X^*
+k=number of circles in radical
+split_part: [vec]
+[vec]:[v1,...,vk]: basis of [(R^\vee)^\perp]^{-delta}
+in this case perp is taken in X^*\otimes Q
+k=number of R^+ factors in radical
+}
+set Z_hat(RealForm G)=([(int,vec)],([vec],[vec])):
+let delta=distinguished_involution(G) then
+M=(1-delta)#simple_roots(G) then
+(A,v)=Smith(M) then
+finite_part=[] in
+let ()=for i:#v do if v[i]>1 then finite_part#:=(v[i], A[i]) fi od in
+(finite_part,(lie_compact_radical_hat(G),lie_split_radical_hat(G)))
+
+{output routine for center of complex group}
+set print_Z(RootDatum rd)=void:
+let (ss_part,rad)=Z_hat(rd) in 
+if #ss_part=0 then
+  if  #rad=0 
+    then  prints("Center is trivial") 
+  else 
+    prints("Center is a connected complex torus of rank ", #rad) fi
+else {#ss_part !=0}
+ let ss_part_string=string:"" in
+ for i:#ss_part do let (n,)=ss_part[i] in ss_part_string#:="Z/"+n+"Z x " od;
+ ss_part_string:=ss_part_string[0:#ss_part_string-3];
+  if (#rad =0) then prints("Group is semisimple");
+  prints("center=",ss_part_string)
+ else
+prints("Split exact sequence:");prints("1->S->Z->Z/S->1");
+prints("S=complex torus of rank ", rank(radical(rd)));
+prints("S/Z=Center(G/S)=",ss_part_string) fi fi
+
+{output routine for center of real form}
+set print_Z(RealForm G)=void:
+let (ss_part,(cptrad,splitrad))=Z_hat(G) then
+ss_part_string="" then 
+()=for i:#ss_part do let (n,)=ss_part[i] in 
+ ss_part_string#:="Z/"+n+"Z x "  od in
+if #ss_part_string>0 then ss_part_string:=ss_part_string[0:#ss_part_string-3] fi;
+if (#cptrad+#splitrad)=0 then {group is semisimple}
+  if #ss_part=0 then prints("Center is trivial") else
+    prints("Group is semisimple");
+    prints("center=", ss_part_string) 
+  fi 
+else
+ if #cptrad=1 then prints("center has ", #cptrad, " circle factor") fi;
+ if #cptrad>1 then prints("center has ", #cptrad, " circle factors") fi;
+ if #splitrad=1 then prints("center has ", #splitrad, " R^+ factor") fi;
+ if #splitrad>1 then prints("center has ", #splitrad, " R^+ factors") fi;
+ if #ss_part>0 then  prints("finite part of center: ",ss_part_string) else
+ prints("center has no finite part") fi
+fi
+

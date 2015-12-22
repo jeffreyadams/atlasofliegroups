@@ -64,6 +64,8 @@ set denom (rat a) = let (,d)=%a in d
 set is_integer (rat r) = bool: denom(r)=1
 set sign (rat a)= int: sign(numer(a)) { denominator is always positive }
 
+set abs(rat a)=rat: sign(a)*a
+
 set floor (rat a) = int: \ %a     { decompose, then integer division }
 set ceil  (rat a) = int: -\ %-a   { same, sandwiched in negations }
 
@@ -395,6 +397,7 @@ set rho_check (RootDatum rd) = ratvec: { rho(dual(rd)), but a bit faster }
 
 { see also rho_i@KGBElt and rho_r@KGBElt defined below }
 
+{these functions assume vec is a root/coroot}
 set is_positive_root (RootDatum rd) = (vec->bool):
   let rc = rho_check(rd) in (vec alpha) bool: rc*alpha>0
 set is_positive_coroot (RootDatum rd) = (vec->bool):
@@ -412,6 +415,12 @@ set is_negative_root (RootDatum rd,vec alpha) = bool:
   is_negative_root(rd)(alpha)
 set is_negative_coroot (RootDatum rd,vec alphav) = bool:
   is_negative_coroot(rd)(alphav)
+
+set all_positive_roots(RootDatum rd, [vec] roots)=bool:
+if #roots=0 then true else all(semisimple_rank(rd), (int i)bool: is_positive_root(rd,roots[i])) fi
+
+set all_positive_coroots(RootDatum rd, [vec] coroots)=bool:
+if #coroots=0 then true else all(semisimple_rank(rd), (int i)bool: is_positive_coroot(rd,coroots[i])) fi
 
 set negative_system (mat posroots) = { the missing half of the root system }
   swiss_matrix_knife(172,posroots,0,0,0,0) { 172= 36+8+128: reverse cols,neg }
@@ -536,6 +545,8 @@ set simple_from_positive (mat posroots,mat poscoroots) = (mat,mat):
 
 set fundamental_weights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_weight(rd,i) od
+set fundamental_coweights (RootDatum rd) = [ratvec]:
+  for i:semisimple_rank(rd) do fundamental_coweight(rd,i) od
 
 
 
@@ -646,8 +657,10 @@ set Cayley (vec alpha,KGBElt x) = KGBElt:
   Cayley(root_index(real_form(x),alpha),x)
 
 { cross action of Weyl group element; avoid name conflict cross@(vec,KGBElt) }
+{ move this to Weylgroup_aux.rx and rename it
 set W_cross ([int] w,KGBElt x) = KGBElt:
-  for i:#w downto 0 do x:=cross(w[i],x) od; x
+for i:#w downto 0 do x:=cross(w[i],x) od; x
+}
 
 set KGB_status_text (int i) = string: ["C-","ic","r ","nc","C+"][i]
 
@@ -692,14 +705,20 @@ set rho_i (KGBElt x) = ratvec: sum(imaginary_posroots(x))/2
 set rho_r (KGBElt x) = ratvec: sum(real_posroots(x))/2
 set rho_check_i (KGBElt x) = ratvec: sum(imaginary_poscoroots(x))/2
 set rho_check_r (KGBElt x) = ratvec: sum(real_poscoroots(x))/2
+{helpful to have versions which only depend on theta}
+set rho_i(mat theta,RootDatum rd)=ratvec:sum(imaginary_posroots(rd,theta))/2
+set rho_r(mat theta,RootDatum rd)=ratvec:sum(real_posroots(rd,theta))/2
+set rho_check_i(mat theta,RootDatum rd)=ratvec:sum(imaginary_poscoroots(rd,theta))/2
+set rho_check_r(mat theta,RootDatum rd)=ratvec:sum(real_poscoroots(rd,theta))/2
 
-{ status for a given KGBElt of general imaginary roots }
+{ compact/noncompact status for a given KGBElt of general imaginary roots }
+{false if the root is not imaginary}
 set is_compact (KGBElt x) = (vec->bool):
   let coweight = rho_check_i(x)+torus_factor(x)
-  in (vec alpha) bool: =(coweight*alpha)%2
+  in (vec alpha) bool: is_imaginary(x)(alpha) and =(coweight*alpha)%2
 set is_noncompact (KGBElt x) = (vec->bool):
   let coweight = rho_check_i(x)+torus_factor(x)
-  in (vec alpha) bool: !=(coweight*alpha)%2
+  in (vec alpha) bool: is_imaginary(x)(alpha) and !=(coweight*alpha)%2
 
 set compact_posroots (KGBElt x) = mat:
   columns_with(is_compact(x),imaginary_posroots(x))
@@ -715,6 +734,10 @@ set print_KGB (KGBElt x) = void:
 ( prints(); prints("Element is number ",#x, " in following KGB set")
 ; print_KGB(real_form(x)) )
 
+set no_Cminus_roots (KGBElt x) = bool:
+  none(semisimple_rank(real_form(x)), (int i)bool: =status(i,x))
+set no_Cplus_roots (KGBElt x) = bool:
+  none(semisimple_rank(real_form(x)), (int i)bool: status(i,x)=4)
 
 {				Blocks					}
 
@@ -769,10 +792,6 @@ set is_regular (Param p) = bool:
 
 set trivial (RealForm G) = Param: { parameter for the trivial representation }
   param(KGB(G,KGB_size(G)-1),null(rank(G)),rho(G))
-
-{ cross action of Weyl group element; avoid name conflict cross@(vec,Param) }
-set W_cross ([int] w,Param p) = Param:
-  for i:#w downto 0 do p:=cross(w[i],p) od; p
 
 { parameter(G,x,lambda,nu)=param(KGB(G,x),lambda-rho(G),nu), so you can enter
   lambda without the rho shift; lambda may have denominator 2 or be a vec
@@ -900,10 +919,6 @@ set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
 
 {				Miscellaneous				}
 
-{ find index of item in list, or -1 if not found }
-set find (int it,[int] list) = int:
- let i=#list-1 in while >=i and list[i]!=it do i-:=1 od; i
-
 set in_string_list (string s,[string] S)=bool:
   let i=#S-1 in while >=i and S[i]!=s do i-:=1 od; >=i
 
@@ -934,3 +949,29 @@ set complex_posroots (KGBElt x) =  mat:
 }
 set monomials(ParamPol P) = [Param]: for c@p in P do p od
 set monomial(ParamPol P,int i) = Param: monomials(P)[i]
+
+{delete one term from a list}
+set delete([int] v, int k)=[int]:v[:k]#v[k+1:]
+set delete([vec] v, int k)=[vec]:v[:k]#v[k+1:]
+set delete([ratvec] v, int k)=[ratvec]:v[:k]#v[k+1:]
+set delete([[ratvec]] v, int k)=[[ratvec]]:v[:k]#v[k+1:]
+set delete([[vec]] v, int k)=[[vec]]:v[:k]#v[k+1:]
+set delete([ParamPol] P, int k)=[ParamPol]:P[:k]#P[k+1:]
+
+{   		      Miscellaneous find functions				}
+
+{ find index of item in list, or -1 if not found }
+
+set find([int] v, int k)=int:first(#v, (int i)bool:v[i]=k)
+set find([Param] P,Param p)=int:first(#P,(int i)bool:P[i]=p)
+set find([KGBElt] S,KGBElt x)=int:first(#S,(int i)bool:S[i]=x)
+
+{used to find root v in list of roots S:}
+set find([[int]] S,[int] v)=int:first(#S,(int i)bool:S[i]=v)
+
+{need different name to avoid disambiguation problem}
+set find_vec([vec] S,vec v)=int:first(#S,(int i)bool:S[i]=v)
+
+
+
+

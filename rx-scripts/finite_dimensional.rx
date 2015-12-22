@@ -17,10 +17,10 @@ set dimension (RootDatum rd, vec lambda_in) = int:
   let lambda=
     if is_dominant(rd,lambda_in) then lambda_in
     else
-      let lambda_dominant = dominant(rd,lambda_in)
-      in prints("Warning: changed ", lambda_in, ", to ", lambda_dominant
-               ," to make it dominant")
-      ; lambda_dominant
+      let lambda_dominant = dominant(rd,lambda_in) in 
+     { prints("Warning: changed ", lambda_in, ", to ", lambda_dominant
+               ," to make it dominant");}
+       lambda_dominant
     fi
   then rho=rho(rd), dim=1/1 { now apply Weyl's dimension formula }
   in for a in poscoroots(rd) do dim*:=(lambda+rho)*a/(rho*a) od; dim\1
@@ -33,7 +33,6 @@ set dimension(Param p) = int:
 
 set fundamental_weight_coordinates (Param p) = vec:
   highest_weight(p)*simple_coroots(root_datum(p))
-
 
 { this function depends on a complex root datum, with half-swapping involution }
 set complex_LKT (Param p) = vec:

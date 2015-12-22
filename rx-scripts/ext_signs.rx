@@ -26,7 +26,7 @@
     whether \pm E_j occurs in the Cayley of F_i by root k (of type 2r21)
 
   typically 7 of these are +, and 1 is minus
-  occasionally there are 2 pluses, and 2 minuses (both directions E_i<-->F_j)
+  occasionally there are 6 pluses, and 2 minuses (both directions E_i<-->F_j)
 
   then sign_2i12(k,E_i,F_j)=-1 if *either arrow gets a minus*, and 1 otherwise
 
