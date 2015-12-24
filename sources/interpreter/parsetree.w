@@ -571,17 +571,17 @@ of~|expr|.
 @< Includes needed... @>=
 #include "sl_list.h" // lists are used in parsing types
 
-@~Historically implementing these lists using the atlas class
-template |containers::simple_list| was the first time a non-POD variant of
-|expr| was introduced, and it required passage to \Cpp11 as well as
-substantial refactoring of the code to make this possible and safe. However,
-it ultimately turned out to be simpler to actually store a raw pointer version
-of the list (obtained by calling its |release| method) in |expr|; especially
-so if alternative compilation with compilers that (still) forbid non-POD
-variants of a union is to be supported, but even independently of that there
-is little benefit from storing smart pointers. In the mean time this
-illustrates the usefulness of having a container type with a lightweight
-conversion to raw pointer and back.
+@~Historically implementing these lists using the atlas class template
+|containers::simple_list| was the first time a non-POD variant of |expr| was
+introduced, and it required passage to \Cpp11 as well as substantial
+refactoring of the code to make this possible and safe. However, it ultimately
+turned out to be simpler to actually store a raw pointer version of the list
+(obtained by calling its |release| method) in |expr|; especially so if
+alternative compilation with compilers that (still) forbid non-POD variants of
+a union is to be supported, but even independently of that there is little
+benefit from storing smart pointers. In the mean time this illustrates the
+usefulness of having a container type with a lightweight conversion to raw
+pointer and back.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef containers::simple_list<expr> expr_list;
@@ -787,7 +787,7 @@ pointer it will just directly called |delete| for the pointer.
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct application_node* app;
 
-@~Since \.{realex} has tuples, we convene that every function call takes just
+@~Since \.{axis} has tuples, we convene that every function call takes just
 one argument. So we define an |application_node| to contain a function and an
 argument expression; both are allowed to be arbitrary expressions, though the
 function is often an applied identifier, and the argument is often a tuple
@@ -2501,14 +2501,14 @@ break;
 
 @*1 Recursive function expressions.
 %
-The basic \.{realex} language is not
-friendly for recursion, since identifiers defined in a local or global
-definition only come into scope after the body of the definition. The fact
-that recursive functions can nonetheless be defined is due to the possibility
-to call functions from a variable, where a runtime assignment to the variable
-ensures that the by the time it gets called, it refers to the very function
-(body) that contains the call. We provide syntactic sugar to make this easier
-for the user; this being so, no new kind of |expr| is needed to implement it.
+The basic \.{axis} language is not friendly for recursion, since identifiers
+defined in a local or global definition only come into scope after the body of
+the definition. The fact that recursive functions can nonetheless be defined
+is due to the possibility to call functions from a variable, where a runtime
+assignment to the variable ensures that the by the time it gets called, it
+refers to the very function (body) that contains the call. We provide
+syntactic sugar to make this easier for the user; this being so, no new kind
+of |expr| is needed to implement it.
 
 @< Declarations of functions for the parser @>=
 expr_p make_recfun(id_type f, expr_p d,

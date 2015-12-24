@@ -27,14 +27,13 @@
 %
 This file describes the central part of the interpreter for the command
 language of the Atlas of Lie Groups and Representation software
-called \.{realex} (which could be taken to stand for Redesigned
-Expression-based Atlas of Lie groups EXecutable). This part is concerned with
-the analysis and execution of expressions that have already been processed by
-the parser. These are highly recursive processes, and this rather large module
-has been limited to those functions that play a part in this recursion. Other
-more one-time matters like initialisation and setting global variables that
-were originally done in this module have been relegated to a separate
-module \.{global.w}.
+called \.{axis} (after the second cervical vertebra, the one below atlas).
+This part is concerned with the analysis and execution of expressions that
+have already been processed by the parser. These are highly recursive
+processes, and this rather large module has been limited to those functions
+that play a part in this recursion. Other more one-time matters like
+initialisation and setting global variables that were originally done in this
+module have been relegated to a separate module \.{global.w}.
 
 @( evaluator.h @>=
 
@@ -166,9 +165,9 @@ expression that selects a value from an empty list, or that calls |error|),
 then this means that evaluation cannot possibly complete without error (since
 no resulting value could have all possible types at once). This situation
 would also happen for a function defined recursively without any terminating
-case, if it were possible to specify such a function in \.{realex} (in reality
+case, if it were possible to specify such a function in \.{axis} (in reality
 the somewhat tedious method that currently is the only way to define recursive
-functions in \.{realex} requires the type of the function to be fixed
+functions in \.{axis} requires the type of the function to be fixed
 beforehand, so this case does not occur). Therefore we might treat the case
 where |convert_expr| leaves |type| completely undetermined as a type error;
 currently this is not signalled as such, but occasionally we do choose to
@@ -348,7 +347,7 @@ struct denotation : public expression_base
 
 @ Here are the first examples of the conversions done in |convert_expr|. Each
 time we extract a \Cpp\ value from the |expr| produced by the parser,
-construct and |new|-allocate a \.{realex} value (for instance |int_value|)
+construct and |new|-allocate a \.{axis} value (for instance |int_value|)
 from it making the pointer shared using |std::make_shared|, pass that
 pointer to the |denotation| constructor, and convert the resulting pointer to
 a unique pointer.

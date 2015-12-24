@@ -450,7 +450,7 @@ void ann_mod_wrapper(expression_base::level l)
 @ Next a simple administrative routine, introduced because we could not handle
 matrices in our programming language at the time (and still necessary as long
 as we want to define |quotient_basis| below as built-in function, since such a
-function cannot use the \.{realex} interpreter). Having computed a new
+function cannot use the \.{axis} interpreter). Having computed a new
 lattice (possibly with the help of |ann_mod|), in the form of vectors to
 replace those selected by |filter_units| from the result of |Smith_Cartan|,
 one needs to make the replacement. The following function does this, taking as
@@ -1606,20 +1606,20 @@ of type |realform_io::Interface|.
 #include "realform_io.h"
 
 @~The class |inner_class_value| will be the first built-in type where we
-deviate from the previously used scheme of holding an \.{atlas} object with
-the main value in a data member |val|. The reason is that the copy constructor
-for |ComplexReductiveGroup| is private (and nowhere defined), so
+deviate from the previously used scheme of holding an Atlas library object
+with the main value in a data member |val|. The reason is that the copy
+constructor for |ComplexReductiveGroup| is private (and nowhere defined), so
 that the straightforward definition of a copy constructor for such a built-in
 type would not work, and the copy constructor is necessary for the |clone|
 method. (In fact, now that normal manipulation of values involves duplicating
 shared pointers rather than of values, there is never a need to copy an
 |inner_class_value|, since |get_own<inner_class_value>| is never called;
 however the |clone| method is still defined for possible future use.) So
-instead, we shall share the \.{atlas} object when duplicating our value, and
+instead, we shall share the library object when duplicating our value, and
 maintain a reference count to allow destruction when the last copy disappears.
 
 The reference count needs to be shared of course, and since the links between
-the |inner_class_value| and both the \.{atlas} value and the reference count
+the |inner_class_value| and both the library value and the reference count
 are indissoluble, we use references for the members |val|, |dual| and
 |ref_count|. The first two references are not |const|, since some methods will
 as a side effect generate |CartanClass| objects in the inner class, whence
@@ -1757,7 +1757,7 @@ argument. (The |weyl::Twist| value returned by |check_involution| is only
 sufficient to determine the desired |M| in the semisimple case, so it cannot
 be used here.) Then the root datum and matrix are passed to a
 |ComplexReductiveGroup| constructor that the library provides specifically for
-this purpose, and which makes a copy of the root datum; the \.{atlas} program
+this purpose, and which makes a copy of the root datum; the \.{Fokko} program
 instead uses a constructor using a |PreRootDatum| that constructs the
 |RootDatum| directly into the |ComplexReductiveGroup|. Using that constructor
 here would be cumbersome and even less efficient then copying the existing
@@ -1804,7 +1804,7 @@ void twisted_involution_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
-@ To simulate the functioning of the \.{atlas} program, an overload of the
+@ To simulate the functioning of the \.{Fokko} program, an overload of the
 function |inner_class| (that used to be called |set_type|, whence the name of
 the wrapper below) takes as argument a Lie type, a list of kernel generators,
 and a string describing the inner class. The evaluation of the call
@@ -1863,7 +1863,7 @@ The wrapper for |set_inner_class| below expresses the permutation matrix~$P$
 produced by |lietype::involution| on the basis of the lattice of the root
 datum~|rd|. That basis is already the canonical basis of $\Zee^n$ used
 in~|rd|, so the difficulty is to find the basis~$b$ on which $P$ is expressed.
-If~|rd| was entered by the user as in the \.{atlas} program or in
+If~|rd| was entered by the user as in the \.{Fokko} program or in
 |root_datum_wrapper|, this was the canonical basis used until the
 |PreRootDatum| constructor expressed everything on the provided basis of a
 sub-lattice; we wish to recover the (integral) matrix~$M$ that specified the
@@ -2324,7 +2324,7 @@ void base_grading_vector_wrapper(expression_base::level l)
 @ There is a partial ordering on the Cartan classes defined for a real form. A
 matrix for this partial ordering is computed by the function
 |Cartan_order_matrix|, which more or less replaces the \.{corder} command in
-\.{atlas}.
+\.{Fokko}.
 
 @h "poset.h"
 @< Local function def...@>=
@@ -2344,7 +2344,7 @@ void Cartan_order_matrix_wrapper(expression_base::level l)
 
 
 @ Finally we make available an equality test for real forms. While this could
-easily be defined in the \.{realex} language itself (two real forms are equal
+easily be defined in the \.{axis} language itself (two real forms are equal
 if they belong to the same inner class, their real form numbers and base
 grading vectors are equal) it is useful to define a test here, since the test
 will also be used later in other equality tests (for KGB elements, or module
@@ -2415,7 +2415,7 @@ void dual_quasisplit_form_wrapper(expression_base::level l)
 %
 It is useful to be able to compute a real form based on other information than
 its index within its inner class, namely on a strong involution representative
-(involution and torus element). The synthetic \.{realex} function |real_form|
+(involution and torus element). The synthetic \.{atlas} function |real_form|
 takes an inner class, a matrix giving an involution~$\theta$, and a rational
 coweight~$t$. After projecting $t$ to the $+1$ eigenspace of~$\theta$ to make
 it $\theta$-stable, it describes (through $\exp_{-1}:l\mapsto\exp(\pi\ii l)$)
@@ -2651,7 +2651,7 @@ void Cartan_involution_wrapper(expression_base::level l)
 }
 
 
-@ This function and the following provide the functionality of the \.{atlas}
+@ This function and the following provide the functionality of the \.{Fokko}
 command \.{cartan}. They are based on |cartan_io::printCartanClass|, but
 rewritten to take into account the fact that we do not know about |Interface|
 objects for complex groups, and such that a usable value is returned. We omit
@@ -3251,7 +3251,7 @@ install_function(KGB_equals_wrapper,@|"=","(KGBElt,KGBElt->bool)");
 @*1 Blocks associated to a real form and a dual real form.
 %
 Although blocks as specified by a real form and a dual real form were designed
-more for the original \.{atlas} interface than for use by \.{realex}, we
+more for the original \.{Fokko} interface than for use by \.{atlas}, we
 provide a data type for such blocks and some simple functionality associated
 to them.
 
@@ -3905,7 +3905,7 @@ void test_nonzero_final(const module_parameter_value& p, const char* descr)
 }
 
 @ Here is the first block generating function, which just reproduces to output
-from the \.{atlas} program for the \.{nblock} command.
+from the \.{Fokko} program for the \.{nblock} command.
 
 @< Local function def...@>=
 void print_n_block_wrapper(expression_base::level l)
@@ -4172,14 +4172,14 @@ When working with parameters for standard modules, and notably with the
 deformation formulas, the need arises to keep track of formal sums of
 standard modules with coefficients of a type that allows keeping track of the
 signatures of the modules. These coefficients, which we shall call split
-integers and give the type \.{Split} in \.{realex}, are elements of the group
+integers and give the type \.{Split} in \.{atlas}, are elements of the group
 algebra over $\Zee$ of a (cyclic) group of order~$2$.
 
 @< Includes needed in the header file @>=
 #include "arithmetic.h"
 
 @*2 A class for split integers.
-Although the necessary operations could easily be defined in the \.{realex}
+Although the necessary operations could easily be defined in the \.{axis}
 programming language using pairs of integers, it is preferable to make them a
 built-in type, since this allows distinguishing them from pairs of integers
 used for other purposes, and to provide special output and conversion
@@ -4309,7 +4309,7 @@ The library provides a type |repr::SR_poly| in which such sums can be
 efficiently maintained. In order to use it we must have seen the header file
 for the module \.{free\_abelian} on which the implementation is based. While
 that class itself does not have such an invariant, the handling of these
-formal sums in \.{realex} will be such that all terms are ensured to have the
+formal sums in \.{atlas} will be such that all terms are ensured to have the
 predicates |is_standard| and |is_final| true, while |is_zero| is false, and to
 have a dominant representative $\gamma$ of the infinitesimal character. Only
 under such restriction can it be guaranteed that equivalent terms (which now
