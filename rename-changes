@@ -1,0 +1,15 @@
+rx-scripts (rename to scripts)
+
+distr_INSTALL (replace texts)
+distr_Makefile (replace texts and references)
+INSTALL (replace texts)
+make_distribution.dh
+Makefile (adapt)
+
+rx-scripts/*.rx (*.ax or *.at)
+
+sources/interpreter/*.w (change all textual references)
+sources/interpreter/buffer.w (change default extension)
+sources/interpreter/evaluator.w (rename to ./axis.w)
+sources/interpreter/built-in-types.w (rename to ./atlas-types.w)
+sources/interpreter/types.w (rename to ./axis-types.w)
