@@ -22,39 +22,51 @@
 \def\emph#1{{\it#1\/}}
 \def\point{\item{$\bullet$}}
 
-@* Introduction to the {\tt realex} interpreter.
+\def\axis.{\.{axis}}
+
+@* Introduction to the {\tt atlas} interpreter.
 %
 While the Atlas software initially consisted of a single executable
-program \.{atlas} that essentially allows running each of the functionalities
+program \.{atlas} that essentially allows running all of the functionality
 provided by the software library separately, a second executable program
-called \.{realex} has been developed since the year~$2006$, which program also
-gives access to the functionalities provided by the software library, but in a
-manner that provides the user with means to capture the results from previous
-computations and use them in subsequent computations. It started out as an
-interface giving the user just assignable variables and an expression language
-for calling library functions, but has grown out to a complete programming
-language, which at the time of writing is still being extended in many
-directions. The name of the program might stand for Redesigned
-Expression-based Atlas of Lie groups EXecutable, until a better explanation
-for the name comes along.
+initially called \.{realex} has been developed since the year~$2006$, which
+program also gives access to the functionality provided by the software
+library, but in a manner that provides the user with means to capture the
+results from previous computations and use them in subsequent computations. It
+started out as an interface giving the user just assignable variables and an
+expression language for calling library functions, but has grown out to a
+complete programming language, which at the time of writing is still being
+extended in many directions. The name \.{realex} stood for
+Redesigned Expression-based Atlas of Lie groups EXecutable.
+
+At the end of the year~$2015$ it was decided, in order to promote the use of
+the programming language version as primary user interface to the Atlas
+software, to give the name \.{atlas} to the interpreter program, while
+renaming the old \.{atlas} program to \.{Fokko} in honour of the creator of
+the Atlas software, Fokko du~Cloux. At the same time it was decided to give
+the name \axis. to the programming language (independent of the Atlas
+library) that had been developed as a major part of the \.{realex} program
+(and which continues to develop). Though no pure \axis. interpreter is
+compiled inside the Atlas software, one could fairly easily be extracted.
 
 The sources specific to the interpreter are situated in the
 current (\.{sources/interpreter/}) subdirectory, and almost all its names are
 placed in the |atlas::interpreter| namespace. This part of the program has
 been split into several modules, only some of which are centred around
-specific data structures; in general these modules are more interdependent
+specific \Cpp\ classes (as is the case for most modules of the Atlas library).
+In general these interpreter modules are more interdependent
 than those of the main Atlas library, and the subdivision is more arbitrary
 and subject to change. We list here the source files for these modules, and
-their dependencies notably on the level of their header files.
+their dependencies notably at the level of their header files.
 
 \point The file \.{buffer.w} defines the classes |BufferedInput| providing an
 interface to input streams, and |Hash_table| storing and providing a
-translation from identifiers to small integers |id_type|.
+translation from \axis. identifiers to small integers |id_type|.
 
-\point The file \.{parsetree.w} defines the |expr| structure representing parsed
-expressions, and many related types, and node constructing functions for use
-by the parser. Its header file includes \.{buffer.h}, and declares some
-pointer types to types that will be defined in \.{types.h}.
+\point The file \.{parsetree.w} defines the |expr| structure representing
+parsed \axis. expressions, and many related types, and node constructing
+functions for use by the parser. Its header file includes \.{buffer.h}, and
+declares some pointer types to types that will be defined in \.{axis-types.h}.
 
 \point The file \.{parser.y} is the source for \.{bison}-generated the parser
 file \.{parser.tab.c}. The header file \.{parser.tab.h} includes nothing, but
@@ -64,32 +76,32 @@ contains definitions depending on \.{parse\_types.h} having been included.
 |Lexical_analyser| and the readline completion function |id_completion_func|.
 Its header file includes \.{buffer.h}, \.{parse\_types.h} and \.{parser.tab.h}.
 
-\point The file \.{types.w} defines the main base classes for the evaluator,
-|type_expr| for representing (realex) types, |value_base| for dynamic values,
-|context| for dynamic evaluation contexts, |expression_base| for ``compiled''
-expressions, |program_error| for exceptions, and numerous types related to
-these. Its header file includes \.{parsetree.h} (which is needed for the error
-classes only).
+\point The file \.{axis-types.w} defines the main base classes for the \axis.
+evaluator, |type_expr| for representing \axis. types, |value_base| for
+dynamic values, |context| for dynamic evaluation contexts, |expression_base|
+for ``compiled'' expressions, |program_error| for exceptions, and numerous
+types related to these. Its header file includes \.{parsetree.h} (which is
+needed for the error classes only).
 
-\point The file \.{built-in-types.w} defines types primitive to realex which
+\point The file \.{global.w} defines primitive \axis. types like integers,
+rationals, matrices. Also some global aspects of the interpreter like
+operating the global identifier tables. Its header file
+includes \.{axis-types.h} and some headers from the Atlas library.
+
+\point The file \.{atlas-types.w} defines types primitive to \.{atlas} which
 encapsulate types of the Atlas library, and their interface functions. Its
 header file includes \.{types.h} and many headers from the Atlas library.
 
-\point The file \.{global.w} defines other primitive types less intimately
-related to Atlas, like integers, rationals, matrices. Also some global aspects
-of the interpreter like operating the global identifier tables. Its header
-file includes \.{types.h} and some headers from the Atlas library.
-
-\point The file \.{evaluator.w} Defines the realex type-checker and the
-evaluator proper. It defines many classes derived from |expression_base|. Its
-header file includes \.{lexer.h} and \.{global.h}.
+\point The file \.{axis.w} Defines the \axis. type-checker and evaluator. It
+defines many classes derived from |expression_base|. Its header file
+includes \.{lexer.h} and \.{global.h}.
 
 \point The file \.{main.w}, the current module, brings everything together and
 defining the main program. It has no header file.
 
 
-@* Main program. This file defines a small main program to test the parser
-under development. It is written in \Cpp, but is it mainly concerned with
+@* Main program. This file defines a small main program that binds together
+the \.{atlas} program. It is written in \Cpp, but is it mainly concerned with
 interfacing to the parser that is generated by~\.{bison}, and which is
 therefore written in~\Cee. However, we now compile the generated parser file
 \.{parser.tab.c} using a \Cpp\ compiler, which means we can write our code
@@ -100,12 +112,12 @@ platforms, we arrange for the possibility of compiling this program in the
 absence of that library. This means that we should refrain from any reference
 to its header files, and so the corresponding \&{\#include} statements cannot
 be given in the usual way, which would cause their inclusion unconditionally.
-Like for the \.{atlas} program, the compile time flag |NREADLINE|, if defined
+Like for the \.{Fokko} program, the compile time flag |NREADLINE|, if defined
 by setting \.{-DNREADLINE} as a flag to the compiler, will prevent any
 dependency on the readline library.
 
-@d realex_version "0.91"
- // numbering from 0.5 (on 27/11/2010); last change September 20, 2015
+@d axis_version "0.9"
+ // numbering from 0.5 (on 27/11/2010); last change May 6, 2015
 
 @c
 
@@ -299,7 +311,7 @@ int main(int argc, char** argv)
   bool use_readline=true;
   @< Other local variables of |main| @>
   @< Handle command line arguments @>
-@/BufferedInput input_buffer(isatty(STDIN_FILENO) ? "rx> " : nullptr
+@/BufferedInput input_buffer(isatty(STDIN_FILENO) ? "atlas> " : nullptr
                             ,use_readline ? readline : nullptr
 			    ,use_readline ? add_history : nullptr);
   main_input_buffer= &input_buffer;
@@ -309,10 +321,10 @@ int main(int argc, char** argv)
   @< Enter system variables into |global_id_table| @>
 @)
   @< Silently read in the files from |prelude_filenames| @>
-  std::cout << "This is 'realex', version " realex_version " (compiled on " @|
-            << atlas::version::COMPILEDATE @| <<
-").\nIt is the programmable interpreter interface to the library (version " @|
-       << atlas::version::VERSION @| << ") of\n"
+  std::cout << "This is 'atlas' (library version " @|
+       << atlas::version::VERSION @| << ", axis language version " @|
+       axis_version "),\ncompiled on " @|
+            << atlas::version::COMPILEDATE @| << ".\n"
        << atlas::version::NAME << @| ". http://www.liegroups.org/\n";
 @)
   @< Enter the main command loop @>
@@ -615,9 +627,8 @@ are currently either known in the overload or global identifier tables, or
 have such a low code that they are keywords or predefined types. All such
 identifiers are known in |main_hash_table|, so that is what our primary loop
 is over, but upon finding a partial match we test the stated conditions. Those
-additional tests (which were not done until version 0.9 of \.{realex})
-prevent names of local identifiers of functions loaded and accidentally typed
-erroneous identifiers to ``pollute the completion space''.
+additional tests prevent names of local identifiers of functions loaded and
+accidentally typed erroneous identifiers to ``pollute the completion space''.
 
 The completion function has some strange characteristics that are dictated by
 the \.{readline} library. It must perform a loop that is actually
@@ -776,7 +787,7 @@ if (working_directory_name!=nullptr)
 
 @< Initialise the \.{readline} library interface @>=
 #ifndef NREADLINE
-  rl_readline_name="realex"; // for users who want to customise |readline|
+  rl_readline_name="axis"; // for users who want to customise |readline|
   using_history();
   rl_completer_word_break_characters = lexical_break_chars;
   rl_attempted_completion_function = do_completion; // set up input completion

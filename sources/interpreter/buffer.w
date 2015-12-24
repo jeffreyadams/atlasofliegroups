@@ -804,10 +804,10 @@ escaping newlines in the middle of tokens, for instance string constants, to
 be handled painlessly). A price to pay is that we cannot analyse the left
 context of a possibly escaping character to see if it is not actually part of
 a token. So we simply assert that a final backslash character on a line is
-always one that escapes the newline; for tokens whose representation can ends
-with a backslash (like the integer division operator in \.{realex}) the user
-should simply refrain from using then at the end of a line (on can add a
-comment after it if necessary).
+always one that escapes the newline; for tokens whose representation is or
+ends with a backslash (in \.{axis} this is the case for the integer division
+operator) the user should simply refrain from using them at the very end of a
+line (one may add a comment after it to avoid the problem).
 
 Since it is easy and efficient to do so, we also skip trailing spaces here;
 this should make little difference since the lexical analyser will probably

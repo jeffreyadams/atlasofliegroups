@@ -933,23 +933,23 @@ type_expr mk_type_expr(const char* s);
 
 @ The task of converting a properly formatted string into a type is one of
 parsing a simple kind of expressions. The strings used here come from string
-denotations in the source code (mostly in calls installing built-in \.{realex}
-function) rather than from user input, and we are not going to write incorrect
-strings (we hope). Therefore we don't care if the error handling is crude
-here. The simplest way of parsing ``by hand'' is recursive descent, so that is
-what we shall use. By passing a character pointer by reference, we allow the
-recursive calls to advance the index within the string read.
+denotations in the source code (mostly in calls installing built-in functions
+into \.{axis}) rather than from user input, and we are not going to write
+incorrect strings (we hope). Therefore we don't care if the error handling is
+crude here. The simplest way of parsing ``by hand'' is recursive descent, so
+that is what we shall use. By passing a character pointer by reference, we
+allow the recursive calls to advance the index within the string read.
 
 The function |scan_type| does the real parsing, |mk_type_expr| calls it,
 providing a local modifiable pointer to bind to its reference parameter (which
 is important because |scan_type| cannot directly accept a \Cee-string constant
-as argument) while also doing error reporting, and |mk_type| is just a
-wrapper around |mk_type_expr| that converts the result from a |type_expr| to
-a smart pointer to (a freshly allocated instance of) such. Currently the
-function |mk_type_expr| is called only during the start-up phase
-of \.{realex}, and if an error encountered (of type |logic_error|, since
-it indicates an error in the \.{realex} program itself), printing of the error
-message will be followed by termination of the program.
+as argument) while also doing error reporting, and |mk_type| is just a wrapper
+around |mk_type_expr| that converts the result from a |type_expr| to a smart
+pointer to (a freshly allocated instance of) such. Currently the function
+|mk_type_expr| is called only during the start-up phase of \.{atlas}, and if an
+error is encountered (of type |logic_error|, since this must be an error in
+the \.{atlas} program itself), printing of the error message will be followed
+by termination of the program.
 
 @< Function definitions @>=
 dressed_type_list scan_type_list(const char*& s);
@@ -1583,7 +1583,7 @@ void push_expanded(expression_base::level l, const shared_value& v);
 @~Type information is not retained in compiled expression values, so
 |push_expanded| cannot know which type had been found for |v| (moreover,
 |push_expanded| is typically called for arguments for which the type is not
-determined at the time that \.{realex} is compiled). But it can use a dynamic
+determined at \.{atlas} compile time). But it can use a dynamic
 cast do determine whether |v| actually is a tuple value or not.
 
 @< Function definitions @>=

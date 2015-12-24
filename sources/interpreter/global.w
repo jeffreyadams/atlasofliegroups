@@ -2391,7 +2391,7 @@ void mat_neq_wrapper(expression_base::level l)
 
 @*2 Vector arithmetic.
 %
-While vector arithmetic operations can easily be implemented in the \.{realex}
+While vector arithmetic operations can easily be implemented in the \.{axis}
 language, and this was actually done (with the exception of scalar and matrix
 products) for a long time, they certainly profit in terms of efficiency from
 being built-in.
