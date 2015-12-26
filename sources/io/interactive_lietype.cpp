@@ -338,6 +338,6 @@ void ignoreSimpleLieType(input::InputBuffer& buf)
   buf >> l;
 }
 
-} // namespace
+} // |namespace|
 
-} // namespace atlas
+} // |namespace atlas|

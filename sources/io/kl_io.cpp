@@ -197,6 +197,6 @@ std::ostream& printMu(std::ostream& strm, const kl::KLContext& klc)
   return strm;
 }
 
-} // namespace kl_io
+} // |namespace kl_io|
 
-} // namsespace atlas
+} // |namsespace atlas|

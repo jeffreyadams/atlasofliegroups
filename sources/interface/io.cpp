@@ -12,8 +12,8 @@
 #include <fstream>
 #include <string>
 
-/* the following macro should be set to an absolute path from the atlas
-   makefile, but if not we use a relative path from the atlas directory */
+/* the following macro should be set to an absolute path from the Atlas
+   Makefile, but if not we use a relative path from the atlas directory */
 #ifndef MESSAGE_DIR_MACRO
 #define MESSAGE_DIR_MACRO "messages/"
 #endif

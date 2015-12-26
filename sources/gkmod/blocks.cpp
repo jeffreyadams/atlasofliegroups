@@ -1774,6 +1774,6 @@ DynkinDiagram folded
 BitMap common_Cartans(RealReductiveGroup& GR, RealReductiveGroup& dGR)
 { return GR.Cartan_set() & GR.complexGroup().dual_Cartan_set(dGR.realForm()); }
 
-} // namespace blocks
+} // |namespace blocks|
 
-} // namespace atlas
+} // |namespace atlas|

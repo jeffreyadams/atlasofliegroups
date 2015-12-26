@@ -1,7 +1,7 @@
 Instructions  installation of the Atlas software.
 For more information about the software see the README file.
 
-The atlas software provides two main programs, called 'atlas' and 'Fokko'.
+The Atlas software provides two main programs, called 'atlas' and 'Fokko'.
 
 Prerequisites: you must have a C++ compiler, and GNU 'make' installed, as well
 as a _development version_ of the GNU readline library (one that includes
@@ -188,7 +188,7 @@ Type
 
 The Gnu readline library should now be installed on your Mac.
 
-There is a problem when the atlas software is linked: the linker
+There is a problem when the Atlas software is linked: the linker
 will find most of the readline commands in someplace like
 
 /usr/lib/libreadline.dylib,
@@ -199,9 +199,9 @@ lives at
 /usr/local/lib/libreadline.5.dylib
 
 The difficulty is that the Mac library lacks two or three of the
-commands used in the atlas readline, so the linker will refuse to
+commands used in the Atlas readline, so the linker will refuse to
 finish.  I don't know the best or most natural way to fix this.  One
-thing which works is to edit the atlas Makefile, modifying the line
+thing which works is to edit the Makefile, modifying the line
 
         rl_libs := -lreadline
 
@@ -209,7 +209,7 @@ to read
 
         rl_libs := -lreadline.5 -lcurses
 
-Now the atlas software should link.
+Now the Atlas software should link.
 
 -------------------------------------------------------------------
 

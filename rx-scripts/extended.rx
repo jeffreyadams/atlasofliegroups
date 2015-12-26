@@ -47,8 +47,8 @@
   ^delta, ^xi_0, omega, ^theta act on X_*,
                              which contains g,l,t,rho_check,alpha_check
 
-  Warning: lambda is in X^*, NOT the same as lambda in (x,lambda,nu) in atlas,
-  (which is in X^*+\rho) rather it is the weight vector atlas call lambda-rho
+  Warning: lambda is in X^*, NOT the same as lambda in (x,lambda,nu) in Fokko,
+  (which is in X^*+\rho) rather it is the weight vector Fokko calls lambda-rho
 
   (g,l,theta) -> xi:
   g = infinitesimal co-character, in X_*\otimes Q, delta-fixed
@@ -252,7 +252,7 @@ set sign (extended_param E,(extended_param F1,extended_param F2)) = int:
 set sign ((extended_param E1,extended_param E2),extended_param F)=int:
   sign(E1,F)+sign(E2,F)
 
-{ default(F)=\pm F is the extended parameter constructed by atlas }
+{ default(F)=\pm F is the extended parameter constructed by Atlas }
 set default (extended_param F) = extended_param:
   E(delta(F),x(F),gamma(F),g(F),lambda(F)+rho(ic(F)))
 

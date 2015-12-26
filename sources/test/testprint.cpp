@@ -123,7 +123,7 @@ std::ostream& print
 
 
 /*
-  Synopsis: produces the file as posted on the atlas website.
+  Synopsis: produces the file as posted on the Atlas website.
 
   Precondition: G.fullCartan() has been called successfully.
 */
@@ -200,6 +200,6 @@ std::ostream& printComponents(std::ostream& strm,
   return strm;
 }
 
-} // namespace testprint
+} // |namespace testprint|
 
-} // namespace atlas
+} // |namespace atlas|

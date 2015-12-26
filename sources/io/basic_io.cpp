@@ -258,4 +258,4 @@ template std::ostream& operator<<
 
 } // |namespace matrix|
 
-} // namespace atlas
+} // |namespace atlas|

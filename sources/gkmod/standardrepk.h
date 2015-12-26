@@ -37,7 +37,7 @@ namespace standardrepk {
 
 // type |HCParam|: image of a weight of the $\rho$-cover mod $(1-\theta)X^*$
 
-// the following cannot be in atlas_fwd.h: they need free_abelian.h
+// the following cannot be in ../Atlas.h: they need free_abelian.h
 typedef Char::coef_t CharCoeff;
 typedef q_Char::coef_t q_CharCoeff; // i.e., |Polynomial<int>|
 
@@ -98,7 +98,7 @@ template <typename C>
   identifications and relations, which are associated to the notions of
   being "standard" (rather than continued), "final", and "normalized").
 
-  In the atlas picture, the Cartan and complete positive root system are
+  In the Atlas picture, the Cartan and complete positive root system are
   always fixed, so one does not specify 2) and 3); instead the situation
   will be conjugated to one where the positive roots are the perpetual ones,
   and what changes is the strong involution $x$ representing the real form,

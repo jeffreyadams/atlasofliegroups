@@ -106,8 +106,8 @@ class KLSupport
   void fillPrimitivize();
 };
 
-} // namespace klsupport
+} // |namespace klsupport|
 
-} // namespace atlas
+} // |namespace atlas|
 
 #endif

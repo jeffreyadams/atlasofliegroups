@@ -571,7 +571,7 @@ of~|expr|.
 @< Includes needed... @>=
 #include "sl_list.h" // lists are used in parsing types
 
-@~Historically implementing these lists using the atlas class template
+@~Historically implementing these lists using the Atlas class template
 |containers::simple_list| was the first time a non-POD variant of |expr| was
 introduced, and it required passage to \Cpp11 as well as substantial
 refactoring of the code to make this possible and safe. However, it ultimately

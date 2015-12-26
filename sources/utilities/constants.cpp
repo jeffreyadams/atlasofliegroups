@@ -96,4 +96,4 @@ constants constants::init()
 
   const constants constants::dummy = constants::init(); // ensure call |init|
 
-} // namespace atlas
+} // |namespace atlas|

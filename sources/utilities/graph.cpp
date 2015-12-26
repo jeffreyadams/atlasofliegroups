@@ -304,6 +304,6 @@ void OrientedGraph::addLinks
 
 }
 
-} // namespace graph
+} // |namespace graph|
 
-} // namespace atlas
+} // |namespace atlas|

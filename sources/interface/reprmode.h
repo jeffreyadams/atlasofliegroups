@@ -38,8 +38,8 @@ namespace commands {
   const StandardRepr& currentStandardRepr();
   void ensure_full_block();
 
-} // namespace reprmode
+} // |namespace reprmode|
 
-} // namespace atlas
+} // |namespace atlas|
 
 #endif

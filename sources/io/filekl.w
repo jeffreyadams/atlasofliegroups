@@ -21,10 +21,10 @@
 @* Introduction.
 %
 This source file groups functionality for exchanging information between the
-\.{atlas} program and external utility programs that provide information about
+\.{Fokko} program and external utility programs that provide information about
 Kazhdan-Lusztig polynomials, via some binary files that contain the results of
-atlas computations. The goal is that such results can be accessed without
-having to run \.{atlas} again, which is quite essential in the case of the
+Fokko's computations. The goal is that such results can be accessed without
+having to run \.{Fokko} again, which is quite essential in the case of the
 Kazhdan-Lusztig polynomials for the big block of~$E_8$, but which can be
 useful for other cases as well.
 
@@ -32,16 +32,16 @@ A variety of simple binary file formats is defined, with in each case an
 accompanying class whose constructor will open a file of that type and whose
 methods provide the necessary interpretation of the binary format, so that the
 utility programs can be written in  a natural style almost as if they had
-access to the \.{atlas} structures that produced the values written to file.
+access to the \.{Fokko} structures that produced the values written to file.
 
 The definitions of those classes is easiest to understand if juxtaposed to the
 definitions of the routines that write the binary files. It is important
 however to have separate object files for the two kinds of functions, since
-the writing functions need to have access to many internal \.{atlas} classes,
+the writing functions need to have access to many internal Atlas classes,
 whereas the reading functions should not depend on linking together with those
-\.{atlas} classes, lest the utility programs become as large as \.{atlas}
+Atlas classes, lest the utility programs become as large as \.{Fokko}
 itself. This source file then will write a file \.{filekl.cpp} that compiles
-to an object module of \.{atlas}, and  another file \.{filekl\_in.cpp} whose
+to an object module of \.{Fokko}, and  another file \.{filekl\_in.cpp} whose
 object module is to be incorporated into utility programs.
 
 @h "filekl.h"
@@ -70,7 +70,7 @@ namespace atlas {
 
 @ The header file \.{filekl.h} requires no include files other than the
 forward declarations contained in the \.{iosfwd} standard header
-and \.{atlas\_types.h}.
+and \.{Atlas.h}.
 
 @< Includes needed in the header file @>=
 #include <iosfwd>

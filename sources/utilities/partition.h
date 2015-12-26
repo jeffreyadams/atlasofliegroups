@@ -265,9 +265,9 @@ class PartitionIterator
 
 }; // |class PartitionIterator|
 
-} // namespace partition
+} // |namespace partition|
 
-} // namespace atlas
+} // |namespace atlas|
 
 /******** template definitions ***********************************************/
 

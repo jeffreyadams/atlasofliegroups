@@ -349,6 +349,6 @@ void fillLengthLess
   ll[l+1]=b.size(); // here l=b.length(b.size()-1)=max(lengths(b))
 }
 
-} // namsespace
+} // |namsespace|
 
-} // namespace atlas
+} // |namespace atlas|

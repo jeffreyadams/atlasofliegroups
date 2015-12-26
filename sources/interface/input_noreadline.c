@@ -132,6 +132,6 @@ const char* readLine (const char* prompt, bool toHistory)
   return line.c_str();
 }
 
-} // namespace
+} // |namespace|
 
-} // namespace atlas
+} // |namespace atlas|

@@ -576,8 +576,8 @@ const char* getCommand( const char* prompt)
 }
 
 
-} // namespace
+} // |namespace|
 
 } // |namespace commands|
 
-} // namespace atlas
+} // |namespace atlas|

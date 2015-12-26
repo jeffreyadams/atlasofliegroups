@@ -43,10 +43,10 @@ namespace atlas {
    compitlation. Any *_fwd.h files in the structure and gkmod subirectories
    were simply replaced by this file, avoiding duplication, but the utilities
    modules have the ambition of being reusable independently of the rest of
-   the atlas library. In fact this file should always be included in any atlas
+   the Atlas library. In fact this file should always be included in any Atlas
    header file other than from the utilitites subdierectory, and alway before
    any header files from that subdirectory, so the definitions here will be
-   the only ones seen when compiling the atlas library.
+   the only ones seen when compiling the Atlas library.
  */
   namespace set {
     typedef size_t Elt;

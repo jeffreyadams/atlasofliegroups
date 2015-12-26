@@ -6,12 +6,12 @@ INSTALL = /usr/bin/install
 
 # You may edit the INSTALLDIR and BINDIR variables
 
-# INSTALLDIR is where the executables atlas, realex and the messages directory
+# INSTALLDIR is where the executables Fokko, atlas, and the messages directory
 # will be moved after successfull compilation
 
-# BINDIR is where a symbolic link to the 'atlas' executable will be created,
-# and shell script executing 'realex' will be placed; provided this directory
-# is in the search path, you can then call atlas, realex from anywhere
+# BINDIR is where a symbolic link to the 'Fokko' executable will be created,
+# and shell script executing 'atlas' will be placed; provided this directory
+# is in the search path, you can then call Fokko, atlas, from anywhere
 
 # However when BINDIR is INSTALLDIR one cannot have those shell scripts since
 # they would be at the same place as the executable to call; since both default
