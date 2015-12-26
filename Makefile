@@ -35,12 +35,12 @@ version := $(shell ./getversion.pl)
 messagedir := $(INSTALLDIR)/messages/
 cweb_dir := cwebx
 sources_dir := sources
-realex_dir := sources/interpreter
+atlas_dir := sources/interpreter
 
 # Fokko_dirs contains subdirectories of 'atlas/sources' needed for 'Fokko'
-# realex_dirs are where the object files for realex are situated
+# atlas_dirs are where the object files for 'atlas' are situated
 Fokko_dirs  := utilities structure gkmod io error interface test
-realex_dirs := utilities structure gkmod io error interpreter
+atlas_dirs := utilities structure gkmod io error interpreter
 
 # Fokko_sources contains a list of the source files (i.e., the .cpp files)
 Fokko_sources := $(wildcard $(Fokko_dirs:%=sources/%/*.cpp))
@@ -50,9 +50,9 @@ Fokko_objects := $(Fokko_sources:%.cpp=%.o)
 
 # headers are searched in the all directories containing source files
 Fokko_includes := $(addprefix -Isources/,$(Fokko_dirs))
-realex_includes := $(addprefix -Isources/,$(realex_dirs))
+atlas_includes := $(addprefix -Isources/,$(atlas_dirs))
 
-# for the interpreter (realex sans the Atlas library) sources are *.w files
+# for the interpreter (atlas sans the Atlas library) sources are *.w files
 interpreter_cwebs := $(wildcard sources/interpreter/*.w)
 interpreter_cweb_objects := $(interpreter_cwebs:%.w=%.o)
 interpreter_objects := $(interpreter_cweb_objects) \
@@ -62,11 +62,11 @@ interpreter_made_files := $(interpreter_cwebs:%.w=%.cpp) \
     sources/interpreter/parse_types.h \
     sources/interpreter/parser.tab.h sources/interpreter/parser.tab.c
 # the following variable is a list of patterns, not files!
-non_realex_objects := sources/io/interactive%.o \
+non_atlas_objects := sources/io/interactive%.o \
     sources/interface/%.o sources/test/%.o \
     sources/io/poset.o sources/utilities/abelian.o sources/gkmod/kgp.o
-realex_objects := $(interpreter_objects) \
-    $(filter-out $(non_realex_objects),$(Fokko_objects))
+atlas_objects := $(interpreter_objects) \
+    $(filter-out $(non_atlas_objects),$(Fokko_objects))
 
 objects := $(Fokko_objects) $(interpreter_objects)
 
@@ -92,7 +92,7 @@ pflags := -Wall -pg -O -DNREADLINE
 # these flags are necessary for compilation, the -c should not be altered
 CXXFLAGS  = -c $(CXXFLAVOR)
 
-# additional flags specific for Fokko (realex specifics are in its own Makefile)
+# additional flags specific for Fokko (atlas specifics are in its own Makefile)
 Fokko_flags = $(Fokko_includes)
 
 # to select another flavor, set optimize=true, debug=true or profile=true
@@ -166,8 +166,8 @@ endif
 
 .PHONY: all install version distribution
 
-# The default target is 'all', which builds the executable 'Fokko', and 'realex'
-all: Fokko realex
+# The default target is 'all', which builds the executable 'Fokko', and 'atlas'
+all: Fokko atlas
 
 # the following dependency forces emptymode.cpp to be recompiled whenever any
 # of the object files changes; this guarantees that the date in the version
@@ -194,10 +194,10 @@ sources/interface/io.o : sources/interface/io.cpp
 	$(CXX) $(CXXFLAGS) $(Fokko_flags) -DMESSAGE_DIR_MACRO=\"$(messagedir)\" -o $@ $<
 
 
-# for files proper to realex, the build is defined inside sources/interpreter
+# for files proper to atlas, the build is defined inside sources/interpreter
 
-realex: $(cweb_dir)/ctanglex $(interpreter_made_files) $(realex_objects)
-	cd sources/interpreter && $(MAKE) ../../realex
+atlas: $(cweb_dir)/ctanglex $(interpreter_made_files) $(atlas_objects)
+	cd sources/interpreter && $(MAKE) ../../atlas
 
 $(filter-out sources/interpreter/parser.tab.%,$(interpreter_made_files)):
 	cd sources/interpreter && $(MAKE) $(subst sources/interpreter/,,$@)
@@ -230,13 +230,13 @@ endif
 
 include sources/interpreter/dependencies # these are manually maintained for now
 
-install: Fokko realex
+install: Fokko atlas
 ifneq ($(INSTALLDIR),$(shell pwd))
 	@echo "Installing directories and files in $(INSTALLDIR)"
 	$(INSTALL) -d $(INSTALLDIR)/www
 	$(INSTALL) -d $(INSTALLDIR)/messages $(INSTALLDIR)/rx-scripts
 	$(INSTALL) -m 644 LICENSE COPYRIGHT README $(INSTALLDIR)
-	$(INSTALL) -p Fokko realex $(INSTALLDIR)
+	$(INSTALL) -p Fokko atlas $(INSTALLDIR)
 	$(INSTALL) -m 644 www/*html $(INSTALLDIR)/www/
 	$(INSTALL) -m 644 messages/*.help $(INSTALLDIR)/messages/
 	$(INSTALL) -m 644 messages/intro_mess $(INSTALLDIR)/messages/
@@ -245,11 +245,11 @@ endif
 ifneq ($(BINDIR),$(INSTALLDIR))
 	mkdir -p $(BINDIR)
 	@if test -h $(BINDIR)/Fokko; then rm -f $(BINDIR)/Fokko; fi
-	@if test -h $(BINDIR)/realex; then rm -f $(BINDIR)/realex; fi
+	@if test -h $(BINDIR)/atlas; then rm -f $(BINDIR)/atlas; fi
 	ln -s $(INSTALLDIR)/Fokko $(BINDIR)/Fokko # make symbolic link
-# whenever BINDIR is not INSTALLDIR, we can put a shell script as bin/realex
+# whenever BINDIR is not INSTALLDIR, we can put a shell script as bin/atlas
 # which ensures the search path will be properly set (no compiled-in path here)
-	echo '#!/bin/sh\nexec $(INSTALLDIR)/realex --path=$(INSTALLDIR)/rx-scripts basic.rx "$$@"' >$(BINDIR)/realex; chmod a+x $(BINDIR)/realex
+	echo '#!/bin/sh\nexec $(INSTALLDIR)/atlas --path=$(INSTALLDIR)/rx-scripts basic.rx "$$@"' >$(BINDIR)/atlas; chmod a+x $(BINDIR)/atlas
 endif
 
 version:
@@ -264,7 +264,7 @@ mostlyclean:
            sources/*/*.tex sources/*/*.dvi sources/*/*.log sources/*/*.toc
 
 clean: mostlyclean
-	$(RM) -f Fokko realex
+	$(RM) -f Fokko atlas
 
 veryclean: clean
 	$(RM) -f sources/*/*.d cwebx/*.o cwebx/ctanglex cwebx/cweavex \
