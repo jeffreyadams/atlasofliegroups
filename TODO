@@ -6,12 +6,12 @@
 - Rewrite block construction using methods inspired by synthetic operations
 - Rewrite K type computations to use data type more compatible with Param
 
-* Work on the atlas program
+* Work on the Fokko program
 
 - correct bug with mysterious typeahead after bailing out with ? (done?)
 - clean up the mess dealing with input (interface/input, io/interactive...)
 
-* Work on the realex program
+* Work on the atlas program
 
 - When input is redirected from a file, return EXIT_SUCCESS on clean run only
 

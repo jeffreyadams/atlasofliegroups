@@ -59,7 +59,7 @@ struct constants
 private: // trickery to ensure initialization is performed exactly once
   static constants init();
   static const constants dummy; // a |static| variable can be of own class!
-}; // struct constants
+}; // |struct constants|
 
 } // |namespace atlas|
 

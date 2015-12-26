@@ -1270,7 +1270,7 @@ equivalents like |Weight| for |int_Vector|, as that might be more confusing
 that helpful to users. In any case, the interpretation of the values is not at
 all fixed (vectors are used for coweights and (co)roots as well as for
 weights, and matrices could denote either a basis or an automorphism of a
-lattice). The header \.{atlas\_types.h} makes sure all types are pre-declared,
+lattice). The header \.{../Atlas.h} makes sure all types are pre-declared,
 but we need to see the actual type definitions in order to incorporated these
 values in ours.
 

@@ -168,11 +168,11 @@ set tworho_c(RealForm G)= ratvec:2*rho_c(G)
 
 {	  conversion from restriction to K format to Param		}
 
-{ atlas outputs a K-type as two_lambda@torus_bits#cartan_class
+{ Fokko outputs a K-type as two_lambda@torus_bits#cartan_class
   this defines a final standard limit parameter p=(x,lambda) where
   torus_factor(x)=base_grading(G)+torus_bits, and involution(x) is the
   canonical involution of the Cartan_class
-  currently atlas commands Ktype_mat, branch and Ktypeform print K-types in
+  currently Fokko commands Ktype_mat, branch and Ktypeform print K-types in
   format [ 2, 2,-2, 2 ]@(0,0,1,1)#4; this can be made into a Param value by
   calling the function below as convert_K_type(G,[2,2,-2,2],[0,0,1,1],4)
 }

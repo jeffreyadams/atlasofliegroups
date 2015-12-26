@@ -352,7 +352,7 @@ class CoveringIterator {
 
   void makeBasis(WeightList&) const;
 
-  // report where we are in atlas-interface fashion
+  // report where we are in Fokko-interface fashion
   RatWeightList kernel_generators () const;
 
 // manipulators

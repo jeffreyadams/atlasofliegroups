@@ -1334,6 +1334,6 @@ void WeylGroup::act
   (const RootDatum& rd, const WeylElt& w, matrix::Vector<int>& v) const;
 
 
-}
+} // |namespace weyl|
 
 } // |namespace atlas|

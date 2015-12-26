@@ -674,7 +674,7 @@ private:
   // number of conjugate twisted involutions (|rs| is our root system)
   size_t orbit_size(const RootSystem& rs) const;
 
-}; // class CartanClass
+}; // |class CartanClass|
 
 } // |namespace cartanclass|
 
