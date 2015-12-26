@@ -12,7 +12,7 @@ regular integral infinitesimal character, which is "dual" to B. This
 means that there is a bijection B -> B^v, written pi -> pi^v, with a
 number of properties.
 
-In the context of atlas a block B is determined by a real form of G
+In the context of Atlas a block B is determined by a real form of G
 and a real form of G^v. Associated to these choices are K and K^v, the
 (complexified) maximal compact subgroups of the real form of G and
 G^v, respectively. The K-orbits on G/B are parametrized by integers
@@ -21,10 +21,10 @@ parametrized by a subset S of pairs (x,y). See the help file for the
 block command. The numbering of the kgb elements for G^v is that of
 the dualkgb command.
 
-The dual block B^v is parametrized by {(y,x)| (x,y) in S}. 
+The dual block B^v is parametrized by {(y,x)| (x,y) in S}.
 
 The dualmap command gives the bijection between B and B^v. Also see
-dualkgb. 
+dualkgb.
 
 
 Example: principal block for Sp(4,R) and its dual

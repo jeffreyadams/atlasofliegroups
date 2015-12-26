@@ -6,6 +6,8 @@ INSTALL (replace texts)
 make_distribution.sh
 Makefile (adapt)
 
+messages/*.help (some renaming in texts)
+
 rx-scripts/*.rx (*.ax or *.at)
 rx-scripts/realex.help (rename to ./axis.help)
 rx-scripts/function.help (rename to ./atlas.help)
