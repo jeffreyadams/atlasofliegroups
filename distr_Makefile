@@ -19,8 +19,8 @@ INSTALL = /usr/bin/install
 # INSTALLDIR only needs to be changed if the current directory is temporary
 
 # In a single-user situation, you might want something like this:
-#   INSTALLDIR := /home/fokko/myatlas
-#   BINDIR     := /home/fokko/bin
+#   INSTALLDIR := /home/ducloux/atlas
+#   BINDIR     := /home/ducloux/bin
 
 # In a multi-user situation, you might want this (requires root privilege):
 #   INSTALLDIR := /usr/local/atlas
@@ -34,19 +34,19 @@ version := $(shell ./getversion.pl)
 
 messagedir := $(INSTALLDIR)/messages/
 
-# atlas_dirs contains subdirectories of 'atlas/sources' that need compilation
+# Fokko_dirs contains subdirectories of 'atlas/sources' needed for 'Fokko'
 # realex_dirs are where the object files for realex are situated
-atlas_dirs  := utilities structure gkmod io error interface test
+Fokko_dirs  := utilities structure gkmod io error interface test
 realex_dirs := utilities structure gkmod io error interpreter
 
-# atlas_sources contains a list of the source files (i.e., the .cpp files)
-atlas_sources := $(wildcard $(atlas_dirs:%=sources/%/*.cpp))
+# Fokko_sources contains a list of the source files (i.e., the .cpp files)
+Fokko_sources := $(wildcard $(Fokko_dirs:%=sources/%/*.cpp))
 
 # there is one .o file for each .cpp file, in the same directory
-atlas_objects := $(atlas_sources:%.cpp=%.o)
+Fokko_objects := $(Fokko_sources:%.cpp=%.o)
 
 # headers are searched in the all directories containing source files
-atlas_includes := $(addprefix -Isources/,$(atlas_dirs))
+Fokko_includes := $(addprefix -Isources/,$(Fokko_dirs))
 realex_includes := $(addprefix -Isources/,$(realex_dirs))
 
 interpreter_objects := $(patsubst %.cpp,%.o, \
@@ -55,9 +55,9 @@ non_realex_objects := sources/io/interactive%.o \
     sources/interface/%.o sources/test/%.o \
     sources/io/poset.o sources/utilities/abelian.o sources/gkmod/kgp.o
 realex_objects := $(interpreter_objects) \
-    $(filter-out $(non_realex_objects),$(atlas_objects))
+    $(filter-out $(non_realex_objects),$(Fokko_objects))
 
-objects := $(atlas_objects) $(interpreter_objects)
+objects := $(Fokko_objects) $(interpreter_objects)
 
 # compiler flags
 # whenever changing the setting of these flags, do 'make clean' first
@@ -74,8 +74,8 @@ gflags := -Wall -ggdb
 # these flags are necessary for compilation, the -c should not be altered
 CXXFLAGS  = -c $(CXXFLAVOR)
 
-# additional flags specific for atlas and realex
-atlas_flags = $(atlas_includes)
+# additional flags specific for Fokko and realex
+Fokko_flags = $(Fokko_includes)
 realex_flags = -Wno-parentheses $(realex_includes)
 
 # to select another flavor, set optimize=false or (stronger) debug=true
@@ -113,7 +113,7 @@ else
 endif
 
 ifeq ($(verbose),true)
-    atlas_flags += -DVERBOSE
+    Fokko_flags += -DVERBOSE
 endif
 
 # the compiler to use, including language switch
@@ -142,16 +142,16 @@ endif
 
 .PHONY: all install version
 
-# The default target is 'all', which builds the executable 'atlas', and 'realex'
-all: atlas realex
+# The default target is 'all', which builds the executable 'Fokko', and 'realex'
+all: Fokko realex
 
 # the following dependency forces emptymode.cpp to be recompiled whenever any
 # of the object files changes; this guarantees that the date in the version
 # string it prints will be that of the last recompilation.
-sources/interface/emptymode.o: $(atlas_sources)
+sources/interface/emptymode.o: $(Fokko_sources)
 
-atlas: $(atlas_objects)
-	$(CXX) -o atlas $(atlas_objects) $(LDFLAGS)
+Fokko: $(Fokko_objects)
+	$(CXX) -o Fokko $(Fokko_objects) $(LDFLAGS)
 
 realex: $(realex_objects)
 	$(CXX) -o realex $(realex_objects) $(LDFLAGS)
@@ -159,14 +159,14 @@ realex: $(realex_objects)
 # Rules with two colons are static pattern rules: they are like implicit
 # rules, but only apply to the files listed before the first colon
 
-$(filter-out sources/interface/io.o,$(atlas_objects)) : %.o : %.cpp
-	$(CXX) $(CXXFLAGS) $(atlas_flags) -o $*.o $*.cpp
+$(filter-out sources/interface/io.o,$(Fokko_objects)) : %.o : %.cpp
+	$(CXX) $(CXXFLAGS) $(Fokko_flags) -o $*.o $*.cpp
 
 # the $(messagedir) variable is only needed for the compilation of io.cpp
 sources/interface/io.o : sources/interface/io.cpp
-	$(CXX) $(CXXFLAGS) $(atlas_flags) -DMESSAGE_DIR_MACRO=\"$(messagedir)\" -o $@ $<
+	$(CXX) $(CXXFLAGS) $(Fokko_flags) -DMESSAGE_DIR_MACRO=\"$(messagedir)\" -o $@ $<
 
-# for the interpreter replace $(atlas_flags) by $(realex_flags)
+# for the interpreter replace $(Fokko_flags) by $(realex_flags)
 $(filter-out sources/interpreter/parser.tab.o,$(interpreter_objects)) :\
   %.o : %.cpp
 	$(CXX) $(CXXFLAGS) $(realex_flags) -o $*.o $*.cpp
@@ -175,12 +175,12 @@ sources/interpreter/parser.tab.o: \
   sources/interpreter/parser.tab.c sources/interpreter/parsetree.h
 	$(CXX) $(CXXFLAGS) $(realex_flags) -o $@ $<
 
-install: atlas realex
+install: Fokko realex
 ifneq ($(INSTALLDIR),$(shell pwd))
 	@echo "Installing directories and files in $(INSTALLDIR)"
 	$(INSTALL) -d $(INSTALLDIR)/messages $(INSTALLDIR)/rx-scripts
 	$(INSTALL) -m 644 LICENSE COPYRIGHT README $(INSTALLDIR)
-	$(INSTALL) -p atlas realex $(INSTALLDIR)
+	$(INSTALL) -p Fokko realex $(INSTALLDIR)
 	$(INSTALL) -m 644 messages/*.help $(INSTALLDIR)/messages/
 	$(INSTALL) -m 644 messages/intro_mess $(INSTALLDIR)/messages/
 	$(INSTALL) -m 644 rx-scripts/* $(INSTALLDIR)/rx-scripts/
@@ -188,10 +188,10 @@ endif
 ifneq ($(BINDIR),$(INSTALLDIR))
 ifneq ($(BINDIR),$(shell pwd))
 	$(INSTALL) -d $(BINDIR)
-	@if test -h $(BINDIR)/atlas; then rm -f $(BINDIR)/atlas; fi
+	@if test -h $(BINDIR)/Fokko; then rm -f $(BINDIR)/Fokko; fi
 	@if test -e $(BINDIR)/realex; then rm -f $(BINDIR)/realex; fi
-	ln -s $(INSTALLDIR)/atlas $(BINDIR)/atlas # make symbolic link
-# since BINDIR is not INSTALLDIR, we can put a shell script as bin/realex
+	ln -s $(INSTALLDIR)/Fokko $(BINDIR)/Fokko # make symbolic link
+# whenever BINDIR is not INSTALLDIR, we can put a shell script as bin/realex
 # which ensures the search path will be properly set (no compiled-in path here)
 	echo '#!/bin/sh\n$(INSTALLDIR)/realex --path=$(INSTALLDIR)/rx-scripts basic.rx "$$@"' >$(BINDIR)/realex; chmod a+x $(BINDIR)/realex
 endif
@@ -205,8 +205,8 @@ mostlyclean:
 	$(RM) -f $(objects)
 
 clean: mostlyclean
-	$(RM) -f atlas realex
+	$(RM) -f Fokko realex
 
-# distribution version of atlas uses a frozen set of dependencies
+# distribution version of Fokko uses a frozen set of dependencies
 
 include dependencies
