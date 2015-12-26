@@ -16,7 +16,7 @@
 
 #include "bitmap_fwd.h"
 #include "poset_fwd.h"
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "topology.h"	// containment of |Connectivity| field
 

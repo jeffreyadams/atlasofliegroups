@@ -52,7 +52,7 @@ $(realex_dir)/global.o $(realex_dir)/global.tex: \
  $(realex_dir)/lexer.h \
  $(sources_dir)/utilities/arithmetic.h \
  $(sources_dir)/utilities/arithmetic_fwd.h \
- $(sources_dir)/structure/atlas_types.h \
+ $(sources_dir)/Atlas.h \
  $(sources_dir)/utilities/constants.h \
  $(sources_dir)/utilities/matrix.h \
  $(sources_dir)/utilities/matrix_fwd.h \
@@ -65,7 +65,7 @@ $(realex_dir)/global.o $(realex_dir)/global.tex: \
  $(sources_dir)/utilities/bitmap.h \
  $(sources_dir)/utilities/constants.h \
  $(sources_dir)/structure/lattice.h \
- $(sources_dir)/structure/atlas_types.h \
+ $(sources_dir)/Atlas.h \
  $(sources_dir)/structure/bitvector.h \
  $(sources_dir)/utilities/bitset.h \
  $(sources_dir)/utilities/bitset_fwd.h \
@@ -113,7 +113,7 @@ $(realex_dir)/evaluator.o $(realex_dir)/evaluator.tex : \
  $(sources_dir)/utilities/size_fwd.h \
  $(sources_dir)/utilities/sl_list.h \
  $(sources_dir)/utilities/tags.h \
- $(sources_dir)/structure/atlas_types.h \
+ $(sources_dir)/Atlas.h \
  $(sources_dir)/structure/bitvector.h \
  $(sources_dir)/structure/cartanclass.h \
  $(sources_dir)/structure/complexredgp.h \
@@ -178,7 +178,7 @@ $(realex_dir)/built-in-types.o $(realex_dir)/built-in-types.tex: \
  $(sources_dir)/utilities/size_fwd.h \
  $(sources_dir)/utilities/sl_list.h \
  $(sources_dir)/utilities/tags.h \
- $(sources_dir)/structure/atlas_types.h \
+ $(sources_dir)/Atlas.h \
  $(sources_dir)/structure/bitvector.h \
  $(sources_dir)/structure/cartanclass.h \
  $(sources_dir)/structure/complexredgp.h \
@@ -254,7 +254,7 @@ $(realex_dir)/main.o $(realex_dir)/main.tex: \
  $(sources_dir)/utilities/size.h \
  $(sources_dir)/utilities/size_fwd.h \
  $(sources_dir)/utilities/tags.h \
- $(sources_dir)/structure/atlas_types.h \
+ $(sources_dir)/Atlas.h \
  $(sources_dir)/structure/bitvector.h \
  $(sources_dir)/structure/cartanclass.h \
  $(sources_dir)/structure/complexredgp.h \

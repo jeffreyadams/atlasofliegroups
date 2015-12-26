@@ -17,7 +17,7 @@ factorization, to avoid overflow problems).
 #ifndef WEYLSIZE_H  /* guard against multiple inclusions */
 #define WEYLSIZE_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "size_fwd.h"
 

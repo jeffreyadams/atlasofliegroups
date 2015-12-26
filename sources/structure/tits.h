@@ -20,7 +20,7 @@ TitsGroup and TitsElt.
 #include "ratvec.h"   // |RatWeight| contained in |TorusElement|
 #include "arithmetic_fwd.h"
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "bitvector.h" // contained in |TitsGroup|
 #include "prerootdata.h" // contained in |GlobalTitsGroup|

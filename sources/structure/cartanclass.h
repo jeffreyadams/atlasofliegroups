@@ -12,7 +12,7 @@
 #ifndef CARTANCLASS_H  /* guard against multiple inclusions */
 #define CARTANCLASS_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "tags.h"
 #include "bitset.h"	// containment of |Grading|

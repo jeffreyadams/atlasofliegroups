@@ -14,7 +14,7 @@
 #ifndef WEYL_H  /* guard against multiple inclusions */
 #define WEYL_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include <cstring>
 #include <cassert>

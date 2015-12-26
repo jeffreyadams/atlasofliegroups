@@ -7,7 +7,7 @@
 #include <iosfwd>
 
 #include "bitset.h"
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 namespace atlas {
   namespace filekl {

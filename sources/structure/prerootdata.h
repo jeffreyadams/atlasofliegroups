@@ -21,7 +21,7 @@
 #ifndef PREROOTDATA_H  /* guard against multiple inclusions */
 #define PREROOTDATA_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include <stdexcept>
 
 namespace atlas {

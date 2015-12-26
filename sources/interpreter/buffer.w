@@ -474,7 +474,7 @@ BufferedInput* main_input_buffer=nullptr;
 
 @< Includes needed in the header file @>=
 #include <string>
-#include "atlas_types.h" // for common |using| declarations
+#include "../Atlas.h" // for common |using| declarations
 #include "bitmap.h" // so that the type |BitMap| is complete
 #include "sl_list.h" // used for stack of input files
 

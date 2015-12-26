@@ -13,7 +13,7 @@
 #include <iosfwd>
 #include <string>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include "tags.h"
 
 namespace atlas {

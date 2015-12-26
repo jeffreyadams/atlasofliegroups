@@ -10,7 +10,7 @@
 #ifndef MAINMODE_H  /* guard against multiple inclusions */
 #define MAINMODE_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include "commands_fwd.h"
 
 namespace atlas {

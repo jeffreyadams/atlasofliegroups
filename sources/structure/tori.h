@@ -16,7 +16,7 @@
 #include "bits.h"
 #include "tags.h"
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include "subquotient.h"
 
 namespace atlas {

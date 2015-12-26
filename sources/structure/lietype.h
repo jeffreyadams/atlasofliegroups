@@ -17,7 +17,7 @@
 
 #include <stdexcept>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "permutations.h" // needed in the |Layout| structure
 

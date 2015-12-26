@@ -1275,7 +1275,7 @@ but we need to see the actual type definitions in order to incorporated these
 values in ours.
 
 @< Includes needed in the header file @>=
-#include "atlas_types.h" // type declarations that are ``common knowledge''
+#include "../Atlas.h" // type declarations that are ``common knowledge''
 #include "matrix.h" // to make |int_Vector| and |int_Matrix| complete types
 #include "ratvec.h" // to make |RatWeight| a complete type
 

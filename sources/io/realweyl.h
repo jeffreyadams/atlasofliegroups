@@ -11,7 +11,7 @@
 #define REALWEYL_H
 
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "bitvector.h"	// containment
 #include "lietype.h"	// containment

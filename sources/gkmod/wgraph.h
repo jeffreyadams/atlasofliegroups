@@ -15,11 +15,11 @@
 #include "bitset.h"	// inlines
 #include "graph.h"	// containment
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 namespace atlas {
 
-/******** type declarations  (see atlas_types.h)  ***************************/
+/******** type declarations  (see ../Atlas.h)  ***************************/
 
 
 /******** function declarations *********************************************/
