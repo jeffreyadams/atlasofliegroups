@@ -19,7 +19,7 @@
 
 #include "ratvec.h"	// containment infinitesimal character
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include "tits.h"	// representative of $y$ in |non_integral_block|
 #include "descents.h"	// inline methods
 #include "dynkin.h"     // DynkinDiagram

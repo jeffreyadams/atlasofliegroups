@@ -14,7 +14,7 @@
 #ifndef EXT_BLOCK_H  /* guard against multiple inclusions */
 #define EXT_BLOCK_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include <cassert>
 #include <iostream>

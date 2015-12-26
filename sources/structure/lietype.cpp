@@ -48,7 +48,7 @@
 #include "matreduc.h"
 #include "matrix.h"
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 
 /*****************************************************************************

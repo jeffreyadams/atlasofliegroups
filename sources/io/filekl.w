@@ -75,7 +75,7 @@ and \.{atlas\_types.h}.
 @< Includes needed in the header file @>=
 #include <iosfwd>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 @
 @( filekl_in.cpp @>=
@@ -127,7 +127,7 @@ namespace atlas {
 #include <iosfwd>
 
 #include "bitset.h"
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 @
 @< Constants common for writing and reading @>=

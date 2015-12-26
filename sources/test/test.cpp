@@ -16,7 +16,7 @@
 #include <fstream>
 #include <map>
 
-#include "atlas_types.h" // here to preempt double inclusion of _fwd files
+#include "../Atlas.h" // here to preempt double inclusion of _fwd files
 
 #include "free_abelian.h"
 #include "permutations.h"

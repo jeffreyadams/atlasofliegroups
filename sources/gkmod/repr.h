@@ -13,7 +13,7 @@
 
 #include <iostream>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "matrix.h"	// containment
 #include "ratvec.h"	// containment

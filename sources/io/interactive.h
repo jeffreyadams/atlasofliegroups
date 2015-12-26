@@ -11,7 +11,7 @@
 #ifndef INTERACTIVE_H  /* guard against multiple inclusions */
 #define INTERACTIVE_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include <string>
 #include <ios>

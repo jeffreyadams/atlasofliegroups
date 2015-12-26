@@ -1,6 +1,6 @@
 /*
   This is kl_error.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
@@ -10,7 +10,7 @@
 #ifndef KL_ERROR_H  /* guard against multiple inclusions */
 #define KL_ERROR_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 /******** type declarations *************************************************/
 

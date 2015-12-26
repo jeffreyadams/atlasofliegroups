@@ -96,7 +96,7 @@ Our first chapter concerns Lie types, as indicated by strings like
 library.
 
 @< Includes needed in the header file @>=
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include <stdexcept>
 #include "lietype.h"
 

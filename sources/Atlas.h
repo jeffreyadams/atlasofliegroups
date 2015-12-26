@@ -1,10 +1,5 @@
-/*!
-\file
-\brief Forward declarations of classes and types for atlas namespace.
-
-*/
 /*
-  This is atlas_types.h
+  This is Atlas.h
 
   Copyright (C) 2011 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
@@ -12,10 +7,10 @@
   For license information see the LICENSE file
 */
 
-#ifndef ATLAS_TYPES_H  /* guard against multiple inclusions */
-#define ATLAS_TYPES_H
+#ifndef ATLAS_H  /* guard against multiple inclusions */
+#define ATLAS_H
 
-/*
+/*    Forward declarations of classes and types for atlas namespace.
 
  This module defines types in the (global) atlas namespace that can be
  therefore used in short form by all modules that include this file.

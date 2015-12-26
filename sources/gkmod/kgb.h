@@ -16,7 +16,7 @@ representing orbits of K on G/B.
 #ifndef KGB_H  /* guard against multiple inclusions */
 #define KGB_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "gradings.h"	// containment in |KGBEltInfo|
 #include "hashtable.h"	// containment in |KGB_base|

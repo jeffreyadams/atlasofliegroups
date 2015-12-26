@@ -20,7 +20,7 @@ StandardRepK and KhatContext.
 #include <vector>
 #include <iostream>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "complexredgp.h"// inlines
 #include "realredgp.h"	// numerous inline methods
@@ -41,7 +41,7 @@ namespace standardrepk {
 typedef Char::coef_t CharCoeff;
 typedef q_Char::coef_t q_CharCoeff; // i.e., |Polynomial<int>|
 
-// remaining definitions could be in atlas_types.h, but seem module-specific
+// remaining definitions could be in ../Atlas.h, but seem module-specific
 
 typedef Free_Abelian<seq_no,long int,graded_compare> combination;
 typedef std::pair<seq_no,combination> equation;

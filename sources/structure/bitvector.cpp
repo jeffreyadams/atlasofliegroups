@@ -19,7 +19,7 @@
 
 #include "bitvector.h"
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "comparison.h"
 #include "constants.h"

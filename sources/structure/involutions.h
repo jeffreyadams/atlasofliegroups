@@ -14,7 +14,7 @@
 #include <cassert>
 #include <functional>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "hashtable.h"   // containment
 #include "permutations.h"// containment root permutation in |InvolutionData|
