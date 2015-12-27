@@ -128,7 +128,7 @@ struct Layout
 
 // constructors and destructors
 
-Layout() : d_type(), d_inner(), d_perm() {} // needed in realex
+Layout() : d_type(), d_inner(), d_perm() {} // needed in atlas
 
   /* In the old Fokko interface, the Lie type is first provided,
      and the inner class type is later added; defaults identity permutation */

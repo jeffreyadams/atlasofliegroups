@@ -19,7 +19,7 @@
 
 - Investigate if some tracing facilty (printing "let" values) is feasible
 
-- Integrate a bigint library to store realex int (and rat?) values; while
+- Integrate a bigint library to store atlas int (and rat?) values; while
   attending that, signal overflow in arithmetic operations / conversions
 
 
@@ -75,12 +75,12 @@
   one knows nothing about what + does). However, for v #:= x in a loop it
   should be possible to avoid a new allocation for v at every iteration.
 
-* Work on the realex scripts
+* Work on the atlas scripts
 - Complete the groups in groups.rx (types G,F); also avoid use of "s" etc.
 
 * Work on documentation
 
-- Write a tutorial on the realex languge, in bottom-up style
+- Write a tutorial on the axis languge, in bottom-up style
 
 * Work on makefiles, distribution and support programs (cwebx)
 - change name of parser.y to parser.ypp, and adapt all Makefiles

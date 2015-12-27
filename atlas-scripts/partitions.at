@@ -1,8 +1,8 @@
 : Partition=[int]   {partition a_1\ge a_2\ge ... a_n>0}
 
-{see realex.help}
-set fac = 
-let rec_fun f(int n) = int: if n<=0 then 1 else n*f(n-1) fi in 
+{see atlas.help}
+set fac =
+let rec_fun f(int n) = int: if n<=0 then 1 else n*f(n-1) fi in
 (int n):if n<0 then error("factorial of negative number ",n," is not defined")
 else f(n) fi
 
@@ -13,7 +13,7 @@ if #P=0 then [] else for i:P[0] do  last(#P, (int j)bool:P[j]>i)+1 od fi
 set size(Partition P)=int:sum(P)
 
 {r(P,i,j)=number of boxes to right of (and including) box (i,j)}
-set r(Partition P,int i,int j)=int:P[i]-j  
+set r(Partition P,int i,int j)=int:P[i]-j
 
 {c(P,i,j)=number of boxes to below  (and including) box (i,j)}
 set c(Partition P,int i,int j)=int:r(transpose(P),j,i)
@@ -22,7 +22,7 @@ set hook_length(Partition P,int i, int j)=int:r(P,i,j)+c(P,i,j)-1
 
 set product_hook_lengths(Partition P)=int:
 let rv=1 in
-for i:#P do 
+for i:#P do
  for j:P[i] do rv*:=hook_length(P,i,j) od od;rv
 
 set dim_rep(Partition P)=rat_as_int(fac(size(P))/product_hook_lengths(P))

@@ -321,11 +321,11 @@ int main(int argc, char** argv)
   @< Enter system variables into |global_id_table| @>
 @)
   @< Silently read in the files from |prelude_filenames| @>
-  std::cout << "This is 'atlas' (library version " @|
+  std::cout << "This is 'atlas' (version " @|
        << atlas::version::VERSION @| << ", axis language version " @|
-       axis_version "),\ncompiled on " @|
-            << atlas::version::COMPILEDATE @| << ".\n"
-       << atlas::version::NAME << @| ". http://www.liegroups.org/\n";
+       axis_version "),\n" @| << atlas::version::NAME << @|
+       " interpreter,\ncompiled on " @|  << atlas::version::COMPILEDATE
+       << ".   http://www.liegroups.org/\n";
 @)
   @< Enter the main command loop @>
   signal(SIGINT,SIG_DFL); // reinstall default signal handler
