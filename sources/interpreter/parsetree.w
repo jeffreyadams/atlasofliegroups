@@ -1248,7 +1248,8 @@ immediately be safe for possible destruction by |destroy_id_pat| (no undefined
 pointers; the |sublist| pointer of |id_pat| is ignored when |kind==0|). Other
 constructors are from a |raw_id_pat| reference and from individual components.
 
-@h "types.h" // so complete type definitions will be known in \.{parsetree.cpp}
+@h "axis-types.h"
+   // so complete type definitions will be known in \.{parsetree.cpp}
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef containers::simple_list<struct id_pat> patlist;
@@ -1554,8 +1555,8 @@ the types of its parameters, and such things as type coercion and function
 overloading would make such type deduction doubtful even if it could be done).
 Types are also an essential ingredient of casts. Types have an elaborate
 (though straightforward) internal structure, and the necessary constructing
-functions like |make_tuple_type| are defined in the module \.{types.w} rather
-than here.
+functions like |make_tuple_type| are defined in the module \.{axis-types.w}
+rather than here.
 
 When the parser was compiled as \Cee~code, we were forced to use void pointers
 in the parser, to masquerade for the actual pointers to \Cpp~types; numerous
@@ -1566,10 +1567,10 @@ smart pointers for types while being handled in the parser, since other
 pointers for expressions that it handles are not smart pointers either.
 
 @< Includes needed... @>=
-#include "types.h" // parsing types need |type_p| and such
+#include "axis-types.h" // parsing types need |type_p| and such
 
-@ Most functionality for these types is given in \.{types.w}; we just need to
-say how to destroy them.
+@ Most functionality for these types is given in \.{axis-types.w}; we just
+need to say how to destroy them.
 
 @< Declarations of functions for the parser @>=
 void destroy_type(type_p t);
@@ -1589,8 +1590,8 @@ void destroy_type_list(raw_type_list t)@+ {@; (type_list(t)); }
 typedef struct lambda_node* lambda;
 
 @~It contains a pattern for the formal parameter(s), its type (a smart pointer
-defined in \.{types.w}), an expression (the body of the function), and finally
-the source location of the function.
+defined in \.{axis-types.w}), an expression (the body of the function), and
+finally the source location of the function.
 
 
 @< Structure and typedef... @>=

@@ -27,10 +27,10 @@
 This file describes several built-in types related to the Atlas software,
 which used by the interpreter as primitive types. It also defines built-in
 functions that relate to these types. This part of the program is completely
-oriented towards the Atlas library, whereas the \.{evaluator} does things that
-are for the most part independent of that library.
+oriented towards the Atlas library, whereas the module \.{axis} implements the
+programming language of that name, which is independent of that library.
 
-@h "built-in-types.h"
+@h "atlas-types.h"
 
 @f lambda nullptr
 @f pi nullptr
@@ -46,7 +46,7 @@ namespace {@; @< Local function definitions @>@; }@;
 @ As usual the external interface is written to the header file associated to
 this file.
 
-@( built-in-types.h @>=
+@( atlas-types.h @>=
 
 #ifndef BUILT_IN_TYPES_H
 #define BUILT_IN_TYPES_H
@@ -79,16 +79,16 @@ void initialise_builtin_types()
 }
 
 @ Before we can define any types we must make sure the types defined
-in \.{types.w} from which we shall derive others are known. Including this as
-first file from our header file ensures the types are known wherever they are
-needed. Some more basic built-in types likes integers, vectors, and strings
-are defined in \.{global.w}, and we need their declarations too in our
+in \.{axis-types.w} from which we shall derive others are known. Including
+this as first file from our header file ensures the types are known wherever
+they are needed. Some more basic built-in types likes integers, vectors, and
+strings are defined in \.{global.w}, and we need their declarations too in our
 implementation, but we avoid including its header into out header file.
 
 @h "global.h"
 
 @< Includes needed in the header file @>=
-#include "types.h"
+#include "axis-types.h"
 
 @*1 Lie types.
 Our first chapter concerns Lie types, as indicated by strings like
@@ -4473,14 +4473,14 @@ void param_to_poly()
 @ There also is function to extract the coefficient (multiplicity) of a given
 parameter in a virtual module. However, it is bound to the array subscription
 syntax, and therefore does not have a wrapper function. Instead, it is
-implemented the \.{evaluator} module, as the |evaluate| method of the
+implemented the \.{axis} module, as the |evaluate| method of the
 |module_coefficient| class derived from |subscr_base|.
 
 In a subscription of a polynomial by a parameter, the arguments are not
 initially on the stack, but come from evaluating the |array| and |index|
 fields of the |module_coefficient| expression.
 
-@h "evaluator.h" // for |module_coefficient|
+@h "axis.h" // for |module_coefficient|
 
 @< Function def... @>=
 void module_coefficient::evaluate(level l) const

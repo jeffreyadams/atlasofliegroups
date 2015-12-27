@@ -270,7 +270,7 @@ cannot, as it can in the conditions of |if| or |while| clauses,
 be eliminated).
 
 @h <csignal>
-@h "built-in-types.h"
+@h "atlas-types.h"
 
 @< Initialise various parts of the program @>=
   @< Initialise the \.{readline} library interface @>
@@ -443,7 +443,7 @@ if (paths.size()>0)
 #endif
 
 @ The command loop maintains two global variables that were defined
-in \.{evaluator.w}, namely |last_type| and |last_value|; these start off in a
+in \.{axis.w}, namely |last_type| and |last_value|; these start off in a
 neutral state. In a loop we call the parser until it sets |verbosity<0|, which
 is done upon seeing the \.{quit} command. We call the |reset| method of the
 lexical scanner before calling the parser, which will discard any input that
@@ -453,7 +453,7 @@ new line of input, or abandons the program in case none can be obtained.
 @< Enter the main command loop @>=
 last_value = shared_value (new tuple_value(0));
 last_type = void_type.copy();
- // |last_type| is a |type_ptr| defined in \.{evaluator.w}
+ // |last_type| is a |type_ptr| defined in \.{axis.w}
 while (ana.reset()) // get a fresh line for lexical analyser, or quit
 { @< Undo temporary trickery aimed at |readline| filename completion @>
   expr_p parse_tree;
@@ -487,7 +487,7 @@ and the runtime error is silently caught. If the result is an empty tuple, we
 suppress printing of the uninteresting value.
 
 @h <stdexcept>
-@h "evaluator.h"
+@h "axis.h"
 
 @< Analyse types and then evaluate and print... @>=
 { bool type_OK=false;

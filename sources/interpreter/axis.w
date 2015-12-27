@@ -35,12 +35,12 @@ that play a part in this recursion. Other more one-time matters like
 initialisation and setting global variables that were originally done in this
 module have been relegated to a separate module \.{global.w}.
 
-@( evaluator.h @>=
+@( axis.h @>=
 
 #ifndef EVALUATOR_H
 #define EVALUATOR_H
 
-#include "types.h"
+#include "axis-types.h"
 
 @< Includes needed in the header file @>@;
 namespace atlas { namespace interpreter {
@@ -52,7 +52,7 @@ namespace atlas { namespace interpreter {
 
 @ The implementation unit follows a somewhat similar pattern.
 
-@h "evaluator.h"
+@h "axis.h"
 @h <cstdlib>
 @c
 namespace atlas { namespace interpreter {
@@ -73,7 +73,7 @@ used in this module).
 @< Declarations of exported functions @>=
 void reset_evaluator ();
 
-@~The |execution_stack|, held in a global variable defined in \.{types.w},
+@~The |execution_stack|, held in a global variable defined in \.{axis-types.w},
 owns the values it contains, but there was no reason to wrap it into a class
 with a destructor, since we never intend to destroy the stack entirely: if our
 program exits either peacefully or by an uncaught exception we don't care
@@ -112,7 +112,7 @@ transforms the syntax tree into a more directly executable form and therefore
 might be called compilation, and execution of those transformed expressions.
 
 The expression returned by the parser, of type |expr|, and the conversion to
-the executable format |expression| (a type defined in \.{types.w} as a pointer
+the executable format |expression| (a type defined in \.{axis-types.w} as a pointer
 to the base class |expression_base|, from which many more specialised classes
 will be derived) is performed by the function |convert_expr|. This is a large
 and highly recursive function, and a large part of the current module is
@@ -355,7 +355,7 @@ a unique pointer.
 The code below takes into account the possibility that a denotation is
 converted immediately to some other type, for instance integer denotations can
 be used where a rational number is expected. The function |conform_types|
-(defined in \.{types.w}) will test whether the denotation provides or can be
+(defined in \.{axis-types.w}) will test whether the denotation provides or can be
 converted to the required type, and may modify its final argument in the
 latter case.
 
@@ -661,7 +661,7 @@ case list_display:
 }
 
 @ When in |convert_expr| we encounter a list display when a non-void non-row
-type is expected, we call |row_coercion| (defined in \.{types.w}) to find a
+type is expected, we call |row_coercion| (defined in \.{axis-types.w}) to find a
 coercion to |type| from some row of |comp_type| type. If this is successful,
 we continue to convert the component expressions with as expected type the
 corresponding component type. Once a conversion has been determined, we
@@ -792,7 +792,7 @@ This stack is implemented as a singly linked list, and accessed through a
 shared pointer. It is not an instance of |containers::simple_list| mainly
 because of sharing of parts between different contexts, which arises when
 closures are formed as will be described later. The structure pointed to by
-|shared_context| is described in \.{types.w}; essentially, each node of the
+|shared_context| is described in \.{axis-types.w}; essentially, each node of the
 list is a vector of values associated with identifiers introduced in the same
 lexical |layer|. Although each value is associated with an identifier, they
 are stored anonymously; the proper location of an applied identifier is
@@ -1602,7 +1602,7 @@ catch (const std::exception& e)
 In this chapter we define some wrapper functions that are not accessed through
 the overload table; they must be directly visible to the type checking code
 that inserts them, which is why they are defined as local functions to the
-current \.{evaluator.w} module.
+current \.{axis.w} module.
 
 The function |print| outputs any value in the format used by the interpreter
 itself. This function has an argument of unknown type; we just pass the popped
@@ -2467,7 +2467,7 @@ choose. These classes differ mostly by their |evaluate| method, so we first
 derive an intermediate class from |expression_base|, and derive the others
 from it. This class also serves to host an enumeration type and some static
 methods that will serve later. We include a case here, |mod_poly_term|, that
-is related to a type defined in \.{built-in-types}.
+is related to a type defined in \.{atlas-types}.
 
 At the same time we shall define ``slices'', which differ from subscriptions
 in selecting a whole range of index values. The name is not really
@@ -3894,12 +3894,12 @@ loop body is standard.
 } // restore context upon destruction of |loop_frame|
 
 @ The loop over terms of a virtual module is slightly different, and since it
-handles values defined in the modules \.{built-in-types.w} we shall include
+handles values defined in the modules \.{atlas-types.w} we shall include
 its header file. We implement the $4$ reversal variants, even though it makes
 little sense unless the internal order of the terms in the polynomial (over
 which the user has no control) are meaningful to the user.
 
-@h "built-in-types.h"
+@h "atlas-types.h"
 @< Perform a loop over the terms of a virtual module @>=
 { shared_virtual_module pol_val = get<virtual_module_value>();
 @/size_t n=pol_val->val.size();
