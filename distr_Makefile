@@ -178,12 +178,12 @@ sources/interpreter/parser.tab.o: \
 install: Fokko realex
 ifneq ($(INSTALLDIR),$(shell pwd))
 	@echo "Installing directories and files in $(INSTALLDIR)"
-	$(INSTALL) -d $(INSTALLDIR)/messages $(INSTALLDIR)/rx-scripts
+	$(INSTALL) -d $(INSTALLDIR)/messages $(INSTALLDIR)/atlas-scripts
 	$(INSTALL) -m 644 LICENSE COPYRIGHT README $(INSTALLDIR)
 	$(INSTALL) -p Fokko realex $(INSTALLDIR)
 	$(INSTALL) -m 644 messages/*.help $(INSTALLDIR)/messages/
 	$(INSTALL) -m 644 messages/intro_mess $(INSTALLDIR)/messages/
-	$(INSTALL) -m 644 rx-scripts/* $(INSTALLDIR)/rx-scripts/
+	$(INSTALL) -m 644 atlas-scripts/* $(INSTALLDIR)/atlas-scripts/
 endif
 ifneq ($(BINDIR),$(INSTALLDIR))
 ifneq ($(BINDIR),$(shell pwd))
@@ -193,7 +193,7 @@ ifneq ($(BINDIR),$(shell pwd))
 	ln -s $(INSTALLDIR)/Fokko $(BINDIR)/Fokko # make symbolic link
 # whenever BINDIR is not INSTALLDIR, we can put a shell script as bin/realex
 # which ensures the search path will be properly set (no compiled-in path here)
-	echo '#!/bin/sh\n$(INSTALLDIR)/realex --path=$(INSTALLDIR)/rx-scripts basic.rx "$$@"' >$(BINDIR)/realex; chmod a+x $(BINDIR)/realex
+	echo '#!/bin/sh\n$(INSTALLDIR)/realex --path=$(INSTALLDIR)/atlas-scripts basic.at "$$@"' >$(BINDIR)/realex; chmod a+x $(BINDIR)/realex
 endif
 endif
 

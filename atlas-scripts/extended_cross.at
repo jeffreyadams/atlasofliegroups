@@ -1,0 +1,180 @@
+<basic.at
+<extended_misc.at
+<extended_types.at
+
+{ debug ext_cross construction, shouldn't be necessary }
+set test_ext_cross (Param p, [int] kappa, extended_param xq) = void:
+  let ()=if not valid(xq) then error("xq is not valid") fi
+  then w=W_word:(root_datum(p),kappa)
+  then q=parameter(xq), cross=cross(w,p)
+  in
+  if q!=cross
+  then prints("cross/ext_cross are not consistent: ",q," ",cross); error("")
+{ else prints("cross/ext_cross are consistent") }
+  fi
+
+{ extended cross action in length 1 }
+set ext_cross_1(int j
+               ,extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E
+               ) = extended_param:
+  let p=parameter(E), rd=integrality_datum(E)
+  then type = string: {1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn}
+    ext_type_1(delta,j,p)
+  , alpha=root(rd,j)
+  , alpha_check=coroot(rd,j)
+  then s_alpha    = 1 - column(alpha)*row(alpha_check)
+  , s_alpha_check = 1 - column(alpha_check)*row(alpha) { = ^s_alpha }
+  in
+{  let ()=prints("type:", type) in }
+  if ((type="1C+") or (type="1C-")) then
+    let new_lambda = { lambda +alpha*(alpha_check*(gamma-lambda)-1) }
+        ratvec_as_vec(s_alpha*lambda+(alpha_check*gamma-1)*alpha)
+    , new_l = { l + ((g-l)*alpha-1)*alpha_check }
+        ratvec_as_vec(s_alpha_check*l+(g*alpha-1)*alpha_check)
+    , new_theta = s_alpha*theta*s_alpha
+    , new_omega = s_alpha_check*omega*s_alpha_check
+    , new_t = s_alpha*t
+    , new_tau= tau*s_alpha
+    then xq =
+      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
+    in { test_ext_cross(p,[j],xq); } xq
+  elif (type="1i1") then
+    let new_lambda=lambda
+    , new_l=l+alpha_check
+    , new_theta=s_alpha*theta*s_alpha
+    , new_omega=s_alpha_check*omega*s_alpha_check
+    , new_t=t
+    , new_tau=tau
+    then xq=
+      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
+    in { test_ext_cross(p,[j],xq); } xq
+  elif (type="1r2") then
+    let new_lambda=lambda+alpha
+    then new_l=l
+    then new_theta=s_alpha*theta*inverse(s_alpha)
+    then new_omega=inverse(s_alpha_check)*omega*s_alpha_check
+    then new_t=t
+    then new_tau=tau
+    then xq=
+      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
+    in { test_ext_cross(p,[j],xq); } xq
+  else E
+  fi
+
+{extended cross action in length 2}
+set ext_cross_2(int j
+               ,extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E
+               ) = extended_param:
+  let p=parameter(E), rd=integrality_datum(E)
+  then type = string: { 2C+,2C-,2Ci,2Cr,2i11,2i12,2i22,2r22,2r21,2r11,2rn,2ic }
+    ext_type_2(delta,j,p)
+  , simples = simple_roots(rd), cosimples = simple_coroots(rd)
+{  then ()=prints("ext_cross_2 type is:", type) }
+  then alpha=root(rd,j) , alpha_check=coroot(rd,j)
+  , s_alpha       = reflection(rd,j)
+  , s_alpha_check = coreflection(rd,j) { = ^s_alpha }
+  then (k,beta,beta_check) = { avoid staggering 3 more let-levels }
+    let b = delta*alpha then k=root_index(rd,b) in (k,b,coroot(rd,k))
+  then s_beta    = reflection(rd,k)
+  , s_beta_check = coreflection(rd,k) { = ^s_beta }
+  then s_ab = s_alpha*s_beta { = s_beta*s_alpha }
+  then s_ab_check = { s_beta_check*s_alpha_check=s_alpha_check*s_beta_check }
+     ^s_ab
+  in
+  if ((type="2C+") or (type="2C-")) then
+    let new_lambda = { alpha_check*gamma = beta_check*gamma by delta-symmetry }
+      ratvec_as_vec(s_ab*lambda+(alpha+beta)*(alpha_check*gamma-1))
+    , new_l = { g*alpha = g*beta by delta-symmetry }
+      ratvec_as_vec(l*s_ab+(g*alpha-1)*(alpha_check+beta_check) )
+    , new_theta = s_ab*theta*s_beta*s_alpha
+    , new_omega = s_ab_check*omega*s_ab_check
+    , new_tau = s_ab*tau
+    , new_t = t*s_ab
+    then xq =
+      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
+    in test_ext_cross(p,[j,k],xq); xq
+  elif (type="2Ci") then
+    E { cross action not defined, but Cayley transform is! }
+  elif (type="2Cr") then { alpha and beta have same effect, use only alpha }
+    let new_lambda = ratvec_as_vec(s_alpha*lambda+alpha*(alpha_check*gamma-1))
+    , new_l = ratvec_as_vec(l*s_alpha+(g*alpha-1)*alpha_check)
+    , new_theta = s_alpha*theta*s_alpha
+    , new_omega = s_alpha_check*omega*s_alpha_check
+    , new_tau = ratvec_as_vec(s_alpha*tau+alpha*(alpha_check*(lambda-gamma)+1))
+    , new_t   = ratvec_as_vec(t-(t*alpha+t*beta)/2*alpha_check)
+    then xq =
+      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
+    in test_ext_cross(p,[j],xq); xq
+  elif (type="2i11") then
+{   prints("type 2i11"); }
+    let new_lambda=lambda, new_l = l+alpha_check+beta_check
+    , new_theta = s_ab*theta*s_beta*s_alpha
+    , new_omega = s_ab_check*omega*s_ab_check
+    , new_tau = tau, new_t = t
+    then xq =
+      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_t,new_tau)
+    in test_ext_cross(p,[j],xq); xq
+  elif (type="2i12") then
+{   prints("TYPE 2i12"); }
+{   prints("alpha check:", alpha_check); }
+    let new_lambda=lambda
+    , new_l = l+alpha_check
+    , new_theta = s_ab*theta*s_beta*s_alpha
+    , new_omega = s_ab_check*omega*s_ab_check
+    , new_tau = tau
+{   , new_t = let (s,valid) = solve(1+omega,alpha_check-beta_check)}
+{ see Table 2 in twisted paper, case 2i12crx }
+    , new_t = let (s,valid) = solve(1+^theta,alpha_check-beta_check)
+      in if valid then t-s
+         else error("failure in cross action of type 2i12, solving for s")
+         fi
+    then xq=
+      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
+    in { test_ext_cross(p,[j],xq); } xq
+  elif (type="2r22") then
+    let new_lambda=vec:lambda+alpha+beta
+    , new_l = l
+    , new_theta = s_ab*theta*s_beta*s_alpha
+    , new_omega = s_ab_check*omega*s_ab_check
+    , new_tau = tau
+    , new_t = t
+    then xq =
+      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
+    in test_ext_cross(p,[j,k],xq); xq
+  elif (type="2r21") then
+    let new_lambda = lambda+alpha
+    , new_l = l
+    , new_theta = s_ab*theta*s_beta*s_alpha
+    , new_omega = s_ab_check*omega*s_ab_check
+{    , new_tau = let (zeta,valid) = solve(1+theta,alpha-beta) }
+{ see Table 2 in twisted paper, case 2r21crx }
+    , new_tau = let (zeta,valid) = solve(1+omega,alpha-beta)
+      in if valid then tau-zeta
+         else error("failure in cross action of type 2r21, solving for zeta")
+         fi
+    , new_t = t
+    then xq =
+      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
+    in test_ext_cross(p,[j],xq); xq
+  else E
+  fi
+
+
+{ extenteded cross action not yet defined }
+set ext_cross_3(int j,extended_param E) = extended_param:
+  let p=parameter(E) then type=ext_type_2(delta(E),j,p)
+  in prints("ext_cross_3"); E { should be defined properly here! FIXME }
+
+{ ext_cross calls one of the ext_cross_i
+  this command used to be called in all cases, but is replaced by
+  nonintegral.at:ext_cross
+  except in special cases: types 2i11/2i12/2r22/2r21 }
+set ext_cross_simple (int j, extended_param (ic,delta,,,,,,,,):E) =
+    extended_param:
+( let p=parameter(E), l=ext_length(integrality_datum(E),delta,j) in
+{ prints("length is:", l); }
+  assert(is_fixed(delta,p),"Parameter is not fixed by delta")
+; [ext_cross_1@(int,extended_param)
+  ,ext_cross_2@(int,extended_param)
+  ,ext_cross_3@(int,extended_param)] [l-1] (j,E)  { note the l-1 here }
+)

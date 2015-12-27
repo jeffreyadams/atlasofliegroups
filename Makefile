@@ -234,13 +234,13 @@ install: Fokko atlas
 ifneq ($(INSTALLDIR),$(shell pwd))
 	@echo "Installing directories and files in $(INSTALLDIR)"
 	$(INSTALL) -d $(INSTALLDIR)/www
-	$(INSTALL) -d $(INSTALLDIR)/messages $(INSTALLDIR)/rx-scripts
+	$(INSTALL) -d $(INSTALLDIR)/messages $(INSTALLDIR)/atlas-scripts
 	$(INSTALL) -m 644 LICENSE COPYRIGHT README $(INSTALLDIR)
 	$(INSTALL) -p Fokko atlas $(INSTALLDIR)
 	$(INSTALL) -m 644 www/*html $(INSTALLDIR)/www/
 	$(INSTALL) -m 644 messages/*.help $(INSTALLDIR)/messages/
 	$(INSTALL) -m 644 messages/intro_mess $(INSTALLDIR)/messages/
-	$(INSTALL) -m 644 rx-scripts/* $(INSTALLDIR)/rx-scripts/
+	$(INSTALL) -m 644 atlas-scripts/* $(INSTALLDIR)/atlas-scripts/
 endif
 ifneq ($(BINDIR),$(INSTALLDIR))
 	mkdir -p $(BINDIR)
@@ -249,7 +249,7 @@ ifneq ($(BINDIR),$(INSTALLDIR))
 	ln -s $(INSTALLDIR)/Fokko $(BINDIR)/Fokko # make symbolic link
 # whenever BINDIR is not INSTALLDIR, we can put a shell script as bin/atlas
 # which ensures the search path will be properly set (no compiled-in path here)
-	echo '#!/bin/sh\nexec $(INSTALLDIR)/atlas --path=$(INSTALLDIR)/rx-scripts basic.rx "$$@"' >$(BINDIR)/atlas; chmod a+x $(BINDIR)/atlas
+	echo '#!/bin/sh\nexec $(INSTALLDIR)/atlas --path=$(INSTALLDIR)/atlas-scripts basic.at "$$@"' >$(BINDIR)/atlas; chmod a+x $(BINDIR)/atlas
 endif
 
 version:

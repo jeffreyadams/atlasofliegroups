@@ -1,0 +1,442 @@
+<lietypes.at
+<Weylgroup.at
+<coherent.at
+<thetastable.at
+<sort.at
+<all_Kparameters.at
+<complex_nilpotent_orbits.at
+<K_norm.at
+<LKT_aux.at
+set kn_verbose=false
+set kn_very_verbose=false
+{implementation of parts of Letter to Atlas II: nilpotent orbits}
+
+{given x a theta_x-stable set of roots R, return subset of R
+consisting of each imaginary root alpha\in R, and one of each pair
+alpha,theta(alpha)
+if R isn't theta-stable this will fail}
+set extract_roots(KGBElt x, [vec] roots)=[vec]:
+let theta=involution(x) then
+rv=[] in
+while #roots>0 do
+ let alpha=roots[0] in
+ rv#:=alpha;
+ roots:=delete(roots,0);
+  if theta*alpha != alpha then
+   let  index=find_vec(roots,theta*alpha) in if (index=-1) then error("set of roots is not theta-stable") else
+      roots:=delete(roots, find_vec(roots,theta*alpha))  fi fi od;rv
+
+{roots of H in s[1]
+ s = -1 eigenspace of theta_x
+ s[1] = 1 H-eigenspace of H on s
+}
+set s_one_roots(KGBElt x, ratvec H)=[vec]:
+let theta=involution(x) then
+()=assert(^theta*H = H,"H is not ^theta-fixed") then
+P=parabolic_alt(H,x) then
+x_max=x(P) then
+u=nilrad_alt(H,x) then
+u_complex=extract_roots(x,u) then
+roots=[vec]:[] then
+()=for alpha in u do
+if alpha*H=1 and is_noncompact(x_max)(alpha)  then roots#:=alpha fi od then
+()=for alpha in u_complex do if alpha*H=1 then roots#:=alpha fi od in roots
+
+{restriction of s_one_roots to H^{theta_x}
+ each pair (alpha,theta(alpha)) contributes
+ a single root restriction(alpha)=restriction(theta(alpha)),
+ corresponding to the single vector X_\alpha-\theta(X_\alpha) in s[1]
+ characters of H^theta are elements of X^*/(1-theta)X^*
+}
+set s_one_roots_restricted(KGBElt x,ratvec H)=[vec]:
+let roots=s_one_roots(x,H) in
+roots:=extract_roots(x,roots)
+{for alpha in roots do (1+involution(x))*alpha/2 od NO?}
+
+{generate all subsets of [ratvec], modified from misc.at}
+set generate_all_subsets([vec] S) = [[vec]]:
+  let len=#S
+  , gen (int i) = [[vec]]: [] { recursive stub; genee subset of S[i:] }
+  in
+  ( gen :=
+    ((int i):
+      if i=len then [[]]
+      else let r=gen(i+1) in r # for x in r do S[i]#x od
+      fi)
+  )(0)
+
+{all subset of the restrictions of the roots of s[1] to Lie(H)^{\theta_x}
+ see Knilpotent paper, Corollary 7.3(6)}
+set subsets(KGBElt x,ratvec H)=[[vec]]:
+let roots=s_one_roots_restricted(x,H) in
+delete(generate_all_subsets(roots),0) {don't want empty subset}
+
+set sum([ratvec] list)=if #list=0 then null(0) else let v=ratvec:null(#list[0]) in for w in list do v+:=w od; v fi
+
+set rho_shifts(KGBElt x,ratvec H)=[(vec,int)]:
+let rd=root_datum(x) then
+(H_dom,w)=make_dominant(rd,H) then
+x_dom=cross(inverse(w),x) then
+(x,H)=(x_dom,H_dom) then
+m=w_matrix(w) then
+S=subsets(x,H) in [(vec:null(rank(real_form(x))),0)]#for v in S do (sum(m*v),#v) od
+
+{this definition looks wrong}
+{set rho_u_cap_s(KGBElt x,ratvec H)=ratvec:
+let L=Levi_alt(H,x) then
+x_L=inverse_embed_KGB(x,L) in rho_s(x)-rho_s(x_L)}
+
+{correct definition?}
+set rho_u_cap_s(KGBElt x,ratvec H)=ratvec:rho_u_cap_s(parabolic_alt(H,x))
+
+{need to twist L\cap K type by (one dimension L\cap K-type) -2rho(u\cap s)
+ an L\cap K type is given by standard,final,limit parameter for L
+ 2rho(u\cap s) is not typically one-dimensional for L
+ algorithm:
+ given std,final,limit parameter p for L <-> L\cap K-type tau
+ compute k_type_formula for p
+ for each term (x,lambda,nu) in k_type_formula,
+  replace with (x,lambda+shift,nu+shift)
+  shift is the "appropriate" -2*rho(u\cap s):
+  let mu=2*rho_u_cap_s(x_0,H) where x_0=KGB(L,0)
+  this is the "basic" shift
+  if x is in the fundamental fiber for L, then x=wx_0, and the shift is w*mu
+  for any x, the shift is by w where canonical_x_K(p)=wx_0
+  the resulting term might not be standard, so apply standardize
+ take the composition series of the resulting ParamPol
+ set nu=0 in all terms
+ let q be the (unique?) parameter occuring of minimal height (K_norm)
+ this is the std final limit parameter for the L\cap K-type tau+2*rho(u\cap s)
+ **this complicated function should be unnecessary, now that we can construct
+ the shift by: p_L -> mu_L= LKT_highest_weight(p_L) ->
+  mu_L_shifted=mu_L-2*rho_u_cap_s(x,H) ->
+  p_L_shifted=K_types(x_L,mu_L_shifted)
+  incorporated new version as a test, see "alternative way..." towards the end of the function
+
+let (x_L,mu_L)=LKT_highest_weight(p_L) then
+mu_L_shifted=ratvec_as_vec(mu_L-2*rho_u_cap_s(x,H)) then
+p_L_shifted=parameter(K_type(x_L,mu_L_shifted)) then
+valid=(p_L_shifted = m[0]) then
+}
+set twist_by_minus_2rho_u_cap_s(KGBElt x,ratvec H,int kgb_number_L,ratvec lambda_L)=
+(KParam,(ParamPol,[KHighestWeight],[KHighestWeight],[int])):
+{(answer,(debugging information)}
+let ()=if kn_verbose then prints("twist with: x=", x, " H= ", H, "x= ", kgb_number_L, " lambda_L= ", lambda_L) fi then
+L=Levi_alt(H,x) then
+x_0=KGB(L,0) then
+mu=2*rho_u_cap_s(x,H) then
+{()=prints("rho(u\cap s)=",mu) then}
+x_L=KGB(L,kgb_number_L) then
+p_L=parameter(x_L,lambda_L,null(rank(L))) then
+{()=prints("p_L:", p_L) then}
+k_type_formula=K_type_formula(p_L) then
+{()=prints("k_type_formula:", k_type_formula) then}
+d=null_module(L) then
+(welements,kgb)=cross_W_orbit_extra(x_0) then
+()=for c@p in k_type_formula do
+{ let ()=prints("working on: ", p) in}
+ let x=canonical_x_K(p) then
+ i=find(kgb,x) then
+ w=welements[i] then
+{this shift involving KGB(L,0) is probably a
+ mistake, a holdover from when parabolics weren't
+ defined correctly}
+{ shift=act(w,mu) in}
+ shift=mu in
+{ let ()=prints("p: ", p, " w: ", w, " shift: ",shift, " l+s: ", lambda(p)-shift) then}
+{ ()=prints("shifted: ",parameter(x(p), lambda(p)-shift,nu(p)-shift)) then
+ ()=prints("stdized: ",standardize(parameter(x(p), lambda(p)-shift,nu(p)-shift))) in}
+ d+:=c*standardize(parameter(x(p), lambda(p)-shift,nu(p)-shift)) od then
+{ ()=prints("d: ", d) then}
+ cs=composition_series(d)*0 then
+{ ()=prints("cs= ", cs) then}
+{ ()=for p in monomials(cs) do prints(height(p), " ", LKT_highest_weights(p,KGB(L,0)), " ", LKT_dimensions(p)) od then}
+m=sort_by_height(monomials(cs)) in
+{()=prints("m=",m) in}
+{alternative way to define this, including this here for testing}
+let (x_L,mu_L)=LKT_highest_weight(p_L) then
+mu_L_shifted=ratvec_as_vec(mu_L-2*rho_u_cap_s(x,H)) then
+p_L_shifted=parameter(K_type(x_L,mu_L_shifted)) then
+valid=(p_L_shifted = m[0]) then
+()=if valid then (if kn_verbose then prints("test of shift by -2rho(u\cap s) passed") fi) else
+prints("failure computing shift by -2rho(u\cap s)");
+prints("m[0]=", m[0]);
+prints("m=",m);
+prints("p_L_shifted=",p_L_shifted);error("no match") fi in
+(Kparameter(m[0]),(cs,LKT_highest_weights(p_L,KGB(L,0)),LKT_highest_weights(m[0],KGB(L,0)), LKT_dimensions(m[0])))
+
+
+{this implements the algorithm of Proposition 7.3(6)
+p_L must be a standard final limit parameter for L=Levi_alt(H,x) (i.e. an L\cap K-type)
+this includes the new shift by -2rho(u\cap p)
+}
+set mu(KGBElt x, ratvec H, int kgb_number_L, ratvec lambda_L)=KParamPol:
+let L=Levi_alt(H,x) then
+p_L_0=KParam:(KGB(L,kgb_number_L),lambda_L) in
+if (is_zero(parameter(p_L_0))) then error("p_L_0 is zero")
+elif  not (is_standard(parameter(p_L_0))) then error("p_L_0 is not standard")
+elif not (is_final(parameter(p_L_0))) then error("p_L_0 is not final")
+else
+let ()=if kn_verbose then prints("mu(p_L_0) with p_L_0=", p_L_0) fi then
+(p_L,debug)=twist_by_minus_2rho_u_cap_s(x,H,number(x(p_L_0)),lambda(p_L_0)) then
+G=real_form(x) then
+x_L=x(p_L) then
+()=if kn_verbose then prints("untwisted p_L_0:", p_L_0) fi then
+ ()=if kn_verbose then prints("twisted p_L:", p_L) fi then
+()=if kn_verbose then prints("L=", real_form(x(p_L)), " computing mu(p_L), p_L=", p_L) fi then
+rv=null_module(G) in let
+rhoshifts=rho_shifts(x,H) then
+()=if kn_verbose then prints("rhoshifts: x=", x, "H=", H) fi then
+()=if kn_verbose then prints("number of rhoshifts:", #rhoshifts);prints("rhoshifts:", rhoshifts) fi then
+P_L=K_type_formula(parameter(p_L)) in let
+()=if kn_verbose then
+prints("K_norm(p_L)=", K_norm(p_L));
+prints("K-type formula on L: ", P_L);
+prints("terms in sum:");
+for c@p_L in P_L do prints(p_L) od fi then
+ ()=for c@p_L in P_L do let
+  ()=if kn_verbose then prints("");prints("computing term ", p_L) fi in
+  for (shift,j) in rhoshifts do
+    let ()=if kn_very_verbose then prints("j=",j," shift=",shift);
+   prints("c=",split_as_int(c));
+   prints("parameter on L:", p_L) fi in
+   let q=parameter(x(p_L),lambda(p_L)-shift,nu(p_L)) then
+  ()=if kn_very_verbose then prints("shifted param on L:", q, " with K_norm=", K_norm(q)) fi then
+   r_1=theta_induce_standard(q,G) then
+{   ()=prints("OK") then}
+   ()=if kn_verbose then prints("******* induced*0: ", r_1*0," of K_norm ", K_norms(r_1*0), "******") fi then
+{   ()=prints("OK1") then}
+{   ()=if kn_verbose then prints("K_norm of induced: ", K_norm(r_1)) fi then}
+{    ()=if kn_verbose then prints("K_norm on G before standardization: ", K_norm(r_1)) fi then}
+{   ()=if kn_very_verbose then prints("theta_induced parameter on G before standardization:", r_1) fi then}
+{   r_2=standardize(r_1) then}
+{   ()=if kn_very_verbose then prints("theta_induced parameter on G standardized:", r_2) fi then}
+{   r_3=standardize(r_2)*0 {set nu=0} in}
+    r_3=r_1*0 in
+{  let ()=if kn_very_verbose then prints("theta_induced parameter on G at nu=0:", r_3) fi in }
+   rv+:=(-1)^j*c*r_3 od od in rv fi
+
+set mu(KGBElt x, ratvec H, KParam p_L)=KParamPol:mu(x,H,number(x(p_L)),lambda(p_L))
+set mu(KGBElt x, ratvec H, Param p_L)=KParamPol:mu(x,H,Kparameter(p_L))
+set mu (KGBElt x,ratvec H)=mu(x,H,Kparameter(trivial(Levi_alt(H,x))*0))
+set mu (KGBElt x,ratvec H,KHighestWeight mu)=mu(x,H,K_type(mu))
+
+
+{
+set mu_old(KGBElt x, ratvec H, KParam p_L)=KParamPol:
+let x_L=x(p_L) then
+shift=-2*(rho_s(embed_KGB(x_L,real_form(x)))-rho_s(x_L)) then
+(y,lambda)=p_L in mu(x,H, (y, lambda+shift))
+
+set mu_old (KGBElt x,ratvec H)=mu_old(x,H,Kparameter(trivial(Levi_alt(H,x))))
+}
+{x_L must be a KGB element for Levi_alt(H,x)
+then p_L=parameter(x_L,lambda_L,0) -> mu(x,H,p_L)
+}
+set mu(KGBElt x,vec H,KGBElt x_L, ratvec lambda_L)=KParamPol:
+mu(x,H,number(x_L),lambda_L)
+
+{assume ParamPol has integral (not split) coefficients}
+set vector([Param] list,ParamPol P)=(bool,vec):
+let v=null(#list) then
+()=for p@i in list do
+let coeff=split_as_int(P[p]) in
+v[i]:=coeff;
+P:=P-coeff*p od
+then
+found = (#P=0) in (found,v)
+{set vector([Param] list,ParamPol P)=(bool,vec):
+let v=null(#list) then
+()=for p@i in list do coeff=P[p] then
+v[i]=coeff then
+P:=P-coeff*p od
+then
+found = (#P=0) in (found,v)
+}
+
+
+{let v=null(#list) then
+found=true in
+for (c,p) in %P do let
+i=find(list,p) in if i=-1 then found:=false else v[i]+:=split_as_int(c) fi od;(found,v)}
+
+{assume ParamPol has integral (not split) coefficients}
+set vector([KParam] list,KParamPol P)=(bool,vec):
+vector(for q in list do parameter(q) od,P)
+
+{given list=[P_1,...,P_n] of KParamPols
+test if P=\sum a_i P_i
+}
+
+{list of ParamPols -> list of distinct parameters occuring
+careful: don't let terms cancel!
+}
+set monomials([ParamPol] list)=[Param]:
+let sum_list=null_module(real_form(list[0])) in
+for P in list do
+ for c@p in P do sum_list+:=p od od;monomials(sum_list)
+
+
+{given ParamPols Q_1,...,Q_n and P test if
+P=\sum a_i Q_i
+Q_i and P are assumed to have integer coefficients
+return true/false, and [ParamPol] R,[int] S so that
+P=sum S[i]*R[i]
+}
+set in_span([KParamPol] list,KParamPol P)=(bool,[KParamPol],[int],[int]):
+{let ()=prints("in_span with:");for a in list do prints(a) od; prints("P=",P) in}
+let ()=prints("in_span with list of length ",#list, " P=",P) in
+if #list=0 then (false,[KParamPol]:[],[int]:[],[int]:[]) else
+let G=real_form(list[0]) then
+R=[KParamPol]:[] then
+S=[int]:[] then
+basis=monomials(list) then
+{()=prints("basis:", basis) then}
+pairs=for Q in list do  {prints("Q=",Q);} vector(basis,Q) od in
+let M=mat:for (,w) in pairs do w od then
+()=prints("Going to compute vector", #basis, " ", #monomials(P)) then
+(valid,T)=vector(basis,P) then
+()=prints("Computed vector", #basis, " ", #monomials(P)) in
+{let ()=prints("valid:", valid, "T=",T) in}
+{let ()=prints("vector is possibly valid:",valid) in}
+if valid then
+ let ()=prints("Now solving:", #M, " ", #T) in
+ let (v,success)=solve(M,T) then
+ ()=prints("Done solving:", #M, " ", #T) in
+ if (success) then
+  let ()=prints("success", v) in
+  let ()=for i:#v do if v[i]!=0 then
+{    prints("column ",i,":", M[i]); }
+    for j:#(M[i]) do if M[i][j]!=0 then prints(basis[j], " ", K_norm(Kparameter(basis[j]))) fi od fi od in
+let  ()=for i:#v do
+    if v[i]!=0 then
+       S#:=v[i];
+{       let ()=prints("nonzero column i ",v[i], " ", M[i]) in }
+       let column=M[i] in
+       let pols=null_module(G) in
+       let ()=for j:#column do if column[j]!=0 then (pols+:=column[j]*basis[j]) fi  od in
+       R#:=pols fi
+  od in
+  (true,[KParamPol]:R,[int]:S,[int]:v)   {if valid and success}
+  else (false,[KParamPol]:[],[int]:[],[int]:[]) fi  {if valid and not success}
+ else (false,[],[],[]) fi {if valid}
+fi {if #list=0}
+
+set in_span_alt([ParamPol] list,ParamPol P)=
+let basis=monomials(list) then
+{()=prints("basis:", basis) then}
+pairs=for Q in list do  {prints("Q=",Q);} vector(basis,Q) od in
+let M=mat:for (,w) in pairs do w od then
+(valid,T)=vector(basis,P) in
+{let ()=prints("vector is possibly valid:",valid) in}
+if valid then
+prints("M=",M);
+prints("T=",T);
+let inlattice=in_lattice(M,T) in prints("solved in_lattice:",inlattice);(basis,M,T,inlattice)
+else prints("can't find vector at all");(basis,M,T,false) fi
+
+{convenient to define in_span([[ParamPol]] list,ParamPol P)=
+in_span( flatten the list,P)
+}
+set in_span([[ParamPol]] list_of_lists,ParamPol P)=(bool,[ParamPol],[int],[int]):
+let list=[ParamPol]:[] in
+let ()=for new_list in list_of_lists do list#:=new_list od in
+in_span(list,P)
+{COMMENT -
+
+
+{given (x,H,n) compute span of all mu(x,H,p_L) for K_norm(p_L)<=n}
+set all_mu(KGBElt x,ratvec H,int bound)=
+let rv=[Param]:[] then
+P=null_module(real_form(x)) then
+params_L=all_K_parameters_norm_less_than(Levi_alt(H,x),rho_check(real_form(x)),bound) in
+for p_L in params_L do {prints("ADDING", mu(x,H,p_L));}P+:=mu(x,H,p_L) od;monomials(P)
+
+set all_H_smaller(KGBElt x,ratvec H)=
+let rd=root_datum(x) then
+allH=all_H(real_form(x)) then
+length_H=invariant_form(dual(rd),H,H) then
+smaller_H=[] in for (X,) in allH do if invariant_form(dual(rd),X,X)<length_H
+ then smaller_H#:=X fi od;smaller_H
+
+set all_mu_smaller(KGBElt x, ratvec H, int bound)=[ParamPol]:
+let G=real_form(x) then
+{()=prints("in all_mu_smaller with ", x, " ", H, " ", bound) then}
+smallerH=all_H_smaller(x,H) then
+rv=[ParamPol]:[] in
+for h in smallerH do
+  let L=Levi_alt(x,h) in
+  for p_L in all_K_parameters_norm_less_than(L,rho_check(real_form(x)),bound-rat_as_int(2*rho(G)*rho_check(G)) )
+  do  let m=mu(x,h,p_L) in
+  if (K_norm(m)<=bound) then
+     prints("ADDING:",h, " ",  L, " ", p_L, " ", m, " ", K_norm(m));rv#:=mu(x,h,p_L)
+  else
+     prints("NOT ADDING:",h, " ",  L, " ", p_L, " ", m, " ", K_norm(m)) fi
+ od od;rv
+
+{term_contained(P,Q)=int:N if:
+P=\sum a_i p_i
+Q=N(\sum a_i p_i) + other terms for some integer N
+In other words, let #P be the number of terms in P,
+return N <=>  #(Q-NP)=#Q-#P, otherwise returns 0
+}
+set term_contained(ParamPol P,ParamPol Q)=int:
+let
+(c_p,p)=(%P)[0] then
+params_Q=for (,q) in %Q do q od then
+N=rat:0 then
+k=find(params_Q,p) in
+if k=-1 then 0 else
+ let (c_q,)=(%Q)[k] in
+ N:=split_as_int(c_q)/split_as_int(c_p);
+ if not is_integer(N) then 0
+ else let diff=Q-rat_as_int(N)*P in
+ if #(monomials(diff))=#monomials(Q)-#monomials(P) then rat_as_int(N) else 0 fi fi fi
+
+set reduce_mu(KGBElt x,ratvec H,KParam p_L,[ParamPol] smaller)=(KParamPol,KParamPol):
+let mu=mu(x,H,p_L) then
+{()=prints("mu=",mu) then}
+G=real_form(x) then
+{bound=K_norm(mu)-rat_as_int(2*rho(G)*rho_check(G)) then}
+bound=2*K_norm(mu) in
+{()=prints("bound=",bound) then}
+{smaller=all_mu_smaller(x,H,bound) then}
+{()=prints("all_mu_smaller:") then}
+{()=for mu in smaller do print_K_parameter(mu);prints(K_norm(mu)) od in}
+let rec_fun f(ParamPol Q,[ParamPol] smaller_mu)=ParamPol:
+{let ()=prints();prints("trying to reduce:");
+print_K_parameter(Q) in}
+if #smaller_mu=0 then
+prints("Done reducing:");
+{print_K_parameter(Q);prints();}Q else
+let P={prints("using smaller_mu=");
+print_K_parameter(smaller_mu[0]);}smaller_mu[0] then
+N=term_contained(leading_terms(P),leading_terms(Q)) in
+if N=0 then
+{prints("No reduction");}f(Q,delete(smaller_mu,0)) else
+{prints("REDUCTION FOUND");prints("after reduction:");}
+{print_K_parameter(Q-N*P);}f(Q-N*P,smaller)  fi fi in (mu,f(mu,smaller))
+
+set reduce_mu(KGBElt x,ratvec H,KParam p_L)=(KParamPol,KParamPol):
+let mu=mu(x,H,p_L) then
+G=real_form(x) then
+bound=2*K_norm(mu) in reduce_mu(x,H,p_L,all_mu_smaller(x,H,bound))
+
+set reduce_mu(KGBElt x,ratvec H, int k, ratvec lambda_L,[ParamPol] smaller)=(KParamPol,KParamPol):
+let L=Levi_alt(H,x) in reduce_mu(x,H,KParam:(KGB(L,k),lambda_L),smaller)
+
+set reduce_mu(KGBElt x,ratvec H, int k, ratvec lambda_L)=(KParamPol,KParamPol):
+let L=Levi_alt(H,x) in reduce_mu(x,H,KParam:(KGB(L,k),lambda_L))
+
+
+
+set reduce_mu(KGBElt x,ratvec H,KGBElt x_L,ratvec lambda_L)=(KParamPol,KParamPol):
+let p_L=KParam:(x_L,lambda_L) in reduce_mu(x,H,p_L)
+
+set leading_reduce_mu(KGBElt x,ratvec H,KParam p_L)=(KParamPol,KParamPol):let (m,r)=reduce_mu(x,H,p_L) in
+(m,leading_terms(r))
+
+set leading_reduce_mu(KGBElt x,ratvec H,KGBElt x_L,ratvec lambda_L)=(KParamPol,KParamPol):let (m,r)=reduce_mu(x,H,x_L,lambda_L) in
+(m,leading_terms(r))
+
+}

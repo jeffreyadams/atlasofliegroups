@@ -1,0 +1,1888 @@
+Brief introduction to 'atlas', the new interface to the Atlas software
+
+
+1 Introduction
+
+The program 'atlas', built from the files in this directory and from a large
+part of the sources of the Atlas library, provides access to its functions in
+an expression-oriented fashion. Whereas the older program 'Fokko' will enter a
+dialogue whenever it needs some parameter to be set (inner class, real form,
+Cartan class,...) these parameters can be defined by expressions in 'atlas'.
+As a consequence such parameters can be more flexibly handled, results of
+computations can be reused, and scripting and programming become possible.
+
+The 'atlas' program consists of an implementation for a general programming
+language called 'axis' (which we developed and is currently only used within
+the Atlas project), to whose general functionality are added a great number of
+value types specific for Atlas, and functions from its library operating upon
+them. In the description we below we try to refer to 'axis' for basic features
+proper to the programming language, and 'atlas' for anything specific for the
+Atlas specific functionality, but the destinction may be ignored without harm.
+
+   Prerequisites for building the 'atlas' program.
+
+To compile atlas, you need a recent release of the 'cwebx' system, which is
+included in the Atlas distribution. It contains tools to turn the "literate"
+sources, {buffer,built-in-types,evaluator,global,lexer,main,parsetree,types}
+with extension .w, into compilable files (extensions .cpp and (except for
+main) .h) and source documentation files (extension .dvi). The build process
+will automatically produce executables and source code documentation.
+
+Apart from 'cewbx', you need as tools (GNU) 'make', 'bison', and a compiler
+like 'g++' which you already need to compile the 'Fokko' program (but contrary
+to Fokko, you need at least version 4.4 of gcc/g++ to compile atlas, since
+atlas uses certain C++11 functionality present in that version and later).
+Once you are set, type 'make' in the atlas/sources/interpreter directory (or
+'make atlas' in the Atlas directory) to build atlas. Normally this will
+automatically invoke the tools to create all the files mentioned above when
+they are needed. (Using the -j (job server) switch to GNU 'make' may speed up
+compilation on multi-procesor machines, but sometimes fails to complete
+correctly; rerunning running make without '-j' should resolve this.)
+
+After the first compilation of 'atlas' it is advised to call 'make install'
+with a BINDIR argument as described in the Atlas installation instructions.
+This will produce in the specified directory (which should be in your $PATH)
+an executable script named 'atlas' that calls the just compiled executable,
+preloads a "standard prelude" of user defined functions, and provides some
+additional information enabling it to find other scripts provided with Atlas
+upon request. This also has the advantage that you can then call 'atlas' from
+any directory, without any need to specify a path as in './atlas'.
+
+2 Comparison with the Fokko program
+
+This section is for those whose have used the older atlas program that now has
+been renamed to 'Fokko'. It is not essential for understanding the new atlas
+program, though it should be noted that using the Atlas specific functions of
+the program assumes some knowledge about how representation theoretic notions
+are encoded, and 'Fokko' may give a simpler introduction to this than 'atlas'.
+
+Consider for instance the following session
+
+  $ Fokko
+  This is the Atlas of Reductive Lie Groups and Representations...
+  Enter "help" if you need assistance.
+
+  empty: blocksizes
+  Lie type: B5.A3.T1
+  elements of finite order in the center of the simply connected group:
+  Z/2.Z/4.Q/Z
+  enter kernel generators, one per line
+  (ad for adjoint, sc for simply connected, ? to abort):
+  1/2,0/4,0/4
+  0/2,2/4,2/4
+
+  enter inner class(es): scc
+	0      0      0      0      0      0      0      1
+	0      0      0      0      0      0      0     11
+	0      0      0      0      0      0      0     10
+	0      0      0      0      0      0      0     75
+	0      0      0      0      0      0      0    110
+	0      0      0      0      0      0      3     21
+	0      0      0      0      0      0      0    305
+	0      0      0      0      0      0      0    750
+	0      0      0      0      0      0     33    231
+	0      0      0      0      0      0      0    810
+	0      0      0      0      0      0      0   3050
+	0      0      0      0      0      0    225   1575
+	0      0      0      1     25    130      0   1342
+	0      0      0      0      0      0      0   8100
+	0      0      0      0      0      0    915   6405
+	0      0      0     10    250   1300      0  13420
+	0      0      0      0      0      0   2430  17010
+	3     75    390     21    525   2730   4026  28182
+  main: qq
+  $
+
+Using atlas, the same result can be obtained as follows
+
+  $ atlas
+  This is 'atlas'...
+  atlas> set ic=inner_class("B5.A3.T1",[[1,0,0]/2,[0,1,1]/2],"scc")
+  Identifier ic: InnerClass
+  atlas> ic
+  Value: Complex reductive group of type B5.A3.T1, with involution defining
+  inner class of type 'ccc', with 18 real forms and 8 dual real forms
+  atlas> block_sizes(ic)
+  Value:
+  | 0,  0,   0,  0,   0,    0,    0,     1 |
+  | 0,  0,   0,  0,   0,    0,    0,    11 |
+  | 0,  0,   0,  0,   0,    0,    0,    10 |
+  | 0,  0,   0,  0,   0,    0,    0,    75 |
+  | 0,  0,   0,  0,   0,    0,    0,   110 |
+  | 0,  0,   0,  0,   0,    0,    3,    21 |
+  | 0,  0,   0,  0,   0,    0,    0,   305 |
+  | 0,  0,   0,  0,   0,    0,    0,   750 |
+  | 0,  0,   0,  0,   0,    0,   33,   231 |
+  | 0,  0,   0,  0,   0,    0,    0,   810 |
+  | 0,  0,   0,  0,   0,    0,    0,  3050 |
+  | 0,  0,   0,  0,   0,    0,  225,  1575 |
+  | 0,  0,   0,  1,  25,  130,    0,  1342 |
+  | 0,  0,   0,  0,   0,    0,    0,  8100 |
+  | 0,  0,   0,  0,   0,    0,  915,  6405 |
+  | 0,  0,   0, 10, 250, 1300,    0, 13420 |
+  | 0,  0,   0,  0,   0,    0, 2430, 17010 |
+  | 3, 75, 390, 21, 525, 2730, 4026, 28182 |
+
+  atlas> quit
+  Bye.
+  $
+
+The 'inner_class' function does essentially the same as the dialogue from the
+line 'Lie type:' up to and including the one with 'enter inner class(es):' in
+Fokko. Note however that the specification [[1,0,0]/2,[0,1,1]/2], of the
+kernel generators is somewhat more liberal than allowed in the Fokko program.
+The kernel generators are needed to describe root data in full generality, but
+are not needed for simply connected or adjoint root data; whereas in Fokko
+this is achieved by recognising 'sc' or 'ad' in lieu of kernel generators, the
+'atlas' program provides alternative functions to the above 'inner_class' that
+do not take the kernel generator specification as argument.
+
+So one difference is that rather than being asked to specify a complex group
+and an in inner class after calling the blocksizes command, one needs to
+construct an inner class value first, and then invoke the block_sizes function
+with the inner class as argument. In the atlas session above the variable
+'ic' was set to the computed inner class; the reply confirms (only) its type
+InnerClass. Typing 'ic' after this produces a more elaborate description of
+the inner class, reporting the Lie type, inner class type (note that the 's'
+for the factor 'B5' was converted to 'c') and numbers of (dual) real forms.
+Then the variable 'ic' was used as argument to block_sizes, and it could
+subsequently be used in other function calls as well. Alternatively one could
+have called directly:
+
+  block_sizes(inner_class("B5.A3.T1",[[1,0,0]/2,[0,1,1]/2],"scc"))
+
+but then of course the inner class would not have been available afterwards in
+the variable 'ic'. The matrix resulting from the call was printed, but it
+could instead have been assigned to a variable as well. One can define any
+number of variables, with values of any of the types available. This provides
+more flexibility of use than the Fokko interface, which can basically remember
+just one inner class and one real form between different commands. In addition
+the atlas program provides programming constructions, and allows you to
+define scripts and functions for later use.
+
+The set of primitive functions provided is described in the file 'atlas.help'
+(in the subdirectory atlas-scripts of the Atlas root directory, just like the
+current file). There is also a script 'basic.at' that defines a collection of
+user-defined functions complementing the primitive ones that is usually
+automatically loaded at start-up (there is no separate documentation for these
+as for the primitive functions; just the script source itself). One can
+explicitly request loading some script load by typing at the atlas prompt
+
+atlas> <script.at
+
+which will load the file of that name if it has not already been, and if it
+can be found. (Normally scripts in the standard location atlas-scripts will be
+found using just the file name, but an explicit path may be included in the
+file name after the '<' character; axis syntax is suspended in the file name.)
+When "manually" loading a script, a summary of all its definitions is printed.
+
+
+In the current file we shall document the 'axis' language that the 'atlas'
+program interprets, and its remaining aspects other than primitve functions.
+
+
+3 Design principles of the 'axis' language, and current limitations
+
+The axis language is expression based, which means that the text entered
+serves most often to designate values to be computed rather than actions to be
+performed. Its design is close to that of functional programming languages:
+function values are first class citizens, binding is static with no
+restrictions on lifetime, semantics is value-based for all types (no
+distinction betwen object and value, or between mutable and unmutable values).
+The language does provide assignable variables and loops. All control
+structures including loops are oriented towards construction of values rather
+than towards sequencing of side-effects, although they do provide the latter.
+Somewhat curiously for a language close to functional languages, ordinary
+definitions cannot be recursive, which is a consequence of strict scoping
+rules derived from the lambda-calculus. Nonetheless recursive function
+definitions are supported through use of the rec_fun keyword.
+
+For beginning users it is important to stress the fundamental distinction
+between creating names (variables) and assigning to them. The interpreter will
+never create a variable just because it appears to be used, and therefore
+refuses expressions with unknown names in them: it neither creates new
+variables that are being assigned to (as Python does), nor assumes new names
+to be meaningful but undefined (as do many symbolic algebra packages, which
+take unknown names to stand for indeterminates). Names are introduced using
+the keyword 'set' (for permanent names) or using the keyword 'let' (for local
+names, whose scope is limited to the current expression, or even to part of
+it); in both cases the name is immediately bound to a value. Once a name is
+introduced, its value can be altered by assignment, which is written ':=' (in
+the tradition of Algol and Pascal, and unlike FORTRAN and C). Such assignments
+are fairly rare (they are used almost exclusively for programming purposes),
+and cannot alter the type of the value bound to the name. Both 'set' and 'let'
+follow the name(s) being introduced by '=' (not ':='). Apart from that, '='
+also serves as equality testing operator (defined for most types).
+
+The language is strictly typed, so that type-correctness of expressions must
+be established before their evaluation is attempted. This means that most
+common errors are caught before execution starts, and these error messages are
+usually more specific about their cause than runtime errors (which mention any
+offending value, but cannot trace where that value originated). As a
+consequence it can be tough to write a script in such a way that will load
+without any error message, but the correction cycle is fast: atlas just stops
+at the first error, with a detailed message, and reloading after correcting
+the problem is easy (type up-arrow once to recover the load command from
+history). Once a script is fixed to the point that loading runs to the end of
+the file, most trivial errors will have been eliminated. Nonetheless, type
+checking is a complicated process, which in rare cases could produce hard to
+decipher error messages (but nothing compared to what C++ compilers produce).
+
+Most of the time the system can figure out the types from the expressions, so
+the user need not write them explicitly; however the types of arguments of
+user-defined functions must always be specified. Types are also used to allow
+overloading, which means that it is possible to give the same (natural)
+function or operator name to different operations; in each expression using
+these names, the type system then determines which instance is to be used.
+This applies in particular to user function definitions, so that binding of
+overloaded operators and functions is done statically (when the user defines
+the function rather than when it gets executed). Currently types are
+straightforward and therefore somewhat limited; this is quite sufficient for
+using the Atlas functionality, though for advanced programming the set of
+possible types might need to be enlarged in the future.
+
+The primitive data types currently available for values cover almost all those
+that the Atlas library can handle (root data, inner classes, real forms,
+Cartan classes, KGB elements, parameters for (standard) modules and formal
+sums of those; a notable exception is twisted involutions or Weyl group
+elements but working with representing matrices suffices). For the types
+available not all library functionality is available in atlas, but this can
+sometimes be circumvented using a script. Some data types used internally
+(such as Weyl groups, polynomials) may appear in printed output but cannot be
+further manipulated. The programming language itself is fairly complete in
+functionality, with constructions like variables, loops and conditionals, as
+well as functions and operators (both built-in and user-defined); what is
+currently the most annoying limitation is the absence of second order typing.
+
+4 Types
+
+The axis langude is strongly and statically typed: the interpreter first
+analyses the expressions and definitions given by the user to verify that
+types can be attributed to all subexpressions, and all operations are defined
+for the types they are applied to; only if the expression passes this test
+does the system attempt to evaluate the expression. Thus many computations
+that would produce problems on execution are signaled. For instance, after
+loading groups.at which defined GL: (int->RootDatum), atlas will complain
+about
+
+  atlas> block_sizes (GL(5))
+    Type error:
+      Subexpression GL(5) at <standard input>:...
+      has wrong type: found RootDatum while InnerClass was needed.
+    Type check failed
+
+because the built-in function 'block_sizes' requires an 'InnerClass' value but
+'GL' produces a value of type 'RootDatum'. In the following example
+
+  atlas> Lie_type(Cartan_matrix(GL(5)))
+  Error in expression Lie_type(Cartan_matrix(GL(5))) at...
+    Failed to match `Lie_type' with argument type mat
+  Type check failed
+
+the message is somewhat different, because the name `Lie_type' corresponds to
+several functions, and atlas can only report that none of them applies for
+the given expression. To find out which instances are known, one can enter:
+
+  atlas> whattype Lie_type ?
+  Overloaded instances of Lie_type
+    string->LieType
+    RootDatum->LieType
+    (int,int)->LieType
+
+(note the question mark, which here means treat `Lie_type' as possibly
+overloaded function name rather than as a variable) showing that either a
+string or a RootDatum value would have worked instead of a (Cartan) matrix.
+For instance
+
+  atlas> Lie_type(GL(5))
+  Value: Lie type 'A4.T1'
+  atlas> Lie_type("E6.T1.D4")
+  Value: Lie type 'E6.T1.D4'
+
+All built-in operators and functions, and normally also all user defined ones,
+are defined as "overloaded" symbols (even if only one meaning is built-in, as
+is the case for 'block_sizes'). This allows the user to add new definitions of
+those symbols without overriding those built in. On the other hand, the values
+of all identifiers that are not functions are stored in a different table,
+allowing only one such value at a time to be associated to a given identifier.
+
+The interpreter knows about several "primitive" types, which it distinguishes
+but for which (in contrast to "composite" types discussed below) it usually
+does not provide specific language constructions (although it does know for
+instance that a Boolean value can be tested in a conditional expression).
+These basic types are:
+
+type		represents
+-----------------------------------
+bool		truth values
+int		machine integers (32 or 64 bits depending on the machine)
+rat		rational numbers (quotient of two machine integers)
+string		string of characters
+vec		vector of machine integers
+mat		matrix of machine integers
+ratvec          rational vector (vector numerator with common denominator)
+LieType		Lie type (such as D4.A2.T1.E8)
+RootDatum	root datum, specifying a connected complex reductive group
+InnerClass      inner class of real forms (based root datum with involution)
+RealForm	real form within an inner class
+CartanClass     class of Cartan subgroups within an inner class
+KGBElt		element of the set K\G/B associated to some RealForm value
+Block		block for a pair of RealForm values (at dual inner classes)
+Split		"split integer" a + b.s where s is "split unit" with s^2=1
+Param		value representing a standard module or its irreducible quotient
+ParamPol	virtual module with signature (Param values with Split coefs)
+
+Constant values of type bool, int and string can be entered as usual (use
+'true' or 'false' (without quotes) for truth values, and a string in
+double-quotes (with any contained double-quote characters doubled) for
+strings. Strings denotations contain newline characters (but a constant
+'new_line' is provided, containing a string with a single newline character).
+Values of other basic types can only be obtained by using appropriate
+operators and functions (for instance 22/7 has type 'rat' and GL(5) has type
+'RootDatum'), or sometimes via implicit conversions (see below).
+
+Composite types are either array (list) types, tuple types or function types.
+Array and tuple types both construct aggregates by combining a sequence of
+component values; for array types all components must have the same type and
+there could be any number of them (including none at all), while for tuple
+types the type explicitly enumerates the types of the components, so in
+particular the number of components is determined by the type. A function type
+specifies zero or more argument and result types; for either, unless exactly
+one such type is specified the argument or result type is actually a tuple
+type. Thus if t0,t1,t2,t3 are types, one has composite types like:
+
+[t0]		array of elements all of which have type t0
+[[t0]]		array of elements all of which have type [t0] (a list of lists)
+...		etc
+(t0,t1)		2-tuple formed of components of types t0 and t1 respectively
+(t0,t1,t2)	3-tuple, with components of types t0,t1,t2 respectively
+(t0,t1,t2,t3)	4-tuple, with components of types t0,t1,t2,t3 respectively
+...		etc
+void		0-tuple (irrelevant value)
+(t0->t1)	function with argument of type t0 and result of type t1
+(t0,t1->t2)	function with argument of type (t0,t1) and result of type t2
+(t0->t1,t2)	function with argument of type t0 and result of type (t1,t2)
+(t0,t1->t2,t3)	function with argument of type (t0,t1), result of type (t2,t3)
+(t0,t1->)	function with argument of type (t0,t1) and no useful result
+(->t0)		function with 0 arguments with result of type t0
+...		etc
+
+Often the user does not have to write any types, and the system will take care
+of deriving primitive and composite types as implicitly specified by the
+expression. However when writing user defined functions, the types of the
+arguments must be specified, so that types can be checked for the function
+body; once this check succeeds, a type is attributed to the function, and it
+will henceforth be treated just like a built-in function of that type would be
+(and one can in fact for instance form an array that contains both built-in
+and user-defined functions, provided they all have the same (function) type).
+
+* Array displays, selection and slicing
+
+Array values can be constructed by enclosing a comma-separated lists of
+component expressions (all of the same type) in brackets, as in [1,-4,3*6],
+which is called a row display (the given one will be printed as [1,-4,18]).
+They are also implicitly constructed by loops, as will be described later.
+
+If 'v' is an identifier, or more generally an expression, whose value is an
+array, then the individual components can of the array can be accessed by
+subscripting, as in 'v[i]'. Interpretation of the index always starts from 0:
+the first element of v is v[0], and the last is v[#v-1]. However, one can also
+index counting from the end by prefixing the '[' by '~', so the last element
+is also v~[0], and the before-last v~[1] and so on. One can also select
+multiple elements at once (combined into a new array value) using a "slice",
+specifying the a lower and an upper bound separated by ':'. Each should be
+thought of as indicating a separation between two elements, namely between the
+one at the given index and at an index one less; the slice then selects all
+elements between the lower separator and the upper separator. This means that
+in a v[a:b] includes the element v[a] but excludes v[b], and therefore selects
+b-a elements in all. In case a>=b the slice returns an empty array of the same
+type as v (having a=b is normal, having a>b is allowed but rarely useful). It
+is an error if the lower bound is negative, or if the upper bound exceeds the
+size of the array. Individual bounds in a range can also be counted from the
+end by appending a '~', in which case they indicate the separation after (that
+is, closer to the end) then the element the index would reversely select. As a
+convenience a completely omitted lower bound means 0 (from the beginning) and
+an omitted upper bound means 0~ (up to the end). Finally one can (like for
+subscription) select from the reverses array by prefixing the '[' by '~'.
+
+Here are some examples of various uses of slices
+
+  v[0:3]  or v[:3]    -- the first 3 elements of v
+  v[3:0~] or v[3:]    -- everything except the first 3 elements of v
+  v[2~:0~] or v[2~:]  -- the last 2 elements of v
+  v[0:2~]  or v[:2~]  -- everything except the last 2 elements of v
+  v[i:k]              -- the elements [v[i],v[i+1],...,v[k-1]
+  v[i:k~]             -- all of v except its first i and its last k elements
+  v~[0:0~] or v~[:]   -- all of v in reverse order
+  v~[4:0~] or v~[4:]  -- all of v except the last 4 elements, in reverse order
+  v~[0:5~] or v~[:5~] -- all of v except the first 5 elements, in reverse order
+  v~[i:k]             -- the k-i elements [v[n-1-i],...,v[n-k-1],v[n-k]] (n=#v)
+  v~[k~:i~]           -- the k-i elements [v[k-1],...,v[i+1],v[i]]
+
+While vectors, rational vectors, matrices and strings are not axis arrays
+(they are instead members of primitive types), they do behave like arrays for
+the purpose of selection; the result is respectively an integer, rational
+number, vector (column of the matrix) or a one-character string (the selection
+can also cause an error, if the index is out of bounds). They can also be used
+in slicing, in which case they return a value of the same type as what was
+selected from. For instance "reverse me!"~[:] gives "!em esrever" and
+id_mat(6)[1:2~] returns
+
+    | 0, 0, 0 |
+    | 1, 0, 0 |
+    | 0, 1, 0 |
+    | 0, 0, 1 |
+    | 0, 0, 0 |
+    | 0, 0, 0 |
+
+For individual entries of a matrix, one can provide row and column index at
+once (in that order), separated by a comma as in A[i,j] (this actually indexes
+A by a tuple of type (int,int), as in A[(i,j)]). One can apply reverse
+indexing provided it applies to both indexes, as in A~[0,0] for the bottom
+right entry. Slicing applies somewhat differently in case of matrices (unless
+it involves a single integer range, in which case a range of columns is
+selected). The general form is A[i:k,j:l] where each of the bounds i,k,j,l may
+be followed by '~' (but not 'A'; this syntax allows no global reversal). This
+selects a block of 'A' with the interpretation above for each of the ranges.
+For more general slicing of matrices (with optional reversal of row and/or
+columns, transposition, and negation of individual entries, atlas provides a
+built-in function swiss_matrix_knife (the A[i:k,j:l] syntax in fact uses it).
+
+Finally there is selection if ParamPol values, which can be seen as
+associative arrays mapping certain Param values to Split coefficients, by
+Param values used as index: for a ParamPol P and a Pram value q, the
+subscription P[q] returns the coefficient of q in P (or Split:0 if no term q
+is present). There is a technical restriction to this use due to the fact that
+terms in ParamPol can only involve so-called standard parameters, and these
+are automatically expanded to nonzero final parameters; therefore P[q] gives
+an error unless q is standard, nonzero and final. There is no such thing as
+reversal in associative arrays, so the syntax P~[q] is not allowed here.
+
+* Tuple displays and pattern matching
+
+If instead of brackets of a row display one uses parentheses to enclose a
+sequence of expressions, then a tuple rather than an array is formed (except
+in case there is exactly one expression in the sequence: then parentheses just
+imply grouping as used for instance to override operator precedence). Tuples
+differs from array in that there elements are not required to have the same
+type, and (therefore) cannot be selected by position. In fact the type of a
+tuples expression explicitly specifies the type of the component at each
+position, and since the type checker insists that all expressions have a type,
+it is not possible to work with a tuple not having a fixed number of
+components (unlike arrays, which can well be of varying length). Tuple
+displays are frequently used to pack the arguments of a function (officially
+every function takes a single argument, but very often it is of tuple type).
+So for instance 'f(x,y)' applies the function 'f' to a 2-tuple with components
+'x' and 'y'. But one is not obliged to write a tuple display as argument of a
+function expecting a tuple; for instance after 'set z=(3,4)' the variable 'z'
+holds a 2-tuple, and (the same instance of) 'f' may also be called as 'f(z)'.
+One could even for instance multiply the components of 'z' by writing '*z'
+(giving 12 in the example); indeed the expression '3*4' is transformed by the
+parser into '*(3,4)', and (currently) this form is also used in error
+messages, for instance in
+
+  atlas> GL(10/2)
+  Error in expression GL(/(10,2)) at <standard input>:...
+    Failed to match 'GL' with argument type rat
+  Type check failed
+
+(The operator '/' on integers produces a rational number; for integer division
+ignoring the remainder one should write 10\2 instead).
+
+To decompose tuples, a simple form of pattern matching is provided: wherever
+an identifier can be introduced, one may also specify a tuple of identifiers,
+if the type of the value is appropriate, and the components will be bound to
+the corresponding identifiers. So whereas
+
+  atlas> set x=E
+
+introduces the identifier 'x' whose value (and type) are set to that of the
+expression 'E', one can alternatively say
+
+  atlas> set (x,y)=E
+
+provided that E produces a pair (some value of some 2-tuple type), and the
+variable 'x' will be set to the first component of the pair, and 'y' to the
+second component. In either case, the types of the variables introduced will
+be reported, as in
+
+  atlas> set (q,r) = 22 \% 7   { Euclidean division with remainder }
+  Identifiers q: int, r: int
+  atlas> q    { quotient }
+  Value: 3
+  atlas> r    { remainder }
+  Value: 1
+
+The same pattern-matching is also allowed when introducing parameters of
+user-defined functions, or when introducing local variables. To introduce
+local variables one uses a syntax like that of 'set' used above, but with
+'let' instead of 'set', and followed by 'in' and the "body" if the
+let-expression, the expression where the local variable is in scope. So to
+compute a value from the components of 'z', one could say
+
+  let (x,y)=z in 3*y-x
+
+If only the first component is needed, there is no need to give a name to the
+other one, so for the projection to the first component one can write
+
+  let (x,)=z in x
+
+Local variables get their value and type from the expression between '=' and
+'in', and are independent of any meaning that might previously be associated
+to the identifier; after evaluation of the body, the local identifiers
+introduced, and their values associated to them, are forgotten. (One can no
+longer refer to the local name outside the expression following 'in'; in some
+cases references to them made from inside that expression may survive though.)
+
+Using a local variable, the initial example could have been given in a form
+that does not permanently bind the identifier 'ic':
+
+  atlas> let ic = inner_class("B5.A3.T1",[[1/2,0,0],[0,1/2,1/2]],"scc")
+  L > in block_sizes(ic)
+  Value:
+  | 0,  0,   0,  0,   0,    0,    0,     1 |
+  | 0,  0,   0,  0,   0,    0,    0,    11 |
+  | 0,  0,   0,  0,   0,    0,    0,    10 |
+  | 0,  0,   0,  0,   0,    0,    0,    75 |
+  | 0,  0,   0,  0,   0,    0,    0,   110 |
+  | 0,  0,   0,  0,   0,    0,    3,    21 |
+  | 0,  0,   0,  0,   0,    0,    0,   305 |
+  | 0,  0,   0,  0,   0,    0,    0,   750 |
+  | 0,  0,   0,  0,   0,    0,   33,   231 |
+  | 0,  0,   0,  0,   0,    0,    0,   810 |
+  | 0,  0,   0,  0,   0,    0,    0,  3050 |
+  | 0,  0,   0,  0,   0,    0,  225,  1575 |
+  | 0,  0,   0,  1,  25,  130,    0,  1342 |
+  | 0,  0,   0,  0,   0,    0,    0,  8100 |
+  | 0,  0,   0,  0,   0,    0,  915,  6405 |
+  | 0,  0,   0, 10, 250, 1300,    0, 13420 |
+  | 0,  0,   0,  0,   0,    0, 2430, 17010 |
+  | 3, 75, 390, 21, 525, 2730, 4026, 28182 |
+
+Note that axis recognized that the let-expression was incomplete after the
+first line, changing the prompt to 'L >' in the second line to indicate this.
+
+
+5 Implicit conversions
+
+When types do not match exactly, axis will sometimes insert implicit type
+conversions that are accompanied by conversions of the corresponding values.
+For instance, although the 'vec' type, which functions of the Atlas library
+use, models the same values as '[int]' (pronounced "row of int"; this is the
+general row-of construction applied for component type int), the two types
+have different internal representations (that of 'vec' is a bit more compact).
+The row display syntax will always produce a value of row-of type, so it can
+only be used to produce a '[int]' value. What makes it nevertheless possible
+to provide 'vec' values to functions that need it is the fact that atlas will
+convert between '[int]' and 'vec' when the context that require this. In
+particular one can write a row display as argument to a function in a position
+that takes a 'vec' value. Inversely where a '[int]' value is required, a
+function call returning 'vec' will be accepted, and its result converted.
+
+Not all conversions are bidirectional; in some cases like conversion of
+integers into rational numbers no conversion in the opposite direction is
+provided. One could take the integer part (floor) of a rational number, but
+since this is not the only reasonable option, the call of an explicit function
+will be required for this conversion. Since the user has no control over
+implicit conversions (neither the set of such conversions, nor the details of
+each conversion), they only have been defined in cases where there appears to
+be no doubt about the natural (injective) way to map one type to the other.
+For similar reasons implicit conversions are defined conservatively: when for
+certain values there is no obvious conversion, an error is produced rather than
+making a guess about the desired value; the user who wishes more liberal
+treatment is invited to write and use an explicit conversion that defines it.
+For instance an implicit conversion from '[vec]' to 'mat' is provided (it is
+essential for entering matrix values); a choice is built into atlas that the
+vectors will become columns (rather than rows) of the matrix, but the
+conversion will produce an error when applied to vectors of different lengths
+(rather than padding in some way), and also when applied to an empty row of
+vectors (since there is no way to know the number of rows that the resulting
+empty matrix should have). The latter point causes this implicit conversion to
+often be the wrong choice in programming situations where a row of vectors all
+of known size (but possibly without any vectors at all) needs to be converted
+into a matrix; a built-in operator '#' of signature '(int,[vec]->mat)' is
+provided that allows explicitly specifying the size of the vectors, and thus
+producing a correct result even when the row of vectors is empty.
+
+Here is a list of all implicit type conversions
+
+  vec       <-> [int]
+  mat       <-> [vec]    (vectors are columns of the matrix)
+  mat       <-> [[int]]  (inner arrays are columns of the matrix)
+  int        -> rat      (denominator 1)
+  ratvec    <-> [rat]    (ratvec has least common denominator)
+  vec        -> ratvec   (denominator 1)
+  [int]      -> ratvec
+  int	     -> Split
+  string     -> LieType  (applies Lie_type function)
+  InnerClass -> RootDatum
+  RealForm   -> InnerClass
+  RealForm   -> RootDatum
+  Param	     -> ParamPol (parameter is converted to final parameter(s) first)
+
+At most one implicit conversion is applied to a given subexpression, so there
+is for instance no implicit conversion from '[int]' to '[rat]' passing through
+the intermediate type 'ratvec'; should this chain of implicit conversions be
+desired, writing a cast 'ratvec:' will allow it (the first conversion no being
+inside the cast, the second applied to the result of the cast).
+
+The one-directional conversions int->rat and string->LieType are mainly a
+convenience to users, as these conversion could be written out explicitly:
+
+  atlas> 3+1/7       { same as 3/1+1/7 }
+  Value: 22/7
+  atlas> Cartan_matrix("E8")  { same as Cartan_matrix(LieType("E8")) }
+  Value:
+  |  2,  0, -1,  0,  0,  0,  0,  0 |
+  |  0,  2,  0, -1,  0,  0,  0,  0 |
+  | -1,  0,  2, -1,  0,  0,  0,  0 |
+  |  0, -1, -1,  2, -1,  0,  0,  0 |
+  |  0,  0,  0, -1,  2, -1,  0,  0 |
+  |  0,  0,  0,  0, -1,  2, -1,  0 |
+  |  0,  0,  0,  0,  0, -1,  2, -1 |
+  |  0,  0,  0,  0,  0,  0, -1,  2 |
+
+If desired, a context requiring a given type can be created by a cast: writing
+the desired type name followed by a colon and the expression. So while one
+(currently, this may change in the future) gets an error for
+
+  atlas> [1,1/2,1/3,1/4]
+  Error during analysis of expression at <standard input>:...
+  Type error:
+    Subexpression /(1,2) at <standard input>:...
+    has wrong type: found rat while int was needed.
+  Type check failed
+
+this can be repaired by asking for a list of 'rat'
+
+  atlas> [rat]: [1,1/2,1/3,1/4]
+  Value: [1/1,1/2,1/3,1/4]
+
+Alternatively this input could be turned into a 'ratvec'
+
+  atlas> ratvec: [1,1/2,1/3,1/4]
+  Value: [ 12,  6,  4,  3 ]/12
+
+Note that here in addition to the conversion of the initial '1' from integer
+to rational, a conversion of the row from '[rat]' to 'ratvec' is inserted.
+
+This conversion is applied whenever a list of rationals (or integers) is given
+in place of a 'ratvec'; for instance inner_class takes a list of 'ratvec'
+values as second "kernel generators" argument, and they can be specified as
+
+  atlas> inner_class ("D4.A3",[ratvec]:[[0,1/2,1/4],[0,0,1/2]],"ss")
+  Value: Complex reductive group of type D4.A3, with involution defining
+  inner class of type 'cs', with 10 real forms and 15 dual real forms
+
+Note that the cast '[ratvec]:' to a row of rational vectors is needed because
+(1) the call to 'inner_class' is overloaded, so atlas cannot know beforehand
+that the second argument is of type '[ratvec]', and (2) in isolation the row
+display '[[0,1/2,1/4],[0,0,1/2]]' would give a type error, similarly to the
+example just above. But once the cast is written, atlas knows that each of
+the two sub-displays in the row display must have type 'ratvec', so it is not
+necessary to separately cast those, or to cast the constants '0' to 'rat'.
+
+In this call there could be one kernel generator, '[ratvec]:[[0,1/2,1/4]]', or
+none at all 'ratvec:[]' (for an empty row argument a cast is always necessary
+in order to resolve overloading). However 'ratvec:[0,1/2,1/4]' will not be
+accepted, since a row of rational vectors is required, and atlas will not
+turn a single value into a singleton row automatically. (One could on the
+other hand admit such an argument by defining an additional overload of
+'inner_class' that accepts a single 'ratvec' and builds a singleton row from
+it with which it then calls the built-in version of 'inner_class'.)
+
+Matrices can be built from lists of columns by requiring type 'mat':
+
+  atlas> mat: [[1,2,4],[3,5,7]]
+  Value:
+  | 1, 3 |
+  | 2, 5 |
+  | 4, 7 |
+
+Each list of integers giving a column is in fact first converted to a vector,
+and one could also use a vector-valued expression in its place (for instance
+an identifier bound to a vector value).
+
+For specifying a matrix by rows, a special syntax is provided:
+
+  atlas> [ 1,2,4 | 3,5,7 | 0,-1,6 ]
+  Value:
+  | 1,  2, 4 |
+  | 3,  5, 7 |
+  | 0, -1, 6 |
+
+Note that 'mat:' is not required here, the syntax itself forces a matrix
+result. On the other hand it will not accept 'vec' values as lines; to
+construct a matrix from its row vectors, write '^[r_0,r_1,...]', where '^' is
+a prefix operator indicating matrix transposition. Here the argument is
+implicitly converted from '[vec]' to 'mat', illustrating that although
+overloaded calls (here of the operator '^') do not impose any type on their
+argument, they do match when an argument is found with a type (here '[vec]')
+sufficiently close to one (here 'mat') for which an overload is defined. In
+case the list of rows is given by an expression other than a row display, and
+it could return an empty list, it is better to write 'n^rows' rather than
+just '^rows', where 'n' is the constant size of the rows, as it then returns
+an n times 0 empty matrix rather than an error when 'rows' is an empty list.
+
+
+6 Defining and modifying identifiers
+
+As shown in the examples above, global identifiers are introduced using 'set',
+while local identifiers are introduced with 'let'. Local identifiers can be
+used only in the expression after the following 'in', which may however be an
+arbitrarily large composite expression or clause. Note that in both cases
+the initial keyword is necessary; without it the '=' would be interpreted as
+equality test (probably leading to an error due to an undefined left operand).
+
+For modifying an existing variable, global or local, the assignment operator
+':=' is provided. It is mainly intended for programming use rather than for
+expression evaluation. For instance, a function returning a list of numbers
+1,...,n may be written as follows (while-loops are explained later)
+
+  atlas> set initial (int n) = let i=0 in while i<n do i:=i+1 od
+  Defined initial: (int->[int])
+
+Here the part 'let i=0 in' serves to introduce 'i' as a variable, whose value
+is then repeatedly modified by the assignment 'i:=i+1'. (The values from the
+assignments in the successive iterations of the loop body are then gathered
+into a row-of-integer value; a property of axis that is uncommon in other
+languages.) Any identifier can be used as a variable, including one introduced
+as a function argument; for instance for a decreasing list n-1,...,1,0 one
+could write
+
+  atlas> set initial_downwards (int n) = while (n:=n-1)>=0 do n od
+  Defined initial_downwards: (int->[int])
+
+For identifiers holding an array, vector or matrix, one can also assign to
+individual entries, as in 'v[i]:=x' or 'm[i,j]=i+j'; for matrices one can also
+assign to a whole column, provided the vector that replaces it has the correct
+size; for instance m[i]:=m[i]+m[j]*2 adds column j of m twice to its column i.
+
+It is important to note that (unlike many programming languages) axis does
+not distinguish between values and objects. In other words two different names
+can never have any intimate relation (sharing an object) to each other, so
+assigning to one name will have no effect on the value associated to the other
+name. Therefore evaluating 'let vi=v[i] in vi:=3' does not have the same
+effect as evaluating v[i]:=3, as this would suppose that assigning to vi
+changes the (vector) value associated to v. Instead the value of the local
+name vi is assigned to just before that name disappears, so there is no side
+effect at all and the expression (it just returns 3), which then is rather
+pointless. By the same token calling functions is conceptually strictly by
+value (even if the implementation often avoids duplicating values); a function
+is allowed to assign to the names of its arguments, but this has no effect for
+the caller. For instance the assignment to its argument in the above function
+'initial_downwards' does not have any affect for callers of this function, who
+do not know about the identifier 'n' in 'initial_downwards', or of its use. To
+pass information back from function to its caller, use the return value(s).
+
+As a consequence of this principle, an assignment like v[i]:=x is really an
+assignment to the name v; this value is replaced by a value differing only at
+index i from the value it previously held.
+
+(There is one way a function f can alter values of names of its caller g, but
+this requires that f be defined as a local function inside the body of g. Now
+f can, apart from its own parameters and local variables, can also "see" the
+names of g that are accessible at the point where f is defined, and just like
+any subexpression of the body of g, the body of f can assign to those names.)
+
+In some cases it is desirable to introduce a name, but to forbid any form of
+assignment to that name; for instance if the value of a global variable is
+used inside a function, it can be important to ensure that the value obtained
+is that at the time the function was defined. Such constant names can be
+introduced by prefixing the name by '!', as in 'set !s = Split:(0,1)' (this
+applies to local names as well as to global ones, and to function parameters,
+and also to components of a pattern matching a tuple value). Names introduced
+locally in loops (as described below) are automatically considered constant in
+this sense, since assigning to them has little effect and is usually an error.
+
+As a convenience one can write 'x +:= y' instead of 'x := x + y', and
+similarly for any operator in the place of '+', so in the above examples one
+could say i+:=1 and n-:=1. This is a transformation performed in the parser,
+so '+:=' is not really an operator (and is composed of separate '+' and ':=').
+It should be noted that this requires a simple variable as left operand: the
+parser will reject for instance v[i]+:=1; this should be written v[i]:=v[i]+1.
+
+The rules for assignment are quite different from the introduction of a
+variable (by 'set' or 'let'): the variable must have been introduced
+beforehand, and the value assigned must have the same type as the previously
+held value. An assignment need not be used exclusively for the change to its
+variable it causes; it is also a subexpression in its own right whose value is
+the value assigned (both for ordinary and for component assignments); we
+already used this fact in the examples above.
+
+7 Defining functions and operators
+
+A main use of the axis language is to allow users to define their own
+functions. In practice these are often simple functions of not more than a
+few lines, providing some simple pre- or post-processing around built-in
+operations rather than implementing a whole new algorithm, and the language is
+particularly well adapted to such usage; nonetheless it also allows for
+writing elaborate functions whose body can be as large as one wishes.
+
+Often it is convenient to have user defined functions invoked from formulas
+using operator symbols. While one cannot define new operator symbols, one can
+overload existing ones for new argument types. Defining operator overloads is
+very similar to defining (global) functions.
+
+The normal way to define a function is using a variation of the 'set' syntax
+(which also has counterpart for 'let'), as in
+
+  atlas> set f (LieType lt) = void:
+  : > let rd = simply_connected (lt)
+  L > then ic = inner_class(rd,"s")
+  L > then rf = quasisplit_form (ic) , drf = dual_quasisplit_form (ic)
+  L > in print_block(block(rf,drf))
+  Defined f: (LieType->)
+  atlas> f("A2")
+  0(0,5):  0  0  [C+,C+]  2  1   (*,*)  (*,*)   e
+  1(1,4):  1  0  [i2,C-]  1  0   (3,4)  (*,*)   2,1
+  2(2,3):  1  0  [C-,i2]  0  2   (*,*)  (3,5)   1,2
+  3(3,0):  2  1  [r2,r2]  4  5   (1,*)  (2,*)   1,2,1
+  4(3,1):  2  1  [r2,rn]  3  4   (1,*)  (*,*)   1,2,1
+  5(3,2):  2  1  [rn,r2]  5  3   (*,*)  (2,*)   1,2,1
+  atlas> f("G2")
+   0(0,9):  0  [i1,i1]   1   2   ( 4, *)  ( 3, *)  0  e
+   1(1,9):  0  [i1,ic]   0   1   ( 4, *)  ( *, *)  0  e
+   2(2,9):  0  [ic,i1]   2   0   ( *, *)  ( 3, *)  0  e
+   3(3,8):  1  [C+,r1]   6   3   ( *, *)  ( 0, 2)  2  2
+   4(4,7):  1  [r1,C+]   4   5   ( 0, 1)  ( *, *)  1  1
+   5(5,6):  2  [C+,C-]   8   4   ( *, *)  ( *, *)  1  2,1,2
+   6(6,5):  2  [C-,C+]   3   7   ( *, *)  ( *, *)  2  1,2,1
+   7(7,4):  3  [i2,C-]   7   6   ( 9,10)  ( *, *)  2  2,1,2,1,2
+   8(8,3):  3  [C-,i2]   5   8   ( *, *)  ( 9,11)  1  1,2,1,2,1
+   9(9,0):  4  [r2,r2]  10  11   ( 7, *)  ( 8, *)  3  1,2,1,2,1,2
+  10(9,1):  4  [r2,rn]   9  10   ( 7, *)  ( *, *)  3  1,2,1,2,1,2
+  11(9,2):  4  [rn,r2]  11   9   ( *, *)  ( 8, *)  3  1,2,1,2,1,2
+
+The syntax for defining a function or operator instance is: 'set' followed by
+the function or operator name, then enclosed in parentheses a (possibly empty)
+parameter list containing pairs of the form '<type> <identifier>' separated by
+commas, then '=', and finally the expression giving the function body.
+
+In the example the function body is a cast starting with 'void:', making clear
+on inspection that the return type is void (no useful return value). While
+this is a useful convention, which costs nothing at run time because casts are
+removed after type analysis, it is not obligatory: most of the time axis can
+find the return type by itself (and in the example it would without the cast);
+the reply it gives to the command, here 'Defined f: (LieType->)', indicates
+which type it has found. Note that when calling 'f' we provided a 'string'
+rather than a 'Lie_type' value; axis has inserted the necessary conversion
+implicitly when analyzing those calls.
+
+The example also illustrates a typical composition of the function body
+consisting of a 'let' construction introducing a sequence of introductions of
+local variables: here first 'rd', next (separated by 'then', which in this
+context is equivalent to 'in let') 'ic', and finally (after another 'then')
+'rf' and 'drf' (in parallel, separated by a comma) and finally calling (after
+'in') the function 'print_block' with a nested call to 'block'. The final call
+returns no value, which matches the 'void' type in the initial cast: the
+function 'f' returns no value and gets type (LieType->). Note that after
+calling the function 'f', the usual 'Value:' line before the next prompt is
+absent; this is a special provision for expressions with void type, since
+printing 'Value: ()' for them would just be distracting (the output shown above
+is instead printed as a consequence of evaluating the 'print_block' function,
+but it is not accessible for subsequent manipulation in atlas).
+
+Functions defined by this syntax are overloaded, and stored in a different
+table than variables of non-function type introduced by 'set var = ...'; this
+means an overloaded function can coexist with a value of the same name. This
+other table, called overload table, can store multiple definitions for the
+same function name. So after the above definition one could continue with
+
+  atlas> set f(int n)=n+1
+  Added definition [2] of f: (int->int)
+  atlas> [f(4),f(f(6))]
+  Value: [5,8]
+  atlas> f("A1")
+  0(0,1):  0  0  [i1]  1   (2,*)   e
+  1(1,1):  0  0  [i1]  0   (2,*)   e
+  2(2,0):  1  1  [r1]  2   (0,1)   1
+
+Note how the response after the second 'set f' mentions the addition of a
+definition and the total number [2] of definitions for 'f' now known. When
+encountering a call of 'f', axis finds out which definition to apply based
+on the type of the argument (list). All functions (and operators) built into
+atlas are defined in the overload table, often with more than one initial
+definition for a given name. The user can add definitions to names that
+also refer to built-in functions, they will be overloaded together with the
+original definitions. If one wishes that 'inner_class' can be called with a
+single 'ratvec' to specify kernel generators, it suffices to write
+
+  atlas> set inner_class (LieType lt,ratvec gen,string ict) =
+  = > inner_class(lt,[gen],ict)
+  Added definition [7] of inner_class: (LieType,ratvec,string->InnerClass)
+
+to add a new overloaded meaning to the 'inner_class' function. The fact that
+this definitions itself calls another (built-in) version of 'inner_class' is
+all right, because it can be distinguished by the argument type.
+
+(As an aside, this call could not possibly be taken to be a recursive call,
+even if the types would have matched, since the 'set' definition is only taken
+into account after the body has been analyzed and found correct; the
+definition is therefore unknown during the analysis of its own body.)
+
+New meanings of operator symbols can also be defined in this way. So while
+many versions of arithmetic operations are built into atlas, the standard
+script 'basic.at' defines a lot more instances yet, such as scalar
+multiplication of matrices, for which gives a definition that is basically:
+
+  set * (int c,mat m) = mat: for column in m do for x in column do c*x od od
+
+(the somewhat curious syntax of the 'for' loop will be explained below).
+
+Distinction between operators and functions occurs mostly in use rather than
+at their definition: as opposed to functions, operators can be used infix
+(when they take exactly two arguments) or prefix (always), and without always
+needing parentheses around their arguments. There are some limitations for
+defining operators: one cannot introduce new operator symbols, nor change the
+precedence rules for the existing symbols, and operator definitions cannot be
+local (within 'let'). The last point is because operator definitions always
+add to the overload table, and there is no such thing as local overloads:
+defining a local identifier as a function instead temporarily hides any
+existing overloads of that name for the duration of that local definition.
+
+
+* Overloading versus redefining, and conflicts for potential ambiguities
+
+While the overload table can handle many definitions with the same function
+(or operator) name, it must be able to tell them apart by the argument types
+(the result type is usually not available when resolving an overloaded call,
+so it cannot be used to distinguish overloaded definitions). Moreover some
+implicit conversions can be applied to arguments, making some overloaded
+argument types incompatible (for instance having separate definitions for
+'vec' and '[int]' arguments is not possible, as arguments of these types can
+be implicitly converted into one another). However if a new definition exactly
+matches the argument types of a previous definition, the new definition is
+taken to replace rather than to overload the previous definition. The reply
+that axis gives to a definition indicates when this happens, for instance
+
+  set inner_class (RootDatum rd, string ict)=
+  let lt = Lie_type (rd), basis=^coroot_radical(rd)
+  in inner_class(rd, involution(lt, basis, ict))
+
+(here and henceforth we suppress prompts for readability) leads to the reply
+
+  Redefined inner_class: (RootDatum,string->InnerClass)
+
+showing that a previous (in this case built-in) definition of 'inner_class'
+has been superseded and has become unavailable (the user-defined version has
+replaced it; as it happens, it is almost equivalent to the built-in version).
+
+Here is an example where an attempt to add an overloaded definition for a
+different but closely related argument type is refused (attempt to overload
+the variant defined above with 'ratvec' second argument with a similar
+instance with a '[rat]' second argument:
+
+  set inner_class (LieType lt,[rat] gen,string ict)=
+  inner_class(lt, [ratvec: gen],ict)
+
+gives the somewhat elaborate error message
+
+  Cannot overload `inner_class': previous type (LieType,ratvec,string)
+  is too close to (LieType,[rat],string),
+  making overloading potentially ambiguous. Broadness cannot disambiguate,
+  as either type converts to the other, definition aborted.
+
+The "broadness" phrase relates to the fact that one can for instance overload
+with types 'int' and 'rat', even though the former can be implicitly converted
+to the latter: since the opposite is not possible, 'rat' is considered the
+broader of the two types, and overload resolution will proceed by trying the
+broader type only if no matching for the narrower type is possible. But
+between 'ratvec' and '[rat]' conversions in either direction are possible, so
+axis cannot decide which overload would have to be tried first, whence its
+refusal of the overloaded definition. Note that the full argument types here
+are '(LieType,ratvec,string)' respectively '(LieType,[rat],string)', which are
+not directly convertible (just their second components are), but ambiguity may
+still arise in function calls; axis is conservative and prefers to refuse
+potentially ambiguous overloads when the ambiguity is introduced, rather than
+to wait for a usage that actually exposes the ambiguity (at which point it may
+have become hard to hunt down the offending definitions).
+
+If one wants to replace the old definition so that one with a close but
+distinct type can be accepted, a command 'forget' can be used; here
+
+  atlas> forget inner_class@(LieType,ratvec,string)
+  Definition of inner_class@(LieType,ratvec,string) forgotten
+
+after which the definition attempted and refused above will be accepted.
+
+Functions can also be unnamed values, which is particularly useful if the are
+to be passed as arguments to other functions. So supposing g was defined by
+
+  atlas> set g ((int->int) f) = vec: [f(0),f(f(1)),f(5)]
+  Defined g: ((int->int)->vec)
+
+a function that takes as parameter another function, of type '(int->int)'. As
+argument of 'g' one can provide an anonymous function, for instance one that
+adds 1 to an integer, which can be denoted by '(int n) : n+1', or to make the
+return type explicit '(int n) int: n+1' (the syntax is a parenthesized
+parameter list, an optional return type followed by a colon, and an expression
+giving the function body). One can now call g with this argument:
+
+  atlas> g((int n):n+1)
+  Value: [ 1, 3, 6 ]
+
+One can also call 'g' with a named function 'f'. However since defining a
+named function just introduces an overload for the function name, a bare 'f'
+does not suffice; one needs to specify the argument type for 'f' in the call
+of 'g':
+
+  atlas> set f (int n) = 3*n+1
+  Defined f: (int->int)
+  atlas> g(f)
+  Error during analysis of expression at...
+    Undefined identifier f
+  Type check failed
+  atlas> g(f@int)
+  Value: [  1, 13, 16 ]
+
+Note that 'f' was called "Undefined" even though a function 'f' is defined: in
+the call 'g(f)' the name 'f' is not called, and bindings of 'f' in the
+overload table are not considered. Using 'set' with a value of function type
+always enters in into the overload table, even when it is for instance written
+
+  atlas> set f = (int n): 3*n+1
+  Redefined f: (int->int)
+
+To get a global variable whose value happens to have function type, a special
+syntax is provided, namely 'name : function' instead of 'set name = function":
+
+  atlas>  f : (int n): 2*n+3
+  Identifier f: (int->int)
+  atlas> g(f)
+  Value: [  3, 13, 13 ]
+
+A global identifier defined with a function value in this way can coexist with
+one or more overloaded instances for the same name. However, the presence of
+overloaded instances make the function variable unavailable for use in direct
+function calls, though it can still be used to pass the function value, assign
+it to local variables, or assign a new function (of the same type) to it.
+
+  atlas> f(10) { overloaded instance }
+  Value: 31
+  atlas> let ff=f in ff(10) { pass global variable to local one, then call it }
+  Value: 23
+  atlas> f := ((int n) int: n*n) { syntax requires parentheses here }
+  Value: Function defined at <standard input>:...
+  (n): *@(int,int)(n,n)
+  atlas> g(f) { call g with new value of f }
+  Value: [  0,  1, 25 ]
+
+The 'name : value' syntax is also available for values of non-function type,
+in which case it is strictly equivalent to 'set name = value'.
+
+Although the design of axis aims at always giving variables a value at their
+introduction, deducing their type from that value and avoiding the possibility
+of uninitialized variables, it does allow introducing a global variable
+without specifying an initial value, but only a type. To this end there is the
+variation of the 'name : value' syntax consisting of writing 'name : type'
+instead. For instance the function variable 'f' above could have been
+introduced by
+
+  atlas> f: (int->int)
+  Declaring identifier 'f': (int->int)
+
+after which it has a type but no value, whence the following gives no type
+error but a runtime error
+
+  atlas> g(f)
+  Runtime error:
+    Taking value of uninitialized variable 'f'
+  Evaluation aborted.
+
+(it would be however possible to use 'f' in unevaluated function definitions
+at this point). Before doing anything useful with 'f', it must be assigned to:
+
+  atlas> f := ((int n): 2*n+3)
+  Value: Function defined at <standard input>:...
+  (n): +@(int,int)(*@(int,int)(2,n),3)
+  atlas> g(f)
+  Value: [  3, 13, 13 ]
+
+(Note that after the assignment to 'f' its function body is printed in an
+internal representation, in which overload resolution has been made explicit
+by writing operators prefix and followed by @argument_types; if there had been
+any implicit conversion, it would also have been made visible by a somewhat
+cryptic code. If a command is an assignment, the value assigned is printed, as
+it is for any command that is an expression returning a value; this printing
+can however be suppressed by adding ';()' at the end of the command.)
+
+8 Control structures
+
+As control structures, the axis language currently provides sequenced
+expressions, conditional and case expressions and various kinds of loops. Each
+of them optionally deliver values (which is somewhat unusual in the case of
+loops), though they can also serve more conventionally for selecting/iterating
+actions.
+
+* Sequenced expressions
+
+Sequenced expressions are simply sequences of expressions separated by
+semicolons; together they form a new expression, whose evaluation consists of
+the successive evaluation of the component expressions from left to right, and
+whose value is taken to be that of the final component expression evaluated.
+The values of the other expressions (if any) are ignored; we say they are
+voided. Voiding is like an implicit conversion to a $0$-tuple '()' that can be
+applied to values of all (non-void) types. In particular voiding is recorded
+in the expression after type analysis, and the evaluator uses this information
+to suppress the construction of any (components of) values that are destined
+to be immediately voided, evaluating in those cases only for side effects;
+this can be particularly relevant for the values of function calls and loops.
+
+One might consider ';' as an associative operator with very low precedence
+(lower than assignment, and on the same level as 'let': if the final operand
+starts with 'let' it need not be parenthesized) that evaluates its operands in
+order and returns the value of the rightmost one. Occasionally useful
+(especially in loops) is its variant written as the keyword 'next', that also
+evaluates its operands (usually just two of them) from left to right, but
+returns the value of the leftmost one. Thus in 'e1; e2; e3 next e4' all
+expressions are evaluated in order, and the value of 'e3' is returned. Both
+forms have the same precedence and associate to the right (as 'let' requires
+them to), which implies that in cases like 'e1; e2 next e3; e4 next e5', the
+value will be that of the expression before the first 'next' (i.e., 'e2');
+clearly such multiple use of 'next' is rather pointless.
+
+Being at the same precedence level means that the scope of a 'let' is not
+terminated by a following semicolon: in 'let x=3 in x:=2*x; x+3' the final 'x'
+is still in scope. On the other hand expression with a semicolon always need
+parentheses when used as operands. They do not need them in function
+arguments, as there the parentheses and commas provide sufficient grouping; so
+'f(x;y,z)' is OK though maybe more readable when written as '(x;f(y,z))'. Such
+usage is rare, but the same goes for control structures like conditionals and
+loops: these all provide their own closing symbols, so that semicolons can be
+freely used inside those. Whether or not necessary, it can be useful to group
+large sequences of expressions separated by semicolon with the keywords
+'begin' and 'end', as a more readable equivalent alternative to parentheses.
+
+* Conditional expressions and case expressions
+
+Conditional expressions take the form
+
+  if ... then ... else ... fi
+
+for a simple 2-way branch, or a more elaborate multi-way branch
+
+  if   ... then ...
+  elif ... then ...
+  elif ... then ...
+  ...
+  else ...
+  fi
+
+The else branch may be omitted, the implied branch then being void: 'else ()'.
+
+If the selection is determined by an integral expression 'I' with values in the
+range 0,1,...,n-1 (for instance the result of a reduction modulo n), then the
+multi-way branching is better done using a case-expressions, of the form
+
+  case I
+  in E_0
+  , E_1
+  , ...
+  , E_{n-1}
+  esac
+
+In the conditional expression, the branches after 'then' and 'else' should all
+have the same type that will become the type of the conditional expression, or
+they should be implicitly convertible to a common type. Type analysis tries to
+cleverly guess that common type, and in particular if any of the branches has
+void type, then all non-void branches will be voided (any value is ignored).
+Should axis fail to guess the intended type (with type analysis reporting
+"Could not find common type for branches"), then one can always make the type
+desired (possibly void) explicit, by casting the whole conditional expression
+to it. Casting 'T: if .. then E0 elif .. then E1 else E2 fi' is equivalent to
+casting all branches: if .. then T:E0 elif .. then T:E1 else T:e2 fi'.
+
+The conditions (after 'if' or 'elif') must be expressions of type 'bool'. For
+such expressions one can use logical connectives 'or', 'and' and 'not'. These
+behave like operators with precedences just above that of assignment (and
+increasing in the order given); they are however handled in the parser, which
+will for instance transform 'x and y' into 'if x then y else false fi'. In
+particular 'or' and 'and' short-circuit: they only evaluate their second
+operand if the first operand is not decisive. The user cannot redefine or
+overload these operators. Usage of 'not' in conditions has no runtime cost, as
+axis will rewrite internally to an equivalent expression without 'not'.
+
+* Loops
+
+** While loops
+
+Loops come in various flavors, each one returning a row value with one
+component for each iteration of the loop (however for loops in voided context,
+no result is constructed). There are simple while loops
+
+  while ... do ... od
+
+with as usual a continuation condition after 'while'. This condition is
+evaluated before each iteration, but if some action must be performed each
+time before the condition is tested, it suffices to use a sequenced expression
+as condition. The other expression is the loop body; it is evaluated as long
+as the condition evaluated to 'true', and the values (all of the same type) of
+the evaluations of the loop body for, in order, the components of the row
+value returned by the loop. Obviously evaluating the loop body (or maybe of the
+condition itself) must potentially involve a a side effect susceptible of
+changing the loop condition, if the loop is ever to terminate. So the loop in
+
+  let i=0 in while i<=n do i+:=1 od
+
+will produce a row [1,2,...,n]. Often the side effect is required to
+take place after a component to the row result is contributed; to that end and
+expression sequenced by 'next' can be used. So for instance the variation
+
+  let i=0 in while i<=n do i next i+:=i od
+
+produces the row [0,1,...,n-1].
+
+** Counted for loops
+
+The remaining loops are 'for' loops, which determine the number of iterations
+at the beginning rather than dynamically. Their syntax is somewhat unusual, in
+that it does not specify the starting and ending values of the iteration, but
+rather the number of iterations and the smallest index (which may be the first
+or the last one, depending on the sense of the loop); this appears to be less
+conducive to producing off-by-one errors. Thus an iteration from 0 to n-1 is
+specified as n iterations with lowest index 0, an iteration from 1 to n as n
+iterations with lowest index 1, and an iteration from n-1 to 0 as n downwards
+iterations with lowest index 0. More specifically, one specifies (in this
+order) the number of iterations, the direction (increasing or decreasing) and
+the lower bound of the range (only unit steps are supported, and a negative
+iteration count is interpreted as no iterations). The iteration count is
+preceded by ':', the direction by the keyword 'from' (increasing) or 'downto'
+(decreasing), and the lower bound follows. In the common case of increasing
+iteration starting at 0, the part 'from 0' may be omitted. So
+
+  for i : n from 0 do i od
+
+is an alternative way to produce [0,1,...,n-1], and it may be abbreviated
+
+  for i : n do i od .
+
+To obtain a more traditional range [1,2,...,n], one may say
+
+  for i : n from 1 do i od .
+
+For the reverse list [n-1,...,1,0] use '~' as in
+
+  for i : n ~ do i od
+
+and the shifted reversed list [n,...,1] is produced by
+
+  for i : n from 1 ~ do i od
+
+(This used to be written as 'for i : n downto 1 do i od', but this syntax is
+redundant given the new more flexible tilde syntax, and is now deprecated.)
+
+If something is just to be repeated n times, the loop index can be omitted:
+
+  for :n do 1 od { generate a list of n ones }
+
+** Iteration over composite values
+
+Rather than counted iteration, it is often convenient to use iteration over an
+existing composite value. If V is a row value, or vector, rational vector
+string or matrix then
+
+  for e in V do ... od
+
+iterates over the components of V (for a string these components are
+one-character strings; for a matrix they are its columns), setting e to such a
+component before evaluating the loop body. For instance, one can produce the
+scalar multiple by 3 of a vector V using
+
+  vec: for e in V do 3*e od
+
+(the 'vec:' serves to assemble the entries in a vector rather than a list).
+In some cases it is useful to know the index of the component taken as well
+inside the loop body, in other words the iteration count starting from 0; this
+can be accessed by writing '@ index' before 'in' where 'index' is an
+identifier used to bind the index to, This explains the vector addition above:
+
+  set +(vec v,vec w) = vec: for vi@i in v do vi+w[i] od
+
+where the index i is needed to select the corresponding entry from the other
+vector. These value-returning loops are quite flexible, for instance
+
+  mat: for j = n do for i = m do if i=j then 1 else 0 fi od od
+
+produces an m*n matrix with unit diagonal entries and zeroes elsewhere. Of
+course the case m=n of the identity matrix is most common, be we allowed
+distinct values of m and n to stress that the column-oriented conventions
+force the outer loop to be over the columns and the inner loop to be over the
+rows. (In this case the relevant convention is not one associated to the loops
+themselves, but the one for the implicit conversion of a row of integer lists
+to a value of type 'mat'; but all these conventions are "column-oriented" for
+compatibility.) To add such a matrix to an existing matrix M it suffices to
+write (with again columns being traversed in the outer loop and rows in the
+inner loop):
+
+  for col@j in M do for entry@i in col do entry+if i=j then 1 else 0 fi od od
+
+By the way the standard definitions in basic.at allow replacing the expression
+'if i=j then 1 else 0 fi' by '#(i=j)', a axis version of the Iverson symbol.
+
+These for loops can iterate over every kind of composite value that allows
+subscription (but although one can obtain matrix _entries_ directly by
+subscription, one cannot directly iterate over them; this requires two nested
+loops as the last example above illustrates). Thus one can loop over
+characters in a string (which for lack of a character type are turned into
+single-character strings), entries of a rational vector.
+
+One can also loop over the (nonzero) terms of a 'ParamPol' value, which is
+convenient though somewhat special. One should think of a 'ParamPol' not as a
+list of terms (there is no absolute meaning to the order in which terms are
+presented) but as an association of coefficients (of type 'Split') to values
+of type 'Param' (which values have been made standard, nonzero, and final in
+order for the association to be mathematically meaningful; they also have
+their infinitesimal character representative made dominant so that terms with
+equivalent Param values will combine). This is reflected by allowing the
+coefficient associated in the ParamPol 'pol' to the Param value 'p' to be
+written as 'pol[p]'. Then iterating over a 'pol', a term with Param 'p' and
+coefficient 'c' is presented as a component 'c' stored at index 'p'. Therefore
+a loop over such terms will take the form
+
+  for c@p in pol do ... od
+
+During execution, each time 'c' will be a nonzero 'Split' coefficient, and 'p'
+the corresponding (standard final nonzero dominant) 'Param' value. The order
+of traversal of the terms in the loop is determined by an ordering of 'Param'
+values that is fixed by atlas but not easy to fully describe; however in most
+cases it ought not matter much. (This does imply that the value of this loop,
+in which the values of the loop bodies have been ordered by traversal order,
+is only rarely useful; it could be for instance if the values are then passed
+through a commutative operation, or are being sorted afterwards.) For the
+opposite operation of combining a collection of '(Split,Param)' values
+(possibly generated by a loop) into a 'ParamPol' value, a built-in instance of
+'+' is provided. The collection is given as a row forming the right operand of
+'+', while the left operand is an initial 'ParamPol' to which the terms are to
+be added; often this will take the form 'null_module(rf)+for ... od'.
+
+** Reversal variants in loops
+
+As a general rule, if 'do' in a for loop is preceded by a tilde, then the
+iteration will be performed on the same set of values as before, but traversed
+in the opposite order. If a row is produced as value of the loop, it will
+still be the values of the loop bodies in the order of traversal. However
+preceding the final 'od' be a tilde assembles the values of the loop bodies in
+the order opposite to iteration. The two variants can be combined (traversing
+backwards, but assembling the result in the original increasing order), and
+apply also to versions of 'for' loops given below (the second variant also
+applies to 'while' loops; not the first variant, which is meaningless there).
+
+Like for the while loop, the body may be a sequence expression, and it may
+have side effects. However, assignments to the variables introduced in the
+loop (index and/or value of iteration) are forbidden. This is so because it
+would usually mask an error: once the heading of a loop is processed, there is
+no way to alter the number of iterations (in particular the expressions for
+bounds or array iterated over are evaluated just once), and assignment to the
+loop index suggests that the user tries to do so anyway. (In rare cases where
+one really needs a modified version of an iteration value, copy it to a local
+variable and modify that.) In fact the loop variables are distinct for each
+iteration: if one captures them in functions, each one stays at its initial
+value; so to create a list of functions that add respectively 1,3,6, doing
+
+  functions := for x in [1,3,6] do (int n): n+x od
+
+has the desired effect (functions[1] adds 3, not the "final value" 6 of 'x').
+
+
+9 Recursion
+
+As mentioned above, axis strict scoping rules makes defining recursive
+functions a bit more difficult than most programming languages do. It used to
+be somewhat of an art to define a recursive function (it could, and can still,
+be achieved by calling a function held in a variable to which the recursive
+function itself is assigned), but starting with version 0.9 of axis there is
+a keyword 'rec_fun' that make this automatic (at least for simple recursive
+functions; complicated mutually recursive definitions still require some
+effort). Basically take the function definition as one would write it if
+recursion were directly allowed, and the insert 'rec_fun' before the recursive
+name at its (function) definition. The only restriction is that the return
+type must be explicitly specified (while it is option for ordinary functions);
+failing to do so after rec_fun will result in a syntax error.
+
+Here is the classical (but silly, as using a loop would do quite as well)
+example of the factorial function 'fac':
+
+  atlas> set rec_fun fac (int n) = int: { return type int is specified }
+    if n<=0 then 1 else n*fac(n-1) fi
+  Defined fac: (int->int)
+  atlas> fac(7)
+  Value: 5040
+
+However, in practice it is often better to achieve recursion locally rather
+than directly for the function defined by 'set', as this will allow the latter
+to do some preliminary things that are not to be repeated at each recursive
+call. For instance if in the above definition one wants to signal negative
+arguments as errors rather than returning the (mathematically meaningless)
+value 1 for them, this can be done as follows (the example also shows that the
+recursive function need not have the same name as the global one
+
+  atlas> set fac (int n) = { no return type needed here }
+    if n<0 then error("factorial of negative number ",n," is not defined") fi;
+    let rec_fun f(int n) = int: { return type required here }
+                if n<=0 then 1 else n*f(n-1) fi
+    in f(n)
+
+Since the local function f is defined only to be immediately called, one can
+even make the recursive function anonymous to the outside, as follows
+
+  atlas> set fac (int n) = { no return type needed here }
+    if n<0 then error("factorial of negative number ",n," is not defined") fi;
+    (rec_fun f(int n) = int: if n<=0 then 1 else n*f(n-1) fi) (n) { call it! }
+
+Finally, one could avoid making a new (local) recursive function each time the
+global function is called by postponing the introduction of its arguments;
+this gives the following (optimal though maybe not optimally readable) style:
+
+  atlas> set fac = { no arguments yet }
+    let rec_fun f(int n) = int: if n<=0 then 1 else n*f(n-1) fi { build once }
+    in { now comes that actual definition of fac, an anonymous function }
+    (int n): { introduce argument of fac }
+      if n<0 then error("factorial of negative number ",n," is not defined")
+      else f(n) { call the recursive function }
+      fi
+
+
+10 Splitting commands across lines
+
+Normally each complete line entered is executed as a command (an expression to
+evaluate, an identifier or operator definition, or a miscellaneous command);
+the type check execution are performed without the need for a symbol
+signaling that a command is completed. However, commands may require more
+text than fits on a line, especially if they contain function definitions, so
+some simple provisions are made to not necessarily consider each end-of-line
+as a command terminator. It is not practically possible, nor really desirable,
+to have the parser (which already operates on partial input) decide at the end
+of each line whether the input up to that point would constitute a
+syntactically correct command, and to continue parsing whenever it is not.
+Therefore the approach is adopted that each end-of-line is taken to terminate
+a command, unless there is some simple reason (that the scanner can detect)
+why the command could not possibly be completed there. Note that the same
+rules apply whether the command/definition is processed interactively or is
+read from a file (script), though prompting is only done in the former case.
+
+First of all, a command is not considered complete if it contains unclosed
+opening parentheses or brackets. When this happens interactively, the unclosed
+symbols in question are prefixed (in order) to the continuation prompt, as an
+indication to the user of what still needs to be closed; for instance if a two
+parentheses are unclosed, the prompt becomes "(( >". (Should the user discover
+at this point a mistake that the line entered is wrong and cannot be corrected
+by adding symbols, the best strategy is to cop out by provoking a syntax
+error; the history mechanism facilitates retrial with corrections.)
+
+Similarly the opening keywords 'let', 'begin', 'if', 'while', 'for' will
+suspend command termination until the corresponding closing keyword is found;
+only the change of the prompt here just adds one letter, which is 'L' for
+'let' and 'G' (standing for group) for any of the other ones. Another useful
+provision is that, certain symbols suspend termination when they are at the
+end of a line (these are symbols that cannot be the final one in any valid
+input). These symbols are all (arithmetic, relational and logical) operator
+symbols (including '=' and '~', even when not used as operator), and the
+symbols ':', ':=', ',' (comma), ';' (semicolon), and 'in'. Interactively these
+all append a marking character to the prompt, often their first character.
+
+Usually these rules allow to fend off premature command termination easily; an
+easy way to protect 'set' definitions is to break the first line after '=',
+start the next line with 'begin', and end the definition with a line 'end'.
+But often one can manage without the 'begin' ... 'end', as was done above.
+
+Finally the user can force continuation of the line by typing '\' as the last
+non-space character of the line. This actually uses a different mechanism that
+applies even before scanning starts: it removes the backslash, optional space
+and the following newline, joining together the next line with this one. This
+could even happen in the middle of a string denotation or of some another
+token. Note that _does not mean_ that backslash is used as an escape character
+in axis: the rule applies if and only of a backslash it the last visible
+character on the line, and at all other occurrences '\' is just an operator
+symbol (used to compute the quotient in Euclidean division). The joined lines
+are considered as one long line for all purposes such as error reporting
+(the joined line will be echoed for readability of the error message), after
+which the line number jumps to the true line number of the following line.
+
+
+11 Output and input, redirection
+
+Executing commands can produce output (other than error messages) in two ways:
+they can yield a value, which is then printed preceded by "Value:", and they
+can themselves invoke printing actions. Functions whose purpose is to print
+specific output (like tables) generally do not return a useful value (by
+convention the names to such functions start with "print"). Whatever is the
+manner in which output it produced, the user may decide to write the result to
+a file rather than to the terminal. To that end it suffices to prefix the
+command line (which must be an expression, not a 'set' definition) with ">" or
+with ">>" followed by a file name (which is taken to be delimited by white
+space; alternatively the file name may be enclosed in double quotes, in which
+case it can contain spaces); all terminal output will be redirected to that
+file for the duration of the command. In case of ">" a new file will be
+created, in case of ">>" the output is appended to an existing file. For
+instance
+
+  atlas> > output_file block_sizes(ic)
+  atlas> >>output_file print_KGB(real_form(ic,2))
+  atlas> >>output_file print_KL_list(real_form(ic,2),dual_quasisplit_form(ic))
+  atlas>
+
+will produce in the current directory the file 'output_file' with the results
+of the indicated calls to block_sizes', 'print_KGB', and 'print_KL_list'.
+
+One can also redirect command input from a file. Simply type
+
+  atlas> <filename
+
+on a line by itself to execute the contents of 'filename' as a series of
+commands. The output (responses to definitions, and values of expression
+commands, but not any prompts) still goes to the terminal (unless the file
+contains lines that themselves start with '>'); in addition messages are
+printed indicating the start and end of reading from that file, so that the
+user can track what source the commands producing the output (or an error) are
+coming from. Files being read like this can themselves open other input files.
+To keep track of this nesting, some indentation is added to normal command
+output for every level of input currently active. If the file name used for
+input is unknown (as searched from the current working directory), an
+alternative file name formed by adding the '.at' suffix is tried (unless the
+given file name already contained that suffix), and if still nothing is found
+an error is reported. Any error will close all currently active input files.
+
+Once a file is successfully input, axis remembers its file name and
+suppresses subsequent attempts to read that file as input. This is so that
+scripts can freely start by including other scripts whose definitions they
+depend on, without having multiple dependencies on the same script result in
+it being executed many times. The user can circumvent this check by writing
+
+  atlas> <<filename
+
+in which case the file will be read as input, even if it had been before. This
+can be useful if the file has been edited since it was last read in. Note
+however that in case input of a file is terminated by an error (either from
+one of its commands or from a file included by it) then the file is not yet
+recorded as having been read, so a single '<' then suffices to reread it.
+Realex will refuse to open a file currently already being read from, to prevent
+infinite input loops in case of circular dependencies.
+
+In spite of similar syntax, output and input redirection have rather different
+characteristics. Output redirection only applies to a single expression
+evaluation. Input redirection should not be followed by anything on the same
+line, but it can invoke any number of commands from the given file. It can
+even be used recursively to include commands from other files that are needed
+to process the included file, it that file contains lines that start with '<'.
+One cannot globally redirect the output produced from the commands of an
+included file. If a command read from a file included at any level produces a
+syntax or runtime error, a message reporting the place of the error is
+printed, all included files are abandoned (since with some command failing, it
+is usually pointless to continue); then control is given back to the terminal.
+
+
+12 Miscellaneous commands
+
+Some operations, including the type checker, can be made more verbose by
+giving the command
+
+  atlas> set verbose
+
+which remains in effect until a subsequent command
+
+  atlas> set quiet
+
+is given.
+
+
+One can ask the state of all known identifiers by typing
+
+  atlas> showall
+
+which prints the type and value of every defined function and variable. If one
+just needs to know the type of one expression, one can type
+
+  atlas> whattype expr
+
+This performs type analysis of the expression and prints the result, but does
+not evaluate anything. Overloaded function names by themselves are not a valid
+expressions, so this form cannot be used to find out function overloading.
+However by suffixing a question mark to the command, it will print the types
+of all overloads of the given (function or operator) symbol:
+
+  atlas> whattype + ?
+  Overloaded instances of +
+    (int,int)->int
+    (rat,int)->rat
+    (rat,rat)->rat
+    (vec,vec)->vec
+    (ratvec,ratvec)->ratvec
+    (mat,int)->mat
+    (int,mat)->mat
+    (mat,mat)->mat
+    (Split,Split)->Split
+    (ParamPol,Param)->ParamPol
+    (ParamPol,(Split,Param))->ParamPol
+    (ParamPol,[(Split,Param)])->ParamPol
+    (ParamPol,ParamPol)->ParamPol
+    (string,string)->string
+    (string,int)->string
+    (int,string)->string
+    (string,(int,int))->string
+    Split->int
+
+Finally when you get tired of using atlas, type
+
+  atlas> quit
+  Bye.
+
+
+12 Syntax summary
+
+The formal syntax is defined in the parser generator source file "parser.y"; a
+readable summary can be found at the beginning of "parser.output" which if
+needed can be created by the shell command "bison --report=states parser.y".
+
+The syntax is very largely centered around a single "part of speech", the
+expression. There is no distinction between expressions and statements: every
+expression may have side effects (if it contains assignments for instance) and
+yields a value (although it might be void, i.e., useless). The only part of
+the syntax not directly concerned with expressions is that defining commands,
+which are only allowed at the outermost level. Some other categories, such as
+type specifications and formal parameter lists, are used within certain kinds
+of expressions, but do not themselves constitute expressions. The command level
+will be described at the beginning, the other non-expressions categories at
+the end. In between we enumerate the different kinds of expressions, in order
+from most loosely bound to most tightly bound; using a loosely bound form in
+more tightly bound context requires enclosing the expression in parentheses.
+
+(a) Command level.
+
+The most common command is an expression, possibly followed by a semicolon;
+the case with semicolon is treated exactly as if '()' followed to form a
+sequenced expression with void value (so that no value will be printed.
+
+Another common command is the definition starting with 'set'. In it's basic
+form 'set' is followed by a an identifier pattern or an operator name, an '='
+and an expression. For function definitions there is an alternative form
+deemed more pleasant than writing an anonymous function body after the '=';
+here 'set' is followed by a single function name or operator symbol, and then
+directly the (possibly empty) parameter list in parentheses, only then
+followed by '=' and an expression (the function body). The latter form is
+treated like the basic form of 'set' command obtained by moving the '=' in
+front of the parameter list and inserting ':' where it used to be. Whether
+identifiers or operator of the 'set' command will be stored in the identifier
+table or in the overloading table is not directly dependent on the syntactic
+form used: the rule is currently that overload table is chosen when a single
+identifier or operator is set to an expression of function type, and in all
+other cases the identifier table is used (this does imply the special function
+syntax always overloads). So combined definitions (using a pattern) cannot
+define overloads, but this rule (and the syntax) might change in the future.
+
+A command of the form 'ident : expr' is almost equivalent to the command 'set
+ident = expr', except that it adds to the identifier table in all cases.
+
+A command of the form 'ident : type' similarly introduces an identifier
+into the identifier table, with the given type but with an undefined value.
+
+The 'forget' command removes a global identifier or overload. In the former
+case 'forget' is just followed by the identifier to be removed; in the latter
+case the overload to remove must be specified by writing an operator cast
+(described under expressions): 'forget +@(int,int)' forgets integer addition.
+
+The command 'whattype expression' performs type analysis of the expression,
+and upon success just prints the type found, suppressing evaluation.
+
+The command 'whattype x ?' where x is an identifier or operator symbol shows
+the types of all overloads currently defined for that symbol.
+
+A command 'showall' displays the contents of overload and identifier tables.
+
+The command 'quit' terminates the interpreter, while 'verbose' and 'quiet'
+turn on or off extra diagnostics during expression analysis.
+
+A command starting with '>' or '>>' redirect output to a file; the symbol is
+followed by a file name (either delimited by whitespace or enclosed in quotes)
+and then the expression to be evaluated.
+
+A command starting with '<' or '<<' opens a subsidiary input file as described
+above; it should be followed just by the name of the file to include
+
+
+(b) Quaternary expressions: 'let', anonymous functions, casts, sequences
+
+These are the expression types that end with another expression, without ever
+needing parentheses around that other expression; they are themselves loosely
+bound, so the might require parentheses (or equivalently a begin-end pair)
+around the entire expression if used in certain contexts (as right hand side
+of an assignment for instance, or as item in a semicolon-separated sequence).
+
+Let-expressions introduce local definitions: they start with 'let', then a
+list of one or more definition groups separated by 'then', followed by 'in'
+and finally an expression that produces the value of the construct.
+Definitions in a definition group take effect in the following group, or after
+'in' in case of the last group; in other words 'then' here behaves like 'in
+let'. A definition group consists of one or more definitions separated by
+commas, which definitions are handled in parallel. Each basic definition
+consists of an identifier pattern (see h) followed by '=' and an expression.
+The variation of the 'set' syntax for function definitions (with '=' coming
+after the parameter list) is also available for local function definitions.
+
+Anonymous functions consist of a pair of parentheses enclosing a parameter
+list, followed by an optional (result) type, and then ':' and a (function
+body) expression. A parameter list consists of zero or more pairs of a type
+followed by an identifier pattern, separated by commas.
+
+Casts consist of a type followed by ':' and an expression. They define an
+expression forced to be of the given type (possibly applying an implicit
+conversion to the given expression). Like any other type of expression, an
+implicit conversion may also apply to a cast itself (though this is rare);
+however a cast immediately following '=' in a definition will ensure that the
+entity defined (identifier or function body) will be of exactly that type.
+
+Sequenced expressions come in two kinds: they are sequences of expressions,
+separated either by 'next' or by ';'. Both are as loosely bound as let
+expressions, function definitions and casts, which means that one can chain
+any sequence of 'let ... then .. in' and 'expression ;' or 'expression next'
+before a final expression, without requiring parentheses (also function
+headings and casts can occur, but they usually only occur at the beginning or
+at the end of a chain). Both 'expr1 ; expr2' and 'expr1 next expr2' evaluate
+both expressions from left to right; with a (more usual) semicolon the value
+is that of expr2, while with the 'next' keyword it is the value of expr1. The
+purpose of next is to retain the current value of expr1 even though the later
+side effect of evaluating expr2 might modify the value of expr1. It is unusual
+to have more than one 'expression next' in the chain, but if one does, it is
+the first one that will determine the final value (if there are none, as is
+often the case, then the final expression produces the value of the clause).
+
+(d) Tertiary expressions: assignments.
+
+The three kinds of assignments are tertiary level expressions: simple
+assignments, component assignments and compound assignments (compound
+component assignments are not currently possible). Each of them end with ":="
+followed by a tertiary level expression. To the left of ":=" they have
+respectively an identifier, a subscripted identifier (the subscript being an
+expression enclosed in '[' and ']'), and an expression followed by an operator
+symbol. For a component assignment to be valid it is necessary that the type
+of identifier and index are such that the subscription would be a valid
+expression, but component assignments are not allowed for identifiers of type
+'string', 'ratvec', or 'ParamPol'. When valid, a component assignment is
+handled as a primitive operation in the evaluator. The meaning of a compound
+assignment of the form 'ident # := expr' on the other hand (where # represents
+any infix operator) is by definition that of 'indent := ident # (expr)'; in
+other words it is determined by the overload of the operator for operand types
+of the identifier and the expression, whether built-in or user-defined.
+Currently compound statements are transformed into that form by the parser
+(compound assignments might be handled by the evaluator instead in the future,
+but only so as to achieve the same effect possibly more efficiently.)
+
+(e) Secondary expressions: formulas.
+
+Expressions at the secondary level are formulas, consisting of an operator
+applied to one or two operands. The level in fact splits into many sub-levels
+corresponding to different operator precedences. This structure is not very
+clear from the formal grammar (because precedence is largely handled by
+formula restructuring inside parser actions), but the operators, ordered by
+increasing precedence, are
+
+  or
+  and
+  not         (prefix use only)
+  =,  !=,  <,  >,  <=,  >=
+  +, -
+  *, /, \, %, \%
+  ^
+  #, ~
+
+The logical connectives in the first three lines above are somewhat different,
+in that they are keywords rather than operator symbols, cannot be overloaded
+or redefined, and are in fact currently handled in special ways by the parser
+so as to ensure for instance the short-circuit evaluation of 'and' and 'or'.
+
+Association (implicit grouping among operators of equal precedence) is from
+left to right at all levels, with the exception of the level of '^' at which
+association is from right to left. A monadic (prefix) use of an operator
+symbol has the same precedence as a dyadic (infix) use of the same symbol,
+except that a monadic operator symbol that is immediately preceded by a dyadic
+one, thereby effectively gets the highest possible precedence (the latter
+stipulation is needed to ensure consistency of precedence rules).
+
+ -x+y    is parsed as    (-x)+y
+ -a%p    is parsed as    -(a%p)
+ -a^b    is parsed as    -(a^b)
+ a+-b^c  is parsed as    a+((-b)^c)
+ a/b*c   is parsed as    (a/b)*c
+ a^-1    is parsed as    a^(-1)
+ a/-b+c  is parsed as    (a/(-b))+c
+ a/-b*c  is parsed as    (a/(-b))*c
+ a/-b^c  is parsed as    a/((-b)^c)
+
+All operator symbols can be used as monadic operators; doing so it may in some
+cases be necessary to separate the operator by white space from a preceding
+operator symbol to avoid a two-character operator symbol from being formed.
+
+(f) Primary expressions: subscriptions, function calls, atomic expressions
+
+Primary expressions are sufficiently strongly bound to never require
+parenthesis around them. They comprise subscriptions of aggregate values,
+function calls, and expressions like identifiers without any subexpressions.
+
+Subscriptions and function calls generally consist of a primary expression
+(often just an identifier) followed by an expression enclosed in '[' and ']'
+(for subscriptions) or '(' and ')' (for calls). If the latter expression is a
+tuple display its outer parentheses can be omitted; thus selecting an entry
+from a matrix 'a' can be written 'a[i,j]', and calling a function 'f' with a
+3-tuple as argument can be written 'f(x,y,z)'. The initial expression (giving
+the aggregate of function) can be any primary level expression, or any closed
+clause, except that for technical reasons the grammar forbids writing '()'
+here (this is no problem since the empty tuple is neither an aggregate nor a
+function), which construct is artificially introduced at the secondary level.
+
+Atomic expressions are identifiers, non-negative integer constants, the
+keywords true, false, string constants (enclosed in quotes and on a single
+line), the symbol '$' (representing the value of the last evaluated
+expression) and specializations of overloaded symbols. The latter are formed
+by an (overloaded) identifier or operator followed by '@' and a type.
+
+(g) Closed expressions: displays and groupings, conditionals, loops
+
+These compound expressions include delimiters at both ends, so they never need
+(additional) parentheses; a single parenthesized expression also forms a closed
+expression. The different forms are as follows, where '*' is any expression
+
+if * then * fi		  	which abbreviates: if * then * else () fi)
+if * then * else * fi
+if * then * elif * then ... fi
+while * do * od
+for pattern in * do * od        optionally with ~ before do and/or od
+for pattern @ ident in * do * od idem
+for ident : * do * od            idem (implicit 'from 0')
+for ident : * from * do * od     idem
+for ident : * downto * do * od  deprecated, means 'for ident : to * ~do * od'
+( * )                           a parenthesized expression
+begin * end			which is equivalent to: ( * )
+( * , * , ... )			which builds a tuple
+[ * , ... ]   			which builds a list
+[ * , ... | * , ... | ... ]     which builds a matrix by rows
+
+(h) Identifier patterns
+
+Identifier patterns occur in parameter lists for functions, and in local
+('let') or global ('set') declarations. An identifier pattern can be a single
+identifier, or a parenthesized and comma-separated list of optional identifier
+patterns, optionally followed by ':' and an identifier. If a pattern consist
+of or ends with an identifier, that identifier names the entire value
+corresponding to the pattern. If it contains a parenthesized and
+comma-separated list, the corresponding value must have tuple type with as
+many components as the list, and each identifier pattern in the list
+corresponds to the component of that tuple value at its position. If a pattern
+is absent at some position, the corresponding component is not individually
+named in the pattern, nor (should it be a tuple) any of its own components.
+
+(i) Types
+
+In the grammar types occur in parameter lists, casts, and in specializations
+of overloaded symbols. Currently possibilities of specifying types is fairly
+limited: they are built up of primitive types (one of 'int', 'rat', 'bool',
+'string', 'vec', 'mat', 'ratvec', 'Lie_type', 'RootDatum', 'InnerClass',
+'RealForm', 'CartanClass', 'KGBElt', 'Block', 'Param, 'Split', 'ParamPol')
+using three constructors: the list constructor [*], the tuple constructor
+(*,*,...) (with at least two component types; around a single type parentheses
+just provide redundant grouping) and the function constructor
+(*,*,...->*,*,...) (here if the number of argument or result types is not
+exactly one, parentheses are implicitly assumed around the list, making it
+into a tuple type). There are no type names standing for non-primitive types,
+with one exception: 'void' is predefined as name for the tuple type with no
+component types. Because of ambiguity with empty tuple displays and ditto
+parameter lists, one cannot use '()' to designate this 0-tuple type.
