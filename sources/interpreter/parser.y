@@ -25,7 +25,7 @@
 #include <iostream>
 #include "parsetree.h"  // types and functions used to construct nodes
 #include "lexer.h"  // pointer |lex| to lexical analyser
-#include "evaluator.h" // action functions invoked from within the parser
+#include "axis.h" // action functions invoked from within the parser
   using namespace atlas::interpreter; // to allow simplifying action code
 %}
 %union {

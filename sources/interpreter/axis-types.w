@@ -32,12 +32,12 @@ see if one con be converted into another. This compilation unit is
 called \.{types}, which refers both to user types as to meta-types of the
 interpreter used to represent user types and other fundamental notions.
 
-@( types.h @>=
+@( axis-types.h @>=
 
-#ifndef TYPES_H
-#define TYPES_H
+#ifndef AXIS_TYPES_H
+#define AXIS_TYPES_H
 
-@< Includes needed in \.{types.h} @>@;
+@< Includes needed in \.{axis-types.h} @>@;
 namespace atlas { namespace interpreter {
 @< Type definitions @>@;
 @< Declarations of global variables @>@;
@@ -51,7 +51,7 @@ are absent in each case, the order in the implementation files is local type
 definitions, global variables, local variables, local functions, global
 functions (the last point being is the main goal of the implementation unit).
 
-@h "types.h"
+@h "axis-types.h"
 @h <cstdlib>
 
 @c
@@ -105,7 +105,7 @@ duplication during manipulation. Altogether this part of the program will be
 of a quite different nature than that of the main mathematical library.
 
 
-@< Includes needed in \.{types.h} @>=
+@< Includes needed in \.{axis-types.h} @>=
 #include <memory> // for |std::unique_ptr|, |std::shared_ptr|
 #include "sl_list.h" // for singly linked lists
 
@@ -1207,7 +1207,7 @@ though that information had already been determined during type analysis. We
 shall in fact use this information to double-check our type analysis at
 runtime.
 
-@< Includes needed in \.{types.h} @>=
+@< Includes needed in \.{axis-types.h} @>=
 #include <iostream> // needed for specification of |print| method below
 
 @~We start with a base class for values. For it to be an abstract class, there
@@ -1288,7 +1288,7 @@ std::ostream& operator<< (std::ostream& out, const value_base& v)
 ``row of'' types. They are implemented using vectors from the standard
 template library.
 
-@< Includes needed in \.{types.h} @>=
+@< Includes needed in \.{axis-types.h} @>=
 #include <vector>
 #include <cassert>
 
@@ -2210,7 +2210,7 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
 Before we describe evaluation of expressions we must realise that evaluation
 can cause runtime errors.
 
-@< Includes needed in \.{types.h} @>=
+@< Includes needed in \.{axis-types.h} @>=
 #include <stdexcept>
 
 @ We use classes derived from |std::exception| and similar standard ones like
