@@ -1,0 +1,121 @@
+<basic.at
+<Weylgroup.at
+<W_orbit.at
+
+{ An element in the delta-coset of the (extended) Tits group is represented by
+  (RootDatum rd,ratvec v,mat theta) representing \exp(2i\pi v)\sigma_w\delta
+  where \theta=w\delta.
+  So v is a rational coweight taken modulo 1; theta need not be an invloution.
+  Note that \delta is incorporated into \theta (like into involution@KGBElt)
+  and that theta is defined as operating from left on X^*; for left action of
+  theta on v, use the transpose inverse (right-multiply v by inverse(theta)).
+}
+: Tits_elt = (RootDatum,ratvec,mat)
+
+set root_datum (Tits_elt(rd,,))   = RootDatum: rd
+set torus_factor (Tits_elt(,v,))   = ratvec: v
+set involution (Tits_elt(,,theta)) = mat: theta
+
+{ equality test assumes the root data agree, without check (though it could) }
+set = (Tits_elt(,v,theta),Tits_elt(,u,eta)) = bool: =(v-u)%1 and theta=eta
+set != ((Tits_elt,Tits_elt)p) = bool: not =p
+
+{ identity in Tits group }
+set tits_identity (RootDatum rd) = Tits_elt:
+  let r=rank(rd) in (rd,ratvec:null(r),id_mat(r))
+
+{ element (torus factor=1)*delta in twisted Tits group }
+set tits_delta (RootDatum rd,mat delta) = Tits_elt: (rd,null(rank(rd)),delta)
+set tits_delta (RealForm G) = Tits_elt:
+  tits_delta(RootDatum:G,distinguished_involution(InnerClass:G))
+
+{ left multiplication by sigma_s, where s must index a simple root }
+set left (int s,Tits_elt(rd,v,theta)) = Tits_elt:
+  ( rd
+  , let v1 = coreflect(rd,v,s) { permute sigma_s e(v), so act by s on v } in
+    if lengthens(rd,s,theta) { valid even if theta=w.delta is not in W }
+    then v1
+    else v1+coroot(rd,s)/2 { second term represents m_s = sigma_s^2 }
+    fi % 1
+  , left_reflect(rd,s,theta)
+  )
+
+{ right multiplication by sigma_s, where s must index a simple root }
+set right (Tits_elt(rd,v,theta), int s) = Tits_elt:
+  ( rd
+  , if lengthens(rd,theta,s) { again valid even if theta=w.delta not in W }
+    then v
+    else v+coroot(rd,s)*inverse(theta)/2 { got theta' m_s; permute factors }
+    fi % 1
+  , right_reflect(rd,theta,s)
+  )
+
+{multiplication by canonical lift of W_word}
+set left (W_word({rd assumed that of xi},w),Tits_elt xi) = Tits_elt:
+  for s in w ~ do xi:=left(s,xi) od; xi
+
+set right (Tits_elt xi, W_word({rd assumed that of xi},w)) = Tits_elt:
+  for s in w do xi:=right(xi,s) od; xi
+
+{ left multiply by torus factor \exp(2i\pi v)\sigma_s }
+set left ((ratvec,int)(v,s), Tits_elt xi) = Tits_elt:
+  let (rd,u,phi) = left(s,xi) in (rd,(u+v)%1,phi)
+
+{ right multiply by torus factor \exp(2i\pi v)\sigma_s }
+set right (Tits_elt(,,theta):xi, (ratvec,int)(v,s)) = Tits_elt:
+  let (rd,u,phi) = right(xi,s) in (rd,(v*inverse(theta)+u)%1,phi)
+
+{ conjugate by simple reflection }
+set conjugate (int s, Tits_elt(rd,,):xi) = Tits_elt:
+  let sigma_s_inv = (ratvec,int): (coroot(rd,s)/2 {=m_s},s) in
+  right(left(s,xi),sigma_s_inv)
+
+set conjugate (W_word(,w), Tits_elt xi) = Tits_elt:
+  for s in w ~ do xi:=conjugate(s,xi) od; xi
+
+{ in multiplication only one of the arguments should be in the delta-coset }
+set multiply (Tits_elt(rd,v,theta), Tits_elt({assume rd},u,eta)) = Tits_elt:
+  let tt1 = ^inverse(theta)
+  , neg_crs = columns_with(is_negative_coroot(rd),^inverse(eta)*poscoroots(rd))
+  in
+  ( rd
+  , ( v + tt1*u + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 ) % 1
+  , theta*eta
+  )
+
+set * = multiply@(Tits_elt,Tits_elt)
+
+{ inverse uses the bicycle (note the (2\-/2) structure) lemma:
+   sigma_w*sigma_{w^{-1}} = exp(2\pi i(rho^vee-rho^vee*w^{-1})/2)
+  whence
+   inverse(Tits_elt:(0,theta)) = Tits_elt:(rho_check*(theta-1)/2,inverse(theta))
+  (this formula remains valid with delta included in theta)
+}
+set inverse (Tits_elt(rd,v,theta)) = Tits_elt:
+  let theta_inv = inverse(theta) in
+  {Note: ^theta since acting on torus elements:}
+  (rd, (-v*^theta_inv - rho_check(rd)*(^theta_inv-1)/2) % 1, theta_inv)
+
+{ canonical lift of Weyl group element, assumed reduced, to Tits group }
+set lift (W_word w) = Tits_elt: left(w,tits_identity(root_datum(w)))
+
+{ canonical lift of Weyl group element to \delta-twisted Tits group }
+set lift (mat delta, W_word w) = Tits_elt:
+  left(w,tits_delta(root_datum(w),delta))
+set lift (RealForm G, W_word w) = Tits_elt: left(w,tits_delta(G))
+
+
+{ Tits element raised to an integer power }
+set ^(Tits_elt !xi, int n) = Tits_elt:
+  if   >n then let result=xi in for :n-1 do result*:=xi od; result
+  elif <n then let !xi1=inverse(xi) then result=xi1 in
+          for :n-1 do result*:=xi1 od; result
+  else tits_identity(root_datum(xi))
+  fi
+
+set order(Tits_elt xi)=int:
+let id=tits_identity(root_datum(xi)) then
+(,,m)=xi then
+d=order(m) in
+if xi^d=id then d
+elif xi^(2*d)=id then 2*d else prints("ERROR");-1 fi

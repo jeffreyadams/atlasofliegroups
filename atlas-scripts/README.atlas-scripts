@@ -1,0 +1,29 @@
+basic.at          basic functions
+groups.at     	  defining groups
+misc.at       	  miscellaneous useful commands
+lietypes.at   	  lets you say C4 instead of "C4", and so forth
+hermitian.at  	  functions related to c-forms and Hermitian forms
+kl.at         	  Kazhdan-Lusztig polynomials
+unitary.at  	  some unitary parameters
+nilpotent.at	  for parameters related to nilpotent orbits
+translate.at  	  functions related to translation {experimental}
+sort.at		  functions for sorting parameter lists in various ways
+test.at		  functions for testing the algorithms in many cases
+iterate_deform.at algorithm for deforming nu to 0, now built into Atlas
+sp4.at        	  some stuff tailored to Sp(4,R)
+my.at         	  sample personal.at file
+
+To load basic.at, for example, do:
+
+<basic or <basic.at
+
+Every file will also load all the files on which it depends.
+Probably you should just do:
+
+<hermitian
+
+This will load everything needed to compute Hermitian forms
+
+translate.at is somewhat experimental
+
+I recommend making a file my.at along the lines of the one included.

@@ -439,7 +439,7 @@ class BufferedInput
     BufferedInput (const char* prompt
                   , rl_type rl=nullptr, add_hist_type=nullptr @|
 		  , const char* prompt2="> "
-                  , const char* def_ext=".rx"@|);
+                  , const char* def_ext=".at"@|);
         // use |stdin|, maybe with readline
 @)
     char shift (); // inspect a new character
