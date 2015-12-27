@@ -71,7 +71,7 @@ set is_fixed (mat delta, KGBElt x, KGBElt y) = bool:
 { Stuff related to KGB }
 { x_rep:(v,theta) represents KGB element x is by xi=e(v)\sigma_w\xi_0
   where e(v)=exp(2i\pi v) for v in X_*\otimes Q, and \theta = w\circ\theta_0
-  in realex: torus_factor(x)=2*v-rho_check(G) (NB: v is multiplied by 2)
+  in atlas: torus_factor(x)=2*v-rho_check(G) (NB: v is multiplied by 2)
   Jeff prefers to work with the "actual torus factor" v
 }
 

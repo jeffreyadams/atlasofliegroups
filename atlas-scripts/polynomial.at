@@ -39,7 +39,7 @@ set at_s(vec v) = Split: eval(v,Split:(0,1))
 
 {			  Polynomial matrices				}
 
-{ polynomial matrices are grouped by row, unlike mat values that the realex
+{ polynomial matrices are grouped by row, unlike mat values that the axis
   language implicitly (for loops, simple indexing) consideres by columns
 }
 : poly_mat = [[poly]]

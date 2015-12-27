@@ -146,9 +146,9 @@ void extract_cells_f()
 
 void printVersion()
 {
-  std::cout << "This is " << version::NAME << " version " << version::VERSION
-	    << "." << std::endl;
-  std::cout << "Build date: " << version::COMPILEDATE << "." << std::endl;
+  std::cout << "This is 'Fokko', interface to " << version::NAME << '.'
+	    << std::endl << "Library version " << version::VERSION
+	    << ", build date: " << version::COMPILEDATE << "." << std::endl;
   std::cout <<
     "Enter \"help\" if you need assistance."
 	    << std::endl << std::endl;

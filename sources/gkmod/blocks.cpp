@@ -802,7 +802,7 @@ void nblock_help::parent_up_Cayley(nblock_elt& z, weyl::Generator s) const
 {
   KGBElt cx=kgb.cayley(s,z.xx); // direct Cayley transform on $x$ side
   if (cx == UndefKGB) // undefined Cayley transform: not imaginary noncompact
-    return; // silently ignore, done for use from realex |Cayley| function
+    return; // silently ignore, done for use from atlas |Cayley| function
   z.xx = cx;
 
   /* on $y$ side ensure that |z.yy.evaluate_at(rd.simpleCoroot(s))| is even.
@@ -842,14 +842,14 @@ void nblock_help::parent_down_Cayley(nblock_elt& z, weyl::Generator s) const
 {
   KGBElt cx=kgb.inverseCayley(s,z.xx).first; // inverse Cayley on $x$ side
   if (cx == UndefKGB) // not a real root, so undefined inverse Cayley
-    return; // silently ignore, done for use from realex |inv_Cayley| function
+    return; // silently ignore, done for use from atlas |inv_Cayley| function
 
   // on $y$ side just keep the same dual |TorusElement|, so nothing to do
   // however, for non-parity roots, leave $x$ unchanged as well
   Rational r = z.yy.evaluate_at(rd.simpleCoroot(s)); // modulo $2\Z$
   if (r.numerator()%(2*r.denominator())==0) // then it is a parity root
     z.xx = cx; // move $x$ component of |z|
-  // for nonparity roots, leave |z| is unchanged for realex |inv_Cayley|
+  // for nonparity roots, leave |z| is unchanged for atlas |inv_Cayley|
 }
 
 void nblock_help::do_down_Cayley (nblock_elt& z, weyl::Generator s) const

@@ -28,7 +28,7 @@ with extension .w, into compilable files (extensions .cpp and (except for
 main) .h) and source documentation files (extension .dvi). The build process
 will automatically produce executables and source code documentation.
 
-Apart from 'cewbx', you need as tools (GNU) 'make', 'bison', and a compiler
+Apart from 'cwebx', you need as tools (GNU) 'make', 'bison', and a compiler
 like 'g++' which you already need to compile the 'Fokko' program (but contrary
 to Fokko, you need at least version 4.4 of gcc/g++ to compile atlas, since
 atlas uses certain C++11 functionality present in that version and later).
@@ -161,7 +161,7 @@ the atlas program provides programming constructions, and allows you to
 define scripts and functions for later use.
 
 The set of primitive functions provided is described in the file 'atlas.help'
-(in the subdirectory atlas-scripts of the Atlas root directory, just like the
+(in the subdirectory rx-scripts of the Atlas root directory, just like the
 current file). There is also a script 'basic.at' that defines a collection of
 user-defined functions complementing the primitive ones that is usually
 automatically loaded at start-up (there is no separate documentation for these

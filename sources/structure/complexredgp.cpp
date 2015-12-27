@@ -1161,7 +1161,7 @@ RealFormNbr real_form_of // who claims this KGB element?
    form than the one that is implicitly used, so we allow this function to
    export a cocharacter |strong_form_start| that should be used to produce
    the base grading vector for this real form, rather than what the
-   |base_grading_vector| method produces based on grading alone. In realex the
+   |base_grading_vector| method produces based on grading alone. In atlas the
    synthetic real form function is based on this functionality.
 
    We do insist that |strong_form_start| always produce the same grading (at

@@ -232,7 +232,7 @@ set  principal_block(RealForm G)=Block:block(G,dual_quasisplit_form(G))
 >wcells print_W_cells(G,Gd)
 in shell:
 parse_even_nilpotents.pl wcells
-in realex:
+in atlas:
 <wcells_out {to define variable [[int]]:Wcells}}
 
 

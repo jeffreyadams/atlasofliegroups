@@ -69,7 +69,7 @@ struct NumericUnderflow {
 };
 
 
-// runtime errors for realex
+// runtime errors for atlas
 
 struct Cayley_error : public std::runtime_error
 {
