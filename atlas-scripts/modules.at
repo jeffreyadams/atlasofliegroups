@@ -1,0 +1,180 @@
+<misc.at
+<kl.at
+
+set std="std"
+set irr="irr"
+set I(Param p)=(Param,string):
+if not is_standard(p) then error("parameter is not standard") else (p,std) fi
+set J(Param p)=(Param,string):
+ if not is_standard(p) then error("parameter is not standard")
+ elif not is_final(p) then error("parameter is not final") else (p,irr) fi
+
+set to_string(int n)=string:int_format(n)
+set to_string(rat a)=string:let (n,d)=%a in to_string(n)#"/"#to_string(d)
+
+set to_string(vec v)=string:let rv ="[" in for i:  #v-1 do rv:=rv#to_string(v[i])#"," od;rv:=rv#to_string(v[#v-1])#"]";rv
+set to_string(ratvec v)=string:let rv ="[" in for i:  #v-1 do rv:=rv#to_string(v[i])#"," od;rv:=rv#to_string(v[#v-1])#"]";rv
+
+set kgb_number(KGBElt x)=int:
+let  G=real_form(x) in let (kgb,i,rv)=(KGB(G), 0, -1) in while i<#kgb do if x=KGB(G,i) then (rv:=i,i:=#kgb) else i:=i+1 fi od;rv
+
+set to_string(Param p)=string:let (x,lambda,nu)=(x(p),lambda(p), nu(p)) in let n=kgb_number(x) in
+"(x="#to_string(n)#",lambda="#to_string(lambda)#",nu="#to_string(nu)#")"
+
+set to_string_std(Param p)=string:let (x,lambda,nu)=(x(p),lambda(p),nu(p)) in let n=kgb_number(x) in
+"I(x="#to_string(n)#",lambda="#to_string(lambda)#",nu="#to_string(nu)#")"
+
+set to_string_irr(Param p)=string:let (x,lambda,nu)=(x(p),lambda(p), nu(p)) in let n=kgb_number(x) in
+"J(x="#to_string(n)#",lambda="#to_string(lambda)#",nu="#to_string(nu)#")"
+
+set to_string(Param p, string type)=string:
+ if type=std then to_string_std(p) elif type=irr then to_string_irr(p) else error("type is incorrect") fi
+
+{problem with overloading: 
+set to_string(Param Pol)=[string]:... doesn't work, it returns string not [string]
+}
+set to_string_ParamPol(ParamPol P)=[string]:
+for w@p in P do "("#prettyPrint(w)#")*"#to_string(p)#")" od
+
+set to_string_ParamPol(ParamPol P,string type)=[string]:
+for w@p in P do "("#prettyPrint(w)#")*"#to_string(p,type)#")" od
+
+set array_prints([string] A)=void:for a in A do prints(a) od
+
+{composition series of (p,std,[...])}
+set composition_series(Param p,string type)=
+if type = std then (composition_series(p),irr) else
+error("Composition series not defined for irreducible modules") fi
+
+
+{composition series of ParamPol P: assume P is a linear combination of standard modules}
+set composition_series(ParamPol P)=ParamPol:
+let N=null_module(real_form(P)) in for (coeff,p) in %P do N:=N+coeff*composition_series(p) od;N
+
+{composition series of linear combination of standards (ParamPol P,std)}
+set composition_series(ParamPol P,string type)=(ParamPol,string):
+if type=std then
+let N=null_module(real_form(P)) in for (coeff,p) in %P do N:=N+coeff*composition_series(p) od;(N,irr)
+else error("Composition series not defined for sum of irreducible modules") fi
+
+{character formula of (p,irr,[...]}
+set character_formula(Param p,string type)=
+if type = irr then (character_formula(p),std) else
+error("Character formula not defined for standard modules") fi
+
+{character formula of ParamPol P: assume P is a linear combination of irreducbiles}
+set character_formula(ParamPol P)=ParamPol:
+let N=null_module(real_form(P)) in for (coeff,p) in %P do N:=N+coeff*character_formula(p) od;N
+
+{character formula of linear combination of standards (ParamPol P,irr)}
+set character_formula(ParamPol P,string type)=(ParamPol,string):
+if type=irr then
+let N=null_module(real_form(P)) in for (coeff,p) in %P do N:=N+coeff*character_formula(p) od;(N,std)
+else error("Character formula not defined for sum of irreducible modules") fi
+
+
+
+set composition_series(ParamPol P,string type)=(ParamPol,string):
+if type=std then
+let N=null_module(real_form(P)) in for (coeff,p) in %P do N:=N+coeff*composition_series(p) od;(N,irr)
+else error("Composition series not defined for sum of irreducible modules") fi
+
+set module_print(ParamPol P)=void:array_prints(to_string_ParamPol(P))
+set module_print(ParamPol P,string type)=
+if (type=irr or type=std)  then array_prints(to_string_ParamPol(P,type)) else error("Incorrect type") fi
+set mprint(ParamPol P)=module_print(P)
+set mprint(ParamPol P,string type)=module_print(P,type)
+set mprint((Param,string)(p,type))=prints(to_string(p,type))
+
+{moved to basic.rx set virtual(Param p)=null_module(real_form(p))+p}
+set virtual(Param p,string type)=if (type=irr or type=std)  then (virtual(p),type) else error("incorrect type") fi
+set virtual(Param p,string type)=if (type=irr or type=std)  then (virtual(p),type) else error("incorrect type") fi
+
+
+
+{equality of (ParamPol,irr or std)
+(P,irr)=(Q,irr) or (P,std)=(Q,std): P=Q
+(P,irr)=(Q,std): character_formula(P)=Q
+(P,std)=(Q,irr): character_formula(Q)=P}
+
+set =((Param,string)(p,typep),(Param,string)(q,typeq))=bool:
+if (typep != typeq) then
+prints("cannot compare standards and irreducibles; to compare in the Grothendieck\
+group do virtual(I(p))=virtual(J(q))");false
+else p=q fi
+
+set =((ParamPol,string)(P,typeP),(ParamPol,string)(Q,typeQ))=bool:
+if ((typeP=irr) and (typeQ=irr) or ((typeP=std and typeQ=std))) then P=Q
+elif ((typeP=irr) and (typeQ=std)) then character_formula(P)=Q
+elif ((typeQ=irr) and (typeP=std)) then character_formula(Q)=P else
+error("Incorrect type(s)") fi
+
+set +((ParamPol,string)(P,typeP),(ParamPol,string)(Q,typeQ))=(ParamPol,string):
+if typeP=typeQ then (P+Q,typeP)
+elif typeP=std and typeQ=irr then (P+character_formula(Q),typeP)
+elif typeP=irr and typeQ=std then (P+composition_series(Q),typeP)
+else error("incorrect type(s)") fi
+
+set +((Param,string)(p,typep),(Param,string)(q,typeq))=(ParamPol,string):virtual(p,typep)+virtual(q,typeq)
+
+set +((ParamPol,string)(P,typeP),(Param,string)(q,typeq))=(ParamPol,string):(P,typeP)+(virtual(q),typeq)
+{the next line causes a disambiguation error (?):
+ workaround: to add (ParamPol P,Param q) do P+virtual(q)
+set +((Param,string)(p,typep),(ParamPol,string)(Q,typeQ))=(ParamPol,string):virtual(p,typep)+(Q,typeQ)
+}
+
+
+{unary -}
+set -((ParamPol,string)(P,type))=(ParamPol,string):((-1)*P,type)
+set -((Param,string)(p,type))=-virtual(p,type)
+
+{binary -}
+set -((ParamPol,string)(P,typeP),(ParamPol,string)(Q,typeQ))=(ParamPol,string):(P,typeP)+((-1)*Q,typeQ)
+set -((Param,string)(p,typep),(ParamPol,string)(Q,typeQ))=(ParamPol,string):virtual(p,typep)+((-1)*Q,typeQ)
+set -((Param,string)(p,typep),(Param,string)(q,typeq))=(ParamPol,string):virtual(p,typep)+(-virtual(q,typeq))
+{the next line causes a disambiguation error (?):
+ workaround: to subtract  (ParamPol P,Param q) do P-virtual(q)
+set -((ParamPol,string)(P,typeP),(Param,string)(q,typeq))=(ParamPol,string):(P,typeP)+(-virtual(q,typeq))}
+
+set *(Split w,(ParamPol, string)(P,type))=(w*P,type)
+set *(Split w,(Param, string)(p,type))=(w*virtual(p),type)
+
+
+set =((ParamPol,string)(P,typeP),(Param,string)(q,typeq))=bool:(P,typeP)=(virtual(q,typeq))
+
+set infinitesimal_character(Param p,string type)=ratvec:infinitesimal_character(p)
+set infinitesimal_character(Param p,string type)=ratvec:infinitesimal_character(p)
+
+set has_infinitesimal_character(ParamPol P)=bool:
+let Q=%P then
+(,q0)=Q[0] then
+ic0=infinitesimal_character(q0) then
+(rv,i)=(true,0) in
+while i<#Q do let (,q)=Q[i] in if not ic0=infinitesimal_character(q) then (rv:=false,i:=#Q) else i:=i+1 fi od;rv
+
+set infinitesimal_character(ParamPol P)=ratvec:
+if not has_infinitesimal_character(P) then error("terms have different infinitesimal characters") else
+let (,p)=(%P)[0] in infinitesimal_character(p) fi
+
+set infinitesimal_character(ParamPol P, string type)=ratvec:infinitesimal_character(P)
+
+set tau(Param p,string type)=tau(p)
+set in_tau(int s,(Param,string)(p,type))=bool:if is_compact(s,x(p)) or status_text(s,x(p))="C-" or is_nonparity(s,p) then true else false fi
+set in_tau_complement(int s,(Param,string)ps)=bool:not(in_tau(s,ps))
+set tau_complement(Param p, string type) =
+  let rv=[] in for s:semisimple_rank(real_form(p)) do if in_tau_complement(s,(p,type)) then rv:=rv#s fi od;rv
+
+set status(int s,(Param,string) (p,type))=status(s,p)
+
+{
+{--------------------auxiliary tools---------------------}
+{convert sum of standards to sum of irreducibles}
+set std_to_irr(ParamPol P)=ParamPol:
+let N=null_module(real_form(P)) in for (coeff,p) in %P do N:=N+coeff*composition_series(p) od;N
+
+{convert sum of irreducibles to sum of standards}
+set irr_to_std(ParamPol P)=ParamPol:
+let N=null_module(real_form(P)) in
+for (coeff,p) in %P do N:=N+coeff*character_formula(p) od;N
+}
+
