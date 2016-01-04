@@ -9,35 +9,32 @@ set J(Param p)=(Param,string):
  if not is_standard(p) then error("parameter is not standard")
  elif not is_final(p) then error("parameter is not final") else (p,irr) fi
 
-set to_string(int n)=string:int_format(n)
-set to_string(rat a)=string:let (n,d)=%a in to_string(n)#"/"#to_string(d)
+set to_str(int n)=string:int_format(n)
+set to_str(rat a)=string:let (n,d)=%a in to_str(n)#"/"#to_str(d)
 
-set to_string(vec v)=string:let rv ="[" in for i:  #v-1 do rv:=rv#to_string(v[i])#"," od;rv:=rv#to_string(v[#v-1])#"]";rv
-set to_string(ratvec v)=string:let rv ="[" in for i:  #v-1 do rv:=rv#to_string(v[i])#"," od;rv:=rv#to_string(v[#v-1])#"]";rv
+set to_str(vec v)=string:let rv ="[" in for i:  #v-1 do rv:=rv#to_str(v[i])#"," od;rv:=rv#to_str(v[#v-1])#"]";rv
+set to_str(ratvec v)=string:let rv ="[" in for i:  #v-1 do rv:=rv#to_str(v[i])#"," od;rv:=rv#to_str(v[#v-1])#"]";rv
 
 set kgb_number(KGBElt x)=int:
 let  G=real_form(x) in let (kgb,i,rv)=(KGB(G), 0, -1) in while i<#kgb do if x=KGB(G,i) then (rv:=i,i:=#kgb) else i:=i+1 fi od;rv
 
-set to_string(Param p)=string:let (x,lambda,nu)=(x(p),lambda(p), nu(p)) in let n=kgb_number(x) in
-"(x="#to_string(n)#",lambda="#to_string(lambda)#",nu="#to_string(nu)#")"
+set to_str(Param p)=string:let (x,lambda,nu)=(x(p),lambda(p), nu(p)) in let n=kgb_number(x) in
+"(x="#to_str(n)#",lambda="#to_str(lambda)#",nu="#to_str(nu)#")"
 
-set to_string_std(Param p)=string:let (x,lambda,nu)=(x(p),lambda(p),nu(p)) in let n=kgb_number(x) in
-"I(x="#to_string(n)#",lambda="#to_string(lambda)#",nu="#to_string(nu)#")"
+set to_str_std(Param p)=string:let (x,lambda,nu)=(x(p),lambda(p),nu(p)) in let n=kgb_number(x) in
+"I(x="#to_str(n)#",lambda="#to_str(lambda)#",nu="#to_str(nu)#")"
 
-set to_string_irr(Param p)=string:let (x,lambda,nu)=(x(p),lambda(p), nu(p)) in let n=kgb_number(x) in
-"J(x="#to_string(n)#",lambda="#to_string(lambda)#",nu="#to_string(nu)#")"
+set to_str_irr(Param p)=string:let (x,lambda,nu)=(x(p),lambda(p), nu(p)) in let n=kgb_number(x) in
+"J(x="#to_str(n)#",lambda="#to_str(lambda)#",nu="#to_str(nu)#")"
 
-set to_string(Param p, string type)=string:
- if type=std then to_string_std(p) elif type=irr then to_string_irr(p) else error("type is incorrect") fi
+set to_str(Param p, string type)=string:
+ if type=std then to_str_std(p) elif type=irr then to_str_irr(p) else error("type is incorrect") fi
 
-{problem with overloading: 
-set to_string(Param Pol)=[string]:... doesn't work, it returns string not [string]
-}
-set to_string_ParamPol(ParamPol P)=[string]:
-for w@p in P do "("#prettyPrint(w)#")*"#to_string(p)#")" od
+set to_str(ParamPol P)=[string]:
+for w@p in P do "("#prettyPrint(w)#")*"#to_str(p)#")" od
 
-set to_string_ParamPol(ParamPol P,string type)=[string]:
-for w@p in P do "("#prettyPrint(w)#")*"#to_string(p,type)#")" od
+set to_str(ParamPol P,string type)=[string]:
+for w@p in P do "("#prettyPrint(w)#")*"#to_str(p,type)#")" od
 
 set array_prints([string] A)=void:for a in A do prints(a) od
 
@@ -79,18 +76,17 @@ if type=std then
 let N=null_module(real_form(P)) in for (coeff,p) in %P do N:=N+coeff*composition_series(p) od;(N,irr)
 else error("Composition series not defined for sum of irreducible modules") fi
 
-set module_print(ParamPol P)=void:array_prints(to_string_ParamPol(P))
+set module_print(ParamPol P)=void:array_prints(to_str(P))
 set module_print(ParamPol P,string type)=
-if (type=irr or type=std)  then array_prints(to_string_ParamPol(P,type)) else error("Incorrect type") fi
+if (type=irr or type=std)  then array_prints(to_str(P,type)) else error("Incorrect type") fi
 set mprint(ParamPol P)=module_print(P)
 set mprint(ParamPol P,string type)=module_print(P,type)
-set mprint((Param,string)(p,type))=prints(to_string(p,type))
+set mprint((Param,string)(p,type))=prints(to_str(p,type))
+set print((Param,string)(p,type))=prints(to_str(p,type))
 
 {moved to basic.rx set virtual(Param p)=null_module(real_form(p))+p}
 set virtual(Param p,string type)=if (type=irr or type=std)  then (virtual(p),type) else error("incorrect type") fi
 set virtual(Param p,string type)=if (type=irr or type=std)  then (virtual(p),type) else error("incorrect type") fi
-
-
 
 {equality of (ParamPol,irr or std)
 (P,irr)=(Q,irr) or (P,std)=(Q,std): P=Q
