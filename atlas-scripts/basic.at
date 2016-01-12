@@ -879,6 +879,8 @@ set lookup (Param p, [Param] block) = int:
 {		    Polynomials in module parameters			}
 
 set null_module (ParamPol P) = ParamPol: 0*P
+set -(ParamPol P) = ParamPol: (-1)*P
+
 set first_param (ParamPol P) = Param: let (,p)=first_term(P) in p
 set last_param (ParamPol P)  = Param: let (,p)=last_term(P) in p
 

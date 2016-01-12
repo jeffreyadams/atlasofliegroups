@@ -1,66 +1,70 @@
 Script name		dependencies { brief description of purpose }
        			(ordering always places dependencies before dependents)
 -------------------------------------------------------------------------------
-basic.rx		{ standard prelude of general utility functions }
-lietypes.rx		{ allow omitting quotes in "D4" and friends }
-unitary.rx		{ tables: lists of unitary facets for F4, D4, E7 }
-new_blocks.rx		{ substitute "block" versions using new technology }
-sp4.rx			{ some functions facilitating experiments with sp4 }
-sort.rx			basic { merge sort integers, sort by statistic }
-matrix.rx		basic { get blocks from matrix, partial inverses }
-polynomial.rx		basic { polynomials and matrices with poly entries }
-Weylgroup.rx		basic { W_word, W action; making (integr.) dominant }
-groups.rx		basic { function for constructing groups by name }
-generate_groups.rx	basic { list real forms by isogeny and rank }
-nilpotent.rx		basic { list complex nilp. orbits; tables for G2-E8 }
-parameters.rx		basic { attributes of and functions for Param values }
-iterate_deform.rx	basic { legacy implementation of deformation algorithm }
-torus.rx		basic { construct torus by compact/complex/split ranks }
-galois.rx		basic, groups, generate_groups
+basic.at		{ standard prelude of general utility functions }
+lietypes.at		{ allow omitting quotes in "D4" and friends }
+unitary.at		{ tables: lists of unitary facets for F4, D4, E7 }
+new_blocks.at		{ substitute "block" versions using new technology }
+sp4.at			{ some functions facilitating experiments with sp4 }
+sort.at			basic { merge sort integers, sort by statistic }
+matrix.at		basic { get blocks from matrix, partial inverses }
+polynomial.at		basic { polynomials and matrices with poly entries }
+Weylgroup.at		basic { W_word, W action; making (integr.) dominant }
+groups.at		basic { function for constructing groups by name }
+generate_groups.at	basic { list real forms by isogeny and rank }
+nilpotent.at		basic { list complex nilp. orbits; tables for G2-E8 }
+parameters.at		basic { attributes of and functions for Param values }
+iterate_deform.at	basic { legacy implementation of deformation algorithm }
+torus.at		basic { construct torus by compact/complex/split ranks }
+galois.at		basic, groups, generate_groups
 			{ count conn. components, real forms in square class }
-lattice.rx		basic, matrix { sublattice embeddings and quotients }
-twist.rx		basic, lattice { twist by a distinguished involution }
-group_operations.rx	basic, torus, lattice { torus, product, radical etc. }
-Vogan-dual.rx		basic, parameters { compute y of Param, and full dual }
-K.rx			basic, matrix { embedding of compact root system }
-W_orbit.rx		basic, Weylgroup { W orbit on vectors, list all W }
-cross_W_orbit.rx	basic, Weylgroup { W orbit on KGB and action rep.ives }
-tits.rx			basic, Weylgroup { directly compute in full Tits group }
-Wdelta.rx		basic, Weylgroup, K { inner class with another invol. }
-kl.rx			basic, polynomial { character/composition formulas }
-synthetic.rx		basic, Weylgroup, parameters, lattice
+lattice.at		basic, matrix { sublattice embeddings and quotients }
+twist.at		basic, lattice { twist by a distinguished involution }
+group_operations.at	basic, torus, lattice { torus, product, radical etc. }
+Vogan-dual.at		basic, parameters { compute y of Param, and full dual }
+K.at			basic, matrix { embedding of compact root system }
+W_orbit.at		basic, Weylgroup { W orbit on vectors, list all W }
+cross_W_orbit.at	basic, Weylgroup { W orbit on KGB and action rep.ives }
+tits.at			basic, Weylgroup { directly compute in full Tits group }
+Wdelta.at		basic, Weylgroup, K { inner class with another invol. }
+kl.at			basic, polynomial { character/composition formulas }
+synthetic.at		basic, Weylgroup, parameters, lattice
 			       { do KGB and Param computations from scratch }
-representations.rx	basic, misc, group_operations { various "series" }
-hermitian.rx		basic, representations, kl { unitarity test }
-test_unitarity.rx       groups, hermitian, unitary, nilpotent, lietypes
+representations.at	basic, misc, group_operations { various "series" }
+hermitian.at		basic, representations, kl { unitarity test }
+test_unitarity.at       groups, hermitian, unitary, nilpotent, lietypes
 			{ define a suite of tests for the deformation code }
-translate.rx		basic, hermitian { translation functors, to walls }
-finite_dimensional.rx	basic, Weylgroup, hermitian { highest wts, dim, ... }
-LKT.rx			basic, cross_W_orbit, finite_diml, K { lowest K types }
-extended_misc.rx	basic, lattice, parameters, Weylgroup
+translate.at		basic, hermitian { translation functors, to walls }
+finite_dimensional.at	basic, Weylgroup, hermitian { highest wts, dim, ... }
+LKT.at			basic, cross_W_orbit, finite_diml, K { lowest K types }
+extended_misc.at	basic, lattice, parameters, Weylgroup
 			{ foundation for extended_param operations }
-extended_types.rx	basic, extended_misc { classify extended parameters }
-extended_cross.rx       basic, extended_misc/types { cross action ext. param. }
-extended_cayley.rx      basic, extended_misc/types { Cayley trf. ext. param. }
-extended.rx		basic, lattice, rep'ns, synth, param's, ext_misc/types
+extended_types.at	basic, extended_misc { classify extended parameters }
+extended_cross.at       basic, extended_misc/types { cross action ext. param. }
+extended_cayley.at      basic, extended_misc/types { Cayley trf. ext. param. }
+extended.at		basic, lattice, rep'ns, synth, param's, ext_misc/types
 			{ construction functions for extended_param, signs }
-nonintegral.rx		Wdelta, synthetic, extended* { cross/Cayley; extended }
-synthetic_aux.rx	synthetic, Weyl, Weylgroup, translate
-			{ auxiliary file use to help correcting synthetic.rx }
-hecke.rx		basic, sort, polynomial, extended*, nonintegral
+nonintegral.at		Wdelta, synthetic, extended* { cross/Cayley; extended }
+synthetic_aux.at	synthetic, Weyl, Weylgroup, translate
+			{ auxiliary file use to help correcting synthetic.at }
+hecke.at		basic, sort, polynomial, extended*, nonintegral
 			{ cross actions and Cayleys for extended params; tests }
 
 
+
+---------------------------------------------------------------------------
+all_Kparameters.at      kgp, K_norm, thetastable
+coherent.at		basic, translate, W_orbit
 ---------------------------------------------------------------------------
 			unsorted stuff (not intended for general use)
 
-dual.rx			extended, polynomial, parameters, Vogan-dual
-complex.rx		LKT { some things specific for complex groups }
-ext_signs.rx
-induction.rx
-induction_sp4.rx
-misc.rx
-my.rx			lietpyes, groups { some convenience functions }
-old_hermitian.rx	representations, old_kl
-old_kl.rx		basic, polynomial
-test3.rx
+dual.at			extended, polynomial, parameters, Vogan-dual
+complex.at		LKT { some things specific for complex groups }
+ext_signs.at
+induction.at
+induction_sp4.at
+misc.at
+my.at			lietpyes, groups { some convenience functions }
+old_hermitian.at	representations, old_kl
+old_kl.at		basic, polynomial
+test3.at
