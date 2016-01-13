@@ -127,9 +127,9 @@ DescentStatus descents(KGBElt x, KGBElt y,
 std::vector<set::EltList> makeHasse(const Block_base&);
 
 
-} // namespace
+} // |namespace|
 
-} // namespace blocks
+} // |namespace blocks|
 
 /*****************************************************************************
 
@@ -749,7 +749,7 @@ const InvolutionTable& param_block::involution_table() const
 
 nblock_help::nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
   : kgb(GR.kgb()), rd(subsys.parent_datum()), sub(subsys)
-  , i_tab(GR.complexGroup().involution_table())
+  , i_tab(GR.ccomplexGroup().involution_table())
   , dual_m_alpha(), half_alpha()
 {
   assert(kgb.rank()==rd.semisimpleRank());

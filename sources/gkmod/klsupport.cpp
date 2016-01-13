@@ -32,7 +32,7 @@ namespace {
   void fillLengthLess
     (std::vector<BlockElt>&, const Block_base&);
 
-} // namespace
+} // |namespace|
 
 /*****************************************************************************
 
@@ -315,8 +315,8 @@ void KLSupport::fillDownsets()
     d_state.set(PrimitivizeFilled);
 
     return;
-  } //fillPrimitivize
-} // namespace klsupport
+  } // |fillPrimitivize|
+} // |namespace klsupport|
 
 /*****************************************************************************
 

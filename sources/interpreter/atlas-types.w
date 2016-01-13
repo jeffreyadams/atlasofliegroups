@@ -3012,7 +3012,7 @@ void KGB_involution_wrapper(expression_base::level l)
   const ComplexReductiveGroup& G=x->rf->val.complexGroup();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<matrix_value>
-      (G.involutionMatrix(kgb.involution(x->val))));
+      (G.matrix(kgb.involution(x->val))));
 }
 
 void KGB_length_wrapper(expression_base::level l)

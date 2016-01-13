@@ -40,10 +40,11 @@ namespace kl {
 
 typedef std::vector<std::pair<BlockElt,MuCoeff> > MuRow;
 
-class KLPolEntry;
-/*!
-\brief Calculates and stores the Kazhdan-Lusztig polynomials for a
-  block of representations of G.
+class KLPolEntry; // class definition will given in the implementation file
+
+/*
+  |KLContext| is a class that Calculates and stores the
+  Kazhdan-Lusztig-Vogan polynomials for a block of representations of $G$.
   */
 class KLContext
   : public klsupport::KLSupport // base is needed for full functionality

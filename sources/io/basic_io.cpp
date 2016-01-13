@@ -195,7 +195,7 @@ void write_bytes(unsigned int n, unsigned long long val, std::ostream& out)
 }
 
 
-} // namespace basic_io
+} // |namespace basic_io|
 
 // Instantiations
 

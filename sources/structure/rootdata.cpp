@@ -1252,7 +1252,7 @@ RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma)
   return RationalList(fracs.begin(),fracs.end());
 }
 
-} // namespace rootdata
+} // |namespace rootdata|
 
 /*****************************************************************************
 

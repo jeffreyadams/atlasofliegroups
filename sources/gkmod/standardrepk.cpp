@@ -529,7 +529,7 @@ SRK_context::theta_stable_parabolic
   // Build the parabolic subalgebra:
 
   { // first ensure |strong| is reduced
-    const WeightInvolution theta = complexGroup().involutionMatrix(strong.tw());
+    const WeightInvolution theta = complexGroup().matrix(strong.tw());
     strong.reduce(tits::fiber_denom(theta));
   }
 
@@ -687,8 +687,7 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
 //     std::cout << "Sum over subsets of " << A.size() << " roots, giving ";
 
     typedef free_abelian::Monoid_Ring<Weight> polynomial;
-    const WeightInvolution theta =
-      complexGroup().involutionMatrix(strong.tw());
+    const WeightInvolution theta = complexGroup().matrix(strong.tw());
 
     // compute $X^\mu*\prod_{\alpha\in A}(1-X^\alpha)$ in |pol|
     polynomial pol(mu);
@@ -833,8 +832,7 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
 
     typedef free_abelian::Monoid_Ring<Weight,q_CharCoeff>
       polynomial; // with weight exponents and $q$-polynomials as coefficients
-    const WeightInvolution theta =
-      complexGroup().involutionMatrix(strong.tw());
+    const WeightInvolution theta = complexGroup().matrix(strong.tw());
 
     // compute $X^\mu*\prod_{\alpha\in A}(1-X^\alpha)$ in |pol|
     polynomial pol(mu);

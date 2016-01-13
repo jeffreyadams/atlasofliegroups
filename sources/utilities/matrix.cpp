@@ -199,7 +199,7 @@ template<typename C>
 }
 
 
-} // namespace matrix
+} // |namespace matrix|
 
 /*****************************************************************************
 
@@ -704,7 +704,7 @@ void Matrix_base<C>::eraseColumn(size_t j)
 
 
 
-} // namespace matrix
+} // |namespace matrix|
 
 
 /*****************************************************************************

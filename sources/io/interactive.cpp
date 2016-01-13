@@ -134,7 +134,7 @@ InputFile::InputFile(std::string prompt, std::ios_base::openmode mode)
 
 InputFile::~InputFile() { delete d_stream; }
 
-} // namespace ioutils
+} // |namespace ioutils|
 
 /*****************************************************************************
 
@@ -957,7 +957,7 @@ input::InputBuffer& sr_input()
 }
 
 
-} // namespace interactive
+} // |namespace interactive|
 
 /*****************************************************************************
 
@@ -989,6 +989,6 @@ bool checkInvolution(const WeightInvolution& i,
   return m.divisible(d);
 }
 
-} // namespace
+} // |namespace|
 
-} // namespace atlas
+} // |namespace atlas|

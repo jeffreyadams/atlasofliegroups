@@ -119,7 +119,7 @@ void BitVector<dim>::unslice(BitSet<dim> t,size_t new_size)
   d_size=new_size;
 }
 
-} // namespace bitvector
+} // |namespace bitvector|
 
 /*****************************************************************************
 

@@ -1012,4 +1012,4 @@ size_t CartanClass::orbit_size(const RootSystem& rs) const
 
 }  // |namespace cartanclass|
 
-} // namespace atlas
+} // |namespace atlas|

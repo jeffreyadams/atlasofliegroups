@@ -312,6 +312,13 @@ set drop_upper (int k,ratvec v)= ratvec: v[:k~]
 set <= (ratvec v) = bool: <=numer(v)
 set <  (ratvec v) = bool: < numer(v)
 
+{concatenation of rational vectors}
+set #(ratvec v,ratvec w)=
+let (num_v,denom_v)=%v then
+(num_w,denom_w)=%w then
+temp=[int]:[] in
+for i:#num_v do temp#:=num_v[i]*denom_w od;
+for i:#num_w do temp#:=num_w[i]*denom_v od;ratvec:temp/(denom_v*denom_w) 
 
 
 {			    Split integers				}
@@ -872,6 +879,8 @@ set lookup (Param p, [Param] block) = int:
 {		    Polynomials in module parameters			}
 
 set null_module (ParamPol P) = ParamPol: 0*P
+set -(ParamPol P) = ParamPol: (-1)*P
+
 set first_param (ParamPol P) = Param: let (,p)=first_term(P) in p
 set last_param (ParamPol P)  = Param: let (,p)=last_term(P) in p
 

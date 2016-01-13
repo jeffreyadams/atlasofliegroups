@@ -46,10 +46,13 @@ template<typename C>
   { return A += c; }
 
 template<typename C>
+  PID_Matrix<C>& operator-= (PID_Matrix<C>& A, C c) { return A += -c; }
+
+template<typename C>
   PID_Matrix<C> operator- (PID_Matrix<C> A, C c) { return A += -c; }
 
 template<typename C>
-  PID_Matrix<C>& operator-= (PID_Matrix<C>& A, C c) { return A += -c; }
+  PID_Matrix<C> operator- (C c, PID_Matrix<C> A) { return A.negate() += c; }
 
 }
 

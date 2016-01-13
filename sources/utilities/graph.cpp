@@ -123,7 +123,7 @@ struct info
     : v(x), parent(p), next_edge(0), min(rank) { }
 };
 
-} // namespace
+} // |namespace|
 
 void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* gr) const
 {

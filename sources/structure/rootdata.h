@@ -62,7 +62,7 @@ RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
 RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
 
-} // namespace rootdata
+} // |namespace rootdata|
 
 /******** type definitions **************************************************/
 
