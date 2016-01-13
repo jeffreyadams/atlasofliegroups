@@ -83,3 +83,21 @@ set generate_all_subsets([int] S) = [[int]]:
       else let r=gen(i+1) in r # for x in r do S[i]#x od
       fi)
   )(0)
+
+{ nicer display of Splits }
+set prettyPrint (Split w) = string:
+  let (a,b)=%w in
+  if   b=0 then int_format(a)
+  elif a=0 then
+       if b=1 then "s" elif b=-1 then "-s" else int_format(b)#"s" fi
+  elif b=1 then int_format(a)#"+s"
+  elif b=-1 then int_format(a)#"-s"
+  elif b<-1 then int_format(a)#int_format(b)#"s"
+  else int_format(a)#"+"#int_format(b)#"s"
+  fi
+
+{ nice output of ParamPol:
+  prettyPrint the coefficients, print terms in order of x }
+set prettyPrint (ParamPol P)= void:
+for w@p in P
+do prints("(",prettyPrint(w),")*",p,", ",infinitesimal_character(p)) od
