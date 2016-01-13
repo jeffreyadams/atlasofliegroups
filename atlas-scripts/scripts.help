@@ -53,8 +53,35 @@ hecke.at		basic, sort, polynomial, extended*, nonintegral
 
 
 ---------------------------------------------------------------------------
+2i12.at
+K_norm.at
+K_parameters.at
+K_types.at
+LKT_aux.at
+W_K.at
+Weylgroup_aux.at
 all_Kparameters.at      kgp, K_norm, thetastable
+ap.at
+blocku.at
+canonical_x_K.at	Weylgroup_aux
+center.at		group_operations, lattice { center of G(C), G(R) }
 coherent.at		basic, translate, W_orbit
+complex_nilpotent_orbits.rx
+conjugacy_classes.at
+elliptic_elements.at
+induction_example
+kgp.rx
+knilpotent.at
+knilpotent2.at
+knilpotent3.at
+modules.at
+orbits.at
+parabolics.at
+partitions.at
+real_nilpotent_orbits.at
+thetastable.at
+wreps_type_C.at
+
 ---------------------------------------------------------------------------
 			unsorted stuff (not intended for general use)
 
