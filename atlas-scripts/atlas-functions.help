@@ -76,7 +76,7 @@ stack_rows: ([vec]->mat) : combine ragged rows into matrix, zero-extend shorts
 error: (*,...->*) : print values and abort computation; report a runtime error
 
 int_format: (int->string): representation of integer as digit string
-to_string:(*,...->string): concatenate string representations of arguments
+to_string:(*,...->string): string representation of arguments (concatenated)
 print: (T->T): print value, followed by newline; return same value
 prints: (*,...->): print values raw (no quotes or commas) followed by newline
 ascii: (string->int): ASCII code of initial character, or -1 if string empty

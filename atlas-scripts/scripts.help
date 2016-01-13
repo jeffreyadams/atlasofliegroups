@@ -6,6 +6,7 @@ lietypes.at		{ allow omitting quotes in "D4" and friends }
 unitary.at		{ tables: lists of unitary facets for F4, D4, E7 }
 new_blocks.at		{ substitute "block" versions using new technology }
 sp4.at			{ some functions facilitating experiments with sp4 }
+misc.at			basic { general utility functions }
 sort.at			basic { merge sort integers, sort by statistic }
 matrix.at		basic { get blocks from matrix, partial inverses }
 polynomial.at		basic { polynomials and matrices with poly entries }
@@ -21,6 +22,7 @@ galois.at		basic, groups, generate_groups
 lattice.at		basic, matrix { sublattice embeddings and quotients }
 twist.at		basic, lattice { twist by a distinguished involution }
 group_operations.at	basic, torus, lattice { torus, product, radical etc. }
+center.at		group_operations, lattice { center of G(C), G(R) }
 Vogan-dual.at		basic, parameters { compute y of Param, and full dual }
 K.at			basic, matrix { embedding of compact root system }
 W_orbit.at		basic, Weylgroup { W orbit on vectors, list all W }
@@ -51,6 +53,10 @@ hecke.at		basic, sort, polynomial, extended*, nonintegral
 			{ cross actions and Cayleys for extended params; tests }
 
 
+modules.at		basic, misc, kl { ParamPol values tagged }
+coherent.at		basic, translate, W_orbit { coherent continuations }
+all_Kparameters.at      kgp, K_norm, thetastable
+
 
 ---------------------------------------------------------------------------
 2i12.at
@@ -60,26 +66,21 @@ K_types.at
 LKT_aux.at
 W_K.at
 Weylgroup_aux.at
-all_Kparameters.at      kgp, K_norm, thetastable
 ap.at
 blocku.at
 canonical_x_K.at	Weylgroup_aux
-center.at		group_operations, lattice { center of G(C), G(R) }
-coherent.at		basic, translate, W_orbit
-complex_nilpotent_orbits.rx
+complex_nilpotent_orbits.at
 conjugacy_classes.at
 elliptic_elements.at
-induction_example
-kgp.rx
+kgp.at
 knilpotent.at
 knilpotent2.at
 knilpotent3.at
-modules.at
 orbits.at
 parabolics.at
 partitions.at
 real_nilpotent_orbits.at
-thetastable.at
+thetastable.at		induction, finite_dimensional, canonical_x_K
 wreps_type_C.at
 
 ---------------------------------------------------------------------------
@@ -90,7 +91,6 @@ complex.at		LKT { some things specific for complex groups }
 ext_signs.at
 induction.at
 induction_sp4.at
-misc.at
 my.at			lietpyes, groups { some convenience functions }
 old_hermitian.at	representations, old_kl
 old_kl.at		basic, polynomial

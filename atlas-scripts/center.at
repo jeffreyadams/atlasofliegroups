@@ -28,7 +28,7 @@
 }
 
 { Q-basis of Lie algebra of radical of complex group }
-set lie_radical(RootDatum rd) = [vec]: kernel(^simple_roots(rd))
+set lie_radical (RootDatum rd) = [vec]: kernel(^simple_roots(rd))
 
 { ss_part(rd,v)=projection of v\in X^*\otimes Q onto derived group }
 set ss_part (RootDatum rd, ratvec v) = ratvec:
@@ -38,49 +38,47 @@ set ss_part (RootDatum rd, ratvec v) = ratvec:
   od; result
 
 { lie_radical_part(rd,v)=projection of v\in X^*\otimes Q onto center }
-set lie_radical_part(RootDatum rd, ratvec v)=ratvec:v-ss_part(rd,v)
+set lie_radical_part (RootDatum rd, ratvec v) = ratvec: v-ss_part(rd,v)
 
 { Q-basis of Lie algebra of split part of radical of complex group }
-set lie_split_radical(RealForm G)=[vec]:
-let delta=distinguished_involution(G) then
-lieradical=lie_radical(G) in
+set lie_split_radical (RealForm G) = [vec]:
+  let delta=distinguished_involution(G) then lieradical=lie_radical(G) in
 { need next line because lie_radical(rd) is [vec], empty result cannot
- be converted into mat
+  be converted into mat. Better solution: make lie_radical return type: mat
 }
- if #lieradical=0 then [] else
-let M=(1-delta)*lie_radical(G) then
-(A,v)=adapted_basis(M) in A[0:#v] fi
+  if #lieradical=0 then []
+  else let M=(1-delta)*lie_radical(G) then (A,v)=adapted_basis(M) in A[0:#v]
+  fi
 
 { Q-basis of Lie algebra of compact part of radical of complex group }
-set lie_compact_radical(RealForm G)=[vec]:
-let delta=distinguished_involution(G) then
-lieradical=lie_radical(G) in
- if #lieradical=0 then [] else
-let M=(1+delta)*lie_radical(G) then
-(A,v)=adapted_basis(M) in A[0:#v] fi
+set lie_compact_radical (RealForm G) = [vec]:
+  let delta=distinguished_involution(G) then lieradical=lie_radical(G) in
+  if #lieradical=0 then []
+  else let M=(1+delta)*lie_radical(G) then (A,v)=adapted_basis(M) in A[0:#v]
+  fi
 
 { Q-basis of dual of radical of complex group }
-set lie_radical_hat(RootDatum rd)=[vec]:kernel(^simple_coroots(rd))
+set lie_radical_hat (RootDatum rd) = [vec]: kernel(^simple_coroots(rd))
 
 { Q-basis of dual of split part of radical of complex group }
-set lie_split_radical_hat(RealForm G)=[vec]:
-let delta=distinguished_involution(G) then
-lieradicalhat=lie_radical_hat(G) in
-{ if #lieradicalhat=0 then [null(0)] else }
- if #lieradicalhat=0 then [] else
-let M=(1-delta)*lie_radical_hat(G) then
-(A,v)=adapted_basis(M) in
-{ if #v=0 then [null(0)] else  A[0:#v]  fi fi }
-if #v=0 then [] else  A[0:#v]  fi fi
+set lie_split_radical_hat (RealForm G) = [vec]:
+  let delta=distinguished_involution(G)
+  then lieradicalhat=lie_radical_hat(G)
+  in
+  if #lieradicalhat=0 then []
+  else let M=(1-delta)*lie_radical_hat(G) then (A,v)=adapted_basis(M) in
+    if #v=0 then [] else  A[0:#v] fi
+  fi
 
 { Z-basis of dual of compact part of radical of complex group }
-set lie_compact_radical_hat(InnerClass ic)=[vec]:
-let delta=distinguished_involution(ic) then
-lieradicalhat=lie_radical_hat(ic) in
- if #lieradicalhat=0 then [] else
-let M=(1+delta)*lie_radical_hat(ic) then
-(A,v)=adapted_basis(M) in
-if #v=0 then [] else  A[0:#v]  fi fi
+set lie_compact_radical_hat (InnerClass ic) = [vec]:
+  let delta=distinguished_involution(ic)
+  then lieradicalhat=lie_radical_hat(ic)
+  in
+  if #lieradicalhat=0 then []
+  else let M=(1+delta)*lie_radical_hat(ic) then (A,v)=adapted_basis(M) in
+    if #v=0 then [] else  A[0:#v] fi
+  fi
 
 {
   dual of center of complex group G
