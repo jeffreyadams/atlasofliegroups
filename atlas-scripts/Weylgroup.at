@@ -1,5 +1,5 @@
 <basic.at
-<center.at {for lie_radical}
+<center.at { for lie_radical_part }
 
 { Functions for computing with Weyl words }
 
@@ -32,8 +32,6 @@ set equal (W_word w, W_word u) = bool: w_matrix(w)=w_matrix(u)
 
 set inverse (W_word(rd,w)) = W_word: { reverse w component } (rd,w~[:])
 
-set cross(W_word(rd,w),KGBElt x)=KGBElt:cross(w,x)
-
 {		--- using W to make values dominant ---			}
 
 set non_dominant_index (RootDatum rd, vec v) = int:
@@ -52,7 +50,8 @@ set make_dominant (RootDatum rd, ratvec v) = (ratvec,W_word):
   let (v,denom)=%v then (v_dom,w)=make_dominant(rd,v) in (v_dom/denom,w)
 
 { rho(rootDatum rd) is in basic.at; need rho(rd,v) is in an any chamber:}
-set rho(RootDatum rd, ratvec v)=let (v_dom,w)=make_dominant(rd,v) in act(w, rho(rd))
+set rho(RootDatum rd, ratvec v) = ratvec:
+  let (v_dom,w)=make_dominant(rd,v) in act(w, rho(rd))
 
 set w_long (RootDatum rd) = W_word:
   let (,ww) = make_dominant(rd,-rho(rd)) in ww
@@ -102,6 +101,17 @@ set make_simple_sequence (RootDatum rd, vec !root) = (W_word, int):
 set make_simple (RootDatum rd, vec root) = (mat, int):
   let (w,i) = make_simple_sequence(rd,root) in (w_matrix(w),i)
 
+{  ---- some more basic functions; reduce needs make_dominant above --- }
+
+set reduce (W_word (rd,):w) = W_word:
+  word(rd, w_matrix(w)) { go to and from matrix form }
+
+{ with W_word distinct from [int], these do no conflict cross@(vec,KGBElt }
+set cross (W_word (,w),KGBElt x) = KGBElt:
+  for s in w ~do x:=cross(s,x) od; x
+set cross (W_word (,w),Param p) = Param:
+  for s in w ~do p:=cross(s,p) od; p
+
 
 {		--- translating to dominant gamma ---			}
 
@@ -144,17 +154,26 @@ set make_integrally_dominant (RootDatum rd,ratvec v) = (ratvec,W_word):
 set int_dom_act (W_word(rd,):ww,ratvec v) = ratvec:
   let (new_v,) = make_integrally_dominant(rd,act(ww,v)) in new_v
 
-{------------------------basic group operations---------------------}
+{ --------- basic group operations, non reduced result ----------------- }
 
 set left_mult (int i,W_word(rd,w))  = W_word: (rd, i#w)
 set right_mult (int i,W_word(rd,w)) = W_word: (rd, w#i)
 set conjugate (int i, W_word(rd,w)) = W_word: (rd, i#w#i)
 
 set multiply (W_word(rd,v), W_word({ assume rd too },w)) = W_word: (rd,v#w)
-set * = multiply@(W_word,W_word)
+set * = multiply@(W_word,W_word) { overload to the '*' opetrator }
 
 set conjugate (W_word(rd,v), W_word({ assume rd too },w)) = W_word:
    (rd, v#w#v~[:])
+
+{ Weyl group element raised to an integer power }
+set ^ (W_word (!rd,!w), int n) = W_word:
+  if   >n then let result=w in for :n-1 do result#:=w od; reduce(rd,result)
+  elif <n then let !w1=w~[:] then result=w1 in
+          for :n-1 do result#:=w1 od; reduce(rd,result)
+  else (rd,[])
+  fi
+
 
 { Some basic functions for when a Weyl word represents a twisted involution }
 
@@ -173,25 +192,64 @@ set imaginary_coroots (InnerClass ic, W_word tw) = mat:
 set real_coroots (InnerClass ic, W_word tw) = mat:
   real_coroots(ic,involution(ic,tw))
 
-{  invariants forms on X^* and X_*  }
+{ W-invariant forms on X^* and X_*  }
 
-{matrix of the W-invariant form on X^*\otimes Q
- (gamma,lambda)=\sum <gamma,alpha^v><lambda,alpha^v>
- sum over positive coroots
- the radical of the form is the center
+{ matrix of the W-invariant form on X^*\otimes Q
+  (gamma,lambda)=\sum <gamma,alpha^v><lambda,alpha^v>
+  sum over positive coroots
+  the radical of the form is the center
 }
-set invariant_form(RootDatum rd)=mat:let M=poscoroots(rd) in M*^M
-set invariant_form(RootDatum rd, ratvec v, ratvec w)=let M=invariant_form(rd) in v*M*w
+set invariant_form (RootDatum rd) = mat: let M=poscoroots(rd) in M*^M
+set invariant_form (RootDatum rd, ratvec v, ratvec w) = rat:
+  let M=invariant_form(rd) in v*M*w
 
-set nondegenerate_invariant_form(RootDatum rd, ratvec v,ratvec w)=
-let z=lie_radical_part(rd,v) in invariant_form(rd,v,w)+z*z
+set nondegenerate_invariant_form (RootDatum rd, ratvec v,ratvec w) = rat:
+  let z=lie_radical_part(rd,v) in invariant_form(rd,v,w)+z*z
 
-{W-invariant form on X_*\otimes Q}
-set co_invariant_form(RootDatum rd)=mat:let M=posroots(rd) in M*^M
-set co_invariant_form(RootDatum rd, ratvec v, ratvec w)=let M=co_invariant_form(rd) in v*M*w
+{ W-invariant form on X_*\otimes Q }
+set co_invariant_form (RootDatum rd) =mat: let M=posroots(rd) in M*^M
+set co_invariant_form (RootDatum rd, ratvec v, ratvec w) = rat:
+  let M=co_invariant_form(rd) in v*M*w
 
-set delete([W_word] W, int k)=[W_word]:W[:k]#W[k+1:]
+{ suppress a W_word at index k from a list, requires 0<=k<#list }
+set delete ([W_word] list, int k) = [W_word]: list[:k]#list[k+1:]
 
 { order of W_word, uses order@mat from basic.at }
 set order (W_word w) = int: order(w_matrix(w))
+
+set is_elliptic (W_word w) =bool: det(1-w_matrix(w)) !=0
+set is_regular  (W_word w) =bool:
+  length(w)*order(w)=2*nr_of_posroots(root_datum(w))
+
+{ use complex cross actions to move a KGBElt to a fiber with no C- roots
+  inductive step is move_towards_no_Cminus. Note: =status(i,x) means C-
+  also return simple reflection used
+}
+set move_towards_no_Cminus (KGBElt x) = (KGBElt,int):
+  let i=last(semisimple_rank(real_form(x)), (int i)bool: =status(i,x)) in
+  if i<0 then (x,-1) else (cross(i,x),i) fi
+
+set make_no_Cminus (KGBElt x) = (KGBElt,W_word): { repeat until stable }
+  let rec_fun f (KGBElt x,W_word w) = (KGBElt,W_word):
+    let (y,t)=move_towards_no_Cminus(x) in
+    if x=y then (x,w) else f(y,left_mult(t,w)) fi
+  in f(x,W_word:(real_form(x),[]))
+
+{ similarly with C+ }
+set move_towards_no_Cplus (KGBElt x) = (KGBElt,int):
+  let i=last(semisimple_rank(real_form(x)), (int i)bool: status(i,x)=4) in
+  if i<0 then (x,-1) else (cross(i,x),i) fi
+
+set make_no_Cplus (KGBElt x) = (KGBElt,W_word): { repeat until stable }
+  let rec_fun f(KGBElt x,W_word w)=(KGBElt,W_word):
+     let (y,t)=move_towards_no_Cplus(x) in
+     if x=y then (x,w) else f(y,left_mult(t,w)) fi
+  in f(x,W_word:(real_form(x),[]))
+
+{ apply make_no_Cplus/minus to parameters also }
+set make_no_Cminus (Param p) = Param:
+  let (y,w)=make_no_Cminus(x(p)) in parameter(y,act(w,lambda(p)),act(w,nu(p)))
+
+set make_no_Cplus (Param p) = Param:
+  let (y,w)=make_no_Cplus(x(p)) in parameter(y,act(w,lambda(p)),act(w,nu(p)))
 

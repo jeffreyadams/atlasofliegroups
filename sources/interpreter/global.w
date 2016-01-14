@@ -2089,7 +2089,7 @@ void string_unary_eq_wrapper(expression_base::level l)
     push_value(std::make_shared<bool_value>(i->val.empty()));
 }
 void string_unary_neq_wrapper(expression_base::level l)
-{ shared_string j=get<string_value>(); shared_string i=get<string_value>();
+{ shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<bool_value>(i->val.size()>0));
 }

@@ -34,27 +34,31 @@ set rho_in(KGBElt x) = ratvec:
   columns are a basis of the +1 left-eigenspace delta
 
   This matrix B satisfies ^delta*B=B
-  left multiplication by ^B is projection X^*(H)  -> X^*(T_K0) = X^*(H)/X^*(H)^{-delta}
-  left multiplication by  B is injection  X_*(T_K0)-> X_*(H)   [^delta*v=v for v in image]
+  left multiplication by ^B is
+      projection X^*(H)  -> X^*(T_K0) = X^*(H)/X^*(H)^{-delta}
+  left multiplication by  B is
+      injection  X_*(T_K0)-> X_*(H)   [^delta*v=v for v in image]
 }
 
 set cocharacter_lattice_K (InnerClass ic) = mat:
   let delta=distinguished_involution(ic) in
-  if delta=id_mat(rank(ic)) then delta
-  {eigen_lattice(identity) is not necessarily the identity; using identity gives nicest coordinates}
+  if delta=1
+    { band-aid: eigen_lattice(identity) is not necessarily the identity;
+      using identity gives nicest coordinates }
+  then delta
   else eigen_lattice(^distinguished_involution(ic),1) fi
 
-{also want this for x from the fundamental Cartan, not just the distinguished fiber}
+{ also want this for x from the fundamental Cartan, not just the
+  distinguished fiber}
 
-set is_fundamental_Cartan(KGBElt x)=none(for a in posroots(root_datum(x)) do is_real(a,x) od)
+set is_fundamental_Cartan (KGBElt x) =
+  none(for a in posroots(root_datum(x)) do is_real(a,x) od)
 
-{x is required to be on the fundamental Cartan}
-set cocharacter_lattice_K (KGBElt x)= mat:
+{ in the following function x is required to be on the fundamental Cartan}
+set cocharacter_lattice_K (KGBElt x) = mat:
   assert(is_fundamental_Cartan(x), "x is not on the fundamental Cartan");
   let theta=involution(x) in
-  if theta=id_mat(rank(root_datum(x))) then theta
-  {eigen_lattice(identity) is not necessarily the identity; using identity gives nicest coordinates}
-  else eigen_lattice(^theta,1) fi
+  if theta=1 then theta else eigen_lattice(^theta,1) fi
 
 { matrix of projection X^*(H)-> X^*(T_K0)=X^*(H)/X^*(H)^{-theta_x}
   project modulo the -1 eigenspace of the distinguished involution (or theta_x)
@@ -66,36 +70,47 @@ set projection_to_K_matrix (KGBElt x)      = mat: ^cocharacter_lattice_K(x)
   this accepts a rational vector in X^*_\Q, provided its image is integral
   avoid transpose in projection_to_K_matrixI(ic)*v, but morally it is that
 }
-set project_K (InnerClass ic,vec v)= v*cocharacter_lattice_K(ic)
-set project_K (KGBElt x,vec v)     = v*cocharacter_lattice_K(x)
-set project_K (InnerClass ic,ratvec v)= vec: ratvec_as_vec(v*cocharacter_lattice_K(ic))
-set project_K (KGBElt x,ratvec v)     = vec:ratvec_as_vec(v*cocharacter_lattice_K(x))
+set project_K (InnerClass ic,vec v)= vec: v*cocharacter_lattice_K(ic)
+set project_K (KGBElt x,vec v)     = vec: v*cocharacter_lattice_K(x)
+set project_K (InnerClass ic,ratvec v)= vec:
+  ratvec_as_vec(v*cocharacter_lattice_K(ic))
+set project_K (KGBElt x,ratvec v)     = vec:
+  ratvec_as_vec(v*cocharacter_lattice_K(x))
 
 
-{ matrix of injection X_*(T_K0)->X_*(H); image is the saturated sublattice X_*(H)^theta}
+{ matrix of injection X_*(T_K0)->X_*(H); image is the saturated sublattice
+  X_*(H)^theta }
 set injection_from_K_matrix = (InnerClass->mat):cocharacter_lattice_K@InnerClass
-set injection_from_K_matrix = (KGBElt->mat):cocharacter_lattice_K@KGBElt
+set injection_from_K_matrix = (KGBElt->mat):    cocharacter_lattice_K@KGBElt
 
-{injection function X_*(T_K0) -> X_*(H))}
-set inject_K (InnerClass ic,ratvec v)= vec: ratvec_as_vec(injection_from_K_matrix(ic)*v)
-set inject_K (KGBElt x,ratvec v)     = vec:ratvec_as_vec(injection_from_K_matrix(x)*v)
+{ injection function X_*(T_K0) -> X_*(H)) }
+set inject_K (InnerClass ic,ratvec v)= vec:
+  ratvec_as_vec(injection_from_K_matrix(ic)*v)
+set inject_K (KGBElt x,ratvec v)     = vec:
+  ratvec_as_vec(injection_from_K_matrix(x)*v)
 
-{injection X^*(T_K0) -> X^*(H)^delta_Q   (denominator can be 2)
- B=cocharacter_lattice_K(x)
- left mult by ^B is surjection X^*(H) --> X^*(T_K0)
- restriction to X^*(H)^delta is _not_ necessarily surjective, for example when T(R)=complex torus
- rightinverse(^B): X^*(T_K0)-> X^*(H), not necessarily X^*(H)^delta
- v -> w=(1+delta)/2*rightinverse(B)*v is in X^*(H)^delta\otimes 1/2,
- satisfies ^B*w=v
- application: map (\frak t_K)^* \hookrightarrow \frak t^*, used in the Vogan algorithm, see project.at
+{ injection X^*(T_K0) -> X^*(H)^delta_Q   (denominator can be 2)
+  B=cocharacter_lattice_K(x)
+  left mult by ^B is surjection X^*(H) --> X^*(T_K0)
+  restriction to X^*(H)^delta is _not_ necessarily surjective,
+  for example when T(R)=complex torus
+  rightinverse(^B): X^*(T_K0)-> X^*(H), not necessarily X^*(H)^delta
+  v -> w=(1+delta)/2*rightinverse(B)*v is in X^*(H)^delta\otimes 1/2,
+  satisfies ^B*w=v
+  application: map (\frak t_K)^* \hookrightarrow \frak t^*, used in the
+  Vogan algorithm, see project.at
 }
-set coinject_from_K(InnerClass ic,ratvec v)=ratvec:(1+distinguished_involution(ic))*right_inverse(^cocharacter_lattice_K(ic))*v/2
-set coinject_from_K(KGBElt x,ratvec v)=ratvec:(1+involution(x))*right_inverse(^cocharacter_lattice_K(x))*v/2
+set coinject_from_K (InnerClass ic,ratvec v) = ratvec:
+  (1+distinguished_involution(ic))*right_inverse(^cocharacter_lattice_K(ic))*v/2
+set coinject_from_K (KGBElt x,ratvec v) = ratvec:
+  (1+involution(x))*right_inverse(^cocharacter_lattice_K(x))*v/2
 
-set rank_K (InnerClass ic) = int: let (c,C,)=classify_involution(distinguished_involution(ic)) in c+C
+set rank_K (InnerClass ic) = int:
+  let (c,C,)=classify_involution(distinguished_involution(ic)) in c+C
 
 { G_K_roots_and_coroots_raw
-  Input: x in distinguished fiber, so theta=delta permutes positive complex roots
+  Input: x in distinguished fiber,
+    so theta=delta permutes positive complex roots
   Output: ((G_K_roots,G_K_coroots),(injection matrix,pull_back matrix)
 
   G_K_roots: posroots of K as elements of X^*(H)
@@ -108,9 +123,10 @@ set rank_K (InnerClass ic) = int: let (c,C,)=classify_involution(distinguished_i
   injection matrix: X_*(T_K0) ->  X_*(H)^{^delta} (isomorphism)
   pull_back matrix: X_*(H)^{^delta} -> X_*(T_K0)  (isomorphism)
 }
-set G_K_roots_and_coroots_raw(KGBElt x) = ((mat,mat),(mat,mat)):
+set G_K_roots_and_coroots_raw (KGBElt x) = ((mat,mat),(mat,mat)):
   let ic = inner_class(real_form(x))
-  then inj = cocharacter_lattice_K(ic) { isomorphism (X_*(T_K0)->X_*(H)^\delta) }
+  then
+    inj = cocharacter_lattice_K(ic) { isomorphism (X_*(T_K0)->X_*(H)^\delta) }
   , delta = distinguished_involution(ic), rd = root_datum(ic)
   then pull_back = left_inverse(inj) { columns are coweights in X_*(T_K0) }
   , proj = ^inj { projection X^*->X^*(T_K0) }
@@ -134,36 +150,43 @@ set G_K_roots_and_coroots_raw(KGBElt x) = ((mat,mat),(mat,mat)):
           { the factor after int: is yet another way of expressing c above }
        )
      )
-    ,(inj,pull_back) { used in G_K_roots_and_coroots@KGBElt, and provided in case the user needs them}
+    ,(inj,pull_back)
+      { used in G_K_roots_and_coroots@KGBElt,
+        and provided in case the user needs them }
     )
   end
 
-{apply projection: X^*(H) -> X^*(T_K0) to roots (projection=^inj)
+{ apply projection: X^*(H) -> X^*(T_K0) to roots (projection=^inj)
        pull_back:  X_*(T_K0) -> X_*(H) (isomorphism to X_*(H)^delta
 }
-set G_K_roots_and_coroots(KGBElt x) = (mat,mat):
-let ((roots,coroots),(inj,pullback))=G_K_roots_and_coroots_raw(x) in (^inj*roots,pullback*coroots)
+set G_K_roots_and_coroots (KGBElt x) = (mat,mat):
+  let ((roots,coroots),(inj,pullback)) = G_K_roots_and_coroots_raw(x)
+  in (^inj*roots,pullback*coroots)
 
 { extract simple roots, coroots by computing pairing with rho,rho^v }
-set G_K_simple_roots_and_coroots(KGBElt x) = (mat,mat): let
-pos_sys=G_K_roots_and_coroots(x) in simple_from_positive(pos_sys)
+set G_K_simple_roots_and_coroots (KGBElt x) = (mat,mat):
+  let pos_sys=G_K_roots_and_coroots(x) in simple_from_positive(pos_sys)
 
-set rank_K(RealForm G)=int:compact_rank(Cartan_class(G,0))
+set rank_K (RealForm G) = int: compact_rank(Cartan_class(G,0))
 
-{x is required to be in the distinguished fiber}
-set K_root_datum (KGBElt x) = RootDatum:root_datum(G_K_simple_roots_and_coroots(x))
-set K_0 (KGBElt x) = RealForm: let rd = K_root_datum(x) in quasicompact_form(inner_class(rd,id_mat(rank(rd))))
+{ here x is required to be in the distinguished fiber: }
+set K_root_datum (KGBElt x) = RootDatum:
+  root_datum(G_K_simple_roots_and_coroots(x))
+set K_0 (KGBElt x) = RealForm:
+  let rd = K_root_datum(x)
+  in quasicompact_form(inner_class(rd,id_mat(rank(rd))))
 set K_0 (RealForm G) = RealForm: K_0(KGB(G,0))
 
-{x is required to bein the distinguished fiber}
-set rho_K (KGBElt x) = ratvec:rho(K_0(x))   {in X^*(T_K0)}
-set rho_K (RealForm G) = ratvec:rho(K_0(G))
+{ here x is required to bein the distinguished fiber: }
+set rho_K (KGBElt x) = ratvec:   rho(K_0(x))   { in X^*(T_K0) }
+set rho_K (RealForm G) = ratvec: rho(K_0(G))
 
-set rho_c (KGBElt x) = ratvec:coinject_from_K(x,rho_K(x)) {as an element of (X^*(H)^delta_Q}
-set rho_c (RealForm G) = ratvec:rho_c(KGB(G,0))
+set rho_c (KGBElt x) = ratvec:
+  coinject_from_K(x,rho_K(x)) { as an element of (X^*(H)^delta_Q }
+set rho_c (RealForm G) = ratvec: rho_c(KGB(G,0))
 
-set tworho_c(KGBElt x)= ratvec:2*rho_c(x) {not necessarily a vec}
-set tworho_c(RealForm G)= ratvec:2*rho_c(G)
+set tworho_c(KGBElt x)= ratvec:   2*rho_c(x) { not necessarily a vec }
+set tworho_c(RealForm G)= ratvec: 2*rho_c(G)
 
 
 {	  conversion from restriction to K format to Param		}
@@ -186,5 +209,3 @@ set convert_K_type (RealForm G,vec two_lambda, vec torus_bits, int cartan) =
 set convert_K_type (RealForm G,(vec two_lambda, vec torus_bits, int cartan)) =
   Param:
   convert_K_type(G,two_lambda,torus_bits,cartan)
-
-

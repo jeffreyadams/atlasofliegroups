@@ -46,7 +46,7 @@ set * (RealForm G,RealForm H) = RealForm:
            ,torus_factor(xG)#torus_factor(xH)
            )
 
-{ ----------------radical, i.e. maximal central torus---------------- }
+{ ---------------- radical, i.e. maximal central torus ---------------- }
 
 set radical (RootDatum rd) = RootDatum:
   let empty = null(rank(rd)-semisimple_rank(rd),0) in root_datum(empty,empty)
