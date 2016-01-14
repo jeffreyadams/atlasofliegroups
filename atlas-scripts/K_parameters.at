@@ -35,7 +35,7 @@ set make_no_Cminus (KParam p) = KParam:
   Kparameter(make_no_Cminus(parameter(p)))
 
 {K_norm@(KParam,ratvec) is closely related to height@Param, see down a few lines}
-set K_norm(ratvec v)=(KParam->int):(KParam p):
+set K_norm(ratvec _)=(KParam->int):(KParam p):
 let p=parameter(p) then
 mu=(1+involution(x(p)))*lambda(p) then
 rv=rat:0 in
@@ -72,9 +72,12 @@ for (c,p) in result do prints(split_as_int(c),"*",p, " ", K_norm(v)(p)) od
 
 set print_by_K_norm(ratvec v,KParamPol P)=void:print_by_K_norm(v)(P)
 
-{set K_norm(ratvec v)=(KParamPol->int):(KParamPol P):
-let rv=int:0 in
-for p in monomials(P) do let m=K_norm(v)(Kparameter(p)) in if m>rv then rv:=m fi od;rv
+{
+set K_norm (ratvec v) = (ParamPol->int):
+  (ParamPol P): int
+    let rv=0 in
+    for p in monomials(P)
+    do let m=K_norm(v)(Kparameter(p)) in if m>rv then rv:=m fi od; rv
 }
 
 {K_norm of P is the max of K_norm(terms)}
@@ -85,10 +88,11 @@ for p in monomials(P) do let m=K_norm(v)(Kparameter(p)) in if m>rv then rv:=m fi
 set K_norms(ratvec v,KParamPol P)=[int]:for p in monomials(P) do K_norm(v,p) od
 set K_norms(KParamPol P)=[int]:for p in monomials(P) do K_norm(rho_check(real_form(P)),p) od
 
-set leading_terms(ratvec v)=(KParamPol->KParamPol):(KParamPol P):
-let max=K_norm(v,P) then
-rv=null_module(real_form(P)) in
-for c@p in P do if K_norm(v)(Kparameter(p))=max then rv+:=c*p fi od;rv
+set leading_terms (ratvec v) = (KParamPol->KParamPol):
+  let Knorm_v=K_norm(v) in
+  (KParamPol P): KParamPol:
+    let max=K_norm(v,P), rv=null_module(real_form(P)) in
+    for c@p in P do if Knorm_v(Kparameter(p))=max then rv+:=c*p fi od;rv
 
 set all_K_norms(ratvec v)=(KParamPol->[int]):(KParamPol P):
 let rv=[int]:[] in

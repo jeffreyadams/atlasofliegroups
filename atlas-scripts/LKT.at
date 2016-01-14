@@ -13,7 +13,8 @@ Three ways of parametrizing K-types:
    lambda\in X^*+rho
    this is a final standard limit tempered parameter
    see K_parameters.at
-   this parametrization is bijective from parameters to irreducible representations of K
+   this parametrization is bijective from parameters to irreducible
+   representations of K
    LKTs(p)=[KParam] returns the list of LKTs of p
    LKT(p)=KParam single LKT if unique
 
@@ -173,31 +174,31 @@ set LKT_highest_weight_split_spherical(Param p,KGBElt x_K)=KHighestWeight:
 let (x,mu)=LKT_highest_weight_split_spherical(p) in move_weight(x,x_K,mu)
 
 set LKT_highest_weight(KParam p)=KHighestWeight:
-assert(is_final(parameter(p)),"parameter is not final");
-let p=make_no_Cminus(p) in
-let (Q,pL)=theta_stable_data(parameter(p)) then
-(x_L,mu_L)=LKT_highest_weight_split_spherical(pL) then
-{x_G=canonical_x_K(x(p)) then}
-x_G=x_min(Q) then
-{()=prints("x_G=",x_G) then}
-{mu_G=mu_L+2*rho_u_cap_s(Q)  then}
-{need version of 2*rho_u_cap_s(Q) which is integral, see thetastable.at}
-mu_G=mu_L+two_rho_u_cap_s(Q)  then
-{()=prints("mu_L:",mu_L, " mu_G", mu_G, "shift", 2*rho_u_cap_s(Q)) then}
-{this might be a ratvec, denominator 1/2, by restriction it defines a character of T_{K_0}
-need to replace mu_G\in 1/2X^*theta with mu_G_integral\in X^*
-so that restriction takes mu_G_integral to mu_G restricted to T_{K_0}
+  assert(is_final(parameter(p)),"parameter is not final");
+  let p=make_no_Cminus(p)
+  then (Q,pL)=theta_stable_data(parameter(p))
+  then (x_L,mu_L)=LKT_highest_weight_split_spherical(pL)
+{ then x_G=canonical_x_K(x(p)) }
+  then x_G=x_min(Q)
+  in prints("x_G=",x_G);
+{ need version of 2*rho_u_cap_s(Q) which is integral, see thetastable.at}
+  let mu_G=mu_L+two_rho_u_cap_s(Q)
+{ then ()=prints("mu_L:",mu_L, " mu_G", mu_G, "shift", 2*rho_u_cap_s(Q)) }
+{ this might be a ratvec, denominator 1/2, by restriction it defines a character  of T_{K_0}
+  need to replace mu_G\in 1/2X^*theta with mu_G_integral\in X^*
+  so that restriction takes mu_G_integral to mu_G restricted to T_{K_0}
 }
-mu_K=project_K(x_G,mu_G) then
-mu_G_integral=mu_K*left_inverse(injection_from_K_matrix(x_G)) in
-{prints("L=", Levi(Q));
-prints("pL=", pL);
-prints("mu_K=", mu_K);
-prints("mu_L=", mu_L);
-prints("rho_u_cap_s:=", rho_u_cap_s(Q));
-prints("rho_u_cap_k:=", rho_u_cap_k(Q));
-prints("mu_G=", mu_G);}
-(x_G,mu_G_integral)
+  then mu_K=project_K(x_G,mu_G)
+  then mu_G_integral=mu_K*left_inverse(injection_from_K_matrix(x_G))
+  in
+  prints("L=", Levi(Q));
+  prints("pL=", pL);
+  prints("mu_K=", mu_K);
+  prints("mu_L=", mu_L);
+  prints("rho_u_cap_s:=", rho_u_cap_s(Q));
+  prints("rho_u_cap_k:=", rho_u_cap_k(Q));
+  prints("mu_G=", mu_G);
+  (x_G,mu_G_integral)
 
 {LKT of KParam is unique}
 set LKT_highest_weight(KParam p,KGBElt x_K)=KHighestWeight:

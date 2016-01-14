@@ -1,4 +1,4 @@
-{ thetastable.at Oct 14, 2015 }
+<parabolics.at { for nilrad@Parabolic and nilrad@(ratvec,KGBElt) }
 <induction.at
 <finite_dimensional.at {for is_finite_dimensional}
 <canonical_x_K.at
@@ -43,13 +43,13 @@ rd=root_datum(x) then
 rd_L=root_datum(Levi(P)) then
 theta=involution(x) in ratvec_as_vec(2*rho_S(theta,rd)-2*rho_S(theta,rd_L))
 
-{\rho_u_ic(P) is in \t^* as a subset of \h^*}
-set rho_u_ic(Parabolic P)=ratvec:
-assert(is_parabolic_theta_stable(P),"P is not theta-stable");
-let rv=ratvec:null(rank(root_datum(P))) then
-x=x_min(P) in {???}
-{x=canonical_x_K(maximal(P)) in ???}
-for alpha in nilrad(P) do if is_compact(alpha,x) then rv+:=alpha fi od;rv/2
+{ \rho_u_ic(P) is in \t^* as a subset of \h^* }
+set rho_u_ic (Parabolic P) = ratvec:
+  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+  let
+{   x=x_min(P) in {???}}
+    x=canonical_x_K(maximal(P))
+  in sum(columns_with(is_compact(x),nilrad(P))) / 2
 
 {rho_u_cap_k(P)\in \t^* as element of \h^*
 need 2*rho_u_cap_k(P)\in X^*, restricting to correct element of X^*(T_K0)=X^*/)(X^*)^{-delta}

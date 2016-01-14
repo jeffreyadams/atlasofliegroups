@@ -8,6 +8,8 @@ set is_positive (vec v) = bool: >v
 set is_positive (ratvec v) = bool: is_positive(numer(v))
 set is_nonnegative (ratvec v)= bool: is_nonnegative(numer(v))
 
+set lcm ([int] list) = denom(ratvec: for x in list do {1} /x od)
+
 { transform ParamPol into a list of (Split,Param) pairs; previously built-in }
 set % (ParamPol P) = [(Split,Param)]: for c@p in P do (c,p) od
 
