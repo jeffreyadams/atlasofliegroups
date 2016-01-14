@@ -89,13 +89,12 @@ and then find w so that w*x=x_0
 }
 
 
-set rho_u(Parabolic P)=ratvec:rho(real_form(P)) - rho(Levi(P))
-set rho_l(Parabolic P)=ratvec:rho(Levi(P))
+set rho_u (Parabolic P) = ratvec: rho(real_form(P)) - rho(Levi(P))
+set rho_l (Parabolic P) = ratvec: rho(Levi(P))
 
-set nilrad(Parabolic P)=[vec]:
-let rho_u=rho_u(P) then
-rv=[vec]:[] in
-for alpha in posroots(root_datum(P)) do if alpha*rho_u>0 then rv#:=alpha fi od;rv
+set nilrad (Parabolic P) = mat: { columns are coweights, in fact coroots }
+  let rd=root_datum(P), rho_u=rho_u(P)
+  in columns_with((vec alpha_v) bool: > alpha_v*rho_u ,poscoroots(rd))
 
 {--------------------alternative method---------------}
 {it is convenient to be able to define a parabolic in terms of a semisimple element
