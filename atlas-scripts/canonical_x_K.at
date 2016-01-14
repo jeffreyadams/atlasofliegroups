@@ -1,4 +1,5 @@
-<Weylgroup_aux.at
+<Weylgroup.at { no_Cminus_roots }
+<misc.at { for distinguished_fiber }
 
 { if all complex roots for x are of type C+, then conjecturally the torus
   parts (torus_factor) of all elements in the fiber are a subset of those for

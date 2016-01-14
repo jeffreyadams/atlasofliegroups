@@ -1,5 +1,5 @@
 <tits.at
-<Weylgroup_aux.at
+<Weylgroup.at
 <W_orbit.at
 { compute conjugacy class of w, based on cross_W_orbit.at
 
@@ -12,7 +12,7 @@ let rd=root_datum(x) then
 S=for i:semisimple_rank(rd) do i od then
 words = [[int]:[]], orbit= [x], done=0
   then absent (W_word y) = first(#orbit, (int i)bool:equal(y,orbit[i]))<0
-{         let i=#orbit-1 in while i>=0 and not equal(y,orbit[i]) do i-:=1 od; i<0}
+{ let i=#orbit-1 in while i>=0 and not equal(y,orbit[i]) do i-:=1 od; i<0}
   in
   while done<#orbit
   do

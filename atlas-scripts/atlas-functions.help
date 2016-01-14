@@ -184,12 +184,13 @@ operator % : (LieType->[LieType]) Expand into row of simple factors (or T1)
 
 Smith_Cartan: (LieType->mat,vec): generators of weights modulo roots.
   Find a Smith basis for the weight lattice relative to the sublattice of
-  roots, with corresponding invariant factors; almost equivalent to
-  Smith(^Cartan_matrix(type)), except that (1) the diagonal blick for each
-  simple or torus factor is handled separately by Smith, (2) for torus factors
-  there is a diagonal block '1' in the Smith basis, but with an invariant
-  factor '0', and (3) for factors D_{2n} an equivalent basis is given, which
-  has been tweaked so that the final two vectors are standard basis vectors
+  roots, with corresponding invariant factors. It is almost equivalent to
+  Smith(^Cartan_matrix(type)), except that (1) Smith_Cartan produces a
+  separate diagonal block for each simple or torus factor, (2) for factors 'T'
+  of the Lie type, Smith_Cartan produces a column with just '1' on the
+  diagonal, but with corresponding "invariant factor" set equal to '0', and
+  (3) for factors D_{2n} an equivalent basis is given, which has been tweaked
+  so that the final two vectors are standard basis vectors.
 
 filter_units: (mat,vec->mat,vec): discard entries '1' and their columns.
   The input is presumably produced by 'Smith_Cartan' or 'adapted_basis'; for

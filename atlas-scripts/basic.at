@@ -103,7 +103,26 @@ set + (int i, string s)= string: int_format(i) # s
 
 set + (string s, (int,int)(x,y)) = s + "(" + x + "," + y + ")"
 
+set plural (int n) = string: if n=1 then "" else "s" fi
 
+set concat ([string] list) = string:
+  let result="" in for s in list do result #:=s od; result
+
+set split_lines (string text) = [string]:
+  let result = [string]: [], a=for c in text do c od, last=0 in
+  for c@i in a
+  do if c=new_line then result #:= concat(a[last:i]); last:=i+1 fi
+  od; result
+
+set is_substring (string s, string text) = bool:
+  let s0=for c in s do c od, t0=for c in text do c od in
+  >=last(#t0-#s0,(int start):all(#s0,(int i):t0[start+i]=s0[i]))
+
+set fgrep (string s, string text) = [string]:
+  let result = [string]: [] in
+  for line in split_lines(text)
+  do if is_substring(s,line) then result#:=line fi
+  od; result
 
 {				Vectors					}
 
@@ -278,6 +297,10 @@ set * (rat r,ratvec v) = ratvec: v*r
 { concatenate ratvec values: use conversion to and from [rat] }
 set #(ratvec a,ratvec b) = ratvec: #([rat]:a,[rat]:b)
 
+set sum ([ratvec] list, int l) = ratvec: { sum of ratvecs of constant length l }
+  let result = ratvec: null(l) in
+  for v in list do result+:=v od; result
+
 { multiply rational matrix represented as list of columns by a rational vector
   the m*n matrix M is given as a list of n ratvec values of size m
   v is a ratvec of size n, the result is a ratvec of size m
@@ -311,15 +334,6 @@ set drop_upper (int k,ratvec v)= ratvec: v[:k~]
 
 set <= (ratvec v) = bool: <=numer(v)
 set <  (ratvec v) = bool: < numer(v)
-
-{concatenation of rational vectors}
-set #(ratvec v,ratvec w)=
-let (num_v,denom_v)=%v then
-(num_w,denom_w)=%w then
-temp=[int]:[] in
-for i:#num_v do temp#:=num_v[i]*denom_w od;
-for i:#num_w do temp#:=num_w[i]*denom_v od;ratvec:temp/(denom_v*denom_w) 
-
 
 {			    Split integers				}
 
@@ -530,6 +544,11 @@ set is_regular (RootDatum rd,ratvec v)= bool: { tests all positive coroots }
 set is_integral (RootDatum rd, ratvec v) = bool: { integral on all coroots }
   =(v*simple_coroots(rd)%1)
 
+{ the following should replace the needlessly complicacted built-ins they use }
+set radical_basis (RootDatum rd) = mat: { columns are coweights }
+  coroot_radical(rd)[:,semisimple_rank(rd):] { drop coroots part }
+set coradical_basis (RootDatum rd) = mat: { columns are weights }
+  root_coradical(rd)[:,semisimple_rank(rd):] { drop roots part }
 
 { the following functions give but partial information; giving a more complete
   definition for InnerClass values needs more work (see group_operations.at)
@@ -662,12 +681,6 @@ set cross (vec alpha,KGBElt x) = KGBElt:
   cross(root_index(root_datum(x),alpha),x)
 set Cayley (vec alpha,KGBElt x) = KGBElt:
   Cayley(root_index(real_form(x),alpha),x)
-
-{ cross action of Weyl group element; avoid name conflict cross@(vec,KGBElt) }
-{ move this to Weylgroup_aux.at and rename it
-set W_cross ([int] w,KGBElt x) = KGBElt:
-for i:#w downto 0 do x:=cross(w[i],x) od; x
-}
 
 set KGB_status_text (int i) = string: ["C-","ic","r ","nc","C+"][i]
 

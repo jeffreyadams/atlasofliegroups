@@ -1,34 +1,38 @@
 <basic.at
 <sort.at
-<Weylgroup_aux.at {make_no_Cminus}
+<Weylgroup.at { for make_no_Cminus }
 
-{a KParam is a pair (KGBElt x,ratvec lambda)
- representating a final, non-zero, standard limit module
- lambda\in X^*+rho
- requirements:
- standard: <lambda,alpha^vee>>=0 (alpha imaginary)
- final: <lambda+rho_r,alpha^vee> even (alpha real)
- nonzero: <lambda,alpha^vee>=0 for alpha imaginary-simple => alpha is non-compact
+{ a KParam is a pair (KGBElt x,ratvec lambda)
+  representating a final, non-zero, standard limit module
+  lambda\in X^*+rho
+  requirements:
+  standard: <lambda,alpha^vee>>=0 (alpha imaginary)
+  final: <lambda+rho_r,alpha^vee> even (alpha real)
+  nonzero: <lambda,alpha^vee>=0, alpha imaginary-simple => alpha is non-compact
 }
-:KParam=(KGBElt,ratvec)
-:KParamPol=ParamPol   {I don't see a convenient way to define a different type for KParamPol}
+: KParam = (KGBElt,ratvec)
+: KParamPol = ParamPol { re-use this type, with nu-part of the terms zero }
 
-set x(KParam p)=let (x,)=p in x
-set lambda(KParam p)=let (,lambda)=p in lambda
-set root_datum(KParam p)=root_datum(x(p))
-set real_form(KParam p)=real_form(x(p))
+set x (KParam p) =      KGBElt: let (x,)=p in x
+set lambda (KParam p) = ratvec: let (,lambda)=p in lambda
 
-set dlambda(KParam p)=ratvec:(1+involution(x(p)))*lambda(p)/2
-set dlambda(Param p)=ratvec:(1+involution(x(p)))*lambda(p)/2
+set root_datum (KParam p) = root_datum(x(p))
+set real_form (KParam p)  = real_form(x(p))
 
-set Kparameter(Param p)=KParam:
-assert(nu(p)=null(#nu(p)),"nu(p) is not zero");(x(p),lambda(p))
-set parameter(KParam p)=Param:parameter(x(p),lambda(p),null(rank(root_datum(x(p)))))
+set dlambda (KParam p) = ratvec: (1+involution(x(p)))*lambda(p)/2
+set dlambda (Param p)  = ratvec: (1+involution(x(p)))*lambda(p)/2
 
-{equality of KParams is taken care of by equality of Parameters}
-set =(KParam p,KParam q)=bool:parameter(p)=parameter(q)
+set Kparameter (Param p) = KParam:
+  assert(=nu(p),"nu(p) is not zero");
+  (x(p),lambda(p))
+set parameter (KParam p) = Param:
+  parameter(x(p),lambda(p),null(rank(root_datum(x(p)))))
 
-set make_no_Cminus(KParam p)=KParam:Kparameter(make_no_Cminus(parameter(p)))
+{ equality of KParams is now taken care of by equality of Param values }
+set = (KParam p,KParam q) = bool: parameter(p)=parameter(q)
+
+set make_no_Cminus (KParam p) = KParam:
+  Kparameter(make_no_Cminus(parameter(p)))
 
 {K_norm@(KParam,ratvec) is closely related to height@Param, see down a few lines}
 set K_norm(ratvec v)=(KParam->int):(KParam p):
