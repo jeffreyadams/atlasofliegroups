@@ -1,5 +1,5 @@
 <basic.at
-<lattice.at { added functions, function in_lattice }
+<lattice.at { added functions, function in_lattice@(mat,mat) }
 <parameters.at { for parameter(x,y,gamma), square, square_is_central }
 <Weylgroup.at  { for make_dominant_using_roots }
 

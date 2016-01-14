@@ -1,7 +1,9 @@
-<extended.at
-<polynomial.at
-<parameters.at
-<Vogan-dual.at
+<basic.at
+<parameters.at { for parameter@(KGBElt,KGBElt,ratvec) }
+<synthetic.at { for type KGBElt_gen }
+<Vogan-dual.at { for y_alt@(Param,InnerClass) }
+<polynomial.at { type poly, update_matrix_entry@(poly_mat,int,int,poly) }
+<extended.at { for type xtended_param }
 
 { recover required length_diff function, now only remaining in old_kl.at }
 set length (int i, vec stops) = int: { compute length=max{k:stops[k]<=i} }
@@ -28,7 +30,7 @@ set dual_gamma (KGBElt x,KGBElt_gen y) = ratvec:
   in shift_g_regular(G,base_grading_vector(G) + dual_rho)
 
 
-set dual_parameter (KGBElt x,KGBElt y)=Param:parameter(y,x,dual_gamma(x,y))
+set dual_parameter (KGBElt x,KGBElt y) = Param: parameter(y,x,dual_gamma(x,y))
 
 set dual (Param p, InnerClass dual_integral_class) = Param:
   parameter( y_alt(p,dual_integral_class), dual_lambda(p), dual_gamma(p) )

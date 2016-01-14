@@ -1,6 +1,6 @@
 <basic.at
-<extended_misc.at
-<extended_types.at
+<extended_misc.at { for type extended_param }
+<extended_types.at { for ext_type_1@(int,extended_param) }
 
 { debug ext_cross construction, shouldn't be necessary }
 set test_ext_cross (Param p, [int] kappa, extended_param xq) = void:
