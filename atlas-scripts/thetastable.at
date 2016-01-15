@@ -15,10 +15,10 @@ and all x-complex roots are type C+
 
 {set u(Parabolic P)=[vec]:... was broken; removed, use function in parabolics.at}
 
-set u(KGBElt x)=[vec]:nilrad(theta_stable_parabolic(x))
+set u (KGBElt x) = mat: nilrad(theta_stable_parabolic(x)) { set of coroots }
 
-set rho_l(Parabolic P)=rho(Levi(P))
-set rho_u(Parabolic P)=rho(root_datum(P))-rho_l(P)
+set rho_l (Parabolic P) = rho(Levi(P))
+set rho_u (Parabolic P) = rho(root_datum(P))-rho_l(P)
 
 {Write \h=\t\oplus\a with respect to theta
  \t^* is a quotient of \h^*, also \t^* is a sub of \h^* (those elements vanishing on \a) via this decomposition
@@ -26,11 +26,10 @@ set rho_u(Parabolic P)=rho(root_datum(P))-rho_l(P)
  each pair {alpha,theta(alpha)} contributes \alpha/2, so
  rho_u_cx(P)=1/4(sum of complex roots of u) [note the denominator]
 }
-set rho_u_cx(Parabolic P)=ratvec:
-assert(is_parabolic_theta_stable(P),"P is not theta-stable");
-let rv=ratvec:null(rank(root_datum(P))) then
-x=x_min(P) in  {use the most compact Cartan in L}
-for alpha in nilrad(P) do if is_complex(alpha,x) then rv+:=alpha fi od;rv/2
+set rho_u_cx (Parabolic P) = ratvec:
+  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+  {use the most compact Cartan in L}
+  sum(columns_with(is_complex(x_min(P)),nilrad_roots(P))) / 2
 
 {2*rho_u_cx(P) is not necessarily in X^*
  2*rho_u_cx_alt(P) \in X^*, same restriction to T_K0, i.e. same image modulo (1-delta)X^*
@@ -49,7 +48,7 @@ set rho_u_ic (Parabolic P) = ratvec:
   let
 {   x=x_min(P) in {???}}
     x=canonical_x_K(maximal(P))
-  in sum(columns_with(is_compact(x),nilrad(P))) / 2
+  in sum(columns_with(is_compact(x),nilrad_roots(P))) / 2
 
 {rho_u_cap_k(P)\in \t^* as element of \h^*
 need 2*rho_u_cap_k(P)\in X^*, restricting to correct element of X^*(T_K0)=X^*/)(X^*)^{-delta}
@@ -58,75 +57,82 @@ in rho_u_cx(P) have terms (alpha+theta(alpha)/2, replace these with alpha, which
 see rho_u_cx_alt(P) above
 }
 
-set rho_u_cap_k(Parabolic P)=ratvec:rho_u_cx(P)+rho_u_ic(P)
-set rho_u_cap_s(Parabolic P)=ratvec:rho_u(P)-rho_u_cap_k(P)
+set rho_u_cap_k (Parabolic P) = ratvec: rho_u_cx(P)+rho_u_ic(P)
+set rho_u_cap_s (Parabolic P) = ratvec: rho_u(P)-rho_u_cap_k(P)
 
-set two_rho_u_cap_k_alt(Parabolic P)=vec:ratvec_as_vec(two_rho_u_cx(P)+2*rho_u_ic(P))
-set two_rho_u_cap_s(Parabolic P)=vec:ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k_alt(P)
+set two_rho_u_cap_k_alt (Parabolic P) = vec:
+  ratvec_as_vec(two_rho_u_cx(P)+2*rho_u_ic(P))
+set two_rho_u_cap_s (Parabolic P) = vec:
+  ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k_alt(P)
 
+set dim_u_cap_k (Parabolic (,x):P) = int:
+  let sum=0/1 in
+  for alpha in nilrad_roots(P) do
+    if is_complex(alpha,x) then sum +:= 1/2
+    elif is_compact_imaginary(alpha,x) then sum+:=1
+    fi
+  od; rat_as_int(sum)
 
+set dim_u_cap_k (KGBElt x) = int: dim_u_cap_k(theta_stable_parabolic(x))
 
+set dim_u_cap_p (Parabolic (S,):P) = int: dim_u_cap_k (S,x_min(P))
 
-set dim_u_cap_k(Parabolic P)=int:
-let u=nilrad(P) then
-(S,x)=P then
-(number_compact,number_complex)=(0,0) then
-()=for v in u do if is_compact(v,x) then number_compact+:=1
-elif is_complex(v,x) then number_complex+:=1 fi od  in rat_as_int(number_compact+number_complex/2)
+set dim_u_cap_p (KGBElt x) = int: dim_u_cap_p(theta_stable_parabolic(x))
+set dim_u_cap_p (ratvec lambda,KGBElt x) = int: dim_u_cap_p(parabolic(lambda,x))
 
-set dim_u_cap_k(KGBElt x)=int:dim_u_cap_k(theta_stable_parabolic(x))
+set dim_u_cap_k_2 (Parabolic P,ratvec H { a coweight } ) = int:
+  let x=x_min(P), sum=0/1 in
+  for alpha in nilrad_roots(P) do
+    if H*alpha=2 then
+      if is_complex(alpha,x) then sum+:=1/2
+      elif is_compact_imaginary(alpha,x) then sum+:=1
+      fi
+    fi
+  od; rat_as_int(sum)
 
-set dim_u_cap_p(Parabolic P)=int:
-let u=nilrad(P) then
-x=x_min(P) then
-(number_noncompact,number_complex)=(0,0) then
-()=for v in u do if is_noncompact(x)(v) then number_noncompact+:=1
-elif is_complex(v,x) then number_complex+:=1 fi od  in rat_as_int(number_noncompact+number_complex/2)
+set dim_u_cap_k_ge2 (Parabolic P,ratvec H) = int:
+  let x=x_min(P), sum=0/1 in
+  for alpha in nilrad_roots(P) do
+    if H*alpha>=2 then
+      if is_complex(alpha,x) then sum+:=1/2
+      elif is_compact_imaginary(alpha,x) then sum+:=1
+      fi
+    fi
+  od; rat_as_int(sum)
 
-set dim_u_cap_p(KGBElt x)=int:dim_u_cap_p(theta_stable_parabolic(x))
-set dim_u_cap_p(ratvec lambda,KGBElt x)=int:dim_u_cap_p(parabolic(lambda,x))
+set dim_u_cap_p_ge2 (Parabolic P,ratvec H) = int:
+  let x=x_min(P), sum=0/1 in
+  for alpha in nilrad_roots(P) do
+    if H*alpha>=2 then
+      if is_complex(alpha,x) then sum+:=1/2
+      elif is_noncompact_imaginary(alpha,x) then sum+:=1
+      fi
+    fi
+  od; rat_as_int(sum)
 
-set dim_u_cap_k_2(Parabolic P,ratvec H)=int:
-let u=nilrad(P) then
-x=x_min(P) then
-(number_compact,number_complex)=(0,0) then
-()=for v in u do if v*H=2 then if
-  is_compact(v,x) then number_compact+:=1
-  elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat_as_int(number_compact+number_complex/2)
-
-set dim_u_cap_k_ge2(Parabolic P,ratvec H)=int:
-let u=nilrad(P) then
-x=x_min(P) then
-(number_compact,number_complex)=(0,0) then
-()=for v in u do if v*H>=2 then if
-  is_compact(v,x) then number_compact+:=1
-  elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat_as_int(number_compact+number_complex/2)
-
-set dim_u_cap_p_ge2(Parabolic P,ratvec H)=int:
-let u=nilrad(P) then
-x=x_min(P) then
-(number_noncompact,number_complex)=(0,0) then
-()=for v in u do  if v*H>=2 then  if is_noncompact(x)(v) then number_noncompact+:=1
-elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat_as_int(number_noncompact+number_complex/2)
-
-set dim_u_cap_k_1(Parabolic P,ratvec H)=
-let u=nilrad(P) then
-x=x_min(P) then
-(number_compact,number_complex)=(0,0) then
-()=for v in u do if v*H=1 then if
-  is_compact(v,x) then number_compact+:=1
-  elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat:number_compact+number_complex/2
+set dim_u_cap_k_1 (Parabolic P,ratvec H) = int:
+  let x=x_min(P), sum=0/1 in
+  for alpha in nilrad_roots(P) do
+    if H*alpha=1 then
+      if is_complex(alpha,x) then sum+:=1/2
+      elif is_compact_imaginary(alpha,x) then sum+:=1
+      fi
+    fi
+  od; rat_as_int(sum)
 
 set dim_u_cap_p_1(Parabolic P, ratvec H)=
-let u=nilrad(P) then
-x=x_min(P) then
-(number_noncompact,number_complex)=(0,0) then
-()=for v in u do  if v*H=1 then  if is_noncompact(x)(v) then number_noncompact+:=1
-elif is_complex(v,x) then number_complex+:=1 fi fi od  in rat_as_int(number_noncompact+number_complex/2)
+  let x=x_min(P), sum=0/1 in
+  for alpha in nilrad_roots(P) do
+    if H*alpha=1 then
+      if is_complex(alpha,x) then sum+:=1/2
+      elif is_noncompact_imaginary(alpha,x) then sum+:=1
+      fi
+    fi
+  od; rat_as_int(sum)
 
-set dim_u(ratvec H,KGBElt x)=#nilrad(H,x)
+set dim_u (ratvec H,KGBElt x) = n_columns(nilrad(H,x))
 
-{---------------------------some representations------------------------------------}
+{ -----------------------some representations------------------------------- }
 
 {Note: theta_induce_irreducible(pi_L,G) has infinitesimal character
 infinitesimal character(pi_L)+rho(u)}

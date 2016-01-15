@@ -44,8 +44,8 @@ S is a subset of the simple roots
 Associated to (S,x) is a canonical K-conjugacy class of parabolics of type S
 More precisely, for each \xi, a K_\xi-conjugacy class of parabolics of type S
 }
-:KGPElt=([int], KGBElt)
-:Parabolic=([int], KGBElt)  {synonym}
+: KGPElt    = ([int], KGBElt)
+: Parabolic = ([int], KGBElt)  {synonym}
 
 {some auxiliary routines needed for defining equivalence of data}
 set number(KGBElt x)=let (,n)=%x in n

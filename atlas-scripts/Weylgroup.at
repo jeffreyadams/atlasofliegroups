@@ -10,18 +10,20 @@ set word (W_word(,w))        = [int]:  w
 set # (W_word(,w))           = int: #w { non reduced length of word }
 
 
-{ action of Weyl word on X^*\otimes Q}
+{ action of Weyl word on X^* or X^*\otimes Q}
 set act (W_word(rd,w), vec v) = vec:
   let alpha = simple_roots(rd), alphav = simple_coroots(rd) in
-  for i:#w downto 0 do let wi=w[i] in v -:= alpha[wi]*(alphav[wi]*v) od; v
+  for s in w ~do v -:= alpha[s]*(alphav[s]*v) od; v
 
-set act (W_word ww, ratvec rv) = ratvec:
-  let (v,den)=%rv in act(ww,v)/den
+set act (W_word ww, ratvec rv) = ratvec:  let (v,den)=%rv in act(ww,v)/den
 
-{ action of Weyl word on X_*\otimes Q }
-set co_act (ratvec rcv, W_word(rd,w)) = ratvec:
+{ action of Weyl word on X_* or X_*\otimes Q }
+set co_act (vec cowt, W_word(rd,w)) = ratvec:
   let alpha = simple_roots(rd), alphav = simple_coroots(rd) in
-  for wi in w do rcv -:= (rcv*alpha[wi])*alphav[wi] od; rcv
+  for s in w do cowt -:= (cowt*alpha[s])*alphav[s] od; cowt
+
+set co_act (ratvec rcv, W_word ww) = ratvec:
+  let (cowt,den)=%rcv in co_act(cowt,ww)/den
 
 set w_matrix (W_word(rd,w)) = mat:
   let M=id_mat(rank(rd))
@@ -32,11 +34,13 @@ set equal (W_word w, W_word u) = bool: w_matrix(w)=w_matrix(u)
 
 set inverse (W_word(rd,w)) = W_word: { reverse w component } (rd,w~[:])
 
-{		--- using W to make values dominant ---			}
+{	--- using W to make weight or coweights dominant ---	}
 
 set non_dominant_index (RootDatum rd, vec v) = int:
-  let coords = v*simple_coroots(rd), i=semisimple_rank(rd)-1 in
-  while >=i and coords[i]>=0 do i-:=1 od; i
+  last(simple_coroots(rd),(vec alpha_v): alpha_v*v>=0)
+
+set dual_non_dominant_index (RootDatum rd, vec cowt) = int:
+  last(simple_roots(rd),(vec alpha): cowt*alpha>=0)
 
 { make_dominant(rd,v)
   returns (v_dom,w) where v_dom dominant and v=act(w,v_dom)
@@ -46,12 +50,27 @@ set make_dominant (RootDatum rd, vec v) = (vec,W_word):
   then w = while >=(i:=non_dominant_index(rd,v)) do v:=reflect(rd,i,v); i od
   in (v,(rd,w))
 
+{ dual_make_dominant(rd,cowt)
+  returns (cowt_dom,w) where cowt_dom dominant and cowt=co_act(cowt_dom,w)
+}
+set dual_make_dominant (RootDatum rd, vec cowt) = (vec,W_word):
+  let i=0 { needed to pass value across 'do' }
+  then w = { filled from right to left }
+    while >=(i:=dual_non_dominant_index(rd,cowt))
+    do cowt:=coreflect(rd,cowt,i); i ~od
+  in (cowt,(rd,w))
+
 set make_dominant (RootDatum rd, ratvec v) = (ratvec,W_word):
   let (v,denom)=%v then (v_dom,w)=make_dominant(rd,v) in (v_dom/denom,w)
 
-{ rho(rootDatum rd) is in basic.at; need rho(rd,v) is in an any chamber:}
-set rho(RootDatum rd, ratvec v) = ratvec:
-  let (v_dom,w)=make_dominant(rd,v) in act(w, rho(rd))
+set dual_make_dominant (RootDatum rd, ratvec cowt) = (ratvec,W_word):
+  let (v,denom)=%cowt then (v_dom,w)=dual_make_dominant(rd,v) in (v_dom/denom,w)
+
+{ rho@rootDatum from basic.at; rho(rd,v) in its orbit and in chamber of v: }
+set rho (RootDatum rd, ratvec v) = ratvec:
+  let (,w)=make_dominant(rd,v) in act(w,rho(rd))
+set dual_rho (RootDatum rd, ratvec cowt) = ratvec:
+  let (,w)=make_dominant(rd,cowt) in co_act(rho(rd),w)
 
 set w_long (RootDatum rd) = W_word:
   let (,ww) = make_dominant(rd,-rho(rd)) in ww
