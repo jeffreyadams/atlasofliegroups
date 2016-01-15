@@ -726,14 +726,14 @@ set rho_r (KGBElt x) = ratvec: sum(real_posroots(x))/2
 set rho_check_i (KGBElt x) = ratvec: sum(imaginary_poscoroots(x))/2
 set rho_check_r (KGBElt x) = ratvec: sum(real_poscoroots(x))/2
 
-set rho_i (mat theta,RootDatum rd) = ratvec:
-  sum(imaginary_posroots(rd,theta))/2
-set rho_r (mat theta,RootDatum rd) = ratvec:
-  sum(real_posroots(rd,theta))/2
-set rho_check_i (mat theta,RootDatum rd) = ratvec:
-  sum(imaginary_poscoroots(rd,theta))/2
-set rho_check_r (mat theta,RootDatum rd) = ratvec:
-  sum(real_poscoroots(rd,theta))/2
+set rho_i ((RootDatum,mat) rd_theta) = ratvec:
+  sum(imaginary_posroots(rd_theta))/2
+set rho_r ((RootDatum,mat) rd_theta) = ratvec:
+  sum(real_posroots(rd_theta))/2
+set rho_check_i ((RootDatum,mat) rd_theta) = ratvec:
+  sum(imaginary_poscoroots(rd_theta))/2
+set rho_check_r ((RootDatum,mat) rd_theta) = ratvec:
+  sum(real_poscoroots(rd_theta))/2
 
 { compact/noncompact status for a given KGBElt of general imaginary roots }
 set is_compact (KGBElt x) = (vec->bool):

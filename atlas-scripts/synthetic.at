@@ -4,12 +4,6 @@
 <lattice.at     { for in_lattice }
 
 
-set rho_check_i (RootDatum rd, mat theta) = ratvec:
-  sum(imaginary_poscoroots(rd,theta))/2
-
-set rho_r (RootDatum rd, mat theta) = ratvec:
-  sum(real_posroots(rd,theta))/2
-
 set grading_coweight (KGBElt x) = ratvec: torus_factor(x) + rho_check_i(x)
 
 { alternative to KGB_elt that incorporates shift by rho_check_i }
