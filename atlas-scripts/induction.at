@@ -6,7 +6,7 @@
 <kl.at { for character_formula }
 <coherent.at
 <synthetic.at {for unnormalized_torus_factor}
-<K_norm.at
+<K_parameters.at
 
 set verbose=false
 

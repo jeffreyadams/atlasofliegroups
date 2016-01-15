@@ -1,6 +1,7 @@
 {parabolics.at 10/21/15}
 <kgp.at { for type Parabolic }
 <Weylgroup.at
+<misc.at { generate_all_subsets }
 
 {complex parabolics and Levi factors
  parabolics with theta-stable Levi factor

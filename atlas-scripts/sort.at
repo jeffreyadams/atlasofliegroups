@@ -60,13 +60,14 @@ set inv_standardisation = ([int]->[int]):
     do org_i od { afterward just recover the permuted original indices }
 )
 
-{ inv_standardisation tells order of indices to select from origal for sorting }
+{ inv_standardisation -> order of indices to select from original for sorting }
 set sort_by ((Param->int) f) = ([Param] v) [Param]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 {for use in K_norm.at: sorting of KParams}
-set sort_by ( ( (KGBElt,ratvec) -> int) f ) = ([(KGBElt,ratvec)] v) [(KGBElt,ratvec)]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+set sort_by ( ( (KGBElt,ratvec) -> int) f ) =
+  ([(KGBElt,ratvec)] v) [(KGBElt,ratvec)]:
+    for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 set sort_by (((Param,bool)->int) f) = ([(Param,bool)] v) [(Param,bool)]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
@@ -74,11 +75,12 @@ set sort_by (((Param,bool)->int) f) = ([(Param,bool)] v) [(Param,bool)]:
 set sort_by ( (Split,Param->int) f) = ([(Split,Param)] v) [(Split,Param)]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
-{for use in K_norm.at, sorting of KParamPol}
-set sort_by ( (Split,(KGBElt,ratvec)->int) f) = ([(Split,(KGBElt,ratvec))] v) [(Split,(KGBElt,ratvec))]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+{ for use in K_norm.at, sorting of KParamPol }
+set sort_by ( (Split,(KGBElt,ratvec)->int) f) =
+  ([(Split,(KGBElt,ratvec))] v) [(Split,(KGBElt,ratvec))]:
+    for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
-{also need sorting by rationals}
+{ also need sorting by rationals; this uses conversion to/from ratvec }
 set sort([rat] v)=[rat]:let (num,denom)=%v in sort(num)/denom
 set inv_standardisation([rat] v)=let (num,)=%v in inv_standardisation(num)
 
@@ -93,7 +95,7 @@ set inv_standardisation([rat] v)=let (num,)=%v in inv_standardisation(num)
   models if a new value type is involved; that is OK and in fact recommended.)
 
   For instance LKT.at defines the attribute LKT_dimensions, and then defines
-  sort_by_dimension in a call of sort_by, whose argument used that attribute.
+  sort_by_dimension in a call of sort_by, whose argument uses that attribute.
 }
 
 { sort list of pairs [(Param,bool)] by #reducibility_points of Param }

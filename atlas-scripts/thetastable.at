@@ -1,7 +1,8 @@
 <parabolics.at { for nilrad@Parabolic and nilrad@(ratvec,KGBElt) }
 <induction.at
 <finite_dimensional.at {for is_finite_dimensional}
-<canonical_x_K.at
+<kgp.at { for maximal@Parabolic }
+<canonical_x_K.at { for canonical_x_K@KGBElt }
 
 {basic functions are in parabolics.at
  these are some additional functions related to theta-stable parabolics
