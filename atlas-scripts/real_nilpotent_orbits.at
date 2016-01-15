@@ -55,7 +55,7 @@ let rec_fun f([(KGBElt,vec)] valid_x_H_pairs,
 {let ()=prints("in function f with:", mus, "todo= ", todo) in}
 if #todo=0 then (valid_x_H_pairs,mus,not_valid) else
 let (x,H)=todo[0] then
-()=if real_verbose then prints();prints("Doing (x,H)=(", number(x), ",",H,")") fi then
+()=if real_verbose then prints();prints("Doing (x,H)=(",#x, ",",H,")") fi then
 todo=delete(todo,0) then
 new_mu=mu(x,H) in
 {let ()=prints("Computed new_mu using ", x, "  H=",H) in}
@@ -116,7 +116,7 @@ real_nilpotent_orbits(G,all_x_H_pairs(G),N)
 set print_real_nilpotent_orbits(RealForm G,[(KGBElt,vec)] all_x_H_pairs,int N)=void:
 prints("x  H  diagram   dimension");
 let (orbits,mus,not_valid)=real_nilpotent_orbits(G,all_x_H_pairs,N) in
-for O in orbits do prints(number(x(O)), " ", semisimple_element(O), " ", diagram(O),  "  ", dim_nilpotent(O)) od
+for O in orbits do prints(#x(O), " ", semisimple_element(O), " ", diagram(O),  "  ", dim_nilpotent(O)) od
 
 set print_real_nilpotent_orbits(RealForm G, int N)=void:print_real_nilpotent_orbits(G,all_x_H_pairs(G),N)
 
@@ -139,7 +139,7 @@ let rv=null_module(G) in
  let ()=for j:#mus do
  let (x,h,p,P)=mus[j] in
  rv+:=coeffs[j]*P;
- prints();prints("(x,h,p)=(",number(x),",",h,",",p,")");
+ prints();prints("(x,h,p)=(",#x,",",h,",",p,")");
  for c@p in P do prints(split_as_int(c), "*", p, " ", K_norm(p)) od;
 prints(P) od in
 prints();

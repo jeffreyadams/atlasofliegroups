@@ -260,8 +260,8 @@ set all_K_parameters_norm_less_than (RealForm G, ratvec v,int N) = [KParam]:
 
 set K_parameter_string (KParam p) = string:
   if is_integer(lambda(p))
-  then to_string("(x=",number(x(p)),",lambda=",ratvec_as_vec(lambda(p)),")")
-  else to_string("(x=",number(x(p)),",lambda=", lambda(p),")")
+  then to_string("(x=",#x(p),",lambda=",ratvec_as_vec(lambda(p)),")")
+  else to_string("(x=",#x(p),",lambda=", lambda(p),")")
   fi
 
 set print_K_parameter (KParam p) = void: prints(K_parameter_string(p))

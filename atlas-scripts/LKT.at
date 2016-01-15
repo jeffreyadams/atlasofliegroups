@@ -150,7 +150,7 @@ assert(#lkts=1,"More than one LKT; use LKTs");lkts[0]
 set is_split_spherical(Param p)=bool:
 assert(is_final(p), "parameter is not final");
 if not is_relatively_split(real_form(p)) then false elif
-number(x(p)) != KGB_size(real_form(p))-1 then false else
+#x(p) != KGB_size(real_form(p))-1 then false else
 all(for alpha_check in simple_coroots(root_datum(p)) do is_even(rat_as_int(  (lambda(p)-rho(root_datum(p)))  *alpha_check)) od) fi
 
 set is_split_spherical(KParam p)=bool:is_split_spherical(parameter(p))
