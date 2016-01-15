@@ -1,12 +1,14 @@
 <basic.at
 <misc.at { for prettyPrint }
 <kl.at { for composition_series, character_formula }
+<K_types { for branch_std, branch_irr }
 
 : tag_Param = (Param,string)
 : tag_ParamPol = (ParamPol,string)
 
 set !std="std"
 set !irr="irr"
+set !K_types="K_types"
 
 set I (Param p) = tag_Param:
   assert(is_standard(p),"parameter is not standard"); (p,std)
@@ -15,26 +17,31 @@ set J(Param p)=tag_Param:
   assert(is_final(p),"parameter is not final");
   (p,irr)
 
-{ set kgb_number(KGBElt x)=int: use # from basic.at for this }
+{ set kgb_number(KGBElt x)=int: use #@KGBElt from basic.at for this }
 
 set to_str (Param p) =string:
-  to_string("(x=",#x(p),",lambda=",lambda(p),",nu=",nu(p),")")
+  to_string("(x=",#x(p),",lambda=",[rat]:lambda(p),",nu=",[rat]:nu(p),")")
 
 set to_str_std (Param p) = string: "J"#to_str(p)
 
 set to_str_irr (Param p) = string: "I"#to_str(p)
 
+set to_str_K_types(Param p) = string:
+  to_string("J_K(x=", #x(p) ,",lambda=",[rat]:lambda(p),")")
+
 set to_str (tag_Param(p,type)) = string:
   if type=std then to_str_std(p)
   elif type=irr then to_str_irr(p)
+  elif type=irr then to_str_irr(p)
+  elif type=K_types then to_str_K_types(p)
   else error("type is incorrect")
   fi
 
 set to_str (ParamPol P) = [string]:
-  for w@p in P do "("#prettyPrint(w)#")*"#to_str(p)#")" od
+  for c@p in P do to_string(prettyPrint(c),"*",to_str(p)) od
 
-set to_str (ParamPol P,string type)=[string]:
-  for w@p in P do "("#prettyPrint(w)#")*"#to_str(p,type)#")" od
+set to_str (ParamPol P,string type) = [string]:
+  for c@p in P do to_string(prettyPrint(c),"*",to_str(p,type)) od
 
 set array_prints ([string] A) = void: { pring strings, one per line }
   for a in A do prints(a) od
@@ -59,30 +66,26 @@ set character_formula (tag_ParamPol(P,type)) = tag_ParamPol:
   assert(type = irr,"Character formula not defined for standard modules");
   (character_formula(P),std)
 
-set module_print (ParamPol P) = void: array_prints(to_str(P))
-set module_print (tag_ParamPol(,type):tP) = void:
-  assert(type=irr or type=std,"Incorrect type"); array_prints(to_str(tP))
+set show (ParamPol P) = void: array_prints(to_str(P))
+set show (tag_ParamPol(,type):tP) = void:
+  assert(type=irr or type=std or type=K_types,"Incorrect type");
+  array_prints(to_str(tP))
+set show(tag_Param tp) = void: prints(to_str(tp))
 
-set mprint = module_print@ParamPol
-set mprint = module_print@tag_ParamPol
-set mprint(tag_Param tp) = prints(to_str(tp))
-set print = mprint@tag_Param
+{ the following supports the type KParam defined in K_parameter.at }
+set show(KGBElt x,ratvec lambda) = void:
+  prints("J_K(x=", #x, ",", [rat]:lambda,")")
+
 
 set virtual (tag_Param(p,type)) = tag_ParamPol:
-  assert(type=irr or type=std,"Incorrect type"); (virtual(p),type)
+  assert(type=irr or type=std or type=K_types,"Incorrect type");
+  (virtual(p),type)
 
 
 set = (tag_Param(p,type_p),tag_Param(q,type_q)) = bool:
   assert (type_p=type_q,"cannot compare standards and irreducibles;" # new_line
    #"  to compare in the Grothendieck group do virtual(I(p))=virtual(J(q))");
   p=q
-
-{ equality of (ParamPol,irr or std)
-  (P,irr)=(Q,irr): P=Q
-  (P,std)=(Q,std): P=Q
-  (P,irr)=(Q,std): character_formula(P)=Q
-  (P,std)=(Q,irr): P=character_formula(Q)
-}
 
 set character (tag_ParamPol (P,type)) = ParamPol:
   if type=std then P elif type=irr then character_formula(P)
@@ -150,10 +153,9 @@ set tau_complement (Param p, string type) = tau_complement(p)
 
 set status (int s,tag_Param (p,type)) = int: status(s,p)
 
-{
-{--------------------auxiliary tools---------------------}
-{ convert sum of standards to sum of irreducibles }
-set std_to_irr = composition_series@ParamPol
-set irr_to_std = character_formula@ParamPol
-}
-
+set branch ((Param p,string type), int bound) = (ParamPol,string):
+( if type=std then branch_std(p,bound) elif type=irr then branch_irr(p,bound)
+  else error("wrong type")
+  fi
+, K_types
+)
