@@ -3,15 +3,19 @@
 <thetastable.at
 <sort.at
 
-{<knilpotent3.at {for box}}
-
-set dim_nilpotent(RootDatum rd,ratvec H)=
-if (#H>0) then let (g_0,g_1)=(rank(rd),0) in
-for alpha in posroots(rd) do
- let c=alpha*H in
-   if c=0 then g_0+:=2
-   elif c=1 then g_1+:=1 fi od;
-{prints("g_0:", g_0, "g_1:" ,g_1);}dimension(rd)-g_0-g_1 else 0 fi
+set dim_nilpotent (RootDatum rd,ratvec H) = int:
+  if #H>0
+  then let (g_0,g_1)=(rank(rd),0) in
+    for alpha in posroots(rd)
+    do let c=alpha*H in
+      if c=0 then g_0+:=2
+      elif c=1 then g_1+:=1
+      fi
+    od;
+{prints("g_0:", g_0, "g_1:" ,g_1);}
+    dimension(rd)-g_0-g_1
+  else 0
+  fi
 
 set dim_eigenspace(RootDatum rd, ratvec H, int k)=int:
 let rv=0 in
@@ -87,7 +91,7 @@ let rv=[] in
 for a in A do
  for c in v do rv#:=c#a od od;rv
 
-set rec_fun box(int height, int rank)=[[int]]:
+set rec_fun box (int height, int rank) = [[int]]:
 if rank=1 then for i:height do [i] od else
 smash(for i:height do i od,box(height,rank-1)) fi
 
