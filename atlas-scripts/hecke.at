@@ -1,8 +1,6 @@
 <basic.at
-<sort.at
-<polynomial.at
-<extended.at
-
+<sort.at { for inv_standardisation }
+<extended.at { for E@(mat,Param,ratvec) }
 <extended_cayley.at { for ext_Cayley }
 <nonintegral.at { for ext_cross }
 <polynomial.at { for polynomial arithmetic }
