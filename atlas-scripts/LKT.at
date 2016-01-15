@@ -1,5 +1,6 @@
 <K_parameters.at
 <cross_W_orbit.at { find_W_cross }
+<induction.at { for rho_S@KGBElt }
 <thetastable.at
 <W_K.at {make_strongly_dominant}
 
@@ -13,7 +14,8 @@ Three ways of parametrizing K-types:
    lambda\in X^*+rho
    this is a final standard limit tempered parameter
    see K_parameters.at
-   this parametrization is bijective from parameters to irreducible representations of K
+   this parametrization is bijective from parameters to irreducible
+   representations of K
    LKTs(p)=[KParam] returns the list of LKTs of p
    LKT(p)=KParam single LKT if unique
 
@@ -65,7 +67,8 @@ set move_finite_dimensional (KGBElt x,KGBElt y,Param p) = Param:
   return value is an element of X^*
   which restricts to give an element of X^*(H^delta)=X^*/(1-delta)X^*
   mu is not unique (of course), and mu is not necessarily fixed by delta
-  to get an element fixed by delta we need to allow 1/2X^*, see tworho_K_fixed(x) below
+  to get an element fixed by delta we need to allow 1/2X^*,
+  see tworho_K_fixed(x) below
   if {alpha,delta(alpha)} is a pair of positive roots, these contribute
   alpha (which is in X^*) or (1+delta)alpha/2 (which is delta-fixed)
   in order to get in X^* (not 1/2X^*), contribution of a positive complex pair
@@ -75,15 +78,17 @@ set move_finite_dimensional (KGBElt x,KGBElt y,Param p) = Param:
 
 set tworho_K (KGBElt x) = vec:
 ( if not in_distinguished_fiber(x)
-  then prints("Warning: x is not in distinguished fiber") fi;
-  let G=real_form(x) in sum(compact_posroots(x)) + ratvec_as_vec(2*rho_S(x))
+  then prints("Warning: x is not in distinguished fiber")
+  fi
+; let G=real_form(x) in sum(compact_posroots(x)) + ratvec_as_vec(2*rho_S(x))
 )
 
-{ sum of the roots of K as an element of (X^*)^delta\otimes Q (it can be half-integral)
+{ sum of the roots of K as an element of (X^*)^delta\otimes Q
+  (it can be half-integral)
   x is assumed to be in the distinguished fiber, defining K
   in particular alpha complex posroot implies theta(alpha) is a posroot too
-  tworho_K(x)\in X^* and tworho_K_fixed(x)\in 1/2(X^*)^delta map to same element
-  2*rho_K(x) in X^*(T_{K_0})
+  tworho_K(x)\in X^* and tworho_K_fixed(x)\in 1/2(X^*)^delta map
+  to same element 2*rho_K(x) in X^*(T_{K_0})
 }
 set tworho_K_fixed (KGBElt x) = ratvec:
 ( if not in_distinguished_fiber(x)
@@ -108,15 +113,14 @@ set tworho_K_fixed (KGBElt x) = ratvec:
 )}
 
 set tworho_Kr (KGBElt x, KGBElt y) = vec:
-( if not in_distinguished_fiber(x)
+  if not in_distinguished_fiber(x)
   then prints("Warning: x is not in distinguished fiber")
   elif not no_Cminus_roots(y)
   then prints("Warning: not all complex roots for y are type C+")
   fi;
-  let real_roots=root_datum(simple_from_positive(real_sys(y))) then
-  imx=is_imaginary(x), cpx=is_compact(x) in
-  ratvec_as_vec(sum(columns_with((vec alpha): imx(alpha) and cpx(alpha),posroots(real_roots)))+2*rho_S(involution(x),real_roots))
-)
+  let cix_ry_sum = sum(columns_with(is_compact_imaginary(x),real_posroots(y)))
+  , real_datum_y=root_datum(simple_from_positive(real_sys(y)))
+  in cix_ry_sum + ratvec_as_vec(2*rho_S(involution(x),real_datum_y))
 
 { lowest K-type of (limit of) discrete series on M }
 set M_LKT (Param p) = ratvec:
@@ -124,9 +128,7 @@ set M_LKT (Param p) = ratvec:
   then lambda = involution(x)* { why? what follows is already fixed by theta }
       (infinitesimal_character(p)-nu(p))
   , delta = distinguished_involution(real_form(p))
-  , rho_i=rho_i(x), tworho_ic=2*rho_ic(x)
-{ , (,rv)=projection(1-delta,ratvec_as_vec(lambda+rho_i-tworho_ic)) in rv }
-  in projection_mod_image(1-delta)*ratvec_as_vec(lambda+rho_i-tworho_ic)
+  in projection_mod_image(1-delta)*ratvec_as_vec(lambda+rho_i(x)-2*rho_ci(x))
 
 {---------------- LKT in terms of KParams----------------}
 { K-types are parametrized by final tempered limit parameters
@@ -173,31 +175,31 @@ set LKT_highest_weight_split_spherical(Param p,KGBElt x_K)=KHighestWeight:
 let (x,mu)=LKT_highest_weight_split_spherical(p) in move_weight(x,x_K,mu)
 
 set LKT_highest_weight(KParam p)=KHighestWeight:
-assert(is_final(parameter(p)),"parameter is not final");
-let p=make_no_Cminus(p) in
-let (Q,pL)=theta_stable_data(parameter(p)) then
-(x_L,mu_L)=LKT_highest_weight_split_spherical(pL) then
-{x_G=canonical_x_K(x(p)) then}
-x_G=x_min(Q) then
-{()=prints("x_G=",x_G) then}
-{mu_G=mu_L+2*rho_u_cap_s(Q)  then}
-{need version of 2*rho_u_cap_s(Q) which is integral, see thetastable.at}
-mu_G=mu_L+two_rho_u_cap_s(Q)  then
-{()=prints("mu_L:",mu_L, " mu_G", mu_G, "shift", 2*rho_u_cap_s(Q)) then}
-{this might be a ratvec, denominator 1/2, by restriction it defines a character of T_{K_0}
-need to replace mu_G\in 1/2X^*theta with mu_G_integral\in X^*
-so that restriction takes mu_G_integral to mu_G restricted to T_{K_0}
+  assert(is_final(parameter(p)),"parameter is not final");
+  let p=make_no_Cminus(p)
+  then (Q,pL)=theta_stable_data(parameter(p))
+  then (x_L,mu_L)=LKT_highest_weight_split_spherical(pL)
+{ then x_G=canonical_x_K(x(p)) }
+  then x_G=x_min(Q)
+  in prints("x_G=",x_G);
+{ need version of 2*rho_u_cap_s(Q) which is integral, see thetastable.at}
+  let mu_G=mu_L+two_rho_u_cap_s(Q)
+{ then ()=prints("mu_L:",mu_L, " mu_G", mu_G, "shift", 2*rho_u_cap_s(Q)) }
+{ this might be a ratvec, denominator 1/2, by restriction it defines a character  of T_{K_0}
+  need to replace mu_G\in 1/2X^*theta with mu_G_integral\in X^*
+  so that restriction takes mu_G_integral to mu_G restricted to T_{K_0}
 }
-mu_K=project_K(x_G,mu_G) then
-mu_G_integral=mu_K*left_inverse(injection_from_K_matrix(x_G)) in
-{prints("L=", Levi(Q));
-prints("pL=", pL);
-prints("mu_K=", mu_K);
-prints("mu_L=", mu_L);
-prints("rho_u_cap_s:=", rho_u_cap_s(Q));
-prints("rho_u_cap_k:=", rho_u_cap_k(Q));
-prints("mu_G=", mu_G);}
-(x_G,mu_G_integral)
+  then mu_K=project_K(x_G,mu_G)
+  then mu_G_integral=mu_K*left_inverse(injection_from_K_matrix(x_G))
+  in
+  prints("L=", Levi(Q));
+  prints("pL=", pL);
+  prints("mu_K=", mu_K);
+  prints("mu_L=", mu_L);
+  prints("rho_u_cap_s:=", rho_u_cap_s(Q));
+  prints("rho_u_cap_k:=", rho_u_cap_k(Q));
+  prints("mu_G=", mu_G);
+  (x_G,mu_G_integral)
 
 {LKT of KParam is unique}
 set LKT_highest_weight(KParam p,KGBElt x_K)=KHighestWeight:

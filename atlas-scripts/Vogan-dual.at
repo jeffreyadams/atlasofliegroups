@@ -1,5 +1,5 @@
 <basic.at
-<parameters.at { for rho_i, dual_inner_class }
+<parameters.at { for dual_inner_class }
 
 {
   This starts with some technical functions that are no longer used, so they

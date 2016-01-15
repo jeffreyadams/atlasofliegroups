@@ -57,9 +57,6 @@ set parity (Param p,vec alpha_hat) = bool: { parity condition }
 )
 
 
-set rho_i ((RootDatum, mat) rd_theta) = ratvec:
-  sum(imaginary_poscoroots(rd_theta))/2
-
 { to compute y values over a block of parameters, precompute dual inner class }
 set dual_inner_class (Param p) = InnerClass:
   let id = integrality_datum(real_form(p),infinitesimal_character(p))
@@ -85,7 +82,7 @@ set dual_inner_class (Param p) = InnerClass:
 set y (Param p, InnerClass G_vee) = KGBElt:
   let x = x(p) then dual_theta = -^involution(x)
   then grading_vector = infinitesimal_character(p) - lambda(p) + rho_r(x)
-  , dual_shift = rho_i(G_vee,dual_theta)/2
+  , dual_shift = rho_check_i(G_vee,dual_theta)/2
   in KGB_elt(G_vee,dual_theta,grading_vector-dual_shift)
 
 { caution: this function builds an inner class on the fly; if called multiple

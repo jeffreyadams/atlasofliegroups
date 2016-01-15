@@ -2,23 +2,6 @@
 <basic.at
 <matrix.at { for left_inverse }
 
-{---------------- tests for any root, not just simple  --------------}
-
-{ this is mostly already done in basic.at, just add imaginary test }
-set is_imaginary_compact(KGBElt x) = (vec->bool):
-  let p=is_imaginary(x), q=is_compact(x) { allow pre-computation for x }
-  in (vec alpha) bool: p(alpha) and q(alpha)
-
-set is_imaginary_noncompact(KGBElt x) = (vec->bool):
-  let p=is_imaginary(x), q=is_noncompact(x)
-  in (vec alpha) bool: p(alpha) and q(alpha)
-
-
-set rho_ic(KGBElt x) = ratvec: sum(compact_posroots(x))/2
-
-set rho_in(KGBElt x) = ratvec:
-  sum(columns_with(is_noncompact(x),imaginary_posroots(x)))/2
-
 
 { ------------------    matrices related to T_K0\subset H  ------------------ }
 
@@ -137,7 +120,8 @@ set G_K_roots_and_coroots_raw (KGBElt x) = ((mat,mat),(mat,mat)):
     assert(involution(x)=delta,"x is not in distinguished fiber")
   ; for alpha@j in proots
     do let k = root_index(rd,delta*alpha) in
-       if k=j then if is_cpt(alpha) then ic_inx #:= j fi
+       if k=j { since delta=involution(x), this means alpha is imaginary }
+       then if is_cpt(alpha) then ic_inx #:= j fi
        elif k>j { first of a pair of complex posroots } then C_inx #:= j
        fi
     od

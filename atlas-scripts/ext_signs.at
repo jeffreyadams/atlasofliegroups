@@ -1,8 +1,8 @@
 {signs for extended parameters in special cases, used primarily in hecke.at}
 
-<extended_misc.at
-<extended_cross.at
-<extended_cayley.at
+<extended_misc.at { type extended_param }
+<extended_cross.at { ext_cross@(int,extended_param) }
+<extended_cayley.at { ext_Cayley@(int,extended_param) }
 <hecke.at { for y_gen }
 
 { given E and F, where F occurs in 2i12-Cayley(E)

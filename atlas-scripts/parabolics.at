@@ -1,5 +1,5 @@
 {parabolics.at 10/21/15}
-<kgp.at
+<kgp.at { for type Parabolic }
 <Weylgroup.at
 
 {complex parabolics and Levi factors
@@ -89,48 +89,57 @@ and then find w so that w*x=x_0
 }
 
 
-set rho_u(Parabolic P)=ratvec:rho(real_form(P)) - rho(Levi(P))
-set rho_l(Parabolic P)=ratvec:rho(Levi(P))
+set rho_u (Parabolic P) = ratvec: rho(real_form(P)) - rho(Levi(P))
+set rho_l (Parabolic P) = ratvec: rho(Levi(P))
 
-set nilrad(Parabolic P)=[vec]:
-let rho_u=rho_u(P) then
-rv=[vec]:[] in
-for alpha in posroots(root_datum(P)) do if alpha*rho_u>0 then rv#:=alpha fi od;rv
+set nilrad (Parabolic P) = mat: { columns are coweights, in fact poscoroots }
+  let rd=root_datum(P), rho_u=rho_u(P)
+  in columns_with((vec alpha_v) bool: > alpha_v*rho_u ,poscoroots(rd))
+
+set nilrad_roots (Parabolic P) = mat: { columns are posroots }
+  let rd=root_datum(P), nil_coroots = nilrad(P) in
+  if =nil_coroots then nil_coroots { empty matrix is self_dual }
+  else { convert non-empty set of coroots }
+    for alpha_v in nil_coroots do root(rd,alpha_v) od
+  fi
 
 {--------------------alternative method---------------}
 {it is convenient to be able to define a parabolic in terms of a semisimple element
 either in \h or \h^*
 }
 
-{by default: lambda is in \h^*}
-set zero_simple_coroots(RootDatum rd, ratvec lambda)=[int]:
-let rv=[int]:[] then
-scr=simple_coroots(rd) in
-for i:semisimple_rank(rd) do if lambda*scr[i]=0 then rv#:=i  fi od;rv
+{ by default: lambda is in \h^*, a ration weight }
+set zero_simple_coroots (RootDatum rd, vec lambda) = [int]:
+  let result = [int]:[] in
+  for alpha_v@j in simple_coroots(rd)
+  do if alpha_v*lambda=0 then result #:= j fi od; result
 
-set parabolic(ratvec lambda,KGBElt x)=Parabolic:
-let rd=root_datum(x) then
-(lambda_dom,w)=make_dominant(rd,lambda) in Parabolic:(zero_simple_coroots(rd,lambda_dom), cross(inverse(w),x))
+set parabolic (ratvec lambda,KGBElt x) = Parabolic:
+  let rd=root_datum(x) then (lambda_dom,w)=make_dominant(rd,numer(lambda)) in
+  Parabolic:(zero_simple_coroots(rd,lambda_dom), cross(inverse(w),x))
 
-set Levi(ratvec lambda,KGBElt x)=Levi(parabolic(lambda,x))
-set nilrad(ratvec lambda,KGBElt x)=[vec]:nilrad(parabolic(lambda,x))
-set rho_u(ratvec lambda,KGBElt x)=let roots=nilrad(lambda,x) in if #roots=0 then null(rank(real_form(x))) else ratvec:sum(roots)/2 fi
-set rho_Levi(ratvec lambda,KGBElt x)=ratvec:rho(Levi(lambda,x))
+set Levi (ratvec lambda,KGBElt x) = RealForm: Levi(parabolic(lambda,x))
+set nilrad (ratvec lambda,KGBElt x) = mat: nilrad(parabolic(lambda,x))
+set nilrad_roots (ratvec lambda,KGBElt x) = mat:
+  nilrad_roots(parabolic(lambda,x))
+set rho_u (ratvec lambda,KGBElt x) = ratvec: sum(nilrad_roots(lambda,x)) / 2
 
-{alternatively, X is in \h}
-set zero_simple_roots(RootDatum rd, ratvec lambda)=[int]:
-let rv=[int]:[] then
-sr=simple_roots(rd) in
-for i:semisimple_rank(rd) do if lambda*sr[i]=0 then rv#:=i  fi od;rv
+{ alternatively, H is in \h, a rational coweight }
+set zero_simple_roots(RootDatum rd, vec cowt) = [int]:
+  let result = [int]:[] in
+  for alpha@j in simple_roots(rd)
+  do if cowt*alpha=0 then result #:= j fi od; result
 
-set parabolic_alt(ratvec H,KGBElt x)=Parabolic:
-let rd=root_datum(x) then
-(H_dom,w)=make_dominant(rd,H) in Parabolic:(zero_simple_roots(rd,H_dom), cross(inverse(w),x))
+set parabolic_alt (ratvec H,KGBElt x) = Parabolic:
+  let rd=root_datum(x) then (H_dom,w)=dual_make_dominant(rd,numer(H)) in
+  Parabolic:(zero_simple_roots(rd,H_dom), cross(inverse(w),x))
 
-set Levi_alt(ratvec H,KGBElt x)=Levi(parabolic(H,x))
-set nilrad_alt(ratvec H,KGBElt x)=[vec]:nilrad(parabolic(H,x))
-set rho_u_alt(ratvec H,KGBElt x)=let roots=nilrad(H,x) in if #roots=0 then null(rank(real_form(x))) else ratvec:sum(roots)/2 fi
-set rho_Levi_alt(ratvec H,KGBElt x)=ratvec:rho(Levi(H,x))
+set Levi_alt (ratvec H,KGBElt x) = RealForm: Levi(parabolic_alt(H,x))
+set nilrad_alt (ratvec H,KGBElt x) = mat: nilrad(parabolic_alt(H,x))
+set nilrad_roots_alt (ratvec H,KGBElt x) = mat:
+  nilrad_roots(parabolic_alt(H,x))
+set rho_u_alt (ratvec H,KGBElt x)= ratvec: sum(nilrad_roots_alt(H,x)) /2
+set rho_Levi_alt (ratvec H,KGBElt x) = ratvec: rho(Levi_alt(H,x))
 
 
 

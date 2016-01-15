@@ -1,6 +1,5 @@
 {induction_fix.at AP10/20/2015}
 {parabolic induction from real and theta-stable parabolics}
-set verbose=false
 <basic.at
 <K.at {for rho_K}
 <parabolics.at
@@ -8,6 +7,8 @@ set verbose=false
 <coherent.at
 <synthetic.at {for unnormalized_torus_factor}
 <K_norm.at
+
+set verbose=false
 
 {L is a theta-stable Levi factor in G}
 
@@ -29,42 +30,33 @@ set inverse_embed_KGB(KGBElt x_G,RealForm M)=KGBElt:KGB_elt(M,involution(x_G), t
 
 {---------------- various rho-shifts -----------------}
 
-{Given an involution theta, construct a set S of complex roots containing one
-positive representative of each quadruple (\pm alpha,\pm theta(alpha))
+{ Given an involution theta, return the set S of complex roots containing the
+  first positive representative of each quadruple (\pm alpha,\pm theta(alpha))
 }
+set makeS (mat theta,RootDatum rd) = mat:
+  columns_with((int j,vec alpha):posroot_index(rd,theta*alpha)>j,posroots(rd))
+set makeS (KGBElt x) = mat: makeS(involution(x),root_datum(x))
 
-set makeS (mat theta,RootDatum rd)=[[int]]:
-   let pr=posroots(rd) in let list=[([int],bool)]: for al in pr do (al,true) od in
-   for i:#list do let (al,b)=list[i] in if b then for j:#list do
-      let (beta,c)=list[j] in if beta=theta*al  or beta=-theta*al then
-      list[j]:=(beta,false) fi od fi od;
-      let rv=[[int]]:[] in for (a,b) in list do if b then rv#:=a fi od;rv
-set makeS(KGBElt x)=[[int]]:makeS(involution(x),root_datum(x))
+{ rho_S = half sum of roots in chosen set S of complex roots, described above }
+set rho_S ((mat,RootDatum)pair) = ratvec: sum(makeS(pair))/2
+set rho_S (KGBElt x)            = ratvec: sum(makeS(x))/2
 
-{rho_S=1/2 sum of roots in S}
-set rho_S(mat theta,RootDatum rd)=ratvec:let rv=null(rank(rd)) in
-for alpha in makeS(theta,rd) do rv+:=alpha od;rv/2
+{ subset of makeS, those alpha>0 such that theta*alpha>0 }
+set makeS_typeCplus ((mat,RootDatum)(theta,rd):pair) = mat:
+  columns_with((vec alpha):is_posroot(rd,theta*alpha),makeS(pair))
+set makeS_typeCplus (KGBElt x) = mat:
+  makeS_typeCplus(involution(x),root_datum(x))
 
-set rho_S(KGBElt x)=ratvec:rho_S(involution(x),root_datum(x))
+set rho_S_typeCplus ((mat,RootDatum)pair) = ratvec: sum(makeS_typeCplus(pair))/2
+set rho_S_typeCplus (KGBElt x) = ratvec:
+  rho_S_typeCplus(involution(x),root_datum(x))
 
-{subset of makeS, those alpha>0 such that theta(alpha)>0}
-set makeS_typeCplus(mat theta, RootDatum rd)=[[int]]:
-let S_0=makeS(theta,rd) then
-S=[[int]]:[] in
-for alpha in S_0 do if is_positive_root(rd,alpha) then S#:=alpha fi od;S
-set makeS_typeCplus(KGBElt x)=[[int]]:makeS_typeCplus(involution(x),root_datum(x))
-
-set rho_S_typeCplus(mat theta,RootDatum rd)=ratvec:
-let rv=null(rank(rd)) in
-for alpha in makeS_typeCplus(theta,rd) do rv+:=alpha od;rv/2
-set rho_S_typeCplus(KGBElt x)=ratvec:rho_S_typeCplus(involution(x),root_datum(x))
-
-{rho_k(x)=one-half the sum of the positive roots of h in k,
- 2rho_k(x) is in X^*(H), but is really only well defined modulo (1-theta)X^*
- complex root contribution: only type C+
+{ rho_k(x)=one-half the sum of the positive roots of h in k,
+  2rho_k(x) is in X^*(H), but is really only well defined modulo (1-theta)X^*
+  complex root contribution: only type C+
 }
-set rho_k(KGBElt x)=ratvec:rho_ic(x)+rho_S_typeCplus(x)
-set rho_s(KGBElt x)=ratvec:rho_in(x)+rho_r(x)+rho_S_typeCplus(x)
+set rho_k(KGBElt x)=ratvec: rho_ci(x)+rho_S_typeCplus(x)
+set rho_s(KGBElt x)=ratvec: rho_nci(x)+rho_r(x)+rho_S_typeCplus(x)
 
 {--------------------- real parabolic induction -------------------}
 

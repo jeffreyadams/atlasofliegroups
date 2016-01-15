@@ -22,13 +22,9 @@ set sort = ([int]->[int]): { merge sort }
 set reverse_sort ([int] v) = [int]: sort(v)~[:]
 
 {sort unique}
-set sort_u([int] v)=[int]:
-if #v=0 then [] else
-let w=sort(v) then
-rv=[w[0]] in
-delete(w,0);
-for k in w do if rv[#rv-1]!=k  then rv#:=k fi od;rv fi
-
+set sort_u ([int] v) = [int]:
+  let result = [int]:[] in
+  for a@i in sort(v) do if =i or a!=result~[0] then result #:= a fi od; result
 
 { the following helps stable-sorting of anything according to a statistic }
 

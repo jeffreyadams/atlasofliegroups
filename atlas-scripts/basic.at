@@ -696,8 +696,7 @@ set is_noncompact ((int,KGBElt)p) = status(p)=3
 set is_compact ((int,KGBElt)p) = status(p)=1
 set is_descent ((int,KGBElt)p) = status(p)<3
 set is_ascent ((int,KGBElt)p) = status(p)>=3
-
-
+set is_strict_descent ((int,KGBElt)p) = is_descent(p) and not is_compact(p)
 
 { status of general roots for a KGBElt (which here just represents its fiber) }
 
@@ -707,48 +706,64 @@ set is_complex (KGBElt x)   = (vec->bool): is_complex(involution(x))
 
 
 set imaginary_posroots (KGBElt x) = mat:
-  imaginary_posroots(real_form(x),involution(x))
+  imaginary_posroots(root_datum(x),involution(x))
 set real_posroots (KGBElt x) = mat:
-  real_posroots(real_form(x),involution(x))
+  real_posroots(root_datum(x),involution(x))
 set imaginary_poscoroots (KGBElt x) = mat:
-  imaginary_poscoroots(real_form(x),involution(x))
+  imaginary_poscoroots(root_datum(x),involution(x))
 set real_poscoroots (KGBElt x) = mat:
-  real_poscoroots(real_form(x),involution(x))
+  real_poscoroots(root_datum(x),involution(x))
 set imaginary_sys (KGBElt x) = (mat,mat):
-  let p = (RootDatum:real_form(x),involution(x))
+  let p = (root_datum(x),involution(x))
   in (imaginary_posroots(p),imaginary_poscoroots(p))
 set real_sys (KGBElt x) = (mat,mat):
-  let p = (RootDatum:real_form(x),involution(x))
+  let p = (root_datum(x),involution(x))
   in (real_posroots(p),real_poscoroots(p))
 
 set rho_i (KGBElt x) = ratvec: sum(imaginary_posroots(x))/2
 set rho_r (KGBElt x) = ratvec: sum(real_posroots(x))/2
 set rho_check_i (KGBElt x) = ratvec: sum(imaginary_poscoroots(x))/2
 set rho_check_r (KGBElt x) = ratvec: sum(real_poscoroots(x))/2
-{helpful to have versions which only depend on theta}
-set rho_i(mat theta,RootDatum rd)=ratvec:sum(imaginary_posroots(rd,theta))/2
-set rho_r(mat theta,RootDatum rd)=ratvec:sum(real_posroots(rd,theta))/2
-set rho_check_i(mat theta,RootDatum rd)=ratvec:sum(imaginary_poscoroots(rd,theta))/2
-set rho_check_r(mat theta,RootDatum rd)=ratvec:sum(real_poscoroots(rd,theta))/2
+
+set rho_i ((RootDatum,mat) rd_theta) = ratvec:
+  sum(imaginary_posroots(rd_theta))/2
+set rho_r ((RootDatum,mat) rd_theta) = ratvec:
+  sum(real_posroots(rd_theta))/2
+set rho_check_i ((RootDatum,mat) rd_theta) = ratvec:
+  sum(imaginary_poscoroots(rd_theta))/2
+set rho_check_r ((RootDatum,mat) rd_theta) = ratvec:
+  sum(real_poscoroots(rd_theta))/2
 
 { compact/noncompact status for a given KGBElt of general imaginary roots }
-{false if the root is not imaginary}
 set is_compact (KGBElt x) = (vec->bool):
   let coweight = rho_check_i(x)+torus_factor(x)
-  in (vec alpha) bool: is_imaginary(x)(alpha) and =(coweight*alpha)%2
+  in (vec alpha) bool: assert(is_imaginary(x)(alpha)); =(coweight*alpha)%2
 set is_noncompact (KGBElt x) = (vec->bool):
   let coweight = rho_check_i(x)+torus_factor(x)
-  in (vec alpha) bool: is_imaginary(x)(alpha) and !=(coweight*alpha)%2
+  in (vec alpha) bool: assert(is_imaginary(x)(alpha)); !=(coweight*alpha)%2
+
+{ for roots not known to be imaginary, use these functions instead }
+set is_compact_imaginary (KGBElt x) = (vec->bool):
+  let p=is_imaginary(x), q=is_compact(x) { allow pre-computation for x }
+  in (vec alpha) bool: p(alpha) and q(alpha)
+set is_noncompact_imaginary (KGBElt x) = (vec->bool):
+  let p=is_imaginary(x), q=is_noncompact(x) { allow pre-computation for x }
+  in (vec alpha) bool: p(alpha) and q(alpha)
 
 set compact_posroots (KGBElt x) = mat:
   columns_with(is_compact(x),imaginary_posroots(x))
 set noncompact_posroots (KGBElt x) = mat:
   columns_with(is_noncompact(x),imaginary_posroots(x))
 
+set rho_ci (KGBElt x)  = ratvec: sum(compact_posroots(x))/2
+set rho_nci (KGBElt x) = ratvec: sum(noncompact_posroots(x))/2
+
 set is_imaginary (vec v,KGBElt x) = bool: is_imaginary(x)(v)
 set is_real (vec v,KGBElt x) =      bool: is_real(x)(v)
 set is_complex (vec v,KGBElt x) =   bool: is_complex(x)(v)
-set is_compact (vec v,KGBElt x) =   bool: is_compact(x)(v)
+set is_compact_imaginary (vec v,KGBElt x) = bool: is_compact_imaginary(x)(v)
+set is_noncompact_imaginary (vec v,KGBElt x) = bool:
+  is_noncompact_imaginary(x)(v)
 
 set print_KGB (KGBElt x) = void:
 ( prints(); prints("Element is number ",#x, " in following KGB set")
@@ -969,29 +984,29 @@ set complex_posroots (KGBElt x) =  mat:
   so selecting its monomials (Param values) by position is not reliable, but
   allowing so is useful in user sessions to pick terms from a computed result
 }
-set monomials(ParamPol P) = [Param]: for c@p in P do p od
-set monomial(ParamPol P,int i) = Param: monomials(P)[i]
+set monomials (ParamPol P) = [Param]: for c@p in P do p od
+set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 
-{delete one term from a list}
-set delete([int] v, int k)=[int]:v[:k]#v[k+1:]
-set delete([vec] v, int k)=[vec]:v[:k]#v[k+1:]
-set delete([ratvec] v, int k)=[ratvec]:v[:k]#v[k+1:]
-set delete([[ratvec]] v, int k)=[[ratvec]]:v[:k]#v[k+1:]
-set delete([[vec]] v, int k)=[[vec]]:v[:k]#v[k+1:]
-set delete([ParamPol] P, int k)=[ParamPol]:P[:k]#P[k+1:]
+{ delete one term from a list }
+set delete ([int] v, int k)     =[int]:     v[:k]#v[k+1:]
+set delete ([vec] v, int k)     =[vec]:     v[:k]#v[k+1:]
+set delete ([ratvec] v, int k)  =[ratvec]:  v[:k]#v[k+1:]
+set delete ([[ratvec]] v, int k)=[[ratvec]]:v[:k]#v[k+1:]
+set delete ([[vec]] v, int k)   =[[vec]]:   v[:k]#v[k+1:]
+set delete ([ParamPol] P, int k)=[ParamPol]:P[:k]#P[k+1:]
 
-{   		      Miscellaneous find functions				}
+{   		    Miscellaneous find functions		     }
 
-{ find index of item in list, or -1 if not found }
+{ find index of item in list, or -1 if not found; first does this }
 
-set find([int] v, int k)=int:first(#v, (int i)bool:v[i]=k)
-set find([Param] P,Param p)=int:first(#P,(int i)bool:P[i]=p)
-set find([KGBElt] S,KGBElt x)=int:first(#S,(int i)bool:S[i]=x)
+set find ([int] v, int k)=int:     first(#v,(int i)bool:v[i]=k)
+set find ([Param] P,Param p)=int:  first(#P,(int i)bool:P[i]=p)
+set find ([KGBElt] S,KGBElt x)=int:first(#S,(int i)bool:S[i]=x)
 
-{used to find root v in list of roots S:}
-set find([[int]] S,[int] v)=int:first(#S,(int i)bool:S[i]=v)
+{ used to find root v in list of roots S:}
+set find ([[int]] S,[int] v)=int:first(#S,(int i)bool:S[i]=v)
 
-{need different name to avoid disambiguation problem}
+{ need different name to avoid disambiguation problem }
 set find_vec([vec] S,vec v)=int:first(#S,(int i)bool:S[i]=v)
 
 

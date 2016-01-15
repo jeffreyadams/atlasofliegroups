@@ -1,6 +1,6 @@
 <basic.at
-<extended_misc.at
-<extended_types.at
+<extended_misc.at { for type extended_param }
+<extended_types.at { for ext_type@(int,extended_param) }
 
 { debug ext_cayley construction, shouldn't be needed }
 set test_ext_cayley (Param p, int j, string ext_type, extended_param E) = void:
