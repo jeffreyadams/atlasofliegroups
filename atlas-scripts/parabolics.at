@@ -1,47 +1,46 @@
-{parabolics.at 10/21/15}
 <kgp.at { for type Parabolic }
 <Weylgroup.at
 <misc.at { generate_all_subsets }
 
-{complex parabolics and Levi factors
- parabolics with theta-stable Levi factor
- theta-stable parabolics
- real parabolics
+{   topics addresses in this script:
+  complex parabolics and Levi factors
+  parabolics with theta-stable Levi factor
+  theta-stable parabolics
+  real parabolics
 }
 
-{ComplexParabolic data type: G-conjugacy class of parabolic subgroups of complex group
-(RootDatum rd,[int] S) <-> G-conjugacy class of standard pararbolic with Levi factor given by
-subset S of simple roots
+{ ComplexParabolic data type: each value describes a
+  G-conjugacy class of parabolic subgroups of complex group
+  (RootDatum rd,[int] S) <->
+  G-conjugacy class of standard pararbolic with Levi factor given by
+  subset S of simple roots
 }
 
-:ComplexParabolic=(RootDatum,[int])
+: ComplexParabolic = (RootDatum,[int])
 
-set complex_parabolic([int] S,KGBElt x)=ComplexParabolic:(root_datum(x),S)
+{ see kgp.at, a K-conjugacy class of parabolics is given by the Parbolic
+  data type ([int] S,KGBElt x) }
 
-{complex Levi factor}
+set complex_parabolic (Parabolic(S,x)) = ComplexParabolic: (root_datum(x),S)
+
+{ root datum of the complex Levi factor }
 set complex_Levi (RootDatum rd, (int->bool) select) = RootDatum:
-root_datum(columns_with(select,simple_roots(rd))
+  root_datum(columns_with(select,  simple_roots(rd))
             ,columns_with(select,simple_coroots(rd)))
-set complex_Levi (RootDatum rd,[int] S) = complex_Levi (rd,is_member(S))
+set complex_Levi (RootDatum rd,[int] S) = complex_Levi(rd,is_member(S))
 
-{-------------------------moved from kgp.at-------------------------}
-
-{see kgp.at, a K-conjugacy class of parabolics is given by the Parbolic data type ([int] S,KGBElt x) }
-
-{test if Levi defined by set of simple roots S is theta_x stable
-algorithm: H=sum of fundamental co-weights not in S
-<theta_x(alpha),H>=0 for all alpha in S
+{ test if Levi defined by set of simple roots S is theta_x stable
+  algorithm: H=sum of fundamental coweights with index not in S,
+  test whether <theta_x(alpha),H>=0 for all alpha in S
 }
-set is_Levi_theta_stable(Parabolic P)=bool:
-let (S,x)=P then
-G=real_form(x) then
-T=complement(semisimple_rank(G),S) then
-theta=involution(x) then
-H=ratvec:null(rank(G)) then
-sr=simple_roots(G) then
-fcw=fundamental_coweights(G) then
-()=for i in T do H+:=fcw[i] od in
-all(for i in S do theta*sr[i]*H=0 od)
+set is_Levi_theta_stable (Parabolic(S,x)) = bool:
+  let G=real_form(x)
+  then T=complement(semisimple_rank(G),S)
+  , theta=involution(x)
+  , H=ratvec:null(rank(G))
+  , sr=simple_roots(G)
+  , fcw=fundamental_coweights(G)
+  in for i in T do H+:=fcw[i] od; all(for i in S do theta*sr[i]*H=0 od)
 
 {make a real Levi factor from P=(S,x), the complex Levi of S must be theta_x-stable}
 set Levi(Parabolic P)=RealForm:
@@ -224,11 +223,15 @@ set L = theta_stable_Levi@KGBElt { synonym }
 { -------------- auxiliary routines------------------}
 
 {list of K-conjugacy classes of given ComplexParabolic}
-set KGP(RealForm G,ComplexParabolic (rd,S))=[KGPElt]:for x in maximal_in_partial_order(G,S) do KGPElt:(S,x) od
-set parabolics(RealForm G,ComplexParabolic (rd,S))=[Parabolic]:for x in maximal_in_partial_order(G,S) do Parabolic:(S,x) od
+set KGP (RealForm G,ComplexParabolic (rd,S)) = [KGPElt]:
+  for x in maxima_in_partial_order(G,S) do KGPElt:(S,x) od
+set parabolics (RealForm G,ComplexParabolic (rd,S)) = [Parabolic]:
+  for x in maxima_in_partial_order(G,S) do Parabolic:(S,x) od
 
 set theta_stable_parabolics(RealForm G,ComplexParabolic P)=[Parabolic]:
-let rv=[Parabolic]:[] in  for Q in parabolics(G,P) do if is_parabolic_theta_stable(Q) then rv#:=Q fi od;rv
+  let rv=[Parabolic]:[] in
+  for Q in parabolics(G,P)
+  do if is_parabolic_theta_stable(Q) then rv#:=Q fi od; rv
 
 set theta_stable_parabolics(RealForm G)=[Parabolic]:
 let n=semisimple_rank(G) then

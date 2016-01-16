@@ -47,7 +47,7 @@
   More precisely, for each \xi, a K_\xi-conjugacy class of parabolics of type S
 }
 : KGPElt    = ([int], KGBElt)
-: Parabolic = ([int], KGBElt)  {synonym}
+: Parabolic = ([int], KGBElt)  { synonym }
 
 { some auxiliary routines needed for defining equivalence of data }
 set sort_by((KGBElt -> int) f)= ([KGBElt] v) [KGBElt]:
@@ -57,6 +57,9 @@ set sort = ([KGBElt] -> [KGBElt]): sort_by((KGBElt x) int: #x)
 set min ([KGBElt] list)=sort(list)[0]
 set max ([KGBElt] list)=sort(list)~[0]
 
+
+set KGP_elt (KGPElt pair) = KGPElt: pair { identity; prefer cast KGPElt:(S,x) }
+
 set S (KGPElt(S,)) = [int]: S
 set root_datum (KGPElt(,x)) = RootDatum: root_datum(x)
 set real_form  (KGPElt(,x)) = RealForm:  real_form(x)
@@ -65,101 +68,88 @@ set real_form  (KGPElt(,x)) = RealForm:  real_form(x)
 set complement(int n,[int] S) = [int]:
   list((int i)bool: none(for m in S do i=m od),n)
 
-{ add i to list if (and only if) it is new }
-set add_new(int i,[int] list) = [int]:
-  if find(list,i)=-1 then list#i else list fi
+{ an ascent of x by a generator in S, if any exist }
+set find_ascent ([int] S, KGBElt x) = [KGBElt]:
+  let f = first(#S,(int i)bool: is_ascent(S[i],x)) in
+  if <f then []
+  else let s=S[f] in
+    [if is_noncompact(s,x) then Cayley(s,x) else cross(s,x) fi]
+  fi
 
-{elements above x one step in the partial order given by ascents in S}
-set up_neighbors([int] S,KGBElt x)=[int]:
-let result=[int]:[] in
-for i in S do
- let t=status(i,x) in
-  if t=3 then result#:= #Cayley(i,x)
-  elif t=4 then result#:= #cross(i,x) fi od;sort_u(result)
-
-{elements below x one step in the partial order}
-set down_neighbors([int] S,KGBElt x)=[int]:
+{ all descents of x by generators in S, there may be duplicates }
+  set down_neighbors ([int] S,KGBElt x) = [int]:
   let result=[int]:[] in
-  for i in S
-  do let t=status(i,x) in
-    if t=2
-    then let y=Cayley(i,x) in result#:= #y; result #:= #cross(i,y)
-    elif t=0 then result# := #cross(i,x)
+  for i in list((int i): is_strict_descent(S[i],x),#S)
+  do let s=S[i] in
+    if is_real(s,x)
+    then let y=Cayley(s,x) in result #:= [#y,#cross(s,y)]
+    else result #:= #cross(s,x)
     fi
-  od; sort_u(result)
+  od; result
 
-set is_maximal_in_partial_order ([int] S,KGBElt x)=bool: #up_neighbors(S,x)=0
+set is_maximal_in_partial_order ([int] S,KGBElt x) = bool: #find_ascent(S,x)=0
 
 { maximal elements in the partial order }
-set maximal_in_partial_order(RealForm G,[int] S)=[KGBElt]:
-  let result=[int]:[] in
+set maxima_in_partial_order (RealForm G,[int] S) = [KGBElt]:
+  let result=[KGBElt]:[] in
   for x in KGB(G)
-  do if is_maximal_in_partial_order(S,x) then result #:= #x fi od;
-  for i in sort(result) do KGB(G,i) od
+  do if is_maximal_in_partial_order(S,x) then result #:= x fi od; result
 
 { (unique) maximal element in equivalence class of x }
-set maximal([int] S,KGBElt x)=KGBElt:
-  let rec_fun f([int] S,KGBElt x)=KGBElt:
-    if is_maximal_in_partial_order(S,x) then x
-    else f(S,KGB(real_form(x),up_neighbors(S,x)[0]))
-    fi
-  in f(S,x)
+set maximal ([int] S, KGBElt x) = KGBElt:
+  let r=[KGBElt]: [] in { variable needed to cross 'do' boundary }
+  while r:=find_ascent(S,x); #r>0 do x:=r[0] od; x
 
-set canonical_representative(KGPElt y)=(S(y),maximal(y))
-set x(KGPElt y)=KGBElt:maximal(y)
+set canonical_representative (KGPElt y) = KGPElt: (S(y),maximal(y))
+set x = (KGPElt->KGBElt): maximal@KGPElt
 
 {equivalence class of KGB element in partial order defined by S}
-set equivalence_class_of(KGPElt(S,x):y)=[KGBElt]:
+set equivalence_class_of (KGPElt(S,x):y) = [KGBElt]:
   let x_max=maximal(S,x)
-  then G=real_form(x_max),result=[#x_max], to_do=[#x_max]
+  then G=real_form(x_max), !last=#x_max
+  then result=[last], done=0, present = for :last do false od
   in
-  while #to_do>0
-  do let y=KGB(G,to_do[0]) then new=down_neighbors(S,y) in
-    for i in new do result:=add_new(i,result);to_do:=add_new(i,to_do) od
-  ; to_do:=delete(to_do,0)
+  while done < #result
+  do
+    for i in down_neighbors(S,KGB(G,result[done])) next done +:= 1
+    do if not present[i] then result #:= i; present[i] := true fi od
   od;
   for i in sort(result) do KGB(G,i) od
 
 
 { a minimal element from equivalence class (unlike x_max, it is not unique) }
-set x_min (KGPElt P) = min(equivalence_class_of(P))
+set x_min (KGPElt P) = KGBElt:
+  equivalence_class_of(P)[0] { inefficent, but at least avoid soring twice }
 
-{set of KGP elements (P,S), S=[KGBElt] is an equivalence class
-KGP(G,P) is in bijection with K\G/P}
-set KGP(RealForm G,[int] P)=[KGPElt]:
-for x in maximal_in_partial_order(G,P) do (P,x) od
+{ set of KGP elements (P,S), S=[KGBElt] is an equivalence class
+  KGP(G,P) is in bijection with K\G/P }
+set KGP (RealForm G,[int] S) = [KGPElt]:
+  for x in maxima_in_partial_order(G,S) do KGPElt:(S,x) od
 
 { sometimes it is convenient to just keep the numbers, although this loses the
   information of what G is }
 set KGP_numbers (RealForm G,[int] S) =[int]: for (,x) in KGP(G,S) do #x od
 
 
+{ test y in K\G/P_S is open: <=> last element of y is last element of KGB }
+set is_open (KGPElt y) = bool: #maximal(y) = KGB_size(real_form(y))-1
 
-{test y in K\G/P_S is closed: <=> length(first element)=0}
-set is_closed(KGPElt y)=bool:let eq=equivalence_class_of(y) in length(min(eq))=0
+{ test y in K\G/P_S is closed: <=> length(first element)=0 }
+set is_closed (KGPElt P) = bool: length(x_min(P))=0
 
-set KGP_elt([int] P,KGBElt x)=KGPElt:(P,x)
+{ parabolic determined by (stabilizer in W of) weight lambda }
+set KGP_elt (ratvec lambda,KGBElt x) = KGPElt:
+  let rd=root_datum(x)
+  then (lambda_dom,w)=make_dominant(rd,lambda), P=[int]:[]
+  in for a@i in simple_coroots(rd) do if a*lambda_dom=0 then P#:=i fi od;
+  KGPElt:(P,cross(inverse(w),x))
 
-{parabolic determined by lambda q(lambda)=l(lambda)+u(lambda)}
-set KGP_elt(ratvec lambda,KGBElt x)=KGPElt:
-let rd=root_datum(x) then
-{()=prints("lambda=",lambda) then}
-P=[int]:[]  then
-(lambda_dom,w)=make_dominant(rd,lambda) then
-{()=prints("w=",w) then}
-y=cross(inverse(w),x) in
-for a@i in simple_roots(rd) do if a*lambda_dom=0 then P#:=i fi od;
-KGP_elt(P,y)
-
-set parabolic([int] P,KGBElt x)=Parabolic:KGP_elt(P,x)  {simple roots P}
-set parabolic(ratvec lambda,KGBElt x)=Parabolic:KGP_elt(lambda,x) {lambda in \h^*}
-
-{test y in K\G/P_S is open: <=> last element of y is last element of KGB}
-set is_open(KGPElt y)=bool:let eq=equivalence_class_of(y) then
-G=real_form(y) in  maximal(y)=KGB(G,KGB_size(G)-1)
-
-{(S,x)=(T,y) if these give the same K-orbit of parabolics}
-set =(KGPElt (S,x),KGPElt (T,y))=bool: real_form(x)=real_form(y) and S=T and maximal(S,x)=maximal(S,y)
+{ unnecessary function: instead of parabolic(P,x) do  Parabolic:(p,x)
+    set parabolic([int] P,KGBElt x) = Parabolic:(P,x)
+  also the next just reuses a function defined to return KGPElt
+}
+set parabolic = (ratvec,KGBElt->Parabolic): { first argument lambda in \h^* }
+  KGP_elt@(ratvec,KGBElt)
 
 
 
