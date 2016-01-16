@@ -64,6 +64,8 @@ coherent.at		basic, translate, W_orbit { coherent continuations }
 
 
 ---------------------------------------------------------------------------
+
+std_decs.at		{ convenience script pre-declaring some variables }
 W_K.at			parabolics, K, W_orbit
 complex_nilpotent_orbits.at
 	    basic, misc, Weylgroup, sort, lattice, kgp, parabolics, parameters
@@ -85,6 +87,5 @@ ext_signs.at
 induction.at		K, parabolics, kl, coherent, synthetic, K_norm
 			  { parabolic induction }
 induction_sp4.at
-my.at			lietpyes, groups { some convenience functions }
 orbits.at		misc, Weylgroup, thetastable, sort { nilp. orbits }
 test3.at

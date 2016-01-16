@@ -1,0 +1,15 @@
+v:vec
+M:mat
+A:mat
+B:mat
+roots:mat
+coroots:mat
+rd:RootDatum
+ic:InnerClass
+G:RealForm
+lambda:ratvec
+mu:vec
+nu:ratvec
+x:KGBElt
+y:KGBElt
+rho:ratvec
