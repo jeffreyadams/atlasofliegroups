@@ -24,18 +24,18 @@ template<typename C>
 bool column_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k)
 {
   bool neg=M(i,j)<C(0);
-  if (neg) // happens often in Cartan matrices; result is more pleasant
+  if (neg) // happens often in Cartan matrices; result will be more pleasant
     M.columnMultiply(j,C(-1)); // if we ensure non-negativity the easy way
-  do
+  do // no initial test needed because of precondition |M(i,k)>0|
   {
     M.columnOperation(j,k,-(M(i,j)/M(i,k))); // makes |M(i,j)>=0| smaller
     if (M(i,j)==C(0))
       return neg;
     M.columnOperation(k,j,-(M(i,k)/M(i,j))); // makes |M(i,k)>=0| smaller
   }
-  while (M(i,k)!=C(0));
-  M.swapColumns(j,k); // only upon "normal" exit of loop swapping is needed
-  return not neg;
+  while (M(i,k)!=C(0)); // perform final swap if leaving at this "normal" exit
+  M.swapColumns(j,k);
+  return not neg; // take into account additional sign change here
 }
 
 // make |M(i,j)==0| and |M(k,j)>0| by operations with rows |i| and |k|
@@ -46,23 +46,25 @@ bool row_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k)
   bool neg=M(i,j)<C(0);
   if (neg)
     M.rowMultiply(i,C(-1));
-  do
+  do // no initial test needed because of precondition |M(k,j)>0|
   {
     M.rowOperation(i,k,-(M(i,j)/M(k,j))); // makes |M(i,j)>=0| smaller
     if (M(i,j)==C(0))
       return neg;
     M.rowOperation(k,i,-(M(k,j)/M(i,j))); // makes |M(k,j)>=0| smaller
   }
-  while (M(k,j)!=C(0));
-  M.swapRows(i,k); // only upon "normal" exit of loop swapping is needed
-  return not neg;
+  while (M(k,j)!=C(0)); // perform final swap if leaving at this "normal" exit
+  M.swapRows(i,k);
+  return not neg; // take into account additional sign change here
 }
 
-/* Same operations with "recording" matrix |rec| on which same ops are done.
-   With the number of operations needed probably quite small on average, the
-   cheapest solution is probably to do recording operations immediately.
+/*
+   The same operations, but with "recording" matrix |rec| on which same ops
+   are done. The number of operations needed is quite small on average, so
+   the cheapest solution is probably to do recording operations immediately,
+   rather than to compute an intermediate 2x2 matrix to be applied once.
 */
-// make |M(i,j)==0| and keep |M(i,k)>0| by operations with columns |j| and |k|
+// Make |M(i,j)==0| and keep |M(i,k)>0| by operations with columns |j| and |k|
 // precondition |M(i,k)>0|
 template<typename C>
 bool column_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k,
@@ -78,7 +80,7 @@ bool column_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k,
     if (M(i,j)==C(0))
       return false; // determinant $1$ here
     q=-(M(i,k)/M(i,j));
-    M.columnOperation(k,j,q);
+    M.columnOperation(k,j,q); // we still have |M(i,k)>=0|
     rec.columnOperation(k,j,q);
   }
   while (M(i,k)!=C(0));
@@ -87,10 +89,11 @@ bool column_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k,
   return true;  // determinant $-1$ here
 }
 
-/* make |M(i,j)==0| and keep |M(k,j)>0| by operations with rows |i| and |k|,
-   precondition |M(k,j)>0|. This function has a variant where row operations
-   are recorded inversely, in other words by column operations in the opposite
-   sense; the template parameter |direct| tells whether recording is direct
+/*
+   Make |M(i,j)==0| and keep |M(k,j)>0| by operations with rows |i| and |k|,
+   precondition |M(k,j)>0|. Here we also define a variant where row operations
+   are recorded inversely, in other words by column operations with negated
+   coefficient; template parameter |direct| tells whether recording is direct
 */
 template<typename C, bool direct>
 bool row_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k,
@@ -120,47 +123,48 @@ bool row_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k,
   if (direct)
     rec.swapRows(i,k);
   else
-    rec.swapColumns(k,i);
+    rec.swapColumns(i,k);
   return true;
 }
 
-/* transform |M| to column echelon form
-   postcondition: |M| unchanged column span, |result.size==M.numColumns|, and
-   for all |j| and |i=result.n_th(j)|, |M(i,j)>0| and |M(ii,j)==0| for |ii>i|
+/* transform |M| to column echelon form using only PID operations
+   postcondition: |M| has unchanged column span, |result.size==M.numColumns|,
+   and for |j| and |i=result.n_th(j)|: |M(i,j)>0| and |M(ii,j)==0| for |ii>i|
 */
 template<typename C>
   bitmap::BitMap column_echelon(matrix::PID_Matrix<C>& M)
 {
-  bitmap::BitMap result(M.numRows());
+  bitmap::BitMap result(M.numRows()); // set of pivot rows found so far
   for (size_t j=M.numColumns(); j-->0;)
-  { size_t i=M.numRows();
+  { // all columns beyond |j| have pivot, column |j+1+p| in row |result.n_th(p)|
+    size_t i=M.numRows();
     while (i-->0)
       if (M(i,j)!=C(0))
       {
-	if (result.isMember(i))
-	{
+	if (result.isMember(i)) // there is a previous pivot in row |i|
+	{ // so use it to clear |M(i,j)| (and then continue loop decreasing |i|)
 	  size_t k=j+1+result.position(i); // index of column with pivot at |i|
 	  column_clear(M,i,j,k); // now column |j| is empty in row |i| and below
 	}
 	else // now column |j| will have pivot in row |i|
 	{
           if (M(i,j)<0)
-	    M.columnMultiply(j,-1);
-	  result.insert(i);
+	    M.columnMultiply(j,-1); // ensure positive pivot entry
+	  result.insert(i); // mark row |i| as a pivot row
 	  size_t p=result.position(i);
 	  if (p>0) // then move column |j| to the right |p| places
 	  {
-	    matrix::Vector<C> c=M.column(j);
+	    matrix::Vector<C> c=M.column(j); // save this column while shifting
 	    for (size_t d=j; d<j+p; ++d)
 	      M.set_column(d,M.column(d+1));
-            M.set_column(j+p,c);
+            M.set_column(j+p,c); // re-insert column at its destination place
 	  }
 	  break; // from |while| loop; done with decreasing |i|
 	}
       } // |if (M(i,j)!=0)| and |while (i-->0)|
-    if (i==size_t(~0ul)) // no pivot found for column |j|; forget about it
+    if (i==size_t(-1)) // if no pivot found for column |j|; forget about it
       M.eraseColumn(j); // and no bit is set in |result| for |j| now
-  }
+  } // |for(j-->0)|
 
   return result;
 }
@@ -202,7 +206,7 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
 	goto restart; // repeat outer loop without increasing |d| in this case
       }
 
-      if (i>d) // non-zero entry was found below diagonal; copy it upwars
+      if (i>d) // first non-zero entry below diagonal; add it to 0 on diagonal
       {
 	C u = M(i,d)>0 ? 1 : -1;  // ensure diagonal entry becomes positive
 	M.rowOperation(d,i,u);
@@ -214,7 +218,7 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
 	row.rowMultiply(d,-1);
 	row_sign = -row_sign;
       }
-    } // end block declaring |i|
+    } // end block declaring |i|; now we have |M(d,d)>0|
 
     for (size_t i=d+1; i<m; ++i) // ensure column |d| is null below diagonal
       if (row_clear<C,true>(M,i,d,d,row)) // makes |M(d,d)==gcd>0|, |M(i,d)==0|
@@ -229,7 +233,7 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
 	if (column_clear(M,d,j,d,col)) // makes |M(d,d)==gcd>0| and |M(d,j)==0|
 	  col_sign = -col_sign; // clearing row uses column operations!
 
-      for (i=d+1; i<m; ++i) // check if column |d| is still null below diagonal
+      for (i=d+1; i<m; ++i) // check if column |d| is still zero below diagonal
 	if (M(i,d)!=C(0))
 	  break; // not yet, in this case
      if (i==m) // then whole column below |M(d,d)| is zero, and done for |d|
