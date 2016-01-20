@@ -29,63 +29,65 @@ set complex_Levi (RootDatum rd, (int->bool) select) = RootDatum:
             ,columns_with(select,simple_coroots(rd)))
 set complex_Levi (RootDatum rd,[int] S) = complex_Levi(rd,is_member(S))
 
-{ test if Levi defined by set of simple roots S is theta_x stable
+{ test if complex Levi defined by set of simple roots S is theta_x stable
   algorithm: H=sum of fundamental coweights with index not in S,
   test whether <theta_x(alpha),H>=0 for all alpha in S
 }
-set is_Levi_theta_stable (Parabolic(S,x)) = bool:
-  let G=real_form(x)
-  then T=complement(semisimple_rank(G),S)
+set is_Levi_theta_stable (Parabolic (S,x)) = bool:
+  let G=root_datum(x)
+  then H = { coweight measuring level of roots alpha[t] not in the Levi factor }
+    let sum= ratvec: null(rank(G)) in
+    for t in complement(semisimple_rank(G),S)
+    do sum + := fundamental_coweight(G,t) od; sum
   , theta=involution(x)
-  , H=ratvec:null(rank(G))
-  , sr=simple_roots(G)
-  , fcw=fundamental_coweights(G)
-  in for i in T do H+:=fcw[i] od; all(for i in S do theta*sr[i]*H=0 od)
+  , alpha=simple_roots(G)
+  in all(for s in S do = H*(theta*alpha[s]) od)
 
-{make a real Levi factor from P=(S,x), the complex Levi of S must be theta_x-stable}
-set Levi(Parabolic P)=RealForm:
-assert(is_Levi_theta_stable(P),"Levi factor is not theta-stable");
-let eq=equivalence_class_of(P) then
-x_min=eq[0] then
-(S,x)=P then
-complex_Levi=complex_Levi(real_form(x),S) then
-ic_Levi=inner_class(complex_Levi,involution(x_min)) in
-real_form(ic_Levi,involution(x_min),torus_factor(x_min))
+{ make a real Levi factor from P=(S,x),
+  the complex Levi of S must be theta_x-stable }
+set Levi (Parabolic(S,x):P) = RealForm:
+  assert(is_Levi_theta_stable(P),"Levi factor is not theta-stable");
+  let x_min=x_min(P)
+  then ic_Levi=inner_class(complex_Levi(root_datum(x),S),involution(x_min))
+  in real_form(ic_Levi,involution(x_min),torus_factor(x_min))
 
-{test if parabolic P=(S,x) is theta-stable: <=>
-1) L is theta-stable
-2) y is closed
-3) alpha simple, not in S => alpha is imaginary or C+ wrt maximal(P)
+{ test if parabolic P=(S,x) is theta-stable: <=>
+  1) L is theta-stable
+  2) y is closed
+  3) alpha simple, not in S => alpha is imaginary or C+ wrt maximal(P)
 }
-set is_parabolic_theta_stable(Parabolic P)=bool:
-let x_max=maximal(P),S=S(P) in
-is_Levi_theta_stable(P) and
-is_closed(P) and
-all( for j in complement(semisimple_rank(real_form(x_max)),S) do
-let s=status(j,x_max) in s=1 or s=3 or s=4 od )
+set is_parabolic_theta_stable (Parabolic (S,x):P) = bool:
+  is_Levi_theta_stable(P) and
+  is_closed(P) and
+  ( let x_max=maximal(P) in
+    none(for j in complement(semisimple_rank(root_datum(x)),S)
+         do is_strict_descent(j,x_max) { C- or real }
+         od)
+  )
 
-{test if parabolic P=(S,x) is real: <=>:
-1) L is theta-stable
-2) y is open
-3) alpha simple, not in S => alpha is real or C- wrt a minimal element of P
+{ test if parabolic P=(S,x) is real: <=>:
+  1) L is theta-stable
+  2) y is open
+  3) alpha simple, not in S => alpha is real or C- wrt a maximal element of P
 }
-set is_parabolic_real(Parabolic P)=bool:
-let (S,x)=P then
-x_max=maximal(P) in
-is_Levi_theta_stable(P) and
-is_open(P) and
-all( for j in complement(semisimple_rank(real_form(x_max)),S) do
-let s=status(j,x_max) in s=0 or s=2 od )
+set is_parabolic_real(Parabolic (S,x):P) = bool:
+  is_Levi_theta_stable(P) and
+  is_open(P) and
+  ( let x_max=maximal(P) in
+    all(for j in complement(semisimple_rank(root_datum(x)),S)
+        do is_strict_descent(j,x_max) { C- or real }
+        od)
+  )
 
 {------------  unipotent radical of P ------------------}
-{see K.pdf, Section 4
-P=(S,x)
-if x=x_0:=KGB(G,0) then P is the standard parabolic P_S with simple roots S,
-and nilrad(P) is contained in the basic Borel
-in general P=(S,x) -> gP_Sg^{-1} where gxg^{-1}=x_0
-if the G-orbit of P is closed, equivalently L contains the fundamental Cartan,
-we can replace x with x=x_min(P) which is on the fundamental Cartan
-and then find w so that w*x=x_0
+{ see K.pdf, Section 4
+  P=(S,x)
+  if x=x_0:=KGB(G,0) then P is the standard parabolic P_S with simple roots S,
+  and nilrad(P) is contained in the basic Borel
+  in general P=(S,x) -> gP_Sg^{-1} where gxg^{-1}=x_0
+  if the G-orbit of P is closed, equivalently if L contains the fundamental
+  Cartan, then we can replace x with x=x_min(P) which is on the fundamental
+  Cartan and then find w so that w*x=x_0
 }
 
 
@@ -103,12 +105,12 @@ set nilrad_roots (Parabolic P) = mat: { columns are posroots }
     for alpha_v in nil_coroots do root(rd,alpha_v) od
   fi
 
-{--------------------alternative method---------------}
-{it is convenient to be able to define a parabolic in terms of a semisimple element
-either in \h or \h^*
+{ ----------------- alternative method to define a parabolic --------------- }
+{ it is convenient to be able to define a parabolic in terms of a semisimple
+  element either in \h or \h^*
 }
 
-{ by default: lambda is in \h^*, a ration weight }
+{ by default: lambda is in \h^*, a rational weight }
 set zero_simple_coroots (RootDatum rd, vec lambda) = [int]:
   let result = [int]:[] in
   for alpha_v@j in simple_coroots(rd)
@@ -143,38 +145,38 @@ set rho_Levi_alt (ratvec H,KGBElt x) = ratvec: rho(Levi_alt(H,x))
 
 
 
-{----------------------(real) cuspidal parabolics-------------------}
+{ ----------------------(real) cuspidal parabolics------------------- }
 
-{real_parabolic(x) has Levi factor M=centralizer(A)
-u=positive roots not in M
-for this to be stable: no C+ roots
-=> real roots alpha are those satisfying <(1-theta_x)rho,\alpha^\vee>=0
+{ real_parabolic(x) has Levi factor M=centralizer(A)
+  u=positive roots not in M
+  for this to be stable: no C+ roots
+  => real roots alpha are those satisfying <(1-theta_x)rho,\alpha^\vee>=0
 }
-set real_parabolic(KGBElt x)=assert(no_Cplus_roots(x),"x has some C+ roots");parabolic((1-involution(x))*rho(root_datum(x)),x)
+set real_parabolic (KGBElt x) = Parabolic:
+  assert(no_Cplus_roots(x),"x has some C+ roots");
+  parabolic((1-involution(x))*rho(root_datum(x)),x)
 
-{----------------------theta-stable split parabolics-------------------}
+{ ---------------------theta-stable split parabolics---------------- }
 
-{theta_stable_parabolic(x) has Levi factor L=centralizer(T)
-u=positive roots not in M
-for this to be stable: no C- roots
-=> imaginary roots alpha are those satisfying <(1+theta_x)rho,\alpha^\vee>=0
+{ theta_stable_parabolic(x) has Levi factor L=centralizer(T)
+  u=positive roots not in M
+  for this to be stable: no C- roots
+  => imaginary roots alpha are those satisfying <(1+theta_x)rho,\alpha^\vee>=0
 }
-set theta_stable_parabolic(KGBElt x)=assert(no_Cminus_roots(x),"x has some C- roots");parabolic((1+involution(x))*rho(root_datum(x)),x)
-
-{-------------------moved from group_operations.at-----------------------}
-
-{other ways of constructing parabolics, maybe these aren't so useful any more}
-{comment them out for now}
+set theta_stable_parabolic (KGBElt x) = Parabolic:
+  assert(no_Cminus_roots(x),"x has some C- roots");
+  parabolic((1+involution(x))*rho(root_datum(x)),x)
 
 { ------------------Levi factor of real parabolic----------- }
 
 { M=centralizer of A in H=TA, as a RealForm (cuspidal parabolic) }
 set real_Levi(KGBElt x) = RealForm:
   let theta = involution(x)
-  then ic_M = inner_class(root_datum(simple_from_positive(imaginary_sys(x))),theta)
-  in real_form(ic_M,theta,torus_factor(x))
+  then ic_M =
+    inner_class(root_datum(simple_from_positive(imaginary_sys(x))),theta)
+  in { construct synthetic } real_form(ic_M,theta,torus_factor(x))
 
-{  (begin comment)
+{ (begin comment)
 { Levi factors of general real parabolic }
 
 { Real Levi defined by set of root indices for its simple system, and x }
@@ -228,28 +230,24 @@ set KGP (RealForm G,ComplexParabolic (rd,S)) = [KGPElt]:
 set parabolics (RealForm G,ComplexParabolic (rd,S)) = [Parabolic]:
   for x in maxima_in_partial_order(G,S) do Parabolic:(S,x) od
 
-set theta_stable_parabolics(RealForm G,ComplexParabolic P)=[Parabolic]:
-  let rv=[Parabolic]:[] in
+set theta_stable_parabolics (RealForm G,ComplexParabolic P) = [Parabolic]:
+  let result=[Parabolic]:[] in
   for Q in parabolics(G,P)
-  do if is_parabolic_theta_stable(Q) then rv#:=Q fi od; rv
+  do if is_parabolic_theta_stable(Q) then result#:=Q fi od; result
 
-set theta_stable_parabolics(RealForm G)=[Parabolic]:
-let n=semisimple_rank(G) then
-all=generate_all_subsets(for i:n do i od) then
-rv=[Parabolic]:[] in
-for S in all do rv#:=theta_stable_parabolics(G,(G,S))  od;rv
+set theta_stable_parabolics (RealForm G) = [Parabolic]:
+  let all=generate_all_subsets(#semisimple_rank(G)), result=[Parabolic]:[] in
+  for S in all do result #:= theta_stable_parabolics(G,(G,S)) od; result
 
 
-set theta_stable_parabolics_type(RealForm G,[int] P)=[Parabolic]:
-let rv=[Parabolic]:[] in
-for (Q,y) in theta_stable_parabolics(G) do if Q=P then rv#:=(Q,y) fi od;rv
+set theta_stable_parabolics_type (RealForm G,[int] P) = [Parabolic]:
+  let result=[Parabolic]:[] in
+  for (Q,y) in theta_stable_parabolics(G) do if Q=P then result#:=(Q,y) fi od;
+  result
 
 
-set print_theta_stable_parabolics(RealForm G)=void:
-let all= theta_stable_parabolics(G) in
-for P in all do
-let (S,x)=P then
-L=Levi(P) in
-prints("S=", S, " L= ", L, "  x=",x)
-od;prints("Total: ",#all)
+set print_theta_stable_parabolics (RealForm G) = void:
+  let all = theta_stable_parabolics(G) in
+  for (S,x):P in all do prints("S=", S, " L= ", Levi(P), "  x=",x) od;
+  prints("Total: ",#all)
 
