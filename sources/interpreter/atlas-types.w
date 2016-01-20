@@ -22,13 +22,13 @@
 \def\Zee{{\bf Z}} % cwebx uses \Z and \ZZ itself
 \def\ii{{\rm i}} % imaginary unit
 
-@* Built-in types.
+@* Atlas types.
 %
 This file describes several built-in types related to the Atlas software,
 which used by the interpreter as primitive types. It also defines built-in
 functions that relate to these types. This part of the program is completely
 oriented towards the Atlas library, whereas the module \.{axis} implements the
-programming language of that name, which is independent of that library.
+programming language of that name, which is independent of the Atlas library.
 
 @h "atlas-types.h"
 
@@ -48,8 +48,8 @@ this file.
 
 @( atlas-types.h @>=
 
-#ifndef BUILT_IN_TYPES_H
-#define BUILT_IN_TYPES_H
+#ifndef ATLAS_TYPES_H
+#define ATLAS_TYPES_H
 
 @< Includes needed in the header file @>@;
 namespace atlas { namespace interpreter {
@@ -1276,7 +1276,7 @@ do.
 @< Includes... @>=
 #include "complexredgp.h"
 
-@*2 Analysing involutions. Our constructor for the current built-in type must
+@*2 Analysing involutions. Our constructor for the current atlas type must
 do checking to see that a valid involution is entered, and an analysis of the
 involution to replace the values otherwise obtained from the user interaction,
 in other words we want to find which sequence of inner class letters could
@@ -1605,14 +1605,14 @@ of type |realform_io::Interface|.
 @< Includes... @>=
 #include "realform_io.h"
 
-@~The class |inner_class_value| will be the first built-in type where we
-deviate from the previously used scheme of holding an Atlas library object
-with the main value in a data member |val|. The reason is that the copy
-constructor for |ComplexReductiveGroup| is private (and nowhere defined), so
-that the straightforward definition of a copy constructor for such a built-in
-type would not work, and the copy constructor is necessary for the |clone|
-method. (In fact, now that normal manipulation of values involves duplicating
-shared pointers rather than of values, there is never a need to copy an
+@~The class |inner_class_value| will be the first Atlas type where we deviate
+from the previously used scheme of holding an Atlas library object with the
+main value in a data member |val|. The reason is that the copy constructor for
+|ComplexReductiveGroup| is private (and nowhere defined), so that the
+straightforward definition of a copy constructor for such an Atlas type would
+not work, and the copy constructor is necessary for the |clone| method. (In
+fact, now that normal manipulation of values involves duplicating shared
+pointers rather than of values, there is never a need to copy an
 |inner_class_value|, since |get_own<inner_class_value>| is never called;
 however the |clone| method is still defined for possible future use.) So
 instead, we shall share the library object when duplicating our value, and
@@ -2180,12 +2180,12 @@ typedef std::shared_ptr<real_form_value> own_real_form;
 
 @ The methods |rc| and |rt| ensure a |Rep_table| value is constructed at
 |*rt_p|, and return a reference. The value so obtained will serve to
-manipulate parameters for standard modules, for which we shall define a
-built-in type below. Storing the value here ensures that it will be shared
-between different parameters, and that it will live as long as those parameter
-values do. The value itself does not take much space, but constructing it
-implicitly calls the |val.kgb| method, so we avoid doing this until there is a
-concrete need.
+manipulate parameters for standard modules, for which we shall define an Atlas
+type below. Storing the value here ensures that it will be shared between
+different parameters, and that it will live as long as those parameter values
+do. The value itself does not take much space, but constructing it implicitly
+calls the |val.kgb| method, so we avoid doing this until there is a concrete
+need.
 
 @< Function def...@>=
   const Rep_context& real_form_value::rc()
@@ -4179,11 +4179,11 @@ algebra over $\Zee$ of a (cyclic) group of order~$2$.
 #include "arithmetic.h"
 
 @*2 A class for split integers.
+%
 Although the necessary operations could easily be defined in the \.{axis}
-programming language using pairs of integers, it is preferable to make them a
-built-in type, since this allows distinguishing them from pairs of integers
-used for other purposes, and to provide special output and conversion
-facilities.
+programming language using pairs of integers, it is preferable to make them an
+Atlas type, since this allows distinguishing them from pairs of integers used
+for other purposes, and to provide special output and conversion facilities.
 
 @< Type definitions @>=
 
