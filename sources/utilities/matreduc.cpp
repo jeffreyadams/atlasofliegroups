@@ -11,6 +11,7 @@
 #include <cstdlib>
 
 #include "bitmap.h"
+#include "permutations.h"
 #include "matrix.h"
 #include "arithmetic.h"
 
@@ -183,8 +184,8 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
 			   matrix::PID_Matrix<C>& row,
 			   matrix::PID_Matrix<C>& col)
 {
-  size_t m=M.numRows();
-  size_t n=M.numColumns(); // may decrease, but columns beyond |n| are zero
+  const size_t m=M.numRows();
+  const size_t n=M.numColumns();
 
   row=matrix::PID_Matrix<C>(m); // initialise |row| to identity matrix
   col=matrix::PID_Matrix<C>(n);
@@ -193,66 +194,79 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
   diagonal.reserve(std::min(m,n));
 
   int row_sign = 1, col_sign=1; // determinants of row/column operations
+  bitmap::BitMap pivot_columns(n); // columns of |M| where a pivot was found
 
-  for (size_t d=0; d<m and d<n; ++d) // |n| may be diminished during loop
+  for (size_t k=0,l=0; l<n; ++l) // |k| may or may not be increased inside loop
   {
-  restart:
-    {
-      size_t i=d; // index of first possibly non-zero entry in column $d$
-      while (M(i,d)==C(0)) // find first nonzero entry on or below the diagonal
-	if (++i==m) // then column is zero
-	{
-	  if (d == --n) // decrease column count
-	    break; // if column was in last non-zero position, quit outer loop
-	  M.swapColumns(d,n); // now matrix is zero from column |n| on
-	  col.swapColumns(d,n);
-	  col_sign = -col_sign;
-	  goto restart; // repeat outer loop without increasing |d| in this case
-	}
+    size_t i=k;
+    for (; i<m; ++i)
+      if (M(i,l)!=C(0))
+	break;
+    if (i==m)
+      continue; // advance in loop on |l|, do not increment |k|
 
-      if (i>d) // first non-zero entry below diagonal; add it to 0 on diagonal
+    pivot_columns.insert(l); // there will be a pivot at |M(k,l)|
+
+    if (i>k) // first non-zero entry below diagonal; add it to 0 on diagonal
+    {
+      C u = M(i,l)>0 ? 1 : -1;  // ensure diagonal entry becomes positive
+      M.rowOperation(k,i,u);
+      row.rowOperation(k,i,u);
+    }
+    else // we have |i==k|
+    { ++i; // search for (further) nonzero column entries will start here
+      if (M(k,l)<0) // negative pivot entry, make it positive
       {
-	C u = M(i,d)>0 ? 1 : -1;  // ensure diagonal entry becomes positive
-	M.rowOperation(d,i,u);
-	row.rowOperation(d,i,u);
-      }
-      else if (M(d,d)<0) // negative diagonal entry, make it positive
-      {
-	M.rowMultiply(d,-1);
-	row.rowMultiply(d,-1);
+	M.rowMultiply(k,-1);
+	row.rowMultiply(k,-1);
 	row_sign = -row_sign;
       }
-    } // end block declaring |i|; now we have |M(d,d)>0|
+    }
+    // Now we have ensured |M(k,l)>0| and |M(ii,l)==0| for $k<ii<i$
 
-    // sweep row and column alternatively with |M(d,d)| until both cleared
-    size_t i=d+1,j; // inner loops re-use value of one of these each time
+    // sweep row and column alternatively with |M(k,l)| until both cleared
     while (true) // exit when row and column from |M(d,d)| onwards are zero
     {
-      // |M(i,d)| is first (potentially) nonzero entry below |M(d,d)|
+
+      // |M(i,l)| is first (potentially) nonzero entry below |M(k,l)|
       for ( ; i<m; ++i) // ensure column |d| is null below diagonal
-	if (row_clear<C,true>(M,i,d,d,row)) // makes |M(d,d)==gcd>0|,|M(i,d)==0|
+	if (row_clear<C,true>(M,i,l,k,row)) // makes |M(k,l)==gcd>0|,|M(i,l)==0|
 	  row_sign = -row_sign;
 
-      for (j=d+1; j<n; ++j) // check if row |d| is zero beyond diagonal
-	if (M(d,j)!=C(0))
+      size_t j=l+1; // needs to survive next loop
+      for ( ; j<n; ++j) // check if row |k| is zero beyond diagonal
+	if (M(k,j)!=C(0))
 	  break; // row not zero, work needs to be done
       if (j==n) // loop just terminated, so arm and leg are zero
 	break; // so terminate outer loop
 
-      // now |M(d,j)| is first nonzero entry right of |M(d,d)|
+      // now |M(k,j)| is first nonzero entry right of |M(k,l)|
       for ( ; j<n; ++j) // ensure row |d| is null beyond diagonal
-	if (column_clear(M,d,j,d,col)) // makes |M(d,d)==gcd>0| and |M(d,j)==0|
-	  col_sign = -col_sign; // clearing row uses column operations!
+	if (column_clear(M,k,j,l,col)) // makes |M(k,l)==gcd>0| and |M(k,j)==0|
+	  col_sign = -col_sign;
 
-      for (i=d+1; i<m; ++i) // check if column |d| is still zero below diagonal
-	if (M(i,d)!=C(0))
+      for (i=k+1; i<m; ++i) // check if column |d| is still zero below diagonal
+	if (M(i,l)!=C(0))
 	  break; // column not zero, do not terminate outer loop
-      if (i==m) // then whole column below |M(d,d)| is zero, and done for |d|
-	break; // most likely because no |column_clear| changed column |d|
+      if (i==m) // then whole column below |M(k,l)| is zero, and done for |k|
+	break; // so terminate outer loop
     }
 
-    diagonal.push_back(M(d,d)); // record positive gcd that finally remains
-  } // |for d|
+    diagonal.push_back(M(k,l)); // record positive gcd that finally remains
+
+    ++k; // record that this row contains a pivot, so has been dealt with
+  } // |for(l)|
+
+  // adapt |col| by stable-sorting columns, moving |zero_columns| to the end
+  { const auto n_piv=pivot_columns.size();
+    if (pivot_columns.position(n_piv)<n_piv) // pivot columns not left-adjusted
+    { permutations::Permutation pi(pivot_columns.begin(),pivot_columns.end());
+      ~pivot_columns; // now get the non-pivot columns, and add them at end
+      pi.insert(pi.end(),pivot_columns.begin(),pivot_columns.end());
+      permute_columns(col,pi);
+      col_sign *= sign(pi);
+    }
+  }
 
   if (diagonal.size()>0 and row_sign!=col_sign)
     diagonal[0] = -diagonal[0];
