@@ -1,3 +1,4 @@
+<lattice.at { for solve_vec }
 <kgp.at
 <K_norm.at
 <thetastable.at
@@ -14,24 +15,10 @@ set reduce ([Param] parameters) = [Param]:
 { to reduce a list of KParams, convert to list of parameters, reduce,
   then convert back }
 set reduce ([KParam] Kparameters) = [KParam]:
-  let parameters = for kp in Kparameters do parameter(kp) od
-  then r=reduce(parameters)
-  in for p in r do Kparameter(p) od
+  let parameters = for kp in Kparameters do parameter(kp) od in
+  for p in reduce(parameters) do Kparameter(p) od
 
-set sum (ratvec v) = rat: sum(numer(v))/denom(v)
-
-{ write v as a linear combination of columns of A }
-set solve_in_lattice ([vec] A, vec v) = vec: solve_vec(mat:A,v)
-
-{ A: nxm matrix, columns are a basis of a Z-module V of rank m
-  M: nxr matrix, columns span a submodule of V
-  returns mxr matrix C, column i gives column i of M as a sum of columns of A
-  i.e. A*C=M
-}
-set submodule_basis (mat A,mat M) = mat:
-  for v in M do solve_in_lattice(A,v) od
-
-{ rational matrix [ratvec]:[column_1,...,column_n] }
+{ rational matrix [ratvec]: [column_1,...,column_n] }
 
 { convert rational matrix to
   (mat,[int]):(matrix of numerators,vector of denominators)

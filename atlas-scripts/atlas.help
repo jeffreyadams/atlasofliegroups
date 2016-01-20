@@ -256,7 +256,7 @@ currently the most annoying limitation is the absence of second order typing.
 
 4 Types
 
-The axis langude is strongly and statically typed: the interpreter first
+The axis language is strongly and statically typed: the interpreter first
 analyses the expressions and definitions given by the user to verify that
 types can be attributed to all subexpressions, and all operations are defined
 for the types they are applied to; only if the expression passes this test
@@ -1558,6 +1558,12 @@ one of its commands or from a file included by it) then the file is not yet
 recorded as having been read, so a single '<' then suffices to reread it.
 Realex will refuse to open a file currently already being read from, to prevent
 infinite input loops in case of circular dependencies.
+
+These input commands will search for their files in the directories specified
+by the special system variable 'input_path' which is of type '[string]' (a
+row of strings). This variable can be assigned to from the atlas program, but
+is usually given its (initial) value through command line arguments to the
+atlas program of the form '--path=file_name'
 
 In spite of similar syntax, output and input redirection have rather different
 characteristics. Output redirection only applies to a single expression

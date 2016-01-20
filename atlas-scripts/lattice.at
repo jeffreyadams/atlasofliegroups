@@ -5,7 +5,7 @@
 set submodule_basis (mat M) = mat:
   let (B,cs) = adapted_basis(M) in n_rows(B) # for c@j in cs do c*B[j] od
 
-{ columns are a Q-basis of image(M)}
+{ columns are a Q-basis of image(M) }
 set Q_submodule_basis (mat M) = mat:
   let (B,cs) = adapted_basis(M) in n_rows(B) # for c@j in cs do B[j] od
 
@@ -150,13 +150,16 @@ set solve (mat A, vec v) = (vec,bool): { find integer solution to A*x=v }
     od
   in ( columns_with((int j):j<d,R) * for i:d do target[i] od , success )
 
-{A: nxm matrix, columns are a basis of a Z-module V of rank m
- M: nxr matrix, columns span a submodule of V
- returns mxr matrix C, column i gives column i of M as a sum of columns of A
- i.e. A*C=M
+{ express columns of M relative to basis A of a sub-lattice that contains them
+  A: nxm matrix, columns are a basis of a Z-module V of rank m
+  M: nxr matrix, columns span a submodule of V
+  returns mxr matrix C, column i gives column i of M as a sum of columns of A
+  i.e. A*C=M
 }
+set submodule_basis (mat A,mat M) = mat:
+  n_columns(A) { size of solutions } # for v in M do solve_vec(A,v) od
 
-{write v as a linear combination of columns of A}
-set solve_in_lattice([vec] A, vec v)=vec:solve_vec(mat:A,v)
 
-set submodule_basis(mat A,mat M)=mat:for v in M do solve_in_lattice(A,v) od
+{ write v as a linear combination of columns of A }
+set solve_in_lattice ([vec] A, vec v) = vec: solve_vec(mat:A,v)
+
