@@ -70,11 +70,13 @@ template<typename C>
 bool column_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k,
 		  matrix::PID_Matrix<C>& rec)
 {
-  // Rather than forcing the sign of |M(i,j)|, we shall use |arithmetic::divide|
-  // This is done to avoid gratuitous negative entries in |lattice::kernel|
-  do
+  /* Rather than forcing the sign of |M(i,j)|, as above, we shall use
+     |arithmetic::divide| the first time here. The reason is heuristic; this
+     may sometimes avoid unnecessary negative entries in |lattice::kernel|
+  */
+  C q = -arithmetic::divide(M(i,j),M(i,k));
+  while (true) // not entering loop at an exit point, though it has 2 of them
   {
-    C q = -arithmetic::divide(M(i,j),(unsigned long)M(i,k));
     M.columnOperation(j,k,q); // now |M(i,j)>=0|
     rec.columnOperation(j,k,q);
     if (M(i,j)==C(0))
@@ -82,8 +84,10 @@ bool column_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k,
     q=-(M(i,k)/M(i,j));
     M.columnOperation(k,j,q); // we still have |M(i,k)>=0|
     rec.columnOperation(k,j,q);
+    if (M(i,k)==C(0))
+      break; // perform final swap at this exit
+    q = -(M(i,j)/M(i,k)); // next time around prepare |q| without |divide|
   }
-  while (M(i,k)!=C(0));
   M.swapColumns(j,k);
   rec.swapColumns(j,k);
   return true;  // determinant $-1$ here
@@ -100,10 +104,10 @@ bool row_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k,
 	       matrix::PID_Matrix<C>& rec)
 {
   // Rather than forcing the sign of |M(i,j)|, we shall use |arithmetic::divide|
-  // For |direct==false| this often avoids touching column |i| of |rec|
-  do
+  // For |direct==false|, this often avoids touching column |i| of |rec| at all
+  C q = arithmetic::divide(M(i,j),M(k,j));
+  while (true) // not entering loop at an exit point, though it has 2 of them
   {
-    C q = arithmetic::divide(M(i,j),(unsigned long)M(k,j));
     M.rowOperation(i,k,-q); // now |M(i,j)>=0|, even if |M(i,j)| was negative
     if (direct)
       rec.rowOperation(i,k,-q);
@@ -117,8 +121,10 @@ bool row_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k,
       rec.rowOperation(k,i,-q);
     else // inverse column operation
       rec.columnOperation(i,k,q);
+    if (M(k,j)==C(0))
+      break; // perform final swap at this exit
+    q = M(i,j)/M(k,j); // next time around prepare |q| without |divide|
   }
-  while (M(k,j)!=C(0));
   M.swapRows(i,k);
   if (direct)
     rec.swapRows(i,k);
@@ -178,10 +184,10 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
 			   matrix::PID_Matrix<C>& col)
 {
   size_t m=M.numRows();
-  size_t n=M.numColumns(); // in fact start of known null columns
+  size_t n=M.numColumns(); // may decrease, but columns beyond |n| are zero
 
-  matrix::PID_Matrix<C>(m).swap(row); // initialise |row| to identity matrix
-  matrix::PID_Matrix<C>(n).swap(col);
+  row=matrix::PID_Matrix<C>(m); // initialise |row| to identity matrix
+  col=matrix::PID_Matrix<C>(n);
   std::vector<C> diagonal;
   if (n==0 or m==0) return diagonal; // take out these trivial cases
   diagonal.reserve(std::min(m,n));
@@ -192,19 +198,17 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
   {
   restart:
     {
-      size_t i=d; // index of first possibly non-zero entry in column $j$
-      do // find first nonzero entry
-	if (M(i,d)!=C(0))	break;
-      while (++i<m);
-      if (i==m) // then column is zero
-      {
-	if (d == --n) // decrease column count
-	  break; // if column was in last non-zero position, quit outer loop
-	M.swapColumns(d,n); // now matrix is zero from column |n| on
-	col.swapColumns(d,n);
-	col_sign = -col_sign;
-	goto restart; // repeat outer loop without increasing |d| in this case
-      }
+      size_t i=d; // index of first possibly non-zero entry in column $d$
+      while (M(i,d)==C(0)) // find first nonzero entry on or below the diagonal
+	if (++i==m) // then column is zero
+	{
+	  if (d == --n) // decrease column count
+	    break; // if column was in last non-zero position, quit outer loop
+	  M.swapColumns(d,n); // now matrix is zero from column |n| on
+	  col.swapColumns(d,n);
+	  col_sign = -col_sign;
+	  goto restart; // repeat outer loop without increasing |d| in this case
+	}
 
       if (i>d) // first non-zero entry below diagonal; add it to 0 on diagonal
       {
@@ -220,34 +224,32 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
       }
     } // end block declaring |i|; now we have |M(d,d)>0|
 
-    for (size_t i=d+1; i<m; ++i) // ensure column |d| is null below diagonal
-      if (row_clear<C,true>(M,i,d,d,row)) // makes |M(d,d)==gcd>0|, |M(i,d)==0|
-	row_sign = -row_sign;
-
-    // initial sweep is unlikely to be sufficient, so no termination test here
-
-    size_t i,j=d+1; // these need to survive loops below (but one would suffice)
-    do // sweep row and column alternatively with |M(d,d)| until both cleared
+    // sweep row and column alternatively with |M(d,d)| until both cleared
+    size_t i=d+1,j; // inner loops re-use value of one of these each time
+    while (true) // exit when row and column from |M(d,d)| onwards are zero
     {
+      // |M(i,d)| is first (potentially) nonzero entry below |M(d,d)|
+      for ( ; i<m; ++i) // ensure column |d| is null below diagonal
+	if (row_clear<C,true>(M,i,d,d,row)) // makes |M(d,d)==gcd>0|,|M(i,d)==0|
+	  row_sign = -row_sign;
+
+      for (j=d+1; j<n; ++j) // check if row |d| is zero beyond diagonal
+	if (M(d,j)!=C(0))
+	  break; // row not zero, work needs to be done
+      if (j==n) // loop just terminated, so arm and leg are zero
+	break; // so terminate outer loop
+
+      // now |M(d,j)| is first nonzero entry right of |M(d,d)|
       for ( ; j<n; ++j) // ensure row |d| is null beyond diagonal
 	if (column_clear(M,d,j,d,col)) // makes |M(d,d)==gcd>0| and |M(d,j)==0|
 	  col_sign = -col_sign; // clearing row uses column operations!
 
       for (i=d+1; i<m; ++i) // check if column |d| is still zero below diagonal
 	if (M(i,d)!=C(0))
-	  break; // not yet, in this case
-     if (i==m) // then whole column below |M(d,d)| is zero, and done for |d|
-       break; // most likely because |column_clear| left column |d| unchanged
-
-     for ( ; i<m; ++i) // ensure column |d| is null below diagonal
-       if (row_clear<C,true>(M,i,d,d,row)) // makes |M(d,d)==gcd>0|, |M(i,d)==0|
-	 row_sign = -row_sign;
-
-     for (j=d+1; j<n; ++j) // check if row |d| is still null beyond diagonal
-       if (M(d,j)!=C(0))
-         break; // not thse case, so force outer loop to continue
+	  break; // column not zero, do not terminate outer loop
+      if (i==m) // then whole column below |M(d,d)| is zero, and done for |d|
+	break; // most likely because no |column_clear| changed column |d|
     }
-    while(j<n); // we did |break|, apparently some |row_clear| changed row |d|
 
     diagonal.push_back(M(d,d)); // record positive gcd that finally remains
   } // |for d|
