@@ -81,10 +81,10 @@ ap.at			groups, ..., K_types { Annegret Paul }
 dual.at			extended, polynomial, parameters, Vogan-dual
 canonical_x_K.at	Weylgroup, misc { mapping canonically? to dist. fiber }
 thetastable.at		parabolics, induction, finite_dimensional, canonical_x_K
-all_Kparameters.at      kgp, K_norm, thetastable { ? }
+all_Kparameters.at      lattice, kgp, K_parameters, thetastable { ? }
 complex.at		LKT { some things specific for complex groups }
 ext_signs.at
-induction.at		K, parabolics, kl, coherent, synthetic, K_norm
+induction.at		K, parabolics, kl, coherent, synthetic, K_parameters
 			  { parabolic induction }
 induction_sp4.at
 orbits.at		misc, Weylgroup, thetastable, sort { nilp. orbits }

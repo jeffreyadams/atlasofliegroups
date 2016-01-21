@@ -103,6 +103,11 @@ set maximal ([int] S, KGBElt x) = KGBElt:
 set canonical_representative (KGPElt y) = KGPElt: (S(y),maximal(y))
 set x = (KGPElt->KGBElt): maximal@KGPElt
 
+{ (S,x)=(T,y) if these give the same K-orbit of parabolics }
+set = (KGPElt (S,x),KGPElt (T,y))=bool:
+  real_form(x)=real_form(y) and S=T and maximal(S,x)=maximal(S,y)
+
+
 {equivalence class of KGB element in partial order defined by S}
 set equivalence_class_of (KGPElt(S,x):y) = [KGBElt]:
   let x_max=maximal(S,x)
