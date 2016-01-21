@@ -2,7 +2,7 @@
 
 <basic.at
 <groups.at { for Sp }
-<group_operations.at { for real_Levi }
+<parabolics.at { for real_Levi }
 
 set G=Sp(4,R)
 set L_short=real_Levi(KGB(G,9)) {L_short has simple root (0,2)}

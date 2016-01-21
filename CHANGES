@@ -4,8 +4,9 @@ A detailed history of the early development is found in the file
 workinglog. Newer changes are documented in the CVS repository.
 This file contains a summary of major changes to the software.
 
-Version 0.6 (End 2015)
+Version 0.6 (Jan 16, 2016)
 * Renaming of executatbles: atlas->Fokko and realex->atlas
+* Many scripts added to atlas-scripts/ (and some removed)
 
 Version 0.5.8 (May 6, 2015)
 * Bug fix in branching to K code (negative multiplicities were obtained)

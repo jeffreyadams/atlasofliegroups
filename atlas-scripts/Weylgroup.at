@@ -245,25 +245,25 @@ set is_regular  (W_word w) =bool:
   also return simple reflection used
 }
 set move_towards_no_Cminus (KGBElt x) = (KGBElt,int):
-  let i=last(semisimple_rank(real_form(x)), (int i)bool: =status(i,x)) in
+  let i=last(semisimple_rank(root_datum(x)), (int i)bool: =status(i,x)) in
   if i<0 then (x,-1) else (cross(i,x),i) fi
 
 set make_no_Cminus (KGBElt x) = (KGBElt,W_word): { repeat until stable }
   let rec_fun f (KGBElt x,W_word w) = (KGBElt,W_word):
     let (y,t)=move_towards_no_Cminus(x) in
     if x=y then (x,w) else f(y,left_mult(t,w)) fi
-  in f(x,W_word:(real_form(x),[]))
+  in f(x,W_word:(root_datum(x),[]))
 
 { similarly with C+ }
 set move_towards_no_Cplus (KGBElt x) = (KGBElt,int):
-  let i=last(semisimple_rank(real_form(x)), (int i)bool: status(i,x)=4) in
+  let i=last(semisimple_rank(root_datum(x)), (int i)bool: status(i,x)=4) in
   if i<0 then (x,-1) else (cross(i,x),i) fi
 
 set make_no_Cplus (KGBElt x) = (KGBElt,W_word): { repeat until stable }
   let rec_fun f(KGBElt x,W_word w)=(KGBElt,W_word):
      let (y,t)=move_towards_no_Cplus(x) in
      if x=y then (x,w) else f(y,left_mult(t,w)) fi
-  in f(x,W_word:(real_form(x),[]))
+  in f(x,W_word:(root_datum(x),[]))
 
 { apply make_no_Cplus/minus to parameters also }
 set make_no_Cminus (Param p) = Param:

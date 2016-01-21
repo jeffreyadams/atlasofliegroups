@@ -1,5 +1,5 @@
 <basic.at
-<misc.at
+<misc.at { for split_rank@RealForm }
 <lattice.at { for (co)restrict_action }
 <torus.at { for torus }
 
@@ -21,18 +21,21 @@ end
 
 { defining split groups }
 
-set split_form(InnerClass ic) = RealForm: { try to retain the same inner class }
-  let rd = root_datum(ic)
-  then ic_split = inner_class(rd,-id_mat(rank(rd)))
-  in quasisplit_form(
-    if distinguished_involution(ic)=distinguished_involution(ic_split)
-    then ic else ic_split fi)
+set split_form(InnerClass ic) = RealForm:
+( let rd = root_datum(ic) then ic_split = inner_class(rd,-id_mat(rank(rd))) in
+  quasisplit_form
+  ( if distinguished_involution(ic)=distinguished_involution(ic_split)
+    then ic { try to retain the same inner class }
+    else ic_split
+    fi
+  )
+)
 
 { direct product of RootDatum, InnerClass and RealForm }
 
 set *(RootDatum R,RootDatum S) = RootDatum:
   root_datum(block_matrix(simple_roots(R),simple_roots(S))
-            ,block_matrix(simple_coroots(R),simple_coroots(S)))
+            ,block_matrix(simple_coroots(R),simple_coroots(S)) )
 
 set *(InnerClass ic1,InnerClass ic2) = InnerClass:
   let di =
@@ -40,22 +43,23 @@ set *(InnerClass ic1,InnerClass ic2) = InnerClass:
   in inner_class(root_datum(ic1)*root_datum(ic2),di)
 
 set * (RealForm G,RealForm H) = RealForm:
-  let xG=KGB(G,0), xH=KGB(H,0) in
-  real_form(inner_class(G)*inner_class(H)
-           ,block_matrix(involution(xG),involution(xH))
-           ,torus_factor(xG)#torus_factor(xH)
-           )
+( let xG=KGB(G,0), xH=KGB(H,0) in
+  real_form { synthetic }
+  ( inner_class(G)*inner_class(H)
+  , block_matrix(involution(xG),involution(xH))
+  , torus_factor(xG)#torus_factor(xH)
+  )
+)
 
 { ---------------- radical, i.e. maximal central torus ---------------- }
 
-set radical (RootDatum rd) = RootDatum:
+set radical (RootDatum rd) = RootDatum: { central torus as separate root datum }
   let empty = null(rank(rd)-semisimple_rank(rd),0) in root_datum(empty,empty)
 
-set radical (InnerClass ic) = RealForm:
-  let rd = root_datum(ic) then ssr = semisimple_rank(rd)
-  then coradical = columns_with((int j): j>=ssr,root_coradical(rd))
-  then involution = restrict_action(distinguished_involution(ic),coradical)
-  in quasisplit_form(inner_class(radical(rd),involution))
+set radical (InnerClass ic) = RealForm: { unique real form of central torus }
+  let rd = root_datum(ic)
+  then xi0 = restrict_action(distinguished_involution(ic),coradical_basis(rd))
+  in quasisplit_form(inner_class(radical(rd),xi0))
 
 set maximal_central_torus = (RootDatum->RootDatum): radical@RootDatum
 set maximal_central_torus = (InnerClass->RealForm): radical@InnerClass
@@ -72,59 +76,44 @@ set mod_central_torus (InnerClass ic) = InnerClass:
 
 { transform involution theta to basis of simple roots }
 set adjoint_transform (RootDatum rd, mat theta) = mat:
-  let  image = theta*simple_roots(rd), ssr = semisimple_rank(rd)
-  then image_coords = [vec]:
-     for i: ssr do ratvec_as_vec(fundamental_coweight(rd,i)*image) od
-  in ssr ^ image_coords { square matrix of size ssr }
+  let  image = theta*simple_roots(rd), ssr = semisimple_rank(rd) in
+  ssr ^ { form a square matrix of size ssr with the following rows: }
+    for i: ssr do ratvec_as_vec(fundamental_coweight(rd,i)*image) od
 
-set adjoint(InnerClass ic) = InnerClass:
+set adjoint (InnerClass ic) = InnerClass:
   let rd = root_datum(ic)
   in inner_class(adjoint(rd)
-                ,adjoint_transform(rd,distinguished_involution(ic)))
+                ,adjoint_transform(rd,distinguished_involution(ic))
+		)
 
 set derived (RealForm G) = RealForm:
-  let ic = inner_class(G),  (der_rd,proj)=derived_info(root_datum(G))
-  , x0 = KGB(G,0)
-  then act = corestrict_action(distinguished_involution(ic),proj)
-  in real_form(inner_class(der_rd,act),act
-              ,torus_factor(x0)*right_inverse(proj))
+( let (der_rd,proj)=derived_info(root_datum(G))
+  then xi0 = corestrict_action(distinguished_involution(InnerClass:G),proj)
+  in
+  real_form { synthetic }
+    ( inner_class(der_rd,xi0)
+    , xi0
+    , torus_factor(KGB(G,0))*right_inverse(proj)
+    )
+)
 
-set adjoint(RealForm G)=
-  let adj_ic = adjoint(inner_class(G))
-  , tf = torus_factor(KGB(G,0))*simple_roots(root_datum(G)) { to adjoint }
-  in real_form(adj_ic,distinguished_involution(adj_ic),tf)
-
-{ ----------------Levi factors--------------}
-{moved to parabolics.at}
+set adjoint (RealForm G) = RealForm:
+( let adj_ic = adjoint(inner_class(G)) in
+  real_form { synthetic }
+    ( adj_ic
+    , distinguished_involution(adj_ic)
+    , torus_factor(KGB(G,0))*simple_roots(root_datum(G)) { to adjoint }
+    )
+)
 
 { ----------------tests for classes of groups---------------- }
 
-set is_equal_rank(RealForm G) = bool: split_rank(fundamental_Cartan(G))=0
+set is_equal_rank (InnerClass G) = bool: { whether distinguished_involution=1 }
+  =split_rank(fundamental_Cartan(G))
+{ implicitly is_equal_rank (RealForm G) = bool: is_equal_rank(InnerClass:G) }
 
-set is_split(RealForm G) = bool: rank(G)=split_rank(G)
+set is_split (RealForm G) = bool: { whether most split Cartan has theta = -1 }
+  =compact_rank(most_split_Cartan(G))
 
-{set is_relatively_split(RealForm G) = bool: is_split(derived(G))}
-set is_relatively_split(RealForm G) = bool:
- split_rank(G)=split_rank(radical(G))+semisimple_rank(G)
-
-set is_quasisplit (RealForm G) = bool: form_number(G)=nr_of_real_forms(G)-1
-set is_quasicompact (RealForm G) = bool: form_number(G)=0
-
-set is_semisimple (RootDatum rd) = bool: semisimple_rank(rd) = rank(rd)
-
-set is_simply_connected (RootDatum rd) = bool:
-  is_semisimple(rd) and abs(det(simple_coroots(rd)))=1
-
-set is_adjoint (RootDatum rd) = bool:
-  is_semisimple(rd) and abs(det(simple_roots(rd)))=1
-
-set has_connected_center (RootDatum rd) = bool:
-  is_simply_connected(derived(dual(rd)))
-
-{ for real groups return information about the topology of G(R) }
-{ set is_simply_connected_real_group(RealForm G) = bool:
-    is_simply_connected(root_datum(K_0(G)))
-}
-
-
-
+set is_relatively_split (RealForm G) = bool: { whether is_split(derived(G))) }
+  compact_rank(most_split_Cartan(G))=compact_rank(radical(G))
