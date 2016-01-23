@@ -1,0 +1,25 @@
+{ implement type ratmat that makes linear algebra over Q possible }
+
+<basic.at
+
+: ratmat = (mat,int) { matrix and common denominator }
+
+set gcd(mat M) = int:
+  let invf=inv_fact(M) in if =invf then 1 else invf[0] fi
+
+set simplify(ratmat(M,d)) = ratmat:
+  let g=gcd([gcd(M),d]) in (M\g,d\g)
+
+set columns (ratmat(M,d)) = [ratvec]: for c in M do c/d od
+set rows (ratmat(M,d)) = [ratvec]: for c in ^M do c/d od
+set column (ratmat(M,d),int j) = ratvec: M[j]/d
+set row (ratmat(M,d),int i)    = ratvec: (^M)[i]/d
+
+set ^ (ratmat(M,d)) = ratmat: (^M,d)
+
+set * (ratvec v,ratmat(M,d)) = ratvec: v*M/d
+set * (ratmat(M,d),ratvec v) = ratvec: M*v/d
+
+set * (ratmat(M,d),mat MM) = ratmat: simplify(M*MM,d)
+set * (mat M,ratmat(MM,d)) = ratmat: simplify(M*MM,d)
+set * (ratmat(M,d),ratmat(MM,dd)) = ratmat: simplify(M*MM,d*dd)

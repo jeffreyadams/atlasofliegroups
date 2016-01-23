@@ -108,7 +108,10 @@ set project_on_dominant_cone (KGBElt x, vec mu) = (KGBElt,ratvec,ratvec):
 
 {possibly multivalued, coming from G-spherical case}
 
-{characters_order_2@KGBElt
+{ This function is the same as basis_lambda_differential_0 in all_Kparameters.at
+   List of weights representative of a set of generators of the elementary
+   2-group ker(1+theta(x))/im(1-theta(x)).
+characters_order_2@KGBElt
 returns [v_0,...,v_k], v_i\in X^*,
 the characters of H^{theta_x} with differential 0
 are \sum a_i v_i with a_i=0,1 (or [] -> [0,...,0])
@@ -119,7 +122,7 @@ zero_vector=vec:null(rank(real_form(x))) {default value} then
 K=kernel(1+theta) then
 (r,c)=#K in
 if c=0 then [vec]:[]  else let
-M=submodule_basis(K,1-theta) in
+M=in_lattice_basis(K,1-theta) in
 if #M=0 then [vec]:[] else let
 (A,v)=adapted_basis(M) then
 B=K*A in

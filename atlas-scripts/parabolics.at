@@ -236,8 +236,10 @@ set theta_stable_parabolics (RealForm G,ComplexParabolic P) = [Parabolic]:
   do if is_parabolic_theta_stable(Q) then result#:=Q fi od; result
 
 set theta_stable_parabolics (RealForm G) = [Parabolic]:
-  let all=generate_all_subsets(#semisimple_rank(G)), result=[Parabolic]:[] in
-  for S in all do result #:= theta_stable_parabolics(G,(G,S)) od; result
+  let result=[Parabolic]:[] in
+  for S in power_set(semisimple_rank(G))
+  do result #:= theta_stable_parabolics(G,ComplexParabolic:(G,S))
+  od; result
 
 
 set theta_stable_parabolics_type (RealForm G,[int] P) = [Parabolic]:

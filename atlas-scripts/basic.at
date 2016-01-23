@@ -66,6 +66,8 @@ set min ([int] a) = int: let l=#a in assert(>=l,"Minimum of an empty list");
 set max ([int] a) = int: let l=#a in assert(>=l,"Maximum of an empty list");
   let m=a~[0] in for i:l-1 do if a[i]>m then m:=a[i] fi od; m
 
+set lcm ([int] list) = let (,d) = %(ratvec: for x in list do {1} /x od) in d
+
 set =  ((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0=x1 and y0=y1
 set != ((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0!=x1 or y0!=y1
 
@@ -86,8 +88,10 @@ set ceil  (rat a) = int: -\ %-a   { same, sandwiched in negations }
 
 set \ ((rat,int)p) = int: floor(/p)
 set \ ((rat,rat)p) = int: floor(/p)
+set \% ((rat,int)p) = (int,rat): (\p,%p) { shouldn't these two be built-in? }
+set \% ((rat,rat)p) = (int,rat): (\p,%p)
 
-{ these are mostly for ratvec arguments, but [rat] refuses coercion from vec }
+{ these are mostly for ratvec arguments, but [rat] avoids coercion from vec }
 set floor ([rat] v) = vec: for a in v do floor(a) od
 set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
 
@@ -165,12 +169,21 @@ set <= (vec v) = bool: >= -v { anti-dominance (in fundamental weight coords) }
 set <  (vec v) = bool: > -v  { strict anti-dominance }
 
 set is_member ([int] v) = (int->bool):
-  let start = #v-1 { pre-computation might be more efficient }
+  let !start = #v-1 { pre-computation might be more efficient }
   in (int val)bool: let i=start in while >=i and v[i]!=val do i-:=1 od; >=i
 
 set contains (int val) = ([int]->bool): ([int] v)bool: is_member(v)(val)
 
+set rec_fun all_0_1_vecs (int n) = [vec]:
+  if n<=0 then [null(0)]
+  else let list=all_0_1_vecs(n-1) in
+    for v in list do v#0 od   #   for v in list do v#1 od
+  fi
 
+set rec_fun power_set (int n) = [[int]]: { indices where 0_1_vecs have 1 }
+  if =n then [[]] else let p=power_set(n-:=1) in p # for S in p do S#n od fi
+set power_set ([int] S) = [[int]]:
+  for inx in power_set(#S) do for i in inx do S[i] od od
 
 {				Matrices				}
 

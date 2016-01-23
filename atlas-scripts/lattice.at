@@ -156,7 +156,7 @@ set solve (mat A, vec v) = (vec,bool): { find integer solution to A*x=v }
   returns mxr matrix C, column i gives column i of M as a sum of columns of A
   i.e. A*C=M
 }
-set submodule_basis (mat A,mat M) = mat:
+set in_lattice_basis (mat A,mat M) = mat:
   n_columns(A) { size of solutions } # for v in M do solve_vec(A,v) od
 
 
