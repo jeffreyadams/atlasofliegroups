@@ -97,34 +97,34 @@ set all_lambda_differential_0 (KGBElt x) = [vec]:
   then solve mu-(1+theta)rho =(1+theta)lambda_0
   then return lambda=lambda_0+rho
 }
-set find_lambda (KGBElt x,ratvec mu) = ratvec:
-  let G=real_form(x), th1=1+involution(x) in
-  assert(is_integer(mu),"mu is not integral");
-  assert(in_lattice(th1, ratvec_as_vec(mu-th1*rho(G)))
+set find_lambda (KGBElt x,vec mu) = ratvec:
+  let rho=rho(real_form(x)), th1=1+involution(x) in
+  assert(in_lattice(th1, mu-ratvec_as_vec(th1*rho))
         ,"mu-(1+theta)rho is not in (1+theta)X^*");
-  let lambda_0=solve_vec(th1,ratvec_as_vec(mu-th1*rho(G)))
-  in lambda_0+rho(G)
+  solve_vec(th1,mu-ratvec_as_vec(th1*rho)) + rho
 
-{ mu is (1+theta)lambda/2, need to solve for lambda }
-set make_K_parameter (KGBElt x,ratvec mu) = Param:
-  parameter(x,find_lambda(x,mu),null(rank(real_form(x))))
+{ mu is (1+theta)lambda, need to solve for lambda }
+set make_K_parameter (KGBElt x,vec mu) = Param:
+  parameter(KParam:(x,find_lambda(x,mu)))
 
-set make_all_K_parameters (KGBElt x,ratvec mu) = [KParam]:
+set make_all_K_parameters (KGBElt x,vec mu) = [KParam]:
   let p=make_K_parameter(x,mu) in
   for v in all_lambda_differential_0(x) do (x(p),lambda(p)+v) od
 
 { all K parameters with same dlambda as p }
-set make_all_K_parameters (KParam p) = [KParam]:
-  make_all_K_parameters(x(p), dlambda(p))
+set all_equal_dlambda_K_parameters (KParam p) = [KParam]:
+  make_all_K_parameters(x(p), ratvec_as_vec(dlambda(p)*2))
 
 { all parameters with given infinitesimal character }
 set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
-  let params=[Param]:[] in
+  let rho=rho(G), params=[Param]:[] in
   for x in KGB(G) do
-    let theta=involution(x) then nu=(1-theta)*gamma/2 then mu=(1+theta)*gamma
-    then K_params=make_all_K_parameters(x,mu)
-    in
-      for p in K_params do params#:=parameter(x(p),lambda(p),nu) od
+    let th1=1+involution(x) in
+    if in_lattice(th1,th1*(gamma-rho)) { lest no lambda can be found }
+    then let mu=ratvec_as_vec(th1*gamma), nu=(2-th1)*gamma/2 in
+      params #:= { concatenate the following list of Param values: }
+      for (x,lambda) in make_all_K_parameters(x,mu) do parameter(x,lambda,nu) od
+    fi
   od; reduce(params)  {keep only 1 from each equivalence class}
 
 

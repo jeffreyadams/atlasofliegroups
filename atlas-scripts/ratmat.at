@@ -2,24 +2,29 @@
 
 <basic.at
 
-: ratmat = (mat,int) { matrix and common denominator }
+: ratmat = (mat,int,void) { matrix and common denominator }
+{ the void component avoids unary/binary conflicts, as for -@(mat,int) }
 
 set gcd(mat M) = int:
   let invf=inv_fact(M) in if =invf then 1 else invf[0] fi
 
-set simplify(ratmat(M,d)) = ratmat:
-  let g=gcd([gcd(M),d]) in (M\g,d\g)
+set simplify(ratmat(M,d,)) = ratmat:
+  let g=gcd([gcd(M),d]) in (M\g,d\g,())
 
-set columns (ratmat(M,d)) = [ratvec]: for c in M do c/d od
-set rows (ratmat(M,d)) = [ratvec]: for c in ^M do c/d od
-set column (ratmat(M,d),int j) = ratvec: M[j]/d
-set row (ratmat(M,d),int i)    = ratvec: (^M)[i]/d
+set columns (ratmat(M,d,)) = [ratvec]: for c in M do c/d od
+set rows (ratmat(M,d,)) = [ratvec]: for c in ^M do c/d od
+set column (ratmat(M,d,),int j) = ratvec: M[j]/d
+set row (ratmat(M,d,),int i)    = ratvec: (^M)[i]/d
 
-set ^ (ratmat(M,d)) = ratmat: (^M,d)
+set ^ (ratmat(M,d,)) = ratmat: (^M,d,()) { transpose }
 
-set * (ratvec v,ratmat(M,d)) = ratvec: v*M/d
-set * (ratmat(M,d),ratvec v) = ratvec: M*v/d
+set + (ratmat(M,d,),ratmat(MM,dd,)) = ratmat: simplify(dd*M+d*MM,d*dd,())
+set - (ratmat(M,d,),ratmat(MM,dd,)) = ratmat: simplify(dd*M-d*MM,d*dd,())
+set - (ratmat(M,d,)) = (-M,d,())
 
-set * (ratmat(M,d),mat MM) = ratmat: simplify(M*MM,d)
-set * (mat M,ratmat(MM,d)) = ratmat: simplify(M*MM,d)
-set * (ratmat(M,d),ratmat(MM,dd)) = ratmat: simplify(M*MM,d*dd)
+set * (ratvec v,ratmat(M,d,)) = ratvec: v*M/d
+set * (ratmat(M,d,),ratvec v) = ratvec: M*v/d
+
+set * (ratmat(M,d,),mat MM) = ratmat: simplify(M*MM,d,())
+set * (mat M,ratmat(MM,d,)) = ratmat: simplify(M*MM,d,())
+set * (ratmat(M,d,),ratmat(MM,dd,)) = ratmat: simplify(M*MM,d*dd,())

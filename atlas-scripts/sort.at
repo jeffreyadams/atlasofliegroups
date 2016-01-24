@@ -81,8 +81,8 @@ set sort_by ( (Split,(KGBElt,ratvec)->int) f) =
     for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 { also need sorting by rationals; this uses conversion to/from ratvec }
-set sort([rat] v)=[rat]:let (num,denom)=%v in sort(num)/denom
-set inv_standardisation([rat] v)=let (num,)=%v in inv_standardisation(num)
+set sort ([rat] v) = [rat]: let (num,denom)=%v in sort(num)/denom
+set inv_standardisation ([rat] v) = let (num,)=%v in inv_standardisation(num)
 
 { and so forth for any type; this really should be second-order typed }
 

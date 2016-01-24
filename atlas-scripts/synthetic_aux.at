@@ -77,9 +77,6 @@ set my_posroot_inv_Cayley (int i, Param p) = Param:
   in parameter(x3, gamma-projection, gamma)
 )
 
-{ something that was intended to be implemented, but wasn't yet? }
-set my_posroot_inv_Cayley (int i, Param p) = Param: p
-
 { nothing changed here }
 set my_new_block_line = ([Param],int->string): new_block_line@([Param],int)
 

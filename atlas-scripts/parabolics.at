@@ -12,7 +12,7 @@
 { ComplexParabolic data type: each value describes a
   G-conjugacy class of parabolic subgroups of complex group
   (RootDatum rd,[int] S) <->
-  G-conjugacy class of standard pararbolic with Levi factor given by
+  G-conjugacy class of standard parabolic with Levi factor given by
   subset S of simple roots
 }
 

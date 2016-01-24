@@ -148,15 +148,3 @@ set KGP_elt (ratvec lambda,KGBElt x) = KGPElt:
   then (lambda_dom,w)=make_dominant(rd,lambda), P=[int]:[]
   in for a@i in simple_coroots(rd) do if a*lambda_dom=0 then P#:=i fi od;
   KGPElt:(P,cross(inverse(w),x))
-
-{ unnecessary function: instead of parabolic(P,x) do  Parabolic:(p,x)
-    set parabolic([int] P,KGBElt x) = Parabolic:(P,x)
-  also the next just reuses a function defined to return KGPElt
-}
-set parabolic = (ratvec,KGBElt->Parabolic): { first argument lambda in \h^* }
-  KGP_elt@(ratvec,KGBElt)
-
-
-
-
-

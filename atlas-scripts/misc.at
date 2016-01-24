@@ -17,7 +17,6 @@ set integer_part (ParamPol P) = ParamPol:
 set s_part (ParamPol P) = ParamPol:
   0*P + for c@p in P do (^c,p) od { dubioulsy named conversion ^:(Split->int) }
 
-set s_part (ParamPol P)=ParamPol:integer_part(s*P)
 set parts (ParamPol P)=(integer_part(P),s_part(P))
 
 { simpler syntax for param command: param(G,3,...) for param(KGB(G,3),...)  }

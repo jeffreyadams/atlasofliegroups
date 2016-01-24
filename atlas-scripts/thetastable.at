@@ -18,9 +18,6 @@ and all x-complex roots are type C+
 
 set u (KGBElt x) = mat: nilrad(theta_stable_parabolic(x)) { set of coroots }
 
-set rho_l (Parabolic P) = rho(Levi(P))
-set rho_u (Parabolic P) = rho(root_datum(P))-rho_l(P)
-
 {Write \h=\t\oplus\a with respect to theta
  \t^* is a quotient of \h^*, also \t^* is a sub of \h^* (those elements vanishing on \a) via this decomposition
  rho_u_cx(P) is in \t^* viewed as a subset of \h^*
