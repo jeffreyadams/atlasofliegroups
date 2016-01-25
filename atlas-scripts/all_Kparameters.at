@@ -1,10 +1,6 @@
-<lattice.at { for solve_vec }
-<ratmat.at { rational matrix arithmetic }
-<kgp.at
-<K_parameters.at { for K_norm }
-<thetastable.at
-
-{ some stuff at the top of this file should be moved elsewhere }
+<basic.at
+<K_parameters.at { for type KParam }
+<lattice.at { for in_lattice_basis }
 
 { reduce [Param] by combining equivalent parameters;
   returns a list of inequivalent parameters }
@@ -18,32 +14,6 @@ set reduce ([Param] parameters) = [Param]:
 set reduce ([KParam] Kparameters) = [KParam]:
   let parameters = for kp in Kparameters do parameter(kp) od in
   for p in reduce(parameters) do Kparameter(p) od
-
-{ rational matrix [ratvec]: [column_1,...,column_n] }
-
-{ convert rational matrix to
-  (mat,[int]):(matrix of numerators,vector of denominators)
-}
-set int_matrix ([ratvec] S) = (mat,[int]):
- ( for i:#S do numer(S[i]) od
- , for i:#S do denom(S[i]) od )
-
-{ multiply integer matrix times rational matrix }
-set * (mat M,[ratvec] S) = [ratvec]:
-  let (T,d)=int_matrix(S) then A=M*T in
-  for i:#S do numer(A[i])/d[i] od
-
-{ transpose of rational matrix }
-set ^ ([ratvec] S) = [ratvec]:
-  if #S=0 or #S[0]=0 then []
-  else for i:#S[0] do for j:#S do S[j][i] od od
-  fi
-
-{ multiply rational matrix times integer matrix }
-set *([ratvec] S,mat M) = [ratvec]: ^(^M*^S)
-
-set is_integer_matrix ([ratvec] S) = bool:
-  all( for v in S do is_integer(v) od )
 
 { all nonnegative |vec:a| with $\sum_i(cs[i]*a[i]) \leq limit$
   intended application: c_i = <rho_check,i^th fundamental weight>, which finds
@@ -85,53 +55,27 @@ set all_lambda_differential_0 (KGBElt x) = [vec]:
   let basis=basis_lambda_differential_0(x) in
   for v in all_0_1_vecs(n_columns(basis)) do basis*v od
 
-{ Given mu\in X^*,
-  solve mu=(1+theta_x)*lambda for lambda\in X^*+rho
-  recall from K_parameters: dlambda=(1+theta)lambda/2, so mu will be 2*dlambda
-  algorithm:
-  lambda=lambda_0+rho with lambda_0\in X^*
-  note: (1+theta)rho is in X^*
-  mu=(1+theta)*lambda_0+(1+theta)*rho \in X^*
-  first check mu is in X^*
-  then check mu-(1+theta)rho is in (1+theta)X^*
-  then solve mu-(1+theta)rho =(1+theta)lambda_0
-  then return lambda=lambda_0+rho
-}
-set find_lambda (KGBElt x,vec mu) = ratvec:
-  let rho=rho(real_form(x)), th1=1+involution(x) in
-  assert(in_lattice(th1, mu-ratvec_as_vec(th1*rho))
-        ,"mu-(1+theta)rho is not in (1+theta)X^*");
-  solve_vec(th1,mu-ratvec_as_vec(th1*rho)) + rho
+{ all K parameters with same dlambda as (x,lambda) }
+set all_equal_dlambda_K_parameters (KParam(x,lambda)) = [KParam]:
+  for v in all_lambda_differential_0(x) do (x,lambda+v) od
 
-{ mu is (1+theta)lambda, need to solve for lambda }
-set make_K_parameter (KGBElt x,vec mu) = Param:
-  parameter(KParam:(x,find_lambda(x,mu)))
-
-set make_all_K_parameters (KGBElt x,vec mu) = [KParam]:
-  let p=make_K_parameter(x,mu) in
-  for v in all_lambda_differential_0(x) do (x(p),lambda(p)+v) od
-
-{ all K parameters with same dlambda as p }
-set all_equal_dlambda_K_parameters (KParam p) = [KParam]:
-  make_all_K_parameters(x(p), ratvec_as_vec(dlambda(p)*2))
+{ all actual parameters with same dlambda as p, same nu }
+set all_parameters (Param p) = [Param]:
+  let (x,lambda,nu)=%p in
+  for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
 
 { all parameters with given infinitesimal character }
 set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
   let rho=rho(G), params=[Param]:[] in
   for x in KGB(G) do
     let th1=1+involution(x) in
-    if in_lattice(th1,th1*(gamma-rho)) { lest no lambda can be found }
-    then let mu=ratvec_as_vec(th1*gamma), nu=(2-th1)*gamma/2 in
+    for lr in vec_solve(th1,th1*(gamma-rho)) { needed for lambda to be found }
+    do let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
       params #:= { concatenate the following list of Param values: }
-      for (x,lambda) in make_all_K_parameters(x,mu) do parameter(x,lambda,nu) od
-    fi
-  od; reduce(params)  {keep only 1 from each equivalence class}
+        for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
+    od
+  od; reduce(params)  { keep only 1 from each equivalence class }
 
-
-{ all actual parameters with same dlambda as p, same nu }
-set all_parameters (Param p) = [Param]:
-  for v in all_lambda_differential_0(x(p))
-  do parameter(x(p),lambda(p)+v,nu(p)) od
 
 { all_dominant_norm_less_than(InnerClass ic,ratvec v,int N):
   returns mu dominant (which will be 2*d*lambda=(1+theta)*lambda) such that
@@ -149,53 +93,77 @@ set all_parameters (Param p) = [Param]:
   set [rat]:c =[c_1,...,c_{n-1}] where c_i=<lambda_i,v>
   use cone to find all mu=\sum a_i lambda_i such that <v,mu>=sum a_i*c_i<=N
 }
-set all_dominant_norm_less_than (InnerClass ic, ratvec cowt,int N) =
+set all_dominant_norm_upto (InnerClass ic, ratvec cowt,int N) =
     mat: { columns are weights }
-  let basis = [ratvec]: { rational weights }
-     fundamental_weights(ic) # { concatenate }
-     for w in compact_coradical_basis(ic) do ratvec: w od
-  , rk=rank(root_datum(ic)), result=[vec]: []
+  let rd=root_datum(ic)
+  then basis = [ratvec]: { rational weights }
+         fundamental_weights(rd) # { concatenate }
+         for w in compact_coradical_basis(ic) do ratvec: w od
+  , rk=rank(rd), result=[vec]: []
   in
   for cs in cone(N,for col in basis do cowt*col od) do
     let (v,d) = %sum(for col@i in basis do col*cs[i] od,rk) in
     if d=1 then result #:= v fi
-  od; rk { number or rows of matrix returned } # result
+  od; rk { number of rows of matrix returned } # result
 
-{ mu will be d\lambda=(1+theta)lambda/2 => 2*mu\in X^*
+{ filter and transform list of mu's into list of example lambda-rho values }
+set lambda_rho_from_dominant_norm_upto (KGBElt x, ratvec v, int N) = mat: {wts}
+  let th1=1+involution(x), rho=rho(root_datum(x)), result=[vec]:[] in
+  for mu in all_dominant_norm_upto(inner_class(x),v,N)
+  do result #:= solve(th1,mu-ratvec_as_vec(th1*rho)) od; #rho{rank} # result
+
+set K_parameters_norm_upto ((KGBElt,ratvec,int)(x,,):triple) = [KParam]:
+  let lrs = lambda_rho_from_dominant_norm_upto(triple), rho=rho(root_datum(x))
+  , result=[KParam]:[]
+  in for lr in lrs do result#:=all_equal_dlambda_K_parameters(x,lr+rho) od;
+  result
+
+{ that used to be:
+{ mu will be dlambda=(1+theta)lambda/2 => 2*mu\in X^*
   return all mu dominant satisfying:
   1) mu in X^*
-  2) <mu,rho^vee> <= N
-  3) mu-(1+theta)rho \in (1+delta)X^* (same as in (1+theta)X^*)
-  4)
+  2) <rho^vee,mu> <= N
+  3) mu-(1+theta)rho \in (1+theta)X^* (same as in (1+delta)X^*)
 }
-set all_dominant_in_image_oneplustheta_norm_less_than (
-  InnerClass ic, mat theta,ratvec v,int N ) = [[int]]:
-  let result=[[int]]:[] in
-  for mu in all_dominant_norm_less_than(ic,v,N) do
-    if in_lattice(1+theta,mu-(1+theta)*rho(ic)) then result#:=mu fi
-  od; result
+set all_dominant_in_image_oneplustheta_norm_upto (
+  InnerClass ic, mat theta,ratvec v,int N ) = mat: { columns are weights }
+  let th1=theta+1 in
+  columns_with((vec mu): in_lattice(th1,mu-th1*rho(ic)),
+  	       all_dominant_norm_upto(ic,v,N))
 
-set all_K_parameters_norm_less_than (KGBElt x, ratvec v,int N) = [KParam]:
+{ Given mu\in X^*,
+  solve mu=(1+theta_x)*lambda for lambda\in X^*+rho
+  recall from K_parameters: dlambda=(1+theta)lambda/2, so mu will be 2*dlambda
+  algorithm:
+  lambda=lambda_0+rho with lambda_0\in X^*
+  note: (1+theta)rho is in X^*
+  mu=(1+theta)*lambda_0+(1+theta)*rho \in X^*
+  first check mu is in X^*
+  then check mu-(1+theta)rho is in (1+theta)X^*
+  then solve mu-(1+theta)rho =(1+theta)lambda_0
+  then return lambda=lambda_0+rho
+}
+set make_all_K_parameters (KGBElt x,vec mu) = [KParam]:
+  let rho=rho(real_form(x)), th1=1+involution(x)
+  then mu1=mu-ratvec_as_vec(th1*rho)
+  in all_equal_dlambda_K_parameters(x,solve(th1,mu1)[0]+rho)
+
+set all_K_parameters_norm_upto (KGBElt x, ratvec v,int N) = [KParam]:
   let ic=inner_class(x),theta=involution(x)
-  then mus=all_dominant_in_image_oneplustheta_norm_less_than(ic,theta,v,N)
+  then mus=all_dominant_in_image_oneplustheta_norm_upto(ic,theta,v,N)
   then result=[KParam]:[]
   in for mu in mus do  result#:=make_all_K_parameters(x,mu) od; result
+}
 
-set all_rel_split_theta_stable_parabolics (RealForm G) = [Parabolic]:
-  let parabolics=theta_stable_parabolics(G) then result=[] in
-  for P in parabolics do
-    if is_relatively_split(Levi(P)) then result#:=P fi
-  od; result
+{ older yet stuff
 
-{
-
-set all_K_parameters_norm_less_than (RealForm G, ratvec v,int N) = [KParam]:
+set all_K_parameters_norm_upto (RealForm G, ratvec v,int N) = [KParam]:
   let parabolics=all_rel_split_theta_stable_parabolics(G)
   then Kparameters=[KParam]:[]
   in
   ( for L in parabolics do
       let x_L=KGB(L,KGB_size(L)-1) then x=embed_KGB(x_L,G) in
-      Kparameters#:=all_K_parameters_norm_less_than(x,v,N)
+      Kparameters#:=all_K_parameters_norm_upto(x,v,N)
     od
   ; let result=null_module(G) in
     for p in Kparameters do  result+:=parameter(p) od
@@ -225,8 +193,8 @@ set print_K_parameter_long (KParamPol P) = void:
   od
 
 
-set print_all_K_parameters_norm_less_than (RealForm G, ratvec v,int N) = void:
-  for p in sort_by_K_norm(all_K_parameters_norm_less_than(G,v,N))
+set print_all_K_parameters_norm_upto (RealForm G, ratvec v,int N) = void:
+  for p in sort_by_K_norm(all_K_parameters_norm_upto(G,v,N))
   do prints(p, " ", K_norm(p)) od
 
 

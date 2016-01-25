@@ -1,6 +1,6 @@
 <kgp.at { for type Parabolic }
 <Weylgroup.at
-<misc.at { generate_all_subsets }
+<group_operations { for is_relatively_split }
 
 {   topics addresses in this script:
   complex parabolics and Levi factors
@@ -246,6 +246,14 @@ set theta_stable_parabolics_type (RealForm G,[int] P) = [Parabolic]:
   let result=[Parabolic]:[] in
   for (Q,y) in theta_stable_parabolics(G) do if Q=P then result#:=(Q,y) fi od;
   result
+
+
+set all_rel_split_theta_stable_parabolics (RealForm G) = [Parabolic]:
+  let parabolics=theta_stable_parabolics(G) then result=[] in
+  for P in parabolics do
+    if is_relatively_split(Levi(P)) then result#:=P fi
+  od; result
+
 
 
 set print_theta_stable_parabolics (RealForm G) = void:

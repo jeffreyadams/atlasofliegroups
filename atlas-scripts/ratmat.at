@@ -28,3 +28,31 @@ set * (ratmat(M,d,),ratvec v) = ratvec: M*v/d
 set * (ratmat(M,d,),mat MM) = ratmat: simplify(M*MM,d,())
 set * (mat M,ratmat(MM,d,)) = ratmat: simplify(M*MM,d,())
 set * (ratmat(M,d,),ratmat(MM,dd,)) = ratmat: simplify(M*MM,d*dd,())
+
+{
+{ rational matrix [ratvec]: [column_1,...,column_n] }
+
+{ convert rational matrix to
+  (mat,[int]):(matrix of numerators,vector of denominators)
+}
+set int_matrix ([ratvec] S) = (mat,[int]):
+ ( for i:#S do numer(S[i]) od
+ , for i:#S do denom(S[i]) od )
+
+{ multiply integer matrix times rational matrix }
+set * (mat M,[ratvec] S) = [ratvec]:
+  let (T,d)=int_matrix(S) then A=M*T in
+  for i:#S do numer(A[i])/d[i] od
+
+{ transpose of rational matrix }
+set ^ ([ratvec] S) = [ratvec]:
+  if #S=0 or #S[0]=0 then []
+  else for i:#S[0] do for j:#S do S[j][i] od od
+  fi
+
+{ multiply rational matrix times integer matrix }
+set *([ratvec] S,mat M) = [ratvec]: ^(^M*^S)
+
+set is_integer_matrix ([ratvec] S) = bool:
+  all( for v in S do is_integer(v) od )
+}

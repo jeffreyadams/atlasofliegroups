@@ -185,6 +185,7 @@ set rec_fun power_set (int n) = [[int]]: { indices where 0_1_vecs have 1 }
 set power_set ([int] S) = [[int]]:
   for inx in power_set(#S) do for i in inx do S[i] od od
 
+
 {				Matrices				}
 
 { matrix defined by its dimension and expression for general entry }
@@ -308,7 +309,29 @@ set lookup_row (vec v,mat m) = int:
 { sum of columns of a matrix; this is so neat, avoid calling it sum_columns }
 set sum (mat m)= vec: m*ones(n_columns(m))
 
-{ order of a matrix, hangs unless finite }
+{ solve(mat A,vec b): a list of 0 or 1 solution vec x to the equation A*x=b
+  method:
+  - write L*A*R = D using diagonalize, with L,R invertible matrices, D diagonal
+    (only the d nonzero diagonal entries of D are actually recorded)
+  - A*x = b is equivalent to L*A*x = L*b; call L*b the |target|
+  - set x = R*y for new unknown y; A*x = b is equivalent to L*A*R*y = target
+  - since L*A*R = D, it is necessary that |target| becomes zero after d entries
+  - the first d entries of y must be those of |target| divided by entries of D
+  - the remainder of y is unconstrained, take them to be 0
+  - now x = R*y can be computed using only first d columns of R and target/D
+}
+set solve = (mat,vec->[vec]):
+  let divide_factors (vec v, vec ds) = [vec]:
+    { solve x in diagonal(ds)*x=v[:#ds] if possible and only if v[#ds:]=0 }
+    let OK = =v[#ds:] then result = vec:
+      for d@i in ds do let (q,r)=v[i]\%d in q next OK := OK and =r od
+    in if OK then [result] else [] fi
+  in { solve = }
+  (mat A, vec b) [vec]:
+    let (ds,L,R) = diagonalize(A) in
+    for sol in divide_factors(L*b,ds) do columns_with((int j):j<#sol,R)*sol od
+
+{ multiplicative order of a matrix, hangs unless finite }
 set order (mat !M) = int:
   let (n,):p =#M in assert(=p,"Matrix is not square");
   let N=M, order=1, I=id_mat(n) in
@@ -368,6 +391,14 @@ set sum (ratvec v) = rat: let (n,d)=%v in sum(n)/d
 
 set <= (ratvec v) = bool: <=numer(v)
 set <  (ratvec v) = bool: < numer(v)
+
+{ solve(mat A,ratvec b) finds 0 or 1 ratvec x satisfying the equation A*x=v }
+set solve (mat A, ratvec b) = [ratvec]:
+  let (ds,L,R) = diagonalize(A), (v,denom)=%b then d=#ds, target=L*v in
+  if !=target[d:] then []
+  else [ columns_with((int j):j<d,R) * for d@i in ds*denom do target[i]/d od ]
+  fi
+
 
 {			    Split integers				}
 
