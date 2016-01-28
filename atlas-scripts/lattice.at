@@ -105,50 +105,25 @@ set quotient_matrix (mat M,mat A) = mat:
   in Q\d
 
 
-{ |solve_ratvec| finds a rational solution to linear equation A*x=v }
-{ method:
-  - write L*A*R = D using diagonalize, with L,R invertible matrices, D diagonal
-    (only the d nonzero diagonal entries of D are actually recorded)
-  - A*x = v is equivalent to L*A*x = L*v; call L*v the |target|
-  - set x = R*y for new unknown y; A*x = v is equivalent to L*A*R*y = target
-  - since L*A*R = D, it is necessary that |target| becomes zero after d entries
-  - the first d entries of y must be those of |target| divided by entries of D
-  - the remainder of y is unconstrained, take them to be 0
-  - now x = R*y can be computed using only first d columns of R and target/D
-}
 set solve_ratvec (mat A, vec v) = ratvec:
   let (ds,L,R) = diagonalize(A) then d=#ds, target=L*v
   in begin
     for i:#target-d from d do assert(=target[i],"not in span") od
   ; columns_with((int j):j<d,R) * for i:d do target[i]/ds[i] od end
 
-set in_lattice (mat M, ratvec v) = bool: { whether v in image lattice of M }
-  let (ds,L,) = diagonalize(M) then d=#ds, target=L*v
-  in all(#target, (int i): =if i<d then target[i]%ds[i] else target[i] fi )
+{ integer vector (lattice) solutions to linear system }
 
-{ as |solve_ratvec| but for integer solutions; now divisions must be exact }
+
+set in_lattice (mat M, ratvec u) = bool: { whether v in image lattice of M }
+  let (ds,L,) = diagonalize(M), (v,n)=%u then target=L*v
+  in n=1 and =target[#ds:] and all(for d@i in ds do =target[i]%d od)
+
+set vec_solve (mat A, ratvec u) = [vec]: { <=1 non-rational solution to A*x=b }
+  let (b,n)=%u in if n>1 then [] else solve(A,b) fi
+
+{ as |solve_ratvec|, but require a denominator-free solution }
 set solve_vec (mat A, vec v) = vec: { find integer solution to A*x=v }
-  let (ds,L,R) = diagonalize(A) then d=#ds
-  then target =
-    for c@i in L*v
-    do if i<d
-       then let (q,r)=c\%ds[i] in assert(=r,"not in lattice"); q
-       else assert(=c,"not in span"); 0 { won't be used }
-       fi
-    od
-  in columns_with((int j):j<d,R) * for i:d do target[i] od
-
-{ alternative version: avoid error, but return success status in result }
-set solve (mat A, vec v) = (vec,bool): { find integer solution to A*x=v }
-  let (ds,L,R) = diagonalize(A) then d=#ds, success=true
-  then target =
-    for c@i in L*v
-    do if i<d
-       then let (q,r)=c\%ds[i] in if !=r then success:=false fi; q
-       else if !=c then success:=false fi; 0
-       fi
-    od
-  in ( columns_with((int j):j<d,R) * for i:d do target[i] od , success )
+  let s=solve(A,v) in assert(>#s,"linear system has no solution"); s[0]
 
 { express columns of M relative to basis A of a sub-lattice that contains them
   A: nxm matrix, columns are a basis of a Z-module V of rank m
@@ -156,10 +131,10 @@ set solve (mat A, vec v) = (vec,bool): { find integer solution to A*x=v }
   returns mxr matrix C, column i gives column i of M as a sum of columns of A
   i.e. A*C=M
 }
-set submodule_basis (mat A,mat M) = mat:
+set in_lattice_basis (mat A,mat M) = mat:
   n_columns(A) { size of solutions } # for v in M do solve_vec(A,v) od
 
-
 { write v as a linear combination of columns of A }
-set solve_in_lattice ([vec] A, vec v) = vec: solve_vec(mat:A,v)
+set solve_in_lattice ([vec] A, vec v) = vec:
+  if =#A then assert(=v,"no solution"); null(0) else solve_vec(mat:A,v) fi
 

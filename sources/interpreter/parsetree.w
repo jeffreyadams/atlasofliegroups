@@ -516,9 +516,9 @@ straightforward.
   expr(id_type id, const YYLTYPE& loc, identifier_tag)
 @/: kind(applied_identifier), identifier_variant(id), loc(loc) @+{}
   expr (const YYLTYPE& loc, dollar_tag)
-  : kind(last_value_computed) @+{}
+  : kind(last_value_computed), loc(loc) @+{}
   expr (const YYLTYPE& loc, die_tag)
-  : kind(die_expr) @+{}
+  : kind(die_expr), loc(loc) @+{}
 
 @ As usual there are interface function to the parser.
 

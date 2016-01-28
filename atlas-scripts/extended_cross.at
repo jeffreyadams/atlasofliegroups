@@ -122,12 +122,11 @@ set ext_cross_2(int j
     , new_theta = s_ab*theta*s_beta*s_alpha
     , new_omega = s_ab_check*omega*s_ab_check
     , new_tau = tau
-{   , new_t = let (s,valid) = solve(1+omega,alpha_check-beta_check)}
+{   , new_t = let s = solve(1+omega,alpha_check-beta_check)}
 { see Table 2 in twisted paper, case 2i12crx }
-    , new_t = let (s,valid) = solve(1+^theta,alpha_check-beta_check)
-      in if valid then t-s
-         else error("failure in cross action of type 2i12, solving for s")
-         fi
+    , new_t = let s = solve(1+^theta,alpha_check-beta_check)
+      in assert(>#s,"failure in cross action of type 2i12, solving for s")
+      ; t-s[0]
     then xq=
       (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
     in { test_ext_cross(p,[j],xq); } xq
@@ -146,12 +145,11 @@ set ext_cross_2(int j
     , new_l = l
     , new_theta = s_ab*theta*s_beta*s_alpha
     , new_omega = s_ab_check*omega*s_ab_check
-{    , new_tau = let (zeta,valid) = solve(1+theta,alpha-beta) }
+{    , new_tau = let zeta = solve(1+theta,alpha-beta) }
 { see Table 2 in twisted paper, case 2r21crx }
-    , new_tau = let (zeta,valid) = solve(1+omega,alpha-beta)
-      in if valid then tau-zeta
-         else error("failure in cross action of type 2r21, solving for zeta")
-         fi
+    , new_tau = let zeta = solve(1+omega,alpha-beta)
+      in assert(>#zeta,"failure in cross action of type 2r21, solving for zeta")
+      ; tau-zeta[0]
     , new_t = t
     then xq =
       (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)

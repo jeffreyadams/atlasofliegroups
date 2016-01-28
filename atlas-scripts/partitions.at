@@ -16,3 +16,13 @@ set hook_length (Partition P, int i, int j) =int:
 set dim_rep (Partition P) = int: { don't try this for large parititions }
   let dim=fac(size(P)) in
   for i:#P do for j:P[i] do dim \:= hook_length(P,i,j) od od; dim
+
+{ all weak compositions of numbers <=limit into n parts }
+set rec_fun compositions_le (int limit, int n) = [[int]]:
+  if =n then [[]] { one empty composition (0 parts) }
+  else let result = [[int]]: [] in
+    for last:limit+1
+    do
+      for rest in compositions_le(limit-last,n-1) do result #:= rest#last od
+    od; result
+  fi

@@ -336,11 +336,6 @@ set K0_highest_weight(KHighestWeight mu,KGBElt x_K)=Param:
 let weights=K0_highest_weights(mu,x_K) in
 assert(#weights=1,"More than one K0_highest weight, use K0_highest_weights instead");weights[0]
 
-set LKT_K0(KParam p,KGBElt x_K)=Param:
-let (,tau)=LKT_highest_weight(p,x_K) in finite_dimensional(K_0(x_K),tau)
-
-set LKT_K0(KParam p)=Param:LKT_K0(p,KGB(real_form(p),0))
-
 {-----------------printing and other auxiliary routines -------------}
 {
 set print_LKT ([Param] B, KGBElt x_K) = void:

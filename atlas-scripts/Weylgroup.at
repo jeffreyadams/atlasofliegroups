@@ -1,5 +1,5 @@
 <basic.at
-<center.at { for lie_radical_part }
+<center.at { for lie_coradical_part }
 
 { Functions for computing with Weyl words }
 
@@ -222,8 +222,8 @@ set invariant_form (RootDatum rd) = mat: let M=poscoroots(rd) in M*^M
 set invariant_form (RootDatum rd, ratvec v, ratvec w) = rat:
   let M=invariant_form(rd) in v*M*w
 
-set nondegenerate_invariant_form (RootDatum rd, ratvec v,ratvec w) = rat:
-  let z=lie_radical_part(rd,v) in invariant_form(rd,v,w)+z*z
+set nondegenerate_invariant_form ((RootDatum,ratvec,ratvec)(rd,v,):args) = rat:
+  invariant_form(args)+(let z=lie_coradical_part(rd,v) in z*z)
 
 { W-invariant form on X_*\otimes Q }
 set co_invariant_form (RootDatum rd) =mat: let M=posroots(rd) in M*^M

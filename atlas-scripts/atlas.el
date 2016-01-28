@@ -13,12 +13,19 @@
 	  ) 1 'font-lock-preprocessor-face)
    ;'("^\\s-*<<?\\(\\S-+\\)" 1 font-lock-preprocessor-face)
 
+   ;; type definitions
+   (list (rx
+	  line-start (zero-or-more blank) ":" (zero-or-more blank)
+	  (group (one-or-more (or wordchar (syntax symbol))))
+	  ) 1 'font-lock-type-face)
+   ;'("^\\s-*:\\s-+\\(\\(\\w\\|\\s_\\)+\\)" 1 font-lock-preprocessor-face)
+
    ; function definitions
    (list (rx
 	  line-start (zero-or-more blank) "set" (one-or-more blank)
 	  (group (one-or-more (or wordchar (syntax symbol))))
 	  ) 1 'font-lock-function-name-face)
-   ; '("^\\s-*set\\s-+\\(\\w+\\)\\s-*(" 1 font-lock-function-name-face)
+   ; '("^\\s-*set\\s-+\\(\\(\\w\\|\\s_\\)+\\)" 1 font-lock-function-name-face)
    )
   )
  "Matching structure for axis outer level structures"
@@ -50,6 +57,7 @@
 	'( ( ?\{ . "<}n" ) (?\} . ">{n")
 	   (?\" . "\"")
 	   (?_ . "_")
+           (?= . ".")
 	   ))
        (level1 (append atlas-font-lock-externals atlas-font-lock-keywords))
        (level2 (append atlas-font-lock-externals atlas-font-lock-keywords))

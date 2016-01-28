@@ -1,14 +1,13 @@
-/*!
-\file
-  This is arithmetic.cpp.
-  This module contains straightforward implementations of some elementary
-  arithmetic operations, used in dealing with small abelian groups.
-*/
+// This is arithmetic.cpp.
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006-2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
+*/
+/*
+  This module contains implementations of some elementary arithmetic operations.
 */
 
 #include "arithmetic.h"

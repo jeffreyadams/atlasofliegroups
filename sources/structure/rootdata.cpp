@@ -1031,14 +1031,14 @@ void RootDatum::swap(RootDatum& other)
 /******** private member functions ******************************************/
 
 
-/*!
-\brief Fills in the status of the rootdatum.
+/*
+  Fill in the status of the rootdatum.
 
-  "IsAdjoint" indicates whether the center of the complex group determined by
-  the root datum is connected. This means that the root lattice is a saturated
-  sublattice of the weight lattice *X^*$. Dually "IsSimplyConnected" indicates
-  whether the derived group is simply connected, which means that the coroots
-  span a saturated sublattice of the cocharacter lattice $X_*$.
+  The status flag |IsAdjoint| indicates whether the center of the complex
+  group determined by the root datum is connected. This means that the root
+  lattice is a saturated sublattice of $X^*$. Dually |IsSimplyConnected|
+  indicates whether the derived group is simply connected, which means that
+  the coroots span a saturated sublattice of $X_*$.
 */
 void RootDatum::fillStatus()
 {

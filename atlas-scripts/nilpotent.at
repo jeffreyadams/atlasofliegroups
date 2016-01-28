@@ -1,10 +1,5 @@
 <basic.at { for sum@vec }
 
-set max ([int] p) = int: { for dimensioning vector indexable by entries of p }
-  let m=0 { assuming no negative entries } in
-  for x in p do if x>m then m:=x fi od; m
-
-
 { (complex) nilpotent orbits for simple groups,
   and 1/2 h(O^\vee) for dual nilpotent orbits O^\vee
   classical groups: SL(n), GL(n), Sp(2n), SO(n),
@@ -61,23 +56,22 @@ set partitions =
   including a leading 0 so that rv[i] is the multiplicity of i
   e.g. [4,3,1,1]->[0,2,0,1,1]}
 set partition_multiplicities ([int] p)=vec:
-( let rv=null(max(p)+1) in
-  for k in p do rv[k]:=rv[k]+1 od
-; rv[0]:=0  { clear multiplicity of 0 that was possibly set }
-; rv
+( let mult=null(max(p)+1) in
+  for k in p do mult[k] +:= 1 od
+; mult[0]:=0  { clear multiplicity of 0 that was possibly set }
+; mult
 )
 
 { partitions of n with all rows of parity |parity| having even multiplicity }
 set partitions_parity (int n, int parity) =[[int]]:
-( let P=partitions(n), rv=[[int]]: [] in
-  for p in P do
-    let valid=true in
-    for m@i in partition_multiplicities(p) { i=0 not needed, but 0%2!=1 }
-    do  if i%2=parity and m%2=1 then valid:=false fi
-    od
-  ; if valid then rv #:=p fi
+( let P=partitions(n), result=[[int]]: [] in
+  for p in P
+  do
+    if none(for m@i in partition_multiplicities(p) do i%2=parity and m%2=1 od)
+    then result #:= p
+    fi
   od
-; rv
+; result
 )
 
 { (complex) nilpotent orbits, partition-type classification,

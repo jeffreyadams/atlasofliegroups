@@ -110,12 +110,12 @@ begin let ic = inner_class(x), theta = involution(x) in
 }
   , omega = -^theta
   , lambda_E = (lambda-rho(ic))\1  {lambda_E in X^*}
-  then (t,result1)   = solve(1-omega,l*(delta-1))
-  ,    (tau,result2) = solve(1-theta,(delta-1)*lambda_E)
+  then t   = solve(1-omega,l*(delta-1))
+  ,    tau = solve(1-theta,(delta-1)*lambda_E)
   in
-  assert(result1,"(1-^delta)l=(1-omega)t has no integral solution")
-; assert(result2,"(1-delta)lambda=(1-theta)tau has no integral solution")
-; (ic,delta,gamma,lambda_E,theta,g,l,omega,tau,t)
+  assert(>#t,"(1-^delta)l=(1-omega)t has no integral solution")
+; assert(>#tau,"(1-delta)lambda=(1-theta)tau has no integral solution")
+; (ic,delta,gamma,lambda_E,theta,g,l,omega,tau[0],t[0])
 end
 
 { version for the nonintegral case, using KGBElt_gen for y, see synthetic.at }
@@ -133,12 +133,12 @@ begin let ic = inner_class(x), theta = involution(x) in
 ; let l = (g-torus_factor(x)-rho_check(ic))\1 { convert to vec }
   , omega=involution(y) { NOTE ^theta=-omega }
   , lambda = (gamma-torus_factor(y)-rho(ic))\1
-  then (t,result1)=solve(1-omega,l*(delta-1))
-  ,  (tau,result2)=solve(1-theta,(delta-1)*lambda)
+  then t   = solve(1-omega,l*(delta-1))
+  ,    tau = solve(1-theta,(delta-1)*lambda)
   in
-  assert(result1,"(1-^delta)l=(1-omega)t has no integral solution")
-; assert(result2,"(1-delta)lambda=(1-theta)tau has no integral solution")
-; (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
+  assert(>#t,"(1-^delta)l=(1-omega)t has no integral solution")
+; assert(>#tau,"(1-delta)lambda=(1-theta)tau has no integral solution")
+; (ic,delta,gamma,lambda,theta,g,l,omega,tau[0],t[0])
 end
 
 { in case of an integral parameter, we can deduce gamma, lambda from it }

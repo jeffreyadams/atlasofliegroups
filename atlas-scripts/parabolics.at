@@ -1,6 +1,6 @@
 <kgp.at { for type Parabolic }
 <Weylgroup.at
-<misc.at { generate_all_subsets }
+<group_operations { for is_relatively_split }
 
 {   topics addresses in this script:
   complex parabolics and Levi factors
@@ -12,7 +12,7 @@
 { ComplexParabolic data type: each value describes a
   G-conjugacy class of parabolic subgroups of complex group
   (RootDatum rd,[int] S) <->
-  G-conjugacy class of standard pararbolic with Levi factor given by
+  G-conjugacy class of standard parabolic with Levi factor given by
   subset S of simple roots
 }
 
@@ -236,14 +236,24 @@ set theta_stable_parabolics (RealForm G,ComplexParabolic P) = [Parabolic]:
   do if is_parabolic_theta_stable(Q) then result#:=Q fi od; result
 
 set theta_stable_parabolics (RealForm G) = [Parabolic]:
-  let all=generate_all_subsets(#semisimple_rank(G)), result=[Parabolic]:[] in
-  for S in all do result #:= theta_stable_parabolics(G,(G,S)) od; result
+  let result=[Parabolic]:[] in
+  for S in power_set(semisimple_rank(G))
+  do result #:= theta_stable_parabolics(G,ComplexParabolic:(G,S))
+  od; result
 
 
 set theta_stable_parabolics_type (RealForm G,[int] P) = [Parabolic]:
   let result=[Parabolic]:[] in
   for (Q,y) in theta_stable_parabolics(G) do if Q=P then result#:=(Q,y) fi od;
   result
+
+
+set all_rel_split_theta_stable_parabolics (RealForm G) = [Parabolic]:
+  let parabolics=theta_stable_parabolics(G) then result=[] in
+  for P in parabolics do
+    if is_relatively_split(Levi(P)) then result#:=P fi
+  od; result
+
 
 
 set print_theta_stable_parabolics (RealForm G) = void:

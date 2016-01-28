@@ -8,8 +8,6 @@ set is_positive (vec v) = bool: >v
 set is_positive (ratvec v) = bool: is_positive(numer(v))
 set is_nonnegative (ratvec v)= bool: is_nonnegative(numer(v))
 
-set lcm ([int] list) = denom(ratvec: for x in list do {1} /x od)
-
 { transform ParamPol into a list of (Split,Param) pairs; previously built-in }
 set % (ParamPol P) = [(Split,Param)]: for c@p in P do (c,p) od
 
@@ -19,7 +17,6 @@ set integer_part (ParamPol P) = ParamPol:
 set s_part (ParamPol P) = ParamPol:
   0*P + for c@p in P do (^c,p) od { dubioulsy named conversion ^:(Split->int) }
 
-set s_part (ParamPol P)=ParamPol:integer_part(s*P)
 set parts (ParamPol P)=(integer_part(P),s_part(P))
 
 { simpler syntax for param command: param(G,3,...) for param(KGB(G,3),...)  }
@@ -65,23 +62,14 @@ set to_binary (int length, int n) = vec:
   let v=null(length) in
   while (length-:=1)>=0 and n!=0 do let (q,r)=n\%2 in v[length]:=r; n:=q od; v
 
-set generate_all_binary (int length) = [vec]:
-  let start=null(length)
-  then binary (int n) = vec:
-    let v=start, l=length { we need working copies here }
-    in while (l-:=1)>=0 and n!=0 do let (q,r)=n\%2 in v[l]:=r; n:=q od; v
-  in for i:2^length do binary(i) od
+set generate_all_binary = (int->[vec]): all_0_1_vecs@int
 
-set generate_all_subsets([int] S) = [[int]]:
-  let len=#S
-  , gen (int i) = [[int]]: [] { recursive stub; generate subset of S[i:] }
-  in
-  ( gen :=
-    ((int i):
-      if i=len then [[]]
-      else let r=gen(i+1) in r # for x in r do S[i]#x od
-      fi)
-  )(0)
+set generate_all_subsets ([int] S) = [[int]]:
+  let rec_fun g (int k) = [[int]]: { subsets of first k elements of S }
+    if =k then [[]] { one empty subset of the empty set }
+    else let subs = g(k-1), last=S[k-1] in subs # for s in subs do s#last od
+    fi
+  in g(#S)
 
 { nicer display of Splits }
 set prettyPrint (Split w) = string:

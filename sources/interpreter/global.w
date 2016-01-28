@@ -1544,7 +1544,7 @@ void intlistlist_matrix_convert()
   if (r->val.size()==0)
     throw runtime_error("Cannot convert empty list of lists to matrix");
 @.Cannot convert empty list of lists@>
-  size_t n = force<vector_value>(r->val[0].get())->val.size();
+  size_t n = force<row_value>(r->val[0].get())->val.size();
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
   for(size_t j=0; j<r->val.size(); ++j)
   { int_Vector col = row_to_weight(*force<row_value>(r->val[j].get()));

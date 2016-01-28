@@ -56,6 +56,8 @@
   variables that remain accessible in addition to the boolean condition?
   However for the conditional one could start a 'let' block before the
   conditional starts to keep variables in scope; for while this doesn't work.
+  One possibility would seem to be to view 'do body od' as 'or body; false'
+  followed by an empty 'do () od'; at least in void context that would work.
 
 - Allow skipping entries in value-producing loops; concatenating sub-rows.
   When generating a row from a loop, not every iteration need contribute, and

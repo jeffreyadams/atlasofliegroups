@@ -103,7 +103,7 @@ RationalVector<C>& RationalVector<C>::operator%=(C n)
 {
   assert(n!=0);
   for (auto it=d_num.begin(); it!=d_num.end(); ++it)
-    *it = arithmetic::remainder(*it,d_denom*arithmetic::Denom_t(abs(n)));
+    *it = arithmetic::remainder(*it,d_denom*arithmetic::Denom_t(std::abs(n)));
   return *this;
 }
 
