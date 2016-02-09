@@ -14,6 +14,7 @@ forget ext_cross_3@(int,extended_param)
 { the following would override the grass-roots function from synthetic.at
   by a call to the new built-in cross@(vec,Param); it should do the same thing
   (notably handle non-dominant gamma correctly) but somewhat more efficiently.
+  Un-comment this if you prefer to use the new built-in function
 set posroot_cross (int i, Param p) = Param:
   cross(root(root_datum(p),i),p)
 }
@@ -60,22 +61,17 @@ set ext_cross(
   mat w,extended_param(ic,delta,gamma,lambda,theta,g,l,,tau,t):E) =
   extended_param:
 ( assert(w*delta=delta*w,"w not in W^delta")
+; prints("ext_cross by w=",w); prints("E:"); display(E)
 ; let rd=root_datum(ic), x=x(E)
-  then ()=prints("w=",w) 
-  then ()=prints("E:"); display(E) 
   then x1=cross(w,x), (gamma1,) = make_integrally_dominant(rd, w*gamma)
-  then theta1=involution(x1)
-  , lambda1 = ratvec_as_vec(
-    gamma1 - w*(gamma-lambda) + (w-1)*rho(rd) - (w*rho_r(x)-rho_r(x1)) )
-  then tau1 = ratvec_as_vec( { following is wrong: add weight and coweight? }
-    {w*tau - (^delta-1)*(^w*rho_check_i(x)-rho_check_i(x1)/2) )}
-     w*tau - (delta-1)*(w*rho_r(x)-rho_r(x1)/2) )   
-  then u = inverse(^w)
-  then l1 = ratvec_as_vec(
-    g - u*(g-l)  + (u-1)*rho_check(rd) - (u*rho_check_i(x)-rho_check_i(x1)) )
-  then t1 = ratvec_as_vec( { now it's delta that is wrong; should be ^delta? }
-    {u*t - (delta-1)*(u*rho_check_i(x)-rho_check_i(x1))/2 )}
-     u*t - (^delta-1)*(u*rho_check_i(x)-rho_check_i(x1))/2 )
+  then theta1=involution(x1), u = inverse(w)
+  then rho_r_diff = w*rho_r(x)-rho_r(x1)
+  , rho_i_diff=rho_check_i(x)*u-rho_check_i(x1)
+  then lambda1 =
+    ratvec_as_vec( gamma1 - w*(gamma-lambda) + (w-1)*rho(rd) - rho_r_diff )
+  , tau1 = w*tau - (delta-1)*ratvec_as_vec(rho_r_diff/2)
+  , l1 = ratvec_as_vec(g - (g-l)*u  + rho_check(rd)*(u-1) - rho_i_diff )
+  , t1 = t*u - ratvec_as_vec(rho_i_diff/2)*(delta-1)
   then rv = extended_param:
      (ic,delta,gamma1,lambda1,theta1,g,l1,-^theta1,tau1,t1)
   in
