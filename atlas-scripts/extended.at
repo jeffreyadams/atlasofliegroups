@@ -6,6 +6,8 @@
 <extended_misc.at   { base script extended parameters, defines extended_param }
 <extended_types.at  { for ext_type@(int,extended_param) }
 
+set assert (bool b, (->string) mess ) = void: if not b then error(mess()) fi
+
 {       references:
   Parameters for Twisted Representations (Adams/Vogan)
   Extended Parameters in Atlas (Adams)
@@ -113,8 +115,10 @@ begin let ic = inner_class(x), theta = involution(x) in
   then t   = solve(1-omega,l*(delta-1))
   ,    tau = solve(1-theta,(delta-1)*lambda_E)
   in
-  assert(>#t,"(1-^delta)l=(1-omega)t has no integral solution")
-; assert(>#tau,"(1-delta)lambda=(1-theta)tau has no integral solution")
+  assert(>#t,@: prints("solve(",1-omega,",",l*(delta-1),")");
+             "t*(1+theta)=l*(delta-1) has no integral solution t")
+; assert(>#tau,@: prints("solve(",1-theta,",",(delta-1)*lambda_E,")");
+               "(1-theta)tau=(delta-1)*lambda has no integral solution tau")
 ; (ic,delta,gamma,lambda_E,theta,g,l,omega,tau[0],t[0])
 end
 
@@ -180,7 +184,7 @@ set sign (
   elif gamma1!=gamma2 then 0
   elif g1!=g2 then 0
   elif theta1!=theta2 then 0
-  elif omega1!=omega2 then 0  {redundant}
+  elif omega1!=omega2 then 0  { redundant if parameters individually valid }
   elif x(E1)!=x(E2) then 0
 { elif not KGB_equal(y(E1),y(E2)) then 0 }
 { to avoid trouble with construction of y, use is_conjugate from synthetic.at

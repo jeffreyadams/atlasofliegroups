@@ -47,9 +47,9 @@ set is_Levi_theta_stable (Parabolic (S,x)) = bool:
   the complex Levi of S must be theta_x-stable }
 set Levi (Parabolic(S,x):P) = RealForm:
   assert(is_Levi_theta_stable(P),"Levi factor is not theta-stable");
-  let x_min=x_min(P)
-  then ic_Levi=inner_class(complex_Levi(root_datum(x),S),involution(x_min))
-  in real_form(ic_Levi,involution(x_min),torus_factor(x_min))
+  let x_min=x_min(P) then theta=involution(x_min)
+  then ic_Levi=inner_class(complex_Levi(root_datum(x),S),theta)
+  in { synthetic } real_form(ic_Levi,theta,torus_factor(x_min))
 
 { test if parabolic P=(S,x) is theta-stable: <=>
   1) L is theta-stable
