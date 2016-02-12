@@ -2459,8 +2459,9 @@ void synthetic_real_form_wrapper(expression_base::level l)
     const RootDatum& rd = G->val.rootDatum();
     WeightList alpha(rd.beginSimpleRoot(),rd.endSimpleRoot());
     if (not is_central(alpha,t)) // every root should now have even evaluation
-      throw runtime_error ("Not a valid strong involution");
-@.Not a valid strong...@>
+      throw runtime_error
+         ("Torus factor does not define a valid strong involution");
+@.Torus factor does not...@>
     torus_factor->val /= 2; // now $(1+\theta)/2$ is applied to |torus_factor|
   }
 
