@@ -11,7 +11,13 @@ sort.at		  functions for sorting parameter lists in various ways
 test.at		  functions for testing the algorithms in many cases
 iterate_deform.at algorithm for deforming nu to 0, now built into Atlas
 sp4.at        	  some stuff tailored to Sp(4,R)
-my.at         	  sample personal.at file
+test_unitarity.at tests of unitarity
+
+K_types.at	  branching modules to K
+LKT.at		  lowest K types
+modules.at	  polynomials of parameters labelled by their interpretation
+...		  (for more see scripts.help)
+all.at         	  include numerous files to have many useful functions at hand
 
 To load basic.at, for example, do:
 
@@ -20,10 +26,4 @@ To load basic.at, for example, do:
 Every file will also load all the files on which it depends.
 Probably you should just do:
 
-<hermitian
-
-This will load everything needed to compute Hermitian forms
-
-translate.at is somewhat experimental
-
-I recommend making a file my.at along the lines of the one included.
+<all

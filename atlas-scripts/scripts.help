@@ -42,9 +42,17 @@ test_unitarity.at       groups, hermitian, unitary, nilpotent, lietypes
 			{ define a suite of tests for the deformation code }
 translate.at		basic, hermitian { translation functors, to walls }
 finite_dimensional.at	basic, Weylgroup, hermitian { highest wts, dim, ... }
-LKT.at			basic, cross_W_orbit, finite_diml, K { lowest K types }
+W_K.at			parabolics, K, W_orbit
+LKT.at			basic, cross_W_orbit, finite_dim.l, W_K, thetastable
+                        { lowest K types }
 LKT_aux.at		LKT.at { conversions between K-type parameters }
 K_types.at		basic, hermitian, LKT { branching modules to K }
+coherent.at		basic, translate, W_orbit { coherent continuations }
+induction.at		K, parabolics, kl, coherent, synthetic, K_parameters
+			  { parabolic induction }
+canonical_x_K.at	Weylgroup, misc { mapping canonically? to dist. fiber }
+thetastable.at		parabolics, induction, finite_dimensional, canonical_x_K
+
 extended_misc.at	basic, lattice, parameters, Weylgroup
  			{ foundation for extended_param operations }
 extended_types.at	basic, extended_misc { classify extended parameters }
@@ -60,13 +68,11 @@ hecke.at		basic, sort, polynomial, extended*, nonintegral
 
 
 modules.at		basic, misc, kl { ParamPol values tagged }
-coherent.at		basic, translate, W_orbit { coherent continuations }
 
 
 ---------------------------------------------------------------------------
 
 std_decs.at		{ convenience script pre-declaring some variables }
-W_K.at			parabolics, K, W_orbit
 complex_nilpotent_orbits.at
 	    basic, misc, Weylgroup, sort, lattice, kgp, parabolics, parameters
 conjugacy_classes.at   	Weylgroup, W_orbit
@@ -77,15 +83,10 @@ conjugacy_classes.at   	Weylgroup, W_orbit
 elliptic_elements.at	{ some tables }
 2i12.at			{ example construction }
 wreps_type_C.at		basic, sort, nilpotent, c_n_orbits, partitions {type C}
-ap.at			groups, ..., K_types { Annegret Paul }
 dual.at			extended, polynomial, parameters, Vogan-dual
-canonical_x_K.at	Weylgroup, misc { mapping canonically? to dist. fiber }
-thetastable.at		parabolics, induction, finite_dimensional, canonical_x_K
 all_Kparameters.at      lattice, kgp, K_parameters, thetastable { ? }
 complex.at		LKT { some things specific for complex groups }
 ext_signs.at
-induction.at		K, parabolics, kl, coherent, synthetic, K_parameters
-			  { parabolic induction }
 induction_sp4.at
 orbits.at		misc, Weylgroup, thetastable, sort { nilp. orbits }
 test3.at
