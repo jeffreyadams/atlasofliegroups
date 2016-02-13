@@ -2,14 +2,33 @@ v:vec
 M:mat
 A:mat
 B:mat
+
+P:mat { change of basis }
 roots:mat
 coroots:mat
 rd:RootDatum
+alpha:vec
+beta:vec
+alpha_v:vec
+beta_v:vec
+delta:mat
+xi:mat
 ic:InnerClass
+g:ratvec { cocharacter }
 G:RealForm
+kgb:[KGBElt]
+gamma:ratvec
 lambda:ratvec
 mu:vec
 nu:ratvec
 x:KGBElt
 y:KGBElt
 rho:ratvec
+rho_check:ratvec
+p:Param
+q:Param
+block:[Param]
+P:ParamPol
+
+
+w:(RootDatum,[int]) { Weyl word }

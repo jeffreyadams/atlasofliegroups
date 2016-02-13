@@ -9,11 +9,6 @@ distr_subdirs="messages sources atlas-scripts"
 distr_files="COPYRIGHT LICENSE README CHANGES"
 distr_all_src="error interface io utilities structure gkmod test stand-alone interpreter"
 dirs_with_cweb="interpreter stand-alone io"  # directories containing *.w files
-at_files="basic groups parameters K K_types LKT Weylgroup W_orbit \
-cross_W_orbit dual finite_dimensional galois generate_groups group_operations \
-hermitian induction iterate_deform kl lattice matrix nilpotent nonintegral \
-polynomial representations sort tits torus translate twist unitary \
-test_unitarity lietypes misc my"
 help_files="README.atlas-scripts examples" # files *.help are also included
 
 echo Building $distr
@@ -26,9 +21,11 @@ ln -s $here/distr_INSTALL $distr/INSTALL
 ln -s $here/distr_Makefile $distr/Makefile
 ln -s $here/getversion.pl $distr
 ln -s $here/messages/* $distr/messages/
-ln -s $here/sources/version.h $distr/sources/
-for f in $at_files ; do ln -s $here/atlas-scripts/$f.at $distr/atlas-scripts ; done
-for f in $help_files ; do ln -s $here/atlas-scripts/$f $distr/atlas-scripts ; done
+ln -s $here/sources/version.h $here/sources/Atlas.h $distr/sources/
+for f in $(cd $here/atlas-scripts; git ls-files | grep '\.at$')
+  do ln -s $here/atlas-scripts/$f $distr/atlas-scripts ; done
+for f in $help_files
+  do ln -s $here/atlas-scripts/$f $distr/atlas-scripts ; done
 ln -s $here/atlas-scripts/*.help $distr/atlas-scripts/
 ln -s $here/doc/modules $distr/
 for sd in $distr_all_src

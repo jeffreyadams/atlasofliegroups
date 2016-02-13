@@ -1,8 +1,9 @@
-<K_parameters.at
+<basic.at
 <cross_W_orbit.at { find_W_cross }
-<induction.at { for rho_S@KGBElt }
-<thetastable.at
-<W_K.at {make_strongly_dominant}
+<induction.at { rho_S@KGBElt }
+<finite_dimensional.at { highest_weight@Param }
+<W_K.at { make_strongly_dominant@(KGBElt,ratvec) }
+<thetastable.at { two_rho_u_cap_s@Parabolic }
 
 set LKT_verbose=false
 

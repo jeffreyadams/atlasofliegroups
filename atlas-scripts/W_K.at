@@ -150,16 +150,16 @@ while not done and i<#R_K_dom do
 { let ()=prints("is_P_positive:", is_pos) in}
  if is_pos then  j:=i;done:=true;mu:=mu_2 else i:=i+1 fi od;
 (mu,w_1,R_K_dom[j],done)
-{
-set make_strongly_dominant(KGBElt x,ratvec mu)=(ratvec,mat):
-let (mu_dom,w_1,w_2,done)=
-make_strongly_dominant_long(x,mu) then
-m_1=assert(done=true,"make_strongly_dominant failed");
-lift_action(x,w_1) then
-{()=prints("lifted") then}
-m_2=w_matrix(w_2) then
-{()=prints("m_2=",m_2) in}
-(mu_dom,m_1*m_2)
+
+{ set make_strongly_dominant(KGBElt x,ratvec mu)=(ratvec,mat):
+  let (mu_dom,w_1,w_2,done)=
+  make_strongly_dominant_long(x,mu) then
+  m_1=assert(done=true,"make_strongly_dominant failed");
+  lift_action(x,w_1) then
+  {()=prints("lifted") then}
+  m_2=w_matrix(w_2) then
+  {()=prints("m_2=",m_2) in}
+  (mu_dom,m_1*m_2)
 }
 
 {mu is in X^*(T_{K_0})
