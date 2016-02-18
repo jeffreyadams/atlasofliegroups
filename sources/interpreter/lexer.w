@@ -683,8 +683,8 @@ if ((skip_space(),c=input.shift())=='"')
   file_name=scan_quoted_string();
 else
 { file_name="";
-  while (!std::isspace(c))
-  {@; file_name.push_back(c); c=input.shift(); }
+  while (std::isalnum(c) or std::strchr(".-+~_=!?@@#$%&|",c)!=nullptr)
+  @/{@; file_name.push_back(c); c=input.shift(); }
   input.unshift();
 }
 
