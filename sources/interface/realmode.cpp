@@ -323,10 +323,9 @@ void kgbgraph_f()
   RealReductiveGroup& G_R = currentRealGroup();
   std::cout << "kgbsize: " << G_R.KGB_size() << std::endl;
 
-  // make sure the user enters an actual filename -
-  // standard output makes no sense here
   ioutils::OutputFile file;
-  if ((std::ostream&)file == std::cout) throw error::InputError();
+  if (file.is_std_cout()) // make sure the user entered an actual filename
+    throw error::InputError(); // as standard output makes no sense here
 
   kgb_io::makeDotFile(file,G_R.kgb(),G_R.Bruhat_KGB());
 }
@@ -406,10 +405,9 @@ void kgpgraph_f()
   }
   std::cout << "}: " << kgp.size() << std::endl;
 
-  // make sure the user enters an actual filename -
-  // standard output makes no sense here
   ioutils::OutputFile file;
-  if ((std::ostream&)file == std::cout) throw error::InputError();
+  if (file.is_std_cout()) // make sure the user entered an actual filename
+    throw error::InputError(); // as standard output makes no sense here
 
   // make the dot file
   kgp.makeDotFile(file);

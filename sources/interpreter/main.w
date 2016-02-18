@@ -467,9 +467,11 @@ while (ana.reset()) // get a fresh line for lexical analyser, or quit
       break; // \.{quit} command
     if (verbosity==2 or verbosity==3)
       // indicates output redirection was requested
-    { @< Open |redirect| to specified file, and if successful make
+    { auto write_mode =
+        verbosity==2 ? std::ios_base::trunc : std::ios_base::@;app;
+      verbosity=old_verbosity; // ensure that verbosity change remains temporary
+      @< Open |redirect| to specified file, and if successful make
       |output_stream| point to it; otherwise |continue| @>
-      verbosity=old_verbosity; // verbosity change was temporary
     }
     if (verbosity==1) //
       std::cout << "Expression before type analysis: " << *parse_tree
@@ -578,8 +580,7 @@ directly and |continue| to the next iteration of the main loop, which is more
 practical at this point than throwing and catching an error.
 
 @< Open |redirect| to specified file... @>=
-{ redirect.open(ana.scanned_file_name() ,std::ios_base::out |
-     (verbosity==2 ? std::ios_base::trunc : std::ios_base::@;app));
+{ redirect.open(ana.scanned_file_name() ,std::ios_base::out | write_mode);
   if (redirect.is_open())
     output_stream = &redirect;
   else

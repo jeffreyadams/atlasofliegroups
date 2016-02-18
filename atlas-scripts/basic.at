@@ -282,17 +282,17 @@ set columns_with ((int,vec->bool) p,mat m) = mat:
   let res = [vec]: [] in
   for col@j in m do if p(j,col) then res #:= col fi od; n_rows(m)#res
 set columns_with ((vec->bool) p,mat m) = mat:
-  columns_with (((int,vec)(,col))bool: p(col),m)
+  columns_with(((int,vec)(,col))bool: p(col),m)
 set columns_with ((int->bool) p,mat m) = mat:
-  columns_with (((int,vec)(j,))bool: p(j),m)
+  columns_with(((int,vec)(j,))bool: p(j),m)
 
 set rows_with ((int,vec->bool) p,mat m) = mat:
   let res = [vec]: [] in
   for row@i in ^m do if p(i,row) then res #:= row fi od; n_columns(m)^res
 set rows_with ((vec->bool) p,mat m) = mat:
-  rows_with (((int,vec)(,row))bool: p(row),m)
+  rows_with(((int,vec)(,row))bool: p(row),m)
 set rows_with ((int->bool) p,mat m) = mat:
-  rows_with (((int,vec)(i,))bool: p(i),m)
+  rows_with(((int,vec)(i,))bool: p(i),m)
 
 set >=(mat m) = bool: { test for having non-negative entries only }
   let j=n_columns(m)-1 in while >=j and >=m[j] do j-:=1 od; <j

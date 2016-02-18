@@ -1,3 +1,12 @@
+/*
+  This is kgp.cpp
+
+  Copyright (C) 2011 Scott Crofts
+  part of the Atlas of Lie Groups and Representations
+
+  For license information see the LICENSE file
+*/
+
 #include "kgp.h"
 
 #include "constants.h"

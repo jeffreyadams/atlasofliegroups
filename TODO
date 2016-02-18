@@ -5,6 +5,8 @@
 - Incorporate the calculation of c-invariant forms into the library
 - Rewrite block construction using methods inspired by synthetic operations
 - Rewrite K type computations to use data type more compatible with Param
+- Reconsider synthetic real forms and KGB elements: user should be able to
+  specify a KGB element with desired involution, torus_factor directly
 
 * Work on the Fokko program
 
@@ -12,8 +14,6 @@
 - clean up the mess dealing with input (interface/input, io/interactive...)
 
 * Work on the atlas program
-
-- When input is redirected from a file, return EXIT_SUCCESS on clean run only
 
 - Make conditionals return shared pointer to global true and false values
 
@@ -24,6 +24,7 @@
 
 
 - Improve output of expressions
+  Nuance "simply connected" and "adjoint" for non-semisimple root data
 
 - Allow multiple overloaded functions defined in a single 'set' statement
 

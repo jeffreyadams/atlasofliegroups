@@ -20,6 +20,7 @@
 
 \def\emph#1{{\it#1\/}}
 \def\Zee{{\bf Z}} % cwebx uses \Z and \ZZ itself
+\def\Qu{{\bf Q}}
 \def\ii{{\rm i}} % imaginary unit
 
 @* Atlas types.
@@ -2459,8 +2460,9 @@ void synthetic_real_form_wrapper(expression_base::level l)
     const RootDatum& rd = G->val.rootDatum();
     WeightList alpha(rd.beginSimpleRoot(),rd.endSimpleRoot());
     if (not is_central(alpha,t)) // every root should now have even evaluation
-      throw runtime_error ("Not a valid strong involution");
-@.Not a valid strong...@>
+      throw runtime_error
+         ("Torus factor does not define a valid strong involution");
+@.Torus factor does not...@>
     torus_factor->val /= 2; // now $(1+\theta)/2$ is applied to |torus_factor|
   }
 
@@ -3193,10 +3195,14 @@ void torus_bits_wrapper(expression_base::level l)
   }
 }
 
-@ It might be more useful to export the same value in a form that takes into
-account the base grading of the KGB set. The following function does that,
-returning the result in the form of a rational vector that should be
-interpreted in $({\bf Q}/2{\bf Z})^n$.
+@ It is often be more useful to obtain an equivalent value, but in a form that
+takes into account the cocharacter stored for the real form. The following
+function does that, returning the result in the form of a rational vector that
+should be interpreted in $({\bf Q}/2{\bf Z})^n$ representing
+$(X_*)\otimes_\Zee\Qu/2X_*$. The value has two useful properties: it is
+invariant under right-multiplication by the involution~$\theta$ associated
+to~$x$ (i.e., the ignored part has been projected away), and at the same time
+it lies in the $X_*$-coset of |cocharacter| for the real form.
 
 @< Local function def...@>=
 void torus_factor_wrapper(expression_base::level l)
@@ -3207,7 +3213,7 @@ void torus_factor_wrapper(expression_base::level l)
   TorusElement t = x->rf->cocharacter;
   t += kgb.torus_part(x->val);
   RatCoweight tf = t.as_Qmod2Z(); // still needs to be made $\theta$-fixed
-  push_value(std::make_shared<rational_vector_value>
+  push_value(std::make_shared<rational_vector_value> @|
      (symmetrise(tf,kgb.involution_matrix(x->val))));
 }
 
