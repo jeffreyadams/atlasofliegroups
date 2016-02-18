@@ -122,6 +122,7 @@ class OutputFile
   template<typename T> std::ostream& operator<< (const T& arg)
     {return *d_stream << arg;}
   operator std::ostream& () {return *d_stream;}
+  bool is_std_cout () const { return not d_foutput; }
 }; // |class OutputFile|
 
 
