@@ -522,7 +522,8 @@ KGB::KGB(RealReductiveGroup& GR,
   // check if we are being called to do a full or small KGB construction
   if (Cartan_classes.isMember(0)) // start from fundamental Cartan: do full KGB
   {
-    const Grading gr = square_class_grading(G,GR.square_class());
+    const Grading gr = square_class_grading(G,G.xi_square(GR.realForm()));
+    assert (gr==GR.base_grading());
     d_base = new TitsCoset(G_C,gr);
     TitsElt a (d_base->titsGroup(),G_C.x0_torus_part(GR.realForm()));
     i_tab.reduce(a); // probably unnecessary

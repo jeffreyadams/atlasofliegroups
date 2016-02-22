@@ -23,6 +23,7 @@
 */
 
 #include "complexredgp.h"
+#include "realredgp.h" // for |square_class_choice|
 
 #include <set>
 
@@ -1236,12 +1237,22 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
 
 } // |strong_real_form_of|
 
-
+// mark noncompact and complex roots in preferred way for square class
 Grading square_class_grading(const ComplexReductiveGroup& G,
 			     cartanclass::square_class csc)
 {
-  return G.simple_roots_x0_compact(G.square_class_repr(csc))
-    .complement(G.semisimpleRank());
+  const RootDatum& rd=G.rootDatum();
+  auto gr = G.simple_roots_x0_compact(G.square_class_repr(csc));
+  // this grading complemented would do, but there is now a standarised choice:
+  RatCoweight coch = // pass through this form to get standardised cocharacter
+    realredgp::square_class_choice // standardise representative |RatCoweight|
+      (G.distinguished(),coch_representative(rd,gr));
+
+  // finally convert that to a grading again
+  Grading result; result.fill(rd.semisimpleRank()); // set complex simple roots
+  for (auto it=G.simple_roots_imaginary().begin(); it(); ++it)
+    result.set(*it,coch.dot(rd.simpleRoot(*it))%2==0); // set noncompact roots
+  return result;
 } // |square_class_grading|
 
 /*****************************************************************************

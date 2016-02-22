@@ -129,6 +129,21 @@ const CartanClass& RealReductiveGroup::cartan(size_t cn) const
 RatCoweight RealReductiveGroup::g() const
   { return g_rho_check()+rho_check(rootDatum()); }
 
+// the base grading can be computed directly from $g-\rho\check$, as imaginary
+// simple roots are simple-imaginary, so dot product flags the compact ones
+Grading RealReductiveGroup::base_grading() const
+{
+  const RootDatum& rd=complexGroup().rootDatum();
+  auto im_sys = // by value, as |InvolutionData| evaporates
+    InvolutionData(rd,complexGroup().distinguished()).imaginary_roots();
+  RatCoweight grc = g_rho_check();
+  Grading result;
+  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+    result.set(s,not im_sys.isMember(rd.simpleRootNbr(s)) // flag complex
+		 or grc.dot(rd.simpleRoot(s))%2==0); // and noncompact roots
+  return result;
+}
+
 size_t RealReductiveGroup::numCartan() const { return Cartan_set().size(); }
 
 size_t RealReductiveGroup::rank() const { return rootDatum().rank(); };

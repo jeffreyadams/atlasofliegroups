@@ -34,7 +34,8 @@ namespace complexredgp {
 
 /******** function declarations **********************************************/
 
-RatCoweight coch_representative(const RootDatum& rd, Grading compact_simple);
+// rational coweight whose addition changes grading of simple roots by |shift|
+RatCoweight coch_representative(const RootDatum& rd, Grading shift);
 
 WeylWord canonicalize // return value is conjugator, built left-to-right
   (TwistedInvolution& sigma,
