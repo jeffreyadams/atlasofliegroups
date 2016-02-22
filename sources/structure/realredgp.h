@@ -18,6 +18,7 @@
 #include "poset_fwd.h"
 #include "../Atlas.h"
 
+#include "ratvec.h" // containment of |RatCoweight| field
 #include "topology.h"	// containment of |Connectivity| field
 
 
@@ -54,6 +55,9 @@ class RealReductiveGroup
   RealFormNbr d_realForm; // our identification number
   topology::Connectivity d_connectivity; // characters of the component group
 
+  RatCoweight square_class_cocharacter; // a base coweight for square class
+  TorusPart torus_part_x0; // initial |TorusPart| relative to square class base
+
   const TitsCoset* d_Tg; // owned pointer; the group is stored here
   KGB* kgb_ptr; // owned pointer, but initially |NULL|
   KGB* dual_kgb_ptr; // owned pointer, but initially |NULL|
@@ -79,6 +83,12 @@ class RealReductiveGroup
   BitMap Cartan_set() const;
   const CartanClass& cartan(size_t cn) const; // Cartan number of parent
 
+  TorusPart x0_torus_part() const { return torus_part_x0; }
+  RatCoweight g() const; // |square_class_cocharacter| + $\check\rho$
+  RatCoweight g_rho_check() const // that |g()|, minus $\check\rho$:
+    { return square_class_cocharacter; }
+  Grading base_grading() const; // grading (1=noncompact) at square class base
+
   bool isConnected() const { return d_status[IsConnected]; }
 
   bool isCompact() const { return d_status[IsCompact]; }
@@ -93,15 +103,10 @@ class RealReductiveGroup
   size_t KGB_size() const; // the cardinality of |K\\G/B|.
   size_t mostSplit() const;
 
-/*! \brief
-  Returns the grading offset (on simple roots) adapted to |G|. This flags the
-  simple roots that are noncompact imaginary at the fundamental Cartan in G.
-
-Algorithm: the variable |rset| is first made to flag, among the imaginary
-roots of the fundamental Cartan, those that are noncompact for the chosen
-representative (in the adjoint fiber) of the real form of |G|. The result is
-formed by extracting only the information concerning the presence of the
-\emph{simple} roots in |rset|.
+/*
+  Return the grading offset (on simple roots) adapted to |G|. This flags among
+  the simple roots those that are noncompact imaginary at the initial KGB
+  element |x0| of G (which lives on the fundamental Cartan).
 */
   Grading grading_offset();
 
@@ -126,6 +131,14 @@ formed by extracting only the information concerning the presence of the
   const BruhatOrder& Bruhat_KGB();
 
 }; // |class RealReductiveGroup|
+
+
+//			   function declarations
+
+// given a real form cocharacter, find the one representing its square class
+RatCoweight square_class_choice
+  (const WeightInvolution& xi, const RatCoweight& coch);
+
 
 } // |namespace realredgp|
 

@@ -83,9 +83,10 @@ class GlobalTitsElement
 
 // accessors
 
-// both components are exposed as constant references
-/*!\brief twisted involution whose fiber we are in */
+// both components are exposed as constant references:
+
   const TorusElement& torus_part() const { return t; }
+// twisted involution whose fiber we are in
   const TwistedInvolution& tw() const { return w; }
 
 // a method defined without help of |GlobalTitsGroup| (and which ignores |w|)

@@ -282,14 +282,21 @@ global_KGB::global_KGB(ComplexReductiveGroup& G_C,
   generate(0,dual_twist); // complete element generation, no predicted size
 } // |global_KGB::global_KGB|
 
+/*
+  Simple-imaginary roots evaluate at torus part $t$ to $1$ iff they are compact.
+  To get a grading valid for all imaginary roots, we must add the half sum of
+  positive imaginary coroots to $t$, flipping values at the simple-imaginaries.
+*/
 bool global_KGB::compact(RootNbr n, // assumed imaginary at |a|
 			 const GlobalTitsElement& a) const
 {
-  const Cartan_orbits& i_tab = G.involution_table();
-  TorusElement t=a.torus_part();
-  t += i_tab.check_rho_imaginary(i_tab.nr(a.tw()));
+  const auto& i_tab = G.involution_table();
+  const auto& rd = G.rootDatum();
+  RatCoweight grading_cwt= a.torus_part().as_Qmod2Z();
+  grading_cwt +=
+    RatCoweight(rd.dual_twoRho(i_tab.imaginary_roots(i_tab.nr(a.tw()))),2);
 
-  return not t.negative_at(rootDatum().root(n)); //  whether compact
+  return grading_cwt.dot(rd.root(n))%2==0; //  whether compact
 }
 
 KGBElt global_KGB::lookup(const GlobalTitsElement& a) const
@@ -745,8 +752,6 @@ TitsElt KGB::titsElt(KGBElt x) const
 { return TitsElt(titsGroup(),left_torus_part[x],involution(x)); }
 
 size_t KGB::torus_rank() const { return titsGroup().rank(); }
-
-RatWeight KGB::half_rho() const { return RatWeight(rootDatum().twoRho(),4); }
 
 RatCoweight KGB::base_grading_vector() const
 {

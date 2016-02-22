@@ -54,7 +54,7 @@ class TorusElement
   RatWeight log_pi(bool normalize) const; // return the stored rational vector
   RatWeight log_2pi() const; // value halved: to be interpreted "mod Z^rank"
 
-  // more often it will be practical to have acces to that "mod 2Z^rank" form
+  // more often it will be practical to have access to that "mod 2Z^rank" form
   const RatWeight& as_Qmod2Z() const { return repr; }
 
   bool operator== (const TorusElement& a) const { return repr==a.repr; }

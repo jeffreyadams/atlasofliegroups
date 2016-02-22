@@ -1,0 +1,131 @@
+The purpose of the branch FSB (successor of KGB) is to rationalise the way
+real forms are stored in Atlas, notably in order to make synthetic real forms
+more natural and reliable.
+
+Current situation.
+
+The RealReductiveGroup class (defined in structure/realredgrp.h) has no data
+to explictly describe any strong real form that defines it, and this makes the
+initial part of the KGB construction a rather subtle affair. In fact, the only
+thing that distinguishes a RealReductiveGroup within its inner class is the
+sequence number of the weak real form, stored in |d_realForm| and giving
+(indexing) access to some infomation tabulated in the ComplexReductiveGroup
+"parent" object (accessible through the |d_complexGroup| reference), in other
+words in the inner class. To be able to distinguish strong real forms for the
+same weak real form would at least require recording the common (central)
+square of the strong involutions for the real form; real forms in the same
+square class then still need to be distinguished by some "base grading"
+(grading of the imaginary roots in the fundamental fiber $\xi$, corresponding
+to an initial element x0 of the KGB set for this real form), already present.
+
+KGB initialisation currently works as follows. The method
+RealReductiveGroup::kgb creates as KGB set by calling the |KGB::KGB|
+constructor with the full Cartan set for this real form. After the inner class
+involution table has been filled for all involutions associated to those
+Cartan classes, and the KGB size predicted, the first thing is to get the
+square class grading (of the imaginary simple roots at $\xi$) for
+|GR.square_class()| (which is just a small number). The method
+|ComplexReductiveGroup::square_class_grading| takes a tabulated representative
+real form |wrf| for the square class (from the |square_class_repr| method,
+returning a |RealFormNbr|) and applies the |simple_roots_x0_compact| method to
+it to find its compact simple roots (at x0), whose complement is the grading.
+In detail, this takes the |AdjointFiberElt| |wrf_rep| that represents (the
+adjoint fiber orbit) |wrf|, and lifts it (|fromBasis|) into the Z/2Z vector
+space $X_*/2X_*$; the bits 1 now signal the compact among the simple roots.
+Now the complement (flagging noncompact and complex roots) gives the grading.
+Returning from |square_class_grading|, it is used to construct a |TitsCoset|.
+
+The |TitsCoset| class is one (as if) derived from |TitsGroup|, which adds a
+|grading_offset| field that allows it to implement "based" variants of the
+|TitsGroup| methods, such as |basedTwistedConjugate|. The |grading_offset|
+field is copied from the argument that was computed as |square_class_grading|.
+
+This |TitsCoset| value only depends on the square class, so more is needed to
+distinguish the weak real form within that class. The method
+|ComplexReductiveGroup::x0_torus_part(RealFormNbr)| provides this information,
+and it is used to get an initial element for the KGB cosntruction.
+
+The |ComplexReductiveGroup::x0_torus_part| method also calls the
+|ComplexReductiveGroup::simple_roots_x0_compact| method to get the grading
+used as basis for the square class (it uses a slightly different path, calling
+the |ComplexReductiveGroup::xi_square| method to get the square class number,
+and then again the |ComplexReductiveGroup::square_class_repr| method to turn
+it into a |RealFormNbr|). Then with this grading that flags the compact simple
+roots, |coch_representative| turns it into a rational coweight vector by
+summing over the fundamental coweigts of the flagged roots. With this (square
+class base grading rational coweight) vector |coch| at hand, it is time to
+finally do something that actually depends on the weak real form itself. Again
+call |ComplexReductiveGroup::simple_roots_x0_compact|, but this time with the
+real form itself rather than the representative real form for its square
+class; take the XOR with the (square class) base grading to get a grading,
+which |grading_shift_repr| then converts to an initial |TorusPart t|. [The
+method |ComplexReductiveGroup::grading_shift_repr| does some complicated fiber
+group gymnastics to compute its value; it will not be detailed here.] Then add
+|t| to |coch| to get a cocharacter that represents the real form itself. Just
+before returning from |x0_torus_part|, although |t| could perfectly well
+represent the starting point for the real form, a call to |minimum| with
+amongst others |coch| as argument makes it minimal for the |central_fiber| of
+the real form, i.e., for the action of the part of the imaginary Weyl group
+that leaves the grading unchanged (apparently this minimisation is required to
+allow |CRG::strong_real_form_of| to work).
+
+Surprise: the methods |grading_seed| and |backtrack_seed| from the class
+|tits::EnrichedTitsGroup| are no longer used in this (full) KGB construction!
+
+
+Proposed simplification.
+
+Much of the current work is concerned with laborious conversion of values
+stored in tables in awkward form (orbit numbers for an action of W_im group on
+a subquotient of a Z/2Z vector space like the adjoint fiber group) into
+actually usable form. It would be much simpler if real forms simply stored the
+more relevant values directly; also this may enable "synthetic" real forms
+that do not belong to any tabulated square class to be first class citizens.
+
+A natural value to identify a square class it the central torus element that
+is the square of all its strong involutions; practically the would be a
+rational coweight modulo 1 (i.e., interpreted modulo $X_*$) representing its
+image under $\exp_1$ ($\exp$ to "base 1" short for $x\to\exp(2\pi i x)$). For
+a real form, one would in addition (have to) store its |x0_torus_part|. In
+fact in each square class one grading of the imaginary roots is implicitly
+fixed (currently hrough the arbitrary choice of a weak real form
+representingnthe quare class), and the |x0_torus_part| modifies this grading
+to be one associated to the weal real form. A simpler way to get a
+representative for the square class it through the (inevitable) choice of a
+representative rational coweight for the square. The rational coweight has to
+have integral evaluation on all simple roots in order to represent a central
+element (|y_values::is_central|, which actually acts on a doubled rational
+vector, modulo 2, so tests even evaluation), but when interpreting the
+(undoubled!) rational vector modulo 2 rather than modulo 1, one gets a choice
+of a grading by taking the parities of the evaluations.
+
+The square t\in T of strong invlutions is not only central, but also
+$\xi^t$-stable. In fact when representing it as the exp_1 image of a rational
+coweight, that coweight is only defined modulo $X_*$ and modulo
+$\ker(1-\xi^t)$. For each class modulo $\ker(1-\xi^t)$, one gets a square root
+of t in T by applying exp_{-1} a its $\xi$-stable representative. This square
+root is obviously invariant under translation by $2X_*$, followed by
+projection to the $\xi^t$-stable coweights. We can define a standard choice of
+a square root by taking as coordinates on the $(X_*)_\Q/\ker(1-\xi^t)$ a basis
+of $(X^*)^\xi$, found in a standard way (adapted basis) and taking the
+fractional part of each coordinate; the $\xi^t$-stable coweight with the
+resulting coordinates defines the chosen square root (for the square class).
+Once the rational weight determined (cocharacter $g$ minus $\check\rho$), it
+determines a base grading for the square class, and it remains so add
+$\xi^t$-fixed bitvectors to get torus factors for strong involutions in the
+square class. Every such choice, paired to the distinguished involution $\xi$,
+would define a valid element $x_0$ to start generation of a KGB set. The
+strong real form plus starting $x_0$ is determined by $g-\check\rho-bits$,
+which is a rational vector from which $g-\check\rho$ can be recovered. For the
+tabulated (weak) real forms in an inner class, and appropriate $x_0$ can be
+computed, but for synthetic real forms one can just take the toris factor that
+is provided, after moving it down in the GlobalTitsGroup until it reached the
+distinguished involution $\xi$.
+
+So it would seem reasonable to store with each real form a $\xi^t$-stable
+rational coweight $g-\check\rho-bits$, which is in fact the |torus_factor| of
+its first KGB element $x_0$. From this one can in principle reconstruct
+$g-\check\rho$ as follows: transform coordinates using a basis of $X^*$
+adapted to $(X^*)^\xi$, take the fracional part in the $\xi^t$-invariant
+coordinates and then transform back. It is probably better to just store the
+$bits$ separately, and add them to the stored coweight $g-\check\rho-bits$.

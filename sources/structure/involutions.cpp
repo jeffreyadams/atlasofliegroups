@@ -358,15 +358,6 @@ InvolutionTable::x_equiv(const GlobalTitsElement& x0,
   return true;
 }
 
-TorusPart InvolutionTable::check_rho_imaginary(InvolutionNbr inv) const
-{
-  TorusPart result(rd.rank());
-  RootNbrSet pos_im=imaginary_roots(inv) & rd.posRootSet();
-  for (RootNbrSet::iterator it=pos_im.begin(); it(); ++it)
-    result += TorusPart (rd.coroot(*it));
-  return result;
-}
-
 // choose unique representative for real projection class of a rational weight
 void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const
 {

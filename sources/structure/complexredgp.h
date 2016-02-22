@@ -28,53 +28,54 @@ ComplexReductiveGroup.
 #include "rootdata.h"	// containment of root datum and its dual
 #include "tits.h"	// containment of Tits group and its dual
 
-/******** function declarations **********************************************/
-
 namespace atlas {
 
 namespace complexredgp {
 
-  WeylWord canonicalize // return value is conjugator, built left-to-right
-    (TwistedInvolution& sigma,
-     const RootDatum& rd,
-     const TwistedWeylGroup& W,
-     RankFlags gens);
+/******** function declarations **********************************************/
+
+RatCoweight coch_representative(const RootDatum& rd, Grading compact_simple);
+
+WeylWord canonicalize // return value is conjugator, built left-to-right
+  (TwistedInvolution& sigma,
+   const RootDatum& rd,
+   const TwistedWeylGroup& W,
+   RankFlags gens);
 
 /* this function should NOT be made into a method, suppressing the |rs| and |W|
    parameters, as these can be be dual to those in the |ComplexReductiveGroup|!
 */
-  void Cayley_and_cross_part(RootNbrSet& Cayley,
-			     WeylWord& cross,
-			     const TwistedInvolution& tw,
-			     const RootSystem& rs,
-			     const TwistedWeylGroup& W);
+void Cayley_and_cross_part(RootNbrSet& Cayley,
+			   WeylWord& cross,
+			   const TwistedInvolution& tw,
+			   const RootSystem& rs,
+			   const TwistedWeylGroup& W);
 
-  RealFormNbr strong_real_form_of // who claims this KGB element?
-    (ComplexReductiveGroup& G,
-     TwistedInvolution tw, const RatCoweight& torus_factor,
-     TorusElement& cocharacter // additional output
-     );
+RealFormNbr strong_real_form_of // who claims this KGB element?
+  (ComplexReductiveGroup& G,
+   TwistedInvolution tw, const RatCoweight& torus_factor,
+   TorusElement& cocharacter // additional output
+   );
 
-  Grading square_class_grading(const ComplexReductiveGroup& G,
-			       cartanclass::square_class csc);
+Grading square_class_grading(const ComplexReductiveGroup& G,
+			     cartanclass::square_class csc);
 
 
   // apply involution action of |tw| on weight lattice to |v|
-  void twisted_act
-    (const ComplexReductiveGroup& G, const TwistedInvolution& tw,Weight& v);
-  void twisted_act
-    (const ComplexReductiveGroup& G, const TwistedInvolution& tw,RatWeight& v);
+void twisted_act
+  (const ComplexReductiveGroup& G, const TwistedInvolution& tw,Weight& v);
+void twisted_act
+  (const ComplexReductiveGroup& G, const TwistedInvolution& tw,RatWeight& v);
 
-  void twisted_act
-    (const ComplexReductiveGroup& G,Weight& v, const TwistedInvolution& tw);
-  void twisted_act
-    (const ComplexReductiveGroup& G,RatWeight& v, const TwistedInvolution& tw);
+void twisted_act
+  (const ComplexReductiveGroup& G,Weight& v, const TwistedInvolution& tw);
+void twisted_act
+  (const ComplexReductiveGroup& G,RatWeight& v, const TwistedInvolution& tw);
 
-}
+
 
 /******** type definitions ***************************************************/
 
-namespace complexredgp {
 
 /*   Complex reductive group endowed with an inner class of real forms.
 

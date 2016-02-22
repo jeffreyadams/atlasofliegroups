@@ -828,14 +828,6 @@ TorusPart ComplexReductiveGroup::grading_shift_repr (Grading diff) const
 }
 
 
-RatCoweight coch_representative(const RootDatum& rd, Grading compact_simple)
-{
-  RatWeight result (rd.rank());
-  for (RankFlags::iterator it=compact_simple.begin(); it(); ++it)
-    result += rd.fundamental_coweight(*it);
-  return result;
-}
-
 RatCoweight ComplexReductiveGroup::base_grading_vector(RealFormNbr rf) const
 {
   RankFlags cpct = simple_roots_x0_compact(square_class_repr(xi_square(rf)));
@@ -928,6 +920,15 @@ ComplexReductiveGroup::block_size(RealFormNbr rf,
         Chapter IV -- Functions declared in complexredgp.h
 
 ******************************************************************************/
+
+RatCoweight coch_representative(const RootDatum& rd, Grading compact_simple)
+{
+  RatWeight result (rd.rank());
+  for (RankFlags::iterator it=compact_simple.begin(); it(); ++it)
+    result += rd.fundamental_coweight(*it);
+  return result;
+}
+
 
 WeylWord canonicalize // return value conjugates element new |sigma| to old
   (TwistedInvolution& sigma,
