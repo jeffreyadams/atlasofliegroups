@@ -780,162 +780,6 @@ bool TitsCoset::is_valid(TitsElt a) const
   return a==e;
 }
 
-/* The method |naive_seed| attempts to get an initial Tits group element, for
-   a KGB construction for the real form |rf| starting at Cartan class |cn|, by
-   extracting the necessary information fom the |Fiber| object associated to
-   the Cartan class |cn|, and lifting that information from the level of the
-   fiber group to the level of torus parts. The idea is to interpret |rf| as
-   labeling a conjugation orbit in the adjoint fiber group of the current
-   Cartan class, find a strong real form representative |srf| of it using the
-   |Fiber::strongRealForm| method, which value identifies a square class
-   |srf.second| and a (corresondingly shifted) conjugation orbit in the fiber
-   group of the current Cartan class. Choosing a representative in the latter,
-   one can lift from the fiber group to a (theta-fixed) element of
-   $X_{*}/2X_{*}$ using the |Subquotient::from_basis| method, the result of
-   which (a |SmallBitVector|) can be used as the |TorusPart| that was sought.
-
-   As the name indicates, this method has drawbacks that makes it not always
-   useful. The main drawback is that it interpretes the real form as
-   identifying an orbit in the adjoint fiber group for |Cartan[cn]|, whereas
-   the normal interpretation of |RealFormNbr| values identifies an orbit in
-   the adjoint fiber group for the fundamental Cartan class (|Cartan[0]|).
-   This means that if it is used for other Cartan classes than the fundamental
-   one of the inner class, |rf| must be adapted to the proper labelling using
-   the |real_labels| for |Cartan[cn]| stored in the |ComplexReductiveGroup|.
-
-   Another drawback, harder to circumvent, is that there is no guarantee that
-   the strong real forms chosen at different Cartan classes by the |classRep|
-   method will be the same. Thus the |TorusPart| values returned for different
-   Cartan classes (even assuming |rf| has been properly adapted in each case)
-   need not occur in a common KGB set, even up to equivalence of torus parts.
-
-   The main reason for leaving this (unused) method in the code is that it
-   illustrates how to apply the group morphism from the fiber group to T(2).
- */
-TitsElt TitsCoset::naive_seed
-  (ComplexReductiveGroup& G, RealFormNbr rf, size_t cn) const
-{
-  // locate fiber, weak and strong real forms, and check central square class
-  const Fiber& f=G.cartan(cn).fiber();
-  cartanclass::adjoint_fiber_orbit wrf = G.real_form_part(rf,cn);
-  cartanclass::StrongRealFormRep srf=f.strongRealForm(wrf);
-  assert(srf.second==f.central_square_class(wrf));
-
-  // now lift strong real form from fiber group to a torus part in |result|
-  const Partition& pi = f.fiber_partition(srf.second);
-  SmallBitVector v(RankFlags(pi.classRep(srf.first)),f.fiberRank());
-  TorusPart x = f.fiberGroup().fromBasis(v);
-
-  // right-multiply this torus part by canonical twisted involution for |cn|
-  TitsElt result(titsGroup(),x,G.involution_of_Cartan(cn));
-
-  return result; // result should be reduced immediately by caller
-}
-
-/* The method |grading_seed| attempts to correct the shortcomings of
-   |naive_seed| by insisting on obtaining an element exhibiting a grading that
-   corresponds to the real form |rf|. Thus no element is actually recovered
-   from any fiber group, but rather a set of equations for the torus part is
-   set up and solved. The equations come in two parts: a first section for
-   establishing the correct coset in T(2) with respect to the "numerator"
-   subgroup of the subquotient that defines the fiber group, and a second
-   section for requiring the correct grading of the imaginary roots for the
-   real form that is intended. Both parts are inhomogeneous linear systems,
-   of which the left hand side (linear part) expresses a Z/2Z-linear condition
-   on the torus part, and the right hand side (inhomogeneous part) describes
-   the failure of the null torus part to satisfy the conditions (since these
-   are equations over Z/2Z, there is no need to put in a minus sign).
-
-   The equations of the first section are derived from our test of being in
-   the proper coset for this square class (mentioned in kgb.cpp), namely that
-   the Tits element |a| with this left torus part and canonical twisted
-   involution for the Cartan satisfies $a*twisted(a)=e$ in our based twisted
-   Tits group. The left hand side describes the action of the involution on
-   torus parts, as provided by |Tg.involutionMatrix|. The right hand side is
-   equal to $a*twisted(a)$ where |a| is the canonical lift of the twisted
-   involution to the Tits group (i.e;, its torus part is null).
-
-   The equations of the second section have as left hand sides the reductions
-   modulo 2 of the simple-imaginary roots for the twisted involution,
-   interpreted as Z/2Z-linear forms on torus parts, and as corresponding right
-   hand side the difference between the desired grading of that root and the
-   gradings of it defined by the element |a| above, with null torus part.
-
-   It is not obvious that these equations actually have a solution, but since
-   the traditional KGB construction in fact produces such elements, we assert
-   that one exists. The solution is only meaningful modulo the "denominator"
-   subgroup of the subquotient that defines the fiber group, so the result
-   returned should be reduced modulo that subgroup by the caller.
-
-   If grading seeds are determined for different Cartan classes, there is no
-   guarantee that chosen solutions will belong to the same strong real form.
-   Therefore this method should only be called when only one seed is needed.
- */
-TitsElt TitsCoset::grading_seed
-  (ComplexReductiveGroup& G,RealFormNbr rf, size_t cn) const
-{
-  // locate fiber and weak real form
-  const Fiber& f=G.cartan(cn).fiber();
-  cartanclass::adjoint_fiber_orbit wrf = G.real_form_part(rf,cn);
-  const TwistedInvolution& tw = G.involution_of_Cartan(cn);
-
-  // get an element lying over the canonical twisted involution for |cn|
-  TitsElt a(Tg,tw); // trial element with null torus part
-
-  // get the grading of the imaginary root system given by the element |a|
-  Grading base_grading;
-  for (size_t i=0; i<f.imaginaryRank(); ++i)
-    base_grading.set(i,grading(a,f.simpleImaginary(i)));
-
-  // get the grading of the same system given by chosen representative of |wrf|
-  Grading form_grading = f.grading(f.wrf_rep(wrf));
-  /* the difference between |base_grading| and |form_grading| will have to be
-     compensated by setting an appropriate torus part for |a| */
-
-  // now prepare equations for coset for "fiber numerator" group of torus part
-  Tg.mult(a,twisted(a)); // now |a.t()| gives inhomogenous part for equations
-
-  BinaryEquationList eqns;  // equations for our seed
-  eqns.reserve(G.rank()+f.imaginaryRank()); // for coset + grading
-
-  BinaryMap refl = Tg.involutionMatrix(G.weylGroup().word(tw));
-
-  // coset equations
-  for (size_t i=0; i<G.rank(); ++i)
-  {
-    SmallBitVector lhs = refl.row(i);
-    lhs.flip(i); // left hand side is row $i$ of $TorusPartInvolution-1$
-    eqns.push_back(make_equation(lhs,Tg.left_torus_part(a)[i]));
-  }
-  // grading equations
-  for (size_t i=0; i<f.imaginaryRank(); ++i)
-  {
-    BinaryEquation equation =
-      BinaryEquation(G.rootDatum().root(f.simpleImaginary(i)));
-    equation.pushBack((base_grading^form_grading)[i]);
-    eqns.push_back(equation);
-  }
-
-  // solve, and tack a solution |x| to the left of |a|.
-  TorusPart x(G.rank());
-  bool success=bitvector::solvable(eqns,x);
-  assert(success);
-  ndebug_use(success);
-
-  TitsElt seed(Tg,x,tw); // $x.\sigma_w$
-
-#ifndef NDEBUG
-  // double-check that we have found an element with require properties
-
-  TitsElt check=seed; Tg.mult(check,twisted(check));
-  assert(check==TitsElt(Tg)); // we are in the proper coset
-
-  for (size_t i=0; i<f.imaginaryRank(); ++i)
-    assert(grading(seed,f.simpleImaginary(i))==form_grading[i]); // wrf OK
-#endif
-
-  return seed;  // result should be reduced immediatly by caller
-} // |grading seed|
 
 // torus parts: modulo the mod-2 reduction of the $-\theta$-fixed sublattice
 SmallSubspace fiber_denom(const WeightInvolution& theta)
@@ -951,20 +795,24 @@ EnrichedTitsGroup::EnrichedTitsGroup(const RealReductiveGroup& GR)
 {}
 
 
-/* In this final and most elaborate seeding function, which is also the most
-   reliable one, we stoop down to simulating the KGB construction back from
-   the fundamental fiber to the one for which we try to find a seed, and to
-   try all the representatives in the fundamental fiber of the strong real
-   form, until finding one that, along the chosen path of cross actions and
-   Cayley transforms, proves to be suited for every necessary Cayley transform
-   (making the simple root involved noncompact).
- */
+/*
+  The purpose of the method |backtrack_seed| is to find some |TitsElt| in the
+  strong real form associated with our |EnrichedTitsGroup|, at (the canonical
+  involution of) the Cartan class |cn|. We simulate the KGB construction back
+  from the fundamental fiber to the one for which we try to find a seed,
+  trying all the representatives in the fundamental fiber of the strong real
+  form, until finding one that, along the chosen path of cross actions and
+  Cayley transforms, proves to be suited for every necessary Cayley transform
+  (meaning that it makes all the simple roots involved noncompact). Rather
+  than set out for the journey with the full fundamental fiber and have the
+  unfit ones die along the way, we select a fit element from the fundamental
+  fiber and transform that one; but this does require some preliminary work.
+*/
 TitsElt EnrichedTitsGroup::backtrack_seed
- (const ComplexReductiveGroup& G,
-  RealFormNbr rf, size_t cn) const
+  (const ComplexReductiveGroup& G, RealFormNbr rf, size_t cn) const
 {
   const TitsGroup& Tgr= titsGroup();
-  // a name chosen to avoid shadowing (inaccessible) |Tg|, and thereby warnings
+  // a name chosen to avoid warnings about shadowing (the inaccessible) |Tg|
 
   const TwistedInvolution& tw=G.involution_of_Cartan(cn);
 
@@ -979,19 +827,19 @@ TitsElt EnrichedTitsGroup::backtrack_seed
 
   // transform strong orthogonal set |Cayley| back to distinguished involution
   RootNbrList Cayley(rset.begin(),rset.end()); // convert to |RootNbrList|
-  for (size_t i=0; i<Cayley.size(); ++i)
-    for (size_t j=cross.size(); j-->0; )
-      G.rootDatum().simple_reflect_root(cross[j],Cayley[i]);
+
+  for (auto it=Cayley.begin(); it!=Cayley.end(); ++it)
+    *it = G.rootDatum().permuted_root(cross,*it);
 
   /* at this point we can get from the fundamental fiber to |tw| by first
      applying Cayley transforms in the strongly orthogonal set |Cayley|, and
      then applying cross actions according to |cross|
   */
 
-  /* Now find an element in the chosen strong real form at the fundamental
-     fiber, that has noncompact grading on all the roots of |Cayley| (which
-     are imaginary for $\delta$)
-   */
+/* Now find an element in the stored strong real form |srf| at the fundamental
+   fiber that has noncompact grading on all the roots of |Cayley| (which are
+   all imaginary for $\delta$). Methods |square| and |f_orbit| use this |srf|.
+*/
   TitsElt result(Tgr);
 
   const Fiber& fund=G.fundamental();
@@ -999,8 +847,7 @@ TitsElt EnrichedTitsGroup::backtrack_seed
   for (unsigned long x=0; x<srp.size(); ++x)
     if (srp.class_of(x)==f_orbit()) // test membership of strong real form
     {
-      SmallBitVector v
-	(static_cast<RankFlags>(x),fund.fiberRank());
+      SmallBitVector v (static_cast<RankFlags>(x),fund.fiberRank());
       TorusPart t = fund.fiberGroup().fromBasis(v);
       for (size_t i=0; i<Cayley.size(); ++i)
 	if (is_compact(t,Cayley[i]))
@@ -1011,7 +858,7 @@ TitsElt EnrichedTitsGroup::backtrack_seed
       goto found;
     again: {}
     }
-  assert(false); // getting here means none of the orbit elements is in order
+  assert(false); // getting here means none of the orbit elements is appropriate
 
 found:
 

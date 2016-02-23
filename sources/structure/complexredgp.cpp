@@ -789,15 +789,15 @@ ComplexReductiveGroup::global_KGB_size() const
 
 Grading ComplexReductiveGroup::simple_roots_x0_compact(RealFormNbr rf) const
 {
+#if 1 // actual code
+  return
+    RankFlags(fundamental().wrf_rep(rf)).unslice(simple_roots_imaginary());
+#else // the |unslice| does the change of basis below more efficiently
   const Fiber& fund_f= fundamental();
-  const SmallSubquotient& adfg = fund_f.adjointFiberGroup();
-  RankFlags rf_rep = RankFlags(fund_f.wrf_rep(rf));
-  SmallBitVector x_adj_coch = // in \emph{adjoint} cocharacter lattice modulo 2
-    adfg.fromBasis(SmallBitVector(rf_rep,fund_f.adjointFiberRank()));
-
-  // lifting adjoint fiber group elts just sends bits to delta-fixed places
-  assert(x_adj_coch.data() == rf_rep.unslice(simple_roots_imaginary()));
-  return x_adj_coch.data(); // each bit gives pairing with a simple root
+  RankFlags noncompact(fund_f.wrf_rep(rf)); // among imaginary simples
+  SmallBitVector v(noncompact,fund_f.adjointFiberRank());
+  return fund_f.adjointFiberGroup().fromBasis(v).data();
+#endif
 }
 
 cartanclass::square_class

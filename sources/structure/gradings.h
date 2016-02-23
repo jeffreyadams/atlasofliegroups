@@ -42,14 +42,13 @@ namespace gradings {
 
 namespace gradings {
 
-  /*!
-  \brief Describes a four-valued root attribute for each simple root: to be
-  real, complex, imaginary compact or imaginary noncompact.
+/*
+  The class |Status| describes a four-valued root attribute for each simple
+  root: to be real, complex, imaginary compact or imaginary noncompact.
 
   This information fits nicely in two bits, and these bits can then be
-  packed in a TwoRankFlags bitset (which for the default bound on the
-  rank is 32 bits big.)
-  */
+  packed in a |TwoRankFlags| bitset
+*/
 
 class Status
 {
@@ -124,7 +123,7 @@ class Status
   }
 }; // class Status
 
-
+// a comparison object. Compares bit counts first, when tied uses binary order
 struct GradingCompare
   : public std::binary_function<const Grading& , const Grading& , bool>
 {

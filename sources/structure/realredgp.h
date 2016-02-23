@@ -1,15 +1,14 @@
-/*!
-\file
-\brief Class definitions and function declarations for RealReductiveGroup.
-*/
 /*
   This is realredgp.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
+
+// Class definitions and function declarations for RealReductiveGroup.
 
 #ifndef REALREDGP_H  /* guard against multiple inclusions */
 #define REALREDGP_H

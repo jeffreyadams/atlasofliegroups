@@ -732,12 +732,6 @@ class TitsCoset
   // also keep a version for torus part only
   TorusPart twisted(const TorusPart& t) const { return Tg.twisted(t);}
 
-  // various methods that provide a starting KGB element for any Cartan class
-  TitsElt naive_seed (ComplexReductiveGroup& G,
-		      RealFormNbr rf, size_t cn) const;
-  TitsElt grading_seed (ComplexReductiveGroup& G,
-			RealFormNbr rf, size_t cn) const;
-
 }; // |class TitsCoset|
 
 // A richer version of |TitsCoset|, with more methods

@@ -522,16 +522,17 @@ KGB::KGB(RealReductiveGroup& GR,
   // check if we are being called to do a full or small KGB construction
   if (Cartan_classes.isMember(0)) // start from fundamental Cartan: do full KGB
   {
-    const Grading gr = square_class_grading(G,G.xi_square(GR.realForm()));
-    assert (gr==GR.base_grading());
+    const Grading gr = GR.base_grading();
+    assert ( gr == square_class_grading(G,G.xi_square(GR.realForm())) );
     d_base = new TitsCoset(G_C,gr);
-    TitsElt a (d_base->titsGroup(),G_C.x0_torus_part(GR.realForm()));
+    assert (GR.x0_torus_part() == G_C.x0_torus_part(GR.realForm()) );
+    TitsElt a (d_base->titsGroup(),GR.x0_torus_part());
     i_tab.reduce(a); // probably unnecessary
     elt_hash.match(a); // plant the seed
     KGB_base::add_element(); // add additional info for initial element
   }
   else // partial KGB construction; needs more work to get initial element(s)
-  { // warning: might find different seeds than occur in full KGB constuction
+  {
     tits::EnrichedTitsGroup square_class_base(GR);
     d_base = new TitsCoset(square_class_base); // copy construct from base
     RealFormNbr rf=GR.realForm();
@@ -539,17 +540,12 @@ KGB::KGB(RealReductiveGroup& GR,
 	   G.fundamental().central_square_class(rf));
 
     set::EltList mins=G.Cartan_ordering().minima(Cartan_classes);
-
+    // for (small) block there should be just one minimum, but we loop anyway
     for (set::EltList::iterator it=mins.begin(); it!=mins.end(); ++it)
     {
-      const CartanNbr cn = *it;
-      TitsElt a=
-	(mins.size()==1 // use backtrack only in (unused) multiple minima case
-	 ? square_class_base.grading_seed(G_C,rf,cn)
-	 : square_class_base.backtrack_seed(G,rf,cn)
-	 );
-
+      TitsElt a= square_class_base.backtrack_seed(G,rf,CartanNbr(*it));
       i_tab.reduce(a);
+
       size_t k=elt_hash.match(a);
       assert(k==info.size()); // this KGB element should be new
       ndebug_use(k);
@@ -557,6 +553,7 @@ KGB::KGB(RealReductiveGroup& GR,
     } // |for (it)|
   }
 
+  // now inductively fill the table |elt_pool|/|elt_hash|, and related arrays
   for (KGBElt x=0; x<elt_hash.size(); ++x) // loop makes |elt_hash| grow
   {
     // extend by cross actions
