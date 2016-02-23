@@ -55,10 +55,12 @@ RealReductiveGroup::RealReductiveGroup
   tori::RealTorus msT = G_C.cartan(G_C.mostSplit(rf)).fiber().torus();
   d_connectivity = topology::Connectivity(msT,G_C.rootDatum());
 
-  { using namespace complexredgp;
+  { // no cocharacter provided, use |coch_representative| for square class rep
+    const RootDatum& rd = rootDatum();
     Grading gr =
-      G_C.simple_roots_x0_compact(G_C.square_class_repr(G_C.xi_square(rf)));
-    RatCoweight coch = complexredgp::coch_representative(rootDatum(),gr);
+      square_class_grading(G_C,G_C.xi_square(rf)); // noncompact marked
+    RatCoweight coch =
+      complexredgp::coch_representative(rd,gr.complement(rd.semisimpleRank()));
     // although already dependent only on square class, make it standard choice
     square_class_cocharacter = square_class_choice(G_C.distinguished(),coch);
   }
