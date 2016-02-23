@@ -886,11 +886,13 @@ ComplexReductiveGroup::central_fiber(RealFormNbr rf) const
 
 TorusPart ComplexReductiveGroup::x0_torus_part(RealFormNbr rf) const
 {
-  Grading base = simple_roots_x0_compact(square_class_repr(xi_square(rf)));
+  Grading base = // find grading that corresponds to square class base
+    square_class_grading(*this,xi_square(rf)); // noncompact marked
+  base.complement(rootDatum().semisimpleRank()); // now compact is marked
+  TorusPart t = grading_shift_repr(base^simple_roots_x0_compact(rf));
   TorusElement coch = // corresponds to (square class) base grading vector
     y_values::exp_pi(coch_representative(rootDatum(),base));
-  TorusPart t = grading_shift_repr(base^simple_roots_x0_compact(rf));
-  coch += t; // a candidate torus part for |x0|, based on grading only
+  coch += t; // now |coch| has implied grading for |rf|
   return
     t += minimum(central_fiber(rf),*this,coch); // to preferred orbit repr.tive
 }
@@ -1321,7 +1323,7 @@ SmallBitVector floor (Ratvec_Numer_t num, arithmetic::Numer_t d)
 }
 
 
-// select |TorusPart| from list with minimal fingerprint for |coch|
+// select |TorusPart| from list with minimal fingerprint when added to |coch|
 TorusPart minimum(const containers::sl_list<TorusPart>& cf,
   const ComplexReductiveGroup& G, const TorusElement& coch)
 {
@@ -1343,7 +1345,7 @@ TorusPart minimum(const containers::sl_list<TorusPart>& cf,
 
   const BinaryMap pr(projector);
   auto it= cf.begin();
-  unsigned long v=(ref + pr*(*it)).data().to_ulong();
+  unsigned long v=(ref + pr*(*it)).data().to_ulong(); // current minimal value
   TorusPart min = *it;
   for (++it; it!=cf.end(); ++it)
   {
@@ -1354,7 +1356,7 @@ TorusPart minimum(const containers::sl_list<TorusPart>& cf,
       min = *it;
     }
   }
-  return min;
+  return min; // return the offset |TorusPart|, not the modified bitvector
 } // |minimum|
 
 // replace |coch| by minimum representative modulo image |delta_plus_1|
