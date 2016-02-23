@@ -924,14 +924,6 @@ ComplexReductiveGroup::block_size(RealFormNbr rf,
 
 ******************************************************************************/
 
-RatCoweight coch_representative(const RootDatum& rd, Grading compact_simple)
-{
-  RatWeight result (rd.rank());
-  for (RankFlags::iterator it=compact_simple.begin(); it(); ++it)
-    result += rd.fundamental_coweight(*it);
-  return result;
-}
-
 
 WeylWord canonicalize // return value conjugates element new |sigma| to old
   (TwistedInvolution& sigma,
@@ -1239,18 +1231,43 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
 
 } // |strong_real_form_of|
 
-// mark noncompact and complex roots in preferred way for square class
-Grading square_class_grading(const ComplexReductiveGroup& G,
-			     cartanclass::square_class csc)
+
+RatCoweight coch_representative(const RootDatum& rd, Grading compact_simple)
+{
+  RatWeight result (rd.rank());
+  for (RankFlags::iterator it=compact_simple.begin(); it(); ++it)
+    result += rd.fundamental_coweight(*it);
+  return result;
+}
+
+RatCoweight some_square // some value whose $\exp(2i\pi.)$ is in class |csc|
+  (const ComplexReductiveGroup& G,cartanclass::square_class csc)
 {
   const RootDatum& rd=G.rootDatum();
   auto gr = G.simple_roots_x0_compact(G.square_class_repr(csc));
-  // this grading complemented would do, but there is now a standarised choice:
-  RatCoweight coch = // pass through this form to get standardised cocharacter
-    realredgp::square_class_choice // standardise representative |RatCoweight|
-      (G.distinguished(),coch_representative(rd,gr));
+  // got some grading associated to |csc|; get representative cocharacter for it
+  return realredgp::square_class_choice // and standardise that |RatCoweight|
+    (G.distinguished(),coch_representative(rd,gr));
+}
+
+// mark noncompact and complex simple roots according to |coch|
+Grading grading_of_simples
+  (const ComplexReductiveGroup& G, const RatCoweight& coch)
+{
+  const RootDatum& rd=G.rootDatum();
+  Grading result; result.fill(rd.semisimpleRank()); // set complex simple roots
+  for (auto it=G.simple_roots_imaginary().begin(); it(); ++it)
+    result.set(*it,coch.dot(rd.simpleRoot(*it))%2==0); // set noncompact roots
+  return result;
+} // |grading_of_simples|
+
+Grading square_class_grading(const ComplexReductiveGroup& G,
+			     cartanclass::square_class csc)
+{
+  RatCoweight coch = some_square(G,csc);
 
   // finally convert that to a grading again
+  const RootDatum& rd=G.rootDatum();
   Grading result; result.fill(rd.semisimpleRank()); // set complex simple roots
   for (auto it=G.simple_roots_imaginary().begin(); it(); ++it)
     result.set(*it,coch.dot(rd.simpleRoot(*it))%2==0); // set noncompact roots

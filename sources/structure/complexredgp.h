@@ -34,8 +34,11 @@ namespace complexredgp {
 
 /******** function declarations **********************************************/
 
+
+
 // rational coweight whose addition changes grading of simple roots by |shift|
 RatCoweight coch_representative(const RootDatum& rd, Grading shift);
+
 
 WeylWord canonicalize // return value is conjugator, built left-to-right
   (TwistedInvolution& sigma,
@@ -57,6 +60,13 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
    TwistedInvolution tw, const RatCoweight& torus_factor,
    TorusElement& cocharacter // additional output
    );
+
+RatCoweight some_square // some value whose $\exp(2i\pi.)$ is in class |csc|
+  (const ComplexReductiveGroup& G,cartanclass::square_class csc);
+
+
+Grading grading_of_simples
+  (const ComplexReductiveGroup& G, const RatCoweight& coch);
 
 Grading square_class_grading(const ComplexReductiveGroup& G,
 			     cartanclass::square_class csc);

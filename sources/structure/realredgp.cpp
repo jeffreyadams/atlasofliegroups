@@ -43,27 +43,17 @@ RealReductiveGroup::RealReductiveGroup
   , d_realForm(rf)
   , d_connectivity() // wait for most split torus to be constructed below
 
-  , square_class_cocharacter(0) // set below
+  , square_class_cocharacter(some_square(G_C,G_C.xi_square(rf)))
   , torus_part_x0(G_C.x0_torus_part(rf))
 
   , d_Tg(new // allocate private copy
-	 TitsCoset(G_C,square_class_grading(G_C,square_class())))
+	 TitsCoset(G_C,grading_of_simples(G_C,square_class_cocharacter)))
   , kgb_ptr(NULL)
   , dual_kgb_ptr(NULL)
   , d_status()
 {
   tori::RealTorus msT = G_C.cartan(G_C.mostSplit(rf)).fiber().torus();
   d_connectivity = topology::Connectivity(msT,G_C.rootDatum());
-
-  { // no cocharacter provided, use |coch_representative| for square class rep
-    const RootDatum& rd = rootDatum();
-    Grading gr =
-      square_class_grading(G_C,G_C.xi_square(rf)); // noncompact marked
-    RatCoweight coch =
-      complexredgp::coch_representative(rd,gr.complement(rd.semisimpleRank()));
-    // although already dependent only on square class, make it standard choice
-    square_class_cocharacter = square_class_choice(G_C.distinguished(),coch);
-  }
 
   d_status.set(IsConnected,d_connectivity.component_rank() == 0);
   d_status.set(IsCompact,msT.isCompact());
@@ -135,15 +125,7 @@ RatCoweight RealReductiveGroup::g() const
 // simple roots are simple-imaginary, so dot product flags the compact ones
 Grading RealReductiveGroup::base_grading() const
 {
-  const RootDatum& rd=complexGroup().rootDatum();
-  auto im_sys = // by value, as |InvolutionData| evaporates
-    InvolutionData(rd,complexGroup().distinguished()).imaginary_roots();
-  RatCoweight grc = g_rho_check();
-  Grading result;
-  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
-    result.set(s,not im_sys.isMember(rd.simpleRootNbr(s)) // flag complex
-		 or grc.dot(rd.simpleRoot(s))%2==0); // and noncompact roots
-  return result;
+  return complexredgp::grading_of_simples(complexGroup(),g_rho_check());
 }
 
 size_t RealReductiveGroup::numCartan() const { return Cartan_set().size(); }

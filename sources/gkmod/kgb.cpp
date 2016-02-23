@@ -523,7 +523,6 @@ KGB::KGB(RealReductiveGroup& GR,
   if (Cartan_classes.isMember(0)) // start from fundamental Cartan: do full KGB
   {
     const Grading gr = GR.base_grading();
-    assert ( gr == square_class_grading(G,G.xi_square(GR.realForm())) );
     d_base = new TitsCoset(G_C,gr);
     assert (GR.x0_torus_part() == G_C.x0_torus_part(GR.realForm()) );
     TitsElt a (d_base->titsGroup(),GR.x0_torus_part());

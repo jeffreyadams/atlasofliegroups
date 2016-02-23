@@ -790,7 +790,7 @@ SmallSubspace fiber_denom(const WeightInvolution& theta)
 
 EnrichedTitsGroup::EnrichedTitsGroup(const RealReductiveGroup& GR)
   : TitsCoset(GR.complexGroup(),
-	      square_class_grading(GR.complexGroup(),GR.square_class()))
+	      grading_of_simples(GR.complexGroup(),GR.g_rho_check()))
   , srf(GR.complexGroup().fundamental().strongRealForm(GR.realForm()))
 {}
 
