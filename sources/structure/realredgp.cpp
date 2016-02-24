@@ -218,41 +218,36 @@ const BruhatOrder& RealReductiveGroup::Bruhat_KGB()
 
 
 /*
-  Given a real form cocharacter, find the one representing its square class.
+  Given a real form cocharacter, reduce to one unique for its square class.
+
   This basically chooses a representative for the action of the fundamental
   fiber group on strong involutions in the square class, and serves to define
   a base point, to which the bits for the initial $x_0$ will be an offset.
 
-  This means reduce a class modulo $2X_*+\ker(1-\xi^t)$ to a class modulo
-  $X_*+\ker(1-\xi^t)$. While naively it seems that projecting to $\xi^t$
-  fixed coweights and then choosing a standard representative modulo $X_*$
-  (by reducing each coordinate modulo 1) would work, this fails to do a
-  complete reduction, as one can see in the example where $\xi$ acts on
-  $\Q^2$ by swapping the coordinates: both $[0,0]$ and $[1,1]/2$ are
-  $\xi^t$-fixed with reduced coordinates, but they are still equivalent.
-
-  What is needed instead is to reduce modulo 1 for a complete set of
-  $\xi$-stable coordinates integral on $X_*$, which can be obtained in the
-  form of a basis of the sublattice $(X^*)^\xi$. Since we need $\xi+1$ here
-  anyway for the projection at the end, we obtain that basis here from
-  |adapted_basis| for the (smaller by a finite index) image $(\xi+1)(X^*)$.
+  This means reduce a rational coweight $(X_*)_\Q^{\xi^t}$ modulo the
+  sublattice $(X_*)^{\xi^t}$. We cannot just reduce modulo 1, as that may
+  produce a non $\xi^t$-fixed coweight and indeed one from which one cannot
+  easily recover the desired class of coweights. However once we express the
+  coweights in coordinates relative to a nasis of $(X_*)^{\xi^t}$, we can just
+  reduce those coordinates modulo 1, and then convert back, so we do that.
 */
 RatCoweight square_class_choice
   (const WeightInvolution& xi, const RatCoweight& coch)
 {
-  int_Matrix fix = xi+1; // projection to $\xi$-fixed weights
-  CoeffList diagonal; // its values will be ignored, just the size counts
-  int_Matrix B = matreduc::adapted_basis(fix,diagonal);
-  // initial columns of |B| are basis of the saturarted sublattice $(X^*)^\xi$
-  int_Matrix B_inv(B.inverse());
-  const auto fix_rank=diagonal.size(), n=B.numRows();
+  assert(coch==coch*xi); // assuming $\xi^t$-stable coweights
 
-  // taking preferred repr mod $X_*$ is basically just reduction modulo 1
-  // however, do this only in the first |fix_rank| $\xi$-invariant coordinates
-  RatCoweight tr =
-    (coch*B.block(0,0,n,fix_rank)%=1)*B_inv.block(0,0,fix_rank,n);
-  // now make this $\xi^t$-stable by projecting modulo $\ker(\xi^t-1)$
-  return (tr*fix/=2).normalize();
+  int_Matrix fix = xi+1; // projection to $\xi$-fixed weights
+
+  WeightInvolution row,col;
+  CoeffList diagonal = matreduc::diagonalise(fix,row,col);
+
+  // initial columns of |col| are coordinate weights of $\xi^t$-stable coweights
+  int_Matrix col_inv(col.inverse());
+  const auto d=diagonal.size(), n=col.numRows();
+
+  // convert to $\xi^t$-stable coordinates, take mod 1, then convert back
+  RatCoweight tr = (coch*col.block(0,0,n,d)%=1)*col_inv.block(0,0,d,n);
+  return tr.normalize();
 }
 
 
