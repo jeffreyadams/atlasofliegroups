@@ -193,7 +193,7 @@ ifneq ($(BINDIR),$(shell pwd))
 	ln -s $(INSTALLDIR)/Fokko $(BINDIR)/Fokko # make symbolic link
 # whenever BINDIR is not INSTALLDIR, we can put a shell script as bin/atlas
 # which ensures the search path will be properly set (no compiled-in path here)
-	echo '#!/bin/sh\n$(INSTALLDIR)/atlas --path=$(INSTALLDIR)/atlas-scripts basic.at "$$@"' >$(BINDIR)/atlas; chmod a+x $(BINDIR)/atlas
+	(echo '#!/bin/sh'; echo '$(INSTALLDIR)/atlas --path=$(INSTALLDIR)/atlas-scripts basic.at "$$@"') >$(BINDIR)/atlas; chmod a+x $(BINDIR)/atlas
 endif
 endif
 

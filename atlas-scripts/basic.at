@@ -824,11 +824,11 @@ set rho_check_r ((RootDatum,mat) rd_theta) = ratvec:
 
 { compact/noncompact status for a given KGBElt of general imaginary roots }
 set is_compact (KGBElt x) = (vec->bool):
-  let coweight = rho_check_i(x)+torus_factor(x)
-  in (vec alpha) bool: assert(is_imaginary(x)(alpha)); =(coweight*alpha)%2
+  let coweight = rho_check_i(x)+torus_factor(x), is_im=is_imaginary(x)
+  in (vec alpha) bool: assert(is_im(alpha)); =(coweight*alpha)%2
 set is_noncompact (KGBElt x) = (vec->bool):
-  let coweight = rho_check_i(x)+torus_factor(x)
-  in (vec alpha) bool: assert(is_imaginary(x)(alpha)); !=(coweight*alpha)%2
+  let coweight = rho_check_i(x)+torus_factor(x), is_im=is_imaginary(x)
+  in (vec alpha) bool: assert(is_im(alpha)); !=(coweight*alpha)%2
 
 { for roots not known to be imaginary, use these functions instead }
 set is_compact_imaginary (KGBElt x) = (vec->bool):
