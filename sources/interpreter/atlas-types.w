@@ -2153,7 +2153,7 @@ struct real_form_value : public value_base
 @)
   real_form_value(const inner_class_value& p,RealFormNbr f) @/
   : parent(p), val(p.val,f)
-  , cocharacter(y_values::exp_pi(p.val.base_grading_vector(f)))
+  , cocharacter(y_values::exp_pi(val.g_rho_check()))
   , rt_p(nullptr) @+{}
   real_form_value
     (const inner_class_value& p,RealFormNbr f, const TorusElement& coch) @/

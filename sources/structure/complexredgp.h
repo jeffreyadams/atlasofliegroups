@@ -39,6 +39,9 @@ namespace complexredgp {
 // rational coweight whose addition changes grading of simple roots by |shift|
 RatCoweight coch_representative(const RootDatum& rd, Grading shift);
 
+// given a real form cocharacter, find the one representing its square class
+RatCoweight square_class_choice
+  (const WeightInvolution& xi, const RatCoweight& coch);
 
 WeylWord canonicalize // return value is conjugator, built left-to-right
   (TwistedInvolution& sigma,
@@ -61,15 +64,11 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
    TorusElement& cocharacter // additional output
    );
 
-RatCoweight some_square // some value whose $\exp(2i\pi.)$ is in class |csc|
+RatCoweight some_coch // some cocharacter whose real form is in class |csc|
   (const ComplexReductiveGroup& G,cartanclass::square_class csc);
-
 
 Grading grading_of_simples
   (const ComplexReductiveGroup& G, const RatCoweight& coch);
-
-Grading square_class_grading(const ComplexReductiveGroup& G,
-			     cartanclass::square_class csc);
 
 
   // apply involution action of |tw| on weight lattice to |v|
@@ -377,10 +376,7 @@ class ComplexReductiveGroup
   cartanclass::square_class xi_square(RealFormNbr rf) const;
   RealFormNbr square_class_repr(cartanclass::square_class csc) const;
 
-  TorusPart grading_shift_repr(Grading diff) const;
   TorusPart x0_torus_part(RealFormNbr rf) const;
-
-  RatCoweight base_grading_vector(RealFormNbr rf) const;
 
   // torus parts that remain in the fiber and do not affect any grading
   containers::sl_list<TorusPart> central_fiber(RealFormNbr rf) const;
@@ -465,6 +461,8 @@ class ComplexReductiveGroup
   void construct(); // does essential work, common to two constructors
 
   TwistedInvolution reflection(RootNbr rn,const TwistedInvolution& tw) const;
+
+  TorusPart grading_shift_repr(Grading diff) const;
 
   // whether Cartan \#cn is defined over real form \#rf.
   bool is_defined(RealFormNbr rf, CartanNbr cn) const

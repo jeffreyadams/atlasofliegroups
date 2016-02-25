@@ -23,7 +23,7 @@
 */
 
 #include "complexredgp.h"
-#include "realredgp.h" // for |square_class_choice|
+#include "matreduc.h" // |diagonalise| used in |square_class_choice|
 
 #include <set>
 
@@ -787,12 +787,23 @@ ComplexReductiveGroup::global_KGB_size() const
 
 }
 
+// weak real forms are grouped by square class, whose index |xi_square| finds
+// such forms share a central value for the square of their strong involutions
+cartanclass::square_class ComplexReductiveGroup::xi_square // class for square
+  (RealFormNbr rf) const
+{ return fundamental().central_square_class(rf); }
+
+RealFormNbr ComplexReductiveGroup::square_class_repr // class elected real form
+  (cartanclass::square_class csc) const
+{ return fundamental().realFormPartition().classRep(csc); }
+
+// the basic information stored for a real form is a grading of the simpel roots
 Grading ComplexReductiveGroup::simple_roots_x0_compact(RealFormNbr rf) const
 {
 #if 1 // actual code
   return
     RankFlags(fundamental().wrf_rep(rf)).unslice(simple_roots_imaginary());
-#else // the |unslice| does the change of basis below more efficiently
+#else // |unslice| does the following change of basis below more efficiently
   const Fiber& fund_f= fundamental();
   RankFlags noncompact(fund_f.wrf_rep(rf)); // among imaginary simples
   SmallBitVector v(noncompact,fund_f.adjointFiberRank());
@@ -800,53 +811,118 @@ Grading ComplexReductiveGroup::simple_roots_x0_compact(RealFormNbr rf) const
 #endif
 }
 
-cartanclass::square_class
-ComplexReductiveGroup::xi_square(RealFormNbr rf) const
-{ return fundamental().central_square_class(rf); }
 
-RealFormNbr
-ComplexReductiveGroup::square_class_repr(cartanclass::square_class csc) const
-{ return fundamental().realFormPartition().classRep(csc); }
+/*
+  Given a real form cocharacter, reduce to one unique for its square class.
 
-// here |diff| grades the simple roots, but only imaginary ones are involved
+  This basically chooses a representative for the action of the fundamental
+  fiber group on strong involutions in the square class, and serves to define
+  a base point, to which the bits for the initial $x_0$ will be an offset.
+
+  This means reduce a rational coweight $(X_*)_\Q^{\xi^t}$ modulo the
+  sublattice $(X_*)^{\xi^t}$. We cannot just reduce modulo 1, as that may
+  produce a non $\xi^t$-fixed coweight and indeed one from which one cannot
+  easily recover the desired class of coweights. However once we express the
+  coweights in coordinates relative to a nasis of $(X_*)^{\xi^t}$, we can just
+  reduce those coordinates modulo 1, and then convert back, so we do that.
+*/
+RatCoweight square_class_choice
+  (const WeightInvolution& xi, const RatCoweight& coch)
+{
+  assert(coch==coch*xi); // assuming $\xi^t$-stable coweights
+
+  int_Matrix fix = xi+1; // projection to $\xi$-fixed weights
+
+  WeightInvolution row,col;
+  CoeffList diagonal = matreduc::diagonalise(fix,row,col);
+
+  // initial columns of |col| are coordinate weights of $\xi^t$-stable coweights
+  int_Matrix col_inv(col.inverse());
+  const auto d=diagonal.size(), n=col.numRows();
+
+  // convert to $\xi^t$-stable coordinates, take mod 1, then convert back
+  RatCoweight tr = (coch*col.block(0,0,n,d)%=1)*col_inv.block(0,0,d,n);
+  return tr.normalize();
+}
+
+// For a square class, we'll need to represent the set of compact roots for its
+// |square_class_repr| by a coweight (or |TorusElement|),  via |compacts_for|:
+
+
+// find compact ones among imaginary simple roots for |G|, as defined by |coch|
+Grading compacts_for(const ComplexReductiveGroup& G, TorusElement coch)
+{
+  const RootDatum& rd=G.rootDatum();
+  Grading result;
+  for (auto it=G.simple_roots_imaginary().begin(); it(); ++it)
+    result.set(*it,coch.negative_at(rd.simpleRoot(*it)));
+  return result;
+}
+
+// So we shall actually use the following section of that map
+
+// Find coweight $t$ such that |compacts_for| of $\exp(i\pi t)$ is |compacts|;
+// it isn't unique. Make straightforward choice, with $\exp(2i\pi t)$ central
+RatCoweight coch_representative(const RootDatum& rd, Grading compacts)
+{
+  RatWeight result (rd.rank());
+  for (RankFlags::iterator it=compacts.begin(); it(); ++it)
+    result += rd.fundamental_coweight(*it);
+  return result;
+}
+
+// The above is integrated into |some_coch|, selecting coweight for square class
+
+// some coweight $t$ with real form of $\exp(i\pi t)\delta_1$ in class |csc|
+// this becomes |g_rho_check()| value for all non-synthetic real forms in |csc|
+RatCoweight some_coch
+  (const ComplexReductiveGroup& G,cartanclass::square_class csc)
+{
+  const RootDatum& rd=G.rootDatum();
+  auto gr = G.simple_roots_x0_compact(G.square_class_repr(csc));
+  // got some grading associated to |csc|; get representative cocharacter for it
+  return square_class_choice // and standardise that |RatCoweight|
+    (G.distinguished(),coch_representative(rd,gr));
+} // |some_coch|
+
+
+// Preparations for finding an initial |TorusPart x0| in each weak real form
+
+// We shall deduce |x0| from difference between set of compact roots (gradings)
+
+// Find a |TorusPart|, assumed to exist, that induces a shift |diff| in grading
+// here |diff| grades the simple roots (but only imaginary ones are involved)
 TorusPart ComplexReductiveGroup::grading_shift_repr (Grading diff) const
 {
   const SmallSubquotient& fg = fundamental().fiberGroup();
   const unsigned int f_rank = fg.dimension();
   const unsigned int ssr = semisimpleRank();
+
   BinaryMap fg2grading (ssr,f_rank);
   for (RankFlags::iterator it=simple_roots_imaginary().begin(); it(); ++it)
   {
-    const unsigned int i=*it;
+    const unsigned int i=*it; // this row |i| contains evaluations at $\alpha_i$
     SmallBitVector ai (rootDatum().simpleRoot(i));
     for (unsigned int j=0; j<f_rank; ++j)
-      fg2grading.set(i,j,ai.dot(fg.fromBasis(SmallBitVector(f_rank,j))));
+      fg2grading.set(i,j,fg.fromBasis(SmallBitVector(f_rank,j)).dot(ai));
   }
+
   const BinaryMap grading2fg = fg2grading.section();
   const SmallBitVector v = grading2fg*SmallBitVector(diff,ssr);
-  assert((fg2grading*v).data()==diff);
+  assert((fg2grading*v).data()==diff); // check that we solved the equation
   return fg.fromBasis(v);
-}
+} // |grading_shift_repr|
 
+/*
+  |preimage| is a somewhat technical function to aid |central_fiber|, listing
+  what is essentially the automorphism group of a (future) set K\G/B
 
-RatCoweight ComplexReductiveGroup::base_grading_vector(RealFormNbr rf) const
-{
-  RankFlags cpct = simple_roots_x0_compact(square_class_repr(xi_square(rf)));
-  return coch_representative(rootDatum(),cpct);
-}
-
-// an inverse operation to |coch_representative| composed with |exp_pi|
-Grading compact_simple(const RootDatum& rd, RankFlags imag, TorusElement coch)
-{
-  Grading result;
-  for (auto it=imag.begin(); it(); ++it)
-    result.set(*it,coch.negative_at(rd.simpleRoot(*it)));
-  return result;
-}
-
-/* find all FiberElt values in strong class of |y| for |csc|, mapping to
-   |image| under |toAdjoint|, and return a list of |TorusPart| values that
-   represent their differences with |y|
+  Given an element |y| of the fundamental fiber, find all those that (1) map
+  under |toAdjoint| to the adjoint fiber element |image| (so that they will
+  induce the corresponding shift in grading), and (2) lie in the "same strong
+  real form" as |y|, this being an orbit in the fiber group under the action
+  of the imaginary Weyl group, the action depending on the square class |csc|;
+  return list of |TorusPart| values that represent their differences with |y|.
 */
 containers::sl_list<TorusPart> preimage
 (const Fiber& fund_f, const cartanclass::square_class csc,
@@ -863,7 +939,9 @@ containers::sl_list<TorusPart> preimage
   return result;
 } // |preimage|
 
-// torus parts that remain in the fiber and do not affect any grading
+// now finding all fiber elements for |rf| with identical gradings is easy
+
+// list stabiliser subgroup, in fundamental fiber group, of gradings for |rf|
 containers::sl_list<TorusPart>
 ComplexReductiveGroup::central_fiber(RealFormNbr rf) const
 {
@@ -871,31 +949,40 @@ ComplexReductiveGroup::central_fiber(RealFormNbr rf) const
   const cartanclass::square_class csc = fund_f.central_square_class(rf);
   const Partition& pi = fund_f.fiber_partition(csc);
 
-  // find number of a fiber orbit that maps to our weak real form
+  // find element |y| in some fiber orbit |srf| that maps to our weak real form
   cartanclass::fiber_orbit srf;
   for (srf=0; srf<pi.classCount(); ++srf)
     if (fund_f.toWeakReal(srf,csc)==rf)
       break;
-
   const cartanclass::FiberElt y = pi.classRep(srf);
 
+  // and return shifts to other elements with same |toAdjoint| image as |y|
   return preimage(fund_f,csc,y,fund_f.toAdjoint(y));
 } // |ComplexReductiveGroup::central_fiber|
 
 
+/*
+  We need |central_fiber| in |x0_torus_part| only to standardise the choice,
+  which the function |minimum| defined below actually accomplishes.
 
+  What preceeds that is straightforward: start with the reference compacts for
+  the square class; compare with the desired compacts at |x0| obtained from
+  |simple_roots_x0_compact(rf)| to find the grading shift needed, and using
+  |grading_shift_repr| find a |TorusPart| that will do this. This is the
+  candidate to be standardised; torus element |coch| is needed for |minimum|.
+  */
 TorusPart ComplexReductiveGroup::x0_torus_part(RealFormNbr rf) const
 {
-  Grading base = // find grading that corresponds to square class base
-    square_class_grading(*this,xi_square(rf)); // noncompact marked
-  base.complement(rootDatum().semisimpleRank()); // now compact is marked
-  TorusPart t = grading_shift_repr(base^simple_roots_x0_compact(rf));
-  TorusElement coch = // corresponds to (square class) base grading vector
-    y_values::exp_pi(coch_representative(rootDatum(),base));
-  coch += t; // now |coch| has implied grading for |rf|
-  return
-    t += minimum(central_fiber(rf),*this,coch); // to preferred orbit repr.tive
-}
+  TorusElement t = // corresponds to (square class) base grading vector
+    y_values::exp_pi(some_coch(*this,xi_square(rf)));
+  const Grading base = compacts_for(*this,t);
+  // mark compacts for elected cocharacter in square class
+  // basic |x0| will be one that relative to base produces the right compacts
+  TorusPart bits = grading_shift_repr(base^simple_roots_x0_compact(rf));
+  t += bits; // now |coch| has implied grading for |rf|
+  return bits  // converted to preferred orbit representative:
+    += minimum(central_fiber(rf),*this,t);
+} // |x0_torus_part|
 
 
 
@@ -925,7 +1012,7 @@ ComplexReductiveGroup::block_size(RealFormNbr rf,
 ******************************************************************************/
 
 
-WeylWord canonicalize // return value conjugates element new |sigma| to old
+WeylWord canonicalize // return value conjugates new |sigma| value to old one
   (TwistedInvolution& sigma,
    const RootDatum& rd,
    const TwistedWeylGroup& W,
@@ -1018,11 +1105,11 @@ WeylWord canonicalize // return value conjugates element new |sigma| to old
   }
 
   return ww; // but the main result is the modfied value left in |sigma|
-}
+} // |canonicalize|
 
-/*!
-  \brief Puts into |so| the composite Cayley transform, and into |cross| the
-   cross action corresponding to the twisted involution |ti|.
+/*
+  Put into |so| the composite Cayley transform, and into |cross| the cross
+  action corresponding to the twisted involution |ti|.
 
   Explanation: to each root datum involution $q$, we may associate a
   transformation from the fundamental involution to $q$ that factors as the
@@ -1077,68 +1164,19 @@ void Cayley_and_cross_part(RootNbrSet& Cayley,
   Cayley.set_capacity(rs.numRoots());
   Cayley.insert(so.begin(),so.end());
   Cayley = rs.long_orthogonalize(Cayley);
+} // |Cayley_and_cross_part|
+
+// |TitsCoset::TitsCoset| needs a true grading, complement of |compacts_for|
+// in ther words, mark noncompact and complex simple roots according to |coch|
+Grading grading_of_simples
+  (const ComplexReductiveGroup& G, const RatCoweight& coch)
+{
+  return compacts_for(G,y_values::exp_pi(coch)).complement(G.semisimpleRank());
 }
 
-/* For a very long time real forms in the Atlas software were exclusively
-   approached by selecting from a list that is presented after a rather
-   elaborate preparatory calculation. The following function marks a different
-   possibility, namely by allowing a real form (and in fact a Cartan class and
-   a representative adjoint fiber element at that Cartan) to be selected based
-   on specifying an involution and a grading of the imaginary roots. For
-   practical reasons the grading is specified by its difference with the
-   grading that makes noncompact all simple-imaginary roots (which grading
-   belongs to the quasisplit real form) and this difference is specified by a
-   rational coweight, whose pairing with any imaginary root should be integer,
-   and its parity gives the mentioned difference in grading.
- */
-RealFormNbr real_form_of // who claims this KGB element?
-  (ComplexReductiveGroup& G,
-   TwistedInvolution tw, const RatCoweight& grading_shift,
-   CartanNbr& cn, WeylWord& conj, cartanclass::AdjointFiberElt& rep // outputs
-   )
-{
-  const TwistedWeylGroup& W = G.twistedWeylGroup();
-  const RootDatum& rd=G.rootDatum();
-
-  { // test if |tw| is a proper twisted involution
-    WeylElt test = tw;
-    W.mult(test,W.twisted(tw));
-    if (test!= WeylElt())
-      throw std::runtime_error("Not a twisted involution");
-  }
-
-  // find the proper Cartan class
-  conj = G.canonicalize(tw);
-  for (cn=G.numCartanClasses(); cn-->0;)
-    if (tw==G.involution_of_Cartan(cn))
-      break;
-  assert(cn!=~0); // every valid twisted involution should be found here
-
-  // find the grading of the simple-imaginary roots at |tw|
-  Grading gr;
-  Coweight numer(grading_shift.numerator().begin(),
-		 grading_shift.numerator().end()); // copy and convert
-  arithmetic::Numer_t denom = grading_shift.denominator();
-  rd.dual_act(numer,conj); // convert towards canonical involution
-  InvolutionData id = InvolutionData::build(rd,W,tw);
-  for (unsigned int i=0; i<id.imaginary_rank(); ++i)
-  {
-    int eval = rd.root(id.imaginary_basis(i)).dot(numer);
-    if (eval%denom!=0)
-      throw std::runtime_error
-	("Rational coweight nonintegral at imaginary root");
-    gr.set(i,eval%(2*denom)==0); // set means noncompact; happens if |eval==0|
-  }
-
-  // look up the grading
-  const Fiber& f = G.cartan(cn).fiber();
-  rep = f.gradingRep(gr);
-  cartanclass::adjoint_fiber_orbit orb = f.weakReal().class_of(rep);
-  return G.realFormLabels(cn)[orb]; // found our real form!!
-} // |real_form_of|
 
 
-// An attempt to improve the above
+
 /*
    For a very long time real forms in the Atlas software were exclusively
    approached by selecting from a list that is presented after a rather
@@ -1220,8 +1258,8 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
   strong_form_start = x.torus_part() += minimum(pre,G,x.torus_part());
   // now |x.torus_part| is what |torus_factor| should return at first KGB elt
 
-  assert(compact_simple(rd,G.simple_roots_imaginary(),x.torus_part()) ==
-	 G.simple_roots_x0_compact(wrf)); // check grading is as expected
+  // check that the grading turns out as expected
+  assert(compacts_for(G,x.torus_part()) == G.simple_roots_x0_compact(wrf));
 
   // take into account the torus bits that will be stored at KGB element x0
   strong_form_start += G.x0_torus_part(wrf); // morally subtraction, but mod 2
@@ -1230,49 +1268,6 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
   return wrf;
 
 } // |strong_real_form_of|
-
-
-RatCoweight coch_representative(const RootDatum& rd, Grading compact_simple)
-{
-  RatWeight result (rd.rank());
-  for (RankFlags::iterator it=compact_simple.begin(); it(); ++it)
-    result += rd.fundamental_coweight(*it);
-  return result;
-}
-
-RatCoweight some_square // some value whose $\exp(2i\pi.)$ is in class |csc|
-  (const ComplexReductiveGroup& G,cartanclass::square_class csc)
-{
-  const RootDatum& rd=G.rootDatum();
-  auto gr = G.simple_roots_x0_compact(G.square_class_repr(csc));
-  // got some grading associated to |csc|; get representative cocharacter for it
-  return realredgp::square_class_choice // and standardise that |RatCoweight|
-    (G.distinguished(),coch_representative(rd,gr));
-}
-
-// mark noncompact and complex simple roots according to |coch|
-Grading grading_of_simples
-  (const ComplexReductiveGroup& G, const RatCoweight& coch)
-{
-  const RootDatum& rd=G.rootDatum();
-  Grading result; result.fill(rd.semisimpleRank()); // set complex simple roots
-  for (auto it=G.simple_roots_imaginary().begin(); it(); ++it)
-    result.set(*it,coch.dot(rd.simpleRoot(*it))%2==0); // set noncompact roots
-  return result;
-} // |grading_of_simples|
-
-Grading square_class_grading(const ComplexReductiveGroup& G,
-			     cartanclass::square_class csc)
-{
-  RatCoweight coch = some_square(G,csc);
-
-  // finally convert that to a grading again
-  const RootDatum& rd=G.rootDatum();
-  Grading result; result.fill(rd.semisimpleRank()); // set complex simple roots
-  for (auto it=G.simple_roots_imaginary().begin(); it(); ++it)
-    result.set(*it,coch.dot(rd.simpleRoot(*it))%2==0); // set noncompact roots
-  return result;
-} // |square_class_grading|
 
 /*****************************************************************************
 

@@ -43,7 +43,7 @@ RealReductiveGroup::RealReductiveGroup
   , d_realForm(rf)
   , d_connectivity() // wait for most split torus to be constructed below
 
-  , square_class_cocharacter(some_square(G_C,G_C.xi_square(rf)))
+  , square_class_cocharacter(some_coch(G_C,G_C.xi_square(rf)))
   , torus_part_x0(G_C.x0_torus_part(rf))
 
   , d_Tg(new // allocate private copy
@@ -195,43 +195,6 @@ const BruhatOrder& RealReductiveGroup::Bruhat_KGB()
 {
   kgb(); // ensure |kgb_ptr!=NULL|, but we cannot use (|const|) result here
   return kgb_ptr->bruhatOrder(); // get Bruhat order (generate if necessary)
-}
-
-
-//			   function definitions
-
-
-/*
-  Given a real form cocharacter, reduce to one unique for its square class.
-
-  This basically chooses a representative for the action of the fundamental
-  fiber group on strong involutions in the square class, and serves to define
-  a base point, to which the bits for the initial $x_0$ will be an offset.
-
-  This means reduce a rational coweight $(X_*)_\Q^{\xi^t}$ modulo the
-  sublattice $(X_*)^{\xi^t}$. We cannot just reduce modulo 1, as that may
-  produce a non $\xi^t$-fixed coweight and indeed one from which one cannot
-  easily recover the desired class of coweights. However once we express the
-  coweights in coordinates relative to a nasis of $(X_*)^{\xi^t}$, we can just
-  reduce those coordinates modulo 1, and then convert back, so we do that.
-*/
-RatCoweight square_class_choice
-  (const WeightInvolution& xi, const RatCoweight& coch)
-{
-  assert(coch==coch*xi); // assuming $\xi^t$-stable coweights
-
-  int_Matrix fix = xi+1; // projection to $\xi$-fixed weights
-
-  WeightInvolution row,col;
-  CoeffList diagonal = matreduc::diagonalise(fix,row,col);
-
-  // initial columns of |col| are coordinate weights of $\xi^t$-stable coweights
-  int_Matrix col_inv(col.inverse());
-  const auto d=diagonal.size(), n=col.numRows();
-
-  // convert to $\xi^t$-stable coordinates, take mod 1, then convert back
-  RatCoweight tr = (coch*col.block(0,0,n,d)%=1)*col_inv.block(0,0,d,n);
-  return tr.normalize();
 }
 
 

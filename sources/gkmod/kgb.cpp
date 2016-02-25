@@ -535,8 +535,7 @@ KGB::KGB(RealReductiveGroup& GR,
     tits::EnrichedTitsGroup square_class_base(GR);
     d_base = new TitsCoset(square_class_base); // copy construct from base
     RealFormNbr rf=GR.realForm();
-    assert(square_class_base.square()==
-	   G.fundamental().central_square_class(rf));
+    assert(square_class_base.square()==G.xi_square(rf));
 
     set::EltList mins=G.Cartan_ordering().minima(Cartan_classes);
     // for (small) block there should be just one minimum, but we loop anyway

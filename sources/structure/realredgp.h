@@ -134,10 +134,6 @@ class RealReductiveGroup
 
 //			   function declarations
 
-// given a real form cocharacter, find the one representing its square class
-RatCoweight square_class_choice
-  (const WeightInvolution& xi, const RatCoweight& coch);
-
 
 } // |namespace realredgp|
 

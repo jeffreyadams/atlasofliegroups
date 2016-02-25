@@ -186,7 +186,7 @@ std::ostream& printStrongReal(std::ostream& strm,
       cartanclass::square_class f_csc=fund.central_square_class(fund_wrf);
       // having the square class number of the fundamental fiber, get grading
 
-      RatCoweight coch = some_square(G_C,f_csc);
+      RatCoweight coch = some_coch(G_C,f_csc);
       Grading base_grading = grading_of_simples(G_C,coch);
 
       RatWeight z (G_C.rank());
