@@ -797,10 +797,10 @@ RealFormNbr ComplexReductiveGroup::square_class_repr // class elected real form
   (cartanclass::square_class csc) const
 { return fundamental().realFormPartition().classRep(csc); }
 
-// the basic information stored for a real form is a grading of the simpel roots
+// the basic information stored for a real form is a grading of the simple roots
 Grading ComplexReductiveGroup::simple_roots_x0_compact(RealFormNbr rf) const
 {
-#if 1 // actual code
+#if 1 // exploit that adjoint fiber group is gradings of imaginary simples
   return
     RankFlags(fundamental().wrf_rep(rf)).unslice(simple_roots_imaginary());
 #else // |unslice| does the following change of basis below more efficiently
@@ -1204,9 +1204,7 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
    )
 {
   const GlobalTitsGroup gTg(G);
-  const Cartan_orbits& i_tab = G.involution_table();
   const Fiber& fund_f = G.fundamental();
-  const RootDatum& rd = G.rootDatum();
 
   GlobalTitsElement x //  $\exp(\pi\ii torus_factor)$ gives |TorusElement|,
     (TorusElement(torus_factor,false),tw);
@@ -1226,18 +1224,10 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
   }
 
 
-  RealFormNbr wrf; // the weak real form to return; find its value now:
-  // must do this using the grading of simple-imaginary roots defined by |x|
-  Grading gr; // grading of simple-imaginary roots
-  G.generate_Cartan_orbit(0); // generate involutions in class of fundamental
-  InvolutionNbr inv = i_tab.nr(x.tw()); // without doubt |inv==0|
-  for (unsigned i=0; i<i_tab.imaginary_rank(inv); ++i)
-    gr.set(i,
-      not x.torus_part().negative_at(rd.root(i_tab.imaginary_basis(inv,i))));
-
-  // found the grading, get a corresponding adjoint fiber element, and |wrf|
-  cartanclass::AdjointFiberElt here = fund_f.gradingRep(gr);
-  wrf = fund_f.weakReal().class_of(here);
+  Grading imag_gr = // flag compact ones at $x$ among imaginary simple roots
+    compacts_for(G,x.torus_part()).slice(G.simple_roots_imaginary());
+  cartanclass::AdjointFiberElt here = imag_gr.to_ulong();
+  const RealFormNbr wrf = fund_f.weakReal().class_of(here);
 
   // to adjust the grading is subtle; our freedom depends on the square class
   cartanclass::square_class csc = fund_f.central_square_class(wrf);
