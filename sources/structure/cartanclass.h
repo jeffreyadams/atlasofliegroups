@@ -50,42 +50,50 @@ namespace cartanclass
 namespace cartanclass {
 
 /*
-  The class |Fiber| describes "the fiber" (over a fixed involution of a torus)
-  in twisted Tits group.
+  The class |Fiber| describes "the fiber" (in the set of strong real forms)
+  over a fixed involution of a torus, in twisted Tits group.
 
   This is an important but somewhat subtle class. In fact none of the data
-  stored directly describes the mentioned fiber, nor is it relevant here where
-  the "elements of the fiber" really live. There is a "fiber group" (which is
-  a vector space over $Z/2Z$) that acts simply transitively on the fiber, in
-  other words, the fiber is an affine space over $Z/2Z$ with the fiber group
-  as space of translations. After a choice of a base point, the fiber itself
-  can be identified which this fiber group. One way a fiber element manifests
-  itself is via a grading it defines on the imaginary roots; this grading is
-  determined for the entire fiber by giving the "base grading" for the base
-  point, and the "grading shifts" for translations by each of a set of
-  generators of the grading group.
+  stored directly describes the mentioned fiber, or the strong real forms in
+  it. There is the description of a "fiber group", a vector space over $Z/2Z$
+  that acts simply transitively on the fiber. In other words, the fiber is an
+  affine space over $Z/2Z$ with the fiber group as space of translations, and
+  a choice of a base point determines a bijection between the fiber and this
+  fiber group. One way fiber elements manifest themselves is via a grading of
+  the set of imaginary roots. This grading is determined for the entire fiber
+  by giving the "base grading" for the base point, and the "grading shifts"
+  for translations by each of a set of generators of the grading group.
 
   We fix an involutive automorphism $\tau$ of the complex torus $H$, and
-  consider the collection of all strong real forms $x$ of $G$ (which are
-  elements of "G semidirect delta") that induce $\tau$ on $H$, modulo the
-  conjugation action of $H$ on the collection. Such a strong real form has
-  square equal to some element $z$ in $Z(G)^\delta$. Changing the element $z$
-  by $(1+\delta)Z$ is relatively innocuous, and the quotient
-  $Z^delta/[(1+delta)Z]$ is finite. For each fixed value of $z$, this
-  collection of strong real form representatives in $G.\delta$ (modulo $H$
-  conjugation) has a simply transitive action (left multiplication) of the
-  fiber group $H^{-\tau}/(1-\tau)H$, the component group of the complex group
-  $H^{-\tau}$ of fixed points of $-\tau$. The fiber group is a $Z/2Z$ vector
-  space that can be realized as a subquotient of the group $H(2)$ of elements
-  of order 2 (or 1) in $H$.
+  consider the collection of all strong involutiond $x$ of $G$ (which are
+  elements of "G semidirect delta") that induce $\tau$ on $H$; conjuguation
+  defines an action of $H$ on the collection, and strong real forms are
+  oribits for this action. A strong real form has square equal to some
+  element $z$ in $Z(G)^\delta$. (Changing the element $z$ by $(1+\delta)Z$ is
+  relatively innocuous, and the quotient $Z^delta/[(1+delta)Z]$ is finite.)
 
-  Equivalence classes of strong real forms (still with a fixed value of $z$)
-  give a partition of the fiber group (depending on z). These partitions are
-  stored in |d_strongReal|, and accessed by the function fiber_partition.
+  For each fixed value of $z$, this collection of strong real forms admits a
+  simply transitive action (by left multiplication) of the fiber group: the
+  quotient $H^{-\tau}/(1-\tau)H$, which is isomorphic to the component group
+  of the complex group $H^{-\tau}$ of fixed points of $-\tau$ on $H$. It is an
+  elementary $2$-group that can be realized as a subquotient of the group
+  $H(2)$ of involutions in $H$. While the expression $H^{-\tau}/(1-\tau)H$ is
+  mathematically correct, it is intuitively misleading since the fiber group
+  is largest when $H^{-\tau}$ is smallest, namely when $\tau$ is the identity
+  (one simply gets $H(2)$ in this case), and when for the linear involution
+  $\theta$ of $X^*$ defined by $\tau$ one has that $-\theta$ has one $0$ as
+  fixed point. The expression that will be actually used to determine the
+  fiber group is $(X_*)^\theta/(X_*(1+\theta)), the fixed points of $\theta$
+  acting on the right on the coweight lattive $X_*$, modulo the image of the
+  action of $1+\theta$.
 
-  An equivalence class of strong real forms may be labelled by a pair of
-  integers: the second labelling the element $z$ (or rather its coset modulo
-  $(1+delta)Z$), and the first the equivalence class in the fiber group.
+  For a given $z$, orbits of strong real forms for that $z$ under the action
+  of the imaginary Weyl group form a partition of the fiber group (which
+  parition depends on $z$); this is the basis for the classification of weak
+  real forms. These partitions (for various $z$) are stored in |d_strongReal|,
+  and accessed by the function |fiber_partition|. A strong real form may be
+  labelled by a pair of integers: the second labelling the element $z$ (or
+  rather its coset modulo $(1+delta)Z$), and the first the fiber group orbit.
 */
 class Fiber {
 
