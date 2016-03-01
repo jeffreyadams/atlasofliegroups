@@ -2299,26 +2299,17 @@ imply that a standard choice for the ``infinitesimal cocharacter'' for the
 real from must differ by ${}^\vee\!\rho$ from the value produced here (and the
 |cocharacter| field that stores it does not really have the right name).
 
-We take care to ensure that the coweight returned is dominant, while remaining
+We used to ensure that the coweight returned is dominant, while remaining
 in the coset of $2X_*$ defined by |rf->cocharacter| so that the torus element
-$\exp(\pi\ii t)$ giving the actual base grading is unaffected.
+$\exp(\pi\ii t)$ giving the actual base grading is unaffected. This however
 
 @< Local function def...@>=
 void base_grading_vector_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
-  const ComplexReductiveGroup& G_C=rf->parent.val;
   if (l==expression_base::no_value)
     return;
-  RatCoweight t = rf->cocharacter.as_Qmod2Z(); // take a copy
-  for (weyl::Generator s=0; s<G_C.semisimpleRank(); ++s)
-  { arithmetic::Numer_t v = G_C.rootDatum().simpleRoot(s).dot(t.numerator());
-      // integer
-    RatWeight omega = G_C.rootDatum().fundamental_coweight(s);
-    v = arithmetic::divide(v,t.denominator()*omega.denominator()*2)*2;
-      // round down to even
-    t -= omega.numerator()*v; // adjust to make |t| ``just dominant'' for |s|
-  }
-  push_value(std::make_shared<rational_vector_value>(t));
+  push_value(std::make_shared<rational_vector_value>@|
+    (rf->cocharacter.as_Qmod2Z()));
 }
 
 @ There is a partial ordering on the Cartan classes defined for a real form. A
@@ -2368,8 +2359,8 @@ void real_form_equals_wrapper(expression_base::level l)
   shared_real_form x = get<real_form_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<bool_value>(
-    x->val==y->val and x->cocharacter==y->cocharacter));
+  push_value(std::make_shared<bool_value>@|
+    (x->val==y->val and x->cocharacter==y->cocharacter));
 }
 
 @*2 Dual real forms.
@@ -2399,7 +2390,8 @@ void dual_real_form_wrapper(expression_base::level l)
     return;
   inner_class_value G_check(*G,tags::DualTag());
    // tailor make an |inner_class_value|
-  push_value(std::make_shared<real_form_value>(G_check ,G->dual_interface.in(i->val)));
+  push_value(std::make_shared<real_form_value>@|
+    (G_check ,G->dual_interface.in(i->val)));
 }
 @)
 void dual_quasisplit_form_wrapper(expression_base::level l)
@@ -2633,7 +2625,8 @@ real form, but we have a direct access to it via the |mostSplit| method for
 void most_split_Cartan_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<Cartan_class_value>(rf->parent,rf->val.mostSplit()));
+    push_value(std::make_shared<Cartan_class_value>
+      (rf->parent,rf->val.mostSplit()));
 }
 
 

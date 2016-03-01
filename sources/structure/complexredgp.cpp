@@ -823,7 +823,7 @@ Grading ComplexReductiveGroup::simple_roots_x0_compact(RealFormNbr rf) const
   sublattice $(X_*)^{\xi^t}$. We cannot just reduce modulo 1, as that may
   produce a non $\xi^t$-fixed coweight and indeed one from which one cannot
   easily recover the desired class of coweights. However once we express the
-  coweights in coordinates relative to a nasis of $(X_*)^{\xi^t}$, we can just
+  coweights in coordinates relative to a basis of $(X_*)^{\xi^t}$, we can just
   reduce those coordinates modulo 1, and then convert back, so we do that.
 */
 RatCoweight square_class_choice
@@ -846,7 +846,7 @@ RatCoweight square_class_choice
 }
 
 // For a square class, we'll need to represent the set of compact roots for its
-// |square_class_repr| by a coweight (or |TorusElement|),  via |compacts_for|:
+// |square_class_repr| by a square-central |TorusElement|,  via |compacts_for|:
 
 
 // find compact ones among imaginary simple roots for |G|, as defined by |coch|
@@ -1166,12 +1166,17 @@ void Cayley_and_cross_part(RootNbrSet& Cayley,
   Cayley = rs.long_orthogonalize(Cayley);
 } // |Cayley_and_cross_part|
 
-// |TitsCoset::TitsCoset| needs a true grading, complement of |compacts_for|
-// in ther words, mark noncompact and complex simple roots according to |coch|
+// |TitsCoset::TitsCoset| needs the status of all simple roots for |coch|
+// We mark noncompact roots (so this is complementary to |compacts_for|, and
+// also mark complex roots that have an even pairing with |coch|
 Grading grading_of_simples
   (const ComplexReductiveGroup& G, const RatCoweight& coch)
 {
-  return compacts_for(G,y_values::exp_pi(coch)).complement(G.semisimpleRank());
+  const RootDatum& rd=G.rootDatum();
+  Grading result;
+  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+    result.set(s,coch.dot(rd.simpleRoot(s))%2==0);
+  return result;
 }
 
 
