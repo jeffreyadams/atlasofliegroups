@@ -891,24 +891,26 @@ RatCoweight some_coch
 // We shall deduce |x0| from difference between set of compact roots (gradings)
 
 // Find a |TorusPart|, assumed to exist, that induces a shift |diff| in grading
-// here |diff| grades the simple roots (but only imaginary ones are involved)
+// here |diff| grades the simple roots (but only imaginary ones are considered)
 TorusPart ComplexReductiveGroup::grading_shift_repr (Grading diff) const
 {
-  const SmallSubquotient& fg = fundamental().fiberGroup();
-  const unsigned int f_rank = fg.dimension();
-  const unsigned int ssr = semisimpleRank();
+  diff.slice(simple_roots_imaginary()); // discard complex roots
+  const unsigned int c_rank=simple_roots_imaginary().count();
 
-  BinaryMap fg2grading (ssr,f_rank);
-  for (RankFlags::iterator it=simple_roots_imaginary().begin(); it(); ++it)
-  {
-    const unsigned int i=*it; // this row |i| contains evaluations at $\alpha_i$
-    SmallBitVector ai (rootDatum().simpleRoot(i));
+  const SmallSubquotient& fg = fundamental().fiberGroup();
+  const SmallBitVectorList basis=fg.basis();
+  const unsigned int f_rank = basis.size(); // equals |fg.dimension()|
+
+  BinaryMap fg2grading(c_rank,f_rank);
+  auto it=simple_roots_imaginary().begin();
+  for (unsigned int i=0; i<c_rank; ++i)
+  { SmallBitVector alpha_i(rootDatum().simpleRoot(*it++));
     for (unsigned int j=0; j<f_rank; ++j)
-      fg2grading.set(i,j,fg.fromBasis(SmallBitVector(f_rank,j)).dot(ai));
+      fg2grading.set(i,j,basis[j].dot(alpha_i));
   }
 
   const BinaryMap grading2fg = fg2grading.section();
-  const SmallBitVector v = grading2fg*SmallBitVector(diff,ssr);
+  const SmallBitVector v = grading2fg*SmallBitVector(diff,c_rank);
   assert((fg2grading*v).data()==diff); // check that we solved the equation
   return fg.fromBasis(v);
 } // |grading_shift_repr|
@@ -1166,9 +1168,10 @@ void Cayley_and_cross_part(RootNbrSet& Cayley,
   Cayley = rs.long_orthogonalize(Cayley);
 } // |Cayley_and_cross_part|
 
-// |TitsCoset::TitsCoset| needs the status of all simple roots for |coch|
-// We mark noncompact roots (so this is complementary to |compacts_for|, and
-// also mark complex roots that have an even pairing with |coch|
+/* |TitsCoset::TitsCoset| needs the status of all simple roots for |coch|.
+  We mark noncompact roots (so this is complementary to |compacts_for|),
+  and also mark complex roots that have an even pairing with |coch|.
+*/
 Grading grading_of_simples
   (const ComplexReductiveGroup& G, const RatCoweight& coch)
 {
