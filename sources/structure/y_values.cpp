@@ -14,6 +14,7 @@
 #include "arithmetic.h"
 #include "prerootdata.h"
 #include "rootdata.h"
+#include "matreduc.h" // for |adapted_basis|
 
 namespace atlas {
 
@@ -149,16 +150,30 @@ size_t y_entry::hashCode(size_t modulus) const
 bool y_entry::operator !=(const y_entry& y) const
 { return nr!=y.nr or fingerprint!=y.fingerprint; }
 
-
+// condition |is_central(roots,t)| means $t=\exp(2pi\pi)$ with $<p,roots>$ int
 bool is_central(const WeightList& alpha, const TorusElement& t)
 {
-  RatWeight rw = t.as_Qmod2Z();
-  arithmetic::Numer_t d = 2*rw.denominator();
+  const RatWeight& rw = t.as_Qmod2Z(); // using $\exp(i\pi.)$ is faster, but
+  arithmetic::Numer_t d = 2*rw.denominator(); // it requires even pairings
   for (weyl::Generator s=0; s<alpha.size(); ++s)
-    if (alpha[s].dot(rw.numerator())%d != 0) // see if division is exact
+    if (rw.numerator().dot(alpha[s])%d != 0) // see if division is exact
       return false;
 
   return true;
+}
+
+// For a $\xi$-stable torus element, find $\xi$-stable pre-image by $\exp_1$
+// We need to correct t.log_2pi, shifting by $X_*$ to make it $\xi$-stable
+RatCoweight stable_log(const TorusElement& t, CoweightInvolution xi)
+{
+  xi+=1; // we just need xi+1, and this is why it was passed by-value
+  CoeffList diagonal;
+  const int_Matrix B = matreduc::adapted_basis(xi,diagonal);
+  const int_Matrix B_inv = B.inverse();
+  const auto d=diagonal.size(), n=B.numRows();
+
+  // get coordinates on $\xi$-stable part of $B$, and convert back to original
+  return B.block(0,0,n,d)*B_inv.block(0,0,d,n)*t.log_2pi();
 }
 
 } // |namsepace y_values|

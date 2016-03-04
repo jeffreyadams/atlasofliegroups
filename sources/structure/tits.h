@@ -155,8 +155,9 @@ class GlobalTitsGroup : public TwistedWeylGroup
   // accessors
   size_t semisimple_rank() const { return alpha_v.size(); }
   size_t rank() const { return prd.rank(); }
-  const RatCoweight& torus_part_offset () const { return half_rho_v; }
-  //  { return RatCoweight(root_datum.dual_twoRho(),4); }
+
+  TorusElement torus_element_offset () const // implicit in each |TorusElement|
+  { return y_values::exp_2pi(half_rho_v); } // used only ub |block_io| for 'X'
 
   //!\brief Element m_\alpha of H(2) for simple coroot \#j.
   TorusPart m_alpha(size_t j) const { return alpha_v[j]; }
@@ -186,8 +187,8 @@ class GlobalTitsGroup : public TwistedWeylGroup
 
 // methods that only access some |GlobalTitsElement|
 
-  bool is_valid(const GlobalTitsElement& a) const; // whether strong invovlution
-  bool has_central_square(GlobalTitsElement a) const; // idem (but by-value)
+  // whether |a| is strong involution; if |not check_tw| assume |a.tw()| is OK
+  bool is_valid(const GlobalTitsElement& a,bool check_tw=false) const;
   bool is_valid(const GlobalTitsElement& a, // weaker condition: square being
 		const SubSystem& sub) const; // central in subgroup
   GlobalTitsElement twisted(const GlobalTitsElement& a) const
@@ -209,6 +210,10 @@ class GlobalTitsGroup : public TwistedWeylGroup
   RankFlags descents(const GlobalTitsElement& a) const;
 
   TorusElement theta_tr_times_torus(const GlobalTitsElement& a) const;
+
+  // the square of a torus element, omitting (central) $\exp(2i\pi\check\rho)$
+  // this shift ensures that quasisplit strong involutions return the identity
+  TorusElement square_shifted(const GlobalTitsElement& a) const;
 
   GlobalTitsElement prod(const GlobalTitsElement& a,
 			 const GlobalTitsElement& b) const;
@@ -252,12 +257,6 @@ class GlobalTitsGroup : public TwistedWeylGroup
   void do_inverse_Cayley(weyl::Generator s,TorusElement& t) const;
   void do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a) const;
 
- private: // this exists for pragmatic reasons only; no reason to export it
-  // multiply b on left by either (t,sigma_ww) or delta_1(t,sigma_ww)delta_1
-  void left_mult(const TorusElement& t,
-		 const WeylWord& ww,
-		 bool do_twist, // whether $(t,ww)$ is conjugated by $\delta_1$
-		 GlobalTitsElement& b) const;
 }; // |class GlobalTitsGroup|
 
 

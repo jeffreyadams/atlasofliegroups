@@ -125,8 +125,13 @@ struct y_entry
 
 }; //  |struct y_entry|
 
- // whether each simple root has integral evaluation on a torus element
- bool is_central(const WeightList& simple_roots, const TorusElement& e);
+//				*** Functions ***
+
+// whether each simple root has integral evaluation on a torus element
+bool is_central(const WeightList& simple_roots, const TorusElement& e);
+
+// For a $\xi$-stable torus element, find $\xi$-stable pre-image by $\exp_1$
+RatCoweight stable_log(const TorusElement& t, CoweightInvolution xi);
 
 } // |namespace y_values|
 

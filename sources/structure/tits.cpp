@@ -135,43 +135,15 @@ TorusElement GlobalTitsGroup::theta_tr_times_torus(const GlobalTitsElement& a)
   return y_values::exp_pi(delta_rw);
 }
 
-// this is currently only used by |has_central_square| (with |do_twist==true|)
-// perfoming multiplication from left (torus part side) is most efficient
-void GlobalTitsGroup::left_mult(const TorusElement& t,
-				const WeylWord& ww,
-				bool do_twist,
-				GlobalTitsElement& b) const
-{
-  for (size_t i=ww.size(); i-->0; ) // process from right to left
-  {
-    weyl::Generator s =  // multiply by $\sigma_i$ or $\sigma_{tw(i)}^{-1}$
-      do_twist ? twisted(ww[i]) : ww[i];
-    b.t.simple_reflect(prd,s); // note: |b.t| is \emph{weight} for |simple|
-    if ((weylGroup().leftMult(b.w,s)>0)==do_twist)
-      b.t += m_alpha(s); // adjust torus part on length (do_twist|in|de)crease
-  }
-  b.t = b.t + (do_twist ? twisted(t) : t); // finally add torus part |t|
-}
+// assuming |a.tw()| is a twisted involution, shifted square is easy to compute
+TorusElement GlobalTitsGroup::square_shifted(const GlobalTitsElement& a) const
+{ return a.torus_part()+theta_tr_times_torus(a); }
 
-
-// Elaborate condition to test whether an element is a strong involution
-bool GlobalTitsGroup::has_central_square(GlobalTitsElement a) const
+bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a,bool check_tw) const
 {
-  const TorusElement t = a.t; // copy, to avoid aliasing in |left_mult|
-  left_mult(t,word(a.w),true,a); // compute $twisted(a)*a$
-  if (a.w!=WeylElt()) // |a.w| should have been a twisted involution
+  if (check_tw and TwistedWeylGroup::prod(twisted(a.tw()),a.tw())!=WeylElt())
     return false;
-
-  // now check if |a.t| is central, by scalar products with |simple.coroots()|
-  return is_central(prd.simple_coroots(),a.t); // coroots since |prd| is dual
-}
-
-// Simplified form of the same condition. The simplification is valid
-// because whenever |a.t==id| (basepoint), it is ensured that |is_valid(a)|
-bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a) const
-{
-  return is_central(prd.simple_coroots(),
-		    a.torus_part()+theta_tr_times_torus(a));
+  return is_central(prd.simple_coroots(),square_shifted(a));
 }
 
  // weaker condition: square being central in subgroup
@@ -181,7 +153,7 @@ bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a,
   WeightList alpha; alpha.reserve(sub.rank());
   for (weyl::Generator s=0; s<sub.rank(); ++s)
     alpha.push_back(sub.parent_datum().coroot(sub.parent_nr_simple(s)));
-  return is_central(alpha,a.torus_part()+theta_tr_times_torus(a));
+  return is_central(alpha,square_shifted(a));
 }
 
 

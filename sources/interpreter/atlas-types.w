@@ -2462,8 +2462,7 @@ void synthetic_real_form_wrapper(expression_base::level l)
   }
 
   RatCoweight cocharacter(0); // dummy value to be replaced
-  RealFormNbr rf =
-    strong_real_form_of(G->val,tw,torus_factor->val,cocharacter);
+  RealFormNbr rf = real_form_of(G->val,tw,torus_factor->val,cocharacter);
   if (l!=expression_base::no_value)
     push_value(std::make_shared<real_form_value>(*G,rf,cocharacter));
 }

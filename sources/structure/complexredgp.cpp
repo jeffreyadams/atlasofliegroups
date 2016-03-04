@@ -833,7 +833,7 @@ RatCoweight square_class_choice
 
   int_Matrix fix = xi+1; // projection to $\xi$-fixed weights
 
-  WeightInvolution row,col;
+  int_Matrix row,col;
   CoeffList diagonal = matreduc::diagonalise(fix,row,col);
 
   // initial columns of |col| are coordinate weights of $\xi^t$-stable coweights
@@ -1182,8 +1182,57 @@ Grading grading_of_simples
   return result;
 }
 
+RealFormNbr real_form_of // who claims this KGB element?
+(ComplexReductiveGroup& G, TwistedInvolution tw, // by value, modified
+   const RatCoweight& torus_factor,
+   RatCoweight& coch // additional output
+   )
+{
+  const TwistedWeylGroup& W = G.twistedWeylGroup();
+  const RootDatum& rd=G.rootDatum();
+  const GlobalTitsGroup gTg(G);
+  const WeightInvolution& xi = G.distinguished();
 
+  GlobalTitsElement a //  $\exp(\pi\ii torus_factor)$ gives |TorusElement|,
+    (TorusElement(torus_factor,false),tw);
 
+  auto square=gTg.square_shifted(a); // yes it is shifted, we know ;-)
+  CoweightList simple_roots(rd.beginSimpleRoot(),rd.endSimpleRoot());
+  assert(is_central(simple_roots,square)); // otherwise we cannot succeed
+
+  coch = stable_log(square,xi.transposed());
+  coch = square_class_choice(xi,coch);
+
+  auto conj = G.canonicalize(tw);
+  gTg.cross_act(a,conj); // move to canonical twisted involution
+
+  // find the proper Cartan class
+  CartanNbr cn;
+  for (cn=G.numCartanClasses(); cn-->0;)
+    if (tw==G.involution_of_Cartan(cn))
+      break;
+  assert(cn!=~0); // every valid twisted involution should be found here
+
+  // find the grading of the simple-imaginary roots at |tw|
+  // Coweight numer(torus_factor.numerator().begin(),
+  // 		 torus_factor.numerator().end()); // copy and convert
+  // arithmetic::Numer_t denom = torus_factor.denominator();
+  // rd.dual_act(numer,conj); // convert towards canonical involution
+
+  InvolutionData id = InvolutionData::build(rd,W,tw);
+
+  Grading gr;
+  for (unsigned int i=0; i<id.imaginary_rank(); ++i)
+  {
+    bool compact = a.torus_part().negative_at(rd.root(id.imaginary_basis(i)));
+    gr.set(i,not compact); // set means noncompact; e.g., if |torus_part()==0|
+  }
+
+  // look up the grading
+  const Fiber& f = G.cartan(cn).fiber();
+  auto rep = f.gradingRep(gr);
+  return G.realFormLabels(cn)[f.weakReal().class_of(rep)]; // found real form!
+} // |real_form_of|
 
 /*
    For a very long time real forms in the Atlas software were exclusively

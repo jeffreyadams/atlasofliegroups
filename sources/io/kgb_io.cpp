@@ -149,11 +149,10 @@ std::ostream& var_print_KGB(std::ostream& strm,
 std::ostream& print_X(std::ostream& strm, const global_KGB& kgb)
 {
   {
-    TorusElement yrho =
-      y_values::exp_2pi(kgb.globalTitsGroup().torus_part_offset());
+    TorusElement t_off = kgb.globalTitsGroup().torus_element_offset();
 
     strm << "\\exp(i\\pi\\check\\rho) = \\exp(2i\\pi("
-	 << yrho.log_2pi() << "))" << std::endl;
+	 << t_off.log_2pi() << "))" << std::endl;
   }
   return print(strm,kgb,false,NULL,NULL);
 }

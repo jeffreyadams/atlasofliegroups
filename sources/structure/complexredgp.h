@@ -58,9 +58,9 @@ void Cayley_and_cross_part(RootNbrSet& Cayley,
 			   const RootSystem& rs,
 			   const TwistedWeylGroup& W);
 
-RealFormNbr strong_real_form_of // who claims this KGB element?
-  (ComplexReductiveGroup& G,
-   TwistedInvolution tw, const RatCoweight& torus_factor,
+RealFormNbr real_form_of // who claims this KGB element?
+  (ComplexReductiveGroup& G, TwistedInvolution tw, // by value
+   const RatCoweight& torus_factor,
    RatCoweight& cocharacter // additional output
    );
 
