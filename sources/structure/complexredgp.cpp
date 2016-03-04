@@ -93,7 +93,7 @@ namespace complexredgp {
 		    const ComplexReductiveGroup& G, const TorusElement& coch);
 
   // replace |coch| by minimum representative modulo image |delta_plus_1|
-  void to_minimum_representative(TorusElement& coch,
+  void to_minimum_representative(RatCoweight& coch,
 				 const WeightInvolution& delta);
 
 
@@ -1208,7 +1208,7 @@ Grading grading_of_simples
 RealFormNbr strong_real_form_of // who claims this KGB element?
   (ComplexReductiveGroup& G,
    TwistedInvolution tw, const RatCoweight& torus_factor,
-   TorusElement& strong_form_start // additional output
+   RatCoweight& strong_form_start // additional output
    )
 {
   const GlobalTitsGroup gTg(G);
@@ -1243,24 +1243,27 @@ RealFormNbr strong_real_form_of // who claims this KGB element?
     fund_f.wrf_rep(wrf); // get elected (in fact first) representative of |wrf|
   cartanclass::AdjointFiberElt base = fund_f.class_base(csc); // base of coset
 
-  // to lift |here| to a |FiberElt|, must take it relative to coset base
+  // to lift |here| to a |FiberElt|, we must take it relative to coset base
   const SmallBitVector diff(RankFlags(here^base),fund_f.adjointFiberRank());
   cartanclass::FiberElt y = // get |toAdjoint|-preimage |FiberElt| of |diff|
     (fund_f.toAdjoint().section()*diff).data().to_ulong();
+  assert (fund_f.toAdjoint()*(SmallBitVector(RankFlags(y),fund_f.fiberRank()))
+	  ==diff); // check we actually found a pre-image
 
   // the orbit of |y| is a strong real form lying over |wrf|, stay within it
 
   auto pre = // find shifts within fiber orbit of |y| that will move to |goal|
     preimage(fund_f,csc,y,goal^base);
 
-  strong_form_start = x.torus_part() += minimum(pre,G,x.torus_part());
-  // now |x.torus_part| is what |torus_factor| should return at first KGB elt
-
+  x.torus_part() += minimum(pre,G,x.torus_part());
   // check that the grading turns out as expected
   assert(compacts_for(G,x.torus_part()) == G.simple_roots_x0_compact(wrf));
 
+  strong_form_start = x.torus_part().as_Qmod2Z();
+  // now |torus_factor| at first KGB elt should return |strong_form_start|
+
   // take into account the torus bits that will be stored at KGB element x0
-  strong_form_start += G.x0_torus_part(wrf); // morally subtraction, but mod 2
+  strong_form_start -= RatCoweight(lift(G.x0_torus_part(wrf)),1);
   to_minimum_representative(strong_form_start,G.distinguished());
 
   return wrf;
@@ -1370,15 +1373,14 @@ TorusPart minimum(const containers::sl_list<TorusPart>& cf,
 } // |minimum|
 
 // replace |coch| by minimum representative modulo image |delta_plus_1|
-void to_minimum_representative(TorusElement& coch,
+void to_minimum_representative(RatCoweight& coch,
 			       const WeightInvolution& delta)
 {
-  coch.right_symmetrise(delta); // ensure a delta-fixed representative
+  symmetrise(coch,delta); // ensure a delta-fixed representative
   BinaryMap A(delta.transposed()+1);
   const SmallSubspace mod_space(A); // image space of mod 2 (delta^t+1)
-  const RatCoweight& coch_log = coch.as_Qmod2Z();
   const SmallBitVector ref = // reference bitvector to which shifts are added
-    floor(coch_log.numerator(),coch_log.denominator());
+    floor(coch.numerator(),coch.denominator());
 
   unsigned long min = ref.data().to_ulong();
   unsigned long min_i = 0;
@@ -1394,7 +1396,9 @@ void to_minimum_representative(TorusElement& coch,
       min_i = i;
     }
   }
-  coch += mod_space.fromBasis(SmallBitVector(RankFlags(min_i),d));
+  coch +=
+    RatCoweight(lift(mod_space.fromBasis(SmallBitVector(RankFlags(min_i),d)))
+	       ,1);
 }
 
 // Modify |v| through through involution associated to |tw|

@@ -2149,14 +2149,14 @@ real forms.
 struct real_form_value : public value_base
 { const inner_class_value parent;
   RealReductiveGroup val;
-  const TorusElement cocharacter;
+  const RatCoweight cocharacter;
 @)
   real_form_value(const inner_class_value& p,RealFormNbr f) @/
   : parent(p), val(p.val,f)
-  , cocharacter(y_values::exp_pi(val.g_rho_check()))
+  , cocharacter(val.g_rho_check())
   , rt_p(nullptr) @+{}
   real_form_value
-    (const inner_class_value& p,RealFormNbr f, const TorusElement& coch) @/
+    (const inner_class_value& p,RealFormNbr f, const RatCoweight& coch) @/
   : parent(p), val(p.val,f)
   , cocharacter(coch)
   , rt_p(nullptr) @+{}
@@ -2301,15 +2301,19 @@ real from must differ by ${}^\vee\!\rho$ from the value produced here (and the
 
 We used to ensure that the coweight returned is dominant, while remaining
 in the coset of $2X_*$ defined by |rf->cocharacter| so that the torus element
-$\exp(\pi\ii t)$ giving the actual base grading is unaffected. This however
+$\exp(\pi\ii t)$ giving the actual base grading is unaffected. There is
+however no obvious best way to do this, and the easy way that used to be
+employed could give coweights rather far from inside the dominant chamber; in
+addition this shift may destroy the ${}^t\xi$-invariance of |rf->cocharacter|
+that is hard to reestablish without risk of leaving the coset. Therefore we
+just return |rf->cocharacter| as it is stored.
 
 @< Local function def...@>=
 void base_grading_vector_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<rational_vector_value>@|
-    (rf->cocharacter.as_Qmod2Z()));
+  push_value(std::make_shared<rational_vector_value>(rf->cocharacter));
 }
 
 @ There is a partial ordering on the Cartan classes defined for a real form. A
@@ -2457,7 +2461,7 @@ void synthetic_real_form_wrapper(expression_base::level l)
     torus_factor->val /= 2; // now $(1+\theta)/2$ is applied to |torus_factor|
   }
 
-  TorusElement cocharacter(0); // dummy value to be replaced
+  RatCoweight cocharacter(0); // dummy value to be replaced
   RealFormNbr rf =
     strong_real_form_of(G->val,tw,torus_factor->val,cocharacter);
   if (l!=expression_base::no_value)
@@ -3134,7 +3138,7 @@ void build_KGB_element_wrapper(expression_base::level l)
     torus_factor->val /= 2;
   }
 
-  RatCoweight tv = torus_factor->val - rf->cocharacter.as_Qmod2Z();
+  RatCoweight tv = torus_factor->val - rf->cocharacter;
   if (tv.normalize().denominator()!=1)
     throw runtime_error
       ("Torus factor not in cocharacter coset of real form");
@@ -3178,11 +3182,7 @@ void torus_bits_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   { const KGB& kgb=x->rf->kgb();
     TorusPart t = kgb.torus_part(x->val);
-    own_vector result = std::make_shared<vector_value>
-      (int_Vector(kgb.torus_rank(),0));
-    int_Vector& v = result->val;
-    for (unsigned int i=0; i<kgb.torus_rank(); ++i)
-      v[i]=t[i]; // lift from binary to integer
+    own_vector result = std::make_shared<vector_value>(lift(t));
     push_value(std::move(result));
   }
 }
@@ -3198,9 +3198,7 @@ void torus_factor_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   const KGB& kgb=x->rf->kgb();
-  TorusElement t = x->rf->cocharacter;
-  t += kgb.torus_part(x->val);
-  RatCoweight tf = t.as_Qmod2Z(); // still needs to be made $\theta$-fixed
+  RatCoweight tf = x->rf->cocharacter + lift(kgb.torus_part(x->val));
   push_value(std::make_shared<rational_vector_value>
      (symmetrise(tf,kgb.involution_matrix(x->val))));
 }

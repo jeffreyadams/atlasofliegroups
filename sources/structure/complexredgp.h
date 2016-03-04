@@ -61,7 +61,7 @@ void Cayley_and_cross_part(RootNbrSet& Cayley,
 RealFormNbr strong_real_form_of // who claims this KGB element?
   (ComplexReductiveGroup& G,
    TwistedInvolution tw, const RatCoweight& torus_factor,
-   TorusElement& cocharacter // additional output
+   RatCoweight& cocharacter // additional output
    );
 
 RatCoweight some_coch // some cocharacter whose real form is in class |csc|

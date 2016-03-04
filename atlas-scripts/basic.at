@@ -727,7 +727,7 @@ set split_form (RootDatum r) = RealForm:
 { split form of a Lie type is taken simply connected (times a split torus) }
 set split_form (LieType t) = RealForm: split_form(simply_connected(t))
 
-set quasicompact_form (InnerClass ic) = RealForm: real_forms(ic)[0]
+set quasicompact_form (InnerClass ic) = RealForm: real_form(ic,0)
 { quasisplit_form@InnerClass is built-in }
 
 set is_compatible (RealForm f, RealForm g) = bool:
