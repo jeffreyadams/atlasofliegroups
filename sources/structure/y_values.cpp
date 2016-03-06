@@ -164,6 +164,7 @@ bool is_central(const WeightList& alpha, const TorusElement& t)
 
 // For a $\xi$-stable torus element, find $\xi$-stable pre-image by $\exp_1$
 // We need to correct t.log_2pi, shifting by $X_*$ to make it $\xi$-stable
+// Return elected choice for the class of rational coweights representing $t$
 RatCoweight stable_log(const TorusElement& t, CoweightInvolution xi)
 {
   xi+=1; // we just need xi+1, and this is why it was passed by-value
@@ -172,8 +173,9 @@ RatCoweight stable_log(const TorusElement& t, CoweightInvolution xi)
   const int_Matrix B_inv = B.inverse();
   const auto d=diagonal.size(), n=B.numRows();
 
-  // get coordinates on $\xi$-stable part of $B$, and convert back to original
-  return B.block(0,0,n,d)*B_inv.block(0,0,d,n)*t.log_2pi();
+  // Get coordinates on $\xi$-stable part of $B$, and convert back to original
+  // By doing reduction modulo 1 half-way, ensure elected result is produced
+  return B.block(0,0,n,d)*( B_inv.block(0,0,d,n)*t.log_2pi() %=1);
 }
 
 } // |namsepace y_values|

@@ -861,14 +861,14 @@ Grading compacts_for(const ComplexReductiveGroup& G, TorusElement coch)
 
 // So we shall actually use the following section of that map
 
-// Find coweight $t$ such that |compacts_for| of $\exp(i\pi t)$ is |compacts|;
+// Find central torus element $t$ whose square class admits |compacts| grading
 // it isn't unique. Make straightforward choice, with $\exp(2i\pi t)$ central
-RatCoweight coch_representative(const RootDatum& rd, Grading compacts)
+TorusElement sample_square(const RootDatum& rd, Grading compacts)
 {
-  RatWeight result (rd.rank());
+  RatWeight coch (rd.rank());
   for (RankFlags::iterator it=compacts.begin(); it(); ++it)
-    result += rd.fundamental_coweight(*it);
-  return result;
+    coch += rd.fundamental_coweight(*it);
+  return y_values::exp_2pi(coch); // $2\pi$ makes this a central torus element
 }
 
 // The above is integrated into |some_coch|, selecting coweight for square class
@@ -881,8 +881,8 @@ RatCoweight some_coch
   const RootDatum& rd=G.rootDatum();
   auto gr = G.simple_roots_x0_compact(G.square_class_repr(csc));
   // got some grading associated to |csc|; get representative cocharacter for it
-  return square_class_choice // and standardise that |RatCoweight|
-    (G.distinguished(),coch_representative(rd,gr));
+  return y_values::stable_log // for elected square root of sample square
+    (sample_square(rd,gr),G.distinguished().transposed());
 } // |some_coch|
 
 
@@ -1200,8 +1200,7 @@ RealFormNbr real_form_of // who claims this KGB element?
   CoweightList simple_roots(rd.beginSimpleRoot(),rd.endSimpleRoot());
   assert(is_central(simple_roots,square)); // otherwise we cannot succeed
 
-  coch = stable_log(square,xi.transposed());
-  coch = square_class_choice(xi,coch);
+  coch = stable_log(square,xi.transposed()); // represents elected square root
 
   auto conj = G.canonicalize(tw);
   gTg.cross_act(a,conj); // move to canonical twisted involution
