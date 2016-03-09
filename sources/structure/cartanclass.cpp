@@ -367,23 +367,24 @@ GradingList Fiber::makeGradingShifts
   SmallBitVectorList si2(si); // reduce vectors mod 2
 
   // now compute all results
-  RankFlags supp = d_adjointFiberGroup.support();
-  const SmallBitVectorList& b = d_adjointFiberGroup.space().basis();
+  const SmallBitVectorList& basis = d_adjointFiberGroup.basis();
   GradingList result;
 
   // traverse basis of the subquotient |d_adjointFiberGroup|
-  for (RankFlags::iterator it = supp.begin(); it(); ++it)
+  for (auto it = basis.begin(); it!=basis.end(); ++it)
   {
+    SmallBitVector gen = *it;
+
     // all imaginary roots part
-    RootNbrSet rset(rs.numRoots());
+    RootNbrSet rset(rs.numRoots()); // used only at indices listed in |irl|
     for (size_t j = 0; j < ir2.size(); ++j)
-      rset.set_to(irl[j],ir2[j].dot(b[*it]));
+      rset.set_to(irl[j],gen.dot(ir2[j]));
     all_shifts.push_back(rset);
 
     // simple-imaginary roots part
     Grading gr;
     for (size_t j = 0; j < si2.size(); ++j)
-      gr.set(j,si2[j].dot(b[*it]));
+      gr.set(j,gen.dot(si2[j]));
     result.push_back(gr);
   }
 

@@ -19,6 +19,7 @@
 #include "rootdata.h"     // |refl_prod| function (assertion)
 #include "tori.h"         // |tori::RealTorus| used
 #include "kgb.h"          // |KGB| constructed
+#include "tits.h"         // |TitsGroup| and |TitsElement| access
 
 #include <cassert>
 
@@ -51,7 +52,31 @@ RealReductiveGroup::RealReductiveGroup
   , kgb_ptr(NULL)
   , dual_kgb_ptr(NULL)
   , d_status()
+{ construct(); }
+
+
+RealReductiveGroup::RealReductiveGroup
+  (ComplexReductiveGroup& G_C, RealFormNbr rf,
+   const RatCoweight& coch, TorusPart x0_torus_part)
+  : d_complexGroup(G_C)
+  , d_realForm(rf)
+  , d_connectivity() // wait for most split torus to be constructed below
+
+  , square_class_cocharacter(coch)
+  , torus_part_x0(x0_torus_part)
+
+  , d_Tg(new // allocate private copy
+	 TitsCoset(G_C,grading_of_simples(G_C,square_class_cocharacter)))
+  , kgb_ptr(NULL)
+  , dual_kgb_ptr(NULL)
+  , d_status()
+{ construct(); }
+
+void RealReductiveGroup::construct()
 {
+  ComplexReductiveGroup& G_C=d_complexGroup;
+  RealFormNbr rf=d_realForm;
+
   tori::RealTorus msT = G_C.cartan(G_C.mostSplit(rf)).fiber().torus();
   d_connectivity = topology::Connectivity(msT,G_C.rootDatum());
 
@@ -76,6 +101,7 @@ RealReductiveGroup::RealReductiveGroup
   assert(d_connectivity.component_rank() == c.component_rank());
 #endif
 }
+
 
 RealReductiveGroup::~RealReductiveGroup()
 { delete d_Tg; delete kgb_ptr; delete dual_kgb_ptr; }
@@ -198,8 +224,69 @@ const BruhatOrder& RealReductiveGroup::Bruhat_KGB()
 }
 
 
+//				Functions
 
+TorusPart minimal_torus_part
+  (const ComplexReductiveGroup& G, RealFormNbr wrf, RatCoweight coch,
+   TwistedInvolution tw, // by value, modified
+   const RatCoweight& torus_factor
+  )
+{
+  assert(torus_factor==torus_factor*G.matrix(tw)); // assuming already projected
 
+  RatCoweight diff = (torus_factor-coch).normalize();
+  assert (diff.denominator()==1); // since $\exp(2i\pi diff)=1$
+
+  Grading gr = complexredgp::grading_of_simples(G,coch);
+  TitsCoset Tc(G,gr);
+  const auto& Tg = Tc.titsGroup();
+  const auto& W = Tg.weylGroup();
+  const auto& i_tab = G.involution_table();
+  const TwistedInvolution e; // basis (identity) twisted involution
+
+  TitsElt a (Tg,tw,TorusPart(diff.numerator()));
+  while (a.tw()!=e) // move to fundamental fiber
+  {
+    weyl::Generator s = W.leftDescent(a.tw());
+    if (Tg.hasTwistedCommutation(s,a.tw()))
+    {
+      SmallSubspace mod_space = i_tab.mod_space(i_tab.nr(a.tw()));
+      Tc.inverse_Cayley_transform(a,s,mod_space);
+    }
+    else
+      Tc.basedTwistedConjugate(a,s);
+  }
+
+// now find the minimal element in the imaginary Weyl group orbit of |a.t()|
+// that induces |G.simple_roots_x0_compact(wrf)| on imaginar simple roots
+  const TorusPart t = Tg.left_torus_part(a);
+  const auto& fund_f = G.fundamental();
+  const auto base_cpt = compacts_for(G,y_values::exp_pi(coch));
+  const auto wrf_cpt = G.simple_roots_x0_compact(wrf);
+  const cartanclass::AdjointFiberElt image // which will give required compacts
+    = (base_cpt^wrf_cpt).slice(G.simple_roots_imaginary()).to_ulong();
+
+  const cartanclass::FiberElt y =
+    fund_f.fiberGroup().toBasis(t).data().to_ulong();
+
+  const auto candidates =
+    complexredgp::preimage(G.fundamental(), G.xi_square(wrf),y,image);
+
+  assert(not candidates.empty());
+
+  auto it = candidates.begin();
+  auto min = *it;
+  while (not (++it).at_end())
+    if (*it<min)
+      min = *it;
+
+  Tg.left_add(min-t,a); // est (left) torus part of |a| to |min|
+  assert(Tg.left_torus_part(a)==min);
+  assert(compact_simples(Tc,a,G.simple_roots_imaginary())==wrf_cpt);
+
+  return min;
+
+} // |minimal_toris_part|
 
 } // |namespace realredgp|
 

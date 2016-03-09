@@ -1,16 +1,16 @@
-/*!
-\file
-\brief Class definitions and function declarations for the class
-ComplexReductiveGroup.
-*/
 /*
   This is complexredgp.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006--2010 Marc van Leeuwen
+  Copyright (C) 2006--2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
+*/
+
+/*
+ Class definitions and function declarations for the class
+ ComplexReductiveGroup.
 */
 
 #ifndef COMPLEXREDGP_H  /* guard against multiple inclusions */
@@ -66,6 +66,13 @@ RatCoweight some_coch // some cocharacter whose real form is in class |csc|
 
 Grading grading_of_simples
   (const ComplexReductiveGroup& G, const RatCoweight& coch);
+
+// find compact ones among imaginary simple roots for |G|, as defined by |coch|
+ Grading compacts_for(const ComplexReductiveGroup& G, TorusElement coch);
+
+containers::sl_list<TorusPart> preimage
+  (const Fiber& fund_f, const cartanclass::square_class csc,
+   const cartanclass::FiberElt y, const cartanclass::AdjointFiberElt image);
 
 
   // apply involution action of |tw| on weight lattice to |v|

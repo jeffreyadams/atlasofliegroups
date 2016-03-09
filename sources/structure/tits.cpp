@@ -753,13 +753,6 @@ bool TitsCoset::is_valid(TitsElt a) const
 }
 
 
-// torus parts: modulo the mod-2 reduction of the $-\theta$-fixed sublattice
-SmallSubspace fiber_denom(const WeightInvolution& theta)
-{
-  BinaryMap A(lattice::eigen_lattice(theta.transposed(),-1));
-  return SmallSubspace(A);
-}
-
 EnrichedTitsGroup::EnrichedTitsGroup(const RealReductiveGroup& GR)
   : TitsCoset(GR.complexGroup(),
 	      grading_of_simples(GR.complexGroup(),GR.g_rho_check()))
@@ -855,6 +848,24 @@ found:
 
   return result;  // result should be reduced immediatly by caller
 } // |EnrichedTitsGroup::backtrack_seed|
+
+
+//				Functions
+
+// torus parts: modulo the mod-2 reduction of the $-\theta$-fixed sublattice
+SmallSubspace fiber_denom(const WeightInvolution& theta)
+{
+  BinaryMap A(lattice::eigen_lattice(theta.transposed(),-1));
+  return SmallSubspace(A);
+}
+
+Grading compact_simples(const TitsCoset& Tc, const TitsElt& a, RankFlags imag)
+{
+  Grading result;
+  for (auto it=imag.begin(); it(); ++it)
+    result.set(*it,Tc.simple_grading(a,*it));
+  return result;
+}
 
 } // |namespace tits|
 

@@ -27,8 +27,8 @@ namespace atlas {
 
 namespace realredgp {
 
-/*! \brief Represents a real form on a connected reductive complex group,
- determining a real reductive group
+/* Represent a real form on a connected reductive complex group,
+   determining a real reductive group
 
  An object of this class is determined by a ComplexReductiveGroup and the
  number of a real form; in addition it stores some data concerning the group
@@ -67,6 +67,8 @@ class RealReductiveGroup
 
 // constructors and destructors
   RealReductiveGroup(ComplexReductiveGroup&, RealFormNbr);
+  RealReductiveGroup(ComplexReductiveGroup&, RealFormNbr,
+		     const RatCoweight& coch, TorusPart x0_torus_part);
   ~RealReductiveGroup(); // not inline: type incomplete; deletes pointers
 
 // accessors
@@ -114,8 +116,8 @@ class RealReductiveGroup
   const SmallBitVectorList& dualComponentReps() const;
   const WeightInvolution& distinguished() const;
 
-/*!\brief Returns the set of noncompact imaginary roots for (the
-  representative of) the real form.
+/* Return the set of noncompact imaginary roots for (the representative of)
+   the real form.
 */
   RootNbrSet noncompactRoots() const;
 
@@ -129,11 +131,19 @@ class RealReductiveGroup
   const KGB& kgb_as_dual();
   const BruhatOrder& Bruhat_KGB();
 
+// internal methods
+ private:
+  void construct();  // work common to two constructors
 }; // |class RealReductiveGroup|
 
 
 //			   function declarations
 
+TorusPart minimal_torus_part
+  (const ComplexReductiveGroup& G, RealFormNbr wrf, RatCoweight coch,
+   TwistedInvolution tw, // by value, modified
+   const RatCoweight& torus_factor
+   );
 
 } // |namespace realredgp|
 

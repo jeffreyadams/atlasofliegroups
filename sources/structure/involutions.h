@@ -186,6 +186,9 @@ class InvolutionTable
 
   void reduce(TitsElt& a) const;
 
+  const SmallSubspace& mod_space(InvolutionNbr n) const
+  { assert(n<size()); return data[n].mod_space; }
+
   bool equivalent(const TorusElement& t1, const TorusElement& t2,
 		  InvolutionNbr i) const;
   RatWeight fingerprint(const TorusElement& t, InvolutionNbr i) const;
@@ -217,10 +220,6 @@ class InvolutionTable
   InvolutionNbr add_cross(weyl::Generator s, InvolutionNbr n);
 
   void reserve(size_t s) { pool.reserve(s); }
-
-private: // the space actually stored need not be exposed
-  const SmallSubspace& mod_space(InvolutionNbr n) const
-  { assert(n<size()); return data[n].mod_space; }
 
 }; // |class InvolutionTable|
 
