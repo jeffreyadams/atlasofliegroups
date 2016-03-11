@@ -795,41 +795,43 @@ AdjointFiberElt Fiber::toAdjoint(FiberElt x) const
   Return the class number in the weak real form partition of the strong real
   form |c| in central square class |csc|.
 
-  In spite of the name of this method, the vaue returned is not the number
+  In spite of the name of this method, the value returned is not the number
   globally associated to the weak real form, which is called a real form label
-  but which |Fiber| knows nothing about, but rather the number of the
-  W_im-orbit in the adjoint fiber (group).
+  but which |Fiber| knows nothing about; rather the value is the number of the
+  $W_{im}$-orbit in the adjoint fiber (group). However, if the fiber happens
+  to be the fundamental fiber, then this value is equal to its real form label.
 
-  The pair (c,csc) is the software representation of an equivalence
-  class of strong real forms (always assumed to induce |theta| on H). The
-  integer |csc| labels an element of Z^delta/[(1+delta)Z], thought of as
-  a possible square value for strong real forms.  The fiber group acts
-  simply transitively on strong real forms with square equal to |csc|.
-  The integer c labels an orbit of W_i on this fiber group coset; this
-  orbit is the equivalence class of strong real forms.
+  The pair |(c,csc)| is the software representation of a strong real form
+  (always assumed to induce $\tau$ on $H$). The integer |csc| labels an
+  element of $Z^\delta/[(1+\delta)Z]$, thought of as a possible square value
+  for strong involutions. The fiber group acts simply transitively on strong
+  involutions with square equal to |csc|, so they can be viewed as a coset for
+  the fiber group; the imaginary Weyl group $W_{im}$ acts on this coset in a
+  manner that depends on |csc|. The integer |c| labels an orbit for this
+  action, which is the way we identify a strong real form.
 
-  This function computes the weak real form (W_i orbit on the adjoint
-  fiber group) corresponding to (c,csc).
+  This function computes the weak real form ($W_{im}$ orbit on the
+  \emph{adjoint} fiber group) corresponding to |(c,csc)|.
 
   First, |csc| also labels a coset of the fiber group image in the adjoint
-  fiber group, and class_base(csc) gives a coset representative (base point).
+  fiber group, and |class_base(csc)| is a coset representative (base point).
 
-  The map |toAdjoint| defines a Z/2Z-linear map from the fiber group to the
-  adjoint fiber groups, from which the Z/2Z-affine map for this square class
-  is obtained by adding the base point(as bitvector). It remains to (upstream)
-  find a fiber group element in the |W_i|-orbit labelled by |c|, and
-  (downstream) to find the number of the weak real form of its image under the
-  affine map; the former is |d_strongReal[csc].classRep(c)| and the latter is
-  obtained by the method |class_of| of the partition |d_weakReal|.
+  The map |toAdjoint| defines a $\Z/2\Z$-linear map from the fiber group to
+  the adjoint fiber group, from which the $\Z/2\Z$-affine map for this square
+  class is obtained by adding the base point (as a bitvector). It remains to
+  (upstream) find a fiber group element in the |W_{im}|-orbit labelled by |c|,
+  and (downstream) to find the number of the weak real form of its image under
+  the affine map; the former is |d_strongReal[csc].classRep(c)| and the latter
+  is obtained by the method |class_of| of the partition |d_weakReal|.
 */
 adjoint_fiber_orbit Fiber::toWeakReal(fiber_orbit c, square_class csc) const
 {
   // find image of strong real form element in the adjoint fiber
   AdjointFiberElt y =
-    class_base(csc) ^ toAdjoint(d_strongReal[csc].classRep(c));
+    class_base(csc) ^ toAdjoint(fiber_partition(csc).classRep(c));
 
   // and find its orbit number
-  return d_weakReal.class_of(y);
+  return weakReal().class_of(y);
 }
 
 

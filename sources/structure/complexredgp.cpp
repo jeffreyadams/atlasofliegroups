@@ -956,6 +956,7 @@ ComplexReductiveGroup::central_fiber(RealFormNbr rf) const
   for (srf=0; srf<pi.classCount(); ++srf)
     if (fund_f.toWeakReal(srf,csc)==rf)
       break;
+  assert(srf<pi.classCount()); // some result must be found
   const cartanclass::FiberElt y = pi.classRep(srf);
 
   // and return shifts to other elements with same |toAdjoint| image as |y|

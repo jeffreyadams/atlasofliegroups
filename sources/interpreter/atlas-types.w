@@ -2156,8 +2156,9 @@ struct real_form_value : public value_base
   , cocharacter(val.g_rho_check())
   , rt_p(nullptr) @+{}
   real_form_value
-    (const inner_class_value& p,RealFormNbr f, const RatCoweight& coch) @/
-  : parent(p), val(p.val,f)
+    (const inner_class_value& p,RealFormNbr f
+    ,const RatCoweight& coch, TorusPart tp) @/
+  : parent(p), val(p.val,f,coch,tp)
   , cocharacter(coch)
   , rt_p(nullptr) @+{}
 @)
@@ -2443,7 +2444,7 @@ void synthetic_real_form_wrapper(expression_base::level l)
 { own_rational_vector torus_factor = get_own<rational_vector_value>();
   shared_matrix theta = get<matrix_value>();
   shared_inner_class G = get<inner_class_value>();
-  const TwistedInvolution tw = twisted_from_involution(G->val,theta->val);
+  TwistedInvolution tw = twisted_from_involution(G->val,theta->val);
   if (torus_factor->val.size()!=G->val.rank())
     throw runtime_error ("Torus factor size mismatch");
   {
@@ -2463,8 +2464,10 @@ void synthetic_real_form_wrapper(expression_base::level l)
 
   RatCoweight cocharacter(0); // dummy value to be replaced
   RealFormNbr rf = real_form_of(G->val,tw,torus_factor->val,cocharacter);
+  TorusPart tp = realredgp::minimal_torus_part @|
+   (G->val,rf,cocharacter,std::move(tw),torus_factor->val);
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<real_form_value>(*G,rf,cocharacter));
+    push_value(std::make_shared<real_form_value>(*G,rf,cocharacter,tp));
 }
 
 @ The methods |central_fiber| and |x0_torus_part| of |ComplexReductiveGroup|

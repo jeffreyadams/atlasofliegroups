@@ -863,7 +863,7 @@ Grading compact_simples(const TitsCoset& Tc, const TitsElt& a, RankFlags imag)
 {
   Grading result;
   for (auto it=imag.begin(); it(); ++it)
-    result.set(*it,Tc.simple_grading(a,*it));
+    result.set(*it,not Tc.simple_grading(a,*it));
   return result;
 }
 

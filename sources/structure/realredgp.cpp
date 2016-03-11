@@ -244,7 +244,7 @@ TorusPart minimal_torus_part
   const auto& i_tab = G.involution_table();
   const TwistedInvolution e; // basis (identity) twisted involution
 
-  TitsElt a (Tg,tw,TorusPart(diff.numerator()));
+  TitsElt a (Tg,TorusPart(diff.numerator()),tw);
   while (a.tw()!=e) // move to fundamental fiber
   {
     weyl::Generator s = W.leftDescent(a.tw());
@@ -258,18 +258,17 @@ TorusPart minimal_torus_part
   }
 
 // now find the minimal element in the imaginary Weyl group orbit of |a.t()|
-// that induces |G.simple_roots_x0_compact(wrf)| on imaginar simple roots
-  const TorusPart t = Tg.left_torus_part(a);
-  const auto& fund_f = G.fundamental();
+// that induces |G.simple_roots_x0_compact(wrf)| on imaginary simple roots
   const auto base_cpt = compacts_for(G,y_values::exp_pi(coch));
   const auto wrf_cpt = G.simple_roots_x0_compact(wrf);
   const cartanclass::AdjointFiberElt image // which will give required compacts
     = (base_cpt^wrf_cpt).slice(G.simple_roots_imaginary()).to_ulong();
 
-  const cartanclass::FiberElt y =
-    fund_f.fiberGroup().toBasis(t).data().to_ulong();
+  const TorusPart t = Tg.left_torus_part(a);
+  const auto& fund_fg = G.fundamental().fiberGroup();
+  const cartanclass::FiberElt y = fund_fg.toBasis(t).data().to_ulong();
 
-  const auto candidates =
+  const containers::sl_list<TorusPart> candidates =
     complexredgp::preimage(G.fundamental(), G.xi_square(wrf),y,image);
 
   assert(not candidates.empty());
@@ -277,11 +276,10 @@ TorusPart minimal_torus_part
   auto it = candidates.begin();
   auto min = *it;
   while (not (++it).at_end())
-    if (*it<min)
+    if (t+*it<t+min) // offset |t| does not cancel from this relation!
       min = *it;
 
-  Tg.left_add(min-t,a); // est (left) torus part of |a| to |min|
-  assert(Tg.left_torus_part(a)==min);
+  Tg.left_add(min,a);
   assert(compact_simples(Tc,a,G.simple_roots_imaginary())==wrf_cpt);
 
   return min;
