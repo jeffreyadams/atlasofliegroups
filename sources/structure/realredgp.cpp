@@ -256,6 +256,7 @@ TorusPart minimal_torus_part
     else
       Tc.basedTwistedConjugate(a,s);
   }
+  i_tab.reduce(a); // ensure reduction modulo fiber group denominator subgroup
 
 // now find the minimal element in the imaginary Weyl group orbit of |a.t()|
 // that induces |G.simple_roots_x0_compact(wrf)| on imaginary simple roots
@@ -273,6 +274,7 @@ TorusPart minimal_torus_part
 
   assert(not candidates.empty());
 
+  // choose minimal torus part among reduced ones giving |wrf_cpt| as compacts
   auto it = candidates.begin();
   auto min = *it;
   while (not (++it).at_end())
@@ -280,11 +282,11 @@ TorusPart minimal_torus_part
       min = *it;
 
   Tg.left_add(min,a);
+  assert((i_tab.reduce(a),Tg.left_torus_part(a)==t+min)); // already reduced
   assert(compact_simples(Tc,a,G.simple_roots_imaginary())==wrf_cpt);
 
-  return min;
-
-} // |minimal_toris_part|
+  return Tg.left_torus_part(a);
+} // |minimal_torus_part|
 
 } // |namespace realredgp|
 

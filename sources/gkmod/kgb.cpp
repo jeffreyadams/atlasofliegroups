@@ -524,9 +524,8 @@ KGB::KGB(RealReductiveGroup& GR,
   {
     const Grading gr = GR.base_grading();
     d_base = new TitsCoset(G_C,gr);
-    assert (GR.x0_torus_part() == G_C.x0_torus_part(GR.realForm()) );
     TitsElt a (d_base->titsGroup(),GR.x0_torus_part());
-    i_tab.reduce(a); // probably unnecessary
+    i_tab.reduce(a); // should be unnecessary
     elt_hash.match(a); // plant the seed
     KGB_base::add_element(); // add additional info for initial element
   }

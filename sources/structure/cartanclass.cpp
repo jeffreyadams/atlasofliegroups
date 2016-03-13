@@ -782,12 +782,8 @@ SmallBitVector Fiber::mAlpha(const rootdata::Root& cr) const
 */
 AdjointFiberElt Fiber::toAdjoint(FiberElt x) const
 {
-  RankFlags xf(x);
-  SmallBitVector v(xf,fiberRank());
-
-  SmallBitVector w = d_toAdjoint*v;
-
-  return AdjointFiberElt(w.data().to_ulong());
+  SmallBitVector v(RankFlags(x),fiberRank());
+  return AdjointFiberElt((d_toAdjoint*v).data().to_ulong());
 }
 
 

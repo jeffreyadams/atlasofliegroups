@@ -859,6 +859,15 @@ SmallSubspace fiber_denom(const WeightInvolution& theta)
   return SmallSubspace(A);
 }
 
+Grading compact_simples
+  (const RootDatum& rd, const TorusElement& t, RankFlags imag)
+{
+  Grading result;
+  for (auto it=imag.begin(); it(); ++it)
+    result.set(*it,t.negative_at(rd.simpleRoot(*it)));
+  return result;
+}
+
 Grading compact_simples(const TitsCoset& Tc, const TitsElt& a, RankFlags imag)
 {
   Grading result;

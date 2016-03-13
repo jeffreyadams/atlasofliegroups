@@ -40,6 +40,10 @@ namespace tits {
   // 2-subgroup by which each |TorusPart| at involution |inv| will be reduced
   SmallSubspace fiber_denom(const WeightInvolution& inv);
 
+  // among imaginary generators in |imag| flag compact ones for |t|
+  Grading compact_simples
+    (const RootDatum& rd, const TorusElement& t, RankFlags imag);
+
   // among imaginary generators in |imag| flag compact ones for |a|
   Grading compact_simples
     (const TitsCoset& Tc, const TitsElt& a, RankFlags imag);

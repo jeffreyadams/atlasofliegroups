@@ -85,17 +85,6 @@ namespace complexredgp {
 			  const TwistedWeylGroup& W,
 			  const RootSystem& rs);
 
-  // make from $(\Q/2\Z)^n$ to $(\Z/2\Z)^n$ taking floors of coefficients
-  SmallBitVector floor (Ratvec_Numer_t num, arithmetic::Numer_t d);
-
-  // select |TorusPart| from list with minimal fingerprint for |coch|
-  TorusPart minimum(const containers::sl_list<TorusPart>& cf,
-		    const ComplexReductiveGroup& G, const TorusElement& coch);
-
-  // replace |coch| by minimum representative modulo image |delta_plus_1|
-  void to_minimum_representative(RatCoweight& coch,
-				 const WeightInvolution& delta);
-
 
 /*****************************************************************************
 
@@ -949,18 +938,17 @@ ComplexReductiveGroup::central_fiber(RealFormNbr rf) const
 {
   const Fiber& fund_f= fundamental();
   const cartanclass::square_class csc = fund_f.central_square_class(rf);
-  const Partition& pi = fund_f.fiber_partition(csc);
 
-  // find element |y| in some fiber orbit |srf| that maps to our weak real form
-  cartanclass::fiber_orbit srf;
-  for (srf=0; srf<pi.classCount(); ++srf)
-    if (fund_f.toWeakReal(srf,csc)==rf)
-      break;
-  assert(srf<pi.classCount()); // some result must be found
-  const cartanclass::FiberElt y = pi.classRep(srf);
+  // find Fiber element |y| that maps to |fund_f.wrf_rep(rf)| in adjoint fiber
+  const cartanclass::AdjointFiberElt target = fund_f.wrf_rep(rf);
+  const SmallBitVector diff
+    (RankFlags(target^fund_f.class_base(csc)),fund_f.adjointFiberRank());
+  const cartanclass::FiberElt y = (fund_f.toAdjoint().section()*diff)
+    .data().to_ulong();
+  assert(fund_f.toAdjoint(y)==diff.data().to_ulong());
 
   // and return shifts to other elements with same |toAdjoint| image as |y|
-  return preimage(fund_f,csc,y,fund_f.toAdjoint(y));
+  return preimage(fund_f,csc,y,diff.data().to_ulong());
 } // |ComplexReductiveGroup::central_fiber|
 
 
@@ -979,12 +967,25 @@ TorusPart ComplexReductiveGroup::x0_torus_part(RealFormNbr rf) const
   TorusElement t = // corresponds to (square class) base grading vector
     y_values::exp_pi(some_coch(*this,xi_square(rf)));
   const Grading base = compacts_for(*this,t);
+  const Grading rf_cpt = simple_roots_x0_compact(rf);
   // mark compacts for elected cocharacter in square class
   // basic |x0| will be one that relative to base produces the right compacts
-  TorusPart bits = grading_shift_repr(base^simple_roots_x0_compact(rf));
-  t += bits; // now |coch| has implied grading for |rf|
-  return bits  // converted to preferred orbit representative:
-    += minimum(central_fiber(rf),*this,t);
+  TorusPart bits = grading_shift_repr(base^rf_cpt);
+
+  auto cf = central_fiber(rf);
+  assert(not cf.empty());
+
+  auto it= cf.begin();
+  auto min = *it;
+  while (not (++it).at_end())
+    if (bits+*it<bits+min) // offset |bits| does not cancel from this relation!
+      min = *it;
+  bits+=min;
+
+  assert(tits::compact_simples(rootDatum(),t += bits,simple_roots_imaginary())
+	 ==rf_cpt);
+
+  return bits;
 } // |x0_torus_part|
 
 
@@ -1184,10 +1185,10 @@ Grading grading_of_simples
 }
 
 RealFormNbr real_form_of // who claims this KGB element?
-(ComplexReductiveGroup& G, TwistedInvolution tw, // by value, modified
+  (ComplexReductiveGroup& G, TwistedInvolution tw, // by value, modified
    const RatCoweight& torus_factor,
    RatCoweight& coch // additional output
-   )
+  )
 {
   const TwistedWeylGroup& W = G.twistedWeylGroup();
   const RootDatum& rd=G.rootDatum();
@@ -1197,14 +1198,17 @@ RealFormNbr real_form_of // who claims this KGB element?
   GlobalTitsElement a //  $\exp(\pi\ii torus_factor)$ gives |TorusElement|,
     (TorusElement(torus_factor,false),tw);
 
-  auto square=gTg.square_shifted(a); // yes it is shifted, we know ;-)
-  CoweightList simple_roots(rd.beginSimpleRoot(),rd.endSimpleRoot());
-  assert(is_central(simple_roots,square)); // otherwise we cannot succeed
+  { // compute value of |coch|
+    auto square=gTg.square_shifted(a); // yes it is shifted, we know ;-)
+    CoweightList simple_roots(rd.beginSimpleRoot(),rd.endSimpleRoot());
+    assert(is_central(simple_roots,square)); // otherwise we cannot succeed
 
-  coch = stable_log(square,xi.transposed()); // represents elected square root
+    coch = stable_log(square,xi.transposed()); // represents elected square root
+  }
 
   auto conj = G.canonicalize(tw);
   gTg.cross_act(a,conj); // move to canonical twisted involution
+  assert(a.tw()==tw); // we've moved |a| to the canonical involution
 
   // find the proper Cartan class
   CartanNbr cn;
@@ -1213,111 +1217,21 @@ RealFormNbr real_form_of // who claims this KGB element?
       break;
   assert(cn!=~0); // every valid twisted involution should be found here
 
-  // find the grading of the simple-imaginary roots at |tw|
-  // Coweight numer(torus_factor.numerator().begin(),
-  // 		 torus_factor.numerator().end()); // copy and convert
-  // arithmetic::Numer_t denom = torus_factor.denominator();
-  // rd.dual_act(numer,conj); // convert towards canonical involution
 
-  InvolutionData id = InvolutionData::build(rd,W,tw);
-
-  Grading gr;
-  for (unsigned int i=0; i<id.imaginary_rank(); ++i)
-  {
-    bool compact = a.torus_part().negative_at(rd.root(id.imaginary_basis(i)));
-    gr.set(i,not compact); // set means noncompact; e.g., if |torus_part()==0|
+  Grading gr; // will mark noncompact roots among simpl-imaginary ones at |a|
+  { InvolutionData id = InvolutionData::build(rd,W,tw);
+    for (unsigned int i=0; i<id.imaginary_rank(); ++i)
+    {
+      bool compact = a.torus_part().negative_at(rd.root(id.imaginary_basis(i)));
+      gr.set(i,not compact); // set means noncompact; e.g., if |torus_part()==0|
+    }
   }
 
-  // look up the grading
+  // look up the grading at the fiber of Cartan class |cn|
   const Fiber& f = G.cartan(cn).fiber();
   auto rep = f.gradingRep(gr);
   return G.realFormLabels(cn)[f.weakReal().class_of(rep)]; // found real form!
 } // |real_form_of|
-
-/*
-   For a very long time real forms in the Atlas software were exclusively
-   approached by selecting from a list that is presented after a rather
-   elaborate preparatory calculation. The following function marks a different
-   possibility, namely by allowing a real form to be selected based on
-   specifying an involution and a rational coweight that is to be the
-   'torus_factor' of some KGB element in the fiber over that involution. In
-   fact the specified torus factor might belong to a different strong real
-   form than the one that is implicitly used, so we allow this function to
-   export a cocharacter |strong_form_start| that should be used to produce
-   the base grading vector for this real form, rather than what the
-   |base_grading_vector| method produces based on grading alone. In atlas the
-   synthetic real form function is based on this functionality.
-
-   We do insist that |strong_form_start| always produce the same grading (at
-   the initial KGB element) as |base_grading_vector| for its weak real form
-   does. Also we want any |tw,torus_factor| obtained from a KGB element for
-   for a synthetic real form to reproduce the same |strong_form_start| value,
-   which implies we must define an objective preference among candidates.
- */
-RealFormNbr strong_real_form_of // who claims this KGB element?
-  (ComplexReductiveGroup& G,
-   TwistedInvolution tw, const RatCoweight& torus_factor,
-   RatCoweight& strong_form_start // additional output
-   )
-{
-  const GlobalTitsGroup gTg(G);
-  const Fiber& fund_f = G.fundamental();
-
-  GlobalTitsElement x //  $\exp(\pi\ii torus_factor)$ gives |TorusElement|,
-    (TorusElement(torus_factor,false),tw);
-  assert(gTg.is_valid(x)); // unless this holds, we cannot hope to succeed
-
-  const unsigned int r = G.semisimpleRank();
-  { weyl::Generator s;
-    while ((s=gTg.weylGroup().leftDescent(x.tw()))<r)
-      if (gTg.hasTwistedCommutation(s,x.tw()))
-	gTg.do_inverse_Cayley(s,x);
-      else
-	gTg.cross_act(s,x);
-
-    x.torus_part().reduce();
-    assert(gTg.is_valid(x)); // check that we still have a valid element
-    assert (x.tw()==TwistedInvolution()); // and we are at fundamental fiber
-  }
-
-
-  Grading imag_gr = // flag compact ones at $x$ among imaginary simple roots
-    compacts_for(G,x.torus_part()).slice(G.simple_roots_imaginary());
-  cartanclass::AdjointFiberElt here = imag_gr.to_ulong();
-  const RealFormNbr wrf = fund_f.weakReal().class_of(here);
-
-  // to adjust the grading is subtle; our freedom depends on the square class
-  cartanclass::square_class csc = fund_f.central_square_class(wrf);
-  cartanclass::AdjointFiberElt goal = // element that gives x0 grading
-    fund_f.wrf_rep(wrf); // get elected (in fact first) representative of |wrf|
-  cartanclass::AdjointFiberElt base = fund_f.class_base(csc); // base of coset
-
-  // to lift |here| to a |FiberElt|, we must take it relative to coset base
-  const SmallBitVector diff(RankFlags(here^base),fund_f.adjointFiberRank());
-  cartanclass::FiberElt y = // get |toAdjoint|-preimage |FiberElt| of |diff|
-    (fund_f.toAdjoint().section()*diff).data().to_ulong();
-  assert (fund_f.toAdjoint()*(SmallBitVector(RankFlags(y),fund_f.fiberRank()))
-	  ==diff); // check we actually found a pre-image
-
-  // the orbit of |y| is a strong real form lying over |wrf|, stay within it
-
-  auto pre = // find shifts within fiber orbit of |y| that will move to |goal|
-    preimage(fund_f,csc,y,goal^base);
-
-  x.torus_part() += minimum(pre,G,x.torus_part());
-  // check that the grading turns out as expected
-  assert(compacts_for(G,x.torus_part()) == G.simple_roots_x0_compact(wrf));
-
-  strong_form_start = x.torus_part().as_Qmod2Z();
-  // now |torus_factor| at first KGB elt should return |strong_form_start|
-
-  // take into account the torus bits that will be stored at KGB element x0
-  strong_form_start -= RatCoweight(lift(G.x0_torus_part(wrf)),1);
-  to_minimum_representative(strong_form_start,G.distinguished());
-
-  return wrf;
-
-} // |strong_real_form_of|
 
 /*****************************************************************************
 
@@ -1374,81 +1288,6 @@ unsigned long makeRepresentative(const Grading& gr,
     throw std::runtime_error("Representative of impossible grading requested");
 } // |makeRepresentative|
 
-
-// make from $(\Q/2\Z)^n$ to $(\Z/2\Z)^n$ taking floors of coefficients
-SmallBitVector floor (Ratvec_Numer_t num, arithmetic::Numer_t d)
-{
-  SmallBitVector result (num.size()); // will hold the "floor" values
-  for (unsigned int i=0; i<num.size(); ++i)
-    result.set(i,num[i]%(2*d)/d!=0); // produce bit from floor
-  return result;
-}
-
-
-// select |TorusPart| from list with minimal fingerprint when added to |coch|
-TorusPart minimum(const containers::sl_list<TorusPart>& cf,
-  const ComplexReductiveGroup& G, const TorusElement& coch)
-{
-  if (cf.size()==1) // trivial (but frequent) case, just return coch
-    return cf.front();
-
-  // compute fingerprinting matrix whose kernel annihilates fiber denominator
-  const int_Matrix A = G.distinguished().transposed()+1;
-  const int_Matrix projector = lattice::row_saturate(A);
-  /* |projector| applies to |coch.log_pi(false)|, and the values in $\Q^k$
-      produced are to be interpreted in $(\Q/2\Z)^k$. But |coch| is only to be
-      shifted by elements of $H(2)$ from |cf|, giving integer vectors under
-      |projector|, so for comparison of those we may as well apply the |floor|
-      map $\Q/2\Z \to \Z/2\Z$ to the entries of the value so produced.
-  */
-  const RatCoweight& coch_log = coch.as_Qmod2Z();
-  const SmallBitVector ref = // reference bitvector to which shifts are added
-    floor(projector*coch_log.numerator(),coch_log.denominator());
-
-  const BinaryMap pr(projector);
-  auto it= cf.begin();
-  unsigned long v=(ref + pr*(*it)).data().to_ulong(); // current minimal value
-  TorusPart min = *it;
-  for (++it; it!=cf.end(); ++it)
-  {
-    const unsigned long val = (ref + pr*(*it)).data().to_ulong();
-    if (val<v)
-    {
-      v = val;
-      min = *it;
-    }
-  }
-  return min; // return the offset |TorusPart|, not the modified bitvector
-} // |minimum|
-
-// replace |coch| by minimum representative modulo image |delta_plus_1|
-void to_minimum_representative(RatCoweight& coch,
-			       const WeightInvolution& delta)
-{
-  symmetrise(coch,delta); // ensure a delta-fixed representative
-  BinaryMap A(delta.transposed()+1);
-  const SmallSubspace mod_space(A); // image space of mod 2 (delta^t+1)
-  const SmallBitVector ref = // reference bitvector to which shifts are added
-    floor(coch.numerator(),coch.denominator());
-
-  unsigned long min = ref.data().to_ulong();
-  unsigned long min_i = 0;
-  const unsigned d = mod_space.dimension();
-  const unsigned long N=1ul<<d;
-  for (unsigned long i=1; i<N; ++i)
-  {
-    const SmallBitVector v(RankFlags(i),d);
-    const unsigned long val=(ref+mod_space.fromBasis(v)).data().to_ulong();
-    if (val<min)
-    {
-      min = val;
-      min_i = i;
-    }
-  }
-  coch +=
-    RatCoweight(lift(mod_space.fromBasis(SmallBitVector(RankFlags(min_i),d)))
-	       ,1);
-}
 
 // Modify |v| through through involution associated to |tw|
 void twisted_act

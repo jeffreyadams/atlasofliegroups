@@ -2339,21 +2339,25 @@ void Cartan_order_matrix_wrapper(expression_base::level l)
 }
 
 
-@ Finally we make available an equality test for real forms. While this could
-easily be defined in the \.{axis} language itself (two real forms are equal
-if they belong to the same inner class, their real form numbers and base
-grading vectors are equal) it is useful to define a test here, since the test
-will also be used later in other equality tests (for KGB elements, or module
-parameters), where one should resist the temptation to test (by pointer
-equality) for identical |RealReductiveGroup| objects, which would be too
-strict.
+@ Finally we make available an equality test for real forms. This could easily
+be defined in the \.{axis} language itself: two real forms are equal if they
+belong to the same inner class, their base grading vectors are equal, and the
+torus bits of their initial KGB elements are the same (this should imply their
+real form numbers are the same too). However it is useful to define a test
+here; not only can we do the tests more efficiently, the same test will later
+also be used in other equality tests (for KGB elements, or module parameters);
+there one should resist the temptation to test (by pointer equality) for
+identical |RealReductiveGroup| objects, which would be too strict.
 
 @< Local function def...@>=
 
 inline bool operator==
   (const RealReductiveGroup& x, const RealReductiveGroup& y)
-@/{@;
-  return &x.complexGroup() == &y.complexGroup() and x.realForm()==y.realForm();
+{
+  return &x.complexGroup() == &y.complexGroup()
+   @| and x.g_rho_check()==y.g_rho_check()
+   @| and x.x0_torus_part()==y.x0_torus_part()
+   @| and (assert(x.realForm()==y.realForm()),true);
 }
 inline bool operator!=
   (const RealReductiveGroup& x, const RealReductiveGroup& y)
@@ -2364,8 +2368,7 @@ void real_form_equals_wrapper(expression_base::level l)
   shared_real_form x = get<real_form_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<bool_value>@|
-    (x->val==y->val and x->cocharacter==y->cocharacter));
+  push_value(std::make_shared<bool_value> (x->val==y->val));
 }
 
 @*2 Dual real forms.
@@ -2462,12 +2465,26 @@ void synthetic_real_form_wrapper(expression_base::level l)
     torus_factor->val /= 2; // now $(1+\theta)/2$ is applied to |torus_factor|
   }
 
+  @< Ensure that the involution table knows about the Cartan class of |tw|
+     and those below it in the Cartan ordering @>
   RatCoweight cocharacter(0); // dummy value to be replaced
   RealFormNbr rf = real_form_of(G->val,tw,torus_factor->val,cocharacter);
   TorusPart tp = realredgp::minimal_torus_part @|
    (G->val,rf,cocharacter,std::move(tw),torus_factor->val);
   if (l!=expression_base::no_value)
     push_value(std::make_shared<real_form_value>(*G,rf,cocharacter,tp));
+}
+
+@ The call to |minimal_torus_part| uses the involution table in order to be
+able to do downward (inverse) Cayley transforms, so we must ensure that any
+involutions that can be encountered have been entered into the table.
+
+@< Ensure that the involution table knows about the Cartan class of |tw|... @>=
+{ CartanNbr cn = G->val.class_number(tw);
+  G->val.generate_Cartan_orbit(cn);
+  const BitMap& b = G->val.Cartan_ordering().below(cn);
+  for (auto it=b.begin(); it(); ++it)
+    G->val.generate_Cartan_orbit(*it);
 }
 
 @ The methods |central_fiber| and |x0_torus_part| of |ComplexReductiveGroup|
