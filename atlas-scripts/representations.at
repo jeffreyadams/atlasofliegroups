@@ -1,4 +1,4 @@
-<misc.at { for generate_all_subsets }
+g<misc.at { for generate_all_subsets }
 <group_operations.at { for is_split and such }
 <cross_W_orbit.at
 
@@ -56,7 +56,7 @@ assert(is_equal_rank(derived(G)),"G is not equal rank mod center");
 assert(is_integer(lambda-rho(G)),"lambda is not in rho+X^*");
 assert(is_regular(G,lambda),"lambda is not regular");
 let (lambda_dom,w)=make_dominant(G,lambda) in 
-prints("w=",w, cross(inverse(w),x));parameter(cross(w,x),lambda_dom,null(rank(G)))
+parameter(cross(w,x),lambda_dom,null(rank(G)))
 
 {discrete series parameter with given HC parameter lambda, wrt KGB(G,0)}
 set discrete_series(RealForm G,ratvec lambda)=Param:discrete_series(KGB(G,0),lambda)
