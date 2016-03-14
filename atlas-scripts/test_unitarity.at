@@ -3,6 +3,7 @@
 <unitary.at
 <nilpotent.at
 <lietypes.at
+<representations.at
 
 { test list [(Param p,bool answer)],
   test p for unitarity and compare result with answer
@@ -59,55 +60,53 @@ else
 ; prints("Result: ",if rv then "Passed" else "Failed" fi); rv
 fi
 
+set test([Param] parameters)= bool:test(for p in parameters do (p,true) od)
+
 set test_one(Param param,bool unitary)=test([(param,unitary)])
 set test_one_unitary(Param param)=test([(param,true)])
 
 { prepare parameters, all are supposed to be unitary }
-set all_unitary([Param] parameters)= [(Param,bool)]:
+{set all_unitary([Param] parameters)= [(Param,bool)]:
   for p in parameters do (p,true) od
+}
 
 { prepare parameters from |nu| values only }
-set spherical_mixed(RealForm G,[(ratvec,bool)] nu_pairs)=  [(Param,bool)]:
+{set spherical_mixed(RealForm G,[(ratvec,bool)] nu_pairs)=  [(Param,bool)]:
   for (nu,ans) in nu_pairs do (spherical_principal_series(G,nu),ans) od
-
-set spherical(RealForm G,[ratvec] nus)= [Param]:
-  for nu in nus do spherical_principal_series(G,nu) od
+}
 
 { for simple types, test spherical representations with nu=1/2 h(O^\vee)
   G should be simple, split, SL(n,R), Sp(2n,R), SO(n,n),SO(n+1,n)
   or simply connected;  see nilpotent_lambdas in nilpotent.at }
 set spherical_unipotent(RealForm G)= [Param]:
-( if #Lie_type(root_datum(G))>1 then error("Not a simple group") fi
-; spherical(G,nilpotent_lambdas(G))
-)
+assert(#Lie_type(root_datum(G))=1,"Not a simple group");
+assert(is_split(G),"Group is not split");
+for gamma in nilpotent_lambdas(G) do minimal_spherical_principal_series(G,gamma) od
 
 { a series of tests if increasing length }
 { very fast tests }
-set test1()=test(all_unitary(spherical_unipotent(Sp(4,R))))
-set test2()=test(all_unitary(spherical_unipotent(split_form(G2))))
-set test3()=test(all_unitary(spherical_unipotent(Sp(6,R))))
+set test1()=test(spherical_unipotent(Sp(4,R)))
+set test2()=test(spherical_unipotent(split_form(G2)))
+set test3()=test(spherical_unipotent(Sp(6,R)))
 set test4()=
   let G2=quasisplit_form(inner_class(adjoint("G2"),"e"))
   then p=trivial(G2) then (B,t)=block(p)
   in test (for p@i in B do (p,i<5 or i=t) od)
 
 { slightly longer, up to a few minutes }
-set test5()= test(all_unitary(spherical_unipotent(SO(5,4))))
+set test5()= test(spherical_unipotent(SO(5,4)))
 set test6()=
   let p=trivial(Sp(4,R)) then (B,t)=block(p) in
   test(for p@i in B do (p,i<7 or i=t) od)
 
 { first 49 of 59 spherical unitary parameters for F4 }
 set test7()= bool:
-  test(all_unitary(spherical(split_form(F4)
-			    ,for i:49 do F4_spherical_unitary[i] od)))
+  test(for i:49 do minimal_spherical_principal_series(split_form(F4),F4_spherical_unitary[i]) od)
 
 { first 100 of spherical unitary for E7
   requires more memory}
 set test8()= bool:
-  test(all_unitary(spherical(split_form(E7)
-			    ,for i:100 do E7_spherical_unitary[i] od)))
-
+  test(for i:100 do minimal_spherical_principal_series(split_form(E7),E7_spherical_unitary[i]) od)
 
 { trivial of F4 takes up to two hours }
 set test9()=bool:

@@ -1,0 +1,55 @@
+<ratmat.at
+
+{change of basis matrices between given simple_roots(rd) and
+user's my_roots
+columns of my_roots are simple roots in user's preferred coordinates,
+each root is a ratvec (vec is allowed also)
+my_roots has semi-simple rank(rd) columns, but is not necessarily square
+set C=change_basis(rd,my_roots)
+set D=inverse_change_basis(rd,my_roots)
+D*my_roots=simple_roots(rd)
+C*simple_roots(rd)=my_roots
+D*C=id_mat(semi_simple_rank(rd))
+D*[v]_{my_basis}=[v]_{simple_roots(rd) basis}
+C*[v]_{simple_roots(rd) basis}=[v]_{my_basis}z
+theta given in basis simple_roots(rd) -> 
+C*theta*D in my_basis
+}
+
+{need some routines for rational matrices from ratmat.at}
+{multiplication of rational matrices, and mat*rational matrix}
+{transpose of rational matrix}
+{convert rational matrix to integral one if possible}
+
+{columns of A are coordinates of simple roots in user's preferred coordinate system
+my_roots=[ratvec] or [vec]
+}
+set change_basis(RootDatum rd,ratmat my_roots)=ratmat:my_roots*rational_inverse(simple_roots(rd))
+set change_basis(RootDatum rd, [ratvec] my_roots)=ratmat:my_roots*rational_inverse(simple_roots(rd))
+set change_basis(RootDatum rd, mat my_roots)=ratmat:change_basis(rd, mat_as_ratmat(my_roots))
+
+{return intetgral matrix if possible}
+set integral_change_basis(RootDatum rd,ratmat my_roots)=mat:ratmat_as_mat(change_basis(rd,my_roots))
+set integral_change_basis(RootDatum rd,[ratvec] my_roots)=mat:ratmat_as_mat(change_basis(rd,my_roots))
+set integral_change_basis(RootDatum rd,mat my_roots)=mat:ratmat_as_mat(change_basis(rd,my_roots))
+
+
+{rational matrix D satisfying: D*my_roots=simple_roots(rd)
+this is not just the inverse of C if these matrices are not square, i.e. 
+rank > semisimple_rank
+D=simple_roots(rd)*left_inverse(my_roots)
+where left_inverse is left_inverse(A)=^[A(^AA)^{-1}]
+}
+set inverse_change_basis(RootDatum rd, ratmat my_roots)=let A = my_roots in simple_roots(rd)*^(A*inverse((^A*A)))
+set inverse_change_basis(RootDatum rd, [ratvec] my_roots)=inverse_change_basis(rd,ratvecs_as_ratmat(my_roots))
+set inverse_change_basis(RootDatum rd, mat my_roots)=inverse_change_basis(rd,mat_as_ratmat(my_roots))
+
+{return intetgral matrix if possible}
+set integral_inverse_change_basis(RootDatum rd,ratmat my_roots)=mat:ratmat_as_mat(inverse_change_basis(rd,my_roots))
+set integral_inverse_change_basis(RootDatum rd,[ratvec] my_roots)=mat:ratmat_as_mat(inverse_change_basis(rd,my_roots))
+set integral_inverse_change_basis(RootDatum rd,mat my_roots)=mat:ratmat_as_mat(inverse_change_basis(rd,my_roots))
+
+
+
+
+

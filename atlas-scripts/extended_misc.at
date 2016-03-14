@@ -125,6 +125,9 @@ set log_zeta (mat delta, vec lambda, vec l,vec tau,vec t) = rat: { modulo 1 }
 set log_z (extended_param(,delta,,lambda,,,l,,tau,t)) = rat:
   log_z(delta,lambda,l,tau,t)
 
+set my_log_z (extended_param(,delta,,lambda,theta,,l,,tau,t)) = rat:
+  log_z(theta,lambda,l,tau,t)
+
 set log_zeta (extended_param(,delta,,lambda,,,l,,tau,t)) = rat:
   log_zeta(delta,lambda,l,tau,t)
 

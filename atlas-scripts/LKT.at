@@ -181,8 +181,8 @@ set LKT_highest_weight(KParam p)=KHighestWeight:
   then (Q,pL)=theta_stable_data(parameter(p))
   then (x_L,mu_L)=LKT_highest_weight_split_spherical(pL)
 { then x_G=canonical_x_K(x(p)) }
-  then x_G=x_min(Q)
-  in prints("x_G=",x_G);
+  then x_G=x_min(Q) in
+{  in prints("x_G=",x_G);}
 { need version of 2*rho_u_cap_s(Q) which is integral, see thetastable.at}
   let mu_G=mu_L+two_rho_u_cap_s(Q)
 { then ()=prints("mu_L:",mu_L, " mu_G", mu_G, "shift", 2*rho_u_cap_s(Q)) }
@@ -193,13 +193,13 @@ set LKT_highest_weight(KParam p)=KHighestWeight:
   then mu_K=project_K(x_G,mu_G)
   then mu_G_integral=mu_K*left_inverse(injection_from_K_matrix(x_G))
   in
-  prints("L=", Levi(Q));
+{  prints("L=", Levi(Q));
   prints("pL=", pL);
   prints("mu_K=", mu_K);
   prints("mu_L=", mu_L);
   prints("rho_u_cap_s:=", rho_u_cap_s(Q));
   prints("rho_u_cap_k:=", rho_u_cap_k(Q));
-  prints("mu_G=", mu_G);
+  prints("mu_G=", mu_G);}
   (x_G,mu_G_integral)
 
 {LKT of KParam is unique}

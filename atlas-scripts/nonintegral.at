@@ -67,11 +67,19 @@ set ext_cross(
   then theta1=involution(x1), u = inverse(w)
   then rho_r_diff = w*rho_r(x)-rho_r(x1)
   , rho_i_diff=rho_check_i(x)*u-rho_check_i(x1)
+  then ()=prints("rho_r_diff/2:", rho_r_diff) 
   then lambda1 =
     ratvec_as_vec( gamma1 - w*(gamma-lambda) + (w-1)*rho(rd) - rho_r_diff )
-  , tau1 = w*tau - (delta-1)*ratvec_as_vec(rho_r_diff/2)
-  , l1 = ratvec_as_vec(g - (g-l)*u  + rho_check(rd)*(u-1) - rho_i_diff )
-  , t1 = t*u - ratvec_as_vec(rho_i_diff/2)*(delta-1)
+  then ()=prints("lambda1:", lambda1) 
+  then tau1 = w*tau - (delta-1)*ratvec_as_vec(rho_r_diff/2)
+  then ()=prints("tau1:", tau1) 
+ then
+   l1 = ratvec_as_vec(g - (g-l)*u  + rho_check(rd)*(u-1) - rho_i_diff )
+  then ()=prints("l1:", l1) 
+  then ()=prints("rho_i_diff/2:",rho_i_diff/2)
+  then
+ t1 = t*u - ratvec_as_vec(rho_i_diff/2)*(delta-1)
+  then ()=prints("t1:", t1) 
   then rv = extended_param:
      (ic,delta,gamma1,lambda1,theta1,g,l1,-^theta1,tau1,t1)
   in
