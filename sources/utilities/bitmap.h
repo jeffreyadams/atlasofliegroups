@@ -185,7 +185,7 @@ class BitMap
 
   BitMap& operator^= (const BitMap&);
 
-  bool andnot(const BitMap& b); // remove bits of |b|, return whether any left
+  BitMap& andnot(const BitMap& b); // remove bits of |b|
 
   BitMap& operator>>= (unsigned long delta); // shift right (decrease)
   BitMap& operator<<= (unsigned long delta); // shift left (increase)

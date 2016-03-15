@@ -413,7 +413,10 @@ class Fiber {
 */
   const Partition& weakReal() const { return d_weakReal; }
   AdjointFiberElt wrf_rep (adjoint_fiber_orbit wrf) const
-  { return d_weakReal.classRep(wrf); }
+  { return AdjointFiberElt(RankFlags(d_weakReal.classRep(wrf)),
+			   adjointFiberRank()); }
+  adjoint_fiber_orbit adjoint_orbit(AdjointFiberElt x) const
+  { return d_weakReal.class_of(x.data().to_ulong()); }
 
 // private accessors only needed during construction
 

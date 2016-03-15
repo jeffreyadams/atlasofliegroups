@@ -132,9 +132,12 @@ std::ostream& printRealWeyl(std::ostream& strm,
   const RootDatum& rd = G_C.rootDatum();
   const WeylGroup& W = G_C.weylGroup();
   const CartanClass& cc = G_C.cartan(cn);
-  cartanclass::AdjointFiberElt x = G_C.representative(rf,cn);
+  const auto dafr = cc.dualFiber().adjointFiberRank();
 
-  realweyl::RealWeyl rw(cc,x,0,rd,W);
+  cartanclass::AdjointFiberElt x = G_C.representative(rf,cn);
+  cartanclass::AdjointFiberElt y (RankFlags(0),dafr); // dual quasisplit form
+
+  realweyl::RealWeyl rw(cc,x,y,rd,W);
   realweyl::RealWeylGenerators rwg(rw,cc,rd);
 
   realweyl_io::printRealWeyl(strm,rw,rwg);

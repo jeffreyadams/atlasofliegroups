@@ -262,12 +262,13 @@ TorusPart minimal_torus_part
 // that induces |G.simple_roots_x0_compact(wrf)| on imaginary simple roots
   const auto base_cpt = compacts_for(G,y_values::exp_pi(coch));
   const auto wrf_cpt = G.simple_roots_x0_compact(wrf);
+  const auto afr = G.fundamental().adjointFiberRank();
   const cartanclass::AdjointFiberElt image // which will give required compacts
-    = (base_cpt^wrf_cpt).slice(G.simple_roots_imaginary()).to_ulong();
+    ( (base_cpt^wrf_cpt).slice(G.simple_roots_imaginary()), afr);
 
   const TorusPart t = Tg.left_torus_part(a);
   const auto& fund_fg = G.fundamental().fiberGroup();
-  const cartanclass::FiberElt y = fund_fg.toBasis(t).data().to_ulong();
+  const cartanclass::FiberElt y = fund_fg.toBasis(t);
 
   const containers::sl_list<TorusPart> candidates =
     complexredgp::preimage(G.fundamental(), G.xi_square(wrf),y,image);

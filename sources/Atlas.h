@@ -305,8 +305,8 @@ namespace atlas {
   namespace cartanclass {
     class Fiber;
     class CartanClass;
-    typedef unsigned int FiberElt;	// element of the fiber group
-    typedef unsigned int AdjointFiberElt;  // element of adjoint fiber (-group)
+    typedef SmallBitVector FiberElt;	// element of the fiber group
+    typedef SmallBitVector AdjointFiberElt;  // element of adjoint fiber(-group)
     typedef unsigned short fiber_orbit; // # of W_imag orbit in fiber group
     typedef unsigned short adjoint_fiber_orbit; // same for adjoint fiber group
     typedef unsigned short square_class; // identifies a class of real forms

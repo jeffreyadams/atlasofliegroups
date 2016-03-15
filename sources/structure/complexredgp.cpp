@@ -2,6 +2,7 @@
   This is complexredgp.cpp.
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006-2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -181,7 +182,7 @@ void ComplexReductiveGroup::construct() // common part of two constructors
 	// setting the initial torus part for each real form is subtle.
 	Cartan[0].rep[i]=              // in |adj_Tg|, a torus part is a
 	  cartanclass::restrictGrading // |Grading| of simple roots, where
-	  (f.compactRoots(weak_real.classRep(i)), // compact ones need bit set
+	  (f.compactRoots(f.wrf_rep(i)), // compact ones need bit set
 	   d_rootDatum.simpleRootList()); // to flip base (noncompact) grading
       }
     }
@@ -286,7 +287,7 @@ void ComplexReductiveGroup::construct() // common part of two constructors
 
 	RankFlags gr = // as above, torus part is obtained as a grading
 	  cartanclass::restrictGrading // values at simple roots give torus part
-	  (f.compactRoots(weak_real.classRep(i)), // compact ones need a set bit
+	  (f.compactRoots(f.wrf_rep(i)), // compact ones need a set bit
 	   d_rootDatum.simpleRootList()); // reproduces grading at imag. simples
 	TitsElt x(dual_Tg,TorusPart(gr,d_rootDatum.semisimpleRank()));
 	dual_adj_Tg.basedTwistedConjugate(x,ww); // transform to canonical
@@ -463,28 +464,8 @@ ComplexReductiveGroup::~ComplexReductiveGroup()
 
 ******************************************************************************/
 
-/******** private accessors **************************************************/
 
-/* Compose |tw| to the left with the reflection $s_\alpha$
-
-  This is a twisted involution if $s_\alpha$ twisted-commutes with |tw|;
-  used in practice with even only with $\alpha$ imaginary for |tw|
-*/
-TwistedInvolution
-ComplexReductiveGroup::reflection(RootNbr alpha,
-				  const TwistedInvolution& tw) const
-{
-  WeylWord rw=rootDatum().reflectionWord(alpha);
-
-  TwistedInvolution result=tw;
-  for (size_t i=rw.size(); i-->0; ) // left multiply |tw| by |rw|
-    W.leftMult(result,rw[i]);
-
-  return result;
-}
-
-
-/******** manipulators *******************************************************/
+/******** private manipulators ***************************************/
 
 
 /*
@@ -535,11 +516,8 @@ void ComplexReductiveGroup::map_real_forms(CartanNbr cn)
   for (size_t i=0; i<sim.size(); ++i)
     ref_gr.set(i,adj_Tg.grading(a,sim[i]));
 
-  cartanclass::AdjointFiberElt rep = f.gradingRep(ref_gr);
-
-  // now lift |rep| to a torus part and subtract from |base|
-  SmallBitVector v(RankFlags(rep),f.adjointFiberRank());
-  base -= f.adjointFiberGroup().fromBasis(v);
+  // now subtract transformed coordinates of reference grading from |base|
+  base -= f.adjointFiberGroup().fromBasis(f.gradingRep(ref_gr));
   // now |base| grades all imaginary simple roots noncompact
   Cartan[cn].rep[quasisplit()] = base.data(); // store improved representative
 
@@ -547,9 +525,8 @@ void ComplexReductiveGroup::map_real_forms(CartanNbr cn)
   {
     RealFormNbr rf = *rfi;
     TorusPart tp = sample_torus_part(cn,rf);
-    cartanclass::AdjointFiberElt rep =
-      f.adjointFiberGroup().toBasis(tp-=base).data().to_ulong();
-    Cartan[cn].real_labels[weak_real.class_of(rep)]=rf;
+    cartanclass::AdjointFiberElt rep = f.adjointFiberGroup().toBasis(tp-=base);
+    Cartan[cn].real_labels[f.adjoint_orbit(rep)]=rf;
   }
   assert(Cartan[cn].real_labels[0]==quasisplit());
 } // |ComplexReductiveGroup::map_real_forms|
@@ -571,20 +548,18 @@ void ComplexReductiveGroup::map_dual_real_forms(CartanNbr cn)
   for (size_t i=0; i<sre.size(); ++i)
     dual_ref_gr.set(i,dual_adj_Tg.grading(dual_a,sre[i]));
 
-  cartanclass::AdjointFiberElt dual_rep = dual_f.gradingRep(dual_ref_gr);
-
-  // now lift |rep| to a torus part and subtract from |base|
-  SmallBitVector v(RankFlags(dual_rep),dual_f.adjointFiberRank());
-  dual_base -= dual_f.adjointFiberGroup().fromBasis(v);
+  // now subtract transformed coordinates of reference grading from |dual_base|
+  dual_base -=
+    dual_f.adjointFiberGroup().fromBasis(dual_f.gradingRep(dual_ref_gr));
 
   for (BitMap::iterator
 	 drfi=Cartan[cn].dual_real_forms.begin(); drfi(); ++drfi)
   {
     RealFormNbr drf = *drfi;
     TorusPart tp = dual_sample_torus_part(cn,drf);
-    cartanclass::AdjointFiberElt rep =
-      dual_f.adjointFiberGroup().toBasis(tp-=dual_base).data().to_ulong();
-    Cartan[cn].dual_real_labels[dual_weak_real.class_of(rep)]=drf;
+    cartanclass::AdjointFiberElt dual_rep =
+      dual_f.adjointFiberGroup().toBasis(tp-=dual_base);
+    Cartan[cn].dual_real_labels[dual_f.adjoint_orbit(dual_rep)]=drf;
   }
   assert(Cartan[cn].dual_real_labels[0]==0);
   Cartan[cn].dual_rep[0] = dual_base.data();
@@ -790,8 +765,8 @@ RealFormNbr ComplexReductiveGroup::square_class_repr // class elected real form
 Grading ComplexReductiveGroup::simple_roots_x0_compact(RealFormNbr rf) const
 {
 #if 1 // exploit that adjoint fiber group is gradings of imaginary simples
-  return
-    RankFlags(fundamental().wrf_rep(rf)).unslice(simple_roots_imaginary());
+  RankFlags tmp = fundamental().wrf_rep(rf).data(); // |unslice| is non-const
+  return tmp.unslice(simple_roots_imaginary());
 #else // |unslice| does the following change of basis below more efficiently
   const Fiber& fund_f= fundamental();
   RankFlags noncompact(fund_f.wrf_rep(rf)); // among imaginary simples
@@ -922,11 +897,14 @@ containers::sl_list<TorusPart> preimage
   const SmallSubquotient& fg = fund_f.fiberGroup();
   const unsigned int f_rk = fund_f.fiberRank();
   const Partition& pi = fund_f.fiber_partition(csc);
-  const cartanclass::fiber_orbit srf = pi.class_of(y);
+  const cartanclass::fiber_orbit srf = pi.class_of(y.data().to_ulong());
   containers::sl_list<TorusPart> result;
-  for (cartanclass::FiberElt i=pi.classRep(srf); i<pi.size(); ++i)
-    if (pi.class_of(i)==srf and fund_f.toAdjoint(i)==image)
-      result.push_back(fg.fromBasis(SmallBitVector(RankFlags(i^y),f_rk)));
+  for (unsigned i=pi.classRep(srf); i<pi.size(); ++i) // only start is optimised
+    if (pi.class_of(i)==srf) // beyond that, just test for the right class
+    { cartanclass::FiberElt fe(RankFlags(i),f_rk);
+      if (fund_f.toAdjoint(fe)==image)
+	result.push_back(fg.fromBasis(fe+y));
+    }
   return result;
 } // |preimage|
 
@@ -941,14 +919,12 @@ ComplexReductiveGroup::central_fiber(RealFormNbr rf) const
 
   // find Fiber element |y| that maps to |fund_f.wrf_rep(rf)| in adjoint fiber
   const cartanclass::AdjointFiberElt target = fund_f.wrf_rep(rf);
-  const SmallBitVector diff
-    (RankFlags(target^fund_f.class_base(csc)),fund_f.adjointFiberRank());
-  const cartanclass::FiberElt y = (fund_f.toAdjoint().section()*diff)
-    .data().to_ulong();
-  assert(fund_f.toAdjoint(y)==diff.data().to_ulong());
+  const SmallBitVector diff = target - fund_f.class_base(csc);
+  const cartanclass::FiberElt y = fund_f.toAdjoint().section()*diff;
+  assert(fund_f.toAdjoint(y)==diff); // check that we found a pre-image
 
   // and return shifts to other elements with same |toAdjoint| image as |y|
-  return preimage(fund_f,csc,y,diff.data().to_ulong());
+  return preimage(fund_f,csc,y,diff);
 } // |ComplexReductiveGroup::central_fiber|
 
 
@@ -1230,7 +1206,7 @@ RealFormNbr real_form_of // who claims this KGB element?
   // look up the grading at the fiber of Cartan class |cn|
   const Fiber& f = G.cartan(cn).fiber();
   auto rep = f.gradingRep(gr);
-  return G.realFormLabels(cn)[f.weakReal().class_of(rep)]; // found real form!
+  return G.realFormLabels(cn)[f.adjoint_orbit(rep)]; // found real form!
 } // |real_form_of|
 
 /*****************************************************************************
@@ -1260,8 +1236,9 @@ unsigned long makeRepresentative(const Grading& gr,
 				 const RootNbrList& rl,
 				 const Fiber& fundf)
 {
+  cartanclass::AdjointFiberElt base(RankFlags(0),fundf.adjointFiberRank());
   RootNbrSet brs =
-    fundf.noncompactRoots(0); // noncompact roots for the base grading
+    fundf.noncompactRoots(base); // noncompact roots for the base grading
   Grading bgr =
     cartanclass::restrictGrading(brs,rl); // view as grading of roots of |rl|
   SmallBitVector bc(bgr,rl.size()); // transform to binary vector
@@ -1274,8 +1251,9 @@ unsigned long makeRepresentative(const Grading& gr,
   SmallBitVectorList cl(fundf.adjointFiberRank(),bc);
   for (unsigned int i = 0; i < cl.size(); ++i)
   {
+    cartanclass::AdjointFiberElt afe(fundf.adjointFiberRank(),i); // $e_i$
     Grading gr1 =
-      cartanclass::restrictGrading(fundf.noncompactRoots(1 << i),rl);
+      cartanclass::restrictGrading(fundf.noncompactRoots(afe),rl);
     cl[i] += // cl[i] is shift for vector e[i]
       SmallBitVector(gr1,rl.size());
   }

@@ -464,8 +464,6 @@ class ComplexReductiveGroup
 
   void construct(); // does essential work, common to two constructors
 
-  TwistedInvolution reflection(RootNbr rn,const TwistedInvolution& tw) const;
-
   TorusPart grading_shift_repr(Grading diff) const;
 
   // whether Cartan \#cn is defined over real form \#rf.

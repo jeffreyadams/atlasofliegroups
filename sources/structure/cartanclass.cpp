@@ -2,7 +2,7 @@
   This is cartanclass.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006-2014 Marc van Leeuwen
+  Copyright (C) 2006-201g Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -134,14 +134,12 @@ CartanClass::CartanClass(const RootDatum& rd,
   corresponding to class |wrf| in |fiber().weakReal()|.
 
   Algorithm: this is the case iff the grading corresponding to wrf is trivial,
-  i.e., all imaginary roots are compact. In this case it does not matter which
-  representative fiber element |x| is chosen, since the action of the
-  imaginary Weyl group obviously stabilises the trivial grading.
+  i.e., all imaginary roots are compact. Since cross actions by compact
+  imaginary roots are trivial, the fiber element |x| below is then unique.
 */
 bool CartanClass::isMostSplit(adjoint_fiber_orbit wrf) const
 {
-  AdjointFiberElt x = fiber().wrf_rep(wrf);
-  return  fiber().grading(x).none();;
+  auto& f=fiber(); return f.grading(f.wrf_rep(wrf)).none();
 }
 
 
@@ -668,7 +666,7 @@ std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
     RankFlags yf(d_weakReal.classRep(wrf));
 
     // subtract base point
-    yf ^= RankFlags(class_base(c));
+    yf ^= class_base(c).data();
 
     // find preimage |xf| of |yf| in the fiber
     SmallBitVector v(yf,adjointFiberRank()); // the desired image
@@ -705,36 +703,26 @@ std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
 */
 RootNbrSet Fiber::noncompactRoots(AdjointFiberElt x) const
 {
-  RankFlags bit(x);
   RootNbrSet result = d_baseNoncompact;
-
-  for (size_t i=0; i<adjointFiberRank() ; ++i)
-    if (bit[i])
-      result ^= d_noncompactShift[i];
+  for (auto it=x.data().begin(); it(); ++it)
+    result ^= d_noncompactShift[*it];
   return result;
 }
 
 // Return the compact imaginary roots for element |x| in the adjoint fiber.
 RootNbrSet Fiber::compactRoots(AdjointFiberElt x) const
 {
-  RootNbrSet result = imaginaryRootSet();
-  result.andnot(noncompactRoots(x));
-  return result;
+  RootNbrSet imaginary = imaginaryRootSet(); // take a copy
+  return imaginary.andnot(noncompactRoots(x));
 }
 
-/*
-  Flag in |gr| the noncompact simple-imaginary roots for element |x| in the
-  adjoint fiber.
-
-  Precondition: |x| represents an element of the subquotient in
-  |d_adjointFiberGroup|.
-*/
+// Flag the noncompact simple-imaginary roots for adjoint fiber element |x|.
 Grading Fiber::grading(AdjointFiberElt x) const
 {
-  assert(d_gradingShift.size()==adjointFiberRank()); // length of combination
+  assert(x.size()==d_gradingShift.size()); // length of combination
 
   Grading gr = d_baseGrading;
-  gr ^= bitvector::combination(d_gradingShift,RankFlags(x));
+  gr ^= bitvector::combination(d_gradingShift,x.data());
 
   return gr;
 }
@@ -758,8 +746,8 @@ AdjointFiberElt Fiber::gradingRep(const Grading& gr) const
     shifts.push_back(SmallBitVector(d_gradingShift[i],ir));
 
   RankFlags result;
-  if (combination_exists(shifts,target,result))
-    return AdjointFiberElt(result.to_ulong()); // condition has set |result|
+  if (combination_exists(shifts,target,result)) // sets |result|
+    return AdjointFiberElt(result,adjointFiberRank());
   else
     throw std::runtime_error("Representative of impossible grading requested");
 }
@@ -782,8 +770,7 @@ SmallBitVector Fiber::mAlpha(const rootdata::Root& cr) const
 */
 AdjointFiberElt Fiber::toAdjoint(FiberElt x) const
 {
-  SmallBitVector v(RankFlags(x),fiberRank());
-  return AdjointFiberElt((d_toAdjoint*v).data().to_ulong());
+  return d_toAdjoint*x;
 }
 
 
@@ -822,12 +809,9 @@ AdjointFiberElt Fiber::toAdjoint(FiberElt x) const
 */
 adjoint_fiber_orbit Fiber::toWeakReal(fiber_orbit c, square_class csc) const
 {
-  // find image of strong real form element in the adjoint fiber
-  AdjointFiberElt y =
-    class_base(csc) ^ toAdjoint(fiber_partition(csc).classRep(c));
-
-  // and find its orbit number
-  return weakReal().class_of(y);
+  FiberElt rep (RankFlags(fiber_partition(csc).classRep(c)),fiberRank());
+  // get orbit number of image of strong real form element in the adjoint fiber
+  return adjoint_orbit(class_base(csc) + toAdjoint(rep));
 }
 
 
@@ -884,8 +868,11 @@ Grading specialGrading(const Fiber& f, RealFormNbr rf, const RootSystem& rs)
 
   // sort the gradings that occur in this class
   for (unsigned long i=0; i<n; ++i)
-    if (f.weakReal().class_of(i) == rf)
-      grs.insert(restrictGrading(f.noncompactRoots(i),rs.simpleRootList()));
+  { AdjointFiberElt x(RankFlags(i),f.adjointFiberRank());
+    if (f.adjoint_orbit(x) == rf)
+      grs.insert(restrictGrading(f.noncompactRoots(x),rs.simpleRootList()));
+  }
+  assert(not grs.empty());
 
   // return the first element
   return *(grs.begin());
@@ -902,7 +889,7 @@ RootNbrSet
 toMostSplit(const Fiber& fundf, RealFormNbr rf, const RootSystem& rs)
 {
   RootNbrSet ir = fundf.imaginaryRootSet();
-  unsigned long rep = fundf.wrf_rep(rf);
+  AdjointFiberElt rep = fundf.wrf_rep(rf);
 
   return gradings::max_orth(fundf.noncompactRoots(rep),ir,rs);
 }

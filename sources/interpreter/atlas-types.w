@@ -2138,28 +2138,18 @@ fields. To remind us that the |parent| is not there to be changed by us, we
 declare it |const|. The object referred to may in fact undergo internal change
 however, via manipulators of the |val| field.
 
-The |cocharacter| field is a recent addition to the structure, allowing us to
-distinguish between several strong real forms associated to the same weak real
-form; see synthetic real forms below. We therefore provide two constructors:
-the first computes |cocharacter| from a grading giving the weak real form, and
-another where |cocharacter| is explicitly provided; it is used for synthetic
-real forms.
-
 @< Type definitions @>=
 struct real_form_value : public value_base
 { const inner_class_value parent;
   RealReductiveGroup val;
-  const RatCoweight cocharacter;
 @)
   real_form_value(const inner_class_value& p,RealFormNbr f) @/
   : parent(p), val(p.val,f)
-  , cocharacter(val.g_rho_check())
   , rt_p(nullptr) @+{}
   real_form_value
     (const inner_class_value& p,RealFormNbr f
     ,const RatCoweight& coch, TorusPart tp) @/
   : parent(p), val(p.val,f,coch,tp)
-  , cocharacter(coch)
   , rt_p(nullptr) @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -2314,7 +2304,7 @@ void base_grading_vector_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<rational_vector_value>(rf->cocharacter));
+  push_value(std::make_shared<rational_vector_value>(rf->val.g_rho_check()));
 }
 
 @ There is a partial ordering on the Cartan classes defined for a real form. A
@@ -2423,12 +2413,12 @@ a torus element; the square of this element should be central (meaning in
 coordinates that all simple roots have integral evaluation on the projected
 rational vector; in the code below the doubled projection is made first, and
 evaluations must be even). If this test succeeds, the function then returns
-the corresponding real form, but in which a |cocharacter| value is stored
-deduced from the torus element that identifies the strong real form, and may
-differ from the |cocharacter| value for the weak real form that could be
-obtained by selecting by number in the inner class. This difference notably
-allows the same strong involution representative to be subsequently used to
-specify a KGB element for this (strong) real form.
+the corresponding real form, but in which a cocharacter value is stored
+(representing the square of any strong involution for the real form) deduced
+from the given torus element, which may differ from the value for the (weak)
+real form selected by the number |rf->val;realForm()| in the inner class. This
+difference notably allows the same strong involution representative to be
+subsequently used to specify a KGB element for this (strong) real form.
 
 @:synthetic_real_form@>
 
@@ -2467,12 +2457,13 @@ void synthetic_real_form_wrapper(expression_base::level l)
 
   @< Ensure that the involution table knows about the Cartan class of |tw|
      and those below it in the Cartan ordering @>
-  RatCoweight cocharacter(0); // dummy value to be replaced
-  RealFormNbr rf = real_form_of(G->val,tw,torus_factor->val,cocharacter);
+  RatCoweight coch(0); // dummy value to be replaced
+  RealFormNbr rf = real_form_of(G->val,tw,torus_factor->val,coch);
+   // sets |coch|
   TorusPart tp = realredgp::minimal_torus_part @|
-   (G->val,rf,cocharacter,std::move(tw),torus_factor->val);
+   (G->val,rf,coch,std::move(tw),torus_factor->val);
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<real_form_value>(*G,rf,cocharacter,tp));
+    push_value(std::make_shared<real_form_value>(*G,rf,coch,tp));
 }
 
 @ The call to |minimal_torus_part| uses the involution table in order to be
@@ -2908,8 +2899,10 @@ different lines after commas if necessary.
 { bool first=true; std::ostringstream os;
   for (size_t i=0; i<pi.size(); ++i)
     if ( rf_nr[pi.class_of(i)] == rf->val.realForm())
-    { os << ( first ? first=false,'[' : ',');
-      Grading gr=cc->val.fiber().grading(i);
+    { const auto& f= cc->val.fiber();
+      cartanclass::AdjointFiberElt afe(RankFlags(i),f.adjointFiberRank());
+      os << ( first ? first=false,'[' : ',');
+      Grading gr=f.grading(afe);
       gr=sigma.pull_back(gr);
       prettyprint::prettyPrint(os,gr,si.size());
     }
@@ -3140,8 +3133,9 @@ latter defines a grading of the corresponding imaginary roots, in the same
 manner as for the synthetic |real_form| in section @#synthetic_real_form@>
 above, but in fact it even completely describes the KGB element. In order for
 this to be possible, the |torus_factor| must be compatible with the
-|cocharacter| stored in the real form, but which should always be right if the
-real form was itself synthesised from the |torus_factor| value.
+cocharacter |rf->val.g_rho_check()| stored in the real form, but which should
+always be right if the real form was itself synthesised from the
+|torus_factor| value.
 
 @< Local function def...@>=
 void build_KGB_element_wrapper(expression_base::level l)
@@ -3151,22 +3145,20 @@ void build_KGB_element_wrapper(expression_base::level l)
 
   if (torus_factor->val.size()!=rf->val.rank())
     throw runtime_error ("Torus factor size mismatch");
-  { // make theta-fixed:
-    Ratvec_Numer_t& num = torus_factor->val.numerator();
+@)
+  Ratvec_Numer_t& num = torus_factor->val.numerator();
+  { // make theta-fixed and remove base grading vector offset
     num += theta->val.right_prod(num);
-    torus_factor->val /= 2;
+    ((torus_factor->val /= 2) -=rf->val.g_rho_check()).normalize() ;
+    if (torus_factor->val.denominator()!=1)
+      throw runtime_error
+        ("Torus factor not in cocharacter coset of real form");
+@.Torus factor not in cocharacter...@>
   }
 
-  RatCoweight tv = torus_factor->val - rf->cocharacter;
-  if (tv.normalize().denominator()!=1)
-    throw runtime_error
-      ("Torus factor not in cocharacter coset of real form");
-@.Torus factor not in cocharacter...@>
-
   const ComplexReductiveGroup& G = rf->parent.val;
-  TorusPart t(tv.numerator()); // reduce modulo $2$
-  TwistedInvolution tw = twisted_from_involution(G,theta->val);
-  TitsElt a (G.titsGroup(),t,tw);
+  TitsElt a
+   (G.titsGroup(),TorusPart(num),twisted_from_involution(G,theta->val));
 
   KGBElt x = rf->kgb().lookup(a);
   if (x== rf->kgb().size())
@@ -3174,7 +3166,7 @@ void build_KGB_element_wrapper(expression_base::level l)
 
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<KGB_elt_value> (rf,x));
+  push_value(std::make_shared<KGB_elt_value>(rf,x));
 }
 
 
@@ -3217,7 +3209,7 @@ void torus_factor_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   const KGB& kgb=x->rf->kgb();
-  RatCoweight tf = x->rf->cocharacter + lift(kgb.torus_part(x->val));
+  RatCoweight tf = x->rf->val.g_rho_check() + lift(kgb.torus_part(x->val));
   push_value(std::make_shared<rational_vector_value>
      (symmetrise(tf,kgb.involution_matrix(x->val))));
 }
@@ -3237,8 +3229,7 @@ void KGB_equals_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   push_value(std::make_shared<bool_value>(
-   @| x->rf->val==y->rf->val and x->rf->cocharacter==y->rf->cocharacter
-      and x->val==y->val));
+   @| x->rf->val==y->rf->val and x->val==y->val));
 }
 
 @ Finally we install everything related to $K\backslash G/B$ elements.

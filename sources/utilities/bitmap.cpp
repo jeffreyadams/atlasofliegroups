@@ -423,14 +423,13 @@ BitMap& BitMap::operator^= (const BitMap& b)
   exceed the size of the current bitmap (but may be smaller).
   Return whether any bits remain in the result.
 */
-bool BitMap::andnot(const BitMap& b)
+BitMap& BitMap::andnot(const BitMap& b)
 {
   assert(b.capacity()<=capacity());
-  bool any=false;
   for (unsigned long j = 0; j < b.d_map.size(); ++j)
-    if ((d_map[j] &= ~(b.d_map[j]))!=0) any=true;
+    d_map[j] &= ~b.d_map[j];
 
-  return any;
+  return *this;
 }
 
 BitMap& BitMap::operator<<= (unsigned long delta) // increase values by |delta|

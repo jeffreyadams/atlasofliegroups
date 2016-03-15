@@ -127,6 +127,7 @@ std::ostream& printGradings(std::ostream& strm, const Fiber& f,
 			    const RootSystem& rs)
 {
   typedef std::vector<unsigned long>::const_iterator VI;
+  const auto afr = f.adjointFiberRank();
 
   const RootNbrList& si = f.simpleImaginary();
   int_Matrix cm = rs.cartanMatrix(si);
@@ -140,21 +141,23 @@ std::ostream& printGradings(std::ostream& strm, const Fiber& f,
   const Partition& pi = f.weakReal();
   unsigned long c = 0;
 
-  for (Partition::iterator i(pi); i(); ++i) {
-
+  for (Partition::iterator it(pi); it(); ++it)
+  {
     std::ostringstream os;
     os << "real form #";
     os << rfl[c] << ": ";
 
-    VI i_first = i->first;
-    VI i_last = i->second;
+    const VI i_first = it->first;
+    const VI i_last = it->second;
 
     os << '[';
 
-    for (VI j = i->first; j != i_last; ++j) {
+    for (VI j = i_first; j != i_last; ++j)
+    {
       if (j != i_first)
 	os << ',';
-      Grading gr= a.pull_back(f.grading(*j));
+      cartanclass::AdjointFiberElt afe(RankFlags(*j),afr);
+      Grading gr= a.pull_back(f.grading(afe));
       prettyprint::prettyPrint(os,gr,f.simpleImaginary().size());
     }
 
