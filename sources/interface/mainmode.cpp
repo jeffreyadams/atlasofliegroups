@@ -47,10 +47,10 @@ namespace commands {
   with the "type" command, which amounts to exiting and re-entering the main
   mode.
 
-  NOTE : it could be useful to have several active groups simultaneously, say
-  for comparison purposes. This should be easy to do (an easy scheme would
-  be for instance to have "first", "second" switch between two groups; but
-  more sophisticated things are possible.)
+  NOTE (by Fokko): it could be useful to have several active groups
+  simultaneously, say for comparison purposes. This should be easy to do (an
+  easy scheme would be for instance to have "first", "second" switch between
+  two groups; but more sophisticated things are possible.)
 
 *****************************************************************************/
 

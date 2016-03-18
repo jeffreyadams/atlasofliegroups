@@ -83,15 +83,18 @@ Interface::Interface(const ComplexReductiveGroup& G,
 : d_in(G.numRealForms()), d_out(G.numRealForms()), d_name(G.numRealForms())
 {
   const size_t nrf = G.numRealForms();
-  const RootSystem& rs = G.rootSystem();
-  const Fiber& fundf = G.fundamental();
+  const auto& rs = G.rootSystem();
+  const auto& rd = G.rootDatum();
 
   std::vector<RealFormData> rf_data; rf_data.reserve(nrf);
 
   for (RealFormNbr rf = 0; rf<nrf; ++rf)
   {
-    RootNbrSet so = cartanclass::toMostSplit(fundf,rf,rs);
-    Grading gr = cartanclass::specialGrading(fundf,rf,rs);
+    RootNbrSet so = gradings::max_orth
+      (G.noncompactRoots(rf),
+       InvolutionData(rd,G.distinguished()).imaginary_roots(), rs);
+    Grading gr = cartanclass::specialGrading
+      (G.weak_real_partition(),rf,G.simple_roots_imaginary());
     rf_data.push_back(RealFormData(rf,gr,so));
   }
 
@@ -125,16 +128,19 @@ Interface::Interface(const ComplexReductiveGroup& G,
 , d_name(G.numDualRealForms())
 {
   const size_t ndrf = G.numDualRealForms();
-  const RootSystem& drs = G.dualRootSystem();
-  const Fiber& dfundf = G.dualFundamental();
+  const auto& drd = G.dualRootDatum();
+  const auto& drs = G.dualRootSystem();
   const lietype::Layout dlo = dual(lo);
 
   std::vector<RealFormData> rf_data; rf_data.reserve(ndrf);
 
   for (RealFormNbr drf = 0; drf<ndrf; ++drf)
   {
-    RootNbrSet so = cartanclass::toMostSplit(dfundf,drf,drs);
-    Grading gr = cartanclass::specialGrading(dfundf,drf,drs);
+    RootNbrSet so = gradings::max_orth
+      (G.parity_coroots(drf),
+       InvolutionData(drd,G.dualDistinguished()).imaginary_roots(), drs);
+    Grading gr = cartanclass::specialGrading
+      (G.dual_weak_real_partition(),drf,G.simple_roots_real());
     rf_data.push_back(RealFormData(drf,gr,so));
   }
 
@@ -213,14 +219,13 @@ std::ostream& printRealForms(std::ostream& strm, const Interface& I)
 namespace {
 
 /*
-  Synopsis: comparison of RealFormData.
+  comparison of RealFormData, used for ordering real forms in an inner class
 
   Sorts the data by compacity (most compact forms first), and for equal
   compacity, by their grading. This ensures that the ordering will be the same
   for all covering groups. However the comparisons of gradings depends on the
-  permutation of simple roots relative to the standard ordering of the diagram
-  for the Lie type, which could be improved.
-
+  order of simple roots, so will not be invariant under diagram renumbering.
+  Dixit Fokko "this could be improved" but it's not worth the hassle to try.
 */
 bool operator< (const RealFormData& first, const RealFormData& second)
 {

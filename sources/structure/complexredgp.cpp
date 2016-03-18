@@ -173,8 +173,8 @@ void ComplexReductiveGroup::construct() // common part of two constructors
 {
   { // task 1: generate Cartan classes, fill non-dual part of |Cartan|
     { // complete initialisation of |Cartan[0]|
-      const Fiber& f=fundamental();
-      const Partition& weak_real=f.weakReal();
+      const Fiber& f=d_fundamental;
+      const Partition& weak_real=weak_real_partition();
       // fill initial |form_reps| vector with assignment from |weak_real|
       for (RealFormNbr i=0; i<weak_real.classCount(); ++i)
       {
@@ -277,7 +277,7 @@ void ComplexReductiveGroup::construct() // common part of two constructors
       WeylWord ww = canonicalize(w0); // but not always canonical
       assert(w0==Cartan.back().tw);
 
-      const Fiber& f=dualFundamental();
+      const Fiber& f=d_dualFundamental;
       const Partition& weak_real=f.weakReal();
       // fill initial |form_reps| vector with assignment from |weak_real|
       for (unsigned long i=0; i<weak_real.classCount(); ++i)
@@ -620,7 +620,16 @@ ComplexReductiveGroup::dualFiberSize(RealFormNbr rf, CartanNbr cn) const
 
 RankFlags ComplexReductiveGroup::simple_roots_imaginary() const
 {
-  const Permutation twist = simple_twist();
+  const auto twist = twistedWeylGroup().twist();
+  RankFlags result;
+  for (weyl::Generator s=0; s<semisimpleRank(); ++s)
+    result.set(s,s==twist[s]);
+  return result;
+}
+
+RankFlags ComplexReductiveGroup::simple_roots_real() const
+{
+  const auto twist = twistedWeylGroup().dual_twist();
   RankFlags result;
   for (weyl::Generator s=0; s<semisimpleRank(); ++s)
     result.set(s,s==twist[s]);
@@ -755,20 +764,27 @@ ComplexReductiveGroup::global_KGB_size() const
 // such forms share a central value for the square of their strong involutions
 cartanclass::square_class ComplexReductiveGroup::xi_square // class for square
   (RealFormNbr rf) const
-{ return fundamental().central_square_class(rf); }
+{ return d_fundamental.central_square_class(rf); }
 
 RealFormNbr ComplexReductiveGroup::square_class_repr // class elected real form
   (cartanclass::square_class csc) const
-{ return fundamental().realFormPartition().classRep(csc); }
+{ return d_fundamental.realFormPartition().classRep(csc); }
 
 // the basic information stored for a real form is a grading of the simple roots
 Grading ComplexReductiveGroup::simple_roots_x0_compact(RealFormNbr rf) const
 {
-#if 1 // exploit that adjoint fiber group is gradings of imaginary simples
-  RankFlags tmp = fundamental().wrf_rep(rf).data(); // |unslice| is non-const
+#if 1 // exploit that adjoint fiber group structure is rather transparent
+  // Weak real forms are constructed as orbits in the adjoint fiber group. The
+  // basis used for adjoint X_* is that of the fundamental coweights, on which
+  // the distinguished involution acts as a permutation; the adjoint fiber
+  // group generators are the fixed points of this (involutive) permutation,
+  // which are the fundamental coweights for the imaginary simple coroots. So
+  // each bit in a (weak) real form representative directly gives compactness
+  // of a imaginary simple coroots; it sufices to move the bits to their place
+  RankFlags tmp = d_fundamental.wrf_rep(rf).data(); // |unslice| is non-const
   return tmp.unslice(simple_roots_imaginary());
 #else // |unslice| does the following change of basis below more efficiently
-  const Fiber& fund_f= fundamental();
+  const Fiber& fund_f= d_fundamental;
   RankFlags noncompact(fund_f.wrf_rep(rf)); // among imaginary simples
   SmallBitVector v(noncompact,fund_f.adjointFiberRank());
   return fund_f.adjointFiberGroup().fromBasis(v).data();
@@ -861,7 +877,7 @@ TorusPart ComplexReductiveGroup::grading_shift_repr (Grading diff) const
   diff.slice(simple_roots_imaginary()); // discard complex roots
   const unsigned int c_rank=simple_roots_imaginary().count();
 
-  const SmallSubquotient& fg = fundamental().fiberGroup();
+  const SmallSubquotient& fg = d_fundamental.fiberGroup();
   const SmallBitVectorList basis=fg.basis();
   const unsigned int f_rank = basis.size(); // equals |fg.dimension()|
 
@@ -878,6 +894,38 @@ TorusPart ComplexReductiveGroup::grading_shift_repr (Grading diff) const
   assert((fg2grading*v).data()==diff); // check that we solved the equation
   return fg.fromBasis(v);
 } // |grading_shift_repr|
+
+/*
+  |preimage| is a somewhat technical function to aid |central_fiber|, listing
+  what is essentially the automorphism group of a (future) set K\G/B
+
+  Given an element |y| of the fundamental fiber, find all those that (1) map
+  under |toAdjoint| to the adjoint fiber element |image| (so that they will
+  induce the corresponding shift in grading), and (2) lie in the "same strong
+  real form" as |y|, this being an orbit in the fiber group under the action
+  of the imaginary Weyl group, the action depending on the square class |csc|;
+  return list of |TorusPart| values that represent their differences with |y|.
+*/
+containers::sl_list<TorusPart>
+  ComplexReductiveGroup::torus_parts_for_grading_shift
+    (const cartanclass::square_class csc,
+     const cartanclass::FiberElt y, const cartanclass::AdjointFiberElt image)
+  const
+{
+  const auto& fund_f = d_fundamental;
+  const SmallSubquotient& fg = fund_f.fiberGroup();
+  const unsigned int f_rk = fund_f.fiberRank();
+  const Partition& pi = fund_f.fiber_partition(csc);
+  const cartanclass::fiber_orbit srf = pi.class_of(y.data().to_ulong());
+  containers::sl_list<TorusPart> result;
+  for (unsigned i=pi.classRep(srf); i<pi.size(); ++i) // only start is optimised
+    if (pi.class_of(i)==srf) // beyond that, just test for the right class
+    { cartanclass::FiberElt fe(RankFlags(i),f_rk);
+      if (fund_f.toAdjoint(fe)==image)
+	result.push_back(fg.fromBasis(fe-y));
+    }
+  return result;
+} // |torus_parts_for_grading_shift|
 
 /*
   |preimage| is a somewhat technical function to aid |central_fiber|, listing
@@ -914,7 +962,7 @@ containers::sl_list<TorusPart> preimage
 containers::sl_list<TorusPart>
 ComplexReductiveGroup::central_fiber(RealFormNbr rf) const
 {
-  const Fiber& fund_f= fundamental();
+  const Fiber& fund_f= d_fundamental;
   const cartanclass::square_class csc = fund_f.central_square_class(rf);
 
   // find Fiber element |y| that maps to |fund_f.wrf_rep(rf)| in adjoint fiber

@@ -1,14 +1,14 @@
-/*!
-\file
-\brief Implementation of the class RealReductiveGroup.
-*/
 /*
   This is realredgp.cpp
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006-2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
+
+// Implementation of the class RealReductiveGroup.
+
 
 #include "realredgp.h"
 
@@ -89,8 +89,12 @@ void RealReductiveGroup::construct()
 
 #ifndef NDEBUG
   // construct the torus for the most split Cartan
-  const Fiber& fundf = G_C.fundamental();
-  RootNbrSet so= cartanclass::toMostSplit(fundf,rf,G_C.rootSystem());
+  RootNbrSet noncompacts = G_C.noncompactRoots(rf);
+  TwistedInvolution xi; // empty: the distinguished one for the inner class
+  RootNbrSet so =
+    gradings::max_orth(noncompacts,
+		       G_C.involution_data(xi).imaginary_roots(),
+		       G_C.rootSystem());
 
   // recompute matrix of most split Cartan
   const RootDatum& rd = G_C.rootDatum();
@@ -183,10 +187,6 @@ Grading RealReductiveGroup::grading_offset()
   return cartanclass::restrictGrading(rset,rootDatum().simpleRootList());
 }
 
-cartanclass::square_class RealReductiveGroup::square_class() const
-  { return d_complexGroup.fundamental().central_square_class(d_realForm); }
-
-
 
 const size_t RealReductiveGroup::component_rank() const
   { return d_connectivity.component_rank(); }
@@ -262,16 +262,15 @@ TorusPart minimal_torus_part
 // that induces |G.simple_roots_x0_compact(wrf)| on imaginary simple roots
   const auto base_cpt = compacts_for(G,y_values::exp_pi(coch));
   const auto wrf_cpt = G.simple_roots_x0_compact(wrf);
-  const auto afr = G.fundamental().adjointFiberRank();
+  const auto sri = G.simple_roots_imaginary();
   const cartanclass::AdjointFiberElt image // which will give required compacts
-    ( (base_cpt^wrf_cpt).slice(G.simple_roots_imaginary()), afr);
+    ( (base_cpt^wrf_cpt).slice(sri), sri.count());
 
   const TorusPart t = Tg.left_torus_part(a);
-  const auto& fund_fg = G.fundamental().fiberGroup();
-  const cartanclass::FiberElt y = fund_fg.toBasis(t);
+  const cartanclass::FiberElt y = G.to_fundamental_fiber(t);
 
   const containers::sl_list<TorusPart> candidates =
-    complexredgp::preimage(G.fundamental(), G.xi_square(wrf),y,image);
+    G.torus_parts_for_grading_shift(G.xi_square(wrf),y,image);
 
   assert(not candidates.empty());
 

@@ -19,6 +19,7 @@
 #include <string>     // used implicitly in throwing errors
 
 #include "tags.h"
+#include "bits.h"
 #include "size.h"	// used in orbit size computation
 
 #include "dynkin.h"     // for |makeSimpleComplex| and |orbit_size|
@@ -844,7 +845,7 @@ Grading restrictGrading(const RootNbrSet& rs, const RootNbrList& rl)
   Precondition: |f| is the fundamental fiber;
 
   For each noncompact noncomplex irreducible real form, with the exception of
-  sl(n+1,R) where there is only one grading, there is at least one grading
+  sl(2n+1,R) where there is only one grading, there is at least one grading
   with exactly one noncompact simple root. (The unequal rank inner class in
   type $A_n$ is particular by the rareness of imaginary simple roots candidate
   for being noncompact: there is at most one, and only if $n$ is odd; for this
@@ -856,8 +857,8 @@ Grading restrictGrading(const RootNbrSet& rs, const RootNbrList& rl)
   form will the easily allow a name to be associated to the real form.
 
   NOTE: the grading is represented as the set of noncompact imaginary roots
-  that are also simple roots for the root system |rs|. This is OK; knowledge
-  of just that set is sufficient to characterise the real form.
+  among the simple roots for the root system |rs|. This is OK; knowledge of
+  just that set is sufficient to characterise the real form.
 */
 Grading specialGrading(const Fiber& f, RealFormNbr rf, const RootSystem& rs)
 {
@@ -876,6 +877,27 @@ Grading specialGrading(const Fiber& f, RealFormNbr rf, const RootSystem& rs)
 
   // return the first element
   return *(grs.begin());
+}
+
+Grading specialGrading
+  (const Partition& fg_partition, RealFormNbr rf, RankFlags imaginary_simples)
+{
+  auto n = fg_partition.size();
+  assert(bits::bitCount(n)==1); // we must have a power of $2$ as size
+
+  auto i=fg_partition.classRep(rf); // get first representative element
+  RankFlags compacts (i);
+  auto max = compacts.count();
+  for (++i; i<n; ++i)
+    if (fg_partition.class_of(i) == rf and bits::bitCount(i)>=max)
+    {
+      compacts = RankFlags(i);
+      max=compacts.count();
+    }
+
+  // convert |compacts| to a grading represented on the simple roots
+  compacts^=RankFlags(n-1); // take complement; no need to compute $\log_2(n)$
+  return compacts.unslice(imaginary_simples);
 }
 
 /*

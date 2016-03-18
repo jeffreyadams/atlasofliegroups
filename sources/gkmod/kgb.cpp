@@ -197,7 +197,6 @@ global_KGB::global_KGB(ComplexReductiveGroup& G_C, bool dual_twist)
   KGB_base::reserve(size);
 
   { // get elements at the fundamental fiber, for "all" square classes
-    const SmallSubquotient& fg = G.fundamental().fiberGroup();
     first_of_tau.push_back(0); // start of fundamental fiber
 
     // get number of subsets of generators, and run through them
@@ -206,16 +205,15 @@ global_KGB::global_KGB(ComplexReductiveGroup& G_C, bool dual_twist)
     {
       Grading gr=bitvector::combination
 	(Tg.square_class_generators(),RankFlags(c));
-      RatWeight rw (G.rank());
+      RatWeight rcw (G.rank());
       for (Grading::iterator // for flagged (imaginary) simple roots
 	     it=gr.begin(); it(); ++it)
-	rw += G.rootDatum().fundamental_coweight(*it); // a sum of f. coweights
+	rcw += G.rootDatum().fundamental_coweight(*it); // a sum of f. coweights
 
-      for (unsigned long i=0; i<fg.size(); ++i)
+      for (unsigned long i=0; i<G.fundamental_fiber_size(); ++i)
       {
-	TorusElement t=y_values::exp_pi(rw);
-	t += fg.fromBasis // add |TorusPart| from fiber group; bits from |i|
-	  (SmallBitVector(RankFlags(i),fg.dimension()));
+	TorusElement t=y_values::exp_pi(rcw);
+	t += G.lift_from_fundamental_fiber(i); // add |TorusPart| from for |i|
 	elt.push_back(GlobalTitsElement(t));
 	add_element(); // create in base
       } // |for (i)|

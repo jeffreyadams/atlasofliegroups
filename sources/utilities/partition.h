@@ -55,24 +55,6 @@ class Partition
 
  public:
 
-// types for unary function object
-
-   /*!
-   \brief Required to make Partition an adaptable unary function object
-
-   Alternatively we could have got this by deriving the Parition class from
-   std::unary_function<unsigned long,unsigned long>
-   */
-  typedef unsigned long argument_type;
-
-  /*!
-  \brief Required to make Partition an adaptable unary function object
-
-   Alternatively we could have got this by deriving the Parition class from
-   std::unary_function<unsigned long,unsigned long>
-  */
-  typedef unsigned long result_type;
-
   typedef PartitionIterator iterator;
 
 // constructors and destructors

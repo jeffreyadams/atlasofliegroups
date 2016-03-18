@@ -37,8 +37,8 @@ namespace cartanclass
     restrictGrading(const RootNbrSet&, const RootNbrList&);
 
   // minimal grading of the imaginary simple roots that belongs to |rf|
-  Grading
-    specialGrading(const Fiber&,RealFormNbr rf,const RootSystem&);
+  Grading specialGrading
+    (const Partition& fg_partition, RealFormNbr rf, RankFlags fixed_points);
 
   // strongly orthogonal reflections leading to most split Cartan for |rf|
   RootNbrSet

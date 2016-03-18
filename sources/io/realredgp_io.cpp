@@ -171,7 +171,6 @@ std::ostream& printStrongReal(std::ostream& strm,
 			      const realform_io::Interface& rfi,
 			      size_t cn)
 {
-  Fiber fund = G_C.fundamental();
   const CartanClass& cc = G_C.cartan(cn);
   const RealFormNbrList& rfl = G_C.realFormLabels(cn);
 
@@ -186,9 +185,9 @@ std::ostream& printStrongReal(std::ostream& strm,
     {
       RealFormNbr wrf=cc.fiber().realFormPartition().classRep(csc);
       RealFormNbr fund_wrf= rfl[wrf]; // lift weak real form to |fund|
-      cartanclass::square_class f_csc=fund.central_square_class(fund_wrf);
-      // having the square class number of the fundamental fiber, get grading
+      cartanclass::square_class f_csc=G_C.xi_square(fund_wrf);
 
+      // having the square class number of the fundamental fiber, get grading
       RatCoweight coch = some_coch(G_C,f_csc);
       Grading base_grading = grading_of_simples(G_C,coch);
 

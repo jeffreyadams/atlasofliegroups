@@ -756,7 +756,7 @@ bool TitsCoset::is_valid(TitsElt a) const
 EnrichedTitsGroup::EnrichedTitsGroup(const RealReductiveGroup& GR)
   : TitsCoset(GR.complexGroup(),
 	      grading_of_simples(GR.complexGroup(),GR.g_rho_check()))
-  , srf(GR.complexGroup().fundamental().strongRealForm(GR.realForm()))
+  , srf(GR.complexGroup().sample_strong_form(GR.realForm()))
 {}
 
 
@@ -807,13 +807,11 @@ TitsElt EnrichedTitsGroup::backtrack_seed
 */
   TitsElt result(Tgr);
 
-  const Fiber& fund=G.fundamental();
-  const Partition& srp = fund.fiber_partition(square());
+  const Partition& srp = G.fundamental_fiber_partition(square());
   for (unsigned long x=0; x<srp.size(); ++x)
     if (srp.class_of(x)==f_orbit()) // test membership of strong real form
     {
-      SmallBitVector v (static_cast<RankFlags>(x),fund.fiberRank());
-      TorusPart t = fund.fiberGroup().fromBasis(v);
+      TorusPart t = G.lift_from_fundamental_fiber(x);
       for (size_t i=0; i<Cayley.size(); ++i)
 	if (is_compact(t,Cayley[i]))
 	  goto again; // none of the |Cayley[i]| should be compact

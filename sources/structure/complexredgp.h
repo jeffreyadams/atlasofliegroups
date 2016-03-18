@@ -275,11 +275,6 @@ class ComplexReductiveGroup
   // a general repository for involutions, organised by conjugacy class
   const Cartan_orbits& involution_table () const { return C_orb; }
 
-  //  the fundamental fiber.
-  const Fiber& fundamental() const { return d_fundamental; }
-  //  the fundamental fiber for the dual group
-  const Fiber& dualFundamental() const { return d_dualFundamental; }
-
 
 // Attributes of the inner class as a whole
 
@@ -288,7 +283,8 @@ class ComplexReductiveGroup
 	(&twistedWeylGroup().twist()[0],
 	 &twistedWeylGroup().twist()[semisimpleRank()]); }
 
-  RankFlags simple_roots_imaginary() const; // delta-fixed simple roots
+  RankFlags simple_roots_imaginary() const; // $\xi$-fixed simple roots
+  RankFlags simple_roots_real() const; // $(-w_0\xi^t)$-fixed simple roots
 
   const Permutation& root_involution() const { return root_twist; }
   RootNbr twisted_root(RootNbr alpha) const { return root_twist[alpha]; }
@@ -302,17 +298,17 @@ class ComplexReductiveGroup
 
   // the distinguished involution for G and for its dual group
   const WeightInvolution& distinguished() const
-    { return fundamental().involution(); }
+    { return d_fundamental.involution(); }
   const CoweightInvolution& dualDistinguished() const
-    { return dualFundamental().involution(); }
+    { return d_dualFundamental.involution(); }
 
   // number of conjugacy classes of Cartan subgroups.
   CartanNbr numCartanClasses() const { return Cartan.size(); }
   // number of weak real forms of G.
-  RealFormNbr numRealForms() const { return fundamental().numRealForms(); }
+  RealFormNbr numRealForms() const { return d_fundamental.numRealForms(); }
   // number of weak real forms of the dual group of G.
   RealFormNbr numDualRealForms() const
-  { return dualFundamental().numRealForms(); }
+  { return d_dualFundamental.numRealForms(); }
   // total number of involutions for the inner class.
   InvolutionNbr numInvolutions() const;
 
@@ -366,7 +362,12 @@ class ComplexReductiveGroup
   /* a set of noncompact imaginary roots at the distinguished involution
      for a representative of this real form */
   RootNbrSet noncompactRoots(RealFormNbr rf) const
-  { return fundamental().noncompactRoots(fundamental().wrf_rep(rf)); }
+  { return d_fundamental.noncompactRoots(d_fundamental.wrf_rep(rf)); }
+
+  /* a set of noncompact imaginary roots at the distinguished involution
+     for a representative of this real form */
+  RootNbrSet parity_coroots(RealFormNbr drf) const
+  { return d_dualFundamental.noncompactRoots(d_dualFundamental.wrf_rep(drf)); }
 
   // the number of elements in K\\G/B for real form |rf|.
   unsigned long KGB_size(RealFormNbr rf) const
@@ -393,6 +394,33 @@ class ComplexReductiveGroup
   // the same limited to indicated Cartan classes only
   unsigned long block_size(RealFormNbr rf, RealFormNbr drf,
 			   const BitMap& Cartan_classes) const;
+
+  // more functions that interrogate the fundametal fiber
+  cartanclass::StrongRealFormRep sample_strong_form (RealFormNbr rf) const
+  { return d_fundamental.strongRealForm(rf); }
+  unsigned long fundamental_fiber_size() const
+  { return d_fundamental.fiberSize(); }
+  const Partition&
+    fundamental_fiber_partition(cartanclass::square_class csc) const
+  { return d_fundamental.fiber_partition(csc); }
+  TorusPart lift_from_fundamental_fiber(unsigned long x) const
+  { const Fiber& fund=d_fundamental;
+    SmallBitVector v (static_cast<RankFlags>(x),fund.fiberRank());
+    return fund.fiberGroup().fromBasis(v);
+  }
+  cartanclass::FiberElt to_fundamental_fiber(TorusPart t) const
+  { return d_fundamental.fiberGroup().toBasis(t); }
+
+  // list torus parts mapping to strong form of |y| and further to |image|
+  containers::sl_list<TorusPart> torus_parts_for_grading_shift
+    (const cartanclass::square_class csc,
+     const cartanclass::FiberElt y, const cartanclass::AdjointFiberElt image)
+  const;
+
+  const Partition& weak_real_partition() const
+  { return d_fundamental.weakReal(); }
+  const Partition& dual_weak_real_partition() const
+  { return d_dualFundamental.weakReal(); }
 
   // size of fibers in KGB set for |rf| over any involution in Cartan class |cn|
   unsigned long fiberSize(RealFormNbr rf, CartanNbr cn) const;

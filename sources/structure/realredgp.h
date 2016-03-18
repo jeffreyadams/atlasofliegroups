@@ -111,7 +111,6 @@ class RealReductiveGroup
 */
   Grading grading_offset();
 
-  cartanclass::square_class square_class() const;
   const size_t component_rank() const;
   const SmallBitVectorList& dualComponentReps() const;
   const WeightInvolution& distinguished() const;
