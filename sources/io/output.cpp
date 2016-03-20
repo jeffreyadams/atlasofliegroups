@@ -1,13 +1,14 @@
 /*
-  This is complexredgp_io.cpp
+  This is output.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
 
-#include "complexredgp_io.h"
+#include "output.h"
 
 #include <iostream>
 
@@ -36,7 +37,7 @@ namespace atlas {
 
 ******************************************************************************/
 
-namespace complexredgp_io {
+namespace output {
 
 Interface::Interface(ComplexReductiveGroup& G,
 		     const lietype::Layout& lo)
@@ -58,15 +59,15 @@ void Interface::swap(Interface& other)
   d_dualRealFormInterface.swap(other.d_dualRealFormInterface);
 }
 
-} // |namespace complexredgp_io|
+} // |namespace output|
 
 /*****************************************************************************
 
-        Chapter II --- Functions declared in complexredgp_io
+        Chapter II --- Functions declared in output
 
 ******************************************************************************/
 
-namespace complexredgp_io {
+namespace output {
 
 std::ostream& printBlockSizes(std::ostream& strm, Interface& CI)
 {

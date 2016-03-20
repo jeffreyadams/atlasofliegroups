@@ -44,7 +44,7 @@ namespace interactive {
 
   size_t get_Cartan_class(const BitMap& cs) throw(error::InputError);
 
-  void get_group_type(ComplexReductiveGroup*&, complexredgp_io::Interface*&)
+  void get_group_type(ComplexReductiveGroup*&, output::Interface*&)
     throw(error::InputError);
 
   void getInteractive(LieType&) throw(error::InputError);
@@ -58,10 +58,10 @@ namespace interactive {
   void getInteractive(InnerClassType&, const LieType&)
     throw(error::InputError);
 
-  RealFormNbr get_real_form(complexredgp_io::Interface&)
+  RealFormNbr get_real_form(output::Interface&)
     throw(error::InputError);
 
-  RealFormNbr get_dual_real_form(complexredgp_io::Interface&,
+  RealFormNbr get_dual_real_form(output::Interface&,
 				 RealFormNbr rf)
     throw(error::InputError);
 

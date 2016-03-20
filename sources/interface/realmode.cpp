@@ -13,7 +13,7 @@
 
 #include "cartan_io.h"
 #include "complexredgp.h"
-#include "complexredgp_io.h"
+#include "output.h"
 #include "error.h"
 #include "interactive.h"
 #include "io.h"

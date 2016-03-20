@@ -14,7 +14,7 @@
 
 #include "basic_io.h"
 #include "complexredgp.h"
-#include "complexredgp_io.h"
+#include "output.h"
 #include "realredgp.h"
 #include "realredgp_io.h"
 #include "emptymode.h"
@@ -84,7 +84,7 @@ namespace {
 
   ComplexReductiveGroup* G_C_pointer=NULL;
   ComplexReductiveGroup* dual_G_C_pointer=NULL;
-  complexredgp_io::Interface* G_I_pointer=NULL;
+  output::Interface* G_I_pointer=NULL;
 
 } // |namespace|
 
@@ -109,13 +109,13 @@ ComplexReductiveGroup& current_dual_group()
   return *dual_G_C_pointer;
 }
 
-complexredgp_io::Interface& currentComplexInterface()
+output::Interface& currentComplexInterface()
 {
   return *G_I_pointer;
 }
 
 void replaceComplexGroup(ComplexReductiveGroup* G
-			,complexredgp_io::Interface* I)
+			,output::Interface* I)
 {
   delete G_C_pointer;
   delete dual_G_C_pointer;
@@ -310,7 +310,7 @@ void help_f() // override more extensive help of empty mode by simple help
 // Print the matrix of blocksizes.
 void blocksizes_f()
 {
-  complexredgp_io::printBlockSizes(std::cout,currentComplexInterface());
+  output::printBlockSizes(std::cout,currentComplexInterface());
 }
 
 // Activates real mode (user will select real form)
@@ -350,7 +350,7 @@ void gradings_f()
   ioutils::OutputFile file;
 
   static_cast<std::ostream&>(file) << std::endl;
-  complexredgp_io::printGradings(file,cn,currentComplexInterface())
+  output::printGradings(file,cn,currentComplexInterface())
       << std::endl;
 
 }
@@ -376,7 +376,7 @@ void strongreal_f()
 void dualkgb_f()
 {
   ComplexReductiveGroup& G_C = currentComplexGroup();
-  complexredgp_io::Interface& G_I = currentComplexInterface();
+  output::Interface& G_I = currentComplexInterface();
 
   RealFormNbr drf = interactive::get_dual_real_form(G_I,G_C.numRealForms());
 
@@ -400,7 +400,7 @@ void type_f()
   try
   {
     ComplexReductiveGroup* G;
-    complexredgp_io::Interface* I;
+    output::Interface* I;
     interactive::get_group_type(G,I);
     replaceComplexGroup(G,I);
     drop_to(main_mode); // drop invalidated descendant modes if called from them

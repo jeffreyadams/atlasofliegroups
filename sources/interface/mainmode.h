@@ -27,9 +27,9 @@ namespace commands {
   extern commands::CommandTree& main_mode; // defined in commands.cpp
   ComplexReductiveGroup& currentComplexGroup();
   ComplexReductiveGroup& current_dual_group();
-  complexredgp_io::Interface& currentComplexInterface();
+  output::Interface& currentComplexInterface();
   void replaceComplexGroup(ComplexReductiveGroup*
-			   ,complexredgp_io::Interface*);
+			   ,output::Interface*);
 
 } // |namespace commands|
 

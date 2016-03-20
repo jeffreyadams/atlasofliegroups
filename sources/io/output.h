@@ -1,14 +1,15 @@
 /*
-  This is complexredgp_io.h
+  This is output.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
 
-#ifndef COMPLEXREDGP_IO_H  /* guard against multiple inclusions */
-#define COMPLEXREDGP_IO_H
+#ifndef OUTPUT_H  /* guard against multiple inclusions */
+#define OUTPUT_H
 
 
 
@@ -18,7 +19,7 @@ namespace atlas {
 
 /******** function declarations *********************************************/
 
-namespace complexredgp_io {
+namespace output {
 
 std::ostream& printBlockSizes(std::ostream&, Interface&);
 
@@ -28,7 +29,7 @@ std::ostream& printGradings(std::ostream&, size_t, Interface&);
 
 /******** type definitions **************************************************/
 
-namespace complexredgp_io {
+namespace output {
 
 class Interface {
 

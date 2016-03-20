@@ -18,7 +18,7 @@
 #include "cartan_io.h"
 #include "cartanclass.h"
 #include "complexredgp.h"
-#include "complexredgp_io.h"
+#include "output.h"
 #include "dynkin.h"
 #include "ioutils.h"
 #include "lattice.h"
@@ -128,7 +128,7 @@ std::ostream& print
   Precondition: G.fullCartan() has been called successfully.
 */
 std::ostream& printBlockData(std::ostream& strm,
-			     complexredgp_io::Interface& CI)
+			     output::Interface& CI)
 {
   const ComplexReductiveGroup& G = CI.complexGroup();
   const RootDatum& rd = G.rootDatum();
@@ -160,7 +160,7 @@ std::ostream& printBlockData(std::ostream& strm,
   Prints information about the conjugacy classes of Cartan subgroups.
 */
 std::ostream& printCartanClasses(std::ostream& strm,
-				 complexredgp_io::Interface& CI)
+				 output::Interface& CI)
 {
   const ComplexReductiveGroup& G = CI.complexGroup();
 

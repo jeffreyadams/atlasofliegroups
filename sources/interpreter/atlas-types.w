@@ -2816,7 +2816,7 @@ void square_classes_wrapper(expression_base::level l)
 
 @ The function |print_gradings| gives on a per-real-form basis the
 functionality of the Atlas command \.{gradings} that is implemented by
-|complexredgp_io::printGradings| and |cartan_io::printGradings|. It therefore
+|output::printGradings| and |cartan_io::printGradings|. It therefore
 takes, like |fiber_partition|, a Cartan class and a real form as parameter. Its
 output consist of a list of $\Zee/2\Zee$-gradings of each of the fiber group
 elements in the part corresponding to the real form, where each grading is a

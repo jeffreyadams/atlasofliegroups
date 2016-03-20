@@ -27,7 +27,7 @@
 #include "prettyprint.h"	// |printVector|
 #include "basic_io.h"	// |seqPrint|
 #include "ioutils.h"	// |skipSpaces|
-#include "complexredgp_io.h" // its |Interface| class
+#include "output.h" // its |Interface| class
 #include "kgb_io.h"	// its |print| function
 
 
@@ -235,9 +235,9 @@ size_t get_Cartan_class(const BitMap& cs) throw(error::InputError)
   in that case both pointers are unchanged.
 
   We pass references to pointers to both a |ComplexReductiveGroup| and to a
-  |complexredgp_io::Interface|, both of which will be assigned appropriately
+  |output::Interface|, both of which will be assigned appropriately
 */
-void get_group_type(ComplexReductiveGroup*& pG,complexredgp_io::Interface*& pI)
+void get_group_type(ComplexReductiveGroup*& pG,output::Interface*& pI)
   throw(error::InputError)
 {
   // first get the Lie type
@@ -255,7 +255,7 @@ void get_group_type(ComplexReductiveGroup*& pG,complexredgp_io::Interface*& pI)
 
   // commit (unless |RootDatum(prd)| should throw: then nothing is changed)
   pG=new ComplexReductiveGroup(prd,inv);
-  pI=new complexredgp_io::Interface(*pG,lo);
+  pI=new output::Interface(*pG,lo);
   // the latter constructor also constructs two realform interfaces in *pI
 }
 
@@ -453,7 +453,7 @@ void getInteractive(InnerClassType& ict, const LieType& lt)
   in that case, d_G is not touched.
 */
 
-RealFormNbr get_real_form(complexredgp_io::Interface& CI)
+RealFormNbr get_real_form(output::Interface& CI)
   throw(error::InputError)
 {
   const realform_io::Interface rfi = CI.realFormInterface();
@@ -497,7 +497,7 @@ RealFormNbr get_real_form(complexredgp_io::Interface& CI)
 
   Throws an InputError if the interaction with the user fails.
 */
-RealFormNbr get_dual_real_form(complexredgp_io::Interface& CI,
+RealFormNbr get_dual_real_form(output::Interface& CI,
 			       RealFormNbr rf)
   throw(error::InputError)
 {

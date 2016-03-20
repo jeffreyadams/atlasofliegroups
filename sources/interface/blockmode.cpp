@@ -15,7 +15,7 @@
 #include "mainmode.h"
 
 #include "complexredgp.h"
-#include "complexredgp_io.h"
+#include "output.h"
 #include "error.h"
 #include "helpmode.h"
 #include "interactive.h"
@@ -210,7 +210,7 @@ void block_mode_entry() throw(EntryError)
     RealReductiveGroup& G_R = currentRealGroup();
 
     ComplexReductiveGroup& G_C = G_R.complexGroup();
-    complexredgp_io::Interface& G_I = currentComplexInterface();
+    output::Interface& G_I = currentComplexInterface();
 
     // get dual real form
     RealFormNbr drf = interactive::get_dual_real_form(G_I,G_R.realForm());
@@ -235,7 +235,7 @@ void dualrealform_f()
   try
   {
     RealReductiveGroup& G_R = currentRealGroup();
-    complexredgp_io::Interface& G_I = currentComplexInterface();
+    output::Interface& G_I = currentComplexInterface();
 
     // get dual real form
     RealFormNbr drf = interactive::get_dual_real_form(G_I,G_R.realForm());

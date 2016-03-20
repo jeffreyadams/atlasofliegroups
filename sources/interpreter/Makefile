@@ -87,7 +87,7 @@ Atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/io/ioutils.o \
  $(sources_dir)/io/block_io.o \
  $(sources_dir)/io/realredgp_io.o \
- $(sources_dir)/io/complexredgp_io.o \
+ $(sources_dir)/io/output.o \
  $(sources_dir)/io/realweyl.o \
  $(sources_dir)/io/realweyl_io.o \
  $(sources_dir)/io/cartan_io.o \

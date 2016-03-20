@@ -17,7 +17,7 @@
 #include "basic_io.h"	// |seqPrint|
 #include "cartan_io.h"// |printcartanClass|
 #include "complexredgp.h"
-#include "complexredgp_io.h" // use of its |Interface| class
+#include "output.h" // use of its |Interface| class
 #include "graph.h"	// |OrientedGraph|
 #include "ioutils.h"	// |foldLine|
 #include "partition.h"
@@ -71,7 +71,7 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
 // Print information about all the Cartan classes for |G_RI.realGroup()|.
 std::ostream& printCartanClasses(std::ostream& strm,
 				 RealFormNbr rf,
-				 complexredgp_io::Interface& G_CI)
+				 output::Interface& G_CI)
 {
   const BitMap& b = G_CI.complexGroup().Cartan_set(rf);
   bool first = true;

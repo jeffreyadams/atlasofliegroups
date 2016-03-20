@@ -28,7 +28,7 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
 
 std::ostream& printCartanClasses(std::ostream&,
 				 RealFormNbr rf,
-				 complexredgp_io::Interface&);
+				 output::Interface&);
 
 std::ostream& printCartanOrder(std::ostream&,
 			       const RealReductiveGroup&);

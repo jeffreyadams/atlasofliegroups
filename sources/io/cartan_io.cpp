@@ -17,7 +17,7 @@
 #include "complexredgp.h"
 
 #include "basic_io.h"
-#include "complexredgp_io.h" // use of its |Interface| class
+#include "output.h" // use of its |Interface| class
 #include "ioutils.h"
 #include "prettyprint.h"
 
@@ -34,7 +34,7 @@ namespace cartan_io {
 
 // Print information about the Cartan class #cn.
 std::ostream& printCartanClass(std::ostream& strm, size_t cn,
-			       complexredgp_io::Interface& CI)
+			       output::Interface& CI)
 {
   ComplexReductiveGroup& G = CI.complexGroup();
   const RootSystem& rs = G.rootDatum();
