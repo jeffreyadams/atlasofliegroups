@@ -2,6 +2,7 @@
   This is realform_io.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -63,11 +64,11 @@ bool operator< (const RealFormData& first, const RealFormData& second);
 
 /*****************************************************************************
 
-        Chapter I -- The Interface class
+        Chapter I -- The FormNumberMap class
 
 ******************************************************************************/
 
-namespace realform_io {
+namespace output {
 
 
 /*
@@ -78,7 +79,7 @@ namespace realform_io {
   interface) of rf --- so d_in and d_out are inverses of each other. The
   names are names for the corresponding Lie algebras.
 */
-Interface::Interface(const ComplexReductiveGroup& G,
+FormNumberMap::FormNumberMap(const ComplexReductiveGroup& G,
 		     const lietype::Layout& lo)
 : d_in(G.numRealForms()), d_out(G.numRealForms()), d_name(G.numRealForms())
 {
@@ -88,7 +89,7 @@ Interface::Interface(const ComplexReductiveGroup& G,
 
   std::vector<RealFormData> rf_data; rf_data.reserve(nrf);
 
-  for (RealFormNbr rf = 0; rf<nrf; ++rf)
+  for (RealFormNbr rf = 0; rf<nrf; ++rf) // rf is internal real form number
   {
     RootNbrSet so = gradings::max_orth
       (G.noncompactRoots(rf),
@@ -100,7 +101,7 @@ Interface::Interface(const ComplexReductiveGroup& G,
 
   std::sort(rf_data.begin(),rf_data.end());
 
-  for (size_t i = 0; i<nrf; ++i)
+  for (size_t i = 0; i<nrf; ++i) // now |i| is external number for |rf_data[i]|
   {
     d_in[i] = rf_data[i].realForm();
     d_out[d_in[i]] = i;
@@ -121,7 +122,7 @@ Interface::Interface(const ComplexReductiveGroup& G,
 /*
   Synopsis: like the previous one, but for the _dual_ real forms.
 */
-Interface::Interface(const ComplexReductiveGroup& G,
+FormNumberMap::FormNumberMap(const ComplexReductiveGroup& G,
 		     const lietype::Layout& lo, tags::DualTag)
 : d_in(G.numDualRealForms())
 , d_out(G.numDualRealForms())
@@ -163,7 +164,7 @@ Interface::Interface(const ComplexReductiveGroup& G,
 }
 
 /******* copy, assignment and swap *******************************************/
-void Interface::swap(Interface& other)
+void FormNumberMap::swap(FormNumberMap& other)
 
 {
   d_in.swap(other.d_in);
@@ -179,7 +180,7 @@ void Interface::swap(Interface& other)
   Precondition: rf is an outer real form number.
 */
 
-const char* Interface::typeName(RealFormNbr rf) const
+const char* FormNumberMap::typeName(RealFormNbr rf) const
 {
   return d_name[rf].c_str();
 }
@@ -192,13 +193,13 @@ const char* Interface::typeName(RealFormNbr rf) const
 
 ******************************************************************************/
 
-namespace realform_io {
+namespace output {
 
 /*
   Synopsis: outputs the list of real forms in I.
 */
 
-std::ostream& printRealForms(std::ostream& strm, const Interface& I)
+std::ostream& printRealForms(std::ostream& strm, const FormNumberMap& I)
 {
   for (size_t i = 0; i < I.numRealForms(); ++i) {
     std::cout << i << ": " << I.typeName(i) << std::endl;

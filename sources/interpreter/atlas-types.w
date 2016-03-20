@@ -1600,7 +1600,7 @@ of type |ComplexReductiveGroup|, we shall need to record additional
 information in order to be able to present meaningful names for the real forms
 and dual real forms in this inner class. The above analysis of involutions was
 necessary in order to obtain such information; it will be recorded in values
-of type |realform_io::Interface|.
+of type |output::FormNumberMap|.
 
 @< Includes... @>=
 #include "realform_io.h"
@@ -1654,7 +1654,7 @@ struct inner_class_value : public value_base
 @)
   lietype::LieType rd_type;
   lietype::InnerClassType ic_type;
-  const realform_io::Interface interface,dual_interface;
+  const output::FormNumberMap interface,dual_interface;
 @)
   inner_class_value  // main constructor
    (std::unique_ptr<ComplexReductiveGroup> G, const lietype::Layout& lo);
@@ -1968,7 +1968,7 @@ the group itself and for the dual group, we define an auxiliary function that
 produces the list, and then use it twice.
 
 @< Local function def...@>=
-void push_name_list(const realform_io::Interface& interface)
+void push_name_list(const output::FormNumberMap& interface)
 { own_row result = std::make_shared<row_value>(0);
   for (size_t i=0; i<interface.numRealForms(); ++i)
     result->val.emplace_back
@@ -2797,7 +2797,7 @@ the square of any strong involution representing the real form.
 @< Local function def...@>=
 void square_classes_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
-  const realform_io::Interface rfi = cc->parent.interface;
+  const output::FormNumberMap rfi = cc->parent.interface;
   const RealFormNbrList& rfl = cc->parent.val.realFormLabels(cc->number);
   if (l==expression_base::no_value)
     return;
@@ -5142,17 +5142,17 @@ void print_blocku_wrapper(expression_base::level l)
 
 @ The \.{blockstabilizer} command has a slightly different calling scheme than
 \.{block} and its friends, in that it requires a block and a Cartan class. The
-lock itself is not actually used, just the real form and dial real form it
+block itself is not actually used, just the real form and dual real form it
 holds. The signature of |realredgp_io::printBlockStabilizer| is a bit strange,
 as it requires a |RealReductiveGroup| argument for the real form, but only
 numbers for the Cartan class and the dual real form (but this is
 understandable, as information about the inner class must be transmitted in
 some way). In fact it used to be even a bit stranger, in that the real form
-was passed in the form of a |realredgp_io::Interface| value, a class (not to
-be confused with |realform_io::Interface|, which does not specify a particular
-real form) that we do not use in this program; since only the |realGroup|
-field of the |realredgp_io::Interface| was used in
-|realredgp_io::printBlockStabilizer|, we have changed its parameter
+was passed in the form of a |realredgp_io::Interface| value, a class (no
+longer existent, and not to be confused with |output::FormNumberMap|,
+which does not specify a particular real form) that we do not use in this
+program; since only the |realGroup| field of the |realredgp_io::Interface| was
+used in |realredgp_io::printBlockStabilizer|, we have changed its parameter
 specification to allow it to be called easily here.
 
 @< Local function def...@>=
@@ -5161,7 +5161,7 @@ void print_blockstabilizer_wrapper(expression_base::level l)
   shared_Block b = get<Block_value>();
 @)
   realredgp_io::printBlockStabilizer
-   (*output_stream,b->rf->val,cc->number,b->dual_rf->val.realForm());
+   (*output_stream, @| b->rf->val,cc->number,b->dual_rf->val.realForm());
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();

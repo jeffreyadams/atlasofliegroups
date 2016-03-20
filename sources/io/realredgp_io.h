@@ -24,7 +24,7 @@ namespace realredgp_io {
 std::ostream& printBlockStabilizer(std::ostream& strm,
 				   RealReductiveGroup& G_R,
 				   size_t cn,
-				   RealFormNbr rf);
+				   RealFormNbr dual_rf);
 
 std::ostream& printCartanClasses(std::ostream&,
 				 RealFormNbr rf,
@@ -39,7 +39,7 @@ std::ostream& printRealWeyl(std::ostream& strm,
 
 std::ostream& printStrongReal(std::ostream& strm,
 			      ComplexReductiveGroup& G_C,
-			      const realform_io::Interface& rfi,
+			      const output::FormNumberMap& rfi,
 			      size_t cn);
 
 } // |namespace realredgp_io|

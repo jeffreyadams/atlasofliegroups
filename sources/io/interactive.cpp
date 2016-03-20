@@ -456,7 +456,7 @@ void getInteractive(InnerClassType& ict, const LieType& lt)
 RealFormNbr get_real_form(output::Interface& CI)
   throw(error::InputError)
 {
-  const realform_io::Interface rfi = CI.realFormInterface();
+  const output::FormNumberMap rfi = CI.realFormInterface();
 
   // if there is only one choice, make it
   if (rfi.numRealForms() == 1) {
@@ -507,7 +507,7 @@ RealFormNbr get_dual_real_form(output::Interface& CI,
   if (restrict)
     drfl = G.dualRealFormLabels(G.mostSplit(rf));
 
-  const realform_io::Interface drfi = CI.dualRealFormInterface();
+  const output::FormNumberMap drfi = CI.dualRealFormInterface();
 
   // if there is only one choice, make it
   if ((restrict ? drfl.size() : drfi.numRealForms())== 1)

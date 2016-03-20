@@ -37,8 +37,8 @@ class Interface {
 
   ComplexReductiveGroup* d_complexGroup;
 
-  realform_io::Interface d_realFormInterface;
-  realform_io::Interface d_dualRealFormInterface;
+  output::FormNumberMap d_realFormInterface;
+  output::FormNumberMap d_dualRealFormInterface;
 
  public:
 
@@ -55,11 +55,11 @@ class Interface {
     return *d_complexGroup;
   }
 
-  const realform_io::Interface& dualRealFormInterface() const {
+  const output::FormNumberMap& dualRealFormInterface() const {
     return d_dualRealFormInterface;
   }
 
-  const realform_io::Interface& realFormInterface() const {
+  const output::FormNumberMap& realFormInterface() const {
     return d_realFormInterface;
   }
 

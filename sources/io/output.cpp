@@ -43,7 +43,7 @@ Interface::Interface(ComplexReductiveGroup& G,
 		     const lietype::Layout& lo)
   : d_complexGroup(&G)
   , d_realFormInterface(G,lo)
-  , d_dualRealFormInterface(realform_io::Interface(G,lo,tags::DualTag()))
+  , d_dualRealFormInterface(output::FormNumberMap(G,lo,tags::DualTag()))
 {}
 
 /******** copy, assignment and swap ******************************************/
@@ -72,8 +72,8 @@ namespace output {
 std::ostream& printBlockSizes(std::ostream& strm, Interface& CI)
 {
   ComplexReductiveGroup& G = CI.complexGroup();
-  const realform_io::Interface rfi = CI.realFormInterface();
-  const realform_io::Interface drfi = CI.dualRealFormInterface();
+  const output::FormNumberMap rfi = CI.realFormInterface();
+  const output::FormNumberMap drfi = CI.dualRealFormInterface();
 
   matrix::Matrix<unsigned long> block(G.numRealForms(),G.numDualRealForms());
   unsigned long maxEntry = 0;
@@ -106,7 +106,7 @@ std::ostream& printGradings(std::ostream& strm, size_t cn, Interface& CI)
   const CartanClass& cc = G.cartan(cn);
 
   RealFormNbrList rfl(cc.numRealForms());
-  const realform_io::Interface& rfi = CI.realFormInterface();
+  const output::FormNumberMap& rfi = CI.realFormInterface();
 
   for (cartanclass::adjoint_fiber_orbit i = 0; i < rfl.size(); ++i)
     rfl[i] = rfi.out(G.realFormLabels(cn)[i]);

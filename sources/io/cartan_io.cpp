@@ -82,7 +82,7 @@ std::ostream& printCartanClass(std::ostream& strm, size_t cn,
     strm << "complex factor: " << clt << std::endl;
 
   RealFormNbrList rfl(cc.numRealForms());
-  const realform_io::Interface& rfi = CI.realFormInterface();
+  const output::FormNumberMap& rfi = CI.realFormInterface();
 
   for (cartanclass::adjoint_fiber_orbit i = 0; i < rfl.size(); ++i)
     rfl[i] = rfi.out(G.realFormLabels(cn)[i]);

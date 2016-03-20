@@ -168,7 +168,7 @@ std::ostream& printRealWeyl(std::ostream& strm,
 */
 std::ostream& printStrongReal(std::ostream& strm,
 			      ComplexReductiveGroup& G_C,
-			      const realform_io::Interface& rfi,
+			      const output::FormNumberMap& rfi,
 			      size_t cn)
 {
   const CartanClass& cc = G_C.cartan(cn);

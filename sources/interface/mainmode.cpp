@@ -322,20 +322,20 @@ void realform_f()
 
 void showrealforms_f()
 {
-  const realform_io::Interface& rfi =
+  const output::FormNumberMap& rfi =
     currentComplexInterface().realFormInterface();
 
   std::cout << "(weak) real forms are:" << std::endl;
-  realform_io::printRealForms(std::cout,rfi);
+  output::printRealForms(std::cout,rfi);
 }
 
 void showdualforms_f()
 {
-  const realform_io::Interface& rfi =
+  const output::FormNumberMap& rfi =
     currentComplexInterface().dualRealFormInterface();
 
   std::cout << "(weak) dual real forms are:" << std::endl;
-  realform_io::printRealForms(std::cout,rfi);
+  output::printRealForms(std::cout,rfi);
 }
 
 

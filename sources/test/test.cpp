@@ -249,7 +249,7 @@ void testrun_f()
 	  for (size_t i=0; i<it->size(); ++i)
 	    ict.push_back('e');
 	  lietype::Layout lay(*it,ict);
-	  realform_io::Interface itf(G,lay);
+	  output::FormNumberMap itf(G,lay);
 	  std::cout << " Failure at real form " << itf.out(rf) << std::endl;
 	}
 	std::cout << std::flush;

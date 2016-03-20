@@ -422,7 +422,7 @@ namespace atlas {
   using repr::Rep_context;
   using repr::Rep_table;
 
-  namespace realform_io { class Interface; } // maps internals to names
+  namespace output { class FormNumberMap; } // maps internals to names
   namespace output { class Interface; } // a pair of the above
   namespace realweyl {
     class RealWeyl; // for computing real Weyl groups
