@@ -14,7 +14,7 @@
 #include <sstream>
 #include <set>
 
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "kgb.h"
 
 #include "ioutils.h"	// |digits|
@@ -56,7 +56,7 @@ namespace kgb_io {
 std::ostream& print(std::ostream& strm,
 		    const KGB_base& kgb,
 		    bool traditional,
-		    const ComplexReductiveGroup* G,
+		    const InnerClass* G,
 		    const KGBEltList* which)
 {
   bool subset= which!=NULL;
@@ -137,7 +137,7 @@ std::ostream& print_sub_KGB(std::ostream& strm,
 }
 
 std::ostream& var_print_KGB(std::ostream& strm,
-			    const ComplexReductiveGroup& G,
+			    const InnerClass& G,
 			    const KGB& kgb)
 {
   prettyprint::prettyPrint(strm << "Base grading: [",

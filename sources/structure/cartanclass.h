@@ -469,7 +469,7 @@ private:
   with an involutive automorphism of this torus (the Cartan involution). (More
   precisely, it is a $W$-conjugacy class of involutive automorphisms.) As the
   class is now used in the software, the Cartan involution must be in the
-  inner class specified by ComplexReductiveGroup. Most of the interesting
+  inner class specified by InnerClass. Most of the interesting
   information is contained in the two underlying Fiber classes d_fiber and
   |d_dualFiber|. First of all, that is where the Cartan involution lives (since
   the involution is needed to define the fibers). But the fiber classes also

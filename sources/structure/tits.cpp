@@ -41,7 +41,7 @@
 #include "permutations.h"
 #include "arithmetic.h"
 
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "realredgp.h"
 #include "subquotient.h"
 #include "subsystem.h"
@@ -55,7 +55,7 @@ namespace tits {
 namespace {
 
 std::vector<Grading> compute_square_classes
-  (const ComplexReductiveGroup& G);
+  (const InnerClass& G);
 
 } // |namespace|
 
@@ -83,7 +83,7 @@ GlobalTitsElement GlobalTitsElement::simple_imaginary_cross
 //              |GlobalTitsGroup|
 
 
-GlobalTitsGroup::GlobalTitsGroup(const ComplexReductiveGroup& G)
+GlobalTitsGroup::GlobalTitsGroup(const InnerClass& G)
   : TwistedWeylGroup(G.twistedWeylGroup())
   , prd( // |PreRootDatum|, viewed from the dual side
 	CoweightList(G.rootDatum().beginSimpleCoroot(),
@@ -322,7 +322,7 @@ namespace {
  not in the "support" of the subgroup (so that reduction would be trivial).
  */
 std::vector<Grading> compute_square_classes
-  (const ComplexReductiveGroup& G)
+  (const InnerClass& G)
 {
   const RootDatum& rd = G.rootDatum();
   const WeightInvolution& delta = G.distinguished();
@@ -573,7 +573,7 @@ TitsGroup::involutionMatrix(const WeylWord& ww) const
  *
  */
 
-TitsCoset::TitsCoset(const ComplexReductiveGroup& G, Grading base_grading)
+TitsCoset::TitsCoset(const InnerClass& G, Grading base_grading)
   : my_Tits_group(NULL) // no ownership in this case
   , Tg(G.titsGroup())
   , grading_offset(base_grading)
@@ -582,7 +582,7 @@ TitsCoset::TitsCoset(const ComplexReductiveGroup& G, Grading base_grading)
 }
 
 // Based Tits group for the adjoint group
-TitsCoset::TitsCoset(const ComplexReductiveGroup& G)
+TitsCoset::TitsCoset(const InnerClass& G)
   : my_Tits_group(new TitsGroup(G.rootDatum().cartanMatrix(),
 				      G.weylGroup(),
 				      G.twistedWeylGroup().twist()))
@@ -595,7 +595,7 @@ TitsCoset::TitsCoset(const ComplexReductiveGroup& G)
 }
 
 // Based Tits group for the adjoint dual group
-TitsCoset::TitsCoset(const ComplexReductiveGroup& G,tags::DualTag)
+TitsCoset::TitsCoset(const InnerClass& G,tags::DualTag)
   : my_Tits_group(new TitsGroup(G.rootDatum().cartanMatrix().transposed(),
 				      G.weylGroup(),
 				      G.twistedWeylGroup().dual_twist()))
@@ -774,7 +774,7 @@ EnrichedTitsGroup::EnrichedTitsGroup(const RealReductiveGroup& GR)
   fiber and transform that one; but this does require some preliminary work.
 */
 TitsElt EnrichedTitsGroup::backtrack_seed
-  (const ComplexReductiveGroup& G, RealFormNbr rf, size_t cn) const
+  (const InnerClass& G, RealFormNbr rf, size_t cn) const
 {
   const TitsGroup& Tgr= titsGroup();
   // a name chosen to avoid warnings about shadowing (the inaccessible) |Tg|
@@ -783,7 +783,7 @@ TitsElt EnrichedTitsGroup::backtrack_seed
 
   RootNbrSet rset;
   WeylWord cross;
-  complexredgp::Cayley_and_cross_part(rset,cross,tw,G.rootDatum(),Tgr);
+  innerclass::Cayley_and_cross_part(rset,cross,tw,G.rootDatum(),Tgr);
 
   /* at this point we can get from the fundamental fiber to |tw| by first
      applying cross actions according to |cross|, and then applying Cayley

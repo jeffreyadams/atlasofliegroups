@@ -11,7 +11,7 @@
 
 #include <cstdio>   // not obviously used, but appears helpful for Windows
 
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "output.h"
 #include "error.h"
 #include "interactive.h"
@@ -290,7 +290,7 @@ void KGB_f()
 
   ioutils::OutputFile f;
 
-  ComplexReductiveGroup& G=G_R.complexGroup();
+  InnerClass& G=G_R.complexGroup();
   kgb_io::var_print_KGB(f,G,G_R.kgb());
 }
 

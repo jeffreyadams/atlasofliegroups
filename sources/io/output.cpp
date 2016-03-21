@@ -24,7 +24,7 @@
 #include "lietype.h"
 #include "dynkin.h"
 #include "gradings.h"
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "cartanclass.h"
 #include "realredgp.h"
 #include "realweyl.h"	// |RealWeyl| class
@@ -43,7 +43,7 @@ namespace output {
 
 
   std::ostream& printBlockSizes(std::ostream& strm,
-				ComplexReductiveGroup& G,Interface& CI)
+				InnerClass& G,Interface& CI)
 {
   const FormNumberMap rfi = CI.realFormInterface();
   const FormNumberMap drfi = CI.dualRealFormInterface();
@@ -103,7 +103,7 @@ namespace {
   interface) of rf --- so d_in and d_out are inverses of each other. The
   names are names for the corresponding Lie algebras.
 */
-FormNumberMap::FormNumberMap(const ComplexReductiveGroup& G,
+FormNumberMap::FormNumberMap(const InnerClass& G,
 			     const lietype::Layout& lo)
 : d_in(G.numRealForms()), d_out(G.numRealForms()), d_name(G.numRealForms())
 {
@@ -146,7 +146,7 @@ FormNumberMap::FormNumberMap(const ComplexReductiveGroup& G,
 /*
   Synopsis: like the previous one, but for the _dual_ real forms.
 */
-FormNumberMap::FormNumberMap(const ComplexReductiveGroup& G,
+FormNumberMap::FormNumberMap(const InnerClass& G,
 			     const lietype::Layout& lo, tags::DualTag)
 : d_in(G.numDualRealForms())
 , d_out(G.numDualRealForms())
@@ -198,7 +198,7 @@ std::ostream& printRealForms(std::ostream& strm, const FormNumberMap& I)
 
 
 std::ostream& printGradings(std::ostream& strm,
-			    ComplexReductiveGroup& G, size_t cn, Interface& CI)
+			    InnerClass& G, size_t cn, Interface& CI)
 {
   const CartanClass& cc = G.cartan(cn);
 
@@ -216,7 +216,7 @@ std::ostream& printGradings(std::ostream& strm,
 
 // Print information about the Cartan class #cn.
 std::ostream& printCartanClass(std::ostream& strm,
-			       const ComplexReductiveGroup& G,
+			       const InnerClass& G,
 			       size_t cn,
 			       output::Interface& CI)
 {
@@ -361,7 +361,7 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
 				   size_t cn, RealFormNbr drf)
 
 {
-  ComplexReductiveGroup& G_C = G_R.complexGroup();
+  InnerClass& G_C = G_R.complexGroup();
   const RootDatum& rd = G_R.rootDatum();
   const WeylGroup& W = G_R.weylGroup();
 
@@ -444,7 +444,7 @@ std::ostream& printRealWeyl(std::ostream& strm,
 			    RealReductiveGroup& G_R, // modifiable for |cartan|
 			    size_t cn)
 {
-  ComplexReductiveGroup& G_C = G_R.complexGroup();
+  InnerClass& G_C = G_R.complexGroup();
 
   RealFormNbr rf = G_R.realForm();
 
@@ -486,7 +486,7 @@ std::ostream& printRealWeyl(std::ostream& strm,
   real forms; we label them with the corresponding weak real form.
 */
 std::ostream& printStrongReal(std::ostream& strm,
-			      ComplexReductiveGroup& G_C,
+			      InnerClass& G_C,
 			      const output::FormNumberMap& rfi,
 			      size_t cn)
 {

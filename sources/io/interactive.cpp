@@ -234,10 +234,10 @@ size_t get_Cartan_class(const BitMap& cs) throw(error::InputError)
   Throws an |InputError| if the interaction with the user is not successful;
   in that case both pointers are unchanged.
 
-  We pass references to pointers to both a |ComplexReductiveGroup| and to a
+  We pass references to pointers to both an |InnerClass| and to a
   |output::Interface|, both of which will be assigned appropriately
 */
-void get_group_type(ComplexReductiveGroup*& pG,output::Interface*& pI)
+void get_group_type(InnerClass*& pG,output::Interface*& pI)
   throw(error::InputError)
 {
   // first get the Lie type
@@ -254,7 +254,7 @@ void get_group_type(ComplexReductiveGroup*& pG,output::Interface*& pI)
   WeightInvolution inv=getInnerClass(lo,b); // may throw InputError
 
   // commit (unless |RootDatum(prd)| should throw: then nothing is changed)
-  pG=new ComplexReductiveGroup(prd,inv);
+  pG=new InnerClass(prd,inv);
   pI=new output::Interface(*pG,lo);
   // the latter constructor also constructs two realform interfaces in *pI
 }
@@ -498,7 +498,7 @@ RealFormNbr get_real_form(output::Interface& CI)
   Throws an InputError if the interaction with the user fails.
 */
 RealFormNbr get_dual_real_form(output::Interface& CI,
-			       const ComplexReductiveGroup& G,
+			       const InnerClass& G,
 			       RealFormNbr rf)
   throw(error::InputError)
 {
@@ -784,7 +784,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 {
   // first step: get initial x in canonical fiber
   size_t cn=get_Cartan_class(GR.Cartan_set());
-  const ComplexReductiveGroup& G=GR.complexGroup();
+  const InnerClass& G=GR.complexGroup();
   const RootDatum& rd=G.rootDatum();
 
   const KGB& kgb=GR.kgb();

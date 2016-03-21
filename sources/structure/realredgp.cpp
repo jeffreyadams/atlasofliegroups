@@ -15,7 +15,7 @@
 #include "matreduc.h" // |adapted_basis|
 
 #include "cartanclass.h"  // |Fiber|, and |toMostSplit| function (assertion)
-#include "complexredgp.h" // various methods
+#include "innerclass.h" // various methods
 #include "rootdata.h"     // |refl_prod| function (assertion)
 #include "tori.h"         // |tori::RealTorus| used
 #include "kgb.h"          // |KGB| constructed
@@ -39,7 +39,7 @@ namespace realredgp {
   reductive group and a real form.
 */
 RealReductiveGroup::RealReductiveGroup
-  (ComplexReductiveGroup& G_C, RealFormNbr rf)
+  (InnerClass& G_C, RealFormNbr rf)
   : d_complexGroup(G_C)
   , d_realForm(rf)
   , d_connectivity() // wait for most split torus to be constructed below
@@ -56,7 +56,7 @@ RealReductiveGroup::RealReductiveGroup
 
 
 RealReductiveGroup::RealReductiveGroup
-  (ComplexReductiveGroup& G_C, RealFormNbr rf,
+  (InnerClass& G_C, RealFormNbr rf,
    const RatCoweight& coch, TorusPart x0_torus_part)
   : d_complexGroup(G_C)
   , d_realForm(rf)
@@ -74,7 +74,7 @@ RealReductiveGroup::RealReductiveGroup
 
 void RealReductiveGroup::construct()
 {
-  ComplexReductiveGroup& G_C=d_complexGroup;
+  InnerClass& G_C=d_complexGroup;
   RealFormNbr rf=d_realForm;
 
   tori::RealTorus msT = G_C.cartan(G_C.mostSplit(rf)).fiber().torus();
@@ -155,7 +155,7 @@ RatCoweight RealReductiveGroup::g() const
 // simple roots are simple-imaginary, so dot product flags the compact ones
 Grading RealReductiveGroup::base_grading() const
 {
-  return complexredgp::grading_of_simples(complexGroup(),g_rho_check());
+  return innerclass::grading_of_simples(complexGroup(),g_rho_check());
 }
 
 size_t RealReductiveGroup::numCartan() const { return Cartan_set().size(); }
@@ -227,7 +227,7 @@ const BruhatOrder& RealReductiveGroup::Bruhat_KGB()
 //				Functions
 
 TorusPart minimal_torus_part
-  (const ComplexReductiveGroup& G, RealFormNbr wrf, RatCoweight coch,
+  (const InnerClass& G, RealFormNbr wrf, RatCoweight coch,
    TwistedInvolution tw, // by value, modified
    const RatCoweight& torus_factor
   )
@@ -237,7 +237,7 @@ TorusPart minimal_torus_part
   RatCoweight diff = (torus_factor-coch).normalize();
   assert (diff.denominator()==1); // since $\exp(2i\pi diff)=1$
 
-  Grading gr = complexredgp::grading_of_simples(G,coch);
+  Grading gr = innerclass::grading_of_simples(G,coch);
   TitsCoset Tc(G,gr);
   const auto& Tg = Tc.titsGroup();
   const auto& W = Tg.weylGroup();

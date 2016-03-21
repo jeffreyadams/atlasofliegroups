@@ -32,7 +32,7 @@
 #include "arithmetic.h"	// functions
 #include "bruhat.h"
 #include "cartanclass.h"// |CartanClass| methods
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "lattice.h"	// |row_saturate|
 #include "realredgp.h"  // |KGB| constructor
 #include "rootdata.h"
@@ -180,7 +180,7 @@ void KGB_base::add_element()
 */
 
 // create structure incorporating all KGB structures for a given inner class
-global_KGB::global_KGB(ComplexReductiveGroup& G_C, bool dual_twist)
+global_KGB::global_KGB(InnerClass& G_C, bool dual_twist)
   : KGB_base(G_C,G_C.semisimpleRank())
   , Tg(G_C) // construct global Tits group as subobject
   , elt()
@@ -225,7 +225,7 @@ global_KGB::global_KGB(ComplexReductiveGroup& G_C, bool dual_twist)
 
 }
 
-global_KGB::global_KGB(ComplexReductiveGroup& G_C,
+global_KGB::global_KGB(InnerClass& G_C,
 		       const GlobalTitsElement& x, bool dual_twist)
   : KGB_base(G_C,G_C.semisimpleRank())
   , Tg(G_C) // construct global Tits group as subobject
@@ -492,7 +492,7 @@ KGB::KGB(RealReductiveGroup& GR,
   , d_bruhat(NULL)
   , d_base(NULL)
 {
-  ComplexReductiveGroup& G_C=GR.complexGroup(); // non-|const| version of |G|
+  InnerClass& G_C=GR.complexGroup(); // non-|const| version of |G|
   //const TitsGroup& Tg = G.titsGroup();
   size_t rank = G.semisimpleRank(); // |G.rank()| does not interest us here
 

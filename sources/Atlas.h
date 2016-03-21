@@ -299,7 +299,7 @@ namespace atlas {
 
 
   typedef unsigned short CartanNbr; // index of Cartan class
-  typedef unsigned short RealFormNbr; // index used in |ComplexReductiveGroup|
+  typedef unsigned short RealFormNbr; // index used in |InnerClass|
   typedef std::vector<RealFormNbr> RealFormNbrList;
 
   namespace cartanclass {
@@ -315,8 +315,8 @@ namespace atlas {
   using cartanclass::Fiber;
   using cartanclass::CartanClass;
 
-  namespace complexredgp { class ComplexReductiveGroup; }
-  using complexredgp::ComplexReductiveGroup;
+  namespace innerclass { class InnerClass; }
+  using innerclass::InnerClass;
 
   namespace realredgp { class RealReductiveGroup; }
   using realredgp::RealReductiveGroup;

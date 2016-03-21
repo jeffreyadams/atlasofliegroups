@@ -16,7 +16,7 @@
 #include "mainmode.h"
 #include "blockmode.h" // for re-use of |currentKL| and such
 
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "output.h"
 #include "error.h"
 #include "helpmode.h"

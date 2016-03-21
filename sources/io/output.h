@@ -27,20 +27,20 @@ namespace output {
   class Interface;
 
 std::ostream& printBlockSizes
-  (std::ostream&, ComplexReductiveGroup&, Interface&);
+  (std::ostream&, InnerClass&, Interface&);
 
 
 std::ostream& printRealForms(std::ostream& strm, const FormNumberMap& m);
 
 std::ostream&
 printCartanClass(std::ostream&,
-		 const ComplexReductiveGroup&, size_t, output::Interface&);
+		 const InnerClass&, size_t, output::Interface&);
 
 std::ostream& printFiber(std::ostream&, const Fiber&,
 			 const RealFormNbrList&);
 
 std::ostream& printGradings
-  (std::ostream&, ComplexReductiveGroup&, size_t, Interface&);
+  (std::ostream&, InnerClass&, size_t, Interface&);
 
 std::ostream& printGradings(std::ostream&, const Fiber&,
 			    const RealFormNbrList&,
@@ -64,7 +64,7 @@ std::ostream& printRealWeyl(std::ostream& strm,
 			    size_t cn);
 
 std::ostream& printStrongReal(std::ostream& strm,
-			      ComplexReductiveGroup& G_C,
+			      InnerClass& G_C,
 			      const output::FormNumberMap& rfi,
 			      size_t cn);
 
@@ -82,9 +82,9 @@ class FormNumberMap
  public:
 
 // constructors and destructors
-  FormNumberMap(const ComplexReductiveGroup&, const lietype::Layout&);
+  FormNumberMap(const InnerClass&, const lietype::Layout&);
 
-  FormNumberMap(const ComplexReductiveGroup&, const lietype::Layout&,
+  FormNumberMap(const InnerClass&, const lietype::Layout&,
 		tags::DualTag);
 
 // accessors
@@ -105,7 +105,7 @@ class Interface : public std::pair<FormNumberMap,FormNumberMap>
  public:
 
 // constructors and destructors
-  Interface(ComplexReductiveGroup& G, const lietype::Layout& lo)
+  Interface(InnerClass& G, const lietype::Layout& lo)
   : base(FormNumberMap(G,lo),FormNumberMap(G,lo,tags::DualTag()))
   {}
 

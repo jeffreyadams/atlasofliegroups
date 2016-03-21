@@ -269,7 +269,7 @@ template std::vector<unsigned short>
 Permutation::renumbering(const std::vector<unsigned short>& v) const; // kgb
 
 template void
-Permutation::renumber(std::vector<unsigned short>& v) const; // complexredgp
+Permutation::renumber(std::vector<unsigned short>& v) const; // innerclass
 
 template void
 Permutation::renumber(std::vector<unsigned long>& v) const; // rootdata,weyl,.

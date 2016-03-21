@@ -1,5 +1,5 @@
 /*
-  This is complexredgp.h
+  This is innerclass.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
   Copyright (C) 2006--2016 Marc van Leeuwen
@@ -10,11 +10,11 @@
 
 /*
  Class definitions and function declarations for the class
- ComplexReductiveGroup.
+ InnerClass.
 */
 
-#ifndef COMPLEXREDGP_H  /* guard against multiple inclusions */
-#define COMPLEXREDGP_H
+#ifndef INNERCLASS_H  /* guard against multiple inclusions */
+#define INNERCLASS_H
 
 #include "../Atlas.h"
 
@@ -30,7 +30,7 @@
 
 namespace atlas {
 
-namespace complexredgp {
+namespace innerclass {
 
 /******** function declarations **********************************************/
 
@@ -47,7 +47,7 @@ WeylWord canonicalize // return value is conjugator, built left-to-right
    RankFlags gens);
 
 /* this function should NOT be made into a method, suppressing the |rs| and |W|
-   parameters, as these can be be dual to those in the |ComplexReductiveGroup|!
+   parameters, as these can be be dual to those in the |InnerClass|!
 */
 void Cayley_and_cross_part(RootNbrSet& Cayley,
 			   WeylWord& cross,
@@ -56,19 +56,19 @@ void Cayley_and_cross_part(RootNbrSet& Cayley,
 			   const TwistedWeylGroup& W);
 
 RealFormNbr real_form_of // who claims this KGB element?
-  (ComplexReductiveGroup& G, TwistedInvolution tw, // by value
+  (InnerClass& G, TwistedInvolution tw, // by value
    const RatCoweight& torus_factor,
    RatCoweight& cocharacter // additional output
    );
 
 RatCoweight some_coch // some cocharacter whose real form is in class |csc|
-  (const ComplexReductiveGroup& G,cartanclass::square_class csc);
+  (const InnerClass& G,cartanclass::square_class csc);
 
 Grading grading_of_simples
-  (const ComplexReductiveGroup& G, const RatCoweight& coch);
+  (const InnerClass& G, const RatCoweight& coch);
 
 // find compact ones among imaginary simple roots for |G|, as defined by |coch|
- Grading compacts_for(const ComplexReductiveGroup& G, TorusElement coch);
+ Grading compacts_for(const InnerClass& G, TorusElement coch);
 
 containers::sl_list<TorusPart> preimage
   (const Fiber& fund_f, const cartanclass::square_class csc,
@@ -77,14 +77,14 @@ containers::sl_list<TorusPart> preimage
 
   // apply involution action of |tw| on weight lattice to |v|
 void twisted_act
-  (const ComplexReductiveGroup& G, const TwistedInvolution& tw,Weight& v);
+  (const InnerClass& G, const TwistedInvolution& tw,Weight& v);
 void twisted_act
-  (const ComplexReductiveGroup& G, const TwistedInvolution& tw,RatWeight& v);
+  (const InnerClass& G, const TwistedInvolution& tw,RatWeight& v);
 
 void twisted_act
-  (const ComplexReductiveGroup& G,Weight& v, const TwistedInvolution& tw);
+  (const InnerClass& G,Weight& v, const TwistedInvolution& tw);
 void twisted_act
-  (const ComplexReductiveGroup& G,RatWeight& v, const TwistedInvolution& tw);
+  (const InnerClass& G,RatWeight& v, const TwistedInvolution& tw);
 
 
 
@@ -147,7 +147,7 @@ void twisted_act
   holds most of the information about the Cartan class (in two |Fiber|
   structures, an ordinary and dual fiber, see the \.{cartanclass} module);
   this information is generated for all Cartan classes upon construction of
-  the |ComplexReductiveGroup|. The remaining fields of |C_info| reflect an
+  the |InnerClass|. The remaining fields of |C_info| reflect an
   old and now reverted design decision, in which only a pointer to a
   |CartanClass| was held, which was intially null and "filled" on demand. This
   meant that real forms, which are identified as orbits in the adjoint fiber
@@ -173,7 +173,7 @@ void twisted_act
   dual group.
 
   */
-class ComplexReductiveGroup
+class InnerClass
 {
   // The based root datum. It is stored here (constructed by our constructor)
   const RootDatum d_rootDatum;
@@ -218,7 +218,7 @@ class ComplexReductiveGroup
     CartanClass Cc; // detailed information, basically |Fiber| and dual |Fiber|
     RealFormNbrList real_labels,dual_real_labels;
 
-    C_info(const ComplexReductiveGroup& G, const TwistedInvolution twi,
+    C_info(const InnerClass& G, const TwistedInvolution twi,
 	   CartanNbr i); // index |i| of this Cartan used to dimension |below|
 
   }; // |C_info|
@@ -235,21 +235,21 @@ class ComplexReductiveGroup
 
  public:
 // constructors and destructors
-  ComplexReductiveGroup(const PreRootDatum&, // constructor builds root datum
+  InnerClass(const PreRootDatum&, // constructor builds root datum
 			const WeightInvolution&);
 
-  ComplexReductiveGroup(const RootDatum&, // alternative that copies root datum
+  InnerClass(const RootDatum&, // alternative that copies root datum
 			const WeightInvolution&);
 
-  ComplexReductiveGroup(const ComplexReductiveGroup&, tags::DualTag);
+  InnerClass(const InnerClass&, tags::DualTag);
 
 // copy, assignment and swap are not needed, and therefore forbidden
-  ComplexReductiveGroup(const ComplexReductiveGroup&) = delete;
-  ComplexReductiveGroup& operator= (const ComplexReductiveGroup&) = delete;
-  void swap(ComplexReductiveGroup& G) = delete;
+  InnerClass(const InnerClass&) = delete;
+  InnerClass& operator= (const InnerClass&) = delete;
+  void swap(InnerClass& G) = delete;
 
 
-  ~ComplexReductiveGroup();
+  ~InnerClass();
 
 // Accessors
 
@@ -509,9 +509,9 @@ class ComplexReductiveGroup
   void map_real_forms(CartanNbr cn);      // set |Cartan[cn].real_labels|
   void map_dual_real_forms(CartanNbr cn); // set |Cartan[cn].dual_real_labels|
 
-}; // |class ComplexReductiveGroup|
+}; // |class InnerClass|
 
-} // |namespace complexredgp|
+} // |namespace innerclass|
 
 } // |namespace atlas|
 

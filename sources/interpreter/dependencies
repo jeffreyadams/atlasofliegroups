@@ -116,7 +116,7 @@ $(realex_dir)/axis.o $(realex_dir)/axis.tex : \
  $(sources_dir)/Atlas.h \
  $(sources_dir)/structure/bitvector.h \
  $(sources_dir)/structure/cartanclass.h \
- $(sources_dir)/structure/complexredgp.h \
+ $(sources_dir)/structure/innerclass.h \
  $(sources_dir)/structure/dynkin.h \
  $(sources_dir)/structure/gradings.h \
  $(sources_dir)/structure/involutions.h \
@@ -181,7 +181,7 @@ $(realex_dir)/built-in-types.o $(realex_dir)/built-in-types.tex: \
  $(sources_dir)/Atlas.h \
  $(sources_dir)/structure/bitvector.h \
  $(sources_dir)/structure/cartanclass.h \
- $(sources_dir)/structure/complexredgp.h \
+ $(sources_dir)/structure/innerclass.h \
  $(sources_dir)/structure/dynkin.h \
  $(sources_dir)/structure/gradings.h \
  $(sources_dir)/structure/involutions.h \
@@ -256,7 +256,7 @@ $(realex_dir)/main.o $(realex_dir)/main.tex: \
  $(sources_dir)/Atlas.h \
  $(sources_dir)/structure/bitvector.h \
  $(sources_dir)/structure/cartanclass.h \
- $(sources_dir)/structure/complexredgp.h \
+ $(sources_dir)/structure/innerclass.h \
  $(sources_dir)/structure/gradings.h \
  $(sources_dir)/structure/involutions.h \
  $(sources_dir)/structure/lietype.h \

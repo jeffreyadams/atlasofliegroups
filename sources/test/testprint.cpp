@@ -16,7 +16,7 @@
 
 #include "basic_io.h"
 #include "cartanclass.h"
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "output.h"
 #include "dynkin.h"
 #include "ioutils.h"

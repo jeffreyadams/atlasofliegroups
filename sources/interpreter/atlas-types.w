@@ -595,7 +595,7 @@ the new denominator~|d|.
 @*2 Specifying inner classes. Now we move ahead a bit in the theory, from
 functions that help in building root data to functions that help defining
 (inner classes of) real forms. The first of such functions is
-|lietype::involution|, which takes a Lie type and a |InnerClassType|
+|lietype::involution|, which takes a Lie type and an |InnerClassType|
 (a vector of characters describing the kind of involution wanted) and produces
 a matrix describing the involution, defined on the weight lattice for the
 simply connected group of the given type. That function supposes its arguments
@@ -1263,18 +1263,19 @@ install_function(integrality_points_wrapper
                 ,@|"integrality_points","(RootDatum,ratvec->[rat])");
 
 @*1 A type for complex reductive groups equipped with an involution.
-We shall now go ahead to define a primitive type holding a
-|ComplexReductiveGroup|, which represents a complex reductive
-group equipped with an involution, which defines an ``inner class'' of real
-forms for that group. We can construct such an object from a root datum and an
-involution. In the Atlas software such involutions are entered indirectly via
-a user interaction, and the way it was constructed is stored and used for
-certain purposes. For maximal flexibility, we want to be able to provide an
-involution produced in any way we like. This means there is some extra work to
-do.
+%
+We shall now go ahead to define a primitive type holding an |InnerClass|
+object, which represents a complex reductive group equipped with a
+distinguished involution defining an ``inner class'' of real forms for that
+group. We can construct such an object from a based root datum and an
+involution of it. In the \.{Fokko} program, such involutions are entered
+indirectly via a user interaction, and the way it was constructed is stored
+and used for certain purposes. For maximal flexibility, we want to be able to
+provide an involution produced in any way we like. This means there is some
+extra work to do.
 
 @< Includes... @>=
-#include "complexredgp.h"
+#include "innerclass.h"
 
 @*2 Analysing involutions. Our constructor for the current atlas type must
 do checking to see that a valid involution is entered, and an analysis of the
@@ -1596,7 +1597,7 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 
 @*2 Storing the inner class values.
 Although abstractly an inner class value is described completely by an object
-of type |ComplexReductiveGroup|, we shall need to record additional
+of type |InnerClass|, we shall need to record additional
 information in order to be able to present meaningful names for the real forms
 and dual real forms in this inner class. The above analysis of involutions was
 necessary in order to obtain such information; it will be recorded in values
@@ -1608,7 +1609,7 @@ of type |output::FormNumberMap|.
 @~The class |inner_class_value| will be the first Atlas type where we deviate
 from the previously used scheme of holding an Atlas library object with the
 main value in a data member |val|. The reason is that the copy constructor for
-|ComplexReductiveGroup| is private (and nowhere defined), so that the
+|InnerClass| is private (and nowhere defined), so that the
 straightforward definition of a copy constructor for such an Atlas type would
 not work, and the copy constructor is necessary for the |clone| method. (In
 fact, now that normal manipulation of values involves duplicating shared
@@ -1625,7 +1626,7 @@ are indissoluble, we use references for the members |val|, |dual| and
 as a side effect generate |CartanClass| objects in the inner class, whence
 they are technically manipulators rather than accessors.
 
-The main constructor takes a unique-pointer to a |ComplexReductiveGroup| as
+The main constructor takes a unique-pointer to an |InnerClass| as
 argument, as a reminder that the caller gives up ownership of this pointer
 that should come from a call to~|new|; this pointer will henceforth be owned
 by the |inner_class_value| constructed, in shared ownership with any values
@@ -1636,7 +1637,7 @@ computed by |check_involution| above, in order to ensure its validity.
 Occasionally we shall need to refer to the dual inner class (for the dual
 group); since the construction of an instance takes some work, we do not wish
 to repeat that every time the dual is needed, so we create the dual
-|ComplexReductiveGroup| value upon construction of the
+|InnerClass| value upon construction of the
 |inner_class_value| and store it in the |dual| field where it will be
 available as needed.
 
@@ -1648,8 +1649,8 @@ containing class exists.
 
 @< Type definitions @>=
 struct inner_class_value : public value_base
-{ ComplexReductiveGroup& val;
-  ComplexReductiveGroup& dual;
+{ InnerClass& val;
+  InnerClass& dual;
   size_t& ref_count;
 @)
   lietype::LieType rd_type;
@@ -1657,7 +1658,7 @@ struct inner_class_value : public value_base
   const output::FormNumberMap interface,dual_interface;
 @)
   inner_class_value  // main constructor
-   (std::unique_ptr<ComplexReductiveGroup> G, const lietype::Layout& lo);
+   (std::unique_ptr<InnerClass> G, const lietype::Layout& lo);
   ~inner_class_value();
 @)
   virtual void print(std::ostream& out) const;
@@ -1706,17 +1707,17 @@ a smart pointer until the construction succeeds.
 
 @< Function def...@>=
 inner_class_value::inner_class_value
-  (std::unique_ptr<ComplexReductiveGroup> g,
+  (std::unique_ptr<InnerClass> g,
    const lietype::Layout& lo)
 @/: val(*g)
-, dual(*new ComplexReductiveGroup(*g,tags::DualTag()))
+, dual(*new InnerClass(*g,tags::DualTag()))
 @/, ref_count(*new size_t(1))
 @/, rd_type(lo.d_type), ic_type(lo.d_inner)
 , interface(*g,lo), dual_interface(*g,lo,tags::DualTag())
  {@; g.release(); } // now that we own |g|, release the unique-pointer
 
 @ We allow construction of a dual |inner_class_value|. Since it can share the
-two fields referring to objects of type |ComplexReductiveGroup|
+two fields referring to objects of type |InnerClass|
 in the opposite order, we can consider it as a member of the same reference
 counted family, and share the |ref_count| field. This means this constructor
 is more like the copy constructor than like the main constructor, and in
@@ -1733,7 +1734,7 @@ inner_class_value::inner_class_value(const inner_class_value& v,tags::DualTag)
 {@; ++ref_count; }
 
 
-@ One of the most practical informations about a |ComplexReductiveGroup|,
+@ One of the most practical informations about an |InnerClass|,
 which is available directly after its construction, is the number of real
 forms in the inner class defined by it; we print this information when a
 |inner_class_value| is printed.
@@ -1756,10 +1757,10 @@ applied to the matrix, since the test does not actually modify its matrix
 argument. (The |weyl::Twist| value returned by |check_involution| is only
 sufficient to determine the desired |M| in the semisimple case, so it cannot
 be used here.) Then the root datum and matrix are passed to a
-|ComplexReductiveGroup| constructor that the library provides specifically for
+|InnerClass| constructor that the library provides specifically for
 this purpose, and which makes a copy of the root datum; the \.{Fokko} program
 instead uses a constructor using a |PreRootDatum| that constructs the
-|RootDatum| directly into the |ComplexReductiveGroup|. Using that constructor
+|RootDatum| directly into the |InnerClass|. Using that constructor
 here would be cumbersome and even less efficient then copying the existing
 root datum.
 
@@ -1775,8 +1776,8 @@ void fix_involution_wrapper(expression_base::level l)
 @)
   for (unsigned int i=0; i<ww.size(); ++i) // apply elements in generation order
     rd->val.simple_reflect(ww[i],M);
-  std::unique_ptr<ComplexReductiveGroup>
-    G(new ComplexReductiveGroup(rd->val,M));
+  std::unique_ptr<InnerClass>
+    G(new InnerClass(rd->val,M));
   push_value(std::make_shared<inner_class_value>(std::move(G),lo));
 }
 
@@ -1796,8 +1797,8 @@ void twisted_involution_wrapper(expression_base::level l)
 @)
   for (unsigned int i=0; i<ww.size(); ++i) // apply elements in generation order
     rd->val.simple_reflect(ww[i],M);
-  std::unique_ptr<ComplexReductiveGroup>
-    G(new ComplexReductiveGroup(rd->val,M));
+  std::unique_ptr<InnerClass>
+    G(new InnerClass(rd->val,M));
   push_value(std::make_shared<inner_class_value>(std::move(G),lo));
   push_value(std::make_shared<vector_value>(std::vector<int>(ww.begin(),ww.end())));
   if (l==expression_base::single_value)
@@ -1841,8 +1842,8 @@ void set_type_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return; // bow out now all possible errors are passed
 @)
-  std::unique_ptr<ComplexReductiveGroup>@|
-    G(new ComplexReductiveGroup(rd->val,M->val));
+  std::unique_ptr<InnerClass>@|
+    G(new InnerClass(rd->val,M->val));
   push_value(std::make_shared<inner_class_value>(std::move(G),lo));
 }
 
@@ -2055,7 +2056,7 @@ void occurrence_matrix_wrapper(expression_base::level l)
 }
 
 @ We do the same for dual real forms. Note that we had to introduce the method
-|dualCartanSet| for |ComplexReductiveGroup| in order to be able
+|dualCartanSet| for |InnerClass| in order to be able
 to write this function.
 
 @< Local function def...@>=
@@ -2126,7 +2127,7 @@ connected complex reductive group; the corresponding Atlas class is called
 @*2 Class definition.
 The layout of this type of value is different from what we have seen before.
 An Atlas object of class |RealReductiveGroup| is dependent upon another Atlas
-object to which it stores a pointer, which is of type |ComplexReductiveGroup|,
+object to which it stores a pointer, which is of type |InnerClass|,
 so we must make sure that the object pointed to cannot disappear before it
 does. The easiest way to do this is to place an |inner_class_value| object
 |parent| inside the |real_form_value| class that we shall now define; the
@@ -2424,7 +2425,7 @@ subsequently used to specify a KGB element for this (strong) real form.
 
 @< Local function def...@>=
 TwistedInvolution twisted_from_involution
-  (const ComplexReductiveGroup& G, const WeightInvolution theta)
+  (const InnerClass& G, const WeightInvolution theta)
 { const RootDatum& rd = G.rootDatum();
   WeylWord ww;
   if (check_involution(theta,rd,ww)!=G.twistedWeylGroup().twist() @| or
@@ -2478,7 +2479,7 @@ involutions that can be encountered have been entered into the table.
     G->val.generate_Cartan_orbit(*it);
 }
 
-@ The methods |central_fiber| and |x0_torus_part| of |ComplexReductiveGroup|
+@ The methods |central_fiber| and |x0_torus_part| of |InnerClass|
 can be accessed using following functions. The function |central_fiber|
 computes those torus parts in the fiber at the distinguished involution that
 both remain in the strong real form orbit and are central (do not affect any
@@ -2539,7 +2540,7 @@ real reductive groups in an inner class. The Atlas software associates a fixed
 set of Cartan classes to each inner class, and records for each real form the
 subset of those Cartan classes that occur for the real form. Since versions
 0.3.5 of the software, the Cartan classes are identified and numbered upon
-construction of a |ComplexReductiveGroup| object, but |CartanClass| objects
+construction of an |InnerClass| object, but |CartanClass| objects
 are constructed on demand.
 
 @< Includes... @>=
@@ -2572,7 +2573,7 @@ private:
 typedef std::shared_ptr<const Cartan_class_value> shared_Cartan_class;
 
 @ In the constructor we used to check that the Cartan class with the given
-number currently exists, but now the |ComplexReductiveGroup::cartan| method
+number currently exists, but now the |InnerClass::cartan| method
 assures that one is generated if this should not have been done before. We
 therefore call that method in the initialiser; on return it provides a valid
 reference.
@@ -3019,7 +3020,7 @@ void KGB_Cartan_wrapper(expression_base::level l)
 void KGB_involution_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  const ComplexReductiveGroup& G=x->rf->val.complexGroup();
+  const InnerClass& G=x->rf->val.complexGroup();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<matrix_value>
       (G.matrix(kgb.involution(x->val))));
@@ -3156,7 +3157,7 @@ void build_KGB_element_wrapper(expression_base::level l)
 @.Torus factor not in cocharacter...@>
   }
 
-  const ComplexReductiveGroup& G = rf->parent.val;
+  const InnerClass& G = rf->parent.val;
   TitsElt a
    (G.titsGroup(),TorusPart(num),twisted_from_involution(G,theta->val));
 
@@ -3218,7 +3219,7 @@ void torus_factor_wrapper(expression_base::level l)
 straightforward as long as one takes care not to just test the (smart)
 pointers |x->rf| and |y->rf| to the |real_form_value| objects for equality,
 but to test their |val| fields (of type |RealReductiveGroup|) using the
-equality operator defined above, which test the |ComplexReductiveGroup|
+equality operator defined above, which test the |InnerClass|
 objects for identity, and real form numbers for equality. This distinction is
 important to make synthesised real forms first class citizens.
 
@@ -4824,7 +4825,7 @@ applying the corresponding simple reflections to~$\lambda$.
 @< Local function def...@>=
 void to_canonical_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  const ComplexReductiveGroup& G=p->rf->val.complexGroup();
+  const InnerClass& G=p->rf->val.complexGroup();
   const KGB& kgb = p->rf->kgb();
   const RootDatum& rd=G.rootDatum();
 @)
@@ -5191,7 +5192,7 @@ void print_KGB_wrapper(expression_base::level l)
 void print_X_wrapper(expression_base::level l)
 { shared_inner_class ic = get<inner_class_value>();
 @)
-  ComplexReductiveGroup& G=ic->val;
+  InnerClass& G=ic->val;
   kgb::global_KGB kgb(G); // build global Tits group, "all" square classes
   kgb_io::print_X(*output_stream,kgb);
 @)

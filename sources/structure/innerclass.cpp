@@ -1,5 +1,5 @@
 /*
-  This is complexredgp.cpp.
+  This is innerclass.cpp.
 
   Copyright (C) 2004,2005 Fokko du Cloux
   Copyright (C) 2006-2016 Marc van Leeuwen
@@ -10,9 +10,9 @@
 
 
 /*
-  Implementation for the class ComplexReductiveGroup.
+  Implementation for the class InnerClass.
 
-  The ComplexReductiveGroup class will play a central role in the whole
+  The InnerClass class will play a central role in the whole
   program. Even though it is entirely defined by its based root datum and an
   involutive automorphism of that datum, it has seemed more natural to use
   this class to collect the wealth of combinatorial data that they give rise
@@ -23,7 +23,7 @@
   once; so that is another reason to not choose a real form a priori.
 */
 
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "matreduc.h" // |diagonalise| used in |square_class_choice|
 
 #include <set>
@@ -70,7 +70,7 @@
 
 namespace atlas {
 
-namespace complexredgp {
+namespace innerclass {
 
   void crossTransform(RootNbrList&,
 		      const WeylWord&,
@@ -89,12 +89,12 @@ namespace complexredgp {
 
 /*****************************************************************************
 
-        Chapter I -- The ComplexReductiveGroup class
+        Chapter I -- The InnerClass class
 
 ******************************************************************************/
 
-ComplexReductiveGroup::C_info::C_info
-  (const ComplexReductiveGroup& G,const TwistedInvolution twi, CartanNbr i)
+InnerClass::C_info::C_info
+  (const InnerClass& G,const TwistedInvolution twi, CartanNbr i)
   : tw(twi)
   , real_forms(G.numRealForms()), dual_real_forms(G.numDualRealForms())
   , rep(G.numRealForms()),        dual_rep(G.numDualRealForms())
@@ -108,10 +108,10 @@ ComplexReductiveGroup::C_info::C_info
 /*
   Main constructor
 
-  Constructs a |ComplexReductiveGroup| from a pre-rootdatum |rd| and a
+  Constructs an |InnerClass| from a pre-rootdatum |rd| and a
   distinguished involution |d|, which stabilises the set of simple roots
 */
-ComplexReductiveGroup::ComplexReductiveGroup
+InnerClass::InnerClass
  (const PreRootDatum& prd, const WeightInvolution& tmp_d)
   : d_rootDatum(prd)
   , d_dualRootDatum(d_rootDatum,tags::DualTag())
@@ -140,10 +140,10 @@ ComplexReductiveGroup::ComplexReductiveGroup
 /*
   Variant constructor, differs only by using a constructed root datum
 
-  Constructs a |ComplexReductiveGroup| from a rootdatum |rd| and a
+  Constructs an |InnerClass| from a rootdatum |rd| and a
   distinguished involution |d|, which stabilises the set of simple roots
 */
-ComplexReductiveGroup::ComplexReductiveGroup
+InnerClass::InnerClass
  (const RootDatum& rd, const WeightInvolution& tmp_d)
   : d_rootDatum(rd)
   , d_dualRootDatum(d_rootDatum,tags::DualTag())
@@ -169,7 +169,7 @@ ComplexReductiveGroup::ComplexReductiveGroup
   construct(); // set up |Cartan| data, but only resizes |C_orb|
 }
 
-void ComplexReductiveGroup::construct() // common part of two constructors
+void InnerClass::construct() // common part of two constructors
 {
   { // task 1: generate Cartan classes, fill non-dual part of |Cartan|
     { // complete initialisation of |Cartan[0]|
@@ -371,10 +371,10 @@ void ComplexReductiveGroup::construct() // common part of two constructors
       map_dual_real_forms(cn); // used to be |correlateDualForms(cn);|
     }
   }
-} // |ComplexReductiveGroup::construct|
+} // |InnerClass::construct|
 
 // Construct the complex reductive group dual to G
-ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
+InnerClass::InnerClass(const InnerClass& G,
 					     tags::DualTag)
   : d_rootDatum(G.d_dualRootDatum)
   , d_dualRootDatum(G.d_rootDatum)
@@ -449,7 +449,7 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
 
 
 // destruction frees Weyl group if owned
-ComplexReductiveGroup::~ComplexReductiveGroup()
+InnerClass::~InnerClass()
 {
   delete my_W;
 }
@@ -460,7 +460,7 @@ ComplexReductiveGroup::~ComplexReductiveGroup()
 
 /*****************************************************************************
 
-        Chapter II --- private (auxiliary) methods for ComplexReductiveGroup
+        Chapter II --- private (auxiliary) methods for InnerClass
 
 ******************************************************************************/
 
@@ -500,7 +500,7 @@ ComplexReductiveGroup::~ComplexReductiveGroup()
   fact that the representatives for the quasisplit form are thus improved).
 
  */
-void ComplexReductiveGroup::map_real_forms(CartanNbr cn)
+void InnerClass::map_real_forms(CartanNbr cn)
 {
   TitsCoset adj_Tg(*this);
   const Fiber& f = Cartan[cn].Cc.fiber();
@@ -529,9 +529,9 @@ void ComplexReductiveGroup::map_real_forms(CartanNbr cn)
     Cartan[cn].real_labels[f.adjoint_orbit(rep)]=rf;
   }
   assert(Cartan[cn].real_labels[0]==quasisplit());
-} // |ComplexReductiveGroup::map_real_forms|
+} // |InnerClass::map_real_forms|
 
-void ComplexReductiveGroup::map_dual_real_forms(CartanNbr cn)
+void InnerClass::map_dual_real_forms(CartanNbr cn)
 {
   TitsCoset dual_adj_Tg(*this,tags::DualTag());
   const Fiber& dual_f = Cartan[cn].Cc.dualFiber();
@@ -563,12 +563,12 @@ void ComplexReductiveGroup::map_dual_real_forms(CartanNbr cn)
   }
   assert(Cartan[cn].dual_real_labels[0]==0);
   Cartan[cn].dual_rep[0] = dual_base.data();
-} // |ComplexReductiveGroup::map_dual_real_forms|
+} // |InnerClass::map_dual_real_forms|
 
 
 // The size of the fiber orbits of strong forms for |rf| in Cartan |cn|
 unsigned long
-ComplexReductiveGroup::fiberSize(RealFormNbr rf, CartanNbr cn) const
+InnerClass::fiberSize(RealFormNbr rf, CartanNbr cn) const
 {
   cartanclass::adjoint_fiber_orbit wrf = real_form_part(rf,cn);
   // |wrf| indexes a $W_{im}$ orbit on |cartan(cn).fiber().adjointFiberGroup()|
@@ -594,7 +594,7 @@ ComplexReductiveGroup::fiberSize(RealFormNbr rf, CartanNbr cn) const
 */
 
 unsigned long
-ComplexReductiveGroup::dualFiberSize(RealFormNbr rf, CartanNbr cn) const
+InnerClass::dualFiberSize(RealFormNbr rf, CartanNbr cn) const
 {
   cartanclass::adjoint_fiber_orbit wrf=dual_real_form_part(rf,cn);
 
@@ -611,14 +611,14 @@ ComplexReductiveGroup::dualFiberSize(RealFormNbr rf, CartanNbr cn) const
 
 /*****************************************************************************
 
-        Chapter III --- public accessor methods for ComplexReductiveGroup
+        Chapter III --- public accessor methods for InnerClass
 
 ******************************************************************************/
 
 
 /******** accessors **********************************************************/
 
-RankFlags ComplexReductiveGroup::simple_roots_imaginary() const
+RankFlags InnerClass::simple_roots_imaginary() const
 {
   const auto twist = twistedWeylGroup().twist();
   RankFlags result;
@@ -627,7 +627,7 @@ RankFlags ComplexReductiveGroup::simple_roots_imaginary() const
   return result;
 }
 
-RankFlags ComplexReductiveGroup::simple_roots_real() const
+RankFlags InnerClass::simple_roots_real() const
 {
   const auto twist = twistedWeylGroup().dual_twist();
   RankFlags result;
@@ -637,7 +637,7 @@ RankFlags ComplexReductiveGroup::simple_roots_real() const
 }
 
 BitMap
-ComplexReductiveGroup::Cartan_set(RealFormNbr rf) const
+InnerClass::Cartan_set(RealFormNbr rf) const
 {
   BitMap support(Cartan.size());
   for (CartanNbr i=0; i<Cartan.size(); ++i)
@@ -648,7 +648,7 @@ ComplexReductiveGroup::Cartan_set(RealFormNbr rf) const
 }
 
 BitMap
-ComplexReductiveGroup::dual_Cartan_set(RealFormNbr drf) const
+InnerClass::dual_Cartan_set(RealFormNbr drf) const
 {
   BitMap support(Cartan.size());
   for (CartanNbr i=0; i<Cartan.size(); ++i)
@@ -659,7 +659,7 @@ ComplexReductiveGroup::dual_Cartan_set(RealFormNbr drf) const
 }
 
 // The total number of involutions (generating Cartans as needed)
-InvolutionNbr ComplexReductiveGroup::numInvolutions() const
+InvolutionNbr InnerClass::numInvolutions() const
 {
   InvolutionNbr count = 0;
 
@@ -670,7 +670,7 @@ InvolutionNbr ComplexReductiveGroup::numInvolutions() const
 }
 
 // The total number of involutions corresponding to the given set of Cartans
-InvolutionNbr ComplexReductiveGroup::numInvolutions
+InvolutionNbr InnerClass::numInvolutions
   (const BitMap& Cartan_classes) const
 {
   InvolutionNbr count = 0;
@@ -682,21 +682,21 @@ InvolutionNbr ComplexReductiveGroup::numInvolutions
 }
 
 WeightInvolution
-ComplexReductiveGroup::compute_matrix(const TwistedInvolution& tw)  const
+InnerClass::compute_matrix(const TwistedInvolution& tw)  const
 {
   return rootDatum().matrix(weylGroup().word(tw.w())) * distinguished();
 }
 
 // Sum of the real roots
 Weight
-ComplexReductiveGroup::posRealRootSum(const TwistedInvolution& tw) const
+InnerClass::posRealRootSum(const TwistedInvolution& tw) const
 {
   return rootDatum().twoRho(involution_data(tw).real_roots());
 }
 
 // Sum of the imaginary roots.
 Weight
-ComplexReductiveGroup::posImaginaryRootSum(const TwistedInvolution& tw) const
+InnerClass::posImaginaryRootSum(const TwistedInvolution& tw) const
 {
   return rootDatum().twoRho(involution_data(tw).imaginary_roots());
 }
@@ -708,16 +708,16 @@ ComplexReductiveGroup::posImaginaryRootSum(const TwistedInvolution& tw) const
    these form the letters of |w| from left (last applied) to right (first).
 */
 WeylWord // return value is conjugating element
-ComplexReductiveGroup::canonicalize
+InnerClass::canonicalize
   (TwistedInvolution &sigma, // element to modify
    RankFlags gens) // subset of generators, "defaults" to all simple generators
   const
 {
-  return complexredgp::canonicalize(sigma,rootDatum(),twistedWeylGroup(),gens);
+  return innerclass::canonicalize(sigma,rootDatum(),twistedWeylGroup(),gens);
 }
 
 //!\brief find number of Cartan class containing twisted involution |sigma|
-CartanNbr ComplexReductiveGroup::class_number(TwistedInvolution sigma) const
+CartanNbr InnerClass::class_number(TwistedInvolution sigma) const
 {
   canonicalize(sigma);
   for (CartanNbr i=0; i<Cartan.size(); ++i)
@@ -731,7 +731,7 @@ CartanNbr ComplexReductiveGroup::class_number(TwistedInvolution sigma) const
 
 // the size of the subset of KGB for |rf| for involutions in |Cartan_classes|
 unsigned long
-ComplexReductiveGroup::KGB_size(RealFormNbr rf,
+InnerClass::KGB_size(RealFormNbr rf,
 				const BitMap& Cartan_classes) const
 {
   unsigned long result=0;
@@ -748,7 +748,7 @@ ComplexReductiveGroup::KGB_size(RealFormNbr rf,
    its square class)
 */
 unsigned long
-ComplexReductiveGroup::global_KGB_size() const
+InnerClass::global_KGB_size() const
 {
   unsigned long result=0;
   for (CartanNbr cn=0; cn<numCartanClasses(); ++cn)
@@ -762,16 +762,16 @@ ComplexReductiveGroup::global_KGB_size() const
 
 // weak real forms are grouped by square class, whose index |xi_square| finds
 // such forms share a central value for the square of their strong involutions
-cartanclass::square_class ComplexReductiveGroup::xi_square // class for square
+cartanclass::square_class InnerClass::xi_square // class for square
   (RealFormNbr rf) const
 { return d_fundamental.central_square_class(rf); }
 
-RealFormNbr ComplexReductiveGroup::square_class_repr // class elected real form
+RealFormNbr InnerClass::square_class_repr // class elected real form
   (cartanclass::square_class csc) const
 { return d_fundamental.realFormPartition().classRep(csc); }
 
 // the basic information stored for a real form is a grading of the simple roots
-Grading ComplexReductiveGroup::simple_roots_x0_compact(RealFormNbr rf) const
+Grading InnerClass::simple_roots_x0_compact(RealFormNbr rf) const
 {
 #if 1 // exploit that adjoint fiber group structure is rather transparent
   // Weak real forms are constructed as orbits in the adjoint fiber group. The
@@ -830,7 +830,7 @@ RatCoweight square_class_choice
 
 
 // find compact ones among imaginary simple roots for |G|, as defined by |coch|
-Grading compacts_for(const ComplexReductiveGroup& G, TorusElement coch)
+Grading compacts_for(const InnerClass& G, TorusElement coch)
 {
   const RootDatum& rd=G.rootDatum();
   Grading result;
@@ -856,7 +856,7 @@ TorusElement sample_square(const RootDatum& rd, Grading compacts)
 // some coweight $t$ with real form of $\exp(i\pi t)\delta_1$ in class |csc|
 // this becomes |g_rho_check()| value for all non-synthetic real forms in |csc|
 RatCoweight some_coch
-  (const ComplexReductiveGroup& G,cartanclass::square_class csc)
+  (const InnerClass& G,cartanclass::square_class csc)
 {
   const RootDatum& rd=G.rootDatum();
   auto gr = G.simple_roots_x0_compact(G.square_class_repr(csc));
@@ -872,7 +872,7 @@ RatCoweight some_coch
 
 // Find a |TorusPart|, assumed to exist, that induces a shift |diff| in grading
 // here |diff| grades the simple roots (but only imaginary ones are considered)
-TorusPart ComplexReductiveGroup::grading_shift_repr (Grading diff) const
+TorusPart InnerClass::grading_shift_repr (Grading diff) const
 {
   diff.slice(simple_roots_imaginary()); // discard complex roots
   const unsigned int c_rank=simple_roots_imaginary().count();
@@ -907,7 +907,7 @@ TorusPart ComplexReductiveGroup::grading_shift_repr (Grading diff) const
   return list of |TorusPart| values that represent their differences with |y|.
 */
 containers::sl_list<TorusPart>
-  ComplexReductiveGroup::torus_parts_for_grading_shift
+  InnerClass::torus_parts_for_grading_shift
     (const cartanclass::square_class csc,
      const cartanclass::FiberElt y, const cartanclass::AdjointFiberElt image)
   const
@@ -960,7 +960,7 @@ containers::sl_list<TorusPart> preimage
 
 // list stabiliser subgroup, in fundamental fiber group, of gradings for |rf|
 containers::sl_list<TorusPart>
-ComplexReductiveGroup::central_fiber(RealFormNbr rf) const
+InnerClass::central_fiber(RealFormNbr rf) const
 {
   const Fiber& fund_f= d_fundamental;
   const cartanclass::square_class csc = fund_f.central_square_class(rf);
@@ -973,7 +973,7 @@ ComplexReductiveGroup::central_fiber(RealFormNbr rf) const
 
   // and return shifts to other elements with same |toAdjoint| image as |y|
   return preimage(fund_f,csc,y,diff);
-} // |ComplexReductiveGroup::central_fiber|
+} // |InnerClass::central_fiber|
 
 
 /*
@@ -986,7 +986,7 @@ ComplexReductiveGroup::central_fiber(RealFormNbr rf) const
   |grading_shift_repr| find a |TorusPart| that will do this. This is the
   candidate to be standardised; torus element |coch| is needed for |minimum|.
   */
-TorusPart ComplexReductiveGroup::x0_torus_part(RealFormNbr rf) const
+TorusPart InnerClass::x0_torus_part(RealFormNbr rf) const
 {
   TorusElement t = // corresponds to (square class) base grading vector
     y_values::exp_pi(some_coch(*this,xi_square(rf)));
@@ -1015,7 +1015,7 @@ TorusPart ComplexReductiveGroup::x0_torus_part(RealFormNbr rf) const
 
 
 unsigned long
-ComplexReductiveGroup::block_size(RealFormNbr rf,
+InnerClass::block_size(RealFormNbr rf,
 				  RealFormNbr drf,
 				  const BitMap& Cartan_classes) const
 {
@@ -1035,7 +1035,7 @@ ComplexReductiveGroup::block_size(RealFormNbr rf,
 
 /*****************************************************************************
 
-        Chapter IV -- Functions declared in complexredgp.h
+        Chapter IV -- Functions declared in innerclass.h
 
 ******************************************************************************/
 
@@ -1199,7 +1199,7 @@ void Cayley_and_cross_part(RootNbrSet& Cayley,
   and also mark complex roots that have an even pairing with |coch|.
 */
 Grading grading_of_simples
-  (const ComplexReductiveGroup& G, const RatCoweight& coch)
+  (const InnerClass& G, const RatCoweight& coch)
 {
   const RootDatum& rd=G.rootDatum();
   Grading result;
@@ -1209,7 +1209,7 @@ Grading grading_of_simples
 }
 
 RealFormNbr real_form_of // who claims this KGB element?
-  (ComplexReductiveGroup& G, TwistedInvolution tw, // by value, modified
+  (InnerClass& G, TwistedInvolution tw, // by value, modified
    const RatCoweight& torus_factor,
    RatCoweight& coch // additional output
   )
@@ -1317,26 +1317,26 @@ unsigned long makeRepresentative(const Grading& gr,
 
 // Modify |v| through through involution associated to |tw|
 void twisted_act
-  (const ComplexReductiveGroup& G, const TwistedInvolution& tw,Weight& v)
+  (const InnerClass& G, const TwistedInvolution& tw,Weight& v)
 {
   G.involution_table().matrix(tw).apply_to(v);
 }
 
 void twisted_act
-  (const ComplexReductiveGroup& G, const TwistedInvolution& tw,RatWeight& v)
+  (const InnerClass& G, const TwistedInvolution& tw,RatWeight& v)
 {
   G.involution_table().matrix(tw).apply_to(v.numerator());
 }
 
 // Modify |v| through through involution associated to |tw|
 void twisted_act
-  (const ComplexReductiveGroup& G,Weight& v, const TwistedInvolution& tw)
+  (const InnerClass& G,Weight& v, const TwistedInvolution& tw)
 {
   G.involution_table().matrix(tw).right_mult(v);
 }
 
 void twisted_act
-  (const ComplexReductiveGroup& G,RatWeight& v, const TwistedInvolution& tw)
+  (const InnerClass& G,RatWeight& v, const TwistedInvolution& tw)
 {
   G.involution_table().matrix(tw).right_mult(v.numerator());
 }
@@ -1359,7 +1359,7 @@ void twisted_act
   transforming to it. This amounts to solving a system of linear equations
   mod 2.
 */
-void ComplexReductiveGroup::correlateForms(CartanNbr cn)
+void InnerClass::correlateForms(CartanNbr cn)
 {
   const RootSystem& rs = rootDatum();
   const TwistedWeylGroup& tW = twistedWeylGroup();
@@ -1403,9 +1403,9 @@ void ComplexReductiveGroup::correlateForms(CartanNbr cn)
 
   Cartan[cn].real_labels = rfl;
   assert(rfl[0]==quasisplit()); // adjoint base grading is always quasisplit
-} // |ComplexReductiveGroup::correlateForms|
+} // |InnerClass::correlateForms|
 
-void ComplexReductiveGroup::correlateDualForms(CartanNbr cn)
+void InnerClass::correlateDualForms(CartanNbr cn)
 {
   const RootSystem& rs = dualRootDatum();
   const TwistedWeylGroup& tW = dualTwistedWeylGroup();
@@ -1451,7 +1451,7 @@ void ComplexReductiveGroup::correlateDualForms(CartanNbr cn)
 
   Cartan[cn].dual_real_labels = rfl;
   assert(rfl[0]==0); // adjoint base grading is always quasisplit
-} // |ComplexReductiveGroup::correlateDualForms|
+} // |InnerClass::correlateDualForms|
 
 /*
   Check whether |ti| decomposes as the composition of the cross-action
@@ -1483,6 +1483,6 @@ bool checkDecomposition(const TwistedInvolution& ti,
 #endif
 
 
-} // |namespace complexredgp|
+} // |namespace innerclass|
 
 } // |namespace atlas|

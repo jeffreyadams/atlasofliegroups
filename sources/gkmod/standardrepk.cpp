@@ -1677,7 +1677,7 @@ void KhatContext::go(const StandardRepK& initial)
 ******************************************************************************/
 
 PSalgebra::PSalgebra(TitsElt base,
-		     const ComplexReductiveGroup& G)
+		     const InnerClass& G)
     : strong_inv(base)
     , cn(G.class_number(base.tw()))
     , sub_diagram() // class |RankFlags| needs no dimensioning

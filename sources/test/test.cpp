@@ -26,7 +26,7 @@
 #include "prerootdata.h"
 #include "rootdata.h"
 #include "cartanclass.h"
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "realredgp.h"
 
 #include "kgb.h"
@@ -234,7 +234,7 @@ void testrun_f()
     {
       PreRootDatum prd = *cit;
       WeightInvolution id(prd.rank()); // identity
-      ComplexReductiveGroup G(prd,id);
+      InnerClass G(prd,id);
       for (RealFormNbr rf=0; rf<G.numRealForms(); ++rf)
       {
 	RealReductiveGroup G_R(G,rf);
@@ -306,7 +306,7 @@ void poscoroots_rootbasis_f()
 
 void X_f()
 {
-  ComplexReductiveGroup& G=commands::currentComplexGroup();
+  InnerClass& G=commands::currentComplexGroup();
   kgb::global_KGB kgb(G); // build global Tits group, "all" square classes
   ioutils::OutputFile f;
   kgb_io::print_X(f,kgb);

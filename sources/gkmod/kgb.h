@@ -20,7 +20,7 @@ representing orbits of K on G/B.
 
 #include "gradings.h"	// containment in |KGBEltInfo|
 #include "hashtable.h"	// containment in |KGB_base|
-#include "complexredgp.h" // access to involution table
+#include "innerclass.h" // access to involution table
 #include "weyl.h"       // |weyl::TI_Entry::Pooltype|
 #include "tits.h"       // containment |GlobalTitsGroup|
 #include "y_values.h"   // containment |TorusElement|
@@ -57,7 +57,7 @@ class KGB_base
  protected: // available during construction from derived classes
   typedef unsigned int inv_index; // internal sequence number of involutions
 
-  const ComplexReductiveGroup& G; // hold a reference for convenience
+  const InnerClass& G; // hold a reference for convenience
 
   // per KGB element information
   struct EltInfo
@@ -95,7 +95,7 @@ class KGB_base
 
 
  protected: // constructor is only meant for use from derived classes
-  explicit KGB_base(const ComplexReductiveGroup& GC, unsigned int ss_rank)
+  explicit KGB_base(const InnerClass& GC, unsigned int ss_rank)
   : G(GC)
   , data(ss_rank)
   , info()
@@ -120,7 +120,7 @@ class KGB_base
   size_t size() const { return info.size(); } // number of KGB elements
   inv_index nr_involutions() const { return inv_nrs.size(); }
 
-  const ComplexReductiveGroup& complexGroup() const { return G; }
+  const InnerClass& complexGroup() const { return G; }
   const RootDatum& rootDatum() const;
   const WeylGroup& weylGroup() const;
   const TwistedWeylGroup& twistedWeylGroup() const;
@@ -240,9 +240,9 @@ class global_KGB : public KGB_base
   global_KGB(const global_KGB& org); // forbid copying
 
  public:
-  global_KGB(ComplexReductiveGroup& G, bool dual_twist=false);
+  global_KGB(InnerClass& G, bool dual_twist=false);
 
-  global_KGB(ComplexReductiveGroup& G,
+  global_KGB(InnerClass& G,
 	     const GlobalTitsElement& x,
 	     bool dual_twist=false); // generate KGB containing |x|
 

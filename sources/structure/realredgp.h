@@ -30,7 +30,7 @@ namespace realredgp {
 /* Represent a real form on a connected reductive complex group,
    determining a real reductive group
 
- An object of this class is determined by a ComplexReductiveGroup and the
+ An object of this class is determined by a InnerClass and the
  number of a real form; in addition it stores some data concerning the group
  of real points of the real form
 
@@ -49,7 +49,7 @@ class RealReductiveGroup
   // we do not own the complex group; a RealReductiveGroup should be seen
   // as dependent on a complex group; when the complex group changes,
   // the dependent RealReductiveGroup objects are invalidated
-  ComplexReductiveGroup& d_complexGroup;
+  InnerClass& d_complexGroup;
 
   RealFormNbr d_realForm; // our identification number
   topology::Connectivity d_connectivity; // characters of the component group
@@ -66,15 +66,15 @@ class RealReductiveGroup
  public:
 
 // constructors and destructors
-  RealReductiveGroup(ComplexReductiveGroup&, RealFormNbr);
-  RealReductiveGroup(ComplexReductiveGroup&, RealFormNbr,
+  RealReductiveGroup(InnerClass&, RealFormNbr);
+  RealReductiveGroup(InnerClass&, RealFormNbr,
 		     const RatCoweight& coch, TorusPart x0_torus_part);
   ~RealReductiveGroup(); // not inline: type incomplete; deletes pointers
 
 // accessors
-  const ComplexReductiveGroup& complexGroup() const { return d_complexGroup; }
+  const InnerClass& complexGroup() const { return d_complexGroup; }
   // following method forces |const| result, compare with |cbegin| methods
-  const ComplexReductiveGroup& ccomplexGroup() const { return d_complexGroup; }
+  const InnerClass& ccomplexGroup() const { return d_complexGroup; }
   RealFormNbr realForm() const { return d_realForm; }
   const RootDatum& rootDatum() const;
   const TitsCoset& basedTitsGroup() const { return *d_Tg; }
@@ -123,7 +123,7 @@ class RealReductiveGroup
 // manipulators
   void swap(RealReductiveGroup&);
 
-  ComplexReductiveGroup& complexGroup()
+  InnerClass& complexGroup()
     { return d_complexGroup; }
 
   const KGB& kgb();
@@ -139,7 +139,7 @@ class RealReductiveGroup
 //			   function declarations
 
 TorusPart minimal_torus_part
-  (const ComplexReductiveGroup& G, RealFormNbr wrf, RatCoweight coch,
+  (const InnerClass& G, RealFormNbr wrf, RatCoweight coch,
    TwistedInvolution tw, // by value, modified
    const RatCoweight& torus_factor
    );

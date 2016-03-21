@@ -66,7 +66,7 @@ Atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/utilities/bits.o \
  $(sources_dir)/utilities/bitset.o \
  $(sources_dir)/utilities/permutations.o \
- $(sources_dir)/structure/complexredgp.o \
+ $(sources_dir)/structure/innerclass.o \
  $(sources_dir)/structure/tits.o \
  $(sources_dir)/structure/cartanclass.o \
  $(sources_dir)/structure/weyl.o \

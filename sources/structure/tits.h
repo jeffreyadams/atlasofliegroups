@@ -158,7 +158,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
 
  public:
   // for implementing 'X' for inner class (when latter is fully constructed)
-  GlobalTitsGroup(const ComplexReductiveGroup& G);
+  GlobalTitsGroup(const InnerClass& G);
 
   // accessors
   size_t semisimple_rank() const { return alpha_v.size(); }
@@ -678,11 +678,11 @@ class TitsCoset
   const RootSystem& rs; // needed (only) for the |grading| method
 
  public:
-  TitsCoset(const ComplexReductiveGroup& G, Grading base_grading);
+  TitsCoset(const InnerClass& G, Grading base_grading);
 
-  TitsCoset(const ComplexReductiveGroup& G);// adjoint case
+  TitsCoset(const InnerClass& G);// adjoint case
 
-  TitsCoset(const ComplexReductiveGroup& G,
+  TitsCoset(const InnerClass& G,
 	    tags::DualTag);// dual adjoint case
 
   ~TitsCoset() { delete(my_Tits_group); }
@@ -751,7 +751,7 @@ class EnrichedTitsGroup : public TitsCoset
   bool is_compact(const TorusPart& x, RootNbr n) const
     { return not grading(TitsElt(titsGroup(),x),n); }
 
-  TitsElt backtrack_seed (const ComplexReductiveGroup& G,
+  TitsElt backtrack_seed (const InnerClass& G,
 			  RealFormNbr rf, size_t cn) const;
 
 }; // |class EnrichedTitsGroup|
