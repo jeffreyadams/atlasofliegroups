@@ -41,7 +41,7 @@
 #include "basic_io.h"
 #include "prettyprint.h"
 #include "interactive.h"
-#include "realform_io.h"
+#include "output.h"
 #include "kgb_io.h"
 #include "block_io.h"
 

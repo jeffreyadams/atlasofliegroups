@@ -27,7 +27,6 @@
 #include "dynkin.h"
 #include "lietype.h"
 #include "realredgp.h"
-#include "realredgp_io.h"
 #include "kgb.h"
 #include "kgb_io.h"
 #include "blocks.h"
@@ -213,7 +212,7 @@ void block_mode_entry() throw(EntryError)
     output::Interface& G_I = currentComplexInterface();
 
     // get dual real form
-    RealFormNbr drf = interactive::get_dual_real_form(G_I,G_R.realForm());
+    RealFormNbr drf = interactive::get_dual_real_form(G_I,G_C,G_R.realForm());
 
     dual_G_C_pointer=new ComplexReductiveGroup(G_C,tags::DualTag());
     dual_G_R_pointer=new RealReductiveGroup(*dual_G_C_pointer,drf);
@@ -235,10 +234,11 @@ void dualrealform_f()
   try
   {
     RealReductiveGroup& G_R = currentRealGroup();
+    ComplexReductiveGroup& G_C = G_R.complexGroup();
     output::Interface& G_I = currentComplexInterface();
 
     // get dual real form
-    RealFormNbr drf = interactive::get_dual_real_form(G_I,G_R.realForm());
+    RealFormNbr drf = interactive::get_dual_real_form(G_I,G_C,G_R.realForm());
 
     // we can call the swap method for rvalues, but not with and rvalue arg
     RealReductiveGroup(*dual_G_C_pointer,drf).swap(*dual_G_R_pointer);
@@ -432,7 +432,7 @@ void blockstabilizer_f()
   size_t cn=interactive::get_Cartan_class(blocks::common_Cartans(G_R,dGR));
 
   ioutils::OutputFile file;
-  realredgp_io::printBlockStabilizer
+  output::printBlockStabilizer
     (file,currentRealGroup(),cn,currentDualRealForm());
 }
 

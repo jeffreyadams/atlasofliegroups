@@ -16,14 +16,12 @@
 #include "complexredgp.h"
 #include "output.h"
 #include "realredgp.h"
-#include "realredgp_io.h"
 #include "emptymode.h"
 #include "error.h"
 #include "helpmode.h"
 #include "interactive.h"
 #include "io.h"
 #include "ioutils.h"
-#include "realform_io.h"
 #include "realmode.h"
 #include "rootdata.h"
 #include "kgb.h"
@@ -310,7 +308,8 @@ void help_f() // override more extensive help of empty mode by simple help
 // Print the matrix of blocksizes.
 void blocksizes_f()
 {
-  output::printBlockSizes(std::cout,currentComplexInterface());
+  output::printBlockSizes(std::cout,
+			  currentComplexGroup(),currentComplexInterface());
 }
 
 // Activates real mode (user will select real form)
@@ -350,7 +349,7 @@ void gradings_f()
   ioutils::OutputFile file;
 
   static_cast<std::ostream&>(file) << std::endl;
-  output::printGradings(file,cn,currentComplexInterface())
+  output::printGradings(file,G_C,cn,currentComplexInterface())
       << std::endl;
 
 }
@@ -365,7 +364,7 @@ void strongreal_f()
 
   ioutils::OutputFile file;
   file << "\n";
-  realredgp_io::printStrongReal
+  output::printStrongReal
     (file,
      currentComplexGroup(),
      currentComplexInterface().realFormInterface(),
@@ -378,7 +377,7 @@ void dualkgb_f()
   ComplexReductiveGroup& G_C = currentComplexGroup();
   output::Interface& G_I = currentComplexInterface();
 
-  RealFormNbr drf = interactive::get_dual_real_form(G_I,G_C.numRealForms());
+  RealFormNbr drf = interactive::get_dual_real_form(G_I,G_C,G_C.numRealForms());
 
   // the complex group must be in a variable: is non-const for real group
   ComplexReductiveGroup dG_C(G_C,tags::DualTag());

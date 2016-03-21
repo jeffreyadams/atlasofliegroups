@@ -11,67 +11,115 @@
 #ifndef OUTPUT_H  /* guard against multiple inclusions */
 #define OUTPUT_H
 
+#include <iostream>
+#include <iosfwd>
 
-
-#include "realform_io.h"	// containment of |Interface|s
+#include "../Atlas.h"
+#include "tags.h"
 
 namespace atlas {
 
-/******** function declarations *********************************************/
-
 namespace output {
 
-std::ostream& printBlockSizes(std::ostream&, Interface&);
+/******** function declarations *********************************************/
 
-std::ostream& printGradings(std::ostream&, size_t, Interface&);
+  class FormNumberMap;
+  class Interface;
 
-}
+std::ostream& printBlockSizes
+  (std::ostream&, ComplexReductiveGroup&, Interface&);
+
+
+std::ostream& printRealForms(std::ostream& strm, const FormNumberMap& m);
+
+std::ostream&
+printCartanClass(std::ostream&,
+		 const ComplexReductiveGroup&, size_t, output::Interface&);
+
+std::ostream& printFiber(std::ostream&, const Fiber&,
+			 const RealFormNbrList&);
+
+std::ostream& printGradings
+  (std::ostream&, ComplexReductiveGroup&, size_t, Interface&);
+
+std::ostream& printGradings(std::ostream&, const Fiber&,
+			    const RealFormNbrList&,
+			    const RootSystem&);
+
+
+std::ostream& printBlockStabilizer(std::ostream& strm,
+				   RealReductiveGroup& G_R,
+				   size_t cn,
+				   RealFormNbr dual_rf);
+
+std::ostream& printCartanClasses(std::ostream&,
+				 RealReductiveGroup& G_R,
+				 output::Interface&);
+
+std::ostream& printCartanOrder(std::ostream&,
+			       const RealReductiveGroup&);
+
+std::ostream& printRealWeyl(std::ostream& strm,
+			    RealReductiveGroup& G_R,
+			    size_t cn);
+
+std::ostream& printStrongReal(std::ostream& strm,
+			      ComplexReductiveGroup& G_C,
+			      const output::FormNumberMap& rfi,
+			      size_t cn);
 
 /******** type definitions **************************************************/
 
-namespace output {
+// an object to map an internal form number to an external number and name
+class FormNumberMap
+{
 
-class Interface {
+  RealFormNbrList d_in;
+  RealFormNbrList d_out;
 
- private:
-
-  ComplexReductiveGroup* d_complexGroup;
-
-  output::FormNumberMap d_realFormInterface;
-  output::FormNumberMap d_dualRealFormInterface;
+  std::vector<std::string> d_name; // real form names indexed by external number
 
  public:
 
 // constructors and destructors
-  Interface(ComplexReductiveGroup&, const lietype::Layout&);
+  FormNumberMap(const ComplexReductiveGroup&, const lietype::Layout&);
 
-  ~Interface() {}
-
-// copy, assignment and swap
-  void swap(Interface&);
+  FormNumberMap(const ComplexReductiveGroup&, const lietype::Layout&,
+		tags::DualTag);
 
 // accessors
-  const ComplexReductiveGroup& complexGroup() const {
-    return *d_complexGroup;
-  }
+  RealFormNbr in(RealFormNbr external_rf) const {  return d_in[external_rf]; }
+  RealFormNbr out(RealFormNbr internal_rf) const { return d_out[internal_rf]; }
 
-  const output::FormNumberMap& dualRealFormInterface() const {
-    return d_dualRealFormInterface;
-  }
+  const std::string& type_name(RealFormNbr external_rf) const
+  { return d_name[external_rf]; }
 
-  const output::FormNumberMap& realFormInterface() const {
-    return d_realFormInterface;
-  }
+  size_t numRealForms() const { return d_in.size(); }
 
-// manipulators
-  ComplexReductiveGroup& complexGroup() {
-    return *d_complexGroup;
-  }
+// no manipulators
+};
+
+class Interface : public std::pair<FormNumberMap,FormNumberMap>
+{
+  typedef std::pair<FormNumberMap,FormNumberMap> base;
+ public:
+
+// constructors and destructors
+  Interface(ComplexReductiveGroup& G, const lietype::Layout& lo)
+  : base(FormNumberMap(G,lo),FormNumberMap(G,lo,tags::DualTag()))
+  {}
+
+
+  const output::FormNumberMap& realFormInterface() const
+  { return this->first; }
+
+  const output::FormNumberMap& dualRealFormInterface() const
+  { return this->second; }
 
 };
 
-}
+} // |namespace output|
 
-}
+} // |namespace atlas|
 
 #endif

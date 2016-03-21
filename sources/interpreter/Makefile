@@ -76,7 +76,6 @@ Atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/structure/tori.o \
  $(sources_dir)/structure/weylsize.o \
  $(sources_dir)/structure/gradings.o \
- $(sources_dir)/io/realform_io.o \
  $(sources_dir)/structure/realredgp.o \
  $(sources_dir)/structure/topology.o \
  $(sources_dir)/io/prettyprint.o \
@@ -86,11 +85,9 @@ Atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/gkmod/bruhat.o \
  $(sources_dir)/io/ioutils.o \
  $(sources_dir)/io/block_io.o \
- $(sources_dir)/io/realredgp_io.o \
  $(sources_dir)/io/output.o \
  $(sources_dir)/io/realweyl.o \
  $(sources_dir)/io/realweyl_io.o \
- $(sources_dir)/io/cartan_io.o \
  $(sources_dir)/gkmod/klsupport.o \
  $(sources_dir)/gkmod/kl.o \
  $(sources_dir)/gkmod/wgraph.o \

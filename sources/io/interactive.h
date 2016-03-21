@@ -62,6 +62,7 @@ namespace interactive {
     throw(error::InputError);
 
   RealFormNbr get_dual_real_form(output::Interface&,
+				 const ComplexReductiveGroup& G,
 				 RealFormNbr rf)
     throw(error::InputError);
 

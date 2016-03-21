@@ -214,7 +214,6 @@ $(realex_dir)/built-in-types.o $(realex_dir)/built-in-types.tex: \
  $(sources_dir)/io/kl_io.h \
  $(sources_dir)/io/prettyprint.h \
  $(sources_dir)/io/realform_io.h \
- $(sources_dir)/io/realredgp_io.h \
  $(sources_dir)/io/wgraph_io.h
 
 $(realex_dir)/main.o: $(realex_dir)/main.cpp

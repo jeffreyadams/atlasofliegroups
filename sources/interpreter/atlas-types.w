@@ -1603,7 +1603,7 @@ necessary in order to obtain such information; it will be recorded in values
 of type |output::FormNumberMap|.
 
 @< Includes... @>=
-#include "realform_io.h"
+#include "output.h"
 
 @~The class |inner_class_value| will be the first Atlas type where we deviate
 from the previously used scheme of holding an Atlas library object with the
@@ -1972,7 +1972,7 @@ void push_name_list(const output::FormNumberMap& interface)
 { own_row result = std::make_shared<row_value>(0);
   for (size_t i=0; i<interface.numRealForms(); ++i)
     result->val.emplace_back
-      (std::make_shared<string_value>(interface.typeName(i)));
+      (std::make_shared<string_value>(interface.type_name(i)));
   push_value(std::move(result));
 }
 @)
@@ -2197,7 +2197,7 @@ void real_form_value::print(std::ostream& out) const
   if (val.isQuasisplit())
     out << (val.isSplit() ? "" : "quasi") << "split ";
   out << "real group with Lie algebra '" @|
-      << parent.interface.typeName(parent.interface.out(val.realForm())) @|
+      << parent.interface.type_name(parent.interface.out(val.realForm())) @|
       << '\'' ;
 }
 
@@ -2660,11 +2660,11 @@ void Cartan_involution_wrapper(expression_base::level l)
 
 
 @ This function and the following provide the functionality of the \.{Fokko}
-command \.{cartan}. They are based on |cartan_io::printCartanClass|, but
+command \.{cartan}. They are based on |output::printCartanClass|, but
 rewritten to take into account the fact that we do not know about |Interface|
 objects for complex groups, and such that a usable value is returned. We omit
 in our function {\it Cartan\_info} the data printed in |printCartanClass| in
-the final call to |cartan_io::printFiber| (namely all the real forms for which
+the final call to |output::printFiber| (namely all the real forms for which
 this Cartan class exists with the corresponding part of the adjoint fiber
 group), relegating it instead to a second function {\it fiber\_part} that
 operates on a per-real-form basis. This separation seems more natural in a
@@ -2709,7 +2709,7 @@ void Cartan_info_wrapper(expression_base::level l)
 
 @ A functionality that is implicit in the Atlas command \.{cartan} is the
 enumeration of all real forms corresponding to a given Cartan class. While
-|cartan_io::printFiber| traverses the real forms in the order corresponding to
+|output::printFiber| traverses the real forms in the order corresponding to
 the parts of the partition |f.weakReal()| for the fiber~|f| associated to the
 Cartan class, it is not necessary to use this order, and we can instead simply
 traverse all real forms and check whether the given Cartan class exists for
@@ -2816,7 +2816,7 @@ void square_classes_wrapper(expression_base::level l)
 
 @ The function |print_gradings| gives on a per-real-form basis the
 functionality of the Atlas command \.{gradings} that is implemented by
-|output::printGradings| and |cartan_io::printGradings|. It therefore
+|output::printGradings| and |output::printGradings|. It therefore
 takes, like |fiber_partition|, a Cartan class and a real form as parameter. Its
 output consist of a list of $\Zee/2\Zee$-gradings of each of the fiber group
 elements in the part corresponding to the real form, where each grading is a
@@ -5064,7 +5064,7 @@ persistent data) so for the moment it should not be so bad.
 @ The \.{realweyl} and \.{strongreal} commands require a real form and a
 compatible Cartan class.
 
-@h "realredgp_io.h"
+@h "output.h"
 @< Local function def...@>=
 void print_realweyl_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
@@ -5080,7 +5080,7 @@ void print_realweyl_wrapper(expression_base::level l)
     ("Cartan class not defined for real form");
 @.Cartan class not defined...@>
 @)
-  realredgp_io::printRealWeyl (*output_stream,rf->val,cc->number);
+  output::printRealWeyl (*output_stream,rf->val,cc->number);
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
@@ -5090,7 +5090,7 @@ void print_realweyl_wrapper(expression_base::level l)
 void print_strongreal_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
 @)
- realredgp_io::printStrongReal
+ output::printStrongReal
     (*output_stream,cc->parent.val,cc->parent.interface,cc->number);
 @)
   if (l==expression_base::single_value)
@@ -5143,16 +5143,16 @@ void print_blocku_wrapper(expression_base::level l)
 @ The \.{blockstabilizer} command has a slightly different calling scheme than
 \.{block} and its friends, in that it requires a block and a Cartan class. The
 block itself is not actually used, just the real form and dual real form it
-holds. The signature of |realredgp_io::printBlockStabilizer| is a bit strange,
+holds. The signature of |output::printBlockStabilizer| is a bit strange,
 as it requires a |RealReductiveGroup| argument for the real form, but only
 numbers for the Cartan class and the dual real form (but this is
 understandable, as information about the inner class must be transmitted in
 some way). In fact it used to be even a bit stranger, in that the real form
-was passed in the form of a |realredgp_io::Interface| value, a class (no
+was passed in the form of a |output::Interface| value, a class (no
 longer existent, and not to be confused with |output::FormNumberMap|,
 which does not specify a particular real form) that we do not use in this
-program; since only the |realGroup| field of the |realredgp_io::Interface| was
-used in |realredgp_io::printBlockStabilizer|, we have changed its parameter
+program; since only the |realGroup| field of the |output::Interface| was
+used in |output::printBlockStabilizer|, we have changed its parameter
 specification to allow it to be called easily here.
 
 @< Local function def...@>=
@@ -5160,7 +5160,7 @@ void print_blockstabilizer_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
   shared_Block b = get<Block_value>();
 @)
-  realredgp_io::printBlockStabilizer
+  output::printBlockStabilizer
    (*output_stream, @| b->rf->val,cc->number,b->dual_rf->val.realForm());
 @)
   if (l==expression_base::single_value)

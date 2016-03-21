@@ -29,7 +29,6 @@
 #include "dynkin.h"
 #include "lietype.h"
 #include "realredgp.h"
-#include "realredgp_io.h"
 #include "kgb.h"
 #include "kgb_io.h"
 #include "blocks.h"

@@ -15,7 +15,6 @@
 #include <sstream>
 
 #include "basic_io.h"
-#include "cartan_io.h"
 #include "cartanclass.h"
 #include "complexredgp.h"
 #include "output.h"
@@ -29,6 +28,7 @@
 #include "size.h"
 #include "tori.h"
 #include "weylsize.h"
+
 
 /*****************************************************************************
 
@@ -120,59 +120,6 @@ std::ostream& print
 }
 */
 
-
-
-/*
-  Synopsis: produces the file as posted on the Atlas website.
-
-  Precondition: G.fullCartan() has been called successfully.
-*/
-std::ostream& printBlockData(std::ostream& strm,
-			     output::Interface& CI)
-{
-  const ComplexReductiveGroup& G = CI.complexGroup();
-  const RootDatum& rd = G.rootDatum();
-
-  LieType lt = rd.Lie_type();
-
-  strm << std::setw(25) << "" << "Block data"
-       << std::endl;
-
-  strm << std::setw(16) << "" << "for the";
-
-  if (rd.isSimplyConnected())
-    strm << " simply connected";
-  else if (rd.isAdjoint())
-    strm << " adjoint";
-
-  strm << " group of type " << lt
-       << std::endl;
-
-  strm << std::endl;
-
-  printCartanClasses(strm,CI);
-
-  return strm;
-}
-
-
-/*
-  Prints information about the conjugacy classes of Cartan subgroups.
-*/
-std::ostream& printCartanClasses(std::ostream& strm,
-				 output::Interface& CI)
-{
-  const ComplexReductiveGroup& G = CI.complexGroup();
-
-  for (unsigned long j = 0; j < G.numCartanClasses(); ++j) {
-    strm << "Cartan #" << j << ":" << std::endl;
-    cartan_io::printCartanClass(strm,j,CI);
-    if (j+1 < G.numCartanClasses())
-      strm << std::endl << std::endl;
-  }
-
-  return strm;
-}
 
 
 /*

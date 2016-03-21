@@ -460,7 +460,7 @@ RealFormNbr get_real_form(output::Interface& CI)
 
   // if there is only one choice, make it
   if (rfi.numRealForms() == 1) {
-    std::cout << "there is a unique real form: " << rfi.typeName(0)
+    std::cout << "there is a unique real form: " << rfi.type_name(0)
 	      << std::endl;
     return 0;
   }
@@ -478,7 +478,7 @@ RealFormNbr get_real_form(output::Interface& CI)
   {
     std::cout << "(weak) real forms are:" << std::endl;
     for (size_t i = 0; i < rfi.numRealForms(); ++i)
-      std::cout << i << ": " << rfi.typeName(i) << std::endl;
+      std::cout << i << ": " << rfi.type_name(i) << std::endl;
 
     r=get_bounded_int
       (realform_input_buffer,"enter your choice: ",rfi.numRealForms());
@@ -498,10 +498,10 @@ RealFormNbr get_real_form(output::Interface& CI)
   Throws an InputError if the interaction with the user fails.
 */
 RealFormNbr get_dual_real_form(output::Interface& CI,
+			       const ComplexReductiveGroup& G,
 			       RealFormNbr rf)
   throw(error::InputError)
 {
-  ComplexReductiveGroup& G = CI.complexGroup();
   bool restrict = rf<G.numRealForms();
   RealFormNbrList drfl;
   if (restrict)
@@ -514,7 +514,7 @@ RealFormNbr get_dual_real_form(output::Interface& CI,
   {
     RealFormNbr rfn = restrict ? drfl[0] : 0;
     std::cout << "there is a unique dual real form choice: "
-	      << drfi.typeName(drfi.out(rfn)) << std::endl;
+	      << drfi.type_name(drfi.out(rfn)) << std::endl;
     return rfn;
   }
 
@@ -545,7 +545,7 @@ RealFormNbr get_dual_real_form(output::Interface& CI,
     std::cout << "possible (weak) dual real forms are:" << std::endl;
 
     for (BitMap::iterator it = vals.begin(); it(); ++it)
-      std::cout << *it << ": " << drfi.typeName(*it) << std::endl;
+      std::cout << *it << ": " << drfi.type_name(*it) << std::endl;
     r = get_int_in_set("enter your choice: ",vals);
   }
 

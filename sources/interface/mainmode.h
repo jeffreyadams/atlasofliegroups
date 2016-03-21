@@ -28,8 +28,7 @@ namespace commands {
   ComplexReductiveGroup& currentComplexGroup();
   ComplexReductiveGroup& current_dual_group();
   output::Interface& currentComplexInterface();
-  void replaceComplexGroup(ComplexReductiveGroup*
-			   ,output::Interface*);
+  void replaceComplexGroup(ComplexReductiveGroup*,output::Interface*);
 
 } // |namespace commands|
 
