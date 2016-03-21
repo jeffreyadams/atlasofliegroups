@@ -258,7 +258,7 @@ class Block : public Block_base
  public:
   // use one of the following two pseudo contructors to build |Block| values
   static Block build // pseudo contructor with small (and forgotten) KGB sets
-    (ComplexReductiveGroup&, RealFormNbr rf, RealFormNbr drf);
+    (InnerClass&, RealFormNbr rf, RealFormNbr drf);
 
   static Block build // pseudo contructor with stored KGB sets
     (RealReductiveGroup& G_R, RealReductiveGroup& dG_R);
@@ -330,11 +330,11 @@ class param_block : public Block_base // blocks of parameters
   param_block(const Rep_context& rc, unsigned int rank);
 
   // auxiliary for construction
-  void compute_duals(const ComplexReductiveGroup& G,const SubSystem& rs);
+  void compute_duals(const InnerClass& G,const SubSystem& rs);
 
  public:
   // "inherited" accessors
-  const ComplexReductiveGroup& complexGroup() const;
+  const InnerClass& complexGroup() const;
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& realGroup() const;
 

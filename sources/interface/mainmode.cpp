@@ -13,17 +13,15 @@
 #include "test.h"     // to absorb test commands
 
 #include "basic_io.h"
-#include "complexredgp.h"
-#include "complexredgp_io.h"
+#include "innerclass.h"
+#include "output.h"
 #include "realredgp.h"
-#include "realredgp_io.h"
 #include "emptymode.h"
 #include "error.h"
 #include "helpmode.h"
 #include "interactive.h"
 #include "io.h"
 #include "ioutils.h"
-#include "realform_io.h"
 #include "realmode.h"
 #include "rootdata.h"
 #include "kgb.h"
@@ -47,10 +45,10 @@ namespace commands {
   with the "type" command, which amounts to exiting and re-entering the main
   mode.
 
-  NOTE : it could be useful to have several active groups simultaneously, say
-  for comparison purposes. This should be easy to do (an easy scheme would
-  be for instance to have "first", "second" switch between two groups; but
-  more sophisticated things are possible.)
+  NOTE (by Fokko): it could be useful to have several active groups
+  simultaneously, say for comparison purposes. This should be easy to do (an
+  easy scheme would be for instance to have "first", "second" switch between
+  two groups; but more sophisticated things are possible.)
 
 *****************************************************************************/
 
@@ -82,9 +80,9 @@ namespace {
   // local variables
   // these have been changed to pointers to avoid swapping of G_C
 
-  ComplexReductiveGroup* G_C_pointer=NULL;
-  ComplexReductiveGroup* dual_G_C_pointer=NULL;
-  complexredgp_io::Interface* G_I_pointer=NULL;
+  InnerClass* G_C_pointer=NULL;
+  InnerClass* dual_G_C_pointer=NULL;
+  output::Interface* G_I_pointer=NULL;
 
 } // |namespace|
 
@@ -95,27 +93,27 @@ namespace {
 
 ******************************************************************************/
 
-ComplexReductiveGroup& currentComplexGroup()
+InnerClass& currentComplexGroup()
 
 {
   return *G_C_pointer;
 }
 
-ComplexReductiveGroup& current_dual_group()
+InnerClass& current_dual_group()
 {
   if (dual_G_C_pointer==NULL)
-    dual_G_C_pointer = new ComplexReductiveGroup
+    dual_G_C_pointer = new InnerClass
       (currentComplexGroup(), tags::DualTag());
   return *dual_G_C_pointer;
 }
 
-complexredgp_io::Interface& currentComplexInterface()
+output::Interface& currentComplexInterface()
 {
   return *G_I_pointer;
 }
 
-void replaceComplexGroup(ComplexReductiveGroup* G
-			,complexredgp_io::Interface* I)
+void replaceComplexGroup(InnerClass* G
+			,output::Interface* I)
 {
   delete G_C_pointer;
   delete dual_G_C_pointer;
@@ -310,7 +308,8 @@ void help_f() // override more extensive help of empty mode by simple help
 // Print the matrix of blocksizes.
 void blocksizes_f()
 {
-  complexredgp_io::printBlockSizes(std::cout,currentComplexInterface());
+  output::printBlockSizes(std::cout,
+			  currentComplexGroup(),currentComplexInterface());
 }
 
 // Activates real mode (user will select real form)
@@ -322,27 +321,27 @@ void realform_f()
 
 void showrealforms_f()
 {
-  const realform_io::Interface& rfi =
+  const output::FormNumberMap& rfi =
     currentComplexInterface().realFormInterface();
 
   std::cout << "(weak) real forms are:" << std::endl;
-  realform_io::printRealForms(std::cout,rfi);
+  output::printRealForms(std::cout,rfi);
 }
 
 void showdualforms_f()
 {
-  const realform_io::Interface& rfi =
+  const output::FormNumberMap& rfi =
     currentComplexInterface().dualRealFormInterface();
 
   std::cout << "(weak) dual real forms are:" << std::endl;
-  realform_io::printRealForms(std::cout,rfi);
+  output::printRealForms(std::cout,rfi);
 }
 
 
 // Print the gradings associated to the weak real forms.
 void gradings_f()
 {
-  ComplexReductiveGroup& G_C = currentComplexGroup();
+  InnerClass& G_C = currentComplexGroup();
 
   // get Cartan class; abort if unvalid
   size_t cn=interactive::get_Cartan_class(G_C.Cartan_set(G_C.quasisplit()));
@@ -350,7 +349,7 @@ void gradings_f()
   ioutils::OutputFile file;
 
   static_cast<std::ostream&>(file) << std::endl;
-  complexredgp_io::printGradings(file,cn,currentComplexInterface())
+  output::printGradings(file,G_C,cn,currentComplexInterface())
       << std::endl;
 
 }
@@ -358,14 +357,14 @@ void gradings_f()
 // Print information about strong real forms.
 void strongreal_f()
 {
-  ComplexReductiveGroup& G_C = currentComplexGroup();
+  InnerClass& G_C = currentComplexGroup();
 
   // get Cartan class; abort if unvalid
   size_t cn=interactive::get_Cartan_class(G_C.Cartan_set(G_C.quasisplit()));
 
   ioutils::OutputFile file;
   file << "\n";
-  realredgp_io::printStrongReal
+  output::printStrongReal
     (file,
      currentComplexGroup(),
      currentComplexInterface().realFormInterface(),
@@ -375,13 +374,13 @@ void strongreal_f()
 // Print a kgb table for a dual real form.
 void dualkgb_f()
 {
-  ComplexReductiveGroup& G_C = currentComplexGroup();
-  complexredgp_io::Interface& G_I = currentComplexInterface();
+  InnerClass& G_C = currentComplexGroup();
+  output::Interface& G_I = currentComplexInterface();
 
-  RealFormNbr drf = interactive::get_dual_real_form(G_I,G_C.numRealForms());
+  RealFormNbr drf = interactive::get_dual_real_form(G_I,G_C,G_C.numRealForms());
 
   // the complex group must be in a variable: is non-const for real group
-  ComplexReductiveGroup dG_C(G_C,tags::DualTag());
+  InnerClass dG_C(G_C,tags::DualTag());
   RealReductiveGroup dG(dG_C,drf);
 
   std::cout << "dual kgbsize: " << dG.KGB_size() << std::endl;
@@ -399,8 +398,8 @@ void type_f()
 {
   try
   {
-    ComplexReductiveGroup* G;
-    complexredgp_io::Interface* I;
+    InnerClass* G;
+    output::Interface* I;
     interactive::get_group_type(G,I);
     replaceComplexGroup(G,I);
     drop_to(main_mode); // drop invalidated descendant modes if called from them

@@ -596,7 +596,7 @@ the new denominator~|d|.
 @*2 Specifying inner classes. Now we move ahead a bit in the theory, from
 functions that help in building root data to functions that help defining
 (inner classes of) real forms. The first of such functions is
-|lietype::involution|, which takes a Lie type and a |InnerClassType|
+|lietype::involution|, which takes a Lie type and an |InnerClassType|
 (a vector of characters describing the kind of involution wanted) and produces
 a matrix describing the involution, defined on the weight lattice for the
 simply connected group of the given type. That function supposes its arguments
@@ -1264,18 +1264,19 @@ install_function(integrality_points_wrapper
                 ,@|"integrality_points","(RootDatum,ratvec->[rat])");
 
 @*1 A type for complex reductive groups equipped with an involution.
-We shall now go ahead to define a primitive type holding a
-|ComplexReductiveGroup|, which represents a complex reductive
-group equipped with an involution, which defines an ``inner class'' of real
-forms for that group. We can construct such an object from a root datum and an
-involution. In the Atlas software such involutions are entered indirectly via
-a user interaction, and the way it was constructed is stored and used for
-certain purposes. For maximal flexibility, we want to be able to provide an
-involution produced in any way we like. This means there is some extra work to
-do.
+%
+We shall now go ahead to define a primitive type holding an |InnerClass|
+object, which represents a complex reductive group equipped with a
+distinguished involution defining an ``inner class'' of real forms for that
+group. We can construct such an object from a based root datum and an
+involution of it. In the \.{Fokko} program, such involutions are entered
+indirectly via a user interaction, and the way it was constructed is stored
+and used for certain purposes. For maximal flexibility, we want to be able to
+provide an involution produced in any way we like. This means there is some
+extra work to do.
 
 @< Includes... @>=
-#include "complexredgp.h"
+#include "innerclass.h"
 
 @*2 Analysing involutions. Our constructor for the current atlas type must
 do checking to see that a valid involution is entered, and an analysis of the
@@ -1597,19 +1598,19 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 
 @*2 Storing the inner class values.
 Although abstractly an inner class value is described completely by an object
-of type |ComplexReductiveGroup|, we shall need to record additional
+of type |InnerClass|, we shall need to record additional
 information in order to be able to present meaningful names for the real forms
 and dual real forms in this inner class. The above analysis of involutions was
 necessary in order to obtain such information; it will be recorded in values
-of type |realform_io::Interface|.
+of type |output::FormNumberMap|.
 
 @< Includes... @>=
-#include "realform_io.h"
+#include "output.h"
 
 @~The class |inner_class_value| will be the first Atlas type where we deviate
 from the previously used scheme of holding an Atlas library object with the
 main value in a data member |val|. The reason is that the copy constructor for
-|ComplexReductiveGroup| is private (and nowhere defined), so that the
+|InnerClass| is private (and nowhere defined), so that the
 straightforward definition of a copy constructor for such an Atlas type would
 not work, and the copy constructor is necessary for the |clone| method. (In
 fact, now that normal manipulation of values involves duplicating shared
@@ -1626,7 +1627,7 @@ are indissoluble, we use references for the members |val|, |dual| and
 as a side effect generate |CartanClass| objects in the inner class, whence
 they are technically manipulators rather than accessors.
 
-The main constructor takes a unique-pointer to a |ComplexReductiveGroup| as
+The main constructor takes a unique-pointer to an |InnerClass| as
 argument, as a reminder that the caller gives up ownership of this pointer
 that should come from a call to~|new|; this pointer will henceforth be owned
 by the |inner_class_value| constructed, in shared ownership with any values
@@ -1637,7 +1638,7 @@ computed by |check_involution| above, in order to ensure its validity.
 Occasionally we shall need to refer to the dual inner class (for the dual
 group); since the construction of an instance takes some work, we do not wish
 to repeat that every time the dual is needed, so we create the dual
-|ComplexReductiveGroup| value upon construction of the
+|InnerClass| value upon construction of the
 |inner_class_value| and store it in the |dual| field where it will be
 available as needed.
 
@@ -1649,16 +1650,16 @@ containing class exists.
 
 @< Type definitions @>=
 struct inner_class_value : public value_base
-{ ComplexReductiveGroup& val;
-  ComplexReductiveGroup& dual;
+{ InnerClass& val;
+  InnerClass& dual;
   size_t& ref_count;
 @)
   lietype::LieType rd_type;
   lietype::InnerClassType ic_type;
-  const realform_io::Interface interface,dual_interface;
+  const output::FormNumberMap interface,dual_interface;
 @)
   inner_class_value  // main constructor
-   (std::unique_ptr<ComplexReductiveGroup> G, const lietype::Layout& lo);
+   (std::unique_ptr<InnerClass> G, const lietype::Layout& lo);
   ~inner_class_value();
 @)
   virtual void print(std::ostream& out) const;
@@ -1707,17 +1708,17 @@ a smart pointer until the construction succeeds.
 
 @< Function def...@>=
 inner_class_value::inner_class_value
-  (std::unique_ptr<ComplexReductiveGroup> g,
+  (std::unique_ptr<InnerClass> g,
    const lietype::Layout& lo)
 @/: val(*g)
-, dual(*new ComplexReductiveGroup(*g,tags::DualTag()))
+, dual(*new InnerClass(*g,tags::DualTag()))
 @/, ref_count(*new size_t(1))
 @/, rd_type(lo.d_type), ic_type(lo.d_inner)
 , interface(*g,lo), dual_interface(*g,lo,tags::DualTag())
  {@; g.release(); } // now that we own |g|, release the unique-pointer
 
 @ We allow construction of a dual |inner_class_value|. Since it can share the
-two fields referring to objects of type |ComplexReductiveGroup|
+two fields referring to objects of type |InnerClass|
 in the opposite order, we can consider it as a member of the same reference
 counted family, and share the |ref_count| field. This means this constructor
 is more like the copy constructor than like the main constructor, and in
@@ -1734,7 +1735,7 @@ inner_class_value::inner_class_value(const inner_class_value& v,tags::DualTag)
 {@; ++ref_count; }
 
 
-@ One of the most practical informations about a |ComplexReductiveGroup|,
+@ One of the most practical informations about an |InnerClass|,
 which is available directly after its construction, is the number of real
 forms in the inner class defined by it; we print this information when a
 |inner_class_value| is printed.
@@ -1757,10 +1758,10 @@ applied to the matrix, since the test does not actually modify its matrix
 argument. (The |weyl::Twist| value returned by |check_involution| is only
 sufficient to determine the desired |M| in the semisimple case, so it cannot
 be used here.) Then the root datum and matrix are passed to a
-|ComplexReductiveGroup| constructor that the library provides specifically for
+|InnerClass| constructor that the library provides specifically for
 this purpose, and which makes a copy of the root datum; the \.{Fokko} program
 instead uses a constructor using a |PreRootDatum| that constructs the
-|RootDatum| directly into the |ComplexReductiveGroup|. Using that constructor
+|RootDatum| directly into the |InnerClass|. Using that constructor
 here would be cumbersome and even less efficient then copying the existing
 root datum.
 
@@ -1776,8 +1777,8 @@ void fix_involution_wrapper(expression_base::level l)
 @)
   for (unsigned int i=0; i<ww.size(); ++i) // apply elements in generation order
     rd->val.simple_reflect(ww[i],M);
-  std::unique_ptr<ComplexReductiveGroup>
-    G(new ComplexReductiveGroup(rd->val,M));
+  std::unique_ptr<InnerClass>
+    G(new InnerClass(rd->val,M));
   push_value(std::make_shared<inner_class_value>(std::move(G),lo));
 }
 
@@ -1797,8 +1798,8 @@ void twisted_involution_wrapper(expression_base::level l)
 @)
   for (unsigned int i=0; i<ww.size(); ++i) // apply elements in generation order
     rd->val.simple_reflect(ww[i],M);
-  std::unique_ptr<ComplexReductiveGroup>
-    G(new ComplexReductiveGroup(rd->val,M));
+  std::unique_ptr<InnerClass>
+    G(new InnerClass(rd->val,M));
   push_value(std::make_shared<inner_class_value>(std::move(G),lo));
   push_value(std::make_shared<vector_value>(std::vector<int>(ww.begin(),ww.end())));
   if (l==expression_base::single_value)
@@ -1842,8 +1843,8 @@ void set_type_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return; // bow out now all possible errors are passed
 @)
-  std::unique_ptr<ComplexReductiveGroup>@|
-    G(new ComplexReductiveGroup(rd->val,M->val));
+  std::unique_ptr<InnerClass>@|
+    G(new InnerClass(rd->val,M->val));
   push_value(std::make_shared<inner_class_value>(std::move(G),lo));
 }
 
@@ -1969,11 +1970,11 @@ the group itself and for the dual group, we define an auxiliary function that
 produces the list, and then use it twice.
 
 @< Local function def...@>=
-void push_name_list(const realform_io::Interface& interface)
+void push_name_list(const output::FormNumberMap& interface)
 { own_row result = std::make_shared<row_value>(0);
   for (size_t i=0; i<interface.numRealForms(); ++i)
     result->val.emplace_back
-      (std::make_shared<string_value>(interface.typeName(i)));
+      (std::make_shared<string_value>(interface.type_name(i)));
   push_value(std::move(result));
 }
 @)
@@ -2056,7 +2057,7 @@ void occurrence_matrix_wrapper(expression_base::level l)
 }
 
 @ We do the same for dual real forms. Note that we had to introduce the method
-|dualCartanSet| for |ComplexReductiveGroup| in order to be able
+|dualCartanSet| for |InnerClass| in order to be able
 to write this function.
 
 @< Local function def...@>=
@@ -2127,7 +2128,7 @@ connected complex reductive group; the corresponding Atlas class is called
 @*2 Class definition.
 The layout of this type of value is different from what we have seen before.
 An Atlas object of class |RealReductiveGroup| is dependent upon another Atlas
-object to which it stores a pointer, which is of type |ComplexReductiveGroup|,
+object to which it stores a pointer, which is of type |InnerClass|,
 so we must make sure that the object pointed to cannot disappear before it
 does. The easiest way to do this is to place an |inner_class_value| object
 |parent| inside the |real_form_value| class that we shall now define; the
@@ -2139,27 +2140,18 @@ fields. To remind us that the |parent| is not there to be changed by us, we
 declare it |const|. The object referred to may in fact undergo internal change
 however, via manipulators of the |val| field.
 
-The |cocharacter| field is a recent addition to the structure, allowing us to
-distinguish between several strong real forms associated to the same weak real
-form; see synthetic real forms below. We therefore provide two constructors:
-the first computes |cocharacter| from a grading giving the weak real form, and
-another where |cocharacter| is explicitly provided; it is used for synthetic
-real forms.
-
 @< Type definitions @>=
 struct real_form_value : public value_base
 { const inner_class_value parent;
   RealReductiveGroup val;
-  const TorusElement cocharacter;
 @)
   real_form_value(const inner_class_value& p,RealFormNbr f) @/
   : parent(p), val(p.val,f)
-  , cocharacter(y_values::exp_pi(p.val.base_grading_vector(f)))
   , rt_p(nullptr) @+{}
   real_form_value
-    (const inner_class_value& p,RealFormNbr f, const TorusElement& coch) @/
-  : parent(p), val(p.val,f)
-  , cocharacter(coch)
+    (const inner_class_value& p,RealFormNbr f
+    ,const RatCoweight& coch, TorusPart tp) @/
+  : parent(p), val(p.val,f,coch,tp)
   , rt_p(nullptr) @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -2207,7 +2199,7 @@ void real_form_value::print(std::ostream& out) const
   if (val.isQuasisplit())
     out << (val.isSplit() ? "" : "quasi") << "split ";
   out << "real group with Lie algebra '" @|
-      << parent.interface.typeName(parent.interface.out(val.realForm())) @|
+      << parent.interface.type_name(parent.interface.out(val.realForm())) @|
       << '\'' ;
 }
 
@@ -2300,26 +2292,21 @@ imply that a standard choice for the ``infinitesimal cocharacter'' for the
 real from must differ by ${}^\vee\!\rho$ from the value produced here (and the
 |cocharacter| field that stores it does not really have the right name).
 
-We take care to ensure that the coweight returned is dominant, while remaining
+We used to ensure that the coweight returned is dominant, while remaining
 in the coset of $2X_*$ defined by |rf->cocharacter| so that the torus element
-$\exp(\pi\ii t)$ giving the actual base grading is unaffected.
+$\exp(\pi\ii t)$ giving the actual base grading is unaffected. There is
+however no obvious best way to do this, and the easy way that used to be
+employed could give coweights rather far from inside the dominant chamber; in
+addition this shift may destroy the ${}^t\xi$-invariance of |rf->cocharacter|
+that is hard to reestablish without risk of leaving the coset. Therefore we
+just return |rf->cocharacter| as it is stored.
 
 @< Local function def...@>=
 void base_grading_vector_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
-  const ComplexReductiveGroup& G_C=rf->parent.val;
   if (l==expression_base::no_value)
     return;
-  RatCoweight t = rf->cocharacter.as_Qmod2Z(); // take a copy
-  for (weyl::Generator s=0; s<G_C.semisimpleRank(); ++s)
-  { arithmetic::Numer_t v = G_C.rootDatum().simpleRoot(s).dot(t.numerator());
-      // integer
-    RatWeight omega = G_C.rootDatum().fundamental_coweight(s);
-    v = arithmetic::divide(v,t.denominator()*omega.denominator()*2)*2;
-      // round down to even
-    t -= omega.numerator()*v; // adjust to make |t| ``just dominant'' for |s|
-  }
-  push_value(std::make_shared<rational_vector_value>(t));
+  push_value(std::make_shared<rational_vector_value>(rf->val.g_rho_check()));
 }
 
 @ There is a partial ordering on the Cartan classes defined for a real form. A
@@ -2344,21 +2331,25 @@ void Cartan_order_matrix_wrapper(expression_base::level l)
 }
 
 
-@ Finally we make available an equality test for real forms. While this could
-easily be defined in the \.{axis} language itself (two real forms are equal
-if they belong to the same inner class, their real form numbers and base
-grading vectors are equal) it is useful to define a test here, since the test
-will also be used later in other equality tests (for KGB elements, or module
-parameters), where one should resist the temptation to test (by pointer
-equality) for identical |RealReductiveGroup| objects, which would be too
-strict.
+@ Finally we make available an equality test for real forms. This could easily
+be defined in the \.{axis} language itself: two real forms are equal if they
+belong to the same inner class, their base grading vectors are equal, and the
+torus bits of their initial KGB elements are the same (this should imply their
+real form numbers are the same too). However it is useful to define a test
+here; not only can we do the tests more efficiently, the same test will later
+also be used in other equality tests (for KGB elements, or module parameters);
+there one should resist the temptation to test (by pointer equality) for
+identical |RealReductiveGroup| objects, which would be too strict.
 
 @< Local function def...@>=
 
 inline bool operator==
   (const RealReductiveGroup& x, const RealReductiveGroup& y)
-@/{@;
-  return &x.complexGroup() == &y.complexGroup() and x.realForm()==y.realForm();
+{
+  return &x.complexGroup() == &y.complexGroup()
+   @| and x.g_rho_check()==y.g_rho_check()
+   @| and x.x0_torus_part()==y.x0_torus_part()
+   @| and (assert(x.realForm()==y.realForm()),true);
 }
 inline bool operator!=
   (const RealReductiveGroup& x, const RealReductiveGroup& y)
@@ -2369,8 +2360,7 @@ void real_form_equals_wrapper(expression_base::level l)
   shared_real_form x = get<real_form_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<bool_value>(
-    x->val==y->val and x->cocharacter==y->cocharacter));
+  push_value(std::make_shared<bool_value> (x->val==y->val));
 }
 
 @*2 Dual real forms.
@@ -2400,7 +2390,8 @@ void dual_real_form_wrapper(expression_base::level l)
     return;
   inner_class_value G_check(*G,tags::DualTag());
    // tailor make an |inner_class_value|
-  push_value(std::make_shared<real_form_value>(G_check ,G->dual_interface.in(i->val)));
+  push_value(std::make_shared<real_form_value>@|
+    (G_check ,G->dual_interface.in(i->val)));
 }
 @)
 void dual_quasisplit_form_wrapper(expression_base::level l)
@@ -2424,18 +2415,18 @@ a torus element; the square of this element should be central (meaning in
 coordinates that all simple roots have integral evaluation on the projected
 rational vector; in the code below the doubled projection is made first, and
 evaluations must be even). If this test succeeds, the function then returns
-the corresponding real form, but in which a |cocharacter| value is stored
-deduced from the torus element that identifies the strong real form, and may
-differ from the |cocharacter| value for the weak real form that could be
-obtained by selecting by number in the inner class. This difference notably
-allows the same strong involution representative to be subsequently used to
-specify a KGB element for this (strong) real form.
+the corresponding real form, but in which a cocharacter value is stored
+(representing the square of any strong involution for the real form) deduced
+from the given torus element, which may differ from the value for the (weak)
+real form selected by the number |rf->val;realForm()| in the inner class. This
+difference notably allows the same strong involution representative to be
+subsequently used to specify a KGB element for this (strong) real form.
 
 @:synthetic_real_form@>
 
 @< Local function def...@>=
 TwistedInvolution twisted_from_involution
-  (const ComplexReductiveGroup& G, const WeightInvolution theta)
+  (const InnerClass& G, const WeightInvolution theta)
 { const RootDatum& rd = G.rootDatum();
   WeylWord ww;
   if (check_involution(theta,rd,ww)!=G.twistedWeylGroup().twist() @| or
@@ -2448,7 +2439,7 @@ void synthetic_real_form_wrapper(expression_base::level l)
 { own_rational_vector torus_factor = get_own<rational_vector_value>();
   shared_matrix theta = get<matrix_value>();
   shared_inner_class G = get<inner_class_value>();
-  const TwistedInvolution tw = twisted_from_involution(G->val,theta->val);
+  TwistedInvolution tw = twisted_from_involution(G->val,theta->val);
   if (torus_factor->val.size()!=G->val.rank())
     throw runtime_error ("Torus factor size mismatch");
   {
@@ -2466,14 +2457,30 @@ void synthetic_real_form_wrapper(expression_base::level l)
     torus_factor->val /= 2; // now $(1+\theta)/2$ is applied to |torus_factor|
   }
 
-  TorusElement cocharacter(0); // dummy value to be replaced
-  RealFormNbr rf =
-    strong_real_form_of(G->val,tw,torus_factor->val,cocharacter);
+  @< Ensure that the involution table knows about the Cartan class of |tw|
+     and those below it in the Cartan ordering @>
+  RatCoweight coch(0); // dummy value to be replaced
+  RealFormNbr rf = real_form_of(G->val,tw,torus_factor->val,coch);
+   // sets |coch|
+  TorusPart tp = realredgp::minimal_torus_part @|
+   (G->val,rf,coch,std::move(tw),torus_factor->val);
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<real_form_value>(*G,rf,cocharacter));
+    push_value(std::make_shared<real_form_value>(*G,rf,coch,tp));
 }
 
-@ The methods |central_fiber| and |x0_torus_part| of |ComplexReductiveGroup|
+@ The call to |minimal_torus_part| uses the involution table in order to be
+able to do downward (inverse) Cayley transforms, so we must ensure that any
+involutions that can be encountered have been entered into the table.
+
+@< Ensure that the involution table knows about the Cartan class of |tw|... @>=
+{ CartanNbr cn = G->val.class_number(tw);
+  G->val.generate_Cartan_orbit(cn);
+  const BitMap& b = G->val.Cartan_ordering().below(cn);
+  for (auto it=b.begin(); it(); ++it)
+    G->val.generate_Cartan_orbit(*it);
+}
+
+@ The methods |central_fiber| and |x0_torus_part| of |InnerClass|
 can be accessed using following functions. The function |central_fiber|
 computes those torus parts in the fiber at the distinguished involution that
 both remain in the strong real form orbit and are central (do not affect any
@@ -2534,7 +2541,7 @@ real reductive groups in an inner class. The Atlas software associates a fixed
 set of Cartan classes to each inner class, and records for each real form the
 subset of those Cartan classes that occur for the real form. Since versions
 0.3.5 of the software, the Cartan classes are identified and numbered upon
-construction of a |ComplexReductiveGroup| object, but |CartanClass| objects
+construction of an |InnerClass| object, but |CartanClass| objects
 are constructed on demand.
 
 @< Includes... @>=
@@ -2567,7 +2574,7 @@ private:
 typedef std::shared_ptr<const Cartan_class_value> shared_Cartan_class;
 
 @ In the constructor we used to check that the Cartan class with the given
-number currently exists, but now the |ComplexReductiveGroup::cartan| method
+number currently exists, but now the |InnerClass::cartan| method
 assures that one is generated if this should not have been done before. We
 therefore call that method in the initialiser; on return it provides a valid
 reference.
@@ -2634,7 +2641,8 @@ real form, but we have a direct access to it via the |mostSplit| method for
 void most_split_Cartan_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<Cartan_class_value>(rf->parent,rf->val.mostSplit()));
+    push_value(std::make_shared<Cartan_class_value>
+      (rf->parent,rf->val.mostSplit()));
 }
 
 
@@ -2654,11 +2662,11 @@ void Cartan_involution_wrapper(expression_base::level l)
 
 
 @ This function and the following provide the functionality of the \.{Fokko}
-command \.{cartan}. They are based on |cartan_io::printCartanClass|, but
+command \.{cartan}. They are based on |output::printCartanClass|, but
 rewritten to take into account the fact that we do not know about |Interface|
 objects for complex groups, and such that a usable value is returned. We omit
 in our function {\it Cartan\_info} the data printed in |printCartanClass| in
-the final call to |cartan_io::printFiber| (namely all the real forms for which
+the final call to |output::printFiber| (namely all the real forms for which
 this Cartan class exists with the corresponding part of the adjoint fiber
 group), relegating it instead to a second function {\it fiber\_part} that
 operates on a per-real-form basis. This separation seems more natural in a
@@ -2703,7 +2711,7 @@ void Cartan_info_wrapper(expression_base::level l)
 
 @ A functionality that is implicit in the Atlas command \.{cartan} is the
 enumeration of all real forms corresponding to a given Cartan class. While
-|cartan_io::printFiber| traverses the real forms in the order corresponding to
+|output::printFiber| traverses the real forms in the order corresponding to
 the parts of the partition |f.weakReal()| for the fiber~|f| associated to the
 Cartan class, it is not necessary to use this order, and we can instead simply
 traverse all real forms and check whether the given Cartan class exists for
@@ -2791,7 +2799,7 @@ the square of any strong involution representing the real form.
 @< Local function def...@>=
 void square_classes_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
-  const realform_io::Interface rfi = cc->parent.interface;
+  const output::FormNumberMap rfi = cc->parent.interface;
   const RealFormNbrList& rfl = cc->parent.val.realFormLabels(cc->number);
   if (l==expression_base::no_value)
     return;
@@ -2810,7 +2818,7 @@ void square_classes_wrapper(expression_base::level l)
 
 @ The function |print_gradings| gives on a per-real-form basis the
 functionality of the Atlas command \.{gradings} that is implemented by
-|complexredgp_io::printGradings| and |cartan_io::printGradings|. It therefore
+|output::printGradings| and |output::printGradings|. It therefore
 takes, like |fiber_partition|, a Cartan class and a real form as parameter. Its
 output consist of a list of $\Zee/2\Zee$-gradings of each of the fiber group
 elements in the part corresponding to the real form, where each grading is a
@@ -2893,8 +2901,10 @@ different lines after commas if necessary.
 { bool first=true; std::ostringstream os;
   for (size_t i=0; i<pi.size(); ++i)
     if ( rf_nr[pi.class_of(i)] == rf->val.realForm())
-    { os << ( first ? first=false,'[' : ',');
-      Grading gr=cc->val.fiber().grading(i);
+    { const auto& f= cc->val.fiber();
+      cartanclass::AdjointFiberElt afe(RankFlags(i),f.adjointFiberRank());
+      os << ( first ? first=false,'[' : ',');
+      Grading gr=f.grading(afe);
       gr=sigma.pull_back(gr);
       prettyprint::prettyPrint(os,gr,si.size());
     }
@@ -3011,7 +3021,7 @@ void KGB_Cartan_wrapper(expression_base::level l)
 void KGB_involution_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  const ComplexReductiveGroup& G=x->rf->val.complexGroup();
+  const InnerClass& G=x->rf->val.complexGroup();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<matrix_value>
       (G.matrix(kgb.involution(x->val))));
@@ -3125,8 +3135,9 @@ latter defines a grading of the corresponding imaginary roots, in the same
 manner as for the synthetic |real_form| in section @#synthetic_real_form@>
 above, but in fact it even completely describes the KGB element. In order for
 this to be possible, the |torus_factor| must be compatible with the
-|cocharacter| stored in the real form, but which should always be right if the
-real form was itself synthesised from the |torus_factor| value.
+cocharacter |rf->val.g_rho_check()| stored in the real form, but which should
+always be right if the real form was itself synthesised from the
+|torus_factor| value.
 
 @< Local function def...@>=
 void build_KGB_element_wrapper(expression_base::level l)
@@ -3136,22 +3147,20 @@ void build_KGB_element_wrapper(expression_base::level l)
 
   if (torus_factor->val.size()!=rf->val.rank())
     throw runtime_error ("Torus factor size mismatch");
-  { // make theta-fixed:
-    Ratvec_Numer_t& num = torus_factor->val.numerator();
+@)
+  Ratvec_Numer_t& num = torus_factor->val.numerator();
+  { // make theta-fixed and remove base grading vector offset
     num += theta->val.right_prod(num);
-    torus_factor->val /= 2;
+    ((torus_factor->val /= 2) -=rf->val.g_rho_check()).normalize() ;
+    if (torus_factor->val.denominator()!=1)
+      throw runtime_error
+        ("Torus factor not in cocharacter coset of real form");
+@.Torus factor not in cocharacter...@>
   }
 
-  RatCoweight tv = torus_factor->val - rf->cocharacter.as_Qmod2Z();
-  if (tv.normalize().denominator()!=1)
-    throw runtime_error
-      ("Torus factor not in cocharacter coset of real form");
-@.Torus factor not in cocharacter...@>
-
-  const ComplexReductiveGroup& G = rf->parent.val;
-  TorusPart t(tv.numerator()); // reduce modulo $2$
-  TwistedInvolution tw = twisted_from_involution(G,theta->val);
-  TitsElt a (G.titsGroup(),t,tw);
+  const InnerClass& G = rf->parent.val;
+  TitsElt a
+   (G.titsGroup(),TorusPart(num),twisted_from_involution(G,theta->val));
 
   KGBElt x = rf->kgb().lookup(a);
   if (x== rf->kgb().size())
@@ -3159,7 +3168,7 @@ void build_KGB_element_wrapper(expression_base::level l)
 
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<KGB_elt_value> (rf,x));
+  push_value(std::make_shared<KGB_elt_value>(rf,x));
 }
 
 
@@ -3186,11 +3195,7 @@ void torus_bits_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   { const KGB& kgb=x->rf->kgb();
     TorusPart t = kgb.torus_part(x->val);
-    own_vector result = std::make_shared<vector_value>
-      (int_Vector(kgb.torus_rank(),0));
-    int_Vector& v = result->val;
-    for (unsigned int i=0; i<kgb.torus_rank(); ++i)
-      v[i]=t[i]; // lift from binary to integer
+    own_vector result = std::make_shared<vector_value>(lift(t));
     push_value(std::move(result));
   }
 }
@@ -3210,9 +3215,7 @@ void torus_factor_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   const KGB& kgb=x->rf->kgb();
-  TorusElement t = x->rf->cocharacter;
-  t += kgb.torus_part(x->val);
-  RatCoweight tf = t.as_Qmod2Z(); // still needs to be made $\theta$-fixed
+  RatCoweight tf = x->rf->val.g_rho_check() + lift(kgb.torus_part(x->val));
   push_value(std::make_shared<rational_vector_value> @|
      (symmetrise(tf,kgb.involution_matrix(x->val))));
 }
@@ -3221,7 +3224,7 @@ void torus_factor_wrapper(expression_base::level l)
 straightforward as long as one takes care not to just test the (smart)
 pointers |x->rf| and |y->rf| to the |real_form_value| objects for equality,
 but to test their |val| fields (of type |RealReductiveGroup|) using the
-equality operator defined above, which test the |ComplexReductiveGroup|
+equality operator defined above, which test the |InnerClass|
 objects for identity, and real form numbers for equality. This distinction is
 important to make synthesised real forms first class citizens.
 
@@ -3232,8 +3235,7 @@ void KGB_equals_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   push_value(std::make_shared<bool_value>(
-   @| x->rf->val==y->rf->val and x->rf->cocharacter==y->rf->cocharacter
-      and x->val==y->val));
+   @| x->rf->val==y->rf->val and x->val==y->val));
 }
 
 @ Finally we install everything related to $K\backslash G/B$ elements.
@@ -4828,7 +4830,7 @@ applying the corresponding simple reflections to~$\lambda$.
 @< Local function def...@>=
 void to_canonical_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  const ComplexReductiveGroup& G=p->rf->val.complexGroup();
+  const InnerClass& G=p->rf->val.complexGroup();
   const KGB& kgb = p->rf->kgb();
   const RootDatum& rd=G.rootDatum();
 @)
@@ -5068,7 +5070,7 @@ persistent data) so for the moment it should not be so bad.
 @ The \.{realweyl} and \.{strongreal} commands require a real form and a
 compatible Cartan class.
 
-@h "realredgp_io.h"
+@h "output.h"
 @< Local function def...@>=
 void print_realweyl_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
@@ -5084,7 +5086,7 @@ void print_realweyl_wrapper(expression_base::level l)
     ("Cartan class not defined for real form");
 @.Cartan class not defined...@>
 @)
-  realredgp_io::printRealWeyl (*output_stream,rf->val,cc->number);
+  output::printRealWeyl (*output_stream,rf->val,cc->number);
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
@@ -5094,7 +5096,7 @@ void print_realweyl_wrapper(expression_base::level l)
 void print_strongreal_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
 @)
- realredgp_io::printStrongReal
+ output::printStrongReal
     (*output_stream,cc->parent.val,cc->parent.interface,cc->number);
 @)
   if (l==expression_base::single_value)
@@ -5146,17 +5148,17 @@ void print_blocku_wrapper(expression_base::level l)
 
 @ The \.{blockstabilizer} command has a slightly different calling scheme than
 \.{block} and its friends, in that it requires a block and a Cartan class. The
-lock itself is not actually used, just the real form and dial real form it
-holds. The signature of |realredgp_io::printBlockStabilizer| is a bit strange,
+block itself is not actually used, just the real form and dual real form it
+holds. The signature of |output::printBlockStabilizer| is a bit strange,
 as it requires a |RealReductiveGroup| argument for the real form, but only
 numbers for the Cartan class and the dual real form (but this is
 understandable, as information about the inner class must be transmitted in
 some way). In fact it used to be even a bit stranger, in that the real form
-was passed in the form of a |realredgp_io::Interface| value, a class (not to
-be confused with |realform_io::Interface|, which does not specify a particular
-real form) that we do not use in this program; since only the |realGroup|
-field of the |realredgp_io::Interface| was used in
-|realredgp_io::printBlockStabilizer|, we have changed its parameter
+was passed in the form of a |output::Interface| value, a class (no
+longer existent, and not to be confused with |output::FormNumberMap|,
+which does not specify a particular real form) that we do not use in this
+program; since only the |realGroup| field of the |output::Interface| was
+used in |output::printBlockStabilizer|, we have changed its parameter
 specification to allow it to be called easily here.
 
 @< Local function def...@>=
@@ -5164,8 +5166,8 @@ void print_blockstabilizer_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
   shared_Block b = get<Block_value>();
 @)
-  realredgp_io::printBlockStabilizer
-   (*output_stream,b->rf->val,cc->number,b->dual_rf->val.realForm());
+  output::printBlockStabilizer
+   (*output_stream, @| b->rf->val,cc->number,b->dual_rf->val.realForm());
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
@@ -5195,7 +5197,7 @@ void print_KGB_wrapper(expression_base::level l)
 void print_X_wrapper(expression_base::level l)
 { shared_inner_class ic = get<inner_class_value>();
 @)
-  ComplexReductiveGroup& G=ic->val;
+  InnerClass& G=ic->val;
   kgb::global_KGB kgb(G); // build global Tits group, "all" square classes
   kgb_io::print_X(*output_stream,kgb);
 @)

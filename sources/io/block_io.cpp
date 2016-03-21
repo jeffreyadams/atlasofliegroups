@@ -17,7 +17,7 @@
 
 #include "polynomials.h"
 #include "kgb.h"     // |kgb.size()|
-#include "complexredgp.h" // |twoRho| in |nu_block::print|
+#include "innerclass.h" // |twoRho| in |nu_block::print|
 #include "blocks.h"
 #include "ext_block.h"
 #include "kl.h"

@@ -26,7 +26,7 @@
 #include "prerootdata.h"
 #include "rootdata.h"
 #include "cartanclass.h"
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "realredgp.h"
 
 #include "kgb.h"
@@ -41,7 +41,7 @@
 #include "basic_io.h"
 #include "prettyprint.h"
 #include "interactive.h"
-#include "realform_io.h"
+#include "output.h"
 #include "kgb_io.h"
 #include "block_io.h"
 
@@ -234,7 +234,7 @@ void testrun_f()
     {
       PreRootDatum prd = *cit;
       WeightInvolution id(prd.rank()); // identity
-      ComplexReductiveGroup G(prd,id);
+      InnerClass G(prd,id);
       for (RealFormNbr rf=0; rf<G.numRealForms(); ++rf)
       {
 	RealReductiveGroup G_R(G,rf);
@@ -249,7 +249,7 @@ void testrun_f()
 	  for (size_t i=0; i<it->size(); ++i)
 	    ict.push_back('e');
 	  lietype::Layout lay(*it,ict);
-	  realform_io::Interface itf(G,lay);
+	  output::FormNumberMap itf(G,lay);
 	  std::cout << " Failure at real form " << itf.out(rf) << std::endl;
 	}
 	std::cout << std::flush;
@@ -306,7 +306,7 @@ void poscoroots_rootbasis_f()
 
 void X_f()
 {
-  ComplexReductiveGroup& G=commands::currentComplexGroup();
+  InnerClass& G=commands::currentComplexGroup();
   kgb::global_KGB kgb(G); // build global Tits group, "all" square classes
   ioutils::OutputFile f;
   kgb_io::print_X(f,kgb);

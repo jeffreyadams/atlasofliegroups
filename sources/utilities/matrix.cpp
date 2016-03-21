@@ -772,9 +772,10 @@ template Vector<int>& Vector<int>::add(Vector<int>::const_iterator b,int c);
 template Vector<Num>& Vector<Num>::add(Vector<int>::const_iterator b,Num c);
 template Vector<Num>& Vector<Num>::add(Vector<Num>::const_iterator b,Num c);
 template int Vector<int>::dot(Vector<int> const&) const;
+template Num Vector<int>::dot(Vector<Num> const&) const;
+template int Vector<Num>::dot(Vector<int> const&) const;
 template signed char
   Vector<signed char>::dot(const Vector<signed char>&) const;
-template Num Vector<int>::dot(Vector<Num> const&) const;
 
 template Vector<int>& operator/=(Vector<int>&,int);
 template Vector<int>& divide (Vector<int>&,int);

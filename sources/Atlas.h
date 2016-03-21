@@ -299,14 +299,14 @@ namespace atlas {
 
 
   typedef unsigned short CartanNbr; // index of Cartan class
-  typedef unsigned short RealFormNbr; // index used in |ComplexReductiveGroup|
+  typedef unsigned short RealFormNbr; // index used in |InnerClass|
   typedef std::vector<RealFormNbr> RealFormNbrList;
 
   namespace cartanclass {
     class Fiber;
     class CartanClass;
-    typedef unsigned int FiberElt;	// element of the fiber group
-    typedef unsigned int AdjointFiberElt;  // element of adjoint fiber (-group)
+    typedef SmallBitVector FiberElt;	// element of the fiber group
+    typedef SmallBitVector AdjointFiberElt;  // element of adjoint fiber(-group)
     typedef unsigned short fiber_orbit; // # of W_imag orbit in fiber group
     typedef unsigned short adjoint_fiber_orbit; // same for adjoint fiber group
     typedef unsigned short square_class; // identifies a class of real forms
@@ -315,8 +315,8 @@ namespace atlas {
   using cartanclass::Fiber;
   using cartanclass::CartanClass;
 
-  namespace complexredgp { class ComplexReductiveGroup; }
-  using complexredgp::ComplexReductiveGroup;
+  namespace innerclass { class InnerClass; }
+  using innerclass::InnerClass;
 
   namespace realredgp { class RealReductiveGroup; }
   using realredgp::RealReductiveGroup;
@@ -422,8 +422,8 @@ namespace atlas {
   using repr::Rep_context;
   using repr::Rep_table;
 
-  namespace realform_io { class Interface; } // maps internals to names
-  namespace complexredgp_io { class Interface; } // a pair of the above
+  namespace output { class FormNumberMap; } // maps internals to names
+  namespace output { class Interface; } // a pair of the above
   namespace realweyl {
     class RealWeyl; // for computing real Weyl groups
     class RealWeylGenerators;

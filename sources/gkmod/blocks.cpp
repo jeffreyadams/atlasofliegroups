@@ -22,7 +22,7 @@
 #include "hashtable.h"
 
 #include "bruhat.h"	// construction
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "realredgp.h"
 #include "subsystem.h"
 #include "y_values.h"
@@ -533,10 +533,10 @@ Block::Block(const KGB& kgb,const KGB& dual_kgb)
 
 // Construction function for the |Block| class.
 // It is a pseudo constructor method that ends calling main contructor
-Block Block::build(ComplexReductiveGroup& G, RealFormNbr rf, RealFormNbr drf)
+Block Block::build(InnerClass& G, RealFormNbr rf, RealFormNbr drf)
 {
   RealReductiveGroup G_R(G,rf);
-  ComplexReductiveGroup dG(G,tags::DualTag()); // the dual group
+  InnerClass dG(G,tags::DualTag()); // the dual group
   RealReductiveGroup dG_R(dG,drf);
 
   KGB kgb     (G_R, common_Cartans(G_R,dG_R),false);
@@ -699,7 +699,7 @@ BlockEltList param_block::survivors_below(BlockElt z) const
   return result;
 } // |param_block::survivors_below|
 
-void param_block::compute_duals(const ComplexReductiveGroup& G,
+void param_block::compute_duals(const InnerClass& G,
 				const SubSystem& rs)
 {
   const WeightInvolution& delta = G.distinguished();
@@ -740,7 +740,7 @@ void param_block::compute_duals(const ComplexReductiveGroup& G,
 
 RealReductiveGroup& param_block::realGroup() const
   { return rc.realGroup(); }
-const ComplexReductiveGroup& param_block::complexGroup() const
+const InnerClass& param_block::complexGroup() const
   { return rc.realGroup().complexGroup(); }
 const InvolutionTable& param_block::involution_table() const
   { return complexGroup().involution_table(); }
@@ -903,7 +903,7 @@ non_integral_block::non_integral_block
   : param_block(rc,rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
   , z_hash(info)
 {
-  const ComplexReductiveGroup& G = complexGroup();
+  const InnerClass& G = complexGroup();
   const RootDatum& rd = G.rootDatum();
   Block_base::dd = DynkinDiagram(rd.cartanMatrix());
 

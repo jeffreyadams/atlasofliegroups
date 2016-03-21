@@ -706,13 +706,14 @@ set split_rank (CartanClass cc) = int:
 set compact_rank (InnerClass G) = int: compact_rank(fundamental_Cartan(G))
 set split_rank (RealForm G)     = int: split_rank(most_split_Cartan(G))
 
-{equality of Cartan classes}
-set =(CartanClass H,CartanClass J)=bool:
-let (,theta_H,,)=Cartan_info(H) then
-(,theta_J,,)=Cartan_info(J) in theta_H=theta_J
+{ equality of Cartan classes }
+set = (CartanClass H,CartanClass J) = bool:
+  let (,theta_H,,)=Cartan_info(H), (,theta_J,,)=Cartan_info(J) in
+  theta_H=theta_J { compare their twisted involutions }
 
-{get number of CartanClass}
-set number(CartanClass H,RealForm G)=int:let i=last(nr_of_Cartan_classes(G), (int i)bool: Cartan_class(G,i)=H) in i
+{ number of the Cartan class H in the list of those for the real form G }
+set number(CartanClass H,RealForm G) = int:
+  last(nr_of_Cartan_classes(G), (int i)bool: Cartan_class(G,i)=H)
 
 {				Real forms				}
 
@@ -734,7 +735,7 @@ set split_form (RootDatum r) = RealForm:
 { split form of a Lie type is taken simply connected (times a split torus) }
 set split_form (LieType t) = RealForm: split_form(simply_connected(t))
 
-set quasicompact_form (InnerClass ic) = RealForm: real_forms(ic)[0]
+set quasicompact_form (InnerClass ic) = RealForm: real_form(ic,0)
 { quasisplit_form@InnerClass is built-in }
 
 set is_compatible (RealForm f, RealForm g) = bool:
@@ -757,9 +758,10 @@ set inner_class (KGBElt x) = InnerClass: real_form(x)
 
 set KGB (RealForm rf) = [KGBElt]: for i:KGB_size(rf) do KGB(rf,i) od
 
-{all KGBElt mapping to given CartanClass}
-set KGB(CartanClass H,RealForm G)=[KGBElt]:
-let rv=[KGBElt]:[] in for x in KGB(G) do if Cartan_class(x)=H then rv#:=x fi od;rv
+{ all KGB elements of G mapping to its Cartan class H }
+set KGB (CartanClass H,RealForm G) = [KGBElt]:
+  let result=[KGBElt]:[] in
+  for x in KGB(G) do if Cartan_class(x)=H then result#:=x fi od; result
 
 set KGB_elt ((InnerClass, mat, ratvec) (,theta,v):all) = KGBElt:
   let rf = real_form(all)   { find real form within ic }
@@ -917,7 +919,7 @@ set lambda_minus_rho (Param p) = vec: let (,lambda_rho,) =%p in lambda_rho
 set lambda (Param p) = ratvec: lambda_minus_rho(p)+rho(real_form(p))
 set infinitesimal_character (Param p) = ratvec: let (,,gamma) =%p in gamma
 set nu (Param p) = ratvec: let (x,,gamma) =%p in (1-involution(x))*gamma/2
-set Cartan_class(Param p)=CartanClass:Cartan_class(x(p))
+set Cartan_class (Param p) = CartanClass: Cartan_class(x(p))
 
 set involution (Param p)=involution(x(p))
 

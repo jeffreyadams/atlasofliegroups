@@ -1,22 +1,25 @@
-/*!
-\file
-\brief Implementation of the class RealReductiveGroup.
-*/
 /*
   This is realredgp.cpp
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006-2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
 
+// Implementation of the class RealReductiveGroup.
+
+
 #include "realredgp.h"
 
+#include "matreduc.h" // |adapted_basis|
+
 #include "cartanclass.h"  // |Fiber|, and |toMostSplit| function (assertion)
-#include "complexredgp.h" // various methods
+#include "innerclass.h" // various methods
 #include "rootdata.h"     // |refl_prod| function (assertion)
 #include "tori.h"         // |tori::RealTorus| used
 #include "kgb.h"          // |KGB| constructed
+#include "tits.h"         // |TitsGroup| and |TitsElement| access
 
 #include <cassert>
 
@@ -36,16 +39,44 @@ namespace realredgp {
   reductive group and a real form.
 */
 RealReductiveGroup::RealReductiveGroup
-  (ComplexReductiveGroup& G_C, RealFormNbr rf)
+  (InnerClass& G_C, RealFormNbr rf)
   : d_complexGroup(G_C)
   , d_realForm(rf)
   , d_connectivity() // wait for most split torus to be constructed below
+
+  , square_class_cocharacter(some_coch(G_C,G_C.xi_square(rf)))
+  , torus_part_x0(G_C.x0_torus_part(rf))
+
   , d_Tg(new // allocate private copy
-	 TitsCoset(G_C,square_class_grading(G_C,square_class())))
+	 TitsCoset(G_C,grading_of_simples(G_C,square_class_cocharacter)))
   , kgb_ptr(NULL)
   , dual_kgb_ptr(NULL)
   , d_status()
+{ construct(); }
+
+
+RealReductiveGroup::RealReductiveGroup
+  (InnerClass& G_C, RealFormNbr rf,
+   const RatCoweight& coch, TorusPart x0_torus_part)
+  : d_complexGroup(G_C)
+  , d_realForm(rf)
+  , d_connectivity() // wait for most split torus to be constructed below
+
+  , square_class_cocharacter(coch)
+  , torus_part_x0(x0_torus_part)
+
+  , d_Tg(new // allocate private copy
+	 TitsCoset(G_C,grading_of_simples(G_C,square_class_cocharacter)))
+  , kgb_ptr(NULL)
+  , dual_kgb_ptr(NULL)
+  , d_status()
+{ construct(); }
+
+void RealReductiveGroup::construct()
 {
+  InnerClass& G_C=d_complexGroup;
+  RealFormNbr rf=d_realForm;
+
   tori::RealTorus msT = G_C.cartan(G_C.mostSplit(rf)).fiber().torus();
   d_connectivity = topology::Connectivity(msT,G_C.rootDatum());
 
@@ -58,8 +89,12 @@ RealReductiveGroup::RealReductiveGroup
 
 #ifndef NDEBUG
   // construct the torus for the most split Cartan
-  const Fiber& fundf = G_C.fundamental();
-  RootNbrSet so= cartanclass::toMostSplit(fundf,rf,G_C.rootSystem());
+  RootNbrSet noncompacts = G_C.noncompactRoots(rf);
+  TwistedInvolution xi; // empty: the distinguished one for the inner class
+  RootNbrSet so =
+    gradings::max_orth(noncompacts,
+		       G_C.involution_data(xi).imaginary_roots(),
+		       G_C.rootSystem());
 
   // recompute matrix of most split Cartan
   const RootDatum& rd = G_C.rootDatum();
@@ -70,6 +105,7 @@ RealReductiveGroup::RealReductiveGroup
   assert(d_connectivity.component_rank() == c.component_rank());
 #endif
 }
+
 
 RealReductiveGroup::~RealReductiveGroup()
 { delete d_Tg; delete kgb_ptr; delete dual_kgb_ptr; }
@@ -112,6 +148,16 @@ BitMap RealReductiveGroup::Cartan_set() const
 const CartanClass& RealReductiveGroup::cartan(size_t cn) const
   { return d_complexGroup.cartan(cn); }
 
+RatCoweight RealReductiveGroup::g() const
+  { return g_rho_check()+rho_check(rootDatum()); }
+
+// the base grading can be computed directly from $g-\rho\check$, as imaginary
+// simple roots are simple-imaginary, so dot product flags the compact ones
+Grading RealReductiveGroup::base_grading() const
+{
+  return innerclass::grading_of_simples(complexGroup(),g_rho_check());
+}
+
 size_t RealReductiveGroup::numCartan() const { return Cartan_set().size(); }
 
 size_t RealReductiveGroup::rank() const { return rootDatum().rank(); };
@@ -128,14 +174,19 @@ size_t RealReductiveGroup::KGB_size() const
 size_t RealReductiveGroup::mostSplit() const
  { return d_complexGroup.mostSplit(d_realForm); }
 
+/*
+  Algorithm: the variable |rset| is first made to flag, among the imaginary
+  roots of the fundamental Cartan, those that are noncompact for the chosen
+  representative (in the adjoint fiber) of the real form of |G|. The result is
+  formed by extracting only the information concerning the presence of the
+  \emph{simple} roots in |rset|.
+*/
 Grading RealReductiveGroup::grading_offset()
 {
   RootNbrSet rset= noncompactRoots(); // grading for real form rep
   return cartanclass::restrictGrading(rset,rootDatum().simpleRootList());
 }
 
-cartanclass::square_class RealReductiveGroup::square_class() const
-  { return d_complexGroup.fundamental().central_square_class(d_realForm); }
 
 const size_t RealReductiveGroup::component_rank() const
   { return d_connectivity.component_rank(); }
@@ -171,6 +222,71 @@ const BruhatOrder& RealReductiveGroup::Bruhat_KGB()
   kgb(); // ensure |kgb_ptr!=NULL|, but we cannot use (|const|) result here
   return kgb_ptr->bruhatOrder(); // get Bruhat order (generate if necessary)
 }
+
+
+//				Functions
+
+TorusPart minimal_torus_part
+  (const InnerClass& G, RealFormNbr wrf, RatCoweight coch,
+   TwistedInvolution tw, // by value, modified
+   const RatCoweight& torus_factor
+  )
+{
+  assert(torus_factor==torus_factor*G.matrix(tw)); // assuming already projected
+
+  RatCoweight diff = (torus_factor-coch).normalize();
+  assert (diff.denominator()==1); // since $\exp(2i\pi diff)=1$
+
+  Grading gr = innerclass::grading_of_simples(G,coch);
+  TitsCoset Tc(G,gr);
+  const auto& Tg = Tc.titsGroup();
+  const auto& W = Tg.weylGroup();
+  const auto& i_tab = G.involution_table();
+  const TwistedInvolution e; // basis (identity) twisted involution
+
+  TitsElt a (Tg,TorusPart(diff.numerator()),tw);
+  while (a.tw()!=e) // move to fundamental fiber
+  {
+    weyl::Generator s = W.leftDescent(a.tw());
+    if (Tg.hasTwistedCommutation(s,a.tw()))
+    {
+      SmallSubspace mod_space = i_tab.mod_space(i_tab.nr(a.tw()));
+      Tc.inverse_Cayley_transform(a,s,mod_space);
+    }
+    else
+      Tc.basedTwistedConjugate(a,s);
+  }
+  i_tab.reduce(a); // ensure reduction modulo fiber group denominator subgroup
+
+// now find the minimal element in the imaginary Weyl group orbit of |a.t()|
+// that induces |G.simple_roots_x0_compact(wrf)| on imaginary simple roots
+  const auto base_cpt = compacts_for(G,y_values::exp_pi(coch));
+  const auto wrf_cpt = G.simple_roots_x0_compact(wrf);
+  const auto sri = G.simple_roots_imaginary();
+  const cartanclass::AdjointFiberElt image // which will give required compacts
+    ( (base_cpt^wrf_cpt).slice(sri), sri.count());
+
+  const TorusPart t = Tg.left_torus_part(a);
+  const cartanclass::FiberElt y = G.to_fundamental_fiber(t);
+
+  const containers::sl_list<TorusPart> candidates =
+    G.torus_parts_for_grading_shift(G.xi_square(wrf),y,image);
+
+  assert(not candidates.empty());
+
+  // choose minimal torus part among reduced ones giving |wrf_cpt| as compacts
+  auto it = candidates.begin();
+  auto min = *it;
+  while (not (++it).at_end())
+    if (t+*it<t+min) // offset |t| does not cancel from this relation!
+      min = *it;
+
+  Tg.left_add(min,a);
+  assert((i_tab.reduce(a),Tg.left_torus_part(a)==t+min)); // already reduced
+  assert(compact_simples(Tc,a,G.simple_roots_imaginary())==wrf_cpt);
+
+  return Tg.left_torus_part(a);
+} // |minimal_torus_part|
 
 } // |namespace realredgp|
 

@@ -260,7 +260,7 @@ Permutation standardization(const std::vector<U>& a, size_t bound,
 
 template bitset::BitSet<constants::RANK_MAX>
 Permutation::pull_back(const bitset::BitSet<constants::RANK_MAX>& v) const;
-  // cartan_io, realform_io
+  // output
 
 template std::vector<unsigned int>
 Permutation::renumbering(const std::vector<unsigned int>& v) const; // blocks
@@ -269,7 +269,7 @@ template std::vector<unsigned short>
 Permutation::renumbering(const std::vector<unsigned short>& v) const; // kgb
 
 template void
-Permutation::renumber(std::vector<unsigned short>& v) const; // complexredgp
+Permutation::renumber(std::vector<unsigned short>& v) const; // innerclass
 
 template void
 Permutation::renumber(std::vector<unsigned long>& v) const; // rootdata,weyl,.

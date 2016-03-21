@@ -22,7 +22,7 @@ StandardRepK and KhatContext.
 
 #include "../Atlas.h"
 
-#include "complexredgp.h"// inlines
+#include "innerclass.h"// inlines
 #include "realredgp.h"	// numerous inline methods
 #include "hashtable.h"	// containment
 #include "free_abelian.h"// containment and use via |Char|
@@ -265,7 +265,7 @@ class SRK_context
   SRK_context(RealReductiveGroup &G);
 
   // accessors
-  ComplexReductiveGroup& complexGroup() const
+  InnerClass& complexGroup() const
     { return G.complexGroup(); }
   const RootDatum& rootDatum() const { return G.rootDatum(); }
   const WeylGroup& weylGroup() const { return G.weylGroup(); }
@@ -588,7 +588,7 @@ class PSalgebra // Parabolic subalgebra
   RootNbrSet nilpotents; // (positive) roots in nilpotent radical
  public:
   PSalgebra (TitsElt base,
-	     const ComplexReductiveGroup& G);
+	     const InnerClass& G);
 
   const TitsElt& strong_involution() const { return strong_inv; }
   TwistedInvolution involution() const { return strong_inv.tw(); }

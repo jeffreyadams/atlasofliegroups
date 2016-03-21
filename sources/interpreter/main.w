@@ -556,7 +556,7 @@ for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
       { expression_ptr e; type_expr found_type=analyse_types(*parse_tree,e);
         e->evaluate(expression_base::single_value);
         if (found_type!=void_type)
-          log_stream << "Value: " << pop_value();
+          log_stream << "Value: " << *pop_value() << '\n';
         else
           pop_value(); // don't forget to cast away that void value
       }

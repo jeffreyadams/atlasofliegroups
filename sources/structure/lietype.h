@@ -117,7 +117,7 @@ struct InnerClassType : public std::vector<TypeLetter>
    involution of the diagram needs to be indicated, whence the |d_perm| field.
    This is ultimately used (only) to correctly associate a real form name
    (recognised in standard diagram labelling) from a special representative
-   grading of the real form (only one bit set), in |realform_io::printType|;
+   grading of the real form (only one bit set), in |output::printType|;
    |d_perm| maps standard (Bourbaki) diagram numbers to simple root indices.
 */
 struct Layout
