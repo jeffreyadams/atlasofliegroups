@@ -2858,7 +2858,7 @@ void rvm_prod_wrapper(expression_base::level l)
   shared_rational_vector v=get<rational_vector_value>();
   if (v->val.size()!=m->val.numRows())
     throw runtime_error(std::string("Size mismatch ")@|
-     + str(v->val.size()) + ":" + str(m->val.numColumns()));
+     + str(v->val.size()) + ":" + str(m->val.numRows()));
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value>(v->val*m->val));
 }

@@ -27,9 +27,9 @@ std::ostream& print(std::ostream&, const RootDatum&);
 
 std::ostream& print(std::ostream&, const RealReductiveGroup&);
 
-std::ostream& printBlockData(std::ostream&, complexredgp_io::Interface&);
+  // std::ostream& printBlockData(std::ostream&, output::Interface&);
 
-std::ostream& printCartanClasses(std::ostream&, complexredgp_io::Interface&);
+  // std::ostream& printCartanClasses(std::ostream&, output::Interface&);
 
 std::ostream& printCartanMatrix(std::ostream&, const RootNbrList&,
 				const RootSystem&);

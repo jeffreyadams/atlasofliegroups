@@ -1,6 +1,14 @@
-/*!
-\file
-  \brief Implementation of the RootDatum class.
+/*
+  This is rootdata.cpp.
+
+  Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006--2016 Marc van Leeuwen
+  part of the Atlas of Lie Groups and Representations
+
+  For license information see the LICENSE file
+*/
+
+/*		     Implementation of the RootDatum class.
 
   What we call a root datum in this program is what is usually called
   a based root datum.
@@ -24,15 +32,6 @@
   corresponds to a sublattice of finite index in the character
   lattice, containing the root lattice. From this sublattice the
   actual root datum is constructed.
-*/
-/*
-  This is rootdata.cpp.
-
-  Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006--2011 Marc van Leeuwen
-  part of the Atlas of Lie Groups and Representations
-
-  For license information see the LICENSE file
 */
 
 #include "rootdata.h"
@@ -1074,9 +1073,13 @@ void RootDatum::fillStatus()
 
 ******************************************************************************/
 
+RatWeight rho (const RootDatum& rd)
+  { return RatWeight(rd.twoRho(),2); }
+RatCoweight rho_check (const RootDatum& rd)
+  { return RatCoweight(rd.dual_twoRho(),2); }
 
-/*!
-\brief Returns matrix of dual involution of the one given by |q|
+/*
+  Return matrix of dual involution of the one given by |q|
 
   Precondition: |q| is an involution of |rd| as a _based_ root datum
 

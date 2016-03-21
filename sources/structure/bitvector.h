@@ -97,6 +97,7 @@ template<size_t dim>
   void spanAdd(std::vector<BitVector<dim> >&, std::vector<size_t>&,
 	       const BitVector<dim>&);
 
+template<size_t dim> int_Vector lift(const BitVector<dim>& v);
 
 /******** type definitions **************************************************/
 

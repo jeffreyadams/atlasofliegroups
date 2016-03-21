@@ -23,12 +23,12 @@ namespace kgb_io {
   std::ostream& print(std::ostream& strm,
 		      const KGB_base& kgb,
 		      bool traditional =false,
-		      const ComplexReductiveGroup* G=NULL,
+		      const InnerClass* G=NULL,
 		      const KGBEltList* which = NULL);
 
   std::ostream& printKGB(std::ostream&, const KGB&);
   std::ostream& var_print_KGB(std::ostream&,
-			      const ComplexReductiveGroup&,
+			      const InnerClass&,
 			      const KGB&);
 
   std::ostream& print_sub_KGB(std::ostream& strm,

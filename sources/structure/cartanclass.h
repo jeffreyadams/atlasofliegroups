@@ -37,8 +37,8 @@ namespace cartanclass
     restrictGrading(const RootNbrSet&, const RootNbrList&);
 
   // minimal grading of the imaginary simple roots that belongs to |rf|
-  Grading
-    specialGrading(const Fiber&,RealFormNbr rf,const RootSystem&);
+  Grading specialGrading
+    (const Partition& fg_partition, RealFormNbr rf, RankFlags fixed_points);
 
   // strongly orthogonal reflections leading to most split Cartan for |rf|
   RootNbrSet
@@ -421,7 +421,10 @@ class Fiber {
 */
   const Partition& weakReal() const { return d_weakReal; }
   AdjointFiberElt wrf_rep (adjoint_fiber_orbit wrf) const
-  { return d_weakReal.classRep(wrf); }
+  { return AdjointFiberElt(RankFlags(d_weakReal.classRep(wrf)),
+			   adjointFiberRank()); }
+  adjoint_fiber_orbit adjoint_orbit(AdjointFiberElt x) const
+  { return d_weakReal.class_of(x.data().to_ulong()); }
 
 // private accessors only needed during construction
 
@@ -474,7 +477,7 @@ private:
   with an involutive automorphism of this torus (the Cartan involution). (More
   precisely, it is a $W$-conjugacy class of involutive automorphisms.) As the
   class is now used in the software, the Cartan involution must be in the
-  inner class specified by ComplexReductiveGroup. Most of the interesting
+  inner class specified by InnerClass. Most of the interesting
   information is contained in the two underlying Fiber classes d_fiber and
   |d_dualFiber|. First of all, that is where the Cartan involution lives (since
   the involution is needed to define the fibers). But the fiber classes also

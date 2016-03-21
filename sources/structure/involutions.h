@@ -186,13 +186,15 @@ class InvolutionTable
 
   void reduce(TitsElt& a) const;
 
+  const SmallSubspace& mod_space(InvolutionNbr n) const
+  { assert(n<size()); return data[n].mod_space; }
+
   bool equivalent(const TorusElement& t1, const TorusElement& t2,
 		  InvolutionNbr i) const;
   RatWeight fingerprint(const TorusElement& t, InvolutionNbr i) const;
   y_entry pack(const TorusElement& t, InvolutionNbr i) const;
   KGB_elt_entry x_pack(const GlobalTitsElement& x) const; // for X only; slow
   bool x_equiv(const GlobalTitsElement& x0,const GlobalTitsElement& x1) const;
-  TorusPart check_rho_imaginary(InvolutionNbr i) const;
 
   // choose unique representative for real projection of rational weight
   void real_unique(InvolutionNbr i, RatWeight& y) const;
@@ -219,10 +221,6 @@ class InvolutionTable
 
   void reserve(size_t s) { pool.reserve(s); }
 
-private: // the space actually stored need not be exposed
-  const SmallSubspace& mod_space(InvolutionNbr n) const
-  { assert(n<size()); return data[n].mod_space; }
-
 }; // |class InvolutionTable|
 
 struct Cartan_orbit
@@ -230,7 +228,7 @@ struct Cartan_orbit
   unsigned int Cartan_class_nbr;
   InvolutionNbr start,size;
 
-  Cartan_orbit(InvolutionTable& i_tab,ComplexReductiveGroup& G, CartanNbr cn);
+  Cartan_orbit(InvolutionTable& i_tab,InnerClass& G, CartanNbr cn);
 
   bool contains(InvolutionNbr i) const { return i-start<size; }
   InvolutionNbr end() const { return start+size; }
@@ -254,7 +252,7 @@ public:
 // manipulators
 
   void set_size(CartanNbr n_Cartans); // resize once number of Cartans is known
-  void add(ComplexReductiveGroup& G, CartanNbr cn);
+  void add(InnerClass& G, CartanNbr cn);
 
 // accessors
 

@@ -14,8 +14,8 @@
 #include "realmode.h"
 #include "mainmode.h"
 
-#include "complexredgp.h"
-#include "complexredgp_io.h"
+#include "innerclass.h"
+#include "output.h"
 #include "error.h"
 #include "helpmode.h"
 #include "interactive.h"
@@ -27,7 +27,6 @@
 #include "dynkin.h"
 #include "lietype.h"
 #include "realredgp.h"
-#include "realredgp_io.h"
 #include "kgb.h"
 #include "kgb_io.h"
 #include "blocks.h"
@@ -83,7 +82,7 @@ namespace {
 
   // local variables
 
-  ComplexReductiveGroup* dual_G_C_pointer=NULL;
+  InnerClass* dual_G_C_pointer=NULL;
   RealReductiveGroup* dual_G_R_pointer=NULL;
   Block* block_pointer=NULL;
   wgraph::WGraph* WGr_pointer=NULL;
@@ -148,7 +147,7 @@ CommandNode blockNode()
   return result;
 }
 
-ComplexReductiveGroup& currentDualComplexGroup()
+InnerClass& currentDualComplexGroup()
 {
   return *dual_G_C_pointer;
 }
@@ -209,13 +208,13 @@ void block_mode_entry() throw(EntryError)
   {
     RealReductiveGroup& G_R = currentRealGroup();
 
-    ComplexReductiveGroup& G_C = G_R.complexGroup();
-    complexredgp_io::Interface& G_I = currentComplexInterface();
+    InnerClass& G_C = G_R.complexGroup();
+    output::Interface& G_I = currentComplexInterface();
 
     // get dual real form
-    RealFormNbr drf = interactive::get_dual_real_form(G_I,G_R.realForm());
+    RealFormNbr drf = interactive::get_dual_real_form(G_I,G_C,G_R.realForm());
 
-    dual_G_C_pointer=new ComplexReductiveGroup(G_C,tags::DualTag());
+    dual_G_C_pointer=new InnerClass(G_C,tags::DualTag());
     dual_G_R_pointer=new RealReductiveGroup(*dual_G_C_pointer,drf);
   }
   catch(error::InputError& e)
@@ -235,10 +234,11 @@ void dualrealform_f()
   try
   {
     RealReductiveGroup& G_R = currentRealGroup();
-    complexredgp_io::Interface& G_I = currentComplexInterface();
+    InnerClass& G_C = G_R.complexGroup();
+    output::Interface& G_I = currentComplexInterface();
 
     // get dual real form
-    RealFormNbr drf = interactive::get_dual_real_form(G_I,G_R.realForm());
+    RealFormNbr drf = interactive::get_dual_real_form(G_I,G_C,G_R.realForm());
 
     // we can call the swap method for rvalues, but not with and rvalue arg
     RealReductiveGroup(*dual_G_C_pointer,drf).swap(*dual_G_R_pointer);
@@ -314,7 +314,7 @@ void smalldualkgb_f()
 {
   RealReductiveGroup& G_R = currentRealGroup();
   RealReductiveGroup& dGR = currentDualRealGroup();
-  ComplexReductiveGroup& dGC = currentDualComplexGroup();
+  InnerClass& dGC = currentDualComplexGroup();
 
   BitMap common=blocks::common_Cartans(dGR,G_R);
 
@@ -357,7 +357,7 @@ void dualblock_f()
 
 void smalldualblock_f()
 {
-  ComplexReductiveGroup& dG = currentDualComplexGroup();
+  InnerClass& dG = currentDualComplexGroup();
 
   Block block =
     Block::build(dG,currentDualRealForm(),currentRealForm());
@@ -432,7 +432,7 @@ void blockstabilizer_f()
   size_t cn=interactive::get_Cartan_class(blocks::common_Cartans(G_R,dGR));
 
   ioutils::OutputFile file;
-  realredgp_io::printBlockStabilizer
+  output::printBlockStabilizer
     (file,currentRealGroup(),cn,currentDualRealForm());
 }
 

@@ -25,11 +25,10 @@ namespace commands {
 
   commands::CommandNode mainNode();
   extern commands::CommandTree& main_mode; // defined in commands.cpp
-  ComplexReductiveGroup& currentComplexGroup();
-  ComplexReductiveGroup& current_dual_group();
-  complexredgp_io::Interface& currentComplexInterface();
-  void replaceComplexGroup(ComplexReductiveGroup*
-			   ,complexredgp_io::Interface*);
+  InnerClass& currentComplexGroup();
+  InnerClass& current_dual_group();
+  output::Interface& currentComplexInterface();
+  void replaceComplexGroup(InnerClass*,output::Interface*);
 
 } // |namespace commands|
 
