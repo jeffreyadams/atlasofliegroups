@@ -99,7 +99,6 @@ namespace {
   void test_f();
   void braid_f();
   void go_f();
-  void mytest_f();
   void fix_braid_f();
 
   void roots_rootbasis_f();
@@ -216,8 +215,6 @@ void addTestCommands<commands::BlockmodeTag> (commands::CommandNode& mode)
 {
   mode.add("braid",braid_f,
 	   "tests braid relations on an extended block",commands::use_tag);
-  mode.add("mytest",mytest_f,
-	   "my test command",commands::use_tag);
   mode.add("go",go_f,
 	   "generates difficult SO(5,5) extended block, and runs 'braid'",
 	   commands::use_tag);
@@ -887,306 +884,8 @@ bool isDirectRecursion(ext_block::DescValue v)
   return is_descent(v) and is_unique_image(v);
 }
 
-
-void mytest(KGB kgb){
-  //  prettyprint::printInvolution(strm,kgb.involution(1),kgb.twistedWeylGroup())<< std::endl;
-
-  }
-void mytest_f(){
-  // RealReductiveGroup& G = commands::currentRealGroup();
-  // ComplexReductiveGroup& GC=commands::currentComplexGroup();
-  // const global_KGB& global_kgb = global_KGB(GC);
-  // const KGB& kgb = G.kgb();
-  // const TitsGroup& Tg = G.titsGroup();
-  // const GlobalTitsGroup& global_Tg = GlobalTitsGroup(GC);
-  // ioutils::OutputFile f;
-
-  // RatWeight zero=global_kgb.torus_part(0).log_2pi();
-  // WeightInvolution delta = G.distinguished();
-  // std::cout<<  "delta:" << std::endl;
-  // for (unsigned i=0; i<delta.numRows(); ++i)
-  // 	{   std::cout << " " << std::endl;
-  // 	  for (unsigned j=0; j<delta.numColumns(); ++j)
-  // 	    std::cout << delta(i,j);}
-
-
-  // for (size_t i=0; i<kgb.size(); ++i){
-  //   KGBElt dual_x=kgb.Hermitian_dual(i);
-  //   if (dual_x==i){
-  //     f << "" << std::endl << "x=" << i << " w=";
-  //     prettyprint::printInvolution(f,kgb.involution(i),kgb.twistedWeylGroup());      
-
-  //     //    WeightInvolution matrix=kgb.involution_matrix(i);
-  //     //    RatWeight shift=y_shift-matrix*y_shift;
-      
-  //   //    TorusPart t=kgb.torus_part(i);
-  //   //TorusElement global_t=global_kgb.torus_part(i);
-  //     //    RootDatum rd=GC.rootDatum();
-
-  //     TorusElement s=global_kgb.torus_part(i);
-  //     WeightInvolution theta=kgb.involution_matrix(i);
-  //     RatWeight log_s=s.log_2pi();
-
-  //     RatWeight gamma=(theta*log_s-log_s);
-  //     RatWeight log_h=(gamma-delta*gamma);
-  //     log_h=RatWeight(log_h.numerator(),4*log_h.denominator()).normalize();
-
-  //     RatWeight log_s_new=(log_s+theta*log_s);
-  //     log_s_new=RatWeight(log_s_new.numerator(),2*log_s_new.denominator()).normalize();
-  //     bool equal=(log_s==log_s_new);
-  //     //      std::cout << "  s=" << log_t << "  t_new: " << t_new;
-  //     std::cout << "  s=" << log_s << "  ";
-  //     if (!equal) std::cout << " s'=" << log_s_new;
-  //     if (log_h != zero)      std::cout << " " <<  "  h=" << log_h;
-  //     RatWeight log_t=log_h+delta*log_h;
-  //     log_t=RatWeight(log_t.numerator(),log_t.denominator()).normalize();
-  //     if (log_t != zero) std::cout << " t=" << log_t;
-      
-
-
-      
-
-  //   // WeightInvolution matrix=kgb.involution_matrix(i);
-  //   // if (matrix*rw==rw) std::cout << "yes equal"; else std::cout << "NOT not equal";
-  //   // std::cout << "rw=" << rw << "theta(rw)=" << matrix*rw << std::endl;
-
-
-
-  //   //    TorusElement t=kgb.torus_part_global(rd,i);
-  //   //    TwistedInvolution ti=kgb.involution(i);
-  //   //    WeylElt w=WeylElt(ti);
-  //   //    GlobalTitsElement xi=GlobalTitsElement(t,w);
-
-  //   //    TorusPart tp=kgb.torus_part(i);
-  //   //    TitsElt xi_tits=TitsElt(Tg,tp,w);
-  //   //    WeylElt wxi=xi_tits.w();
-
-
-
-  //   }
-
-  //   //  f << "" << std::endl;
-  // }
-}
-
-
-void mytest_f_old(){
-
-
-  RealReductiveGroup& G = commands::currentRealGroup();
-  ComplexReductiveGroup& GC=commands::currentComplexGroup();
-  const global_KGB& global_kgb = global_KGB(GC);
-  const KGB& kgb = G.kgb();
-  
-  const TitsGroup& Tg = G.titsGroup();
-  const GlobalTitsGroup& global_Tg = GlobalTitsGroup(GC);
-  ioutils::OutputFile f;
-
-  TorusElement yrho =y_values::exp_2pi(global_kgb.globalTitsGroup().torus_part_offset());
-  //  const GlobalTitsElement& hdelta=GlobalTitsElement(yrho);
-  //  GlobalTitsElement minus_hdelta=GlobalTitsElement(minus_yrho);
-  RatWeight y_shift=yrho.log_2pi();
-  f << "m_rho=exp(i\\pi(" << y_shift << "), terms with h=m_rho labelled *" << std::endl;
-  static TorusElement id =global_kgb.torus_part(0);
-
-  for (size_t i=0; i<kgb.size(); ++i){
-    KGBElt dual_x=kgb.Hermitian_dual(i);
-        if (dual_x==i){
-	  f << "" << std::endl << "x=" << i << " w=";
-      prettyprint::printInvolution(f,kgb.involution(i),kgb.twistedWeylGroup());      
-
-      //    WeightInvolution matrix=kgb.involution_matrix(i);
-      //    RatWeight shift=y_shift-matrix*y_shift;
-      
-    //    TorusPart t=kgb.torus_part(i);
-    //TorusElement global_t=global_kgb.torus_part(i);
-    RootDatum rd=GC.rootDatum();
-
-
-
-
-    TorusElement t=kgb.torus_part_global(rd,i);
-    TwistedInvolution ti=kgb.involution(i);
-    WeylElt w=WeylElt(ti);
-    GlobalTitsElement xi=GlobalTitsElement(t,w);
-
-    //    TorusPart tp=kgb.torus_part(i);
-    //    TitsElt xi_tits=TitsElt(Tg,tp,w);
-    //    WeylElt wxi=xi_tits.w();
-
-    
-
-    RatWeight log_torus_part_xi=t.log_2pi()+y_shift;
-    f << " h(xi): ";
-    if (t==id){
-      f << "*";
-    }
-
-
-
-  //    eblock.toggle_edge(153,213); // 4, 2Ci/2Cr
-  //    eblock.toggle_edge(254,196); // 4, 2Ci/2Cr
-  //    eblock.toggle_edge(240,284); // 4, 2Ci/2Cr
-
-
-
-
-  //    eblock.toggle_edge(153,213); // 4, 2Ci/2Cr
-  //    eblock.toggle_edge(254,196); // 4, 2Ci/2Cr
-  //    eblock.toggle_edge(240,284); // 4, 2Ci/2Cr
-
-
-
-
-  //    eblock.toggle_edge(153,213); // 4, 2Ci/2Cr
-  //    eblock.toggle_edge(254,196); // 4, 2Ci/2Cr
-  //    eblock.toggle_edge(240,284); // 4, 2Ci/2Cr
-
-
-
-
-  //    eblock.toggle_edge(153,213); // 4, 2Ci/2Cr
-  //    eblock.toggle_edge(254,196); // 4, 2Ci/2Cr
-  //    eblock.toggle_edge(240,284); // 4, 2Ci/2Cr
-
-    f << log_torus_part_xi << " ";
-
-     GlobalTitsElement delta_xi=global_Tg.twisted(xi);
-     TorusElement torus_part_delta_xi=delta_xi.torus_part();
-     RatWeight log_torus_part_delta_xi=torus_part_delta_xi.log_2pi()+y_shift;
-     f << "h(delta(xi)):" << log_torus_part_delta_xi << " ";
-     RatWeight difference=log_torus_part_delta_xi-log_torus_part_xi;
-     
-     if (xi==delta_xi)
-       f << "true";
-     else
-       f <<  "false  " << difference;
-
-     const WeylGroup& W = Tg.weylGroup();
-     // test Cayleys                         
-     //     weyl::Generator s;
-     unsigned s;
-     for (s=0; s<G.semisimpleRank(); ++s)
-       {if (kgb.status(s,i)==gradings::Status::Real)
-	   {  f << "" << std::endl;
-	     f << " s: " << s << " " ;
-	     WeylElt sw=w;
-	     W.leftMult(sw,s);
-	     GlobalTitsElement my_cayley=GlobalTitsElement(t,sw);
-	     GlobalTitsElement cayley=xi;
-	     global_Tg.do_inverse_Cayley(s,cayley);
-
-	     TwistedInvolution xi_w=xi.tw();
-	     TwistedInvolution cayley_wtemp=cayley.tw();
-	     f << "first ";
-	     prettyprint::printInvolution(f,xi_w,kgb.twistedWeylGroup());      
-	     f << "second ";
-	     prettyprint::printInvolution(f,cayley_wtemp,kgb.twistedWeylGroup());      
-
-	     TorusElement torus_part_my_cayley=my_cayley.torus_part();
-	     RatWeight log_torus_part_my_cayley=torus_part_my_cayley.log_2pi()+y_shift;
-	     TwistedInvolution my_cayley_w=my_cayley.tw();
-	     f << "  my_cayley:" << log_torus_part_my_cayley << " ";
-	     prettyprint::printInvolution(f,my_cayley_w,kgb.twistedWeylGroup());      
-	     f << "  ";
-
-	     TorusElement torus_part_cayley=cayley.torus_part();
-	     RatWeight log_torus_part_cayley=torus_part_cayley.log_2pi()+y_shift;
-	     TwistedInvolution cayley_w=cayley.tw();
-	     f << "cayley: " << log_torus_part_cayley << " ";
-	     prettyprint::printInvolution(f,cayley_w,kgb.twistedWeylGroup());      
-	     f << "  ";
-	     
-	     if (my_cayley==cayley)
-	       f << "cayleys are equal ";
-	     else
-	       f << "cayleys not equal ";
-	     
-
-	     //	     WeylElt w = WeylElt();  // the identity
-	     //W.leftMult(w,s);   // s as an element of W
-	     
-
-
-	     //	     TitsElt muin=TitsElt(Tg,w);
-	     //	     f << "  muin: ";
-	     //	     prettyprint::printTitsElt(f,muin,Tg);
-
-	     //	     GlobalTitsElement sigma=GlobalTitsElement(w,rd.rank());
-	     //	     TitsElt sigma_tits=TitsElt(Tg,w);
-
-	     //	     GlobalTitsElement my_Cayley=global_Tg.prod(sigma,xi);
-			      //	     GlobalTitsElement cayley=xi;
-			      //	     global_Tg.do_inverse_Cayley(s,cayley);
-
-			      //	     if (my_Cayley==cayley)
-			      //	       f << " cayleys are equal ";
-	     
-
-	     //	     TitsElt mu=TitsElt(Tg,w);
-	     //	     f << "  mu: ";
-	     //	     prettyprint::printTitsElt(f,mu,Tg);
-
-	   }
-
-
-
-	 //	 GlobalTitsElement test=global_Tg.prod(axi,xi);
-	 
-	 //std::ostream& printTitsElt(std::ostream& strm, const TitsElt& a,const TitsGroup& Tg)
-
-      //      W.leftMult(xi.w,s);
-      //GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
-	 //      global_Tg.do_inverse_Cayley(s,xi);
-      //      WeylElt test=prod(WeylElt(),s);
-      //      GlobalTitsElement sigma=GlobalTitsElement(s,rd.rank());
-      //(const WeylElt& we,size_t rank) : t(rank),w(we) {}
-
-       //      global_Tg.mult_sigma(xi,s);
-      //      mult_sigma(TitsElt&, weyl::Generator);
-      
-    //	  assert(kgb.status(sub.simple(s),conj_x)==gradings::Status::Real);
-	}
-
-
-
-
-  // RatWeight twisted_weight=twisted_te.log_2pi();
-  // TorusElement modified=y_values::exp_2pi(shift+twisted_weight);
-  // GlobalTitsElement modified_tits_element=GlobalTitsElement(modified,w);
-
-  // f << "  modified: " << shift+twisted_weight+y_shift << " ";
-  
-  // if (modified_tits_element==global_te)
-  //   f << "  modified is true"; 
-  // else
-  //   f << "  modified is false";
-
-
-      }//  if (dual_x==i){
-
-
-
-
-  }
-  //    TorusElement torus_twist=y_values::exp_2pi(shift);
-    
-  
-
-
-
-
-  f << "" << std::endl;
-}
-
-  
-
-
-// Check for nasty endgame cases in block
-//void test_braid(ext_block::extended_block my_eblock)
-int test_braid(ext_block::extended_block my_eblock)
+int test_braid(ext_block::extended_block eblock) // by value
 {
-  ext_block::extended_block eblock=my_eblock;
   std::cout << "testing braids" << std::endl;
   bool OK=true; int count=0; int failed=0;
   for (weyl::Generator t=1; t<eblock.rank(); ++t)
@@ -1231,63 +930,73 @@ void fix_braid(ext_block::extended_block& eblock)
 	if (not seen.isMember(x))
 	{
 	  BitMap cluster(eblock.size());
-	    if (ext_block::check_braid(eblock,s,t,x,cluster))
-	      ++count;
-	    else
-	    { //braid failure
-	      OK = false;
-	      std::cout  << "Braid relation failure: " << eblock.z(x)
-			 << ", s=" << s+1 << ", t=" << t+1;
-	      for (BitMap::iterator it=cluster.begin(); it(); ++it){
-		std::cout << (it==cluster.begin() ? " (" : ",")
-			  << eblock.z(*it);
-		std::cout << "[" << descent_code(eblock.descent_type(t,*it)) << "]";
-	      }
-	      std::cout << ")";
-	      if (cluster.size()>10) {
-		int found_2Ci=0;
-		for (BitMap::iterator iter=cluster.begin(); iter(); ++iter){
-		  BlockElt x=eblock.z(*iter);
-		  const ext_block::DescValue type = eblock.descent_type(t,*iter);
-		  //	std::cout << " " << descent_code(type) << " ";
-		  BlockElt y1,y2;
-		  if (type==atlas::ext_block::two_semi_imaginary){
-		    if (found_2Ci==0){
-		      ++found_2Ci;
-		      y1=eblock.Cayley(t,*iter);
-		      //   std::cout << std::endl << "first: " << x << ";" << eblock.z(y1);
-		      } else {
-		      y2=eblock.Cayley(t,*iter);
-			// std::cout << "second: " << x << ";" << eblock.z(y2);
-		      eblock.toggle_edge(x,eblock.z(y2));
-		      std::cout << std::endl;
-		      if (eblock.z(y2)<eblock.z(y1)) std::cout << "OUT OF ORDER"<< std::endl;
-		      break;
-		    }
+	  if (ext_block::check_braid(eblock,s,t,x,cluster))
+	    ++count;
+	  else
+	  { //braid failure
+	    OK = false;
+	    std::cout  << "Braid relation failure: " << eblock.z(x)
+		       << ", s=" << s+1 << ", t=" << t+1;
+	    for (BitMap::iterator it=cluster.begin(); it(); ++it)
+	      std::cout << (it==cluster.begin() ? " (" : ",")
+			<< eblock.z(*it) << "["
+			<< descent_code(eblock.descent_type(t,*it)) << "]";
+	    std::cout << ")";
+	    if (cluster.size()>10)
+	    {
+	      bool found_2Ci=false;
+	      for (BitMap::iterator iter=cluster.begin(); iter(); ++iter)
+	      {
+		BlockElt x = eblock.z(*iter);
+		const ext_block::DescValue type = eblock.descent_type(t,*iter);
+		//	std::cout << " " << descent_code(type) << " ";
+		BlockElt y1,y2;
+		if (type==atlas::ext_block::two_semi_imaginary)
+		{
+		  if (not found_2Ci) // then we have a first match
+		  {
+		    found_2Ci=true;
+		    y1=eblock.Cayley(t,*iter);
+	 //   std::cout << std::endl << "first: " << x << ";" << eblock.z(y1);
 		  }
-		}
-	      } // cluster.size()>10
-	      else { //cluster.size()=4 or 6
-		std::cout << std::endl << "fixing small cluster (" << cluster.size() << ")" << std::endl;
-		for (BitMap::iterator it=cluster.begin(); it(); ++it){
-		  BlockElt x=eblock.z(*it);
-		  const ext_block::DescValue type = eblock.descent_type(t,*it);
-		  if (type==atlas::ext_block::two_semi_imaginary){
-		    BlockElt y=eblock.Cayley(t,*it);
-		    eblock.set_edge(x,eblock.z(y));
+		  else // a second match
+		  {
+		    y2=eblock.Cayley(t,*iter);
+		    // std::cout << "second: " << x << ";" << eblock.z(y2);
+		    eblock.toggle_edge(x,eblock.z(y2));
 		    std::cout << std::endl;
+		    if (eblock.z(y2)<eblock.z(y1))
+		      std::cout << "OUT OF ORDER"<< std::endl;
+		    break; // from iteration over cluster
 		  }
 		}
-		std::cout << std::endl;
 	      }
-	      seen |= cluster; // don't do elements of same cluster again
+	    } // cluster.size()>10
+	    else //cluster.size()=4 or 6
+	    {
+	      std::cout << std::endl << "fixing small cluster ("
+			<< cluster.size() << ")" << std::endl;
+	      for (BitMap::iterator it=cluster.begin(); it(); ++it)
+	      {
+		BlockElt x=eblock.z(*it);
+		const ext_block::DescValue type = eblock.descent_type(t,*it);
+		if (type==atlas::ext_block::two_semi_imaginary)
+		{
+		  BlockElt y=eblock.Cayley(t,*it);
+		  eblock.set_edge(x,eblock.z(y));
+		  std::cout << std::endl;
+		}
+	      }
+	      std::cout << std::endl;
 	    }
-	}
-    }
+	    seen |= cluster; // don't do elements of same cluster again
+	  } // end of braid failure case
+	} // loop over |x|
+    } // |for (s)|
   if (OK)
     std::cout << "All " << count << " relations hold!\n";
   std::cout << std::endl;
-} // |braid_f|
+} // |fix_braid|
 
 
 
@@ -1299,39 +1008,6 @@ void braid_f()
   test_braid(eblock);
 }
 
-
-void toggle(int v[]){
-  int w[4];
-  int i;
-  for (i=0; i<4; ++i){
-    w[i]=v[i];
-  }
-  if (v[4]==1){
-    w[0]=v[0];w[1]=v[3];w[2]=v[1];w[3]=v[3];
-  } 
-  else if (v[4]==1){
-    w[0]=v[1];w[1]=v[2];w[2]=v[2];w[3]=v[3];
-  }
-  else if (v[4]==2){
-    w[0]=v[0];w[1]=v[2];w[2]=v[1];w[3]=v[3];
-  }
-  else if (v[4]==3){
-    w[0]=v[0];w[1]=v[2];w[2]=v[1];w[3]=v[2];
-  }
-  else if (v[4]==4){
-    w[0]=v[0];w[1]=v[2];w[2]=v[1];w[3]=v[3];
-  }
-  else if (v[4]==5){
-    w[0]=v[0];w[1]=v[3];w[2]=v[1];w[3]=v[2];
-  }
-  else if (v[4]==6){
-    w[0]=v[0];w[1]=v[3];w[2]=v[1];w[3]=v[3];
-  }
-  else if (v[4]==7){
-    w[0]=v[0];w[1]=v[3];w[2]=v[1];w[3]=v[3];
-  }
-  v[0]=w[0];v[1]=w[1];v[2]=w[2];v[3]=w[3];
-}
 
 
 void go_f()
@@ -1354,7 +1030,8 @@ void go_f()
     }
     else
     {
-      std::cout << "Number of braid relation failures: " << failures << std::endl;
+      std::cout << "Number of braid relation failures: " << failures
+		<< std::endl;
       nr_failures += failures;
       std::cout << std::endl <<"Fixing braids pass " << j << std::endl;
       fix_braid(eblock);

@@ -522,7 +522,7 @@ void KL_table::fill_next_column(PolHash& hash)
     const unsigned defect = has_defect(type(s,y)) ? 1 : 0;
     const unsigned k = aux.block.orbit(s).length();
     const int sign = aux.block.epsilon(s,sy,y);
-    assert(1<=k and k<=3);
+    assert(1<=k and k<=3); ndebug_use(k);
 
     // fill array |cy| with initial contributions from $(T_s+1)*c_{sy}$
     for (BlockElt x=aux.length_floor(y); x-->0; )

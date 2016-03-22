@@ -129,8 +129,10 @@ class extended_block
 // manipulators
 
   void patch_signs();
-  void order_quad(BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s);
-  bool toggle_edge(BlockElt x,BlockElt y); // result tells new value;
+  void order_quad // make 2i12/2r21 quadruple have minus for |y|--|q| edge
+    (BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s, bool verbose=true);
+  bool // return new value; true means edge was flipped to minus
+    toggle_edge(BlockElt x,BlockElt y, bool verbose=true);
   bool set_edge(BlockElt x,BlockElt y);    // always set
   unsigned int list_edges();  // returns number of toggled pairs
   void report_2Ci_toggles(extended_block eblock);
@@ -145,7 +147,7 @@ class extended_block
 
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
 
-  // Look up element by |x|, |y| coordinates
+  // Look up element by its index in |parent| (if that did define an element)
   BlockElt element(BlockElt z) const; // partial inverse of method |z|
 
   const DescValue descent_type(weyl::Generator s, BlockElt n) const
