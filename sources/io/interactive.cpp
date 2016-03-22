@@ -27,7 +27,7 @@
 #include "prettyprint.h"	// |printVector|
 #include "basic_io.h"	// |seqPrint|
 #include "ioutils.h"	// |skipSpaces|
-#include "complexredgp_io.h" // its |Interface| class
+#include "output.h" // its |Interface| class
 #include "kgb_io.h"	// its |print| function
 
 
@@ -134,7 +134,7 @@ InputFile::InputFile(std::string prompt, std::ios_base::openmode mode)
 
 InputFile::~InputFile() { delete d_stream; }
 
-} // namespace ioutils
+} // |namespace ioutils|
 
 /*****************************************************************************
 
@@ -234,10 +234,10 @@ size_t get_Cartan_class(const BitMap& cs) throw(error::InputError)
   Throws an |InputError| if the interaction with the user is not successful;
   in that case both pointers are unchanged.
 
-  We pass references to pointers to both a |ComplexReductiveGroup| and to a
-  |complexredgp_io::Interface|, both of which will be assigned appropriately
+  We pass references to pointers to both an |InnerClass| and to a
+  |output::Interface|, both of which will be assigned appropriately
 */
-void get_group_type(ComplexReductiveGroup*& pG,complexredgp_io::Interface*& pI)
+void get_group_type(InnerClass*& pG,output::Interface*& pI)
   throw(error::InputError)
 {
   // first get the Lie type
@@ -254,8 +254,8 @@ void get_group_type(ComplexReductiveGroup*& pG,complexredgp_io::Interface*& pI)
   WeightInvolution inv=getInnerClass(lo,b); // may throw InputError
 
   // commit (unless |RootDatum(prd)| should throw: then nothing is changed)
-  pG=new ComplexReductiveGroup(prd,inv);
-  pI=new complexredgp_io::Interface(*pG,lo);
+  pG=new InnerClass(prd,inv);
+  pI=new output::Interface(*pG,lo);
   // the latter constructor also constructs two realform interfaces in *pI
 }
 
@@ -359,9 +359,9 @@ void getInteractive(PreRootDatum& d_prd,
   }
 
   // make new PreRootDatum
+  d_prd = PreRootDatum(lt);
+  d_prd.quotient(LatticeMatrix(d_b,d_b.size()));
 
-  PreRootDatum(lt,d_b).swap(d_prd);
-  // swap with d_prd; the old PreRootDatum will be destroyed
 } // |getInteractive(PreRootDatum&,...)|
 
 
@@ -453,14 +453,14 @@ void getInteractive(InnerClassType& ict, const LieType& lt)
   in that case, d_G is not touched.
 */
 
-RealFormNbr get_real_form(complexredgp_io::Interface& CI)
+RealFormNbr get_real_form(output::Interface& CI)
   throw(error::InputError)
 {
-  const realform_io::Interface rfi = CI.realFormInterface();
+  const output::FormNumberMap rfi = CI.realFormInterface();
 
   // if there is only one choice, make it
   if (rfi.numRealForms() == 1) {
-    std::cout << "there is a unique real form: " << rfi.typeName(0)
+    std::cout << "there is a unique real form: " << rfi.type_name(0)
 	      << std::endl;
     return 0;
   }
@@ -478,7 +478,7 @@ RealFormNbr get_real_form(complexredgp_io::Interface& CI)
   {
     std::cout << "(weak) real forms are:" << std::endl;
     for (size_t i = 0; i < rfi.numRealForms(); ++i)
-      std::cout << i << ": " << rfi.typeName(i) << std::endl;
+      std::cout << i << ": " << rfi.type_name(i) << std::endl;
 
     r=get_bounded_int
       (realform_input_buffer,"enter your choice: ",rfi.numRealForms());
@@ -497,24 +497,24 @@ RealFormNbr get_real_form(complexredgp_io::Interface& CI)
 
   Throws an InputError if the interaction with the user fails.
 */
-RealFormNbr get_dual_real_form(complexredgp_io::Interface& CI,
+RealFormNbr get_dual_real_form(output::Interface& CI,
+			       const InnerClass& G,
 			       RealFormNbr rf)
   throw(error::InputError)
 {
-  ComplexReductiveGroup& G = CI.complexGroup();
   bool restrict = rf<G.numRealForms();
   RealFormNbrList drfl;
   if (restrict)
     drfl = G.dualRealFormLabels(G.mostSplit(rf));
 
-  const realform_io::Interface drfi = CI.dualRealFormInterface();
+  const output::FormNumberMap drfi = CI.dualRealFormInterface();
 
   // if there is only one choice, make it
   if ((restrict ? drfl.size() : drfi.numRealForms())== 1)
   {
     RealFormNbr rfn = restrict ? drfl[0] : 0;
     std::cout << "there is a unique dual real form choice: "
-	      << drfi.typeName(drfi.out(rfn)) << std::endl;
+	      << drfi.type_name(drfi.out(rfn)) << std::endl;
     return rfn;
   }
 
@@ -532,8 +532,12 @@ RealFormNbr get_dual_real_form(complexredgp_io::Interface& CI,
       get_type_ahead(commands::currentLine(),realform_input_buffer))
   {
     realform_input_buffer >> r;
-    if (not vals.isMember(r))
+    if (realform_input_buffer.fail() or not vals.isMember(r))
+    {
+      realform_input_buffer.str("");
+      r = drfi.numRealForms(); // make |r| positively invalid again
       std::cout << "Discarding invalid type-ahead.\n";
+    }
   }
 
   if (not vals.isMember(r))
@@ -541,7 +545,7 @@ RealFormNbr get_dual_real_form(complexredgp_io::Interface& CI,
     std::cout << "possible (weak) dual real forms are:" << std::endl;
 
     for (BitMap::iterator it = vals.begin(); it(); ++it)
-      std::cout << *it << ": " << drfi.typeName(*it) << std::endl;
+      std::cout << *it << ": " << drfi.type_name(*it) << std::endl;
     r = get_int_in_set("enter your choice: ",vals);
   }
 
@@ -552,7 +556,7 @@ RealFormNbr get_dual_real_form(complexredgp_io::Interface& CI,
 void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
 {
   // get the user input as a string
-  psg = 0;
+  psg.reset();
   std::string line;
   std::cout << "enter simple roots (" << 1 << "-" << rank << "): ";
   std::getline(std::cin, line);
@@ -562,7 +566,8 @@ void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
   istream.str(line);
 
   // parse it
-  while (!istream.eof()) {
+  while (not istream.eof())
+  {
     // read the next non-whitespace character
     char c;
     std::streampos pos = istream.tellg();
@@ -589,7 +594,7 @@ void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
       // if the number is in range, add it to the subset
       --n; // change to 0-based convention (makes 0 huge and therefore ignored)
       if (n < rank)
-        psg |= (1<<n);
+        psg.set(n);
     }
 
     // see if the user aborted
@@ -779,7 +784,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 {
   // first step: get initial x in canonical fiber
   size_t cn=get_Cartan_class(GR.Cartan_set());
-  const ComplexReductiveGroup& G=GR.complexGroup();
+  const InnerClass& G=GR.complexGroup();
   const RootDatum& rd=G.rootDatum();
 
   const KGB& kgb=GR.kgb();
@@ -789,7 +794,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
     if (kgb.Cartan_class(k)==cn)
     {
       cf.insert(k);
-      if (kgb.involution(k)==G.twistedInvolution(cn))
+      if (kgb.involution(k)==G.involution_of_Cartan(cn))
 	canonical_fiber.push_back(k);
     }
 
@@ -824,8 +829,8 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
     for (size_t i=0; i<i_tab.imaginary_rank(i_x); ++i)
     {
       RootNbr alpha = i_tab.imaginary_basis(i_x,i);
-      int v=-rho.scalarProduct(rd.coroot(alpha));
-      if (kgb::status(kgb,x,rd,alpha)==gradings::Status::ImaginaryCompact)
+      int v = -rho.dot(rd.coroot(alpha));
+      if (kgb::status(kgb,x,alpha)==gradings::Status::ImaginaryCompact)
 	++v; // imaginary compact root should not be singular
       std::cout	<< rd.coroot(alpha) << " (>=" << v << ')' << std::endl;
     }
@@ -842,7 +847,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 	RootNbr alpha = i_tab.imaginary_basis(i_x,i);
 	int v = l.dot(rd.coroot(alpha));
 	bool compact =
-	  kgb::status(kgb,x,rd,alpha)==gradings::Status::ImaginaryCompact;
+	  kgb::status(kgb,x,alpha)==gradings::Status::ImaginaryCompact;
 	if (v<0 or (v==0 and compact))
 	{
 	  std::cout << (v<0 ? "Non-dominant for"
@@ -885,8 +890,8 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 	  std::cout << "Making dominant for "  << (real ? "real" : "complex")
 		    << " coroot " << alpha << std::endl;
 #endif
-          rd.simpleReflect(numer,s);
-          rd.simpleReflect(lambda_rho,s);
+          rd.simple_reflect(s,numer);
+          rd.simple_reflect(s,lambda_rho);
 	  if (not real) // center is $\rho$, but $\rho_r$ cancels if |real|
 	    lambda_rho -= rd.simpleRoot(s);
           x = kgb.cross(s,x);
@@ -899,7 +904,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 	  std::cout << "Applying complex descent for singular coroot "
 		    << alpha << std::endl;
 #endif
-          rd.simpleReflect(lambda_rho,s); lambda_rho -= rd.simpleRoot(s);
+          rd.simple_reflect(s,lambda_rho); lambda_rho -= rd.simpleRoot(s);
           x = kgb.cross(s,x);
 	  changed = true;
           break;
@@ -952,7 +957,7 @@ input::InputBuffer& sr_input()
 }
 
 
-} // namespace interactive
+} // |namespace interactive|
 
 /*****************************************************************************
 
@@ -984,6 +989,6 @@ bool checkInvolution(const WeightInvolution& i,
   return m.divisible(d);
 }
 
-} // namespace
+} // |namespace|
 
-} // namespace atlas
+} // |namespace atlas|

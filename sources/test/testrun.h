@@ -31,7 +31,7 @@ namespace testrun {
   class CoveringIterator;
   class RealFormIterator;
   class SubGroupIterator;
-  class TorusPartIterator;
+  class TorusMapIterator;
 
 }
 
@@ -45,7 +45,16 @@ namespace testrun {
 
 namespace testrun {
 
-// base class for group iterators (currently nothing derived from it)
+// Dixit Fokko: base class for group iterators
+/*
+  It is unclear to me [MvL] what exactly this class was intended for. Visibly
+  an abstract base class, but currently nothing is derived from it, nor is
+  anything implemented. None of the iterators defined in the sequel have
+  |RealReductiveGroup| as value type, so it is not those that were intended to
+  be derived from |GroupIterator|. Maybe different kinds of iterators over
+  |RealReductiveGroup| were envisioned, based on restrictive criteria listed
+  in the |Category| enumeration. For now this is both useless and unused.
+ */
 
 class GroupIterator {
 
@@ -135,7 +144,7 @@ class LieTypeIterator {
   }
 };  // |class LieTypeIterator|
 
-class TorusPartIterator {
+class TorusMapIterator {
 
  private:
 
@@ -155,21 +164,21 @@ class TorusPartIterator {
   typedef const value_type& reference;
 
 // constructors and destructors
-  TorusPartIterator() {}
+  TorusMapIterator() {}
 
-  TorusPartIterator(size_t, const BitMap&);
+  TorusMapIterator(size_t, const BitMap&);
 
   // copy-like constructor, but move iterators to point to new (copied) bitmap
-  TorusPartIterator(const TorusPartIterator&, const BitMap&);
+  TorusMapIterator(const TorusMapIterator&, const BitMap&);
 
-  ~TorusPartIterator() {}
+  ~TorusMapIterator() {}
 
 // accessors
-  bool operator== (const TorusPartIterator& i) const {
+  bool operator== (const TorusMapIterator& i) const {
     return d_data == i.d_data;
   }
 
-  bool operator!= (const TorusPartIterator& i) const {
+  bool operator!= (const TorusMapIterator& i) const {
     return not operator== (i);
   }
 
@@ -190,22 +199,22 @@ class TorusPartIterator {
   }
 
 // manipulators
-  TorusPartIterator& operator++ ();
+  TorusMapIterator& operator++ ();
 
-  TorusPartIterator operator++ (int) {
-    TorusPartIterator tmp(*this);
+  TorusMapIterator operator++ (int) {
+    TorusMapIterator tmp(*this);
     ++(*this);
     return tmp;
   }
 
   void reset(const BitMap&);
-};  // |class TorusPartIterator|
+};  // |class TorusMapIterator|
 
 class SubgroupIterator {
 
  private:
 
-  abelian::FiniteAbelianGroup* d_group;
+  const abelian::FiniteAbelianGroup* d_group;
   std::vector<BitMap> d_prevRank;
   std::set<BitMap> d_thisRank;
   std::vector<BitMap>::const_iterator d_prev;
@@ -231,7 +240,7 @@ class SubgroupIterator {
 // constructors and destructors
   SubgroupIterator() {};
 
-  explicit SubgroupIterator(abelian::FiniteAbelianGroup& A);
+  explicit SubgroupIterator(const abelian::FiniteAbelianGroup& A);
 
   ~SubgroupIterator() {};
 
@@ -277,27 +286,24 @@ class SubgroupIterator {
 
 class CoveringIterator {
 
- private:
-
-  LieType d_lieType;
-  abelian::FiniteAbelianGroup* d_dcenter;
+  const LieType d_lieType;
+  // the center of the dual to the simply connected semisimple group
+  const abelian::FiniteAbelianGroup* d_dcenter;
   size_t d_rank;
   size_t d_semisimpleRank;
   size_t d_torusRank;
 
 // iterator management
-  BitMap d_quotReps;
-  SubgroupIterator d_subgroup;
-  TorusPartIterator d_torusPart;
+  BitMap d_quotReps; // flags coset representatives mod |d_subgroup|
+  SubgroupIterator d_subgroup; // current subgroup quotiented by
+  TorusMapIterator d_torusMap;
   bool d_done;
 
 // data for the PreRootDatum
-  WeightList d_smithBasis;
+  WeightList d_smithBasis; // basis span fund. weights, adapted to root lattice
   PreRootDatum d_preRootDatum;
 
 // private member functions
-  void adjustBasis(WeightList&, const WeightList&);
-  void makeBasis(WeightList&);
   CoveringIterator(const CoveringIterator&);
   CoveringIterator& operator= (const CoveringIterator&);
 
@@ -313,8 +319,7 @@ class CoveringIterator {
   CoveringIterator() {}
 
   explicit CoveringIterator(const LieType&);
-
-  virtual ~CoveringIterator();
+  ~CoveringIterator();
 
 // accessors
   bool operator== (const CoveringIterator& i) const {
@@ -345,13 +350,13 @@ class CoveringIterator {
     return *d_subgroup;
   }
 
+  void makeBasis(WeightList&) const;
+
+  // report where we are in Fokko-interface fashion
+  RatWeightList kernel_generators () const;
+
 // manipulators
   CoveringIterator& operator++ ();
-  CoveringIterator operator++ (int) {
-    CoveringIterator tmp(*this);
-    ++(*this);
-    return tmp;
-  }
 };  // |class CoveringIterator|
 
 class RealFormIterator {

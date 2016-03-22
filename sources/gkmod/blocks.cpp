@@ -12,7 +12,6 @@
 
 #include <cassert>
 #include <vector>
-#include <deque>
 #include <set> // for |insertAscents|
 #include <algorithm>
 #include <iterator>
@@ -23,7 +22,7 @@
 #include "hashtable.h"
 
 #include "bruhat.h"	// construction
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "realredgp.h"
 #include "subsystem.h"
 #include "y_values.h"
@@ -128,9 +127,9 @@ DescentStatus descents(KGBElt x, KGBElt y,
 std::vector<set::EltList> makeHasse(const Block_base&);
 
 
-} // namespace
+} // |namespace|
 
-} // namespace blocks
+} // |namespace blocks|
 
 /*****************************************************************************
 
@@ -534,10 +533,10 @@ Block::Block(const KGB& kgb,const KGB& dual_kgb)
 
 // Construction function for the |Block| class.
 // It is a pseudo constructor method that ends calling main contructor
-Block Block::build(ComplexReductiveGroup& G, RealFormNbr rf, RealFormNbr drf)
+Block Block::build(InnerClass& G, RealFormNbr rf, RealFormNbr drf)
 {
   RealReductiveGroup G_R(G,rf);
-  ComplexReductiveGroup dG(G,tags::DualTag()); // the dual group
+  InnerClass dG(G,tags::DualTag()); // the dual group
   RealReductiveGroup dG_R(dG,drf);
 
   KGB kgb     (G_R, common_Cartans(G_R,dG_R),false);
@@ -622,7 +621,7 @@ RatWeight param_block::nu(BlockElt z) const
 // here the lift $t$ is normalised using |InvolutionTable::real_unique|
 Weight param_block::lambda_rho(BlockElt z) const
 {
-  RatWeight t =  y_rep(y(z)).log_pi(false);
+  RatWeight t =  y_rep(y(z)).log_pi(false); // take a copy
   InvolutionNbr i_x = rc.kgb().inv_nr(parent_x(z));
   involution_table().real_unique(i_x,t);
 
@@ -634,13 +633,13 @@ Weight param_block::lambda_rho(BlockElt z) const
 }
 
 // reconstruct $\lambda$ from $\gamma$ and the torus part $t$ of $y$ using the
-// formula $\lambda = \gamma - {1-\theta\over2}.\log{{t\over\pi\ii})$
+// formula $\lambda = \gamma - {1-\theta\over2}.\log({t\over\pi\ii})$
 // the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
 RatWeight param_block::lambda(BlockElt z) const
 {
   InvolutionNbr i_x = rc.kgb().inv_nr(parent_x(z));
   const WeightInvolution& theta = involution_table().matrix(i_x);
-  RatWeight t =  y_rep(y(z)).log_2pi();
+  RatWeight t =  y_rep(y(z)).log_2pi(); // implicit division by 2 here
   const Ratvec_Numer_t& num = t.numerator();
   return infin_char - RatWeight(num-theta*num,t.denominator());
 }
@@ -700,7 +699,7 @@ BlockEltList param_block::survivors_below(BlockElt z) const
   return result;
 } // |param_block::survivors_below|
 
-void param_block::compute_duals(const ComplexReductiveGroup& G,
+void param_block::compute_duals(const InnerClass& G,
 				const SubSystem& rs)
 {
   const WeightInvolution& delta = G.distinguished();
@@ -720,10 +719,10 @@ void param_block::compute_duals(const ComplexReductiveGroup& G,
 
     // analyse the |twist|-orbits on the Dynkin diagram of |rs|
     for (weyl::Generator s=0; s<rs.rank(); ++s)
-    if (twist[s]==s)
-      orbits.push_back(ext_gen(s));
-    else if (twist[s]>s)
-      orbits.push_back(ext_gen(rs.cartan(s,twist[s])==0, s,twist[s]));
+      if (twist[s]==s)
+	orbits.push_back(ext_gen(s));
+      else if (twist[s]>s)
+	orbits.push_back(ext_gen(rs.cartan(s,twist[s])==0, s,twist[s]));
 
     for (BlockElt z=0; z<size(); ++z)
     {
@@ -737,28 +736,28 @@ void param_block::compute_duals(const ComplexReductiveGroup& G,
 	info[z].dual = element(x_of[dual_x],dual_y);
     }
   }
-}
-
-
+} // |param_block::compute_duals|
 
 RealReductiveGroup& param_block::realGroup() const
   { return rc.realGroup(); }
-const ComplexReductiveGroup& param_block::complexGroup() const
+const InnerClass& param_block::complexGroup() const
   { return rc.realGroup().complexGroup(); }
 const InvolutionTable& param_block::involution_table() const
   { return complexGroup().involution_table(); }
 
 
+
 nblock_help::nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
   : kgb(GR.kgb()), rd(subsys.parent_datum()), sub(subsys)
-  , i_tab(GR.complexGroup().involution_table())
-  , dual_m_alpha(kgb.rank()), half_alpha()
+  , i_tab(GR.ccomplexGroup().involution_table())
+  , dual_m_alpha(), half_alpha()
 {
   assert(kgb.rank()==rd.semisimpleRank());
+  dual_m_alpha.reserve(kgb.rank());
   half_alpha.reserve(kgb.rank());
   for (weyl::Generator s=0; s<kgb.rank(); ++s)
   {
-    dual_m_alpha[s]=TorusPart(rd.simpleRoot(s));
+    dual_m_alpha.push_back(TorusPart(rd.simpleRoot(s)));
     half_alpha.push_back(TorusElement(RatWeight(rd.simpleRoot(s),2),false));
   }
 }
@@ -803,7 +802,7 @@ void nblock_help::parent_up_Cayley(nblock_elt& z, weyl::Generator s) const
 {
   KGBElt cx=kgb.cayley(s,z.xx); // direct Cayley transform on $x$ side
   if (cx == UndefKGB) // undefined Cayley transform: not imaginary noncompact
-    return; // silently ignore, done for use from realex |Cayley| function
+    return; // silently ignore, done for use from atlas |Cayley| function
   z.xx = cx;
 
   /* on $y$ side ensure that |z.yy.evaluate_at(rd.simpleCoroot(s))| is even.
@@ -843,14 +842,14 @@ void nblock_help::parent_down_Cayley(nblock_elt& z, weyl::Generator s) const
 {
   KGBElt cx=kgb.inverseCayley(s,z.xx).first; // inverse Cayley on $x$ side
   if (cx == UndefKGB) // not a real root, so undefined inverse Cayley
-    return; // silently ignore, done for use from realex |inv_Cayley| function
+    return; // silently ignore, done for use from atlas |inv_Cayley| function
 
   // on $y$ side just keep the same dual |TorusElement|, so nothing to do
-  // however, for non-parity roots, leave $x$ unchenged as well
+  // however, for non-parity roots, leave $x$ unchanged as well
   Rational r = z.yy.evaluate_at(rd.simpleCoroot(s)); // modulo $2\Z$
   if (r.numerator()%(2*r.denominator())==0) // then it is a parity root
     z.xx = cx; // move $x$ component of |z|
-  // for nonparity roots, leave |z| is unchanged for realex |inv_Cayley|
+  // for nonparity roots, leave |z| is unchanged for atlas |inv_Cayley|
 }
 
 void nblock_help::do_down_Cayley (nblock_elt& z, weyl::Generator s) const
@@ -863,6 +862,14 @@ void nblock_help::do_down_Cayley (nblock_elt& z, weyl::Generator s) const
     parent_cross_act(z,ww[i]);
 }
 
+void nblock_help::twist(nblock_elt& z) const
+{
+  z.xx = kgb.Hermitian_dual(z.xx);
+  z.yy.act_by(i_tab.delta);
+}
+
+
+// this essentially modularly reduces the |y| component by taking fingerprint
 y_entry nblock_help::pack_y(const nblock_elt& z) const
 {
   InvolutionNbr i = kgb.inv_nr(z.x());
@@ -896,7 +903,7 @@ non_integral_block::non_integral_block
   : param_block(rc,rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
   , z_hash(info)
 {
-  const ComplexReductiveGroup& G = complexGroup();
+  const InnerClass& G = complexGroup();
   const RootDatum& rd = G.rootDatum();
   Block_base::dd = DynkinDiagram(rd.cartanMatrix());
 
@@ -1019,7 +1026,7 @@ non_integral_block::non_integral_block
       // compute length change; only nonzero for complex roots; if so, if
       // $\theta(\alpha)$ positive, like $\alpha$, then go down (up for $x$)
       int d = i_tab.complex_roots(i_theta).isMember(alpha)
-	    ? rd.isPosRoot(i_tab.root_involution(i_theta,alpha)) ? -1 : 1
+	    ? rd.is_posroot(i_tab.root_involution(i_theta,alpha)) ? -1 : 1
 	    : 0 ;
       int length = this->length(next) + d;
       assert(length>=0); // if not, then starting point not minimal for length
@@ -1751,8 +1758,8 @@ DynkinDiagram folded
 	int d=orbit[i].length()-orbit[j].length();
 	if (d==0)
 	{
-	  Cartan(i,j)=diag.cartanEntry(i,j); // for same type orbits just
-	  Cartan(j,i)=diag.cartanEntry(j,i); // copy Cartan matrix entry
+	  Cartan(i,j)=diag.Cartan_entry(i,j); // for same type orbits just
+	  Cartan(j,i)=diag.Cartan_entry(j,i); // copy Cartan matrix entry
 	}
 	else // unequal type, mark $-2$ when first index is longer than second
 	{
@@ -1767,6 +1774,6 @@ DynkinDiagram folded
 BitMap common_Cartans(RealReductiveGroup& GR, RealReductiveGroup& dGR)
 { return GR.Cartan_set() & GR.complexGroup().dual_Cartan_set(dGR.realForm()); }
 
-} // namespace blocks
+} // |namespace blocks|
 
-} // namespace atlas
+} // |namespace atlas|

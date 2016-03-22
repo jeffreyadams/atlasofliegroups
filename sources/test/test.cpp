@@ -18,7 +18,7 @@
 
 #include "polynomials.h"
 #include "kgb.h"     // |kgb.size()|
-#include "complexredgp.h" // |twoRho| in |nu_block::print|
+#include "innerclass.h" // |twoRho| in |nu_block::print|
 #include "blocks.h"
 #include "ext_block.h"
 #include "kl.h"
@@ -38,7 +38,7 @@
 #include <fstream>
 #include <map>
 
-#include "atlas_types.h" // here to preempt double inclusion of _fwd files
+#include "../Atlas.h" // here to preempt double inclusion of _fwd files
 
 #include "free_abelian.h"
 #include "permutations.h"
@@ -48,7 +48,7 @@
 #include "prerootdata.h"
 #include "rootdata.h"
 #include "cartanclass.h"
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "realredgp.h"
 #include "tits.h"
 #include "weyl.h"
@@ -65,7 +65,7 @@
 #include "basic_io.h"
 #include "prettyprint.h"
 #include "interactive.h"
-#include "realform_io.h"
+#include "output.h"
 #include "kgb_io.h"
 #include "block_io.h"
 
@@ -113,6 +113,8 @@ namespace {
   void branch_f();
   void qbranch_f();
   void srtest_f();
+  void testrun_f();
+  void exam_f();
 
   void X_f();
 
@@ -154,6 +156,10 @@ namespace {
 template<>
 void addTestCommands<commands::EmptymodeTag> (commands::CommandNode& mode)
 {
+  mode.add("testrun",testrun_f,
+	   "iterates over root data of given rank, calling examine",
+	   commands::use_tag);
+
   if (testMode == EmptyMode)
     mode.add("test",test_f,test_tag);
 }
@@ -203,6 +209,10 @@ void addTestCommands<commands::RealmodeTag> (commands::CommandNode& mode)
   mode.add("srtest",srtest_f,
 	   "gives information about a representation",commands::std_help);
 
+  mode.add("examine",exam_f,
+	   "tests whether x0 will change",commands::use_tag);
+
+
   if (testMode == RealMode)
     mode.add("test",test_f,test_tag);
 
@@ -248,6 +258,45 @@ namespace {
 
 
 // Empty mode functions
+
+bool examine(RealReductiveGroup& G);
+void testrun_f()
+{
+  unsigned long rank=interactive::get_bounded_int
+    (interactive::common_input(),"rank: ",constants::RANK_MAX+1);
+  std::cout << "Testing x0 torus bits.\n"; // adapt to |examine|
+  for (testrun::LieTypeIterator it(testrun::Semisimple,rank); it(); ++it)
+  {
+    std::cout<< *it << std::endl;
+    for (testrun::CoveringIterator cit(*it); cit(); ++cit)
+    {
+      PreRootDatum prd = *cit;
+      WeightInvolution id(prd.rank()); // identity
+      InnerClass G(prd,id);
+      for (RealFormNbr rf=0; rf<G.numRealForms(); ++rf)
+      {
+	RealReductiveGroup G_R(G,rf);
+	if (not examine(G_R))
+	{
+	  WeightList subattice_basis;
+	  cit.makeBasis(subattice_basis);
+	  basic_io::seqPrint(std::cout,
+			     subattice_basis.begin(),subattice_basis.end(),
+			     ", ","\n Sublattice basis: ","\n");
+	  lietype::InnerClassType ict; // need layout to convert form number
+	  for (size_t i=0; i<it->size(); ++i)
+	    ict.push_back('e');
+	  lietype::Layout lay(*it,ict);
+	  output::FormNumberMap itf(G,lay);
+	  std::cout << " Failure at real form " << itf.out(rf) << std::endl;
+	}
+	std::cout << std::flush;
+      }
+    }
+    std::cout << '.' << std::endl;
+  }
+
+}
 
 
 // Main mode functions
@@ -295,7 +344,7 @@ void poscoroots_rootbasis_f()
 
 void X_f()
 {
-  ComplexReductiveGroup& G=commands::currentComplexGroup();
+  InnerClass& G=commands::currentComplexGroup();
   kgb::global_KGB kgb(G); // build global Tits group, "all" square classes
   ioutils::OutputFile f;
   kgb_io::print_X(f,kgb);
@@ -627,12 +676,8 @@ void mod_lattice_f()
 
   unsigned long cn=interactive::get_Cartan_class(G.Cartan_set());
 
-  WeightInvolution q = G.cartan(cn).involution();
-  for (size_t j = 0; j<q.numRows(); ++j)
-    q(j,j) -= 1;
-
   CoeffList factor;
-  int_Matrix b = matreduc::adapted_basis(q,factor);
+  int_Matrix b = matreduc::adapted_basis(G.cartan(cn).involution()-1,factor);
 
   RankFlags units, doubles;
   unsigned n1=0,n2=0;
@@ -806,7 +851,7 @@ void srtest_f()
   prettyprint::printVector(std::cout << " converted to (1/2)",khc.lift(sr));
 
   const TwistedInvolution& canonical =
-    G.complexGroup().twistedInvolution(sr.Cartan());
+    G.complexGroup().involution_of_Cartan(sr.Cartan());
   if (kgb.involution(x)!=canonical)
     prettyprint::printWeylElt(std::cout << " at involution ",
 			      canonical, G.weylGroup());
@@ -817,37 +862,21 @@ void srtest_f()
 
 bool examine(RealReductiveGroup& G)
 {
-  const WeylGroup& W = G.weylGroup();
   const KGB& kgb=G.kgb();
-  size_t l = W.length(kgb.involution(0)),t;
-  for (size_t i=1; i<kgb.size(); ++i)
-    if ((t=W.length(kgb.involution(i)))<l)
-      return false;
-    else
-      l=t;
-  return true;
+  TorusPart t0 = kgb.torus_part(0);
+  TorusPart t1 = G.complexGroup().x0_torus_part(G.realForm());
+  return t0==t1;
 }
 
-
-
-TorusElement torus_part
-  (const RootDatum& rd,
-   const WeightInvolution& theta,
-   const RatWeight& lambda, // discrete parameter
-   const RatWeight& gamma // infinitesimal char
-  )
+void exam_f()
 {
-  InvolutionData id(rd,theta);
-  Weight cumul(rd.rank(),0);
-  arithmetic::Numer_t n=gamma.denominator();
-  const Ratvec_Numer_t& v=gamma.numerator();
-  const RootNbrSet pos_real = id.real_roots() & rd.posRootSet();
-  for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
-    if (rd.coroot(*it).dot(v) %n !=0) // nonintegral
-      cumul+=rd.root(*it);
-  // now |cumul| is $2\rho_\Re(G)-2\rho_\Re(G(\gamma))$
-
-  return y_values::exp_pi(gamma-lambda+RatWeight(cumul,2));
+  RealReductiveGroup& G = commands::currentRealGroup();
+  if (examine(G))
+    std::cout << "x0 torus bits constistent with traditional ones";
+  else
+    std::cout << "x0 torus bits changed from " << G.kgb().torus_part(0)
+	      << " to " << G.complexGroup().x0_torus_part(G.realForm());
+  std::cout << std::endl;
 }
 
 void test_f() // trial of twisted KLV computation
@@ -1059,7 +1088,6 @@ void go_f()
 
 
 // Block mode functions
-
 
 } // |namespace|
 

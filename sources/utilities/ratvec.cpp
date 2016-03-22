@@ -12,6 +12,7 @@
 #include "ratvec.h"
 
 #include <cassert>
+#include <cstdlib> // for |std::abs|
 #include <stdexcept>
 #include <vector>
 
@@ -26,7 +27,7 @@ namespace ratvec {
 template<typename C>
 template<typename C1>
 RationalVector<C>::RationalVector(const  matrix::Vector<C1>& v, C d)
-  : d_num(v.begin(),v.end()), d_denom(arithmetic::abs(d))
+  : d_num(v.begin(),v.end()), d_denom(std::abs(d))
 { if (d<C(0)) d_num*=-C(1); }
 
 // the following implementation assumes |long| can hold cross products
@@ -63,7 +64,7 @@ RationalVector<C> RationalVector<C>::operator+(const RationalVector<C>& v)
 }
 
 // rational vectors are not guaranteed on lowest terms
-// however if multiplication can be by cancellation it is done that way
+// however if multiplication can be done by cancellation, it is done that way
 template<typename C>
 RationalVector<C>& RationalVector<C>::operator*=(C n)
 {
@@ -82,26 +83,52 @@ RationalVector<C>& RationalVector<C>::operator*=(C n)
 
 // division takes signed argument to avoid catastrophic surprises: if ever a
 // negative argument were passed, implicit conversion to unsigned would be fatal
+// like multiplication, this function does not guarantee a normalized result
 template<typename C>
 RationalVector<C>& RationalVector<C>::operator/=(C n)
 {
+  assert(n!=0);
   if (n>0)
     d_denom*=arithmetic::Denom_t(n);
   else
   {
-    assert(n!=0);
     d_num=-d_num;
-    d_denom*=arithmetic::Denom_t(-n);
+    d_denom*=-arithmetic::Denom_t(n); // safe to convert to unsigned, negate
   }
   return *this;
 }
 
 template<typename C>
+RationalVector<C>& RationalVector<C>::operator%=(C n)
+{
+  assert(n!=0);
+  for (auto it=d_num.begin(); it!=d_num.end(); ++it)
+    *it = arithmetic::remainder(*it,d_denom*arithmetic::Denom_t(std::abs(n)));
+  return *this;
+}
+
+template<typename C>
+RationalVector<C>& RationalVector<C>::operator*=(const arithmetic::Rational& r)
+{ return (*this /= r.denominator()) *= r.numerator(); }
+
+template<typename C>
 RationalVector<C> RationalVector<C>::operator*(const arithmetic::Rational& r)
 const
 {
-  RationalVector result(*this);
-  return ((result *= r.numerator()) /= r.denominator()).normalize();
+  return RationalVector(d_num*r.numerator(),d_denom*r.denominator());
+}
+
+template<typename C>
+RationalVector<C>& RationalVector<C>::operator/=(const arithmetic::Rational& r)
+{ assert (r.numerator()!=0);
+  return (*this /= r.numerator()) *= r.denominator();
+}
+
+template<typename C>
+RationalVector<C> RationalVector<C>::operator/(const arithmetic::Rational& r)
+const
+{
+  return RationalVector(d_num*r.denominator(),d_denom*r.numerator());
 }
 
 template<typename C>
@@ -115,7 +142,7 @@ RationalVector<C>& RationalVector<C>::normalize()
   for (size_t i=0; i<d_num.size(); ++i)
   {
     if (d_num[i]!=0)
-      d=arithmetic::gcd(d,arithmetic::abs(d_num[i]));
+      d=arithmetic::gcd(d,std::abs(d_num[i]));
     if (d==1)
       return *this;
   }
@@ -133,6 +160,13 @@ template<typename C1, typename C2>
   return RationalVector<C2>(M*v.numerator(),v.denominator());
 }
 
+template<typename C1, typename C2>
+  RationalVector<C2> operator*
+  (const RationalVector<C2>& v,const matrix::Matrix<C1>& M)
+{
+  return RationalVector<C2>(M.right_prod(v.numerator()),v.denominator());
+}
+
   /*
 
     Instantiation of templates (only these are generated)
@@ -146,6 +180,8 @@ template RationalVector<arithmetic::Numer_t>::RationalVector
   (const matrix::Vector<arithmetic::Numer_t>&, arithmetic::Numer_t);
 template RationalVector<arithmetic::Numer_t> operator*
   (const matrix::Matrix<int>& M, const RationalVector<arithmetic::Numer_t>& v);
+template RationalVector<arithmetic::Numer_t> operator*
+  (const RationalVector<arithmetic::Numer_t>& v,const matrix::Matrix<int>& M);
 
 } // |namespace ratvec|
 

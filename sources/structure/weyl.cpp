@@ -33,6 +33,7 @@
 #include "prerootdata.h"// for defining action using only simple (co)roots
 #include "rootdata.h"	// also needed for defining action, and deducing twist
 #include "blocks.h"  // for |ext_gen|
+#include "sl_list.h"
 
 // extra defs for windows compilation -spc
 #ifdef WIN32
@@ -384,7 +385,7 @@ WeylElt WeylGroup::inverse(const WeylElt& w) const
 void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w) const
 {
   std::set<WeylElt> found;
-  std::stack<WeylElt> toDo;
+  std::stack<WeylElt,containers::mirrored_simple_list<WeylElt> > toDo;
 
   found.insert(w);
   toDo.push(w);
@@ -608,7 +609,7 @@ template<typename C>
   {
     const WeylWord& xw = wordPiece(w,i);
     for (size_t j = xw.size(); j-->0; )
-      rd.simpleReflect(v,d_out[xw[j]]);
+      rd.simple_reflect(d_out[xw[j]],v);
   }
 }
 
@@ -635,7 +636,7 @@ template<typename C>
   {
     const WeylWord& xw = wordPiece(w,i);
     for (size_t j = xw.size(); j-->0; )
-      prd.simpleReflect(v,d_out[xw[j]]);
+      prd.simple_reflect(d_out[xw[j]],v);
   }
 }
 
@@ -659,14 +660,14 @@ void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M)
   Same as |act(rd,inverse(w),v)|, but avoiding computation of |inverse(w)|.
   Here the leftmost factors act first.
 */
-void WeylGroup::inverseAct(const RootDatum& rd, const WeylElt& w, Weight& v)
+void WeylGroup::inverse_act(const RootDatum& rd, const WeylElt& w, Weight& v)
   const
 {
   for (size_t i=0; i<d_rank; ++i )
   {
     const WeylWord& xw = wordPiece(w,i);
     for (size_t j=0; j<xw.size(); ++j )
-      rd.simpleReflect(v,d_out[xw[j]]);
+      rd.simple_reflect(d_out[xw[j]],v);
   }
 }
 
@@ -760,7 +761,8 @@ void TwistedWeylGroup::twistedConjugacyClass
   const
 {
   std::set<TwistedInvolution> found;
-  std::stack<TwistedInvolution> toDo;
+  std::stack<TwistedInvolution,
+	     containers::mirrored_simple_list<TwistedInvolution> > toDo;
 
   found.insert(tw);
   toDo.push(tw);
@@ -1022,7 +1024,7 @@ WeightInvolution TwistedWeylGroup::involution_matrix
   return WeightInvolution(b,b.size());
 }
 
-} // namespace weyl
+} // |namespace weyl|
 
 
 /*****************************************************************************
@@ -1195,7 +1197,7 @@ size_t TI_Entry::hashCode(size_t modulus) const
   return hash & (modulus-1);
 }
 
-} // namespace weyl
+} // |namespace weyl|
 
 /*****************************************************************************
 
@@ -1215,7 +1217,7 @@ Twist make_twist(const RootDatum& rd, const WeightInvolution& d)
   RootNbrList simple_image(rd.semisimpleRank());
 
   for (size_t i = 0; i<simple_image.size(); ++i)
-    simple_image[i] = rd.rootNbr(d*rd.simpleRoot(i));
+    simple_image[i] = rd.root_index(d*rd.simpleRoot(i));
 
   rootdata::wrt_distinguished(rd,simple_image); // and forget the Weyl element
 
@@ -1323,7 +1325,7 @@ void fillCoxMatrix(int_Matrix& cox,
 
 //				Template instantiation
 
-} // namespace
+} // |namespace|
 
 namespace weyl {
 
@@ -1332,6 +1334,6 @@ void WeylGroup::act
   (const RootDatum& rd, const WeylElt& w, matrix::Vector<int>& v) const;
 
 
-}
+} // |namespace weyl|
 
-} // namespace atlas
+} // |namespace atlas|

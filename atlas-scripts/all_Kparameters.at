@@ -1,0 +1,201 @@
+<basic.at
+<K_parameters.at { for type KParam }
+<lattice.at { for in_lattice_basis }
+
+{ reduce [Param] by combining equivalent parameters;
+  returns a list of inequivalent parameters }
+set reduce ([Param] parameters) = [Param]:
+  if #parameters=0 then [Param]:[]
+  else monomials(virtual(real_form(parameters[0]),parameters))
+  fi
+
+{ to reduce a list of KParams, convert to list of parameters, reduce,
+  then convert back }
+set reduce ([KParam] Kparameters) = [KParam]:
+  let parameters = for kp in Kparameters do parameter(kp) od in
+  for p in reduce(parameters) do Kparameter(p) od
+
+{ all nonnegative |vec:a| with $\sum_i(cs[i]*a[i]) \leq limit$
+  intended application: c_i = <rho_check,i^th fundamental weight>, which finds
+  all dominant weights at level <= limit, where simple roots have level 1
+}
+set cone (rat limit, [rat] cs { all >0 } ) = mat: { columns are weights }
+  let n=#cs
+  then rec_fun cn (rat limit, int k) { from this index on } = mat:
+    if k=n { 0 parts } then null(0,1) { one column of size 0; don't miss it! }
+    else
+      let c=cs[k], result = [vec]:[] { using [vec] here better than mat } in
+      for first: limit\c+1
+      do let rec=cn(limit-c*first,k+1) in
+        result #:= ([vec]: (ones(n_columns(rec))*first)^rec )
+      od; mat: result { conversion safe, |result| holds at least one vector }
+    fi
+  in cn(limit,0)
+
+{
+  matrix whose columns are weights representative of a set of generators
+  of the elementary 2-group ker(1+theta(x))/im(1-theta(x)). Might do as well:
+  let (A,v) = adapted_basis(1-involution(x))
+  then (B,)=filter_units(A[:,:#v],v) in B
+}
+set basis_lambda_differential_0 (KGBElt x) = mat: { columns are weights }
+  let theta=involution(x) then E=eigen_lattice(theta,-1)
+  then { express im(1-theta) in basis E, and find E-basis adapted to it }
+    (A,v)=adapted_basis(in_lattice_basis(E,1-theta))
+  in { prints("K=",E); prints("A=",A); prints("v=",v); prints ("B=",E*A); }
+  E * { transform to original coordinates } columns_with((int j):v[j]=2,A)
+{ }
+
+{ all 2^k vectors in X^* representing the characters of H^theta with
+  differential 0
+  k= number of R^* factors in H
+  if H^theta is connected, returns [[0,...,0]]
+}
+set all_lambda_differential_0 (KGBElt x) = [vec]:
+  let basis=basis_lambda_differential_0(x) in
+  for v in all_0_1_vecs(n_columns(basis)) do basis*v od
+
+{ all K parameters with same dlambda as (x,lambda) }
+set all_equal_dlambda_K_parameters (KParam(x,lambda)) = [KParam]:
+  for v in all_lambda_differential_0(x) do (x,lambda+v) od
+
+{ all actual parameters with same dlambda as p, same nu }
+set all_parameters (Param p) = [Param]:
+  let (x,lambda,nu)=%p in
+  for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
+
+{ all parameters with given infinitesimal character }
+set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
+  let rho=rho(G), params=[Param]:[] in
+  for x in KGB(G) do
+    let th1=1+involution(x) in
+    for lr in vec_solve(th1,th1*(gamma-rho)) { needed for lambda to be found }
+    do let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
+      params #:= { concatenate the following list of Param values: }
+        for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
+    od
+  od; reduce(params)  { keep only 1 from each equivalence class }
+
+
+{ all_dominant_norm_less_than(InnerClass ic,ratvec v,int N):
+  returns mu dominant (which will be 2*d*lambda=(1+theta)*lambda) such that
+  1) mu\in X^*
+  2) d*mu restricted to the center is trivial
+  3) <v,mu> = <=N
+  Note: default is v=rho_check(G), so condition is
+  <rho_check,mu> = 2d*<rho_check,lambda> <= N
+  in applications: mu is for L, a subgroup of G, and v=rho_check(G)
+  algorithm:
+  set [lambda_1,...,lambda_{m-1}]=fundamental weights
+  set [lambda_m,...,lambda_{n-1}]=lie_compact_radical_hat(G):
+   this is a Z-basis of compact part of radical (see center.at)
+  [lambda_1,...,lambda_{n-1}] is Z-basis we want
+  set [rat]:c =[c_1,...,c_{n-1}] where c_i=<lambda_i,v>
+  use cone to find all mu=\sum a_i lambda_i such that <v,mu>=sum a_i*c_i<=N
+}
+set all_dominant_norm_upto (InnerClass ic, ratvec cowt,int N) =
+    mat: { columns are weights }
+  let rd=root_datum(ic)
+  then basis = [ratvec]: { rational weights }
+         fundamental_weights(rd) # { concatenate }
+         for w in compact_coradical_basis(ic) do ratvec: w od
+  , rk=rank(rd), result=[vec]: []
+  in
+  for cs in cone(N,for col in basis do cowt*col od) do
+    let (v,d) = %sum(for col@i in basis do col*cs[i] od,rk) in
+    if d=1 then result #:= v fi
+  od; rk { number of rows of matrix returned } # result
+
+{ filter and transform list of mu's into list of example lambda-rho values }
+set lambda_rho_from_dominant_norm_upto (KGBElt x, ratvec v, int N) = mat: {wts}
+  let th1=1+involution(x), rho=rho(root_datum(x)), result=[vec]:[] in
+  for mu in all_dominant_norm_upto(inner_class(x),v,N)
+  do result #:= solve(th1,mu-ratvec_as_vec(th1*rho)) od; #rho{rank} # result
+
+set K_parameters_norm_upto ((KGBElt,ratvec,int)(x,,):triple) = [KParam]:
+  let lrs = lambda_rho_from_dominant_norm_upto(triple), rho=rho(root_datum(x))
+  , result=[KParam]:[]
+  in for lr in lrs do result#:=all_equal_dlambda_K_parameters(x,lr+rho) od;
+  result
+
+{ that used to be:
+{ mu will be dlambda=(1+theta)lambda/2 => 2*mu\in X^*
+  return all mu dominant satisfying:
+  1) mu in X^*
+  2) <rho^vee,mu> <= N
+  3) mu-(1+theta)rho \in (1+theta)X^* (same as in (1+delta)X^*)
+}
+set all_dominant_in_image_oneplustheta_norm_upto (
+  InnerClass ic, mat theta,ratvec v,int N ) = mat: { columns are weights }
+  let th1=theta+1 in
+  columns_with((vec mu): in_lattice(th1,mu-th1*rho(ic)),
+  	       all_dominant_norm_upto(ic,v,N))
+
+{ Given mu\in X^*,
+  solve mu=(1+theta_x)*lambda for lambda\in X^*+rho
+  recall from K_parameters: dlambda=(1+theta)lambda/2, so mu will be 2*dlambda
+  algorithm:
+  lambda=lambda_0+rho with lambda_0\in X^*
+  note: (1+theta)rho is in X^*
+  mu=(1+theta)*lambda_0+(1+theta)*rho \in X^*
+  first check mu is in X^*
+  then check mu-(1+theta)rho is in (1+theta)X^*
+  then solve mu-(1+theta)rho =(1+theta)lambda_0
+  then return lambda=lambda_0+rho
+}
+set make_all_K_parameters (KGBElt x,vec mu) = [KParam]:
+  let rho=rho(real_form(x)), th1=1+involution(x)
+  then mu1=mu-ratvec_as_vec(th1*rho)
+  in all_equal_dlambda_K_parameters(x,solve(th1,mu1)[0]+rho)
+
+set all_K_parameters_norm_upto (KGBElt x, ratvec v,int N) = [KParam]:
+  let ic=inner_class(x),theta=involution(x)
+  then mus=all_dominant_in_image_oneplustheta_norm_upto(ic,theta,v,N)
+  then result=[KParam]:[]
+  in for mu in mus do  result#:=make_all_K_parameters(x,mu) od; result
+}
+
+{ older yet stuff
+
+set all_K_parameters_norm_upto (RealForm G, ratvec v,int N) = [KParam]:
+  let parabolics=all_rel_split_theta_stable_parabolics(G)
+  then Kparameters=[KParam]:[]
+  in
+  ( for L in parabolics do
+      let x_L=KGB(L,KGB_size(L)-1) then x=embed_KGB(x_L,G) in
+      Kparameters#:=all_K_parameters_norm_upto(x,v,N)
+    od
+  ; let result=null_module(G) in
+    for p in Kparameters do  result+:=parameter(p) od
+  ; sort_by_K_norm(for q in monomials(result) do Kparameter(q) od)
+  )
+
+set K_parameter_string (KParam p) = string:
+  if is_integer(lambda(p))
+  then to_string("(x=",#x(p),",lambda=",ratvec_as_vec(lambda(p)),")")
+  else to_string("(x=",#x(p),",lambda=", lambda(p),")")
+  fi
+
+set print_K_parameter (KParam p) = void: prints(K_parameter_string(p))
+
+set print_K_parameter(ParamPol P) = void:
+  for (c,p) in %P do
+    prints(split_as_int(c),"*", K_parameter_string(Kparameter(p)))
+  od
+
+set print_K_parameter_long (KParam p) = void:
+  prints(K_parameter_string(p), " ", K_norm(p))
+
+set print_K_parameter_long (KParamPol P) = void:
+  for (c,p) in %P
+  do prints(split_as_int(c),"*"
+           , K_parameter_string(Kparameter(p)), "  ", K_norm(Kparameter(p)))
+  od
+
+
+set print_all_K_parameters_norm_upto (RealForm G, ratvec v,int N) = void:
+  for p in sort_by_K_norm(all_K_parameters_norm_upto(G,v,N))
+  do prints(p, " ", K_norm(p)) od
+
+
+}

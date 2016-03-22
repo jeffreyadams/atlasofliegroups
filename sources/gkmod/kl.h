@@ -17,7 +17,7 @@
 #include <limits>
 #include <set>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "klsupport.h"	// containment
 #include "polynomials.h"// containment

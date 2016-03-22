@@ -1,20 +1,18 @@
-/*!
-\file
-\brief Class definition and function declarations for class Block.
-*/
 /*
   This is ext_block.h
 
-  Copyright (C) 2013 Marc van Leeuwen
+  Copyright (C) 2013-2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
 
+// Class definition and function declarations for class |extended_block|.
+
 #ifndef EXT_BLOCK_H  /* guard against multiple inclusions */
 #define EXT_BLOCK_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include <cassert>
 #include <iostream>

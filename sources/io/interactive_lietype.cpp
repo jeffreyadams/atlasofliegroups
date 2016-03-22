@@ -294,9 +294,8 @@ void readInnerClass(InnerClassType& ict, input::InputBuffer& buf,
 */
 void readLieType(LieType& lt, input::InputBuffer& buf)
 {
-  bool read = true;
-
-  while (read) {
+  do
+  {
     lietype::TypeLetter x;
     size_t l;
     buf >> x;
@@ -305,15 +304,13 @@ void readLieType(LieType& lt, input::InputBuffer& buf)
       while (l-->0) lt.push_back(SimpleLieType('T',1));
     else
       lt.push_back(SimpleLieType(x,l));
-    buf >> x;
-    if (x != '.') {
-      buf.unget(); // put character back
-      break;
-    }
   }
+  while (buf.get() == '.'); // continue only (!) after full stop
+
+  buf.unget(); // put final character read back
 }
 
-} // namespace interactive_lietype
+} // |namespace interactive_lietype|
 
 /*****************************************************************************
 
@@ -341,6 +338,6 @@ void ignoreSimpleLieType(input::InputBuffer& buf)
   buf >> l;
 }
 
-} // namespace
+} // |namespace|
 
-} // namespace atlas
+} // |namespace atlas|

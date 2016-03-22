@@ -4,6 +4,35 @@ A detailed history of the early development is found in the file
 workinglog. Newer changes are documented in the CVS repository.
 This file contains a summary of major changes to the software.
 
+Version 0.6 (Jan 16, 2016)
+* Renaming of executatbles: atlas->Fokko and realex->atlas
+* Many scripts added to atlas-scripts/ (and some removed)
+
+Version 0.5.8 (May 6, 2015)
+* Bug fix in branching to K code (negative multiplicities were obtained)
+* Branching to K functions now in realex too
+
+Version 0.5.7 (Dec 1 2014)
+* Synthetic real forms and their KGB elements
+* Modify build process, and adopt C++11 as source language
+
+Version 0.5.6 (Oct 18 2013)
+* Correct length in extended blocks
+
+Version 0.5.5 (July 9 2013)
+* Extended blocks
+* Some "extended" functionality (cross, Cayley, twist) available in realex
+
+Version 0.5.4 (Feb 6 2013)
+* Atlas command handling structure is reorganized
+* KL computations in repr mode handle any type of block used for mode entry
+* Twist of block defined by inner class involution implemented
+
+Version 0.5.3 (Dec 30 2012)
+* Rational vectors use long long type
+* Several bugs related to the deformation formula are fixed
+* Better caching of previous results in deformation computation
+
 Version 0.5.2 (July 2, 2012)
 * Bugfix in (nonintegral) block construction
 * Implementation changes: new formulas in KL computation, avoiding thickets
@@ -17,7 +46,7 @@ Version 0.5.1 (June 13, 2012)
 * Minor changes to realex: function definition syntax extended, strings
 * Some scripts improved
 
-Version 0.5   (Jun 1, 2012)
+Version 0.5   (June 1, 2012)
 Building atlas and realex:
 * 'make readline=false' option for realex
 

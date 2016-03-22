@@ -72,6 +72,6 @@ inline void write_bytes<1>(unsigned long long val, std::ostream& out)
   out.put(char(val));
 }
 
-} // namespace basic_io
+} // |namespace basic_io|
 
-} // namespace atlas
+} // |namespace atlas|

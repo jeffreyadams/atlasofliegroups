@@ -10,7 +10,7 @@ standard representations restricted to K.
 
 *** Overview ***
 
-In the setting of the atlas software a "standard representation" is an
+In the setting of the Atlas software a "standard representation" is an
 induced representation from a discrete series or limit of discrete
 series on a real parabolic subgroup. (In the literature this is a
 "standard limit representation"). Such a representation I is "final"
@@ -19,7 +19,7 @@ case of regular infinitesimal character, and which guarantee that I
 has a unique lowest K-type mu(I). Every irreducible representation of
 K is obtained this way.
 
-In the atlas software we work with a fixed complex Cartan subgroup T
+In the Atlas software we work with a fixed complex Cartan subgroup T
 and set of positive roots. Fix an element x of the KGB space (see the
 help file for the KGB command). Then conjugation by x defines a Cartan
 involution theta=theta_x. The fixed points K=K_x of theta is the

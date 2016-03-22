@@ -18,7 +18,7 @@ namespace atlas {
   /* The class OutputFile was moved from here to interactive.h
 
      The reason is that its implementation performs user input, which would
-     make the rest of this module unusable for realex, which does not want to
+     make the rest of this module unusable for atlas, which does not want to
      link in any code performing input
   */
 

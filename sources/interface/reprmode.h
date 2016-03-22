@@ -11,7 +11,7 @@
 #define REPRMODE_H
 
 #include "commands_fwd.h"
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include "wgraph.h"
 
 namespace atlas {
@@ -38,8 +38,8 @@ namespace commands {
   const StandardRepr& currentStandardRepr();
   void ensure_full_block();
 
-} // namespace reprmode
+} // |namespace reprmode|
 
-} // namespace atlas
+} // |namespace atlas|
 
 #endif

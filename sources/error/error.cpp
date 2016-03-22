@@ -16,22 +16,14 @@
 
         Chapter I -- The FatalError class
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace atlas {
 
 namespace error {
 
+// Calling |FatalError("why")| will actually terminate te program!
 void FatalError::operator() (const char* mess)
-
-/*
-  Synopsis: executes the FatalError.
-
-  This prints a short message and exits.
-*/
-
 {
   std::cerr << mess << std::endl;
   std::exit(0);

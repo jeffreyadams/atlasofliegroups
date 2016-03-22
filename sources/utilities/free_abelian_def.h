@@ -23,14 +23,14 @@ Free_Abelian<T,C,Compare>&
 {
   if (m==C(0))
     return *this; // avoid useless work that might introduce null entries
-  std::pair<typename base::iterator,bool> trial =
-    this->insert(std::make_pair(p,m));
-  if (not trial.second) // nothing was inserted, but |trial.first->first==p|
-  {
-    trial.first->second += m; // add |m| to existing coefficient
-    if (trial.first->second==C(0))
-      this->erase(trial.first); // remove term whose coefficient has become $0$
-  }
+  std::pair<typename base::iterator,typename base::iterator> range =
+    this->equal_range(p);
+  if (range.first==range.second) // nothing was  will,found, so we can insert
+    this->insert(range.first,std::make_pair(p,m)); // hinted-insert; succeeds
+  else
+    if ((range.first->second += m)==C(0)) // add |m| to existing coefficient
+      this->erase(range.first); // remove term whose coefficient has become $0$
+
   return *this;
 }
 
@@ -101,5 +101,5 @@ Monoid_Ring<T,C,Compare>
   return result;
 }
 
-  } // namespace free_abelian
-} // namespace atlas
+  } // |namespace free_abelian|
+} // |namespace atlas|

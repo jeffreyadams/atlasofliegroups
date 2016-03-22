@@ -1,123 +1,277 @@
-sources/interpreter/main.cpp: sources/interpreter/main.w
-sources/interpreter/buffer.cpp sources/interpreter/buffer.h: \
-  sources/interpreter/buffer.w
-sources/interpreter/lexer.cpp sources/interpreter/lexer.h: \
-  sources/interpreter/lexer.w
-sources/interpreter/parsetree.cpp sources/interpreter/parsetree.h: \
-  sources/interpreter/parsetree.w
-sources/interpreter/types.cpp sources/interpreter/types.h: \
-  sources/interpreter/types.w
-sources/interpreter/evaluator.cpp sources/interpreter/evaluator.h: \
-  sources/interpreter/evaluator.w
-sources/interpreter/built-in-types.cpp sources/interpreter/built-in-types.h: \
-  sources/interpreter/built-in-types.w
+$(realex_dir)/main.cpp: $(realex_dir)/main.w
+$(realex_dir)/buffer.cpp $(realex_dir)/buffer.h: \
+  $(realex_dir)/buffer.w
+$(realex_dir)/lexer.cpp $(realex_dir)/lexer.h: \
+  $(realex_dir)/lexer.w
+$(realex_dir)/parsetree.cpp \
+  $(realex_dir)/parse_types.h $(realex_dir)/parsetree.h: \
+  $(realex_dir)/parsetree.w
+$(realex_dir)/axis-types.cpp $(realex_dir)/axis-types.h: \
+  $(realex_dir)/axis-types.w
+$(realex_dir)/axis.cpp $(realex_dir)/axis.h: \
+  $(realex_dir)/axis.w
+$(realex_dir)/built-in-types.cpp $(realex_dir)/built-in-types.h: \
+  $(realex_dir)/built-in-types.w
 
-sources/interpreter/buffer.o: \
- sources/interpreter/buffer.cpp sources/interpreter/buffer.h
-sources/interpreter/lexer.o: \
- sources/interpreter/lexer.cpp sources/interpreter/lexer.h \
- sources/interpreter/buffer.h sources/interpreter/parsetree.h \
- sources/interpreter/parser.tab.h
-sources/interpreter/parsetree.o: \
- sources/interpreter/parsetree.cpp sources/interpreter/parsetree.h \
- sources/interpreter/lexer.h sources/interpreter/buffer.h \
- sources/interpreter/parser.tab.h
-sources/interpreter/types.o: \
- sources/interpreter/types.cpp sources/interpreter/types.h \
- sources/interpreter/parsetree.h
-sources/interpreter/evaluator.o: \
- sources/interpreter/evaluator.cpp sources/interpreter/evaluator.h \
- sources/interpreter/types.h sources/interpreter/parsetree.h \
- sources/utilities/arithmetic.h sources/utilities/arithmetic_fwd.h \
- sources/interpreter/lexer.h sources/interpreter/buffer.h \
- sources/interpreter/parser.tab.h sources/structure/atlas_types.h \
- sources/utilities/constants.h sources/utilities/matrix.h \
- sources/utilities/matrix_fwd.h sources/utilities/tags.h \
- sources/utilities/ratvec.h sources/utilities/matreduc.h \
- sources/utilities/bitmap_fwd.h sources/utilities/bitmap.h \
- sources/utilities/constants.h sources/structure/lattice.h \
- sources/structure/atlas_types.h
-sources/interpreter/built-in-types.o: \
- sources/interpreter/built-in-types.cpp \
- sources/interpreter/built-in-types.h sources/interpreter/evaluator.h \
- sources/interpreter/types.h sources/interpreter/parsetree.h \
- sources/utilities/arithmetic.h sources/utilities/arithmetic_fwd.h \
- sources/interpreter/lexer.h sources/interpreter/buffer.h \
- sources/interpreter/parser.tab.h sources/structure/atlas_types.h \
- sources/utilities/constants.h sources/utilities/matrix.h \
- sources/utilities/matrix_fwd.h sources/utilities/tags.h \
- sources/utilities/ratvec.h sources/structure/lietype.h \
- sources/structure/atlas_types.h sources/utilities/permutations.h \
- sources/utilities/permutations_fwd.h sources/utilities/bitset_fwd.h \
- sources/utilities/bitmap_fwd.h sources/utilities/permutations_def.h \
- sources/structure/rootdata.h sources/utilities/arithmetic_fwd.h \
- sources/utilities/tags.h sources/utilities/bitset.h \
- sources/utilities/bits.h sources/utilities/constants.h \
- sources/structure/complexredgp.h sources/utilities/bitmap.h \
- sources/structure/cartanclass.h sources/utilities/partition.h \
- sources/utilities/partition_fwd.h sources/utilities/partition_def.h \
- sources/utilities/bitmap.h sources/structure/involutions.h \
- sources/utilities/hashtable.h sources/utilities/hashtable_fwd.h \
- sources/utilities/hashtable_def.h sources/structure/weyl.h \
- sources/utilities/size.h sources/utilities/size_fwd.h \
- sources/structure/subquotient.h sources/structure/bitvector.h \
- sources/structure/tori.h sources/utilities/bits.h \
- sources/utilities/poset.h sources/utilities/poset_fwd.h \
- sources/utilities/graph_fwd.h sources/utilities/set.h \
- sources/structure/rootdata.h sources/structure/tits.h \
- sources/structure/prerootdata.h sources/structure/y_values.h \
- sources/io/realform_io.h \
- sources/structure/realredgp.h sources/utilities/bitmap_fwd.h \
- sources/utilities/poset_fwd.h sources/structure/topology.h \
- sources/gkmod/kgb.h sources/structure/weyl.h \
- sources/structure/tits.h sources/structure/subsystem.h \
- sources/structure/gradings.h sources/structure/cartanclass.h \
- sources/gkmod/repr.h sources/utilities/free_abelian.h \
- sources/utilities/free_abelian_fwd.h sources/utilities/free_abelian_def.h \
- sources/io/basic_io_def.h sources/structure/prerootdata.h \
- sources/io/basic_io.h sources/structure/dynkin.h sources/structure/lattice.h \
- sources/utilities/matreduc.h sources/structure/tori.h \
- sources/io/prettyprint.h sources/io/ioutils.h sources/io/realredgp_io.h \
- sources/gkmod/blocks.h sources/gkmod/descents.h sources/io/block_io.h \
- sources/io/kgb_io.h sources/gkmod/kl.h sources/gkmod/klsupport.h \
- sources/gkmod/blocks.h sources/utilities/polynomials.h \
- sources/utilities/polynomials_fwd.h sources/utilities/polynomials_def.h \
- sources/error/error.h sources/gkmod/klsupport.h sources/io/kl_io.h \
- sources/gkmod/wgraph.h sources/utilities/graph.h \
- sources/utilities/partition.h sources/io/wgraph_io.h
-sources/interpreter/main.o: \
- sources/interpreter/main.cpp sources/interpreter/parsetree.h \
- sources/interpreter/parser.tab.h sources/interpreter/buffer.h \
- sources/interpreter/lexer.h sources/interface/version.h \
- sources/interpreter/built-in-types.h sources/interpreter/evaluator.h \
- sources/interpreter/types.h sources/utilities/arithmetic.h \
- sources/utilities/arithmetic_fwd.h sources/structure/atlas_types.h \
- sources/utilities/constants.h sources/utilities/matrix.h \
- sources/utilities/matrix_fwd.h sources/utilities/tags.h \
- sources/utilities/ratvec.h sources/structure/lietype.h \
- sources/structure/atlas_types.h sources/utilities/permutations.h \
- sources/utilities/permutations_fwd.h sources/utilities/bitset_fwd.h \
- sources/utilities/bitmap_fwd.h sources/utilities/permutations_def.h \
- sources/structure/rootdata.h sources/utilities/arithmetic_fwd.h \
- sources/utilities/tags.h sources/utilities/bitset.h \
- sources/utilities/bits.h sources/utilities/constants.h \
- sources/structure/complexredgp.h sources/utilities/bitmap.h \
- sources/structure/cartanclass.h sources/utilities/partition.h \
- sources/utilities/partition_fwd.h sources/utilities/partition_def.h \
- sources/utilities/bitmap.h sources/structure/involutions.h \
- sources/utilities/hashtable.h sources/utilities/hashtable_fwd.h \
- sources/utilities/hashtable_def.h sources/structure/weyl.h \
- sources/utilities/size.h sources/utilities/size_fwd.h \
- sources/structure/subquotient.h sources/structure/bitvector.h \
- sources/structure/tori.h sources/utilities/bits.h \
- sources/utilities/poset.h sources/utilities/poset_fwd.h \
- sources/utilities/graph_fwd.h sources/utilities/set.h \
- sources/structure/rootdata.h sources/structure/tits.h \
- sources/structure/prerootdata.h sources/structure/y_values.h \
- sources/io/realform_io.h sources/gkmod/kgb.h sources/structure/weyl.h \
- sources/structure/realredgp.h sources/utilities/bitmap_fwd.h \
- sources/utilities/poset_fwd.h sources/structure/topology.h \
- sources/structure/tits.h sources/structure/subsystem.h \
- sources/structure/gradings.h sources/structure/cartanclass.h \
- sources/gkmod/repr.h sources/utilities/free_abelian.h \
- sources/utilities/free_abelian_fwd.h sources/utilities/free_abelian_def.h
+$(realex_dir)/parser.tab.o: \
+ $(realex_dir)/parsetree.h \
+ $(realex_dir)/parse_types.h \
+ $(realex_dir)/parser.tab.h \
+ $(realex_dir)/axis-types.h
+
+$(realex_dir)/buffer.o: $(realex_dir)/buffer.cpp
+$(realex_dir)/buffer.o $(realex_dir)/buffer.tex: $(realex_dir)/buffer.h
+
+$(realex_dir)/parsetree.o: $(realex_dir)/parsetree.cpp
+$(realex_dir)/parsetree.o $(realex_dir)/parsetree.tex: \
+ $(realex_dir)/parsetree.h \
+ $(realex_dir)/parse_types.h \
+ $(realex_dir)/parser.tab.h \
+ $(sources_dir)/utilities/sl_list.h \
+ $(realex_dir)/axis-types.h \
+ $(realex_dir)/lexer.h \
+ $(realex_dir)/buffer.h
+
+$(realex_dir)/lexer.o: $(realex_dir)/lexer.cpp
+$(realex_dir)/lexer.o $(realex_dir)/lexer.tex: \
+ $(realex_dir)/lexer.h \
+ $(realex_dir)/buffer.h \
+ $(realex_dir)/parsetree.h \
+ $(realex_dir)/parse_types.h \
+ $(realex_dir)/parser.tab.h
+
+$(realex_dir)/global.o: $(realex_dir)/global.cpp
+$(realex_dir)/global.o $(realex_dir)/global.tex: \
+ $(realex_dir)/global.h \
+ $(realex_dir)/axis-types.h \
+ $(realex_dir)/parsetree.h \
+ $(realex_dir)/parse_types.h \
+ $(realex_dir)/parser.tab.h \
+ $(realex_dir)/buffer.h \
+ $(realex_dir)/axis.h \
+ $(realex_dir)/lexer.h \
+ $(sources_dir)/utilities/arithmetic.h \
+ $(sources_dir)/utilities/arithmetic_fwd.h \
+ $(sources_dir)/Atlas.h \
+ $(sources_dir)/utilities/constants.h \
+ $(sources_dir)/utilities/matrix.h \
+ $(sources_dir)/utilities/matrix_fwd.h \
+ $(sources_dir)/utilities/tags.h \
+ $(sources_dir)/utilities/ratvec.h \
+ $(sources_dir)/utilities/matrix.h \
+ $(sources_dir)/utilities/arithmetic.h \
+ $(sources_dir)/utilities/matreduc.h \
+ $(sources_dir)/utilities/bitmap_fwd.h \
+ $(sources_dir)/utilities/bitmap.h \
+ $(sources_dir)/utilities/constants.h \
+ $(sources_dir)/structure/lattice.h \
+ $(sources_dir)/Atlas.h \
+ $(sources_dir)/structure/bitvector.h \
+ $(sources_dir)/utilities/bitset.h \
+ $(sources_dir)/utilities/bitset_fwd.h \
+ $(sources_dir)/utilities/bits.h \
+ $(sources_dir)/utilities/permutations.h \
+ $(sources_dir)/utilities/permutations_fwd.h \
+ $(sources_dir)/utilities/permutations_def.h \
+ $(sources_dir)/utilities/bitmap.h
+
+$(realex_dir)/axis.o: $(realex_dir)/axis.cpp
+$(realex_dir)/axis.o $(realex_dir)/axis.tex : \
+ $(realex_dir)/axis.h \
+ $(realex_dir)/axis-types.h \
+ $(realex_dir)/parsetree.h \
+ $(realex_dir)/parse_types.h \
+ $(realex_dir)/parser.tab.h \
+ $(realex_dir)/buffer.h \
+ $(realex_dir)/lexer.h \
+ $(realex_dir)/global.h \
+ $(realex_dir)/built-in-types.h \
+ $(sources_dir)/utilities/arithmetic.h \
+ $(sources_dir)/utilities/arithmetic_fwd.h \
+ $(sources_dir)/utilities/bitmap.h \
+ $(sources_dir)/utilities/bitmap_fwd.h \
+ $(sources_dir)/utilities/bits.h \
+ $(sources_dir)/utilities/bitset.h \
+ $(sources_dir)/utilities/bitset_fwd.h \
+ $(sources_dir)/utilities/constants.h \
+ $(sources_dir)/utilities/free_abelian.h \
+ $(sources_dir)/utilities/free_abelian_fwd.h \
+ $(sources_dir)/utilities/graph_fwd.h \
+ $(sources_dir)/utilities/hashtable.h \
+ $(sources_dir)/utilities/hashtable_fwd.h \
+ $(sources_dir)/utilities/matrix.h \
+ $(sources_dir)/utilities/matrix_fwd.h \
+ $(sources_dir)/utilities/partition.h \
+ $(sources_dir)/utilities/partition_fwd.h \
+ $(sources_dir)/utilities/permutations.h \
+ $(sources_dir)/utilities/permutations_fwd.h \
+ $(sources_dir)/utilities/poset.h \
+ $(sources_dir)/utilities/poset_fwd.h \
+ $(sources_dir)/utilities/ratvec.h \
+ $(sources_dir)/utilities/set.h \
+ $(sources_dir)/utilities/size.h \
+ $(sources_dir)/utilities/size_fwd.h \
+ $(sources_dir)/utilities/sl_list.h \
+ $(sources_dir)/utilities/tags.h \
+ $(sources_dir)/Atlas.h \
+ $(sources_dir)/structure/bitvector.h \
+ $(sources_dir)/structure/cartanclass.h \
+ $(sources_dir)/structure/innerclass.h \
+ $(sources_dir)/structure/dynkin.h \
+ $(sources_dir)/structure/gradings.h \
+ $(sources_dir)/structure/involutions.h \
+ $(sources_dir)/structure/lietype.h \
+ $(sources_dir)/structure/prerootdata.h \
+ $(sources_dir)/structure/realredgp.h \
+ $(sources_dir)/structure/rootdata.h \
+ $(sources_dir)/structure/subquotient.h \
+ $(sources_dir)/structure/tits.h \
+ $(sources_dir)/structure/topology.h \
+ $(sources_dir)/structure/tori.h \
+ $(sources_dir)/structure/weyl.h \
+ $(sources_dir)/structure/y_values.h \
+ $(sources_dir)/gkmod/blocks.h \
+ $(sources_dir)/gkmod/descents.h \
+ $(sources_dir)/gkmod/kgb.h \
+ $(sources_dir)/gkmod/repr.h \
+ $(sources_dir)/io/realform_io.h
+
+$(realex_dir)/built-in-types.o: $(realex_dir)/built-in-types.cpp
+$(realex_dir)/built-in-types.o $(realex_dir)/built-in-types.tex: \
+ $(realex_dir)/built-in-types.h \
+ $(realex_dir)/axis-types.h \
+ $(realex_dir)/parsetree.h \
+ $(realex_dir)/parse_types.h \
+ $(realex_dir)/parser.tab.h \
+ $(realex_dir)/buffer.h \
+ $(realex_dir)/global.h \
+ $(realex_dir)/axis.h \
+ $(realex_dir)/lexer.h \
+ $(sources_dir)/utilities/arithmetic.h \
+ $(sources_dir)/utilities/arithmetic_fwd.h \
+ $(sources_dir)/utilities/bitmap.h \
+ $(sources_dir)/utilities/bitmap_fwd.h \
+ $(sources_dir)/utilities/bits.h \
+ $(sources_dir)/utilities/bitset.h \
+ $(sources_dir)/utilities/bitset_fwd.h \
+ $(sources_dir)/utilities/constants.h \
+ $(sources_dir)/utilities/free_abelian.h \
+ $(sources_dir)/utilities/free_abelian_fwd.h \
+ $(sources_dir)/utilities/graph.h \
+ $(sources_dir)/utilities/graph_fwd.h \
+ $(sources_dir)/utilities/hashtable.h \
+ $(sources_dir)/utilities/hashtable_fwd.h \
+ $(sources_dir)/utilities/matreduc.h \
+ $(sources_dir)/utilities/matrix.h \
+ $(sources_dir)/utilities/matrix_fwd.h \
+ $(sources_dir)/utilities/partition.h \
+ $(sources_dir)/utilities/partition_fwd.h \
+ $(sources_dir)/utilities/permutations.h \
+ $(sources_dir)/utilities/permutations_fwd.h \
+ $(sources_dir)/utilities/polynomials.h \
+ $(sources_dir)/utilities/polynomials_fwd.h \
+ $(sources_dir)/utilities/poset.h \
+ $(sources_dir)/utilities/poset_fwd.h \
+ $(sources_dir)/utilities/ratvec.h \
+ $(sources_dir)/utilities/set.h \
+ $(sources_dir)/utilities/size.h \
+ $(sources_dir)/utilities/size_fwd.h \
+ $(sources_dir)/utilities/sl_list.h \
+ $(sources_dir)/utilities/tags.h \
+ $(sources_dir)/Atlas.h \
+ $(sources_dir)/structure/bitvector.h \
+ $(sources_dir)/structure/cartanclass.h \
+ $(sources_dir)/structure/innerclass.h \
+ $(sources_dir)/structure/dynkin.h \
+ $(sources_dir)/structure/gradings.h \
+ $(sources_dir)/structure/involutions.h \
+ $(sources_dir)/structure/lattice.h \
+ $(sources_dir)/structure/lietype.h \
+ $(sources_dir)/structure/prerootdata.h \
+ $(sources_dir)/structure/prerootdata.h \
+ $(sources_dir)/structure/realredgp.h \
+ $(sources_dir)/structure/rootdata.h \
+ $(sources_dir)/structure/rootdata.h \
+ $(sources_dir)/structure/subquotient.h \
+ $(sources_dir)/structure/tits.h \
+ $(sources_dir)/structure/topology.h \
+ $(sources_dir)/structure/tori.h \
+ $(sources_dir)/structure/weyl.h \
+ $(sources_dir)/structure/y_values.h \
+ $(sources_dir)/gkmod/blocks.h \
+ $(sources_dir)/gkmod/descents.h \
+ $(sources_dir)/gkmod/ext_block.h \
+ $(sources_dir)/gkmod/kgb.h \
+ $(sources_dir)/gkmod/kl.h \
+ $(sources_dir)/gkmod/klsupport.h \
+ $(sources_dir)/gkmod/repr.h \
+ $(sources_dir)/gkmod/wgraph.h \
+ $(sources_dir)/error/error.h \
+ $(sources_dir)/io/basic_io.h \
+ $(sources_dir)/io/block_io.h \
+ $(sources_dir)/io/ioutils.h \
+ $(sources_dir)/io/kgb_io.h \
+ $(sources_dir)/io/kl_io.h \
+ $(sources_dir)/io/prettyprint.h \
+ $(sources_dir)/io/realform_io.h \
+ $(sources_dir)/io/wgraph_io.h
+
+$(realex_dir)/main.o: $(realex_dir)/main.cpp
+$(realex_dir)/main.o $(realex_dir)/main.tex: \
+ $(realex_dir)/buffer.h \
+ $(realex_dir)/built-in-types.h \
+ $(realex_dir)/axis.h \
+ $(realex_dir)/global.h \
+ $(realex_dir)/lexer.h \
+ $(realex_dir)/parsetree.h \
+ $(realex_dir)/parser.tab.h \
+ $(realex_dir)/parse_types.h \
+ $(realex_dir)/axis-types.h \
+ $(sources_dir)/utilities/arithmetic.h \
+ $(sources_dir)/utilities/arithmetic_fwd.h \
+ $(sources_dir)/utilities/bitmap.h \
+ $(sources_dir)/utilities/bitmap_fwd.h \
+ $(sources_dir)/utilities/bits.h \
+ $(sources_dir)/utilities/bitset.h \
+ $(sources_dir)/utilities/bitset_fwd.h \
+ $(sources_dir)/utilities/constants.h \
+ $(sources_dir)/utilities/free_abelian.h \
+ $(sources_dir)/utilities/free_abelian_fwd.h \
+ $(sources_dir)/utilities/graph_fwd.h \
+ $(sources_dir)/utilities/hashtable.h \
+ $(sources_dir)/utilities/hashtable_fwd.h \
+ $(sources_dir)/utilities/matrix.h \
+ $(sources_dir)/utilities/matrix_fwd.h \
+ $(sources_dir)/utilities/partition.h \
+ $(sources_dir)/utilities/partition_fwd.h \
+ $(sources_dir)/utilities/permutations.h \
+ $(sources_dir)/utilities/permutations_fwd.h \
+ $(sources_dir)/utilities/poset.h \
+ $(sources_dir)/utilities/poset_fwd.h \
+ $(sources_dir)/utilities/ratvec.h \
+ $(sources_dir)/utilities/set.h \
+ $(sources_dir)/utilities/size.h \
+ $(sources_dir)/utilities/size_fwd.h \
+ $(sources_dir)/utilities/tags.h \
+ $(sources_dir)/Atlas.h \
+ $(sources_dir)/structure/bitvector.h \
+ $(sources_dir)/structure/cartanclass.h \
+ $(sources_dir)/structure/innerclass.h \
+ $(sources_dir)/structure/gradings.h \
+ $(sources_dir)/structure/involutions.h \
+ $(sources_dir)/structure/lietype.h \
+ $(sources_dir)/structure/prerootdata.h \
+ $(sources_dir)/structure/realredgp.h \
+ $(sources_dir)/structure/rootdata.h \
+ $(sources_dir)/structure/subquotient.h \
+ $(sources_dir)/structure/subsystem.h \
+ $(sources_dir)/structure/tits.h \
+ $(sources_dir)/structure/tits.h \
+ $(sources_dir)/structure/topology.h \
+ $(sources_dir)/structure/tori.h \
+ $(sources_dir)/structure/weyl.h \
+ $(sources_dir)/structure/y_values.h \
+ $(sources_dir)/gkmod/kgb.h \
+ $(sources_dir)/gkmod/repr.h \
+ $(sources_dir)/version.h \
+ $(sources_dir)/io/realform_io.h

@@ -16,9 +16,10 @@
   For license information see the LICENSE file
 */
 
-#include <deque>
+#include <queue>
 
 #include "bitmap.h"
+#include "sl_list.h"
 
 /*****************************************************************************
 
@@ -80,12 +81,13 @@ template<typename F> // class F serving as function object (ul,ul)->ul
   {
     unsigned long root = *it; // starting element for a fresh orbit
     unsigned long thisClass = result.new_class(root);
-    std::deque<unsigned long> queue(1,root);
+    std::queue<unsigned long,containers::sl_list<unsigned long> > q;
+    q.push(root);
     b.remove(root); // avoid looping back to |root| later
 
     do
     {
-      unsigned long x = queue.front(); queue.pop_front();
+      unsigned long x = q.front(); q.pop();
 
       for (unsigned long i=0; i<c; ++i)
       {
@@ -94,15 +96,15 @@ template<typename F> // class F serving as function object (ul,ul)->ul
 	{
 	  b.remove(y);
 	  result.addToClass(thisClass,y);
-	  queue.push_back(y);
+	  q.push(y);
 	}
       }
     }
-    while (not queue.empty());
+    while (not q.empty());
   }
   return result;
 }
 
-} // namespace partition
+} // |namespace partition|
 
-} // namespace atlas
+} // |namespace atlas|

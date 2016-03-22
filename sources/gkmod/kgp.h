@@ -1,40 +1,70 @@
+/*
+  This is kgp.h
+
+  Copyright (C) 2011 Scott Crofts
+  part of the Atlas of Lie Groups and Representations
+
+  For license information see the LICENSE file
+*/
+
 #ifndef KGP_H
 #define KGP_H
 
 #include "kgb.h"
 #include "bruhat.h"
 #include <queue>
+#include "sl_list.h"
 
-namespace atlas { 
+namespace atlas {
 namespace kgb {
 
-class KGPOrbit {
+class KGP_orbit
+{
+  std::vector<KGBElt> data;
+
 public:
   // allow KGP class to build orbits
   friend class KGP;
 
   // Constructor
-  KGPOrbit() {};
+  KGP_orbit() {};
 
   // print function
   std::ostream& print(std::ostream& strm) const;
 
   // comparison based on dimension (i.e. length of open orbit)
-  bool operator< (const KGPOrbit &elt) const  { return (open() < elt.open()); }
+  bool operator< (const KGP_orbit &elt) const  { return (open() < elt.open()); }
 
   // accessors
   KGBElt open() const { return data.back(); }
   size_t size() const { return data.size(); }
 
-// Data
-protected:
-  std::vector<KGBElt> data;
 };
 
-class KGP {
+class KGP
+{
+  // link to KGB graph
+  const KGB& kgb;
+
+  // link to the bruhat order on kgb
+  const bruhat::BruhatOrder& kgborder;
+
+  // table to hold KGP orbit numbers for each KGB orbit
+  std::vector<KGPElt> kgptable;
+
+  // list of KGP orbits
+  std::vector<KGP_orbit> data;
+
+  // hasse diagram for closure relations
+  // (pointer since there is no default constructor)
+  bruhat::BruhatOrder *bruhat;
+
+  // maximum orbit size - needed for print formatting
+  size_t msize;
+
 public:
   // Constructor
-  KGP(realredgp::RealReductiveGroup& G_R, const unsigned int generators);
+  KGP(realredgp::RealReductiveGroup& G_R, RankFlags generators);
 
   // Destructor (free memory if necessary)
   ~KGP() { if (bruhat != NULL) delete bruhat; }
@@ -54,31 +84,13 @@ public:
   // accessors
   size_t size() const { return data.size(); }
 
-protected:
+private:
   // helper function - removes redundant edges from a closure relation
-  void reduce(std::queue<KGPElt>& q, std::vector<bool>& closure, std::vector<set::EltList>& hasse, KGPElt minelt);
+  typedef std::queue<KGPElt,containers::sl_list<KGPElt> > KGP_queue;
+  void reduce(KGP_queue& q, std::vector<bool>& closure,
+	      std::vector<set::EltList>& hasse, KGPElt minelt);
 
-  // Data
-
-  // link to KGB graph
-  const KGB& kgb;
-  
-  // link to the bruhat order on kgb
-  const bruhat::BruhatOrder& kgborder;
-
-  // table to hold KGP orbit numbers for each KGB orbit
-  std::vector<KGPElt> kgptable;
-
-  // list of KGP orbits
-  std::vector<KGPOrbit> data;
-
-  // hasse diagram for closure relations 
-  // (pointer since there is no default constructor)
-  bruhat::BruhatOrder *bruhat;
-
-  // maximum orbit size - needed for print formatting
-  size_t msize;
-};
+}; // |class KGP|
 
 
 } // |namespace kgb|

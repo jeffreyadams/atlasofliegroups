@@ -19,7 +19,7 @@ the implementation of the KL algorithm.
 
 #include "permutations.h"
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 namespace atlas {
 

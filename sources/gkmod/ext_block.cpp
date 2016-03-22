@@ -152,8 +152,7 @@ bool extended_block::toggle_edge(BlockElt x,BlockElt y, bool verbose)
   x = element(x); y=element(y);
   assert (x!=UndefBlock and y!=UndefBlock);
   BlockEltPair p= x<y ? std::make_pair(x,y) : std::make_pair(y,x);
-  std::pair<std::set<BlockEltPair>::iterator,bool>
-    inserted = flipped_edges.insert(p);
+  auto inserted = flipped_edges.insert(p);
   if (not inserted.second)
     flipped_edges.erase(inserted.first);
 
@@ -170,11 +169,9 @@ bool extended_block::set_edge(BlockElt x,BlockElt y)
   x = element(x); y=element(y);
   assert (x!=UndefBlock and y!=UndefBlock);
   BlockEltPair p= x<y ? std::make_pair(x,y) : std::make_pair(y,x);
-  std::pair<std::set<BlockEltPair>::iterator,bool> inserted = flipped_edges.insert(p);
-  //  if (not inserted.second) flipped_edges.erase(inserted.first);
+  auto inserted = flipped_edges.insert(p);
 
   std::cerr << ""  << "set edge (" << z(p.first) << ',' << z(p.second) << ')';
-    //	    << std::endl;
   return inserted.second;
 }
 
@@ -718,15 +715,14 @@ void show_mat(std::ostream& strm,const matrix::Matrix<Pol> M,unsigned inx)
     }
 }
 
-
 bool check_braid
-(const extended_block& b, weyl::Generator s, weyl::Generator t, BlockElt x,
- BitMap& cluster)
+  (const extended_block& b, weyl::Generator s, weyl::Generator t, BlockElt x,
+   BitMap& cluster)
 {
   if (s==t)
     return true;
   static const unsigned int cox_entry[] = {2, 3, 4, 6};
-  unsigned int len = cox_entry[b.Dynkin().edgeMultiplicity(s,t)];
+  unsigned int len = cox_entry[b.Dynkin().edge_multiplicity(s,t)];
 
   BitMap todo(b.size()),used(b.size());
   todo.insert(x);

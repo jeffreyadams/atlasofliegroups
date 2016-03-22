@@ -17,7 +17,7 @@
 
 #include <stdexcept>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "permutations.h" // needed in the |Layout| structure
 
@@ -75,10 +75,9 @@ struct Layout;
 
 
 
-typedef char TypeLetter;
-
 struct SimpleLieType : public std::pair<TypeLetter,size_t>
-{ typedef std::pair<TypeLetter,size_t> base;
+{ // there are no additional data members
+  typedef std::pair<TypeLetter,size_t> base;
   SimpleLieType(TypeLetter t,size_t rank) : base(t,rank) {}
   TypeLetter type() const { return base::first; }
   TypeLetter& type() { return base::first; }
@@ -91,7 +90,8 @@ struct SimpleLieType : public std::pair<TypeLetter,size_t>
 };
 
 struct LieType : public std::vector<SimpleLieType>
-{ typedef std::vector<SimpleLieType> base;
+{ // there are no additional data members
+  typedef std::vector<SimpleLieType> base;
   LieType() : base() {}
   LieType(const base& b) : base(b) {}
 
@@ -106,7 +106,8 @@ struct LieType : public std::vector<SimpleLieType>
 // the follwing rather empty definition serves mainly to make |InnerClassType|
 // a genuine member of |namespace lietype| for argument-dependent lookup
 struct InnerClassType : public std::vector<TypeLetter>
-{ typedef std::vector<TypeLetter> base;
+{ // there are no additional data members
+  typedef std::vector<TypeLetter> base;
   InnerClassType() : base() {}
 };
 
@@ -116,7 +117,7 @@ struct InnerClassType : public std::vector<TypeLetter>
    involution of the diagram needs to be indicated, whence the |d_perm| field.
    This is ultimately used (only) to correctly associate a real form name
    (recognised in standard diagram labelling) from a special representative
-   grading of the real form (only one bit set), in |realform_io::printType|;
+   grading of the real form (only one bit set), in |output::printType|;
    |d_perm| maps standard (Bourbaki) diagram numbers to simple root indices.
 */
 struct Layout
@@ -127,9 +128,9 @@ struct Layout
 
 // constructors and destructors
 
-Layout() : d_type(), d_inner(), d_perm() {} // needed in realex
+Layout() : d_type(), d_inner(), d_perm() {} // needed in atlas
 
-  /* In the old atlas interface, the Lie type is first provided,
+  /* In the old Fokko interface, the Lie type is first provided,
      and the inner class type is later added; defaults identity permutation */
   Layout(const LieType& lt)
     :d_type(lt),d_inner(),d_perm(lt.rank(),1) {}
@@ -148,8 +149,7 @@ Layout() : d_type(), d_inner(), d_perm() {} // needed in realex
   bool checkRank(const TypeLetter&, size_t);
 
   // involution (permutation) matrix for possibly renumbered Dynkin diagram
-  WeightInvolution involution(const Layout& lo)
-    throw (std::runtime_error,std::bad_alloc);
+  WeightInvolution involution(const Layout& lo);
 
   // permutation matrix for |ict| in simply connected |lt|, Bourbaki order
   WeightInvolution involution(const LieType& lt,

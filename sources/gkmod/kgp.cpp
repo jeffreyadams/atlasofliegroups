@@ -1,3 +1,12 @@
+/*
+  This is kgp.cpp
+
+  Copyright (C) 2011 Scott Crofts
+  part of the Atlas of Lie Groups and Representations
+
+  For license information see the LICENSE file
+*/
+
 #include "kgp.h"
 
 #include "constants.h"
@@ -13,9 +22,9 @@
 namespace atlas {
   namespace kgb {
 
-    // Methods of |KGPOrbit|
+    // Methods of |KGP_orbit|
 
-std::ostream& KGPOrbit::print(std::ostream& strm) const
+std::ostream& KGP_orbit::print(std::ostream& strm) const
 {
   size_t size = data.size();
 
@@ -33,7 +42,7 @@ std::ostream& KGPOrbit::print(std::ostream& strm) const
 
 
     // Constructor
-KGP::KGP(realredgp::RealReductiveGroup& G_R, const unsigned int generators)
+KGP::KGP(realredgp::RealReductiveGroup& G_R, RankFlags generators)
 : kgb(G_R.kgb())
 , kgborder(G_R.Bruhat_KGB())
 , kgptable(kgb.size(),KGPElt(~0))
@@ -42,12 +51,11 @@ KGP::KGP(realredgp::RealReductiveGroup& G_R, const unsigned int generators)
 {
   // local data
   size_t kgbsize = kgb.size();
-  RankFlags roots(generators);
   KGPElt unassigned = ~0;
 
   // determine the KGP orbit for each KGB orbit
   size_t count = 0;
-  std::queue<KGBElt> q;
+  KGP_queue q;
   for (KGBElt i=0; i<kgbsize; i++)
   { // see if we found a new orbit
     if (kgptable[i] == unassigned)
@@ -63,7 +71,7 @@ KGP::KGP(realredgp::RealReductiveGroup& G_R, const unsigned int generators)
 
       // for each simple root, determine the other elements
       // look for other elements in the orbit
-      for (RankFlags::iterator it=roots.begin(); it(); ++it)
+      for (RankFlags::iterator it=generators.begin(); it(); ++it)
       {
 	weyl::Generator j=*it;
 	// the root is in the parabolic, check the cross action
@@ -112,7 +120,7 @@ KGP::KGP(realredgp::RealReductiveGroup& G_R, const unsigned int generators)
   // the above sort undoubtedly messed up the mapping, so we need to fix it
   for (KGPElt i=0; i<count; i++)
   {
-    KGPOrbit kgporbit = data[i];
+    KGP_orbit kgporbit = data[i];
     size_t osize = kgporbit.size();
     for (size_t j=0; j<osize; j++)
       kgptable[kgporbit.data[j]] = i;
@@ -134,7 +142,7 @@ void KGP::fillClosure()
   std::vector<bool> closure(kgpsize,0);
   for (KGPElt i=0; i<kgpsize; i++)
   { // for each kgb orbit in this kgp orbit, examine closure edges of degree one
-    KGPOrbit kgporbit = data[i];
+    KGP_orbit kgporbit = data[i];
     size_t osize = kgporbit.size();
     size_t minelt = kgpsize;
     for (size_t j=0; j<osize; j++)
@@ -155,7 +163,7 @@ void KGP::fillClosure()
     // at this point, closure contains a generating set of edges for
     // the closure relation. We now reduce this set to a minimal
     // generating set
-    std::queue<KGPElt> q;
+    KGP_queue q;
     for (KGPElt j=i; j-->minelt;)
       if (closure[j]==1)
       {
@@ -174,7 +182,7 @@ void KGP::fillClosure()
 } // |KGP::fillClosure|
 
 // helper function - removes redundant edges from a closure relation
-void KGP::reduce(std::queue<KGPElt>& q,
+void KGP::reduce(KGP_queue& q,
 		 std::vector<bool>& closure,
 		 std::vector<set::EltList>& hasse,
 		 KGPElt minelt)

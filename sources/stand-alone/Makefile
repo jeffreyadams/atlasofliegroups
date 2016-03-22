@@ -26,18 +26,19 @@ else
       OFLAG := -O
 endif
 
-CXXFLAGS := -Wall $(OFLAG) $(INCLUDE_FLAGS)
+CXXFLAGS := -std=c++0x -Wall $(OFLAG) $(INCLUDE_FLAGS)
 
 # our beloved C++ compiler
 CXX = g++
 
-cwebx_sources := matrix-merge.w coef-merge.w KLread.w
+cwebx_sources := matrix-merge.w coef-merge.w KLread.w Euler-201.w
 webtexfiles   := $(cwebx_sources:%.w=%.tex)
 
 dvifiles := $(cwebx_sources:%.w=%.dvi)
 derived_cpp := $(cwebx_sources:%.w=%.cpp)
 
-illiterate_sources := matstat.cpp polstat.cpp linear.cpp Poincare.cpp
+illiterate_sources := matstat.cpp polstat.cpp linear.cpp Poincare.cpp \
+  lights-off.cpp lists.cpp
 
 matrix-merge_objects := ../utilities/bitmap.o ../utilities/constants.o \
    ../utilities/bits.o ../utilities/arithmetic.o ../error/error.o
@@ -53,6 +54,14 @@ searchpol_objects:=
 
 Poincare_objects:= ../io/basic_io.o \
    ../utilities/bitset.o ../utilities/bits.o ../utilities/constants.o
+
+lights-off_objects:= ../utilities/mod2_system.o  ../utilities/constants.o \
+   ../utilities/bitmap.o ../utilities/bits.o
+
+Euler_objects:= ../utilities/bitmap.o  ../utilities/constants.o \
+   ../utilities/bits.o
+
+lists_objects :=
 
 executables := $(cwebx_sources:%.w=%) $(illiterate_sources:%.cpp=%)
 
@@ -103,6 +112,12 @@ linear: linear.cpp $(polstat_objects)
 
 Poincare: Poincare.cpp $(Poincare_objects)
 
+lights-off: lights-off.cpp $(lights-off_objects)
+
+Euler-201: Euler-201.cpp $(Euler_objects)
+
+lists: lists.cpp ../utilities/sl_list.h $(lists_objects)
+
 # a static pattern rule giving the usual C++ single-module compilation
 $(executables): %: %.cpp
-	$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) -o $@ $^

@@ -1,9 +1,7 @@
-/*!
-\file
-  This is matrix.h
-*/
+// This is matrix.h
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006-2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -37,6 +35,23 @@ template<typename C>
   void initBasis(std::vector<Vector<C> >& v, size_t n)
   { v=standard_basis<C>(n); }
 
+template<typename C>
+  PID_Matrix<C>& operator+= (PID_Matrix<C>& A, C c); // |A=A+c|, avoiding copy
+
+// non-destructive form takes value parameter, which maybe selects rvalue copy
+template<typename C>
+  PID_Matrix<C> operator+ (PID_Matrix<C> A, C c) // add scalar matrix
+  { return A += c; }
+
+template<typename C>
+  PID_Matrix<C>& operator-= (PID_Matrix<C>& A, C c) { return A += -c; }
+
+template<typename C>
+  PID_Matrix<C> operator- (PID_Matrix<C> A, C c) { return A += -c; }
+
+template<typename C>
+  PID_Matrix<C> operator- (C c, PID_Matrix<C> A) { return A.negate() += c; }
+
 }
 
 /******** type definitions ***************************************************/
@@ -57,27 +72,53 @@ public:
   template<typename I>
     Vector (I b, I e) : base(b,e) {} // construction from iterators
 
-  Vector<C>& operator+= (const Vector<C>&);
-  Vector<C>& operator-= (const Vector<C>&);
-  Vector<C>& operator*= (C);
-  Vector<C>& negate (); // negates argument in place
+  Vector& operator+= (const Vector&);
+  Vector& operator-= (const Vector&);
+  Vector& operator*= (C);
+  Vector& negate (); // negates argument in place
+  Vector& negate_add (const Vector& y); // reversed -=, so *this = y - *this
+
+  // the following two methods do not take an end iterator; count is |size()|
+  template<typename I> Vector& add(I b,C c); // add |Vector(b,b+size())*c|
+  template<typename I> Vector& subtract( I b,C c) { return add(b,-c); }
+
 
   template<typename C1> C1 dot (const Vector<C1>& v) const;
   bool isZero() const;
 
-  Vector<C> operator+ (const Vector<C>& v) const
-    { Vector<C> result(*this); return result +=v; }
-  Vector<C> operator- (const Vector<C>&v) const
-    { Vector<C> result(*this); return result -=v; }
-  Vector<C> operator* (C c) const
-    { Vector<C> result(*this); return result *=c; }
-  Vector<C> operator- () const
-    { Vector<C> result(*this); return result.negate(); }
+#if __GNUC__ < 4 || \
+  __GNUC__ == 4 && ( __GNUC_MINOR__ < 8 || \
+                     __GNUC_MINOR__ == 8 && __GNUC_PATCHLEVEL__ < 1)
+  Vector operator+ (const Vector& v) const
+    { Vector result(*this); return result +=v; }
+  Vector operator- (const Vector&v) const
+    { Vector result(*this); return result -=v; }
+  Vector operator* (C c) const
+    { Vector result(*this); return result *=c; }
+  Vector operator- () const
+    { Vector result(*this); return result.negate(); }
+#else
+  Vector operator+ (const Vector& v) const &
+    { Vector result(*this); return result +=v; }
+  Vector operator- (const Vector&v) const &
+    { Vector result(*this); return result -=v; }
+  Vector operator* (C c) const &
+    { Vector result(*this); return result *=c; }
+  Vector operator- () const &
+    { Vector result(*this); return result.negate(); }
+
+  Vector operator+ (const Vector& v) &&
+  { Vector result(std::move(*this)); return result +=v; }
+  Vector operator- (const Vector&v)  &&
+    { Vector result(std::move(*this)); return result -=v; }
+  Vector operator* (C c) &&
+    { Vector result(std::move(*this)); return result *=c; }
+  Vector operator- () &&
+    { Vector result(std::move(*this)); return result.negate(); }
+#endif
 
   template<typename C1>
-    Vector<C1> scaled (C1 c) const // like operator*, but forces type to C1
-  { Vector<C1> result(base::begin(),base::end()); return result *=c; }
-
+    Vector<C1> scaled (C1 c) const; // like operator*, but forces type to C1
 
   Matrix<C> row_matrix() const;    // vector as 1-row matrix
   Matrix<C> column_matrix() const; // vector as 1-column matrix
@@ -85,10 +126,13 @@ public:
 
 // these are external functions, to allow instantiating |Vector<Pol>|
 template<typename C>
-  Vector<C>& operator/= (Vector<C>& v, C c) throw (std::runtime_error);
+  Vector<C>& operator/= (Vector<C>& v, C c); // this division must be exact
 template<typename C>
-  Vector<C> operator/ (Vector<C> v,C c) throw (std::runtime_error)
-  { return v /= c; }
+  Vector<C>& divide (Vector<C>& v, C c); // this integer division rounds down
+template<typename C>
+  Vector<C>& operator%= (Vector<C>& v, C c);
+template<typename C>
+  Vector<C> operator/ (Vector<C> v,C c) { return v /= c; }
 
 
 template<typename C> class Matrix_base
@@ -127,7 +171,7 @@ template<typename C> class Matrix_base
   void get_row(Vector<C>&, size_t) const;
   void get_column(Vector<C>&, size_t) const;
 
-  Vector<C> row(size_t i) const { Vector<C> r; get_row(r,i); return r; }
+  Vector<C> row(size_t i) const { return Vector<C>(at(i,0),at(i+1,0)); }
   std::vector<Vector<C> > rows() const;
   Vector<C> column(size_t j) const { Vector<C> c; get_column(c,j); return c; }
   std::vector<Vector<C> > columns() const;
@@ -135,6 +179,7 @@ template<typename C> class Matrix_base
   bool operator== (const Matrix_base<C>&) const;
   bool operator!= (const Matrix_base<C>& m) const {return not(operator==(m)); }
 
+  bool is_zero() const; // whether all entries are zero
   bool isEmpty() const { return d_data.size() == 0; }
 // manipulators
   C& operator() (size_t i, size_t j) { return d_data[i*d_columns+j]; }
@@ -149,52 +194,77 @@ template<typename C> class Matrix_base
   void eraseColumn(size_t);
   void eraseRow(size_t);
   void reset() { d_data.assign(d_data.size(),C(0)); }
+
+ protected:
+  const C* at (size_t i,size_t j) const { return &operator()(i,j); }
+  C* at (size_t i,size_t j)             { return &operator()(i,j); }
 }; // |template<typename C> class Matrix_base|
 
 template<typename C> class Matrix : public Matrix_base<C>
 {
-  typedef Matrix_base<C> base;
+ protected:
+   typedef Matrix_base<C> base;
 
  public:
 // constructors
   Matrix() : base() {}
+  Matrix(const base& M) : base(M) {}
+  Matrix(base&& M) : base(std::move(M)) {}
 
+#if __GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 8
+  // that is, if compiler version is sufficiently new
+  using base::base; // inherit all constructors
+#else
   Matrix(size_t m, size_t n) : base(m,n) {}
   Matrix(size_t m, size_t n, const C& c) : base(m,n,c) {}
 
-  explicit Matrix(size_t n); // square identity matrix
   Matrix(const std::vector<Vector<C> >&cols, size_t n_rows)
     : base(cols,n_rows) {}
 
   template<typename I> // from sequence of columns obtained via iterator
     Matrix(I begin, I end, size_t n_rows, tags::IteratorTag)
     : base(begin,end,n_rows,tags::IteratorTag()) {}
+#endif
+  explicit Matrix(size_t n); // square identity matrix
 
 // accessors
-  Matrix<C> transposed() const
-    { Matrix<C> result(*this); result.transpose(); return result; }
-  Matrix<C> negative_transposed() const
-    { Matrix<C> result(*this); result.negate(); result.transpose();
-      return result; }
+  // no non-destructive additive matrix operations; no need for them (yet?)
 
+#if __GNUC__ < 4 || \
+  __GNUC__ == 4 && ( __GNUC_MINOR__ < 8 || \
+                     __GNUC_MINOR__ == 8 && __GNUC_PATCHLEVEL__ < 1)
+  // that is, if compiler version is too old
+  Matrix transposed() const;
+  Matrix negative_transposed() const { return transposed().negate(); }
+#else
+  Matrix transposed() const &;
+  Matrix transposed() &&
+    { return Matrix(std::move(*this)).transpose(); }
+  Matrix negative_transposed() const & { return transposed().negate(); }
+  Matrix negative_transposed() &&
+    { return Matrix(std::move(*this)).negate().transpose(); }
+#endif
+
+  // there is no point in trying to do these matrix multiplications in-place
   template<typename C1> Vector<C1> operator* (const Vector<C1>&) const;
+  template<typename C1> Vector<C1> right_prod(const Vector<C1>&) const;
 
-  template<typename C1> Vector<C1> right_mult(const Vector<C1>&) const;
-  template<typename C1> void apply_to(Vector<C1>& v) const { v= operator*(v); }
+  template<typename C1> void apply_to(Vector<C1>& v) const
+    { v= operator*(v); }
+  template<typename C1> void right_mult(Vector<C1>& v) const
+    { v= right_prod(v); }
 
-  Matrix<C> operator* (const Matrix<C>&) const;
+  Matrix operator* (const Matrix&) const;
 
 // manipulators
 
-  Matrix<C>& operator+= (const Matrix<C>&);
-  Matrix<C>& operator-= (const Matrix<C>&);
-  Matrix<C>& operator*= (const Matrix<C>& Q)
-    { (*this*Q).swap(*this); return *this; }
-  Matrix<C>& leftMult (const Matrix<C>& P)
-    { (P**this).swap(*this); return *this; }
+  Matrix& operator+= (const Matrix&);
+  Matrix& operator-= (const Matrix&);
+  Matrix& operator*= (const Matrix& Q) { return *this = *this * Q; }
+  Matrix& leftMult (const Matrix& P)   { return *this = P * *this; }
 
-  void negate(){ base::d_data.negate(); }
-  void transpose();
+  Matrix& negate() { base::d_data.negate(); return *this; }
+  Matrix& transpose();
 
   // secondary manipulators
 
@@ -215,9 +285,15 @@ template<typename C> class PID_Matrix : public Matrix<C>
   typedef Matrix<C> base;
 
  public:
-// forward constructors to Matrix
   PID_Matrix() : base() {}
+  PID_Matrix(const base& M) : base(M) {}
+  PID_Matrix(base&& M) : base(std::move(M)) {}
 
+// forward constructors to Matrix
+#if __GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 8
+  // that is, if compiler version is sufficiently new
+  using base::base; // inherit all constructors
+#else
   PID_Matrix(size_t m, size_t n) : base(m,n) {}
   PID_Matrix(size_t m, size_t n, const C& c) : base(m,n,c) {}
 
@@ -228,45 +304,63 @@ template<typename C> class PID_Matrix : public Matrix<C>
   template<typename I> // from sequence of columns obtained via iterator
     PID_Matrix(I begin, I end, size_t n_rows, tags::IteratorTag)
     : base(begin,end,n_rows,tags::IteratorTag()) {}
+#endif
 
 // manipulators
-  PID_Matrix<C>& operator/= (const C& c) throw (std::runtime_error);
+  PID_Matrix& operator+= (const Matrix<C>& M)
+    { base::operator+=(M); return *this; }
+  PID_Matrix& operator-= (const Matrix<C>& M)
+    { base::operator-=(M); return *this; }
+  PID_Matrix& operator*= (const Matrix<C>& Q)
+    { base::operator*=(Q); return *this; }
+  PID_Matrix& leftMult (const Matrix<C>& P)
+    { base::leftMult(P); return *this; }
 
-  void invert();
-  void invert(C& d);
+  PID_Matrix& operator/= (const C& c) throw (std::runtime_error)
+  { if (c != C(1)) base::base::d_data /= c; return *this; }
+
+  PID_Matrix& negate() { base::negate(); return *this; }
+  PID_Matrix& transpose() { base::transpose(); return *this; }
+
+  PID_Matrix& invert();
+  PID_Matrix& invert(C& d);
 
 // accessors
-  PID_Matrix<C> transposed() const
-    { PID_Matrix<C> result(*this); result.transpose(); return result; }
-  PID_Matrix<C> negative_transposed() const
-    { PID_Matrix<C> result(*this); result.negate(); result.transpose();
-      return result; }
+#if __GNUC__ < 4 || \
+  __GNUC__ == 4 && ( __GNUC_MINOR__ < 8 || \
+                     __GNUC_MINOR__ == 8 && _GNUC_PATCHLEVEL__ < 1)
+  // that is, if compiler version is too old
+  PID_Matrix transposed() const  { return PID_Matrix(base::transposed()); }
+  PID_Matrix negative_transposed() const
+    { return PID_Matrix(base::negative_transposed()); }
+  PID_Matrix inverse() const     { return PID_Matrix(*this).invert(); }
+  PID_Matrix inverse(C& d) const { return PID_Matrix(*this).invert(d); }
+#else
+  PID_Matrix transposed() const  & { return PID_Matrix(base::transposed()); }
+  PID_Matrix transposed() &&
+    { return PID_Matrix(std::move(*this)).transpose(); }
+  PID_Matrix negative_transposed() const &
+    { return PID_Matrix(base::negative_transposed()); }
+  PID_Matrix negative_transposed() &&
+    { return PID_Matrix(std::move(*this)).negate().transpose(); }
+  PID_Matrix inverse() const &     { return PID_Matrix(*this).invert(); }
+  PID_Matrix inverse() &&  { return PID_Matrix(std::move(*this)).invert(); }
+  PID_Matrix inverse(C& d) const & { return PID_Matrix(*this).invert(d); }
+  PID_Matrix inverse(C& d) && { return PID_Matrix(std::move(*this)).invert(d); }
+#endif
 
   using base::operator*;
 
-  PID_Matrix<C>& operator+= (const Matrix<C>& M)
-    { base::operator+=(M); return *this; }
-  PID_Matrix<C>& operator-= (const Matrix<C>& M)
-    { base::operator-=(M); return *this; }
-  PID_Matrix<C>& operator*= (const Matrix<C>& Q)
-    { base::operator*(Q).swap(*this); return *this; }
-  PID_Matrix<C>& leftMult (const Matrix<C>& P)
-    { (P**this).swap(*this); return *this; }
-
-  PID_Matrix<C> operator* (const Matrix<C>& Q) const
-  { PID_Matrix<C> res; base::operator*(Q).swap(res); return res; }
-
-  PID_Matrix<C> inverse() const
-    { PID_Matrix<C> result(*this); result.invert(); return result; }
-  PID_Matrix<C> inverse(C& d) const
-    { PID_Matrix<C> result(*this); result.invert(d); return result; }
+  PID_Matrix operator* (const Matrix<C>& Q) const
+    { return PID_Matrix(base::operator*(Q)); }
 
 
-  PID_Matrix<C> on_basis(const std::vector<Vector<C> >& basis) const;
+
+  PID_Matrix on_basis(const std::vector<Vector<C> >& basis) const;
 
   // secondary accessors (for inversion algorithms)
   bool divisible(C) const;
-  PID_Matrix<C> block(size_t i0, size_t j0, size_t i1, size_t j1) const;
+  PID_Matrix block(size_t i0, size_t j0, size_t i1, size_t j1) const;
 
 }; // |class PID_Matrix|
 

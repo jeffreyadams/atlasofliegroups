@@ -179,6 +179,7 @@ void CommandNode::add(const char* const name, const Command& command)
     = d_map.insert(std::make_pair(name,command));
 
   assert(p.second); // name should not be doubly defined in one |CommandNode|
+  ndebug_use(p);
 }
 
 void CommandNode::add(const char* const name, action_pointer f,
@@ -575,8 +576,8 @@ const char* getCommand( const char* prompt)
 }
 
 
-} // namespace
+} // |namespace|
 
 } // |namespace commands|
 
-} // namespace atlas
+} // |namespace atlas|

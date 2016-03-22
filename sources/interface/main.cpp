@@ -18,7 +18,7 @@
 #include "emptymode.h"
 #include "error.h"
 #include "input.h"
-#include "version.h"
+#include "../version.h"
 #include "io.h" // so modify message directory
 
 // This one function should not reside in the |atlas| (or any other) namespace

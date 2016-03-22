@@ -50,7 +50,7 @@ sources/utilities/matrix.h
   // To distinguish constructor for dual object from copy-constructor
   struct DualTag {};
 
-  // To distinguish an expermental function (constructor) from one it is 
+  // To distinguish an expermental function (constructor) from one it is
   // ultimately destined to replace.
   struct NewTag {};
 

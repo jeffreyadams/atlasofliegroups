@@ -17,7 +17,7 @@
 
 #include "polynomials.h"
 #include "kgb.h"     // |kgb.size()|
-#include "complexredgp.h" // |twoRho| in |nu_block::print|
+#include "innerclass.h" // |twoRho| in |nu_block::print|
 #include "blocks.h"
 #include "ext_block.h"
 #include "kl.h"
@@ -53,12 +53,17 @@ std::ostream& Block_base::print_to(std::ostream& strm,
 
   const int pad = 2;
 
+  bool traditional = dynamic_cast<const Block*>(this)!=nullptr;
+
   for (BlockElt z=0; z<size(); ++z)
   {
     // print entry number and corresponding orbit pair
-    strm << std::setw(width) << z
-	 << '(' << std::setw(xwidth) << x(z)
-	 << ',' << std::setw(ywidth) << y(z) << "):";
+    strm << std::setw(width) << z;
+    if (traditional) // prining "local" x,y is confusing in other cases
+      strm << '(' << std::setw(xwidth) << x(z)
+	   << ',' << std::setw(ywidth) << y(z) << "):";
+    else
+      strm << ':';
 
     // print length
     strm << std::setw(lwidth+pad) << length(z) << std::setw(pad) << "";
@@ -114,13 +119,13 @@ std::ostream& non_integral_block::print
   (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {
   const KGB& kgb = rc.kgb();
-  int xwidth = ioutils::digits(kgb.size()-1,10ul);
-  RatWeight ll=y_part(z);
+  unsigned int xwidth = ioutils::digits(kgb.size()-1,10ul);
+  unsigned int ysize = y_part(z).size();
 
   strm << (survives(z) ? '*' : ' ')
        << "(x=" << std::setw(xwidth) << parent_x(z)
-       << ",lam=rho+" << std::setw(2*ll.size()+3) << lambda_rho(z)
-       << ", nu=" << std::setw(2*ll.size()+5) << nu(z)
+       << ",lam=rho+" << std::setw(2*ysize+3) << lambda_rho(z)
+       << ", nu=" << std::setw(2*ysize+5) << nu(z)
        << ')' << std::setw(2) << "";
 
   const TwistedInvolution& ti = kgb.involution(parent_x(z));
@@ -476,6 +481,6 @@ std::ostream& print_KL(std::ostream& f, param_block& block, BlockElt z)
   return f;
 }
 
-} // namespace block_io|
+} // |namespace block_io||
 
-} // namespace atlas|
+} // |namespace atlas||

@@ -12,6 +12,7 @@
 #include "arithmetic.h"
 #include "matreduc.h"
 #include "tags.h"
+#include "ratvec.h"
 
 // extra defs for windows compilation -spc
 #ifdef WIN32
@@ -49,22 +50,17 @@ namespace {
   void setCycGenerator(BitMap&, const std::vector<BitMap>&,
 		       const std::set<BitMap>&,
 		       std::vector<BitMap>::const_iterator&,
-		       abelian::FiniteAbelianGroup&);
+		       const abelian::FiniteAbelianGroup&);
   void updateCycGenerator(BitMap&, const abelian::FiniteAbelianGroup&,
 			  const BitMap&, abelian::GrpNbr);
 
 } // |namespace|
-} // |namespace testrun|
 
 /*****************************************************************************
 
         Chapter I -- GroupIterator classes
 
 ******************************************************************************/
-
-namespace testrun {
-
-}
 
 /*****************************************************************************
 
@@ -75,8 +71,6 @@ namespace testrun {
   factors). This will provide the foundation for more complicated iterators.
 
 ******************************************************************************/
-
-namespace testrun {
 
 /*
   Constructs an iterator that will run through all types of category c in
@@ -222,13 +216,12 @@ void advance_type(SimpleLieType& slt,Category c)
 }
 
 } // |namespace|
-} // |namespace testrun|
 
 /*****************************************************************************
 
-        Chapter III -- The TorusPartIterator class
+        Chapter III -- The TorusMapIterator class
 
-  A |TorusPartIterator| runs through all $r$-tuples in $S^r$, where $S$ is
+  A |TorusMapIterator| runs through all $r$-tuples in $S^r$, where $S$ is
   some set of |unsigned long| specified by a |BitMap|. We assume $S$
   is non-empty, so that at least one $r$-tuple exists; we might have $r=0$.
 
@@ -239,16 +232,13 @@ void advance_type(SimpleLieType& slt,Category c)
 
 ******************************************************************************/
 
-namespace testrun {
-
-
 /*
-  Makes a TorusPartIterator that runs through all r-tuples in $B^r$. Since we
-  are assuming that $B$ is non-empty, we can safely dereference |B.begin()|
+  Makes a TorusMapIterator that runs through all r-tuples in $S^r$. Since we
+  are assuming that $S$ is non-empty, we can safely dereference |b.begin()|
   and set |d_done=false| initially
 */
-TorusPartIterator::
-TorusPartIterator(size_t r, const BitMap& b)
+TorusMapIterator::
+TorusMapIterator(size_t r, const BitMap& b)
   : d_rank(r)
   , d_first(b.begin())
   , d_last(b.end())
@@ -258,8 +248,8 @@ TorusPartIterator(size_t r, const BitMap& b)
 {}
 
   // copy, but then change iterators to point into |b|
-TorusPartIterator::
-TorusPartIterator(const TorusPartIterator& src, const BitMap& b)
+TorusMapIterator::
+TorusMapIterator(const TorusMapIterator& src, const BitMap& b)
   : d_rank(src.d_rank)
   , d_first(b.begin())
   , d_last(b.end())
@@ -275,7 +265,7 @@ TorusPartIterator(const TorusPartIterator& src, const BitMap& b)
 /*
   We increment d-tuples starting from the end.
 */
-TorusPartIterator& TorusPartIterator::operator++ ()
+TorusMapIterator& TorusMapIterator::operator++ ()
 {
   for (size_t j=d_rank; j-->0; )
   {
@@ -298,7 +288,7 @@ TorusPartIterator& TorusPartIterator::operator++ ()
 /*
   Re-initializes the iterator for the subgroup B
 */
-void TorusPartIterator::reset(const BitMap& qr)
+void TorusMapIterator::reset(const BitMap& qr)
 {
   d_first = qr.begin();
   d_last = qr.end();
@@ -308,7 +298,6 @@ void TorusPartIterator::reset(const BitMap& qr)
   d_done = false;
 }
 
-}
 
 /*****************************************************************************
 
@@ -330,16 +319,15 @@ void TorusPartIterator::reset(const BitMap& qr)
   to consider quotients of products of a simply connected semisimple group $G$
   and a (central) torus $T=(\C^\times)^d$, by subgroups which intersect $T$
   trivially. Dually, they correspond to subgroups $D$ of $C x \Z^d$, where $C$
-  is the dual of the center of $G$ (i.e. the weight lattice of $G$ modulo the
-  root lattice), and $Z\^d$ is the character lattice of $T$, such that the
-  projection $D\to\Z^d$ is surjective. So we have to traverse the subgroups
-  $H$ of $C$, and for each enumerate homomorphisms $f:\Z^d\to C/H$ to the
-  quotient; the corresponding subgroup $D$ is given by
+  is the dual of the (finite) center of $G$ (i.e. the weight lattice of $G$
+  modulo its root lattice), and $Z\^d$ is the character lattice of $T$, such
+  that the projection $D\to\Z^d$ is surjective. So we have to traverse the
+  subgroups $H$ of $C$, and for each enumerate homomorphisms $f:\Z^d\to C/H$
+  to the corresponding quotient; the corresponding subgroup $D$ is given by
   $\{ (c,x)\in C\times \Z^d : (c mod H)=f(x) \}$
 
 ******************************************************************************/
 
-namespace testrun {
 
 /******** constructors and destructors ***************************************/
 
@@ -355,22 +343,23 @@ CoveringIterator::CoveringIterator(const LieType& lt)
   , d_torusRank(d_rank-d_semisimpleRank)
   , d_quotReps()
   , d_subgroup()
-  , d_torusPart()
+  , d_torusMap()
   , d_done(false)
-  , d_smithBasis(d_semisimpleRank)
+  , d_smithBasis()
   , d_preRootDatum()
 {
   CoeffList factor;
   int_Matrix Smith = // true Smith form needed here
     matreduc::Smith_basis(lt.transpose_Cartan_matrix(),factor);
 
-  assert(factor.size()==d_semisimpleRank); // no zero factors to be dropped
+  assert(factor.size()==d_semisimpleRank); // semisimple, so no zero factors
 
   abelian::GroupType gt;
 
+  d_smithBasis.reserve(d_semisimpleRank);
   for (size_t j=0; j<factor.size(); ++j)
   {
-    d_smithBasis[j] = Smith.column(j);
+    d_smithBasis.push_back(Smith.column(j)); // size is rank, including torus
     if (factor[j]>1)
       gt.push_back(factor[j]);
   }
@@ -378,20 +367,20 @@ CoveringIterator::CoveringIterator(const LieType& lt)
   d_dcenter = new abelian::FiniteAbelianGroup(gt);
   d_subgroup = SubgroupIterator(*d_dcenter);
 
-  d_quotReps.set_capacity(d_dcenter->order());
-  quotReps(d_quotReps,*d_subgroup,*d_dcenter);
-  d_torusPart = TorusPartIterator(d_torusRank,d_quotReps);
+  d_quotReps = abelian::quotReps(*d_subgroup,*d_dcenter);
+  d_torusMap = TorusMapIterator(d_torusRank,d_quotReps);
 
   WeightList lb;
   makeBasis(lb);
 
-  d_preRootDatum = PreRootDatum(d_lieType,lb);
-}
+  d_preRootDatum = PreRootDatum(d_lieType);
+  d_preRootDatum.quotient(LatticeMatrix(lb,lb.size()));
+} // |CoveringIterator::CoveringIterator(const LieType&)|
 
 
 /*
   Copy constructor. Needs to make sure that it gets a new copy of the
-  *(i.d_dcenter). Also needs to construct the |d_torusPart| carefully
+  *(i.d_dcenter). Also needs to construct the |d_torusMap| carefully
 */
 CoveringIterator::CoveringIterator(const CoveringIterator& i)
   : d_lieType(i.d_lieType)
@@ -402,7 +391,7 @@ CoveringIterator::CoveringIterator(const CoveringIterator& i)
   , d_torusRank(i.d_torusRank)
   , d_quotReps(i.d_quotReps)
   , d_subgroup(i.d_subgroup)
-  , d_torusPart(i.d_torusPart,d_quotReps)
+  , d_torusMap(i.d_torusMap,d_quotReps)
   , d_done(i.d_done)
   , d_smithBasis(i.d_smithBasis)
   , d_preRootDatum(i.d_preRootDatum)
@@ -451,18 +440,19 @@ CoveringIterator& CoveringIterator::operator++ ()
 {
   // advance the torus part
 
-  ++d_torusPart;
+  ++d_torusMap;
 
-  if (d_torusPart())
+  if (d_torusMap())
     goto finish;
 
   // otherwise, advance d_subgroup
 
   ++d_subgroup;
 
-  if (d_subgroup()) {
-    quotReps(d_quotReps,*d_subgroup,*d_dcenter);
-    d_torusPart.reset(d_quotReps);
+  if (d_subgroup()) // there was a next subgroup
+  {
+    d_quotReps = abelian::quotReps(*d_subgroup,*d_dcenter);
+    d_torusMap.reset(d_quotReps);
     goto finish;
   }
 
@@ -476,72 +466,104 @@ finish: // update d_preRootDatum
   WeightList lb;
   makeBasis(lb);
 
-  d_preRootDatum = PreRootDatum(d_lieType,lb);
+  d_preRootDatum = PreRootDatum(d_lieType);
+  d_preRootDatum.quotient(LatticeMatrix(lb,lb.size()));
 
   return *this;
-}
+} // |CoveringIterator::operator++|
 
 
 /*
-  Puts in b the basis corresponding to d_group and d_torusPart.
+  Puts in b the basis of a sublattice corresponding to d_group and d_torusMap.
 
   The algorithm is as follows. We look at the lattice spanned by the vectors
   of our Smith basis starting from where the invariant factor becomes > 1.
   Then in terms of these coordinates, we get our sublattice as follows : the
   columns where the invariant factor is non-zero are gotten from *d_dcenter.
-  basis; the other ones are directly read off from d_torusPart (there is a
+  basis; the other ones are directly read off from d_torusMap (there is a
   lower identity block, and the upper block is given by writing the elements
-  of d_torusPart as weights.) Then we need to carry out a matrix
+  of d_torusMap as weights.) Then we need to carry out a matrix
   multiplication to express these vectors in our original basis, and replace
   the Smith vectors by these combinations. That will yield a basis for our
   lattice (not a Smith basis in general, but we don't mind.)
 */
-void CoveringIterator::makeBasis(WeightList& b)
+void CoveringIterator::makeBasis(WeightList& b) const
 {
   // the sizes that are involved
 
   size_t c_rank = d_dcenter->rank();
   size_t t_rank = d_torusRank;
-  size_t s_rank = d_rank - c_rank - t_rank;
+  size_t s_rank = d_rank - c_rank - t_rank; // remaining rank, #{invf = 1}
 
-  WeightList cb;
-  basis(cb,group(),*d_dcenter); // now cb has size c_rank
+  // viewing |dcenter| / |group()| as quotient of $\Z^{c_rank}$ let |cb|
+  WeightList cb; // be adapted generators of the free subgroup modded out
+  abelian::basis(cb,group(),*d_dcenter); // now cb has size c_rank
 
-  // resize the vectors in cb
+  // resize the vectors in cb to accomodate zero "torus" coordinates
 
   for (size_t j = 0; j < cb.size(); ++j)
     cb[j].resize(c_rank+t_rank,0);
 
-  // add the vectors corresponding to the torus part
+  // add the vectors corresponding to the torus map
 
-  for (size_t j = 0; j < t_rank; ++j) {
+  for (size_t j = 0; j < t_rank; ++j)
+  {
     Weight v(c_rank);
-    d_dcenter->toWeight(v,(*d_torusPart)[j]);
-    v.resize(c_rank+t_rank,0);
+    d_dcenter->toWeight(v,(*d_torusMap)[j]); // "torus to center" map
+    v.resize(c_rank+t_rank,0); // extend by identity on torus coordinates
     v[c_rank+j] = 1;
     cb.push_back(v);
   }
 
   // modify the relevant part of the Smith basis
 
-  int_Matrix m_cb(cb,c_rank+t_rank);
-  int_Matrix m_sb
+  int_Matrix m_cb(cb,c_rank+t_rank); // convert |cb| to a matrix
+  int_Matrix m_sb // start after the invariant factors that are $1$
     (d_smithBasis.begin() + s_rank,d_smithBasis.end(), d_semisimpleRank,
      tags::IteratorTag());
 
-  m_sb *= m_cb;
+  m_sb *= m_cb; // use |m_sb| to map each column of |m_cb| to lattice element
 
   // put the new basis in b
 
   b.resize(d_smithBasis.size());
 
   for (size_t j = 0; j < s_rank; ++j)
-    b[j] = d_smithBasis[j];
+    b[j] = d_smithBasis[j]; // use part with invariant factors 1 unchanged
 
   for (size_t j = s_rank; j < b.size(); ++j)
     b[j] = m_sb.column(j-s_rank);
-}
+} // |CoveringIterator::makeBasis|
 
+RatWeightList CoveringIterator::kernel_generators() const
+{
+  const unsigned int c_rank = d_dcenter->rank();
+  const unsigned int t_rank = d_torusRank;
+
+  // viewing |dcenter| / |group()| as quotient of $\Z^{c_rank}$ let |cb|
+  WeightList cb; // be adapted generators of the free subgroup modded out
+  abelian::basis(cb,group(),*d_dcenter); // now cb has size c_rank
+
+  // resize the vectors in cb to accomodate zero "torus" coordinates
+
+  for (size_t j = 0; j < cb.size(); ++j)
+    cb[j].resize(c_rank+t_rank,0);
+
+  // add the vectors corresponding to the torus map
+
+  for (size_t j = 0; j < t_rank; ++j)
+  {
+    Weight v(c_rank);
+    d_dcenter->toWeight(v,(*d_torusMap)[j]); // "torus to center" map
+    v.resize(c_rank+t_rank,0); // extend by identity on torus coordinates
+    v[c_rank+j] = 1;
+    cb.push_back(v);
+  }
+
+  RatWeightList result; result.reserve(cb.size());
+  // TO BE COMPLETED
+
+  return result;
 }
 
 /*****************************************************************************
@@ -557,15 +579,13 @@ void CoveringIterator::makeBasis(WeightList& b)
 
 ******************************************************************************/
 
-namespace testrun {
-
 
 /*
   Constructs the SubgroupIterator that (using reset as well as ++) will
   allow us to iterate through the various subgroups of the finite abelian
   group of the given shape.
 */
-SubgroupIterator::SubgroupIterator(abelian::FiniteAbelianGroup& A)
+SubgroupIterator::SubgroupIterator(const abelian::FiniteAbelianGroup& A)
   :d_group(&A)
 {
   // make data for the trivial subgroup
@@ -697,7 +717,6 @@ void SubgroupIterator::resetGenerator()
     incrementGenerator();
 }
 
-}
 
 /*****************************************************************************
 
@@ -705,17 +724,11 @@ void SubgroupIterator::resetGenerator()
 
 ******************************************************************************/
 
-namespace testrun {
-
-}
-
 /*****************************************************************************
 
         Chapter VII -- Auxiliary functions
 
 ******************************************************************************/
-
-namespace testrun {
 
 namespace {
 
@@ -767,7 +780,7 @@ void setCycGenerator(BitMap& cyc,
 		     const std::vector<BitMap>& prev,
 		     const std::set<BitMap>& current,
 		     std::vector<BitMap>::const_iterator& b,
-		     abelian::FiniteAbelianGroup& A)
+		     const abelian::FiniteAbelianGroup& A)
 
 {
   if (b == prev.end()) // do nothing

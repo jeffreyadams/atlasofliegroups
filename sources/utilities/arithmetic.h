@@ -1,9 +1,7 @@
-/*!
-\file
-  This is arithmetic.h
-*/
+// This is arithmetic.h
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006-2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -23,9 +21,6 @@ namespace atlas {
 namespace arithmetic {
 
 // operations without conversion for all integral types (all are inlined below)
-  template<typename I> I abs(I);
-  template<typename I> I min(I,I);
-  template<typename I> I max(I,I);
   template<typename I> I divide(I, Denom_t);
   template<typename I> Denom_t remainder(I, Denom_t);
   //  template<typename I> I factorial(I); // moved to the size module
@@ -71,10 +66,12 @@ public:
      error prone; e.g., floor=numerator()/denominator() would wreak havoc */
   Numer_t denominator() const { return Numer_t(denom); }
 
+  // these operators all return normalised results
   Rational operator+(Rational q) const;
   Rational operator-(Rational q) const;
   Rational operator*(Rational q) const;
-  Rational operator/(Rational q) const;
+  Rational operator/(Rational q) const; // assumes $q\neq0$, will not throw
+  Rational operator%(Rational q) const; // assumes $q\neq0$, will not throw
 
   Rational& operator=(Rational q)
     { num=q.num; denom=q.denom; return normalize(); }
@@ -83,18 +80,28 @@ public:
   Rational& operator-=(Rational q) { return operator=(operator-(q)); }
   Rational& operator*=(Rational q) { return operator=(operator*(q)); }
   Rational& operator/=(Rational q) { return operator=(operator/(q)); }
+  Rational& operator%=(Rational q) { return operator=(operator%(q)); }
 
+  // assignment operators with integers have efficient implemementations
   Rational& operator+=(Numer_t n);
   Rational& operator-=(Numer_t n);
   Rational& operator*=(Numer_t n);
-  Rational& operator/=(Numer_t n);
+  Rational& operator/=(Numer_t n); // assumes $n\neq0$, will not throw
+  Rational& operator%=(Numer_t n); // assumes $n\neq0$, will not throw
 
-  bool operator==(Rational q) const { return num*q.denom==denom*q.num; }
-  bool operator!=(Rational q) const { return num*q.denom!=denom*q.num; }
-  bool operator<(Rational q)  const { return num*q.denom<denom*q.num; }
-  bool operator<=(Rational q) const { return num*q.denom<=denom*q.num; }
-  bool operator>(Rational q)  const { return num*q.denom>denom*q.num; }
-  bool operator>=(Rational q) const { return num*q.denom>=denom*q.num; }
+  // these definitions must use |denominator()| to ensure signed comparison
+  bool operator==(Rational q) const
+    { return num*q.denominator()==denominator()*q.num; }
+  bool operator!=(Rational q) const
+    { return num*q.denominator()!=denominator()*q.num; }
+  bool operator<(Rational q)  const
+    { return num*q.denominator()<denominator()*q.num; }
+  bool operator<=(Rational q) const
+    { return num*q.denominator()<=denominator()*q.num; }
+  bool operator>(Rational q)  const
+    { return num*q.denominator()>denominator()*q.num; }
+  bool operator>=(Rational q) const
+    { return num*q.denominator()>=denominator()*q.num; }
 
   inline Rational& normalize();
   Rational& power(int n); // raise to power |n| and return |*this|
@@ -137,14 +144,6 @@ std::ostream& operator<< (std::ostream& out, const Rational& frac);
 
 /******** inline function definitions ***************************************/
 
-// Return the absolute value/min/max, without changing the size
-template<typename I>
-  inline I abs(I a) { return a >= 0 ? a : -a; }
-template<typename I>
-  inline I min(I a,I b) { return a<b ? a : b; }
-template<typename I>
-  inline I max(I a,I b) { return a<b ? b : a; }
-
 /*! The result of |divide(a,b)| is the unique integer $q$ with $a = q.b + r$,
   and $0 \leq r < b$. Here the sign of |a| may be arbitrary, the requirement
   for |r| assumes |b| positive, which is why it is passed as unsigned (also
@@ -156,8 +155,8 @@ template<typename I>
   instance, divide(-1,2) should be -1, so that -1 = -1.2 + 1, but on my
   machine, -1/2 is 0 (which is the other value accepted by the C standard;
   Fokko.) [Note that the correct symmetry to apply to |a|, one that maps
-  classes with the same quotient to each other, is not \f$a\to -a\f$ but
-  \f$a\to -1-a\f$, where the latter value can be conveniently written as |~a|
+  classes with the same quotient to each other, is not $a\to -a$ but
+  $a\to -1-a$, where the latter value can be conveniently written as |~a|
   in C or C++. Amazingly Fokko's incorrect original expresion |-(-a/b -1)|
   never did any harm. MvL]
 */
@@ -169,21 +168,23 @@ template<typename I>
 inline Denom_t divide (Denom_t a, Denom_t b)
   { return a/b; } // unsigned division is OK in this case
 
-/*!
-  Synopsis: returns the remainder of the division of a by b.
+/*
+  Return the remainder of the division of |a| (signed) by |b| (unsigned).
 
   The point is to allow |I| to be a signed type, and avoid the catastrophic
   implicit conversion to unsigned when using the '%' operation. Also corrects
   the deficiency of 'signed modulo' by always returning the unique number |r|
   in [0,m[ such that $a = q.b + r$, in other words with |q=divide(a,b)| above.
 
-  NOTE: For $a<0$ one should \emph{not} return |m - (-a % b)|; this fails when
+  NOTE: For $a<0$ one should \emph{not} return |b - (-a % b)|; this fails when
   $b$ divides $a$. However replacing |-| by |~|, which maps $a\mapsto-1-a$
   and satifies |~(q*b+r)==~q*b+(b+~r)|, the result is always correct.
 */
 template<typename I>
   inline Denom_t remainder(I a, Denom_t b)
-  { return a >= 0 ? a%b : b+~(~a%b); } // conversions to unsigned are safe here
+  { return a >= 0 ? a%b // safe implicit conversion to unsigned here
+      : b+~(~static_cast<Denom_t>(a)%b); // safe explicit conversion here
+  }
 
   inline Denom_t div_gcd (Denom_t d, Denom_t a) { return d/unsigned_gcd(a,d); }
 

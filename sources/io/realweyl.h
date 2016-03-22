@@ -11,7 +11,7 @@
 #define REALWEYL_H
 
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "bitvector.h"	// containment
 #include "lietype.h"	// containment
@@ -56,7 +56,8 @@ class RealWeyl {
 // constructors and destructors
   RealWeyl():d_group(0) {}
 
-  RealWeyl(const CartanClass&, unsigned long, unsigned long,
+  RealWeyl(const CartanClass&,
+	   cartanclass::AdjointFiberElt, cartanclass::AdjointFiberElt,
 	   const RootDatum&, const WeylGroup&);
 
   ~RealWeyl() {}

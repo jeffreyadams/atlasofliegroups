@@ -86,10 +86,10 @@ only if i < j.
   private:
   void fillPoset();
 
-}; // class BruhatOrder
+}; // |class BruhatOrder|
 
-} // namespace bruhat
+} // |namespace bruhat|
 
-} // namespace atlas
+} // |namespace atlas|
 
 #endif

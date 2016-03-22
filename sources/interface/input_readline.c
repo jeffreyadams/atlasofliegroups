@@ -182,12 +182,20 @@ bool hasQuestionMark(InputBuffer& buf)
 */
 
 {
-  std::streampos pos = buf.tellg();
-  char x = 0;
+  char x;
   buf >> x;
-  buf.reset(pos);
 
-  return x == '?';
+  if (buf.fail())
+    return false; // nothing read, so there is no question mark
+
+  if (x == '?')
+  {
+    buf.str(""); // clear remaining contents, so no type-ahead will be left
+    return true;
+  }
+  buf.unget(); // place non-questionmark character back in the stream
+
+  return false;
 }
 
 void initReadLine()
@@ -195,7 +203,7 @@ void initReadLine()
 {
   using namespace commands;
 
-  // allow setting of atlas-specific user preferences
+  // allow setting of Atlas-specific user preferences
   rl_readline_name = "Atlas";
 
   rl_completion_entry_function = completionGenerator;
@@ -295,6 +303,6 @@ const char* readLine (const char* prompt, bool toHistory)
   return line_read;
 }
 
-} // namespace
+} // |namespace|
 
-} // namespace atlas
+} // |namespace atlas|

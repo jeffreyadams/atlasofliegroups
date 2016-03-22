@@ -9,7 +9,7 @@
 
 #include "bitmap.h"
 
-#include <algorithm> // for |lower_bound|
+#include <algorithm> // for |lower_bound|, |copy|, |copy_backward|
 #include "bits.h"
 
 #include <cassert>
@@ -423,14 +423,57 @@ BitMap& BitMap::operator^= (const BitMap& b)
   exceed the size of the current bitmap (but may be smaller).
   Return whether any bits remain in the result.
 */
-bool BitMap::andnot(const BitMap& b)
+BitMap& BitMap::andnot(const BitMap& b)
 {
   assert(b.capacity()<=capacity());
-  bool any=false;
   for (unsigned long j = 0; j < b.d_map.size(); ++j)
-    if ((d_map[j] &= ~(b.d_map[j]))!=0) any=true;
+    d_map[j] &= ~b.d_map[j];
 
-  return any;
+  return *this;
+}
+
+BitMap& BitMap::operator<<= (unsigned long delta) // increase values by |delta|
+{
+  unsigned long delta_rem = delta & posBits;
+  delta >>= baseShift; // we must move |delta| words, and then |delta_rem| bits
+  if (delta>0) // shifting by |0| is useless, and undefined behavior too
+  {
+    std::copy_backward(d_map.begin(),d_map.end()-delta,d_map.end());
+    std::fill(d_map.begin(),d_map.begin()+delta,0ul);
+  }
+  if (delta_rem>0 and not d_map.empty())
+  {
+    std::vector<unsigned long>::iterator it;
+    for (it=d_map.end(); --it!=d_map.begin(); )
+    {
+      *it <<= delta_rem; // shift bits up
+      *it |= *(it-1) >> (constants::longBits-delta_rem);
+    }
+    *it <<= delta_rem; // shift bits up
+  }
+  return *this;
+}
+
+BitMap& BitMap::operator>>= (unsigned long delta) // decrease values by |delta|
+{
+  unsigned long delta_rem = delta & posBits;
+  delta >>= baseShift; // we must move |delta| words, and then |delta_rem| bits
+  if (delta>0) // shifting by |0| is useless, and undefined behavior too
+  {
+    std::copy(d_map.begin()+delta,d_map.end(),d_map.begin());
+    std::fill(d_map.end()-delta,d_map.end(),0ul);
+  }
+  if (delta_rem>0 and not d_map.empty())
+  {
+    std::vector<unsigned long>::iterator it;
+    for (it=d_map.begin(); it+1!=d_map.end(); ++it)
+    {
+      *it >>= delta_rem; // shift bits doan
+      *it |= *(it+1) << (constants::longBits-delta_rem);
+    }
+    *it <<= delta_rem; // shift last bits down
+  }
+  return *this;
 }
 
 /*!
@@ -496,8 +539,8 @@ template<typename I> void BitMap::insert(I first, I last)
 }
 
 
-/*!
-  Synopsis: sets the capacity of the bitmap to n.
+/*
+  Set the capacity of the bitmap to |n|, shrinking |d_map| if possible
 
   Does not modify the contents up to the previous size, at least if n is
   larger. The new elements are initialized to zero.
@@ -512,6 +555,13 @@ void BitMap::set_capacity(unsigned long n)
   d_capacity = n;
 }
 
+// Add one more place to bitmap (amortised efficiently), set it to value |b|
+void BitMap::extend_capacity(bool b)
+{
+  if (d_capacity == (d_map.size()<<baseShift))
+    d_map.push_back(0); // allocate space; |std::vector| handles efficiency
+  set_to(d_capacity++,b);
+}
 
 /*!
   Synopsis: sets r bits from position n to the first r bits in a.
@@ -642,11 +692,9 @@ template void BitMap::insert
  (std::vector<unsigned short>::iterator,
   std::vector<unsigned short>::iterator); // root sets from RootNbrList
 
-// These instantiations are not used, but may serve to test compilation:
+typedef std::vector<unsigned long>::iterator VI;
 
-// typedef std::vector<unsigned short>::iterator VI;
-
-// template BitMap::BitMap(unsigned long n, const VI& first, const VI& last);
+template BitMap::BitMap(unsigned long n, const VI& first, const VI& last);
 // template BitMap::BitMap(const VI& f,const VI& l, const VI& sf,const VI& sl);
 
 } // |namespace bitmap|

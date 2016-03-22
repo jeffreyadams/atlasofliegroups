@@ -1,112 +1,127 @@
-# This Makefile serves only to make realex + source documentation by running
-# 'make' inside this directory; if you are just interested in compiling
-# realex, use run 'make realex' in the main atlas directory instead. In
-# particular if you want optimization, use that (where optimization is on by
-# default) rahter than this Makefile. As this file is used for development
-# work only, it unconditionally sets debugging on and optimization off.
+# This Makefile serves to make 'atlas' and possibly source documentation
+# running 'make' or 'make atlas' in the main atlas directory will just use
+# this makefile to make the atlas program (and its requisites of course)
+# Running 'make' from the current directory will in addition make the source
+# documentation (as first target, so that you can look at your typeset code in
+# the dvi file while it is being compiled, and when reading error messages).
+# In the latter case debugging is on, and optimization off, by default, but in
+# the former case (being invoked from the main atlas directory), the
+# compilation flavor that is set in that directory is passed on and used.
 
-# where to look for the atlas sources (in the parent directory)
-atlas_sources := ..
+# where we are
+atlas_dir := .
 
-# only the directories listed below of the atlas sources are actually used
-ATLAS_DIRS := utilities structure gkmod error io interface
+# where to look for the Atlas sources (in the parent directory)
+sources_dir := ..
+
+Atlas_root := $(sources_dir)/..
+cwebx_dir := $(Atlas_root)/cwebx
+
+# only the directories listed below of the Atlas sources are actually used
+sources_subdirs := utilities structure gkmod error io interface
 
 # this variable is used both by g++, and by cweavex needing the trailing slash
-INCLUDE_FLAGS := $(ATLAS_DIRS:%=-I$(atlas_sources)/%/)
+INCLUDE_FLAGS := $(sources_subdirs:%=-I$(sources_dir)/%/)
 
-# please make sure cweavex and ctanglex refer to the executables of the latest
-# version of CWEBx, see http://www-math.univ-poitiers.fr/~maavl/CWEBx
-# the ++ flags make them expect C++ rather than C
-
-CTANGLE := ../../cweb-x3.51/ctanglex ++
-CWEAVE := ../../cweb-x3.51/cweavex ++ $(INCLUDE_FLAGS)
+CTANGLE := $(cwebx_dir)/ctanglex
+CWEAVE := $(cwebx_dir)/cweavex
 
 # these are the optional flags for CWEBx, modify them according to your taste
-CWEAVEFLAGS  := -p +mde
-CTANGLEFLAGS := -p
+# do no omit flags ++ (expect C++ rather than C) and $(INCLUDE_FLAGS)
+CWEAVEFLAGS  := ++ -p +mde $(INCLUDE_FLAGS)
+CTANGLEFLAGS := ++ -p
 
-CWEBXMACROS := $(shell kpsewhich cwebxmac.tex)
+CWEBXMACROS := $(cwebx_dir)/cwebxmac.tex
 
-# these are used for C++ compilation and linking (debugging, no optimization)
-CXXFLAGS = -Wall -Wno-parentheses -g $(INCLUDE_FLAGS)
+# these flags are necessary for compilation, and should not be altered
+CXXFLAGS := -c $(INCLUDE_FLAGS) -Wno-parentheses
 
-# our beloved C++ compiler
-CXX = g++
+# these flags set the compilation flavor (default: debugging, no optimization)
+CXXFLAVOR ?= -Wall -ggdb
 
-# parallel execution beats the old_targets trickery below, turn it off
-MAKEFLAGS += -j1
+# our C++ compiler (call language version c++0x, for backward compatibility)
+CXX := g++ -std=c++0x
 
-# only the atlas object files listed below are used
-atlas_objects := $(atlas_sources)/structure/prerootdata.o \
- $(atlas_sources)/structure/lietype.o \
- $(atlas_sources)/utilities/arithmetic.o \
- $(atlas_sources)/error/error.o \
- $(atlas_sources)/structure/rootdata.o \
- $(atlas_sources)/utilities/bitmap.o \
- $(atlas_sources)/utilities/constants.o \
- $(atlas_sources)/structure/dynkin.o \
- $(atlas_sources)/structure/lattice.o \
- $(atlas_sources)/utilities/bits.o \
- $(atlas_sources)/utilities/bitset.o \
- $(atlas_sources)/utilities/permutations.o \
- $(atlas_sources)/structure/complexredgp.o \
- $(atlas_sources)/structure/tits.o \
- $(atlas_sources)/structure/cartanclass.o \
- $(atlas_sources)/structure/weyl.o \
- $(atlas_sources)/utilities/partition.o \
- $(atlas_sources)/utilities/poset.o \
- $(atlas_sources)/utilities/size.o \
- $(atlas_sources)/structure/tori.o \
- $(atlas_sources)/structure/weylsize.o \
- $(atlas_sources)/structure/gradings.o \
- $(atlas_sources)/io/realform_io.o \
- $(atlas_sources)/structure/realredgp.o \
- $(atlas_sources)/structure/topology.o \
- $(atlas_sources)/io/prettyprint.o \
- $(atlas_sources)/io/basic_io.o \
- $(atlas_sources)/gkmod/blocks.o \
- $(atlas_sources)/gkmod/kgb.o \
- $(atlas_sources)/gkmod/bruhat.o \
- $(atlas_sources)/io/ioutils.o \
- $(atlas_sources)/io/block_io.o \
- $(atlas_sources)/io/realredgp_io.o \
- $(atlas_sources)/io/complexredgp_io.o \
- $(atlas_sources)/io/realweyl.o \
- $(atlas_sources)/io/realweyl_io.o \
- $(atlas_sources)/io/cartan_io.o \
- $(atlas_sources)/gkmod/klsupport.o \
- $(atlas_sources)/gkmod/kl.o \
- $(atlas_sources)/gkmod/wgraph.o \
- $(atlas_sources)/io/kl_io.o \
- $(atlas_sources)/utilities/graph.o \
- $(atlas_sources)/error/kl_error.o \
- $(atlas_sources)/io/kgb_io.o \
- $(atlas_sources)/io/wgraph_io.o \
- $(atlas_sources)/io/filekl.o \
- $(atlas_sources)/io/filekl_in.o \
- $(atlas_sources)/utilities/matrix.o \
- $(atlas_sources)/utilities/ratvec.o \
- $(atlas_sources)/structure/bitvector.o \
- $(atlas_sources)/structure/subquotient.o \
- $(atlas_sources)/utilities/matreduc.o \
- $(atlas_sources)/gkmod/standardrepk.o \
- $(atlas_sources)/gkmod/repr.o \
- $(atlas_sources)/structure/subsystem.o \
- $(atlas_sources)/structure/involutions.o \
- $(atlas_sources)/structure/y_values.o \
- $(atlas_sources)/gkmod/ext_block.o
+CXXVERSION := $(shell $(CXX) -dumpversion)
+CXXVERSIONOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.8)
+CXXVERSIONVERYOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.6)
 
-cwebx_sources := $(wildcard *.w)
+ifeq "$(CXXVERSIONOLD)" "1"
+  CXXFLAVOR += -Dincompletecpp11
+endif
+ifeq "$(CXXVERSIONVERYOLD)" "1"
+  CXXFLAVOR += -Dnoexcept= -Dconstexpr= -Dnullptr=0
+endif
+
+# only the Atlas object files listed below are used
+Atlas_objects := $(sources_dir)/structure/prerootdata.o \
+ $(sources_dir)/structure/lietype.o \
+ $(sources_dir)/utilities/arithmetic.o \
+ $(sources_dir)/error/error.o \
+ $(sources_dir)/structure/rootdata.o \
+ $(sources_dir)/utilities/bitmap.o \
+ $(sources_dir)/utilities/constants.o \
+ $(sources_dir)/structure/dynkin.o \
+ $(sources_dir)/structure/lattice.o \
+ $(sources_dir)/utilities/bits.o \
+ $(sources_dir)/utilities/bitset.o \
+ $(sources_dir)/utilities/permutations.o \
+ $(sources_dir)/structure/innerclass.o \
+ $(sources_dir)/structure/tits.o \
+ $(sources_dir)/structure/cartanclass.o \
+ $(sources_dir)/structure/weyl.o \
+ $(sources_dir)/utilities/partition.o \
+ $(sources_dir)/utilities/poset.o \
+ $(sources_dir)/utilities/size.o \
+ $(sources_dir)/structure/tori.o \
+ $(sources_dir)/structure/weylsize.o \
+ $(sources_dir)/structure/gradings.o \
+ $(sources_dir)/structure/realredgp.o \
+ $(sources_dir)/structure/topology.o \
+ $(sources_dir)/io/prettyprint.o \
+ $(sources_dir)/io/basic_io.o \
+ $(sources_dir)/gkmod/blocks.o \
+ $(sources_dir)/gkmod/kgb.o \
+ $(sources_dir)/gkmod/bruhat.o \
+ $(sources_dir)/io/ioutils.o \
+ $(sources_dir)/io/block_io.o \
+ $(sources_dir)/io/output.o \
+ $(sources_dir)/io/realweyl.o \
+ $(sources_dir)/io/realweyl_io.o \
+ $(sources_dir)/gkmod/klsupport.o \
+ $(sources_dir)/gkmod/kl.o \
+ $(sources_dir)/gkmod/wgraph.o \
+ $(sources_dir)/io/kl_io.o \
+ $(sources_dir)/utilities/graph.o \
+ $(sources_dir)/error/kl_error.o \
+ $(sources_dir)/io/kgb_io.o \
+ $(sources_dir)/io/wgraph_io.o \
+ $(sources_dir)/io/filekl.o \
+ $(sources_dir)/io/filekl_in.o \
+ $(sources_dir)/utilities/matrix.o \
+ $(sources_dir)/utilities/ratvec.o \
+ $(sources_dir)/structure/bitvector.o \
+ $(sources_dir)/structure/subquotient.o \
+ $(sources_dir)/utilities/matreduc.o \
+ $(sources_dir)/gkmod/standardrepk.o \
+ $(sources_dir)/gkmod/repr.o \
+ $(sources_dir)/structure/subsystem.o \
+ $(sources_dir)/structure/involutions.o \
+ $(sources_dir)/structure/y_values.o \
+ $(sources_dir)/gkmod/ext_block.o
+
+cwebx_sources :=  buffer.w parsetree.w lexer.w \
+  axis-types.w global.w axis.w atlas-types.w main.w
 
 c++files      := $(cwebx_sources:%.w=%.cpp)
 c++objects    := $(c++files:%.cpp=%.o)
 webtexfiles   := $(cwebx_sources:%.w=%.tex)
 
-headers := $(filter-out main.h,$(c++files:%.cpp=%.h)) parser.tab.h
+headers := $(filter-out main.h,$(c++files:%.cpp=%.h)) parser.tab.h parse_tree.h
 
 dvifiles := $(cwebx_sources:%.w=%.dvi)
 
-objects := $(c++objects) parser.tab.o $(atlas_objects)
+objects := $(c++objects) parser.tab.o $(Atlas_objects)
 
 # You may define an environment variable 'rl_libs' to override the definition
 # below. For me (on Debian or Ubuntu Linux) just "-lreadline" suffices, but on
@@ -132,81 +147,106 @@ LDFLAGS := $(rl_libs)
 
 .PHONY: all mostlyclean clean headers cppfiles dvifiles compilable
 
-all:	headers dvifiles ../../realex
+all:	headers dvifiles $(Atlas_root)/atlas
 
-# 'make clean' all derived files, but the executable program isn't here
+# 'make clean' removes all derived files, but the executable program isn't here
 clean:
-	rm -f *.o *.log *.toc $(webtexfiles) *.dvi *~ *.cpp *.c *.h
+	$(RM) -f *.o *.log *.toc $(webtexfiles) *.dvi *~ *.cpp *.c *.h
+	$(RM) cwebxmac.tex
 
 # 'make compilable' prepares everything for compilation
-compilable: clean
+compilable: clean # remove existing .cpp flies, to regerenate without #line
 	$(MAKE) CTANGLEFLAGS=-pl parser.tab.c $(c++files) $(webtexfiles)
-ifneq ($(CWEBXMACROS),./cwebxmac.tex)
-	cp $(CWEBXMACROS) .
-endif
+	cp $(CWEBXMACROS) . # get the macros file here, so TeX applies cleanly
+
+$(CTANGLE):
+	cd $(cwebx_dir) && $(MAKE) ctanglex
+
+$(CWEAVE):
+	cd $(cwebx_dir) && $(MAKE) cweavex
 
 # we use no implicit suffix rules in this Makefile
 .SUFFIXES:
 
 # we do use the following pattern rules (explicit implicit rules, so to say)
 
-# a static pattern rule giving the usual C++ compilation
-$(c++objects) $(atlas_objects): %.o: %.cpp
-	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+# static pattern rules giving the usual C++ compilation
+$(c++objects) $(Atlas_objects): %.o: %.cpp
+	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
-# here we cannot use a static pattern rule, since there are multiple targets
-# C++ source and header files are made from CWEBx files (.w) with the ++ switch
-# we add manipulations to preserve the date of existing and unchanged targets
-%.cpp %.h: %.w
-	@-touch -a $*.cpp $*.h # ensure both targets exist
-	@-mkdir old_targets
-	@mv $*.cpp $*.h old_targets
+# for running ctanglex we cannot use a static pattern rule, since there are
+# multiple targets: the C++ source and the corresponding header file(s) are
+# made from CWEBx files (.w) by a single run of ctangles (with the ++ switch)
+
+# For a long time we added manipulations here to preserve the date of existing
+# and unchanged targets, to prevent remaking nearly everything whenever any .w
+# file was modified, because the remakes the .h file(s). The mechanism is
+# commented out now however, as while it works reasonably for a seqential
+# make, it cases trouble when make is runn with --jobs set to more than 1
+# The basic problem is that targets are temporily removed, so other makes fail
+%.cpp %.h: %.w $(CTANGLE)
+#	@if [ -f $*.cpp ]; then mv $*.cpp old_targets;\
+#                           else touch old_targets/$*.ccp; fi
+#	@if [ -f $*.h ];   then mv $*.h old_targets;\
+#                           else touch old_targets/$*.h; fi
+#	@if [ $* = parsetree ]; then \
+#           if [ -f parse_types.h ]; then mv parse_types.h old_targets;\
+#                                    else rm -f old_targets/parse_types.h; fi fi
 	$(CTANGLE) $(CTANGLEFLAGS) $<
-	@for i in $*.cpp $*.h;\
-        do if cmp -s old_targets/$$i $$i;\
-           then mv old_targets/$$i $$i; echo $$i unchanged;\
-           fi done
-	@rm -r old_targets
+#	@for i in $*.cpp $*.h;\
+#        do if cmp -s old_targets/$$i $$i;\
+#           then mv old_targets/$$i $$i; echo $$i unchanged;\
+#           fi done
+#	@if [ $* = parsetree ]; then \
+#           if cmp -s old_targets/parse_types.h parse_types.h;\
+#           then mv old_targets/parse_types.h .; echo parse_types.h unchanged;\
+#           fi fi
 
-# prevent remaking files that are under CVS, unless .w file changed recently
-../utilities/filekl.h ../utilities/filekl.cpp ../utilities/filekl_in.h ../utilities/filekl_in.cpp : ../utilities/filekl.w ;
+parse_types.h: parsetree.w $(CTANGLE)
+	$(CTANGLE) $(CTANGLEFLAGS) parsetree.w
+
+# remaking these Atlas files is unneeded: they are also under version control
+# but above pattern rule matches; so provide an empty rule to prevent remaking
+../io/filekl.h ../io/filekl.cpp ../io/filekl_in.h ../io/filekl_in.cpp : ;
 
 # TeX files are also made from CWEBx files (.w) with the ++ switch, by cweavex
-%.tex: %.w
+%.tex: %.w $(CWEAVE)
 	$(CWEAVE) $(CWEAVEFLAGS) $<
 
 # and DVI files are made from TeX files of course
 %.dvi: %.tex
-	$(TEX) $<
+	TEXINPUTS=.:$(cwebx_dir): $(TEX) $<
 
 # these targets allow you to say "make headers" or "make dvifiles"
 headers: $(headers)
 cppfiles: $(c++files)
 dvifiles: $(dvifiles)
+objectfiles: $(c++objects) parser.tab.o
 
-# Our executable program 'realex' is in atlas root directory. Then name realex
-# stands for Rewritten Expression-based Atlas of Lie groups EXecutable
-../../realex: $(objects)
+# all of these "derived sources" need the CWEBx tools to be compiled first
+$(headers): $(CTANGLE)
+$(c++files): $(CTANGLE)
+$(dvifiles): $(CWEAVE)
+
+# Our executable program 'atlas' is in Atlas root directory.
+$(Atlas_root)/atlas: $(objects)
 	$(CXX) -o $@ $^ $(LDFLAGS)
-ifeq (,$(findstring t,$(MAKEFLAGS))) # unless a flag -t was given
-	$(MAKE) -t $@ # now that build succeeds mark everything as up-to-date
-endif
 
 # the parser is produced by bison, and compiled using the C++ compiler
 parser.tab.c parser.tab.h: parser.y
+#	@if [ -f parser.tab.c ]; then mv parser.tab.c old_targets;\
+#                                 else touch old_targets/parser.tab.c; fi
+#	@if [ -f parser.tab.h ]; then mv parser.tab.h old_targets;\
+#                                 else touch old_targets/$*.h; fi
 	bison -d parser.y
-parser.tab.o: parser.tab.c parsetree.h
-	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+#	@for i in parser.tab.c parser.tab.h;\
+#        do if cmp -s old_targets/$$i $$i;\
+#           then mv old_targets/$$i $$i; echo $$i unchanged;\
+#           fi done
+parser.tab.o: parser.tab.c
+	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
 # miscellaneous dependencies (some already known), produced by hand for now
-# these are also included from the main atlas makefile
+# these are also included from the main Atlas makefile
 
 include dependencies
-
-# in general a .tex file depends on the same files as the corresponding .o
-# file, since cweave scans the same header files as the C++ compiler
-
-lexer.o lexer.tex: parser.tab.h buffer.h
-evaluator.o evaluator.tex: evaluator.h types.h lexer.h parsetree.h
-built-in-types.o built-in-types.tex: evaluator.h types.h lexer.h
-main.o main.tex: $(headers)

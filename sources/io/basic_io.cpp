@@ -195,7 +195,7 @@ void write_bytes(unsigned int n, unsigned long long val, std::ostream& out)
 }
 
 
-} // namespace basic_io
+} // |namespace basic_io|
 
 // Instantiations
 
@@ -243,6 +243,9 @@ void write_bytes(unsigned int n, unsigned long long val, std::ostream& out)
 //   (std::ostream& strm, const BitSet<constants::RANK_MAX>& b);
 
 template std::ostream& polynomials::operator<<
+  (std::ostream& strm, const Polynomial<KLCoeff>& P);
+
+template std::ostream& polynomials::operator<<
   (std::ostream& strm, const Polynomial<int>& P);
 
 template std::ostream& bitvector::operator<<
@@ -255,4 +258,4 @@ template std::ostream& operator<<
 
 } // |namespace matrix|
 
-} // namespace atlas
+} // |namespace atlas|

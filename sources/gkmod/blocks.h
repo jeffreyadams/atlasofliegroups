@@ -19,7 +19,7 @@
 
 #include "ratvec.h"	// containment infinitesimal character
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include "tits.h"	// representative of $y$ in |non_integral_block|
 #include "descents.h"	// inline methods
 #include "dynkin.h"     // DynkinDiagram
@@ -258,7 +258,7 @@ class Block : public Block_base
  public:
   // use one of the following two pseudo contructors to build |Block| values
   static Block build // pseudo contructor with small (and forgotten) KGB sets
-    (ComplexReductiveGroup&, RealFormNbr rf, RealFormNbr drf);
+    (InnerClass&, RealFormNbr rf, RealFormNbr drf);
 
   static Block build // pseudo contructor with stored KGB sets
     (RealReductiveGroup& G_R, RealReductiveGroup& dG_R);
@@ -330,11 +330,11 @@ class param_block : public Block_base // blocks of parameters
   param_block(const Rep_context& rc, unsigned int rank);
 
   // auxiliary for construction
-  void compute_duals(const ComplexReductiveGroup& G,const SubSystem& rs);
+  void compute_duals(const InnerClass& G,const SubSystem& rs);
 
  public:
   // "inherited" accessors
-  const ComplexReductiveGroup& complexGroup() const;
+  const InnerClass& complexGroup() const;
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& realGroup() const;
 
@@ -364,13 +364,12 @@ class non_integral_block : public param_block
 {
 
   // A simple structure to pack a pair of already sequenced numbers (indices
-  // into the |info| field for some (future) block into a hashable value
-
+  // into the |info| field for some future block) into a hashable value
 
   block_hash z_hash; //  on |Block_base::info|
 
  public:
-  non_integral_block // rewritten constructor, for full block
+  non_integral_block // constructor for full block
     (const repr::Rep_context& rc,
      StandardRepr sr, // by value,since it will be made dominant before use
      BlockElt& entry_element	// set to block element matching input
@@ -403,7 +402,7 @@ public:
   nblock_elt (KGBElt x, const TorusElement& t) : xx(x), yy(t) {}
 
   KGBElt x() const { return xx; }
-  const TorusElement y() const { return yy; }
+  const TorusElement& y() const { return yy; }
 
 }; // |class nblock_elt|
 
@@ -432,6 +431,8 @@ public:
   void do_up_Cayley (nblock_elt& z, weyl::Generator s) const;
   void do_down_Cayley (nblock_elt& z, weyl::Generator s) const;
   bool is_real_nonparity(nblock_elt z, weyl::Generator s) const; // by value
+
+  void twist(nblock_elt& z) const;
 
   y_entry pack_y(const nblock_elt& z) const;
 }; // |class nblock_help|

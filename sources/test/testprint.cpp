@@ -15,10 +15,9 @@
 #include <sstream>
 
 #include "basic_io.h"
-#include "cartan_io.h"
 #include "cartanclass.h"
-#include "complexredgp.h"
-#include "complexredgp_io.h"
+#include "innerclass.h"
+#include "output.h"
 #include "dynkin.h"
 #include "ioutils.h"
 #include "lattice.h"
@@ -29,6 +28,7 @@
 #include "size.h"
 #include "tori.h"
 #include "weylsize.h"
+
 
 /*****************************************************************************
 
@@ -86,7 +86,7 @@ std::ostream& print(std::ostream& strm, const RootDatum& rd)
 
   if (not rd.isSemisimple()) { // print radical and coradical bases
     strm << "radical basis :" << std::endl;
-    CoweightList r_rad(rd.beginRadical(),rd.endRadical());
+    CoweightList r_rad(rd.beginRadical(),rd.endRadical()); // generate list
     prettyprint::printBasis(strm,r_rad) << std::endl;
 
     strm << "coradical basis :" << std::endl;
@@ -95,15 +95,13 @@ std::ostream& print(std::ostream& strm, const RootDatum& rd)
   }
 
   strm << "positive roots :" << std::endl;
-  WeightList r_pr(rd.beginPosRoot(),rd.endPosRoot());
-  const WeightList& r_prr=r_pr; // save instantiations of |seqPrint|
-  basic_io::seqPrint(strm,r_prr.begin(),r_prr.end(),"\n","","")
+  WeightList r_pr(rd.beginPosRoot(),rd.endPosRoot()); // generate actual roots
+  basic_io::seqPrint(strm,r_pr.cbegin(),r_pr.cend(),"\n","","")
     << std::endl << std::endl;
 
   strm << "positive coroots :" << std::endl;
-  CoweightList r_pcr(rd.beginPosCoroot(),rd.endPosCoroot());
-  const CoweightList& r_pcrr=r_pr; // save instantiations of |seqPrint|
-  basic_io::seqPrint(strm,r_pcrr.begin(),r_pcrr.end(),"\n","","")
+  CoweightList r_pcr(rd.beginPosCoroot(),rd.endPosCoroot()); // generate coroots
+  basic_io::seqPrint(strm,r_pcr.cbegin(),r_pcr.cend(),"\n","","")
     << std::endl << std::endl;
 
   return strm;
@@ -122,59 +120,6 @@ std::ostream& print
 }
 */
 
-
-
-/*
-  Synopsis: produces the file as posted on the atlas website.
-
-  Precondition: G.fullCartan() has been called successfully.
-*/
-std::ostream& printBlockData(std::ostream& strm,
-			     complexredgp_io::Interface& CI)
-{
-  const ComplexReductiveGroup& G = CI.complexGroup();
-  const RootDatum& rd = G.rootDatum();
-
-  LieType lt = rd.Lie_type();
-
-  strm << std::setw(25) << "" << "Block data"
-       << std::endl;
-
-  strm << std::setw(16) << "" << "for the";
-
-  if (rd.isSimplyConnected())
-    strm << " simply connected";
-  else if (rd.isAdjoint())
-    strm << " adjoint";
-
-  strm << " group of type " << lt
-       << std::endl;
-
-  strm << std::endl;
-
-  printCartanClasses(strm,CI);
-
-  return strm;
-}
-
-
-/*
-  Prints information about the conjugacy classes of Cartan subgroups.
-*/
-std::ostream& printCartanClasses(std::ostream& strm,
-				 complexredgp_io::Interface& CI)
-{
-  const ComplexReductiveGroup& G = CI.complexGroup();
-
-  for (unsigned long j = 0; j < G.numCartanClasses(); ++j) {
-    strm << "Cartan #" << j << ":" << std::endl;
-    cartan_io::printCartanClass(strm,j,CI);
-    if (j+1 < G.numCartanClasses())
-      strm << std::endl << std::endl;
-  }
-
-  return strm;
-}
 
 
 /*
@@ -202,6 +147,6 @@ std::ostream& printComponents(std::ostream& strm,
   return strm;
 }
 
-} // namespace testprint
+} // |namespace testprint|
 
-} // namespace atlas
+} // |namespace atlas|

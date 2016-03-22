@@ -1,0 +1,447 @@
+% Standard macros for CWEBx listings (in addition to plain.tex)
+% File: cwebxmac.tex, Author: Marc van Leeuwen, Date: November 1994
+% Slightly revised for C++, January 2006, June 2009
+
+\ifx\documentstyle\undefined\else\endinput\fi % LaTeX would use other macros
+\ifx \cwebxmacloaded\undefined \let\cwebxmacloaded=\relax \else \endinput \fi
+\xdef\fmtversion{\fmtversion+CWEBx3.06}
+\let\:=\. % preserve a way to get the dot accent
+
+\font\ninerm=cmr9
+\font\eightrm=cmr8
+\font\titlefont=cmr7 scaled\magstep4 % title on the contents page
+\font\ttitlefont=cmtt10 scaled\magstep2 % typewriter type in title
+\font\tentex=cmtex10 % TeX extended character set (used in strings)
+\fontdimen7\tentex=0pt % no double space after sentences
+\hyphenchar\tentex=-1 % no automatic hyphenation within strings
+
+\newdimen\indentunit \indentunit 1em
+\parskip 0pt % no stretch between paragraphs
+\parindent\indentunit % for paragraphs and for the first line of C text
+
+\chardef\v=`| % vertical (|)
+\def\caps#1{\hbox{\ninerm #1}}
+\def\Cee{\caps C} \def\Cpp{\Cee\PP} % \def\UNIX{\caps{UNIX}} etc.
+\let\Sec=\S % section mark
+\def\Secs{\Sec\Sec} % as in \Sec@#label@>
+
+\let\mainfont=\tenrm
+
+\def\Cident#1{{\it#1\/\kern.05em}} % italic type for identifiers
+\def\\#1{\leavevmode\hbox\Cident{#1}} % robust version
+\def\Cbold#1{{\bf
+  \def\_{\kern.04em\vbox{\hrule width.3em height .6pt}\kern.08em}%
+  #1\/\kern.05em}} % boldface type for reserved words
+\def\&#1{\leavevmode\hbox\Cbold{#1}} % robust version
+\def\Cstring#1{\ifmmode {}$\typewriter{#1}${}\else\typewriter{#1}\fi}
+\def\typewriter#1{{\tentex % typewriter type for strings
+  \let\\=\BS % backslash in a string
+  \let\{=\LB % left brace in a string
+  \let\}=\RB % right brace in a string
+  \let\~=\TL % tilde in a string
+  \let\ =\SP % space in a string
+  \let\_=\UL % underline in a string
+  \let\&=\AM % ampersand in a string
+  \let\^=\CF % circumflex in a string
+  #1\kern.05em}}
+\def\.#1{\leavevmode\hbox\typewriter{#1}}
+\def\){\discretionary{"}{"}{}} % discretionary string break
+\def\AT{@} % at sign for control text (no longer needed since CWEBx2+1.0)
+\def\a#1{\mathopen{\hbox to \indentunit{$#1$\hss}}} % '{' in tab space
+\def\m#1{\mathord{#1}} % braces required here if #1 generates a penalty
+
+\chardef\AM=`\& % ampersand character in a string
+\chardef\BS=`\\ % backslash in a string
+\chardef\LB=`\{ % left brace in a string
+\chardef\RB=`\} % right brace in a string
+\def\SP{{\tt\char`\ }} % (visible) space in a string
+\chardef\TL=`\~ % tilde in a string
+\chardef\UL=`\_ % underline character in a string
+\chardef\CF=`\^ % circumflex character in a string
+
+\newbox\PPbox % symbol for ++
+\setbox\PPbox=\hbox{\kern.5pt\raise1pt\hbox{\sevenrm+\kern-1pt+}\kern.5pt}
+\def\PP{\copy\PPbox}
+\newbox\MMbox
+\setbox\MMbox=\hbox{\kern.5pt\raise1pt\hbox{\sevensy\char0
+ \kern-1pt\char0}\kern.5pt}
+\def\MM{\copy\MMbox}
+\newbox\SSbox % symbol for ##
+\setbox\SSbox=\hbox{\kern.5pt\raise1pt\hbox{\sevenrm\#\kern-1pt\#}\kern.5pt}
+\def\SS{\mathbin{\copy\SSbox}}
+\def\MG{{\rightarrow}} % symbol for `->'
+\let\GG=\gg
+\let\LL=\ll
+\let\NULL=\odot
+\let\nullptr=\odot
+\mathchardef\AND="2026 % bitwise and; also \& (unary operator)
+\def\OR{\Penalty6\mid} % bitwise or
+\let\XOR=\oplus % bitwise exclusive or
+\def\CM{{\sim}} % bitwise complement
+\newbox\MODbox \setbox\MODbox=\hbox{\eightrm\%}
+\def\MOD{\mathbin{\copy\MODbox}}
+\def\CC{{::}}
+
+\newbox\bak \setbox\bak=\hbox to -\indentunit{} % backspace one em
+\newbox\bakk\setbox\bakk=\hbox to -2\indentunit{} % backspace two ems
+
+\newcount\ind % current indentation level + 2 (for hanging indentation)
+\newcount\pl %level of parentheses
+\mathchardef\lpar=\mathcode`( \mathchardef\rpar=\mathcode`)
+\mathchardef\lbrac=\mathcode`[ \mathchardef\rbrac=\mathcode`]
+\mathchardef\plus=\mathcode`+ \mathchardef\minus=\mathcode`-
+\mathchardef\mcolon=\mathcode`:
+{\catcode`(=\active \catcode`)=\active
+ \catcode`[=\active \catcode`]=\active
+ \gdef({\global\advance\pl 1\lpar}
+ \gdef){\ifnum\pl>0\global\advance\pl-1\fi\rpar}
+ \gdef[{\global\advance\pl 2\lbrac}
+ \gdef]{\ifnum\pl>0\global\advance\pl-2\fi\rbrac}
+ \catcode`+=\active \catcode`-=\active \catcode`*=\active
+ \gdef+{\Penalty8\plus} \gdef-{\Penalty8\minus} \gdef*{\Penalty9\ast}
+ \catcode`:=\active \gdef:{\Penalty3\mcolon}
+}
+\def\cweblbrace{\global\advance\pl 1\lbrace}
+\def\cwebrbrace{\ifnum\pl>0\global\advance\pl-1\fi\rbrace}
+
+% breaking within parentheses will be unattractive,
+% and within brackets even more so
+
+\def\0#1{\penalty\number\pl#10 } % optional break in inner mode
+\def\1{\global\advance\ind by1\global\hangindent\ind\indentunit}
+ % indent one more notch
+\def\2{\global\advance\ind by-1} % indent one less notch
+\def\3#1{\hfil\0#1\hfilneg} % optional break in outer mode
+\def\4{\copy\bak\ignorespaces} % backspace one notch
+\def\5{\hfil\penalty-1\hfilneg\enspace\kern2\indentunit\copy\bakk
+  \ignorespaces}% break space
+\def\6{\ifmmode\else\par % forced break
+  \hangindent\ind\indentunit\noindent\kern\ind\indentunit
+   \copy\bakk\ignorespaces\fi}
+\def\7{\Y\6} % forced break and a little extra vertical space
+\def\8{\hskip-\ind\indentunit\hskip 2\indentunit} % cancel full indentation
+
+\let\yskip=\smallskip % amount of space between subsections, and at `@)'
+\newskip\intersecskip \intersecskip=12pt minus 3pt % space between sections
+\newif\ifcodemode \codemodefalse % whether we are in \Cee part of section
+\newif\ifon % whether a section will produce any printed output
+\let\maybe=\iftrue % \if-like macro; governs printing of unchanged sections
+\def\changesonly{\let\maybe=\iffalse} % the user might set this in limbo
+\def\onmaybe{\let\ifon=\maybe} % this is executed for each unchanged section
+
+\def\Penalty#1{\relax\ifcodemode\3#1\fi} % optional break if in code mode
+
+% Summary of use of \Penalty
+%\def*{\Penalty9\ast}
+%\def+{\Penalty8\plus} \gdef-{\Penalty8\minus}
+%\def\I{\Penalty7\neq} % inequality test
+%\def\S{\Penalty7=} % equality test
+%\def\OR{\Penalty6\mid} % bitwise OR
+%\def\W{\Penalty5\land} % logical AND
+%\def\V{\Penalty4\lor} % logical OR
+%\def\?{\Penalty3\mathrel?} % `?' operator
+%\def:{\Penalty3\mcolon} % colon in math mode matches `?' operator
+%\def\K{\Leftarrow\Penalty2} % assignment operator,
+% comma operator gets \Penalty1 by CWEAVE
+
+\def\note#1#2.% for cross-referencing notes, as at the end of a section
+{\Y\noindent{\hangindent2\indentunit\baselineskip10pt\eightrm#1~#2.\par}}
+\def\defin#1{\global\advance\ind by 2
+     \1\&{#1}\quad} % begin `#define' or `format' of `#include'
+\def\lapstar{\rlap{*}}
+\def\stsec % start up setion
+ {\endcodemode\noindent{\let\*=\lapstar\bf\secstar.\quad}}
+\let\startsection=\stsec % this one is used; provides hook for extra actions
+\newcount\gdepth % depth of last starred section
+\newcount\secpagedepth \secpagedepth=2 % depth where no page break is forced
+\newtoks\gtitle % title of last starred section
+
+\def\A{\note{See also section}} % xref for doubly defined module name
+\def\As{\note{See also sections}} % xref for multiply defined module name
+\def\ATL{\par\noindent\bgroup\catcode`\_=12 \postATL} % print @l in limbo
+\def\postATL#1 #2 {\bf letter \\{\uppercase{\char"#1}}
+   tangles as \tentex "#2"\egroup\par}
+\def\noATL#1 #2 {}
+\def\noatl{\let\ATL=\noATL} % suppress output from @l
+\def\ATP{\X\kern-.5em:Preprocessor directives\X}
+\def\B{\leavevmode % go into C mode
+  \ifcodemode\else
+    \begingroup\codemodetrue
+    \rightskip=0pt plus 300pt
+    \pretolerance 10000
+    \hyphenpenalty 9999 % so strings can be broken (with string break inserted)
+    \exhyphenpenalty 10000
+    \binoppenalty 10000
+    \relpenalty 10000
+    \mathcode`(="8000 \mathcode`)="8000 \mathcode`[="8000 \mathcode`]="8000
+    \mathcode`+="8000 \mathcode`-="8000 \mathcode`*="8000 \mathcode`:="8000
+    \let\{=\cweblbrace \let\}=\cwebrbrace
+    \let\.=\Cstring \let\\=\Cident \let\&=\Cbold
+  \fi
+  \global\ind=2
+  \global\pl=0
+  \1}
+\def\endcodemode
+ {\ifcodemode
+    \endgroup % get out of C mode
+    \global\hangindent=0pt % counteract \global\hangindent in \1
+  \fi
+  }
+\def\C#1% ordinary C comment; try to allow a break if little room is left
+  {\hfil\penalty0\hfilneg\kern4\indentunit\copy\bakk$/\ast\,$#1$\,\ast/$}
+\def\SHC#1% C++ one-line comment; force onto the current line
+  {\nobreak\kern2\indentunit\hbox{$/\!/\,$#1\unskip}}%
+\def\D{\8\defin{\#define}} % macro definition
+\def\E{\Penalty7=} % equality test
+\let\EQ=\equiv % after defining module name
+\def\PE{\mathrel\plus\EQ} % further defining section of a module
+\def\ET{ and~} % conjunction between two section numbers
+\def\ETs{, and~} % conjunction between the last two of several section numbers
+\def\F{\defin{format}} % format definition
+\let\G=\ge % greater than or equal sign
+% \H is long Hungarian umlaut accent
+\def\h{\8\defin{\#include}} % header file inclusion
+\def\I{\Penalty7\neq} % inequality test
+\def\J{\.{@\&}} % TANGLE's join operation
+\def\K{\Leftarrow\Penalty2} % assignment operator,
+   % can be changed to `=' (if \E is redefined) or `\leftarrow', if desired
+\def\KK#1{\mathrel{#1}\K} % composite assignment operators
+   % braces are required for same reason as for \m
+\def\MRL#1{\mathrel{#1}} % for first such operator in compatibility mode
+% \L is Polish letter suppressed-L
+\outer\def\M#1. %	start of `@ ' section
+ {\MN#1.\ifon
+  \vskip 0pt plus .5 \vsize \penalty-1000\vskip 0pt plus -.5 \vsize
+  \vskip\intersecskip\startsection
+ }
+\outer\def\n#1. %	start of `@~' section
+ {\MN#1.\ifon\vskip\intersecskip\startsection
+ }
+\outer\def\N#1 #2. #3. %start of `@*' section
+ {\global\gdepth=#1\global\gtitle={#3}\MN#2.%
+  \ifon \ifnum\gdepth<\secpagedepth \vfil\eject
+	\else \vskip 0pt plus .5 \vsize \penalty-1000\vskip 0pt plus -.5 \vsize
+	      \vskip\intersecskip
+	\fi
+  \fi
+  \message{*\secno}% progress report
+  \edef\next{\write\cont % to contents file
+    {\ZZ{#1}{#3}{\secno}{\noexpand\the\pageno}}}
+  \next
+  \ifon\startsection{\bf#3.\quad}%
+ }
+\def\MN#1.% common code for \M, \N, \n
+ {\par{\xdef\secstar{#1}\let\*=\empty\xdef\secno{#1}}%
+  \ifx\secno\secstar \onmaybe % print unchanged section if \maybe=\iftrue
+  \else\ontrue % changed sections are always printed
+  \fi \mark{{{\tensy x}\secno}{\the\gdepth}{\the\gtitle}}%
+ }% each \mark is {section reference}{depth}{title}
+% \O is Scandinavian letter O-with-slash
+% \P is paragraph sign
+\def\Q{\note{This code is cited in section}} % xref for citation of a module
+\def\Qs{\note{This code is cited in sections}} % xref for citations of a module
+\let\R=\lnot % logical not
+% \S is section sign
+\def\T#1{%
+  {\let\~=\oct \let\^=\hex \let\_=\timestentothepower \let\$=\withsuffix #1}}
+\def\oct{{}^\circ\kern-.2em\it\aftergroup\afteroct}
+\def\afteroct{\kern.2em }
+\def\hex{{}^{\scriptscriptstyle\#}\tt}
+\def\timestentothepower{\cdot 10^{\aftergroup}}
+\def\withsuffix{_{\rm\,\aftergroup}}
+\def\U{\note{This code is used in section}} % xref for use of a module
+\def\Us{\note{This code is used in sections}} % xref for uses of a module
+\def\V{\Penalty4\mid\mid} % logical or
+\def\W{\Penalty5\mathrel{\AND\AND}} % logical and, or rvalue ref
+\def\X#1:#2\X{\langle\,${#2\eightrm\enspace#1}$\,\rangle} % module name
+\def\Y{\par\yskip}
+\let\Z=\le % less than or equal sign
+\let\ZZ=\relax % now you can \send the control sequence \ZZ
+\def\?{\Penalty3\mathrel?} % `?' operator
+\def\vb#1{\leavevmode\hbox{\kern2pt\vrule\vtop{\vbox{\hrule
+        \hbox{\strut\kern2pt\.{#1}\kern2pt}}
+      \hrule}\vrule\kern2pt}} % verbatim string
+\def\ang#1{\if<#1\unskip\langle\else\if>#1\rangle\else#1\fi\fi} % C++ angles
+\let\*=*
+
+
+% output routines
+
+\newif\iftitle % if true suppresses first running head
+\def\lheader{\mainfont\the\pageno\eightrm\qquad\grouptitle\hfill\title\qquad
+  \mainfont\topsecno} % top line on left-hand pages
+\def\rheader{\mainfont\topsecno\eightrm\qquad\title\hfill\grouptitle
+  \qquad\mainfont\the\pageno} % top line on right-hand pages
+\def\grouptitle{\let\i=I\let\j=J\uppercase\expandafter{\expandafter
+                        \takethree\topmark}}
+\def\topsecno{\expandafter\takeone\topmark}
+\def\takeone#1#2#3{#1}
+\def\taketwo#1#2#3{#2}
+\def\takethree#1#2#3{#3}
+\def\nullsec{{\eightrm\kern-2em }} % the \kern-2em cancels \qquad in headers
+
+\let\page=\pagebody \normalbottom
+% \def\page{\box255 }% faster, but loses plain TeX footnotes
+\def\normaloutput#1#2#3% #1=page, #2=running head if even, #3 idem if odd
+{\ifodd\pageno\hoffset=\pageshift\fi
+ \shipout\vbox
+ {\vbox to\fullpageheight
+  {\iftitle\global\titlefalse % no running head, but reset for next pages
+   \else\hbox to\pagewidth{\vbox to10pt{}\ifodd\pageno #3\else#2\fi}%
+   \fi
+   \vfill#1% parameter #1 is the page itself
+ }}
+ \global\advance\pageno by1
+}
+
+\def\title{\uppercase\expandafter{\jobname}} % default title
+\def\topofcontents{\centerline{\titlefont\title}\vskip.7in
+  \vfill} % this material will start the table of contents page
+\def\botofcontents{\vfill\vfill
+  \if|\covernote|\else
+  \centerline{\covernote}% material ends the table of contents page
+  \fi}
+\def\covernote{}
+\def\contentspagenumber{0} % default page number for table of contents
+
+\newdimen\pagewidth \pagewidth=6.5in % the width of each page
+\newdimen\pageheight \pageheight=8.7in % the height of each page
+\newdimen\fullpageheight \fullpageheight=9in % page height including headlines
+\newdimen\pageshift \pageshift=0pt % shift righthand pages wrt lefthand ones
+\def\magnify#1{\mag=#1\pagewidth=6.5truein\pageheight=8.7truein
+  \fullpageheight=9truein\setpage}
+\def\setpage{\hsize=\pagewidth \vsize=\pageheight} % use after changing page size
+\def\contentsfile{\jobname.toc } % file that gets table of contents info
+\def\readcontents{\input\contentsfile}
+
+\newwrite\cont
+\output= % temporary for first page, which is emtpy so as to define \topmark
+{\setbox0=\box255 % throw away empty page
+ \openout\cont=\contentsfile % gets written when first real page is shipped
+ \write\cont{\catcode `\noexpand\@=11 }   % first line makes `@' letter
+ \global\output={\normaloutput\page\lheader\rheader}% the real \output
+}
+\setpage
+\vbox to 2\vsize{} % dummy page, but the first \topmark won't be null
+\gtitle={\.{CWEB} output} % this running head is reset by starred sections
+\mark{\noexpand\nullsec0{\the\gtitle}}
+% page must be oversized so even a very early \inx won't get the chance
+% to reassign \output before this page is sent off.
+
+\newbox\sbox % one-page buffer for delayed output of page before index
+\newif\ifpagesaved % whether buffer has been filled
+\def\bufferedoutput
+{{\ifpagesaved\normaloutput{\box\sbox}\lheader\rheader\fi % empty buffer
+  \global\setbox\sbox=\page \global\pagesavedtrue % fill buffer
+}}
+
+\def\ch#1.%
+{{\let\*=\relax
+  \note{The following sections were changed by the change file:}{#1}.%
+}}
+
+\newbox\lbox % lefthand column in the index
+\def\inx
+ {\par\vskip6pt plus 1fil \endcodemode % we are beginning the index
+  \def\page{\box255 } \normalbottom
+  \write\cont{\catcode `\noexpand\@=12\relax}   % make `@' other char
+  \closeout\cont % the contents information has been fully gathered
+  \output=\bufferedoutput\pagesavedfalse\eject % eject pages, keeping last
+  \setbox\sbox=\vbox{\unvbox\sbox} % allow its glue to reset
+  \vsize=\pageheight \advance\vsize by -\ht\sbox % the remaining height
+  \hsize=.5\pagewidth \advance\hsize by -10pt
+    % column width for the index (20pt between cols)
+  \parfillskip 0pt plus .6\hsize % try to avoid almost empty lines
+  \def\lr{L} % this tells whether the left or right column is next
+  \output=
+  {\if L\lr\global\setbox\lbox=\page \gdef\lr{R}
+   \else
+     \normaloutput
+     {\vbox to\pageheight
+      {\box\sbox \vss \hbox to\pagewidth{\box\lbox \hfil \page}}%
+     }% page argument to \normaloutput
+     \lheader\rheader % other two arguments to \normaloutput
+     \global\vsize\pageheight \gdef\lr{L} \global\pagesavedfalse
+   \fi
+  }%
+  \message{Index:}
+  \parskip 0pt plus .5pt
+  \let\@=\inxentry
+  \def\[##1]{$\underline{##1}$} % underlined index item
+  \rm \rightskip0pt plus 2.5em \tolerance 10000 \let\*=\lapstar
+  \hyphenpenalty 10000 \parindent0pt
+ }
+
+\outer\def\inxentry#1#2, % index entry; #1 is `h' or `m' for horiz/math mode
+ {\par\hangindent2em\noindent\if#1m$#2$\else#2\fi:\kern1em}
+
+\def\fin
+ {\par\vfill\eject % this is done when we are ending the index
+  \ifpagesaved\null\vfill\eject\fi % needed in case index is empty
+  \if R\lr \null\vfill\eject\fi % finish the current page
+  \parfillskip 0pt plus 1fil % restore normal paragraph end
+  \setpage % restore page shape
+  \output={\normaloutput\page\lheader\rheader}% restore output routine
+  \message{Module names:}
+  \def\grouptitle{NAMES OF THE MODULES}
+  \let\topsecno=\nullsec
+  \let\note=\finnote
+  \def\Q{\note{Cited in section}}%   crossref for mention of a section
+  \def\Qs{\note{Cited in sections}}% crossref for mentions of a section
+  \def\U{\note{Used in section}}%    crossref for use of a module
+  \def\Us{\note{Used in sections}}%  crossref for uses of a module
+  \def\@{\par\hangindent 2em}\let\*=*
+ }
+
+\def\finnote#1#2.{\quad{\eightrm#1~#2.}}
+
+\def\con
+ {\par\vfill\eject % finish the module names
+  \rightskip 0pt \hyphenpenalty 50 \tolerance 200
+  \setpage
+  \output={\normaloutput\page\lheader\rheader}
+  \titletrue % prepare to output the table of contents
+  \pageno=\contentspagenumber
+  \def\grouptitle{TABLE OF CONTENTS}
+  \message{Table of contents:}
+  \topofcontents
+  \line{\hfil Section\hbox to3em{\hss Page}}
+  \let\ZZ=\contentsline
+  \readcontents % read the contents info
+  \botofcontents \eject\end % print the contents page(s) and terminate
+ }
+\def\contentsline#1#2#3#4% #1=depth, #2=title, #3=secno, #4=pageno
+ {\line{\kern#1\indentunit \ignorespaces#2 \leaders\hbox to .5em{.\hfil}\hfil
+        \ #3\hbox to3em{\hss#4}%
+       }%
+ }
+\def\coneven % force even number of pages before contents
+{\par\vfill\eject\ifodd\pageno\else\shipout\hbox{}\advancepageno\fi\con}
+\def\noinx{\def\inx{\endcodemode\end}} % no indexes or table of contents
+\def\nomods{\let\FIN=\fin \def\fin{\let\parfillskip=\end \FIN}}
+    % no index of module names or table of contents
+\def\nocon{\let\con=\end} % no table of contents
+\def\today{\ifcase\month\or
+  January\or February\or March\or April\or May\or June\or
+  July\or August\or September\or October\or November\or December\fi
+  \space\number\day, \number\year}
+\newcount\twodigits
+\def\hours{\twodigits=\time \divide\twodigits by 60 \printtwodigits
+  \multiply\twodigits by-60 \advance\twodigits by\time \printtwodigits}
+\def\gobbleone1{}
+\def\printtwodigits{\advance\twodigits100
+  \expandafter\gobbleone\number\twodigits
+  \advance\twodigits-100 }
+\def\now{{\eightrm\today\ at \hours}}
+\def\datethis % say `\datethis' in limbo, to get your listing timestamped
+ {\def\startsection{\leftline\now\bigskip\let\startsection=\stsec\stsec}}
+\def\datecontentspage % timestamps the contents page
+ {\def\topofcontents
+   {\leftline\now\bigskip\centerline{\titlefont\title}\vfill}%
+ }
+
+\def\indentation#1{\indentunit#1\relax
+   \parindent\indentunit
+   \setbox\bak\hbox to-\indentunit{}% backspace one unit
+   \setbox\bakk\hbox to-2\indentunit{}% backspace two units
+}

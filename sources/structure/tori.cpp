@@ -1,16 +1,15 @@
-/*!
-\file
-\brief
-Implementation of the class RealTorus
-
-*/
 /*
   This is tori.cpp
 
+  Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
+
+
+//			Implementation of the class RealTorus
+
 
 #include "tori.h"
 
@@ -107,8 +106,8 @@ void fullMinusBasis(WeightList&,
 
 namespace tori {
 
-/*!
-  \brief Constructs the torus with involution |i| (the rank is recovered
+/*
+  Construct the torus with involution |i| (the rank is recovered
   from the size of the matrix.)
 */
 RealTorus::RealTorus(const WeightInvolution& i)
@@ -135,8 +134,8 @@ RealTorus::RealTorus(const WeightInvolution& i)
 }
 
 
-/*!
-  Synopsis: constructs the torus "dual" to T.
+/*
+  Construct the torus "dual" to T.
 
   This is the torus whose weight lattice is dual to that of T, equipped with
   the involution -tau^t, where tau is the involution for T. The minus sign is
@@ -171,10 +170,10 @@ RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
 /******** accessors *********************************************************/
 
 
-/*!
-  \brief Constructs the map |cm| induced, at the level of dual component
-  groups of real tori, by a map |m| from the weight lattice of our own
-  |RealTorus| to the one of |T_dest|.
+/*
+  Construct the map |cm| induced, at the level of dual component groups of
+  real tori, by a map |m| from the weight lattice of our own |RealTorus| to
+  the one of |T_dest|.
 
   The idea is simple enough: look at the columns of m modulo 2 and project
   them onto dpi0, and then restrict to our dual component representatives.
@@ -191,7 +190,7 @@ BinaryMap RealTorus::componentMap
 
 /******** manipulators ******************************************************/
 
-}
+
 
 /*****************************************************************************
 
@@ -199,10 +198,7 @@ BinaryMap RealTorus::componentMap
 
 ******************************************************************************/
 
-namespace tori {
-
-
-/*!
+/*
   Compute $(V_+ + V_-) / V_+$ where $V_+$ is the image mod 2 of the $q$-fixed
   sublattice ($+1$-eigenspace) and $V_-$ of the $-q$-fixed sublattice.
 
@@ -221,7 +217,7 @@ SmallSubquotient dualPi0(const WeightInvolution& q)
   SmallBitVectorList plus2(plusBasis(q)); // mod 2: denominator subgroup
 
   BinaryMap i2(q);  // reduce modulo 2
-  BinaryMap id; identityMatrix(id,q.numRows());
+  auto id = BinaryMap::identity(q.numRows());
 
   i2 += id; // now |i2| is mod-2 image of |theta-1| (and also of |theta+1|)
 
@@ -234,33 +230,16 @@ SmallSubquotient dualPi0(const WeightInvolution& q)
   return cs;
 }
 
-/*!
-  \brief Puts in mb a basis for the +1 eigenspace of the involution;
+/*
+  Put in |mb| a basis for the +1 eigenspace of the involution;
 
   Algorithm: the vectors e+i(e), when e runs through b, generate a lattice
   commensurate with the eigenspace.
 */
-void plusBasis(WeightList& pb,
-	       const WeightInvolution& i)
-
-/*!
-  Synopsis: puts in mb a basis for the +1 eigenspace of the involution;
-
-  Algorithm: the vectors e+i(e), when e runs through b, generate a lattice
-  commensurate with the eigenspace.
-*/
-
+void plusBasis(WeightList& pb, const WeightInvolution& inv)
 {
-  size_t n = i.numRows();
-
-  // put in q the matrix of vectors i(e)+e in the basis b
-
-  WeightInvolution q(i);
-  for (size_t i=0; i<n; ++i)
-    q(i,i) += 1;
-
   CoeffList factor;
-  int_Matrix b = matreduc::adapted_basis(q,factor);
+  int_Matrix b = matreduc::adapted_basis(inv+1,factor);
 
   size_t r=factor.size();
 
@@ -275,25 +254,16 @@ WeightList plusBasis(const WeightInvolution& i)
   WeightList result; plusBasis(result,i); return result;
 }
 
-/*!
-  Synopsis: puts in mb a basis for the -1 eigenspace of the involution.
+/*
+  Put in |mb| a basis for the -1 eigenspace of the involution.
 
   Algorithm: the vectors e-i(e), when e runs through b, generate a lattice
   commensurate with the eigenspace.
 */
-void minusBasis(WeightList& mb,
-		const WeightInvolution& i)
+void minusBasis(WeightList& mb, const WeightInvolution& inv)
 {
-  size_t n = i.numRows();
-
-  // put in q the matrix of vectors i(e)-e in the basis b
-
-  WeightInvolution q(i);
-  for (size_t i=0; i<n; ++i)
-    q(i,i) -= 1;
-
   CoeffList factor;
-  int_Matrix b = matreduc::adapted_basis(q,factor);
+  int_Matrix b = matreduc::adapted_basis(inv-1,factor);
 
   size_t r=factor.size();
 
@@ -308,13 +278,13 @@ WeightList minusBasis(const WeightInvolution& i)
   WeightList result; minusBasis(result,i); return result;
 }
 
-/*!
-  Synopsis: writes in qm the matrix of the restriction of q to X_-.
+/*
+  Write in |qm| the matrix of the restriction of $q$ to $X_-$.
 
   Precondition: q commutes with the involution;
 */
 void minusMatrix(int_Matrix& qm,
-		 const int_Matrix& q, const RealTorus& t)
+		 const WeightInvolution& q, const RealTorus& t)
 {
   const WeightList& bm = t.minusLattice();
   int_Matrix(bm.size(),bm.size()).swap(qm);
@@ -330,8 +300,8 @@ void minusMatrix(int_Matrix& qm,
 }
 
 
-/*!
-  Synopsis: writes in qp the matrix of the restriction of q to X_+.
+/*
+  Write in |qp| the matrix of the restriction of $q$ to $X_+$.
 
   Precondition: q commutes with the involution;
 */
@@ -351,7 +321,6 @@ void plusMatrix(WeightInvolution& qp,
   }
 }
 
-}  // |namespace tori|
 
 /*****************************************************************************
 
@@ -359,13 +328,11 @@ void plusMatrix(WeightInvolution& qp,
 
 ******************************************************************************/
 
-namespace tori {
-
 namespace {
 
 
-/*!
-  Synopsis: puts the subquotient V^tau/V_+ in cs.
+/*
+  Puts the subquotient V^tau/V_+ in cs.
 
   Explanation: V is X/2X; V_+ is the image of X_+ in V, similarly for V_-,
   and V^tau=V_+ + V_- is the kernel of the map induced by tau-1 on V.
@@ -378,7 +345,7 @@ void makeTopology(SmallSubquotient& cs, const RealTorus& T)
   SmallBitVectorList plus2(T.plusLattice()); // reduce mod 2
 
   BinaryMap i2(T.involution()); // reduce mod 2
-  BinaryMap id; identityMatrix(id,T.rank());
+  auto id = BinaryMap::identity(T.rank());
   i2 += id;
 
   SmallBitVectorList b=i2.kernel(); // kernel of |theta+1| mod 2, contains V_+
@@ -387,9 +354,9 @@ void makeTopology(SmallSubquotient& cs, const RealTorus& T)
 }
 
 
-/*!
-  Synopsis: puts in mb a basis for the -1 eigenspace of the involution; puts
-  in tm the matrix of a projection onto X_-.
+/*
+  Put in |mb| a basis for the -1 eigenspace of the involution; puts
+  in |tm| the matrix of a projection onto $X_-$.
 
   The matrix tm is in terms of the standard basis of X, and the chosen basis
   of X_-. There is no significance to the chosen complement; the intention is
@@ -399,20 +366,10 @@ void makeTopology(SmallSubquotient& cs, const RealTorus& T)
   commensurate with the eigenspace. The basis adapted to this sublattice also
   yields the projection matrix, after inversion.
 */
-void fullMinusBasis(WeightList& mb,
-		    int_Matrix& tm,
-		    const WeightInvolution& i)
+void fullMinusBasis(WeightList& mb, int_Matrix& tm, const WeightInvolution& inv)
 {
-  size_t n = i.numRows();
-
-  // put in q the matrix of vectors i(e)-e in the basis b
-
-  WeightInvolution q(i);
-  for (size_t i=0; i<n; ++i)
-    q(i,i) -= 1;
-
   CoeffList factor;
-  int_Matrix b = matreduc::adapted_basis(q,factor);
+  int_Matrix b = matreduc::adapted_basis(inv-1,factor);
 
   size_t r=factor.size();
 
@@ -423,12 +380,12 @@ void fullMinusBasis(WeightList& mb,
 
   // make projection matrix
   // rows of projection matrix are the first rows of the inverse of |b|
-  tm = b.inverse().block(0,0,r,n);
+  tm = b.inverse().block(0,0,r,inv.numRows());
 }
 
 
-/*!
-  \brief puts in |pb| a basis for the +1 eigenlattice of the involution;
+/*
+  Put in |pb| a basis for the +1 eigenlattice of the involution;
   puts in |tp| the matrix of a coordinate transformation from the standard
   basis to |pb|.
 
@@ -444,20 +401,10 @@ void fullMinusBasis(WeightList& mb,
   the standard basis to the Smith basis; retaining only the rows that give the
   initial coordinates we obtain the matrix |tp|.
 */
-void fullPlusBasis(WeightList& pb,
-		   int_Matrix& tp,
-		   const WeightInvolution& tau)
+void fullPlusBasis(WeightList& pb, int_Matrix& tp, const WeightInvolution& tau)
 {
-  size_t n = tau.numRows();
-
-  // put in q the matrix of vectors tau(e)+e in the basis b
-
-  WeightInvolution q(tau);
-  for (size_t i=0; i<n; ++i)
-    q(i,i) += 1;
-
   CoeffList factor;
-  int_Matrix b = matreduc::adapted_basis(q,factor);
+  int_Matrix b = matreduc::adapted_basis(tau+1,factor);
 
   size_t r=factor.size();
 
@@ -467,7 +414,7 @@ void fullPlusBasis(WeightList& pb,
     pb.push_back(b.column(j));
 
   // make coordinate transformation matrix
-  tp=b.inverse().block(0,0,r,n);
+  tp=b.inverse().block(0,0,r,tau.numRows());
 }
 
 } // |namespace|

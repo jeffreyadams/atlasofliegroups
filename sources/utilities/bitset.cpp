@@ -28,16 +28,16 @@ template <size_t n>
     set(i,v[i]%2!=0);
 }
 
-/*!
-  \brief Return an iterator pointing to the first set bit; this is
-  essentially just d_bits itself.
+/*
+  Return an iterator pointing to the first set bit; this is essentially just
+  d_bits itself.
 */
 BitSetBase<1>::iterator BitSetBase<1>::begin() const
 { return BitSetBase<1>::iterator(*this); }
 
 
-/*!
-  \brief replaces the bitset by the "defragmented" intersection with |c|
+/*
+  Replace the bitset by the "defragmented" intersection with |c|
   (i.e. those bits are packed consecutively, the rest disappear.)
 */
 void BitSetBase<1>::slice(const BitSetBase<1>& c)
@@ -51,8 +51,8 @@ void BitSetBase<1>::slice(const BitSetBase<1>& c)
   d_bits=result; // overwrite with compacted bits
 }
 
-/*!
-  \brief expands bits to positions of set bits in |c|, with zeros between.
+/*
+  Expand bits to positions of set bits in |c|, with zeros between.
   Thus |x.slice(c)| followed by |x.unslice(c)| amounts to |x&=c|
 */
 void BitSetBase<1>::unslice(const BitSetBase<1>& c)
@@ -191,8 +191,30 @@ void BitSetBase<2>::set(unsigned int j)
     |= constants::bitMask[j & constants::posBits];
 }
 
-// void BitSetBase<2>::slice(const BitSetBase<1>& c);
-// void BitSetBase<2>::unslice(const BitSetBase<1>& c);
+void BitSetBase<2>::slice(const BitSetBase<2>& c)
+{
+  unsigned int count=0;
+  BitSetBase<2> tmp;
+
+  for (iterator it = c.begin(); it(); ++it,++count)
+    if (test(*it))
+      tmp.set(count);
+
+  operator= (tmp); // copy new value to |*this|
+}
+
+void BitSetBase<2>::unslice(const BitSetBase<2>& c)
+{
+  unsigned int count=0;
+  BitSetBase<2> tmp;
+
+  for (iterator it = c.begin(); it(); ++it,++count)
+    if (test(count))
+      tmp.set(*it);
+
+  operator= (tmp); // copy new value to |*this|
+}
+
 
 void BitSetBase<2>::swap(BitSetBase<2>& source)
 {
@@ -255,6 +277,7 @@ BitSetBase<2>::iterator& BitSetBase<2>::iterator::operator++ ()
 template class BitSet<constants::RANK_MAX>;
   template BitSet<constants::RANK_MAX>::BitSet(const std::vector<int>&);
 template class BitSet<2*constants::RANK_MAX>;
+  // template class BitSetBase<2>; // uncomment to see if everything compiles
 
 } // |namespace bitset|
 

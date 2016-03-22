@@ -1,8 +1,8 @@
 /*
   This is interactive_lietype.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Lie Groups and Representations 
+  part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
@@ -13,7 +13,7 @@
 #include <map>
 #include <string>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include "lietype.h"	// |lietype::TypeLetter|
 
 /******** function declarations **********************************************/
@@ -22,7 +22,7 @@ namespace atlas {
 
 namespace interactive_lietype {
 
-  bool checkInnerClass(input::InputBuffer&, const LieType&, 
+  bool checkInnerClass(input::InputBuffer&, const LieType&,
 		       bool output=true);
 
   bool checkLieType(input::InputBuffer&);

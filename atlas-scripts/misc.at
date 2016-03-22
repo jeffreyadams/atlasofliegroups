@@ -1,0 +1,90 @@
+<basic.at
+
+{ test if an integer is even, or a rational is an integer }
+set is_nonnegative (vec v) = bool: >=v
+set is_positive (vec v) = bool: >v
+
+{ test if a ratvec is in fact a vec (integers)}
+set is_positive (ratvec v) = bool: is_positive(numer(v))
+set is_nonnegative (ratvec v)= bool: is_nonnegative(numer(v))
+
+{ transform ParamPol into a list of (Split,Param) pairs; previously built-in }
+set % (ParamPol P) = [(Split,Param)]: for c@p in P do (c,p) od
+
+{ integer_part and s_part of a ParamPol, s.t. P=integer_part(P)+s*s_part(P) }
+set integer_part (ParamPol P) = ParamPol:
+  0*P + for c@p in P do (+c,p) od { dubioulsy named conversion +:(Split->int) }
+set s_part (ParamPol P) = ParamPol:
+  0*P + for c@p in P do (^c,p) od { dubioulsy named conversion ^:(Split->int) }
+
+set parts (ParamPol P)=(integer_part(P),s_part(P))
+
+{ simpler syntax for param command: param(G,3,...) for param(KGB(G,3),...)  }
+set param(RealForm G,int k, vec lambda_rho,ratvec nu) = Param:
+  param(KGB(G,k),lambda_rho,nu)
+
+{ replace non-final parameter with [Param p] of final ones
+  uses this feature of ParamPol, but ignores any coefficients }
+set finalize (Param p)= [Param]: for c@q in ParamPol: p do q od
+
+{ evaluate at s=t for t integer (or rational?): replace w=a+bs with a+bt }
+{ would seem to make sense only if t^2=1, so if either t=1 or t=-1 }
+set  #(Split w,int t)=let (a,b)=%w in int: a+t*b
+set  #(Split w,rat t)=let (a,b)=%w in rat: a+t*b
+set  #(ParamPol P,int t)= ParamPol: { with integer coefficiens }
+  null_module(real_form(P)) +  for w@q in P do (w#t,q) od
+
+{properties of groups}
+
+set fiber_partition(RealForm G) = [int]: fiber_partition(Cartan_class(G,0),G)
+
+set in_distinguished_fiber(KGBElt x) = bool:
+  involution(x)=distinguished_involution(real_form(x))
+
+set distinguished_fiber (RealForm G) = [int]:
+  let i=0 in
+  while i<KGB_size(G) and in_distinguished_fiber(KGB(G,i)) do i next i:=i+1 od
+
+set ss_rank (RootDatum rd)= semisimple_rank(rd)
+
+set dimension (RootDatum rd) = 2*nr_of_posroots(rd)+rank(rd)
+
+set root_length(RootDatum rd,vec alpha) = int: rat_as_int(alpha*rho_check(rd))
+set is_simple_root(RootDatum rd,[int] alpha) = bool: root_length(rd,alpha)=1
+
+set simple_imaginary_subsystem (KGBElt x) = (mat,mat): { simple (co)roots }
+  simple_from_positive(imaginary_sys(x))
+
+set simple_real_subsystem (KGBElt x) = (mat,mat): { simple (co)roots }
+  simple_from_positive(real_sys(x))
+
+set to_binary (int length, int n) = vec:
+  let v=null(length) in
+  while (length-:=1)>=0 and n!=0 do let (q,r)=n\%2 in v[length]:=r; n:=q od; v
+
+set generate_all_binary = (int->[vec]): all_0_1_vecs@int
+
+set generate_all_subsets ([int] S) = [[int]]:
+  let rec_fun g (int k) = [[int]]: { subsets of first k elements of S }
+    if =k then [[]] { one empty subset of the empty set }
+    else let subs = g(k-1), last=S[k-1] in subs # for s in subs do s#last od
+    fi
+  in g(#S)
+
+{ nicer display of Splits }
+set prettyPrint (Split w) = string:
+  let (a,b)=%w in
+  if   b=0 then int_format(a)
+  elif a=0 then
+       if b=1 then "s" elif b=-1 then "-s" else int_format(b)#"s" fi
+  elif b=1 then int_format(a)#"+s"
+  elif b=-1 then int_format(a)#"-s"
+  elif b<-1 then int_format(a)#int_format(b)#"s"
+  else int_format(a)#"+"#int_format(b)#"s"
+  fi
+
+{ nice output of ParamPol:
+  prettyPrint the coefficients, print terms in order of x }
+set prettyPrint (ParamPol P)= void:
+for w@p in P
+do prints("(",prettyPrint(w),")*",p,", ",infinitesimal_character(p)) od

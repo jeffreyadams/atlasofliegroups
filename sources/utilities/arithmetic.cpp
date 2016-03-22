@@ -1,19 +1,20 @@
-/*!
-\file
-  This is arithmetic.cpp.
-  This module contains straightforward implementations of some elementary
-  arithmetic operations, used in dealing with small abelian groups.
-*/
+// This is arithmetic.cpp.
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006-2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
+/*
+  This module contains implementations of some elementary arithmetic operations.
+*/
 
 #include "arithmetic.h"
 
-#include <stdexcept>
+#include <stdexcept> // some cases throw
+#include <cassert>   // but most just assert; user should test uncertain cases
+#include <cstdlib>
 
 #include "constants.h"
 #include "arithmetic.h"
@@ -33,11 +34,12 @@ namespace arithmetic {
 
 
 /*!
-  The classical Euclidian algorithm. It is assumed that b > 0;
+  The classical Euclidian algorithm for positive (indeed unsigned) numbers.
+  It is assumed that |b != 0|, but |a| might be zero.
 */
 Denom_t unsigned_gcd(Denom_t a, Denom_t b)
 {
-  do
+  do // a double-exit loop
     if ((a %= b)==0)
       return b;
   while ((b %= a)!=0);
@@ -113,23 +115,30 @@ Rational& Rational::operator*=(Numer_t n)
   {
     if (n<0)
     { n=-n; num=-num; }
-    if (denom%n==0)
-      denom/=n;
-    else
-      num*=n;
+    Numer_t d = unsigned_gcd(denom,n);
+    denom/=d;
+    num *= static_cast<Numer_t>(n/d); // |n| implicitly converted to unsiged
   }
-  return *this;
+  return *this; // result will be normalised if |this| was
 }
 
 Rational& Rational::operator/=(Numer_t n)
-{ if (n<0)
+{ assert(n!=0);
+  if (n<0)
   { n=-n; num=-num; }
-  if (num%n==0)
-    num/=n;
-  else
-    denom*=n;
+  Numer_t d = unsigned_gcd(std::abs(num),n);
+  num/=d;
+  denom *= n/d; // |n| implicitly converted to unsigned here
+  return *this; // result will be normalised if |this| was
+}
+
+Rational& Rational::operator%=(Numer_t n)
+{ assert(n!=0);
+  num = remainder(num,denom*std::abs(n));
   return *this;
 }
+
+
 
 Rational Rational::operator+(Rational q) const
 {
@@ -151,25 +160,31 @@ Rational Rational::operator*(Rational q) const
 
 Rational Rational::operator/(Rational q) const
 {
+  assert(q.num!=0);
   if (q.num>0)
     return Rational(num*Numer_t(q.denom),denom*q.num).normalize();
-  else if (q.num==0)
-    throw std::domain_error("Rational division by 0");
   else
     return Rational(-num*Numer_t(q.denom),denom*-q.num).normalize();
+}
+
+Rational Rational::operator%(Rational q) const
+{
+  assert(q.num!=0);
+  return Rational(remainder(num*Numer_t(q.denom),denom*std::abs(q.num)),
+		  denom*q.denom).normalize();
 }
 
 Rational& Rational::power(int n)
 {
   normalize();
-  Denom_t numer=arithmetic::abs(num);
+  Denom_t numer=std::abs(num);
   if (n<0)
   { if (num==0)
-      throw std::domain_error("Negative power of rational zero");
+      throw std::runtime_error("Negative power of rational zero");
     std::swap(numer,denom); n=-n;
   }
   numer = arithmetic::power(numer,n); denom = arithmetic::power(denom,n);
-  num = (num>=0 ? numer : - Numer_t(numer));
+  num = (num>=0 or n%2==0 ? numer : - Numer_t(numer));
   return *this;
 }
 

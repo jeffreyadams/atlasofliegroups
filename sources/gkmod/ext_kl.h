@@ -11,7 +11,7 @@
 #define EXT_KL_H
 
 #include "ext_block.h"
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include "polynomials.h"
 
 namespace atlas {

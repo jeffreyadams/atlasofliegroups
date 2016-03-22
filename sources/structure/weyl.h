@@ -14,7 +14,7 @@
 #ifndef WEYL_H  /* guard against multiple inclusions */
 #define WEYL_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include <cstring>
 #include <cassert>
@@ -58,6 +58,15 @@ namespace weyl {
       { std::memset(d,~0,sizeof(d)); }
     Generator& operator[] (size_t i) { return d[i]; }
     const Generator& operator[] (size_t i) const { return d[i]; }
+
+    bool operator!=(const Twist& y) const
+    { for (unsigned i=0; i<constants::RANK_MAX; ++i)
+	if (d[i]!=y.d[i])
+	  return true;
+      return false;
+    }
+    bool operator==(const Twist& y) const { return not operator!=(y); }
+
   };
 
 
@@ -612,17 +621,17 @@ public:
   \brief Nondestructive version of |act| method
 */
   Weight
-    imageBy(const RootDatum& rd, const WeylElt& w, Weight v) const
+    image_by(const RootDatum& rd, const WeylElt& w, Weight v) const
     { act(rd,w,v); return v; }
 
-  void inverseAct(const RootDatum& rd, const WeylElt& w, Weight& v) const;
+  void inverse_act(const RootDatum& rd, const WeylElt& w, Weight& v) const;
 
 /*!
-  \brief Nondestructive version of |inverseAct| method
+  \brief Nondestructive version of |inverse_act| method
 */
   Weight
-    imageByInverse(const RootDatum& rd, const WeylElt& w, Weight v) const
-    { inverseAct(rd,w,v); return v; }
+    image_by_inverse(const RootDatum& rd, const WeylElt& w, Weight v) const
+    { inverse_act(rd,w,v); return v; }
 
 
 // manipulators

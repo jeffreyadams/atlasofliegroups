@@ -1,6 +1,4 @@
-/*!
-\file
-\brief Implementation of the classes TitsGroup and TitsElt.
+/*       Implementation of the classes TitsGroup and TitsElt.
 
   This module contains an implementation of a slight variant of the
   Tits group (also called extended Weyl group) as defined in J. Tits,
@@ -43,7 +41,7 @@
 #include "permutations.h"
 #include "arithmetic.h"
 
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "realredgp.h"
 #include "subquotient.h"
 #include "subsystem.h"
@@ -57,7 +55,7 @@ namespace tits {
 namespace {
 
 std::vector<Grading> compute_square_classes
-  (const ComplexReductiveGroup& G);
+  (const InnerClass& G);
 
 } // |namespace|
 
@@ -85,21 +83,22 @@ GlobalTitsElement GlobalTitsElement::simple_imaginary_cross
 //              |GlobalTitsGroup|
 
 
-GlobalTitsGroup::GlobalTitsGroup(const ComplexReductiveGroup& G)
+GlobalTitsGroup::GlobalTitsGroup(const InnerClass& G)
   : TwistedWeylGroup(G.twistedWeylGroup())
-  , simple(PreRootDatum // viewed from the dual side
-	   (CoweightList(G.rootDatum().beginSimpleCoroot(),
-			 G.rootDatum().endSimpleCoroot()),
-	    WeightList(G.rootDatum().beginSimpleRoot(),
-		       G.rootDatum().endSimpleRoot()),
-	    G.rootDatum().rank()))
+  , prd( // |PreRootDatum|, viewed from the dual side
+	CoweightList(G.rootDatum().beginSimpleCoroot(),
+		     G.rootDatum().endSimpleCoroot()),
+	WeightList(G.rootDatum().beginSimpleRoot(),
+		   G.rootDatum().endSimpleRoot()),
+	G.rootDatum().rank())
   , delta_tr(G.distinguished().transposed())
-  , alpha_v(G.semisimpleRank())
+  , alpha_v()
   , half_rho_v(G.rootDatum().dual_twoRho(),4)
   , square_class_gen(compute_square_classes(G))
 {
-  for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
-    alpha_v[i]=TorusPart(simple.roots()[i]);
+  alpha_v.reserve(G.semisimpleRank());
+  for (size_t i=0; i<G.semisimpleRank(); ++i) // reduce vectors mod 2
+    alpha_v.push_back(TorusPart(prd.simple_roots()[i]));
 }
 
 WeightInvolution
@@ -107,7 +106,7 @@ WeightInvolution
 {
   WeightInvolution M = delta_tr;
   M.negate(); // we need the involution |-^delta| corresponding to |delta|
-  weylGroup().act(simple,tw,M); // twisted involution, so left action is OK
+  weylGroup().act(prd,tw,M); // twisted involution, so left action is OK
   return M;
 }
 
@@ -123,7 +122,7 @@ TorusElement GlobalTitsGroup::dual_twisted(const TorusElement& x) const
 {
   RatWeight rw = x.log_pi(false);
   const WeylGroup& W = weylGroup();
-  W.act(simple,W.longest(),rw);
+  W.act(prd,W.longest(),rw);
   return y_values::exp_pi(RatWeight(delta_tr*-rw.numerator(),
 				    rw.denominator()));
 }
@@ -132,78 +131,29 @@ TorusElement GlobalTitsGroup::theta_tr_times_torus(const GlobalTitsElement& a)
   const
 { RatWeight rw = a.torus_part().log_pi(false);
   RatWeight delta_rw(delta_tr*rw.numerator(),rw.denominator());
-  weylGroup().act(simple,a.tw(),delta_rw);
+  weylGroup().act(prd,a.tw(),delta_rw);
   return y_values::exp_pi(delta_rw);
 }
 
-// this is currently only used by |has_central_square| (with |do_twist==true|)
-// perfoming multiplication from left (torus part side) is most efficient
-void GlobalTitsGroup::left_mult(const TorusElement& t,
-				const WeylWord& ww,
-				bool do_twist,
-				GlobalTitsElement& b) const
-{
-  for (size_t i=ww.size(); i-->0; ) // process from right to left
-  {
-    weyl::Generator s =  // multiply by $\sigma_i$ or $\sigma_{tw(i)}^{-1}$
-      do_twist ? twisted(ww[i]) : ww[i];
-    b.t.simple_reflect(simple,s); // note: |b.t| is \emph{weight} for |simple|
-    if ((weylGroup().leftMult(b.w,s)>0)==do_twist)
-      b.t += m_alpha(s); // adjust torus part on length (do_twist|in|de)crease
-  }
-  b.t = b.t + (do_twist ? twisted(t) : t); // finally add torus part |t|
-}
+// assuming |a.tw()| is a twisted involution, shifted square is easy to compute
+TorusElement GlobalTitsGroup::square_shifted(const GlobalTitsElement& a) const
+{ return a.torus_part()+theta_tr_times_torus(a); }
 
-
-// Elaborate condition to test whether an element is a strong involution
-bool GlobalTitsGroup::has_central_square(GlobalTitsElement a) const
+bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a,bool check_tw) const
 {
-  const TorusElement t = a.t; // copy, to avoid aliasing in |left_mult|
-  left_mult(t,word(a.w),true,a); // compute $twisted(a)*a$
-  if (a.w!=WeylElt()) // |a.w| should have been a twisted involution
+  if (check_tw and TwistedWeylGroup::prod(twisted(a.tw()),a.tw())!=WeylElt())
     return false;
-
-  // now check if |a.t| is central, by scalar products with |simple.coroots()|
-  RatWeight rw = a.t.log_2pi();
-  for (weyl::Generator s=0; s<semisimple_rank(); ++s)
-    if (arithmetic::remainder(simple.coroots()[s].dot(rw.numerator())
-			    ,rw.denominator())!=0)
-      return false;
-
-  return true;
-}
-
-// Simplified form of the same condition. The simplification is valid
-// because whenever |a.t==id| (basepoint), it is ensured that |is_valid(a)|
-bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a) const
-{
-  const TorusElement t = a.torus_part()+theta_tr_times_torus(a);
-
-  // now check if |t| is central, by scalar products with |simple.coroots()|
-  RatWeight rw = t.log_2pi();
-  for (weyl::Generator s=0; s<semisimple_rank(); ++s)
-    if (arithmetic::remainder(simple.coroots()[s].dot(rw.numerator())
-			    ,rw.denominator())!=0)
-      return false;
-
-  return true;
+  return is_central(prd.simple_coroots(),square_shifted(a));
 }
 
  // weaker condition: square being central in subgroup
 bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a,
 			       const SubSystem& sub) const
 {
-  const TorusElement t = a.torus_part()+theta_tr_times_torus(a);
-
-  // now check if |t| is central, by scalar products with |simple.coroots()|
-  RatWeight rw = t.log_2pi();
+  WeightList alpha; alpha.reserve(sub.rank());
   for (weyl::Generator s=0; s<sub.rank(); ++s)
-    if (arithmetic::remainder(sub.parent_datum().coroot(sub.parent_nr_simple(s))
-			      .dot(rw.numerator())
-			      ,rw.denominator())!=0)
-      return false;
-
-  return true;
+    alpha.push_back(sub.parent_datum().coroot(sub.parent_nr_simple(s)));
+  return is_central(alpha,square_shifted(a));
 }
 
 
@@ -222,10 +172,11 @@ void
 GlobalTitsGroup::imaginary_cross_act(weyl::Generator s,TorusElement& t) const
 {
   Rational r =
-    t.evaluate_at(simple.coroots()[s]) - Rational(1); // $\rho_{im}$ shift
+    t.evaluate_at(prd.simple_coroots()[s])
+		   - Rational(1); // $\rho_{im}$ shift
   if (r.numerator()!=0) // compact imaginary case needs no action
     add(RatWeight // now reflect for |s|, shifted to fix $\rho_{im}$
-	(simple.roots()[s]*-r.numerator(),2*r.denominator()),t);
+	(prd.simple_roots()[s]*-r.numerator(),2*r.denominator()),t);
 }
 
 /* The code below uses Tits element representation as $t*\sigma_w*\delta_1$
@@ -287,13 +238,13 @@ int GlobalTitsGroup::cross_act(GlobalTitsElement& a,const  WeylWord& w)
 void
 GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,TorusElement& t) const
 {
-  const Coweight& eval_pt=simple.coroots()[s];
+  const Coweight& eval_pt=prd.simple_coroots()[s];
   RatWeight w=t.log_2pi();
   int num = eval_pt.dot(w.numerator()); // should become multiple of denominator
 
   if (num % w.denominator()!=0) // correction needed if alpha compact
   {
-    const Weight& shift_vec= simple.roots()[s];
+    const Weight& shift_vec= prd.simple_roots()[s];
     // |eval_pt.dot(shift_vec)==2|, so correct numerator by |(num/2d)*shift_vec|
     w -= RatWeight(shift_vec*num,2*w.denominator());
     assert(eval_pt.dot(w.numerator())==0);
@@ -310,7 +261,7 @@ void GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
 
 // Sometimes we need to compute the grading at non-simple imaginary roots.
 // This could be computed using expression in simple-imaginary roots |alpha|,
-// for which grading is \emph{compact} iff  |torus_part().negative_at(alpha)|
+// for which grading is \emph{compact} iff |torus_part().negative_at(alpha)|
 // however that is not easy to implement; conjugating to simple is easier.
 // Root system |rs| necessary to interpret |alpha|, dual makes no difference
 bool GlobalTitsGroup::compact(const RootSystem& rs,
@@ -318,15 +269,12 @@ bool GlobalTitsGroup::compact(const RootSystem& rs,
 			      GlobalTitsElement a)
   const
 {
-  if (not rs.isPosRoot(alpha))
-    alpha=rs.rootMinus(alpha);
-
-  assert(rs.isPosRoot(alpha));
+  make_positive(rs,alpha);
   weyl::Generator s; // declare outside loop, allow inspection of final value
   while (alpha!=rs.simpleRootNbr(s=rs.find_descent(alpha)))
   {
     cross_act(s,a);
-    rs.simple_reflect_root(alpha,s);
+    rs.simple_reflect_root(s,alpha);
   }
 
   return compact(s,a); // since now |alpha==rs.simpleRootNbr(s)|
@@ -345,16 +293,22 @@ namespace {
  The function |compute_square_classes| computes this list of generators.
 
  Actually the valid gradings do not form a $\Z/2\Z$ vector space, but an
- affine space for which one can take the grading of $\delta$ as base point.
- These gradings apply to the set $(\<\Phi>_\Z)^\delta$ of $\delta$-fixed
- elements of the root lattice. The grading for the strong involution
- $t.\delta$, with torus-offset $t=\exp(\pi i c)$ from $\delta$, differs at
- weight vector $v$ from the grading for $\delta$ by a factor $(-1)^{\<v,c>}$.
- But since $c$ must be $\delta$-stable to define a valid square of a strong
- involution, we certainly have $\<(1+\delta)x,c>\in2\Z$ for all
- $x\in\<\Phi>_\Z$; thus the grading is always invariant under translating $v$
- by an element of the $1+\delta$-image of the root lattice. Therefore it
- suffices to record the grading on the $\delta$-fixed \emph{simple} roots.
+ affine space, for which one can take the grading of $\delta_1$ as base point
+ (it grades all simple-imaginary roots as non-compact). These gradings apply
+ to $\delta$-fixed (imaginary) roots, and by extension to the set
+ $(\<\Phi>_\Z)^\delta$ of $\delta$-fixed elements of the root lattice. The
+ grading for the strong involution representative $t.\delta$, with torus part
+ $t=\exp(\pi i c)$, differs at $\delta$-fixed element $v$ from the grading for
+ $\delta$ by a factor $(-1)^{\<v,c>}$ (the exponent will be integer).
+ Projecting $c$ to the $\delta$-fixed subspace of $X_*\tensor\Q$ gives a
+ different representative of the same strong involution, for which the strong
+ involution condition $t=\exp(\pi i(1+delta)c)\in Z(G)$ says that $\<.c>$
+ takes integer values on all roots. Then $\<(1+\delta)x,c>\in2\Z$ for all
+ $x\in\<\Phi>_\Z$; this means all obtained gradings are invariant under
+ translation by any element of the $1+\delta$-image of the root lattice.
+ Because all $v\in(\<\Phi>_\Z)^\delta$ are sums of $\delta$-fixed simple roots
+ on one hand and of sums of $\delta$-exchanged simple root pairs on the other,
+ it suffices to know the grading on $\delta$-fixed \emph{simple} roots.
 
  The list is formed of generators of the quotient of all possible gradings of
  those simple roots by the subgroup of gradings coming from $\delta$-fixed
@@ -368,7 +322,7 @@ namespace {
  not in the "support" of the subgroup (so that reduction would be trivial).
  */
 std::vector<Grading> compute_square_classes
-  (const ComplexReductiveGroup& G)
+  (const InnerClass& G)
 {
   const RootDatum& rd = G.rootDatum();
   const WeightInvolution& delta = G.distinguished();
@@ -426,15 +380,17 @@ TitsGroup::TitsGroup(const RootDatum& rd,
 		     const WeightInvolution& delta)
   : TwistedWeylGroup(W,weyl::make_twist(rd,delta))
   , d_rank(rd.rank())
-  , d_simpleRoot(rd.semisimpleRank())   // set number of vectors, but not yet
-  , d_simpleCoroot(rd.semisimpleRank()) // their size (which will be |d_rank|)
+  , d_simpleRoot()   // set number of vectors, but not yet
+  , d_simpleCoroot() // their size (which will be |d_rank|)
   , d_involution(delta.transposed())
   , dual_involution(rd.rank()) // set below
 {
+  d_simpleRoot.reserve(rd.semisimpleRank());
+  d_simpleCoroot.reserve(rd.semisimpleRank());
   for (size_t i = 0; i<rd.semisimpleRank(); ++i) // reduce vectors mod 2
   {
-    d_simpleRoot[i]  =TorusPart(rd.simpleRoot(i));
-    d_simpleCoroot[i]=TorusPart(rd.simpleCoroot(i));
+    d_simpleRoot.push_back(TorusPart(rd.simpleRoot(i)));
+    d_simpleCoroot.push_back(TorusPart(rd.simpleCoroot(i)));
   }
 
   // we could compute $w_0*d_invulution$ to give |dual_involution|
@@ -617,7 +573,7 @@ TitsGroup::involutionMatrix(const WeylWord& ww) const
  *
  */
 
-TitsCoset::TitsCoset(const ComplexReductiveGroup& G, Grading base_grading)
+TitsCoset::TitsCoset(const InnerClass& G, Grading base_grading)
   : my_Tits_group(NULL) // no ownership in this case
   , Tg(G.titsGroup())
   , grading_offset(base_grading)
@@ -626,7 +582,7 @@ TitsCoset::TitsCoset(const ComplexReductiveGroup& G, Grading base_grading)
 }
 
 // Based Tits group for the adjoint group
-TitsCoset::TitsCoset(const ComplexReductiveGroup& G)
+TitsCoset::TitsCoset(const InnerClass& G)
   : my_Tits_group(new TitsGroup(G.rootDatum().cartanMatrix(),
 				      G.weylGroup(),
 				      G.twistedWeylGroup().twist()))
@@ -639,7 +595,7 @@ TitsCoset::TitsCoset(const ComplexReductiveGroup& G)
 }
 
 // Based Tits group for the adjoint dual group
-TitsCoset::TitsCoset(const ComplexReductiveGroup& G,tags::DualTag)
+TitsCoset::TitsCoset(const InnerClass& G,tags::DualTag)
   : my_Tits_group(new TitsGroup(G.rootDatum().cartanMatrix().transposed(),
 				      G.weylGroup(),
 				      G.twistedWeylGroup().dual_twist()))
@@ -724,15 +680,12 @@ TitsElt TitsCoset::twisted(const TitsElt& a) const
 
 bool TitsCoset::grading(TitsElt a, RootNbr alpha) const
 {
-  if (not rs.isPosRoot(alpha))
-    alpha=rs.rootMinus(alpha);
-
-  assert(rs.isPosRoot(alpha));
+  make_positive(rs,alpha);
   weyl::Generator s; // declare outside loop, allow inspection of final value
   while (alpha!=rs.simpleRootNbr(s=rs.find_descent(alpha)))
   {
     basedTwistedConjugate(a,s);
-    rs.simple_reflect_root(alpha,s);
+    rs.simple_reflect_root(s,alpha);
   }
 
   return simple_grading(a,s);
@@ -770,7 +723,7 @@ bool TitsCoset::grading(TitsElt a, RootNbr alpha) const
 
 bool TitsCoset::simple_imaginary_grading(TorusPart t, RootNbr alpha) const
 {
-  assert(rs.isPosRoot(alpha));
+  assert(rs.is_posroot(alpha));
 
   RankFlags re_mod2(rs.root_expr(alpha));
 
@@ -799,247 +752,66 @@ bool TitsCoset::is_valid(TitsElt a) const
   return a==e;
 }
 
-/* The method |naive_seed| attempts to get an initial Tits group element, for
-   a KGB construction for the real form |rf| starting at Cartan class |cn|, by
-   extracting the necessary information fom the |Fiber| object associated to
-   the Cartan class |cn|, and lifting that information from the level of the
-   fiber group back to the level of torus parts. But as the name indicates,
-   the result is not always good, as it fails to account for the different
-   grading choices involved in identifying the (weak) real form in the fiber
-   and in the KGB construction. In the fiber construction, the action used to
-   partition the fiber group according to real forms uses a grading of the
-   imaginary roots for the twisted involution that makes all simple-imaginary
-   ones noncompact. In the KGB construction (i.e., in our |TitsCoset|) a
-   grading is chosen only at the distinguished involution, and only of the
-   simple roots that are imaginary for that involution; it depends on the
-   square class of the real form. The bitvector |v| below is zero for some
-   strong involution |si| in same square class as |rf| at Cartan class |cn|;
-   the result will be correct if and only if the null torus part |x| defines
-   (by |TitsCoset::grading|) the same grading of the (simple) imaginary roots
-   for the canonical involution of Cartan class |cn| as |si| does (through
-   |Fiber::class_base|).
-
-   The only case where one can rely on that to be true is for the fundamental
-   Cartan (|cn==0|), if our |TitsCoset| was extracted as base object from
-   an |EnrichedTitsGroup| (the latter being necessarily constructed through
-   |EnrichedTitsGroup::for_square_class|), because in that case the
-   |TitsCoset::grading_offset| field was actually computed from de
-   grading defined by the element |si| in the fundamental fiber. In the general
-   case all bets are off: the real form of |si| need not even be the same one
-   as the one corresponding to |TitsCoset::grading_offset|.
-
-   The main reason for leaving this (unused) method in the code is that it
-   illustrates how to apply the group morphism from the fiber group to T(2).
- */
-TitsElt TitsCoset::naive_seed
-  (ComplexReductiveGroup& G, RealFormNbr rf, size_t cn) const
-{
-  // locate fiber, weak and strong real forms, and check central square class
-  const Fiber& f=G.cartan(cn).fiber();
-  cartanclass::adjoint_fiber_orbit wrf = G.real_form_part(rf,cn);
-  cartanclass::StrongRealFormRep srf=f.strongRealForm(wrf);
-  assert(srf.second==f.central_square_class(wrf));
-  // the |grading_offset| of our |TitsCoset| gives the square class base
-
-  // now lift strong real form from fiber group to a torus part in |result|
-  const Partition& pi = f.fiber_partition(srf.second);
-  SmallBitVector v(RankFlags(pi.classRep(srf.first)),f.fiberRank());
-  TorusPart x = f.fiberGroup().fromBasis(v);
-
-  // right-multiply this torus part by canonical twisted involution for |cn|
-  TitsElt result(titsGroup(),x,G.twistedInvolution(cn));
-
-  return result; // result should be reduced immediately by caller
-}
-
-/* The method |grading_seed| attempts to correct the shortcomings of
-   |naive_seed| by insisting on obtaining an element exhibiting a grading that
-   corresponds to the real form |rf|. Thus no element is actually recovered
-   from any fiber group, but rather a set of equations for the torus part is
-   set up and solved. The equations come in two parts: a first section for
-   establishing the correct coset in T(2) with respect to the "numerator"
-   subgroup of the subquotient that defines th fiber group, and a second
-   section for requiring the correct grading of the imaginary roots for the
-   real form that is intended. Both parts are inhomogeneous linear equations,
-   of which the left hand side (linear part) expresses a Z/2Z-linear condition
-   on the torus part, and the right hand side (inhomogeneous part) describes
-   the failure of the null torus part to satisfy the conditions (since these
-   are equations over Z/2Z, there is no need to put in a minus sign).
-
-   The equations of the first section are derived from our test of being in
-   the proper coset for this square class (mentioned in kgb.cpp), namely that
-   the Tits element |a| with this left torus part and canonical twisted
-   involution for the Cartan satisfies $a*twisted(a)=e$ in our based twisted
-   Tits group. The left hand side describes the action of the involution on
-   torus parts, as provided by |Tg.involutionMatrix|. The right hand side is
-   equal to $a*twisted(a)$ where |a| is the canonical lift of the twisted
-   involution to the Tits group (i.e;, its torus part is null).
-
-   The equations of the second section have as left hand sides the reductions
-   modulo 2 of the simple-imaginary roots for the twisted involution,
-   interpreted as Z/2Z-linear forms on torus parts, and as corresponding right
-   hand side the difference between the desired grading of that root and the
-   gradings of it defined by the element |a| above, with null torus part.
-
-   It is not obvious that these equations actually have a solution, but since
-   the traditional KGB construction in fact produces such elements, we assert
-   that one exists. The solution is only meaningful modulo the "denominator"
-   subgroup of the subquotient that defines the fiber group, so the result
-   returned should be reduced modulo that subgroup by the caller.
-
-   If grading seeds are determined for different Cartan classes, there is no
-   guarantee that chosen solutions will belong to the same strong real form.
-   Therefore this method should only be called when only one seed is needed.
- */
-TitsElt TitsCoset::grading_seed
-  (ComplexReductiveGroup& G,RealFormNbr rf, size_t cn) const
-{
-  // locate fiber and weak real form
-  const Fiber& f=G.cartan(cn).fiber();
-  cartanclass::adjoint_fiber_orbit wrf = G.real_form_part(rf,cn);
-  const TwistedInvolution& tw = G.twistedInvolution(cn);
-
-  // get an element lying over the canonical twisted involution for |cn|
-  TitsElt a(Tg,tw); // trial element with null torus part
-
-  // get the grading of the imaginary root system given by the element |a|
-  Grading base_grading;
-  for (size_t i=0; i<f.imaginaryRank(); ++i)
-    base_grading.set(i,grading(a,f.simpleImaginary(i)));
-
-  // get the grading of the same system given by chosen representative of |wrf|
-  Grading form_grading = f.grading(f.weakReal().classRep(wrf));
-  /* the difference between |base_grading| and |form_grading| will have to be
-     compensated by setting an appropriate torus part for |a| */
-
-  // now prepare equations for coset for "fiber numerator" group of torus part
-  Tg.mult(a,twisted(a)); // now |a.t()| gives inhomogenous part for equations
-
-  BinaryEquationList eqns;  // equations for our seed
-  eqns.reserve(G.rank()+f.imaginaryRank()); // for coset + grading
-
-  BinaryMap refl = Tg.involutionMatrix(G.weylGroup().word(tw));
-
-  // coset equations
-  for (size_t i=0; i<G.rank(); ++i)
-  {
-    SmallBitVector lhs = refl.row(i);
-    lhs.flip(i); // left hand side is row $i$ of $TorusPartInvolution-1$
-    eqns.push_back(make_equation(lhs,Tg.left_torus_part(a)[i]));
-  }
-  // grading equations
-  for (size_t i=0; i<f.imaginaryRank(); ++i)
-  {
-    BinaryEquation equation =
-      BinaryEquation(G.rootDatum().root(f.simpleImaginary(i)));
-    equation.pushBack((base_grading^form_grading)[i]);
-    eqns.push_back(equation);
-  }
-
-  // solve, and tack a solution |x| to the left of |a|.
-  TorusPart x(G.rank());
-  bool success=bitvector::solvable(eqns,x);
-  assert(success);
-  ndebug_use(success);
-
-  TitsElt seed(Tg,x,tw); // $x.\sigma_w$
-
-#ifndef NDEBUG
-  // double-check that we have found an element with require properties
-
-  TitsElt check=seed; Tg.mult(check,twisted(check));
-  assert(check==TitsElt(Tg)); // we are in the proper coset
-
-  for (size_t i=0; i<f.imaginaryRank(); ++i)
-    assert(grading(seed,f.simpleImaginary(i))==form_grading[i]); // wrf OK
-#endif
-
-  return seed;  // result should be reduced immediatly by caller
-} // |grading seed|
-
-// torus parts: modulo the mod-2 reduction of the $-\theta$-fixed sublattice
-SmallSubspace fiber_denom(const WeightInvolution& theta)
-{
-  BinaryMap A(lattice::eigen_lattice(theta.transposed(),-1));
-  return SmallSubspace(A);
-}
-
-/*! \brief Returns the grading offset for the base real form of the square
- class (coset in adjoint fiber group) |csc|; |fund| and |rs| are corresponding
- values. |fund| must be a fundamental fiber, in order that restricting grading
- to simple roots suffice to determine the real form, or even the square class
- */
-Grading
-square_class_grading_offset(const Fiber& fund,
-			    cartanclass::square_class csc,
-			    const RootSystem& rs)
-{
-  RootNbrSet rset = fund.compactRoots(fund.class_base(csc));
-  return cartanclass::restrictGrading(rset,rs.simpleRootList())// restrict
-    .complement(rs.rank());// and complement with respec to to simple roots
-
-}
 
 EnrichedTitsGroup::EnrichedTitsGroup(const RealReductiveGroup& GR)
   : TitsCoset(GR.complexGroup(),
-	      square_class_grading_offset(GR.complexGroup().fundamental(),
-					  GR.square_class(),
-					  GR.rootDatum()))
-  , srf(GR.complexGroup().fundamental().strongRealForm(GR.realForm()))
+	      grading_of_simples(GR.complexGroup(),GR.g_rho_check()))
+  , srf(GR.complexGroup().sample_strong_form(GR.realForm()))
 {}
 
 
-/* In this final and most elaborate seeding function, which is also the most
-   reliable one, we stoop down to simulating the KGB construction back from
-   the fundamental fiber to the one for which we try to find a seed, and to
-   try all the representatives in the fundamental fiber of the strong real
-   form, until finding one that, along the chosen path of cross actions and
-   Cayley transforms, proves to be suited for every necessary Cayley transform
-   (making the simple root involved noncompact).
- */
+/*
+  The purpose of the method |backtrack_seed| is to find some |TitsElt| in the
+  strong real form associated with our |EnrichedTitsGroup|, at (the canonical
+  involution of) the Cartan class |cn|. We simulate the KGB construction back
+  from the fundamental fiber to the one for which we try to find a seed,
+  trying all the representatives in the fundamental fiber of the strong real
+  form, until finding one that, along the chosen path of cross actions and
+  Cayley transforms, proves to be suited for every necessary Cayley transform
+  (meaning that it makes all the simple roots involved noncompact). Rather
+  than set out for the journey with the full fundamental fiber and have the
+  unfit ones die along the way, we select a fit element from the fundamental
+  fiber and transform that one; but this does require some preliminary work.
+*/
 TitsElt EnrichedTitsGroup::backtrack_seed
- (const ComplexReductiveGroup& G,
-  RealFormNbr rf, size_t cn) const
+  (const InnerClass& G, RealFormNbr rf, size_t cn) const
 {
   const TitsGroup& Tgr= titsGroup();
-  // a name chosen to avoid shadowing (inaccessible) |Tg|, and thereby warnings
+  // a name chosen to avoid warnings about shadowing (the inaccessible) |Tg|
 
-  const TwistedInvolution& tw=G.twistedInvolution(cn);
+  const TwistedInvolution& tw=G.involution_of_Cartan(cn);
 
   RootNbrSet rset;
   WeylWord cross;
-  complexredgp::Cayley_and_cross_part(rset,cross,tw,G.rootDatum(),Tgr);
+  innerclass::Cayley_and_cross_part(rset,cross,tw,G.rootDatum(),Tgr);
 
   /* at this point we can get from the fundamental fiber to |tw| by first
      applying cross actions according to |cross|, and then applying Cayley
-     transforms in the strongly orthogonal set |Cayley|.
+     transforms in the strongly orthogonal set |rset|.
   */
 
   // transform strong orthogonal set |Cayley| back to distinguished involution
-  RootNbrList Cayley(rset.begin(),rset.end()); // convert to |RootList|
-  for (size_t i=0; i<Cayley.size(); ++i)
-    for (size_t j=cross.size(); j-->0; )
-      G.rootDatum().simple_reflect_root(Cayley[i],cross[j]);
+  RootNbrList Cayley(rset.begin(),rset.end()); // convert to |RootNbrList|
+
+  for (auto it=Cayley.begin(); it!=Cayley.end(); ++it)
+    *it = G.rootDatum().permuted_root(cross,*it);
 
   /* at this point we can get from the fundamental fiber to |tw| by first
      applying Cayley transforms in the strongly orthogonal set |Cayley|, and
      then applying cross actions according to |cross|
   */
 
-  /* Now find an element in the chosen strong real form at the fundamental
-     fiber, that has noncompact grading on all the roots of |Cayley| (which
-     are imaginary for $\delta$)
-   */
+/* Now find an element in the stored strong real form |srf| at the fundamental
+   fiber that has noncompact grading on all the roots of |Cayley| (which are
+   all imaginary for $\delta$). Methods |square| and |f_orbit| use this |srf|.
+*/
   TitsElt result(Tgr);
 
-  const Fiber& fund=G.fundamental();
-  const Partition& srp = fund.fiber_partition(square());
+  const Partition& srp = G.fundamental_fiber_partition(square());
   for (unsigned long x=0; x<srp.size(); ++x)
-    if (srp.class_of(x)==f_orbit())
+    if (srp.class_of(x)==f_orbit()) // test membership of strong real form
     {
-      SmallBitVector v
-	(static_cast<RankFlags>(x),fund.fiberRank());
-      TorusPart t = fund.fiberGroup().fromBasis(v);
+      TorusPart t = G.lift_from_fundamental_fiber(x);
       for (size_t i=0; i<Cayley.size(); ++i)
 	if (is_compact(t,Cayley[i]))
 	  goto again; // none of the |Cayley[i]| should be compact
@@ -1049,7 +821,7 @@ TitsElt EnrichedTitsGroup::backtrack_seed
       goto found;
     again: {}
     }
-  assert(false); // getting here means none of the orbit elements is in order
+  assert(false); // getting here means none of the orbit elements is appropriate
 
 found:
 
@@ -1075,7 +847,34 @@ found:
   return result;  // result should be reduced immediatly by caller
 } // |EnrichedTitsGroup::backtrack_seed|
 
-} // namespace tits
+
+//				Functions
+
+// torus parts: modulo the mod-2 reduction of the $-\theta$-fixed sublattice
+SmallSubspace fiber_denom(const WeightInvolution& theta)
+{
+  BinaryMap A(lattice::eigen_lattice(theta.transposed(),-1));
+  return SmallSubspace(A);
+}
+
+Grading compact_simples
+  (const RootDatum& rd, const TorusElement& t, RankFlags imag)
+{
+  Grading result;
+  for (auto it=imag.begin(); it(); ++it)
+    result.set(*it,t.negative_at(rd.simpleRoot(*it)));
+  return result;
+}
+
+Grading compact_simples(const TitsCoset& Tc, const TitsElt& a, RankFlags imag)
+{
+  Grading result;
+  for (auto it=imag.begin(); it(); ++it)
+    result.set(*it,not Tc.simple_grading(a,*it));
+  return result;
+}
+
+} // |namespace tits|
 
 
-} // namespace atlas
+} // |namespace atlas|

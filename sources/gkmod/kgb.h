@@ -16,10 +16,11 @@ representing orbits of K on G/B.
 #ifndef KGB_H  /* guard against multiple inclusions */
 #define KGB_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "gradings.h"	// containment in |KGBEltInfo|
 #include "hashtable.h"	// containment in |KGB_base|
+#include "innerclass.h" // access to involution table
 #include "weyl.h"       // |weyl::TI_Entry::Pooltype|
 #include "tits.h"       // containment |GlobalTitsGroup|
 #include "y_values.h"   // containment |TorusElement|
@@ -54,7 +55,9 @@ namespace kgb {
 class KGB_base
 {
  protected: // available during construction from derived classes
-  const ComplexReductiveGroup& G; // hold a reference for convenience
+  typedef unsigned int inv_index; // internal sequence number of involutions
+
+  const InnerClass& G; // hold a reference for convenience
 
   // per KGB element information
   struct EltInfo
@@ -82,9 +85,9 @@ class KGB_base
   std::vector<std::vector<KGBfields> > data; // first index: simple reflection
   std::vector<EltInfo> info; // per element information
 
-  //!\brief tables to map twisted involutions to their sequence number
-  weyl::TI_Entry::Pooltype inv_pool;
-  HashTable<weyl::TI_Entry,unsigned int> inv_hash;
+  // tables defining local (generation) ordering of involutions
+  std::vector<InvolutionNbr> inv_nrs; // |inv_index| means index into |inv_nrs|
+  std::vector<inv_index> inv_loc; // parital inverse, indexed |InvolutionNbr|
 
   //!\brief to help find range of elements with fixed twisted involution
   std::vector<KGBElt> first_of_tau; // size: |numInvolutions()+1|
@@ -92,23 +95,22 @@ class KGB_base
 
 
  protected: // constructor is only meant for use from derived classes
-  explicit KGB_base(const ComplexReductiveGroup& GC, unsigned int ss_rank)
+  explicit KGB_base(const InnerClass& GC, unsigned int ss_rank)
   : G(GC)
   , data(ss_rank)
   , info()
-  , inv_pool(), inv_hash(inv_pool)
+  , inv_nrs(), inv_loc()
   , first_of_tau()
   {}
 
 
  public:
   KGB_base (const KGB_base& org) // copy contructor
-    : G(org.G) // share
-    , data(org.data)
-    , info(org.info)
-    , inv_pool(org.inv_pool) // copy
-    , inv_hash(inv_pool) // reconstruct, using our own |pool|
-    , first_of_tau(org.first_of_tau)
+  : G(org.G) // share
+  , data(org.data)
+  , info(org.info)
+  , inv_nrs(org.inv_nrs), inv_loc(org.inv_loc)
+  , first_of_tau(org.first_of_tau)
   {}
 
   virtual ~KGB_base(){} // maybe overly cautious; no |KGB_base*| is intended
@@ -116,9 +118,9 @@ class KGB_base
 
   size_t rank() const { return data.size(); } // number of simple reflections
   size_t size() const { return info.size(); } // number of KGB elements
-  unsigned int nr_involutions() const { return inv_pool.size(); }
+  inv_index nr_involutions() const { return inv_nrs.size(); }
 
-  const ComplexReductiveGroup& complexGroup() const { return G; }
+  const InnerClass& complexGroup() const { return G; }
   const RootDatum& rootDatum() const;
   const WeylGroup& weylGroup() const;
   const TwistedWeylGroup& twistedWeylGroup() const;
@@ -129,25 +131,27 @@ class KGB_base
     { return data[s][x].Cayley_image; }
   KGBEltPair inverseCayley(weyl::Generator s, KGBElt x) const
     { return data[s][x].inverse_Cayley_image; }
+  KGBElt any_Cayley(weyl::Generator s, KGBElt x) const
+    { return isDescent(s,x) ? inverseCayley(s,x).first : cayley(s,x); }
 
   KGBElt cross(const WeylWord& ww, KGBElt x) const;
   KGBElt cross(KGBElt x, const WeylWord& ww) const;
 
-  unsigned int length(KGBElt x) const;
+  unsigned int length(KGBElt x) const
+  { return G.involution_table().length(inv_nr(x));}
 
   KGBElt Hermitian_dual(KGBElt x) const { return info[x].dual; }
 
-  TwistedInvolution nth_involution(unsigned int n) const
-    { return inv_pool[n]; }
+  // a method useful mostly for traversing all our involutions
+  const TwistedInvolution& nth_involution(inv_index n) const
+  { return G.involution_table().involution(inv_nrs[n]); }
 
-  InvolutionNbr involution_index(KGBElt x) const // internal index of involution
-  { return std::upper_bound(first_of_tau.begin(),first_of_tau.end(),x)
-      -first_of_tau.begin() -1;
-  }
   const TwistedInvolution& involution(KGBElt x) const // after construction only
-  { return inv_pool[involution_index(x)]; }
+  { return nth_involution(involution_index(x)); } // the one associated to |x|
 
-  const WeightInvolution & involution_matrix(KGBElt x) const;
+  const WeightInvolution & involution_matrix(KGBElt x) const
+  { return G.involution_table().matrix(inv_nr(x)); }
+
   InvolutionNbr inv_nr(KGBElt x) const; // external number (within inner class)
 
   const DescentSet& descent(KGBElt x) const { return info[x].desc; }
@@ -186,6 +190,15 @@ class KGB_base
   virtual std::ostream& print(std::ostream& strm, KGBElt x) const
   { return strm; }
 
+ private: // this internal index of involution is only usable by methods above
+
+  // find involution index |i| such that |inv_nrs[i]| is involution of |x|
+  InvolutionNbr involution_index(KGBElt x) const
+  // look up index first element if |first_of_tau| greater than |x|; then -1
+  { return std::upper_bound(first_of_tau.begin(),first_of_tau.end(),x)
+      -first_of_tau.begin() -1;
+  } // returns |i| where |first_of_tau(i)<=x| and this fails for |i+1|;
+
  protected:
   void reserve (size_t n); // prepare for generating |n| elements
   void add_element();  // create entry in |data| and |info|
@@ -215,6 +228,7 @@ struct KGB_elt_entry
   KGB_elt_entry (const RatWeight& f,
 		 const GlobalTitsElement& y);
   GlobalTitsElement repr() const;
+  RatWeight label () const { return fingerprint; }
 
 }; //  |struct KGB_elt_entry|
 
@@ -226,9 +240,9 @@ class global_KGB : public KGB_base
   global_KGB(const global_KGB& org); // forbid copying
 
  public:
-  global_KGB(ComplexReductiveGroup& G, bool dual_twist=false);
+  global_KGB(InnerClass& G, bool dual_twist=false);
 
-  global_KGB(ComplexReductiveGroup& G,
+  global_KGB(InnerClass& G,
 	     const GlobalTitsElement& x,
 	     bool dual_twist=false); // generate KGB containing |x|
 
@@ -256,15 +270,19 @@ class global_KGB : public KGB_base
 //			     Fokko's |class KGB|
 
 
-/*!
-\brief Represents the orbits of K on G/B for a particular real form.
+/*
+  A KGB object represents the orbits of K on G/B for a particular real form,
+  in the form of a graph structure (cross actions an Cayley transforms), plus
+  some additional data that permit interpreting its elements in the context.
 
-This class adds some information with respect to that kept in |KGB_base|, and
-most importantly carries out the actual filling of the base object. As
-additional data that are held in this derived class there is the
-|TitsCoset| used during construction, and the torus parts (relative to
-the base point) that distinguish elements in the same fiber. This class also
-provides the possibility to generate and store the Bruhat order on the set.
+  This class adds some information with respect to that kept in |KGB_base|,
+  and most importantly carries out the actual filling of the |KGB_base| base
+  object (the graph structure). As additional data that are held in this
+  derived class there is the |TitsCoset| used during construction (really an
+  attribute of the square class of the real form), and the torus parts
+  (relative to the base point) that distinguish K\G/B elements in the same
+  fiber. This class also provides the possibility to generate and store the
+  Bruhat order on the set.
 */
 
 class KGB : public KGB_base
@@ -272,7 +290,7 @@ class KGB : public KGB_base
 
   enum State { BruhatConstructed, NumStates };
 
-  std::vector<unsigned int> Cartan; ///< records Cartan classes of elements
+  std::vector<inv_index> Cartan; ///< records Cartan classes of involutions
 
   std::vector<TorusPart> left_torus_part; // of size |size()|
   BitSet<NumStates> d_state;
@@ -285,7 +303,7 @@ and in addition the Hasse diagram (set of all covering relations).
   BruhatOrder* d_bruhat;
 
   //! \brief Owned pointer to the based Tits group.
-  TitsCoset* d_base; // pointer, because constructed late by |generate|
+  TitsCoset* d_base; // pointer, because constructed late by constructor
 
  public:
 
@@ -309,11 +327,10 @@ and in addition the Hasse diagram (set of all covering relations).
 //! \brief The Tits group.
   const TitsGroup& titsGroup() const { return d_base->titsGroup(); }
 
-  RatWeight half_rho() const;
-
   TorusPart torus_part(KGBElt x) const { return left_torus_part[x]; }
-  TorusElement torus_part_global // |torus_part| but coded as in |global_KGB|
-    (const RootDatum&rd, KGBElt x) const; // needs root datum (for base grading)
+  // reconstruct from |torus_part| a |TorusElement| as in |global_KGB|
+  RatCoweight base_grading_vector() const; // offset for |torus_part_global|
+  RatCoweight torus_part_global(KGBElt x) const; // will be $\theta^t$-fixed
 
   TitsElt titsElt(KGBElt x) const; // get KGB element |x| as a |TitsElt|
   size_t torus_rank() const; // the (non-semisimple) rank of torus parts.
@@ -324,7 +341,7 @@ and in addition the Hasse diagram (set of all covering relations).
   bool simple_imaginary_grading(KGBElt x,RootNbr alpha) const
   { return d_base->simple_imaginary_grading(torus_part(x),alpha); }
 
-  KGBElt lookup(const TitsElt& a) const;
+  KGBElt lookup(TitsElt a) const; // by value
 
 
 // manipulators
@@ -348,23 +365,13 @@ private:
 
 /* ****************** function definitions **************************** */
 
-// general cross action in (non simple) root
-// root is given as simple root + conjugating Weyl word to simple root
-KGBElt cross(const KGB_base& kgb, KGBElt x,
-	     weyl::Generator s, const WeylWord& ww);
+// general cross action in root $\alpha$
+KGBElt cross(const KGB_base& kgb, KGBElt x, RootNbr alpha);
 
-// general Cayley transform in (non simple) non-compact imaginary root
-// root is given as simple root + conjugating Weyl word to simple root
-KGBElt Cayley (const KGB_base& kgb, KGBElt x,
-	       weyl::Generator s, const WeylWord& ww);
+// general (inverse) Cayley transform in root $\alpha$ (nci or real)
+KGBElt any_Cayley (const KGB_base& kgb, KGBElt x, RootNbr alpha);
 
-// general inverse Cayley transform (choice) in (non simple) real root
-// root is given as simple root + conjugating Weyl word to simple root
-KGBElt inverse_Cayley (const KGB_base& kgb, KGBElt x,
-		       weyl::Generator s, const WeylWord& ww);
-
-gradings::Status::Value status(const KGB_base& kgb, KGBElt x,
-			       const RootSystem& rs, RootNbr alpha);
+gradings::Status::Value status(const KGB_base& kgb, KGBElt x, RootNbr alpha);
 
 } // |namespace kgb|
 

@@ -1,0 +1,130 @@
+<synthetic.at
+<Weylgroup.at  { for type W_word, make_dominant and friends }
+<translate.at  { for T@(Param,ratvec) }
+
+{ this function differs from posroot_cross@(int,Param) in synthetic.at only
+  in that is calls make_dominant_using_roots from Weylgroup.at; also it has
+  essentially become cross@(mat,Param) in nonintegral.at
+}
+set my_posroot_cross (int i, Param p) = Param:
+  let x0 = x(p), gamma = infinitesimal_character(p)
+  then rd = root_datum(real_form(x0))
+  , x1 = posroot_cross(i,x0), grading_wt=gamma-lambda(p)+rho_r(x0)
+  then theta1= involution(x1), w=reflection(rd,i)
+  then (new_gamma,) = make_dominant_using_roots(rd,reflection(rd,i)*gamma)
+  in parameter(x1,new_gamma - w*grading_wt + rho_r(rd,theta1), new_gamma)
+
+set simpleroot_cross = (int,KGBElt->KGBElt): { we could use builtin cross }
+  posroot_cross@(int,KGBElt) { but this uses the "synthetic" version }
+
+set Wword_cross(W_word(rd,w),KGBElt x)=KGBElt:
+  for s in w { reverse: } ~ do x:=simpleroot_cross(s,x) od; x
+
+{ no need for special code for the simple reflection case }
+
+{ The following differs from posroot_Cayley by final call of T only?
+  No, there was rho_r(id,..) in some places where rho_r(rd,..) was needed.
+  Ans also there is make_simple(rd,beta) here, but make_simple(id,beta) there
+  Why is the call to T necessary?ut make_simple(id,beta) there.
+  Isn't final parameter(x3,..) already defined at infin. character gamma?
+}
+set my_posroot_Cayley (int i, Param p) = Param:
+  let x0=x(p), gamma=infinitesimal_character(p)
+  then G = real_form(x0), x3=posroot_Cayley(i,x0), theta0=involution(x0)
+  then rd=root_datum(G), theta3=involution(x3)
+  then ()= if denom(coroot(rd,i)*gamma)!=1
+           then error("coroot is not integral for parameter")
+           fi
+  , id = integrality_datum(rd,gamma), beta=root(rd,i)
+  then (w,s) = make_simple(rd,beta)
+{ then ()=prints("w:", w) }
+  then w1=inverse(w)
+  then theta1 = w*theta0*w1 { involution before Cayley by root(id,s) }
+  then theta2 = reflection(rd,s)*theta1 { after that simple imaginary Cayley }
+{ then ()=prints("theta1:", theta1)
+        ; prints("theta2:", theta2)
+        ; prints("theta3:", theta3)
+}
+  then diff1 = w1*rho_r(rd,theta1) - rho_r(rd,theta0)
+  ,    diff2 = w1*rho_r(rd,theta2) - rho_r(rd,theta3)
+{ then ()=prints("diff1:", diff1)
+        ; prints("diff2:", diff2)
+        ; prints("new lambda:", lambda(p)+diff1-diff2)
+}
+{ need to translate to original infinitesimal character: }
+  in T(parameter(x3,lambda(p) + diff1 - diff2, gamma)
+      ,infinitesimal_character(p))
+
+set my_posroot_inv_Cayley (int i, Param p) = Param:
+( let x0=x(p), gamma=infinitesimal_character(p)
+  then G = real_form(x0), x3=posroot_Cayley(i,x0), theta0=involution(x0)
+  then rd=root_datum(G), theta3=involution(x3)
+  in assert(is_integer(coroot(rd,i)*gamma)
+           ,"coroot is not integral for parameter"
+           )
+; let id = integrality_datum(rd,gamma), beta=root(rd,i)
+  then (w,s) = make_simple(id,beta)
+  then w1=inverse(w)
+  then theta1 = w*theta0*w1 { involution for Cayley by root(id,s) }
+  then theta2 = reflection(rd,s)*theta1 { for simple imaginary Cayley }
+  then diff1 = w1*rho_r(rd,theta1) - rho_r(rd,theta0)
+  ,    diff2 = w1*rho_r(rd,theta2) - rho_r(rd,theta3)
+{ then let()=prints("diff1: ", diff1, " diff 2: "
+                   , diff2, " diff1-diff2: ", diff1-diff2) }
+  then projection = (1-theta3) * (gamma-lambda(p) - diff1 + diff2) /2
+{ then ()=prints("projection: ", projection
+                ," gamma-projection: ", gamma-projection) }
+  in parameter(x3, gamma-projection, gamma)
+)
+
+{ nothing changed here }
+set my_new_block_line = ([Param],int->string): new_block_line@([Param],int)
+
+set test_cayleys (Param p) = void:
+  let G=real_form(p), B = [Param]: block_of(p)
+  , simple_integral_roots=simple_roots(integrality_datum(p))
+  then simple_indices = [int]:
+    for alpha in simple_integral_roots do root_index(G,alpha) od
+  , (result1,result2)=(true,true)
+  in
+  for q@k in B do
+    prints(k, " ", q)
+  ; for j@i in simple_indices
+    do
+      let c1 = Cayley(i,q) { calls built-in (or new_blocks.at substitute) }
+      in
+      if c1 != q { which means Cayley is defined }
+      then
+        let c2=posroot_Cayley(j,q), c3=my_posroot_Cayley(j,q)
+        then passed_posroot    = c2=c1 or c2=cross(i,c1)
+        ,    passed_my_posroot = c3=c1 or c3=cross(i,c1)
+        in if result1 then result1:=   passed_posroot fi { perform 'and' }
+        ;  if result2 then result2:=passed_my_posroot fi { perform 'and' }
+        ;  prints(passed_posroot,", ", passed_my_posroot)
+      fi
+    od
+  od; prints("posroot:", result1);prints("my_posroot:", result2)
+
+{ do the same test without using posroot_Cayley, which crased in some cases }
+set test_cayleys_2 (Param p) = void:
+  let G=real_form(p), B=block_of(p)
+  , simple_integral_roots=simple_roots(integrality_datum(p))
+  then simple_indices = [int]:
+    for alpha in simple_integral_roots do root_index(G,alpha) od
+  , result=true
+  in
+  for q@k in B do
+    prints(k, " ", q)
+  ; for j@i in simple_indices
+    do
+      let c1=Cayley(i,q) { calls built-in (or new_blocks.at substitute) }
+      in
+      if c1 != q {Cayley is defined}
+      then
+        let c2 = my_posroot_Cayley(j,q)
+        then passed_my_posroot = c2=c1 or c2=cross(i,c1)
+        in if result then result:= passed_my_posroot fi { perform 'and' }
+        ;  prints(passed_my_posroot)
+      fi
+    od
+  od; prints("my_posroot:", result)
