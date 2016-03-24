@@ -2,7 +2,7 @@
   This is bitvector.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2008,2009,2013 Marc van Leeuwen
+  Copyright (C) 2008-2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -19,7 +19,7 @@
 
 #include "bitvector.h"
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "comparison.h"
 #include "constants.h"
@@ -816,16 +816,20 @@ template<size_t dim> void spanAdd(std::vector<BitVector<dim> >& a,
   a.push_back(w);
 }
 
+template<size_t dim> int_Vector lift(const BitVector<dim>& v)
+{ int_Vector result(v.size(),0);
+  for (auto it=v.data().begin(); it(); ++it)
+    result[*it]=1;
+  return result;
+}
+
+
 /* functions never called have been grouped here, MvL */
 #if 0
-template<size_t dim>
-  void complement(BitSet<dim>& c,
-		  const std::vector<BitVector<dim> >& b,
-		  size_t d)
 
-/*!
-  \brief Flags into |c| a subset of the standard basis that spans a
-  complementary subspace to the subspace spanned by |b|.
+/*
+  Flag into |c| a subset of the standard basis that spans a complementary
+  subspace to the subspace spanned by |b|.
 
   It is assumed that the vectors in b are all of the same size, but not
   necessarily independent.
@@ -834,7 +838,10 @@ template<size_t dim>
   to set bits beyond that (so that |c.count()|, for instance, yields the
   correct dimension of the complement.)
 */
-
+template<size_t dim>
+  void complement(BitSet<dim>& c,
+		  const std::vector<BitVector<dim> >& b,
+		  size_t d)
 {
   std::vector<size_t> f;
   std::vector<BitVector<dim> > a;
@@ -851,12 +858,8 @@ template<size_t dim>
     c.reset(f[j]);
 }
 
+// Tell whether the system of bitvectors is independent.
 template<size_t dim> bool isIndependent(const std::vector<BitVector<dim> >& b)
-
-/*!
-  \brief Tells whether the system of bitvectors is independent.
-*/
-
 {
   std::vector<BitVector<dim> > a;
   std::vector<size_t> f;
@@ -871,9 +874,9 @@ template<size_t dim> bool isIndependent(const std::vector<BitVector<dim> >& b)
 }
 
 
-/*!
-  \brief Puts in p the matrix of the projection on the canonical
-  complement to the span of b.
+/*
+  Put in p the matrix of the projection on the canonical complement to the
+  span of b.
 
   We assume that b holds the normal basis for the
   subspace V that it spans (if not, this can be obtained by a call to
@@ -887,7 +890,6 @@ template<size_t dim>
 		  size_t d)
 {
   // flag the indices for the canonical complement
-
   BitSet<dim> c;
   std::vector<size_t> f;
 
@@ -921,20 +923,17 @@ template<size_t dim>
   }
 }
 
-// this function does not appear to be used anywhere [MvL]
-template<size_t dim>
-  void reflectionMatrix(BitMatrix<dim>& m, const BitVector<dim>& a,
-			const BitVector<dim>& a_check)
-
-/*!
-  \brief Puts in m the matrix of the reflection defined by a and a_check.
+/*
+  Put into m the matrix of the reflection defined by a and a_check.
 
   Precondition: a and a_check have same size; <a,a_check> = 0;
 
   This is the operator x -> x + <x,a_check>a (we can write + because we are
   in characteristic two.)
 */
-
+template<size_t dim>
+  void reflectionMatrix(BitMatrix<dim>& m, const BitVector<dim>& a,
+			const BitVector<dim>& a_check)
 {
   identityMatrix(m,a.size());
 
@@ -943,18 +942,15 @@ template<size_t dim>
       m.addToColumn(j,a);
 }
 
-// this function does not appear to be used anywhere [MvL]
-template<size_t dim>
-  void relations(std::vector<BitVector<dim> >& rel,
-		 const std::vector<BitVector<dim> >& b)
-
-/*!
-  \brief Writes in r the relations among the elements in b.
+/*
+  Write into r the relations among the elements in b.
 
   In other words, it solves the system of equations defined by the _rows_ in
   the matrix whose columns are given by b.
 */
-
+template<size_t dim>
+  void relations(std::vector<BitVector<dim> >& rel,
+		 const std::vector<BitVector<dim> >& b)
 {
   rel.resize(0);
 
@@ -1024,11 +1020,13 @@ template
 template void identityMatrix(BitMatrix<constants::RANK_MAX>&, size_t);
 template void initBasis(std::vector<SmallBitVector>&, size_t);
 
+template int_Vector lift(const SmallBitVector& v);
+
 template class BitVector<constants::RANK_MAX>;   // |SmallBitVector|
 template class BitVector<constants::RANK_MAX+1>; // |BinaryEquation|
 template class BitMatrix<constants::RANK_MAX>;   // |BinaryMap|
 
-template class BitVector<64ul>; // used in realex function |subspace_normal|
+template class BitVector<64ul>; // used in atlas function |subspace_normal|
 template
    void initBasis<64ul>(std::vector<BitVector<64ul> >& b, size_t r); // idem
 template class BitMatrix<64ul>; // used in realex function |binary_invert|

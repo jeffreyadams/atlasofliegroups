@@ -48,7 +48,7 @@
 #include "matreduc.h"
 #include "matrix.h"
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 
 /*****************************************************************************
@@ -367,21 +367,22 @@ InnerClassType dual_type(InnerClassType ict, const LieType& lt)
 }
 
 /* compute dual of Lie type (including diagram numbering) and inner class.
-   For the dual of types $F_4$ end $G_2$ we reverse the numbering of the
-   nodes, thus avoiding the introduction of the variant types $f_4$ and $g_2$.
-   We just interchange types $B_n$ and $C_n$, even for $n=2$ where we could
-   have instead interchanged the numbering of the two roots as for $G_2$. This
-   is because users like the (fictive) distinction between $B_2$ and $C_2$.
 
-   The dual inner class contains (as non-based root datum involution) the
-   negated transpose of the distinguished involution of the inner class. This
-   amounts to interchanging inner class types 'c' and 's'. For complex ('C')
-   inner classes we currently do nothing, although if the Lie type is XX where
-   -1 is not in the Weyl group of X (i.e., such that 's' is not 'c' for X),
-   then the negated transpose distinguished involution is not in the "same"
-   inner class, but rather in "another" complex class of Lie type XX; the very
-   limited use made of the dual Layout (in realform_io) justifies this choice.
- */
+  For the dual of types $F_4$ end $G_2$ we reverse the numbering of the
+  nodes, thus avoiding the introduction of the variant types $f_4$ and $g_2$.
+  We just interchange types $B_n$ and $C_n$, even for $n=2$ where we could
+  have instead interchanged the numbering of the two roots as for $G_2$. This
+  is because users like the (fictive) distinction between $B_2$ and $C_2$.
+
+  The dual inner class contains (as non-based root datum involution) the
+  negated transpose of the distinguished involution of the inner class. This
+  amounts to interchanging inner class types 'c' and 's'. For complex ('C')
+  inner classes we currently do nothing, although if the Lie type is XX where
+  -1 is not in the Weyl group of X (i.e., such that 's' is not 'c' for X),
+  then the negated transpose distinguished involution is not in the "same"
+  inner class, but rather in "another" complex class of Lie type XX. The very
+  limited use made (in output) of the dual Layout justifies this imprecision.
+*/
 Layout dual(const Layout& lo)
 {
   Layout result=lo;

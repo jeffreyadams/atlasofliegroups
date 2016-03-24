@@ -1,0 +1,194 @@
+{		computing coherent continuations		}
+
+<basic.at
+<translate.at { for translation functor T@(Param(Pol),ratvec) }
+<W_orbit.at
+
+
+{ ------------ Cayleys as sums of one or two terms ---------- }
+
+{ nci Cayley transform as a sum of one or two terms }
+set nci_Cayley (int k,Param p) = ParamPol:
+  let c1=Cayley(k,p) then c2=cross(k,c1) in
+  if c1=c2 then c1 else c1+c2 fi
+
+{ real Cayley transform as a sum of one or two terms }
+set r1_Cayley (int k,Param p) = ParamPol:
+  let c1=inv_Cayley(k,p) then c2=cross(k,c1) in
+  if c1=c2 then c1 else c1+c2 fi
+
+{ -----------coherent continuation in basis of standards----------- }
+
+{ DANGEROUS BEND
+  all versions of coherent continuation action are right actions
+     (u*w).p = w*(u*p)
+  therefore the reflection arguments are written to the right
+     coherent_std_reg(p,w*u)=coherent_std_reg(coherent_std_reg(p,w),u)
+  this ultimately comes down to the inverse on pages 460-461
+  of Vogan's big green book
+}
+
+{ coherent continuation action of simple root on Param in basis of standards }
+
+{
+  regular infinitesimal character case is easier
+  user will usually will not need to call this function
+}
+set coherent_std_reg (Param p,int s) = ParamPol:
+  assert(is_regular(p),"infinitesimal character is not regular");
+  let type=status(s,x(p)) in
+  if   type=1 { compact imaginary }     then -p
+  elif type=3 { non-compact imaginary } then nci_Cayley(s,p)-cross(s,p)
+  else        { complex or real }            cross(s,p)
+  fi
+
+{ coherent continuation action of simple root on ParamPol in basis of standards
+  regular case
+}
+set coherent_std_reg (ParamPol P,int s) = ParamPol:
+  let sum=0*P in
+  for coeff@p in P do sum +:= coeff*coherent_std_reg(p,s) od; sum
+
+
+{ coherent continuation action of Weyl group on Param in basis of standards
+  regular case
+  see the dangerous bend above; this applies [a1,a2,...,an] in
+  the order ( . * a1 * a2 * ... * an )
+  this applies to all other invocations of coherent_*
+}
+set coherent_std_reg (Param p,[int] w) = ParamPol:
+  let P=virtual(p) in for s in w do P:=coherent_std_reg(P,s) od; P
+
+{ in singular case,
+  move to regular infinitesimal character, apply w, and move back
+  Dangerous Bend (example):
+
+  atlas> set G=Sp(6,R)
+  atlas> set p=parameter(KGB(G,3),[3,2,2],[0,0,0])
+  Value: zero parameter (x=3,lambda=[3,2,2]/1,nu=[0,0,0]/1)
+
+  the root e2-e3 is compact, so this limit of DS is zero
+  however its coherent continuation is not zero
+
+  atlas> coherent_std(0,p)
+  Value:
+  -1*final parameter (x=4,lambda=[3,2,2]/1,nu=[0,0,0]/1)
+  1*final parameter (x=9,lambda=[3,2,2]/1,nu=[1,-1,0]/2)
+}
+
+{ action of simple root on parameter, basis of standards }
+set coherent_std (Param p,int s) = ParamPol:
+  if is_regular(p) then coherent_std_reg(p,s)
+  else
+    let gamma=infinitesimal_character(p)
+    then p_reg=T(p,gamma+rho(real_form(p)))
+    in T(coherent_std_reg(p_reg,s),gamma)
+  fi
+
+{ coherent continuation action of Weyl group element on ParamPol,
+  basis of standards }
+set coherent_std (Param p,[int] w) = ParamPol:
+  if is_regular(p) then coherent_std_reg(p,w)
+  else
+    let gamma=infinitesimal_character(p)
+    then p_reg=T(p,gamma+2*rho(real_form(p)))
+    in T(coherent_std_reg(p_reg,w),gamma)
+  fi
+
+{ coherent continuation action of simple root on ParamPol, basis of standards }
+set coherent_std (ParamPol P,int s) = ParamPol:
+  let N=null_module(real_form(P)) in
+  for coeff@p in P do N +:= coeff*coherent_std(p,s) od; N
+
+{ coherent continuation action of Weyl group on ParamPol, basis of standards }
+set coherent_std (ParamPol P,[int] w) = ParamPol:
+  for s in w do P:=coherent_std(P,s) od; P
+
+set coherent_std (W_word v,Param p)=ParamPol:coherent_std(p,word(v))
+set coherent_std (W_word v,ParamPol P)=ParamPol:coherent_std(P,word(v))
+
+{ ------------coherent continuation in basis of irreducibles------------ }
+
+{ coherent continuation of simple root on Param in basis of irreducibles }
+set coherent_irr (Param p,int s) =
+  composition_series(coherent_std(character_formula(p),s))
+
+{ coherent continuation of Weyl group element on Param, basis of irreducibles }
+set coherent_irr (Param p,[int] w)=
+  composition_series(coherent_std(character_formula(p),w))
+
+{ coherent continuation of simple root on ParamPol, basis of irreducibles }
+set coherent_irr (ParamPol P,int s) = ParamPol:
+  composition_series(coherent_std(character_formula(P),s))
+
+{ coherent continuation of Weyl group element on ParamPol in
+  basis of irreducibles }
+set coherent_irr (ParamPol P,[int] w) = ParamPol:
+  composition_series(coherent_std(character_formula(P),w))
+
+{ ---------------------------coherent families------------------------------ }
+
+set coherent_family_irr (ParamPol P, ratvec v)=ParamPol:
+  if is_dominant(root_datum(P),v) then T_irr(P,v)
+  else let (v_dominant,w)=make_dominant(root_datum(P),v)
+    then (,u)=w
+    in { coherent_irr(u,T_irr(P,v_dominant)) }
+       T_irr(coherent_irr(P,u),act(inverse(w),v))
+ fi
+
+{
+: term = (Param,string)
+: module = (ParamPol,string)
+{ ------------phi_alpha: translation of stds/irrs away from one  wall-------- }
+
+set phi(term(p,type), int s, ratvec v) = module:
+  let (gamma,rd)=(infinitesimal_character(p),root_datum(p))
+  then a=simple_coroots(rd)[s]
+  in assert(is_integer(v-gamma),"translation is not integral");
+    assert(is_regular(rd,v),
+           "translation is not to regular infinitesimal character");
+    assert(a*gamma=0 and a*v !=0,
+           "this is not translation away from a single root wall");
+    assert(#singular_roots(rd,gamma)=1,
+           "this is not translation away from a single root wall");
+   (virtual(translate_to(p,v)),type) + coherent(s,(translate_to(p,v),type))
+
+{ -----------phi_alpha: translation of ParamPol away from one  wall---------- }
+
+set phi(module(P, type),int s,ratvec v) = module:
+  let Q=(null_module(P),type) in
+  for (w,q) in %P do Q +:= w*phi((q,type),s,v) od; Q
+
+{ set psi(ParamPol P,int s)= ParamPol:
+  let Q=null_module(P) in for (w,q) in %P do Q +:= (w,psi(q,s)) od; Q
+}
+
+{ phi_alpha*psi_alpha: translation of stds/irrs to and from from one  wall }
+
+set phi_psi(term(p,type),int s) = module:
+  phi(psi((p,type),s),s,infinitesimal_character(p))
+
+set phi_psi(module(P,type),int s) = module:
+  phi(psi((P,type),s),s,infinitesimal_character(P))
+
+{ -----------skew symmetrized coherent continuation ----------- }
+
+{ sum over W_S of (-1)^{w} (w.P) }
+set skew_symmetrize_coherent([int] S,module(P,type)) = module:
+  let N=(null_module(real_form(P)),type)
+  , WS=W_orbit_W_elements(root_datum(P),S,ratvectovec(2*rho(root_datum(P))))
+  in for w in WS do N:=N+(-1)^#w*coherent(w,(P,type)) od; N
+
+{ same as previous, assuming W_S=W }
+set skew_symmetrize_coherent(module(P,type)) = module:
+  let S=[int]: for i:rank(root_datum(P)) do i od
+  in skew_symmetrize_coherent(S,(P,type))
+
+{ same as previous, applied to standard or irreducible }
+set skew_symmetrize_coherent([int] S,term(p,type)) = module:
+  skew_symmetrize_coherent(S,(virtual(p),type))
+set skew_symmetrize_coherent(term(p,type)) = module:
+  skew_symmetrize_coherent(virtual(p),type)
+}
+
+

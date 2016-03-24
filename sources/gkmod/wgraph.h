@@ -12,7 +12,7 @@
 
 #include <iostream>
 
-#include "atlas_types.h" // must be included before any utility headers are
+#include "../Atlas.h"   // must be included before any utility headers are
 
 #include "bitset.h"	// inlines
 #include "graph.h"	// containment
@@ -20,7 +20,7 @@
 
 namespace atlas {
 
-/******** type declarations  (see atlas_types.h)  ***************************/
+/******** type declarations  (see ../Atlas.h)  ***************************/
 
 
 /******** function declarations *********************************************/

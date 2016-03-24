@@ -12,7 +12,7 @@
 
 #include <iosfwd>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "bitset.h"	// for default argument to |printDescent|
 #include "ext_block.h"  // for |ext_block::DescValue|

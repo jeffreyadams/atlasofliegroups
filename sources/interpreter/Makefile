@@ -1,6 +1,6 @@
-# This Makefile serves to make realex and possibly source documentation
-# running 'make' or 'make realex' in the main atlas directory will just use
-# this makefile to make the realex program (and its requisites of course)
+# This Makefile serves to make 'atlas' and possibly source documentation
+# running 'make' or 'make atlas' in the main atlas directory will just use
+# this makefile to make the atlas program (and its requisites of course)
 # Running 'make' from the current directory will in addition make the source
 # documentation (as first target, so that you can look at your typeset code in
 # the dvi file while it is being compiled, and when reading error messages).
@@ -9,19 +9,19 @@
 # compilation flavor that is set in that directory is passed on and used.
 
 # where we are
-realex_dir := .
+atlas_dir := .
 
-# where to look for the atlas sources (in the parent directory)
+# where to look for the Atlas sources (in the parent directory)
 sources_dir := ..
 
-atlas_root := $(sources_dir)/..
-cwebx_dir := $(atlas_root)/cwebx
+Atlas_root := $(sources_dir)/..
+cwebx_dir := $(Atlas_root)/cwebx
 
-# only the directories listed below of the atlas sources are actually used
-ATLAS_DIRS := utilities structure gkmod error io interface
+# only the directories listed below of the Atlas sources are actually used
+sources_subdirs := utilities structure gkmod error io interface
 
 # this variable is used both by g++, and by cweavex needing the trailing slash
-INCLUDE_FLAGS := $(ATLAS_DIRS:%=-I$(sources_dir)/%/)
+INCLUDE_FLAGS := $(sources_subdirs:%=-I$(sources_dir)/%/)
 
 CTANGLE := $(cwebx_dir)/ctanglex
 CWEAVE := $(cwebx_dir)/cweavex
@@ -53,8 +53,8 @@ ifeq "$(CXXVERSIONVERYOLD)" "1"
   CXXFLAVOR += -Dnoexcept= -Dconstexpr= -Dnullptr=0
 endif
 
-# only the atlas object files listed below are used
-atlas_objects := $(sources_dir)/structure/prerootdata.o \
+# only the Atlas object files listed below are used
+Atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/structure/lietype.o \
  $(sources_dir)/utilities/arithmetic.o \
  $(sources_dir)/error/error.o \
@@ -66,7 +66,7 @@ atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/utilities/bits.o \
  $(sources_dir)/utilities/bitset.o \
  $(sources_dir)/utilities/permutations.o \
- $(sources_dir)/structure/complexredgp.o \
+ $(sources_dir)/structure/innerclass.o \
  $(sources_dir)/structure/tits.o \
  $(sources_dir)/structure/cartanclass.o \
  $(sources_dir)/structure/weyl.o \
@@ -76,7 +76,6 @@ atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/structure/tori.o \
  $(sources_dir)/structure/weylsize.o \
  $(sources_dir)/structure/gradings.o \
- $(sources_dir)/io/realform_io.o \
  $(sources_dir)/structure/realredgp.o \
  $(sources_dir)/structure/topology.o \
  $(sources_dir)/io/prettyprint.o \
@@ -86,11 +85,9 @@ atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/gkmod/bruhat.o \
  $(sources_dir)/io/ioutils.o \
  $(sources_dir)/io/block_io.o \
- $(sources_dir)/io/realredgp_io.o \
- $(sources_dir)/io/complexredgp_io.o \
+ $(sources_dir)/io/output.o \
  $(sources_dir)/io/realweyl.o \
  $(sources_dir)/io/realweyl_io.o \
- $(sources_dir)/io/cartan_io.o \
  $(sources_dir)/gkmod/klsupport.o \
  $(sources_dir)/gkmod/kl.o \
  $(sources_dir)/gkmod/wgraph.o \
@@ -114,7 +111,7 @@ atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/gkmod/ext_block.o
 
 cwebx_sources :=  buffer.w parsetree.w lexer.w \
-  types.w global.w evaluator.w built-in-types.w main.w
+  axis-types.w global.w axis.w atlas-types.w main.w
 
 c++files      := $(cwebx_sources:%.w=%.cpp)
 c++objects    := $(c++files:%.cpp=%.o)
@@ -124,7 +121,7 @@ headers := $(filter-out main.h,$(c++files:%.cpp=%.h)) parser.tab.h parse_tree.h
 
 dvifiles := $(cwebx_sources:%.w=%.dvi)
 
-objects := $(c++objects) parser.tab.o $(atlas_objects)
+objects := $(c++objects) parser.tab.o $(Atlas_objects)
 
 # You may define an environment variable 'rl_libs' to override the definition
 # below. For me (on Debian or Ubuntu Linux) just "-lreadline" suffices, but on
@@ -150,7 +147,7 @@ LDFLAGS := $(rl_libs)
 
 .PHONY: all mostlyclean clean headers cppfiles dvifiles compilable
 
-all:	headers dvifiles ../../realex
+all:	headers dvifiles $(Atlas_root)/atlas
 
 # 'make clean' removes all derived files, but the executable program isn't here
 clean:
@@ -174,7 +171,7 @@ $(CWEAVE):
 # we do use the following pattern rules (explicit implicit rules, so to say)
 
 # static pattern rules giving the usual C++ compilation
-$(c++objects) $(atlas_objects): %.o: %.cpp
+$(c++objects) $(Atlas_objects): %.o: %.cpp
 	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
 # for running ctanglex we cannot use a static pattern rule, since there are
@@ -231,9 +228,8 @@ $(headers): $(CTANGLE)
 $(c++files): $(CTANGLE)
 $(dvifiles): $(CWEAVE)
 
-# Our executable program 'realex' is in atlas root directory. Then name realex
-# stands for Rewritten Expression-based Atlas of Lie groups EXecutable
-../../realex: $(objects)
+# Our executable program 'atlas' is in Atlas root directory.
+$(Atlas_root)/atlas: $(objects)
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
 # the parser is produced by bison, and compiled using the C++ compiler
@@ -251,6 +247,6 @@ parser.tab.o: parser.tab.c
 	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@
 
 # miscellaneous dependencies (some already known), produced by hand for now
-# these are also included from the main atlas makefile
+# these are also included from the main Atlas makefile
 
 include dependencies

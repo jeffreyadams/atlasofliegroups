@@ -13,7 +13,7 @@
 
 #include <iostream>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "matrix.h"	// containment
 #include "ratvec.h"	// containment
@@ -96,7 +96,7 @@ class Rep_context
 
   // accessors
   RealReductiveGroup& realGroup() const { return G; }
-  const ComplexReductiveGroup& complexGroup() const { return G.complexGroup(); }
+  const InnerClass& complexGroup() const { return G.complexGroup(); }
   const RootDatum& rootDatum() const { return G.rootDatum(); }
   const WeylGroup& weylGroup() const { return G.weylGroup(); }
   const TwistedWeylGroup& twistedWeylGroup() const
@@ -216,7 +216,7 @@ class Rep_table : public Rep_context
 // 				Functions
 
 // compute shift in $\lambda$ component involved in non-simple Cayley
-Weight Cayley_shift (const ComplexReductiveGroup& G,
+Weight Cayley_shift (const InnerClass& G,
 		     InvolutionNbr theta_upstairs, // at the more split Cartan
 		     WeylWord to_simple); // acting from the left
 

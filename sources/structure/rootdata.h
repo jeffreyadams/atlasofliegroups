@@ -15,15 +15,13 @@
 #ifndef ROOTDATA_H  /* guard against multiple inclusions */
 #define ROOTDATA_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include <algorithm>
 
 #include "arithmetic_fwd.h"
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include "tags.h"
-
-#include "atlas_types.h"
 
 #include "bitset.h" // for ascent and descent sets
 #include "matrix.h" // for loads of subobjects
@@ -41,7 +39,7 @@ namespace rootdata {
 RatWeight rho (const RootDatum& rd);
 RatWeight rho (const RootDatum& rd,const RootNbrSet& sub_posroots);
 RatCoweight rho_check (const RootDatum& rd);
- RatCoweight rho_check (const RootDatum& rd,const RootNbrSet& sub_posroots);
+RatCoweight rho_check (const RootDatum& rd,const RootNbrSet& sub_posroots);
 
 CoweightInvolution dualBasedInvolution
   (const WeightInvolution&, const RootDatum&);

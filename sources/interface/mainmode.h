@@ -10,7 +10,7 @@
 #ifndef MAINMODE_H  /* guard against multiple inclusions */
 #define MAINMODE_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include "commands_fwd.h"
 
 namespace atlas {
@@ -25,13 +25,12 @@ namespace commands {
 
   commands::CommandNode mainNode();
   extern commands::CommandTree& main_mode; // defined in commands.cpp
-  ComplexReductiveGroup& currentComplexGroup();
-  ComplexReductiveGroup& current_dual_group();
+  InnerClass& currentComplexGroup();
+  InnerClass& current_dual_group();
   const lietype::Layout& current_layout();
   const WeightList& current_lattice_basis();
-  complexredgp_io::Interface& currentComplexInterface();
-  void replaceComplexGroup(ComplexReductiveGroup*
-			   ,complexredgp_io::Interface*);
+  output::Interface& currentComplexInterface();
+  void replaceComplexGroup(InnerClass*,output::Interface*);
 
 } // |namespace commands|
 

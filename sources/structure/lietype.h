@@ -17,7 +17,7 @@
 
 #include <stdexcept>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "permutations.h" // needed in the |Layout| structure
 
@@ -117,7 +117,7 @@ struct InnerClassType : public std::vector<TypeLetter>
    involution of the diagram needs to be indicated, whence the |d_perm| field.
    This is ultimately used (only) to correctly associate a real form name
    (recognised in standard diagram labelling) from a special representative
-   grading of the real form (only one bit set), in |realform_io::printType|;
+   grading of the real form (only one bit set), in |output::printType|;
    |d_perm| maps standard (Bourbaki) diagram numbers to simple root indices.
 */
 struct Layout
@@ -128,9 +128,9 @@ struct Layout
 
 // constructors and destructors
 
-Layout() : d_type(), d_inner(), d_perm() {} // needed in realex
+Layout() : d_type(), d_inner(), d_perm() {} // needed in atlas
 
-  /* In the old atlas interface, the Lie type is first provided,
+  /* In the old Fokko interface, the Lie type is first provided,
      and the inner class type is later added; defaults identity permutation */
   Layout(const LieType& lt)
     :d_type(lt),d_inner(),d_perm(lt.rank(),1) {}

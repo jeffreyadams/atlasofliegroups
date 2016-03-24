@@ -17,7 +17,7 @@
 #include "weyl.h"
 #include "y_values.h"
 #include "tits.h"
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "lattice.h"
 
 #include "kgb.h" // for |KGB_elt_entry|
@@ -358,15 +358,6 @@ InvolutionTable::x_equiv(const GlobalTitsElement& x0,
   return true;
 }
 
-TorusPart InvolutionTable::check_rho_imaginary(InvolutionNbr inv) const
-{
-  TorusPart result(rd.rank());
-  RootNbrSet pos_im=imaginary_roots(inv) & rd.posRootSet();
-  for (RootNbrSet::iterator it=pos_im.begin(); it(); ++it)
-    result += TorusPart (rd.coroot(*it));
-  return result;
-}
-
 // choose unique representative for real projection class of a rational weight
 void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const
 {
@@ -405,7 +396,7 @@ Weight InvolutionTable::unpack(InvolutionNbr inv, TorusPart y_part) const
 
 
 Cartan_orbit::Cartan_orbit(InvolutionTable& i_tab,
-			   ComplexReductiveGroup& G,
+			   InnerClass& G,
 			   CartanNbr cn)
   : Cartan_class_nbr(cn)
   , start(i_tab.size())
@@ -432,7 +423,7 @@ const CartanNbr undefined = ~0;
 void Cartan_orbits::set_size(CartanNbr n_Cartans)
 { Cartan_index.resize(n_Cartans,undefined); orbit.reserve(n_Cartans); }
 
-void Cartan_orbits::add(ComplexReductiveGroup& G, CartanNbr cn)
+void Cartan_orbits::add(InnerClass& G, CartanNbr cn)
 {
   assert(cn<Cartan_index.size());
   if (Cartan_index[cn]!=undefined)
@@ -487,6 +478,6 @@ size_t Cartan_orbits::total_size(const BitMap& Cartan_classes) const
   return s;
 }
 
-} // namsepace
+} // |namsepace|
 
 } // |namespace atlas|

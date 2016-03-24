@@ -16,8 +16,8 @@
 #include "mainmode.h"
 #include "blockmode.h" // for re-use of |currentKL| and such
 
-#include "complexredgp.h"
-#include "complexredgp_io.h"
+#include "innerclass.h"
+#include "output.h"
 #include "error.h"
 #include "helpmode.h"
 #include "interactive.h"
@@ -29,7 +29,6 @@
 #include "dynkin.h"
 #include "lietype.h"
 #include "realredgp.h"
-#include "realredgp_io.h"
 #include "kgb.h"
 #include "kgb_io.h"
 #include "blocks.h"

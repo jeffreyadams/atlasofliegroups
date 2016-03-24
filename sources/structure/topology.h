@@ -14,7 +14,7 @@
 
 #include <vector>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "bitvector.h" // contained in |Connectivity|
 

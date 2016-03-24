@@ -86,7 +86,7 @@ only if i < j.
   private:
   void fillPoset();
 
-}; // class BruhatOrder
+}; // |class BruhatOrder|
 
 } // |namespace bruhat|
 

@@ -1,0 +1,81 @@
+{ implement type ratmat that makes linear algebra over Q possible }
+
+<basic.at
+
+{ a trick to locally rebind |s| (defined in basic.at) to constant string "/" }
+save_s : s
+set !s = "/"
+
+: ratmat = (mat,string,int) { matrix, slash, common denominator }
+{ the void component avoids unary/binary conflicts, as for -@(mat,int) }
+
+set gcd(mat M) = int:
+  let invf=inv_fact(M) in if =invf then 1 else invf[0] fi
+
+set simplify(ratmat(M,,d)) = ratmat:
+  let g=gcd([gcd(M),d]) in (M\g,s,d\g)
+
+set / (mat M,int d) = ratmat:
+  assert(!=d,"Division of matrix by 0");
+  simplify(if >d then (M,s,d) else (-M,s,-d) fi)
+
+set * (rat f,mat M) = ratmat: let (n,d)=%f in (n*M)/d
+set / (mat M,rat f) = ratmat: (/f)*M
+
+set entry (ratmat(M,,d),int i,int j) = rat: M[i,j]/d
+
+{ matrix defined by its dimension and expression for general entry }
+set matrix ((int,int)(r,c),(int,int->rat) f) = ratmat:
+  let val = [[rat]]: for i:r do for j:c do f(i,j) od od
+  then D = lcm(for row in val do lcm(for e in row do denom(e) od) od)
+  in simplify(r#for j:c do for i:r do let (n,d)=%val[i][j] in n*(D\d) od od,s,D)
+
+set n_rows (ratmat(M,,))= int: let (r,)=#M in r
+set n_columns (ratmat(M,,))= int: let (,c)=#M in c
+
+set columns (ratmat(M,,d)) = [ratvec]: for c in M do c/d od
+set rows (ratmat(M,,d)) = [ratvec]: for c in ^M do c/d od
+set column (ratmat(M,,d),int j) = ratvec: M[j]/d
+set row (ratmat(M,,d),int i)    = ratvec: (^M)[i]/d
+
+set columns_with ((int,ratvec->bool) p,ratmat(M,,d)) = ratmat:
+  let res = [vec]: [] in
+  for col@j in M do if p(j,col/d) then res #:= col fi od; n_rows(M)#res / d
+set columns_with ((ratvec->bool) p,ratmat T) = ratmat:
+  columns_with(((int,ratvec)(,col))bool: p(col),T)
+set columns_with ((int->bool) p,ratmat(M,,d)) = ratmat:
+  { we can use mat version here } columns_with(p,M) / d
+
+set rows_with ((int,ratvec->bool) p,ratmat(M,,d)) = ratmat:
+  let res = [vec]: [] in
+  for row@i in ^M do if p(i,row/d) then res #:= row fi od; n_columns(M)^res / d
+set rows_with ((ratvec->bool) p,ratmat T) = ratmat:
+  rows_with(((int,ratvec)(,row))bool: p(row),T)
+set rows_with ((int->bool) p,ratmat(M,,d)) = ratmat:
+  { we can use mat version here } rows_with(p,M) / d
+
+set det (ratmat(M,,d)) = rat: det(M)/d^n_rows(M) { this very easily overflows }
+
+set ^ (ratmat(M,,d)) { transpose } = ratmat: (^M,s,d)
+
+set + (ratmat(M,,d),ratmat(MM,,dd)) = ratmat: simplify(dd*M+d*MM,s,d*dd)
+set - (ratmat(M,,d),ratmat(MM,,dd)) = ratmat: simplify(dd*M-d*MM,s,d*dd)
+set - (ratmat(M,,d)) = (-M,d,())
+
+set * (ratvec v,ratmat(M,,d)) = ratvec: v*M/d
+set * (ratmat(M,,d),ratvec v) = ratvec: M*v/d
+
+set * (ratmat(M,,d),mat MM) = ratmat: simplify(M*MM,s,d)
+set * (mat M,ratmat(MM,,d)) = ratmat: simplify(M*MM,s,d)
+set * (ratmat(M,,d),ratmat(MM,,dd)) = ratmat: simplify(M*MM,s,d*dd)
+
+set / (ratmat(M,,d)) = ratmat:
+   let (A,f)=invert(M) in
+   assert(!=f,"inverse of singular rational matrix"); (d/f)*A
+
+set ^ (ratmat(M,,d):Md,int e) = ratmat:
+  if >=e then (M^e,s,d^e) else let (A,,m) = /Md, e1 = -e in (A^e1,s,m^e1) fi
+
+{ finally restore |s| from basic.at, and free the identifier |save_s| }
+s : save_s
+forget save_s

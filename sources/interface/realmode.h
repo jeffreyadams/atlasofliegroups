@@ -11,7 +11,7 @@
 #define REALMODE_H
 
 #include "commands_fwd.h"
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 namespace atlas {
 

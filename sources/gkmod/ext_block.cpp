@@ -12,7 +12,7 @@
 #include <cassert>
 #include <vector>
 
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "weyl.h"
 #include "kgb.h"
 #include "blocks.h"
@@ -171,6 +171,7 @@ void validate(const param& E)
   assert((delta-1)*E.lambda_rho==(1-theta)*E.tau);
   assert((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t));
   assert(((E.ctxt.g()-E.l-rho_check(rd))*(1-theta)).numerator().isZero());
+  ndebug_use(delta); ndebug_use(theta); ndebug_use(rd);
   assert(((theta+1)*(E.ctxt.gamma()-E.lambda_rho-rho(rd)))
 	 .numerator().isZero());
 }
@@ -1408,6 +1409,7 @@ DescValue type (const param& E, const ext_gen& p,
   return result;
 } // |type|
 
+// act by external twist |delta| on KGB element |x|
 KGBElt twisted (const KGB& kgb, KGBElt x,
 		const WeightInvolution& delta, const weyl::Twist& twist)
 {
@@ -1421,13 +1423,13 @@ KGBElt twisted (const KGB& kgb, KGBElt x,
 
   const WeylGroup& W = kgb.complexGroup().weylGroup();
   TitsElt te = kgb.titsElt(x);
-  WeylElt delta_w = W.translation(te.w(),twist);
+  WeylElt delta_w = W.translation(te.w(),twist); // act on twisted involution
   TitsElt delta_te (kgb.complexGroup().titsGroup(),delta_t,delta_w);
   return kgb.lookup(delta_te);
 }
 
 // involution for dual KGB is just $\delta$ transposed, no factor $-w_0$ here
-// both |kgb| adn |dual_kgb| must be knwon to be twist-stable
+// both |kgb| and |dual_kgb| must be known to be twist-stable
 BlockElt twisted (const Block& block,
 		  const KGB& kgb, const KGB& dual_kgb, // all are needed
 		  BlockElt z,
@@ -1568,7 +1570,7 @@ extended_block::extended_block // for the inner class twist only
 
 
 ext_block::ext_block // for external twist; old style blocks
-  (const ComplexReductiveGroup& G,
+  (const InnerClass& G,
    const Block& block,
    const KGB& kgb, const KGB& dual_kgb, // all are needed
    const WeightInvolution& delta)
@@ -1601,7 +1603,7 @@ ext_block::ext_block // for external twist; old style blocks
 }
 
 ext_block::ext_block // for an external twist
-  (const ComplexReductiveGroup& G,
+  (const InnerClass& G,
    const param_block& block, const KGB& kgb,
    const WeightInvolution& delta)
   : parent(block)
@@ -1614,7 +1616,7 @@ ext_block::ext_block // for an external twist
 {
   BitMap fixed_points(block.size());
 
-  { // compute the delta-fixe points of the block
+  { // compute the delta-fixed points of the block
     // the following is NOT |twist(orbits)|, which would be for subsystem
     weyl::Twist twist(fold_orbits(block.rootDatum(),delta));
 

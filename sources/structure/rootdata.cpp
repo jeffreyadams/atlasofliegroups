@@ -1,5 +1,14 @@
 /*
-  Implementation of the RootDatum class and related functions.
+  This is rootdata.cpp.
+
+  Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006--2016 Marc van Leeuwen
+  part of the Atlas of Lie Groups and Representations
+
+  For license information see the LICENSE file
+*/
+
+/*		     Implementation of the RootDatum class.
 
   What we call a root datum in this program is what is usually called
   a based root datum.
@@ -23,15 +32,6 @@
   corresponds to a sublattice of finite index in the character
   lattice, containing the root lattice. From this sublattice the
   actual root datum is constructed.
-*/
-/*
-  This is rootdata.cpp.
-
-  Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006--2011 Marc van Leeuwen
-  part of the Atlas of Lie Groups and Representations
-
-  For license information see the LICENSE file
 */
 
 #include "rootdata.h"
@@ -1027,14 +1027,14 @@ void RootDatum::swap(RootDatum& other)
 /******** private member functions ******************************************/
 
 
-/*!
-\brief Fills in the status of the rootdatum.
+/*
+  Fill in the status of the rootdatum.
 
-  "IsAdjoint" indicates whether the center of the complex group determined by
-  the root datum is connected. This means that the root lattice is a saturated
-  sublattice of the weight lattice *X^*$. Dually "IsSimplyConnected" indicates
-  whether the derived group is simply connected, which means that the coroots
-  span a saturated sublattice of the cocharacter lattice $X_*$.
+  The status flag |IsAdjoint| indicates whether the center of the complex
+  group determined by the root datum is connected. This means that the root
+  lattice is a saturated sublattice of $X^*$. Dually |IsSimplyConnected|
+  indicates whether the derived group is simply connected, which means that
+  the coroots span a saturated sublattice of $X_*$.
 */
 void RootDatum::fillStatus()
 {
@@ -1078,15 +1078,14 @@ RatCoweight rho_check (const RootDatum& rd)
 RatCoweight rho_check (const RootDatum& rd, const RootNbrSet& sub_posroots)
   { return RatCoweight(rd.dual_twoRho(sub_posroots),2); }
 
-
 /*
   Return matrix of dual fundamental involution related to fundamental |q|
 
-  Precondition: |q| is an involution of |rd| as a _based_ root datum .
+  Here |q| is an involution of |rd| as a _based_ root datum.
   Note that |rd| is not the dual root datum, although the result will be a
   based involution for that dual datum
 
-  Postcondition: result is an involution of the based root datum dual to |rd|
+  Returns an involution of the based root datum dual to |rd|
 
   Formula: it is given by $(w_0^t)(-q^t) = (-q.w_0)^t$
 

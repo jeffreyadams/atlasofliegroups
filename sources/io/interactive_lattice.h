@@ -12,7 +12,7 @@
 
 
 #include "error.h"
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 /******** function declarations **********************************************/
 

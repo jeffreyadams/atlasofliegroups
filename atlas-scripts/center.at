@@ -1,0 +1,163 @@
+<basic.at { for (at least) radical_basis }
+
+{ center Z and dual Z_hat of complex group or real form }
+{
+  dual of center of complex group (i.e. RootDatum) is
+  P/X^*  (weight lattice modulo character lattice)
+
+  dual of center of RealForm is
+  Z^=(Z_c)^ x (Z_s)^
+   Z_c=compact part of Z
+   Z_s=vector component of Z
+  (Z_s)^ is a Q-vector space
+  (Z_c)^ further decomposes Z^n x (finite part)
+   Z^n = dual of identity component Z_{c,0} of Z_c
+   finite part = dual of (Z_c/Z_{c,0}) = two-group
+  caution: (Z_{c,0},Z_s) is the identity component of the
+  radical(G(C)), which is a complex torus. If there is a split factor,
+  then this gives a Z/2Z in Z_f
+  parametrize Z_hat as [dual of finite_part,(dual of Z_{c,0}, dual of Z_s)]
+  dual of finite part: [(int d, vec v)]: v has order d
+  dual of Z_{c,0}: Z-basis of X^*(Z_{c,0})
+  dual of Z_s: Q-basis of dual of Z_s (Q-vector space)
+
+  it isn't as easy to give explicit generators for the center
+  the functions print_Z(RootDatum rd) and print_Z(RealForm G) give
+  human-understandable descriptions
+}
+
+{ Q-basis of Lie algebra of radical of complex group; columns are coweights }
+set lie_radical = (RootDatum->mat): { kernel(^simple_roots(rd)) }
+  radical_basis@RootDatum { defined in basic.at (and actually a better name) }
+
+{ ss_part(rd,v)=projection of v\in X^*\otimes Q onto Q-span of the roots }
+set ss_part (RootDatum rd, ratvec v) = ratvec:
+  let fw= [ratvec]: fundamental_weights(rd) in
+  sum(for coord@i in (^simple_coroots(rd))*v do coord*fw[i] od, rank(rd))
+
+{ lie_radical_part(rd,v)=projection of v\in X^*\otimes Q onto Lie coradical }
+set lie_coradical_part (RootDatum rd, ratvec v) = ratvec: v-ss_part(rd,v)
+
+{ Q-basis of Lie algebra of split part of radical; columns are coweights }
+set split_radical_basis (InnerClass G) =  mat:
+  kernel( ^(simple_roots(G)#(1+distinguished_involution(G))) )
+{ same: Q-basis of Lie algebra of split part of radical of complex group }
+set lie_split_radical (InnerClass G) = mat: { columns are coweights }
+  let (A,v)=adapted_basis(^(1-distinguished_involution(G))*lie_radical(G))
+  in A[:#v] { take part of basis spanning saturation of image in X_* }
+
+{ Q-basis of Lie algebra of compact part of radical; columns are coweights }
+set compact_radical_basis (InnerClass G) =  mat:
+  kernel( ^(simple_roots(G)#(1-distinguished_involution(G))) )
+{ same: Q-basis of Lie algebra of compact part of radical of complex group }
+set lie_compact_radical (InnerClass G) = mat:
+  let (A,v)=adapted_basis((1+^distinguished_involution(G))*lie_radical(G))
+  in A[:#v] { take part of basis spanning saturation of image in X_* }
+
+{ Q-basis of dual of radical of complex group }
+set lie_radical_hat = (RootDatum->mat): { kernel(^simple_coroots(rd)) }
+  coradical_basis@RootDatum { defined in basic.at (and actually a better name) }
+
+{ Q-basis of split part of coradical; columns are weights }
+set split_coradical_basis (InnerClass G) =  mat:
+  kernel( (^simple_coroots(G)) ^ {stack up} (1+distinguished_involution(G)) )
+{ same: Q-basis of dual of split part of radical of complex group }
+set lie_split_radical_hat (InnerClass G) = mat:
+  let (A,v)=adapted_basis((1-distinguished_involution(G))*lie_radical_hat(G))
+  in A[:#v] { take part of basis spanning saturation of image in X^* }
+
+{ Q-basis of split part of coradical; columns are weights }
+set compact_coradical_basis (InnerClass G) =  mat:
+  kernel( (^simple_coroots(G)) ^ {stack up} (1-distinguished_involution(G)) )
+{ Q-basis of dual of compact part of radical of complex group }
+set lie_compact_radical_hat (InnerClass G) = mat:
+  let (A,v)=adapted_basis((1+distinguished_involution(G))*lie_radical_hat(G))
+  in A[:#v] { take part of basis spanning saturation of image in X^* }
+
+
+{
+  dual of center of complex group G
+  return value: (ss_part,radical)
+  ss_part is the center of G/radical(G)
+  ss_part=(mat,vec)
+  every entry d@j in the vec part means column j is a generator of order d
+  radical=mat
+    whose columns form a Q-basis of the dual of the Lie algebra of the radical
+  [v1,...,vk]: basis of (R^\vee)^\perp
+  where R^\vee is the coroots, and perp is taken in X^*\otimes Q
+}
+set Z_hat (RootDatum rd) = ((mat,vec),mat):
+( { semisimple part determined by invariant factors other than 1 from Smith: }
+  filter_units(Smith(simple_roots(rd)))
+, lie_radical(rd)
+)
+
+{
+  dual of center of real form G
+  return value: (finite_part,(compact_radical,split_radical))
+
+  finite_part=(mat,vec)
+  every entry d@j in the vec part means column j is a generator of order d
+
+  radical:
+  compact_radical: mat whose columns are a basis of [(R^\vee)^\perp]^{delta}
+  where R^\vee is the coroots, and perp is taken in X^*
+  number of columns = number of circles in radical
+  split_part: mat whose columns are a basis of [(R^\vee)^\perp]^{-delta}
+  in this case perp is taken in X^*\otimes Q
+  number of columns = number of R^+ factors in radical
+}
+set Z_hat (InnerClass G) = ((mat,vec),(mat,mat)):
+( { finite part determined by invariant factors other than 1 from Smith: }
+  filter_units(Smith((1-distinguished_involution(G))#simple_roots(G)))
+, (lie_compact_radical_hat(G),lie_split_radical_hat(G))
+)
+
+{ output routine for center of complex group }
+
+set finite_center_string (mat gens, vec ds) = string:
+  let result="" in
+  for d in ds
+  do if !=result then result #:= " x " fi; result #:="Z/"+d+"Z"
+  od; result
+
+set print_Z (RootDatum rd) = void:
+  let ((,ds):ss_part,rad)=Z_hat(rd) then n_finite=#ds, n_rad=n_columns(rad) in
+  if =n_finite
+  then
+    if =n_rad then  prints("Center is trivial")
+    else prints("Center is a connected complex torus of rank ", n_rad)
+    fi
+  else { n_finite !=0 }
+    let finite_part= finite_center_string(ss_part) in
+    if =n_rad
+    then prints("Group is semisimple",new_line,"center=",finite_part)
+    else
+      prints("Split exact sequence:",new_line,"1->S->Z->Z/S->1");
+      prints("S=complex torus of rank ", n_rad);
+      prints("S/Z=Center(G/S)=",finite_part)
+    fi
+  fi
+
+{ output routine for center of real form }
+set print_Z (InnerClass G) = void:
+( let ((,ds):ss_part,(cptrad,splitrad))=Z_hat(G)
+  then n_finite = #ds
+  , cpt_rank=n_columns(cptrad), split_rank=n_columns(splitrad)
+  , finite_part= finite_center_string(ss_part)
+  in
+  if =(cpt_rank+split_rank) { i.e., if both are zero }
+  then { group is semisimple }
+    if =n_finite
+    then prints("Center is trivial")
+    else prints("Group is semisimple"); prints("center=", finite_part)
+    fi
+  else
+    prints("center has ", cpt_rank, " circle factor"#plural(cpt_rank))
+  ; prints("center has ", split_rank, " R^+ factor"#plural(split_rank))
+  ; if =n_finite
+    then prints("center has no finite part")
+    else prints("finite part of center: ",finite_part)
+    fi
+  fi
+)

@@ -14,7 +14,7 @@
 #ifndef EXT_BLOCK_H  /* guard against multiple inclusions */
 #define EXT_BLOCK_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include <cassert>
 #include <iostream>
@@ -22,7 +22,7 @@
 
 #include "lietype.h" // for the structure |ext_gen|
 #include "dynkin.h"  // for |DynkinDiagram|
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "realredgp.h"
 #include "blocks.h" // for some inlined methods (dependency should be removed)
 #include "subsystem.h" // for inclusion of |SubSystem| field
@@ -228,11 +228,11 @@ class ext_block
  public:
 
 // constructors and destructors
-  ext_block(const ComplexReductiveGroup& G,
+  ext_block(const InnerClass& G,
 	    const Block& block,
 	    const KGB& kgb, const KGB& dual_kgb, // all are needed
 	    const WeightInvolution& delta);
-  ext_block(const ComplexReductiveGroup& G,
+  ext_block(const InnerClass& G,
 	    const param_block& block, const KGB& kgb,
 	    const WeightInvolution& delta);
 
@@ -310,7 +310,7 @@ class context // holds values that remain fixed across extended block
   const RootDatum& id() const { return integr_datum; }
   const SubSystem& subsys() const { return sub; }
   RealReductiveGroup& realGroup () const { return d_rc.realGroup(); }
-  const ComplexReductiveGroup& complexGroup () const
+  const InnerClass& complexGroup () const
     { return realGroup().complexGroup(); }
   const WeightInvolution& delta () const { return d_delta; }
   const RatWeight& gamma() const { return d_gamma; }

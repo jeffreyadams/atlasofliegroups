@@ -11,7 +11,7 @@
 #define BLOCKMODE_H
 
 #include "commands_fwd.h"
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include "wgraph.h"
 
 namespace atlas {
@@ -26,7 +26,7 @@ namespace commands {
 
   CommandNode blockNode(); // create a node with new commands
   extern CommandTree& block_mode; // defined in commands.cpp
-  ComplexReductiveGroup& currentDualComplexGroup();
+  InnerClass& currentDualComplexGroup();
   RealReductiveGroup& currentDualRealGroup();
   RealFormNbr currentDualRealForm();
   Block& currentBlock();

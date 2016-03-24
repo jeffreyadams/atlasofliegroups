@@ -1,9 +1,7 @@
-/*!
-\file
-  This is arithmetic.h
-*/
+// This is arithmetic.h
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006-2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -157,8 +155,8 @@ std::ostream& operator<< (std::ostream& out, const Rational& frac);
   instance, divide(-1,2) should be -1, so that -1 = -1.2 + 1, but on my
   machine, -1/2 is 0 (which is the other value accepted by the C standard;
   Fokko.) [Note that the correct symmetry to apply to |a|, one that maps
-  classes with the same quotient to each other, is not \f$a\to -a\f$ but
-  \f$a\to -1-a\f$, where the latter value can be conveniently written as |~a|
+  classes with the same quotient to each other, is not $a\to -a$ but
+  $a\to -1-a$, where the latter value can be conveniently written as |~a|
   in C or C++. Amazingly Fokko's incorrect original expresion |-(-a/b -1)|
   never did any harm. MvL]
 */

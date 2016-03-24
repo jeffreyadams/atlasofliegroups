@@ -281,7 +281,7 @@ template<> class BitSetBase<2>
   void truncate(unsigned int limit);
 
   void slice(const BitSetBase<2>& c); // extract bits set in |c|, compacting
-  void unslice(const BitSetBase<1>& c); // expand bits to positions set in |c|
+  void unslice(const BitSetBase<2>& c); // expand bits to positions set in |c|
   void swap(BitSetBase<2>& source);
  }; // |class BitSetBase<2>|
 

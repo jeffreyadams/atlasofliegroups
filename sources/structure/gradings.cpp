@@ -121,12 +121,12 @@ bool GradingCompare::operator() (const Grading& lhs, const Grading& rhs)
 */
 bool isNonCompact(const rootdata::Root& v, const Grading& g)
 {
-  bool b = false;
+  unsigned s=0;
 
-  for (unsigned long i = 0; i < v.size(); ++i)
-    b ^= g[i] and v[i]%2!=0;
+  for (auto it=g.begin(); it(); ++it)
+    s += v[*it];
 
-  return b;
+  return s%2!=0;
 }
 
 /* Here is an example of how one could use |isNonCompact|.

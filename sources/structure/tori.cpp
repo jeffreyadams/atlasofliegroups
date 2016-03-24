@@ -1,16 +1,15 @@
-/*!
-\file
-\brief
-Implementation of the class RealTorus
-
-*/
 /*
   This is tori.cpp
 
+  Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
+
+
+//			Implementation of the class RealTorus
+
 
 #include "tori.h"
 
@@ -107,8 +106,8 @@ void fullMinusBasis(WeightList&,
 
 namespace tori {
 
-/*!
-  \brief Constructs the torus with involution |i| (the rank is recovered
+/*
+  Construct the torus with involution |i| (the rank is recovered
   from the size of the matrix.)
 */
 RealTorus::RealTorus(const WeightInvolution& i)
@@ -135,8 +134,8 @@ RealTorus::RealTorus(const WeightInvolution& i)
 }
 
 
-/*!
-  Synopsis: constructs the torus "dual" to T.
+/*
+  Construct the torus "dual" to T.
 
   This is the torus whose weight lattice is dual to that of T, equipped with
   the involution -tau^t, where tau is the involution for T. The minus sign is
@@ -171,10 +170,10 @@ RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
 /******** accessors *********************************************************/
 
 
-/*!
-  \brief Constructs the map |cm| induced, at the level of dual component
-  groups of real tori, by a map |m| from the weight lattice of our own
-  |RealTorus| to the one of |T_dest|.
+/*
+  Construct the map |cm| induced, at the level of dual component groups of
+  real tori, by a map |m| from the weight lattice of our own |RealTorus| to
+  the one of |T_dest|.
 
   The idea is simple enough: look at the columns of m modulo 2 and project
   them onto dpi0, and then restrict to our dual component representatives.
@@ -191,7 +190,7 @@ BinaryMap RealTorus::componentMap
 
 /******** manipulators ******************************************************/
 
-}
+
 
 /*****************************************************************************
 
@@ -199,10 +198,7 @@ BinaryMap RealTorus::componentMap
 
 ******************************************************************************/
 
-namespace tori {
-
-
-/*!
+/*
   Compute $(V_+ + V_-) / V_+$ where $V_+$ is the image mod 2 of the $q$-fixed
   sublattice ($+1$-eigenspace) and $V_-$ of the $-q$-fixed sublattice.
 
@@ -234,8 +230,8 @@ SmallSubquotient dualPi0(const WeightInvolution& q)
   return cs;
 }
 
-/*!
-  \brief Puts in mb a basis for the +1 eigenspace of the involution;
+/*
+  Put in |mb| a basis for the +1 eigenspace of the involution;
 
   Algorithm: the vectors e+i(e), when e runs through b, generate a lattice
   commensurate with the eigenspace.
@@ -258,8 +254,8 @@ WeightList plusBasis(const WeightInvolution& i)
   WeightList result; plusBasis(result,i); return result;
 }
 
-/*!
-  Synopsis: puts in mb a basis for the -1 eigenspace of the involution.
+/*
+  Put in |mb| a basis for the -1 eigenspace of the involution.
 
   Algorithm: the vectors e-i(e), when e runs through b, generate a lattice
   commensurate with the eigenspace.
@@ -283,7 +279,7 @@ WeightList minusBasis(const WeightInvolution& i)
 }
 
 /*
-  Writes in qm the matrix of the restriction of q to X_-.
+  Write in |qm| the matrix of the restriction of $q$ to $X_-$.
 
   Precondition: q commutes with the involution;
 */
@@ -305,7 +301,7 @@ void minusMatrix(int_Matrix& qm,
 
 
 /*
-  Writes in qp the matrix of the restriction of q to X_+.
+  Write in |qp| the matrix of the restriction of $q$ to $X_+$.
 
   Precondition: q commutes with the involution;
 */
@@ -325,15 +321,12 @@ void plusMatrix(WeightInvolution& qp,
   }
 }
 
-}  // |namespace tori|
 
 /*****************************************************************************
 
         Chapter III -- Auxiliary functions
 
 ******************************************************************************/
-
-namespace tori {
 
 namespace {
 
@@ -362,8 +355,8 @@ void makeTopology(SmallSubquotient& cs, const RealTorus& T)
 
 
 /*
-  Puts in mb a basis for the -1 eigenspace of the involution; puts
-  in tm the matrix of a projection onto X_-.
+  Put in |mb| a basis for the -1 eigenspace of the involution; puts
+  in |tm| the matrix of a projection onto $X_-$.
 
   The matrix tm is in terms of the standard basis of X, and the chosen basis
   of X_-. There is no significance to the chosen complement; the intention is
@@ -392,7 +385,7 @@ void fullMinusBasis(WeightList& mb, int_Matrix& tm, const WeightInvolution& inv)
 
 
 /*
-  Puts in |pb| a basis for the +1 eigenlattice of the involution;
+  Put in |pb| a basis for the +1 eigenlattice of the involution;
   puts in |tp| the matrix of a coordinate transformation from the standard
   basis to |pb|.
 

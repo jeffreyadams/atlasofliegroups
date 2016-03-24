@@ -1124,7 +1124,7 @@ void KLContext::silent_fill(BlockElt last_y)
     std::ostringstream os;
     os << "negative coefficient in P_{" << e.x << ',' << e.y
        << "} at line " << e.line << '.';
-    throw std::runtime_error(os.str()); // so that realex may catch it
+    throw std::runtime_error(os.str()); // so that atlas may catch it
   }
 }
 
@@ -1212,7 +1212,7 @@ void KLContext::verbose_fill(BlockElt last_y)
     std::ostringstream os;
     os << "negative coefficient in P_{" << e.x << ',' << e.y
        << "} at line " << e.line << '.';
-    throw std::runtime_error(os.str()); // so that realex may catch it
+    throw std::runtime_error(os.str()); // so that atlas may catch it
   }
 
 }

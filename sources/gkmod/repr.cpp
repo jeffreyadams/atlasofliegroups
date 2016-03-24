@@ -540,7 +540,7 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
 
    Sum of positve roots changing real status, and becoming negative at $\beta$
 */
-Weight Cayley_shift (const ComplexReductiveGroup& G,
+Weight Cayley_shift (const InnerClass& G,
 		     InvolutionNbr theta_upstairs, // at the more split Cartan
 		     WeylWord to_simple)
 { const RootDatum& rd=G.rootDatum();

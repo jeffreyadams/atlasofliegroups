@@ -28,7 +28,7 @@
 #include "prettyprint.h"	// |printVector|
 #include "basic_io.h"	// |seqPrint|
 #include "ioutils.h"	// |skipSpaces|
-#include "complexredgp_io.h" // its |Interface| class
+#include "output.h" // its |Interface| class
 #include "kgb_io.h"	// its |print| function
 
 
@@ -253,12 +253,11 @@ size_t get_Cartan_class(const BitMap& cs)
   Throws an |InputError| if the interaction with the user is not successful;
   in that case both pointers are unchanged.
 
-  We pass references to pointers to both a |ComplexReductiveGroup| and to a
-  |complexredgp_io::Interface|, both of which will be assigned appropriately
+  We pass references to pointers to both an |InnerClass| and to a
+  |output::Interface|, both of which will be assigned appropriately
 */
 void get_group_type
-  (ComplexReductiveGroup*& pG,
-   complexredgp_io::Interface*& pI,
+  (InnerClass*& pG,output::Interface*& pI,
    lietype::Layout& layout, WeightList& basis) // export these two
 {
   // first get the Lie type
@@ -275,8 +274,8 @@ void get_group_type
   WeightInvolution inv=getInnerClass(lo,b); // may throw InputError
 
   // commit (unless |RootDatum(prd)| should throw: then nothing is changed)
-  pG=new ComplexReductiveGroup(prd,inv);
-  pI=new complexredgp_io::Interface(*pG,lo);
+  pG=new InnerClass(prd,inv);
+  pI=new output::Interface(*pG,lo);
   layout = lo;
   basis = std::move(b);
   // the latter constructor also constructs two realform interfaces in *pI
@@ -472,13 +471,13 @@ void getInteractive(InnerClassType& ict, const LieType& lt)
   in that case, d_G is not touched.
 */
 
-RealFormNbr get_real_form(complexredgp_io::Interface& CI)
+RealFormNbr get_real_form(output::Interface& CI)
 {
-  const realform_io::Interface rfi = CI.realFormInterface();
+  const output::FormNumberMap rfi = CI.realFormInterface();
 
   // if there is only one choice, make it
   if (rfi.numRealForms() == 1) {
-    std::cout << "there is a unique real form: " << rfi.typeName(0)
+    std::cout << "there is a unique real form: " << rfi.type_name(0)
 	      << std::endl;
     return 0;
   }
@@ -496,7 +495,7 @@ RealFormNbr get_real_form(complexredgp_io::Interface& CI)
   {
     std::cout << "(weak) real forms are:" << std::endl;
     for (size_t i = 0; i < rfi.numRealForms(); ++i)
-      std::cout << i << ": " << rfi.typeName(i) << std::endl;
+      std::cout << i << ": " << rfi.type_name(i) << std::endl;
 
     r=get_bounded_int
       (realform_input_buffer,"enter your choice: ",rfi.numRealForms());
@@ -515,23 +514,23 @@ RealFormNbr get_real_form(complexredgp_io::Interface& CI)
 
   Throws an InputError if the interaction with the user fails.
 */
-RealFormNbr get_dual_real_form(complexredgp_io::Interface& CI,
+RealFormNbr get_dual_real_form(output::Interface& CI,
+			       const InnerClass& G,
 			       RealFormNbr rf)
 {
-  ComplexReductiveGroup& G = CI.complexGroup();
   bool restrict = rf<G.numRealForms();
   RealFormNbrList drfl;
   if (restrict)
     drfl = G.dualRealFormLabels(G.mostSplit(rf));
 
-  const realform_io::Interface drfi = CI.dualRealFormInterface();
+  const output::FormNumberMap drfi = CI.dualRealFormInterface();
 
   // if there is only one choice, make it
   if ((restrict ? drfl.size() : drfi.numRealForms())== 1)
   {
     RealFormNbr rfn = restrict ? drfl[0] : 0;
     std::cout << "there is a unique dual real form choice: "
-	      << drfi.typeName(drfi.out(rfn)) << std::endl;
+	      << drfi.type_name(drfi.out(rfn)) << std::endl;
     return rfn;
   }
 
@@ -562,7 +561,7 @@ RealFormNbr get_dual_real_form(complexredgp_io::Interface& CI,
     std::cout << "possible (weak) dual real forms are:" << std::endl;
 
     for (BitMap::iterator it = vals.begin(); it(); ++it)
-      std::cout << *it << ": " << drfi.typeName(*it) << std::endl;
+      std::cout << *it << ": " << drfi.type_name(*it) << std::endl;
     r = get_int_in_set("enter your choice: ",vals);
   }
 
@@ -796,7 +795,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 {
   // first step: get initial x in canonical fiber
   size_t cn=get_Cartan_class(GR.Cartan_set());
-  const ComplexReductiveGroup& G=GR.complexGroup();
+  const InnerClass& G=GR.complexGroup();
   const RootDatum& rd=G.rootDatum();
 
   const KGB& kgb=GR.kgb();

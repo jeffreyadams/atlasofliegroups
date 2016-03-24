@@ -112,7 +112,7 @@ class HashTable
 
     }
 
-}; // class HashTable
+}; // |class HashTable|
 
 } // |namespace hashtable|
 } // |namespace atlas|

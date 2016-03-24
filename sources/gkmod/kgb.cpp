@@ -32,7 +32,7 @@
 #include "arithmetic.h"	// functions
 #include "bruhat.h"
 #include "cartanclass.h"// |CartanClass| methods
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "lattice.h"	// |row_saturate|
 #include "realredgp.h"  // |KGB| constructor
 #include "rootdata.h"
@@ -180,7 +180,7 @@ void KGB_base::add_element()
 */
 
 // create structure incorporating all KGB structures for a given inner class
-global_KGB::global_KGB(ComplexReductiveGroup& G_C, bool dual_twist)
+global_KGB::global_KGB(InnerClass& G_C, bool dual_twist)
   : KGB_base(G_C,G_C.semisimpleRank())
   , Tg(G_C) // construct global Tits group as subobject
   , elt()
@@ -197,7 +197,6 @@ global_KGB::global_KGB(ComplexReductiveGroup& G_C, bool dual_twist)
   KGB_base::reserve(size);
 
   { // get elements at the fundamental fiber, for "all" square classes
-    const SmallSubquotient& fg = G.fundamental().fiberGroup();
     first_of_tau.push_back(0); // start of fundamental fiber
 
     // get number of subsets of generators, and run through them
@@ -206,16 +205,15 @@ global_KGB::global_KGB(ComplexReductiveGroup& G_C, bool dual_twist)
     {
       Grading gr=bitvector::combination
 	(Tg.square_class_generators(),RankFlags(c));
-      RatWeight rw (G.rank());
+      RatWeight rcw (G.rank());
       for (Grading::iterator // for flagged (imaginary) simple roots
 	     it=gr.begin(); it(); ++it)
-	rw += G.rootDatum().fundamental_coweight(*it); // a sum of f. coweights
+	rcw += G.rootDatum().fundamental_coweight(*it); // a sum of f. coweights
 
-      for (unsigned long i=0; i<fg.size(); ++i)
+      for (unsigned long i=0; i<G.fundamental_fiber_size(); ++i)
       {
-	TorusElement t=y_values::exp_pi(rw);
-	t += fg.fromBasis // add |TorusPart| from fiber group; bits from |i|
-	  (SmallBitVector(RankFlags(i),fg.dimension()));
+	TorusElement t=y_values::exp_pi(rcw);
+	t += G.lift_from_fundamental_fiber(i); // add |TorusPart| from for |i|
 	elt.push_back(GlobalTitsElement(t));
 	add_element(); // create in base
       } // |for (i)|
@@ -227,7 +225,7 @@ global_KGB::global_KGB(ComplexReductiveGroup& G_C, bool dual_twist)
 
 }
 
-global_KGB::global_KGB(ComplexReductiveGroup& G_C,
+global_KGB::global_KGB(InnerClass& G_C,
 		       const GlobalTitsElement& x, bool dual_twist)
   : KGB_base(G_C,G_C.semisimpleRank())
   , Tg(G_C) // construct global Tits group as subobject
@@ -282,14 +280,21 @@ global_KGB::global_KGB(ComplexReductiveGroup& G_C,
   generate(0,dual_twist); // complete element generation, no predicted size
 } // |global_KGB::global_KGB|
 
+/*
+  Simple-imaginary roots evaluate at torus part $t$ to $1$ iff they are compact.
+  To get a grading valid for all imaginary roots, we must add the half sum of
+  positive imaginary coroots to $t$, flipping values at the simple-imaginaries.
+*/
 bool global_KGB::compact(RootNbr n, // assumed imaginary at |a|
 			 const GlobalTitsElement& a) const
 {
-  const Cartan_orbits& i_tab = G.involution_table();
-  TorusElement t=a.torus_part();
-  t += i_tab.check_rho_imaginary(i_tab.nr(a.tw()));
+  const auto& i_tab = G.involution_table();
+  const auto& rd = G.rootDatum();
+  RatCoweight grading_cwt= a.torus_part().as_Qmod2Z();
+  grading_cwt +=
+    RatCoweight(rd.dual_twoRho(i_tab.imaginary_roots(i_tab.nr(a.tw()))),2);
 
-  return not t.negative_at(rootDatum().root(n)); //  whether compact
+  return grading_cwt.dot(rd.root(n))%2==0; //  whether compact
 }
 
 KGBElt global_KGB::lookup(const GlobalTitsElement& a) const
@@ -487,7 +492,7 @@ KGB::KGB(RealReductiveGroup& GR,
   , d_bruhat(NULL)
   , d_base(NULL)
 {
-  ComplexReductiveGroup& G_C=GR.complexGroup(); // non-|const| version of |G|
+  InnerClass& G_C=GR.complexGroup(); // non-|const| version of |G|
   //const TitsGroup& Tg = G.titsGroup();
   size_t rank = G.semisimpleRank(); // |G.rank()| does not interest us here
 
@@ -515,33 +520,27 @@ KGB::KGB(RealReductiveGroup& GR,
   // check if we are being called to do a full or small KGB construction
   if (Cartan_classes.isMember(0)) // start from fundamental Cartan: do full KGB
   {
-    const Grading gr = square_class_grading(G,GR.square_class());
+    const Grading gr = GR.base_grading();
     d_base = new TitsCoset(G_C,gr);
-    TitsElt a (d_base->titsGroup(),G_C.x0_torus_part(GR.realForm()));
-    i_tab.reduce(a); // probably unnecessary
+    TitsElt a (d_base->titsGroup(),GR.x0_torus_part());
+    i_tab.reduce(a); // should be unnecessary
     elt_hash.match(a); // plant the seed
     KGB_base::add_element(); // add additional info for initial element
   }
   else // partial KGB construction; needs more work to get initial element(s)
-  { // warning: might find different seeds than occur in full KGB constuction
+  {
     tits::EnrichedTitsGroup square_class_base(GR);
     d_base = new TitsCoset(square_class_base); // copy construct from base
     RealFormNbr rf=GR.realForm();
-    assert(square_class_base.square()==
-	   G.fundamental().central_square_class(rf));
+    assert(square_class_base.square()==G.xi_square(rf));
 
     set::EltList mins=G.Cartan_ordering().minima(Cartan_classes);
-
+    // for (small) block there should be just one minimum, but we loop anyway
     for (set::EltList::iterator it=mins.begin(); it!=mins.end(); ++it)
     {
-      const CartanNbr cn = *it;
-      TitsElt a=
-	(mins.size()==1 // use backtrack only in (unused) multiple minima case
-	 ? square_class_base.grading_seed(G_C,rf,cn)
-	 : square_class_base.backtrack_seed(G,rf,cn)
-	 );
-
+      TitsElt a= square_class_base.backtrack_seed(G,rf,CartanNbr(*it));
       i_tab.reduce(a);
+
       size_t k=elt_hash.match(a);
       assert(k==info.size()); // this KGB element should be new
       ndebug_use(k);
@@ -549,6 +548,7 @@ KGB::KGB(RealReductiveGroup& GR,
     } // |for (it)|
   }
 
+  // now inductively fill the table |elt_pool|/|elt_hash|, and related arrays
   for (KGBElt x=0; x<elt_hash.size(); ++x) // loop makes |elt_hash| grow
   {
     // extend by cross actions
@@ -745,8 +745,6 @@ TitsElt KGB::titsElt(KGBElt x) const
 { return TitsElt(titsGroup(),left_torus_part[x],involution(x)); }
 
 size_t KGB::torus_rank() const { return titsGroup().rank(); }
-
-RatWeight KGB::half_rho() const { return RatWeight(rootDatum().twoRho(),4); }
 
 RatCoweight KGB::base_grading_vector() const
 {

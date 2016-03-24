@@ -41,7 +41,6 @@ Permutation::Permutation(const Permutation& pi, int) // inverse
 }
 
 
-
 template<size_t n>
   bitset::BitSet<n> Permutation::pull_back(const bitset::BitSet<n>& v) const
 {
@@ -118,7 +117,55 @@ void Permutation::renumber(std::vector<U>& v, U except) const
       *it = pi[*it];
 }
 
-/*! Permutes rows and columns of the matrix according to the permutation,
+
+int sign(const Permutation& pi)
+{
+  int result = 1; size_t j;
+  bitmap::BitMap seen(pi.size());
+  for (size_t i=0; i<pi.size(); ++i)
+    if ((j=pi[i])!=i and not seen.isMember(i))
+      do // loop is performed (cycle length)-1 times
+      {	assert(not seen.isMember(j)); // will detect loops at non-permutations
+	seen.insert(j);
+	result = -result;
+	j=pi[j];
+      }
+      while (j!=i);
+  return result;
+}
+
+
+// Make column |j| of matrix be column |pi[j]| of the old matrix, for all |j|
+template<typename T>
+void permute_columns(matrix::Matrix_base<T>& M, const Permutation& pi)
+{
+  assert(M.numColumns()>=pi.size());
+  bitmap::BitMap seen(pi.size()); // initialized empty
+
+  for (size_t j = 0; j < pi.size(); ++j)
+    if (not seen.isMember(j))
+    {
+      seen.insert(j);
+      if (pi[j]!=j) // avoid useless work; test also allows |do|-|while| below
+      {
+	const auto C_j= M.column(j);
+	size_t l=j;
+	do
+	{ // effectively set |M.column(l)=M.column(pi[l])|
+	  for (size_t i=0; i<M.numRows(); ++i) // but an inline loop is faster
+	    M(i,l)=M(i,pi[l]);
+	  l=pi[l];
+	  assert(not seen.isMember(l));
+	  seen.insert(l); // column |l| was copied from, and will be set
+	}
+	while (pi[l]!=j); // stop with |l| at final element of cycle
+	M.set_column(l,C_j); // and insert the original column there
+      } // |if (p[j]!=j)|
+    } // |for(j)| and |if (not seen.isMember(j))|
+}
+
+/*
+  Permute rows and columns of the matrix according to the permutation,
   resulting in the matrix of the same operator, expressed in the permuted
   basis e_{a^{-1}[0]}, ... , e_{a^{-1}[n-1]}. This amounts to conjugating by
   the permutation matrix (delta_{a[j],j})_{i,j} that transforms from
@@ -144,13 +191,14 @@ void Permutation::conjugate(matrix::Matrix_base<T>& M) const
   result.swap(M); // export result in |M|
 }
 
-/*! Permutes rows and columns of the matrix according to the inverse
-  permutation, resulting in the matrix of the same operator but expressed in
+/*
+  Permute rows and columns of the matrix according to the inverse permutation,
+  resulting in the matrix of the same operator but expressed in
   the inverse-permuted basis e_{a[0]}, ... , e_{a[n-1]}. This amounts to
   conjugating by the inverse permutation matrix (delta_{i,a[i]})_{i,j} that
   transforms from coordinates on the standard basis to those on tha basis.
 
-  Precondition: |m| is an |n| by |n|, and |a| a permutation of |n|
+  Precondition: |M| is an |n| by |n| matrix, and |*this| a permutation of |n|
 
   Method: the new entry at (i,j) is set to the old entry at (a[i],a[j]), in a
   separate copy (without trying to do the permutation of entries in place)
@@ -212,7 +260,7 @@ Permutation standardization(const std::vector<U>& a, size_t bound,
 
 template bitset::BitSet<constants::RANK_MAX>
 Permutation::pull_back(const bitset::BitSet<constants::RANK_MAX>& v) const;
-  // cartan_io, realform_io
+  // output
 
 template std::vector<unsigned int>
 Permutation::renumbering(const std::vector<unsigned int>& v) const; // blocks
@@ -221,13 +269,16 @@ template std::vector<unsigned short>
 Permutation::renumbering(const std::vector<unsigned short>& v) const; // kgb
 
 template void
-Permutation::renumber(std::vector<unsigned short>& v) const; // complexredgp
+Permutation::renumber(std::vector<unsigned short>& v) const; // innerclass
 
 template void
 Permutation::renumber(std::vector<unsigned long>& v) const; // rootdata,weyl,.
 
 template void
 Permutation::renumber(std::vector<unsigned int>&, unsigned int) const; // blocks
+
+template void
+permute_columns(matrix::Matrix_base<int>& M, const Permutation& pi); // matreduc
 
 template void
 Permutation::inv_conjugate(matrix::Matrix_base<int>& M) const; // weyl

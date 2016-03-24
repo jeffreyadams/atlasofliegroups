@@ -22,7 +22,7 @@
 #include "hashtable.h"
 
 #include "bruhat.h"	// construction
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "realredgp.h"
 #include "subsystem.h"
 #include "y_values.h"
@@ -555,10 +555,10 @@ Block::Block(const KGB& kgb,const KGB& dual_kgb)
 
 // Construction function for the |Block| class.
 // It is a pseudo constructor method that ends calling main contructor
-Block Block::build(ComplexReductiveGroup& G, RealFormNbr rf, RealFormNbr drf)
+Block Block::build(InnerClass& G, RealFormNbr rf, RealFormNbr drf)
 {
   RealReductiveGroup G_R(G,rf);
-  ComplexReductiveGroup dG(G,tags::DualTag()); // the dual group
+  InnerClass dG(G,tags::DualTag()); // the dual group
   RealReductiveGroup dG_R(dG,drf);
 
   KGB kgb     (G_R, common_Cartans(G_R,dG_R),false);
@@ -619,7 +619,7 @@ void Block::compute_supports()
 
 RealReductiveGroup& param_block::realGroup() const
   { return rc.realGroup(); }
-const ComplexReductiveGroup& param_block::complexGroup() const
+const InnerClass& param_block::complexGroup() const
   { return rc.realGroup().complexGroup(); }
 const InvolutionTable& param_block::involution_table() const
   { return complexGroup().involution_table(); }
@@ -716,7 +716,7 @@ BlockEltList param_block::survivors_below(BlockElt z) const
   return result;
 } // |param_block::survivors_below|
 
-void param_block::compute_duals(const ComplexReductiveGroup& G,
+void param_block::compute_duals(const InnerClass& G,
 				const SubSystem& rs)
 {
   const WeightInvolution& delta = G.distinguished();
@@ -824,7 +824,7 @@ void nblock_help::parent_up_Cayley(nblock_elt& z, weyl::Generator s) const
 {
   KGBElt cx=kgb.cayley(s,z.xx); // direct Cayley transform on $x$ side
   if (cx == UndefKGB) // undefined Cayley transform: not imaginary noncompact
-    return; // silently ignore, done for use from realex |Cayley| function
+    return; // silently ignore, done for use from atlas |Cayley| function
   z.xx = cx;
 
   /* on $y$ side ensure that |z.yy.evaluate_at(rd.simpleCoroot(s))| is even.
@@ -864,14 +864,14 @@ void nblock_help::parent_down_Cayley(nblock_elt& z, weyl::Generator s) const
 {
   KGBElt cx=kgb.inverseCayley(s,z.xx).first; // inverse Cayley on $x$ side
   if (cx == UndefKGB) // not a real root, so undefined inverse Cayley
-    return; // silently ignore, done for use from realex |inv_Cayley| function
+    return; // silently ignore, done for use from atlas |inv_Cayley| function
 
   // on $y$ side just keep the same dual |TorusElement|, so nothing to do
   // however, for non-parity roots, leave $x$ unchanged as well
   Rational r = z.yy.evaluate_at(rd.simpleCoroot(s)); // modulo $2\Z$
   if (r.numerator()%(2*r.denominator())==0) // then it is a parity root
     z.xx = cx; // move $x$ component of |z|
-  // for nonparity roots, leave |z| is unchanged for realex |inv_Cayley|
+  // for nonparity roots, leave |z| is unchanged for atlas |inv_Cayley|
 }
 
 void nblock_help::do_down_Cayley (nblock_elt& z, weyl::Generator s) const
@@ -925,7 +925,7 @@ param_block::param_block
   , y_hash(y_pool)
   , z_hash(info)
 {
-  const ComplexReductiveGroup& G = complexGroup();
+  const InnerClass& G = complexGroup();
   const RootDatum& rd = G.rootDatum();
   Block_base::dd = DynkinDiagram(rd.cartanMatrix());
 
@@ -1027,9 +1027,10 @@ param_block::param_block
     ys.clear();
     size_t nr_y = 0;
     // now traverse R_packet of |first_x|, collecting their |y|'s
-    for (BlockElt z=next; z<info.size() and x(z)==x(next); ++z,++nr_y)
+    for (BlockElt z=next; z<info.size() and x(z)==first_x; ++z,++nr_y)
     {
       assert(y_hash[y(z)].nr==i_theta); // involution of |y| must match |x|
+      ndebug_use(i_theta);
       assert(y(z)==y(next)+nr_y);   // and |y|s are consecutive
       ys.push_back(y(z));           // so |ys| could have been avoided
     }

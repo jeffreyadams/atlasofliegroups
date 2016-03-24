@@ -633,8 +633,9 @@ template<typename C>
 void Matrix<C>::rowOperation(size_t i0, size_t i1, const C& c)
 {
   assert(i0<base::numRows() and i1<base::numRows());
-  for (size_t j=0; j<base::numColumns(); ++j)
-    (*this)(i0,j) += c*(*this)(i1,j);
+  if (c!=C(0))
+    for (size_t j=0; j<base::numColumns(); ++j)
+      (*this)(i0,j) += c*(*this)(i1,j);
 }
 
 
@@ -646,8 +647,9 @@ template<typename C>
 void Matrix<C>::columnOperation(size_t j0, size_t j1, const C& c)
 {
   assert(j0<base::numColumns() and j1<base::numColumns());
-  for (size_t i=0; i<base::numRows(); ++i)
-    (*this)(i,j0) += c*(*this)(i,j1);
+  if (c!=C(0))
+    for (size_t i=0; i<base::numRows(); ++i)
+      (*this)(i,j0) += c*(*this)(i,j1);
 }
 
 
@@ -659,8 +661,9 @@ template<typename C>
 void Matrix<C>::rowMultiply(size_t i, C f)
 {
   assert(i<base::numRows());
-  for (size_t j=0; j<base::numColumns(); ++j)
-    (*this)(i,j) *= f;
+  if (f!=C(1))
+    for (size_t j=0; j<base::numColumns(); ++j)
+      (*this)(i,j) *= f;
 }
 
 /*!
@@ -670,8 +673,9 @@ template<typename C>
 void Matrix<C>::columnMultiply(size_t j, C f)
 {
   assert(j<base::numColumns());
-  for (size_t i=0; i<base::numRows(); ++i)
-    (*this)(i,j) *= f;
+  if (f!=C(1))
+    for (size_t i=0; i<base::numRows(); ++i)
+      (*this)(i,j) *= f;
 }
 
 
@@ -788,9 +792,10 @@ template Vector<int>& Vector<int>::add(Vector<int>::const_iterator b,int c);
 template Vector<Num>& Vector<Num>::add(Vector<int>::const_iterator b,Num c);
 template Vector<Num>& Vector<Num>::add(Vector<Num>::const_iterator b,Num c);
 template int Vector<int>::dot(Vector<int> const&) const;
+template Num Vector<int>::dot(Vector<Num> const&) const;
+template int Vector<Num>::dot(Vector<int> const&) const;
 template signed char
   Vector<signed char>::dot(const Vector<signed char>&) const;
-template Num Vector<int>::dot(Vector<Num> const&) const;
 
 template Vector<int>& operator/=(Vector<int>&,int);
 template Vector<int>& divide (Vector<int>&,int);

@@ -203,7 +203,7 @@ void initReadLine()
 {
   using namespace commands;
 
-  // allow setting of atlas-specific user preferences
+  // allow setting of Atlas-specific user preferences
   rl_readline_name = "Atlas";
 
   rl_completion_entry_function = completionGenerator;
@@ -303,6 +303,6 @@ const char* readLine (const char* prompt, bool toHistory)
   return line_read;
 }
 
-} // namespace
+} // |namespace|
 
-} // namespace atlas
+} // |namespace atlas|

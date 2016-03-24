@@ -5,25 +5,26 @@
 - Incorporate the calculation of c-invariant forms into the library
 - Rewrite block construction using methods inspired by synthetic operations
 - Rewrite K type computations to use data type more compatible with Param
+- Reconsider synthetic real forms and KGB elements: user should be able to
+  specify a KGB element with desired involution, torus_factor directly
 
-* Work on the atlas program
+* Work on the Fokko program
 
 - correct bug with mysterious typeahead after bailing out with ? (done?)
 - clean up the mess dealing with input (interface/input, io/interactive...)
 
-* Work on the realex program
-
-- When input is redirected from a file, return EXIT_SUCCESS on clean run only
+* Work on the atlas program
 
 - Make conditionals return shared pointer to global true and false values
 
 - Investigate if some tracing facilty (printing "let" values) is feasible
 
-- Integrate a bigint library to store realex int (and rat?) values; while
+- Integrate a bigint library to store atlas int (and rat?) values; while
   attending that, signal overflow in arithmetic operations / conversions
 
 
 - Improve output of expressions
+  Nuance "simply connected" and "adjoint" for non-semisimple root data
 
 - Allow multiple overloaded functions defined in a single 'set' statement
 
@@ -56,6 +57,8 @@
   variables that remain accessible in addition to the boolean condition?
   However for the conditional one could start a 'let' block before the
   conditional starts to keep variables in scope; for while this doesn't work.
+  One possibility would seem to be to view 'do body od' as 'or body; false'
+  followed by an empty 'do () od'; at least in void context that would work.
 
 - Allow skipping entries in value-producing loops; concatenating sub-rows.
   When generating a row from a loop, not every iteration need contribute, and
@@ -75,12 +78,12 @@
   one knows nothing about what + does). However, for v #:= x in a loop it
   should be possible to avoid a new allocation for v at every iteration.
 
-* Work on the realex scripts
+* Work on the atlas scripts
 - Complete the groups in groups.rx (types G,F); also avoid use of "s" etc.
 
 * Work on documentation
 
-- Write a tutorial on the realex languge, in bottom-up style
+- Write a tutorial on the axis languge, in bottom-up style
 
 * Work on makefiles, distribution and support programs (cwebx)
 - change name of parser.y to parser.ypp, and adapt all Makefiles

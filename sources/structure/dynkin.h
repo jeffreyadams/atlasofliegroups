@@ -17,7 +17,7 @@
 #include <utility> // for |std::pair|
 #include <vector>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "bitset.h"
 #include "permutations.h"
@@ -56,7 +56,7 @@ namespace dynkin {
 		   bool check, // if true, be prepared for arbitrary |cm|
 		   Permutation& pi);
 
-  RankFlagsList components(const DynkinDiagram& d); 
+  RankFlagsList components(const DynkinDiagram& d);
 
   Permutation normalize(const DynkinDiagram& d);
 

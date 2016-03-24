@@ -516,9 +516,9 @@ straightforward.
   expr(id_type id, const YYLTYPE& loc, identifier_tag)
 @/: kind(applied_identifier), identifier_variant(id), loc(loc) @+{}
   expr (const YYLTYPE& loc, dollar_tag)
-  : kind(last_value_computed) @+{}
+  : kind(last_value_computed), loc(loc) @+{}
   expr (const YYLTYPE& loc, die_tag)
-  : kind(die_expr) @+{}
+  : kind(die_expr), loc(loc) @+{}
 
 @ As usual there are interface function to the parser.
 
@@ -571,17 +571,17 @@ of~|expr|.
 @< Includes needed... @>=
 #include "sl_list.h" // lists are used in parsing types
 
-@~Historically implementing these lists using the atlas class
-template |containers::simple_list| was the first time a non-POD variant of
-|expr| was introduced, and it required passage to \Cpp11 as well as
-substantial refactoring of the code to make this possible and safe. However,
-it ultimately turned out to be simpler to actually store a raw pointer version
-of the list (obtained by calling its |release| method) in |expr|; especially
-so if alternative compilation with compilers that (still) forbid non-POD
-variants of a union is to be supported, but even independently of that there
-is little benefit from storing smart pointers. In the mean time this
-illustrates the usefulness of having a container type with a lightweight
-conversion to raw pointer and back.
+@~Historically implementing these lists using the Atlas class template
+|containers::simple_list| was the first time a non-POD variant of |expr| was
+introduced, and it required passage to \Cpp11 as well as substantial
+refactoring of the code to make this possible and safe. However, it ultimately
+turned out to be simpler to actually store a raw pointer version of the list
+(obtained by calling its |release| method) in |expr|; especially so if
+alternative compilation with compilers that (still) forbid non-POD variants of
+a union is to be supported, but even independently of that there is little
+benefit from storing smart pointers. In the mean time this illustrates the
+usefulness of having a container type with a lightweight conversion to raw
+pointer and back.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef containers::simple_list<expr> expr_list;
@@ -787,7 +787,7 @@ pointer it will just directly called |delete| for the pointer.
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct application_node* app;
 
-@~Since \.{realex} has tuples, we convene that every function call takes just
+@~Since \.{axis} has tuples, we convene that every function call takes just
 one argument. So we define an |application_node| to contain a function and an
 argument expression; both are allowed to be arbitrary expressions, though the
 function is often an applied identifier, and the argument is often a tuple
@@ -1248,7 +1248,8 @@ immediately be safe for possible destruction by |destroy_id_pat| (no undefined
 pointers; the |sublist| pointer of |id_pat| is ignored when |kind==0|). Other
 constructors are from a |raw_id_pat| reference and from individual components.
 
-@h "types.h" // so complete type definitions will be known in \.{parsetree.cpp}
+@h "axis-types.h"
+   // so complete type definitions will be known in \.{parsetree.cpp}
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef containers::simple_list<struct id_pat> patlist;
@@ -1554,8 +1555,8 @@ the types of its parameters, and such things as type coercion and function
 overloading would make such type deduction doubtful even if it could be done).
 Types are also an essential ingredient of casts. Types have an elaborate
 (though straightforward) internal structure, and the necessary constructing
-functions like |make_tuple_type| are defined in the module \.{types.w} rather
-than here.
+functions like |make_tuple_type| are defined in the module \.{axis-types.w}
+rather than here.
 
 When the parser was compiled as \Cee~code, we were forced to use void pointers
 in the parser, to masquerade for the actual pointers to \Cpp~types; numerous
@@ -1566,10 +1567,10 @@ smart pointers for types while being handled in the parser, since other
 pointers for expressions that it handles are not smart pointers either.
 
 @< Includes needed... @>=
-#include "types.h" // parsing types need |type_p| and such
+#include "axis-types.h" // parsing types need |type_p| and such
 
-@ Most functionality for these types is given in \.{types.w}; we just need to
-say how to destroy them.
+@ Most functionality for these types is given in \.{axis-types.w}; we just
+need to say how to destroy them.
 
 @< Declarations of functions for the parser @>=
 void destroy_type(type_p t);
@@ -1589,8 +1590,8 @@ void destroy_type_list(raw_type_list t)@+ {@; (type_list(t)); }
 typedef struct lambda_node* lambda;
 
 @~It contains a pattern for the formal parameter(s), its type (a smart pointer
-defined in \.{types.w}), an expression (the body of the function), and finally
-the source location of the function.
+defined in \.{axis-types.w}), an expression (the body of the function), and
+finally the source location of the function.
 
 
 @< Structure and typedef... @>=
@@ -2501,14 +2502,14 @@ break;
 
 @*1 Recursive function expressions.
 %
-The basic \.{realex} language is not
-friendly for recursion, since identifiers defined in a local or global
-definition only come into scope after the body of the definition. The fact
-that recursive functions can nonetheless be defined is due to the possibility
-to call functions from a variable, where a runtime assignment to the variable
-ensures that the by the time it gets called, it refers to the very function
-(body) that contains the call. We provide syntactic sugar to make this easier
-for the user; this being so, no new kind of |expr| is needed to implement it.
+The basic \.{axis} language is not friendly for recursion, since identifiers
+defined in a local or global definition only come into scope after the body of
+the definition. The fact that recursive functions can nonetheless be defined
+is due to the possibility to call functions from a variable, where a runtime
+assignment to the variable ensures that the by the time it gets called, it
+refers to the very function (body) that contains the call. We provide
+syntactic sugar to make this easier for the user; this being so, no new kind
+of |expr| is needed to implement it.
 
 @< Declarations of functions for the parser @>=
 expr_p make_recfun(id_type f, expr_p d,

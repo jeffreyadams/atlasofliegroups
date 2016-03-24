@@ -13,7 +13,7 @@
 #ifndef SUBSYSTEM_H  /* guard against multiple inclusions */
 #define SUBSYSTEM_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "rootdata.h"	// derive from |RootSystem|
 #include "weyl.h"	// containment

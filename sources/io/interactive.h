@@ -11,7 +11,7 @@
 #ifndef INTERACTIVE_H  /* guard against multiple inclusions */
 #define INTERACTIVE_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include <string>
 #include <ios>
@@ -47,8 +47,7 @@ namespace interactive {
 
   size_t get_Cartan_class(const BitMap& cs);
 
-  void get_group_type
-    (ComplexReductiveGroup*&, complexredgp_io::Interface*&,
+  void get_group_type(InnerClass*&, output::Interface*&,
      lietype::Layout& layout, WeightList& basis);
 
   void getInteractive(LieType&);
@@ -58,9 +57,10 @@ namespace interactive {
     getInnerClass(lietype::Layout& lo, const WeightList& basis);
   void getInteractive(InnerClassType&, const LieType&);
 
-  RealFormNbr get_real_form(complexredgp_io::Interface&);
+  RealFormNbr get_real_form(output::Interface&);
 
-  RealFormNbr get_dual_real_form(complexredgp_io::Interface&,
+  RealFormNbr get_dual_real_form(output::Interface&,
+				 const InnerClass& G,
 				 RealFormNbr rf);
 
 
@@ -113,6 +113,7 @@ class OutputFile
   template<typename T> std::ostream& operator<< (const T& arg)
     {return *d_stream << arg;}
   operator std::ostream& () {return *d_stream;}
+  bool is_std_cout () const { return not d_foutput; }
 }; // |class OutputFile|
 
 

@@ -18,7 +18,7 @@
 
 #include "ratvec.h"	// containment infinitesimal character
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include "tits.h"	// representative of $y$ in |non_integral_block|
 #include "descents.h"	// inline methods
 #include "lietype.h"    // |ext_gen|;
@@ -243,7 +243,7 @@ class Block : public Block_base
  public:
   // use one of the following two pseudo contructors to build |Block| values
   static Block build // pseudo contructor with small (and forgotten) KGB sets
-    (ComplexReductiveGroup&, RealFormNbr rf, RealFormNbr drf);
+    (InnerClass&, RealFormNbr rf, RealFormNbr drf);
 
   static Block build // pseudo contructor with stored KGB sets
     (RealReductiveGroup& G_R, RealReductiveGroup& dG_R);
@@ -332,13 +332,13 @@ class param_block : public Block_base
      StandardRepr sr); // by value,since it will be made dominant before use
 
   // auxiliary for construction
-  void compute_duals(const ComplexReductiveGroup& G,const SubSystem& rs);
+  void compute_duals(const InnerClass& G,const SubSystem& rs);
 
  public:
   // accessors that get values via |rc|
   const repr::Rep_context& context() const { return rc; }
   const RootDatum& rootDatum() const;
-  const ComplexReductiveGroup& complexGroup() const;
+  const InnerClass& complexGroup() const;
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& realGroup() const;
 

@@ -26,7 +26,7 @@
 
 @* Outline.
 %
-This file originated from splitting off a part of the module \.{evaluator.w}
+This file originated from splitting off a part of the module \.{axis.w}
 that was getting too large. It collects functions that are important to the
 evaluation process, but which are not part of the recursive machinery of
 type-checking and evaluating all different expression forms.
@@ -39,7 +39,7 @@ such as the introduction of new global identifiers. The second part is
 dedicated to some fundamental types, like integers, Booleans, strings, without
 which the programming language would be an empty shell (but types more
 specialised to the Atlas software are defined in another
-module, \.{built-in-types}). Finally there is a large section with basic
+module, \.{atlas-types}). Finally there is a large section with basic
 functions related to these types.
 
 @( global.h @>=
@@ -153,7 +153,7 @@ table, and the above code needs some types defined elsewhere.
 @< Includes needed in the header file @>=
 #include <map>
 #include "parsetree.h" // for |id_type|
-#include "types.h" // for |shared_value|
+#include "axis-types.h" // for |shared_value|
 
 @~Overloading is not done in this table, so a simple associative table with
 the identifier as key is used.
@@ -651,7 +651,7 @@ void initialise_evaluator()
 @+{@; @< Initialise evaluator @> }
 
 @~Although not necessary, the following will avoid some early reallocations of
-|execution_stack|, a vector variable defined in \.{types.w}.
+|execution_stack|, a vector variable defined in \.{axis-types.w}.
 
 @< Initialise evaluator @>=
 execution_stack.reserve(16); // avoid some early reallocations
@@ -659,7 +659,7 @@ execution_stack.reserve(16); // avoid some early reallocations
 @*1 Invoking the type checker.
 %
 Let us recapitulate the general organisation of the evaluator, explained in
-more detail in the introduction of \.{evaluator.w}. The parser reads what the
+more detail in the introduction of \.{axis.w}. The parser reads what the
 user types, and returns an |expr| value representing the abstract syntax tree.
 Then the highly recursive function |convert_expr| is called for this value,
 which will either produce (a pointer to) an executable object of a type
@@ -683,7 +683,7 @@ that error is an exception for which the code that calls us will have to
 provide a handler anyway, and which handler will serve as a more practical
 point to really resume after an error.
 
-@h "evaluator.h"
+@h "axis.h"
 
 @< Global function definitions @>=
 type_expr analyse_types(const expr& e,expression_ptr& p)
@@ -804,7 +804,7 @@ for syntactic reasons.
 
 We follow the logic for type-analysis of a let-expression, and for evaluation
 we follow the logic of binding identifiers in a user-defined function (these
-are defined in \.{evaluator.w}). However we use |analyse_types| here (which
+are defined in \.{axis.w}). However we use |analyse_types| here (which
 catches and reports errors) rather than calling |convert_expr| directly. To
 provide some feedback to the user we report any types assigned, but not the
 values.
@@ -1165,12 +1165,12 @@ inline std::string str(unsigned char c)
 This section is devoted to primitive types that are not not very
 Atlas-specific, ranging from integers to matrices, and which often have some
 related functionality in the programming language (like conditional clauses
-for Boolean values), which functionality is defined in \.{evaluator.w}. There
+for Boolean values), which functionality is defined in \.{axis.w}. There
 are also implicit conversions related to these types, and these will be
 defined in the current module.
 
 This section can be seen as in introduction to the large
-module \.{built-in-types.w}, in which many more types and functions are
+module \.{atlas-types.w}, in which many more types and functions are
 defined that provide Atlas-specific functionality. In fact the type for
 rational numbers defined here is based on the |RatWeight| class defined in the
 Atlas library, so we must include a header file (which defines the necessary
@@ -1270,12 +1270,12 @@ equivalents like |Weight| for |int_Vector|, as that might be more confusing
 that helpful to users. In any case, the interpretation of the values is not at
 all fixed (vectors are used for coweights and (co)roots as well as for
 weights, and matrices could denote either a basis or an automorphism of a
-lattice). The header \.{atlas\_types.h} makes sure all types are pre-declared,
+lattice). The header \.{../Atlas.h} makes sure all types are pre-declared,
 but we need to see the actual type definitions in order to incorporated these
 values in ours.
 
 @< Includes needed in the header file @>=
-#include "atlas_types.h" // type declarations that are ``common knowledge''
+#include "../Atlas.h" // type declarations that are ``common knowledge''
 #include "matrix.h" // to make |int_Vector| and |int_Matrix| complete types
 #include "ratvec.h" // to make |RatWeight| a complete type
 
@@ -1544,7 +1544,7 @@ void intlistlist_matrix_convert()
   if (r->val.size()==0)
     throw runtime_error("Cannot convert empty list of lists to matrix");
 @.Cannot convert empty list of lists@>
-  size_t n = force<vector_value>(r->val[0].get())->val.size();
+  size_t n = force<row_value>(r->val[0].get())->val.size();
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
   for(size_t j=0; j<r->val.size(); ++j)
   { int_Vector col = row_to_weight(*force<row_value>(r->val[j].get()));
@@ -1614,7 +1614,7 @@ wrapper functions will be transferred from and to stack as a |shared_value|,
 so a wrapper function has neither arguments nor a result type. Variables that
 refer to a wrapper function have the type |wrapper_function| defined below;
 the |level| parameter serves the same function as for |evaluate| methods of
-classes derived from |expression_base|, as described in \.{evaluator.w}: to
+classes derived from |expression_base|, as described in \.{axis.w}: to
 inform whether a result value should be produced at all, and if so whether it
 should be expanded on the |execution_stack| in case it is a tuple.
 
@@ -2089,7 +2089,7 @@ void string_unary_eq_wrapper(expression_base::level l)
     push_value(std::make_shared<bool_value>(i->val.empty()));
 }
 void string_unary_neq_wrapper(expression_base::level l)
-{ shared_string j=get<string_value>(); shared_string i=get<string_value>();
+{ shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<bool_value>(i->val.size()>0));
 }
@@ -2229,7 +2229,7 @@ We now define a few functions, to really exercise something, even if it is
 modest, from the Atlas library. These wrapper function are not really to be
 considered part of the interpreter, but a first step to its interface with the
 Atlas library, which is developed in much more detail in the compilation
-unit \.{built-in-types}. In fact we shall make some of these wrapper functions
+unit \.{atlas-types}. In fact we shall make some of these wrapper functions
 externally callable, so they can be directly used from that compilation unit.
 
 @*2 Predicates and relations.
@@ -2391,7 +2391,7 @@ void mat_neq_wrapper(expression_base::level l)
 
 @*2 Vector arithmetic.
 %
-While vector arithmetic operations can easily be implemented in the \.{realex}
+While vector arithmetic operations can easily be implemented in the \.{axis}
 language, and this was actually done (with the exception of scalar and matrix
 products) for a long time, they certainly profit in terms of efficiency from
 being built-in.
@@ -2858,7 +2858,7 @@ void rvm_prod_wrapper(expression_base::level l)
   shared_rational_vector v=get<rational_vector_value>();
   if (v->val.size()!=m->val.numRows())
     throw runtime_error(std::string("Size mismatch ")@|
-     + str(v->val.size()) + ":" + str(m->val.numColumns()));
+     + str(v->val.size()) + ":" + str(m->val.numRows()));
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value>(v->val*m->val));
 }
@@ -3027,7 +3027,7 @@ void transpose_vec_wrapper(expression_base::level l)
 }
 
 @ The wrappers for matrix transposition and identity matrix are called
-from \.{built-in-types.w}.
+from \.{atlas-types.w}.
 
 @< Declarations of exported functions @>=
 void transpose_mat_wrapper (expression_base::level);

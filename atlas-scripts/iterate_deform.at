@@ -1,0 +1,104 @@
+<basic.at
+
+set iterate_deform_debug = false {set to true for more output}
+
+set null_wt(int r) = ratvec: null(r)
+set has_nu0 (Param p) = bool: =nu(p)
+
+set weak_lower (Param p) = Param:
+  let (x,lambda,gamma)=%p, rp=reducibility_points(p)
+  then lim = #rp
+  in param(x,lambda,if lim=0 then null_wt(#gamma) else gamma*rp[lim-1] fi)
+
+set lower (Param p) = Param:
+  let (x,lambda,gamma)=%p, rp=reducibility_points(p)
+  then lim = let nrp=#rp in if nrp>0 and rp[nrp-1]=1/1 then nrp-1 else nrp fi
+  in  param(x,lambda,if lim=0 then null_wt(#gamma) else gamma*rp[lim-1] fi)
+
+set deformation (Param p) = (Param,ParamPol): (lower(p),deform(p))
+
+set iterate_deform (Param p) = { compute complete deformation to 0 iteratively }
+  ((Param,ParamPol),int): { (deformed parameter, deformation terms), count) }
+begin
+  let rf = real_form(p)
+  then d= null_module(rf), d_done=null_module(rf), count=0
+  in
+    p := weak_lower(p) { snap to first decomp. point }
+  ; while #d>0 or not has_nu0(p)
+    do
+     let (new_p,d_new)=deformation(p)
+     in count:=count+1
+     ; if iterate_deform_debug
+       then prints("deforming p: ",p," at ",infinitesimal_character(p))
+       fi
+     ; p:=new_p
+     ; for k@q in d { now also treat terms that were in d, result to d_new }
+       do
+	 if has_nu0(q) then d_done +:= (k,q)
+	 else
+	   let (new_q,deformation_terms)=deformation(q)
+	   in count:=count+1
+         ; d_new +:= (k,new_q)
+	 ; d_new +:= for l@r in deformation_terms do (k*l,r) od
+	 fi
+       od
+     ; d:=d_new
+     ; if iterate_deform_debug then prints("Remaining in d_new: ",#d) fi
+    od
+  ; ((p,d_done),count)
+end
+
+set recursive_deform (Param p) = (Param,ParamPol):
+  let zero=null_module(real_form(p))
+  then recd = (Split c,Param p,(->)f) (Param,ParamPol): (p,zero) { dummy }
+  in
+  ( recd := { now create a recursive function be reassigning to |recd| }
+    begin (Split coef,Param p, (->) back_trace):
+		 { coef is to be multiplied to deformation terms }
+      if has_nu0(p) then (p,zero) { but deformed |p| has |coef| implicitly }
+      elif not is_standard(p) then back_trace(); prints(p,%p); error("halt")
+      else
+	let (x,lambda,gamma)=%p, rp=reducibility_points(p)
+	then inx=#rp, at_nu0=zero
+	then acc= while inx>0 do deform(param(x,lambda,gamma*rp[inx-:=1])) od
+	in
+	  for terms@i in acc
+	  do let f = @: let a=rp[#rp-1-i]
+			 in back_trace(); prints(a,", ",(x,lambda,gamma*a)) in
+	    for k@q in terms
+	    do
+	      let c=coef*k then (q0,nu0_terms) = recd(c,q,f)
+	      in at_nu0 +:= nu0_terms + (c,q0)
+	    od
+	  od
+	; (param(x,lambda,null_wt(#gamma)),at_nu0)
+      fi
+    end
+  ) { value in parentheses is recursive |recd|; apply it: } (Split:1,p,@:())
+
+set rec_def (Param p) = (Param,ParamPol):
+  if is_zero(p) or not is_final(p) then error("improper parameter")
+  else
+    let empty=null_module(real_form(p))
+    then recd = (Split c,Param p) (Param,ParamPol): (p,empty) { dummy }
+    in
+    ( recd := { now create a recursive function be reassigning to |recd| }
+      begin (Split coef,Param p): { coef to be multiplied to deformation terms }
+	if has_nu0(p) then (p,empty) { but deformed |p| has |coef| implicitly }
+	elif not is_standard(p) then prints(p,%p); error("halt")
+	else
+	  let (x,lambda,gamma)=%p, rp=reducibility_points(p)
+	  then inx=#rp, at_nu0=empty, acc=empty
+	  in while inx>0 do acc+:=deform(param(x,lambda,gamma*rp[inx-:=1])) od
+	  ; for k@q in acc
+	    do
+	      let c=coef*k then (q0,nu0_terms) = recd(c,q)
+	      in at_nu0 +:= nu0_terms + (c,q0)
+	    od
+	  ; { return deformed p and accumulated deformation terms }
+	  (param(x,lambda,null_wt(#gamma)), at_nu0)
+	fi
+      end
+    ) { value in parentheses is recursive |recd|; apply it: }
+  (1,p)
+  fi

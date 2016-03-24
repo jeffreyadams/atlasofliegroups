@@ -16,11 +16,11 @@ representing orbits of K on G/B.
 #ifndef KGB_H  /* guard against multiple inclusions */
 #define KGB_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "gradings.h"	// containment in |KGBEltInfo|
 #include "hashtable.h"	// containment in |KGB_base|
-#include "complexredgp.h" // access to involution table
+#include "innerclass.h" // access to involution table
 #include "weyl.h"       // |weyl::TI_Entry::Pooltype|
 #include "tits.h"       // containment |GlobalTitsGroup|
 #include "y_values.h"   // containment |TorusElement|
@@ -57,7 +57,7 @@ class KGB_base
  protected: // available during construction from derived classes
   typedef unsigned int inv_index; // internal sequence number of involutions
 
-  const ComplexReductiveGroup& G; // hold a reference for convenience
+  const InnerClass& G; // hold a reference for convenience
 
   // per KGB element information
   struct EltInfo
@@ -95,7 +95,7 @@ class KGB_base
 
 
  protected: // constructor is only meant for use from derived classes
-  explicit KGB_base(const ComplexReductiveGroup& GC, unsigned int ss_rank)
+  explicit KGB_base(const InnerClass& GC, unsigned int ss_rank)
   : G(GC)
   , data(ss_rank)
   , info()
@@ -120,7 +120,7 @@ class KGB_base
   size_t size() const { return info.size(); } // number of KGB elements
   inv_index nr_involutions() const { return inv_nrs.size(); }
 
-  const ComplexReductiveGroup& complexGroup() const { return G; }
+  const InnerClass& complexGroup() const { return G; }
   const RootDatum& rootDatum() const;
   const WeylGroup& weylGroup() const;
   const TwistedWeylGroup& twistedWeylGroup() const;
@@ -240,9 +240,9 @@ class global_KGB : public KGB_base
   global_KGB(const global_KGB& org); // forbid copying
 
  public:
-  global_KGB(ComplexReductiveGroup& G, bool dual_twist=false);
+  global_KGB(InnerClass& G, bool dual_twist=false);
 
-  global_KGB(ComplexReductiveGroup& G,
+  global_KGB(InnerClass& G,
 	     const GlobalTitsElement& x,
 	     bool dual_twist=false); // generate KGB containing |x|
 
@@ -270,15 +270,19 @@ class global_KGB : public KGB_base
 //			     Fokko's |class KGB|
 
 
-/*!
-\brief Represents the orbits of K on G/B for a particular real form.
+/*
+  A KGB object represents the orbits of K on G/B for a particular real form,
+  in the form of a graph structure (cross actions an Cayley transforms), plus
+  some additional data that permit interpreting its elements in the context.
 
-This class adds some information with respect to that kept in |KGB_base|, and
-most importantly carries out the actual filling of the base object. As
-additional data that are held in this derived class there is the
-|TitsCoset| used during construction, and the torus parts (relative to
-the base point) that distinguish elements in the same fiber. This class also
-provides the possibility to generate and store the Bruhat order on the set.
+  This class adds some information with respect to that kept in |KGB_base|,
+  and most importantly carries out the actual filling of the |KGB_base| base
+  object (the graph structure). As additional data that are held in this
+  derived class there is the |TitsCoset| used during construction (really an
+  attribute of the square class of the real form), and the torus parts
+  (relative to the base point) that distinguish K\G/B elements in the same
+  fiber. This class also provides the possibility to generate and store the
+  Bruhat order on the set.
 */
 
 class KGB : public KGB_base
@@ -322,8 +326,6 @@ and in addition the Hasse diagram (set of all covering relations).
   const TitsCoset& basedTitsGroup() const { return *d_base; }
 //! \brief The Tits group.
   const TitsGroup& titsGroup() const { return d_base->titsGroup(); }
-
-  RatWeight half_rho() const;
 
   TorusPart torus_part(KGBElt x) const { return left_torus_part[x]; }
   // reconstruct from |torus_part| a |TorusElement| as in |global_KGB|

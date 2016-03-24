@@ -1,7 +1,7 @@
 Instructions  installation of the Atlas software.
 For more information about the software see the README file.
 
-The atlas software provides two main programs, called 'atlas' and 'realex'.
+The Atlas software provides two main programs, called 'atlas' and 'Fokko'.
 
 Prerequisites: you must have a C++ compiler, the GNU programs make and bison.
 You also need a _development version_ of the GNU readline library (one that
@@ -25,7 +25,7 @@ On many systems simply do:
 make
 
 (the impatient may add a flag -jN to compile up to N files in parallel)
-which should compile binaries atlas and realex in the current directory.
+which should compile binaries atlas and Fokko in the current directory.
 
 Apart from potential difficulties involving "readline", which must be
 installed independently of our project or else turned off, the compilation
@@ -34,11 +34,11 @@ Atlas project (see the end of this file for addresses), as we like to be aware
 of any difficulties encountered in compiling the software.
 
 Once compiled you can run the programs by giving their name in a path with at
-least one '/', for instance ./atlas for the atlas program (which one
-terminates with the command 'qq'). For realex it is best to change directory to
-rx-scripts and then run ../realex; then scripts that come with the
-distribution can be loaded by commands like '<basic.rx' (which loads the
-standard prelude); the realex program is terminated by the command 'quit'.
+least one '/', for instance ./Fokko for the Fokko program (which one
+terminates with the command 'qq'). For atlas it is best to change directory to
+atlas-scripts and then run ../atlas; then scripts that come with the
+distribution can be loaded by commands like '<basic' (which loads the
+standard prelude); the atlas program is terminated by the command 'quit'.
 
 Then to complete, one can optionally do either
 
@@ -55,7 +55,7 @@ make install INSTALLDIR=/usr/local/atlas BINDIR=/usr/local/bin
 
 LONGER VERSION:
 
-The 'make install' command serves two purposes: to make 'atlas' and 'realex'
+The 'make install' command serves two purposes: to make 'Fokko' and 'atlas'
 more easily callable (from your search path), and possibly move the compiled
 system to a place where it can function independently of the source directory.
 
@@ -66,32 +66,32 @@ make install INSTALLDIR=... BINDIR=...
 Both of the assignments are optional; if INSTALLDIR is given the this installs
 the essential programs and data separately from the sources in that directory
 (created if necessary), and if BINDIR is given this creates executable files
-'atlas' and 'realex' in the specified directory (actually a symbolic link and
+'atlas' and 'Fokko' in the specified directory (actually a symbolic link and
 a short shell script invoking the programs in INSTALLDIR). The default for
 both INSTALLDIR and BINDIR is the current directory, but leaving both so, the
 call 'make install' does nothing. It is advised to change at least BINDIR from
-the default, allowing 'make' to create the shell script BINDIR/realex that
-executes the binary INSTALLDIR/realex with some hidden arguments; these ensure
+the default, allowing 'make' to create the shell script BINDIR/atlas that
+executes the binary INSTALLDIR/atlas with some hidden arguments; these ensure
 loading a small "standard prelude" of predefined functions and setting a
-search path for further realex scripts that you might want to load manually.
+search path for further atlas scripts that you might want to load manually.
 
 If specified, INSTALLDIR should probably be a not yet existing subdirectory
 with 'atlas' in its name to keep things together, as the programs and
 directories with auxiliary files are placed directly into INSTALLDIR. On the
 other hand BINDIR should be an existing directory mentioned in your $PATH.
 
-The atlas program also needs to locate some auxiliary (help) files for which
+The Fokko program also needs to locate some auxiliary (help) files for which
 it uses a search path fixed during compilation. This means that if you set
-INSTALLDIR to differ from the compilation directory, the atlas program needs to
+INSTALLDIR to differ from the compilation directory, the Fokko program needs to
 be slightly modified to be able to locate the (moved) help files. This is
 easily obtained by removing the small object file that stores the search path,
 after which recompilation is automatically done within the 'make install'
 command, and uses the INSTALLDIR value to correctly set the compiled path.
 This explains the need for 'rm sources/interface/io.o' above.
 
-Should atlas nevertheless report problem in locating help files (in which case
+Should Fokko nevertheless report problem in locating help files (in which case
 it will tell where it looked in vain) the compiled-in search path can be
-overridden by a path on the 'atlas' command line (ending with /messages/)
+overridden by a path on the 'Fokko' command line (ending with /messages/)
 
 
 COMPILING OPTIONS
@@ -120,12 +120,12 @@ make clean
 
 to start from scratch.
 
-For information using the enhanced command line interpreter realex, see below.
+For information using the enhanced command line interpreter atlas, see below.
 
 -------------------------------------------------------------------
 Compiling with readline
 
-Both atlas and realex programs are built to use the readline library which
+Both Fokko and atlas programs are built to use the readline library which
 allows to more easily type commands, providing simple editing, history (with
 arrow keys) and command completion (with <tab>) among other useful command
 line features. You should be able to compile with readline on most Linux
@@ -189,7 +189,7 @@ Type
 
 The Gnu readline library should now be installed on your Mac.
 
-There is a problem when the atlas software is linked: the linker
+There is a problem when the Atlas software is linked: the linker
 will find most of the readline commands in someplace like
 
 /usr/lib/libreadline.dylib,
@@ -200,9 +200,9 @@ lives at
 /usr/local/lib/libreadline.5.dylib
 
 The difficulty is that the Mac library lacks two or three of the
-commands used in the atlas readline, so the linker will refuse to
+commands used in the Atlas readline, so the linker will refuse to
 finish.  I don't know the best or most natural way to fix this.  One
-thing which works is to edit the atlas Makefile, modifying the line
+thing which works is to edit the Makefile, modifying the line
 
         rl_libs := -lreadline
 
@@ -210,21 +210,21 @@ to read
 
         rl_libs := -lreadline.5 -lcurses
 
-Now the atlas software should link.
+Now the Atlas software should link.
 
 -------------------------------------------------------------------
 
-REALEX
+ATLAS
 
-While the program 'atlas' gives a direct interface to the basic functions in
-the Atlas software, the 'realex' program provides the same functionality
+While the program 'Fokko' gives a direct interface to the basic functions in
+the Atlas software, the 'atlas' program provides the same functionality
 withing the setting of a fairly elaborate user programming language.
 
-This is best run from the subdirectory rx-scripts, which provides a large
+This is best run from the subdirectory atlas-scripts, which provides a large
 collection of predefined user functions, and also contains the help files for
-the program (unlike atlas, you cannot access the help files from the realex
+the program (unlike Fokko, you cannot access the help files from the atlas
 command line; just open the files separately in a text editor). A first
-introduction to various aspects of the language is given in realex.help, a
+introduction to various aspects of the language is given in atlas.help, a
 long list of functions built into the language is given in functions.help, and
 a brief overview of the scripts that come with the system is given in
 scripts.help (very succinct, the main purpose is to order the scripts by

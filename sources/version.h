@@ -14,8 +14,8 @@ namespace atlas {
 
 namespace version {
 
-const char* const NAME = "the Atlas of Lie Groups and Representations program";
-const char* const VERSION = "0.5.8"; // last advanced May 6, 2015
+const char* const NAME = "the Atlas of Lie Groups and Representations";
+const char* const VERSION = "0.6"; // last advanced January, 2016
 const char* const COMPILEDATE = __DATE__ " at " __TIME__;
 
 }

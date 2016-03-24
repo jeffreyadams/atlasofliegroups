@@ -212,7 +212,7 @@ Weight SRK_context::lift(size_t cn, HCParam p) const
   const Cartan_info& ci=info(cn);
   Weight result=ci.freeLift*p.first; // lift free part
 
-  WeightList torsion_lift=ci.torsionLift;
+  const WeightList& torsion_lift = ci.torsionLift;
   for (size_t i=0; i<torsion_lift.size(); ++i)
     if (p.second[i])
       result += torsion_lift[i]; // add even vectors representing torsion part
@@ -453,7 +453,7 @@ q_Char SRK_context::q_reflect_eq(const StandardRepK& sr,size_t i,
 } // |SRK_context::q_reflect_eq|
 
 
-/*!
+/*
   The purpose of |theta_stable_parabolic| is to move to a situation in which
   |dom| is dominant, and in which the only positive roots sent to negative
   ones by the involution $\theta$ are the real ones. Then the real roots
@@ -461,7 +461,7 @@ q_Char SRK_context::q_reflect_eq(const StandardRepK& sr,size_t i,
   $\theta$-stable parabolic subalgebra. The involution $\theta$ is given by
   the twisted involution in |strong|; we think of keeping it fixed while
   gradually moving around the set of positive roots, each time replacing some
-  complex root in the simple basis by its opposite. In realitity the positive
+  complex root in the simple basis by its opposite. In reality the positive
   system is fixed, and the moves conjugate $\theta$ and reflect |dom|. In fact
   we shall need a fiber part as well as an involution once we have obtained
   our goal, so conjugetion is in fact |basedTwistedConjugate| on |strong|.
@@ -1677,7 +1677,7 @@ void KhatContext::go(const StandardRepK& initial)
 ******************************************************************************/
 
 PSalgebra::PSalgebra(TitsElt base,
-		     const ComplexReductiveGroup& G)
+		     const InnerClass& G)
     : strong_inv(base)
     , cn(G.class_number(base.tw()))
     , sub_diagram() // class |RankFlags| needs no dimensioning

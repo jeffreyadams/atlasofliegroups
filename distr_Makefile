@@ -6,12 +6,12 @@ INSTALL = /usr/bin/install
 
 # You may edit the INSTALLDIR and BINDIR variables
 
-# INSTALLDIR is where the executables atlas, realex and the messages directory
+# INSTALLDIR is where the executables Fokko, atlas, and the messages directory
 # will be moved after successfull compilation
 
-# BINDIR is where a symbolic link to the 'atlas' executable will be created,
-# and shell script executing 'realex' will be placed; provided this directory
-# is in the search path, you can then call atlas, realex from anywhere
+# BINDIR is where a symbolic link to the 'Fokko' executable will be created,
+# and shell script executing 'atlas' will be placed; provided this directory
+# is in the search path, you can then call Fokko, atlas, from anywhere
 
 # However when BINDIR is INSTALLDIR one cannot have those shell scripts since
 # they would be at the same place as the executable to call; since both default
@@ -19,8 +19,8 @@ INSTALL = /usr/bin/install
 # INSTALLDIR only needs to be changed if the current directory is temporary
 
 # In a single-user situation, you might want something like this:
-#   INSTALLDIR := /home/fokko/myatlas
-#   BINDIR     := /home/fokko/bin
+#   INSTALLDIR := /home/ducloux/atlas
+#   BINDIR     := /home/ducloux/bin
 
 # In a multi-user situation, you might want this (requires root privilege):
 #   INSTALLDIR := /usr/local/atlas
@@ -34,30 +34,30 @@ version := $(shell ./getversion.pl)
 
 messagedir := $(INSTALLDIR)/messages/
 
-# atlas_dirs contains subdirectories of 'atlas/sources' that need compilation
-# realex_dirs are where the object files for realex are situated
-atlas_dirs  := utilities structure gkmod io error interface test
-realex_dirs := utilities structure gkmod io error interpreter
+# Fokko_dirs contains subdirectories of 'atlas/sources' needed for 'Fokko'
+# atlas_dirs are where the object files for atlas are situated
+Fokko_dirs  := utilities structure gkmod io error interface test
+atlas_dirs := utilities structure gkmod io error interpreter
 
-# atlas_sources contains a list of the source files (i.e., the .cpp files)
-atlas_sources := $(wildcard $(atlas_dirs:%=sources/%/*.cpp))
+# Fokko_sources contains a list of the source files (i.e., the .cpp files)
+Fokko_sources := $(wildcard $(Fokko_dirs:%=sources/%/*.cpp))
 
 # there is one .o file for each .cpp file, in the same directory
-atlas_objects := $(atlas_sources:%.cpp=%.o)
+Fokko_objects := $(Fokko_sources:%.cpp=%.o)
 
 # headers are searched in the all directories containing source files
+Fokko_includes := $(addprefix -Isources/,$(Fokko_dirs))
 atlas_includes := $(addprefix -Isources/,$(atlas_dirs))
-realex_includes := $(addprefix -Isources/,$(realex_dirs))
 
 interpreter_objects := $(patsubst %.cpp,%.o, \
     $(wildcard sources/interpreter/*.cpp)) sources/interpreter/parser.tab.o
-non_realex_objects := sources/io/interactive%.o \
+non_atlas_objects := sources/io/interactive%.o \
     sources/interface/%.o sources/test/%.o \
     sources/io/poset.o sources/utilities/abelian.o sources/gkmod/kgp.o
-realex_objects := $(interpreter_objects) \
-    $(filter-out $(non_realex_objects),$(atlas_objects))
+atlas_objects := $(interpreter_objects) \
+    $(filter-out $(non_atlas_objects),$(Fokko_objects))
 
-objects := $(atlas_objects) $(interpreter_objects)
+objects := $(Fokko_objects) $(interpreter_objects)
 
 # compiler flags
 # whenever changing the setting of these flags, do 'make clean' first
@@ -74,9 +74,9 @@ gflags := -Wall -ggdb
 # these flags are necessary for compilation, the -c should not be altered
 CXXFLAGS  = -c $(CXXFLAVOR)
 
-# additional flags specific for atlas and realex
-atlas_flags = $(atlas_includes)
-realex_flags = -Wno-parentheses $(realex_includes)
+# additional flags specific for Fokko and atlas
+Fokko_flags = $(Fokko_includes)
+atlas_flags = -Wno-parentheses $(atlas_includes)
 
 # to select another flavor, set optimize=false or (stronger) debug=true
 # when calling make (as in "make optimize=false") or set CXXFLAVOR as an
@@ -113,7 +113,7 @@ else
 endif
 
 ifeq ($(verbose),true)
-    atlas_flags += -DVERBOSE
+    Fokko_flags += -DVERBOSE
 endif
 
 # the compiler to use, including language switch
@@ -142,58 +142,58 @@ endif
 
 .PHONY: all install version
 
-# The default target is 'all', which builds the executable 'atlas', and 'realex'
-all: atlas realex
+# The default target is 'all', which builds the executable 'Fokko', and 'atlas'
+all: Fokko atlas
 
 # the following dependency forces emptymode.cpp to be recompiled whenever any
 # of the object files changes; this guarantees that the date in the version
 # string it prints will be that of the last recompilation.
-sources/interface/emptymode.o: $(atlas_sources)
+sources/interface/emptymode.o: $(Fokko_sources)
+
+Fokko: $(Fokko_objects)
+	$(CXX) -o Fokko $(Fokko_objects) $(LDFLAGS)
 
 atlas: $(atlas_objects)
 	$(CXX) -o atlas $(atlas_objects) $(LDFLAGS)
 
-realex: $(realex_objects)
-	$(CXX) -o realex $(realex_objects) $(LDFLAGS)
-
 # Rules with two colons are static pattern rules: they are like implicit
 # rules, but only apply to the files listed before the first colon
 
-$(filter-out sources/interface/io.o,$(atlas_objects)) : %.o : %.cpp
-	$(CXX) $(CXXFLAGS) $(atlas_flags) -o $*.o $*.cpp
+$(filter-out sources/interface/io.o,$(Fokko_objects)) : %.o : %.cpp
+	$(CXX) $(CXXFLAGS) $(Fokko_flags) -o $*.o $*.cpp
 
 # the $(messagedir) variable is only needed for the compilation of io.cpp
 sources/interface/io.o : sources/interface/io.cpp
-	$(CXX) $(CXXFLAGS) $(atlas_flags) -DMESSAGE_DIR_MACRO=\"$(messagedir)\" -o $@ $<
+	$(CXX) $(CXXFLAGS) $(Fokko_flags) -DMESSAGE_DIR_MACRO=\"$(messagedir)\" -o $@ $<
 
-# for the interpreter replace $(atlas_flags) by $(realex_flags)
+# for the interpreter replace $(Fokko_flags) by $(atlas_flags)
 $(filter-out sources/interpreter/parser.tab.o,$(interpreter_objects)) :\
   %.o : %.cpp
-	$(CXX) $(CXXFLAGS) $(realex_flags) -o $*.o $*.cpp
+	$(CXX) $(CXXFLAGS) $(atlas_flags) -o $*.o $*.cpp
 # bison produces a file with extension .c, nonetheless it too needs $(CXX)
 sources/interpreter/parser.tab.o: \
   sources/interpreter/parser.tab.c sources/interpreter/parsetree.h
-	$(CXX) $(CXXFLAGS) $(realex_flags) -o $@ $<
+	$(CXX) $(CXXFLAGS) $(atlas_flags) -o $@ $<
 
-install: atlas realex
+install: Fokko atlas
 ifneq ($(INSTALLDIR),$(shell pwd))
 	@echo "Installing directories and files in $(INSTALLDIR)"
-	$(INSTALL) -d $(INSTALLDIR)/messages $(INSTALLDIR)/rx-scripts
+	$(INSTALL) -d $(INSTALLDIR)/messages $(INSTALLDIR)/atlas-scripts
 	$(INSTALL) -m 644 LICENSE COPYRIGHT README $(INSTALLDIR)
-	$(INSTALL) -p atlas realex $(INSTALLDIR)
+	$(INSTALL) -p Fokko atlas $(INSTALLDIR)
 	$(INSTALL) -m 644 messages/*.help $(INSTALLDIR)/messages/
 	$(INSTALL) -m 644 messages/intro_mess $(INSTALLDIR)/messages/
-	$(INSTALL) -m 644 rx-scripts/* $(INSTALLDIR)/rx-scripts/
+	$(INSTALL) -m 644 atlas-scripts/* $(INSTALLDIR)/atlas-scripts/
 endif
 ifneq ($(BINDIR),$(INSTALLDIR))
 ifneq ($(BINDIR),$(shell pwd))
 	$(INSTALL) -d $(BINDIR)
-	@if test -h $(BINDIR)/atlas; then rm -f $(BINDIR)/atlas; fi
-	@if test -e $(BINDIR)/realex; then rm -f $(BINDIR)/realex; fi
-	ln -s $(INSTALLDIR)/atlas $(BINDIR)/atlas # make symbolic link
-# since BINDIR is not INSTALLDIR, we can put a shell script as bin/realex
+	@if test -h $(BINDIR)/Fokko; then rm -f $(BINDIR)/Fokko; fi
+	@if test -e $(BINDIR)/atlas; then rm -f $(BINDIR)/atlas; fi
+	ln -s $(INSTALLDIR)/Fokko $(BINDIR)/Fokko # make symbolic link
+# whenever BINDIR is not INSTALLDIR, we can put a shell script as bin/atlas
 # which ensures the search path will be properly set (no compiled-in path here)
-	echo '#!/bin/sh\n$(INSTALLDIR)/realex --path=$(INSTALLDIR)/rx-scripts basic.rx "$$@"' >$(BINDIR)/realex; chmod a+x $(BINDIR)/realex
+	echo '#!/bin/sh\n$(INSTALLDIR)/atlas --path=$(INSTALLDIR)/atlas-scripts basic.at "$$@"' >$(BINDIR)/atlas; chmod a+x $(BINDIR)/atlas
 endif
 endif
 
@@ -205,8 +205,8 @@ mostlyclean:
 	$(RM) -f $(objects)
 
 clean: mostlyclean
-	$(RM) -f atlas realex
+	$(RM) -f Fokko atlas
 
-# distribution version of atlas uses a frozen set of dependencies
+# distribution version of Fokko uses a frozen set of dependencies
 
 include dependencies

@@ -17,7 +17,7 @@
 
 #include "polynomials.h"
 #include "kgb.h"     // |kgb.size()|
-#include "complexredgp.h" // |twoRho| in |nu_block::print|
+#include "innerclass.h" // |twoRho| in |nu_block::print|
 #include "blocks.h"
 #include "ext_block.h"
 #include "kl.h"
@@ -53,12 +53,17 @@ std::ostream& Block_base::print_to(std::ostream& strm,
 
   const int pad = 2;
 
+  bool traditional = dynamic_cast<const Block*>(this)!=nullptr;
+
   for (BlockElt z=0; z<size(); ++z)
   {
     // print entry number and corresponding orbit pair
-    strm << std::setw(width) << z
-	 << '(' << std::setw(xwidth) << x(z)
-	 << ',' << std::setw(ywidth) << y(z) << "):";
+    strm << std::setw(width) << z;
+    if (traditional) // prining "local" x,y is confusing in other cases
+      strm << '(' << std::setw(xwidth) << x(z)
+	   << ',' << std::setw(ywidth) << y(z) << "):";
+    else
+      strm << ':';
 
     // print length
     strm << std::setw(lwidth+pad) << length(z) << std::setw(pad) << "";
