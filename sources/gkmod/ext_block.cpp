@@ -1448,6 +1448,8 @@ BlockElt twisted (const param_block& block, const KGB& kgb,
   KGBElt x = block.x(z);
   TorusElement y = block.y_rep(block.y(z));
   KGBElt xx= twisted(kgb,x,delta,twist);
+  if (xx==UndefKGB)
+    return UndefBlock;
   y.act_by(delta);
   BlockElt result=block.lookup(xx,y);
   return result;
@@ -1620,9 +1622,9 @@ ext_block::ext_block // for an external twist
     // the following is NOT |twist(orbits)|, which would be for subsystem
     weyl::Twist twist(fold_orbits(block.rootDatum(),delta));
 
-    if (twisted(kgb,0,delta,twist)==UndefKGB or
-	twisted(block,kgb,0,delta,twist)==UndefBlock)
-      return; // if one or other not delta-stable, leave |size==0| and quit
+    // test if twisting some block element lands in the same block
+    if (twisted(block,kgb,0,delta,twist)==UndefBlock)
+      return; // if block not delta-stable, leave |size==0| and quit
 
     for (BlockElt z=0; z<block.size(); ++z)
     {
@@ -1656,7 +1658,7 @@ void ext_block::complete_construction(const BitMap& fixed_points)
   {
     BlockElt z=parent_nr[n];
     info.push_back(elt_info(z));
-    for (weyl::Generator oi=0; oi<orbits.size(); ++oi)
+    for (weyl::Generator oi=0; oi<orbits.size(); ++oi) // |oi|: orbit index
     {
       const weyl::Generator s = orbits[oi].s0, t=orbits[oi].s1;
       BlockElt link, second = UndefBlock; // these index parent block elements
@@ -1664,7 +1666,7 @@ void ext_block::complete_construction(const BitMap& fixed_points)
       data[oi].push_back(block_fields(type)); // create entry
 
       if (link==UndefBlock)
-	continue; // |s| done for imaginary compact and real nonparity cases
+	continue; // done with |s| for imaginary compact, real nonparity cases
 
       if (is_descent(type)) // then set or check length from predecessor
       {
