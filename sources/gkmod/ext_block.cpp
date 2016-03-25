@@ -147,17 +147,9 @@ context::context
 
 // compute |bgv-(bgv+t_bits)*(1+theta)/2 == (bgv-t_bits-(bgv+t_bits)*theta)/2|
 Coweight ell (const KGB& kgb, KGBElt x)
-{ const RatCoweight bgv=kgb.base_grading_vector();
-  const Coweight t_bits (kgb.torus_part(x)); // lift from bitvector to vector
-  RatCoweight result=bgv+t_bits;
-  kgb.involution_matrix(x).right_mult(result.numerator());
-  result.numerator().negate();
-  result += bgv;
-  result -= t_bits;
-  result /= 2;
-  result.normalize();
-  assert(result.denominator()==1);
-  return Coweight(result.numerator().begin(),result.numerator().end());
+{ auto diff= (kgb.base_grading_vector()-kgb.torus_factor(x)).normalize();
+  assert(diff.denominator()==1);
+  return Coweight(diff.numerator().begin(),diff.numerator().end());
 }
 
 
@@ -199,7 +191,7 @@ param::param (const context& ec, KGBElt x, const Weight& lambda_rho)
 }
 
 param::param (const context& ec, const TwistedInvolution& tw,
-	 Weight lambda_rho, Weight tau, Coweight l, Coweight t)
+	      Weight lambda_rho, Weight tau, Coweight l, Coweight t)
   : ctxt(ec), tw(tw)
   , l(std::move(l))
   , lambda_rho(std::move(lambda_rho)), tau(std::move(tau))
