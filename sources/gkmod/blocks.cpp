@@ -155,7 +155,7 @@ inline BlockElt& first_free_slot(BlockEltPair& p)
 Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
   : info(), data(kgb.rank()), orbits()
   , d_first_z_of_x() // filled below
-  , dd(kgb.complexGroup().rootDatum().cartanMatrix())
+  , dd(kgb.innerClass().rootDatum().cartanMatrix())
   , d_bruhat(NULL)
   , klc_ptr(NULL)
 {
@@ -740,16 +740,16 @@ void param_block::compute_duals(const InnerClass& G,
 
 RealReductiveGroup& param_block::realGroup() const
   { return rc.realGroup(); }
-const InnerClass& param_block::complexGroup() const
-  { return rc.realGroup().complexGroup(); }
+const InnerClass& param_block::innerClass() const
+  { return rc.realGroup().innerClass(); }
 const InvolutionTable& param_block::involution_table() const
-  { return complexGroup().involution_table(); }
+  { return innerClass().involution_table(); }
 
 
 
 nblock_help::nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
   : kgb(GR.kgb()), rd(subsys.parent_datum()), sub(subsys)
-  , i_tab(GR.ccomplexGroup().involution_table())
+  , i_tab(GR.cinnerClass().involution_table())
   , dual_m_alpha(), half_alpha()
 {
   assert(kgb.rank()==rd.semisimpleRank());
@@ -903,7 +903,7 @@ non_integral_block::non_integral_block
   : param_block(rc,rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
   , z_hash(info)
 {
-  const InnerClass& G = complexGroup();
+  const InnerClass& G = innerClass();
   const RootDatum& rd = G.rootDatum();
   Block_base::dd = DynkinDiagram(rd.cartanMatrix());
 
@@ -1402,7 +1402,7 @@ non_integral_block::non_integral_block
   : param_block(rc,rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
   , z_hash(info)
 {
-  const RootDatum& rd = complexGroup().rootDatum();
+  const RootDatum& rd = innerClass().rootDatum();
   Block_base::dd = DynkinDiagram(rd.cartanMatrix());
 
   const KGB& kgb = rc.kgb();
@@ -1538,7 +1538,7 @@ non_integral_block::non_integral_block
   } // |for(i)|
 
   kgb_nr_of.assign(&x_of[0],&x_of[x_org+1]); // copy identity map with holes
-  compute_duals(complexGroup(),sub);
+  compute_duals(innerClass(),sub);
 
 } // |non_integral_block::non_integral_block|, partial version
 
@@ -1772,7 +1772,7 @@ DynkinDiagram folded
 } // |folded|
 
 BitMap common_Cartans(RealReductiveGroup& GR, RealReductiveGroup& dGR)
-{ return GR.Cartan_set() & GR.complexGroup().dual_Cartan_set(dGR.realForm()); }
+{ return GR.Cartan_set() & GR.innerClass().dual_Cartan_set(dGR.realForm()); }
 
 } // |namespace blocks|
 

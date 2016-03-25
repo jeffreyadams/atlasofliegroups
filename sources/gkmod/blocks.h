@@ -334,7 +334,7 @@ class param_block : public Block_base // blocks of parameters
 
  public:
   // "inherited" accessors
-  const InnerClass& complexGroup() const;
+  const InnerClass& innerClass() const;
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& realGroup() const;
 

@@ -290,7 +290,7 @@ void KGB_f()
 
   ioutils::OutputFile f;
 
-  InnerClass& G=G_R.complexGroup();
+  InnerClass& G=G_R.innerClass();
   kgb_io::var_print_KGB(f,G,G_R.kgb());
 }
 

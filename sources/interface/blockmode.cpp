@@ -208,7 +208,7 @@ void block_mode_entry() throw(EntryError)
   {
     RealReductiveGroup& G_R = currentRealGroup();
 
-    InnerClass& G_C = G_R.complexGroup();
+    InnerClass& G_C = G_R.innerClass();
     output::Interface& G_I = currentComplexInterface();
 
     // get dual real form
@@ -234,7 +234,7 @@ void dualrealform_f()
   try
   {
     RealReductiveGroup& G_R = currentRealGroup();
-    InnerClass& G_C = G_R.complexGroup();
+    InnerClass& G_C = G_R.innerClass();
     output::Interface& G_I = currentComplexInterface();
 
     // get dual real form
