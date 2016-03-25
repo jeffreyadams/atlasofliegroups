@@ -2,7 +2,7 @@
   This is blocks.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2007--2013 Marc van Leeuwen
+  Copyright (C) 2007--2016 Marc van Leeuwen
   Part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file

@@ -751,11 +751,11 @@ RatCoweight KGB::base_grading_vector() const
   return G.g_rho_check();
 }
 
-
+// this rational coweight for |x| is central to synthetic real forms
 RatCoweight KGB::torus_factor(KGBElt x) const
 {
   RatCoweight tf = base_grading_vector();
-  tf += lift(torus_part(x));
+  tf -= lift(torus_part(x));
 
   // finally ensure result is $\theta^t$-fixed
   return symmetrise(tf,involution_matrix(x));
