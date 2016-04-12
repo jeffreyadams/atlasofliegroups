@@ -57,7 +57,7 @@ class KGB_base
  protected: // available during construction from derived classes
   typedef unsigned int inv_index; // internal sequence number of involutions
 
-  const InnerClass& G; // hold a reference for convenience
+  const InnerClass& ic; // hold a reference for convenience
 
   // per KGB element information
   struct EltInfo
@@ -96,7 +96,7 @@ class KGB_base
 
  protected: // constructor is only meant for use from derived classes
   explicit KGB_base(const InnerClass& GC, unsigned int ss_rank)
-  : G(GC)
+  : ic(GC)
   , data(ss_rank)
   , info()
   , inv_nrs(), inv_loc()
@@ -106,7 +106,7 @@ class KGB_base
 
  public:
   KGB_base (const KGB_base& org) // copy contructor
-  : G(org.G) // share
+  : ic(org.ic) // share
   , data(org.data)
   , info(org.info)
   , inv_nrs(org.inv_nrs), inv_loc(org.inv_loc)
@@ -120,7 +120,7 @@ class KGB_base
   size_t size() const { return info.size(); } // number of KGB elements
   inv_index nr_involutions() const { return inv_nrs.size(); }
 
-  const InnerClass& complexGroup() const { return G; }
+  const InnerClass& innerClass() const { return ic; }
   const RootDatum& rootDatum() const;
   const WeylGroup& weylGroup() const;
   const TwistedWeylGroup& twistedWeylGroup() const;
@@ -138,19 +138,19 @@ class KGB_base
   KGBElt cross(KGBElt x, const WeylWord& ww) const;
 
   unsigned int length(KGBElt x) const
-  { return G.involution_table().length(inv_nr(x));}
+  { return ic.involution_table().length(inv_nr(x));}
 
   KGBElt Hermitian_dual(KGBElt x) const { return info[x].dual; }
 
   // a method useful mostly for traversing all our involutions
   const TwistedInvolution& nth_involution(inv_index n) const
-  { return G.involution_table().involution(inv_nrs[n]); }
+  { return ic.involution_table().involution(inv_nrs[n]); }
 
   const TwistedInvolution& involution(KGBElt x) const // after construction only
   { return nth_involution(involution_index(x)); } // the one associated to |x|
 
   const WeightInvolution & involution_matrix(KGBElt x) const
-  { return G.involution_table().matrix(inv_nr(x)); }
+  { return ic.involution_table().matrix(inv_nr(x)); }
 
   InvolutionNbr inv_nr(KGBElt x) const; // external number (within inner class)
 
@@ -290,6 +290,8 @@ class KGB : public KGB_base
 
   enum State { BruhatConstructed, NumStates };
 
+  const RealReductiveGroup& G; // to access base grading vector |g_rho_check|
+
   std::vector<inv_index> Cartan; ///< records Cartan classes of involutions
 
   std::vector<TorusPart> left_torus_part; // of size |size()|
@@ -329,8 +331,8 @@ and in addition the Hasse diagram (set of all covering relations).
 
   TorusPart torus_part(KGBElt x) const { return left_torus_part[x]; }
   // reconstruct from |torus_part| a |TorusElement| as in |global_KGB|
-  RatCoweight base_grading_vector() const; // offset for |torus_part_global|
-  RatCoweight torus_part_global(KGBElt x) const; // will be $\theta^t$-fixed
+  RatCoweight base_grading_vector() const; // offset for |torus_factor|
+  RatCoweight torus_factor(KGBElt x) const; // will be $\theta^t$-fixed
 
   TitsElt titsElt(KGBElt x) const; // get KGB element |x| as a |TitsElt|
   size_t torus_rank() const; // the (non-semisimple) rank of torus parts.

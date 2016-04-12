@@ -40,7 +40,7 @@ namespace realredgp {
 */
 RealReductiveGroup::RealReductiveGroup
   (InnerClass& G_C, RealFormNbr rf)
-  : d_complexGroup(G_C)
+  : d_innerClass(G_C)
   , d_realForm(rf)
   , d_connectivity() // wait for most split torus to be constructed below
 
@@ -58,7 +58,7 @@ RealReductiveGroup::RealReductiveGroup
 RealReductiveGroup::RealReductiveGroup
   (InnerClass& G_C, RealFormNbr rf,
    const RatCoweight& coch, TorusPart x0_torus_part)
-  : d_complexGroup(G_C)
+  : d_innerClass(G_C)
   , d_realForm(rf)
   , d_connectivity() // wait for most split torus to be constructed below
 
@@ -74,7 +74,7 @@ RealReductiveGroup::RealReductiveGroup
 
 void RealReductiveGroup::construct()
 {
-  InnerClass& G_C=d_complexGroup;
+  InnerClass& G_C=d_innerClass;
   RealFormNbr rf=d_realForm;
 
   tori::RealTorus msT = G_C.cartan(G_C.mostSplit(rf)).fiber().torus();
@@ -119,7 +119,7 @@ RealReductiveGroup::~RealReductiveGroup()
 
 void RealReductiveGroup::swap(RealReductiveGroup& other)
 {
-  assert(&d_complexGroup==&other.d_complexGroup); // cannot swap references
+  assert(&d_innerClass==&other.d_innerClass); // cannot swap references
   std::swap(d_realForm,other.d_realForm);
   d_connectivity.swap(other.d_connectivity);
   std::swap(d_Tg,other.d_Tg);
@@ -130,23 +130,23 @@ void RealReductiveGroup::swap(RealReductiveGroup& other)
 
 
 const RootDatum& RealReductiveGroup::rootDatum() const
-  { return d_complexGroup.rootDatum(); }
+  { return d_innerClass.rootDatum(); }
 
 const TitsGroup& RealReductiveGroup::titsGroup() const
   { return d_Tg->titsGroup(); }
 
 const WeylGroup& RealReductiveGroup::weylGroup() const
-  { return d_complexGroup.weylGroup(); }
+  { return d_innerClass.weylGroup(); }
 
 const TwistedWeylGroup& RealReductiveGroup::twistedWeylGroup() const
-  { return d_complexGroup.twistedWeylGroup(); }
+  { return d_innerClass.twistedWeylGroup(); }
 
 BitMap RealReductiveGroup::Cartan_set() const
-  { return complexGroup().Cartan_set(d_realForm); }
+  { return innerClass().Cartan_set(d_realForm); }
 
 // Returns Cartan \#cn (assumed to belong to cartanSet()) of the group.
 const CartanClass& RealReductiveGroup::cartan(size_t cn) const
-  { return d_complexGroup.cartan(cn); }
+  { return d_innerClass.cartan(cn); }
 
 RatCoweight RealReductiveGroup::g() const
   { return g_rho_check()+rho_check(rootDatum()); }
@@ -155,7 +155,7 @@ RatCoweight RealReductiveGroup::g() const
 // simple roots are simple-imaginary, so dot product flags the compact ones
 Grading RealReductiveGroup::base_grading() const
 {
-  return innerclass::grading_of_simples(complexGroup(),g_rho_check());
+  return innerclass::grading_of_simples(innerClass(),g_rho_check());
 }
 
 size_t RealReductiveGroup::numCartan() const { return Cartan_set().size(); }
@@ -166,13 +166,13 @@ size_t RealReductiveGroup::semisimpleRank() const
   { return rootDatum().semisimpleRank(); }
 
 size_t RealReductiveGroup::numInvolutions()
-  { return complexGroup().numInvolutions(Cartan_set()); }
+  { return innerClass().numInvolutions(Cartan_set()); }
 
 size_t RealReductiveGroup::KGB_size() const
- { return d_complexGroup.KGB_size(d_realForm); }
+ { return d_innerClass.KGB_size(d_realForm); }
 
 size_t RealReductiveGroup::mostSplit() const
- { return d_complexGroup.mostSplit(d_realForm); }
+ { return d_innerClass.mostSplit(d_realForm); }
 
 /*
   Algorithm: the variable |rset| is first made to flag, among the imaginary
@@ -194,10 +194,10 @@ const SmallBitVectorList& RealReductiveGroup::dualComponentReps() const
   { return d_connectivity.dualComponentReps(); }
 
 const WeightInvolution& RealReductiveGroup::distinguished() const
-  { return d_complexGroup.distinguished(); }
+  { return d_innerClass.distinguished(); }
 
 RootNbrSet RealReductiveGroup::noncompactRoots() const
-  { return d_complexGroup.noncompactRoots(d_realForm); }
+  { return d_innerClass.noncompactRoots(d_realForm); }
 
 
 // return stored KGB structure, after generating it if necessary

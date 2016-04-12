@@ -166,7 +166,7 @@ inline BlockElt& first_free_slot(BlockEltPair& p)
 Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
   : info(), data(kgb.rank()), orbits()
   , d_first_z_of_x() // filled below
-  , dd(kgb.complexGroup().rootDatum().cartanMatrix())
+  , dd(kgb.innerClass().rootDatum().cartanMatrix())
   , d_bruhat(NULL)
   , klc_ptr(NULL)
 {
@@ -619,12 +619,12 @@ void Block::compute_supports()
 
 RealReductiveGroup& param_block::realGroup() const
   { return rc.realGroup(); }
-const InnerClass& param_block::complexGroup() const
-  { return rc.realGroup().complexGroup(); }
+const InnerClass& param_block::innerClass() const
+  { return rc.realGroup().innerClass(); }
 const InvolutionTable& param_block::involution_table() const
-  { return complexGroup().involution_table(); }
+  { return innerClass().involution_table(); }
 const RootDatum& param_block::rootDatum() const
-  { return complexGroup().rootDatum(); }
+  { return innerClass().rootDatum(); }
 const TwistedInvolution& param_block::involution(BlockElt z) const
 { return rc.kgb().involution(x(z)); }
 
@@ -764,14 +764,14 @@ BlockElt param_block::lookup(KGBElt x, const TorusElement& y_rep) const
 ext_gens param_block::fold_orbits(const WeightInvolution& delta) const
 {
   assert(delta*gamma().numerator()==gamma().numerator());
-  const auto sub = integrality_datum(complexGroup().rootDatum(),infin_char);
+  const auto sub = integrality_datum(innerClass().rootDatum(),infin_char);
   return rootdata::fold_orbits(sub,delta);
 }
 
 
 nblock_help::nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
   : kgb(GR.kgb()), rd(subsys.parent_datum()), sub(subsys)
-  , i_tab(GR.ccomplexGroup().involution_table())
+  , i_tab(GR.cinnerClass().involution_table())
   , dual_m_alpha(), half_alpha()
 {
   assert(kgb.rank()==rd.semisimpleRank());
@@ -925,7 +925,7 @@ param_block::param_block
   , y_hash(y_pool)
   , z_hash(info)
 {
-  const InnerClass& G = complexGroup();
+  const InnerClass& G = innerClass();
   const RootDatum& rd = G.rootDatum();
   Block_base::dd = DynkinDiagram(rd.cartanMatrix());
 
@@ -1390,7 +1390,7 @@ param_block::param_block
   , y_hash(y_pool)
   , z_hash(info)
 {
-  const RootDatum& rd = complexGroup().rootDatum();
+  const RootDatum& rd = innerClass().rootDatum();
   Block_base::dd = DynkinDiagram(rd.cartanMatrix());
 
   const KGB& kgb = rc.kgb();
@@ -1535,7 +1535,7 @@ param_block::param_block
     } // |for(s)|
   } // |for(i)|
 
-  compute_duals(complexGroup(),sub);
+  compute_duals(innerClass(),sub);
 
 } // |param_block::param_block|, partial block version
 
@@ -1739,7 +1739,7 @@ std::vector<BlockElt> dual_map(const Block_base& b, const Block_base& dual_b)
 
 
 BitMap common_Cartans(RealReductiveGroup& GR, RealReductiveGroup& dGR)
-{ return GR.Cartan_set() & GR.complexGroup().dual_Cartan_set(dGR.realForm()); }
+{ return GR.Cartan_set() & GR.innerClass().dual_Cartan_set(dGR.realForm()); }
 
 } // |namespace blocks|
 

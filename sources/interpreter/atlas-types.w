@@ -2322,7 +2322,7 @@ void Cartan_order_matrix_wrapper(expression_base::level l)
     return;
   size_t n=rf->val.numCartan();
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(n,n,0));
-  const poset::Poset& p = rf->val.complexGroup().Cartan_ordering();
+  const poset::Poset& p = rf->val.innerClass().Cartan_ordering();
   for (size_t i=0; i<n; ++i)
     for (size_t j=i; j<n; ++j)
       if (p.lesseq(i,j)) M->val(i,j)=1;
@@ -2346,7 +2346,7 @@ identical |RealReductiveGroup| objects, which would be too strict.
 inline bool operator==
   (const RealReductiveGroup& x, const RealReductiveGroup& y)
 {
-  return &x.complexGroup() == &y.complexGroup()
+  return &x.innerClass() == &y.innerClass()
    @| and x.g_rho_check()==y.g_rho_check()
    @| and x.x0_torus_part()==y.x0_torus_part()
    @| and (assert(x.realForm()==y.realForm()),true);
@@ -3021,7 +3021,7 @@ void KGB_Cartan_wrapper(expression_base::level l)
 void KGB_involution_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  const InnerClass& G=x->rf->val.complexGroup();
+  const InnerClass& G=x->rf->val.innerClass();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<matrix_value>
       (G.matrix(kgb.involution(x->val))));
@@ -3120,7 +3120,7 @@ void KGB_status_wrapper(expression_base::level l)
     unsigned stat=kgb::status(kgb,x->val,alpha);
     if (stat==0) // $\alpha$ is a complex root, check if it is an ascent
     {
-      RootNbr theta_alpha = kgb.complexGroup().involution_table().
+      RootNbr theta_alpha = kgb.innerClass().involution_table().
         root_involution(kgb.inv_nr(x->val),alpha);
       if (kgb.rootDatum().is_posroot(theta_alpha))
        stat = 4; // set status to complex ascent
@@ -3215,9 +3215,8 @@ void torus_factor_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   const KGB& kgb=x->rf->kgb();
-  RatCoweight tf = x->rf->val.g_rho_check() + lift(kgb.torus_part(x->val));
   push_value(std::make_shared<rational_vector_value> @|
-     (symmetrise(tf,kgb.involution_matrix(x->val))));
+    (kgb.torus_factor(x->val)));
 }
 
 @ Finally we make available, by popular request, the equality test. This is
@@ -4830,7 +4829,7 @@ applying the corresponding simple reflections to~$\lambda$.
 @< Local function def...@>=
 void to_canonical_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  const InnerClass& G=p->rf->val.complexGroup();
+  const InnerClass& G=p->rf->val.innerClass();
   const KGB& kgb = p->rf->kgb();
   const RootDatum& rd=G.rootDatum();
 @)
@@ -5185,7 +5184,7 @@ void print_KGB_wrapper(expression_base::level l)
   *output_stream
     << "kgbsize: " << rf->val.KGB_size() << std::endl;
   const KGB& kgb=rf->kgb();
-  kgb_io::var_print_KGB(*output_stream,rf->val.complexGroup(),kgb);
+  kgb_io::var_print_KGB(*output_stream,rf->val.innerClass(),kgb);
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();

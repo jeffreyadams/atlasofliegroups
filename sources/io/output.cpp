@@ -361,7 +361,7 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
 				   size_t cn, RealFormNbr drf)
 
 {
-  InnerClass& G_C = G_R.complexGroup();
+  InnerClass& G_C = G_R.innerClass();
   const RootDatum& rd = G_R.rootDatum();
   const WeylGroup& W = G_R.weylGroup();
 
@@ -392,7 +392,7 @@ std::ostream& printCartanClasses(std::ostream& strm,
 				 RealReductiveGroup& G,
 				 output::Interface& G_CI)
 {
-  const BitMap& b = G.complexGroup().Cartan_set(G.realForm());
+  const BitMap& b = G.innerClass().Cartan_set(G.realForm());
   bool first = true;
 
   for (BitMap::iterator i = b.begin(); i(); ++i)
@@ -402,7 +402,7 @@ std::ostream& printCartanClasses(std::ostream& strm,
     else
       strm << std::endl << std::endl;
     strm << "Cartan #" << *i << ":" << std::endl;
-    output::printCartanClass(strm,G.complexGroup(),*i,G_CI);
+    output::printCartanClass(strm,G.innerClass(),*i,G_CI);
   }
 
   return strm;
@@ -416,7 +416,7 @@ std::ostream& printCartanClasses(std::ostream& strm,
 std::ostream& printCartanOrder(std::ostream& strm,
 			       const RealReductiveGroup& G_R)
 {
-  const poset::Poset& p = G_R.complexGroup().Cartan_ordering();
+  const poset::Poset& p = G_R.innerClass().Cartan_ordering();
 
   // get Hasse diagram of the Cartan classes for |G_R|
   graph::OrientedGraph g = p.hasseDiagram(G_R.mostSplit());
@@ -444,7 +444,7 @@ std::ostream& printRealWeyl(std::ostream& strm,
 			    RealReductiveGroup& G_R, // modifiable for |cartan|
 			    size_t cn)
 {
-  InnerClass& G_C = G_R.complexGroup();
+  InnerClass& G_C = G_R.innerClass();
 
   RealFormNbr rf = G_R.realForm();
 

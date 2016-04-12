@@ -265,8 +265,8 @@ class SRK_context
   SRK_context(RealReductiveGroup &G);
 
   // accessors
-  InnerClass& complexGroup() const
-    { return G.complexGroup(); }
+  InnerClass& innerClass() const
+    { return G.innerClass(); }
   const RootDatum& rootDatum() const { return G.rootDatum(); }
   const WeylGroup& weylGroup() const { return G.weylGroup(); }
   const TwistedWeylGroup& twistedWeylGroup() const
@@ -276,7 +276,7 @@ class SRK_context
     { return G.basedTitsGroup(); }
 
   const TwistedInvolution involution_of_Cartan(size_t cn) const
-    { return complexGroup().involution_of_Cartan(cn); }
+    { return innerClass().involution_of_Cartan(cn); }
   const Fiber& fiber(const StandardRepK& sr) const
     { return G.cartan(sr.Cartan()).fiber(); }
 

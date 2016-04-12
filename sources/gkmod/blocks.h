@@ -338,7 +338,7 @@ class param_block : public Block_base
   // accessors that get values via |rc|
   const repr::Rep_context& context() const { return rc; }
   const RootDatum& rootDatum() const;
-  const InnerClass& complexGroup() const;
+  const InnerClass& innerClass() const;
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& realGroup() const;
 

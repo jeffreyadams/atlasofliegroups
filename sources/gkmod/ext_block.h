@@ -310,8 +310,7 @@ class context // holds values that remain fixed across extended block
   const RootDatum& id() const { return integr_datum; }
   const SubSystem& subsys() const { return sub; }
   RealReductiveGroup& realGroup () const { return d_rc.realGroup(); }
-  const InnerClass& complexGroup () const
-    { return realGroup().complexGroup(); }
+  const InnerClass& innerClass () const { return realGroup().innerClass(); }
   const WeightInvolution& delta () const { return d_delta; }
   const RatWeight& gamma() const { return d_gamma; }
   const RatCoweight& g() const { return d_g; }
@@ -343,7 +342,7 @@ struct param // prefer |struct| with |const| members for ease of access
   const repr::Rep_context rc() const { return ctxt.rc(); }
   const WeightInvolution& delta () const { return ctxt.delta(); }
   const WeightInvolution& theta () const
-    { return ctxt.complexGroup().matrix(tw); }
+    { return ctxt.innerClass().matrix(tw); }
 
 }; // |param|
 

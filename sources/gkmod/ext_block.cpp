@@ -163,8 +163,8 @@ Coweight ell (const KGB& kgb, KGBElt x)
 
 void validate(const param& E)
 {
-  const auto& i_tab = E.rc().complexGroup().involution_table();
-  const auto& rd = E.rc().complexGroup().rootDatum();
+  const auto& i_tab = E.rc().innerClass().involution_table();
+  const auto& rd = E.rc().innerClass().rootDatum();
   const auto& theta = i_tab.matrix(E.tw);
   const auto& delta = E.ctxt.delta();
   assert(delta*theta==theta*delta);
@@ -242,7 +242,7 @@ bool in_R_image(WeightInvolution&& A,Coweight b)
 bool same_standard_reps (const param& E, const param& F)
 {
   if (&E.ctxt!=&F.ctxt)
-  { if (&E.ctxt.complexGroup()!=&F.ctxt.complexGroup())
+  { if (&E.ctxt.innerClass()!=&F.ctxt.innerClass())
       throw std::runtime_error
 	("Comparing extended parameters from different inner classes");
     if (E.delta()!=F.delta()
@@ -257,7 +257,7 @@ bool same_standard_reps (const param& E, const param& F)
 
 KGBElt x(const param& E)
 { TorusPart tp(E.l);
-  TitsElt a(E.ctxt.complexGroup().titsGroup(),tp,E.tw);
+  TitsElt a(E.ctxt.innerClass().titsGroup(),tp,E.tw);
   return E.rc().kgb().lookup(a);
 }
 
@@ -783,7 +783,7 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
  */
 param complex_cross(ext_gen p, const param& E)
 { const RootDatum& rd = E.rc().rootDatum();
-  const InvolutionTable& i_tab = E.rc().complexGroup().involution_table();
+  const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
   auto &tW = E.rc().twistedWeylGroup(); // caution: |p| refers to integr. datum
 
   TwistedInvolution tw=E.tw;
@@ -833,7 +833,7 @@ param complex_cross(ext_gen p, const param& E)
 
 
 WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
-{ const RootDatum& rd = ctxt.complexGroup().rootDatum();
+{ const RootDatum& rd = ctxt.innerClass().rootDatum();
   std::vector<weyl::Generator> delta (rd.semisimpleRank());
   std::vector<bool> is_length_3 (delta.size());
 
@@ -893,7 +893,7 @@ DescValue type (const param& E, const ext_gen& p,
 {
   DescValue result;
   const TwistedWeylGroup& tW = E.rc().twistedWeylGroup();
-  const InvolutionTable& i_tab = E.rc().complexGroup().involution_table();
+  const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
   const RootDatum& rd = E.rc().rootDatum();
   const RootDatum& integr_datum = E.ctxt.id();
   const SubSystem& subs = E.ctxt.subsys();
@@ -923,7 +923,7 @@ DescValue type (const param& E, const ext_gen& p,
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	const Weight rho_r_shift = repr::Cayley_shift
-	  (E.rc().complexGroup(),i_tab.nr(new_tw),ww);
+	  (E.rc().innerClass(),i_tab.nr(new_tw),ww);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	Weight first; // maybe a root with |(1-delta)*first==alpha|
@@ -989,7 +989,7 @@ DescValue type (const param& E, const ext_gen& p,
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 
 	const Weight rho_r_shift =
-	  repr::Cayley_shift(E.rc().complexGroup(),theta,ww);
+	  repr::Cayley_shift(E.rc().innerClass(),theta,ww);
 	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
 	const int level = level_a(E,rho_r_shift,n_alpha);
@@ -1094,7 +1094,7 @@ DescValue type (const param& E, const ext_gen& p,
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	const Weight rho_r_shift = repr::Cayley_shift
-	  (E.rc().complexGroup(),i_tab.nr(new_tw),ww);
+	  (E.rc().innerClass(),i_tab.nr(new_tw),ww);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
 
@@ -1178,7 +1178,7 @@ DescValue type (const param& E, const ext_gen& p,
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
 
 	const Weight rho_r_shift =
-	  repr::Cayley_shift(E.rc().complexGroup(),theta,ww);
+	  repr::Cayley_shift(E.rc().innerClass(),theta,ww);
 	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
@@ -1324,7 +1324,7 @@ DescValue type (const param& E, const ext_gen& p,
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	const Weight rho_r_shift = repr::Cayley_shift
-	  (E.rc().complexGroup(),i_tab.nr(new_tw),ww);
+	  (E.rc().innerClass(),i_tab.nr(new_tw),ww);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
 
@@ -1341,7 +1341,7 @@ DescValue type (const param& E, const ext_gen& p,
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
 
 	const Weight rho_r_shift =
-	  repr::Cayley_shift(E.rc().complexGroup(),theta,ww);
+	  repr::Cayley_shift(E.rc().innerClass(),theta,ww);
 	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
@@ -1373,7 +1373,7 @@ DescValue type (const param& E, const ext_gen& p,
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 
 	  const Weight rho_r_shift =
-	    repr::Cayley_shift(E.rc().complexGroup(),theta,ww);
+	    repr::Cayley_shift(E.rc().innerClass(),theta,ww);
 	  assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
 	  int tf_alpha = (E.ctxt.g() - E.l).dot(alpha) - rd.level(n_alpha);
@@ -1413,7 +1413,7 @@ DescValue type (const param& E, const ext_gen& p,
 KGBElt twisted (const KGB& kgb, KGBElt x,
 		const WeightInvolution& delta, const weyl::Twist& twist)
 {
-  RatCoweight g_rho_l = kgb.torus_part_global(x);
+  RatCoweight g_rho_l = kgb.torus_factor(x);
   delta.right_mult(g_rho_l.numerator());
   const RatCoweight diff = (g_rho_l - kgb.base_grading_vector()).normalize();
   if (diff.denominator()!=1)
@@ -1421,10 +1421,10 @@ KGBElt twisted (const KGB& kgb, KGBElt x,
 
   TorusPart delta_t(diff.numerator());
 
-  const WeylGroup& W = kgb.complexGroup().weylGroup();
+  const WeylGroup& W = kgb.innerClass().weylGroup();
   TitsElt te = kgb.titsElt(x);
   WeylElt delta_w = W.translation(te.w(),twist); // act on twisted involution
-  TitsElt delta_te (kgb.complexGroup().titsGroup(),delta_t,delta_w);
+  TitsElt delta_te (kgb.innerClass().titsGroup(),delta_t,delta_w);
   return kgb.lookup(delta_te);
 }
 

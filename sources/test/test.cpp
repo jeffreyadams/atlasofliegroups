@@ -813,7 +813,7 @@ void srtest_f()
   prettyprint::printVector(std::cout << " converted to (1/2)",khc.lift(sr));
 
   const TwistedInvolution& canonical =
-    G.complexGroup().involution_of_Cartan(sr.Cartan());
+    G.innerClass().involution_of_Cartan(sr.Cartan());
   if (kgb.involution(x)!=canonical)
     prettyprint::printWeylElt(std::cout << " at involution ",
 			      canonical, G.weylGroup());
@@ -826,7 +826,7 @@ bool examine(RealReductiveGroup& G)
 {
   const KGB& kgb=G.kgb();
   TorusPart t0 = kgb.torus_part(0);
-  TorusPart t1 = G.complexGroup().x0_torus_part(G.realForm());
+  TorusPart t1 = G.innerClass().x0_torus_part(G.realForm());
   return t0==t1;
 }
 
@@ -837,7 +837,7 @@ void exam_f()
     std::cout << "x0 torus bits constistent with traditional ones";
   else
     std::cout << "x0 torus bits changed from " << G.kgb().torus_part(0)
-	      << " to " << G.complexGroup().x0_torus_part(G.realForm());
+	      << " to " << G.innerClass().x0_torus_part(G.realForm());
   std::cout << std::endl;
 }
 
