@@ -839,30 +839,21 @@ Grading compacts_for(const InnerClass& G, TorusElement coch)
   return result;
 }
 
-// So we shall actually use the following section of that map
-
-// Find central torus element $t$ whose square class admits |compacts| grading
-// it isn't unique. Make straightforward choice, with $\exp(2i\pi t)$ central
-TorusElement sample_square(const RootDatum& rd, Grading compacts)
-{
-  RatWeight coch (rd.rank());
-  for (RankFlags::iterator it=compacts.begin(); it(); ++it)
-    coch += rd.fundamental_coweight(*it);
-  return y_values::exp_2pi(coch); // $2\pi$ makes this a central torus element
-}
-
-// The above is integrated into |some_coch|, selecting coweight for square class
+// The function |some_coch| defines an elected cocharacter for the square class
 
 // some coweight $t$ with real form of $\exp(i\pi t)\delta_1$ in class |csc|
 // this becomes |g_rho_check()| value for all non-synthetic real forms in |csc|
-RatCoweight some_coch
-  (const InnerClass& G,cartanclass::square_class csc)
+RatCoweight some_coch (const InnerClass& G,cartanclass::square_class csc)
 {
   const RootDatum& rd=G.rootDatum();
-  auto gr = G.simple_roots_x0_compact(G.square_class_repr(csc));
+  auto compacts = G.simple_roots_x0_compact(G.square_class_repr(csc));
   // got some grading associated to |csc|; get representative cocharacter for it
+  RatWeight coch_rep (rd.rank());
+  for (RankFlags::iterator it=compacts.begin(); it(); ++it)
+    coch_rep += rd.fundamental_coweight(*it);
+  assert(compacts_for(G,y_values::exp_pi(coch_rep))==compacts);
   return y_values::stable_log // for elected square root of sample square
-    (sample_square(rd,gr),G.distinguished().transposed());
+    (y_values::exp_2pi(coch_rep),G.distinguished().transposed());
 } // |some_coch|
 
 
