@@ -320,22 +320,41 @@ struct param // prefer |struct| with |const| members for ease of access
   const context& ctxt;
   const TwistedInvolution tw; // implicitly defines $\theta$
 
-  const Coweight l; // with |tw| gives a |GlobalTitsElement|; lifts its |t|
-  const Weight lambda_rho; // lift of that value in a |StandardRepr|
-  const Weight tau; // a solution to $(1-\theta)*\tau=(\delta-1)\lambda_\rho$
-  const Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
+private:
+  Coweight d_l; // with |tw| gives a |GlobalTitsElement|; lifts its |t|
+  Weight d_lambda_rho; // lift of that value in a |StandardRepr|
+  Weight d_tau; // a solution to $(1-\theta)*\tau=(\delta-1)\lambda_\rho$
+  Coweight d_t; // a solution to $t(1-theta)=l(\delta-1)$
 
+public:
   param (const context& ec, const StandardRepr& sr);
   param (const context& ec, KGBElt x, const Weight& lambda_rho);
   param (const context& ec, const TwistedInvolution& tw,
 	 Weight lambda_rho, Weight tau, Coweight l, Coweight t);
 
+  param (const param& p) = default;
   param (param&& p)
   : ctxt(p.ctxt), tw(std::move(p.tw))
-  , l(std::move(p.l))
-  , lambda_rho(std::move(p.lambda_rho)), tau(std::move(p.tau))
-  , t(std::move(p.t))
+  , d_l(std::move(p.d_l))
+  , d_lambda_rho(std::move(p.d_lambda_rho))
+  , d_tau(std::move(p.d_tau))
+  , d_t(std::move(p.d_t))
   {}
+
+  param& operator= (const param& p)
+  { assert(tw==p.tw); // cannot assign this, so it should match
+    d_l=p.d_l; d_lambda_rho=p.d_lambda_rho; d_tau=p.d_tau; d_t=p.d_t;
+  }
+  param& operator= (param&& p)
+  { assert(tw==p.tw); // cannot assign this, so it should match
+    d_l=std::move(p.d_l); d_lambda_rho=std::move(p.d_lambda_rho);
+    d_tau=std::move(p.d_tau); d_t=std::move(p.d_t);
+  }
+
+  const Coweight& l () const { return d_l; }
+  const Weight& lambda_rho () const { return d_lambda_rho; }
+  const Weight& tau () const { return d_tau; }
+  const Coweight& t () const { return d_t; }
 
   const repr::Rep_context rc() const { return ctxt.rc(); }
   const WeightInvolution& delta () const { return ctxt.delta(); }
