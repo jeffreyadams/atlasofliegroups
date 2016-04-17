@@ -356,6 +356,11 @@ public:
   const Weight& tau () const { return d_tau; }
   const Coweight& t () const { return d_t; }
 
+  void set_l (Coweight l) { d_l=l; }
+  void set_lambda_rho (Weight lambda_rho) { d_lambda_rho=lambda_rho; }
+  void set_tau (Weight tau) { d_tau=tau; }
+  void set_t (Coweight t) { d_t=t; }
+
   const repr::Rep_context rc() const { return ctxt.rc(); }
   const WeightInvolution& delta () const { return ctxt.delta(); }
   const WeightInvolution& theta () const
@@ -379,6 +384,8 @@ KGBElt x(const param& E); // reconstruct |E|
 bool same_standard_reps (const param& E, const param& F);
 // whether |E| and |F| give opposite sign, assuming |same_standard_reps(E,F)|
 bool signs_differ (const param& E, const param& F);
+inline int sign_between (const param& E, const param& F)
+  { return signs_differ(E,F) ? -1 : 1; }
 
 // find out type of extended parameters, and push its neighbours onto |links|
 DescValue type (const param& E, const ext_gen& p,
