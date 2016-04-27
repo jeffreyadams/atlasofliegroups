@@ -25,12 +25,12 @@ namespace commands {
 
   commands::CommandNode mainNode();
   extern commands::CommandTree& main_mode; // defined in commands.cpp
-  InnerClass& currentComplexGroup();
+  InnerClass& current_inner_class();
   InnerClass& current_dual_group();
   const lietype::Layout& current_layout();
   const WeightList& current_lattice_basis();
   output::Interface& currentComplexInterface();
-  void replaceComplexGroup(InnerClass*,output::Interface*);
+  void replace_inner_class(InnerClass*,output::Interface*);
 
 } // |namespace commands|
 

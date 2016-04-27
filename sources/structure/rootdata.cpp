@@ -994,7 +994,7 @@ WeylWord RootDatum::to_dominant(Weight v) const
 
   NOTE: not intended for heavy use. If that were the case, it would be better
   to use the decomposition of ww into pieces, and multiply those together.
-  However, that would be for the ComplexGroup to do, as it is it that has
+  However, that would be for the InnerClass to do, as it is it that has
   access to both the Weyl group and the root datum.
 */
 WeightInvolution RootDatum::matrix(const WeylWord& ww) const

@@ -325,7 +325,7 @@ void extblock_f()
 {
   ensure_full_block();
   ext_block::extended_block eblock(current_param_block(),
-				   currentComplexGroup().twistedWeylGroup());
+				   current_inner_class().twistedWeylGroup());
   ioutils::OutputFile file;
   eblock.print_to(file);
 }
@@ -343,7 +343,7 @@ void gextblock_f()
 	      << " for the current block." << std::endl;
     return;
   }
-  ext_block::ext_block eblock(currentComplexGroup(),block,
+  ext_block::ext_block eblock(current_inner_class(),block,
 			      currentRealGroup().kgb(),delta);
   if (check(eblock,block))
   {
