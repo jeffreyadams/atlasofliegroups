@@ -154,7 +154,7 @@ void real_mode_entry() throw(EntryError)
   try
   {
     RealFormNbr rf = interactive::get_real_form(currentComplexInterface());
-    G_R_pointer=new RealReductiveGroup(currentComplexGroup(),rf);
+    G_R_pointer=new RealReductiveGroup(current_inner_class(),rf);
     rt = new Rep_table(currentRealGroup());
   }
   catch(error::InputError& e)
@@ -174,7 +174,7 @@ void realform_f()
   try
   { // we can call the swap method for rvalues, but not with and rvalue arg
     RealFormNbr rf = interactive::get_real_form(currentComplexInterface());
-  RealReductiveGroup(currentComplexGroup(),rf).swap(currentRealGroup());
+  RealReductiveGroup(current_inner_class(),rf).swap(currentRealGroup());
     delete rt; rt = new Rep_table(currentRealGroup());
     drop_to(real_mode); // drop invalidated descendant modes if called from them
   }

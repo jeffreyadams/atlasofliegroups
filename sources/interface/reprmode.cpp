@@ -327,7 +327,7 @@ void blocktwist_f()
 void extblock_f()
 {
   ext_block::extended_block eblock(current_param_block(),
-				   currentComplexGroup().twistedWeylGroup());
+				   current_inner_class().twistedWeylGroup());
   ioutils::OutputFile file;
   eblock.print_to(file);
 }
