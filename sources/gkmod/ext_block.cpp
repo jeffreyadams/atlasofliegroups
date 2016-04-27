@@ -129,6 +129,15 @@ bool has_defect(DescValue v)
 int generator_length(DescValue v)
 { return v<two_complex_ascent ? 1 : v<three_complex_ascent ? 2 : 3; }
 
+// find element |n| such that |z(n)>=zz|
+BlockElt ext_block::element(BlockElt zz) const
+{
+  BlockElt n=0;
+  while (n<size() and z(n)<zz)
+    ++n;
+  return n;
+}
+
 context::context
   (const repr::Rep_context& rc, WeightInvolution delta, const RatWeight& gamma)
     : d_rc(rc)
@@ -274,6 +283,48 @@ bool sign_differs_with_one_of (const param& E, const param& F1, const param& F2)
 
 bool is_default (const param& E)
 { return not signs_differ(E,param(E.ctxt,x(E),E.lambda_rho())); }
+
+void ext_block::add_neighbours
+  (BlockEltList& dst, weyl::Generator s, BlockElt n) const
+{
+  const BlockEltPair& links = data[s][n].links;
+  if (links.first==UndefBlock)
+    return;
+  dst.push_back(links.first);
+  if (links.second==UndefBlock)
+    return;
+  dst.push_back(links.second);
+}
+
+// whether link for |s| from |x| to |y| has a signe flip attached
+int ext_block::epsilon(weyl::Generator s, BlockElt x, BlockElt y ) const
+{
+  BlockEltPair p= x<y ? std::make_pair(x,y) : std::make_pair(y,x);
+  int sign = flipped_edges.count(p)==0 ? 1 : -1;
+
+  // each 2i12/21r21 quadruple has one negative sign not using |flipped_edges|
+  if (has_quadruple(descent_type(s,x)) and
+      data[s][x].links.second==y and data[s][y].links.second==x)
+    sign = -sign; // it is between second elements in both pairs of the quad
+
+  return sign;
+}
+
+BlockEltList ext_block::down_set(BlockElt n) const
+{
+  BlockEltList result; result.reserve(rank());
+  for (weyl::Generator s=0; s<rank(); ++s)
+  {
+    const DescValue type = descent_type(s,n);
+    if (is_descent(type) and not is_like_compact(type))
+    {
+      result.push_back(data[s][n].links.first);
+      if (has_double_image(type))
+	result.push_back(data[s][n].links.second);
+    }
+  }
+  return result;
+}
 
 DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 			BlockElt& link)
@@ -2033,14 +2084,16 @@ BlockElt ext_block::some_scent(weyl::Generator s, BlockElt n) const
   return c;
 }
 
+BlockElt ext_block::Cayley(weyl::Generator s, BlockElt n) const
+{
+  return  is_complex(descent_type(s,n)) ? UndefBlock : data[s][n].links.first;
+}
+
 BlockEltPair ext_block::Cayleys(weyl::Generator s, BlockElt n) const
 {
   const DescValue type = descent_type(s,n);
-  if (has_double_image(type))
-    return data[s][n].links;
-  if (is_complex(type) or is_like_compact(type) or is_like_nonparity(type))
-    return {UndefBlock,UndefBlock};
-  return {data[s][n].links.first,UndefBlock};
+  assert(has_double_image(type));
+  return data[s][n].links;
 }
 
 
@@ -2169,6 +2222,63 @@ bool check(const ext_block eb, const param_block& block)
   } // |for(n)|
   return true;
 }
+
+// coefficient of neighbour |sx| for $s$ in action $(T_s+1)*a_x$
+Pol ext_block::T_coef(weyl::Generator s, BlockElt sx, BlockElt x) const
+{
+  DescValue v = descent_type(s,x);
+  if (not is_descent(v))
+  {
+    if (x==sx) // diagonal coefficient
+      if (has_defect(v))
+	return Pol(1,1)+Pol(1); // $q+1$
+      else  // $0$, $1$, or $2$
+	return Pol(is_like_nonparity(v) ? 0 : has_double_image(v) ? 2 : 1);
+    else if (is_like_type_1(v) and sx==cross(s,x)) // type 1 imaginary cross
+    {
+      BlockElt y = Cayley(s,x); // pass via this element for signs
+      int sign = epsilon(s,x,y)*epsilon(s,sx,y); // combine two Cayley signs
+      return Pol(sign);
+    }
+    else // below diagonal coefficient
+    {
+      assert (data[s][x].links.first==sx or data[s][x].links.second==sx);
+      int sign = epsilon(s,x,sx);
+      if (has_defect(v)) // $\pm(q+1)$
+	return Pol(1,sign)+Pol(sign);
+      else
+	return Pol(sign); // $\pm1$
+    }
+  } // |if (not is_descent(v))|
+
+  int k = orbit(s).length();
+  Pol result(k,1); // start with $q^k$
+  if (x==sx) // diagonal coefficient
+  {
+    if (has_double_image(v))  // diagonal coefficient
+      result[0] = -1; // $q^k-1$
+    else if (is_like_compact(v))
+      result[0] = 1; // $q^k+1$
+    else if (has_defect(v))
+      result[1] = -1; // $q^k-q$
+    // |else| leave $q^k$
+  }
+  else if (is_like_type_2(v) and sx==cross(s,x)) // type 2 real cross
+  {
+    BlockElt y = Cayley(s,x); // pass via Cayley descent for signs
+    int sign = epsilon(s,y,x)*epsilon(s,y,sx); // combine two Cayley signs
+    return Pol(-sign); // forget term $q^k$, return $\mp 1$ instead
+  }
+  else // remaining cases involve descending edge (above-diagonal coefficient)
+  {
+    assert (data[s][x].links.first==sx or data[s][x].links.second==sx);
+    if (not is_complex(v))
+      result[has_defect(v) ? 1 : 0] = -1; // change into $q^k-1$ or $q^k-q$
+    result *= epsilon(s,x,sx); // flip sign according to chosen edge
+  }
+
+  return result;
+} // |extended_block::T_coef|
 
 } // |namespace ext_block|
 
