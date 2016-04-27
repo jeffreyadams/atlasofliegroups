@@ -142,69 +142,6 @@ std::ostream& param_block::print
 
 namespace ext_block {
 
-std::ostream& extended_block::print_to (std::ostream& strm) const
-{
-  if (size()==0)
-    return strm << "Empty extended block (block is not twist-stable)."
-		<< std::endl;
-  // compute maximal width of entry
-  int width = ioutils::digits(z(size()-1),10ul);
-  int lwidth = ioutils::digits(length(size()-1),10ul);
-
-  const int pad = 2;
-
-  for (BlockElt n=0; n<size(); ++n)
-  {
-    // print parent entry number
-    strm << std::setw(width) << z(n);
-
-    // print length
-    strm << std::setw(lwidth+pad) << length(n) << std::setw(pad) << "";
-
-    // print descents types
-    if (rank()==0)
-      strm << '[';
-    else
-      for (weyl::Generator s=0; s<rank(); ++s)
-	strm << (s==0 ? '[' : ',') << descent_code(descent_type(s,n));
-    strm << ']';
-
-    // print cross actions
-    for (weyl::Generator s = 0; s < rank(); ++s)
-    {
-      strm << std::setw(width+pad);
-      if (cross(s,n)==UndefBlock) strm << '*';
-      else strm << z(cross(s,n));
-    }
-    strm << std::setw(pad+1) << "";
-
-    // print Cayley transforms
-    for (size_t s = 0; s < rank(); ++s)
-    {
-      strm << '(' << std::setw(width);
-      if (is_complex(descent_type(s,n)) or data[s][n].links.first==UndefBlock)
-	strm << '*';
-      else strm << z(data[s][n].links.first);
-      strm << ',' << std::setw(width);
-      if (has_double_image(descent_type(s,n))
-	  and data[s][n].links.second!=UndefBlock)
-	strm << z(data[s][n].links.second);
-      else
-	strm << '*';
-      strm << ')' << std::setw(pad) << "";
-    }
-
-    weyl::InvolutionWord dec =
-      tW.extended_involution_expr(parent.involution(z(n)));
-    for (size_t i=0; i<dec.size(); ++i)
-      if (dec[i]>=0) strm << static_cast<char>('1'+dec[i]) << '^';
-      else strm << static_cast<char>('1'+~dec[i]) << 'x';
-    strm << 'e' << std::endl;
-  } // |for (n)|
-
-  return strm;
-} // |print_to|
-
 std::ostream& ext_block::print_to (std::ostream& strm) const
 {
   if (size()==0)

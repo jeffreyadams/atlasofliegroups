@@ -324,8 +324,11 @@ void blocktwist_f()
 void extblock_f()
 {
   ensure_full_block();
-  ext_block::extended_block eblock(current_param_block(),
-				   current_inner_class().twistedWeylGroup());
+  ext_block::ext_block eblock
+    (current_inner_class(),
+     current_param_block(),
+     currentRealGroup().kgb(),
+     current_inner_class().distinguished());
   ioutils::OutputFile file;
   eblock.print_to(file);
 }
