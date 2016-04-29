@@ -348,7 +348,7 @@ void gextblock_f()
   }
   ext_block::ext_block eblock(current_inner_class(),block,
 			      currentRealGroup().kgb(),delta);
-  if (check(eblock,block))
+  if (check(eblock,block,true))
   {
     std::cout << "Extended block structure checked successfully." << std::endl;
     ioutils::OutputFile file;

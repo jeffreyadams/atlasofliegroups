@@ -296,18 +296,28 @@ void ext_block::add_neighbours
   dst.push_back(links.second);
 }
 
-// whether link for |s| from |x| to |y| has a signe flip attached
+void ext_block::flip_edge(weyl::Generator s, BlockElt x, BlockElt y)
+{
+  BlockEltPair p= data[s][x].links;
+  int i= p.first==y ? 0 : p.second==y ? 1 : -1;
+  assert(i>=0);
+  info[x].flips[i].flip(s);
+}
+
+// whether link for |s| from |x| to |y| has a sign flip attached
 int ext_block::epsilon(weyl::Generator s, BlockElt x, BlockElt y ) const
 {
-  BlockEltPair p= x<y ? std::make_pair(x,y) : std::make_pair(y,x);
-  int sign = flipped_edges.count(p)==0 ? 1 : -1;
+  BlockEltPair p= data[s][x].links;
+  int i= p.first==y ? 0 : p.second==y ? 1 : -1;
+  assert(i>=0);
+  bool flip = info[x].flips[i][s];
 
-  // each 2i12/21r21 quadruple has one negative sign not using |flipped_edges|
+  // each 2i12/21r21 quadruple has one implicit negative sign not using |flips|
   if (has_quadruple(descent_type(s,x)) and
-      data[s][x].links.second==y and data[s][y].links.second==x)
-    sign = -sign; // it is between second elements in both pairs of the quad
+      i==1 and data[s][y].links.second==x)
+    flip = not flip; // it is between second elements in both pairs of the quad
 
-  return sign;
+  return flip ? -1 : 1;
 }
 
 BlockEltList ext_block::down_set(BlockElt n) const
@@ -1816,28 +1826,6 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 } // |star|
 
 
-// move to standard form, return sign of change; root is integrally-simple
-int normalize_1i1 (param& E, RootNbr n_alpha)
-{ const param E0=E;
-  const InnerClass& ic = E.rc().innerClass();
-  const InvolutionTable& i_tab = ic.involution_table();
-  const RootDatum& rd = E.rc().rootDatum();
-  const Weight alpha=rd.root(n_alpha);
-  const Weight alpha_v=rd.coroot(n_alpha);
-  const int tf_alpha = (E.ctxt.g() - E.l()).dot(alpha)-rd.level(n_alpha);
-  assert(E.t().dot(alpha)==0); // follows from $\delta*\alpha=\alpha$
-  // too hard to do: |assert(level_a(E,Cayley_shift(theta,ww),n_alpha)==0);|
-
-  const WeightInvolution th_1 = // theta upstairs minus identity
-    rd.root_reflection(n_alpha) * i_tab.matrix(E.tw) - 1;
-
-  Weight diff = matreduc::find_solution(th_1,alpha); // MINUS $\sigma$
-
-  E.set_l(E.l()+alpha_v*(tf_alpha/2));
-  E.set_tau(E.tau()+diff*alpha_v.dot(E.tau()));
-  return signs_differ(E0,E) ? -1 : 1;
-}
-
 // act by external twist |delta| on KGB element |x|
 KGBElt twisted (const KGB& kgb, KGBElt x,
 		const WeightInvolution& delta, const weyl::Twist& twist)
@@ -1896,7 +1884,6 @@ ext_block::ext_block // for external twist; old style blocks
   , d_delta(delta)
   , info()
   , data(orbits.size()) // create that many empty vectors
-  , flipped_edges()
 {
   BitMap fixed_points(block.size());
 
@@ -1928,7 +1915,6 @@ ext_block::ext_block // for an external twist
   , d_delta(delta)
   , info()
   , data(orbits.size()) // create that many empty vectors
-  , flipped_edges()
 {
   BitMap fixed_points(block.size());
 
@@ -2099,7 +2085,7 @@ BlockEltPair ext_block::Cayleys(weyl::Generator s, BlockElt n) const
 
 
 // check validity, by comparing with results found using extended parameters
-bool check(const ext_block eb, const param_block& block)
+bool check(ext_block eb, const param_block& block, bool verbose)
 {
   context ctxt (block.context(),eb.delta(),block.gamma());
   containers::sl_list<param> links;
@@ -2133,8 +2119,12 @@ bool check(const ext_block eb, const param_block& block)
 	  param F(ctxt,block.x(cz),block.lambda_rho(cz));
 	  assert(same_standard_reps(*it,F));
 	  if (sign!=sign_between(*it,F))
-	    std::cout << "Flip at cross link " << unsigned{s} << " from " << z
-		      << " to " << cz << '.' << std::endl;
+	  {
+	    eb.flip_edge(s,n,m);
+	    if (verbose)
+	      std::cout << "Flip at cross link " << unsigned{s}
+                        << " from " << z << " to " << cz << '.' << std::endl;
+	  }
 	} break;
       case one_imaginary_single: case one_real_single:
       case two_imaginary_single_single: case two_real_single_single:
@@ -2144,15 +2134,23 @@ bool check(const ext_block eb, const param_block& block)
 	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
 	  assert(same_standard_reps(*it,F));
 	  if (sign!=sign_between(*it,F))
-	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
-		      << " to " << Cz << '.' << std::endl;
+	  {
+	    eb.flip_edge(s,n,m);
+	    if (verbose)
+	      std::cout << "Flip at Cayley link " << unsigned{s}
+	                << " from " << z << " to " << Cz << '.' << std::endl;
+	  }
 	  ++it;
 	  m=eb.cross(s,n); BlockElt cz = eb.z(m);
 	  param Fc(ctxt,block.x(cz),block.lambda_rho(cz));
 	  assert(same_standard_reps(*it,Fc));
 	  if (sign!=sign_between(*it,Fc))
-	    std::cout << "Flip at cross link " << unsigned{s} << " from " << z
-		      << " to " << cz << '.' << std::endl;
+	  {
+	    eb.flip_edge(s,n,m);
+	    if (verbose)
+	      std::cout << "Flip at cross link " << unsigned{s}
+	                << " from " << z << " to " << cz << '.' << std::endl;
+	  }
 	} break;
       case two_semi_imaginary: case two_semi_real:
       case three_semi_imaginary: case three_real_semi:
@@ -2163,8 +2161,12 @@ bool check(const ext_block eb, const param_block& block)
 	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
 	  assert(same_standard_reps(*it,F));
 	  if (sign!=sign_between(*it,F))
-	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
-		      << " to " << Cz << '.' << std::endl;
+	  {
+	    eb.flip_edge(s,n,m);
+	    if (verbose)
+	      std::cout << "Flip at Cayley link " << unsigned{s}
+		      << " from " << z << " to " << Cz << '.' << std::endl;
+	  }
 	} break;
       case one_imaginary_pair_fixed: case one_real_pair_fixed:
       case two_imaginary_double_double: case two_real_double_double:
@@ -2181,11 +2183,19 @@ bool check(const ext_block eb, const param_block& block)
 		   same_standard_reps(*std::next(it),F0));
 	  unsigned iF0 = straight ? 0 : 1; // |links| index that pairs with |F0|
 	  if (sign!=sign_between(*std::next(it,iF0),F0))
-	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
-		      << " to " << Cz0 << '.' << std::endl;
+	  {
+	    eb.flip_edge(s,n,m.first);
+	    if (verbose)
+	      std::cout << "Flip at Cayley link " << unsigned{s}
+			<< " from " << z << " to " << Cz0 << '.' << std::endl;
+	  }
 	  if (sign!=sign_between(*std::next(it,1-iF0),F1))
-	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
-		      << " to " << Cz1 << '.' << std::endl;
+	  {
+	    eb.flip_edge(s,n,m.second);
+	    if (verbose)
+	      std::cout << "Flip at Cayley link " << unsigned{s}
+			<< " from " << z << " to " << Cz1 << '.' << std::endl;
+	  }
 	} break;
       case two_imaginary_single_double_fixed: case two_real_single_double_fixed:
 	{ assert(links.size()==3);
@@ -2201,21 +2211,34 @@ bool check(const ext_block eb, const param_block& block)
 		   same_standard_reps(*std::next(it),F0));
 	  unsigned iF0 = straight ? 0 : 1; // |links| index that pairs with |F0|
 	  if (sign!=sign_between(*std::next(it,iF0),F0))
-	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
-		      << " to " << Cz0 << '.' << std::endl;
+	  {
+	    eb.flip_edge(s,n,m.first);
+	    if (verbose)
+	      std::cout << "Flip at Cayley link " << unsigned{s}
+			<< " from " << z << " to " << Cz0 << '.' << std::endl;
+	  }
 	  if (sign!=sign_between(*std::next(it,1-iF0),F1))
-	    std::cout << "Flip at Cayley link " << unsigned{s} << " from " << z
-		      << " to " << Cz1 << '.' << std::endl;
+	  {
+	    eb.flip_edge(s,n,m.second);
+	    if (verbose)
+	      std::cout << "Flip at Cayley link " << unsigned{s}
+			<< " from " << z << " to " << Cz1 << '.' << std::endl;
+	  }
 	  // check the false cross link
 	  std::advance(it,2);
 	  m = eb.Cayleys(s,m.first);
-	  BlockElt fcz = eb.z(m.first==n ? m.second : m.first);
+	  auto m0= m.first==n ? m.second : m.first;
+	  BlockElt fcz = eb.z(m0);
 	  assert(fcz==block.cross(p.s0,z) and fcz==block.cross(p.s1,z));
 	  param F(ctxt,block.x(fcz),block.lambda_rho(fcz));
 	  assert(same_standard_reps(*it,F));
 	  if (sign!=sign_between(*it,F))
-	    std::cout << "Flip at false cross link " << unsigned{s}
-		      << " from " << z << " to " << fcz << '.' << std::endl;
+	  {
+	    // no |eb.flip_edge(s,n,m0)| as it is not a true neighbour
+	    if (verbose)
+	      std::cout << "Flip at false cross link " << unsigned{s}
+			<< " from " << z << " to " << fcz << '.' << std::endl;
+	  }
 	} break;
       } // |switch(tp)|
     } // |for(s)|

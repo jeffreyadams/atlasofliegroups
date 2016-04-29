@@ -106,7 +106,8 @@ class ext_block
   {
     BlockElt z; // index into parent |Block_base| structure
     unsigned short length; // length for extended group
-  elt_info(BlockElt zz): z(zz),length(0) {}
+    RankFlags flips[2];
+    elt_info(BlockElt zz): z(zz),length(0),flips{{},{}} {}
 
   // methods that will allow building a hashtable with |info| as pool
     typedef std::vector<elt_info> Pooltype;
@@ -119,6 +120,7 @@ class ext_block
   {
     DescValue type;
     BlockEltPair links; // one or two values, depending on |type|
+
   block_fields(DescValue t) : type(t),links(UndefBlock,UndefBlock) {}
   };
 
@@ -130,8 +132,6 @@ class ext_block
 
   std::vector<elt_info> info; // its size defines the size of the block
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
-
-  std::set<BlockEltPair> flipped_edges;
 
  public:
 
@@ -145,7 +145,7 @@ class ext_block
 	    const WeightInvolution& delta);
 
 // manipulators
-
+  void flip_edge(weyl::Generator s, BlockElt x, BlockElt y);
 
 // accessors
 
@@ -301,7 +301,7 @@ inline int sign_between (const param& E, const param& F)
 DescValue type (const param& E, const ext_gen& p,
 		containers::sl_list<param>& links);
 
-bool check(const ext_block eb, const param_block& block);
+bool check(ext_block eb, const param_block& block, bool verbose=false);
 
 } // |namespace ext_block|
 
