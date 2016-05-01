@@ -1353,16 +1353,18 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 
 	  // normalise
 	  E.set_tau(E.tau()+diff*tau_coef);
-	  E.set_l(E.l()+alpha_v*(tf_alpha/2));
+	  auto new_l = E.l()+alpha_v*(tf_alpha/2);
+	  E.set_l(tf_alpha%4==0 ? new_l : new_l-alpha_v); // retain parity
 
 	  links.push_back(param // Cayley link
 			  (E.ctxt,new_tw,
 			   E.lambda_rho() + first + rho_r_shift, E.tau(),
-			   E.l(), E.t()
+			   new_l, E.t()
 			   ));
 	  links.push_back(param // cross link
 			  (E.ctxt,E.tw,
-			   E.lambda_rho(),E.tau(), E.l()+alpha_v,E.t()));
+			   E.lambda_rho(),E.tau(),
+			   tf_alpha%4==0 ? new_l-alpha_v : new_l, E.t()));
 	} // end of type 1 case
 	else
 	{ // type 2; now we need to distinguish 1i2f and 1i2s
@@ -1377,7 +1379,7 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 
 	  // normalise
 	  E.set_tau(E.tau()+alpha*(tau_coef/2));
-	  E.set_l(E.l()+alpha_v*(tf_alpha/2));
+	  E.set_l(E.l()+alpha_v*(tf_alpha/2)); // no need to retain parity here
 
 	  links.push_back(param // first Cayley link
 			  (E.ctxt,new_tw,
@@ -1410,9 +1412,7 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s0),E.tw);
 
-	E.set_lambda_rho(E.lambda_rho() + alpha*(level/2));
-
-	Weight new_lambda_rho = E.lambda_rho()-rho_r_shift;
+	Weight new_lambda_rho = E.lambda_rho() + alpha*(level/2) - rho_r_shift;
 	assert((E.ctxt.gamma()-new_lambda_rho).dot(alpha_v)
 	       ==rd.colevel(n_alpha)); // check that |level_a| did its work
 
@@ -1446,6 +1446,7 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 	    return one_real_pair_switched;
 	  result = one_real_pair_fixed; // what remains is case 1r1f
 
+	  E.set_lambda_rho(E.lambda_rho() + alpha*(level/2));
 	  E.set_t(E.t() - alpha_v*(t_alpha/2));
 
 	  links.push_back(param // first Cayley link
@@ -1466,6 +1467,8 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 	    matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
 				    alpha_v);
 
+	  E.set_lambda_rho(E.lambda_rho() // must keep parity of alpha here
+			   + alpha*(2*arithmetic::divide(level,4)));
 	  E.set_t(E.t() - diff*t_alpha);
 
 	  links.push_back(param // Cayley link
@@ -1475,7 +1478,9 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 			   E.l(), E.t()
 			   ));
 	  links.push_back(param // cross link
-	        (E.ctxt,E.tw, E.lambda_rho()+alpha ,E.tau(),E.l(),E.t()));
+	        (E.ctxt,E.tw,
+		 E.lambda_rho()+(level%4==0 ? -alpha : alpha),
+		 E.tau(),E.l(),E.t()));
 	}
       }
       else // length 1 complex case
@@ -1821,6 +1826,7 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
     }
     break;
   }
+  assert(same_standard_reps(E0,E));
   sign *= sign_between(E0,E);
   return result;
 } // |star|
