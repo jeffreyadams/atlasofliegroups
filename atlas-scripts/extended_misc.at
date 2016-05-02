@@ -29,6 +29,7 @@ set Cayley (int s,Param p) = Param:
   let alpha = simple_roots(
     integrality_datum(real_form(p),infinitesimal_character(p)))
   in Cayley(alpha[s],p)
+set inv_Cayley = Cayley@(int,Param) { leave this defined for other scripts }
 
 { Cayley transform as a set (actually an array, but order doesn't matter) }
 set Cayley_set (int j,Param p) = [Param]:
