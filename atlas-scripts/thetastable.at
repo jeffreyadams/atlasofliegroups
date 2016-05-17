@@ -33,25 +33,27 @@ set rho_u_cx (Parabolic P) = ratvec:
   {use the most compact Cartan in L}
   sum(columns_with(is_complex(x_min(P)),nilrad_roots(P))) / 2
 
+{rho_u_cx(P) is not necessarily in X^*
+ rho_u_cx_T(P) \in X^*, same restriction to T_K0, i.e. same image modulo (1-delta)X^*
+ need this to define \rho_u_cap_k
+}
 {
-  rho_u_cx(P) is not necessarily in X^*
-  rho_u_cx_T(P) \in X^*, same restriction to T_K0,
-  i.e. same image modulo (1-delta)X^* (need this to define \rho_u_cap_k)
-  in rho_u_cx(P) have terms (alpha+theta(alpha)/2, replace these with alpha,
-  which has the same restriction
-  rho_S(theta,rd): each pair alpha,theta(alpha) contributes alpha/2
-  so 2*rho_S(theta,rd) contribution is \alpha, which is what we want
+set two_rho_u_cx(Parabolic P)=vec:
+assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+let x=x_min(P) then
+rd=root_datum(x) then
+rd_L=root_datum(Levi(P)) then
+theta=involution(x) in ratvec_as_vec(2*rho_S(theta,rd)-2*rho_S(theta,rd_L))
 }
 
-set rho_u_cx_T (Parabolic P) = vec:
-  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
-  let x=x_min(P)
-  then rd=root_datum(x), rd_L=root_datum(Levi(P)), theta=involution(x)
-  in ratvec_as_vec(2*rho_S(theta,rd)-2*rho_S(theta,rd_L))
+set rho_u_cx_T(Parabolic P)=vec:
+assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+let x=x_min(P) then
+rd=root_datum(x) then
+rd_L=root_datum(Levi(P)) then
+theta=involution(x) in ratvec_as_vec(2*rho_S(theta,rd)-2*rho_S(theta,rd_L))
 
-{ \rho_u_ic(P) is in \t^* as a subset of \h^*s
-  =1/2 the sum of the imaginary, compact roots in u
-}
+{ \rho_u_ic(P) is in \t^* as a subset of \h^* }
 set rho_u_ic (Parabolic P) = ratvec:
   assert(is_parabolic_theta_stable(P),"P is not theta-stable");
   let
@@ -64,9 +66,13 @@ set two_rho_u_cap_k (Parabolic P) = vec:
 set two_rho_u_cap_s (Parabolic P) = vec:
   ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P)
 
-{these give the same restriction to T_K0, but aren't necessarily integral:}
 set rho_u_cap_k (Parabolic P) = ratvec: rho_u_cx(P)/2+rho_u_ic(P)
 set rho_u_cap_s (Parabolic P) = ratvec: rho_u(P)-rho_u_cap_k(P)
+
+set two_rho_u_cap_k_alt (Parabolic P) = vec:
+  ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P))
+set two_rho_u_cap_s (Parabolic P) = vec:
+  ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k_alt(P)
 
 set dim_u_cap_k (Parabolic (,x):P) = int:
   let sum=0/1 in

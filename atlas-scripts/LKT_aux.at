@@ -165,7 +165,7 @@ let rd=root_datum(x) then
 diff=lambda-mu_3_orig then
 S=[int]:[] in
  for i:ss_rank(rd) do if fundamental_coweight(rd,i)*diff>0 then S#:=i fi od;
- parabolic(S,y)
+ Parabolic:(S,y)
 
 {go from highest weight to K_types [KParam]  mu -> [p_1,...,p_r]
  multivalued: LKT_highest_weight(p_i)=mu
