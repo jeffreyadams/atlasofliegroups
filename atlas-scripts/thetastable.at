@@ -29,11 +29,20 @@ set rho_u_cx (Parabolic P) = ratvec:
   {use the most compact Cartan in L}
   sum(columns_with(is_complex(x_min(P)),nilrad_roots(P))) / 2
 
-{2*rho_u_cx(P) is not necessarily in X^*
- 2*rho_u_cx_alt(P) \in X^*, same restriction to T_K0, i.e. same image modulo (1-delta)X^*
+{rho_u_cx(P) is not necessarily in X^*
+ rho_u_cx_T(P) \in X^*, same restriction to T_K0, i.e. same image modulo (1-delta)X^*
  need this to define \rho_u_cap_k
 }
+{
 set two_rho_u_cx(Parabolic P)=vec:
+assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+let x=x_min(P) then
+rd=root_datum(x) then
+rd_L=root_datum(Levi(P)) then
+theta=involution(x) in ratvec_as_vec(2*rho_S(theta,rd)-2*rho_S(theta,rd_L))
+}
+
+set rho_u_cx_T(Parabolic P)=vec:
 assert(is_parabolic_theta_stable(P),"P is not theta-stable");
 let x=x_min(P) then
 rd=root_datum(x) then
@@ -46,7 +55,7 @@ set rho_u_ic (Parabolic P) = ratvec:
   let
 {   x=x_min(P) in {???}}
     x=canonical_x_K(maximal(P))
-  in sum(columns_with(is_compact(x),nilrad_roots(P))) / 2
+  in sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2
 
 {rho_u_cap_k(P)\in \t^* as element of \h^*
 need 2*rho_u_cap_k(P)\in X^*, restricting to correct element of X^*(T_K0)=X^*/)(X^*)^{-delta}
@@ -55,11 +64,11 @@ in rho_u_cx(P) have terms (alpha+theta(alpha)/2, replace these with alpha, which
 see rho_u_cx_alt(P) above
 }
 
-set rho_u_cap_k (Parabolic P) = ratvec: rho_u_cx(P)+rho_u_ic(P)
+set rho_u_cap_k (Parabolic P) = ratvec: rho_u_cx(P)/2+rho_u_ic(P)
 set rho_u_cap_s (Parabolic P) = ratvec: rho_u(P)-rho_u_cap_k(P)
 
 set two_rho_u_cap_k_alt (Parabolic P) = vec:
-  ratvec_as_vec(two_rho_u_cx(P)+2*rho_u_ic(P))
+  ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P))
 set two_rho_u_cap_s (Parabolic P) = vec:
   ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k_alt(P)
 

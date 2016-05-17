@@ -185,13 +185,15 @@ set LKT_highest_weight(KParam p)=KHighestWeight:
 {  in prints("x_G=",x_G);}
 { need version of 2*rho_u_cap_s(Q) which is integral, see thetastable.at}
   let mu_G=mu_L+two_rho_u_cap_s(Q)
-{ then ()=prints("mu_L:",mu_L, " mu_G", mu_G, "shift", 2*rho_u_cap_s(Q)) }
+ then ()=prints("mu_L:",mu_L,new_line, " mu_G", mu_G, new_line,"2*rho_u_cap_s(Q)", 2*rho_u_cap_s(Q), new_line, "two_rho_u_cap_s", two_rho_u_cap_s(Q)) 
 { this might be a ratvec, denominator 1/2, by restriction it defines a character  of T_{K_0}
   need to replace mu_G\in 1/2X^*theta with mu_G_integral\in X^*
   so that restriction takes mu_G_integral to mu_G restricted to T_{K_0}
 }
-  then mu_K=project_K(x_G,mu_G)
+  then mu_K=project_K(x_G,mu_G) 
+  then ()=prints("mu_K=", mu_K)  
   then mu_G_integral=mu_K*left_inverse(injection_from_K_matrix(x_G))
+  then ()=prints("mu_G_integral:", mu_G_integral) 
   in
 {  prints("L=", Levi(Q));
   prints("pL=", pL);
@@ -244,13 +246,19 @@ set fundamental_weights_K_H(KGBElt x)=[ratvec]:
 let M=left_inverse(injection_from_K_matrix(x)) in for v in fundamental_weights(K_0(x)) do v*M od
 
 
+{set LKT_K0(KParam p,KGBElt x_K)=Param:
+let (,tau)=LKT_highest_weight(p,x_K) in finite_dimensional(K_0(x_K),tau)}
+
 set LKT_K0(KParam p,KGBElt x_K)=Param:
-let (,tau)=LKT_highest_weight(p,x_K) in finite_dimensional(K_0(x_K),tau)
+let (,tau)=LKT_highest_weight(p,x_K) in finite_dimensional(K_0(x_K),project_K(x_K,tau))
 
 set LKT_K0(KParam p)=Param:LKT_K0(p,KGB(real_form(x(p)),0))
 
-set LKTs_K0(Param p,KGBElt x_K)=[Param]:
+{set LKTs_K0(Param p,KGBElt x_K)=[Param]:
 for (,tau) in LKT_highest_weights(p,x_K) do finite_dimensional(K_0(x_K),tau)  od
+}
+set LKTs_K0(Param p,KGBElt x_K)=[Param]:
+for (,tau) in LKT_highest_weights(p,x_K) do finite_dimensional(K_0(x_K),project_K(x_K,tau))  od
 
 set LKTs_K0(Param p)=[Param]:LKTs_K0(p,KGB(real_form(x(p)),0))
 
