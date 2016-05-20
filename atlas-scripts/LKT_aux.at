@@ -8,7 +8,7 @@
 }
 {  ------------map from KParams (K_types) to highest weights-----------   }
 
-{ see LKT_highest_weights(...) in LKT.at }
+{ see highest_weights(...) in LKT.at }
 
 { -----------------map from highest weights to K-types------------------ }
 
@@ -168,10 +168,11 @@ S=[int]:[] in
  Parabolic:(S,y)
 
 {go from highest weight to K_types [KParam]  mu -> [p_1,...,p_r]
- multivalued: LKT_highest_weight(p_i)=mu
+ multivalued: highest_weight(p_i)=mu
  algorithm:
  1) G-spherical case: mu\in X^*/(1-delta)X^*, satisfying <mu,\alpha^\vee>=0
     for all alpha in Delta(G,T_{K_0})<
+See KHatHowe, Section 15
 }
 set fix(KHighestWeight mu,KGBElt x_Q)=KHighestWeight:
 let (x,tau)=mu then
@@ -219,7 +220,6 @@ assert(#ktypes=1,
        "more than one K-type maps to this KHighestWeight;" # new_line #
        "use K_types to get them all"); ktypes[0]
 
-
 set number_extensions(KHighestWeight mu)=int:
   let (x,tau)=mu in #R_K_dom_mu(x,project_K(x,tau))
 
@@ -228,20 +228,13 @@ let (x,tau)=mu
 in dimension(K0_highest_weights(mu)[0])*
    rat_as_int(#R_K_dom(x)/number_extensions(mu))
 
-
-
-
-
 set fund_weight_to_atlas(KGBElt x,ratvec mu)=ratvec:
 let fw=fundamental_weights(K_0(x)) then
 rv=ratvec:null(rank_K(real_form(x))) in
 for i:#mu do rv+:=mu[i]*fw[i] od;rv
 
-
-
-
 {			    sorting by dimension			}
 
 set sort_by_dimension = ([(Split,Param)] -> [(Split,Param)]):
- sort_by( (Split s,Param p) int: LKT_dimensions(p)[0] )
+ sort_by( (Split s,Param p) int: dimensions(p)[0] )
 

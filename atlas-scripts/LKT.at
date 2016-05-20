@@ -1,4 +1,4 @@
-<basic.at
+
 <cross_W_orbit.at { find_W_cross }
 <induction.at { rho_S@KGBElt }
 <finite_dimensional.at { highest_weight@Param }
@@ -22,8 +22,8 @@ Three ways of parametrizing K-types:
 
 2) KHighestWeight: (x,mu), x in distinguished fiber, mu in X^*(H^delta)
    this is a highest weight for K_#=H^delta.K_0
-   LKT_highest_weights(p)=[KHighestWeight]
-   LKT_highest_weight(p)=KHighestWeight
+   highest_weights(p)=[KHighestWeight]
+   highest_weight(p)=KHighestWeight
    not bijective if K_#\ne K
 
 3) LKT as parameters for K_0, data type is Param
@@ -59,7 +59,7 @@ set move_weight (KGBElt x,KGBElt y,ratvec lambda) = (KGBElt,ratvec):
 )
 
 set move_finite_dimensional (KGBElt x,KGBElt y,Param p) = Param:
-  let (,hw)=move_weight(x,y,highest_weight(p))
+  let (,hw)=move_weight(x,y,highest_weight_finite_dimensional(p))
   in finite_dimensional(K_0(real_form(y)),hw)
 
 { sum of the roots of K as an element of X^*(H^delta)
@@ -155,8 +155,8 @@ if not is_relatively_split(real_form(p)) then false elif
 all(for alpha_check in simple_coroots(root_datum(p)) do is_even(rat_as_int(  (lambda(p)-rho(root_datum(p)))  *alpha_check)) od) fi
 
 set is_split_spherical(KParam p)=bool:is_split_spherical(parameter(p))
-
-set LKT_highest_weight_split_spherical(KParam p)=KHighestWeight:
+{need to fix this function
+set highest_weight_split_spherical(KParam p)=KHighestWeight:
 assert(is_split_spherical(p), "p is not a spherical rep of a split group");
 let x=x(p) then
 lambda=lambda(p) then
@@ -166,71 +166,90 @@ mu=ratvec:lambda(p)-rho(rd) then
 ()=for alpha_check@i in simple_coroots(rd) do mu-:=mu*alpha_check*fw[i] od then
 ()=assert(all(for alpha_check in simple_coroots(rd) do mu*alpha_check=0 od),"error, mu isn't orthogonal to all roots") in
 (KGB(real_form(x),0),ratvec_as_vec(mu))
+}
 
-set LKT_highest_weight_split_spherical(Param p)=KHighestWeight:LKT_highest_weight_split_spherical(Kparameter(p*0))
+set highest_weight_split_spherical(KParam p)=KHighestWeight:
+assert(is_split_spherical(p), "p is not a spherical rep of a split group");
+let x=x(p) then
+x_K=canonical_x_K(x) then
+i_rd=root_datum(imaginary_sys(x_K)) then
+lambda=lambda(p) then
+rd=i_rd then
+fw=fundamental_weights(rd) then
+mu=ratvec:lambda(p)-rho(rd) then
+()=prints("mu=", mu) then
+()=for alpha_check@i in simple_coroots(rd) do mu-:=mu*alpha_check*fw[i] od then
+()=prints("mu modified=", mu) then
+()=assert(all(for alpha_check in simple_coroots(rd) do mu*alpha_check=0 od),"error, mu isn't orthogonal to all roots") in
+(KGB(real_form(x),0),ratvec_as_vec(mu))
 
-set LKT_highest_weight_split_spherical(KParam p,KGBElt x_K)=KHighestWeight:
-let (x,mu)=LKT_highest_weight_split_spherical(p) in move_weight(x,x_K,mu)
 
-set LKT_highest_weight_split_spherical(Param p,KGBElt x_K)=KHighestWeight:
-let (x,mu)=LKT_highest_weight_split_spherical(p) in move_weight(x,x_K,mu)
+set highest_weight_split_spherical(Param p)=KHighestWeight:highest_weight_split_spherical(Kparameter(p*0))
 
-set LKT_highest_weight(KParam p)=KHighestWeight:
+set highest_weight_split_spherical(KParam p,KGBElt x_K)=KHighestWeight:
+let (x,mu)=highest_weight_split_spherical(p) in move_weight(x,x_K,mu)
+
+set highest_weight_split_spherical(Param p,KGBElt x_K)=KHighestWeight:
+let (x,mu)=highest_weight_split_spherical(p) in move_weight(x,x_K,mu)
+
+set highest_weight(KParam p)=KHighestWeight:
   assert(is_final(parameter(p)),"parameter is not final");
   let p=make_no_Cminus(p)
   then (Q,pL)=theta_stable_data(parameter(p))
-  then (x_L,mu_L)=LKT_highest_weight_split_spherical(pL)
-{ then x_G=canonical_x_K(x(p)) }
-  then x_G=x_min(Q) in
+  then (x_L,mu_L)=highest_weight_split_spherical(pL)
+  then x_G=canonical_x_K(x(p)) in
+{  then x_G=x_min(Q) in}
 {  in prints("x_G=",x_G);}
 { need version of 2*rho_u_cap_s(Q) which is integral, see thetastable.at}
-  let mu_G=mu_L+two_rho_u_cap_s(Q)
+ let mu_G=mu_L+two_rho_u_cap_s(Q)
  then ()=prints("mu_L:",mu_L,new_line, " mu_G", mu_G, new_line,"2*rho_u_cap_s(Q)", 2*rho_u_cap_s(Q), new_line, "two_rho_u_cap_s", two_rho_u_cap_s(Q)) 
 { this might be a ratvec, denominator 1/2, by restriction it defines a character  of T_{K_0}
   need to replace mu_G\in 1/2X^*theta with mu_G_integral\in X^*
   so that restriction takes mu_G_integral to mu_G restricted to T_{K_0}
 }
-  then mu_K=project_K(x_G,mu_G) 
+{don't understand this issue, it looks like mu_G is integral}
+{also, can't project to character of T_{K_0}, lose information on disconnected part,
+having to do with K_#}
+{try commenting out the rest...}
+in (x_G,mu_G)
+{  then mu_K=project_K(x_G,mu_G) 
   then ()=prints("mu_K=", mu_K)  
   then mu_G_integral=mu_K*left_inverse(injection_from_K_matrix(x_G))
   then ()=prints("mu_G_integral:", mu_G_integral) 
   in
-{  prints("L=", Levi(Q));
+  prints("L=", Levi(Q));
   prints("pL=", pL);
   prints("mu_K=", mu_K);
   prints("mu_L=", mu_L);
   prints("rho_u_cap_s:=", rho_u_cap_s(Q));
   prints("rho_u_cap_k:=", rho_u_cap_k(Q));
-  prints("mu_G=", mu_G);}
+  prints("mu_G=", mu_G);
   (x_G,mu_G_integral)
+}
 
 {LKT of KParam is unique}
-set LKT_highest_weight(KParam p,KGBElt x_K)=KHighestWeight:
-let (x,mu)=LKT_highest_weight(p) in move_weight(x,x_K,mu)
+set highest_weight(KParam p,KGBElt x_K)=KHighestWeight:
+let (x,mu)=highest_weight(p) in move_weight(x,x_K,mu)
 
 {LKT of Param is not neccessarily unique}
-set LKT_highest_weights(Param p)=[KHighestWeight]:
-for q in finalize(p*0) do LKT_highest_weight(Kparameter(q)) od
-
-set LKTs_highest_weight(Param p)=[KHighestWeight]:LKT_highest_weights(p)
+set highest_weights(Param p)=[KHighestWeight]:
+for q in finalize(p*0) do highest_weight(Kparameter(q)) od
 
 {return single LKT of Param if it is unique}
-set LKT_highest_weight(Param p)=KHighestWeight:
-let lkts=LKT_highest_weights(p) in
-assert(#lkts=1,"LKT is not unique, use LKT_highest_weights");lkts[0]
+set highest_weight(Param p)=KHighestWeight:
+let lkts=highest_weights(p) in
+assert(#lkts=1,"LKT is not unique, use highest_weights");lkts[0]
 
-set LKT_highest_weights (Param p,KGBElt x_K) = [KHighestWeight]:
-  for (x,mu) in LKT_highest_weights(p) do move_weight(x,x_K,mu) od
-
-set LKTs_highest_weight (Param p,KGBElt x_K) = [KHighestWeight]:LKT_highest_weights(p,x_K)
+set highest_weights (Param p,KGBElt x_K) = [KHighestWeight]:
+  for (x,mu) in highest_weights(p) do move_weight(x,x_K,mu) od
 
 
 {although LKT is unique, allow call using plural weights}
-set LKT_highest_weights(KParam p) =KHighestWeight:LKT_highest_weight(p)
+set highest_weights(KParam p) =KHighestWeight:highest_weight(p)
 
 { just list the highest weights of lowest K-types, with respect to given x_K }
-{set LKT_highest_weights (Param p,KGBElt x_K) = [vec]:
-  for (x,mu) in LKT_highest_weights(p)  do let (,mu_1)= move_weight(x,x_K,mu) in mu_1 od}
+{set highest_weights (Param p,KGBElt x_K) = [vec]:
+  for (x,mu) in highest_weights(p)  do let (,mu_1)= move_weight(x,x_K,mu) in mu_1 od}
 
 {---------------- K-type as parameter for the identity component of K----------------}
 
@@ -246,27 +265,26 @@ set fundamental_weights_K_H(KGBElt x)=[ratvec]:
 let M=left_inverse(injection_from_K_matrix(x)) in for v in fundamental_weights(K_0(x)) do v*M od
 
 
-{set LKT_K0(KParam p,KGBElt x_K)=Param:
-let (,tau)=LKT_highest_weight(p,x_K) in finite_dimensional(K_0(x_K),tau)}
+{set K0_param(KParam p,KGBElt x_K)=Param:
+let (,tau)=highest_weight(p,x_K) in finite_dimensional(K_0(x_K),tau)}
 
-set LKT_K0(KParam p,KGBElt x_K)=Param:
-let (,tau)=LKT_highest_weight(p,x_K) in finite_dimensional(K_0(x_K),project_K(x_K,tau))
+set K0_param(KParam p,KGBElt x_K)=Param:
+let (,tau)=highest_weight(p,x_K) in finite_dimensional(K_0(x_K),project_K(x_K,tau))
 
-set LKT_K0(KParam p)=Param:LKT_K0(p,KGB(real_form(x(p)),0))
+set K0_param(KParam p)=Param:K0_param(p,KGB(real_form(x(p)),0))
 
 {set LKTs_K0(Param p,KGBElt x_K)=[Param]:
-for (,tau) in LKT_highest_weights(p,x_K) do finite_dimensional(K_0(x_K),tau)  od
+for (,tau) in highest_weights(p,x_K) do finite_dimensional(K_0(x_K),tau)  od
 }
-set LKTs_K0(Param p,KGBElt x_K)=[Param]:
-for (,tau) in LKT_highest_weights(p,x_K) do finite_dimensional(K_0(x_K),project_K(x_K,tau))  od
+set K0_params(Param p,KGBElt x_K)=[Param]:
+for (,tau) in highest_weights(p,x_K) do finite_dimensional(K_0(x_K),project_K(x_K,tau))  od
+set K0_params(Param p)=[Param]:K0_params(p,KGB(real_form(x(p)),0))
 
-set LKTs_K0(Param p)=[Param]:LKTs_K0(p,KGB(real_form(x(p)),0))
-
-set LKT_K0(Param p,KGBElt x_K)=Param:
-let lkts=LKTs_K0(p,x_K) in
+set K0_param(Param p,KGBElt x_K)=Param:
+let lkts=K0_params(p,x_K) in
 assert(#lkts=1,"Parameter has more than one LKT, use LKTS_K0");lkts[0]
 
-set LKT_K0(Param p)=Param:LKT_K0(p,KGB(real_form(x(p)),0))
+set K0_param(Param p)=Param:K0_param(p,KGB(real_form(x(p)),0))
 
 { mu is a highest weight for K_0=identity component of K_x
   returns fundamental weight coordinates
@@ -281,9 +299,9 @@ weight=ratvec:null(ss_rank(real_form(x))) then
 ()=for i:#tau do weight+:=tau[i]*fw[i] od in
 assert(is_integer(weight),"Weight is not integral");(x,ratvec_as_vec(weight))
 
-set LKT_dimensions (Param p, KGBElt x_K) = [int]:for pi in LKTs_K0(p,x_K) do dimension(pi) od
-set LKT_dimensions (Param p) = [int]:   LKT_dimensions(p,KGB(real_form(p),0))
-set LKT_dimensions ([Param] B)= [[int]]: for p in B do LKT_dimensions(p) od
+set dimensions (Param p, KGBElt x_K) = [int]:for pi in K0_params(p,x_K) do dimension(pi) od
+set dimensions (Param p) = [int]:   dimensions(p,KGB(real_form(p),0))
+set dimensions ([Param] B)= [[int]]: for p in B do dimensions(p) od
 
 {-----------------------equality of KHighestWeights------------}
 
@@ -307,16 +325,16 @@ else
  m_G_tau_2=lift_action(x,w_tau2)*w_matrix(y_tau2) then
  mu_3=m_G_mu_2*mu_0 then
  tau_3=m_G_tau_2*tau_0 in
- let ()=if LKT_verbose then
+{ let ()=if LKT_verbose then
  prints("m_G_mu_2:", m_G_mu_2);
  prints("m_G_tau_2:", m_G_tau_2);
  prints("mu_0: ", mu_0, " tau_0 :", tau_0);
  prints("mu_1: ", mu_1, " tau_1 :", tau_1);
  prints("mu_2: ", mu_2, " tau_2 :", tau_2);
- prints("mu_3: ", mu_3, " tau_3 :", tau_3) fi in
+ prints("mu_3: ", mu_3, " tau_3 :", tau_3) fi in}
  in_lattice((1-involution(x_0)),mu_3-tau_3) fi fi
 
-{-----------------KHighestWeight to LKT_K0 --------------------------}
+{-----------------KHighestWeight to K0_param --------------------------}
 
 set R_K_dom_mu_orbit(KGBElt x,vec mu)=[KHighestWeight]:
 let (K_0,R_K_dom)=W_K(x) then
@@ -352,7 +370,7 @@ set print_LKT ([Param] B, KGBElt x_K) = void:
   prints("K_0: ", K_0)
 { ; prints("rho_K:", rho(K_0)) }
 ; for p in B
-  do let lkt=LKT_K0(x_K,p)
+  do let lkt=K0_param(x_K,p)
   in prints(""); prints(p); prints(" Lowest K-types:")
   ; for pi in lkt
     do prints(" ", pi, "  dim=", dimension(pi)
@@ -373,7 +391,7 @@ set testps (RealForm G, KGBElt x) = void:
 begin prints("Minimal K-types of all principal series of")
 ; prints(G); prints("K=",K_0(x)); prints("rho_K=", rho(K_0(x)))
 ; for p in all_principal_series(G)
-  do let lkt=LKT_highest_weights(p,x) in
+  do let lkt=highest_weights(p,x) in
 {   prints(p,lkt)
   ; for mu in lkt do prints(fundamental_weight_coordinates(mu,x)) od od
 }

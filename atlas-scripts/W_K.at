@@ -94,6 +94,7 @@ sr_G=[[int]]:simple_roots(rd_G) in
 {R_K_dom is W(K_0,T_{K_0})\cap W_c_perp
 given as list of Weyl group elements,
 each of which is a product of (commuting) reflections from W_c_perp
+See KHatHow Proposition 4.4 (3)
 }
 set R_K_dom(KGBElt x)=[W_word]:
 let W_c_perp=W_c_perp(x) then
