@@ -21,7 +21,7 @@ set branch_irr (ParamPol P,int bound) = ParamPol:
 
 set print_K_irr (ParamPol P,KGBElt x,int bound) = void:
   for (mult,q) in sort_by_height(branch_irr(P,bound))
-  do prints(split_as_int(mult), "*", LKT_highest_weights(q,x)[0]) od
+  do prints(split_as_int(mult), "*", highest_weights(q,x)[0]) od
 
 set print_K_irr (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
   print_K_irr(P,KGB(real_form(P),0),bound)
@@ -32,8 +32,8 @@ set print_K_irr (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
 }
 set print_K_irr_long (ParamPol P,KGBElt x,int bound) = void:
   for (mult,q) in sort_by_height(branch_irr(P,bound))
-  do let hw=LKT_highest_weights(q,x)[0] in
-    prints(split_as_int(mult), "*", hw, " ", LKT_dimensions(q)[0]
+  do let hw=highest_weights(q,x)[0] in
+    prints(split_as_int(mult), "*", hw, " ", dimensions(q)[0]
           , "    ", height(q))
   od
 
@@ -52,7 +52,7 @@ set print_K_irr_long (Param p, int bound) = void:
 
 set print_K_std (ParamPol P,KGBElt x,int bound) = void:
   for (mult,q) in sort_by_height(branch_std(P,bound))
-  do let hw=LKT_highest_weights(q,x)[0] in
+  do let hw=highest_weights(q,x)[0] in
     prints(split_as_int(mult), "*", hw)
   od
 
@@ -66,8 +66,8 @@ set print_K_std (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
 set print_K_std_long (ParamPol P,KGBElt x,int bound) = void:
 ( prints("rho_K=", rho_K(x))
 ; for (mult,q) in sort_by_height(branch_std(P,bound))
-  do let hw=LKT_highest_weights(q,x)[0] in
-    prints(split_as_int(mult), "*", hw, " ", LKT_dimensions(q)[0]
+  do let hw=highest_weights(q,x)[0] in
+    prints(split_as_int(mult), "*", hw, " ", dimensions(q)[0]
           ,  "    ", height(q))
   od
 )

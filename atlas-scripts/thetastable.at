@@ -33,17 +33,14 @@ set rho_u_cx (Parabolic P) = ratvec:
   {use the most compact Cartan in L}
   sum(columns_with(is_complex(x_min(P)),nilrad_roots(P))) / 2
 
-{rho_u_cx(P) is not necessarily in X^*
- rho_u_cx_T(P) \in X^*, same restriction to T_K0, i.e. same image modulo (1-delta)X^*
- need this to define \rho_u_cap_k
-}
 {
-set two_rho_u_cx(Parabolic P)=vec:
-assert(is_parabolic_theta_stable(P),"P is not theta-stable");
-let x=x_min(P) then
-rd=root_datum(x) then
-rd_L=root_datum(Levi(P)) then
-theta=involution(x) in ratvec_as_vec(2*rho_S(theta,rd)-2*rho_S(theta,rd_L))
+rho_u_cx(P) is not necessarily in X^*
+rho_u_cx_T(P) \in X^*, same restriction to T_K0, i.e. same image modulo (1-delta)X^*
+(need this to define \rho_u_cap_k)
+in rho_u_cx(P) have terms (alpha+theta(alpha)/2, replace these with alpha,
+which has the same restriction
+rho_S(theta,rd): each pair alpha,theta(alpha) contributes alpha/2
+so 2*rho_S(theta,rd) contribution is \alpha, which is what we want
 }
 
 set rho_u_cx_T(Parabolic P)=vec:
@@ -53,7 +50,9 @@ rd=root_datum(x) then
 rd_L=root_datum(Levi(P)) then
 theta=involution(x) in ratvec_as_vec(2*rho_S(theta,rd)-2*rho_S(theta,rd_L))
 
-{ \rho_u_ic(P) is in \t^* as a subset of \h^* }
+{ \rho_u_ic(P) is in \t^* as a subset of \h^* 
+ =1/2 the sum of the imaginary, compact roots in u
+}
 set rho_u_ic (Parabolic P) = ratvec:
   assert(is_parabolic_theta_stable(P),"P is not theta-stable");
   let
@@ -61,18 +60,18 @@ set rho_u_ic (Parabolic P) = ratvec:
     x=canonical_x_K(maximal(P))
   in sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2
 
-set two_rho_u_cap_k (Parabolic P) = vec:
-  ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P))
-set two_rho_u_cap_s (Parabolic P) = vec:
-  ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P)
+{
+rho_u_cx(P)/2+rho_u_ic(P)\in h^* has correct restriction, but might not live in 1/2X^*
+rho_u_cap_k(P)\in \t^* as element of \h^*
+need 2*rho_u_cap_k(P)\in X^*, restricting to correct element of X^*(T_K0)=X^*/)(X^*)^{-delta}
 
+}
+set two_rho_u_cap_k (Parabolic P) = vec:ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P))
+set two_rho_u_cap_s (Parabolic P) = vec:ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P)
+
+{these give the same restriction to T_K0, but aren't necessarily integral:}
 set rho_u_cap_k (Parabolic P) = ratvec: rho_u_cx(P)/2+rho_u_ic(P)
 set rho_u_cap_s (Parabolic P) = ratvec: rho_u(P)-rho_u_cap_k(P)
-
-set two_rho_u_cap_k_alt (Parabolic P) = vec:
-  ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P))
-set two_rho_u_cap_s (Parabolic P) = vec:
-  ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k_alt(P)
 
 set dim_u_cap_k (Parabolic (,x):P) = int:
   let sum=0/1 in
@@ -183,38 +182,11 @@ x_new=cross(inverse(w),x_in) then
 {()=prints("x_new=", x_new) then}
 {lambda_q_new=act(w,lambda_q) then}
 lambda_in_new=act(inverse(w),lambda_in) then
-P_new=parabolic(lambda_q_new,x_new) then
-L_new=Levi(P_new) then
-t_L_new=trivial(L_new) then
-()=prints("L=", L_new) then
-()=prints("rho_L=", rho(L_new)) then
-()=prints("rho_u=", rho_u(P_new)) in
-{pi_L=parameter(x(t_L_new),lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))
- ,lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))) in}
-{let ()=prints("lambda_q=", lambda_q) in
-let ()=prints("lambda_q_new=", lambda_q_new) in
-let ()=prints("x_in=", x_in) in
-let ()=prints("x_new=", x_new) in
-let ()=prints("rho_u_new:", rho_u(parabolic(lambda_q_new,x_new))) in
-let ()=prints("lambda(t_L_new)=", lambda(t_L_new)) in
-let ()=prints("lambda_in=", lambda_in) in
-let ()=prints("lambda_in_new=", lambda_in_new) in}
-let pi_L=parameter
-  (x(t_L_new)
-  ,lambda(t_L_new) + lambda_in_new - rho_u(parabolic(lambda_q_new,x_new))
-  ,nu(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))
-  )
-in
-{let ()=prints("A:",lambda(t_L_new)+lambda_in_new
- -rho_u(parabolic(lambda_q_new,x_new))) in
-let ()=prints("B:", nu(t_L_new)+lambda_in_new
- -rho_u(parabolic(lambda_q_new,x_new))) in
-let ()=prints("lambda(t_L_new):", lambda(t_L_new)) in
-let ()=prints("nu(t_L_new):", nu(t_L_new)) in
-let ()=prints("pi_L= ", pi_L) in
-let ()=prints("properties:") in}
-assert(dimension(pi_L)=1,"pi_L is not one-dimensional") ;
-{prints("in Aq, p_L=", pi_L);}
+P=parabolic(lambda_q_new,x_new) then
+L=Levi(P) then
+t_L=trivial(L) then
+pi_L=parameter(x(t_L),lambda(t_L)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new)),nu(t_L)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))) in
+{let ()=prints("in Aq, p_L=", pi_L) in}
 theta_induce_irreducible(pi_L,G)
 
 set Aq(KGBElt x_in,ratvec lambda_in, ratvec lambda_q)=Param:
