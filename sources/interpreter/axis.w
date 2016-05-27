@@ -372,7 +372,7 @@ case string_denotation:
   }
 case boolean_denotation:
   { expression_ptr d@|(new denotation
-        (std::make_shared<bool_value>(e.bool_denotation_variant)));
+        (whether(e.bool_denotation_variant)));
     return conform_types(bool_type,type,std::move(d),e);
   }
 

@@ -13,8 +13,6 @@
 
 * Work on the atlas program
 
-- Make conditionals return shared pointer to global true and false values
-
 - Investigate if some tracing facilty (printing "let" values) is feasible
 
 - Make error traceback report location of each call, not just the callee

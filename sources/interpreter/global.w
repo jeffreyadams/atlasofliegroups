@@ -1258,6 +1258,23 @@ private:
 @)
 typedef std::shared_ptr<const bool_value> shared_bool;
 
+@ Since there are only two possible Boolean values, we can save storage
+allocation and deallocation by pre-allocating two constant objects, one of
+which will be shared every time a Boolean value is produced.
+
+@< Declarations of global variables @>=
+extern const shared_bool global_false, global_true;
+
+@~These shared pointers are of course initialised at their definition.
+@< Global variable definitions @>=
+const shared_bool global_false = std::make_shared<bool_value>(false);
+const shared_bool global_true  = std::make_shared<bool_value>(true);
+
+@~To get a copy of one of these two shared pointers one usually calls the
+following inline function.
+@< Template and inline function definitions @>=
+inline shared_bool whether(bool b)@+{@; return b ? global_true : global_false; }
+
 @*1 Primitive types for vectors and matrices.
 %
 The interpreter distinguishes its own types like \.{[int]} ``row of integer''
@@ -1910,38 +1927,38 @@ avoids having to laboriously construct a null value of the correct dimension.
 void bool_not_wrapper(expression_base::level l)
 { bool b=get<bool_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(not b));
+    push_value(whether(not b));
 }
 @)
 void int_unary_eq_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i==0));
+    push_value(whether(i==0));
 }
 void int_unary_neq_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i!=0));
+    push_value(whether(i!=0));
 }
 void int_non_negative_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i>=0));
+    push_value(whether(i>=0));
 }
 void int_positive_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i>0));
+    push_value(whether(i>0));
 }
 void int_non_positive_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i<=0));
+    push_value(whether(i<=0));
 }
 void int_negative_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i<0));
+    push_value(whether(i<0));
 }
 
 @ Here are the traditional, binary, versions of the relations.
@@ -1951,37 +1968,37 @@ void int_negative_wrapper(expression_base::level l)
 void int_eq_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i==j));
+    push_value(whether(i==j));
 }
 @)
 void int_neq_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i!=j));
+    push_value(whether(i!=j));
 }
 @)
 void int_less_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i<j));
+    push_value(whether(i<j));
 }
 @)
 void int_lesseq_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i<=j));
+    push_value(whether(i<=j));
 }
 @)
 void int_greater_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i>j));
+    push_value(whether(i>j));
 }
 @)
 void int_greatereq_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i>=j));
+    push_value(whether(i>=j));
 }
 
 @ For the rational numbers as well we define unary relations.
@@ -1991,32 +2008,32 @@ void int_greatereq_wrapper(expression_base::level l)
 void rat_unary_eq_wrapper(expression_base::level l)
 { Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i.numerator()==0));
+    push_value(whether(i.numerator()==0));
 }
 void rat_unary_neq_wrapper(expression_base::level l)
 { Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i.numerator()!=0));
+    push_value(whether(i.numerator()!=0));
 }
 void rat_non_negative_wrapper(expression_base::level l)
 { Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i.numerator()>=0));
+    push_value(whether(i.numerator()>=0));
 }
 void rat_positive_wrapper(expression_base::level l)
 { Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i.numerator()>0));
+    push_value(whether(i.numerator()>0));
 }
 void rat_non_positive_wrapper(expression_base::level l)
 { Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i.numerator()<=0));
+    push_value(whether(i.numerator()<=0));
 }
 void rat_negative_wrapper(expression_base::level l)
 { Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i.numerator()<0));
+    push_value(whether(i.numerator()<0));
 }
 
 @ Here are the traditional, binary, versions of the relations for the
@@ -2027,37 +2044,37 @@ rational numbers.
 void rat_eq_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i==j));
+    push_value(whether(i==j));
 }
 @)
 void rat_neq_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i!=j));
+    push_value(whether(i!=j));
 }
 @)
 void rat_less_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i<j));
+    push_value(whether(i<j));
 }
 @)
 void rat_lesseq_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i<=j));
+    push_value(whether(i<=j));
 }
 @)
 void rat_greater_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i>j));
+    push_value(whether(i>j));
 }
 @)
 void rat_greatereq_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i>=j));
+    push_value(whether(i>=j));
 }
 
 @ For booleans we also have equality and ineqality.
@@ -2066,13 +2083,13 @@ void rat_greatereq_wrapper(expression_base::level l)
 void equiv_wrapper(expression_base::level l)
 { bool a=get<bool_value>()->val; bool b=get<bool_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(a==b));
+    push_value(whether(a==b));
 }
 @)
 void inequiv_wrapper(expression_base::level l)
 { bool a=get<bool_value>()->val; bool b=get<bool_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(a!=b));
+    push_value(whether(a!=b));
 }
 
 @*1 Strings.
@@ -2086,43 +2103,43 @@ and one for converting integers to their string representation.
 void string_unary_eq_wrapper(expression_base::level l)
 { shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val.empty()));
+    push_value(whether(i->val.empty()));
 }
 void string_unary_neq_wrapper(expression_base::level l)
 { shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val.size()>0));
+    push_value(whether(i->val.size()>0));
 }
 void string_eq_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val==j->val));
+    push_value(whether(i->val==j->val));
 }
 void string_neq_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val!=j->val));
+    push_value(whether(i->val!=j->val));
 }
 @)
 void string_less_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val<j->val));
+    push_value(whether(i->val<j->val));
 }
 void string_leq_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val<=j->val));
+    push_value(whether(i->val<=j->val));
 }
 void string_greater_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val>j->val));
+    push_value(whether(i->val>j->val));
 }
 void string_geq_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val>=j->val));
+    push_value(whether(i->val>=j->val));
 }
 @)
 void concatenate_wrapper(expression_base::level l)
@@ -2244,9 +2261,9 @@ void vec_unary_eq_wrapper(expression_base::level l)
   const auto end=i->val.end();
   for (auto it=i->val.begin(); it!=end; ++it)
     if (*it!=0)
-    {@; push_value(std::make_shared<bool_value>(false));
+    {@; push_value(whether(false));
       return; }
-  push_value(std::make_shared<bool_value>(true));
+  push_value(whether(true));
 }
 void vec_unary_neq_wrapper(expression_base::level l)
 { shared_vector i=get<vector_value>();
@@ -2255,19 +2272,19 @@ void vec_unary_neq_wrapper(expression_base::level l)
   const auto end=i->val.end();
   for (auto it=i->val.begin(); it!=end; ++it)
     if (*it!=0)
-    {@; push_value(std::make_shared<bool_value>(true));
+    {@; push_value(whether(true));
       return; }
-  push_value(std::make_shared<bool_value>(false));
+  push_value(whether(false));
 }
 void vec_eq_wrapper(expression_base::level l)
 { shared_vector j=get<vector_value>(); shared_vector i=get<vector_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val==j->val));
+    push_value(whether(i->val==j->val));
 }
 void vec_neq_wrapper(expression_base::level l)
 { shared_vector j=get<vector_value>(); shared_vector i=get<vector_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val!=j->val));
+    push_value(whether(i->val!=j->val));
 }
 
 @ The following vector predicates test whether all coefficient are non
@@ -2287,7 +2304,7 @@ void vec_non_negative_wrapper(expression_base::level l)
   for (auto it=v->val.begin(); it!=v->val.end(); ++it)
     if (*it<0)
     {@; OK=false; break; }
-  push_value(std::make_shared<bool_value>(OK));
+  push_value(whether(OK));
 }
 void vec_positive_wrapper(expression_base::level l)
 { shared_vector v = get<vector_value>();
@@ -2297,7 +2314,7 @@ void vec_positive_wrapper(expression_base::level l)
   for (auto it=v->val.begin(); it!=v->val.end(); ++it)
     if (*it<=0)
     {@; OK=false; break; }
-  push_value(std::make_shared<bool_value>(OK));
+  push_value(whether(OK));
 }
 
 @ We continue similarly with rational vector equality comparisons.
@@ -2311,9 +2328,9 @@ void ratvec_unary_eq_wrapper(expression_base::level l)
   const auto end=i->val.numerator().end();
   for (auto it=i->val.numerator().begin(); it!=end; ++it)
     if (*it!=0)
-    {@; push_value(std::make_shared<bool_value>(false));
+    {@; push_value(whether(false));
       return; }
-  push_value(std::make_shared<bool_value>(true));
+  push_value(whether(true));
 }
 void ratvec_unary_neq_wrapper(expression_base::level l)
 { shared_rational_vector i=get<rational_vector_value>();
@@ -2322,21 +2339,21 @@ void ratvec_unary_neq_wrapper(expression_base::level l)
   const auto end=i->val.numerator().end();
   for (auto it=i->val.numerator().begin(); it!=end; ++it)
     if (*it!=0)
-    {@; push_value(std::make_shared<bool_value>(true));
+    {@; push_value(whether(true));
       return; }
-  push_value(std::make_shared<bool_value>(false));
+  push_value(whether(false));
 }
 void ratvec_eq_wrapper(expression_base::level l)
 { shared_rational_vector j=get<rational_vector_value>();
   shared_rational_vector i=get<rational_vector_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val==j->val));
+    push_value(whether(i->val==j->val));
 }
 void ratvec_neq_wrapper(expression_base::level l)
 { shared_rational_vector j=get<rational_vector_value>();
   shared_rational_vector i=get<rational_vector_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val!=j->val));
+    push_value(whether(i->val!=j->val));
 }
 
 @ Like for vectors, we add dominance tests.
@@ -2351,7 +2368,7 @@ void ratvec_non_negative_wrapper(expression_base::level l)
   for (auto it=v->val.numerator().begin(); it!=v->val.numerator().end(); ++it)
     if (*it<0)
     {@; OK=false; break; }
-  push_value(std::make_shared<bool_value>(OK));
+  push_value(whether(OK));
 }
 void ratvec_positive_wrapper(expression_base::level l)
 { shared_rational_vector v = get<rational_vector_value>();
@@ -2361,7 +2378,7 @@ void ratvec_positive_wrapper(expression_base::level l)
   for (auto it=v->val.numerator().begin(); it!=v->val.numerator().end(); ++it)
     if (*it<=0)
     {@; OK=false; break; }
-  push_value(std::make_shared<bool_value>(OK));
+  push_value(whether(OK));
 }
 
 @ And here are matrix equality comparisons.
@@ -2371,22 +2388,22 @@ void ratvec_positive_wrapper(expression_base::level l)
 void mat_unary_eq_wrapper(expression_base::level l)
 { shared_matrix i=get<matrix_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val.is_zero()));
+    push_value(whether(i->val.is_zero()));
 }
 void mat_unary_neq_wrapper(expression_base::level l)
 { shared_matrix i=get<matrix_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(not i->val.is_zero()));
+    push_value(whether(not i->val.is_zero()));
 }
 void mat_eq_wrapper(expression_base::level l)
 { shared_matrix j=get<matrix_value>(); shared_matrix i=get<matrix_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val==j->val));
+    push_value(whether(i->val==j->val));
 }
 void mat_neq_wrapper(expression_base::level l)
 { shared_matrix j=get<matrix_value>(); shared_matrix i=get<matrix_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val!=j->val));
+    push_value(whether(i->val!=j->val));
 }
 
 @*2 Vector arithmetic.
