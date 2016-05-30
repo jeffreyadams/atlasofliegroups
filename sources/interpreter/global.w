@@ -354,14 +354,15 @@ Id_table* global_id_table=nullptr; // will never be |nullptr| at run time
 %
 To implement overloading we use a similar structure as the ordinary global
 identifier table. However the basic table entry for an overloading needs a
-level of sharing less, since the function bound for given argument types
-cannot be changed by assignment, so the call will refer directly to the value
-stored rather than to its location. We also take into account that the stored
-types are always function types, so that we can store a |func_type| structure
-without tag or pointer to it. This saves space, although it makes  access the
-full function type as a |type_expr| rather difficult; however the latter is
-seldom needed in normal use. Remarks about ownership of the type
-apply without change from the non-overloaded case however.
+level of sharing less, since the function that is bound to an identifier for
+given argument types cannot be changed by assignment, which allows us to refer
+directly to the value stored rather than to its location. We also take into
+account that the stored types are always function types, so that we can store
+a |func_type| structure without tag or pointer to it. This saves space,
+although it makes access the full function type as a |type_expr| rather
+difficult; however the latter is seldom needed in normal use. Remarks about
+ownership of the type apply without change from the non-overloaded case
+however.
 
 @< Type definitions @>=
 
@@ -383,7 +384,7 @@ public:
    = @[default@]; // no copy-and-swap needed
 #endif
 @)
-  shared_value value() const @+{@; return val; }
+  shared_value @;value() const @+{@; return val; }
   const func_type& type() const @+{@; return tp; }
 };
 

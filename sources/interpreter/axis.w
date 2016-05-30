@@ -1021,7 +1021,7 @@ location information is stored to allow the calling expression to be
 identified during an error trace-back. Apart from the location information, an
 error trace will also provide a name of the called function (which is more
 readable than trying to reproduce the whole function call expression), which
-will be obtained from the virtual method |function_name|>
+will be obtained from the virtual method |function_name|.
 
 @< Type def... @>=
 struct call_base : public expression_base
@@ -1102,6 +1102,7 @@ struct builtin_value : public value_base
 private:
   builtin_value@[(const builtin_value& v) = default@];
 };
+typedef std::shared_ptr<const builtin_value> shared_builtin;
 
 @ While syntactically more complicated than ordinary function calls, the call
 of overloaded functions is actually simpler at run time, because the function
@@ -1114,16 +1115,16 @@ call will become an |overloaded_closure_call| that will be defined below).
 
 @< Type definitions @>=
 struct overloaded_builtin_call : public call_base
-{ wrapper_function f;
-  std::string print_name;
+{ wrapper_function f; // shortcut to implementing function
+  shared_builtin fun; // points to the full |builtin_value|
 @)
-  overloaded_builtin_call(wrapper_function v,const char* n,expression_ptr&& a,
-    const source_location& loc)
-  : call_base(std::move(a),loc), f(v), print_name(n) @+ {}
+  overloaded_builtin_call
+    (const shared_builtin& fun,expression_ptr&& a,const source_location& loc)
+  : call_base(std::move(a),loc), f(fun->val), fun(fun) @+ {}
   virtual ~@[overloaded_builtin_call() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
-  virtual std::string function_name() const @+{@; return print_name; }
+  virtual std::string function_name() const @+{@; return fun->print_name; }
 };
 
 @ When printing, we ignore the stored wrapper function (which does not record
@@ -1132,7 +1133,7 @@ general function calls with an identifier as function.
 
 @< Function definitions @>=
 void overloaded_builtin_call::print(std::ostream& out) const
-{ out << print_name;
+{ out << function_name();
   if (dynamic_cast<tuple_expression*>(argument.get())!=nullptr)
     out << *argument;
   else out << '(' << *argument << ')';
@@ -1154,293 +1155,9 @@ struct generic_builtin_call : public overloaded_builtin_call
 @)
   generic_builtin_call(wrapper_function v,const char* n,expression_ptr&& a,
     source_location loc)
-  : base(v,n,std::move(a),loc)@+ {}
+  : base(std::make_shared<const builtin_value>(v,n),std::move(a),loc)@+ {}
   virtual void evaluate(level l) const;
 };
-
-@*1 Type-checking function calls.
-%
-When we type-check a function call, we must expect the function part to be any
-type of expression. But when it is a single identifier (possibly an operator
-symbol) for which one or more overloads are defined then we attempt overload
-resolution, unless the same identifier is locally bound with function type as
-such bindings take precedence (however we ignore a possible binding for the
-identifier in the global identifier table, even if it should have function
-type). In all other cases (including that of a local function identifier), the
-known type of the function expression gives the argument and result
-types, and can be used to help converting the argument expression and the call
-expression itself. Thus in such cases we first get the type of the expression
-in the function position, requiring only that it be a function type, then
-type-check and convert the argument expression using the obtained result type,
-and build a converted function call~|call|. Finally (and this is done by
-|conform_types|) we test if the required type matches the return type (in
-which case we simply return~|call|), or if the return type can be coerced to
-it (in which case we return |call| as transformed by |coerce|); if neither is
-possible |conform_types| will throw a~|type_error|.
-
-@< Cases for type-checking and converting... @>=
-case function_call:
-{ if (e.call_variant->fun.kind==applied_identifier)
-    @< Convert and |return| an overloaded function call
-    if |e.call_variant->fun| is known in |global_overload_table|,
-    unless it is a local function identifier @>
-  type_expr f_type=gen_func_type.copy(); // start with generic function type
-  expression_ptr fun = convert_expr(e.call_variant->fun,f_type);
-  expression_ptr arg = convert_expr(e.call_variant->arg,f_type.func->arg_type);
-  expression_ptr call
-    (new call_expression(std::move(fun),std::move(arg),e.loc));
-  return conform_types(f_type.func->result_type,type,std::move(call),e);
-}
-
-@ The main work here has been relegated to |resolve_overload| defined in
-section@#resolve_overload@>; otherwise we just need to take care of the things
-mentioned in the module name.
-
-The cases relegated to |resolve_overload| include calls of special operators
-like the size-of operator~`\#', even in case such an operator should not occur
-in the overload table.
-
-@< Convert and |return| an overloaded function call... @>=
-{ const id_type id =e.call_variant->fun.identifier_variant;
-  size_t i,j; bool b; // dummies; local binding not used here
-  auto local_type_p=layer::lookup(id,i,j,b);
-  if (local_type_p==nullptr or local_type_p->kind!=function_type)
- // not calling by local identifier
-  { const overload_table::variant_list& variants
-      = global_overload_table->variants(id);
-    if (variants.size()>0 or is_special_operator(id))
-      return resolve_overload(e,type,variants);
-  }
-}
-
-@ The names of some special operators are tested for each time we analyse an
-overloaded call. The numeric values of these identifiers are not known
-explicitly at compile time, but they will not change once the tables are
-initialised; to avoid having to look them up in |main_hash_table| each time,
-we store each one in a static variable inside a dedicated local function.
-
-@h "lexer.h" // for |main_hash_table|
-
-@< Local function definitions @>=
-id_type equals_name()
-{@; static id_type name=main_hash_table->match_literal("=");
-  return name;
-}
-
-id_type size_of_name()
-{@; static id_type name=main_hash_table->match_literal("#");
-  return name;
-}
-id_type print_name()
-{@; static id_type name=main_hash_table->match_literal("print");
-  return name;
-}
-id_type to_string_name()
-{@; static id_type name=main_hash_table->match_literal("to_string");
-  return name;
-}
-id_type prints_name()
-{@; static id_type name=main_hash_table->match_literal("prints");
-  return name;
-}
-id_type error_name()
-{@; static id_type name=main_hash_table->match_literal("error");
-  return name;
-}
-@)
-inline bool is_special_operator(id_type id)
-{@; return id==size_of_name()
-        or id==print_name()
-        or id==to_string_name()
-        or id==prints_name()
-        or id==error_name(); }
-
-@ For overloaded function calls, once the overloading is resolved, we proceed
-in a similar fashion to non-overloaded calls, except that there is no function
-expression to convert (the overload table contains an already evaluated
-function value, either built-in or user-defined). We deal with the built-in
-case here, and will give the user-defined case later when we have discussed
-the necessary value types.
-
-As a special safety measure against the easily made error of writing `\.='
-instead of an assignment operator~`\.{:=}', we forbid converting to void the
-result of an (always overloaded) call to the equality operator, treating this
-case as a type error instead. In the unlikely case that the user defines an
-overloaded instance of `\.=' with void result type, calls to this operator
-will still be accepted.
-
-@< Return a call of the function value |*v.val|... @>=
-{ expression_ptr call;
-  auto f = dynamic_cast<const builtin_value*>(v.val.get());
-  if (f!=nullptr)
-    call = expression_ptr (new @| overloaded_builtin_call
-      (f->val,f->print_name.c_str(),std::move(arg),e.loc));
-  else
-    @< Set |call| to the call of the user-defined function |v|
-       with argument |arg| @>
-
-  if (type==void_type and
-      id==equals_name() and
-      v.type().result_type!=void_type)
-    throw type_error(e,v.type().result_type.copy(),std::move(type));
-  return conform_types(v.type().result_type,type,std::move(call),e);
-}
-
-@ For operator symbols that satisfy |is_special_operator(id)|, we test generic
-argument type patterns before we test instances in the overload table, because
-the latter could otherwise mask some generic ones due to coercion. Therefore
-if we fail to find a match, we simply fall through; however if we match an
-argument type but fail to match the returned type, we throw a |type_error|.
-
-The function |print| (but not |prints|) will return the value printed if
-required, so it has the type of a generic identity function. This is done so
-that inserting |print| around subexpressions for debugging purposes can be
-done without other modifications of the user program. Any call to |print| is
-accepted without check of the argument, and to ensure that coercions that
-would apply in the absence of |print| still get their chance, we call
-|conform_types| to possibly insert them at the outside of that call (so the
-value printed is the one before any coercion). It is still theoretically
-possible that inserting a call to print into valid code results in an error,
-namely for argument expressions that \emph{need} the type expected by the
-context in order to pass the type check. These cases are quite rare though,
-and can be overcome by inserting a cast inside the |print|. Moreover, in such
-cases an error will have been reported before we even get to this code, due to
-the fact that we have required that arguments can be analysed to
-|a_priori_type| without benefit of a context type; therefore there is nothing
-we could possibly do about it here.
-
-In the case of |prints|, the context must either expect or accept a void
-result, which is the condition that the call |type.specialise(void_type)|
-below tests. The case of |error| is like |prints| for its arguments, but will
-not return, so nothing at all is demanded of the context type.
-
-@< If |id| is a special operator like size-of... @>=
-{ if (id==size_of_name())
-  { if (a_priori_type.kind==row_type)
-    { expression_ptr call(new @|
-        overloaded_builtin_call(sizeof_wrapper,"#",std::move(arg),e.loc));
-      return conform_types(int_type,type,std::move(call),e);
-    }
-    else if (a_priori_type.kind!=undetermined_type and
-             a_priori_type.specialise(pair_type))
-    @< Recognise and return 2-argument versions of `\#', or fall through in
-       case of failure @>
-  }
-  else if (id==print_name()) // this one always matches
-  { expression_ptr call(new
-      generic_builtin_call(print_wrapper,"print",std::move(arg),e.loc));
-    return conform_types(a_priori_type,type,std::move(call),e);
- }
-  else if(id==to_string_name()) // this always matches as well
-  { expression_ptr call(new
-      generic_builtin_call(to_string_wrapper,"to_string",std::move(arg),e.loc));
-    if (type.specialise(str_type))
-      return call;
-    throw type_error(e,str_type.copy(),std::move(type));
-  }
-  else if(id==prints_name()) // this always matches as well
-  { expression_ptr call(new
-      generic_builtin_call(prints_wrapper,"prints",std::move(arg),e.loc));
-    if (type.specialise(void_type))
-      return call;
-    throw type_error(e,void_type.copy(),std::move(type));
-  }
-  else if(id==error_name()) // this always matches as well
-  { return expression_ptr(new
-      generic_builtin_call(error_wrapper,"error",std::move(arg),e.loc));
-  }
-}
-
-@ The operator `\#' can also be used as infix operator, to join (concatenate)
-two row values of the same type or to extend one on either end by a single
-element. In the former case we require that both arguments have identical row
-type, in the latter case we allow the single element to be, or to be converted
-to, the component type of the row value. The corresponding wrapper functions
-will be defined in section@#hash wrappers@>.
-
-There is a subtlety in the order here, due to the fact that one of the
-arguments could be the empty list, with undetermined row type. Then there is
-actual ambiguity: with `\#' interpreted as join, the result is just the other
-operand, while suffixing or prefixing to the empty list gives a singleton of
-the other operand, and to some operands the empty list itself can also be
-suffixed or prefixed. The simplest resolution of this ambiguity is to say that
-join never applies with one of the arguments of undetermined list type, and
-that suffixing is preferred over prefixing (for instance $[[2]]\#[\,]$ will
-give $[[2],[\,]]$, but $[\,]\#[[2]]$ will give $[[[2]]]$). This can be
-obtained by testing for suffixing before testing for join: after the former
-test we know the first argument does not have type \.{[*]}, so it will match
-the second argument type only if both are determined row types.
-
-In order to be as general as a user might expect, we allow the additional
-component to be suffixed or prefixed to a row value to be coerced to the
-component type of that row. There are some technical complications that
-justify defining a small function |can_coerce_arg| to handle this, which are
-explained at the definition of this function below. The arguments to this
-function are: a tuple (pair) expression, an index of a component ($0$ or $1$),
-the initial type of that component of the pair and the (component) type it
-should be coerced to. The function returns a success code, and if (and only
-if) it returns |true| it may have modified the component type (by specialising
-it) or the pair expression (by inserting a coercion).
-
-@< Recognise and return 2-argument versions of `\#'... @>=
-{
-  type_expr& arg_tp0 = a_priori_type.tupple->contents;
-  type_expr& arg_tp1 = a_priori_type.tupple->next->contents;
-  if (arg_tp0.kind==row_type)
-  { if (can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type)) // suffix
-    { expression_ptr call(new @| overloaded_builtin_call
-        (suffix_element_wrapper,"#",std::move(arg),e.loc));
-      return conform_types(arg_tp0,type,std::move(call),e);
-    }
-    if (arg_tp0==arg_tp1) // join
-    { expression_ptr call(new @| overloaded_builtin_call
-        (join_rows_wrapper,"#",std::move(arg),e.loc));
-      return conform_types(arg_tp0,type,std::move(call),e);
-    }
-  }
-  if (arg_tp1.kind==row_type and @|
-         can_coerce_arg(arg.get(),0,arg_tp0,*arg_tp1.component_type))
-          // prefix
-  { expression_ptr call(new @| overloaded_builtin_call
-      (prefix_element_wrapper,"#",std::move(arg),e.loc));
-    return conform_types(arg_tp1,type,std::move(call),e);
-  }
-}
-
-@ We called |can_coerce_arg| when type-checking the dyadic use of the operator
-`\#', in order to see if one of its arguments can be coerced from its type
-|from| to |to|. The situation there is somewhat unusual, in that we have
-already converted the entire argument expression at the point where we
-discover, based on the type found, that one of the arguments might need to be
-coerced. This means that such a coercion must be inserted into an already
-constructed expression. Nonetheless a direct application of |coerce| is up to
-the task, after using a dynamic cast to break open the $2$-tuple forming the
-argument pair.
-
-Before we plunge into this coercion insertion, we test if the types can be
-made to match without coercion, after possibly specialising the type |to|
-(which might be undefined, for instance when suffixing/prefixing to an empty
-list).
-
-Another complication is that we decided having a dyadic use of `\#' based on
-finding a 2-tuple type, but this is no guarantee there are actually two
-operand subexpressions (in a |tuple_expression|); we do a dynamic cast to find
-that out, and in the case the user was so contrived as to use monadic `\#' on
-a non-tuple expression of 2-tuple type, we just report that no coercion of
-operands is done (after all we need a subexpression to be able to insert any
-conversion). These complications warrant defining a separate function to
-handle them.
-
-@< Local function definitions @>=
-bool can_coerce_arg
-  (expression e,size_t i,const type_expr& from,type_expr& to)
-{ if (to.specialise(from))
-    return true; // type matches without coercion
-  tuple_expression* tup= dynamic_cast<tuple_expression*>(e);
-  if (tup==nullptr or tup->component.size()!=2)
-    return false; // we need a pair to insert a coercion
-  return coerce(from,to,tup->component[i]);
-}
 
 @*1 Evaluating general function calls, the built-in case.
 %
@@ -1616,6 +1333,298 @@ catch (const std::exception& e)
 { runtime_error new_error(e.what());
   extend_message(new_error,this,nullptr,arg_string);
   throw new_error;
+}
+
+@*1 Type-checking function calls.
+%
+When we type-check a function call, we must expect the function part to be any
+type of expression. But when it is a single identifier (possibly an operator
+symbol) for which one or more overloads are defined then we attempt overload
+resolution, unless the same identifier is locally bound with function type as
+such bindings take precedence (however we ignore a possible binding for the
+identifier in the global identifier table, even if it should have function
+type). In all other cases (including that of a local function identifier), the
+known type of the function expression gives the argument and result
+types, and can be used to help converting the argument expression and the call
+expression itself. Thus in such cases we first get the type of the expression
+in the function position, requiring only that it be a function type, then
+type-check and convert the argument expression using the obtained result type,
+and build a converted function call~|call|. Finally (and this is done by
+|conform_types|) we test if the required type matches the return type (in
+which case we simply return~|call|), or if the return type can be coerced to
+it (in which case we return |call| as transformed by |coerce|); if neither is
+possible |conform_types| will throw a~|type_error|.
+
+@< Cases for type-checking and converting... @>=
+case function_call:
+{ if (e.call_variant->fun.kind==applied_identifier)
+    @< Convert and |return| an overloaded function call
+    if |e.call_variant->fun| is known in |global_overload_table|,
+    unless it is a local function identifier @>
+  type_expr f_type=gen_func_type.copy(); // start with generic function type
+  expression_ptr fun = convert_expr(e.call_variant->fun,f_type);
+  expression_ptr arg = convert_expr(e.call_variant->arg,f_type.func->arg_type);
+  expression_ptr call
+    (new call_expression(std::move(fun),std::move(arg),e.loc));
+  return conform_types(f_type.func->result_type,type,std::move(call),e);
+}
+
+@ The main work here has been relegated to |resolve_overload| defined in
+section@#resolve_overload@>; otherwise we just need to take care of the things
+mentioned in the module name.
+
+The cases relegated to |resolve_overload| include calls of special operators
+like the size-of operator~`\#', even in case such an operator should not occur
+in the overload table.
+
+@< Convert and |return| an overloaded function call... @>=
+{ const id_type id =e.call_variant->fun.identifier_variant;
+  size_t i,j; bool b; // dummies; local binding not used here
+  auto local_type_p=layer::lookup(id,i,j,b);
+  if (local_type_p==nullptr or local_type_p->kind!=function_type)
+ // not calling by local identifier
+  { const overload_table::variant_list& variants
+      = global_overload_table->variants(id);
+    if (variants.size()>0 or is_special_operator(id))
+      return resolve_overload(e,type,variants);
+  }
+}
+
+@ The names of some special operators are tested for each time we analyse an
+overloaded call. The numeric values of these identifiers are not known
+explicitly at compile time, but they will not change once the tables are
+initialised; to avoid having to look them up in |main_hash_table| each time,
+we store each one in a static variable inside a dedicated local function.
+
+@h "lexer.h" // for |main_hash_table|
+
+@< Local function definitions @>=
+id_type equals_name()
+{@; static id_type name=main_hash_table->match_literal("=");
+  return name;
+}
+
+id_type size_of_name()
+{@; static id_type name=main_hash_table->match_literal("#");
+  return name;
+}
+id_type print_name()
+{@; static id_type name=main_hash_table->match_literal("print");
+  return name;
+}
+id_type to_string_name()
+{@; static id_type name=main_hash_table->match_literal("to_string");
+  return name;
+}
+id_type prints_name()
+{@; static id_type name=main_hash_table->match_literal("prints");
+  return name;
+}
+id_type error_name()
+{@; static id_type name=main_hash_table->match_literal("error");
+  return name;
+}
+@)
+inline bool is_special_operator(id_type id)
+{@; return id==size_of_name()
+        or id==print_name()
+        or id==to_string_name()
+        or id==prints_name()
+        or id==error_name(); }
+
+@ For overloaded function calls, once the overloading is resolved, we proceed
+in a similar fashion to non-overloaded calls, except that there is no function
+expression to convert (the overload table contains an already evaluated
+function value, either built-in or user-defined). We deal with the built-in
+case here, and will give the user-defined case later when we have discussed
+the necessary value types.
+
+As a special safety measure against the easily made error of writing `\.='
+instead of an assignment operator~`\.{:=}', we forbid converting to void the
+result of an (always overloaded) call to the equality operator, treating this
+case as a type error instead. In the unlikely case that the user defines an
+overloaded instance of `\.=' with void result type, calls to this operator
+will still be accepted.
+
+@< Return a call of the function value |*v.val|... @>=
+{ expression_ptr call;
+  auto f = std::dynamic_pointer_cast<const builtin_value>(v.val);
+  if (f.get()!=nullptr)
+    call = expression_ptr (new @| overloaded_builtin_call
+      (f,std::move(arg),e.loc));
+  else
+    @< Set |call| to the call of the user-defined function |v|
+       with argument |arg| @>
+
+  if (type==void_type and
+      id==equals_name() and
+      v.type().result_type!=void_type)
+    throw type_error(e,v.type().result_type.copy(),std::move(type));
+  return conform_types(v.type().result_type,type,std::move(call),e);
+}
+
+@ For operator symbols that satisfy |is_special_operator(id)|, we test generic
+argument type patterns before we test instances in the overload table, because
+the latter could otherwise mask some generic ones due to coercion. Therefore
+if we fail to find a match, we simply fall through; however if we match an
+argument type but fail to match the returned type, we throw a |type_error|.
+
+The function |print| (but not |prints|) will return the value printed if
+required, so it has the type of a generic identity function. This is done so
+that inserting |print| around subexpressions for debugging purposes can be
+done without other modifications of the user program. Any call to |print| is
+accepted without check of the argument, and to ensure that coercions that
+would apply in the absence of |print| still get their chance, we call
+|conform_types| to possibly insert them at the outside of that call (so the
+value printed is the one before any coercion). It is still theoretically
+possible that inserting a call to print into valid code results in an error,
+namely for argument expressions that \emph{need} the type expected by the
+context in order to pass the type check. These cases are quite rare though,
+and can be overcome by inserting a cast inside the |print|. Moreover, in such
+cases an error will have been reported before we even get to this code, due to
+the fact that we have required that arguments can be analysed to
+|a_priori_type| without benefit of a context type; therefore there is nothing
+we could possibly do about it here.
+
+In the case of |prints|, the context must either expect or accept a void
+result, which is the condition that the call |type.specialise(void_type)|
+below tests. The case of |error| is like |prints| for its arguments, but will
+not return, so nothing at all is demanded of the context type.
+
+@< If |id| is a special operator like size-of... @>=
+{ static shared_builtin sizeof_row =
+    std::make_shared<const builtin_value>(sizeof_wrapper,"#");
+  if (id==size_of_name())
+  { if (a_priori_type.kind==row_type)
+    { expression_ptr call(new @|
+        overloaded_builtin_call(sizeof_row,std::move(arg),e.loc));
+      return conform_types(int_type,type,std::move(call),e);
+    }
+    else if (a_priori_type.kind!=undetermined_type and
+             a_priori_type.specialise(pair_type))
+    @< Recognise and return 2-argument versions of `\#', or fall through in
+       case of failure @>
+  }
+  else if (id==print_name()) // this one always matches
+  { expression_ptr call(new
+      generic_builtin_call(print_wrapper,"print",std::move(arg),e.loc));
+    return conform_types(a_priori_type,type,std::move(call),e);
+ }
+  else if(id==to_string_name()) // this always matches as well
+  { expression_ptr call(new
+      generic_builtin_call(to_string_wrapper,"to_string",std::move(arg),e.loc));
+    if (type.specialise(str_type))
+      return call;
+    throw type_error(e,str_type.copy(),std::move(type));
+  }
+  else if(id==prints_name()) // this always matches as well
+  { expression_ptr call(new
+      generic_builtin_call(prints_wrapper,"prints",std::move(arg),e.loc));
+    if (type.specialise(void_type))
+      return call;
+    throw type_error(e,void_type.copy(),std::move(type));
+  }
+  else if(id==error_name()) // this always matches as well
+  { return expression_ptr(new
+      generic_builtin_call(error_wrapper,"error",std::move(arg),e.loc));
+  }
+}
+
+@ The operator `\#' can also be used as infix operator, to join (concatenate)
+two row values of the same type or to extend one on either end by a single
+element. In the former case we require that both arguments have identical row
+type, in the latter case we allow the single element to be, or to be converted
+to, the component type of the row value. The corresponding wrapper functions
+will be defined in section@#hash wrappers@>.
+
+There is a subtlety in the order here, due to the fact that one of the
+arguments could be the empty list, with undetermined row type. Then there is
+actual ambiguity: with `\#' interpreted as join, the result is just the other
+operand, while suffixing or prefixing to the empty list gives a singleton of
+the other operand, and to some operands the empty list itself can also be
+suffixed or prefixed. The simplest resolution of this ambiguity is to say that
+join never applies with one of the arguments of undetermined list type, and
+that suffixing is preferred over prefixing (for instance $[[2]]\#[\,]$ will
+give $[[2],[\,]]$, but $[\,]\#[[2]]$ will give $[[[2]]]$). This can be
+obtained by testing for suffixing before testing for join: after the former
+test we know the first argument does not have type \.{[*]}, so it will match
+the second argument type only if both are determined row types.
+
+In order to be as general as a user might expect, we allow the additional
+component to be suffixed or prefixed to a row value to be coerced to the
+component type of that row. There are some technical complications that
+justify defining a small function |can_coerce_arg| to handle this, which are
+explained at the definition of this function below. The arguments to this
+function are: a tuple (pair) expression, an index of a component ($0$ or $1$),
+the initial type of that component of the pair and the (component) type it
+should be coerced to. The function returns a success code, and if (and only
+if) it returns |true| it may have modified the component type (by specialising
+it) or the pair expression (by inserting a coercion).
+
+@< Recognise and return 2-argument versions of `\#'... @>=
+{
+  static shared_builtin prefix_elt =
+    std::make_shared<const builtin_value>(prefix_element_wrapper,"#");
+  static shared_builtin suffix_elt =
+    std::make_shared<const builtin_value>(suffix_element_wrapper,"#");
+  static shared_builtin join_rows =
+    std::make_shared<const builtin_value>(join_rows_wrapper,"#");
+  type_expr& arg_tp0 = a_priori_type.tupple->contents;
+  type_expr& arg_tp1 = a_priori_type.tupple->next->contents;
+  if (arg_tp0.kind==row_type)
+  { if (can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type)) // suffix
+    { expression_ptr call(new @| overloaded_builtin_call
+        (suffix_elt,std::move(arg),e.loc));
+      return conform_types(arg_tp0,type,std::move(call),e);
+    }
+    if (arg_tp0==arg_tp1) // join
+    { expression_ptr call(new @| overloaded_builtin_call
+        (join_rows,std::move(arg),e.loc));
+      return conform_types(arg_tp0,type,std::move(call),e);
+    }
+  }
+  if (arg_tp1.kind==row_type and @|
+         can_coerce_arg(arg.get(),0,arg_tp0,*arg_tp1.component_type))
+          // prefix
+  { expression_ptr call(new @| overloaded_builtin_call
+      (prefix_elt,std::move(arg),e.loc));
+    return conform_types(arg_tp1,type,std::move(call),e);
+  }
+}
+
+@ We called |can_coerce_arg| when type-checking the dyadic use of the operator
+`\#', in order to see if one of its arguments can be coerced from its type
+|from| to |to|. The situation there is somewhat unusual, in that we have
+already converted the entire argument expression at the point where we
+discover, based on the type found, that one of the arguments might need to be
+coerced. This means that such a coercion must be inserted into an already
+constructed expression. Nonetheless a direct application of |coerce| is up to
+the task, after using a dynamic cast to break open the $2$-tuple forming the
+argument pair.
+
+Before we plunge into this coercion insertion, we test if the types can be
+made to match without coercion, after possibly specialising the type |to|
+(which might be undefined, for instance when suffixing/prefixing to an empty
+list).
+
+Another complication is that we decided having a dyadic use of `\#' based on
+finding a 2-tuple type, but this is no guarantee there are actually two
+operand subexpressions (in a |tuple_expression|); we do a dynamic cast to find
+that out, and in the case the user was so contrived as to use monadic `\#' on
+a non-tuple expression of 2-tuple type, we just report that no coercion of
+operands is done (after all we need a subexpression to be able to insert any
+conversion). These complications warrant defining a separate function to
+handle them.
+
+@< Local function definitions @>=
+bool can_coerce_arg
+  (expression e,size_t i,const type_expr& from,type_expr& to)
+{ if (to.specialise(from))
+    return true; // type matches without coercion
+  tuple_expression* tup= dynamic_cast<tuple_expression*>(e);
+  if (tup==nullptr or tup->component.size()!=2)
+    return false; // we need a pair to insert a coercion
+  return coerce(from,to,tup->component[i]);
 }
 
 @*1 Some special wrapper functions.
@@ -3227,7 +3236,7 @@ case negation_expr:
   if (not type.specialise(b)) // |not| preserves the |bool| type
     throw type_error(e,std::move(b),std::move(type));
   return expression_ptr(new overloaded_builtin_call
-     (boolean_negate_builtin->val,"{!@@bool}",std::move(arg),e.loc));
+     (boolean_negate_builtin,std::move(arg),e.loc));
 }
 
 @ Often however a Boolean negation can be eliminated entirely from the
