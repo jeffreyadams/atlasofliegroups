@@ -974,8 +974,8 @@ expression_ptr resolve_overload
       }
     }
     if (match)
-      @< Return a call of variant |v| with argument |arg|, or |throw| if
-         result type mismatches |type| @>
+      @< Return a call of the function value |*v.val| with argument |arg|,
+         or |throw| if result type mismatches |type| @>
   }
 
   @< Complain about failing overload resolution @>
@@ -1012,29 +1012,56 @@ however many of the aspects that we deal with right away, notably function
 overloading, are in fact much more recent additions than used-defined
 functions were.
 
-We start with introducing a type for representing general function calls after
-type checking. This is the general form where function can be given by any
-kind of expression, not necessarily an applied identifier; indeed most cases
-where a named function is called will handled by another kind of expression,
-the overloaded call. In contrast with that, this type of call will dynamically
-evaluate the function expression, possibly resulting in different functions
-between evaluations.
+There will be several classes of expressions to represent function calls,
+differing in the degree to which the called function has been identified
+during type analysis. An intermediate class |call_base| between
+|expression_base| and these classes is derived, to group some functionality
+common to them. All call expressions take a general argument expression, and
+location information is stored to allow the calling expression to be
+identified during an error trace-back. Apart from the location information, an
+error trace will also provide a name of the called function (which is more
+readable than trying to reproduce the whole function call expression), which
+will be obtained from the virtual method |function_name|>
 
 @< Type def... @>=
-struct call_expression : public expression_base
-{ expression_ptr function, argument;
+struct call_base : public expression_base
+{ expression_ptr argument;
+  source_location loc;
 @)
-  call_expression(expression_ptr&& f,expression_ptr&& a)
-   : function(f.release()),argument(a.release()) @+{}
+  call_base(expression_ptr&& arg, const source_location& loc)
+  : argument(arg.release()), loc(loc) @+{}
+  virtual ~@[call_base() nothing_new_here@];
+  virtual std::string function_name() const=0;
+};
+
+@ We start with introducing a type for representing general function calls
+after type checking. This is the general form where function can be given by
+any kind of expression, not necessarily an applied identifier; indeed most
+cases where a named function is called will handled by another kind of
+expression, the overloaded call. In contrast with that, this type of call will
+dynamically evaluate the function expression, possibly resulting in different
+functions between evaluations.
+
+@< Type def... @>=
+struct call_expression : public call_base
+{ expression_ptr function;
+@)
+  call_expression
+    (expression_ptr&& f,expression_ptr&& a, const source_location& loc)
+   : call_base(std::move(a),loc), function(f.release()) @+{}
   virtual ~@[call_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
+  virtual std::string function_name() const
+    // here we just print-wrap the function expression
+    {@; std::ostringstream o; o << *function; return o.str(); }
+
 };
 
 @ To print a function call we print the function expression, enclosed in
 parentheses unless it is an identifier, and the argument, enclosed in
 parentheses unless it is a tuple expression (which already has parentheses).
-The conditions for suppressing parentheses are tested a dynamic casts.
+The conditions for suppressing parentheses are tested using dynamic casts.
 
 @< Function definitions @>=
 void call_expression::print(std::ostream& out) const
@@ -1046,8 +1073,9 @@ void call_expression::print(std::ostream& out) const
   else out << '(' << *argument << ')';
 }
 
-@ When a call involves a built-in function, what is executed is a ``wrapper
-function'', defined in \.{global.h}.
+@ When a call involves a built-in function, what is executed is a value of
+type |wrapper_function|, which is a |typedef| for a specific kind of function
+pointer, defined in \.{global.h}.
 
 @< Includes needed in the header file @>=
 
@@ -1079,24 +1107,23 @@ private:
 of overloaded functions is actually simpler at run time, because the function
 is necessarily referred to by an identifier (or operator) instead of by an
 arbitrary expression, and overloading resolution results in a
-function \emph{value} rather than in the description of a location where the
-function can be found at run time. If that value happens to be a built-in
-function, the call will be translated into an |overloaded_builtin_call| rather
-than into a |call_expression|.
+function \emph{value} that has been identified at analysis time. If that value
+happens to be a built-in function, the call will be translated into an
+|overloaded_builtin_call| rather than into a |call_expression| (otherwise the
+call will become an |overloaded_closure_call| that will be defined below).
 
 @< Type definitions @>=
-struct overloaded_builtin_call : public expression_base
+struct overloaded_builtin_call : public call_base
 { wrapper_function f;
   std::string print_name;
-  expression_ptr argument;
-  source_location loc;
 @)
   overloaded_builtin_call(wrapper_function v,const char* n,expression_ptr&& a,
-    source_location loc)
-  : f(v), print_name(n), argument(a.release()), loc(loc)@+ {}
+    const source_location& loc)
+  : call_base(std::move(a),loc), f(v), print_name(n) @+ {}
   virtual ~@[overloaded_builtin_call() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
+  virtual std::string function_name() const @+{@; return print_name; }
 };
 
 @ When printing, we ignore the stored wrapper function (which does not record
@@ -1134,32 +1161,34 @@ struct generic_builtin_call : public overloaded_builtin_call
 @*1 Type-checking function calls.
 %
 When we type-check a function call, we must expect the function part to be any
-type of expression. However, when it is a single identifier (possibly operator
-symbol) that is not locally bound with function type, and for which overloads
-are defined, then we attempt overload resolution (and in this case we ignore
-any value possibly present in the global identifier table). In all other
-cases, the function expression determines its own type, and once this is
-known, its argument and result types can be used to help converting the
-argument expression and the call expression itself. Thus in such cases we
-first get the type of the expression in the function position, requiring only
-that it be a function type, then type-check and convert the argument
-expression using the obtained result type, and build a converted function
-call~|call|. Finally (and this is done by |conform_types|) we test if the
-required type matches the return type (in which case we simply return~|call|),
-or if the return type can be coerced to it (in which case we return |call| as
-transformed by |coerce|); if neither is possible |conform_types| will throw
-a~|type_error|.
+type of expression. But when it is a single identifier (possibly an operator
+symbol) for which one or more overloads are defined then we attempt overload
+resolution, unless the same identifier is locally bound with function type as
+such bindings take precedence (however we ignore a possible binding for the
+identifier in the global identifier table, even if it should have function
+type). In all other cases (including that of a local function identifier), the
+known type of the function expression gives the argument and result
+types, and can be used to help converting the argument expression and the call
+expression itself. Thus in such cases we first get the type of the expression
+in the function position, requiring only that it be a function type, then
+type-check and convert the argument expression using the obtained result type,
+and build a converted function call~|call|. Finally (and this is done by
+|conform_types|) we test if the required type matches the return type (in
+which case we simply return~|call|), or if the return type can be coerced to
+it (in which case we return |call| as transformed by |coerce|); if neither is
+possible |conform_types| will throw a~|type_error|.
 
 @< Cases for type-checking and converting... @>=
 case function_call:
 { if (e.call_variant->fun.kind==applied_identifier)
-    @< Convert and |return| an overloaded function call if
-    |e.call_variant->fun| is not a local function identifier and is known in
-    |global_overload_table| @>
+    @< Convert and |return| an overloaded function call
+    if |e.call_variant->fun| is known in |global_overload_table|,
+    unless it is a local function identifier @>
   type_expr f_type=gen_func_type.copy(); // start with generic function type
   expression_ptr fun = convert_expr(e.call_variant->fun,f_type);
   expression_ptr arg = convert_expr(e.call_variant->arg,f_type.func->arg_type);
-  expression_ptr call (new call_expression(std::move(fun),std::move(arg)));
+  expression_ptr call
+    (new call_expression(std::move(fun),std::move(arg),e.loc));
   return conform_types(f_type.func->result_type,type,std::move(call),e);
 }
 
@@ -1240,9 +1269,9 @@ case as a type error instead. In the unlikely case that the user defines an
 overloaded instance of `\.=' with void result type, calls to this operator
 will still be accepted.
 
-@< Return a call of variant |v|... @>=
+@< Return a call of the function value |*v.val|... @>=
 { expression_ptr call;
-  const builtin_value* f = dynamic_cast<const builtin_value*>(v.val.get());
+  auto f = dynamic_cast<const builtin_value*>(v.val.get());
   if (f!=nullptr)
     call = expression_ptr (new @| overloaded_builtin_call
       (f->val,f->print_name.c_str(),std::move(arg),e.loc));
@@ -1459,12 +1488,12 @@ void call_expression::evaluate(level l) const
     else // built-in functions
       (*f->val)(l); // call the wrapper function, handling |l| appropriately
   }
-  @< Catch-block for exceptions thrown within function calls @>
+  @< Catch-block for exceptions thrown within general function calls @>
 }
 
 @ We shall in various catch blocks have to append information to the message,
 which the function |extend_message| facilitates. It is called with both an
-|expression| designating the function expression before evaluation
+|expression| designating the function call expression
 (typically pointing to an |identifier| object, though it could point to any
 kind of expression), and the |value| resulting from evaluating that
 expression (pointing to either a |builtin_value| or a |closure_value|).
@@ -1477,18 +1506,10 @@ classes with modifiable message to the standard ones like
 
 @< Local fun... @>=
 void extend_message
-  (error_base& e,const expression_base* function, const value_base* fun,
+  (error_base& e,const call_base* call, const value_base* fun,
    const std::string& arg)
 { std::ostringstream o;
-  auto bif_p=dynamic_cast<const overloaded_builtin_call*>(function);
-  auto clf_p=dynamic_cast<const overloaded_closure_call*>(function);
-  auto id_p=dynamic_cast<const identifier*>(function);
-  o << "\n(in call of "
-    << ( bif_p!=nullptr ? bif_p->print_name
-       : clf_p!=nullptr ? clf_p->print_name
-       : id_p!=nullptr ? id_p->name() : "anonymous function"
-       )
-    << ", ";
+  o << "\n(in call " << call->loc << " of " << call->function_name() << ", ";
   auto f=dynamic_cast<const closure_value*>(fun);
   if (f==nullptr)
      o << "built-in";
@@ -1499,13 +1520,13 @@ void extend_message
   e.message.append(o.str());
 }
 
-@ We catch all |error_base| errors thrown during the execution of a function
-call. Even though the test whether the |function| field of our
+@ We catch any error derived from |error_base| thrown during the execution of
+a function call. Although the test whether the |function| field of our
 |call_expression| is an identifier is done using a |dynamic_cast| during
 evaluation, this is a syntactic and therefore unchanging property of the call
-expression (we could have added a Boolean field to record it for instance).
-Having an identifier as |function| in a |call_expression| is a rare
-circumstance, as most function calls will translate to an
+expression (we could for instance have added a Boolean field to record it).
+Having an identifier as |function| in a |call_expression| is a fairly rare
+circumstance, since most function calls will get translated into an
 |overloaded_builtin_call| or an |overloaded_closure_call|, to be treated
 later. Currently however recursive function calls necessarily involve a
 general |call_expression|; also they may give rise to multiple identical
@@ -1521,14 +1542,14 @@ its message field correctly.
 
 @:Catch to trace back calls@>
 
-@< Catch-block for exceptions thrown within function calls @>=
+@< Catch-block for exceptions thrown within general function calls @>=
 catch (error_base& e)
-{@; extend_message(e,function.get(),fun.get(),arg_string);
+{@; extend_message(e,this,fun.get(),arg_string);
   throw;
 }
 catch (const std::exception& e)
 { runtime_error new_error(e.what());
-  extend_message(new_error,function.get(),fun.get(),arg_string);
+  extend_message(new_error,this,fun.get(),arg_string);
   throw new_error;
 }
 
@@ -2255,19 +2276,18 @@ frequent case can be handled more efficiently than by building a
 directly storing a closure value.
 
 @< Type definitions @>=
-struct overloaded_closure_call : public expression_base
+struct overloaded_closure_call : public call_base
 { shared_closure fun;
   std::string print_name;
-  expression_ptr argument;
-  source_location loc;
 @)
   overloaded_closure_call @|
    (shared_closure f,const std::string& n,expression_ptr&& a
    ,const source_location& loc)
-  : fun(f), print_name(n), argument(a.release()), loc(loc) @+ {}
+  : call_base(std::move(a),loc), fun(f), print_name(n) @+ {}
   virtual ~@[overloaded_closure_call() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
+  virtual std::string function_name() const {@; return print_name; }
 };
 
 @ When printing it, we ignore the closure and use the overloaded function

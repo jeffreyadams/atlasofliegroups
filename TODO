@@ -15,8 +15,6 @@
 
 - Investigate if some tracing facilty (printing "let" values) is feasible
 
-- Make error traceback report location of each call, not just the callee
-
 - Integrate a bigint library to store atlas int (and rat?) values; while
   attending that, signal overflow in arithmetic operations / conversions
 
