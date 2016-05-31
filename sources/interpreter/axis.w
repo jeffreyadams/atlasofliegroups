@@ -61,6 +61,7 @@ namespace {
 @< Local class definitions @>@;
 @< Local variable definitions @>@;
 @< Local function definitions @>@;
+@< Static variable definitions that refer to local functions @>@;
 }@;
 @< Function definitions @>@;
 }@; }@;
@@ -304,8 +305,7 @@ these cases and treat them one syntactic construction at the time.
 
 @< Function definitions @>=
 expression_ptr convert_expr(const expr& e, type_expr& type)
-{
-  switch(e.kind)
+{ switch(e.kind)
   {
    @\@< Cases for type-checking and converting expression~|e| against
    |type|, all of which either |return| or |throw| a |type_error| @>
@@ -850,17 +850,17 @@ There is a subtlety in that the identifier may have a more general type than
 empty list, and a concrete type of list is required). In this case the first
 call of |specialise| below succeeds without making |type| equal to the
 identifier type |*id_t|, and if this happens we specialise the latter instead
-to |type|, using the |specialise| method either of the |layer| class (static)
-respectively of |global_id_table|. This ensures that the same
-local identifier cannot be subsequently used with an incompatible
-specialisation (notably any further assignments to the variable must respect
-the more specific type). It remains a rare circumstance that an applied
-occurrence (rather than an assignment) of a local identifier specialises its
-type; it could happen if the identifier is used in a cast. However type safety
-requires that we always record the type to which the identifier value was
-specialised, since if one allows different specialisations of the same
-identifier type to be made in different subexpressions, then a devious program
-can manage to exploit this to get false type predictions.
+to |type|, using the |specialise| method either of the |layer| class (a static
+method) or of |global_id_table|. This ensures that the same local identifier
+cannot be subsequently used with an incompatible specialisation (notably any
+further assignments to the variable must respect the more specific type). It
+remains a rare circumstance that an applied occurrence (rather than an
+assignment) of a local identifier specialises its type; it could happen if the
+identifier is used in a cast. However type safety requires that we always
+record the type to which the identifier value was specialised, since if one
+allows different specialisations of the same identifier type to be made in
+different subexpressions, then a devious program can manage to exploit this to
+get false type predictions.
 
 @< Cases for type-checking and converting... @>=
 case applied_identifier:
@@ -1082,9 +1082,13 @@ pointer, defined in \.{global.h}.
 #include "global.h" // for |wrapper_function|
 
 @ The class of dynamic values holding a wrapper function is called
-|builtin_value|; it also stores a print name, which is used when the wrapper
-function, rather than being called, gets printed as (part of) a value in its
-own right.
+|builtin_value|. Besides the function pointer it also stores a print name,
+which is used when the wrapper function, rather than being called, gets
+printed as (part of) a value in its own right; it is also used when reporting
+an error during the execution of the built-in function. Most |builtin_value|
+instances are constructed at start-up time when functions are entered into the
+global overload table; their |print_name| will stick, even if the user binds
+it to a new name.
 
 @< Type definitions @>=
 
@@ -1112,6 +1116,10 @@ function \emph{value} that has been identified at analysis time. If that value
 happens to be a built-in function, the call will be translated into an
 |overloaded_builtin_call| rather than into a |call_expression| (otherwise the
 call will become an |overloaded_closure_call| that will be defined below).
+Here we store a shared pointer to the |builtin_value|, which has the advantage
+of not duplicating the |print_name| string for every call expression. To avoid
+that this const an extra pointer dereference at each call, we copy the
+function pointer directly into |overloaded_builtin_call| as its field~|f|.
 
 @< Type definitions @>=
 struct overloaded_builtin_call : public call_base
@@ -1127,40 +1135,195 @@ struct overloaded_builtin_call : public call_base
   virtual std::string function_name() const @+{@; return fun->print_name; }
 };
 
-@ When printing, we ignore the stored wrapper function (which does not record
-its name) and use the overloaded function name; otherwise we proceed as for
-general function calls with an identifier as function.
+@ When printing, we use the |fun| field for its |print_name|, which the method
+|function_name| achieves; we ensure it is called non-virtually to avoid the
+overhead (in fact no derived class redefines the method, but the compiler
+cannot know that). For the argument list we proceed as for general function
+calls.
 
 @< Function definitions @>=
 void overloaded_builtin_call::print(std::ostream& out) const
-{ out << function_name();
+{ out << overloaded_builtin_call::function_name();
   if (dynamic_cast<tuple_expression*>(argument.get())!=nullptr)
     out << *argument;
   else out << '(' << *argument << ')';
 }
 
 @ Some built-in functions like |print| accept arguments of any types, and in
-particular tuples of any length. For such functions we cannot adopt the method
-used for other built-in functions of expanding argument tuples on the stack,
-since there would then be no way to recover their number. Fortunately such
-functions are necessarily accessed through overloading, so we detect the fact
-that they are being used at analysis time. This fact is then recorded it in
-the type of call expression generated, and the |evaluate| method will ask for
-an unexpanded argument on the execution stack. Therefore we derive a type from
-|overloaded_builtin_call| that will override only the |evaluate| method.
+particular tuples of any length. For such functions there is no use in
+adopting the approach used for other built-in functions of expanding argument
+tuples on the stack; instead the argument is always considered as one value.
+Fortunately such functions are necessarily accessed through overloading, so we
+detect the fact that they are being used at analysis time. This fact is then
+recorded it in the type of call expression generated, and the |evaluate|
+method will ask for an unexpanded argument on the execution stack. Therefore
+we derive a type from |overloaded_builtin_call| that will override only the
+|evaluate| method.
 
 @< Type definitions @>=
-struct generic_builtin_call : public overloaded_builtin_call
+struct variadic_builtin_call : public overloaded_builtin_call
 { typedef overloaded_builtin_call base;
 @)
-  generic_builtin_call(wrapper_function v,const char* n,expression_ptr&& a,
+  variadic_builtin_call(const shared_builtin& fun,expression_ptr&& a,
     source_location loc)
-  : base(std::make_shared<const builtin_value>(v,n),std::move(a),loc)@+ {}
+  : base(fun,std::move(a),loc)@+ {}
   virtual void evaluate(level l) const;
 };
 
-@*1 Evaluating general function calls, the built-in case.
+
+@*1 Evaluating calls of built-in functions.
 %
+We now discuss how at run time built-in functions are called. Basically the
+task consists of evaluating the arguments, placing them on the
+|execution_stack|, and then calling the wrapper function through its pointer.
+
+Some complication is added to this in order to be able to provide a back-trace
+in case an error occurs during the function call. In debugging mode, that is
+when |verbosity>0|, the arguments with which the function was called will be
+printed in the back trace; since these arguments no longer need to exist at
+the time the error occurs, we need to anticipate this possibility, and we do
+so by recording the argument(s) as a string in a local variable of the
+evaluation method.
+
+Of the three classes derived from |call_base|, the one with the simplest
+|evaluate| method is the class |variadic_builtin_call|, as it treats whatever
+arguments it receives as a single value, that can be converted to a string
+simply by performing output to an |ostringstream|.
+
+In order to provide a trace of interrupted functions in case of an error,
+function calls are executed in a |try| block (this will be true as well for
+cases to be given later). We have made sure that the evaluation of the
+arguments(s) of the function were done outside this |try| block, since
+reporting functions that have not yet started executing would be confusing. We
+detach the code for the |catch| block, so that it can be textually shared
+with another |evaluate| method.
+
+@< Function definitions @>=
+void variadic_builtin_call::evaluate(level l) const
+{ std::string arg_string;
+  argument->eval();
+  if (verbosity>0) // then record argument(s) as string
+  {@; std::ostringstream o;
+    o << *execution_stack.back();
+    arg_string = o.str();
+  }
+@)
+  try
+  {@; (*f)(l); } // call the built-in function
+  @< Catch-block for exceptions thrown within function calls @>
+}
+
+@ To provide back-trace, we catch and re-throw an error after extending the
+stored error string. The result is a list of interrupted named function calls,
+from inner to outer.
+
+The work of modifying the error string is common to several such |catch|
+blocks, and relegated to a function |extend_message| to be defined presently.
+The error string is modified withing the existing error object; this is a
+possibility that error objects derived from our |error_base| provide, contrary
+to standard error objects like |std::runtime_error|. Nonetheless, we need to
+deal with some errors derived from |std::exception| but not from our
+|error_base|; notably the Atlas library may throw |std::runtime_error| rather
+than our (\.{axis}) |runtime_error|, and |std::bad_alloc| can be thrown from
+many places. Those errors do not have a modifiable message field (and
+|std::bad_alloc| cannot even be raised with a provided error string at all),
+so we re-brand those exceptions as |runtime_error|, by throwing the latter
+after initialising its message field from |e.what()| and extending it through
+a call of~|extend_message|.
+
+@:Catch to trace back calls@>
+
+@< Catch-block for exceptions thrown within function calls @>=
+catch (error_base& e)
+{@; extend_message(e,this,fun,arg_string);
+  throw;
+}
+catch (const std::exception& e)
+{ runtime_error new_error(e.what());
+  extend_message(new_error,this,fun,arg_string);
+  throw new_error;
+}
+
+@ The function |extend_message| facilitates appending information to error
+messages in |catch| blocks. It is called with, apart from the error~|e| whose
+message is to be modified, the expression~|call| whose evaluation was
+interrupted by the error, the value |fun| of the function called (either a
+|builtin_value| or a |closure_value|), and a string~|arg| that in debug mode
+describes the arguments (when not in debug mode the string will be empty and
+is ignored).
+
+We report the source location of the call expression and the name of the
+function called (both obtained from |call|), and a source location for the
+definition of the called function (obtained from |fun|) in case it is
+user-defined; when the called function was built in we just report that.
+
+@< Local fun... @>=
+void extend_message
+  (error_base& e,const call_base* call, const shared_value& fun,
+   const std::string& arg)
+{ std::ostringstream o;
+  o << "\n(in call " << call->loc << " of " << call->function_name() << ", ";
+  auto f=dynamic_cast<const closure_value*>(fun.get());
+  if (f==nullptr)
+     o << "built-in";
+  else o << "defined " << f->p->loc;
+  o << ')';
+  if (verbosity>0)
+    o << "\n  argument" << (arg[0]=='(' ? "s: " : ": ") << arg;
+  e.message.append(o.str());
+}
+
+@ The |evaluate| method for ordinary built-in functions is similar to that of
+generic functions, but is somewhat complicated by the fact that for efficiency
+reasons arguments are directly evaluated onto the |execution_stack|, without
+ever constructing a tuple for them (this is achieved by using the |multi_eval|
+method). This somewhat complicates the code for recording the argument as a
+string in debugging mode, since it needs to find out how many separate
+arguments have been evaluated. This is done by recording the stack pointer
+before arguments are evaluated, and comparing with its values afterwards.
+
+Currently there are no built-in function that take no arguments, but the code
+below caters for the possibility anyway. Recording the arguments as strings
+happens for all function calls (we cannot predict which ones will throw an
+error) and obviously has a performance penalty; this is the reason why this
+work is only done in debug mode. By using the same variable name
+|arg_string|, we can reuse the |catch| block defined before.
+
+@< Function definitions @>=
+void overloaded_builtin_call::evaluate(level l) const
+{ std::string arg_string;
+  if (verbosity==0)
+    argument->multi_eval();
+  else // record argument(s) as string
+  { auto sp = execution_stack.size();
+    argument->multi_eval(); // mark stack before evaluation
+    std::ostringstream o;
+    if (execution_stack.size()>sp+1) // multiple arguments
+      for (o << '(';
+           sp<execution_stack.size();
+           o << (sp<execution_stack.size() ? ',' : ')')
+          )
+        o << *execution_stack[sp++];
+    else if (execution_stack.size()==sp) o << "()"; // no arguments
+    else
+      o << *execution_stack.back(); // single argument case
+    arg_string = o.str();
+  }
+@)
+  try
+  {@; (*f)(l); } // call the built-in function
+  @< Catch-block for exceptions thrown within function calls @>
+}
+
+
+@ Finally we consider the case where evaluating a |call_expression| results in
+calling a built-in function. Since the function to be called is here produced
+by evaluating an expression (maybe as simple as an identifier), the fact that
+it is a built-int rather than user-defined function can here only be
+determined at run time. The part of this method that deals with the case of a
+user defined function is split off, and will be presented later once we have
+discussed the representation of user defined functions.
+
 To evaluate a |call_expression| object, in which the function part can be any
 expression, we must evaluate this function part, and then dynamically test
 whether it is a built-in or a user-defined function. In the former case we
@@ -1172,171 +1335,51 @@ all). The evaluation of user-defined functions will be detailed later, but we
 can already say that in this case it will be more useful to receive the
 argument on the stack as a single value.
 
-As a general mechanism to aid locating errors in user programs, we report a
-trace-back line whenever a runtime error is produced during the evaluation of
-a function call. We make sure that the evaluation of the arguments(s) of the
-function is done outside this |try| block, since reporting functions that have
-not yet started executing would be confusing.
+We reuse the previous |catch| block literally a third time; this time not only
+do we judiciously choose the name |arg_string| to match what we did before,
+but also the local variable name |fun| to math the field name
+|overloaded_builtin_call::fun| that the cited module referred to in previous
+instances.
 
 @< Function definitions @>=
 void call_expression::evaluate(level l) const
 { function->eval(); @+ shared_value fun=pop_value();
-@/size_t sp = execution_stack.size();
+  auto f = dynamic_cast<const builtin_value*>(fun.get());
+  const bool user_defined = f==nullptr;
   std::string arg_string;
-  const builtin_value* f=dynamic_cast<const builtin_value*>(fun.get());
-  argument->evaluate(f==nullptr ? single_value : multi_value);
-  if (verbosity>0)
-  { std::ostringstream o;
-    if (f==nullptr or sp+1==execution_stack.size()) // get single argument
-      o << *execution_stack.back();
-    else // built-in with multiple arguments, gather them
-    { o << '(';
-      while(sp<execution_stack.size())
-    @/{@; o << *execution_stack[sp++];
-          o << (sp<execution_stack.size() ? ',' : ')');
-      }
-    }
+  if (verbosity==0)
+    argument->evaluate(user_defined ? single_value : multi_value);
+  else
+  { auto sp = execution_stack.size();
+    argument->evaluate(user_defined ? single_value : multi_value);
+    std::ostringstream o;
+    if (execution_stack.size()>sp+1) // multiple arguments
+      for (o << '(';
+           sp<execution_stack.size();
+           o << (sp<execution_stack.size() ? ',' : ')')
+          )
+        o << *execution_stack[sp++];
+    else if (execution_stack.size()==sp) o << "()"; // no arguments
+    else
+      o << *execution_stack.back(); // single argument case
     arg_string = o.str();
   }
 @)
   try
-  { if (f==nullptr)
+  { if (user_defined)
       @< Call user-defined function |fun| with argument on |execution_stack| @>
     else // built-in functions
       (*f->val)(l); // call the wrapper function, handling |l| appropriately
   }
-  @< Catch-block for exceptions thrown within general function calls @>
+  @< Catch-block for exceptions thrown within function calls @>
 }
 
-@ We shall in various catch blocks have to append information to the message,
-which the function |extend_message| facilitates. It is called with both an
-|expression| designating the function call expression
-(typically pointing to an |identifier| object, though it could point to any
-kind of expression), and the |value| resulting from evaluating that
-expression (pointing to either a |builtin_value| or a |closure_value|).
-
-We append a line with the function name to the error string, and re-throw the
-error. The result is a trace-back of interrupted named function calls, from
-inner to outer. It is because of these operations that we prefer our error
-classes with modifiable message to the standard ones like
-|std::runtime_error|.
-
-@< Local fun... @>=
-void extend_message
-  (error_base& e,const call_base* call, const value_base* fun,
-   const std::string& arg)
-{ std::ostringstream o;
-  o << "\n(in call " << call->loc << " of " << call->function_name() << ", ";
-  auto f=dynamic_cast<const closure_value*>(fun);
-  if (f==nullptr)
-     o << "built-in";
-  else o << "defined " << f->p->loc;
-  o << ')';
-  if (verbosity>0)
-    o << "\n  argument" << (arg[0]=='(' ? "s: " : ": ") << arg;
-  e.message.append(o.str());
-}
-
-@ We catch any error derived from |error_base| thrown during the execution of
-a function call. Although the test whether the |function| field of our
-|call_expression| is an identifier is done using a |dynamic_cast| during
-evaluation, this is a syntactic and therefore unchanging property of the call
-expression (we could for instance have added a Boolean field to record it).
-Having an identifier as |function| in a |call_expression| is a fairly rare
-circumstance, since most function calls will get translated into an
-|overloaded_builtin_call| or an |overloaded_closure_call|, to be treated
-later. Currently however recursive function calls necessarily involve a
-general |call_expression|; also they may give rise to multiple identical
-trace-back lines.
-
-Of the types possible here, namely |runtime_error|, |logic_error|,
-|std::runtime_error| (for errors thrown by the Atlas library) and
-|std::bad_alloc|, the latter two do not have a modifiable message field, and
-|std::bad_alloc| cannot even be re-raised at all with a provided error string.
-Therefore we re-brand all exceptions derived from |std::exception| but not
-from our |error_base| as |runtime_error|, throwing the latter after setting
-its message field correctly.
-
-@:Catch to trace back calls@>
-
-@< Catch-block for exceptions thrown within general function calls @>=
-catch (error_base& e)
-{@; extend_message(e,this,fun.get(),arg_string);
-  throw;
-}
-catch (const std::exception& e)
-{ runtime_error new_error(e.what());
-  extend_message(new_error,this,fun.get(),arg_string);
-  throw new_error;
-}
-
-@*1 Evaluating overloaded built-in function calls.
-%
-Calling an overloaded built-in function calls the wrapper function after
-evaluating the argument(s) to the stack.
-
-For generic built-in functions like |print|, we only change the fact that
-arguments are evaluated using |eval| to a single value on the stack.
-
-@< Function definitions @>=
-void overloaded_builtin_call::evaluate(level l) const
-{ size_t sp = execution_stack.size();
-  std::string arg_string;
-  argument->multi_eval();
-  if (verbosity>0) // then record argument(s) as string
-  { std::ostringstream o;
-    if (sp+1==execution_stack.size())
-      o << *execution_stack.back();
-    else
-    { o << '(';
-      while(sp<execution_stack.size())
-    @/{@; o << *execution_stack[sp++];
-          o << (sp<execution_stack.size() ? ',' : ')');
-      }
-    }
-    arg_string = o.str();
-  }
-@)
-  @< Execute |(*f)(l)|, catching and re-throwing any errors, having extended
-     the message with a reference to built-in function |print_name| @>
-}
-
-void generic_builtin_call::evaluate(level l) const
-{ std::string arg_string;
-  argument->eval();
-  if (verbosity>0) // then record argument(s) as string
-  {@; std::ostringstream o;
-    o << *execution_stack.back();
-    arg_string = o.str();
-  }
-@)
-  @< Execute |(*f)(l)|, catching and re-throwing any errors...@>
-}
-
-@ Like for general function calls, we provide a trace of interrupted functions
-by temporarily catching errors. Although we know that we have an
-|overloaded_builtin_call| which directly stores a function pointer so that
-it not really has any |value| obtained by evaluating the function expression,
-we can use |extend_message| by passing it |this| as |function| and |nullptr|
-as |fun| (which will cause its final dynamic cast to keep a null pointer, and
-therefore print \.{built in} a source location). Again we convert any
-|std::exception| not derived from our |error_base| into a |runtime_error|.
-
-@< Execute |(*f)(l)|, catching and re-throwing any errors...@>=
-try
-{@; (*f)(l); }
-catch (error_base& e)
-{@; extend_message(e,this,nullptr,arg_string);
-  throw;
-}
-catch (const std::exception& e)
-{ runtime_error new_error(e.what());
-  extend_message(new_error,this,nullptr,arg_string);
-  throw new_error;
-}
 
 @*1 Type-checking function calls.
 %
+We now discuss the treatment of function calls at the time of type analysis,
+and how the instances of classes derived from |call_base| come to be.
+
 When we type-check a function call, we must expect the function part to be any
 type of expression. But when it is a single identifier (possibly an operator
 symbol) for which one or more overloads are defined then we attempt overload
@@ -1369,9 +1412,9 @@ case function_call:
   return conform_types(f_type.func->result_type,type,std::move(call),e);
 }
 
-@ The main work here has been relegated to |resolve_overload| defined in
-section@#resolve_overload@>; otherwise we just need to take care of the things
-mentioned in the module name.
+@ The main work here is done by a call to |resolve_overload| defined above in
+section@#resolve_overload@>. Before we make the call, we take care to give
+priority to local function type identifiers, as mentioned in the module name.
 
 The cases relegated to |resolve_overload| include calls of special operators
 like the size-of operator~`\#', even in case such an operator should not occur
@@ -1386,7 +1429,7 @@ in the overload table.
   { const overload_table::variant_list& variants
       = global_overload_table->variants(id);
     if (variants.size()>0 or is_special_operator(id))
-      return resolve_overload(e,type,variants);
+    @/return resolve_overload(e,type,variants);
   }
 }
 
@@ -1432,12 +1475,17 @@ inline bool is_special_operator(id_type id)
         or id==prints_name()
         or id==error_name(); }
 
-@ For overloaded function calls, once the overloading is resolved, we proceed
-in a similar fashion to non-overloaded calls, except that there is no function
-expression to convert (the overload table contains an already evaluated
-function value, either built-in or user-defined). We deal with the built-in
-case here, and will give the user-defined case later when we have discussed
-the necessary value types.
+@ The definition of the function |resolve_overload| left some modules to be
+specified, which we now do.
+
+For overloaded function calls, once the overloading is resolved, we need to
+construct a function call object. We proceed in a similar fashion as above
+when building a |call_expression|, but with the arguments |arg| already
+converted before we come here, since |resolve_overload| needed their types.
+Also there is no function expression |fun| to convert here: the overload table
+contains an already evaluated function value~|v|, which is either built-in or
+user-defined. When it is built-in we build an |overloaded_builtin_call|,
+otherwise we defer to yet another module to be specified later.
 
 As a special safety measure against the easily made error of writing `\.='
 instead of an assignment operator~`\.{:=}', we forbid converting to void the
@@ -1448,8 +1496,7 @@ will still be accepted.
 
 @< Return a call of the function value |*v.val|... @>=
 { expression_ptr call;
-  auto f = std::dynamic_pointer_cast<const builtin_value>(v.val);
-  if (f.get()!=nullptr)
+  if (@[auto f = std::dynamic_pointer_cast<const builtin_value>(v.val)@;@])
     call = expression_ptr (new @| overloaded_builtin_call
       (f,std::move(arg),e.loc));
   else
@@ -1463,11 +1510,20 @@ will still be accepted.
   return conform_types(v.type().result_type,type,std::move(call),e);
 }
 
-@ For operator symbols that satisfy |is_special_operator(id)|, we test generic
-argument type patterns before we test instances in the overload table, because
-the latter could otherwise mask some generic ones due to coercion. Therefore
-if we fail to find a match, we simply fall through; however if we match an
-argument type but fail to match the returned type, we throw a |type_error|.
+@ Another part of |resolve_overload| left be specified is the one that
+recognises special operators with generic argument type patterns, which have
+an identifier~|id| that satisfies |is_special_operator(id)|. The built-in
+function objects that are inserted into the calls here do not come from the
+|global_overload_table|, but from a collection of static of static variables
+whose name ends with |_builtin|, and which are initialised in a module given
+later, using calls to |std::make_shared| so that they refer to unique shared
+instances.
+
+The code below executes \emph{before} considering instances in the overload
+table, because the latter could otherwise inadvertently mask some generic
+instances, due to coercion. Therefore if we fail to find a match, we simply
+fall through; however if we match an argument type but fail to match the
+returned type, we throw a |type_error|.
 
 The function |print| (but not |prints|) will return the value printed if
 required, so it has the type of a generic identity function. This is done so
@@ -1492,12 +1548,10 @@ below tests. The case of |error| is like |prints| for its arguments, but will
 not return, so nothing at all is demanded of the context type.
 
 @< If |id| is a special operator like size-of... @>=
-{ static shared_builtin sizeof_row =
-    std::make_shared<const builtin_value>(sizeof_wrapper,"#");
-  if (id==size_of_name())
+{ if (id==size_of_name())
   { if (a_priori_type.kind==row_type)
     { expression_ptr call(new @|
-        overloaded_builtin_call(sizeof_row,std::move(arg),e.loc));
+        overloaded_builtin_call(sizeof_row_builtin,std::move(arg),e.loc));
       return conform_types(int_type,type,std::move(call),e);
     }
     else if (a_priori_type.kind!=undetermined_type and
@@ -1507,27 +1561,26 @@ not return, so nothing at all is demanded of the context type.
   }
   else if (id==print_name()) // this one always matches
   { expression_ptr call(new
-      generic_builtin_call(print_wrapper,"print",std::move(arg),e.loc));
+      variadic_builtin_call(print_builtin,std::move(arg),e.loc));
     return conform_types(a_priori_type,type,std::move(call),e);
  }
   else if(id==to_string_name()) // this always matches as well
   { expression_ptr call(new
-      generic_builtin_call(to_string_wrapper,"to_string",std::move(arg),e.loc));
+      variadic_builtin_call(to_string_builtin,std::move(arg),e.loc));
     if (type.specialise(str_type))
       return call;
     throw type_error(e,str_type.copy(),std::move(type));
   }
   else if(id==prints_name()) // this always matches as well
   { expression_ptr call(new
-      generic_builtin_call(prints_wrapper,"prints",std::move(arg),e.loc));
+      variadic_builtin_call(prints_builtin,std::move(arg),e.loc));
     if (type.specialise(void_type))
       return call;
     throw type_error(e,void_type.copy(),std::move(type));
   }
   else if(id==error_name()) // this always matches as well
-  { return expression_ptr(new
-      generic_builtin_call(error_wrapper,"error",std::move(arg),e.loc));
-  }
+    return expression_ptr(new
+      variadic_builtin_call(error_builtin,std::move(arg),e.loc));
 }
 
 @ The operator `\#' can also be used as infix operator, to join (concatenate)
@@ -1563,23 +1616,17 @@ it) or the pair expression (by inserting a coercion).
 
 @< Recognise and return 2-argument versions of `\#'... @>=
 {
-  static shared_builtin prefix_elt =
-    std::make_shared<const builtin_value>(prefix_element_wrapper,"#");
-  static shared_builtin suffix_elt =
-    std::make_shared<const builtin_value>(suffix_element_wrapper,"#");
-  static shared_builtin join_rows =
-    std::make_shared<const builtin_value>(join_rows_wrapper,"#");
   type_expr& arg_tp0 = a_priori_type.tupple->contents;
   type_expr& arg_tp1 = a_priori_type.tupple->next->contents;
   if (arg_tp0.kind==row_type)
   { if (can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type)) // suffix
     { expression_ptr call(new @| overloaded_builtin_call
-        (suffix_elt,std::move(arg),e.loc));
+        (suffix_elt_builtin,std::move(arg),e.loc));
       return conform_types(arg_tp0,type,std::move(call),e);
     }
     if (arg_tp0==arg_tp1) // join
     { expression_ptr call(new @| overloaded_builtin_call
-        (join_rows,std::move(arg),e.loc));
+        (join_rows_builtin,std::move(arg),e.loc));
       return conform_types(arg_tp0,type,std::move(call),e);
     }
   }
@@ -1587,7 +1634,7 @@ it) or the pair expression (by inserting a coercion).
          can_coerce_arg(arg.get(),0,arg_tp0,*arg_tp1.component_type))
           // prefix
   { expression_ptr call(new @| overloaded_builtin_call
-      (prefix_elt,std::move(arg),e.loc));
+      (prefix_elt_builtin,std::move(arg),e.loc));
     return conform_types(arg_tp1,type,std::move(call),e);
   }
 }
@@ -1625,133 +1672,6 @@ bool can_coerce_arg
   if (tup==nullptr or tup->component.size()!=2)
     return false; // we need a pair to insert a coercion
   return coerce(from,to,tup->component[i]);
-}
-
-@*1 Some special wrapper functions.
-%
-In this chapter we define some wrapper functions that are not accessed through
-the overload table; they must be directly visible to the type checking code
-that inserts them, which is why they are defined as local functions to the
-current \.{axis.w} module.
-
-The function |print| outputs any value in the format used by the interpreter
-itself. This function has an argument of unknown type; we just pass the popped
-value to the |operator<<|. The function returns its argument unchanged as
-result, which facilitates inserting |print| statements for debugging purposes.
-
-This is the first place in this file where we produce user output to a file.
-In general, rather than writing directly to |std::cout|, we shall pass via a
-pointer whose |output_stream| value is maintained in the main program, so that
-redirecting output to a different stream can be easily implemented. Since this
-is a wrapper function there is no other way to convey the output stream to be
-used than via a dedicated global variable.
-
-@< Local function definitions @>=
-void print_wrapper(expression_base::level l)
-{
-  *output_stream << *execution_stack.back() << std::endl;
-  if (l!=expression_base::single_value) // in |single_value| case we are done
-    push_expanded(l,pop_value()); // otherwise remove and possibly expand value
-}
-
-@ Sometimes the user may want to use a stripped version of the |print| output:
-no quotes in case of a string value, or no parentheses or commas in case of a
-tuple value (so that a single statement can chain several texts on the same
-line). The |prints_wrapper| does this down to the level of omitting quotes in
-individual argument strings, using dynamic casts to determine the case that
-applies. The function |error| does the same, but collects the output into a
-string which it then throws as |runtime_error|.
-
-@< Local function definitions @>=
-std::ostream& to_string_aux(std::ostream& o, expression_base::level l)
-{ shared_value v=pop_value();
-@)
-  const string_value* s=dynamic_cast<const string_value*>(v.get());
-  if (s!=nullptr)
-    o << s->val; // single string without quotes
-  else
-  { const tuple_value* t=dynamic_cast<const tuple_value*>(v.get());
-    if (t!=nullptr)
-    { for (auto it=t->val.begin(); it!=t->val.end(); ++it)
-      { s=dynamic_cast<const string_value*>(it->get());
-        if (s!=nullptr)
-	  o << s->val; // string components without quotes
-        else
-           o << *it->get(); // treat non-string tuple components as |print|
-      }
-    }
-    else
-      o << *v; // output like |print| unless string or tuple
-  }
-  return o;
-}
-
-void to_string_wrapper(expression_base::level l)
-{ std::ostringstream o;
-  to_string_aux(o,l);
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<string_value>(o.str()));
-}
-
-void prints_wrapper(expression_base::level l)
-{ to_string_aux(*output_stream,l) << std::endl;
-  if (l==expression_base::single_value)
-    wrap_tuple<0>(); // don't forget to return a value if asked for
-}
-
-void error_wrapper(expression_base::level l)
-{ std::ostringstream o;
-  to_string_aux(o,l);
-  throw runtime_error(o.str());
-}
-
-
-@ The generic size-of wrapper is used to find the length of any ``row-of''
-value. Finding sizes of other objects like vectors, matrices, polynomials,
-will require more specialised unary overloads of the `\#' operator.
-
-@< Local function definitions @>=
-void sizeof_wrapper(expression_base::level l)
-{ size_t s=get<row_value>()->val.size();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(s));
-}
-
-
-@ Here are functions for adding individual elements to a row value, and for
-joining two such values.
-
-@:hash wrappers@>
-
-@< Local function definitions @>=
-void suffix_element_wrapper(expression_base::level l)
-{ shared_value e=pop_value();
-  own_row r=get_own<row_value>();
-  if (l!=expression_base::no_value)
-  {@; r->val.push_back(std::move(e));
-    push_value(std::move(r));
-  }
-}
-@)
-void prefix_element_wrapper(expression_base::level l)
-{ own_row r=get_own<row_value>();
-  shared_value e=pop_value();
-  if (l!=expression_base::no_value)
-  {@; r->val.insert(r->val.begin(),e);
-    push_value(std::move(r));
-  }
-}
-@)
-void join_rows_wrapper(expression_base::level l)
-{ shared_row y=get<row_value>();
-  shared_row x=get<row_value>();
-  if (l!=expression_base::no_value)
-  { own_row result = std::make_shared<row_value>(x->val.size()+y->val.size());
-    std::copy(y->val.begin(),y->val.end(), @|
-      std::copy(x->val.begin(),x->val.end(),result->val.begin()));
-@/  push_value(std::move(result));
-  }
-
 }
 
 @* Let-expressions, and identifier patterns.
@@ -2284,6 +2204,12 @@ frequent case can be handled more efficiently than by building a
 |call_expression|, we introduce a new |expression| type that is capable of
 directly storing a closure value.
 
+Closures themselves are anonymous, so the |print_name| reflects the overloaded
+name that was used to identify this function; it can vary separately from the
+closure |fun| if the latter is entered more than once in the the tables. This
+is in contrast to |overloaded_builtin_call| where the name is taken from the
+stored |builtin_value|, and cannot be dissociated from the wrapper function.
+
 @< Type definitions @>=
 struct overloaded_closure_call : public call_base
 { shared_closure fun;
@@ -2296,7 +2222,7 @@ struct overloaded_closure_call : public call_base
   virtual ~@[overloaded_closure_call() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
-  virtual std::string function_name() const {@; return print_name; }
+  virtual std::string function_name() const @+{@; return print_name; }
 };
 
 @ When printing it, we ignore the closure and use the overloaded function
@@ -2336,9 +2262,9 @@ the identifiers are not used at all at runtime (they are present in the
 used here); our implementation can be classified as one using ``nameless
 dummies'' (also known as ``de Bruijn indices'').
 
-When we come here |f| must be a |closure_value|, and the argument has already
-been evaluated, and is available as a single value on the |execution_stack|.
-The evaluation of the call temporarily replaces the current execution context
+When we come here |f| must be a |closure_value|, the argument has already been
+evaluated, and is available as a single value on the |execution_stack|. The
+evaluation of the call temporarily replaces the current execution context
 |frame::current| by one composed of |f->context| stored in the closure and a
 new frame defined by the parameter list |f->param| and the argument obtained
 as |pop_value()|; the function body is evaluated in this extended context.
@@ -2368,35 +2294,29 @@ interrupted function calls in the error message) together with the evaluation
 part of section@# lambda evaluation @> just given. The simplification
 consists of the fact that the closure is already evaluated and stored, and
 that in particular we don't have to distinguish dynamically between built-in
-functions and closures, nor between calls of anonymous or named functions (we
-are always in the latter case) for producing the error trace.
+functions and closures.
+
+Not having varied our naming conventions (|arg_string| and |fun|), we can make
+a fourth textual reuse of the |catch| block.
 
 @< Function definitions @>=
 void overloaded_closure_call::evaluate(level l) const
-{ argument->eval();
+{ argument->eval(); // evaluate arguments as a single value
   std::string arg_string;
+  if (verbosity!=0) // then record argument(s) as string
+  {@; std::ostringstream o;
+    o << *execution_stack.back();
+    arg_string = o.str();
+  }
   try
   { lambda_frame fr(fun->p->param,fun->context);
-    if (verbosity>0) // then record argument(s) as string
-    {@; std::ostringstream o;
-      o << *execution_stack.back();
-      arg_string = o.str();
-    }
 @)
     // now save context, create new one for |fun|
     fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
     fun->body.evaluate(l);
     // call, passing evaluation level |l| to function body
   }
-  catch (error_base& e)
-  {@; extend_message(e,this,fun.get(),arg_string);
-    throw;
-  }
-  catch (const std::exception& e)
-  { runtime_error new_error(e.what());
-    extend_message(new_error,this,fun.get(),arg_string);
-    throw new_error;
-  }
+  @< Catch-block for exceptions thrown within function calls @>
 }
 
 @* Sequence expressions.
@@ -2864,7 +2784,6 @@ repetitiveness, we use for this a function that is itself templated over the
 class template that takes |flags| as template argument; there will be $5$
 different such class templates used in calls of |make_slice|.
 
-@s slice int
 @< Local function definitions @>=
 template < @[ template < unsigned > class @+ slice @] >
 expression make_slice(unsigned flags
@@ -3600,9 +3519,9 @@ void for_expression<flags,kind>::print(std::ostream& out) const
 }
 
 @ As in |make_slice| above, we need to convert runtime values for |flags| and
-the |sub_type t| to template arguments. This is quite boring, but is the price
-we have to pay to get selection at type-check time of an |evaluate| method
-for which the dynamic choice has been constant-folded away by the \Cpp\
+the |sub_type t@;| to template arguments. This is quite boring, but is the
+price we have to pay to get selection at type-check time of an |evaluate|
+method for which the dynamic choice has been constant-folded away by the \Cpp\
 compiler.
 
 @< Local function definitions @>=
@@ -4187,29 +4106,25 @@ break;
 @ For our special operators, |print|, |prints|, |to_string|, |error|, we
 select their wrapper function here always, since they accept any argument
 type. We signal an error only if the context requires a type that cannot be
-specialised the type of operator found. For $\#$ the situation will be
+specialised to the type of operator found. For $\#$ the situation will be
 slightly more complicated.
 
 @< Test special argument patterns... @>=
 { if (c->oper==print_name())
   { if (functype_specialise(type,ctype,ctype))
-    return expression_ptr(new @| denotation
-      (std::make_shared<builtin_value>(print_wrapper,"print")));
+    return expression_ptr(new @| denotation (print_builtin));
   }
   else if (c->oper==prints_name())
   { if (functype_specialise(type,ctype,void_type))
-    return expression_ptr(new @| denotation
-      (std::make_shared<builtin_value>(prints_wrapper,"prints")));
+    return expression_ptr(new @| denotation (prints_builtin));
   }
   else if (c->oper==to_string_name())
   { if (functype_specialise(type,ctype,str_type))
-    return expression_ptr(new @| denotation
-      (std::make_shared<builtin_value>(prints_wrapper,"to_string")));
+    return expression_ptr(new @| denotation (to_string_builtin));
   }
   else if (c->oper==error_name())
   { if (functype_specialise(type,ctype,unknown_type))
-    return expression_ptr(new @| denotation
-      (std::make_shared<builtin_value>(prints_wrapper,"error")));
+    return expression_ptr(new @| denotation (error_builtin));
   }
   else if (c->oper==size_of_name())
     @< Select the proper instance of the \.\# operator,
@@ -4224,8 +4139,7 @@ match is found here, there can still be one in the overload table.
 @< Select the proper instance of the \.\# operator,... @>=
 { if (ctype.kind==row_type)
   { if (functype_specialise(type,ctype,int_type))
-  @/return expression_ptr(new @| denotation
-      (std::make_shared<builtin_value>(sizeof_wrapper,"#@@[T]")));
+  @/return expression_ptr(new @| denotation (sizeof_row_builtin));
     throw type_error(e,ctype.copy(),std::move(type));
   }
   else if (ctype.specialise(pair_type))
@@ -4235,24 +4149,18 @@ match is found here, there can still be one in the overload table.
     if (arg_tp0.kind==row_type)
     { if (arg_tp0==arg_tp1)
       { if (functype_specialise(type,ctype,arg_tp0))
-        return expression_ptr(new @| denotation
-          (std::make_shared<builtin_value>@|(join_rows_wrapper
-                                          ,"#@@([T],[T]->[T])")));
+        return expression_ptr(new @| denotation (join_rows_builtin));
         throw type_error(e,ctype.copy(),std::move(type));
       }
       else if (*arg_tp0.component_type==arg_tp1)
       { if (functype_specialise(type,ctype,arg_tp0))
-        return expression_ptr(new @| denotation
-            (std::make_shared<builtin_value>@|(suffix_element_wrapper
-                                              ,"#@@([T],T->[T])")));
+        return expression_ptr(new @| denotation(suffix_elt_builtin));
         throw type_error(e,ctype.copy(),std::move(type));
       }
     }
     if (arg_tp1.kind==row_type and *arg_tp1.component_type==arg_tp0)
     { if (functype_specialise(type,ctype,arg_tp1))
-      return expression_ptr(new @| denotation
-        (std::make_shared<builtin_value>@|(prefix_element_wrapper
-                                          ,"#@@(T,[T]->[T])")));
+      return expression_ptr(new @| denotation (prefix_elt_builtin));
       throw type_error(e,ctype.copy(),std::move(type));
     }
   }
@@ -4727,6 +4635,151 @@ case comp_ass_stat:
       p.reset(new global_component_assignment<false>
         (aggr,std::move(i),std::move(r),kind));
   return conform_types(comp_t,type,std::move(p),e);
+}
+
+@* Some special wrapper functions.
+%
+In this chapter we define some wrapper functions that are not accessed through
+the overload table; they must be directly visible to the type checking code
+that inserts them, which is why they are defined as local functions to the
+current \.{axis.w} module.
+
+@< Static variable definitions that refer to local functions @>=
+static shared_builtin sizeof_row_builtin =
+    std::make_shared<const builtin_value>(sizeof_wrapper,"#@@[T]");
+static shared_builtin print_builtin =
+  std::make_shared<const builtin_value>(print_wrapper,"print@@T");
+static shared_builtin to_string_builtin =
+  std::make_shared<const builtin_value>(to_string_wrapper,"to_string@@T");
+static shared_builtin prints_builtin =
+  std::make_shared<const builtin_value>(prints_wrapper,"prints@@T");
+static shared_builtin error_builtin =
+  std::make_shared<const builtin_value>(error_wrapper,"error@@T");
+static shared_builtin prefix_elt_builtin =
+  std::make_shared<const builtin_value>(prefix_element_wrapper,"#@@(T,[T])");
+static shared_builtin suffix_elt_builtin =
+  std::make_shared<const builtin_value>(suffix_element_wrapper,"#@@([T],T)");
+static shared_builtin join_rows_builtin =
+  std::make_shared<const builtin_value>(join_rows_wrapper,"#@@([T],[T])");
+
+@ The function |print| outputs any value in the format used by the interpreter
+itself. This function has an argument of unknown type; we just pass the popped
+value to the |operator<<|. The function returns its argument unchanged as
+result, which facilitates inserting |print| statements for debugging purposes.
+
+This is the first place in this file where we produce user output to a file.
+In general, rather than writing directly to |std::cout|, we shall pass via a
+pointer whose |output_stream| value is maintained in the main program, so that
+redirecting output to a different stream can be easily implemented. Since this
+is a wrapper function there is no other way to convey the output stream to be
+used than via a dedicated global variable.
+
+@< Local function definitions @>=
+void print_wrapper(expression_base::level l)
+{
+  *output_stream << *execution_stack.back() << std::endl;
+  if (l!=expression_base::single_value) // in |single_value| case we are done
+    push_expanded(l,pop_value()); // otherwise remove and possibly expand value
+}
+
+@ Sometimes the user may want to use a stripped version of the |print| output:
+no quotes in case of a string value, or no parentheses or commas in case of a
+tuple value (so that a single statement can chain several texts on the same
+line). The |prints_wrapper| does this down to the level of omitting quotes in
+individual argument strings, using dynamic casts to determine the case that
+applies. The function |error| does the same, but collects the output into a
+string which it then throws as |runtime_error|.
+
+@< Local function definitions @>=
+std::ostream& to_string_aux(std::ostream& o, expression_base::level l)
+{ shared_value v=pop_value();
+@)
+  const string_value* s=dynamic_cast<const string_value*>(v.get());
+  if (s!=nullptr)
+    o << s->val; // single string without quotes
+  else
+  { const tuple_value* t=dynamic_cast<const tuple_value*>(v.get());
+    if (t!=nullptr)
+    { for (auto it=t->val.begin(); it!=t->val.end(); ++it)
+      { s=dynamic_cast<const string_value*>(it->get());
+        if (s!=nullptr)
+	  o << s->val; // string components without quotes
+        else
+           o << *it->get(); // treat non-string tuple components as |print|
+      }
+    }
+    else
+      o << *v; // output like |print| unless string or tuple
+  }
+  return o;
+}
+
+void to_string_wrapper(expression_base::level l)
+{ std::ostringstream o;
+  to_string_aux(o,l);
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<string_value>(o.str()));
+}
+
+void prints_wrapper(expression_base::level l)
+{ to_string_aux(*output_stream,l) << std::endl;
+  if (l==expression_base::single_value)
+    wrap_tuple<0>(); // don't forget to return a value if asked for
+}
+
+void error_wrapper(expression_base::level l)
+@/{@; std::ostringstream o;
+  to_string_aux(o,l);
+  throw runtime_error(o.str());
+}
+
+
+@ The generic size-of wrapper is used to find the length of any ``row-of''
+value. Finding sizes of other objects like vectors, matrices, polynomials,
+will require more specialised unary overloads of the `\#' operator.
+
+@< Local function definitions @>=
+void sizeof_wrapper(expression_base::level l)
+{ size_t s=get<row_value>()->val.size();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(s));
+}
+
+
+@ Here are functions for adding individual elements to a row value, and for
+joining two such values.
+
+@:hash wrappers@>
+
+@< Local function definitions @>=
+void suffix_element_wrapper(expression_base::level l)
+{ shared_value e=pop_value();
+  own_row r=get_own<row_value>();
+  if (l!=expression_base::no_value)
+  {@; r->val.push_back(std::move(e));
+    push_value(std::move(r));
+  }
+}
+@)
+void prefix_element_wrapper(expression_base::level l)
+{ own_row r=get_own<row_value>();
+  shared_value e=pop_value();
+  if (l!=expression_base::no_value)
+  {@; r->val.insert(r->val.begin(),e);
+    push_value(std::move(r));
+  }
+}
+@)
+void join_rows_wrapper(expression_base::level l)
+{ shared_row y=get<row_value>();
+  shared_row x=get<row_value>();
+  if (l!=expression_base::no_value)
+  { own_row result = std::make_shared<row_value>(x->val.size()+y->val.size());
+    std::copy(y->val.begin(),y->val.end(), @|
+      std::copy(x->val.begin(),x->val.end(),result->val.begin()));
+@/  push_value(std::move(result));
+  }
+
 }
 
 @* Index.
