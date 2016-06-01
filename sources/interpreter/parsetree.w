@@ -1241,7 +1241,7 @@ length~$1$, will be forbidden: they would be confusing since $1$-tuples do not
 exist.
 
 The structure |raw_id_pat| cannot have a constructor, since it figures in a
-bare |union|, where this is not allowed. However the value from the will be
+bare |union|, where this is not allowed. However the value from them will be
 transformed into |id_pat| which is fully equipped with (move) constructors and
 destructors. Its default constructor will ensure that constructed nodes will
 immediately be safe for possible destruction by |destroy_id_pat| (no undefined
@@ -1404,7 +1404,6 @@ struct let_pair { id_pat pattern; expr val;
   : pattern(std::move(x.pattern)), val(std::move(x.val)) @+{}
   let_pair (id_pat&& p, expr&& v)
   : pattern(std::move(p)), val(std::move(v)) @+{}
-#else
 #endif
 };
 typedef containers::simple_list<let_pair> let_list;
@@ -1874,7 +1873,7 @@ struct while_node
   // backward compatibility for gcc 4.6
 };
 struct for_node
-{ struct id_pat id; @+ expr in_part; @+ expr body;
+{ id_pat id; @+ expr in_part; @+ expr body;
   BitSet<2> flags;
 @)
   for_node(id_pat&& id, expr&& in_part, expr&& body, unsigned flags)
@@ -2344,7 +2343,7 @@ expr_p make_assignment(id_type lhs, expr_p r, const YYLTYPE& loc)
   return new expr(new assignment_node { lhs, std::move(rhs) },loc);
 }
 
-@ Copy by assignment of raw pointers, not really |new|.
+@ Copying is done by assignment of raw pointers, not really a novelty.
 
 @< Cases for copying... @>=
 case ass_stat: assign_variant=other.assign_variant; break;
