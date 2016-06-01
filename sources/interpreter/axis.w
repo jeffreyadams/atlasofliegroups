@@ -3129,24 +3129,15 @@ in the case of loop statements, a value of ``row-of'' type is returned.
 @*1 The Boolean negation.
 %
 Though not really a control structure, Boolean negation is mostly used in
-conjunction with control structures. We shall translated them into calls of a
-built-in function, so no new expression type is needed. On the other hand we
-shall need a |shared_value| pointing to the |builtin_value| for the negation
-function. We declare it here; it will be set by the main program to point at
-the proper field in the overload table, after installing its contents.
+conjunction with control structures. When it is, it can most often be handled
+by translation into a variation of the control structure, such as swapping the
+branches of a conditional expression. However some uses cannot be so absorbed
+and do need some runtime action; we translate these into calls of a
+built-in function |boolean_negate_builtin| that will be defined below, along
+with the generic functions.
 
-@< Declarations of global variables @>=
-
-extern std::shared_ptr<const builtin_value> boolean_negate_builtin;
-
-@~What has been declared must be defined.
-
-@< Global variable definitions @>=
-
-std::shared_ptr<const builtin_value> boolean_negate_builtin;
-
-@ The type check is easy; the argument must be of |bool| type (or convertible
-to it, but nothing else it) and so must (become) the required |type|.
+The type check is easy; the argument must be of |bool| type (or convertible
+to it, but nothing else is so) and so must (become) the required |type|.
 
 @< Cases for type-checking and converting... @>=
 case negation_expr:
@@ -3154,7 +3145,7 @@ case negation_expr:
    expression_ptr arg = convert_expr(*e.negation_variant,b);
   if (not type.specialise(b)) // |not| preserves the |bool| type
     throw type_error(e,std::move(b),std::move(type));
-  return expression_ptr(new overloaded_builtin_call
+  return expression_ptr(new @| overloaded_builtin_call
      (boolean_negate_builtin,std::move(arg),e.loc));
 }
 
@@ -4661,6 +4652,8 @@ static shared_builtin suffix_elt_builtin =
   std::make_shared<const builtin_value>(suffix_element_wrapper,"#@@([T],T)");
 static shared_builtin join_rows_builtin =
   std::make_shared<const builtin_value>(join_rows_wrapper,"#@@([T],[T])");
+static shared_builtin boolean_negate_builtin =
+  std::make_shared<const builtin_value>(bool_not_wrapper,"not@@bool");
 
 @ The function |print| outputs any value in the format used by the interpreter
 itself. This function has an argument of unknown type; we just pass the popped
@@ -4781,6 +4774,16 @@ void join_rows_wrapper(expression_base::level l)
   }
 
 }
+
+@ Finally we define the Boolean negation wrapper function.
+@< Local function definitions @>=
+void bool_not_wrapper(expression_base::level l)
+{ bool b=get<bool_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(whether(not b));
+}
+@)
+
 
 @* Index.
 

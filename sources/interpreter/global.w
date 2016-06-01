@@ -1925,12 +1925,6 @@ avoids having to laboriously construct a null value of the correct dimension.
 
 @< Local function definitions @>=
 
-void bool_not_wrapper(expression_base::level l)
-{ bool b=get<bool_value>()->val;
-  if (l!=expression_base::no_value)
-    push_value(whether(not b));
-}
-@)
 void int_unary_eq_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
@@ -2909,7 +2903,6 @@ install_function(rat_modulo_wrapper,"%","(rat,rat->rat)");
 install_function(rat_unary_minus_wrapper,"-","(rat->rat)");
 install_function(rat_inverse_wrapper,"/","(rat->rat)");
 install_function(rat_power_wrapper,"^","(rat,int->rat)");
-install_function(bool_not_wrapper,"!","(bool->bool)");
 install_function(int_unary_eq_wrapper,"=","(int->bool)");
 install_function(int_unary_neq_wrapper,"!=","(int->bool)");
 install_function(int_non_negative_wrapper,">=","(int->bool)");

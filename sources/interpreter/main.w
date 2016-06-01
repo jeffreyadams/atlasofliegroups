@@ -263,12 +263,6 @@ longer necessary, as it is done automatically before |main| is called. Our own
 compilation units do require explicit calling of their initialisation
 functions.
 
-The looking up of the ``operator''~\.! overloaded at |bool| is done here to
-initialise the static variable |boolean_negate_builtin| that the evaluator
-declares, and uses to implement the |not| operation (in places where it
-cannot, as it can in the conditions of |if| or |while| clauses,
-be eliminated).
-
 @h <csignal>
 @h "atlas-types.h"
 
@@ -277,17 +271,6 @@ be eliminated).
   signal(SIGINT,sigint_handler); // install handler for user interrupt
   initialise_evaluator();
   initialise_builtin_types();
-@)
-  { id_type shriek = main_hash_table->match_literal("!");
-    const auto& variants = global_overload_table->variants(shriek);
-    for (auto it=variants.begin(); it!=variants.end(); ++it)
-      if (it->type().arg_type==bool_type)
-      @/{@; boolean_negate_builtin =
-          std::dynamic_pointer_cast<const builtin_value>(it->val);
-         break;
-      }
-    assert(boolean_negate_builtin.get()!=nullptr);
-  }
 
 
 @ Our main program constructs unique instances
