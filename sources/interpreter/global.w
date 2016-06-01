@@ -3017,15 +3017,20 @@ in fact be hard to avoid.
 @< Local function definitions @>=
 void null_vec_wrapper(expression_base::level l)
 { int n=get<int_value>()->val;
+  if (n<0)
+    throw runtime_error("Negative size for vector: "+str(n));
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<vector_value>(int_Vector(std::max(n,0),0)));
+    push_value(std::make_shared<vector_value>(int_Vector(n,0)));
 }
 @) void null_mat_wrapper(expression_base::level l)
 { int n=get<int_value>()->val;
   int m=get<int_value>()->val;
+  if (m<0)
+    throw runtime_error("Negative number of rows: "+str(m));
+  if (n<0)
+    throw runtime_error("Negative number of columns: "+str(n));
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<matrix_value>
-      (int_Matrix(std::max(m,0),std::max(n,0),0)));
+    push_value(std::make_shared<matrix_value> (int_Matrix(m,n,0)));
 }
 void transpose_vec_wrapper(expression_base::level l)
 { shared_vector v=get<vector_value>();
