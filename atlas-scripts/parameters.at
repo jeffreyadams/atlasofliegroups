@@ -3,7 +3,7 @@
 { various ways of defining parameters }
 
 { torus_factor, aka "normalized torus factor", is theta-fixed,
-  xi=exp(2\pi i*(torus_factor)/2)exp(rho^\vee/2)\sigma_w\xi_0
+  xi=exp(2\pi i*(torus_factor)/2)exp(2\pi i*rho^\vee/2)\sigma_w\xi_0
   note over 2 in exp terms, Marc writes e_1(x)=exp(\pi ix)
   xi=exp(2\pi i*(unnormalized_torus_factor))\sigma_w\xi_0
    =>

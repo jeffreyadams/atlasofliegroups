@@ -1,25 +1,21 @@
-{see K_parameters.at}
+{
+this used to be called K_types.at
+now consists almost exclusively of printing functions
+}
 
 <basic.at     { for *@(Param,rat) }
 <LKT.at       { for sort_by_height }
 <hermitian.at { for hermitian_form_irreducible }
-<K_highest_weights.at
 
 set sort_by_height (ParamPol P) = [(Split,Param)]:
   sort_by_height(for c@p in P do (c,p) od)
 
 set branch_std (Param p, int bound) = ParamPol:
   let sum=0*p in
-  for c@q in ParamPol: p*(rat:0) do sum+:= c*branch(q,bound) od; 
-{sum}
-finalize(sum)
-{the finalize step shouldn't be necessary, but at least 
-temporarily it is due to a bug in branch}
-
+  for c@q in ParamPol: p*(rat:0) do sum+:= c*branch(q,bound) od; sum
 
 set branch_std (ParamPol P,int bound) = ParamPol:
-  let sum=0*P in for c@p in P*(rat:0) do sum +:= c*branch(p,bound) od; 
-{sum} finalize(sum)
+  let sum=0*P in for c@p in P*(rat:0) do sum +:= c*branch(p,bound) od; sum
 
 set branch_irr (Param p, int bound) = ParamPol:
   branch_std(character_formula(p),bound)
@@ -42,11 +38,9 @@ set print_branch_irr (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
 set print_branch_irr_long (ParamPol P,KGBElt x,int bound) = void:
   for (mult,q) in sort_by_height(branch_irr(P,bound))
   do let hw=highest_weights(q,x)[0] in
-    prints(split_as_int(mult), "*", hw,  "  ", fundamental_weight_coordinates(hw), " ", dimensions(q)[0]
+    prints(split_as_int(mult), "*", hw, " ", dimensions(q)[0]
           , "    ", height(q))
   od
-
-
 
 set print_branch_irr_long (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
   print_branch_irr_long(P,KGB(real_form(P),0),bound)
@@ -129,11 +123,3 @@ set signed_mult (Param p_K,Param p) = (int,int):
    ( split_as_int(branch_std(P,height(p_K))[p_K])
    , split_as_int(branch_std(Q,height(p_K))[p_K])
    )
-
-set print_K_types(ParamPol P)=void:
-let Q=sort_by_height(P) in for (c,p) in Q do 
-let mu=highest_weight(LKT(p)) in  prints(split_as_int(c), " ", fundamental_weight_coordinates (mu), " ", dimension(mu), " ", length(mu)) od
-
-set print_K_types(ParamPol P, KGBElt x_K)=void:
-let Q=sort_by_height(P) in for (c,p) in Q do 
-let mu=highest_weight(LKT(p),x_K) in  prints(split_as_int(c), " ", fundamental_weight_coordinates (mu), " ", dimension(mu), " ", length(mu)) od

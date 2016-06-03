@@ -5,10 +5,11 @@
 
 { ------------------    matrices related to T_K0\subset H  ------------------ }
 
-{ T_K0=(H^delta)_0 \subset T_K=H^delta \subset H
+{ T_K0=(H^delta)_0 =Cartan subgroup of K0
+  T_K0\subset T_K=H^delta \subset H
   T_K0 is a torus \subset T_K abelian (possibly disconnected)
   X^*(T_K0)= X^*/(X^*)^{-delta}
-  X^*(T_K)    = X^*/(1-delta)X^*
+  X^*(T_K)    = X^*/(1-delta)X^* -->> X^*(T_K0) (restriction map is surjective)
   see W_K.at
 
   K_0=identity component of K, with Cartan subgroup T_K0

@@ -86,7 +86,7 @@ set multiply (Tits_elt(rd,v,theta), Tits_elt({assume rd},u,eta)) = Tits_elt:
 set * = multiply@(Tits_elt,Tits_elt)
 
 { inverse uses the bicycle (note the (2\-/2) structure) lemma:
-   sigma_w*sigma_{w^{-1}} = exp(2\pi i(rho^vee-rho^vee*w^{-1})/2)
+   sigma_w*sigma_{w^{-1}} = exp(2\pi i(rho^vee-rho^vee*w)/2)
   whence
    inverse(Tits_elt:(0,theta)) = Tits_elt:(rho_check*(theta-1)/2,inverse(theta))
   (this formula remains valid with delta included in theta)
