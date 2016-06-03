@@ -3991,7 +3991,7 @@ void counted_for_expression<flags>::evaluate(level l) const
     b+=c-1; // so that |b-c| will start at original |b|, and increase as |c--|
 
   if ((flags&0x4)==0)
-  { id_pat pattern(id,0x1,patlist());
+  { id_pat pattern(id);
     if (l==no_value)
     { while (c-->0)
       { frame fr(pattern);

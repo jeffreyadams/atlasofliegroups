@@ -1272,10 +1272,12 @@ struct id_pat
   @/ : name(x.name), kind(x.kind)
   , sublist((kind & 0x2)==0 ? nullptr : x.sublist)
   @+{}
-  id_pat (id_type n, unsigned char k, patlist&& l)
-  : name(n), kind(k), sublist(std::move(l)) @+{}
+  id_pat (id_type n) : name(n), kind(0x1), sublist() @+{}
+    // name only,  no constness
   id_pat(patlist&& l): name(), kind(0x2),  sublist(std::move(l)) @+{}
     // no name, no constness
+  id_pat (id_type n, unsigned char k, patlist&& l)
+  : name(n), kind(k), sublist(std::move(l)) @+{}
 @)
   id_pat (const id_pat& x) = @[ delete @];
 @/id_pat& operator=(const id_pat& x) = @[ delete @];
@@ -2461,7 +2463,7 @@ expr_p make_comp_upd_ass(expr_p l, id_type op, expr_p r,
   id_type array_name=s.array.identifier_variant;
       // save before move from |s.array|
   id_type hidden=lookup_identifier("$");@q$@>
-  id_pat v(hidden,0x1,patlist());
+  id_pat v(hidden);
   expr_ptr subs(new expr (new subscription_node@|
     (std::move(s.array)
     ,expr(hidden,loc,expr::identifier_tag())
@@ -2537,9 +2539,8 @@ expr_p make_recfun(id_type f, expr_p d,
    (new lambda_node@|(id_pat(),lam.parameter_type.copy(),std::move(dummy_body))
     ,loc);
   expr rec_assign (new assignment_node(f,std::move(definition)),loc);
-  id_pat v(f,0x1,patlist());
   return new expr(new let_expr_node @|
-    (std::move(v),std::move(dummy_f),std::move(rec_assign)),loc);
+    (id_pat(f),std::move(dummy_f),std::move(rec_assign)),loc);
 }
 
 
