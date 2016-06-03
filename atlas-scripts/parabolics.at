@@ -6,7 +6,7 @@
   complex parabolics and Levi factors
   parabolics with theta-stable Levi factor
   theta-stable parabolics
-  real parabolics
+b  real parabolics
 }
 
 { ComplexParabolic data type: each value describes a

@@ -1,6 +1,8 @@
+<K_parameters.at
 <parabolics.at
 <K.at
 <W_orbit.at
+<cross_W_orbit.at
 
 {full Weyl group W_K of disconnected maximal compact subgroup
 throughout x must be in distinguished fiber, and make 2rho_c G-dominant
@@ -79,6 +81,7 @@ let x=KGB(G,i) in if is_dominant(G,tworho_c(x)) then rv#:=x fi od;rv
 set nice_choice_x(RealForm G)=KGBElt:nice_choices_x(G)[0]
 
 {W_c_perp, see khatHowe Propsition 4.4}
+{requirement: x makes 2rho_c G-dominant}
 set W_c_perp(KGBElt x)=[(RootDatum,[int])]:generate_W(small_Levi(x))
 
 {write a word for L as a word for G
@@ -95,6 +98,7 @@ sr_G=[[int]]:simple_roots(rd_G) in
 given as list of Weyl group elements,
 each of which is a product of (commuting) reflections from W_c_perp
 See KHatHow Proposition 4.4 (3)
+requirement: x makes 2rho_c G-dominant
 }
 set R_K_dom(KGBElt x)=[W_word]:
 let W_c_perp=W_c_perp(x) then
@@ -102,7 +106,23 @@ rv=[(RootDatum,[int])]:[] in
 {need to change to numbering for G}
 for w in W_c_perp do if cross(convert_W_word(w,root_datum(x)),x)=x then rv#:=w fi od;rv
 {W_K(x)=(W_K(K_0,T_{K_0}), R_K_dom(x))}
+
+{requirement: x makes 2rho_c G-dominant}
 set W_K(KGBElt x)=(RootDatum,[(RootDatum,[int])]):(K_root_datum(x),R_K_dom(x))
+
+set move_weight ((KGBElt x,vec mu),KGBElt y) = KHighestWeight:
+assert(real_form(x)=real_form(y),"Real form mismatch");
+let w=find_W_cross(x,y) in (y,act(w,mu))
+
+{first replace (x,mu) with an equivalent ("nice") one such that x makes 2rho_c G-dominant}
+set R_K_dom_mu_orbit(KHighestWeight (x,mu))=[KHighestWeight]:
+ let (x,mu) = if is_dominant(real_form(x),tworho_c(x)) then (x,mu) else move_weight((x,mu), nice_choice_x(real_form(x))) fi in 
+ let (K_0,R_K_dom)=W_K(x) then
+ (mu_1,)=make_dominant(K_0,mu) then
+ rv=[KHighestWeight]:[] then
+ ()=for w in R_K_dom do
+ let mu_2=factor_action(x,w)*mu_1 in
+ if first(#rv, (int i)bool: let (,phi)=rv[i] in mu_2=phi)=-1 then rv#:=(x,mu_2) fi od in rv
 
 {test if mu\in X^*(T_K) is P-positive (khatHowe page 19)
  for each w=w_A in R_K_dom(x),  <mu,\sum_{i\in A}\beta^\vee_i> \ge 0
@@ -165,6 +185,7 @@ while not done and i<#R_K_dom do
 
 {mu is in X^*(T_{K_0})
  make it K_0-dominant, and compute stabilizer in R_K_dom
+ requirement: x makes 2rho_c G-dominant
 }
 set R_K_dom_mu(KGBElt x,ratvec mu)=[W_word]:
 let (K_0,R_K_dom)=W_K(x) then

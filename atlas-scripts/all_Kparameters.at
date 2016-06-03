@@ -11,9 +11,9 @@ set reduce ([Param] parameters) = [Param]:
 
 { to reduce a list of KParams, convert to list of parameters, reduce,
   then convert back }
-set reduce ([KParam] Kparameters) = [KParam]:
+set reduce ([K_Type] Kparameters) = [K_Type]:
   let parameters = for kp in Kparameters do parameter(kp) od in
-  for p in reduce(parameters) do Kparameter(p) od
+  for p in reduce(parameters) do K_type(p) od
 
 { all nonnegative |vec:a| with $\sum_i(cs[i]*a[i]) \leq limit$
   intended application: c_i = <rho_check,i^th fundamental weight>, which finds
@@ -57,7 +57,7 @@ set all_lambda_differential_0 (KGBElt x) = [vec]:
   for v in all_0_1_vecs(n_columns(basis)) do basis*v od
 
 { all K parameters with same dlambda as (x,lambda) }
-set all_equal_dlambda_K_parameters (KParam(x,lambda)) = [KParam]:
+set all_equal_dlambda_K_parameters (K_Type(x,lambda)) = [K_Type]:
   for v in all_lambda_differential_0(x) do (x,lambda+v) od
 
 { all actual parameters with same dlambda as p, same nu }
@@ -113,9 +113,11 @@ set lambda_rho_from_dominant_norm_upto (KGBElt x, ratvec v, int N) = mat: {wts}
   for mu in all_dominant_norm_upto(inner_class(x),v,N)
   do result ##:= solve(th1,mu-ratvec_as_vec(th1*rho)) od; #rho{rank} # result
 
-set K_parameters_norm_upto ((KGBElt,ratvec,int)(x,,):triple) = [KParam]:
+set K_parameters_norm_upto ((KGBElt,ratvec,int)(x,,):triple) = [K_Type]:
   let lrs = lambda_rho_from_dominant_norm_upto(triple), rho=rho(root_datum(x))
-  in ## for lr in lrs do all_equal_dlambda_K_parameters(x,lr+rho) od
+  , result=[K_Type]:[]
+  in for lr in lrs do result#:=all_equal_dlambda_K_parameters(x,lr+rho) od;
+  result
 
 { that used to be:
 { mu will be dlambda=(1+theta)lambda/2 => 2*mu\in X^*
@@ -142,23 +144,23 @@ set all_dominant_in_image_oneplustheta_norm_upto (
   then solve mu-(1+theta)rho =(1+theta)lambda_0
   then return lambda=lambda_0+rho
 }
-set make_all_K_parameters (KGBElt x,vec mu) = [KParam]:
+set make_all_K_parameters (KGBElt x,vec mu) = [K_Type]:
   let rho=rho(real_form(x)), th1=1+involution(x)
   then mu1=mu-ratvec_as_vec(th1*rho)
   in all_equal_dlambda_K_parameters(x,solve(th1,mu1)[0]+rho)
 
-set all_K_parameters_norm_upto (KGBElt x, ratvec v,int N) = [KParam]:
+set all_K_parameters_norm_upto (KGBElt x, ratvec v,int N) = [K_Type]:
   let ic=inner_class(x),theta=involution(x)
   then mus=all_dominant_in_image_oneplustheta_norm_upto(ic,theta,v,N)
-  then result=[KParam]:[]
+  then result=[K_Type]:[]
   in for mu in mus do  result#:=make_all_K_parameters(x,mu) od; result
 }
 
 { older yet stuff
 
-set all_K_parameters_norm_upto (RealForm G, ratvec v,int N) = [KParam]:
+set all_K_parameters_norm_upto (RealForm G, ratvec v,int N) = [K_Type]:
   let parabolics=all_rel_split_theta_stable_parabolics(G)
-  then Kparameters=[KParam]:[]
+  then Kparameters=[K_Type]:[]
   in
   ( for L in parabolics do
       let x_L=KGB(L,KGB_size(L)-1) then x=embed_KGB(x_L,G) in
@@ -169,23 +171,23 @@ set all_K_parameters_norm_upto (RealForm G, ratvec v,int N) = [KParam]:
   ; sort_by_K_norm(for q in monomials(result) do Kparameter(q) od)
   )
 
-set K_parameter_string (KParam p) = string:
+set K_parameter_string (K_Type p) = string:
   if is_integer(lambda(p))
   then to_string("(x=",#x(p),",lambda=",ratvec_as_vec(lambda(p)),")")
   else to_string("(x=",#x(p),",lambda=", lambda(p),")")
   fi
 
-set print_K_parameter (KParam p) = void: prints(K_parameter_string(p))
+set print_K_parameter (K_Type p) = void: prints(K_parameter_string(p))
 
 set print_K_parameter(ParamPol P) = void:
   for (c,p) in %P do
     prints(split_as_int(c),"*", K_parameter_string(Kparameter(p)))
   od
 
-set print_K_parameter_long (KParam p) = void:
+set print_K_parameter_long (K_Type p) = void:
   prints(K_parameter_string(p), " ", K_norm(p))
 
-set print_K_parameter_long (KParamPol P) = void:
+set print_K_parameter_long (K_Type_Pol P) = void:
   for (c,p) in %P
   do prints(split_as_int(c),"*"
            , K_parameter_string(Kparameter(p)), "  ", K_norm(Kparameter(p)))

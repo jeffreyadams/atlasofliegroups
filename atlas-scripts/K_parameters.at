@@ -1,109 +1,69 @@
 <basic.at
 <sort.at
+<K.at
 <Weylgroup.at { for make_no_Cminus }
 
-{ a KParam is a pair (KGBElt x,ratvec lambda)
+{See top of K.at for some notation}
+{Three ways of parametrizing K-types:
+
+1. K_Type:(KGBElt x,ratvec lambda)
   representating a final, non-zero, standard limit module
+  these are in bijection with K-hat
   lambda\in X^*+rho
   requirements:
   standard: <lambda,alpha^vee>>=0 (alpha imaginary)
   final: <lambda+rho_r,alpha^vee> even (alpha real)
   nonzero: <lambda,alpha^vee>=0, alpha imaginary-simple => alpha is non-compact
+
+2. KHighestWeight: (KGBElt x_K,vec mu)
+  x_K in distinguised fiber defines K
+  recall (see K.at) T_K=H^\delta is abelian subgroup of K_#
+  mu\in X^*/(1-delta)X^*=X^*(T_K) (T_K can be disconnected)
+    is a highest weight for K_#=T_K.K_0
+  equivalence includes modding out by (1-delta)X^*, see function = below
+
+3. K0_Param: ordinary parameter (x_K,lambda,nu=0) for 
+   irreducible finite dimensional representation of K_0
+   its highest weight is a dominant weight of T_K0
 }
-: KParam = (KGBElt,ratvec)
-: KParamPol = ParamPol { re-use this type, with nu-part of the terms zero }
+: K_Type = (KGBElt,ratvec)
+: K_Type_Pol = ParamPol { re-use this type, with nu-part of the terms zero }
+: KHighestWeight = (KGBElt,vec)
 
-set x (KParam p) =      KGBElt: let (x,)=p in x
-set lambda (KParam p) = ratvec: let (,lambda)=p in lambda
+set x (K_Type p) =      KGBElt: let (x,)=p in x
+set lambda (K_Type p) = ratvec: let (,lambda)=p in lambda
 
-set root_datum (KParam p) = root_datum(x(p))
-set real_form (KParam p)  = real_form(x(p))
+set root_datum (K_Type p) = root_datum(x(p))
+set real_form (K_Type p)  = real_form(x(p))
+set real_form (KHighestWeight (x,mu))  = real_form(x)
+set K_0(KHighestWeight (x,))=K_0(x)
 
-set dlambda (KParam p) = ratvec: (1+involution(x(p)))*lambda(p)/2
+set dlambda (K_Type p) = ratvec: (1+involution(x(p)))*lambda(p)/2
 set dlambda (Param p)  = ratvec: (1+involution(x(p)))*lambda(p)/2
 
-set Kparameter (Param p) = KParam:
-  assert(=nu(p),"nu(p) is not zero"); (x(p),lambda(p))
-set parameter (KParam p) = Param:
-  parameter(x(p),lambda(p),null(rank(root_datum(x(p)))))
+set K_type (Param p) = K_Type:assert(=nu(p),"nu(p) is not zero"); (x(p),lambda(p))
+set parameter (K_Type p) = Param:parameter(x(p),lambda(p),null(rank(root_datum(x(p)))))
 
-{ equality of KParams is now taken care of by equality of Param values }
-set = (KParam p,KParam q) = bool: parameter(p)=parameter(q)
+{ equality of K_Types is now taken care of by equality of Param values }
+set = (K_Type p,K_Type q) = bool: parameter(p)=parameter(q)
 
-set make_no_Cminus (KParam p) = KParam:
-  Kparameter(make_no_Cminus(parameter(p)))
+set make_no_Cminus(K_Type p)=K_Type:K_type(make_no_Cminus(parameter(p)))
 
-{ K_norm@(ratvec,KParam) is closely related to height@Param,
-  see down a few lines
-  There is no dependency on the ratvec argument, but this might be added back
-}
-set K_norm (ratvec _) = (KParam->int): (KParam(x,lambda)):
-  let mu=(1+involution(x))*lambda, result=rat:0 in
-  for alpha_v in poscoroots(root_datum(x)) do  result+:=abs(alpha_v*mu) od;
-  rat_as_int(result/2)
+{--------------length of K-types------------------}
 
-set K_norm (ratvec v,KParam p) = int: K_norm(v)(p)
-set K_norm (ratvec v,Param p) =  int: K_norm(v)(Kparameter(p))
-{ also define K_norm(v) of the (Split,Param) term of a ParamPol }
-set K_norm (ratvec v,Split s,KParam p)=int: K_norm(v)(p)
-set K_norm (ratvec v,Split s,Param p)=int:  K_norm(v)(Kparameter(p))
-
-{ height(Param->int) is defined, indepdent of nu,
-  K_norm(Kparam->int) is essentially (height@Param)/2
-  precisely: K_norm(KParam kp)=height(parameter(kp))/2
-}
-set K_norm (KParam p) =int: K_norm(rho_check(real_form(x(p))))(p)
-set K_norm (Param p)  =int: K_norm(Kparameter(p))
-set K_norm (Split s,KParam p) = int: K_norm(p)
-
-{
-set K_norm (ratvec v) = (ParamPol->int):
-  (ParamPol P): int
-    let result=0 in
-    for p in monomials(P)
-    do let m=K_norm(v)(Kparameter(p)) in
-      if m>result then result:=m fi
-    od; result
+{length of K-type with highest weight mu is <mu+2*rho_K,mu+2*rho_K>
+used in definition of lowest K-types
 }
 
-{ K_norm of P is the max of K_norm(terms) }
-set K_norms (ratvec v) = let norm=K_norm(v) in (KParamPol P) [int]:
-  for @p in P do norm(Kparameter(p)) od
+set length(KHighestWeight (x,mu))=rat:
+let rd=root_datum(K_0(x)) then
+shift=2*rho(rd) in nondegenerate_invariant_form(rd,mu+shift,mu+shift)
 
-set K_norms (KParamPol P) = [int]: K_norms(rho_check(real_form(P))) (P)
 
-set K_norm (ratvec v,KParamPol P) = int: let norms=K_norms(v) in
-  if =P then 0 else max(norms(P)) fi
 
-set K_norm (KParamPol P) =int: K_norm(rho_check(real_form(P)),P)
 
-set leading_terms (ratvec v) = let norm=K_norm(v) in (KParamPol P): KParamPol:
-  let max=K_norm(v,P), result=null_module(real_form(P)) in
-  for c@p in P do if norm(Kparameter(p))=max then result+:=c*p fi od; result
 
-set all_K_norms (ratvec v) = let norm=K_norm(v) in (KParamPol P) [int]:
-  sort(for c@p in P do norm(Kparameter(p)) od)
 
-set all_K_norms(KParamPol P) = [int]: all_K_norms(rho_check(real_form(P))) (P)
 
-{ sort [KParam] by K_norm(v) }
-set sort_by_K_norm (ratvec v) = ([KParam] -> [KParam]): sort_by(K_norm(v))
 
-set sort_KParamPol_by_K_norm (ratvec v) = let norm=K_norm(v) in
-  ([(Split,KParam)] -> [(Split,KParam)]): sort_by((Split s,KParam p):norm(p))
 
-set sort_by_K_norm = ([KParam] -> [KParam]): sort_by( K_norm@KParam )
-set sort_by_K_norm = ([(Split,KParam)] -> [(Split,KParam)]):
-  sort_by( K_norm@(Split,KParam) )
-
-set print_by_K_norm (ratvec v) = let norm=K_norm(v) in (KParamPol P) void:
-  let result=sort_KParamPol_by_K_norm(v)(for c@p in P do (c,Kparameter(p)) od)
-  in for (c,p) in result do prints(split_as_int(c),"*",p," ", K_norm(v)(p)) od
-
-set print_by_K_norm (ratvec v,KParamPol P) = void: print_by_K_norm(v)(P)
-
-set print_by_K_norm (KParamPol P) = void:
-  print_by_K_norm(rho_check(real_form(P)),P)
-
-set leading_terms (KParamPol P) = KParamPol:
-  leading_terms(rho_check(real_form(P)))(P)
