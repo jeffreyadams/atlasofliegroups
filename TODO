@@ -24,10 +24,6 @@
 
 - Allow multiple overloaded functions defined in a single 'set' statement
 
-- Allow parallel assignments just like parallel 'let' or 'set' bindings. This
-  was postponed because of same-target cases that should be forbidden; but as
-  targets are just names, this should not in fact be any harder to enforce.
-
 - Make balancing a general concept, also applied within row displays.
   This probably requires discovering a priori type in a separate bottom-up
   pass over the |expr| value (maybe inserting casts to record what it found)

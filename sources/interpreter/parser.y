@@ -202,6 +202,7 @@ declaration: pattern '=' expr { $$ = make_let_node($1,$3); }
 ;
 
 tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3,@$); }
+	| SET pattern BECOMES tertiary { $$ = make_multi_assignment($2,$4,@$); }
 	| assignable_subsn BECOMES tertiary { $$ = make_comp_ass($1,$3,@$); }
 	| IDENT OPERATOR_BECOMES tertiary
 	  { $$ = make_assignment($1,

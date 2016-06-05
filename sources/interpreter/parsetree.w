@@ -2295,14 +2295,19 @@ Simple assignment statements are quite simple as expressions.
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct assignment_node* assignment;
 
-@~In a simple assignment the left hand side is just an identifier.
+@~In a simple assignment the left hand side is just an identifier. However, we
+now also cater for general identifier patterns as left hand side, but keep
+having a special constructor for the single identifier case.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct assignment_node
-{ id_type lhs; expr rhs;
+{ id_pat lhs; expr rhs;
 @)
   assignment_node(id_type lhs, expr&& rhs)
 @/: lhs(lhs)
+  , rhs(std::move(rhs))@+{}
+  assignment_node(id_pat&& lhs, expr&& rhs)
+@/: lhs(std::move(lhs))
   , rhs(std::move(rhs))@+{}
 #ifdef incompletecpp11
   assignment_node(const assignment_node& x) = @[delete@];
@@ -2330,19 +2335,29 @@ expr(assignment&& a, const YYLTYPE& loc)
  , loc(loc)
 @+{}
 
-@ Assignment statements are built by |make_assignment|.
+@ Assignment statements are built by |make_assignment| (when simply assigning
+to an identifier) or by |make_multi_assignment| (for a more general pattern as
+left hand side, which requires using a different syntax).
 
 @< Declarations of functions for the parser @>=
 expr_p make_assignment(id_type lhs, expr_p rhs, const YYLTYPE& loc);
+expr_p make_multi_assignment(raw_id_pat& lhs, expr_p rhs, const YYLTYPE& loc);
 
-@~It does what one would expect it to (except for those who expect their
-homework assignment made).
+@~These functions do what one would expect them to (except for those who
+expect them to make their homework assignments).
 
 @< Definitions of functions for the parser@>=
-expr_p make_assignment(id_type lhs, expr_p r, const YYLTYPE& loc)
+
+expr_p make_assignment(id_type id, expr_p r, const YYLTYPE& loc)
 {
   expr_ptr rr(r); expr& rhs=*rr;
-  return new expr(new assignment_node { lhs, std::move(rhs) },loc);
+  return new expr(new @| assignment_node { id, std::move(rhs) },loc);
+}
+@)
+expr_p make_multi_assignment(raw_id_pat& lhs, expr_p r, const YYLTYPE& loc)
+{
+  expr_ptr rr(r); expr& rhs=*rr;
+  return new expr(new assignment_node { id_pat(lhs), std::move(rhs) },loc);
 }
 
 @ Copying is done by assignment of raw pointers, not really a novelty.
@@ -2355,12 +2370,15 @@ case ass_stat: assign_variant=other.assign_variant; break;
 @< Cases for destroying... @>=
 case ass_stat: delete assign_variant; break;
 
-@ Printing assignment statements is absolutely straightforward.
+@ Printing assignment statements, we include |"set"| only if this cannot be a
+simple assignment
 
 @< Cases for printing... @>=
 case ass_stat:
 { const assignment& ass = e.assign_variant;
-  out << main_hash_table->name_of(ass->lhs) << ":=" << ass->rhs ;
+  if ((ass->lhs.kind&0x3)!=0x1)
+    out << "set ";
+  out << ass->lhs << ":=" << ass->rhs ;
 }
 break;
 

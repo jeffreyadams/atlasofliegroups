@@ -78,7 +78,7 @@ Its header file includes \.{buffer.h}, \.{parse\_types.h} and \.{parser.tab.h}.
 
 \point The file \.{axis-types.w} defines the main base classes for the \axis.
 evaluator, |type_expr| for representing \axis. types, |value_base| for
-dynamic values, |context| for dynamic evaluation contexts, |expression_base|
+dynamic values, |shared_context| for dynamic evaluation contexts, |expression_base|
 for ``compiled'' expressions, |program_error| for exceptions, and numerous
 types related to these. Its header file includes \.{parsetree.h} (which is
 needed for the error classes only).

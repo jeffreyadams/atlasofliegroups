@@ -192,9 +192,9 @@ runtime stack occupied by a |vector| is hardly larger than that of the
 reference to it, this is mostly a proof-of-concept, namely that lists can be
 handled with storage for the elements in automatic variables residing in the
 runtime stack. The fact that pushing and popping is automatically managed in
-an exception-safe manner is also cute; however in case of an exception
-explicitly clearing the list in |reset_evaluator|, as used to be done, would
-also work.
+an exception-safe manner is also cute; however explicitly clearing the list in
+|reset_evaluator| in case of an exception, as used to be done, would also
+work.
 
 @< Type def... @>=
 class layer
@@ -4161,8 +4161,17 @@ match is found here, there can still be one in the overload table.
 %
 Syntactically there is hardly anything simpler than simple assignment
 statements. However, semantically we distinguish assignments to local and to
-global variables; the two kinds will be converted into objects of classes
-derived from |assignment_expr|.
+global variables. Then there are ``component assignments'' which modify
+repetitive values like row values by changing one component; these too will
+distinguish local and global versions. Finally, while not present in the
+initial language design, a multiple assignment statement was added to the
+language that can take apart tuple components, just as can be done in
+definitions of new (global or local) variables. As these can mix local and
+global destinations, we will introduce a separate expression type for these
+somewhat more expensive assignments. We retain the following intermediate
+class for all assignment statements except multiple assignments (the latter
+will derive directly from |expression_base|), as it allows to avoid a bit of
+code duplication.
 
 @< Type definitions @>=
 struct assignment_expr : public expression_base
@@ -4246,6 +4255,135 @@ void local_assignment::evaluate(level l) const
   push_expanded(l,dest);
 }
 
+@ The type for multiple assignments has to cater for a mixture of global and
+local names present in the destination pattern. This is don by having
+(possibly empty) vectors for both types of destination, and a |Bitmap| telling
+for each name in left-to-right order whether it is global.
+
+The constructor here is more elaborate than for simple assignments, because
+the various identifiers in the pattern |lhs| must be looked up, the fields of
+the class initialised to reflect the results (or an error could be thrown),
+and a corresponding type needs to be exported to serve as a cast for the right
+hand side expression.
+
+@h "bitmap.h"
+
+@< Type definitions @>=
+class multiple_assignment : public expression_base
+{
+ public:
+  struct local_dest {@; size_t depth, offset; };
+  typedef containers::simple_list<local_dest> loc_list;
+  typedef containers::simple_list<shared_share> glob_list;
+ private:
+  id_pat lhs;
+  expression_ptr rhs;
+  loc_list locals;
+  glob_list globals;
+  BitMap is_global;
+public:
+  multiple_assignment
+    (const id_pat& lhs,expression_ptr&& r
+    ,loc_list&& ll, glob_list&& gl, BitMap&& bm);
+  virtual ~@[multiple_assignment() nothing_new_here@];
+  virtual void print(std::ostream& out) const;
+  virtual void evaluate(level l) const;
+};
+
+@ The constructor needs to be defined outside the class definition because it
+sues |copy_id_pat|.
+@< Function definitions @>=
+multiple_assignment::multiple_assignment @|
+    (const id_pat& lhs,expression_ptr&& r
+    ,loc_list&& ll, glob_list&& gl, BitMap&& bm)
+: lhs(copy_id_pat(lhs)), rhs(std::move(r))
+, locals(std::move(ll)),globals(std::move(gl)), is_global(std::move(bm))@+{}
+
+@ Printing reflects the special syntax for multiple assignments.
+@< Function def... @>=
+void multiple_assignment::print(std::ostream& out) const
+{@; out << "set " << lhs << ":=" << *rhs; }
+
+@ Evaluating a multiple assignment requires in general a recursive traversal
+of the left hand side pattern, with a corresponding traversal of the right
+hand side value, to assign to each destination identifier the corresponding
+component of that value. Traversal is in post-order, which is motivated by
+considerations of type-checking as explained later. Preparing the required
+destinations in order is sufficiently complicated to merit the definition of a
+special class |dest_iterator| dedicated to this. It acts as an output
+iterator, whose sole purpose is to accept the stream of values produced. But
+rather than using the composite syntax |*dst++=v| we write |dst.receive(v)|,
+the method |receive| doing the required assignment and iterator advancing.
+
+@< Local function definitions @>=
+void thread_assign
+  (const id_pat& pat, const shared_value& val, dest_iterator& dst)
+{ if ((pat.kind&0x2)!=0)
+  { const tuple_value* t=force<tuple_value>(val.get());
+    assert(t->val.size()==length(pat.sublist));
+    auto src = t->val.begin();
+    for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it,++src)
+      thread_assign(*it,*src,dst);
+  }
+  if ((pat.kind&0x1)!=0)
+    dst.receive(val);
+}
+
+@ It is now easy to write the |multiple_assignment::evaluate| method. The
+|dest_iterator| will need to know about the internal lists |locals,globals|
+and bitmap |is_global| to be able to do its job.
+
+@< Function definitions @>=
+void multiple_assignment::evaluate (level l) const
+{ rhs->eval();
+  shared_value v = pop_value();
+  dest_iterator dst(locals,globals,is_global);
+  thread_assign(lhs,v,dst);
+  push_expanded(l,v);
+}
+
+@ So now we are left with describing the output iterator. Internally it
+suffices to store weak iterators into the lists of local and global
+destinations of the assignment, and a current position in the bitmap.
+
+@< Local class definitions @>=
+class dest_iterator
+{
+  multiple_assignment::loc_list::weak_const_iterator l_it;
+  multiple_assignment::glob_list::weak_const_iterator g_it;
+  const BitMap& is_global; @+
+  unsigned long n; // index into |is_global|
+ public:
+  dest_iterator @|
+   (const multiple_assignment::loc_list& locs
+   ,const multiple_assignment::glob_list& globs
+   ,const BitMap& is_global)
+  : l_it(locs.wcbegin())
+  , g_it(globs.wcbegin())
+  , is_global(is_global)
+  , n(0)
+  @+{}
+  void receive (const shared_value& val);
+};
+
+@ And finally here is the |receive| method. With the proper preparations, it
+is not really difficult to implement, and easily understood by comparing to
+statements in the |evaluate| methods for simple assignments.
+
+@< Local function definitions @>=
+void dest_iterator::receive (const shared_value& val)
+{ if (is_global.isMember(n++))
+  @/{@; assert (not g_it.at_end());
+    *(*g_it++) = val;
+  } // send to |shared_share| stored in |globs|
+  else
+  @/{@;
+    assert (not l_it.at_end());
+    frame::current->elem(l_it->depth,l_it->offset)=val;
+    ++l_it;
+  }
+}
+
 @ Here are some simple functions that will be called for errors both in simple
 assignments and component assignments.
 
@@ -4288,8 +4426,9 @@ assumed by the variable is recorded.
 
 @< Cases for type-checking and converting... @>=
 case ass_stat:
+if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
 {
-  id_type lhs=e.assign_variant->lhs;
+  id_type lhs=e.assign_variant->lhs.name;
   const_type_p id_t; size_t i,j; bool is_const;
   const bool is_local = (id_t=layer::lookup(lhs,i,j,is_const))!=nullptr;
   if (not is_local and (id_t=global_id_table->type_of(lhs,is_const))==nullptr)
@@ -4313,6 +4452,158 @@ case ass_stat:
   ? expression_ptr(new local_assignment(lhs,i,j,std::move(r)))
 @/: expression_ptr(new global_assignment(lhs,std::move(r)));
   return conform_types(rhs_type,type,std::move(assign),e);
+}
+else @< Generate and |return| a |multiple_assignment| @>
+
+@ For traversing the left hand side pattern in a multiple definition, we need
+some semi-local variables, to be accessible from within the recursive function
+but not renewed for each recursive call. The solution of passing around a
+reference to a structure containing those variables is elegantly realised by
+definition the traversal function as a recursive method of that structure (the
+implicit reference |*this| is passed around unchanged).
+
+@< Local class definitions @>=
+struct threader
+{ typedef containers::sl_list<multiple_assignment::local_dest> loc_list;
+  typedef containers::sl_list<shared_share> glob_list;
+@)
+  const expr& e;
+  loc_list locs;
+  glob_list globs;
+  BitMap is_global;
+  containers::sl_list<std::pair<id_type,const_type_p> > assoc;
+@)
+  threader (const expr& e) : e(e), locs(), globs(), is_global(), assoc() @+{}
+  void thread (const id_pat& pat,type_expr& type); // recursively analyse |pat|
+  void refine () const; // maybe specialise stored identifiers
+};
+
+@ The left hand side pattern is traversed in post-order: when there is both an
+identifier for the whole and a sub-list, the former is handled after the
+latter. This simplifies testing of type compatibility in the destination
+pattern, where the only possible error now is that a type for a ``parent''
+identifier does not match the (possibly partly specified) tuple type
+established by its children.
+
+@< Function definitions @>=
+void threader::thread(const id_pat& pat,type_expr& type)
+{ if ((pat.kind&0x4)!=0)
+    @< Throw an error to signal forbidden qualifier \.! before |pat.name| @>
+  if ((pat.kind&0x2)!=0) // first treat any sublist
+  { type.specialise(unknown_tuple(length(pat.sublist)));
+    assert(type.kind==tuple_type); // this should succeed
+    wtl_iterator t_it(type.tupple);
+    for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it,++t_it)
+      thread(*it,*t_it);
+  }
+  if ((pat.kind&0x1)!=0)
+  { id_type id = pat.name;
+    const_type_p id_t; // will point to type of local or global |id|
+    @< Check that |id| did not occur previously in this left hand side @>
+    size_t i,j; bool is_const;
+    const bool is_local = (id_t=layer::lookup(id,i,j,is_const))!=nullptr;
+    if (not is_local and (id_t = global_id_table->type_of(id,is_const))==nullptr)
+      report_undefined(id,e,"multiple assignment");
+    if (is_const)
+      report_constant_modified(id,e,"multiple assignment");
+    is_global.extend_capacity(not is_local);
+@)
+    if (not type.specialise(*id_t)) // incorporate found type into |type|
+      @< Throw an error to signal type incompatibility for |id| @>
+    assoc.push_back(std::make_pair(id,&type));
+      // record pointer to |type| for later refinement of |id|
+    if (is_local)
+      locs.push_back(@[multiple_assignment::local_dest{i,j}@]);
+    else
+      globs.push_back(global_id_table->address_of(id));
+  }
+}
+
+@ The error signalled here should really be a syntax error, but the fact that
+a generator without conflicts can be generated for our grammar depends on the
+pattern after \.{set} being independent of whether \.= or \.{:=} follows it;
+this is why we allowed these qualifiers to arrive up to this point.
+
+@< Throw an error to signal forbidden qualifier \.! before |pat.name| @>=
+{ std::ostringstream o;
+  o << "Cannot constant-qualify '!' identifier '"
+    << main_hash_table->name_of(pat.name) @| << "' in multi-assignment";
+  throw expr_error(e,o.str());
+}
+
+@ Multiple assignment is only well defined if all target variables are
+disjoint. Component assignments are not possible here, so we simply check that
+all identifiers used are distinct.
+
+@< Check that |id| did not occur previously in this left hand side @>=
+for (auto it=assoc.wcbegin(); not it.at_end(); ++it)
+  if (it->first==id)
+   { std::ostringstream o;
+     o << "Multiple assignments to same identifier '"
+       << main_hash_table->name_of(pat.name) @| << "' in multi-assignment";
+     throw expr_error(e,o.str());
+   }
+
+
+@ The error of incompatible left hand side patterns does not match the format
+of a |type_error|, so we throw a more general |expr_error| instead, after
+assembling the data to identify the error.
+
+@< Throw an error to signal type incompatibility for |id| @>=
+{ std::ostringstream o;
+  o << "Incompatible type for '" << main_hash_table->name_of(id)
+  @|<< "' in multi-assignment: type " << *id_t
+  @|<< " does no match pattern " << type;
+  throw expr_error(e,o.str());
+}
+
+@ Just like for simple assignments, there is a remote possibility that the
+type of the right hand side specialises types of one or more variables used in
+the left hand side pattern. This means that after converting, the type that
+was found for that identifier will have been specialised. The method |refine|
+traverses all identifiers and specialises their type, as stored either in
+|global_id_table| or in |layer::lexical_context|; most of the time this will
+do nothing, but when there is need, this will do what is required.
+
+The implementation traverses the |assoc| list, and in parallel the bits in
+|is_global| to determine whether a global or local identifier type has to be
+specialised. In the case of global identifiers the identifier stored in
+|assoc| is used, but for local identifiers the |depth| and |offset| stored in
+|locs| are used instead, which requires a separate iterator |loc_it|.
+
+@< Function definitions @>=
+void threader::refine() const
+{ unsigned long n=0;
+  auto loc_it = locs.cbegin();
+  for (auto it = assoc.cbegin(); not assoc.at_end(it); ++it)
+    if (is_global.isMember(n++))
+      global_id_table->specialise(it->first,*it->second);
+    else
+    {@;
+      layer::specialise(loc_it->depth,loc_it->offset,*it->second);
+      ++loc_it;
+    }
+}
+
+@ For a multiple assignment, we first get the type |lhs_type| from a recursive
+traversal and look-up of the destination pattern~|pat|, then we convert the
+right hand side in the context of that type, and finally call |refine| to
+adapt the types of the left hand side variables to possible side effect of
+that conversion. Finally |thr| provides most of the values needed for
+construction the |multiple_assignment|.
+
+@< Generate and |return| a |multiple_assignment| @>=
+{ const id_pat& pat=e.assign_variant->lhs;
+  type_expr lhs_type;
+  threader thr(e);
+  thr.thread(pat,lhs_type);
+  expression_ptr r = convert_expr(e.assign_variant->rhs,lhs_type);
+  thr.refine();
+  expression_ptr m_ass (
+    new @| multiple_assignment
+      (pat,std::move(r)
+      ,thr.locs.undress(),thr.globs.undress(),std::move(thr.is_global)));
+  return conform_types(lhs_type,type,std::move(m_ass),e);
 }
 
 @*1 Component assignments.
