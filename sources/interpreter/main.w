@@ -77,8 +77,8 @@ contains definitions depending on \.{parse\_types.h} having been included.
 Its header file includes \.{buffer.h}, \.{parse\_types.h} and \.{parser.tab.h}.
 
 \point The file \.{axis-types.w} defines the main base classes for the \axis.
-evaluator, |type_expr| for representing \axis. types, |value_base| for
-dynamic values, |shared_context| for dynamic evaluation contexts, |expression_base|
+evaluator, |type_expr| for representing \axis. types, |value_base| for dynamic
+values, |shared_context| for dynamic evaluation contexts, |expression_base|
 for ``compiled'' expressions, |program_error| for exceptions, and numerous
 types related to these. Its header file includes \.{parsetree.h} (which is
 needed for the error classes only).
@@ -116,7 +116,8 @@ Like for the \.{Fokko} program, the compile time flag |NREADLINE|, if defined
 by setting \.{-DNREADLINE} as a flag to the compiler, will prevent any
 dependency on the readline library.
 
-@d axis_version "0.9"
+@q axis_version "0.9" @>
+@d axis_version "0.9.1" @q multiple assignments @>
  // numbering from 0.5 (on 27/11/2010); last change May 6, 2015
 
 @c

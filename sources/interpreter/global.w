@@ -689,7 +689,7 @@ point to really resume after an error.
 @< Global function definitions @>=
 type_expr analyse_types(const expr& e,expression_ptr& p)
 { try
-  { type_expr type; // this starts out as of |undetermined_type|
+  { type_expr type; // this starts out as an |undetermined_type|
     p = convert_expr(e,type);
     return type;
   }
@@ -711,6 +711,7 @@ type_expr analyse_types(const expr& e,expression_ptr& p)
                 << err.what() << std::endl;
   }
   throw runtime_error("Type check failed");
+    // not really run-time, but go to its handler
 @.Type check failed@>
 }
 
@@ -756,7 +757,7 @@ may be assigned to in the main program, which causes output redirection.
 @< Global variable definitions @>=
 std::ostream* output_stream= &std::cout;
 
-@ Global identifiers can be introduced (or modified) by the function
+@ Global identifiers can be introduced (or overridden) by the function
 |global_set_identifiers|, handling the \&{set} syntax with the same
 possibilities as for local definitions (the \&{let}
 syntax); therefore it takes a |raw_let_list| as argument. Some other syntactic
@@ -786,22 +787,21 @@ void global_set_identifiers(const raw_let_list& d)
 able to clobber the value prepared by the caller without taking a copy; we do
 not intend to actually move from the argument.
 
-In a change from our initial implementation, that parameter (which is set by
-the parser) can allow overloading without forcing it. Allowing the parameter
-to be cleared here then actually serves to allow more cases to be handled
-using the overload table, since the parser will now set |overload>0| more
-freely. Indeed the parser currently passes |overload==0| only when the
+In a change from our initial implementation, the parameter |overload| (which
+is set by the parser) can allow overloading without forcing it. Allowing the
+parameter to be cleared here actually serves to allow more cases to be handled
+using the overload table, as the parser will now set |overload>0| more freely.
+Indeed the parser currently passes |overload==0| only when the
 ``\\{identifier}\.:\\{value}'' syntax is used to introduce a new identifier.
 
 However, the code below sets |overload=0| also whenever the defining
-expression has anything other than a function type (which must in addition
-take at least one argument); in particular this makes it impossible to add
-multiple items to the overload table with a single \&{set} command. This
-restriction is mostly motivated by the complications that allowing mixing of
-overloaded and non-overloaded definitions would entail (for instance when
-reporting the resulting updates to the user), and by the fact that operator
-definitions would in any case be excluded from multiple-overload situations
-for syntactic reasons.
+expression has anything other than a function type; in particular this makes
+it impossible to add multiple items to the overload table with a
+single \&{set} command. This restriction is mostly motivated by the
+complications that allowing mixing of overloaded and non-overloaded
+definitions would entail (for instance when reporting the resulting updates to
+the user), and by the fact that operator definitions would in any case be
+excluded from multiple-overload situations for syntactic reasons.
 
 We follow the logic for type-analysis of a let-expression, and for evaluation
 we follow the logic of binding identifiers in a user-defined function (these
@@ -812,31 +812,33 @@ values.
 
 
 @< Local function definitions @>=
+@< Define auxiliary function for catch block of |do_global_set| @>
 void do_global_set(id_pat&& pat, const expr& rhs, int overload)
 { size_t n_id=count_identifiers(pat);
-  static const char* phase_name[3] = {"type check","evaluation","definition"};
-  int phase=0; // needs to be declared outside the |try|, is used in |catch|
+  int phase; // needs to be declared outside the |try|, is used in |catch|
   try
-  { expression_ptr e;
+  { phase=0; // type check
+    expression_ptr e;
     type_expr t=analyse_types(rhs,e);
     if (not pattern_type(pat).specialise(t))
       @< Report that type |t| of |rhs| does not have required structure,
          and |throw| @>
-    if (overload!=0)
-      @< Set |overload=0| if type |t| is not a function type, or |throw|
-         if |overload==2| @>
-@)
-    phase=1;
+    if (t.kind==function_type)
+      overload=2;
+    else @< Set |overload=0|, unless |overload==2| in which case |throw| @>
     layer b(n_id);
     thread_bindings(pat,t,b,false); // match identifiers and their future types
+
+@)
+    phase=1; // evaluation of right hand side
 
     std::vector<shared_value> v;
     v.reserve(n_id);
 @/  e->eval();
+@)
+    phase=2; // actual definition of identifiers
     thread_components(pat,pop_value(),std::back_inserter(v));
      // associate values with identifiers
-@)
-    phase=2;
     @< Emit indentation corresponding to the input level to |*output_stream| @>
     if (overload==0)
       @< Add instance of identifiers in |b| with values in |v| to
@@ -862,15 +864,12 @@ the parser will pass |overload==2| in this case, signalling that it must not
 be cleared to~$0$, but rather result in an error message in cases where
 setting it to~$0$ is attempted.
 
-@< Set |overload=0| if type |t| is not a function type... @>=
-{ if (t.kind!=function_type) // cannot overload with a non-function value
-  { if (overload==2)
+@< Set |overload=0|, unless... @>=
+{ if (overload==2)
   // an operator; it can \emph{only} be overloaded, so this case is an error
-      throw runtime_error
-        ("Cannot set operator to a non function value");
+      throw program_error("Cannot set operator to a non function value");
     overload=0;
      // but in other cases just go to the global identifier table instead
-  }
 }
 
 @ For identifier definitions we print their names and types (paying attention
@@ -942,7 +941,7 @@ available from the |main_input_buffer|.
 }
 
 @ When the right hand side type does not match the requested pattern, we throw
-a |runtime_error| signalling this fact; we have to re-generate the required
+a |program_error| signalling this fact; we have to re-generate the required
 pattern using |pattern_type| to do this.
 
 @< Report that type |t| of |rhs| does not have required structure,
@@ -951,7 +950,7 @@ pattern using |pattern_type| to do this.
   o << "Type " << t @|
     << " of right hand side does not match required pattern "
     << pattern_type(pat);
-  throw runtime_error(o.str());
+  throw program_error(o.str());
 }
 
 @ We shall use the following static variable to signal
@@ -965,42 +964,49 @@ extern bool clean;
 @< Global variable definitions @>=
 bool clean=true;
 
-@ A |runtime_error| may be thrown either during type check, matching with
-the identifier pattern, or evaluation; we catch all those cases here. Whether
-or not an error is caught, the pattern |pat| and the expression |rhs| should
-not be destroyed here, since the parser which aborts after calling this
-function should do that while clearing its parsing stack.
+@ A |program_error| may be thrown during type check or matching with the
+identifier pattern, or a |runtime_error| can be thrown during evaluation; we
+catch all those cases here. It is convenient to centralise actual error
+reporting in an auxiliary function |handle| defined below. That function uses
+the value of the variable |phase| that our function maintains, but in most
+cases its values should correspond to the type of error thrown, as indicated
+in the |assert| statements. The final |catch| clause will catch any
+|std::runtime_error| thrown from the library (rather than by our wrapper
+functions), although it hardly seems possible they could get through to here
+without being relabelled as (our) |runtime_error| by the back-trace producing
+code. This clause is in fact defined to catch any |std::exception| so that we
+really should not be letting any unexpected error through here.
+
+Whether or not an error is caught, the pattern
+|pat| and the expression |rhs| should not be destroyed here, since the parser
+which aborts after calling this function should do that while clearing its
+parsing stack.
 
 @< Catch block for errors thrown during a global identifier definition @>=
+catch (program_error& err)
+{@; assert(phase==0); handle(err,pat,phase,overload); }
 catch (runtime_error& err)
-{ std::cerr << err.what() << '\n';
-  if (n_id>0)
-  { std::vector<id_type> names; names.reserve(n_id);
-    list_identifiers(pat,names);
-    std::cerr << "  Identifier" << (n_id==1 ? "" : "s");
-    for (size_t i=0; i<n_id; ++i)
-      std::cerr << (i==0 ? " '" : ", '")
-                << main_hash_table->name_of(names[i]) << '\'';
-    std::cerr << " not " << (overload==0 ? "created." : "overloaded.")
-              << std::endl;
-  }
-@/clean=false;
-  reset_evaluator(); main_input_buffer->close_includes();
-}
+{@; assert(phase==1); handle(err,pat,phase,overload); }
 catch (logic_error& err)
-{ std::cerr << "Unexpected error: " << err.what() << ", " @|
-            << phase_name[phase]
-            << " aborted.\n";
+{@; std::cerr << "Unexpected error: ";
+  handle(err,pat,phase,overload);
+}
+catch (std::exception& err)
+{@; handle(err,pat,phase,overload); }
+
+@ Here is the common part for various |catch| clauses.
+
+@< Define auxiliary function for catch block of |do_global_set| @>=
+void handle
+  (const std::exception& err,const id_pat& pat, int phase, int overload)
+{ static const char* message[3] = {"not executed","interrupted","failed"};
+  std::cerr << err.what() << "\n  Command 'set " << pat << "' "
+            << message[phase]
+         @| << ", nothing " << (overload<=1 ? "defin" : "overload") << "ed.\n";
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
-catch (error_base& err)
-{ std::cerr << err.what() << ", "
-            << phase_name[phase]
-            << " aborted.\n";
-@/clean=false;
-  reset_evaluator(); main_input_buffer->close_includes();
-}
+
 
 @ The following function is called when an identifier is declared with type
 but undefined value. Note that we output a message \emph{before} actually
