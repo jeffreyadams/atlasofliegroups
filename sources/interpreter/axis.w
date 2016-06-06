@@ -1768,9 +1768,8 @@ similar structure.
 type_expr pattern_type(const id_pat& pat);
 size_t count_identifiers(const id_pat& pat);
 void list_identifiers(const id_pat& pat, std::vector<id_type>& d);
-void thread_bindings(const id_pat& pat,const type_expr& type, layer& dst,
-  bool is_const
-);
+void thread_bindings
+  (const id_pat& pat,const type_expr& type, layer& dst, bool is_const);
 void thread_components
   (const id_pat& pat,const shared_value& val,
    std::back_insert_iterator<std::vector<shared_value> > dst);

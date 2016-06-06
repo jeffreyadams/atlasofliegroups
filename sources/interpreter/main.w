@@ -117,7 +117,7 @@ by setting \.{-DNREADLINE} as a flag to the compiler, will prevent any
 dependency on the readline library.
 
 @q axis_version "0.9" @>
-@d axis_version "0.9.1" @q multiple assignments @>
+@d axis_version "0.9.1" @q multiple assignments, multi-overload set command @>
  // numbering from 0.5 (on 27/11/2010); last change May 6, 2015
 
 @c
@@ -468,9 +468,11 @@ while (ana.reset()) // get a fresh line for lexical analyser, or quit
 }
 
 @ If a type error is detected by |analyse_types|, then it will have signalled
-it and thrown a |runtime_error|; if that happens |type_OK| will remain |false|
-and the runtime error is silently caught. If the result is an empty tuple, we
-suppress printing of the uninteresting value.
+it and thrown a |program_error|; if not, then evaluation may instead produce a
+|runtime_error|. Therefore the manipulation below of |type_OK| to see whether
+we passed the analysis phase successfully should be redundant. If the result
+of evaluation is an empty tuple, we suppress printing of the uninteresting
+value.
 
 @h <stdexcept>
 @h "axis.h"
@@ -581,15 +583,20 @@ method |close_includes| defined in \.{buffer.w}.
 
 @< Various |catch| phrases for the main loop @>=
 catch (const runtime_error& err)
-{ if (type_OK)
-    std::cerr << "Runtime error:\n  " << err.what() << "\nEvaluation aborted.";
-  else std::cerr << err.what();
-  std::cerr << std::endl;
+{ assert(type_OK);
+  std::cerr << "Runtime error:\n  " << err.what() << "\nEvaluation aborted."
+            << std::endl;
+@/clean=false;
+  reset_evaluator(); main_input_buffer->close_includes();
+}
+catch (const program_error& err)
+{ assert(not type_OK);
+  std::cerr << err.what() << std::endl;
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
 catch (const logic_error& err)
-{ std::cerr << "Internal error: " << err.what() << "\nEvaluation aborted.\n";
+{ std::cerr << "Internal error: " << err.what() << std::endl;
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }

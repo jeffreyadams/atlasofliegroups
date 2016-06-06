@@ -693,7 +693,7 @@ type_expr analyse_types(const expr& e,expression_ptr& p)
     p = convert_expr(e,type);
     return type;
   }
-  catch (type_error& err)
+  catch (const type_error& err)
   { std::cerr << "Error during analysis of expression " << e.loc << std::endl;
     std::cerr << err.what() << ":\n  Subexpression " << err.offender
 @|            << ' ' << err.offender.loc
@@ -701,18 +701,17 @@ type_expr analyse_types(const expr& e,expression_ptr& p)
 @|            << " while " << err.required << " was needed.\n";
 @.Subexpression has wrong type@>
   }
-  catch (expr_error& err)
+  catch (const expr_error& err)
   { std::cerr << "Error in expression "
               << err.offender << ' ' << err.offender.loc << "\n  " @|
               << err.what() << std::endl;
   }
-  catch (program_error& err)
+  catch (const program_error& err)
   { std::cerr << "Error during analysis of expression " << e.loc << "\n  " @|
                 << err.what() << std::endl;
   }
-  throw runtime_error("Type check failed");
-    // not really run-time, but go to its handler
-@.Type check failed@>
+  throw program_error("Expression analysis failed");
+@.Expression analysis failed@>
 }
 
 
@@ -794,14 +793,14 @@ using the overload table, as the parser will now set |overload>0| more freely.
 Indeed the parser currently passes |overload==0| only when the
 ``\\{identifier}\.:\\{value}'' syntax is used to introduce a new identifier.
 
-However, the code below sets |overload=0| also whenever the defining
-expression has anything other than a function type; in particular this makes
-it impossible to add multiple items to the overload table with a
-single \&{set} command. This restriction is mostly motivated by the
-complications that allowing mixing of overloaded and non-overloaded
-definitions would entail (for instance when reporting the resulting updates to
-the user), and by the fact that operator definitions would in any case be
-excluded from multiple-overload situations for syntactic reasons.
+The code below allows, when |overload==1|, mixing definitions of identifiers
+that go to the overload table and to the identifier table, depending on the
+type of the value they get bound to (but operator definitions are excluded
+from such mixing for syntactic reasons). There is an implicit restriction
+though, that any identifier gets at most one binding per call of
+|do_global_set| (in other words, per \&{set} command), because the call to
+|thread_bindings| cannot put multiple bindings of the same identifier into its
+|layer|. This restriction should not cause much inconvenience to users.
 
 We follow the logic for type-analysis of a let-expression, and for evaluation
 we follow the logic of binding identifiers in a user-defined function (these
@@ -823,31 +822,32 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload)
     if (not pattern_type(pat).specialise(t))
       @< Report that type |t| of |rhs| does not have required structure,
          and |throw| @>
-    if (t.kind==function_type)
-      overload=2;
-    else @< Set |overload=0|, unless |overload==2| in which case |throw| @>
+    @< Check that we are not setting an operator to a non-function value @>
     layer b(n_id);
     thread_bindings(pat,t,b,false); // match identifiers and their future types
 
 @)
     phase=1; // evaluation of right hand side
-
-    std::vector<shared_value> v;
-    v.reserve(n_id);
 @/  e->eval();
 @)
     phase=2; // actual definition of identifiers
+    std::vector<shared_value> v;
+    v.reserve(n_id);
     thread_components(pat,pop_value(),std::back_inserter(v));
      // associate values with identifiers
-    @< Emit indentation corresponding to the input level to |*output_stream| @>
-    if (overload==0)
-      @< Add instance of identifiers in |b| with values in |v| to
+    auto v_it = v.cbegin();
+    for (auto it = b.begin(); it!=b.end(); ++it,++v_it)
+    { assert(v_it!=v.cend());
+      @< Emit indentation corresponding to the input level to
+         |*output_stream| @>
+      if (overload==0 or it->second.kind!=function_type)
+      @< Add instance of identifier |it->first| with value |*v_it| to
          |global_id_table| @>
-    else
-      @< Add instance of identifier in |b[0]| with value in |v[0]| to
+      else
+      @< Add instance of identifier |it->first| with value |*v_it| to
          |global_overload_table| @>
-
-    *output_stream << std::endl;
+      *output_stream << std::endl;
+    }
   }
   @< Catch block for errors thrown during a global identifier definition @>
 }
@@ -856,44 +856,35 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload)
 @ When |overload>0|, choosing whether the definition enters into the overload
 table or into the global identifier table is determined by the type of the
 defining expression (in particular this allows operators to be defined by an
-arbitrary expression). However, this creates the possibility (if the defining
-expression should have non-function type) of causing an operator to be added
-the global identifier table, which is pointless (since the syntax does not
-allow such a value to be retrieved). Therefore this case needs some attention:
-the parser will pass |overload==2| in this case, signalling that it must not
-be cleared to~$0$, but rather result in an error message in cases where
-setting it to~$0$ is attempted.
+arbitrary expression). However, when |overload==2| we are defining an
+operator symbol, which can only be meaningfully added to the overload table.
+Therefore we insist for that case that a value of function type is being
+ascribed to the operator symbol, so that it will go to the overload table.
 
-@< Set |overload=0|, unless... @>=
-{ if (overload==2)
-  // an operator; it can \emph{only} be overloaded, so this case is an error
-      throw program_error("Cannot set operator to a non function value");
-    overload=0;
-     // but in other cases just go to the global identifier table instead
+@< Check that we are not setting an operator... @>=
+{ if (overload==2 and t.kind!=function_type)
+    throw program_error("Cannot set operator to a non function value");
 }
 
-@ For identifier definitions we print their names and types (paying attention
-to the very common singular case), before calling |global_id_table->add|.
-@< Add instance of identifiers in |b| with values in |v| to
-   |global_id_table| @>=
-{ if (n_id>0)
-    *output_stream << "Identifier";
-  auto v_it = v.begin();
-  for (auto it=b.begin(); it!=b.end(); ++it, ++v_it)
-  { *output_stream << (it==b.begin() ? n_id==1 ? " " : "s " : ", ") @|
-              << main_hash_table->name_of(it->first);
-    *output_stream << ": " << it->second;
-    if (global_id_table->present(it->first))
-    { bool is_const;
-      *output_stream << " (hiding previous one of type "
+@ For identifier definitions we print their name and type, one line for each
+identifier. Doing this before calling |global_id_table->add|, that call can
+pilfer the type |it->second|.
+
+@< Add instance of identifier |it->first| with value |*v_it| to
+         |global_id_table| @>=
+{ *output_stream << (b.is_const(it) ? "Constant " : "Variable ") @|
+                 << main_hash_table->name_of(it->first)
+                 << ": " << it->second;
+  if (global_id_table->present(it->first))
+  { bool is_const;
+    *output_stream << " (overriding previous instance, which had type "
              @| << *global_id_table->type_of(it->first,is_const);
-      if (is_const)
-        *output_stream << " (constant)";
-      *output_stream << ')';
-    }
-    global_id_table->add
-      (it->first,std::move(*v_it),std::move(it->second),b.is_const(it));
+    if (is_const)
+      *output_stream << " (constant)";
+    *output_stream << ')';
   }
+  global_id_table->add
+    (it->first,std::move(*v_it),std::move(it->second),b.is_const(it));
 }
 
 @ For overloaded definitions the main difference is calling the |add| method
@@ -901,33 +892,28 @@ of |global_overload_table| instead of that of |global_id_table|, and the
 different wording of the report to the user. However another difference is
 that here the |add| method may throw because of a conflict of a new definition
 with an existing one; we therefore do not print anything before the |add|
-method has successfully completed. Multiple overloaded definitions in a
-single \&{set} statement are excluded by the fact that a tuple type for the
-defining expression will cause setting |overload=0|; that assignment together
-with a pattern check during type analysis will prevent us from coming here
-with multiple identifiers, and the |assert| statement below checks this
-exclusion. If the logic above were relaxed to allow such multiple definitions,
-one could introduce a loop below as in the ordinary definition case; then
-however error handling would also need adaptation, since a failed definition
-need not be the first one, and the previous ones would need to be either
-undone or not reported as failed.
+method has successfully completed. An unfortunate consequence of this
+possibility is that we may end up with a multiple \&{set} command that gets
+partially executed and then aborts. This is quite rare though, and not
+catastrophic, so we don't do any effort here to exclude this.
 
-@< Add instance of identifier in |b[0]| with value in |v[0]| to
+@< Add instance of identifier |it->first| with value |*v_it| to
    |global_overload_table| @>=
-{ assert(n_id=1);
-  size_t old_n=global_overload_table->variants(b[0].first).size();
+{ size_t old_n=global_overload_table->variants(it->first).size();
 @/std::ostringstream type_string;
-  type_string<<b[0].second; // save string for type
-  global_overload_table->add@|(b[0].first,std::move(v[0]),std::move(b[0].second));
+  type_string << it->second;
+    // save type |it->second| as string before moving from it
+  global_overload_table->add@|
+    (it->first,std::move(*v_it),std::move(it->second));
     // insert or replace table entry
-  size_t n=global_overload_table->variants(b[0].first).size();
+  size_t n=global_overload_table->variants(it->first).size();
   if (n==old_n)
     *output_stream << "Redefined ";
   else if (n==1)
     *output_stream << "Defined ";
   else
     *output_stream << "Added definition [" << n << "] of ";
-  *output_stream << main_hash_table->name_of(b[0].first) << ": "
+  *output_stream << main_hash_table->name_of(it->first) << ": "
             << type_string.str();
 }
 
@@ -965,17 +951,19 @@ extern bool clean;
 bool clean=true;
 
 @ A |program_error| may be thrown during type check or matching with the
-identifier pattern, or a |runtime_error| can be thrown during evaluation; we
-catch all those cases here. It is convenient to centralise actual error
-reporting in an auxiliary function |handle| defined below. That function uses
-the value of the variable |phase| that our function maintains, but in most
-cases its values should correspond to the type of error thrown, as indicated
-in the |assert| statements. The final |catch| clause will catch any
-|std::runtime_error| thrown from the library (rather than by our wrapper
-functions), although it hardly seems possible they could get through to here
-without being relabelled as (our) |runtime_error| by the back-trace producing
-code. This clause is in fact defined to catch any |std::exception| so that we
-really should not be letting any unexpected error through here.
+identifier pattern (|phase==0|), and also when a conflicting overload
+situation is detected (with |phase==2|), while a |runtime_error| can be thrown
+during evaluation (|phase==1|); we catch all those cases here. It is
+convenient to centralise actual error reporting in an auxiliary function
+|handle| defined below. That function uses the value of the variable |phase|
+that our function maintains, but in most cases its values should correspond to
+the type of error thrown, as indicated in the |assert| statements. The final
+|catch| clause will catch any |std::runtime_error| thrown from the library
+(rather than by our wrapper functions), although it hardly seems possible they
+could get through to here without being relabelled as (our) |runtime_error| by
+the back-trace producing code. This clause is in fact defined to catch any
+|std::exception| so that we really should not be letting any unexpected error
+through here.
 
 Whether or not an error is caught, the pattern
 |pat| and the expression |rhs| should not be destroyed here, since the parser
@@ -983,15 +971,15 @@ which aborts after calling this function should do that while clearing its
 parsing stack.
 
 @< Catch block for errors thrown during a global identifier definition @>=
-catch (program_error& err)
-{@; assert(phase==0); handle(err,pat,phase,overload); }
-catch (runtime_error& err)
+catch (const program_error& err)
+{@; assert(phase!=1); handle(err,pat,phase,overload); }
+catch (const runtime_error& err)
 {@; assert(phase==1); handle(err,pat,phase,overload); }
-catch (logic_error& err)
+catch (const logic_error& err)
 {@; std::cerr << "Unexpected error: ";
   handle(err,pat,phase,overload);
 }
-catch (std::exception& err)
+catch (const std::exception& err)
 {@; handle(err,pat,phase,overload); }
 
 @ Here is the common part for various |catch| clauses.
@@ -1001,8 +989,10 @@ void handle
   (const std::exception& err,const id_pat& pat, int phase, int overload)
 { static const char* message[3] = {"not executed","interrupted","failed"};
   std::cerr << err.what() << "\n  Command 'set " << pat << "' "
-            << message[phase]
-         @| << ", nothing " << (overload<=1 ? "defin" : "overload") << "ed.\n";
+            << message[phase];
+  if (phase<2)
+    std::cerr << ", nothing " << (overload<=1 ? "defin" : "overload") << "ed";
+  std::cerr << ".\n";
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
