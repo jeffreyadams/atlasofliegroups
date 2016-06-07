@@ -754,9 +754,9 @@ bool TitsCoset::is_valid(TitsElt a) const
 
 
 EnrichedTitsGroup::EnrichedTitsGroup(const RealReductiveGroup& GR)
-  : TitsCoset(GR.complexGroup(),
-	      grading_of_simples(GR.complexGroup(),GR.g_rho_check()))
-  , srf(GR.complexGroup().sample_strong_form(GR.realForm()))
+  : TitsCoset(GR.innerClass(),
+	      grading_of_simples(GR.innerClass(),GR.g_rho_check()))
+  , srf(GR.innerClass().sample_strong_form(GR.realForm()))
 {}
 
 

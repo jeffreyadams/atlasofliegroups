@@ -121,7 +121,7 @@ public:
      |const_iterator|; only used for |insert| and |erase| manipulators */
     : link_loc(const_cast<link_type*>(&link)) {}
 
-  // contents access methods; return |const| ptr/ref for |const_iterator|
+  // contents access methods; return |const| ref/ptr for |const_iterator|
   const T& operator*() const { return (*link_loc)->contents; }
   const T* operator->() const { return &(*link_loc)->contents; }
 
@@ -184,7 +184,7 @@ public:
   weak_sl_list_const_iterator() : link(nullptr) {} // default iterator: end
   explicit weak_sl_list_const_iterator(link_type p): link(p) {}
 
-  // contents access methods; return |const| ptr/ref for |const_iterator|
+  // contents access methods; return |const| ref/ptr for |const_iterator|
   const T& operator*() const { return link->contents; }
   const T* operator->() const { return &link->contents; }
 
@@ -199,6 +199,9 @@ public:
   bool at_end () const { return link==nullptr; }
 }; // |struct weak_sl_list_const_iterator| template
 
+
+// weak iterators allow acces to list elements but not to the list structure
+// so no insert/delete are possible using weak iterators
 
 template<typename T,typename Alloc = std::allocator<T> >
 struct weak_sl_list_iterator
@@ -265,6 +268,8 @@ template<typename T, typename Alloc>
 
   typedef sl_list_const_iterator<T, Alloc> const_iterator;
   typedef sl_list_iterator<T, Alloc> iterator;
+  typedef weak_sl_list_const_iterator<T, Alloc> weak_const_iterator;
+  typedef weak_sl_list_iterator<T, Alloc> weak_iterator;
 
   // data
  private:
@@ -429,6 +434,7 @@ template<typename T, typename Alloc>
 
   //iterators
   iterator begin() { return iterator(head); }
+  weak_iterator wbegin() { return weak_iterator(head.get()); }
 
   // instead of |end()| we provide the |at_end| condition
   static bool at_end (iterator p) { return p.link_loc->get()==nullptr; }
@@ -481,7 +487,8 @@ template<typename T, typename Alloc>
     node_type* p = allocator_new(node_allocator(),std::move(val));
     p->next.reset(pos.link_loc->release()); // link the trailing nodes here
     pos.link_loc->reset(p); // and attach new node to previous ones
-    return iterator(pos); // convert type; while unchanged, |pos| now "points to" new node
+    return iterator(pos);
+		// convert type; while unchanged, |pos| now "points to" new node
   }
 
   iterator insert (const_iterator pos, size_type n, const T& val)
@@ -596,6 +603,10 @@ template<typename T, typename Alloc>
   const T& front () const { return head->contents; }
   const_iterator begin () const { return const_iterator(head); }
   const_iterator cbegin () const { return const_iterator(head); }
+  weak_const_iterator wbegin () const
+    { return weak_const_iterator(head.get()); }
+  weak_const_iterator wcbegin () const
+    { return weak_const_iterator(head.get()); }
   // instead of |end()| we provide the |at_end| condition
   static bool at_end (const_iterator p) { return p.link_loc->get()==nullptr; }
 
@@ -677,6 +688,8 @@ template<typename T, typename Alloc>
 
   typedef sl_list_const_iterator<T,Alloc> const_iterator;
   typedef sl_list_iterator<T,Alloc> iterator;
+  typedef weak_sl_list_const_iterator<T, Alloc> weak_const_iterator;
+  typedef weak_sl_list_iterator<T, Alloc> weak_iterator;
 
   // data
  private:
@@ -847,6 +860,8 @@ template<typename T, typename Alloc>
   //iterators
   iterator begin () { return iterator(head); }
   iterator end ()   { return iterator(*tail); }
+  weak_iterator wbegin() { return weak_iterator(head.get()); }
+  weak_iterator wend()   { return weak_iterator(nullptr); }
 
   // in addition to |end()| we provide the |at_end| condition
   static bool at_end (iterator p) { return p.link_loc->get()==nullptr; }
@@ -1114,6 +1129,12 @@ template<typename T, typename Alloc>
   const_iterator end ()   const { return const_iterator(*tail); }
   const_iterator cbegin () const { return const_iterator(head); }
   const_iterator cend ()   const { return const_iterator(*tail); }
+  weak_const_iterator wbegin () const
+    { return weak_const_iterator(head.get()); }
+  weak_const_iterator wcbegin () const
+    { return weak_const_iterator(head.get()); }
+  weak_const_iterator wend () const   { return weak_const_iterator(nullptr); }
+  weak_const_iterator wcend () const  { return weak_const_iterator(nullptr); }
 
   // in addition to |end()| we provide the |at_end| condition
   static bool at_end (const_iterator p) { return p.link_loc->get()==nullptr; }

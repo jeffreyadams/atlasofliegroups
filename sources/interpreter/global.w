@@ -354,14 +354,15 @@ Id_table* global_id_table=nullptr; // will never be |nullptr| at run time
 %
 To implement overloading we use a similar structure as the ordinary global
 identifier table. However the basic table entry for an overloading needs a
-level of sharing less, since the function bound for given argument types
-cannot be changed by assignment, so the call will refer directly to the value
-stored rather than to its location. We also take into account that the stored
-types are always function types, so that we can store a |func_type| structure
-without tag or pointer to it. This saves space, although it makes  access the
-full function type as a |type_expr| rather difficult; however the latter is
-seldom needed in normal use. Remarks about ownership of the type
-apply without change from the non-overloaded case however.
+level of sharing less, since the function that is bound to an identifier for
+given argument types cannot be changed by assignment, which allows us to refer
+directly to the value stored rather than to its location. We also take into
+account that the stored types are always function types, so that we can store
+a |func_type| structure without tag or pointer to it. This saves space,
+although it makes access the full function type as a |type_expr| rather
+difficult; however the latter is seldom needed in normal use. Remarks about
+ownership of the type apply without change from the non-overloaded case
+however.
 
 @< Type definitions @>=
 
@@ -383,7 +384,7 @@ public:
    = @[default@]; // no copy-and-swap needed
 #endif
 @)
-  shared_value value() const @+{@; return val; }
+  shared_value @;value() const @+{@; return val; }
   const func_type& type() const @+{@; return tp; }
 };
 
@@ -688,11 +689,11 @@ point to really resume after an error.
 @< Global function definitions @>=
 type_expr analyse_types(const expr& e,expression_ptr& p)
 { try
-  { type_expr type; // this starts out as of |undetermined_type|
+  { type_expr type; // this starts out as an |undetermined_type|
     p = convert_expr(e,type);
     return type;
   }
-  catch (type_error& err)
+  catch (const type_error& err)
   { std::cerr << "Error during analysis of expression " << e.loc << std::endl;
     std::cerr << err.what() << ":\n  Subexpression " << err.offender
 @|            << ' ' << err.offender.loc
@@ -700,17 +701,17 @@ type_expr analyse_types(const expr& e,expression_ptr& p)
 @|            << " while " << err.required << " was needed.\n";
 @.Subexpression has wrong type@>
   }
-  catch (expr_error& err)
+  catch (const expr_error& err)
   { std::cerr << "Error in expression "
               << err.offender << ' ' << err.offender.loc << "\n  " @|
               << err.what() << std::endl;
   }
-  catch (program_error& err)
+  catch (const program_error& err)
   { std::cerr << "Error during analysis of expression " << e.loc << "\n  " @|
                 << err.what() << std::endl;
   }
-  throw runtime_error("Type check failed");
-@.Type check failed@>
+  throw program_error("Expression analysis failed");
+@.Expression analysis failed@>
 }
 
 
@@ -755,7 +756,7 @@ may be assigned to in the main program, which causes output redirection.
 @< Global variable definitions @>=
 std::ostream* output_stream= &std::cout;
 
-@ Global identifiers can be introduced (or modified) by the function
+@ Global identifiers can be introduced (or overridden) by the function
 |global_set_identifiers|, handling the \&{set} syntax with the same
 possibilities as for local definitions (the \&{let}
 syntax); therefore it takes a |raw_let_list| as argument. Some other syntactic
@@ -785,22 +786,21 @@ void global_set_identifiers(const raw_let_list& d)
 able to clobber the value prepared by the caller without taking a copy; we do
 not intend to actually move from the argument.
 
-In a change from our initial implementation, that parameter (which is set by
-the parser) can allow overloading without forcing it. Allowing the parameter
-to be cleared here then actually serves to allow more cases to be handled
-using the overload table, since the parser will now set |overload>0| more
-freely. Indeed the parser currently passes |overload==0| only when the
+In a change from our initial implementation, the parameter |overload| (which
+is set by the parser) can allow overloading without forcing it. Allowing the
+parameter to be cleared here actually serves to allow more cases to be handled
+using the overload table, as the parser will now set |overload>0| more freely.
+Indeed the parser currently passes |overload==0| only when the
 ``\\{identifier}\.:\\{value}'' syntax is used to introduce a new identifier.
 
-However, the code below sets |overload=0| also whenever the defining
-expression has anything other than a function type (which must in addition
-take at least one argument); in particular this makes it impossible to add
-multiple items to the overload table with a single \&{set} command. This
-restriction is mostly motivated by the complications that allowing mixing of
-overloaded and non-overloaded definitions would entail (for instance when
-reporting the resulting updates to the user), and by the fact that operator
-definitions would in any case be excluded from multiple-overload situations
-for syntactic reasons.
+The code below allows, when |overload==1|, mixing definitions of identifiers
+that go to the overload table and to the identifier table, depending on the
+type of the value they get bound to (but operator definitions are excluded
+from such mixing for syntactic reasons). There is an implicit restriction
+though, that any identifier gets at most one binding per call of
+|do_global_set| (in other words, per \&{set} command), because the call to
+|thread_bindings| cannot put multiple bindings of the same identifier into its
+|layer|. This restriction should not cause much inconvenience to users.
 
 We follow the logic for type-analysis of a let-expression, and for evaluation
 we follow the logic of binding identifiers in a user-defined function (these
@@ -811,40 +811,43 @@ values.
 
 
 @< Local function definitions @>=
+@< Define auxiliary function for catch block of |do_global_set| @>
 void do_global_set(id_pat&& pat, const expr& rhs, int overload)
 { size_t n_id=count_identifiers(pat);
-  static const char* phase_name[3] = {"type check","evaluation","definition"};
-  int phase=0; // needs to be declared outside the |try|, is used in |catch|
+  int phase; // needs to be declared outside the |try|, is used in |catch|
   try
-  { expression_ptr e;
+  { phase=0; // type check
+    expression_ptr e;
     type_expr t=analyse_types(rhs,e);
     if (not pattern_type(pat).specialise(t))
       @< Report that type |t| of |rhs| does not have required structure,
          and |throw| @>
-    if (overload!=0)
-      @< Set |overload=0| if type |t| is not a function type, or |throw|
-         if |overload==2| @>
-@)
-    phase=1;
+    @< Check that we are not setting an operator to a non-function value @>
     layer b(n_id);
     thread_bindings(pat,t,b,false); // match identifiers and their future types
 
+@)
+    phase=1; // evaluation of right hand side
+@/  e->eval();
+@)
+    phase=2; // actual definition of identifiers
     std::vector<shared_value> v;
     v.reserve(n_id);
-@/  e->eval();
     thread_components(pat,pop_value(),std::back_inserter(v));
      // associate values with identifiers
-@)
-    phase=2;
-    @< Emit indentation corresponding to the input level to |*output_stream| @>
-    if (overload==0)
-      @< Add instance of identifiers in |b| with values in |v| to
+    auto v_it = v.cbegin();
+    for (auto it = b.begin(); it!=b.end(); ++it,++v_it)
+    { assert(v_it!=v.cend());
+      @< Emit indentation corresponding to the input level to
+         |*output_stream| @>
+      if (overload==0 or it->second.kind!=function_type)
+      @< Add instance of identifier |it->first| with value |*v_it| to
          |global_id_table| @>
-    else
-      @< Add instance of identifier in |b[0]| with value in |v[0]| to
+      else
+      @< Add instance of identifier |it->first| with value |*v_it| to
          |global_overload_table| @>
-
-    *output_stream << std::endl;
+      *output_stream << std::endl;
+    }
   }
   @< Catch block for errors thrown during a global identifier definition @>
 }
@@ -853,47 +856,35 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload)
 @ When |overload>0|, choosing whether the definition enters into the overload
 table or into the global identifier table is determined by the type of the
 defining expression (in particular this allows operators to be defined by an
-arbitrary expression). However, this creates the possibility (if the defining
-expression should have non-function type) of causing an operator to be added
-the global identifier table, which is pointless (since the syntax does not
-allow such a value to be retrieved). Therefore this case needs some attention:
-the parser will pass |overload==2| in this case, signalling that it must not
-be cleared to~$0$, but rather result in an error message in cases where
-setting it to~$0$ is attempted.
+arbitrary expression). However, when |overload==2| we are defining an
+operator symbol, which can only be meaningfully added to the overload table.
+Therefore we insist for that case that a value of function type is being
+ascribed to the operator symbol, so that it will go to the overload table.
 
-@< Set |overload=0| if type |t| is not a function type... @>=
-{ if (t.kind!=function_type) // cannot overload with a non-function value
-  { if (overload==2)
-  // an operator; it can \emph{only} be overloaded, so this case is an error
-      throw runtime_error
-        ("Cannot set operator to a non function value");
-    overload=0;
-     // but in other cases just go to the global identifier table instead
-  }
+@< Check that we are not setting an operator... @>=
+{ if (overload==2 and t.kind!=function_type)
+    throw program_error("Cannot set operator to a non function value");
 }
 
-@ For identifier definitions we print their names and types (paying attention
-to the very common singular case), before calling |global_id_table->add|.
-@< Add instance of identifiers in |b| with values in |v| to
-   |global_id_table| @>=
-{ if (n_id>0)
-    *output_stream << "Identifier";
-  auto v_it = v.begin();
-  for (auto it=b.begin(); it!=b.end(); ++it, ++v_it)
-  { *output_stream << (it==b.begin() ? n_id==1 ? " " : "s " : ", ") @|
-              << main_hash_table->name_of(it->first);
-    *output_stream << ": " << it->second;
-    if (global_id_table->present(it->first))
-    { bool is_const;
-      *output_stream << " (hiding previous one of type "
+@ For identifier definitions we print their name and type, one line for each
+identifier. Doing this before calling |global_id_table->add|, that call can
+pilfer the type |it->second|.
+
+@< Add instance of identifier |it->first| with value |*v_it| to
+         |global_id_table| @>=
+{ *output_stream << (b.is_const(it) ? "Constant " : "Variable ") @|
+                 << main_hash_table->name_of(it->first)
+                 << ": " << it->second;
+  if (global_id_table->present(it->first))
+  { bool is_const;
+    *output_stream << " (overriding previous instance, which had type "
              @| << *global_id_table->type_of(it->first,is_const);
-      if (is_const)
-        *output_stream << " (constant)";
-      *output_stream << ')';
-    }
-    global_id_table->add
-      (it->first,std::move(*v_it),std::move(it->second),b.is_const(it));
+    if (is_const)
+      *output_stream << " (constant)";
+    *output_stream << ')';
   }
+  global_id_table->add
+    (it->first,std::move(*v_it),std::move(it->second),b.is_const(it));
 }
 
 @ For overloaded definitions the main difference is calling the |add| method
@@ -901,33 +892,28 @@ of |global_overload_table| instead of that of |global_id_table|, and the
 different wording of the report to the user. However another difference is
 that here the |add| method may throw because of a conflict of a new definition
 with an existing one; we therefore do not print anything before the |add|
-method has successfully completed. Multiple overloaded definitions in a
-single \&{set} statement are excluded by the fact that a tuple type for the
-defining expression will cause setting |overload=0|; that assignment together
-with a pattern check during type analysis will prevent us from coming here
-with multiple identifiers, and the |assert| statement below checks this
-exclusion. If the logic above were relaxed to allow such multiple definitions,
-one could introduce a loop below as in the ordinary definition case; then
-however error handling would also need adaptation, since a failed definition
-need not be the first one, and the previous ones would need to be either
-undone or not reported as failed.
+method has successfully completed. An unfortunate consequence of this
+possibility is that we may end up with a multiple \&{set} command that gets
+partially executed and then aborts. This is quite rare though, and not
+catastrophic, so we don't do any effort here to exclude this.
 
-@< Add instance of identifier in |b[0]| with value in |v[0]| to
+@< Add instance of identifier |it->first| with value |*v_it| to
    |global_overload_table| @>=
-{ assert(n_id=1);
-  size_t old_n=global_overload_table->variants(b[0].first).size();
+{ size_t old_n=global_overload_table->variants(it->first).size();
 @/std::ostringstream type_string;
-  type_string<<b[0].second; // save string for type
-  global_overload_table->add@|(b[0].first,std::move(v[0]),std::move(b[0].second));
+  type_string << it->second;
+    // save type |it->second| as string before moving from it
+  global_overload_table->add@|
+    (it->first,std::move(*v_it),std::move(it->second));
     // insert or replace table entry
-  size_t n=global_overload_table->variants(b[0].first).size();
+  size_t n=global_overload_table->variants(it->first).size();
   if (n==old_n)
     *output_stream << "Redefined ";
   else if (n==1)
     *output_stream << "Defined ";
   else
     *output_stream << "Added definition [" << n << "] of ";
-  *output_stream << main_hash_table->name_of(b[0].first) << ": "
+  *output_stream << main_hash_table->name_of(it->first) << ": "
             << type_string.str();
 }
 
@@ -941,7 +927,7 @@ available from the |main_input_buffer|.
 }
 
 @ When the right hand side type does not match the requested pattern, we throw
-a |runtime_error| signalling this fact; we have to re-generate the required
+a |program_error| signalling this fact; we have to re-generate the required
 pattern using |pattern_type| to do this.
 
 @< Report that type |t| of |rhs| does not have required structure,
@@ -950,7 +936,7 @@ pattern using |pattern_type| to do this.
   o << "Type " << t @|
     << " of right hand side does not match required pattern "
     << pattern_type(pat);
-  throw runtime_error(o.str());
+  throw program_error(o.str());
 }
 
 @ We shall use the following static variable to signal
@@ -964,42 +950,53 @@ extern bool clean;
 @< Global variable definitions @>=
 bool clean=true;
 
-@ A |runtime_error| may be thrown either during type check, matching with
-the identifier pattern, or evaluation; we catch all those cases here. Whether
-or not an error is caught, the pattern |pat| and the expression |rhs| should
-not be destroyed here, since the parser which aborts after calling this
-function should do that while clearing its parsing stack.
+@ A |program_error| may be thrown during type check or matching with the
+identifier pattern (|phase==0|), and also when a conflicting overload
+situation is detected (with |phase==2|), while a |runtime_error| can be thrown
+during evaluation (|phase==1|); we catch all those cases here. It is
+convenient to centralise actual error reporting in an auxiliary function
+|handle| defined below. That function uses the value of the variable |phase|
+that our function maintains, but in most cases its values should correspond to
+the type of error thrown, as indicated in the |assert| statements. The final
+|catch| clause will catch any |std::runtime_error| thrown from the library
+(rather than by our wrapper functions), although it hardly seems possible they
+could get through to here without being relabelled as (our) |runtime_error| by
+the back-trace producing code. This clause is in fact defined to catch any
+|std::exception| so that we really should not be letting any unexpected error
+through here.
+
+Whether or not an error is caught, the pattern
+|pat| and the expression |rhs| should not be destroyed here, since the parser
+which aborts after calling this function should do that while clearing its
+parsing stack.
 
 @< Catch block for errors thrown during a global identifier definition @>=
-catch (runtime_error& err)
-{ std::cerr << err.what() << '\n';
-  if (n_id>0)
-  { std::vector<id_type> names; names.reserve(n_id);
-    list_identifiers(pat,names);
-    std::cerr << "  Identifier" << (n_id==1 ? "" : "s");
-    for (size_t i=0; i<n_id; ++i)
-      std::cerr << (i==0 ? " '" : ", '")
-                << main_hash_table->name_of(names[i]) << '\'';
-    std::cerr << " not " << (overload==0 ? "created." : "overloaded.")
-              << std::endl;
-  }
+catch (const program_error& err)
+{@; assert(phase!=1); handle(err,pat,phase,overload); }
+catch (const runtime_error& err)
+{@; assert(phase==1); handle(err,pat,phase,overload); }
+catch (const logic_error& err)
+{@; std::cerr << "Unexpected error: ";
+  handle(err,pat,phase,overload);
+}
+catch (const std::exception& err)
+{@; handle(err,pat,phase,overload); }
+
+@ Here is the common part for various |catch| clauses.
+
+@< Define auxiliary function for catch block of |do_global_set| @>=
+void handle
+  (const std::exception& err,const id_pat& pat, int phase, int overload)
+{ static const char* message[3] = {"not executed","interrupted","failed"};
+  std::cerr << err.what() << "\n  Command 'set " << pat << "' "
+            << message[phase];
+  if (phase<2)
+    std::cerr << ", nothing " << (overload<=1 ? "defin" : "overload") << "ed";
+  std::cerr << ".\n";
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
-catch (logic_error& err)
-{ std::cerr << "Unexpected error: " << err.what() << ", " @|
-            << phase_name[phase]
-            << " aborted.\n";
-@/clean=false;
-  reset_evaluator(); main_input_buffer->close_includes();
-}
-catch (error_base& err)
-{ std::cerr << err.what() << ", "
-            << phase_name[phase]
-            << " aborted.\n";
-@/clean=false;
-  reset_evaluator(); main_input_buffer->close_includes();
-}
+
 
 @ The following function is called when an identifier is declared with type
 but undefined value. Note that we output a message \emph{before} actually
@@ -1257,6 +1254,23 @@ private:
 };
 @)
 typedef std::shared_ptr<const bool_value> shared_bool;
+
+@ Since there are only two possible Boolean values, we can save storage
+allocation and deallocation by pre-allocating two constant objects, one of
+which will be shared every time a Boolean value is produced.
+
+@< Declarations of global variables @>=
+extern const shared_bool global_false, global_true;
+
+@~These shared pointers are of course initialised at their definition.
+@< Global variable definitions @>=
+const shared_bool global_false = std::make_shared<bool_value>(false);
+const shared_bool global_true  = std::make_shared<bool_value>(true);
+
+@~To get a copy of one of these two shared pointers one usually calls the
+following inline function.
+@< Template and inline function definitions @>=
+inline shared_bool whether(bool b)@+{@; return b ? global_true : global_false; }
 
 @*1 Primitive types for vectors and matrices.
 %
@@ -1907,41 +1921,35 @@ avoids having to laboriously construct a null value of the correct dimension.
 
 @< Local function definitions @>=
 
-void bool_not_wrapper(expression_base::level l)
-{ bool b=get<bool_value>()->val;
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(not b));
-}
-@)
 void int_unary_eq_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i==0));
+    push_value(whether(i==0));
 }
 void int_unary_neq_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i!=0));
+    push_value(whether(i!=0));
 }
 void int_non_negative_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i>=0));
+    push_value(whether(i>=0));
 }
 void int_positive_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i>0));
+    push_value(whether(i>0));
 }
 void int_non_positive_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i<=0));
+    push_value(whether(i<=0));
 }
 void int_negative_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i<0));
+    push_value(whether(i<0));
 }
 
 @ Here are the traditional, binary, versions of the relations.
@@ -1951,37 +1959,37 @@ void int_negative_wrapper(expression_base::level l)
 void int_eq_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i==j));
+    push_value(whether(i==j));
 }
 @)
 void int_neq_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i!=j));
+    push_value(whether(i!=j));
 }
 @)
 void int_less_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i<j));
+    push_value(whether(i<j));
 }
 @)
 void int_lesseq_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i<=j));
+    push_value(whether(i<=j));
 }
 @)
 void int_greater_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i>j));
+    push_value(whether(i>j));
 }
 @)
 void int_greatereq_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i>=j));
+    push_value(whether(i>=j));
 }
 
 @ For the rational numbers as well we define unary relations.
@@ -1991,32 +1999,32 @@ void int_greatereq_wrapper(expression_base::level l)
 void rat_unary_eq_wrapper(expression_base::level l)
 { Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i.numerator()==0));
+    push_value(whether(i.numerator()==0));
 }
 void rat_unary_neq_wrapper(expression_base::level l)
 { Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i.numerator()!=0));
+    push_value(whether(i.numerator()!=0));
 }
 void rat_non_negative_wrapper(expression_base::level l)
 { Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i.numerator()>=0));
+    push_value(whether(i.numerator()>=0));
 }
 void rat_positive_wrapper(expression_base::level l)
 { Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i.numerator()>0));
+    push_value(whether(i.numerator()>0));
 }
 void rat_non_positive_wrapper(expression_base::level l)
 { Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i.numerator()<=0));
+    push_value(whether(i.numerator()<=0));
 }
 void rat_negative_wrapper(expression_base::level l)
 { Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i.numerator()<0));
+    push_value(whether(i.numerator()<0));
 }
 
 @ Here are the traditional, binary, versions of the relations for the
@@ -2027,37 +2035,37 @@ rational numbers.
 void rat_eq_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i==j));
+    push_value(whether(i==j));
 }
 @)
 void rat_neq_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i!=j));
+    push_value(whether(i!=j));
 }
 @)
 void rat_less_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i<j));
+    push_value(whether(i<j));
 }
 @)
 void rat_lesseq_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i<=j));
+    push_value(whether(i<=j));
 }
 @)
 void rat_greater_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i>j));
+    push_value(whether(i>j));
 }
 @)
 void rat_greatereq_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i>=j));
+    push_value(whether(i>=j));
 }
 
 @ For booleans we also have equality and ineqality.
@@ -2066,13 +2074,13 @@ void rat_greatereq_wrapper(expression_base::level l)
 void equiv_wrapper(expression_base::level l)
 { bool a=get<bool_value>()->val; bool b=get<bool_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(a==b));
+    push_value(whether(a==b));
 }
 @)
 void inequiv_wrapper(expression_base::level l)
 { bool a=get<bool_value>()->val; bool b=get<bool_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(a!=b));
+    push_value(whether(a!=b));
 }
 
 @*1 Strings.
@@ -2086,43 +2094,43 @@ and one for converting integers to their string representation.
 void string_unary_eq_wrapper(expression_base::level l)
 { shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val.empty()));
+    push_value(whether(i->val.empty()));
 }
 void string_unary_neq_wrapper(expression_base::level l)
 { shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val.size()>0));
+    push_value(whether(i->val.size()>0));
 }
 void string_eq_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val==j->val));
+    push_value(whether(i->val==j->val));
 }
 void string_neq_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val!=j->val));
+    push_value(whether(i->val!=j->val));
 }
 @)
 void string_less_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val<j->val));
+    push_value(whether(i->val<j->val));
 }
 void string_leq_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val<=j->val));
+    push_value(whether(i->val<=j->val));
 }
 void string_greater_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val>j->val));
+    push_value(whether(i->val>j->val));
 }
 void string_geq_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val>=j->val));
+    push_value(whether(i->val>=j->val));
 }
 @)
 void concatenate_wrapper(expression_base::level l)
@@ -2244,9 +2252,9 @@ void vec_unary_eq_wrapper(expression_base::level l)
   const auto end=i->val.end();
   for (auto it=i->val.begin(); it!=end; ++it)
     if (*it!=0)
-    {@; push_value(std::make_shared<bool_value>(false));
+    {@; push_value(whether(false));
       return; }
-  push_value(std::make_shared<bool_value>(true));
+  push_value(whether(true));
 }
 void vec_unary_neq_wrapper(expression_base::level l)
 { shared_vector i=get<vector_value>();
@@ -2255,19 +2263,19 @@ void vec_unary_neq_wrapper(expression_base::level l)
   const auto end=i->val.end();
   for (auto it=i->val.begin(); it!=end; ++it)
     if (*it!=0)
-    {@; push_value(std::make_shared<bool_value>(true));
+    {@; push_value(whether(true));
       return; }
-  push_value(std::make_shared<bool_value>(false));
+  push_value(whether(false));
 }
 void vec_eq_wrapper(expression_base::level l)
 { shared_vector j=get<vector_value>(); shared_vector i=get<vector_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val==j->val));
+    push_value(whether(i->val==j->val));
 }
 void vec_neq_wrapper(expression_base::level l)
 { shared_vector j=get<vector_value>(); shared_vector i=get<vector_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val!=j->val));
+    push_value(whether(i->val!=j->val));
 }
 
 @ The following vector predicates test whether all coefficient are non
@@ -2287,7 +2295,7 @@ void vec_non_negative_wrapper(expression_base::level l)
   for (auto it=v->val.begin(); it!=v->val.end(); ++it)
     if (*it<0)
     {@; OK=false; break; }
-  push_value(std::make_shared<bool_value>(OK));
+  push_value(whether(OK));
 }
 void vec_positive_wrapper(expression_base::level l)
 { shared_vector v = get<vector_value>();
@@ -2297,7 +2305,7 @@ void vec_positive_wrapper(expression_base::level l)
   for (auto it=v->val.begin(); it!=v->val.end(); ++it)
     if (*it<=0)
     {@; OK=false; break; }
-  push_value(std::make_shared<bool_value>(OK));
+  push_value(whether(OK));
 }
 
 @ We continue similarly with rational vector equality comparisons.
@@ -2311,9 +2319,9 @@ void ratvec_unary_eq_wrapper(expression_base::level l)
   const auto end=i->val.numerator().end();
   for (auto it=i->val.numerator().begin(); it!=end; ++it)
     if (*it!=0)
-    {@; push_value(std::make_shared<bool_value>(false));
+    {@; push_value(whether(false));
       return; }
-  push_value(std::make_shared<bool_value>(true));
+  push_value(whether(true));
 }
 void ratvec_unary_neq_wrapper(expression_base::level l)
 { shared_rational_vector i=get<rational_vector_value>();
@@ -2322,21 +2330,21 @@ void ratvec_unary_neq_wrapper(expression_base::level l)
   const auto end=i->val.numerator().end();
   for (auto it=i->val.numerator().begin(); it!=end; ++it)
     if (*it!=0)
-    {@; push_value(std::make_shared<bool_value>(true));
+    {@; push_value(whether(true));
       return; }
-  push_value(std::make_shared<bool_value>(false));
+  push_value(whether(false));
 }
 void ratvec_eq_wrapper(expression_base::level l)
 { shared_rational_vector j=get<rational_vector_value>();
   shared_rational_vector i=get<rational_vector_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val==j->val));
+    push_value(whether(i->val==j->val));
 }
 void ratvec_neq_wrapper(expression_base::level l)
 { shared_rational_vector j=get<rational_vector_value>();
   shared_rational_vector i=get<rational_vector_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val!=j->val));
+    push_value(whether(i->val!=j->val));
 }
 
 @ Like for vectors, we add dominance tests.
@@ -2351,7 +2359,7 @@ void ratvec_non_negative_wrapper(expression_base::level l)
   for (auto it=v->val.numerator().begin(); it!=v->val.numerator().end(); ++it)
     if (*it<0)
     {@; OK=false; break; }
-  push_value(std::make_shared<bool_value>(OK));
+  push_value(whether(OK));
 }
 void ratvec_positive_wrapper(expression_base::level l)
 { shared_rational_vector v = get<rational_vector_value>();
@@ -2361,7 +2369,7 @@ void ratvec_positive_wrapper(expression_base::level l)
   for (auto it=v->val.numerator().begin(); it!=v->val.numerator().end(); ++it)
     if (*it<=0)
     {@; OK=false; break; }
-  push_value(std::make_shared<bool_value>(OK));
+  push_value(whether(OK));
 }
 
 @ And here are matrix equality comparisons.
@@ -2371,22 +2379,22 @@ void ratvec_positive_wrapper(expression_base::level l)
 void mat_unary_eq_wrapper(expression_base::level l)
 { shared_matrix i=get<matrix_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val.is_zero()));
+    push_value(whether(i->val.is_zero()));
 }
 void mat_unary_neq_wrapper(expression_base::level l)
 { shared_matrix i=get<matrix_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(not i->val.is_zero()));
+    push_value(whether(not i->val.is_zero()));
 }
 void mat_eq_wrapper(expression_base::level l)
 { shared_matrix j=get<matrix_value>(); shared_matrix i=get<matrix_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val==j->val));
+    push_value(whether(i->val==j->val));
 }
 void mat_neq_wrapper(expression_base::level l)
 { shared_matrix j=get<matrix_value>(); shared_matrix i=get<matrix_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i->val!=j->val));
+    push_value(whether(i->val!=j->val));
 }
 
 @*2 Vector arithmetic.
@@ -2891,7 +2899,6 @@ install_function(rat_modulo_wrapper,"%","(rat,rat->rat)");
 install_function(rat_unary_minus_wrapper,"-","(rat->rat)");
 install_function(rat_inverse_wrapper,"/","(rat->rat)");
 install_function(rat_power_wrapper,"^","(rat,int->rat)");
-install_function(bool_not_wrapper,"!","(bool->bool)");
 install_function(int_unary_eq_wrapper,"=","(int->bool)");
 install_function(int_unary_neq_wrapper,"!=","(int->bool)");
 install_function(int_non_negative_wrapper,">=","(int->bool)");
@@ -3006,15 +3013,20 @@ in fact be hard to avoid.
 @< Local function definitions @>=
 void null_vec_wrapper(expression_base::level l)
 { int n=get<int_value>()->val;
+  if (n<0)
+    throw runtime_error("Negative size for vector: "+str(n));
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<vector_value>(int_Vector(std::max(n,0),0)));
+    push_value(std::make_shared<vector_value>(int_Vector(n,0)));
 }
 @) void null_mat_wrapper(expression_base::level l)
 { int n=get<int_value>()->val;
   int m=get<int_value>()->val;
+  if (m<0)
+    throw runtime_error("Negative number of rows: "+str(m));
+  if (n<0)
+    throw runtime_error("Negative number of columns: "+str(n));
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<matrix_value>
-      (int_Matrix(std::max(m,0),std::max(n,0),0)));
+    push_value(std::make_shared<matrix_value> (int_Matrix(m,n,0)));
 }
 void transpose_vec_wrapper(expression_base::level l)
 { shared_vector v=get<vector_value>();

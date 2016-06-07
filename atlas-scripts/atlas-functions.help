@@ -549,27 +549,29 @@ Cayley: (int,KGBElt->KGBElt): Cayley transform for (posrootnr,KGB element)
   which signifies a single-value inverse Cayley, or else the second value
 twist: (KGBElt->KGBElt): twist of KGB element x, useful for Hermitian dual
   This is defined by conjugation of x by the distinguished involution delta
-torus_factor: (KGBElt->ratvec): torus part of KGB element, twice that in print_X
+torus_factor: (KGBElt->ratvec): coweight for KGB element, twice that in print_X
   This is a \theta^t stable rational vector v with integral evaluations on
   all imaginary roots; interpreted modulo the image of 1+\theta^t acting
   on X_*, so in particular modulo (2\Z)^n. For an imaginary root \alpha
   the scalar product < v + \check\rho_i , \alpha > determines whether \alpha
-  is compact (if even) or noncompact (if odd)
+  is compact (if even) or noncompact (if odd). Together with the inner class
+  and the invlution, this value completely characterises the KGB element (and
+  its real form), and it can be reconstructed using the KGB_elt function below.
 torus_bits: (KGBElt->vec): torus part of KGB element as vector of 0,1 values
   A vector of size the rank that distinguishes between different KGB elements
   at the same involution, in the format used internally. From this the value
-  torus_factor(x) is computed using base_grading_vector(rf)+torus_bits(x), for
-  the real form rf of x, a value then averaged with its \theta^t image
+  torus_factor(x) is computed using base_grading_vector(rf)-torus_bits(x), for
+  the real form rf of x, which value is then symmetrized for \theta^t.
 KGB_elt: (RealForm,mat,ratvec): KGB element defined by rational coweight
   This function finds a KGB element x such that real_form(x), involution(x),
   and torus_factor(x) match the values (rf,M,v) given as arguments. The
   interpretation for the (involution) matrix M and rational (coweight) vector
-  v are as for real_form@(InnerClass,mat,ratvec); moreover rf should be the
-  real form returned (for this inner class) by real_form(ic,M,v), and the
-  difference v-base_grading_vector(rf) must be an integer vector. There is
+  v are as for real_form@(InnerClass,mat,ratvec); moreover rf should be equal
+  to the real form returned (for this inner class) by real_form(ic,M,v), and
+  the difference v-base_grading_vector(rf) must be an integer vector. There is
   then at most one KGB element x for rf such that torus_factor(x) is congruent
   to v modulo the image of ^M+1 (i.e., M+1 applied on right), which x is then
-  returned by this function (if no such x is found, then an error is signaled).
+  returned by this function (if no such x is found, an error is signaled).
 
 operator = : (KGBElt,KGBElt): equality of elements of a same KGB set
 

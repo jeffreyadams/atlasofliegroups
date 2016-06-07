@@ -202,6 +202,7 @@ declaration: pattern '=' expr { $$ = make_let_node($1,$3); }
 ;
 
 tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3,@$); }
+	| SET pattern BECOMES tertiary { $$ = make_multi_assignment($2,$4,@$); }
 	| assignable_subsn BECOMES tertiary { $$ = make_comp_ass($1,$3,@$); }
 	| IDENT OPERATOR_BECOMES tertiary
 	  { $$ = make_assignment($1,
@@ -238,8 +239,7 @@ formula : formula_start operand { $$=end_formula($1,$2,@$); }
 ;
 formula_start : operator       { $$=start_unary_formula($1.id,$1.priority,@1); }
 	| comprim operator     { $$=start_formula($1,$2.id,$2.priority,@2); }
-	| IDENT operator       { $$=start_formula
-	      (make_applied_identifier($1,@1),$2.id,$2.priority,@2); }
+	| ident_expr operator  { $$=start_formula($1,$2.id,$2.priority,@2); }
 	| formula_start operand operator
 	  { $$=extend_formula($1,$2,$3.id,$3.priority,@3); }
 ;
@@ -261,7 +261,7 @@ ident_expr : IDENT { $$=make_applied_identifier($1,@1); } ;
 
 comprim: subscription | slice
 	| primary '(' commalist_opt ')'
-	{ $$=make_application_node($1,reverse_expr_list($3),@$,@2,@4); }
+	  { $$=make_application_node($1,reverse_expr_list($3),@$,@2,@4); }
 	| INT { $$ = make_int_denotation($1,@$); }
 	| TRUE { $$ = make_bool_denotation(true,@$); }
 	| FALSE { $$ = make_bool_denotation(false,@$); }

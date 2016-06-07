@@ -1,9 +1,8 @@
-/*!
-\file
-  This is matrix.cpp. This module contains some simple utilities for matrices.
-*/
 /*
+  This is matrix.cpp. This module contains some simple utilities for matrices.
+
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006-2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -428,9 +427,7 @@ template<typename C>
     (*this)(i,j)=v[i];
 }
 
-/*!
-  Adds |v| as new row to the matrix. Entries being stored by row, this is easy
-*/
+// Add |v| as new row to the matrix. Entries being stored by row, this is easy
 template<typename C>
   void Matrix_base<C>::add_row(const Vector<C>& v)
 {
@@ -442,9 +439,7 @@ template<typename C>
   std::copy(v.begin(),v.end(),at(d_rows-1,0));
 }
 
-/*!
-  Adds |v| as new column to the matrix. This is harder than adding a row
-*/
+// Add |v| as new column to the matrix. This is harder than adding a row
 template<typename C>
   void Matrix_base<C>::add_column(const Vector<C>& v)
 {

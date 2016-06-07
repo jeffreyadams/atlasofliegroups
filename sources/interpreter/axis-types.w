@@ -179,7 +179,7 @@ typedef atlas::containers::sl_node<type_expr>* raw_type_list;
 typedef containers::sl_list<type_expr> dressed_type_list;
 typedef containers::weak_sl_list_const_iterator<type_expr> wtl_const_iterator;
 typedef containers::weak_sl_list_iterator<type_expr> wtl_iterator;
-  // wel = weak type list
+  // wtl = weak type list
 
 @ Since types and type lists own their trees, their copy constructors must
 make a deep copy. The class |type_expr| will provide no copy constructor but
@@ -459,7 +459,7 @@ where |insert| can be used to add node (note that the class template
 |end| methods usually are).
 
 This is the one place where we need to cater for the fact that we cannot
-create a e|type_list::iterator| for the |tupple| field, which is a raw
+create an |type_list::iterator| for the |tupple| field, which is a raw
 pointer. Instead we create an initially empty |type_list dst@;| and make an
 iterator for it; after creating the nodes of the list, the |type_list| is
 demoted to |raw_type_list| by calling its |release| method, which raw
