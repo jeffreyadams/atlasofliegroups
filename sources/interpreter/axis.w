@@ -450,8 +450,8 @@ virtual void print(std::ostream& out) const @+{@; out << " die "; }
 
 @< Function definitions @>=
 void shell::evaluate (level l) const
-{ throw runtime_error("I die"); // |shell| explodes
-}
+{@; throw runtime_error("I die"); } // our |shell| explodes
+
 
 @ The main point of \&{die} is not trying to evaluate, but allowing it to
 pass type checking successfully. It does so trivially.
@@ -1902,13 +1902,25 @@ public:
   frame (const id_pat& pattern)
   : pattern(pattern)
   {@; current = std::make_shared<evaluation_context>(std::move(current)); }
-  ~frame() @+{@; current = current->tail(); } // don't move here!
+  ~frame() @+{@; current = current->tail(); } // don't use |std::move| here!
 @)
   void bind (const shared_value& val)
     { current->reserve(count_identifiers(pattern));
       thread_components(pattern,val,current->back_inserter());
     }
+  std::vector<id_type> id_list() const; // list identifiers, for back-tracing
 };
+
+@ This method is only called during exception handling, so a simple access to
+the identifiers is more important than an efficient one. Therefore we convert
+the pattern to a vector, using a  call to |list_identifiers|.
+
+@< Local function definitions @>=
+std::vector<id_type> frame::id_list() const
+{ std::vector<id_type> names; names.reserve(count_identifiers(pattern));
+  list_identifiers(pattern,names);
+  return names;
+}
 
 @ Evaluating a let expression is now straightforward: evaluate the initialiser
 to produce a value on the stack; then create a new |frame| in which this value
@@ -1920,8 +1932,34 @@ void let_expression::evaluate(level l) const
 @)
   frame fr(variable); // save context, create new one for |f|
   fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
-  body->evaluate(l); // call, passing evaluation level |l| to function body
+  try {@; body->evaluate(l); }
+    // call, passing evaluation level |l| to function body
+  @< Catch block for providing a trace-back of local variables @>
 } // restore context upon destruction of |fr|
+
+
+@ Providing the current values of local variables at an error stop is useful
+and quite easy. We obtain the names of the identifiers from the frame |fr| to
+which they are copied rather than directly from our |variable|, with the main
+purpose of reusing the module identically as |catch| block for user defined
+functions, where the current (call) expression does not have an identifier
+pattern available, but there is a frame |fr| from which is can be obtained.
+
+@< Catch block for providing a trace-back of local variables @>=
+catch (error_base& e)
+{ std::vector<id_type> names = fr.id_list();
+  auto id_it = names.cbegin(); std::ostringstream o; o << "\n  [";
+  for (auto it = frame::current->begin(); it!=frame::current->end();
+       ++it,++id_it)
+  { if (it!=frame::current->begin())
+      o << ", ";
+    o << main_hash_table->name_of(*id_it) << '=' << **it;
+  }
+  o << ']';
+  e.message.append(o.str());
+  throw;
+}
+
 
 @*1 Lambda-expressions (user-defined functions).
 %
@@ -2189,7 +2227,18 @@ public:
       frame::current->reserve(count_identifiers(pattern));
       thread_components(pattern,val,frame::current->back_inserter());
     }
+  std::vector<id_type> id_list() const; // list identifiers, for back-tracing
 };
+
+@ This method is identical to the one in |frame|, but as said, we cannot use
+inheritance.
+
+@< Local function definitions @>=
+std::vector<id_type> lambda_frame::id_list() const
+{ std::vector<id_type> names; names.reserve(count_identifiers(pattern));
+  list_identifiers(pattern,names);
+  return names;
+}
 
 @ In general a closure formed from a $\lambda$ expression can be handled in
 various ways (like being passed as argument, returned, stored) before being
@@ -2269,10 +2318,13 @@ new frame defined by the parameter list |f->param| and the argument obtained
 as |pop_value()|; the function body is evaluated in this extended context.
 Afterwards the original context is restored by the destructor of~|fr|, whether
 the call completes normally or is terminated by a runtime error. This approach
-will have its most important use when the language will allow controlled
+will maybe have its most important use when the language will allow controlled
 abnormal exit from evaluation of subexpressions, such as breaking out of
-loops, explicit returning from functions, an user defined exception handling;
-currently however, none of these are possible yet.
+loops, explicit returning from functions, and user defined exception handling;
+currently however, none of these are implemented.
+
+By naming our frame |fr|, we can textually reuse a |catch| block, as mentioned
+at its definition.
 
 @: lambda evaluation @>
 
@@ -2282,7 +2334,9 @@ currently however, none of these are possible yet.
   lambda_frame fr(f->p->param,f->context);
     // save context, create new one for |f|
   fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
-  f->body.evaluate(l); // call, passing evaluation level |l| to function body
+  try {@; f->body.evaluate(l); }
+    // call, passing evaluation level |l| to function body
+  @< Catch block for providing a trace-back of local variables @>
 } // restore context upon destruction of |fr|
 
 @ Evaluation of an overloaded function call bound to a closure consists of a
@@ -2296,7 +2350,8 @@ that in particular we don't have to distinguish dynamically between built-in
 functions and closures.
 
 Not having varied our naming conventions (|arg_string| and |fun|), we can make
-a fourth textual reuse of the |catch| block.
+a fourth textual reuse of the |catch| block for function calls, as well as
+(|fr|) a third reuse of the |catch| block for local variables.
 
 @< Function definitions @>=
 void overloaded_closure_call::evaluate(level l) const
@@ -2312,9 +2367,10 @@ void overloaded_closure_call::evaluate(level l) const
 @)
     // now save context, create new one for |fun|
     fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
-    fun->body.evaluate(l);
+    try {@; fun->body.evaluate(l); }
     // call, passing evaluation level |l| to function body
-  }
+    @< Catch block for providing a trace-back of local variables @>
+  } // restore context upon destruction of |fr|
   @< Catch-block for exceptions thrown within function calls @>
 }
 

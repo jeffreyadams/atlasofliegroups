@@ -13,16 +13,12 @@
 
 * Work on the atlas program
 
-- Investigate if some tracing facilty (printing "let" values) is feasible
-
 - Integrate a bigint library to store atlas int (and rat?) values; while
   attending that, signal overflow in arithmetic operations / conversions
 
-
 - Improve output of expressions
+  Distinguish one-line (maybe abbreviated) and long forms.
   Nuance "simply connected" and "adjoint" for non-semisimple root data
-
-- Allow multiple overloaded functions defined in a single 'set' statement
 
 - Make balancing a general concept, also applied within row displays.
   This probably requires discovering a priori type in a separate bottom-up
