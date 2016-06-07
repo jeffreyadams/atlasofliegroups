@@ -4,25 +4,29 @@
 <kgp.at { for maximal@Parabolic }
 <canonical_x_K.at { for canonical_x_K@KGBElt }
 
-{basic functions are in parabolics.at
- these are some additional functions related to theta-stable parabolics
+{ basic functions are in parabolics.at
+  these are some additional functions related to theta-stable parabolics
 
-from parabolics.at:
+  from parabolics.at:
 Parabolic:([int] P,KGBElt x)
-theta_stable_parabolic(KGBElt x) returns a theta-stable parabolic provided all complex roots of x are type C+
-parabolic(ratvec lambda,KGBElt x)= returns a theta-stable parabolic if \theta_x(lambda)=lambda
+theta_stable_parabolic(KGBElt x)
+  returns a theta-stable parabolic provided all complex roots of x are type C+
+parabolic(ratvec lambda,KGBElt x)
+  returns a theta-stable parabolic if \theta_x(lambda)=lambda
 and all x-complex roots are type C+
 }
 
-{set u(Parabolic P)=[vec]:... was broken; removed, use function in parabolics.at}
+{ set u(Parabolic P)=[vec]:...
+  was broken; removed, use function in parabolics.at }
 
 set u (KGBElt x) = mat: nilrad(theta_stable_parabolic(x)) { set of coroots }
 
-{Write \h=\t\oplus\a with respect to theta
- \t^* is a quotient of \h^*, also \t^* is a sub of \h^* (those elements vanishing on \a) via this decomposition
- rho_u_cx(P) is in \t^* viewed as a subset of \h^*
- each pair {alpha,theta(alpha)} contributes \alpha/2, so
- rho_u_cx(P)=1/4(sum of complex roots of u) [note the denominator]
+{ Write \h=\t\oplus\a with respect to theta
+  \t^* is a quotient of \h^*, also \t^* is a sub of \h^*
+  (those elements vanishing on \a) via this decomposition
+  rho_u_cx(P) is in \t^* viewed as a subset of \h^*
+  each pair {alpha,theta(alpha)} contributes \alpha/2, so
+  rho_u_cx(P)=1/4(sum of complex roots of u) [note the denominator]
 }
 set rho_u_cx (Parabolic P) = ratvec:
   assert(is_parabolic_theta_stable(P),"P is not theta-stable");
@@ -30,24 +34,23 @@ set rho_u_cx (Parabolic P) = ratvec:
   sum(columns_with(is_complex(x_min(P)),nilrad_roots(P))) / 2
 
 {
-rho_u_cx(P) is not necessarily in X^*
-rho_u_cx_T(P) \in X^*, same restriction to T_K0, i.e. same image modulo (1-delta)X^*
-(need this to define \rho_u_cap_k)
-in rho_u_cx(P) have terms (alpha+theta(alpha)/2, replace these with alpha,
-which has the same restriction
-rho_S(theta,rd): each pair alpha,theta(alpha) contributes alpha/2
-so 2*rho_S(theta,rd) contribution is \alpha, which is what we want
+  rho_u_cx(P) is not necessarily in X^*
+  rho_u_cx_T(P) \in X^*, same restriction to T_K0,
+  i.e. same image modulo (1-delta)X^* (need this to define \rho_u_cap_k)
+  in rho_u_cx(P) have terms (alpha+theta(alpha)/2, replace these with alpha,
+  which has the same restriction
+  rho_S(theta,rd): each pair alpha,theta(alpha) contributes alpha/2
+  so 2*rho_S(theta,rd) contribution is \alpha, which is what we want
 }
 
-set rho_u_cx_T(Parabolic P)=vec:
-assert(is_parabolic_theta_stable(P),"P is not theta-stable");
-let x=x_min(P) then
-rd=root_datum(x) then
-rd_L=root_datum(Levi(P)) then
-theta=involution(x) in ratvec_as_vec(2*rho_S(theta,rd)-2*rho_S(theta,rd_L))
+set rho_u_cx_T (Parabolic P) = vec:
+  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+  let x=x_min(P)
+  then rd=root_datum(x), rd_L=root_datum(Levi(P)), theta=involution(x)
+  in ratvec_as_vec(2*rho_S(theta,rd)-2*rho_S(theta,rd_L))
 
-{ \rho_u_ic(P) is in \t^* as a subset of \h^* 
- =1/2 the sum of the imaginary, compact roots in u
+{ \rho_u_ic(P) is in \t^* as a subset of \h^*s
+  =1/2 the sum of the imaginary, compact roots in u
 }
 set rho_u_ic (Parabolic P) = ratvec:
   assert(is_parabolic_theta_stable(P),"P is not theta-stable");
@@ -57,13 +60,16 @@ set rho_u_ic (Parabolic P) = ratvec:
   in sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2
 
 {
-rho_u_cx(P)/2+rho_u_ic(P)\in h^* has correct restriction, but might not live in 1/2X^*
-rho_u_cap_k(P)\in \t^* as element of \h^*
-need 2*rho_u_cap_k(P)\in X^*, restricting to correct element of X^*(T_K0)=X^*/)(X^*)^{-delta}
-
+  rho_u_cx(P)/2+rho_u_ic(P)\in h^* has correct restriction,
+  but might not live in 1/2X^*
+  rho_u_cap_k(P)\in \t^* as element of \h^*
+  need 2*rho_u_cap_k(P)\in X^*,
+  restricting to correct element of X^*(T_K0)=X^*/)(X^*)^{-delta}
 }
-set two_rho_u_cap_k (Parabolic P) = vec:ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P))
-set two_rho_u_cap_s (Parabolic P) = vec:ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P)
+set two_rho_u_cap_k (Parabolic P) = vec:
+  ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P))
+set two_rho_u_cap_s (Parabolic P) = vec:
+  ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P)
 
 {these give the same restriction to T_K0, but aren't necessarily integral:}
 set rho_u_cap_k (Parabolic P) = ratvec: rho_u_cx(P)/2+rho_u_ic(P)
@@ -138,168 +144,180 @@ set dim_u (ratvec H,KGBElt x) = n_columns(nilrad(H,x))
 
 { -----------------------some representations------------------------------- }
 
-{Note: theta_induce_irreducible(pi_L,G) has infinitesimal character
-infinitesimal character(pi_L)+rho(u)}
+{ Note: theta_induce_irreducible(pi_L,G) has infinitesimal character
+ infinitesimal character(pi_L)+rho(u)}
 
 {
-Aq(x,lambda,lambda_q) defined as follows
-if lambda_q is weakly dominant set q=q(x,\lambda_q)
-apply derived functor to one dimensional lambda-rho(u) of L
-(lambda+rho(L))-rho(u)+rho(u)=lambda+rho_L
-REQUIRE: lambda-rho(u)\in X^*
-Aq(x,lambda,lambda_q) has infinitesimal character lambda+rho_L,
-thus lambda has infinitesimal character lambda+rho_L for L, goes to a
-infinitesimal character lambda+rho_L for G; i.e.
-Aq takes infinitesimal character gamma_L to SAME infinitesimal character for G
-for example, equal rank, x on compact Cartan Aq(x,rho(G),rho(G))
-is a discrete series with infinitesimal character rho(G)
-if lambda_q isn't weakly dominant define Aq(x,lambda,lambda_q)=Aq(wx,w\lambda,w\lambda_q)
-where w\lambda_q is weakly dominant
+  Aq(x,lambda,lambda_q) defined as follows
+  if lambda_q is weakly dominant set q=q(x,\lambda_q)
+  apply derived functor to one dimensional lambda-rho(u) of L
+  (lambda+rho(L))-rho(u)+rho(u)=lambda+rho_L
+  REQUIRE: lambda-rho(u)\in X^*
+  Aq(x,lambda,lambda_q) has infinitesimal character lambda+rho_L,
+  thus lambda has infinitesimal character lambda+rho_L for L, goes to a
+  infinitesimal character lambda+rho_L for G; i.e.
+  Aq takes infinitesimal character gamma_L to SAME infinitesimal character
+  for G, for example, equal rank, x on compact Cartan Aq(x,rho(G),rho(G))
+  is a discrete series with infinitesimal character rho(G)
+  if lambda_q isn't weakly dominant define
+  Aq(x,lambda,lambda_q)=Aq(wx,w\lambda,w\lambda_q)
+  where w\lambda_q is weakly dominant
 }
 
-{first defined Aq as a ParamPol, in case it isn't irreducible}
-set Aq_param_pol(KGBElt x_in,ratvec lambda_in, ratvec lambda_q)=ParamPol:
-{let ()=prints("Aq_param_pol with:", x_in, " ", lambda_in, " ", lambda_q) in}
-let G=real_form(x_in) then
+{ first defined Aq as a ParamPol, in case it isn't irreducible }
+set Aq_param_pol (KGBElt x_in,ratvec lambda_in, ratvec lambda_q) = ParamPol:
+{ prints("Aq_param_pol with:", x_in, " ", lambda_in, " ", lambda_q); }
+  let G=real_form(x_in)
 {find w making lambda_q weakly dominant}
-(lambda_q_new,w)=make_dominant(G,lambda_q) then
-{()=prints("w=", w, "  lambda_q_new=", lambda_q_new) then}
-x_new=cross(inverse(w),x_in) then
-{lambda_q_new=act(w,lambda_q) then}
-lambda_in_new=act(inverse(w),lambda_in) then
-P_new=parabolic(lambda_q_new,x_new) then
-L_new=Levi(P_new) then
-t_L_new=trivial(L_new) in
-{()=prints("t_L_new= ", t_L_new) in}
-{pi_L=parameter(x(t_L_new),lambda_in_new-rho_u(parabolic(lambda_q_new,x_new)),lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))) in}
-{let ()=prints("lambda_q=", lambda_q) in
-let ()=prints("lambda_q_new=", lambda_q_new) in
-let ()=prints("x_in=", x_in) in
-let ()=prints("x_new=", x_new) in
-let ()=prints("rho_u_new:", rho_u(parabolic(lambda_q_new,x_new))) in
-let ()=prints("lambda(t_L_new)=", lambda(t_L_new)) in
-let ()=prints("lambda_in=", lambda_in) in
-let ()=prints("lambda_in_new=", lambda_in_new) in}
-let pi_L=parameter(x(t_L_new),lambda(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new)),nu(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))) in
-{let ()=prints("A:",lambda(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))) in
-let ()=prints("B:", nu(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))) in
-let ()=prints("lambda(t_L_new):", lambda(t_L_new)) in
-let ()=prints("nu(t_L_new):", nu(t_L_new)) in
-let ()=prints("pi_L= ", pi_L) in
-let ()=prints("properties:") in
-let ()=goodness(pi_L,G) in}
-assert(dimension(pi_L)=1,"pi_L is not one-dimensional") ;
+  then (lambda_q_new,w)=make_dominant(G,lambda_q)
+{ then ()=prints("w=", w, "  lambda_q_new=", lambda_q_new) then }
+  then x_new=cross(inverse(w),x_in)
+{ then lambda_q_new=act(w,lambda_q) }
+  then lambda_in_new=act(inverse(w),lambda_in)
+  then P_new=parabolic(lambda_q_new,x_new)
+  then L_new=Levi(P_new)
+  then t_L_new=trivial(L_new)
+  in
+{ prints("t_L_new= ", t_L_new); }
+{ let pi_L=
+  parameter(x(t_L_new)
+           ,lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))
+           ,lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))) in }
+{ prints("lambda_q=", lambda_q);
+  prints("lambda_q_new=", lambda_q_new);
+  prints("x_in=", x_in);
+  prints("x_new=", x_new);
+  prints("rho_u_new:", rho_u(parabolic(lambda_q_new,x_new)));
+  prints("lambda(t_L_new)=", lambda(t_L_new));
+  prints("lambda_in=", lambda_in);
+  prints("lambda_in_new=", lambda_in_new); }
+  let pi_L= parameter
+    (x(t_L_new)
+    ,lambda(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))
+    ,nu(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))
+    )
+  in
+{ prints("A:"
+        ,lambda(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new)));
+  prints("B:", nu(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new)));
+  prints("lambda(t_L_new):", lambda(t_L_new));
+  prints("nu(t_L_new):", nu(t_L_new));
+  prints("pi_L= ", pi_L);
+  prints("properties:");
+  goodness(pi_L,G); }
+  assert(dimension(pi_L)=1,"pi_L is not one-dimensional");
+{ prints("in Aq, p_L=", pi_L); }
+  theta_induce_irreducible(pi_L,G)
 
-{let ()=prints("in Aq, p_L=", pi_L) in}
-theta_induce_irreducible(pi_L,G)
+set Aq (KGBElt x_in,ratvec lambda_in, ratvec lambda_q) = Param:
+  let P=%Aq_param_pol(x_in,lambda_in,lambda_q)
+  in assert(#P<=1,"Aq is not irreducible. Use Aq_param_pol(x,lambda) instead");
+  let (c,p)=P[0]
+  in assert(c=1,"Aq has multiplicity. Use Aq_param_pol(x,lambda) instead");
+  p
 
-set Aq(KGBElt x_in,ratvec lambda_in, ratvec lambda_q)=Param:
-let P=Aq_param_pol(x_in,lambda_in,lambda_q) then
-P=%P in
-if #P>1 then error("Aq is not irreducible. Use Aq_param_pol(x,lambda) instead")  else
-let (c,p)=P[0] in
- if c!=1 then error("Aq has multiplicity. Use Aq_param_pol(x,lambda) instead")
-else p fi fi
+{ if not provided, assume lambda_q=lambda }
+set Aq (KGBElt x,ratvec lambda_in) = Param:
+  Aq(x,lambda_in,lambda_in)
 
-{if not provided, assume lambda_q=lambda}
-set Aq(KGBElt x,ratvec lambda_in)=Param:Aq(x,lambda_in,lambda_in)
+{ specify G, and not x, to use x=KGB(G,0) }
 
-{specify G, and not x, to use x=KGB(G,0)}
-
-set Aq(RealForm G,ratvec lambda_in, ratvec lambda_q)=Param:Aq(KGB(G)[0],lambda_in,lambda_q)
-set Aq(RealForm G,ratvec lambda_in)=Param:Aq(G,lambda_in,lambda_in)
+set Aq (RealForm G,ratvec lambda_in, ratvec lambda_q) = Param:
+  Aq(KGB(G)[0],lambda_in,lambda_q)
+set Aq(RealForm G,ratvec lambda_in)=Param:
+  Aq(G,lambda_in,lambda_in)
 
 
 
 
 {----------------------Good/Fair conditions------------------}
 
-{Good/Fair
-condition on roots of u
-theta_induce(pi_L,G)
-gamma_L -> gamma_G=gamma_L+rho_u
-good: <gamma_L+rho_u,alpha^vee> > 0
-weakly good: <gamma_L+rho_u,alpha^vee> \ge 0
-fair: <gamma_L-rho_L+rho_u,alpha^vee> > 0
+{ Good/Fair
+  condition on roots of u
+  theta_induce(pi_L,G)
+  gamma_L -> gamma_G=gamma_L+rho_u
+  good: <gamma_L+rho_u,alpha^vee> > 0
+  weakly good: <gamma_L+rho_u,alpha^vee> \ge 0
+  fair: <gamma_L-rho_L+rho_u,alpha^vee> > 0
 
-Aq(x,lambda,lambda_q):
-gamma_L=lambda+rho_L
-gamma_L -> gamma_G=gamma_L = lambda+rho_L
-Aq(x,lambda)=theta_induce(x,lambda-rho_u)
-good: <lambda+rho_L,alpha^vee> > 0
-fair: <lambda,alpha^vee> > 0
-weakly fair: <lambda,alpha^vee> \ge 0
+  Aq(x,lambda,lambda_q):
+  gamma_L=lambda+rho_L
+  gamma_L -> gamma_G=gamma_L = lambda+rho_L
+  Aq(x,lambda)=theta_induce(x,lambda-rho_u)
+  good: <lambda+rho_L,alpha^vee> > 0
+  fair: <lambda,alpha^vee> > 0
+  weakly fair: <lambda,alpha^vee> \ge 0
 
-theta_induce(pi_L,G) = Euler-Poincare characteristic of cohomological induction functor
-fair => vanishing outside middle degree => honest representation
-weakly fair: same implication
-NB: <gamma_L-rho_L_rho_U,alpha^vee> >= 0 does NOT imply vanishing (in general) if pi_L is not one dimensional
-hence "weakly fair" is only defined if pi_L is one dimensional
+  theta_induce(pi_L,G) = Euler-Poincare characteristic of cohomological
+  induction functor
+  fair => vanishing outside middle degree => honest representation
+  weakly fair: same implication
+  NB: <gamma_L-rho_L_rho_U,alpha^vee> >= 0 does NOT imply vanishing
+  (in general) if pi_L is not one dimensional
+  hence "weakly fair" is only defined if pi_L is one dimensional
 }
 
-set is_good(Param p_L,RealForm G)=bool:
-let L=real_form(p_L) then
-rho_u=rho(G)-rho(L) in
-is_strictly_dominant(G,infinitesimal_character(p_L)+rho_u)
+set is_good (Param p_L,RealForm G) = bool:
+  let L=real_form(p_L)
+  then rho_u=rho(G)-rho(L)
+  in is_strictly_dominant(G,infinitesimal_character(p_L)+rho_u)
 
-set is_weakly_good(Param p_L,RealForm G)=bool:
-let L=real_form(p_L) then
-rho_u=rho(G)-rho(L) in
-is_dominant(G,infinitesimal_character(p_L)+rho_u)
+set is_weakly_good (Param p_L,RealForm G) = bool:
+  let L=real_form(p_L)
+  then rho_u=rho(G)-rho(L)
+  in is_dominant(G,infinitesimal_character(p_L)+rho_u)
 
-set is_fair(Param p_L,RealForm G)=bool:
-let L=real_form(p_L) then
-rho_u=rho(G)-rho(L) in
-is_strictly_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
+set is_fair (Param p_L,RealForm G) = bool:
+  let L=real_form(p_L)
+  then rho_u=rho(G)-rho(L)
+  in is_strictly_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
 
-{weakly fair only defined if pi_L is finite dimensional}
-set is_weakly_fair(Param p_L,RealForm G)=bool:
-let L=real_form(p_L) then
-rho_u=rho(G)-rho(L) in
-is_finite_dimensional(p_L) and dimension(p_L)=1 and is_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
+{ weakly fair only defined if pi_L is finite dimensional }
+set is_weakly_fair (Param p_L,RealForm G) = bool:
+  let L=real_form(p_L)
+  then rho_u=rho(G)-rho(L)
+  in is_finite_dimensional(p_L) and dimension(p_L)=1 and
+     is_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
 
-set is_good(KGBElt x,ratvec lambda_in,ratvec lambda_q)=bool:
-let L=Levi(lambda_q,x) in
-is_strictly_dominant(real_form(x),lambda_in+rho(L))
+set is_good (KGBElt x,ratvec lambda_in,ratvec lambda_q) = bool:
+  let L=Levi(lambda_q,x) in is_strictly_dominant(real_form(x),lambda_in+rho(L))
 
-set is_weakly_good(KGBElt x,ratvec lambda_in,ratvec lambda_q)=bool:
-let L=Levi(lambda_q,x) in is_dominant(root_datum(x),lambda_in+rho(L))
+set is_weakly_good (KGBElt x,ratvec lambda_in,ratvec lambda_q) = bool:
+  let L=Levi(lambda_q,x) in is_dominant(root_datum(x),lambda_in+rho(L))
 
-set is_fair(KGBElt x,ratvec lambda_in,ratvec lambda_q)=bool:
-is_strictly_dominant(real_form(x),lambda_in)
+set is_fair (KGBElt x,ratvec lambda_in,ratvec lambda_q) = bool:
+  is_strictly_dominant(real_form(x),lambda_in)
 
-set is_weakly_fair(KGBElt x,ratvec lambda_in,ratvec lambda_q)=bool:
-is_dominant(real_form(x),lambda_in)
+set is_weakly_fair (KGBElt x,ratvec lambda_in,ratvec lambda_q) = bool:
+  is_dominant(real_form(x),lambda_in)
 
-set goodness(Param p_L,RealForm G)=void:
-let L=real_form(p_L) then
-rho_l=rho(L) then
-rho_u=rho(G)-rho(L) then
-infchar_l=infinitesimal_character(p_L) in
-{()=prints("infinitesimal character(l)=", infchar_l) then
-()=prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u) then
-()=prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l) in}
-if is_good(p_L,G) then prints("Good")
-elif is_weakly_good(p_L,G) then prints("Weakly good")
-elif is_fair(p_L,G) then prints("Fair")
-elif is_weakly_fair(p_L,G) then prints("Weakly fair")  else
-prints("None") fi
+set goodness (Param p_L,RealForm G) = void:
+  let L=real_form(p_L) then rho_l=rho(L)
+  then rho_u=rho(G)-rho_l, infchar_l=infinitesimal_character(p_L)
+  in
+{ prints("infinitesimal character(l)=", infchar_l);
+  prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
+  prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l); }
+  if is_good(p_L,G) then prints("Good")
+  elif is_weakly_good(p_L,G) then prints("Weakly good")
+  elif is_fair(p_L,G) then prints("Fair")
+  elif is_weakly_fair(p_L,G) then prints("Weakly fair")
+  else prints("None")
+  fi
 
-set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q)=void:
-let G=real_form(x) then
-P=parabolic(lambda_q,x) then 
-L=Levi(P) then
-rho_l=rho(L) then
-rho_u=rho(G)-rho(L) then
-infchar_l=lambda_in+rho_l then
-()=prints("infinitesimal character(l)=", infchar_l) then
-()=prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u) then
-()=prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l) in
-if is_good(x,lambda_in,lambda_q) then prints("Good")
-elif is_weakly_good(x,lambda_in,lambda_q) then prints("Weakly good")
-elif is_fair(x,lambda_in,lambda_q) then prints("Fair")
-elif is_weakly_fair(x,lambda_in,lambda_q) then prints("Weakly fair")  else
-prints("None") fi
+set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = void:
+  let G=real_form(x), P=parabolic(lambda_q,x)
+  then L=Levi(P) then rho_l=rho(L)
+  then rho_u=rho(G)-rho_l, infchar_l=lambda_in+rho_l
+  in prints("infinitesimal character(l)=", infchar_l);
+    prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
+    prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l);
+  if is_good(x,lambda_in,lambda_q) then prints("Good")
+  elif is_weakly_good(x,lambda_in,lambda_q) then prints("Weakly good")
+  elif is_fair(x,lambda_in,lambda_q) then prints("Fair")
+  elif is_weakly_fair(x,lambda_in,lambda_q) then prints("Weakly fair")
+  else prints("None")
+  fi
 
 
 

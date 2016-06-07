@@ -27,8 +27,10 @@ set param(RealForm G,int k, vec lambda_rho,ratvec nu) = Param:
   uses this feature of ParamPol, but ignores any coefficients }
 set finalize (Param p)= [Param]: for c@q in ParamPol: p do q od
 
-set finalize(ParamPol P)=ParamPol: let rv=null_module(real_form(P)) in for c@q in P do 
-let Q=finalize(q) in for r in Q do rv+:=c*r od od;rv
+set finalize (ParamPol P) = ParamPol:
+  let result=null_module(real_form(P)) in
+  for c@q in P do let Q=finalize(q) in for r in Q do result+:=c*r od od;
+  result
 
 { evaluate at s=t for t integer (or rational?): replace w=a+bs with a+bt }
 { would seem to make sense only if t^2=1, so if either t=1 or t=-1 }
