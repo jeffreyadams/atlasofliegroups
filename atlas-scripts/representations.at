@@ -13,34 +13,69 @@ set finite_dimensional (RealForm G,vec gamma) = Param:
   param(KGB(G,KGB_size(G)-1),gamma,gamma+rho(G))
 
 set finite_dimensional_fundamental_weight_coordinates(RealForm G,vec tau)=Param:
-let fw=fundamental_weights(G) then
-rv=ratvec:null(rank(G)) then
-()=for i:#tau do rv+:=tau[i]*fw[i] od  in
-assert(is_integer(rv), "weight is not integral");
-finite_dimensional(G,ratvec_as_vec(rv))
+  let fw=fundamental_weights(G), result=ratvec:null(rank(G)) in
+  for i:#tau do result+:=tau[i]*fw[i] od;
+  assert(is_integer(result), "weight is not integral");
+  finite_dimensional(G,result\1)
 
 { the trivial block }
 set trivial_block(RealForm G)=[Param]:block_of(trivial(G))
 
+{return a large fundamental series if G is quasisplit (not necessarily unique)}
+set large_fundamental_series (RealForm G,ratvec lambda) = Param:
+  assert(is_quasisplit(G),"group is not quasisplit");
+  assert(is_regular(G,lambda),"lambda is not regular");
+  parameter(G,0,lambda,lambda)
+
 set large_fundamental_series (RealForm G) = Param:
-  if not(is_quasisplit(G)) then error("group is not quasisplit")
-  else let v=null(rank(G)) in param(G,0,v,v)
-  fi
+  large_fundamental_series(G,rho(G))
+
+{ return a large discrete series if G is quasisplit and equal rank
+  (not necessarily unique) }
+set large_discrete_series (RealForm G,ratvec lambda) = Param:
+  assert(is_equal_rank(G),"group is not equal rank");
+  large_fundamental_series(G,lambda)
 
 set large_discrete_series (RealForm G) = Param:
-  if not(is_equal_rank(G)) then error("group is not equal rank")
-  else large_fundamental_series(G)
-  fi
+  large_discrete_series(G,rho(G))
 
-{ spherical principal series of split group; assuming G is split }
-set spherical_principal_series (RealForm G, ratvec nu) = Param:
-  param(KGB(G,KGB_size(G)-1),null(rank(G)),nu)
+set minimal_principal_series(RealForm G,ratvec lambda,ratvec nu)=Param:
+  let n=KGB_size(G)-1 in parameter(KGB(G,n),lambda,nu)
+set minimal_principal_series(RealForm G)=Param:
+  minimal_principal_series(G,rho(G),rho(G))
+set minimal_spherical_principal_series(RealForm G,ratvec nu)=Param:
+  minimal_principal_series(G,rho(G),nu)
+set minimal_spherical_principal_series(RealForm G)=Param:
+  minimal_spherical_principal_series(G,rho(G))
 
-set sc_split_only(RealForm G) = RealForm:
-  if not is_split(G) then error("Group must be split")
-  elif not is_simply_connected(G) then error("Group must be simply connected")
-  else G
-  fi
+{ Harish-Chandra parameter of (relative) discrete series, with respect to
+  given x_b }
+set hc_parameter(Param p,KGBElt x_b)=ratvec:
+  assert(is_equal_rank(derived(real_form(p)))
+        ,"Group is not equal rank mod center");
+  assert(Cartan_class(p)=fundamental_Cartan(real_form(p))
+        ,"Cartan is not compact mod center");
+  let w=find_W_cross(x(p),x_b) in act(w,lambda(p))
+
+{ Harish-Chandra parameter of (relative) discrete series, with respect to
+  x_b=KGB(G,0) }
+set hc_parameter(Param p)=ratvec:
+  hc_parameter(p,KGB(real_form(p),0))
+
+{ discrete series parameter with given HC parameter lambda, wrt given x }
+set discrete_series(KGBElt x,ratvec lambda)=Param:
+  let G=real_form(x) in
+  assert(is_equal_rank(derived(G)),"G is not equal rank mod center");
+  assert(is_integer(lambda-rho(G)),"lambda is not in rho+X^*");
+  assert(is_regular(G,lambda),"lambda is not regular");
+  let (lambda_dom,w)=make_dominant(G,lambda) in
+  parameter(cross(w,x),lambda_dom,null(rank(G)))
+
+{ discrete series parameter with given HC parameter lambda, wrt KGB(G,0) }
+set discrete_series(RealForm G,ratvec lambda)=Param:
+  discrete_series(KGB(G,0),lambda)
+
+{ for lists of multiple representations see all_parameters.at }
 
 set principal_series_by_tau (RealForm G,[int] tau_invariant) = Param:
   let lambda = ratvec: null(rank(sc_split_only(G)))

@@ -42,7 +42,8 @@ set print_branch_irr_long (ParamPol P,KGBElt x,int bound) = void:
           , "    ", height(q))
   od
 
-set print_branch_irr_long (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
+set print_branch_irr_long (ParamPol P,int bound) = void:
+  { default to x=KGB(G,0) }
   print_branch_irr_long(P,KGB(real_form(P),0),bound)
 
 { these definitions promote Param->ParamPol without relying on coercion }

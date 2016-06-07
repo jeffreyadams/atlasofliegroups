@@ -3,8 +3,8 @@
 <K.at
 <Weylgroup.at { for make_no_Cminus }
 
-{See top of K.at for some notation}
-{Three ways of parametrizing K-types:
+{ See top of K.at for some notation }
+{ Three ways of parametrizing K-types:
 
 1. K_Type:(KGBElt x,ratvec lambda)
   representating a final, non-zero, standard limit module
@@ -22,7 +22,7 @@
     is a highest weight for K_#=T_K.K_0
   equivalence includes modding out by (1-delta)X^*, see function = below
 
-3. K0_Param: ordinary parameter (x_K,lambda,nu=0) for 
+3. K0_Param: ordinary parameter (x_K,lambda,nu=0) for
    irreducible finite dimensional representation of K_0
    its highest weight is a dominant weight of T_K0
 }
@@ -41,18 +41,20 @@ set K_0(KHighestWeight (x,))=K_0(x)
 set dlambda (K_Type p) = ratvec: (1+involution(x(p)))*lambda(p)/2
 set dlambda (Param p)  = ratvec: (1+involution(x(p)))*lambda(p)/2
 
-set K_type (Param p) = K_Type:assert(=nu(p),"nu(p) is not zero"); (x(p),lambda(p))
-set parameter (K_Type p) = Param:parameter(x(p),lambda(p),null(rank(root_datum(x(p)))))
+set K_type (Param p) = K_Type:
+  assert(=nu(p),"nu(p) is not zero"); (x(p),lambda(p))
+set parameter (K_Type p) = Param:
+  parameter(x(p),lambda(p),null(rank(root_datum(x(p)))))
 
 { equality of K_Types is now taken care of by equality of Param values }
 set = (K_Type p,K_Type q) = bool: parameter(p)=parameter(q)
 
 set make_no_Cminus(K_Type p)=K_Type:K_type(make_no_Cminus(parameter(p)))
 
-{--------------length of K-types------------------}
+{ --------------length of K-types------------------ }
 
-{length of K-type with highest weight mu is <mu+2*rho_K,mu+2*rho_K>
-used in definition of lowest K-types
+{ length of K-type with highest weight mu is <mu+2*rho_K,mu+2*rho_K>
+  used in definition of lowest K-types
 }
 
 set length(KHighestWeight (x,mu))=rat:

@@ -1,8 +1,7 @@
-<Weylgroup.at {for make_no_Cminus}
+<basic.at
+<K_parameters.at { for K_Type }
 
 {----------------norm of K-types------------------}
-
-set make_no_Cminus (K_Type p) = K_type(make_no_Cminus(parameter(p)))
 
 { K_norm@(ratvec,K_Type) is closely related to height@Param,
   see down a few lines
