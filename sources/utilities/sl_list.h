@@ -97,12 +97,14 @@ sl_node(T&& contents) : next(nullptr), contents(std::move(contents)) {}
   : next(nullptr), contents(std::forward<Args>(args)...) {}
 }; // |class sl_node| template
 
+template<typename T,typename Alloc> class sl_list_iterator;
 template<typename T, typename Alloc = std::allocator<T> >
   struct sl_list_const_iterator
   : public std::iterator<std::forward_iterator_tag, T>
 {
   friend class simple_list<T,Alloc>;
   friend class sl_list<T,Alloc>;
+  friend class sl_list_iterator<T,Alloc>; // lest |link_loc| needs |protected|
 
   typedef typename sl_node<T,Alloc>::link_type link_type;
 
@@ -110,7 +112,6 @@ private:
   typedef sl_list_const_iterator<T,Alloc> self;
 
   // data
-protected:
   link_type* link_loc; // pointer to link field
 
 public:
@@ -167,22 +168,28 @@ private: // friend classes may do the following conversion:
   : Base(cit) {} // there's really nothing to it
 }; // |struct sl_list_iterator| template
 
+template<typename T, typename Alloc> struct weak_sl_list_iterator;
 template<typename T, typename Alloc = std::allocator<T> >
   struct weak_sl_list_const_iterator
   : public std::iterator<std::forward_iterator_tag, T>
 {
-  typedef const sl_node<T,Alloc>* link_type; // here: a raw pointer
+  friend class weak_sl_list_iterator<T,Alloc>;
+  typedef sl_node<T,Alloc>* link_type; // here: a raw pointer
+  typedef const sl_node<T,Alloc>* const_link_type;
 
 private:
   typedef weak_sl_list_const_iterator<T,Alloc> self;
 
   // data
-  link_type link; // contents copied from some link field
+  link_type link; // pointer to non-const, but only expoilitable by derived
 
 public:
   // constructors
   weak_sl_list_const_iterator() : link(nullptr) {} // default iterator: end
-  explicit weak_sl_list_const_iterator(link_type p): link(p) {}
+  explicit weak_sl_list_const_iterator(const_link_type p)
+  /* the following const_cast is safe because not exploitable using a mere
+     |const_iterator|; only used to allow weak_iterator to be derived */
+  : link(const_cast<link_type>(p)) {}
 
   // contents access methods; return |const| ref/ptr for |const_iterator|
   const T& operator*() const { return link->contents; }
@@ -204,38 +211,27 @@ public:
 // so no insert/delete are possible using weak iterators
 
 template<typename T,typename Alloc = std::allocator<T> >
-struct weak_sl_list_iterator
-  : public std::iterator<std::forward_iterator_tag, T>
+class weak_sl_list_iterator
+  : public weak_sl_list_const_iterator<T,Alloc>
 {
-  typedef sl_node<T,Alloc>* link_type; // here: a raw pointer
-
- private:
-  typedef weak_sl_list_const_iterator<T,Alloc> const_self;
+  typedef weak_sl_list_const_iterator<T,Alloc> Base;
   typedef weak_sl_list_iterator<T,Alloc> self;
 
-  // data
-  link_type link; // contents copied from some link field
+  // no extra data
 
 public:
   // constructors
-  weak_sl_list_iterator() : link(nullptr) {}
-  // default iterator: end
-  explicit weak_sl_list_iterator(link_type p): link(p) {}
+  weak_sl_list_iterator() : Base() {} // default iterator: end
+  explicit weak_sl_list_iterator(typename Base::link_type p): Base(p) {}
 
   // contents access methods;  return non-const ref/ptr
-  T& operator*() const { return link->contents; }
-  T* operator->() const { return &link->contents; }
+  T& operator*() const { return Base::link->contents; }
+  T* operator->() const { return &Base::link->contents; }
 
-  self operator++() { link = link->next.get(); return *this; }
+  self operator++() { Base::link = Base::link->next.get(); return *this; }
   self operator++(int) // post-increment
-  { self tmp=*this; link = link->next.get(); return tmp; }
-
-  // equality testing methods
-  bool operator==(const self& x) const { return link == x.link; }
-  bool operator!=(const self& x) const { return link != x.link; }
-
-  bool at_end () const { return link==nullptr; }
-  operator const_self () const { return const_self(link); }
+  { self tmp=*this; Base::link = Base::link->next.get(); return tmp; }
+  // for other methods, including equality tests, use the Base methods
 }; // |struct weak_sl_list_iterator| template
 
 
@@ -436,9 +432,6 @@ template<typename T, typename Alloc>
   iterator begin() { return iterator(head); }
   weak_iterator wbegin() { return weak_iterator(head.get()); }
 
-  // instead of |end()| we provide the |at_end| condition
-  static bool at_end (iterator p) { return p.link_loc->get()==nullptr; }
-
   T& front () { return head->contents; }
   void pop_front ()
   { head.reset(head->next.release()); }
@@ -609,6 +602,7 @@ template<typename T, typename Alloc>
     { return weak_const_iterator(head.get()); }
   // instead of |end()| we provide the |at_end| condition
   static bool at_end (const_iterator p) { return p.link_loc->get()==nullptr; }
+  static bool at_end (weak_const_iterator p) { return p.at_end(); }
 
 }; // |class simple_list<T,Alloc>|
 
@@ -862,9 +856,6 @@ template<typename T, typename Alloc>
   iterator end ()   { return iterator(*tail); }
   weak_iterator wbegin() { return weak_iterator(head.get()); }
   weak_iterator wend()   { return weak_iterator(nullptr); }
-
-  // in addition to |end()| we provide the |at_end| condition
-  static bool at_end (iterator p) { return p.link_loc->get()==nullptr; }
 
   T& front () { return head->contents; }
   void pop_front ()
@@ -1138,6 +1129,7 @@ template<typename T, typename Alloc>
 
   // in addition to |end()| we provide the |at_end| condition
   static bool at_end (const_iterator p) { return p.link_loc->get()==nullptr; }
+  static bool at_end (weak_const_iterator p) { return p.at_end(); }
 
 }; // |class sl_list<T,Alloc>|
 
