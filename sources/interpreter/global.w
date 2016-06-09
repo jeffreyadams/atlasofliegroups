@@ -701,6 +701,14 @@ type_expr analyse_types(const expr& e,expression_ptr& p)
 @|            << " while " << err.required << " was needed.\n";
 @.Subexpression has wrong type@>
   }
+  catch (const balance_error& err)
+  { std::cerr << "Error in expression "
+              << err.offender << ' ' << err.offender.loc << "\n  " @|
+              << err.what() ;
+    for (auto it=err.variants.wcbegin(); not err.variants.at_end((it)); ++it)
+      std::cerr << ( it==err.variants.wcbegin() ? ": { " : ", " ) << *it;
+    std::cerr<< " }" << std::endl;
+  }
   catch (const expr_error& err)
   { std::cerr << "Error in expression "
               << err.offender << ' ' << err.offender.loc << "\n  " @|

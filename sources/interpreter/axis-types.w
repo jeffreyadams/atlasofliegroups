@@ -2316,6 +2316,20 @@ struct type_error : public expr_error
 #endif
 };
 
+@ For type balancing, we shall use controlled throwing and catching of errors
+inside the type checker, which is facilitated by using a dedicated error type.
+If balancing ultimately fails, this error will be thrown uncaught by the
+balancing code, so |catch| blocks around type checking functions must be
+prepared to report the types that are stored in the error value.
+
+@< Type definitions @>=
+struct balance_error : public expr_error
+{ containers::sl_list<type_expr> variants;
+  balance_error(const expr& e)
+  : expr_error(e,"No common type found"), variants() @+{}
+};
+
+
 @ When a user interrupts the computation, we wish to return to the main
 interpreter loop. To that end we shall at certain points in the program check
 the status of a flag that the signal handler sets, and if it is raised call an

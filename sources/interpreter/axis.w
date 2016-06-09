@@ -3281,67 +3281,6 @@ void conditional_expression::print(std::ostream& out) const
   out << " else " << *cur->else_branch << " fi ";
 }
 
-@ For type-checking conditional expressions we are in a somewhat similar
-situation as for list displays: both branches need to be of the same type, but
-we might not know which. After checking that the |condition| yields a Boolean
-value, we used to just first convert the else-branch and then the then-branch
-(this was immediately followed by the |return| statement); this unusual
-order was explained by the fact that the else-branch is more likely to have
-void type (for instance whenever it is absent) than the then-branch, in which
-case the then-branch can benefit from the ensuing strong void context. We now
-however adopt a more symmetric approach that in case of differing \foreign{a
-priori} types will try to convert one branch to the type of the other, in
-whichever direction seems most promising (as judged by |is_close|). Like for
-coercions in the context of operator overloading, the most flexible way to
-adapt to a newly discovered target type for a subexpression is to call
-|convert_expr| again with that target type.
-
-This code is a first approximation to type balancing, as it should ideally
-also be applied for instance between the expressions in a list display.
-
-@< Cases for type-checking and converting... @>=
-case conditional_expr:
-{ if (was_negated(e.if_variant->condition)) // eliminate negated conditions
-    e.if_variant->then_branch.swap(e.if_variant->else_branch);
-  expression_ptr c  =
-    convert_expr(e.if_variant->condition,as_lvalue(bool_type.copy()));
-  type_expr else_type(type.copy());
-  // make a copy so as to treat branches similarly
-  expression_ptr th = convert_expr(e.if_variant->then_branch,type);
-  expression_ptr el = convert_expr(e.if_variant->else_branch,else_type);
-  if (type!=else_type) // we had different specialisations in the two branches
-  {
-    if (type==void_type or else_type==void_type)
-      // type was unknown, one branch became void
-    {
-      if (type==void_type)
-        el.reset(new voiding(std::move(el)));
-      else
-        th.reset(new voiding(std::move(th))),type = std::move(else_type);
-    }
-    else if (type==unknown_type or else_type==unknown_type)
-      // error exit is always OK
-      type.specialise(else_type); // but retain the more specific one in |type|
-    else
-    {
-      int cmp = is_close(type,else_type);
-      if ((cmp&0x1)!=0) // \.{then} branch may convert to |else_type|
-        th =
-          convert_expr(e.if_variant->then_branch,type = std::move(else_type));
-      else if ((cmp&0x2)!=0) // |else| branch may convert to |type|
-        el = convert_expr(e.if_variant->else_branch,type);
-      else
-      { std::ostringstream o;
-        o << "Could not find common type for branches of conditional, "
-        "types are " << type << " and " << else_type;
-        throw expr_error(e,o.str());
-      }
-    }
-  }
-  return expression_ptr(new
-    conditional_expression(std::move(c),std::move(th),std::move(el)));
-}
-
 @ Evaluating a conditional expression ends up evaluating either the
 then-branch or the else-branch.
 
@@ -3352,6 +3291,115 @@ void conditional_expression::evaluate(level l) const
     then_branch->evaluate(l);
   @+ else else_branch->evaluate(l);
 }
+
+@ For balancing we need a partial ordering on types; the following function
+tells whether any value of type |b| can be made to be of type~|a|. If so we
+call type |a| broader than~|b|, although there is no inclusion relation; the
+type |void| that any type can be converted to is the broadest of all, while
+the type \&*, which allows no values at all, it the narrowest of all.
+
+@< Local function definitions @>=
+bool broader_eq (const type_expr& a, const type_expr& b)
+{ if (a==void_type or b==unknown_type)
+    return true;
+  if (a==unknown_type or b==void_type)
+    return false;
+  int cmp = is_close(a,b);
+  return (cmp&0x2)!=0; // whether |b| can be converted to |a|
+}
+
+@ Type type-checking conditional expressions involves a difficulty that also
+exists for list displays: both (and for nested conditionals: all) branches
+need to be of the same type, but we might not know which. We adopt the rule
+(borrowed from Algol~68) that at least one of the branches gets the common
+type when converted in the context of the original pattern |type|, while the
+others can be converted in the context of that common type (possibly using
+coercions).
+
+After checking that we set up for type balancing, whose details are explained
+later. Once a common type is found, any branches that were originally found to
+have a different (narrower) type are converted again, which may insert
+coercions absent in the original conversion (it may also throw some other type
+error if conversion in that context turns out to be impossible after all).
+
+@< Cases for type-checking and converting... @>=
+case conditional_expr:
+{ auto& exp = *e.if_variant;
+  if (was_negated(exp.condition)) // eliminate negated conditions
+    exp.then_branch.swap(exp.else_branch);
+  expression_ptr c  =  convert_expr(exp.condition,as_lvalue(bool_type.copy()));
+  expression_ptr conv[2];
+  type_expr br[2] = { type.copy(), type.copy() };
+  @< Convert branches, storing results in |conv| and their types in |br|,
+     specialise |type| to one of them to which the other can be converted,
+     or |throw| a |balance_error| when this is not possible @>
+  for (unsigned i=0; i<2; ++i)
+    if (br[i]!=type) // then redo conversion with broader type |common|
+      conv[i] =
+        convert_expr( i==0 ? exp.then_branch : exp.else_branch , type);
+  return expression_ptr(new @|
+    conditional_expression(std::move(c),std::move(conv[0]),std::move(conv[1])));
+}
+
+@ Here is the general set-up for balancing; we could take advantage of the
+fact that we only have two branches at hand directly, but this would gain very
+little, and be at the expense of obscuring the general idea of balancing.
+
+We try to find in |common| a maximal type between the branches for the
+|broader_eq| relation. Branch types incomparable with the current value of
+|common| are put aside in |conflicts|, which also collects types from
+|balance_error| if thrown by one of the calls to |convert_expr|; such types
+cannot possibly be the common type. However at the end, |common| may have
+become broad enough to accommodate them (for instance |void| can accommodate
+every type). So we prune |conflict| before reporting an error, which we only
+do if at least one conflicting type remains; if so, the type |common| is added
+to the error object.
+
+@< Convert branches, storing results in |conv| and their types in |br|... @>=
+{ type_expr common;
+    // greatest common denominator that branch types convert to\dots
+  containers::sl_list<type_expr> conflicts;
+    // except those branch types that are put aside here
+  for (unsigned i=0; i<2; ++i)
+  { try
+     { conv[i] =
+          convert_expr( i==0 ? exp.then_branch : exp.else_branch , br[i]);
+        if (not broader_eq(common,br[i]))
+        { if (broader_eq(br[i],common))
+            common = br[i].copy();
+          else
+            conflicts.push_back(br[i].copy());
+            // record type not convertible to |common|
+        }
+    }
+    catch (balance_error& err) {@; conflicts.append(std::move(err.variants)); }
+  }
+@)
+  @< Prune from |conflicts| any types for which final |common| is broader @>
+  if (conflicts.empty()) // then balancing succeeded, so set |type| to |common|
+  { bool success = type.specialise(common); ndebug_use(success);
+    assert(success);
+    // since |common| was obtained by |convert_expr| from some copy of |type|
+  }
+  else
+  { balance_error err(e);
+    err.message += " between branches of conditional";
+    err.variants.push_back(std::move(common));
+    err.variants.append(std::move(conflicts));
+    throw std::move(err);
+  }
+}
+
+@ Pruning is quite simple, and gives us an occasion to exercise the |erase|
+method of |containers::sl_list|. In such loops one should not forget
+to \emph{not advance} the iterator in case a node is erased in front of it.
+
+@< Prune... @>=
+for (auto it=conflicts.cbegin(); not conflicts.at_end(it); )
+  if (broader_eq(common,*it))
+    conflicts.erase(it);
+  else
+    ++it;
 
 @*1 While loops.
 %
