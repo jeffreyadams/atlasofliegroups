@@ -162,10 +162,6 @@ public:
   self operator++() { Base::operator++(); return *this; }
   self operator++(int) // post-increment
   { self tmp=*this; Base::operator++(nullptr); return tmp; }
-
-private: // friend classes may do the following conversion:
-  explicit sl_list_iterator(const Base& cit) // explicit removal of constness
-  : Base(cit) {} // there's really nothing to it
 }; // |struct sl_list_iterator| template
 
 template<typename T, typename Alloc> struct weak_sl_list_iterator;
@@ -467,57 +463,71 @@ template<typename T, typename Alloc>
 
   iterator insert (const_iterator pos, const T& val)
   {
+    link_type& link = *pos.link_loc;
     // construct node value
     node_type* p = allocator_new(node_allocator(),val);
-    p->next.reset(pos.link_loc->release()); // link the trailing nodes here
-    pos.link_loc->reset(p); // and attach new node to previous ones
-    return iterator(pos); // convert type; unchanged but points to new node
+    p->next.reset(link.release()); // link the trailing nodes here
+    link.reset(p); // and attach new node to previous ones
+    return iterator(link); // non-const version of |pos|, points to new node
   }
 
   iterator insert (const_iterator pos, T&& val)
   {
+    link_type& link = *pos.link_loc;
     // construct node value
     node_type* p = allocator_new(node_allocator(),std::move(val));
-    p->next.reset(pos.link_loc->release()); // link the trailing nodes here
-    pos.link_loc->reset(p); // and attach new node to previous ones
-    return iterator(pos);
-		// convert type; while unchanged, |pos| now "points to" new node
+    p->next.reset(link.release()); // link the trailing nodes here
+    link.reset(p); // and attach new node to previous ones
+    return iterator(link); // non-const version of |pos|, points to new node
   }
 
   iterator insert (const_iterator pos, size_type n, const T& val)
   {
     while (n-->0)
-      insert(pos,val);
-    return iterator(pos);
+      insert(pos,val); // insert copies of |val| in back-to-front sense
+    return iterator(*pos.link_loc);
   }
 
   template<typename InputIt, typename = typename std::enable_if<
   std::is_base_of<std::input_iterator_tag,
 		  typename std::iterator_traits<InputIt>::iterator_category
   >::value>::type >
-    void insert (const_iterator pos, InputIt first, InputIt last)
+    iterator insert (const_iterator pos, InputIt first, InputIt last)
   {
-    for( ; first!=last; ++first)
+    iterator result(*pos.link_loc); // non-const copy of |pos|
+    for( ; first!=last; ++first,++pos)
     { // |insert(pos++,*first);|
     // construct node value
       node_type* p = allocator_new(node_allocator(),*first);
       p->next.reset(pos.link_loc->release()); // link the trailing nodes here
       pos.link_loc->reset(p); // and attach new node to previous ones
-      pos = iterator(p->next); // or simply |++pos|
     }
+    return result; // copy of original |pos|, at first element inserted if any
   }
 
+  // splice in |other| and return advanced iterator |pos|
+  iterator splice (const_iterator pos, simple_list&& other)
+  { link_type tail = *pos.link_loc;
+    *pos.link_loc = std::move(other.head); // |std::unique_ptr| does the work
+    while (not pos.at_end())
+      ++pos;
+    *pos.link_loc = std::move(tail);
+    return pos; // point after inserted elements
+  }
+
+
   iterator erase (const_iterator pos)
-  { pos.link_loc->reset((*pos.link_loc)->next.release());
-    return iterator(pos);
+  { link_type& link = *pos.link_loc;
+    link.reset(link->next.release());
+    return iterator(link);
   }
 
   iterator erase (const_iterator first, const_iterator last)
-  { node_type* end = last.link_loc->get(); // because |last| gets invalid
-    while (first.link_loc->get()!=end)
-      // |erase(first);|
-      first.link_loc->reset((*first.link_loc)->next.release());
-    return iterator(first);
+  { node_type* end = last.link_loc->get(); // copy because |last| gets invalid
+    link_type& link = *first.link_loc;
+    while (link.get()!=end)
+      link.reset(link->next.release()); // same as |erase(first);|
+    return iterator(link);
   }
 
   void clear ()
@@ -854,8 +864,8 @@ template<typename T, typename Alloc>
   //iterators
   iterator begin () { return iterator(head); }
   iterator end ()   { return iterator(*tail); }
-  weak_iterator wbegin() { return weak_iterator(head.get()); }
-  weak_iterator wend()   { return weak_iterator(nullptr); }
+  weak_iterator wbegin () { return weak_iterator(head.get()); }
+  weak_iterator wend ()   { return weak_iterator(nullptr); }
 
   T& front () { return head->contents; }
   void pop_front ()
@@ -943,49 +953,52 @@ template<typename T, typename Alloc>
 
   iterator insert (const_iterator pos, const T& val)
   {
+    link_type& link = *pos.link_loc;
     node_type* p = allocator_new(node_allocator(),val);
     if (at_end(pos))
       tail=&p->next;
     else
-      p->next.reset(pos.link_loc->release()); // link the trailing nodes here
-    pos.link_loc->reset(p); // and attach new node to previous ones
+      p->next.reset(link.release()); // link the trailing nodes here
+    link.reset(p); // and attach new node to previous ones
     ++node_count;
-    return iterator(pos);
+    return iterator(link);
   }
 
   iterator insert (const_iterator pos, T&& val)
   {
+    link_type& link = *pos.link_loc;
     node_type* p = allocator_new(node_allocator(),std::move(val));
     if (at_end(pos))
       tail=&p->next;
     else
-      p->next.reset(pos.link_loc->release()); // link the trailing nodes here
-    pos.link_loc->reset(p); // and attach new node to previous ones
+      p->next.reset(link.release()); // link the trailing nodes here
+    link.reset(p); // and attach new node to previous ones
     ++node_count;
-    return iterator(pos);
+    return iterator(link);
   }
 
   iterator insert (const_iterator pos, size_type n, const T& val)
   {
+    link_type& link = *pos.link_loc;
     if (n-->0)
     {
       insert(pos,val); // this takes care of changing |tail| if necessary
       while (n-->0)
       {
 	node_type* p = allocator_new(node_allocator(),val);
-	p->next.reset(pos.link_loc->release()); // link the trailing nodes here
-	pos.link_loc->reset(p); // and attach new node to previous ones
+	p->next.reset(link.release()); // link the trailing nodes here
+	link.reset(p); // and attach new node to previous ones
 	++node_count; // exception safe tracking of the size
       }
     }
-    return iterator(pos);
+    return iterator(link);
   }
 
   template<typename InputIt, typename = typename std::enable_if<
   std::is_base_of<std::input_iterator_tag,
 		  typename std::iterator_traits<InputIt>::iterator_category
   >::value>::type >
-    void insert (const_iterator pos, InputIt first, InputIt last)
+    iterator insert (const_iterator pos, InputIt first, InputIt last)
   {
     ensure me(tail,pos); // will adapt |tail| if |at_end(pos)| throughout
     for( ; first!=last; ++first)
@@ -1014,24 +1027,50 @@ template<typename T, typename Alloc>
 
   iterator erase (const_iterator pos)
   {
-    pos.link_loc->reset((*pos.link_loc)->next.release());
-    if (pos.link_loc->get()==nullptr) // if final node was erased
-      tail = pos.link_loc; // we need to reestablish validity of |tail|
+    link_type& link = *pos.link_loc;
+    link.reset(link->next.release());
+    if (link.get()==nullptr) // if final node was erased
+      tail = &link; // we need to reestablish validity of |tail|
     --node_count;
-    return iterator(pos);
+    return iterator(link);
   }
 
   iterator erase (const_iterator first, const_iterator last)
   { const node_type* end_ptr =  // we must store this pointer value
       last.link_loc->get();     // because |last| will get invalidated
-    while (first.link_loc->get()!=end_ptr)
-    { // |erase(first);|
-      first.link_loc->reset((*first.link_loc)->next.release());
+    link_type& link = *first.link_loc;
+    while (link.get()!=end_ptr)
+    {
+      link.reset(link->next.release()); // |erase(first);|
       --node_count;
     }
     if (end_ptr==nullptr) // if we had |last==end()| initially, then
-      tail = first.link_loc; // we need to reestablish validity of |tail|
-    return iterator(first);
+      tail = &link; // we need to reestablish validity of |tail|
+    return iterator(link);
+  }
+
+  void append (sl_list&& other)
+  { if (not other.empty()) // avoid erroneously setting |tail| in trival case
+    { *tail = std::move(other.head); // |std::unique_ptr| does the work
+      tail = other.tail;
+      node_count += other.node_count;
+      other.set_empty();
+    }
+  }
+
+  iterator splice (const_iterator pos, sl_list&& other)
+  { if (other.empty())
+      return iterator(*pos.link_loc);
+    link_type& final = *other.tail;
+    link_type& link = *pos.link_loc;
+    if (pos==cend())
+      tail = &final;
+    else
+      final = std::move(link); // attach our remainder
+    link = std::move(other.head);
+    node_count += other.node_count;
+    other.set_empty();
+    return iterator(final);
   }
 
   void clear ()
