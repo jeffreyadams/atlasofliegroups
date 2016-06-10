@@ -2146,10 +2146,12 @@ close to each other (and therefore mutually exclusive for overloading). This
 used to be the convention adopted, but it was found to be rather restrictive
 in use, so the rules were changed to state that an un-cast expression \.{[]}
 will not match overload instances of specific row types; it might match an
-parameter of specified type \.{[*]} (once we allow that as type expression),
-and such a parameter could \emph{only} take an empty list corresponding
-argument (which is very limiting of course, but it allows being explicit about
-which overloaded instance should be selected by an argument \.{[]}).
+parameter of specified type \.{[*]} (we allow that as type specification for
+function parameters), and such a parameter can \emph{only} take an empty
+list corresponding argument (this is very limiting of course, but it allows
+being explicit about which overloaded instance should be selected by an
+argument \.{[]}, by defining an overload for \.{[*]} that explicitly calls
+the one for say \.{[vec]}).
 
 These considerations are not limited to empty lists (although it is the most
 common case): whenever an expression has an \foreign{a priori} type
@@ -2203,6 +2205,66 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
          and (flags&=is_close(*it0,*it1))!=0)
   @/{@; ++it0; ++it1; }
   return it0.at_end() and it1.at_end() ? flags : 0x0;
+}
+
+@ For balancing we need a related but slightly different partial ordering on
+types. The function |broader_eq| tells whether an expression of \foreign{a
+priori} type |b| might also valid (with possible coercions inserted) in the
+context of type~|a|; if so we call type |a| broader than~|b|.
+
+@< Declarations of exported functions @>=
+bool broader_eq (const type_expr& a, const type_expr& b);
+
+@~The relation |greater_eq(a,b)| does not imply that values of type~|b| can be
+converted to type~|a|; what is indicated is a possible conversion of
+expressions might depend on the form of the expressions, and only be achieved
+by coercions applied to more or less deeply nested subexpressions (for
+instance a list display is required if $a$ is \.{[rat]} and |b| is \.{[int]}).
+It is not the responsibility of |greater_eq| to decide whether this succeeds
+or not (an error will be thrown later if it turns out to fail), but it defines
+a partial ordering to guide which types are candidate types will be
+considered.
+
+Since these are types deduced for expressions rather than required type
+patterns, \.* stands for tho most narrow rather than a very broad type, indeed
+one for an expression like \.{die} that can never return a value, and the
+type \.{[*]} is narrower than any other row type (the only value that an
+expression with this type can return is an empty list). Nonetheless
+``broader'' does not imply more possible values, and the type \.{void} is the
+broadest of all since all values can be converted to it.
+
+The implementation is by structural recursion, like |is_close|, but some
+details are different. We do take |void_type| into consideration here, as well
+as the (rare) type |unknown_type|. Since we want to define a partial ordering,
+we must forbid one direction of all two-way coercions; since those always
+involve exactly one primitive types, we do this by only allowing the
+conversion in the direction of the primitive type. For the rest we just do the
+recursion in the usual way with just one twist: function types can only be
+comparable if they have equal argument types, but there might be a recursive
+|broader_eq| relation between the result types (because a coercion might
+``creep into'' the body of a lambda expression; this is not likely, but we can
+cater for it here).
+
+@< Function definitions @>=
+bool broader_eq (const type_expr& a, const type_expr& b)
+{ if (a==void_type or b==unknown_type)
+    return true;
+  if (a==unknown_type or b==void_type)
+    return false;
+  if (a.kind==primitive_type)
+    return (is_close(a,b)&0x2)!=0; // whether |b| can be converted to |a|
+  if (a.kind!=b.kind) // includes remaining cases where |b.kind==primitive_type|
+    return false; // no broader between different kinds on non-primitive types
+  if (a.kind==row_type)
+    return broader_eq(*a.component_type,*b.component_type);
+  if (a.kind==function_type)
+    return a.func->arg_type==b.func->arg_type and @|
+    broader_eq(a.func->result_type,b.func->result_type);
+  wtl_const_iterator itb(b.tupple);
+  for (wtl_const_iterator ita(a.tupple);
+       not ita.at_end(); ++ita,++itb)
+    if (itb.at_end() or not broader_eq(*ita,*itb)) return false;
+  return itb.at_end(); // if list of |a| has ended, that of |b| must as well
 }
 
 @* Error values.

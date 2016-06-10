@@ -616,73 +616,165 @@ void list_expression::evaluate(level l) const
   }
 }
 
-@ If a list display has multiple components, they must all have the same
-type~$t$, and the result type will be ``row of''~$t$. If a type of that form
-is required, the components will be required to have type $t$, if no
-particular type is required then the components will just be required to have
-equal types; in addition we want to allow additional cases which can be made
-to conform by inserting conversion routines.
+@ Type-checking of list displays involves a difficulty that also exists for
+conditional expressions and possibly other cases: all component expressions
+need to be of the same type, but we might not know which. We adopt the rule
+(borrowed from Algol~68) that at least one of the components gets the common
+type when converted in the context of the original type (pattern), while the
+others can be converted in the context of that common type (possibly using
+coercions). This process is called type balancing (the mental image is
+comparing the ``weights'' of the component expression types, to see which one
+is the firmest in determining the result type).
 
-The function |convert_expr| handles all this in a fairly effortless way. As we
-proceed along the components, the type |*type.component_type| may get
-specialised if undefined initially, and once this is the case further
-components may be coerced into the previously established component type. This
-does give a slight asymmetry, in that types from previous components may guide
-conversions applied to later components but not vice versa. If however the
-context requires a specific row type, all components may be coerced to the
-corresponding component type. When a type other than ``row of'' is expected,
-we must instead take explicit action to see whether some type conversion can
-resolve the conflict.
+@ Here is the general set-up for balancing. We try to find in |common| a
+maximal type between the branches for the |broader_eq| relation. Branch types
+incomparable with the current value of |common| are put aside in |conflicts|,
+which also collects types from |balance_error| if thrown by one of the calls
+to |convert_expr|; such types cannot possibly be the common type.
 
-We also build a converted |list_expression| representing the list display. We
-reserve space beforehand, and then push a completed |expression_ptr| pointer
-into it whenever |convert_expr| has converted a subexpression.
+However at the end, |common| may have become broad enough to accommodate them
+(for instance |void| can accommodate every possible type). So we prune
+|conflict| before possibly reporting an error. In case of success, any
+branches that were originally found to have a different (narrower) type, or
+whose conversion threw an error, are converted again. Branches that threw a
+|balance_error| are certain to satisfy the test |comp_type[i]!=target| below
+(which in their case means that |target| has changed since a copy was taken to
+initialise |comp_type[i]|), since such an error will have contributed to
+|conflicts| type that were strict specialisations of the original |target|,
+and which cannot have been pruned unless |target| was changed to a broader
+type since. The new conversion may insert coercions that were absent in the
+original conversion (it may also throw some other type error if conversion in
+that context turns out to be impossible after all).
+
+
+@< Local function definitions @>=
+
+void balance
+   ( type_expr& target // component type required from context
+   , raw_expr_list elist // list of expression to be balanced
+   , const expr& e // containing expression, for error reporting
+   , const char* description // what kind of components, for error message
+   , std::vector<expression_ptr>& components // output, converted expressions
+   )
+{
+  unsigned n = length(elist); components.reserve(n);
+  std::vector<type_expr> comp_type; comp_type.reserve(n);
+  type_expr common;
+    // greatest common denominator that branch types convert to\dots
+  containers::sl_list<type_expr> conflicts;
+    // except those branch types that are put aside here
+  for (wel_const_iterator it(elist); not it.at_end(); ++it)
+  { try
+    { comp_type.push_back(target.copy());
+          // start each with a copy of original |target| type
+      type_expr& ctype =comp_type.back(); // call that copy |ctype|
+      components.push_back(expression_ptr());
+         // push, whether or not |convert_expr| succeeds
+      components.back()=convert_expr(*it,ctype);
+      if (not broader_eq(common,ctype))
+        { if (broader_eq(ctype,common))
+            common = ctype.copy();
+          else
+            conflicts.push_back(ctype.copy());
+            // record type not convertible to |common|
+        }
+    }
+    catch (balance_error& err) {@; conflicts.append(std::move(err.variants)); }
+  }
+  @< Prune from |conflicts| any types that now test narrower than |common|
+     and if noting is left specialise |target| to |common|;
+     otherwise |throw| a |balance_error| mentioning |common| and |conflicts| @>
+
+  wel_const_iterator it(elist);
+  for (unsigned i=0; i<n; ++i,++it)
+    if (comp_type[i]!=target)
+      components[i] = convert_expr(*it,target);
+      // redo conversion with broader |common| type
+}
+
+@ Pruning is quite simple, and gives us an occasion to exercise the |erase|
+method of |containers::sl_list|. In such loops one should not forget
+to \emph{not advance} the iterator in case a node is erased in front of it.
+
+Only if if at least one conflicting type remains do we report an error; if so,
+the type |common| is added as first type to the error object, so that one has
+a complete list of types that caused to balancing to fail.
+
+
+@< Prune from |conflicts| any types... @>=
+{ for (auto it=conflicts.cbegin(); not conflicts.at_end(it); )
+    if (broader_eq(common,*it))
+      conflicts.erase(it);
+    else
+      ++it;
+  if (conflicts.empty())
+     // then balancing succeeded, so set |target| to |common|
+  { bool success = target.specialise(common); ndebug_use(success);
+    assert(success);
+    // since |common| was obtained by |convert_expr| from some copy of |target|
+  }
+  else
+  { balance_error err(e);
+    (err.message += " between ") += description ;
+    err.variants.push_back(std::move(common));
+    err.variants.append(std::move(conflicts));
+    throw std::move(err);
+  }
+}
+
+@ With balancing implemented, converting a list display become fairly easy.
+The simplest case is one where a |type| a row type (or |undefined_type| that
+can be specialised to such). In that case we prepare an initially empty
+|list_expression|, then call |balance| with the component type of |type|,
+which if successful will have converted to component types into our
+|list_expression|, and it remains to |return| that object.
+
+The case where a list display occurs in a void context is rare but valid.
+(Since no list will be created, even though all component expression will be
+evaluated, the choice of writing a list display is rather curious.) For it we
+perform balancing with an undetermined component type (as if the display were
+in undetermined type context), and wrap the result in a |voiding| expression.
+
+In the remaining case we call |row_coercion| (defined in \.{axis-types.w}) to
+see if a coercion to |type| from some row of |comp_type| exists. If this is
+successful, we continue balancing with |comp_type| as expected component type.
+As before balancing performs the conversion of the component expressions into
+|result|, which here we wrap up in the appropriate |conversion| found by
+|row_coercion|.
+
+Finally if nothing works we report a type error with ``found type'' \.{[*]}
+(we cannot be more specific; indeed none of the component expressions has been
+analysed at this point).
+
+@:list display conversion@>
 
 @< Cases for type-checking and converting... @>=
 case list_display:
 { std::unique_ptr<list_expression> result (new list_expression(0));
   result->component.reserve(length(e.sublist));
-  wel_const_iterator it(e.sublist);
-  if (type==void_type)
-  { type_expr target; // initially undetermined common component type
-    for (; not it.at_end(); ++it)
-      result->component.push_back(convert_expr(*it,target));
-    return expression_ptr(new voiding(std::move(result)));
-    // and forget |target|
-  }
-  else if (type.specialise(row_of_type))
-  { for (; not it.at_end(); ++it)
-      result->component.push_back(convert_expr(*it,*type.component_type));
+@/static const char* const str = "components of list expression";
+  if (type.specialise(row_of_type))
+  @/{@;
+    balance(*type.component_type,e.sublist,e,str,result->component);
     return std::move(result);
   }
-  @< If |type| can be converted from some row-of type, check the components
-     of |e.sublist| against the required type, and apply a conversion
-     function to the converted expression; otherwise |throw| a |type_error| @>
-}
-
-@ When in |convert_expr| we encounter a list display when a non-void non-row
-type is expected, we call |row_coercion| (defined in \.{axis-types.w}) to find a
-coercion to |type| from some row of |comp_type| type. If this is successful,
-we continue to convert the component expressions with as expected type the
-corresponding component type. Once a conversion has been determined, we
-proceed as in the case where as ``row-of'' type was required, and in
-particular there may be further coercions of individual expressions in the
-list display.
-
-@:list display conversion@>
-
-@< If |type| can be converted from some row-of type, check the components of
-   |e.sublist|... @>=
-{ type_expr comp_type;
-  const conversion_record* conv = row_coercion(type,comp_type);
-  if (conv==nullptr)
-  // no conversion was found; there's nothing left but to report an error
-    throw type_error(e,row_of_type.copy(),std::move(type));
 @)
-  for (; not it.at_end(); ++it)
-    result->component.push_back(convert_expr(*it,comp_type));
-  return expression_ptr(new
-    conversion(*conv,expression_ptr(std::move(result))));
+  type_expr comp_type;
+  if (type==void_type) // in void context leave undetermined target type
+  { balance(comp_type,e.sublist,e,str,result->component);
+    return expression_ptr(new voiding(std::move(result)));
+    // and forget |comp_type|
+  }
+@)
+  const conversion_record* conv = row_coercion(type,comp_type);
+  if (conv!=nullptr)
+  { balance(comp_type,e.sublist,e,str,result->component);
+    return expression_ptr(new
+      conversion(*conv,expression_ptr(std::move(result))));
+  }
+@)
+  throw type_error(e,row_of_type.copy(),std::move(type));
+  // |type| incompatible with any list
 }
 
 @* Identifiers.
@@ -3292,114 +3384,21 @@ void conditional_expression::evaluate(level l) const
   @+ else else_branch->evaluate(l);
 }
 
-@ For balancing we need a partial ordering on types; the following function
-tells whether any value of type |b| can be made to be of type~|a|. If so we
-call type |a| broader than~|b|, although there is no inclusion relation; the
-type |void| that any type can be converted to is the broadest of all, while
-the type \&*, which allows no values at all, it the narrowest of all.
-
-@< Local function definitions @>=
-bool broader_eq (const type_expr& a, const type_expr& b)
-{ if (a==void_type or b==unknown_type)
-    return true;
-  if (a==unknown_type or b==void_type)
-    return false;
-  int cmp = is_close(a,b);
-  return (cmp&0x2)!=0; // whether |b| can be converted to |a|
-}
-
-@ Type type-checking conditional expressions involves a difficulty that also
-exists for list displays: both (and for nested conditionals: all) branches
-need to be of the same type, but we might not know which. We adopt the rule
-(borrowed from Algol~68) that at least one of the branches gets the common
-type when converted in the context of the original pattern |type|, while the
-others can be converted in the context of that common type (possibly using
-coercions).
-
-After checking that we set up for type balancing, whose details are explained
-later. Once a common type is found, any branches that were originally found to
-have a different (narrower) type are converted again, which may insert
-coercions absent in the original conversion (it may also throw some other type
-error if conversion in that context turns out to be impossible after all).
+@ With the function |balance| defined above, and thanks to the fact that we
+somewhat artificially arranged the then and else branches to be accessible as a
+|raw_expr_list|, conversion of conditionals has become easy.
 
 @< Cases for type-checking and converting... @>=
 case conditional_expr:
 { auto& exp = *e.if_variant;
   if (was_negated(exp.condition)) // eliminate negated conditions
-    exp.then_branch.swap(exp.else_branch);
+    exp.branches.contents.swap(exp.branches.next->contents);
   expression_ptr c  =  convert_expr(exp.condition,as_lvalue(bool_type.copy()));
-  expression_ptr conv[2];
-  type_expr br[2] = { type.copy(), type.copy() };
-  @< Convert branches, storing results in |conv| and their types in |br|,
-     specialise |type| to one of them to which the other can be converted,
-     or |throw| a |balance_error| when this is not possible @>
-  for (unsigned i=0; i<2; ++i)
-    if (br[i]!=type) // then redo conversion with broader type |common|
-      conv[i] =
-        convert_expr( i==0 ? exp.then_branch : exp.else_branch , type);
-  return expression_ptr(new @|
+  std::vector<expression_ptr> conv;
+  balance(type,&exp.branches,e,"branches of conditional",conv);
+@/return expression_ptr(new @|
     conditional_expression(std::move(c),std::move(conv[0]),std::move(conv[1])));
 }
-
-@ Here is the general set-up for balancing; we could take advantage of the
-fact that we only have two branches at hand directly, but this would gain very
-little, and be at the expense of obscuring the general idea of balancing.
-
-We try to find in |common| a maximal type between the branches for the
-|broader_eq| relation. Branch types incomparable with the current value of
-|common| are put aside in |conflicts|, which also collects types from
-|balance_error| if thrown by one of the calls to |convert_expr|; such types
-cannot possibly be the common type. However at the end, |common| may have
-become broad enough to accommodate them (for instance |void| can accommodate
-every type). So we prune |conflict| before reporting an error, which we only
-do if at least one conflicting type remains; if so, the type |common| is added
-to the error object.
-
-@< Convert branches, storing results in |conv| and their types in |br|... @>=
-{ type_expr common;
-    // greatest common denominator that branch types convert to\dots
-  containers::sl_list<type_expr> conflicts;
-    // except those branch types that are put aside here
-  for (unsigned i=0; i<2; ++i)
-  { try
-     { conv[i] =
-          convert_expr( i==0 ? exp.then_branch : exp.else_branch , br[i]);
-        if (not broader_eq(common,br[i]))
-        { if (broader_eq(br[i],common))
-            common = br[i].copy();
-          else
-            conflicts.push_back(br[i].copy());
-            // record type not convertible to |common|
-        }
-    }
-    catch (balance_error& err) {@; conflicts.append(std::move(err.variants)); }
-  }
-@)
-  @< Prune from |conflicts| any types for which final |common| is broader @>
-  if (conflicts.empty()) // then balancing succeeded, so set |type| to |common|
-  { bool success = type.specialise(common); ndebug_use(success);
-    assert(success);
-    // since |common| was obtained by |convert_expr| from some copy of |type|
-  }
-  else
-  { balance_error err(e);
-    err.message += " between branches of conditional";
-    err.variants.push_back(std::move(common));
-    err.variants.append(std::move(conflicts));
-    throw std::move(err);
-  }
-}
-
-@ Pruning is quite simple, and gives us an occasion to exercise the |erase|
-method of |containers::sl_list|. In such loops one should not forget
-to \emph{not advance} the iterator in case a node is erased in front of it.
-
-@< Prune... @>=
-for (auto it=conflicts.cbegin(); not conflicts.at_end(it); )
-  if (broader_eq(common,*it))
-    conflicts.erase(it);
-  else
-    ++it;
 
 @*1 While loops.
 %

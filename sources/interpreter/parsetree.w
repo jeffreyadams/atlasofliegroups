@@ -1701,17 +1701,25 @@ Of course we need if-then-else expressions.
 typedef struct conditional_node* cond;
 
 @~The parser handles \&{elif} constructions, so we only need to handle the
-basic two-branch case.
+basic two-branch case. Nonetheless we prefer to have the two branches as a
+linked list, so as to dispose of a |raw_expr_list| value that can be passed to
+the same balancing function as for instance the components of a list display
+(it would be quite tedious to reorganise the contents of two explicit |expr|
+fields to make them occur in a list without temporarily removing the
+originals, given that copying |expr| values is expensive). On the other hand,
+given that the list always has length~$2$, we can represent the list by its
+initial node.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct conditional_node
-{ expr condition; expr then_branch; expr else_branch;
+{ expr condition; containers::sl_node<expr> branches;
 @)
   conditional_node(expr&& condition, expr&& then_branch, expr&& else_branch)
 @/: condition(std::move(condition))
-  , then_branch(std::move(then_branch))
-  , else_branch(std::move(else_branch))@+{}
-  // backward compatibility for gcc 4.6
+  , branches(std::move(then_branch))
+  { branches.next.reset(new
+      containers::sl_node<expr>(std::move(else_branch)));
+  }
 };
 
 @ The tag used for these expressions is |conditional_expr|.
@@ -1765,7 +1773,8 @@ reconstruct \&{elif} constructions.
 @< Cases for printing... @>=
 case conditional_expr:
 { const cond& c=e.if_variant; out << " if " << c->condition @|
-  << " then " << c->then_branch << " else " << c->else_branch << " fi ";
+  << " then " << c->branches.contents @|
+  << " else " << c->branches.next->contents << " fi ";
 }
 break;
 
