@@ -1717,9 +1717,10 @@ struct conditional_node
   conditional_node(expr&& condition, expr&& then_branch, expr&& else_branch)
 @/: condition(std::move(condition))
   , branches(std::move(then_branch))
-  { branches.next.reset(new
+  {@; branches.next.reset(new
       containers::sl_node<expr>(std::move(else_branch)));
   }
+  @< Other constructor for |conditional_node| @>
 };
 
 @ The tag used for these expressions is |conditional_expr|.
@@ -1732,10 +1733,12 @@ struct conditional_node
 @< Variants of ... @>=
 cond if_variant;
 
-@ There is a constructor for building conditional expressions.
+@ There is a constructor for building conditional expressions. As explained
+below, the variant |if_variant| will be reused (for case expressions), so
+exceptionally we pass the |expr_kind| tag explicitly.
 @< Methods of |expr| @>=
-expr(cond&& conditional, const YYLTYPE& loc)
- : kind(conditional_expr)
+expr(expr_kind which, cond&& conditional, const YYLTYPE& loc)
+ : kind(which)
  , if_variant(std::move(conditional))
  , loc(loc)
 @+{}
@@ -1744,14 +1747,15 @@ expr(cond&& conditional, const YYLTYPE& loc)
 @< Declarations of functions for the parser @>=
 expr_p make_conditional_node(expr_p c, expr_p t, expr_p e, const YYLTYPE& loc);
 
-@~It is entirely straightforward.
+@~Here we pass the |conditional_expr| tag explicitly to the |expr| constructor
+above.
 
 @< Definitions of functions for the parser @>=
 expr_p make_conditional_node(expr_p c, expr_p t, expr_p e, const YYLTYPE& loc)
 {
   expr_ptr cc(c), tt(t), ee(e);
   expr& cnd=*cc; expr& thn=*tt; expr& els=*ee;
-@/return new @| expr(new @|
+@/return new @| expr(conditional_expr, new @|
       conditional_node { std::move(cnd), std::move(thn), std::move(els) },loc);
 }
 
@@ -1784,29 +1788,29 @@ For a long time the language had no multi-way branching expression at all.
 Currently we implement a \&{case} expression selecting based on an integer
 value, explicit branches being given for a finite segment of the possible
 values. No doubt with the later introduction of distinguished union type there
-will be a richer set of \&{case} expressions. For now they are just syntactic
-sugar, and the code below transforms the ingredients of an
-integer-based \&{case} expression into an equivalent expression that realises
-the multi-way branching by selection a function from a row pf function values.
+will be a richer set of \&{case} expressions.
 
-We define a function for constructing the expression as usual. For now there
-is no corresponding expression type, but we name it as if there were one, so
-that we can later just replace the body this function to change the
-implementation.
+As a by-effect of representing the branches of a conditional expression as a
+non-empty list, the integer case expression becomes structurally
+\emph{equivalent} to the conditional expression (this time the
+branches can form a non-empty list of any length). So for the parse we just
+need a tag value to discriminate the two, but not a new variant in the union.
+
+@< Enumeration tags for |expr_kind| @>= int_case_expr, @[@]
+
+@~On the other hand, we do need a different constructor for
+|conditional_node| to handle the more general list.
+@< Other constructor for |conditional_node| @>=
+conditional_node(expr&& condition, containers::sl_node<expr>&& branches)
+@/: condition(std::move(condition))
+  , branches(std::move(branches))
+  @+{}
+
+@
+We define a function for constructing the expression as usual.
 
 @< Declarations of functions for the parser @>=
 expr_p make_int_case_node(expr_p selector, raw_expr_list ins, const YYLTYPE& loc);
-
-@ We shall need a variation of the |expr| constructor that builds its
-|lambda_variant|, because we want to duplicate (copy construct) an existing
-|source_location| rather than construct one from an |YYLTYPE| structure.
-
-@< Methods of |expr| @>=
-expr(lambda&& fun, const source_location& loc)
- : kind(lambda_expr)
- , lambda_variant(std::move(fun))
- , loc(loc)
-@+{}
 
 @ This time the implementation is not straightforward. We convert the
 in-expressions to functions without arguments, collect them in a list
@@ -1817,27 +1821,38 @@ function part and an empty argument list.
 @< Definitions of functions for the parser @>=
 expr_p make_int_case_node(expr_p s, raw_expr_list i, const YYLTYPE& loc)
 {
-  expr_ptr ss(s); expr_list ins(i);
+  expr_ptr ss(s); expr_list in_list(i);
   expr& selector=*ss;
-  for (auto it=ins.begin(); not ins.at_end(it); ++it)
-  { const source_location& it_loc = it->loc;
-    lambda f(new
-      lambda_node(id_pat(patlist()),void_type.copy(),std::move(*it)));
-    *it=expr(std::move(f),it_loc);
-  }
-  expr arr(std::move(ins),expr::tuple_display_tag());
-    // abuse of this tuple constructor
-  arr.kind = list_display; // but then set the correct kind
-  sub select(new subscription_node(std::move(arr), std::move(selector),false));
-    // non reversed
-  expr fun(std::move(select),loc); // function part is this subscription
-  expr arg {@[expr_list(),expr::tuple_display_tag()@]};
-    // avoid most vexing parse!
-  app result(new application_node(std::move(fun),std::move(arg)));
-    // call after selecting
-  return new expr(std::move(result),loc);
-    // generate final |expr|, return pointer
+  assert(not in_list.empty());
+  containers::sl_node<expr>& ins = *i;
+  return new expr(int_case_expr,new @|
+    conditional_node(std::move(selector),std::move(ins)),loc);
 }
+
+@ We could have done the following by putting a second switch label on the
+|@[case conditional_expr:@]| above
+@< Cases for copying... @>=
+case int_case_expr:
+  if_variant=other.if_variant;
+break;
+
+@~And similarly here.
+
+@< Cases for destroying... @>=
+case int_case_expr: delete if_variant; break;
+
+@ To print an integer case expression at parser level, we do the obvious.
+
+@< Cases for printing... @>=
+case int_case_expr:
+{ const cond& c=e.if_variant;
+  wel_const_iterator it(&c->branches);
+  out << " case " << c->condition << " in " << *it;
+  for (++it; not it.at_end(); ++it)
+    out  << ", " << *it;
+  out << " esac ";
+}
+break;
 
 
 

@@ -3001,10 +3001,11 @@ comparison against the unsigned array size; in the error message the signed
 quantity is transmitted however.
 
 @< Function definitions @>=
-inline std::string range_mess(int i,size_t n,const expression_base* e)
+inline std::string range_mess
+  (int i,size_t n,const expression_base* e,const char* where)
 { std::ostringstream o;
   e->print(o << "index " << i << " out of range (0<= . <" << n
-             << ") in subscription ");
+             << ") in " << where << ' ');
   return o.str();
 }
 @)
@@ -3016,7 +3017,7 @@ void row_subscription<reversed>::evaluate(level l) const
   if (reversed)
     i=n-1-i;
   if (static_cast<unsigned int>(i)>=n)
-    throw runtime_error(range_mess(i,n,this));
+    throw runtime_error(range_mess(i,n,this,"subscription"));
   push_expanded(l,r->val[i]);
 }
 @)
@@ -3028,7 +3029,7 @@ void vector_subscription<reversed>::evaluate(level l) const
   if (reversed)
     i=n-1-i;
   if (static_cast<unsigned int>(i)>=n)
-    throw runtime_error(range_mess(i,n,this));
+    throw runtime_error(range_mess(i,n,this,"subscription"));
   if (l!=no_value)
     push_value(std::make_shared<int_value>(v->val[i]));
 }
@@ -3041,7 +3042,7 @@ void ratvec_subscription<reversed>::evaluate(level l) const
   if (reversed)
     i=n-1-i;
   if (static_cast<unsigned int>(i)>=n)
-    throw runtime_error(range_mess(i,n,this));
+    throw runtime_error(range_mess(i,n,this,"subscription"));
   if (l!=no_value)
     push_value(std::make_shared<rat_value>(Rational @|
        (v->val.numerator()[i],v->val.denominator())));
@@ -3055,7 +3056,7 @@ void string_subscription<reversed>::evaluate(level l) const
   if (reversed)
     i=n-1-i;
   if (static_cast<unsigned int>(i)>=n)
-    throw runtime_error(range_mess(i,n,this));
+    throw runtime_error(range_mess(i,n,this,"subscription"));
   if (l!=no_value)
     push_value(std::make_shared<string_value>(s->val.substr(i,1)));
 }
@@ -3076,10 +3077,10 @@ void matrix_subscription<reversed>::evaluate(level l) const
   {@;  i=r-1-i; j=c-1-j; }
   if (static_cast<unsigned int>(i)>=r)
     throw runtime_error
-     ("initial "+range_mess(i,r,this));
+     ("initial "+range_mess(i,r,this,"matrix subscription"));
   if (static_cast<unsigned int>(j)>=c)
     throw runtime_error
-     ("final "+range_mess(j,c,this));
+     ("final "+range_mess(j,c,this,"matrix subscription"));
   if (l!=no_value)
     push_value(std::make_shared<int_value>(m->val(i,j)));
 }
@@ -3092,7 +3093,7 @@ void matrix_get_column<reversed>::evaluate(level l) const
   if (reversed)
     j=c-1-j;
   if (static_cast<unsigned int>(j)>=c)
-    throw runtime_error(range_mess(j,c,this));
+    throw runtime_error(range_mess(j,c,this,"matrix column selection"));
   if (l!=no_value)
     push_value(std::make_shared<vector_value>(m->val.column(j)));
 }
@@ -3355,7 +3356,7 @@ that were eliminated in the parser (and even those that the user did not
 employ, but could have). To this end, we remain in a loop as long as the
 |else|-part is itself a conditional expression. This makes a loop with exit in
 the middle a natural solution, and in any case \Cpp\ does not allow using a
-variable introduced in the body, like |p| below, to be used it the condition
+variable introduced in the body, like |p| below, to be used in the condition
 of a |while| or |for| controlling the loop.
 
 @< Function definitions @>=
@@ -3398,6 +3399,61 @@ case conditional_expr:
   balance(type,&exp.branches,e,"branches of conditional",conv);
 @/return expression_ptr(new @|
     conditional_expression(std::move(c),std::move(conv[0]),std::move(conv[1])));
+}
+
+@*1 Integer controlled case expressions.
+%
+The integer case expression (multi-way branch controlled by an integer value)
+is quite similar to a conditional, but contains a list of branches rather than
+two of them.
+
+@< Type def... @>=
+struct int_case_expression : public expression_base
+{ expression_ptr condition; std::vector<expression_ptr> branches;
+@)
+  int_case_expression
+   (expression_ptr&& c,std::vector<expression_ptr>&& b)
+   : condition(c.release()),branches(std::move(b))
+  @+{}
+  virtual ~@[int_case_expression() nothing_new_here@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ To print a case expression is straightforward.
+
+@< Function definitions @>=
+void int_case_expression::print(std::ostream& out) const
+{ auto it = branches.cbegin();
+  assert(it!=branches.cend());
+  out << " case " << *condition << " in " << **it;
+  while (++it!=branches.cend())
+    out << ", " << **it;
+  out << " esac ";
+}
+
+@ Evaluating a case expression ends up evaluating one of the |branches|.
+
+@< Function definitions @>=
+void int_case_expression::evaluate(level l) const
+{ condition->eval();
+  int i = get<int_value>()->val;
+  if (static_cast<unsigned>(i)>=branches.size())
+    throw runtime_error(range_mess(i,branches.size(),this,"case expression"));
+  branches[i]->evaluate(l);
+}
+
+@ With the function |balance| defined above, conversion of case expressions
+has become easy.
+
+@< Cases for type-checking and converting... @>=
+case int_case_expr:
+{ auto& exp = *e.if_variant;
+  expression_ptr c  =  convert_expr(exp.condition,as_lvalue(int_type.copy()));
+  std::vector<expression_ptr> conv;
+  balance(type,&exp.branches,e,"branches of case",conv);
+@/return expression_ptr(new @|
+    int_case_expression(std::move(c),std::move(conv)));
 }
 
 @*1 While loops.
@@ -4858,7 +4914,7 @@ the component assignment, possibly expanding a tuple in the process.
   std::vector<shared_value>& a=force<row_value>(loc)->val;
   size_t n=a.size();
   if (i>=n)
-    throw runtime_error(range_mess(i,a.size(),this));
+    throw runtime_error(range_mess(i,a.size(),this,"component assignment"));
   auto& ai = a[reversed ? n-1-i : i];
   ai = pop_value(); // assign non-expanded value
   push_expanded(lev,ai); // return value may need expansion, or be omitted
@@ -4874,7 +4930,7 @@ the component assignment expression is not used.
   std::vector<int>& v=force<vector_value>(loc)->val;
   size_t n=v.size();
   if (i>=n)
-    throw runtime_error(range_mess(i,v.size(),this));
+    throw runtime_error(range_mess(i,v.size(),this,"component assignment"));
   v[reversed ? n-1-i : i]= force<int_value>(execution_stack.back().get())->val;
     // assign |int| from un-popped top
   if (lev==no_value)
@@ -4892,9 +4948,10 @@ indices, and there are two bound checks.
   int_Matrix& m=force<matrix_value>(loc)->val;
   size_t k=m.numRows(),l=m.numColumns();
   if (i>=k)
-    throw runtime_error(range_mess(i,m.numRows(),this));
+    throw runtime_error(range_mess(i,m.numRows(),this,"matrix entry assignment"));
   if (j>=l)
-    throw runtime_error(range_mess(j,m.numColumns(),this));
+    throw runtime_error(
+      range_mess(j,m.numColumns(),this,"matrix entry assignment"));
   m(reversed ? k-1-i : i,reversed ? l-1-j : j)=
     force<int_value>(execution_stack.back().get())->val;
     // assign |int| from un-popped top
@@ -4912,7 +4969,8 @@ for matching column length.
     // don't pop
   size_t l=m.numColumns();
   if (j>=l)
-    throw runtime_error(range_mess(j,m.numColumns(),this));
+    throw runtime_error(
+      range_mess(j,m.numColumns(),this,"matrix column assignment"));
   if (v.size()!=m.numRows())
     throw runtime_error
       (std::string("Cannot replace column of size ")+str(m.numRows())+

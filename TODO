@@ -20,7 +20,6 @@
   Distinguish one-line (maybe abbreviated) and long forms.
   Nuance "simply connected" and "adjoint" for non-semisimple root data
 
-- Implement case statement directly (using balancing)
 - Check whether nested voiding in loops is necessary, maybe do only outer one
 
 - Implement compound assignment directly
