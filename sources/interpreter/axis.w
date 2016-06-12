@@ -616,7 +616,9 @@ void list_expression::evaluate(level l) const
   }
 }
 
-@ Type-checking of list displays involves a difficulty that also exists for
+@*1 Balancing.
+%
+Type-checking of list displays involves a difficulty that also exists for
 conditional expressions and possibly other cases: all component expressions
 need to be of the same type, but we might not know which. We adopt the rule
 (borrowed from Algol~68) that at least one of the components gets the common
@@ -626,26 +628,25 @@ coercions). This process is called type balancing (the mental image is
 comparing the ``weights'' of the component expression types, to see which one
 is the firmest in determining the result type).
 
-@ Here is the general set-up for balancing. We try to find in |common| a
-maximal type between the branches for the |broader_eq| relation. Branch types
-incomparable with the current value of |common| are put aside in |conflicts|,
-which also collects types from |balance_error| if thrown by one of the calls
-to |convert_expr|; such types cannot possibly be the common type.
+@ Here is the general set-up for balancing. We try to find in |common| a type
+to which all branches can conform. Branch types incomparable with the current
+value of |common| are put aside in |conflicts|. At the end, |common| may have
+become broad enough to accommodate them (for instance |void| can accommodate
+every possible type). So we prune |conflict| before possibly reporting an
+error.
 
-However at the end, |common| may have become broad enough to accommodate them
-(for instance |void| can accommodate every possible type). So we prune
-|conflict| before possibly reporting an error. In case of success, any
-branches that were originally found to have a different (narrower) type, or
-whose conversion threw an error, are converted again. Branches that threw a
-|balance_error| are certain to satisfy the test |comp_type[i]!=target| below
-(which in their case means that |target| has changed since a copy was taken to
-initialise |comp_type[i]|), since such an error will have contributed to
-|conflicts| type that were strict specialisations of the original |target|,
-and which cannot have been pruned unless |target| was changed to a broader
-type since. The new conversion may insert coercions that were absent in the
-original conversion (it may also throw some other type error if conversion in
-that context turns out to be impossible after all).
-
+In case of success, any branches that were originally found to have a
+different (narrower) type, or whose conversion threw a balancing error inside
+the branch, are converted again, replacing a possible previous result in
+|components|. Branches that threw a |balance_error| are certain to satisfy the
+test |comp_type[i]!=target| below (which in their case means that |target| has
+changed since a copy was taken to initialise |comp_type[i]|), since such an
+error will have contributed to |conflicts| type that were strict
+specialisations of the original |target|, and which cannot have been pruned
+unless |target| was changed to a broader type since. The new conversion may
+insert coercions that were absent in the original conversion (it may also
+throw some other type error if conversion in that context turns out to be
+impossible after all).
 
 @< Local function definitions @>=
 
@@ -663,24 +664,9 @@ void balance
     // greatest common denominator that branch types convert to\dots
   containers::sl_list<type_expr> conflicts;
     // except those branch types that are put aside here
-  for (wel_const_iterator it(elist); not it.at_end(); ++it)
-  { try
-    { comp_type.push_back(target.copy());
-          // start each with a copy of original |target| type
-      type_expr& ctype =comp_type.back(); // call that copy |ctype|
-      components.push_back(expression_ptr());
-         // push, whether or not |convert_expr| succeeds
-      components.back()=convert_expr(*it,ctype);
-      if (not broader_eq(common,ctype))
-        { if (broader_eq(ctype,common))
-            common = ctype.copy();
-          else
-            conflicts.push_back(ctype.copy());
-            // record type not convertible to |common|
-        }
-    }
-    catch (balance_error& err) {@; conflicts.append(std::move(err.variants)); }
-  }
+  @< Convert each expression in |elist| in the context of a copy of |target|,
+     pushing the results to |components|; maintain |common| as balancing type,
+     record in |conflicts| non conforming component types @>
   @< Prune from |conflicts| any types that now test narrower than |common|
      and if noting is left specialise |target| to |common|;
      otherwise |throw| a |balance_error| mentioning |common| and |conflicts| @>
@@ -690,6 +676,48 @@ void balance
     if (comp_type[i]!=target)
       components[i] = convert_expr(*it,target);
       // redo conversion with broader |common| type
+}
+
+@ We try to maintain |common| as the maximal type between the branches for the
+|broader_eq| relation. If this fails due to incomparable types we move the
+non-conforming type to |conflicts|. That list also collects types from
+|balance_error| if thrown directly by one of the calls to |convert_expr|.
+Since such type collections have internal incompatibilities, they never
+provide the common type; no comparison with |common| is needed.
+
+When catching a |balance_error|, we re-|throw| if the error was produced in a
+subexpression of the branch, as this indicates an error independent of out
+balancing. If that branch was a list display, the reported types are somewhat
+laboriously wrapped in a ``row-of'' to produce the component type that
+interests us here.
+
+@< Convert each expression in |elist| in the context... @>=
+for (wel_const_iterator it(elist); not it.at_end(); ++it)
+{ try
+  { comp_type.push_back(target.copy());
+        // start each with a copy of original |target| type
+    type_expr& ctype =comp_type.back(); // call that copy |ctype|
+    components.push_back(expression_ptr());
+       // push, whether or not |convert_expr| succeeds
+    components.back()=convert_expr(*it,ctype);
+    if (not broader_eq(common,ctype))
+      { if (broader_eq(ctype,common))
+          common = ctype.copy();
+        else
+          conflicts.push_back(ctype.copy());
+          // record type not convertible to |common|
+      }
+  }
+  catch (balance_error& err)
+  { if (&err.offender!=&*it) // only incorporate top-level balancing errors
+      throw; // any deeper error is propagated to be reported
+    else if (err.offender.kind==list_display)
+      // then wrap variants in row-of
+      for (auto it=err.variants.wbegin(); not err.variants.at_end(it); ++it)
+        it->set_from(type_expr(type_ptr(new type_expr(std::move(*it)))));
+        // row-of |*it|
+    conflicts.append(std::move(err.variants)); // then join to our |conflicts|
+  }
 }
 
 @ Pruning is quite simple, and gives us an occasion to exercise the |erase|
