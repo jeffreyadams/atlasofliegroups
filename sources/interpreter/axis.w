@@ -543,22 +543,58 @@ case tuple_display:
 @*1 Evaluating tuple displays.
 %
 Evaluating a tuple display evaluates its components in a simple loop. If
-|l==no_value| this is done for side effects only, otherwise each component
-produces (via the |eval| method) a single value on the stack. Afterwards the
-result needs to be grouped into a single value only if |l==single_value|,
-which is accomplished by |wrap_tuple|.
+|l==no_value| this is done for side effects only (a rare case), which is
+achieved by calling the |void_eval| method of the component expressions.
+If a single value is to be produced we prepare the result tuple at the right
+size (but filled with null pointers), then in a loop evaluate the component
+values using the |eval| method that leaves a single value on the stack, which
+we move (by |pop_value|) into to corresponding slot of |result|; when done,
+the |result| is pushed onto the stack. Finally when |l=multi_eval| we proceed
+similarly but without preparing a result; we simple leave the component values
+on the execution stack.
+
+The final case is one of the rare occasions where we leave values sitting on
+the |execution_stack| for some time, and the only one where a |break| might
+occur at such a point (this should be quite rare, but it is possible). It is
+therefore easier to clean the stack up in the code below, than to mark the
+execution stack before entering any loop that might terminate with |break|,
+and resetting it to the marked position when the |loop_break| is caught (in
+particular since there are many kinds of loops that would need consideration).
+However, while we thus localise the clean-up in a single place, this code does
+get executed very often (every time a built-in function is called, except if
+it has exactly $1$ argument). We therefore take care (by not marking anything
+at loop entry) that in the non-throwing case (the vast majority) no cycles are
+wasted at all (assuming, as seems reasonable, that simply entering a
+|try|-block does not involve any work).
 
 @< Function def... @>=
 void tuple_expression::evaluate(level l) const
-{ if (l==no_value)
+{ switch(l)
+  {
+  case no_value:
     for (auto it=component.begin(); it!=component.end(); ++it)
       (*it)->void_eval();
-  else
-  { for (auto it=component.begin(); it!=component.end(); ++it)
-      (*it)->eval();
-    if (l==single_value)
-      wrap_tuple(component.size());
-  }
+    break;
+  case single_value:
+    { auto result = std::make_shared<tuple_value>(component.size());
+      auto dst_it = result->val.begin();
+      for (auto it=component.cbegin(); it!=component.cend(); ++it,++dst_it)
+        {@; (*it)->eval(); *dst_it=pop_value(); }
+      push_value(result);
+    } break;
+  case multi_value:
+    { auto it=component.begin();
+      try
+      {@; for (; it!=component.end(); ++it)
+          (*it)->eval();
+      }
+      catch (const loop_break&) // clean up execution stack locally
+      { for (; it!=component.begin(); --it)
+          execution_stack.pop_back();
+        throw; // propagate the |break|
+      }
+    }
+  } // |switch(l)|
 }
 
 @* List displays.
@@ -668,7 +704,7 @@ void balance
      pushing the results to |components|; maintain |common| as balancing type,
      record in |conflicts| non conforming component types @>
   @< Prune from |conflicts| any types that now test narrower than |common|
-     and if noting is left specialise |target| to |common|;
+     and if nothing is left specialise |target| to |common|;
      otherwise |throw| a |balance_error| mentioning |common| and |conflicts| @>
 
   wel_const_iterator it(elist);
@@ -3610,20 +3646,27 @@ interrupt flag in the body of the evaluation of any |while|-loop.
 template<unsigned flags>
 void while_expression<flags>::evaluate(level l) const
 { if (l==no_value)
-    while (condition->eval(),get<bool_value>()->val==((flags&0x1)==0))
-    { if (interrupt_flag!=0)
-        throw user_interrupt();
-      body->void_eval();
+  { try
+    { while (condition->eval(),get<bool_value>()->val==((flags&0x1)==0))
+      { if (interrupt_flag!=0)
+          throw user_interrupt();
+        body->void_eval();
+      }
     }
+    catch (const loop_break&) @+{}
+  }
   else
   { own_row result = std::make_shared<row_value>(0);
     auto& dst = result->val;
-    while (condition->eval(),get<bool_value>()->val==((flags&0x1)==0))
-    { if (interrupt_flag!=0)
-        throw user_interrupt();
-      body->eval();
-      dst.push_back(pop_value());
+    try
+    { while (condition->eval(),get<bool_value>()->val==((flags&0x1)==0))
+      { if (interrupt_flag!=0)
+           throw user_interrupt();
+        body->eval();
+        dst.push_back(pop_value());
+      }
     }
+    catch (const loop_break&) @+{}
     if ((flags&0x2)!=0)
       std::reverse(dst.begin(),dst.end());
     push_value(std::move(result));
@@ -3887,11 +3930,25 @@ template <unsigned flags, subscr_base::sub_type kind>
 void for_expression<flags,kind>::evaluate(level l) const
 { in_part->eval();
   own_tuple loop_var = std::make_shared<tuple_value>(2);
-       // this is safe to re-use between iterations
+       // safe to re-use among iterations
   own_row result;
-  shared_value* dst=nullptr;
-  @< Evaluate the loop, dispatching the various possibilities for |kind|, and
-  setting |result| @>
+  std::vector<shared_value>::iterator dst;
+  // set to |result->val.begin()| or |result->val.end()|
+  try
+  { switch (kind)
+    @/{@;
+      @< Cases for evaluating a the loop over components of a value,
+         each setting |result| @>
+    }
+  }
+  catch (const loop_break&)
+  { if (l!=no_value)
+    { if ((flags&0x2)!=0)
+        std::move(dst,result->val.end(),result->val.begin());
+        // after break, left-align |result|
+      result->val.resize(result->val.end()-dst);
+    }
+  }
 
   if (l!=no_value)
     push_value(std::move(result));
@@ -3900,22 +3957,16 @@ void for_expression<flags,kind>::evaluate(level l) const
 @ For evaluating |for| loops we must take care to interpret the |kind| field
 when selecting a component from the in-part. Because of differences in the
 type of |in_val|, some code must be duplicated, which we do as much as
-possible by sharing a module between the various loop bodies.
+possible by sharing modules between the various loop bodies.
 
-@< Evaluate the loop, dispatching the various possibilities for |kind|... @>=
-switch (kind)
-{
+@< Cases for evaluating a the loop over components of a value... @>=
 case subscr_base::row_entry:
   { shared_row in_val = get<row_value>();
-  @/size_t n=in_val->val.size();
-    size_t i= (flags&0x1)==0 ? 0 : n;
-    if (l!=no_value)
-  @/{@; result = std::make_shared<row_value>(n);
-      dst = &result->val[(flags&0x2)==0 ? 0 : n];
-    }
+    size_t n=in_val->val.size();
+    @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
     while (i!=((flags&0x1)==0 ? n : 0))
     { loop_var->val[1]=in_val->val[(flags&0x1)==0 ? i : i-1];
-        // share the current row component
+        // move index into |loop_var| pair
       @< Set |loop_var->val[0]| to |i++| or to |--i|, create a new |frame| for
       |pattern| binding |loop_var|, and evaluate the |loop_body| in it;
       maybe assign |*dst++| or |*--dst| from it @>
@@ -3924,12 +3975,8 @@ case subscr_base::row_entry:
   @+break;
 case subscr_base::vector_entry:
   { shared_vector in_val = get<vector_value>();
-  @/size_t n=in_val->val.size();
-    size_t i= (flags&0x1)==0 ? 0 : n;
-    if (l!=no_value)
-  @/{@; result = std::make_shared<row_value>(n);
-      dst = &result->val[(flags&0x2)==0 ? 0 : n];
-    }
+    size_t n=in_val->val.size();
+    @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
     while (i!=((flags&0x1)==0 ? n : 0))
     { loop_var->val[1] = std::make_shared<int_value>
         (in_val->val[(flags&0x1)==0 ? i : i-1]);
@@ -3939,12 +3986,8 @@ case subscr_base::vector_entry:
   @+break;
 case subscr_base::ratvec_entry:
   { shared_rational_vector in_val = get<rational_vector_value>();
-  @/size_t n=in_val->val.size();
-    size_t i= (flags&0x1)==0 ? 0 : n;
-    if (l!=no_value)
-  @/{@; result = std::make_shared<row_value>(n);
-      dst = &result->val[(flags&0x2)==0 ? 0 : n];
-    }
+    size_t n=in_val->val.size();
+    @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
     while (i!=((flags&0x1)==0 ? n : 0))
     { loop_var->val[1] = std::make_shared<rat_value> @|
       (Rational
@@ -3956,12 +3999,8 @@ case subscr_base::ratvec_entry:
   @+break;
 case subscr_base::string_char:
   { shared_string in_val = get<string_value>();
-  @/size_t n=in_val->val.size();
-    size_t i= (flags&0x1)==0 ? 0 : n;
-    if (l!=no_value)
-  @/{@; result = std::make_shared<row_value>(n);
-      dst = &result->val[(flags&0x2)==0 ? 0 : n];
-    }
+    size_t n=in_val->val.size();
+    @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
     while (i!=((flags&0x1)==0 ? n : 0))
     { loop_var->val[1] = std::make_shared<string_value>
             (in_val->val.substr((flags&0x1)==0 ? i : i-1,1));
@@ -3969,14 +4008,17 @@ case subscr_base::string_char:
     }
   }
   @+break;
+
+@ Here are the remaining cases. The case |matrix_column| is ever so slightly
+different because the loop count is given by the number of column rather than
+the size of |inv_val->val|. The case |mod_poly_term| has more important to be
+detailed later. The other two cases should never arise.
+
+@< Cases for evaluating a the loop over components of a value... @>=
 case subscr_base::matrix_column:
   { shared_matrix in_val = get<matrix_value>();
-  @/size_t n=in_val->val.numColumns();
-    size_t i= (flags&0x1)==0 ? 0 : n;
-    if (l!=no_value)
-  @/{@; result = std::make_shared<row_value>(n);
-      dst = &result->val[(flags&0x2)==0 ? 0 : n];
-    }
+    size_t n=in_val->val.numColumns();
+    @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
     while (i!=((flags&0x1)==0 ? n : 0))
     { loop_var->val[1] = std::make_shared<vector_value>
         (in_val->val.column((flags&0x1)==0 ? i : i-1));
@@ -3989,14 +4031,22 @@ case subscr_base::mod_poly_term:
   break;
 case subscr_base::matrix_entry:; // excluded in type analysis
 case subscr_base::not_so: assert(false);
-  }
 
+@ The bit |flags&0x1| indicates reversal during traversal of the source, and
+|flags&0x2| indicates reversal while writing the destination value.
+
+@< Define loop index |i|, allocate |result| and initialise iterator |dst| @>=
+size_t i= (flags&0x1)==0 ? 0 : n;
+if (l!=no_value)
+{ result = std::make_shared<row_value>(n);
+  dst = (flags&0x2)==0 ? result->val.begin() : result->val.end();
+}
 
 @ We set the in-part component stored in |loop_var->val[1]| separately for the
 various values of |kind|, but |loop_var->val[0]| is always the (integral) loop
 index. Once initialised, |loop_var| is passed by the method |frame::bind|
 through the function |thread_components| to set up |loop_frame|, whose
-constructor hash pushed it onto |frame::current| to form the new evaluation
+constructor has pushed it onto |frame::current| to form the new evaluation
 context. Like for |loop_var->val[0]|, it is important that |frame::current| be
 set to point to a newly created frame at each iteration, since any closure
 values in the loop body will incorporate its current instance by reference;
@@ -4019,48 +4069,44 @@ loop body is standard.
 } // restore context upon destruction of |loop_frame|
 
 @ The loop over terms of a virtual module is slightly different, and since it
-handles values defined in the modules \.{atlas-types.w} we shall include
-its header file. We implement the $4$ reversal variants, even though it makes
-little sense unless the internal order of the terms in the polynomial (over
-which the user has no control) are meaningful to the user.
+handles values defined in the modules \.{atlas-types.w} we shall include its
+header file. We implement the $4$ reversal variants, even though reversal at
+the source makes little sense unless the internal order of the terms in the
+polynomial (over which the user has no control) are meaningful to the user.
+This reversal is implemented by using reverse iterators to control the loop;
+the loop body itself is textually identical, though the type of |it| differs
+between them.
 
 @h "atlas-types.h"
 @< Perform a loop over the terms of a virtual module @>=
 { shared_virtual_module pol_val = get<virtual_module_value>();
-@/size_t n=pol_val->val.size();
+  size_t n=pol_val->val.size();
   if (l!=no_value)
-@/{@; result = std::make_shared<row_value>(n);
-    dst = &result->val[(flags&0x2)==0 ? 0 : n];
+  { result = std::make_shared<row_value>(n);
+    dst = (flags&0x2)==0 ? result->val.begin() : result->val.end();
   }
   if ((flags&0x1)==0)
     for (auto it=pol_val->val.cbegin(); it!=pol_val->val.cend(); ++it)
-    { loop_var->val[0] =
-        std::make_shared<module_parameter_value>(pol_val->rf,it->first);
-      loop_var->val[1] = std::make_shared<split_int_value>(it->second);
-      frame loop_frame(pattern);
-      loop_frame.bind(loop_var);
-      if (l==no_value)
-        body->void_eval();
-      else
-      {@; body->eval();
-        *((flags&0x2)==0 ? dst++ : --dst) = pop_value();
-      }
-    } // restore context upon destruction of |loop_frame|
+      @< Loop body for iterating over terms of a virtual module @>
   else
     for (auto it=pol_val->val.crbegin(); it!=pol_val->val.crend(); ++it)
-    { loop_var->val[0] =
-        std::make_shared<module_parameter_value>(pol_val->rf,it->first);
-      loop_var->val[1] = std::make_shared<split_int_value>(it->second);
-      frame loop_frame(pattern);
-      loop_frame.bind(loop_var);
-      if (l==no_value)
-        body->void_eval();
-      else
-      {@; body->eval();
-        *((flags&0x2)==0 ? dst++ : --dst) = pop_value();
-      }
-    } // restore context upon destruction of |loop_frame|
+      @< Loop body for iterating over terms of a virtual module @>
 }
+
+@~And here is that loop body.
+@< Loop body for iterating over terms of a virtual module @>=
+{ loop_var->val[0] =
+    std::make_shared<module_parameter_value>(pol_val->rf,it->first);
+  loop_var->val[1] = std::make_shared<split_int_value>(it->second);
+  frame loop_frame(pattern);
+  loop_frame.bind(loop_var);
+  if (l==no_value)
+    body->void_eval();
+  else
+  {@; body->eval();
+    *((flags&0x2)==0 ? dst++ : --dst) = pop_value();
+  }
+} // restore context upon destruction of |loop_frame|
 
 @*1 Counted loops.
 %
@@ -4164,7 +4210,11 @@ case cfor_expr:
 }
 
 @ Executing a loop is a simple variation of what we have seen before for
-|while| and |for| loops.
+|while| and |for| loops. However we optimise when the loop index gets no name
+(bit |flags&0x4| is set), since then we can omit introducing a |frame| for the
+loop altogether. Also we organise to always use a decreasing loop counter
+internally, as this simplifies the termination condition and can be marginally
+faster.
 
 @< Function definitions @>=
 template <unsigned flags>
@@ -4173,44 +4223,77 @@ void counted_for_expression<flags>::evaluate(level l) const
   int c=(count->eval(),get<int_value>()->val);
   if (c<0)
     c=0; // no negative size result
-  if ((flags&0x1)==0)
-    b+=c-1; // so that |b-c| will start at original |b|, and increase as |c--|
 
-  if ((flags&0x4)==0)
-  { id_pat pattern(id);
-    if (l==no_value)
+  if ((flags&0x4)==0) @< Perform counted loop with loop index @>
+  else // now there is no loop counter, and no |frame| should be created
+  { if (l==no_value)
+    { try {@; while (c-->0)
+        body->void_eval();
+      }
+      catch (const loop_break&) @+{}
+    }
+    else
+    { own_row result = std::make_shared<row_value>(c);
+      auto dst = (flags&0x2)==0 ? result->val.begin() : result->val.end();
+      try @/{@;
+        while (c-->0)
+        {@; body->eval();
+          *((flags&0x2)==0? dst++:--dst) = pop_value();
+        }
+      }
+      catch (const loop_break&)
+      { if ((flags&0x2)!=0)
+          std::move(dst,result->val.end(),result->val.begin());
+          // after break, left-align |result|
+        result->val.resize(result->val.end()-dst);
+      }
+      push_value(std::move(result));
+    }
+  }
+}
+
+@ If a loop index is to be available in the loop, it will be computed each
+time from our internal loop variable~|c| and the specified lower bound, which we
+stored in~|b|. If the loop is decreasing the index is |b+c|. If the loop is to
+be increasing, we compute the loop index as |b-c| which increases as |c|
+decreases; to obtain the desired range of values, we add |c-1| to |b| before
+starting the loop.
+
+Apart from creating a |frame| for the loop index on each iteration, the code
+is identical to that above.
+
+@< Perform counted loop with loop index @>=
+{ if ((flags&0x1)==0)
+    b+=c-1; // so |b-c| will start at original |b|, and increase when |c--|
+  id_pat pattern(id);
+  if (l==no_value)
+  { try
     { while (c-->0)
       { frame fr(pattern);
         fr.bind(std::make_shared<int_value>((flags&0x1)==0 ? b-c : b+c));
         body->void_eval();
       }
     }
-    else
-    { own_row result = std::make_shared<row_value>(c);
-      auto dst = &result->val[(flags&0x2)==0 ? 0 : c];
-      while (c-->0)
+    catch (const loop_break&) @+{}
+  }
+  else
+  { own_row result = std::make_shared<row_value>(c);
+    auto dst = (flags&0x2)==0 ? result->val.begin() : result->val.end();
+    try
+    { while (c-->0)
       { frame fr(pattern);
         fr.bind(std::make_shared<int_value>((flags&0x1)==0 ? b-c : b+c));
         body->eval();
         *((flags&0x2)==0? dst++:--dst) = pop_value();
       }
-      push_value(std::move(result));
     }
-  }
-  else // now there is no loop counter, and no |frame| should be created
-  { if (l==no_value)
-    { while (c-->0)
-        body->void_eval();
+    catch (const loop_break&)
+    { if ((flags&0x2)!=0)
+        std::move(dst,result->val.end(),result->val.begin());
+        // after break, left-align |result|
+      result->val.resize(result->val.end()-dst);
     }
-    else
-    { own_row result = std::make_shared<row_value>(c);
-      auto dst = &result->val[(flags&0x2)==0 ? 0 : c];
-      while (c-->0)
-        {@; body->eval();
-        *((flags&0x2)==0? dst++:--dst) = pop_value();
-      }
-      push_value(std::move(result));
-    }
+    push_value(std::move(result));
   }
 }
 

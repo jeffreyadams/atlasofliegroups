@@ -1798,11 +1798,12 @@ was found. The function |conform_types| first tries to specialise the type
 |required| to the one |found|, and if this fails tries to coerce |found| to
 |required|, in the latter case enveloping the translated expression |d| in the
 applied conversion function; if both fail an error mentioning the
-expression~|e| is thrown. The function |row_coercion| specialises if possible
-|component_type| in such a way that the corresponding row type can be coerced
-to |final_type|, and returns a pointer to the |conversion_record| for the
-coercion in question. The function |coercion| serves for filling the coercion
-table.
+expression~|e| is thrown.
+
+The function |row_coercion| specialises if possible |component_type| in such a
+way that the corresponding row type can be coerced to |final_type|, and
+returns a pointer to the |conversion_record| for the coercion in question. The
+function |coercion| serves for filling the coercion table.
 
 @< Declarations of exported functions @>=
 
@@ -2390,6 +2391,24 @@ struct balance_error : public expr_error
   balance_error(const expr& e)
   : expr_error(e,"No common type found"), variants() @+{}
 };
+
+@ Here is another special purpose error type, throwing of which does not
+always signal an error. In fact it is meant to always be caught silently,
+since its purpose is to implement a |break| statement that will allow
+terminating the execution of loops other than through the regular termination
+condition. During analysis we check that any use of |break| occurs within some
+loop, and without being inside an intermediate $\lambda$-expression (which
+would allow smuggling it out of the loop), so not catching a thrown
+|loop_break| should never happen. Therefore we derive this type from
+|logic_error|, so that should this ever happen, it will be reported as such.
+
+@< Type definitions @>=
+struct loop_break : private logic_error
+{ loop_break() : logic_error("Uncaught break from loop") @+{}
+#ifdef incompletecpp11
+  ~loop_break () throw() @+{}
+#endif
+} ;
 
 
 @ When a user interrupts the computation, we wish to return to the main

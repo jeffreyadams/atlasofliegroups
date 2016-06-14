@@ -289,8 +289,6 @@ comprim: subscription | slice
 	| FOR ':' expr DO expr tilde_opt OD
 	  { $$=make_cfor_node(-1,$3,wrap_tuple_display(nullptr,@$)
                              ,$5,2*$6+4,@$); }
-	| FOR ':' expr FROM expr DO expr tilde_opt OD
-	  { $$=make_cfor_node(-1,$3,$5,$7,2*$8+4,@$); }
 	| FOR IDENT ':' expr DOWNTO expr DO expr OD
 	  { $$=make_cfor_node($2,$4,$6,$8,1,@$); }
 	| '(' expr ')'	       { $$=$2; }
