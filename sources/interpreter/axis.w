@@ -104,7 +104,7 @@ void reset_evaluator()
 }
 
 
-@* Outline of the evaluation process.
+@* Outline of the analysis and evaluation processes.
 %
 This module is concerned with the processing of the abstract syntax tree as
 produced by the parser, ultimately producing actions and computed values. This
@@ -113,15 +113,15 @@ transforms the syntax tree into a more directly executable form and therefore
 might be called compilation, and execution of those transformed expressions.
 
 The expression returned by the parser, of type |expr|, and the conversion to
-the executable format |expression| (a type defined in \.{axis-types.w} as a pointer
-to the base class |expression_base|, from which many more specialised classes
-will be derived) is performed by the function |convert_expr|. This is a large
-and highly recursive function, and a large part of the current module is
-dedicated to its definition. The execution of the converted value is performed
-by calling the (purely) virtual method |expression_base::evaluate|, so that
-the code describing the actual execution of expressions is distributed among
-the many definitions of that method in derived classes, and this definition is
-only implicitly (mutually) recursive through calls to the
+the executable format |expression| (a type defined in \.{axis-types.w} as a
+pointer to the base class |expression_base|, from which many more specialised
+classes will be derived) is performed by the function |convert_expr|. This is
+a large and highly recursive function, and a large part of the current module
+is dedicated to its definition. The execution of the converted value is
+performed by calling the (purely) virtual method |expression_base::evaluate|,
+so that the code describing the actual execution of expressions is distributed
+among the many definitions of that method in derived classes, and this
+definition is only implicitly (mutually) recursive through calls to the
 |expression_base::evaluate| method.
 
 @ During type checking, it may happen for certain subexpressions that a
@@ -196,6 +196,13 @@ an exception-safe manner is also cute; however explicitly clearing the list in
 |reset_evaluator| in case of an exception, as used to be done, would also
 work.
 
+We also use this structure to maintain an additional attribute |in_loop|,
+which could have been left to the parser at the price of increasing the size
+of the grammar. It tells whether we are inside a loop statement, where the
+user may validly use a |break| statement. Whenever this attribute changes
+we push a new layer, which in most cases was needed anyway, but in some cases
+(|while| loops) serves specifically to mark this change.
+
 @< Type def... @>=
 class layer
 {
@@ -206,11 +213,15 @@ public:
 private:
   vec variable;
   BitMap constness;
+  const bool in_loop;
 public:
   layer(const layer&) = @[delete@]; // no ordinary copy constructor
   layer& operator= (const layer&) = @[delete@]; // nor assignment operator
-  layer(size_t n) : variable(), constness(n)
-  @+{@; variable.reserve(n); lexical_context.push_front(this); }
+  layer(size_t n,bool in_loop=
+    // default to inherit from previous layer, initially |false|
+    not lexical_context.empty() and lexical_context.front()->in_loop)
+  : variable(), constness(n), in_loop(in_loop)
+  {@; variable.reserve(n); lexical_context.push_front(this); }
   ~layer () @+{@; lexical_context.pop_front(); }
 @)
   void add(id_type id,type_expr&& t, bool is_const);
@@ -226,6 +237,7 @@ public:
   vec::const_iterator cend() const @+{@; return variable.end(); }
   bool is_const (vec::const_iterator it) const
   @+{@; return constness.isMember(it-cbegin()); }
+  bool may_break() const @+{@; return in_loop; }
 };
 
 
@@ -270,7 +282,9 @@ function used to return a |type_p| rather than a |const_type_p|. This
 signature has now been changed to force such after-the-fact type
 specialisations to be made more explicit; they now require calling the method
 |layer::specialise|. For this reason |lookup| can use const-iterators, and in
-fact |specialise| can as well because pointers insulate const-ness.
+fact |specialise| can as well (for |range|), because the extra indirection
+(because the nodes of a |layer::list| store pointers) insulates from the
+|const|-ness of the iterator.
 
 @< Function def... @>=
 const_type_p layer::lookup
@@ -959,7 +973,7 @@ layer.
 
 Thus using applied identifiers requires no looking up at run time, although
 traversing of the linked list up to the specified depth is necessary. One
-might imagine keeping a stack of layer pointers cached to speed up the
+might imagine keeping a stack of |layer| pointers cached to speed up the
 evaluation of applied identifiers of large depth, but such a cache would have
 to be renewed at each context switch, such as those that occur when calling or
 returning from a user-defined function; it is doubtful whether this would
@@ -2230,7 +2244,8 @@ case lambda_expr:
   type_expr& arg_type=fun->parameter_type;
   if (not arg_type.specialise(pattern_type(pat)))
     throw expr_error(e,"Function argument pattern does not match its type");
-@/layer new_layer(count_identifiers(pat));
+@/layer new_layer(count_identifiers(pat),false);
+    // final |false| means ``forbid |break|''
   thread_bindings(pat,arg_type,new_layer,false);
   if (type!=void_type)
   { if (not (type.specialise(gen_func_type)
@@ -3594,22 +3609,24 @@ display (except that there is only one expression in this case).
 
 @< Cases for type-checking and converting... @>=
 case while_expr:
-{ const w_loop& w=e.while_variant;
-  if (was_negated(w->condition))
-    w->flags.set(0); // this makes an ``until-loop''
-  expression_ptr c = convert_expr(w->condition,as_lvalue(bool_type.copy()));
+{ while_node& w=*e.while_variant;
+  if (was_negated(w.condition))
+    w.flags.set(0); // this makes an ``until-loop''
+  expression_ptr c = convert_expr(w.condition,as_lvalue(bool_type.copy()));
+@)
+  layer bind(0,true); // no local variables for loop, but allow |break|
   if (type==void_type)
-  { expression_ptr result(make_while_loop @| (w->flags.to_ulong(),
-       std::move(c),convert_expr(w->body, as_lvalue(void_type.copy()))));
+  { expression_ptr result(make_while_loop @| (w.flags.to_ulong(),
+       std::move(c),convert_expr(w.body, as_lvalue(void_type.copy()))));
     return expression_ptr(new voiding(std::move(result)));
   }
   else if (type.specialise(row_of_type))
-  { expression_ptr b = convert_expr(w->body, *type.component_type);
+  { expression_ptr b = convert_expr(w.body, *type.component_type);
     return expression_ptr (make_while_loop @|
-       (w->flags.to_ulong(),std::move(c),std::move(b)));
+       (w.flags.to_ulong(),std::move(c),std::move(b)));
   }
   else
-  @< If |type| can be converted from some row-of type, check |w->body|
+  @< If |type| can be converted from some row-of type, check |w.body|
      against its component type, construct the |while_expression|, and apply
      the appropriate conversion function to it; otherwise |throw| a
      |type_error| @>
@@ -3618,7 +3635,7 @@ case while_expr:
 @ For |while| loops we follow the same logic for finding an appropriate
 component type as for list displays, in section@#list display conversion@>.
 
-@< If |type| can be converted from some row-of type, check |w->body| against
+@< If |type| can be converted from some row-of type, check |w.body| against
    its component type, construct the |while_expression|, and apply the
    appropriate conversion function to it; otherwise |throw| a |type_error| @>=
 { type_expr comp_type;
@@ -3627,7 +3644,7 @@ component type as for list displays, in section@#list display conversion@>.
     throw type_error(e,row_of_type.copy(),std::move(type));
 @)
   return expression_ptr(new conversion(*conv, expression_ptr(make_while_loop @|
-       (w->flags.to_ulong(),std::move(c),convert_expr(w->body,comp_type)))));
+       (w.flags.to_ulong(),std::move(c),convert_expr(w.body,comp_type)))));
 }
 
 
@@ -3650,6 +3667,8 @@ void while_expression<flags>::evaluate(level l) const
     { while (condition->eval(),get<bool_value>()->val==((flags&0x1)==0))
       { if (interrupt_flag!=0)
           throw user_interrupt();
+        id_pat empty; frame fr(empty);
+          // we must match lexical |layer| that was used
         body->void_eval();
       }
     }
@@ -3662,6 +3681,8 @@ void while_expression<flags>::evaluate(level l) const
     { while (condition->eval(),get<bool_value>()->val==((flags&0x1)==0))
       { if (interrupt_flag!=0)
            throw user_interrupt();
+        id_pat empty; frame fr(empty);
+          // we must match lexical |layer| that was used
         body->eval();
         dst.push_back(pop_value());
       }
@@ -3846,14 +3867,14 @@ coercion.
 
 @< Cases for type-checking and converting... @>=
 case for_expr:
-{ const f_loop& f=e.for_variant;
+{ const for_node& f=*e.for_variant;
   type_expr in_type;
-  expression_ptr in_expr = convert_expr(f->in_part,in_type);  // \&{in} part
+  expression_ptr in_expr = convert_expr(f.in_part,in_type);  // \&{in} part
   subscr_base::sub_type which; // the kind of aggregate iterated over
-  layer bind(count_identifiers(f->id));
+  layer bind(count_identifiers(f.id),true);
    // for identifier(s) introduced in this loop
   @< Set |which| according to |in_type|, and set |bind| according to the
-     identifiers contained in |f->id| @>
+     identifiers contained in |f.id| @>
   type_expr body_type;
   type_expr *btp=&body_type; // point to place to record body type
   const conversion_record* conv=nullptr;
@@ -3863,9 +3884,9 @@ case for_expr:
     btp=type.component_type;
   else if ((conv=row_coercion(type,body_type))==nullptr)
     throw type_error(e,row_of_type.copy(),std::move(type));
-  expression_ptr body(convert_expr (f->body,*btp));
+  expression_ptr body(convert_expr (f.body,*btp));
 @/expression_ptr loop(make_for_loop@|
-    (f->flags.to_ulong(),f->id,std::move(in_expr),std::move(body),which));
+    (f.flags.to_ulong(),f.id,std::move(in_expr),std::move(body),which));
 @/return type==void_type ? expression_ptr(new voiding(std::move(loop)))
   : @| conv!=nullptr ? expression_ptr(new conversion(*conv,std::move(loop)))
   : @| std::move(loop) ;
@@ -3877,7 +3898,7 @@ polynomial. The call to |subscr_base::index_kind| will set |comp_type| to the
 component type resulting from such a subscription.
 
 @< Set |which| according to |in_type|, and set |bind| according to the
-   identifiers contained in |f->id| @>=
+   identifiers contained in |f.id| @>=
 { type_expr comp_type; const type_expr* tp;
   which = subscr_base::index_kind(in_type,*(tp=&int_type),comp_type);
   if (which==subscr_base::not_so)
@@ -3887,14 +3908,14 @@ component type resulting from such a subscription.
     o << "Cannot iterate over value of type " << in_type;
     throw expr_error(e,o.str());
   }
-  type_expr pt = pattern_type(f->id);
+  type_expr pt = pattern_type(f.id);
   type_list it_comps;
   it_comps.push_front(std::move(comp_type));
   it_comps.push_front(type_expr(tp->copy()));
   type_expr it_type(std::move(it_comps));
   if (not pt.specialise(it_type))
     throw expr_error(e,"Improper structure of loop variable pattern");
-  thread_bindings(f->id,it_type,bind,true); // force all identifiers constant
+  thread_bindings(f.id,it_type,bind,true); // force all identifiers constant
 }
 
 @ Now follows the code that actually implements various kinds of loops. It is
@@ -3937,7 +3958,7 @@ void for_expression<flags,kind>::evaluate(level l) const
   try
   { switch (kind)
     @/{@;
-      @< Cases for evaluating a the loop over components of a value,
+      @< Cases for evaluating a loop over components of a value,
          each setting |result| @>
     }
   }
@@ -3959,7 +3980,7 @@ when selecting a component from the in-part. Because of differences in the
 type of |in_val|, some code must be duplicated, which we do as much as
 possible by sharing modules between the various loop bodies.
 
-@< Cases for evaluating a the loop over components of a value... @>=
+@< Cases for evaluating a loop over components of a value... @>=
 case subscr_base::row_entry:
   { shared_row in_val = get<row_value>();
     size_t n=in_val->val.size();
@@ -4014,7 +4035,7 @@ different because the loop count is given by the number of column rather than
 the size of |inv_val->val|. The case |mod_poly_term| has more important to be
 detailed later. The other two cases should never arise.
 
-@< Cases for evaluating a the loop over components of a value... @>=
+@< Cases for evaluating a loop over components of a value... @>=
 case subscr_base::matrix_column:
   { shared_matrix in_val = get<matrix_value>();
     size_t n=in_val->val.numColumns();
@@ -4141,7 +4162,8 @@ void counted_for_expression<flags>::print(std::ostream& out) const
 @ As in |make_slice| and |make_for_loop| above, we need to convert runtime
 values for |flags|. This time there are $6$ template instances, since a loop
 index may be omitted (bit position $2$) but in that case it makes no sense to
-reverse the input sequence (and the syntax will not allow it).
+reverse the order of traversal of the ``input sequence'' (and the syntax will
+not allow it).
 
 @< Local function definitions @>=
 expression make_counted_loop (unsigned flags, id_type id, @|
@@ -4171,13 +4193,13 @@ body.
 
 @< Cases for type-checking and converting... @>=
 case cfor_expr:
-{ const c_loop& c=e.cfor_variant;
-  expression_ptr count_expr = convert_expr(c->count,as_lvalue(int_type.copy()));
+{ const cfor_node& c=*e.cfor_variant;
+  expression_ptr count_expr = convert_expr(c.count,as_lvalue(int_type.copy()));
   static const shared_value zero = std::make_shared<int_value>(0);
     // avoid repeated allocation
-  expression_ptr bound_expr = is_empty(c->bound) @|
+  expression_ptr bound_expr = is_empty(c.bound) @|
     ? expression_ptr(new denotation(zero))
-    : convert_expr(c->bound,as_lvalue(int_type.copy())) ;
+    : convert_expr(c.bound,as_lvalue(int_type.copy())) ;
 @)
   type_expr body_type;
   type_expr *btp=&body_type; // point to place to record body type
@@ -4189,20 +4211,21 @@ case cfor_expr:
   else if ((conv=row_coercion(type,body_type))==nullptr)
     throw type_error(e,row_of_type.copy(),std::move(type));
 @)
-  if (c->flags[2]) // case of no loop variable; avoid introducing empty |layer|
-  { expression_ptr body(convert_expr (c->body,*btp));
-  @/expression_ptr loop(make_counted_loop(c->flags.to_ulong(), @|
-      c->id,std::move(count_expr),std::move(bound_expr),std::move(body)));
+  if (c.flags[2]) // case of no loop variable
+  { layer bind(0,true);  // no local variables for loop, but allow |break|
+    expression_ptr body(convert_expr (c.body,*btp));
+  @/expression_ptr loop(make_counted_loop(c.flags.to_ulong(), @|
+      c.id,std::move(count_expr),std::move(bound_expr),std::move(body)));
   return type==void_type ? expression_ptr(new voiding(std::move(loop))) : @|
          conv!=nullptr ? expression_ptr(new conversion(*conv,std::move(loop)))
                        : @| std::move(loop);
   }
   else // case of a loop variable
-  { layer bind(1);
-    bind.add(c->id,int_type.copy(),true); // add |id| as constant
-    expression_ptr body(convert_expr (c->body,*btp));
-  @/expression_ptr loop(make_counted_loop(c->flags.to_ulong(), @|
-      c->id,std::move(count_expr),std::move(bound_expr),std::move(body)));
+  { layer bind(1,true);
+    bind.add(c.id,int_type.copy(),true); // add |id| as constant
+    expression_ptr body(convert_expr (c.body,*btp));
+  @/expression_ptr loop(make_counted_loop(c.flags.to_ulong(), @|
+      c.id,std::move(count_expr),std::move(bound_expr),std::move(body)));
     return type==void_type ? expression_ptr(new voiding(std::move(loop))) : @|
          conv!=nullptr ? expression_ptr(new conversion(*conv,std::move(loop)))
                        : @| std::move(loop);
@@ -4225,8 +4248,9 @@ void counted_for_expression<flags>::evaluate(level l) const
     c=0; // no negative size result
 
   if ((flags&0x4)==0) @< Perform counted loop with loop index @>
-  else // now there is no loop counter, and no |frame| should be created
-  { if (l==no_value)
+  else // now there is no loop counter
+  { id_pat empty; frame fr(empty); // must match lexical |layer| that was used
+    if (l==no_value)
     { try {@; while (c-->0)
         body->void_eval();
       }
