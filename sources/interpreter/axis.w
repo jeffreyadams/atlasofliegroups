@@ -229,6 +229,7 @@ public:
     (id_type id, size_t& depth, size_t& offset, bool& is_const);
   static void specialise (size_t depth, size_t offset,const type_expr& t);
 @)
+  bool empty() const @+{@; return variable.empty(); }
   std::pair<id_type,type_expr>& operator[] (size_t i)
   @+{@; return variable[i]; }
   vec::iterator begin() @+{@; return variable.begin(); }
@@ -272,40 +273,46 @@ layer::list layer::lexical_context;
 pointer to the type if a match for the identifier |id| was found, also
 assigning its static binding coordinates to output arguments |depth| and
 |offset|. If no match is found a null pointer is returned and the output
-parameters are unchanged.
-
-There is a possibility that a caller will afterwards want to specialise the
-type found for an identifier, if the type returned here has some unknown
-component as in `\.{[*]}', and if the subsequent usage of the identifier makes
-clear what specific type is to replace the `\.*'. For this reason this
-function used to return a |type_p| rather than a |const_type_p|. This
-signature has now been changed to force such after-the-fact type
-specialisations to be made more explicit; they now require calling the method
-|layer::specialise|. For this reason |lookup| can use const-iterators, and in
-fact |specialise| can as well (for |range|), because the extra indirection
-(because the nodes of a |layer::list| store pointers) insulates from the
-|const|-ness of the iterator.
+parameters are unchanged. We allow having a |layer| with no variables
+at all for which no stack frame will correspond at all (as a frame would incur
+a runtime cost for no good at all). The method |lookup| will skip such layers
+without increasing the |depth| it reports.
 
 @< Function def... @>=
 const_type_p layer::lookup
   (id_type id, size_t& depth, size_t& offset, bool& is_const)
 { size_t i=0;
   for (auto range=lexical_context.cbegin(); not lexical_context.at_end(range);
-       ++range,++i)
-    for (auto it=(*range)->cbegin(); it!=(*range)->cend(); ++it)
-      if (it->first==id)
-      {@; depth=i;
-        offset=it-(*range)->begin();
-        is_const = (*range)->is_const(it);
-        return &it->second;
-      }
+       ++range)
+    if (not (*range)->variable.empty())
+    { for (auto it=(*range)->cbegin(); it!=(*range)->cend(); ++it)
+        if (it->first==id) // then found; now set output values
+          { depth=i;
+            offset=it-(*range)->begin();
+            is_const = (*range)->is_const(it);
+            return &it->second;
+          }
+      ++i; // increment depth for non-empty layers only
+    }
   return nullptr;
 }
-@)
+
+@ The method |specialise| serves a specific detail that could have been (and
+used to be) handled by having |lookup| return |type_p| rather than
+|const_type_p|. This is the possibility that a caller will afterwards need to
+specialise the type found for an identifier from its uses, if the type
+initially had an unknown component as in `\.{[*]}'. Rather than modifying the
+look-up type, one achieves this by calling |specialise| with the |depth| and
+|offset| returned by |lookup|. This method must skip without counting the same
+layers that |lookup| skipped.
+
+@< Function def... @>=
+
 void layer::specialise (size_t depth, size_t offset,const type_expr& t)
 { auto range=lexical_context.cbegin();
   while (depth-->0)
-    ++range;
+    do ++range;
+    while ((*range)->variable.empty()); // advance layer, skipping empty ones
   (**range)[offset].second.specialise(t);
 }
 
@@ -867,11 +874,11 @@ lexical context. This identification can result in two outcomes: it may be
 bound to a local or to a global name, which two cases are treated in fairly
 different way. In particular after type analysis the two cases are converted
 into different kinds of |expression|. The most fundamental difference is that
-for global identifiers a value is already known at the time the identifier
-expression is type-checked, and the type of this value can be used; for local
-identifiers just a type is associated to the identifier during type analysis,
-and indeed during different evaluations the same local identifier may find
-itself bound to different values.
+for global identifiers, the value (object) it refers to is already known at
+the time the identifier expression is type-checked; for local identifiers the
+|lookup| just find a position in some layer, but that will correspond to
+different objects at different executions of the expression. However in either
+case the type of the identifier is known at analysis time, and will not change.
 
 Global identifiers values will be stored in a global identifier table holding
 values and their types. The values of local identifiers will be stored at
@@ -966,18 +973,18 @@ closures are formed as will be described later. The structure pointed to by
 list is a vector of values associated with identifiers introduced in the same
 lexical |layer|. Although each value is associated with an identifier, they
 are stored anonymously; the proper location of an applied identifier is
-determined by its position in the list of lexical frames at the time of type
+determined by its position in the list of lexical layers at the time of type
 checking, and recorded as a pair of a relative depth (of the defining
 occurrence with respect to the applied occurrence) and an offset within the
 layer.
 
 Thus using applied identifiers requires no looking up at run time, although
-traversing of the linked list up to the specified depth is necessary. One
-might imagine keeping a stack of |layer| pointers cached to speed up the
-evaluation of applied identifiers of large depth, but such a cache would have
-to be renewed at each context switch, such as those that occur when calling or
-returning from a user-defined function; it is doubtful whether this would
-actually result in more rapid evaluation.
+traversing of the linked list of corresponding |frame|s, up to the specified
+depth, is necessary. One might imagine keeping a stack of |layer| pointers
+cached to speed up the evaluation of applied identifiers of large depth, but
+such a cache would have to be renewed at each context switch, such as those
+that occur when calling or returning from a user-defined function; it is
+doubtful whether this would actually result in more rapid evaluation.
 
 The pointer holding the current execution context is declared a as static
 variable of a local class |frame| to be detailed in section @#frame class@>.
@@ -1335,7 +1342,7 @@ struct variadic_builtin_call : public overloaded_builtin_call
 { typedef overloaded_builtin_call base;
 @)
   variadic_builtin_call(const shared_builtin& fun,expression_ptr&& a,
-    source_location loc)
+    const source_location& loc)
   : base(fun,std::move(a),loc)@+ {}
   virtual void evaluate(level l) const;
 };
@@ -2034,16 +2041,29 @@ body to the required type in the extended context. Note that the constructed
 |layer| is a local variable whose constructor pushes it onto the
 |layer::lexical_context| list, and whose destructor will pop it off.
 
+If there are no identifiers at all, we should avoid that the execution of the
+|let_expression| push an empty frame on the evaluation context, as this would
+wreak havoc due to the fact that we made applied identifiers not count empty
+layers. Rather than have the |let_expression::evaluate| method handle
+this dynamically, we avoid generating such a |let_expression| altogether, and
+instead generate a |seq_expression| whose |evaluate| method does exactly what
+is needed in this case.
+
 @< Cases for type-checking and converting... @>=
 case let_expr:
-{ const let& lexp=e.let_variant;
-  id_pat& pat=lexp->pattern;
+{ const auto& lexp=*e.let_variant;
+  const id_pat& pat=lexp.pattern;
   type_expr decl_type=pattern_type(pat);
-  expression_ptr arg = convert_expr(lexp->val,decl_type);
-@/layer new_layer(count_identifiers(pat));
+  expression_ptr arg = convert_expr(lexp.val,decl_type);
+@/auto n=count_identifiers(pat);
+  if (n==0)
+  // then avoid frame without identifiers, so compile as sequence expression
+    return expression_ptr(new @|
+      seq_expression(std::move(arg),convert_expr(lexp.body,type)));
+  layer new_layer(n);
   thread_bindings(pat,decl_type,new_layer,false);
   return expression_ptr(new @|
-    let_expression(pat,std::move(arg),convert_expr(lexp->body,type)));
+    let_expression(pat,std::move(arg),convert_expr(lexp.body,type)));
 }
 
 @ Here is a class whose main purpose, like that of |layer| before, is to have
@@ -2071,7 +2091,9 @@ public:
 @)
   frame (const id_pat& pattern)
   : pattern(pattern)
-  {@; current = std::make_shared<evaluation_context>(std::move(current)); }
+  { assert(count_identifiers(pattern)>0); // avoid frames without identifiers
+    current = std::make_shared<evaluation_context>(std::move(current));
+  }
   ~frame() @+{@; current = current->tail(); } // don't use |std::move| here!
 @)
   void bind (const shared_value& val)
@@ -2380,20 +2402,28 @@ class lambda_frame
 {
   const id_pat& pattern;
   const shared_context saved;
+  const bool empty;
 public:
   lambda_frame (const id_pat& pattern, const shared_context& outer)
-  : pattern(pattern), saved(std::move(frame::current))
+  : pattern(pattern)
+  , saved(std::move(frame::current))
+  , empty(count_identifiers(pattern)==0)
   { assert(&outer!=&frame::current); // for excluded case use |frame| instead
-    try
-    {@; frame::current = std::make_shared<evaluation_context>(outer); }
+    try {@;
+      frame::current =
+        empty ? outer : std::make_shared<evaluation_context>(outer);
+    }
     catch(...)
     {@; frame::current = std::move(saved); throw; }
     // restore as destructor would do
   }
   ~lambda_frame() @+{@; frame::current = std::move(saved); }
 @)
+  bool is_empty() const @+{@; return empty; }
   void bind (const shared_value& val)
-    { if (interrupt_flag!=0)
+    { assert(not empty);
+      // one should not call |bind| for an |empty| lambda frame
+      if (interrupt_flag!=0)
         throw user_interrupt();
       frame::current->reserve(count_identifiers(pattern));
       thread_components(pattern,val,frame::current->back_inserter());
@@ -2500,14 +2530,19 @@ at its definition.
 @: lambda evaluation @>
 
 @< Call user-defined function |fun| with argument on |execution_stack| @>=
-{ const closure_value* f=force<closure_value>(fun.get());
+{ const closure_value& f=*force<closure_value>(fun.get());
 @)
-  lambda_frame fr(f->p->param,f->context);
+  lambda_frame fr(f.p->param,f.context);
     // save context, create new one for |f|
-  fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
-  try {@; f->body.evaluate(l); }
-    // call, passing evaluation level |l| to function body
-  @< Catch block for providing a trace-back of local variables @>
+  if (fr.is_empty()) // we must test for functions without named arguments
+  {@; execution_stack.pop_back(); f.body.evaluate(l); }
+  // evaluate dropping argument, avoid |bind|
+  else
+  { fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
+    try {@; f.body.evaluate(l); }
+      // call, passing evaluation level |l| to function body
+    @< Catch block for providing a trace-back of local variables @>
+  }
 } // restore context upon destruction of |fr|
 
 @ Evaluation of an overloaded function call bound to a closure consists of a
@@ -2535,12 +2570,17 @@ void overloaded_closure_call::evaluate(level l) const
   }
   try
   { lambda_frame fr(fun->p->param,fun->context);
+      // save context, create new one for |fun|
 @)
-    // now save context, create new one for |fun|
-    fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
-    try {@; fun->body.evaluate(l); }
-    // call, passing evaluation level |l| to function body
-    @< Catch block for providing a trace-back of local variables @>
+    if (fr.is_empty()) // we must test for functions without named arguments
+      {@; execution_stack.pop_back(); fun->body.evaluate(l); }
+      //  avoid |bind|, evaluate
+    else
+    { fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
+      try {@; fun->body.evaluate(l); }
+      // call, passing evaluation level |l| to function body
+      @< Catch block for providing a trace-back of local variables @>
+    }
   } // restore context upon destruction of |fr|
   @< Catch-block for exceptions thrown within function calls @>
 }
@@ -3667,8 +3707,6 @@ void while_expression<flags>::evaluate(level l) const
     { while (condition->eval(),get<bool_value>()->val==((flags&0x1)==0))
       { if (interrupt_flag!=0)
           throw user_interrupt();
-        id_pat empty; frame fr(empty);
-          // we must match lexical |layer| that was used
         body->void_eval();
       }
     }
@@ -3681,8 +3719,6 @@ void while_expression<flags>::evaluate(level l) const
     { while (condition->eval(),get<bool_value>()->val==((flags&0x1)==0))
       { if (interrupt_flag!=0)
            throw user_interrupt();
-        id_pat empty; frame fr(empty);
-          // we must match lexical |layer| that was used
         body->eval();
         dst.push_back(pop_value());
       }
@@ -3865,6 +3901,14 @@ set to the required type (if none of these apply a |type_error| is thrown).
 After converting the loop, we must not forget to maybe apply voiding or a
 coercion.
 
+There is a slight twist for the rare occasion that a loop over components
+introduced no identifiers at all, since |for_expression::evaluate| should not
+push a forbidden empty |frame| on the evaluation context. The case is marginal
+since it just allows repeated evaluation of the loop body as many times as the
+number of components looped over, but it is no excluded syntactically (and
+would be hard to). To avoid having to worry about this at runtime, we shall
+substitute a counted loop for such loops.
+
 @< Cases for type-checking and converting... @>=
 case for_expr:
 { const for_node& f=*e.for_variant;
@@ -3884,8 +3928,13 @@ case for_expr:
     btp=type.component_type;
   else if ((conv=row_coercion(type,body_type))==nullptr)
     throw type_error(e,row_of_type.copy(),std::move(type));
+@)
   expression_ptr body(convert_expr (f.body,*btp));
-@/expression_ptr loop(make_for_loop@|
+@/expression_ptr loop;
+  if (bind.empty()) // we must avoid making a
+    @< Set |loop| to a index-less counted |for| loop controlled by the
+       size of |in_expr|, and containing |body| @>
+  else loop.reset(make_for_loop@|
     (f.flags.to_ulong(),f.id,std::move(in_expr),std::move(body),which));
 @/return type==void_type ? expression_ptr(new voiding(std::move(loop)))
   : @| conv!=nullptr ? expression_ptr(new conversion(*conv,std::move(loop)))
@@ -3893,17 +3942,18 @@ case for_expr:
 }
 
 @ This type must be indexable by integers (so it is either a row-type or
-vector, matrix or string), or it must be a loop over the coefficients of a
-polynomial. The call to |subscr_base::index_kind| will set |comp_type| to the
-component type resulting from such a subscription.
+vector, rational vector, matrix or string), or it must be a loop over the
+coefficients of a polynomial. The call to |subscr_base::index_kind| will set
+|comp_type| to the component type resulting from such a subscription.
 
 @< Set |which| according to |in_type|, and set |bind| according to the
    identifiers contained in |f.id| @>=
 { type_expr comp_type; const type_expr* tp;
   which = subscr_base::index_kind(in_type,*(tp=&int_type),comp_type);
   if (which==subscr_base::not_so)
+    // if not integer-indexable, try parameter-indexable
     which = subscr_base::index_kind(in_type,*(tp=&param_type),comp_type);
-  if (which==subscr_base::not_so)
+  if (which==subscr_base::not_so) // if its not that either, it is wrong
   { std::ostringstream o;
     o << "Cannot iterate over value of type " << in_type;
     throw expr_error(e,o.str());
@@ -4154,9 +4204,12 @@ suppress ``\&{from}~0''.
 @< Function definitions @>=
 template <unsigned flags>
 void counted_for_expression<flags>::print(std::ostream& out) const
-{ print_body(out << " for " << main_hash_table->name_of(id)
+{ if ((flags&0x4)==0)
+    print_body(out << " for " << main_hash_table->name_of(id)
                  << ": " << *count @|
                  << " from " << *bound, flags);
+  else // omit nonexistent identifier
+    print_body(out << " for : " << *count << " from " << *bound, flags);
 }
 
 @ As in |make_slice| and |make_for_loop| above, we need to convert runtime
@@ -4186,6 +4239,43 @@ expression make_counted_loop (unsigned flags, id_type id, @|
   }
 }
 
+@ Here is another way we can obtain a counted |for|-loop, from a
+loop-over-components that does not bind any identifiers at all; a case that we
+set aside as explained earlier.
+
+In order to substitute a counted loop without index for such a loop, we need
+to assemble a call to the appropriate size-computing built-in function. The
+needed |shared_builtin| values will be assembled later, and some of the actual
+built-in functions needed to be declared as global functions (and in one case
+even defined in the first place) specifically for this purpose.
+
+@< Set |loop| to a index-less counted |for| loop... @>=
+{ expression_ptr call; const source_location &loc = f.in_part.loc;
+  switch(which)
+  {
+  case subscr_base::row_entry: call.reset(new @|
+      overloaded_builtin_call(sizeof_row_builtin,std::move(in_expr),loc));
+  break; case subscr_base::vector_entry: call.reset(new @|
+      overloaded_builtin_call(sizeof_vector_builtin,std::move(in_expr),loc));
+  break; case subscr_base::ratvec_entry: call.reset(new @|
+      overloaded_builtin_call(sizeof_ratvec_builtin,std::move(in_expr),loc));
+  break; case subscr_base::string_char: call.reset(new @|
+      overloaded_builtin_call(sizeof_string_builtin,std::move(in_expr),loc));
+  break; case subscr_base::matrix_column: call.reset(new @|
+      overloaded_builtin_call(matrix_columns_builtin,std::move(in_expr),loc));
+  break; case subscr_base::mod_poly_term: call.reset(new @|
+      overloaded_builtin_call(sizeof_parampol_builtin,std::move(in_expr),loc));
+  break; default: assert(false);
+  }
+  static const shared_value zero = std::make_shared<int_value>(0);
+  expression_ptr bound(new denotation(zero)); // make new denotation for loop
+  if (f.flags.test(1)) // whether reversed assembly of return value
+    loop.reset(new @| counted_for_expression<6>
+      (-1,std::move(call),std::move(bound),std::move(body)));
+  else
+    loop.reset(new @| counted_for_expression<4>
+      (-1,std::move(call),std::move(bound),std::move(body)));
+}
 
 @ Type-checking counted |for| loops is rather like that of other |for| loops,
 but we must extend the context with the loop variable while processing the loop
@@ -4248,32 +4338,30 @@ void counted_for_expression<flags>::evaluate(level l) const
     c=0; // no negative size result
 
   if ((flags&0x4)==0) @< Perform counted loop with loop index @>
-  else // now there is no loop counter
-  { id_pat empty; frame fr(empty); // must match lexical |layer| that was used
-    if (l==no_value)
-    { try {@; while (c-->0)
-        body->void_eval();
-      }
-      catch (const loop_break&) @+{}
+  else if (l==no_value) // counted loop without index and no value
+  { try {@; while (c-->0)
+      body->void_eval();
     }
-    else
-    { own_row result = std::make_shared<row_value>(c);
-      auto dst = (flags&0x2)==0 ? result->val.begin() : result->val.end();
-      try @/{@;
-        while (c-->0)
-        {@; body->eval();
-          *((flags&0x2)==0? dst++:--dst) = pop_value();
-        }
-      }
-      catch (const loop_break&)
-      { if ((flags&0x2)!=0)
-          std::move(dst,result->val.end(),result->val.begin());
-          // after break, left-align |result|
-        result->val.resize(result->val.end()-dst);
-      }
-      push_value(std::move(result));
-    }
+    catch (const loop_break&) @+{}
   }
+  else // counted loop without index producing a value
+  { own_row result = std::make_shared<row_value>(c);
+    auto dst = (flags&0x2)==0 ? result->val.begin() : result->val.end();
+    try @/{@;
+      while (c-->0)
+      {@; body->eval();
+        *((flags&0x2)==0? dst++:--dst) = pop_value();
+      }
+    }
+    catch (const loop_break&)
+    { if ((flags&0x2)!=0)
+        std::move(dst,result->val.end(),result->val.begin());
+        // after break, left-align |result|
+      result->val.resize(result->val.end()-dst);
+    }
+    push_value(std::move(result));
+  }
+
 }
 
 @ If a loop index is to be available in the loop, it will be computed each
@@ -5224,6 +5312,17 @@ current \.{axis.w} module.
 @< Static variable definitions that refer to local functions @>=
 static shared_builtin sizeof_row_builtin =
     std::make_shared<const builtin_value>(sizeof_wrapper,"#@@[T]");
+static shared_builtin sizeof_vector_builtin =
+    std::make_shared<const builtin_value>(sizeof_vector_wrapper,"#@@vec");
+static shared_builtin sizeof_ratvec_builtin =
+    std::make_shared<const builtin_value>(sizeof_ratvec_wrapper,"#@@ratvec");
+static shared_builtin sizeof_string_builtin =
+    std::make_shared<const builtin_value>(sizeof_string_wrapper,"#@@string");
+static shared_builtin matrix_columns_builtin =
+    std::make_shared<const builtin_value>(matrix_ncols_wrapper,"ncols@@mat");
+static shared_builtin sizeof_parampol_builtin =
+    std::make_shared<const builtin_value>(virtual_module_size_wrapper,
+    "#@@ParamPol");
 static shared_builtin print_builtin =
   std::make_shared<const builtin_value>(print_wrapper,"print@@T");
 static shared_builtin to_string_builtin =

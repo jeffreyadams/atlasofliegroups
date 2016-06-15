@@ -2176,12 +2176,25 @@ void ascii_char_wrapper(expression_base::level l)
 }
 
 
-@*1 Size-of and other generic operators.
+@*1 Special instances of size-of and other generic operators.
 %
-For the size-of operator we provide several specific bindings: for strings,
-vectors and matrices.
+While often used as generic functions, we provide several specific bindings of
+the `\#' operator: for strings, rational vectors, vectors, matrices and
+virtual modules. For the benefit of loops over these values, we define these
+as global functions (the last one actually defined in the \.{atlas-types}
+module); in fact for matrices it is a variant counting the columns that is
+needed there.
 
-@< Local function definitions @>=
+@< Declarations of exported functions @>=
+void sizeof_vector_wrapper(expression_base::level l);
+void sizeof_ratvec_wrapper(expression_base::level l);
+void sizeof_string_wrapper(expression_base::level l);
+void matrix_ncols_wrapper(expression_base::level l);
+void virtual_module_size_wrapper(expression_base::level l);
+
+@ The definitions are straightforward.
+
+@< Global function definitions @>=
 void sizeof_string_wrapper(expression_base::level l)
 { size_t s=get<string_value>()->val.size();
   if (l!=expression_base::no_value)
@@ -2193,8 +2206,26 @@ void sizeof_vector_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>(s));
 }
-
 @)
+void sizeof_ratvec_wrapper(expression_base::level l)
+{ size_t s=get<rational_vector_value>()->val.size();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(s));
+}
+@)
+void matrix_ncols_wrapper(expression_base::level l)
+{ shared_matrix m=get<matrix_value>();
+  if (l==expression_base::no_value)
+    return;
+  push_value(std::make_shared<int_value>(m->val.numColumns()));
+}
+
+@ Giving both matrix bounds is what is bound in the overload table to `\#' for
+matrix arguments. The decision to do so is somewhat dubious (it makes matrices
+require somewhat different user code than other looped-over types), but in any
+case this should be a local function.
+
+@< Local function definitions @>=
 void matrix_bounds_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
@@ -2947,6 +2978,7 @@ install_function(string_to_ascii_wrapper,"ascii","(string->int)");
 install_function(ascii_char_wrapper,"ascii","(int->string)");
 install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
+install_function(sizeof_ratvec_wrapper,"#","(ratvec->int)");
 install_function(matrix_bounds_wrapper,"#","(mat->int,int)");
 install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
 install_function(vector_prefix_wrapper,"#","(int,vec->vec)");

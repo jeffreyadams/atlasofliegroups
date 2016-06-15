@@ -4412,12 +4412,6 @@ void real_form_of_virtual_module_wrapper(expression_base::level l)
     push_value(m->rf);
 }
 @)
-void virtual_module_size_wrapper(expression_base::level l)
-{ shared_virtual_module m = get<virtual_module_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(m->val.size()));
-}
-
 void virtual_module_unary_eq_wrapper(expression_base::level l)
 { shared_virtual_module m = get<virtual_module_value>();
   if (l!=expression_base::no_value)
@@ -4456,6 +4450,16 @@ void virtual_module_neq_wrapper(expression_base::level l)
       return; }
   push_value(whether
     (mit!=m->val.end() or nit!=n->val.end()));
+}
+
+@ This function must be global, it is declared in the header
+file \.{global.h}.
+
+@< Function definitions @>=
+void virtual_module_size_wrapper(expression_base::level l)
+{ shared_virtual_module m = get<virtual_module_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(m->val.size()));
 }
 
 
