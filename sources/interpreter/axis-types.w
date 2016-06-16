@@ -2404,7 +2404,9 @@ would allow smuggling it out of the loop), so not catching a thrown
 
 @< Type definitions @>=
 struct loop_break : private logic_error
-{ loop_break() : logic_error("Uncaught break from loop") @+{}
+{ unsigned depth;
+  loop_break(int n)
+  : logic_error("Uncaught break from loop"), depth(n) @+{}
 #ifdef incompletecpp11
   ~loop_break () throw() @+{}
 #endif

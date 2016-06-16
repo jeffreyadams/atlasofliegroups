@@ -501,10 +501,11 @@ applied_identifier,
 last_value_computed,break_expr,
 die_expr, @[@]
 
-@ For identifiers we just store their code; for |last_value_computed| nothing
-at all.
+@ For |applied_identifier|s we just store their code, for |break_expr| their
+depth; for |last_value_computed| and |die_expr| nothing at all.
 @< Variants of ... @>=
 id_type identifier_variant;
+unsigned break_variant;
 
 @ We need new tags here to define new constructors, which for the rest are
 straightforward.
@@ -512,14 +513,15 @@ straightforward.
 @< Methods of |expr| @>=
   struct identifier_tag @+{}; @+
   struct dollar_tag @+{};
-  struct break_tag @+{};
+  struct break_tag @+{@; unsigned depth; };
   struct die_tag @+{};
+@)
   expr(id_type id, const YYLTYPE& loc, identifier_tag)
 @/: kind(applied_identifier), identifier_variant(id), loc(loc) @+{}
   expr (const YYLTYPE& loc, dollar_tag)
   : kind(last_value_computed), loc(loc) @+{}
-  expr (const YYLTYPE& loc, break_tag)
-  : kind(break_expr), loc(loc) @+{}
+  expr (const YYLTYPE& loc, break_tag t)
+  : kind(break_expr), break_variant(t.depth), loc(loc) @+{}
   expr (const YYLTYPE& loc, die_tag)
   : kind(die_expr), loc(loc) @+{}
 
@@ -528,7 +530,7 @@ straightforward.
 @< Declarations of functions for the parser @>=
 expr_p make_applied_identifier (id_type id, const YYLTYPE& loc);
 expr_p make_dollar(const YYLTYPE& loc);
-expr_p make_break(const YYLTYPE& loc);
+expr_p make_break(unsigned n,const YYLTYPE& loc);
 expr_p make_die(const YYLTYPE& loc);
 
 @~In spite of the absence of dedicated constructors, these function have
@@ -540,8 +542,8 @@ expr_p make_applied_identifier (id_type id, const YYLTYPE& loc)
 
 expr_p make_dollar (const YYLTYPE& loc)
 @+{@; return new expr(loc,expr::dollar_tag()); }
-expr_p make_break (const YYLTYPE& loc)
-@+{@; return new expr(loc,expr::break_tag()); }
+expr_p make_break (unsigned n,const YYLTYPE& loc)
+{@; return new expr(loc,@[expr::break_tag{n}@]); }
 expr_p make_die (const YYLTYPE& loc)
 @+{@; return new expr(loc,expr::die_tag()); }
 
@@ -553,22 +555,29 @@ case last_value_computed:
 case break_expr:
 case die_expr: break;
 
-@ Having a POD type variant, copying an applied identifier can be done by
-assignment.
+@ Having a POD type variant, copying an applied identifier or break can be
+done by assignment; the other two cases have no data at all.
 
 @< Cases for copying... @>=
 case applied_identifier: identifier_variant=other.identifier_variant; break;
-case last_value_computed: case break_expr: case die_expr: break;
+case break_expr: break_variant=other.break_variant;
+case last_value_computed: case die_expr: break;
 
 @~To print an applied identifier, we look it up in the main hash table. We
-print \.\$ as the user wrote it.
+also print the other cases as the user wrote them.
 
 @< Cases for printing... @>=
 case applied_identifier:
   out << main_hash_table->name_of(e.identifier_variant);
 break;
 case last_value_computed: out << '$'; @q$@> break;
-case break_expr: out << " break "; break;
+case break_expr:
+{@;
+  out << " break ";
+  if (e.break_variant>0)
+    out << e.break_variant << ' ';
+}
+  break;
 case die_expr: out << " die "; break;
 
 @*1 Expression lists.

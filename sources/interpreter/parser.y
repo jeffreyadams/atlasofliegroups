@@ -310,7 +310,8 @@ comprim: subscription | slice
 	| operator '@' type { $$=make_op_cast($1.id,$3,@$); }
 	| IDENT '@' type    { $$=make_op_cast($1,$3,@$); }
 	| DIE { $$= make_die(@$); }
-	| BREAK { $$= make_break(@$); }
+	| BREAK { $$= make_break(0,@$); }
+	| BREAK INT { $$= make_break($2,@$); }
 ;
 
 assignable_subsn:

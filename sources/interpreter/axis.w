@@ -178,7 +178,9 @@ ignore certain scenarios in which the type derived for a subexpression is
 @< Declarations of exported functions @>=
 expression_ptr convert_expr(const expr& e, type_expr& type);
 
-@ In the function |convert_expr| we shall need a type for storing bindings
+@*1 Layers of lexical context.
+%
+In the function |convert_expr| we shall need a type for storing bindings
 between identifiers and types, and this will be the |layer| class. It stores a
 vector of type |layer::vec| of individual bindings, while it automatically
 pushes (a pointer to) itself on a stack |layer::lexical_context| of such
@@ -196,12 +198,13 @@ an exception-safe manner is also cute; however explicitly clearing the list in
 |reset_evaluator| in case of an exception, as used to be done, would also
 work.
 
-We also use this structure to maintain an additional attribute |in_loop|,
+We also use this structure to maintain an additional attribute |may_break|,
 which could have been left to the parser at the price of increasing the size
 of the grammar. It tells whether we are inside a loop statement, where the
-user may validly use a |break| statement. Whenever this attribute changes
-we push a new layer, which in most cases was needed anyway, but in some cases
-(|while| loops) serves specifically to mark this change.
+user may validly use a |break| statement. This attribute may change only we
+push a new layer, and is reset when the layer is removed. In most cases such a
+layer was needed anyway, but in some cases (|while| loops) a layer is added
+specifically to mark this change.
 
 @< Type def... @>=
 class layer
@@ -213,15 +216,22 @@ public:
 private:
   vec variable;
   BitMap constness;
-  const bool in_loop;
+  unsigned loop_depth;
 public:
   layer(const layer&) = @[delete@]; // no ordinary copy constructor
   layer& operator= (const layer&) = @[delete@]; // nor assignment operator
-  layer(size_t n,bool in_loop=
-    // default to inherit from previous layer, initially |false|
-    not lexical_context.empty() and lexical_context.front()->in_loop)
-  : variable(), constness(n), in_loop(in_loop)
+  layer(size_t n)
+  : variable(), constness(n)
+  , loop_depth(lexical_context.empty() ? 0 : lexical_context.front()->loop_depth)
   {@; variable.reserve(n); lexical_context.push_front(this); }
+  layer(size_t n,bool on)
+  : variable(), constness(n)
+  , loop_depth(on ? lexical_context.empty()
+                    ? 1 : lexical_context.front()->loop_depth+1
+              : 0)
+  {@; variable.reserve(n); lexical_context.push_front(this); }
+@q layer (size_t n,bool on) : layer(n) // use delegating constructor @>
+@q @@+{@@; if (on) ++loop_depth; else loop_depth=0; } @>
   ~layer () @+{@; lexical_context.pop_front(); }
 @)
   void add(id_type id,type_expr&& t, bool is_const);
@@ -238,8 +248,9 @@ public:
   vec::const_iterator cend() const @+{@; return variable.end(); }
   bool is_const (vec::const_iterator it) const
   @+{@; return constness.isMember(it-cbegin()); }
-  static bool may_break()
-  {@; return not lexical_context.empty() and lexical_context.front()->in_loop; }
+  static bool may_break(unsigned depth)
+  {@; return not lexical_context.empty()
+      and lexical_context.front()->loop_depth > depth; }
 };
 
 
@@ -480,8 +491,7 @@ pass type checking successfully. It does so trivially.
 
 @< Cases for type-checking and converting... @>=
 case die_expr:
-{@; return expression_ptr(new shell());
-}
+{@; return expression_ptr(new shell); }
 
 @*1 The break expression.
 %
@@ -489,9 +499,14 @@ The expression \&{break} allows a premature exit from any kind of loop.
 
 @< Type definitions @>=
 struct breaker: public expression_base
-{
+{ unsigned depth;
+  breaker(unsigned depth) : depth(depth) @+{}
 virtual void evaluate (level l) const;
-virtual void print(std::ostream& out) const @+{@; out << " break "; }
+virtual void print(std::ostream& out) const
+{@; out << " break ";
+   if (depth>0)
+     out << depth << ' ';
+}
 };
 
 @ The break is realised by the \Cpp\ exception mechanism. We shall make sure
@@ -499,15 +514,15 @@ it can only by used in places where it will be caught.
 
 @< Function definitions @>=
 void breaker::evaluate (level l) const
-{@; throw loop_break(); }
+{@; throw loop_break(depth); }
 
 
 @ The only check we do for \&{break} is that it occurs in a loop.
 
 @< Cases for type-checking and converting... @>=
 case break_expr:
-{ if (layer::may_break())
-    return expression_ptr(new breaker);
+{ if (layer::may_break(e.break_variant))
+    return expression_ptr(new breaker(e.break_variant));
   throw expr_error(e,"not in the reach of a loop");
 }
 
@@ -702,7 +717,7 @@ void list_expression::evaluate(level l) const
   }
 }
 
-@*1 Balancing.
+@*1 Type balancing.
 %
 Type-checking of list displays involves a difficulty that also exists for
 conditional expressions and possibly other cases: all component expressions
@@ -3739,7 +3754,10 @@ void while_expression<flags>::evaluate(level l) const
         body->void_eval();
       }
     }
-    catch (const loop_break&) @+{}
+    catch (loop_break& err) @+
+    {@; if (err.depth-- > 0)
+          throw;
+    }
   }
   else
   { own_row result = std::make_shared<row_value>(0);
@@ -3752,7 +3770,10 @@ void while_expression<flags>::evaluate(level l) const
         dst.push_back(pop_value());
       }
     }
-    catch (const loop_break&) @+{}
+    catch (loop_break& err) @+
+    {@; if (err.depth-- > 0)
+          throw;
+    }
     if ((flags&0x2)!=0)
       std::reverse(dst.begin(),dst.end());
     push_value(std::move(result));
@@ -4041,11 +4062,13 @@ void for_expression<flags,kind>::evaluate(level l) const
          each setting |result| @>
     }
   }
-  catch (const loop_break&)
-  { if (l!=no_value)
+  catch (loop_break& err)
+  { if (err.depth-- > 0)
+      throw;
+    if (l!=no_value)
     { if ((flags&0x2)!=0)
         dst=std::move(dst,result->val.end(),result->val.begin());
-        // after break, left-align |result|
+          // after break, left-align |result|
       result->val.resize(dst-result->val.begin());
     }
   }
@@ -4371,7 +4394,10 @@ void counted_for_expression<flags>::evaluate(level l) const
   { try {@; while (c-->0)
       body->void_eval();
     }
-    catch (const loop_break&) @+{}
+    catch (loop_break& err) @+
+    {@; if (err.depth-- > 0)
+          throw;
+    }
   }
   else // counted loop without index producing a value
   { own_row result = std::make_shared<row_value>(c);
@@ -4382,8 +4408,10 @@ void counted_for_expression<flags>::evaluate(level l) const
         *((flags&0x2)==0? dst++:--dst) = pop_value();
       }
     }
-    catch (const loop_break&)
-    { if ((flags&0x2)!=0)
+    catch (loop_break& err)
+    { if (err.depth-- > 0)
+        throw;
+      if ((flags&0x2)!=0)
         dst=std::move(dst,result->val.end(),result->val.begin());
         // after break, left-align |result|
       result->val.resize(dst-result->val.begin());
@@ -4415,7 +4443,10 @@ is identical to that above.
         body->void_eval();
       }
     }
-    catch (const loop_break&) @+{}
+    catch (loop_break& err) @+
+    {@; if (err.depth-- > 0)
+          throw;
+    }
   }
   else
   { own_row result = std::make_shared<row_value>(c);
@@ -4428,8 +4459,10 @@ is identical to that above.
         *((flags&0x2)==0? dst++:--dst) = pop_value();
       }
     }
-    catch (const loop_break&)
-    { if ((flags&0x2)!=0)
+    catch (loop_break& err)
+    { if (err.depth-- > 0)
+        throw;
+      if ((flags&0x2)!=0)
         dst=std::move(dst,result->val.end(),result->val.begin());
         // after break, left-align |result|
       result->val.resize(dst-result->val.begin());
