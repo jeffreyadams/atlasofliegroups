@@ -3696,9 +3696,9 @@ case while_expr:
 { while_node& w=*e.while_variant;
   if (was_negated(w.condition))
     w.flags.set(0); // this makes an ``until-loop''
+  layer bind(0,true); // no local variables for loop, but allow |break|
   expression_ptr c = convert_expr(w.condition,as_lvalue(bool_type.copy()));
 @)
-  layer bind(0,true); // no local variables for loop, but allow |break|
   if (type==void_type)
   { expression_ptr result(make_while_loop @| (w.flags.to_ulong(),
        std::move(c),convert_expr(w.body, as_lvalue(void_type.copy()))));

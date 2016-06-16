@@ -2046,12 +2046,15 @@ case for_expr:
 }
 break;
 case cfor_expr:
-{ const c_loop& c=e.cfor_variant;
-@/out << " for " << main_hash_table->name_of(c->id) << ": " << c->count;
-  if (not is_empty(c->bound))
-    out << " from " << c->bound;
-  out << (c->flags[0] ? " ~do " : " do ") << c->body
-      << (c->flags[1] ? " ~od " : " od ");
+{ const cfor_node& c=*e.cfor_variant;
+@/out << " for ";
+  if (c.id!=id_type(-1))
+    out << main_hash_table->name_of(c.id);
+  out << ": " << c.count;
+  if (not is_empty(c.bound))
+    out << " from " << c.bound;
+  out << (c.flags[0] ? " ~do " : " do ") << c.body
+      << (c.flags[1] ? " ~od " : " od ");
 }
 break;
 
