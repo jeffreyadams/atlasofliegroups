@@ -60,7 +60,8 @@
 
 %token QUIT SET LET IN BEGIN END IF THEN ELSE ELIF FI AND OR NOT
 %token WHILE DO OD NEXT FOR FROM DOWNTO CASE ESAC REC_FUN
-%token TRUE FALSE DIE WHATTYPE SHOWALL FORGET
+%token TRUE FALSE DIE BREAK WHATTYPE SHOWALL FORGET
+
 %token <oper> OPERATOR OPERATOR_BECOMES '=' '*'
 %token <val> INT
 %token <str> STRING
@@ -289,8 +290,6 @@ comprim: subscription | slice
 	| FOR ':' expr DO expr tilde_opt OD
 	  { $$=make_cfor_node(-1,$3,wrap_tuple_display(nullptr,@$)
                              ,$5,2*$6+4,@$); }
-	| FOR ':' expr FROM expr DO expr tilde_opt OD
-	  { $$=make_cfor_node(-1,$3,$5,$7,2*$8+4,@$); }
 	| FOR IDENT ':' expr DOWNTO expr DO expr OD
 	  { $$=make_cfor_node($2,$4,$6,$8,1,@$); }
 	| '(' expr ')'	       { $$=$2; }
@@ -311,6 +310,8 @@ comprim: subscription | slice
 	| operator '@' type { $$=make_op_cast($1.id,$3,@$); }
 	| IDENT '@' type    { $$=make_op_cast($1,$3,@$); }
 	| DIE { $$= make_die(@$); }
+	| BREAK { $$= make_break(0,@$); }
+	| BREAK INT { $$= make_break($2,@$); }
 ;
 
 assignable_subsn:

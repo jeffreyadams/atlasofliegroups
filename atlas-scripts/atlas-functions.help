@@ -58,6 +58,7 @@ operators =, != : (mat,mat->bool): matrix equality and inequality
 
 operator # : (string->int) : length of string
 operator # : (vec->int) : number of components of vector
+operator # : (ratvec->int) : number of components of rational vector
 operator # : (mat->int,int) : dimensions (rows*columns) of a matrix
 operator # : ([T]->int) : number of components of row (T is any type)
 
