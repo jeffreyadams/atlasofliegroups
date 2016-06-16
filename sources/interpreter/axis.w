@@ -4233,35 +4233,45 @@ between them.
 
 @*1 Counted loops.
 %
-Next we consider counted |for| loops.
+Next we consider counted |for| loops. Like with other loops there are quite a
+few variations. For efficiency we shall handle cases of omitted identifier and
+(lower) |bound=0| (most likely due to an omitted \&{from} clause) specially.
+We could do the all distinctions detectable at compile time through the
+template argument |flags|, which would avoid any runtime tests, but give a lot
+of cases. We choose to represent in |flags| all distinction \emph{except} that
+of an absent |bound| expression. The latter will be tested for presence when
+initialising the lower bound; this gives a minute runtime cost when the bound
+is present, but halves the number of template instances used.
 
 @< Type def... @>=
 template <unsigned flags>
 struct counted_for_expression : public loop_base
-{ expression_ptr count, bound; id_type id;
+{ id_type id; // may be $-1$, if |(flags&0x4)!=0|
+  expression_ptr count, bound;
+  // we allow |bound| (but not |count|) to hold |nullptr|
 @)
   counted_for_expression
    (id_type i, expression_ptr&& cnt, expression_ptr&& bnd,
     expression_ptr&& b)
-  : loop_base(std::move(b)), count(cnt.release()),bound(bnd.release()),id(i)
+  : loop_base(std::move(b)), id(i), count(cnt.release()),bound(bnd.release())
   @+{}
   virtual ~@[counted_for_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
 
-@ Printing a counted |for| expression is straightforward; we don't bother to
-suppress ``\&{from}~0''.
+@ Printing a counted |for| expression is straightforward, omitting optional
+parts if absent.
 
 @< Function definitions @>=
 template <unsigned flags>
 void counted_for_expression<flags>::print(std::ostream& out) const
 { if ((flags&0x4)==0)
-    print_body(out << " for " << main_hash_table->name_of(id)
-                 << ": " << *count @|
-                 << " from " << *bound, flags);
-  else // omit nonexistent identifier
-    print_body(out << " for : " << *count << " from " << *bound, flags);
+    out << " for " << main_hash_table->name_of(id) << ": " << *count;
+  else out << " for : " << *count;  // omit nonexistent identifier
+  if (bound.get()!=nullptr)
+    out << " from " << *bound;
+  print_body(out,flags);
 }
 
 @ As in |make_slice| and |make_for_loop| above, we need to convert runtime
@@ -4319,14 +4329,13 @@ even defined in the first place) specifically for this purpose.
       overloaded_builtin_call(sizeof_parampol_builtin,std::move(in_expr),loc));
   break; default: assert(false);
   }
-  static const shared_value zero = std::make_shared<int_value>(0);
-  expression_ptr bound(new denotation(zero)); // make new denotation for loop
+
   if (f.flags.test(1)) // whether reversed assembly of return value
     loop.reset(new @| counted_for_expression<6>
-      (-1,std::move(call),std::move(bound),std::move(body)));
+      (-1,std::move(call),nullptr,std::move(body)));
   else
     loop.reset(new @| counted_for_expression<4>
-      (-1,std::move(call),std::move(bound),std::move(body)));
+      (-1,std::move(call),nullptr,std::move(body)));
 }
 
 @ Type-checking counted |for| loops is rather like that of other |for| loops,
@@ -4337,10 +4346,8 @@ body.
 case cfor_expr:
 { const cfor_node& c=*e.cfor_variant;
   expression_ptr count_expr = convert_expr(c.count,as_lvalue(int_type.copy()));
-  static const shared_value zero = std::make_shared<int_value>(0);
-    // avoid repeated allocation
-  expression_ptr bound_expr = is_empty(c.bound) @|
-    ? expression_ptr(new denotation(zero))
+  expression_ptr bound_expr = is_empty(c.bound)
+    ? nullptr
     : convert_expr(c.bound,as_lvalue(int_type.copy())) ;
 @)
   type_expr body_type;
@@ -4384,8 +4391,7 @@ faster.
 @< Function definitions @>=
 template <unsigned flags>
 void counted_for_expression<flags>::evaluate(level l) const
-{ int b=(bound->eval(),get<int_value>()->val);
-  int c=(count->eval(),get<int_value>()->val);
+{ int c=(count->eval(),get<int_value>()->val);
   if (c<0)
     c=0; // no negative size result
 
@@ -4432,16 +4438,29 @@ Apart from creating a |frame| for the loop index on each iteration, the code
 is identical to that above.
 
 @< Perform counted loop with loop index @>=
-{ if ((flags&0x1)==0)
-    b+=c-1; // so |b-c| will start at original |b|, and increase when |c--|
+{ int b=(bound.get()==nullptr ? 0 : (bound->eval(),get<int_value>()->val));
   id_pat pattern(id);
   if (l==no_value)
   { try
-    { while (c-->0)
-      { frame fr(pattern);
-        fr.bind(std::make_shared<int_value>((flags&0x1)==0 ? b-c : b+c));
-        body->void_eval();
-      }
+    { c+=b; // set to upper bound, exclusive
+      if ((flags&0x1)==0) // increasing loop
+        while (b<c)
+        @/{@; frame fr(pattern);
+          fr.bind(std::make_shared<int_value>(b++));
+          body->void_eval();
+        }
+      else if (b!=0)
+        while (c-->b)
+        @/{@; frame fr(pattern);
+          fr.bind(std::make_shared<int_value>(c));
+          body->void_eval();
+        }
+      else // same with |b==0|, but this is marginally faster
+         while (c-->0)
+        @/{@; frame fr(pattern);
+          fr.bind(std::make_shared<int_value>(c));
+          body->void_eval();
+        }
     }
     catch (loop_break& err) @+
     {@; if (err.depth-- > 0)
@@ -4452,12 +4471,28 @@ is identical to that above.
   { own_row result = std::make_shared<row_value>(c);
     auto dst = (flags&0x2)==0 ? result->val.begin() : result->val.end();
     try
-    { while (c-->0)
-      { frame fr(pattern);
-        fr.bind(std::make_shared<int_value>((flags&0x1)==0 ? b-c : b+c));
-        body->eval();
-        *((flags&0x2)==0? dst++:--dst) = pop_value();
-      }
+    { c+=b; // set to upper bound, exclusive
+      if ((flags&0x1)==0) // increasing loop
+        while (b<c)
+        { frame fr(pattern);
+          fr.bind(std::make_shared<int_value>(b++));
+          body->eval();
+          *((flags&0x2)==0? dst++:--dst) = pop_value();
+        }
+      else if (b!=0)
+        while (c-->b)
+        { frame fr(pattern);
+          fr.bind(std::make_shared<int_value>(c));
+          body->eval();
+          *((flags&0x2)==0? dst++:--dst) = pop_value();
+        }
+      else // same with |b==0|, but this is marginally faster
+        while (c-->0)
+        { frame fr(pattern);
+          fr.bind(std::make_shared<int_value>(c));
+          body->eval();
+          *((flags&0x2)==0? dst++:--dst) = pop_value();
+       }
     }
     catch (loop_break& err)
     { if (err.depth-- > 0)
