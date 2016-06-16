@@ -238,7 +238,8 @@ public:
   vec::const_iterator cend() const @+{@; return variable.end(); }
   bool is_const (vec::const_iterator it) const
   @+{@; return constness.isMember(it-cbegin()); }
-  bool may_break() const @+{@; return in_loop; }
+  static bool may_break()
+  {@; return not lexical_context.empty() and lexical_context.front()->in_loop; }
 };
 
 
@@ -480,6 +481,34 @@ pass type checking successfully. It does so trivially.
 @< Cases for type-checking and converting... @>=
 case die_expr:
 {@; return expression_ptr(new shell());
+}
+
+@*1 The break expression.
+%
+The expression \&{break} allows a premature exit from any kind of loop.
+
+@< Type definitions @>=
+struct breaker: public expression_base
+{
+virtual void evaluate (level l) const;
+virtual void print(std::ostream& out) const @+{@; out << " break "; }
+};
+
+@ The break is realised by the \Cpp\ exception mechanism. We shall make sure
+it can only by used in places where it will be caught.
+
+@< Function definitions @>=
+void breaker::evaluate (level l) const
+{@; throw loop_break(); }
+
+
+@ The only check we do for \&{break} is that it occurs in a loop.
+
+@< Cases for type-checking and converting... @>=
+case break_expr:
+{ if (layer::may_break())
+    return expression_ptr(new breaker);
+  throw expr_error(e,"not in the reach of a loop");
 }
 
 @* Tuple displays.
@@ -4015,9 +4044,9 @@ void for_expression<flags,kind>::evaluate(level l) const
   catch (const loop_break&)
   { if (l!=no_value)
     { if ((flags&0x2)!=0)
-        std::move(dst,result->val.end(),result->val.begin());
+        dst=std::move(dst,result->val.end(),result->val.begin());
         // after break, left-align |result|
-      result->val.resize(result->val.end()-dst);
+      result->val.resize(dst-result->val.begin());
     }
   }
 
@@ -4355,9 +4384,9 @@ void counted_for_expression<flags>::evaluate(level l) const
     }
     catch (const loop_break&)
     { if ((flags&0x2)!=0)
-        std::move(dst,result->val.end(),result->val.begin());
+        dst=std::move(dst,result->val.end(),result->val.begin());
         // after break, left-align |result|
-      result->val.resize(result->val.end()-dst);
+      result->val.resize(dst-result->val.begin());
     }
     push_value(std::move(result));
   }
@@ -4401,9 +4430,9 @@ is identical to that above.
     }
     catch (const loop_break&)
     { if ((flags&0x2)!=0)
-        std::move(dst,result->val.end(),result->val.begin());
+        dst=std::move(dst,result->val.end(),result->val.begin());
         // after break, left-align |result|
-      result->val.resize(result->val.end()-dst);
+      result->val.resize(dst-result->val.begin());
     }
     push_value(std::move(result));
   }

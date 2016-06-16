@@ -60,7 +60,8 @@
 
 %token QUIT SET LET IN BEGIN END IF THEN ELSE ELIF FI AND OR NOT
 %token WHILE DO OD NEXT FOR FROM DOWNTO CASE ESAC REC_FUN
-%token TRUE FALSE DIE WHATTYPE SHOWALL FORGET
+%token TRUE FALSE DIE BREAK WHATTYPE SHOWALL FORGET
+
 %token <oper> OPERATOR OPERATOR_BECOMES '=' '*'
 %token <val> INT
 %token <str> STRING
@@ -309,6 +310,7 @@ comprim: subscription | slice
 	| operator '@' type { $$=make_op_cast($1.id,$3,@$); }
 	| IDENT '@' type    { $$=make_op_cast($1,$3,@$); }
 	| DIE { $$= make_die(@$); }
+	| BREAK { $$= make_break(@$); }
 ;
 
 assignable_subsn:

@@ -237,7 +237,7 @@ const char* keywords[] =
  ,"and","or","not"
  ,"while","do","od","next","for","from","downto"
  ,"case","esac", "rec_fun"
- ,"true","false", "die"
+ ,"true","false", "die", "break"
  ,"whattype","showall","forget"
  ,nullptr};
 

@@ -493,12 +493,12 @@ case string_denotation:
 For representing applied identifiers, we use the integer type |id_type|
 defined above. Their tag is |applied_identifier|. An expression that behaves
 somewhat similarly is `\.\$', which stands for the last value computed.
-Finally we have an expression \&{die} that can be used as a typeless dummy
-whose evaluation signals an error.
+Finally we have expressions |break| and \&{die} that are type-less, and whose
+evaluation breaks from the most current loop respectively aborts evaluation.
 
 @< Enumeration tags for |expr_kind| @>=
 applied_identifier,
-last_value_computed,
+last_value_computed,break_expr,
 die_expr, @[@]
 
 @ For identifiers we just store their code; for |last_value_computed| nothing
@@ -512,11 +512,14 @@ straightforward.
 @< Methods of |expr| @>=
   struct identifier_tag @+{}; @+
   struct dollar_tag @+{};
+  struct break_tag @+{};
   struct die_tag @+{};
   expr(id_type id, const YYLTYPE& loc, identifier_tag)
 @/: kind(applied_identifier), identifier_variant(id), loc(loc) @+{}
   expr (const YYLTYPE& loc, dollar_tag)
   : kind(last_value_computed), loc(loc) @+{}
+  expr (const YYLTYPE& loc, break_tag)
+  : kind(break_expr), loc(loc) @+{}
   expr (const YYLTYPE& loc, die_tag)
   : kind(die_expr), loc(loc) @+{}
 
@@ -525,6 +528,7 @@ straightforward.
 @< Declarations of functions for the parser @>=
 expr_p make_applied_identifier (id_type id, const YYLTYPE& loc);
 expr_p make_dollar(const YYLTYPE& loc);
+expr_p make_break(const YYLTYPE& loc);
 expr_p make_die(const YYLTYPE& loc);
 
 @~In spite of the absence of dedicated constructors, these function have
@@ -536,6 +540,8 @@ expr_p make_applied_identifier (id_type id, const YYLTYPE& loc)
 
 expr_p make_dollar (const YYLTYPE& loc)
 @+{@; return new expr(loc,expr::dollar_tag()); }
+expr_p make_break (const YYLTYPE& loc)
+@+{@; return new expr(loc,expr::break_tag()); }
 expr_p make_die (const YYLTYPE& loc)
 @+{@; return new expr(loc,expr::die_tag()); }
 
@@ -544,6 +550,7 @@ expr_p make_die (const YYLTYPE& loc)
 @< Cases for destroying... @>=
 case applied_identifier:
 case last_value_computed:
+case break_expr:
 case die_expr: break;
 
 @ Having a POD type variant, copying an applied identifier can be done by
@@ -551,7 +558,7 @@ assignment.
 
 @< Cases for copying... @>=
 case applied_identifier: identifier_variant=other.identifier_variant; break;
-case last_value_computed: case die_expr: break;
+case last_value_computed: case break_expr: case die_expr: break;
 
 @~To print an applied identifier, we look it up in the main hash table. We
 print \.\$ as the user wrote it.
@@ -561,6 +568,7 @@ case applied_identifier:
   out << main_hash_table->name_of(e.identifier_variant);
 break;
 case last_value_computed: out << '$'; @q$@> break;
+case break_expr: out << " break "; break;
 case die_expr: out << " die "; break;
 
 @*1 Expression lists.
@@ -948,8 +956,8 @@ expr_p make_unary_call(id_type name, expr_p a,
 @*2 Boolean negation.
 
 It used to be the case that a Boolean negation ``|not E|'' was converted inside
-the parser to the equivalent conditional expression ``|if E| \&{then} |false@;
-else true@;|~\&{fi}'', similarly to the way the Boolean operations |and| and
+the parser to the equivalent conditional expression ``|if E| \&{then}~|false|
+|else|~|true|~\&{fi}'', similarly to the way the Boolean operations |and| and
 |or| still are translated (which ensures their ``lazy'' evaluation). For |not|
 it is however more efficient to translate into the call of a simple built-in
 negation function. We therefore define an expression type for Boolean
@@ -1720,7 +1728,7 @@ struct conditional_node
   {@; branches.next.reset(new
       containers::sl_node<expr>(std::move(else_branch)));
   }
-  @< Other constructor for |conditional_node| @>
+  @< Other constructor for |conditional_node| @>@;
 };
 
 @ The tag used for these expressions is |conditional_expr|.
