@@ -1,6 +1,6 @@
 %{
   /*
-   Copyright (C) 2006-2015 Marc van Leeuwen
+   Copyright (C) 2006-2016 Marc van Leeuwen
    This file is part of the Atlas of Lie Groups and Representations (the Atlas)
 
    This program is made available under the terms stated in the GNU
@@ -60,7 +60,7 @@
 
 %token QUIT SET LET IN BEGIN END IF THEN ELSE ELIF FI AND OR NOT
 %token WHILE DO OD NEXT FOR FROM DOWNTO CASE ESAC REC_FUN
-%token TRUE FALSE DIE BREAK WHATTYPE SHOWALL FORGET
+%token TRUE FALSE DIE BREAK RETURN WHATTYPE SHOWALL FORGET
 
 %token <oper> OPERATOR OPERATOR_BECOMES '=' '*'
 %token <val> INT
@@ -173,6 +173,7 @@ expr    : LET lettail { $$=$2; }
 	  { auto l=make_lambda_node($4.patl,$4.typel,$6,@$);
             $$ = make_recfun($2,l,@$,@2);
           }
+        | RETURN expr { $$=make_return($2,@$); }
         | cast
 	| tertiary ';' expr { $$=make_sequence($1,$3,true,@$); }
         | tertiary NEXT expr { $$=make_sequence($1,$3,false,@$); }

@@ -118,6 +118,7 @@ anyway.
 
 enum expr_kind @+
  { @< Enumeration tags for |expr_kind| @>@;@; @+no_expr };
+typedef struct expr* expr_p; // raw pointer type for use on parser stack
 struct expr {
   expr_kind kind;
   union {@; @< Variants of the anonymous |union| in |expr| @>@; };
@@ -125,7 +126,6 @@ struct expr {
 @)
   @< Methods of |expr| @>@;
 };
-typedef expr* expr_p; // raw pointer type for use on parser stack
 typedef std::unique_ptr<expr> expr_ptr;
 @)
 @< Structure and typedef declarations for types built upon |expr| @>@;
@@ -488,24 +488,27 @@ case boolean_denotation:
 case string_denotation:
   out << '"' << e.str_denotation_variant << '"'; break;
 
-@*2 Applied identifiers, the last value computed, die.
+@*2 Applied identifiers, the last value computed, break, return, die.
 %
 For representing applied identifiers, we use the integer type |id_type|
 defined above. Their tag is |applied_identifier|. An expression that behaves
 somewhat similarly is `\.\$', which stands for the last value computed.
-Finally we have expressions |break| and \&{die} that are type-less, and whose
-evaluation breaks from the most current loop respectively aborts evaluation.
+Finally we have expressions |break|, |return e| and \&{die} that are
+type-less, and whose evaluation breaks from the most current loop respectively
+aborts evaluation.
 
 @< Enumeration tags for |expr_kind| @>=
 applied_identifier,
-last_value_computed,break_expr,
+last_value_computed,break_expr,return_expr,
 die_expr, @[@]
 
 @ For |applied_identifier|s we just store their code, for |break_expr| their
-depth; for |last_value_computed| and |die_expr| nothing at all.
+depth, for |return_expr| a pointer to another |expr|; for
+|last_value_computed| and |die_expr| nothing at all.
 @< Variants of ... @>=
 id_type identifier_variant;
 unsigned break_variant;
+expr_p return_variant;
 
 @ We need new tags here to define new constructors, which for the rest are
 straightforward.
@@ -514,6 +517,7 @@ straightforward.
   struct identifier_tag @+{}; @+
   struct dollar_tag @+{};
   struct break_tag @+{@; unsigned depth; };
+  struct return_tag @+{};
   struct die_tag @+{};
 @)
   expr(id_type id, const YYLTYPE& loc, identifier_tag)
@@ -522,6 +526,8 @@ straightforward.
   : kind(last_value_computed), loc(loc) @+{}
   expr (const YYLTYPE& loc, break_tag t)
   : kind(break_expr), break_variant(t.depth), loc(loc) @+{}
+  expr (expr_p exp, const YYLTYPE& loc, return_tag t)
+  : kind(return_expr), return_variant(exp), loc(loc) @+{}
   expr (const YYLTYPE& loc, die_tag)
   : kind(die_expr), loc(loc) @+{}
 
@@ -532,9 +538,9 @@ expr_p make_applied_identifier (id_type id, const YYLTYPE& loc);
 expr_p make_dollar(const YYLTYPE& loc);
 expr_p make_break(unsigned n,const YYLTYPE& loc);
 expr_p make_die(const YYLTYPE& loc);
+expr_p make_return(expr_p exp,const YYLTYPE& loc);
 
-@~In spite of the absence of dedicated constructors, these function have
-rather simple definitions.
+@~These function have rather simple definitions.
 
 @< Definitions of functions for the parser @>=
 expr_p make_applied_identifier (id_type id, const YYLTYPE& loc)
@@ -544,16 +550,20 @@ expr_p make_dollar (const YYLTYPE& loc)
 @+{@; return new expr(loc,expr::dollar_tag()); }
 expr_p make_break (unsigned n,const YYLTYPE& loc)
 {@; return new expr(loc,@[expr::break_tag{n}@]); }
+expr_p make_return (expr_p exp,const YYLTYPE& loc)
+{@; return new expr(exp,loc,expr::return_tag{}); }
 expr_p make_die (const YYLTYPE& loc)
 @+{@; return new expr(loc,expr::die_tag()); }
 
-@~Like for integer and boolean denotations, there is nothing to destroy here.
+@~Like for integer and boolean denotations, there is nothing to destroy here,
+except for a |return_expr|.
 
 @< Cases for destroying... @>=
 case applied_identifier:
 case last_value_computed:
 case break_expr:
 case die_expr: break;
+case return_expr: delete return_variant; break;
 
 @ Having a POD type variant, copying an applied identifier or break can be
 done by assignment; the other two cases have no data at all.
@@ -561,6 +571,7 @@ done by assignment; the other two cases have no data at all.
 @< Cases for copying... @>=
 case applied_identifier: identifier_variant=other.identifier_variant; break;
 case break_expr: break_variant=other.break_variant;
+case return_expr: return_variant=other.return_variant;
 case last_value_computed: case die_expr: break;
 
 @~To print an applied identifier, we look it up in the main hash table. We
@@ -577,6 +588,8 @@ case break_expr:
   if (e.break_variant>0)
     out << e.break_variant << ' ';
 }
+  break;
+case return_expr: @+{@; out << " return " << *e.return_variant; }
   break;
 case die_expr: out << " die "; break;
 

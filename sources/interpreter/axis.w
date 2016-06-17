@@ -198,13 +198,14 @@ an exception-safe manner is also cute; however explicitly clearing the list in
 |reset_evaluator| in case of an exception, as used to be done, would also
 work.
 
-We also use this structure to maintain an additional attribute |may_break|,
-which could have been left to the parser at the price of increasing the size
-of the grammar. It tells whether we are inside a loop statement, where the
-user may validly use a |break| statement. This attribute may change only we
-push a new layer, and is reset when the layer is removed. In most cases such a
-layer was needed anyway, but in some cases (|while| loops) a layer is added
-specifically to mark this change.
+We also use this structure to maintain an additional attributes telling
+whether we are inside a function and how deeply nested inside loops we are.
+This is to facilitate checking the legality of |break| and |return|
+expressions. Correct use of these could have been left to the parser at the
+price of increasing the size of the grammar. These attribute may change only
+when pushing/popping a layer. In most cases such a layer was needed anyway,
+but in some cases (|while| loops) a layer is added specifically to mark this
+change.
 
 @< Type def... @>=
 class layer
@@ -216,22 +217,15 @@ public:
 private:
   vec variable;
   BitMap constness;
-  unsigned loop_depth;
+  const unsigned loop_depth; // number of nested loops we are in
+  const type_p return_type;
+    // return type of current function, if any (non owned)
 public:
   layer(const layer&) = @[delete@]; // no ordinary copy constructor
   layer& operator= (const layer&) = @[delete@]; // nor assignment operator
-  layer(size_t n)
-  : variable(), constness(n)
-  , loop_depth(lexical_context.empty() ? 0 : lexical_context.front()->loop_depth)
-  {@; variable.reserve(n); lexical_context.push_front(this); }
-  layer(size_t n,bool on)
-  : variable(), constness(n)
-  , loop_depth(on ? lexical_context.empty()
-                    ? 1 : lexical_context.front()->loop_depth+1
-              : 0)
-  {@; variable.reserve(n); lexical_context.push_front(this); }
-@q layer (size_t n,bool on) : layer(n) // use delegating constructor @>
-@q @@+{@@; if (on) ++loop_depth; else loop_depth=0; } @>
+  layer(size_t n); // non-function non-loop layer
+  layer(size_t n,type_p return_type);
+    // function or (with |return_type==nullptr|) loop layer
   ~layer () @+{@; lexical_context.pop_front(); }
 @)
   void add(id_type id,type_expr&& t, bool is_const);
@@ -251,7 +245,36 @@ public:
   static bool may_break(unsigned depth)
   {@; return not lexical_context.empty()
       and lexical_context.front()->loop_depth > depth; }
+  static bool may_return()
+  {@; return not lexical_context.empty()
+      and lexical_context.front()->return_type!=nullptr; }
+  static type_expr& current_return_type()
+  {@; return *lexical_context.front()->return_type; }
 };
+
+@ Here are the constructors, which are used on three kinds of occasions: the
+first one for \&{let} expressions, and the second one for loops (in which case
+|return_type==nullptr|) and for user-defined functions (in which case
+|return_type!=nullptr|).
+
+@< Function def... @>=
+layer::layer(size_t n) // non-function non-loop layer
+: variable(), constness(n)
+, loop_depth(lexical_context.empty() ? 0 : lexical_context.front()->loop_depth)
+, return_type(lexical_context.empty() ? nullptr
+             : lexical_context.front()->return_type)
+{@; variable.reserve(n); lexical_context.push_front(this); }
+layer::layer(size_t n,type_p return_type) // function or loop layer
+: variable(), constness(n)
+,@/ loop_depth(return_type!=nullptr ? 0
+            : lexical_context.empty() ? 1
+            : lexical_context.front()->loop_depth+1)
+,@/ return_type(return_type!=nullptr ? return_type @|
+             : lexical_context.empty() ? nullptr
+             : lexical_context.front()->return_type)
+{@; variable.reserve(n); lexical_context.push_front(this); }
+@q layer (size_t n,type_p rt) : layer(n) // delegating constructor @>
+@q @@+{@@; if (rt==nullptr) ++loop_depth; else loop_depth=0,return_type=rt; } @>
 
 
 @ The method |add| adds a pair to the vector of bindings; the type is moved
@@ -526,6 +549,42 @@ case break_expr:
   throw expr_error(e,"not in the reach of a loop");
 }
 
+@*1 The return expression.
+%
+The expression |return exp| allows a premature exit from a user-defined
+function, returning the value of the expressions |exp|.
+
+@< Type definitions @>=
+struct returner: public expression_base
+{ expression_ptr exp;
+  returner(expression_ptr&& exp) : exp(std::move(exp)) @+{}
+virtual void evaluate (level l) const;
+virtual void print(std::ostream& out) const @+
+{@; out << " return " << *exp;}
+};
+
+@ The return is realised by the \Cpp\ exception mechanism. We shall make sure
+it can only by used in places where it will be caught. As usual the value of
+the enclosed expression is evaluated to the stack, from where in case of
+success we move it into a |function_return| object and throw that.
+
+@< Function definitions @>=
+void returner::evaluate (level l) const
+{@; exp->eval(); throw function_return(pop_value()); }
+
+@ For a \&{return} expression we check that it occurs in a function body. From
+the |layer| structure we get a (modifiable) reference
+|layer::current_return_type()| to the return type of the current function,
+which will provide the type context for the expression after~|return|.
+
+@< Cases for type-checking and converting... @>=
+case return_expr:
+{ if (layer::may_return())
+    return expression_ptr(new @|
+      returner(convert_expr(*e.return_variant,layer::current_return_type())));
+  throw expr_error(e,"not inside a function body");
+}
+
 @* Tuple displays.
 %
 Tuples are sequences of values of non-uniform type, usually short and with a
@@ -597,9 +656,8 @@ case tuple_display:
   bool tuple_expected = type.specialise(tup);
   // whether |type| is a tuple of correct size
   wtl_iterator tl_it (tuple_expected ? type.tupple : tup.tupple);
-  wel_const_iterator it(e.sublist);
-  while (not it.at_end())
-    comp.push_back(convert_expr(*it,*tl_it)), ++it,++tl_it;
+  for (wel_const_iterator it(e.sublist); not it.at_end(); ++it,++tl_it)
+    comp.push_back(convert_expr(*it,*tl_it));
   if (tuple_expected or coerce(tup,type,result))
       return result;
   throw type_error(e,std::move(tup),std::move(type));
@@ -654,6 +712,11 @@ void tuple_expression::evaluate(level l) const
           (*it)->eval();
       }
       catch (const loop_break&) // clean up execution stack locally
+      { for (; it!=component.begin(); --it)
+          execution_stack.pop_back();
+        throw; // propagate the |break|
+      }
+      catch (const function_return&) // clean up execution stack locally
       { for (; it!=component.begin(); --it)
           execution_stack.pop_back();
         throw; // propagate the |break|
@@ -2305,28 +2368,31 @@ checking), ignore the return type, and return a |voiding| of it.
 
 @< Cases for type-checking and converting... @>=
 case lambda_expr:
-{ const lambda& fun=e.lambda_variant;
-  const id_pat& pat=fun->pattern;
-  type_expr& arg_type=fun->parameter_type;
-  if (not arg_type.specialise(pattern_type(pat)))
+{ const lambda_node& fun=*e.lambda_variant;
+  const id_pat& pat=fun.pattern;
+  const type_expr& arg_type=fun.parameter_type;
+    // argument type specified in |fun|
+  if (not pattern_type(pat).specialise(arg_type))
+    // do |pat| structure and |arg_type| conflict?
     throw expr_error(e,"Function argument pattern does not match its type");
-@/layer new_layer(count_identifiers(pat),false);
-    // final |false| means ``forbid |break|''
-  thread_bindings(pat,arg_type,new_layer,false);
   if (type!=void_type)
   { if (not (type.specialise(gen_func_type)
              and type.func->arg_type.specialise(arg_type)))
     @/throw type_error(e,
                        type_expr(arg_type.copy(),unknown_type.copy()),
                        std::move(type));
-    return expression_ptr(new @|
-      lambda_expression(pat, convert_expr(fun->body,type.func->result_type)
-                       ,std::move(e.loc)));
+    type_expr& rt = type.func->result_type; // we can now safely access this
+  @/layer new_layer(count_identifiers(pat),&rt);
+    thread_bindings(pat,arg_type,new_layer,false);
+  @/return expression_ptr(new @|
+      lambda_expression(pat, convert_expr(fun.body,rt), std::move(e.loc)));
   }
   else
   { type_expr dummy; // unused result type
+  @/layer new_layer(count_identifiers(pat),&dummy);
+    thread_bindings(pat,arg_type,new_layer,false);
     expression_ptr result(new @|
-      lambda_expression(pat,convert_expr(fun->body,dummy),std::move(e.loc)));
+      lambda_expression(pat,convert_expr(fun.body,dummy),std::move(e.loc)));
     return expression_ptr(new voiding(std::move(result)));
   }
 }
@@ -2574,6 +2640,7 @@ at its definition.
 @: lambda evaluation @>
 
 @< Call user-defined function |fun| with argument on |execution_stack| @>=
+try
 { const closure_value& f=*force<closure_value>(fun.get());
 @)
   lambda_frame fr(f.p->param,f.context);
@@ -2588,6 +2655,18 @@ at its definition.
     @< Catch block for providing a trace-back of local variables @>
   }
 } // restore context upon destruction of |fr|
+@< Catch block for explicit |return| from functions @>
+
+@ When the call |f.body.evaluate(l)| ends up executing an explicit |return|
+expression, it won't have put anything on the |execution_stack|, but the value
+to return will be stored inside the error object. (This is the right thing to
+do in the unlikely case that intermediate values are removed from
+|execution_stack| during the \Cpp\ stack unwinding.) It suffices to place the
+value on the stack, which is just what |push_expanded| does.
+
+@< Catch block for explicit |return| from functions @>=
+catch (function_return& err) @+
+{@; push_expanded(l,std::move(err.val)); }
 
 @ Evaluation of an overloaded function call bound to a closure consists of a
 simplified version of the part of |call_expression::evaluate| dedicated to
@@ -2626,6 +2705,7 @@ void overloaded_closure_call::evaluate(level l) const
       @< Catch block for providing a trace-back of local variables @>
     }
   } // restore context upon destruction of |fr|
+  @< Catch block for explicit |return| from functions @>
   @< Catch-block for exceptions thrown within function calls @>
 }
 
@@ -3696,7 +3776,7 @@ case while_expr:
 { while_node& w=*e.while_variant;
   if (was_negated(w.condition))
     w.flags.set(0); // this makes an ``until-loop''
-  layer bind(0,true); // no local variables for loop, but allow |break|
+  layer bind(0,nullptr); // no local variables for loop, but allow |break|
   expression_ptr c = convert_expr(w.condition,as_lvalue(bool_type.copy()));
 @)
   if (type==void_type)
@@ -3965,7 +4045,7 @@ case for_expr:
   type_expr in_type;
   expression_ptr in_expr = convert_expr(f.in_part,in_type);  // \&{in} part
   subscr_base::sub_type which; // the kind of aggregate iterated over
-  layer bind(count_identifiers(f.id),true);
+  layer bind(count_identifiers(f.id),nullptr);
    // for identifier(s) introduced in this loop
   @< Set |which| according to |in_type|, and set |bind| according to the
      identifiers contained in |f.id| @>
@@ -4360,8 +4440,8 @@ case cfor_expr:
   else if ((conv=row_coercion(type,body_type))==nullptr)
     throw type_error(e,row_of_type.copy(),std::move(type));
 @)
-  if (c.flags[2]) // case of no loop variable
-  { layer bind(0,true);  // no local variables for loop, but allow |break|
+  if (c.flags[2]) // case of absent loop variable
+  { layer bind(0,nullptr);  // no local variables for loop, but allow |break|
     expression_ptr body(convert_expr (c.body,*btp));
   @/expression_ptr loop(make_counted_loop(c.flags.to_ulong(), @|
       c.id,std::move(count_expr),std::move(bound_expr),std::move(body)));
@@ -4369,8 +4449,8 @@ case cfor_expr:
          conv!=nullptr ? expression_ptr(new conversion(*conv,std::move(loop)))
                        : @| std::move(loop);
   }
-  else // case of a loop variable
-  { layer bind(1,true);
+  else // case of a present loop variable
+  { layer bind(1,nullptr);
     bind.add(c.id,int_type.copy(),true); // add |id| as constant
     expression_ptr body(convert_expr (c.body,*btp));
   @/expression_ptr loop(make_counted_loop(c.flags.to_ulong(), @|
@@ -4508,15 +4588,26 @@ is identical to that above.
 
 @* Casts and operator casts.
 %
-Casts are very simple to process; they do not need any |expression| type to
-represent them. So type checking is all there is to it, which is easy since a
-strong context is provided.
+Casts are very simple to process. They do not need any |expression| type to
+represent them, so type checking is all there is to it. Nonetheless there is a
+subtlety in the code below, which starts with |type.specialise(c.type)| even
+though the final |conform_types| will attempt the same specialisation. One
+consequence is that if the cast should (rather sillily) specify a less
+specific type than |type| from the context, as the second cast
+in \.{[rat]:[*]:[0]}, then the stronger context will be used in the
+conversion. More importantly though, the specialisation now takes
+place \emph{before} the conversion, which in case our cast is a function body
+means that the result type of that function gets specialised before the rest
+of the body is analysed, and any |return| expressions in the body will profit
+from the cast's strong type context.
 
 @< Cases for type-checking and converting... @>=
 case cast_expr:
-{ const cast& c=e.cast_variant;
-  expression_ptr p = convert_expr(c->exp,c->type);
-  return conform_types(c->type,type,std::move(p),e);
+{ cast_node& c=*e.cast_variant;
+  if (type.specialise(c.type)) // see if we can do without conversion
+    return convert_expr(c.exp,type); // in which case use now specialised |type|
+  expression_ptr p = convert_expr(c.exp,c.type); // otherwise use |c.type|
+  return conform_types(c.type,type,std::move(p),e);
 }
 
 @ Another kind of cast is the operator cast, which selects an operator or

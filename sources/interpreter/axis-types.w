@@ -2413,6 +2413,22 @@ struct loop_break : private logic_error
 } ;
 
 
+@ Similarly to the above, there is a |function_return| object that can be
+thrown to implement a |return| expression. Again analysis will have ensured
+that the object will always be caught, so this type as well will be derived
+from |logic_error|.
+
+@< Type definitions @>=
+struct function_return : private logic_error
+{ shared_value val;
+  function_return(shared_value&& val)
+  : logic_error("Uncaught return from function"), val(val) @+{}
+#ifdef incompletecpp11
+  ~function_return () throw() @+{}
+#endif
+} ;
+
+
 @ When a user interrupts the computation, we wish to return to the main
 interpreter loop. To that end we shall at certain points in the program check
 the status of a flag that the signal handler sets, and if it is raised call an

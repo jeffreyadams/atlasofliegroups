@@ -40,7 +40,6 @@
 
 - Do some support for object oriented programming (just named tuples might do).
 
-- Premature exits: break from loop, return from function
 - Scoping in while loops: declarations of condition remain valid in body?
   The same question arises in conditional: if the condition is the result of
   a complicated computation, could that computation define some local

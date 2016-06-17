@@ -167,7 +167,8 @@ public:
   Id_table& operator=(const Id_table&) = @[ delete @];
   Id_table() : table() @+{} // the default and only constructor
 @)
-  void add(id_type id, shared_value v, type_expr&& t, bool is_const); // insertion
+  void add(id_type id, shared_value v, type_expr&& t, bool is_const);
+   // insertion
   void add_type_def(id_type id, type_expr&& t); // insertion of type only
   bool remove(id_type id); // deletion
   shared_share address_of(id_type id); // locate
@@ -203,20 +204,19 @@ new type (destroying the previous).
 void Id_table::add(id_type id, shared_value val, type_expr&& type, bool is_const)
 { auto its = table.equal_range(id);
 
-  if (its.first==its.second) @[ // no global identifier was previously known
-#ifdef incompletecpp11
+  if (its.first==its.second) // no global identifier was previously known
   {
+#ifdef incompletecpp11
     auto it = table.insert(its.first,std::make_pair(id,id_data()));
       // create a slot
     it->second = id_data @|
           (std::make_shared<shared_value>(std::move(val))
           , std::move(type), is_const );
-  }
 #else
-  table.emplace_hint(its.first,id, id_data @|
-   (std::make_shared<shared_value>(std::move(val)),std::move(type),is_const));
+    table.emplace_hint(its.first,id, id_data @|
+    (std::make_shared<shared_value>(std::move(val)),std::move(type),is_const));
 #endif
-  @]@;
+  }
   else // a global identifier was previously known
     its.first->second = id_data(
       std::make_shared<shared_value>(std::move(val)), std::move(type),is_const);
@@ -235,16 +235,17 @@ void Id_table::add_type_def(id_type id, type_expr&& type)
 { auto its = table.equal_range(id);
 
   if (its.first==its.second) // no global identifier was previously known
-#ifdef incompletecpp11
   {
+#ifdef incompletecpp11
     auto it = table.insert(its.first,std::make_pair(id,id_data()));
       // create a slot
     it->second = id_data (shared_share(),std::move(type),true);
       // and fill it with |type| only
-  }
 #else
-  table.emplace_hint(its.first,id,id_data(shared_share(),std::move(type),true));
+    table.emplace_hint @|
+      (its.first,id,id_data(shared_share(),std::move(type),true));
 #endif
+  }
   else // a global identifier was previously known, replace it
     its.first->second = id_data(shared_share(),std::move(type),true);
 }
