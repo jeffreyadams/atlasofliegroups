@@ -77,6 +77,7 @@
 %type <expression> expr expr_opt tertiary cast lettail or_expr and_expr
 %type <expression> not_expr formula operand secondary primary iftail
 %type <expression> subscription slice comprim assignable_subsn ident_expr
+%type <expression> do_expr do_lettail
 %type <ini_form> formula_start
 %type <oper> operator
 %type <val> tilde_opt
@@ -84,6 +85,7 @@
 %destructor { destroy_expr ($$); } and_expr not_expr formula operand iftail
 %destructor { destroy_expr ($$); } secondary primary comprim subscription slice
 %destructor { destroy_expr ($$); } assignable_subsn ident_expr
+%destructor { destroy_expr ($$); } do_expr do_lettail
 %destructor { destroy_formula($$); } formula_start
 %destructor { delete $$; } STRING
 %type  <expression_list> commalist commalist_opt commabarlist
@@ -175,8 +177,8 @@ expr    : LET lettail { $$=$2; }
           }
         | RETURN expr { $$=make_return($2,@$); }
         | cast
-	| tertiary ';' expr { $$=make_sequence($1,$3,true,@$); }
-        | tertiary NEXT expr { $$=make_sequence($1,$3,false,@$); }
+	| tertiary ';' expr { $$=make_sequence($1,$3,0,@$); }
+        | tertiary NEXT expr { $$=make_sequence($1,$3,1,@$); }
 	| tertiary
 ;
 
@@ -184,6 +186,15 @@ cast	: type ':' expr { $$ = make_cast($1,$3,@$); }
 
 lettail : declarations IN expr { $$ = make_let_expr_node($1,$3,@$); }
 	| declarations THEN lettail  { $$ = make_let_expr_node($1,$3,@$); }
+;
+
+do_expr : LET do_lettail { $$=$2; }
+	| tertiary ';' do_expr { $$=make_sequence($1,$3,0,@$); }
+	| tertiary DO expr { $$=make_sequence($1,$3,2,@$); }
+;
+
+do_lettail : declarations IN do_expr { $$ = make_let_expr_node($1,$3,@$); }
+	| declarations THEN do_lettail  { $$ = make_let_expr_node($1,$3,@$); }
 ;
 
 declarations: declarations ',' declaration { $$ = append_let_node($1,$3); }
@@ -272,7 +283,7 @@ comprim: subscription | slice
 	| IF iftail { $$=$2; }
 	| CASE expr IN commalist ESAC
 	  { $$=make_int_case_node($2,reverse_expr_list($4),@$); }
-	| WHILE expr DO expr tilde_opt OD { $$=make_while_node($2,$4,2*$5,@$); }
+	| WHILE do_expr tilde_opt OD { $$=make_while_node($2,2*$3,@$); }
 	| FOR pattern_opt IN expr tilde_opt DO expr tilde_opt OD
 	  { struct raw_id_pat p,x; p.kind=0x2; x.kind=0x0;
 	    p.sublist=make_pattern_node(make_pattern_node(nullptr,$2),x);

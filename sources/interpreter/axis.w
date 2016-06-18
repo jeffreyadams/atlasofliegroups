@@ -2777,21 +2777,19 @@ void next_expression::evaluate(level l) const
 
 @< Cases for type-checking and converting... @>=
 case seq_expr:
-{ const sequence& seq=e.sequence_variant;
-  if (seq->forward)
-  { expression_ptr first = convert_expr(seq->first,as_lvalue(void_type.copy()));
-    expression_ptr last  = convert_expr(seq->last,type);
-    return expression_ptr(new
-      seq_expression(std::move(first),std::move(last)));
-  }
-  else
-  { expression_ptr first = convert_expr(seq->first,type);
-    expression_ptr last  = convert_expr(seq->last,as_lvalue(void_type.copy()));
-    return expression_ptr(new
-       next_expression(std::move(first),std::move(last)));
-  }
+{ const sequence_node& seq=*e.sequence_variant;
+  expression_ptr first = convert_expr(seq.first,as_lvalue(void_type.copy()));
+  expression_ptr last  = convert_expr(seq.last,type);
+  return expression_ptr(new seq_expression(std::move(first),std::move(last)));
 }
-
+break;
+case next_expr:
+{ const sequence_node& seq=*e.sequence_variant;
+  expression_ptr first = convert_expr(seq.first,type);
+  expression_ptr last  = convert_expr(seq.last,as_lvalue(void_type.copy()));
+  return expression_ptr(new next_expression(std::move(first),std::move(last)));
+}
+break;
 
 @* Array subscription and slicing.
 %
@@ -3567,15 +3565,28 @@ raw pointers to structures containing |expr| fields: our caller does not hold
 any pointer pointing directly to the argument~|e| it passes, so we cannot
 operate merely by changing some pointers.
 
+The negation hunting works through expression types that return one of their
+component expressions: |let| expressions, sequence expressions, and \&{next}
+expressions; this is easily achieved by recursive calls. More importantly it
+also handles the |do|-expressions that combine condition and loop body inside
+a |while| loop, in which case the recursion goes into the (first) condition
+part, since that is the part where the negations are to be removed.
+
 @< Local function definitions @>=
 
-bool was_negated (expr& e)
-{ bool negative=false; expr_p p=&e;
-  while (p->kind==negation_expr)
-  @/{@; negative=not negative; p=p->negation_variant; }
-  e=std::move(*p); // will do nothing if |p=&e|
-  return negative;
+bool was_negated (expr& e, bool b)
+{ switch (e.kind)
+  { default: return b;
+  case negation_expr:
+    e=std::move(*e.negation_variant); // remove top level |not|
+    return was_negated(e,not b); // recursively continue
+  case let_expr: return was_negated(e.let_variant->body,b);
+  case seq_expr: return was_negated(e.sequence_variant->last,b);
+  case next_expr: return was_negated(e.sequence_variant->first,b);
+  }
 }
+
+bool was_negated(expr& e) @+{@; return was_negated(e,false); }
 
 @*1 Conditional expressions.
 %
@@ -3714,11 +3725,7 @@ struct loop_base : public expression_base
 @)
 template<unsigned flags>
 struct while_expression : public loop_base
-{ expression_ptr condition;
-@)
-  while_expression(expression_ptr&& c,expression_ptr&& b)
-   : loop_base(std::move(b)),condition(c.release())
-  @+{}
+{ while_expression(expression_ptr&& b): loop_base(std::move(b)) @+{}
   virtual ~@[while_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
@@ -3735,30 +3742,48 @@ void loop_base::print_body(std::ostream& out,unsigned flags) const
         << ((flags&0x2)!=0 ? " ~od " : " od ");
 }
 
-@ In printing a |while| expression, the bit |0x1| controls the initial keyword
-printed.
+@ But in a |while| expression |body| contains the condition as well and will
+print \.{do} or \.{\char\~do}, so we cannot use |print_body|.
 
 @< Function definitions @>=
 template<unsigned flags>
 void while_expression<flags>::print(std::ostream& out) const
-{@; print_body
-     (out << ((flags&0x1)!=0 ? " until " : " while ") <<  *condition
-     , flags&0x2);
-}
+{@; out << " while " << *body << ((flags&0x2)!=0 ? " ~od " : " od "); }
 
 @ The following function helps instantiating the class template, selecting a
 constant template parameter equal to |flags|.
 
 @< Local function def... @>=
-expression make_while_loop
-  (unsigned flags,expression_ptr&& condition,expression_ptr&& body)
+expression make_while_loop (unsigned flags,expression_ptr&& body)
 { switch(flags)
   {
-  case 0: return new while_expression<0>(std::move(condition),std::move(body));
-  case 1: return new while_expression<1>(std::move(condition),std::move(body));
-  case 2: return new while_expression<2>(std::move(condition),std::move(body));
-  case 3: return new while_expression<3>(std::move(condition),std::move(body));
+  case 0: return new while_expression<0>(std::move(body));
+  case 2: return new while_expression<2>(std::move(body));
   default: assert(false); return nullptr;
+  }
+}
+
+@ In while loops, a negation in the condition might appear after a number of
+declarations and statements (first part of a sequence expressions), and the
+negation is recorded in the final ``do expression'' which contains both
+condition and loop body, rather than in the enclosing |while| loop. Therefore
+we cannot use |was_negated| directly, but use a similar recursive function
+that is initiated by the analysis of a |while| expression.
+This function must ultimately hit and expression of the |do_expr| kind, and
+when this happens it calls |was_negated| for its condition part, and records a
+possible negation found by changing |e.kind| from |do_expr| to |neg_do_expr|.
+Since the parser never introduces |neg_do_exp|, and this function will never be
+called twice on the same expression, no case for that kind is considered.
+
+@< Local function definitions @>=
+
+void push_negation (expr& e)
+{ switch (e.kind)
+  { default: assert(false); return; // we should never come here
+  case let_expr: return push_negation(e.let_variant->body);
+  case seq_expr: return push_negation(e.sequence_variant->last);
+  case do_expr: if (was_negated(e.sequence_variant->first))
+  @/{@; e.kind=neg_do_expr; return; } // obligatory exit from recursion
   }
 }
 
@@ -3774,20 +3799,18 @@ display (except that there is only one expression in this case).
 @< Cases for type-checking and converting... @>=
 case while_expr:
 { while_node& w=*e.while_variant;
-  if (was_negated(w.condition))
-    w.flags.set(0); // this makes an ``until-loop''
+  push_negation(w.body); // push any negation
   layer bind(0,nullptr); // no local variables for loop, but allow |break|
-  expression_ptr c = convert_expr(w.condition,as_lvalue(bool_type.copy()));
 @)
   if (type==void_type)
   { expression_ptr result(make_while_loop @| (w.flags.to_ulong(),
-       std::move(c),convert_expr(w.body, as_lvalue(void_type.copy()))));
+       convert_expr(w.body, as_lvalue(void_type.copy()))));
     return expression_ptr(new voiding(std::move(result)));
   }
   else if (type.specialise(row_of_type))
   { expression_ptr b = convert_expr(w.body, *type.component_type);
     return expression_ptr (make_while_loop @|
-       (w.flags.to_ulong(),std::move(c),std::move(b)));
+       (w.flags.to_ulong(),std::move(b)));
   }
   else
   @< If |type| can be converted from some row-of type, check |w.body|
@@ -3808,9 +3831,8 @@ component type as for list displays, in section@#list display conversion@>.
     throw type_error(e,row_of_type.copy(),std::move(type));
 @)
   return expression_ptr(new conversion(*conv, expression_ptr(make_while_loop @|
-       (w.flags.to_ulong(),std::move(c),convert_expr(w.body,comp_type)))));
+       (w.flags.to_ulong(),convert_expr(w.body,comp_type)))));
 }
-
 
 @ Of course evaluating is what most distinguishes loops from conditionals.
 There are few surprises: if no value is asked for we simple perform a
@@ -3819,19 +3841,78 @@ and otherwise we also do a |while|-loop, but use |eval| to produce a value on
 |execution_stack| each time around, popping it off and pushing it onto a
 |row_value| value that will ultimately become the value of the loop.
 
-Since |while|-loops can run indefinitely and don't necessarily involve calls to
-user-defined functions (where a test is done too), we put a test of the user
-interrupt flag in the body of the evaluation of any |while|-loop.
+@< Local variable definitions @>=
+bool while_condition_result;
+
+@ An essential part of the runtime for while loops is given by
+|do_expresision|, which is a subtle variation of |next_expression|.
+@< Type def... @>=
+template <bool negated>
+struct do_expression : public expression_base
+{ expression_ptr condition,body;
+@)
+  do_expression(expression_ptr&& c,expression_ptr&& b)
+   : condition(c.release()),body(b.release()) @+{}
+  virtual ~@[do_expression() nothing_new_here@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ Printing a |do_expression| differs from that of |next_expression| except for
+the keyword.
+
+@< Function definitions @>=
+template <bool negated>
+  void do_expression<negated>::print(std::ostream& out) const
+{@; out << *condition << (negated ? " ~do " : " do ") << *body; }
+
+@ The analysis of a |do| expression is similar to the of a sequence
+expression, but its first part is a |bool| rather than |void| context.
+
+@< Cases for type-checking and converting... @>=
+case do_expr:
+{ const sequence_node& seq=*e.sequence_variant;
+  expression_ptr cond = convert_expr(seq.first,as_lvalue(bool_type.copy()));
+  expression_ptr body = convert_expr(seq.last,type);
+  return
+    expression_ptr(new do_expression<false>(std::move(cond),std::move(body)));
+}
+break;
+case neg_do_expr:
+{ const sequence_node& seq=*e.sequence_variant;
+  expression_ptr cond = convert_expr(seq.first,as_lvalue(bool_type.copy()));
+  expression_ptr body = convert_expr(seq.last,type);
+  return
+    expression_ptr(new do_expression<true>(std::move(cond),std::move(body)));
+}
+break;
+
+@ For a |do_expression|, it is the value of the first expression that is
+retained as result.
+
+@< Function def... @>=
+template <bool negated>
+  void do_expression<negated>::evaluate(level l) const
+{ condition->eval();
+  bool cont=get<bool_value>()->val!=negated;
+  if (cont)
+    body->evaluate(l);
+  while_condition_result=cont;
+}
+
+@ Since |while|-loops can run indefinitely and don't necessarily involve calls
+to user-defined functions (where a test is done too), we put a test of the
+user interrupt flag in the body of the evaluation of any |while|-loop.
 
 @< Function definitions @>=
 template<unsigned flags>
 void while_expression<flags>::evaluate(level l) const
 { if (l==no_value)
   { try
-    { while (condition->eval(),get<bool_value>()->val==((flags&0x1)==0))
+    { while (body->void_eval(),while_condition_result==((flags&0x1)==0))
       { if (interrupt_flag!=0)
           throw user_interrupt();
-        body->void_eval();
+        {} // nothing else, body is already evaluated to void
       }
     }
     catch (loop_break& err) @+
@@ -3843,10 +3924,9 @@ void while_expression<flags>::evaluate(level l) const
   { own_row result = std::make_shared<row_value>(0);
     auto& dst = result->val;
     try
-    { while (condition->eval(),get<bool_value>()->val==((flags&0x1)==0))
+    { while (body->eval(),while_condition_result==((flags&0x1)==0))
       { if (interrupt_flag!=0)
            throw user_interrupt();
-        body->eval();
         dst.push_back(pop_value());
       }
     }
