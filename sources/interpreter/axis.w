@@ -3712,38 +3712,28 @@ case int_case_expr:
 
 @*1 While loops.
 %
-Next we consider |while| loops, which have two parts.
+Next we consider different kinds of loops, to start with |while| loops.
+Although they contain two parts, a condition before |do| and a body after it,
+the two are present in the following structure as a single |body|. The reason
+for this is that we want to allow declarations in the condition to remain
+valid in the body, which can be realised by having both contained in a
+|do_expression| structure that does not have to be a direct descendent of the
+|while_expression|, but can involve a number of intermediate |let_expression|
+and |seq_expression| nodes. The grammar guarantees that eventually such a
+|do_expression| will be reached.
 
 @< Type def... @>=
-struct loop_base : public expression_base
-{ expression_ptr body;
-  loop_base (expression_ptr&& b) : body(b.release()) @+{}
-  virtual ~@[loop_base() nothing_new_here@];
-  void print_body (std::ostream& out,unsigned flags) const;
-};
-
-@)
 template<unsigned flags>
-struct while_expression : public loop_base
-{ while_expression(expression_ptr&& b): loop_base(std::move(b)) @+{}
+struct while_expression : public expression_base
+{ expression_ptr body;
+  while_expression(expression_ptr&& b): body(std::move(b)) @+{}
   virtual ~@[while_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
 
-@ We can handle the |flags|-dependent part of printing in the method
-|print_body|. The part involving the bit |0x1| will serve for other kinds of
-loops than |while| loops.
-
-@< Function definitions @>=
-
-void loop_base::print_body(std::ostream& out,unsigned flags) const
-{@; out << ((flags&0x1)!=0 ? " ~do " : " do ")  << *body
-        << ((flags&0x2)!=0 ? " ~od " : " od ");
-}
-
-@ But in a |while| expression |body| contains the condition as well and will
-print \.{do} or \.{\char\~do}, so we cannot use |print_body|.
+@ In printing of while loops, the symbol \.{do} or \.{\char\~do} with appear
+in the output for |*body|.
 
 @< Function definitions @>=
 template<unsigned flags>
@@ -3751,7 +3741,8 @@ void while_expression<flags>::print(std::ostream& out) const
 {@; out << " while " << *body << ((flags&0x2)!=0 ? " ~od " : " od "); }
 
 @ The following function helps instantiating the class template, selecting a
-constant template parameter equal to |flags|.
+constant template parameter equal to |flags|. Only the bit at position~$1$,
+with place value $2^1=2$ is actually used for |while| loops.
 
 @< Local function def... @>=
 expression make_while_loop (unsigned flags,expression_ptr&& body)
@@ -3763,43 +3754,20 @@ expression make_while_loop (unsigned flags,expression_ptr&& body)
   }
 }
 
-@ In while loops, a negation in the condition might appear after a number of
-declarations and statements (first part of a sequence expressions), and the
-negation is recorded in the final ``do expression'' which contains both
-condition and loop body, rather than in the enclosing |while| loop. Therefore
-we cannot use |was_negated| directly, but use a similar recursive function
-that is initiated by the analysis of a |while| expression.
-This function must ultimately hit and expression of the |do_expr| kind, and
-when this happens it calls |was_negated| for its condition part, and records a
-possible negation found by changing |e.kind| from |do_expr| to |neg_do_expr|.
-Since the parser never introduces |neg_do_exp|, and this function will never be
-called twice on the same expression, no case for that kind is considered.
-
-@< Local function definitions @>=
-
-void push_negation (expr& e)
-{ switch (e.kind)
-  { default: assert(false); return; // we should never come here
-  case let_expr: return push_negation(e.let_variant->body);
-  case seq_expr: return push_negation(e.sequence_variant->last);
-  case do_expr: if (was_negated(e.sequence_variant->first))
-  @/{@; e.kind=neg_do_expr; return; } // obligatory exit from recursion
-  }
-}
-
 @ Type checking for |while| loops has a few complications because possibly a
 row result must be produced from the loop body expression. If the context
 requires void type, we require the same for the body type, knowing that
-generation of a row value will be suppressed in these cases anyway (this is
-more flexible than leaving it undetermined, in which case conditionals in the
-loop body would be required to have branches of compatible types). In all
-other cases we proceed for the body expression as for the components of a row
-display (except that there is only one expression in this case).
+generation of a row value will be suppressed in these cases anyway. (This is
+more flexible than leaving it undetermined as we did in the somewhat similar
+case of a list display; in contrast to that case, a loop in void context is
+quite normal, and making their body void allows for instance conditionals
+contained in them to have branches of not necessarily compatible types.) In
+all other cases we proceed for the body expression as for the components of a
+list display (except that there is only one expression in this case).
 
 @< Cases for type-checking and converting... @>=
 case while_expr:
 { while_node& w=*e.while_variant;
-  push_negation(w.body); // push any negation
   layer bind(0,nullptr); // no local variables for loop, but allow |break|
 @)
   if (type==void_type)
@@ -3834,18 +3802,22 @@ component type as for list displays, in section@#list display conversion@>.
        (w.flags.to_ulong(),convert_expr(w.body,comp_type)))));
 }
 
-@ Of course evaluating is what most distinguishes loops from conditionals.
-There are few surprises: if no value is asked for we simple perform a
-|while|-loop at the \Cpp~level (applying |void_eval| to the body expression),
-and otherwise we also do a |while|-loop, but use |eval| to produce a value on
-|execution_stack| each time around, popping it off and pushing it onto a
-|row_value| value that will ultimately become the value of the loop.
+@ Of course evaluating is what most distinguishes loops from conditionals. The
+work is partly delegated to the evaluation of the special expression in the
+body that determines both the loop guard condition and if positive the loop
+body. Afterwards it needs to transmit what it has done back to the enclosing
+loop. It could do this on the |execution_stack|, but since this condition is
+quite short-lived (it just has to maybe traverse the destruction of a number
+of stack |frame|s for |let| declarations that terminate), we can avoid
+wrapping into a |shared_value| and unwrapping by reserving a static |bool|
+variable for this purpose.
 
 @< Local variable definitions @>=
 bool while_condition_result;
 
-@ An essential part of the runtime for while loops is given by
-|do_expresision|, which is a subtle variation of |next_expression|.
+@ The mentioned special expression is a |do_expresision|, which is a slight
+variation of |seq_expression|.
+
 @< Type def... @>=
 template <bool negated>
 struct do_expression : public expression_base
@@ -3858,8 +3830,11 @@ struct do_expression : public expression_base
   virtual void print(std::ostream& out) const;
 };
 
-@ Printing a |do_expression| differs from that of |next_expression| except for
-the keyword.
+@ Printing a |do_expression| differs from that of |next_expression| only in
+the keyword, where we print a tilde to indicate an inverted condition (giving
+an until-loop rather than a while-loop so to speak), even though this is
+(currently) not an allowed input syntax (writing an explicit |not| that gives
+the inverted condition is deemed more readable).
 
 @< Function definitions @>=
 template <bool negated>
@@ -3867,53 +3842,86 @@ template <bool negated>
 {@; out << *condition << (negated ? " ~do " : " do ") << *body; }
 
 @ The analysis of a |do| expression is similar to the of a sequence
-expression, but its first part is a |bool| rather than |void| context.
+expression, notably it is the type of the final (body) subexpression that is
+deemed to be the type of the whole expression; however its initial
+subexpression has a |bool| rather than |void| context. If the condition was
+negated, we generate the negated template instance of |do_expression|.
 
 @< Cases for type-checking and converting... @>=
 case do_expr:
-{ const sequence_node& seq=*e.sequence_variant;
-  expression_ptr cond = convert_expr(seq.first,as_lvalue(bool_type.copy()));
+{ sequence_node& seq=*e.sequence_variant;
+  bool neg = was_negated(seq.first);
+  expression_ptr condition = convert_expr(seq.first,as_lvalue(bool_type.copy()));
   expression_ptr body = convert_expr(seq.last,type);
-  return
-    expression_ptr(new do_expression<false>(std::move(cond),std::move(body)));
-}
-break;
-case neg_do_expr:
-{ const sequence_node& seq=*e.sequence_variant;
-  expression_ptr cond = convert_expr(seq.first,as_lvalue(bool_type.copy()));
-  expression_ptr body = convert_expr(seq.last,type);
-  return
-    expression_ptr(new do_expression<true>(std::move(cond),std::move(body)));
+  if (neg)
+    return expression_ptr(new @|
+      do_expression<true>(std::move(condition),std::move(body)));
+  else
+    return expression_ptr(new @|
+       do_expression<false>(std::move(condition),std::move(body)));
 }
 break;
 
-@ For a |do_expression|, it is the value of the first expression that is
-retained as result.
+@ The evaluation of a |do_expression| is somewhat special in that whether it
+places a value on the runtime stack (assuming that |l!=no_value|) depends on
+the outcome of evaluation the condition. Nonetheless the definition is very
+simple. The only subtle point is to postpone setting |while_condition_result|
+to the end of the evaluation, since the call |body->evaluate(l)| may clobber
+this variable. The two explicit instances below could easily be combined into
+one template definition, but since the whole point of inverted conditions is
+to make this (marginally) more efficient (than evaluating a call to
+|boolean_negate_builtin|), we prefer for once to be explicit rather than to
+depend on the \Cpp\ compiler's constant folding doing the simplification.
 
 @< Function def... @>=
-template <bool negated>
-  void do_expression<negated>::evaluate(level l) const
+template <>
+  void do_expression<false>::evaluate(level l) const
 { condition->eval();
-  bool cont=get<bool_value>()->val!=negated;
-  if (cont)
-    body->evaluate(l);
-  while_condition_result=cont;
+  if (get<bool_value>()->val)
+    {@; body->evaluate(l); while_condition_result=true; }
+  else while_condition_result=false;
+}
+template <>
+  void do_expression<true>::evaluate(level l) const
+{ condition->eval();
+  if (get<bool_value>()->val)
+     while_condition_result=false;
+  else {@; body->evaluate(l); while_condition_result=true; }
 }
 
-@ Since |while|-loops can run indefinitely and don't necessarily involve calls
+@ Now we can consider the evaluation of |while| loops themselves. If no value
+is asked for we simple perform a |while|-loop at the \Cpp~level (applying
+|void_eval| to the body expression), and otherwise we also do a |while|-loop,
+but use |eval| to produce a value on |execution_stack| each time around,
+popping it off and pushing it onto a |row_value| value that will ultimately
+become the value of the loop. Curiously, due to the combined evaluation of
+condition and loop body, of  the |void| case corresponds most
+naturally to a |do|-|while| loop in \Cpp, since nothing remains to be done
+after testing the termination condition. This is not true for the
+value-producing while loop, since the vale produced by the loop body needs to
+be popped from the |execution_stack|; therefore we have to use the
+comma-operator in the condition of the |while| loop here.
+
+Since |while|-loops can run indefinitely and don't necessarily involve calls
 to user-defined functions (where a test is done too), we put a test of the
-user interrupt flag in the body of the evaluation of any |while|-loop.
+user interrupt flag in the body of the evaluation of any |while|-loop. This
+does of course carry a slight performance penalty, but that will hardly be
+noticeable unless evaluating |body| does very little, and it is precisely in
+such situations (for instance where the user forgot some updating that would
+alter the value of the loop condition) where the possibility of a user
+interrupt may be vital.
 
 @< Function definitions @>=
 template<unsigned flags>
 void while_expression<flags>::evaluate(level l) const
 { if (l==no_value)
   { try
-    { while (body->void_eval(),while_condition_result==((flags&0x1)==0))
-      { if (interrupt_flag!=0)
+    { do
+      { body->void_eval();
+        if (interrupt_flag!=0)
           throw user_interrupt();
-        {} // nothing else, body is already evaluated to void
       }
+      while (while_condition_result);
     }
     catch (loop_break& err) @+
     {@; if (err.depth-- > 0)
@@ -3924,7 +3932,7 @@ void while_expression<flags>::evaluate(level l) const
   { own_row result = std::make_shared<row_value>(0);
     auto& dst = result->val;
     try
-    { while (body->eval(),while_condition_result==((flags&0x1)==0))
+    { while (body->eval(),while_condition_result)
       { if (interrupt_flag!=0)
            throw user_interrupt();
         dst.push_back(pop_value());
@@ -3942,7 +3950,7 @@ void while_expression<flags>::evaluate(level l) const
 
 @*1 For loops.
 %
-Next we consider |for| loops over components of a value. They have three
+We now consider |for| loops over components of a value. They have three
 parts, an identifier pattern defining the loop variable(s), an in-part giving
 the object whose components are iterated over, and a body that may produce a
 new value for each component of the in-part. Due to the way |for_expressions|
@@ -3959,20 +3967,23 @@ usually takes place when a pattern list is completed, but this reversal does
 not happen for the $2$-element list used for the patterns in for-loops.)
 
 Apart from iterating over row value of any type, we allow iteration over
-vectors, rational vectors, strings, and matrix columns, the non-row types that
-are indexable by integers, and also over the terms of a parameter polynomial
+vectors, rational vectors, strings, and matrix columns (types that are
+indexable by integers), and also over the terms of a parameter polynomial
 (representing isotypical components of a virtual module). The syntax of the
 for loop is the same for all these cases. However the constructed |expression|
 will be of a class templated on |kind| describing the kind of value iterated
 over, so that their |evaluate| methods will be specialised to that kind. We
 also template over the |flags| that indicate the reversal options (determined
 by by the precise syntax used), so that these get built into the evaluate
-method as well. Altogether we use $4\times6=24$ instances of |for_expression|.
+method as well. Bit |0x1| of |flags| controls reverse traversal at input,
+while bit |0x2| indicates reverse accumulation of values for the result.
+Altogether we use $4\times6=24$ instances of |for_expression|.
 
 @< Type def... @>=
 template <unsigned flags, subscr_base::sub_type kind>
-struct for_expression : public loop_base
+struct for_expression : public expression_base
 { id_pat pattern; expression_ptr in_part;
+  expression_ptr body;
 @)
   for_expression (const id_pat& p, expression_ptr&& i, expression_ptr&& b);
   virtual ~@[for_expression() nothing_new_here@];
@@ -3988,21 +3999,28 @@ the header file, but otherwise it is quite straightforward.
 template <unsigned flags, subscr_base::sub_type kind>
 for_expression<flags,kind>::for_expression@|
  (const id_pat& p, expression_ptr&& i, expression_ptr&& b)
-   : loop_base(std::move(b)), pattern(copy_id_pat(p)), in_part(i.release())
+   : pattern(copy_id_pat(p)), in_part(i.release()), body(b.release())
   @+{}
 
 
 @ Printing a |for| expression is straightforward, taking note that the index
 part is first in the pattern though written \emph{after} \.@@, and that it
-could be absent.
+could be absent. We split off a (non templated) part for reuse in other loops,
+which shows how the bits of |flags| correspond to optional tildes before the
+keywords |do| and~\&{od}.
 
 @< Function definitions @>=
+void print_body(std::ostream& out,const expression_ptr& body,unsigned flags)
+{@; out << ((flags&0x1)!=0 ? " ~do " : " do ")  << *body
+        << ((flags&0x2)!=0 ? " ~od " : " od ");
+}
+@)
 template <unsigned flags, subscr_base::sub_type kind>
 void for_expression<flags,kind>::print(std::ostream& out) const
 { out << " for " << *++pattern.sublist.begin();
     if (pattern.sublist.front().kind==0x1)
       out << '@@' << pattern.sublist.front();
-  print_body(out << " in " << *in_part,flags);
+  print_body(out << " in " << *in_part,body,flags);
 }
 
 @ As in |make_slice| above, we need to convert runtime values for |flags| and
@@ -4130,18 +4148,20 @@ case for_expr:
   @< Set |which| according to |in_type|, and set |bind| according to the
      identifiers contained in |f.id| @>
   type_expr body_type;
-  type_expr *btp=&body_type; // point to place to record body type
+  type_p btp; // will point to the place to record body type
   const conversion_record* conv=nullptr;
+    // initialise in case we don't reach the assignment below
   if (type==void_type)
     btp=&type; // we can reuse this type; no risk of specialisation
   else if (type.specialise(row_of_type))
     btp=type.component_type;
-  else if ((conv=row_coercion(type,body_type))==nullptr)
-    throw type_error(e,row_of_type.copy(),std::move(type));
+  else if ((conv=row_coercion(type,body_type))!=nullptr)
+    btp=&body_type;
+  else throw type_error(e,row_of_type.copy(),std::move(type));
 @)
   expression_ptr body(convert_expr (f.body,*btp));
 @/expression_ptr loop;
-  if (bind.empty()) // we must avoid making a
+  if (bind.empty()) // we must avoid having an empty |frame| produced at runtime
     @< Set |loop| to a index-less counted |for| loop controlled by the
        size of |in_expr|, and containing |body| @>
   else loop.reset(make_for_loop@|
@@ -4151,29 +4171,30 @@ case for_expr:
   : @| std::move(loop) ;
 }
 
-@ This type must be indexable by integers (so it is either a row-type or
-vector, rational vector, matrix or string), or it must be a loop over the
-coefficients of a polynomial. The call to |subscr_base::index_kind| will set
-|comp_type| to the component type resulting from such a subscription.
+@ The |in_type| must be indexable by integers (so it is either a row-type or
+vector, rational vector, matrix or string), or it must be the polynomial type,
+indexable by |param_type|. If so, the first or second call to
+|subscr_base::index_kind| will set |comp_type| to the component type resulting
+from such a subscription. We also make |tp| point to the index type used.
 
 @< Set |which| according to |in_type|, and set |bind| according to the
    identifiers contained in |f.id| @>=
-{ type_expr comp_type; const type_expr* tp;
-  which = subscr_base::index_kind(in_type,*(tp=&int_type),comp_type);
+{ type_expr comp_type; const_type_p inx_type;
+  which = subscr_base::index_kind(in_type,*(inx_type=&int_type),comp_type);
   if (which==subscr_base::not_so)
     // if not integer-indexable, try parameter-indexable
-    which = subscr_base::index_kind(in_type,*(tp=&param_type),comp_type);
+    which = subscr_base::index_kind(in_type,*(inx_type=&param_type),comp_type);
   if (which==subscr_base::not_so) // if its not that either, it is wrong
   { std::ostringstream o;
     o << "Cannot iterate over value of type " << in_type;
     throw expr_error(e,o.str());
   }
-  type_expr pt = pattern_type(f.id);
-  type_list it_comps;
+  type_list it_comps; // type of ``iterator'' value (pattern) named in the loop
   it_comps.push_front(std::move(comp_type));
-  it_comps.push_front(type_expr(tp->copy()));
+  it_comps.push_front(type_expr(inx_type->copy()));
   type_expr it_type(std::move(it_comps));
-  if (not pt.specialise(it_type))
+    // build tuple type from index and component types
+  if (not pattern_type(f.id).specialise(it_type))
     throw expr_error(e,"Improper structure of loop variable pattern");
   thread_bindings(f.id,it_type,bind,true); // force all identifiers constant
 }
@@ -4240,7 +4261,7 @@ void for_expression<flags,kind>::evaluate(level l) const
 @ For evaluating |for| loops we must take care to interpret the |kind| field
 when selecting a component from the in-part. Because of differences in the
 type of |in_val|, some code must be duplicated, which we do as much as
-possible by sharing modules between the various loop bodies.
+possible by sharing modules between the various loop bodies textually.
 
 @< Cases for evaluating a loop over components of a value... @>=
 case subscr_base::row_entry:
@@ -4405,15 +4426,15 @@ is present, but halves the number of template instances used.
 
 @< Type def... @>=
 template <unsigned flags>
-struct counted_for_expression : public loop_base
+struct counted_for_expression : public expression_base
 { id_type id; // may be $-1$, if |(flags&0x4)!=0|
-  expression_ptr count, bound;
+  expression_ptr count, bound, body;
   // we allow |bound| (but not |count|) to hold |nullptr|
 @)
   counted_for_expression
    (id_type i, expression_ptr&& cnt, expression_ptr&& bnd,
     expression_ptr&& b)
-  : loop_base(std::move(b)), id(i), count(cnt.release()),bound(bnd.release())
+  : id(i), count(cnt.release()),bound(bnd.release()), body(b.release())
   @+{}
   virtual ~@[counted_for_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
@@ -4431,7 +4452,7 @@ void counted_for_expression<flags>::print(std::ostream& out) const
   else out << " for : " << *count;  // omit nonexistent identifier
   if (bound.get()!=nullptr)
     out << " from " << *bound;
-  print_body(out,flags);
+  print_body(out,body,flags);
 }
 
 @ As in |make_slice| and |make_for_loop| above, we need to convert runtime
@@ -4542,11 +4563,18 @@ case cfor_expr:
 }
 
 @ Executing a loop is a simple variation of what we have seen before for
-|while| and |for| loops. However we optimise when the loop index gets no name
-(bit |flags&0x4| is set), since then we can omit introducing a |frame| for the
-loop altogether. Also we organise to always use a decreasing loop counter
-internally, as this simplifies the termination condition and can be marginally
-faster.
+|while| and |for| loops over value components. We distinguish a number of
+cases, some by template argument and others dynamically, but always before
+entering the loop, in order to allow an optimal adaptation to the task. We en
+up always using a \Cpp\ |while| loop to implement the |for| loop.
+
+A special case that is optimised for is when the user gave no name to loop
+index, so bit |flags&0x4| is set: we can then omit introducing a |frame| for
+the loop altogether. Also, since the syntax ensures that absence of a name for
+the loop index implies absence of a lower bound expression (which would be
+unused anyway) we can omit trying to evaluate |bound| here. We choose to
+always use a decreasing loop counter internally in such cases, as this
+simplifies the termination condition and might therefore be marginally faster.
 
 @< Function definitions @>=
 template <unsigned flags>
@@ -4555,7 +4583,18 @@ void counted_for_expression<flags>::evaluate(level l) const
   if (c<0)
     c=0; // no negative size result
 
-  if ((flags&0x4)==0) @< Perform counted loop with loop index @>
+  if ((flags&0x4)==0) // then loop uses index
+  { int b=(bound.get()==nullptr ? 0 : (bound->eval(),get<int_value>()->val));
+    c+=b; // set to upper bound, exclusive
+    id_pat pattern(id);
+    if (l==no_value)
+      @< Perform counted loop that uses an index, without storing result,
+         between lower bound |b| and exclusive upper bound |c| @>
+    else
+      @< Perform counted loop that uses an index, pushing result to
+         |execution_stack|,
+         between lower bound |b| and exclusive upper bound |c| @>
+  }
   else if (l==no_value) // counted loop without index and no value
   { try {@; while (c-->0)
       body->void_eval();
@@ -4587,83 +4626,79 @@ void counted_for_expression<flags>::evaluate(level l) const
 
 }
 
-@ If a loop index is to be available in the loop, it will be computed each
-time from our internal loop variable~|c| and the specified lower bound, which we
-stored in~|b|. If the loop is decreasing the index is |b+c|. If the loop is to
-be increasing, we compute the loop index as |b-c| which increases as |c|
-decreases; to obtain the desired range of values, we add |c-1| to |b| before
-starting the loop.
+@ For a counted loop using its index, we remain at the \Cpp\ level close to
+the \.{axis} loop being implemented, but we transform the bound |b| or|c| into
+our loop index. For decreasing loops we distinguish the case where the lower
+bound is~$0$, the default value, since a test against a constant~$0$ is a bit
+more efficient.
 
-Apart from creating a |frame| for the loop index on each iteration, the code
-is identical to that above.
-
-@< Perform counted loop with loop index @>=
-{ int b=(bound.get()==nullptr ? 0 : (bound->eval(),get<int_value>()->val));
-  id_pat pattern(id);
-  if (l==no_value)
-  { try
-    { c+=b; // set to upper bound, exclusive
-      if ((flags&0x1)==0) // increasing loop
-        while (b<c)
-        @/{@; frame fr(pattern);
-          fr.bind(std::make_shared<int_value>(b++));
-          body->void_eval();
-        }
-      else if (b!=0)
-        while (c-->b)
-        @/{@; frame fr(pattern);
-          fr.bind(std::make_shared<int_value>(c));
-          body->void_eval();
-        }
-      else // same with |b==0|, but this is marginally faster
-         while (c-->0)
-        @/{@; frame fr(pattern);
-          fr.bind(std::make_shared<int_value>(c));
-          body->void_eval();
-        }
-    }
-    catch (loop_break& err) @+
-    {@; if (err.depth-- > 0)
-          throw;
-    }
+@< Perform counted loop that uses an index, without storing result,
+   between lower bound |b| and exclusive upper bound |c| @>=
+{ try
+  { if ((flags&0x1)==0) // increasing loop
+      while (b<c)
+      @/{@; frame fr(pattern);
+        fr.bind(std::make_shared<int_value>(b++));
+        body->void_eval();
+      }
+    else if (b!=0)
+      while (c-->b)
+      @/{@; frame fr(pattern);
+        fr.bind(std::make_shared<int_value>(c));
+        body->void_eval();
+      }
+    else // same with |b==0|, but this is marginally faster
+       while (c-->0)
+      @/{@; frame fr(pattern);
+        fr.bind(std::make_shared<int_value>(c));
+        body->void_eval();
+      }
   }
-  else
-  { own_row result = std::make_shared<row_value>(c);
-    auto dst = (flags&0x2)==0 ? result->val.begin() : result->val.end();
-    try
-    { c+=b; // set to upper bound, exclusive
-      if ((flags&0x1)==0) // increasing loop
-        while (b<c)
-        { frame fr(pattern);
-          fr.bind(std::make_shared<int_value>(b++));
-          body->eval();
-          *((flags&0x2)==0? dst++:--dst) = pop_value();
-        }
-      else if (b!=0)
-        while (c-->b)
-        { frame fr(pattern);
-          fr.bind(std::make_shared<int_value>(c));
-          body->eval();
-          *((flags&0x2)==0? dst++:--dst) = pop_value();
-        }
-      else // same with |b==0|, but this is marginally faster
-        while (c-->0)
-        { frame fr(pattern);
-          fr.bind(std::make_shared<int_value>(c));
-          body->eval();
-          *((flags&0x2)==0? dst++:--dst) = pop_value();
-       }
-    }
-    catch (loop_break& err)
-    { if (err.depth-- > 0)
+  catch (loop_break& err) @+
+  {@; if (err.depth-- > 0)
         throw;
-      if ((flags&0x2)!=0)
-        dst=std::move(dst,result->val.end(),result->val.begin());
-        // after break, left-align |result|
-      result->val.resize(dst-result->val.begin());
-    }
-    push_value(std::move(result));
   }
+}
+
+@ The case where a result is accumulated just differs by adding the necessary
+bits of stuff.
+
+@< Perform counted loop that uses an index, pushing result to |execution_stack|,
+   between lower bound |b| and exclusive upper bound |c| @>=
+{ own_row result = std::make_shared<row_value>(c);
+  auto dst = (flags&0x2)==0 ? result->val.begin() : result->val.end();
+  try
+  { if ((flags&0x1)==0) // increasing loop
+      while (b<c)
+      { frame fr(pattern);
+        fr.bind(std::make_shared<int_value>(b++));
+        body->eval();
+        *((flags&0x2)==0? dst++:--dst) = pop_value();
+      }
+    else if (b!=0)
+      while (c-->b)
+      { frame fr(pattern);
+        fr.bind(std::make_shared<int_value>(c));
+        body->eval();
+        *((flags&0x2)==0? dst++:--dst) = pop_value();
+      }
+    else // same with |b==0|, but this is marginally faster
+      while (c-->0)
+      { frame fr(pattern);
+        fr.bind(std::make_shared<int_value>(c));
+        body->eval();
+        *((flags&0x2)==0? dst++:--dst) = pop_value();
+     }
+  }
+  catch (loop_break& err)
+  { if (err.depth-- > 0)
+      throw;
+    if ((flags&0x2)!=0)
+      dst=std::move(dst,result->val.end(),result->val.begin());
+      // after break, left-align |result|
+    result->val.resize(dst-result->val.begin());
+  }
+  push_value(std::move(result));
 }
 
 @* Casts and operator casts.
