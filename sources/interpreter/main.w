@@ -236,7 +236,7 @@ const char* keywords[] =
  ,"set","let","in","begin","end"
  ,"if","then","else","elif","fi"
  ,"and","or","not"
- ,"while","do","od","next","for","from","downto"
+ ,"next","do","dont","from","downto","while","for","od"
  ,"case","esac", "rec_fun"
  ,"true","false", "die", "break", "return"
  ,"whattype","showall","forget"

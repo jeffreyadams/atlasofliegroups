@@ -3830,6 +3830,29 @@ struct do_expression : public expression_base
   virtual void print(std::ostream& out) const;
 };
 
+@ For efficiency we also define two variants without condition, for in case
+the condition is given simply by |true| or |false|. In the former case we just
+have a |body| that will always be evaluated and (if no interruption occurs)
+set |while_condition_result=true|, in the latter case not even a body is
+necessary, and evaluation just sets |while_condition_result=false|.
+
+@< Type def... @>=
+struct forever_expression : public expression_base
+{ expression_ptr body;
+@)
+  forever_expression(expression_ptr&& b) : body(b.release()) @+{}
+  virtual ~@[forever_expression() nothing_new_here@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+struct dont_expression : public expression_base
+{ dont_expression() @+{}
+  virtual ~@[dont_expression() nothing_new_here@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+
 @ Printing a |do_expression| differs from that of |next_expression| only in
 the keyword, where we print a tilde to indicate an inverted condition (giving
 an until-loop rather than a while-loop so to speak), even though this is
@@ -3840,6 +3863,10 @@ the inverted condition is deemed more readable).
 template <bool negated>
   void do_expression<negated>::print(std::ostream& out) const
 {@; out << *condition << (negated ? " ~do " : " do ") << *body; }
+void forever_expression::print(std::ostream& out) const @+
+{@; out << " do " << *body; }
+void dont_expression::print(std::ostream& out) const @+
+{@; out << " dont "; }
 
 @ The analysis of a |do| expression is similar to the of a sequence
 expression, notably it is the type of the final (body) subexpression that is
@@ -3851,8 +3878,15 @@ negated, we generate the negated template instance of |do_expression|.
 case do_expr:
 { sequence_node& seq=*e.sequence_variant;
   bool neg = was_negated(seq.first);
-  expression_ptr condition = convert_expr(seq.first,as_lvalue(bool_type.copy()));
   expression_ptr body = convert_expr(seq.last,type);
+    // body needs type checking in all cases
+  if (seq.first.kind==boolean_denotation)
+  { if (seq.first.bool_denotation_variant==neg)
+      return expression_ptr(new dont_expression()); // and drop |body|
+    else
+      return expression_ptr(new forever_expression(std::move(body)));
+  }
+  expression_ptr condition = convert_expr(seq.first,as_lvalue(bool_type.copy()));
   if (neg)
     return expression_ptr(new @|
       do_expression<true>(std::move(condition),std::move(body)));
@@ -3888,6 +3922,12 @@ template <>
      while_condition_result=false;
   else {@; body->evaluate(l); while_condition_result=true; }
 }
+@)
+void forever_expression::evaluate(level l) const
+{@; body->evaluate(l); while_condition_result=true; }
+void dont_expression::evaluate(level l) const
+{@; while_condition_result=false; }
+
 
 @ Now we can consider the evaluation of |while| loops themselves. If no value
 is asked for we simple perform a |while|-loop at the \Cpp~level (applying
