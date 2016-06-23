@@ -3930,14 +3930,15 @@ void dont_expression::evaluate(level l) const
 
 
 @ Now we can consider the evaluation of |while| loops themselves. If no value
-is asked for we simple perform a |while|-loop at the \Cpp~level (applying
-|void_eval| to the body expression), and otherwise we also do a |while|-loop,
-but use |eval| to produce a value on |execution_stack| each time around,
-popping it off and pushing it onto a |row_value| value that will ultimately
-become the value of the loop. Curiously, due to the combined evaluation of
-condition and loop body, of  the |void| case corresponds most
-naturally to a |do|-|while| loop in \Cpp, since nothing remains to be done
-after testing the termination condition. This is not true for the
+is asked for, we simply perform a |while|-loop at the \Cpp~level (applying
+|void_eval| to the body expression). Otherwise we also do a |while|-loop, but
+use |eval| to produce a value on |execution_stack| each time around, popping
+it off and pushing it to the front of a |simple_list| (which therefore
+accumulates values in reverse order), which we move-convert into a vector, in
+the appropriate order, when the loop terminates. Curiously, due to the
+combined evaluation of condition and loop body, of the |void| case corresponds
+most naturally to a |do|-|while| loop in \Cpp, since nothing remains to be
+done after testing the termination condition. This is not true for the
 value-producing while loop, since the vale produced by the loop body needs to
 be popped from the |execution_stack|; therefore we have to use the
 comma-operator in the condition of the |while| loop here.
@@ -3969,22 +3970,33 @@ void while_expression<flags>::evaluate(level l) const
     }
   }
   else
-  { own_row result = std::make_shared<row_value>(0);
-    auto& dst = result->val;
+  { containers::simple_list<shared_value> result;
+    size_t s=0;
     try
     { while (body->eval(),while_condition_result)
       { if (interrupt_flag!=0)
            throw user_interrupt();
-        dst.push_back(pop_value());
+        result.push_front(pop_value());
+        ++s;
       }
     }
     catch (loop_break& err) @+
     {@; if (err.depth-- > 0)
           throw;
     }
-    if ((flags&0x2)!=0)
-      std::reverse(dst.begin(),dst.end());
-    push_value(std::move(result));
+    own_row r = std::make_shared<row_value>(s);
+    if ((flags&0x2)==0) // forward accumulating while loop
+    { auto dst = r->val.rbegin();
+        // use reverse iterator, since we reverse accumulated
+      for (auto it = result.wbegin(); not it.at_end(); ++it,++dst)
+        *dst = std::move(*it);
+    }
+    else // reverse accumulating while loop
+    { auto dst = r->val.begin(); // use ordinary iterator
+      for (auto it = result.wbegin(); not it.at_end(); ++it,++dst)
+        *dst = std::move(*it);
+    }
+    push_value(std::move(r));
   }
 }
 
