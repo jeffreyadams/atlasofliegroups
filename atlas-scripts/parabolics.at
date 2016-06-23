@@ -249,7 +249,7 @@ set theta_stable_parabolics_type (RealForm G,[int] P) = [Parabolic]:
 
 
 set all_rel_split_theta_stable_parabolics (RealForm G) = [Parabolic]:
-  let parabolics=theta_stable_parabolics(G) then result=[] in
+  let parabolics=theta_stable_parabolics(G) then result=[Parabolic]: [] in
   for P in parabolics do
     if is_relatively_split(Levi(P)) then result#:=P fi
   od; result
