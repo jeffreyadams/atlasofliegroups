@@ -1241,7 +1241,7 @@ expression_ptr resolve_overload
 { const expr& args = e.call_variant->arg;
   type_expr a_priori_type;
   expression_ptr arg = convert_expr(args,a_priori_type);
-    // get \foreign{a priori} type or argument
+    // get \foreign{a priori} type for argument
   id_type id =  e.call_variant->fun.identifier_variant;
   @< If |id| is a special operator like size-of and it matches
   |a_priori_type|, |return| a call |id(args)| @>
@@ -1730,7 +1730,6 @@ id_type equals_name()
 {@; static id_type name=main_hash_table->match_literal("=");
   return name;
 }
-
 id_type size_of_name()
 {@; static id_type name=main_hash_table->match_literal("#");
   return name;
@@ -1798,10 +1797,9 @@ will still be accepted.
 recognises special operators with generic argument type patterns, which have
 an identifier~|id| that satisfies |is_special_operator(id)|. The built-in
 function objects that are inserted into the calls here do not come from the
-|global_overload_table|, but from a collection of static of static variables
-whose name ends with |_builtin|, and which are initialised in a module given
-later, using calls to |std::make_shared| so that they refer to unique shared
-instances.
+|global_overload_table|, but from a collection of static variables whose name
+ends with |_builtin|, and which are initialised in a module given later, using
+calls to |std::make_shared| so that they refer to unique shared instances.
 
 The code below executes \emph{before} considering instances in the overload
 table, because the latter could otherwise inadvertently mask some generic
@@ -4300,9 +4298,11 @@ void for_expression<flags,kind>::evaluate(level l) const
       throw;
     if (l!=no_value)
     { if ((flags&0x2)!=0)
+        // doing |break| in reverse-gathering loop requires a shift
         dst=std::move(dst,result->val.end(),result->val.begin());
-          // after break, left-align |result|
+          // left-align |result|
       result->val.resize(dst-result->val.begin());
+      // resize needed in all cases
     }
   }
 
