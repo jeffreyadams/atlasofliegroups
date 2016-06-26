@@ -40,7 +40,7 @@ set lie_coradical_part (RootDatum rd, ratvec v) = ratvec: v-ss_part(rd,v)
 
 { Q-basis of Lie algebra of split part of radical; columns are coweights }
 set split_radical_basis (InnerClass G) =  mat:
-  kernel( ^(simple_roots(G)#(1+distinguished_involution(G))) )
+  kernel( ^(simple_roots(G)##(1+distinguished_involution(G))) )
 { same: Q-basis of Lie algebra of split part of radical of complex group }
 set lie_split_radical (InnerClass G) = mat: { columns are coweights }
   let (A,v)=adapted_basis(^(1-distinguished_involution(G))*lie_radical(G))
@@ -48,7 +48,7 @@ set lie_split_radical (InnerClass G) = mat: { columns are coweights }
 
 { Q-basis of Lie algebra of compact part of radical; columns are coweights }
 set compact_radical_basis (InnerClass G) =  mat:
-  kernel( ^(simple_roots(G)#(1-distinguished_involution(G))) )
+  kernel( ^(simple_roots(G)##(1-distinguished_involution(G))) )
 { same: Q-basis of Lie algebra of compact part of radical of complex group }
 set lie_compact_radical (InnerClass G) = mat:
   let (A,v)=adapted_basis((1+^distinguished_involution(G))*lie_radical(G))
@@ -109,7 +109,7 @@ set Z_hat (RootDatum rd) = ((mat,vec),mat):
 }
 set Z_hat (InnerClass G) = ((mat,vec),(mat,mat)):
 ( { finite part determined by invariant factors other than 1 from Smith: }
-  filter_units(Smith((1-distinguished_involution(G))#simple_roots(G)))
+  filter_units(Smith( (1-distinguished_involution(G))##simple_roots(G) ))
 , (lie_compact_radical_hat(G),lie_split_radical_hat(G))
 )
 

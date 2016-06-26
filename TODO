@@ -20,6 +20,8 @@
   Distinguish one-line (maybe abbreviated) and long forms.
   Nuance "simply connected" and "adjoint" for non-semisimple root data
 
+- For errors during implict conversion, provide back-tracing as for calls
+
 - Check whether nested voiding in loops is necessary, maybe do only outer one
 
 - Implement compound assignment directly

@@ -67,7 +67,7 @@ set generate_all_binary = (int->[vec]): all_0_1_vecs@int
 set generate_all_subsets ([int] S) = [[int]]:
   let rec_fun g (int k) = [[int]]: { subsets of first k elements of S }
     if =k then [[]] { one empty subset of the empty set }
-    else let subs = g(k-1), last=S[k-1] in subs # for s in subs do s#last od
+    else let subs = g(k-1), last=S[k-1] in subs ## for s in subs do s#last od
     fi
   in g(#S)
 

@@ -231,7 +231,7 @@ set co_invariant_form (RootDatum rd, ratvec v, ratvec w) = rat:
   let M=co_invariant_form(rd) in v*M*w
 
 { suppress a W_word at index k from a list, requires 0<=k<#list }
-set delete ([W_word] list, int k) = [W_word]: list[:k]#list[k+1:]
+set delete ([W_word] list, int k) = [W_word]: list[:k]##list[k+1:]
 
 { order of W_word, uses order@mat from basic.at }
 set order (W_word w) = int: order(w_matrix(w))

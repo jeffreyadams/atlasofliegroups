@@ -64,7 +64,7 @@ let D=C[0:#w] in (D*A*v,saturation_quotient_module_basis(M)*B*v)
   using columns of M as basis
 }
 set sub_matrix (mat A,mat M) = mat:
-  let P = M#kernel(^M) then (Pinverse,d) = invert(P)
+  let P = M##kernel(^M) then (Pinverse,d) = invert(P)
   then Q = minor(Pinverse*A*P,n_columns(M)) { extract top-left k*k block }
   in assert(=Q%d,"lattice not fixed"); Q\d
 
@@ -99,7 +99,7 @@ set corestrict_action (mat A, mat M) = mat: ^restrict_action(^A,^M)
   using the basis from quotient_module_basis(M)
 }
 set quotient_matrix (mat M,mat A) = mat:
-  let P= submodule_basis(M)#quotient_module_basis(M), ncM=n_columns(M)
+  let P= submodule_basis(M)##quotient_module_basis(M), ncM=n_columns(M)
   then (Pinverse,d) = invert(P)
   then Q = minor(Pinverse*A*P,n_columns(A)-ncM,ncM)
   in Q\d

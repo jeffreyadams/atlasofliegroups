@@ -176,11 +176,11 @@ set contains (int val) = ([int]->bool): ([int] v)bool: is_member(v)(val)
 set rec_fun all_0_1_vecs (int n) = [vec]:
   if n<=0 then [null(0)]
   else let list=all_0_1_vecs(n-1) in
-    for v in list do v#0 od   #   for v in list do v#1 od
+    for v in list do v#0 od  ##  for v in list do v#1 od
   fi
 
 set rec_fun power_set (int n) = [[int]]: { indices where 0_1_vecs have 1 }
-  if =n then [[]] else let p=power_set(n-:=1) in p # for S in p do S#n od fi
+  if =n then [[]] else let p=power_set(n-:=1) in p ## for S in p do S#n od fi
 set power_set ([int] S) = [[int]]:
   for inx in power_set(#S) do for i in inx do S[i] od od
 
@@ -208,10 +208,14 @@ set # (vec v, mat m) = mat: n_rows(m) { require size match } # (v#([vec]:m))
 set ^ (mat m, vec v) = mat: n_columns(m) ^ (([vec]:^m)#v)
 set ^ (vec v, mat m) = mat: n_columns(m) ^ (v#([vec]:^m))
 
-set # (mat A, mat B) = mat: { concatenate horizontally, must have same depth }
-   n_rows(B)#(([vec]:A)#([vec]:B))
+set ## (mat A, mat B) = mat: { concatenate horizontally, must have same depth }
+   n_rows(B) # (([vec]:A)##([vec]:B))
 set ^ (mat A, mat B) = mat: { concatenate vertically, must have same width }
-   n_columns(B) ^ (([vec]:^A)#([vec]:^B))
+   n_columns(B) ^ (([vec]:^A)##([vec]:^B))
+
+{ concatenate horizontally a list of matrices; each of n rows }
+set ## (int n,[mat] L) = mat:
+  n # ## for M in L do [vec]:M od
 
 { apply a function to all matrix entries }
 set map_on (mat m) = ((int->int)->mat):
@@ -348,7 +352,8 @@ set * (int i,ratvec v) = ratvec: v*i
 set * (rat r,ratvec v) = ratvec: v*r
 
 { concatenate ratvec values: use conversion to and from [rat] }
-set #(ratvec a,ratvec b) = ratvec: #([rat]:a,[rat]:b)
+set ## (ratvec a,ratvec b) = ratvec: ##([rat]:a,[rat]:b)
+set ## ([ratvec] rs) = ratvec: ## for r in rs do [rat]:r od
 
 set sum ([ratvec] list, int l) = ratvec: { sum of ratvecs of constant length l }
   let result = ratvec: null(l) in
@@ -517,9 +522,9 @@ set negative_system (mat posroots) = { the missing half of the root system }
 
 { having _all_ roots can be useful }
 set roots (RootDatum rd) = mat:
-  let pr=posroots(rd) in negative_system(pr)#pr
+  let pr=posroots(rd) in negative_system(pr) ## pr
 set coroots (RootDatum rd) = mat:
-  let pcr=poscoroots(rd) in negative_system(pcr)#pcr
+  let pcr=poscoroots(rd) in negative_system(pcr) ## pcr
 
 { the correspondence between roots and coroots }
 set root (RootDatum rd, vec alpha_v) = vec: root(rd,coroot_index(rd,alpha_v))
@@ -1050,7 +1055,7 @@ set positive_imaginary_roots_and_coroots = imaginary_sys@(RootDatum,mat)
 set positive_imaginary_roots_and_coroots = imaginary_sys@KGBElt
 
 set imaginary_roots_and_coroots ((RootDatum, mat)p) = (mat,mat):
-  let (a,b)=imaginary_sys(p) in (negative_system(a)#a,negative_system(b)#b)
+  let (a,b)=imaginary_sys(p) in (negative_system(a)##a, negative_system(b)##b)
 set imaginary_roots_and_coroots (KGBElt x) = (mat,mat):
   imaginary_roots_and_coroots (root_datum(real_form(x)),involution(x))
 
@@ -1058,7 +1063,7 @@ set positive_real_roots_and_coroots = real_sys@(RootDatum,mat)
 set positive_real_roots_and_coroots = real_sys@KGBElt
 
 set real_roots_and_coroots ((RootDatum, mat)p) = (mat,mat):
-  let (a,b)=real_sys(p) in (negative_system(a)#a,negative_system(b)#b)
+  let (a,b)=real_sys(p) in (negative_system(a)##a, negative_system(b)##b)
 set real_roots_and_coroots (KGBElt x) = (mat,mat):
   real_roots_and_coroots (root_datum(real_form(x)),involution(x))
 
@@ -1075,12 +1080,12 @@ set monomials (ParamPol P) = [Param]: for c@p in P do p od
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 
 { delete one term from a list }
-set delete ([int] v, int k)     =[int]:     v[:k]#v[k+1:]
-set delete ([vec] v, int k)     =[vec]:     v[:k]#v[k+1:]
-set delete ([ratvec] v, int k)  =[ratvec]:  v[:k]#v[k+1:]
-set delete ([[ratvec]] v, int k)=[[ratvec]]:v[:k]#v[k+1:]
-set delete ([[vec]] v, int k)   =[[vec]]:   v[:k]#v[k+1:]
-set delete ([ParamPol] P, int k)=[ParamPol]:P[:k]#P[k+1:]
+set delete ([int] v, int k)     =[int]:     v[:k]##v[k+1:]
+set delete ([vec] v, int k)     =[vec]:     v[:k]##v[k+1:]
+set delete ([ratvec] v, int k)  =[ratvec]:  v[:k]##v[k+1:]
+set delete ([[ratvec]] v, int k)=[[ratvec]]:v[:k]##v[k+1:]
+set delete ([[vec]] v, int k)   =[[vec]]:   v[:k]##v[k+1:]
+set delete ([ParamPol] P, int k)=[ParamPol]:P[:k]##P[k+1:]
 
 {   		    Miscellaneous find functions		     }
 

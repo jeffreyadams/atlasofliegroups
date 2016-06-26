@@ -1237,13 +1237,12 @@ practice this is not a problem, as it requires a deeply nested formula with
 coercions required at all levels, which would be a highly artificial
 situation.
 
-@ Coercion of arguments is forbidden when a variant requires a |void| argument
-type, so as to avoid that a parameterless function variant would accept and
-convert to void any argument combination that failed to match other instances;
-in such case a failed error should be signalled instead. So a |void| argument
-type requires an exact type match, but otherwise the matching condition is
-that |is_close| sets the bit indicating a possible conversion from the
-|a_priori_type| to the expected operand type.
+@ The matching condition is that the call |is_close(a_priori_type,arg_type)|
+sets the bit indicating a possible conversion from the |a_priori_type| to the
+expected |arg_type|. (Since |is_close| treats |void| as just the $0$-tuple
+type, this means that an instance with |arg_type==void_type| (no arguments)
+will not match any call with an argument (unless it has void type), even
+though any type can be voided to |void|; this is intended behaviour.)
 
 Apart from the cases listed in |variants|, there are also cases that match a
 ``generic'' operation (in fact an operation that has a second order type, but
@@ -1270,8 +1269,8 @@ inexact match, because it might irreversibly specialise |type| according to
 the tentative match, and this should be avoided if a generic match turns out
 to override this match.
 
-The specification of one part of this function involving user-defined
-functions is postponed until later.
+The part of this function that actually constructs a function call is
+postponed to be detailed later.
 
 @:resolve_overload@>
 
@@ -1281,9 +1280,10 @@ expression_ptr resolve_overload
    type_expr& type,
    const overload_table::variant_list& variants)
 { const expr& args = e.call_variant->arg;
-  type_expr a_priori_type;
-  expression_ptr arg = convert_expr(args,a_priori_type);
+  type_expr apt; // modifiable temporary
+  expression_ptr arg = convert_expr(args,apt);
     // get \foreign{a priori} type for argument
+  const type_expr& a_priori_type = apt;
   id_type id =  e.call_variant->fun.identifier_variant;
   expression_ptr call(nullptr);
     // will be assigned in case of match requiring coercion
@@ -1298,7 +1298,7 @@ expression_ptr resolve_overload
       // exact match, return
     }
     else
-    if (arg_type!=void_type and (is_close(a_priori_type,arg_type)&0x1)!=0)
+    if ((is_close(a_priori_type,arg_type)&0x1)!=0)
     {
 // inexact match, so tentatively convert again using |arg_type|, hoping coercion helps
       try
@@ -1322,12 +1322,14 @@ expression_ptr resolve_overload
 }
 
 @ Here is how we match special operators with generic argument type patterns;
-they have an identifier~|id| that satisfies |is_special_operator(id)|. The
-built-in function objects that are inserted into the calls here do not come
-from the |global_overload_table|, but from a collection of static variables
-whose name ends with |_builtin|, and which are initialised in a module given
-later, using calls to |std::make_shared| so that they refer to unique shared
-instances.
+they have an identifier~|id| that satisfies the predicate
+|is_special_operator| to be defined below, and which is tested to ensure
+such function calls get to the current code even if the operator should be
+absent from the overload table. The built-in function objects that are
+inserted into the calls here do not come from the |global_overload_table|, but
+from a collection of static variables whose name ends with |_builtin|, and
+which are initialised in a module given later, using calls to
+|std::make_shared| so that they refer to unique shared instances.
 
 The function |print| (but not |prints|) will return the value printed if
 required, so it has the type of a generic identity function. This is done so
@@ -1358,11 +1360,11 @@ the case of \&{die}.
         overloaded_builtin_call(sizeof_row_builtin,std::move(arg),e.loc));
       return conform_types(int_type,type,std::move(call),e);
     }
-    else if (a_priori_type.kind!=undetermined_type and
-             a_priori_type.specialise(pair_type))
-    @< Recognise and return 2-argument versions of `\#', or fall through in
-       case of failure @>
+    else if (is_pair_type(a_priori_type))
+    @< Recognise and return 2-argument versions of `\#', or fall through @>
   }
+  else if (id==concatenate_name())
+    @< Recognise and return instances of `\#\#', or fall through @>
   else if (id==print_name()) // this one always matches
   { if (not type.specialise(a_priori_type))
       arg=convert_expr(args,type); // redo conversion with |type| from context
@@ -1388,60 +1390,78 @@ the case of \&{die}.
       variadic_builtin_call(error_builtin,std::move(arg),e.loc));
 }
 
-@ The operator `\#' can also be used as infix operator, to join (concatenate)
-two row values of the same type or to extend one on either end by a single
-element. The corresponding wrapper functions will be defined in
+@ We used the following simple type predicate above. Contrary to specialising
+to |pair_type|, this function cannot alter its argument.
+
+@< Local function definitions @>=
+bool is_pair_type(const type_expr& t)
+@+{@; return t.kind==tuple_type and length(t.tupple)==2; }
+
+@ The operator `\#' can also be used as infix operator, to extend row value on
+either end by a single element. The corresponding wrapper functions will be
+defined in
 %
 section@#hash wrappers@>.
 %
-In the case of joining two rows we require that both arguments have identical
-row type; in the case of extension of a row we require that one operand has
-row-of type, with component type equal to the type of the other operand (we
-allow no coercion of operands, as for all generic operators). We do however
-make an exception to the rule that operands with type \.{[*]} (from the
-expression $[\,]$, or more often from identifiers that have been initialised
-with that expression) will not match in overloading unless that exact type is
-specified: for the operator `\#', if one of the operands has this type, then
-its unknown component type will be specialised to the type of the other
-operand.
+We require that one operand has row-of type, with component type equal to the
+type of the other operand (we allow no coercion of operands, as for almost all
+generic operators). We do however make an exception to the rule that operands
+with type \.{[*]} (from the expression $[\,]$, or more often from identifiers
+that have been initialised with that expression) will not match in overloading
+unless that exact type is specified: for the operator `\#', if one of the
+operands has this type, then its unknown component type will be specialised to
+the type of the other operand.
 
 These rules allow for a few ambiguous cases, when both operands have row type,
-but these are quite rare. We resolve the ambiguity by stipulating the
-preference order suffix, join, prefix. This implies that join is chosen only
-if both operands have equal types without unknown component (otherwise suffix
-takes precedence), and the fact that suffix takes precedence over prefix means
-that for instance $[[2]]\#[\,]$ will give as result $[[2],[\,]]$, while
-$[\,]\#[[2]]$ will give $[[[2]]]$.
+but these are quite rare. We resolve the ambiguity by stipulating that suffix
+is preferred over prefix when both can apply. This implies that for instance
+$[[2]]\#[\,]$ will give as result $[[2],[\,]]$, while $[\,]\#[[2]]$ will give
+$[[[2]]]$.
 
 @< Recognise and return 2-argument versions of `\#'... @>=
 {
   const type_expr& ap_tp0 = a_priori_type.tupple->contents;
   const type_expr& ap_tp1 = a_priori_type.tupple->next->contents;
-  if (ap_tp0.kind==row_type) // suffix case
-  { if (ap_tp0.component_type->specialise(ap_tp1))
-    { expression_ptr call(new @| overloaded_builtin_call
-        (suffix_elt_builtin,std::move(arg),e.loc));
-      return conform_types(ap_tp0,type,std::move(call),e);
-    }
-    if (ap_tp0==ap_tp1) // join case
-    { expression_ptr call(new @| overloaded_builtin_call
-        (join_rows_builtin,std::move(arg),e.loc));
-      return conform_types(ap_tp0,type,std::move(call),e);
-    }
+  if (ap_tp0.kind==row_type and
+      ap_tp0.component_type->specialise(ap_tp1)) // suffix case
+  { expression_ptr call(new @| overloaded_builtin_call
+      (suffix_elt_builtin,std::move(arg),e.loc));
+    return conform_types(ap_tp0,type,std::move(call),e);
   }
-  if (ap_tp1.kind==row_type) // prefix case
-  { if (ap_tp1.component_type->specialise(ap_tp0))
-    { expression_ptr call(new @| overloaded_builtin_call
-        (prefix_elt_builtin,std::move(arg),e.loc));
-      return conform_types(ap_tp1,type,std::move(call),e);
-    }
+  if (ap_tp1.kind==row_type and
+      ap_tp1.component_type->specialise(ap_tp0)) // prefix case
+  { expression_ptr call(new @| overloaded_builtin_call
+      (prefix_elt_builtin,std::move(arg),e.loc));
+    return conform_types(ap_tp1,type,std::move(call),e);
   }
 }
 
-@ Failing overload resolution causes a |expr_error| explaining the is matching
-identifier and type. As most function definitions will be in the overload
-table even if only one definition is present, we produce a more specific
-|type_error| in that case, whose message will mention the unique
+@ For `\#\#' we have instances concatenating all elements of a row of rows,
+and another concatenating two rows of the same type.
+
+@< Recognise and return instances of `\#\#'... @>=
+{ if (a_priori_type.kind==row_type and
+      a_priori_type.component_type->kind==row_type)
+  { expression_ptr call(new @|
+      overloaded_builtin_call(join_rows_row_builtin,std::move(arg),e.loc));
+    return conform_types(*a_priori_type.component_type,type,std::move(call),e);
+  }
+  if (a_priori_type.kind==tuple_type and
+    @|length(a_priori_type.tupple)==2 and
+    @|a_priori_type.tupple->contents==a_priori_type.tupple->next->contents and
+    @|a_priori_type.tupple->contents.kind==row_type)
+  { expression_ptr call(new @| overloaded_builtin_call
+        (join_rows_builtin,std::move(arg),e.loc));
+    return conform_types
+         (a_priori_type.tupple->contents,type,std::move(call),e);
+  }
+}
+
+@ Here is the final part of |resolve_overload|, reached when no valid match
+could be found. In that case we |throw| a |expr_error| explaining the is
+matching identifier and type. As most function definitions will be in the
+overload table even if only one definition is present, we produce a more
+specific |type_error| in that case, whose message will mention the unique
 expected argument type.
 
 @< Complain about failing overload resolution @>=
@@ -1454,6 +1474,57 @@ else
     << "' with argument type "
     << a_priori_type;
   throw expr_error(e,o.str());
+}
+
+@ Here we define |is_special_operator|, a function called when a function or
+operator name is absent from the overload, so see if |resolve_overload| should
+be called anyway. It must compare against the numeric codes of these
+identifiers, which are not known explicitly at compile time, but which will
+not change once the tables are initialised. To avoid having to look up these
+codes in |main_hash_table| each time, we store each one in a static variable
+inside a dedicated local function. While the equality operator is not a
+generic one, it is tested for elsewhere, so we also give it its local function
+with static variable.
+
+@h "lexer.h" // for |main_hash_table|
+
+@< Local function definitions @>=
+id_type size_of_name()
+{@; static id_type name=main_hash_table->match_literal("#");
+  return name;
+}
+id_type concatenate_name()
+{@; static id_type name=main_hash_table->match_literal("##");
+  return name;
+}
+id_type print_name()
+{@; static id_type name=main_hash_table->match_literal("print");
+  return name;
+}
+id_type to_string_name()
+{@; static id_type name=main_hash_table->match_literal("to_string");
+  return name;
+}
+id_type prints_name()
+{@; static id_type name=main_hash_table->match_literal("prints");
+  return name;
+}
+id_type error_name()
+{@; static id_type name=main_hash_table->match_literal("error");
+  return name;
+}
+@)
+inline bool is_special_operator(id_type id)
+{@; return id==size_of_name()
+    @|  or id==concatenate_name()
+    @|  or id==print_name()
+    @|  or id==to_string_name()
+    @|  or id==prints_name()
+    @|  or id==error_name(); }
+@)
+id_type equals_name()
+{@; static id_type name=main_hash_table->match_literal("=");
+  return name;
 }
 
 @* Function calls.
@@ -1889,47 +1960,6 @@ in the overload table.
     @/return resolve_overload(e,type,variants);
   }
 }
-
-@ The names of some special operators are tested for each time we analyse an
-overloaded call. The numeric values of these identifiers are not known
-explicitly at compile time, but they will not change once the tables are
-initialised; to avoid having to look them up in |main_hash_table| each time,
-we store each one in a static variable inside a dedicated local function.
-
-@h "lexer.h" // for |main_hash_table|
-
-@< Local function definitions @>=
-id_type equals_name()
-{@; static id_type name=main_hash_table->match_literal("=");
-  return name;
-}
-id_type size_of_name()
-{@; static id_type name=main_hash_table->match_literal("#");
-  return name;
-}
-id_type print_name()
-{@; static id_type name=main_hash_table->match_literal("print");
-  return name;
-}
-id_type to_string_name()
-{@; static id_type name=main_hash_table->match_literal("to_string");
-  return name;
-}
-id_type prints_name()
-{@; static id_type name=main_hash_table->match_literal("prints");
-  return name;
-}
-id_type error_name()
-{@; static id_type name=main_hash_table->match_literal("error");
-  return name;
-}
-@)
-inline bool is_special_operator(id_type id)
-{@; return id==size_of_name()
-        or id==print_name()
-        or id==to_string_name()
-        or id==prints_name()
-        or id==error_name(); }
 
 @* Let-expressions, and identifier patterns.
 %
@@ -4810,7 +4840,7 @@ case op_cast_expr:
 { const op_cast& c=e.op_cast_variant;
   const overload_table::variant_list& variants =
    global_overload_table->variants(c->oper);
-  type_expr& ctype=c->type;
+  const type_expr& ctype=c->type;
   if (is_special_operator(c->oper))
     @< Test special argument patterns, and on match |return| an appropriate
        denotation @>
@@ -4862,12 +4892,16 @@ slightly more complicated.
   else if (c->oper==size_of_name())
     @< Select the proper instance of the \.\# operator,
        or fall through if none applies @>
+  else if (c->oper==concatenate_name())
+    @< Select the proper instance of the \.{\#\#} operator,
+       or fall through if none applies @>
 }
 
-@ For the \.\#, we select from four possible variants that deliver different
-wrapper functions. We signal an error if we found a match but the type of the
-resulting operator does not match the type required by the context. If no
-match is found here, there can still be one in the overload table.
+@ For the \.\# operator, we select from four possible variants that deliver
+different wrapper functions. We signal an error if we found a match but the
+type of the resulting operator does not match the type required by the
+context. If no match is found here, there can still be one in the overload
+table.
 
 @< Select the proper instance of the \.\# operator,... @>=
 { if (ctype.kind==row_type)
@@ -4875,25 +4909,39 @@ match is found here, there can still be one in the overload table.
   @/return expression_ptr(new @| denotation (sizeof_row_builtin));
     throw type_error(e,ctype.copy(),std::move(type));
   }
-  else if (ctype.specialise(pair_type))
+  else if (is_pair_type(ctype))
   {
     type_expr& arg_tp0 = ctype.tupple->contents;
     type_expr& arg_tp1 = ctype.tupple->next->contents;
-    if (arg_tp0.kind==row_type)
-    { if (arg_tp0==arg_tp1)
-      { if (functype_specialise(type,ctype,arg_tp0))
-        return expression_ptr(new @| denotation (join_rows_builtin));
-        throw type_error(e,ctype.copy(),std::move(type));
-      }
-      else if (*arg_tp0.component_type==arg_tp1)
-      { if (functype_specialise(type,ctype,arg_tp0))
+    if (arg_tp0.kind==row_type and *arg_tp0.component_type==arg_tp1)
+    { if (functype_specialise(type,ctype,arg_tp0))
         return expression_ptr(new @| denotation(suffix_elt_builtin));
-        throw type_error(e,ctype.copy(),std::move(type));
-      }
+      throw type_error(e,ctype.copy(),std::move(type));
     }
     if (arg_tp1.kind==row_type and *arg_tp1.component_type==arg_tp0)
     { if (functype_specialise(type,ctype,arg_tp1))
       return expression_ptr(new @| denotation (prefix_elt_builtin));
+      throw type_error(e,ctype.copy(),std::move(type));
+    }
+  }
+}
+
+@ Like for \.\#, we select for the \.{\#\#} operator the variants that deliver
+different wrapper functions.
+
+@< Select the proper instance of the \.{\#\#} operator,... @>=
+{ if (ctype.kind==row_type and ctype.component_type->kind==row_type)
+  { if (functype_specialise(type,ctype,*ctype.component_type))
+  @/return expression_ptr(new @| denotation (join_rows_row_builtin));
+    throw type_error(e,ctype.copy(),std::move(type));
+  }
+  else if (is_pair_type(ctype))
+  {
+    type_expr& arg_tp0 = ctype.tupple->contents;
+    type_expr& arg_tp1 = ctype.tupple->next->contents;
+    if (arg_tp0.kind==row_type and arg_tp1==arg_tp0)
+    { if (functype_specialise(type,ctype,arg_tp0))
+        return expression_ptr(new @| denotation (join_rows_builtin));
       throw type_error(e,ctype.copy(),std::move(type));
     }
   }
@@ -5697,7 +5745,9 @@ static shared_builtin prefix_elt_builtin =
 static shared_builtin suffix_elt_builtin =
   std::make_shared<const builtin_value>(suffix_element_wrapper,"#@@([T],T)");
 static shared_builtin join_rows_builtin =
-  std::make_shared<const builtin_value>(join_rows_wrapper,"#@@([T],[T])");
+  std::make_shared<const builtin_value>(join_rows_wrapper,"##@@([T],[T])");
+static shared_builtin join_rows_row_builtin =
+  std::make_shared<const builtin_value>(join_rows_row_wrapper,"##@@([[T]])");
 static shared_builtin boolean_negate_builtin =
   std::make_shared<const builtin_value>(bool_not_wrapper,"not@@bool");
 
@@ -5810,15 +5860,36 @@ void prefix_element_wrapper(expression_base::level l)
 }
 @)
 void join_rows_wrapper(expression_base::level l)
-{ shared_row y=get<row_value>();
-  shared_row x=get<row_value>();
-  if (l!=expression_base::no_value)
-  { own_row result = std::make_shared<row_value>(x->val.size()+y->val.size());
-    std::copy(y->val.begin(),y->val.end(), @|
-      std::copy(x->val.begin(),x->val.end(),result->val.begin()));
-@/  push_value(std::move(result));
-  }
+{ shared_row second=get<row_value>();
+  shared_row first=get<row_value>();
+  if (l==expression_base::no_value)
+    return;
+  const auto& x=first->val;
+  const auto& y=second->val;
+  own_row result = std::make_shared<row_value>(x.size()+y.size());
+@/std::copy(y.begin(),y.end(),
+      @+ std::copy(x.begin(),x.end(),result->val.begin()) @+ );
+@/push_value(std::move(result));
+}
 
+@)
+void join_rows_row_wrapper(expression_base::level l)
+{ shared_row arg=get<row_value>();
+  if (l==expression_base::no_value)
+    return;
+  const std::vector<shared_value>& x=arg->val;
+  std::vector< const std::vector<shared_value>*> p; p.reserve(x.size());
+  for (auto it=x.cbegin(); it!=x.cend(); ++it)
+    p.push_back(&force<row_value>(it->get())->val);
+  size_t s=0;
+  for (auto it=p.cbegin(); it!=p.cend(); ++it)
+    s+=(*it)->size();
+  own_row result = std::make_shared<row_value>(s);
+  auto dst=result->val.begin();
+  for (auto it=p.cbegin(); it!=p.cend(); ++it)
+    dst=std::copy((*it)->cbegin(),(*it)->cend(),dst);
+  assert(dst==result->val.end());
+@/push_value(std::move(result));
 }
 
 @ Finally we define the Boolean negation wrapper function.

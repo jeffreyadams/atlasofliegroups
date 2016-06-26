@@ -62,7 +62,7 @@
 %token NEXT DO DONT FROM DOWNTO WHILE FOR OD CASE ESAC REC_FUN
 %token TRUE FALSE DIE BREAK RETURN WHATTYPE SHOWALL FORGET
 
-%token <oper> OPERATOR OPERATOR_BECOMES '=' '*'
+%token <oper> OPERATOR OPERATOR_BECOMES '=' '*' CONCAT
 %token <val> INT
 %token <str> STRING
 %token <id_code> IDENT TYPE_ID
@@ -72,6 +72,7 @@
 %token ARROW "->"
 %token BECOMES ":="
 %token TLSUB "~["
+%token CONCAT "##"
 %token END_OF_FILE
 
 %type <expression> expr expr_opt tertiary cast lettail or_expr and_expr

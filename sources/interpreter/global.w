@@ -2142,17 +2142,38 @@ void string_geq_wrapper(expression_base::level l)
     push_value(whether(i->val>=j->val));
 }
 @)
-void concatenate_wrapper(expression_base::level l)
-{ shared_string b=get<string_value>(); shared_string a=get<string_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<string_value>(a->val+b->val));
-}
-@)
 void int_format_wrapper(expression_base::level l)
 { int n=get<int_value>()->val;
   std::ostringstream o; o<<n;
   if (l!=expression_base::no_value)
     push_value(std::make_shared<string_value>(o.str()));
+}
+
+@ Here are the functions for concatenating two or more strings.
+
+@< Local function definitions @>=
+void string_concatenate_wrapper(expression_base::level l)
+{ shared_string b=get<string_value>(); shared_string a=get<string_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<string_value>(a->val+b->val));
+}
+@)
+void concatenate_strings_wrapper(expression_base::level l)
+{ shared_row arg=get<row_value>();
+  if (l==expression_base::no_value)
+    return;
+  const std::vector<shared_value>& x=arg->val;
+  std::vector<const std::string*> p; p.reserve(x.size());
+  for (auto it=x.cbegin(); it!=x.cend(); ++it)
+    p.push_back(&force<string_value>(it->get())->val);
+  size_t s=0;
+  for (auto it=p.cbegin(); it!=p.cend(); ++it)
+    s+=(*it)->size();
+  std::string result(s,char()); auto dst=result.begin();
+  for (auto it=p.cbegin(); it!=p.cend(); ++it)
+    dst=std::copy((*it)->cbegin(),(*it)->cend(),dst);
+  assert(dst==result.end());
+  push_value(std::make_shared<string_value>(std::move(result)));
 }
 
 @ To give a rudimentary capability of analysing strings, we provide, in
@@ -2262,7 +2283,7 @@ void join_vectors_wrapper(expression_base::level l)
 { shared_vector y=get<vector_value>();
   shared_vector x=get<vector_value>();
   if (l!=expression_base::no_value)
-  { own_vector result = std::make_shared<vector_value>(std::vector<int>());
+  { own_vector result = std::make_shared<vector_value>(int_Vector());
     result->val.reserve(x->val.size()+y->val.size());
     result->val.insert(result->val.end(),x->val.begin(),x->val.end());
     result->val.insert(result->val.end(),y->val.begin(),y->val.end());
@@ -2270,6 +2291,26 @@ void join_vectors_wrapper(expression_base::level l)
   }
 
 }
+@)
+void join_vector_row_wrapper(expression_base::level l)
+{ shared_row arg=get<row_value>();
+  if (l==expression_base::no_value)
+    return;
+  const std::vector<shared_value>& x=arg->val;
+  std::vector<const int_Vector*> p; p.reserve(x.size());
+  for (auto it=x.cbegin(); it!=x.cend(); ++it)
+    p.push_back(&force<vector_value>(it->get())->val);
+  size_t s=0;
+  for (auto it=p.cbegin(); it!=p.cend(); ++it)
+    s+=(*it)->size();
+  int_Vector result(s);
+  auto dst=result.begin();
+  for (auto it=p.cbegin(); it!=p.cend(); ++it)
+    dst=std::copy((*it)->cbegin(),(*it)->cend(),dst);
+  assert(dst==result.end());
+  push_value(std::make_shared<vector_value>(std::move(result)));
+}
+
 
 @*1 Vectors and matrices.
 %
@@ -2973,7 +3014,8 @@ install_function(string_less_wrapper,"<","(string,string->bool)");
 install_function(string_leq_wrapper,"<=","(string,string->bool)");
 install_function(string_greater_wrapper,">","(string,string->bool)");
 install_function(string_geq_wrapper,">=","(string,string->bool)");
-install_function(concatenate_wrapper,"#","(string,string->string)");
+install_function(string_concatenate_wrapper,"#","(string,string->string)");
+install_function(concatenate_strings_wrapper,"##","([string]->string)");
 install_function(int_format_wrapper,"int_format","(int->string)");
 install_function(string_to_ascii_wrapper,"ascii","(string->int)");
 install_function(ascii_char_wrapper,"ascii","(int->string)");
@@ -2984,6 +3026,7 @@ install_function(matrix_bounds_wrapper,"#","(mat->int,int)");
 install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
 install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
 install_function(join_vectors_wrapper,"#","(vec,vec->vec)");
+install_function(join_vector_row_wrapper,"##","([vec]->vec)");
 install_function(vec_unary_eq_wrapper,"=","(vec->bool)");
 install_function(vec_unary_neq_wrapper,"!=","(vec->bool)");
 install_function(vec_eq_wrapper,"=","(vec,vec->bool)");
