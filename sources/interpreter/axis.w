@@ -3746,7 +3746,29 @@ case int_case_expr:
 
 @*1 While loops.
 %
-Next we consider different kinds of loops, to start with |while| loops.
+Next we consider different kinds of loops. Apart from the distinction between
+loops controlled by a condition (|while|), by the components of some value
+(|for|) or by a simple counter (counted |for|), each kind may have several
+variants, determined at compile time and transformed into a template argument
+to the classes implementing the loops. The variant is determined by a
+combination of bits, like one indicating reverse traversal of the ``input''
+range (for |for| loops only) and one indicating reverse accumulation of the
+loop body values into a row (for any kind of loop). For readability these bits
+will be tested by the following predicates; since |flags| will be a template
+parameter at all uses, the predicates will have a constant value in all cases,
+whence the |constexpr| declaration.
+
+@s constexpr const
+
+@< Local function def... @>=
+constexpr bool in_reversed(unsigned flags) @+{@; return (flags&0x1)!=0; }
+constexpr bool in_forward(unsigned flags) @+{@; return (flags&0x1)==0; }
+constexpr bool out_reversed(unsigned flags) @+{@; return (flags&0x2)!=0; }
+constexpr bool out_forward(unsigned flags) @+{@; return (flags&0x2)==0; }
+constexpr bool no_frame(unsigned flags) @+{@; return (flags&0x4)!=0; }
+constexpr bool has_frame(unsigned flags) @+{@; return (flags&0x4)==0; }
+
+@ Let us start with considering |while| loops.
 Although they contain two parts, a condition before |do| and a body after it,
 the two are present in the following structure as a single |body|. The reason
 for this is that we want to allow declarations in the condition to remain
@@ -3772,7 +3794,7 @@ in the output for |*body|.
 @< Function definitions @>=
 template<unsigned flags>
 void while_expression<flags>::print(std::ostream& out) const
-{@; out << " while " << *body << ((flags&0x2)!=0 ? " ~od " : " od "); }
+{@; out << " while " << *body << (out_reversed(flags) ? " ~od " : " od "); }
 
 @ The following function helps instantiating the class template, selecting a
 constant template parameter equal to |flags|. Only the bit at position~$1$,
@@ -4019,7 +4041,7 @@ void while_expression<flags>::evaluate(level l) const
           throw;
     }
     own_row r = std::make_shared<row_value>(s);
-    if ((flags&0x2)==0) // forward accumulating while loop
+    if (out_forward(flags)) // forward accumulating while loop
     { auto dst = r->val.rbegin();
         // use reverse iterator, since we reverse accumulated
       for (auto it = result.wbegin(); not it.at_end(); ++it,++dst)
@@ -4097,13 +4119,13 @@ keywords |do| and~\&{od}.
 
 @< Function definitions @>=
 void print_body(std::ostream& out,const expression_ptr& body,unsigned flags)
-{@; out << ((flags&0x1)!=0 ? " ~do " : " do ")  << *body
-        << ((flags&0x2)!=0 ? " ~od " : " od ");
+{@; out << (in_reversed(flags) ? " ~do " : " do ")  << *body
+        << (out_reversed(flags) ? " ~od " : " od ");
 }
 @)
 template <unsigned flags, subscr_base::sub_type kind>
 void for_expression<flags,kind>::print(std::ostream& out) const
-{ out << " for " << *++pattern.sublist.begin();
+{ out << " for " << *std::next(pattern.sublist.begin());
     if (pattern.sublist.front().kind==0x1)
       out << '@@' << pattern.sublist.front();
   print_body(out << " in " << *in_part,body,flags);
@@ -4333,7 +4355,7 @@ void for_expression<flags,kind>::evaluate(level l) const
   { if (err.depth-- > 0)
       throw;
     if (l!=no_value)
-    { if ((flags&0x2)!=0)
+    { if (out_reversed(flags))
         // doing |break| in reverse-gathering loop requires a shift
         dst=std::move(dst,result->val.end(),result->val.begin());
           // left-align |result|
@@ -4356,8 +4378,8 @@ case subscr_base::row_entry:
   { shared_row in_val = get<row_value>();
     size_t n=in_val->val.size();
     @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
-    while (i!=((flags&0x1)==0 ? n : 0))
-    { loop_var->val[1]=in_val->val[(flags&0x1)==0 ? i : i-1];
+    while (i!=(in_forward(flags) ? n : 0))
+    { loop_var->val[1]=in_val->val[in_forward(flags) ? i : i-1];
         // move index into |loop_var| pair
       @< Set |loop_var->val[0]| to |i++| or to |--i|, create a new |frame| for
       |pattern| binding |loop_var|, and evaluate the |loop_body| in it;
@@ -4369,9 +4391,9 @@ case subscr_base::vector_entry:
   { shared_vector in_val = get<vector_value>();
     size_t n=in_val->val.size();
     @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
-    while (i!=((flags&0x1)==0 ? n : 0))
+    while (i!=(in_forward(flags) ? n : 0))
     { loop_var->val[1] = std::make_shared<int_value>
-        (in_val->val[(flags&0x1)==0 ? i : i-1]);
+        (in_val->val[in_forward(flags) ? i : i-1]);
       @< Set |loop_var->val[0]| to... @>
     }
   }
@@ -4380,10 +4402,10 @@ case subscr_base::ratvec_entry:
   { shared_rational_vector in_val = get<rational_vector_value>();
     size_t n=in_val->val.size();
     @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
-    while (i!=((flags&0x1)==0 ? n : 0))
+    while (i!=(in_forward(flags) ? n : 0))
     { loop_var->val[1] = std::make_shared<rat_value> @|
       (Rational
-        (in_val->val.numerator()[(flags&0x1)==0 ? i : i-1]
+        (in_val->val.numerator()[in_forward(flags) ? i : i-1]
         ,in_val->val.denominator()));
       @< Set |loop_var->val[0]| to... @>
     }
@@ -4393,27 +4415,28 @@ case subscr_base::string_char:
   { shared_string in_val = get<string_value>();
     size_t n=in_val->val.size();
     @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
-    while (i!=((flags&0x1)==0 ? n : 0))
+    while (i!=(in_forward(flags) ? n : 0))
     { loop_var->val[1] = std::make_shared<string_value>
-            (in_val->val.substr((flags&0x1)==0 ? i : i-1,1));
+            (in_val->val.substr(in_forward(flags) ? i : i-1,1));
       @< Set |loop_var->val[0]| to... @>
     }
   }
   @+break;
 
 @ Here are the remaining cases. The case |matrix_column| is ever so slightly
-different because the loop count is given by the number of column rather than
-the size of |inv_val->val|. The case |mod_poly_term| has more important to be
-detailed later. The other two cases should never arise.
+different because the iteration count~|n| is given by the number of columns,
+rather than the size, of |inv_val->val|. The case |mod_poly_term| has more
+important differences, to be detailed later. The other two cases should never
+arise.
 
 @< Cases for evaluating a loop over components of a value... @>=
 case subscr_base::matrix_column:
   { shared_matrix in_val = get<matrix_value>();
     size_t n=in_val->val.numColumns();
     @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
-    while (i!=((flags&0x1)==0 ? n : 0))
+    while (i!=(in_forward(flags) ? n : 0))
     { loop_var->val[1] = std::make_shared<vector_value>
-        (in_val->val.column((flags&0x1)==0 ? i : i-1));
+        (in_val->val.column(in_forward(flags) ? i : i-1));
       @< Set |loop_var->val[0]| to... @>
     }
   }
@@ -4424,39 +4447,40 @@ case subscr_base::mod_poly_term:
 case subscr_base::matrix_entry:; // excluded in type analysis
 case subscr_base::not_so: assert(false);
 
-@ The bit |flags&0x1| indicates reversal during traversal of the source, and
-|flags&0x2| indicates reversal while writing the destination value.
+@ The following code, which occurs five times, used both the input and output
+direction attributes.
 
 @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>=
-size_t i= (flags&0x1)==0 ? 0 : n;
+size_t i= in_forward(flags) ? 0 : n;
 if (l!=no_value)
 { result = std::make_shared<row_value>(n);
-  dst = (flags&0x2)==0 ? result->val.begin() : result->val.end();
+  dst = out_forward(flags) ? result->val.begin() : result->val.end();
 }
 
-@ We set the in-part component stored in |loop_var->val[1]| separately for the
-various values of |kind|, but |loop_var->val[0]| is always the (integral) loop
-index. Once initialised, |loop_var| is passed by the method |frame::bind|
-through the function |thread_components| to set up |loop_frame|, whose
-constructor has pushed it onto |frame::current| to form the new evaluation
-context. Like for |loop_var->val[0]|, it is important that |frame::current| be
-set to point to a newly created frame at each iteration, since any closure
-values in the loop body will incorporate its current instance by reference;
-there would be no point in supplying fresh pointers in |loop_var| if they were
-subsequently copied to overwrite the pointers in the same |evaluation_context|
-object each time. Once these things have been handled, the evaluation of the
-loop body is standard.
+@ This code too occurs identically five times. We set the in-part component
+stored in |loop_var->val[1]| separately for the various values of |kind|, but
+|loop_var->val[0]| is always the (integral) loop index. Once initialised,
+|loop_var| is passed by the method |frame::bind| through the function
+|thread_components| to set up |loop_frame|, whose constructor has pushed it
+onto |frame::current| to form the new evaluation context. Like for
+|loop_var->val[0]|, it is important that |frame::current| be set to point to a
+newly created frame at each iteration, since any closure values in the loop
+body will incorporate its current instance by reference; there would be no
+point in supplying fresh pointers in |loop_var| if they were subsequently
+copied to overwrite the pointers in the same |evaluation_context| object each
+time. Once these things have been handled, the evaluation of the loop body is
+standard.
 
 @< Set |loop_var->val[0]| to... @>=
-{ loop_var->val[0] = std::make_shared<int_value>((flags&0x1)==0 ? i++ : --i);
-    // index; newly created each time
+{ loop_var->val[0] = std::make_shared<int_value>(in_forward(flags) ? i++ : --i);
+    // create a fresh index each time
   frame loop_frame (pattern);
   loop_frame.bind(loop_var);
   if (l==no_value)
     body->void_eval();
   else
   {@; body->eval();
-     *((flags&0x2)==0 ? dst++ : --dst) = pop_value();
+     *(out_forward(flags) ? dst++ : --dst) = pop_value();
   }
 } // restore context upon destruction of |loop_frame|
 
@@ -4475,9 +4499,9 @@ between them.
   size_t n=pol_val->val.size();
   if (l!=no_value)
   { result = std::make_shared<row_value>(n);
-    dst = (flags&0x2)==0 ? result->val.begin() : result->val.end();
+    dst = out_forward(flags) ? result->val.begin() : result->val.end();
   }
-  if ((flags&0x1)==0)
+  if (in_forward(flags))
     for (auto it=pol_val->val.cbegin(); it!=pol_val->val.cend(); ++it)
       @< Loop body for iterating over terms of a virtual module @>
   else
@@ -4485,7 +4509,8 @@ between them.
       @< Loop body for iterating over terms of a virtual module @>
 }
 
-@~And here is that loop body.
+@~And here is that loop body, included twice identically.
+
 @< Loop body for iterating over terms of a virtual module @>=
 { loop_var->val[0] =
     std::make_shared<module_parameter_value>(pol_val->rf,it->first);
@@ -4496,7 +4521,7 @@ between them.
     body->void_eval();
   else
   {@; body->eval();
-    *((flags&0x2)==0 ? dst++ : --dst) = pop_value();
+    *(out_forward(flags) ? dst++ : --dst) = pop_value();
   }
 } // restore context upon destruction of |loop_frame|
 
@@ -4515,14 +4540,14 @@ is present, but halves the number of template instances used.
 @< Type def... @>=
 template <unsigned flags>
 struct counted_for_expression : public expression_base
-{ id_type id; // may be $-1$, if |(flags&0x4)!=0|
+{ id_type id; // may be $-1$, if |no_frame(flags)|
   expression_ptr count, bound, body;
   // we allow |bound| (but not |count|) to hold |nullptr|
 @)
   counted_for_expression
-   (id_type i, expression_ptr&& cnt, expression_ptr&& bnd,
+@| (id_type i, expression_ptr&& cnt, expression_ptr&& bnd,
     expression_ptr&& b)
-  : id(i), count(cnt.release()),bound(bnd.release()), body(b.release())
+@/: id(i), count(cnt.release()),bound(bnd.release()), body(b.release())
   @+{}
   virtual ~@[counted_for_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
@@ -4535,7 +4560,7 @@ parts if absent.
 @< Function definitions @>=
 template <unsigned flags>
 void counted_for_expression<flags>::print(std::ostream& out) const
-{ if ((flags&0x4)==0)
+{ if (has_frame(flags))
     out << " for " << main_hash_table->name_of(id) << ": " << *count;
   else out << " for : " << *count;  // omit nonexistent identifier
   if (bound.get()!=nullptr)
@@ -4671,7 +4696,7 @@ void counted_for_expression<flags>::evaluate(level l) const
   if (c<0)
     c=0; // no negative size result
 
-  if ((flags&0x4)==0) // then loop uses index
+  if (has_frame(flags)) // then loop uses index
   { int b=(bound.get()==nullptr ? 0 : (bound->eval(),get<int_value>()->val));
     c+=b; // set to upper bound, exclusive
     id_pat pattern(id);
@@ -4694,17 +4719,17 @@ void counted_for_expression<flags>::evaluate(level l) const
   }
   else // counted loop without index producing a value
   { own_row result = std::make_shared<row_value>(c);
-    auto dst = (flags&0x2)==0 ? result->val.begin() : result->val.end();
+    auto dst = out_forward(flags) ? result->val.begin() : result->val.end();
     try @/{@;
       while (c-->0)
       {@; body->eval();
-        *((flags&0x2)==0? dst++:--dst) = pop_value();
+        *(out_forward(flags)? dst++:--dst) = pop_value();
       }
     }
     catch (loop_break& err)
     { if (err.depth-- > 0)
         throw;
-      if ((flags&0x2)!=0)
+      if (out_reversed(flags))
         dst=std::move(dst,result->val.end(),result->val.begin());
         // after break, left-align |result|
       result->val.resize(dst-result->val.begin());
@@ -4723,7 +4748,7 @@ more efficient.
 @< Perform counted loop that uses an index, without storing result,
    between lower bound |b| and exclusive upper bound |c| @>=
 { try
-  { if ((flags&0x1)==0) // increasing loop
+  { if (in_forward(flags)) // increasing loop
       while (b<c)
       @/{@; frame fr(pattern);
         fr.bind(std::make_shared<int_value>(b++));
@@ -4754,34 +4779,34 @@ bits of stuff.
 @< Perform counted loop that uses an index, pushing result to |execution_stack|,
    between lower bound |b| and exclusive upper bound |c| @>=
 { own_row result = std::make_shared<row_value>(c);
-  auto dst = (flags&0x2)==0 ? result->val.begin() : result->val.end();
+  auto dst = out_forward(flags) ? result->val.begin() : result->val.end();
   try
-  { if ((flags&0x1)==0) // increasing loop
+  { if (in_forward(flags)) // increasing loop
       while (b<c)
       { frame fr(pattern);
         fr.bind(std::make_shared<int_value>(b++));
         body->eval();
-        *((flags&0x2)==0? dst++:--dst) = pop_value();
+        *(out_forward(flags)? dst++:--dst) = pop_value();
       }
     else if (b!=0)
       while (c-->b)
       { frame fr(pattern);
         fr.bind(std::make_shared<int_value>(c));
         body->eval();
-        *((flags&0x2)==0? dst++:--dst) = pop_value();
+        *(out_forward(flags)? dst++:--dst) = pop_value();
       }
     else // same with |b==0|, but this is marginally faster
       while (c-->0)
       { frame fr(pattern);
         fr.bind(std::make_shared<int_value>(c));
         body->eval();
-        *((flags&0x2)==0? dst++:--dst) = pop_value();
+        *(out_forward(flags)? dst++:--dst) = pop_value();
      }
   }
   catch (loop_break& err)
   { if (err.depth-- > 0)
       throw;
-    if ((flags&0x2)!=0)
+    if (out_reversed(flags))
       dst=std::move(dst,result->val.end(),result->val.begin());
       // after break, left-align |result|
     result->val.resize(dst-result->val.begin());
