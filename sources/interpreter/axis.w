@@ -3767,8 +3767,10 @@ constexpr bool out_reversed(unsigned flags) @+{@; return (flags&0x2)!=0; }
 constexpr bool out_forward(unsigned flags) @+{@; return (flags&0x2)==0; }
 constexpr bool no_frame(unsigned flags) @+{@; return (flags&0x4)!=0; }
 constexpr bool has_frame(unsigned flags) @+{@; return (flags&0x4)==0; }
+constexpr bool yields_count(unsigned flags) @+{@; return (flags&0x8)!=0; }
 
 @ Let us start with considering |while| loops.
+%
 Although they contain two parts, a condition before |do| and a body after it,
 the two are present in the following structure as a single |body|. The reason
 for this is that we want to allow declarations in the condition to remain
@@ -3797,15 +3799,19 @@ void while_expression<flags>::print(std::ostream& out) const
 {@; out << " while " << *body << (out_reversed(flags) ? " ~od " : " od "); }
 
 @ The following function helps instantiating the class template, selecting a
-constant template parameter equal to |flags|. Only the bit at position~$1$,
-with place value $2^1=2$ is actually used for |while| loops.
+constant template parameter equal to |flags|. The only flag bits used in while
+loops are |0x2| for reverse accumulation of values from the loop body, and
+|0x8| indicating that only the number of iterations done should be returned as
+value for the loop. The two are mutually exclusive, so we have three cases
+here.
 
 @< Local function def... @>=
 expression make_while_loop (unsigned flags,expression_ptr&& body)
 { switch(flags)
   {
-  case 0: return new while_expression<0>(std::move(body));
-  case 2: return new while_expression<2>(std::move(body));
+  case 0x0: return new while_expression<0>(std::move(body));
+  case 0x2: return new while_expression<2>(std::move(body));
+  case 0x8: return new while_expression<8>(std::move(body));
   default: assert(false); return nullptr;
   }
 }
@@ -3831,6 +3837,9 @@ case while_expr:
        convert_expr(w.body, as_lvalue(void_type.copy()))));
     return expression_ptr(new voiding(std::move(result)));
   }
+  else if (type==int_type)
+    return expression_ptr(make_while_loop @| (0x8,
+       convert_expr(w.body, as_lvalue(void_type.copy()))));
   else if (type.specialise(row_of_type))
   { expression_ptr b = convert_expr(w.body, *type.component_type);
     return expression_ptr (make_while_loop @|
@@ -3987,17 +3996,16 @@ void dont_expression::evaluate(level l) const
 
 @ Now we can consider the evaluation of |while| loops themselves. If no value
 is asked for, we simply perform a |while|-loop at the \Cpp~level (applying
-|void_eval| to the body expression). Otherwise we also do a |while|-loop, but
-use |eval| to produce a value on |execution_stack| each time around, popping
-it off and pushing it to the front of a |simple_list| (which therefore
-accumulates values in reverse order), which we move-convert into a vector, in
-the appropriate order, when the loop terminates. Curiously, due to the
-combined evaluation of condition and loop body, of the |void| case corresponds
-most naturally to a |do|-|while| loop in \Cpp, since nothing remains to be
-done after testing the termination condition. This is not true for the
-value-producing while loop, since the vale produced by the loop body needs to
-be popped from the |execution_stack|; therefore we have to use the
-comma-operator in the condition of the |while| loop here.
+|void_eval| to the body expression). When the |yields_count| predicate holds,
+we do similarly but keep a count of the loop iterations and return that value.
+In the remaining cases a row value is produced; it will be detailed later.
+
+Curiously, due to the combined evaluation of condition and loop body, of the
+|void| case corresponds most naturally to a |do|-|while| loop in \Cpp, since
+nothing remains to be done after testing the termination condition. This is
+not true for the value-producing while loop, since the vale produced by the
+loop body needs to be popped from the |execution_stack|; therefore we have to
+use the comma-operator in the condition of the |while| loop here.
 
 Since |while|-loops can run indefinitely and don't necessarily involve calls
 to user-defined functions (where a test is done too), we put a test of the
@@ -4025,35 +4033,60 @@ void while_expression<flags>::evaluate(level l) const
           throw;
     }
   }
-  else
-  { containers::simple_list<shared_value> result;
-    size_t s=0;
+  else if (yields_count(flags))
+  { int count=0;
     try
-    { while (body->eval(),while_condition_result)
-      { if (interrupt_flag!=0)
-           throw user_interrupt();
-        result.push_front(pop_value());
-        ++s;
+    { while(body->void_eval(), while_condition_result)
+      { ++count;
+        if (interrupt_flag!=0)
+          throw user_interrupt();
       }
     }
     catch (loop_break& err) @+
     {@; if (err.depth-- > 0)
           throw;
     }
-    own_row r = std::make_shared<row_value>(s);
-    if (out_forward(flags)) // forward accumulating while loop
-    { auto dst = r->val.rbegin();
-        // use reverse iterator, since we reverse accumulated
-      for (auto it = result.wbegin(); not it.at_end(); ++it,++dst)
-        *dst = std::move(*it);
-    }
-    else // reverse accumulating while loop
-    { auto dst = r->val.begin(); // use ordinary iterator
-      for (auto it = result.wbegin(); not it.at_end(); ++it,++dst)
-        *dst = std::move(*it);
-    }
-    push_value(std::move(r));
+    push_value(std::make_shared<int_value>(count));
   }
+  else
+  @< Perform a |while| loop, accumulating values from the loop bodies into a
+     row that is pushed onto |execution_stack| @>
+}
+
+@ When accumulating values into a row we also use a \Cpp\ |while|-loop, but
+use |eval| to produce a value on |execution_stack| each time around, popping
+it off and pushing it to the front of a |simple_list| (which therefore
+accumulates values in reverse order), which we move-convert into a vector, in
+the appropriate order, when the loop terminates.
+
+@< Perform a |while| loop, accumulating values... @>=
+{ containers::simple_list<shared_value> result;
+  size_t s=0;
+  try
+  { while (body->eval(),while_condition_result)
+    { if (interrupt_flag!=0)
+         throw user_interrupt();
+      result.push_front(pop_value());
+      ++s;
+    }
+  }
+  catch (loop_break& err) @+
+  {@; if (err.depth-- > 0)
+        throw;
+  }
+  own_row r = std::make_shared<row_value>(s);
+  if (out_forward(flags)) // forward accumulating while loop
+  { auto dst = r->val.rbegin();
+      // use reverse iterator, since we reverse accumulated
+    for (auto it = result.wbegin(); not it.at_end(); ++it,++dst)
+      *dst = std::move(*it);
+  }
+  else // reverse accumulating while loop
+  { auto dst = r->val.begin(); // use ordinary iterator
+    for (auto it = result.wbegin(); not it.at_end(); ++it,++dst)
+      *dst = std::move(*it);
+  }
+  push_value(std::move(r));
 }
 
 @*1 For loops.
