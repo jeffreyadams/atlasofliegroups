@@ -1336,15 +1336,16 @@ required, so it has the type of a generic identity function. This is done so
 that inserting |print| around subexpressions for debugging purposes can be
 done without other modifications of the user program. For this to work in all
 cases, we treat the argument of |print| as if it we directly in the context of
-the call to |print|: if necessary, we re-convert the argument in a |type|
-context (then coercion will be done inside the argument, and no coercion
-applies directly to the p|print| call itself). It is still theoretically
-possible that inserting a call to print into valid code results in an error,
-namely for argument expressions that fail to produce an \foreign{a priori}
-type at all in the initial conversion (done without the |type|context); in
-such cases an error will have been reported even before we even get to the
-code below. These cases are quite rare though, and can be overcome by
-inserting a cast inside the |print|.
+the call to |print| (unless that is a void context, lest the argument get
+voided before |print| sees it): if necessary, we re-convert the argument in a
+|type| context (then coercion will be done inside the argument, and no
+coercion applies directly to the |print| call itself). It is still
+theoretically possible that inserting a call to print into valid code results
+in an error, namely for argument expressions that fail to produce
+an \foreign{a priori} type at all in the initial conversion (done without the
+|type|context); in such cases an error will have been reported even before we
+even get to the code below. These cases are quite rare though, and can be
+overcome by inserting a cast inside the |print|.
 
 In the case of |prints|, the context must either expect or accept a |void|
 type, which is the condition that the call |type.specialise(void_type)| below
@@ -1366,11 +1367,14 @@ the case of \&{die}.
   else if (id==concatenate_name())
     @< Recognise and return instances of `\#\#', or fall through @>
   else if (id==print_name()) // this one always matches
-  { if (not type.specialise(a_priori_type))
+  { if (type!=void_type and not type.specialise(a_priori_type))
       arg=convert_expr(args,type); // redo conversion with |type| from context
-     return expression_ptr(new
-       variadic_builtin_call(print_builtin,std::move(arg),e.loc));
- }
+    expression_ptr result(new
+      variadic_builtin_call(print_builtin,std::move(arg),e.loc));
+    if (type==void_type and a_priori_type!=void_type)
+      result.reset(new voiding(std::move(result)));
+    return result;
+  }
   else if(id==to_string_name()) // this always matches as well
   { expression_ptr call(new
       variadic_builtin_call(to_string_builtin,std::move(arg),e.loc));
@@ -1646,7 +1650,7 @@ happens to be a built-in function, the call will be translated into an
 call will become an |overloaded_closure_call| that will be defined below).
 Here we store a shared pointer to the |builtin_value|, which has the advantage
 of not duplicating the |print_name| string for every call expression. To avoid
-that this const an extra pointer dereference at each call, we copy the
+that this costs an extra pointer dereference at each call, we copy the
 function pointer directly into |overloaded_builtin_call| as its field~|f|.
 
 @< Type definitions @>=
@@ -1847,7 +1851,7 @@ void overloaded_builtin_call::evaluate(level l) const
 @ Finally we consider the case where evaluating a |call_expression| results in
 calling a built-in function. Since the function to be called is here produced
 by evaluating an expression (maybe as simple as an identifier), the fact that
-it is a built-int rather than user-defined function can here only be
+it is a built-in rather than user-defined function can here only be
 determined at run time. The part of this method that deals with the case of a
 user defined function is split off, and will be presented later once we have
 discussed the representation of user defined functions.
