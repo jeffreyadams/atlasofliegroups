@@ -30,147 +30,168 @@ R(K)_dom=W(K,H^delta)\cap W_c^perp   (Proposition 4.4)
 lift_action(x,w) assumes x is in the distinguished fiber, and
 w is a W_word for K_0(x)
 }
-set lift_action(KGBElt x, W_word w)=mat:
-let (rd_K,w_K)=w then
-rd=root_datum(x) then
-((roots,coroots),(inj,pullback))=G_K_roots_and_coroots_raw(x) then
-rv=id_mat(rank(rd)) in
-for i in w_K do
-let alpha=roots[i] in
- if is_imaginary(alpha,x) then rv*:=reflection(rd,alpha) else
- rv*:=reflection(rd,alpha)*reflection(rd,involution(x)*alpha) fi od;rv
+set lift_action (KGBElt x, W_word w) = mat:
+  let (rd_K,w_K)=w, rd=root_datum(x)
+  , ((roots,coroots),(inj,pullback))=G_K_roots_and_coroots_raw(x)
+  then result=id_mat(rank(rd)) in
+  for i in w_K
+  do let alpha=roots[i] in
+    if is_imaginary(alpha,x) then result*:=reflection(rd,alpha)
+    else result*:=reflection(rd,alpha)*reflection(rd,involution(x)*alpha)
+    fi
+  od;
+  result
 
 
-{given G,x in distinguished fiber, K_0=K_0(x), Weyl group element w for W(K,H),
- w acts on X^*(H)
- w factors to an action on X^*(T_K)=X^*(H)/X^*(H)^{-delta}
- algorithm:
- set inj = cocharacter_lattice_K(x) { isomorphism (X_*(T_K)->X_*(T)^\delta) }
- set proj=left_inverse(inj)  {NOT projection_to_K_matrix(x)}
- w -> proj*matrix(w)*inj
+{ given G,x in distinguished fiber, K_0=K_0(x), Weyl group element w for W(K,H),
+  w acts on X^*(H)
+  w factors to an action on X^*(T_K)=X^*(H)/X^*(H)^{-delta}
+  algorithm:
+  set inj = cocharacter_lattice_K(x) { isomorphism (X_*(T_K)->X_*(T)^\delta) }
+  set proj=left_inverse(inj)  {NOT projection_to_K_matrix(x)}
+  w -> proj*matrix(w)*inj
 }
-set factor_action(KGBElt x,W_word w)=mat:
-let inj=cocharacter_lattice_K(x) then
-proj=left_inverse(inj) in proj*w_matrix(w)*inj
+set factor_action (KGBElt x,W_word w) = mat:
+  let inj=cocharacter_lattice_K(x) then proj=left_inverse(inj) in
+  proj*w_matrix(w)*inj
 
 {this is the small Levi factor related to disconnectedness of K
 See khatHowe Proposition 4.4
 x must be in distinguished fiber, and make 2rho_c G-dominant
 }
-set small_Levi(KGBElt x)=RealForm:
-assert(in_distinguished_fiber(x),"x is not in distinguished fiber");
-assert(is_dominant(real_form(x),tworho_c(x)),"x does not make 2rho_c dominant");
-{Levi_from_lambda(tworho_c(x),x)}
-Levi(parabolic(tworho_c(x),x))
+set small_Levi (KGBElt x) = RealForm:
+  assert(in_distinguished_fiber(x),"x is not in distinguished fiber");
+  assert(is_dominant(real_form(x),tworho_c(x))
+        ,"x does not make 2rho_c dominant");
+  { Levi_from_lambda(tworho_c(x),x) }
+  Levi(parabolic(tworho_c(x),x))
 
-{utility function, a coroot beta^\vee of L=small_Levi(x) is in X_*(H)^delta,
-which is the image of X_*(T_K) \hookrightarrow X_*(H)
-what matters is <\beta^vee,\mu> where \mu\in X^*(T_K)
-(this is how P-positive is defined)
-so \beta^vee is viewed X_*(T_K)
-coordinates can be surprising (negative), so it is helpful to see these coroots as
+{ utility function, a coroot beta^\vee of L=small_Levi(x) is in X_*(H)^delta,
+  which is the image of X_*(T_K) \hookrightarrow X_*(H)
+  what matters is <\beta^vee,\mu> where \mu\in X^*(T_K)
+  (this is how P-positive is defined)
+  so \beta^vee is viewed X_*(T_K)
+  coordinates can be surprising (negative), so it is helpful to see these
+  coroots as
 }
-set small_Levi_coroots_K(KGBElt x)=mat: {coroots of small Levi as elements of X_*(T_K)}
-let L=small_Levi(x) in left_inverse(injection_from_K_matrix(x))*simple_coroots(L)
+{ coroots of small Levi as elements of X_*(T_K) }
+set small_Levi_coroots_K (KGBElt x) = mat:
+  let L=small_Levi(x) in
+  left_inverse(injection_from_K_matrix(x))*simple_coroots(L)
 
-{all choices of x in distinguished fiber making 2rho_c dominant}
-set nice_choices_x(RealForm G)=[KGBElt]:
-let rv=[KGBElt]:[] in for i in distinguished_fiber(G) do
-let x=KGB(G,i) in if is_dominant(G,tworho_c(x)) then rv#:=x fi od;rv
+{ all choices of x in distinguished fiber making 2rho_c dominant }
+set nice_choices_x (RealForm G) = [KGBElt]:
+  let result=[KGBElt]:[] in
+  for i in distinguished_fiber(G)
+  do let x=KGB(G,i) in if is_dominant(G,tworho_c(x)) then result#:=x fi
+  od;
+  result
 
-set nice_choice_x(RealForm G)=KGBElt:nice_choices_x(G)[0]
+set nice_choice_x (RealForm G) = KGBElt: nice_choices_x(G)[0]
 
-{W_c_perp, see khatHowe Propsition 4.4}
-{requirement: x makes 2rho_c G-dominant}
-set W_c_perp(KGBElt x)=[(RootDatum,[int])]:generate_W(small_Levi(x))
+{ W_c_perp, see khatHowe Propsition 4.4 }
+{ requirement: x makes 2rho_c G-dominant }
+set W_c_perp(KGBElt x) = [(RootDatum,[int])]:
+  generate_W(small_Levi(x))
 
-{write a word for L as a word for G
- L is small_Levi() of type A_1^n
-every simple (in fact positive) root of L is simple for G, but with a different number
+{ write a word for L as a word for G
+  L is small_Levi() of type A_1^n
+  every simple (in fact positive) root of L is simple for G, but with a
+  different number
 }
-set convert_W_word((RootDatum rd_L,[int] w),RootDatum rd_G)=W_word:
-let rv=[int]:[] then
-sr_L=simple_roots(rd_L) then
-sr_G=[[int]]:simple_roots(rd_G) in
- for i in w do rv#:=find(sr_G,[int]:sr_L[i]) od;W_word:(rd_G,rv)
+set convert_W_word ((RootDatum rd_L,[int] w),RootDatum rd_G) = W_word:
+  let result=[int]:[]
+  , sr_L=simple_roots(rd_L), sr_G=[[int]]:simple_roots(rd_G)
+  in for i in w do result#:=find(sr_G,[int]:sr_L[i]) od;
+  W_word:(rd_G,result)
 
-{R_K_dom is W(K_0,T_{K_0})\cap W_c_perp
-given as list of Weyl group elements,
-each of which is a product of (commuting) reflections from W_c_perp
-See KHatHow Proposition 4.4 (3)
-requirement: x makes 2rho_c G-dominant
+{ R_K_dom is W(K_0,T_{K_0})\cap W_c_perp
+  given as list of Weyl group elements,
+  each of which is a product of (commuting) reflections from W_c_perp
+  See KHatHow Proposition 4.4 (3)
+  requirement: x makes 2rho_c G-dominant
 }
-set R_K_dom(KGBElt x)=[W_word]:
-let W_c_perp=W_c_perp(x) then
-rv=[(RootDatum,[int])]:[] in
-{need to change to numbering for G}
-for w in W_c_perp do if cross(convert_W_word(w,root_datum(x)),x)=x then rv#:=w fi od;rv
-{W_K(x)=(W_K(K_0,T_{K_0}), R_K_dom(x))}
+set R_K_dom(KGBElt x) = [W_word]:
+  let W_c_perp=W_c_perp(x), result=[(RootDatum,[int])]:[] in
+{ need to change to numbering for G }
+  for w in W_c_perp
+  do if cross(convert_W_word(w,root_datum(x)),x)=x then result#:=w fi od;
+  result
+{ W_K(x)=(W_K(K_0,T_{K_0}), R_K_dom(x)) }
 
 {requirement: x makes 2rho_c G-dominant}
 set W_K(KGBElt x)=(RootDatum,[(RootDatum,[int])]):(K_root_datum(x),R_K_dom(x))
 
 set move_weight ((KGBElt x,vec mu),KGBElt y) = KHighestWeight:
-assert(real_form(x)=real_form(y),"Real form mismatch");
-let w=find_W_cross(x,y) in (y,act(w,mu))
+  assert(real_form(x)=real_form(y),"Real form mismatch");
+  let w=find_W_cross(x,y) in (y,act(w,mu))
 
-{first replace (x,mu) with an equivalent ("nice") one such that x makes 2rho_c G-dominant}
-set R_K_dom_mu_orbit(KHighestWeight (x,mu))=[KHighestWeight]:
- let (x,mu) = if is_dominant(real_form(x),tworho_c(x)) then (x,mu) else move_weight((x,mu), nice_choice_x(real_form(x))) fi in 
- let (K_0,R_K_dom)=W_K(x) then
- (mu_1,)=make_dominant(K_0,mu) then
- rv=[KHighestWeight]:[] then
- ()=for w in R_K_dom do
- let mu_2=factor_action(x,w)*mu_1 in
- if first(#rv, (int i)bool: let (,phi)=rv[i] in mu_2=phi)=-1 then rv#:=(x,mu_2) fi od in rv
+{ first replace (x,mu) with an equivalent ("nice") one such that x makes
+  2rho_c G-dominant }
+set R_K_dom_mu_orbit (KHighestWeight (x,mu)) = [KHighestWeight]:
+ let (x,mu) =
+   if is_dominant(real_form(x),tworho_c(x)) then (x,mu)
+   else move_weight((x,mu), nice_choice_x(real_form(x)))
+   fi
+ then (K_0,R_K_dom)=W_K(x)
+ then (mu_1,)=make_dominant(K_0,mu), result=[KHighestWeight]:[]
+ in
+   for w in R_K_dom
+   do let mu_2=factor_action(x,w)*mu_1 in
+     if first(#result, (int i)bool: let (,phi)=result[i] in mu_2=phi)=-1
+     then result#:=(x,mu_2)
+     fi
+   od;
+   result
 
-{test if mu\in X^*(T_K) is P-positive (khatHowe page 19)
- for each w=w_A in R_K_dom(x),  <mu,\sum_{i\in A}\beta^\vee_i> \ge 0
- NB: since mu\in X^*(T_K), \beta^vee\in X_*(H), need to replace
- beta^vee with left_inverse(injection_from_K_matrix)(beta^vee)
+{ test if mu\in X^*(T_K) is P-positive (khatHowe page 19)
+  for each w=w_A in R_K_dom(x),  <mu,\sum_{i\in A}\beta^\vee_i> \ge 0
+  NB: since mu\in X^*(T_K), \beta^vee\in X_*(H), need to replace
+  beta^vee with left_inverse(injection_from_K_matrix)(beta^vee)
 }
 
-{the weight \sum\beta_k^\vee of khatHowe Proposition 4.4(5)}
-set P_positive_test_coweight(KGBElt x,W_word S)=vec:
-let sum=null(rank_K(real_form(x)))  then
-(rd_K,w)=S then
-M=left_inverse(injection_from_K_matrix(x)) in
-for i in w do sum+:=M*simple_coroots(rd_K)[i] od;sum
+{ the weight \sum\beta_k^\vee of khatHowe Proposition 4.4(5) }
+set P_positive_test_coweight (KGBElt x,W_word S) = vec:
+  let sum=null(rank_K(real_form(x))), (rd_K,w)=S
+  , M=left_inverse(injection_from_K_matrix(x))
+  in for i in w do sum+:=M*simple_coroots(rd_K)[i] od;
+  sum
 
-{utility function}
-set P_positive_test_coweights(KGBElt x)=[vec]:for w in R_K_dom(x) do P_positive_test_coweight(x,w) od
+{ utility function }
+set P_positive_test_coweights (KGBElt x) = [vec]:
+  for w in R_K_dom(x) do P_positive_test_coweight(x,w) od
 
-set is_P_positive(KGBElt x,ratvec mu,[W_word] S)=bool:
-let (rd,)=S[0] then
-{()=prints("is_P_positive: rd=", rd, " mu=", mu) then
-()=prints("Weyl group elements: ", for (,w) in S do w od) then}
-M=left_inverse(injection_from_K_matrix(x)) in
-{let ()=prints("M=",M) in}
-all(for w in S do
- let v=P_positive_test_coweight(x,w) in
- v*mu>=0 od)
+set is_P_positive (KGBElt x,ratvec mu,[W_word] S) = bool:
+  let (rd,)=S[0]
+{ then ()=prints("is_P_positive: rd=", rd, " mu=", mu);
+          prints("Weyl group elements: ", for (,w) in S do w od) }
+  then M=left_inverse(injection_from_K_matrix(x))
+  in { prints("M=",M); }
+    all(for w in S do let v=P_positive_test_coweight(x,w) in v*mu>=0 od)
 
-{mu is in X^*(T_{K})
- apply w in W(K_0,T_{K_0}) to make it K_0-dominant
- then apply R_K_dom to make it P-positive
- when applying R_K_dom, these are elements of W(K,H)
+{ mu is in X^*(T_{K})
+  apply w in W(K_0,T_{K_0}) to make it K_0-dominant
+  then apply R_K_dom to make it P-positive
+  when applying R_K_dom, these are elements of W(K,H)
   use factor_action (see LKT.at) to get the action on X^*(T_K)
- x must be in distinguished fiber, and make 2rho_c G-dominant
+  x must be in distinguished fiber, and make 2rho_c G-dominant
 }
-set make_strongly_dominant(KGBElt x,ratvec mu)=(ratvec,W_word,W_word,bool):
-let (K_0,R_K_dom)=W_K(x) then
-(mu_1,w_1)=make_dominant(K_0,mu) in
-{let ()=prints("mu_1:", mu_1) in }
-let L=small_Levi(x) in
-let done=false, i=0,j=-1,mu=mu_1,w=w_1 in
-while not done and i<#R_K_dom do
-{ let ()=prints("i:", i) in}
- let mu_2=factor_action(x,R_K_dom[i])*mu_1 in
-{ let ()=prints("mu_2:", mu_2) in}
- let is_pos=is_P_positive(x,mu_2,R_K_dom) in
-{ let ()=prints("is_P_positive:", is_pos) in}
- if is_pos then  j:=i;done:=true;mu:=mu_2 else i:=i+1 fi od;
-(mu,w_1,R_K_dom[j],done)
+set make_strongly_dominant (KGBElt x,ratvec mu) = (ratvec,W_word,W_word,bool):
+  let (K_0,R_K_dom)=W_K(x)
+  then (mu_1,w_1)=make_dominant(K_0,mu)
+{ then ()=prints("mu_1:", mu_1) }
+  then L=small_Levi(x), done=false, i=0, j=-1, mu=mu_1, w=w_1
+  in
+    while not done and i<#R_K_dom
+    do { prints("i:", i); }
+      let mu_2=factor_action(x,R_K_dom[i])*mu_1 in
+      { prints("mu_2:", mu_2); }
+      let is_pos=is_P_positive(x,mu_2,R_K_dom) in
+      { prints("is_P_positive:", is_pos); }
+      if is_pos then j:=i;done:=true; mu:=mu_2
+      else i:=i+1
+      fi
+    od; (mu,w_1,R_K_dom[j],done)
 
 { set make_strongly_dominant(KGBElt x,ratvec mu)=(ratvec,mat):
   let (mu_dom,w_1,w_2,done)=
@@ -187,14 +208,12 @@ while not done and i<#R_K_dom do
  make it K_0-dominant, and compute stabilizer in R_K_dom
  requirement: x makes 2rho_c G-dominant
 }
-set R_K_dom_mu(KGBElt x,ratvec mu)=[W_word]:
-let (K_0,R_K_dom)=W_K(x) then
-(mu_1,)=make_dominant(K_0,mu) then
-rv=[W_word]:[] in
-for w in R_K_dom do
- if factor_action(x,w)*mu_1=mu_1 then rv#:=w fi od;rv
-
-{set extract_mod2_basis([vec])=[vec]:}
+set R_K_dom_mu (KGBElt x,ratvec mu)  =[W_word]:
+  let (K_0,R_K_dom)=W_K(x)
+  then (mu_1,)=make_dominant(K_0,mu), result=[W_word]:[]
+  in
+    for w in R_K_dom do if factor_action(x,w)*mu_1=mu_1 then result#:=w fi od;
+    result
 
 
 

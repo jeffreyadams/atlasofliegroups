@@ -266,7 +266,7 @@ void testrun_f()
 // Print the roots in the simple root coordinates.
 void roots_rootbasis_f()
 {
-  const RootSystem& rs =  commands::currentComplexGroup().rootSystem();
+  const RootSystem& rs =  commands::current_inner_class().rootSystem();
   ioutils::OutputFile file;
 
   for (RootNbr i=0; i<rs.numRoots(); ++i)
@@ -277,7 +277,7 @@ void roots_rootbasis_f()
 void posroots_rootbasis_f()
 
 {
-  const RootSystem& rs = commands::currentComplexGroup().rootSystem();
+  const RootSystem& rs = commands::current_inner_class().rootSystem();
 
   ioutils::OutputFile file;
   prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
@@ -286,7 +286,7 @@ void posroots_rootbasis_f()
 // Print the coroots in the simple coroot coordinates.
 void coroots_rootbasis_f()
 {
-  const RootSystem rs (commands::currentComplexGroup().dualRootSystem());
+  const RootSystem rs (commands::current_inner_class().dualRootSystem());
 
   ioutils::OutputFile file;
   for (RootNbr i=0; i<rs.numRoots(); ++i)
@@ -297,7 +297,7 @@ void coroots_rootbasis_f()
 // Print the positive coroots in the simple coroot coordinates.
 void poscoroots_rootbasis_f()
 {
-  const RootSystem rs (commands::currentComplexGroup().dualRootSystem());
+  const RootSystem rs (commands::current_inner_class().dualRootSystem());
 
   ioutils::OutputFile file;
   prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
@@ -306,7 +306,7 @@ void poscoroots_rootbasis_f()
 
 void X_f()
 {
-  InnerClass& G=commands::currentComplexGroup();
+  InnerClass& G=commands::current_inner_class();
   kgb::global_KGB kgb(G); // build global Tits group, "all" square classes
   ioutils::OutputFile f;
   kgb_io::print_X(f,kgb);
@@ -813,7 +813,7 @@ void srtest_f()
   prettyprint::printVector(std::cout << " converted to (1/2)",khc.lift(sr));
 
   const TwistedInvolution& canonical =
-    G.complexGroup().involution_of_Cartan(sr.Cartan());
+    G.innerClass().involution_of_Cartan(sr.Cartan());
   if (kgb.involution(x)!=canonical)
     prettyprint::printWeylElt(std::cout << " at involution ",
 			      canonical, G.weylGroup());
@@ -826,7 +826,7 @@ bool examine(RealReductiveGroup& G)
 {
   const KGB& kgb=G.kgb();
   TorusPart t0 = kgb.torus_part(0);
-  TorusPart t1 = G.complexGroup().x0_torus_part(G.realForm());
+  TorusPart t1 = G.innerClass().x0_torus_part(G.realForm());
   return t0==t1;
 }
 
@@ -837,7 +837,7 @@ void exam_f()
     std::cout << "x0 torus bits constistent with traditional ones";
   else
     std::cout << "x0 torus bits changed from " << G.kgb().torus_part(0)
-	      << " to " << G.complexGroup().x0_torus_part(G.realForm());
+	      << " to " << G.innerClass().x0_torus_part(G.realForm());
   std::cout << std::endl;
 }
 

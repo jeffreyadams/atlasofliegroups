@@ -35,11 +35,6 @@ namespace innerclass {
 /******** function declarations **********************************************/
 
 
-
-// given a real form cocharacter, find the one representing its square class
-RatCoweight square_class_choice
-  (const WeightInvolution& xi, const RatCoweight& coch);
-
 WeylWord canonicalize // return value is conjugator, built left-to-right
   (TwistedInvolution& sigma,
    const RootDatum& rd,

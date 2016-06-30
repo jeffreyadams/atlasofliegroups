@@ -97,10 +97,10 @@ GlobalTitsElement KGB_elt_entry::repr() const
 
 */
 
-const RootDatum& KGB_base::rootDatum() const { return G.rootDatum(); }
-const WeylGroup& KGB_base::weylGroup() const { return G.weylGroup(); }
+const RootDatum& KGB_base::rootDatum() const { return ic.rootDatum(); }
+const WeylGroup& KGB_base::weylGroup() const { return ic.weylGroup(); }
 const TwistedWeylGroup& KGB_base::twistedWeylGroup() const
-  { return G.twistedWeylGroup(); }
+  { return ic.twistedWeylGroup(); }
 
 KGBElt KGB_base::cross(const WeylWord& ww, KGBElt x) const
 {
@@ -118,7 +118,7 @@ KGBElt KGB_base::cross(KGBElt x, const WeylWord& ww) const
 
 KGBEltPair KGB_base::tauPacket(const TwistedInvolution& w) const
 {
-  InvolutionNbr n = G.involution_table().nr(w);
+  InvolutionNbr n = ic.involution_table().nr(w);
   if (n==HashTable<weyl::TI_Entry,InvolutionNbr>::empty)
     return KGBEltPair(0,0);  // involution not (yet) generated in |G|
   inv_index i=inv_loc[n];
@@ -129,7 +129,7 @@ KGBEltPair KGB_base::tauPacket(const TwistedInvolution& w) const
 
 size_t KGB_base::packet_size(const TwistedInvolution& w) const
 {
-  InvolutionNbr n = G.involution_table().nr(w);
+  InvolutionNbr n = ic.involution_table().nr(w);
   if (n==HashTable<weyl::TI_Entry,InvolutionNbr>::empty)
     return 0;  // involution not (yet) generated in |G|, so empty packet here
   inv_index i=inv_loc[n];
@@ -143,10 +143,10 @@ InvolutionNbr KGB_base::inv_nr(KGBElt x) const
   return inv_nrs[involution_index(x)];
 }
 
-// compute Cartan class with aid of |G.involution_table()|
+// compute Cartan class with aid of |ic.involution_table()|
 CartanNbr KGB_base::Cartan_class(KGBElt x) const
 { // compute passing by involution index, |InvolutionNbr|
-  return G.involution_table().Cartan_class(inv_nr(x));
+  return ic.involution_table().Cartan_class(inv_nr(x));
 }
 
 
@@ -205,15 +205,15 @@ global_KGB::global_KGB(InnerClass& G_C, bool dual_twist)
     {
       Grading gr=bitvector::combination
 	(Tg.square_class_generators(),RankFlags(c));
-      RatWeight rcw (G.rank());
+      RatWeight rcw (ic.rank());
       for (Grading::iterator // for flagged (imaginary) simple roots
 	     it=gr.begin(); it(); ++it)
-	rcw += G.rootDatum().fundamental_coweight(*it); // a sum of f. coweights
+	rcw += ic.rootDatum().fundamental_coweight(*it); // a sum of f. coweights
 
-      for (unsigned long i=0; i<G.fundamental_fiber_size(); ++i)
+      for (unsigned long i=0; i<ic.fundamental_fiber_size(); ++i)
       {
 	TorusElement t=y_values::exp_pi(rcw);
-	t += G.lift_from_fundamental_fiber(i); // add |TorusPart| from for |i|
+	t += ic.lift_from_fundamental_fiber(i); // add |TorusPart| from for |i|
 	elt.push_back(GlobalTitsElement(t));
 	add_element(); // create in base
       } // |for (i)|
@@ -234,7 +234,7 @@ global_KGB::global_KGB(InnerClass& G_C,
   generate_involutions(G_C.numInvolutions());
   assert(Tg.is_valid(x)); // unless this holds, we cannot hope to succeed
 
-  const RootDatum& rd = G.rootDatum();
+  const RootDatum& rd = ic.rootDatum();
 
   for (CartanNbr i=0; i<G_C.numCartanClasses(); ++i)
     G_C.generate_Cartan_orbit(i);
@@ -288,8 +288,8 @@ global_KGB::global_KGB(InnerClass& G_C,
 bool global_KGB::compact(RootNbr n, // assumed imaginary at |a|
 			 const GlobalTitsElement& a) const
 {
-  const auto& i_tab = G.involution_table();
-  const auto& rd = G.rootDatum();
+  const auto& i_tab = ic.involution_table();
+  const auto& rd = ic.rootDatum();
   RatCoweight grading_cwt= a.torus_part().as_Qmod2Z();
   grading_cwt +=
     RatCoweight(rd.dual_twoRho(i_tab.imaginary_roots(i_tab.nr(a.tw()))),2);
@@ -299,7 +299,7 @@ bool global_KGB::compact(RootNbr n, // assumed imaginary at |a|
 
 KGBElt global_KGB::lookup(const GlobalTitsElement& a) const
 {
-  const Cartan_orbits& i_tab = G.involution_table();
+  const Cartan_orbits& i_tab = ic.involution_table();
 
   KGBEltPair p = tauPacket(a.tw());
   for (KGBElt x=p.first; x<p.second; ++x)
@@ -324,10 +324,10 @@ std::ostream& global_KGB::print(std::ostream& strm, KGBElt x) const
 void global_KGB::generate_involutions(size_t num_inv)
 {
   inv_nrs.reserve(num_inv);
-  inv_loc.assign(G.numInvolutions(),-1);
+  inv_loc.assign(ic.numInvolutions(),-1);
 
   const TwistedWeylGroup& W = twistedWeylGroup();
-  const Cartan_orbits& i_tab = G.involution_table();
+  const Cartan_orbits& i_tab = ic.involution_table();
 
   inv_index end_length=0; // end of the length-interval under construction
 
@@ -360,7 +360,7 @@ void global_KGB::generate_involutions(size_t num_inv)
 
 void global_KGB::generate(size_t predicted_size, bool dual_twist)
 {
-  const Cartan_orbits& i_tab = G.involution_table();
+  const Cartan_orbits& i_tab = ic.involution_table();
   const TwistedWeylGroup& W = Tg; // for when |GlobalTitsGroup| is not used
 
   first_of_tau.reserve(inv_nrs.size()+1); // currently |first_of_tau.size()==2|
@@ -483,36 +483,36 @@ void global_KGB::generate(size_t predicted_size, bool dual_twist)
 
 */
 
-KGB::KGB(RealReductiveGroup& GR,
+KGB::KGB(RealReductiveGroup& G,
 	 const BitMap& Cartan_classes, bool dual_twist)
-  : KGB_base(GR.complexGroup(),GR.complexGroup().semisimpleRank())
+  : KGB_base(G.innerClass(),G.innerClass().semisimpleRank())
+  , G(G)
   , Cartan()
   , left_torus_part()
   , d_state()
   , d_bruhat(NULL)
   , d_base(NULL)
 {
-  InnerClass& G_C=GR.complexGroup(); // non-|const| version of |G|
-  //const TitsGroup& Tg = G.titsGroup();
-  size_t rank = G.semisimpleRank(); // |G.rank()| does not interest us here
+  //const TitsGroup& Tg = ic.titsGroup();
+  size_t rank = ic.semisimpleRank(); // |ic.rank()| does not interest us here
 
-  {// check that |Cartan_classes| is upwards closed within |GR.Cartan_set()|
-    BitMap test_set = GR.Cartan_set();
+  {// check that |Cartan_classes| is upwards closed within |G.Cartan_set()|
+    BitMap test_set = G.Cartan_set();
     test_set.andnot(Cartan_classes);
     for (BitMap::iterator it=test_set.begin(); it(); ++it)
-      assert(Cartan_classes.disjoint(G.Cartan_ordering().below(*it)));
+      assert(Cartan_classes.disjoint(ic.Cartan_ordering().below(*it)));
   }
 
   // make sure |G| has information about involutions for |Cartan_classes|
-  const Cartan_orbits& i_tab = G_C.involution_table();
+  const Cartan_orbits& i_tab = ic.involution_table();
 
   for (auto it=Cartan_classes.begin(); it(); ++it)
-    G_C.generate_Cartan_orbit(*it);
+    G.innerClass().generate_Cartan_orbit(*it);
 
   tits::TE_Entry::Pooltype elt_pool; // of size |size()|
   HashTable<tits::TE_Entry,KGBElt> elt_hash(elt_pool);
 
-  size_t size = G_C.KGB_size(GR.realForm(),Cartan_classes);
+  size_t size = ic.KGB_size(G.realForm(),Cartan_classes);
 
   elt_pool.reserve(size);
   KGB_base::reserve(size);
@@ -520,25 +520,25 @@ KGB::KGB(RealReductiveGroup& GR,
   // check if we are being called to do a full or small KGB construction
   if (Cartan_classes.isMember(0)) // start from fundamental Cartan: do full KGB
   {
-    const Grading gr = GR.base_grading();
-    d_base = new TitsCoset(G_C,gr);
-    TitsElt a (d_base->titsGroup(),GR.x0_torus_part());
+    const Grading gr = G.base_grading();
+    d_base = new TitsCoset(ic,gr);
+    TitsElt a (d_base->titsGroup(),G.x0_torus_part());
     i_tab.reduce(a); // should be unnecessary
     elt_hash.match(a); // plant the seed
     KGB_base::add_element(); // add additional info for initial element
   }
   else // partial KGB construction; needs more work to get initial element(s)
   {
-    tits::EnrichedTitsGroup square_class_base(GR);
+    tits::EnrichedTitsGroup square_class_base(G);
     d_base = new TitsCoset(square_class_base); // copy construct from base
-    RealFormNbr rf=GR.realForm();
-    assert(square_class_base.square()==G.xi_square(rf));
+    RealFormNbr rf=G.realForm();
+    assert(square_class_base.square()==ic.xi_square(rf));
 
-    set::EltList mins=G.Cartan_ordering().minima(Cartan_classes);
+    set::EltList mins=ic.Cartan_ordering().minima(Cartan_classes);
     // for (small) block there should be just one minimum, but we loop anyway
     for (set::EltList::iterator it=mins.begin(); it!=mins.end(); ++it)
     {
-      TitsElt a= square_class_base.backtrack_seed(G,rf,CartanNbr(*it));
+      TitsElt a= square_class_base.backtrack_seed(ic,rf,CartanNbr(*it));
       i_tab.reduce(a);
 
       size_t k=elt_hash.match(a);
@@ -617,11 +617,11 @@ KGB::KGB(RealReductiveGroup& GR,
   Permutation a1; // will be reordering assignment
   { // first sort involutions
 
-    inv_nrs.reserve(G.numInvolutions(Cartan_classes));
+    inv_nrs.reserve(ic.numInvolutions(Cartan_classes));
     for (BitMap::iterator it=Cartan_classes.begin(); it(); ++it)
       for (InvolutionNbr i=i_tab[*it].start; i<i_tab[*it].end(); ++i)
 	inv_nrs.push_back(i);
-    inv_loc.assign(G.numInvolutions(),-1);
+    inv_loc.assign(ic.numInvolutions(),-1);
 
     // sort involutions length: Weyl length; internal number
     std::stable_sort(inv_nrs.begin(),inv_nrs.end(),i_tab.less());
@@ -664,8 +664,8 @@ KGB::KGB(RealReductiveGroup& GR,
   for (auto it=inv_nrs.begin(); it!=inv_nrs.end(); ++it)
     Cartan.push_back(i_tab.Cartan_class(*it));
 
-  TorusPart shift(G.rank());
-  bool do_dual_twist = dual_twist and is_dual_twist_stable(GR,shift);
+  TorusPart shift(ic.rank());
+  bool do_dual_twist = dual_twist and is_dual_twist_stable(G,shift);
   if (do_dual_twist)
   {
     // see whether some element (our initial seed) maps into the block
@@ -694,14 +694,14 @@ KGB::KGB(RealReductiveGroup& GR,
     else
       info[x].dual = UndefKGB;
   }
-} // |KGB::KGB(GR,Cartan_classes,i_tab)|
+} // |KGB::KGB(G,Cartan_classes,i_tab)|
 
 
 bool KGB::is_dual_twist_stable
-  (const RealReductiveGroup& GR, TorusPart& shift) const
+  (const RealReductiveGroup& G, TorusPart& shift) const
 {
-  // although |GR| will be for "dualrealform", we use non-dualised nomenclature
-  const RootDatum& rd = GR.rootDatum();
+  // although |G| will be for "dualrealform", we use non-dualised nomenclature
+  const RootDatum& rd = G.rootDatum();
 
   Grading base = basedTitsGroup().base_grading();
   RatWeight rw (titsGroup().rank());
@@ -711,7 +711,7 @@ bool KGB::is_dual_twist_stable
     rw += rd.fundamental_coweight(weylGroup().Chevalley_dual(*it));
   }
   // before requiring integrality, we need to mod out by equivalence
-  int_Matrix A = GR.complexGroup().distinguished();
+  int_Matrix A = G.innerClass().distinguished();
   A.transpose() += 1;
   int_Matrix projector = lattice::row_saturate(A);
   projector.apply_to(rw.numerator()); // this may change the size of |rw|
@@ -748,36 +748,24 @@ size_t KGB::torus_rank() const { return titsGroup().rank(); }
 
 RatCoweight KGB::base_grading_vector() const
 {
-  const RootDatum& rd = G.rootDatum();
-  RatWeight result (rd.rank());
-  RankFlags gr = base_grading();
-  gr.complement(rank()); // take complement in set of simple roots
-  for (Grading::iterator it=gr.begin(); it(); ++it)
-    result += rd.fundamental_coweight(*it);
-  return result;
+  return G.g_rho_check();
 }
 
-
-RatCoweight KGB::torus_part_global(KGBElt x) const
+// this rational coweight for |x| is central to synthetic real forms
+RatCoweight KGB::torus_factor(KGBElt x) const
 {
-  RatCoweight rw = base_grading_vector();
-
-  RankFlags tp = torus_part(x).data();
-  arithmetic::Numer_t d = rw.denominator();
-  for (RankFlags::iterator it = tp.begin(); it(); ++it)
-    rw.numerator()[*it]+=d;
+  RatCoweight tf = base_grading_vector();
+  tf -= lift(torus_part(x));
 
   // finally ensure result is $\theta^t$-fixed
-  const int_Matrix& theta = involution_matrix(x);
-  return RatCoweight(rw.numerator()+theta.right_prod(rw.numerator()),2*d)
-        .normalize();
+  return symmetrise(tf,involution_matrix(x));
 }
 
 // Looks up a |TitsElt| value and returns its KGB number, or |size()|
 // Since KGB does not have mod space handy, must assume |a| already reduced
 KGBElt KGB::lookup(TitsElt a) const
 {
-  G.involution_table().reduce(a); // make sure |a| is reduced before searching
+  ic.involution_table().reduce(a); // make sure |a| is reduced before searching
   const TitsGroup& Tg=titsGroup();
   KGBEltPair p = tauPacket(a.tw());
   TorusPart t = Tg.left_torus_part(a);

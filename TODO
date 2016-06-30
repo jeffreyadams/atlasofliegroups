@@ -5,8 +5,6 @@
 - Incorporate the calculation of c-invariant forms into the library
 - Rewrite block construction using methods inspired by synthetic operations
 - Rewrite K type computations to use data type more compatible with Param
-- Reconsider synthetic real forms and KGB elements: user should be able to
-  specify a KGB element with desired involution, torus_factor directly
 
 * Work on the Fokko program
 
@@ -15,23 +13,13 @@
 
 * Work on the atlas program
 
-- Make conditionals return shared pointer to global true and false values
-
-- Investigate if some tracing facilty (printing "let" values) is feasible
-
 - Integrate a bigint library to store atlas int (and rat?) values; while
   attending that, signal overflow in arithmetic operations / conversions
 
-
 - Improve output of expressions
+  Distinguish one-line (maybe abbreviated) and long forms.
   Nuance "simply connected" and "adjoint" for non-semisimple root data
 
-- Allow multiple overloaded functions defined in a single 'set' statement
-
-- Make balancing a general concept, also applied within row displays.
-  This probably requires discovering a priori type in a separate bottom-up
-  pass over the |expr| value (maybe inserting casts to record what it found)
-  which approach would also help making overload resolution more efficient
 - Check whether nested voiding in loops is necessary, maybe do only outer one
 
 - Implement compound assignment directly
@@ -49,6 +37,8 @@
   the loop is started) might do better gathering them in a list structure.
 
 - Allow list-comprehension syntax like in Haskell (and Python?)
+
+- Do some support for object oriented programming (just named tuples might do).
 
 - Premature exits: break from loop, return from function
 - Scoping in while loops: declarations of condition remain valid in body?

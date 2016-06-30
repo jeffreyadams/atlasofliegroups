@@ -60,7 +60,8 @@
 
 %token QUIT SET LET IN BEGIN END IF THEN ELSE ELIF FI AND OR NOT
 %token WHILE DO OD NEXT FOR FROM DOWNTO CASE ESAC REC_FUN
-%token TRUE FALSE DIE WHATTYPE SHOWALL FORGET
+%token TRUE FALSE DIE BREAK WHATTYPE SHOWALL FORGET
+
 %token <oper> OPERATOR OPERATOR_BECOMES '=' '*'
 %token <val> INT
 %token <str> STRING
@@ -202,6 +203,7 @@ declaration: pattern '=' expr { $$ = make_let_node($1,$3); }
 ;
 
 tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3,@$); }
+	| SET pattern BECOMES tertiary { $$ = make_multi_assignment($2,$4,@$); }
 	| assignable_subsn BECOMES tertiary { $$ = make_comp_ass($1,$3,@$); }
 	| IDENT OPERATOR_BECOMES tertiary
 	  { $$ = make_assignment($1,
@@ -238,8 +240,7 @@ formula : formula_start operand { $$=end_formula($1,$2,@$); }
 ;
 formula_start : operator       { $$=start_unary_formula($1.id,$1.priority,@1); }
 	| comprim operator     { $$=start_formula($1,$2.id,$2.priority,@2); }
-	| IDENT operator       { $$=start_formula
-	      (make_applied_identifier($1,@1),$2.id,$2.priority,@2); }
+	| ident_expr operator  { $$=start_formula($1,$2.id,$2.priority,@2); }
 	| formula_start operand operator
 	  { $$=extend_formula($1,$2,$3.id,$3.priority,@3); }
 ;
@@ -261,7 +262,7 @@ ident_expr : IDENT { $$=make_applied_identifier($1,@1); } ;
 
 comprim: subscription | slice
 	| primary '(' commalist_opt ')'
-	{ $$=make_application_node($1,reverse_expr_list($3),@$,@2,@4); }
+	  { $$=make_application_node($1,reverse_expr_list($3),@$,@2,@4); }
 	| INT { $$ = make_int_denotation($1,@$); }
 	| TRUE { $$ = make_bool_denotation(true,@$); }
 	| FALSE { $$ = make_bool_denotation(false,@$); }
@@ -289,8 +290,6 @@ comprim: subscription | slice
 	| FOR ':' expr DO expr tilde_opt OD
 	  { $$=make_cfor_node(-1,$3,wrap_tuple_display(nullptr,@$)
                              ,$5,2*$6+4,@$); }
-	| FOR ':' expr FROM expr DO expr tilde_opt OD
-	  { $$=make_cfor_node(-1,$3,$5,$7,2*$8+4,@$); }
 	| FOR IDENT ':' expr DOWNTO expr DO expr OD
 	  { $$=make_cfor_node($2,$4,$6,$8,1,@$); }
 	| '(' expr ')'	       { $$=$2; }
@@ -311,6 +310,8 @@ comprim: subscription | slice
 	| operator '@' type { $$=make_op_cast($1.id,$3,@$); }
 	| IDENT '@' type    { $$=make_op_cast($1,$3,@$); }
 	| DIE { $$= make_die(@$); }
+	| BREAK { $$= make_break(0,@$); }
+	| BREAK INT { $$= make_break($2,@$); }
 ;
 
 assignable_subsn:

@@ -106,16 +106,14 @@ set lift (RealForm G, W_word w) = Tits_elt: left(w,tits_delta(G))
 
 
 { Tits element raised to an integer power }
-set ^(Tits_elt !xi, int n) = Tits_elt:
+set ^ (Tits_elt !xi, int n) = Tits_elt:
   if   >n then let result=xi in for :n-1 do result*:=xi od; result
   elif <n then let !xi1=inverse(xi) then result=xi1 in
           for :n-1 do result*:=xi1 od; result
   else tits_identity(root_datum(xi))
   fi
 
-set order(Tits_elt xi)=int:
-let id=tits_identity(root_datum(xi)) then
-(,,m)=xi then
-d=order(m) in
-if xi^d=id then d
-elif xi^(2*d)=id then 2*d else prints("ERROR");-1 fi
+set order (Tits_elt xi) = int:
+  let id=tits_identity(root_datum(xi)), (,,m)=xi
+  then d=order(m)
+  in if xi^d=id then d elif xi^(2*d)=id then 2*d else error() fi

@@ -147,7 +147,7 @@ CommandNode blockNode()
   return result;
 }
 
-InnerClass& currentDualComplexGroup()
+InnerClass& current_dual_inner_class()
 {
   return *dual_G_C_pointer;
 }
@@ -208,7 +208,7 @@ void block_mode_entry() throw(EntryError)
   {
     RealReductiveGroup& G_R = currentRealGroup();
 
-    InnerClass& G_C = G_R.complexGroup();
+    InnerClass& G_C = G_R.innerClass();
     output::Interface& G_I = currentComplexInterface();
 
     // get dual real form
@@ -234,7 +234,7 @@ void dualrealform_f()
   try
   {
     RealReductiveGroup& G_R = currentRealGroup();
-    InnerClass& G_C = G_R.complexGroup();
+    InnerClass& G_C = G_R.innerClass();
     output::Interface& G_I = currentComplexInterface();
 
     // get dual real form
@@ -301,7 +301,7 @@ void smallkgb_f()
 
   std::cout
     << "partial kgb size: "
-    << currentComplexGroup().KGB_size
+    << current_inner_class().KGB_size
          (currentRealForm(),common)
     << std::endl;
 
@@ -314,7 +314,7 @@ void smalldualkgb_f()
 {
   RealReductiveGroup& G_R = currentRealGroup();
   RealReductiveGroup& dGR = currentDualRealGroup();
-  InnerClass& dGC = currentDualComplexGroup();
+  InnerClass& dGC = current_dual_inner_class();
 
   BitMap common=blocks::common_Cartans(dGR,G_R);
 
@@ -340,7 +340,7 @@ void smallblock_f()
 {
   ioutils::OutputFile file;
   // must unfortunatly regenerate the block here
-  Block::build(currentComplexGroup(),
+  Block::build(current_inner_class(),
 	       currentRealForm(),
 	       currentDualRealForm()).print_to(file,false);
 }
@@ -357,7 +357,7 @@ void dualblock_f()
 
 void smalldualblock_f()
 {
-  InnerClass& dG = currentDualComplexGroup();
+  InnerClass& dG = current_dual_inner_class();
 
   Block block =
     Block::build(dG,currentDualRealForm(),currentRealForm());
@@ -445,7 +445,7 @@ void blocktwist_f()
 void extblock_f()
 {
   ext_block::extended_block eblock(currentBlock(),
-				   currentComplexGroup().twistedWeylGroup());
+				   current_inner_class().twistedWeylGroup());
   ioutils::OutputFile file;
   eblock.print_to(file);
 }

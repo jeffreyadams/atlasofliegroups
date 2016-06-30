@@ -1,15 +1,14 @@
-/*!
-\file
-\brief Class definition and function declarations for class Block.
-*/
 /*
   This is blocks.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2007-2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
+
+// Class definition and function declarations for class |Block| and friends.
 
 #ifndef BLOCKS_H  /* guard against multiple inclusions */
 #define BLOCKS_H
@@ -334,7 +333,7 @@ class param_block : public Block_base // blocks of parameters
 
  public:
   // "inherited" accessors
-  const InnerClass& complexGroup() const;
+  const InnerClass& innerClass() const;
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& realGroup() const;
 

@@ -1940,7 +1940,7 @@ void inner_class_equality_wrapper(expression_base::level l)
 { shared_inner_class G = get<inner_class_value>();
   shared_inner_class H = get<inner_class_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(&G->val==&H->val));
+    push_value(whether(&G->val==&H->val));
 }
 @)
 void distinguished_involution_wrapper(expression_base::level l)
@@ -2322,7 +2322,7 @@ void Cartan_order_matrix_wrapper(expression_base::level l)
     return;
   size_t n=rf->val.numCartan();
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(n,n,0));
-  const poset::Poset& p = rf->val.complexGroup().Cartan_ordering();
+  const poset::Poset& p = rf->val.innerClass().Cartan_ordering();
   for (size_t i=0; i<n; ++i)
     for (size_t j=i; j<n; ++j)
       if (p.lesseq(i,j)) M->val(i,j)=1;
@@ -2346,7 +2346,7 @@ identical |RealReductiveGroup| objects, which would be too strict.
 inline bool operator==
   (const RealReductiveGroup& x, const RealReductiveGroup& y)
 {
-  return &x.complexGroup() == &y.complexGroup()
+  return &x.innerClass() == &y.innerClass()
    @| and x.g_rho_check()==y.g_rho_check()
    @| and x.x0_torus_part()==y.x0_torus_part()
    @| and (assert(x.realForm()==y.realForm()),true);
@@ -2360,7 +2360,7 @@ void real_form_equals_wrapper(expression_base::level l)
   shared_real_form x = get<real_form_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<bool_value> (x->val==y->val));
+  push_value(whether(x->val==y->val));
 }
 
 @*2 Dual real forms.
@@ -3021,7 +3021,7 @@ void KGB_Cartan_wrapper(expression_base::level l)
 void KGB_involution_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  const InnerClass& G=x->rf->val.complexGroup();
+  const InnerClass& G=x->rf->val.innerClass();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<matrix_value>
       (G.matrix(kgb.involution(x->val))));
@@ -3120,7 +3120,7 @@ void KGB_status_wrapper(expression_base::level l)
     unsigned stat=kgb::status(kgb,x->val,alpha);
     if (stat==0) // $\alpha$ is a complex root, check if it is an ascent
     {
-      RootNbr theta_alpha = kgb.complexGroup().involution_table().
+      RootNbr theta_alpha = kgb.innerClass().involution_table().
         root_involution(kgb.inv_nr(x->val),alpha);
       if (kgb.rootDatum().is_posroot(theta_alpha))
        stat = 4; // set status to complex ascent
@@ -3215,9 +3215,8 @@ void torus_factor_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   const KGB& kgb=x->rf->kgb();
-  RatCoweight tf = x->rf->val.g_rho_check() + lift(kgb.torus_part(x->val));
   push_value(std::make_shared<rational_vector_value> @|
-     (symmetrise(tf,kgb.involution_matrix(x->val))));
+    (kgb.torus_factor(x->val)));
 }
 
 @ Finally we make available, by popular request, the equality test. This is
@@ -3234,8 +3233,7 @@ void KGB_equals_wrapper(expression_base::level l)
   shared_KGB_elt x = get<KGB_elt_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<bool_value>(
-   @| x->rf->val==y->rf->val and x->val==y->val));
+  push_value(whether(x->rf->val==y->rf->val and x->val==y->val));
 }
 
 @ Finally we install everything related to $K\backslash G/B$ elements.
@@ -3668,22 +3666,21 @@ void is_standard_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   RootNbr witness;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>
-		(p->rc().is_standard(p->val,witness)));
+    push_value(whether(p->rc().is_standard(p->val,witness)));
 }
 
 void is_zero_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   RootNbr witness;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(p->rc().is_zero(p->val,witness)));
+    push_value(whether(p->rc().is_zero(p->val,witness)));
 }
 
 void is_final_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   RootNbr witness;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(p->rc().is_final(p->val,witness)));
+    push_value(whether(p->rc().is_final(p->val,witness)));
 }
 
 @ Before constructing (non-integral) blocks, it is essential that the
@@ -3730,7 +3727,7 @@ void parameter_equivalent_wrapper(expression_base::level l)
     StandardRepr z0=p->val, z1=q->val; // copy
     if (p->rc().is_standard(z0,witness) and q->rc().is_standard(z1,witness))
   @/{@; p->rc().make_dominant(z0); q->rc().make_dominant(z1); }
-    push_value(std::make_shared<bool_value>(z0==z1));
+    push_value(whether(z0==z1));
   }
 }
 
@@ -4236,25 +4233,25 @@ void split_int_value::print(std::ostream& out) const @+
 void split_unary_eq_wrapper(expression_base::level l)
 { Split_integer i=get<split_int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i.e()==0 and i.s()==0));
+    push_value(whether(i.e()==0 and i.s()==0));
 }
 void split_unary_neq_wrapper(expression_base::level l)
 { Split_integer i=get<split_int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i.s()!=0 or i.e()!=0));
+    push_value(whether(i.s()!=0 or i.e()!=0));
 }
 @)
 void split_eq_wrapper(expression_base::level l)
 { Split_integer j=get<split_int_value>()->val;
   Split_integer i=get<split_int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i==j));
+    push_value(whether(i==j));
 }
 void split_neq_wrapper(expression_base::level l)
 { Split_integer j=get<split_int_value>()->val;
   Split_integer i=get<split_int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i!=j));
+    push_value(whether(i!=j));
 }
 @)
 void split_plus_wrapper(expression_base::level l)
@@ -4415,22 +4412,16 @@ void real_form_of_virtual_module_wrapper(expression_base::level l)
     push_value(m->rf);
 }
 @)
-void virtual_module_size_wrapper(expression_base::level l)
-{ shared_virtual_module m = get<virtual_module_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(m->val.size()));
-}
-
 void virtual_module_unary_eq_wrapper(expression_base::level l)
 { shared_virtual_module m = get<virtual_module_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(m->val.empty()));
+    push_value(whether(m->val.empty()));
 }
 
 void virtual_module_unary_neq_wrapper(expression_base::level l)
 { shared_virtual_module m = get<virtual_module_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(m->val.size()>0));
+    push_value(whether(m->val.size()>0));
 }
 
 @)
@@ -4442,9 +4433,9 @@ void virtual_module_eq_wrapper(expression_base::level l)
   auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
   for (; mit!=m->val.end() and nit!=n->val.end(); ++mit,++nit)
     if (mit->first!=nit->first or mit->second!=nit->second)
-    @/{@;  push_value(std::make_shared<bool_value>(false));
+    @/{@;  push_value(whether(false));
       return; }
-  push_value(std::make_shared<bool_value>
+  push_value(whether
       (mit==m->val.end() and nit==n->val.end()));
 }
 void virtual_module_neq_wrapper(expression_base::level l)
@@ -4455,10 +4446,20 @@ void virtual_module_neq_wrapper(expression_base::level l)
   auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
   for (; mit!=m->val.end() and nit!=n->val.end(); ++mit,++nit)
     if (mit->first!=nit->first or mit->second!=nit->second)
-    @/{@;  push_value(std::make_shared<bool_value>(true));
+    @/{@;  push_value(whether(true));
       return; }
-  push_value(std::make_shared<bool_value>
+  push_value(whether
     (mit!=m->val.end() or nit!=n->val.end()));
+}
+
+@ This function must be global, it is declared in the header
+file \.{global.h}.
+
+@< Function definitions @>=
+void virtual_module_size_wrapper(expression_base::level l)
+{ shared_virtual_module m = get<virtual_module_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(m->val.size()));
 }
 
 
@@ -4830,7 +4831,7 @@ applying the corresponding simple reflections to~$\lambda$.
 @< Local function def...@>=
 void to_canonical_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  const InnerClass& G=p->rf->val.complexGroup();
+  const InnerClass& G=p->rf->val.innerClass();
   const KGB& kgb = p->rf->kgb();
   const RootDatum& rd=G.rootDatum();
 @)
@@ -5185,7 +5186,7 @@ void print_KGB_wrapper(expression_base::level l)
   *output_stream
     << "kgbsize: " << rf->val.KGB_size() << std::endl;
   const KGB& kgb=rf->kgb();
-  kgb_io::var_print_KGB(*output_stream,rf->val.complexGroup(),kgb);
+  kgb_io::var_print_KGB(*output_stream,rf->val.innerClass(),kgb);
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();

@@ -49,7 +49,7 @@ class RealReductiveGroup
   // we do not own the complex group; a RealReductiveGroup should be seen
   // as dependent on a complex group; when the complex group changes,
   // the dependent RealReductiveGroup objects are invalidated
-  InnerClass& d_complexGroup;
+  InnerClass& d_innerClass;
 
   RealFormNbr d_realForm; // our identification number
   topology::Connectivity d_connectivity; // characters of the component group
@@ -72,9 +72,9 @@ class RealReductiveGroup
   ~RealReductiveGroup(); // not inline: type incomplete; deletes pointers
 
 // accessors
-  const InnerClass& complexGroup() const { return d_complexGroup; }
+  const InnerClass& innerClass() const { return d_innerClass; }
   // following method forces |const| result, compare with |cbegin| methods
-  const InnerClass& ccomplexGroup() const { return d_complexGroup; }
+  const InnerClass& cinnerClass() const { return d_innerClass; }
   RealFormNbr realForm() const { return d_realForm; }
   const RootDatum& rootDatum() const;
   const TitsCoset& basedTitsGroup() const { return *d_Tg; }
@@ -123,8 +123,8 @@ class RealReductiveGroup
 // manipulators
   void swap(RealReductiveGroup&);
 
-  InnerClass& complexGroup()
-    { return d_complexGroup; }
+  InnerClass& innerClass()
+    { return d_innerClass; }
 
   const KGB& kgb();
   const KGB& kgb_as_dual();

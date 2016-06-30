@@ -226,7 +226,7 @@ StandardRepK SRK_context::std_rep (const Weight& two_lambda, TitsElt a) const
   const RootDatum& rd=rootDatum();
 
   TwistedInvolution sigma=a.tw();
-  const WeylWord ww = complexGroup().canonicalize(sigma);
+  const WeylWord ww = innerClass().canonicalize(sigma);
   // now |sigma| is canonical and |w| conjugates |sigma| to |a.tw()|
 
 
@@ -237,7 +237,7 @@ StandardRepK SRK_context::std_rep (const Weight& two_lambda, TitsElt a) const
 
   Weight mu=rd.image_by_inverse(two_lambda,ww); // move weight to canonical
 
-  size_t cn = complexGroup().class_number(sigma);
+  size_t cn = innerClass().class_number(sigma);
   StandardRepK result(cn,
 		      info(cn).fiber_modulus.mod_image
 		        (titsGroup().left_torus_part(a)),
@@ -252,7 +252,7 @@ StandardRepK SRK_context::std_rep (const Weight& two_lambda, TitsElt a) const
 RawRep SRK_context::Levi_rep (Weight lambda, TitsElt a, RankFlags gens) const
 {
   TwistedInvolution sigma=a.tw();
-  const WeylWord ww = complexGroup().canonicalize(sigma,gens);
+  const WeylWord ww = innerClass().canonicalize(sigma,gens);
   // now |sigma| is canonical for |gens|, and |w| conjugates it to |a.tw()|
 
   const RootDatum& rd=rootDatum();
@@ -529,12 +529,12 @@ SRK_context::theta_stable_parabolic
   // Build the parabolic subalgebra:
 
   { // first ensure |strong| is reduced
-    const WeightInvolution theta = complexGroup().matrix(strong.tw());
+    const WeightInvolution theta = innerClass().matrix(strong.tw());
     strong.reduce(tits::fiber_denom(theta));
   }
 
   ww.swap(conjugator); // report the conjugating element we found
-  return PSalgebra(strong,complexGroup());
+  return PSalgebra(strong,innerClass());
 
 } // |theta_stable_parabolic|
 
@@ -666,7 +666,7 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
     Char::coef_t c=it->second; // coefficient from |KGB_sum_p|
     const Weight& mu=it->first.first; // weight from |KGB_sum_p|
     const TitsElt& strong=it->first.second; // Tits elt from |KGB_sum_p|
-    InvolutionData id = complexGroup().involution_data(strong.tw());
+    InvolutionData id = innerClass().involution_data(strong.tw());
 
     RootNbrSet A(rd.numRoots());
     for (BitMap::iterator
@@ -687,7 +687,7 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
 //     std::cout << "Sum over subsets of " << A.size() << " roots, giving ";
 
     typedef free_abelian::Monoid_Ring<Weight> polynomial;
-    const WeightInvolution theta = complexGroup().matrix(strong.tw());
+    const WeightInvolution theta = innerClass().matrix(strong.tw());
 
     // compute $X^\mu*\prod_{\alpha\in A}(1-X^\alpha)$ in |pol|
     polynomial pol(mu);
@@ -810,7 +810,7 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
     q_CharCoeff c=it->second; // coefficient from |q_KGB_sum|
     const Weight& mu=it->first.first; // weight from |q_KGB_sum|
     const TitsElt& strong=it->first.second; // Tits elt from |q_KGB_sum|
-    InvolutionData id = complexGroup().involution_data(strong.tw());
+    InvolutionData id = innerClass().involution_data(strong.tw());
 
     RootNbrSet A(rd.numRoots());
     for (BitMap::iterator
@@ -832,7 +832,7 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
 
     typedef free_abelian::Monoid_Ring<Weight,q_CharCoeff>
       polynomial; // with weight exponents and $q$-polynomials as coefficients
-    const WeightInvolution theta = complexGroup().matrix(strong.tw());
+    const WeightInvolution theta = innerClass().matrix(strong.tw());
 
     // compute $X^\mu*\prod_{\alpha\in A}(1-X^\alpha)$ in |pol|
     polynomial pol(mu);

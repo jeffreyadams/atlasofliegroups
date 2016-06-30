@@ -756,7 +756,7 @@ StandardRepK get_standardrep(const SRK_context& c) throw(error::InputError)
   prettyprint::printVector(std::cout<<"2rho = ",c.rootDatum().twoRho())
     << std::endl;
   Weight lambda=
-  get_weight(sr_input_buffer,"Give lambda-rho: ",c.complexGroup().rank());
+  get_weight(sr_input_buffer,"Give lambda-rho: ",c.innerClass().rank());
 
   return c.std_rep_rho_plus(lambda,c.kgb().titsElt(x));
 }
@@ -769,7 +769,7 @@ StandardRepr get_repr(const Rep_context& c) throw(error::InputError)
   prettyprint::printVector(std::cout<<"2rho = ",c.rootDatum().twoRho())
     << std::endl;
   Weight lambda_rho=
-    get_weight(sr_input_buffer,"Give lambda-rho: ",c.complexGroup().rank());
+    get_weight(sr_input_buffer,"Give lambda-rho: ",c.innerClass().rank());
   RatWeight nu =
     get_ratweight(sr_input_buffer,"nu:",c.rootDatum().rank());
   return c.sr(x,lambda_rho,nu);
@@ -784,7 +784,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 {
   // first step: get initial x in canonical fiber
   size_t cn=get_Cartan_class(GR.Cartan_set());
-  const InnerClass& G=GR.complexGroup();
+  const InnerClass& G=GR.innerClass();
   const RootDatum& rd=G.rootDatum();
 
   const KGB& kgb=GR.kgb();
