@@ -551,7 +551,7 @@ expr_p make_dollar (const YYLTYPE& loc)
 expr_p make_break (unsigned n,const YYLTYPE& loc)
 {@; return new expr(loc,@[expr::break_tag{n}@]); }
 expr_p make_return (expr_p exp,const YYLTYPE& loc)
-{@; return new expr(exp,loc,expr::return_tag{}); }
+{@; return new expr(exp,loc,@[expr::return_tag{}@]); }
 expr_p make_die (const YYLTYPE& loc)
 @+{@; return new expr(loc,expr::die_tag()); }
 
