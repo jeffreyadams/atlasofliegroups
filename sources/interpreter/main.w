@@ -427,7 +427,9 @@ if (paths.size()>0)
 }
 #endif
 
-@ The command loop maintains two global variables that were defined
+@*1 The main command loop.
+%
+The command loop maintains two global variables that were defined
 in \.{axis.w}, namely |last_type| and |last_value|; these start off in a
 neutral state. In a loop we call the parser until it sets |verbosity<0|, which
 is done upon seeing the \.{quit} command. We call the |reset| method of the
@@ -487,12 +489,14 @@ value.
     if (verbosity>0)
       std::cout << "Type found: " << found_type << std::endl @|
 	        << "Converted expression: " << *e << std::endl;
-    e->evaluate(expression_base::single_value);
-@)  // now that evaluation did not |throw|, we can record the predicted type
-    last_type = std::move(found_type);
-    last_value=pop_value();
-    if (last_type!=void_type)
+    if (found_type==void_type)
+      e->void_eval();
+    else
+    { e->eval();
+      last_type = std::move(found_type);
+      last_value=pop_value();
       *output_stream << "Value: " << *last_value << std::endl;
+    }
     destroy_expr(parse_tree);
   }
   @< Various |catch| phrases for the main loop @>

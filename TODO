@@ -22,8 +22,6 @@
 
 - For errors during implict conversion, provide back-tracing as for calls
 
-- Check whether nested voiding in loops is necessary, maybe do only outer one
-
 - Implement compound assignment directly
   While 'v #:= x' (with vec v, int x) is easy to write (and common in loop
   bodies), it is converted to 'v := v#x' which is not efficient: with 'v'
@@ -38,7 +36,7 @@
   future loops using features that make size of resulting row unknown when
   the loop is started) might do better gathering them in a list structure.
 
-- Allow list-comprehension syntax like in Haskell (and Python?)
+- Maybe allow list-comprehension syntax like in Haskell (and Python?)
 
 - Do some support for object oriented programming (just named tuples might do).
 
