@@ -1,13 +1,16 @@
 <basic.at
 
+set row(mat M,int i)=vec:(^M)[i]
+set column(mat M,int i)=vec:M[i]
+
 set block_matrix(mat A,mat B) = mat:
   let ra=n_rows(A), rb=n_rows(B) then za=null(ra), zb=null(rb) in
   (ra+rb)# (for col in A do col##zb od ## for col in B do za##col od)
 
-set minor(mat M, [int] S)=mat: { arbitrary choice |S| of rows, same columns }
+set minor(mat M, [int] S)=mat: {arbitrary choice of rows, same columns}
 let size=#S in size^ for i in S do for j in S do M[i,j] od od
 
-set principal_minor(mat M, int size, int start) = mat: { |start| is offset }
+set principal_minor(mat M, int size, int start) = mat: { principal minor, offset start }
   size ^ for i:size from start do for j:size from start do M[i,j] od od
 set principal_minor(mat M,int size) = mat: principal_minor(M,size,0)
 

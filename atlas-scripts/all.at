@@ -1,7 +1,6 @@
 {load this file to load all recommended .at files}
 
 <K_types.at
-<LKT_aux.at
 <orbits.at
 <wreps_type_C.at
 <complex.at
@@ -11,3 +10,9 @@
 <elliptic_elements.at
 <tits.at
 <dual.at
+<all_Kparameters.at
+<coordinates.at
+<K_norm.at
+<print_K_types.at
+<all_parameters.at
+

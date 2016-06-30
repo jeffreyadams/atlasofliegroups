@@ -3,7 +3,7 @@
 <synthetic.at { for type KGBElt_gen }
 <Vogan-dual.at { for y_alt@(Param,InnerClass) }
 <polynomial.at { type poly, update_matrix_entry@(poly_mat,int,int,poly) }
-<extended.at { for type xtended_param }
+<extended.at { for type extended_param }
 
 { recover required length_diff function, now only remaining in old_kl.at }
 set length (int i, vec stops) = int: { compute length=max{k:stops[k]<=i} }

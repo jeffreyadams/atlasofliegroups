@@ -165,6 +165,11 @@ set theta_induce_standard(Param p_L,RealForm G)=ParamPol:
 let L=real_form(x(p_L)) then
 x_G=embed_KGB(x(p_L),G) then
 shift=rho(G)-rho(L) then
+{()=prints("L=", L);prints(simple_roots(L)) then
+()=prints("p_L=", p_L) then
+()=prints("x_L=", x(p_L)) then
+()=prints("torus_factor(x_L)=", torus_factor(x(p_L))) then
+()=prints("x_G=", x_G) then}
 ()=if verbose then prints("theta_induce_standard of parameter on L: ", p_L) fi then
 ()=if verbose then prints("shift (rho_G-rho_L): ", shift) fi then
 {p_G=parameter(x_G,lambda(p_L)+rho(G)-rho_r(x_G)-rho(L)+rho_r(x(p_L)), nu(p_L)) then}

@@ -183,11 +183,11 @@ set printPoly (poly v) = void: prints(stringPoly(v,"q"))
    0 +1
 }
 
-set printPolyMatrix(poly_mat M,int space_size)= void:
-  let space= " "*space_size, wd = max(for v in ##M do #stringPoly(v,"q") od)
-  in
-    for row in M
-    do prints(##for v in row do space+l_adjust(wd,stringPoly(v,"q")) od)
+set printPolyMatrix (poly_mat M) = void:
+  let rv="", n=#M in
+    for i:n do
+      let line="" in
+      for j:#M[i] do line+:=" "+stringPoly(M[i][j],"q") od; prints(line)
     od
 
 set printPolyMatrix (poly_mat M) = void: printPolyMatrix(M,3)

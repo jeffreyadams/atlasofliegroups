@@ -90,7 +90,7 @@ set is_parabolic_real(Parabolic (S,x):P) = bool:
   Cartan and then find w so that w*x=x_0
 }
 
-
+set rho_u(ComplexParabolic P)=ratvec: rho(root_datum(P))-rho(complex_Levi(P))
 set rho_u (Parabolic P) = ratvec: rho(real_form(P)) - rho(Levi(P))
 set rho_l (Parabolic P) = ratvec: rho(Levi(P))
 
