@@ -41,7 +41,6 @@ set square2 (InnerClass ic,mat theta,ratvec tf) = ratvec:
 set square (RealForm G) = ratvec: (base_grading_vector(G)+rho_check(G))%1
 set square (KGBElt x) = ratvec: square(real_form(x))
 
-
 { tf=normalized torus_factor: xi=exp(\pi i(tf\rho^v))\sigma_w\xi_0
   so square_is_central(ic,theta(x),torus_factor(x)) should always be true
 }
@@ -56,12 +55,12 @@ set parity (Param p,vec alpha_hat) = bool: { parity condition }
 ; (alpha_hat * (gamma-lambda(p)+rho_r(x))) % 2 = 1/1
 )
 
-
 { to compute y values over a block of parameters, precompute dual inner class }
 set dual_inner_class (Param p) = InnerClass:
   let id = integrality_datum(real_form(p),infinitesimal_character(p))
   in dual(inner_class(id,involution(x(p))))
 
+{Removing things related to duality, see Vogan-dual.at}
 
 { In duality, y is a KGBElt for G^\vee(gamma), but only its torus factor as a
   generalized KGB element for G^\vee is what is easily computed, namely as
@@ -78,17 +77,16 @@ set dual_inner_class (Param p) = InnerClass:
 
   A probably more sucessful attempt is in Vogan-dual.at:  dual_KGB and y_alt.
 }
-
+{
 set y (Param p, InnerClass G_vee) = KGBElt:
   let x = x(p) then dual_theta = -^involution(x)
   then grading_vector = infinitesimal_character(p) - lambda(p) + rho_r(x)
   , dual_shift = rho_check_i(G_vee,dual_theta)/2
   in KGB_elt(G_vee,dual_theta,grading_vector-dual_shift)
-
+}
 { caution: this function builds an inner class on the fly; if called multiple
   times even with the same argument, the results will be incompatible
 }
-set y (Param p) = KGBElt: y(p,dual_inner_class(p))
 
 set lambda (ratvec gamma,mat theta,KGBElt y) = ratvec:
 ( assert(theta=-^involution(y),"incompatible involutions")
@@ -137,6 +135,7 @@ set parameter (KGBElt x,KGBElt y,ratvec gamma)=Param:
 set parameter (KGBElt x, KGBElt y)=Param:
   parameter(x,y,choose_g(y,x)) { computes gamma from real_form(y), x-dominant }
 
+{see Vogan-dual.at}
 {this gives a parameter for the dual group with infinitesimal character g}
 {
   set dual_parameter (KGBElt x, KGBElt y,ratvec g) = Param: parameter(y,x,g)
@@ -144,10 +143,11 @@ set parameter (KGBElt x, KGBElt y)=Param:
   (parameter(x,y,gamma), dual_parameter(x,y,g))
 }
 
-{copied from Vogan-dual.at}
 { shift (up) a candidate dual infinitesimal character to strictly dominant }
+{
 set shift_g_regular (RootDatum rd, ratvec g) = ratvec:
   for alpha@i in simple_roots(rd)
   do let (v,d) = %fundamental_coweight(rd,i)
      in g +:= (1-ceil(g*alpha/d)) * v
   od; g
+}

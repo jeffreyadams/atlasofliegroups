@@ -99,8 +99,6 @@ set dual_KGB (Param p, InnerClass dual_int_ic) = KGBElt:
   in KGB_elt(dual_int_ic,dual_theta
             ,phi+integral_shift(rho_corr-rho_r(x),simple_ims,dLR))
 
-
-
 set central_cocharacter (RealForm G) = ratvec:
   (base_grading_vector(G) + rho_check(G))%1
 
@@ -130,18 +128,24 @@ set dual_lambda (Param p) = ratvec: { is mod 2: ell(p)+rho(dual_inner_class) }
 set check_dual_lambda (Param p) = bool:
   dual_lambda(p)%1 = rho_check(integrality_datum(p))%1
 
-set dual_alt (Param p, InnerClass dual_integral_class) = Param:
+{used to be called dual_alt}
+set dual (Param p, InnerClass dual_integral_class) = Param:
   parameter( dual_KGB(p,dual_integral_class), dual_lambda(p), dual_gamma(p) )
+
+{define dual of (x,y,gamma), see Parameters.at}
+set dual(KGBElt x,KGBElt y, ratvec gamma)=dual(parameter(x,y,gamma),inner_class(y))
+set dual(KGBElt x,KGBElt y)=dual(parameter(x,y),inner_class(y))
 
 { caution: these three functions build an inner class on the fly; if called
   multiple times even with the same argument, the results will be incompatible
-}
+safer not to use these, and not necessary
 set y_alt (Param p) = KGBElt: dual_KGB(p,dual_inner_class(p))
 set dual_real_form (Param p) = RealForm: real_form(y_alt(p))
 set dual_alt (Param p) = Param: dual_alt(p,dual_inner_class(p))
+}
 
 { allow calling dual_KGB under the name y_alt }
-set y_alt = (Param,InnerClass->KGBElt):  dual_KGB@(Param,InnerClass)
+{set y_alt = (Param,InnerClass->KGBElt):  dual_KGB@(Param,InnerClass)}
 
 set test1 (Param p) = [bool]: { consistency of dual real form across block }
   let G_v=dual_inner_class(p) then drf = real_form(dual_KGB(p,G_v))

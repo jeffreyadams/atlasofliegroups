@@ -61,9 +61,9 @@ set is_even (int n) = bool: n%2=0
 set min (int k, int l) = int: if k<l then k else l fi
 set max (int k, int l) = int: if k<l then l else k fi
 
-set min ([int] a) = int: let l=#a in assert(>=l,"Minimum of an empty list");
+set min ([int] a) = int: let l=#a in assert(l>=1,"Minimum of an empty list");
   let m=a~[0] in for i:l-1 do if a[i]<m then m:=a[i] fi od; m
-set max ([int] a) = int: let l=#a in assert(>=l,"Maximum of an empty list");
+set max ([int] a) = int: let l=#a in assert(l>=1,"Maximum of an empty list");
   let m=a~[0] in for i:l-1 do if a[i]>m then m:=a[i] fi od; m
 
 set lcm ([int] list) = let (,d) = %(ratvec: for x in list do {1} /x od) in d
