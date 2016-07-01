@@ -20,7 +20,6 @@ L(2rho_c) is of type A_1^r, with weyl group W_c^\perp
 R(K)_dom=W(K,H^delta)\cap W_c^perp   (Proposition 4.4)
 }
 
-
 {given G,x in distinguished fiber, K_0=K_0(x), Weyl group element w for W(K_0,H_{K_0})
  lift this to an element of W(G,H)
  should satisfy:
@@ -31,7 +30,7 @@ lift_action(x,w) assumes x is in the distinguished fiber, and
 w is a W_word for K_0(x)
 }
 set lift_action (KGBElt x, W_word w) = mat:
-  let (rd_K,w_K)=w, rd=root_datum(x)
+let   (rd_K,w_K)=w, rd=root_datum(x)
   , ((roots,coroots),(inj,pullback))=G_K_roots_and_coroots_raw(x)
   then result=id_mat(rank(rd)) in
   for i in w_K
@@ -116,7 +115,7 @@ set R_K_dom(KGBElt x) = [W_word]:
 { need to change to numbering for G }
   for w in W_c_perp
   do if cross(convert_W_word(w,root_datum(x)),x)=x then result#:=w fi od;
-  result
+ result
 { W_K(x)=(W_K(K_0,T_{K_0}), R_K_dom(x)) }
 
 {requirement: x makes 2rho_c G-dominant}
@@ -134,12 +133,14 @@ set R_K_dom_mu_orbit (KHighestWeight (x,mu)) = [KHighestWeight]:
    else move_weight((x,mu), nice_choice_x(real_form(x)))
    fi
  then (K_0,R_K_dom)=W_K(x)
- then (mu_1,)=make_dominant(K_0,mu), result=[KHighestWeight]:[]
+ then proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
+ then (mu_0,v)=make_dominant(K_0,proj*mu) 
+ then mu_1=lift_action(x,v)*mu then
+ result=[KHighestWeight]:[]
  in
    for w in R_K_dom
-   do let mu_2=factor_action(x,w)*mu_1 in
-     if first(#result, (int i)bool: let (,phi)=result[i] in mu_2=phi)=-1
-     then result#:=(x,mu_2)
+     do let mu_2=act(w,mu_1) in
+     if first(#result, (int i)bool: let (,phi)=result[i] in mu_2=phi)=-1 then result#:=(x,mu_2)
      fi
    od;
    result
@@ -169,22 +170,24 @@ set is_P_positive (KGBElt x,ratvec mu,[W_word] S) = bool:
   in { prints("M=",M); }
     all(for w in S do let v=P_positive_test_coweight(x,w) in v*mu>=0 od)
 
-{ mu is in X^*(T_{K})
+{ mu is in X^*, viewed as element of X^*(T_{K})=X^*/(1-delta)X^*
   apply w in W(K_0,T_{K_0}) to make it K_0-dominant
   then apply R_K_dom to make it P-positive
   when applying R_K_dom, these are elements of W(K,H)
-  use factor_action (see LKT.at) to get the action on X^*(T_K)
+  use lift_action to get the action on X^*  
   x must be in distinguished fiber, and make 2rho_c G-dominant
 }
 set make_strongly_dominant (KGBElt x,ratvec mu) = (ratvec,W_word,W_word,bool):
   let (K_0,R_K_dom)=W_K(x)
-  then (mu_1,w_1)=make_dominant(K_0,mu)
-{ then ()=prints("mu_1:", mu_1) }
+  then proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
+  then (mu_0,w_1)=make_dominant(K_0,proj*mu) 
+  then mu_1=lift_action(x,w_1)*mu
   then L=small_Levi(x), done=false, i=0, j=-1, mu=mu_1, w=w_1
   in
     while not done and i<#R_K_dom
     do { prints("i:", i); }
-      let mu_2=factor_action(x,R_K_dom[i])*mu_1 in
+{      let mu_2=factor_action(x,R_K_dom[i])*mu_1 in}
+       let mu_2=lift_action(x,R_K_dom[i])*mu_1 in
       { prints("mu_2:", mu_2); }
       let is_pos=is_P_positive(x,mu_2,R_K_dom) in
       { prints("is_P_positive:", is_pos); }
@@ -210,9 +213,13 @@ set make_strongly_dominant (KGBElt x,ratvec mu) = (ratvec,W_word,W_word,bool):
 }
 set R_K_dom_mu (KGBElt x,ratvec mu)  =[W_word]:
   let (K_0,R_K_dom)=W_K(x)
-  then (mu_1,)=make_dominant(K_0,mu), result=[W_word]:[]
+
+ then proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
+ then (mu_0,v)=make_dominant(K_0,proj*mu) 
+ then mu_1=lift_action(x,v)*mu 
+ then result=[W_word]:[]
   in
-    for w in R_K_dom do if factor_action(x,w)*mu_1=mu_1 then result#:=w fi od;
+    for w in R_K_dom do if lift_action(x,w)*mu_1=mu_1 then result#:=w fi od;
     result
 
 
