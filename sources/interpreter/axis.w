@@ -4978,8 +4978,9 @@ inline bool functype_specialise
 
 @ Operator casts only access already existing values. In most cases we must
 access the global overload table to find the value. Since upon success we find
-a bare function value, we must (as we did for~`\.\$') use the |denotation|
-class to serve as wrapper that upon evaluation will return the value again.
+a bare |shared_function|, we must (as we did for~`\.\$') use the
+|capture_expression| class to serve as wrapper that upon evaluation will
+return the value again.
 
 @< Cases for type-checking and converting... @>=
 case op_cast_expr:
@@ -4987,28 +4988,26 @@ case op_cast_expr:
   const overload_table::variant_list& variants =
    global_overload_table->variants(c->oper);
   const type_expr& ctype=c->type;
-  if (is_special_operator(c->oper))
-    @< Test special argument patterns, and on match |return| an appropriate
-       denotation @>
-  size_t i;  std::ostringstream o;
+  std::ostringstream o;
+  o << main_hash_table->name_of(c->oper) << '@@' << ctype;
+@)
+  size_t i;
   for (i=0; i<variants.size(); ++i)
     if (variants[i].type().arg_type==ctype)
       break;
-  if (i==variants.size()) // nothing was found
+  if (i<variants.size()) // something was found
   {
-    o << "Cannot resolve " << main_hash_table->name_of(c->oper) @|
-       << " at argument type " << ctype;
-  @/throw program_error(o.str());
+    expression_ptr p(new capture_expression(variants[i].val,o.str()));
+    const type_expr& res_t = variants[i].type().result_type;
+    if (functype_specialise(type,ctype,res_t) or type==void_type)
+      return p;
+    throw type_error(e,type_expr(ctype.copy(),res_t.copy()),std::move(type));
   }
-  o << main_hash_table->name_of(c->oper) << '@@' << ctype;
-  expression_ptr p(new capture_expression(variants[i].val,o.str()));
-  const type_expr& res_t = variants[i].type().result_type;
-  if (functype_specialise(type,ctype,res_t))
-    return p;
-  else if (type==void_type)
-    return expression_ptr(new voiding(std::move(p)));
-  else throw
-      type_error(e,type_expr(ctype.copy(),res_t.copy()),std::move(type));
+@)// now we have no match from the overload table, try generic operations
+  if (is_special_operator(c->oper))
+    @< Test special argument patterns, and on match |return| an appropriate
+       denotation @>
+@/throw program_error("No instance for "+o.str()+" found");
 }
 break;
 
@@ -5021,19 +5020,19 @@ slightly more complicated.
 @< Test special argument patterns... @>=
 { if (c->oper==print_name())
   { if (functype_specialise(type,ctype,ctype))
-    return expression_ptr(new @| denotation (print_builtin));
+    return expression_ptr(new @| capture_expression (print_builtin,o.str()));
   }
   else if (c->oper==prints_name())
   { if (functype_specialise(type,ctype,void_type))
-    return expression_ptr(new @| denotation (prints_builtin));
+    return expression_ptr(new @| capture_expression (prints_builtin,o.str()));
   }
   else if (c->oper==to_string_name())
   { if (functype_specialise(type,ctype,str_type))
-    return expression_ptr(new @| denotation (to_string_builtin));
+    return expression_ptr(new @| capture_expression (to_string_builtin,o.str()));
   }
   else if (c->oper==error_name())
   { if (functype_specialise(type,ctype,unknown_type))
-    return expression_ptr(new @| denotation (error_builtin));
+    return expression_ptr(new @| capture_expression (error_builtin,o.str()));
   }
   else if (c->oper==size_of_name())
     @< Select the proper instance of the \.\# operator,
@@ -5052,7 +5051,8 @@ table.
 @< Select the proper instance of the \.\# operator,... @>=
 { if (ctype.kind==row_type)
   { if (functype_specialise(type,ctype,int_type))
-  @/return expression_ptr(new @| denotation (sizeof_row_builtin));
+  @/return expression_ptr(new @|
+      capture_expression (sizeof_row_builtin,o.str()));
     throw type_error(e,ctype.copy(),std::move(type));
   }
   else if (is_pair_type(ctype))
@@ -5061,12 +5061,14 @@ table.
     type_expr& arg_tp1 = ctype.tupple->next->contents;
     if (arg_tp0.kind==row_type and *arg_tp0.component_type==arg_tp1)
     { if (functype_specialise(type,ctype,arg_tp0))
-        return expression_ptr(new @| denotation(suffix_elt_builtin));
+        return expression_ptr(new @|
+          capture_expression(suffix_elt_builtin,o.str()));
       throw type_error(e,ctype.copy(),std::move(type));
     }
     if (arg_tp1.kind==row_type and *arg_tp1.component_type==arg_tp0)
     { if (functype_specialise(type,ctype,arg_tp1))
-      return expression_ptr(new @| denotation (prefix_elt_builtin));
+      return expression_ptr(new @|
+        capture_expression (prefix_elt_builtin,o.str()));
       throw type_error(e,ctype.copy(),std::move(type));
     }
   }
@@ -5078,7 +5080,8 @@ different wrapper functions.
 @< Select the proper instance of the \.{\#\#} operator,... @>=
 { if (ctype.kind==row_type and ctype.component_type->kind==row_type)
   { if (functype_specialise(type,ctype,*ctype.component_type))
-  @/return expression_ptr(new @| denotation (join_rows_row_builtin));
+  @/return expression_ptr(new @|
+      capture_expression (join_rows_row_builtin,o.str()));
     throw type_error(e,ctype.copy(),std::move(type));
   }
   else if (is_pair_type(ctype))
@@ -5087,7 +5090,8 @@ different wrapper functions.
     type_expr& arg_tp1 = ctype.tupple->next->contents;
     if (arg_tp0.kind==row_type and arg_tp1==arg_tp0)
     { if (functype_specialise(type,ctype,arg_tp0))
-        return expression_ptr(new @| denotation (join_rows_builtin));
+        return expression_ptr(new @|
+          capture_expression (join_rows_builtin,o.str()));
       throw type_error(e,ctype.copy(),std::move(type));
     }
   }
