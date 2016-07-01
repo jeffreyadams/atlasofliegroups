@@ -1462,8 +1462,11 @@ struct function_base : public value_base
   function_base() : @[value_base@]() @+{}
   virtual ~@[function_base() nothing_new_here@];
   virtual void apply(expression_base::level l) const=0;
+    // go; arg.\ values on |execution_stack|
   virtual expression_base::level argument_policy() const=0;
+    // form to prepare arguments in
   virtual void report_origin(std::ostream& o) const=0;
+    // tell where we are from
 };
 typedef std::shared_ptr<const function_base> shared_function;
 
@@ -1523,9 +1526,20 @@ instances are constructed at start-up time when functions are entered into the
 global overload table; their |print_name| will stick, even if the user binds
 it to a new name.
 
-@< Type definitions @>=
+Some built-in functions like |print| accept arguments of any types, and in
+particular tuples of any length. For such functions there is no use in
+adopting the approach used for other built-in functions of expanding argument
+tuples on the stack; instead the argument is always considered as one value.
+We cater for the distinction between the two variants at run-time by
+making this a class template with a Boolean template argument |variadic|. This
+is necessary because operator casts make it possible to use specialisations
+of variadic functions as function values (of the correspondingly specialised
+type), so they can occur not only in overloaded calls, but in any place that
+other built-in of user-defined functions can.
 
-struct builtin_value : public function_base
+@< Type definitions @>=
+template <bool variadic>
+  struct builtin_value : public function_base
 { wrapper_function val;
   std::string print_name;
 @)
@@ -1536,17 +1550,19 @@ struct builtin_value : public function_base
   @+{@; out << '{' << print_name << '}'; }
   virtual void apply(expression_base::level l) const @+
     {@; (*val)(l); } // apply function pointer
-  virtual expression_base::level argument_policy() const @+
-  { return expression_base::multi_value; }
+  virtual expression_base::level argument_policy() const
+  {@; return variadic
+      ? expression_base::single_value : expression_base::multi_value; }
   virtual void report_origin(std::ostream& o) const @+
-  { o << "built-in"; }
+  {@; o << "built-in"; }
 @)
   virtual builtin_value* clone() const @+{@; return new builtin_value(*this); }
   static const char* name() @+{@; return "built-in function"; }
 private:
   builtin_value@[(const builtin_value& v) = default@];
 };
-typedef std::shared_ptr<const builtin_value> shared_builtin;
+typedef std::shared_ptr<const builtin_value<false> > shared_builtin;
+typedef std::shared_ptr<const builtin_value<true> > shared_variadic_builtin;
 
 @ While syntactically more complicated than ordinary function calls, the call
 of overloaded functions is actually simpler at run time, because the function
@@ -1561,19 +1577,34 @@ of not duplicating the |print_name| string for every call expression. To avoid
 that this costs an extra pointer dereference at each call, we copy the
 function pointer directly into |overloaded_builtin_call| as its field~|f|.
 
+When accessed through overloading, the condition whether a built-in function
+is variadic or not is known at compile time, so we can make this a class
+template with a |variadic| template argument, just like |builtin_value|;
+indeed the template argument serves exclusively to adapt the type of the
+member~|f|.
+
 @< Type definitions @>=
-struct overloaded_builtin_call : public call_base
-{ wrapper_function f_ptr; // shortcut to implementing function
-  shared_builtin f; // points to the full |builtin_value|
+template <bool variadic>
+  struct builtin_call : public call_base
+{ typedef std::shared_ptr<const builtin_value<variadic> > ptr_to_builtin;
 @)
-  overloaded_builtin_call
-    (const shared_builtin& fun,expression_ptr&& a,const source_location& loc)
-  : call_base(std::move(a),loc), f_ptr(fun->val), f(fun) @+ {}
-  virtual ~@[overloaded_builtin_call() nothing_new_here@];
+  wrapper_function f_ptr; // shortcut to implementing function
+  ptr_to_builtin f;
+   // points to the full |builtin_value|
+@)
+  builtin_call
+    (const ptr_to_builtin& fun,
+     expression_ptr&& a,
+     const source_location& loc)
+@/: call_base(std::move(a),loc), f_ptr(fun->val), f(fun) @+ {}
+  virtual ~@[builtin_call() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
   virtual std::string function_name() const @+{@; return f->print_name; }
 };
+@)
+typedef builtin_call<false> overloaded_builtin_call;
+typedef builtin_call<true> variadic_builtin_call;
 
 @ When printing, we use the |f| field for its |print_name|, which the method
 |function_name| achieves; we ensure it is called non-virtually to avoid the
@@ -1582,33 +1613,13 @@ cannot know that). For the argument list we proceed as for general function
 calls.
 
 @< Function definitions @>=
-void overloaded_builtin_call::print(std::ostream& out) const
-{ out << overloaded_builtin_call::function_name();
+template <bool variadic>
+  void builtin_call<variadic>::print(std::ostream& out) const
+{ out << function_name();
   if (dynamic_cast<tuple_expression*>(argument.get())!=nullptr)
     out << *argument;
   else out << '(' << *argument << ')';
 }
-
-@ Some built-in functions like |print| accept arguments of any types, and in
-particular tuples of any length. For such functions there is no use in
-adopting the approach used for other built-in functions of expanding argument
-tuples on the stack; instead the argument is always considered as one value.
-Fortunately such functions are necessarily accessed through overloading, so we
-detect the fact that they are being used at analysis time. This fact is then
-recorded it in the type of call expression generated, and the |evaluate|
-method will ask for an unexpanded argument on the execution stack. Therefore
-we derive a type from |overloaded_builtin_call| that will override only the
-|evaluate| method.
-
-@< Type definitions @>=
-struct variadic_builtin_call : public overloaded_builtin_call
-{ typedef overloaded_builtin_call base;
-@)
-  variadic_builtin_call @| (const shared_builtin& f,expression_ptr&& a,
-    const source_location& loc)
-  : base(f,std::move(a),loc)@+ {}
-  virtual void evaluate(level l) const;
-};
 
 @ The following function builds a |variadic_builtin_call|, ensuring that the
 argument is wrapped up in a |voiding| if |needs_voiding| holds. The Boolean
@@ -1617,7 +1628,7 @@ the argument expression is not just ``()''.
 
 @< Local fun... @>=
 expression_ptr make_variadic_call
-  (const shared_builtin& f
+  (const shared_variadic_builtin& f
   ,expression_ptr&& a, bool needs_voiding
   ,const source_location& loc)
 { if (needs_voiding)
@@ -1653,6 +1664,7 @@ detach the code for the |catch| block, so that it can be textually shared
 with another |evaluate| method.
 
 @< Function definitions @>=
+template<>
 void variadic_builtin_call::evaluate(level l) const
 { std::string arg_string;
   argument->eval(); ; // always evaluate to single value
@@ -1741,6 +1753,7 @@ work is only done in debug mode. By using the same variable name
 |arg_string|, we can reuse the |catch| block defined before.
 
 @< Function definitions @>=
+template<>
 void overloaded_builtin_call::evaluate(level l) const
 { std::string arg_string;
   if (verbosity==0)
@@ -2531,9 +2544,9 @@ typedef std::shared_ptr<const closure_value> shared_closure;
 also print an indication of where the function was defined (this was not
 useful for |lambda_expression|, since these never get printed directly, only
 as part of printing a |closure_value|). One could imagine printing after this
-body ``where'' followed by the bindings held in the |c| field. Even better
-only the bindings for relevant (because referenced) identifiers could be
-printed. But it's not done yet.
+body ``where'' followed by the bindings held in the |context| field. Even
+better only the bindings for relevant (because referenced) identifiers could
+be printed. But it's not done yet.
 
 @< Function def... @>=
 void closure_value::print(std::ostream& out) const
@@ -2717,16 +2730,22 @@ will still be accepted.
 @< Set |call| to a call of the function value |*v.val|... @>=
 { if (arg_type==void_type and not is_empty(args))
     arg.reset(new voiding(std::move(arg)));
-  if (@[auto f = std::dynamic_pointer_cast<const builtin_value>(v.val)@;@])
-    call = expression_ptr (new @| overloaded_builtin_call
-      (f,std::move(arg),e.loc));
-  else
   if (@[auto f = std::dynamic_pointer_cast<const closure_value>(v.val)@;@])
   { std::ostringstream name;
     name << main_hash_table->name_of(id) << '@@' << arg_type;
     call = expression_ptr(new
              overloaded_closure_call(f,name.str(),std::move(arg),e.loc));
   }
+  else
+  if (@[auto f =
+        std::dynamic_pointer_cast<const builtin_value<false> >(v.val)@;@])
+    call = expression_ptr (new @| overloaded_builtin_call
+      (f,std::move(arg),e.loc));
+  else
+  if (@[auto f =
+     std::dynamic_pointer_cast<const builtin_value<true> >(v.val)@;@])
+    call = expression_ptr (new @| variadic_builtin_call
+      (f,std::move(arg),e.loc));
   else
     throw logic_error("Overloaded value is not a function");
 @)
@@ -5914,36 +5933,44 @@ current \.{axis.w} module.
 
 @< Static variable definitions that refer to local functions @>=
 static shared_builtin sizeof_row_builtin =
-    std::make_shared<const builtin_value>(sizeof_wrapper,"#@@[T]");
+    std::make_shared<const builtin_value<false> >(sizeof_wrapper,"#@@[T]");
 static shared_builtin sizeof_vector_builtin =
-    std::make_shared<const builtin_value>(sizeof_vector_wrapper,"#@@vec");
+    std::make_shared<const builtin_value<false> >
+      (sizeof_vector_wrapper,"#@@vec");
 static shared_builtin sizeof_ratvec_builtin =
-    std::make_shared<const builtin_value>(sizeof_ratvec_wrapper,"#@@ratvec");
+    std::make_shared<const builtin_value<false> >
+      (sizeof_ratvec_wrapper,"#@@ratvec");
 static shared_builtin sizeof_string_builtin =
-    std::make_shared<const builtin_value>(sizeof_string_wrapper,"#@@string");
+    std::make_shared<const builtin_value<false> >
+       (sizeof_string_wrapper,"#@@string");
 static shared_builtin matrix_columns_builtin =
-    std::make_shared<const builtin_value>(matrix_ncols_wrapper,"ncols@@mat");
+    std::make_shared<const builtin_value<false> >
+     (matrix_ncols_wrapper,"ncols@@mat");
 static shared_builtin sizeof_parampol_builtin =
-    std::make_shared<const builtin_value>(virtual_module_size_wrapper,
-    "#@@ParamPol");
-static shared_builtin print_builtin =
-  std::make_shared<const builtin_value>(print_wrapper,"print@@T");
-static shared_builtin to_string_builtin =
-  std::make_shared<const builtin_value>(to_string_wrapper,"to_string@@T");
-static shared_builtin prints_builtin =
-  std::make_shared<const builtin_value>(prints_wrapper,"prints@@T");
-static shared_builtin error_builtin =
-  std::make_shared<const builtin_value>(error_wrapper,"error@@T");
+    std::make_shared<const builtin_value<false> >
+      (virtual_module_size_wrapper, "#@@ParamPol");
+static shared_variadic_builtin print_builtin =
+  std::make_shared<const builtin_value<true> >(print_wrapper,"print@@T");
+static shared_variadic_builtin to_string_builtin =
+  std::make_shared<const builtin_value<true> >(to_string_wrapper,"to_string@@T");
+static shared_variadic_builtin prints_builtin =
+  std::make_shared<const builtin_value<true> >(prints_wrapper,"prints@@T");
+static shared_variadic_builtin error_builtin =
+  std::make_shared<const builtin_value<true> >(error_wrapper,"error@@T");
 static shared_builtin prefix_elt_builtin =
-  std::make_shared<const builtin_value>(prefix_element_wrapper,"#@@(T,[T])");
+  std::make_shared<const builtin_value<false> >
+    (prefix_element_wrapper,"#@@(T,[T])");
 static shared_builtin suffix_elt_builtin =
-  std::make_shared<const builtin_value>(suffix_element_wrapper,"#@@([T],T)");
+  std::make_shared<const builtin_value<false> >
+    (suffix_element_wrapper,"#@@([T],T)");
 static shared_builtin join_rows_builtin =
-  std::make_shared<const builtin_value>(join_rows_wrapper,"##@@([T],[T])");
+  std::make_shared<const builtin_value<false> >
+    (join_rows_wrapper,"##@@([T],[T])");
 static shared_builtin join_rows_row_builtin =
-  std::make_shared<const builtin_value>(join_rows_row_wrapper,"##@@([[T]])");
+  std::make_shared<const builtin_value<false> >
+    (join_rows_row_wrapper,"##@@([[T]])");
 static shared_builtin boolean_negate_builtin =
-  std::make_shared<const builtin_value>(bool_not_wrapper,"not@@bool");
+  std::make_shared<const builtin_value<false> >(bool_not_wrapper,"not@@bool");
 
 @ The function |print| outputs any value in the format used by the interpreter
 itself. This function has an argument of unknown type; we just pass the popped

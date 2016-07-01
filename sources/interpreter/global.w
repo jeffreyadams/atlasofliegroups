@@ -1677,7 +1677,7 @@ void install_function
     throw logic_error
      ("Built-in with non-function type: "+print_name.str());
   print_name << '@@' << type->func->arg_type;
-  auto val = std::make_shared<builtin_value>(f,print_name.str());
+  auto val = std::make_shared<builtin_value<false> >(f,print_name.str());
   global_overload_table->add
     (main_hash_table->match_literal(name),std::move(val),std::move(*type));
 }
