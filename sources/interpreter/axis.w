@@ -1418,12 +1418,15 @@ id_type equals_name()
 @* Function calls.
 %
 One of the most basic and important tasks of the evaluator is to allow
-function calls, which may involve either built-in or user-defined functions.
+function calls, which may involve either built-in or user-defined functions;
+to this list may be added other types of runtime values that behave like
+functions, such as selectors from a tuple.
+
 This central part of the evaluator will be presented with an initial focus on
 built-in functions, while leaving the particulars of user defined functions
-(also known as $\lambda$-expressions) and their evaluation aside until
-somewhat later. This corresponds more or less to the development history of
-the interpreter, in which initially only built-in functions were catered for;
+(also known as $\lambda$-expressions) and other types aside until somewhat
+later. This corresponds more or less to the development history of the
+interpreter, in which initially only built-in functions were catered for;
 however many of the aspects that we deal with right away, notably function
 overloading, are in fact much more recent additions than used-defined
 functions were.
@@ -1439,16 +1442,30 @@ error trace will also provide a name of the called function (which is more
 readable than trying to reproduce the whole function call expression), which
 will be obtained from the virtual method |function_name|.
 
+We similarly define an intermediate class |function_base| between
+|value_base| and the concrete classes that will define function objects,
+like built-in functions.
+
 @< Type def... @>=
 struct call_base : public expression_base
 { expression_ptr argument;
   source_location loc;
 @)
   call_base(expression_ptr&& arg, const source_location& loc)
-  : argument(arg.release()), loc(loc) @+{}
+  : expression_base(), argument(arg.release()), loc(loc) @+{}
   virtual ~@[call_base() nothing_new_here@];
   virtual std::string function_name() const=0;
 };
+
+struct function_base : public value_base
+{
+  function_base() : @[value_base@]() @+{}
+  virtual ~@[function_base() nothing_new_here@];
+  virtual void apply(expression_base::level l) const=0;
+  virtual expression_base::level argument_policy() const=0;
+  virtual void report_origin(std::ostream& o) const=0;
+};
+typedef std::shared_ptr<const function_base> shared_function;
 
 @ We start with introducing a type for representing general function calls
 after type checking. This is the general form where function can be given by
@@ -1508,15 +1525,22 @@ it to a new name.
 
 @< Type definitions @>=
 
-struct builtin_value : public value_base
+struct builtin_value : public function_base
 { wrapper_function val;
   std::string print_name;
 @)
   builtin_value(wrapper_function v,const std::string& n)
-  : val(v), print_name(n) @+ {}
+  : function_base(), val(v), print_name(n) @+ {}
   virtual ~ @[builtin_value() nothing_new_here@];
   virtual void print(std::ostream& out) const
   @+{@; out << '{' << print_name << '}'; }
+  virtual void apply(expression_base::level l) const @+
+    {@; (*val)(l); } // apply function pointer
+  virtual expression_base::level argument_policy() const @+
+  { return expression_base::multi_value; }
+  virtual void report_origin(std::ostream& o) const @+
+  { o << "built-in"; }
+@)
   virtual builtin_value* clone() const @+{@; return new builtin_value(*this); }
   static const char* name() @+{@; return "built-in function"; }
 private:
@@ -1539,19 +1563,19 @@ function pointer directly into |overloaded_builtin_call| as its field~|f|.
 
 @< Type definitions @>=
 struct overloaded_builtin_call : public call_base
-{ wrapper_function f; // shortcut to implementing function
-  shared_builtin fun; // points to the full |builtin_value|
+{ wrapper_function f_ptr; // shortcut to implementing function
+  shared_builtin f; // points to the full |builtin_value|
 @)
   overloaded_builtin_call
     (const shared_builtin& fun,expression_ptr&& a,const source_location& loc)
-  : call_base(std::move(a),loc), f(fun->val), fun(fun) @+ {}
+  : call_base(std::move(a),loc), f_ptr(fun->val), f(fun) @+ {}
   virtual ~@[overloaded_builtin_call() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
-  virtual std::string function_name() const @+{@; return fun->print_name; }
+  virtual std::string function_name() const @+{@; return f->print_name; }
 };
 
-@ When printing, we use the |fun| field for its |print_name|, which the method
+@ When printing, we use the |f| field for its |print_name|, which the method
 |function_name| achieves; we ensure it is called non-virtually to avoid the
 overhead (in fact no derived class redefines the method, but the compiler
 cannot know that). For the argument list we proceed as for general function
@@ -1580,9 +1604,9 @@ we derive a type from |overloaded_builtin_call| that will override only the
 struct variadic_builtin_call : public overloaded_builtin_call
 { typedef overloaded_builtin_call base;
 @)
-  variadic_builtin_call @| (const shared_builtin& fun,expression_ptr&& a,
+  variadic_builtin_call @| (const shared_builtin& f,expression_ptr&& a,
     const source_location& loc)
-  : base(fun,std::move(a),loc)@+ {}
+  : base(f,std::move(a),loc)@+ {}
   virtual void evaluate(level l) const;
 };
 
@@ -1593,12 +1617,12 @@ the argument expression is not just ``()''.
 
 @< Local fun... @>=
 expression_ptr make_variadic_call
-  (const shared_builtin& fun
+  (const shared_builtin& f
   ,expression_ptr&& a, bool needs_voiding
   ,const source_location& loc)
 { if (needs_voiding)
     a.reset(new voiding(std::move(a))); // wrap argument in voiding
-  return expression_ptr(new variadic_builtin_call(fun,std::move(a),loc));
+  return expression_ptr(new variadic_builtin_call(f,std::move(a),loc));
 }
 
 @*1 Evaluating calls of built-in functions.
@@ -1639,8 +1663,8 @@ void variadic_builtin_call::evaluate(level l) const
   }
 @)
   try
-  {@; (*f)(l); } // call the built-in function
-  @< Catch-block for exceptions thrown within function calls @>
+  {@; (*f_ptr)(l); } // call the built-in function
+  @< Catch-block for exceptions thrown within call of |f| with |arg_string| @>
 }
 
 @ To provide back-trace, we catch and re-throw an error after extending the
@@ -1663,40 +1687,37 @@ a call of~|extend_message|.
 
 @:Catch to trace back calls@>
 
-@< Catch-block for exceptions thrown within function calls @>=
+@< Catch-block for exceptions thrown within call of |f| with |arg_string| @>=
 catch (error_base& e)
-{@; extend_message(e,this,fun,arg_string);
+{@; extend_message(e,this,f,arg_string);
   throw;
 }
 catch (const std::exception& e)
 { runtime_error new_error(e.what());
-  extend_message(new_error,this,fun,arg_string);
+  extend_message(new_error,this,f,arg_string);
   throw new_error;
 }
 
 @ The function |extend_message| facilitates appending information to error
 messages in |catch| blocks. It is called with, apart from the error~|e| whose
 message is to be modified, the expression~|call| whose evaluation was
-interrupted by the error, the value |fun| of the function called (either a
+interrupted by the error, the value |f| of the function called (either a
 |builtin_value| or a |closure_value|), and a string~|arg| that in debug mode
 describes the arguments (when not in debug mode the string will be empty and
 is ignored).
 
 We report the source location of the call expression and the name of the
 function called (both obtained from |call|), and a source location for the
-definition of the called function (obtained from |fun|) in case it is
+definition of the called function (obtained from |f|) in case it is
 user-defined; when the called function was built in we just report that.
 
 @< Local fun... @>=
 void extend_message
-  (error_base& e,const call_base* call, const shared_value& fun,
+  (error_base& e,const call_base* call, const shared_function& f,
    const std::string& arg)
 { std::ostringstream o;
   o << "\n(in call " << call->loc << " of " << call->function_name() << ", ";
-  auto f=dynamic_cast<const closure_value*>(fun.get());
-  if (f==nullptr)
-     o << "built-in";
-  else o << "defined " << f->p->loc;
+  f->report_origin(o);
   o << ')';
   if (verbosity>0)
     o << "\n  argument" << (arg[0]=='(' ? "s: " : ": ") << arg;
@@ -1741,8 +1762,8 @@ void overloaded_builtin_call::evaluate(level l) const
   }
 @)
   try
-  {@; (*f)(l); } // call the built-in function
-  @< Catch-block for exceptions thrown within function calls @>
+  {@; (*f_ptr)(l); } // call the built-in function
+  @< Catch-block for exceptions thrown within call of |f|... @>
 }
 
 
@@ -1767,21 +1788,23 @@ argument on the stack as a single value.
 
 We reuse the previous |catch| block literally a third time; this time not only
 do we judiciously choose the name |arg_string| to match what we did before,
-but also the local variable name |fun| to math the field name
-|overloaded_builtin_call::fun| that the cited module referred to in previous
+but also the local variable name |f| to math the field name
+|overloaded_builtin_call::f| that the cited module referred to in previous
 instances.
 
 @< Function definitions @>=
 void call_expression::evaluate(level l) const
-{ function->eval(); @+ shared_value fun=pop_value();
-  auto f = dynamic_cast<const builtin_value*>(fun.get());
-  const bool user_defined = f==nullptr;
+{ function->eval();
+  auto f = std::dynamic_pointer_cast<const function_base>(pop_value());
+  if (f.get()==nullptr)
+    throw logic_error
+      ("Non-function value found for function in a call expression");
   std::string arg_string;
   if (verbosity==0)
-    argument->evaluate(user_defined ? single_value : multi_value);
+    argument->evaluate(f->argument_policy());
   else
   { auto sp = execution_stack.size();
-    argument->evaluate(user_defined ? single_value : multi_value);
+    argument->evaluate(f->argument_policy());
     std::ostringstream o;
     if (execution_stack.size()>sp+1) // multiple arguments
       for (o << '(';
@@ -1795,13 +1818,8 @@ void call_expression::evaluate(level l) const
     arg_string = o.str();
   }
 @)
-  try
-  { if (user_defined)
-      @< Call user-defined function |fun| with argument on |execution_stack| @>
-    else // built-in functions
-      (*f->val)(l); // call the wrapper function, handling |l| appropriately
-  }
-  @< Catch-block for exceptions thrown within function calls @>
+  try {@; f->apply(l); } // apply the function, handling |l| appropriately
+  @< Catch-block for exceptions thrown within call of |f|... @>
 }
 
 
@@ -2487,15 +2505,21 @@ closures are actually executed less than once on average; in such cases we are
 actually wasting effort here.
 
 @< Type def... @>=
-struct closure_value : public value_base
+struct closure_value : public function_base
 { shared_context context;
   shared_lambda p;
   const expression_base& body; // shortcut to function body
 @)
   closure_value@|(const shared_context& c, const shared_lambda& l)
-  : context(c), p(l), body(*p->body) @+{}
+  : function_base(), context(c), p(l), body(*p->body) @+{}
   virtual ~ @[closure_value() nothing_new_here@];
   virtual void print(std::ostream& out) const;
+  virtual void apply(expression_base::level l) const;
+  virtual expression_base::level argument_policy() const @+
+  {@; return expression_base::single_value; }
+  virtual void report_origin(std::ostream& o) const @+
+  {@; o << "defined " << p->loc; }
+@)
   virtual closure_value* clone() const @+
   {@; return new closure_value(context,p); }
   static const char* name() @+{@; return "closure"; }
@@ -2626,19 +2650,19 @@ directly storing a closure value.
 
 Closures themselves are anonymous, so the |print_name| reflects the overloaded
 name that was used to identify this function; it can vary separately from the
-closure |fun| if the latter is entered more than once in the the tables. This
+closure |f| if the latter is entered more than once in the the tables. This
 is in contrast to |overloaded_builtin_call| where the name is taken from the
 stored |builtin_value|, and cannot be dissociated from the wrapper function.
 
 @< Type definitions @>=
 struct overloaded_closure_call : public call_base
-{ shared_closure fun;
+{ shared_closure f;
   std::string print_name;
 @)
   overloaded_closure_call @|
    (shared_closure f,const std::string& n,expression_ptr&& a
    ,const source_location& loc)
-  : call_base(std::move(a),loc), fun(f), print_name(n) @+ {}
+  : call_base(std::move(a),loc), f(f), print_name(n) @+ {}
   virtual ~@[overloaded_closure_call() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
@@ -2697,11 +2721,11 @@ will still be accepted.
     call = expression_ptr (new @| overloaded_builtin_call
       (f,std::move(arg),e.loc));
   else
-  if (@[auto fun = std::dynamic_pointer_cast<const closure_value>(v.val)@;@])
+  if (@[auto f = std::dynamic_pointer_cast<const closure_value>(v.val)@;@])
   { std::ostringstream name;
     name << main_hash_table->name_of(id) << '@@' << arg_type;
     call = expression_ptr(new
-             overloaded_closure_call(fun,name.str(),std::move(arg),e.loc));
+             overloaded_closure_call(f,name.str(),std::move(arg),e.loc));
   }
   else
     throw logic_error("Overloaded value is not a function");
@@ -2748,24 +2772,25 @@ at its definition.
 
 @: lambda evaluation @>
 
-@< Call user-defined function |fun| with argument on |execution_stack| @>=
-try
-{ const closure_value& f=*force<closure_value>(fun.get());
-@)
-  lambda_frame fr(f.p->param,f.context);
-    // save context, create new one for |f|
-  if (fr.is_empty()) // we must test for functions without named arguments
-  {@; execution_stack.pop_back();
-    f.body.evaluate(l);
-  } //  drop argument, evaluate avoiding |bind|
-  else
-  { fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
-    try {@; f.body.evaluate(l); }
-      // call, passing evaluation level |l| to function body
-    @< Catch block for providing a trace-back of local variables @>
-  }
-} // restore context upon destruction of |fr|
-@< Catch block for explicit |return| from functions @>
+@< Function def... @>=
+void closure_value::apply(expression_base::level l) const
+{
+  try
+  { lambda_frame fr(p->param,context);
+      // save context, create new one for |*this|
+    if (fr.is_empty()) // we must test for functions without named arguments
+    {@; execution_stack.pop_back();
+      body.evaluate(l);
+    } //  drop argument, evaluate avoiding |bind|
+    else
+    { fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
+      try {@; body.evaluate(l); }
+        // call, passing evaluation level |l| to function body
+      @< Catch block for providing a trace-back of local variables @>
+    }
+  } // restore context upon destruction of |fr|
+  @< Catch block for explicit |return| from functions @>
+}
 
 @ When the call |f.body.evaluate(l)| ends up executing an explicit |return|
 expression, it won't have put anything on the |execution_stack|, but the value
@@ -2788,7 +2813,7 @@ consists of the fact that the closure is already evaluated and stored, and
 that in particular we don't have to distinguish dynamically between built-in
 functions and closures.
 
-Not having varied our naming conventions (|arg_string| and |fun|), we can make
+Not having varied our naming conventions (|f| and |arg_string|), we can make
 a fourth textual reuse of the |catch| block for function calls, as well as
 (|fr|) a third reuse of the |catch| block for local variables.
 
@@ -2802,21 +2827,21 @@ void overloaded_closure_call::evaluate(level l) const
     arg_string = o.str();
   }
   try
-  { lambda_frame fr(fun->p->param,fun->context);
-      // save context, create new one for |fun|
+  { lambda_frame fr(f->p->param,f->context);
+      // save context, create new one for |f|
 @)
     if (fr.is_empty()) // we must test for functions without named arguments
-      {@; execution_stack.pop_back(); fun->body.evaluate(l); }
+      {@; execution_stack.pop_back(); f->body.evaluate(l); }
       //  avoid |bind|, evaluate
     else
     { fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
-      try {@; fun->body.evaluate(l); }
+      try {@; f->body.evaluate(l); }
       // call, passing evaluation level |l| to function body
       @< Catch block for providing a trace-back of local variables @>
     }
   } // restore context upon destruction of |fr|
   @< Catch block for explicit |return| from functions @>
-  @< Catch-block for exceptions thrown within function calls @>
+  @< Catch-block for exceptions thrown within call of |f|... @>
 }
 
 @* Sequence expressions.

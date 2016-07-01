@@ -365,12 +365,20 @@ difficult; however the latter is seldom needed in normal use. Remarks about
 ownership of the type apply without change from the non-overloaded case
 however.
 
+@h "axis.h"
+// implementation needs definition of |function_base|; also and many uses
+
 @< Type definitions @>=
 
+class function_base;
+// derived from |value_base|, defined in \.{axis.h}; values with function type
+typedef std::shared_ptr<const function_base> shared_function;
+// specialises |shared_value|
+
 struct overload_data
-{ shared_value val; @+ func_type tp;
+{ shared_function val; @+ func_type tp;
 public:
-  overload_data(shared_value&& val,func_type&& t)
+  overload_data(shared_function&& val,func_type&& t)
   : val(std::move(val)), tp(std::move(t)) @+{}
 #ifdef incompletecpp11
   overload_data (const overload_data& x) = @[delete@];
@@ -385,7 +393,7 @@ public:
    = @[default@]; // no copy-and-swap needed
 #endif
 @)
-  shared_value @;value() const @+{@; return val; }
+  shared_function @;value() const @+{@; return val; }
   const func_type& type() const @+{@; return tp; }
 };
 
@@ -444,7 +452,7 @@ public:
    // number of distinct identifiers
   void print(std::ostream&) const;
 @) // manipulators
-  void add(id_type id, shared_value v, type_expr&& t);
+  void add(id_type id, shared_function v, type_expr&& t);
    // insertion
   bool remove(id_type id, const type_expr& arg_t); //deletion
 };
@@ -470,7 +478,7 @@ is inserted before any strictly less specific overloaded instances.
 
 @< Global function def... @>=
 void overload_table::add
-  (id_type id, shared_value val, type_expr&& t)
+  (id_type id, shared_function val, type_expr&& t)
 { assert (t.kind==function_type);
   func_type type(std::move(*t.func)); // steal the function type
   auto its = table.equal_range(id);
@@ -685,8 +693,6 @@ that error is an exception for which the code that calls us will have to
 provide a handler anyway, and which handler will serve as a more practical
 point to really resume after an error.
 
-@h "axis.h"
-
 @< Global function definitions @>=
 type_expr analyse_types(const expr& e,expression_ptr& p)
 { try
@@ -853,7 +859,7 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload)
       @< Add instance of identifier |it->first| with value |*v_it| to
          |global_id_table| @>
       else
-      @< Add instance of identifier |it->first| with value |*v_it| to
+      @< Add instance of identifier |it->first| with function value |*v_it| to
          |global_overload_table| @>
       *output_stream << std::endl;
     }
@@ -906,14 +912,17 @@ possibility is that we may end up with a multiple \&{set} command that gets
 partially executed and then aborts. This is quite rare though, and not
 catastrophic, so we don't do any effort here to exclude this.
 
-@< Add instance of identifier |it->first| with value |*v_it| to
+@< Add instance of identifier |it->first| with function value |*v_it| to
    |global_overload_table| @>=
-{ size_t old_n=global_overload_table->variants(it->first).size();
+{ shared_function f = std::dynamic_pointer_cast<const function_base>(*v_it);
+  if (f.get()==nullptr)
+    throw logic_error("Non-function value found with function type");
+  size_t old_n=global_overload_table->variants(it->first).size();
 @/std::ostringstream type_string;
   type_string << it->second;
     // save type |it->second| as string before moving from it
   global_overload_table->add@|
-    (it->first,std::move(*v_it),std::move(it->second));
+    (it->first,std::move(f),std::move(it->second));
     // insert or replace table entry
   size_t n=global_overload_table->variants(it->first).size();
   if (n==old_n)
@@ -1668,9 +1677,9 @@ void install_function
     throw logic_error
      ("Built-in with non-function type: "+print_name.str());
   print_name << '@@' << type->func->arg_type;
-  own_value val = std::make_shared<builtin_value>(f,print_name.str());
+  auto val = std::make_shared<builtin_value>(f,print_name.str());
   global_overload_table->add
-    (main_hash_table->match_literal(name),val,std::move(*type));
+    (main_hash_table->match_literal(name),std::move(val),std::move(*type));
 }
 
 @*1 Integer functions.

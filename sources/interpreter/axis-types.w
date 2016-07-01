@@ -2397,7 +2397,7 @@ struct type_error : public expr_error
     : expr_error(e,"Type error") @|
       ,actual(std::move(a)),required(std::move(r)) @+{}
 #ifdef incompletecpp11
-  type_error@[(type_error&& e)
+  type_error(type_error&& e)
   : expr_error(std::move(e))
   , actual(std::move(e.actual)), required(std::move(e.required)) @+{}
   ~type_error () throw() @+{}
