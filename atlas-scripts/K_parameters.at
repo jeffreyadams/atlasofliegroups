@@ -18,7 +18,7 @@
 2. KHighestWeight: (KGBElt x_K,vec mu)
   x_K in distinguised fiber defines K
   recall (see K.at) T_K=H^\delta is abelian subgroup of K_#
-  mu\in X^*/(1-delta)X^*=X^*(T_K) (T_K can be disconnected)
+  mu\in X^*, viewed as element of X^*/(1-delta)X^*=X^*(T_K) (T_K can be disconnected)
     is a highest weight for K_#=T_K.K_0
   equivalence includes modding out by (1-delta)X^*, see function = below
 
