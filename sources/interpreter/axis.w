@@ -1565,17 +1565,44 @@ typedef std::shared_ptr<const builtin_value<false> > shared_builtin;
 typedef std::shared_ptr<const builtin_value<true> > shared_variadic_builtin;
 
 @ While syntactically more complicated than ordinary function calls, the call
-of overloaded functions is actually simpler at run time, because the function
-is necessarily referred to by an identifier (or operator) instead of by an
-arbitrary expression, and overloading resolution results in a
-function \emph{value} that has been identified at analysis time. If that value
-happens to be a built-in function, the call will be translated into an
-|overloaded_builtin_call| rather than into a |call_expression| (otherwise the
-call will become an |overloaded_closure_call| that will be defined below).
-Here we store a shared pointer to the |builtin_value|, which has the advantage
-of not duplicating the |print_name| string for every call expression. To avoid
-that this costs an extra pointer dereference at each call, we copy the
-function pointer directly into |overloaded_builtin_call| as its field~|f|.
+of overloaded functions is actually more direct at run time, because the
+function is necessarily referred to by an identifier (or operator) instead of
+by an arbitrary expression, and overloading resolution results in that
+identifier being replaced by a function \emph{value}, known at analysis time.
+Different kinds of function values, derived from |function_base|, can then
+give rise to different kind of overloaded calls. We introduce
+|overloaded_call| as another abstract class between |call_base| and those
+kinds of call; its main purpose is to store a name that reflects how
+overloading was resolved.
+@< Type definitions @>=
+struct overloaded_call : public call_base
+{ std::string name;
+@)
+  overloaded_call
+    (const std::string& name,
+     expression_ptr&& arg,
+     const source_location& loc)
+@/: call_base(std::move(arg),loc), name(name) @+ {}
+  virtual ~@[overloaded_call() nothing_new_here@];
+  virtual std::string function_name() const @+{@; return name; }
+  virtual void print(std::ostream& out) const;
+};
+
+@ This base class already has the elements necessary for printing the call.
+
+@< Function definitions @>=
+void overloaded_call::print(std::ostream& out) const
+{ out << name;
+  if (dynamic_cast<tuple_expression*>(argument.get())!=nullptr)
+     out << *argument;
+  else out << '(' << *argument << ')';
+}
+
+@ If that function value is a |builtin_value| function, the call will become
+an |overloaded_builtin_call| rather than a |call_expression|. Here we store a
+shared pointer to the |builtin_value|. To avoid that this costs an extra
+pointer dereference at each call, we copy the function pointer directly into
+|overloaded_builtin_call| as its field~|f|.
 
 When accessed through overloading, the condition whether a built-in function
 is variadic or not is known at compile time, so we can make this a class
@@ -1585,41 +1612,31 @@ member~|f|.
 
 @< Type definitions @>=
 template <bool variadic>
-  struct builtin_call : public call_base
+  struct overloaded_builtin_call : public overloaded_call
 { typedef std::shared_ptr<const builtin_value<variadic> > ptr_to_builtin;
 @)
   wrapper_function f_ptr; // shortcut to implementing function
   ptr_to_builtin f;
    // points to the full |builtin_value|
 @)
-  builtin_call
+  overloaded_builtin_call
     (const ptr_to_builtin& fun,
-     expression_ptr&& a,
+     const std::string& name,
+     expression_ptr&& arg,
      const source_location& loc)
-@/: call_base(std::move(a),loc), f_ptr(fun->val), f(fun) @+ {}
-  virtual ~@[builtin_call() nothing_new_here@];
+@/: overloaded_call(name,std::move(arg),loc), f_ptr(fun->val), f(fun) @+ {}
+  overloaded_builtin_call
+    (const ptr_to_builtin& fun,
+     expression_ptr&& arg,
+     const source_location& loc)
+@/: overloaded_call(f->print_name,std::move(arg),loc)
+  , f_ptr(fun->val), f(fun) @+ {}
+  virtual ~@[overloaded_builtin_call() nothing_new_here@];
   virtual void evaluate(level l) const;
-  virtual void print(std::ostream& out) const;
-  virtual std::string function_name() const @+{@; return f->print_name; }
 };
 @)
-typedef builtin_call<false> overloaded_builtin_call;
-typedef builtin_call<true> variadic_builtin_call;
-
-@ When printing, we use the |f| field for its |print_name|, which the method
-|function_name| achieves; we ensure it is called non-virtually to avoid the
-overhead (in fact no derived class redefines the method, but the compiler
-cannot know that). For the argument list we proceed as for general function
-calls.
-
-@< Function definitions @>=
-template <bool variadic>
-  void builtin_call<variadic>::print(std::ostream& out) const
-{ out << function_name();
-  if (dynamic_cast<tuple_expression*>(argument.get())!=nullptr)
-    out << *argument;
-  else out << '(' << *argument << ')';
-}
+typedef overloaded_builtin_call<false> builtin_call;
+typedef overloaded_builtin_call<true> variadic_builtin_call;
 
 @ The following function builds a |variadic_builtin_call|, ensuring that the
 argument is wrapped up in a |voiding| if |needs_voiding| holds. The Boolean
@@ -1629,11 +1646,12 @@ the argument expression is not just ``()''.
 @< Local fun... @>=
 expression_ptr make_variadic_call
   (const shared_variadic_builtin& f
+  ,const std::string& name
   ,expression_ptr&& a, bool needs_voiding
   ,const source_location& loc)
 { if (needs_voiding)
     a.reset(new voiding(std::move(a))); // wrap argument in voiding
-  return expression_ptr(new variadic_builtin_call(f,std::move(a),loc));
+  return expression_ptr(new variadic_builtin_call(f,name,std::move(a),loc));
 }
 
 @*1 Evaluating calls of built-in functions.
@@ -1754,7 +1772,7 @@ work is only done in debug mode. By using the same variable name
 
 @< Function definitions @>=
 template<>
-void overloaded_builtin_call::evaluate(level l) const
+void builtin_call::evaluate(level l) const
 { std::string arg_string;
   if (verbosity==0)
     argument->multi_eval();
@@ -1802,7 +1820,7 @@ argument on the stack as a single value.
 We reuse the previous |catch| block literally a third time; this time not only
 do we judiciously choose the name |arg_string| to match what we did before,
 but also the local variable name |f| to math the field name
-|overloaded_builtin_call::f| that the cited module referred to in previous
+|builtin_call::f| that the cited module referred to in previous
 instances.
 
 @< Function definitions @>=
@@ -1906,15 +1924,14 @@ table.
   }
 }
 
-@ Here is how we match special operators with generic argument type patterns;
-they have an identifier~|id| that satisfies the predicate
-|is_special_operator| to be defined below, and which is tested to ensure
-such function calls get to the current code even if the operator should be
-absent from the overload table. The built-in function objects that are
-inserted into the calls here do not come from the |global_overload_table|, but
-from a collection of static variables whose name ends with |_builtin|, and
-which are initialised in a module given later, using calls to
-|std::make_shared| so that they refer to unique shared instances.
+@ Here is how inside |resolve_overload| we match special operators with
+generic argument type patterns; they have an identifier~|id| that satisfied
+the predicate |is_special_operator|, which ensures reaching the current code.
+Rather than from the |global_overload_table|, the built-in function objects
+that are inserted into the calls come from a collection of static variables
+whose name ends with |_builtin|, and which are initialised in a module given
+later, using calls to |std::make_shared| so that they refer to unique shared
+instances.
 
 The function |print| (but not |prints|) will return the value printed if
 required, so it has the type of a generic identity function. This is done so
@@ -1940,45 +1957,43 @@ will not return, so nothing at all is demanded of the context type, like in
 the case of \&{die}.
 
 @< If |id| is a special operator like \#... @>=
-{ if (id==size_of_name())
-  { if (a_priori_type.kind==row_type)
-    { expression_ptr call(new @|
-        overloaded_builtin_call(sizeof_row_builtin,std::move(arg),e.loc));
-      return conform_types(int_type,type,std::move(call),e);
-    }
-    else if (is_pair_type(a_priori_type))
-    @< Recognise and return 2-argument versions of `\#', or fall through @>
-  }
+{ std::ostringstream name;
+  name << main_hash_table->name_of(id) << '@@' << a_priori_type;
+  if (id==size_of_name())
+    @< Recognise and return versions of `\#', or fall through @>
   else if (id==concatenate_name())
     @< Recognise and return instances of `\#\#', or fall through @>
   else // remaining cases always match
   { const bool needs_voiding = a_priori_type==void_type and not is_empty(args);
     if (id==print_name())
     { if (type!=void_type and not type.specialise(a_priori_type))
+      {
         arg = convert_expr(args,type); // redo conversion, now in |type| context
-      return
-        make_variadic_call(print_builtin,std::move(arg),needs_voiding,e.loc);
+        name.str(); name << "print@@" << type; // correct |type| in |name|
+      }
+      return make_variadic_call
+        (print_builtin,name.str(),std::move(arg),needs_voiding,e.loc);
     }
     else if(id==to_string_name()) // this always matches as well
     {
-      expression_ptr call =
-        make_variadic_call(to_string_builtin,std::move(arg),needs_voiding,e.loc);
+      expression_ptr call = make_variadic_call
+        (to_string_builtin,name.str(),std::move(arg),needs_voiding,e.loc);
       return conform_types(str_type,type,std::move(call),e);
     }
     else if(id==prints_name()) // this always matches as well
-    { expression_ptr call =
-        make_variadic_call(prints_builtin,std::move(arg),needs_voiding,e.loc);
+    { expression_ptr call = make_variadic_call
+       (prints_builtin,name.str(),std::move(arg),needs_voiding,e.loc);
       return conform_types(void_type,type,std::move(call),e);
       // check that |type==void_type|
     }
     else if(id==error_name()) // this always matches as well
-      return
-        make_variadic_call(error_builtin,std::move(arg),needs_voiding,e.loc);
+      return make_variadic_call
+        (error_builtin,name.str(),std::move(arg),needs_voiding,e.loc);
   }
 }
 
-@ We used the following simple type predicate above. Contrary to specialising
-to |pair_type|, this function cannot alter its argument.
+@ We shall use the following simple type predicate above. Contrary to
+specialising to |pair_type|, this function cannot alter its argument.
 
 @< Local function definitions @>=
 bool is_pair_type(const type_expr& t)
@@ -2005,21 +2020,28 @@ is preferred over prefix when both can apply. This implies that for instance
 $[[2]]\#[\,]$ will give as result $[[2],[\,]]$, while $[\,]\#[[2]]$ will give
 $[[[2]]]$.
 
-@< Recognise and return 2-argument versions of `\#'... @>=
-{
-  const type_expr& ap_tp0 = a_priori_type.tupple->contents;
-  const type_expr& ap_tp1 = a_priori_type.tupple->next->contents;
-  if (ap_tp0.kind==row_type and
-      ap_tp0.component_type->specialise(ap_tp1)) // suffix case
-  { expression_ptr call(new @| overloaded_builtin_call
-      (suffix_elt_builtin,std::move(arg),e.loc));
-    return conform_types(ap_tp0,type,std::move(call),e);
+@< Recognise and return versions of `\#'... @>=
+{ if (a_priori_type.kind==row_type)
+  { expression_ptr call(new @|
+      builtin_call(sizeof_row_builtin,name.str(),std::move(arg),e.loc));
+    return conform_types(int_type,type,std::move(call),e);
   }
-  if (ap_tp1.kind==row_type and
-      ap_tp1.component_type->specialise(ap_tp0)) // prefix case
-  { expression_ptr call(new @| overloaded_builtin_call
-      (prefix_elt_builtin,std::move(arg),e.loc));
-    return conform_types(ap_tp1,type,std::move(call),e);
+  else if (is_pair_type(a_priori_type))
+  {
+    const type_expr& ap_tp0 = a_priori_type.tupple->contents;
+    const type_expr& ap_tp1 = a_priori_type.tupple->next->contents;
+    if (ap_tp0.kind==row_type and
+        ap_tp0.component_type->specialise(ap_tp1)) // suffix case
+    { expression_ptr call(new @| builtin_call
+        (suffix_elt_builtin,std::move(arg),e.loc));
+      return conform_types(ap_tp0,type,std::move(call),e);
+    }
+    if (ap_tp1.kind==row_type and
+        ap_tp1.component_type->specialise(ap_tp0)) // prefix case
+    { expression_ptr call(new @| builtin_call
+        (prefix_elt_builtin,std::move(arg),e.loc));
+      return conform_types(ap_tp1,type,std::move(call),e);
+    }
   }
 }
 
@@ -2030,14 +2052,14 @@ and another concatenating two rows of the same type.
 { if (a_priori_type.kind==row_type and
       a_priori_type.component_type->kind==row_type)
   { expression_ptr call(new @|
-      overloaded_builtin_call(join_rows_row_builtin,std::move(arg),e.loc));
+      builtin_call(join_rows_row_builtin,std::move(arg),e.loc));
     return conform_types(*a_priori_type.component_type,type,std::move(call),e);
   }
   if (a_priori_type.kind==tuple_type and
     @|length(a_priori_type.tupple)==2 and
     @|a_priori_type.tupple->contents==a_priori_type.tupple->next->contents and
     @|a_priori_type.tupple->contents.kind==row_type)
-  { expression_ptr call(new @| overloaded_builtin_call
+  { expression_ptr call(new @| builtin_call
         (join_rows_builtin,std::move(arg),e.loc));
     return conform_types
          (a_priori_type.tupple->contents,type,std::move(call),e);
@@ -2664,34 +2686,20 @@ directly storing a closure value.
 Closures themselves are anonymous, so the |print_name| reflects the overloaded
 name that was used to identify this function; it can vary separately from the
 closure |f| if the latter is entered more than once in the the tables. This
-is in contrast to |overloaded_builtin_call| where the name is taken from the
+is in contrast to |builtin_call| where the name is taken from the
 stored |builtin_value|, and cannot be dissociated from the wrapper function.
 
 @< Type definitions @>=
-struct overloaded_closure_call : public call_base
+struct closure_call : public overloaded_call
 { shared_closure f;
-  std::string print_name;
 @)
-  overloaded_closure_call @|
+  closure_call @|
    (shared_closure f,const std::string& n,expression_ptr&& a
    ,const source_location& loc)
-  : call_base(std::move(a),loc), f(f), print_name(n) @+ {}
-  virtual ~@[overloaded_closure_call() nothing_new_here@];
+  : overloaded_call(n,std::move(a),loc), f(f) @+ {}
+  virtual ~@[closure_call() nothing_new_here@];
   virtual void evaluate(level l) const;
-  virtual void print(std::ostream& out) const;
-  virtual std::string function_name() const @+{@; return print_name; }
 };
-
-@ When printing it, we ignore the closure and use the overloaded function
-name.
-
-@< Function definitions @>=
-void overloaded_closure_call::print(std::ostream& out) const
-{ out << print_name;
-  if (dynamic_cast<tuple_expression*>(argument.get())!=nullptr)
-     out << *argument;
-  else out << '(' << *argument << ')';
-}
 
 @ The definition of the function |resolve_overload| left one module to be
 specified, namely building a function call once a match is found
@@ -2709,8 +2717,8 @@ argument already converted. There is no function part to convert either: the
 overload table contains an already evaluated function value~|v|, which is
 either a |builtin_value| representing a built-in function, or a
 |closure_value| representing a user-defined function and its evaluation
-context. Here we build an |overloaded_builtin_call| respectively an
-|overloaded_closure_call| for those cases.
+context. Here we build an |builtin_call| respectively a |closure_call| for
+those cases.
 
 This is one of the places where we might have to insert a |voiding|, in the
 rare case that a function with void argument type is called with a nonempty
@@ -2730,22 +2738,20 @@ will still be accepted.
 @< Set |call| to a call of the function value |*v.val|... @>=
 { if (arg_type==void_type and not is_empty(args))
     arg.reset(new voiding(std::move(arg)));
+  std::ostringstream name;
+  name << main_hash_table->name_of(id) << '@@' << arg_type;
   if (@[auto f = std::dynamic_pointer_cast<const closure_value>(v.val)@;@])
-  { std::ostringstream name;
-    name << main_hash_table->name_of(id) << '@@' << arg_type;
-    call = expression_ptr(new
-             overloaded_closure_call(f,name.str(),std::move(arg),e.loc));
-  }
+    call = expression_ptr(new closure_call(f,name.str(),std::move(arg),e.loc));
   else
   if (@[auto f =
         std::dynamic_pointer_cast<const builtin_value<false> >(v.val)@;@])
-    call = expression_ptr (new @| overloaded_builtin_call
-      (f,std::move(arg),e.loc));
+    call = expression_ptr (new @| builtin_call
+      (f,name.str(),std::move(arg),e.loc));
   else
   if (@[auto f =
      std::dynamic_pointer_cast<const builtin_value<true> >(v.val)@;@])
     call = expression_ptr (new @| variadic_builtin_call
-      (f,std::move(arg),e.loc));
+      (f,name.str(),std::move(arg),e.loc));
   else
     throw logic_error("Overloaded value is not a function");
 @)
@@ -2837,7 +2843,7 @@ a fourth textual reuse of the |catch| block for function calls, as well as
 (|fr|) a third reuse of the |catch| block for local variables.
 
 @< Function definitions @>=
-void overloaded_closure_call::evaluate(level l) const
+void closure_call::evaluate(level l) const
 { argument->eval(); // evaluate arguments as a single value
   std::string arg_string;
   if (verbosity!=0) // then record argument(s) as string
@@ -3691,7 +3697,7 @@ case negation_expr:
    expression_ptr arg = convert_expr(*e.negation_variant,b);
   if (not type.specialise(b)) // |not| preserves the |bool| type
     throw type_error(e,std::move(b),std::move(type));
-  return expression_ptr(new @| overloaded_builtin_call
+  return expression_ptr(new @| builtin_call
      (boolean_negate_builtin,std::move(arg),e.loc));
 }
 
@@ -4771,17 +4777,17 @@ even defined in the first place) specifically for this purpose.
   switch(which)
   {
   case subscr_base::row_entry: call.reset(new @|
-      overloaded_builtin_call(sizeof_row_builtin,std::move(in_expr),loc));
+      builtin_call(sizeof_row_builtin,std::move(in_expr),loc));
   break; case subscr_base::vector_entry: call.reset(new @|
-      overloaded_builtin_call(sizeof_vector_builtin,std::move(in_expr),loc));
+      builtin_call(sizeof_vector_builtin,std::move(in_expr),loc));
   break; case subscr_base::ratvec_entry: call.reset(new @|
-      overloaded_builtin_call(sizeof_ratvec_builtin,std::move(in_expr),loc));
+      builtin_call(sizeof_ratvec_builtin,std::move(in_expr),loc));
   break; case subscr_base::string_char: call.reset(new @|
-      overloaded_builtin_call(sizeof_string_builtin,std::move(in_expr),loc));
+      builtin_call(sizeof_string_builtin,std::move(in_expr),loc));
   break; case subscr_base::matrix_column: call.reset(new @|
-      overloaded_builtin_call(matrix_columns_builtin,std::move(in_expr),loc));
+      builtin_call(matrix_columns_builtin,std::move(in_expr),loc));
   break; case subscr_base::mod_poly_term: call.reset(new @|
-      overloaded_builtin_call(sizeof_parampol_builtin,std::move(in_expr),loc));
+      builtin_call(sizeof_parampol_builtin,std::move(in_expr),loc));
   break; default: assert(false);
   }
 
