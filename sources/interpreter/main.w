@@ -117,8 +117,9 @@ by setting \.{-DNREADLINE} as a flag to the compiler, will prevent any
 dependency on the readline library.
 
 @q axis_version "0.9" @>
-@q axis_version "0.9.1"  multiple assignments, multi-overload set command @>
-@d axis_version "0.9.2" @q balancing, break, return, ++reach in while loops @>
+@q axis_version "0.9.1" multiple assignments, multi-overload set command @>
+@q axis_version "0.9.2" balancing, break, return, ++reach in while loops @>
+@d axis_version "0.9.3" @q avoid voiding, internals calls, field selectors @>
  // numbering from 0.5 (on 27/11/2010); last change May 6, 2015
 
 @c

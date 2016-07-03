@@ -1316,7 +1316,7 @@ expression_ptr resolve_overload
   { const overload_data& v=*it;
     const auto& arg_type=v.type().arg_type;
     if (a_priori_type==arg_type) // exact match
-    { @< Set |call| to a call of the function value |*v.val| with argument
+    { @< Set |call| to a call of the function value |*v.value()| with argument
          moved from |arg| @>
       return conform_types(v.type().result_type,type,std::move(call),e);
       // exact match, return
@@ -1328,7 +1328,7 @@ expression_ptr resolve_overload
       try
       { expression_ptr arg=convert_expr(args,as_lvalue(arg_type.copy()));
         // redo conversion
-        @< Set |call| to a call of the function value |*v.val|... @>
+        @< Set |call| to a call of the function value |*v.value()|... @>
         result_type = &v.type().result_type;
         // just store the |call| and the its |result_type| now
       }
@@ -1343,6 +1343,56 @@ expression_ptr resolve_overload
     // return inexact match if special operators did not do exact match
     return conform_types(*result_type,type,std::move(call),e);
   @< Complain about failing overload resolution @>
+}
+
+@ Having found a match and converted the argument expression to |arg|, we need
+to construct a function call object. The overload table contains an already
+evaluated function value~|v.value()|, which is has type |shared_function|,
+more specific than |shared_value| as it points to a value that represents a
+function object. Such values can either hold a built-in function or a
+user-defined function its evaluation context, and we shall add to the list of
+possibilities later. Each type as a corresponding specialised function call
+type, and we shall provide a virtual method |function_value::build_call| that
+does the appropriate conversion in each case. Thereby the expression-building
+part of code below has become particularly simple. One noteworthy point is
+that |build_call| may need to store a shared pointer to the |function_value|
+itself in the call it builds, and we need to pass the shared pointer
+|v.value()| to the virtual method so that it can do so while sharing ownership
+with the pointer is was called from.
+
+This is one of the places where we might have to insert a |voiding|, in the
+rare case that a function with void argument type is called with a nonempty
+argument expression. An alternative would be to replace the call by a sequence
+expression, evaluating the argument expression separately and then the
+function call with an empty argument expression. In any case the
+test \emph{can} be made here, since we have type argument type in the variable
+|arg_type|, and the argument expression in |args|.
+
+As a special safety measure against the easily made error of writing `\.='
+instead of an assignment operator~`\.{:=}', we forbid converting to void the
+result of an (always overloaded) call to the equality operator, treating this
+case as a type error instead. In the unlikely case that the user defines an
+overloaded instance of `\.=' with void result type, calls to this operator
+will still be accepted.
+
+@< Set |call| to a call of the function value |*v.value()|... @>=
+{ if (arg_type==void_type and not is_empty(args))
+    arg.reset(new voiding(std::move(arg)));
+  std::ostringstream name;
+  name << main_hash_table->name_of(id) << '@@' << arg_type;
+  call = v.value()->build_call(v.value(),name.str(),std::move(arg),e.loc);
+@)
+  if (type==void_type and
+      id==equals_name() and
+      v.type().result_type!=void_type)
+  { std::ostringstream o;
+    o << "Use op equality operator '=' in void context; " @|
+      << "did you mean ':=' instead?\n  If you really want " @|
+      << "the result of '=' to be voided, use a cast to " @|
+      << v.type().result_type << '.';
+    throw expr_error(e,o.str());
+      // importantly this is not a |type_error|, which might be caught
+  }
 }
 
 @ Here is the final part of |resolve_overload|, reached when no valid match
@@ -1442,10 +1492,6 @@ error trace will also provide a name of the called function (which is more
 readable than trying to reproduce the whole function call expression), which
 will be obtained from the virtual method |function_name|.
 
-We similarly define an intermediate class |function_base| between
-|value_base| and the concrete classes that will define function objects,
-like built-in functions.
-
 @< Type def... @>=
 struct call_base : public expression_base
 { expression_ptr argument;
@@ -1456,7 +1502,23 @@ struct call_base : public expression_base
   virtual ~@[call_base() nothing_new_here@];
   virtual std::string function_name() const=0;
 };
+@)
 
+@ We similarly define an intermediate class |function_base| between
+|value_base| and the concrete classes that will define function objects,
+like built-in functions. The main (virtual) methods introduced here are
+|apply|, which will serve in |call_expression::evaluate| below to implement
+a call of the function object once arguments have been evaluated to the stack,
+and |build_call| that is instead used to build a specialised call expression
+when a function value is identified at analysis time (in overloaded calls).
+In addition |argument_policy| tells how the function object wants its
+arguments prepared, and |report_origin| which serves in forming an back-trace
+in case of errors during execution of the function.
+
+@< Type def... @>=
+// \.{global.h} predeclares |function_base|, and defines:
+// |typedef std::shared_ptr<const function_base> shared_function;|
+@)
 struct function_base : public value_base
 {
   function_base() : @[value_base@]() @+{}
@@ -1467,8 +1529,11 @@ struct function_base : public value_base
     // form to prepare arguments in
   virtual void report_origin(std::ostream& o) const=0;
     // tell where we are from
+  virtual expression_ptr build_call
+    (const shared_function& owner,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const=0;
 };
-typedef std::shared_ptr<const function_base> shared_function;
+
 
 @ We start with introducing a type for representing general function calls
 after type checking. This is the general form where function can be given by
@@ -1555,6 +1620,9 @@ template <bool variadic>
       ? expression_base::single_value : expression_base::multi_value; }
   virtual void report_origin(std::ostream& o) const @+
   {@; o << "built-in"; }
+  virtual expression_ptr build_call
+    (const shared_function& owner,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const;
 @)
   virtual builtin_value* clone() const @+{@; return new builtin_value(*this); }
   static const char* name() @+{@; return "built-in function"; }
@@ -1598,39 +1666,44 @@ void overloaded_call::print(std::ostream& out) const
   else out << '(' << *argument << ')';
 }
 
-@ If that function value is a |builtin_value| function, the call will become
+@ If its function value is a |builtin_value|, an overloaded call will become
 an |overloaded_builtin_call| rather than a |call_expression|. Here we store a
-shared pointer to the |builtin_value|. To avoid that this costs an extra
-pointer dereference at each call, we copy the function pointer directly into
-|overloaded_builtin_call| as its field~|f|.
+shared pointer to the |builtin_value|, which is useful to identify the actual
+function when an error is thrown. However we want to avoid accessing that
+(unchanging) value each time from the |evaluate| method, so we copy the
+function pointer|f_ptr| to be called directly into the
+|overloaded_builtin_call|.
 
 When accessed through overloading, the condition whether a built-in function
 is variadic or not is known at compile time, so we can make this a class
 template with a |variadic| template argument, just like |builtin_value|;
 indeed the template argument serves exclusively to adapt the type of the
-member~|f|.
+member~|f|. An additional constructor without |name| argument is provided for
+convenience to places where our interpreter directly produces calls to
+certain built-in functions, without going through the overload table; the
+function name is then deduced from the one stored in the |builtin_value|.
 
 @< Type definitions @>=
 template <bool variadic>
   struct overloaded_builtin_call : public overloaded_call
 { typedef std::shared_ptr<const builtin_value<variadic> > ptr_to_builtin;
 @)
-  wrapper_function f_ptr; // shortcut to implementing function
   ptr_to_builtin f;
-   // points to the full |builtin_value|
+   // points to the full |builtin_value|, for back-tracing interrupted calls
+  wrapper_function f_ptr; // shortcut to implementing function
 @)
   overloaded_builtin_call
     (const ptr_to_builtin& fun,
      const std::string& name,
      expression_ptr&& arg,
      const source_location& loc)
-@/: overloaded_call(name,std::move(arg),loc), f_ptr(fun->val), f(fun) @+ {}
+@/: overloaded_call(name,std::move(arg),loc), f(fun), f_ptr(fun->val) @+ {}
   overloaded_builtin_call
     (const ptr_to_builtin& fun,
      expression_ptr&& arg,
      const source_location& loc)
-@/: overloaded_call(f->print_name,std::move(arg),loc)
-  , f_ptr(fun->val), f(fun) @+ {}
+@/: overloaded_call(fun->print_name,std::move(arg),loc)
+  , f(fun), f_ptr(fun->val) @+ {}
   virtual ~@[overloaded_builtin_call() nothing_new_here@];
   virtual void evaluate(level l) const;
 };
@@ -1652,6 +1725,20 @@ expression_ptr make_variadic_call
 { if (needs_voiding)
     a.reset(new voiding(std::move(a))); // wrap argument in voiding
   return expression_ptr(new variadic_builtin_call(f,name,std::move(a),loc));
+}
+
+@ Here is how a |builtin_value| can turn itself into an
+|overloaded_builtin_call| when provided with an argument expression, as well
+as a |name| to call itself and a |source_location| for the call.
+
+@< Function def... @>=
+template <bool variadic>
+expression_ptr builtin_value<variadic>::build_call
+    (const shared_function& owner,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const
+{ std::shared_ptr<const builtin_value<variadic> > f(owner,this);
+  return expression_ptr(new @|
+    overloaded_builtin_call<variadic>(f,name,std::move(arg),loc));
 }
 
 @*1 Evaluating calls of built-in functions.
@@ -2554,6 +2641,9 @@ struct closure_value : public function_base
   {@; return expression_base::single_value; }
   virtual void report_origin(std::ostream& o) const @+
   {@; o << "defined " << p->loc; }
+  virtual expression_ptr build_call
+    (const shared_function& owner,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const;
 @)
   virtual closure_value* clone() const @+
   {@; return new closure_value(context,p); }
@@ -2701,72 +2791,18 @@ struct closure_call : public overloaded_call
   virtual void evaluate(level l) const;
 };
 
-@ The definition of the function |resolve_overload| left one module to be
-specified, namely building a function call once a match is found
-in the overload table; we will give this part now. This code is in fact
-included in the function twice, once for the case the \foreign{a priori} type
-of the argument exactly matches the expected argument type, and once for an
-inexact match where the argument had to be reconverted for the expected type;
-however the difference between these scenarios has no effect on what is to be
-done here.
+@ Here is how a |closure_value| can turn itself into an
+|closure_call| when provided with an argument expression, as well
+as a |name| to call itself and a |source_location| for the call.
 
-Having found a match and converted the argument expression to |arg|, we need
-to construct a function call object. We proceed in a similar fashion as in
-section@#type-check calls@> when building a |call_expression|, but with the
-argument already converted. There is no function part to convert either: the
-overload table contains an already evaluated function value~|v|, which is
-either a |builtin_value| representing a built-in function, or a
-|closure_value| representing a user-defined function and its evaluation
-context. Here we build an |builtin_call| respectively a |closure_call| for
-those cases.
-
-This is one of the places where we might have to insert a |voiding|, in the
-rare case that a function with void argument type is called with a nonempty
-argument expression. An alternative would be to replace the call by a sequence
-expression, evaluating the argument expression separately and then the
-function call with an empty argument expression. In any case the
-test \emph{can} be made here, since we have type argument type in the variable
-|arg_type|, and the argument expression in |args|.
-
-As a special safety measure against the easily made error of writing `\.='
-instead of an assignment operator~`\.{:=}', we forbid converting to void the
-result of an (always overloaded) call to the equality operator, treating this
-case as a type error instead. In the unlikely case that the user defines an
-overloaded instance of `\.=' with void result type, calls to this operator
-will still be accepted.
-
-@< Set |call| to a call of the function value |*v.val|... @>=
-{ if (arg_type==void_type and not is_empty(args))
-    arg.reset(new voiding(std::move(arg)));
-  std::ostringstream name;
-  name << main_hash_table->name_of(id) << '@@' << arg_type;
-  if (@[auto f = std::dynamic_pointer_cast<const closure_value>(v.val)@;@])
-    call = expression_ptr(new closure_call(f,name.str(),std::move(arg),e.loc));
-  else
-  if (@[auto f =
-        std::dynamic_pointer_cast<const builtin_value<false> >(v.val)@;@])
-    call = expression_ptr (new @| builtin_call
-      (f,name.str(),std::move(arg),e.loc));
-  else
-  if (@[auto f =
-     std::dynamic_pointer_cast<const builtin_value<true> >(v.val)@;@])
-    call = expression_ptr (new @| variadic_builtin_call
-      (f,name.str(),std::move(arg),e.loc));
-  else
-    throw logic_error("Overloaded value is not a function");
-@)
-  if (type==void_type and
-      id==equals_name() and
-      v.type().result_type!=void_type)
-  { std::ostringstream o;
-    o << "Use op equality operator '=' in void context; " @|
-      << "did you mean ':=' instead?\n  If you really want " @|
-      << "the result of '=' to be voided, use a cast to " @|
-      << v.type().result_type << '.';
-    throw expr_error(e,o.str());
-      // importantly this is not a |type_error|, which might be caught
-  }
+@< Function def... @>=
+expression_ptr closure_value::build_call
+    (const shared_function& owner,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const
+{ std::shared_ptr<const closure_value> f(owner,this);
+  return expression_ptr(new @| closure_call(f,name,std::move(arg),loc));
 }
+
 
 @ When calling a function in a non overloading manner, we come to the code
 below if it turns out not to be a built-in function. This code basically
@@ -3653,6 +3689,106 @@ void matrix_slice<flags>::evaluate(level l) const
     r.set_column(j,m.column((flags&0x1)==0 ? lwb++ : n - ++lwb));
   push_value(std::move(result));
 }
+
+@* Projection functions.
+%
+The axis language does not have an absolute need for operations of selection
+from a tuple, since binding of patters can achieve the same effect; indeed for
+a long time no such operation existed. We introduce it here nonetheless,
+because it can be more practical in certain situations, and also to because
+discriminated unions will have similar injection operations that would be more
+cumbersome to do without.
+
+@< Type def... @>=
+struct projector_value : public function_base
+{ type_expr type;
+  unsigned position;
+  id_type id;
+  source_location loc;
+@)
+  projector_value
+     (const type_expr& t,unsigned i,id_type id,const source_location& loc)
+  : type(t.copy()),position(i),id(id),loc(loc) @+ {}
+  virtual ~ @[projector_value() nothing_new_here@];
+  virtual void print(std::ostream& out) const;
+  virtual void apply(expression_base::level l) const;
+  virtual expression_base::level argument_policy() const;
+  virtual void report_origin(std::ostream& o) const;
+  virtual expression_ptr build_call
+    (const shared_function& owner,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const;
+@)
+  virtual projector_value* clone() const @+
+  {@; return new projector_value(*this); }
+  static const char* name() @+{@; return "built-in function"; }
+private:
+  projector_value(const projector_value& v)
+@/:type(v.type.copy()),position(v.position),loc(v.loc)@+{}
+};
+
+@ Here are two virtual methods. We print the position selected and the type
+selected from. The (tuple) operand of a selection is to be computed as a
+|single_value|, since it is unlikely to be given as a tuple display anyway,
+and this makes it easy to replace the value on the stack by one of its
+components.
+
+@< Function def... @>=
+void projector_value::print(std::ostream& out) const
+  {@; out << "{."<< main_hash_table->name_of(id) << ": "
+                 << type << '.' << position << '}'; }
+expression_base::level projector_value::argument_policy() const
+  {@; return expression_base::single_value; }
+void projector_value::report_origin(std::ostream& o) const
+ {@; o << "projector defined " << loc; }
+
+@ Applying a selector is quite easy: we pop the tuple value from the stack,
+selecting our component from it, then hand it to |push_expanded| to place the
+component back on the stack, according to the policy |l| requested from us.
+
+@< Function def... @>=
+void projector_value::apply(expression_base::level l) const
+{@; push_expanded(l,get<tuple_value>()->val[position]); }
+
+@
+@< Type def... @>=
+struct projector_call : public overloaded_call
+{ unsigned position; id_type id;
+@)
+  projector_call @|
+   (const projector_value& f,const std::string& n,expression_ptr&& a
+   ,const source_location& loc)
+  : overloaded_call(n,std::move(a),loc), position(f.position), id(f.id) @+ {}
+  virtual ~@[projector_call() nothing_new_here@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ Here is how a |projector_value| can turn itself into an
+|projector_call| when provided with an argument expression, as well
+as a |name| to call itself and a |source_location| for the call. We don't store
+a (shared) pointer to the |projector_value|, so we ignore the initial
+argument here.
+
+@< Function def... @>=
+expression_ptr projector_value::build_call
+    (const shared_function&,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const
+{@; return expression_ptr(new projector_call(*this,name,std::move(arg),loc));
+}
+
+@ The virtual methods for |projector_call| are easy. Since nothing can go
+wrong with selection, |projector_call::evaluate| does no effort to contribute
+to an error back-trace.
+
+@< Function def... @>=
+void projector_call::evaluate(level l) const
+{@;
+  argument->eval(); // evaluate arguments as a single value
+  push_expanded(l,get<tuple_value>()->val[position]);
+}
+@)
+void projector_call::print(std::ostream& out) const
+{@; out << *argument << '.' << main_hash_table->name_of(id); }
 
 @* Control structures.
 %
@@ -5047,7 +5183,7 @@ case op_cast_expr:
       break;
   if (i<variants.size()) // something was found
   {
-    expression_ptr p(new capture_expression(variants[i].val,o.str()));
+    expression_ptr p(new capture_expression(variants[i].value(),o.str()));
     const type_expr& res_t = variants[i].type().result_type;
     if (functype_specialise(type,ctype,res_t) or type==void_type)
       return p;

@@ -375,7 +375,7 @@ class function_base;
 typedef std::shared_ptr<const function_base> shared_function;
 // specialises |shared_value|
 
-struct overload_data
+class overload_data
 { shared_function val; @+ func_type tp;
 public:
   overload_data(shared_function&& val,func_type&& t)
@@ -393,7 +393,7 @@ public:
    = @[default@]; // no copy-and-swap needed
 #endif
 @)
-  shared_function @;value() const @+{@; return val; }
+  const shared_function& @;value() const @+{@; return val; }
   const func_type& type() const @+{@; return tp; }
 };
 
@@ -735,6 +735,8 @@ type_expr analyse_types(const expr& e,expression_ptr& p)
 This section will be devoted to some interactions between user and program
 that do not consist just of evaluating expressions.
 
+@*2 Defining global identifiers or overloads.
+%X
 The function |global_set_identifier| handles introducing identifiers, either
 normal ones or overloaded instances of functions, using the \&{set} syntax.
 It has a variant for multiple declarations |global_set_identifiers|.
@@ -752,7 +754,8 @@ void global_set_identifiers(const raw_let_list& d);
 void global_declare_identifier(id_type id, type_p type);
 void global_forget_identifier(id_type id);
 void global_forget_overload(id_type id, type_p type);
-void type_define_identifier(id_type id, type_p type);
+void type_define_identifier
+  (id_type id, type_p type, raw_id_pat ip, const YYLTYPE& loc);
 void show_ids();
 void type_of_expr(expr_p e);
 void show_overloads(id_type id);
@@ -826,7 +829,7 @@ values.
 
 
 @< Local function definitions @>=
-@< Define auxiliary function for catch block of |do_global_set| @>
+@< Define auxiliary functions for |do_global_set| @>
 void do_global_set(id_pat&& pat, const expr& rhs, int overload)
 { size_t n_id=count_identifiers(pat);
   int phase; // needs to be declared outside the |try|, is used in |catch|
@@ -861,7 +864,6 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload)
       else
       @< Add instance of identifier |it->first| with function value |*v_it| to
          |global_overload_table| @>
-      *output_stream << std::endl;
     }
   }
   @< Catch block for errors thrown during a global identifier definition @>
@@ -898,41 +900,55 @@ pilfer the type |it->second|.
       *output_stream << " (constant)";
     *output_stream << ')';
   }
+  *output_stream << std::endl;
   global_id_table->add
     (it->first,std::move(*v_it),std::move(it->second),b.is_const(it));
 }
 
 @ For overloaded definitions the main difference is calling the |add| method
 of |global_overload_table| instead of that of |global_id_table|, and the
-different wording of the report to the user. However another difference is
-that here the |add| method may throw because of a conflict of a new definition
-with an existing one; we therefore do not print anything before the |add|
-method has successfully completed. An unfortunate consequence of this
-possibility is that we may end up with a multiple \&{set} command that gets
-partially executed and then aborts. This is quite rare though, and not
-catastrophic, so we don't do any effort here to exclude this.
+different wording of the report to the user. But we want to perform some of
+the same operations also from type definitions, which do not pass through
+|do_global_set|, so we define a function that does the main action, including
+reporting the changes made to the user.
 
-@< Add instance of identifier |it->first| with function value |*v_it| to
-   |global_overload_table| @>=
-{ shared_function f = std::dynamic_pointer_cast<const function_base>(*v_it);
-  if (f.get()==nullptr)
-    throw logic_error("Non-function value found with function type");
-  size_t old_n=global_overload_table->variants(it->first).size();
+One difference is that here the |add| method may throw because of a
+conflict of a new definition with an existing one; we therefore do not print
+anything before the |add| method has successfully completed. An unfortunate
+consequence of this possibility is that we may end up with a multiple \&{set}
+command that gets partially executed and then aborts. This is quite rare
+though, and not catastrophic, so we don't do any effort here to exclude this.
+
+@< Define auxiliary functions for |do_global_set| @>=
+void add_overload(id_type id, shared_function&& f, type_expr&& type)
+{
+  size_t old_n=global_overload_table->variants(id).size();
 @/std::ostringstream type_string;
-  type_string << it->second;
-    // save type |it->second| as string before moving from it
-  global_overload_table->add@|
-    (it->first,std::move(f),std::move(it->second));
+  type_string << type;
+    // save type |type| as string before moving from it
+  global_overload_table->add(id,std::move(f),std::move(type));
     // insert or replace table entry
-  size_t n=global_overload_table->variants(it->first).size();
+  size_t n=global_overload_table->variants(id).size();
   if (n==old_n)
     *output_stream << "Redefined ";
   else if (n==1)
     *output_stream << "Defined ";
   else
     *output_stream << "Added definition [" << n << "] of ";
-  *output_stream << main_hash_table->name_of(it->first) << ": "
+  *output_stream << main_hash_table->name_of(id) << ": "
             << type_string.str();
+  *output_stream << std::endl;
+}
+
+@ Since |type| being a function type we a condition for coming to this code,
+the dynamic cast below should always succeed, if our type system is correct.
+
+@< Add instance of identifier |it->first| with function value |*v_it| to
+   |global_overload_table| @>=
+{ shared_function f = std::dynamic_pointer_cast<const function_base>(*v_it);
+  if (f.get()==nullptr)
+    throw logic_error("Non-function value found with function type");
+  add_overload(it->first,std::move(f),std::move(it->second));
 }
 
 @ For readability of the output produced during input from auxiliary files, we
@@ -1002,7 +1018,7 @@ catch (const std::exception& err)
 
 @ Here is the common part for various |catch| clauses.
 
-@< Define auxiliary function for catch block of |do_global_set| @>=
+@< Define auxiliary functions for |do_global_set| @>=
 void handle
   (const std::exception& err,const id_pat& pat, int phase, int overload)
 { static const char* message[3] = {"not executed","interrupted","failed"};
@@ -1016,7 +1032,9 @@ void handle
 }
 
 
-@ The following function is called when an identifier is declared with type
+@*2 Declaring and forgetting global identifiers.
+%
+The following function is called when an identifier is declared with type
 but undefined value. Note that we output a message \emph{before} actually
 entering the identifier into the table, since the latter moves the type value
 out of |type|, so it would be a bit more effort if we wanted to print the
@@ -1058,13 +1076,30 @@ void global_forget_overload(id_type id, type_p t)
             << std::endl;
 }
 
-@ The following function is called when an identifier is defined as an
+@*2 Defining type identifiers.
+%
+The following function is called when an identifier is defined as an
 abbreviation for a type.
 
 @< Global function definitions @>=
-void type_define_identifier(id_type id, type_p t)
-{ type_ptr saf(t); // ensure clean-up
+void type_define_identifier
+  (id_type id, type_p t, raw_id_pat ip, const YYLTYPE& loc)
+{ type_ptr saf(t); id_pat fields(ip); // ensure clean-up
   type_expr& type=*t;
+  if (not fields.sublist.empty()) // do this before we move from |type|
+  { assert(type.kind==tuple_type);
+    auto tp_it =wtl_const_iterator(type.tupple);
+    unsigned count=0;
+    for (auto it=fields.sublist.wcbegin(); not it.at_end();
+         ++tp_it,++count,++it)
+      if (it->kind==0x1) // field selector present
+      { type_expr fun_type(type.copy(),tp_it->copy()); // make projector type
+        shared_function projector =
+          std::make_shared<projector_value>(type,count,it->name,loc);
+        add_overload(it->name,std::move(projector),std::move(fun_type));
+      }
+  }
+@)
   bool redefine = global_id_table->is_defined_type(id);
   if (not redefine)
     @< Test that |id| has no global definition or overloads;
@@ -1090,7 +1125,9 @@ and emit an error message instead when it is attempted..
   }
 }
 
-@ It is useful to print type information, either for a single expression or
+@*2 Printing information from internal tables.
+%
+It is useful to print type information, either for a single expression or
 for all identifiers in the table. The function |type_of_expr| prints the type
 of a single expression, without evaluating it. Since we allow arbitrary
 expressions, we must cater for the possibility of failing type analysis, in

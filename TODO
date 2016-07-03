@@ -20,6 +20,8 @@
   Distinguish one-line (maybe abbreviated) and long forms.
   Nuance "simply connected" and "adjoint" for non-semisimple root data
 
+- See if cloning of values is ever needed, and remove it if not
+
 - For errors during implict conversion, provide back-tracing as for calls
 
 - Implement compound assignment directly
@@ -37,8 +39,6 @@
   the loop is started) might do better gathering them in a list structure.
 
 - Maybe allow list-comprehension syntax like in Haskell (and Python?)
-
-- Do some support for object oriented programming (just named tuples might do).
 
 - Allow skipping entries in value-producing loops; concatenating sub-rows.
   When generating a row from a loop, not every iteration need contribute, and

@@ -854,26 +854,32 @@ source location.
 
 @< Methods of |expr| @>=
 expr(app&& fx, const YYLTYPE& loc)
- : kind(function_call)
+@/: kind(function_call)
  , call_variant(std::move(fx))
  , loc(loc)
  @+{}
 expr(app&& fx, const source_location& loc)
- : kind(function_call)
+@/: kind(function_call)
  , call_variant(std::move(fx))
  , loc(loc)
  @+{}
 
-@ Building an |application_node| combines the function expression with an
-|expr_list| for the argument. The argument list will either be packed into a
+@ Building an |application_node| usually combines the function expression with
+an |expr_list| for the argument. The argument list will either be packed into a
 tuple, or if it has length$~1$ unpacked into a single expression. For tracing
 the location of the argument tuple, two additional locations will be provided
 by the parser, those of the left and right parentheses that delimit the
 argument list (and which are present even for an empty argument list).
 
+Another version is provided if the argument is already grouped as a single
+expression, for use with the (generalised) field selector syntax, where the
+(projection) function follows the argument. Here no separate location
+for the argument is needed, as this information has already been included.
+
 @< Declarations of functions for the parser @>=
 expr_p make_application_node(expr_p f, raw_expr_list args,
  const YYLTYPE& loc, const YYLTYPE& left, const YYLTYPE& right);
+expr_p make_application_node(expr_p f, expr_p arg, const YYLTYPE& loc);
 
 @~Here for once there is some work to do. Since there are two cases to deal
 with, the argument expression is initially default-constructed, after which
@@ -894,7 +900,12 @@ expr_p make_application_node(expr_p f, raw_expr_list r_args,
       source_location(source_location(left),source_location(right)));
   return new expr(std::move(a),loc); // move construct application expression
 }
-
+@)
+expr_p make_application_node(expr_p f, expr_p arg, const YYLTYPE& loc)
+{ expr_ptr ff(f); expr_ptr args(arg);
+  app a(new application_node { std::move(*ff), std::move(*args) } );
+  return new expr(std::move(a),loc); // move construct application expression
+}
 @ Destroying a raw pointer field just means calling |delete| on it.
 
 @< Cases for destroying... @>=
