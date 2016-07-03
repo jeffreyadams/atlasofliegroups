@@ -338,16 +338,22 @@ used to be) handled by having |lookup| return |type_p| rather than
 specialise the type found for an identifier from its uses, if the type
 initially had an unknown component as in `\.{[*]}'. Rather than modifying the
 look-up type, one achieves this by calling |specialise| with the |depth| and
-|offset| returned by |lookup|. This method must skip without counting the same
-layers that |lookup| skipped.
+|offset| returned by |lookup|.
+
+This method must find non-empty layer number |depth|, so it must skip depth
+non-empty layers, and any empty layers separated by them, until reaching the
+non-empty layer that is not to be skipped. The fact that we previously found
+an identifier at |depth| ensures that we do not run off our |lexical_context|.
+The |while| loop below achieves this, decrementing |depth| only when |range|
+points to a non-empty layer, and stopping when |depth| is decremented
+from~$0$.
 
 @< Function def... @>=
 
 void layer::specialise (size_t depth, size_t offset,const type_expr& t)
 { auto range=lexical_context.cbegin();
-  while (depth-->0)
-    do ++range;
-    while ((*range)->variable.empty()); // advance layer, skipping empty ones
+  while ((*range)->variable.empty() or depth-->0)
+    ++range;
   (**range)[offset].second.specialise(t);
 }
 
