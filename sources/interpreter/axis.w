@@ -5011,15 +5011,14 @@ void counted_for_expression<flags>::evaluate(level l) const
 
   if (has_frame(flags)) // then loop uses index
   { int b=(bound.get()==nullptr ? 0 : (bound->eval(),get<int_value>()->val));
-    c+=b; // set to upper bound, exclusive
     id_pat pattern(id);
     if (l==no_value)
       @< Perform counted loop that uses an index, without storing result,
-         between lower bound |b| and exclusive upper bound |c| @>
+         doing |c| iterations with lower bound |b| @>
     else
       @< Perform counted loop that uses an index, pushing result to
          |execution_stack|,
-         between lower bound |b| and exclusive upper bound |c| @>
+         doing |c| iterations with lower bound |b| @>
   }
   else if (l==no_value) // counted loop without index and no value
   { try {@; while (c-->0)
@@ -5059,8 +5058,9 @@ bound is~$0$, the default value, since a test against a constant~$0$ is a bit
 more efficient.
 
 @< Perform counted loop that uses an index, without storing result,
-   between lower bound |b| and exclusive upper bound |c| @>=
-{ try
+   doing |c| iterations with lower bound |b| @>=
+{ c+=b; // set to upper bound, exclusive
+  try
   { if (in_forward(flags)) // increasing loop
       while (b<c)
       @/{@; frame fr(pattern);
@@ -5090,8 +5090,9 @@ more efficient.
 bits of stuff.
 
 @< Perform counted loop that uses an index, pushing result to |execution_stack|,
-   between lower bound |b| and exclusive upper bound |c| @>=
+   doing |c| iterations with lower bound |b| @>=
 { own_row result = std::make_shared<row_value>(c);
+  c+=b; // set to upper bound, exclusive
   auto dst = out_forward(flags) ? result->val.begin() : result->val.end();
   try
   { if (in_forward(flags)) // increasing loop
