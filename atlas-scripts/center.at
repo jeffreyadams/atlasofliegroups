@@ -115,11 +115,8 @@ set Z_hat (InnerClass G) = ((mat,vec),(mat,mat)):
 
 { output routine for center of complex group }
 
-set finite_center_string (mat gens, vec ds) = string:
-  let result="" in
-  for d in ds
-  do if !=result then result #:= " x " fi; result #:="Z/"+d+"Z"
-  od; result
+set finite_center_string (mat ., vec ds) = string:
+  ## for d@i in ds do if =i then "" else " x " fi + "Z/"+(d+"Z") od
 
 set print_Z (RootDatum rd) = void:
   let ((,ds):ss_part,rad)=Z_hat(rd) then n_finite=#ds, n_rad=n_columns(rad) in
@@ -153,8 +150,8 @@ set print_Z (InnerClass G) = void:
     else prints("Group is semisimple"); prints("center=", finite_part)
     fi
   else
-    prints("center has ", cpt_rank, " circle factor"#plural(cpt_rank))
-  ; prints("center has ", split_rank, " R^+ factor"#plural(split_rank))
+    prints("center has ", cpt_rank, " circle factor"+plural(cpt_rank))
+  ; prints("center has ", split_rank, " R^+ factor"+plural(split_rank))
   ; if =n_finite
     then prints("center has no finite part")
     else prints("finite part of center: ",finite_part)

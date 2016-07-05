@@ -43,11 +43,11 @@ set gamma_R (Param p) = ratvec: (mu(p)-nu_C(p))/2
 }
 set gparameter (RealForm G,ratvec gamma_L, ratvec gamma_R) = Param:
   let n=#gamma_L
-  then lambda = ratvec_as_vec(gamma_L+gamma_R)#null(n)
+  then lambda = ratvec_as_vec(gamma_L+gamma_R)##null(n)
   then nu = concatenate((gamma_L-gamma_R)/2, (gamma_R-gamma_L)/2)
   in parameter(KGB(G,0),lambda,nu)
 
 { define a parameter of aG complex by (mu,nu) }
 set mparameter (RealForm G, vec mu, ratvec nu) = Param:
-  parameter(KGB(G,0), mu#null(#mu), concatenate(nu/2,-nu/2))
+  parameter(KGB(G,0), mu##null(#mu), concatenate(nu/2,-nu/2))
 

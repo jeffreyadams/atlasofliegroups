@@ -179,18 +179,16 @@ set left_mult (int i,W_word(rd,w))  = W_word: (rd, i#w)
 set right_mult (int i,W_word(rd,w)) = W_word: (rd, w#i)
 set conjugate (int i, W_word(rd,w)) = W_word: (rd, i#w#i)
 
-set multiply (W_word(rd,v), W_word({ assume rd too },w)) = W_word: (rd,v#w)
+set multiply (W_word(rd,v), W_word({ assume rd too },w)) = W_word: (rd,v##w)
 set * = multiply@(W_word,W_word) { overload to the '*' opetrator }
 
 set conjugate (W_word(rd,v), W_word({ assume rd too },w)) = W_word:
-   (rd, v#w#v~[:])
+   (rd, ##[ v, w, v~[:] ])
 
 { Weyl group element raised to an integer power }
-set ^ (W_word (!rd,!w), int n) = W_word:
-  if   >n then let result=w in for :n-1 do result#:=w od; reduce(rd,result)
-  elif <n then let !w1=w~[:] then result=w1 in
-          for :n-1 do result#:=w1 od; reduce(rd,result)
-  else (rd,[])
+set ^ (W_word (!rd,w), int n) = W_word:
+  if =n then (rd,[])
+  else if <n then set (w,n):=(w~[:],-n) fi; reduce(rd, ## for :n do w od)
   fi
 
 
