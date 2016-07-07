@@ -271,8 +271,10 @@ ident_expr : IDENT { $$=make_applied_identifier($1,@1); } ;
 comprim: subscription | slice
         | primary '(' commalist_opt ')'
 	  { $$=make_application_node($1,reverse_expr_list($3),@$,@2,@4); }
-	| primary '.' ident_expr { $$=make_application_node($3,$1,@$);  }
-	| primary '.' unit { $$=make_application_node($3,$1,@$);  }
+	| primary '.' ident_expr { $$=make_application_node($3,$1,@$); }
+	| primary '.' unit { $$=make_application_node($3,$1,@$); }
+	| primary '.' operator
+	  { $$=make_application_node(make_applied_identifier($3.id,@3),$1,@$); }
         | unit;
 unit    : INT { $$ = make_int_denotation($1,@$); }
 	| TRUE { $$ = make_bool_denotation(true,@$); }
