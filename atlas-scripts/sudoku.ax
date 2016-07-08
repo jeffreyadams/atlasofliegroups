@@ -28,6 +28,9 @@
   index and a number in the range [0,9) and return the corresponding row index.
 }
 
+set name_choice (int vij) = string: let (v,ij)=vij\%81 then (i,j)=ij\%9 in
+  to_string("Square ",(i+1,j+1)," gets value ", v+1)
+
 set constraint0_of_choice (int vij) = int: vij\9 { drop final nonal digit j }
 set choice_of_constraint0 (int vi,int j) = int: vi*9+j { insert final digit j }
 set name_constraint0(int vi) = string:
@@ -63,12 +66,13 @@ set name_co = [(int->string)]:
 
 : game_interface =
   ( (int->bool) available { available(choice): whether |choice| is allowed }
-  , (int->int,int) select
-    { (c,m)=select(group): index |c| with fewest (|m|) choices in |group| }
-  , (int->) choose { choose(choice): do choice and update internal data }
-  , (->) unchoose  { backtrack, undo the last choice currently recorded }
   , (->int) level  { number of currently active choices }
   , (->mat) board  { current position, as matrix with entries 0 or 1-9 }
+  , (->vec) moves  { list of choices made so far }
+  , (int->int,int) best
+    { (c,m)=best(group): index |c| with fewest (|m|) choices in |group| }
+  , (int->) choose { choose(choice): do choice and update internal data }
+  , (->) unchoose  { backtrack, undo the last choice currently recorded }
   )
 
 set setup_grid = ( mat-> game_interface ): { constructor }
@@ -120,7 +124,7 @@ let (selection,top) = (vec,int): { stack of choices made, entries 0<=.<729 }
     ; disabled[nr]:=[] { clear list associated to constraint after use }
     )
   then { public methods }
-    select (int group) { find a most promising constraint in |group| }
+    best (int group) { find a most promising constraint in |group| }
       = (int,int): { position of constraint, and its (minimal) option count }
         let (min_loc,min)=(-1,10), !covd=covered[81*group:81*(group+1)] in
         for cnt@c in nr_options[group] do
@@ -135,8 +139,9 @@ let (selection,top) = (vec,int): { stack of choices made, entries 0<=.<729 }
         for group:4 do uncover_constraint(group,co_of_ch[group](choice)) od
       ; insert(choice)
   , board () = mat: let B=null(9,9) in
-        for choice in selection do let (v,ij)=choice\%81 then (i,j)=ij\%9 in
-          B[i,j]:=v+1 od
+        for choice in selection[:top]
+        do let (v,ij)=choice\%81 then (i,j)=ij\%9 in B[i,j]:=v+1
+        od
       ; B
   in { update state to reflect the initial grid givein in |M| }
   assert(#M=(9,9))
@@ -146,19 +151,21 @@ let (selection,top) = (vec,int): { stack of choices made, entries 0<=.<729 }
 ; { finally export a tuple of methods}
   game_interface:
   ( (int choice)bool: available[choice]
-  , select
-  , choose, unchoose
   , @int: top { the |level| method }
-  , board)
+  , board
+  , @vec: selection[:top]
+  , best
+  , choose, unchoose
+  )
 end
 
 set solve ( game_interface game ) = [mat]:
   ( rec_fun solve (bool sure) [mat]:
     if game.level()=81 then [game.board()]
     else let group=-1, constraint=-1, min=10 in
-      for i:4 ~
-      do let (c,m)=game.select(i) in
-        if m<min then set (group,constraint,min):=(i,c,m)
+      for g:4 ~
+      do let (c,m)=game.best(g) in
+        if m<min then set (group,constraint,min):=(g,c,m)
         ; if min<=#sure then break fi { when sure stop at min=1, else at min=0 }
         fi
       od
