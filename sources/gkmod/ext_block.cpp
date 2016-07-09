@@ -235,7 +235,7 @@ bool in_R_image(WeightInvolution&& A,Coweight b)
   return true;
 }
 
-// whether |E| and |F| lie over equivalent |StandrdRepr| values
+// whether |E| and |F| lie over equivalent |StandardRepr| values
 bool same_standard_reps (const param& E, const param& F)
 {
   if (&E.ctxt!=&F.ctxt)
@@ -258,7 +258,18 @@ KGBElt x(const param& E)
   return E.rc().kgb().lookup(a);
 }
 
-// this implements (comparison using) the formula from Propodition 16 in
+int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
+{ return
+    (E.l().dot((E.delta()-1)*E.tau()) + 2*E.t().dot(E.lambda_rho())) % 4;
+}
+
+int z_quot (const param& E, const param& F)
+{ int d = z(E)-z(F);
+  assert (d%2==0); // when used, this function should only produce a sign
+  return d%4==0 ? 1 : -1;
+}
+
+// this implements (comparison using) the formula from Proposition 16 in
 // "Parameters for twisted repressentations" (with $\delta-1=-(1-\delta)$
 // the relation is symmetric in |E|, |F|, although not obviously so
 bool signs_differ (const param& E, const param& F)
@@ -1287,14 +1298,13 @@ DescValue type (const param& E, const ext_gen& p,
   return result;
 } // |type|
 
-// version of |type| that will also export a sign, from normalisation of |E|
-DescValue star (param& E, // parameter will be normalised relative to |p|
+// version of |type| that will also export signs for every element of |links|
+DescValue star (const param& E,
 		const ext_gen& p,
-		containers::sl_list<param>& links,
-		int& sign)
+		containers::sl_list<std::pair<int,param> >& links)
 {
-  const param E0=E; // retain initial value for comparison
-  DescValue result; sign=1; // default value, may be changed
+  param E0=E; // a copy of |E| that might be modified below to "normalise"
+  DescValue result;
 
   const TwistedWeylGroup& tW = E.rc().twistedWeylGroup();
   const InnerClass& ic = E.rc().innerClass();
@@ -1352,22 +1362,28 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 	      matreduc::find_solution(th_1,alpha); // solutions are equivalent
 
 	  // normalise
-	  E.set_tau(E.tau()+diff*tau_coef);
+	  E0.set_tau(E.tau()+diff*tau_coef);
 	  auto new_l = E.l()+alpha_v*(tf_alpha/2);
-	  E.set_l(tf_alpha%4==0 ? new_l : new_l-alpha_v); // retain parity
+	  E0.set_l(tf_alpha%4==0 ? new_l : new_l-alpha_v); // retain parity
+	  assert(same_standard_reps(E,E0));
+	  int sign = sign_between(E,E0);
 
-	  links.push_back(param // Cayley link
-			  (E.ctxt,new_tw,
-			   E.lambda_rho() + first + rho_r_shift, E.tau(),
-			   new_l, E.t()
-			   ));
-	  links.push_back(param // cross link
-			  (E.ctxt,E.tw,
-			   E.lambda_rho(),E.tau(),
-			   tf_alpha%4==0 ? new_l-alpha_v : new_l, E.t()));
-	} // end of type 1 case
+	  links.push_back(std::make_pair
+			  (sign
+			  ,param // Cayley link
+			   (E.ctxt,new_tw,
+			    E.lambda_rho() + first + rho_r_shift, E0.tau(),
+			    new_l, E.t()
+			    )));
+	  links.push_back(std::make_pair
+			  (sign
+			  ,param // cross link
+			   (E.ctxt,E.tw,
+			    E.lambda_rho(),E0.tau(),
+			    tf_alpha%4==0 ? new_l-alpha_v : new_l, E.t())));
+	} // end of 1i1 case
 	else
-	{ // type 2; now we need to distinguish 1i2f and 1i2s
+	{ // imaginary type 2; now we need to distinguish 1i2f and 1i2s
 
 	  if (tau_coef%2!=0) // was set up so that this means: switched
 	  { // no spurious $\tau'$ since $\<\alpha^\vee,(X^*)^\theta>=2\Z$:
@@ -1378,21 +1394,27 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 	  result = one_imaginary_pair_fixed;  // what remains is case 1i2f
 
 	  // normalise
-	  E.set_tau(E.tau()+alpha*(tau_coef/2));
-	  E.set_l(E.l()+alpha_v*(tf_alpha/2)); // no need to retain parity here
+	  E0.set_tau(E.tau()+alpha*(tau_coef/2));
+	  E0.set_l(E.l()+alpha_v*(tf_alpha/2)); // no need to retain parity here
+	  assert(same_standard_reps(E,E0));
+	  int sign = sign_between(E,E0);
 
-	  links.push_back(param // first Cayley link
+	  links.push_back(std::make_pair
+			  (sign
+			  ,param // first Cayley link
 			  (E.ctxt,new_tw,
 			   E.lambda_rho() + first + rho_r_shift,
-			   E.tau() - first,
-			   E.l(), E.t()
-			   ));
-	  links.push_back(param // second Cayley link
+			   E0.tau() - first,
+			   E0.l(), E.t()
+			   )));
+	  links.push_back(std::make_pair
+			  (sign
+			  ,param // second Cayley link
 			  (E.ctxt,new_tw,
 			   E.lambda_rho() + first + rho_r_shift + alpha,
-			   E.tau() - first,
-			   E.l(), E.t()
-			   ));
+			   E0.tau() - first,
+			   E0.l(), E.t()
+			   )));
 	} // end of type 2 case
       } // end of length 1 imaginary case
 
@@ -1446,20 +1468,26 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 	    return one_real_pair_switched;
 	  result = one_real_pair_fixed; // what remains is case 1r1f
 
-	  E.set_lambda_rho(E.lambda_rho() + alpha*(level/2));
-	  E.set_t(E.t() - alpha_v*(t_alpha/2));
+	  E0.set_lambda_rho(E.lambda_rho() + alpha*(level/2));
+	  E0.set_t(E.t() - alpha_v*(t_alpha/2));
+	  assert(same_standard_reps(E,E0));
+	  int sign = sign_between(E,E0);
 
-	  links.push_back(param // first Cayley link
+	  links.push_back(std::make_pair
+			  (sign
+			  ,param // first Cayley link
 			  (E.ctxt,new_tw,
 			   new_lambda_rho, E.tau() + tau_correction,
-			   E.l(), E.t()
-			   ));
-	  links.push_back(param // second Cayley link
+			   E.l(), E0.t()
+			   )));
+	  links.push_back(std::make_pair
+			  (sign
+			  ,param // second Cayley link
 			  (E.ctxt,new_tw,
 			   new_lambda_rho, E.tau() + tau_correction,
-			   E.l() + alpha_v, E.t()
-			   ));
-	} // end of real type 1 case
+			   E.l() + alpha_v, E0.t()
+			   )));
+	} // end of 1r1 case
 	else // real type 2
 	{
 	  result = one_real_single;
@@ -1467,26 +1495,32 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 	    matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
 				    alpha_v);
 
-	  E.set_lambda_rho(E.lambda_rho() // must keep parity of alpha here
-			   + alpha*(2*arithmetic::divide(level,4)));
-	  E.set_t(E.t() - diff*t_alpha);
+	  E0.set_lambda_rho(E.lambda_rho() // must keep parity of alpha here
+			    + alpha*(2*arithmetic::divide(level,4)));
+	  E0.set_t(E.t() - diff*t_alpha);
+	  assert(same_standard_reps(E,E0));
+	  int sign = sign_between(E,E0);
 
-	  links.push_back(param // Cayley link
+	  links.push_back(std::make_pair
+			  (sign
+			  ,param // Cayley link
 			  (E.ctxt,new_tw,
 			   new_lambda_rho,
 			   E.tau() + tau_correction,
-			   E.l(), E.t()
-			   ));
-	  links.push_back(param // cross link
-	        (E.ctxt,E.tw,
-		 E.lambda_rho()+(level%4==0 ? -alpha : alpha),
-		 E.tau(),E.l(),E.t()));
+			   E.l(), E0.t()
+			   )));
+	  links.push_back(std::make_pair
+			  (sign
+			  ,param // cross link
+			   (E.ctxt,E.tw,
+			    E0.lambda_rho()+(level%4==0 ? -alpha : alpha),
+			    E.tau(),E.l(),E0.t())));
 	}
       }
       else // length 1 complex case
       { result = rd.is_posroot(theta_alpha)
 	  ? one_complex_ascent : one_complex_descent ;
-	links.push_back(complex_cross(p,E));
+	links.push_back(std::make_pair(1,complex_cross(p,E)));
       }
     }
     break;
@@ -1525,17 +1559,16 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 	if (matreduc::has_solution(th_1,alpha)) // then type 2i11
 	{ result = two_imaginary_single_single;
 	  const Weight sigma = matreduc::find_solution(th_1,alpha*at+beta*bt);
-	  links.push_back(param // Cayley link
-			  (E.ctxt, new_tw,
-			   E.lambda_rho() + rho_r_shift,
-			   E.tau() + sigma,
-			   E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
-			   E.t()
-			   ));
-	  links.push_back(param // cross link
-			  (E.ctxt,E.tw,
-			   E.lambda_rho(),E.tau(),
-			   E.l()+alpha_v+beta_v, E.t()));
+
+	  param F (E.ctxt, new_tw,
+		   E.lambda_rho() + rho_r_shift,  E.tau() + sigma,
+		   E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t());
+
+	  E0.set_l(E.l()+alpha_v+beta_v);
+	  int sign0 = z_quot(E,F);
+	  int sign1 = sign0 * z_quot(E0,F);
+	  links.push_back(std::make_pair(sign0,std::move(F)));	// Cayley link
+	  links.push_back(std::make_pair(sign1,std::move(E0))); // cross link
 	}
 	else if (matreduc::has_solution(th_1,alpha+beta)) // case 2i12
 	{
@@ -1549,25 +1582,20 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 	  const Weight sigma =
 	    matreduc::find_solution(th_1,alpha*(at+mm)+beta*(bt-mm));
 
+	  const Weight new_tau = E.tau() - alpha*((at+m)/2) - beta*((bt-m)/2);
+          const Coweight new_l = E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2);
+
+	  param F0(E.ctxt, new_tw,
+		   E.lambda_rho() + rho_r_shift + alpha*m, new_tau,
+		   new_l, E.t());
+	  param F1(E.ctxt, new_tw,
+		   E.lambda_rho() + rho_r_shift + alpha*mm, new_tau + sigma,
+		   new_l, E.t());
+	  int sign0=z_quot(E,F0), sign1=z_quot(E,F1); // before the |std::move|
+
 	  // first Cayley link will be the one that does not need |sigma|
-	  links.push_back(param // first Cayley link
-			  (E.ctxt, new_tw,
-			   E.lambda_rho() + rho_r_shift + alpha*m,
-			   E.tau() - alpha*((at+m)/2) - beta*((bt-m)/2),
-			   E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t()
-			   ));
-	  links.push_back(param // second Cayley link
-			  (E.ctxt, new_tw,
-			   E.lambda_rho() + rho_r_shift + alpha*mm,
-			   E.tau() + sigma,
-			   E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t()
-			   ));
-	  const Coweight s =
-	    matreduc::find_solution(i_tab.matrix(E.tw).transposed()+1,
-				    beta_v-alpha_v);
-	  links.push_back(param // false cross action link
-			  (E.ctxt,E.tw,
-			   E.lambda_rho(),E.tau(), E.l()+alpha_v, E.t()+s));
+	  links.push_back(std::make_pair(sign0,std::move(F0))); // first Cayley
+	  links.push_back(std::make_pair(sign1,std::move(F1))); // second Cayley
 	} // end of case 2i12f
 	else
 	{ // type 2i22
@@ -1576,20 +1604,19 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 	  // $(1-\delta)\tau\in(X^*)^\theta+2X^*$ so $<av-bv,\tau>$ is even
 	  assert((at-bt)%2==0);
 	  int m =  static_cast<unsigned int>(at)%2; // safe modular reduction
-	  links.push_back(param // first Cayley link
-			  (E.ctxt, new_tw,
-			   E.lambda_rho() + alpha*m + rho_r_shift,
-			   E.tau() - alpha*((at+m)/2) - beta*((bt-m)/2),
-			   E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
-			   E.t()
-			   ));
-	  links.push_back(param // second Cayley link
-			  (E.ctxt,new_tw,
-			   E.lambda_rho() + alpha*(1-m) + beta + rho_r_shift,
-			   E.tau() - alpha*((at-m)/2) - beta*((bt+m)/2),
-			   E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
-			   E.t()
-			   ));
+
+	  param F0(E.ctxt, new_tw,
+		   E.lambda_rho() + rho_r_shift + alpha*m,
+		   E.tau() - alpha*((at+m)/2) - beta*((bt-m)/2),
+		   E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t());
+	  param F1(E.ctxt, new_tw,
+		   E.lambda_rho() + rho_r_shift + alpha*(1-m) + beta,
+		   E.tau() - alpha*((at-m)/2) - beta*((bt+m)/2),
+		   F0.l(),E.t());
+	  int sign0=z_quot(E,F0), sign1=z_quot(E,F1); // before the |std::move|
+
+	  links.push_back(std::make_pair(sign0,std::move(F0))); // first Cayley
+	  links.push_back(std::make_pair(sign1,std::move(F1))); // second Cayley
 	} // end type 2i22 case
       }
 
@@ -1618,26 +1645,31 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 	  + alpha*(a_level/2) + beta*(b_level/2);
 
 	int ta = E.t().dot(alpha); int tb = E.t().dot(beta);
+	param E1=E; // another modifiable copy, like |E0|
 
 	if (matreduc::has_solution(theta_1,alpha))
 	{ // type 2r11
 	  result = two_real_double_double;
-	  // $\alpha$ and $\beta$ are even on $(X_*)^{-\theta'}$ and
+	  // $\alpha$ is even on $(X_*)^{-\theta'}$ (so is $\beta$), and
 	  // $t(1-\delta)\in(X_*)^{-\theta'}+2X_*$ so $<t,alpha-beta>$ is even
 	  assert((ta-tb)%2==0);
 	  int m =  static_cast<unsigned int>(ta)%2;
-	  links.push_back(param // first Cayley link
-			  (E.ctxt, new_tw,
-			   new_lambda_rho, E.tau(),
-			   E.l()+alpha_v*m,
-			   E.t() - alpha_v*((ta+m)/2)+beta_v*((tb-m)/2)
-			   ));
-	  links.push_back(param // second Cayley link
-			  (E.ctxt,new_tw,
-			   new_lambda_rho, E.tau(),
-			   E.l()+alpha_v*(1-m)+beta_v,
-			   E.t() - alpha_v*((ta-m)/2)+beta_v*((tb+m)/2)
-			   ));
+
+	  // set two values for |t|; actually the same value in case |m==0|
+	  E0.set_t(E.t() - alpha_v*((ta+m)/2) - beta_v*((tb-m)/2));
+	  E1.set_t(E.t() - alpha_v*((ta-m)/2) - beta_v*((tb+m)/2));
+
+	  param F0(E.ctxt, new_tw,
+		   new_lambda_rho,E.tau(), E.l()+alpha_v*m, E0.t());
+	  param F1(E.ctxt, new_tw,
+		   new_lambda_rho,E.tau(), E.l()+alpha_v*(1-m)+beta_v,E1.t());
+
+	  int sign0=sign_between(E,E0)*z_quot(E0,F0);
+	  int sign1=sign_between(E,E1)*z_quot(E1,F1);
+
+	  // Cayley links
+	  links.push_back(std::make_pair(sign0,std::move(F0)));
+	  links.push_back(std::make_pair(sign1,std::move(F1)));
 	} // end 2r11 case
 	else if (matreduc::has_solution(theta_1,alpha+beta))
 	{ // type 2r21
@@ -1652,38 +1684,41 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 	    matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
 				    alpha_v*(ta+mm)+beta_v*(tb-mm));
 
-	  // first Cayley link will be the one that does not need |sigma|
-	  links.push_back(param // first Cayley link
-			  (E.ctxt, new_tw,
-			   new_lambda_rho, E.tau(),
-			   E.l()+alpha_v*m,
-			   E.t() - alpha_v*((ta+m)/2) - beta_v*((tb-m)/2)
-			   ));
-	  links.push_back(param // second Cayley link
-			  (E.ctxt, new_tw,
-			   new_lambda_rho, E.tau(),
-			   E.l()+alpha_v*mm,
-			   E.t() - s
-			   ));
-	  const Weight sigma = matreduc::find_solution(theta_1,alpha-beta);
-	  links.push_back(param // false cross action link
-			  (E.ctxt,E.tw,
-			   E.lambda_rho()+alpha,E.tau()+sigma, E.l(), E.t()));
+	  // E0 is parameter adapted to Cayley transform that does not need |s|
+	  E0.set_t(E.t() - alpha_v*((ta+m)/2) - beta_v*((tb-m)/2));
+	  E1.set_t(E.t() - s);
+
+	  param F0(E.ctxt, new_tw,
+		   new_lambda_rho, E.tau(), E.l()+alpha_v*m, E0.t());
+	  param F1(E.ctxt, new_tw,
+		   new_lambda_rho, E.tau(), E.l()+alpha_v*mm, E1.t());
+
+	  int sign0=sign_between(E,E0)*z_quot(E0,F0);
+	  int sign1=sign_between(E,E1)*z_quot(E1,F1);
+
+	  // Cayley links
+	  links.push_back(std::make_pair(sign0,std::move(F0)));
+	  links.push_back(std::make_pair(sign1,std::move(F1)));
+
 	} // end of case 2r21f
 	else // case 2r22
 	{ result = two_real_single_single;
 	  const Coweight s =
 	    matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
 				    alpha_v*ta+beta_v*tb);
-	  links.push_back(param // Cayley link
-			  (E.ctxt, new_tw,
-			   new_lambda_rho, E.tau(),
-			   E.l(), E.t() - s
-			   ));
-	  links.push_back(param // cross link
-			  (E.ctxt,E.tw,
-			   E.lambda_rho()+alpha+beta ,E.tau(),E.l(),E.t()));
-	}
+
+	  E0.set_t(E.t() - s); // parameter adapted to Cayley transform |F|
+	  E1.set_lambda_rho(E.lambda_rho()+alpha_v);
+	  E1.set_t(E0.t()); // cross action, keeps adaption of |t| to |F| below
+
+	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau(), E.l(), E0.t());
+
+	  int sign0=sign_between(E,E0)*z_quot(E0,F);
+	  int sign1=sign0*z_quot(E1,F); // total sign from |E| to its cross |E1|
+
+	  links.push_back(std::make_pair(sign0,std::move(F ))); // Cayley link
+	  links.push_back(std::make_pair(sign1,std::move(E1))); // cross link
+	} // end of case 2r22
       }
       else // length 2 complex case
       { const bool ascent = rd.is_posroot(theta_alpha);
@@ -1704,13 +1739,15 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 	  const Coweight new_l = E.l() + alpha_v*dual_f;
           const Coweight new_t = rd.coreflection(E.t(),n_alpha)
 	    + alpha_v*(ascent ? -dual_f : dual_f);
-	  links.push_back(param (E.ctxt, new_tw, // Cayley link
-				 new_lambda_rho, new_tau, new_l, new_t));
+	  links.push_back(std::make_pair
+			  (1
+			  ,param (E.ctxt, new_tw, // Cayley link
+				  new_lambda_rho, new_tau, new_l, new_t)));
 	}
 	else // twisted non-commutation with |s0.s1|
 	{
 	  result = ascent ? two_complex_ascent : two_complex_descent;
-	  links.push_back(complex_cross(p,E));
+	  links.push_back(std::make_pair(1,complex_cross(p,E)));
 	}
       }
     }
@@ -1751,9 +1788,12 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 
 	const Weight new_tau = E.tau() - alpha*kappa_v.dot(E.tau());
  	const Coweight new_l = E.l() + kappa_v*((tf_alpha+tf_beta)/2);
-	links.push_back(param // Cayley link
-			(E.ctxt, new_tw,
-			 E.lambda_rho() + rho_r_shift, new_tau, new_l, E.t()));
+	links.push_back(std::make_pair
+			  (1
+			  ,param // Cayley link
+			   (E.ctxt, new_tw,
+			    E.lambda_rho() + rho_r_shift, new_tau,
+			    new_l, E.t())));
       }
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 3 real case
       {
@@ -1777,10 +1817,12 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 
 	const Weight new_lambda_rho =
 	  E.lambda_rho()-rho_r_shift + kappa*((a_level+b_level)/2);
-	links.push_back(param // Cayley link
-			(E.ctxt, new_tw,
-			 new_lambda_rho,E.tau(),
-			 E.l(),E.t()-alpha_v*kappa.dot(E.t())));
+	links.push_back(std::make_pair
+			  (1
+			  ,param // Cayley link
+			   (E.ctxt, new_tw,
+			    new_lambda_rho,E.tau(),
+			    E.l(),E.t()-alpha_v*kappa.dot(E.t()))));
       }
       else // length 3 complex case
       { const bool ascent = rd.is_posroot(theta_alpha);
@@ -1802,32 +1844,34 @@ DescValue star (param& E, // parameter will be normalised relative to |p|
 	  Weight new_lambda_rho = E.lambda_rho() + rho_r_shift; // for now
 
 	  if (ascent) // 3Ci
-	    links.push_back(param // Cayley link
-			    (E.ctxt, new_tw,
-			     dtf_alpha%2==0 ? new_lambda_rho
+	    links.push_back(std::make_pair
+			    (1
+			     ,param // Cayley link
+			     (E.ctxt, new_tw,
+			      dtf_alpha%2==0 ? new_lambda_rho
 			      : new_lambda_rho + kappa,
-			     E.tau() - kappa*(kappa_v.dot(E.tau())/2),
-			     E.l() + kappa_v*tf_alpha,
-			     E.t()));
+			      E.tau() - kappa*(kappa_v.dot(E.tau())/2),
+			      E.l() + kappa_v*tf_alpha,
+			      E.t())));
 	  else // 3Cr
-	    links.push_back(param // Cayley link
-			    (E.ctxt, new_tw,
-			     new_lambda_rho + kappa*dtf_alpha, E.tau(),
-			     tf_alpha%2==0 ? E.l() : E.l()+kappa_v,
-			     E.t() - kappa_v*(kappa.dot(E.t())/2)));
+	    links.push_back(std::make_pair
+			    (1
+			     ,param // Cayley link
+			     (E.ctxt, new_tw,
+			      new_lambda_rho + kappa*dtf_alpha, E.tau(),
+			      tf_alpha%2==0 ? E.l() : E.l()+kappa_v,
+			      E.t() - kappa_v*(kappa.dot(E.t())/2))));
 
 	}
 	else // twisted non-commutation: 3C+ or 3C-
 	{
 	  result = ascent ? three_complex_ascent : three_complex_descent;
-	  links.push_back(complex_cross(p,E));
+	  links.push_back(std::make_pair(1,complex_cross(p,E)));
 	}
       }
     }
     break;
   }
-  assert(same_standard_reps(E0,E));
-  sign *= sign_between(E0,E);
   return result;
 } // |star|
 
@@ -2094,14 +2138,14 @@ BlockEltPair ext_block::Cayleys(weyl::Generator s, BlockElt n) const
 bool check(ext_block eb, const param_block& block, bool verbose)
 {
   context ctxt (block.context(),eb.delta(),block.gamma());
-  containers::sl_list<param> links;
+  containers::sl_list<std::pair<int,param> > links;
   for (BlockElt n=0; n<eb.size(); ++n)
   { auto z=eb.z(n);
     for (weyl::Generator s=0; s<eb.rank(); ++s)
     { ext_gen p=eb.orbit(s);
       param E(ctxt,block.x(z),block.lambda_rho(z)); // re-init each iteration
-      int sign; links.clear(); // output arguments for |star|
-      auto tp = star(E,p,links,sign);
+      links.clear(); // output arguments for |star|
+      auto tp = star(E,p,links);
       if (tp!=eb.descent_type(s,n))
 	return false;
 
@@ -2123,8 +2167,8 @@ bool check(ext_block eb, const param_block& block, bool verbose)
 	  BlockElt m=eb.cross(s,n);
 	  BlockElt cz = eb.z(m); // corresponding element of block
 	  param F(ctxt,block.x(cz),block.lambda_rho(cz));
-	  assert(same_standard_reps(*it,F));
-	  if (sign!=sign_between(*it,F))
+	  assert(same_standard_reps(it->second,F));
+	  if (it->first!=sign_between(it->second,F))
 	  {
 	    eb.flip_edge(s,n,m);
 	    if (verbose)
@@ -2138,8 +2182,8 @@ bool check(ext_block eb, const param_block& block, bool verbose)
 	  BlockElt m=eb.some_scent(s,n); // the unique (inverse) Cayley
 	  BlockElt Cz = eb.z(m); // corresponding element of block
 	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
-	  assert(same_standard_reps(*it,F));
-	  if (sign!=sign_between(*it,F))
+	  assert(same_standard_reps(it->second,F));
+	  if (it->first!=sign_between(it->second,F))
 	  {
 	    eb.flip_edge(s,n,m);
 	    if (verbose)
@@ -2149,8 +2193,8 @@ bool check(ext_block eb, const param_block& block, bool verbose)
 	  ++it;
 	  m=eb.cross(s,n); BlockElt cz = eb.z(m);
 	  param Fc(ctxt,block.x(cz),block.lambda_rho(cz));
-	  assert(same_standard_reps(*it,Fc));
-	  if (sign!=sign_between(*it,Fc))
+	  assert(same_standard_reps(it->second,Fc));
+	  if (it->first!=sign_between(it->second,Fc))
 	  {
 	    eb.flip_edge(s,n,m);
 	    if (verbose)
@@ -2165,8 +2209,8 @@ bool check(ext_block eb, const param_block& block, bool verbose)
 	  BlockElt m=eb.some_scent(s,n); // the unique (inverse) Cayley
 	  BlockElt Cz = eb.z(m); // corresponding element of block
 	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
-	  assert(same_standard_reps(*it,F));
-	  if (sign!=sign_between(*it,F))
+	  assert(same_standard_reps(it->second,F));
+	  if (it->first!=sign_between(it->second,F))
 	  {
 	    eb.flip_edge(s,n,m);
 	    if (verbose)
@@ -2181,21 +2225,20 @@ bool check(ext_block eb, const param_block& block, bool verbose)
 	  BlockElt Cz0 = eb.z(m.first); BlockElt Cz1= eb.z(m.second);
 	  param F0(ctxt,block.x(Cz0),block.lambda_rho(Cz0));
 	  param F1(ctxt,block.x(Cz1),block.lambda_rho(Cz1));
-	  bool straight=same_standard_reps(*it,F0);
-	  if (straight)
-	    assert(same_standard_reps(*std::next(it),F1));
-	  else // it must be crossed
-	    assert(same_standard_reps(*it,F1) and
-		   same_standard_reps(*std::next(it),F0));
-	  unsigned iF0 = straight ? 0 : 1; // |links| index that pairs with |F0|
-	  if (sign!=sign_between(*std::next(it,iF0),F0))
+	  bool straight=same_standard_reps(it->second,F0);
+          const auto& node0 = straight ? *it : *std::next(it);
+          const auto& node1 = straight ? *std::next(it) : *it;
+	  if (not straight)
+	    assert(same_standard_reps(node0.second,F0));
+	  assert(same_standard_reps(node1.second,F1));
+	  if (node0.first!=sign_between(node0.second,F0))
 	  {
 	    eb.flip_edge(s,n,m.first);
 	    if (verbose)
 	      std::cout << "Flip at Cayley link " << unsigned{s}
 			<< " from " << z << " to " << Cz0 << '.' << std::endl;
 	  }
-	  if (sign!=sign_between(*std::next(it,1-iF0),F1))
+	  if (node1.first!=sign_between(node1.second,F1))
 	  {
 	    eb.flip_edge(s,n,m.second);
 	    if (verbose)
@@ -2204,53 +2247,37 @@ bool check(ext_block eb, const param_block& block, bool verbose)
 	  }
 	} break;
       case two_imaginary_single_double_fixed: case two_real_single_double_fixed:
-	{ assert(links.size()==3);
+	{ assert(links.size()==2);
 	  BlockEltPair m=eb.Cayleys(s,n);
 	  BlockElt Cz0 = eb.z(m.first); BlockElt Cz1= eb.z(m.second);
 	  param F0(ctxt,block.x(Cz0),block.lambda_rho(Cz0));
 	  param F1(ctxt,block.x(Cz1),block.lambda_rho(Cz1));
-	  bool straight=same_standard_reps(*it,F0);
-	  if (straight)
-	    assert(same_standard_reps(*std::next(it),F1));
-	  else // it must be crossed
-	    assert(same_standard_reps(*it,F1) and
-		   same_standard_reps(*std::next(it),F0));
-	  unsigned iF0 = straight ? 0 : 1; // |links| index that pairs with |F0|
-	  if (sign!=sign_between(*std::next(it,iF0),F0))
+	  bool straight=same_standard_reps(it->second,F0);
+          const auto& node0 = straight ? *it : *std::next(it);
+          const auto& node1 = straight ? *std::next(it) : *it;
+	  if (not straight)
+	    assert(same_standard_reps(node0.second,F0));
+	  assert(same_standard_reps(node1.second,F1));
+	  if (node0.first!=sign_between(node0.second,F0))
 	  {
 	    eb.flip_edge(s,n,m.first);
 	    if (verbose)
 	      std::cout << "Flip at Cayley link " << unsigned{s}
 			<< " from " << z << " to " << Cz0 << '.' << std::endl;
 	  }
-	  if (sign!=sign_between(*std::next(it,1-iF0),F1))
+	  if (node1.first!=sign_between(node1.second,F1))
 	  {
 	    eb.flip_edge(s,n,m.second);
 	    if (verbose)
 	      std::cout << "Flip at Cayley link " << unsigned{s}
 			<< " from " << z << " to " << Cz1 << '.' << std::endl;
 	  }
-	  // check the false cross link
-	  std::advance(it,2);
-	  m = eb.Cayleys(s,m.first);
-	  auto m0= m.first==n ? m.second : m.first;
-	  BlockElt fcz = eb.z(m0);
-	  assert(fcz==block.cross(p.s0,z) and fcz==block.cross(p.s1,z));
-	  param F(ctxt,block.x(fcz),block.lambda_rho(fcz));
-	  assert(same_standard_reps(*it,F));
-	  if (sign!=sign_between(*it,F))
-	  {
-	    // no |eb.flip_edge(s,n,m0)| as it is not a true neighbour
-	    if (verbose)
-	      std::cout << "Flip at false cross link " << unsigned{s}
-			<< " from " << z << " to " << fcz << '.' << std::endl;
-	  }
 	} break;
       } // |switch(tp)|
     } // |for(s)|
   } // |for(n)|
-  return true;
-}
+  return true; // report sucess if we get here
+} // |check|
 
 // coefficient of neighbour |sx| for $s$ in action $(T_s+1)*a_x$
 Pol ext_block::T_coef(weyl::Generator s, BlockElt sx, BlockElt x) const

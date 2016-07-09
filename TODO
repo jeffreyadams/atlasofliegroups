@@ -2,11 +2,11 @@
 - Study what the unequal rank case is about, and how to do it
 
 * Work on the Atlas library
+
+- Fix bug wen switching the real form when coming from realmode
 - Incorporate the calculation of c-invariant forms into the library
 - Rewrite block construction using methods inspired by synthetic operations
 - Rewrite K type computations to use data type more compatible with Param
-- Reconsider synthetic real forms and KGB elements: user should be able to
-  specify a KGB element with desired involution, torus_factor directly
 
 * Work on the Fokko program
 

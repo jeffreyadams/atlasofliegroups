@@ -254,11 +254,13 @@ public:
   param& operator= (const param& p)
   { assert(tw==p.tw); // cannot assign this, so it should match
     d_l=p.d_l; d_lambda_rho=p.d_lambda_rho; d_tau=p.d_tau; d_t=p.d_t;
+    return *this;
   }
   param& operator= (param&& p)
   { assert(tw==p.tw); // cannot assign this, so it should match
     d_l=std::move(p.d_l); d_lambda_rho=std::move(p.d_lambda_rho);
     d_tau=std::move(p.d_tau); d_t=std::move(p.d_t);
+    return *this;
   }
 
   const Coweight& l () const { return d_l; }
