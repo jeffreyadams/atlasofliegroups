@@ -125,10 +125,10 @@ set G_K_roots_and_coroots_raw (KGBElt x) = ((mat,mat),(mat,mat)):
        elif k>j { first of a pair of complex posroots } then C_inx #:= j
        fi
     od
-  ; (( {proj * }r#for i in ic_inx#C_inx do proots[i] od
+  ; (( {proj * }r#for i in ic_inx##C_inx do proots[i] od
      , {pull_back * }
        (r#for i in ic_inx do pcroots[i] od)
-       # { concatenate matrices }
+       ## { concatenate matrices }
        (r#for i in C_inx
           do pcroots[i]*(1+delta)*(int: 1-pcroots[i]*delta*proots[i]) od
           { the factor after int: is yet another way of expressing c above }

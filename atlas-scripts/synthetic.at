@@ -98,9 +98,8 @@ set find_posroot (RootDatum rd, vec alpha) = int:
   let pr=posroots(rd) then i = n_columns(pr)-1
   in while i>=0 and pr[i]!=alpha do i-:=1 od; i
 
-set concat ([string] l,string a, string b, string c) = string:
-  let s = a then last=#l-1 in
-  for t@i in l do s#:= t # if i=last then c else b fi od; s
+set concat ([string] l,string open, string sep, string close) = string:
+  ## [open, ## for t@i in l do if =i then "" else sep fi + t od, close]
 
 set posroot_status (int i, Param p) = int:
   let rd=RootDatum: real_form(p) then st=status(root(rd,i),x(p)) in
@@ -116,7 +115,6 @@ begin let p=B[i]
   then rd=root_datum(p), id = integrality_datum(p)
   then i_simple = for alpha in simple_roots(id) do find_posroot(rd,alpha) od
   then stats = for a in i_simple do posroot_status(a,p) od
-  then line = concat(for st in stats do block_status_text(st) od ,"[",",","]")
   , v0(int alpha) = "(*,*)"
   , vi1(int alpha) = "(" + find(B,posroot_Cayley(alpha,p)) + ",*)"
   , vi2(int alpha) = let q=posroot_Cayley(alpha,p) in
@@ -124,11 +122,12 @@ begin let p=B[i]
   , vr2(int alpha) = "(" + find(B,posroot_inv_Cayley(alpha,p)) + ",*)"
   , vr1(int alpha) = let q=posroot_inv_Cayley(alpha,p) in
           "(" + find(B,q) + ","+ find(B,posroot_cross(alpha,q))+")"
-  in for alpha in i_simple
-     do line #:= "  " + find(B,posroot_cross(alpha,p)) od
-  ; for alpha@i in i_simple
-     do line #:= "  " # [v0,v0,vr1,vr2,v0,v0,vi1,vi2][stats[i]](alpha) od
-; line
+  in ##
+  [ concat(for st in stats do block_status_text(st) od ,"[",",","]")
+  , ## for alpha in i_simple    do "  " + find(B,posroot_cross(alpha,p)) od
+  , ## for alpha@i in i_simple
+       do "  " + case stats[i] in v0,v0,vr1,vr2,v0,v0,vi1,vi2 esac(alpha) od
+  ]
 end
 
 { the following function supposes v,w are unnormalized torus factors

@@ -118,6 +118,7 @@ anyway.
 
 enum expr_kind @+
  { @< Enumeration tags for |expr_kind| @>@;@; @+no_expr };
+typedef struct expr* expr_p; // raw pointer type for use on parser stack
 struct expr {
   expr_kind kind;
   union {@; @< Variants of the anonymous |union| in |expr| @>@; };
@@ -125,7 +126,6 @@ struct expr {
 @)
   @< Methods of |expr| @>@;
 };
-typedef expr* expr_p; // raw pointer type for use on parser stack
 typedef std::unique_ptr<expr> expr_ptr;
 @)
 @< Structure and typedef declarations for types built upon |expr| @>@;
@@ -488,23 +488,27 @@ case boolean_denotation:
 case string_denotation:
   out << '"' << e.str_denotation_variant << '"'; break;
 
-@*2 Applied identifiers, the last value computed, die.
+@*2 Applied identifiers, the last value computed, break, return, die.
 %
 For representing applied identifiers, we use the integer type |id_type|
 defined above. Their tag is |applied_identifier|. An expression that behaves
 somewhat similarly is `\.\$', which stands for the last value computed.
-Finally we have an expression \&{die} that can be used as a typeless dummy
-whose evaluation signals an error.
+Finally we have expressions |break|, |return e| and \&{die} that are
+type-less, and whose evaluation breaks from the most current loop respectively
+aborts evaluation.
 
 @< Enumeration tags for |expr_kind| @>=
 applied_identifier,
-last_value_computed,
+last_value_computed,break_expr,return_expr,
 die_expr, @[@]
 
-@ For identifiers we just store their code; for |last_value_computed| nothing
-at all.
+@ For |applied_identifier|s we just store their code, for |break_expr| their
+depth, for |return_expr| a pointer to another |expr|; for
+|last_value_computed| and |die_expr| nothing at all.
 @< Variants of ... @>=
 id_type identifier_variant;
+unsigned break_variant;
+expr_p return_variant;
 
 @ We need new tags here to define new constructors, which for the rest are
 straightforward.
@@ -512,11 +516,18 @@ straightforward.
 @< Methods of |expr| @>=
   struct identifier_tag @+{}; @+
   struct dollar_tag @+{};
+  struct break_tag @+{@; unsigned depth; };
+  struct return_tag @+{};
   struct die_tag @+{};
+@)
   expr(id_type id, const YYLTYPE& loc, identifier_tag)
 @/: kind(applied_identifier), identifier_variant(id), loc(loc) @+{}
   expr (const YYLTYPE& loc, dollar_tag)
   : kind(last_value_computed), loc(loc) @+{}
+  expr (const YYLTYPE& loc, break_tag t)
+  : kind(break_expr), break_variant(t.depth), loc(loc) @+{}
+  expr (expr_p exp, const YYLTYPE& loc, return_tag t)
+  : kind(return_expr), return_variant(exp), loc(loc) @+{}
   expr (const YYLTYPE& loc, die_tag)
   : kind(die_expr), loc(loc) @+{}
 
@@ -525,10 +536,11 @@ straightforward.
 @< Declarations of functions for the parser @>=
 expr_p make_applied_identifier (id_type id, const YYLTYPE& loc);
 expr_p make_dollar(const YYLTYPE& loc);
+expr_p make_break(unsigned n,const YYLTYPE& loc);
 expr_p make_die(const YYLTYPE& loc);
+expr_p make_return(expr_p exp,const YYLTYPE& loc);
 
-@~In spite of the absence of dedicated constructors, these function have
-rather simple definitions.
+@~These function have rather simple definitions.
 
 @< Definitions of functions for the parser @>=
 expr_p make_applied_identifier (id_type id, const YYLTYPE& loc)
@@ -536,31 +548,49 @@ expr_p make_applied_identifier (id_type id, const YYLTYPE& loc)
 
 expr_p make_dollar (const YYLTYPE& loc)
 @+{@; return new expr(loc,expr::dollar_tag()); }
+expr_p make_break (unsigned n,const YYLTYPE& loc)
+{@; return new expr(loc,@[expr::break_tag{n}@]); }
+expr_p make_return (expr_p exp,const YYLTYPE& loc)
+{@; return new expr(exp,loc,@[expr::return_tag{}@]); }
 expr_p make_die (const YYLTYPE& loc)
 @+{@; return new expr(loc,expr::die_tag()); }
 
-@~Like for integer and boolean denotations, there is nothing to destroy here.
+@~Like for integer and boolean denotations, there is nothing to destroy here,
+except for a |return_expr|.
 
 @< Cases for destroying... @>=
 case applied_identifier:
 case last_value_computed:
+case break_expr:
 case die_expr: break;
+case return_expr: delete return_variant; break;
 
-@ Having a POD type variant, copying an applied identifier can be done by
-assignment.
+@ Having a POD type variant, copying an applied identifier or break can be
+done by assignment; the other two cases have no data at all.
 
 @< Cases for copying... @>=
 case applied_identifier: identifier_variant=other.identifier_variant; break;
+case break_expr: break_variant=other.break_variant;
+case return_expr: return_variant=other.return_variant;
 case last_value_computed: case die_expr: break;
 
 @~To print an applied identifier, we look it up in the main hash table. We
-print \.\$ as the user wrote it.
+also print the other cases as the user wrote them.
 
 @< Cases for printing... @>=
 case applied_identifier:
   out << main_hash_table->name_of(e.identifier_variant);
 break;
 case last_value_computed: out << '$'; @q$@> break;
+case break_expr:
+{@;
+  out << " break ";
+  if (e.break_variant>0)
+    out << e.break_variant << ' ';
+}
+  break;
+case return_expr: @+{@; out << " return " << *e.return_variant; }
+  break;
 case die_expr: out << " die "; break;
 
 @*1 Expression lists.
@@ -824,26 +854,32 @@ source location.
 
 @< Methods of |expr| @>=
 expr(app&& fx, const YYLTYPE& loc)
- : kind(function_call)
+@/: kind(function_call)
  , call_variant(std::move(fx))
  , loc(loc)
  @+{}
 expr(app&& fx, const source_location& loc)
- : kind(function_call)
+@/: kind(function_call)
  , call_variant(std::move(fx))
  , loc(loc)
  @+{}
 
-@ Building an |application_node| combines the function expression with an
-|expr_list| for the argument. The argument list will either be packed into a
+@ Building an |application_node| usually combines the function expression with
+an |expr_list| for the argument. The argument list will either be packed into a
 tuple, or if it has length$~1$ unpacked into a single expression. For tracing
 the location of the argument tuple, two additional locations will be provided
 by the parser, those of the left and right parentheses that delimit the
 argument list (and which are present even for an empty argument list).
 
+Another version is provided if the argument is already grouped as a single
+expression, for use with the (generalised) field selector syntax, where the
+(projection) function follows the argument. Here no separate location
+for the argument is needed, as this information has already been included.
+
 @< Declarations of functions for the parser @>=
 expr_p make_application_node(expr_p f, raw_expr_list args,
  const YYLTYPE& loc, const YYLTYPE& left, const YYLTYPE& right);
+expr_p make_application_node(expr_p f, expr_p arg, const YYLTYPE& loc);
 
 @~Here for once there is some work to do. Since there are two cases to deal
 with, the argument expression is initially default-constructed, after which
@@ -864,7 +900,12 @@ expr_p make_application_node(expr_p f, raw_expr_list r_args,
       source_location(source_location(left),source_location(right)));
   return new expr(std::move(a),loc); // move construct application expression
 }
-
+@)
+expr_p make_application_node(expr_p f, expr_p arg, const YYLTYPE& loc)
+{ expr_ptr ff(f); expr_ptr args(arg);
+  app a(new application_node { std::move(*ff), std::move(*args) } );
+  return new expr(std::move(a),loc); // move construct application expression
+}
 @ Destroying a raw pointer field just means calling |delete| on it.
 
 @< Cases for destroying... @>=
@@ -948,8 +989,8 @@ expr_p make_unary_call(id_type name, expr_p a,
 @*2 Boolean negation.
 
 It used to be the case that a Boolean negation ``|not E|'' was converted inside
-the parser to the equivalent conditional expression ``|if E| \&{then} |false@;
-else true@;|~\&{fi}'', similarly to the way the Boolean operations |and| and
+the parser to the equivalent conditional expression ``|if E| \&{then}~|false|
+|else|~|true|~\&{fi}'', similarly to the way the Boolean operations |and| and
 |or| still are translated (which ensures their ``lazy'' evaluation). For |not|
 it is however more efficient to translate into the call of a simple built-in
 negation function. We therefore define an expression type for Boolean
@@ -1241,7 +1282,7 @@ length~$1$, will be forbidden: they would be confusing since $1$-tuples do not
 exist.
 
 The structure |raw_id_pat| cannot have a constructor, since it figures in a
-bare |union|, where this is not allowed. However the value from the will be
+bare |union|, where this is not allowed. However the value from them will be
 transformed into |id_pat| which is fully equipped with (move) constructors and
 destructors. Its default constructor will ensure that constructed nodes will
 immediately be safe for possible destruction by |destroy_id_pat| (no undefined
@@ -1272,10 +1313,12 @@ struct id_pat
   @/ : name(x.name), kind(x.kind)
   , sublist((kind & 0x2)==0 ? nullptr : x.sublist)
   @+{}
-  id_pat (id_type n, unsigned char k, patlist&& l)
-  : name(n), kind(k), sublist(std::move(l)) @+{}
+  id_pat (id_type n) : name(n), kind(0x1), sublist() @+{}
+    // name only,  no constness
   id_pat(patlist&& l): name(), kind(0x2),  sublist(std::move(l)) @+{}
     // no name, no constness
+  id_pat (id_type n, unsigned char k, patlist&& l)
+  : name(n), kind(k), sublist(std::move(l)) @+{}
 @)
   id_pat (const id_pat& x) = @[ delete @];
 @/id_pat& operator=(const id_pat& x) = @[ delete @];
@@ -1404,7 +1447,6 @@ struct let_pair { id_pat pattern; expr val;
   : pattern(std::move(x.pattern)), val(std::move(x.val)) @+{}
   let_pair (id_pat&& p, expr&& v)
   : pattern(std::move(p)), val(std::move(v)) @+{}
-#else
 #endif
 };
 typedef containers::simple_list<let_pair> let_list;
@@ -1700,17 +1742,26 @@ Of course we need if-then-else expressions.
 typedef struct conditional_node* cond;
 
 @~The parser handles \&{elif} constructions, so we only need to handle the
-basic two-branch case.
+basic two-branch case. Nonetheless we prefer to have the two branches as a
+linked list, so as to dispose of a |raw_expr_list| value that can be passed to
+the same balancing function as for instance the components of a list display
+(it would be quite tedious to reorganise the contents of two explicit |expr|
+fields to make them occur in a list without temporarily removing the
+originals, given that copying |expr| values is expensive). On the other hand,
+given that the list always has length~$2$, we can represent the list by its
+initial node.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct conditional_node
-{ expr condition; expr then_branch; expr else_branch;
+{ expr condition; containers::sl_node<expr> branches;
 @)
   conditional_node(expr&& condition, expr&& then_branch, expr&& else_branch)
 @/: condition(std::move(condition))
-  , then_branch(std::move(then_branch))
-  , else_branch(std::move(else_branch))@+{}
-  // backward compatibility for gcc 4.6
+  , branches(std::move(then_branch))
+  {@; branches.next.reset(new
+      containers::sl_node<expr>(std::move(else_branch)));
+  }
+  @< Other constructor for |conditional_node| @>@;
 };
 
 @ The tag used for these expressions is |conditional_expr|.
@@ -1723,10 +1774,12 @@ struct conditional_node
 @< Variants of ... @>=
 cond if_variant;
 
-@ There is a constructor for building conditional expressions.
+@ There is a constructor for building conditional expressions. As explained
+below, the variant |if_variant| will be reused (for case expressions), so
+exceptionally we pass the |expr_kind| tag explicitly.
 @< Methods of |expr| @>=
-expr(cond&& conditional, const YYLTYPE& loc)
- : kind(conditional_expr)
+expr(expr_kind which, cond&& conditional, const YYLTYPE& loc)
+ : kind(which)
  , if_variant(std::move(conditional))
  , loc(loc)
 @+{}
@@ -1735,14 +1788,15 @@ expr(cond&& conditional, const YYLTYPE& loc)
 @< Declarations of functions for the parser @>=
 expr_p make_conditional_node(expr_p c, expr_p t, expr_p e, const YYLTYPE& loc);
 
-@~It is entirely straightforward.
+@~Here we pass the |conditional_expr| tag explicitly to the |expr| constructor
+above.
 
 @< Definitions of functions for the parser @>=
 expr_p make_conditional_node(expr_p c, expr_p t, expr_p e, const YYLTYPE& loc)
 {
   expr_ptr cc(c), tt(t), ee(e);
   expr& cnd=*cc; expr& thn=*tt; expr& els=*ee;
-@/return new @| expr(new @|
+@/return new @| expr(conditional_expr, new @|
       conditional_node { std::move(cnd), std::move(thn), std::move(els) },loc);
 }
 
@@ -1764,7 +1818,8 @@ reconstruct \&{elif} constructions.
 @< Cases for printing... @>=
 case conditional_expr:
 { const cond& c=e.if_variant; out << " if " << c->condition @|
-  << " then " << c->then_branch << " else " << c->else_branch << " fi ";
+  << " then " << c->branches.contents @|
+  << " else " << c->branches.next->contents << " fi ";
 }
 break;
 
@@ -1774,29 +1829,29 @@ For a long time the language had no multi-way branching expression at all.
 Currently we implement a \&{case} expression selecting based on an integer
 value, explicit branches being given for a finite segment of the possible
 values. No doubt with the later introduction of distinguished union type there
-will be a richer set of \&{case} expressions. For now they are just syntactic
-sugar, and the code below transforms the ingredients of an
-integer-based \&{case} expression into an equivalent expression that realises
-the multi-way branching by selection a function from a row pf function values.
+will be a richer set of \&{case} expressions.
 
-We define a function for constructing the expression as usual. For now there
-is no corresponding expression type, but we name it as if there were one, so
-that we can later just replace the body this function to change the
-implementation.
+As a by-effect of representing the branches of a conditional expression as a
+non-empty list, the integer case expression becomes structurally
+\emph{equivalent} to the conditional expression (this time the
+branches can form a non-empty list of any length). So for the parse we just
+need a tag value to discriminate the two, but not a new variant in the union.
+
+@< Enumeration tags for |expr_kind| @>= int_case_expr, @[@]
+
+@~On the other hand, we do need a different constructor for
+|conditional_node| to handle the more general list.
+@< Other constructor for |conditional_node| @>=
+conditional_node(expr&& condition, containers::sl_node<expr>&& branches)
+@/: condition(std::move(condition))
+  , branches(std::move(branches))
+  @+{}
+
+@
+We define a function for constructing the expression as usual.
 
 @< Declarations of functions for the parser @>=
 expr_p make_int_case_node(expr_p selector, raw_expr_list ins, const YYLTYPE& loc);
-
-@ We shall need a variation of the |expr| constructor that builds its
-|lambda_variant|, because we want to duplicate (copy construct) an existing
-|source_location| rather than construct one from an |YYLTYPE| structure.
-
-@< Methods of |expr| @>=
-expr(lambda&& fun, const source_location& loc)
- : kind(lambda_expr)
- , lambda_variant(std::move(fun))
- , loc(loc)
-@+{}
 
 @ This time the implementation is not straightforward. We convert the
 in-expressions to functions without arguments, collect them in a list
@@ -1807,27 +1862,38 @@ function part and an empty argument list.
 @< Definitions of functions for the parser @>=
 expr_p make_int_case_node(expr_p s, raw_expr_list i, const YYLTYPE& loc)
 {
-  expr_ptr ss(s); expr_list ins(i);
+  expr_ptr ss(s); expr_list in_list(i);
   expr& selector=*ss;
-  for (auto it=ins.begin(); not ins.at_end(it); ++it)
-  { const source_location& it_loc = it->loc;
-    lambda f(new
-      lambda_node(id_pat(patlist()),void_type.copy(),std::move(*it)));
-    *it=expr(std::move(f),it_loc);
-  }
-  expr arr(std::move(ins),expr::tuple_display_tag());
-    // abuse of this tuple constructor
-  arr.kind = list_display; // but then set the correct kind
-  sub select(new subscription_node(std::move(arr), std::move(selector),false));
-    // non reversed
-  expr fun(std::move(select),loc); // function part is this subscription
-  expr arg {@[expr_list(),expr::tuple_display_tag()@]};
-    // avoid most vexing parse!
-  app result(new application_node(std::move(fun),std::move(arg)));
-    // call after selecting
-  return new expr(std::move(result),loc);
-    // generate final |expr|, return pointer
+  assert(not in_list.empty());
+  containers::sl_node<expr>& ins = *i;
+  return new expr(int_case_expr,new @|
+    conditional_node(std::move(selector),std::move(ins)),loc);
 }
+
+@ We could have done the following by putting a second switch label on the
+|@[case conditional_expr:@]| above
+@< Cases for copying... @>=
+case int_case_expr:
+  if_variant=other.if_variant;
+break;
+
+@~And similarly here.
+
+@< Cases for destroying... @>=
+case int_case_expr: delete if_variant; break;
+
+@ To print an integer case expression at parser level, we do the obvious.
+
+@< Cases for printing... @>=
+case int_case_expr:
+{ const cond& c=e.if_variant;
+  wel_const_iterator it(&c->branches);
+  out << " case " << c->condition << " in " << *it;
+  for (++it; not it.at_end(); ++it)
+    out  << ", " << *it;
+  out << " esac ";
+}
+break;
 
 
 
@@ -1864,17 +1930,16 @@ whether the loop index is absent.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct while_node
-{ expr condition; @+ expr body;
+{ expr body; // contains a |do|-expression producing condition and body
   BitSet<2> flags;
 @)
-  while_node(expr&& condition, expr&& body, unsigned flags)
-@/: condition(std::move(condition))
-  , body(std::move(body))
+  while_node(expr&& body, unsigned flags)
+@/: body(std::move(body))
   , flags(flags)@+{}
   // backward compatibility for gcc 4.6
 };
 struct for_node
-{ struct id_pat id; @+ expr in_part; @+ expr body;
+{ id_pat id; @+ expr in_part; @+ expr body;
   BitSet<2> flags;
 @)
   for_node(id_pat&& id, expr&& in_part, expr&& body, unsigned flags)
@@ -1931,7 +1996,7 @@ expr(c_loop&& loop, const YYLTYPE& loc)
 more \\{make}-functions.
 
 @< Declarations of functions for the parser @>=
-expr_p make_while_node(expr_p c, expr_p b, unsigned flags, const YYLTYPE& loc);
+expr_p make_while_node(expr_p b, unsigned flags, const YYLTYPE& loc);
 expr_p make_for_node
   (raw_id_pat& id, expr_p ip, expr_p b, unsigned flags, const YYLTYPE& loc);
 expr_p make_cfor_node
@@ -1941,11 +2006,10 @@ expr_p make_cfor_node
 @ They are quite straightforward, as usual.
 
 @< Definitions of functions for the parser @>=
-expr_p make_while_node(expr_p c, expr_p b, unsigned flags, const YYLTYPE& loc)
+expr_p make_while_node(expr_p b, unsigned flags, const YYLTYPE& loc)
 {
-  expr_ptr cc(c), bb(b);
-  expr& cnd=*cc; expr& body=*bb;
-  return new expr(new while_node { std::move(cnd), std::move(body), flags},loc) ;
+  expr_ptr bb(b); expr& body=*bb;
+  return new expr(new while_node { std::move(body), flags},loc) ;
 }
 @)
 expr_p make_for_node
@@ -1987,7 +2051,7 @@ input syntax.
 @< Cases for printing... @>=
 case while_expr:
 { const w_loop& w=e.while_variant;
-@/ out << " while " << w->condition << " do " << w->body << " od ";
+@/ out << " while " << w->body << " od ";
 }
 break;
 case for_expr:
@@ -2004,12 +2068,15 @@ case for_expr:
 }
 break;
 case cfor_expr:
-{ const c_loop& c=e.cfor_variant;
-@/out << " for " << main_hash_table->name_of(c->id) << ": " << c->count;
-  if (not is_empty(c->bound))
-    out << " from " << c->bound;
-  out << (c->flags[0] ? " ~do " : " do ") << c->body
-      << (c->flags[1] ? " ~od " : " od ");
+{ const cfor_node& c=*e.cfor_variant;
+@/out << " for ";
+  if (c.id!=id_type(-1))
+    out << main_hash_table->name_of(c.id);
+  out << ": " << c.count;
+  if (not is_empty(c.bound))
+    out << " from " << c.bound;
+  out << (c.flags[0] ? " ~do " : " do ") << c.body
+      << (c.flags[1] ? " ~od " : " od ");
 }
 break;
 
@@ -2294,14 +2361,19 @@ Simple assignment statements are quite simple as expressions.
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct assignment_node* assignment;
 
-@~In a simple assignment the left hand side is just an identifier.
+@~In a simple assignment the left hand side is just an identifier. However, we
+now also cater for general identifier patterns as left hand side, but keep
+having a special constructor for the single identifier case.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct assignment_node
-{ id_type lhs; expr rhs;
+{ id_pat lhs; expr rhs;
 @)
   assignment_node(id_type lhs, expr&& rhs)
 @/: lhs(lhs)
+  , rhs(std::move(rhs))@+{}
+  assignment_node(id_pat&& lhs, expr&& rhs)
+@/: lhs(std::move(lhs))
   , rhs(std::move(rhs))@+{}
 #ifdef incompletecpp11
   assignment_node(const assignment_node& x) = @[delete@];
@@ -2329,22 +2401,32 @@ expr(assignment&& a, const YYLTYPE& loc)
  , loc(loc)
 @+{}
 
-@ Assignment statements are built by |make_assignment|.
+@ Assignment statements are built by |make_assignment| (when simply assigning
+to an identifier) or by |make_multi_assignment| (for a more general pattern as
+left hand side, which requires using a different syntax).
 
 @< Declarations of functions for the parser @>=
 expr_p make_assignment(id_type lhs, expr_p rhs, const YYLTYPE& loc);
+expr_p make_multi_assignment(raw_id_pat& lhs, expr_p rhs, const YYLTYPE& loc);
 
-@~It does what one would expect it to (except for those who expect their
-homework assignment made).
+@~These functions do what one would expect them to (except for those who
+expect them to make their homework assignments).
 
 @< Definitions of functions for the parser@>=
-expr_p make_assignment(id_type lhs, expr_p r, const YYLTYPE& loc)
+
+expr_p make_assignment(id_type id, expr_p r, const YYLTYPE& loc)
 {
   expr_ptr rr(r); expr& rhs=*rr;
-  return new expr(new assignment_node { lhs, std::move(rhs) },loc);
+  return new expr(new @| assignment_node { id, std::move(rhs) },loc);
+}
+@)
+expr_p make_multi_assignment(raw_id_pat& lhs, expr_p r, const YYLTYPE& loc)
+{
+  expr_ptr rr(r); expr& rhs=*rr;
+  return new expr(new assignment_node { id_pat(lhs), std::move(rhs) },loc);
 }
 
-@ Copy by assignment of raw pointers, not really |new|.
+@ Copying is done by assignment of raw pointers, not really a novelty.
 
 @< Cases for copying... @>=
 case ass_stat: assign_variant=other.assign_variant; break;
@@ -2354,12 +2436,15 @@ case ass_stat: assign_variant=other.assign_variant; break;
 @< Cases for destroying... @>=
 case ass_stat: delete assign_variant; break;
 
-@ Printing assignment statements is absolutely straightforward.
+@ Printing assignment statements, we include |"set"| only if this cannot be a
+simple assignment
 
 @< Cases for printing... @>=
 case ass_stat:
 { const assignment& ass = e.assign_variant;
-  out << main_hash_table->name_of(ass->lhs) << ":=" << ass->rhs ;
+  if ((ass->lhs.kind&0x3)!=0x1)
+    out << "set ";
+  out << ass->lhs << ":=" << ass->rhs ;
 }
 break;
 
@@ -2462,7 +2547,7 @@ expr_p make_comp_upd_ass(expr_p l, id_type op, expr_p r,
   id_type array_name=s.array.identifier_variant;
       // save before move from |s.array|
   id_type hidden=lookup_identifier("$");@q$@>
-  id_pat v(hidden,0x1,patlist());
+  id_pat v(hidden);
   expr_ptr subs(new expr (new subscription_node@|
     (std::move(s.array)
     ,expr(hidden,loc,expr::identifier_tag())
@@ -2538,9 +2623,8 @@ expr_p make_recfun(id_type f, expr_p d,
    (new lambda_node@|(id_pat(),lam.parameter_type.copy(),std::move(dummy_body))
     ,loc);
   expr rec_assign (new assignment_node(f,std::move(definition)),loc);
-  id_pat v(f,0x1,patlist());
   return new expr(new let_expr_node @|
-    (std::move(v),std::move(dummy_f),std::move(rec_assign)),loc);
+    (id_pat(f),std::move(dummy_f),std::move(rec_assign)),loc);
 }
 
 
@@ -2558,26 +2642,25 @@ sequences by chaining pairs, instead of storing a vector of expressions: at
 three pointers overhead per vector, a chained representation is more compact
 as long as the average length of a sequence is less than~$5$ expressions.
 
-In fact we used this expression also for a variant of sequence expressions, in
-which the value of the \emph{first} expression is retained as final value,
-while the second expression is then evaluated without using its value; the
-|forward| field indicates whether the first form was used.
-
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct sequence_node
-{ expr first; expr last; bool forward;
+{ expr first; expr last;
 @)
-  sequence_node(expr&& first, expr&& last, bool forward)
+  sequence_node(expr&& first, expr&& last)
 @/: first(std::move(first))
-  , last(std::move(last))
-  , forward(forward)@+{}
+  , last(std::move(last))@+{}
   // backward compatibility for gcc 4.6
 };
 
-@ The tag used for sequence statements is |seq_expr|.
+@ In fact we use this expression also for two variants variant of sequence
+expressions, one in which the value of the \emph{first} expression is retained
+as final value and the second expression is then evaluated without using its
+value (the \&{next} keyword), and one where the result of the left operand
+determines whether the right operand will be evaluated or not (the |do| in
+|while| loops).
 
 @< Enumeration tags for |expr_kind| @>=
-seq_expr, @[@]
+seq_expr, next_expr, do_expr, @[@]
 
 @ And there is of course a variant of |expr_union| for sequences.
 @< Variants of ... @>=
@@ -2585,8 +2668,8 @@ sequence sequence_variant;
 
 @ As always there is a constructor for building the new variant.
 @< Methods of |expr| @>=
-expr(sequence&& s, const YYLTYPE& loc)
- : kind(seq_expr)
+expr(sequence&& s, unsigned which, const YYLTYPE& loc)
+ : kind(which==0 ? seq_expr : which==1 ? next_expr : do_expr)
  , sequence_variant(std::move(s))
  , loc(loc)
 @+{}
@@ -2595,35 +2678,51 @@ expr(sequence&& s, const YYLTYPE& loc)
 
 @< Declarations of functions for the parser @>=
 expr_p make_sequence
-  (expr_p first, expr_p last, bool forward, const YYLTYPE& loc);
+  (expr_p first, expr_p last, unsigned which, const YYLTYPE& loc);
 
 @~It does what one would expect it to.
 
 @< Definitions of functions for the parser @>=
 expr_p make_sequence
-  (expr_p f, expr_p l, bool forward, const YYLTYPE& loc)
+  (expr_p f, expr_p l, unsigned which, const YYLTYPE& loc)
 {
   expr_ptr ff(f), ll(l); expr& first=*ff; expr& last=*ll;
   return new expr(new @|
-    sequence_node { std::move(first), std::move(last), forward } ,loc);
+    sequence_node { std::move(first), std::move(last) }, which ,loc);
 }
 
-@ Is this the final case? For now, it is!
+@ Are these the final cases? For now, they are!
 
 @< Cases for copying... @>=
-case seq_expr: sequence_variant=other.sequence_variant; break;
+case seq_expr:
+case next_expr:
+case do_expr:
+   sequence_variant=other.sequence_variant; break;
 
 @ Finally sequence nodes need destruction, like everything else.
 
 @< Cases for destroying... @>=
-case seq_expr: delete sequence_variant; break;
+case seq_expr:
+case next_expr:
+case do_expr:
+   delete sequence_variant; break;
 
 @ Printing sequences is absolutely straightforward.
 
 @< Cases for printing... @>=
 case seq_expr:
 {@; const sequence& seq = e.sequence_variant;
-  out << seq->first << (seq->forward ? ";" : " next ") << seq->last ;
+  out << seq->first << "; " << seq->last ;
+}
+break;
+case next_expr:
+{@; const sequence& seq = e.sequence_variant;
+  out << seq->first << " next " << seq->last ;
+}
+break;
+case do_expr:
+{@; const sequence& seq = e.sequence_variant;
+  out << seq->first << " do " << seq->last ;
 }
 break;
 

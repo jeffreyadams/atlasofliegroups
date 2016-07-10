@@ -139,18 +139,16 @@ set poly_permute_basis(poly P, poly_mat A) = poly_mat: { P is permutation }
 { make a printable string out of a polynomial and name of indeterminate,
   for use in other print functions }
 set stringPoly (poly v, string q)= string:
-  if =v then "0"
-  else
-    let rv="" in
-    for c@k in v do
-      if c!=0 then
-	let coef = if c<0 then "-" else "+" fi #
-            if abs(c)=1 and k>0 then "" else int_format(abs(c)) fi
-	,   term = if k>1 then q#"^"#int_format(k) elif k=0 then "" else q fi
-	in rv #:= coef#term
+  if =v then "0" else
+  ##for c@k in v do
+      if =c then "" else
+      ##
+      [ { sign } if c<0 then "-" else "+" fi
+      , { coefficient } if abs(c)=1 and k>0 then "" else int_format(abs(c)) fi
+      , { monomial } if k>1 then q+"^"+int_format(k) elif k=0 then "" else q fi
+      ]
       fi
     od
-  ; rv
   fi
 
 { nice printing of a polynomial }

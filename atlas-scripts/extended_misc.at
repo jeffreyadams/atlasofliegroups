@@ -38,8 +38,7 @@ set Cayley_set (int j,Param p) = [Param]:
 
 { doubly iterated Cayley }
 set Cayley_set (int j, int k, Param p) = [Param]:
-  let rv=[Param]: [] in
-  for q in Cayley_set(k,p) do rv #:=Cayley_set(j,q) od; rv
+  ## for q in Cayley_set(k,p) do Cayley_set(j,q) od
 
 { uniform syntax for single or iterated Cayley }
 set Cayley_set ([int] kappa, Param p) = [Param]:

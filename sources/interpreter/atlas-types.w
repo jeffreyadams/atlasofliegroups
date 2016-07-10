@@ -1941,7 +1941,7 @@ void inner_class_equality_wrapper(expression_base::level l)
 { shared_inner_class G = get<inner_class_value>();
   shared_inner_class H = get<inner_class_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(&G->val==&H->val));
+    push_value(whether(&G->val==&H->val));
 }
 @)
 void distinguished_involution_wrapper(expression_base::level l)
@@ -2361,7 +2361,7 @@ void real_form_equals_wrapper(expression_base::level l)
   shared_real_form x = get<real_form_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<bool_value> (x->val==y->val));
+  push_value(whether(x->val==y->val));
 }
 
 @*2 Dual real forms.
@@ -2419,7 +2419,7 @@ evaluations must be even). If this test succeeds, the function then returns
 the corresponding real form, but in which a cocharacter value is stored
 (representing the square of any strong involution for the real form) deduced
 from the given torus element, which may differ from the value for the (weak)
-real form selected by the number |rf->val;realForm()| in the inner class. This
+real form selected by the number |rf->val.realForm()| in the inner class. This
 difference notably allows the same strong involution representative to be
 subsequently used to specify a KGB element for this (strong) real form.
 
@@ -3235,8 +3235,7 @@ void KGB_equals_wrapper(expression_base::level l)
   shared_KGB_elt x = get<KGB_elt_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<bool_value>(
-   @| x->rf->val==y->rf->val and x->val==y->val));
+  push_value(whether(x->rf->val==y->rf->val and x->val==y->val));
 }
 
 @ Finally we install everything related to $K\backslash G/B$ elements.
@@ -3669,22 +3668,21 @@ void is_standard_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   RootNbr witness;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>
-		(p->rc().is_standard(p->val,witness)));
+    push_value(whether(p->rc().is_standard(p->val,witness)));
 }
 
 void is_zero_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   RootNbr witness;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(p->rc().is_zero(p->val,witness)));
+    push_value(whether(p->rc().is_zero(p->val,witness)));
 }
 
 void is_final_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   RootNbr witness;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(p->rc().is_final(p->val,witness)));
+    push_value(whether(p->rc().is_final(p->val,witness)));
 }
 
 @ Before constructing (non-integral) blocks, it is essential that the
@@ -3731,7 +3729,7 @@ void parameter_equivalent_wrapper(expression_base::level l)
     StandardRepr z0=p->val, z1=q->val; // copy
     if (p->rc().is_standard(z0,witness) and q->rc().is_standard(z1,witness))
   @/{@; p->rc().make_dominant(z0); q->rc().make_dominant(z1); }
-    push_value(std::make_shared<bool_value>(z0==z1));
+    push_value(whether(z0==z1));
   }
 }
 
@@ -4315,25 +4313,25 @@ void split_int_value::print(std::ostream& out) const @+
 void split_unary_eq_wrapper(expression_base::level l)
 { Split_integer i=get<split_int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i.e()==0 and i.s()==0));
+    push_value(whether(i.e()==0 and i.s()==0));
 }
 void split_unary_neq_wrapper(expression_base::level l)
 { Split_integer i=get<split_int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i.s()!=0 or i.e()!=0));
+    push_value(whether(i.s()!=0 or i.e()!=0));
 }
 @)
 void split_eq_wrapper(expression_base::level l)
 { Split_integer j=get<split_int_value>()->val;
   Split_integer i=get<split_int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i==j));
+    push_value(whether(i==j));
 }
 void split_neq_wrapper(expression_base::level l)
 { Split_integer j=get<split_int_value>()->val;
   Split_integer i=get<split_int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(i!=j));
+    push_value(whether(i!=j));
 }
 @)
 void split_plus_wrapper(expression_base::level l)
@@ -4494,22 +4492,16 @@ void real_form_of_virtual_module_wrapper(expression_base::level l)
     push_value(m->rf);
 }
 @)
-void virtual_module_size_wrapper(expression_base::level l)
-{ shared_virtual_module m = get<virtual_module_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(m->val.size()));
-}
-
 void virtual_module_unary_eq_wrapper(expression_base::level l)
 { shared_virtual_module m = get<virtual_module_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(m->val.empty()));
+    push_value(whether(m->val.empty()));
 }
 
 void virtual_module_unary_neq_wrapper(expression_base::level l)
 { shared_virtual_module m = get<virtual_module_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<bool_value>(m->val.size()>0));
+    push_value(whether(m->val.size()>0));
 }
 
 @)
@@ -4521,9 +4513,9 @@ void virtual_module_eq_wrapper(expression_base::level l)
   auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
   for (; mit!=m->val.end() and nit!=n->val.end(); ++mit,++nit)
     if (mit->first!=nit->first or mit->second!=nit->second)
-    @/{@;  push_value(std::make_shared<bool_value>(false));
+    @/{@;  push_value(whether(false));
       return; }
-  push_value(std::make_shared<bool_value>
+  push_value(whether
       (mit==m->val.end() and nit==n->val.end()));
 }
 void virtual_module_neq_wrapper(expression_base::level l)
@@ -4534,10 +4526,20 @@ void virtual_module_neq_wrapper(expression_base::level l)
   auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
   for (; mit!=m->val.end() and nit!=n->val.end(); ++mit,++nit)
     if (mit->first!=nit->first or mit->second!=nit->second)
-    @/{@;  push_value(std::make_shared<bool_value>(true));
+    @/{@;  push_value(whether(true));
       return; }
-  push_value(std::make_shared<bool_value>
+  push_value(whether
     (mit!=m->val.end() or nit!=n->val.end()));
+}
+
+@ This function must be global, it is declared in the header
+file \.{global.h}.
+
+@< Function definitions @>=
+void virtual_module_size_wrapper(expression_base::level l)
+{ shared_virtual_module m = get<virtual_module_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(m->val.size()));
 }
 
 

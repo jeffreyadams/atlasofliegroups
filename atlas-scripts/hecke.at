@@ -205,7 +205,7 @@ begin prints("Computing fixed parameters in block of size ", #B)
     if find_pair((x,y), done) then k:=k+1
     else let subspace=generate_subspace(i,j,E(delta,gamma,x,g,y)) in
       prints("Computed subspace ", #subspaces, " of dimension ", #subspace)
-    ; subspaces #:= subspace; sizes #:= #subspace; done #:= subspace
+    ; subspaces #:= subspace; sizes #:= #subspace; done ##:= subspace
     fi
   od
 ; (subspaces,#B_0,sizes)

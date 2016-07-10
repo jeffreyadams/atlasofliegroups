@@ -184,7 +184,7 @@ typedef atlas::containers::sl_node<type_expr>* raw_type_list;
 typedef containers::sl_list<type_expr> dressed_type_list;
 typedef containers::weak_sl_list_const_iterator<type_expr> wtl_const_iterator;
 typedef containers::weak_sl_list_iterator<type_expr> wtl_iterator;
-  // wel = weak type list
+  // wtl = weak type list
 
 @ Since types and type lists own their trees, their copy constructors must
 make a deep copy. The class |type_expr| will provide no copy constructor but
@@ -464,7 +464,7 @@ where |insert| can be used to add node (note that the class template
 |end| methods usually are).
 
 This is the one place where we need to cater for the fact that we cannot
-create a e|type_list::iterator| for the |tupple| field, which is a raw
+create an |type_list::iterator| for the |tupple| field, which is a raw
 pointer. Instead we create an initially empty |type_list dst@;| and make an
 iterator for it; after creating the nodes of the list, the |type_list| is
 demoted to |raw_type_list| by calling its |release| method, which raw
@@ -1803,11 +1803,12 @@ was found. The function |conform_types| first tries to specialise the type
 |required| to the one |found|, and if this fails tries to coerce |found| to
 |required|, in the latter case enveloping the translated expression |d| in the
 applied conversion function; if both fail an error mentioning the
-expression~|e| is thrown. The function |row_coercion| specialises if possible
-|component_type| in such a way that the corresponding row type can be coerced
-to |final_type|, and returns a pointer to the |conversion_record| for the
-coercion in question. The function |coercion| serves for filling the coercion
-table.
+expression~|e| is thrown.
+
+The function |row_coercion| specialises if possible |component_type| in such a
+way that the corresponding row type can be coerced to |final_type|, and
+returns a pointer to the |conversion_record| for the coercion in question. The
+function |coercion| serves for filling the coercion table.
 
 @< Declarations of exported functions @>=
 
@@ -1939,19 +1940,33 @@ void coercion(const type_expr& from,
 {@; coerce_table.emplace_back(from,to,s,f); }
 
 @ There is one coercion that is not stored in the lookup table, since it can
-operate on any input type: the voiding coercion. It is necessary for instance
-to allow a conditional expression that is intended for its side effects only,
-to have branches that evaluate to different types (including the possibility
-of absent branches which will be taken to deliver an empty tuple): the
-conditional expression will get \.{void} type to which the result of each of
-its branches can be coerced.
+operate on any input type: the ``voiding'' coercion. It can be applied during
+type analysis to for instance to allow a conditional expression in a void
+context to have branches that evaluate to different types (including the
+possibility of absent branches which will be taken to deliver an empty tuple):
+those branches which do not already have void type will get their resulting
+value voided, so that in the end all branches share the void type of the
+entire conditional.
 
-In fact voiding is not dealt with using a |conversion| expression, since as we
-have seen its |evaluate| method evaluates its argument using the |eval|
-method, so with |level| parameter set to |single_value|. However for a voiding
-coercion this level should be |no_value|. So we introduce a type derived from
-|expression| whose main virtue is that its |evaluate| method sets the level to
-|no_value| by calling |void_eval|.
+At runtime, voiding is mostly taken care of by the |level| argument~|l| passed
+around in the evaluation mechanism. Any subexpressions with imposed void type,
+like the expression before the semicolon in a sequence expression, will get
+their |evaluate| method called with |l==no_value|, which suppresses the
+production of any value on the |execution_stack|. This setting will be
+inherited down to for instance the branches, if the subexpression was a
+conditional, so nothing special needs to be done to ensure that branches which
+originally had non-void type get voided. However, there are some rare cases
+where the void type does not derive from the syntactic nature of the context,
+such as in the right hand side of an assignment to a variable that happens to
+have |void| type (a quite useless but valid operation). In these cases the
+type analysis will have to explicitly insert a mechanism to avoid a value to
+be produced (and in the example, assigned) where none was intended.
+
+The |voiding| expression type serves that purpose. It distinguishes itself
+from instances of |conversion|, in that |voiding::evaluate| calls |evaluate|
+for the contained expression with |l==no_value|, rather than with
+|l==single_value| as |conversion::evaluate| does. If fact that is about all
+that |voiding| is about.
 
 @< Type definitions @>=
 class voiding : public expression_base
@@ -1962,9 +1977,9 @@ public:
   virtual void print(std::ostream& out) const;
 };
 
-@ The |evaluate| method should not ignore its |level| argument completely:
-when |l==single_value| an actual empty tuple should be produced, which
-|wrap_tuple<0>()| does.
+@ The |voiding::evaluate| method should not ignore its own |level| argument
+completely: when called with |l==single_value|, an actual empty tuple should
+be produced on the stack, which |wrap_tuple<0>()| does.
 
 @< Function definitions @>=
 void voiding::evaluate(level l) const
@@ -1982,23 +1997,36 @@ appropriate entry, and wraps |e| into a corresponding |conversion| it finds
 one. Ownership of the expression pointed to by |e| is handled implicitly: it
 is released during the construction of the |conversion|, and immediately
 afterwards |reset| reclaims ownership of the pointer to that |conversion|.
-Note that in the |conversion| constructor, the first argument |*it| is used
-only for its |conversion_info| base type; the |from| and |to| fields are not
-accessible to the newly built expression. As last resort we build a |voiding|
-if |to_type==void_type|.
+Note that the |conversion| constructor uses |*it| only for its
+|conversion_info| base type; the types |from| and |to| are not retained at run
+time.
+
+When |to_type==void_type|, the conversion always succeeds, as the syntactic
+voiding coercion is allowed in all places where |coerce| is called. We used to
+do |e.reset(new voiding(std::move(e)));| in that case as well, which is a safe
+way to ensure that voiding will take place dynamically whenever present
+syntactically. However as argued above, in most cases no runtime action is
+necessary, since the context will have already set |l==no_value| for
+subexpressions with void type. In removing that statement from the code below,
+we have moved responsibility to type analysis, which must now ensure that any
+subexpression with void type will have |l==no_value| when evaluated. This
+means that in some cases a |voiding| has to be constructed explicitly. This
+crops up in many places (for instance a component in a tuple display just
+might happen to have void type), but almost all such cases are far-fetched; so
+we trade some economy of code for efficiency in execution.
 
 @< Function definitions @>=
 bool coerce(const type_expr& from_type, const type_expr& to_type,
 	    expression_ptr& e)
-{ for (auto it=coerce_table.begin(); it!=coerce_table.end(); ++it)
+{ if (to_type==void_type)
+  {@;
+     return true;
+  } // syntactically voided here, |e| is unchanged
+  for (auto it=coerce_table.begin(); it!=coerce_table.end(); ++it)
     if (from_type==*it->from and to_type==*it->to)
     @/{@; e.reset(new conversion(*it,std::move(e)));
       return true;
     }
-  if (to_type==void_type)
-  {@; e.reset(new voiding(std::move(e)));
-     return true;
-  }
   return false;
 }
 
@@ -2151,10 +2179,12 @@ close to each other (and therefore mutually exclusive for overloading). This
 used to be the convention adopted, but it was found to be rather restrictive
 in use, so the rules were changed to state that an un-cast expression \.{[]}
 will not match overload instances of specific row types; it might match an
-parameter of specified type \.{[*]} (once we allow that as type expression),
-and such a parameter could \emph{only} take an empty list corresponding
-argument (which is very limiting of course, but it allows being explicit about
-which overloaded instance should be selected by an argument \.{[]}).
+parameter of specified type \.{[*]} (we allow that as type specification for
+function parameters), and such a parameter can \emph{only} take an empty
+list corresponding argument (this is very limiting of course, but it allows
+being explicit about which overloaded instance should be selected by an
+argument \.{[]}, by defining an overload for \.{[*]} that explicitly calls
+the one for say \.{[vec]}).
 
 These considerations are not limited to empty lists (although it is the most
 common case): whenever an expression has an \foreign{a priori} type
@@ -2208,6 +2238,66 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
          and (flags&=is_close(*it0,*it1))!=0)
   @/{@; ++it0; ++it1; }
   return it0.at_end() and it1.at_end() ? flags : 0x0;
+}
+
+@ For balancing we need a related but slightly different partial ordering on
+types. The function |broader_eq| tells whether an expression of \foreign{a
+priori} type |b| might also valid (with possible coercions inserted) in the
+context of type~|a|; if so we call type |a| broader than~|b|.
+
+@< Declarations of exported functions @>=
+bool broader_eq (const type_expr& a, const type_expr& b);
+
+@~The relation |greater_eq(a,b)| does not imply that values of type~|b| can be
+converted to type~|a|; what is indicated is a possible conversion of
+expressions might depend on the form of the expressions, and only be achieved
+by coercions applied to more or less deeply nested subexpressions (for
+instance a list display is required if $a$ is \.{[rat]} and |b| is \.{[int]}).
+It is not the responsibility of |greater_eq| to decide whether this succeeds
+or not (an error will be thrown later if it turns out to fail), but it defines
+a partial ordering to guide which types are candidate types will be
+considered.
+
+Since these are types deduced for expressions rather than required type
+patterns, \.* stands for tho most narrow rather than a very broad type, indeed
+one for an expression like \.{die} that can never return a value, and the
+type \.{[*]} is narrower than any other row type (the only value that an
+expression with this type can return is an empty list). Nonetheless
+``broader'' does not imply more possible values, and the type \.{void} is the
+broadest of all since all values can be converted to it.
+
+The implementation is by structural recursion, like |is_close|, but some
+details are different. We do take |void_type| into consideration here, as well
+as the (rare) type |unknown_type|. Since we want to define a partial ordering,
+we must forbid one direction of all two-way coercions; since those always
+involve exactly one primitive types, we do this by only allowing the
+conversion in the direction of the primitive type. For the rest we just do the
+recursion in the usual way with just one twist: function types can only be
+comparable if they have equal argument types, but there might be a recursive
+|broader_eq| relation between the result types (because a coercion might
+``creep into'' the body of a lambda expression; this is not likely, but we can
+cater for it here).
+
+@< Function definitions @>=
+bool broader_eq (const type_expr& a, const type_expr& b)
+{ if (a==void_type or b==unknown_type)
+    return true;
+  if (a==unknown_type or b==void_type)
+    return false;
+  if (a.kind==primitive_type)
+    return (is_close(a,b)&0x2)!=0; // whether |b| can be converted to |a|
+  if (a.kind!=b.kind) // includes remaining cases where |b.kind==primitive_type|
+    return false; // no broader between different kinds on non-primitive types
+  if (a.kind==row_type)
+    return broader_eq(*a.component_type,*b.component_type);
+  if (a.kind==function_type)
+    return a.func->arg_type==b.func->arg_type and @|
+    broader_eq(a.func->result_type,b.func->result_type);
+  wtl_const_iterator itb(b.tupple);
+  for (wtl_const_iterator ita(a.tupple);
+       not ita.at_end(); ++ita,++itb)
+    if (itb.at_end() or not broader_eq(*ita,*itb)) return false;
+  return itb.at_end(); // if list of |a| has ended, that of |b| must as well
 }
 
 @* Error values.
@@ -2312,7 +2402,7 @@ struct type_error : public expr_error
     : expr_error(e,"Type error") @|
       ,actual(std::move(a)),required(std::move(r)) @+{}
 #ifdef incompletecpp11
-  type_error@[(type_error&& e)
+  type_error(type_error&& e)
   : expr_error(std::move(e))
   , actual(std::move(e.actual)), required(std::move(e.required)) @+{}
   ~type_error () throw() @+{}
@@ -2320,6 +2410,56 @@ struct type_error : public expr_error
   type_error@[(type_error&& e) = default@];
 #endif
 };
+
+@ For type balancing, we shall use controlled throwing and catching of errors
+inside the type checker, which is facilitated by using a dedicated error type.
+If balancing ultimately fails, this error will be thrown uncaught by the
+balancing code, so |catch| blocks around type checking functions must be
+prepared to report the types that are stored in the error value.
+
+@< Type definitions @>=
+struct balance_error : public expr_error
+{ containers::sl_list<type_expr> variants;
+  balance_error(const expr& e)
+  : expr_error(e,"No common type found"), variants() @+{}
+};
+
+@ Here is another special purpose error type, throwing of which does not
+always signal an error. In fact it is meant to always be caught silently,
+since its purpose is to implement a |break| statement that will allow
+terminating the execution of loops other than through the regular termination
+condition. During analysis we check that any use of |break| occurs within some
+loop, and without being inside an intermediate $\lambda$-expression (which
+would allow smuggling it out of the loop), so not catching a thrown
+|loop_break| should never happen. Therefore we derive this type from
+|logic_error|, so that should this ever happen, it will be reported as such.
+
+@< Type definitions @>=
+struct loop_break : private logic_error
+{ unsigned depth;
+  loop_break(int n)
+  : logic_error("Uncaught break from loop"), depth(n) @+{}
+#ifdef incompletecpp11
+  ~loop_break () throw() @+{}
+#endif
+} ;
+
+
+@ Similarly to the above, there is a |function_return| object that can be
+thrown to implement a |return| expression. Again analysis will have ensured
+that the object will always be caught, so this type as well will be derived
+from |logic_error|.
+
+@< Type definitions @>=
+struct function_return : private logic_error
+{ shared_value val;
+  function_return(shared_value&& val)
+  : logic_error("Uncaught return from function"), val(val) @+{}
+#ifdef incompletecpp11
+  ~function_return () throw() @+{}
+#endif
+} ;
+
 
 @ When a user interrupts the computation, we wish to return to the main
 interpreter loop. To that end we shall at certain points in the program check

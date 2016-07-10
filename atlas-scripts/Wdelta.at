@@ -42,9 +42,8 @@ set length (RootDatum rd, int i,int j) = int:
   if =coroot(rd,j)*root(rd,i) then 2 else 3 fi
 
 set rewrite_word_Wdelta_to_W (InnerClass ic, W_word({rd_delta},w)) = W_word:
-  let table= translate_Wdelta_generators(ic), trans= [int]: [] in
-  for s in w do trans #:= table[s] { concatenate } od;
-  (RootDatum:ic,trans)
+  let table= translate_Wdelta_generators(ic)
+  in (RootDatum:ic, ## for s in w do table[s] od)
 
 set rewrite_word_Wdelta_to_W (RootDatum rd,mat delta,W_word ww) = W_word:
   rewrite_word_Wdelta_to_W(inner_class(rd,delta), ww)

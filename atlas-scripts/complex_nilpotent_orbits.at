@@ -46,7 +46,7 @@ for alpha in posroots(rd) do if alpha*H>rv then rv:=alpha*H fi od; rat_as_int(rv
 set all_eigenspaces(RootDatum rd, ratvec H)=[int]:
 assert(is_dominant(dual(rd),H),"H is not dominant");
 let sum=0 in
-let rv=[] in
+let rv=[int]:[] in
 for k:max_eigenspace(rd,H)+1 do
 let d=dim_eigenspace(rd,H,k) in
 rv#:=d;if k=0 then sum+:=d  else sum+:=2*d fi od ;
@@ -95,7 +95,7 @@ sort_by((vec v,rat c) rat: c)
 
 
 set smash([int] v,[[int]] A)=[[int]]:
-let rv=[] in
+let rv=[[int]]:[] in
 for a in A do
  for c in v do rv#:=c#a od od;rv
 
@@ -177,11 +177,14 @@ begin
 end
 
 set max_only([(vec,[vec])] arg)=[(vec,[vec])]:
-if #arg>0 then
-let (H_last,vectors_last)=arg[#arg-1] then
-max=#vectors_last in
-let rv=[] in
-for (H,vectors) in arg do if #vectors=max then rv#:=(H,vectors) fi od;rv else [(vec:null(0),[vec]:[])] fi
+  if #arg>0
+  then
+    let (H_last,vectors_last)=arg[#arg-1] then max=#vectors_last 
+    then rv= [(vec,[vec])]: []
+    in for (H,vectors) in arg do if #vectors=max then rv#:=(H,vectors) fi od
+  ; rv
+  else [(vec:null(0),[])]
+  fi
 
 {
 
@@ -315,7 +318,8 @@ let i=first(#C,(int i)bool:is_Aq(element(B,C[i]))) in i!=-1
 set is_Aq(Block B,int i)=bool:is_Aq(element(B,i))
 
 set Aq_cells(Block B,[[int]] cells)=
-let rv=[] in for C in cells do if is_Aq_cell(B,C) then rv#:=C fi od;rv
+  let rv=[[int]]:[] in
+  for C in cells do if is_Aq_cell(B,C) then rv#:=C fi od; rv
 
 set Aq_reps(Block B,[int] cell)=
 let rv=[int]:[] in for i in cell do if is_Aq(B,i) then rv#:=i fi od ;rv
