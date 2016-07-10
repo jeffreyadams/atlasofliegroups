@@ -90,6 +90,22 @@ set integral_shift (ratvec v, mat simples,(vec d,mat L,mat R)) = vec:
   in assert ((sol*L1s)%2 = vals,"no solution mod 2"); sol * L1
 
 set dual_KGB (Param p, InnerClass dual_int_ic) = KGBElt:
+  let x=x(p)
+  then dual_tf=infinitesimal_character(p) - lambda(p) 
+  then dual_theta = -^involution(x)  { |dual_tf| is |dual_theta|-stable }
+  then (simple_ims,)= simple_from_positive(imaginary_sys(dual_int_ic,dual_theta))
+  then (rho_corr,dLR) { correct the change of rho_check implicit in dual_tf }
+    = fixed_lift(dual_theta-1,rho(root_datum(p))-rho(integrality_datum(p)))
+  then integral_shift=integral_shift(rho_corr-rho_r(x),simple_ims,dLR)
+  then phi = dual_tf + rho_corr { dual_theta stable rep.tive of dual square }
+  then ()=prints("integral_shift:", integral_shift)  
+  then ()=prints("rho_corr:", rho_corr) 
+  in KGB_elt(dual_int_ic,
+             dual_theta,
+             phi+integral_shift)
+
+{
+set dual_KGB (Param p, InnerClass dual_int_ic) = KGBElt:
   let x=x(p), dual_tf=infinitesimal_character(p) - lambda(p)
   then dual_theta = -^involution(x)  { |dual_tf| is |dual_theta|-stable }
   then (rho_corr,dLR) { correct the change of rho_check implicit in dual_tf }
@@ -98,7 +114,7 @@ set dual_KGB (Param p, InnerClass dual_int_ic) = KGBElt:
   then phi = dual_tf + rho_corr { dual_theta stable rep.tive of dual square }
   in KGB_elt(dual_int_ic,dual_theta
             ,phi+integral_shift(rho_corr-rho_r(x),simple_ims,dLR))
-
+}
 set central_cocharacter (RealForm G) = ratvec:
   (base_grading_vector(G) + rho_check(G))%1
 
