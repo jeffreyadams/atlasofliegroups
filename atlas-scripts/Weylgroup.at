@@ -43,9 +43,10 @@ set dual_non_dominant_index (RootDatum rd, vec cowt) = int:
   last(simple_roots(rd),(vec alpha): cowt*alpha>=0)
 
 { make_dominant(rd,v)
-  returns (v_dom,w) where v_dom dominant and v=act(w,v_dom)
+  returns (v_dom,w) where v_dom is dominant and v=act(w,v_dom)
 }
 set make_dominant (RootDatum rd, vec v) = (vec,W_word):
+  assert(#v=rank(rd),"vector v wrong size for root datum rd");
   let i=0 { needed to pass value across 'do' }
   then w = while >=(i:=non_dominant_index(rd,v)) do v:=reflect(rd,i,v); i od
   in (v,(rd,w))

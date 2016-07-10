@@ -13,20 +13,23 @@
 {equality of KHighestWeights}
 set = (KHighestWeight (x,mu), KHighestWeight (y,tau)) = bool:
   real_form(x)=real_form(y) and
- (let x_0=KGB(real_form(x),0) then
+  (let x_0=KGB(real_form(x),0) then
   (,mu_0)=move_weight((x,mu),x_0) then
   (,tau_0)=move_weight((y,tau),x_0) then
   K_0=K_0(x_0) then
-  mu_1=project_K(x_0,mu_0) then
-  tau_1=project_K(x_0,tau_0) then
-  (mu_2,w_mu2,y_mu2,)=make_strongly_dominant(x_0,mu_1) then
+  mu_1=project_K(x_0,mu_0) then   {element of X^*(T_{K_0})}
+  tau_1=project_K(x_0,tau_0) then {element of X^*(T_{K_0})}
+{  (mu_2,w_mu2,y_mu2,)=make_strongly_dominant(x_0,mu_1) then
   (tau_2,w_tau2,y_tau2,)=make_strongly_dominant(x_0,tau_1)
+}
+  (mu_2,w_mu2)=make_dominant(K_0,mu_1) then
+  (tau_2,w_tau2)=make_dominant(K_0,tau_1)
   in mu_2=tau_2 and
 { lift action of w up to H, and then compare projection of
   w\mu and \tau to X^*(H^\delta)=X^*/(1-delta)X^* }
   ( let m_w_mu2=lift_action(x,w_mu2) then
-    m_G_mu_2=lift_action(x,w_mu2)*w_matrix(y_mu2) then
-    m_G_tau_2=lift_action(x,w_tau2)*w_matrix(y_tau2) then
+    m_G_mu_2=lift_action(x,w_mu2){*w_matrix(y_mu2)} then
+    m_G_tau_2=lift_action(x,w_tau2){*w_matrix(y_tau2)} then
     mu_3=m_G_mu_2*mu_0 then
     tau_3=m_G_tau_2*tau_0
     in
@@ -104,11 +107,13 @@ set centralizer(KGBElt x,ratvec v) = (KGBElt,RootDatum):
   in (KGB_elt(subrd,involution(x),torus_factor(x)),subrd)
 
 set find_nci_root (KGBElt x,ratvec tau) = int:
+  let ()=prints("find nci_root with x=", x,  " tau=", tau) in 
   let rd=root_datum(x)
   then sr=simple_roots(rd), scr=simple_coroots(rd),ssr=ss_rank(rd)
   then j= first(ssr, (int i)bool: scr[i]*tau<0 and is_noncompact(x)(sr[i]) )
   in
-  if j<0 then j
+{  if j<0 then j  ???}
+  if j>=0 then j
   else j:=
     first(ssr
          , (int i)bool:
@@ -117,7 +122,7 @@ set find_nci_root (KGBElt x,ratvec tau) = int:
             scr[i]*involution(x)*sr[i] = -1 and
             is_noncompact(x)( (1+involution(x))*sr[i] ) { why is that a root? }
          )
-  ; assert(>=j)
+  ; prints("j=",j);assert(>=j,"error in find_nci_root")
   ; root_index(rd,sr[j]+involution(x)*sr[j])
   fi
 
@@ -127,14 +132,13 @@ set find_nci_root (KGBElt x,ratvec tau) = int:
 in (X^*)^delta project it to X^*(T_K0) where T_K0=identity component of H^delta}
 {(x,mu) equivalent to (wx,w\mu) so WLOG mu is G-dominant}
 
-
 {This is the Vogan algorithm, version in khatHowe Section 13,
 which is a slight modification of BGB Proposition 5.3.3
 given (x,mu) -> mu+2rho_K(x) ->
    choose positive chamber for G -> mu+2rho_K(x)-rho
  project on given dominant chamber
  returns (x,mu_2rho_K(x)-rho,tau) where tau is dominant
- need the second argument for the modified Vogan algorithm
+     need the second argument for the modified Vogan algorithm
  }
 set project_on_dominant_cone (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
 let rd=root_datum(x) then
@@ -149,7 +153,8 @@ prints("mu_1:", mu_1);
 prints("x_1: ", x_1) then
 }
 { Note: tworho_K_fixed(x) (above) is in (\h^*)^theta,
-  while rho_K(x) is in \t^*, need the former}
+  while rho_K(x) is in \t^*, need the former
+}
 mu_2=mu_1+tworho_K_fixed(x_1) in
 {let ()=prints("mu_2:", mu_2) in}
 let (,y)=make_dominant(rd,mu_2) in

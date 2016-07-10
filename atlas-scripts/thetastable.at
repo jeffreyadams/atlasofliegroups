@@ -351,10 +351,10 @@ set goodness(Param p_L,Parabolic P,RealForm G)=string:
 let L=real_form(p_L) then
 rho_l=rho(L) then
 rho_u=rho(G)-rho(L) then
-infchar_l=infinitesimal_character(p_L) then
-()=prints("infinitesimal character(l)=", infchar_l) then
+infchar_l=infinitesimal_character(p_L) in
+{()=prints("infinitesimal character(l)=", infchar_l) then
 ()=prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u) then
-()=prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l) in
+()=prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l) in}
 if is_good(p_L,P,G) then "Good"
 elif is_weakly_good(p_L,P,G) then "Weakly good"
 elif is_fair(p_L,P,G) then "Fair"
@@ -367,10 +367,10 @@ P=parabolic(lambda_q,x) then
 L=Levi(P) then
 rho_l=rho(L) then
 rho_u=rho(G)-rho(L) then
-infchar_l=lambda_in+rho_l then
-()=prints("infinitesimal character(l)=", infchar_l) then
+infchar_l=lambda_in+rho_l in
+{()=prints("infinitesimal character(l)=", infchar_l) then
 ()=prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u) then
-()=prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l) in
+()=prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l) in}
 if is_good(x,lambda_in,lambda_q) then "Good"
 elif is_weakly_good(x,lambda_in,lambda_q) then "Weakly good"
 elif is_fair(x,lambda_in,lambda_q) then "Fair"
@@ -438,10 +438,10 @@ set goodness (Param p_L,RealForm G) = void:
 set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = void:
   let G=real_form(x), P=parabolic(lambda_q,x)
   then L=Levi(P) then rho_l=rho(L)
-  then rho_u=rho(G)-rho_l, infchar_l=lambda_in+rho_l
-  in prints("infinitesimal character(l)=", infchar_l);
+  then rho_u=rho(G)-rho_l, infchar_l=lambda_in+rho_l in 
+{  in prints("infinitesimal character(l)=", infchar_l);
     prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
-    prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l);
+    prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l);}
   if is_good(x,lambda_in,lambda_q) then prints("Good")
   elif is_weakly_good(x,lambda_in,lambda_q) then prints("Weakly good")
   elif is_fair(x,lambda_in,lambda_q) then prints("Fair")

@@ -95,6 +95,16 @@ set KL_Q_polynomials ([Param] B)=
   let Q_1=poly_permute_basis(perm,Q_0) in  { Q_1 (usually) lower triangular }
   transpose(Q_1) { (usually) upper triangular }
 
+{individual Q polynomials
+ given B to make sure have the right basis in the right order
+ given Q so don't need to recompute it
+}
+set KL_Q_polynomial([Param] B, poly_mat Q,Param irr,Param std)=poly:
+let index_irr=find(B,irr) then
+index_std=find(B,std) in
+assert(index_irr>=0 and index_std>=0,"irr and/or std not found in block");
+Q[index_irr][index_std]
+
 { in some cases this test fails because it is off by a permutation which
   I don't understand
 }

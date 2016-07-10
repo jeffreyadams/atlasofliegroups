@@ -959,8 +959,13 @@ set imaginary_type (vec alpha, Param p) = int:
 set real_type (vec alpha, Param p) = int:
   if cross(alpha,p)=p then 1 else 2 fi
 
+{inv_Cayley is no longer used
 set is_nonparity (int s,Param p)=bool: is_real(s,x(p)) and inv_Cayley(s,p)=p
 set is_parity (int s,Param p)= bool: is_real(s,x(p)) and inv_Cayley(s,p)!=p
+}
+
+set is_nonparity (int s,Param p)=bool: is_real(s,x(p)) and Cayley(s,p)=p
+set is_parity (int s,Param p)= bool: is_real(s,x(p)) and Cayley(s,p)!=p
 
 set is_nonparity (vec alpha,Param p)=bool:
   is_real(alpha,x(p)) and Cayley(alpha,p)=p
@@ -1112,6 +1117,9 @@ set find ([[int]] S,[int] v)=int:first(#S,(int i)bool:S[i]=v)
 
 { need different name to avoid disambiguation problem }
 set find_vec([vec] S,vec v)=int:first(#S,(int i)bool:S[i]=v)
+
+{ pad string with blanks (for lining up columns in tables)}
+set pad(string s,int padding)=string: let rv=s in for i:padding-#s do rv+:=" " od;rv
 
 
 
