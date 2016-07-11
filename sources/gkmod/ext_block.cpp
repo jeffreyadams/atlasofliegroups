@@ -272,7 +272,7 @@ int z_quot (const param& E, const param& F)
 // this implements (comparison using) the formula from Proposition 16 in
 // "Parameters for twisted repressentations" (with $\delta-1=-(1-\delta)$
 // the relation is symmetric in |E|, |F|, although not obviously so
-bool signs_differ (const param& E, const param& F)
+bool same_sign (const param& E, const param& F)
 {
   const WeightInvolution& delta = E.delta();
   Weight kappa1=E.tau(), kappa2=F.tau();
@@ -282,18 +282,18 @@ bool signs_differ (const param& E, const param& F)
   assert (i_exp%2==0);
   int n1_exp =
     (F.l()-E.l()).dot(E.tau()) + F.t().dot(F.lambda_rho()-E.lambda_rho());
-  return (i_exp/2+n1_exp)%2!=0;
+  return (i_exp/2+n1_exp)%2==0;
 }
 
-bool sign_differs_with_one_of (const param& E, const param& F1, const param& F2)
+bool same_sign_with_one_of (const param& E, const param& F1, const param& F2)
 { return
-    same_standard_reps(E,F1) ? signs_differ(E,F1)
-    : same_standard_reps(E,F2) ? signs_differ(E,F2)
+    same_standard_reps(E,F1) ? same_sign(E,F1)
+    : same_standard_reps(E,F2) ? same_sign(E,F2)
     : throw std::runtime_error("Neither candidate has same standard repn");
 }
 
 bool is_default (const param& E)
-{ return not signs_differ(E,param(E.ctxt,x(E),E.lambda_rho())); }
+{ return same_sign(E,param(E.ctxt,x(E),E.lambda_rho())); }
 
 void ext_block::add_neighbours
   (BlockEltList& dst, weyl::Generator s, BlockElt n) const
@@ -1451,7 +1451,7 @@ DescValue star (const param& E,
 
 	  E0.set_t(E.t() - alpha_v*(t_alpha/2));
 	  assert(same_standard_reps(E,E0));
-	  assert(not signs_differ(E,E0)); // since only |t| changes
+	  assert(same_sign(E,E0)); // since only |t| changes
 
 	  param F0(E.ctxt,new_tw,
 		   new_lambda_rho, E.tau() + tau_correction, E.l(), E0.t());
@@ -1473,7 +1473,7 @@ DescValue star (const param& E,
 
 	  E0.set_t(E.t() - diff*t_alpha);
 	  assert(same_standard_reps(E,E0));
-	  assert(not signs_differ(E,E0)); // since only |t| changes
+	  assert(same_sign(E,E0)); // since only |t| changes
 	  param E1 = E0; // for cross neighbour
 	  E1.set_lambda_rho(E.lambda_rho()+alpha);
 
@@ -1788,7 +1788,7 @@ DescValue star (const param& E,
 	  E.lambda_rho()-rho_r_shift + kappa*((a_level+b_level)/2);
 
 	E0.set_t(E.t()-alpha_v*kappa.dot(E.t()));
-	assert(not signs_differ(E,E0));
+	assert(same_sign(E,E0));
 
 	param F(E.ctxt, new_tw,	new_lambda_rho,E.tau(), E.l(), E0.t() );
 
@@ -1826,7 +1826,7 @@ DescValue star (const param& E,
 	  else // 3Cr
 	  {
 	    E0.set_t(E.t() - kappa_v*(kappa.dot(E.t())/2));
-	    assert(not signs_differ(E,E0));
+	    assert(same_sign(E,E0));
 	    param F(E.ctxt, new_tw,
 		    new_lambda_rho + kappa*dtf_alpha, E.tau(),
 		    tf_alpha%2==0 ? E.l() : E.l()+kappa_v, E0.t());

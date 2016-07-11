@@ -294,10 +294,10 @@ KGBElt x(const param& E); // reconstruct |E|
 
 // whether |E| and |F| lie over equivalent |StandrdRepr| values
 bool same_standard_reps (const param& E, const param& F);
-// whether |E| and |F| give opposite sign, assuming |same_standard_reps(E,F)|
-bool signs_differ (const param& E, const param& F);
+// whether |E| and |F| give same sign, assuming |same_standard_reps(E,F)|
+bool same_sign (const param& E, const param& F);
 inline int sign_between (const param& E, const param& F)
-  { return signs_differ(E,F) ? -1 : 1; }
+  { return same_sign(E,F) ? 1 : -1; }
 
 // find out type of extended parameters, and push its neighbours onto |links|
 DescValue type (const param& E, const ext_gen& p,
