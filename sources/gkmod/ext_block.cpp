@@ -1451,7 +1451,7 @@ DescValue star (const param& E,
 
 	  E0.set_t(E.t() - alpha_v*(t_alpha/2));
 	  assert(same_standard_reps(E,E0));
-	  assert(sign_between(E,E0)==1); // since only |t| changes
+	  assert(not signs_differ(E,E0)); // since only |t| changes
 
 	  param F0(E.ctxt,new_tw,
 		   new_lambda_rho, E.tau() + tau_correction, E.l(), E0.t());
@@ -1473,7 +1473,7 @@ DescValue star (const param& E,
 
 	  E0.set_t(E.t() - diff*t_alpha);
 	  assert(same_standard_reps(E,E0));
-	  assert(sign_between(E,E0)==1); // since only |t| changes
+	  assert(not signs_differ(E,E0)); // since only |t| changes
 	  param E1 = E0; // for cross neighbour
 	  E1.set_lambda_rho(E.lambda_rho()+alpha);
 
@@ -1753,16 +1753,16 @@ DescValue star (const param& E,
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	const Weight rho_r_shift = repr::Cayley_shift(ic,i_tab.nr(new_tw),ww);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
-	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
+	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 3
 
-	const Weight new_tau = E.tau() - alpha*kappa_v.dot(E.tau());
- 	const Coweight new_l = E.l() + kappa_v*((tf_alpha+tf_beta)/2);
-	links.push_back(std::make_pair
-			  (1
-			  ,param // Cayley link
-			   (E.ctxt, new_tw,
-			    E.lambda_rho() + rho_r_shift, new_tau,
-			    new_l, E.t())));
+	param F(E.ctxt, new_tw,
+		E.lambda_rho() + rho_r_shift,
+		E.tau() - alpha*kappa_v.dot(E.tau()),
+		E.l() + kappa_v*((tf_alpha+tf_beta)/2), E.t());
+
+	int sign = z_quot(E,F);
+
+	links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
       }
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 3 real case
       {
@@ -1786,12 +1786,14 @@ DescValue star (const param& E,
 
 	const Weight new_lambda_rho =
 	  E.lambda_rho()-rho_r_shift + kappa*((a_level+b_level)/2);
-	links.push_back(std::make_pair
-			  (1
-			  ,param // Cayley link
-			   (E.ctxt, new_tw,
-			    new_lambda_rho,E.tau(),
-			    E.l(),E.t()-alpha_v*kappa.dot(E.t()))));
+
+	E0.set_t(E.t()-alpha_v*kappa.dot(E.t()));
+	assert(not signs_differ(E,E0));
+
+	param F(E.ctxt, new_tw,	new_lambda_rho,E.tau(), E.l(), E0.t() );
+
+	int sign = z_quot(E0,F);
+	links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
       }
       else // length 3 complex case
       { const bool ascent = rd.is_posroot(theta_alpha);
@@ -1813,23 +1815,25 @@ DescValue star (const param& E,
 	  Weight new_lambda_rho = E.lambda_rho() + rho_r_shift; // for now
 
 	  if (ascent) // 3Ci
-	    links.push_back(std::make_pair
-			    (1
-			     ,param // Cayley link
-			     (E.ctxt, new_tw,
-			      dtf_alpha%2==0 ? new_lambda_rho
-			      : new_lambda_rho + kappa,
-			      E.tau() - kappa*(kappa_v.dot(E.tau())/2),
-			      E.l() + kappa_v*tf_alpha,
-			      E.t())));
+	  { param F(E.ctxt,new_tw,
+		    dtf_alpha%2==0 ? new_lambda_rho : new_lambda_rho + kappa,
+		    E.tau() - kappa*(kappa_v.dot(E.tau())/2),
+		    E.l() + kappa_v*tf_alpha, E.t());
+
+	    int sign  = z_quot(E,F);
+	    links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
+	  }
 	  else // 3Cr
-	    links.push_back(std::make_pair
-			    (1
-			     ,param // Cayley link
-			     (E.ctxt, new_tw,
-			      new_lambda_rho + kappa*dtf_alpha, E.tau(),
-			      tf_alpha%2==0 ? E.l() : E.l()+kappa_v,
-			      E.t() - kappa_v*(kappa.dot(E.t())/2))));
+	  {
+	    E0.set_t(E.t() - kappa_v*(kappa.dot(E.t())/2));
+	    assert(not signs_differ(E,E0));
+	    param F(E.ctxt, new_tw,
+		    new_lambda_rho + kappa*dtf_alpha, E.tau(),
+		    tf_alpha%2==0 ? E.l() : E.l()+kappa_v, E0.t());
+
+	    int sign = z_quot(E0,F);
+	    links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
+	  }
 
 	}
 	else // twisted non-commutation: 3C+ or 3C-
