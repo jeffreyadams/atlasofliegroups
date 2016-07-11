@@ -270,10 +270,11 @@ int z_quot (const param& E, const param& F)
 }
 
 // this implements (comparison using) the formula from Proposition 16 in
-// "Parameters for twisted repressentations" (with $\delta-1=-(1-\delta)$
+// "Parameters for twisted repressentations" (with $\delta-1 = -(1-\delta)$
 // the relation is symmetric in |E|, |F|, although not obviously so
 bool same_sign (const param& E, const param& F)
 {
+  assert(same_standard_reps(E,F));
   const WeightInvolution& delta = E.delta();
   Weight kappa1=E.tau(), kappa2=F.tau();
   kappa1 -= delta*kappa1;
@@ -1450,7 +1451,6 @@ DescValue star (const param& E,
 	  result = one_real_pair_fixed; // what remains is case 1r1f
 
 	  E0.set_t(E.t() - alpha_v*(t_alpha/2));
-	  assert(same_standard_reps(E,E0));
 	  assert(same_sign(E,E0)); // since only |t| changes
 
 	  param F0(E.ctxt,new_tw,
@@ -1472,10 +1472,11 @@ DescValue star (const param& E,
 				    alpha_v);
 
 	  E0.set_t(E.t() - diff*t_alpha);
-	  assert(same_standard_reps(E,E0));
 	  assert(same_sign(E,E0)); // since only |t| changes
+
 	  param E1 = E0; // for cross neighbour
 	  E1.set_lambda_rho(E.lambda_rho()+alpha);
+	  assert(not same_standard_reps(E0,E1));
 
 	  param F(E.ctxt,new_tw,
 		  new_lambda_rho, E.tau() + tau_correction, E.l(), E0.t());
@@ -1626,15 +1627,18 @@ DescValue star (const param& E,
 
 	  // set two values for |t|; actually the same value in case |m==0|
 	  E0.set_t(E.t() - alpha_v*((ta+m)/2) - beta_v*((tb-m)/2));
+	  assert(same_sign(E,E0)); // since only |t| changes
+
 	  E1.set_t(E.t() - alpha_v*((ta-m)/2) - beta_v*((tb+m)/2));
+	  assert(same_sign(E,E1)); // since only |t| changes
 
 	  param F0(E.ctxt, new_tw,
 		   new_lambda_rho,E.tau(), E.l()+alpha_v*m, E0.t());
 	  param F1(E.ctxt, new_tw,
 		   new_lambda_rho,E.tau(), E.l()+alpha_v*(1-m)+beta_v,E1.t());
 
-	  int sign0=sign_between(E,E0)*z_quot(E0,F0);
-	  int sign1=sign_between(E,E1)*z_quot(E1,F1);
+	  int sign0=z_quot(E0,F0);
+	  int sign1=z_quot(E1,F1);
 
 	  // Cayley links
 	  links.push_back(std::make_pair(sign0,std::move(F0)));
@@ -1655,15 +1659,18 @@ DescValue star (const param& E,
 
 	  // E0 is parameter adapted to Cayley transform that does not need |s|
 	  E0.set_t(E.t() - alpha_v*((ta+m)/2) - beta_v*((tb-m)/2));
+	  assert(same_sign(E,E0)); // since only |t| changes
+
 	  E1.set_t(E.t() - s);
+	  assert(same_sign(E,E1)); // since only |t| changes
 
 	  param F0(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau(), E.l()+alpha_v*m, E0.t());
 	  param F1(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau(), E.l()+alpha_v*mm, E1.t());
 
-	  int sign0=sign_between(E,E0)*z_quot(E0,F0);
-	  int sign1=sign_between(E,E1)*z_quot(E1,F1);
+	  int sign0=z_quot(E0,F0);
+	  int sign1=z_quot(E1,F1);
 
 	  // Cayley links
 	  links.push_back(std::make_pair(sign0,std::move(F0)));
@@ -1677,12 +1684,15 @@ DescValue star (const param& E,
 				    alpha_v*ta+beta_v*tb);
 
 	  E0.set_t(E.t() - s); // parameter adapted to Cayley transform |F|
+	  assert(same_sign(E,E0)); // since only |t| changes
+
 	  E1.set_lambda_rho(E.lambda_rho()+alpha_v);
 	  E1.set_t(E0.t()); // cross action, keeps adaption of |t| to |F| below
+	  assert(not same_standard_reps(E0,E1));
 
 	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau(), E.l(), E0.t());
 
-	  int sign0=sign_between(E,E0)*z_quot(E0,F);
+	  int sign0=z_quot(E0,F);
 	  int sign1=sign0*z_quot(E1,F); // total sign from |E| to its cross |E1|
 
 	  links.push_back(std::make_pair(sign0,std::move(F ))); // Cayley link
@@ -1788,7 +1798,7 @@ DescValue star (const param& E,
 	  E.lambda_rho()-rho_r_shift + kappa*((a_level+b_level)/2);
 
 	E0.set_t(E.t()-alpha_v*kappa.dot(E.t()));
-	assert(same_sign(E,E0));
+	assert(same_sign(E,E0)); // since only |t| changes
 
 	param F(E.ctxt, new_tw,	new_lambda_rho,E.tau(), E.l(), E0.t() );
 
@@ -1826,7 +1836,8 @@ DescValue star (const param& E,
 	  else // 3Cr
 	  {
 	    E0.set_t(E.t() - kappa_v*(kappa.dot(E.t())/2));
-	    assert(same_sign(E,E0));
+	    assert(same_sign(E,E0)); // since only |t| changes
+
 	    param F(E.ctxt, new_tw,
 		    new_lambda_rho + kappa*dtf_alpha, E.tau(),
 		    tf_alpha%2==0 ? E.l() : E.l()+kappa_v, E0.t());
