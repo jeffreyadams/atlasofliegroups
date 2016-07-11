@@ -1361,26 +1361,17 @@ DescValue star (const param& E,
 	  Weight diff = // called $-\sigma$ in table 2 of [Ptr] (NOTE MINUS)
 	      matreduc::find_solution(th_1,alpha); // solutions are equivalent
 
-	  // normalise
-	  E0.set_tau(E.tau()+diff*tau_coef);
-	  auto new_l = E.l()+alpha_v*(tf_alpha/2);
-	  E0.set_l(tf_alpha%4==0 ? new_l : new_l-alpha_v); // retain parity
-	  assert(same_standard_reps(E,E0));
-	  int sign = sign_between(E,E0);
+	  param F(E.ctxt,new_tw,
+		  E.lambda_rho() + first + rho_r_shift, E0.tau()+diff*tau_coef,
+		  E.l()+alpha_v*(tf_alpha/2), E.t());
 
-	  links.push_back(std::make_pair
-			  (sign
-			  ,param // Cayley link
-			   (E.ctxt,new_tw,
-			    E.lambda_rho() + first + rho_r_shift, E0.tau(),
-			    new_l, E.t()
-			    )));
-	  links.push_back(std::make_pair
-			  (sign
-			  ,param // cross link
-			   (E.ctxt,E.tw,
-			    E.lambda_rho(),E0.tau(),
-			    tf_alpha%4==0 ? new_l-alpha_v : new_l, E.t())));
+ 	  E0.set_l(tf_alpha%4==0 ? F.l()+alpha_v : F.l()); // for cross
+	  assert(not same_standard_reps(E,E0));
+	  int sign  = z_quot(E,F);
+	  int sign0 = sign*z_quot(E0,F);
+
+	  links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
+	  links.push_back(std::make_pair(sign0,std::move(E0))); // cross link
 	} // end of 1i1 case
 	else
 	{ // imaginary type 2; now we need to distinguish 1i2f and 1i2s
@@ -1393,28 +1384,18 @@ DescValue star (const param& E,
 	  }
 	  result = one_imaginary_pair_fixed;  // what remains is case 1i2f
 
-	  // normalise
-	  E0.set_tau(E.tau()+alpha*(tau_coef/2));
-	  E0.set_l(E.l()+alpha_v*(tf_alpha/2)); // no need to retain parity here
-	  assert(same_standard_reps(E,E0));
-	  int sign = sign_between(E,E0);
+	  param F0(E.ctxt,new_tw,
+		   E.lambda_rho() + first + rho_r_shift,
+		   E0.tau() - first,
+		   E0.l(), E.t());
+	  param F1(E.ctxt,new_tw,
+		   F0.lambda_rho() + alpha, F0.tau(), E0.l(), E.t());
 
-	  links.push_back(std::make_pair
-			  (sign
-			  ,param // first Cayley link
-			  (E.ctxt,new_tw,
-			   E.lambda_rho() + first + rho_r_shift,
-			   E0.tau() - first,
-			   E0.l(), E.t()
-			   )));
-	  links.push_back(std::make_pair
-			  (sign
-			  ,param // second Cayley link
-			  (E.ctxt,new_tw,
-			   E.lambda_rho() + first + rho_r_shift + alpha,
-			   E0.tau() - first,
-			   E0.l(), E.t()
-			   )));
+	  int sign0 = sign_between(E,F0);
+	  int sign1 = sign_between(E,F1);
+
+	  links.push_back(std::make_pair(sign0,std::move(F0)));
+	  links.push_back(std::make_pair(sign1,std::move(F1)));
 	} // end of type 2 case
       } // end of length 1 imaginary case
 
@@ -1468,25 +1449,20 @@ DescValue star (const param& E,
 	    return one_real_pair_switched;
 	  result = one_real_pair_fixed; // what remains is case 1r1f
 
-	  E0.set_lambda_rho(E.lambda_rho() + alpha*(level/2));
 	  E0.set_t(E.t() - alpha_v*(t_alpha/2));
 	  assert(same_standard_reps(E,E0));
-	  int sign = sign_between(E,E0);
+	  assert(sign_between(E,E0)==1); // since only |t| changes
 
-	  links.push_back(std::make_pair
-			  (sign
-			  ,param // first Cayley link
-			  (E.ctxt,new_tw,
-			   new_lambda_rho, E.tau() + tau_correction,
-			   E.l(), E0.t()
-			   )));
-	  links.push_back(std::make_pair
-			  (sign
-			  ,param // second Cayley link
-			  (E.ctxt,new_tw,
-			   new_lambda_rho, E.tau() + tau_correction,
-			   E.l() + alpha_v, E0.t()
-			   )));
+	  param F0(E.ctxt,new_tw,
+		   new_lambda_rho, E.tau() + tau_correction, E.l(), E0.t());
+	  param F1(E.ctxt,new_tw,
+		   new_lambda_rho, F0.tau(), E.l() + alpha_v, E0.t());
+
+	  int sign0 = z_quot(E0,F0), sign1 = z_quot(E0,F0);
+
+	  links.push_back(std::make_pair(sign0,std::move(F0))); // first Cayley
+	  links.push_back(std::make_pair(sign1,std::move(F1))); // second Cayley
+
 	} // end of 1r1 case
 	else // real type 2
 	{
@@ -1495,26 +1471,19 @@ DescValue star (const param& E,
 	    matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
 				    alpha_v);
 
-	  E0.set_lambda_rho(E.lambda_rho() // must keep parity of alpha here
-			    + alpha*(2*arithmetic::divide(level,4)));
 	  E0.set_t(E.t() - diff*t_alpha);
 	  assert(same_standard_reps(E,E0));
-	  int sign = sign_between(E,E0);
+	  assert(sign_between(E,E0)==1); // since only |t| changes
+	  param E1 = E0; // for cross neighbour
+	  E1.set_lambda_rho(E.lambda_rho()+alpha);
 
-	  links.push_back(std::make_pair
-			  (sign
-			  ,param // Cayley link
-			  (E.ctxt,new_tw,
-			   new_lambda_rho,
-			   E.tau() + tau_correction,
-			   E.l(), E0.t()
-			   )));
-	  links.push_back(std::make_pair
-			  (sign
-			  ,param // cross link
-			   (E.ctxt,E.tw,
-			    E0.lambda_rho()+(level%4==0 ? -alpha : alpha),
-			    E.tau(),E.l(),E0.t())));
+	  param F(E.ctxt,new_tw,
+		  new_lambda_rho, E.tau() + tau_correction, E.l(), E0.t());
+	  int sign0 = z_quot(E0,F);
+	  int sign1 = sign0*z_quot(E1,F);
+
+	  links.push_back(std::make_pair(sign0,std::move(F ))); // Cayley link
+	  links.push_back(std::make_pair(sign1,std::move(E1))); // cross link
 	}
       }
       else // length 1 complex case
@@ -1565,10 +1534,10 @@ DescValue star (const param& E,
 		   E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t());
 
 	  E0.set_l(E.l()+alpha_v+beta_v);
-	  int sign0 = z_quot(E,F);
-	  int sign1 = sign0 * z_quot(E0,F);
-	  links.push_back(std::make_pair(sign0,std::move(F)));	// Cayley link
-	  links.push_back(std::make_pair(sign1,std::move(E0))); // cross link
+	  int sign = z_quot(E,F);
+	  int sign0 = sign * z_quot(E0,F);
+	  links.push_back(std::make_pair(sign,std::move(F)));	// Cayley link
+	  links.push_back(std::make_pair(sign0,std::move(E0))); // cross link
 	}
 	else if (matreduc::has_solution(th_1,alpha+beta)) // case 2i12
 	{
