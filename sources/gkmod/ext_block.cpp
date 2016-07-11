@@ -133,6 +133,20 @@ BlockElt extended_block::element(BlockElt zz) const
   return n;
 }
 
+unsigned int extended_block::list_edges()
+{
+  std::set<BlockEltPair>::iterator it;
+  std::cout << "flipped edges:" << std::endl;
+  int count=0;
+  for (it = flipped_edges.begin(); it != flipped_edges.end(); it++)
+  {
+    BlockEltPair p=*it;
+    std::cout << z(p.first) << "," << z(p.second) << std::endl;
+    ++count;
+  }
+  std::cout << std::endl;
+  return count;
+}
 
 bool extended_block::toggle_edge(BlockElt x,BlockElt y, bool verbose)
 {
@@ -149,6 +163,36 @@ bool extended_block::toggle_edge(BlockElt x,BlockElt y, bool verbose)
 	      << z(p.first) << ',' << z(p.second) << ')' << std::endl;
 
   return inserted.second;
+}
+
+//same as toggle_edge, but always set the edge
+bool extended_block::set_edge(BlockElt x,BlockElt y)
+{
+  x = element(x); y=element(y);
+  assert (x!=UndefBlock and y!=UndefBlock);
+  BlockEltPair p= x<y ? std::make_pair(x,y) : std::make_pair(y,x);
+  std::pair<std::set<BlockEltPair>::iterator,bool>
+    inserted = flipped_edges.insert(p);
+
+  std::cerr << ""  << "set edge (" << z(p.first) << ',' << z(p.second) << ')';
+    //	    << std::endl;
+  return inserted.second;
+}
+
+void extended_block::report_2Ci_toggles(ext_block::extended_block eblock)
+{
+  std::cout << "all (2Ci,2Cr) pairs and their flipped status" << std::endl;
+  for (weyl::Generator s=1; s<eblock.rank(); ++s)
+    for (BlockElt x=0; x<eblock.size(); ++x)
+      if (eblock.descent_type(s,x)==atlas::ext_block::two_semi_imaginary)
+      {
+	BlockElt y=eblock.Cayley(s,x);
+	BlockEltPair p= x<y ? std::make_pair(x,y) : std::make_pair(y,x);
+	std::cout << s+1 << " " << eblock.z(x) << " " << eblock.z(y);
+	if (eblock.flipped_edges.count(p)==1) std::cout << " flipped";
+	std::cout << std::endl;
+      }
+
 }
 
 void extended_block::order_quad
@@ -485,7 +529,7 @@ DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
 } // |extended_type|
 
 extended_block::extended_block
-(const Block_base& block,const TwistedWeylGroup& W)
+  (const Block_base& block,const TwistedWeylGroup& W)
   : parent(block)
   , tW(W)
   , folded(blocks::folded(block.Dynkin(),block.fold_orbits()))
@@ -775,11 +819,15 @@ void show_mat(std::ostream& strm,const matrix::Matrix<Pol> M,unsigned inx)
 {
   strm << "T_" << inx+1 << " [";
   for (unsigned i=0; i<M.numRows(); ++i)
+    {        strm << " " << std::endl;
     for (unsigned j=0; j<M.numColumns(); ++j)
-      if (not M(i,j).isZero())
-	M(i,j).print(strm << i << ',' << j << ':',"q")  << ';';
-  strm << ']' << std::endl;
+      //      if (not M(i,j).isZero())
+      //	M(i,j).print(strm << i << ',' << j << ':',"q")  << ';';
+      M(i,j).print(strm  << ' ',"q");
+    //  strm << " " << std::endl;
+    }
 }
+
 
 bool check_braid
 (const extended_block& b, weyl::Generator s, weyl::Generator t, BlockElt x,
@@ -835,16 +883,19 @@ bool check_braid
       Tt.apply_to(v), Ts.apply_to(w);
 
   cluster |= used;
+
   static bool verbose = false;
   bool success = v==w;
-  if (verbose and not success)
+  if (verbose and (not success or b.z(x)==59))
   {
+    //    std::cout << "success: " << success << std::endl;
     show_mat(std::cout,Ts,s);
+    std::cout << std::endl;
     show_mat(std::cout,Tt,t);
   }
   return success;
-}
+} // |ext_block::check_braid|
 
-} // namespace ext_block
+} // |namespace ext_block|
 
-} // namespace atlas
+} // |namespace atlas|

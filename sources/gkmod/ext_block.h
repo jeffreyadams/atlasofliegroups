@@ -134,6 +134,10 @@ class extended_block
   bool // return new value; true means edge was flipped to minus
     toggle_edge(BlockElt x,BlockElt y, bool verbose=true);
 
+  bool set_edge(BlockElt x,BlockElt y);    // always set
+  unsigned int list_edges();  // returns number of toggled pairs
+  void report_2Ci_toggles(extended_block eblock);
+
 // accessors
 
   size_t rank() const { return data.size(); }

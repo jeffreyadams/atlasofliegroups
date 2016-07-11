@@ -1,7 +1,7 @@
 /*
   This is ext_kl.h
 
-  Copyright (C) 2013 Marc vna Leeuwen
+  Copyright (C) 2013 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
