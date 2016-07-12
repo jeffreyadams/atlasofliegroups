@@ -1935,19 +1935,33 @@ void coercion(const type_expr& from,
 {@; coerce_table.emplace_back(from,to,s,f); }
 
 @ There is one coercion that is not stored in the lookup table, since it can
-operate on any input type: the voiding coercion. It is necessary for instance
-to allow a conditional expression that is intended for its side effects only,
-to have branches that evaluate to different types (including the possibility
-of absent branches which will be taken to deliver an empty tuple): the
-conditional expression will get \.{void} type to which the result of each of
-its branches can be coerced.
+operate on any input type: the ``voiding'' coercion. It can be applied during
+type analysis to for instance to allow a conditional expression in a void
+context to have branches that evaluate to different types (including the
+possibility of absent branches which will be taken to deliver an empty tuple):
+those branches which do not already have void type will get their resulting
+value voided, so that in the end all branches share the void type of the
+entire conditional.
 
-In fact voiding is not dealt with using a |conversion| expression, since as we
-have seen its |evaluate| method evaluates its argument using the |eval|
-method, so with |level| parameter set to |single_value|. However for a voiding
-coercion this level should be |no_value|. So we introduce a type derived from
-|expression| whose main virtue is that its |evaluate| method sets the level to
-|no_value| by calling |void_eval|.
+At runtime, voiding is mostly taken care of by the |level| argument~|l| passed
+around in the evaluation mechanism. Any subexpressions with imposed void type,
+like the expression before the semicolon in a sequence expression, will get
+their |evaluate| method called with |l==no_value|, which suppresses the
+production of any value on the |execution_stack|. This setting will be
+inherited down to for instance the branches, if the subexpression was a
+conditional, so nothing special needs to be done to ensure that branches which
+originally had non-void type get voided. However, there are some rare cases
+where the void type does not derive from the syntactic nature of the context,
+such as in the right hand side of an assignment to a variable that happens to
+have |void| type (a quite useless but valid operation). In these cases the
+type analysis will have to explicitly insert a mechanism to avoid a value to
+be produced (and in the example, assigned) where none was intended.
+
+The |voiding| expression type serves that purpose. It distinguishes itself
+from instances of |conversion|, in that |voiding::evaluate| calls |evaluate|
+for the contained expression with |l==no_value|, rather than with
+|l==single_value| as |conversion::evaluate| does. If fact that is about all
+that |voiding| is about.
 
 @< Type definitions @>=
 class voiding : public expression_base
@@ -1958,9 +1972,9 @@ public:
   virtual void print(std::ostream& out) const;
 };
 
-@ The |evaluate| method should not ignore its |level| argument completely:
-when |l==single_value| an actual empty tuple should be produced, which
-|wrap_tuple<0>()| does.
+@ The |voiding::evaluate| method should not ignore its own |level| argument
+completely: when called with |l==single_value|, an actual empty tuple should
+be produced on the stack, which |wrap_tuple<0>()| does.
 
 @< Function definitions @>=
 void voiding::evaluate(level l) const
@@ -1978,23 +1992,36 @@ appropriate entry, and wraps |e| into a corresponding |conversion| it finds
 one. Ownership of the expression pointed to by |e| is handled implicitly: it
 is released during the construction of the |conversion|, and immediately
 afterwards |reset| reclaims ownership of the pointer to that |conversion|.
-Note that in the |conversion| constructor, the first argument |*it| is used
-only for its |conversion_info| base type; the |from| and |to| fields are not
-accessible to the newly built expression. As last resort we build a |voiding|
-if |to_type==void_type|.
+Note that the |conversion| constructor uses |*it| only for its
+|conversion_info| base type; the types |from| and |to| are not retained at run
+time.
+
+When |to_type==void_type|, the conversion always succeeds, as the syntactic
+voiding coercion is allowed in all places where |coerce| is called. We used to
+do |e.reset(new voiding(std::move(e)));| in that case as well, which is a safe
+way to ensure that voiding will take place dynamically whenever present
+syntactically. However as argued above, in most cases no runtime action is
+necessary, since the context will have already set |l==no_value| for
+subexpressions with void type. In removing that statement from the code below,
+we have moved responsibility to type analysis, which must now ensure that any
+subexpression with void type will have |l==no_value| when evaluated. This
+means that in some cases a |voiding| has to be constructed explicitly. This
+crops up in many places (for instance a component in a tuple display just
+might happen to have void type), but almost all such cases are far-fetched; so
+we trade some economy of code for efficiency in execution.
 
 @< Function definitions @>=
 bool coerce(const type_expr& from_type, const type_expr& to_type,
 	    expression_ptr& e)
-{ for (auto it=coerce_table.begin(); it!=coerce_table.end(); ++it)
+{ if (to_type==void_type)
+  {@;
+     return true;
+  } // syntactically voided here, |e| is unchanged
+  for (auto it=coerce_table.begin(); it!=coerce_table.end(); ++it)
     if (from_type==*it->from and to_type==*it->to)
     @/{@; e.reset(new conversion(*it,std::move(e)));
       return true;
     }
-  if (to_type==void_type)
-  {@; e.reset(new voiding(std::move(e)));
-     return true;
-  }
   return false;
 }
 
@@ -2370,7 +2397,7 @@ struct type_error : public expr_error
     : expr_error(e,"Type error") @|
       ,actual(std::move(a)),required(std::move(r)) @+{}
 #ifdef incompletecpp11
-  type_error@[(type_error&& e)
+  type_error(type_error&& e)
   : expr_error(std::move(e))
   , actual(std::move(e.actual)), required(std::move(e.required)) @+{}
   ~type_error () throw() @+{}
@@ -2409,6 +2436,22 @@ struct loop_break : private logic_error
   : logic_error("Uncaught break from loop"), depth(n) @+{}
 #ifdef incompletecpp11
   ~loop_break () throw() @+{}
+#endif
+} ;
+
+
+@ Similarly to the above, there is a |function_return| object that can be
+thrown to implement a |return| expression. Again analysis will have ensured
+that the object will always be caught, so this type as well will be derived
+from |logic_error|.
+
+@< Type definitions @>=
+struct function_return : private logic_error
+{ shared_value val;
+  function_return(shared_value&& val)
+  : logic_error("Uncaught return from function"), val(val) @+{}
+#ifdef incompletecpp11
+  ~function_return () throw() @+{}
 #endif
 } ;
 

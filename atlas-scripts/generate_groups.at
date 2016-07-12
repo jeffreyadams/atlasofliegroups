@@ -22,18 +22,18 @@ set all_inner_classes(string type_and_rank) = [string]:
   either simply connected "sc" or adjoint "ad"
 }
 set all_simple_given_isogeny_and_rank(string isogeny,int rank) = [RealForm]:
-  let rootsystems=all_simple_root_systems_given_rank(rank), rv=[RealForm]:[]
+  let rootsystems=all_simple_root_systems_given_rank(rank)
   , is_sc = isogeny ="sc" or (assert(isogeny="ad","unknown isogeny"); false)
   in
-  for rs in rootsystems
+##for rs in rootsystems
   do let lt=Lie_type (rs), inner_classes=all_inner_classes(rs)
     then type = RootDatum:
       if is_sc then simply_connected(lt) else adjoint(lt) fi
     in
-      for ic in inner_classes
-      do rv#:=real_forms(Cartan_class(inner_class(type,ic),0))
+    ##for ic in inner_classes
+      do real_forms(Cartan_class(inner_class(type,ic),0))
       od
-  od; rv
+  od
 
 { more practical synonym }
 set all_simple = all_simple_given_isogeny_and_rank@(string,int)

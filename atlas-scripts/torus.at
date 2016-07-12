@@ -2,8 +2,8 @@
 
 { involution for torus with |a| compact, |b| complex, and |c| split factors }
 set torus_involution (int a,int b,int c) = mat:
-  let M=diagonal(ones(a)#null(2*b)#-ones(c))
-  in for i in for i:b do a+2*i od do M[i,i+1]:=1; M[i+1,i]:=1 od; M
+  let M=diagonal(##[ones(a), null(2*b), -ones(c)])
+  in for i in  for i:b do a+2*i od  do M[i,i+1]:=1; M[i+1,i]:=1 od; M
 
 set torus (int a,int b, int c) = RealForm:
   let r=null(a+2*b+c,0)

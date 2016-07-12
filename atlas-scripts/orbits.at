@@ -33,7 +33,7 @@ for alpha in posroots(rd) do if alpha*H>rv then rv:=alpha*H fi od; rat_as_int(rv
 set all_eigenspaces(RootDatum rd, ratvec H)=[int]:
 assert(is_dominant(dual(rd),H),"H is not dominant");
 let sum=0 in
-let rv=[] in
+let rv=[int]:[] in
 for k:max_eigenspace(rd,H)+1 do
 let d=dim_eigenspace(rd,H,k) in
 rv#:=d;if k=0 then sum+:=d  else sum+:=2*d fi od ;
@@ -80,9 +80,8 @@ sort_by((vec v,rat c) rat: c)
 
 
 set smash([int] v,[[int]] A)=[[int]]:
-let rv=[] in
-for a in A do
- for c in v do rv#:=c#a od od;rv
+  let rv=[[int]]: [] in
+  for a in A do for c in v do rv#:=c#a od od;rv
 
 set rec_fun box (int height, int rank) = [[int]]:
 if rank=1 then for i:height do [i] od else
@@ -126,23 +125,35 @@ sort_by((ratvec z,[vec] v) int:#v)
 
 {find H which work for given q=q(x,H)=(L,u)}
 set find_H((KGBElt x,RealForm L,[vec] u))=[(vec,[vec])]:
-let rv=[] then
-u_p=[] in
-let ()=for alpha in u do if is_noncompact(x)(alpha) then u_p#:=alpha fi od in
+  let rv= [(vec,[vec])]: [] then u_p=[vec]: []
+  then ()=for alpha in u do if is_noncompact(x)(alpha) then u_p#:=alpha fi od
+  in
 {let ()=prints("u_p:", u_p) in}
-for (H,) in all_H(real_form(x)) do
-{prints("H=", H, ", ", rho(L), ", ", H*rho(L));}if (^involution(x)*H=H and H*rho(L)=0 and
-all (for alpha in u_p do {prints("alpha:", alpha,"H*alpha:", H*alpha);} H*alpha>0 od)) then
-    let two_roots=[vec]:[] in
-    let ()=for i:#u_p do {prints(u_p[i]);}if H*u_p[i]=2 then two_roots#:=u_p[i] fi od  in
-    let ()=rv#:=(H,two_roots) in  rv  fi od ;rv
+  for (H,) in all_H(real_form(x))
+  do
+    {prints("H=", H, ", ", rho(L), ", ", H*rho(L));}
+    if (^involution(x)*H=H and H*rho(L)=0 and
+      all (for alpha in u_p
+           do {prints("alpha:", alpha,"H*alpha:", H*alpha);} H*alpha>0 od))
+    then
+      let two_roots=[vec]:[]
+      then ()=for i:#u_p
+        do {prints(u_p[i]);} if H*u_p[i]=2 then two_roots#:=u_p[i] fi od
+      in rv#:=(H,two_roots)
+    fi
+  od; rv
 
-set max_only([(vec,[vec])] arg)=[(vec,[vec])]:
-if #arg>0 then
-let (H_last,vectors_last)=arg[#arg-1] then
-max=#vectors_last in
-let rv=[] in
-for (H,vectors) in arg do if #vectors=max then rv#:=(H,vectors) fi od;rv else [(vec:null(0),[vec]:[])] fi
+set max_only ([(vec,[vec])] arg) = [(vec,[vec])]:
+  if #arg>0
+  then
+    let (H_last,vectors_last)=arg[#arg-1] then max=#vectors_last
+    then rv= [(vec,[vec])]: []
+    in
+      for (H,vectors) in arg
+      do if #vectors=max then rv#:=(H,vectors) fi od
+  ; rv
+  else [(vec:null(0),[vec]:[])]
+  fi
 
 {
 
@@ -150,29 +161,38 @@ for (H,vectors) in arg do if #vectors=max then rv#:=(H,vectors) fi od;rv else [(
       while not done and i<#u_p do if H*u[i]=2 then done:=true;rv#:=(H,u_p[i]) else i:=i+1 fi od fi od ;rv
 }
 
-set output([((KGBElt,RealForm,[vec]),[(vec,[vec])])] answer)=
-let rv=[] in
-let rv_summary=[] in
-let ((x,,),) =answer[0] in
-let rd=root_datum(x) in
-for (q,pairs) in answer do
-let (x,L,u)=q in prints();prints("x=", x);prints("L=",L);prints("u=",u);
-for (H,vectors) in pairs do prints("H:", H, " dimension: ", dim_nilpotent(rd,H));prints("vectors: ", vectors); rv#:=(H,vectors) od ;rv_summary#:=(q,#pairs)od;
-prints("summary:");
-{for ((x,L,u),s)@i in rv_summary do }
-for ((x,L,u),pairs)@i in answer do
-prints();prints("parabolic #", i);prints(x);prints(L);prints("u=", u, "  dim(u): ", #u);prints("Number of H:",#pairs);
-for (H,u) in pairs do
- prints("H: ", H);prints("u\cap p:", u, "  dim u\cap p:", #u);prints("dimension: ",dim_nilpotent(rd,H)) od od;
-prints();prints("number of parabolics:", #answer);
-prints("number of orbits:", #rv);
-prints("dimensions of orbits:");
- let orbits= for (q,pairs)  in answer do
-  let (x,,)=q in
- for (H,) in pairs do  dim_nilpotent(rd,H) od od in print(orbits);
-prints("all dimensions:", flatten(orbits));
-prints("dimensions with multiplicity:", sort(flatten(orbits)));
-prints("distinct dimensions:", sort_u(flatten(orbits))); orbits
+set output ([((KGBElt,RealForm,[vec]),[(vec,[vec])])] answer) =
+  let rv= [(vec,[vec])]: [] in
+  let rv_summary= [((KGBElt,RealForm,[vec]),int)]: [] in
+  let ((x,,),) =answer[0] in
+  let rd=root_datum(x) in
+  for (q,pairs) in answer
+  do
+    let (x,L,u)=q in prints();prints("x=", x); prints("L=",L);prints("u=",u)
+  ; for (H,vectors) in pairs
+    do prints("H:", H, " dimension: ", dim_nilpotent(rd,H))
+    ; prints("vectors: ", vectors); rv#:=(H,vectors)
+    od
+  ; rv_summary#:=(q,#pairs)
+  od; prints("summary:");
+  {for ((x,L,u),s)@i in rv_summary do }
+  for ((x,L,u),pairs)@i in answer
+  do prints(); prints("parabolic #", i); prints(x); prints(L)
+  ; prints("u=", u, "  dim(u): ", #u); prints("Number of H:",#pairs)
+  ; for (H,u) in pairs
+    do prints("H: ", H); prints("u\cap p:", u, "  dim u\cap p:", #u)
+    ; prints("dimension: ",dim_nilpotent(rd,H))
+    od
+  od; prints();prints("number of parabolics:", #answer);
+  prints("number of orbits:", #rv); prints("dimensions of orbits:");
+  let orbits=
+    for (q,pairs)  in answer
+    do let (x,,)=q in for (H,) in pairs do dim_nilpotent(rd,H) od
+    od
+  in print(orbits);
+  prints("all dimensions:", flatten(orbits));
+  prints("dimensions with multiplicity:", sort(flatten(orbits)));
+  prints("distinct dimensions:", sort_u(flatten(orbits))); orbits
 
 set output_H([((KGBElt,RealForm,[vec]),[(vec,[vec])])] answer)=
 let ((x,,),) =answer[0] in
@@ -273,7 +293,8 @@ let i=first(#C,(int i)bool:is_Aq(element(B,C[i]))) in i!=-1
 set is_Aq(Block B,int i)=bool:is_Aq(element(B,i))
 
 set Aq_cells(Block B,[[int]] cells)=
-let rv=[] in for C in cells do if is_Aq_cell(B,C) then rv#:=C fi od;rv
+  let rv=[[int]]: [] in
+  for C in cells do if is_Aq_cell(B,C) then rv#:=C fi od;rv
 
 set Aq_reps(Block B,[int] cell)=
 let rv=[int]:[] in for i in cell do if is_Aq(B,i) then rv#:=i fi od ;rv

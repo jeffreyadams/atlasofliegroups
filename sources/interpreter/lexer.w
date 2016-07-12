@@ -647,8 +647,13 @@ break; case '^': prevent_termination=c;
        valp->oper.priority = 7; // exponentiation is right-associative
        code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '#': prevent_termination=c;
-       valp->oper.id = id_table.match_literal("#");
-       valp->oper.priority = 8; // basic meaning is non-associative
+       valp->oper.priority = 8;
+       if (input.shift()=='#')
+         valp->oper.id = id_table.match_literal("##");
+       else
+       {@; input.unshift();
+         valp->oper.id = id_table.match_literal("#");
+       }
        code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break;
 

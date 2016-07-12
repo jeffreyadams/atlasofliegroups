@@ -118,6 +118,7 @@ anyway.
 
 enum expr_kind @+
  { @< Enumeration tags for |expr_kind| @>@;@; @+no_expr };
+typedef struct expr* expr_p; // raw pointer type for use on parser stack
 struct expr {
   expr_kind kind;
   union {@; @< Variants of the anonymous |union| in |expr| @>@; };
@@ -125,7 +126,6 @@ struct expr {
 @)
   @< Methods of |expr| @>@;
 };
-typedef expr* expr_p; // raw pointer type for use on parser stack
 typedef std::unique_ptr<expr> expr_ptr;
 @)
 @< Structure and typedef declarations for types built upon |expr| @>@;
@@ -488,24 +488,27 @@ case boolean_denotation:
 case string_denotation:
   out << '"' << e.str_denotation_variant << '"'; break;
 
-@*2 Applied identifiers, the last value computed, die.
+@*2 Applied identifiers, the last value computed, break, return, die.
 %
 For representing applied identifiers, we use the integer type |id_type|
 defined above. Their tag is |applied_identifier|. An expression that behaves
 somewhat similarly is `\.\$', which stands for the last value computed.
-Finally we have expressions |break| and \&{die} that are type-less, and whose
-evaluation breaks from the most current loop respectively aborts evaluation.
+Finally we have expressions |break|, |return e| and \&{die} that are
+type-less, and whose evaluation breaks from the most current loop respectively
+aborts evaluation.
 
 @< Enumeration tags for |expr_kind| @>=
 applied_identifier,
-last_value_computed,break_expr,
+last_value_computed,break_expr,return_expr,
 die_expr, @[@]
 
 @ For |applied_identifier|s we just store their code, for |break_expr| their
-depth; for |last_value_computed| and |die_expr| nothing at all.
+depth, for |return_expr| a pointer to another |expr|; for
+|last_value_computed| and |die_expr| nothing at all.
 @< Variants of ... @>=
 id_type identifier_variant;
 unsigned break_variant;
+expr_p return_variant;
 
 @ We need new tags here to define new constructors, which for the rest are
 straightforward.
@@ -514,6 +517,7 @@ straightforward.
   struct identifier_tag @+{}; @+
   struct dollar_tag @+{};
   struct break_tag @+{@; unsigned depth; };
+  struct return_tag @+{};
   struct die_tag @+{};
 @)
   expr(id_type id, const YYLTYPE& loc, identifier_tag)
@@ -522,6 +526,8 @@ straightforward.
   : kind(last_value_computed), loc(loc) @+{}
   expr (const YYLTYPE& loc, break_tag t)
   : kind(break_expr), break_variant(t.depth), loc(loc) @+{}
+  expr (expr_p exp, const YYLTYPE& loc, return_tag t)
+  : kind(return_expr), return_variant(exp), loc(loc) @+{}
   expr (const YYLTYPE& loc, die_tag)
   : kind(die_expr), loc(loc) @+{}
 
@@ -532,9 +538,9 @@ expr_p make_applied_identifier (id_type id, const YYLTYPE& loc);
 expr_p make_dollar(const YYLTYPE& loc);
 expr_p make_break(unsigned n,const YYLTYPE& loc);
 expr_p make_die(const YYLTYPE& loc);
+expr_p make_return(expr_p exp,const YYLTYPE& loc);
 
-@~In spite of the absence of dedicated constructors, these function have
-rather simple definitions.
+@~These function have rather simple definitions.
 
 @< Definitions of functions for the parser @>=
 expr_p make_applied_identifier (id_type id, const YYLTYPE& loc)
@@ -544,16 +550,20 @@ expr_p make_dollar (const YYLTYPE& loc)
 @+{@; return new expr(loc,expr::dollar_tag()); }
 expr_p make_break (unsigned n,const YYLTYPE& loc)
 {@; return new expr(loc,@[expr::break_tag{n}@]); }
+expr_p make_return (expr_p exp,const YYLTYPE& loc)
+{@; return new expr(exp,loc,@[expr::return_tag{}@]); }
 expr_p make_die (const YYLTYPE& loc)
 @+{@; return new expr(loc,expr::die_tag()); }
 
-@~Like for integer and boolean denotations, there is nothing to destroy here.
+@~Like for integer and boolean denotations, there is nothing to destroy here,
+except for a |return_expr|.
 
 @< Cases for destroying... @>=
 case applied_identifier:
 case last_value_computed:
 case break_expr:
 case die_expr: break;
+case return_expr: delete return_variant; break;
 
 @ Having a POD type variant, copying an applied identifier or break can be
 done by assignment; the other two cases have no data at all.
@@ -561,6 +571,7 @@ done by assignment; the other two cases have no data at all.
 @< Cases for copying... @>=
 case applied_identifier: identifier_variant=other.identifier_variant; break;
 case break_expr: break_variant=other.break_variant;
+case return_expr: return_variant=other.return_variant;
 case last_value_computed: case die_expr: break;
 
 @~To print an applied identifier, we look it up in the main hash table. We
@@ -577,6 +588,8 @@ case break_expr:
   if (e.break_variant>0)
     out << e.break_variant << ' ';
 }
+  break;
+case return_expr: @+{@; out << " return " << *e.return_variant; }
   break;
 case die_expr: out << " die "; break;
 
@@ -841,26 +854,32 @@ source location.
 
 @< Methods of |expr| @>=
 expr(app&& fx, const YYLTYPE& loc)
- : kind(function_call)
+@/: kind(function_call)
  , call_variant(std::move(fx))
  , loc(loc)
  @+{}
 expr(app&& fx, const source_location& loc)
- : kind(function_call)
+@/: kind(function_call)
  , call_variant(std::move(fx))
  , loc(loc)
  @+{}
 
-@ Building an |application_node| combines the function expression with an
-|expr_list| for the argument. The argument list will either be packed into a
+@ Building an |application_node| usually combines the function expression with
+an |expr_list| for the argument. The argument list will either be packed into a
 tuple, or if it has length$~1$ unpacked into a single expression. For tracing
 the location of the argument tuple, two additional locations will be provided
 by the parser, those of the left and right parentheses that delimit the
 argument list (and which are present even for an empty argument list).
 
+Another version is provided if the argument is already grouped as a single
+expression, for use with the (generalised) field selector syntax, where the
+(projection) function follows the argument. Here no separate location
+for the argument is needed, as this information has already been included.
+
 @< Declarations of functions for the parser @>=
 expr_p make_application_node(expr_p f, raw_expr_list args,
  const YYLTYPE& loc, const YYLTYPE& left, const YYLTYPE& right);
+expr_p make_application_node(expr_p f, expr_p arg, const YYLTYPE& loc);
 
 @~Here for once there is some work to do. Since there are two cases to deal
 with, the argument expression is initially default-constructed, after which
@@ -881,7 +900,12 @@ expr_p make_application_node(expr_p f, raw_expr_list r_args,
       source_location(source_location(left),source_location(right)));
   return new expr(std::move(a),loc); // move construct application expression
 }
-
+@)
+expr_p make_application_node(expr_p f, expr_p arg, const YYLTYPE& loc)
+{ expr_ptr ff(f); expr_ptr args(arg);
+  app a(new application_node { std::move(*ff), std::move(*args) } );
+  return new expr(std::move(a),loc); // move construct application expression
+}
 @ Destroying a raw pointer field just means calling |delete| on it.
 
 @< Cases for destroying... @>=
@@ -1906,12 +1930,11 @@ whether the loop index is absent.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct while_node
-{ expr condition; @+ expr body;
+{ expr body; // contains a |do|-expression producing condition and body
   BitSet<2> flags;
 @)
-  while_node(expr&& condition, expr&& body, unsigned flags)
-@/: condition(std::move(condition))
-  , body(std::move(body))
+  while_node(expr&& body, unsigned flags)
+@/: body(std::move(body))
   , flags(flags)@+{}
   // backward compatibility for gcc 4.6
 };
@@ -1973,7 +1996,7 @@ expr(c_loop&& loop, const YYLTYPE& loc)
 more \\{make}-functions.
 
 @< Declarations of functions for the parser @>=
-expr_p make_while_node(expr_p c, expr_p b, unsigned flags, const YYLTYPE& loc);
+expr_p make_while_node(expr_p b, unsigned flags, const YYLTYPE& loc);
 expr_p make_for_node
   (raw_id_pat& id, expr_p ip, expr_p b, unsigned flags, const YYLTYPE& loc);
 expr_p make_cfor_node
@@ -1983,11 +2006,10 @@ expr_p make_cfor_node
 @ They are quite straightforward, as usual.
 
 @< Definitions of functions for the parser @>=
-expr_p make_while_node(expr_p c, expr_p b, unsigned flags, const YYLTYPE& loc)
+expr_p make_while_node(expr_p b, unsigned flags, const YYLTYPE& loc)
 {
-  expr_ptr cc(c), bb(b);
-  expr& cnd=*cc; expr& body=*bb;
-  return new expr(new while_node { std::move(cnd), std::move(body), flags},loc) ;
+  expr_ptr bb(b); expr& body=*bb;
+  return new expr(new while_node { std::move(body), flags},loc) ;
 }
 @)
 expr_p make_for_node
@@ -2029,7 +2051,7 @@ input syntax.
 @< Cases for printing... @>=
 case while_expr:
 { const w_loop& w=e.while_variant;
-@/ out << " while " << w->condition << " do " << w->body << " od ";
+@/ out << " while " << w->body << " od ";
 }
 break;
 case for_expr:
@@ -2620,26 +2642,25 @@ sequences by chaining pairs, instead of storing a vector of expressions: at
 three pointers overhead per vector, a chained representation is more compact
 as long as the average length of a sequence is less than~$5$ expressions.
 
-In fact we used this expression also for a variant of sequence expressions, in
-which the value of the \emph{first} expression is retained as final value,
-while the second expression is then evaluated without using its value; the
-|forward| field indicates whether the first form was used.
-
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct sequence_node
-{ expr first; expr last; bool forward;
+{ expr first; expr last;
 @)
-  sequence_node(expr&& first, expr&& last, bool forward)
+  sequence_node(expr&& first, expr&& last)
 @/: first(std::move(first))
-  , last(std::move(last))
-  , forward(forward)@+{}
+  , last(std::move(last))@+{}
   // backward compatibility for gcc 4.6
 };
 
-@ The tag used for sequence statements is |seq_expr|.
+@ In fact we use this expression also for two variants variant of sequence
+expressions, one in which the value of the \emph{first} expression is retained
+as final value and the second expression is then evaluated without using its
+value (the \&{next} keyword), and one where the result of the left operand
+determines whether the right operand will be evaluated or not (the |do| in
+|while| loops).
 
 @< Enumeration tags for |expr_kind| @>=
-seq_expr, @[@]
+seq_expr, next_expr, do_expr, @[@]
 
 @ And there is of course a variant of |expr_union| for sequences.
 @< Variants of ... @>=
@@ -2647,8 +2668,8 @@ sequence sequence_variant;
 
 @ As always there is a constructor for building the new variant.
 @< Methods of |expr| @>=
-expr(sequence&& s, const YYLTYPE& loc)
- : kind(seq_expr)
+expr(sequence&& s, unsigned which, const YYLTYPE& loc)
+ : kind(which==0 ? seq_expr : which==1 ? next_expr : do_expr)
  , sequence_variant(std::move(s))
  , loc(loc)
 @+{}
@@ -2657,35 +2678,51 @@ expr(sequence&& s, const YYLTYPE& loc)
 
 @< Declarations of functions for the parser @>=
 expr_p make_sequence
-  (expr_p first, expr_p last, bool forward, const YYLTYPE& loc);
+  (expr_p first, expr_p last, unsigned which, const YYLTYPE& loc);
 
 @~It does what one would expect it to.
 
 @< Definitions of functions for the parser @>=
 expr_p make_sequence
-  (expr_p f, expr_p l, bool forward, const YYLTYPE& loc)
+  (expr_p f, expr_p l, unsigned which, const YYLTYPE& loc)
 {
   expr_ptr ff(f), ll(l); expr& first=*ff; expr& last=*ll;
   return new expr(new @|
-    sequence_node { std::move(first), std::move(last), forward } ,loc);
+    sequence_node { std::move(first), std::move(last) }, which ,loc);
 }
 
-@ Is this the final case? For now, it is!
+@ Are these the final cases? For now, they are!
 
 @< Cases for copying... @>=
-case seq_expr: sequence_variant=other.sequence_variant; break;
+case seq_expr:
+case next_expr:
+case do_expr:
+   sequence_variant=other.sequence_variant; break;
 
 @ Finally sequence nodes need destruction, like everything else.
 
 @< Cases for destroying... @>=
-case seq_expr: delete sequence_variant; break;
+case seq_expr:
+case next_expr:
+case do_expr:
+   delete sequence_variant; break;
 
 @ Printing sequences is absolutely straightforward.
 
 @< Cases for printing... @>=
 case seq_expr:
 {@; const sequence& seq = e.sequence_variant;
-  out << seq->first << (seq->forward ? ";" : " next ") << seq->last ;
+  out << seq->first << "; " << seq->last ;
+}
+break;
+case next_expr:
+{@; const sequence& seq = e.sequence_variant;
+  out << seq->first << " next " << seq->last ;
+}
+break;
+case do_expr:
+{@; const sequence& seq = e.sequence_variant;
+  out << seq->first << " do " << seq->last ;
 }
 break;
 

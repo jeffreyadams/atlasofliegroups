@@ -41,7 +41,7 @@ set block(Param p) = ([Param],int):
     od
   ; ( let (,n)=%x(p), res = [Param]: [], count=0 in
       for t@i in tab
-      do res #:= t
+      do res ##:= t
       ; if i<n then count+:=#t
         elif i=n then let i=0 in while t[i]!=p do i+:=1 od; count+:=i
         fi

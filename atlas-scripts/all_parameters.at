@@ -43,13 +43,13 @@ set all_parameters_KGB_gamma(KGBElt x,ratvec gamma)=[Param]:
   let th1=1+involution(x) in
    for lr in vec_solve(th1,th1*(gamma-rho)) { needed for lambda to be found }
     do let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
-      params #:= { concatenate the following list of Param values: }
+      params ##:= { concatenate the following list of Param values: }
         for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
     od;reduce(params)  { keep only 1 from each equivalence class }
 
 {all parameters living on giving Cartan with given infinitesimal character}
 set all_parameters_Cartan_gamma(CartanClass H,RealForm G,ratvec gamma)=[Param]:
-let params=[Param]:[] in for x in KGB(H,G) do params#:=all_parameters_KGB_gamma(x,gamma) od;params
+let params=[Param]:[] in for x in KGB(H,G) do params##:=all_parameters_KGB_gamma(x,gamma) od;params
 
 
 {all parameters with given infinitesimal character}
@@ -59,7 +59,7 @@ set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
     let th1=1+involution(x) in
     for lr in vec_solve(th1,th1*(gamma-rho)) { needed for lambda to be found }
     do let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
-      params #:= { concatenate the following list of Param values: }
+      params ##:= { concatenate the following list of Param values: }
         for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
     od
   od; reduce(params)  { keep only 1 from each equivalence class }

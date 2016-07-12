@@ -236,10 +236,10 @@ set theta_stable_parabolics (RealForm G,ComplexParabolic P) = [Parabolic]:
   do if is_parabolic_theta_stable(Q) then result#:=Q fi od; result
 
 set theta_stable_parabolics (RealForm G) = [Parabolic]:
-  let result=[Parabolic]:[] in
+## { concatenate all loop bodies }
   for S in power_set(semisimple_rank(G))
-  do result #:= theta_stable_parabolics(G,ComplexParabolic:(G,S))
-  od; result
+  do theta_stable_parabolics(G,ComplexParabolic:(G,S))
+  od
 
 
 set theta_stable_parabolics_type (RealForm G,[int] P) = [Parabolic]:
@@ -249,7 +249,7 @@ set theta_stable_parabolics_type (RealForm G,[int] P) = [Parabolic]:
 
 
 set all_rel_split_theta_stable_parabolics (RealForm G) = [Parabolic]:
-  let parabolics=theta_stable_parabolics(G) then result=[] in
+  let parabolics=theta_stable_parabolics(G) then result=[Parabolic]: [] in
   for P in parabolics do
     if is_relatively_split(Levi(P)) then result#:=P fi
   od; result

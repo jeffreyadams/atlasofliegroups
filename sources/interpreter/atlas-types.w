@@ -2418,7 +2418,7 @@ evaluations must be even). If this test succeeds, the function then returns
 the corresponding real form, but in which a cocharacter value is stored
 (representing the square of any strong involution for the real form) deduced
 from the given torus element, which may differ from the value for the (weak)
-real form selected by the number |rf->val;realForm()| in the inner class. This
+real form selected by the number |rf->val.realForm()| in the inner class. This
 difference notably allows the same strong involution representative to be
 subsequently used to specify a KGB element for this (strong) real form.
 

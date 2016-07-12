@@ -144,10 +144,10 @@ set stringPoly (poly v, string q)= string:
     let rv="" in
     for c@k in v do
       if c!=0 then
-	let coef = if c<0 then "-" else "+" fi #
+	let coef = if c<0 then "-" else "+" fi +
             if abs(c)=1 and k>0 then "" else int_format(abs(c)) fi
-	,   term = if k>1 then q#"^"#int_format(k) elif k=0 then "" else q fi
-	in rv #:= coef#term
+	,   term = if k>1 then q+"^"+int_format(k) elif k=0 then "" else q fi
+	in rv ##:= coef+term
       fi
     od
   ; rv
@@ -163,12 +163,18 @@ set printPoly (poly v) = void: prints(stringPoly(v,"q"))
    0 +1
 }
 
-set printPolyMatrix (poly_mat M) = void:
-  let rv="", n=#M in
-    for i:n do
+set printPolyMatrix(poly_mat M,int space_size)=
+  let space="" in let ()= for i:space_size do space+:=" " od  in
+  let max_size=max(for i:#M do max(for j:#M[i] do #stringPoly(M[i][j],"q") od) od) in
+  let rv="" in 
+    for i:#M do
       let line="" in
-      for j:#M[i] do line+:=" "+stringPoly(M[i][j],"q") od; prints(line)
+      for j:#M[i] do line+:=space+pad(stringPoly(M[i][j],"q"),max_size) od; prints(line)
     od
+
+set printPolyMatrix (poly_mat M) = void:printPolyMatrix(M,3)
+
+
 
 { restore normal vector arithmetic }
 forget +@(vec,vec)

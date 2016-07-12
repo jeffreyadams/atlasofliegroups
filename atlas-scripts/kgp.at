@@ -77,15 +77,15 @@ set find_ascent ([int] S, KGBElt x) = [KGBElt]:
   fi
 
 { all descents of x by generators in S, there may be duplicates }
-  set down_neighbors ([int] S,KGBElt x) = [int]:
-  let result=[int]:[] in
+set down_neighbors ([int] S,KGBElt x) = [int]:
+  ##
   for i in list((int i): is_strict_descent(S[i],x),#S)
   do let s=S[i] in
     if is_real(s,x)
-    then let y=Cayley(s,x) in result #:= [#y,#cross(s,y)]
-    else result #:= #cross(s,x)
+    then let y=Cayley(s,x) in [#y,#cross(s,y)]
+    else [#cross(s,x)]
     fi
-  od; result
+  od
 
 set is_maximal_in_partial_order ([int] S,KGBElt x) = bool: #find_ascent(S,x)=0
 

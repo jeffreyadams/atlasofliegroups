@@ -26,9 +26,8 @@ every symbol is equivalent to a unique one with a=b+1 and at most one 0
 set normalize([int] v)=[int]:let
 rec_fun f([int] v)=[int]: if #v=0 then v elif v[0]>0 then v else f(for k in delete(v,0) do k-1 od) fi in f(v)
 
-{other direction: replace [a1,,,.ak] with [0,1,...,r,a1+r,...,ak+r]}
-set expand([int] v, int r)=[int]:
-for i:r do i od # for c in v do c+r od
+{ other direction: replace [a1,,,.ak] with [0,1,...,r-1,a1+r,...,ak+r] }
+set expand([int] v, int r)=[int]: #r ## for c in v do c+r od
 
 {normalize symbol: |f|=|g|+1 and at most 1 zero}
 set normalize(Symbol S)=Symbol:
@@ -74,15 +73,15 @@ let S=normalize(S) then
 f=S[0],g=S[1] then
 F=for c in f do 2*c od then
 G=for c in g do 2*c+1 od then
-F_G=sort(F#G)  then
+F_G=sort(F##G)  then
 H=F_G - for i:#F_G  do i od in let K=reverse(H) then
 rv=[int]:[] in  for c in K do if c>0 then rv#:=c fi od;rv
 
 {Wrep to Symbol}
 set symbol(Wrep sigma)=Symbol:
 let (p,q)=sigma then
-()=if #p<#q+1 then p#:=null(#q+1-#p)
-elif #q+1<#p then q#:=null(#p-#q-1) fi
+()=if #p<#q+1 then p##:=null(#q+1-#p)
+elif #q+1<#p then q##:=null(#p-#q-1) fi
 in [sort(p+for i:#p ~ do i od),sort(q+for j:#q ~ do j od)]
 
 {Wrep -> Orbit}
@@ -173,8 +172,8 @@ set A_Levi_factor(int rank, [int] tau)=[int]:
 let tau=sort(tau) in
 assert(tau[#tau-1] < rank,"last entry of tau is great than rank-1");
 assert(tau[#tau-1] != rank-1,"Levi factor is of type AC not A");
-let strings=extract_strings(tau) in
-strings:=for a in strings do a+1 od;strings#(for i:rank-sum(strings) do 1 od)
+let strings= for a in extract_strings(tau) do a+1 od
+in strings##(for i:rank-sum(strings) do 1 od)
 
 {AC Levi factor(tau invariant): same as (A_Levi_factor,c) where c gives the size of
 the type C factor
@@ -184,7 +183,7 @@ assert(tau[#tau-1] = rank-1,"Levi factor is type A not AC");
 let (c,)=cut_off_last_string(tau) in
 let strings=extract_strings(tau) in
 for i:#strings-1 do strings[i]:=strings[i]+1 od;
-(c,strings#(for i:rank-sum(strings) do 1 od))
+(c,strings## ones(rank-sum(strings)))
 
 {maximal (by inclusion)}
 set is_max([[int]] taus,[int] tau)=bool:
