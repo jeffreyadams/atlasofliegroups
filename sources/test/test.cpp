@@ -99,7 +99,6 @@ namespace {
   void test_f();
   void braid_f();
   void go_f();
-  void fix_braid_f();
 
   void roots_rootbasis_f();
   void coroots_rootbasis_f();
@@ -906,11 +905,6 @@ void test_f() // trial of twisted KLV computation
 	f << twisted_KLV.P(x,y) << std::endl;
       }
 
-}
-
-bool isDirectRecursion(ext_block::DescValue v)
-{
-  return is_descent(v) and is_unique_image(v);
 }
 
 int test_braid(ext_block::extended_block eblock) // by value
