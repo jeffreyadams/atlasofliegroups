@@ -178,7 +178,7 @@ bool extended_block::set_edge(BlockElt x,BlockElt y)
 void extended_block::report_2Ci_toggles(ext_block::extended_block eblock)
 {
   std::cout << "all (2Ci,2Cr) pairs and their flipped status" << std::endl;
-  for (weyl::Generator s=1; s<eblock.rank(); ++s)
+  for (weyl::Generator s=0; s<eblock.rank(); ++s)
     for (BlockElt x=0; x<eblock.size(); ++x)
       if (eblock.descent_type(s,x)==atlas::ext_block::two_semi_imaginary)
       {
