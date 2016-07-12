@@ -771,8 +771,11 @@ WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
   return result;
 } // |fixed_conjugate_simple|
 
-// for real Cayley transforms, $\lambda$ needs $\rho_r$ shift, then projection;
-// so compute scalar product of |alpha_check| with dual torus factor plus shift
+/* for real Cayley transforms, one will subtracts $\rho_r$ from |lambda_rho|
+  before projecting it parallel to alpha so as to make |alpha_v| vanish on
+  |gamma-lambda_rho-rho|. Here we compute from |E.lambda_rho()|, corrected by
+  that |shift|, the multiple of $\alpha/2$ that such a projection would add.
+ */
 int level_a (const param& E, const Weight& shift, RootNbr alpha)
 {
   const RootDatum& rd = E.rc().rootDatum();
@@ -1387,16 +1390,16 @@ DescValue star (const param& E,
 
 	  param F0(E.ctxt,new_tw,
 		   E.lambda_rho() + first + rho_r_shift,
-		   E0.tau() - first,
-		   E0.l(), E.t());
+		   E.tau() + alpha*(tau_coef/2) - first,
+		   E.l() + alpha_v*(tf_alpha/2), E.t());
 	  param F1(E.ctxt,new_tw,
-		   F0.lambda_rho() + alpha, F0.tau(), E0.l(), E.t());
+		   F0.lambda_rho() + alpha, F0.tau(), F0.l(), E.t());
 
-	  int sign0 = sign_between(E,F0);
-	  int sign1 = sign_between(E,F1);
+	  int sign0 = z_quot(E,F0);
+	  int sign1 = z_quot(E,F1);
 
-	  links.push_back(std::make_pair(sign0,std::move(F0)));
-	  links.push_back(std::make_pair(sign1,std::move(F1)));
+	  links.push_back(std::make_pair(sign0,std::move(F0))); // Cayley link
+	  links.push_back(std::make_pair(sign1,std::move(F1))); // Cayley link
 	} // end of type 2 case
       } // end of length 1 imaginary case
 
@@ -1474,7 +1477,7 @@ DescValue star (const param& E,
 	  E0.set_t(E.t() - diff*t_alpha);
 	  assert(same_sign(E,E0)); // since only |t| changes
 
-	  param E1 = E0; // for cross neighbour
+	  param E1 = E0; // for cross neighbour; share updated value of |t|
 	  E1.set_lambda_rho(E.lambda_rho()+alpha);
 	  assert(not same_standard_reps(E0,E1));
 
