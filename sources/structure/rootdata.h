@@ -65,6 +65,8 @@ RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
 RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
 
+ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution delta);
+
 } // |namespace rootdata|
 
 /******** type definitions **************************************************/
@@ -256,7 +258,7 @@ class RootSystem
   matrix::Vector<int> pos_system_vec(const RootNbrList& Delta) const;
 
   // find simple basis for subsystem
-  RootNbrList simpleBasis(RootNbrSet rs) const;
+  RootNbrList simpleBasis(RootNbrSet rs) const; // by value
 
   bool sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const;
   bool sumIsRoot(RootNbr alpha, RootNbr beta) const

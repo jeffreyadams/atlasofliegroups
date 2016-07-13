@@ -47,15 +47,14 @@ namespace weyl {
 
 /******** type definitions **************************************************/
 
-  /*!
-\brief A mapping between one interpretation of Generators and another
-  */
-  class Twist // also used by synonym |WeylInterface|
+  // A mapping between one interpretation of Generators and another
+  class Twist // also used under the typedef name |WeylInterface|
   {
     Generator d[constants::RANK_MAX];
   public:
     Twist () // assures definite values are always set
       { std::memset(d,~0,sizeof(d)); }
+    Twist(const ext_gens& orbits);
     Generator& operator[] (size_t i) { return d[i]; }
     const Generator& operator[] (size_t i) const { return d[i]; }
 
@@ -705,11 +704,11 @@ public:
   const Twist& twist() const { return d_twist; } // noun "twist"
   void twist(WeylElt& w) const { w=twisted(w); } // verb "twist"
 
-  std::vector<ext_gen> twist_orbits () const;
+  ext_gens twist_orbits () const;
   Twist dual_twist() const; // the twist for the dual twisted Weyl group
 
-  /*!
-     Twisted conjugates element |tw| by the generator |s|:
+  /*
+     Twisted conjugate element |tw| by the generator |s|:
      $tw:=s.tw.\delta(s)$. Returns length change, in $\{-2,0,2\}$. For
      consistency, these functions should have |s| resp. |ww| as first argument
    */

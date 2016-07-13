@@ -46,7 +46,7 @@ bool PolEntry::operator!=(PolEntry::Pooltype::const_reference e) const
 }
 
 
-descent_table::descent_table(const ext_block::extended_block& eb)
+descent_table::descent_table(const ext_block::ext_block& eb)
   : descents(eb.size()), good_ascents(eb.size())
   , prim_index(1<<eb.rank(),std::vector<unsigned int>(eb.size(),0))
   , prim_flip(eb.size(),BitMap(prim_index.size()))
@@ -187,7 +187,7 @@ Pol qk_minus_q(int k)
 // component of element $a_x$ in product $(T_s+1)a_{sy}$
 Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
 {
-  const ext_block::extended_block& b = aux.block;
+  const ext_block::ext_block& b = aux.block;
   switch(type(s,x))
   { default:
       assert(false); // list will only contain descent types
@@ -269,7 +269,7 @@ inline Pol m(int a,int b) { return a==0 ? Pol(b) : qk_plus_1(2)*a + Pol(1,b); }
 Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 		    const std::vector<Pol>& M) const
 {
-  const ext_block::extended_block& bl=aux.block;
+  const ext_block::ext_block& bl=aux.block;
   const BlockElt z =  bl.some_scent(s,y); // unique ascent by |s| of |y|
 
   const unsigned defect = has_defect(type(s,z)) ? 1 : 0;
@@ -379,7 +379,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
 		     const std::vector<Pol>& M) const
 {
-  const ext_block::extended_block& bl=aux.block;
+  const ext_block::ext_block& bl=aux.block;
   const unsigned k = bl.orbit(s).length();
   if (k==1) // nothing changed for this case
     return  Pol(bl.l(y,x)%2==0 ? 0 : mu(1,x,y));

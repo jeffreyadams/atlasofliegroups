@@ -142,7 +142,7 @@ std::ostream& non_integral_block::print
 
 namespace ext_block {
 
-std::ostream& extended_block::print_to (std::ostream& strm) const
+std::ostream& ext_block::print_to (std::ostream& strm) const
 {
   if (size()==0)
     return strm << "Empty extended block (block is not twist-stable)."

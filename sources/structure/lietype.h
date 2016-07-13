@@ -143,6 +143,26 @@ Layout() : d_type(), d_inner(), d_perm() {} // needed in atlas
 }; // |struct Layout|
 
 
+struct ext_gen // generator of extended Weyl group
+{
+  enum { one, two, three } type;
+  weyl::Generator s0,s1;
+  WeylWord w_tau;
+
+  explicit ext_gen (weyl::Generator s)
+    : type(one), s0(s), s1(~0), w_tau() { w_tau.push_back(s); }
+  ext_gen (bool b) = delete; // defuse implicit conversion
+  ext_gen (bool commute, weyl::Generator s, weyl::Generator t)
+  : type(commute ? two : three), s0(s), s1(t)
+  { w_tau.push_back(s);  w_tau.push_back(t);
+    if (not commute) w_tau.push_back(s);
+  }
+
+  int length() const { return type+1; }
+};
+
+
+
 
 /******** function declarations **********************************************/
 

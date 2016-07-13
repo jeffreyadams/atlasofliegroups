@@ -32,7 +32,7 @@
 #include "permutations.h"// to hold the result from dynkin
 #include "prerootdata.h"// for defining action using only simple (co)roots
 #include "rootdata.h"	// also needed for defining action, and deducing twist
-#include "blocks.h"  // for |ext_gen|
+#include "lietype.h"  // for |ext_gen|
 #include "sl_list.h"
 
 // extra defs for windows compilation -spc
@@ -700,14 +700,14 @@ WeylElt TwistedWeylGroup::dual_twisted(const WeylElt& w) const
   return W.translation(w,dual_twist);
 }
 
-std::vector<ext_gen> TwistedWeylGroup::twist_orbits ()  const
+ext_gens TwistedWeylGroup::twist_orbits ()  const
 {
   unsigned int size=0;
   for (weyl::Generator s=0; s<rank(); ++s)
     if (twisted(s)>=s)
       ++size;
 
-  std::vector<ext_gen> result; result.reserve(size);
+  ext_gens result; result.reserve(size);
 
   for (weyl::Generator s=0; s<rank(); ++s)
     if (twisted(s)==s)
@@ -894,7 +894,7 @@ InvolutionWord TwistedWeylGroup::extended_involution_expr(TwistedInvolution tw)
   const
 {
   assert(twisted(tw)==tw);
-  std::vector<blocks::ext_gen> orbit = twist_orbits();
+  ext_gens orbit = twist_orbits();
 
   InvolutionWord result; result.reserve(involutionLength(tw));
 
@@ -1187,6 +1187,24 @@ Transducer::Transducer(const int_Matrix& c, size_t r)
 	  // else case (3) : $xs$ moves up, do nothing
 	}
       } // |if (..==UndefEltPiece)|, |for|, |for|
+} // |Transducer::Transducer|
+
+
+
+/*			    Other, small, classes			*/
+
+// extract |Twist| information from a list of "extended generators"
+Twist::Twist(const ext_gens& orbits)
+{
+  std::fill_n(&d[0],constants::RANK_MAX,Generator(~0));
+  for (auto it=orbits.begin(); it!=orbits.end(); ++it)
+    if (it->length()==1)
+      d[it->s0]=it->s0;
+    else
+    {
+      d[it->s0]=it->s1;
+      d[it->s1]=it->s0;
+    }
 }
 
 size_t TI_Entry::hashCode(size_t modulus) const

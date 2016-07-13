@@ -41,7 +41,8 @@
 
 #include "arithmetic.h"
 
-#include "lietype.h"	// value returned from |LieType| method
+#include "lietype.h"	// value returned from |LieType| method, |ext_gen|
+
 #include "dynkin.h"
 #include "lattice.h"
 #include "bitmap.h"  // for root sets
@@ -1253,6 +1254,27 @@ RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma)
       fracs.insert(Rational(s,*it));
 
   return RationalList(fracs.begin(),fracs.end());
+}
+
+ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution delta)
+{
+  ext_gens result;
+  const Permutation pi = rd.rootPermutation(delta);
+  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+  {
+    RootNbr alpha=rd.simpleRootNbr(s);
+    if (pi[alpha]==alpha)
+      result.push_back(ext_gen(s));
+    else if (pi[alpha]>alpha)
+    {
+      if (rd.is_simple_root(pi[alpha]))
+	result.push_back(ext_gen(rd.isOrthogonal(alpha,pi[alpha]),
+				 s,rd.simpleRootIndex(pi[alpha])));
+      else
+	throw std::runtime_error("Not a distinguished involution");
+    }
+  }
+  return result;
 }
 
 } // |namespace rootdata|

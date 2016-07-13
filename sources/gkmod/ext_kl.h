@@ -34,10 +34,10 @@ class descent_table
   std::vector<std::vector<unsigned int> > prim_index;
   std::vector<BitMap> prim_flip; // sign for |prim_index|, transposed indexing
  public:
-  const ext_block::extended_block& block;
+  const ext_block::ext_block& block;
 
 // constructors and destructors
-  explicit descent_table(const ext_block::extended_block&);
+  explicit descent_table(const ext_block::ext_block&);
 
 // accessors
 
@@ -75,7 +75,7 @@ class KL_table
   std::vector<kl::KLRow> column; // columns are lists of polynomial pointers
 
  public:
-   KL_table(const ext_block::extended_block& b, std::vector<Pol>& pool)
+   KL_table(const ext_block::ext_block& b, std::vector<Pol>& pool)
     : aux(b), storage_pool(pool), column() {}
 
   size_t rank() const { return aux.block.rank(); }

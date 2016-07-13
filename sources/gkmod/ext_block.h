@@ -7,7 +7,7 @@
   For license information see the LICENSE file
 */
 
-// Class definition and function declarations for class |extended_block|.
+// Class definition and function declarations for class |ext_block|.
 
 #ifndef EXT_BLOCK_H  /* guard against multiple inclusions */
 #define EXT_BLOCK_H
@@ -100,7 +100,7 @@ BlockElt twisted (const Block& block,
 
 typedef Polynomial<int> Pol;
 
-class extended_block
+class ext_block
 {
   struct elt_info // per block element information
   {
@@ -124,40 +124,44 @@ class extended_block
   block_fields(DescValue t) : type(t),links(UndefBlock,UndefBlock) {}
   };
 
-  const Block_base& parent;
-  const TwistedWeylGroup& tW; // needed for printing only
-  const DynkinDiagram folded;
+  const Block_base& parent; // block, maybe non-intg. where we are fixed points
+  ext_gens orbits; // $\delta$-orbits of generators for the parent block
+  const DynkinDiagram folded; // diagram defined on those orbits
+
+  WeightInvolution d_delta;
 
   std::vector<elt_info> info; // its size defines the size of the block
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
   BlockEltList l_start; // where elements of given length start
 
-  std::set<BlockEltPair> flipped_edges;
-
  public:
 
 // constructors and destructors
-  extended_block(const Block_base& block,const TwistedWeylGroup& W);
+  ext_block(const InnerClass& G,
+	    const Block& block,
+	    const KGB& kgb, const KGB& dual_kgb, // all are needed
+	    const WeightInvolution& delta);
+  ext_block(const InnerClass& G,
+	    const param_block& block, const KGB& kgb,
+	    const WeightInvolution& delta);
 
 // manipulators
+  void flip_edge(weyl::Generator s, BlockElt x, BlockElt y);
 
-  void patch_signs();
-  void order_quad // make 2i12/2r21 quadruple have minus for |y|--|q| edge
-    (BlockElt x,BlockElt y, BlockElt p, BlockElt q, int s, bool verbose=true);
   bool // return new value; true means edge was flipped to minus
     toggle_edge(BlockElt x,BlockElt y, bool verbose=true);
   bool set_edge(BlockElt x,BlockElt y);    // always set
   unsigned int list_edges();  // returns number of toggled pairs
-  void report_2Ci_toggles(extended_block eblock);
+  void report_2Ci_toggles() const;
 
 // accessors
 
-  size_t rank() const { return data.size(); }
+  size_t rank() const { return orbits.size(); }
   size_t size() const { return info.size(); }
 
-  ext_gen orbit(weyl::Generator s) const { return parent.orbit(s); }
+  ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
   const DynkinDiagram& Dynkin() const { return folded; }
-  //  const WeightInvolution& delta() const { return d_delta; }
+  const WeightInvolution& delta() const { return d_delta; }
 
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
 
@@ -194,7 +198,12 @@ class extended_block
   // print whole block to stream (name chosen to avoid masking by |print|)
   std::ostream& print_to(std::ostream& strm) const; // defined in |block_io|
 
-}; // |class extended_block|
+private:
+  void complete_construction(const BitMap& fixed_points);
+
+}; // |class ext_block|
+
+
 
 // Extended parameters
 
@@ -301,12 +310,12 @@ inline int sign_between (const param& E, const param& F)
 // find out type of extended parameters, and push its neighbours onto |links|
 DescValue type (const param& E, const ext_gen& p,
 		containers::sl_list<param>& links);
-bool check(const extended_block& eb, const param_block& block,
-	   bool verbose=false);
+
+bool check(const ext_block& eb, const param_block& block, bool verbose=false);
 
 // check braid relation at |x|; also mark all involved elements in |cluster|
 bool check_braid
-  (const extended_block& b, weyl::Generator s, weyl::Generator t, BlockElt x,
+  (const ext_block& b, weyl::Generator s, weyl::Generator t, BlockElt x,
    BitMap& cluster);
 
 } // |namespace ext_block|
