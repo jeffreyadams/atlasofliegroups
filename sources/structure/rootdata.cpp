@@ -85,6 +85,8 @@
 
 namespace atlas {
 
+namespace rootdata {
+
 
 /*****************************************************************************
 
@@ -105,8 +107,6 @@ namespace atlas {
   full rank of our fundamental lattice containing Q.
 
 ******************************************************************************/
-
-namespace rootdata {
 
 struct RootSystem::root_compare
 {
@@ -848,8 +848,8 @@ void RootDatum::reflect(LatticeMatrix& M,RootNbr alpha) const
 }
 
 
-/*!
-\brief Returns the permutation of the roots induced by |q|.
+/*
+  Return the permutation of the roots induced by |q|.
 
   Precondition: |q| permutes the roots;
 */
@@ -858,20 +858,17 @@ Permutation RootDatum::rootPermutation(const WeightInvolution& q) const
   RootNbrList simple_image(semisimpleRank());
 
   for (weyl::Generator s=0; s<semisimpleRank(); ++s)
-    simple_image[s] = root_index(q*simpleRoot(s));
+  { auto image = root_index(q*simpleRoot(s));
+    assert(image<numRoots());
+    simple_image[s] = image;
+  }
 
   return extend_to_roots(simple_image);
 }
 
 
 
-/*!
-\brief Returns the reflection for root \#alpha.
-
-  NOTE: this is not intended for heavy use. If that is envisioned, it would be
-  better to construct the matrices once and for all and return const
-  references.
-*/
+// Return the reflection for root number |alpha|.
 WeightInvolution RootDatum::root_reflection(RootNbr alpha) const
 {
   LatticeMatrix result(d_rank); // identity
@@ -889,7 +886,7 @@ WeightInvolution RootDatum::root_reflection(RootNbr alpha) const
 
 WeylWord RootDatum::reflectionWord(RootNbr alpha) const
 {
-  return to_dominant(reflection(twoRho(),alpha));
+  return to_dominant(reflection(alpha,twoRho()));
 }
 
 
@@ -926,19 +923,18 @@ Weight RootDatum::twoRho(const RootNbrList& rl) const
   return result;
 }
 
-/*!
-\brief Returns the sum of the positive roots in rs.
+/* Returns the sum of the positive roots in rs.
 
   Precondition: rs holds the roots in a sub-rootsystem of the root system of
-  rd;
+  rd, or possibly only the positive roots in such a subsystem
 */
-Weight RootDatum::twoRho(const RootNbrSet& rs) const
+Weight RootDatum::twoRho(RootNbrSet rs) const
 {
   Weight result(rank(),0);
+  rs &= posRootSet(); // limit to positive roots in the subset
 
   for (RootNbrSet::iterator i = rs.begin(); i(); ++i)
-    if (is_posroot(*i))
-      result += root(*i);
+    result += root(*i);
 
   return result;
 }
@@ -955,13 +951,13 @@ Coweight RootDatum::dual_twoRho(const RootNbrList& rl) const
   return result;
 }
 
-Coweight RootDatum::dual_twoRho(const RootNbrSet& rs) const
+Coweight RootDatum::dual_twoRho(RootNbrSet rs) const
 {
   Coweight result(rank(),0);
+  rs &= posRootSet(); // limit to positive roots in the subset
 
   for (RootNbrSet::iterator i = rs.begin(); i(); ++i)
-    if (is_posroot(*i))
-      result += coroot(*i);
+    result += coroot(*i);
 
   return result;
 }
@@ -1074,17 +1070,22 @@ void RootDatum::fillStatus()
 
 ******************************************************************************/
 
-RatWeight rho (const RootDatum& rd)
-  { return RatWeight(rd.twoRho(),2); }
+RatWeight rho (const RootDatum& rd) { return RatWeight(rd.twoRho(),2); }
+RatWeight rho (const RootDatum& rd, const RootNbrSet& sub_posroots)
+  { return RatWeight(rd.twoRho(sub_posroots),2); }
 RatCoweight rho_check (const RootDatum& rd)
   { return RatCoweight(rd.dual_twoRho(),2); }
+RatCoweight rho_check (const RootDatum& rd, const RootNbrSet& sub_posroots)
+  { return RatCoweight(rd.dual_twoRho(sub_posroots),2); }
 
 /*
-  Return matrix of dual involution of the one given by |q|
+  Return matrix of dual fundamental involution related to fundamental |q|
 
-  Precondition: |q| is an involution of |rd| as a _based_ root datum
+  Here |q| is an involution of |rd| as a _based_ root datum.
+  Note that |rd| is not the dual root datum, although the result will be a
+  based involution for that dual datum
 
-  Postcondition: result is an involution of the based root datum dual to |rd|
+  Returns an involution of the based root datum dual to |rd|
 
   Formula: it is given by $(w_0^t)(-q^t) = (-q.w_0)^t$
 
@@ -1195,6 +1196,33 @@ WeylWord conjugate_to_simple(const RootSystem& rs,RootNbr& alpha)
   return result;
 }
 
+// set of positive roots made negative by left multiplication by |w|
+// form L to R letter s: either: reflect by by $\alpha_s$, which posroot toggle
+RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w)
+{ RootNbr npos = rs.numPosRoots();
+  std::vector<Permutation> pos_perm_simple;
+  pos_perm_simple.reserve(rs.rank());
+  for (unsigned i=0; i<rs.rank(); ++i)
+  { const Permutation& p = rs.simple_root_permutation(i);
+    pos_perm_simple.push_back(Permutation(npos));
+    for (RootNbr j=0; j<npos; ++j)
+      if (j==i) pos_perm_simple.back()[j]=i; // make |j| itself a fixed point
+      else pos_perm_simple.back()[j]=rs.posRootIndex(p[rs.posRootNbr(j)]);
+  }
+
+  RootNbrSet current(npos), tmp(npos);
+  for (auto it=w.begin(); it!=w.end(); ++it)
+  { tmp.reset(); // clear out all old bits
+    Permutation& p=pos_perm_simple[*it]; // a positive root permutation
+    for (auto root_it=current.begin(); root_it(); ++root_it)
+      tmp.insert(p[*root_it]); // apply permutation to the subset of roots
+    tmp.flip(*it); // flip status of simple root for current letter of |w|
+    current=tmp;
+  }
+
+  current.set_capacity(rs.numRoots()); // double the size
+  return current <<= npos; // shift to root (rather than posroot) numbers
+}
 
 /*
   Return the matrix represented by the product of the
@@ -1277,16 +1305,12 @@ ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution delta)
   return result;
 }
 
-} // |namespace rootdata|
 
 /*****************************************************************************
 
                 Chapter III -- Auxiliary methods.
 
 ******************************************************************************/
-
-namespace rootdata {
-
 
 
 // a class for making a compare object for indices, backwards lexicographic

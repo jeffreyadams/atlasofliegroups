@@ -190,6 +190,10 @@ template<typename C> class Matrix_base
   void add_row(const Vector<C>&);
   void add_column(const Vector<C>&);
 
+  // in the following two methods |k,l| are top-left indices of submatrix
+  void get_block(Matrix_base<C>& dst, unsigned k, unsigned l) const;
+  void set_block(unsigned k, unsigned l, const Matrix_base<C>& src);
+
 // resize undefined; use |Matrix<C>(m,n).swap(M)| instead of |M.resize(m,n)|
 
   void eraseColumn(size_t);

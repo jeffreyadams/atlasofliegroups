@@ -183,7 +183,6 @@ class ext_block
   // some of the above: an (a/de)scent of |n| in block; assumed to exist
   BlockElt some_scent(weyl::Generator s, BlockElt n) const;
 
-
   // whether link for |s| from |x| to |y| has a sign flip attached
   int epsilon(weyl::Generator s, BlockElt x, BlockElt y) const;
 
@@ -311,7 +310,7 @@ inline int sign_between (const param& E, const param& F)
 DescValue type (const param& E, const ext_gen& p,
 		containers::sl_list<param>& links);
 
-bool check(const ext_block& eb, const param_block& block, bool verbose=false);
+bool check(ext_block& eb, const param_block& block, bool verbose=false);
 
 // check braid relation at |x|; also mark all involved elements in |cluster|
 bool check_braid

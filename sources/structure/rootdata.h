@@ -37,7 +37,9 @@ namespace atlas {
 namespace rootdata {
 
 RatWeight rho (const RootDatum& rd);
+RatWeight rho (const RootDatum& rd,const RootNbrSet& sub_posroots);
 RatCoweight rho_check (const RootDatum& rd);
+RatCoweight rho_check (const RootDatum& rd,const RootNbrSet& sub_posroots);
 
 CoweightInvolution dualBasedInvolution
   (const WeightInvolution&, const RootDatum&);
@@ -57,6 +59,9 @@ void make_positive(const RootSystem& rs,RootNbr& alpha);
 // conjugate |alpha| to a simple root, returning right-conjugating word applied
 // afterwards |alpha| is shifted to become a \emph{simple} root index
 WeylWord conjugate_to_simple(const RootSystem& rs,RootNbr& alpha);
+
+// set of positive roots sent to negative by |w| (whose sum is $(1-w^{-1})\rho$)
+RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w);
 
 // compute product of reflections in set of orthogonal roots
 WeightInvolution refl_prod(const RootNbrSet&, const RootDatum&);
@@ -505,7 +510,7 @@ use by accessors.
 
   template<typename C>
     matrix::Vector<C>
-    reflection(matrix::Vector<C> lambda, RootNbr alpha) const
+    reflection(RootNbr alpha,matrix::Vector<C> lambda) const
     { reflect(alpha,lambda); return lambda; }
   template<typename C>
   matrix::Vector<C>
@@ -588,10 +593,10 @@ use by accessors.
   // express coroot in basis of simple coroots
   int_Vector inSimpleCoroots(RootNbr alpha) const { return coroot_expr(alpha); }
 
-  Weight twoRho(const RootNbrList&) const;
-  Weight twoRho(const RootNbrSet&) const;
+  Weight twoRho(const RootNbrList&) const; // sum of the \emph{positive} members
+  Weight twoRho(RootNbrSet) const; // by value; sum of the positive members
   Coweight dual_twoRho(const RootNbrList&) const;
-  Coweight dual_twoRho(const RootNbrSet&) const;
+  Coweight dual_twoRho(RootNbrSet) const; // by value
 
 
   WeylWord word_of_inverse_matrix(const WeightInvolution&)

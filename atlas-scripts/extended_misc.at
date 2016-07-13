@@ -29,6 +29,7 @@ set Cayley (int s,Param p) = Param:
   let alpha = simple_roots(
     integrality_datum(real_form(p),infinitesimal_character(p)))
   in Cayley(alpha[s],p)
+set inv_Cayley = Cayley@(int,Param) { leave this defined for other scripts }
 
 { Cayley transform as a set (actually an array, but order doesn't matter) }
 set Cayley_set (int j,Param p) = [Param]:
@@ -133,13 +134,14 @@ set y (extended_param (ic,,gamma,lambda,,,,omega,,)) = KGBElt:
   KGB_elt(dual(ic),omega,(gamma-lambda-rho(ic)))
 
 set x (extended_param (ic,,,,theta,g,l,,,)) = KGBElt:
-  KGB_elt(ic,theta,(g-l-rho_check(ic)))
+  KGB_elt(ic,theta,(g-rho_check(RootDatum:ic)-l))
 
 { recover ordinary Param value from extended_param; coul be defined as
   set parameter (extended_param (,,gamma,,,,,,,):a) = Param:
   parameter(x(a),y(a),gamma)
 
   actually this is better: use (x,lambda,gamma)
+  altogether, only the fields (ic,,gamma,lambda,theta,g,l,,,) of |a| are used
 }
 set parameter (extended_param (ic,,gamma,lambda,,,,,,):a) = Param:
   param(x(a),lambda,gamma)
@@ -178,7 +180,7 @@ begin let OK=false { pessimist: avoids having to set this in many branches } in
   elif !=(gamma-lambda-rho(ic))*(1-omega)
   then prints("(1-^omega)gamma\ne (1-^omega)(lambda+rho)")
   elif -l*(1-delta)!=t*(1+theta) then prints("(^delta-1)l\ne (1+^theta)t")
-  elif -(1-delta)*lambda!=(1-theta)*tau
+  elif -(1-delta)*lambda!=(1-theta)*tau { recall that -theta=^omega }
   then prints("(delta-1)lambda\ne (1+^omega)tau")
   else OK:=true
   fi
@@ -192,17 +194,19 @@ set fixed (mat delta, [Param] B)=[Param]:
 { select delta-fixed elements from block_of(p) }
 set fixed_block_of (mat delta, Param p) = [Param]: fixed(delta,block_of(p))
 
-{ display(E): terse output of E }
-set display (extended_param (,,gamma,lambda,,g,l,,tau,t):E) = void:
-( prints("     x=", x(E))
-; prints(" gamma=",gamma)
-; prints("     g=",g)
-; prints("")
-; prints("lambda=",lambda)
-; prints("   tau=",tau)
-; prints("     l=",l)
-; prints("     t=",t)
-)
+set format (extended_param (,,gamma,lambda,,g,l,,tau,t):E) = string:
+  to_string ( "     x=", x(E)
+  , new_line, " gamma=",gamma
+  , new_line, "     g=",g
+  , new_line
+  , new_line, "lambda=",lambda
+  , new_line, "   tau=",tau
+  , new_line, "     l=",l
+  , new_line, "     t=",t
+  )
 
-set display_one_line (extended_param (,,,lambda,,,l,,tau,t)) = void:
-  prints(lambda,", ", tau, ", ", l, ", ", t, ", ")
+set short_format (extended_param (,,,lambda,,,l,,tau,t)) = string:
+  to_string("lambda =",lambda,", tau=", tau, ", l=", l, ", t=", t, ".")
+
+set display (extended_param E) = void: prints(format(E))
+set display_one_line (extended_param E) = void: prints(short_format(E))

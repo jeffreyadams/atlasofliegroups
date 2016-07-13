@@ -115,7 +115,7 @@ std::ostream& Block::print
   return strm ;
 }
 
-std::ostream& non_integral_block::print
+std::ostream& param_block::print
   (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {
   const KGB& kgb = rc.kgb();
@@ -194,12 +194,7 @@ std::ostream& ext_block::print_to (std::ostream& strm) const
       strm << ')' << std::setw(pad) << "";
     }
 
-    weyl::InvolutionWord dec =
-      tW.extended_involution_expr(parent.involution(z(n)));
-    for (size_t i=0; i<dec.size(); ++i)
-      if (dec[i]>=0) strm << static_cast<char>('1'+dec[i]) << '^';
-      else strm << static_cast<char>('1'+~dec[i]) << 'x';
-    strm << 'e' << std::endl;
+    strm << std::endl;
   } // |for (n)|
 
   return strm;

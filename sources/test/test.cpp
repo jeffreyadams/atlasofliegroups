@@ -881,9 +881,13 @@ void exam_f()
 void test_f() // trial of twisted KLV computation
 {
 
-  ext_block::extended_block
-    eblock(commands::currentBlock(),
-	   commands::current_inner_class().twistedWeylGroup());
+  ext_block::ext_block
+    eblock(commands::current_inner_class(),
+	   commands::currentBlock(),
+	   commands::currentRealGroup().kgb(),
+	   commands::currentDualRealGroup().kgb(),
+	   commands::current_inner_class().distinguished()
+	   );
 
   BlockElt last; input::InputBuffer& cl= commands::currentLine();
   cl >> last; // maybe get threshold for filling
@@ -907,7 +911,7 @@ void test_f() // trial of twisted KLV computation
 
 }
 
-int test_braid(ext_block::extended_block eblock) // by value
+int test_braid(ext_block::ext_block eblock) // by value
 {
   std::cout << "testing braids" << std::endl;
   bool OK=true; int count=0; int failed=0;
@@ -942,7 +946,7 @@ int test_braid(ext_block::extended_block eblock) // by value
   return failed;
 } // |braid_f|
 
-void fix_braid(ext_block::extended_block& eblock)
+void fix_braid(ext_block::ext_block& eblock)
 {
   bool OK=true; int count=0;
   for (weyl::Generator t=1; t<eblock.rank(); ++t)
@@ -1025,9 +1029,13 @@ void fix_braid(ext_block::extended_block& eblock)
 
 void braid_f()
 {
-  ext_block::extended_block
-    eblock(commands::currentBlock(),
-	   commands::current_inner_class().twistedWeylGroup());
+  ext_block::ext_block
+    eblock(commands::current_inner_class(),
+	   commands::currentBlock(),
+	   commands::currentRealGroup().kgb(),
+	   commands::currentDualRealGroup().kgb(),
+	   commands::current_inner_class().distinguished()
+	   );
   test_braid(eblock);
 }
 
@@ -1035,9 +1043,13 @@ void braid_f()
 
 void go_f()
 {
-  ext_block::extended_block
-    eblock(commands::currentBlock(),
-	   commands::current_inner_class().twistedWeylGroup());
+  ext_block::ext_block
+    eblock(commands::current_inner_class(),
+	   commands::currentBlock(),
+	   commands::currentRealGroup().kgb(),
+	   commands::currentDualRealGroup().kgb(),
+	   commands::current_inner_class().distinguished()
+	   );
 
   int nr_failures=0;
   int max_tries=10;
@@ -1048,7 +1060,7 @@ void go_f()
     if (failures==0)
     {
       std::cout << "Total braid relations fixed: " << nr_failures << std::endl;
-      eblock.report_2Ci_toggles(eblock);
+      eblock.report_2Ci_toggles();
       break;
     }
     else

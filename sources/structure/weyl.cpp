@@ -267,7 +267,10 @@ int WeylGroup::multIn(WeylElt& w, Generator s) const
 
   // in the next loop |j| cannot pass |0| since transducer 0 only has shifts
   for (Generator t; (t=d_transducer[j].out(w[j],s))!=UndefGenerator; s=t)
+  {
+    assert(j!=0);
     --j;
+  }
 
   // now transductions are exhausted and one nontrivial shift remains
   WeylElt::EltPiece wj=w[j];

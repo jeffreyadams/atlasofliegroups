@@ -305,7 +305,7 @@ KGBElt global_KGB::lookup(const GlobalTitsElement& a) const
   for (KGBElt x=p.first; x<p.second; ++x)
     if (i_tab.x_equiv(element(x),a))
       return x;
-  return size(); // report failure
+  return UndefKGB; // report failure
 }
 
 std::ostream& global_KGB::print(std::ostream& strm, KGBElt x) const
@@ -772,7 +772,7 @@ KGBElt KGB::lookup(TitsElt a) const
   for (KGBElt x=p.first; x<p.second; ++x)
     if (Tg.left_torus_part(titsElt(x))==t)
       return x;
-  return size(); // report failure
+  return UndefKGB; // report failure
 }
 
 const poset::Poset& KGB::bruhatPoset() // this creates full poset on demand

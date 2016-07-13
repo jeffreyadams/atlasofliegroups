@@ -77,8 +77,16 @@ stack_rows: ([vec]->mat) : combine ragged rows into matrix, zero-extend shorts
 error: (*,...->*) : print values and abort computation; report a runtime error
 
 int_format: (int->string): representation of integer as digit string
+<<<<<<< HEAD:rx-scripts/functions.help
+to_string:(*,...->string): concatenate string representations of arguments
+print: (T->T): print value, followed by newline; return same value
+||||||| merged common ancestors
+to_string:(*,...->string): concatenate string representations of arguments
+print: (*->*): print value, followed by newline; return same value
+=======
 to_string:(*,...->string): string representation of arguments (concatenated)
 print: (T->T): print value, followed by newline; return same value
+>>>>>>> latest:atlas-scripts/atlas-functions.help
 prints: (*,...->): print values raw (no quotes or commas) followed by newline
 ascii: (string->int): ASCII code of initial character, or -1 if string empty
 ascii: (int->string): string of length 1 with given ASCII code (if safe value)
@@ -662,12 +670,31 @@ KL_block: (Param->[Param],int,mat,[vec],vec,vec,mat): block, raw_KL, and more
   actual block by selecting only the columns whose index is among the
   survivors, and multiplying the resulting matrix on the left by the
   contibution-coefficient matrix (the final component this function returns).
-partial_KL_block: (Param->[Param],mat,[vec],vec,vec,mat) partial KL_block
+partial_KL_block: (Param->[Param],mat,[vec],vec,vec,mat): partial KL_block
   This function relates to KL_block as partial_block relates to block. The
   first component of the result is the Bruhat interval as in partial_block,
   and all other components are the same is in KL_block (except that the now
   superfluous second component of KL_block is omitted), but with the two vec
   components filtered so as to be indexed by the Bruhat interval indices only.
+extended_block: (Param,mat->[Param],mat,mat,mat) extended block with graph data
+  The arguents are a parameter p and an external distinguished involution delta
+  (which should commute with the inner class distinguished involution). The
+  block of p is constructed as in block@Param, and the (possibly empty) list of
+  its parameters fixed by the action of delta returned as first component. The
+  remaining three components are matrices indexed by (in this order) an index
+  into the list of parameters and an index in the delta-folded Dynkin diagram
+  (an extended generator), and containing for the first matrix a code for the
+  type of the parameter for the generator, and for the other two matrices the
+  indices of the neighbors for this generator (two for double-valued Cayley
+  transforms or for single-valued ones with in addition a cross action, one for
+  a complex cross action, none for cases like a compact imaginary generator).
+  Every parameter in the extended block has an implicit choice of extended
+  parameter attached, with respect to which choices certain neighbor relations
+  may involve a sign flip, which is indicated in the corresponding matrix entry
+  (link value): if the extended block has size n, then link values from 0 to n-1
+  indicate a neighbor with no flip, negative values fro; -1 to -n indicate a
+  sign flip (for the index corresponding by subtraction from -1), and the value
+  n indicates absence of a link.
 
 operators =, != : (Split->bool): test split integer against Split:(0,0)
 operators =, != : (Split,Split->bool): equality/inequality of split integers

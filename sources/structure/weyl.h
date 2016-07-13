@@ -53,7 +53,7 @@ namespace weyl {
     Generator d[constants::RANK_MAX];
   public:
     Twist () // assures definite values are always set
-      { std::memset(d,~0,sizeof(d)); }
+    { std::fill_n(&d[0],constants::RANK_MAX,Generator(~0)); }
     Twist(const ext_gens& orbits);
     Generator& operator[] (size_t i) { return d[i]; }
     const Generator& operator[] (size_t i) const { return d[i]; }
@@ -718,7 +718,7 @@ public:
     int d = W.leftMult(w,s);
     return d+W.mult(w,d_twist[s]);
   }
-  int twistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
+  int twistedConjugate(const WeylWord& ww,TwistedInvolution& tw) const
   {
     int d=0;
     for (size_t i=ww.size(); i-->0; )
