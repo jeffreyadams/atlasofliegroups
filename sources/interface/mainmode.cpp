@@ -41,7 +41,7 @@ namespace commands {
 
   Basically, entering the main mode means setting the group type. In an
   interactive session, there is always a "current group"; this may be exported
-  through the function "currentComplexGroup". The current group may be changed
+  through the function "current_inner_class". The current group may be changed
   with the "type" command, which amounts to exiting and re-entering the main
   mode.
 
@@ -93,7 +93,7 @@ namespace {
 
 ******************************************************************************/
 
-InnerClass& currentComplexGroup()
+InnerClass& current_inner_class()
 
 {
   return *G_C_pointer;
@@ -103,7 +103,7 @@ InnerClass& current_dual_group()
 {
   if (dual_G_C_pointer==NULL)
     dual_G_C_pointer = new InnerClass
-      (currentComplexGroup(), tags::DualTag());
+      (current_inner_class(), tags::DualTag());
   return *dual_G_C_pointer;
 }
 
@@ -112,7 +112,7 @@ output::Interface& currentComplexInterface()
   return *G_I_pointer;
 }
 
-void replaceComplexGroup(InnerClass* G
+void replace_inner_class(InnerClass* G
 			,output::Interface* I)
 {
   delete G_C_pointer;
@@ -152,7 +152,7 @@ void main_mode_entry() throw(EntryError)
 // function only called from |exitMode|
 void main_mode_exit()
 {
-  replaceComplexGroup(NULL,NULL);
+  replace_inner_class(NULL,NULL);
 }
 
 } // |namespace|
@@ -218,7 +218,7 @@ namespace {
 void cmatrix_f()
 {
   prettyprint::printMatrix
-    (std::cout,currentComplexGroup().rootDatum().cartanMatrix());
+    (std::cout,current_inner_class().rootDatum().cartanMatrix());
 
 }
 
@@ -227,7 +227,7 @@ void cmatrix_f()
 void rootdatum_f()
 {
   ioutils::OutputFile file;
-  testprint::print(file,currentComplexGroup().rootDatum());
+  testprint::print(file,current_inner_class().rootDatum());
 }
 
 
@@ -236,7 +236,7 @@ void roots_f()
 {
   ioutils::OutputFile file;
 
-  const RootDatum& rd = currentComplexGroup().rootDatum();
+  const RootDatum& rd = current_inner_class().rootDatum();
 
   WeightList::const_iterator first = rd.beginRoot();
   WeightList::const_iterator last = rd.endRoot();
@@ -248,7 +248,7 @@ void coroots_f()
 {
   ioutils::OutputFile file;
 
-  const RootDatum& rd = currentComplexGroup().rootDatum();
+  const RootDatum& rd = current_inner_class().rootDatum();
 
   CoweightList::const_iterator first = rd.beginCoroot();
   CoweightList::const_iterator last = rd.endCoroot();
@@ -259,7 +259,7 @@ void coroots_f()
 // Print the simple roots in the lattice coordinates.
 void simpleroots_f()
 {
-  const RootDatum& rd = currentComplexGroup().rootDatum();
+  const RootDatum& rd = current_inner_class().rootDatum();
 
   rootdata::WRootIterator first = rd.beginSimpleRoot();
   rootdata::WRootIterator last = rd.endSimpleRoot();
@@ -269,7 +269,7 @@ void simpleroots_f()
 // Print the simple coroots in the lattice coordinates.
 void simplecoroots_f()
 {
-  const RootDatum& rd = currentComplexGroup().rootDatum();
+  const RootDatum& rd = current_inner_class().rootDatum();
 
   rootdata::WRootIterator first = rd.beginSimpleCoroot();
   rootdata::WRootIterator last = rd.endSimpleCoroot();
@@ -281,7 +281,7 @@ void posroots_f()
 {
   ioutils::OutputFile file;
 
-  const RootDatum& rd = currentComplexGroup().rootDatum();
+  const RootDatum& rd = current_inner_class().rootDatum();
 
   rootdata::WRootIterator first = rd.beginPosRoot();
   rootdata::WRootIterator last = rd.endPosRoot();
@@ -293,7 +293,7 @@ void poscoroots_f()
 {
   ioutils::OutputFile file;
 
-  const RootDatum& rd = currentComplexGroup().rootDatum();
+  const RootDatum& rd = current_inner_class().rootDatum();
 
   rootdata::WRootIterator first = rd.beginPosCoroot();
   rootdata::WRootIterator last = rd.endPosCoroot();
@@ -309,7 +309,7 @@ void help_f() // override more extensive help of empty mode by simple help
 void blocksizes_f()
 {
   output::printBlockSizes(std::cout,
-			  currentComplexGroup(),currentComplexInterface());
+			  current_inner_class(),currentComplexInterface());
 }
 
 // Activates real mode (user will select real form)
@@ -341,7 +341,7 @@ void showdualforms_f()
 // Print the gradings associated to the weak real forms.
 void gradings_f()
 {
-  InnerClass& G_C = currentComplexGroup();
+  InnerClass& G_C = current_inner_class();
 
   // get Cartan class; abort if unvalid
   size_t cn=interactive::get_Cartan_class(G_C.Cartan_set(G_C.quasisplit()));
@@ -357,7 +357,7 @@ void gradings_f()
 // Print information about strong real forms.
 void strongreal_f()
 {
-  InnerClass& G_C = currentComplexGroup();
+  InnerClass& G_C = current_inner_class();
 
   // get Cartan class; abort if unvalid
   size_t cn=interactive::get_Cartan_class(G_C.Cartan_set(G_C.quasisplit()));
@@ -366,7 +366,7 @@ void strongreal_f()
   file << "\n";
   output::printStrongReal
     (file,
-     currentComplexGroup(),
+     current_inner_class(),
      currentComplexInterface().realFormInterface(),
      cn);
 }
@@ -374,7 +374,7 @@ void strongreal_f()
 // Print a kgb table for a dual real form.
 void dualkgb_f()
 {
-  InnerClass& G_C = currentComplexGroup();
+  InnerClass& G_C = current_inner_class();
   output::Interface& G_I = currentComplexInterface();
 
   RealFormNbr drf = interactive::get_dual_real_form(G_I,G_C,G_C.numRealForms());
@@ -401,7 +401,7 @@ void type_f()
     InnerClass* G;
     output::Interface* I;
     interactive::get_group_type(G,I);
-    replaceComplexGroup(G,I);
+    replace_inner_class(G,I);
     drop_to(main_mode); // drop invalidated descendant modes if called from them
   }
   catch(error::InputError& e) {

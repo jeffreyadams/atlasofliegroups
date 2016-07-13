@@ -77,8 +77,8 @@ contains definitions depending on \.{parse\_types.h} having been included.
 Its header file includes \.{buffer.h}, \.{parse\_types.h} and \.{parser.tab.h}.
 
 \point The file \.{axis-types.w} defines the main base classes for the \axis.
-evaluator, |type_expr| for representing \axis. types, |value_base| for
-dynamic values, |context| for dynamic evaluation contexts, |expression_base|
+evaluator, |type_expr| for representing \axis. types, |value_base| for dynamic
+values, |shared_context| for dynamic evaluation contexts, |expression_base|
 for ``compiled'' expressions, |program_error| for exceptions, and numerous
 types related to these. Its header file includes \.{parsetree.h} (which is
 needed for the error classes only).
@@ -116,7 +116,10 @@ Like for the \.{Fokko} program, the compile time flag |NREADLINE|, if defined
 by setting \.{-DNREADLINE} as a flag to the compiler, will prevent any
 dependency on the readline library.
 
-@d axis_version "0.9"
+@q axis_version "0.9" @>
+@q axis_version "0.9.1" multiple assignments, multi-overload set command @>
+@q axis_version "0.9.2" balancing, break, return, ++reach in while loops @>
+@d axis_version "0.9.3" @q avoid voiding, internals calls, field selectors @>
  // numbering from 0.5 (on 27/11/2010); last change May 6, 2015
 
 @c
@@ -234,9 +237,9 @@ const char* keywords[] =
  ,"set","let","in","begin","end"
  ,"if","then","else","elif","fi"
  ,"and","or","not"
- ,"while","do","od","next","for","from","downto"
+ ,"next","do","dont","from","downto","while","for","od"
  ,"case","esac", "rec_fun"
- ,"true","false", "die"
+ ,"true","false", "die", "break", "return"
  ,"whattype","showall","forget"
  ,nullptr};
 
@@ -263,12 +266,6 @@ longer necessary, as it is done automatically before |main| is called. Our own
 compilation units do require explicit calling of their initialisation
 functions.
 
-The looking up of the ``operator''~\.! overloaded at |bool| is done here to
-initialise the static variable |boolean_negate_builtin| that the evaluator
-declares, and uses to implement the |not| operation (in places where it
-cannot, as it can in the conditions of |if| or |while| clauses,
-be eliminated).
-
 @h <csignal>
 @h "atlas-types.h"
 
@@ -277,17 +274,6 @@ be eliminated).
   signal(SIGINT,sigint_handler); // install handler for user interrupt
   initialise_evaluator();
   initialise_builtin_types();
-@)
-  { id_type shriek = main_hash_table->match_literal("!");
-    const auto& variants = global_overload_table->variants(shriek);
-    for (auto it=variants.begin(); it!=variants.end(); ++it)
-      if (it->type().arg_type==bool_type)
-      @/{@; boolean_negate_builtin =
-          std::dynamic_pointer_cast<const builtin_value>(it->val);
-         break;
-      }
-    assert(boolean_negate_builtin.get()!=nullptr);
-  }
 
 
 @ Our main program constructs unique instances
@@ -442,7 +428,9 @@ if (paths.size()>0)
 }
 #endif
 
-@ The command loop maintains two global variables that were defined
+@*1 The main command loop.
+%
+The command loop maintains two global variables that were defined
 in \.{axis.w}, namely |last_type| and |last_value|; these start off in a
 neutral state. In a loop we call the parser until it sets |verbosity<0|, which
 is done upon seeing the \.{quit} command. We call the |reset| method of the
@@ -484,9 +472,11 @@ while (ana.reset()) // get a fresh line for lexical analyser, or quit
 }
 
 @ If a type error is detected by |analyse_types|, then it will have signalled
-it and thrown a |runtime_error|; if that happens |type_OK| will remain |false|
-and the runtime error is silently caught. If the result is an empty tuple, we
-suppress printing of the uninteresting value.
+it and thrown a |program_error|; if not, then evaluation may instead produce a
+|runtime_error|. Therefore the manipulation below of |type_OK| to see whether
+we passed the analysis phase successfully should be redundant. If the result
+of evaluation is an empty tuple, we suppress printing of the uninteresting
+value.
 
 @h <stdexcept>
 @h "axis.h"
@@ -500,12 +490,14 @@ suppress printing of the uninteresting value.
     if (verbosity>0)
       std::cout << "Type found: " << found_type << std::endl @|
 	        << "Converted expression: " << *e << std::endl;
-    e->evaluate(expression_base::single_value);
-@)  // now that evaluation did not |throw|, we can record the predicted type
-    last_type = std::move(found_type);
-    last_value=pop_value();
-    if (last_type!=void_type)
+    if (found_type==void_type)
+      e->void_eval();
+    else
+    { e->eval();
+      last_type = std::move(found_type);
+      last_value=pop_value();
       *output_stream << "Value: " << *last_value << std::endl;
+    }
     destroy_expr(parse_tree);
   }
   @< Various |catch| phrases for the main loop @>
@@ -597,15 +589,20 @@ method |close_includes| defined in \.{buffer.w}.
 
 @< Various |catch| phrases for the main loop @>=
 catch (const runtime_error& err)
-{ if (type_OK)
-    std::cerr << "Runtime error:\n  " << err.what() << "\nEvaluation aborted.";
-  else std::cerr << err.what();
-  std::cerr << std::endl;
+{ assert(type_OK);
+  std::cerr << "Runtime error:\n  " << err.what() << "\nEvaluation aborted."
+            << std::endl;
+@/clean=false;
+  reset_evaluator(); main_input_buffer->close_includes();
+}
+catch (const program_error& err)
+{ assert(not type_OK);
+  std::cerr << err.what() << std::endl;
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
 catch (const logic_error& err)
-{ std::cerr << "Internal error: " << err.what() << "\nEvaluation aborted.\n";
+{ std::cerr << "Internal error: " << err.what() << std::endl;
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }

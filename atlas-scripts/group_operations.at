@@ -47,7 +47,7 @@ set * (RealForm G,RealForm H) = RealForm:
   real_form { synthetic }
   ( inner_class(G)*inner_class(H)
   , block_matrix(involution(xG),involution(xH))
-  , torus_factor(xG)#torus_factor(xH)
+  , torus_factor(xG)##torus_factor(xH)
   )
 )
 

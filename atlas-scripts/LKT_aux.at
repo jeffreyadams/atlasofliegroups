@@ -216,8 +216,8 @@ for qL in all_pL do
 set K_type(KHighestWeight(x,mu))=KParam:
 let ktypes=K_types(x,mu) in
 assert(#ktypes=1,
-       "more than one K-type maps to this KHighestWeight;" # new_line #
-       "use K_types to get them all"); ktypes[0]
+      ##["more than one K-type maps to this KHighestWeight;", new_line,
+       "use K_types to get them all"]); ktypes[0]
 
 
 set number_extensions(KHighestWeight mu)=int:

@@ -22,9 +22,9 @@ set J(Param p)=tag_Param:
 set to_str (Param p) =string:
   to_string("(x=",#x(p),",lambda=",[rat]:lambda(p),",nu=",[rat]:nu(p),")")
 
-set to_str_std (Param p) = string: "I"#to_str(p)
+set to_str_std (Param p) = string: "I"+to_str(p)
 
-set to_str_irr (Param p) = string: "J"#to_str(p)
+set to_str_irr (Param p) = string: "J"+to_str(p)
 
 set to_str_K_types(Param p) = string:
   to_string("J_K(x=", #x(p) ,",lambda=",[rat]:lambda(p),")")
@@ -83,8 +83,8 @@ set virtual (tag_Param(p,type)) = tag_ParamPol:
 
 
 set = (tag_Param(p,type_p),tag_Param(q,type_q)) = bool:
-  assert (type_p=type_q,"cannot compare standards and irreducibles;" # new_line
-   #"  to compare in the Grothendieck group do virtual(I(p))=virtual(J(q))");
+  assert (type_p=type_q,"cannot compare standards and irreducibles;" + new_line
+   +"  to compare in the Grothendieck group do virtual(I(p))=virtual(J(q))");
   p=q
 
 set character (tag_ParamPol (P,type)) = ParamPol:

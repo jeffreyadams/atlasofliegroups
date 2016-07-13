@@ -1,7 +1,7 @@
 /*
   This is ext_block.cpp
 
-  Copyright (C) 2013-2014 Marc van Leeuwen
+  Copyright (C) 2013-2016 Marc van Leeuwen
   Part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file

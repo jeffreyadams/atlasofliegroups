@@ -96,7 +96,7 @@ class Rep_context
 
   // accessors
   RealReductiveGroup& realGroup() const { return G; }
-  const InnerClass& complexGroup() const { return G.complexGroup(); }
+  const InnerClass& innerClass() const { return G.innerClass(); }
   const RootDatum& rootDatum() const { return G.rootDatum(); }
   const WeylGroup& weylGroup() const { return G.weylGroup(); }
   const TwistedWeylGroup& twistedWeylGroup() const

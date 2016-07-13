@@ -1,6 +1,6 @@
 # This Makefile serves to make 'atlas' and possibly source documentation
 # running 'make' or 'make atlas' in the main atlas directory will just use
-# this makefile to make the atlas program (and its requisites of course)
+# this Makefile to make the atlas program (and its requisites of course)
 # Running 'make' from the current directory will in addition make the source
 # documentation (as first target, so that you can look at your typeset code in
 # the dvi file while it is being compiled, and when reading error messages).
@@ -117,7 +117,7 @@ c++files      := $(cwebx_sources:%.w=%.cpp)
 c++objects    := $(c++files:%.cpp=%.o)
 webtexfiles   := $(cwebx_sources:%.w=%.tex)
 
-headers := $(filter-out main.h,$(c++files:%.cpp=%.h)) parser.tab.h parse_tree.h
+headers := $(filter-out main.h,$(c++files:%.cpp=%.h)) parser.tab.h parse_types.h
 
 dvifiles := $(cwebx_sources:%.w=%.dvi)
 
@@ -182,7 +182,7 @@ $(c++objects) $(Atlas_objects): %.o: %.cpp
 # and unchanged targets, to prevent remaking nearly everything whenever any .w
 # file was modified, because the remakes the .h file(s). The mechanism is
 # commented out now however, as while it works reasonably for a seqential
-# make, it cases trouble when make is runn with --jobs set to more than 1
+# make, it cases trouble when make is run with --jobs set to more than 1
 # The basic problem is that targets are temporily removed, so other makes fail
 %.cpp %.h: %.w $(CTANGLE)
 #	@if [ -f $*.cpp ]; then mv $*.cpp old_targets;\

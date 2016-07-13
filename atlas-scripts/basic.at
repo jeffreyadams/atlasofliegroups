@@ -1,6 +1,5 @@
 set # (int n)= [int]: for i:n do i od       { [0,1,...,n-1] }
 set # (bool b) = int: if b then 1 else 0 fi { Iverson symbol }
-set # (ratvec v)= int: let (n,)=%v in #n    { length }
 
 set ^ = !=@(bool,bool) { exclusive or }
 
@@ -10,41 +9,38 @@ set assert (bool b) = void: assert(b,"assertion failed") { default message }
 { bitsets encoded as functions (int->bool) and upper bound limit }
 
 set list ((int->bool) filter, int limit) = [int]:
-  let result=[int]:[]
-  in for i:limit do if filter(i) then result#:=i fi od; result
+  ## for i:limit do if filter(i) then [i] else [] fi od
 set complement ((int->bool) filter, int limit) = [int]:
-  let result=[int]:[]
-  in for i:limit do if not filter(i) then result#:=i fi od; result
+  ## for i:limit do if filter(i) then [] else [i] fi od
 
 set count ((int->bool) filter, int limit) = int:
   let c=0 in for i:limit do if filter(i) then c+:=1 fi od; c
 
 set all ([bool] p) = bool:
-  let i=#p-1 in while >=i and p[i] do i-:=1 od; <i
+  for x in p do if not x then return false fi od; true
 set none ([bool] p) = bool:
-  let i=#p-1 in while >=i and not p[i] do i-:=1 od; <i
+  for x in p do if x then return false fi od; true
 set first ([bool] p) = int:
-  let i=0,n=#p in while i<n and not p[i] do i+:=1 od; if i=n then -1 else i fi
-set last ([bool] p) = int: { this is somewhat more efficient than first }
+  for x@i in p do if x then return i fi od; -1
+set last ([bool] p) = int:
   let i=#p-1 in while >=i and not p[i] do i-:=1 od; i
 
 set all (int limit,(int->bool) filter) = bool:
-  while limit-:=1; >=limit and filter(limit) do () od; <limit
+  for i:limit do if not filter(i) then return false fi od; true
 set none (int limit,(int->bool) filter) = bool:
-  while limit-:=1; >=limit and not filter(limit) do () od; <limit
+  for i:limit do if filter(i) then return false fi od; true
 set first (int limit,(int->bool) filter) = int:
-  let i=0
-  in while i<limit and not filter(i) do i+:=1 od; if i=limit then -1 else i fi
+  for i:limit do if filter(i) then return i fi od; -1
 set last (int limit,(int->bool) filter) = int:
-  while limit-:=1; >=limit and not filter(limit) do () od; limit
+  for i:limit ~do if filter(i) then return i fi od; -1
 
 { if evaluating conditions is expensive, one can procedure them with '@:'}
 set all ([(->bool)] p) = bool:
-  let i=#p-1 in while >=i and p[i]() do i-:=1 od; <i
+  for x in p do if not x() then return false fi od; true
 set none ([(->bool)] p) = bool:
-  let i=#p-1 in while >=i and not p[i]() do i-:=1 od; <i
+  for x in p do if x() then return false fi od; true
 set first ([(->bool)] p) = int:
-  let i=0,n=#p in while i<n and not p[i]() do i+:=1 od; if i=n then -1 else i fi
+  for x@i in p do if x() then return i fi od; -1
 set last ([(->bool)] p) = int: { this is somewhat more efficient than first }
   let i=#p-1 in while >=i and not p[i]() do i-:=1 od; i
 
@@ -105,26 +101,23 @@ set rat_as_int (rat r) = int:
 
 set !new_line = ascii(10) { including this in a string passes to a new line }
 
-set + (string s,string t) = string: s # t { alias for concatenation }
+set + = ##@(string,string) { + aliases string concatenation "ax" ## "is" }
 set * = (string,int->string): { repeat string; use recursive doubling }
-  let rep(string s,int n) = string: s in
-  begin rep:=((string s,int n) string:
-      if n=1 then s
-      else let (q,r)=n\%2 then half=rep(s,q) in
-        half # if =r then half else half#s fi
-      fi)
-  ; (string s,int n) string: if <=n then "" else rep(s,n) fi
-  end
+  let rec_fun rep(string s,int n) = string:
+    if n=1 then s
+    else let (q,r)=n\%2 then half=rep(s,q) in
+      half + if =r then half else half+s fi
+    fi
+  in (string s,int n) string: if <=n then "" else rep(s,n) fi
 
-set + (string s, int i)= string: s # int_format(i)
-set + (int i, string s)= string: int_format(i) # s
+set + (string s, int i)= string: s + int_format(i)
+set + (int i, string s)= string: int_format(i) + s
 
 set + (string s, (int,int)(x,y)) = s + "(" + x + "," + y + ")"
 
 set plural (int n) = string: if n=1 then "" else "s" fi
 
-set concat ([string] list) = string:
-  let result="" in for s in list do result #:=s od; result
+set concat = ##@[string]
 
 set split_lines (string text) = [string]:
   let result = [string]: [], a=for c in text do c od, last=0 in
@@ -177,11 +170,11 @@ set contains (int val) = ([int]->bool): ([int] v)bool: is_member(v)(val)
 set rec_fun all_0_1_vecs (int n) = [vec]:
   if n<=0 then [null(0)]
   else let list=all_0_1_vecs(n-1) in
-    for v in list do v#0 od   #   for v in list do v#1 od
+    for v in list do v#0 od  ##  for v in list do v#1 od
   fi
 
 set rec_fun power_set (int n) = [[int]]: { indices where 0_1_vecs have 1 }
-  if =n then [[]] else let p=power_set(n-:=1) in p # for S in p do S#n od fi
+  if =n then [[]] else let p=power_set(n-:=1) in p ## for S in p do S#n od fi
 set power_set ([int] S) = [[int]]:
   for inx in power_set(#S) do for i in inx do S[i] od od
 
@@ -209,10 +202,14 @@ set # (vec v, mat m) = mat: n_rows(m) { require size match } # (v#([vec]:m))
 set ^ (mat m, vec v) = mat: n_columns(m) ^ (([vec]:^m)#v)
 set ^ (vec v, mat m) = mat: n_columns(m) ^ (v#([vec]:^m))
 
-set # (mat A, mat B) = mat: { concatenate horizontally, must have same depth }
-   n_rows(B)#(([vec]:A)#([vec]:B))
+set ## (mat A, mat B) = mat: { concatenate horizontally, must have same depth }
+   n_rows(B) # (([vec]:A)##([vec]:B))
 set ^ (mat A, mat B) = mat: { concatenate vertically, must have same width }
-   n_columns(B) ^ (([vec]:^A)#([vec]:^B))
+   n_columns(B) ^ (([vec]:^A)##([vec]:^B))
+
+{ concatenate horizontally a list of matrices; each of n rows }
+set ## (int n,[mat] L) = mat:
+  n # ## for M in L do [vec]:M od
 
 { apply a function to all matrix entries }
 set map_on (mat m) = ((int->int)->mat):
@@ -349,7 +346,8 @@ set * (int i,ratvec v) = ratvec: v*i
 set * (rat r,ratvec v) = ratvec: v*r
 
 { concatenate ratvec values: use conversion to and from [rat] }
-set #(ratvec a,ratvec b) = ratvec: #([rat]:a,[rat]:b)
+set ## (ratvec a,ratvec b) = ratvec: ##([rat]:a,[rat]:b)
+set ## ([ratvec] rs) = ratvec: ## for r in rs do [rat]:r od
 
 set sum ([ratvec] list, int l) = ratvec: { sum of ratvecs of constant length l }
   let result = ratvec: null(l) in
@@ -420,9 +418,9 @@ set split_as_int (Split x) = int:
 set split_format (Split w) = string:
   let (a,b)=%w in
   if =a and !=b
-  then if abs(b)>1 then int_format(b) elif b=1 then "" else "-" fi #"s"
-  else int_format(a) #
-    if abs(b)>1 then if <b then "" else "+" fi #int_format(b)#"s"
+  then if abs(b)>1 then int_format(b) elif b=1 then "" else "-" fi +"s"
+  else int_format(a) +
+    if abs(b)>1 then if <b then "" else "+" fi +int_format(b)+"s"
     elif =b then "" elif b=1 then "+s" else "-s"
     fi
   fi
@@ -518,9 +516,9 @@ set negative_system (mat posroots) = { the missing half of the root system }
 
 { having _all_ roots can be useful }
 set roots (RootDatum rd) = mat:
-  let pr=posroots(rd) in negative_system(pr)#pr
+  let pr=posroots(rd) in negative_system(pr) ## pr
 set coroots (RootDatum rd) = mat:
-  let pcr=poscoroots(rd) in negative_system(pcr)#pcr
+  let pcr=poscoroots(rd) in negative_system(pcr) ## pcr
 
 { the correspondence between roots and coroots }
 set root (RootDatum rd, vec alpha_v) = vec: root(rd,coroot_index(rd,alpha_v))
@@ -678,8 +676,8 @@ set print_Cartan_info (CartanClass cc) = void:
   begin
     prints("compact: ",cr,", complex: ",Cr,", split: ",sr)
   ; (let str = "canonical twisted involution: " in
-       if =#ww then str #:= "e"
-       else for s@i in ww do if =i then str +:= s+1 else str #:= ","+(s+1) fi od
+       if =#ww then str +:= "e"
+       else for s@i in ww do if =i then str +:= s+1 else str +:= ","+(s+1) fi od
        fi
      ; prints(str)
     )
@@ -1051,7 +1049,7 @@ set positive_imaginary_roots_and_coroots = imaginary_sys@(RootDatum,mat)
 set positive_imaginary_roots_and_coroots = imaginary_sys@KGBElt
 
 set imaginary_roots_and_coroots ((RootDatum, mat)p) = (mat,mat):
-  let (a,b)=imaginary_sys(p) in (negative_system(a)#a,negative_system(b)#b)
+  let (a,b)=imaginary_sys(p) in (negative_system(a)##a, negative_system(b)##b)
 set imaginary_roots_and_coroots (KGBElt x) = (mat,mat):
   imaginary_roots_and_coroots (root_datum(real_form(x)),involution(x))
 
@@ -1059,7 +1057,7 @@ set positive_real_roots_and_coroots = real_sys@(RootDatum,mat)
 set positive_real_roots_and_coroots = real_sys@KGBElt
 
 set real_roots_and_coroots ((RootDatum, mat)p) = (mat,mat):
-  let (a,b)=real_sys(p) in (negative_system(a)#a,negative_system(b)#b)
+  let (a,b)=real_sys(p) in (negative_system(a)##a, negative_system(b)##b)
 set real_roots_and_coroots (KGBElt x) = (mat,mat):
   real_roots_and_coroots (root_datum(real_form(x)),involution(x))
 
@@ -1076,12 +1074,12 @@ set monomials (ParamPol P) = [Param]: for c@p in P do p od
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 
 { delete one term from a list }
-set delete ([int] v, int k)     =[int]:     v[:k]#v[k+1:]
-set delete ([vec] v, int k)     =[vec]:     v[:k]#v[k+1:]
-set delete ([ratvec] v, int k)  =[ratvec]:  v[:k]#v[k+1:]
-set delete ([[ratvec]] v, int k)=[[ratvec]]:v[:k]#v[k+1:]
-set delete ([[vec]] v, int k)   =[[vec]]:   v[:k]#v[k+1:]
-set delete ([ParamPol] P, int k)=[ParamPol]:P[:k]#P[k+1:]
+set delete ([int] v, int k)     =[int]:     v[:k]##v[k+1:]
+set delete ([vec] v, int k)     =[vec]:     v[:k]##v[k+1:]
+set delete ([ratvec] v, int k)  =[ratvec]:  v[:k]##v[k+1:]
+set delete ([[ratvec]] v, int k)=[[ratvec]]:v[:k]##v[k+1:]
+set delete ([[vec]] v, int k)   =[[vec]]:   v[:k]##v[k+1:]
+set delete ([ParamPol] P, int k)=[ParamPol]:P[:k]##P[k+1:]
 
 {   		    Miscellaneous find functions		     }
 

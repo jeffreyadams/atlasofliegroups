@@ -49,19 +49,19 @@ Rep_context::Rep_context(RealReductiveGroup &G_R)
 size_t Rep_context::rank() const { return rootDatum().rank(); }
 
 const TwistedInvolution Rep_context::involution_of_Cartan(size_t cn) const
-{ return complexGroup().involution_of_Cartan(cn); }
+{ return innerClass().involution_of_Cartan(cn); }
 
 StandardRepr Rep_context::sr_gamma
   (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const
 {
-  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const InvolutionTable& i_tab = innerClass().involution_table();
   return StandardRepr(x, i_tab.pack(kgb().inv_nr(x),lambda_rho), gamma);
 }
 
 RatWeight Rep_context::gamma
   (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
 {
-  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const InvolutionTable& i_tab = innerClass().involution_table();
   const RatWeight lambda(lambda_rho*2+rootDatum().twoRho(),2);
   const RatWeight diff = lambda - nu;
   const RatWeight theta_diff(i_tab.matrix(kgb().inv_nr(x))*diff.numerator(),
@@ -92,7 +92,7 @@ StandardRepr Rep_context::sr(const param_block& b, BlockElt i) const
 Weight Rep_context::lambda_rho(const StandardRepr& z) const
 {
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
-  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const InvolutionTable& i_tab = innerClass().involution_table();
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
   const RatWeight gamma_rho = z.gamma() - RatWeight(rootDatum().twoRho(),2);
@@ -112,7 +112,7 @@ RatWeight Rep_context::lambda(const StandardRepr& z) const
 RatWeight Rep_context::nu(const StandardRepr& z) const
 {
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
-  const WeightInvolution& theta = complexGroup().involution_table().matrix(i_x);
+  const WeightInvolution& theta = innerClass().involution_table().matrix(i_x);
   const Ratvec_Numer_t num = z.gamma().numerator()-theta*z.gamma().numerator();
   return RatWeight(num,2*z.gamma().denominator()).normalize();
 }
@@ -122,7 +122,7 @@ bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
 {
   const RootDatum& rd = rootDatum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
-  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const InvolutionTable& i_tab = innerClass().involution_table();
   const Ratvec_Numer_t& numer = z.gamma().numerator();
 
   for (unsigned i=0; i<i_tab.imaginary_rank(i_x); ++i)
@@ -140,7 +140,7 @@ bool Rep_context::is_zero(const StandardRepr& z, RootNbr& witness) const
 {
   const RootDatum& rd = rootDatum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
-  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const InvolutionTable& i_tab = innerClass().involution_table();
   const Ratvec_Numer_t& numer = z.gamma().numerator();
 
   for (unsigned i=0; i<i_tab.imaginary_rank(i_x); ++i)
@@ -160,7 +160,7 @@ bool Rep_context::is_final(const StandardRepr& z, RootNbr& witness) const
 {
   const RootDatum& rd = rootDatum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
-  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const InvolutionTable& i_tab = innerClass().involution_table();
   const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
   const Weight test_wt = i_tab.unpack(i_x,z.y()) // $(1-\theta)(\lambda-\rho)$
            + rd.twoRho()-rd.twoRho(pos_real); // replace $\rho$ by $\rho_R$
@@ -179,8 +179,8 @@ bool Rep_context::is_oriented(const StandardRepr& z, RootNbr alpha) const
 {
   const RootDatum& rd = rootDatum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
-  const InvolutionTable& i_tab = complexGroup().involution_table();
-  const RootNbrSet real = complexGroup().involution_table().real_roots(i_x);
+  const InvolutionTable& i_tab = innerClass().involution_table();
+  const RootNbrSet real = innerClass().involution_table().real_roots(i_x);
 
   assert(real.isMember(alpha)); // only real roots should be tested
 
@@ -198,7 +198,7 @@ bool Rep_context::is_oriented(const StandardRepr& z, RootNbr alpha) const
 unsigned int Rep_context::orientation_number(const StandardRepr& z) const
 {
   const RootDatum& rd = rootDatum();
-  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const InvolutionTable& i_tab = innerClass().involution_table();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const RootNbrSet real = i_tab.real_roots(i_x);
   const Permutation& root_inv = i_tab.root_involution(i_x);
@@ -251,7 +251,7 @@ void Rep_context::W_act(const WeylWord& w,StandardRepr& z) const
     x = kgb().cross(s,x);
   }
   z.y_bits = // reinsert $y$ bits component
-    complexGroup().involution_table().pack(kgb().inv_nr(x),lr);
+    innerClass().involution_table().pack(kgb().inv_nr(x),lr);
 }
 
 void
@@ -261,7 +261,7 @@ Rep_context::W_act(const WeylWord& w,StandardRepr& z,const SubSystem& subsys)
   const RootDatum& rd = rootDatum();
   KGBElt& x= z.x_part;
   InvolutionNbr i_x = kgb().inv_nr(x);
-  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const InvolutionTable& i_tab = innerClass().involution_table();
 
   // the following are non-|const|, and modified in the loop below
   Weight lambda2_shifted = (lambda_rho(z)*=2)
@@ -320,7 +320,7 @@ WeylWord Rep_context::make_dominant(StandardRepr& z) const
     }
     while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
   }
-  z.y_bits=complexGroup().involution_table().pack(kgb().inv_nr(x),lr);
+  z.y_bits=innerClass().involution_table().pack(kgb().inv_nr(x),lr);
   return result;
 } // |make_dominant|
 
@@ -330,7 +330,7 @@ Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
   const RootDatum& rd = rootDatum();
   KGBElt& x= z.x_part;
   InvolutionNbr i_x = kgb().inv_nr(x);
-  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const InvolutionTable& i_tab = innerClass().involution_table();
 
   // the following are non-|const|, and modified in the loop below
   Weight lambda2_shifted = (lambda_rho(z)*=2)
@@ -374,7 +374,7 @@ RationalList Rep_context::reducibility_points(const StandardRepr& z) const
 {
   const RootDatum& rd = rootDatum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
-  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const InvolutionTable& i_tab = innerClass().involution_table();
   const Permutation& theta = i_tab.root_involution(i_x);
 
   const RatWeight& gamma = z.gamma();
@@ -445,7 +445,7 @@ StandardRepr Rep_context::cross(weyl::Generator s, StandardRepr z) const
   aux.cross_act(src,s);
   const RatWeight& t =  src.y().as_Qmod2Z();
   // InvolutionNbr i_x = kgb().inv_nr(z.x());
-  // no need to do |complexGroup().involution_table().real_unique(i_x,t)|
+  // no need to do |innerClass().involution_table().real_unique(i_x,t)|
 
   RatWeight lr =  (infin_char - t - RatWeight(rd.twoRho(),2)).normalize();
   assert(lr.denominator()==1); // we have reconstructed $\lambda-\rho \in X^*$
@@ -459,7 +459,7 @@ StandardRepr Rep_context::cross(const Weight& alpha, StandardRepr z) const
   const RootDatum& rd = rootDatum();
   KGBElt& x= z.x_part;
   InvolutionNbr i_x = kgb().inv_nr(x);
-  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const InvolutionTable& i_tab = innerClass().involution_table();
 
   const SubSystem& subsys = SubSystem::integral(rd,z.infinitesimal_char);
   WeylWord w=make_dominant(z,subsys);
@@ -503,7 +503,7 @@ StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
   aux.do_up_Cayley(src,s);
   RatWeight t =  src.y().log_pi(false);
   // InvolutionNbr i_x = kgb().inv_nr(z.x());
-  // no need to do |complexGroup().involution_table().real_unique(i_x,t)|
+  // no need to do |innerClass().involution_table().real_unique(i_x,t)|
 
   RatWeight lr =  (infin_char - t - RatWeight(rd.twoRho(),2)).normalize();
   assert(lr.denominator()==1);
@@ -523,7 +523,7 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
   aux.do_down_Cayley(src,s);
   RatWeight t =  src.y().log_pi(false);
   // InvolutionNbr i_x = kgb().inv_nr(z.x());
-  // no need to do |complexGroup().involution_table().real_unique(i_x,t)|
+  // no need to do |innerClass().involution_table().real_unique(i_x,t)|
 
   RatWeight lr =  (infin_char - t - RatWeight(rd.twoRho(),2)).normalize();
   assert(lr.denominator()==1);
@@ -537,7 +537,7 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
 {
   const RootDatum& rd = rootDatum();
   const KGB& kgb = this->kgb();
-  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const InvolutionTable& i_tab = innerClass().involution_table();
   const SubSystem& subsys = SubSystem::integral(rd,z.infinitesimal_char);
 
   WeylWord w=make_dominant(z,subsys);
@@ -642,7 +642,7 @@ bool Rep_context::compare::operator()
 SR_poly Rep_context::expand_final(StandardRepr z) const // by value
 {
   const RootDatum& rd = rootDatum();
-  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const InvolutionTable& i_tab = innerClass().involution_table();
 
   make_dominant(z); // this simplifies matters a lot; |z| is unchanged hereafter
 

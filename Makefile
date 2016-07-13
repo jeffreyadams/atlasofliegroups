@@ -202,8 +202,7 @@ atlas: $(cweb_dir)/ctanglex $(interpreter_made_files) $(atlas_objects)
 $(filter-out sources/interpreter/parser.tab.%,$(interpreter_made_files)):
 	cd sources/interpreter && $(MAKE) $(subst sources/interpreter/,,$@)
 
-$(filter-out sources/interpreter/parser.tab.o,$(interpreter_objects)) :\
-  %.o : %.cpp
+$(interpreter_cweb_objects) : %.o : %.w # skip %.cpp, go straight to sources
 	cd sources/interpreter && $(MAKE) $(subst sources/interpreter/,,$@)
 
 sources/interpreter/parser.tab.c sources/interpreter/parser.tab.h: \
@@ -275,4 +274,8 @@ $(cweb_dir)/cweavex: $(cweb_dir)/common.h $(cweb_dir)/cweave.c
 	cd $(cweb_dir) && $(MAKE) cweavex
 
 showobjects:
-	@echo $(objects)
+	@echo objects: $(objects)
+	@echo
+	@echo atlas_objects: $(atlas_objects)
+	@echo
+	@echo Fokko_objects: $(Fokko_objects)
