@@ -211,7 +211,7 @@ Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
   case ext_block::one_real_pair_fixed:
   case ext_block::two_real_double_double:
     { // contribute $P_{x',sy}+P_{x'',sy}+(q^k-1)P_{x,sy}$
-      BlockEltPair sx = b.inverse_Cayleys(s,x);
+      BlockEltPair sx = b.Cayleys(s,x);
       return b.T_coef(s,x,sx.first)*P(sx.first,sy)
 	+ b.T_coef(s,x,sx.second)*P(sx.second,sy)
 	+ b.T_coef(s,x,x) * P(x,sy);
@@ -220,7 +220,7 @@ Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
   case ext_block::one_real_single:
   case ext_block::two_real_single_single:
     { // contribute $P_{x_s,sy}+q^kP_{x,sy}-P_{s*x,sy}$
-      const BlockElt s_x = b.inverse_Cayley(s,x);
+      const BlockElt s_x = b.Cayley(s,x);
       const BlockElt x_cross = b.cross(s,x);
       return b.T_coef(s,x,s_x)*P(s_x,sy)
 	+ b.T_coef(s,x,x_cross)*P(x_cross,sy)
@@ -231,14 +231,14 @@ Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
   case ext_block::three_semi_real:
   case ext_block::three_real_semi:
     { // contribute $(q+1)P_{x_s,sy}+(q^k-q)P_{x,sy}$
-      const BlockElt sx = b.inverse_Cayley(s,x);
+      const BlockElt sx = b.Cayley(s,x);
       return b.T_coef(s,x,sx) * P(sx,sy)
 	+ b.T_coef(s,x,x) * P(x,sy);
     }
     // epsilon case: 2r21
-  case ext_block::two_real_single_double:
+  case ext_block::two_real_single_double_fixed:
     { // contribute $P_{x',sy}\pm P_{x'',sy}+(q^2-1)P_{x,sy}$
-      BlockEltPair sx = b.inverse_Cayleys(s,x);
+      BlockEltPair sx = b.Cayleys(s,x);
       return b.T_coef(s,x,sx.first)*P(sx.first,sy)
 	+ b.T_coef(s,x,sx.second)*P(sx.second,sy)
 	+ b.T_coef(s,x,x) * P(x,sy);
@@ -287,7 +287,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
       int acc = mu(2,x,y);
       if (has_defect(type(s,x)))
       {
-	BlockElt sx=bl.inverse_Cayley(s,x);
+	BlockElt sx=bl.Cayley(s,x);
 	acc += mu(1,sx,y)*bl.epsilon(s,sx,x); // sign is |T_coef(s,x,sx)[1]|
       }
       for (unsigned l=bl.length(x)+1; l<bl.length(z); l+=2)
@@ -323,7 +323,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
       int b = mu(3,x,y);
       if (has_defect(type(s,x)))
       {
-	BlockElt sx=bl.inverse_Cayley(s,x);
+	BlockElt sx=bl.Cayley(s,x);
 	b += mu(1,sx,y)*bl.epsilon(s,sx,x); // sign is |T_coef(s,x,sx)[1]|
       }
       for (BlockElt u=bl.length_first(bl.length(x)+1);
@@ -689,7 +689,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	}
 	else
 	{
-	  assert(tsx==ext_block::two_imaginary_single_double);
+	  assert(tsx==ext_block::two_imaginary_single_double_fixed);
 	  BlockEltPair sx=aux.block.Cayleys(s,x);
 	  Pol S;
 	  if (sx.first<y)

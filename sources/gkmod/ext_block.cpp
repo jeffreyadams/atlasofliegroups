@@ -12,11 +12,15 @@
 #include <cassert>
 #include <vector>
 
-#include "blocks.h"
+#include "innerclass.h"
 #include "weyl.h"
+#include "kgb.h"
+#include "blocks.h"
+#include "repr.h"
 
 #include "bitmap.h"
 #include "polynomials.h"
+#include "matreduc.h"
 /*
   For an extended group, the block structure is more complicated than an
   ordinary block, because each link in fact represents a local part of the
@@ -41,9 +45,10 @@ bool is_complex(DescValue v)
 bool has_double_image(DescValue v)
 {
   static unsigned long mask =
-       1ul << one_real_pair_fixed         | 1ul << one_imaginary_pair_fixed
-    |  1ul << two_real_double_double      | 1ul << two_imaginary_double_double
-    |  1ul << two_imaginary_single_double | 1ul << two_real_single_double;
+      1ul << one_real_pair_fixed         | 1ul << one_imaginary_pair_fixed
+    | 1ul << two_real_double_double      | 1ul << two_imaginary_double_double
+    | 1ul << two_imaginary_single_double_fixed
+    | 1ul << two_real_single_double_fixed;
 
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
@@ -100,7 +105,8 @@ bool is_like_type_2(DescValue v)
 bool has_quadruple(DescValue v)
 {
   static const unsigned long mask =
-    1ul << two_imaginary_single_double | 1ul << two_real_single_double;
+      1ul << two_imaginary_single_double_fixed
+    | 1ul << two_real_single_double_fixed;
 
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
@@ -197,10 +203,10 @@ void extended_block::order_quad
   x = element(x); y=element(y); // decipher user friendly numbering
   p = element(p); q=element(q);
   assert (x!=UndefBlock and y!=UndefBlock and p!=UndefBlock and q!=UndefBlock);
-  assert (descent_type(s-1,x)==two_imaginary_single_double);
-  assert (descent_type(s-1,y)==two_imaginary_single_double);
-  assert (descent_type(s-1,p)==two_real_single_double);
-  assert (descent_type(s-1,q)==two_real_single_double);
+  assert (descent_type(s-1,x)==two_imaginary_single_double_fixed);
+  assert (descent_type(s-1,y)==two_imaginary_single_double_fixed);
+  assert (descent_type(s-1,p)==two_real_single_double_fixed);
+  assert (descent_type(s-1,q)==two_real_single_double_fixed);
   const BlockEltPair xy(x,y);
   const BlockEltPair pq(p,q);
   std::vector<block_fields>& data_s = data[s-1];
@@ -209,68 +215,6 @@ void extended_block::order_quad
   if (verbose)
     std::cerr << "Ordering (" << z(x) << ',' << z(y) << ';'
 	      << z(p) << ',' << z(q) << ") for generator " << s << std::endl;
-}
-
-BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
-{
-  switch (descent_type(s,n))
-  {
-  case one_complex_ascent:
-  case one_complex_descent:
-  case two_complex_ascent:
-  case two_complex_descent:
-  case three_complex_ascent:
-  case three_complex_descent:
-    return data[s][n].links.first;
-
-    // zero valued Cayleys have trivial cross actions
-  case one_real_nonparity: case one_imaginary_compact:
-  case two_real_nonparity: case two_imaginary_compact:
-  case three_real_nonparity: case three_imaginary_compact:
-
-    // double valued Cayleys also have trivial cross actions
-  case one_real_pair_fixed: case one_real_pair_switched:
-  case one_imaginary_pair_fixed: case one_imaginary_pair_switched:
-  case two_real_double_double: case two_imaginary_double_double:
-
-    // cases with back-and-forth cross actions
-  case two_semi_imaginary: case two_semi_real:
-  case two_imaginary_single_double: case two_real_single_double:
-  case three_semi_imaginary: case three_real_semi:
-  case three_imaginary_semi: case three_semi_real:
-    return n;
-
-    // single valued extended Cayleys use second link for cross action
-  case one_imaginary_single:
-  case one_real_single:
-  case two_imaginary_single_single:
-  case two_real_single_single:
-    return data[s][n].links.second;
-
-  }
-  assert(false); return UndefBlock; // keep compiler happy
-} // |extended_block::cross|
-
-BlockElt extended_block::Cayley(weyl::Generator s, BlockElt n) const
-{
-  const DescValue type = descent_type(s,n);
-  return
-    is_descent(type) or is_complex(type) ? UndefBlock : data[s][n].links.first;
-}
-
-BlockElt extended_block::inverse_Cayley(weyl::Generator s, BlockElt n) const
-{
-  const DescValue type = descent_type(s,n);
-  return
-    not is_descent(type) or is_complex(type) ? UndefBlock
-    : data[s][n].links.first;
-}
-
-BlockElt extended_block::some_scent(weyl::Generator s, BlockElt n) const
-{
-  const BlockElt c = data[s][n].links.first;
-  assert(c!=UndefBlock);
-  return c;
 }
 
 void extended_block::add_neighbours
@@ -283,33 +227,6 @@ void extended_block::add_neighbours
   if (links.second==UndefBlock)
     return;
   dst.push_back(links.second);
-}
-
-BlockEltPair extended_block::Cayleys(weyl::Generator s, BlockElt n) const
-{
-  const DescValue type = descent_type(s,n);
-  BlockEltPair result(UndefBlock,UndefBlock);
-  if (not is_descent(type) and not is_complex(type))
-  {
-    result.first = data[s][n].links.first;
-    if (has_double_image(type))
-      result.second = data[s][n].links.second;
-  }
-  return result;
-}
-
-BlockEltPair
-extended_block::inverse_Cayleys(weyl::Generator s, BlockElt n) const
-{
-  const DescValue type = descent_type(s,n);
-  BlockEltPair result(UndefBlock,UndefBlock);
-  if (is_descent(type) and not is_complex(type))
-  {
-    result.first = data[s][n].links.first;
-    if (has_double_image(type))
-      result.second = data[s][n].links.second;
-  }
-  return result;
 }
 
 // whether link for |s| from |x| to |y| has a signe flip attached
@@ -342,7 +259,74 @@ BlockEltList extended_block::down_set(BlockElt n) const
   return result;
 }
 
-DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
+context::context
+  (const repr::Rep_context& rc, WeightInvolution delta, const RatWeight& gamma)
+    : d_rc(rc)
+    , d_delta(std::move(delta)), d_gamma(gamma)
+    , d_g(rc.kgb().base_grading_vector()+rho_check(rc.rootDatum()))
+    , integr_datum(integrality_datum(rc.rootDatum(),gamma))
+    , sub(SubSystem::integral(rc.rootDatum(),gamma))
+{}
+
+// compute |bgv-(bgv+t_bits)*(1+theta)/2 == (bgv-t_bits-(bgv+t_bits)*theta)/2|
+Coweight ell (const KGB& kgb, KGBElt x)
+{ auto diff= (kgb.base_grading_vector()-kgb.torus_factor(x)).normalize();
+  assert(diff.denominator()==1);
+  return Coweight(diff.numerator().begin(),diff.numerator().end());
+}
+
+
+void validate(const param& E)
+{
+  const auto& i_tab = E.rc().innerClass().involution_table();
+  const auto& rd = E.rc().innerClass().rootDatum();
+  const auto& theta = i_tab.matrix(E.tw);
+  const auto& delta = E.ctxt.delta();
+  assert(delta*theta==theta*delta);
+  assert((delta-1)*E.lambda_rho()==(1-theta)*E.tau());
+  assert((delta-1).right_prod(E.l())==(theta+1).right_prod(E.t()));
+  assert(((E.ctxt.g()-E.l()-rho_check(rd))*(1-theta)).numerator().isZero());
+  ndebug_use(delta); ndebug_use(theta); ndebug_use(rd);
+  assert(((theta+1)*(E.ctxt.gamma()-E.lambda_rho()-rho(rd)))
+	 .numerator().isZero());
+}
+
+param::param (const context& ec, const StandardRepr& sr)
+  : ctxt(ec)
+  , tw(ec.rc().kgb().involution(sr.x()))
+  , d_l(ell(ec.realGroup().kgb(),sr.x()))
+  , d_lambda_rho(ec.rc().lambda_rho(sr))
+  , d_tau(matreduc::find_solution(1-theta(),(delta()-1)*lambda_rho()))
+  , d_t(matreduc::find_solution
+	(theta().transposed()+1,(delta()-1).right_prod(l())))
+{
+  validate(*this);
+}
+
+param::param (const context& ec, KGBElt x, const Weight& lambda_rho)
+  : ctxt(ec)
+  , tw(ec.realGroup().kgb().involution(x))
+  , d_l(ell(ec.realGroup().kgb(),x))
+  , d_lambda_rho(lambda_rho)
+  , d_tau(matreduc::find_solution(1-theta(),(delta()-1)*lambda_rho))
+  , d_t(matreduc::find_solution
+	(theta().transposed()+1,(delta()-1).right_prod(l())))
+{
+  validate(*this);
+}
+
+param::param (const context& ec, const TwistedInvolution& tw,
+	      Weight lambda_rho, Weight tau, Coweight l, Coweight t)
+  : ctxt(ec), tw(tw)
+  , d_l(std::move(l))
+  , d_lambda_rho(std::move(lambda_rho))
+  , d_tau(std::move(tau))
+  , d_t(std::move(t))
+{
+  validate(*this);
+}
+
+DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 			BlockElt& link)
 {
   switch (p.type)
@@ -403,7 +387,7 @@ DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
 	return two_imaginary_single_single; // really just a guess
       assert(block.Hermitian_dual(link)==link);
       return block.descentValue(p.s0,link)==DescentStatus::RealTypeI
-	? two_imaginary_single_single : two_imaginary_single_double;
+	? two_imaginary_single_single : two_imaginary_single_double_fixed;
     case DescentStatus::RealTypeII:
       link=block.inverseCayley(p.s0,z).first;
       if (link==UndefBlock)
@@ -413,7 +397,7 @@ DescValue extended_type(const Block_base& block, BlockElt z, ext_gen p,
 	return two_real_single_single; // really just a guess
       assert(block.Hermitian_dual(link)==link);
       return block.descentValue(p.s0,link)==DescentStatus::ImaginaryTypeII
-	? two_real_single_single : two_real_single_double;
+	? two_real_single_single : two_real_single_double_fixed;
     case DescentStatus::ImaginaryTypeII:
       link=block.cayley(p.s0,z).first;
       if (link==UndefBlock)
@@ -555,9 +539,9 @@ extended_block::extended_block
     l_start[++cur_len]=parent.size(); // makes |l_start[length(...)+1]| legal
   }
 
-  info.reserve(parent_nr.size());
+  info.reserve(parent_nr.size());  // reserve size of (smaller) extended block
   for (weyl::Generator s=0; s<folded_rank; ++s)
-    data[s].reserve(parent_nr.size());
+    data[s].reserve(parent_nr.size()); // same for each |data[s]|.
 
   for (BlockElt n=0; n<parent_nr.size(); ++n)
   {
@@ -570,9 +554,10 @@ extended_block::extended_block
       DescValue type = extended_type(block,z,parent.orbit(s),link);
       data[s].push_back(block_fields(type)); // create entry for block element
       if (link==UndefBlock)
-	continue; // |s| done for imaginary compact and real nonparity cases
+	continue; // done with |s| for imaginary compact, real nonparity cases
 
-      switch (type) // maybe set |second|, depending on case
+      // now maybe set |second|, depending on case
+      switch (type)
       {
       default: break;
 
@@ -603,8 +588,8 @@ extended_block::extended_block
 	}
 	break;
 
-      case two_imaginary_single_double:
-      case two_real_single_double: // find second Cayley image, which is
+      case two_imaginary_single_double_fixed:
+      case two_real_single_double_fixed: // find second Cayley image, which is
 	second = parent.cross(parent.orbit(s).s0,link); // parent cross link
 	assert(parent.cross(parent.orbit(s).s1,link)==second); // (either gen)
 	if (link>second) // to make sure ordering is same for a twin pair
@@ -638,6 +623,69 @@ extended_block::extended_block
     }
   } // |for(n)|
 } // |extended_block::extended_block|
+
+BlockElt extended_block::cross(weyl::Generator s, BlockElt n) const
+{
+  switch (descent_type(s,n))
+  {
+  case one_complex_ascent:
+  case one_complex_descent:
+  case two_complex_ascent:
+  case two_complex_descent:
+  case three_complex_ascent:
+  case three_complex_descent:
+    return data[s][n].links.first;
+
+    // zero valued Cayleys have trivial cross actions
+  case one_real_nonparity: case one_imaginary_compact:
+  case one_imaginary_pair_switched: case one_real_pair_switched:
+  case two_real_nonparity: case two_imaginary_compact:
+  case two_imaginary_single_double_switched:
+  case two_real_single_double_switched:
+  case three_real_nonparity: case three_imaginary_compact:
+
+    // double valued Cayleys also have trivial cross actions
+  case one_real_pair_fixed: case one_imaginary_pair_fixed:
+  case two_real_double_double: case two_imaginary_double_double:
+
+    // cases with back-and-forth cross actions
+  case two_semi_imaginary: case two_semi_real:
+  case two_imaginary_single_double_fixed: case two_real_single_double_fixed:
+  case three_semi_imaginary: case three_real_semi:
+  case three_imaginary_semi: case three_semi_real:
+    return n;
+
+    // some single valued extended Cayleys use second link for cross action
+  case one_imaginary_single:
+  case one_real_single:
+  case two_imaginary_single_single:
+  case two_real_single_single:
+    return data[s][n].links.second;
+
+  }
+  assert(false); return UndefBlock; // keep compiler happy
+} // |extended_block::cross|
+
+BlockElt extended_block::some_scent(weyl::Generator s, BlockElt n) const
+{
+  const BlockElt c = data[s][n].links.first;
+  assert(c!=UndefBlock);
+  return c;
+}
+
+BlockElt extended_block::Cayley(weyl::Generator s, BlockElt n) const
+{
+  return  is_complex(descent_type(s,n)) ? UndefBlock : data[s][n].links.first;
+}
+
+BlockEltPair extended_block::Cayleys(weyl::Generator s, BlockElt n) const
+{
+  const DescValue type = descent_type(s,n);
+  assert(has_double_image(type));
+  return data[s][n].links;
+}
+
+
 
 // coefficient of neighbour |sx| for $s$ in action $(T_s+1)*a_x$
 Pol extended_block::T_coef(weyl::Generator s, BlockElt sx, BlockElt x) const
@@ -681,7 +729,7 @@ Pol extended_block::T_coef(weyl::Generator s, BlockElt sx, BlockElt x) const
   }
   else if (is_like_type_2(v) and sx==cross(s,x)) // type 2 real cross
   {
-    BlockElt y = inverse_Cayley(s,x); // pass via this element for signs
+    BlockElt y = Cayley(s,x); // pass via Cayley descent for signs
     int sign = epsilon(s,y,x)*epsilon(s,y,sx); // combine two Cayley signs
     return Pol(-sign); // forget term $q^k$, return $\mp 1$ instead
   }
@@ -780,7 +828,7 @@ bool check_braid
     show_mat(std::cout,Tt,t);
   }
   return success;
-} // |ext_block::check_braid|
+} // |check_braid|
 
 } // |namespace ext_block|
 

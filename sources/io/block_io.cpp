@@ -123,12 +123,12 @@ std::ostream& non_integral_block::print
   unsigned int ysize = y_part(z).size();
 
   strm << (survives(z) ? '*' : ' ')
-       << "(x=" << std::setw(xwidth) << parent_x(z)
+       << "(x=" << std::setw(xwidth) << x(z)
        << ",lam=rho+" << std::setw(2*ysize+3) << lambda_rho(z)
        << ", nu=" << std::setw(2*ysize+5) << nu(z)
        << ')' << std::setw(2) << "";
 
-  const TwistedInvolution& ti = kgb.involution(parent_x(z));
+  const TwistedInvolution& ti = kgb.involution(x(z));
   const TwistedWeylGroup& tW = kgb.twistedWeylGroup();
   // print root datum involution
   if (as_invol_expr) prettyprint::printInvolution(strm,ti,tW);
@@ -209,38 +209,40 @@ const char* descent_code(DescValue v)
 {
   switch(v)
   {
-  case one_complex_ascent: return "1C+ ";
-  case one_complex_descent: return "1C- ";
-  case one_imaginary_single: return "1i1 ";
-  case one_real_pair_fixed: return "1r1f";
-  case one_imaginary_pair_fixed: return "1i2f";
-  case one_real_single: return "1r2 ";
-  case one_imaginary_pair_switched: return "1i2s";
-  case one_real_pair_switched: return "1r1s";
-  case one_real_nonparity: return "1rn ";
-  case one_imaginary_compact: return "1ic ";
+  case one_complex_ascent: return "1C+  ";
+  case one_complex_descent: return "1C-  ";
+  case one_imaginary_single: return "1i1  ";
+  case one_real_pair_fixed: return "1r1f ";
+  case one_imaginary_pair_fixed: return "1i2f ";
+  case one_real_single: return "1r2  ";
+  case one_imaginary_pair_switched: return "1i2s ";
+  case one_real_pair_switched: return "1r1s ";
+  case one_real_nonparity: return "1rn  ";
+  case one_imaginary_compact: return "1ic  ";
 
-  case two_complex_ascent: return "2C+ ";
-  case two_complex_descent: return "2C- ";
-  case two_semi_imaginary: return "2Ci ";
-  case two_semi_real: return "2Cr ";
-  case two_imaginary_single_single: return "2i11";
-  case two_real_double_double: return "2r11";
-  case two_imaginary_single_double: return "2i12";
-  case two_real_single_double: return "2r21";
-  case two_imaginary_double_double: return "2i22";
-  case two_real_single_single: return "2r22";
-  case two_real_nonparity: return "2rn ";
-  case two_imaginary_compact: return "2ic ";
+  case two_complex_ascent: return "2C+  ";
+  case two_complex_descent: return "2C-  ";
+  case two_semi_imaginary: return "2Ci  ";
+  case two_semi_real: return "2Cr  ";
+  case two_imaginary_single_single: return "2i11 ";
+  case two_real_double_double: return "2r11 ";
+  case two_imaginary_single_double_fixed: return "2i12f";
+  case two_real_single_double_fixed: return "2r21f";
+  case two_imaginary_double_double: return "2i22 ";
+  case two_real_single_single: return "2r22 ";
+  case two_imaginary_single_double_switched: return "2i12s";
+  case two_real_single_double_switched: return "2r21s";
+  case two_real_nonparity: return "2rn  ";
+  case two_imaginary_compact: return "2ic  ";
 
-  case three_complex_ascent: return "3C+ ";
-  case three_complex_descent: return "3C- ";
-  case three_semi_imaginary: return "3Ci ";
-  case three_real_semi: return "3r  ";
-  case three_imaginary_semi: return "3i  ";
-  case three_semi_real: return "3Cr ";
-  case three_real_nonparity: return "3rn ";
-  case three_imaginary_compact: return "3ic ";
+  case three_complex_ascent: return "3C+  ";
+  case three_complex_descent: return "3C-  ";
+  case three_semi_imaginary: return "3Ci  ";
+  case three_real_semi: return "3r   ";
+  case three_imaginary_semi: return "3i   ";
+  case three_semi_real: return "3Cr  ";
+  case three_real_nonparity: return "3rn  ";
+  case three_imaginary_compact: return "3ic  ";
   }
   assert(false); return NULL;
 }
