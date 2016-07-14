@@ -126,12 +126,12 @@ DynkinDiagram::DynkinDiagram(const ext_gens& orbits, const DynkinDiagram& diag)
 	if (not diag.star(ii)[jj])
 	  ii = orbits[i].s1;
 	assert (diag.star(ii)[jj]);
+	d_star[i].set(j);
+	d_star[j].set(i); // mark |i| and |j| as neighbours in new diagram
 
 	int diff=orbits[i].length()-orbits[j].length();
 	if (diff==0) // equal length
 	{ // then copy Cartan entries
-	  d_star[i].set(j);
-	  d_star[j].set(i);
 	  const Multiplicity m = diag.edge_multiplicity(ii,jj);
 	  if (m>1)
 	  {

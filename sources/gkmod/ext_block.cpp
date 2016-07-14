@@ -2216,6 +2216,7 @@ BlockEltPair ext_block::Cayleys(weyl::Generator s, BlockElt n) const
 
 
 // check validity, by comparing with results found using extended parameters
+// the signs are recorded in |eb|, and printed to |cout| is |verbose| holds.
 bool check(ext_block& eb, const param_block& block, bool verbose)
 {
   context ctxt (block.context(),eb.delta(),block.gamma());
@@ -2223,9 +2224,8 @@ bool check(ext_block& eb, const param_block& block, bool verbose)
   for (BlockElt n=0; n<eb.size(); ++n)
   { auto z=eb.z(n);
     for (weyl::Generator s=0; s<eb.rank(); ++s)
-    { ext_gen p=eb.orbit(s);
-      param E(ctxt,block.x(z),block.lambda_rho(z)); // re-init each iteration
-      links.clear(); // output arguments for |star|
+    { param E(ctxt,block.x(z),block.lambda_rho(z)); // re-init each iteration
+      ext_gen p=eb.orbit(s); links.clear(); // output arguments for |star|
       auto tp = star(E,p,links);
       if (tp!=eb.descent_type(s,n))
 	return false;

@@ -222,8 +222,6 @@ void addTestCommands<commands::RealmodeTag> (commands::CommandNode& mode)
 template<>
 void addTestCommands<commands::BlockmodeTag> (commands::CommandNode& mode)
 {
-  mode.add("braid",braid_f,
-	   "tests braid relations on an extended block",commands::use_tag);
   mode.add("go",go_f,
 	   "generates difficult SO(5,5) extended block, and runs 'braid'",
 	   commands::use_tag);
@@ -237,6 +235,8 @@ void addTestCommands<commands::BlockmodeTag> (commands::CommandNode& mode)
 template<>
 void addTestCommands<commands::ReprmodeTag> (commands::CommandNode& mode)
 {
+  mode.add("braid",braid_f,
+	   "tests braid relations on an extended block",commands::use_tag);
   if (testMode == ReprMode)
     mode.add("test",test_f,test_tag);
 
@@ -911,7 +911,7 @@ void test_f() // trial of twisted KLV computation
 
 }
 
-int test_braid(ext_block::ext_block eblock) // by value
+int test_braid(const ext_block::ext_block& eblock)
 {
   std::cout << "testing braids" << std::endl;
   bool OK=true; int count=0; int failed=0;
@@ -944,7 +944,27 @@ int test_braid(ext_block::ext_block eblock) // by value
     std::cout << "All " << count << " relations hold!\n";
   std::cout << std::endl;
   return failed;
-} // |braid_f|
+} // |test_braid|
+
+
+void braid_f()
+{
+  commands::ensure_full_block();
+  WeightInvolution delta = interactive::get_commuting_involution
+    (commands::current_layout(), commands::current_lattice_basis());
+
+  auto& block = commands::current_param_block();
+  if (not ((delta-1)*block.gamma().numerator()).isZero())
+  {
+    std::cout << "Chosen delta does not fix gamma=" << block.gamma()
+	      << " for the current block." << std::endl;
+    return;
+  }
+  ext_block::ext_block eblock(commands::current_inner_class(),block,
+			      commands::currentRealGroup().kgb(),delta);
+  if (check(eblock,block,true))
+    test_braid(eblock);
+}
 
 void fix_braid(ext_block::ext_block& eblock)
 {
@@ -1024,20 +1044,6 @@ void fix_braid(ext_block::ext_block& eblock)
     std::cout << "All " << count << " relations hold!\n";
   std::cout << std::endl;
 } // |fix_braid|
-
-
-
-void braid_f()
-{
-  ext_block::ext_block
-    eblock(commands::current_inner_class(),
-	   commands::currentBlock(),
-	   commands::currentRealGroup().kgb(),
-	   commands::currentDualRealGroup().kgb(),
-	   commands::current_inner_class().distinguished()
-	   );
-  test_braid(eblock);
-}
 
 
 
