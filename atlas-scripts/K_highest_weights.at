@@ -5,6 +5,39 @@
   (x,lambda) <-> representations of K
   K_highest_weights.at: KHighestWeights (x,mu) <-> representations of K_#
 }
+{ KHighestWeight: mu    K_types tau
+  see KHatHowe Section 4, especially Theorem 4.10
+  notation: 
+    KHatHowe   Atlas
+      T_{f0}    T_K0
+      T_f       T_K
+      T_fl      T_{K,large}
+
+    R(K)=|K/K_#|=|T_{K,large}/T_K|
+
+  given mu a character of T_K 
+
+  T_K \subset T_K(\mu) \subset T_{K,large}
+   |-----a-------|--------b-------|
+   ab=|R(K)|
+   a=|R(K,mu)|,  b=|R(K)/R(K,mu)|
+
+   {mu_i|i=1,...,b} characters of T_K  <-> {\tilde\mu_j|j=1,...,a} irreps of T_{K,large}
+
+   {mu_i}= orbit of R(K) acting acting on mu=mu_1, stabilizer is R(K,mu)
+   {\tilde\mu_j|j=1,...,a} irreducible representations of T_{K,large}
+   
+   mu_i -> Ind_{T_K}^{T_{K,large}})(mu_i)= \sum_{j=1}^a \tilde\mu_j
+   \tilde\mu_j -> Res^{T_{K,large}}_{T_K}(\tilde\mu_j)=\sum_{i=1}^a\mu_i
+
+   mu_i -> a choices of extension to T_K(mu_i) -> induce irreducibly to T_{K,large}
+     each mu_i (i=1,...,a) -> same set of \tilde\mu_j (j=1,...,b)
+   dim(\tilde\mu_j)=|R(K)/R(K,mu)| 
+   mu_i -> tau(mu_i) irreducible of K_#, dimension given by Weyl dimension formula
+   \tilde\mu_j -> \tau(\tilde\mu_j) irreducible of K
+   dim(\tau(\tilde\mu_j))=dim(\tau(\mu_j))*b=dim(\tau(\mu_j))|R(K)/R(K,mu_j)| (See Theorem 4.10(1))
+}
+
 { main functions in this file:
   highest_weights@K_Type -> [KHighestWeight]
   highest_weight@K_Type -> KHighestWeight  (first one in previous function)
@@ -69,7 +102,9 @@ set highest_weight_one (K_Type p) = KHighestWeight:
 { then ()=prints("mu_L:",mu_L,new_line, " mu_G", mu_G, new_line,"2*rho_u_cap_s(Q)", 2*rho_u_cap_s(Q), new_line, "two_rho_u_cap_s", two_rho_u_cap_s(Q)) }
 in (x_G,mu_G)
 
-{primary multi-valued function K_type -> [KHighestWeight]}
+{primary multi-valued function K_type -> [KHighestWeight]
+number of terms is |R(K)/R(K,mu)|
+}
 set highest_weights (K_Type p) = [KHighestWeight]:
   R_K_dom_mu_orbit(highest_weight_one(p))
 
@@ -111,7 +146,7 @@ set find_nci_root (KGBElt x,ratvec tau) = int:
   then sr=simple_roots(rd), scr=simple_coroots(rd),ssr=ss_rank(rd)
   then j= first(ssr, (int i)bool: scr[i]*tau<0 and is_noncompact(x)(sr[i]) )
   in
-  if j<0 then j
+  if j>=0 then j
   else j:=
     first(ssr
          , (int i)bool:
@@ -140,6 +175,7 @@ given (x,mu) -> mu+2rho_K(x) ->
  need the second argument for the modified Vogan algorithm
  }
 set project_on_dominant_cone (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
+let ()=prints("project_on_dominant_cone with x=", x, " mu=", mu) in
 let rd=root_datum(x) then
 mu=(1+involution(x))*mu/2 then
 (mu_1,w)=make_dominant(rd,mu) then
@@ -241,25 +277,29 @@ set parabolic (KHighestWeight (x,mu)) = Parabolic:
   then S= list( (int i): fundamental_coweight(rd,i)*diff>0, ss_rank(rd))
   in Parabolic:(S,y)
 
-{ go from highest weight to K_types [K_Type]  mu -> [p_1,...,p_r]
+{ go from KHighestWeight mu to K_types [K_Type]  mu -> [p_1,...,p_r]
   multivalued: highest_weight(p_i)=mu
  algorithm:
  1) G-spherical case: mu\in X^*/(1-delta)X^*, satisfying <mu,\alpha^\vee>=0
-    for all alpha in Delta(G,T_{K_0})<
+    for all alpha in Delta(G,T_{K_0})
 See KHatHowe, Section 15
 }
 set fix (KHighestWeight mu,KGBElt x_Q) = KHighestWeight:
   let (x,tau)=mu then w=find_W_cross(x,x_Q) in (cross(w,x),act(w,tau))
 
-set K_types (KHighestWeight mu)= [K_Type]:
-  let (y,mu_3_orig,dlambda)=project_on_dominant_cone(mu)
-  then Q=parabolic(mu)  {Q is theta-stable}
+{this function takes KHighestWeight mu -> |R(K,mu)| K_types, see top of this file}
+{first replace mu with strongly dominant mu in same R_K_dom_mu orbit}
+set K_types (KHighestWeight mu_in)= [K_Type]:
+{  let (y,mu_3_orig,dlambda)=project_on_dominant_cone(mu) in}
+  let (mu,,,)=make_strongly_dominant(mu_in) in
+  let  Q=parabolic(mu)  {Q is theta-stable}
   in { prints("Q=", Q); }
   assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
   let x_Q=x_min(Q)
-  then {()=prints("x_Q=", x_Q) then} mu=fix(mu,x_Q)
-  then (x,tau)=mu
-  then { ()=prints("fixed mu:", mu) then }
+  then mu=fix(mu,x_Q) 
+  {then ()=prints("x_Q=", x_Q)}
+  then (x,tau)=mu then
+  {  then  ()=prints("fixed mu:", mu) then }
   { ()=assert(mu=fix(mu,x_Q),"error: mu\ne fix(mu)") then }
      L=Levi(Q)
   then { L is relatively split }
@@ -273,16 +313,17 @@ set K_types (KHighestWeight mu)= [K_Type]:
      prints("arg:", tau-2*rho_u_cap_s(Q)+rho_l(Q)) then }
   ()=assert(is_relatively_split(L),"L is not relatively split") then
   pL=finalize(parameter(KGB(L,#KGB(L)-1),
-	                tau-two_rho_u_cap_s(Q)+rho_l(Q), null(#dlambda)))
+	                tau-two_rho_u_cap_s(Q)+rho_l(Q), null(rank(L))))
   then
-{ ()=prints("pL:", pL);
-     prints("Q=:", Q) then }
+ ()=prints("pL:", pL);
+     prints("Q=:", Q) then 
      result=[K_Type]:[]
   in  assert(#pL=1,"finalized parameter has more than one term");
   let all_pL=all_G_spherical_same_differential(pL[0]) in
   for qL in all_pL
-  do { prints("qL:", qL); }
+  do  prints("qL:", qL); 
     let ind=monomials(induce_standard(parameter(qL),Q,real_form(x))) in
+    let ()=prints("induced:", ind) in
     assert(#ind=1,"induced has more than one term");
     result#:=K_type(ind[0])
   od; result
@@ -298,12 +339,11 @@ set K_type (KHighestWeight(x,mu)) = K_Type:
 set K0_highest_weight (KHighestWeight(x,mu)) = Param:
   finite_dimensional(K_0(x),project_K(real_form(x),mu))
 
-set number_extensions(KHighestWeight mu) = int:
-  let (x,tau)=mu in #R_K_dom_mu(x,project_K(x,tau))
-
-set dimension (KHighestWeight mu) = int:
-  let (x,tau)=mu in
-  dimension(K0_highest_weight(mu))*rat_as_int(#R_K_dom(x)/number_extensions(mu))
+{dimension of KHighestWeight=dimension of representation of K_#
+                            =dimension of representation of K_0, given by Weyl dimension formula}
+set dimension (KHighestWeight mu) = int:dimension(K0_highest_weight(mu))
 
 set dimension (K_Type p) = int:
-  dimension(highest_weights(p)[0])
+let hw=highest_weights(p) then
+mu=hw[0] then
+(x,)=mu in dimension(mu)*rat_as_int(#R_K_dom(x)/#R_K_dom_mu(mu))

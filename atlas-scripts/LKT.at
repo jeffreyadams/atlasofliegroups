@@ -1,7 +1,7 @@
 <cross_W_orbit.at { find_W_cross }
 <induction.at { rho_S@KGBElt }
 <finite_dimensional.at { highest_weight@Param }
-<W_K.at { make_strongly_dominant@(KGBElt,ratvec) }
+<W_K.at {move_weight}
 <thetastable.at { two_rho_u_cap_s@Parabolic }
 <Weylgroup.at {make_no_Cminus}
 

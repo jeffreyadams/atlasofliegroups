@@ -104,13 +104,15 @@ set convert_W_word ((RootDatum rd_L,[int] w),RootDatum rd_G) = W_word:
   in for i in w do result#:=find(sr_G,[int]:sr_L[i]) od;
   W_word:(rd_G,result)
 
-{ R_K_dom is W(K_0,T_{K_0})\cap W_c_perp
-  given as list of Weyl group elements,
+{ R_K_dom is W(K,T_K)\cap W_c_perp
+  W(K,T_K)=R_K_dom \ltimes W(K_0,T_{K_0}) (KHatHowe Proposition 4.2)
+  Note: W(K,T_K)\simeq W(G,H) (KHatHowe after Definition 4.1)
+  so R_K_dom is given as list of elements of W(G,H)
   each of which is a product of (commuting) reflections from W_c_perp
   See KHatHow Proposition 4.4 (3)
   requirement: x makes 2rho_c G-dominant
 }
-set R_K_dom(KGBElt x) = [W_word]:
+set R_K_dom(KGBElt x) = [W_word]:  {these are elements of W(G,H)}
   let W_c_perp=W_c_perp(x), result=[(RootDatum,[int])]:[] in
 { need to change to numbering for G }
   for w in W_c_perp
@@ -177,24 +179,25 @@ set is_P_positive (KGBElt x,ratvec mu,[W_word] S) = bool:
   use lift_action to get the action on X^*  
   x must be in distinguished fiber, and make 2rho_c G-dominant
 }
-set make_strongly_dominant (KGBElt x,ratvec mu) = (ratvec,W_word,W_word,bool):
+set make_strongly_dominant (KGBElt x,vec mu) = ((KGBElt,vec),W_word,W_word,bool):
   let (K_0,R_K_dom)=W_K(x)
   then proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
-  then (mu_0,w_1)=make_dominant(K_0,proj*mu) 
-  then mu_1=lift_action(x,w_1)*mu
+  then (mu_0,w_1)=make_dominant(K_0,proj*mu)   {w_1 is in W(K_0,T_{K_0})}
+  then mu_1=lift_action(x,w_1)*mu              {use lift_action so w_1 acts in mu\in X^*, mu_1\in X^*}
   then L=small_Levi(x), done=false, i=0, j=-1, mu=mu_1, w=w_1
   in
     while not done and i<#R_K_dom
-    do { prints("i:", i); }
-{      let mu_2=factor_action(x,R_K_dom[i])*mu_1 in}
-       let mu_2=lift_action(x,R_K_dom[i])*mu_1 in
-      { prints("mu_2:", mu_2); }
+    do  prints("i:", i); 
+       let mu_2=act(R_K_dom[i],mu_1) in 
+{      let mu_2=factor_action(x,R_K_dom[i])*mu_1 in  ???}
+{       let mu_2=lift_action(x,R_K_dom[i])*mu_1 in   ???}
+       prints("mu_2:", mu_2); 
       let is_pos=is_P_positive(x,mu_2,R_K_dom) in
-      { prints("is_P_positive:", is_pos); }
+       prints("is_P_positive:", is_pos); 
       if is_pos then j:=i;done:=true; mu:=mu_2
       else i:=i+1
       fi
-    od; (mu,w_1,R_K_dom[j],done)
+    od; ((x,mu),w_1,R_K_dom[j],done)
 
 { set make_strongly_dominant(KGBElt x,ratvec mu)=(ratvec,mat):
   let (mu_dom,w_1,w_2,done)=
@@ -211,15 +214,14 @@ set make_strongly_dominant (KGBElt x,ratvec mu) = (ratvec,W_word,W_word,bool):
  make it K_0-dominant, and compute stabilizer in R_K_dom
  requirement: x makes 2rho_c G-dominant
 }
-set R_K_dom_mu (KGBElt x,ratvec mu)  =[W_word]:
-  let (K_0,R_K_dom)=W_K(x)
-
+set R_K_dom_mu (KGBElt x,vec mu)  =[W_word]: let (K_0,R_K_dom)=W_K(x)
  then proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
  then (mu_0,v)=make_dominant(K_0,proj*mu) 
  then mu_1=lift_action(x,v)*mu 
  then result=[W_word]:[]
   in
-    for w in R_K_dom do if lift_action(x,w)*mu_1=mu_1 then result#:=w fi od;
+{    for w in R_K_dom do if lift_action(x,w)*mu_1=mu_1 then result#:=w fi od;}
+    for w in R_K_dom do if act(w,mu_1)=mu_1 then result#:=w fi od;
     result
 
 
