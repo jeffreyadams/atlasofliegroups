@@ -395,16 +395,10 @@ void ext_block::flip_edge(weyl::Generator s, BlockElt x, BlockElt y)
 int ext_block::epsilon(weyl::Generator s, BlockElt x, BlockElt y ) const
 {
   BlockEltPair p= data[s][x].links;
-  int i= p.first==y ? 0 : p.second==y ? 1 : -1;
-  assert(i>=0);
-  bool flip = info[x].flips[i][s];
+  int i= p.first==y ? 0 : 1;
+  assert(i==0 or p.second==y);
 
-  // each 2i12/21r21 quadruple has one implicit negative sign not using |flips|
-  if (has_quadruple(descent_type(s,x)) and
-      i==1 and data[s][y].links.second==x)
-    flip = not flip; // it is between second elements in both pairs of the quad
-
-  return flip ? -1 : 1;
+  return info[x].flips[i][s] ? -1 : 1;
 }
 
 BlockEltList ext_block::down_set(BlockElt n) const
