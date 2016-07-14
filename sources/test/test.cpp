@@ -936,8 +936,8 @@ int test_braid(const ext_block::ext_block& eblock)
 			  << eblock.z(*it) ;
 
 	      std::cout << ')' << std::endl;
-	      seen |= cluster; // don't do elements of same cluster again
 	    }
+	    seen |= cluster; // don't do elements of same cluster again
 	  }
     }
   if (OK)

@@ -83,7 +83,8 @@ bool has_quadruple(DescValue v); // 2i12/2r21 cases
 
 bool is_proper_ascent(DescValue v);
 
-int generator_length(DescValue v);
+unsigned int generator_length(DescValue v);
+unsigned int link_count(DescValue v);
 
 DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 			BlockElt& first_link);

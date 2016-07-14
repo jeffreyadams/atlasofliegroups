@@ -692,7 +692,7 @@ extended_block: (Param,mat->[Param],mat,mat,mat) extended block with graph data
   parameter attached, with respect to which choices certain neighbor relations
   may involve a sign flip, which is indicated in the corresponding matrix entry
   (link value): if the extended block has size n, then link values from 0 to n-1
-  indicate a neighbor with no flip, negative values fro; -1 to -n indicate a
+  indicate a neighbor with no flip, negative values from -1 to -n indicate a
   sign flip (for the index corresponding by subtraction from -1), and the value
   n indicates absence of a link.
 

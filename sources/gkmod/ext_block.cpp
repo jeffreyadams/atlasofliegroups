@@ -126,8 +126,51 @@ bool has_defect(DescValue v)
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
 
-int generator_length(DescValue v)
+unsigned int generator_length(DescValue v)
 { return v<two_complex_ascent ? 1 : v<three_complex_ascent ? 2 : 3; }
+
+unsigned int link_count(DescValue v)
+{ switch(v)
+  {
+    // zero valued Cayleys: nothing recirded (cross action is trivial)
+  case one_real_nonparity: case one_imaginary_compact:
+  case one_imaginary_pair_switched: case one_real_pair_switched:
+  case two_real_nonparity: case two_imaginary_compact:
+  case two_imaginary_single_double_switched:
+  case two_real_single_double_switched:
+  case three_real_nonparity: case three_imaginary_compact:
+    return 0;
+
+    // complex cases (record only the cross action)
+  case one_complex_ascent:
+  case one_complex_descent:
+  case two_complex_ascent:
+  case two_complex_descent:
+  case three_complex_ascent:
+  case three_complex_descent:
+    return 1;
+
+    // semi cases do not record thei (trivial) cross action
+  case two_semi_imaginary: case two_semi_real:
+  case three_semi_imaginary: case three_real_semi:
+  case three_imaginary_semi: case three_semi_real:
+    return 1;
+
+    // some single valued extended Cayleys use second link for cross action
+  case one_imaginary_single:
+  case one_real_single:
+  case two_imaginary_single_single:
+  case two_real_single_single:
+    return 2;
+
+    // double valued Cayleys also have unrecorded trivial cross actions
+  case one_real_pair_fixed: case one_imaginary_pair_fixed:
+  case two_real_double_double: case two_imaginary_double_double:
+  case two_imaginary_single_double_fixed: case two_real_single_double_fixed:
+    return 2;
+  }
+  assert(false); return -1; // keep compiler happy
+}
 
 // find element |n| such that |z(n)>=zz|
 BlockElt ext_block::element(BlockElt zz) const

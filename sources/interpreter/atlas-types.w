@@ -4177,7 +4177,8 @@ void extended_block_wrapper(expression_base::level l)
 into a list of parameters and three tables in the form of matrices.
 
 @< Compute edge flips in |eb|... @>=
-{ check(eb,block,true);
+{ check(eb,block,false);
+    // set flips using extended parameter computations, do not report
   own_row params = std::make_shared<row_value>(eb.size());
   int_Matrix types(eb.size(),eb.rank());
 @/int_Matrix links0(eb.size(),eb.rank());
@@ -4193,13 +4194,13 @@ into a list of parameters and three tables in the form of matrices.
     { auto type = eb.descent_type(s,n);
       types(n,s) = static_cast<int>(type);
       if (is_like_compact(type) or is_like_nonparity(type))
-      {@/@; links0(n,s)=eb.size(); links1(n,s)=eb.size(); }
+      @/{@; links0(n,s)=eb.size(); links1(n,s)=eb.size(); }
       else
       { links0(n,s)= is_complex(type) ? eb.cross(s,n): eb.Cayley(s,n);
         if (eb.epsilon(s,n,links0(n,s))<0)
 	  links0(n,s) = -1-links0(n,s);
-        if (is_complex(type) or generator_length(type)==3)
-          links1(n,s)=eb.size();
+        if (link_count(type)==1)
+          links1(n,s)=eb.size(); // leave second matrix entry empty
         else
         { links1(n,s)= has_double_image(type)
             ? eb.Cayleys(s,n).second
