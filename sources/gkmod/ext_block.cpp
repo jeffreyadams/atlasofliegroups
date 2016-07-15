@@ -1882,18 +1882,24 @@ DescValue star (const param& E,
 	  TwistedInvolution new_tw = E.tw;
 	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
 
-	  const int f = (E.ctxt.gamma() - E.lambda_rho()).dot(alpha_v)
-	    - rd.colevel(n_alpha);
-	  const int dual_f = (E.ctxt.g() - E.l()).dot(alpha)
-	    - rd.level(n_alpha);
+	  const int f =
+	    (E.ctxt.gamma() - E.lambda_rho()).dot(alpha_v)- rd.colevel(n_alpha);
+	  const int dual_f =
+	    (E.ctxt.g() - E.l()).dot(alpha) - rd.level(n_alpha);
 	  const Weight new_lambda_rho = E.lambda_rho() + alpha*f;
 	  const Weight new_tau =
 	    rd.reflection(n_alpha,E.tau()) + alpha*(ascent ? f : -f);
 	  const Coweight new_l = E.l() + alpha_v*dual_f;
           const Coweight new_t = rd.coreflection(E.t(),n_alpha)
 	    + alpha_v*(ascent ? -dual_f : dual_f);
+	  int ab_t =
+	    ascent ? (alpha_v+beta_v).dot(E.tau())
+	    : E.t().dot(beta-alpha);
+	  assert (ab_t%2==0);
+	  int sign = (ascent ? ab_t * dual_f : ab_t * (f+alpha_v.dot(E.tau())))
+		      %4==0 ? 1 : -1;
 	  links.push_back(std::make_pair
-			  (1
+			  (sign
 			  ,param (E.ctxt, new_tw, // Cayley link
 				  new_lambda_rho, new_tau, new_l, new_t)));
 	}
