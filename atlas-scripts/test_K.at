@@ -1,0 +1,41 @@
+<all
+set all_reps_from_xy_blocks(RealForm G)=
+let rv=[] in
+let Gd=dual_quasisplit_form(G) in
+for H in real_forms(Gd) do
+ let B=block(G,H) in
+  for i:#B do rv#:=parameter(element(B,i)) od od;rv
+
+set test_K_xy(RealForm G)=
+let reps=all_reps_from_xy_blocks(G) in
+for p in reps do prints(p, " ", LKTs(p)) od
+
+
+
+set test_K([Param] B)=void:
+let passed=true then
+G=real_form(B[0]) then
+x=KGB(G,0) then 
+R_K=R_K_dom(x) then 
+()=prints("|R_K|=", #R_K) in
+for p@i in B do let 
+lkts=LKTs(p) then 
+hw=highest_weights(lkts[0]) then 
+ktypes=K_types(hw[0]) then
+dim_hw=dimension(hw[0]) then
+dim_ktype=dimension(lkts[0]) then
+R_K_mu=R_K_dom_mu(hw[0]) then
+test_1=#hw*#ktypes=#R_K then
+test_2= dim_hw*#R_K=dim_ktype*#R_K_mu then
+()=if not(test_1 and test_2) then passed:=false fi in 
+prints(new_line,"i=",i, new_line, "number of LKTs: ", #lkts, new_line, "#reps mu of K_#: ", #hw, new_line, "#reps of \tilde mu of K: ",   #ktypes);
+prints("(# of mu)*(# of \tilde\mu)=|R_K|: ",test_1);
+prints("dim(mu's): ", for mu in hw do dimension(mu) od);
+prints("dim(\tilde\mu's): ", for tildemu in ktypes do dimension(tildemu) od);
+prints("dim(mu)*|R_K/R_K(mu)|=dim(\tilde\mu):", test_2) od;
+prints(new_line,"Tests passed: ", passed) 
+
+set G=SO(2,2)
+set p=trivial(G)
+set B=block_of(p)
+test_K(B)

@@ -10,7 +10,7 @@
   notation: 
     KHatHowe   Atlas
       T_{f0}    T_K0
-      T_f       T_K
+      T_f       T_K=H^\delta
       T_fl      T_{K,large}
 
     R(K)=|K/K_#|=|T_{K,large}/T_K|
@@ -144,7 +144,7 @@ set centralizer(KGBElt x,ratvec v) = (KGBElt,RootDatum):
 set find_nci_root (KGBElt x,ratvec tau) = int:
   let rd=root_datum(x)
   then sr=simple_roots(rd), scr=simple_coroots(rd),ssr=ss_rank(rd)
-  then j= first(ssr, (int i)bool: scr[i]*tau<0 and is_noncompact(x)(sr[i]) )
+  then j= first(ssr, (int i)bool: scr[i]*tau<0 and is_noncompact_imaginary(x)(sr[i]) )
   in
   if j>=0 then j
   else j:=
@@ -175,7 +175,7 @@ given (x,mu) -> mu+2rho_K(x) ->
  need the second argument for the modified Vogan algorithm
  }
 set project_on_dominant_cone (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
-let ()=prints("project_on_dominant_cone with x=", x, " mu=", mu) in
+{let ()=prints("project_on_dominant_cone with x=", x, " mu=", mu) in}
 let rd=root_datum(x) then
 mu=(1+involution(x))*mu/2 then
 (mu_1,w)=make_dominant(rd,mu) then
@@ -292,6 +292,7 @@ set fix (KHighestWeight mu,KGBElt x_Q) = KHighestWeight:
 set K_types (KHighestWeight mu_in)= [K_Type]:
 {  let (y,mu_3_orig,dlambda)=project_on_dominant_cone(mu) in}
   let (mu,,,)=make_strongly_dominant(mu_in) in
+  let ()=prints("PASSED make_strong_dominant") in
   let  Q=parabolic(mu)  {Q is theta-stable}
   in { prints("Q=", Q); }
   assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
@@ -315,15 +316,15 @@ set K_types (KHighestWeight mu_in)= [K_Type]:
   pL=finalize(parameter(KGB(L,#KGB(L)-1),
 	                tau-two_rho_u_cap_s(Q)+rho_l(Q), null(rank(L))))
   then
- ()=prints("pL:", pL);
-     prints("Q=:", Q) then 
+{ ()=prints("pL:", pL);
+     prints("Q=:", Q) then }
      result=[K_Type]:[]
   in  assert(#pL=1,"finalized parameter has more than one term");
   let all_pL=all_G_spherical_same_differential(pL[0]) in
   for qL in all_pL
-  do  prints("qL:", qL); 
+  do  {prints("qL:", qL); }
     let ind=monomials(induce_standard(parameter(qL),Q,real_form(x))) in
-    let ()=prints("induced:", ind) in
+{    let ()=prints("induced:", ind) in}
     assert(#ind=1,"induced has more than one term");
     result#:=K_type(ind[0])
   od; result
