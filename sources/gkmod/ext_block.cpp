@@ -1561,7 +1561,7 @@ DescValue star (const param& E,
 
 	  param F0(E.ctxt,new_tw,
 		   E.lambda_rho() + first + rho_r_shift,
-		   E.tau() + alpha*(tau_coef/2) - first,
+		   E.tau() - alpha*(tau_coef/2) - first,
 		   E.l() + alpha_v*(tf_alpha/2), E.t());
 	  param F1(E.ctxt,new_tw,
 		   F0.lambda_rho() + alpha, F0.tau(), F0.l(), E.t());
