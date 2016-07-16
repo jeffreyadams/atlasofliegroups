@@ -942,11 +942,12 @@ WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
   return result;
 } // |fixed_conjugate_simple|
 
-/* for real Cayley transforms, one will subtracts $\rho_r$ from |lambda_rho|
-  before projecting it parallel to alpha so as to make |alpha_v| vanish on
+/*
+  for real Cayley transforms, one will subtract $\rho_r$ from |lambda_rho|
+  before projecting it parallel to |alpha| so as to make |alpha_v| vanish on
   |gamma-lambda_rho-rho|. Here we compute from |E.lambda_rho()|, corrected by
   that |shift|, the multiple of $\alpha/2$ that such a projection would add.
- */
+*/
 int level_a (const param& E, const Weight& shift, RootNbr alpha)
 {
   const RootDatum& rd = E.rc().rootDatum();
@@ -1054,21 +1055,11 @@ DescValue type (const param& E, const ext_gen& p,
       {
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
-
-	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
-	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
-
-	const int level = level_a(E,rho_r_shift,n_alpha);
-
-	if (level%2!=0) // nonparity
-	   return one_real_nonparity; // no link added here
-
 	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s0),E.tw);
 
-	Weight new_lambda_rho = E.lambda_rho()-rho_r_shift + alpha*(level/2);
-	assert((E.ctxt.gamma()-new_lambda_rho).dot(alpha_v)
-	       ==rd.colevel(n_alpha)); // check that |level_a| did its work
+	Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
+	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
 	const WeightInvolution& th_1 = i_tab.matrix(E.tw)-1; // upstairs
 	bool type1 = matreduc::has_solution(th_1,alpha);
@@ -1082,15 +1073,25 @@ DescValue type (const param& E, const ext_gen& p,
 	    rd.find_descent(alpha_simple);
 	  Weight first = // corresponding root summand, conjugated back
 	    rd.root(rd.permuted_root(rd.simpleRootNbr(s),ww));
-	  new_lambda_rho -= first; // final, non-delta-fixed contribution
+	  rho_r_shift += first; // final, non-delta-fixed contribution
 
 	  if (type1)
 	    // $(1-\theta)(s+f)=(\delta-1)*(-f)$ when $(\theta-1)s=\alpha$
 	    tau_correction = matreduc::find_solution(th_1,alpha)+first;
 	  else // type 2; now |matrix(new_tw)*first==delta*first| (second root)
 	    tau_correction = first; // since $(1-\theta)f = (\delta-1)*(-f)$
-	  assert((i_tab.matrix(new_tw)-1)*tau_correction==delta_1*-first);
+	  assert((i_tab.matrix(new_tw)-1)*tau_correction==delta_1*first);
 	}
+
+	// only after possibly adapting |rho_r_shift| can we test parity
+	const int level = level_a(E,rho_r_shift,n_alpha);
+
+	if (level%2!=0) // nonparity
+	   return one_real_nonparity; // no link added here
+
+	Weight new_lambda_rho = E.lambda_rho()-rho_r_shift + alpha*(level/2);
+	assert((E.ctxt.gamma()-new_lambda_rho).dot(alpha_v)
+	       ==rd.colevel(n_alpha)); // check that |level_a| did its work
 
 	const int t_alpha = E.t().dot(alpha);
 	if (type1)
@@ -1578,21 +1579,11 @@ DescValue star (const param& E,
       {
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
-
-	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
-	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
-
-	const int level = level_a(E,rho_r_shift,n_alpha);
-
-	if (level%2!=0) // nonparity
-	   return one_real_nonparity; // no link added here
-
 	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s0),E.tw);
 
-	Weight new_lambda_rho = E.lambda_rho() + alpha*(level/2) - rho_r_shift;
-	assert((E.ctxt.gamma()-new_lambda_rho).dot(alpha_v)
-	       ==rd.colevel(n_alpha)); // check that |level_a| did its work
+	Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
+	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
 	const WeightInvolution& th_1 = i_tab.matrix(E.tw)-1; // upstairs
 	bool type1 = matreduc::has_solution(th_1,alpha);
@@ -1606,16 +1597,27 @@ DescValue star (const param& E,
 	    rd.find_descent(alpha_simple);
 	  Weight first = // corresponding root summand, conjugated back
 	    rd.root(rd.permuted_root(rd.simpleRootNbr(s),ww));
-	  new_lambda_rho -= first; // final, non delta-fixed contribution
+	  rho_r_shift += first; // final, non delta-fixed contribution
 
-	  // we must add $d$ to $\tau$ with $(\theta'-1)d=(1-\delta)*first$
+	  // we must add $d$ to $\tau$ with $(1-\theta')d=(1-\delta)*first$
 	  if (type1)
-	    // $(1-\theta)(s+f)=(1-\delta)*f$ when $(\theta-1)s=\alpha$
+	    // $(1-\theta')(s+f)=(1-\delta)*f$ when $(\theta-1)s=\alpha$
 	    tau_correction = matreduc::find_solution(th_1,alpha)+first;
 	  else // type 2; now |matrix(new_tw)*first==delta*first| (second root)
 	    tau_correction = first; // since $(1-\theta)f = (1-\delta)*f$
-	  assert((i_tab.matrix(new_tw)-1)*tau_correction==delta_1*-first);
+	  assert((i_tab.matrix(new_tw)-1)*tau_correction==delta_1*first);
 	}
+
+	// only after possibly adapting |rho_r_shift| can we test parity
+	const int level = level_a(E,rho_r_shift,n_alpha);
+
+	if (level%2!=0) // nonparity
+	   return one_real_nonparity; // no link added here
+
+	const Weight new_lambda_rho =
+	  E.lambda_rho() + alpha*(level/2) - rho_r_shift;
+	assert((E.ctxt.gamma()-new_lambda_rho).dot(alpha_v)
+	       ==rd.colevel(n_alpha)); // check that |level_a| did its work
 
 	const int t_alpha = E.t().dot(alpha);
 	if (type1)
