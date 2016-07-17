@@ -1197,7 +1197,7 @@ WeylWord conjugate_to_simple(const RootSystem& rs,RootNbr& alpha)
 }
 
 // set of positive roots made negative by left multiplication by |w|
-// form L to R letter s: either: reflect by by $\alpha_s$, which posroot toggle
+// for letter s in w (L to R): reflect by by $\alpha_s$, which posroot toggle
 RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w)
 { RootNbr npos = rs.numPosRoots();
   std::vector<Permutation> pos_perm_simple;

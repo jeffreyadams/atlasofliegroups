@@ -1998,7 +1998,7 @@ DescValue star (const param& E,
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 
-	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
+	  const Weight rho_r_shift = repr::Cayley_shift(ic,i_tab.nr(new_tw),ww);
 	  assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
 	  int tf_alpha = (E.ctxt.g() - E.l()).dot(alpha) - rd.level(n_alpha);
