@@ -1784,7 +1784,7 @@ DescValue star (const param& E,
 	assert(b_level%2==0); // since |a_level| and |b_level| have same parity
 
 	WeightInvolution theta_1 = i_tab.matrix(theta)-1; // upstairs
-	const TwistedInvolution new_tw =
+	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
 
 	const Weight new_lambda_rho = E.lambda_rho()-rho_r_shift
@@ -1862,7 +1862,7 @@ DescValue star (const param& E,
 	  E0.set_t(E.t() - s); // parameter adapted to Cayley transform |F|
 	  assert(same_sign(E,E0)); // since only |t| changes
 
-	  E1.set_lambda_rho(E.lambda_rho()+alpha_v);
+	  E1.set_lambda_rho(E.lambda_rho()+alpha+beta);
 	  E1.set_t(E0.t()); // cross action, keeps adaption of |t| to |F| below
 	  assert(not same_standard_reps(E0,E1));
 
