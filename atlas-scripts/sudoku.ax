@@ -28,8 +28,17 @@
   index and a number in the range [0,9) and return the corresponding row index.
 }
 
+{ this function belongs in basic.at }
+set filter ([int] list) = ((int->bool)cond): [int]:
+  ## for x in list do if cond(x) then [x] else [] fi od
+
+{ user function for encoding and decoding choices }
+set choice (int v, int i, int j) = int:
+  ((v-1)*9+i-1)*9+j-1
 set name_choice (int vij) = string: let (v,ij)=vij\%81 then (i,j)=ij\%9 in
   to_string("Square ",(i+1,j+1)," gets value ", v+1)
+
+{ functions representing the implicit choice-constraint indicence matrix }
 
 set constraint0_of_choice (int vij) = int: vij\9 { drop final nonal digit j }
 set choice_of_constraint0 (int vi,int j) = int: vi*9+j { insert final digit j }
@@ -63,14 +72,19 @@ set name_co = [(int->string)]:
   [ name_constraint0@(int), name_constraint1@(int)
   , name_constraint2@(int), name_constraint3@(int) ]
 
+{ the "class" type, used later to represent manipulalable board positions }
 
 : game_interface =
   ( (int->bool) available { available(choice): whether |choice| is allowed }
+  , (int,int->bool) covered
+    { (g,co)->whether constraint |co| in group|g| is already covered }
+  , (int,int->[int]) options { (g,co)->options for constraint |co|, group|g| }
+  , (int,int->int) opt_count { (g,co)->number of (remaining) options above }
   , (->int) level  { number of currently active choices }
   , (->mat) board  { current position, as matrix with entries 0 or 1-9 }
   , (->vec) moves  { list of choices made so far }
-  , (int->int,int) best
-    { (c,m)=best(group): index |c| with fewest (|m|) choices in |group| }
+  , (int->int,int) best { hint for best way to proceed, per group (0-3) }
+    { (c,m)=best(group): constraint |c| with fewest (|m|) options in |group| }
   , (int->) choose { choose(choice): do choice and update internal data }
   , (->) unchoose  { backtrack, undo the last choice currently recorded }
   )
@@ -104,18 +118,15 @@ let (selection,top) = (vec,int): { stack of choices made, entries 0<=.<729 }
         do nr_options[group] + e81[constraint_index_of(choice)]
         od
     )
+  , options (int group) = let choice_of=ch_of_co[group] in
+      (int constraint) [int]:
+        (for k:9 do choice_of(constraint,k) od).filter((int ch): available[ch])
   then { other private methods using the above }
     cover_constraint (int group, int c) = void: { mark constraint as covered }
-    ( let nr=81*group+c, choice_of=ch_of_co[group] in
+    ( let nr=81*group+c, list = options(group)(c) in
       assert(not covered[nr]
-            ,"constraint "+c+" in group "+group+ "covered twice")
-    ; covered[nr]:=true
-    ; let list= vec:
-        ##for k:9
-          do let ch=choice_of(c,k) in
-            if available[ch] then remove(ch); [ch] else [] fi
-          od
-      in disabled[nr]:= list
+            ,"constraint "+c+" in group "+group+" covered twice")
+    ; covered[nr]:=true; for ch in list do remove(ch) od; disabled[nr]:= list
     )
   , uncover_constraint (int group, int c) = void:
     ( let nr=81*group+c in
@@ -137,7 +148,6 @@ let (selection,top) = (vec,int): { stack of choices made, entries 0<=.<729 }
   , unchoose () = void:
         let choice=selection[top-:=1] in
         for group:4 do uncover_constraint(group,co_of_ch[group](choice)) od
-      ; insert(choice)
   , board () = mat: let B=null(9,9) in
         for choice in selection[:top]
         do let (v,ij)=choice\%81 then (i,j)=ij\%9 in B[i,j]:=v+1
@@ -150,7 +160,10 @@ let (selection,top) = (vec,int): { stack of choices made, entries 0<=.<729 }
   fi od od
 ; { finally export a tuple of methods}
   game_interface:
-  ( (int choice)bool: available[choice]
+  ( (int choice) bool: available[choice]
+  , (int group, int constraint) bool: covered[81*group+constraint]
+  , (int group, int constraint) [int]: options(group)(constraint)
+  , (int group, int constraint) int: nr_options[group][constraint]
   , @int: top { the |level| method }
   , board
   , @vec: selection[:top]
@@ -161,7 +174,8 @@ end
 
 set solve ( game_interface game ) = [mat]:
   ( rec_fun solve (bool sure) [mat]:
-    if game.level()=81 then [game.board()]
+    if game.level()=81
+    then if not sure then prints("solution found") fi; [game.board()]
     else let group=-1, constraint=-1, min=10 in
       for g:4 ~
       do let (c,m)=game.best(g) in
@@ -170,30 +184,96 @@ set solve ( game_interface game ) = [mat]:
         fi
       od
     ; let choice=ch_of_co[group] in
-      if =min then [] { dead end }
+      if =min then prints(if sure then "inconsistency" else "dead end" fi); []
       elif min=1 { proceed confidently }
       then
         let remaining = { get the unique available choice |k| for |constraint| }
           first(9,(int k):game.available(choice(constraint,k))) in
         assert(>=remaining,"unique choice cannot be found") { check existence }
-      ; prints(name_co[group](constraint)," has forced value "
+      ; prints(if not sure then "   " else "" fi { indent }
+              ,name_co[group](constraint)
+              ,if sure then " has" else " would have" fi, " forced value "
               ,if group!=2 then to_string(remaining+1)
                else let (i,j)=remaining\%3 in to_string("",(i+1,j+1))
                fi)
       ; game.choose(choice(constraint,remaining))
       ; solve(sure) { tail recurse here }
+      next game.unchoose()
       else { case where we must try several alternatives and backtrack }
-      ## { each loop iteration contributes a [mat]; concatenate them }
-        for k:9
+        let L = ##
+          for k:9
+          do if game.available(choice(constraint,k)) then [k] else [] fi
+          od
+        in
+        prints("Need to explore ",min," alternatives for "
+               ,name_co[group](constraint), " (level ",game.level(),")")
+      ; prints("Options ", for k in L do k+1 od)
+      ; ## { each loop iteration contributes a [mat]; concatenate them }
+        for k in L
         do let ch=choice(constraint,k) in
-          if game.available(ch)
-          then game.choose(ch); solve(false) next game.unchoose()
-          else []
-          fi
+          prints("Trying ", k+1, " (level ",game.level(),")")
+        ; game.choose(ch); solve(false) next game.unchoose()
         od
       fi
    fi
  ) (true)
+
+{ tools for manual exploration }
+
+game : game_interface { working variable; functions below refer to this }
+
+set start (mat M) = void: game:=setup_grid(M)
+
+set place ((int,int,int)vij) = void:
+  let choice = choice(vij) in
+  if game.available(choice) then game.choose(choice)
+  else prints("Sorry, I cannot make that choice"); print(game.board())
+  fi
+
+set step (int group) = bool: { return whether a sure step could be made }
+  let (constraint,count)=game.best(group)
+  in
+  if count!=1 then false
+  else
+    let options = for k:9 do ch_of_co[group](constraint,k) od
+    then choice = options.filter(game.available)[0]
+    in
+    prints(name_choice(choice)); game.choose(choice); true
+  fi
+
+set advance (int group) = int: { returns count of steps advanced }
+  while step(group) do () od
+
+set advance ([int] groups) = int: { returns count of steps advanced }
+  sum(while let s=sum(for g in groups do advance(g) od) in >s do s od)
+
+set backup (int l) = void: while game.level()>l do game.unchoose() od
+
+set suggest () = void:
+begin
+  let m = min(for g:4 do let (,min)=game.best(g) in min od)
+  then most_constrained =
+    for g:4 do (#81).filter((int co):game.opt_count(g,co)=m) od
+  , count = for :729 do 0 od
+  in
+  if m>9 then prints("The board is solved")
+  elif =m then prints("The board is inconsistent, at level ",game.level())
+  elif
+    for cons@g in most_constrained do for constraint in cons
+    do for choice in game.options(g,constraint) do count[choice]+:=1 od
+    od od
+  ; m=1
+  then prints("The following placements can be made with certainty:")
+  ; for choice in (#729).filter((int ch): >count[ch])
+    do prints(name_choice(choice)) od
+  else prints("All constraints leave at least ",m
+             ," alternatives to be explored")
+  ; let max=max(count) then choices=(#729).filter((int ch): count[ch]=max) in
+    prints("Choices that form such an alternative for ",max
+          ," constraints at once are:")
+  ; for choice in choices do prints(name_choice(choice)) od
+  fi
+end
 
 set A = mat:
 [7,9,0,0,0,0,0,0,0
@@ -205,4 +285,16 @@ set A = mat:
 |0,3,0,0,0,7,5,1,0
 |0,1,0,0,0,5,0,0,9
 |8,0,0,0,0,0,0,0,0
+]
+
+set hard_one = mat:
+[0,0,0,0,0,1,0,2,0
+|3,0,0,0,4,0,5,0,0
+|0,0,0,6,0,0,0,0,7
+|0,0,2,0,0,0,0,0,1
+|0,8,0,0,9,0,0,3,0
+|4,0,0,0,0,0,8,0,0
+|5,0,0,0,0,2,0,0,0
+|0,9,0,0,3,0,4,0,0
+|0,0,6,7,0,0,0,0,0
 ]
