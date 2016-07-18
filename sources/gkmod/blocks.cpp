@@ -927,7 +927,6 @@ param_block::param_block
 {
   const InnerClass& G = innerClass();
   const RootDatum& rd = G.rootDatum();
-  Block_base::dd = DynkinDiagram(rd.cartanMatrix());
 
   const InvolutionTable& i_tab = G.involution_table();
   const KGB& kgb = rc.kgb();
@@ -936,6 +935,8 @@ param_block::param_block
   infin_char=sr.gamma(); // now we can set the infinitesimal character
 
   const SubSystem sub = SubSystem::integral(rd,infin_char);
+  Block_base::dd =
+    DynkinDiagram(sub.cartanMatrix().transposed()); // convert from dual side
 
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
   for (weyl::Generator s=0; s<our_rank; ++s)
@@ -1391,7 +1392,6 @@ param_block::param_block
   , z_hash(info)
 {
   const RootDatum& rd = innerClass().rootDatum();
-  Block_base::dd = DynkinDiagram(rd.cartanMatrix());
 
   const KGB& kgb = rc.kgb();
 
@@ -1399,6 +1399,8 @@ param_block::param_block
   infin_char=sr.gamma(); // now we can set the infinitesimal character
 
   const SubSystem sub = SubSystem::integral(rd,infin_char);
+  Block_base::dd =
+    DynkinDiagram(sub.cartanMatrix().transposed()); // convert from dual side
 
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
   for (weyl::Generator s=0; s<our_rank; ++s)

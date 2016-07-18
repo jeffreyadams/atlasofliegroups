@@ -2096,6 +2096,7 @@ ext_block::ext_block // for an external twist
   BitMap fixed_points(block.size());
 
   { // compute the delta-fixed points of the block
+
     // the following is NOT |twist(orbits)|, which would be for subsystem
     weyl::Twist twist(fold_orbits(block.rootDatum(),delta));
 
