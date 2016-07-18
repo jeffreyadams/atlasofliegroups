@@ -181,16 +181,19 @@ std::ostream& ext_block::print_to (std::ostream& strm) const
     // print Cayley transforms
     for (size_t s = 0; s < rank(); ++s)
     {
-      strm << '(' << std::setw(width);
+      strm << '(';
       if (is_complex(descent_type(s,n)) or data[s][n].links.first==UndefBlock)
-	strm << '*';
-      else strm << z(data[s][n].links.first);
-      strm << ',' << std::setw(width);
+	strm << std::setw(width+1) << '*';
+      else
+	strm << (info[n].flips[0][s] ? '-' : '+')
+	     << std::setw(width) << z(data[s][n].links.first);
+      strm << ',';
       if (has_double_image(descent_type(s,n))
 	  and data[s][n].links.second!=UndefBlock)
-	strm << z(data[s][n].links.second);
+	strm << (info[n].flips[1][s] ? '-' : '+')
+	     << std::setw(width) << z(data[s][n].links.second);
       else
-	strm << '*';
+	strm << std::setw(width+1) << '*';
       strm << ')' << std::setw(pad) << "";
     }
 

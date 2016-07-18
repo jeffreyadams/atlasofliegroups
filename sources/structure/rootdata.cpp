@@ -1284,7 +1284,7 @@ RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma)
   return RationalList(fracs.begin(),fracs.end());
 }
 
-ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution delta)
+ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta)
 {
   ext_gens result;
   const Permutation pi = rd.rootPermutation(delta);
