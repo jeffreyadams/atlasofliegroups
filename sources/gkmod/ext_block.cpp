@@ -1585,6 +1585,21 @@ DescValue star (const param& E,
 	Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
 	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
+	RootNbr alpha_0 = // maybe one of |alpha==alpha_0+alpha_1|
+	  rd.is_simple_root(alpha_simple) ? 0 // unused
+	  : rd.permuted_root(rd.simpleRootNbr(rd.find_descent(alpha_simple)),
+			     ww);
+
+	// test parity, taking into account modifications that will be applied
+	bool shift_correct = // whether |alpha_0| is defined and real at |theta|
+	  not rd.is_simple_root(alpha_simple) and
+	  i_tab.root_involution(theta,alpha_0)==rd.rootMinus(alpha_0);
+	const int level = level_a(E,rho_r_shift,n_alpha) +
+	   (shift_correct ? 1 : 0 ); // add 1 if |alpha_0| is defined and real
+
+	if (level%2!=0) // nonparity
+	   return one_real_nonparity; // no link added here
+
 	const WeightInvolution& th_1 = i_tab.matrix(E.tw)-1; // upstairs
 	bool type1 = matreduc::has_solution(th_1,alpha);
 
@@ -1593,29 +1608,20 @@ DescValue star (const param& E,
 	  tau_correction = Weight(rd.rank(),0); // no correction needed here
 	else
 	{
-	  weyl::Generator s = // first switched root index
-	    rd.find_descent(alpha_simple);
-	  Weight first = // corresponding root summand, conjugated back
-	    rd.root(rd.permuted_root(rd.simpleRootNbr(s),ww));
-	  rho_r_shift += first; // final, non delta-fixed contribution
+	  const Weight a0 = rd.root(alpha_0);
+	  if (shift_correct)
+	  {
+	    rho_r_shift += a0; // non delta-fixed contribution
 
-	  // we must add $d$ to $\tau$ with $(1-\theta')d=(1-\delta)*first$
-	  if (type1)
-	    // $(1-\theta')(s+f)=(1-\delta)*f$ when $(\theta-1)s=\alpha$
-	    tau_correction = matreduc::find_solution(th_1,alpha)+first;
-	  else // type 2; now |matrix(new_tw)*first==delta*first| (second root)
-	    tau_correction = first; // since $(1-\theta)f = (1-\delta)*f$
-	  assert((i_tab.matrix(new_tw)-1)*tau_correction==delta_1*first);
+	    // now we must add $d$ to $\tau$ with $(1-\theta')d=(1-\delta)*a0$
+	    // since $\theta'*a0 = a1 = \delta*a_0$, we can take $d=a0$
+	    tau_correction = a0;
+	    assert((i_tab.matrix(new_tw)-1)*tau_correction==delta_1*a0);
+	  }
 	}
 
-	// only after possibly adapting |rho_r_shift| can we test parity
-	const int level = level_a(E,rho_r_shift,n_alpha);
-
-	if (level%2!=0) // nonparity
-	   return one_real_nonparity; // no link added here
-
 	const Weight new_lambda_rho =
-	  E.lambda_rho() + alpha*(level/2) - rho_r_shift;
+	  E.lambda_rho() - rho_r_shift + alpha*(level/2);
 	assert((E.ctxt.gamma()-new_lambda_rho).dot(alpha_v)
 	       ==rd.colevel(n_alpha)); // check that |level_a| did its work
 

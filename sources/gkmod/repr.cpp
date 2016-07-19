@@ -534,11 +534,17 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
 		  infin_char);
 }
 
-/* compute shift in |lambda| component of parameter for Cayley transform
-   by a non-simple root $\alpha$, from involutions |theta_down| to |theta_up|,
-   where |to_simple| left-conjugates root $\alpha$ to some simple root $\beta$
+/*
+  Compute shift in |lambda| component of parameter for Cayley transform by a
+  non-simple root $\alpha$, from involutions |theta_down| to |theta_up|, where
+  |to_simple| left-conjugates root $\alpha$ to some simple root.
 
-   Sum of positve roots changing real status, and becoming negative at $\beta$
+  Curiously, this appears to depend only on $\theta$ upstairs and the
+  conjugating element |to_simple|; an explanation is needed here. It seems to
+  be because \emph{all} upstairs real roots becoming negative by the necessary
+  conjugation will be downstairs complex roots (so contribute to the shift).
+
+  Sum of positve real roots becoming negative at $\theta'=^{to\_simple}\theta$
 */
 Weight Cayley_shift (const InnerClass& G,
 		     InvolutionNbr theta_upstairs, // at the more split Cartan
