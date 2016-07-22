@@ -19,6 +19,23 @@
 set = (KGB_pair(x,y), KGB_pair(z,w) ) = bool: x=z and y=w
 set != (KGB_pair(x,y), KGB_pair(z,w)) = bool: x!=z or y!=w
 
+{ y_gen=(ic,omega,psi), psi\in X^*(H)_Q is dual torus factor, made to be
+  omega-fixed. Compare definition to x@entended_param from extended_misc.rx,
+  which implies that torus_factor(x(E))=(g-l-rho_check(ic))*(1+theta)/2
+}
+set y_gen(extended_param(ic,,gamma,lambda,,,,omega,,)) = KGBElt_gen:
+  (dual(ic),omega,(gamma-lambda-rho(ic))*(1+omega)/2)
+
+{ this computes y_gen(E@(mat,Param,ratvec)(.,p,.)) without the unused stuff }
+set y_gen (Param p) = KGBElt_gen:
+  let ic=inner_class(p), (x,lambda_rho,gamma)=%p { vec lambda_rho: lambda of E }
+  then theta=involution(x)
+  { dual tf : gamma-lambda(p) ($-\theta$-fixed) where lambda(p)=lambda_rho+rho }
+  in (dual(ic),-^theta,gamma-(lambda_rho+rho(ic)))
+
+
+{ Some purely adminstrative support functions }
+
 { index((x,y,list_of_pairs) :
   index of (x,y) in [(x_i,y_i)], return -1 if not found
 }
@@ -33,20 +50,6 @@ set find_pair( (KGB_pair,[KGB_pair]) p) = bool:
 set add_pair( KGB_pair xy, [KGB_pair] xy_pairs) = [KGB_pair]:
   if index(xy,xy_pairs)>=0 then xy_pairs else xy_pairs#xy fi
 
-{ y_gen=(ic,omega,psi), psi\in X^*(H)_Q is dual torus factor, made to be
-  omega-fixed. Compare definition to x@entended_param from extended_misc.at,
-  which implies that torus_factor(x(E))=(g-l-rho_check(ic))*(1+theta)/2
-}
-set y_gen(extended_param(ic,,gamma,lambda,,,,omega,,)) = KGBElt_gen:
-  (dual(ic),omega,(gamma-lambda-rho(ic))*(1+omega)/2)
-
-{ this computes y_gen(E@(mat,Param,ratvec)(.,p,.)) without the unused stuff }
-set y_gen (Param p) = KGBElt_gen:
-  let ic=inner_class(p), (x,lambda_rho,gamma)=%p { vec lambda_rho: lambda of E }
-  then theta=involution(x)
-  { dual tf : gamma-lambda(p) ($-\theta$-fixed) where lambda(p)=lambda_rho+rho }
-  in (dual(ic),-^theta,gamma-(lambda_rho+rho(ic)))
-
 { index(E,list_of_pairs) = index(x(E),y(E),list_of_pairs) }
 set index( extended_param Ep, [KGB_pair] xy_pairs) = int:
   index((x(Ep),y_gen(Ep)),xy_pairs)
@@ -57,46 +60,48 @@ set index(Param p,[KGB_pair] xy_pairs) = int:
   index((x(p),y_gen(p)),xy_pairs)
 }
 
-{ compute everything you get to by applying a single Cayley or cross }
-set neighbors(int j,
-         extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):Ep) =
-    [extended_param]:
+
+
+{ compute all other |extended_param| values you can get to by applying a
+  single Cayley transform or cross action to a given extended parameter
+}
+set neighbors(int j, extended_param Ep) = [extended_param]:
   let type=ext_type(j,Ep) in
-{ let ()=prints("Ep in neighbors:");display(Ep) in }
-{ let ()=prints("type in neighbors: ", type) in }
-  if (type="1C+") then [ext_cross(j,Ep)]
-  elif (type="1C+") then [ext_cross(j,Ep)]
-  elif (type="1C-") then [ext_cross(j,Ep)]
-  elif (type="1i1") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
-  elif (type="1i2f") then ext_Cayley(j,Ep)
-  elif (type="1i2s") then []
-  elif (type="1ic") then []
-  elif (type="1r1f") then ext_Cayley(j,Ep)
-  elif (type="1r1s") then []
-  elif (type="1r2") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
-  elif (type="1rn") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
-  elif (type="1r1s") then []
-  elif (type="2C+") then [ext_cross(j,Ep)]
-  elif (type="2C-") then [ext_cross(j,Ep)]
-  elif (type="2Ci") then ext_Cayley(j,Ep)
-  elif (type="2Cr") then ext_Cayley(j,Ep)
-  elif (type="2i11") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
-  elif (type="2i12") then ext_cross(j,Ep)#ext_Cayley(j,Ep)
-  elif (type="2i22") then ext_Cayley(j,Ep)
-  elif (type="2r22") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
-  elif (type="2r21")
-     then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0],ext_Cayley(j,Ep)[1]]
-  elif (type="2r11") then ext_Cayley(j,Ep)
-  elif (type="2rn") then []
-  elif (type="2ic") then []
-  elif (type="3C+") then [ext_cross(j,Ep)]
-  elif (type="3C-") then [ext_cross(j,Ep)]
-  elif (type="3Ci") then ext_Cayley(j,Ep)
-  elif (type="3Cr") then ext_Cayley(j,Ep)
-  elif (type="3i") then ext_Cayley(j,Ep)
-  elif (type="3r") then ext_Cayley(j,Ep)
-  elif (type="3rn") then []
-  elif (type="3ic") then []
+{ prints("Ep in neighbors: ",format(Ep)); }
+{ prints("type in neighbors: ", type); }
+  if   type="1C+" then [ext_cross(j,Ep)]
+  elif type="1C+" then [ext_cross(j,Ep)]
+  elif type="1C-" then [ext_cross(j,Ep)]
+  elif type="1i1" then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
+  elif type="1i2f" then ext_Cayley(j,Ep)
+  elif type="1i2s" then []
+  elif type="1ic" then []
+  elif type="1r1f" then ext_Cayley(j,Ep)
+  elif type="1r1s" then []
+  elif type="1r2" then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
+  elif type="1rn" then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
+  elif type="1r1s" then []
+  elif type="2C+" then [ext_cross(j,Ep)]
+  elif type="2C-" then [ext_cross(j,Ep)]
+  elif type="2Ci" then ext_Cayley(j,Ep)
+  elif type="2Cr" then ext_Cayley(j,Ep)
+  elif type="2i11" then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
+  elif type="2i12" then ext_cross(j,Ep)#ext_Cayley(j,Ep)
+  elif type="2i22" then ext_Cayley(j,Ep)
+  elif type="2r22" then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
+  elif type="2r21"
+    then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0],ext_Cayley(j,Ep)[1]]
+  elif type="2r11" then ext_Cayley(j,Ep)
+  elif type="2rn" then []
+  elif type="2ic" then []
+  elif type="3C+" then [ext_cross(j,Ep)]
+  elif type="3C-" then [ext_cross(j,Ep)]
+  elif type="3Ci" then ext_Cayley(j,Ep)
+  elif type="3Cr" then ext_Cayley(j,Ep)
+  elif type="3i" then ext_Cayley(j,Ep)
+  elif type="3r" then ext_Cayley(j,Ep)
+  elif type="3rn" then []
+  elif type="3ic" then []
   else prints("type:", type);error("I must have missed a case")
   fi
 
@@ -143,9 +148,9 @@ set xy_neighbors (
   od; rv
 
 { generate_subspace(i,j,delta,gamma,g,(x,y)) returns a Hecke invariant subspace
-  (more precisely subset, represented as list) of space of extended parameters:
-  all nodes you can get to by applying Hecke operators T_i and T_j to given
-  node
+  (more precisely its spanning subset, represented as list) of space of
+  extended parameters: all nodes you can get to by applying Hecke operators
+  T_i and T_j to given node
 }
 set generate_subspace(
     int j, int k, mat delta, ratvec gamma, ratvec g, KGB_pair(x,y)) =
@@ -156,7 +161,7 @@ begin
   do last := #rv { mark }
 { ; prints(); prints("calling xy_neighbors ", j, ", ", gamma, ", ", rv) }
   ; rv := xy_neighbors(j,delta,gamma,g,rv)
-{ ; prints();prints("calling xy_neighbors ", k, ", ", gamma, ", ", rv) }
+{ ; prints(); prints("calling xy_neighbors ", k, ", ", gamma, ", ", rv) }
   ; rv := xy_neighbors(k,delta,gamma,g,rv)
   od
 ; x_sort(rv)

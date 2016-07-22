@@ -254,7 +254,7 @@ class global_KGB : public KGB_base
   const GlobalTitsElement& element(KGBElt x) const { return elt[x]; }
 
   bool compact(RootNbr alpha, const GlobalTitsElement& a) const;
-  KGBElt lookup(const GlobalTitsElement& x) const;
+  KGBElt lookup(const GlobalTitsElement& x) const; // may return |UndefKGB|
 
 // virtual methods
   virtual std::ostream& print(std::ostream& strm, KGBElt x) const;
@@ -331,7 +331,7 @@ and in addition the Hasse diagram (set of all covering relations).
 
   TorusPart torus_part(KGBElt x) const { return left_torus_part[x]; }
   // reconstruct from |torus_part| a |TorusElement| as in |global_KGB|
-  RatCoweight base_grading_vector() const; // offset for |torus_part_global|
+  RatCoweight base_grading_vector() const; // offset for |torus_factor|
   RatCoweight torus_factor(KGBElt x) const; // will be $\theta^t$-fixed
 
   TitsElt titsElt(KGBElt x) const; // get KGB element |x| as a |TitsElt|
@@ -343,7 +343,7 @@ and in addition the Hasse diagram (set of all covering relations).
   bool simple_imaginary_grading(KGBElt x,RootNbr alpha) const
   { return d_base->simple_imaginary_grading(torus_part(x),alpha); }
 
-  KGBElt lookup(TitsElt a) const; // by value
+  KGBElt lookup(TitsElt a) const; // by value; it may return |UndefKGB|
 
 
 // manipulators

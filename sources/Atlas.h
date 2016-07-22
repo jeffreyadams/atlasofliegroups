@@ -23,6 +23,9 @@
 
 #include <vector>
 #include <functional> // for |std::less|
+#include <stack> // for our specialisation below
+#include <queue> // for our specialisation below
+
 
 #include "constants.h"
 
@@ -44,7 +47,7 @@ namespace atlas {
    were simply replaced by this file, avoiding duplication, but the utilities
    modules have the ambition of being reusable independently of the rest of
    the Atlas library. In fact this file should always be included in any Atlas
-   header file other than from the utilitites subdierectory, and alway before
+   header file other than from the utilitites subdirectory, and alway before
    any header files from that subdirectory, so the definitions here will be
    the only ones seen when compiling the Atlas library.
  */
@@ -63,6 +66,53 @@ namespace atlas {
 
   namespace bitmap { class BitMap; }
   using bitmap::BitMap;
+
+  namespace containers {
+
+  template<typename T,typename Alloc = std::allocator<T> >
+    class simple_list;
+  template<typename T,typename Alloc = std::allocator<T> >
+    class sl_list;
+
+  template<typename T, typename Alloc = std::allocator<T> >
+    struct sl_list_const_iterator;
+  template<typename T,typename Alloc = std::allocator<T> >
+    class sl_list_iterator;
+
+  template<typename T,typename Alloc = std::allocator<T> >
+    class mirrored_simple_list;
+
+  template<typename T,typename Alloc = std::allocator<T> >
+    class mirrored_sl_list;
+
+  template<typename T,typename Alloc = std::allocator<T> >
+#ifndef incompletecpp11
+    using stack = std::stack<T, mirrored_simple_list<T,Alloc> >;
+#else
+  struct stack : public std::stack<T, mirrored_simple_list<T,Alloc> >
+  {
+    template <typename... Args>
+      stack(Args&&... args)
+      : std::stack<T, mirrored_simple_list<T,Alloc> >
+	(std::forward<Args>(args)...)
+    {}
+  }; // |struct stack|
+#endif
+
+  template<typename T,typename Alloc = std::allocator<T> >
+#ifndef incompletecpp11
+    using queue = std::queue<T, sl_list<T,Alloc> >;
+#else
+  struct queue : public std::queue<T, sl_list<T,Alloc> >
+  {
+    template <typename... Args>
+      queue(Args&&... args)
+      : std::queue<T, sl_list<T,Alloc> > (std::forward<Args>(args)...)
+    {}
+  }; // |struct stack|
+#endif
+
+  } // |namespace cantainers|
 
   namespace arithmetic {
     typedef long long int Numer_t;
@@ -134,6 +184,7 @@ namespace atlas {
 #define SET_H
 #define BITSET_FWD_H
 #define BITMAP_FWD_H
+#define SL_LIST_FWD_H
 #define ARITHMETIC_FWD_H
 #define MATRIX_FWD_H
 #define RATVEC_FWD_H
@@ -197,10 +248,13 @@ namespace atlas {
     struct InnerClassType;
     struct Layout;
     typedef char TypeLetter;
+    class ext_gen;
   }
   using lietype::SimpleLieType;
   using lietype::LieType;
   using lietype::InnerClassType;
+  using lietype::ext_gen;
+  typedef std::vector<ext_gen> ext_gens;
 
   namespace prerootdata { class PreRootDatum; }
   using prerootdata::PreRootDatum;
@@ -353,17 +407,13 @@ namespace atlas {
   typedef std::vector<DescentStatus> DescentStatusList;
 
   namespace blocks {
-    class ext_gen;
     class Block_base;
     class Block;
     class param_block;
-    class non_integral_block;
   }
-  using blocks::ext_gen;
   using blocks::Block_base;
   using blocks::Block;
   using blocks::param_block;
-  using blocks::non_integral_block;
   typedef unsigned int BlockElt;
   typedef std::vector<BlockElt> BlockEltList;
   typedef std::pair<BlockElt,BlockElt> BlockEltPair;

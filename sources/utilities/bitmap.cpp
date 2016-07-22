@@ -444,10 +444,10 @@ BitMap& BitMap::operator<<= (unsigned long delta) // increase values by |delta|
   if (delta_rem>0 and not d_map.empty())
   {
     std::vector<unsigned long>::iterator it;
-    for (it=d_map.end(); --it!=d_map.begin(); )
+    for (it=d_map.end(); --it!=d_map.begin(); ) // reverse loop, omit initial
     {
       *it <<= delta_rem; // shift bits up
-      *it |= *(it-1) >> (constants::longBits-delta_rem);
+      *it |= *(it-1) >> (constants::longBits-delta_rem); // bits shifted in
     }
     *it <<= delta_rem; // shift bits up
   }

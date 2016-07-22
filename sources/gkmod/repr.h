@@ -215,6 +215,15 @@ class Rep_table : public Rep_context
 
 // 				Functions
 
+// shift in $\lambda$ component involved in non-simple Cayleys (and crosses)
+Weight Cayley_shift (const InnerClass& G,
+		     InvolutionNbr theta_upstairs, // at the more split Cartan
+		     const WeylWord& to_simple); // acting from the left
+
+// dual notion of |Cayley_shift|, used for $\ell$ in extended parameters
+Coweight ell_shift (const InnerClass& G,
+		    InvolutionNbr theta_downstairs, // at more compact Cartan
+		    const WeylWord& to_simple); // acting from the left
 
 } // |namespace repr|
 

@@ -185,7 +185,7 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
 			   matrix::PID_Matrix<C>& col)
 {
   const size_t m=M.numRows();
-  const size_t n=M.numColumns();
+  const size_t n=M.numColumns(); // |n| will become: start of known null columns
 
   row=matrix::PID_Matrix<C>(m); // initialise |row| to identity matrix
   col=matrix::PID_Matrix<C>(n);
@@ -412,6 +412,20 @@ matrix::PID_Matrix<C> Smith_basis(const matrix::PID_Matrix<C>& M,
 
 
 template<typename C> // find a solution |x| for |A*x==b|
+bool has_solution(const matrix::PID_Matrix<C>& A, matrix::Vector<C> b)
+{
+  matrix::PID_Matrix<C> row,col;
+  std::vector<C> diagonal = diagonalise(A,row,col); // $R*A*C=D$ diagonal
+  row.apply_to(b); // left multiply equation by $R$, giving $D*C^{-1}*x=R*b$
+
+  // now solve for the value of $C^{-1}*x$
+  for (unsigned int i=b.size(); i-->0; )
+    if ((i<diagonal.size() ? b[i] % diagonal[i] : b[i]) != 0)
+      return false;
+  return true;
+}
+
+template<typename C> // find a solution |x| for |A*x==b|
 matrix::Vector<C> find_solution(const matrix::PID_Matrix<C>& A,
 				matrix::Vector<C> b)
 {
@@ -457,6 +471,9 @@ matrix::PID_Matrix<int> Smith_basis(const matrix::PID_Matrix<int>& M,
 template
 matrix::PID_Matrix<int> adapted_basis(const matrix::PID_Matrix<int> M,
 				      std::vector<int>& diagonal);
+
+template
+bool has_solution(const matrix::PID_Matrix<int>& A, matrix::Vector<int> b);
 
 template
 matrix::Vector<int> find_solution(const matrix::PID_Matrix<int>& A,

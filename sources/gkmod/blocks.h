@@ -21,7 +21,8 @@
 #include "../Atlas.h"
 #include "tits.h"	// representative of $y$ in |non_integral_block|
 #include "descents.h"	// inline methods
-#include "dynkin.h"     // DynkinDiagram
+#include "lietype.h"    // |ext_gen|;
+#include "dynkin.h"     // |DynkinDiagram|
 
 namespace atlas {
 
@@ -41,29 +42,11 @@ namespace blocks {
 
   BitMap common_Cartans(RealReductiveGroup& GR,	RealReductiveGroup& dGR);
 
-  struct ext_gen; // defined below, represents fold-orbit of Weyl generators
   DynkinDiagram folded // produced folded version of diagram, given orbits
-    (const DynkinDiagram& diag, const std::vector<ext_gen>& orbits);
+    (const DynkinDiagram& diag, const ext_gens& orbits);
 
 
 /******** type definitions **************************************************/
-
-struct ext_gen // generator of extended Weyl group
-{
-  enum { one, two, three } type;
-  weyl::Generator s0,s1;
-  WeylWord w_tau;
-
-  explicit ext_gen (weyl::Generator s)
-    : type(one), s0(s), s1(~0), w_tau() { w_tau.push_back(s); }
-  ext_gen (bool commute, weyl::Generator s, weyl::Generator t)
-  : type(commute ? two : three), s0(s), s1(t)
-  { w_tau.push_back(s);  w_tau.push_back(t);
-    if (not commute) w_tau.push_back(s);
-  }
-
-  int length() const { return type+1; }
-};
 
 // The class |BlockBase| serves external functionality, not block construction
 class Block_base
@@ -77,8 +60,10 @@ class Block_base
     BlockElt dual; // number of Hermitian dual of this element, if any
   EltInfo(KGBElt xx,KGBElt yy,DescentStatus dd, unsigned short ll)
   : x(xx),y(yy),descent(dd),length(ll), dual(UndefBlock) {}
-  EltInfo(KGBElt xx,KGBElt yy, unsigned short ll)
-  : x(xx),y(yy),descent(),length(ll), dual(UndefBlock) {}
+
+  // sometimes leave |descent| and |ll| (which |hashCode| ignores) blank
+  EltInfo(KGBElt xx,KGBElt yy)
+  : x(xx),y(yy),descent(),length(0), dual(UndefBlock) {}
 
   // methods that will allow building a hashtable with |info| as pool
     typedef std::vector<EltInfo> Pooltype;
@@ -99,7 +84,7 @@ class Block_base
 
   std::vector<EltInfo> info; // its size defines the size of the block
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
-  std::vector<ext_gen> orbits;
+  ext_gens orbits;
 
   // map KGB element |x| to the first block element |z| with |this->x(z)>=x|
   // this vector may remain empty if |element| virtual methodis redefined
@@ -136,7 +121,7 @@ class Block_base
 
   const DynkinDiagram& Dynkin() const { return dd; }
   ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
-  const std::vector<ext_gen>& fold_orbits() const { return orbits; }
+  const ext_gens& inner_fold_orbits() const { return orbits; }
 
   KGBElt x(BlockElt z) const { assert(z<size()); return info[z].x; }
   KGBElt y(BlockElt z) const { assert(z<size()); return info[z].y; }
@@ -173,6 +158,7 @@ class Block_base
   bool isWeakDescent(weyl::Generator s, BlockElt z) const
     { return DescentStatus::isDescent(descentValue(s,z)); }
 
+  // the following indicate existence of ascending/descending link
   bool isStrictAscent(weyl::Generator, BlockElt) const;
   bool isStrictDescent(weyl::Generator, BlockElt) const;
   weyl::Generator firstStrictDescent(BlockElt z) const;
@@ -200,9 +186,9 @@ class Block_base
   { fill_klc(last_y,verbose); return *klc_ptr; }
 
  protected:
-  // a method to straighten out blocks generated in some non standard order
-  // renumber |x| through |new_x|, then order increasingly, set |first_z_of_x|
-  KGBElt renumber_x(const std::vector<KGBElt>& new_x);
+  // order block by increasing value of |x(z)|, adapting tables accoringly
+  // also sets lengths, and |first_z_of_x| recording where |x(z)| changes
+  KGBElt sort_by_x();
   void compute_first_zs(); // set |first_z_of_x| according to |x| values
 
  private:
@@ -309,36 +295,54 @@ private:
 
 }; // |class Block|
 
-typedef HashTable<y_entry,KGBElt> y_part_hash;
 
-// |param_block| is intermediate between |Block_base| and |non_integral_block|
-class param_block : public Block_base // blocks of parameters
+
+typedef HashTable<y_entry,KGBElt> y_part_hash;
+typedef Block_base::EltInfo block_elt_entry;
+typedef HashTable<block_elt_entry,BlockElt> block_hash;
+
+// a class for blocks of (possibly non integral) parameters
+class param_block : public Block_base
 {
- protected: // everything that is here serves derived classes only
   const Rep_context& rc; // accesses many things, including KGB set for x
 
   RatWeight infin_char; // infinitesimal character
   RankFlags singular; // flags simple roots for which |infin_char| is singular
 
-  std::vector<KGBElt> kgb_nr_of; // maps child |x| numbers to parent |kgb|
-  std::vector<KGBElt> x_of;      // inverse mapping, partial
-
   y_entry::Pooltype y_pool;
-  y_part_hash y_hash;
+  y_part_hash y_hash; // hash table allows storing |y| parts by index
+
+  // A simple structure to pack a pair of already sequenced numbers (indices
+  // into the |info| field for some future block) into a hashable value
+
+  block_hash z_hash; //  on |Block_base::info|
+
+
+ public:
 
   param_block(const Rep_context& rc, unsigned int rank);
+  param_block // constructor for full block
+    (const repr::Rep_context& rc,
+     StandardRepr sr, // by value,since it will be made dominant before use
+     BlockElt& entry_element	// set to block element matching input
+    );
+
+  param_block // alternative constructor, for interval below |sr|
+    (const repr::Rep_context& rc,
+     StandardRepr sr); // by value,since it will be made dominant before use
 
   // auxiliary for construction
   void compute_duals(const InnerClass& G,const SubSystem& rs);
 
  public:
-  // "inherited" accessors
+  // accessors that get values via |rc|
+  const repr::Rep_context& context() const { return rc; }
+  const RootDatum& rootDatum() const;
   const InnerClass& innerClass() const;
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& realGroup() const;
 
   const RatWeight& gamma() const { return infin_char; }
-  KGBElt parent_x(BlockElt z) const { return kgb_nr_of[x(z)]; }
   const TorusElement& y_rep(KGBElt y) const { return y_pool[y].repr(); }
 
   RatWeight nu(BlockElt z) const; // "real" projection of |infin_char|
@@ -348,48 +352,29 @@ class param_block : public Block_base // blocks of parameters
   bool survives(BlockElt z) const; // whether $J(z_{reg})$ survives tr. functor
   BlockEltList survivors_below(BlockElt z) const; // expression for $I(z)$
 
+  RatWeight y_part(BlockElt z) const; // raw torus part info, normalized
+
+  BlockElt lookup(KGBElt x, const TorusElement& y_rep) const;
+
+  ext_gens fold_orbits(const WeightInvolution& delta) const;
+
   // virtual methods
-  virtual KGBElt xsize() const { return kgb_nr_of.size(); } // child |x| range
-  virtual KGBElt ysize() const { return y_hash.size(); }    // child |y| range
+  virtual KGBElt xsize() const { return x(size()-1)+1; } // we're sorted by |x|
+  virtual KGBElt ysize() const { return y_hash.size(); } // child |y| range
   virtual const TwistedInvolution& involution(BlockElt z) const; // from |kgb|
 
-}; // |class param_block|
-
-
-typedef Block_base::EltInfo block_elt_entry;
-typedef HashTable<block_elt_entry,BlockElt> block_hash;
-
-class non_integral_block : public param_block
-{
-
-  // A simple structure to pack a pair of already sequenced numbers (indices
-  // into the |info| field for some future block) into a hashable value
-
-  block_hash z_hash; //  on |Block_base::info|
-
- public:
-  non_integral_block // constructor for full block
-    (const repr::Rep_context& rc,
-     StandardRepr sr, // by value,since it will be made dominant before use
-     BlockElt& entry_element	// set to block element matching input
-    );
-
-  non_integral_block // alternative constructor, for interval below |sr|
-    (const repr::Rep_context& rc,
-     StandardRepr sr); // by value,since it will be made dominant before use
-
-  // virtual methods
-  virtual BlockElt element(KGBElt x,KGBElt y) const; // redefined using |z_hash|
   virtual std::ostream& print // defined in block_io.cpp
     (std::ostream& strm, BlockElt z,bool as_invol_expr) const;
 
-  // new methods
-  RatWeight y_part(BlockElt z) const; // raw torus part info, normalized
 
  private:
-  void add_z(KGBElt x,KGBElt y, unsigned short l);
+  BlockElt earlier(KGBElt x,KGBElt y) const // find already constructed element
+  { return z_hash.find(block_elt_entry(x,y)); } // used during construction
 
-}; // |class non_integral_block|
+  void add_z(KGBElt x,KGBElt y);
+
+}; // |class param_block|
+
 
 
 class nblock_elt // internal representation during construction
