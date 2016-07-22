@@ -89,7 +89,7 @@ set H1 (RealForm G) = int: #strong_real_forms_same_type(G)
 }
 set iterate_H1 (int min_rank, int max_rank) = void:
   let announce(string s,int rank) = void:
-    prints("Calculating H^1(Gamma,G) for "#s#" simple groups of rank ",rank)
+    prints("Calculating H^1(Gamma,G) for ",s," simple groups of rank ",rank)
   in
   for rank:max_rank-min_rank+1 from min_rank
   do

@@ -98,8 +98,8 @@ set dual_KGB (Param p, InnerClass dual_int_ic) = KGBElt:
     = fixed_lift(dual_theta-1,rho(root_datum(p))-rho(integrality_datum(p)))
   then integral_shift=integral_shift(rho_corr-rho_r(x),simple_ims,dLR)
   then phi = dual_tf + rho_corr { dual_theta stable rep.tive of dual square }
-  then ()=prints("integral_shift:", integral_shift)  
-  then ()=prints("rho_corr:", rho_corr) 
+{  then ()=prints("integral_shift:", integral_shift)  
+  then ()=prints("rho_corr:", rho_corr) }
   in KGB_elt(dual_int_ic,
              dual_theta,
              phi+integral_shift)

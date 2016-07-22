@@ -20,7 +20,9 @@
   Distinguish one-line (maybe abbreviated) and long forms.
   Nuance "simply connected" and "adjoint" for non-semisimple root data
 
-- Check whether nested voiding in loops is necessary, maybe do only outer one
+- See if cloning of values is ever needed, and remove it if not
+
+- For errors during implict conversion, provide back-tracing as for calls
 
 - Implement compound assignment directly
   While 'v #:= x' (with vec v, int x) is easy to write (and common in loop
@@ -36,19 +38,7 @@
   future loops using features that make size of resulting row unknown when
   the loop is started) might do better gathering them in a list structure.
 
-- Allow list-comprehension syntax like in Haskell (and Python?)
-
-- Do some support for object oriented programming (just named tuples might do).
-
-- Premature exits: break from loop, return from function
-- Scoping in while loops: declarations of condition remain valid in body?
-  The same question arises in conditional: if the condition is the result of
-  a complicated computation, could that computation define some local
-  variables that remain accessible in addition to the boolean condition?
-  However for the conditional one could start a 'let' block before the
-  conditional starts to keep variables in scope; for while this doesn't work.
-  One possibility would seem to be to view 'do body od' as 'or body; false'
-  followed by an empty 'do () od'; at least in void context that would work.
+- Maybe allow list-comprehension syntax like in Haskell (and Python?)
 
 - Allow skipping entries in value-producing loops; concatenating sub-rows.
   When generating a row from a loop, not every iteration need contribute, and

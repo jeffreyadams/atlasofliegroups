@@ -108,7 +108,7 @@ set rational_inverse(mat M)=ratmat:inverse(mat_as_ratmat(M))
 set ratvec_to_string(ratvec v)=string:
 let rv=string:"" in 
 for a in v do let (n,d)=%a in
-if d=1 then rv#:=int_format(n)#" " else rv#:=int_format(n)#"/"#int_format(d)#" " fi od;rv
+if d=1 then rv##:=int_format(n)+" " else rv##:=int_format(n)+"/"+int_format(d)+" " fi od;rv
 
 set show(ratmat(M,,d))=void:for v in M do prints(ratvec_to_string(v/d)) od
 

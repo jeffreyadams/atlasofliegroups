@@ -95,6 +95,13 @@ sl_node(const T& contents) : next(nullptr), contents(contents) {}
 sl_node(T&& contents) : next(nullptr), contents(std::move(contents)) {}
   template<typename... Args> sl_node(Args&&... args)
   : next(nullptr), contents(std::forward<Args>(args)...) {}
+
+  sl_node(const sl_node&) = delete;
+  sl_node(sl_node&&) = default;
+  ~sl_node() // dtor could be empty, but would imply recursive destruction
+  { while (next.get()!=nullptr) // this loop bounds recursion depth to 2
+      next.reset(next->next.release()); // destroys just the following node
+  }
 }; // |class sl_node| template
 
 template<typename T,typename Alloc> class sl_list_iterator;

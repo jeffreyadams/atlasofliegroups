@@ -448,9 +448,3 @@ set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = void:
   elif is_weakly_fair(x,lambda_in,lambda_q) then prints("Weakly fair")
   else prints("None")
   fi
-
-
-
-
-
-

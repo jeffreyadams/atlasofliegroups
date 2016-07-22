@@ -24,11 +24,12 @@ set cone (rat limit, [rat] cs { all >0 } ) = mat: { columns are weights }
   then rec_fun cn (rat limit, int k) { from this index on } = mat:
     if k=n { 0 parts } then null(0,1) { one column of size 0; don't miss it! }
     else
-      let c=cs[k], result = [vec]:[] { using [vec] here better than mat } in
-      for first: limit\c+1
-      do let rec=cn(limit-c*first,k+1) in
-        result #:= ([vec]: (ones(n_columns(rec))*first)^rec )
-      od; mat: result { conversion safe, |result| holds at least one vector }
+      let c=cs[k] in mat: { conversion safe, there is at least one vector }
+        [vec]: ##
+        for first: limit\c+1
+        do let rec=cn(limit-c*first,k+1) in
+          [vec]: (ones(n_columns(rec))*first)^rec
+        od
     fi
   in cn(limit,0)
 
@@ -71,7 +72,7 @@ set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
     let th1=1+involution(x) in
     for lr in vec_solve(th1,th1*(gamma-rho)) { needed for lambda to be found }
     do let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
-      params #:= { concatenate the following list of Param values: }
+      params ##:= { concatenate the following list of Param values: }
         for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
     od
   od; reduce(params)  { keep only 1 from each equivalence class }
@@ -97,7 +98,7 @@ set all_dominant_norm_upto (InnerClass ic, ratvec cowt,int N) =
     mat: { columns are weights }
   let rd=root_datum(ic)
   then basis = [ratvec]: { rational weights }
-         fundamental_weights(rd) # { concatenate }
+         fundamental_weights(rd) ## { concatenate }
          for w in compact_coradical_basis(ic) do ratvec: w od
   , rk=rank(rd), result=[vec]: []
   in
@@ -110,13 +111,11 @@ set all_dominant_norm_upto (InnerClass ic, ratvec cowt,int N) =
 set lambda_rho_from_dominant_norm_upto (KGBElt x, ratvec v, int N) = mat: {wts}
   let th1=1+involution(x), rho=rho(root_datum(x)), result=[vec]:[] in
   for mu in all_dominant_norm_upto(inner_class(x),v,N)
-  do result #:= solve(th1,mu-ratvec_as_vec(th1*rho)) od; #rho{rank} # result
+  do result ##:= solve(th1,mu-ratvec_as_vec(th1*rho)) od; #rho{rank} # result
 
 set K_parameters_norm_upto ((KGBElt,ratvec,int)(x,,):triple) = [K_Type]:
   let lrs = lambda_rho_from_dominant_norm_upto(triple), rho=rho(root_datum(x))
-  , result=[K_Type]:[]
-  in for lr in lrs do result#:=all_equal_dlambda_K_parameters(x,lr+rho) od;
-  result
+  in ## for lr in lrs do all_equal_dlambda_K_parameters(x,lr+rho) od
 
 { that used to be:
 { mu will be dlambda=(1+theta)lambda/2 => 2*mu\in X^*

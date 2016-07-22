@@ -1,0 +1,201 @@
+{ solving classical sudoku game, using general constraint resolution approach }
+
+<basic.at
+
+{ We view sudoku as an instance of a problem of selecting a subset of rows
+  from a (large, virtual) basic {0,1} matrix, such that their sum is the
+  all-one vector, in other words such that for each column exactly one
+  selected row has a 1 in it. There are 81*9=729 rows, with row |81*v+9*i+j|
+  indicating the choice of placing entry v in square (i,j) (the indices and
+  values being shifted down from the usual numbering to lie in the range 0..8.
+  The basic matrix has 4 groups of 81 columns, each representing a constraint
+  that a solution should satisfy. In group 0 the column index is interpreted
+  as |9*v+i|, and the entry tells whether its row, whose index encodes (v,i,j)
+  has those values of |v,i|. In group 1 the column index is simplarly
+  interpreted as |9*v+j|, and marks the combination |v,j| present in the row
+  index. In group 3 the column index is interpreted as the combination of a
+  value |v| and a block |b|, the numbering of the blocks being given by the
+  rule that square (i,j) belongs to block b=3*(i\3)+j\3 (again the bits in a
+  column of group 2 indicates whether the row index encodes matching (v,i,j))
+  In group 3, the column index is interpreted as the number |9*i+j| of a
+  square (i,j), and the entries indicate whether (i,j) from the row match that.
+}
+
+{ This fixed {0,1} matrix is only present implicitly. Given that each row has
+  a single entry 1 in each group, there are 4 functions, one for each group,
+  that return the column with this entry. In the transpose direction, each
+  column contains 9 entries 1, so there are 4 functions that take a column
+  index and a number in the range [0,9) and return the corresponding row index.
+}
+
+set constraint0_of_choice (int vij) = int: vij\9 { drop final nonal digit j }
+set choice_of_constraint0 (int vi,int j) = int: vi*9+j { insert final digit j }
+set name_constraint0(int vi) = string:
+  let (v,i)=vi\%9 in to_string("column of value ",v+1," in row ",i+1)
+
+set constraint1_of_choice (int vij) = int: let (vi,j)=vij\%9 in vi\9*9+j
+set choice_of_constraint1 (int vj,int i) = int: let (v,j)=vj\%9 in (v*9+i)*9+j
+set name_constraint1(int vj) = string:
+  let (v,j)=vj\%9 in to_string("row of value ",v+1," in column ",j+1)
+
+set constraint2_of_choice (int ch) = int: (ch\27)*3 + (ch\3)%3
+set choice_of_constraint2 (int vb,int p) = int:
+  let (vi,jj)=vb\%3, (pi,pj)=p\%3 in ((vi*3+pi)*3+jj)*3+pj
+set name_constraint2(int vb) = string:
+  let (v,b)=vb\%9 then (i,j)=b\%3 in
+  to_string("square of value ",v+1," in block ",(i+1,j+1))
+
+set constraint3_of_choice (int ch) = int: ch%81 { just location here }
+set choice_of_constraint3 (int ij, int v) = int: v*81+ij
+set name_constraint3(int ij) = string:
+  let (i,j)=ij\%9 in to_string("value in square ",(i+1,j+1))
+
+set co_of_ch = [(int->int)]:
+  [ constraint0_of_choice@int, constraint1_of_choice@int
+  , constraint2_of_choice@int, constraint3_of_choice@int ]
+set ch_of_co = [(int,int->int)]:
+  [ choice_of_constraint0@(int,int), choice_of_constraint1@(int,int)
+  , choice_of_constraint2@(int,int), choice_of_constraint3@(int,int) ]
+set name_co = [(int->string)]:
+  [ name_constraint0@(int), name_constraint1@(int)
+  , name_constraint2@(int), name_constraint3@(int) ]
+
+
+: game_interface =
+  ( (int->bool) available { available(choice): whether |choice| is allowed }
+  , (int->int,int) select
+    { (c,m)=select(group): index |c| with fewest (|m|) choices in |group| }
+  , (int->) choose { choose(choice): do choice and update internal data }
+  , (->) unchoose  { backtrack, undo the last choice currently recorded }
+  , (->int) level  { number of currently active choices }
+  , (->mat) board  { current position, as matrix with entries 0 or 1-9 }
+  )
+
+set setup_grid = ( mat-> game_interface ): { constructor }
+let !e81=[vec]: id_mat(81) { constant, available like a class static value }
+in (mat M): { start constructor, do following for each call of |setup_grid| }
+begin { state variables }
+let (selection,top) = (vec,int): { stack of choices made, entries 0<=.<729 }
+		(null(81),0)
+  , covered     = [bool]: { whether already enforced, per constraint }
+		for :4*81 do false od
+  , available = [bool]: { whether still allowed, tabluated per choice }
+		for :729 do true od
+  , nr_options  = [vec]: { count remaining options per constraint, by group }
+		let nines=9*ones(81) in for :4 do nines od
+  , disabled = [vec]: { list of choices that covering this constraint forbade }
+		let nothing=null(0) in for :4*81 do nothing od
+  then { most basic private methods }
+    remove (int choice) = void: { disable |choice| (it violates a constraint) }
+    ( available[choice]:=false
+    ; nr_options := { update counting vectors (size 81) in each group }
+        for constraint_index_of@group in co_of_ch
+        do nr_options[group] - e81[constraint_index_of(choice)]
+        od
+    )
+  , insert (int choice) = void: { re-enable |choice| (when backtracking) }
+    ( available[choice]:=true
+    ; nr_options := { update counting vectors (size 81) in each group }
+        for constraint_index_of@group in co_of_ch
+        do nr_options[group] + e81[constraint_index_of(choice)]
+        od
+    )
+  then { other private methods using the above }
+    cover_constraint (int group, int c) = void: { mark constraint as covered }
+    ( let nr=81*group+c, choice_of=ch_of_co[group] in
+      assert(not covered[nr]
+            ,"constraint "+c+" in group "+group+ "covered twice")
+    ; covered[nr]:=true
+    ; let list= vec:
+        ##for k:9
+          do let ch=choice_of(c,k) in
+            if available[ch] then remove(ch); [ch] else [] fi
+          od
+      in disabled[nr]:= list
+    )
+  , uncover_constraint (int group, int c) = void:
+    ( let nr=81*group+c in
+      covered[nr]:=false
+    ; for ch in disabled[nr] do insert(ch) od
+    ; disabled[nr]:=[] { clear list associated to constraint after use }
+    )
+  then { public methods }
+    select (int group) { find a most promising constraint in |group| }
+      = (int,int): { position of constraint, and its (minimal) option count }
+        let (min_loc,min)=(-1,10), !covd=covered[81*group:81*(group+1)] in
+        for cnt@c in nr_options[group] do
+          if not covd[c] and cnt<min then set (min_loc,min):=(c,cnt) fi
+        od
+      ; (min_loc,min)
+  , choose (int choice) = void: { push |choice| on stack and update counts }
+        selection[top next top+:=1]:=choice
+      ; for group:4 do cover_constraint(group,co_of_ch[group](choice)) od
+  , unchoose () = void:
+        let choice=selection[top-:=1] in
+        for group:4 do uncover_constraint(group,co_of_ch[group](choice)) od
+      ; insert(choice)
+  , board () = mat: let B=null(9,9) in
+        for choice in selection do let (v,ij)=choice\%81 then (i,j)=ij\%9 in
+          B[i,j]:=v+1 od
+      ; B
+  in { update state to reflect the initial grid givein in |M| }
+  assert(#M=(9,9))
+; for i:9 do for j:9 do let m=M[i,j] in if m>0 then
+    choose(((m-1)*9+i)*9+j)
+  fi od od
+; { finally export a tuple of methods}
+  game_interface:
+  ( (int choice)bool: available[choice]
+  , select
+  , choose, unchoose
+  , @int: top { the |level| method }
+  , board)
+end
+
+set solve ( game_interface game ) = [mat]:
+  ( rec_fun solve (bool sure) [mat]:
+    if game.level()=81 then [game.board()]
+    else let group=-1, constraint=-1, min=10 in
+      for i:4 ~
+      do let (c,m)=game.select(i) in
+        if m<min then set (group,constraint,min):=(i,c,m)
+        ; if min<=#sure then break fi { when sure stop at min=1, else at min=0 }
+        fi
+      od
+    ; let choice=ch_of_co[group] in
+      if =min then [] { dead end }
+      elif min=1 { proceed confidently }
+      then
+        let remaining = { get the unique available choice |k| for |constraint| }
+          first(9,(int k):game.available(choice(constraint,k))) in
+        assert(>=remaining,"unique choice cannot be found") { check existence }
+      ; prints(name_co[group](constraint)," has forced value "
+              ,if group!=2 then to_string(remaining+1)
+               else let (i,j)=remaining\%3 in to_string("",(i+1,j+1))
+               fi)
+      ; game.choose(choice(constraint,remaining))
+      ; solve(sure) { tail recurse here }
+      else { case where we must try several alternatives and backtrack }
+      ## { each loop iteration contributes a [mat]; concatenate them }
+        for k:9
+        do let ch=choice(constraint,k) in
+          if game.available(ch)
+          then game.choose(ch); solve(false) next game.unchoose()
+          else []
+          fi
+        od
+      fi
+   fi
+ ) (true)
+
+set A = mat:
+[7,9,0,0,0,0,0,0,0
+|0,0,2,0,0,0,7,9,8
+|0,0,0,0,0,0,4,0,3
+|9,0,0,0,6,0,0,0,2
+|0,0,6,2,3,0,0,0,0
+|0,5,3,0,7,0,0,0,0
+|0,3,0,0,0,7,5,1,0
+|0,1,0,0,0,5,0,0,9
+|8,0,0,0,0,0,0,0,0
+]

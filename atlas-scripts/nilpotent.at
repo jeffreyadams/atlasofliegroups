@@ -104,8 +104,9 @@ set String (int n)=[rat]: for k:n\2 do (n-1)/2-k od { e.g., [4/2,2/2] }
 set nilpotent_lambda(LieType t,[int] P) = ratvec:
   let rv=[rat]:[] in
   if get_type(t)=0
-  then for p in P do rv #:= rho(p)    od; rv
-  else for k in P do rv #:= String(k) od; rv # for i: sum(P)\2-#rv do 0/1 od
+  then ## for p in P do rho(p) od
+  else let strs = ## for k in P do String(k) od in
+    strs ## for i: sum(P)\2-#strs do rat:0 od
   fi
 
 
