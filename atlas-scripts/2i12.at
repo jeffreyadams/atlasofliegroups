@@ -1,6 +1,7 @@
 <extended.at
 <hecke.at
 <nonintegral.at
+<dual.at
 
 set rd=root_datum(Lie_type("A1.A1"),[[1/2,1/2]])
 set ic=inner_class(rd,"ss")
@@ -22,7 +23,7 @@ set gamma=infinitesimal_character(p)
 set g=g(E)
 
 set x=x(p)
-set y=y(p)
+set y=dual_KGB(p,dual_inner_class(p))
 set id=integrality_datum(p)
 set y_gen=y_gen(p)
 set E=E(delta,gamma,x,g,y_gen)

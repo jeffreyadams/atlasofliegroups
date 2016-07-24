@@ -1,12 +1,12 @@
 {induction_fix.at AP10/20/2015}
 {parabolic induction from real and theta-stable parabolics}
 <basic.at
-<K.at {for rho_K}
 <parabolics.at
 <kl.at { for character_formula }
 <coherent.at
 <synthetic.at {for unnormalized_torus_factor}
 <K_parameters.at
+<rho_shifts.at
 
 set verbose=false
 
@@ -39,35 +39,6 @@ set embed_KGB (KGBElt x_L,RealForm G) = KGBElt:
 set inverse_embed_KGB (KGBElt x_G,RealForm M) = KGBElt:
   KGB_elt(M,involution(x_G), torus_factor(x_G))
 
-{---------------- various rho-shifts -----------------}
-
-{ Given an involution theta, return the set S of complex roots containing the
-  first positive representative of each quadruple (\pm alpha,\pm theta(alpha))
-}
-set makeS (mat theta,RootDatum rd) = mat:
-  columns_with((int j,vec alpha):posroot_index(rd,theta*alpha)>j,posroots(rd))
-set makeS (KGBElt x) = mat: makeS(involution(x),root_datum(x))
-
-{ rho_S = half sum of roots in chosen set S of complex roots, described above }
-set rho_S ((mat,RootDatum)pair) = ratvec: sum(makeS(pair))/2
-set rho_S (KGBElt x)            = ratvec: sum(makeS(x))/2
-
-{ subset of makeS, those alpha>0 such that theta*alpha>0 }
-set makeS_typeCplus ((mat,RootDatum)(theta,rd):pair) = mat:
-  columns_with((vec alpha):is_posroot(rd,theta*alpha),makeS(pair))
-set makeS_typeCplus (KGBElt x) = mat:
-  makeS_typeCplus(involution(x),root_datum(x))
-
-set rho_S_typeCplus ((mat,RootDatum)pair) = ratvec: sum(makeS_typeCplus(pair))/2
-set rho_S_typeCplus (KGBElt x) = ratvec:
-  rho_S_typeCplus(involution(x),root_datum(x))
-
-{ rho_k(x)=one-half the sum of the positive roots of h in k,
-  2rho_k(x) is in X^*(H), but is really only well defined modulo (1-theta)X^*
-  complex root contribution: only type C+
-}
-set rho_k(KGBElt x)=ratvec: rho_ci(x)+rho_S_typeCplus(x)
-set rho_s(KGBElt x)=ratvec: rho_nci(x)+rho_r(x)+rho_S_typeCplus(x)
 
 {--------------------- real parabolic induction -------------------}
 
@@ -121,7 +92,7 @@ set cuspidal_data (Param p) = (Parabolic,Param):
   (P
   ,parameter
    (x_M
-   ,lambda(p)-rho_r(x_G)+rho_r(x_M)-(1-theta)*(rho_S(x_G)-rho_S(x_M))
+  ,lambda(p)-rho_r(x_G)+rho_r(x_M)-(1-theta)*(rho_S(x_G)-rho_S(x_M))
    ,nu(p)
    )
   )
@@ -191,7 +162,7 @@ set standardize (ParamPol P) = ParamPol:
   p_L=(x_L,lambda,nu) ->
     p_G=(embed_KGB(x_L,G),lambda + appropriate rho-shift,nu)
   rho-shift is:
-    rho_i(G)-rho_i(L)+rho_complex(G)-rho_complex(L)
+  rho_i(G)-rho_i(L)+rho_complex(G)-rho_complex(L)
    =rho(G)-rho_r(G)-rho(L)+rho_r(L).
   Since q is theta stable rho_r(G)-rho_r(L)=0 so the
   shift is rho(G)-rho(L)=rho(u)
