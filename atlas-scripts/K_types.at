@@ -133,10 +133,11 @@ set signed_mult (Param p_K,Param p) = (int,int):
    , split_as_int(branch_std(Q,height(p_K))[p_K])
    )
 
+{this should be modified to print all LKTs}
 set print_K_types (ParamPol P) = void:
   let Q=sort_by_height(P) in
   for (c,p) in Q
-  do let mu=highest_weight(LKT(p)) in
+  do let mu=highest_weight_one(LKT(p)) in
     prints(split_as_int(c), " ", fundamental_weight_coordinates (mu)
           , " ", dimension(mu), " ", length(mu))
   od
@@ -144,7 +145,7 @@ set print_K_types (ParamPol P) = void:
 set print_K_types (ParamPol P, KGBElt x_K) = void:
   let Q=sort_by_height(P) in
   for (c,p) in Q
-  do let mu=highest_weight(LKT(p),x_K) in
+  do let mu=highest_weight_one(LKT(p),x_K) in
     prints(split_as_int(c), " ", fundamental_weight_coordinates (mu)
           , " ", dimension(mu), " ", length(mu))
   od
