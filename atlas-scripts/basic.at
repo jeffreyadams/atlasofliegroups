@@ -58,10 +58,29 @@ set is_even (int n) = bool: n%2=0
 set min (int k, int l) = int: if k<l then k else l fi
 set max (int k, int l) = int: if k<l then l else k fi
 
-set min ([int] a) = int: let l=#a in assert(l>=1,"Minimum of an empty list");
+set min ([int] a) = int: let l=#a in assert(l.>,"Minimum of an empty list");
   let m=a~[0] in for i:l-1 do if a[i]<m then m:=a[i] fi od; m
-set max ([int] a) = int: let l=#a in assert(l>=1,"Maximum of an empty list");
+set max ([int] a) = int: let l=#a in assert(l.>,"Maximum of an empty list");
   let m=a~[0] in for i:l-1 do if a[i]>m then m:=a[i] fi od; m
+
+set min_loc ([int] a) = int: { position of first occurrence of minimum, or -1 }
+  let l=#a in
+  if =l then -1
+  else let p=0, m=a[0] in
+    for i:l-1 from 1 do if a[i]<m then set (p,m):=(i,a[i]) fi od; p
+  fi
+set max_loc ([int] a) = int: { position of first occurrence of maximum, or -1 }
+  let l=#a in
+  if =l then -1
+  else let p=0, m=a[0] in
+    for i:l-1 from 1 do if a[i]>m then set (p,m):=(i,a[i]) fi od; p
+  fi
+
+{ versions seeded with a "limit value" to use in case of an empty list }
+set min (int !seed) = ([int]->int):
+  ([int] l): let m=seed in for a in l do if a<m then m:=a fi od; m
+set max (int !seed) = ([int]->int):
+  ([int] l): let m=seed in for a in l do if a>m then m:=a fi od; m
 
 set lcm ([int] list) = let (,d) = %(ratvec: for x in list do {1} /x od) in d
 
@@ -110,6 +129,7 @@ set * = (string,int->string): { repeat string; use recursive doubling }
       half + if =r then half else half+s fi
     fi
   in (string s,int n) string: if <=n then "" else rep(s,n) fi
+set * (int n,string s) = string: s*n { allow factor to come first }
 
 set + (string s, int i)= string: s + int_format(i)
 set + (int i, string s)= string: int_format(i) + s
@@ -1177,4 +1197,4 @@ set find ([[int]] S,[int] v)=int:first(#S,(int i)bool:S[i]=v)
 set find_vec([vec] S,vec v)=int:first(#S,(int i)bool:S[i]=v)
 
 { pad string with blanks (for lining up columns in tables)}
-set pad(string s,int padding)=string: let rv=s in for i:padding-#s do rv+:=" " od;rv
+set pad(string s,int padding)=string: l_adjust(padding,s)

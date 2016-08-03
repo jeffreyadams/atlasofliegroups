@@ -35,7 +35,8 @@ set projection_mod_image (mat M) = mat:
 
 { M is an nxk matrix whose columns span a submodule W of V=Z^n
   Projection to saturation of W, parallel to complement from |adapted_basis(M)|
-  Basis of image space: initial vectors of |adapted_basis(M)|, i.e. Q_submodule_basis(M)
+  Basis of image space: initial vectors of |adapted_basis(M)|,
+  i.e. Q_submodule_basis(M)
 }
 set projection_to_image (mat M) = mat:
   let (B,cs) = adapted_basis(M) then d=#cs
@@ -65,7 +66,8 @@ let D=C[0:#w] in (D*A*v,saturation_quotient_module_basis(M)*B*v)
 }
 set sub_matrix (mat A,mat M) = mat:
   let P = M##kernel(^M) then (Pinverse,d) = invert(P)
-  then Q = principal_minor(Pinverse*A*P,n_columns(M)) { extract top-left k*k block }
+  then Q = { extract top-left k*k block }
+    principal_minor(Pinverse*A*P,n_columns(M))
   in assert(=Q%d,"lattice not fixed"); Q\d
 
 { assuming M injective and Im(A*M)\subset Im(A), find unique C with A*M=M*C }

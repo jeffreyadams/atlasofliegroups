@@ -24,7 +24,7 @@ set * = convolve@(vec,vec)
 set strip (poly v) = poly: v + (poly:[])
 
 { evaluate polynomial at integer }
-set evaluate_at_1 = sum@poly { from basic.at; most often we need this easy case }
+set evaluate_at_1 = sum@poly { from basic.at; often we need this easy case }
 
 set eval (poly v,int k) = int:
   let sum=0 in  for i:#v downto 0 do sum:= v[i] + k*sum od; sum
@@ -163,16 +163,14 @@ set printPoly (poly v) = void: prints(stringPoly(v,"q"))
    0 +1
 }
 
-set printPolyMatrix(poly_mat M,int space_size)=
-  let space="" in let ()= for i:space_size do space+:=" " od  in
-  let max_size=max(for i:#M do max(for j:#M[i] do #stringPoly(M[i][j],"q") od) od) in
-  let rv="" in 
-    for i:#M do
-      let line="" in
-      for j:#M[i] do line+:=space+pad(stringPoly(M[i][j],"q"),max_size) od; prints(line)
+set printPolyMatrix(poly_mat M,int space_size)= void:
+  let space= " "*space_size, wd = max(for v in ##M do #stringPoly(v,"q") od)
+  in
+    for row in M
+    do prints(##for v in row do space+l_adjust(wd,stringPoly(v,"q")) od)
     od
 
-set printPolyMatrix (poly_mat M) = void:printPolyMatrix(M,3)
+set printPolyMatrix (poly_mat M) = void: printPolyMatrix(M,3)
 
 
 
