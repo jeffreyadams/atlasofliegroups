@@ -12,7 +12,7 @@ set left_kernel(mat M)=mat:^kernel(^M)  {M: mxn, left_kernel: sxm, left_kernel(M
 set column([[vec]] M,int i)=for j:#M do M[j][i] od
 set null_poly_mat(int r,int c)=poly_mat:for j:r do for i:c do [] od od
 set mat_as_poly_mat(mat A)=poly_mat:
-for i:n_rows(A) do 
+for i:n_rows(A) do
  let v=row(A,i) in
   for j:#v do vec:[v[j]] od od
 set *(mat A,poly_mat B)=mat_as_poly_mat(A)*B
@@ -39,7 +39,7 @@ set permutation_matrix_sort([int] S)=mat:permutation_matrix(S,sort(S))
 
 set in_tau (int s,Param p) = bool: let (b,)= tau_bitset(p) in b(s)  {s in tau(p)}
 set in_tau([int] S,Param p)=bool:all(for i:#S do in_tau(S[i],p) od) {S\subset tau(p)}
-set in_tau([*] S,Param p)=bool:in_tau([int]:S,p)               
+set in_tau([*] S,Param p)=bool:in_tau([int]:S,p)
 
 set in_tau_complement(int s,Param p)=bool:not in_tau(s,p)    {s not in tau(p)}
 set in_tau_complement([int] S,Param p)=bool:all(for i:#S do in_tau_complement(S[i],p) od)  {S\subset tau(p)-complement, i.e. tau(p)\subset S-complement}
@@ -96,7 +96,7 @@ set lengths_signs_matrix([*] S,[Param] B)=mat: lengths_signs_matrix([int]:S,B)
 
 set dual_parameters_matrix([int] S,[Param] B)=mat:
 let dual_parameters=dual_parameters(S,B) then
-perm=permutation(B) then 
+perm=permutation(B) then
 rv=null(#dual_parameters,#B) in
 for i:#dual_parameters do rv[i,perm[i]]:=1 od;rv
 set dual_parameters_matrix([*] S,[Param] B)=mat:dual_parameters_matrix([int]:S,B)
@@ -121,7 +121,7 @@ let dual_inner_class=dual_inner_class(B[0]) in let rv= for p in B do number(dual
 in sort_u(rv)
 
 set stable_at_regular([Param] B)=
-let dual_KGB_elements=get_y(B) then 
+let dual_KGB_elements=get_y(B) then
 dual_inner_class=dual_inner_class(B[0]) then
 rv=null(#B,#dual_KGB_elements) in
 for p@i in B do rv[i,number(dual_KGB(p,dual_inner_class))]:=1 od ;
@@ -154,16 +154,16 @@ let params=parameters(S,B) then
 P=permutation_matrix_sort(params) in (M*^P,for i in sort(params) do Psi(B[i],S) od)
 set stable_at_singular([*] S,[Param] B)=(mat,[Param]):stable_at_singular([int]:S,B)
 
-set print_stable_at_singular_unsorted([int] S,[Param] B)=void:let (M,)=stable_at_singular_unsorted(S,B) in 
-let params=parameters(S,B) in 
-prints("dimension of block:", n_rows(M), new_line, 
+set print_stable_at_singular_unsorted([int] S,[Param] B)=void:let (M,)=stable_at_singular_unsorted(S,B) in
+let params=parameters(S,B) in
+prints("dimension of block:", n_rows(M), new_line,
 "parameters=", params, new_line,
 "dimension space of stable characters:", n_rows(M), new_line,M)
 set print_stable_at_singular_unsorted([*] S,[Param] B)=void:print_stable_at_singular_unsorted([int]:S,B)
 
-set print_stable_at_singular([int] S,[Param] B)=void:let (M,)=stable_at_singular(S,B) in 
-let params=sort(parameters(S,B)) in 
-prints("dimension of block:", n_rows(M), new_line, 
+set print_stable_at_singular([int] S,[Param] B)=void:let (M,)=stable_at_singular(S,B) in
+let params=sort(parameters(S,B)) in
+prints("dimension of block:", n_rows(M), new_line,
 "parameters=", params, new_line,
 "dimension space of stable characters:", n_rows(M), new_line,M)
 set print_stable_at_singular([*] S,[Param] B)=void:print_stable_at_singular([int]:S,B)
@@ -178,7 +178,7 @@ for i:#indices do rv[i,indices[i]]:=1 od;rv
 
 set stable_at_singular([int] S,[Param] B,[Param] subset_in)=(mat,[Param]):
 {first replace subset with those so that tau(p)\in S-complement}
-let parameters=for i in parameters(S,B) do B[i] od then 
+let parameters=for i in parameters(S,B) do B[i] od then
 ()=prints("number of parameters in block:", #B) then
 ()=prints("number of given parameters:", #subset_in) then
 subset=[Param]:[] in
@@ -204,9 +204,9 @@ set print_stable_at_singular([*] S,[Param] B,[Param] subset)=void:print_stable_a
 set stable([Param] params)=(mat,[Param]):
 assert(has_infinitesimal_character(params),"terms do not all have same infinitesimal character");
 let G=real_form(params[0]) then
-p=params[0] then 
+p=params[0] then
 gamma=infinitesimal_character(p) then
-gamma_reg=make_regular(root_datum(p),gamma) then 
+gamma_reg=make_regular(root_datum(p),gamma) then
 S=singular_simple_indices(G,infinitesimal_character(p)) then
 params_reg=for p in params do T(p,gamma_reg) od then
 B=block_of(params_reg[0]) in

@@ -221,20 +221,30 @@ if tau[#tau-1]=rank-1 then
 AC_Levis#:=AC_Levi_factor(rank,tau) else
 A_Levis#:=A_Levi_factor(rank,tau) fi od;(A_Levis,AC_Levis) fi
 
-set my_max([int] v)=if #v=0 then 0 else max(v) fi
+set my_max = ([int]->int): max(0) { take 0 for empty list }
 
-set max_first_entry([[int]] v)=int:if #v=1 and #v[0]=0 then 0 else my_max(for i:#v do v[i][0] od) fi
-set keep_by_first_entry([[int]] v,int k)=[[int]]:if #v=1 and  #v[0]=0 then v else let rv=[[int]]:[] in for w in v do if w[0]=k then rv#:=w fi od;rv fi
-set keep_by_first_entry_and_truncate([[int]] v,int k)=[[int]]:let w=keep_by_first_entry(v,k)  in
-let rv=[[int]]:[] in for u in w do if #u>1 then rv#:=delete(u,0) fi od;rv
+set max_first_entry([[int]] v)=int:
+  if #v=1 and #v[0]=0 then 0 else my_max(for i:#v do v[i][0] od) fi
+set keep_by_first_entry([[int]] v,int k)=[[int]]:
+  if #v=1 and  #v[0]=0 then v
+  else let rv=[[int]]:[] in for w in v do if w[0]=k then rv#:=w fi od; rv
+  fi
+set keep_by_first_entry_and_truncate([[int]] v,int k)=[[int]]:
+  let w=keep_by_first_entry(v,k) in
+  let rv=[[int]]:[] in for u in w do if #u>1 then rv#:=delete(u,0) fi od;rv
 
 { set max_first_entry([(int,[int])] v)=int:
     max(for i:#v do let (,w)=v[i] in w[0] od)
 }
 
-set max_tagged_entry([(int,[int])] v)=int:my_max(for i:#v do let (c,)=v[i] in c od)
-set keep_by_first_entry([(int,[int])] v,int k)=[(int,[int])]:let rv=[(int,[int])]:[] in for (c,w) in v do if w[0]=k then rv#:=(c,w) fi od;rv
-set keep_by_first_entry([(int,[int])] v,int k)=[(int,[int])]:let rv=[(int,[int])]:[] in for (c,w) in v do if w[0]=k then rv#:=(c,w) fi od;rv
+set max_tagged_entry([(int,[int])] v)=int:
+  my_max(for i:#v do let (c,)=v[i] in c od)
+set keep_by_first_entry([(int,[int])] v,int k)=[(int,[int])]:
+  let rv=[(int,[int])]:[] in
+  for (c,w) in v do if w[0]=k then rv#:=(c,w) fi od;rv
+set keep_by_first_entry([(int,[int])] v,int k)=[(int,[int])]:
+  let rv=[(int,[int])]:[] in
+  for (c,w) in v do if w[0]=k then rv#:=(c,w) fi od;rv
 
 set keep_by_first_entry_and_truncate([(int,[int])] v,int k)=[(int,[int])]:
   let w=keep_by_first_entry(v,k) in

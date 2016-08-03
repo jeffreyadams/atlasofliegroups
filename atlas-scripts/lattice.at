@@ -65,8 +65,9 @@ let D=C[0:#w] in (D*A*v,saturation_quotient_module_basis(M)*B*v)
   using columns of M as basis
 }
 set sub_matrix (mat A,mat M) = mat:
-  let P = M#kernel(^M) then (Pinverse,d) = invert(P)
-  then Q = principal_minor(Pinverse*A*P,n_columns(M)) { extract top-left k*k block }
+  let P = M##kernel(^M) then (Pinverse,d) = invert(P)
+  then Q = { extract top-left k*k block }
+    principal_minor(Pinverse*A*P,n_columns(M))
   in assert(=Q%d,"lattice not fixed"); Q\d
 
 { assuming M injective and Im(A*M)\subset Im(A), find unique C with A*M=M*C }

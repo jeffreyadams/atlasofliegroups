@@ -183,7 +183,8 @@ t_L_new=trivial(L_new) then
 ()=prints("L=", L_new) then
 ()=prints("rho_L=", rho(L_new)) then
 ()=prints("rho_u=", rho_u(P_new)) in
-{pi_L=parameter(x(t_L_new),lambda_in_new-rho_u(parabolic(lambda_q_new,x_new)),lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))) in}
+{pi_L=parameter(x(t_L_new),lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))
+ ,lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))) in}
 {let ()=prints("lambda_q=", lambda_q) in
 let ()=prints("lambda_q_new=", lambda_q_new) in
 let ()=prints("x_in=", x_in) in
@@ -192,9 +193,16 @@ let ()=prints("rho_u_new:", rho_u(parabolic(lambda_q_new,x_new))) in
 let ()=prints("lambda(t_L_new)=", lambda(t_L_new)) in
 let ()=prints("lambda_in=", lambda_in) in
 let ()=prints("lambda_in_new=", lambda_in_new) in}
-let pi_L=parameter(x(t_L_new),lambda(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new)),nu(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))) in
-{let ()=prints("A:",lambda(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))) in
-let ()=prints("B:", nu(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))) in
+let pi_L=parameter
+  (x(t_L_new)
+  ,lambda(t_L_new) + lambda_in_new - rho_u(parabolic(lambda_q_new,x_new))
+  ,nu(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))
+  )
+in
+{let ()=prints("A:",lambda(t_L_new)+lambda_in_new
+ -rho_u(parabolic(lambda_q_new,x_new))) in
+let ()=prints("B:", nu(t_L_new)+lambda_in_new
+ -rho_u(parabolic(lambda_q_new,x_new))) in
 let ()=prints("lambda(t_L_new):", lambda(t_L_new)) in
 let ()=prints("nu(t_L_new):", nu(t_L_new)) in
 let ()=prints("pi_L= ", pi_L) in
@@ -204,19 +212,18 @@ assert(dimension(pi_L)=1,"pi_L is not one-dimensional") ;
 theta_induce_irreducible(pi_L,G)
 
 set Aq(KGBElt x_in,ratvec lambda_in, ratvec lambda_q)=Param:
-let P=Aq_param_pol(x_in,lambda_in,lambda_q) then
-P=%P in
-if #P>1 then error("Aq is not irreducible. Use Aq_param_pol(x,lambda) instead")  else
-let (c,p)=P[0] in
- if c!=1 then error("Aq has multiplicity. Use Aq_param_pol(x,lambda) instead")
-else p fi fi
+  let P=%Aq_param_pol(x_in,lambda_in,lambda_q) in
+  assert(#P=1,"Aq is not irreducible. Use Aq_param_pol(x,lambda) instead");
+  let (c,p)=P[0] in
+  assert(c=1,"Aq has multiplicity. Use Aq_param_pol(x,lambda) instead"); p
 
 {if not provided, assume lambda_q=lambda}
 set Aq(KGBElt x,ratvec lambda_in)=Param:Aq(x,lambda_in,lambda_in)
 
 {specify G, and not x, to use x=KGB(G,0)}
 
-set Aq(RealForm G,ratvec lambda_in, ratvec lambda_q)=Param:Aq(KGB(G)[0],lambda_in,lambda_q)
+set Aq(RealForm G,ratvec lambda_in, ratvec lambda_q)=Param:
+  Aq(KGB(G)[0],lambda_in,lambda_q)
 set Aq(RealForm G,ratvec lambda_in)=Param:Aq(G,lambda_in,lambda_in)
 
 { first defined Aq as a ParamPol, in case it isn't irreducible }
@@ -311,24 +318,24 @@ set Aq(RealForm G,ratvec lambda_in)=Param:
 }
 
 set is_good(Param p_L,Parabolic P,RealForm G)=bool:
-let v=infinitesimal_character(p_L)+rho_u(P) in 
+let v=infinitesimal_character(p_L)+rho_u(P) in
 all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
 
 set is_weakly_good(Param p_L,Parabolic P,RealForm G)=bool:
-let v=infinitesimal_character(p_L)+rho_u(P) in 
+let v=infinitesimal_character(p_L)+rho_u(P) in
 all(for alpha_check in nilrad(P) do v*alpha_check>=0 od)
 
 set is_fair(Param p_L,Parabolic P,RealForm G)=bool:
-let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in 
+let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in
 all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
 
 set is_weakly_fair(Param p_L,Parabolic P,RealForm G)=bool:
-let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in 
+let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in
 all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
 
 {weakly fair only defined if pi_L is finite dimensional}
 set is_weakly_fair(Param p_L,Parabolic P,RealForm G)=bool:
-let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in 
+let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in
 is_finite_dimensional(p_L) and all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
 
 set is_good(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
@@ -352,9 +359,10 @@ let L=real_form(p_L) then
 rho_l=rho(L) then
 rho_u=rho(G)-rho(L) then
 infchar_l=infinitesimal_character(p_L) in
-{()=prints("infinitesimal character(l)=", infchar_l) then
-()=prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u) then
-()=prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l) in}
+{ prints("infinitesimal character(l)=", infchar_l);
+  prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
+  prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l);
+}
 if is_good(p_L,P,G) then "Good"
 elif is_weakly_good(p_L,P,G) then "Weakly good"
 elif is_fair(p_L,P,G) then "Fair"
@@ -363,14 +371,15 @@ elif is_weakly_fair(p_L,P,G) then "Weakly fair"  else
 
 set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q)=
 let G=real_form(x) then
-P=parabolic(lambda_q,x) then 
+P=parabolic(lambda_q,x) then
 L=Levi(P) then
 rho_l=rho(L) then
 rho_u=rho(G)-rho(L) then
 infchar_l=lambda_in+rho_l in
-{()=prints("infinitesimal character(l)=", infchar_l) then
-()=prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u) then
-()=prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l) in}
+{ prints("infinitesimal character(l)=", infchar_l);
+  prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
+  prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l);
+}
 if is_good(x,lambda_in,lambda_q) then "Good"
 elif is_weakly_good(x,lambda_in,lambda_q) then "Weakly good"
 elif is_fair(x,lambda_in,lambda_q) then "Fair"
@@ -438,7 +447,7 @@ set goodness (Param p_L,RealForm G) = void:
 set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = void:
   let G=real_form(x), P=parabolic(lambda_q,x)
   then L=Levi(P) then rho_l=rho(L)
-  then rho_u=rho(G)-rho_l, infchar_l=lambda_in+rho_l in 
+  then rho_u=rho(G)-rho_l, infchar_l=lambda_in+rho_l in
 {  in prints("infinitesimal character(l)=", infchar_l);
     prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
     prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l);}
