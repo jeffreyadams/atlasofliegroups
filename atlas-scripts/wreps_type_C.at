@@ -6,9 +6,11 @@
 {type C}
 {
 three kinds of objects
-[int] P: permutation for nilpotent orbit of type C_n (odd rows have even multiplicity)
+[int] P: permutation for nilpotent orbit of type C_n
+         (odd rows have even multiplicity)
 [[int] f,[int] g]: symbol as defined by Lusztig
-([int] p,[int] q): pair of partitions, |p|+|q|=n, corresponding to a Weyl group representation
+([int] p,[int] q):
+  pair of partitions, |p|+|q|=n, corresponding to a Weyl group representation
 note that symbol is of type [[int]] (always with two parts)
 Wrep is of type ([int],[int])
 symbol:
@@ -23,8 +25,10 @@ every symbol is equivalent to a unique one with a=b+1 and at most one 0
 : Wrep  =([int],[int])  {pair of partitions; |p|+|q|=n}
 
 {use equivalence relation on symbols to get one with at most one 0}
-set normalize([int] v)=[int]:let
-rec_fun f([int] v)=[int]: if #v=0 then v elif v[0]>0 then v else f(for k in delete(v,0) do k-1 od) fi in f(v)
+set normalize([int] v)=[int]:
+let rec_fun f([int] v)=[int]:
+  if #v=0 then v elif v[0]>0 then v else f(for k in delete(v,0) do k-1 od) fi
+in f(v)
 
 { other direction: replace [a1,,,.ak] with [0,1,...,r-1,a1+r,...,ak+r] }
 set expand([int] v, int r)=[int]: #r ## for c in v do c+r od
@@ -94,7 +98,9 @@ set =(Wrep  a,Wrep b)=bool: let (a1,a2)=a then (b1,b2)=b in a1=b1 and a2=b2
 set symbols_equal(Symbol a,Symbol b)=bool:a[0]=b[0] and a[1]=b[1]
 
 set dimension(Wrep sigma)=int:
-let (p,q)=sigma in dim_rep(p)*dim_rep(q)*rat_as_int(fac(size(p)+size(q))/(fac(size(p))*fac(size(q))))
+let (p,q)=sigma in
+ dim_rep(p)*dim_rep(q)* { binom(size(p),size(q)) }
+   rat_as_int(fac(size(p)+size(q))/(fac(size(p))*fac(size(q))))
 
 set all_reps_C(int n)=
 let rv=[Wrep]:[] in
@@ -146,13 +152,17 @@ tau=[1,2,3,5,6,7] -> Q=([4,3,1],3) -> GL(4)xSp(6)xGL(1)
 
 
 {given v=[a_0,...,a_n] increasing, returns (j,[a_{j},...,a_n])
-where [a_0,...,a_{j-1}] is the longest string (of length j) increasing by 1 at each step
+where [a_0,...,a_{j-1}] is the longest string (of length j)
+  increasing by 1 at each step
 }
-set cut_off_string([int] v)=(int,[int]):let i=last(#v, (int i)bool: v[i]=v[0]+i) in (i+1,v[i+1:~])
+set cut_off_string([int] v)=(int,[int]):let i=last(#v, (int i)bool:
+  v[i]=v[0]+i) in (i+1,v[i+1:~])
 
 {given v=[a_0,...,a_n] increasing, returns (k,[a_0,...,a_{n-k}]) where
-[a_{n-k+1},..,a_n] is the longest string (of length k) increasing by 1 at each step
-where [a_0,...,a_{j-1}] is the longest string (of length j) increasing by 1 at each step
+[a_{n-k+1},..,a_n] is the longest string (of length k)
+ increasing by 1 at each step
+where [a_0,...,a_{j-1}] is the longest string (of length j)
+ increasing by 1 at each step
 }
 
 
@@ -197,7 +207,8 @@ for tau in taus do if is_max(taus,tau) then
 if (find(rv,tau)) =-1 then rv#:=tau fi fi od;rv
 
 set Levi_signature(int rank,[[int]] tau_invariants)=([[int]],[(int,[int])]):
-{if #tau_invariants=0 or #tau_invariants[0]=0 then ([[rank]],[(int,[int])]:[]) else}
+{ if #tau_invariants=0 or #tau_invariants[0]=0
+  then ([[rank]],[(int,[int])]:[]) else }
 if #tau_invariants=0 then ([[int]]:[],[(int,[int])]:[])
 elif #tau_invariants[0]=0 then ([[int]]:[[]],[(int,[int])]:[]) else
 let
@@ -210,21 +221,35 @@ if tau[#tau-1]=rank-1 then
 AC_Levis#:=AC_Levi_factor(rank,tau) else
 A_Levis#:=A_Levi_factor(rank,tau) fi od;(A_Levis,AC_Levis) fi
 
-set max_first_entry([[int]] v)=int:if #v=1 and #v[0]=0 then 0 else max(for i:#v do v[i][0] od) fi
-set keep_by_first_entry([[int]] v,int k)=[[int]]:if #v=1 and  #v[0]=0 then v else let rv=[[int]]:[] in for w in v do if w[0]=k then rv#:=w fi od;rv fi
-set keep_by_first_entry_and_truncate([[int]] v,int k)=[[int]]:let w=keep_by_first_entry(v,k)  in
-let rv=[[int]]:[] in for u in w do if #u>1 then rv#:=delete(u,0) fi od;rv
+set my_max = ([int]->int): max(0) { take 0 for empty list }
 
-{set max_first_entry([(int,[int])] v)=int:max(for i:#v do let (,w)=v[i] in w[0] od)
+set max_first_entry([[int]] v)=int:
+  if #v=1 and #v[0]=0 then 0 else my_max(for i:#v do v[i][0] od) fi
+set keep_by_first_entry([[int]] v,int k)=[[int]]:
+  if #v=1 and  #v[0]=0 then v
+  else let rv=[[int]]:[] in for w in v do if w[0]=k then rv#:=w fi od; rv
+  fi
+set keep_by_first_entry_and_truncate([[int]] v,int k)=[[int]]:
+  let w=keep_by_first_entry(v,k) in
+  let rv=[[int]]:[] in for u in w do if #u>1 then rv#:=delete(u,0) fi od;rv
+
+{ set max_first_entry([(int,[int])] v)=int:
+    max(for i:#v do let (,w)=v[i] in w[0] od)
 }
 
-set max_tagged_entry([(int,[int])] v)=int:max(for i:#v do let (c,)=v[i] in c od)
-set keep_by_first_entry([(int,[int])] v,int k)=[(int,[int])]:let rv=[(int,[int])]:[] in for (c,w) in v do if w[0]=k then rv#:=(c,w) fi od;rv
-set keep_by_first_entry([(int,[int])] v,int k)=[(int,[int])]:let rv=[(int,[int])]:[] in for (c,w) in v do if w[0]=k then rv#:=(c,w) fi od;rv
+set max_tagged_entry([(int,[int])] v)=int:
+  my_max(for i:#v do let (c,)=v[i] in c od)
+set keep_by_first_entry([(int,[int])] v,int k)=[(int,[int])]:
+  let rv=[(int,[int])]:[] in
+  for (c,w) in v do if w[0]=k then rv#:=(c,w) fi od;rv
+set keep_by_first_entry([(int,[int])] v,int k)=[(int,[int])]:
+  let rv=[(int,[int])]:[] in
+  for (c,w) in v do if w[0]=k then rv#:=(c,w) fi od;rv
 
-set keep_by_first_entry_and_truncate([(int,[int])] v,int k)=[(int,[int])]:let w=keep_by_first_entry(v,k) in
-let rv=[(int,[int])]:[] in for (c,u) in w do
-if c>0 and #u>1 then rv#:=(c,delete(u,0)) fi od;rv
+set keep_by_first_entry_and_truncate([(int,[int])] v,int k)=[(int,[int])]:
+  let w=keep_by_first_entry(v,k) in
+  let rv=[(int,[int])]:[] in for (c,u) in w do
+  if c>0 and #u>1 then rv#:=(c,delete(u,0)) fi od;rv
 
 {Heart of the matter, implements the Noel-Jackson algorithm
 given a set of tau-invariants, gives a collection of Levi factors;
@@ -233,10 +258,12 @@ these Levis
 Note: tau_invariants=[[int]]:[] (in the inductive step signals done)
 is different from [[int]]:[[]] (gives the trivial rep, principal orbit
 }
-set wrep(int rank,[[int]] tau_invariants)=Wrep:let
-rec_fun f(int rank,[[int]] A_Levis,[(int,[int])] AC_Levis, [int] p,[int] q)=([int],[int]):
+set wrep(int rank,[[int]] tau_invariants)=Wrep:
+  let rec_fun f
+    (int rank,[[int]] A_Levis,[(int,[int])] AC_Levis, [int] p,[int] q) =
+    ([int],[int]):
 if #A_Levis=0 and #AC_Levis=0 then
-{let ()=prints("Done with p=",p, "q=",q) in }
+let ()=prints("Done with p=",p, "q=",q) in
 assert(sum(p)+sum(q)=rank,"Error: |p|+|q| != rank");
 (transpose(q),transpose(p))
 elif #A_Levis=1 and #A_Levis[0]=0 and #AC_Levis=0 then ([rank],[]) else let
@@ -254,8 +281,10 @@ x=b,y=a-b in  {add x to p, y to q, keep only Levis with first term a}
 {let ()=prints("x= ", x, " y=", y) in}
 if x>0 then p:=p#x fi;
 if y>0 then q:=q#y fi;
-f(rank,keep_by_first_entry_and_truncate(A_Levis,a),keep_by_first_entry_and_truncate(AC_Levis,a),p,q)  fi in
-let (A_Levis,AC_Levis)=Levi_signature(rank,tau_invariants) in f(rank,A_Levis,AC_Levis,[],[])
+f(rank,keep_by_first_entry_and_truncate(A_Levis,a)
+     ,keep_by_first_entry_and_truncate(AC_Levis,a),p,q)  fi in
+let (A_Levis,AC_Levis)=Levi_signature(rank,tau_invariants) in
+  f(rank,A_Levis,AC_Levis,[],[])
 
 set wrep(Block B,[int] cell)=Wrep:
 wrep(rank(real_form(B)), tau_invariants_of_cell_raw(B,cell))
@@ -264,7 +293,8 @@ set wreps(Block B,[[int]] cells)=[Wrep]:for cell in cells do wrep(B,cell) od
 
 set print_wrep_cpt(Block B, [int] cell)=
 let rep=wrep(B,cell) in
-prints(cell, "              ", Aq_reps(B,cell), "             ", rep,special_star(rep), "        ", orbit(rep))
+prints(cell, "              ", Aq_reps(B,cell), "             ", rep
+      ,special_star(rep), "        ", orbit(rep))
 
 set print_wrep(Block B, [int] cell)=
 let rep=wrep(B,cell) then

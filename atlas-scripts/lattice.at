@@ -1,5 +1,5 @@
 <basic.at
-<matrix.at { for 'minor' (this dependency might be eliminated) }
+<matrix.at { for 'principal_minor' (this dependency might be eliminated) }
 
 { M is an nxk matrix, columns of M define a Z-module W=image(M)\subset Z^n }
 set submodule_basis (mat M) = mat:
@@ -35,7 +35,8 @@ set projection_mod_image (mat M) = mat:
 
 { M is an nxk matrix whose columns span a submodule W of V=Z^n
   Projection to saturation of W, parallel to complement from |adapted_basis(M)|
-  Basis of image space: initial vectors of |adapted_basis(M)|, i.e. Q_submodule_basis(M)
+  Basis of image space: initial vectors of |adapted_basis(M)|,
+  i.e. Q_submodule_basis(M)
 }
 set projection_to_image (mat M) = mat:
   let (B,cs) = adapted_basis(M) then d=#cs
@@ -65,7 +66,8 @@ let D=C[0:#w] in (D*A*v,saturation_quotient_module_basis(M)*B*v)
 }
 set sub_matrix (mat A,mat M) = mat:
   let P = M##kernel(^M) then (Pinverse,d) = invert(P)
-  then Q = minor(Pinverse*A*P,n_columns(M)) { extract top-left k*k block }
+  then Q = { extract top-left k*k block }
+    principal_minor(Pinverse*A*P,n_columns(M))
   in assert(=Q%d,"lattice not fixed"); Q\d
 
 { assuming M injective and Im(A*M)\subset Im(A), find unique C with A*M=M*C }
@@ -101,7 +103,7 @@ set corestrict_action (mat A, mat M) = mat: ^restrict_action(^A,^M)
 set quotient_matrix (mat M,mat A) = mat:
   let P= submodule_basis(M)##quotient_module_basis(M), ncM=n_columns(M)
   then (Pinverse,d) = invert(P)
-  then Q = minor(Pinverse*A*P,n_columns(A)-ncM,ncM)
+  then Q = principal_minor(Pinverse*A*P,n_columns(A)-ncM,ncM)
   in Q\d
 
 
