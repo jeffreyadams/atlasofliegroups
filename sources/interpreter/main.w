@@ -694,7 +694,7 @@ functions (in our case |do_completion| defined below), it is too late to
 adjust the |text| it selected to be completed.
 
 @< Local static data @>=
-char lexical_break_chars[] = " \t\n=<>+-*/\\%,;:()[]{}#!?$@@\"|~";
+char lexical_break_chars[] = " \t\n=<>+-*/\\%,;:.()[]{}#!?$@@\"|~";
 
 @ The above function |id_completion_func| will not be plugged directly into
 the readline completion mechanism, but instead we provide an alternative
