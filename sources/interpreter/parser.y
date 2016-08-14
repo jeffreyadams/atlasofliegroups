@@ -75,17 +75,17 @@
 %token END_OF_FILE
 
 %type <expression> expr expr_opt tertiary cast lettail or_expr and_expr
-%type <expression> not_expr formula operand secondary primary unit iftail
+%type <expression> not_expr formula operand secondary primary unit selector
 %type <expression> subscription slice comprim assignable_subsn ident_expr
-%type <expression> do_expr do_lettail do_iftail
+%type <expression> do_expr do_lettail do_iftail iftail
 %type <ini_form> formula_start
 %type <oper> operator
 %type <val> tilde_opt
 %destructor { destroy_expr ($$); } expr expr_opt tertiary cast lettail or_expr
-%destructor { destroy_expr ($$); } and_expr not_expr formula operand iftail
-%destructor { destroy_expr ($$); } secondary primary comprim unit subscription
+%destructor { destroy_expr ($$); } and_expr not_expr formula operand secondary
+%destructor { destroy_expr ($$); } primary comprim unit selector subscription
 %destructor { destroy_expr ($$); } slice assignable_subsn ident_expr
-%destructor { destroy_expr ($$); } do_expr do_lettail do_iftail
+%destructor { destroy_expr ($$); } do_expr do_lettail do_iftail iftail
 %destructor { destroy_formula($$); } formula_start
 %destructor { delete $$; } STRING
 %type  <expression_list> commalist do_commalist commalist_opt commabarlist
@@ -213,12 +213,17 @@ declaration: pattern '=' expr { $$ = make_let_node($1,$3); }
 tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3,@$); }
 	| SET pattern BECOMES tertiary { $$ = make_multi_assignment($2,$4,@$); }
 	| assignable_subsn BECOMES tertiary { $$ = make_comp_ass($1,$3,@$); }
+	| IDENT '.' IDENT BECOMES tertiary
+	  { $$ = make_field_ass($1,$3,$5,@$); }
 	| IDENT OPERATOR_BECOMES tertiary
 	  { $$ = make_assignment($1,
 		  make_binary_call($2.id,
 		    make_applied_identifier($1,@1),$3,@$,@2),@$); }
 	| assignable_subsn OPERATOR_BECOMES tertiary
 	  { $$ = make_comp_upd_ass($1,$2.id,$3,@$,@2); }
+	| IDENT '.' ident_expr OPERATOR_BECOMES tertiary
+	{ $$ = make_field_upd_ass
+                (make_applied_identifier($1,@1),$3,$4.id,$5,@$,@2); }
 	| or_expr
 ;
 
@@ -267,14 +272,17 @@ tilde_opt : '~' { $$ = 1; }
 
 primary: comprim | ident_expr ;
 ident_expr : IDENT { $$=make_applied_identifier($1,@1); } ;
+selector : unit	| ident_expr
+	 | operator { $$=make_applied_identifier($1.id,@1); }
+;
+
 
 comprim: subscription | slice
         | primary '(' commalist_opt ')'
 	  { $$=make_application_node($1,reverse_expr_list($3),@$,@2,@4); }
-	| primary '.' ident_expr { $$=make_application_node($3,$1,@$); }
-	| primary '.' unit { $$=make_application_node($3,$1,@$); }
-	| primary '.' operator
-	  { $$=make_application_node(make_applied_identifier($3.id,@3),$1,@$); }
+	| IDENT '.' selector
+          { $$=make_application_node($3,make_applied_identifier($1,@1),@$); }
+	| comprim '.' selector { $$=make_application_node($3,$1,@$); }
         | unit;
 unit    : INT { $$ = make_int_denotation($1,@$); }
 	| TRUE { $$ = make_bool_denotation(true,@$); }

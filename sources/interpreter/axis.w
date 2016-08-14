@@ -3701,13 +3701,13 @@ void matrix_slice<flags>::evaluate(level l) const
 The axis language does not have an absolute need for operations of selection
 from a tuple, since binding of patters can achieve the same effect; indeed for
 a long time no such operation existed. We introduce it here nonetheless,
-because it can be more practical in certain situations, and also to because
+because it can be more practical in certain situations, and also because
 discriminated unions will have similar injection operations that would be more
 cumbersome to do without.
 
 @< Type def... @>=
 struct projector_value : public function_base
-{ type_expr type;
+{ type_expr type; // used for printing purposes only
   unsigned position;
   id_type id;
   source_location loc;
@@ -5759,23 +5759,33 @@ stored in |thr|.
 @*1 Component assignments.
 %
 The language we are implementing does not employ the notion of sub-object; in
-other words if one sets $b=a[i]$ for some list, vector or matrix $a$, then $s$
+other words if one sets $b=a[i]$ for some list, vector or matrix $a$, then $b$
 will behave as a copy of the entry $a[i]$ rather than as an alias, so
 subsequent assignment to $b$ will not affect~$a$ or vice versa. (This does no
 prevent us to share storage between $b$ and $a$ initially, it just means the
 sharing should be broken if $b$ or $a$ are modified; we practice
-copy-on-write.) This simplifies the semantic model considerably, but if we
-want to allow creating composite values by subsequently setting their
-components, we need to allow assignments of the form $a[i]:=c$. The meaning of
-this is the same as assigning a new value to all of $a$ that differs from the
-original value only at index~$i$; it may however be expected to be implemented
-more efficiently if the storage of $a$ is not currently shared, as would
-usually be the case at least from the second such assignment to~$a$ on. The
-interpreter will have to treat such component assignments as a whole (with
-three components $a,i,c$, in which $a$ must be an identifier), which also
-means that it will not be able to handle something like $a[i][j]:=c$ even when
-that would seem to make sense (however $m[i,j]:=c$ for matrix values $m$ will
-be supported).
+copy-on-write.) This simplifies the semantic model considerably; notably we
+avoid the distinction necessary for instance in Python between a (compound)
+value and the object that holds it, because in \.{axis} values sharing the
+same memory behave exactly like identical values in separate memory.
+
+However, if we want to allow creating composite values by sequentially setting
+their components, we need to allow assignments of the form $a[i]:=c$ to
+achieve the modifications, and we cannot view this as an operation on the
+``subobject'' $a[i]$ of~$a$ (not having such a notion). The meaning of this is
+assignment will be taken to be that of assigning a new value to all of $a$,
+which differs from the original value only at index~$i$ (it will however be
+implemented more efficiently if the storage of $a$ is not currently shared, as
+would usually be the case at least from the second such assignment to~$a$ on).
+The interpreter will treat such component assignments as a whole, using an
+expression type with three components $a,i,c$, in which $a$ must be an
+identifier. The latter requirement means that it will not be able to handle
+something like $a[i][j]:=c$ even when that would seem to make sense (because
+$a[i]$ is not a name); however $m[i,j]:=c$ for matrix values $m$ will be
+supported. The design decision made here is made in the assumption that the
+type of assignments that$a[i][j]:=c$ would represent are rare; when really
+needed they can be achieved by temporarily naming the value $a[i]$ and
+assigning to that name before assigning the value of name back to $a[i]$.
 
 In fact we need to implement a whole range of component assignments: there are
 assignments to general row-value components, to vector and matrix components
@@ -5802,13 +5812,33 @@ struct component_assignment : public assignment_expr
 @)
   void assign(level l,shared_value& aggregate,subscr_base::sub_type kind) const;
 };
+@)
+struct field_assignment : public assignment_expr
+{ const unsigned position;
+@)
+  field_assignment
+   (id_type a,unsigned pos,expression_ptr&& r)
+   : assignment_expr(a,std::move(r)), position(pos) @+{}
+  virtual ~@[field_assignment() nothing_new_here@];
 
-@ Printing reassembles the subexpressions according to the input syntax.
+  virtual void print (std::ostream& out) const;
+@)
+  void assign(level l,shared_value& tupple) const;
+};
+
+@ Printing reassembles the subexpressions according to the input syntax,
+except for field assignments which just print the position to be modified.
+
 @< Function def...@>=
 template <bool reversed>
-void component_assignment<reversed>::print(std::ostream& out) const
+void component_assignment<reversed>::print (std::ostream& out) const
 {@; out << main_hash_table->name_of(lhs) << (reversed ? "~[" : "[")
         << *index << "]:=" << *rhs;
+}
+@)
+void field_assignment::print (std::ostream& out) const
+{@; out << main_hash_table->name_of(lhs) << '.' << this->position << ":="
+        << *rhs;
 }
 
 @ For global assignments, we need to have non-|const| access the location
@@ -5827,6 +5857,13 @@ public:
      subscr_base::sub_type k);
   virtual void evaluate(expression_base::level l) const;
 };
+@)
+class global_field_assignment : public field_assignment
+{ shared_share address;
+public:
+  global_field_assignment (id_type a, unsigned pos,expression_ptr&& r);
+  virtual void evaluate(expression_base::level l) const;
+};
 
 @ The constructor for |global_component_assignment| stores the address of the
 aggregate object and the component kind.
@@ -5837,6 +5874,11 @@ global_component_assignment<reversed>::global_component_assignment @|
   (id_type a,expression_ptr&& i,expression_ptr&& r, subscr_base::sub_type k)
 : base(a,std::move(i),std::move(r))
 , kind(k),address(global_id_table->address_of(a)) @+{}
+@)
+global_field_assignment::global_field_assignment @|
+  (id_type a, unsigned pos,expression_ptr&& r)
+: field_assignment(a,pos,std::move(r))
+, address(global_id_table->address_of(a)) @+{}
 
 @ It is in evaluation that component assignments differ most from ordinary
 ones. The work is delegated to the |assign| method of the base class, which is
@@ -5851,11 +5893,21 @@ void global_component_assignment<reversed>::evaluate(expression_base::level l)
   const
 { if (address->get()==nullptr)
   { std::ostringstream o;
-    o << "Assigning to component of uninitialized variable "
+    o << "Assigning to component of uninitialized variable " @|
       << main_hash_table->name_of(this->lhs);
     throw runtime_error(o.str());
   }
   base::assign(l,*address,kind);
+}
+@)
+void global_field_assignment::evaluate(expression_base::level l) const
+{ if (address->get()==nullptr)
+  { std::ostringstream o;
+    o << "Assigning to field of uninitialized variable " @|
+      << main_hash_table->name_of(this->lhs);
+    throw runtime_error(o.str());
+  }
+  assign(l,*address);
 }
 
 @ The |assign| method, which will also be called for local component
@@ -5874,8 +5926,8 @@ template <bool reversed>
 void component_assignment<reversed>::assign
   (level lev,shared_value& aggregate, subscr_base::sub_type kind) const
 { rhs->eval();
-  value loc=uniquify(aggregate);
-    // simple pointer to modifiable value from shared pointer
+  value_base* loc=uniquify(aggregate);
+    // raw pointer to modifiable value from shared pointer
   switch (kind)
   { case subscr_base::row_entry:
   @/@< Replace component at |index| in row |loc| by value on stack @>
@@ -5891,6 +5943,12 @@ void component_assignment<reversed>::assign
   @+break;
   default: {} // remaining cases are eliminated in type analysis
   }
+}
+@)
+void field_assignment::assign (level lev,shared_value& tupple) const
+{ shared_value& field=force<tuple_value>(uniquify(tupple))->val[position];
+  rhs->eval();
+  push_expanded(lev,field=pop_value());
 }
 
 @ A |row_value| component assignment is the simplest kind. The variable |loc|
@@ -5990,9 +6048,18 @@ public:
     expression_ptr&& r, subscr_base::sub_type k);
   virtual void evaluate(expression_base::level l) const;
 };
+@)
+class local_field_assignment : public field_assignment
+{ size_t depth, offset;
+public:
+  local_field_assignment
+    (id_type a, unsigned pos,size_t d, size_t o, expression_ptr&& r);
+  virtual void evaluate(expression_base::level l) const;
+};
 
-@ The constructor for |local_component_assignment| is straightforward, in
-spite of the number of arguments.
+@ The constructors for |local_component_assignment| and
+|local_field_assignment| are both quite straightforward, in spite of their
+number of arguments.
 
 @< Function def... @>=
 template <bool reversed>
@@ -6000,15 +6067,22 @@ local_component_assignment<reversed>::local_component_assignment
  (id_type arr, expression_ptr&& i,size_t d, size_t o, expression_ptr&& r,
   subscr_base::sub_type k)
 : base(arr,std::move(i),std::move(r)), kind(k), depth(d), offset(o) @+{}
+@)
+local_field_assignment::local_field_assignment @|
+  (id_type a, unsigned pos,size_t d, size_t o, expression_ptr&& r)
+: field_assignment(a,pos,std::move(r)), depth(d), offset(o) @+{}
 
-@ The |evaluate| method locates the |shared_value| pointer of the aggregate,
-calls |assign| to do the work.
+@ The |evaluate| methods locate the |shared_value| pointer of the aggregate,
+then |assign| does its job.
 
 @< Function def... @>=
 template <bool reversed>
 void local_component_assignment<reversed>::evaluate(expression_base::level l)
   const
 {@; base::assign (l,frame::current->elem(depth,offset),kind); }
+@)
+void local_field_assignment::evaluate(expression_base::level l) const
+{@; assign (l,frame::current->elem(depth,offset)); }
 
 @ Type-checking and converting component assignment statements follows the
 same lines as that of ordinary assignment statements, but must also
@@ -6070,6 +6144,53 @@ case comp_ass_stat:
     else
       p.reset(new global_component_assignment<false>
         (aggr,std::move(i),std::move(r),kind));
+  return conform_types(comp_t,type,std::move(p),e);
+}
+
+@ And here's the analogous expression analysis for field assignments. We must
+find the field selector in the overload table with the exact (tuple) type, and
+it must be bound to a |projector_value| (so some user defined function that
+selects the proper field will not work here).
+
+@< Cases for type-checking and converting... @>=
+case field_ass_stat:
+{ id_type tupple=e.field_assign_variant->aggr;
+  id_type sel =e.field_assign_variant->selector;
+  const expr& rhs=e.field_assign_variant->rhs;
+@/const_type_p aggr_t; size_t d,o; bool is_const;
+  bool is_local = (aggr_t=layer::lookup(tupple,d,o,is_const))!=nullptr;
+  if (not is_local
+      and (aggr_t=global_id_table->type_of(tupple,is_const))==nullptr)
+    report_undefined(tupple,e,"field assignment");
+@.Undefined identifier@>
+  if (is_const)
+    report_constant_modified(tupple,e,"field assignment");
+@.Name is constant @>
+@) // Now get selector function from the overload table; ignore local bindings
+  const projector_value* proj;
+  { value selector;
+    const auto& variants = global_overload_table->variants(sel);
+    auto it=variants.begin();
+    for (; it!=variants.end(); ++it)
+      if (it->type().arg_type==*aggr_t)
+      {@; selector=it->value().get();
+        break;
+      }
+    if (it==variants.end())
+      throw expr_error (e,"Improper selection in field assignment");
+    proj=dynamic_cast<const projector_value*>(selector);
+    if (proj==nullptr)
+      throw expr_error
+        (e,"Selector in field assignment is not a projector function");
+  }
+@)
+  type_expr comp_t;
+  expression_ptr r = convert_expr(rhs,comp_t);
+  expression_ptr p;
+  if (is_local)
+    p.reset(new local_field_assignment(tupple,proj->position,d,o,std::move(r)));
+  else
+    p.reset(new global_field_assignment(tupple,proj->position,std::move(r)));
   return conform_types(comp_t,type,std::move(p),e);
 }
 

@@ -2448,15 +2448,26 @@ case ass_stat:
 }
 break;
 
-@*2 Component assignments.
+@*2 Component and field assignments.
 %
-We have special expressions for assignments to a component.
+We have special expressions for assignments to an indexed component of an
+indexable value (like a row, vector, or matrix) that is bound to an
+identifier, and for assignments to a named field of a tuple that is bound to
+an identifier. The |typedef| names are shortened here to avoid a name conflict
+with types defined in \.{axis.w}.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct comp_assignment_node* comp_assignment;
+typedef struct field_assignment_node* fld_assignment;
 
-@~In a component assignment has for the left hand side an identifier and an
-index.
+@~In a component assignment, the left hand side records an identifier (holding
+the whole value) and an index. In addition the user may have specified reverse
+indexing as in $a\sim[0]:=x$, and whether this is the case will be recorded in
+the |reversed| field.
+
+In a field assignment, the the left hand side records two identifiers, one
+for the identifier holding the tuple, and one for the selection function
+indicating the field to modify.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct comp_assignment_node
@@ -2478,21 +2489,48 @@ struct comp_assignment_node
   @+{}
 #endif
 };
+@)
+struct field_assignment_node
+{ id_type aggr, selector; expr rhs;
+@)
+  field_assignment_node(id_type aggr, id_type selector, expr&& rhs)
+@/: aggr(aggr)
+  , selector(selector)
+  , rhs(std::move(rhs))
+  @+{}
+#ifdef incompletecpp11
+  field_assignment_node(const field_assignment_node& x) = @[delete@];
+  field_assignment_node(field_assignment_node&& x)
+@/: aggr(x.aggr)
+  , selector(selector)
+  , rhs(std::move(x.rhs))
+  @+{}
+#endif
+};
 
-@ The tag used for assignment statements is |comp_ass_stat|.
+@ The tags used for component assignment statements are |comp_ass_stat| for
+the indexed case, and |select_ass_stat| for the field-selected case.
 
 @< Enumeration tags for |expr_kind| @>=
-comp_ass_stat, @[@]
+comp_ass_stat, field_ass_stat, @[@]
 
-@ And there is of course a variant of |expr_union| for assignments.
+@ And there are of course variants of |expr_union| for these component
+assignments.
 @< Variants of ... @>=
 comp_assignment comp_assign_variant;
+fld_assignment field_assign_variant;
 
-@ As always there is a constructor for building the new variant.
+@ As always there are constructors for building the new variants.
 @< Methods of |expr| @>=
 expr(comp_assignment&& ca, const YYLTYPE& loc)
  : kind(comp_ass_stat)
  , comp_assign_variant(std::move(ca))
+ , loc(loc)
+@+{}
+@)
+expr(fld_assignment&& fa, const YYLTYPE& loc)
+ : kind(field_ass_stat)
+ , field_assign_variant(std::move(fa))
  , loc(loc)
 @+{}
 
@@ -2501,10 +2539,15 @@ does not simply combine the expression components, because for reason of
 parser generation the array and index will have already been combined before
 this function can be called. There is also |make_comp_upd_ass| for the
 operator-assign form of component assignments, as in $v[i]\mathrel+:=a$.
+Finally, similar functions are also given for field assignments.
 
 @< Declarations of functions for the parser @>=
 expr_p make_comp_ass(expr_p lhs, expr_p rhs, const YYLTYPE& loc);
 expr_p make_comp_upd_ass(expr_p lhs, id_type op, expr_p rhs,
+   const YYLTYPE& loc,  const YYLTYPE& op_loc);
+@)
+expr_p make_field_ass(id_type tup, id_type sel, expr_p rhs, const YYLTYPE& loc);
+expr_p make_field_upd_ass(expr_p tupex, expr_p selex, id_type op, expr_p rhs,
    const YYLTYPE& loc,  const YYLTYPE& op_loc);
 
 @~Here we have to take the left hand side apart a bit; the grammar ensures
@@ -2525,6 +2568,17 @@ expr_p make_comp_ass(expr_p l, expr_p r, const YYLTYPE& loc)
   , s.reversed
   }),loc);
 }
+
+@ Here is the corresponding code for field assignments.
+
+@< Definitions of functions for the parser@>=
+expr_p make_field_ass(id_type tup, id_type sel, expr_p r, const YYLTYPE& loc)
+{
+  expr_ptr rr(r); expr& rhs=*rr;
+  return new expr(fld_assignment @|
+    (new field_assignment_node { tup , sel, std::move(rhs) }),loc);
+}
+
 
 @ This variation is somewhat complicated both at input (for the same reason as
 |make_comp_ass|) and the output side, because $v[I]\mathrel\star:= E$ is
@@ -2564,24 +2618,53 @@ expr_p make_comp_upd_ass(expr_p l, id_type op, expr_p r,
     (std::move(v),std::move(s.index),std::move(body)),loc);
 }
 
+@ Here is the corresponding code for field assignments.
+
+@< Definitions of functions for the parser@>=
+expr_p make_field_upd_ass(expr_p tupex, expr_p selex, id_type op, expr_p r,
+   const YYLTYPE& loc,  const YYLTYPE& op_loc)
+{
+  expr_ptr rr(r);
+  expr_ptr tup_exp(tupex);
+  expr_ptr sel_exp(selex);
+  assert(tup_exp->kind==applied_identifier); // grammar ensures this
+  id_type tup=tup_exp->identifier_variant; // save before move from |*tup_exp|
+  assert(sel_exp->kind==applied_identifier); // grammar ensures this
+  id_type sel=sel_exp->identifier_variant; // save before move from |*sel_exp|
+  expr_ptr selec(new expr (new application_node@|
+    (std::move(*sel_exp),std::move(*tup_exp)),loc));
+  expr_ptr formula
+    (make_binary_call(op,selec.release(),rr.release(),loc,op_loc));
+  return new expr(new field_assignment_node(tup,sel,std::move(*formula)),loc);
+}
+
 @ This is getting boring; fortunately we are almost done with the syntax.
 
 @< Cases for copying... @>=
-case comp_ass_stat: comp_assign_variant=other.comp_assign_variant;
-break;
+case comp_ass_stat: comp_assign_variant=other.comp_assign_variant; break;
+case field_ass_stat: field_assign_variant=other.field_assign_variant; break;
 
 @~Destruction one the other hand is as straightforward as usual.
 
 @< Cases for destroying... @>=
 case comp_ass_stat: delete comp_assign_variant; break;
+case field_ass_stat: delete field_assign_variant; break;
+
 @ Printing component assignment statements follow the input syntax.
 
 @< Cases for printing... @>=
 case comp_ass_stat:
-{@; const comp_assignment& ass = e.comp_assign_variant;
+{ const comp_assignment& ass = e.comp_assign_variant;
   out << main_hash_table->name_of(ass->aggr)
-      << (ass->reversed ? "~[" : "[") << ass->index << "]:="
+      << (ass->reversed ? "~[" : "[") << ass->index << @| "]:="
       << ass->rhs ;
+}
+break;
+case field_ass_stat:
+{ const fld_assignment& ass = e.field_assign_variant;
+  out << main_hash_table->name_of(ass->aggr)
+      << '.' << main_hash_table->name_of(ass->selector) @|
+      << ":=" << ass->rhs ;
 }
 break;
 

@@ -1267,7 +1267,7 @@ public:
 };
 inline value_base::~value_base() @+{} // necessary but empty implementation
 @)
-typedef value_base* value;
+typedef const value_base* value;
 typedef std::shared_ptr<const value_base> shared_value;
 typedef std::shared_ptr<value_base> own_value;
 
@@ -1691,12 +1691,12 @@ deletion would ensue.
 
 We provide two versions, where overloading will choose one or the other
 depending on the const-ness of the argument. Since calling |get| for a
-|shared_value| pointer returns a pointer to constant, it will often be the
-second one that is selected.
+|shared_value| pointer returns a |value| (which is pointer to constant), it
+will often be the second one that is selected.
 
 @< Template and inline function definitions @>=
 template <typename D> // |D| is a type derived from |value_base|
- D* force(value v) throw(logic_error)
+  D* force (value_base* v) throw(logic_error)
 { D* p=dynamic_cast<D*>(v);
   if (p==nullptr) throw
     logic_error(std::string("forced value is no ")+D::name());
@@ -1704,52 +1704,61 @@ template <typename D> // |D| is a type derived from |value_base|
 }
 @)
 template <typename D> // |D| is a type derived from |value_base|
-const D* force(const value_base* v) throw(logic_error)
+  const D* force (value v) throw(logic_error)
 { const D* p=dynamic_cast<const D*>(v);
   if (p==nullptr) throw
     logic_error(std::string("forced value is no ")+D::name());
   return p;
 }
 
-@ In some cases a wrapper function will want to get unique access to an object
-(so that we can modify it to produce its result), which requires duplicating
-the value if the value on the stack has |use_count()>1|. In fact if we just
-computed the value on the stack from a function call, it is virtually
-guaranteed to be unshared. Similarly the component assignment operation must
-ensure that the name of the aggregate that is being assigned to is made to
-hold a unique (non-shared) instance of its value which can then be modified in
-place (this was the original motivation for this functionality). The operation
-|uniquify| implements this, and calling it makes clear our destructive
-intentions. We make it take a modifiable lvalue argument into which a new
-shared (but currently unique) pointer is stored in case duplication was
-necessary, and return a |value| raw pointer-to-non-const version of the
-possibly modified value of that pointer, which can then be used to make the
-change to the unique copy (the original pointer cannot, since it is of course
-still a pointer-to-const).
+@ The \.{axis} language allows assignment operations to components of
+aggregates (such as rows, matrices, strings, tuples), which in fact assign a
+new value to the name bound to the aggregate. Since we implement
+copy-on-write, this should in principle make a copy of the aggregate before
+modifying the component, but the copy can be avoided if the aggregate value is
+unshared. The operation |uniquify| implements making a copy if necessary, and
+calling it makes clear our destructive intentions. We make it take a
+modifiable lvalue argument into which a new shared (but currently unique)
+pointer will be stored in case duplication was necessary, and it returns a raw
+pointer-to-non-const version of the new value of that shared pointer, which
+can then be used to make the change to the unique copy. The original pointer
+is of course still a pointer-to-const, so cannot be used for the modification;
+it does however retain ownership. Not surprisingly the implementation of
+|uniquify| uses a |const_cast| operation.
 
-For the more common case of arguments on the stack, we provide a variant
-function template |get_own| of |get|. It has the same prototype as
-|non_const_get|, but like |uniquify| respects copy-on-write by making a copy
-first in case there are other shareholders. Since these functions return
-pointers that are guaranteed to be unique, one might wonder why no use of
-|std::unique_ptr| is made. The answer is this is not possible, since there is
-no way to persuade a |shared_ptr| to release its ownership (as in the
-|release| method of unique pointers), even if it happens to be (or is known to
-be) the unique owner.
+Similarly some wrapper functions will want to get unique access to an argument
+object, so that they can return a modified version of it as result. This
+requires duplicating the argument value on the stack only if it has
+|use_count()>1|, which is a rare circumstance since most functions that place
+a value on the stack will do so with an unshared pointer. For this we provide
+a variant function template of |get| called |get_own|. It has the same
+prototype as |non_const_get|, but like |uniquify| respects copy-on-write by
+making a copy first in case there are other shareholders. The implementation
+somewhat differs from |uniquify| in that it uses a |std::const_pointer_cast|,
+and only in the case no copy is made (in which case that cast is basically all
+it does); in the case a copy is made, it returns a shared pointer to the copy
+(modifiable), while leaving the original shared pointer unchanged (except that
+its reference count will be decremented).
+
+Since these functions return pointers that are guaranteed to be unique, one
+might wonder why no use of |std::unique_ptr| is made. The answer is this is
+not possible, since there is no way to persuade a |shared_ptr| to release its
+ownership (as in the |release| method of unique pointers), even if it happens
+to be (or is known to be) the unique owner.
 
 @< Template and inline function def... @>=
+inline value_base* uniquify(shared_value& v)
+{ if (not v.unique())
+     v=shared_value(v->clone());
+  return const_cast<value_base*>(v.get());
+}
+@)
 template <typename D> // |D| is a type derived from |value_base|
-  std::shared_ptr<D> get_own() throw(logic_error)
+  std::shared_ptr<D> get_own()
 { std::shared_ptr<const D> p=get<D>();
   if (p.unique())
     return std::const_pointer_cast<D>(p);
   return std::shared_ptr<D>(p->clone());
-}
-@)
-inline value uniquify(shared_value& v)
-{ if (not v.unique())
-     v=shared_value(v->clone());
-  return const_cast<value>(v.get());
 }
 
 @ The argument~$n$ to |wrap_tuple| most often is a compile time constant, so
