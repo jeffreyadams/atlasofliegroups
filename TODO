@@ -22,46 +22,35 @@
   Distinguish one-line (maybe abbreviated) and long forms.
   Nuance "simply connected" and "adjoint" for non-semisimple root data
 
-- See if cloning of values is ever needed, and remove it if not
+- See if cloning of all value types is needed, and remove unnecessary ones
+- See why a loop followed by a semicolon explicitly gets is value "voided"
 
 - For errors during implict conversion, provide back-tracing as for calls
 
-- Implement compound assignment directly
-  While 'v #:= x' (with vec v, int x) is easy to write (and common in loop
-  bodies), it is converted to 'v := v#x' which is not efficient: with 'v'
-  still shared when 'v#x' is evaluated, there is no chance of (at least on
-  some occasions) reusing the same memory. This could be possible if built-in
-  compound assignment were handled as a single operation (even though no user
-  defined function could do such a thing). This is most useful for
+- Implement operate-and-assign directly. While 'v #:= x' (with vec v, int x)
+  is easy to write (and common in loop bodies), it is converted to 'v := v#x'
+  which is not efficient: with the operation '#' separated in the syntax tree
+  from the assignement ':=', it has no chance of knowing that the same object
+  can be used to store the result, even if the pointer accessing it has the
+  lowest possible refcount (which is 2, since the name 'v' must be sharing the
+  pointer). This could however be made possible if built-in compound
+  assignment were handled as a single operation for certain built-in
+  operations. Note that this can never be done for user-defined functions, as
+  they have no means of indicating how the return value might reuse the memory
+  from the argument. The combined operator would be most useful for
   concatenation, but operations such as vector addition could also profit.
 
-- Implement value gathering in loop using a sl_list if size is not known.
-  Currently all loops gather values in a std::vector; while loops (as well as
-  future loops using features that make size of resulting row unknown when
-  the loop is started) might do better gathering them in a list structure.
-
-- Maybe allow list-comprehension syntax like in Haskell (and Python?)
-
-- Allow skipping entries in value-producing loops; concatenating sub-rows.
-  When generating a row from a loop, not every iteration need contribute, and
-  nested loops might want to contribute to the same row, in a concatenated
-  fashion.
-
-- Extend type system to deal with second-order types
 - Extend language with recursive types, as well as disjoint union types.
-- Allow encapsulation into user-defined types
+- Extend type system to deal with second-order types
+- Allow encapsulation into user-defined types (possibly using 2nd order types)
 
 - Ensure that root data obtained from inner classes or beyond are shared
 - Avoid creating many identical |real_form_value| instances, by storing links
   to those currently generated within an |inner_class_value| object
-- Check if efficiency features actually work as intended
-  For instance v[i]=k should usually avoid a copy of v being made. Also see
-  if something can be done to avoid duplication in a +:= x (probably not, as
-  one knows nothing about what + does). However, for v #:= x in a loop it
-  should be possible to avoid a new allocation for v at every iteration.
 
 * Work on the atlas scripts
 - Complete the groups in groups.rx (types G,F); also avoid use of "s" etc.
+- Adapt scripts to use/illustrate the new lanuage features, once implemented.
 
 * Work on documentation
 
