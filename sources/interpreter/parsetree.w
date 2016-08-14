@@ -2522,9 +2522,9 @@ fld_assignment field_assign_variant;
 
 @ As always there are constructors for building the new variants.
 @< Methods of |expr| @>=
-expr(comp_assignment&& ca, const YYLTYPE& loc)
+expr(comp_assignment ca, const YYLTYPE& loc)
  : kind(comp_ass_stat)
- , comp_assign_variant(std::move(ca))
+ , comp_assign_variant(ca)
  , loc(loc)
 @+{}
 @)
@@ -2538,8 +2538,12 @@ expr(fld_assignment&& fa, const YYLTYPE& loc)
 does not simply combine the expression components, because for reason of
 parser generation the array and index will have already been combined before
 this function can be called. There is also |make_comp_upd_ass| for the
-operator-assign form of component assignments, as in $v[i]\mathrel+:=a$.
-Finally, similar functions are also given for field assignments.
+operate-assign form of component assignments, as in $v[i]\mathrel+:=a$.
+Finally, similar functions are also given for field assignments. The plain
+assignment just needs the identifiers, but the operate-assign forms wraps them
+into |applied_identifier| expressions (which attaches the proper location
+information) since these are necessary in the right hand side to be
+constructed.
 
 @< Declarations of functions for the parser @>=
 expr_p make_comp_ass(expr_p lhs, expr_p rhs, const YYLTYPE& loc);
@@ -2550,41 +2554,39 @@ expr_p make_field_ass(id_type tup, id_type sel, expr_p rhs, const YYLTYPE& loc);
 expr_p make_field_upd_ass(expr_p tupex, expr_p selex, id_type op, expr_p rhs,
    const YYLTYPE& loc,  const YYLTYPE& op_loc);
 
-@~Here we have to take the left hand side apart a bit; the grammar ensures
+@ Here we have to take the left hand side apart a bit; the grammar ensures
 that |lhs| presents the necessary structure for this code to work.
 
 @< Definitions of functions for the parser@>=
 expr_p make_comp_ass(expr_p l, expr_p r, const YYLTYPE& loc)
 {
-  expr_ptr ll(l), rr(r); expr& lhs=*ll; expr& rhs=*rr;
-  assert(lhs.kind==subscription); // grammar ensures this
-  subscription_node& s = *lhs.subscription_variant;
+  expr_ptr ll(l), rr(r);
+  assert(ll->kind==subscription); // grammar ensures this
+  subscription_node& s = *ll->subscription_variant;
   assert(s.array.kind==applied_identifier); // grammar ensures this
-  return new expr(comp_assignment(new
-  comp_assignment_node @|
+  return new expr(new comp_assignment_node @|
   { s.array.identifier_variant
 @|, std::move(s.index)
-  , std::move(rhs)
+  , std::move(*rr)
   , s.reversed
-  }),loc);
+  },loc);
 }
 
-@ Here is the corresponding code for field assignments.
+@ Here is the even simpler code for field assignments.
 
 @< Definitions of functions for the parser@>=
 expr_p make_field_ass(id_type tup, id_type sel, expr_p r, const YYLTYPE& loc)
-{
-  expr_ptr rr(r); expr& rhs=*rr;
-  return new expr(fld_assignment @|
-    (new field_assignment_node { tup , sel, std::move(rhs) }),loc);
+{@;
+  expr_ptr rr(r);
+  return new expr(new field_assignment_node { tup , sel, std::move(*rr) },loc);
 }
 
 
 @ This variation is somewhat complicated both at input (for the same reason as
 |make_comp_ass|) and the output side, because $v[I]\mathrel\star:= E$ is
 translated into essentially ``\&{let}~$\$=I$~\&{in}~$v[\$]:=v[\$]\star E$'',
-where $\$$ is a local variable (introduced to avoid evaluating $I$ twice) that
-cannot conflict with $v$ or any names used in the expression $E$.
+where $\$$ is a local variable (to avoid evaluating $I$ twice) that
+can't conflict with $v$ or any names used in the expression~$E$.
 
 In doing everything by hand (except for some constructions done by
 |make_binary_call|), this code gives an idea of the amount of work that the
@@ -2594,28 +2596,28 @@ parser actions go through in handling even relatively simple expressions.
 expr_p make_comp_upd_ass(expr_p l, id_type op, expr_p r,
    const YYLTYPE& loc, const YYLTYPE& op_loc)
 {
-  expr_ptr ll(l), rr(r); expr& lhs=*ll;
-  assert(lhs.kind==subscription); // grammar ensures this
-  subscription_node& s = *lhs.subscription_variant;
-  assert(s.array.kind==applied_identifier); // grammar ensures this
+  expr_ptr ll(l), rr(r);
+  assert(ll->kind==subscription); // grammar ensures this
+  auto& s = *ll->subscription_variant;
+  assert(s.array.kind==applied_identifier); // likewise
   id_type array_name=s.array.identifier_variant;
       // save before move from |s.array|
   id_type hidden=lookup_identifier("$");@q$@>
   id_pat v(hidden);
+  expr::identifier_tag id_tag;
   expr_ptr subs(new expr (new subscription_node@|
     (std::move(s.array)
-    ,expr(hidden,loc,expr::identifier_tag())
+    ,expr(hidden,loc,id_tag)
     ,s.reversed
-    ),lhs.loc));
+    ),ll->loc));
   expr_ptr formula(make_binary_call(op,subs.release(),rr.release(),loc,op_loc));
-  comp_assignment_node comp_ass @|
-     (array_name
-     ,expr(hidden,loc,expr::identifier_tag())
+  expr ca (new comp_assignment_node @|
+     {array_name
+     ,expr(hidden,loc,id_tag)
      ,std::move(*formula)
-     ,s.reversed);
-  expr body(new comp_assignment_node(std::move(comp_ass)),loc);
+     ,s.reversed},loc);
   return new expr(new let_expr_node @|
-    (std::move(v),std::move(s.index),std::move(body)),loc);
+    (std::move(v),std::move(s.index), std::move(ca)),loc);
 }
 
 @ Here is the corresponding code for field assignments.
@@ -2627,10 +2629,10 @@ expr_p make_field_upd_ass(expr_p tupex, expr_p selex, id_type op, expr_p r,
   expr_ptr rr(r);
   expr_ptr tup_exp(tupex);
   expr_ptr sel_exp(selex);
-  assert(tup_exp->kind==applied_identifier); // grammar ensures this
-  id_type tup=tup_exp->identifier_variant; // save before move from |*tup_exp|
-  assert(sel_exp->kind==applied_identifier); // grammar ensures this
-  id_type sel=sel_exp->identifier_variant; // save before move from |*sel_exp|
+  assert(tup_exp->kind==applied_identifier and
+         sel_exp->kind==applied_identifier); // grammar
+  id_type tup=tup_exp->identifier_variant, sel=sel_exp->identifier_variant;
+   // save, then move
   expr_ptr selec(new expr (new application_node@|
     (std::move(*sel_exp),std::move(*tup_exp)),loc));
   expr_ptr formula
