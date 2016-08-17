@@ -4061,7 +4061,7 @@ struct while_expression : public expression_base
   virtual void print(std::ostream& out) const;
 };
 
-@ In printing of while loops, the symbol \.{do} or \.{\char\~do} with appear
+@ In printing of while loops, the symbol \.{do} or \.{\char\~do} will appear
 in the output for |*body|.
 
 @< Function definitions @>=
@@ -4104,10 +4104,8 @@ case while_expr:
   layer bind(0,nullptr); // no local variables for loop, but allow |break|
 @)
   if (type==void_type)
-  { expression_ptr result(make_while_loop @| (w.flags.to_ulong(),
+    return expression_ptr@|(make_while_loop (w.flags.to_ulong(),
        convert_expr(w.body, as_lvalue(void_type.copy()))));
-    return expression_ptr(new voiding(std::move(result)));
-  }
   else if (type==int_type)
     return expression_ptr(make_while_loop @| (0x8,
        convert_expr(w.body, as_lvalue(void_type.copy()))));
@@ -4583,9 +4581,8 @@ case for_expr:
        size of |in_expr|, and containing |body| @>
   else loop.reset(make_for_loop@|
     (f.flags.to_ulong(),f.id,std::move(in_expr),std::move(body),which));
-@/return type==void_type ? expression_ptr(new voiding(std::move(loop)))
-  : @| conv!=nullptr ? expression_ptr(new conversion(*conv,std::move(loop)))
-  : @| std::move(loop) ;
+@/return conv==nullptr ? std::move(loop)
+  : @| expression_ptr(new conversion(*conv,std::move(loop))) ;
 }
 
 @ The |in_type| must be indexable by integers (so it is either a row-type or
@@ -4910,9 +4907,10 @@ set aside as explained earlier.
 
 In order to substitute a counted loop without index for such a loop, we need
 to assemble a call to the appropriate size-computing built-in function. The
-needed |shared_builtin| values will be assembled later, and some of the actual
-built-in functions needed to be declared as global functions (and in one case
-even defined in the first place) specifically for this purpose.
+needed |shared_builtin| values are held in variables whose definition will be
+given later. Some of the actual built-in functions needed here are declared as
+global rather than local functions (and in one case even defined in the first
+place) specifically for this purpose.
 
 @< Set |loop| to a index-less counted |for| loop... @>=
 { expression_ptr call; const source_location &loc = f.in_part.loc;
@@ -4970,9 +4968,9 @@ case cfor_expr:
       body.reset(new voiding(std::move(body)));
   @/expression_ptr loop(make_counted_loop(c.flags.to_ulong(), @|
       c.id,std::move(count_expr),std::move(bound_expr),std::move(body)));
-  return type==void_type ? expression_ptr(new voiding(std::move(loop))) : @|
-         conv!=nullptr ? expression_ptr(new conversion(*conv,std::move(loop)))
-                       : @| std::move(loop);
+    return conv==nullptr
+           ? std::move(loop) @|
+           : expression_ptr(new conversion(*conv,std::move(loop)));
   }
   else // case of a present loop variable
   { layer bind(1,nullptr);
@@ -4982,9 +4980,9 @@ case cfor_expr:
       body.reset(new voiding(std::move(body)));
   @/expression_ptr loop(make_counted_loop(c.flags.to_ulong(), @|
       c.id,std::move(count_expr),std::move(bound_expr),std::move(body)));
-    return type==void_type ? expression_ptr(new voiding(std::move(loop))) : @|
-         conv!=nullptr ? expression_ptr(new conversion(*conv,std::move(loop)))
-                       : @| std::move(loop);
+    return conv==nullptr
+           ? std::move(loop) @|
+           : expression_ptr(new conversion(*conv,std::move(loop)));
   }
 }
 

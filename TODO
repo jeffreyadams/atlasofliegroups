@@ -21,7 +21,6 @@
   Nuance "simply connected" and "adjoint" for non-semisimple root data
 
 - See if cloning of all value types is needed, and remove unnecessary ones
-- See why a loop followed by a semicolon explicitly gets is value "voided"
 
 - For errors during implict conversion, provide back-tracing as for calls
 
