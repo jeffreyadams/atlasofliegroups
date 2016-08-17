@@ -35,8 +35,12 @@ let   (rd_K,w_K)=w, rd=root_datum(x)
   then result=id_mat(rank(rd)) in
   for i in w_K
   do let alpha=roots[i] in
+    let beta=involution(x)*alpha in
+    let beta_vee=coroot(rd,beta) in 
     if is_imaginary(alpha,x) then result*:=reflection(rd,alpha)
-    else result*:=reflection(rd,alpha)*reflection(rd,involution(x)*alpha)
+    elif alpha*beta_vee=0 then result*:=reflection(rd,alpha)*reflection(rd,involution(x)*alpha)
+    elif alpha*beta_vee=-1 then result*:=reflection(rd,alpha+beta) else
+     error("error in lift_action")     
     fi
   od;
   result
