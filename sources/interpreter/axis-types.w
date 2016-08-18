@@ -115,29 +115,40 @@ We make a fundamental choice to check types before attempting to execute any
 expression entered by the user; thus type errors can be signalled earlier and
 expressed more understandably than if one would wait until an accident is
 about to happen at runtime. This means that types are to be represented
-independently of runtime values. Of course the interpreter executes its same
-internal code regardless of the types of the values it manipulates; those
-values are then accessed via generic pointers. The runtime values also contain
-an indication of their actual type, which will allow us to do some dynamic
-testing to trap possible errors in the logic of our interpreter, but the user
-should never notice this.
+independently of runtime values. Types will have an effect on the
+transformation of expressions into executable internal form (for example in
+selecting the instance of an overloaded function to use), but once that is
+done, types will no longer be represented at all: the internal code executes
+without being ``aware'' of the types of the values it manipulates. This is
+only possible because those values are then accessed via generic pointers
+(i.e., pointers that, as far as \Cpp\ is concerned, could point to any kind of
+value). Currently runtime values also contain an indication of their type,
+which will allow us to do some dynamic testing to trap possible errors in the
+logic of our interpreter, but the user should never notice this; in an
+optimised version of the \.{atlas} program, this runtime type information and
+corresponding tests could be dropped altogether.
 
 Types are represented by small tree structures, with nodes of types
 |type_expr| that will be detailed later. For now we provide no user-defined
-encapsulation (as \Cpp~classes do), so a type expression exposes the
-accessible operations: a type printed as \.{(int->[(bool,mat)])} for instance
-will specify a function mapping integers to lists of pairs of a Boolean value
-and a matrix, which implies the kind of operation that can be performed with
-such a value. Note however that classes defined in the Atlas software library
-itself will be presented to the user as primitive types, so we do provide
-abstraction there. One kind of type is a function type, which specifies the
+encapsulation (as \Cpp~classes do), so a type expression basically describes
+the structure of the corresponding values, and allows all operations
+compatible with that structure to be performed. For instance the type printed
+as \.{(int->[(bool,mat)])} specifies a function mapping integers to lists of
+pairs of a Boolean value and a matrix, and allow operations compatible with
+that such as calling it with an integer argument and then selecting the second
+component of the final element of the result. However, classes defined in the
+Atlas software library itself will be presented to the user as (opaque)
+primitive types; only built-in operations declared for that primitive type can
+be applied to such values, so we do provide abstraction from internal
+representation there. One kind of type is a function type, which specifies the
 types of the individual function arguments and of the values it returns.
 
-Different types will not share any sub-trees among each other, as is the case
-for STL container types; this simplifies memory management. This choice means
-some recursive copying of tree structures is sometimes required, but (although
-runtime cost of type handling is negligible with respect to other factors in
-the interpreter) we avoid doing so more than absolutely necessary.
+Trees representing different type expressions will not share any sub-trees
+among each other, so they have strict (unshared) ownership of their parts,
+which simplifies memory management. This choice means some recursive copying
+of tree structures is sometimes required, but (although runtime cost of type
+handling is negligible with respect to other factors in the interpreter) we
+avoid doing so more than absolutely necessary.
 
 Usually types are built from the bottom up (from leaves to the root), although
 during type checking the reverse also occurs. This means that nodes of the
@@ -152,7 +163,7 @@ distinguish calls that should be realised with shallow copies and ownership
 transfer from the occasionally needed deep copy. At the same time
 auto-pointers were replaced by unique-pointers, with essentially the same
 functionality, but better adapted to the syntactic facilities. The structure
-also uses ordinary pointers of type~|type_p| whose ownership is managed by the
+also uses ordinary pointers of type~|type_p| when ownership is managed by the
 containing structure.
 
 @< Type definitions @>=
@@ -173,10 +184,11 @@ library, these were used to replace the implementation of type lists.
 #include "sl_list.h" // for internals of the |sl_list| class template
 
 @ The class template |simple_list| is built into the structure itself, while
-|sl_list|, which is mode flexible but requires more space at the head of the
+|sl_list|, which is more flexible but requires more space at the head of the
 list (the class |sl_list<type_expr>| itself), is occasionally used for
 temporary variables. This provides a good test for the usability of the new
-container type, which so far it has passed gracefully.
+container type; so far it has passed them gracefully, though occasionally
+after enriching the repertoire of methods of the container type.
 
 @< Type definitions @>=
 typedef containers::simple_list<type_expr> type_list;
@@ -211,16 +223,16 @@ type_ptr acquire(const type_expr* t) @+
 defined below, and which function can help avoid a Most Vexing Parse
 situation), and repeatedly calling |prefix| to add nodes in front. This
 function is efficient, due its use of move-semantics, both for the node, and
-for the list itself, although the latter is a modifiable lvalue reference
-because it will continue to hold the extended list.
+for the list itself. Nonetheless, the latter is passed as a modifiable lvalue
+reference |dst|, as it will continue to hold the extended list.
 
 @< Declarations of exported functions @>=
 type_list empty_tuple();
 type_list& prefix(type_expr&& t, type_list& dst);
 dressed_type_list& prefix(type_expr&& t, dressed_type_list& dst);
 
-@ Move semantics, introduced in \Cpp11, solves any difficulty with ownership
-management that this code previously had to deal with.
+@ Move semantics, introduced in \Cpp11, has solved any difficulty with
+ownership management that the functions below previously had to deal with.
 
 @< Function def... @>=
 type_list empty_tuple() @+{@; return type_list(); }
@@ -239,17 +251,20 @@ dressed_type_list& prefix(type_expr&& t, dressed_type_list& dst)
 We have a simple but flexible type model. There is a finite number of
 ``primitive'' types, many of which are abstractions of complicated classes
 defined in the Atlas library, such as root data or reductive groups.
-Furthermore one has types that are ``row of'' some other type, tuples
-(Cartesian products) of some given sequence of types, and function types. We
-also allow for an undetermined type, which can serve as a wild-card to specify
-type patterns. Before we can define |type_expr|, we need to enumerate its
-variants and the possibilities for primitive types. Here are enumerations of
-tags for the basic kinds of types, and for the sub-cases of |primitive_type|
-(some of them will be introduced later).
+Furthermore one has function types that map one type to another, types that
+are ``row of'' some other type, tuples (Cartesian products) of some given
+sequence of types, and disjoint unions (co-products in the category of sets)
+of some sequence of types. We also allow for an undetermined type, which can
+serve as a wild-card to specify type patterns. Before we can define
+|type_expr|, we need to enumerate its variants and the possibilities for
+primitive types. Here are enumerations of tags for the basic kinds of types,
+and for the sub-cases of |primitive_type| (some of them will be introduced
+later).
 
 @< Type definitions @>=
-enum type_tag @+
-{ undetermined_type, primitive_type, row_type, tuple_type, function_type };
+enum type_tag
+ { undetermined_type, primitive_type,
+   function_type, row_type, tuple_type, union_type };
 
 enum primitive_tag
 { integral_type, rational_type, string_type, boolean_type
@@ -288,8 +303,8 @@ access them.
 The field name |tupple| was chose because when working with a program
 involving some |unique_ptr| instance, the \.{gdb} debugger cannot access any
 variable or field named |tuple|; the was reported as bug~17098
-on \.{sourceware.org/bugzilla}. Awaiting resolution of the bug, circumvent it
-by using a voluntary misspelling of the name.
+on \.{sourceware.org/bugzilla}. Awaiting resolution of the bug, we circumvent
+it by using a voluntary misspelling of the name.
 
 The field |tupple| used to be (after inclusion of the
 |containers::simple_list| class template in Atlas, which coincided with the
@@ -310,18 +325,21 @@ is why the |raw_type_list| solution is now chosen.
 
 There is one restriction on types that is not visible in the definition below,
 namely that the list of types referred to by the |tupple| field cannot have
-length~$1$ (but length~$0$ is allowed). This is because anything that would
-suggest a $1$-tuple (for instance a parenthesised expression) is identified
-with its unique component.
+length~$1$ (but length~$0$ is allowed, the $0$-tuple being the |void| type; we
+might also take the $0$-union to be the uninhabited type \.* that is for
+instance the ``return type'' of the |error| function, but this is not
+currently the case). This is because anything that would suggest a $1$-tuple
+or $1$-union (for instance a parenthesised expression) is identified with its
+unique component.
 
 @< Definition of |type_expr| @>=
 struct type_expr
 { type_tag kind;
   union
   { primitive_tag prim; // when |kind==primitive|
-    type_p component_type; // when |kind==row_type|
-    raw_type_list tupple; // when |kind==tuple_type|
     func_type* func; // when |kind==function_type|
+    type_p component_type; // when |kind==row_type|
+    raw_type_list tupple; // when |kind==tuple_type| or |kind==union_type|
   };
 @)
   @< Methods of the |type_expr| structure @>@;
@@ -357,24 +375,24 @@ whether it can be made to match the pattern by if necessary replacing some
 undetermined descendants by more specific ones. The call returns a value
 indicating whether this was possible, and if so makes the necessary
 specialisations to our type. That is done by copying, so the caller does not
-require or lose ownership of the pattern for this method.
+require, acquire, or lose ownership of the pattern for/by this method.
 
-The constructors for the row and tuple types receive pointers that will be
-directly inserted into our |struct| and become owned by it; the ownership
-management is simplest when such pointers are ``passed by check'', i.e., as
-rvalue references to smart pointers.
+The constructors for the row, tuple, and union types receive pointers that
+will be directly inserted into our |struct| and become owned by it; the
+ownership management is simplest when such pointers are ``passed by check'',
+i.e., as rvalue references to smart pointers.
 
 @< Methods of the |type_expr| structure @>=
 
 type_expr() noexcept : kind(undetermined_type) @+{}
 explicit type_expr(primitive_tag p) noexcept
   : kind(primitive_type), prim(p) @+{}
-explicit type_expr(type_ptr&& c) noexcept
-  : kind(row_type), component_type(c.release()) @+{}
-explicit type_expr(type_list&& l) noexcept; // tuple types
-explicit type_expr(dressed_type_list&& l) noexcept; // tuple types
 inline type_expr(type_expr&& arg, type_expr&& result) noexcept;
  // for function types
+explicit type_expr(type_ptr&& c) noexcept
+  : kind(row_type), component_type(c.release()) @+{}
+explicit type_expr(type_list&& l,bool is_union=false) noexcept;
+  // tuple and union types
 @)
 #ifdef incompletecpp11
 type_expr(const type_expr& t) = @[delete@];
@@ -385,7 +403,7 @@ type_expr& operator=(type_expr&& t) noexcept; // do move assignment only
 void clear() noexcept;
   // resets to undefined state, cleaning up owned pointers
 ~type_expr() noexcept @+{@; clear(); }
-  // that is all explcitly needed for destruction
+  // that is all that is needed for destruction
 void swap(type_expr& t) noexcept;
 @)
 type_expr copy() const; // in lieu of deep copy constructor
@@ -412,8 +430,8 @@ struct func_type; // must be predeclared for |type_expr|
 constructor, and is easily implemented since |type_expr| has a move
 constructor.
 @< Function definitions @>=
-type_expr::type_expr(type_list&& l) noexcept
-  : kind(tuple_type)
+type_expr::type_expr(type_list&& l,bool is_union) noexcept
+  : kind(is_union ? union_type: tuple_type)
   , tupple(l.release())
   @+{}
 
@@ -441,7 +459,7 @@ type_expr type_expr::copy() const
     case row_type:
       result.component_type=new type_expr(component_type->copy());
     break;
-    case tuple_type:
+    case tuple_type: case union_type:
       @< Placement-construct a deep copy of |tupple| into |result.tupple| @>
     break;
     case function_type: result.func=new func_type(func->copy()); break;
@@ -498,7 +516,7 @@ void type_expr::clear() noexcept
 { switch (kind)
   { case undetermined_type: case primitive_type: break;
     case row_type: delete component_type; break;
-    case tuple_type: delete tupple; break;
+    case tuple_type: case union_type: delete tupple; break;
     case function_type: delete func; break;
   }
   kind = undetermined_type;
@@ -524,9 +542,9 @@ void type_expr::set_from(type_expr&& p) noexcept
   switch(kind=p.kind) // copy top node
   { case undetermined_type: break;
     case primitive_type: prim=p.prim; break;
-    case row_type: component_type=p.component_type; break;
     case function_type: func=p.func; break;
-    case tuple_type: tupple = p.tupple; break;
+    case row_type: component_type=p.component_type; break;
+    case tuple_type: case union_type: tupple = p.tupple; break;
   }
   p.kind=undetermined_type;
   // detach descendants, so |p.clear()| will destroy top-level only
@@ -537,9 +555,9 @@ type_expr::type_expr(type_expr&& x) noexcept // move constructor
 { switch(kind) // move top node
   { case undetermined_type: break;
     case primitive_type: prim=x.prim; break;
-    case row_type: component_type=x.component_type; break;
     case function_type: func=x.func; break;
-    case tuple_type: tupple = x.tupple; break;
+    case row_type: component_type=x.component_type; break;
+    case tuple_type: case union_type: tupple = x.tupple; break;
   }
   x.kind=undetermined_type;
   // detach descendants, so destructor of |x| will do nothing
@@ -564,9 +582,9 @@ void type_expr::swap(type_expr& other) noexcept
     switch(kind)
     { case undetermined_type: break; // no need to swap |nothing| fields
       case primitive_type: std::swap(prim,other.prim); break;
-      case row_type: std::swap(component_type,other.component_type); break;
       case function_type: std::swap(func,other.func); break;
-      case tuple_type: std::swap(tupple,other.tupple); break;
+      case row_type: std::swap(component_type,other.component_type); break;
+      case tuple_type: case union_type: std::swap(tupple,other.tupple); break;
     }
   else
   {
@@ -610,18 +628,18 @@ bool type_expr::specialise(const type_expr& pattern)
   if (pattern.kind!=kind) return false; // impossible to refine
   switch(kind)
   { case primitive_type: return prim==pattern.prim;
-    case row_type: return component_type->specialise(*pattern.component_type);
     case function_type:
       return func->arg_type.specialise(pattern.func->arg_type) @|
          and func->result_type.specialise(pattern.func->result_type);
-    case tuple_type:
+    case row_type: return component_type->specialise(*pattern.component_type);
+    case tuple_type: case union_type:
      @< Try to specialise types in |tupple| to those in |pattern.tupple|,
         and |return| whether this succeeded @>
     default: return true; // to keep the compiler happy, cannot be reached
   }
 }
 
-@ For tuples, specialisation is done component by component.
+@ For tuples and unions, specialisation is done component by component.
 
 @< Try to specialise types in |tupple| to those in |pattern.tupple|... @>=
 {
@@ -645,20 +663,20 @@ bool type_expr::can_specialise(const type_expr& pattern) const
   if (pattern.kind!=kind) return false; // impossible to refine
   switch(kind)
   { case primitive_type: return prim==pattern.prim;
-    case row_type:
-      return component_type->can_specialise(*pattern.component_type);
     case function_type:
       return func->arg_type.can_specialise(pattern.func->arg_type) @|
          and func->result_type.can_specialise(pattern.func->result_type);
-    case tuple_type:
+    case row_type:
+      return component_type->can_specialise(*pattern.component_type);
+    case tuple_type: case union_type:
       @< Find out and |return| whether we can specialise the types in |tupple|
          to those in |pattern.tupple| @>
     default: return true; // to keep the compiler happy, cannot be reached
   }
 }
 
-@ For tuples, the test for possible specialisation is done component by
-component.
+@ For tuples and unions, the test for possible specialisation is done
+component by component.
 
 @< Find out and |return| whether we can specialise the types in |tupple| to
    those in |pattern.tupple| @>=
@@ -709,10 +727,10 @@ struct func_type
   func_type(const func_type& f) = @[delete@];
   func_type& operator=(const func_type& f) = @[delete@];
   func_type(func_type&& f)
-  : arg_type(std::move(f.arg_type)), result_type(std::move(f.result_type))
+@/: arg_type(std::move(f.arg_type)), result_type(std::move(f.result_type))
   @+{}
   func_type& operator=(func_type&& f)
-  { arg_type = std::move(f.arg_type); result_type = std::move(f.result_type);
+  {@; arg_type = std::move(f.arg_type); result_type = std::move(f.result_type);
     return *this;
   }
 #else
@@ -739,28 +757,31 @@ std::ostream& operator<<(std::ostream& out, const func_type& f);
 @~The cases for printing the types are fairly straightforward. Only
 function types are somewhat more involved, since we  want to suppress
 additional parentheses around argument and result types in case these are
-tuple types; defining a separate operator for a |type_list| facilitates our
-task a bit.
+tuple or union types; defining a separate function for a |type_list|
+facilitates our task a bit.
 
 @< Function definitions @>=
 
-std::ostream& operator<<(std::ostream& out, const raw_type_list& l)
+void print(std::ostream& out, const raw_type_list& l,char sep)
 { wtl_const_iterator it(l);
   if (not it.at_end())
     while (out << *it, not (++it).at_end())
-      out << ',';
-  return out;
+      out << sep;
 }
 
 std::ostream& operator<<(std::ostream& out, const func_type& f)
 {
   out << '(';
-  if (f.arg_type.kind==tuple_type)
-     out << f.arg_type.tupple; // naked tuple
+  if (f.arg_type.kind==tuple_type or
+      f.arg_type.kind==union_type and f.arg_type.tupple!=nullptr)
+     print(out,f.arg_type.tupple,f.arg_type.kind==tuple_type?',':'|');
+     // naked tuple or union
   else out << f.arg_type; // other component type
   out << "->";
-  if (f.result_type.kind==tuple_type)
-     out << f.result_type.tupple; // naked tuple
+  if (f.result_type.kind==tuple_type or
+      f.result_type.kind==union_type and f.result_type.tupple!=nullptr)
+     print(out,f.result_type.tupple,f.result_type.kind==tuple_type?',':'|');
+     // naked tuple or union
   else out << f.result_type; // other component type
   out << ')';
   return out;
@@ -770,14 +791,25 @@ std::ostream& operator<<(std::ostream& out, const type_expr& t)
 { switch(t.kind)
   { case undetermined_type: out << '*'; break;
     case primitive_type: out << prim_names[t.prim]; break;
+    case function_type: out << *t.func; break;
     case row_type: out << '[' << *t.component_type << ']'; break;
     case tuple_type:
       if (t.tupple==nullptr)
         out << "void";
       else
-        out << '(' << t.tupple << ')' ;
+      {@;
+         print(out << '(', t.tupple,',');
+         out << ')';
+      }
     break;
-    case function_type: out << *t.func;
+    case union_type:
+      if (t.tupple==nullptr)
+        out << "(*)";
+      else
+      {@;
+         print(out << '(', t.tupple,'|');
+         out << ')';
+      }
     break;
   }
   return out;
@@ -803,12 +835,13 @@ bool operator== (const type_expr& x,const type_expr& y)
 // all cases are listed below, but compilers want a |default| to |return|
   @\case undetermined_type: return true;
     case primitive_type: return x.prim==y.prim;
-    case row_type: return *x.component_type==*y.component_type;
-    case tuple_type: @< Find out and |return| whether all types in |x.tupple|
-    are equal to those in |y.tupple| @>
     case function_type:
       return x.func->arg_type==y.func->arg_type
 	 and x.func->result_type==y.func->result_type;
+    case row_type: return *x.component_type==*y.component_type;
+    case tuple_type: case union_type:
+       @< Find out and |return| whether all types in |x.tupple|
+          are equal to those in |y.tupple| @>
   }
 }
 
