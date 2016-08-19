@@ -28,7 +28,7 @@ R_K_mu=R_K_dom_mu(hw[0]) then
 test_1=#hw*#ktypes=#R_K then
 test_2= dim_hw*#R_K=dim_ktype*#R_K_mu then
 ()=if not(test_1 and test_2) then passed:=false fi in 
-prints(new_line,"i=",i, new_line, "number of LKTs: ", #lkts, new_line, "#reps mu of K_#: ", #hw, new_line, "#reps of \tilde mu of K: ",   #ktypes);
+prints(new_line,"i=",i, new_line, "number of LKTs: ", #lkts, new_line, "#reps mu of K_#: ", #hw, new_line, "#reps \tilde mu of K: ",   #ktypes);
 prints("(# of mu)*(# of \tilde\mu)=|R_K|: ",test_1);
 prints("dim(mu's): ", for mu in hw do dimension(mu) od);
 prints("dim(\tilde\mu's): ", for tildemu in ktypes do dimension(tildemu) od);
