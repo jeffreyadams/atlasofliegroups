@@ -17,7 +17,7 @@ the Atlas project), to whose general functionality are added a great number of
 value types specific for Atlas, and functions from its library operating upon
 them. In the description we below we try to refer to 'axis' for basic features
 proper to the programming language, and 'atlas' for anything specific for the
-Atlas specific functionality, but the destinction may be ignored without harm.
+Atlas specific functionality, but the distinction may be ignored without harm.
 
    Prerequisites for building the 'atlas' program.
 
@@ -161,7 +161,7 @@ the atlas program provides programming constructions, and allows you to
 define scripts and functions for later use.
 
 The set of primitive functions provided is described in the file 'atlas.help'
-(in the subdirectory rx-scripts of the Atlas root directory, just like the
+(in the subdirectory atlas-scripts of the Atlas root directory, just like the
 current file). There is also a script 'basic.at' that defines a collection of
 user-defined functions complementing the primitive ones that is usually
 automatically loaded at start-up (there is no separate documentation for these
@@ -1556,7 +1556,7 @@ can be useful if the file has been edited since it was last read in. Note
 however that in case input of a file is terminated by an error (either from
 one of its commands or from a file included by it) then the file is not yet
 recorded as having been read, so a single '<' then suffices to reread it.
-Realex will refuse to open a file currently already being read from, to prevent
+Atlas will refuse to open a file currently already being read from, to prevent
 infinite input loops in case of circular dependencies.
 
 These input commands will search for their files in the directories specified
@@ -1570,7 +1570,7 @@ characteristics. Output redirection only applies to a single expression
 evaluation. Input redirection should not be followed by anything on the same
 line, but it can invoke any number of commands from the given file. It can
 even be used recursively to include commands from other files that are needed
-to process the included file, it that file contains lines that start with '<'.
+to process the included file, if that file contains lines that start with '<'.
 One cannot globally redirect the output produced from the commands of an
 included file. If a command read from a file included at any level produces a
 syntax or runtime error, a message reporting the place of the error is
@@ -1657,7 +1657,7 @@ more tightly bound context requires enclosing the expression in parentheses.
 
 The most common command is an expression, possibly followed by a semicolon;
 the case with semicolon is treated exactly as if '()' followed to form a
-sequenced expression with void value (so that no value will be printed.
+sequenced expression with void value (so that no value will be printed).
 
 Another common command is the definition starting with 'set'. In it's basic
 form 'set' is followed by a an identifier pattern or an operator name, an '='
