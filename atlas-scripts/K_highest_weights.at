@@ -16,14 +16,16 @@ set LKT_verbose=true
       T_f       T_K=H^\delta
       T_fl      T_{K,large}
 
-    R(K)=|K/K_#|=|T_{K,large}/T_K|
+   R(K)=|K/K_#|=|T_{K,large}/T_K|
 
   given mu a character of T_K
 
-  T_K \subset T_K(\mu) \subset T_{K,large}
+   T_K \subset T_K(\mu) \subset T_{K,large}
    |-----a-------|--------b-------|
    ab=|R(K)|
    a=|R(K,mu)|,  b=|R(K)/R(K,mu)|
+   software: R(K)=R_K_dom(x)
+             R(K,mu)=R_K_dom(mu)
 
    {mu_i|i=1,...,b} characters of T_K  <-> {\tilde\mu_j|j=1,...,a} irreps of T_{K,large}
 
@@ -51,7 +53,7 @@ set LKT_verbose=true
 }
 set = (KHighestWeight (x,mu), KHighestWeight (y,tau)) = bool:
   real_form(x)=real_form(y) and
-  x=y and 
+  x=y and
 ( let  K_0=K_0(x) then
   mu_1=project_K(x,mu) then   {element of X^*(T_{K_0})}
   tau_1=project_K(x,tau) then {element of X^*(T_{K_0})}
@@ -296,6 +298,7 @@ let result=[vec]:[]
  for i:#v do if v[i]=2 then result#:=B[i] fi od;
 result fi fi
 
+{original
 set all_G_spherical_same_differential (K_Type p ) = [K_Type]:
 { assert(is_split_spherical(p),
          "parameter is not spherical for a (relatively) split group"); }
@@ -305,8 +308,29 @@ scr=simple_coroots(root_datum(p)) then
 result=[K_Type]:[] in
  for v in coeffs do
  let mu=vec:null(rank(root_datum(x(p)))) in
-  for j:#v do mu+:=v[j]*chars[j] od;
+  for j:#v do mu+:=v[j]*chars[j] od;prints("mu=",mu);
   if all(for alpha_check in scr do is_even(alpha_check*mu) od)
+  then result#:=(x(p),lambda(p)+mu)
+  fi od;result
+}
+
+{fixed: previous version only checked chi(h)=1 for all h in kernel of the roots,
+also need to check it on Z_2, all elements of order 2 in the center
+see Z_2 in center.at
+}
+set all_G_spherical_same_differential (K_Type p ) = [K_Type]:
+{ assert(is_split_spherical(p),
+         "parameter is not spherical for a (relatively) split group"); }
+let chars=characters_order_2(x(p)) then
+coeffs=generate_all_binary(#chars) then
+scr=simple_coroots(root_datum(p)) then
+Z_2=Z_2(real_form(p)) then
+result=[K_Type]:[] in
+ for v in coeffs do
+ let mu=vec:null(rank(root_datum(x(p)))) in
+  for j:#v do mu+:=v[j]*chars[j] od;
+  if all(for alpha_check in scr do is_even(alpha_check*mu) od) and
+  all(for h in Z_2 do is_even(mu*h) od)
   then result#:=(x(p),lambda(p)+mu)
   fi od;result
 
@@ -339,40 +363,38 @@ set fix (KHighestWeight mu,KGBElt x_Q) = KHighestWeight:
 {this function takes KHighestWeight mu -> |R(K,mu)| K_types, see top of this file}
 {first replace mu with strongly dominant mu in same R_K_dom_mu orbit}
 set K_types (KHighestWeight mu_in)= [K_Type]:
-{  let (y,mu_3_orig,dlambda)=project_on_dominant_cone(mu) in}
   let (mu,,,)=make_strongly_dominant(mu_in) in
-  let ()=prints("PASSED make_strong_dominant, mu=", mu) in
   let  Q=parabolic(mu)  {Q is theta-stable}
-  in { prints("Q=", Q); }
+  in
   assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
   let x_Q=x_min(Q)
   then mu=fix(mu,x_Q)
   {then ()=prints("x_Q=", x_Q)}
   then (x,tau)=mu then
-  {  then  ()=prints("fixed mu:", mu) then }
-  { ()=assert(mu=fix(mu,x_Q),"error: mu\ne fix(mu)") then }
-     L=Levi(Q)
+  ()=if LKT_verbose then  prints("fixed mu:", mu) fi then
+  L=Levi(Q)
   then { L is relatively split }
-{ ()=prints("Q=", Q);
+  ()=if LKT_verbose then
+     prints("Q=", Q);
      prints("mu:", mu);
-     prints("dlambda:", dlambda);
      prints("L=", L);
      prints("rho_u_cap_s(Q)", rho_u_cap_s(Q));
      prints("rho_l(Q)", rho_l(Q));
      prints("tau: ", tau);
-     prints("arg:", tau-2*rho_u_cap_s(Q)+rho_l(Q)) then }
+     prints("arg:", tau-2*rho_u_cap_s(Q)+rho_l(Q)) fi then
   ()=assert(is_relatively_split(L),"L is not relatively split") then
   pL=finalize(parameter(KGB(L,#KGB(L)-1),
 	                tau-two_rho_u_cap_s(Q)+rho_l(Q), null(rank(L))))
   then
-{ ()=prints("pL:", pL);
-     prints("Q=:", Q) then }
+  ()=if LKT_verbose then
+     prints("pL:", pL);
+     prints("Q=:", Q) fi then
      result=[K_Type]:[]
   in  assert(#pL=1,"finalized parameter has more than one term");
   let all_pL=all_G_spherical_same_differential(pL[0]) in
   for qL in all_pL
-  do  {prints("qL:", qL); }
-    let ind=monomials(induce_standard(parameter(qL),Q,real_form(x))) in
+  do  let ()=if LKT_verbose then prints("qL:", qL) fi then
+     ind=monomials(induce_standard(parameter(qL),Q,real_form(x))) in
 {    let ()=prints("induced:", ind) in}
     assert(#ind=1,"induced has more than one term");
     result#:=K_type(ind[0])
