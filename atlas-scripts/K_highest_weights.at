@@ -2,7 +2,7 @@
 <W_K.at
 <thetastable.at
 <LKT.at
-set LKT_verbose=true
+set LKT_verbose=false
 { see K_parameters.at
   K_types.at: K-types as final tempered limit paramters
   (x,lambda) <-> representations of K
@@ -192,7 +192,6 @@ set centralizer(KGBElt x,ratvec v) = (KGBElt,RootDatum):
   in (KGB_elt(subrd,involution(x),torus_factor(x)),subrd)
 
 set find_nci_root (KGBElt x,ratvec tau) = int:
-  let ()=prints("find nci_root with x=", x,  " tau=", tau) in
   let rd=root_datum(x)
   then sr=simple_roots(rd), scr=simple_coroots(rd),ssr=ss_rank(rd)
   then j= first(ssr, (int i)bool: scr[i]*tau<0 and is_noncompact_imaginary(x)(sr[i]) )
