@@ -880,14 +880,16 @@ so that the parser only sees POD, types which it can put into a |union|.
 
 @< Declarations of exported functions @>=
 type_ptr mk_prim_type(primitive_tag p);
+type_ptr mk_function_type(type_expr&& a, type_expr&& r);
 type_ptr mk_row_type(type_ptr&& c);
 type_ptr mk_tuple_type (type_list&& l);
-type_ptr mk_function_type(type_expr&& a, type_expr&& r);
+type_ptr mk_union_type (type_list&& l);
 @)
 type_p make_prim_type(unsigned int p);
+type_p make_function_type(type_p a,type_p r);
 type_p make_row_type(type_p c);
 type_p make_tuple_type(raw_type_list l);
-type_p make_function_type(type_p a,type_p r);
+type_p make_union_type(raw_type_list l);
 @)
 raw_type_list make_type_singleton(type_p raw);
 raw_type_list make_type_list(raw_type_list l,type_p t);
@@ -918,30 +920,36 @@ type_ptr mk_prim_type(primitive_tag p)
     type_ptr(mk_tuple_type(empty_tuple()));
 }
 
+type_ptr mk_function_type (type_expr&& a, type_expr&& r)
+{@; return type_ptr(new type_expr(std::move(a),std::move(r))); }
+
 type_ptr mk_row_type(type_ptr&& c)
 {@; return type_ptr (new type_expr(std::move(c))); }
 
 type_ptr mk_tuple_type (type_list&& l)
-{@; return type_ptr(new type_expr(std::move(l))); }
+{@; return type_ptr(new type_expr(std::move(l),false)); }
 
-type_ptr mk_function_type (type_expr&& a, type_expr&& r)
-{@; return type_ptr(new type_expr(std::move(a),std::move(r)));
-}
+type_ptr mk_union_type (type_list&& l)
+{@; return type_ptr(new type_expr(std::move(l),true)); }
 @)
 type_p make_prim_type(unsigned int p)
 {@; return mk_prim_type(static_cast<primitive_tag>(p)).release(); }
 
-type_p make_row_type(type_p c)
-{@; return mk_row_type(type_ptr(c)).release(); }
+type_p make_function_type(type_p a,type_p r)
+{@; return
+    mk_function_type(std::move(*type_ptr(a)),std::move(*type_ptr(r))).release();
+}
+
+type_p make_row_type(type_p c) {@; return mk_row_type(type_ptr(c)).release(); }
 
 type_p make_tuple_type(raw_type_list l)
 {@; type_list result(l); result.reverse();
     return mk_tuple_type(std::move(result)).release();
 }
 
-type_p make_function_type(type_p a,type_p r)
-{@; return
-    mk_function_type(std::move(*type_ptr(a)),std::move(*type_ptr(r))).release();
+type_p make_union_type(raw_type_list l)
+{@; type_list result(l); result.reverse();
+    return mk_union_type(std::move(result)).release();
 }
 @)
 
@@ -990,15 +998,25 @@ the \.{atlas} program itself), printing of the error message will be followed
 by termination of the program.
 
 @< Function definitions @>=
-dressed_type_list scan_type_list(const char*& s);
+type_expr scan_in_parens(const char*& s);
+type_expr scan_union_list(const char*& s);
+type_expr scan_tuple_list(const char*& s);
 @)
 type_expr scan_type(const char*& s)
-{ if (*s=='*') return ++s,@[type_expr()@]; // undetermined type
+{ if (*s=='(')
+  { type_expr result=scan_in_parens(++s);
+    if (*s++!=')')
+      throw logic_error("Missing ')' in type");
+    return result;
+  }
   else if (*s=='[')
-    @< Scan and |return| a row type, or |throw| a |logic_error| @>
-  else if (*s=='(')
-    @< Scan and |return| a tuple or function type,
-       or |throw| a |logic_error| @>
+  {
+    type_ptr p(new type_expr(scan_in_parens(++s)));
+    if (*s++!=']')
+      throw logic_error("Missing ']' in type");
+    return type_expr(std::move(p));
+  }
+  else if (*s=='*') return ++s,@[type_expr()@]; // undetermined type
   else @< Scan and |return| a primitive type, or |throw| a |logic_error| @>
 }
 @)
@@ -1018,78 +1036,6 @@ type_ptr mk_type(const char* s)
 {@; return type_ptr(new type_expr(mk_type_expr(s))); }
   // wrap up |type_expr| in |type_ptr|
 
-
-@ The following code demonstrates how simple recursive descent parsing can be.
-The only subtle point is that did not advance the pointer |s| when testing for
-|'['| above, so we must start with doing that.
-
-@< Scan and |return| a row type, or |throw| a |logic_error| @>=
-{ type_expr comp=scan_type(++s);
-  if (*s++!=']') throw logic_error("Missing ']' in type");
-    return type_expr(type_ptr(new type_expr(std::move(comp))));
-}
-
-@ Now we do tuple and function types. Here again we start by advancing the
-pointer. Otherwise the descent is still straightforward, thanks to
-|scan_type_list|. After scanning a first list we decide whether this will be a
-tuple type (if a right parenthesis follows) and record it in a boolean
-variable~|is_tuple| to be able to share the code for constructing the tuple
-type.
-
-The only complication is that single parenthesised types, and single argument
-or return types should not be converted into tuple types with one component,
-but just into the constituent type. This is done by assigning to the local
-|type_ptr| variables |a| and |r| either the extracted singleton type or the
-tuple type constructed from the non-singleton list. When extracting a
-singleton type, the |type_expr| reference |l0->t| or |l1->t| used is one to
-part of a |type_node| structure, so there is no other option here than calling
-|copy| to turn this reference into a |type_ptr| owning a fresh copy of that
-singleton type.
-
-Note that this is one of the few places where we really use the
-ownership-tracking semantics of unique-pointers, in the sense that their
-destruction behaviour at a certain point is runtime-dependent: the list nodes
-pointed to by |l0| and |l1| will only be deleted in the case of a singleton
-list, where |type_list_ptr| was not captured and set to null in the
-|type_expr| constructor for a tuple type; in that case the node will be
-deleted, but its contents has been moved out by then.
-
-@< Scan and |return| a tuple or function type, or |throw| a |logic_error| @>=
-{ dressed_type_list l0=scan_type_list(++s), l1;
-  bool is_tuple=*s==')';
-  if (*s=='-' and *++s=='>') l1=scan_type_list(++s);
-  if (*s!=')') throw logic_error("Missing ')' in type");
-   @+ else ++s;
-  type_expr a =
-    l0.size()==1
-    ? std::move(l0.front())
-    : type_expr(l0.undress()); // construct tuple type
-  if (is_tuple)
-    return a;
-  type_expr r =
-    l1.size()==1
-    ? std::move(l1.front())
-    : type_expr(l1.undress()); // construct tuple type
-  return type_expr(std::move(a),std::move(r)); // construct function type
-}
-
-@ A comma-separated list of types is handled by a straightforward loop.
-We must not forget that the list could be empty, which happens only of the
-very first character we see is |')'| or |'-'|. Since we advance our pointer in
-the test for the presence of a comma extending the list, we must back it up
-when the test fails, i.e., after loop exit.
-
-@< Function definitions @>=
-@)
-dressed_type_list scan_type_list(const char*& s)
-{ dressed_type_list result; // start with empty tuple
-  if (*s==')' or *s=='-')
-    return result;
-  do result.push_back(scan_type(s));
-  while (*s++==',');
-  --s; // back up to character that was not a comma
-  return result;
-}
 
 @ For primitive types we use the same strings as for printing them. We test as
 many characters as the type name has, and the fact that no alphanumeric
@@ -1114,6 +1060,54 @@ into the former list to an element of that enumeration.
     }
   }
   throw logic_error("Type unrecognised");
+}
+
+@ The following code demonstrates how simple recursive descent parsing can be.
+
+The function |scan_in_parens| scans a maximal portion of a type string that is
+enclosed in parentheses or brackets. It only deals directly with an arrow that
+might separate argument and return type in a function type (but might of
+course be absent), and relies on |scan_union_list| to recognise the first and
+possibly the second part. The function recognises one or more variants
+separated by vertical bars (using a |while| loop but which uses a comma
+operator to scan a variant before the loop condition), relying on its turn on
+|scan_tuple_list| to deal with individual variants. It must take care though
+to unpack the list in case it has length one (no union is involved in this
+case). Finally |scan_tuple_list| similarly combines components in a list,
+recursively calling |scan_type| for individual components. Unlike unions, we
+allow the number of components to be zero, which can be recognised by having a
+terminating character at the read position right from the start; when the
+happens the loop is no entered at all, an the empty list of components will
+give an empty tuple.
+
+@< Function definitions @>=
+type_expr scan_in_parens(const char*& s)
+{ type_expr a=scan_union_list(s);
+  if (*s!='-' or s[1]!='>')
+    return a;
+  return type_expr(std::move(a),scan_union_list(s+=2));
+    // construct function type
+}
+@)
+type_expr scan_union_list(const char*& s)
+{ dressed_type_list variants;
+  while (variants.emplace_back(scan_tuple_list(s)),*s=='|')
+    ++s;
+  return variants.size()==1
+    ? std::move(variants.front())
+    : type_expr(variants.undress(),true);
+}
+@)
+type_expr scan_tuple_list(const char*& s)
+{ static const std::string term("|-)]");
+  dressed_type_list members;
+  if (term.find(*s)==std::string::npos)
+    // only act on non-terminating characters
+    while (members.emplace_back(scan_type(s)),*s==',')
+      ++s;
+  return members.size()==1
+    ? std::move(members.front())
+    : type_expr(members.undress(),false);
 }
 
 @*1 Predefined type expressions.
