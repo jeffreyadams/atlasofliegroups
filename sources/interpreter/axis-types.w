@@ -712,7 +712,7 @@ and a move constructor.
 The |func_type| structure has two sub-objects of type |type_expr|,
 rather than pointers to them. A move constructor only makes a
 shallow copy of the topmost nodes in the same way as was done in the move
-constructor for~|type_node|. Like for |type_expr| we do not provide an
+constructor for~|type_expr|. Like for |type_expr| we do not provide an
 ordinary copy constructor, but a value-returning |copy| accessor method.
 
 @s result_type normal
@@ -904,14 +904,25 @@ placed on the parsing stack will be argument of an interface function exactly
 once, possibly some |destroy| function in case it pops symbols during error
 recovery).
 
-However, the function |make_tuple_type| also reverses the list of types it
-handles, to reflect the fact that the left-recursive grammar rules most easily
-construct their type lists in reverse order.
+The first group of functions makes some provisions to facilitate special
+relations between types, so that the parser does not have to deal with them.
+Thus |mk_prim_type| will return an empty tuple type when called with the type
+name for |"void"|, although this is not a primitive type (indeed |"void"|
+should probably better be handled just like user-defined type abbreviations).
+The function |mk_union_type| will not encapsulate a list of length one into an
+invalid |type_expr|, but rather return its unique list element, unpacked. The
+reason for this is that having a syntactic category for a list of at least one
+component separated by vertical bars simplifies the grammar considerably; when
+the list has one component (and no bars) a union of one variant is temporarily
+created, but upon incorporation into an encompassing type, the union is then
+removed again. For tuples a similar provision is not necessary, as a somewhat
+more involved set of grammar rules is used that avoids making type lists of
+length~$1$.
 
-Note that we make a special provision that |mk_prim_type| will return an
-empty tuple type when called with the type name for |"void"|, although this is
-contrary to what the name of the function suggests. Indeed |"void"| should
-better be handled just like user-defined type abbreviations.
+The functions |make_tuple_type| and |make_union_type| reverse the list of
+types they handle, to compensate for the fact that the left-recursive grammar
+rules (easier for the parser generator) construct their type lists in reverse
+order.
 
 @< Function definitions @>=
 type_ptr mk_prim_type(primitive_tag p)
@@ -930,7 +941,10 @@ type_ptr mk_tuple_type (type_list&& l)
 {@; return type_ptr(new type_expr(std::move(l),false)); }
 
 type_ptr mk_union_type (type_list&& l)
-{@; return type_ptr(new type_expr(std::move(l),true)); }
+{ return type_ptr(l.singleton() ? new type_expr(std::move(l.front()))
+                  : new type_expr(std::move(l),true));
+}
+
 @)
 type_p make_prim_type(unsigned int p)
 {@; return mk_prim_type(static_cast<primitive_tag>(p)).release(); }
