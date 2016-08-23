@@ -42,7 +42,7 @@ given in the second and third columns.
 The next part of the output of nblock is a list of all the irreducible
 representations in the block of $\pi_r$. (This is the "block" in the
 name of the command.) These representations are numbered $0$ to $n-1$,
-with $n$ the number of elements in the block. This part starts with
+with $n$ the number of elements in the block. This part concludes with
 giving the number corresponding to the parameter that the user entered.
 
 Write $J_r(i)$ for the $i$th representation in the block. The
@@ -162,5 +162,5 @@ to $\rho(G)$; thirdly the continuous part $\nu$ of the parameter is printed.
 The final column gives the twisted involution of the Weyl group that specifies
 the involution of $H$ itself (see the help for the 'kgb' command).
 
-After the complete block os printed, the number of the block element that was
-specified by the user imput is reported.
+After the complete block is printed, the number of the block element that was
+specified by the user input is reported.
