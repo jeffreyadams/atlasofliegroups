@@ -1655,9 +1655,11 @@ more tightly bound context requires enclosing the expression in parentheses.
 
 (a) Command level.
 
-The most common command is an expression, possibly followed by a semicolon;
-the case with semicolon is treated exactly as if '()' followed to form a
-sequenced expression with void value (so that no value will be printed).
+The most common command is an expression, which will be evaluated and its
+value printed. Nothing will be printed if the expression has void type, so for
+a statement evaluated only for its side effect (for instance an assignment) one
+may suppress output either by casting it to void (prefix "void:" to the
+statement), or by following it by a semicolon and then and empty tuple '()'.
 
 Another common command is the definition starting with 'set'. In it's basic
 form 'set' is followed by a an identifier pattern or an operator name, an '='
@@ -1681,6 +1683,8 @@ ident = expr', except that it adds to the identifier table in all cases.
 
 A command of the form 'ident : type' similarly introduces an identifier
 into the identifier table, with the given type but with an undefined value.
+This allows subsequent function definitions to refer to the identifier as a
+global variable, while not commiting to some initial value for it yet.
 
 The 'forget' command removes a global identifier or overload. In the former
 case 'forget' is just followed by the identifier to be removed; in the latter
