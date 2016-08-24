@@ -558,19 +558,6 @@ Weight Cayley_shift (const InnerClass& G,
   return sum;
 }
 
-Coweight ell_shift (const InnerClass& G,
-		    InvolutionNbr theta_downstairs, // at more compact Cartan
-		    const WeylWord& to_simple)
-{ const RootDatum& rd=G.rootDatum();
-  const InvolutionTable& i_tab = G.involution_table();
-  RootNbrSet S =
-    pos_to_neg(rd,to_simple) & i_tab.imaginary_roots(theta_downstairs);
-  Coweight sum(rd.rank(),0); // difference of $\rho^\vee_{im}$ values
-  for (auto it=S.begin(); it(); ++it)
-    sum += rd.coroot(*it); // sum imaginary poscoroots |to_simple| negates
-  return sum;
-}
-
 StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
 {
   const RootDatum& rd = rootDatum();

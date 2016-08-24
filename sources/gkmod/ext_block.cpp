@@ -360,13 +360,29 @@ KGBElt x(const param& E)
   return E.rc().kgb().lookup(a);
 }
 
+#if 0 // unused code, but the formula is referred to in the comment below
 int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
 { return
     (E.l().dot((E.delta()-1)*E.tau()) + 2*E.t().dot(E.lambda_rho())) % 4;
 }
+#endif
 
+
+/*
+  The quotient of |z| values across a Cayley transform will only be used when
+  value of |t| is the same upstairs as downstairs, and, transformed to the
+  situation of a Cayley transform by a \emph{simple} root |alpha|, the value
+  of |lambda_rho| either does not change at all, or changes by |alpha|, with
+  |E.t().cdot(alpha)==0|; hence the second term in |z| contributes nothing.
+  For Cayley by a non-simple root, although the quotient of |z| values might
+  pick up a contribution from the second term due to a |cayley_shift| added to
+  |lambda_rho|, it turns out that the Right Thing is not to use that quotient,
+  but the quotient evaluated at the simple situation. As a consequence, the
+  function below does not call |z| twice, but just computes the contribution
+  to the difference of values that would come \emph{from its first term} only.
+ */
 int z_quot (const param& E, const param& F)
-{ int d = z(E)-z(F);
+{ int d = E.l().dot((E.delta()-1)*E.tau()) - F.l().dot((F.delta()-1)*F.tau());
   assert (d%2==0); // when used, this function should only produce a sign
   return d%4==0 ? 1 : -1;
 }
@@ -901,6 +917,7 @@ WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
   std::vector<bool> is_length_3 (delta.size());
 
   // tabulate action of |delta| on simple roots
+  // this could and should be precomputed in |ctxt|
   for (weyl::Generator s=0; s<delta.size(); ++s)
   { weyl::Generator t =
       rd.simpleRootIndex(rd.root_index(ctxt.delta()*rd.simpleRoot(s)));
@@ -946,7 +963,8 @@ WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
   for real Cayley transforms, one will subtract $\rho_r$ from |lambda_rho|
   before projecting it parallel to |alpha| so as to make |alpha_v| vanish on
   |gamma-lambda_rho-rho|. Here we compute from |E.lambda_rho()|, corrected by
-  that |shift|, the multiple of $\alpha/2$ that such a projection would add.
+  that |shift|, the multiple of $\alpha/2$ that such a projection would add
+  to |lambda_rho| (or equivalently, subtract from |gamma-lambda_rho-rho|).
 */
 int level_a (const param& E, const Weight& shift, RootNbr alpha)
 {
@@ -1793,7 +1811,7 @@ DescValue star (const param& E,
 	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
 
-	const Weight new_lambda_rho = E.lambda_rho()-rho_r_shift
+	const Weight new_lambda_rho = E.lambda_rho() - rho_r_shift
 	  + alpha*(a_level/2) + beta*(b_level/2);
 
 	int ta = E.t().dot(alpha); int tb = E.t().dot(beta);
@@ -1883,49 +1901,80 @@ DescValue star (const param& E,
       }
       else // length 2 complex case
       { const bool ascent = rd.is_posroot(theta_alpha);
-	if (theta_alpha == (ascent ? n_beta : rd.rootMinus(n_beta)))
-	{ // twisted commutation with |s0.s1|: 2Ci or 2Cr
-	  result = ascent ? two_semi_imaginary : two_semi_real;
+	if (theta_alpha != (ascent ? n_beta : rd.rootMinus(n_beta)))
+	{ // twisted non-commutation with |s0.s1|
+	  result = ascent ? two_complex_ascent : two_complex_descent;
+	  links.push_back(std::make_pair(1,complex_cross(p,E)));
+	}
+	else if (ascent)
+	{ // twisted commutation with |s0.s1|: 2Ci
+	  result = two_semi_imaginary;
 
 	  TwistedInvolution new_tw = E.tw;
 	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
 
-	  const int f =
+	  RootNbr alpha_simple = n_alpha;
+	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	  assert(rd.is_simple_root(alpha_simple)); // no complications here
+
+	  const auto theta_p = i_tab.nr(new_tw); // upstairs
+	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,ww);
+	  assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+
+	  // downstairs cross by |ww| only has imaginary and complex steps, so
+	  // $\alpha_v.(\gamma-\lambda_\rho)$ is unchanged across |ww|
+	  const int f = // number of times $\alpha$ is added to $\lambda_\rho$
 	    (E.ctxt.gamma() - E.lambda_rho()).dot(alpha_v)- rd.colevel(n_alpha);
+
+	  const Weight new_lambda_rho = E.lambda_rho() + alpha*f + rho_r_shift;
+	  // both $\gama-\lambda$ and $\tau$ get $f*alpha$ subtracted by
+	  // $\alpha$-reflection; adapt $\tau$ for vanishing $1-\delta$ image
+	  const Weight new_tau = rd.reflection(n_alpha,E.tau()) + alpha*f;
+
+	  // but |dual_v| needs correction by |ell_shift|
 	  const int dual_f =
 	    (E.ctxt.g() - E.l()).dot(alpha) - rd.level(n_alpha);
 
-	  const auto theta_p = i_tab.nr(new_tw);
-	  const WeightInvolution th_1 = i_tab.matrix(theta_p)-1;
-	  const auto w_alpha = rd.reflectionWord(n_alpha);
-	  const Weight ns_corr = // correction for non-simple complex cross
-	    repr::Cayley_shift(ic,theta_p,w_alpha);
-	  const Weight new_lambda_rho = E.lambda_rho() + alpha*f + ns_corr;
-	  const Weight new_tau =
-	    rd.reflection(n_alpha,E.tau()) + alpha*(ascent ? f : -f) -
-	    matreduc::find_solution(i_tab.matrix(theta_p)-1,delta_1*ns_corr);
-	  const Weight ns_l_corr = // correction for non-simple complex cross
-	    repr::ell_shift(ic,theta_p,w_alpha);
-	  const Coweight new_l = E.l() + alpha_v*dual_f + ns_l_corr;
-          const Coweight new_t = rd.coreflection(E.t(),n_alpha)
-	    + alpha_v*(ascent ? -dual_f : dual_f) -
-	    matreduc::find_solution(i_tab.matrix(theta_p).transposed()+1,
-				    delta_1.right_prod(ns_l_corr));
+	  const Coweight new_l = E.l() + alpha_v*dual_f;
+          const Coweight new_t =
+	    rd.coreflection(E.t(),n_alpha) - alpha_v*dual_f;
+	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, new_t);
+
+	  int ab_tau = (alpha_v+beta_v).dot(E.tau());
+	  assert (ab_tau%2==0);
+	  int sign = (ab_tau * dual_f)%4==0 ? 1 : -1;
+	  links.push_back(std::make_pair(sign,std::move(F)));  // "Cayley" link
+	}
+	else // twisted commutation with |s0.s1|, and not |ascent|: 2Cr
+	{ result = two_semi_real;
+
+	  TwistedInvolution new_tw = E.tw;
+	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
+
+	  RootNbr alpha_simple = n_alpha;
+	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	  assert(rd.is_simple_root(alpha_simple)); // no complications here
+
+	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
+	  assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+
+	  const int f = level_a(E,rho_r_shift,n_alpha);
+
+	  const Weight new_lambda_rho = E.lambda_rho() - rho_r_shift + alpha*f;
+	  const Weight new_tau = rd.reflection(n_alpha,E.tau()) - alpha*f;
+
+	  const int dual_f =
+	    (E.ctxt.g() - E.l()).dot(alpha) - rd.level(n_alpha);
+	  const Coweight new_l = E.l() + alpha_v*dual_f;
+          const Coweight new_t =
+	    rd.coreflection(E.t(),n_alpha) + alpha_v*dual_f;
 
 	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, new_t);
 
-	  int ab_t =
-	    ascent ? (alpha_v+beta_v).dot(E.tau())
-	    : E.t().dot(beta-alpha);
-	  assert (ab_t%2==0);
-	  int sign = (ascent ? ab_t * dual_f : ab_t * (f+alpha_v.dot(E.tau())))
-		      %4==0 ? 1 : -1;
+	  int t_ab = E.t().dot(beta-alpha);
+	  assert (t_ab%2==0);
+	  int sign = (t_ab * (f+alpha_v.dot(E.tau()))) %4==0 ? 1 : -1;
 	  links.push_back(std::make_pair(sign,std::move(F)));  // "Cayley" link
-	}
-	else // twisted non-commutation with |s0.s1|
-	{
-	  result = ascent ? two_complex_ascent : two_complex_descent;
-	  links.push_back(std::make_pair(1,complex_cross(p,E)));
 	}
       }
     }

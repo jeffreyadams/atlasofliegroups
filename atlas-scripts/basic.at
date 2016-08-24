@@ -1058,18 +1058,19 @@ set has_double_extended_Cayley (int n) =
 set print_extended_block (Param p, mat delta) = void:
   let (block,types,L0,L1) = extended_block(p,delta) then (l,r)=#types
   then w=width(#block-1)
+  , with_sign(int n) = string: if n<0 then "-"+(-1-n) else "+"+n fi
   in
   for q@i in block
   do prints
   (r_adjust(w,int_format(i))
   ,": ["
-  , ##
+  , ## { statuses }
     for j:r
     do if j=0 then "" else "," fi
     ## l_adjust(5,extended_status_texts[types[i,j]])
     od
   , "]"
-  , ##
+  , ## { cross actions }
     for j:r
     do r_adjust (w+1, int_format(
        if L0[i,j]=l or has_double_extended_Cayley(types[i,j])
@@ -1078,13 +1079,13 @@ set print_extended_block (Param p, mat delta) = void:
        fi))
     od
   , "; "
-  , ##
+  , ## { Cayley transforms }
     for j:r
     do c_adjust (2*w+3,
        if L1[i,j]=l then "." { compact, nonparity or complex: no Cayley }
        elif has_double_extended_Cayley(types[i,j])
-       then L0[i,j]+","+L1[i,j] { double }
-       else int_format(L0[i,j]) { single valued Cayley }
+       then L0[i,j].with_sign+","+L1[i,j].with_sign { double valued Cayley }
+       else L0[i,j].with_sign { single valued Cayley }
        fi)
     od
   , "  x=" , #x(q) , ", " , lambda_minus_rho(q)

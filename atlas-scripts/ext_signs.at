@@ -11,14 +11,13 @@
   the conjecture is the following
   set s=sign(ext_Cayley(k,E)[0 or 1],F)
   set t=sign(ext_Cayley(k,F)[0 or 1],E)
-  in each case the Cayleys of type 2i12/2r21 by root k
-  are double valued, and one of them gives \pm the other argument
-  see definition of sign(E,[F1,F2]),sign([E1,E2],F) in extended.at
+  in each case the Cayleys of type 2i12/2r21 by root k are double valued,
+    and one of them gives \pm the other argument
   then define
-  sign_2i12(k,E,F)=1 if s=t=1 and -1 otherwise
+    sign_2i12(k,E,F)=1 if s=t=1 and -1 otherwise
   the idea is:
-  there are 4 representations E_1,E_2 (more compact Cartan) and F_1,F_2
-  (more split)
+  there are 4 representations E_1,E_2 (more compact Cartan)
+    and F_1,F_2 (more split)
   take these to be the default extended parameters
   for each pair (i,j) (i,j=1,2) there is a sign E_i --> F_j:
     whether \pm F_j occurs in the Cayley of E_i by root k (of type 2i12)
@@ -26,23 +25,20 @@
     whether \pm E_j occurs in the Cayley of F_i by root k (of type 2r21)
 
   typically 7 of these are +, and 1 is minus
-  occasionally there are 6 pluses, and 2 minuses (both directions E_i<-->F_j)
 
   then sign_2i12(k,E_i,F_j)=-1 if *either arrow gets a minus*, and 1 otherwise
 
-  in SL(8,R) p=spherical_principal_series(G,rho(G)/4)
+  in SL(8,R) with p=spherical_principal_series(G,rho(G)/4)
   you get 6 pluses and 2 minuses
 }
 
 set sign_2i12 (int j, extended_param E, extended_param F) = int:
-( let eC1=ext_Cayley(j,E), eC2=ext_Cayley(j,F) in
-  assert(#eC1=2 and #eC2=2)
-; if sign((eC1[0],eC1[1]),F)=1 and sign((eC2[0],eC2[1]),E)=1 then 1 else -1 fi
-)
+  let f (int j, extended_param E, extended_param F) = int:
+    let c=ext_Cayley(j,E) in sign(c[0],F)+sign(c[1],F)
+  in if f(j,E,F)=1 and f(j,F,E)=1 then 1 else -1 fi
 
-{ old version, replaced by one above
-   given E, F related by 2i12
-  compute the sign: coefficient of p(F) in  T_kappa(p(E))
+{ given E=E(x,y,lambda_rho,l,tau,t) and F=(x',y',lambda_rho',tau',l't') related
+  by 2i12, compute the sign: coefficient of pi(F) in  T_kappa(\pi(E))
   see "More on the 2i12, 2Ci and 1i cases" Proposition 1.13
 }
 set sign_2i12_old (int j,extended_param E,extended_param F) = int:
@@ -66,8 +62,9 @@ begin
         ,"q is not a 2i12 Cayley transform of p")
 ; let l_test_1=in_lattice((1+^theta(E)),l(F)-l(E)) in
   let l_test_2=in_lattice((1+^theta(E)),l(F)-l(E)+alpha_check) in
-  let lambda_test_1=in_lattice((1+^omega(F)),lambda(F)-lambda(E)) in
-  let lambda_test_2=in_lattice((1+^omega(F)),alpha+lambda(F)-lambda(E)) in
+  let lambda_test_1=in_lattice((1+^omega(F)),lambda_rho(F)-lambda_rho(E)) in
+  let lambda_test_2 =
+    in_lattice((1+^omega(F)),alpha+lambda_rho(F)-lambda_rho(E)) in
   let kappa= if (l_test_2 and lambda_test_2) then -1 else 1 fi in
   {solve for sigma}
   let sigma = solve((1+^omega(F)),alpha-beta) in
@@ -83,19 +80,19 @@ begin
   let t_0=vec:ratvec_as_vec(t+t*beta*s[0]-t_alpha_beta/2*alpha_check) in
   let E_new=
     if l_test_1
-    then (ic(E),delta(E),gamma(E),lambda(E),theta(E),g(E),l(F),omega(E)
+    then (ic(E),delta(E),gamma(E),lambda_rho(E),theta(E),g(E),l(F),omega(E)
          ,tau_0,t_0)
     elif l_test_2
-    then (ic(E),delta(E),gamma(E),lambda(E),theta(E),g(E),vec:l(F)+alpha_check
+    then (ic(E),delta(E),gamma(E),lambda_rho(E),theta(E),g(E),l(F)+alpha_check
          ,omega(E),tau_0,vec:t_0-s[0])
     else error("l_test_1 and l_test_2 both false")
     fi
   then F_new=
     if lambda_test_1
-    then (ic(F),delta(F),gamma(F),lambda(E),theta(F),g(F),l(F),omega(F)
+    then (ic(F),delta(F),gamma(F),lambda_rho(E),theta(F),g(F),l(F),omega(F)
          ,tau_0,t_0)
     elif lambda_test_2
-    then (ic(F),delta(F),gamma(F),vec:lambda(E)+alpha,theta(F),g(F),l(F)
+    then (ic(F),delta(F),gamma(F),lambda_rho(E)+alpha,theta(F),g(F),l(F)
          ,omega(F),vec:tau_0-sigma[0],t_0)
     else prints(E, x(E), y_gen(E), F, x(F), y_gen(F))
     ; error("lambda_test_1 and lambda_test_2 both false") fi
@@ -115,44 +112,39 @@ set sign_2r21(int j, extended_param E, extended_param F) =int:
   sign_2i12(j,F,E)
 
 { see "More on the 2i12, 2Ci and 1i cases" Section 2 }
-set sign_2Ci (
-    int j,extended_param(,delta,,,,g,l,,tau,):E) = int:
+set sign_2Ci (int j,extended_param E) = int:
   let id=integrality_datum(E)
   then alpha=root(id,j), alpha_check=coroot(id,j)
-  then beta=delta*alpha then beta_check=coroot(id,beta)
+  then beta=E.delta*alpha then beta_check=coroot(id,beta)
   then exponent = rat_as_int( { exponent of i should be even, convert for -1 }
-    ((alpha_check+beta_check)*tau) * ((g-l)*alpha-1) /2 )
+    ((alpha_check+beta_check)*E.tau) * ((E.g-E.l)*alpha-1) /2 )
   in (-1)^exponent
 
-set sign_2Cr (int j,extended_param(,delta,gamma,lambda,,,,,,t):E) = int:
+set sign_2Cr (int j,extended_param E) = int:
   let id=integrality_datum(E)
   then alpha=root(id,j), alpha_check=coroot(id,j)
-  then beta=delta*alpha then beta_check=coroot(id,beta)
+  then beta=E.delta*alpha then beta_check=coroot(id,beta)
   then exponent = rat_as_int( { exponent of i should be even, convert for -1 }
-    (alpha_check*(gamma-lambda)-1) * (t*(alpha+beta)) /2 )
+    (alpha_check*(E.gamma-E.lambda_rho)-1) * (E.t*(alpha+beta)) /2 )
   in (-1)^exponent
 
-set signs_1i1(
-    int j,
-    extended_param
-      (ic,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E):E,
-    extended_param E1,
-    extended_param F
-  ) = (int,int):
+set signs_1i1(int j, extended_param E, extended_param E1, extended_param F) =
+  (int,int):
 begin
   assert(ext_type(j,E)="1i1","Wrong type in signs_1i1")
-; let alpha=root(ic,j), alpha_check=coroot(ic,j), F=ext_Cayley(j,E)[0]
+; let alpha=root(E.ic,j), alpha_check=coroot(E.ic,j), F=ext_Cayley(j,E)[0]
   then sigma = solve((1+^omega(F)),alpha)  in
   assert(>#sigma,"can't solve for sigma in signs_1i1")
-; let new_tau_E = vec: tau_E-(alpha_check*tau_E)*sigma[0]
-  , l_E_alpha = l_E*alpha
+; let new_tau_E = vec: E.tau-(alpha_check*E.tau)*sigma[0]
+  , l_E_alpha = E.l*alpha
   then new_l_E=
     if is_even(l_E_alpha)
-    then l_E-rat_as_int(l_E_alpha/2)*alpha_check
-    else l_E-rat_as_int((l_E_alpha-1)/2)*alpha_check
+    then E.l-rat_as_int(l_E_alpha/2)*alpha_check
+    else E.l-rat_as_int((l_E_alpha-1)/2)*alpha_check
     fi
   then new_E =
-    (ic,delta_E,gamma_E,lambda_E,theta_E,g_E,new_l_E,omega_E,new_tau_E,t_E)
+    (E.ic,E.delta,E.gamma,E.lambda_rho,E.theta
+    ,E.g,new_l_E,E.omega,new_tau_E,E.t)
   then new_F = ext_Cayley(j,new_E), sign_E_new_E=sign(E,new_E)
   in prints("sign_E_new_E:", sign_E_new_E)
 { ; display(new_E) }
