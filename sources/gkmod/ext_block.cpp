@@ -360,13 +360,29 @@ KGBElt x(const param& E)
   return E.rc().kgb().lookup(a);
 }
 
+#if 0 // unused code, but the formula is referred to in the comment below
 int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
 { return
     (E.l().dot((E.delta()-1)*E.tau()) + 2*E.t().dot(E.lambda_rho())) % 4;
 }
+#endif
 
+
+/*
+  The quotient of |z| values across a Cayley transform will only be used when
+  value of |t| is the same upstairs as downstairs, and, transformed to the
+  situation of a Cayley transform by a \emph{simple} root |alpha|, the value
+  of |lambda_rho| either does not change at all, or changes by |alpha|, with
+  |E.t().cdot(alpha)==0|; hence the second term in |z| contributes nothing.
+  For Cayley by a non-simple root, although the quotient of |z| values might
+  pick up a contribution from the second term due to a |cayley_shift| added to
+  |lambda_rho|, it turns out that the Right Thing is not to use that quotient,
+  but the quotient evaluated at the simple situation. As a consequence, the
+  function below does not call |z| twice, but just computes the contribution
+  to the difference of values that would come \emph{from its first term} only.
+ */
 int z_quot (const param& E, const param& F)
-{ int d = z(E)-z(F);
+{ int d = E.l().dot((E.delta()-1)*E.tau()) - F.l().dot((F.delta()-1)*F.tau());
   assert (d%2==0); // when used, this function should only produce a sign
   return d%4==0 ? 1 : -1;
 }
