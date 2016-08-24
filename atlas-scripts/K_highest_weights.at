@@ -18,7 +18,7 @@ set LKT_verbose=false
 
    R(K)=|K/K_#|=|T_{K,large}/T_K|
 
-  given mu a character of T_K
+   given mu a character of T_K
 
    T_K \subset T_K(\mu) \subset T_{K,large}
    |-----a-------|--------b-------|
@@ -27,7 +27,8 @@ set LKT_verbose=false
    software: R(K)=R_K_dom(x)
              R(K,mu)=R_K_dom(mu)
 
-   {mu_i|i=1,...,b} characters of T_K  <-> {\tilde\mu_j|j=1,...,a} irreps of T_{K,large}
+   {mu_i|i=1,...,b} characters of T_K  <->
+     {\tilde\mu_j|j=1,...,a} irreps of T_{K,large}
 
    {mu_i}= orbit of R(K) acting acting on mu=mu_1, stabilizer is R(K,mu)
    {\tilde\mu_j|j=1,...,a} irreducible representations of T_{K,large}
@@ -35,12 +36,15 @@ set LKT_verbose=false
    mu_i -> Ind_{T_K}^{T_{K,large}})(mu_i)= \sum_{j=1}^a \tilde\mu_j
    \tilde\mu_j -> Res^{T_{K,large}}_{T_K}(\tilde\mu_j)=\sum_{i=1}^a\mu_i
 
-   mu_i -> a choices of extension to T_K(mu_i) -> induce irreducibly to T_{K,large}
+   mu_i -> a choices of extension to T_K(mu_i)
+     -> induce irreducibly to T_{K,large}
      each mu_i (i=1,...,a) -> same set of \tilde\mu_j (j=1,...,b)
    dim(\tilde\mu_j)=|R(K)/R(K,mu)|
-   mu_i -> tau(mu_i) irreducible of K_#, dimension given by Weyl dimension formula
+   mu_i -> tau(mu_i) irreducible of K_#,
+      dimension given by Weyl dimension formula
    \tilde\mu_j -> \tau(\tilde\mu_j) irreducible of K
-   dim(\tau(\tilde\mu_j))=dim(\tau(\mu_j))*b=dim(\tau(\mu_j))|R(K)/R(K,mu_j)| (See Theorem 4.10(1))
+   dim(\tau(\tilde\mu_j))=dim(\tau(\mu_j))*b=dim(\tau(\mu_j))|R(K)/R(K,mu_j)|
+     (See Theorem 4.10(1))
 }
 
 { main functions in this file:
@@ -136,20 +140,26 @@ set highest_weight_one (K_Type p) = KHighestWeight:
   then x_G=canonical_x_K(x(p))
   then mu_G=mu_L+two_rho_u_cap_s(Q)
 { need version of 2*rho_u_cap_s(Q) which is integral, see thetastable.at}
-{ this might be a ratvec, denominator 1/2, by restriction it defines a character  of T_{K_0}
+{ this might be a ratvec, denominator 1/2, by restriction it defines a
+  character  of T_{K_0}
   need to replace mu_G\in 1/2X^*theta with mu_G_integral\in X^*
   so that restriction takes mu_G_integral to mu_G restricted to T_{K_0}
 }
-{ then ()=prints("mu_L:",mu_L,new_line, " mu_G", mu_G, new_line,"2*rho_u_cap_s(Q)", 2*rho_u_cap_s(Q), new_line, "two_rho_u_cap_s", two_rho_u_cap_s(Q)) }
+{ then ()=prints("mu_L:",mu_L,new_line, " mu_G", mu_G, new_line,
+     "2*rho_u_cap_s(Q)", 2*rho_u_cap_s(Q), new_line,
+     "two_rho_u_cap_s", two_rho_u_cap_s(Q)) }
 in (x_G,mu_G)
-set highest_weight_one (K_Type p,KGBElt x_K) = KHighestWeight:move_weight(highest_weight_one(p),x_K)
+set highest_weight_one (K_Type p,KGBElt x_K) = KHighestWeight:
+  move_weight(highest_weight_one(p),x_K)
 
 {primary multi-valued function K_type -> [KHighestWeight]
 number of terms is |R(K)/R(K,mu)|
 }
-set highest_weights (K_Type p) = [KHighestWeight]:R_K_dom_mu_orbit(highest_weight_one(p))
+set highest_weights (K_Type p) = [KHighestWeight]:
+  R_K_dom_mu_orbit(highest_weight_one(p))
 
-set highest_weights (K_Type p,KGBElt x_K) = [KHighestWeight]:for mu in highest_weights(p) do move_weight(mu,x_K) od
+set highest_weights (K_Type p,KGBElt x_K) = [KHighestWeight]:
+  for mu in highest_weights(p) do move_weight(mu,x_K) od
 
 {highest_weights(Param p)= union over mu\in LKTs(p) of highest_weights(mu)}
 set highest_weights (Param p) = [KHighestWeight]:
@@ -157,7 +167,8 @@ set highest_weights (Param p) = [KHighestWeight]:
   for q in LKTs(p) do result#:=highest_weights(q) od;
   result
 
-set highest_weights (Param p,KGBElt x_K) = [KHighestWeight]:for (x,mu) in highest_weights(p) do move_weight((x,mu),x_K) od
+set highest_weights (Param p,KGBElt x_K) = [KHighestWeight]:
+  for (x,mu) in highest_weights(p) do move_weight((x,mu),x_K) od
 
 
 {return single highest weight if it is unique}
@@ -194,9 +205,18 @@ set centralizer(KGBElt x,ratvec v) = (KGBElt,RootDatum):
 set find_nci_root (KGBElt x,ratvec tau) = int:
   let rd=root_datum(x)
   then sr=simple_roots(rd), scr=simple_coroots(rd),ssr=ss_rank(rd)
+<<<<<<< HEAD
   then j= first(ssr, (int i)bool: scr[i]*tau<0 and is_noncompact_imaginary(x)(sr[i]) )
   in
   if j>=0 then j
+||||||| merged common ancestors
+  then j= first(ssr, (int i)bool: scr[i]*tau<0 and is_noncompact_imaginary(x)(sr[i]) )
+  in if j>=0 then j
+=======
+  then j= first(ssr, (int i)bool:
+                     scr[i]*tau<0 and is_noncompact_imaginary(x)(sr[i]) )
+  in if j>=0 then j
+>>>>>>> Fix scripts failing the ./check-scripts.sh test and remove trailing whitespace
   else j:=
     first(ssr
          , (int i)bool:
@@ -359,16 +379,23 @@ See KHatHowe, Section 15
 set fix (KHighestWeight mu,KGBElt x_Q) = KHighestWeight:
   let (x,tau)=mu then w=find_W_cross(x,x_Q) in (cross(w,x),act(w,tau))
 
-{this function takes KHighestWeight mu -> |R(K,mu)| K_types, see top of this file}
-{first replace mu with strongly dominant mu in same R_K_dom_mu orbit}
+{ this function takes KHighestWeight mu -> |R(K,mu)| K_types,
+  see top of this file }
+{ first replace mu with strongly dominant mu in same R_K_dom_mu orbit }
 set K_types (KHighestWeight mu_in)= [K_Type]:
   let (mu,,,)=make_strongly_dominant(mu_in) in
   let  Q=parabolic(mu)  {Q is theta-stable}
   in
   assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
   let x_Q=x_min(Q)
+<<<<<<< HEAD
   then mu=fix(mu,x_Q)
   {then ()=prints("x_Q=", x_Q)}
+||||||| merged common ancestors
+  then mu=fix(mu,x_Q) 
+=======
+  then mu=fix(mu,x_Q)
+>>>>>>> Fix scripts failing the ./check-scripts.sh test and remove trailing whitespace
   then (x,tau)=mu then
   ()=if LKT_verbose then  prints("fixed mu:", mu) fi then
   L=Levi(Q)
@@ -413,8 +440,9 @@ set K_type (KHighestWeight(x,mu)) = K_Type:
 set K0_highest_weight (KHighestWeight(x,mu)) = Param:
   finite_dimensional(K_0(x),project_K(real_form(x),mu))
 
-{dimension of KHighestWeight=dimension of representation of K_#
-                            =dimension of representation of K_0, given by Weyl dimension formula}
+{ dimension of KHighestWeight=dimension of representation of K_#
+                             =dimension of representation of K_0,
+			        given by Weyl dimension formula }
 set dimension (KHighestWeight mu) = int:dimension(K0_highest_weight(mu))
 
 set dimension (K_Type p) = int:

@@ -159,18 +159,21 @@ set print_Z (InnerClass G) = void:
   fi
 )
 
-{elements of order 2 in the center of G(R)
-this is very clumsy, should be improved
-needed for  all_G_spherical_same_differential in K_highest_weight.at
-algorithm: run over 2^n elements h=(epsilon_1,...,epsilon_n)\in H
-check if delta(h)=h, i.e. (1+delta)*h has all even entries 
-and alpha(h)=1 for all roots alpha
+{ elements of order 2 in the center of G(R)
+  this is very clumsy, should be improved
+  needed for  all_G_spherical_same_differential in K_highest_weight.at
+  algorithm: run over 2^n elements h=(epsilon_1,...,epsilon_n)\in H
+  check if delta(h)=h, i.e. (1+delta)*h has all even entries
+  and alpha(h)=1 for all roots alpha
 }
-set Z_2(RealForm G)=
-let H_2=generate_all_binary(rank(G)) then
-sr=simple_roots(G) then 
-delta=distinguished_involution(G) then 
-rv=[vec]:[] in
-for h in H_2 do 
- let w=(1+delta)*h in 
- if all(for a in w do is_even(a) od)  and all(for alpha in sr do is_even(alpha*h) od) then rv#:=h fi od;rv
+set Z_2 (RealForm G) = [vec]:
+  let delta1=1+distinguished_involution(G), sr=simple_roots(G)
+  in ## { filter values from H(2)}
+  for h in all_0_1_vecs(rank(G))
+  do
+    if ((h*delta1)%2).= { test (1+^delta)*h is null vector modulo 2}
+      and ((h*sr)%2).= { and h evaluates even on each simple root }
+    then [h]
+    else []
+    fi
+  od
