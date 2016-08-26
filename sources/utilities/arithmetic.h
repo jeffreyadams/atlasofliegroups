@@ -40,6 +40,10 @@ namespace arithmetic {
 
   Denom_t power(Denom_t base, unsigned int exponent);
 
+  template<typename I> int exp_minus_1 (I n) { return n%2==0 ? 1 : -1; }
+  template<typename I> int exp_i (I n)
+  { assert(n%2==0); return n%4==0 ? 1 : -1; }
+
   // inlined; first two arguments are supposed already reduced modulo third
   Denom_t modAdd(Denom_t, Denom_t, Denom_t);
 

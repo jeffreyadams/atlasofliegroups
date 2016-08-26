@@ -382,9 +382,9 @@ int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
   to the difference of values that would come \emph{from its first term} only.
  */
 int z_quot (const param& E, const param& F)
-{ int d = E.l().dot((E.delta()-1)*E.tau()) - F.l().dot((F.delta()-1)*F.tau());
-  assert (d%2==0); // when used, this function should only produce a sign
-  return d%4==0 ? 1 : -1;
+{ assert(E.t()==F.t()); // we require preparing |t| upstairs to get this
+  int d = E.l().dot((E.delta()-1)*E.tau()) - F.l().dot((F.delta()-1)*F.tau());
+  return arithmetic::exp_i(d); // asserts |d| is even, and returns $(-1)^(d/2)$
 }
 
 void ext_block::report_2Ci_toggles() const
@@ -1254,7 +1254,7 @@ DescValue star (const param& E,
 	  // $\alpha^\vee$ and $\beta^\vee$ are even on $(X^*)^\theta$ and
 	  // $(1-\delta)\tau\in(X^*)^\theta+2X^*$ so $<av-bv,\tau>$ is even
 	  assert((at-bt)%2==0);
-	  int m =  static_cast<unsigned int>(at)%2; // safe modular reduction
+	  int m = static_cast<unsigned int>(at)%2; // safe modular reduction
 
 	  param F0(E.ctxt, new_tw,
 		   E.lambda_rho() + rho_r_shift + alpha*m,
@@ -1423,7 +1423,7 @@ DescValue star (const param& E,
 
 	  int ab_tau = (alpha_v+beta_v).dot(E.tau());
 	  assert (ab_tau%2==0);
-	  int sign = (ab_tau * dual_f)%4==0 ? 1 : -1;
+	  int sign = arithmetic::exp_i(ab_tau * dual_f);
 	  links.push_back(std::make_pair(sign,std::move(F)));  // "Cayley" link
 	}
 	else // twisted commutation with |s0.s1|, and not |ascent|: 2Cr
@@ -1454,7 +1454,7 @@ DescValue star (const param& E,
 
 	  int t_ab = E.t().dot(beta-alpha);
 	  assert (t_ab%2==0);
-	  int sign = (t_ab * (f+alpha_v.dot(E.tau()))) %4==0 ? 1 : -1;
+	  int sign = arithmetic::exp_i(t_ab * (f+alpha_v.dot(E.tau())));
 	  links.push_back(std::make_pair(sign,std::move(F)));  // "Cayley" link
 	}
       }
@@ -1545,7 +1545,8 @@ DescValue star (const param& E,
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 
-	  const Weight rho_r_shift = repr::Cayley_shift(ic,i_tab.nr(new_tw),ww);
+	  const Weight rho_r_shift =
+	    repr::Cayley_shift(ic,ascent ? i_tab.nr(new_tw) : theta,ww);
 	  assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
 	  int tf_alpha = (E.ctxt.g() - E.l()).dot(alpha) - rd.level(n_alpha);
