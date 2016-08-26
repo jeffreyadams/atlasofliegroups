@@ -370,22 +370,37 @@ int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
 
 /*
   The quotient of |z| values across a Cayley transform will only be used when
-  value of |t| is the same upstairs as downstairs, and, transformed to the
-  situation of a Cayley transform by a \emph{simple} root |alpha|, the value
-  of |lambda_rho| either does not change at all, or changes by |alpha|, with
-  |E.t().cdot(alpha)==0|; hence the second term in |z| contributes nothing.
-  For Cayley by a non-simple root, although the quotient of |z| values might
-  pick up a contribution from the second term due to a |cayley_shift| added to
+  value of |t| is the same upstairs as downstairs. Then in the quotient of |z|
+  values the second term contributes |t.dot(E.lambda_rho()-F.lambda_rho())|.
+  That difference is often zero for the Cayley transform by a \emph{simple}
+  root |alpha| or (length 1) changes by |alpha| with |t.cdot(alpha)==0|; in
+  those cases the second term in |z| contributes nothing. For Cayley by a
+  non-simple root, although the quotient of |z| values might pick up a
+  contribution from the second term due to a |Cayley_shift| added to
   |lambda_rho|, it turns out that the Right Thing is not to use that quotient,
-  but the quotient evaluated at the simple situation. As a consequence, the
-  function below does not call |z| twice, but just computes the contribution
-  to the difference of values that would come \emph{from its first term} only.
+  but the quotient evaluated at the simple situation. So for these cases we
+  should just compute the contribution to the difference of values |z| that
+  would come \emph{from its first term} above only. This function does that:
  */
 int z_quot (const param& E, const param& F)
 { assert(E.t()==F.t()); // we require preparing |t| upstairs to get this
   int d = E.l().dot((E.delta()-1)*E.tau()) - F.l().dot((F.delta()-1)*F.tau());
   return arithmetic::exp_i(d); // asserts |d| is even, and returns $(-1)^(d/2)$
 }
+
+/*
+  In some cases, notably 2i12, one or both of the Cayley transforms may
+  involve (in the simple root case) a change |mu| in |lambda_rho| that does
+  not necessarily satisfy |t.dot(mu)==0|. In such cases the previous version
+  of |z_quot| is insufficient, and we should include a contribution from the
+  second term. But retrieving |mu| from the parameters |E| and |F| themselves
+  is complicated by the posssible contribution from |Cayley_shift| that should
+  be ignored; however at the place of call the value of |mu| is explicitely
+  available, so we ask here to pass |t.dot(mu)| as third argument |t_mu|.
+ */
+
+int z_quot (const param& E, const param& F, int t_mu)
+{ return z_quot(E,F)*arithmetic::exp_minus_1(t_mu); }
 
 void ext_block::report_2Ci_toggles() const
 {
@@ -1216,7 +1231,7 @@ DescValue star (const param& E,
 		   E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t());
 
 	  E0.set_l(E.l()+alpha_v+beta_v);
-	  int sign = z_quot(E,F);
+	  int sign = z_quot(E,F); // no 3rd arg, since |E.lambda_rho| unchanged
 	  int sign0 = sign * z_quot(E0,F);
 	  links.push_back(std::make_pair(sign,std::move(F)));	// Cayley link
 	  links.push_back(std::make_pair(sign0,std::move(E0))); // cross link
@@ -1242,7 +1257,10 @@ DescValue star (const param& E,
 	  param F1(E.ctxt, new_tw,
 		   E.lambda_rho() + rho_r_shift + alpha*mm, new_tau + sigma,
 		   new_l, E.t());
-	  int sign0=z_quot(E,F0), sign1=z_quot(E,F1); // before the |std::move|
+
+	  // compute signs before invoking |std::move|
+	  int t_alpha=E.t().dot(alpha);
+	  int sign0=z_quot(E,F0,m*t_alpha), sign1=z_quot(E,F1,mm*t_alpha);
 
 	  // first Cayley link will be the one that does not need |sigma|
 	  links.push_back(std::make_pair(sign0,std::move(F0))); // first Cayley
@@ -1264,7 +1282,10 @@ DescValue star (const param& E,
 		   E.lambda_rho() + rho_r_shift + alpha*(1-m) + beta,
 		   E.tau() - alpha*((at-m)/2) - beta*((bt+m)/2),
 		   F0.l(),E.t());
-	  int sign0=z_quot(E,F0), sign1=z_quot(E,F1); // before the |std::move|
+	  // get signs before invoking the |std::move| from |F0|, |F1|
+	  int ta = E.t().dot(alpha), tb=E.t().dot(beta);
+	  int sign0=z_quot(E,F0,ta*m)
+	    , sign1=z_quot(E,F1,ta*(1-m)+tb);
 
 	  links.push_back(std::make_pair(sign0,std::move(F0))); // first Cayley
 	  links.push_back(std::make_pair(sign1,std::move(F1))); // second Cayley
@@ -1309,17 +1330,19 @@ DescValue star (const param& E,
 	  // set two values for |t|; actually the same value in case |m==0|
 	  E0.set_t(E.t() - alpha_v*((ta+m)/2) - beta_v*((tb-m)/2));
 	  assert(same_sign(E,E0)); // since only |t| changes
+	  assert(E0.t().dot(alpha)==-m and E0.t().dot(beta)==m);
 
 	  E1.set_t(E.t() - alpha_v*((ta-m)/2) - beta_v*((tb+m)/2));
 	  assert(same_sign(E,E1)); // since only |t| changes
+	  assert(E1.t().dot(alpha)==m and E1.t().dot(beta)==-m);
 
 	  param F0(E.ctxt, new_tw,
 		   new_lambda_rho,E.tau(), E.l()+alpha_v*m, E0.t());
 	  param F1(E.ctxt, new_tw,
 		   new_lambda_rho,E.tau(), E.l()+alpha_v*(1-m)+beta_v,E1.t());
 
-	  int sign0=z_quot(E0,F0);
-	  int sign1=z_quot(E1,F1);
+	  int sign0=z_quot(E0,F0,m*((b_level-a_level)/2));
+	  int sign1=z_quot(E1,F1,m*((a_level-b_level)/2));
 
 	  // Cayley links
 	  links.push_back(std::make_pair(sign0,std::move(F0)));
@@ -1341,17 +1364,19 @@ DescValue star (const param& E,
 	  // E0 is parameter adapted to Cayley transform that does not need |s|
 	  E0.set_t(E.t() - alpha_v*((ta+m)/2) - beta_v*((tb-m)/2));
 	  assert(same_sign(E,E0)); // since only |t| changes
+	  assert(E0.t().dot(alpha)==-m and E0.t().dot(beta)==m);
 
 	  E1.set_t(E.t() - s);
-	  assert(same_sign(E,E1)); // since only |t| changes
+	  assert(same_sign(E,E1)); // since only |t| change
+	  assert(E1.t().dot(alpha)==-mm and E1.t().dot(beta)==mm);
 
 	  param F0(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau(), E.l()+alpha_v*m, E0.t());
 	  param F1(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau(), E.l()+alpha_v*mm, E1.t());
 
-	  int sign0=z_quot(E0,F0);
-	  int sign1=z_quot(E1,F1);
+	  int sign0=z_quot(E0,F0,m *((b_level-a_level)/2));
+	  int sign1=z_quot(E1,F1,mm*((b_level-a_level)/2));
 
 	  // Cayley links
 	  links.push_back(std::make_pair(sign0,std::move(F0)));
@@ -1366,6 +1391,7 @@ DescValue star (const param& E,
 
 	  E0.set_t(E.t() - s); // parameter adapted to Cayley transform |F|
 	  assert(same_sign(E,E0)); // since only |t| changes
+	  assert(E.t().dot(alpha)==0 and E.t().dot(beta)==0);
 
 	  E1.set_lambda_rho(E.lambda_rho()+alpha+beta);
 	  E1.set_t(E0.t()); // cross action, keeps adaption of |t| to |F| below
@@ -1373,7 +1399,7 @@ DescValue star (const param& E,
 
 	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau(), E.l(), E0.t());
 
-	  int sign0=z_quot(E0,F);
+	  int sign0=z_quot(E0,F); // no 3rd arg, as |E.t().dot(alpha)==0| etc.
 	  int sign1=sign0*z_quot(E1,F); // total sign from |E| to its cross |E1|
 
 	  links.push_back(std::make_pair(sign0,std::move(F ))); // Cayley link
@@ -1499,7 +1525,7 @@ DescValue star (const param& E,
 		E.tau() - alpha*kappa_v.dot(E.tau()),
 		E.l() + kappa_v*((tf_alpha+tf_beta)/2), E.t());
 
-	int sign = z_quot(E,F);
+	int sign = z_quot(E,F); // |lambda_rho| unchanged at simple Cayley
 
 	links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
       }
@@ -1523,15 +1549,15 @@ DescValue star (const param& E,
 	const int b_level = level_a(E,rho_r_shift,n_beta);
 	assert(b_level%2==0); // since |a_level| and |b_level| have same parity
 
-	const Weight new_lambda_rho =
+	const Weight new_lambda_rho = // make level for |kappa| zero
 	  E.lambda_rho()-rho_r_shift + kappa*((a_level+b_level)/2);
 
-	E0.set_t(E.t()-alpha_v*kappa.dot(E.t()));
+	E0.set_t(E.t()-alpha_v*kappa.dot(E.t())); // makes |E.t().dot(kappa)==0|
 	assert(same_sign(E,E0)); // since only |t| changes
 
 	param F(E.ctxt, new_tw,	new_lambda_rho,E.tau(), E.l(), E0.t() );
 
-	int sign = z_quot(E0,F);
+	int sign = z_quot(E0,F); // no 3rd arg since |E.t().dot(kappa)==0|
 	links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
       }
       else // length 3 complex case
@@ -1560,19 +1586,22 @@ DescValue star (const param& E,
 		    E.tau() - kappa*(kappa_v.dot(E.tau())/2),
 		    E.l() + kappa_v*tf_alpha, E.t());
 
-	    int sign  = z_quot(E,F);
+	    assert(E.t().dot(kappa)==0);
+	    // since it is half of |t*(1+theta)*kappa=l*(delta-1)*kappa==0|
+	    int sign  = z_quot(E,F); // may ignore possible shift by |kappa|
 	    links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
 	  }
 	  else // 3Cr
 	  {
-	    E0.set_t(E.t() - kappa_v*(kappa.dot(E.t())/2));
+	    E0.set_t // make |E.t().dot(kappa)==0| using |kappa_v|
+	      (E.t() - kappa_v*(kappa.dot(E.t())/2));
 	    assert(same_sign(E,E0)); // since only |t| changes
 
 	    param F(E.ctxt, new_tw,
 		    new_lambda_rho + kappa*dtf_alpha, E.tau(),
 		    tf_alpha%2==0 ? E.l() : E.l()+kappa_v, E0.t());
 
-	    int sign = z_quot(E0,F);
+	    int sign = z_quot(E0,F); // no 3rd arg since |E.t().dot(kappa)==0|
 	    links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
 	  }
 
