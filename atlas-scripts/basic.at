@@ -119,6 +119,15 @@ set plural (int n) = string: if n=1 then "" else "s" fi
 
 set concat = ##@[string]
 
+set l_adjust (int w, string s) = string:
+  let d=w-#s in if <=d then s else s##(" "*d) fi
+set r_adjust (int w, string s) = string:
+  let d=w-#s in if <=d then s else (" "*d)##s fi
+set c_adjust (int w, string s) = string:
+  let d=w-#s in if <=d then s else let h=d\2 in (" "*h) ## s ## (" "*(d-h)) fi
+
+set width (int n) = int: #int_format(n)
+
 set split_lines (string text) = [string]:
   let result = [string]: [], a=for c in text do c od, last=0 in
   for c@i in a
@@ -768,6 +777,10 @@ set cross (vec alpha,KGBElt x) = KGBElt:
 set Cayley (vec alpha,KGBElt x) = KGBElt:
   Cayley(root_index(real_form(x),alpha),x)
 
+{ cross action of Weyl group element; avoid name conflict cross@(vec,KGBElt) }
+set W_cross ([int] w,KGBElt x) = KGBElt:
+  for s in w ~ do x:=cross(s,x) od; x
+
 set KGB_status_text (int i) = string: ["C-","ic","r ","nc","C+"][i]
 
 set status_text ((int,KGBElt)p) = string: KGB_status_text(status(p))
@@ -852,7 +865,7 @@ set is_noncompact_imaginary (vec v,KGBElt x) = bool:
   is_noncompact_imaginary(x)(v)
 
 set print_KGB (KGBElt x) = void:
-( prints(); prints("Element is number ",#x, " in following KGB set")
+( prints(new_line,"Element is number ",#x, " in following KGB set")
 ; print_KGB(real_form(x)) )
 
 set no_Cminus_roots (KGBElt x) = bool:
@@ -913,6 +926,10 @@ set is_regular (Param p) = bool:
 
 set trivial (RealForm G) = Param: { parameter for the trivial representation }
   param(KGB(G,KGB_size(G)-1),null(rank(G)),rho(G))
+
+{ cross action of Weyl group element; avoid name conflict cross@(vec,Param) }
+set W_cross ([int] w,Param p) = Param:
+  for s in w ~ do p:=cross(s,p) od; p
 
 { parameter(G,x,lambda,nu)=param(KGB(G,x),lambda-rho(G),nu), so you can enter
   lambda without the rho shift; lambda may have denominator 2 or be a vec
@@ -989,6 +1006,54 @@ set lookup (Param p, [Param] block) = int:
   let i=#block-1 in while >=i and block[i]!=p do i-:=1 od; i
 
 
+{			Extended blocks					}
+
+set extended_status_texts = [string]:
+  ["1C+","1C-","1i1","1r1f","1i2f","1r2","1i2s","1r1s","1rn","1ic"
+  ,"2C+","2C-","2Ci","2Cr"
+     ,"2i11","2r11","2i12f","2r21f","2i22","2r22","2i12s","2r21s","2rn","2ic"
+  ,"3C+","3C-","3Ci","3r","3i","3Cr","3rn","3ic"
+  ]
+
+set has_double_extended_Cayley (int n) =
+  if n<5 then n>=3 else n>=16 and n<20 fi { 1r1f,1i2f,2r11,2i12f,2r21f,2i22 }
+
+set print_extended_block (Param p, mat delta) = void:
+  let (block,types,L0,L1) = extended_block(p,delta) then (l,r)=#types
+  then w=width(#block-1)
+  , with_sign(int n) = string: if n<0 then "-"+(-1-n) else "+"+n fi
+  in
+  for q@i in block
+  do prints
+  (r_adjust(w,int_format(i))
+  ,": ["
+  , ## { statuses }
+    for j:r
+    do if j=0 then "" else "," fi
+    ## l_adjust(5,extended_status_texts[types[i,j]])
+    od
+  , "]"
+  , ## { cross actions }
+    for j:r
+    do r_adjust (w+1, int_format(
+       if L0[i,j]=l or has_double_extended_Cayley(types[i,j])
+       then i { self cross when either no Cayleys (nor complex) or 2 of them }
+       elif L1[i,j]=l then L0[i,j] else L1[i,j] { complex resp single Cayley }
+       fi))
+    od
+  , "; "
+  , ## { Cayley transforms }
+    for j:r
+    do c_adjust (2*w+3,
+       if L1[i,j]=l then "." { compact, nonparity or complex: no Cayley }
+       elif has_double_extended_Cayley(types[i,j])
+       then L0[i,j].with_sign+","+L1[i,j].with_sign { double valued Cayley }
+       else L0[i,j].with_sign { single valued Cayley }
+       fi)
+    od
+  , "  x=" , #x(q) , ", " , lambda_minus_rho(q)
+  )
+  od
 
 {		    Polynomials in module parameters			}
 

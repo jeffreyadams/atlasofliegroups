@@ -17,12 +17,6 @@ set r1_Cayley (int k,Param p) = ParamPol:
   let c1=inv_Cayley(k,p) then c2=cross(k,c1) in
   if c1=c2 then c1 else c1+c2 fi
 
-{ -------------cross action------------------------------------ }
-
-{ cross action of Weyl group on parameters}
-set W_cross ([int] w,Param p) = Param:
-  for s in w ~do p:=cross(s,p) od; p
-
 { -----------coherent continuation in basis of standards----------- }
 
 { DANGEROUS BEND

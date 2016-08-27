@@ -12,6 +12,8 @@
 #ifndef RATVEC_H  /* guard against multiple inclusions */
 #define RATVEC_H
 
+#include "ratvec_fwd.h" // ensure coherence
+
 #include <vector>
 #include "matrix.h"
 #include "arithmetic.h"

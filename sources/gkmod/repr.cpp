@@ -14,12 +14,13 @@
 #include "error.h"
 
 #include "arithmetic.h"
-#include "tits.h"
+#include "matreduc.h"
 
+#include "tits.h"
 #include "kgb.h"	// various methods
 #include "blocks.h"	// |dual_involution|
 #include "standardrepk.h"// |KhatContext| methods
-#include "subsystem.h"
+#include "subsystem.h" // |SubSystem| methods
 
 #include "kl.h"
 
@@ -55,6 +56,14 @@ StandardRepr Rep_context::sr_gamma
   (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const
 {
   const InvolutionTable& i_tab = innerClass().involution_table();
+#ifndef NDEBUG // check that constructor below builds a valid StandardRepr
+  int_Matrix theta1 = kgb().involution_matrix(x)+1;
+  RatWeight g_r = gamma - rho(rootDatum());
+  Weight image (g_r.numerator().begin(),g_r.numerator().end()); // convert
+  // |gamma| is compatible with |x| if neither of next two lines throws
+  image = theta1*image/int(g_r.denominator()); // division must be exact
+  matreduc::find_solution(theta1,image); // solution must exist
+#endif
   return StandardRepr(x, i_tab.pack(kgb().inv_nr(x),lambda_rho), gamma);
 }
 
@@ -62,7 +71,7 @@ RatWeight Rep_context::gamma
   (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
 {
   const InvolutionTable& i_tab = innerClass().involution_table();
-  const RatWeight lambda(lambda_rho*2+rootDatum().twoRho(),2);
+  const RatWeight lambda = rho(rootDatum())+lambda_rho;
   const RatWeight diff = lambda - nu;
   const RatWeight theta_diff(i_tab.matrix(kgb().inv_nr(x))*diff.numerator(),
 			     diff.denominator()); // theta(lambda-nu)
@@ -86,7 +95,7 @@ StandardRepr
 StandardRepr Rep_context::sr(const param_block& b, BlockElt i) const
 {
   assert(i<b.size());
-  return sr_gamma(b.parent_x(i),b.lambda_rho(i),b.gamma());
+  return sr_gamma(b.x(i),b.lambda_rho(i),b.gamma());
 }
 
 Weight Rep_context::lambda_rho(const StandardRepr& z) const
@@ -95,7 +104,7 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
   const InvolutionTable& i_tab = innerClass().involution_table();
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
-  const RatWeight gamma_rho = z.gamma() - RatWeight(rootDatum().twoRho(),2);
+  const RatWeight gamma_rho = z.gamma() - rho(rootDatum());
   Ratvec_Numer_t im_part2 = gamma_rho.numerator()+theta*gamma_rho.numerator();
   im_part2 /= gamma_rho.denominator(); // exact: $(1+\theta)(\lambda-\rho)$
   Weight i2(im_part2.begin(),im_part2.end()); // convert to |Weight|
@@ -105,8 +114,8 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
 // return $\lambda \in \rho+X^*$ as half-integer rational vector
 RatWeight Rep_context::lambda(const StandardRepr& z) const
 {
-  const Weight num = lambda_rho(z) * 2 + rootDatum().twoRho();
-  return RatWeight(num,2).normalize();
+  RatWeight result(rho(rootDatum()));
+  return result.normalize()+lambda_rho(z);
 }
 
 RatWeight Rep_context::nu(const StandardRepr& z) const
@@ -447,7 +456,7 @@ StandardRepr Rep_context::cross(weyl::Generator s, StandardRepr z) const
   // InvolutionNbr i_x = kgb().inv_nr(z.x());
   // no need to do |innerClass().involution_table().real_unique(i_x,t)|
 
-  RatWeight lr =  (infin_char - t - RatWeight(rd.twoRho(),2)).normalize();
+  RatWeight lr =  (infin_char - t - rho(rd)).normalize();
   assert(lr.denominator()==1); // we have reconstructed $\lambda-\rho \in X^*$
   return sr_gamma(src.x(),
 		  Weight(lr.numerator().begin(),lr.numerator().end()), // mod 2
@@ -461,35 +470,28 @@ StandardRepr Rep_context::cross(const Weight& alpha, StandardRepr z) const
   InvolutionNbr i_x = kgb().inv_nr(x);
   const InvolutionTable& i_tab = innerClass().involution_table();
 
-  const SubSystem& subsys = SubSystem::integral(rd,z.infinitesimal_char);
-  WeylWord w=make_dominant(z,subsys);
-  const RatWeight& infin_char=z.infinitesimal_char;
-
+  const RatWeight& gamma=z.infinitesimal_char; // integrally dominant
   RootNbr rt = rd.root_index(alpha);
   if (rt==rd.numRoots())
     throw std::runtime_error("Not a root");
-  make_positive(rd,rt);
-  RootNbrSet posroots_sub = subsys.positive_roots();
-  if (not posroots_sub.isMember(rt))
+  // the following test ensures that our final |assert| below won't fail
+  if (rd.coroot(rt).dot(gamma.numerator())%gamma.denominator()!=0)
     throw std::runtime_error("Not an integral root");
-  rt=subsys.to_parent(subsys.permuted_root(subsys.from_parent(rt),w));
 
   RatWeight lambda_shifted =
-    infin_char - lambda(z) + RatWeight(rd.twoRho(i_tab.real_roots(i_x)),2);
-  Ratvec_Numer_t& numer = lambda_shifted.numerator();
+    gamma - lambda(z) + RatWeight(rd.twoRho(i_tab.real_roots(i_x)),2);
+  Ratvec_Numer_t& lambda_numer = lambda_shifted.numerator();
 
-  rd.reflect(rt,numer);
+  rd.reflect(rt,lambda_numer);
   x = kgb().cross(rd.reflectionWord(rt),x);
   i_x = kgb().inv_nr(x);
 
+  // the addition of $\rho$ below is because |sr_gamma| takes $\lambda-\rho$
   lambda_shifted += RatWeight(rd.twoRho()-rd.twoRho(i_tab.real_roots(i_x)),2);
-  lambda_shifted =  (infin_char - lambda_shifted).normalize();
+  lambda_shifted =  (gamma - lambda_shifted).normalize();
   assert(lambda_shifted.denominator()==1);
 
-  StandardRepr result =
-    sr_gamma(x,Weight(numer.begin(),numer.end()),infin_char);
-  W_act(w,result,subsys);
-  return result;
+  return sr_gamma(x,Weight(lambda_numer.begin(),lambda_numer.end()),gamma);
 }
 
 StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
@@ -505,7 +507,7 @@ StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
   // InvolutionNbr i_x = kgb().inv_nr(z.x());
   // no need to do |innerClass().involution_table().real_unique(i_x,t)|
 
-  RatWeight lr =  (infin_char - t - RatWeight(rd.twoRho(),2)).normalize();
+  RatWeight lr =  (infin_char - t - rho(rd)).normalize();
   assert(lr.denominator()==1);
   return sr_gamma(src.x(),
 		  Weight(lr.numerator().begin(),lr.numerator().end()), // mod 2
@@ -525,13 +527,36 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
   // InvolutionNbr i_x = kgb().inv_nr(z.x());
   // no need to do |innerClass().involution_table().real_unique(i_x,t)|
 
-  RatWeight lr =  (infin_char - t - RatWeight(rd.twoRho(),2)).normalize();
+  RatWeight lr =  (infin_char - t - rho(rd)).normalize();
   assert(lr.denominator()==1);
   return sr_gamma(src.x(),
 		  Weight(lr.numerator().begin(),lr.numerator().end()), // mod 2
 		  infin_char);
 }
 
+/*
+  Compute shift in |lambda| component of parameter for Cayley transform by a
+  non-simple root $\alpha$, from involutions |theta_down| to |theta_up|, where
+  |to_simple| left-conjugates root $\alpha$ to some simple root.
+
+  Curiously, this appears to depend only on $\theta$ upstairs and the
+  conjugating element |to_simple|; an explanation is needed here. It seems to
+  be because \emph{all} upstairs real roots becoming negative by the necessary
+  conjugation will be downstairs complex roots (so contribute to the shift).
+
+  Sum of positve real roots becoming negative at $\theta'=^{to\_simple}\theta$
+*/
+Weight Cayley_shift (const InnerClass& G,
+		     InvolutionNbr theta_upstairs, // at the more split Cartan
+		     const WeylWord& to_simple)
+{ const RootDatum& rd=G.rootDatum();
+  const InvolutionTable& i_tab = G.involution_table();
+  RootNbrSet S = pos_to_neg(rd,to_simple) & i_tab.real_roots(theta_upstairs);
+  Weight sum(rd.rank(),0); // difference of $\rho_r$ values
+  for (auto it=S.begin(); it(); ++it)
+    sum += rd.root(*it); // sum real posroots upstairs that |to_simple| negates
+  return sum;
+}
 
 StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
 {
@@ -540,35 +565,42 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   const InvolutionTable& i_tab = innerClass().involution_table();
   const SubSystem& subsys = SubSystem::integral(rd,z.infinitesimal_char);
 
+  // prepare: move to a situation with integrally dominant infinitesimal char.
   WeylWord w=make_dominant(z,subsys);
   KGBElt x= z.x_part; // take a working copy; don't disturb |z|
-  const Weight lr = lambda_rho(z); // use at end to build new parameter
+  Weight lr = lambda_rho(z); // use at end to build new parameter
   const RatWeight& infin_char=z.infinitesimal_char; // constant from here on
 
-  RootNbr rt = rd.root_index(alpha);
-  if (rt==rd.numRoots())
-    throw std::runtime_error("Not a root");
-  make_positive(rd,rt);
-  const RootNbrSet posroots_sub = subsys.positive_roots();
-  if (not posroots_sub.isMember(rt))
+  // check the root argument, and if OK make the corresponding move to above
+  RootNbr rt = subsys.from_parent(rd.root_index(alpha)); // |subsys| numbering
+  if (rt == ~ RootNbr(0)) // either not a root at all or not in subsystem
     throw std::runtime_error("Not an integral root");
   // apply the integrally-dominant-making $W$ element |w| (in |subsys|) to |rt|:
-  rt=subsys.to_parent(subsys.permuted_root(subsys.from_parent(rt),w));
+  rt = subsys.permuted_root(rt,w); // now we've got the root to do Cayley by
+  const RootNbr n_alpha = subsys.to_parent(rt); // for modified |alpha|
 
-  InvolutionNbr inv0= kgb.inv_nr(x);
-  RootNbr s=rt; // future simple root index, the one that |rt| conjugates to
-  WeylWord ww = conjugate_to_simple(rd,s);
-  x = kgb.cross(x,ww);
+  rt = subsys.rt_abs(rt); // interpret as index of a positive root
+  weyl::Generator s=subsys.simple(rt);
+  WeylWord ww = subsys.to_simple(rt);
+  // neither |alpha| nor |rt| will be used beyond thus point
+
+  // now do the Cayley transform proper
+  bool ascent; // whether forward Cayley
+  const InvolutionNbr inv0= kgb.inv_nr(x); // initial involution
+
+  x = kgb.cross(ww,x);
   switch (kgb.status(s,x))
   {
   case gradings::Status::ImaginaryNoncompact:
-    x = kgb.cayley(s,x); break;
-  case gradings::Status::Real:
+    x = kgb.cayley(s,x); ascent=true; break;
+  case gradings::Status::Real: // find out (at inv0) whether root is parity
     { Weight rho2_diff = rd.twoRho() - rd.twoRho(i_tab.real_roots(inv0));
       RatWeight parity_vector = // compute this at the \emph{original} x
 	infin_char - lr - RatWeight(std::move(rho2_diff),2);
-      if (parity_vector.dot(rd.coroot(rt))%2!=0) // then |rt| was parity
-      {	x = kgb.inverseCayley(s,x).first; // do inverse Cayley at |inv1|
+      if (parity_vector.dot(rd.coroot(n_alpha))%2!=0)
+      { // then |alpha| was parity
+	x = kgb.inverseCayley(s,x).first; // do inverse Cayley at |inv1|
+	ascent=false;
 	break;
       }
       // else FALL THROUGH
@@ -577,17 +609,12 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   case gradings::Status::Complex:
     throw error::Cayley_error();
   }
-  x = kgb.cross(ww,x); // finally cross back
-  InvolutionNbr inv3 = kgb.inv_nr(x);
+  x = kgb.cross(x,ww); // finally cross back
 
-  Weight rho_d(rd.rank(),0); // difference of rho values
-  const RootNbrSet posroots = rd.posRootSet();
-  RootNbrSet d03 = (i_tab.real_roots(inv0)^i_tab.real_roots(inv3))&posroots;
-  for (auto it=d03.begin(); it(); ++it)
-    if (rd.is_negroot(rd.permuted_root(*it,ww)))
-      rho_d += rd.root(*it); // sum posroots changing "real" and (by w) "pos"
+  lr += // apply shift depending on distance from being simply-real upstairs
+    Cayley_shift(innerClass(),ascent ? kgb.inv_nr(x) : inv0,ww);
+  z = sr_gamma(x,lr,infin_char);
 
-  z = sr_gamma(x,lr+rho_d,infin_char); // apply shift by |rho_d| to lambda
   W_act(w,z); // move back to origingal infinitesimal character representative
   return z;
 }
@@ -602,7 +629,7 @@ StandardRepr Rep_context::twist(StandardRepr z) const
   blocks::nblock_elt src(z.x(),y_values::exp_pi(infin_char-lambda(z)));
   aux.twist(src);
   RatWeight lr =
-    (infin_char - src.y().log_pi(false) - RatWeight(rd.twoRho(),2)).normalize();
+    (infin_char - src.y().log_pi(false) - rho(rd)).normalize();
   assert(lr.denominator()==1);
   return sr_gamma(src.x(),
 		  Weight(lr.numerator().begin(),lr.numerator().end()), // mod 2
@@ -765,7 +792,7 @@ unsigned int Rep_table::length(StandardRepr z)
     return lengths[hash_index];
 
   // otherwise do it the hard way, constructing a block up to |z|
-  non_integral_block block(*this,z); // compute partial block
+  param_block block(*this,z); // compute partial block
   return block.length(block.size()-1);
 }
 
@@ -781,7 +808,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr z) // must be nonzero and final
   unsigned long hash_index=hash.find(z);
   if (hash_index==hash.empty) // previously unknown parameter
   {
-    non_integral_block block(*this,z);
+    param_block block(*this,z);
     BlockEltList survivors;
     add_block(block,survivors);
 
@@ -885,7 +912,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   {
     Rational r=rp[i];
     const StandardRepr zi = sr(z.x(),lam_rho,nu_z*r);
-    non_integral_block b(*this,zi);
+    param_block b(*this,zi);
     const SR_poly terms = deformation_terms(b,b.size()-1);
     for (SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
       result.add_multiple(deformation(it->first),it->second); // recursion

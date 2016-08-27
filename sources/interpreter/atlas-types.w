@@ -89,6 +89,7 @@ implementation, but we avoid including its header into out header file.
 @h "global.h"
 
 @< Includes needed in the header file @>=
+#include "../Atlas.h" // must be very first \.{atlas} include
 #include "axis-types.h"
 
 @*1 Lie types.
@@ -97,7 +98,6 @@ Our first chapter concerns Lie types, as indicated by strings like
 library.
 
 @< Includes needed in the header file @>=
-#include "../Atlas.h"
 #include <stdexcept>
 #include "lietype.h"
 
@@ -1391,14 +1391,14 @@ however reuse the module that tests for being an involution here.
 
 @< Local function def...@>=
 weyl::Twist check_involution
- (const WeightInvolution& M, const RootDatum& rd,
-  WeylWord& ww, lietype::Layout* lo=nullptr)
+ (WeightInvolution& M, const RootDatum& rd,
+  WeylWord& ww, @| lietype::Layout* lo=nullptr)
 { size_t r=rd.rank(),s=rd.semisimpleRank();
   @< Check that |M| is an $r\times{r}$ matrix defining an involution @>
 @/weyl::Twist p;
-  @< Set |ww| to the reversed Weyl group element needed to be applied after
-  the action of |M| in order to map positive roots to positive roots, and |p|
-  to the permutation of the simple roots so obtained; throw a |runtime_error|
+@/ @< Left-act by Weyl group on |M| to make it map positive roots to positive
+  roots, and set |ww| to the reversed Weyl group element used; also set |p| to
+  the permutation of the simple roots |M| now achieves. Throw a |runtime_error|
   if |M| is not an automorphism of |rd| @>
   if (lo==nullptr)
     return p; // if no details are asked for, we are done now
@@ -1424,7 +1424,7 @@ permutation of its rows and columns.
 
 @f Delta nullptr
 
-@< Set |ww| to the reversed Weyl group element...@>=
+@< Left-act by Weyl group on |M| to make it map positive roots...@>=
 { RootNbrList Delta(s);
   for (weyl::Generator i=0; i<s; ++i)
   { Delta[i]=rd.root_index(M*rd.simpleRoot(i));
@@ -1447,6 +1447,10 @@ permutation of its rows and columns.
     for (weyl::Generator j=0; j<s; ++j)
       if (rd.cartan(p[i],p[j])!=rd.cartan(i,j)) throw runtime_error@|
       ("Matrix does not define a root datum automorphism");
+@)
+  // now adapt |M| so that it becomes the inner class distinguished involution
+  for (unsigned int i=0; i<ww.size(); ++i) // apply elements in generation order
+    rd.simple_reflect(ww[i],M);
 }
 
 @ For each simple factor we look if there are any non-fixed points of the
@@ -1751,23 +1755,23 @@ void inner_class_value::print(std::ostream& out) const
       << (val.numDualRealForms()==1 ? "form" : "forms");
 }
 
-@ Here is the wrapper function for constructing an inner class using, and
-testing the validity of, an involution. The Weyl word |ww| that was needed in
-the test to make the involution into one of the based root datum must be
-applied to the matrix, since the test does not actually modify its matrix
-argument. (The |weyl::Twist| value returned by |check_involution| is only
-sufficient to determine the desired |M| in the semisimple case, so it cannot
-be used here.) Then the root datum and matrix are passed to a
-|InnerClass| constructor that the library provides specifically for
-this purpose, and which makes a copy of the root datum; the \.{Fokko} program
+@ Here is the wrapper function for constructing an inner class using an
+involution, testing its validity in the process. The Weyl word |ww| that was
+needed in the test to make the involution into one of the based root datum
+must be applied to the matrix, since the test does not actually modify its
+matrix argument. (The |weyl::Twist| value returned by |check_involution| is
+only sufficient to determine the desired |M| in the semisimple case, so it
+cannot be used here.) Then the root datum and matrix are passed to a
+|InnerClass| constructor that the library provides specifically for this
+purpose, and which makes a copy of the root datum; the \.{Fokko} program
 instead uses a constructor using a |PreRootDatum| that constructs the
-|RootDatum| directly into the |InnerClass|. Using that constructor
-here would be cumbersome and even less efficient then copying the existing
-root datum.
+|RootDatum| directly into the |InnerClass|. Using that constructor here would
+be cumbersome and even less efficient then copying the existing root datum.
 
 @< Local function def...@>=
 void fix_involution_wrapper(expression_base::level l)
-{ LatticeMatrix M(get<matrix_value>()->val); // safe use of temporary
+{ LatticeMatrix M(get<matrix_value>()->val);
+    // copy construct, safely using temporary
   shared_root_datum rd(get<root_datum_value>());
   WeylWord ww;
   lietype::Layout lo;
@@ -1775,8 +1779,6 @@ void fix_involution_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  for (unsigned int i=0; i<ww.size(); ++i) // apply elements in generation order
-    rd->val.simple_reflect(ww[i],M);
   std::unique_ptr<InnerClass>
     G(new InnerClass(rd->val,M));
   push_value(std::make_shared<inner_class_value>(std::move(G),lo));
@@ -1796,12 +1798,11 @@ void twisted_involution_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  for (unsigned int i=0; i<ww.size(); ++i) // apply elements in generation order
-    rd->val.simple_reflect(ww[i],M);
   std::unique_ptr<InnerClass>
     G(new InnerClass(rd->val,M));
   push_value(std::make_shared<inner_class_value>(std::move(G),lo));
-  push_value(std::make_shared<vector_value>(std::vector<int>(ww.begin(),ww.end())));
+  push_value(std::make_shared<vector_value>
+    (std::vector<int>(ww.begin(),ww.end())));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
@@ -2426,11 +2427,12 @@ subsequently used to specify a KGB element for this (strong) real form.
 
 @< Local function def...@>=
 TwistedInvolution twisted_from_involution
-  (const InnerClass& G, const WeightInvolution theta)
+  (const InnerClass& G, const WeightInvolution theta0)
 { const RootDatum& rd = G.rootDatum();
+  WeightInvolution theta(theta0); // copy allowing modification
   WeylWord ww;
   if (check_involution(theta,rd,ww)!=G.twistedWeylGroup().twist() @| or
-      rd.matrix(ww)*G.distinguished()!=theta)
+      theta!=G.distinguished())
     throw runtime_error("Involution not in this inner class");
   return G.weylGroup().element(ww);
 }
@@ -3163,7 +3165,7 @@ void build_KGB_element_wrapper(expression_base::level l)
    (G.titsGroup(),TorusPart(num),twisted_from_involution(G,theta->val));
 
   KGBElt x = rf->kgb().lookup(a);
-  if (x== rf->kgb().size())
+  if (x==UndefKGB)
     throw runtime_error("KGB element not present");
 
   if (l==expression_base::no_value)
@@ -3386,7 +3388,7 @@ void block_element_wrapper(expression_base::level l)
 @ The inverse operation of decomposing a block element into a KGB element and
 a dual KGB element is also useful. While one could construct the containing
 |Block| value from the given values |x|, |y|, this function is probably most
-used repeatedly with a fixed known lock, so it is more efficient to require
+used repeatedly with a fixed known block, so it is more efficient to require
 that such a block be passed as a parameter. Much of the effort here goes into
 testing that the parameters supplied are coherent with each other; after this,
 the method |Block::element| does the actual work of looking up the pair
@@ -3917,7 +3919,7 @@ void print_n_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
-  non_integral_block block(p->rc(),p->val,init_index);
+  param_block block(p->rc(),p->val,init_index);
   *output_stream << "Parameter defines element " << init_index
                @|<< " of the following block:" << std::endl;
   block.print_to(*output_stream,true);
@@ -3938,7 +3940,7 @@ void block_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {
     BlockElt start; // will hold index in the block of the initial element
-    non_integral_block block(p->rc(),p->val,start);
+    param_block block(p->rc(),p->val,start);
     @< Push a list of parameter values for the elements of |block| @>
     push_value(std::make_shared<int_value>(start));
     if (l==expression_base::single_value)
@@ -3954,7 +3956,7 @@ also construct a module parameter value for each element of |block|.
   const RatWeight& gamma=block.gamma();
   for (BlockElt z=0; z<block.size(); ++z)
   { StandardRepr block_elt_param =
-      p->rc().sr(block.parent_x(z),block.lambda_rho(z),gamma);
+      p->rc().sr(block.x(z),block.lambda_rho(z),gamma);
     param_list->val[z] =
 	std::make_shared<module_parameter_value>(p->rf,block_elt_param);
   }
@@ -3969,7 +3971,7 @@ void partial_block_wrapper(expression_base::level l)
   test_standard(*p,"Cannot generate block");
   if (l!=expression_base::no_value)
   {
-    non_integral_block block(p->rc(),p->val);
+    param_block block(p->rc(),p->val);
     @< Push a list of parameter values for the elements of |block| @>
   }
 }
@@ -3994,7 +3996,7 @@ void KL_block_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {
     BlockElt start; // will hold index in the block of the initial element
-    non_integral_block block(p->rc(),p->val,start);
+    param_block block(p->rc(),p->val,start);
     @< Push a list of parameter values for the elements of |block| @>
     push_value(std::make_shared<int_value>(start));
     const kl::KLContext& klc = block.klc(block.size()-1,false);
@@ -4072,71 +4074,148 @@ element (and with what multiplicity).
 void partial_KL_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  if (l!=expression_base::no_value)
+  if (l==expression_base::no_value) return;
+  param_block block(p->rc(),p->val);
+  @< Push a list of parameter values for the elements of |block| @>
+
+  const kl::KLContext& klc = block.klc(block.size()-1,false);
+  // compute KL polynomials, silently
+
+  own_matrix M = std::make_shared<matrix_value>(int_Matrix(klc.size()));
+  for (size_t y=1; y<klc.size(); ++y)
+    for (size_t x=0; x<y; ++x)
+      M->val(x,y)= klc.KL_pol_index(x,y);
+@)
+  own_row polys = std::make_shared<row_value>(0);
+  polys->val.reserve(klc.polStore().size());
+  for (size_t i=0; i<klc.polStore().size(); ++i)
   {
-    non_integral_block block(p->rc(),p->val);
-    @< Push a list of parameter values for the elements of |block| @>
-
-    const kl::KLContext& klc = block.klc(block.size()-1,false);
-    // compute KL polynomials, silently
-
-    own_matrix M = std::make_shared<matrix_value>(int_Matrix(klc.size()));
-    for (size_t y=1; y<klc.size(); ++y)
-      for (size_t x=0; x<y; ++x)
-        M->val(x,y)= klc.KL_pol_index(x,y);
+    const kl::KLPol& pol = klc.polStore()[i];
+    std::vector<int> coeffs(pol.size());
+    for (size_t j=pol.size(); j-->0; )
+      coeffs[j]=pol[j];
+    polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
+  }
 @)
-    own_row polys = std::make_shared<row_value>(0);
-    polys->val.reserve(klc.polStore().size());
-    for (size_t i=0; i<klc.polStore().size(); ++i)
-    {
-      const kl::KLPol& pol = klc.polStore()[i];
-      std::vector<int> coeffs(pol.size());
-      for (size_t j=pol.size(); j-->0; )
-        coeffs[j]=pol[j];
-      polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
-    }
+  own_vector length_stops = std::make_shared<vector_value>(
+     int_Vector(block.length(block.size()-1)+1));
+  length_stops->val[0]=0;
+  for (size_t i=1; i<length_stops->val.size(); ++i)
+    length_stops->val[i]=block.length_first(i);
 @)
-    own_vector length_stops = std::make_shared<vector_value>(
-       int_Vector(block.length(block.size()-1)+1));
-    length_stops->val[0]=0;
-    for (size_t i=1; i<length_stops->val.size(); ++i)
-      length_stops->val[i]=block.length_first(i);
-@)
-    unsigned n_survivors=0;
+  unsigned n_survivors=0;
+  for (BlockElt z=0; z<block.size(); ++z)
+    if (block.survives(z))
+      ++n_survivors;
+  own_vector survivor =
+    std::make_shared<vector_value>(int_Vector(n_survivors));
+  { unsigned i=0;
     for (BlockElt z=0; z<block.size(); ++z)
       if (block.survives(z))
-        ++n_survivors;
-    own_vector survivor =
-      std::make_shared<vector_value>(int_Vector(n_survivors));
-    { unsigned i=0;
-      for (BlockElt z=0; z<block.size(); ++z)
-        if (block.survives(z))
-          survivor->val[i++]=z;
-      assert(i==n_survivors);
+        survivor->val[i++]=z;
+    assert(i==n_survivors);
+  }
+  own_matrix contributes_to = std::make_shared<matrix_value>(
+    int_Matrix(n_survivors,block.size(),0));
+  for (BlockElt z=0; z<block.size(); ++z)
+  { BlockEltList sb = block.survivors_below(z);
+    for (BlockEltList::const_iterator it=sb.begin(); it!=sb.end(); ++it)
+    { BlockElt x= permutations::find_index<int>(survivor->val,*it);
+        // a row index
+      if ((block.length(z)-block.length(*it))%2==0)
+        ++contributes_to->val(x,z);
+      else
+        --contributes_to->val(x,z);
     }
-    own_matrix contributes_to = std::make_shared<matrix_value>(
-      int_Matrix(n_survivors,block.size(),0));
-    for (BlockElt z=0; z<block.size(); ++z)
-    { BlockEltList sb = block.survivors_below(z);
-      for (BlockEltList::const_iterator it=sb.begin(); it!=sb.end(); ++it)
-      { BlockElt x= permutations::find_index<int>(survivor->val,*it);
-          // a row index
-        if ((block.length(z)-block.length(*it))%2==0)
-          ++contributes_to->val(x,z);
+  }
+@)
+  push_value(std::move(M));
+  push_value(std::move(polys));
+  push_value(std::move(length_stops));
+  push_value(std::move(survivor));
+  push_value(std::move(contributes_to));
+
+  if (l==expression_base::single_value)
+    wrap_tuple<6>();
+}
+
+@ The function |extended_block| intends to make computation of extended
+blocks available in \.{atlas}.
+
+@< Local function def...@>=
+void extended_block_wrapper(expression_base::level l)
+{ LatticeMatrix M(get<matrix_value>()->val); // initialise from provided matrix
+  shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  const auto& rc = p->rc();
+  const RootDatum& rd = rc.rootDatum(); WeylWord ww;
+  check_involution(M,rd,ww); // this makes |M| distinguished
+  { auto& xi = rc.innerClass().distinguished();
+    if (M*xi!=xi*M)
+      throw runtime_error("Non commuting distinguished involution");
+  }
+  if (l==expression_base::no_value) return;
+@)
+  BlockElt start;
+  param_block block(rc,p->val,start);
+  ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),M);
+  if ( ((M-1)*block.gamma().numerator()).isZero()) // block globally stable
+    @< Compute edge flips in |eb| and then the return value components, and
+       call |push_value| for each of them @>
+  else // block not globally stable under |M|, return empty data
+  { push_value(std::make_shared<row_value>(0));
+    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb.rank())));
+    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb.rank())));
+    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb.rank())));
+  }
+@)
+  if (l==expression_base::single_value)
+    wrap_tuple<4>();
+}
+
+@ We somewhat laboriously convert internal information from the extended block
+into a list of parameters and three tables in the form of matrices.
+
+@< Compute edge flips in |eb|... @>=
+{ check(eb,block,false);
+    // set flips using extended parameter computations, do not report
+  own_row params = std::make_shared<row_value>(eb.size());
+  int_Matrix types(eb.size(),eb.rank());
+@/int_Matrix links0(eb.size(),eb.rank());
+  int_Matrix links1(eb.size(),eb.rank());
+
+  for (BlockElt n=0; n<eb.size(); ++n)
+  { auto z = eb.z(n); // number of ordinary parameter in |block|
+    StandardRepr block_elt_param =
+      rc.sr(block.x(z),block.lambda_rho(z),block.gamma());
+    params->val[n] =
+      std::make_shared<module_parameter_value>(p->rf,block_elt_param);
+    for (weyl::Generator s=0; s<eb.rank(); ++s)
+    { auto type = eb.descent_type(s,n);
+      types(n,s) = static_cast<int>(type);
+      if (is_like_compact(type) or is_like_nonparity(type))
+      @/{@; links0(n,s)=eb.size(); links1(n,s)=eb.size(); }
+      else
+      { links0(n,s)= is_complex(type) ? eb.cross(s,n): eb.Cayley(s,n);
+        if (eb.epsilon(s,n,links0(n,s))<0)
+	  links0(n,s) = -1-links0(n,s);
+        if (link_count(type)==1)
+          links1(n,s)=eb.size(); // leave second matrix entry empty
         else
-          --contributes_to->val(x,z);
+        { links1(n,s)= has_double_image(type)
+            ? eb.Cayleys(s,n).second
+            : eb.cross(s,n);
+          if (eb.epsilon(s,n,links1(n,s))<0)
+	    links1(n,s) = -1-links1(n,s);
+        }
       }
     }
-@)
-    push_value(std::move(M));
-    push_value(std::move(polys));
-    push_value(std::move(length_stops));
-    push_value(std::move(survivor));
-    push_value(std::move(contributes_to));
-
-    if (l==expression_base::single_value)
-      wrap_tuple<6>();
   }
+
+  push_value(std::move(params));
+  push_value(std::make_shared<matrix_value> (std::move(types)));
+  push_value(std::make_shared<matrix_value>(std::move(links0)));
+  push_value(std::make_shared<matrix_value>(std::move(links1)));
 }
 
 @ Finally we install everything related to module parameters.
@@ -4170,6 +4249,8 @@ install_function(KL_block_wrapper,@|"KL_block"
                 ,"(Param->[Param],int,mat,[vec],vec,vec,mat)");
 install_function(partial_KL_block_wrapper,@|"partial_KL_block"
                 ,"(Param->[Param],mat,[vec],vec,vec,mat)");
+install_function(extended_block_wrapper,@|"extended_block"
+                ,"(Param,mat->[Param],mat,mat,mat)");
 
 @*1 Polynomials formed from parameters.
 %
@@ -4881,7 +4962,7 @@ void deform_wrapper(expression_base::level l)
   test_standard(*p,"Cannot compute deformation formula");
   if (l==expression_base::no_value)
     return;
-  non_integral_block block(p->rc(),p->val); // partial block construction
+  param_block block(p->rc(),p->val); // partial block construction
   repr::SR_poly terms
      = p->rt().deformation_terms(block,block.size()-1);
 

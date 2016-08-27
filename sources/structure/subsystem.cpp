@@ -29,14 +29,27 @@ SubSystem::SubSystem(const RootDatum& parent,
   , rd(parent) // share
   , pos_map(numPosRoots(),~0)
   , inv_map(rd.numRoots()+1,~0) // one spare entry for "unfound root in parent"
-  , sub_root(sub_sys.size())
+  , sub_root(numPosRoots())
 {
-  for (weyl::Generator i=0; i<sub_sys.size(); ++i)
+  for (unsigned int i=0; i<numPosRoots(); ++i)
   {
-    RootNbr alpha = pos_map[i]=sub_sys[i];
-    inv_map[alpha] = simpleRootNbr(i); // point to simple root |i| in subsystem
+    // first set |pos_map[i]|
+    if (i<sub_sys.size()) // simple in subsystem, just use |sub_sys|
+      pos_map[i]=sub_sys[i];
+    else // use previously stored values in |pos_map|, |sub_root| recursively
+    {
+      RootNbr sub_alpha = posRootNbr(i);
+      weyl::Generator s = find_descent(sub_alpha); // generator for subsystem
+      simple_reflect_root(s,sub_alpha);
+      RootNbr beta = pos_map[posRootIndex(sub_alpha)]; // |beta| is in parent
+      pos_map[i] = rd.permuted_root(sub_root[s].reflection,beta);
+    }
+
+    RootNbr alpha = pos_map[i]; // now we use parent numbering
+    inv_map[alpha] = posRootNbr(i); // refers simple root |i| in subsystem
     inv_map[rd.rootMinus(alpha)] = rootMinus(inv_map[alpha]); // its negative
 
+    // in the remainder we work in parent datum; must find conjugate to simple
     size_t count=0; weyl::Generator s;
     while (alpha!=rd.simpleRootNbr(s=rd.find_descent(alpha)))
     { // just count the reflections needed to make alpha simple
@@ -44,30 +57,20 @@ SubSystem::SubSystem(const RootDatum& parent,
       ++count;
     }
 
+    // now we can dimension our Weyl words, and set |sub_root[i].simple|
     sub_root[i].to_simple.resize(count);
     sub_root[i].reflection.resize(2*count+1);
     sub_root[i].simple=sub_root[i].reflection[count]=s; // set middle letter
 
-    size_t j=count; // redo search loop, now storing values
-    for (alpha=sub_sys[i]; j-->0; rd.simple_reflect_root(s,alpha))
+    size_t j=count; // redo search loop, storing remaining Weyl word letters
+    for (alpha=pos_map[i]; j-->0; rd.simple_reflect_root(s,alpha))
     {
       s=rd.find_descent(alpha);
       sub_root[i].to_simple[j]=s; // write |to_simple| word from right to left
       sub_root[i].reflection[count+1+j]= // and |reflection| from outside in
       sub_root[i].reflection[count-1-j]=s;
     }
-    assert(alpha==rd.simpleRootNbr(sub_root[i].simple));
-  }
-
-  for (unsigned int i=rank(); i<numPosRoots(); ++i)
-  {
-    RootNbr alpha = posRootNbr(i); // root number in subsystem
-    weyl::Generator s = find_descent(alpha);
-    simple_reflect_root(s,alpha);
-    RootNbr beta = pos_map[posRootIndex(alpha)]; // in parent
-    pos_map[i] = rd.permuted_root(sub_root[s].reflection,beta);
-    inv_map[pos_map[i]] = posRootNbr(i);
-    inv_map[rd.rootMinus(pos_map[i])] = numPosRoots()-1-i;
+    assert(alpha==rd.simpleRootNbr(sub_root[i].simple)); // check |alpha|
   }
 }
 

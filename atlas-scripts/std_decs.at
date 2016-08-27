@@ -25,6 +25,7 @@ x:KGBElt
 y:KGBElt
 rho:ratvec
 rho_check:ratvec
+theta:mat
 p:Param
 q:Param
 block:[Param]

@@ -30,11 +30,11 @@ struct Layout;
 
 
 /******** constant declarations **********************************************/
-  /*!
+  /*
   Used by the interaction in interactive_lietype.cpp to tell the user
-  what input is expected for a Lie type.
+  what input is expected for a Lie type. Also used in |SimpleLieType|
   */
-  const char* const typeLetters = "ABCDEFGT";
+const char* const typeLetters = "ABCDEFGT";
 
   /*!
   Used by the interaction in interactive_lietype.cpp to tell the user
@@ -71,9 +71,9 @@ struct Layout;
   The letter "e" stands for "equal rank," and is mapped in every case to
   "c."
   */
-  const char* const innerClassLetters = "Ccesu";
+const char* const innerClassLetters = "Ccesu";
 
-
+enum class simple_ict { equal_rank, unequal_rank, complex };
 
 struct SimpleLieType : public std::pair<TypeLetter,size_t>
 { // there are no additional data members
@@ -143,17 +143,40 @@ Layout() : d_type(), d_inner(), d_perm() {} // needed in atlas
 }; // |struct Layout|
 
 
+struct ext_gen // generator of extended Weyl group
+{
+  enum { one, two, three } type;
+  weyl::Generator s0,s1;
+  WeylWord w_tau;
+
+  explicit ext_gen (weyl::Generator s)
+    : type(one), s0(s), s1(~0), w_tau() { w_tau.push_back(s); }
+  ext_gen (bool b) = delete; // defuse implicit conversion
+  ext_gen (bool commute, weyl::Generator s, weyl::Generator t)
+  : type(commute ? two : three), s0(s), s1(t)
+  { w_tau.push_back(s);  w_tau.push_back(t);
+    if (not commute) w_tau.push_back(s);
+  }
+
+  int length() const { return type+1; }
+};
+
+
+
 
 /******** function declarations **********************************************/
 
   bool checkRank(const TypeLetter&, size_t);
+
+  WeightInvolution simple_involution(const SimpleLieType& slt, simple_ict tp);
 
   // involution (permutation) matrix for possibly renumbered Dynkin diagram
   WeightInvolution involution(const Layout& lo);
 
   // permutation matrix for |ict| in simply connected |lt|, Bourbaki order
   WeightInvolution involution(const LieType& lt,
-					 const InnerClassType& ict);
+			      const InnerClassType& ict);
+  // returns |involution(Layout(lt,ict))|; |WeightInvolution| incomplete here
 
   LieType dual_type(LieType lt);
 

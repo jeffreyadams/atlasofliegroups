@@ -19,6 +19,23 @@
 set = (KGB_pair(x,y), KGB_pair(z,w) ) = bool: x=z and y=w
 set != (KGB_pair(x,y), KGB_pair(z,w)) = bool: x!=z or y!=w
 
+{ y_gen=(ic,omega,psi), psi\in X^*(H)_Q is dual torus factor, made to be
+  omega-fixed. Compare definition to x@entended_param from extended_misc.rx,
+  which implies that torus_factor(x(E))=(g-l-rho_check(ic))*(1+theta)/2
+}
+set y_gen(extended_param(ic,,gamma,lambda,,,,omega,,)) = KGBElt_gen:
+  (dual(ic),omega,(gamma-lambda-rho(ic))*(1+omega)/2)
+
+{ this computes y_gen(E@(mat,Param,ratvec)(.,p,.)) without the unused stuff }
+set y_gen (Param p) = KGBElt_gen:
+  let ic=inner_class(p), (x,lambda_rho,gamma)=%p { vec lambda_rho: lambda of E }
+  then theta=involution(x)
+  { dual tf : gamma-lambda(p) ($-\theta$-fixed) where lambda(p)=lambda_rho+rho }
+  in (dual(ic),-^theta,gamma-(lambda_rho+rho(ic)))
+
+
+{ Some purely adminstrative support functions }
+
 { index((x,y,list_of_pairs) :
   index of (x,y) in [(x_i,y_i)], return -1 if not found
 }
@@ -33,20 +50,6 @@ set find_pair( (KGB_pair,[KGB_pair]) p) = bool:
 set add_pair( KGB_pair xy, [KGB_pair] xy_pairs) = [KGB_pair]:
   if index(xy,xy_pairs)>=0 then xy_pairs else xy_pairs#xy fi
 
-{ y_gen=(ic,omega,psi), psi\in X^*(H)_Q is dual torus factor, made to be
-  omega-fixed. Compare definition to x@entended_param from extended_misc.at,
-  which implies that torus_factor(x(E))=(g-l-rho_check(ic))*(1+theta)/2
-}
-set y_gen(extended_param(ic,,gamma,lambda,,,,omega,,)) = KGBElt_gen:
-  (dual(ic),omega,(gamma-lambda-rho(ic))*(1+omega)/2)
-
-{ this computes y_gen(E@(mat,Param,ratvec)(.,p,.)) without the unused stuff }
-set y_gen (Param p) = KGBElt_gen:
-  let ic=inner_class(p), (x,lambda_rho,gamma)=%p { vec lambda_rho: lambda of E }
-  then theta=involution(x)
-  { dual tf : gamma-lambda(p) ($-\theta$-fixed) where lambda(p)=lambda_rho+rho }
-  in (dual(ic),-^theta,gamma-(lambda_rho+rho(ic)))
-
 { index(E,list_of_pairs) = index(x(E),y(E),list_of_pairs) }
 set index( extended_param Ep, [KGB_pair] xy_pairs) = int:
   index((x(Ep),y_gen(Ep)),xy_pairs)
@@ -57,46 +60,48 @@ set index(Param p,[KGB_pair] xy_pairs) = int:
   index((x(p),y_gen(p)),xy_pairs)
 }
 
-{ compute everything you get to by applying a single Cayley or cross }
-set neighbors(int j,
-         extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):Ep) =
-    [extended_param]:
+
+
+{ compute all other |extended_param| values you can get to by applying a
+  single Cayley transform or cross action to a given extended parameter
+}
+set neighbors(int j, extended_param Ep) = [extended_param]:
   let type=ext_type(j,Ep) in
-{ let ()=prints("Ep in neighbors:");display(Ep) in }
-{ let ()=prints("type in neighbors: ", type) in }
-  if (type="1C+") then [ext_cross(j,Ep)]
-  elif (type="1C+") then [ext_cross(j,Ep)]
-  elif (type="1C-") then [ext_cross(j,Ep)]
-  elif (type="1i1") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
-  elif (type="1i2f") then ext_Cayley(j,Ep)
-  elif (type="1i2s") then []
-  elif (type="1ic") then []
-  elif (type="1r1f") then ext_Cayley(j,Ep)
-  elif (type="1r1s") then []
-  elif (type="1r2") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
-  elif (type="1rn") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
-  elif (type="1r1s") then []
-  elif (type="2C+") then [ext_cross(j,Ep)]
-  elif (type="2C-") then [ext_cross(j,Ep)]
-  elif (type="2Ci") then ext_Cayley(j,Ep)
-  elif (type="2Cr") then ext_Cayley(j,Ep)
-  elif (type="2i11") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
-  elif (type="2i12") then ext_cross(j,Ep)#ext_Cayley(j,Ep)
-  elif (type="2i22") then ext_Cayley(j,Ep)
-  elif (type="2r22") then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
-  elif (type="2r21")
-     then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0],ext_Cayley(j,Ep)[1]]
-  elif (type="2r11") then ext_Cayley(j,Ep)
-  elif (type="2rn") then []
-  elif (type="2ic") then []
-  elif (type="3C+") then [ext_cross(j,Ep)]
-  elif (type="3C-") then [ext_cross(j,Ep)]
-  elif (type="3Ci") then ext_Cayley(j,Ep)
-  elif (type="3Cr") then ext_Cayley(j,Ep)
-  elif (type="3i") then ext_Cayley(j,Ep)
-  elif (type="3r") then ext_Cayley(j,Ep)
-  elif (type="3rn") then []
-  elif (type="3ic") then []
+{ prints("Ep in neighbors: ",format(Ep)); }
+{ prints("type in neighbors: ", type); }
+  if   type="1C+" then [ext_cross(j,Ep)]
+  elif type="1C+" then [ext_cross(j,Ep)]
+  elif type="1C-" then [ext_cross(j,Ep)]
+  elif type="1i1" then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
+  elif type="1i2f" then ext_Cayley(j,Ep)
+  elif type="1i2s" then []
+  elif type="1ic" then []
+  elif type="1r1f" then ext_Cayley(j,Ep)
+  elif type="1r1s" then []
+  elif type="1r2" then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
+  elif type="1rn" then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
+  elif type="1r1s" then []
+  elif type="2C+" then [ext_cross(j,Ep)]
+  elif type="2C-" then [ext_cross(j,Ep)]
+  elif type="2Ci" then ext_Cayley(j,Ep)
+  elif type="2Cr" then ext_Cayley(j,Ep)
+  elif type="2i11" then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
+  elif type="2i12" then ext_cross(j,Ep)#ext_Cayley(j,Ep)
+  elif type="2i22" then ext_Cayley(j,Ep)
+  elif type="2r22" then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0]]
+  elif type="2r21"
+    then [ext_cross(j,Ep),ext_Cayley(j,Ep)[0],ext_Cayley(j,Ep)[1]]
+  elif type="2r11" then ext_Cayley(j,Ep)
+  elif type="2rn" then []
+  elif type="2ic" then []
+  elif type="3C+" then [ext_cross(j,Ep)]
+  elif type="3C-" then [ext_cross(j,Ep)]
+  elif type="3Ci" then ext_Cayley(j,Ep)
+  elif type="3Cr" then ext_Cayley(j,Ep)
+  elif type="3i" then ext_Cayley(j,Ep)
+  elif type="3r" then ext_Cayley(j,Ep)
+  elif type="3rn" then []
+  elif type="3ic" then []
   else prints("type:", type);error("I must have missed a case")
   fi
 
@@ -143,9 +148,9 @@ set xy_neighbors (
   od; rv
 
 { generate_subspace(i,j,delta,gamma,g,(x,y)) returns a Hecke invariant subspace
-  (more precisely subset, represented as list) of space of extended parameters:
-  all nodes you can get to by applying Hecke operators T_i and T_j to given
-  node
+  (more precisely its spanning subset, represented as list) of space of
+  extended parameters: all nodes you can get to by applying Hecke operators
+  T_i and T_j to given node
 }
 set generate_subspace(
     int j, int k, mat delta, ratvec gamma, ratvec g, KGB_pair(x,y)) =
@@ -156,7 +161,7 @@ begin
   do last := #rv { mark }
 { ; prints(); prints("calling xy_neighbors ", j, ", ", gamma, ", ", rv) }
   ; rv := xy_neighbors(j,delta,gamma,g,rv)
-{ ; prints();prints("calling xy_neighbors ", k, ", ", gamma, ", ", rv) }
+{ ; prints(); prints("calling xy_neighbors ", k, ", ", gamma, ", ", rv) }
   ; rv := xy_neighbors(k,delta,gamma,g,rv)
   od
 ; x_sort(rv)
@@ -226,12 +231,11 @@ end
     whether \pm E_j occurs in the Cayley of F_i by root k (of type 2r21)
 
   typically 7 of these are +, and 1 is minus
-  occasionally there are 2 pluses, and 1 minus
 
   then sign_2i12(k,E_i,F_j)=-1 if *either arrow gets a minus*, and 1 otherwise
 
   in SL(8,R) with p=spherical_principal_series(G,rho(G)/4)
-    you get 6 pluses and one minus
+  you get 6 pluses and 2 minuses
 }
 
 set sign_2i12 (int j, extended_param E, extended_param F) = int:
@@ -239,8 +243,8 @@ set sign_2i12 (int j, extended_param E, extended_param F) = int:
     let c=ext_Cayley(j,E) in sign(c[0],F)+sign(c[1],F)
   in if f(j,E,F)=1 and f(j,F,E)=1 then 1 else -1 fi
 
-{ given E=E(x,y,lambda,l,tau,t) and F=(x',y',lambda',tau',l't') related by 2i12
-  compute the sign: coefficient of pi(F) in  T_kappa(\pi(E))
+{ given E=E(x,y,lambda_rho,l,tau,t) and F=(x',y',lambda_rho',tau',l't') related
+  by 2i12, compute the sign: coefficient of pi(F) in  T_kappa(\pi(E))
   see "More on the 2i12, 2Ci and 1i cases" Proposition 1.13
 }
 set sign_2i12_old (int j,extended_param E,extended_param F) = int:
@@ -264,36 +268,37 @@ begin
         ,"q is not a 2i12 Cayley transform of p")
 ; let l_test_1=in_lattice((1+^theta(E)),l(F)-l(E)) in
   let l_test_2=in_lattice((1+^theta(E)),l(F)-l(E)+alpha_check) in
-  let lambda_test_1=in_lattice((1+^omega(F)),lambda(F)-lambda(E)) in
-  let lambda_test_2=in_lattice((1+^omega(F)),alpha+lambda(F)-lambda(E)) in
+  let lambda_test_1=in_lattice((1+^omega(F)),lambda_rho(F)-lambda_rho(E)) in
+  let lambda_test_2 =
+    in_lattice((1+^omega(F)),alpha+lambda_rho(F)-lambda_rho(E)) in
   let kappa= if (l_test_2 and lambda_test_2) then -1 else 1 fi in
   {solve for sigma}
-  let sigma=solve((1+^omega(F)),alpha-beta) in
+  let sigma = solve((1+^omega(F)),alpha-beta) in
   assert(>#sigma,"can't solve for sigma sign_2i12")
 ; let tau=tau(E) in
   let tau_alpha_beta=tau*(alpha_check+beta_check) in
   let tau_0=
     ratvec_as_vec(tau+tau*beta_check*sigma[0]-tau_alpha_beta/2*alpha) in
-  let s=solve((1+^theta(E)),alpha_check-beta_check) in
+  let s = solve((1+^theta(E)),alpha_check-beta_check) in
   assert(>#s,"can't solve for s in epsilon_t")
 ; let t=t(F) in
   let t_alpha_beta=t*(alpha+beta) in
   let t_0=vec:ratvec_as_vec(t+t*beta*s[0]-t_alpha_beta/2*alpha_check) in
   let E_new=
     if l_test_1
-    then (ic(E),delta(E),gamma(E),lambda(E),theta(E),g(E),l(F),omega(E)
+    then (ic(E),delta(E),gamma(E),lambda_rho(E),theta(E),g(E),l(F),omega(E)
          ,tau_0,t_0)
     elif l_test_2
-    then (ic(E),delta(E),gamma(E),lambda(E),theta(E),g(E),vec:l(F)+alpha_check
+    then (ic(E),delta(E),gamma(E),lambda_rho(E),theta(E),g(E),l(F)+alpha_check
          ,omega(E),tau_0,vec:t_0-s[0])
     else error("l_test_1 and l_test_2 both false")
     fi
   then F_new=
     if lambda_test_1
-    then (ic(F),delta(F),gamma(F),lambda(E),theta(F),g(F),l(F),omega(F)
+    then (ic(F),delta(F),gamma(F),lambda_rho(E),theta(F),g(F),l(F),omega(F)
          ,tau_0,t_0)
     elif lambda_test_2
-    then (ic(F),delta(F),gamma(F),vec:lambda(E)+alpha,theta(F),g(F),l(F)
+    then (ic(F),delta(F),gamma(F),lambda_rho(E)+alpha,theta(F),g(F),l(F)
          ,omega(F),vec:tau_0-sigma[0],t_0)
     else prints(E, x(E), y_gen(E), F, x(F), y_gen(F))
     ; error("lambda_test_1 and lambda_test_2 both false") fi
@@ -313,44 +318,39 @@ set sign_2r21(int j, extended_param E, extended_param F) =int:
   sign_2i12(j,F,E)
 
 { see "More on the 2i12, 2Ci and 1i cases" Section 2 }
-set sign_2Ci (
-    int j,extended_param(,delta,,,,g,l,,tau,):E) = int:
+set sign_2Ci (int j,extended_param E) = int:
   let id=integrality_datum(E)
   then alpha=root(id,j), alpha_check=coroot(id,j)
-  then beta=delta*alpha then beta_check=coroot(id,beta)
+  then beta=E.delta*alpha then beta_check=coroot(id,beta)
   then exponent = rat_as_int( { exponent of i should be even, convert for -1 }
-    ((alpha_check+beta_check)*tau) * ((g-l)*alpha-1) /2 )
+    ((alpha_check+beta_check)*E.tau) * ((E.g-E.l)*alpha-1) /2 )
   in (-1)^exponent
 
-set sign_2Cr (int j,extended_param(,delta,gamma,lambda,,,,,,t):E) = int:
+set sign_2Cr (int j,extended_param E) = int:
   let id=integrality_datum(E)
   then alpha=root(id,j), alpha_check=coroot(id,j)
-  then beta=delta*alpha then beta_check=coroot(id,beta)
+  then beta=E.delta*alpha then beta_check=coroot(id,beta)
   then exponent = rat_as_int( { exponent of i should be even, convert for -1 }
-    (alpha_check*(gamma-lambda)-1) * (t*(alpha+beta)) /2 )
+    (alpha_check*(E.gamma-E.lambda_rho)-1) * (E.t*(alpha+beta)) /2 )
   in (-1)^exponent
 
-set signs_1i1(
-    int j,
-    extended_param
-      (ic,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E):E,
-    extended_param E1,
-    extended_param F
-  ) = (int,int):
+set signs_1i1(int j, extended_param E, extended_param E1, extended_param F) =
+  (int,int):
 begin
   assert(ext_type(j,E)="1i1","Wrong type in signs_1i1")
-; let alpha=root(ic,j), alpha_check=coroot(ic,j), F=ext_Cayley(j,E)[0]
+; let alpha=root(E.ic,j), alpha_check=coroot(E.ic,j), F=ext_Cayley(j,E)[0]
   then sigma = solve((1+^omega(F)),alpha)  in
   assert(>#sigma,"can't solve for sigma in signs_1i1")
-; let new_tau_E = vec: tau_E-(alpha_check*tau_E)*sigma[0]
-  , l_E_alpha = l_E*alpha
+; let new_tau_E = vec: E.tau-(alpha_check*E.tau)*sigma[0]
+  , l_E_alpha = E.l*alpha
   then new_l_E=
     if is_even(l_E_alpha)
-    then l_E-rat_as_int(l_E_alpha/2)*alpha_check
-    else l_E-rat_as_int((l_E_alpha-1)/2)*alpha_check
+    then E.l-rat_as_int(l_E_alpha/2)*alpha_check
+    else E.l-rat_as_int((l_E_alpha-1)/2)*alpha_check
     fi
   then new_E =
-    (ic,delta_E,gamma_E,lambda_E,theta_E,g_E,new_l_E,omega_E,new_tau_E,t_E)
+    (E.ic,E.delta,E.gamma,E.lambda_rho,E.theta
+    ,E.g,new_l_E,E.omega,new_tau_E,E.t)
   then new_F = ext_Cayley(j,new_E), sign_E_new_E=sign(E,new_E)
   in prints("sign_E_new_E:", sign_E_new_E)
 { ; display(new_E) }

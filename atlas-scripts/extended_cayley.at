@@ -48,7 +48,7 @@ begin
   in
   if (type="1i1")
   then let new_lambda=lambda
-    then new_l = ratvec_as_vec(l + (rat:((g-l)*alpha-1)) * alpha_check/2)
+    then new_l = l + rat_as_int(((g-l)*alpha-1)/2) * alpha_check
     , new_theta=ref*theta
     , new_omega=omega*coref
     , new_t=t
@@ -58,7 +58,7 @@ begin
     [(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)]
   elif (type="1i2f")
   then let new_lambda=lambda
-    then new_l = ratvec_as_vec(l + (rat:((g-l)*alpha-1))*alpha_check/2)
+    then new_l = ratvec_as_vec(l + (rat:(g-l)*alpha-1) *alpha_check/2)
     , new_theta=ref*theta
     , new_omega=omega*coref
     , new_t=t
@@ -256,14 +256,15 @@ begin
     in test_ext_cayley(p,j,"2r21",F1); test_ext_cayley(p,j,"2r21",F2)
   ; [F1,F2]
   elif (type="2r11") then
-    let new_l_1=l, new_l_2=l, new_t=t in
+    let (new_l_1,new_l_2,new_t_1,new_t_2)=
     if is_even(t*alpha)
-    then new_l_1:=l; new_l_2:=l+alpha_check+beta_check
-    ; new_t:=ratvec_as_vec(t-t*alpha/2*alpha_check-t*beta/2*beta_check)
-    else new_l_1:=l+alpha_check; new_l_2:=l+beta_check
-    ; new_t:=ratvec_as_vec(t-(t*alpha+1)/2*alpha_check-(t*beta+1)/2*beta_check)
+    then (l,l+alpha_check+beta_check
+         ,ratvec_as_vec(t-t*alpha/2*alpha_check-t*beta/2*beta_check)
+         ,ratvec_as_vec(t-t*alpha/2*alpha_check-t*beta/2*beta_check))
+    else (l+alpha_check,l+beta_check
+         ,ratvec_as_vec(t-(t*alpha+1)/2*alpha_check-(t*beta-1)/2*beta_check)
+         ,ratvec_as_vec(t-(t*alpha-1)/2*alpha_check-(t*beta+1)/2*beta_check))
     fi
-  ; let new_t=new_t
     then new_lambda=ratvec_as_vec
       ( lambda + (gamma*alpha_check-lambda*alpha_check-1)/2*alpha
                + (gamma*beta_check-lambda*beta_check-1)/2*beta )
@@ -271,9 +272,9 @@ begin
     then new_omega=omega*s_alpha_check*s_beta_check
     then new_tau=tau
     then F1=
-      (ic,delta,gamma,new_lambda,new_theta,g,new_l_1,new_omega,new_tau,new_t)
+      (ic,delta,gamma,new_lambda,new_theta,g,new_l_1,new_omega,new_tau,new_t_1)
     then F2=
-      (ic,delta,gamma,new_lambda,new_theta,g,new_l_2,new_omega,new_tau,new_t)
+      (ic,delta,gamma,new_lambda,new_theta,g,new_l_2,new_omega,new_tau,new_t_2)
     in test_ext_cayley(p,j,"2r11",F1);test_ext_cayley(p,j,"2r11",F2)
   ;  [F1,F2]
   else prints("Cayley transform of type ", type, " not defined"); [E]

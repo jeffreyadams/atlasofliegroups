@@ -29,6 +29,7 @@ set Cayley (int s,Param p) = Param:
   let alpha = simple_roots(
     integrality_datum(real_form(p),infinitesimal_character(p)))
   in Cayley(alpha[s],p)
+set inv_Cayley = Cayley@(int,Param) { leave this defined for other scripts }
 
 { Cayley transform as a set (actually an array, but order doesn't matter) }
 set Cayley_set (int j,Param p) = [Param]:
@@ -93,21 +94,16 @@ set square_is_central (InnerClass ic,x_rep(v,theta)) = bool:
   square_is_central(ic,theta,v) { use the function defined in parameters.at }
 
 
-: extended_param = (InnerClass,mat,ratvec,vec  ,mat,ratvec,vec,mat,vec,vec)
-  {                (ic,      delta,gamma,lambda,theta,g,   l,omega,tau,t) }
+: extended_param =
+  ( InnerClass ic, mat delta
+  , ratvec gamma, vec lambda_rho, mat theta
+  , ratvec g, vec l, mat omega
+  , vec tau, vec t
+  )
 
-set ic     (extended_param(ic,,,,,,,,,))     = InnerClass: ic
-set delta  (extended_param(,delta,,,,,,,,))  = mat: delta
-set gamma  (extended_param(,,gamma,,,,,,,))  = ratvec: gamma
-set lambda (extended_param(,,,lambda,,,,,,)) = vec: lambda
-set theta  (extended_param(,,,,theta,,,,,))  = mat: theta
-set g      (extended_param(,,,,,g,,,,))      = ratvec: g
-set l      (extended_param(,,,,,,l,,,))      = vec: l
-set omega  (extended_param(,,,,,,,omega,,))  = mat: omega
-set tau    (extended_param(,,,,,,,,tau,))    = vec: tau
-set t      (extended_param(,,,,,,,,,t))      = vec: t
-
-set root_datum     (extended_param(ic,,,,,,,,,))     = RootDatum:root_datum(ic)
+set root_datum (extended_param E) = RootDatum: root_datum(E.ic)
+set rho        (extended_param E) = ratvec: rho(E.root_datum)
+set rho_check  (extended_param E) = ratvec: rho_check(E.root_datum)
 
 set dual_parameter (extended_param
       (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) = extended_param:
@@ -116,36 +112,33 @@ set dual_parameter (extended_param
 { in PFTR: z=i^<tau,(delta_0-1)l>(-1)^<lambda,t>
   PFTR:delta_0 is ^delta here
 }
-set log_z (mat delta, vec lambda, vec l, vec tau,vec t) = rat: { modulo 1 }
-  (l*(delta-1)*tau/2+t*lambda)/2 % 1
+set log_z (mat delta, vec lambda_rho, vec l, vec tau,vec t) = rat: { modulo 1 }
+  (l*(delta-1)*tau/2+t*lambda_rho)/2 % 1
 set log_zeta (mat delta, vec lambda, vec l,vec tau,vec t) = rat: { modulo 1 }
   (t*(delta-1)*lambda/2+l*tau)/2 % 1
 
-set log_z (extended_param(,delta,,lambda,,,l,,tau,t)) = rat:
-  log_z(delta,lambda,l,tau,t)
-
-set log_zeta (extended_param(,delta,,lambda,,,l,,tau,t)) = rat:
-  log_zeta(delta,lambda,l,tau,t)
+set log_z (extended_param E) = rat:
+  log_z(E.delta,E.lambda_rho,E.l,E.tau,E.t)
+set log_zeta (extended_param E) = rat:
+  log_zeta(E.delta,E.lambda_rho,E.l,E.tau,E.t)
 
 { compute x,y, the one-sided parameters of an extended parameter }
 
-set y (extended_param (ic,,gamma,lambda,,,,omega,,)) = KGBElt:
-  KGB_elt(dual(ic),omega,(gamma-lambda-rho(ic)))
+set x (extended_param E) = KGBElt:
+  KGB_elt(E.ic, E.theta, E.g-E.rho_check-E.l)
 
-set x (extended_param (ic,,,,theta,g,l,,,)) = KGBElt:
-  KGB_elt(ic,theta,(g-l-rho_check(ic)))
+set y (extended_param E) = KGBElt: { assumes integral |E.gamma| }
+  KGB_elt(dual(E.ic),E.omega,E.gamma-E.lambda_rho-E.rho)
 
-{ recover ordinary Param value from extended_param; coul be defined as
-  set parameter (extended_param (,,gamma,,,,,,,):a) = Param:
-  parameter(x(a),y(a),gamma)
+{ recover ordinary Param value from extended_param; could be defined as
+  set parameter (extended_param E) = Param: parameter(x(E),y(E),E.gamma)
 
-  actually this is better: use (x,lambda,gamma)
+  actually this is better: use |(E.x,E.lambda,E.gamma)|
 }
-set parameter (extended_param (ic,,gamma,lambda,,,,,,):a) = Param:
-  param(x(a),lambda,gamma)
+set parameter (extended_param E) = Param: param(E.x,E.lambda_rho,E.gamma)
 
-set integrality_datum (extended_param (ic,,gamma,,,,,,,)) = RootDatum:
-  integrality_datum(ic,gamma)
+set integrality_datum (extended_param E) = RootDatum:
+  integrality_datum(E.ic,E.gamma)
 
 { assume gamma(E) is integrally dominant
   translate by sum of roots to make it dominant
@@ -156,16 +149,16 @@ set integrality_datum (extended_param (ic,,gamma,,,,,,,)) = RootDatum:
   However, since not all functions allow that, it is still needed
 }
 set translate_to_dominant (extended_param
-    (ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E) = (extended_param,vec):
+    (ic,delta,gamma,lambda_rho,theta,g,l,omega,tau,t):E) = (extended_param,vec):
   let (new_gamma,shift) = make_dominant_using_roots(root_datum(E),gamma)
   in
-   ((ic,delta, gamma+shift,lambda+shift,theta, g,l,omega, tau,t) , shift)
+   ((ic,delta, gamma+shift,lambda_rho+shift,theta, g,l,omega, tau,t) , shift)
 
 { for debugging:
   test that an extended parameter satisfies the defining conditions
 }
 set valid (
-    extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = bool:
+    extended_param(ic,delta,gamma,lambda_rho,theta,g,l,omega,tau,t)) = bool:
 begin let OK=false { pessimist: avoids having to set this in many branches } in
   if not square_is_central(ic,theta,(g-l-rho_check(ic)))
   then prints("xi^2 is not central")
@@ -175,11 +168,11 @@ begin let OK=false { pessimist: avoids having to set this in many branches } in
   elif omega!=-^theta then prints("Cartan involutions are not compatible")
   elif !=(g-l-rho_check(ic))*(1-theta)
   then prints("(1-^theta)g\ne (1-^theta)(l+rho^v)")
-  elif !=(gamma-lambda-rho(ic))*(1-omega)
-  then prints("(1-^omega)gamma\ne (1-^omega)(lambda+rho)")
+  elif !=(gamma-lambda_rho-rho(ic))*(1-omega)
+  then prints("(1-^omega)gamma\ne (1-^omega)(lambda_rho+rho)")
   elif -l*(1-delta)!=t*(1+theta) then prints("(^delta-1)l\ne (1+^theta)t")
-  elif -(1-delta)*lambda!=(1-theta)*tau
-  then prints("(delta-1)lambda\ne (1+^omega)tau")
+  elif -(1-delta)*lambda_rho!=(1-theta)*tau { recall that -theta=^omega }
+  then prints("(delta-1)lambda_rho\ne (1+^omega)tau")
   else OK:=true
   fi
 ; OK
@@ -192,17 +185,19 @@ set fixed (mat delta, [Param] B)=[Param]:
 { select delta-fixed elements from block_of(p) }
 set fixed_block_of (mat delta, Param p) = [Param]: fixed(delta,block_of(p))
 
-{ display(E): terse output of E }
-set display (extended_param (,,gamma,lambda,,g,l,,tau,t):E) = void:
-( prints("     x=", x(E))
-; prints(" gamma=",gamma)
-; prints("     g=",g)
-; prints("")
-; prints("lambda=",lambda)
-; prints("   tau=",tau)
-; prints("     l=",l)
-; prints("     t=",t)
-)
+set format (extended_param E) = string:
+  to_string ( "         x=", E.x
+  , new_line, "     gamma=", E.gamma
+  , new_line, "         g=", E.g
+  , new_line
+  , new_line, "lambda_rho=", E.lambda_rho
+  , new_line, "       tau=", E.tau
+  , new_line, "         l=", E.l
+  , new_line, "         t=", E.t
+  )
 
-set display_one_line (extended_param (,,,lambda,,,l,,tau,t)) = void:
-  prints(lambda,", ", tau, ", ", l, ", ", t, ", ")
+set short_format (extended_param E) = string: to_string(
+    "lambda_rho =",E.lambda_rho,", tau=", E.tau ,", l=", E.l, ", t=", E.t, ".")
+
+set display (extended_param E) = void: prints(format(E))
+set display_one_line (extended_param E) = void: prints(short_format(E))

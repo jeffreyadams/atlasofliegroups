@@ -1,0 +1,25 @@
+<basic.at
+<extended.at { needed near the end }
+
+set lt = LieType : "A1A1T1T1"
+set P = quotient_basis (lt,[[1,1,0,0]/2,[1,0,1,0]/2])
+set (Pinv,Pdenom) = invert(P)
+
+set rd = root_datum(lt,P) { root datum for quotient group }
+
+set xi = diagonal([1,1,1,-1])
+assert (Pinv*xi*P = Pdenom*xi) { xi is the same on the new basis P }
+set delta = Pinv*[0,1,0,0|1,0,0,0|0,0,-1,0|0,0,0,-1]*P \ Pdenom { not so here }
+
+set ic = inner_class(rd,xi) { so this defines the correct inner class }
+set t = ratvec: [1/2,1/2,1/2,0] { maps to (J,J,i,1) under $\exp_{-1}$ }
+
+set tf = (t*P + rho_check(ic))%2 { torus factor for our strong involution xi }
+set rf = real_form (ic, distinguished_involution(ic), tf) { make real form }
+set x = KGB_elt (rf, distinguished_involution(ic), tf) { synthesise KGB elt }
+
+set p = param(x,[0,0,0,0],rho(rd))
+set B=block_of(p)
+
+set E2r21s = E(delta,B~[0]) { take delta-extended for final element of block }
+set go = @: E(delta,p) { try to do the same for the first: "x is not fixed" }
