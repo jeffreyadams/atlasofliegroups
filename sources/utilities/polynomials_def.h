@@ -517,6 +517,6 @@ void Safe_Poly<C>::safeSubtract(const Safe_Poly& q, Degree d)
   base::adjustSize();
  } // |safeSubtract|
 
-} // namespace polynomials
+} // |namespace polynomials|
 
-} // namespace atlas
+} // |namespace atlas|

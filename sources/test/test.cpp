@@ -18,7 +18,7 @@
 
 #include "polynomials.h"
 #include "kgb.h"     // |kgb.size()|
-#include "complexredgp.h" // |twoRho| in |nu_block::print|
+#include "innerclass.h" // |twoRho| in |nu_block::print|
 #include "blocks.h"
 #include "ext_block.h"
 #include "kl.h"
@@ -38,7 +38,7 @@
 #include <fstream>
 #include <map>
 
-#include "atlas_types.h" // here to preempt double inclusion of _fwd files
+#include "../Atlas.h" // here to preempt double inclusion of _fwd files
 
 #include "free_abelian.h"
 #include "permutations.h"
@@ -48,7 +48,7 @@
 #include "prerootdata.h"
 #include "rootdata.h"
 #include "cartanclass.h"
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "realredgp.h"
 #include "tits.h"
 #include "weyl.h"
@@ -65,7 +65,7 @@
 #include "basic_io.h"
 #include "prettyprint.h"
 #include "interactive.h"
-#include "realform_io.h"
+#include "output.h"
 #include "kgb_io.h"
 #include "block_io.h"
 
@@ -97,10 +97,9 @@ namespace {
   // functions for the test commands
 
   void test_f();
-  void braid_f();
+  //  void block_braid_f();
   void repr_braid_f();
   void go_f();
-  void fix_braid_f();
 
   void roots_rootbasis_f();
   void coroots_rootbasis_f();
@@ -114,6 +113,8 @@ namespace {
   void branch_f();
   void qbranch_f();
   void srtest_f();
+  void testrun_f();
+  void exam_f();
 
   void X_f();
 
@@ -158,6 +159,10 @@ void addTestCommands<commands::EmptymodeTag> (commands::CommandNode& mode)
   mode.add("go",go_f,
 	   "generates difficult SO(7,7) extended block, and runs 'braid'",
 	   commands::use_tag);
+  mode.add("testrun",testrun_f,
+	   "iterates over root data of given rank, calling examine",
+	   commands::use_tag);
+
   if (testMode == EmptyMode)
     mode.add("test",test_f,test_tag);
 }
@@ -207,6 +212,10 @@ void addTestCommands<commands::RealmodeTag> (commands::CommandNode& mode)
   mode.add("srtest",srtest_f,
 	   "gives information about a representation",commands::std_help);
 
+  mode.add("examine",exam_f,
+	   "tests whether x0 will change",commands::use_tag);
+
+
   if (testMode == RealMode)
     mode.add("test",test_f,test_tag);
 
@@ -217,8 +226,11 @@ void addTestCommands<commands::RealmodeTag> (commands::CommandNode& mode)
 template<>
 void addTestCommands<commands::BlockmodeTag> (commands::CommandNode& mode)
 {
-  mode.add("braid",braid_f,
+#if 0 // function cannot be defined without sign-fixing for such blocks
+  mode.add("bbraid",block_braid_f,
 	   "tests braid relations on an extended block",commands::use_tag);
+#endif
+
   mode.add("go",go_f,
 	   "generates difficult SO(5,5) extended block, and runs 'braid'",
 	   commands::use_tag);
@@ -234,6 +246,7 @@ void addTestCommands<commands::ReprmodeTag> (commands::CommandNode& mode)
 {
   mode.add("braid",repr_braid_f,
 	   "tests braid relations on an extended block",commands::use_tag);
+
   if (testMode == ReprMode)
     mode.add("test",test_f,test_tag);
 
@@ -255,13 +268,52 @@ namespace {
 
 // Empty mode functions
 
+bool examine(RealReductiveGroup& G);
+void testrun_f()
+{
+  unsigned long rank=interactive::get_bounded_int
+    (interactive::common_input(),"rank: ",constants::RANK_MAX+1);
+  std::cout << "Testing x0 torus bits.\n"; // adapt to |examine|
+  for (testrun::LieTypeIterator it(testrun::Semisimple,rank); it(); ++it)
+  {
+    std::cout<< *it << std::endl;
+    for (testrun::CoveringIterator cit(*it); cit(); ++cit)
+    {
+      PreRootDatum prd = *cit;
+      WeightInvolution id(prd.rank()); // identity
+      InnerClass G(prd,id);
+      for (RealFormNbr rf=0; rf<G.numRealForms(); ++rf)
+      {
+	RealReductiveGroup G_R(G,rf);
+	if (not examine(G_R))
+	{
+	  WeightList subattice_basis;
+	  cit.makeBasis(subattice_basis);
+	  basic_io::seqPrint(std::cout,
+			     subattice_basis.begin(),subattice_basis.end(),
+			     ", ","\n Sublattice basis: ","\n");
+	  lietype::InnerClassType ict; // need layout to convert form number
+	  for (size_t i=0; i<it->size(); ++i)
+	    ict.push_back('e');
+	  lietype::Layout lay(*it,ict);
+	  output::FormNumberMap itf(G,lay);
+	  std::cout << " Failure at real form " << itf.out(rf) << std::endl;
+	}
+	std::cout << std::flush;
+      }
+    }
+    std::cout << '.' << std::endl;
+  }
+
+}
+
 
 // Main mode functions
 
 // Print the roots in the simple root coordinates.
 void roots_rootbasis_f()
 {
-  const RootSystem& rs =  commands::currentComplexGroup().rootSystem();
+  const RootSystem& rs =  commands::current_inner_class().rootSystem();
   ioutils::OutputFile file;
 
   for (RootNbr i=0; i<rs.numRoots(); ++i)
@@ -272,7 +324,7 @@ void roots_rootbasis_f()
 void posroots_rootbasis_f()
 
 {
-  const RootSystem& rs = commands::currentComplexGroup().rootSystem();
+  const RootSystem& rs = commands::current_inner_class().rootSystem();
 
   ioutils::OutputFile file;
   prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
@@ -281,7 +333,7 @@ void posroots_rootbasis_f()
 // Print the coroots in the simple coroot coordinates.
 void coroots_rootbasis_f()
 {
-  const RootSystem rs (commands::currentComplexGroup().dualRootSystem());
+  const RootSystem rs (commands::current_inner_class().dualRootSystem());
 
   ioutils::OutputFile file;
   for (RootNbr i=0; i<rs.numRoots(); ++i)
@@ -292,7 +344,7 @@ void coroots_rootbasis_f()
 // Print the positive coroots in the simple coroot coordinates.
 void poscoroots_rootbasis_f()
 {
-  const RootSystem rs (commands::currentComplexGroup().dualRootSystem());
+  const RootSystem rs (commands::current_inner_class().dualRootSystem());
 
   ioutils::OutputFile file;
   prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
@@ -301,7 +353,7 @@ void poscoroots_rootbasis_f()
 
 void X_f()
 {
-  ComplexReductiveGroup& G=commands::currentComplexGroup();
+  InnerClass& G=commands::current_inner_class();
   kgb::global_KGB kgb(G); // build global Tits group, "all" square classes
   ioutils::OutputFile f;
   kgb_io::print_X(f,kgb);
@@ -633,12 +685,8 @@ void mod_lattice_f()
 
   unsigned long cn=interactive::get_Cartan_class(G.Cartan_set());
 
-  WeightInvolution q = G.cartan(cn).involution();
-  for (size_t j = 0; j<q.numRows(); ++j)
-    q(j,j) -= 1;
-
   CoeffList factor;
-  int_Matrix b = matreduc::adapted_basis(q,factor);
+  int_Matrix b = matreduc::adapted_basis(G.cartan(cn).involution()-1,factor);
 
   RankFlags units, doubles;
   unsigned n1=0,n2=0;
@@ -812,7 +860,7 @@ void srtest_f()
   prettyprint::printVector(std::cout << " converted to (1/2)",khc.lift(sr));
 
   const TwistedInvolution& canonical =
-    G.complexGroup().involution_of_Cartan(sr.Cartan());
+    G.innerClass().involution_of_Cartan(sr.Cartan());
   if (kgb.involution(x)!=canonical)
     prettyprint::printWeylElt(std::cout << " at involution ",
 			      canonical, G.weylGroup());
@@ -823,45 +871,33 @@ void srtest_f()
 
 bool examine(RealReductiveGroup& G)
 {
-  const WeylGroup& W = G.weylGroup();
   const KGB& kgb=G.kgb();
-  size_t l = W.length(kgb.involution(0)),t;
-  for (size_t i=1; i<kgb.size(); ++i)
-    if ((t=W.length(kgb.involution(i)))<l)
-      return false;
-    else
-      l=t;
-  return true;
+  TorusPart t0 = kgb.torus_part(0);
+  TorusPart t1 = G.innerClass().x0_torus_part(G.realForm());
+  return t0==t1;
 }
 
-
-
-TorusElement torus_part
-  (const RootDatum& rd,
-   const WeightInvolution& theta,
-   const RatWeight& lambda, // discrete parameter
-   const RatWeight& gamma // infinitesimal char
-  )
+void exam_f()
 {
-  InvolutionData id(rd,theta);
-  Weight cumul(rd.rank(),0);
-  arithmetic::Numer_t n=gamma.denominator();
-  const Ratvec_Numer_t& v=gamma.numerator();
-  const RootNbrSet pos_real = id.real_roots() & rd.posRootSet();
-  for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
-    if (rd.coroot(*it).dot(v) %n !=0) // nonintegral
-      cumul+=rd.root(*it);
-  // now |cumul| is $2\rho_\Re(G)-2\rho_\Re(G(\gamma))$
-
-  return y_values::exp_pi(gamma-lambda+RatWeight(cumul,2));
+  RealReductiveGroup& G = commands::currentRealGroup();
+  if (examine(G))
+    std::cout << "x0 torus bits constistent with traditional ones";
+  else
+    std::cout << "x0 torus bits changed from " << G.kgb().torus_part(0)
+	      << " to " << G.innerClass().x0_torus_part(G.realForm());
+  std::cout << std::endl;
 }
 
 void test_f() // trial of twisted KLV computation
 {
 
-  ext_block::extended_block
-    eblock(commands::currentBlock(),
-	   commands::currentComplexGroup().twistedWeylGroup());
+  ext_block::ext_block
+    eblock(commands::current_inner_class(),
+	   commands::currentBlock(),
+	   commands::currentRealGroup().kgb(),
+	   commands::currentDualRealGroup().kgb(),
+	   commands::current_inner_class().distinguished()
+	   );
 
   BlockElt last; input::InputBuffer& cl= commands::currentLine();
   cl >> last; // maybe get threshold for filling
@@ -885,13 +921,9 @@ void test_f() // trial of twisted KLV computation
 
 }
 
-bool isDirectRecursion(ext_block::DescValue v)
-{
-  return is_descent(v) and is_unique_image(v);
-}
 
 // Check for nasty endgame cases in block
-int test_braid(ext_block::extended_block eblock) // by value
+int test_braid(const ext_block::ext_block& eblock)
 {
   std::cout << "testing braids" << std::endl;
   bool OK=true; int count=0; int failed=0;
@@ -916,17 +948,53 @@ int test_braid(ext_block::extended_block eblock) // by value
 			  << eblock.z(*it) ;
 
 	      std::cout << ')' << std::endl;
-	      seen |= cluster; // don't do elements of same cluster again
 	    }
+	    seen |= cluster; // don't do elements of same cluster again
 	  }
     }
   if (OK)
     std::cout << "All " << count << " relations hold!\n";
   std::cout << std::endl;
   return failed;
-} // |braid_f|
+} // |test_braid|
 
-void fix_braid(ext_block::extended_block& eblock)
+#if 0 // call of |check| below needs implementing
+void block_braid_f() // in block mode
+{
+  WeightInvolution delta = interactive::get_commuting_involution
+    (commands::current_layout(), commands::current_lattice_basis());
+
+  auto& block = commands::currentBlock();
+
+  ext_block::ext_block eblock(commands::current_inner_class(),block,
+			      commands::currentRealGroup().kgb(),
+			      commands::currentDualRealGroup().kgb(),
+			      delta);
+  if (check(eblock,block,true))
+    test_braid(eblock);
+}
+#endif
+
+void repr_braid_f()
+{
+  commands::ensure_full_block();
+  WeightInvolution delta = interactive::get_commuting_involution
+    (commands::current_layout(), commands::current_lattice_basis());
+
+  auto& block = commands::current_param_block();
+  if (not ((delta-1)*block.gamma().numerator()).isZero())
+  {
+    std::cout << "Chosen delta does not fix gamma=" << block.gamma()
+	      << " for the current block." << std::endl;
+    return;
+  }
+  ext_block::ext_block eblock(commands::current_inner_class(),block,
+			      commands::currentRealGroup().kgb(),delta);
+  if (check(eblock,block,true))
+    test_braid(eblock);
+}
+
+void fix_braid(ext_block::ext_block& eblock)
 {
   bool OK=true; int count=0;
   for (weyl::Generator t=1; t<eblock.rank(); ++t)
@@ -1007,62 +1075,40 @@ void fix_braid(ext_block::extended_block& eblock)
 
 
 
-void braid_f()
-{
-  ext_block::extended_block
-    eblock(commands::currentBlock(),
-	   commands::currentComplexGroup().twistedWeylGroup());
-  test_braid(eblock);
-}
-
-void repr_braid_f()
-{
-  commands::ensure_full_block();
-  ext_block::extended_block
-    eblock(commands::current_param_block(),
-	   commands::currentComplexGroup().twistedWeylGroup());
-  test_braid(eblock);
-}
-
-
-
 void go_f()
 {
-  drop_to(commands::empty_mode); // make sure all modes will need re-entering
-  commands::currentLine().str("D7 ad u 3 3"); // type-ahead in input buffer
-  commands::currentLine().reset(); // and reset to start at beginning
-  commands::main_mode.activate();
-  commands::real_mode.activate();
-  commands::block_mode.activate();
-  ext_block::extended_block
-    eblock(commands::currentBlock(),
-	   commands::currentComplexGroup().twistedWeylGroup());
+  ext_block::ext_block
+    eblock(commands::current_inner_class(),
+	   commands::currentBlock(),
+	   commands::currentRealGroup().kgb(),
+	   commands::currentDualRealGroup().kgb(),
+	   commands::current_inner_class().distinguished()
+	   );
+  int nr_failures=0;
+  int max_tries=10;
 
-  eblock.toggle_edge(1,5);               // 3, 1i1/1r1f
-  eblock.toggle_edge(20,31);		 // 4, 1i1/1r1f
-  eblock.toggle_edge(39,62);		 // 4, 1i1/1r1f
-  eblock.toggle_edge(74,109);		 // 4, 1i1/1r1f
+  for (int j=0; j<max_tries; ++j)
+  {
+    int failures=test_braid(eblock);
+    if (failures==0)
+    {
+      std::cout << "Total braid relations fixed: " << nr_failures << std::endl;
+      eblock.report_2Ci_toggles();
+      break;
+    }
+    else
+    {
+      std::cout << "Number of braid relation failures: " << failures
+		<< std::endl;
+      nr_failures += failures;
+      std::cout << std::endl <<"Fixing braids pass " << j << std::endl;
+      fix_braid(eblock);
+      eblock.list_edges();
+    }
+  }
 
-  eblock.toggle_edge(68,95);		 // 5, 1i1/1r1f
-  eblock.toggle_edge(117,156);		 // 5, 1i1/1r1f
-  eblock.toggle_edge(183,238);		 // 5, 1i1/1r1f
-  eblock.toggle_edge(186,241);		 // 5, 1i1/1r1f
-  eblock.toggle_edge(274,346);		 // 5, 1i1/1r1f
-  eblock.toggle_edge(386,475);		 // 5, 1i1/1r1f
-
-
-  eblock.order_quad(188,189,339,337,6);
-  eblock.order_quad(276,277,469,467,6);
-  eblock.order_quad(388,389,609,607,6);
-  eblock.order_quad(391,392,618,616,6);
-  eblock.order_quad(520,521,762,760,6);
-  eblock.order_quad(523,524,779,777,6);
-  eblock.order_quad(670,671,935,933,6);
-  eblock.order_quad(673,674,952,950,6);
-  eblock.order_quad(831,832,1110,1108,6);
-  eblock.order_quad(996,997,1273,1271,6);
-
-  if (test_braid(eblock))
+  bool polynomials=false;
+  if (polynomials)
   {
     std::vector<ext_kl::Pol> pool;
     ext_kl::KL_table twisted_KLV(eblock,pool);
@@ -1081,7 +1127,6 @@ void go_f()
 
 
 // Block mode functions
-
 
 } // |namespace|
 

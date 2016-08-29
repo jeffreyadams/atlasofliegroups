@@ -13,6 +13,7 @@
 #include <sstream>
 #include <fstream>
 #include <string>
+#include <cstring>
 
 #include "prerootdata.h"
 #include "kgb.h"	// |KGB|
@@ -27,7 +28,7 @@
 #include "prettyprint.h"	// |printVector|
 #include "basic_io.h"	// |seqPrint|
 #include "ioutils.h"	// |skipSpaces|
-#include "complexredgp_io.h" // its |Interface| class
+#include "output.h" // its |Interface| class
 #include "kgb_io.h"	// its |print| function
 
 
@@ -52,11 +53,11 @@ namespace {
   input::HistoryBuffer realform_input_buffer; // for real form input
   input::HistoryBuffer Cartan_input_buffer; // for Cartan class input
   input::HistoryBuffer sr_input_buffer; // for standardreps
+  input::HistoryBuffer delta_input_buffer; // for external dist. involutions
   input::HistoryBuffer inputBuf; // buffer shared by all other input functions
 
   WeightInvolution
-  getInnerClass(lietype::Layout& lo, const WeightList& basis)
-    throw(error::InputError);
+  getInnerClass(lietype::Layout& lo, const WeightList& basis);
 
   bool checkInvolution(const WeightInvolution& inv,
 		       const WeightList& basis);
@@ -76,7 +77,7 @@ namespace {
 
 namespace ioutils {
 
-OutputFile::OutputFile() throw(error::InputError)
+OutputFile::OutputFile()
 {
   std::string name=interactive::getFileName
     ("Name an output file (return for stdout, ? to abandon): ");
@@ -99,7 +100,6 @@ OutputFile::~OutputFile() // Closes *d_stream if it is not std::cout.
 }
 
 InputFile::InputFile(std::string prompt, std::ios_base::openmode mode)
-   throw(error::InputError)
 {
   // temporarily deactivate completion: default to file-name completion
 #ifndef NREADLINE
@@ -134,7 +134,7 @@ InputFile::InputFile(std::string prompt, std::ios_base::openmode mode)
 
 InputFile::~InputFile() { delete d_stream; }
 
-} // namespace ioutils
+} // |namespace ioutils|
 
 /*****************************************************************************
 
@@ -144,11 +144,30 @@ InputFile::~InputFile() { delete d_stream; }
 
 namespace interactive {
 
+bool get_yes_or_no(const char* prompt)
+{ std::string full_prompt(prompt);
+  full_prompt.append("? (y/n) ");
+  input::InputBuffer buf; // readline/noreadline inteface forces using this
+
+  while(true) // exit is by |return| or by |throw|
+  {
+    buf.getline(full_prompt.c_str(),false); // get an entire line, as always
+    char c=buf.str().c_str()[0]; // exists, though might be a null character
+    if (c=='y' or c=='Y')
+      return true;
+    if (c=='n' or c=='N')
+      return false;
+    if (c=='?')
+      throw error::InputError();
+    std::cout << "Answer 'y' or 'n', or type '?' to abort input." << std::endl;
+  }
+}
+
+
 /*
   Synopsis: get a file name from terminal, abandon with InputError on '?'
 */
 std::string getFileName(const std::string& prompt)
-  throw(error::InputError)
 {
   input::InputBuffer buf;
 
@@ -205,7 +224,7 @@ void bitMapPrompt(std::string& prompt, const char* mess,
 
   Throws an InputError if not successful; cn is not touched in that case.
 */
-size_t get_Cartan_class(const BitMap& cs) throw(error::InputError)
+size_t get_Cartan_class(const BitMap& cs)
 {
   // if there is a unique Cartan class, choose it
   if (cs.size() == 1)
@@ -234,11 +253,12 @@ size_t get_Cartan_class(const BitMap& cs) throw(error::InputError)
   Throws an |InputError| if the interaction with the user is not successful;
   in that case both pointers are unchanged.
 
-  We pass references to pointers to both a |ComplexReductiveGroup| and to a
-  |complexredgp_io::Interface|, both of which will be assigned appropriately
+  We pass references to pointers to both an |InnerClass| and to a
+  |output::Interface|, both of which will be assigned appropriately
 */
-void get_group_type(ComplexReductiveGroup*& pG,complexredgp_io::Interface*& pI)
-  throw(error::InputError)
+void get_group_type
+  (InnerClass*& pG,output::Interface*& pI,
+   lietype::Layout& layout, WeightList& basis) // export these two
 {
   // first get the Lie type
   LieType lt; getInteractive(lt);  // may throw an InputError
@@ -254,8 +274,10 @@ void get_group_type(ComplexReductiveGroup*& pG,complexredgp_io::Interface*& pI)
   WeightInvolution inv=getInnerClass(lo,b); // may throw InputError
 
   // commit (unless |RootDatum(prd)| should throw: then nothing is changed)
-  pG=new ComplexReductiveGroup(prd,inv);
-  pI=new complexredgp_io::Interface(*pG,lo);
+  pG=new InnerClass(prd,inv);
+  pI=new output::Interface(*pG,lo);
+  layout = lo;
+  basis = std::move(b);
   // the latter constructor also constructs two realform interfaces in *pI
 }
 
@@ -282,7 +304,7 @@ bool get_type_ahead(input::InputBuffer& src, input::InputBuffer& dst)
   Throws an InputError is the interaction does not end in a correct assignment
   of lt. Does not touch lt unless the assignment succeeds.
 */
-void getInteractive(LieType& d_lt) throw(error::InputError)
+void getInteractive(LieType& d_lt)
 {
   if (not get_type_ahead(commands::currentLine(),type_input_buffer))
     type_input_buffer.getline("Lie type: ");
@@ -321,8 +343,6 @@ void getInteractive(LieType& d_lt) throw(error::InputError)
 void getInteractive(PreRootDatum& d_prd,
 		    WeightList& d_b,
 		    const LieType& lt)
-  throw(error::InputError)
-
 {
   // get lattice basis
 
@@ -347,7 +367,7 @@ void getInteractive(PreRootDatum& d_prd,
 	  bp += r; // leave |r| standard basis vectors
 	else
 	{
-	  size_t d=bp-d_b.begin();
+	  size_t d=bp-d_b.begin(); // row offset, to start block on diagonal
 	  for (size_t j=0; j<r; ++j,++bp) // row |j|: simple root |j| in |*it|
 	    for (size_t k=0; k<r; ++k)
 	      (*bp)[d+k]=it->Cartan_entry(j,k);
@@ -359,7 +379,8 @@ void getInteractive(PreRootDatum& d_prd,
   }
 
   // make new PreRootDatum
-  d_prd = PreRootDatum(lt,d_b);
+  d_prd = PreRootDatum(lt);
+  d_prd.quotient(LatticeMatrix(d_b,d_b.size()));
 
 } // |getInteractive(PreRootDatum&,...)|
 
@@ -389,12 +410,11 @@ void getInteractive(PreRootDatum& d_prd,
 */
 WeightInvolution
 getInnerClass(lietype::Layout& lo, const WeightList& basis)
-  throw(error::InputError)
 {
   const LieType& lt = lo.d_type;
 
   InnerClassType ict;
-  getInteractive(ict,lt); //< may throw an InputError
+  getInteractive(ict,lt); // may throw an InputError
 
   WeightInvolution i = lietype::involution(lt,ict);
 
@@ -419,7 +439,6 @@ getInnerClass(lietype::Layout& lo, const WeightList& basis)
   of ict. Does not touch ict unless the assignment succeeds.
 */
 void getInteractive(InnerClassType& ict, const LieType& lt)
-  throw(error::InputError)
 {
   if (interactive_lietype::checkInnerClass(inputBuf,lt,false))
     goto read; // skip interaction if |inputBuf| alreadty has valid input
@@ -452,14 +471,13 @@ void getInteractive(InnerClassType& ict, const LieType& lt)
   in that case, d_G is not touched.
 */
 
-RealFormNbr get_real_form(complexredgp_io::Interface& CI)
-  throw(error::InputError)
+RealFormNbr get_real_form(output::Interface& CI)
 {
-  const realform_io::Interface rfi = CI.realFormInterface();
+  const output::FormNumberMap rfi = CI.realFormInterface();
 
   // if there is only one choice, make it
   if (rfi.numRealForms() == 1) {
-    std::cout << "there is a unique real form: " << rfi.typeName(0)
+    std::cout << "there is a unique real form: " << rfi.type_name(0)
 	      << std::endl;
     return 0;
   }
@@ -477,7 +495,7 @@ RealFormNbr get_real_form(complexredgp_io::Interface& CI)
   {
     std::cout << "(weak) real forms are:" << std::endl;
     for (size_t i = 0; i < rfi.numRealForms(); ++i)
-      std::cout << i << ": " << rfi.typeName(i) << std::endl;
+      std::cout << i << ": " << rfi.type_name(i) << std::endl;
 
     r=get_bounded_int
       (realform_input_buffer,"enter your choice: ",rfi.numRealForms());
@@ -496,24 +514,23 @@ RealFormNbr get_real_form(complexredgp_io::Interface& CI)
 
   Throws an InputError if the interaction with the user fails.
 */
-RealFormNbr get_dual_real_form(complexredgp_io::Interface& CI,
+RealFormNbr get_dual_real_form(output::Interface& CI,
+			       const InnerClass& G,
 			       RealFormNbr rf)
-  throw(error::InputError)
 {
-  ComplexReductiveGroup& G = CI.complexGroup();
   bool restrict = rf<G.numRealForms();
   RealFormNbrList drfl;
   if (restrict)
     drfl = G.dualRealFormLabels(G.mostSplit(rf));
 
-  const realform_io::Interface drfi = CI.dualRealFormInterface();
+  const output::FormNumberMap drfi = CI.dualRealFormInterface();
 
   // if there is only one choice, make it
   if ((restrict ? drfl.size() : drfi.numRealForms())== 1)
   {
     RealFormNbr rfn = restrict ? drfl[0] : 0;
     std::cout << "there is a unique dual real form choice: "
-	      << drfi.typeName(drfi.out(rfn)) << std::endl;
+	      << drfi.type_name(drfi.out(rfn)) << std::endl;
     return rfn;
   }
 
@@ -544,7 +561,7 @@ RealFormNbr get_dual_real_form(complexredgp_io::Interface& CI,
     std::cout << "possible (weak) dual real forms are:" << std::endl;
 
     for (BitMap::iterator it = vals.begin(); it(); ++it)
-      std::cout << *it << ": " << drfi.typeName(*it) << std::endl;
+      std::cout << *it << ": " << drfi.type_name(*it) << std::endl;
     r = get_int_in_set("enter your choice: ",vals);
   }
 
@@ -552,7 +569,7 @@ RealFormNbr get_dual_real_form(complexredgp_io::Interface& CI,
 } // |get_dual_real_form|
 
 
-void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
+void getInteractive(atlas::Parabolic &psg, size_t rank)
 {
   // get the user input as a string
   psg.reset();
@@ -616,7 +633,6 @@ void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
 unsigned long get_bounded_int(input::InputBuffer& ib,
 			      const char* prompt,
 			      unsigned long limit)
-  throw(error::InputError)
 {
   ib.getline(prompt,true);
 
@@ -659,7 +675,6 @@ unsigned long get_bounded_int(input::InputBuffer& ib,
 unsigned long get_int_in_set(const char* prompt,
 			     const BitMap& vals,
 			     input::InputBuffer* linep)
-  throw(error::InputError)
 {
 
   unsigned long c;
@@ -714,7 +729,6 @@ unsigned long get_int_in_set(const char* prompt,
 Weight get_weight(input::InputBuffer& ib,
 				const char* prompt,
 				size_t rank)
-  throw(error::InputError)
 {
   ib.getline(prompt,true);
   Weight result(rank);
@@ -735,7 +749,6 @@ Weight get_weight(input::InputBuffer& ib,
 RatWeight get_ratweight(input::InputBuffer& ib,
 				      const char* prompt,
 				      size_t rank)
-    throw(error::InputError)
 {
   std::string pr = "denominator for ";
   pr += prompt;
@@ -747,7 +760,7 @@ RatWeight get_ratweight(input::InputBuffer& ib,
   return RatWeight(num,denom);
 }
 
-StandardRepK get_standardrep(const SRK_context& c) throw(error::InputError)
+StandardRepK get_standardrep(const SRK_context& c)
 {
   unsigned long x=get_bounded_int
     (sr_input_buffer,"Choose KGB element: ",c.kgb().size());
@@ -755,12 +768,12 @@ StandardRepK get_standardrep(const SRK_context& c) throw(error::InputError)
   prettyprint::printVector(std::cout<<"2rho = ",c.rootDatum().twoRho())
     << std::endl;
   Weight lambda=
-  get_weight(sr_input_buffer,"Give lambda-rho: ",c.complexGroup().rank());
+  get_weight(sr_input_buffer,"Give lambda-rho: ",c.innerClass().rank());
 
   return c.std_rep_rho_plus(lambda,c.kgb().titsElt(x));
 }
 
-StandardRepr get_repr(const Rep_context& c) throw(error::InputError)
+StandardRepr get_repr(const Rep_context& c)
 {
   unsigned long x=get_bounded_int
     (sr_input_buffer,"Choose KGB element: ",c.kgb().size());
@@ -768,7 +781,7 @@ StandardRepr get_repr(const Rep_context& c) throw(error::InputError)
   prettyprint::printVector(std::cout<<"2rho = ",c.rootDatum().twoRho())
     << std::endl;
   Weight lambda_rho=
-    get_weight(sr_input_buffer,"Give lambda-rho: ",c.complexGroup().rank());
+    get_weight(sr_input_buffer,"Give lambda-rho: ",c.innerClass().rank());
   RatWeight nu =
     get_ratweight(sr_input_buffer,"nu:",c.rootDatum().rank());
   return c.sr(x,lambda_rho,nu);
@@ -779,11 +792,10 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 				 KGBElt& x,
 				 Weight& lambda_rho,
 				 RatWeight& gamma)
-  throw(error::InputError)
 {
   // first step: get initial x in canonical fiber
   size_t cn=get_Cartan_class(GR.Cartan_set());
-  const ComplexReductiveGroup& G=GR.complexGroup();
+  const InnerClass& G=GR.innerClass();
   const RootDatum& rd=G.rootDatum();
 
   const KGB& kgb=GR.kgb();
@@ -817,8 +829,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
   // second step: get imaginary-dominant lambda
-  RatWeight rho(rd.twoRho(),2);
-  std::cout << "rho = " << rho.normalize() << std::endl;
+  std::cout << "rho = " << rho(rd).normalize() << std::endl;
   if (i_tab.imaginary_rank(i_x)>0)
   {
     std::cout << "NEED, on following imaginary coroot"
@@ -828,8 +839,8 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
     for (size_t i=0; i<i_tab.imaginary_rank(i_x); ++i)
     {
       RootNbr alpha = i_tab.imaginary_basis(i_x,i);
-      int v=-rho.scalarProduct(rd.coroot(alpha));
-      if (kgb::status(kgb,x,rd,alpha)==gradings::Status::ImaginaryCompact)
+      int v = -rd.colevel(alpha); // |rd.coroot(alpha).dot(rho())|
+      if (kgb::status(kgb,x,alpha)==gradings::Status::ImaginaryCompact)
 	++v; // imaginary compact root should not be singular
       std::cout	<< rd.coroot(alpha) << " (>=" << v << ')' << std::endl;
     }
@@ -846,7 +857,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 	RootNbr alpha = i_tab.imaginary_basis(i_x,i);
 	int v = l.dot(rd.coroot(alpha));
 	bool compact =
-	  kgb::status(kgb,x,rd,alpha)==gradings::Status::ImaginaryCompact;
+	  kgb::status(kgb,x,alpha)==gradings::Status::ImaginaryCompact;
 	if (v<0 or (v==0 and compact))
 	{
 	  std::cout << (v<0 ? "Non-dominant for"
@@ -889,8 +900,8 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 	  std::cout << "Making dominant for "  << (real ? "real" : "complex")
 		    << " coroot " << alpha << std::endl;
 #endif
-          rd.simpleReflect(numer,s);
-          rd.simpleReflect(lambda_rho,s);
+          rd.simple_reflect(s,numer);
+          rd.simple_reflect(s,lambda_rho);
 	  if (not real) // center is $\rho$, but $\rho_r$ cancels if |real|
 	    lambda_rho -= rd.simpleRoot(s);
           x = kgb.cross(s,x);
@@ -903,7 +914,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
 	  std::cout << "Applying complex descent for singular coroot "
 		    << alpha << std::endl;
 #endif
-          rd.simpleReflect(lambda_rho,s); lambda_rho -= rd.simpleRoot(s);
+          rd.simple_reflect(s,lambda_rho); lambda_rho -= rd.simpleRoot(s);
           x = kgb.cross(s,x);
 	  changed = true;
           break;
@@ -917,7 +928,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
       std::cout << "Parameter modified to: ";
 
     std::cout << "x="<< x << ", lambda="
-	      << RatWeight(lambda_rho*2+rd.twoRho(),2).normalize()
+	      << rho(rd).normalize()+lambda_rho
 	      << ", gamma=" << gamma << '.' << std::endl;
 
     const RootNbrList& simple_real = i_tab.real_basis(kgb.inv_nr(x));
@@ -936,7 +947,193 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
   }
 
   return SubSystemWithGroup::integral(rd,gamma); // fix integral system only now
+} // |get_parameter|
+
+
+
+struct inner_class_factor
+{ SimpleLieType factor; lietype::simple_ict kind;
+  inner_class_factor(SimpleLieType slt,lietype::TypeLetter l)
+  : factor(slt)
+  { using lietype::simple_ict;
+    if (l=='c' or l=='e')
+      kind=simple_ict::equal_rank;
+    else if (l=='C')
+      kind=simple_ict::complex;
+    else if (l=='u')
+      kind=simple_ict::unequal_rank;
+    else if (l=='s')
+    { if (slt==SimpleLieType{'A',1} or
+	  std::strchr("TADE",slt.first)==nullptr)
+	kind=simple_ict::equal_rank;
+      else if (slt.first!='D')
+	kind=simple_ict::unequal_rank;
+      else kind= slt.second%2==0
+	     ? simple_ict::equal_rank : simple_ict::unequal_rank;
+    }
+    else assert(false);
+  }
+};
+
+bool operator== (const inner_class_factor& a, inner_class_factor& b)
+{ return a.kind==b.kind and a.factor==b.factor; }
+
+std::ostream& operator << (std::ostream& out, const inner_class_factor& icf)
+{
+  using lietype::simple_ict;
+  if (icf.kind==simple_ict::unequal_rank)
+    if (icf.factor.type()=='D' and icf.factor.rank()%2==0)
+      out << "unequal rank";
+    else
+      out << "split";
+  else
+    out << "comp" << (icf.kind==simple_ict::equal_rank ? "act" : "lex");
+  return out << ' ' << icf.factor.type() << icf.factor.rank();
 }
+
+unsigned rank(const inner_class_factor& icf)
+{ return icf.kind==lietype::simple_ict::complex
+    ? 2*icf.factor.rank() : icf.factor.rank(); }
+
+bool has_involution(const SimpleLieType& slt)
+{ switch(slt.type())
+  {
+  case 'T': case 'D': return true;
+  case 'B': case 'C': case 'F': case 'G': default: return false;
+  case 'A': return slt.rank()>1;
+  case 'E': return slt.rank()==6;
+  }
+}
+
+// get second distinguished involution that commutes with the inner class one
+WeightInvolution get_commuting_involution
+  (const lietype::Layout& lo, const WeightList& basis)
+{
+  // here indices, and |RankFlags| bits, identify entries in |lo.d_type|
+  // each of which gives rise to an |inner_class_factor|
+
+  // first collect inner class factors and group equal ones among them
+  containers::sl_list< std::pair<inner_class_factor,RankFlags> > type;
+
+  typedef const inner_class_factor* icf_ref;
+  // map index to the inner class factor corresponding to it
+  std::vector<icf_ref> icf;
+
+  using lietype::simple_ict;
+
+  const SimpleLieType* p= &lo.d_type[0];
+  for (unsigned k=0; k<lo.d_inner.size(); ++k)
+  { const lietype::TypeLetter ict=lo.d_inner[k];
+    inner_class_factor cur(*p++,ict);
+    if (ict=='C')
+    { assert(*p==cur.factor); // next factor must be identical
+      ++p; // extra increment to skip duplicated simple type
+    }
+
+    auto it = type.begin();
+    for ( ; not type.at_end(it); ++it)
+      if (it->first==cur)
+      { it->second.set(k); // record that this index has thes same type
+	icf.push_back(&it->first); // for location
+	break;
+      }
+    if (type.at_end(it)) // no match among previous entries of |type|
+    { auto last=type.push_back(std::make_pair(cur,RankFlags()));
+      last->second.set(k); // and record this index as occupied by it
+      icf.push_back(&last->first); // for location
+    }
+  } // |for(k)|
+
+
+  std::vector< std::pair<unsigned,unsigned> > swaps; // indices of swapped icf's
+  RankFlags nontrivial, internal_swap; // describe delta on unswapped icf's
+  for (auto it=type.cbegin(); not type.at_end(it); ++it)
+  {
+    RankFlags indices=it->second;
+    if (indices.count()>1) // don't ask questions that admit a unique answer
+    {
+      std::cout << "There are " << it->second.count() <<" factors " << it->first
+		<< "; ";
+      unsigned n = get_bounded_int(delta_input_buffer,
+				   "how many pairs swapped by delta? ",
+				   it->second.count()/2+1);
+      auto jt=it->second.begin();
+      while (n-->0)
+      { unsigned first=*jt++, second=*jt++;
+	swaps.push_back(std::make_pair(first,second));
+	indices.reset(first); indices.reset(second); // remove swapped indices
+      }
+    }
+
+    const SimpleLieType& slt = it->first.factor;
+    for (auto jt=indices.begin(); jt(); ++jt)
+      if (it->first.kind==simple_ict::complex)
+      {
+	std::cout << "On fixed factor " << it->first << ' ';
+	internal_swap.set(*jt,
+		  get_yes_or_no("does delta (like xi) swap the two parts"));
+	if (has_involution(slt))
+	{
+	  std::cout << "On that complex factor, ";
+	  std::ostringstream o;
+	  o << "does "
+	    << (internal_swap[*jt] ? "xi.delta" : "delta")
+	    << " act nontrivially on both sides";
+	  nontrivial.set(*jt,get_yes_or_no(o.str().c_str()));
+	}
+      }
+      else if (has_involution(slt)) // with |it->first.kind!=complex|
+      { std::cout << "On fixed factor " << it->first << ' ';
+	nontrivial.set(*jt,get_yes_or_no("does delta act nontrivially"));
+      } // |for (jt)| and |if (kind==complex)|
+  } // |for (it)|
+
+  // Now user interaction is terminated, construct involution
+  unsigned r=0; // cumulated rank of inner class factors
+  std::vector<unsigned> offset(lo.d_inner.size());
+  for (unsigned i=0; i<offset.size(); ++i)
+    offset[i]=r, r+=rank(*icf[i]);
+  WeightInvolution delta (r); // strart with identity matrix
+
+  for (auto it=swaps.begin(); it!=swaps.end(); ++it)
+  {
+    unsigned left=offset[it->first], right=offset[it->second];
+    unsigned r=rank(*icf[it->first]);
+    while (r-->0)
+      delta.swapColumns(left+r,right+r);
+  }
+
+  for (auto it=nontrivial.begin(); it(); ++it)
+  {
+    unsigned k = offset[*it];
+    const SimpleLieType& slt = icf[*it]->factor;
+    const unsigned r = slt.rank();
+    WeightInvolution theta =
+      lietype::simple_involution(slt,simple_ict::unequal_rank);
+    delta.set_block(k,k,theta);
+    if (icf[*it]->kind==simple_ict::complex)
+      delta.set_block(k+r,k+r,theta);
+  }
+  for (auto it=internal_swap.begin(); it(); ++it)
+  {
+    unsigned k = offset[*it];
+    assert(icf[*it]->kind==simple_ict::complex);
+    const SimpleLieType& slt = icf[*it]->factor;
+    const unsigned r = slt.rank();
+    for (unsigned j=k; j<k+r; ++j)
+      delta.swapColumns(j,j+r);
+  }
+
+  if (checkInvolution(delta,basis))
+    return delta.on_basis(basis);
+
+  std::cout << "I'm sorry, Dave. I'm afraid I can't do that.\n"
+            << "That involution does not stabilize the chosen lattice X^*\n"
+	    << "(and I cannot change that lattice for you here;"
+	    << " give a new 'type' command\nwith different"
+	    << " kernel generators in order to do that)" << std::endl;
+  throw error::InputError();
+} // |get_commuting_involution|
 
 
 /*
@@ -956,7 +1153,7 @@ input::InputBuffer& sr_input()
 }
 
 
-} // namespace interactive
+} // |namespace interactive|
 
 /*****************************************************************************
 
@@ -988,6 +1185,6 @@ bool checkInvolution(const WeightInvolution& i,
   return m.divisible(d);
 }
 
-} // namespace
+} // |namespace|
 
-} // namespace atlas
+} // |namespace atlas|

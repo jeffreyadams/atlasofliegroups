@@ -11,7 +11,7 @@
 #define EXT_KL_H
 
 #include "ext_block.h"
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include "polynomials.h"
 #include "kl.h"
 
@@ -35,10 +35,10 @@ class descent_table
   std::vector<std::vector<unsigned int> > prim_index;
   std::vector<BitMap> prim_flip; // sign for |prim_index|, transposed indexing
  public:
-  const ext_block::extended_block& block;
+  const ext_block::ext_block& block;
 
 // constructors and destructors
-  explicit descent_table(const ext_block::extended_block&);
+  explicit descent_table(const ext_block::ext_block&);
 
 // accessors
 
@@ -79,7 +79,7 @@ class KL_table
   kl::KLContext untwisted;
 
  public:
-  KL_table(const ext_block::extended_block& b, std::vector<Pol>& pool);
+  KL_table(const ext_block::ext_block& b, std::vector<Pol>& pool);
 
   size_t rank() const { return aux.block.rank(); }
   size_t size() const { return column.size(); }

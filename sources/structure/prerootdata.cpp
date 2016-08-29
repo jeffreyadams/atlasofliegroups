@@ -42,9 +42,9 @@ namespace prerootdata {
   // constructor
 
 
-/*!
-\brief Constructs the PreRootDatum whose lattice has basis |b|,
-expressed in terms of the simply connected weight lattice basis for |lt|.
+/*
+  Construct the PreRootDatum whose lattice has basis |b|, expressed in terms
+  of the simply connected weight lattice basis for |lt|.
 
 More precisely, we build the unique rootdatum whose Cartan matrix is the
 standard (Bourbaki) Cartan matrix of the semisimple part of the type |lt|
@@ -61,8 +61,7 @@ The constructor puts in |d_roots| the list of simple roots expressed in the
 basis |b|, and in |d_coroots| the list of simple coroots expressed in the
 dual basis.
 */
-PreRootDatum::PreRootDatum(const LieType& lt,
-			   const WeightList& b)
+PreRootDatum::PreRootDatum(const LieType& lt)
   : d_roots(lt.semisimple_rank()), d_coroots(d_roots.size())
   , d_rank(lt.rank())
 {
@@ -78,8 +77,6 @@ PreRootDatum::PreRootDatum(const LieType& lt,
 	  d_roots[s][j] = lt.Cartan_entry(r,j);
 	d_coroots[s][r] = 1;
       }
-  assert(b.size()==lt.rank());
-  quotient(LatticeMatrix(b,b.size())); // transform |b| into a square matrix
 }
 
 
@@ -96,14 +93,11 @@ int_Matrix PreRootDatum::Cartan_matrix() const
   return Cartan;
 }
 
-// replace root datum for one by a finite central quotient
-void PreRootDatum::quotient(const LatticeMatrix& sublattice)
-  throw(std::runtime_error)
+// replace by root datum for a finite central quotient with weight |sublattice|
+PreRootDatum& PreRootDatum::quotient(const LatticeMatrix& sublattice)
 {
-  const size_t rk=sublattice.numColumns();
-
-  if (sublattice.numRows()!=rk)
-    throw std::runtime_error("Sub-lattice matrix must be square");
+  if (sublattice.numRows()!=d_rank or sublattice.numColumns()!=d_rank)
+    throw std::runtime_error("Sub-lattice matrix not square of right size");
 
   LatticeMatrix inv(sublattice);
   LatticeCoeff d; inv.invert(d);
@@ -117,6 +111,7 @@ void PreRootDatum::quotient(const LatticeMatrix& sublattice)
       inv.apply_to(d_roots[j]); d_roots[j]/=d;
       sublattice.right_mult(d_coroots[j]);
     }
+    return *this;
   }
   catch (std::runtime_error& e) {
     // relabel |std::runtime_error("Inexact integer division")| from division
@@ -125,9 +120,9 @@ void PreRootDatum::quotient(const LatticeMatrix& sublattice)
 }
 
 template<typename C>
-  void PreRootDatum::simpleReflect(matrix::Vector<C>& v, weyl::Generator s)
+void PreRootDatum::simple_reflect(weyl::Generator s,matrix::Vector<C>& v)
   const
-{ v -= d_roots[s].scaled(d_coroots[s].dot(v)); }
+{ v.subtract(d_roots[s].begin(),d_coroots[s].dot(v)); }
 
 void PreRootDatum::simple_reflect(weyl::Generator s, LatticeMatrix& M) const
 {
@@ -161,9 +156,9 @@ void PreRootDatum::simple_reflect(LatticeMatrix& M,weyl::Generator s) const
 
 namespace prerootdata {
 
-template void PreRootDatum::simpleReflect
-  (matrix::Vector<arithmetic::Numer_t>& v, weyl::Generator s) const;
+template void PreRootDatum::simple_reflect
+  (weyl::Generator s,matrix::Vector<arithmetic::Numer_t>& v) const;
 
 } // |namespace prerootdata|
 
-} // namespace atlas
+} // |namespace atlas|

@@ -423,14 +423,13 @@ BitMap& BitMap::operator^= (const BitMap& b)
   exceed the size of the current bitmap (but may be smaller).
   Return whether any bits remain in the result.
 */
-bool BitMap::andnot(const BitMap& b)
+BitMap& BitMap::andnot(const BitMap& b)
 {
   assert(b.capacity()<=capacity());
-  bool any=false;
   for (unsigned long j = 0; j < b.d_map.size(); ++j)
-    if ((d_map[j] &= ~(b.d_map[j]))!=0) any=true;
+    d_map[j] &= ~b.d_map[j];
 
-  return any;
+  return *this;
 }
 
 BitMap& BitMap::operator<<= (unsigned long delta) // increase values by |delta|
@@ -445,10 +444,10 @@ BitMap& BitMap::operator<<= (unsigned long delta) // increase values by |delta|
   if (delta_rem>0 and not d_map.empty())
   {
     std::vector<unsigned long>::iterator it;
-    for (it=d_map.end(); --it!=d_map.begin(); )
+    for (it=d_map.end(); --it!=d_map.begin(); ) // reverse loop, omit initial
     {
       *it <<= delta_rem; // shift bits up
-      *it |= *(it-1) >> (constants::longBits-delta_rem);
+      *it |= *(it-1) >> (constants::longBits-delta_rem); // bits shifted in
     }
     *it <<= delta_rem; // shift bits up
   }
@@ -540,8 +539,8 @@ template<typename I> void BitMap::insert(I first, I last)
 }
 
 
-/*!
-  Synopsis: sets the capacity of the bitmap to n.
+/*
+  Set the capacity of the bitmap to |n|, shrinking |d_map| if possible
 
   Does not modify the contents up to the previous size, at least if n is
   larger. The new elements are initialized to zero.
@@ -556,6 +555,13 @@ void BitMap::set_capacity(unsigned long n)
   d_capacity = n;
 }
 
+// Add one more place to bitmap (amortised efficiently), set it to value |b|
+void BitMap::extend_capacity(bool b)
+{
+  if (d_capacity == (d_map.size()<<baseShift))
+    d_map.push_back(0); // allocate space; |std::vector| handles efficiency
+  set_to(d_capacity++,b);
+}
 
 /*!
   Synopsis: sets r bits from position n to the first r bits in a.

@@ -1,0 +1,247 @@
+<LKT.at
+{ Conversions between three ways of parametrizing K-types, see LKT.at
+
+  1. KParam: (x,lambda), call these K-types
+  2. KHighestWeight:
+      (x,mu), x in distinguished fiber, mu in X^*/(1-delta)X^*=X^*(H^delta)
+  3. LKT as parameters for K_0: Param (for K_0), call these K_0_reps
+}
+{  ------------map from KParams (K_types) to highest weights-----------   }
+
+{ see LKT_highest_weights(...) in LKT.at }
+
+{ -----------------map from highest weights to K-types------------------ }
+
+{ -----------------------Vogan algorithm--------------------- }
+
+{ project vector mu on dominant cone (spanned by fundamental coweights)
+  algorithm from KHatHowe Section 13, modification of BGB Proposition 5.3.3
+  used in map from highest weights to LKT below
+}
+
+set centralizer(KGBElt x,ratvec v)=
+assert(^involution(x)*v=v, "v is not theta-stable");
+let rd=root_datum(x) then
+pr=posroots(rd) then
+pcr=poscoroots(rd) then
+(roots,coroots)=([vec]:[],[vec]:[]) then
+()=for alpha@i in pr do
+ if alpha*v=0 then roots#:=pr[i];coroots#:=pcr[i] fi od then
+ subrd=if #roots !=0 then
+  root_datum(simple_from_positive(roots,coroots))
+ else
+  root_datum([vec]:[],[vec]:[],rank(rd)) fi in
+ (KGB_elt(subrd,involution(x),torus_factor(x)),subrd)
+
+set find_nci_root(KGBElt x,ratvec tau)=
+let rd=root_datum(x) then
+sr=simple_roots(rd) then
+scr=simple_coroots(rd) then
+j=first(ss_rank(rd),(int i)bool:scr[i]*tau<0 and (is_noncompact(x)(sr[i]))) in
+if j!=-1 then j else
+let j=first(ss_rank(rd),
+  (int i)bool: scr[i]*tau<0
+   and (is_complex(i,x)
+   and {<alpha,theta(alpha^vee)>=-1}
+     sr[i]*^involution(x)*simple_coroots(rd)[i]=-1
+   and is_noncompact(x)(sr[i]+involution(x)*sr[i])
+  ))
+ in root_index(rd,sr[j]+involution(x)*sr[j]) fi
+
+{(x,mu) is a KHighestWeight (see top of this file)
+ x in the distinguished fiber, theta_x=delta
+ mu\in X^*, viewed modulo (1-delta)X^*
+in (X^*)^delta project it to X^*(T_K0) where T_K0=identity component of H^delta}
+{(x,mu) equivalent to (wx,w\mu) so WLOG mu is G-dominant}
+
+
+{This is the Vogan algorithm, version in khatHowe Section 13,
+which is a slight modification of BGB Proposition 5.3.3
+given (x,mu) -> mu+2rho_K(x) ->
+   choose positive chamber for G -> mu+2rho_K(x)-rho
+ project on given dominant chamber
+ returns (x,mu_2rho_K(x)-rho,tau) where tau is dominant
+ need the second argument for the modified Vogan algorithm
+ }
+set project_on_dominant_cone(KGBElt x, ratvec mu)=(KGBElt,ratvec,ratvec):
+let rd=root_datum(x) then
+mu=(1+involution(x))*mu/2 then
+(mu_1,w)=make_dominant(rd,mu) then
+x_1=cross(inverse(w),x) then
+{x_1=x then
+mu_1=mu then}
+{()=prints("mu:", mu);
+prints("x: ", x);
+prints("mu_1:", mu_1);
+prints("x_1: ", x_1) then
+}
+{ Note: tworho_K_fixed(x) (above) is in (\h^*)^theta,
+  while rho_K(x) is in \t^*, need the former}
+mu_2=mu_1+tworho_K_fixed(x_1) in
+{let ()=prints("mu_2:", mu_2) in}
+let (,y)=make_dominant(rd,mu_2) in
+let x_2=cross(inverse(y),x_1) in
+{let ()=prints("y=", y) in
+let ()=prints("x_2=", x_2) in}
+let rho=act(y,rho(rd)) then
+mu_3=mu_2-rho in
+{let ()=prints("mu_3=", mu_3) in}
+let rec_fun f(KGBElt x, ratvec mu_3_orig,ratvec tau)=(KGBElt,ratvec,ratvec):
+let rd=root_datum(x) in
+{let ()=prints();prints("f with: ", x, " ", real_form(x), " tau= ", tau) in
+let ()=prints("rd:", rd) in
+let ()=prints("tau=",tau) in
+let ()=prints("x=",x, "on real form:", real_form(x)) in}
+if is_dominant(rd,act(inverse(y),tau)) then
+{(x_1,mu_3_orig,tau) else}
+(cross(inverse(y),x_1),act(inverse(y),mu_3), act(inverse(y),tau)) else
+let j=find_nci_root(x,tau) then
+{()=prints("got root: ", j, ", ", posroots(rd)[j]) then}
+{()=prints("beta=", posroots(rd)[j]) then}
+new_tau=tau-poscoroots(rd)[j]*tau*posroots(rd)[j]/2 then
+{()=prints("new_tau=",new_tau) then}
+(sub_x,sub_rd)=centralizer(x,poscoroots(rd)[j]) in
+f(sub_x,mu_3_orig,new_tau) fi in f(x_2,mu_3,mu_3)
+
+set project_on_dominant_cone (KGBElt x, vec mu) = (KGBElt,ratvec,ratvec):
+  project_on_dominant_cone(x,ratvec:mu)
+
+{possibly multivalued, coming from G-spherical case}
+
+{ This function is the same as basis_lambda_differential_0 in all_Kparameters.at
+   List of weights representative of a set of generators of the elementary
+   2-group ker(1+theta(x))/im(1-theta(x)).
+characters_order_2@KGBElt
+returns [v_0,...,v_k], v_i\in X^*,
+the characters of H^{theta_x} with differential 0
+are \sum a_i v_i with a_i=0,1 (or [] -> [0,...,0])
+}
+set characters_order_2(KGBElt x)=[vec]:
+let theta=involution(x) then
+zero_vector=vec:null(rank(real_form(x))) {default value} then
+K=kernel(1+theta) then
+(r,c)=#K in
+if c=0 then [vec]:[]  else let
+M=in_lattice_basis(K,1-theta) in
+if #M=0 then [vec]:[] else let
+(A,v)=adapted_basis(M) then
+B=K*A in
+{prints("K=",K);
+prints("A=",A);
+prints("v=",v);
+prints ("B=",B);}
+let rv=[vec]:[]
+ in
+ for i:#v do if v[i]=2 then rv#:=B[i] fi od;
+rv fi fi
+
+set all_G_spherical_same_differential(KParam p)=
+{ assert(is_split_spherical(p),
+         "parameter is not spherical for a (relatively) split group"); }
+let chars=characters_order_2(x(p)) then
+coeffs=generate_all_binary(#chars) then
+scr=simple_coroots(root_datum(p)) then
+rv=[KParam]:[] in
+ for v in coeffs do
+ let mu=vec:null(rank(root_datum(x(p)))) in
+  for j:#v do mu+:=v[j]*chars[j] od;
+  if all(for alpha_check in scr do is_even(alpha_check*mu) od)
+  then rv#:=(x(p),lambda(p)+mu)
+  fi od;rv
+
+set all_G_spherical_same_differential(Param p) =
+  all_G_spherical_same_differential(Kparameter(p*0))
+
+{ see KHatHowe, end of Section 13
+  mu-> phi=mu_2rho_c-rho-lambda
+    (=lambda-mu_3_orig from project_on_dominant_cone)
+ write phi is a non-negative rational combination of simple roots
+ the simple roots with strictly positive coefficient give the Levi factor L,
+ and q=l+u is the corresponding standard parabolic
+}
+set parabolic(KHighestWeight (x,mu))=
+let rd=root_datum(x) then
+(y,mu_3_orig,lambda)=project_on_dominant_cone(x,mu) then
+diff=lambda-mu_3_orig then
+S=[int]:[] in
+ for i:ss_rank(rd) do if fundamental_coweight(rd,i)*diff>0 then S#:=i fi od;
+ parabolic(S,y)
+
+{go from highest weight to K_types [KParam]  mu -> [p_1,...,p_r]
+ multivalued: LKT_highest_weight(p_i)=mu
+ algorithm:
+ 1) G-spherical case: mu\in X^*/(1-delta)X^*, satisfying <mu,\alpha^\vee>=0
+    for all alpha in Delta(G,T_{K_0})<
+}
+set fix(KHighestWeight mu,KGBElt x_Q)=KHighestWeight:
+let (x,tau)=mu then
+w=find_W_cross(x,x_Q) in
+(cross(w,x),act(w,tau))
+
+set K_types(KHighestWeight mu)=[KParam]:
+let (y,mu_3_orig,dlambda)=project_on_dominant_cone(mu) then
+Q=parabolic(mu) then  {Q is theta-stable}
+{()=prints("Q=", Q) then}
+()=assert(is_parabolic_theta_stable(Q), "Q is not theta stable") then
+x_Q=x_min(Q) then
+{()=prints("x_Q=", x_Q) then}
+mu=fix(mu,x_Q) then
+(x,tau)=mu then
+{()=prints("fixed mu:", mu) in}
+()=assert(mu=fix(mu,x_Q),"error: mu\ne fix(mu)") then
+L=Levi(Q) then  {L is relatively split}
+{()=prints("Q=", Q) then
+()=prints("mu:", mu) then
+()=prints("dlambda:", dlambda) then
+()=prints("L=", L) then
+()=prints("rho_u_cap_s(Q)", rho_u_cap_s(Q)) then
+()=prints("rho_l(Q)", rho_l(Q)) then
+()=prints("tau: ", tau) then
+()=prints("arg:", tau-2*rho_u_cap_s(Q)+rho_l(Q)) then}
+()=assert(is_relatively_split(L),"L is not relatively split") then
+pL=parameter(KGB(L,#KGB(L)-1),
+	     tau-two_rho_u_cap_s(Q)+rho_l(Q), null(#dlambda))  then
+pL=finalize(pL) then
+{()=prints("pL:", pL) then
+()=prints("Q=:", Q) then}
+rv=[KParam]:[] then
+()=assert(#pL=1,"finalized parameter has more than one term")  then
+all_pL=all_G_spherical_same_differential(pL[0]) in
+for qL in all_pL do
+{ let ()=prints("qL:", qL) in}
+ let ind=monomials(induce_standard(parameter(qL),Q,real_form(x))) then
+ ()=assert(#ind=1,"induced has more than one term") in
+ rv#:=Kparameter(ind[0]) od;rv
+
+set K_type(KHighestWeight(x,mu))=KParam:
+let ktypes=K_types(x,mu) in
+assert(#ktypes=1,
+      ##["more than one K-type maps to this KHighestWeight;", new_line,
+       "use K_types to get them all"]); ktypes[0]
+
+
+set number_extensions(KHighestWeight mu)=int:
+  let (x,tau)=mu in #R_K_dom_mu(x,project_K(x,tau))
+
+set dimension(KHighestWeight mu)=int:
+let (x,tau)=mu
+in dimension(K0_highest_weights(mu)[0])*
+   rat_as_int(#R_K_dom(x)/number_extensions(mu))
+
+
+
+
+
+set fund_weight_to_atlas(KGBElt x,ratvec mu)=ratvec:
+let fw=fundamental_weights(K_0(x)) then
+rv=ratvec:null(rank_K(real_form(x))) in
+for i:#mu do rv+:=mu[i]*fw[i] od;rv
+
+
+
+
+{			    sorting by dimension			}
+
+set sort_by_dimension = ([(Split,Param)] -> [(Split,Param)]):
+ sort_by( (Split s,Param p) int: LKT_dimensions(p)[0] )
+

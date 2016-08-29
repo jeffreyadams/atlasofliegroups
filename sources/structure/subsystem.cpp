@@ -29,44 +29,48 @@ SubSystem::SubSystem(const RootDatum& parent,
   , rd(parent) // share
   , pos_map(numPosRoots(),~0)
   , inv_map(rd.numRoots()+1,~0) // one spare entry for "unfound root in parent"
-  , sub_root(sub_sys.size())
+  , sub_root(numPosRoots())
 {
-  for (weyl::Generator i=0; i<sub_sys.size(); ++i)
+  for (unsigned int i=0; i<numPosRoots(); ++i)
   {
-    RootNbr alpha = pos_map[i]=sub_sys[i];
-    inv_map[alpha] = simpleRootNbr(i);
-    inv_map[rd.rootMinus(alpha)] = numPosRoots()-1-i;
+    // first set |pos_map[i]|
+    if (i<sub_sys.size()) // simple in subsystem, just use |sub_sys|
+      pos_map[i]=sub_sys[i];
+    else // use previously stored values in |pos_map|, |sub_root| recursively
+    {
+      RootNbr sub_alpha = posRootNbr(i);
+      weyl::Generator s = find_descent(sub_alpha); // generator for subsystem
+      simple_reflect_root(s,sub_alpha);
+      RootNbr beta = pos_map[posRootIndex(sub_alpha)]; // |beta| is in parent
+      pos_map[i] = rd.permuted_root(sub_root[s].reflection,beta);
+    }
 
+    RootNbr alpha = pos_map[i]; // now we use parent numbering
+    inv_map[alpha] = posRootNbr(i); // refers simple root |i| in subsystem
+    inv_map[rd.rootMinus(alpha)] = rootMinus(inv_map[alpha]); // its negative
+
+    // in the remainder we work in parent datum; must find conjugate to simple
     size_t count=0; weyl::Generator s;
     while (alpha!=rd.simpleRootNbr(s=rd.find_descent(alpha)))
-    {
-      rd.simple_reflect_root(alpha,s);
+    { // just count the reflections needed to make alpha simple
+      rd.simple_reflect_root(s,alpha);
       ++count;
     }
 
+    // now we can dimension our Weyl words, and set |sub_root[i].simple|
     sub_root[i].to_simple.resize(count);
     sub_root[i].reflection.resize(2*count+1);
     sub_root[i].simple=sub_root[i].reflection[count]=s; // set middle letter
 
-    size_t j=count; // redo search loop, now storing values
-    for (alpha=sub_sys[i]; j-->0; rd.simple_reflect_root(alpha,s))
+    size_t j=count; // redo search loop, storing remaining Weyl word letters
+    for (alpha=pos_map[i]; j-->0; rd.simple_reflect_root(s,alpha))
     {
       s=rd.find_descent(alpha);
-      sub_root[i].to_simple[j]=s;
-      sub_root[i].reflection[count+1+j]=sub_root[i].reflection[count-1-j]=s;
+      sub_root[i].to_simple[j]=s; // write |to_simple| word from right to left
+      sub_root[i].reflection[count+1+j]= // and |reflection| from outside in
+      sub_root[i].reflection[count-1-j]=s;
     }
-    assert(alpha==rd.simpleRootNbr(sub_root[i].simple));
-  }
-
-  for (unsigned int i=rank(); i<numPosRoots(); ++i)
-  {
-    RootNbr alpha = posRootNbr(i); // root number in subsystem
-    weyl::Generator s = find_descent(alpha);
-    simple_reflect_root(alpha,s);
-    RootNbr beta = pos_map[posRootIndex(alpha)]; // in parent
-    pos_map[i] = rd.permuted_root(sub_root[s].reflection,beta);
-    inv_map[pos_map[i]] = posRootNbr(i);
-    inv_map[rd.rootMinus(pos_map[i])] = numPosRoots()-1-i;
+    assert(alpha==rd.simpleRootNbr(sub_root[i].simple)); // check |alpha|
   }
 }
 
@@ -84,10 +88,12 @@ SubSystem SubSystem::integral // pseudo contructor for integral system
   return SubSystem(parent,parent.simpleBasis(int_roots));
 }
 
-RootNbr SubSystem::parent_nr(RootNbr alpha) const
+RootNbr SubSystem::to_parent(RootNbr alpha) const
 {
-  return isPosRoot(alpha) ? pos_map[posRootIndex(alpha)]
-    : parent_datum().rootMinus(pos_map[numPosRoots()-1-alpha]) ;
+  RootNbr result = pos_map[rt_abs(alpha)];
+  if (is_negroot(alpha))
+    result = parent_datum().rootMinus(result);
+  return result;
 }
 
 PreRootDatum SubSystem::pre_root_datum() const
@@ -111,7 +117,7 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta,
   for (weyl::Generator i=0; i<rank(); ++i)
   {
     RootNbr image =
-      inv_map[rd.rootNbr(theta*rd.root(parent_nr_simple(i)))];
+      inv_map[rd.root_index(theta*rd.root(parent_nr_simple(i)))];
     assert(image < numRoots());  // |image| is number of image in subsystem
     Delta[i] = rootMinus(image); // |-theta| image of |root(i)|
   }
@@ -151,7 +157,7 @@ weyl::Twist SubSystem::parent_twist(const WeightInvolution& theta,
   for (weyl::Generator i=0; i<rank(); ++i)
   {
     RootNbr image =
-      inv_map[rd.rootNbr(theta*rd.root(parent_nr_simple(i)))];
+      inv_map[rd.root_index(theta*rd.root(parent_nr_simple(i)))];
     assert(image < numRoots());
     Delta[i] = image; // PLUS |theta| image of |root(i)|
   }
@@ -182,21 +188,6 @@ RootNbrSet SubSystem::positive_roots() const
 
 InvolutionData SubSystem::involution_data(const WeightInvolution& theta) const
 { return InvolutionData(rd,theta,positive_roots()); }
-
-// grading of subsystem imaginary roots (parent perspective) induced by parent
-Grading SubSystem::induced(Grading base_grading) const
-{
-  base_grading.complement(rd.semisimpleRank()); // flag compact simple roots
-  Grading result;
-  for (weyl::Generator s=0; s<rank(); ++s)
-  { // count compact parent-simple roots oddly contributing to (subsystem) |s|
-    Grading mask (rd.root_expr(parent_nr_simple(s))); // mod 2
-    result.set(s,mask.dot(base_grading)); // mark if odd count (=>|s| compact)
-  }
-
-  result.complement(rank()); // back to convention marking non-compact roots
-  return result;
-}
 
 SubSystemWithGroup::SubSystemWithGroup(const RootDatum& parent,
 				       const RootNbrList& sub_sys)

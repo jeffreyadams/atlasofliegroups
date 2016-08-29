@@ -35,9 +35,11 @@ template<typename C>
 				    std::vector<C>& diagonal);
 
 template<typename C> // find a solution |x| for |A*x==b|
+  bool has_solution(const matrix::PID_Matrix<C>& A,
+		    matrix::Vector<C> b); // by value
+template<typename C> // find a solution |x| for |A*x==b|
   matrix::Vector<C> find_solution(const matrix::PID_Matrix<C>& A,
-				  matrix::Vector<C> b) // by value
-  throw (std::runtime_error); // thrown if no solution exists
+				  matrix::Vector<C> b); // by value
 
 } // |namespace matreduc|
 } // |namespace atlas|

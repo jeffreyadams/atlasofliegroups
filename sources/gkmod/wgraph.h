@@ -12,14 +12,15 @@
 
 #include <iostream>
 
+#include "../Atlas.h"   // must be included before any utility headers are
+
 #include "bitset.h"	// inlines
 #include "graph.h"	// containment
 
-#include "atlas_types.h"
 
 namespace atlas {
 
-/******** type declarations  (see atlas_types.h)  ***************************/
+/******** type declarations  (see ../Atlas.h)  ***************************/
 
 
 /******** function declarations *********************************************/
@@ -139,8 +140,8 @@ class DecomposedWGraph
 
 }; // |class DecomposedWGraph|
 
-} // namespace wgraph
+} // |namespace wgraph|
 
-} // namespace atlas
+} // |namespace atlas|
 
 #endif

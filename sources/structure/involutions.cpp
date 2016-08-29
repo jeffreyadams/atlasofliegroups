@@ -17,7 +17,7 @@
 #include "weyl.h"
 #include "y_values.h"
 #include "tits.h"
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "lattice.h"
 
 #include "kgb.h" // for |KGB_elt_entry|
@@ -158,7 +158,7 @@ RootNbrList Cayley_roots(const TwistedInvolution& tw,
       const weyl::Generator s=~inv_ex[i];
       W.twistedConjugate(cross,s); // record cross action
       for (size_t i=0; i<result.size(); ++i)
-	rs.simple_reflect_root(result[i],s); // s-reflect the |result| roots
+	rs.simple_reflect_root(s,result[i]); // |s|-reflect the |result| roots
     }
 
   return result;
@@ -200,32 +200,37 @@ InvolutionNbr InvolutionTable::add_involution
     rd.reflect(*it,theta);
 
   int_Matrix A=theta; // will contain |id-theta|, later row-saturated
-  A.negate();
-  for (size_t i=0; i<A.numRows(); ++i)
-    ++A(i,i);
+  A.negate() += 1;
 
   // |R| will map $\lambda-\rho$ to reduced torus part coordinates
   // |B| will then map these coordinates (mod 2) through to $A*(\lambda-\rho)$
   std::vector<int> diagonal;
   int_Matrix B = matreduc::adapted_basis(A,diagonal); // matrix for lifting
   int_Matrix R = B.inverse(); // matrix that maps to adapted basis coordinates
-  R.block(0,0,diagonal.size(),R.numColumns()).swap(R); R*=A;
+  R=R.block(0,0,diagonal.size(),R.numColumns()); // restrict to image |A|
+  R*=A; // now R is A followed by taking coordinates on adapted basis of image
   for (unsigned i=0; i<R.numRows(); ++i)
-    for (unsigned j=0; j<R.numColumns(); ++j)
-    {
-      assert (R(i,j)%diagonal[i]==0); // since $R=D(diagonal)*C^{-1}$
-      R(i,j)/=diagonal[i]; // don't need |arithmetic::divide|, division exact
-    }
+    if (diagonal[i]!=1)
+      for (unsigned j=0; j<R.numColumns(); ++j)
+      {
+	assert (R(i,j)%diagonal[i]==0); // since $R=D(diagonal)*C^{-1}$
+	R(i,j)/=diagonal[i]; // don't need |arithmetic::divide|, division exact
+      }
+  // now |R| gives coordinates on adapted basis scaled: basis of image lattice
+  // |R| is the matrix that will become |M_real|
 
-  B.block(0,0,B.numRows(),diagonal.size()).swap(B);
+  B=B.block(0,0,B.numRows(),diagonal.size());
   for (unsigned j=0; j<B.numColumns(); ++j)
-    B.columnMultiply(j,diagonal[j]);
-
-  A = lattice::row_saturate(A);
+    if (diagonal[j]!=1)
+      B.columnMultiply(j,diagonal[j]);
+  // restore relation |B*R==A| after scaling down rows of |R|
+  // |B| is the matrix that will become |lift_mat|
 
   unsigned int W_length=W.length(canonical);
   unsigned int length = (W_length+Cayleys.size())/2;
-  data.push_back(record(theta,InvolutionData(rd,theta),A,R,diagonal,B,
+  data.push_back(record(theta,InvolutionData(rd,theta),
+			lattice::row_saturate(A),
+			R,diagonal,B,
 			length,W_length,tits::fiber_denom(theta)));
   assert(data.size()==hash.size());
 
@@ -270,6 +275,13 @@ bool
 InvolutionTable::is_real_simple(InvolutionNbr n,weyl::Generator s) const
 { return real_roots(n).isMember(rd.simpleRootNbr(s)); }
 
+bool
+InvolutionTable::is_complex_descent(InvolutionNbr n,RootNbr alpha) const
+{ make_positive(rd,alpha); // test below assumes |alpha| itself is positive
+  return
+    complex_roots(n).isMember(alpha) and
+    rd.is_negroot(root_involution(n,alpha));
+}
 
 bool InvolutionTable::equivalent
   (const TorusElement& t1, const TorusElement& t2, InvolutionNbr i) const
@@ -311,9 +323,8 @@ KGB_elt_entry InvolutionTable::x_pack(const GlobalTitsElement& x) const
   assert(i<hash.size());
   RatWeight wt = x.torus_part().log_2pi();
   // we need projector modulo kernel of |theta^tr+1|, cf. constructor
-  int_Matrix A = matrix(i).transposed();
-  for (size_t i=0; i<A.numRows(); ++i)
-    A(i,i) += 1;
+  int_Matrix A = matrix(i);
+  A.transpose() += 1;
   int_Matrix projector = lattice::row_saturate(A);
   Ratvec_Numer_t p = projector * wt.numerator();
 
@@ -335,9 +346,8 @@ InvolutionTable::x_equiv(const GlobalTitsElement& x0,
   RatWeight wt = x0.torus_part().log_2pi()-x1.torus_part().log_2pi();
 
   // we need projector modulo kernel of |theta^tr+1|, cf. constructor
-  int_Matrix A = matrix(i).transposed();
-  for (size_t i=0; i<A.numRows(); ++i)
-    A(i,i) += 1;
+  int_Matrix A = matrix(i);
+  A.transpose() += 1;
   int_Matrix projector = lattice::row_saturate(A);
   Ratvec_Numer_t p = projector * wt.numerator();
 
@@ -348,16 +358,7 @@ InvolutionTable::x_equiv(const GlobalTitsElement& x0,
   return true;
 }
 
-TorusPart InvolutionTable::check_rho_imaginary(InvolutionNbr inv) const
-{
-  TorusPart result(rd.rank());
-  RootNbrSet pos_im=imaginary_roots(inv) & rd.posRootSet();
-  for (RootNbrSet::iterator it=pos_im.begin(); it(); ++it)
-    result += TorusPart (rd.coroot(*it));
-  return result;
-}
-
-// choose unique representative for real projection of rational weight
+// choose unique representative for real projection class of a rational weight
 void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const
 {
   const record& rec=data[inv];
@@ -366,7 +367,8 @@ void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const
   for (unsigned i=0; i<v.size(); ++i)
     v[i]= arithmetic::remainder(v[i],2*rec.diagonal[i]*y.denominator());
 
-  y.numerator()= rec.lift_mat * v; (y/=2).normalize();
+  y.numerator()= rec.lift_mat * v; // original |y| now "mapped to" |(1-theta)*y|
+  (y/=2).normalize(); // and this gets us back to the class of the original |y|
 }
 
 TorusPart InvolutionTable::pack(InvolutionNbr inv, const Weight& lambda_rho)
@@ -382,6 +384,7 @@ Weight InvolutionTable::unpack(InvolutionNbr inv, TorusPart y_part) const
 {
   const record& rec=data[inv];
   Weight result(rec.lift_mat.numRows(),0);
+  // set |result=left_mat*lift| where |lift| is the integer lift of |y_part|
   for (unsigned i=0; i<y_part.size(); ++i)
     if (y_part[i])
       result += rec.lift_mat.column(i);
@@ -393,7 +396,7 @@ Weight InvolutionTable::unpack(InvolutionNbr inv, TorusPart y_part) const
 
 
 Cartan_orbit::Cartan_orbit(InvolutionTable& i_tab,
-			   ComplexReductiveGroup& G,
+			   InnerClass& G,
 			   CartanNbr cn)
   : Cartan_class_nbr(cn)
   , start(i_tab.size())
@@ -420,7 +423,7 @@ const CartanNbr undefined = ~0;
 void Cartan_orbits::set_size(CartanNbr n_Cartans)
 { Cartan_index.resize(n_Cartans,undefined); orbit.reserve(n_Cartans); }
 
-void Cartan_orbits::add(ComplexReductiveGroup& G, CartanNbr cn)
+void Cartan_orbits::add(InnerClass& G, CartanNbr cn)
 {
   assert(cn<Cartan_index.size());
   if (Cartan_index[cn]!=undefined)
@@ -429,12 +432,6 @@ void Cartan_orbits::add(ComplexReductiveGroup& G, CartanNbr cn)
 
   // now actually generate the involutions associated to this Cartan class
   orbit.push_back(Cartan_orbit(static_cast<InvolutionTable&>(*this),G,cn));
-}
-
-void Cartan_orbits::add(ComplexReductiveGroup& G, const BitMap& Cartan_classes)
-{
-  for (BitMap::iterator it=Cartan_classes.begin(); it(); ++it)
-    add(G,*it);
 }
 
 unsigned int Cartan_orbits::locate(InvolutionNbr i) const
@@ -481,6 +478,6 @@ size_t Cartan_orbits::total_size(const BitMap& Cartan_classes) const
   return s;
 }
 
-} // namsepace
+} // |namsepace|
 
-} // namespace atlas
+} // |namespace atlas|

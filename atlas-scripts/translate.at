@@ -1,0 +1,133 @@
+{ the functions in this file have not been carefully checked }
+
+<basic.at
+<hermitian.at
+
+set translate_debug=false
+
+{
+  translate Param p, at infinitesimal character gamma,
+  to new infinitesimal character gamma_new
+  assumes gamma,gamma_new are dominant, shift=gamma_new-gamma is integral
+  replaces (x,lambda,nu) with (x,lambda+shift,nu+shift)
+  if gamma,gamma_new are regular, p and T(p,gamma_new) will have
+    identical block structure
+  if gamma is regular and gamma_new is singular, block of T(p,gamma_new)
+    will be a quotient of block at gamma
+  if gamma or gamma_new is not dominant, no guarantees (but no test either)
+}
+set translate_by (Param p, vec shift) = Param:
+  let (x,lambda_rho,gamma)=%p in param(x,lambda_rho+shift,gamma+shift)
+set T(Param p, ratvec gamma_new)= Param:
+  translate_by(p,ratvec_as_vec(gamma_new-infinitesimal_character(p)))
+
+{ translate a ParamPol by translating each term }
+set T(ParamPol P, ratvec gamma_new)= ParamPol:
+  if =P then P { without any terms, there is nothing to change }
+  else
+    let gamma = infinitesimal_character(last_param(P))
+    then shift = ratvec_as_vec(gamma_new-gamma)
+    in 0*P + for w@q in P do (w,translate_by(q,shift)) od
+  fi
+
+set to_wall (RootDatum id, int k, ratvec gamma) = vec:
+  let (n,d)=%(fundamental_weight(id,k)*(coroot(id,k)*gamma))
+  in assert(d=1,"cannot project to wall "+k); n
+
+{ translate parameter p to simple root wall #k of the integral root system }
+set Psi(Param p,int k)= Param:
+  let gamma=infinitesimal_character(p)
+  then id = integrality_datum(root_datum(p),gamma)
+  then shift = -to_wall (id,k,gamma)
+  in translate_by(p,shift)
+
+{ translate ParamPol to simple root wall #k of the integral root system; here
+  the integral system might vary among terms; selecting wall #k then is weird
+}
+set Psi(ParamPol P,int k)= ParamPol:
+  null_module(real_form(P)) + for w@q in P do (w,Psi(q,k)) od
+
+{ when all terms has same infinitesimal character, this is more efficient: }
+set Psi(ParamPol P,ratvec gamma,int k)= ParamPol:
+  let id = integrality_datum(root_datum(P),gamma)
+  then shift = -to_wall (id,k,gamma)
+  in null_module(real_form(P)) + for w@q in P do (w,translate_by(q,shift)) od
+
+{ translate p to intersection of set of simple root walls of integral system }
+set Psi(Param p,[int] v)= Param:
+  let gamma=infinitesimal_character(p)
+  then id=integrality_datum(root_datum(p),gamma)
+  then shift = - sum( rank(id) # for k in v  do to_wall(id,k,gamma) od )
+  in translate_by(p,shift)
+
+{ translate P to intersection of set of simple root walls of integral system }
+set Psi(ParamPol P,[int] v)= ParamPol:
+  null_module(real_form(P)) + for w@q in P do (w,Psi(q,v)) od
+
+set Psi(ParamPol P,ratvec gamma,[int] v)= ParamPol:
+  let id = integrality_datum(root_datum(P),gamma)
+  then shift = - sum( rank(id) # for k in v  do to_wall(id,k,gamma) od )
+  in null_module(real_form(P)) + for w@q in P do (w,translate_by(q,shift)) od
+
+set T_irr(ParamPol P,ratvec v)=
+composition_series(T(character_formula(P),v))
+
+set Psi_irr(ParamPol P,int k)=
+composition_series(Psi(character_formula(P),k))
+
+{ the "pseudo-tau" invariant }
+{ this is a subset of simple integral roots such that:
+  1) one can translate to this wall (i.e., the requisite translation is in X^*)
+  2) this translation is 0
+  If G is simply connected this should be the usual tau_invariant
+  Example: the trivial representation of SO(3), the unique simple root
+  is in the pseudo-tau invariant, but you can't translate to the wall,
+  since rho is not in the root lattice
+
+  root k of the integral roots is in pseudo-tau(p) if
+  <gamma,alpha_k^v>*fund_weight is integral, and
+  Psi(p,k)=0 or its x(Psi(p,k)) gets changed by finalize
+  (here Psi(p,k) is the translation of the standard module for p)
+}
+
+set pseudo_tau_bitset (Param p)= ((int->bool),int):
+  let gamma = infinitesimal_character(p)
+  then id=integrality_datum(real_form(p),gamma)
+  in
+  ( (int k): let (n,d)=%(fundamental_weight(id,k)*(coroot(id,k)*gamma))
+    in d=1 and
+      (let p0=translate_by(p,-n)
+       in is_zero(p0) or x(p0)!=x(first_param(ParamPol:p0)))
+  , semisimple_rank(id)
+  )
+
+{ set of integers, defining a subset of the simple integral roots }
+set pseudo_tau (Param p) = [int]: list(pseudo_tau_bitset(p))
+
+{ set of integers, defining a subset of the simple integral roots }
+set pseudo_tau_complement (Param p)= [int]: complement(pseudo_tau_bitset(p))
+
+{ push Param p to the most singular place where the irreducible is non-zero,
+  i.e. to all of the root walls not in the pseudo_tau_invariant
+}
+set make_maximally_singular (Param p)= Param: Psi(p,pseudo_tau_complement(p))
+
+{
+  translate each term in a list of parameters to all the simple root walls
+  not in its tau_invariant, and test if it is unitary.
+  The even special unipotents of G should (all?) show up this way, varying
+  over all blocks at rho
+}
+set test_even_unipotent (Param p)= void:
+( let q=make_maximally_singular(p)
+  then Q=hermitian_form_irreducible(q)
+  in
+  prints(""); prints("original parameter: ",p)
+; prints("translated parameter: ",q,", ", infinitesimal_character(q))
+; prints("translated irreducible is unitary: ",is_unitary(Q))
+; if translate_debug then pol_format(Q) fi
+)
+
+{ test_even_unipotent of a list of parameters }
+set test_even_unipotent ([Param] params)= void:
+  for p in params do  test_even_unipotent(p) od

@@ -11,15 +11,13 @@
 
 #include <cstdio>   // not obviously used, but appears helpful for Windows
 
-#include "cartan_io.h"
-#include "complexredgp.h"
-#include "complexredgp_io.h"
+#include "innerclass.h"
+#include "output.h"
 #include "error.h"
 #include "interactive.h"
 #include "io.h"
 #include "ioutils.h"
 #include "realredgp.h"
-#include "realredgp_io.h"
 #include "kgb.h"
 #include "kgb_io.h"
 #include "test.h"
@@ -156,7 +154,7 @@ void real_mode_entry() throw(EntryError)
   try
   {
     RealFormNbr rf = interactive::get_real_form(currentComplexInterface());
-    G_R_pointer=new RealReductiveGroup(currentComplexGroup(),rf);
+    G_R_pointer=new RealReductiveGroup(current_inner_class(),rf);
     rt = new Rep_table(currentRealGroup());
   }
   catch(error::InputError& e)
@@ -176,7 +174,7 @@ void realform_f()
   try
   { // we can call the swap method for rvalues, but not with and rvalue arg
     RealFormNbr rf = interactive::get_real_form(currentComplexInterface());
-  RealReductiveGroup(currentComplexGroup(),rf).swap(currentRealGroup());
+  RealReductiveGroup(current_inner_class(),rf).swap(currentRealGroup());
     delete rt; rt = new Rep_table(currentRealGroup());
     drop_to(real_mode); // drop invalidated descendant modes if called from them
   }
@@ -231,7 +229,7 @@ void cartan_f()
   ioutils::OutputFile file;
 
   static_cast<std::ostream&>(file) << std::endl;
-  realredgp_io::printCartanClasses(file,currentRealForm(),
+  output::printCartanClasses(file,currentRealGroup(),
 				   currentComplexInterface())
     << std::endl;
 }
@@ -242,7 +240,7 @@ void corder_f()
   RealReductiveGroup& G_R = currentRealGroup();
 
   std::cout << "Hasse diagram of Cartan class ordering:" << std::endl;
-  realredgp_io::printCartanOrder(std::cout,G_R);
+  output::printCartanOrder(std::cout,G_R);
 }
 
 
@@ -270,7 +268,7 @@ void realweyl_f()
 
   ioutils::OutputFile file;
   file << "\n";
-  realredgp_io::printRealWeyl(file,currentRealGroup(),cn);
+  output::printRealWeyl(file,currentRealGroup(),cn);
 }
 
 
@@ -292,7 +290,7 @@ void KGB_f()
 
   ioutils::OutputFile f;
 
-  ComplexReductiveGroup& G=G_R.complexGroup();
+  InnerClass& G=G_R.innerClass();
   kgb_io::var_print_KGB(f,G,G_R.kgb());
 }
 
@@ -323,10 +321,9 @@ void kgbgraph_f()
   RealReductiveGroup& G_R = currentRealGroup();
   std::cout << "kgbsize: " << G_R.KGB_size() << std::endl;
 
-  // make sure the user enters an actual filename -
-  // standard output makes no sense here
   ioutils::OutputFile file;
-  if ((std::ostream&)file == std::cout) throw error::InputError();
+  if (file.is_std_cout()) // make sure the user entered an actual filename
+    throw error::InputError(); // as standard output makes no sense here
 
   kgb_io::makeDotFile(file,G_R.kgb(),G_R.Bruhat_KGB());
 }
@@ -406,10 +403,9 @@ void kgpgraph_f()
   }
   std::cout << "}: " << kgp.size() << std::endl;
 
-  // make sure the user enters an actual filename -
-  // standard output makes no sense here
   ioutils::OutputFile file;
-  if ((std::ostream&)file == std::cout) throw error::InputError();
+  if (file.is_std_cout()) // make sure the user entered an actual filename
+    throw error::InputError(); // as standard output makes no sense here
 
   // make the dot file
   kgp.makeDotFile(file);
@@ -423,8 +419,8 @@ void KGB_h()
 }
 
 
-} // namespace
+} // |namespace|
 
 } // |namespace commands|
 
-} // namespace atlas
+} // |namespace atlas|

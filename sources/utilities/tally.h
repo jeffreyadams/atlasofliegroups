@@ -77,8 +77,8 @@ class TallyVec
   void write_to(std::ostream& out) const; // dump table to file
 }; // class TallyVec
 
-} // namespace tally
-} // namespace atlas
+} // |namespace tally|
+} // |namespace atlas|
 
 #include "tally_def.h"
 

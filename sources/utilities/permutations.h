@@ -37,7 +37,7 @@ struct Permutation
     typedef std::vector<unsigned long> Base;
     Permutation() : Base() {}                       // empty
     Permutation(unsigned long n) : Base(n) {}       // dimensioned only
-    Permutation(unsigned long n, int unsused);      // identity
+    Permutation(unsigned long n, int unused);       // identity
     Permutation(const Permutation& pi, int unused); // inverse
     template<typename I> Permutation(I b,I e) : Base(b,e) {} // range copy
 
@@ -71,11 +71,10 @@ struct Permutation
 
   };
 
-}
 
-/******** function declarations **********************************************/
+/******** free standing function declarations *****************************/
 
-namespace permutations {
+  int sign(const Permutation& pi); // signature of permutation
 
   void compose(Permutation&, const Permutation&, unsigned long n = 0);
 
@@ -83,11 +82,18 @@ namespace permutations {
     Permutation standardization(const std::vector<U>& a, size_t bound,
 				std::vector<unsigned int>* stops = NULL);
 
-}
+  // a right action on columns: produce columns $(M.column(pi[j]))_j$
+  template<typename T>
+    void permute_columns(matrix::Matrix_base<T>& M, const Permutation& pi);
 
-}
+  template<typename T>
+    void permute_rows(matrix::Matrix_base<T>& M, const Permutation& pi);
 
-/******** template definitions ***********************************************/
+ } // |namespace permutations|
+
+} // |namespace atlas|
+
+/********* template definitions with implicit instantiations  ******/
 
 #include "permutations_def.h"
 

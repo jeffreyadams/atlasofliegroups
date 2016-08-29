@@ -1,6 +1,14 @@
-/*!
-\file
-\brief Definitions for the type of a real or complex reductive Lie algebra.
+/*
+  This is lietype.cpp.
+
+  Copyright (C) 2004,2005 Fokko du Cloux
+  part of the Atlas of Lie Groups and Representations
+
+  For license information see the LICENSE file
+*/
+
+/*
+  Definitions for the type of a real or complex reductive Lie algebra.
 
   A complex reductive Lie algebra is simply the product of a number of simple
   complex Lie algebras, and a torus; the simple factors can be of types A-G,
@@ -31,14 +39,6 @@
   internally, we work only with the Cartan matrix and the Cartan involution.
 
 */
-/*
-  This is lietype.cpp.
-
-  Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Lie Groups and Representations
-
-  For license information see the LICENSE file
-*/
 
 #include <cassert>
 
@@ -48,7 +48,7 @@
 #include "matreduc.h"
 #include "matrix.h"
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 
 /*****************************************************************************
@@ -367,21 +367,22 @@ InnerClassType dual_type(InnerClassType ict, const LieType& lt)
 }
 
 /* compute dual of Lie type (including diagram numbering) and inner class.
-   For the dual of types $F_4$ end $G_2$ we reverse the numbering of the
-   nodes, thus avoiding the introduction of the variant types $f_4$ and $g_2$.
-   We just interchange types $B_n$ and $C_n$, even for $n=2$ where we could
-   have instead interchanged the numbering of the two roots as for $G_2$. This
-   is because users like the (fictive) distinction between $B_2$ and $C_2$.
 
-   The dual inner class contains (as non-based root datum involution) the
-   negated transpose of the distinguished involution of the inner class. This
-   amounts to interchanging inner class types 'c' and 's'. for complex ('C')
-   inner classes we currently do nothing, although if the Lie type is XX where
-   -1 is not in the Weyl group of X (i.e., such that 's' is not 'c' for X),
-   then the negated transpose distinguished involution is not in the "same"
-   inner class, but rather in "another" complex class of Lie type XX; the very
-   limited use made of the dual Layout (in realform_io) justifies this choice.
- */
+  For the dual of types $F_4$ end $G_2$ we reverse the numbering of the
+  nodes, thus avoiding the introduction of the variant types $f_4$ and $g_2$.
+  We just interchange types $B_n$ and $C_n$, even for $n=2$ where we could
+  have instead interchanged the numbering of the two roots as for $G_2$. This
+  is because users like the (fictive) distinction between $B_2$ and $C_2$.
+
+  The dual inner class contains (as non-based root datum involution) the
+  negated transpose of the distinguished involution of the inner class. This
+  amounts to interchanging inner class types 'c' and 's'. For complex ('C')
+  inner classes we currently do nothing, although if the Lie type is XX where
+  -1 is not in the Weyl group of X (i.e., such that 's' is not 'c' for X),
+  then the negated transpose distinguished involution is not in the "same"
+  inner class, but rather in "another" complex class of Lie type XX. The very
+  limited use made (in output) of the dual Layout justifies this imprecision.
+*/
 Layout dual(const Layout& lo)
 {
   Layout result=lo;
@@ -452,15 +453,55 @@ bool checkRank(const TypeLetter& x, size_t l)
   }
 }
 
+WeightInvolution simple_involution(const SimpleLieType& slt, simple_ict tp)
+{
+  unsigned r=slt.rank();
+  WeightInvolution result
+    (tp==simple_ict::complex ? 2*r : r); // start with identity
+  if (tp==simple_ict::complex)
+    for (unsigned i=0; i<r; ++i)
+    {
+      std::swap(result(i,i),result(i,i+r));
+      std::swap(result(i+r,i),result(i+r,i+r));
+    }
+  else if (tp==simple_ict::unequal_rank)
+    switch (slt.type())
+    {
+    case 'A': // antidiagonal matrix
+      assert(r>1);
+      for (unsigned i=0; 2*i<r-1; ++i)
+      {
+	std::swap(result(i,i),result(i,r-1-i));
+	std::swap(result(r-1-i,i),result(r-1-i,r-1-i));
+      }
+      break;
+    case 'B': case 'C': case 'F': case 'G': default:
+      assert(false); break;
+    case 'D':
+      std::swap(result(r-2,r-2),result(r-2,r-1));
+      std::swap(result(r-1,r-2),result(r-1,r-1));
+      break;
+    case 'E':
+      assert(r==6);
+      std::swap(result(0,0),result(0,5));
+      std::swap(result(5,0),result(5,5));
+      std::swap(result(2,2),result(2,4));
+      std::swap(result(4,2),result(4,4));
+      break;
+    case 'T':
+      assert(r==1);
+      result(0,0)=-1;
+    }
+  return result;
+}
 
-/*!
-  Synopsis: constructs the fundamental involution for the Lie type lt and the
+/*
+  Construct the fundamental involution for the Lie type lt and the
   inner class ic, in the weight basis for the simply connected group.
 
   Precondition: validity if |lo.d_inner| has been checked
 */
 WeightInvolution involution(const Layout& lo)
-  throw (std::runtime_error,std::bad_alloc)
 {
   const LieType& lt = lo.d_type;
   const InnerClassType& ic = lo.d_inner;
@@ -468,7 +509,7 @@ WeightInvolution involution(const Layout& lo)
 
   WeightInvolution result(lt.rank(),lt.rank(),0);
 
-  size_t r = 0;   // position in flattened Dynkin diagram; index to |pi|
+  size_t r = 0;   // position in flattened Dynkin diagram; an index into |pi|
   size_t pos = 0; // position in |lt|
 
   for (size_t j=0; j<ic.size(); ++j) // |r|,|pos| are also advanced, near end
@@ -537,9 +578,8 @@ WeightInvolution involution(const Layout& lo)
 }
 
 WeightInvolution involution(const LieType& lt,
-				       const InnerClassType& ict)
-{ return involution(Layout(lt,ict)); // default to identity permutation
-}
+			    const InnerClassType& ict)
+{ return involution(Layout(lt,ict)); }
 
 } // |namespace lietype|
 

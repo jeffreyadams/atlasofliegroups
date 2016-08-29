@@ -19,7 +19,7 @@
 #include <cassert>
 #include "bitset.h"
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 namespace atlas {
 
@@ -63,6 +63,33 @@ Subspace(const BitMatrix<dim>& M)
 }
 
 /******** accessors **********************************************************/
+
+/*
+  For the perp subspace, each element of |d_basis| serves as a homogeneous
+  equation. For each position $j$ not in |support()| there is a solution
+  generator, which has 1 in in position $j$, 0 in the other non-support
+  positions, and all positions in |support()| solved by using the
+  corresponding equation from |d_basis|. Since in characteristic 2 signs are
+  ignored, this amounts to simply copying the respective bits at position $j$
+  from |d_basis| to the positions in |support()|.
+ */
+template<size_t dim>
+  BitVectorList<dim> Subspace<dim>::basis_perp () const
+{
+  BitSet<dim> new_supp = support_perp();
+  BitVectorList<dim> result;
+  result.reserve(new_supp.count());
+  for (typename BitSet<dim>::iterator jt=new_supp.begin(); jt(); ++jt)
+  {
+    const unsigned j=*jt;
+    BitVector<dim> gen(rank(),j);
+    unsigned i=0; // index into |d_basis|
+    for (typename BitSet<dim>::iterator it=d_support.begin(); it(); ++it,++i)
+      gen.set(*it,d_basis[i][j]); // copy one bit
+    result.push_back(gen);
+  }
+  return result;
+}
 
 template<size_t dim>
   bool Subspace<dim>::contains(const BitVector<dim>& v) const
@@ -219,7 +246,7 @@ namespace subquotient {
   Precondition: |m| has |source.rank()| columns and |dest.rank()| rows, in
   other words it defines a map at the level of the ambient $Z/2Z$-vector
   spaces. Moreover it maps |source.space()| to |dest.space()| and
-  |source.subspace()| to |dest.subspace()|. [This is a strong condition, which
+  |source.denominator()| to |dest.denominator()|. [This is a strong condition, which
   it is the caller's responsibility to ensure. It is _not_ sufficient that |m|
   gives rise to a mathematically well-defined map between the subquotients;
   for instance while for any subspaces $A,B$ there is a canonical isomorphism
@@ -230,14 +257,14 @@ namespace subquotient {
   The subquotient matrix will be expressed in terms of the canonical bases for
   the subquotients (which are made up of those elements of the basis of the
   larger subspace |space()| that are zero on the bits supporting the smaller
-  subspace |subspace()|.) Therefore its size will be |source.dimension()|
+  subspace |denominator()|.) Therefore its size will be |source.dimension()|
   columns and |dest.dimension()| rows.
 
   Algorithm: take the image through |m| of the subquotient basis in |source|;
   then project onto the subquotient basis in |dest|. Note that this procedure
-  inspects neither |source.subspace()| nor |dest.space()|, but it does select
+  inspects neither |source.denominator()| nor |dest.space()|, but it does select
   using |source.support()| those basis vectors from |source.space()| that
-  cannot be reduced modulo |source.subspace()|, forming a complementary space.
+  cannot be reduced modulo |source.denominator()|, forming a complementary space.
 */
 template<size_t dim>
   BitMatrix<dim> subquotientMap
@@ -258,7 +285,7 @@ template<size_t dim>
 
     /*
     // go to canonical representative modulo destination subspace
-    dest.subspace().mod_reduce(v);
+    dest.denominator().mod_reduce(v);
     assert(v.size()==dest.rank());
 
     // get coordinates in canonical basis

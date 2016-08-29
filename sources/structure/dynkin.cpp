@@ -70,7 +70,7 @@ DynkinDiagram::DynkinDiagram(const int_Matrix& c)
 	{
 	  if (c(j,i)==0) // this test ensures a symmetric adjacency matrix
 	    throw error::CartanError();
-	  d_star[j].set(i); // set |i| as neighbour of |j|, and vice versa to
+	  d_star[j].set(i); // set |i| as neighbour of |j|
 	  if (m>1) // only label multiple edges
 	    d_downedge.push_back (std::make_pair(Edge(i,j),m));
 	}
@@ -105,6 +105,50 @@ DynkinDiagram::DynkinDiagram(const RankFlags& c, const DynkinDiagram& parent)
     d_downedge.push_back
       (std::make_pair(Edge(c.position(l),c.position(s)),it->second));
 
+  }
+} // extracting version of |DynkinDiagram::DynkinDiagram|
+
+// folded diagram, computed from orbits of nodes of |d|
+DynkinDiagram::DynkinDiagram(const ext_gens& orbits, const DynkinDiagram& diag)
+: d_star(orbits.size())
+, d_downedge()
+{
+  for (unsigned int i=0; i<orbits.size(); ++i)
+  {
+    RankFlags neighbours = diag.star(orbits[i].s0);
+    if (orbits[i].length()>1)
+      neighbours |= diag.star(orbits[i].s1);
+    for (unsigned j=orbits.size(); --j > i; )
+      if (neighbours[orbits[j].s0])  // run over neigbours |j| with $i<j<n$
+      {
+	const unsigned jj = orbits[j].s0;
+	unsigned ii = orbits[i].s0;
+	if (not diag.star(ii)[jj])
+	  ii = orbits[i].s1;
+	assert (diag.star(ii)[jj]);
+	d_star[i].set(j);
+	d_star[j].set(i); // mark |i| and |j| as neighbours in new diagram
+
+	int diff=orbits[i].length()-orbits[j].length();
+	if (diff==0) // equal length
+	{ // then copy Cartan entries
+	  const Multiplicity m = diag.edge_multiplicity(ii,jj);
+	  if (m>1)
+	  {
+	    if (diag.Cartan_entry(ii,jj)<-1)
+	      d_downedge.push_back (std::make_pair(Edge(i,j),m));
+	    else
+	      d_downedge.push_back (std::make_pair(Edge(j,i),m));
+	  }
+	}
+	else // unequal orbit lengths
+	{ // then mark multiplicity 2 edge from longer to shorter orbit
+	  if (diff<0)
+	    d_downedge.push_back (std::make_pair(Edge(i,j),2));
+	  else
+	    d_downedge.push_back (std::make_pair(Edge(j,i),2));
+	}
+      }
   }
 }
 

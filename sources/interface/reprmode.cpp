@@ -16,8 +16,8 @@
 #include "mainmode.h"
 #include "blockmode.h" // for re-use of |currentKL| and such
 
-#include "complexredgp.h"
-#include "complexredgp_io.h"
+#include "innerclass.h"
+#include "output.h"
 #include "error.h"
 #include "helpmode.h"
 #include "interactive.h"
@@ -29,7 +29,6 @@
 #include "dynkin.h"
 #include "lietype.h"
 #include "realredgp.h"
-#include "realredgp_io.h"
 #include "kgb.h"
 #include "kgb_io.h"
 #include "blocks.h"
@@ -65,6 +64,7 @@ namespace commands {
   void blockorder_f();
   void blocktwist_f();
   void extblock_f();
+  void gextblock_f();
   void deform_f();
   void kl_f();
   void klbasis_f();
@@ -106,6 +106,7 @@ CommandNode reprNode()
   result.add("blockorder",blockorder_f,"second");
   result.add("blocktwist",blocktwist_f,"second");
   result.add("extblock",extblock_f,"second");
+  result.add("gextblock",gextblock_f,"second");
   result.add("deform",deform_f,"computes deformation terms",std_help);
   result.add("kl",kl_f,
 	     "computes KL polynomials in character formula for this parameter",
@@ -128,7 +129,7 @@ param_block& current_param_block()
   if (state==noblock) // we have entered reprmode without setting block
   {
     block_pointer = // partial block default
-      new non_integral_block(currentRepTable(),*sr);
+      new param_block(currentRepTable(),*sr);
     state=partial_block;
     entry_z = block_pointer->size()-1;
   }
@@ -264,9 +265,7 @@ void nblock_f()
     delete WGr_pointer; WGr_pointer=NULL;
     delete block_pointer; // destroy installed block first
     block_pointer =
-      new non_integral_block(currentRepContext(),
-			     currentStandardRepr(),
-			     entry_z);
+      new param_block(currentRepContext(),currentStandardRepr(),entry_z);
     state=nblock;
   }
   block_f();
@@ -279,9 +278,7 @@ void ensure_full_block()
     delete WGr_pointer; WGr_pointer=NULL;
     delete block_pointer; // destroy installed block first
     block_pointer =
-      new non_integral_block(currentRepContext(),
-			     currentStandardRepr(),
-			     entry_z);
+      new param_block(currentRepContext(),currentStandardRepr(),entry_z);
     state=nblock;
   }
 }
@@ -293,8 +290,7 @@ void partial_block_f()
     delete WGr_pointer; WGr_pointer=NULL;
     delete block_pointer; // destroy installed block first
     block_pointer =
-      new non_integral_block(currentRepContext(),
-			     currentStandardRepr());
+      new param_block(currentRepContext(),currentStandardRepr());
     state=partial_block;
     entry_z = current_param_block().size()-1;
   }
@@ -327,10 +323,39 @@ void blocktwist_f()
 
 void extblock_f()
 {
-  ext_block::extended_block eblock(current_param_block(),
-				   currentComplexGroup().twistedWeylGroup());
+  ensure_full_block();
+  ext_block::ext_block eblock
+    (current_inner_class(),
+     current_param_block(),
+     currentRealGroup().kgb(),
+     current_inner_class().distinguished());
   ioutils::OutputFile file;
   eblock.print_to(file);
+}
+
+void gextblock_f()
+{
+  ensure_full_block();
+  WeightInvolution delta = interactive::get_commuting_involution
+    (commands::current_layout(), commands::current_lattice_basis());
+
+  auto& block = current_param_block();
+  if (not ((delta-1)*block.gamma().numerator()).isZero())
+  {
+    std::cout << "Chosen delta does not fix gamma=" << block.gamma()
+	      << " for the current block." << std::endl;
+    return;
+  }
+  ext_block::ext_block eblock(current_inner_class(),block,
+			      currentRealGroup().kgb(),delta);
+  if (check(eblock,block,true))
+  {
+    std::cout << "Extended block structure checked successfully." << std::endl;
+    ioutils::OutputFile file;
+    eblock.print_to(file);
+  }
+  else
+    std::cout << "Extended block structure check failed." << std::endl;
 }
 
 void kl_f()

@@ -13,7 +13,7 @@
 #ifndef SUBSYSTEM_H  /* guard against multiple inclusions */
 #define SUBSYSTEM_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "rootdata.h"	// derive from |RootSystem|
 #include "weyl.h"	// containment
@@ -41,9 +41,9 @@ class SubSystem : public RootSystem // new system, subsytem of dual
   RootNbrList inv_map; // partial map back from all parent roots
 
   struct root_info
-  { weyl::Generator simple;
-    WeylWord to_simple;
-    WeylWord reflection;
+  { weyl::Generator simple; // some simple root $s$ in parent conjugate to root
+    WeylWord to_simple; // word $w$ conjugating the root to mentioned simple
+    WeylWord reflection; // reflection word for root: $w^{-1}sw$
 
   root_info() : simple(~0), to_simple(), reflection() {}
   };
@@ -79,16 +79,23 @@ class SubSystem : public RootSystem // new system, subsytem of dual
   RootNbr parent_nr_simple(weyl::Generator s) const
   { return pos_map[s]; }
 
-  RootNbr parent_nr(RootNbr alpha) const;
+  RootNbr to_parent(RootNbr alpha) const; // |pos_map| with some shifting
+  RootNbr from_parent(RootNbr alpha) const { return inv_map[alpha]; }
 
-  weyl::Generator simple(weyl::Generator s) const
-  { return sub_root[s].simple; } // parent simple root conjugated to |sub.s|
+  weyl::Generator simple(unsigned int n) const
+  { assert(n<numPosRoots()); // n must be a positive-root index for subsystem
+    return sub_root[n].simple; // parent simple root conjugated to |sub.s|
+  }
 
-  const WeylWord& to_simple(weyl::Generator s) const
-  { return sub_root[s].to_simple; } // parent conjugating word for |simple(s)|
+  const WeylWord& to_simple(unsigned int n) const
+  { assert(n<numPosRoots()); // n must be a positive-root index for subsystem
+    return sub_root[n].to_simple; // parent conjugating word for |simple(s)|
+  }
 
-  const WeylWord& reflection(weyl::Generator s) const
-  { return sub_root[s].reflection; } // parent reflection corresponding to |s|
+  const WeylWord& reflection(unsigned int n) const
+  { assert(n<numPosRoots()); // n must be a positive-root index for subsystem
+    return sub_root[n].reflection; // parent reflection corresponding to |s|
+  }
 
   Coweight sub_2rho() const { return rd.dual_twoRho(pos_map); }
   Weight parent_sub_2rho() const { return rd.twoRho(pos_map); }
@@ -98,8 +105,6 @@ class SubSystem : public RootSystem // new system, subsytem of dual
 
   RootNbrSet positive_roots() const; // for subsystem only
   InvolutionData involution_data (const WeightInvolution& theta) const;
-
-  Grading induced(Grading base_grading) const;
 
 }; // |class SubSystem|
 
@@ -125,6 +130,8 @@ class SubSystemWithGroup : public SubSystem
 
   const WeylGroup& Weyl_group() const { return sub_W; }
 }; // |class SubSystemWithGroup|
+
+
 
 } // |namespace subsystem|
 

@@ -54,14 +54,17 @@ Partition::Partition(std::vector<unsigned long>& f)
   std::map<unsigned long,unsigned long> val; // bijective map im(f)->[0,s[
 
   for (size_t i=0; i<f.size(); ++i)
-    if (val.insert(std::make_pair(f[i],s)).second)
-      // tentatively map f[i] to a new class number |s| and test for success
+  {
+    // tentatively map f[i] to a new class number |s|
+    auto trial = val.insert(std::make_pair(f[i],s));
+    if (trial.second) // insertion succeeded, |f[i]| is new
     { // found a new value
       new_class(i); // add a new class containing i to the partition
       ++s;
     }
     else // |f[i]| had already been seen, find its class and record |i| in it
-      addToClass(val.find(f[i])->second, i);
+      addToClass(trial.first->second,i);
+  }
 }
 
 /*!

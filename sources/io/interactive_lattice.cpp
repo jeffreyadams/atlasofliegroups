@@ -13,6 +13,7 @@
 #include <sstream>
 #include <cstdio>
 #include <cassert>
+#include <cstdlib>
 
 #include "arithmetic.h" // |lcm|
 #include "ratvec.h"	// |RatWeight|
@@ -214,7 +215,7 @@ int getLattice(const CoeffList& root_invf, WeightList& root_lattice_basis)
   return 0; // normal exit
 }
 
-} // namespace interactive_lattice
+} // |namespace interactive_lattice|
 
 /*****************************************************************************
 
@@ -309,7 +310,7 @@ GeneratorError checkGenerator(input::InputBuffer& buf, size_t& r,
   order in the torus (more precisely, their order divides their denominator.)
   So "orthogonal" means having integral pairing with the rational vector.
 
-  Algorithm: collect in |m| all the denominator vectors after bringing
+  Algorithm: collect in |m| all the numerator vectors after bringing
   everything to a common denominator |d|; then we have the problem of finding
   a basis for the lattice on the dual side that under pairing takes all those
   vectors into $d.\Z$. Write $row.m.col=D$ with |row| and |col| invertible
@@ -349,7 +350,7 @@ LatticeMatrix makeOrthogonal (const RatWeightList& rwl, size_t r)
   // integrality requires multiple $d/\gcd(d,factor[j])$ of |result.col(j)|
   for (size_t j=0; j<factor.size(); ++j)
   {
-    long mult = arithmetic::div_gcd(d,arithmetic::abs(factor[j])); // multiplier
+    long mult = arithmetic::div_gcd(d,std::abs(factor[j])); // multiplier
     result.columnMultiply(j,mult);
   }
   return result;
@@ -357,7 +358,7 @@ LatticeMatrix makeOrthogonal (const RatWeightList& rwl, size_t r)
 
 
 /*
-  Synposis: prints the center of the simply connected group.
+  Print the center of the simply connected group.
 
   Precondition: u contains the necessary data: the orders of a natural set of
   generators for the center of the derived group, and a zero for each torus
@@ -367,10 +368,10 @@ std::ostream& printCenter(std::ostream& strm, const CoeffList& u)
 {
   for (size_t i=0; i<u.size(); ++i)
   {
-    if (u[i])
-      strm << "Z/" << u[i];
-    else
+    if (u[i]==0)
       strm << "Q/Z";
+    else
+      strm << "Z/" << u[i];
     if (i<u.size()-1)
       strm << ".";
   }

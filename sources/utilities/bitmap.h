@@ -185,7 +185,7 @@ class BitMap
 
   BitMap& operator^= (const BitMap&);
 
-  bool andnot(const BitMap& b); // remove bits of |b|, return whether any left
+  BitMap& andnot(const BitMap& b); // remove bits of |b|
 
   BitMap& operator>>= (unsigned long delta); // shift right (decrease)
   BitMap& operator<<= (unsigned long delta); // shift left (increase)
@@ -232,6 +232,7 @@ class BitMap
 
  // this was called |resize|, but sets |capacity()|, whence the new name
  void set_capacity(unsigned long n); // any new bits will start out cleared
+ void extend_capacity(bool b); // extend capacity by |1|, adding member if |b|
 
  // set an interval of bits from those (least significant ones) of source
  void setRange(unsigned long start, unsigned long amount, unsigned long source);

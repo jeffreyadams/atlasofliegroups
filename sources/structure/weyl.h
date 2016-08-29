@@ -14,7 +14,7 @@
 #ifndef WEYL_H  /* guard against multiple inclusions */
 #define WEYL_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include <cstring>
 #include <cassert>
@@ -47,17 +47,25 @@ namespace weyl {
 
 /******** type definitions **************************************************/
 
-  /*!
-\brief A mapping between one interpretation of Generators and another
-  */
-  class Twist // also used by synonym |WeylInterface|
+  // A mapping between one interpretation of Generators and another
+  class Twist // also used under the typedef name |WeylInterface|
   {
     Generator d[constants::RANK_MAX];
   public:
     Twist () // assures definite values are always set
-      { std::memset(d,~0,sizeof(d)); }
+    { std::fill_n(&d[0],constants::RANK_MAX,Generator(~0)); }
+    Twist(const ext_gens& orbits);
     Generator& operator[] (size_t i) { return d[i]; }
     const Generator& operator[] (size_t i) const { return d[i]; }
+
+    bool operator!=(const Twist& y) const
+    { for (unsigned i=0; i<constants::RANK_MAX; ++i)
+	if (d[i]!=y.d[i])
+	  return true;
+      return false;
+    }
+    bool operator==(const Twist& y) const { return not operator!=(y); }
+
   };
 
 
@@ -696,11 +704,11 @@ public:
   const Twist& twist() const { return d_twist; } // noun "twist"
   void twist(WeylElt& w) const { w=twisted(w); } // verb "twist"
 
-  std::vector<ext_gen> twist_orbits () const;
+  ext_gens twist_orbits () const;
   Twist dual_twist() const; // the twist for the dual twisted Weyl group
 
-  /*!
-     Twisted conjugates element |tw| by the generator |s|:
+  /*
+     Twisted conjugate element |tw| by the generator |s|:
      $tw:=s.tw.\delta(s)$. Returns length change, in $\{-2,0,2\}$. For
      consistency, these functions should have |s| resp. |ww| as first argument
    */
@@ -710,7 +718,7 @@ public:
     int d = W.leftMult(w,s);
     return d+W.mult(w,d_twist[s]);
   }
-  int twistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
+  int twistedConjugate(const WeylWord& ww,TwistedInvolution& tw) const
   {
     int d=0;
     for (size_t i=ww.size(); i-->0; )

@@ -634,7 +634,7 @@ void KLContext::recursionRow(std::vector<KLPol>& klv,
 
   Precondtion: |klv| already contains, for all $x$ that are primitive w.r.t.
   |y| in increasing order, the terms in $P_{x,y}$ corresponding to
-  $c_s.c_{y1}$, whery |y1| is $s.y$ if |s| is a complex descent, and |y1| is
+  $c_s.c_{y'}$, whery |y'| is $s.y$ if |s| is a complex descent, and |y'| is
   an inverse Cayley transform of |y| if |s| is real type I.
   The mu-table and KL-table have been filled in for elements of length < l(y).
 
@@ -647,12 +647,18 @@ void KLContext::recursionRow(std::vector<KLPol>& klv,
   |y|, and for $c_{y}+c_{s.y}$ when |s| is real type II; however it plays no
   part in this function that only subtracts $\mu$-terms.
 
+  The element $y'$ is called |sy| in the code below.
+
   We construct a loop over |z| first, before traversing |klv| (the test for
-  $z<sy$ is absent, but $\mu(z,sy)\neq0$ implies $z<sy$ (by convention
-  mu(y,y)=0, in any case no coefficient for |sy| is stored in |d_mu[sy]|, and
-  moreover $z=sy$ would be rejected by the descent condition). The chosen loop
-  order allows fetching $\mu(z,y1)$ only once, and terminating the scan of
-  |klv| once its values |x| become too large to produce a non-zero $P_{x,z}$.
+  $z<sy$ is absent, but $\mu(z,sy)\neq0$ implies $z<sy$ (strict, as mu(sy,sy)
+  is 0; in any case no coefficient for |sy| is stored in |d_mu[sy]|, and
+  moreover $z=sy$ would be rejected by the descent condition). The choix have
+  the out loop over $z$ and the inner loop over $x$ (i.e., over |klv|) allows
+  fetching $\mu(z,sy)$ only once, and terminating each scan of |klv| once its
+  values |x| become too large to produce a non-zero $P_{x,z}$. (In fact we
+  stop once $l(x)=l(z)$, and separately consider the case $x=z$.) Either
+  direction of the loop on $z$ would work, but taking it decreasing is more
+  natural; we keep track of the index |zi| at which $x=z$ occurs, if it does.
 
   Elements of length at least $l(sy)=l(y)-1$ on the list |e| are always
   rejected, so the tail of |e| never reached.
@@ -694,7 +700,7 @@ void KLContext::muCorrection(std::vector<KLPol>& klv,
 	for (j = 0; j < e.size(); ++j)
 	{
 	  BlockElt x = e[j];
-	  if (length(x) >= l_z) break; // once reached, no more terms for |z|
+	  if (length(x) >= l_z) break; // once reached, $x=z$ is only case left
 
 	  KLPolRef pol = klPol(x,z);
 	  klv[j].safeSubtract(pol,d); // subtract q^d.P_{x,z} from klv[j]
@@ -703,7 +709,7 @@ void KLContext::muCorrection(std::vector<KLPol>& klv,
 	for (j = 0; j < e.size(); ++j)
 	{
 	  BlockElt x = e[j];
-	  if (length(x) >= l_z) break; // once reached, no more terms for |z|
+	  if (length(x) >= l_z) break; // once reached, $x=z$ is only case left
 
 	  KLPolRef pol = klPol(x,z);
 	  klv[j].safeSubtract(pol,d,mu); // subtract q^d.mu.P_{x,z} from klv[j]
@@ -1118,7 +1124,7 @@ void KLContext::silent_fill(BlockElt last_y)
     std::ostringstream os;
     os << "negative coefficient in P_{" << e.x << ',' << e.y
        << "} at line " << e.line << '.';
-    throw std::runtime_error(os.str()); // so that realex may catch it
+    throw std::runtime_error(os.str()); // so that atlas may catch it
   }
 }
 
@@ -1206,7 +1212,7 @@ void KLContext::verbose_fill(BlockElt last_y)
     std::ostringstream os;
     os << "negative coefficient in P_{" << e.x << ',' << e.y
        << "} at line " << e.line << '.';
-    throw std::runtime_error(os.str()); // so that realex may catch it
+    throw std::runtime_error(os.str()); // so that atlas may catch it
   }
 
 }
@@ -1275,5 +1281,5 @@ void wGraph(wgraph::WGraph& wg, const KLContext& klc)
 
 } // |wGraph|
 
-} // namespace kl
-} // namespace atlas
+} // |namespace kl|
+} // |namespace atlas|

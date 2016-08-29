@@ -35,6 +35,6 @@ void BruhatOrder::fillPoset()
     poset::Poset(d_hasse).swap(d_poset);
 }
 
-} // namespace bruhat
+} // |namespace bruhat|
 
-} // namespace atlas
+} // |namespace atlas|

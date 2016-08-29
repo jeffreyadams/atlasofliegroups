@@ -1,0 +1,52 @@
+{ This file is to be loaded before anything else It's purpose is to replace
+  all old functionality that requires or trasforms Param values to have
+  dominant infinitesimal character by code based on the built-ins
+  cross@(vec,Param) and Cayley@(vec,Param) that only require integral
+  dominance, and moreover conjugate rather than transform to that situation
+}
+
+forget cross@(int,Param)
+forget Cayley@(int,Param)
+forget inv_Cayley@(int,Param)
+
+set old_block = block@Param
+forget block@Param
+
+set cross(int s,Param p) = Param:
+  let (,,gamma)=%p
+  then alpha = simple_roots( integrality_datum(real_form(p),gamma) )
+  in cross(alpha[s],p)
+
+set Cayley(int s,Param p) = Param:
+  let (,,gamma)=%p
+  then alpha = simple_roots( integrality_datum(real_form(p),gamma) )
+  in Cayley(alpha[s],p)
+
+set inv_Cayley = Cayley@(int,Param)
+
+set block(Param p) = ([Param],int):
+  let G=real_form(p), (,,gamma)=%p
+  then sr = simple_roots(integrality_datum(G,gamma))
+  then tab = [[Param]]: for i:KGB_size(G) do [] od
+  , queue = [p], done=0, x(Param q)= KGBElt: let (x,,)=%q in x
+  then record (Param q) = void:
+    let (,n)=%x(q) then t=tab[n] then c=#t-1 in
+    while c>=0 and t[c]!=q do c-:=1 od
+  ; if c<0 then tab[n]:=t#q; queue#:=q fi
+  in begin
+    while #queue>done
+    do let cur = queue[done] next done+:=1 in
+      for alpha in sr do record(cross(alpha,cur))
+      ; record(Cayley(alpha,cur)) od
+    od
+  ; ( let (,n)=%x(p), res = [Param]: [], count=0 in
+      for t@i in tab
+      do res ##:= t
+      ; if i<n then count+:=#t
+        elif i=n then let i=0 in while t[i]!=p do i+:=1 od; count+:=i
+        fi
+      od
+    ; (let (B,)=old_block(p) in if #res!=#B then print("wrong size block") fi)
+    ; (res,count)
+    )
+  end

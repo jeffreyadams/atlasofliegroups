@@ -45,8 +45,8 @@ namespace abelian {
 
   bool isElementaryAbelian(const std::vector<arithmetic::Denom_t>&);
 
-  void quotReps(bitmap::BitMap&, const bitmap::BitMap&,
-		const FiniteAbelianGroup&);
+  // coset representatives of $G/H$ in $G$
+  bitmap::BitMap quotReps(const bitmap::BitMap& H,const FiniteAbelianGroup& G);
 
   void to_array(GrpArr&, GrpNbr, const GroupType&);
 

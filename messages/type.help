@@ -54,7 +54,7 @@ product Z/4.Z/4 of the center of SL(3) and the unique Z/4 in GL(1). We
 choose the inner class containing GL(4,R), which requires the split inner
 class for both SL(3) and GL(1).
 
-atlas: type
+empty: type
 Lie type: A3.T1
 elements of finite order in the center of the simply connected group:
 Z/4.Q/Z
@@ -70,7 +70,7 @@ We want to define the complex group SO(8).SO(8), and take the "C" inner class
 (it turns out that there is only one real form in this inner class, viz.
 SO(8,C) viewed as a real group.) Note the two Z/2 factors for each D4 factor.
 
-atlas: type
+empty: type
 Lie type: D4.D4
 elements of finite order in the center of the simply connected group:
 Z/2.Z/2.Z/2.Z/2
@@ -89,7 +89,7 @@ reductive group! The "component" command will show that this group has four
 components; the identity component is isomorphic to PSO(8,C). Analogous
 examples can be constructed from every complex group with non-trivial center.
 
-atlas: type
+empty: type
 Lie type: D4.D4
 elements of finite order in the center of the simply connected group:
 Z/2.Z/2.Z/2.Z/2

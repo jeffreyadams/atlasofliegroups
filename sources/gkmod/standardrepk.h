@@ -20,9 +20,9 @@ StandardRepK and KhatContext.
 #include <vector>
 #include <iostream>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
-#include "complexredgp.h"// inlines
+#include "innerclass.h"// inlines
 #include "realredgp.h"	// numerous inline methods
 #include "hashtable.h"	// containment
 #include "free_abelian.h"// containment and use via |Char|
@@ -37,11 +37,11 @@ namespace standardrepk {
 
 // type |HCParam|: image of a weight of the $\rho$-cover mod $(1-\theta)X^*$
 
-// the following cannot be in atlas_fwd.h: they need free_abelian.h
+// the following cannot be in ../Atlas.h: they need free_abelian.h
 typedef Char::coef_t CharCoeff;
 typedef q_Char::coef_t q_CharCoeff; // i.e., |Polynomial<int>|
 
-// remaining definitions could be in atlas_types.h, but seem module-specific
+// remaining definitions could be in ../Atlas.h, but seem module-specific
 
 typedef Free_Abelian<seq_no,long int,graded_compare> combination;
 typedef std::pair<seq_no,combination> equation;
@@ -98,7 +98,7 @@ template <typename C>
   identifications and relations, which are associated to the notions of
   being "standard" (rather than continued), "final", and "normalized").
 
-  In the atlas picture, the Cartan and complete positive root system are
+  In the Atlas picture, the Cartan and complete positive root system are
   always fixed, so one does not specify 2) and 3); instead the situation
   will be conjugated to one where the positive roots are the perpetual ones,
   and what changes is the strong involution $x$ representing the real form,
@@ -167,7 +167,7 @@ class StandardRepK
 
 public:
 
-  StandardRepK() {} // so empty slots can be created
+ StandardRepK() : d_fiberElt(0) {} // so empty slots can be created
 
   void swap(const StandardRepK&);
 
@@ -212,6 +212,8 @@ struct Cartan_info
   RankFlags bi_ortho; // simple roots, and necessarily complex ones
   WeightList sum_coroots; // associated sums of 2 coroots
 
+  Cartan_info() : torsionProjector(0) {}
+
   const Weight& coroot_sum(size_t i) const
     { assert (bi_ortho[i]); return sum_coroots[bi_ortho.position(i)]; }
 
@@ -242,7 +244,7 @@ struct bitset_entry : public RankFlags
    Just one dynamic table is held, for projection matrices correponding to
    different subsets of simple roots; they serve to speed up the height
    computation. That computation is not a necessary part for the other
-   functionality of this class, but it allows height-trunction to be built
+   functionality of this class, but it allows height-truncation to be built
    into for instance |K_type_formula|, which speeds up simple cases a lot.
  */
 class SRK_context
@@ -263,8 +265,8 @@ class SRK_context
   SRK_context(RealReductiveGroup &G);
 
   // accessors
-  ComplexReductiveGroup& complexGroup() const
-    { return G.complexGroup(); }
+  InnerClass& innerClass() const
+    { return G.innerClass(); }
   const RootDatum& rootDatum() const { return G.rootDatum(); }
   const WeylGroup& weylGroup() const { return G.weylGroup(); }
   const TwistedWeylGroup& twistedWeylGroup() const
@@ -274,7 +276,7 @@ class SRK_context
     { return G.basedTitsGroup(); }
 
   const TwistedInvolution involution_of_Cartan(size_t cn) const
-    { return complexGroup().involution_of_Cartan(cn); }
+    { return innerClass().involution_of_Cartan(cn); }
   const Fiber& fiber(const StandardRepK& sr) const
     { return G.cartan(sr.Cartan()).fiber(); }
 
@@ -586,7 +588,7 @@ class PSalgebra // Parabolic subalgebra
   RootNbrSet nilpotents; // (positive) roots in nilpotent radical
  public:
   PSalgebra (TitsElt base,
-	     const ComplexReductiveGroup& G);
+	     const InnerClass& G);
 
   const TitsElt& strong_involution() const { return strong_inv; }
   TwistedInvolution involution() const { return strong_inv.tw(); }

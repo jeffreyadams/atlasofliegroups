@@ -101,19 +101,24 @@ int main()
   for (unsigned long i=1; i<=last_squared; ++i)
     max += i*i;
 
+  std::cout << "Computing unique sums of " << k << @| " out of the first "
+            << last_squared << " positive squares." << std::endl;
+
   occurrences state(k,max);
 
   std::cout << max << ", " << state.unique_sums(1).capacity() << std::endl;
   for (unsigned long i=1; i<=last_squared; ++i)
-  { std::cout << i << std::endl; // show progress
+  { std::cout << "Incorporating square of " << i @|
+              << " which is " << i*i << std::endl; // show progress
     state.add(i*i); // include terms
   }
   const value_set result = state.unique_sums(k);
+  std::cout << "Found " << result.size() << " unique sums:" << std::endl;
   std::ostream_iterator<unsigned long> lister(std::cout,",");
   std::copy (result.begin(), result.end(), lister);
-  for (unsigned int i=0; i<=k; ++i)
-     std::cout << (i==0?'\n':',') << state.unique_sums(i).size();
   std::cout << std::endl;
+  auto sum = std::accumulate (result.begin(), result.end(), 0);
+  std::cout << "Sum is " << sum << '.' << std::endl;
 }
 
 @* Index.

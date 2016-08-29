@@ -1,3 +1,12 @@
+/*
+  This is kgp.h
+
+  Copyright (C) 2011 Scott Crofts
+  part of the Atlas of Lie Groups and Representations
+
+  For license information see the LICENSE file
+*/
+
 #ifndef KGP_H
 #define KGP_H
 

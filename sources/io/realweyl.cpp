@@ -30,22 +30,19 @@ SmallBitVectorList rGenerators
 
 namespace realweyl {
 
+  // compute real Weyl group at block element given by $(x,y)$
 RealWeyl::RealWeyl(const CartanClass& cc,
-		   cartanclass::AdjointFiberElt x,
-		   cartanclass::AdjointFiberElt y,
+		   cartanclass::AdjointFiberElt x, // for real form
+		   cartanclass::AdjointFiberElt y, // for dual real form
 		   const RootDatum& rd, const WeylGroup& W)
   :d_group(&W)
 
 {
-  using namespace cartanclass;
-  using namespace rootdata;
-  using namespace tags;
-
   d_imaginary = cc.simpleImaginary();
   d_real = cc.simpleReal();
   d_complex = cc.simpleComplex();
 
-  RootDatum drd(rd,DualTag());
+  RootDatum drd(rd,tags::DualTag());
 
   d_complexType = rd.Lie_type(d_complex);
   d_imaginaryType = rd.Lie_type(d_imaginary);

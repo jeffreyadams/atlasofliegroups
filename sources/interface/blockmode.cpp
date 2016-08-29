@@ -14,8 +14,8 @@
 #include "realmode.h"
 #include "mainmode.h"
 
-#include "complexredgp.h"
-#include "complexredgp_io.h"
+#include "innerclass.h"
+#include "output.h"
 #include "error.h"
 #include "helpmode.h"
 #include "interactive.h"
@@ -27,7 +27,6 @@
 #include "dynkin.h"
 #include "lietype.h"
 #include "realredgp.h"
-#include "realredgp_io.h"
 #include "kgb.h"
 #include "kgb_io.h"
 #include "blocks.h"
@@ -72,6 +71,7 @@ namespace {
   void blockstabilizer_f();
   void blocktwist_f();
   void extblock_f();
+  void gextblock_f();
   void klbasis_f();
   void kllist_f();
   void primkl_f();
@@ -83,7 +83,7 @@ namespace {
 
   // local variables
 
-  ComplexReductiveGroup* dual_G_C_pointer=NULL;
+  InnerClass* dual_G_C_pointer=NULL;
   RealReductiveGroup* dual_G_R_pointer=NULL;
   Block* block_pointer=NULL;
   wgraph::WGraph* WGr_pointer=NULL;
@@ -130,7 +130,9 @@ CommandNode blockNode()
   result.add("blockstabilizer",blockstabilizer_f,
 	     "print the real Weyl group for the block",std_help);
   result.add("blocktwist",blocktwist_f,"shows twist orbits on block");
-  result.add("extblock",extblock_f,"prints block for extended group");
+  result.add("extblock",extblock_f,
+	     "prints block for group extended by inner class involution");
+  result.add("gextblock",gextblock_f,"prints block for general extended group");
   result.add("klbasis",klbasis_f,
 	     "prints the KL basis for the Hecke module",std_help);
   result.add("kllist",kllist_f,
@@ -148,7 +150,7 @@ CommandNode blockNode()
   return result;
 }
 
-ComplexReductiveGroup& currentDualComplexGroup()
+InnerClass& current_dual_inner_class()
 {
   return *dual_G_C_pointer;
 }
@@ -209,13 +211,13 @@ void block_mode_entry() throw(EntryError)
   {
     RealReductiveGroup& G_R = currentRealGroup();
 
-    ComplexReductiveGroup& G_C = G_R.complexGroup();
-    complexredgp_io::Interface& G_I = currentComplexInterface();
+    InnerClass& G_C = G_R.innerClass();
+    output::Interface& G_I = currentComplexInterface();
 
     // get dual real form
-    RealFormNbr drf = interactive::get_dual_real_form(G_I,G_R.realForm());
+    RealFormNbr drf = interactive::get_dual_real_form(G_I,G_C,G_R.realForm());
 
-    dual_G_C_pointer=new ComplexReductiveGroup(G_C,tags::DualTag());
+    dual_G_C_pointer=new InnerClass(G_C,tags::DualTag());
     dual_G_R_pointer=new RealReductiveGroup(*dual_G_C_pointer,drf);
   }
   catch(error::InputError& e)
@@ -235,10 +237,11 @@ void dualrealform_f()
   try
   {
     RealReductiveGroup& G_R = currentRealGroup();
-    complexredgp_io::Interface& G_I = currentComplexInterface();
+    InnerClass& G_C = G_R.innerClass();
+    output::Interface& G_I = currentComplexInterface();
 
     // get dual real form
-    RealFormNbr drf = interactive::get_dual_real_form(G_I,G_R.realForm());
+    RealFormNbr drf = interactive::get_dual_real_form(G_I,G_C,G_R.realForm());
 
     // we can call the swap method for rvalues, but not with and rvalue arg
     RealReductiveGroup(*dual_G_C_pointer,drf).swap(*dual_G_R_pointer);
@@ -301,7 +304,7 @@ void smallkgb_f()
 
   std::cout
     << "partial kgb size: "
-    << currentComplexGroup().KGB_size
+    << current_inner_class().KGB_size
          (currentRealForm(),common)
     << std::endl;
 
@@ -314,7 +317,7 @@ void smalldualkgb_f()
 {
   RealReductiveGroup& G_R = currentRealGroup();
   RealReductiveGroup& dGR = currentDualRealGroup();
-  ComplexReductiveGroup& dGC = currentDualComplexGroup();
+  InnerClass& dGC = current_dual_inner_class();
 
   BitMap common=blocks::common_Cartans(dGR,G_R);
 
@@ -340,7 +343,7 @@ void smallblock_f()
 {
   ioutils::OutputFile file;
   // must unfortunatly regenerate the block here
-  Block::build(currentComplexGroup(),
+  Block::build(current_inner_class(),
 	       currentRealForm(),
 	       currentDualRealForm()).print_to(file,false);
 }
@@ -357,7 +360,7 @@ void dualblock_f()
 
 void smalldualblock_f()
 {
-  ComplexReductiveGroup& dG = currentDualComplexGroup();
+  InnerClass& dG = current_dual_inner_class();
 
   Block block =
     Block::build(dG,currentDualRealForm(),currentRealForm());
@@ -432,7 +435,7 @@ void blockstabilizer_f()
   size_t cn=interactive::get_Cartan_class(blocks::common_Cartans(G_R,dGR));
 
   ioutils::OutputFile file;
-  realredgp_io::printBlockStabilizer
+  output::printBlockStabilizer
     (file,currentRealGroup(),cn,currentDualRealForm());
 }
 
@@ -444,8 +447,24 @@ void blocktwist_f()
 
 void extblock_f()
 {
-  ext_block::extended_block eblock(currentBlock(),
-				   currentComplexGroup().twistedWeylGroup());
+  ext_block::ext_block eblock
+    (current_inner_class(),
+     currentBlock(),
+     currentRealGroup().kgb(), currentDualRealGroup().kgb(),
+     current_inner_class().distinguished());
+  ioutils::OutputFile file;
+  eblock.print_to(file);
+}
+
+
+void gextblock_f()
+{
+  WeightInvolution delta = interactive::get_commuting_involution
+    (commands::current_layout(), commands::current_lattice_basis());
+  ext_block::ext_block eblock(current_inner_class(), currentBlock(),
+			      currentRealGroup().kgb(),
+			      currentDualRealGroup().kgb(),
+			      delta);
   ioutils::OutputFile file;
   eblock.print_to(file);
 }
@@ -536,7 +555,7 @@ void wcells_f()
 
 
 
-} // namespace
+} // |namespace|
 
 } // |namespace commands|
 

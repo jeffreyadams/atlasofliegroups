@@ -48,7 +48,7 @@ bool PolEntry::operator!=(PolEntry::Pooltype::const_reference e) const
 }
 
 
-descent_table::descent_table(const ext_block::extended_block& eb)
+descent_table::descent_table(const ext_block::ext_block& eb)
   : descents(eb.size()), good_ascents(eb.size())
   , prim_index(1<<eb.rank(),std::vector<unsigned int>(eb.size(),0))
   , prim_flip(eb.size(),BitMap(prim_index.size()))
@@ -140,7 +140,7 @@ bool descent_table::extr_back_up(BlockElt& x, BlockElt y) const
   return false;
 } // |descent_table::extr_back_up|
 
-KL_table::KL_table(const ext_block::extended_block& b, std::vector<Pol>& pool)
+KL_table::KL_table(const ext_block::ext_block& b, std::vector<Pol>& pool)
   : aux(b), storage_pool(pool), column()
   , untwisted(b.untwisted())
 { untwisted.fill(false); }
@@ -194,7 +194,7 @@ Pol qk_minus_q(int k)
 // component of element $a_x$ in product $(T_s+1)C_{sy}$
 Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
 {
-  const ext_block::extended_block& b = aux.block;
+  const ext_block::ext_block& b = aux.block;
   switch(type(s,x))
   { default:
       assert(false); // list will only contain descent types
@@ -218,7 +218,7 @@ Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
   case ext_block::one_real_pair_fixed:
   case ext_block::two_real_double_double:
     { // contribute $P_{x',sy}+P_{x'',sy}+(q^k-1)P_{x,sy}$
-      BlockEltPair sx = b.inverse_Cayleys(s,x);
+      BlockEltPair sx = b.Cayleys(s,x);
       return b.T_coef(s,x,sx.first)*P(sx.first,sy)
 	+ b.T_coef(s,x,sx.second)*P(sx.second,sy)
 	+ b.T_coef(s,x,x) * P(x,sy);
@@ -227,7 +227,7 @@ Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
   case ext_block::one_real_single:
   case ext_block::two_real_single_single:
     { // contribute $P_{x_s,sy}+q^kP_{x,sy}-P_{s*x,sy}$
-      const BlockElt s_x = b.inverse_Cayley(s,x);
+      const BlockElt s_x = b.Cayley(s,x);
       const BlockElt x_cross = b.cross(s,x);
       return b.T_coef(s,x,s_x)*P(s_x,sy)
 	+ b.T_coef(s,x,x_cross)*P(x_cross,sy)
@@ -238,14 +238,14 @@ Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
   case ext_block::three_semi_real:
   case ext_block::three_real_semi:
     { // contribute $(q+1)P_{x_s,sy}+(q^k-q)P_{x,sy}$
-      const BlockElt sx = b.inverse_Cayley(s,x);
+      const BlockElt sx = b.Cayley(s,x);
       return b.T_coef(s,x,sx) * P(sx,sy)
 	+ b.T_coef(s,x,x) * P(x,sy);
     }
     // epsilon case: 2r21
-  case ext_block::two_real_single_double:
+  case ext_block::two_real_single_double_fixed:
     { // contribute $P_{x',sy}\pm P_{x'',sy}+(q^2-1)P_{x,sy}$
-      BlockEltPair sx = b.inverse_Cayleys(s,x);
+      BlockEltPair sx = b.Cayleys(s,x);
       return b.T_coef(s,x,sx.first)*P(sx.first,sy)
 	+ b.T_coef(s,x,sx.second)*P(sx.second,sy)
 	+ b.T_coef(s,x,x) * P(x,sy);
@@ -276,7 +276,7 @@ inline Pol m(int a,int b) { return a==0 ? Pol(b) : qk_plus_1(2)*a + Pol(1,b); }
 Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 		    const std::vector<Pol>& M) const
 {
-  const ext_block::extended_block& bl=aux.block;
+  const ext_block::ext_block& bl=aux.block;
   const BlockElt z =  bl.some_scent(s,y); // unique ascent by |s| of |y|
 
   const unsigned defect = has_defect(type(s,z)) ? 1 : 0;
@@ -294,7 +294,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
       int acc = mu(2,x,y);
       if (has_defect(type(s,x)))
       {
-	BlockElt sx=bl.inverse_Cayley(s,x);
+	BlockElt sx=bl.Cayley(s,x);
 	acc += mu(1,sx,y)*bl.epsilon(s,sx,x); // sign is |T_coef(s,x,sx)[1]|
       }
       for (unsigned l=bl.length(x)+1; l<bl.length(z); l+=2)
@@ -330,7 +330,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
       int b = mu(3,x,y); // coefficient $r^0$ in same
       if (has_defect(type(s,x)))
       {
-	BlockElt sx=bl.inverse_Cayley(s,x);
+	BlockElt sx=bl.Cayley(s,x);
 	b += mu(1,sx,y)*bl.epsilon(s,sx,x); // sign is |T_coef(s,x,sx)[1]|
       }
       for (BlockElt u=bl.length_first(bl.length(x)+1);
@@ -390,7 +390,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
 		     const std::vector<Pol>& M) const
 {
-  const ext_block::extended_block& bl=aux.block;
+  const ext_block::ext_block& bl=aux.block;
   const unsigned k = bl.orbit(s).length();
   if (k==1) // nothing changed for this case
     return  Pol(bl.l(y,x)%2==0 ? 0 : mu(1,x,y));
@@ -741,7 +741,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	      Q -= cy[sx_up_t.second];
 	  }
 	  break;
-	case ext_block::two_imaginary_single_double:
+	case ext_block::two_imaginary_single_double_fixed:
 	  {
 	    BlockEltPair sx=aux.block.Cayleys(s,x);
 	    if (sx.first<floor_y)

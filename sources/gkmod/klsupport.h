@@ -17,7 +17,7 @@
 
 #include "bitset.h"	// containment
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include "blocks.h"	// inlining of methods like |cross| and |cayley|
 
 namespace atlas {
@@ -94,8 +94,8 @@ class KLSupport
 
 };
 
-} // namespace klsupport
+} // |namespace klsupport|
 
-} // namespace atlas
+} // |namespace atlas|
 
 #endif

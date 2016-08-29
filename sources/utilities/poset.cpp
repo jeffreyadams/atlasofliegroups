@@ -258,6 +258,6 @@ unsigned long n_comparable_from_Hasse
 }
 
 
-} // namespace poset
+} // |namespace poset|
 
-} // namespace atlas
+} // |namespace atlas|

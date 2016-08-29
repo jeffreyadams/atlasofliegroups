@@ -14,7 +14,7 @@
 #include <cassert>
 #include <functional>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "hashtable.h"   // containment
 #include "permutations.h"// containment root permutation in |InvolutionData|
@@ -24,12 +24,12 @@
 #include "subquotient.h" // containment of |SmallSubspace|
 
 /* The purpose of this module is to provide a central registry of (twisted)
-   invlulutions, in the form of a hash table to encode them by numbers, and
+   involutions, in the form of a hash table to encode them by numbers, and
    supplementary information in the form of a table indexed by those numbers.
    This information, which includes root classification and the (somewhat
    voluminous) involution matrix, is generated as soon a an involution is
    registered here, which happens for whole twisted conjugacy classes at a
-   time through a call to |Cartan_orbits::add| defined below. If user code
+   time, through a call to |Cartan_orbits::add| defined below. If user code
    should need additional information associated involutions, it might define
    an array indexed by |InvolutionNbr|; but currently this happens nowhere.
  */
@@ -102,9 +102,9 @@ class InvolutionTable
     InvolutionData id; // stuff that does not involve weight coordinates
     WeightInvolution theta;
     int_Matrix projector; // for |y|, same kernel as |row_saturate(theta-id)|
-    int_Matrix M_real; // $1-\theta$ followed by expression in adapted basis
+    int_Matrix M_real; // $1-\theta$; then expression in scaled adapted basis
     int_Vector diagonal; // divisors for image of |M_real|
-    int_Matrix lift_mat; // section: satisfies |M_real*lift_mat==diag(diagonal)|
+    int_Matrix lift_mat; // section: satisfies |lift_mat*M_real==1-theta|
     unsigned int length;
     unsigned int W_length;
     SmallSubspace mod_space; // for |x|
@@ -125,7 +125,7 @@ class InvolutionTable
   std::vector<BinaryMap> torus_simple_reflection;
 
  public:
-  InvolutionTable // contructor; starts without any involutions
+  InvolutionTable // constructor; starts without any involutions
     (const RootDatum& , const WeightInvolution&,  const TwistedWeylGroup&);
 
   //accessors
@@ -182,7 +182,12 @@ class InvolutionTable
   bool is_imaginary_simple(InvolutionNbr n,weyl::Generator s) const;
   bool is_real_simple(InvolutionNbr n,weyl::Generator s) const;
 
+  bool is_complex_descent(InvolutionNbr n,RootNbr alpha) const;
+
   void reduce(TitsElt& a) const;
+
+  const SmallSubspace& mod_space(InvolutionNbr n) const
+  { assert(n<size()); return data[n].mod_space; }
 
   bool equivalent(const TorusElement& t1, const TorusElement& t2,
 		  InvolutionNbr i) const;
@@ -190,7 +195,6 @@ class InvolutionTable
   y_entry pack(const TorusElement& t, InvolutionNbr i) const;
   KGB_elt_entry x_pack(const GlobalTitsElement& x) const; // for X only; slow
   bool x_equiv(const GlobalTitsElement& x0,const GlobalTitsElement& x1) const;
-  TorusPart check_rho_imaginary(InvolutionNbr i) const;
 
   // choose unique representative for real projection of rational weight
   void real_unique(InvolutionNbr i, RatWeight& y) const;
@@ -201,7 +205,7 @@ class InvolutionTable
 
   // the following produces a light-weight function object calling |involution|
   class mapper
-    : public std::unary_function<InvolutionNbr,const weyl::TI_Entry& >
+  // : public std::unary_function<InvolutionNbr,const weyl::TI_Entry& >
   {
     const InvolutionTable& t;
   public:
@@ -217,10 +221,6 @@ class InvolutionTable
 
   void reserve(size_t s) { pool.reserve(s); }
 
-private: // the space actually stored need not be exposed
-  const SmallSubspace& mod_space(InvolutionNbr n) const
-  { assert(n<size()); return data[n].mod_space; }
-
 }; // |class InvolutionTable|
 
 struct Cartan_orbit
@@ -228,7 +228,7 @@ struct Cartan_orbit
   unsigned int Cartan_class_nbr;
   InvolutionNbr start,size;
 
-  Cartan_orbit(InvolutionTable& i_tab,ComplexReductiveGroup& G, CartanNbr cn);
+  Cartan_orbit(InvolutionTable& i_tab,InnerClass& G, CartanNbr cn);
 
   bool contains(InvolutionNbr i) const { return i-start<size; }
   InvolutionNbr end() const { return start+size; }
@@ -252,8 +252,7 @@ public:
 // manipulators
 
   void set_size(CartanNbr n_Cartans); // resize once number of Cartans is known
-  void add(ComplexReductiveGroup& G, CartanNbr cn);
-  void add(ComplexReductiveGroup& G, const BitMap& Cartan_classes);
+  void add(InnerClass& G, CartanNbr cn);
 
 // accessors
 
@@ -274,7 +273,8 @@ public:
     const Cartan_orbits& t;
   public:
   comparer(const Cartan_orbits* o) : t(*o) {}
-    bool operator() (InvolutionNbr i, InvolutionNbr j) const; // whether |i<j|
+    // whether involution |i| less than |j| by length; Weyl length; |i<j|
+    bool operator() (InvolutionNbr i, InvolutionNbr j) const;
   };
   comparer less() const { return comparer(this); }
 

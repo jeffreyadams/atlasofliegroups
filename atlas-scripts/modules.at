@@ -1,0 +1,161 @@
+<basic.at
+<misc.at { for prettyPrint }
+<kl.at { for composition_series, character_formula }
+<K_types { for branch_std, branch_irr }
+
+: tag_Param = (Param,string)
+: tag_ParamPol = (ParamPol,string)
+
+set !std="std"
+set !irr="irr"
+set !K_types="K_types"
+
+set I (Param p) = tag_Param:
+  assert(is_standard(p),"parameter is not standard"); (p,std)
+set J(Param p)=tag_Param:
+  assert(is_standard(p),"parameter is not standard");
+  assert(is_final(p),"parameter is not final");
+  (p,irr)
+
+{ set kgb_number(KGBElt x)=int: use #@KGBElt from basic.at for this }
+
+set to_str (Param p) =string:
+  to_string("(x=",#x(p),",lambda=",[rat]:lambda(p),",nu=",[rat]:nu(p),")")
+
+set to_str_std (Param p) = string: "I"+to_str(p)
+
+set to_str_irr (Param p) = string: "J"+to_str(p)
+
+set to_str_K_types(Param p) = string:
+  to_string("J_K(x=", #x(p) ,",lambda=",[rat]:lambda(p),")")
+
+set to_str (tag_Param(p,type)) = string:
+  if type=std then to_str_std(p)
+  elif type=irr then to_str_irr(p)
+  elif type=irr then to_str_irr(p)
+  elif type=K_types then to_str_K_types(p)
+  else error("type is incorrect")
+  fi
+
+set to_str (ParamPol P) = [string]:
+  for c@p in P do to_string(prettyPrint(c),"*",to_str(p)) od
+
+set to_str (ParamPol P,string type) = [string]:
+  for c@p in P do to_string(prettyPrint(c),"*",to_str(p,type)) od
+
+set array_prints ([string] A) = void: { pring strings, one per line }
+  for a in A do prints(a) od
+
+{ composition series of (p,std,[...]) }
+set composition_series (Param p,string type) = tag_ParamPol:
+  assert(type=std,"Composition series not defined for irreducible modules");
+  (composition_series(p),irr)
+
+{ composition series of linear combination of standards (ParamPol P,std) }
+set composition_series (tag_ParamPol(P,type))= tag_ParamPol:
+  assert(type=std,"Composition series not defined for irreducible modules");
+  (composition_series(P),irr)
+
+{ character formula of (p,irr,[...] }
+set character_formula (tag_Param(p,type)) = tag_ParamPol:
+  assert(type = irr,"Character formula not defined for standard modules");
+  (character_formula(p),std)
+
+{ character formula of linear combination of standards (ParamPol P,irr) }
+set character_formula (tag_ParamPol(P,type)) = tag_ParamPol:
+  assert(type = irr,"Character formula not defined for standard modules");
+  (character_formula(P),std)
+
+set show (ParamPol P) = void: array_prints(to_str(P))
+set show (tag_ParamPol(,type):tP) = void:
+  assert(type=irr or type=std or type=K_types,"Incorrect type");
+  array_prints(to_str(tP))
+set show(tag_Param tp) = void: prints(to_str(tp))
+
+{ the following supports the type KParam defined in K_parameter.at }
+set show(KGBElt x,ratvec lambda) = void:
+  prints("J_K(x=", #x, ",", [rat]:lambda,")")
+
+
+set virtual (tag_Param(p,type)) = tag_ParamPol:
+  assert(type=irr or type=std or type=K_types,"Incorrect type");
+  (virtual(p),type)
+
+
+set = (tag_Param(p,type_p),tag_Param(q,type_q)) = bool:
+  assert (type_p=type_q,"cannot compare standards and irreducibles;" + new_line
+   +"  to compare in the Grothendieck group do virtual(I(p))=virtual(J(q))");
+  p=q
+
+set character (tag_ParamPol (P,type)) = ParamPol:
+  if type=std then P elif type=irr then character_formula(P)
+  else error("Incorrect types")
+  fi
+
+set = (tag_ParamPol(P,type_P):tP,tag_ParamPol(Q,type_Q):tQ) = bool:
+  if type_P=type_Q then P=Q else character(tP)=character(tQ) fi
+
+{ add possibly mixed type polynomials, imposing the type of first argument P }
+set + (tag_ParamPol(P,type_P):tP,tag_ParamPol(Q,type_Q):tQ) = tag_ParamPol:
+  if type_P=type_Q then (P+Q,type_P)
+  elif type_P=std and type_Q=irr then (P+character_formula(Q),type_P)
+  elif type_P=irr and type_Q=std then (P+composition_series(Q),type_P)
+  else error("incorrect type(s)") fi
+
+set + (tag_Param(p,type_p),tag_Param(q,type_q)) = tag_ParamPol:
+  virtual(p,type_p)+virtual(q,type_q)
+
+set + (tag_ParamPol(P,type_P),tag_Param(q,typeq)) = tag_ParamPol:
+  (P,type_P)+(virtual(q),typeq)
+
+{ cannot also have +@(tag_Param,tag_ParamPol): would create coercion ambiguity }
+
+{ unary - }
+set - (tag_ParamPol(P,type)) = tag_ParamPol: ((-1)*P,type)
+set - (tag_Param(p,type))= tag_ParamPol: (-p,type)
+
+{ binary - }
+set - (tag_ParamPol(P,type_P),tag_ParamPol(Q,type_Q)) = tag_ParamPol:
+  (P,type_P)+((-1)*Q,type_Q)
+set -(tag_Param(p,typep),tag_ParamPol(Q,type_Q)) = tag_ParamPol:
+  (ParamPol: p,typep)+((-1)*Q,type_Q)
+set - (tag_Param(p,typep),tag_Param(q,typeq))=tag_ParamPol:
+  (ParamPol: p,typep)+(ParamPol: -q,typeq)
+
+set * (Split w,tag_ParamPol(P,type)) = tag_ParamPol: (w*P,type)
+set * (Split w,tag_Param(p,type)) = tag_ParamPol: (w*p,type)
+
+set = (tag_ParamPol(P,type_P),tag_Param(q,typeq)) = bool:
+  (P,type_P)=(virtual(q,typeq))
+
+set infinitesimal_character (Param p,string type) = ratvec:
+  infinitesimal_character(p)
+
+set has_infinitesimal_character (ParamPol P) = bool:
+  if #P=0 then false
+  else let ic0=infinitesimal_character(first_param(P)), result=true, i=0 in
+    all (for @p in P do infinitesimal_character(p)=ic0 od )
+  fi
+
+set infinitesimal_character(ParamPol P) = ratvec:
+  assert(has_infinitesimal_character(P),
+        "terms have different infinitesimal characters");
+  infinitesimal_character(first_param(P))
+
+set infinitesimal_character (ParamPol P, string type) = ratvec:
+  infinitesimal_character(P)
+
+set tau (Param p,string type) = [int]: tau(p)
+set in_tau (int s,tag_Param(p,type)) = bool: let (b,)= tau_bitset(p) in b(s)
+
+set in_tau_complement(int s,tag_Param ps)=bool: not(in_tau(s,ps))
+set tau_complement (Param p, string type) = tau_complement(p)
+
+set status (int s,tag_Param (p,type)) = int: status(s,p)
+
+set branch ((Param p,string type), int bound) = (ParamPol,string):
+( if type=std then branch_std(p,bound) elif type=irr then branch_irr(p,bound)
+  else error("wrong type")
+  fi
+, K_types
+)

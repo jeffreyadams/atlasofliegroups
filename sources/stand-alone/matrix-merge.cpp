@@ -47,9 +47,8 @@ const std::ios_base::openmode binary_in=
 template<unsigned int n>
   size_t tuple_entry<n>::hashCode(size_t modulus) const
   { size_t h=0;
-    for (unsigned int i=0; i<n; ++i)
-      h=(h<<2)+comp[i];
-    return h&(modulus-1);
+    for (unsigned int i=0; i<n; ++i) h=((h<<2)+comp[i])&(modulus-1);
+    return h;
   }
 
 

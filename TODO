@@ -2,92 +2,74 @@
 - Study what the unequal rank case is about, and how to do it
 
 * Work on the Atlas library
+
+- Fix bug wen switching the real form when coming from realmode
 - Incorporate the calculation of c-invariant forms into the library
+- Rewrite block construction using methods inspired by synthetic operations
+- Rewrite K type computations to use data type more compatible with Param
+
+* Work on the Fokko program
+
+- correct bug with mysterious typeahead after bailing out with ? (done?)
+- clean up the mess dealing with input (interface/input, io/interactive...)
 
 * Work on the atlas program
 
- - correct bug with myterisous typeahead after bailing out with ?
- - clean up the mess dealing with input (interface/input, io/interactive...)
+- Integrate a bigint library to store atlas int (and rat?) values; while
+  attending that, signal overflow in arithmetic operations / conversions
 
-* Work on the realex program
+- Improve output of expressions
+  Distinguish one-line (maybe abbreviated) and long forms.
+  Nuance "simply connected" and "adjoint" for non-semisimple root data
 
- - See if syntax can allow (let i=3 in for k:i do print(k) od); without parens
+- See if cloning of values is ever needed, and remove it if not
 
- - Allow for declaring an input path, and (silent) default prelude
+- For errors during implict conversion, provide back-tracing as for calls
 
- - Allow Python-style slices of lists, vectors, matrices
- - Allow list-comprehension syntax like in Haskell (and Python?)
- - Integrate a bigint library to store realex int (and rat?) values; while
-   attending that, signal overflow in arithmetic operations / conversions
+- Implement compound assignment directly
+  While 'v #:= x' (with vec v, int x) is easy to write (and common in loop
+  bodies), it is converted to 'v := v#x' which is not efficient: with 'v'
+  still shared when 'v#x' is evaluated, there is no chance of (at least on
+  some occasions) reusing the same memory. This could be possible if built-in
+  compound assignment were handled as a single operation (even though no user
+  defined function could do such a thing). This is most useful for
+  concatenation, but operations such as vector addition could also profit.
 
+- Implement value gathering in loop using a sl_list if size is not known.
+  Currently all loops gather values in a std::vector; while loops (as well as
+  future loops using features that make size of resulting row unknown when
+  the loop is started) might do better gathering them in a list structure.
 
- - Handle catching of a user interrupt
-   When a user types ^C, this should break off computation as soon as feasible
-   and return the realex prompt. This may be quite difficult to implement if
-   for interrupts happening while an atlas library function is executing.
+- Maybe allow list-comprehension syntax like in Haskell (and Python?)
 
- - Mention file and line in non-syntax errors
- - Improve output of expressions
+- Allow skipping entries in value-producing loops; concatenating sub-rows.
+  When generating a row from a loop, not every iteration need contribute, and
+  nested loops might want to contribute to the same row, in a concatenated
+  fashion.
 
- - Allow multiple overloaded functions defined in a single 'set' statement
- - Allow recursion through a more intuitive syntax
- - See if functions without argument can still live in overload table
-   Currently they live in the table for ordinary variables, which can produce
-   some subtle asymmetry in their handling (notably their treatment changes
-   when a first overloaded instance is added). It would be preferable to treat
-   them as overloaded functions anyway, but to disable the voiding coercion in
-   argument positions of overloaded functions. Check possible complications.
+- Extend type system to deal with second-order types
+- Extend language with recursive types, as well as disjoint union types.
+- Allow encapsulation into user-defined types
 
- - See if overloads with empty row argument cannot be via '[*]' type
-   Currently, since any row type could match the argument expression '[]',
-   overloads differing only in the kind of row type are not allowed, lest a
-   potential call with uncast '[]' argument would be ambiguous. One could
-   imagine that such an argument would only match a '[*]' type specification
-   (which would in return only match that) so that multiple row overloads can
-   coexist, and the user still has control of how to handle the '[]' case.
+- Ensure that root data obtained from inner classes or beyond are shared
+- Avoid creating many identical |real_form_value| instances, by storing links
+  to those currently generated within an |inner_class_value| object
+- Check if efficiency features actually work as intended
+  For instance v[i]=k should usually avoid a copy of v being made. Also see
+  if something can be done to avoid duplication in a +:= x (probably not, as
+  one knows nothing about what + does). However, for v #:= x in a loop it
+  should be possible to avoid a new allocation for v at every iteration.
 
- - Allow loops executed in reverse order
-   This generalises downto to for-in loops. Saying 'for e@i reverse in array
-   do f(e,i) od' runs through elements of 'array' backwards, 'i' decreasing
-   correspondingly; any row value built by loop is still constructed forward,
-   so 'i' does not refer to position in built-up row in this case.
-
- - Premature exits: break from loop, return from function
- - Scoping in while loops: declarations of condition remain valid in body?
-   The same question arises in conditional: if the condition is the result of
-   a complicated computation, could that computation define some local
-   variables that remain accessible in addition to the boolean condition?
-   However for the conditional one could start a 'let' block before the
-   conditional starts to keep variables in scope; for while this doesn't work.
-
- - Allow skipping entries in value-producing loops; concatenating sub-rows.
-   When generating a row from a loop, not every iteration need contribute, and
-   nested loops might want to contribute to the same row, in a concatenated
-   fashion.
-
- - Allow for array slices and maybe other row-transformations
- - Extend type system to deal with second-order types
- - Extend language with recursive types, as well as disjoint union types.
- - Allow encapsulation into user-defined types
-
- - Ensure that root data obtained from inner classes or beyond are shared
- - Avoid creating many identical |real_form_value| instances, by storing links
-   to those currently generated within an |inner_class_value| object
- - Check if efficiency features actually work as intended
-   For instance v[i]=k should usually avoid a copy of v being made. Also see
-   if something can be done to avoid duplication in a +:= x (probably not, as
-   one knows nothing about what + does). However, for v #:= x in a loop it
-   should be possible to avoid a new allocation for v at every iteration.
-  - Duplication avoiding in component assignment
-  - For loops in void context never build up any value.
-
-* Work on the realex scripts
-  - Complete the groups in groups.rx (types G,F); also avoid use of "s" etc.
-  - Study and rewrite Jeffs scripts to see what can be put into the library
+* Work on the atlas scripts
+- Complete the groups in groups.rx (types G,F); also avoid use of "s" etc.
 
 * Work on documentation
 
-* Work on makefiles, distribution and support programs
- - Figure out how to avoid 'unrecognised typedef at line 367 of atlas_types.h'
- - Improve makefile so that 'make realex' doesn't run ctanglex many times
- - Add some make targets for recording options as suggested by Nelson Beebe
+- Write a tutorial on the axis languge, in bottom-up style
+
+* Work on makefiles, distribution and support programs (cwebx)
+- change name of parser.y to parser.ypp, and adapt all Makefiles
+- Figure out how to avoid 'unrecognised typedefs' all the time
+- Make cweavex format a 2-line "do x; while(y);" with correct indentation
+- Make cwebx messages mention file name, to 'make -jN' output comprehensible
+- Add some make targets for recording options as suggested by Nelson Beebe

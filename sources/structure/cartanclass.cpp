@@ -2,7 +2,7 @@
   This is cartanclass.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006-2014 Marc van Leeuwen
+  Copyright (C) 2006-201g Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -16,9 +16,10 @@
 #include <set>
 #include <utility>
 #include <stdexcept>
-#include <string>     // used inplicitly in throwing errors
+#include <string>     // used implicitly in throwing errors
 
 #include "tags.h"
+#include "bits.h"
 #include "size.h"	// used in orbit size computation
 
 #include "dynkin.h"     // for |makeSimpleComplex| and |orbit_size|
@@ -40,8 +41,9 @@ namespace atlas {
 
     namespace {
 
-/*!\brief Constructs a function object defining the action of the
-  simple-imaginary reflections on a fiber.
+/*
+  A function object defining the action of the simple-imaginary reflections on
+  a fiber.
 
   The function object this class provides, and that can be used by
   |partition::makeOrbits|, takes the index |s| of a simple-imaginary root and
@@ -64,39 +66,38 @@ namespace atlas {
   "transposition" of the information is done by the constructor below.
 */
 
-  class FiberAction
+class FiberAction
+{
+  Grading d_baseGrading; // indexed by |s|
+  RankFlagsList d_alpha;   // indexed by |s| first
+  RankFlagsList d_mAlpha;  // indexed by |s| first
+
+public:
+// constructors and destructors
+  FiberAction(const Grading& gr,
+	      const GradingList& gs, // size: fiber rank
+	      const RankFlagsList& ma) // size: imaginary rank
+    : d_baseGrading(gr)
+    , d_alpha(ma.size()) // initialise size only here
+    , d_mAlpha(ma)
   {
-    Grading d_baseGrading; // indexed by |s|
-    RankFlagsList d_alpha;   // indexed by |s| first
-    RankFlagsList d_mAlpha;  // indexed by |s| first
+    for (size_t i = 0; i<ma.size(); ++i)
+      for (size_t j = 0; j<gs.size(); ++j)
+	  d_alpha[i].set(j,gs[j][i]);
+  }
 
-  public:
-  // constructors and destructors
-    FiberAction(const Grading& gr,
-		const GradingList& gs, // size: fiber rank
-		const RankFlagsList& ma) // size: imaginary rank
-      : d_baseGrading(gr)
-      , d_alpha(ma.size()) // initialise size only here
-      , d_mAlpha(ma)
-    {
-      for (size_t i = 0; i<ma.size(); ++i)
-	for (size_t j = 0; j<gs.size(); ++j)
-	    d_alpha[i].set(j,gs[j][i]);
-    }
-
-  // accessors
-    bool grading(RankFlags x, unsigned long s) const
-      { return d_baseGrading[s] != x.scalarProduct(d_alpha[s]); }
-    unsigned long operator() (unsigned long s, unsigned long x) const
-    {
-      RankFlags b(x); if (grading(b,s))  b ^= d_mAlpha[s];
-      return b.to_ulong();
-    }
-  };
+// accessors
+  bool grading(RankFlags x, unsigned long s) const
+    { return d_baseGrading[s] != x.scalarProduct(d_alpha[s]); }
+  unsigned long operator() (unsigned long s, unsigned long x) const
+  {
+    RankFlags b(x); if (grading(b,s))  b ^= d_mAlpha[s];
+    return b.to_ulong();
+  }
+};
 
 } // |namespace|
 
-} // |namespace cartanclass|
 
 /*****************************************************************************
 
@@ -104,10 +105,9 @@ namespace atlas {
 
 ******************************************************************************/
 
-namespace cartanclass {
 
-/*!
-  Synopsis: constructs the Cartan class with involution theta.
+/*
+  Construct the Cartan class with involution theta.
 
   Precondition: theta is an involution of the root datum rd that can be
   obtained from the distinguished involution by multiplication to the left by
@@ -130,29 +130,19 @@ CartanClass::CartanClass(const RootDatum& rd,
 
 /******** accessors **********************************************************/
 
-/*!
-  \brief Tells whether this cartan class is the most split one for
-  weak real form corresponding to class \#wrf in fiber().weakReal().
+/*
+  Tell whether this Cartan class is the most split one for weak real form
+  corresponding to class |wrf| in |fiber().weakReal()|.
 
   Algorithm: this is the case iff the grading corresponding to wrf is trivial,
-  i.e., all imaginary roots are compact. In this case it does not matter which
-  representative fiber element |x| is chosen, since the action of the
-  imaginary Weyl group obviously stabilises the trivial grading. [In fact
-  there should be only one such representative by injectivity of the map from
-  the adjoint fiber to gradings, as given by the assert statement below. MvL]
+  i.e., all imaginary roots are compact. Since cross actions by compact
+  imaginary roots are trivial, the fiber element |x| below is then unique.
 */
 bool CartanClass::isMostSplit(adjoint_fiber_orbit wrf) const
 {
-  AdjointFiberElt x = fiber().weakReal().classRep(wrf);
-
-  Grading gr= fiber().grading(x);
-
-  assert(gr.any() or fiber().weakReal().classSize(wrf)==1);
-
-  return gr.none();
+  auto& f=fiber(); return f.grading(f.wrf_rep(wrf)).none();
 }
 
-}
 
 /*****************************************************************************
 
@@ -160,7 +150,6 @@ bool CartanClass::isMostSplit(adjoint_fiber_orbit wrf) const
 
 ******************************************************************************/
 
-namespace cartanclass {
 
 // Fiber constructor for involution |theta| of the root datum |rd|.
 
@@ -202,21 +191,6 @@ Fiber::Fiber(const Fiber& other)
   , d_strongRealFormReps(other.d_strongRealFormReps)
 {}
 
-
-// Assignment operator. Uses copy constructor, with check for self-assignment
-
-Fiber& Fiber::operator= (const Fiber& other)
-{
-  // handle self-assignment
-  if (&other != this) {
-    this->~Fiber();
-    new(this) Fiber(other);
-  }
-
-  return *this;
-}
-
-
 /*       Private accessors of |Fiber| used during construction      */
 
 
@@ -225,7 +199,7 @@ Fiber& Fiber::operator= (const Fiber& other)
 
   This is the subquotient $V_+ + V_-/V_+$ as constructed by |tori::dualPi0|,
   but for $-\theta^t$. So the group is isomorphic to the +1 eigenspace of the
-  transpose involution $\theta^t$|, modulo the image of $\theta^t+1|, in other
+  transpose involution $\theta^t$, modulo the image of $\theta^t+1$, in other
   words it is $\Ker(\theta^t-1)/\Im(\theta^t+1)$, and it also isomorphic to
   the component group of the set of $-\theta$ fixed points of the Cartan $H$.
 
@@ -255,14 +229,13 @@ adjoint_involution(const RootSystem& rs, const InvolutionData& id)
   return WeightInvolution(b,rs.rank()).negative_transposed();
 }
 
-/*!
-  \brief Makes the group that acts 1-transitively on the adjoint fiber.
+/*
+  Build the group that acts 1-transitively on the adjoint fiber.
 
   Algorithm: this is the subquotient $V_+ + V_-/V_+$ for the involution
   induced by |-^theta| on the cocharacter lattice (the |adjoint_involution|).
 */
-SmallSubquotient
-Fiber::makeAdjointFiberGroup(const RootSystem& rs) const
+SmallSubquotient Fiber::makeAdjointFiberGroup(const RootSystem& rs) const
 {
   SmallSubquotient result =
     tori::dualPi0(adjoint_involution(rs,d_involutionData));
@@ -272,8 +245,8 @@ Fiber::makeAdjointFiberGroup(const RootSystem& rs) const
   return result;
 }
 
-/*!
-  \brief Makes the stabilizer of the grading in the adjoint fiber group.
+/*
+  Makes the stabilizer of the grading in the adjoint fiber group.
 
   Explanation: each real form parameter defines a grading of the imaginary
   root system, obtained by pairing with the simple-imaginary roots. It should
@@ -287,8 +260,7 @@ Fiber::makeAdjointFiberGroup(const RootSystem& rs) const
   whence the constructor for |Fiber| just calls this function to |assert| that
   the result is trivial.
 */
-SmallSubspace
-Fiber::gradingGroup (const RootSystem& rs) const
+SmallSubspace Fiber::gradingGroup (const RootSystem& rs) const
 {
   // define map
   const SmallBitVectorList& baf =
@@ -321,9 +293,9 @@ Fiber::gradingGroup (const RootSystem& rs) const
 }
 
 
-/*!
-  \brief Returns the base grading (all ones) on simple-imaginary roots, while
-  flagging all noncompact imaginary roots in |flagged_roots|
+/*
+  Flag all noncompact imaginary roots in |flagged_roots|, and return the
+  all-ones (quasisplit base) grading of simple-imaginary roots
 
   Algorithm: for the noncompact roots, express each imaginary root in terms
   of the simple-imaginary ones, and flag it if the sum of coordinates is odd.
@@ -353,8 +325,8 @@ Grading Fiber::makeBaseGrading
   return Grading(constants::lMask[imaginaryRank()]); // all ones
 }
 
-/*!
-  \brief Computes, for each basis vector of the adjoint fiber group, the
+/*
+  Compute, for each basis vector of the adjoint fiber group, the
   grading shifts for simple-imaginary roots, and also sets |all_shifts| to
   flag the grading of the full set of imaginary roots.
 
@@ -373,10 +345,10 @@ Grading Fiber::makeBaseGrading
   apply to a root, it is enough to express that root in the simple root basis,
   and do the scalar product mod 2. Note that in contrast to |makeBaseGrading|
   above, and in spite of the reuse of the same names, we express in the (full)
-  simple root basis here, not on the simple-imaginary root basis.
+  simple root basis here, not in the simple-imaginary root basis.
 */
 GradingList Fiber::makeGradingShifts
-(std::vector<RootNbrSet>& all_shifts,const RootSystem& rs) const
+  (std::vector<RootNbrSet>& all_shifts,const RootSystem& rs) const
 {
   // express imaginary roots in (full) simple root basis
   const RootNbrList irl
@@ -394,24 +366,24 @@ GradingList Fiber::makeGradingShifts
   SmallBitVectorList si2(si); // reduce vectors mod 2
 
   // now compute all results
-  RankFlags supp = d_adjointFiberGroup.support();
-  const SmallBitVectorList& b
-    = d_adjointFiberGroup.space().basis();
+  const SmallBitVectorList& basis = d_adjointFiberGroup.basis();
   GradingList result;
 
   // traverse basis of the subquotient |d_adjointFiberGroup|
-  for (RankFlags::iterator it = supp.begin(); it(); ++it)
+  for (auto it = basis.begin(); it!=basis.end(); ++it)
   {
+    SmallBitVector gen = *it;
+
     // all imaginary roots part
-    RootNbrSet rset(rs.numRoots());
+    RootNbrSet rset(rs.numRoots()); // used only at indices listed in |irl|
     for (size_t j = 0; j < ir2.size(); ++j)
-      rset.set_to(irl[j],ir2[j].dot(b[*it]));
+      rset.set_to(irl[j],gen.dot(ir2[j]));
     all_shifts.push_back(rset);
 
     // simple-imaginary roots part
     Grading gr;
     for (size_t j = 0; j < si2.size(); ++j)
-      gr.set(j,si2[j].dot(b[*it]));
+      gr.set(j,gen.dot(si2[j]));
     result.push_back(gr);
   }
 
@@ -420,12 +392,11 @@ GradingList Fiber::makeGradingShifts
   return result;
 }
 
-/*!
-  \brief Constructs the $m_\alpha$s (images of coroots) in the fiber group,
+/*
+  Constructs the $m_\alpha$s (images of coroots) in the fiber group,
   for $\alpha$ simple-imaginary.
 
-  The effective number of bits of each $m_\alpha$ is
-  |d_fiberGroup.dimension()|
+  The effective number of bits of $m_\alpha$ is |d_fiberGroup.dimension()|
 
   We take the coroots corresponding to the imaginary simple roots, which in
   the root datum are already expressed in the basis of the coweight lattice
@@ -446,9 +417,9 @@ RankFlagsList Fiber::mAlphas (const RootDatum& rd) const
   return result;
 }
 
-/*!
-  \brief Constructs the $m_\alpha$s (images of coroots) in the adjoint
-  fiber group, for $\alpha$ simple-imaginary.
+/*
+  Construct the $m_\alpha$s (images of coroots) in the adjoint fiber group,
+  for $\alpha$ simple-imaginary.
 
   The number of bits of each $m_\alpha$ is
   |d_adjointFiberGroup.dimension()|
@@ -462,8 +433,7 @@ RankFlagsList Fiber::mAlphas (const RootDatum& rd) const
   what is left to do is to convert to the basis of the adjoint fiber group,
   which amounts to reducing modulo $V_-$.
 */
-RankFlagsList
-Fiber::adjointMAlphas (const RootSystem& rs) const
+RankFlagsList Fiber::adjointMAlphas (const RootSystem& rs) const
 {
   RankFlagsList result(imaginaryRank());
 
@@ -484,8 +454,8 @@ Fiber::adjointMAlphas (const RootSystem& rs) const
   return result;
 }
 
-/*!
-  \brief Computes the toAdjoint matrix.
+/*
+  Compute the toAdjoint matrix.
 
   Explanation: this is the matrix of the natural map from the fiber group to
   the adjoint fiber group. Such a map exists because (1) the root lattice is a
@@ -504,8 +474,7 @@ Fiber::adjointMAlphas (const RootSystem& rs) const
   fiber group; notably, it represents an element of $V_+ + V_-$ in
   $Y_* / 2Y_*$. (without space that formula would have ended our comment!)
 */
-BinaryMap
-Fiber::makeFiberMap(const RootDatum& rd) const
+BinaryMap Fiber::makeFiberMap(const RootDatum& rd) const
 {
 
   SmallBitVectorList b_sr
@@ -532,16 +501,15 @@ Fiber::makeFiberMap(const RootDatum& rd) const
 }
 
 
-/*!
-  \brief Computes the partition of the adjoint fiber, whose parts correspond
-  to the weak real forms.
+/*
+  Compute the partition of the adjoint fiber, whose parts correspond to the
+  weak real forms.
 
   Algorithm: we construct the |FiberAction| object corresponding to the action
-  of the imaginary Weyl group on the adjoint fiber, and then call |makeOrbits|
-  to make the partition. For the fiber action we can use the base grading and
-  the grading shifts "as is", while the fiber group elements $m_\alpha$
-  are computed by |adjointMAlphas|.
-*/
+  of the imaginary Weyl group on the adjoint fiber, and then call the |orbits|
+  method to make the partition. For the fiber action we can use the base
+  grading and the grading shifts "as is", while the fiber group elements
+  $m_\alpha$ are computed by |adjointMAlphas|. */
 Partition Fiber::makeWeakReal(const RootSystem& rs) const
 {
   RankFlagsList ma=adjointMAlphas(rs);
@@ -551,9 +519,8 @@ Partition Fiber::makeWeakReal(const RootSystem& rs) const
 
 
 
-/*!
-  \brief Computes the partition of the weak real forms according to central
-  square classes.
+/*
+  Compute the partition of the weak real forms according to square classes.
 
   Explanation: while weak real forms correspond to orbits in the adjoint
   fiber, they can be grouped into even coarser "central square classes",
@@ -611,8 +578,8 @@ Partition Fiber::makeRealFormPartition() const
 }
 
 
-/*!
-  \brief Computes the strong real form partitions.
+/*
+  Compute the strong real form partitions.
 
   In the software, strong real forms are represented by orbits of "fiber
   elements" under the imaginary Weyl group, where the fiber elements live in a
@@ -646,14 +613,14 @@ Partition Fiber::makeRealFormPartition() const
   they correspond to another choice of a base point in the affine space.
 
 */
-std::vector<Partition> Fiber::makeStrongReal
-  (const RootDatum& rd) const
+std::vector<Partition> Fiber::makeStrongReal (const RootDatum& rd) const
 {
   /* get the grading shifts; these are obtained from the images of the
      canonical basis vectors of the fiber group in the adjoint fiber group. */
 
   GradingList gs(fiberRank());
 
+  // basically compute |L*d_toAdjoint| where rows of L are |d_gradingShift|
   for (size_t i = 0; i < gs.size(); ++i)
     gs[i]=bitvector::combination(d_gradingShift,d_toAdjoint.column(i).data());
 
@@ -685,10 +652,10 @@ std::vector<Partition> Fiber::makeStrongReal
 */
 std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
 {
-  SmallBitVectorList b(fiberRank());
+  SmallBitVectorList b; b.reserve(fiberRank());
 
-  for (size_t i = 0; i < b.size(); ++i)
-    b[i]=d_toAdjoint.column(i);
+  for (size_t j = 0; j < fiberRank(); ++j)
+    b.push_back(d_toAdjoint.column(j));
 
   std::vector<StrongRealFormRep> result(numRealForms());
 
@@ -700,7 +667,7 @@ std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
     RankFlags yf(d_weakReal.classRep(wrf));
 
     // subtract base point
-    yf ^= RankFlags(class_base(c));
+    yf ^= class_base(c).data();
 
     // find preimage |xf| of |yf| in the fiber
     SmallBitVector v(yf,adjointFiberRank()); // the desired image
@@ -730,53 +697,40 @@ std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
 
 
 
-/*!
-  \brief Returns the noncompact imaginary roots for elt \#x in the adjoint
-  fiber (whose bitset is interpreted as an element of the subquotient
-  in |d_adjointFiberGroup|).
+/*
+  Return the set of noncompact imaginary roots for elt |x| in the adjoint
+  fiber (whose bitset is interpreted as an element of the subquotient in
+  |d_adjointFiberGroup|).
 */
 RootNbrSet Fiber::noncompactRoots(AdjointFiberElt x) const
 {
-  RankFlags bit(x);
   RootNbrSet result = d_baseNoncompact;
-
-  for (size_t i=0; i<adjointFiberRank() ; ++i)
-    if (bit[i])
-      result ^= d_noncompactShift[i];
+  for (auto it=x.data().begin(); it(); ++it)
+    result ^= d_noncompactShift[*it];
   return result;
 }
 
-/*!
-  \brief Returns the compact imaginary roots for element \#x in the
-   adjoint fiber.
-*/
+// Return the compact imaginary roots for element |x| in the adjoint fiber.
 RootNbrSet Fiber::compactRoots(AdjointFiberElt x) const
 {
-  RootNbrSet result = imaginaryRootSet();
-  result.andnot(noncompactRoots(x));
-  return result;
+  RootNbrSet imaginary = imaginaryRootSet(); // take a copy
+  return imaginary.andnot(noncompactRoots(x));
 }
 
-/*!
-  \brief Flags in gr the noncompact simple-imaginary roots for element \#x
-  in the adjoint fiber.
-
-  Precondition: |x| represents an element of the subquotient in
-  |d_adjointFiberGroup|.
-*/
+// Flag the noncompact simple-imaginary roots for adjoint fiber element |x|.
 Grading Fiber::grading(AdjointFiberElt x) const
 {
-  assert(d_gradingShift.size()==adjointFiberRank()); // length of combination
+  assert(x.size()==d_gradingShift.size()); // length of combination
 
   Grading gr = d_baseGrading;
-  gr ^= bitvector::combination(d_gradingShift,RankFlags(x));
+  gr ^= bitvector::combination(d_gradingShift,x.data());
 
   return gr;
 }
 
-/*!
-  \brief Returns an element |x| of the adjoint fiber group such that
-  |grading(x)==gr| (if it exists, it is unique).
+/*
+  Return an element |x| of the adjoint fiber group such that |grading(x)==gr|
+  (if it exists, it is unique).
 
   Algorithm: the grading must be reached from the base grading (with all ones)
   by adding a linear combination of grading shifts. So we set up and solve the
@@ -786,21 +740,21 @@ AdjointFiberElt Fiber::gradingRep(const Grading& gr) const
 {
   const size_t ir=imaginaryRank();
   SmallBitVector target(gr,ir);
-  target -= SmallBitVector(d_baseGrading,ir);
+  target -= SmallBitVector(d_baseGrading,ir); // this complements gradings
 
-  SmallBitVectorList shifts(adjointFiberRank());
-  for (size_t i = 0; i < shifts.size(); ++i)
-    shifts[i]=SmallBitVector(d_gradingShift[i],ir);
+  SmallBitVectorList shifts; shifts.reserve(adjointFiberRank());
+  for (size_t i = 0; i < adjointFiberRank(); ++i)
+    shifts.push_back(SmallBitVector(d_gradingShift[i],ir));
 
   RankFlags result;
-  if (combination_exists(shifts,target,result))
-    return AdjointFiberElt(result.to_ulong()); // condition has set |result|
+  if (combination_exists(shifts,target,result)) // sets |result|
+    return AdjointFiberElt(result,adjointFiberRank());
   else
     throw std::runtime_error("Representative of impossible grading requested");
 }
 
-/*!
-  \brief Returns the fiber group element $m_\alpha$ corresponding to |cr|.
+/*
+  Return the fiber group element $m_\alpha$ corresponding to |cr|.
 
   Precondition: |cr| a weight vector for an imaginary coroot $\alpha^\vee$
   for this Cartan.
@@ -810,64 +764,56 @@ SmallBitVector Fiber::mAlpha(const rootdata::Root& cr) const
   return d_fiberGroup.toBasis(SmallBitVector(cr));
 }
 
-/*!
-  \brief Returns the image of x in the adjoint fiber group.
+/*
+  Return the image of |x| in the adjoint fiber group.
 
-  Precondition: x is a valid element in the fiber group.
+  Precondition: |x| is a valid element in the fiber group.
 */
 AdjointFiberElt Fiber::toAdjoint(FiberElt x) const
 {
-  RankFlags xf(x);
-  SmallBitVector v(xf,fiberRank());
-
-  SmallBitVector w = d_toAdjoint*v;
-
-  return AdjointFiberElt(w.data().to_ulong());
+  return d_toAdjoint*x;
 }
 
 
-/*!
-  Returns the class number in the weak real form partition of the
-  strong real form \#c in central square class \#csc.
+/*
+  Return the class number in the weak real form partition of the strong real
+  form |c| in central square class |csc|.
 
-  In spite of the name of this method, the vaue returned is not the number
+  In spite of the name of this method, the value returned is not the number
   globally associated to the weak real form, which is called a real form label
-  but which |Fiber| knows nothing about, but rather the number of the
-  W_im-orbit in the adjoint fiber (group).
+  but which |Fiber| knows nothing about; rather the value is the number of the
+  $W_{im}$-orbit in the adjoint fiber (group). However, if the fiber happens
+  to be the fundamental fiber, then this value is equal to its real form label.
 
-  The pair (c,csc) is the software representation of an equivalence
-  class of strong real forms (always assumed to induce |theta| on H). The
-  integer |csc| labels an element of Z^delta/[(1+delta)Z], thought of as
-  a possible square value for strong real forms.  The fiber group acts
-  simply transitively on strong real forms with square equal to |csc|.
-  The integer c labels an orbit of W_i on this fiber group coset; this
-  orbit is the equivalence class of strong real forms.
+  The pair |(c,csc)| is the software representation of a strong real form
+  (always assumed to induce $\tau$ on $H$). The integer |csc| labels an
+  element of $Z^\delta/[(1+\delta)Z]$, thought of as a possible square value
+  for strong involutions. The fiber group acts simply transitively on strong
+  involutions with square equal to |csc|, so they can be viewed as a coset for
+  the fiber group; the imaginary Weyl group $W_{im}$ acts on this coset in a
+  manner that depends on |csc|. The integer |c| labels an orbit for this
+  action, which is the way we identify a strong real form.
 
-  This function computes the weak real form (W_i orbit on the adjoint
-  fiber group) corresponding to (c,csc).
+  This function computes the weak real form ($W_{im}$ orbit on the
+  \emph{adjoint} fiber group) corresponding to |(c,csc)|.
 
   First, |csc| also labels a coset of the fiber group image in the adjoint
-  fiber group, and class_base(csc) gives a coset representative (base point).
+  fiber group, and |class_base(csc)| is a coset representative (base point).
 
-  The map |toAdjoint| defines a Z/2Z-linear map from the fiber group to the
-  adjoint fiber groups, from which the Z/2Z-affine map for this square class
-  is obtained by adding the base point(as bitvector). It remains to (upstream)
-  find a fiber group element in the |W_i|-orbit labelled by |c|, and
-  (downstream) to find the number of the weak real form of its image under the
-  affine map; the former is |d_strongReal[csc].classRep(c)| and the latter is
-  obtained by the method |class_of| of the partition |d_weakReal|.
+  The map |toAdjoint| defines a $\Z/2\Z$-linear map from the fiber group to
+  the adjoint fiber group, from which the $\Z/2\Z$-affine map for this square
+  class is obtained by adding the base point (as a bitvector). It remains to
+  (upstream) find a fiber group element in the |W_{im}|-orbit labelled by |c|,
+  and (downstream) to find the number of the weak real form of its image under
+  the affine map; the former is |d_strongReal[csc].classRep(c)| and the latter
+  is obtained by the method |class_of| of the partition |d_weakReal|.
 */
 adjoint_fiber_orbit Fiber::toWeakReal(fiber_orbit c, square_class csc) const
 {
-  // find image of strong real form element in the adjoint fiber
-  AdjointFiberElt y =
-    class_base(csc) ^ toAdjoint(d_strongReal[csc].classRep(c));
-
-  // and find its orbit number
-  return d_weakReal.class_of(y);
+  FiberElt rep (RankFlags(fiber_partition(csc).classRep(c)),fiberRank());
+  // get orbit number of image of strong real form element in the adjoint fiber
+  return adjoint_orbit(class_base(csc) + toAdjoint(rep));
 }
-
-} // namespace cartanclass
 
 
 /*****************************************************************************
@@ -876,22 +822,14 @@ adjoint_fiber_orbit Fiber::toWeakReal(fiber_orbit c, square_class csc) const
 
 ******************************************************************************/
 
-namespace cartanclass {
-
-/*!
-  \brief Returns the sum of positive compact imaginary roots for |x| in |f|.
-*/
-Weight
-compactTwoRho(AdjointFiberElt x, const Fiber& f, const RootDatum& rd)
+// Return the sum of positive compact imaginary roots for |x| in |f|.
+Weight compactTwoRho(AdjointFiberElt x, const Fiber& f, const RootDatum& rd)
 {
   return rd.twoRho(f.compactRoots(x));
 }
 
-/*!
-  \brief Returns the restriction of the grading in |rs| to |rl|.
-*/
-Grading
-restrictGrading(const RootNbrSet& rs, const RootNbrList& rl)
+// Returns the restriction of the grading in |rs| to |rl|.
+Grading restrictGrading(const RootNbrSet& rs, const RootNbrList& rl)
 {
   Grading result;
   for (size_t i=0; i<rl.size(); ++i)
@@ -907,7 +845,7 @@ restrictGrading(const RootNbrSet& rs, const RootNbrList& rl)
   Precondition: |f| is the fundamental fiber;
 
   For each noncompact noncomplex irreducible real form, with the exception of
-  sl(n+1,R) where there is only one grading, there is at least one grading
+  sl(2n+1,R) where there is only one grading, there is at least one grading
   with exactly one noncompact simple root. (The unequal rank inner class in
   type $A_n$ is particular by the rareness of imaginary simple roots candidate
   for being noncompact: there is at most one, and only if $n$ is odd; for this
@@ -919,8 +857,8 @@ restrictGrading(const RootNbrSet& rs, const RootNbrList& rl)
   form will the easily allow a name to be associated to the real form.
 
   NOTE: the grading is represented as the set of noncompact imaginary roots
-  that are also simple roots for the root system |rs|. This is OK; knowledge
-  of just that set is sufficient to characterise the real form.
+  among the simple roots for the root system |rs|. This is OK; knowledge of
+  just that set is sufficient to characterise the real form.
 */
 Grading specialGrading(const Fiber& f, RealFormNbr rf, const RootSystem& rs)
 {
@@ -931,16 +869,40 @@ Grading specialGrading(const Fiber& f, RealFormNbr rf, const RootSystem& rs)
 
   // sort the gradings that occur in this class
   for (unsigned long i=0; i<n; ++i)
-    if (f.weakReal().class_of(i) == rf)
-      grs.insert(restrictGrading(f.noncompactRoots(i),rs.simpleRootList()));
+  { AdjointFiberElt x(RankFlags(i),f.adjointFiberRank());
+    if (f.adjoint_orbit(x) == rf)
+      grs.insert(restrictGrading(f.noncompactRoots(x),rs.simpleRootList()));
+  }
+  assert(not grs.empty());
 
   // return the first element
   return *(grs.begin());
 }
 
-/*!
-  \brief Returns a set of strongly orthogonal roots, leading from
-  the fundamental Cartan to the most split one for the real form |rf|
+Grading specialGrading
+  (const Partition& fg_partition, RealFormNbr rf, RankFlags imaginary_simples)
+{
+  auto n = fg_partition.size();
+  assert(bits::bitCount(n)==1); // we must have a power of $2$ as size
+
+  auto i=fg_partition.classRep(rf); // get first representative element
+  RankFlags compacts (i);
+  auto max = compacts.count();
+  for (++i; i<n; ++i)
+    if (fg_partition.class_of(i) == rf and bits::bitCount(i)>=max)
+    {
+      compacts = RankFlags(i);
+      max=compacts.count();
+    }
+
+  // convert |compacts| to a grading represented on the simple roots
+  compacts^=RankFlags(n-1); // take complement; no need to compute $\log_2(n)$
+  return compacts.unslice(imaginary_simples);
+}
+
+/*
+  a set of strongly orthogonal roots, leading from the fundamental Cartan to
+  the most split one for the real form |rf|
 
   Algorithm: a greedy one: as long as there are noncompact imaginary
   roots, use one of them to get to a less compact Cartan.
@@ -949,12 +911,11 @@ RootNbrSet
 toMostSplit(const Fiber& fundf, RealFormNbr rf, const RootSystem& rs)
 {
   RootNbrSet ir = fundf.imaginaryRootSet();
-  unsigned long rep = fundf.weakReal().classRep(rf);
+  AdjointFiberElt rep = fundf.wrf_rep(rf);
 
   return gradings::max_orth(fundf.noncompactRoots(rep),ir,rs);
 }
 
-} // |namespace cartanclass|
 
 /*****************************************************************************
 
@@ -962,7 +923,6 @@ toMostSplit(const Fiber& fundf, RealFormNbr rf, const RootSystem& rs)
 
 ******************************************************************************/
 
-namespace cartanclass {
 
 /*
   The list of the simple roots for a complex factor in $W^\theta$, where
@@ -992,8 +952,7 @@ namespace cartanclass {
   are non-orthogonal to some of those roots |rTau|. Hence we exclude for each
   |rTau| any nodes that are non-orthogonal to it.
 */
-RootNbrList
-CartanClass::makeSimpleComplex(const RootDatum& rd) const
+RootNbrList CartanClass::makeSimpleComplex(const RootDatum& rd) const
 {
   Weight tri=rd.twoRho(imaginaryRootSet());
   Weight trr=rd.twoRho(realRootSet());
@@ -1038,9 +997,7 @@ CartanClass::makeSimpleComplex(const RootDatum& rd) const
   return result;
 }
 
-/*!
-   \brief Returns the size of the twisted involution orbit for this class.
-*/
+// The size of the twisted involution orbit for this class.
 size_t CartanClass::orbit_size(const RootSystem& rs) const
 {
   LieType lt=dynkin::Lie_type(rs.cartanMatrix());
@@ -1063,4 +1020,4 @@ size_t CartanClass::orbit_size(const RootSystem& rs) const
 
 }  // |namespace cartanclass|
 
-} // namespace atlas
+} // |namespace atlas|

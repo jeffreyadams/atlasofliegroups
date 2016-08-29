@@ -2,7 +2,7 @@
   This is blocks.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2007--2013 Marc van Leeuwen
+  Copyright (C) 2007--2016 Marc van Leeuwen
   Part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -22,14 +22,14 @@
 #include "hashtable.h"
 
 #include "bruhat.h"	// construction
-#include "complexredgp.h"
+#include "innerclass.h"
 #include "realredgp.h"
 #include "subsystem.h"
 #include "y_values.h"
 #include "kgb.h"
 #include "weyl.h"
 #include "kl.h"		// destruction
-#include "repr.h" // use of |StandardRepr| in |non_integral_block| constructor
+#include "repr.h" // use of |StandardRepr| in |param_block| constructor
 
 /*
   Our task in the traditional setup (the constructor for |Block|) is fairly
@@ -87,6 +87,17 @@
 	   |         /   \                                     /   \
       (   s^x   ,   y     y' )     Real Type II (twice)     s^z_1  s^z_2
 
+  When $\alpha,\alpha^\vee$ are the root and coroot for |s|, the involution of
+  $X^*$ at the more compact Cartan is $\theta$ and at the more split Cartan
+  $\theta'=s_\alpha*\theta$, then one has equivalences
+
+    \alpha^\vee\notin X_*(1+\theta) \iff \alpha\in(1-\theta')X^* \iff type 1
+
+    \alpha^\vee\in X_*(1+\theta) \iff \alpha\notin(1-\theta')X^* \iff type 2
+
+  Moreover  $\<\alpha^\vee, (X^*)^\theta> = n\Z$  in type $n\in\{1,2\}$ and
+  also  $< (X_*)^{-\theta'}, \alpha > = (2/n)\Z$  in type $n\in\{1,2\}$
+
   If |s| is imaginary compact for the involution, it will be real and not in
   the image of the Cayley transform for the dual involution. No Cayley
   transorm will be defined for the |x| coordinate, and no inverse Cayley
@@ -127,9 +138,9 @@ DescentStatus descents(KGBElt x, KGBElt y,
 std::vector<set::EltList> makeHasse(const Block_base&);
 
 
-} // namespace
+} // |namespace|
 
-} // namespace blocks
+} // |namespace blocks|
 
 /*****************************************************************************
 
@@ -155,7 +166,7 @@ inline BlockElt& first_free_slot(BlockEltPair& p)
 Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
   : info(), data(kgb.rank()), orbits()
   , d_first_z_of_x() // filled below
-  , dd(kgb.complexGroup().rootDatum().cartanMatrix())
+  , dd(kgb.innerClass().rootDatum().cartanMatrix())
   , d_bruhat(NULL)
   , klc_ptr(NULL)
 {
@@ -184,7 +195,8 @@ Block_base::Block_base(const Block_base& b) // copy constructor, unused
 
 Block_base::~Block_base() { delete d_bruhat; delete klc_ptr; }
 
-/*!\brief Look up element by |x|, |y| coordinates
+/*
+  Look up element by |x|, |y| coordinates
 
   Precondition: |x| and |y| should be compatible: such a block element exists
 
@@ -217,8 +229,8 @@ BlockElt Block_base::length_first(size_t l) const
 }
 
 
-/*!
-  \brief Tells if s is a strict ascent generator for z.
+/*
+  Tells if s is a strict ascent generator for z.
 
   Explanation: this means that descentValue(s,z) is one of ComplexAscent,
   ImaginaryTypeI or ImaginaryTypeII.
@@ -230,8 +242,8 @@ bool Block_base::isStrictAscent(weyl::Generator s, BlockElt z) const
     and v!=DescentStatus::RealNonparity;
 }
 
-/*!
-  \brief Tells if s is a strict descent generator for z.
+/*
+  Tells if s is a strict descent generator for z.
 
   Explanation: this means that descentValue(s,z) is one of ComplexDescent,
   RealTypeI or RealTypeII.
@@ -243,9 +255,9 @@ bool Block_base::isStrictDescent(weyl::Generator s, BlockElt z) const
     and v!=DescentStatus::ImaginaryCompact;
 }
 
-/*!
-  \brief Returns the first descent for z (the number of a simple root) that is
-not imaginary compact, or rank() if there is no such descent.
+/*
+  Returns the first descent for z (the number of a simple root) that is
+  not imaginary compact, or rank() if there is no such descent.
 */
 weyl::Generator Block_base::firstStrictDescent(BlockElt z) const
 {
@@ -256,9 +268,9 @@ weyl::Generator Block_base::firstStrictDescent(BlockElt z) const
   return rank(); // signal nothing was found
 }
 
-/*!
-  \brief Returns the first descent for z (the number of a simple root) that is
-either complex or real type I; if there is no such descent returns |rank()|
+/*
+ Returns the first descent for z (the number of a simple root) that is either
+ complex or real type I; if there is no such descent returns |rank()|
 */
 weyl::Generator Block_base::firstStrictGoodDescent(BlockElt z) const
 {
@@ -271,33 +283,29 @@ weyl::Generator Block_base::firstStrictGoodDescent(BlockElt z) const
 }
 
 
-KGBElt Block_base::renumber_x(const std::vector<KGBElt>& new_x)
+KGBElt Block_base::sort_by_x()
 {
   KGBElt x_lim=0; // high-water mark for |new_x| values
+  KGBEltList xs(info.size()); // gather vector of |x| values over the block
+
+  // compute upper limit for |x| values
   for (BlockElt z=0; z<size(); ++z)
-  {
-    KGBElt xx=new_x[x(z)];
-    if (xx>=x_lim)
-      x_lim=xx+1;
-    info[z].x = xx;
-  }
+    if ((xs[z]=x(z))>=x_lim)
+      x_lim=xs[z]+1;
 
-  KGBEltList xs(info.size());
-  for (size_t i=0; i<info.size(); ++i)
-    xs[i]=info[i].x;
-
-  Permutation pi_inv = // assigns |z| to its new place
+  auto pi_inv = // assigns each block element |z| to its new place
     permutations::standardization(xs,x_lim,&d_first_z_of_x);
 
-  Permutation pi(pi_inv,-1); // assigns to new place its original one
+  Permutation pi(pi_inv,-1);
 
-  pi.pull_back(info).swap(info);
+  info = pi.pull_back(info); // permute |info|, move-assign
 
+  // now adapt |data| tables, assumed to be already computed, and set lengths
   for (weyl::Generator s=0; s<rank(); ++s)
   {
     std::vector<block_fields>& tab_s = data[s];
-    pi.pull_back(tab_s).swap(tab_s); // permute fields of |data[s]|
-    for (BlockElt z=0; z<size(); ++z)
+    tab_s = pi.pull_back(tab_s); // permute fields of |data[s]|
+    for (BlockElt z=0; z<size(); ++z) // and update cross and Cayley links
     {
       tab_s[z].cross_image=pi_inv[tab_s[z].cross_image];
       BlockEltPair& p=tab_s[z].Cayley_image;
@@ -307,11 +315,25 @@ KGBElt Block_base::renumber_x(const std::vector<KGBElt>& new_x)
 	if (p.second!=UndefBlock)
 	  p.second=pi_inv[p.second];
       }
-    }
-  }
+    } // |for z|
+  } // |for s|
+
+  // now all links are correct, deduce length information from them
+  for (BlockElt z=0; z<size(); ++z) // must be te outer loop here
+    for (weyl::Generator s=0; s<rank(); ++s)
+      if (isStrictDescent(s,z)) // compute length from below if possible
+      {
+	BlockElt sz = descentValue(s,z)==DescentStatus::ComplexDescent
+	  ? cross(s,z) : inverseCayley(s,z).first;
+	if (info[z].length==0)
+	  info[z].length=info[sz].length+1;
+	else
+	  assert(info[z].length==info[sz].length+1); // cannot change nonzero
+      }
+
 
   return x_lim;
-} // |Block_base::renumber_x|
+} // |Block_base::sort_by_x|
 
 // Here is one method not related to block construction
 /*
@@ -533,10 +555,10 @@ Block::Block(const KGB& kgb,const KGB& dual_kgb)
 
 // Construction function for the |Block| class.
 // It is a pseudo constructor method that ends calling main contructor
-Block Block::build(ComplexReductiveGroup& G, RealFormNbr rf, RealFormNbr drf)
+Block Block::build(InnerClass& G, RealFormNbr rf, RealFormNbr drf)
 {
   RealReductiveGroup G_R(G,rf);
-  ComplexReductiveGroup dG(G,tags::DualTag()); // the dual group
+  InnerClass dG(G,tags::DualTag()); // the dual group
   RealReductiveGroup dG_R(dG,drf);
 
   KGB kgb     (G_R, common_Cartans(G_R,dG_R),false);
@@ -595,23 +617,20 @@ void Block::compute_supports()
 
 
 
-param_block::param_block(const Rep_context& rc0, unsigned int rank)
-  : Block_base(rank)
-  , rc(rc0)
-  , infin_char(0) // don't set yet
-  , singular() // idem
-  , kgb_nr_of()
-  , x_of(rc.kgb().size(),UndefKGB)
-  , y_pool()
-  , y_hash(y_pool)
-{}
-
+RealReductiveGroup& param_block::realGroup() const
+  { return rc.realGroup(); }
+const InnerClass& param_block::innerClass() const
+  { return rc.realGroup().innerClass(); }
+const InvolutionTable& param_block::involution_table() const
+  { return innerClass().involution_table(); }
+const RootDatum& param_block::rootDatum() const
+  { return innerClass().rootDatum(); }
 const TwistedInvolution& param_block::involution(BlockElt z) const
-{ return rc.kgb().involution(parent_x(z)); }
+{ return rc.kgb().involution(x(z)); }
 
 RatWeight param_block::nu(BlockElt z) const
 {
-  InvolutionNbr i_x = rc.kgb().inv_nr(parent_x(z));
+  InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
   const WeightInvolution& theta = involution_table().matrix(i_x);
   return RatWeight (gamma().numerator()-theta*gamma().numerator()
 		    ,2*gamma().denominator()).normalize();
@@ -621,25 +640,23 @@ RatWeight param_block::nu(BlockElt z) const
 // here the lift $t$ is normalised using |InvolutionTable::real_unique|
 Weight param_block::lambda_rho(BlockElt z) const
 {
-  RatWeight t =  y_rep(y(z)).log_pi(false);
-  InvolutionNbr i_x = rc.kgb().inv_nr(parent_x(z));
+  RatWeight t =  y_rep(y(z)).log_pi(false); // take a copy
+  InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
   involution_table().real_unique(i_x,t);
 
-  RatWeight lr =
-    (infin_char - t - RatWeight(realGroup().rootDatum().twoRho(),2))
-    .normalize();
+  RatWeight lr =(infin_char - t - rho(realGroup().rootDatum())).normalize();
   assert(lr.denominator()==1);
   return Weight(lr.numerator().begin(),lr.numerator().end());
 }
 
 // reconstruct $\lambda$ from $\gamma$ and the torus part $t$ of $y$ using the
-// formula $\lambda = \gamma - {1-\theta\over2}.\log{{t\over\pi\ii})$
+// formula $\lambda = \gamma - {1-\theta\over2}.\log({t\over\pi\ii})$
 // the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
 RatWeight param_block::lambda(BlockElt z) const
 {
-  InvolutionNbr i_x = rc.kgb().inv_nr(parent_x(z));
+  InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
   const WeightInvolution& theta = involution_table().matrix(i_x);
-  RatWeight t =  y_rep(y(z)).log_2pi();
+  RatWeight t =  y_rep(y(z)).log_2pi(); // implicit division by 2 here
   const Ratvec_Numer_t& num = t.numerator();
   return infin_char - RatWeight(num-theta*num,t.denominator());
 }
@@ -699,11 +716,10 @@ BlockEltList param_block::survivors_below(BlockElt z) const
   return result;
 } // |param_block::survivors_below|
 
-void param_block::compute_duals(const ComplexReductiveGroup& G,
+void param_block::compute_duals(const InnerClass& G,
 				const SubSystem& rs)
 {
   const WeightInvolution& delta = G.distinguished();
-  const InvolutionTable& i_tab = G.involution_table();
 
   if (delta*infin_char==infin_char) // for stable blocks compute |delta|-action
   {
@@ -726,37 +742,44 @@ void param_block::compute_duals(const ComplexReductiveGroup& G,
 
     for (BlockElt z=0; z<size(); ++z)
     {
-      KGBElt parent_x = kgb_nr_of[x(z)];
-      KGBElt dual_x = rc.kgb().Hermitian_dual(parent_x);
-      assert(y_hash[y(z)].nr==rc.kgb().inv_nr(parent_x)); // check coherence
-      TorusElement t = y_hash[y(z)].t_rep;
-      t = y_values::exp_pi(delta*t.log_pi(false)); // twist |t| by |delta|
-      KGBElt dual_y = y_hash.find(i_tab.pack(t,rc.kgb().inv_nr(dual_x)));
-      if (dual_y!=y_hash.empty)
-	info[z].dual = element(x_of[dual_x],dual_y);
+      KGBElt dual_x = rc.kgb().Hermitian_dual(x(z));
+      if (dual_x!=UndefKGB)
+      {
+	assert(y_hash[y(z)].nr==rc.kgb().inv_nr(x(z))); // check coherence
+	TorusElement t = y_hash[y(z)].t_rep;
+	t.act_by(delta); // twist |t| by |delta|
+	info[z].dual = lookup(dual_x,t);
+      }
     }
   }
 } // |param_block::compute_duals|
 
-RealReductiveGroup& param_block::realGroup() const
-  { return rc.realGroup(); }
-const ComplexReductiveGroup& param_block::complexGroup() const
-  { return rc.realGroup().complexGroup(); }
-const InvolutionTable& param_block::involution_table() const
-  { return complexGroup().involution_table(); }
+BlockElt param_block::lookup(KGBElt x, const TorusElement& y_rep) const
+{
+  const KGBElt y =
+    y_hash.find(involution_table().pack(y_rep,realGroup().kgb().inv_nr(x)));
+  return earlier(x,y);
+}
 
+ext_gens param_block::fold_orbits(const WeightInvolution& delta) const
+{
+  assert(delta*gamma().numerator()==gamma().numerator());
+  const auto sub = integrality_datum(innerClass().rootDatum(),infin_char);
+  return rootdata::fold_orbits(sub,delta);
+}
 
 
 nblock_help::nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
   : kgb(GR.kgb()), rd(subsys.parent_datum()), sub(subsys)
-  , i_tab(GR.complexGroup().involution_table())
-  , dual_m_alpha(kgb.rank()), half_alpha()
+  , i_tab(GR.cinnerClass().involution_table())
+  , dual_m_alpha(), half_alpha()
 {
   assert(kgb.rank()==rd.semisimpleRank());
+  dual_m_alpha.reserve(kgb.rank());
   half_alpha.reserve(kgb.rank());
   for (weyl::Generator s=0; s<kgb.rank(); ++s)
   {
-    dual_m_alpha[s]=TorusPart(rd.simpleRoot(s));
+    dual_m_alpha.push_back(TorusPart(rd.simpleRoot(s)));
     half_alpha.push_back(TorusElement(RatWeight(rd.simpleRoot(s),2),false));
   }
 }
@@ -801,7 +824,7 @@ void nblock_help::parent_up_Cayley(nblock_elt& z, weyl::Generator s) const
 {
   KGBElt cx=kgb.cayley(s,z.xx); // direct Cayley transform on $x$ side
   if (cx == UndefKGB) // undefined Cayley transform: not imaginary noncompact
-    return; // silently ignore, done for use from realex |Cayley| function
+    return; // silently ignore, done for use from atlas |Cayley| function
   z.xx = cx;
 
   /* on $y$ side ensure that |z.yy.evaluate_at(rd.simpleCoroot(s))| is even.
@@ -841,14 +864,14 @@ void nblock_help::parent_down_Cayley(nblock_elt& z, weyl::Generator s) const
 {
   KGBElt cx=kgb.inverseCayley(s,z.xx).first; // inverse Cayley on $x$ side
   if (cx == UndefKGB) // not a real root, so undefined inverse Cayley
-    return; // silently ignore, done for use from realex |inv_Cayley| function
+    return; // silently ignore, done for use from atlas |inv_Cayley| function
 
   // on $y$ side just keep the same dual |TorusElement|, so nothing to do
-  // however, for non-parity roots, leave $x$ unchenged as well
+  // however, for non-parity roots, leave $x$ unchanged as well
   Rational r = z.yy.evaluate_at(rd.simpleCoroot(s)); // modulo $2\Z$
   if (r.numerator()%(2*r.denominator())==0) // then it is a parity root
     z.xx = cx; // move $x$ component of |z|
-  // for nonparity roots, leave |z| is unchanged for realex |inv_Cayley|
+  // for nonparity roots, leave |z| is unchanged for atlas |inv_Cayley|
 }
 
 void nblock_help::do_down_Cayley (nblock_elt& z, weyl::Generator s) const
@@ -864,7 +887,7 @@ void nblock_help::do_down_Cayley (nblock_elt& z, weyl::Generator s) const
 void nblock_help::twist(nblock_elt& z) const
 {
   z.xx = kgb.Hermitian_dual(z.xx);
-  z.yy.act_by(i_tab.delta);
+  z.yy.act_by(i_tab.delta); // apply matrix |i_tab.delta| to |RatWeight z.yy|
 }
 
 
@@ -879,32 +902,31 @@ y_entry nblock_help::pack_y(const nblock_elt& z) const
 }
 
 
-BlockElt non_integral_block::element(KGBElt x,KGBElt y) const
-{
-  return z_hash.find(block_elt_entry(x,y,0)); // length ignored in search
-}
-
-void non_integral_block::add_z(KGBElt x,KGBElt y, unsigned short l)
+void param_block::add_z(KGBElt x,KGBElt y)
 {
   size_t old_size=info.size();
-  BlockElt z=z_hash.match(block_elt_entry(x,y,l));
+  BlockElt z=z_hash.match(block_elt_entry(x,y));
   assert(z==old_size);
   assert(z+1==info.size());
   ndebug_use(old_size);
   ndebug_use(z);
 }
 
-non_integral_block::non_integral_block
+param_block::param_block
   (const Rep_context& rc,
    StandardRepr sr,             // by value; made dominant internally
    BlockElt& entry_element	// set to block element matching input
   )
-  : param_block(rc,rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
+  : Block_base(rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
+  , rc(rc)
+  , infin_char(0) // don't set yet
+  , singular() // idem
+  , y_pool()
+  , y_hash(y_pool)
   , z_hash(info)
 {
-  const ComplexReductiveGroup& G = complexGroup();
+  const InnerClass& G = innerClass();
   const RootDatum& rd = G.rootDatum();
-  Block_base::dd = DynkinDiagram(rd.cartanMatrix());
 
   const InvolutionTable& i_tab = G.involution_table();
   const KGB& kgb = rc.kgb();
@@ -913,6 +935,8 @@ non_integral_block::non_integral_block
   infin_char=sr.gamma(); // now we can set the infinitesimal character
 
   const SubSystem sub = SubSystem::integral(rd,infin_char);
+  Block_base::dd =
+    DynkinDiagram(sub.cartanMatrix().transposed()); // convert from dual side
 
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
   for (weyl::Generator s=0; s<our_rank; ++s)
@@ -923,25 +947,25 @@ non_integral_block::non_integral_block
 
   // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
   const KGBElt x_org = sr.x();
-  const nblock_elt org(x_org,y_values::exp_pi(infin_char-rc.lambda(sr)));
+  const TorusElement y_org = y_values::exp_pi(infin_char-rc.lambda(sr));
+  auto z_start = nblock_elt(x_org,y_org); // working copy
 
   // step 2: move up toward the most split fiber for the current real form
   { // modify |x| and |y|, ascending for |x|, descending for |y|
-    nblock_elt z = org;
     weyl::Generator s;
     do
       for(s=0; s<our_rank; ++s)
       {
-	KGBElt xx=kgb.cross(sub.to_simple(s),z.x());
+	KGBElt xx=kgb.cross(sub.to_simple(s),z_start.x());
 	weyl::Generator ss=sub.simple(s);
 	if (kgb.isAscent(ss,xx))
 	{
 	  if (kgb.status(ss,xx)==gradings::Status::Complex)
-	    aux.cross_act(z,s);
+	    aux.cross_act(z_start,s);
 	  else // imaginary noncompact
 	  {
 	    assert(kgb.status(ss,xx) == gradings::Status::ImaginaryNoncompact);
-	    aux.do_up_Cayley(z,s);
+	    aux.do_up_Cayley(z_start,s);
 	  }
 	  break;
 	} // |if(isDescent)|
@@ -950,14 +974,12 @@ non_integral_block::non_integral_block
 
     // DON'T assert(x+1==kgb.size()); fails e.g. in complex groups, empty |sub|
 
-    kgb_nr_of.push_back(z.x()); // save obtained value for |x|
-    x_of[z.x()]=0; // and the parent KGB element |x| will get renumbered 0
-    y_hash.match(aux.pack_y(z)); // save obtained value for |y|
+    y_hash.match(aux.pack_y(z_start)); // save obtained value for |y|
   } // end of step 2
 
   // step 3: generate imaginary fiber-orbit of |y|'s (|x| is unaffected)
   {
-    const KGBElt x0 = kgb_nr_of[0];
+    const KGBElt x0 = z_start.x();
     const InvolutionNbr theta0 = kgb.inv_nr(x0);
 
     // generating reflections are by subsystem real roots for |theta|
@@ -981,9 +1003,8 @@ non_integral_block::non_integral_block
       data[s].reserve(y_hash.size());
 
     for (size_t i=0; i<y_hash.size(); ++i)
-      add_z(0,i,0); // length is on dual side
+      add_z(x0,i); // length is on dual side
 
-    // we leave |first_z_of_x| empty, |compute_first_zs()| would set 2 values
   } // end of step 3
 
   // step 4: generate packets for successive involutions
@@ -993,20 +1014,24 @@ non_integral_block::non_integral_block
   std::vector<KGBElt> cross_ys(ys.size()); cross_ys.reserve(0x100);
   std::vector<KGBElt> Cayley_ys(ys.size()); Cayley_ys.reserve(0x100);
 
+  BitMap x_seen(kgb.size());
+  x_seen.insert(z_start.x()); // the only value of |x| seen so far
+
   size_t qi=0; // index into queue
 
   for (BlockElt next=0; qi<queue.size(); next=queue[qi++])
   { // process involution packet of elements from |next| to |queue[qi]|
 
-    const KGBElt first_x = parent_x(next);
+    const KGBElt first_x = x(next);
     const InvolutionNbr i_theta = kgb.inv_nr(first_x);
 
     ys.clear();
     size_t nr_y = 0;
     // now traverse R_packet of |first_x|, collecting their |y|'s
-    for (BlockElt z=next; z<info.size() and x(z)==x(next); ++z,++nr_y)
+    for (BlockElt z=next; z<info.size() and x(z)==first_x; ++z,++nr_y)
     {
       assert(y_hash[y(z)].nr==i_theta); // involution of |y| must match |x|
+      ndebug_use(i_theta);
       assert(y(z)==y(next)+nr_y);   // and |y|s are consecutive
       ys.push_back(y(z));           // so |ys| could have been avoided
     }
@@ -1019,22 +1044,13 @@ non_integral_block::non_integral_block
       std::vector<block_fields>& tab_s = data[s];
       tab_s.resize(info.size()); // ensure enough slots for now
 
-      const RootNbr alpha=sub.parent_nr_simple(s); // root currently considered
       unsigned int y_start=y_hash.size(); // new |y|s numbered from here up
-
-      // compute length change; only nonzero for complex roots; if so, if
-      // $\theta(\alpha)$ positive, like $\alpha$, then go down (up for $x$)
-      int d = i_tab.complex_roots(i_theta).isMember(alpha)
-	    ? rd.isPosRoot(i_tab.root_involution(i_theta,alpha)) ? -1 : 1
-	    : 0 ;
-      int length = this->length(next) + d;
-      assert(length>=0); // if not, then starting point not minimal for length
 
       nblock_elt sample(first_x,y_hash[ys[0]].repr());
       aux.cross_act(sample,s);
       bool new_cross = // whether cross action discovers unseen involution
 	y_hash.find(aux.pack_y(sample)) == y_hash.empty;
-      assert(new_cross == (x_of[sample.x()]==(unsigned int)~0));
+      assert(x_seen.isMember(sample.x()) == not new_cross);
       // cross action gives a fresh |x| coordinate iff it gives fresh |y|
 
       cross_ys.clear(); Cayley_ys.clear();
@@ -1050,31 +1066,30 @@ non_integral_block::non_integral_block
 	}
       } // compute values |cross_ys|
 
-      for (unsigned int i=0; i<nr_x; ++i)
+      for (unsigned int i=0; i<nr_x; ++i) // |i| counts R-packets for involution
       {
 	BlockElt base_z = next+i*nr_y; // first element of R-packet
-	KGBElt n = parent_x(base_z);
+	KGBElt n = x(base_z); // |n| is |x| value for R-packet
 	KGBElt s_x_n = kgb.cross(sub.reflection(s),n); // don't need |y| here
-	assert (new_cross == (x_of[s_x_n]==(unsigned int)~0));
+	assert (x_seen.isMember(s_x_n) == (not new_cross));
 	// cross action on |n| gives a fresh value iff it did for the |ys|
 
 	// set the cross links for this |n| and all corresponding |ys|
 	if (new_cross) // add a new R-packet
 	{
-	  x_of[s_x_n] = kgb_nr_of.size(); // install a new |x| value that
-	  kgb_nr_of.push_back(s_x_n); // corresponds to parent element |s_x_n|
+	  x_seen.insert(s_x_n); // record the new |x| value
 	  for (unsigned int j=0; j<nr_y; ++j)
 	  {
 	    tab_s[base_z+j].cross_image = info.size(); // link to new element
 
-	    add_z(x_of[s_x_n],cross_ys[j],length);
+	    add_z(s_x_n,cross_ys[j]);
 	    // same |x| neighbour throughout loop, but |y| neighbour varies
 	  } // |for(j)|
 	  // |d_first_z_of_x.push_back(info.size())| would mark end of R-packet
 	} // |if(new_cross)|
 	else // install cross links to previously existing elements
 	  for (unsigned int j=0; j<nr_y; ++j)
-	    tab_s[base_z+j].cross_image = element(x_of[s_x_n],cross_ys[j]);
+	    tab_s[base_z+j].cross_image = earlier(s_x_n,cross_ys[j]);
 
 	// compute component |s| of |info[z].descent|, this |n|, all |y|s
 	KGBElt conj_n = kgb.cross(sub.to_simple(s),n); // conjugate
@@ -1091,7 +1106,7 @@ non_integral_block::non_integral_block
 	  break;
 	case gradings::Status::ImaginaryCompact:
 	  for (unsigned int j=0; j<nr_y; ++j)
-	      info[base_z+j].descent.set(s,DescentStatus::ImaginaryCompact);
+	    info[base_z+j].descent.set(s,DescentStatus::ImaginaryCompact);
 	  break;
 	case gradings::Status::ImaginaryNoncompact:
 	  if (kgb.cross(sub.simple(s),conj_n)!=conj_n)
@@ -1104,7 +1119,7 @@ non_integral_block::non_integral_block
 	case gradings::Status::Real: // now status depends on |y|
 	  for (unsigned int j=0; j<nr_y; ++j)
 	  {
-	    nblock_elt z(n,y_hash[ys[j]].repr());
+	    nblock_elt z(n,y_hash[ys[j]].repr()); // element non-conjugated
 	    if (aux.is_real_nonparity(z,s))
 	      info[base_z+j].descent.set(s,DescentStatus::RealNonparity);
 	    else
@@ -1125,14 +1140,12 @@ non_integral_block::non_integral_block
 	{
 	  KGBEltPair Cayleys = kgb.inverseCayley(sub.simple(s),conj_n);
 	  KGBElt ctx1 = kgb.cross(Cayleys.first,sub.to_simple(s));
-	  length = this->length(next)+1; // length always increases here
 
 	  if (i==0)
-	  { // |do_Cayley| is independent of |x|, if so, do first time:
+	  { // |do_Cayley| is independent of |x|; if so, do in first R-packet:
 	    assert(y_hash.size()==y_start); // nothing created by cross actions
-	    KGBElt x_start = kgb_nr_of.size();
 
-	    bool new_Cayley = (x_of[ctx1]==(unsigned int)~0);
+	    bool new_Cayley = not x_seen.isMember(ctx1);
 
 	    // independent of new creation, fill |Cayley_ys|, extend |y_hash|
 	    for (unsigned int j=0; j<nr_y; ++j)
@@ -1145,53 +1158,50 @@ non_integral_block::non_integral_block
 
 	    if (new_Cayley) // then we need to create new R-packets
 	    {
-	      // first create the set of |x| values giving R-packets
-	      x_of[ctx1] = x_start; // create |x| for the first new R-packet
-	      kgb_nr_of.push_back(ctx1);
-
 	      // complete fiber of x's over new involution using
 	      // subsystem imaginary cross actions
               RootNbrSet pos_imag = // subsystem positive imaginary roots
 		sub.positive_roots() & i_tab.imaginary_roots(kgb.inv_nr(ctx1));
 	      RootNbrList ib = rd.simpleBasis(pos_imag);
-	      for (size_t k=x_start; k<kgb_nr_of.size(); ++k) // grows
-	      {
-		KGBElt cur_x = kgb_nr_of[k];
-		for (size_t r=0; r<ib.size(); ++r)
-		{
-		  KGBElt new_x = kgb.cross(rd.reflectionWord(ib[r]),cur_x);
-		  if (x_of[new_x] == (unsigned int)~0)
+	      auto orbit = BitMap{kgb.size()};
+	      orbit.insert(ctx1);
+	      { auto todo = containers::queue<KGBElt> {}; // no list init
+		todo.push(ctx1); // so manually insert
+		do
+		{ KGBElt cur_x = todo.front(); todo.pop();
+		  for (size_t r=0; r<ib.size(); ++r)
 		  {
-		    x_of[new_x] = kgb_nr_of.size();
-		    kgb_nr_of.push_back(new_x);
-		  }
-		} // |for(r)|
-	      } // |for (k)|
-
+		    KGBElt new_x = kgb.cross(rd.reflectionWord(ib[r]),cur_x);
+		    if (not orbit.isMember(new_x))
+		      orbit.insert(new_x), todo.push(new_x);
+		  } // |for(r)|
+		}
+		while (not todo.empty());
+	      }
+	      x_seen |= orbit;
 	      // then generate corrsponding part of block, combining (x,y)'s
-	      for (size_t k=x_start; k<kgb_nr_of.size(); ++k)
+	      for (auto it=orbit.begin(); it(); ++it)
 		for (unsigned int y=y_start; y<y_hash.size(); ++y)
-		  add_z(k,y,length);
-	        // again we could (and used to) mark end of R-packet here
-	      // |for(k)|
+		  add_z(*it,y);
+
 	      // finallly make sure that Cayley links slots exist for code below
 	      tab_s.resize(info.size());
 	    } // |if (new_Cayley)|: finished creating new R-packets
 	  } // |if (i==0)|: finished work for first |x| when some |y| is parity
 
 	  // now in all cases make links using |element| lookup
-	  for (unsigned int j=0,p=0; j<nr_y; ++j) // |p counts parity |y|s only
+	  for (unsigned int j=0,p=0; j<nr_y; ++j) // |p| counts parity |y|s only
 	    if (descentValue(s,base_z+j)!=DescentStatus::RealNonparity)
 	    {
 	      KGBElt cty=Cayley_ys[p++]; // unique Cayley transform of |y|
-	      BlockElt target = element(x_of[ctx1],cty);
+	      BlockElt target = earlier(ctx1,cty);
 	      tab_s[base_z+j].Cayley_image.first = target;
 	      first_free_slot(tab_s[target].Cayley_image) = base_z+j;
 	      if (Cayleys.second!=UndefKGB) // then double valued (type1)
 	      {
 		KGBElt ctx2 = kgb.cross(Cayleys.second,sub.to_simple(s));
-		assert (x_of[ctx2]!=(unsigned int)~0);
-		target = element(x_of[ctx2],cty);
+		assert (x_seen.isMember(ctx2));
+		target = earlier(ctx2,cty);
 		tab_s[base_z+j].Cayley_image.second = target;
 		first_free_slot(tab_s[target].Cayley_image) = base_z+j;
 	      }
@@ -1207,47 +1217,23 @@ non_integral_block::non_integral_block
   } // |for (next<queue[qi])|
   // end of step 4
 
-  // correct for reverse order construction
-  { size_t max_l=length(size()-1);
-    for (BlockElt z=0; z<size(); ++z)
-      info[z].length = max_l-length(z);
-  }
-
-  { // renumber the |x| values by (now) increasing length, and reorder block
-    std::vector<KGBElt> new_x;
-    { KGBElt stop=xsize(); // we shall reunmber the |x| values
-      new_x.reserve(stop);
-      for (unsigned i=0; i<queue.size(); ++i) // do involution packets in order
-      {
-	KGBElt start=queue[i]<info.size() ? xsize()-x(queue[i]) : 0;
-	for (KGBElt j=start; j<stop; ++j) // do |x| values in a packet
-	  new_x.push_back(j); // allocate slice of new values, lower than before
-	stop=start; // next slice will stop where this one started
-      }
-    }
-
-    renumber_x(new_x); // does the actual renumbering, and reordering of block
-    Permutation pi(new_x.begin(),new_x.end());
-    pi.permute(kgb_nr_of);
-    pi.renumber(x_of,UndefKGB); // renumber, leaving |UndefKGB| as is
-
-    z_hash.reconstruct(); // adapt to permutation and remapped |x| values
-  }
+  sort_by_x(); // reorder block by increasing value of |x|
+  z_hash.reconstruct(); // adapt to permutation of the block
 
   compute_duals(G,sub); // finally compute Hermitian duals
 
   // and look up which element matches the original input
-  entry_element = element(x_of[x_org],y_hash.find(aux.pack_y(org)));
+  entry_element = lookup(x_org,y_org);
 
-} // |non_integral_block::non_integral_block|
-
-
+} // |param_block::param_block|, full block version
 
 
+
+// a derived class whose main additional method computes a Bruhat order ideal
 struct partial_nblock_help : public nblock_help
 {
   y_part_hash& y_hash; // will reference a field of |param_block|
-  block_hash& z_hash;  // will reference a field of |non_integral_block|
+  block_hash& z_hash;  // will reference a field of |param_block|
 
   std::vector<BlockEltList> predecessors; // a list of predecessors for each z
 
@@ -1267,7 +1253,7 @@ struct partial_nblock_help : public nblock_help
 
   unsigned int length(BlockElt z_inx) const { return z_hash[z_inx].length; }
 
-  nblock_elt get(BlockElt z_inx) const
+  nblock_elt get(BlockElt z_inx) const // convert block index to |nblock_elt|
   {
     const block_elt_entry& e=z_hash[z_inx];
     return nblock_elt(e.x,y_hash[e.y].repr());
@@ -1276,7 +1262,7 @@ struct partial_nblock_help : public nblock_help
   { return z_hash.find(z_entry); }
 
   BlockElt lookup(KGBElt x,KGBElt y) const
-  { return lookup(block_elt_entry(x,y,0)); }
+  { return lookup(block_elt_entry(x,y)); }
 
   BlockElt lookup(const nblock_elt& z) const
   { KGBElt y = y_hash.find(pack_y(z));
@@ -1285,7 +1271,7 @@ struct partial_nblock_help : public nblock_help
     else return lookup(z.x(),y);
   }
 
-  BlockElt nblock_below (const nblock_elt& z);
+  BlockElt nblock_below (const nblock_elt& z); // the main method
 
 }; // |class partial_nblock_help|
 
@@ -1300,6 +1286,7 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
   }
 
   BlockEltList pred; // will hold list of elements covered by z
+  // invariant: |nblock_below| has been called for every element in |pred|
 
   weyl::Generator s; // a complex or real type 1 descent, if such exists
 
@@ -1355,7 +1342,7 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
   else // add all |s|-ascents for elements covered by |sz|
     for (BlockElt i=0; i<predecessors[sz_inx].size(); ++i)
     {
-      nblock_elt c = get(predecessors[sz_inx][i]);
+      nblock_elt c = get(predecessors[sz_inx][i]); // convert from |BlockElt|
       KGBElt conj_x= conj_in_x(s,c.x());
       switch (kgb.status(sub.simple(s),conj_x))
       {
@@ -1376,7 +1363,7 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
 
 	  if (type_2)
 	  {
-	    cross_act(c,s); // this should change: we are in type 2
+	    cross_act(c,s); // this changes |c| since we are in type 2
 	    pred.push_back(nblock_below(c));
 	  }
 	}
@@ -1386,9 +1373,7 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
 
   // finally we can add |z| to |z_hash|, after all its Bruhat-predecessors
   assert(z_hash.size()==predecessors.size());
-  BlockElt res = z_hash.match
-    (block_elt_entry(z.x(),y_hash.match(pack_y(z)),
-		     pred.size()==0 ? 0 : length(pred[0])+1));
+  BlockElt res = z_hash.match(block_elt_entry(z.x(),y_hash.match(pack_y(z))));
   assert(res==predecessors.size()); // |z| must have been added just now
   predecessors.push_back(pred); // store list of elements covered by |z|
   return res;
@@ -1396,13 +1381,17 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
 
 
 // alternative constructor, for interval below |sr|
-non_integral_block::non_integral_block
+param_block::param_block
 (const Rep_context& rc, StandardRepr sr) // by value; made dominant internally
-  : param_block(rc,rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
+  : Block_base(rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
+  , rc(rc)
+  , infin_char(0) // don't set yet
+  , singular() // idem
+  , y_pool()
+  , y_hash(y_pool)
   , z_hash(info)
 {
-  const RootDatum& rd = complexGroup().rootDatum();
-  Block_base::dd = DynkinDiagram(rd.cartanMatrix());
+  const RootDatum& rd = innerClass().rootDatum();
 
   const KGB& kgb = rc.kgb();
 
@@ -1410,6 +1399,8 @@ non_integral_block::non_integral_block
   infin_char=sr.gamma(); // now we can set the infinitesimal character
 
   const SubSystem sub = SubSystem::integral(rd,infin_char);
+  Block_base::dd =
+    DynkinDiagram(sub.cartanMatrix().transposed()); // convert from dual side
 
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
   for (weyl::Generator s=0; s<our_rank; ++s)
@@ -1422,45 +1413,51 @@ non_integral_block::non_integral_block
   const KGBElt x_org = sr.x();
   const nblock_elt org(x_org,y_values::exp_pi(infin_char-rc.lambda(sr)));
 
-  BlockElt last=aux.nblock_below(org); // generate partial block in |aux|
-
-  {
-    std::vector<unsigned int> len(size());
-    for (BlockElt z=0; z<size(); ++z)
-      len[z]=length(z);
-    Permutation pi = permutations::standardization(len,len[last]+1);
-    pi.permute(info);
-    z_hash.reconstruct(); // adapt to permutation of entries
-  }
+  // generate partial block in |aux|
+  BlockElt last=aux.nblock_below(org); // this fills |y_hash| and |z_hash|
 
   size_t size= last+1;
   assert(info.size()==size); // |info| should have obtained precisely this size
 
-  data.assign(our_rank,std::vector<block_fields>(size)); // |UndefBlock| entries
+  // allocate link fields with |UndefBlock| entries
+  data.assign(our_rank,std::vector<block_fields>(size));
 
+  { // sort |info| by |x| value; cannot call |sort_by_x| as |data| not yet set
+    KGBEltList xs(info.size()); // gather vector of |x| values over the block
+    for (size_t i=0; i<info.size(); ++i)
+      xs[i]=info[i].x;
+
+    auto stzn = // assigns each block element |z| to its new place
+      permutations::standardization(xs,x_org+1,&d_first_z_of_x);
+
+    info = Permutation(stzn,-1).pull_back(info); // permute |info|
+    z_hash.reconstruct(); // adapt to permutation of the block
+  }
+
+  // compute all links for all elements in partial block, by increasing length
   for (BlockElt i=0; i<size; ++i)
   {
     const block_elt_entry& z=z_hash[i];
-
-    KGBElt x = z.x;
-    x_of[x]=x; // record presence of |x|, |kgb_nr_of| remains empty for now
 
     DescentStatus& desc_z = info[i].descent;
     for (weyl::Generator s=0; s<our_rank; ++s)
     {
       std::vector<block_fields>& tab_s = data[s];
-      nblock_elt cur = aux.get(i);
+      nblock_elt cur = aux.get(i); // element |z| as |nblock_elt|
 
-      KGBElt conj_x = aux.conj_in_x(s,x);
-      if (kgb.isDescent(sub.simple(s),conj_x))
+      KGBElt conj_x = aux.conj_in_x(s,z.x);
+      if (kgb.isDescent(sub.simple(s),conj_x)) // complex descent or real
       {
 	if (kgb.status(sub.simple(s),conj_x)==gradings::Status::Complex)
 	{
 	  aux.cross_act(cur,s);
 	  BlockElt sz = aux.lookup(cur);
-	  assert(sz!=aux.z_hash.empty);
+	  assert(sz!=aux.z_hash.empty); // should be in generated partial block
 	  tab_s[i].cross_image = sz; tab_s[sz].cross_image = i;
-	  assert(aux.length(sz)+1==length(i));
+	  if (length(i)==0) // not yet set
+	    info[i].length=aux.length(sz)+1; // set it
+	  else
+	    assert(length(i)==aux.length(sz)+1); // test it
 	  desc_z.set(s,DescentStatus::ComplexDescent);
 	  assert(descentValue(s,sz)==DescentStatus::ComplexAscent);
 	}
@@ -1477,8 +1474,12 @@ non_integral_block::non_integral_block
 	  {
 	    aux.do_down_Cayley(cur,s);
 	    BlockElt sz = aux.lookup(cur);
-	    assert(aux.length(sz)+1==length(i));
 	    tab_s[i].Cayley_image.first = sz; // first inverse Cayley
+	    if (length(i)==0) // not yet set
+	      info[i].length=aux.length(sz)+1; // set it
+	    else
+	      assert(length(i)==aux.length(sz)+1); // test it
+
 	    if (kgb.isDoubleCayleyImage(sub.simple(s),conj_x)) // real type 1
 	    {
 	      desc_z.set(s,DescentStatus::RealTypeI);
@@ -1536,15 +1537,15 @@ non_integral_block::non_integral_block
     } // |for(s)|
   } // |for(i)|
 
-  kgb_nr_of.assign(&x_of[0],&x_of[x_org+1]); // copy identity map with holes
-  compute_duals(complexGroup(),sub);
+  compute_duals(innerClass(),sub);
 
-} // |non_integral_block::non_integral_block|, partial version
+} // |param_block::param_block|, partial block version
 
-RatWeight non_integral_block::y_part(BlockElt z) const
+
+RatWeight param_block::y_part(BlockElt z) const
 {
   RatWeight t =  y_rep(y(z)).log_pi(false);
-  InvolutionNbr i_x = rc.kgb().inv_nr(parent_x(z));
+  InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
   involution_table().real_unique(i_x,t);
   return (t/=2).normalize();
 }
@@ -1738,41 +1739,10 @@ std::vector<BlockElt> dual_map(const Block_base& b, const Block_base& dual_b)
   return result;
 }
 
-// build Dynkin diagram resulting from folding by diagram involution |fold|
-DynkinDiagram folded
-  (const DynkinDiagram& diag, const std::vector<ext_gen>& orbit)
-{
-  unsigned n=orbit.size();
-  // we can only build complete Dynkin diagrams, so compute the Cartan matrix
-  int_Matrix Cartan(n,n,0);
-  for (unsigned int i=0; i<n; ++i)
-  {
-    Cartan(i,i) = 2;
-    RankFlags neighbours = diag.star(orbit[i].s0);
-    if (orbit[i].length()>1)
-      neighbours |= diag.star(orbit[i].s1);
-    for (unsigned j=n; --j>i;)
-      if (neighbours[orbit[j].s0])
-      {
-	int d=orbit[i].length()-orbit[j].length();
-	if (d==0)
-	{
-	  Cartan(i,j)=diag.Cartan_entry(i,j); // for same type orbits just
-	  Cartan(j,i)=diag.Cartan_entry(j,i); // copy Cartan matrix entry
-	}
-	else // unequal type, mark $-2$ when first index is longer than second
-	{
-	  Cartan(i,j)=d>0 ? -2 : -1;
-	  Cartan(j,i)=d<0 ? -2 : -1;
-	}
-      }
-  }
-  return DynkinDiagram(Cartan);
-} // |folded|
 
 BitMap common_Cartans(RealReductiveGroup& GR, RealReductiveGroup& dGR)
-{ return GR.Cartan_set() & GR.complexGroup().dual_Cartan_set(dGR.realForm()); }
+{ return GR.Cartan_set() & GR.innerClass().dual_Cartan_set(dGR.realForm()); }
 
-} // namespace blocks
+} // |namespace blocks|
 
-} // namespace atlas
+} // |namespace atlas|

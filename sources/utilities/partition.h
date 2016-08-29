@@ -1,6 +1,5 @@
-/*!
-\file
-\brief Class definitions and function declarations for class Partition.
+/*
+    Class definitions and function declarations for class Partition.
 
 The purpose of the class Partition is to represent the partition of a
 finite set given by a group action.  A typical example is a Weyl group
@@ -37,8 +36,7 @@ template<typename F>  // F is the type of a binary function object
 
 /******** type definitions ***************************************************/
 
-  /*!
- \brief Partition of some set [0,n[ into classes.
+  /*  Partition of some set [0,n[ into classes.
 
   The partition is represented by a vector d_class of n unsigned longs,
   mapping values to a number in [0,s[ characterizing the class (where s is the
@@ -52,38 +50,10 @@ template<typename F>  // F is the type of a binary function object
   */
 class Partition
 {
-
- private:
-
-  /*!
-  \brief The number d_class[j] labels the class containing the value j.
-  */
-  std::vector<unsigned long> d_class;
-
-  /*!
-  \brief The value d_classRep[i] is some element of class \#i.
-  */
-  std::vector<unsigned long> d_classRep;
+  std::vector<unsigned long> d_class; // number identifying the class of |i|
+  std::vector<unsigned long> d_classRep; // section of the |d_class|
 
  public:
-
-// types for unary function object
-
-   /*!
-   \brief Required to make Partition an adaptable unary function object
-
-   Alternatively we could have got this by deriving the Parition class from
-   std::unary_function<unsigned long,unsigned long>
-   */
-  typedef unsigned long argument_type;
-
-  /*!
-  \brief Required to make Partition an adaptable unary function object
-
-   Alternatively we could have got this by deriving the Parition class from
-   std::unary_function<unsigned long,unsigned long>
-  */
-  typedef unsigned long result_type;
 
   typedef PartitionIterator iterator;
 
@@ -110,21 +80,16 @@ class Partition
   bool operator== (const Partition& other) const
   { return d_class == other.d_class; }
 
-  /*!
-\brief Returns the number of classes in the partition.
-  */
+  // The number of classes in the partition
   unsigned long classCount() const { return d_classRep.size(); }
 
-  /*!
-  \brief Returns the number of an element belong to class \# c.
-  */
+  // An element belonging to class |c| (in fact the first such element)
   unsigned long classRep(unsigned long c) const { return d_classRep[c]; }
 
+  // The number of elements belonging to class |c|
   unsigned long classSize(unsigned long) const;
 
-  /*!
-  \brief Number of elements of the underlying set of the partition.
-   */
+  // Number of elements of the underlying set of the partition
   unsigned long size() const { return d_class.size(); }
 
   // an auxiliary class to turn a partition into function object for comparison
@@ -270,9 +235,9 @@ class PartitionIterator
 
 }; // |class PartitionIterator|
 
-} // namespace partition
+} // |namespace partition|
 
-} // namespace atlas
+} // |namespace atlas|
 
 /******** template definitions ***********************************************/
 

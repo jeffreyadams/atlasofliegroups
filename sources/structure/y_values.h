@@ -10,7 +10,7 @@
 #ifndef Y_VALUES_H  /* guard against multiple inclusions */
 #define Y_VALUES_H
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 
 #include "ratvec.h"   // containment
 
@@ -49,11 +49,12 @@ class TorusElement
   TorusElement(const RatWeight& r,bool two);
 
   // accessors
+  size_t rank () const { return repr.size(); }
 
   RatWeight log_pi(bool normalize) const; // return the stored rational vector
   RatWeight log_2pi() const; // value halved: to be interpreted "mod Z^rank"
 
-  // more often it will be practical to have acces to that "mod 2Z^rank" form
+  // more often it will be practical to have access to that "mod 2Z^rank" form
   const RatWeight& as_Qmod2Z() const { return repr; }
 
   bool operator== (const TorusElement& a) const { return repr==a.repr; }
@@ -72,8 +73,11 @@ class TorusElement
   bool negative_at(const Coweight& alpha) const
   {
     // the following asserts internally that |evaluate_at(alpha)| is integer
-    return repr.scalarProduct(alpha)%2!=0; // true if evaluates to odd integer
+    return repr.dot(alpha)%2!=0; // true if evaluates to odd integer
   }
+
+  // evaluation giving rational number modulo 2, represented in interval [0,2)
+  Rational evaluate_at(const SmallBitVector& alpha) const;
 
   // evaluation giving rational number modulo 2, represented in interval [0,2)
   Rational evaluate_at(const Coweight& alpha) const;
@@ -88,10 +92,16 @@ class TorusElement
   // manipulators
 
   TorusElement& operator+=(TorusPart v); // arg by value since it is small
+  TorusElement& reduce(); // reduce entires mod $2\Z$
 
   void simple_reflect(const PreRootDatum& prd, weyl::Generator s);
   void reflect(const RootDatum& rd, RootNbr alpha);
   void act_by(const  WeightInvolution& delta);
+
+  TorusElement& left_symmetrise(const WeightInvolution& delta)
+  { symmetrise(delta,repr); return this->reduce(); }
+  TorusElement& right_symmetrise(const WeightInvolution& delta)
+  { symmetrise(repr,delta); return this->reduce(); }
 }; // |class TorusElement|
 
 inline TorusElement exp_pi(const RatWeight& r) { return TorusElement(r,false); }
@@ -115,6 +125,13 @@ struct y_entry
 
 }; //  |struct y_entry|
 
+//				*** Functions ***
+
+// whether each simple root has integral evaluation on a torus element
+bool is_central(const WeightList& simple_roots, const TorusElement& e);
+
+// For a $\xi$-stable torus element, find $\xi$-stable pre-image by $\exp_1$
+RatCoweight stable_log(const TorusElement& t, CoweightInvolution xi);
 
 } // |namespace y_values|
 

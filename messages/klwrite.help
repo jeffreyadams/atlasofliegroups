@@ -10,7 +10,7 @@ sources/interpreter/KLread.cpp).
 The first file "matrix output" contains indexing data for the
 polynomials: which polynomial number is attached to which pair of
 block elements.  The user is asked to choose a name for it; something
-like 
+like
 
      sl6R-mat
 
@@ -25,8 +25,8 @@ Kazhdan-Lusztig polynomials for the block.  (This is more or less what
 is produced in human-readable form by the "kllist" command, although
 here the polynomials are ordered by the order in which they were
 computed.) The user is asked to choose a name for it; something
-like 
+like
 
      sl6R-coef
 
-might be convenient.  
+might be convenient.
