@@ -246,7 +246,6 @@ void addTestCommands<commands::ReprmodeTag> (commands::CommandNode& mode)
 {
   mode.add("braid",repr_braid_f,
 	   "tests braid relations on an extended block",commands::use_tag);
-
   if (testMode == ReprMode)
     mode.add("test",test_f,test_tag);
 
@@ -1084,6 +1083,7 @@ void go_f()
 	   commands::currentDualRealGroup().kgb(),
 	   commands::current_inner_class().distinguished()
 	   );
+
   int nr_failures=0;
   int max_tries=10;
 

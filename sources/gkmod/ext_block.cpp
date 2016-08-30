@@ -11,7 +11,7 @@
 
 #include <cassert>
 #include <vector>
-#include <iostream>
+#include <iostream> // |std::cout| used in methods like |ext_block::list_edges|
 
 #include "innerclass.h"
 #include "weyl.h"
@@ -117,8 +117,8 @@ bool has_defect(DescValue v)
 bool has_quadruple(DescValue v)
 {
   static const unsigned long mask =
-    1ul << two_imaginary_single_double_fixed
-  | 1ul << two_real_single_double_fixed;
+      1ul << two_imaginary_single_double_fixed
+    | 1ul << two_real_single_double_fixed;
 
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
@@ -419,7 +419,6 @@ void ext_block::report_2Ci_toggles() const
       }
 
 }
-
 
 // this implements (comparison using) the formula from Proposition 16 in
 // "Parameters for twisted repressentations" (with $\delta-1 = -(1-\delta)$
@@ -1722,6 +1721,7 @@ void ext_block::complete_construction(const BitMap& fixed_points)
   {
     BlockElt z=parent_nr[n];
     info.push_back(elt_info(z));
+    info.back().length = parent.length(z);
     for (weyl::Generator oi=0; oi<orbits.size(); ++oi) // |oi|: orbit index
     {
       const weyl::Generator s = orbits[oi].s0, t=orbits[oi].s1;
@@ -1731,14 +1731,6 @@ void ext_block::complete_construction(const BitMap& fixed_points)
 
       if (link==UndefBlock)
 	continue; // done with |s| for imaginary compact, real nonparity cases
-
-      if (is_descent(type)) // then set or check length from predecessor
-      {
-	if (info.back().length==0)
-	  info.back().length=info[child_nr[link]].length+1;
-	else
-	  assert(info.back().length==info[child_nr[link]].length+1);
-      }
 
       // now maybe set |second|, depending on case
       switch (type)
@@ -1822,6 +1814,7 @@ BlockElt ext_block::cross(weyl::Generator s, BlockElt n) const
   case two_imaginary_single_single:
   case two_real_single_single:
     return data[s][n].links.second;
+
   }
   assert(false); return UndefBlock; // keep compiler happy
 } // |ext_block::cross|

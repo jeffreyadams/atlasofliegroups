@@ -545,9 +545,11 @@ void KL_table::fill_next_column(PolHash& hash)
       if (aux.descent_set(u)[s])
       {
 	unsigned d=aux.block.l(y,u)+defect; // doubled degree shift of |cy[u]|
+	assert(u<cy.size());
 	if (cy[u].isZero())
 	  continue;
 
+	assert(u<Ms.size());
 	Pol gM = get_M(s,u,sy,Ms);
 	Ms[u]=extract_M(cy[u],d,defect);
 	assert(Ms[u]==gM);
@@ -660,15 +662,15 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
     }
     else // |x| is extremal for |y|, so we must do real computation
     { // first seek proper |s|
-      unsigned i; ext_block::DescValue tx; weyl::Generator s;
+      unsigned i; ext_block::DescValue tsx; weyl::Generator s;
       for (i=0; i<rn_s.size(); ++i)
-	if (is_proper_ascent(tx=type(s=rn_s[i],x)) // (we don't do 'ic' here)
-	    and ( not is_like_type_1(tx)
+	if (is_proper_ascent(tsx=type(s=rn_s[i],x)) // (we don't do 'ic' here)
+	    and ( not is_like_type_1(tsx)
 		  or aux.easy_set(aux.block.cross(s,x),y).any()) )
 	    break;
 
-      if (i<rn_s.size())
-      { // effectively now |const weyl::Generator s=rn_s[i];|
+      if (i<rn_s.size()) // that is, we did |break| above
+      {	// so we still have |s==rn_s[i]| and |tsx==type(s,x)|
 	std::vector<Pol>& M = M_s[i];
 	const unsigned k = aux.block.orbit(s).length();
 	PolEntry& Q=cy[x];
@@ -680,12 +682,12 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	    Q += Pol((aux.block.l(y,u)+k-M[u].degree())/2, P(x,u)*M[u]);
 
 	// subtract terms for ascent(s) of |x|; divide by its own coefficient
-	switch(tx)
+	switch(tsx)
 	{
  	case ext_block::one_complex_ascent:
 	case ext_block::two_complex_ascent:
 	case ext_block::three_complex_ascent:
-	  { // |(is_complex(tx))|
+	  { // |(is_complex(tsx))|
 	    BlockElt sx=aux.block.cross(s,x);
 	    if (sx<floor_y) // subtract contrib. from $[T_x](T_s+1).T_{sx}=q^k$
 	      Q -= aux.block.T_coef(s,x,sx)*cy[sx]; // coef is $\pm q^k$
@@ -694,7 +696,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	case ext_block::two_semi_imaginary:
 	case ext_block::three_semi_imaginary:
 	case ext_block::three_imaginary_semi:
-	  { // |has_defect(tx)|
+	  { // |has_defect(tsx)|
 	    BlockElt sx=aux.block.Cayley(s,x);
 	    if (sx<floor_y)
 	      Q -= aux.block.T_coef(s,x,sx)*cy[sx]; // coef is $\pm(q^k-q)$
@@ -713,7 +715,8 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	  break;
 	case ext_block::one_imaginary_pair_fixed:
 	case ext_block::two_imaginary_double_double:
-	  { // |is_like_type_2(tx)|
+	  { // |is_like_type_2(tsx)|
+	    assert(has_double_image(tsx)); // since it is a type 2 ascent
 	    BlockEltPair sx=aux.block.Cayleys(s,x);
 	    if (sx.first<floor_y)
 	      Q -= aux.block.T_coef(s,x,sx.first)*cy[sx.first]; // $\pm(q^k-1)$
@@ -724,7 +727,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	  break;
 	case ext_block::one_imaginary_single:
 	case ext_block::two_imaginary_single_single:
-	  { // |is_like_type_1(tx)|, this used to be called the endgame case
+	  { // |is_like_type_1(tsx)|, this used to be called the endgame case
 	    BlockElt x_prime=aux.block.Cayley(s,x);
 	    if (x_prime<floor_y)
 	      Q -= aux.block.T_coef(s,x,x_prime)*cy[x_prime]; // $\pm(q^k-1)$
@@ -734,11 +737,21 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	    BlockElt s_cross_x = aux.block.cross(s,x);
 	    assert(aux.easy_set(s_cross_x,y).any()); // this was tested above
 	    const weyl::Generator t=aux.easy_set(s_cross_x,y).firstBit();
-	    BlockEltPair sx_up_t = aux.block.Cayleys(t,s_cross_x);
-	    if (sx_up_t.first<floor_y)
-	      Q -= cy[sx_up_t.first];
-	    if (sx_up_t.second<floor_y)
-	      Q -= cy[sx_up_t.second];
+	    auto ttscx=type(t,s_cross_x);
+	    if (has_double_image(ttscx))
+	    {
+	      BlockEltPair sx_up_t = aux.block.Cayleys(t,s_cross_x);
+	      if (sx_up_t.first<floor_y)
+		Q -= cy[sx_up_t.first];
+	      if (sx_up_t.second<floor_y)
+		Q -= cy[sx_up_t.second];
+	    }
+	    else
+	    {
+	      BlockElt sx_up_t=aux.block.Cayley(t,s_cross_x);
+	      if (sx_up_t<floor_y)
+		Q -= cy[sx_up_t];
+	    }
 	  }
 	  break;
 	case ext_block::two_imaginary_single_double_fixed:
@@ -765,8 +778,8 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
       for (unsigned j=0; j<rn_s.size(); ++j)
       {
 	const weyl::Generator s=rn_s[j];
-	const ext_block::DescValue tx=type(s,x);
-	if (not is_descent(tx) and has_defect(tx))
+	const ext_block::DescValue tsx=type(s,x);
+	if (not is_descent(tsx) and has_defect(tsx))
 	{
 	  const BlockElt sx = aux.block.Cayley(s,x);
 	  assert(sx<floor_y); // could only fail if |x| in downset tested above
