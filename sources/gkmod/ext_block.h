@@ -160,6 +160,8 @@ class ext_block
   size_t rank() const { return orbits.size(); }
   size_t size() const { return info.size(); }
 
+  const Block_base& untwisted() const { return parent; }
+
   ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
   const DynkinDiagram& Dynkin() const { return folded; }
   const WeightInvolution& delta() const { return d_delta; }

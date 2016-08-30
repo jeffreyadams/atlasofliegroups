@@ -13,6 +13,7 @@
 #include "ext_block.h"
 #include "../Atlas.h"
 #include "polynomials.h"
+#include "kl.h" // for (temporary) inclusion of |kl::KLContext| in |KL_table|
 
 namespace atlas {
 
@@ -74,9 +75,11 @@ class KL_table
 
   std::vector<kl::KLRow> column; // columns are lists of polynomial pointers
 
+  //TEMPORARY
+  kl::KLContext untwisted;
+
  public:
-   KL_table(const ext_block::ext_block& b, std::vector<Pol>& pool)
-    : aux(b), storage_pool(pool), column() {}
+  KL_table(const ext_block::ext_block& b, std::vector<Pol>& pool);
 
   size_t rank() const { return aux.block.rank(); }
   size_t size() const { return column.size(); }
@@ -100,7 +103,7 @@ class KL_table
   typedef HashTable<PolEntry,kl::KLIndex> PolHash;
   void fill_next_column(PolHash& hash);
 
-  // component of basis element $a_x$ in product $(T_s+1)a_{sy}$
+  // component of basis element $a_x$ in product $(T_s+1)C_{sy}$
   Pol product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const;
   Pol extract_M(Pol& Q,unsigned d,unsigned defect) const;
 
@@ -114,9 +117,11 @@ class KL_table
 
   // look for a direct recursion and return whether possible;
   // if possible also get contributions from $c_s*a_y$ into |out|
-  bool direct_recursion(BlockElt y,weyl::Generator& s, BlockElt& sy) const;
+  bool has_direct_recursion(BlockElt y,weyl::Generator& s, BlockElt& sy) const;
 
   void do_new_recursion(BlockElt y,PolHash& hash);
+
+  bool check_polys(BlockElt y) const;
 
 }; // |KL_table|
 

@@ -24,6 +24,7 @@
 #include "free_abelian.h"
 #include "arithmetic.h" // |SplitInteger|
 
+
 namespace atlas {
 
 namespace repr {
@@ -191,6 +192,9 @@ class Rep_table : public Rep_context
   std::vector<SR_poly> KL_list; // indexed by |hash| values for |StandardRepr|s
   std::vector<SR_poly> def_formula; // idem
 
+  std::vector<SR_poly> twisted_KLV_list; // indexed by |hash|s for twist-fixed
+  std::vector<SR_poly> twisted_def_formula; // idem
+
  public:
   Rep_table(RealReductiveGroup &G)
     : Rep_context(G), pool(), hash(pool), KL_list(), def_formula()
@@ -199,6 +203,7 @@ class Rep_table : public Rep_context
   unsigned int length(StandardRepr z); // by value
 
   SR_poly KL_column_at_s(StandardRepr z); // by value
+  SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
 
   SR_poly deformation_terms (param_block& block,BlockElt entry_elem);
   // here |block| is non-|const| because it calls |add_block|
@@ -209,6 +214,9 @@ class Rep_table : public Rep_context
   void add_block(param_block& block, BlockEltList& survivors);
   // here |block| is non-|const| as the method generates KL polynomials in it
   // and |survivors| is non-|const| because the method computes and exports it
+
+  void add_block(ext_block::ext_block& block, param_block& parent);
+  // here |block| is non-|const|; the method generates twisted KLv polyns in it
 
 }; // |Rep_table|
 

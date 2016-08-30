@@ -472,6 +472,8 @@ namespace atlas {
   using repr::Rep_context;
   using repr::Rep_table;
 
+  namespace ext_block { class ext_block; }
+
   namespace output { class FormNumberMap; } // maps internals to names
   namespace output { class Interface; } // a pair of the above
   namespace realweyl {

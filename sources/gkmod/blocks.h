@@ -42,9 +42,6 @@ namespace blocks {
 
   BitMap common_Cartans(RealReductiveGroup& GR,	RealReductiveGroup& dGR);
 
-  DynkinDiagram folded // produced folded version of diagram, given orbits
-    (const DynkinDiagram& diag, const ext_gens& orbits);
-
 
 /******** type definitions **************************************************/
 
