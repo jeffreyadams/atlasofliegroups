@@ -194,67 +194,14 @@ Pol qk_minus_q(int k)
 // component of element $a_x$ in product $(T_s+1)C_{sy}$
 Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
 {
+  assert(is_descent(type(s,x)));  // otherwise don't call this function
   const ext_block::ext_block& b = aux.block;
-  switch(type(s,x))
-  { default:
-      assert(false); // list will only contain descent types
-      return Pol();
-      // complex
-  case ext_block::one_complex_descent:
-  case ext_block::two_complex_descent:
-  case ext_block::three_complex_descent: // contribute $P_{sx,sy}+q^kP_{x,sy}$
-    {
-      const BlockElt sx = b.cross(s,x);
-      return b.T_coef(s,x,sx)*P(sx,sy) + b.T_coef(s,x,x)*P(x,sy);
-    }
-    // imaginary compact, real switched
-  case ext_block::one_imaginary_compact:
-  case ext_block::two_imaginary_compact:
-  case ext_block::three_imaginary_compact:
-  case ext_block::one_real_pair_switched:
-  case ext_block::two_real_single_double_switched:
-    // contribute $(q^k+1)P_{x,sy}$
-    return b.T_coef(s,x,x) * P(x,sy);
-    // real type 1
-  case ext_block::one_real_pair_fixed:
-  case ext_block::two_real_double_double:
-    { // contribute $P_{x',sy}+P_{x'',sy}+(q^k-1)P_{x,sy}$
-      BlockEltPair sx = b.Cayleys(s,x);
-      return b.T_coef(s,x,sx.first)*P(sx.first,sy)
-	+ b.T_coef(s,x,sx.second)*P(sx.second,sy)
-	+ b.T_coef(s,x,x) * P(x,sy);
-    }
-    // real type 2
-  case ext_block::one_real_single:
-  case ext_block::two_real_single_single:
-    { // contribute $P_{x_s,sy}+q^kP_{x,sy}-P_{s*x,sy}$
-      const BlockElt s_x = b.Cayley(s,x);
-      const BlockElt x_cross = b.cross(s,x);
-      return b.T_coef(s,x,s_x)*P(s_x,sy)
-	+ b.T_coef(s,x,x_cross)*P(x_cross,sy)
-	+ b.T_coef(s,x,x) * P(x,sy);
-    }
-    // defect type descents: 2Cr, 3Cr, 3r
-  case ext_block::two_semi_real:
-  case ext_block::three_semi_real:
-  case ext_block::three_real_semi:
-    { // contribute $(q+1)P_{x_s,sy}+(q^k-q)P_{x,sy}$
-      const BlockElt sx = b.Cayley(s,x);
-      return b.T_coef(s,x,sx) * P(sx,sy)
-	+ b.T_coef(s,x,x) * P(x,sy);
-    }
-    // quadruple case: 2r21f
-  case ext_block::two_real_single_double_fixed:
-    { // contribute $P_{x',sy}\pm P_{x'',sy}+(q^2-1)P_{x,sy}$
-      BlockEltPair sx = b.Cayleys(s,x);
-      return b.T_coef(s,x,sx.first)*P(sx.first,sy)
-	+ b.T_coef(s,x,sx.second)*P(sx.second,sy)
-	+ b.T_coef(s,x,x) * P(x,sy);
-      // return P(sx.first,sy)*b.epsilon(s,x,sx.first)
-      // 	+ P(sx.second,sy)*b.epsilon(s,x,sx.second)
-      // 	+ b.T_coef(s,x,x) * P(x,sy);
-    }
-  } // |switch(type(s,x))|
+  BlockEltList neighbours; neighbours.reserve(s);
+  aux.block.add_neighbours(neighbours,s,x);
+  Pol result=b.T_coef(s,x,x)*P(x,sy); // start with term from diagonal
+  for (auto it=neighbours.begin(); it!=neighbours.end(); ++it)
+    result += b.T_coef(s,x,*it)*P(*it,sy);
+  return result;
 } // |KL_table::product_comp|
 
 // shift symmetric Laurent polynomial $aq^{-1}+b+aq$ to ordinary polynomial
