@@ -212,6 +212,7 @@ Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
   case ext_block::two_imaginary_compact:
   case ext_block::three_imaginary_compact:
   case ext_block::one_real_pair_switched:
+  case ext_block::two_real_single_double_switched:
     // contribute $(q^k+1)P_{x,sy}$
     return b.T_coef(s,x,x) * P(x,sy);
     // real type 1
@@ -242,7 +243,7 @@ Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
       return b.T_coef(s,x,sx) * P(sx,sy)
 	+ b.T_coef(s,x,x) * P(x,sy);
     }
-    // epsilon case: 2r21
+    // quadruple case: 2r21f
   case ext_block::two_real_single_double_fixed:
     { // contribute $P_{x',sy}\pm P_{x'',sy}+(q^2-1)P_{x,sy}$
       BlockEltPair sx = b.Cayleys(s,x);

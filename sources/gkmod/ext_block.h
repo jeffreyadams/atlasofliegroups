@@ -39,10 +39,10 @@ enum DescValue // every even/odd pair is one of associated ascent and descent
   one_real_pair_fixed,          // type 1, twist-fixed inverse Cayley images
   one_imaginary_pair_fixed,     // type 2, twist-fixed Cayley images
   one_real_single,              // type 2, single inverse Cayley image
-  one_imaginary_pair_switched,  // type 2, twist-switched Cayley images
-  one_real_pair_switched,       // type 1, twist-switched inverse Cayley images
-  one_real_nonparity,
-  one_imaginary_compact,
+  one_imaginary_pair_switched,  // ascent:  type 1i2 with twist-switched images
+  one_real_pair_switched,       // descent: type 1r1 with twist-switched images
+  one_real_nonparity,		// an ascent
+  one_imaginary_compact,	// a descent
 
   two_complex_ascent,           // distinct commuting complex ascents
   two_complex_descent,          // distinct commuting complex descents
@@ -54,10 +54,10 @@ enum DescValue // every even/odd pair is one of associated ascent and descent
   two_real_single_double_fixed, // single-valued inverse Cayleys become double
   two_imaginary_double_double,  // commuting double-valued Cayleys (2-valued)
   two_real_single_single,	// commuting single-valued inverse Cayleys
-  two_imaginary_single_double_switched,  // 2i12, twist-switched images
-  two_real_single_double_switched,	 // 2r12, twist-switched images
-  two_real_nonparity,
-  two_imaginary_compact,
+  two_imaginary_single_double_switched,  // ascent: 2i12, twist-switched images
+  two_real_single_double_switched,	 // descent:2r12, twist-switched images
+  two_real_nonparity,		// an ascent
+  two_imaginary_compact,	// a descent
 
   three_complex_ascent,         // distinct non-commuting complex ascents
   three_complex_descent,        // distinct non-commuting complex descents
@@ -65,23 +65,23 @@ enum DescValue // every even/odd pair is one of associated ascent and descent
   three_real_semi, // non-commuting single-valued inverse Cayleys get complex
   three_imaginary_semi,  // non-commuting single-valued Cayleys become complex
   three_semi_real,       // non-commuting complex descents become real
-  three_real_nonparity,
-  three_imaginary_compact
+  three_real_nonparity,		// an ascent
+  three_imaginary_compact	// a descent
 }; // |enum DescValue|
 
 const char* descent_code(DescValue v); // defined in |block_io|
 inline bool is_descent(DescValue v) { return v%2!=0; }
-bool is_complex(DescValue v);
-bool is_unique_image(DescValue v);
-bool has_double_image(DescValue v);
-bool is_like_nonparity(DescValue v);
-bool is_like_compact(DescValue v);
-bool is_like_type_1(DescValue v);
-bool is_like_type_2(DescValue v);
-bool has_defect(DescValue v);
-bool has_quadruple(DescValue v); // 2i12/2r21 cases
+bool is_complex(DescValue v); // types 1C+, 1C-, 2C+, 2C-, 3C+, 3C-
+bool is_unique_image(DescValue v); // types 1r1f, 1i2f, 2r11, 2i22, and defects
+bool has_double_image(DescValue v); // types 1r1f, 1i2f, 2r11, 2i22, and quads
+bool is_like_nonparity(DescValue v); // ascents with 0 links
+bool is_like_compact(DescValue v);  // descents with 0 links
+bool is_like_type_1(DescValue v); // types 1i1, 1r1f, 2i11, 2r11
+bool is_like_type_2(DescValue v); // types 1i2f, 1r2, 2i22, 2r22
+bool has_defect(DescValue v); // types 2Ci, 2Cr, 3Ci, 3r, 3Cr, 3i
+bool has_quadruple(DescValue v); // types 2i12f and 2r21f
 
-bool is_proper_ascent(DescValue v);
+bool is_proper_ascent(DescValue v); // ascent with at least 1 link
 
 unsigned int generator_length(DescValue v);
 unsigned int link_count(DescValue v);
@@ -129,7 +129,7 @@ class ext_block
   ext_gens orbits; // $\delta$-orbits of generators for the parent block
   const DynkinDiagram folded; // diagram defined on those orbits
 
-  WeightInvolution d_delta;
+  WeightInvolution d_delta; // purely passive: nothing else uses coordinates
 
   std::vector<elt_info> info; // its size defines the size of the block
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
@@ -189,8 +189,8 @@ class ext_block
   // whether link for |s| from |x| to |y| has a sign flip attached
   int epsilon(weyl::Generator s, BlockElt x, BlockElt y) const;
 
-  // coefficient of neighbour |sx| for $s$ in action $(T_s+1)*a_x$
-  Pol T_coef(weyl::Generator s, BlockElt sx, BlockElt x) const;
+  // coefficient of neighbour |xx| of |x| in the action $(T_s+1)*a_x$
+  Pol T_coef(weyl::Generator s, BlockElt xx, BlockElt x) const;
 
   BlockEltList down_set(BlockElt y) const;
 

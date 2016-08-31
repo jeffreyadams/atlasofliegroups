@@ -68,20 +68,22 @@ bool has_double_image(DescValue v)
 }
 
 
-bool is_like_nonparity(DescValue v)
+bool is_like_nonparity(DescValue v) // ascents with 0 neighbours
 {
   static unsigned long mask =
-      1ul << one_imaginary_pair_switched | 1ul << one_real_nonparity
-    | 1ul << two_real_nonparity          | 1ul << three_real_nonparity;
+      1ul << one_real_nonparity | 1ul << one_imaginary_pair_switched
+    | 1ul << two_real_nonparity | 1ul << two_imaginary_single_double_switched
+    | 1ul << three_real_nonparity;
 
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
 
-bool is_like_compact(DescValue v)
+bool is_like_compact(DescValue v) // descents with 0 neighbours
 {
   static unsigned long mask =
-      1ul << one_real_pair_switched | 1ul << one_imaginary_compact
-    | 1ul << two_imaginary_compact  | 1ul << three_imaginary_compact;
+      1ul << one_imaginary_compact | 1ul << one_real_pair_switched
+    | 1ul << two_imaginary_compact | 1ul << two_real_single_double_switched
+    | 1ul << three_imaginary_compact;
 
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
@@ -1984,7 +1986,7 @@ bool check(ext_block& eb, const param_block& block, bool verbose)
   return true; // report sucess if we get here
 } // |check|
 
-// coefficient of neighbour |sx| for $s$ in action $(T_s+1)*a_x$
+// coefficient of neighbour |sx| of |x| in the action $(T_s+1)*a_x$
 Pol ext_block::T_coef(weyl::Generator s, BlockElt sx, BlockElt x) const
 {
   DescValue v = descent_type(s,x);
