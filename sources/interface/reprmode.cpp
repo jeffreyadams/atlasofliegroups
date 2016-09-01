@@ -41,6 +41,7 @@
 #include "wgraph.h"
 #include "wgraph_io.h"
 #include "test.h"
+#include "ext_kl.h"
 
 /****************************************************************************
 
@@ -67,6 +68,7 @@ namespace commands {
   void gextblock_f();
   void deform_f();
   void kl_f();
+  void ext_kl_f();
   void klbasis_f();
   void kllist_f();
   void primkl_f();
@@ -117,6 +119,7 @@ CommandNode reprNode()
   result.add("klwrite",klwrite_f,"second");
   result.add("wcells",wcells_f,"second");
   result.add("wgraph",wgraph_f,"second");
+  result.add("extkl",ext_kl_f,"computes the KL polynomials for extended block");
 
   // add test commands
   test::addTestCommands<ReprmodeTag>(result);
@@ -357,6 +360,41 @@ void gextblock_f()
   else
     std::cout << "Extended block structure check failed." << std::endl;
 }
+
+void ext_kl_f()
+{
+  ensure_full_block();
+  WeightInvolution delta = interactive::get_commuting_involution
+    (commands::current_layout(), commands::current_lattice_basis());
+
+  auto& block = current_param_block();
+  if (not ((delta-1)*block.gamma().numerator()).isZero())
+  {
+    std::cout << "Chosen delta does not fix gamma=" << block.gamma()
+	      << " for the current block." << std::endl;
+    return;
+  }
+  ext_block::ext_block eblock(current_inner_class(),block,
+			      currentRealGroup().kgb(),delta);
+  if (check(eblock,block,true))
+  {
+    std::vector<ext_kl::Pol> pool;
+    ext_kl::KL_table twisted_KLV(eblock,pool);
+    twisted_KLV.fill_columns();
+
+    ioutils::OutputFile f;
+    for (BlockElt y=0; y<eblock.size(); ++y)
+      for (BlockElt x=y+1; x-->0; )
+	if (not twisted_KLV.P(x,y).isZero())
+	{
+	  f << "P(" << eblock.z(x) << ',' << eblock.z(y) << ")=";
+	  f << twisted_KLV.P(x,y) << std::endl;
+	}
+  }
+  else
+    std::cout << "Extended block structure check failed." << std::endl;
+}
+
 
 void kl_f()
 {
