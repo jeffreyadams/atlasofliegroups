@@ -154,13 +154,14 @@ Pol KL_table::P(BlockElt x, BlockElt y) const
   return aux.flips(x,y) ? -storage_pool[col_y[inx]] : storage_pool[col_y[inx]];
 }
 
+// coefficient of P_{x,y} of $q^{(l(y/x)-i)/2}$ (used with i=1,2,3 only)
 int KL_table::mu(int i,BlockElt x, BlockElt y) const
 {
   if (aux.block.length(x)+i>aux.block.length(y))
-    return 0;
+    return 0; // coefficient would be at negative degree
   unsigned d=aux.block.l(y,x)-i;
   if (d%2!=0)
-    return 0;
+    return 0; // coefficient would be at non-integral degree
   d/=2;
   PolRef Pxy=P(x,y);
   return Pxy.isZero() or Pxy.degree()<d ? 0 : Pxy[d];
@@ -204,7 +205,13 @@ Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
   return result;
 } // |KL_table::product_comp|
 
-// shift symmetric Laurent polynomial $aq^{-1}+b+aq$ to ordinary polynomial
+
+/* our analogue of $\mu$ in ordinary KL computations takes the form of a
+   symmetric Laurent polynomial $m$ in $r=\sqrt q$. Since we have no data
+   structure for Laurent polynomials, we shift exponents to get into $\Z[q]$
+ */
+
+// auxiliary to form $aq^{-1}+b+aq$, shifted to an ordinary polynomial
 inline Pol m(int a,int b) { return a==0 ? Pol(b) : qk_plus_1(2)*a + Pol(1,b); }
 
 /*
@@ -212,14 +219,19 @@ inline Pol m(int a,int b) { return a==0 ? Pol(b) : qk_plus_1(2)*a + Pol(1,b); }
   $m(x)\cong r^k p_{x,y} + def(s,x) r p_{s_x,y}-\sum_{x<u<y}p_{x,u}m(u)$ where
   $m(x)$ is $m_s(x,y)$, and congruence is modulo $r^{-1+def(s,y)}\Z[r^{-1}]$;
   then use symmetry of $m(x)$ to complete. The actual result returned is
-  shifted minimally to an ordinary polynomial in $q=r^2$. There is a
-  complication when $def(s,y)=1$, since a congruence modulo $r^0\Z[r^{-1}]$
-  cannot be used to determine the coefficient of $r^0$ in $m(x)$, and instead
-  one must use that the difference between the members of above congruence
-  should be a multiple of $(r+r^{-1})$. To that end we use for our
-  computations, instead of the coefficient of $r^0$ of polynomials, the
-  appropriate |up_remainder(1,d)| values. As |up_remainder| (with appropriate
-  shifts) is a ring morphism, it can be applied to individual factors.
+  shifted minimally to an ordinary polynomial in $q=r^2$ (function |m| above).
+
+  There is a complication when $def(s,y)=1$, since a congruence modulo
+  $r^0\Z[r^{-1}]$ cannot be used to determine the coefficient of $r^0$ in
+  $m(x)$. Instead one must use the fact that the difference between members of
+  above congruence should be a multiple of $(r+r^{-1})$. To that end we use
+  for our computations, instead of the coefficient of $r^0$ of polynomials,
+  the appropriate |up_remainder(1,d)| values. As |up_remainder| is, with
+  appropriate shifts, a ring morphism, it can be applied to separate factors.
+
+  This function will be called when the values of $m(u)$ have already been
+  computed for $u$ of length greater than $x$, and these values are passed in
+  the final argument |M|, so as to avoid inefficient recursive calls.
  */
 Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 		    const std::vector<Pol>& M) const
@@ -231,7 +243,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
   const unsigned k = bl.orbit(s).length();
 
   if (k==1)
-    return  Pol(bl.l(y,x)%2==0 ? 0 : mu(1,x,y));
+    return Pol(mu(1,x,y)); // will be zero if $l(x,y)$ is even
 
   if (k==2)
   {
@@ -251,7 +263,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 	    acc -= mu(1,x,u)*M[u][0];
       return Pol(acc);
     }
-    // |k==2| defect case
+    // for |k==2| there remains the defect (for the |y| to |z| link) case
     int acc= product_comp(x,s,y).up_remainder(1,(bl.l(z,x)+1)/2);
     for (unsigned l=bl.length(x)+2; l<bl.length(z); l+=2)
       for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
@@ -287,7 +299,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 	  b -= mu(M[u].degree(),x,u)*M[u][M[u].degree()];
       return m(a,b);
     }
-    // remains the |k==3|, even degree $m_s(x,y)$, defect $y$ case
+    // there remains the |k==3|, even degree $m_s(x,y)$, defect $y$ case
     Pol Q = product_comp(x,s,y);
     if (a!=0)
       Q -= Pol((bl.l(z,x)-1)/2,qk_plus_1(2)*a); // shaves top term
@@ -324,16 +336,16 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 /*
   This is largely the same formula, but used in different context, which
   obliges to possibly leave out some term. Here one knows that $y$ is real
-  nonparity for $s$, so in particular has no defect and the is no element $z$;
-  also $x$ is known to be a descent for $s$ (unlike in the code above). On the
-  other hand one is still busy computing the Hecke element $C_y$. It is a
-  precondition that its coefficient $P_{x,y}$ has already been determined, and
-  stored, but not necessarily $P_{x',y}$ for $x'<x$; we must therefore refrain
-  from (implicit) references to such polynomials. The vector $M$ can be used
-  to safely access the (complete) values $M_s(u,y)$ for all $u>x$.
+  nonparity for $s$, so in particular has no defect and there is no element
+  $z$; also $x$ is known to be a descent for $s$ (unlike in the code above).
+  On the other hand one is still busy computing the Hecke element $C_y$. It is
+  a precondition that its coefficient $P_{x,y}$ has already been determined,
+  and stored, but $P_{x',y}$ for $x'<x$ need not be; we must therefore refrain
+  from (implicit) references to such polynomials. Again the vector $M$ can be
+  used to safely access the (complete) values $M_s(u,y)$ for all $u>x$.
 
   Comparing with the formulas above, the terms to skip are those involving
-  |inverse_Cayley(s,x)|.
+  |Cayley(s,x)| (since |s| is a descent for |x|, in fact a downward Cayley).
  */
 Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
 		     const std::vector<Pol>& M) const
@@ -382,10 +394,9 @@ Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
 bool KL_table::has_direct_recursion(BlockElt y,
 				    weyl::Generator& s, BlockElt& sy) const
 {
-  ext_block::DescValue v; // make value survive loop
   for (s=0; s<rank(); ++s)
   {
-    v=type(s,y);
+    const ext_block::DescValue v=type(s,y);
     if (is_descent(v) and is_unique_image(v))
     {
       sy = aux.block.some_scent(s,y); // some descent by $s$ of $y$
