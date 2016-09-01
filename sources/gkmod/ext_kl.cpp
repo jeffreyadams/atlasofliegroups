@@ -760,7 +760,13 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 bool check(const Pol& P_sigma, const KLPol& P)
 {
   if (P_sigma.isZero())
+  { if (P.isZero())
+      return true;
+    for (unsigned i=0; i<=P.degree(); ++i)
+      if (P[i]%2!=0)
+	return false;
     return true;
+  }
   if (P.isZero() or P_sigma.degree()>P.degree())
     return false;
   for (polynomials::Degree i=0; i<=P.degree(); ++i)
