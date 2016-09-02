@@ -625,7 +625,8 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
       for (i=0; i<rn_s.size(); ++i)
 	if (is_proper_ascent(tsx=type(s=rn_s[i],x)) // (we don't do 'ic' here)
 	    and ( not is_like_type_1(tsx)
-		  or aux.easy_set(aux.block.cross(s,x),y).any()) )
+		  or aux.easy_set(aux.block.cross(s,x),y).any())
+	    or (is_like_compact(tsx)))
 	    break;
 
       if (i<rn_s.size()) // that is, we did |break| above
@@ -723,6 +724,21 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
  	    Q/=2; // divide by |T_coef(s,x,x)==2|
 	  }
 	  break;
+	case ext_block::one_imaginary_compact:
+	case ext_block::one_real_pair_switched:
+	case ext_block::two_imaginary_compact:
+	case ext_block::two_real_single_double_switched:
+	case ext_block::three_imaginary_compact:
+	  {
+	    // here we just need to divide Q by q^k+1, I think
+	    // but I only know how to divide by q+1!
+	    //	    std::cerr << "got to (ic,rn); (x,y)=(" << x <<"," << y
+	    //		      << "), Q=" << Q << std::endl;
+	    int c = // remainder in upward division by $[T_x](T_s+1).T_x=1+q$
+	      Q.factor_by(1,(aux.block.l(y,x)+1)/2); // deg $\ceil l(y/x)/2$
+	    assert(c==0);
+	  }
+	  break;
 	default: assert(false); // other cases should not have selected |s|
 	} // |switch(tx)|
 	// now |Q| is stored in |cy[x]|
@@ -760,13 +776,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 bool check(const Pol& P_sigma, const KLPol& P)
 {
   if (P_sigma.isZero())
-  { if (P.isZero())
-      return true;
-    for (unsigned i=0; i<=P.degree(); ++i)
-      if (P[i]%2!=0)
-	return false;
     return true;
-  }
   if (P.isZero() or P_sigma.degree()>P.degree())
     return false;
   for (polynomials::Degree i=0; i<=P.degree(); ++i)
