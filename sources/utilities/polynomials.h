@@ -1,7 +1,3 @@
-/*!
-\file
-\brief Class definitions and function declarations for the class Polynomial.
-*/
 /*
   This is polynomials.h
 
@@ -10,6 +6,8 @@
 
   For license information see the LICENSE file
 */
+
+/* Class definitions and function declarations for the class Polynomial. */
 
 #ifndef POLYNOMIALS_H  /* guard against multiple inclusions */
 #define POLYNOMIALS_H
@@ -54,7 +52,8 @@ void safeSubtract(C&, C);// version of |operator-=| testing for underflow
 /******** type definitions **************************************************/
 
 
-/*! \brief Polynomials with coefficients in |C|
+/*
+  Polynomials with coefficients in |C|
 
   The coefficient type |C| could be a signed or unsigned integral type, or any
   type providing ring operations (operator+, operator*= etc.), for instance
@@ -87,8 +86,8 @@ template <typename U>
   bool operator== (const Polynomial& q) const { return d_data == q.d_data; }
   bool operator!= (const Polynomial& q) const { return d_data != q.d_data; }
 
-/*!
-\brief Operator < is the default from the standard library < on vector.
+/*
+  Operator < is the default from the standard library < on vector.
 
   The comparison operation below is only defined in order to allow ordered
   data types containing polynomials, such as |std::set<Polynomial<int> >|.
@@ -138,7 +137,11 @@ template <typename U>
   Polynomial operator- () const { return Polynomial(*this)*= C(-1); }
 
   // as |up_remainder| above, but also change polynomial into quotient $Q$
-  C factor_by(C c, Degree d); // assumes $d\geq degree()$
+  // the coefficient in degree |d| may leave a remainder which is returned
+  C factor_by_1_plus_q(Degree d); // with precondition |this->degree()<=d|
+
+  // similarly upward divide by $1+q^k$, return remainder in degree |d|
+  C factor_by_1_plus_q_to_the(Degree k,Degree d);
 
   std::ostream& print(std::ostream& strm, const char* x) const;
 
@@ -165,7 +168,7 @@ template <typename C>
   void safeAdd(const Safe_Poly& p, Degree d, C c); // *this += c*q^d*p
   void safeAdd(const Safe_Poly& p, Degree d = 0);  // *this += q^d*p
   void safeDivide(C c);  // *this = *this/c
-  void safeQuotient(Degree d = 0);  // *this = (*this + mq^d)/(q+1)
+  void safe_quotient_by_1_plus_q(Degree delta);  // *this = (*this + mq^d)/(q+1)
 
   void safeSubtract(const Safe_Poly& p, Degree d, C c);
   void safeSubtract(const Safe_Poly& p, Degree d = 0 );

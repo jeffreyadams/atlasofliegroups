@@ -453,23 +453,24 @@ Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
   if (2*Q.degree()>d)
   {
     assert(M_deg!=0 and M_deg<3); // now |0<M_deg<3|
-    M= Pol(M_deg,Q[Q.degree()]);
+    M= Pol(M_deg,Q[Q.degree()]); // copy leading coefficient from |Q| to |M|
     M[0]=M[M_deg]; // symmetrise
-    assert(Q.degree()>=M_deg);
-    Q -= Pol(Q.degree()-M_deg,M); // subtract contribution
+    assert(Q.degree()>=M_deg); // |Q| should have sufficient degree for:
+    Q -= Pol(Q.degree()-M_deg,M); // subtract contribution of |M| from |Q|
     assert(2*Q.degree()<=d); // terms of strictly positive degree are gone
   }
-  int c = Q.factor_by(1,d/2); // division by $q+1$ is done here
-  assert (c==0 or d%2==0); // if $d$ odd, there should be no remainder
-  if (c==0)
+  // now divide by $1+q$, allowing remainder (degree $d/2$) from middle term |M|
+  int c = Q.factor_by_1_plus_q(d/2);
+  assert (c==0 or d%2==0); // if $d$ odd, there should be no such remainder
+  if (c==0) // and in any case, if there was no remainder, leave |M| as is
     return M;
 
-  // now add constant $c$ to $m$, since $cr^d$ had to be subtracted from $Q$
+  // otherwise add constant $c$ to $m$, as $cr^d$ had to be subtracted from $Q$
   if (M.isZero())
     M=Pol(c); // if there were no terms, create one of degree $0$
   else
   {
-    assert(M_deg==2); // in which case "constant" term is in the middle
+    assert(M_deg==2); // now the constant term of |m| has index 1 in |M|
     M[1]=c;
   }
   return M;
@@ -623,10 +624,15 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
     { // first seek proper |s|
       unsigned i; ext_block::DescValue tsx; weyl::Generator s;
       for (i=0; i<rn_s.size(); ++i)
-	if (is_proper_ascent(tsx=type(s=rn_s[i],x)) // (we don't do 'ic' here)
-	    and ( not is_like_type_1(tsx)
-		  or aux.easy_set(aux.block.cross(s,x),y).any()) )
-	    break;
+      { tsx=type(s=rn_s[i],x); // save values for in case we |break| below
+	if (is_like_type_1(tsx) // take cases like i1 only if (endgame case):
+	   ? aux.easy_set(aux.block.cross(s,x),y).any() // another |t| helps;
+	   : is_proper_ascent(tsx) // all other ascents except rn for x are OK
+	   )
+	  break;
+	if (is_like_compact(tsx))
+	  break; // having types (ic,rn) for $x,y$ allows new recursion too
+      }
 
       if (i<rn_s.size()) // that is, we did |break| above
       {	// so we still have |s==rn_s[i]| and |tsx==type(s,x)|
@@ -664,7 +670,8 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	       a term in effective degree $r^1$, from |mu(1,x,y)| that is not
 	       included in $M[sx]$ when used to fill |Q| in loop above */
 	    int c = // remainder in upward division by $[T_x](T_s+1).T_x=1+q$
-	      Q.factor_by(1,(aux.block.l(y,x)+1)/2); // deg $\ceil l(y/x)/2$
+	      // the remainder being taken in degree $\ceil l(y/x)/2$
+	      Q.factor_by_1_plus_q((aux.block.l(y,x)+1)/2);
 	    if (aux.block.l(y,x)%2!=0)
 	      assert(-c==Q.coef(aux.block.l(y,x)/2));
 	    else
@@ -722,6 +729,14 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	      Q -= aux.block.T_coef(s,x,sx.second)*cy[sx.second]; // idem
  	    Q/=2; // divide by |T_coef(s,x,x)==2|
 	  }
+	  break;
+	case ext_block::one_imaginary_compact:
+	case ext_block::one_real_pair_switched:
+	case ext_block::two_imaginary_compact:
+	case ext_block::two_real_single_double_switched:
+	case ext_block::three_imaginary_compact:
+	  // these cases require no additional terms to be substracted
+	  Q.factor_by_1_plus_q_to_the(k,(aux.block.l(y,x)+3)/2); // degree OK?
 	  break;
 	default: assert(false); // other cases should not have selected |s|
 	} // |switch(tx)|

@@ -921,7 +921,7 @@ void KLContext::newRecursionRow
 
       unsigned int s= ascent_descent(x,y);
       if (s<rank()) // a primitive element that is not extremal; easy case
-      { // equation (1.9b) in recursion.pdf
+      { // equation (1.9) in recursion.pdf
 	assert(descentValue(s,x)==DescentStatus::ImaginaryTypeII);
 	BlockEltPair p = cayley(s,x);
 	KLPol pol = klPol(p.first,y,kl_p,pr_p,pr.end());
@@ -970,7 +970,7 @@ void KLContext::newRecursionRow
 	     leading (if nonzero) term to appear in addition to (3.4), giving
 	     rise to equation (3.7). Yet we can determine the quotient by q+1.
 	  */
-	  pol.safeQuotient(length(y)-length(x));
+	  pol.safe_quotient_by_1_plus_q(length(y)-length(x));
 	  break;
 
 	default: assert(false); //we've handled all possible NiceAscents

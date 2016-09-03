@@ -52,8 +52,8 @@ template<typename C>
     d_data.push_back(c);
 }
 
-/*!
-  \brief Constructs cX^d.
+/*
+  Constructs cX^d.
 
   We construct cX^d, and not the zero polynomial, so that our basic assumption
   about the degree (leading coefficient is nonzero) is satisfied.
@@ -94,8 +94,8 @@ C& Polynomial<C>::operator[] (Degree i)
   return d_data[i];
 }
 
-/*!
-  \brief Adjusts the size of d_data so that it corresponds to the degree + 1.
+/*
+  Adjusts the size of d_data so that it corresponds to the degree + 1.
 
   Just casts away any leading zero coefficients, possibly all of them
 */
@@ -215,20 +215,38 @@ template<typename C> C Polynomial<C>::up_remainder(C c, Degree d) const
   return remainder; // excess that was found in |coef(d)| for exact division
 }
 
-// non const version of the same, changing polynomial into the quotient
-template<typename C> C Polynomial<C>::factor_by(C c, Degree d)
+// version of the same, with $c=1$, that also changes |*this| into the quotient
+template<typename C> C Polynomial<C>::factor_by_1_plus_q(Degree d)
 {
   if (isZero())
     return C(0);
-  assert(degree()<=d);
-  if (d>degree())
+  assert(this->degree()<=d);
+  if (d>this->degree())
     d_data.resize(d+1,C(0)); // extend with zero coefficients to make degree $d$
   C remainder = d_data[0];
   for (Degree i=1; i<=d; ++i) // |d_data[i-1]| becomes quotient coefficient
-    remainder = (d_data[i] -= c*remainder); // |d_data[i]| is now remainder
-  d_data[d]=0; // kill remainder in top coefficient, its value is held in |sum|
-  adjustSize();
+    remainder = (d_data[i] -= remainder); // |d_data[i]| is now remainder
+  d_data[d]=0; // kill |remainder| that is now in the top coefficient
+  adjustSize(); // and then reduce quotient size to match its actual degree
   return remainder; // excess that was found in |d_data[d]| for exact division
+}
+
+// version of the preceeding with division by $1+q^k$ rather than by $1+q$
+template<typename C>
+C Polynomial<C>::factor_by_1_plus_q_to_the(Degree k,Degree d)
+{
+  if (isZero())
+    return C(0);
+  assert(this->degree()<=d);
+  if (d>this->degree())
+    d_data.resize(d+1,C(0)); // extend with zero coefficients to make degree $d$
+  for (Degree i=k; i<=d; ++i) // quotient captures |d_data[i-k]|
+    d_data[i] -= d_data[i-k]; // and term in degree |i| remains to be treated
+  C result = d_data[d];
+  for (Degree i=k; i-->0;)
+    d_data[d-k]=0; // kill off remainder and lower degree terms
+  adjustSize();
+  return result;
 }
 
 template<typename C>
@@ -242,8 +260,8 @@ bool Polynomial<C>::multi_term () const
   return false;
 }
 
-/*!
-  \brief Polynomial comparison: whether p < q
+/*
+  Polynomial comparison: whether p < q
 
   Explanation: p < q if deg(p) < deg(q), or if degrees are equal, and the
   comparison holds for coefficients, in lex-order starting from the top.
@@ -315,8 +333,8 @@ std::ostream& Polynomial<C>::print(std::ostream& strm, const char* x) const
  *****************************************************************************/
 
 
-/*!
-  \brief a += b.
+/*
+  a += b.
 
   Throws a NumericOverflow exception in case of overflow.
 */
@@ -330,8 +348,8 @@ template<typename C> void safeAdd(C& a, C b)
     a += b;
 }
 
-/*!
-  \brief a /= b.
+/*
+  a /= b.
 
   Throws a NumericOverflow exception in case of nondivisibility.
 */
@@ -344,8 +362,8 @@ template<typename C> void safeDivide(C& a, C b)
 }
 
 
-/*!
-  \brief a *= b.
+/*
+  a *= b.
 
   Throws a NumericOverflow exception in case of overflow.
 */
@@ -363,8 +381,8 @@ template<typename C> void safeProd(C& a, C b)
 }
 
 
-/*!
-  \brief a -= b.
+/*
+  a -= b.
 
   Throws a NumericUnderflow exception in case of underflow.
 */
@@ -379,8 +397,8 @@ template<typename C> void safeSubtract(C& a, C b)
 }
 
 
-/*!
-  \brief Adds x^d.c.q, to *this, watching for overflow, assuming |c>0|.
+/*
+  Adds x^d.c.q, to *this, watching for overflow, assuming |c>0|.
 
   NOTE: may forward a NumericOverflow exception.
 
@@ -436,37 +454,48 @@ void Safe_Poly<C>::safeDivide(C c)
     polynomials::safeDivide((*this)[j],c); //this may throw
 }
 
-/* Divides polynomials by $q+1$, imagining if necessary an additional leading
-term \mu*q^{d+1} to make division exact, with appropriate scalar \mu and
-d=(delta-1)/2 should be whole. We'll have delta==l(y)-l(x), whence the name.
+/*
+  Divide polynomial by $q+1$, imagining if necessary an additional leading
+  term of degree $(delta+1)/2$ (must be integer) to make division exact.
 
-Imagining such a term should be necessary only if the current degree of the
-polynomial is precisely $d$, since the quotient must have non-negative
-coefficients, and if it has a positive coefficient of $q^d$ then so does its
-product by $q+1$.
+  The following reasoning is applied in order to make the strongest possible
+  |assert|, while looping only over the coefficients initially present. Two
+  cases are possible: the quotient is of degree strictly less than the maximal
+  allowed $d=(delta-1)/2$, allowed, or it has degree $d$. The former holds if
+  and only if the original polynomial, which is $q+1$ times the quotient with
+  any term of degree $d+1$ suppressed, is divisible by $q+1$; on the other
+  hand in the latter case the original polynomial must have had degree $d$, as
+  its the coefficient in degree $d$ is the sum of the positive leading
+  coefficient and the non-negative preceeding coefficient of the quotient.
 
-However it could be that $\mu=0$, in which case the polynomial is already
-divisible by $q+1$; then the quotient must have degree strictly less than the
-half-integer $(delta-1)/2$. Whence the assertion |2*degree()<delta-1$.
-*/
+  So after doing the upward division up to |this->degree()|, we test the value
+  in what used to be the leading coefficient. If it is zero, the division was
+  exact, and we get the quotient simply by calling |adjustSize| which will
+  precisely drop this one coefficient; then we assert the (quotient) degree is
+  less than $d$ (expressed as |2*degree()+1<delta|). Otherwise the nonzero
+  value we tested is actually the leading term of the quotient, which we
+  assert to be of degree $d$ exactly. (For this case we may imagine the loop
+  going on one more step to kill off the fictive coefficient in degree $d+1$.)
+  In particular we do not need, in this final case, to call |adjustSize|.
+ */
 template<typename C>
-void Safe_Poly<C>::safeQuotient(Degree delta)
+void Safe_Poly<C>::safe_quotient_by_1_plus_q(Degree delta)
 {
   if (base::isZero()) // this avoids problems with |base::degree()|
     return; // need not and cannot invent nonzero \mu*q^{d+1} here
   for (size_t j = 1; j <= base::degree(); ++j)
     polynomials::safeSubtract((*this)[j],(*this)[j-1]); // does c[j] -= c[j-1]
-  if ((*this)[base::degree()]==0) // number tested is the candidate for \mu
-  { // polynomial was already multiple of q+1
+  if ((*this)[base::degree()]==0) // test coefficient in old leading term
+  { // then upward division was exact: polynomial was already multiple of q+1
     base::adjustSize(); // decreases degree by exactly 1
-    assert(2*base::degree()+1<delta);
+    assert(2*base::degree()+1<delta); // quotient had degree less than $d$
   }
-  else
-    assert(2*base::degree()+1==delta); // a term \mu*q^{d+1} is needed
+  else // we need to imagine a term $\mu*q^{d+1}$ with nonzero $\mu$
+    assert(2*base::degree()+1==delta); // and quotient must have degree $d$
 }
 
-/*!
-  \brief Subtracts x^d.c.q from *this, watching for underflow, assuming |c>0|
+/*
+  Subtracts x^d.c.q from *this, watching for underflow, assuming |c>0|
 
   NOTE: may forward a NumericUnderflow exception.
 
