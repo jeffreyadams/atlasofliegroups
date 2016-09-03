@@ -730,17 +730,75 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	case ext_block::two_real_single_double_switched:
 	case ext_block::three_imaginary_compact:
 	  {
+	    switch (k)
 	    // here we just need to divide Q by q^k+1, I think
 	    // but I only know how to divide by q+1!
 	    //	    std::cerr << "got to (ic,rn); (x,y)=(" << x <<"," << y
 	    //		      << "), Q=" << Q << std::endl;
-	    int c = // remainder in upward division by $[T_x](T_s+1).T_x=1+q$
-	      Q.factor_by(1,(aux.block.l(y,x)+1)/2); // deg $\ceil l(y/x)/2$
-	    assert(c==0);
-	  }
+	      {
+	      case 1:
+		{
+		  int c = // remainder in upward division
+		  // by $[T_x](T_s+1).T_x=1+q$
+		    //see comment in kl.cpp around line 870: division may be
+		    //inexact. 
+		  Q.factor_by(1,(aux.block.l(y,x)+1)/2); // deg $\ceil l(y/x)/2$
+		  /*	  if(c !=0)
+		    {
+		      std::cerr << "x = " << x << ", y = " << y <<
+			", l(y,x) = " << aux.block.l(y,x) << ", Q = " 
+			<< Q << std::endl;
+		    }
+
+		  assert(c==0);
+		  */
+		}
+		break;
+	      case 2:
+		{
+		  if(Q.isZero()) break;
+		  //		  std::cerr << "x = " << x << ", y = " << y
+		  //<< ", Q = " <<
+		  //  Q <<  std::endl;
+		  unsigned d=Q.degree();
+		  int top=0;
+		  int next=0;
+		  int sgn=1;
+		  for(unsigned i=0; 2*i <= d; ++i)
+		    {
+		      top += sgn*Q.coef(d-2*i);
+		      if (d != 2*i) next +=sgn*Q.coef(d-2*i-1);
+		      sgn=-sgn;
+		    }
+		  //	  std::cerr << "top = " << top << ", next = " <<
+		  //  next << std::endl; 
+		  assert(top==0 and next==0);
+		  Q -= Pol(d,Q.coef(d));
+		  if(Q.coef(d-1) != 0) Q -= Pol(d-1,Q.coef(d-1));
+		  for(unsigned i=2; i<d-1; ++i) // work on coef of q^i
+		    {
+		      sgn=-1;
+		      for(unsigned j=1; 2*j <= i; ++j)
+			{
+			  if(Q.coef(i-2*j) != 0)
+			    Q += Pol(i,sgn*Q.coef(i-2*j));
+			  sgn = -sgn;
+			}
+		    }//loop on q^i term in Q
+		}// |case k=2|
+		break;
+	      case 3:
+		{
+		  // I think that if there is a 3rn simple,
+		  // then Q = P(x,y) = 0.
+		}
+		break;
+	      default: assert(false); // k is supposed to be 1, 2, or 3	      	
+	      } // |switch(k)|
 	  break;
+	  }
 	default: assert(false); // other cases should not have selected |s|
-	} // |switch(tx)|
+	} // |switch(tsx)|
 	// now |Q| is stored in |cy[x]|
       } // end of |if(i<rn_s.size())|; no |else|, just leave |cy[x]==Pol(0)|
     } // end of easy/hard condition
@@ -775,8 +833,15 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 
 bool check(const Pol& P_sigma, const KLPol& P)
 {
-  if (P_sigma.isZero())
+
+ if (P_sigma.isZero())
+  { if (P.isZero())
+      return true;
+    for (unsigned i=0; i<=P.degree(); ++i)
+      if (P[i]%2!=0)
+	return false;
     return true;
+  }
   if (P.isZero() or P_sigma.degree()>P.degree())
     return false;
   for (polynomials::Degree i=0; i<=P.degree(); ++i)
