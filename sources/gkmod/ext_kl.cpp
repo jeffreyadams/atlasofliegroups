@@ -303,7 +303,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
     Pol Q = product_comp(x,s,y);
     if (a!=0)
       Q -= Pol((bl.l(z,x)-1)/2,qk_plus_1(2)*a); // shaves top term
-    assert(2*Q.degree()<=bl.l(z,x)+1);
+    assert(Q.isZero() or 2*Q.degree()<=bl.l(z,x)+1);
     int b= Q.up_remainder(1,(bl.l(z,x)+1)/2); // remainder by $q+1$
 
     /* since odd degree $m_s(u,y)$ do not contribute to $q+1$ remainder
@@ -425,7 +425,7 @@ void KL_table::fill_columns(BlockElt y)
  */
 Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
 {
-  assert(2*Q.degree()<d+3 and Q.degree()<=d);
+  assert(Q.isZero() or (2*Q.degree()<d+3 and Q.degree()<=d));
   unsigned M_deg = 2*Q.degree()-d; // might be negative; if so, unused
   Pol M(0); // result
 
@@ -457,7 +457,7 @@ Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
     M[0]=M[M_deg]; // symmetrise
     assert(Q.degree()>=M_deg); // |Q| should have sufficient degree for:
     Q -= Pol(Q.degree()-M_deg,M); // subtract contribution of |M| from |Q|
-    assert(2*Q.degree()<=d); // terms of strictly positive degree are gone
+    assert(Q.isZero() or 2*Q.degree()<=d); // terms of strictly positive degree are gone
   }
   // now divide by $1+q$, allowing remainder (degree $d/2$) from middle term |M|
   int c = Q.factor_by_1_plus_q(d/2);
