@@ -739,7 +739,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	  Q.factor_by_1_plus_q_to_the(k,(aux.block.l(y,x)+3)/2); // degree OK?
 	  break;
 	default: assert(false); // other cases should not have selected |s|
-	} // |switch(tx)|
+	} // |switch(tsx)|
 	// now |Q| is stored in |cy[x]|
       } // end of |if(i<rn_s.size())|; no |else|, just leave |cy[x]==Pol(0)|
     } // end of easy/hard condition
