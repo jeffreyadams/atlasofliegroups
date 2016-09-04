@@ -231,7 +231,11 @@ template<typename C> C Polynomial<C>::factor_by_1_plus_q(Degree d)
   return remainder; // excess that was found in |d_data[d]| for exact division
 }
 
-// version of the preceeding with division by $1+q^k$ rather than by $1+q$
+// version of the preceding with division by $1+q^k$ rather than by $1+q$
+// desired behavior: divide this by 1+q^k, keeping just the terms up to
+// degree d-k; last k correspond to remainder. (More useful to have
+// the return balue the remainder, perhaps written as of degree at
+// most k-1?) But for ext_kl application this is fine.)
 template<typename C>
 C Polynomial<C>::factor_by_1_plus_q_to_the(Degree k,Degree d)
 {
@@ -244,7 +248,8 @@ C Polynomial<C>::factor_by_1_plus_q_to_the(Degree k,Degree d)
     d_data[i] -= d_data[i-k]; // and term in degree |i| remains to be treated
   C result = d_data[d];
   for (Degree i=k; i-->0;)
-    d_data[d-k]=0; // kill off remainder and lower degree terms
+    d_data[d-i]=0; // kill off remainder and lower degree terms
+		   // [corrected from d_data[d-k]
   adjustSize();
   return result;
 }
