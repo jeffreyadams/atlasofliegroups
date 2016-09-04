@@ -68,7 +68,7 @@ namespace commands {
   void gextblock_f();
   void deform_f();
   void kl_f();
-  void ext_kl_f();
+  void extkl_f();
   void klbasis_f();
   void kllist_f();
   void primkl_f();
@@ -119,7 +119,7 @@ CommandNode reprNode()
   result.add("klwrite",klwrite_f,"second");
   result.add("wcells",wcells_f,"second");
   result.add("wgraph",wgraph_f,"second");
-  result.add("extkl",ext_kl_f,"computes the KL polynomials for extended block");
+  result.add("extkl",extkl_f,"computes the KL polynomials for extended block");
 
   // add test commands
   test::addTestCommands<ReprmodeTag>(result);
@@ -143,7 +143,11 @@ const SubSystemWithGroup& currentSubSystem() { return *sub; }
 
 const StandardRepr& currentStandardRepr() { return *sr; }
 
-
+kl::KLContext& current_param_KL()
+{
+  return current_param_block().klc(current_param_block().size()-1,true);
+}
+  
 /****************************************************************************
 
         Chapter II -- The repr mode |CommandNode|
@@ -361,7 +365,7 @@ void gextblock_f()
     std::cout << "Extended block structure check failed." << std::endl;
 }
 
-void ext_kl_f()
+void extkl_f()
 {
   ensure_full_block();
   WeightInvolution delta = interactive::get_commuting_involution
@@ -456,7 +460,7 @@ void deform_f()
 */
 void klbasis_f()
 {
-  const kl::KLContext& klc = currentKL();
+  const kl::KLContext& klc = current_param_KL();
 
   ioutils::OutputFile file;
   file << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:"
@@ -468,7 +472,7 @@ void klbasis_f()
 // Print the list of all distinct Kazhdan-Lusztig-Vogan polynomials
 void kllist_f()
 {
-  const kl::KLContext& klc = currentKL();
+  const kl::KLContext& klc = current_param_KL();
 
   ioutils::OutputFile file;
   kl_io::printKLList(file,klc);
@@ -484,7 +488,7 @@ void kllist_f()
 
 void primkl_f()
 {
-  const kl::KLContext& klc = currentKL();
+  const kl::KLContext& klc = current_param_KL();
 
   ioutils::OutputFile file;
   file << "Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
@@ -500,7 +504,7 @@ void klwrite_f()
   interactive::open_binary_file
     (coefficient_out,"File name for polynomial output: ");
 
-  const kl::KLContext& klc = currentKL();
+  const kl::KLContext& klc = current_param_KL();
 
   if (matrix_out.is_open())
   {
