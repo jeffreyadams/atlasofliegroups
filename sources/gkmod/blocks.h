@@ -357,9 +357,9 @@ class param_block : public Block_base
 
 
  private:
-  // order block by increasing value of |x(z)|, adapting tables accoringly
-  // also sets lengths, and |first_z_of_x| recording where |x(z)| changes
-  KGBElt sort_by_x();
+  // recompute lengths and order block by increasing value of them, and by
+  // increaing |x(z)| among elements of given length; adapt tables accoringly
+  void sort_by_length();
 
   BlockElt earlier(KGBElt x,KGBElt y) const // find already constructed element
   { return z_hash.find(block_elt_entry(x,y)); } // used during construction

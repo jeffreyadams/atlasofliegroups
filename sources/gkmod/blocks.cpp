@@ -280,18 +280,38 @@ weyl::Generator Block_base::firstStrictGoodDescent(BlockElt z) const
 }
 
 
-KGBElt param_block::sort_by_x()
+void param_block::sort_by_length()
 {
-  KGBElt x_lim=0; // high-water mark for |new_x| values
-  KGBEltList xs(info.size()); // gather vector of |x| values over the block
+  const unsigned max_length = info.back().length;
+  KGBEltList xs; xs.reserve(size()); // overdimensioned
+  Permutation pi_inv(size()); // filled below
+  const KGBElt x_lim=realGroup().KGB_size(); // limit for |x| values
 
-  // compute upper limit for |x| values
-  for (BlockElt z=0; z<size(); ++z)
-    if ((xs[z]=x(z))>=x_lim)
-      x_lim=xs[z]+1;
+  BlockElt z=0; // start at the split end, where old length is minimal
+  auto it = pi_inv.begin(); // output iterator likewise starts at beginning
+  for (unsigned old_length=0; old_length<=max_length; ++old_length)
+  { unsigned new_length = max_length-old_length;
+    xs.clear();
+    if (new_length>0)
+      for ( ; length(z)==old_length; ++z)
+      { info[z].length=new_length; // reencode length relative to compact
+	xs.push_back(x(z)); // and record the |x| value
+      }
+    else // on the last stretch check for going through the top instead
+      for ( ; z<size(); ++z)
+      { info[z].length=new_length;
+	xs.push_back(x(z));
+      }
 
-  auto pi_inv = // assigns each block element |z| to its new place
-    permutations::standardization(xs,x_lim,nullptr);
+    // from |xs|, extract a partial permutation by standardization
+    Permutation partial = permutations::standardization(xs,x_lim,nullptr);
+
+    // now transfer those values into |pi_inv|, shifting appropriately
+    const unsigned long base=size()-z; // remaining elements will come before
+    for (unsigned long i=0; i<xs.size(); ++i)
+      *it++ = base + partial[i]; // final rank of of element giving |xs[i]|
+  }
+  assert (it==pi_inv.end());
 
   Permutation pi(pi_inv,-1);
 
@@ -315,22 +335,7 @@ KGBElt param_block::sort_by_x()
     } // |for z|
   } // |for s|
 
-  // now all links are correct, deduce length information from them
-  for (BlockElt z=0; z<size(); ++z) // must be te outer loop here
-    for (weyl::Generator s=0; s<rank(); ++s)
-      if (isStrictDescent(s,z)) // compute length from below if possible
-      {
-	BlockElt sz = descentValue(s,z)==DescentStatus::ComplexDescent
-	  ? cross(s,z) : inverseCayley(s,z).first;
-	if (info[z].length==0)
-	  info[z].length=info[sz].length+1;
-	else
-	  assert(info[z].length==info[sz].length+1); // cannot change nonzero
-      }
-
-
-  return x_lim;
-} // |param_block::sort_by_x|
+} // |param_block::sort_by_length|
 
 // Here is one method not related to block construction
 /*
@@ -901,10 +906,11 @@ y_entry nblock_help::pack_y(const nblock_elt& z) const
 }
 
 
+// add a new block element to |z_hash| and (therfore) to |info|
 void param_block::add_z(KGBElt x,KGBElt y)
 {
   size_t old_size=info.size();
-  BlockElt z=z_hash.match(block_elt_entry(x,y));
+  BlockElt z=z_hash.match(block_elt_entry(x,y)); // constructor sets |length==0|
   assert(z==old_size);
   assert(z+1==info.size());
   ndebug_use(old_size);
@@ -1002,16 +1008,16 @@ param_block::param_block
       data[s].reserve(y_hash.size());
 
     for (size_t i=0; i<y_hash.size(); ++i)
-      add_z(x0,i); // length is on dual side
+      add_z(x0,i); // this adds information to |info|; we leave |length==0|
 
   } // end of step 3
 
   // step 4: generate packets for successive involutions
 
-  std::vector<BlockElt> queue(1,info.size()); // involution packet boundaries
-  std::vector<KGBElt> ys; ys.reserve(0x100); // enough for |1<<RANK_MAX|
-  std::vector<KGBElt> cross_ys(ys.size()); cross_ys.reserve(0x100);
-  std::vector<KGBElt> Cayley_ys(ys.size()); Cayley_ys.reserve(0x100);
+  BlockEltList queue(1,info.size()); // involution packet boundaries
+  KGBEltList ys; ys.reserve(0x100); // enough for |1<<RANK_MAX|
+  KGBEltList cross_ys(ys.size()); cross_ys.reserve(0x100);
+  KGBEltList Cayley_ys(ys.size()); Cayley_ys.reserve(0x100);
 
   BitMap x_seen(kgb.size());
   x_seen.insert(z_start.x()); // the only value of |x| seen so far
@@ -1023,6 +1029,9 @@ param_block::param_block
 
     const KGBElt first_x = x(next);
     const InvolutionNbr i_theta = kgb.inv_nr(first_x);
+
+    // precompute (reversed) length for anything generated this iteration
+    const auto next_length = info[next].length+1;
 
     ys.clear();
     size_t nr_y = 0;
@@ -1083,6 +1092,8 @@ param_block::param_block
 
 	    add_z(s_x_n,cross_ys[j]);
 	    // same |x| neighbour throughout loop, but |y| neighbour varies
+
+	    info.back().length=next_length;
 	  } // |for(j)|
 	  // |d_first_z_of_x.push_back(info.size())| would mark end of R-packet
 	} // |if(new_cross)|
@@ -1092,7 +1103,7 @@ param_block::param_block
 
 	// compute component |s| of |info[z].descent|, this |n|, all |y|s
 	KGBElt conj_n = kgb.cross(sub.to_simple(s),n); // conjugate
-	bool do_Cayley=false; // is made |true| if a real parity case is found
+	bool any_Cayley=false; // is made |true| if a real parity case is found
 	switch(kgb.status(sub.simple(s),conj_n))
 	{
 	case gradings::Status::Complex:
@@ -1123,7 +1134,7 @@ param_block::param_block
 	      info[base_z+j].descent.set(s,DescentStatus::RealNonparity);
 	    else
 	    {
-	      do_Cayley=true;
+	      any_Cayley=true;
 	      if (cross_ys[j] != ys[j])
 		info[base_z+j].descent.set(s,DescentStatus::RealTypeII);
 	      else
@@ -1135,78 +1146,80 @@ param_block::param_block
 
 
 	// now do inverse Cayley transform through |s| if applicable
-	if (do_Cayley)
-	{
-	  KGBEltPair Cayleys = kgb.inverseCayley(sub.simple(s),conj_n);
-	  KGBElt ctx1 = kgb.cross(Cayleys.first,sub.to_simple(s));
+	if (not any_Cayley)
+	  continue; // if there were no valid Cayley links, we're done for |i|
 
-	  if (i==0)
-	  { // |do_Cayley| is independent of |x|; if so, do in first R-packet:
-	    assert(y_hash.size()==y_start); // nothing created by cross actions
+	KGBEltPair Cayleys = kgb.inverseCayley(sub.simple(s),conj_n);
+	KGBElt ctx1 = kgb.cross(Cayleys.first,sub.to_simple(s));
 
-	    bool new_Cayley = not x_seen.isMember(ctx1);
+	if (i==0)
+	{ // |any_Cayley| was independent of |x|; if so, do in first R-packet:
+	  assert(y_hash.size()==y_start); // nothing created by cross actions
 
-	    // independent of new creation, fill |Cayley_ys|, extend |y_hash|
-	    for (unsigned int j=0; j<nr_y; ++j)
-	      if (descentValue(s,base_z+j) != DescentStatus::RealNonparity)
-	      {
-		nblock_elt z(n,y_hash[ys[j]].repr());
-		aux.do_down_Cayley(z,s);
-		Cayley_ys.push_back(y_hash.match(aux.pack_y(z)));
-	      }
+	  bool new_Cayley = not x_seen.isMember(ctx1);
 
-	    if (new_Cayley) // then we need to create new R-packets
+	  // independent of new creation, fill |Cayley_ys|, extend |y_hash|
+	  for (unsigned int j=0; j<nr_y; ++j)
+	    if (descentValue(s,base_z+j) != DescentStatus::RealNonparity)
 	    {
-	      // complete fiber of x's over new involution using
-	      // subsystem imaginary cross actions
-              RootNbrSet pos_imag = // subsystem positive imaginary roots
-		sub.positive_roots() & i_tab.imaginary_roots(kgb.inv_nr(ctx1));
-	      RootNbrList ib = rd.simpleBasis(pos_imag);
-	      auto orbit = BitMap{kgb.size()};
-	      orbit.insert(ctx1);
-	      { auto todo = containers::queue<KGBElt> {}; // no list init
-		todo.push(ctx1); // so manually insert
-		do
-		{ KGBElt cur_x = todo.front(); todo.pop();
-		  for (size_t r=0; r<ib.size(); ++r)
-		  {
-		    KGBElt new_x = kgb.cross(rd.reflectionWord(ib[r]),cur_x);
-		    if (not orbit.isMember(new_x))
-		      orbit.insert(new_x), todo.push(new_x);
-		  } // |for(r)|
-		}
-		while (not todo.empty());
-	      }
-	      x_seen |= orbit;
-	      // then generate corrsponding part of block, combining (x,y)'s
-	      for (auto it=orbit.begin(); it(); ++it)
-		for (unsigned int y=y_start; y<y_hash.size(); ++y)
-		  add_z(*it,y);
+	      nblock_elt z(n,y_hash[ys[j]].repr());
+	      aux.do_down_Cayley(z,s);
+	      Cayley_ys.push_back(y_hash.match(aux.pack_y(z)));
+	    }
 
-	      // finallly make sure that Cayley links slots exist for code below
-	      tab_s.resize(info.size());
-	    } // |if (new_Cayley)|: finished creating new R-packets
-	  } // |if (i==0)|: finished work for first |x| when some |y| is parity
+	  if (new_Cayley) // then we need to create new R-packets
+	  {
+	    // complete fiber of x's over new involution using
+	    // subsystem imaginary cross actions
+	    RootNbrSet pos_imag = // subsystem positive imaginary roots
+	      sub.positive_roots() & i_tab.imaginary_roots(kgb.inv_nr(ctx1));
+	    RootNbrList ib = rd.simpleBasis(pos_imag);
+	    auto orbit = BitMap{kgb.size()};
+	    orbit.insert(ctx1);
+	    { auto todo = containers::queue<KGBElt> {}; // no list init
+	      todo.push(ctx1); // so manually insert
+	      do
+	      { KGBElt cur_x = todo.front(); todo.pop();
+		for (size_t r=0; r<ib.size(); ++r)
+		{
+		  KGBElt new_x = kgb.cross(rd.reflectionWord(ib[r]),cur_x);
+		  if (not orbit.isMember(new_x))
+		    orbit.insert(new_x), todo.push(new_x);
+		} // |for(r)|
+	      }
+	      while (not todo.empty());
+	    }
+	    x_seen |= orbit;
+	    // then generate corrsponding part of block, combining (x,y)'s
+	    for (auto it=orbit.begin(); it(); ++it)
+	      for (unsigned int y=y_start; y<y_hash.size(); ++y)
+	      {
+		add_z(*it,y);
+		info.back().length=next_length;
+	      }
+
+	    // finallly make sure that Cayley links slots exist for code below
+	    tab_s.resize(info.size());
+	  } // |if (new_Cayley)|: finished creating new R-packets
+	} // |if (i==0)|: finished work for first |x| when some |y| is parity
 
 	  // now in all cases make links using |element| lookup
-	  for (unsigned int j=0,p=0; j<nr_y; ++j) // |p| counts parity |y|s only
-	    if (descentValue(s,base_z+j)!=DescentStatus::RealNonparity)
+	for (unsigned int j=0,p=0; j<nr_y; ++j) // |p| counts parity |y|s only
+	  if (descentValue(s,base_z+j)!=DescentStatus::RealNonparity)
+	  {
+	    KGBElt cty=Cayley_ys[p++]; // unique Cayley transform of |y|
+	    BlockElt target = earlier(ctx1,cty);
+	    tab_s[base_z+j].Cayley_image.first = target;
+	    first_free_slot(tab_s[target].Cayley_image) = base_z+j;
+	    if (Cayleys.second!=UndefKGB) // then double valued (type1)
 	    {
-	      KGBElt cty=Cayley_ys[p++]; // unique Cayley transform of |y|
-	      BlockElt target = earlier(ctx1,cty);
-	      tab_s[base_z+j].Cayley_image.first = target;
+	      KGBElt ctx2 = kgb.cross(Cayleys.second,sub.to_simple(s));
+	      assert (x_seen.isMember(ctx2));
+	      target = earlier(ctx2,cty);
+	      tab_s[base_z+j].Cayley_image.second = target;
 	      first_free_slot(tab_s[target].Cayley_image) = base_z+j;
-	      if (Cayleys.second!=UndefKGB) // then double valued (type1)
-	      {
-		KGBElt ctx2 = kgb.cross(Cayleys.second,sub.to_simple(s));
-		assert (x_seen.isMember(ctx2));
-		target = earlier(ctx2,cty);
-		tab_s[base_z+j].Cayley_image.second = target;
-		first_free_slot(tab_s[target].Cayley_image) = base_z+j;
-	      }
+	    }
 	  } // |for(j)|
-
-	} // |if(do_Cayley)|
 
       } // |for(i)
 
@@ -1216,7 +1229,7 @@ param_block::param_block
   } // |for (next<queue[qi])|
   // end of step 4
 
-  sort_by_x(); // reorder block by increasing value of |x|
+  sort_by_length(); // reorder block by increasing value of |x|
   z_hash.reconstruct(); // adapt to permutation of the block
 
   compute_duals(G,sub); // finally compute Hermitian duals
