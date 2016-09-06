@@ -783,7 +783,7 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 	  assert(block.descentValue(p.s1,t)==DescentStatus::ImaginaryTypeII);
 	  link=block.cayley(p.s1,t).first;
 	  if (not fixed_points.isMember(link))
-	    link=block.cross(p.s0,link), assert(fixed_points.isMember(link));
+	    link=block.cross(p.s1,link), assert(fixed_points.isMember(link));
 	  return three_semi_imaginary;
 	}
 	link=block.cross(p.s0,block.cross(p.s1,t));
