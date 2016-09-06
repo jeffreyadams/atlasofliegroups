@@ -233,9 +233,9 @@ template<typename C> C Polynomial<C>::factor_by_1_plus_q(Degree d)
 
 // version of the preceding with division by $1+q^k$ rather than by $1+q$
 // desired behavior: divide this by 1+q^k, keeping just the terms up to
-// degree d-k; last k correspond to remainder. (More useful to have
-// the return balue the remainder, perhaps written as of degree at
-// most k-1?) But for ext_kl application this is fine.)
+// degree d-k; last k correspond to remainder. (It might be more useful to have
+// the return value the remainder, but that would require returning type
+// |Polynomial<C>|, which in the current application in ext_kl is ignored.)
 template<typename C>
 C Polynomial<C>::factor_by_1_plus_q_to_the(Degree k,Degree d)
 {
@@ -249,7 +249,6 @@ C Polynomial<C>::factor_by_1_plus_q_to_the(Degree k,Degree d)
   C result = d_data[d];
   for (Degree i=k; i-->0;)
     d_data[d-i]=0; // kill off remainder and lower degree terms
-		   // [corrected from d_data[d-k]
   adjustSize();
   return result;
 }
