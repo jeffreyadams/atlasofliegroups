@@ -241,7 +241,7 @@ Permutation standardization(const std::vector<U>& a, size_t bound,
     size_t ci=count[i]; count[i]=sum; sum+=ci;
   }
   // now |count[v]| holds number of values less than |v| in |a|
-  if (stops!=NULL)
+  if (stops!=nullptr)
   { stops->reserve(bound+1);
     stops->assign(count.begin(),count.end());
     stops->push_back(sum);

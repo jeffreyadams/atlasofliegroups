@@ -117,7 +117,7 @@
   set for the RealNonparity case (note that this is opposite to the status of
   imaginary and real generators in the other (parity) cases). These cases do
   not count as strict descent/ascent however, as is indicated in the
-  predicate emthods |isStrictDescent| and |isStrictAscent| below.
+  predicate methods |isStrictDescent| and |isStrictAscent| below.
 */
 
 namespace atlas {
@@ -165,7 +165,6 @@ inline BlockElt& first_free_slot(BlockEltPair& p)
 
 Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
   : info(), data(kgb.rank()), orbits()
-  , d_first_z_of_x() // filled below
   , dd(kgb.innerClass().rootDatum().cartanMatrix())
   , d_bruhat(NULL)
   , klc_ptr(NULL)
@@ -175,7 +174,6 @@ Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
 // an almost trivial constructor used for derived non-integral block types
 Block_base::Block_base(unsigned int rank)
   : info(), data(rank), orbits()
-  , d_first_z_of_x()
   , dd()
   , d_bruhat(NULL)
   , klc_ptr(NULL)
@@ -183,7 +181,6 @@ Block_base::Block_base(unsigned int rank)
 
 Block_base::Block_base(const Block_base& b) // copy constructor, unused
   : info(b.info), data(b.data), orbits(b.orbits)
-  , d_first_z_of_x(b.d_first_z_of_x)
   , dd(b.dd)
   , d_bruhat(NULL) // don't care to copy; is empty in |Block::build| anyway
   , klc_ptr(NULL)  // likewise
@@ -205,7 +202,7 @@ Block_base::~Block_base() { delete d_bruhat; delete klc_ptr; }
   one present for |x| (there must be at least one) we can predict the value
   directly, since for each fixed |x| value the values of |y| are consecutive.
 */
-BlockElt Block_base::element(KGBElt xx,KGBElt yy) const
+BlockElt Block::element(KGBElt xx,KGBElt yy) const
 {
   BlockElt first=d_first_z_of_x[xx];
   BlockElt z = first +(yy-y(first));
@@ -283,7 +280,7 @@ weyl::Generator Block_base::firstStrictGoodDescent(BlockElt z) const
 }
 
 
-KGBElt Block_base::sort_by_x()
+KGBElt param_block::sort_by_x()
 {
   KGBElt x_lim=0; // high-water mark for |new_x| values
   KGBEltList xs(info.size()); // gather vector of |x| values over the block
@@ -294,13 +291,13 @@ KGBElt Block_base::sort_by_x()
       x_lim=xs[z]+1;
 
   auto pi_inv = // assigns each block element |z| to its new place
-    permutations::standardization(xs,x_lim,&d_first_z_of_x);
+    permutations::standardization(xs,x_lim,nullptr);
 
   Permutation pi(pi_inv,-1);
 
   info = pi.pull_back(info); // permute |info|, move-assign
 
-  // now adapt |data| tables, assumed to be already computed, and set lengths
+  // now adapt |data| tables, assumed to be already computed
   for (weyl::Generator s=0; s<rank(); ++s)
   {
     std::vector<block_fields>& tab_s = data[s];
@@ -333,7 +330,7 @@ KGBElt Block_base::sort_by_x()
 
 
   return x_lim;
-} // |Block_base::sort_by_x|
+} // |param_block::sort_by_x|
 
 // Here is one method not related to block construction
 /*
@@ -403,7 +400,7 @@ BlockEltPair Block_base::link
 
 // manipulators
 
-void Block_base::compute_first_zs() // assumes |x| values weakly increase
+void Block::compute_first_zs() // assumes |x| values weakly increase
 {
   d_first_z_of_x.resize(xsize()+1);
   KGBElt xx=0;
@@ -457,6 +454,7 @@ Block::Block(const Block& b) // obligatory but in practice unused contruction
   , tW(b.tW) // share
   , d_Cartan(b.d_Cartan)
   , d_involution(b.d_involution)
+  , d_first_z_of_x(b.d_first_z_of_x)
   , d_involutionSupport(b.d_involutionSupport)
 {}
 
@@ -466,7 +464,8 @@ Block::Block(const KGB& kgb,const KGB& dual_kgb)
   : Block_base(kgb,dual_kgb)
   , tW(kgb.twistedWeylGroup())
   , xrange(kgb.size()), yrange(dual_kgb.size())
-  , d_Cartan(), d_involution(), d_involutionSupport() // filled below
+  , d_Cartan(), d_involution(), d_first_z_of_x(), d_involutionSupport()
+    // these fields are filled below
 {
   const TwistedWeylGroup& dual_tW =dual_kgb.twistedWeylGroup();
 
@@ -968,9 +967,9 @@ param_block::param_block
 	    aux.do_up_Cayley(z_start,s);
 	  }
 	  break;
-	} // |if(isDescent)|
+	} // |if(isAscent)|
       } // |for(s)|
-    while(s<our_rank); // loop until no descents found in |subsys|
+    while(s<our_rank); // loop until no ascents found in |subsys|
 
     // DON'T assert(x+1==kgb.size()); fails e.g. in complex groups, empty |sub|
 
@@ -1428,7 +1427,7 @@ param_block::param_block
       xs[i]=info[i].x;
 
     auto stzn = // assigns each block element |z| to its new place
-      permutations::standardization(xs,x_org+1,&d_first_z_of_x);
+      permutations::standardization(xs,x_org+1,nullptr);
 
     info = Permutation(stzn,-1).pull_back(info); // permute |info|
     z_hash.reconstruct(); // adapt to permutation of the block
@@ -1727,8 +1726,9 @@ dual_involution(const TwistedInvolution& w,
   return result;
 }
 
-
-std::vector<BlockElt> dual_map(const Block_base& b, const Block_base& dual_b)
+// given dual blocks, map numbers from first block to their partner in second
+// this can only work with |Block| values, since the |element| lookup is used
+std::vector<BlockElt> dual_map(const Block& b, const Block& dual_b)
 {
   assert(b.size()==dual_b.size());
 

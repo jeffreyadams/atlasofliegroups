@@ -38,7 +38,7 @@ namespace blocks {
      const TwistedWeylGroup& dual_W);
 
   // map from numbering of |b| to that of |dual_b|, assuming latter is dual
-  std::vector<BlockElt> dual_map(const Block_base& b, const Block_base& dual_b);
+  std::vector<BlockElt> dual_map(const Block& b, const Block& dual_b);
 
   BitMap common_Cartans(RealReductiveGroup& GR,	RealReductiveGroup& dGR);
 
@@ -83,10 +83,6 @@ class Block_base
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
   ext_gens orbits;
 
-  // map KGB element |x| to the first block element |z| with |this->x(z)>=x|
-  // this vector may remain empty if |element| virtual methodis redefined
-  std::vector<BlockElt> d_first_z_of_x; // of size |xsize+1|
-
   DynkinDiagram dd;
   // possible tables of Bruhat order and Kazhdan-Lusztig polynomials
   BruhatOrder* d_bruhat;
@@ -122,9 +118,6 @@ class Block_base
 
   KGBElt x(BlockElt z) const { assert(z<size()); return info[z].x; }
   KGBElt y(BlockElt z) const { assert(z<size()); return info[z].y; }
-
-  // Look up element by |x|, |y| coordinates
-  virtual BlockElt element(KGBElt x,KGBElt y) const;
 
   size_t length(BlockElt z) const { return info[z].length; }
 
@@ -182,12 +175,6 @@ class Block_base
   kl::KLContext& klc(BlockElt last_y, bool verbose)
   { fill_klc(last_y,verbose); return *klc_ptr; }
 
- protected:
-  // order block by increasing value of |x(z)|, adapting tables accoringly
-  // also sets lengths, and |first_z_of_x| recording where |x(z)| changes
-  KGBElt sort_by_x();
-  void compute_first_zs(); // set |first_z_of_x| according to |x| values
-
  private:
   void fillBruhat();
   void fill_klc(BlockElt last_y,bool verbose);
@@ -227,9 +214,10 @@ class Block : public Block_base
   std::vector<size_t> d_Cartan; // of size |size()|
   TwistedInvolutionList d_involution; // of size |size()|
 
-  /*!
-\brief Flags the generators occurring in reduced expression for |d_involution|.
-  */
+  // map KGB element |x| to the first block element |z| with |this->x(z)>=x|
+  BlockEltList d_first_z_of_x; // of size |xsize+1|
+
+  // Flags the generators occurring in reduced expression for |d_involution|.
   std::vector<RankFlags> d_involutionSupport; // of size |size()|
 
 
@@ -261,6 +249,9 @@ class Block : public Block_base
   virtual KGBElt xsize() const { return xrange; }
   virtual KGBElt ysize() const { return yrange; }
 
+  // Look up element by |x|, |y| coordinates
+  BlockElt element(KGBElt x,KGBElt y) const;
+
   size_t Cartan_class(BlockElt z) const
     { assert(z<size()); return d_Cartan[z]; }
 
@@ -288,6 +279,7 @@ class Block : public Block_base
 
   // private accessor and manipulators
 private:
+  void compute_first_zs(); // set |first_z_of_x| according to |x| values
   void compute_supports(); // used during construction
 
 }; // |class Block|
@@ -365,6 +357,10 @@ class param_block : public Block_base
 
 
  private:
+  // order block by increasing value of |x(z)|, adapting tables accoringly
+  // also sets lengths, and |first_z_of_x| recording where |x(z)| changes
+  KGBElt sort_by_x();
+
   BlockElt earlier(KGBElt x,KGBElt y) const // find already constructed element
   { return z_hash.find(block_elt_entry(x,y)); } // used during construction
 
