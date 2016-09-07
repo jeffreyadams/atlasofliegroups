@@ -280,62 +280,48 @@ weyl::Generator Block_base::firstStrictGoodDescent(BlockElt z) const
 }
 
 
-void param_block::sort_by_length()
+void param_block::reverse_length_and_sort(bool full_block)
 {
-  const unsigned max_length = info.back().length;
-  KGBEltList xs; xs.reserve(size()); // overdimensioned
-  Permutation pi_inv(size()); // filled below
+  const unsigned max_length = // full block ends compact, partial blcok starts so
+    (full_block ? info.back() : info.front()).length;
+
   const KGBElt x_lim=realGroup().KGB_size(); // limit for |x| values
+  std::vector<unsigned> value(size(),0u); // values to be ranked below
 
-  BlockElt z=0; // start at the split end, where old length is minimal
-  auto it = pi_inv.begin(); // output iterator likewise starts at beginning
-  for (unsigned old_length=0; old_length<=max_length; ++old_length)
-  { unsigned new_length = max_length-old_length;
-    xs.clear();
-    if (new_length>0)
-      for ( ; length(z)==old_length; ++z)
-      { info[z].length=new_length; // reencode length relative to compact
-	xs.push_back(x(z)); // and record the |x| value
-      }
-    else // on the last stretch check for going through the top instead
-      for ( ; z<size(); ++z)
-      { info[z].length=new_length;
-	xs.push_back(x(z));
-      }
-
-    // from |xs|, extract a partial permutation by standardization
-    Permutation partial = permutations::standardization(xs,x_lim,nullptr);
-
-    // now transfer those values into |pi_inv|, shifting appropriately
-    const unsigned long base=size()-z; // remaining elements will come before
-    for (unsigned long i=0; i<xs.size(); ++i)
-      *it++ = base + partial[i]; // final rank of of element giving |xs[i]|
+  for (BlockElt i=0; i<size(); ++i)
+  { assert(length(i)<=max_length);
+    auto new_len = info[i].length = max_length-length(i); // reverse length
+    value[i]= new_len*x_lim+x(i); // length has priority over value of |x|
   }
-  assert (it==pi_inv.end());
 
-  Permutation pi(pi_inv,-1);
+  Permutation ranks = // standardization permutation, to be used for reordering
+    permutations::standardization(value,(max_length+1)*x_lim,nullptr);
 
-  info = pi.pull_back(info); // permute |info|, move-assign
+  ranks.permute(info); // permute |info| by increasing |value|
+  z_hash.reconstruct(); // adapt to permutation of the block
+
+  if (not full_block) // data fields are inserted only later for partial block
+    return; // so in that case we are done
 
   // now adapt |data| tables, assumed to be already computed
   for (weyl::Generator s=0; s<rank(); ++s)
   {
     std::vector<block_fields>& tab_s = data[s];
-    tab_s = pi.pull_back(tab_s); // permute fields of |data[s]|
+    ranks.permute(tab_s); // permute fields of |data[s]|
     for (BlockElt z=0; z<size(); ++z) // and update cross and Cayley links
     {
-      tab_s[z].cross_image=pi_inv[tab_s[z].cross_image];
+      tab_s[z].cross_image = ranks[tab_s[z].cross_image];
       BlockEltPair& p=tab_s[z].Cayley_image;
       if (p.first!=UndefBlock)
       {
-	p.first=pi_inv[p.first];
+	p.first=ranks[p.first];
 	if (p.second!=UndefBlock)
-	  p.second=pi_inv[p.second];
+	  p.second=ranks[p.second];
       }
     } // |for z|
   } // |for s|
 
-} // |param_block::sort_by_length|
+} // |param_block::reverse_length_and_sort|
 
 // Here is one method not related to block construction
 /*
@@ -614,7 +600,7 @@ void Block::compute_supports()
   } // |for(z)|
 } // |Block::compute_supports|
 
-// 		****	     Nothing else for |Block|		****
+//		****	     Nothing else for |Block|		****
 
 
 
@@ -710,7 +696,7 @@ BlockEltList param_block::survivors_below(BlockElt z) const
 	    z = iC.second; // continue with right branch, adding its results
 	  }
 	  break;
-       	default: assert(false); // should never happen, but compiler wants it
+	default: assert(false); // should never happen, but compiler wants it
 	}
 	break; // restart outer loop if a descent was applied
       } // |if(descent(*it,z)|
@@ -1229,7 +1215,7 @@ param_block::param_block
   } // |for (next<queue[qi])|
   // end of step 4
 
-  sort_by_length(); // reorder block by increasing value of |x|
+  reverse_length_and_sort(true); // reorder block by increasing value of |x|
   z_hash.reconstruct(); // adapt to permutation of the block
 
   compute_duals(G,sub); // finally compute Hermitian duals
@@ -1327,7 +1313,7 @@ BlockElt
       if (not is_real_nonparity(z,s)) // excludes real nonparity
       { // so we now know that |z| has a type 1 real descent at |s|
 	do_down_Cayley(sz,s);
- 	sz_inx = nblock_below(sz,level+1);
+	sz_inx = nblock_below(sz,level+1);
 	pred.reserve(predecessors[sz_inx].size()+2); // a rough estimate
 	pred.push_back(sz_inx);
 	cross_act(sz,s); // get other inverse Cayley image of |z|
@@ -1438,29 +1424,11 @@ param_block::param_block
   size_t size= last+1;
   assert(info.size()==size); // |info| should have obtained precisely this size
 
+
+  reverse_length_and_sort(false); // do reversal operation for partial block
+
   // allocate link fields with |UndefBlock| entries
   data.assign(our_rank,std::vector<block_fields>(size));
-
-  { // reverse length and then sort by length first, and then by |x|
-    unsigned max_length=length(0);
-    for (BlockElt i=1; i<size; ++i)
-      if (length(i)>max_length)
-	max_length=length(i);
-
-    std::vector<unsigned> value(size,0u);
-    const unsigned x_lim = realGroup().KGB_size(); // limit for |x| values
-
-    for (BlockElt i=0; i<size; ++i)
-    { auto new_len = info[i].length = max_length-length(i); // reverse length
-      value[i]= new_len*x_lim+x(i); // length has priority over value of |x|
-    }
-
-    auto stdz = // standardization permutation, to be used for reordering
-      permutations::standardization(value,(max_length+1)*x_lim,nullptr);
-
-    stdz.permute(info); // permute |info| by increasing |value|
-    z_hash.reconstruct(); // adapt to permutation of the block
-  }
 
   // compute all links for all elements in partial block, by increasing length
   for (BlockElt i=0; i<size; ++i)
