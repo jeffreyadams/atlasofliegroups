@@ -143,7 +143,11 @@ bool descent_table::extr_back_up(BlockElt& x, BlockElt y) const
 KL_table::KL_table(const ext_block::ext_block& b, std::vector<Pol>& pool)
   : aux(b), storage_pool(pool), column()
   , untwisted(b.untwisted())
-{ untwisted.fill(false); }
+{
+#ifndef NDEBUG
+  untwisted.fill(false);
+#endif 
+}
 
 Pol KL_table::P(BlockElt x, BlockElt y) const
 {
