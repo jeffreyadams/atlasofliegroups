@@ -147,7 +147,7 @@ kl::KLContext& current_param_KL()
 {
   return current_param_block().klc(current_param_block().size()-1,true);
 }
-  
+
 /****************************************************************************
 
         Chapter II -- The repr mode |CommandNode|

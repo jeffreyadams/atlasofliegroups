@@ -1258,6 +1258,7 @@ struct partial_nblock_help : public nblock_help
   , predecessors()
 {}
 
+  // accessors
   KGBElt conj_in_x(weyl::Generator s,KGBElt x) const
   { return kgb.cross(sub.to_simple(s),x); }
   KGBElt conj_out_x(KGBElt x,weyl::Generator s) const
@@ -1283,13 +1284,18 @@ struct partial_nblock_help : public nblock_help
     else return lookup(z.x(),y);
   }
 
-  BlockElt nblock_below (const nblock_elt& z); // the main method
+  // manipulator
+
+  // the main method, a recursive function
+  // construct elements below |z|, at depth |level| from the root call
+  BlockElt nblock_below (const nblock_elt& z, unsigned level);
 
 }; // |class partial_nblock_help|
 
 // |nblock_below| extends |y_hash|, and |z_hash| with |z|, having ensured the
 // presence of its predecessors. Returns (new, current max) hash index of |z|
-BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
+BlockElt
+  partial_nblock_help::nblock_below (const nblock_elt& z, unsigned level)
 {
   { // check if already known, but don't add to |z_hash| yet if not
     BlockElt res = lookup(z);
@@ -1311,7 +1317,7 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
     if (kgb.isComplexDescent(sub.simple(s),conj_x))
     {
       cross_act(sz,s);
-      sz_inx = nblock_below(sz);
+      sz_inx = nblock_below(sz,level+1);
       pred.reserve(predecessors[sz_inx].size()+1); // a rough estimate
       pred.push_back(sz_inx); // certainly |sz| is predecessor of |z|
       break; // we shall add $s$-ascents of |predecessors[sz_inx]| below
@@ -1321,37 +1327,19 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
       if (not is_real_nonparity(z,s)) // excludes real nonparity
       { // so we now know that |z| has a type 1 real descent at |s|
 	do_down_Cayley(sz,s);
- 	sz_inx = nblock_below(sz);
+ 	sz_inx = nblock_below(sz,level+1);
 	pred.reserve(predecessors[sz_inx].size()+2); // a rough estimate
 	pred.push_back(sz_inx);
 	cross_act(sz,s); // get other inverse Cayley image of |z|
-	pred.push_back(nblock_below(sz)); // and include it in |pred|
+	pred.push_back(nblock_below(sz,level+1)); // and include it in |pred|
 	break; // we shall add $s$-ascents of |predecessors[sz_inx]| below
       } // |if (real_parity)|
     } // |if (doubleCayleyImage)|
 
   } // |for (s)|
 
-  // if above loop completed, there are no complex or real type I descents
-  if (s==sub.rank()) // only real type II descents, insert and return those
-  {
-    pred.reserve(sub.rank()); // enough, and probably more than that
-    while (s-->0) // we reverse the loop just because it looks cute
-    {
-      nblock_elt sz = z; // have a copy ready for modification
-      KGBElt conj_x= conj_in_x(s,z.x());
-      if (kgb.status(sub.simple(s),conj_x)==gradings::Status::Real)
-      {
-	if (not is_real_nonparity(z,s)) // then it was real type II
-	{
-	  assert (not kgb.isDoubleCayleyImage(sub.simple(s),conj_x));
-	  do_down_Cayley(sz,s);
-	  pred.push_back(nblock_below(sz)); // recurr, but ignore descents
-	}
-      }
-    } // |while (s-->0)|
-  } // |if (s==sub.rank())|
-  else // add all |s|-ascents for elements covered by |sz|
+  // if above loop performed a |break| it found complex or real type I descent
+  if (s<sub.rank()) // if so, add |s|-ascents for elements covered by |sz|
     for (BlockElt i=0; i<predecessors[sz_inx].size(); ++i)
     {
       nblock_elt c = get(predecessors[sz_inx][i]); // convert from |BlockElt|
@@ -1364,28 +1352,47 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
 	if (not kgb.isDescent(sub.simple(s),conj_x)) // complex ascent
 	{
 	  cross_act(c,s);
-	  pred.push_back(nblock_below(c));
+	  pred.push_back(nblock_below(c,level+1));
 	} // |if(complex ascent)
 	break;
       case gradings::Status::ImaginaryNoncompact:
 	{
 	  bool type_2 = kgb.cross(sub.simple(s),conj_x)==conj_x;
 	  do_up_Cayley(c,s);
-	  pred.push_back(nblock_below(c));
+	  pred.push_back(nblock_below(c,level+1));
 
 	  if (type_2)
 	  {
 	    cross_act(c,s); // this changes |c| since we are in type 2
-	    pred.push_back(nblock_below(c));
+	    pred.push_back(nblock_below(c,level+1));
 	  }
 	}
 	break;
       } // |switch(status(s,conj_x))|
     } // |for (i)|
+  else // the loop on |s| above compled, finding only real type II descents
+  { // insert and return those descents
+    pred.reserve(sub.rank()); // enough, and probably more than that
+    while (s-->0) // we reverse the loop just because it looks cute
+    {
+      nblock_elt sz = z; // have a copy ready for modification
+      KGBElt conj_x= conj_in_x(s,z.x());
+      if (kgb.status(sub.simple(s),conj_x)==gradings::Status::Real)
+      {
+	if (not is_real_nonparity(z,s)) // then it was real type II
+	{
+	  assert (not kgb.isDoubleCayleyImage(sub.simple(s),conj_x));
+	  do_down_Cayley(sz,s);
+	  pred.push_back(nblock_below(sz,level+1)); // recurr ignoring descents
+	}
+      }
+    } // |while (s-->0)|
+  } // |if (s==sub.rank())|
 
   // finally we can add |z| to |z_hash|, after all its Bruhat-predecessors
   assert(z_hash.size()==predecessors.size());
-  BlockElt res = z_hash.match(block_elt_entry(z.x(),y_hash.match(pack_y(z))));
+  block_elt_entry e(z.x(),y_hash.match(pack_y(z)),DescentStatus(),level);
+  BlockElt res = z_hash.match(e);
   assert(res==predecessors.size()); // |z| must have been added just now
   predecessors.push_back(pred); // store list of elements covered by |z|
   return res;
@@ -1426,7 +1433,7 @@ param_block::param_block
   const nblock_elt org(x_org,y_values::exp_pi(infin_char-rc.lambda(sr)));
 
   // generate partial block in |aux|
-  BlockElt last=aux.nblock_below(org); // this fills |y_hash| and |z_hash|
+  BlockElt last=aux.nblock_below(org,0); // this fills |y_hash| and |z_hash|
 
   size_t size= last+1;
   assert(info.size()==size); // |info| should have obtained precisely this size
@@ -1434,15 +1441,24 @@ param_block::param_block
   // allocate link fields with |UndefBlock| entries
   data.assign(our_rank,std::vector<block_fields>(size));
 
-  { // sort |info| by |x| value; cannot call |sort_by_x| as |data| not yet set
-    KGBEltList xs(info.size()); // gather vector of |x| values over the block
-    for (size_t i=0; i<info.size(); ++i)
-      xs[i]=info[i].x;
+  { // reverse length and then sort by length first, and then by |x|
+    unsigned max_length=length(0);
+    for (BlockElt i=1; i<size; ++i)
+      if (length(i)>max_length)
+	max_length=length(i);
 
-    auto stzn = // assigns each block element |z| to its new place
-      permutations::standardization(xs,x_org+1,nullptr);
+    std::vector<unsigned> value(size,0u);
+    const unsigned x_lim = realGroup().KGB_size(); // limit for |x| values
 
-    info = Permutation(stzn,-1).pull_back(info); // permute |info|
+    for (BlockElt i=0; i<size; ++i)
+    { auto new_len = info[i].length = max_length-length(i); // reverse length
+      value[i]= new_len*x_lim+x(i); // length has priority over value of |x|
+    }
+
+    auto stdz = // standardization permutation, to be used for reordering
+      permutations::standardization(value,(max_length+1)*x_lim,nullptr);
+
+    stdz.permute(info); // permute |info| by increasing |value|
     z_hash.reconstruct(); // adapt to permutation of the block
   }
 
@@ -1454,7 +1470,7 @@ param_block::param_block
     DescentStatus& desc_z = info[i].descent;
     for (weyl::Generator s=0; s<our_rank; ++s)
     {
-      std::vector<block_fields>& tab_s = data[s];
+      auto& tab_s = data[s];
       nblock_elt cur = aux.get(i); // element |z| as |nblock_elt|
 
       KGBElt conj_x = aux.conj_in_x(s,z.x);
@@ -1466,10 +1482,7 @@ param_block::param_block
 	  BlockElt sz = aux.lookup(cur);
 	  assert(sz!=aux.z_hash.empty); // should be in generated partial block
 	  tab_s[i].cross_image = sz; tab_s[sz].cross_image = i;
-	  if (length(i)==0) // not yet set
-	    info[i].length=aux.length(sz)+1; // set it
-	  else
-	    assert(length(i)==aux.length(sz)+1); // test it
+	  assert(length(i)==length(sz)+1);
 	  desc_z.set(s,DescentStatus::ComplexDescent);
 	  assert(descentValue(s,sz)==DescentStatus::ComplexAscent);
 	}
@@ -1487,10 +1500,7 @@ param_block::param_block
 	    aux.do_down_Cayley(cur,s);
 	    BlockElt sz = aux.lookup(cur);
 	    tab_s[i].Cayley_image.first = sz; // first inverse Cayley
-	    if (length(i)==0) // not yet set
-	      info[i].length=aux.length(sz)+1; // set it
-	    else
-	      assert(length(i)==aux.length(sz)+1); // test it
+	    assert(length(i)==length(sz)+1);
 
 	    if (kgb.isDoubleCayleyImage(sub.simple(s),conj_x)) // real type 1
 	    {
@@ -1501,7 +1511,7 @@ param_block::param_block
 	      aux.cross_act(cur,s);
 	      sz = aux.lookup(cur);
 	      assert(descentValue(s,sz)==DescentStatus::ImaginaryTypeI);
-	      assert(aux.length(sz)+1==length(i));
+	      assert(length(i)==length(sz)+1);
 	      tab_s[i].Cayley_image.second = sz; // second inverse Cayley
 	      tab_s[sz].Cayley_image.first = i;  // single-valued Cayley
 	    }
@@ -1521,31 +1531,29 @@ param_block::param_block
 
 	} // |s| is real
       } // |if(isDescent)|
-      else if (kgb.status(sub.simple(s),conj_x)==gradings::Status::Complex)
-	desc_z.set(s,DescentStatus::ComplexAscent);
-      // cross link will be set if and when complex ascent appears in block
-      else // imaginary
-      {
-	if (kgb.status(sub.simple(s),conj_x)
-	    == gradings::Status::ImaginaryCompact)
+      else // ascent, links will be set if and when its ascent appears in block
+	if (kgb.status(sub.simple(s),conj_x)==gradings::Status::Complex)
+	  desc_z.set(s,DescentStatus::ComplexAscent);
+	else // imaginary
 	{
-	  desc_z.set(s,DescentStatus::ImaginaryCompact);
-	  tab_s[i].cross_image = i;
-	}
-	else if (kgb.cross(sub.simple(s),conj_x)==conj_x)
-	{
-	  desc_z.set(s,DescentStatus::ImaginaryTypeII);
-	  tab_s[i].cross_image = i;
-	}
-	else
-	{ // In imaginary type 1 situation |z| has a nontrivial cross action
-	  desc_z.set(s,DescentStatus::ImaginaryTypeI);
-	  KGBElt cross_x = aux.conj_out_x(kgb.cross(sub.simple(s),conj_x),s);
-	  BlockElt sz=aux.lookup(cross_x,z.y);
-          if (sz!=aux.z_hash.empty) // cross neighbour might be absent
-	    tab_s[i].cross_image = sz;
-	}
-      }
+	  if (kgb.status(sub.simple(s),conj_x)
+	      == gradings::Status::ImaginaryCompact)
+	  { desc_z.set(s,DescentStatus::ImaginaryCompact);
+	    tab_s[i].cross_image = i;
+	  }
+	  else if (kgb.cross(sub.simple(s),conj_x)==conj_x)
+	  { desc_z.set(s,DescentStatus::ImaginaryTypeII);
+	    tab_s[i].cross_image = i;
+	  }
+	  else // imaginary type 1; here |z| has a nontrivial cross action
+	  { desc_z.set(s,DescentStatus::ImaginaryTypeI);
+	    KGBElt cross_x = aux.conj_out_x(kgb.cross(sub.simple(s),conj_x),s);
+	    BlockElt sz=aux.lookup(cross_x,z.y);
+	    if (sz!=aux.z_hash.empty) // cross neighbour might be absent
+	      tab_s[i].cross_image = sz;
+	  }
+	} // end of imaginary case, and of case distinction
+
     } // |for(s)|
   } // |for(i)|
 
