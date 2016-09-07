@@ -226,7 +226,7 @@ bool ext_block::toggle_edge(BlockElt x,BlockElt y, bool verbose)
 	info[y].flips[data[kappa][y].links.first==x ? 0 : 1].flip(kappa);
       }
     }
-  assert(found);
+  assert(found); ndebug_use(found);
   return bit;
 }
 
@@ -250,7 +250,7 @@ bool ext_block::set_edge(BlockElt x,BlockElt y)
 	info[y].flips[data[kappa][y].links.first==x ? 0 : 1].set(kappa);
       }
     }
-  assert(found);
+  assert(found); ndebug_use(found);
   return bit;
 }
 
@@ -1835,8 +1835,7 @@ BlockElt ext_block::Cayley(weyl::Generator s, BlockElt n) const
 
 BlockEltPair ext_block::Cayleys(weyl::Generator s, BlockElt n) const
 {
-  const DescValue type = descent_type(s,n);
-  assert(has_double_image(type));
+  assert(has_double_image(descent_type(s,n)));
   return data[s][n].links;
 }
 

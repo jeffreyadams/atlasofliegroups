@@ -357,9 +357,13 @@ class param_block : public Block_base
 
 
  private:
-  // recompute lengths and order block by increasing value of them, and by
-  // increaing |x(z)| among elements of given length; adapt tables accoringly
-  void sort_by_length();
+/*
+  reverse lengths and order block with them increasing, and by increasing
+  |x(z)| among elements of given length; adapt tables accordingly. Argument
+  |full_block| tells whether a full (rather than partial) block was generated;
+  in this case (only) the |data| fields are adapted to the permutation
+ */
+  void reverse_length_and_sort(bool full_block);
 
   BlockElt earlier(KGBElt x,KGBElt y) const // find already constructed element
   { return z_hash.find(block_elt_entry(x,y)); } // used during construction
