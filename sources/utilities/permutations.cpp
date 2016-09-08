@@ -219,11 +219,13 @@ void Permutation::inv_conjugate(matrix::Matrix_base<T>& M) const
 }
 
 
-// Standardization is a method of associating to a sequence of numbers |a| a
-// permutation |pi|, such that |a[i]<a[j]| implies |pi[i]<pi[j], and
-// |a[i]<a[j]| implies that |pi[i]<pi[j] is equivalent to |i<j|. Equivalently,
-// setting |a=standardization(a).permute(a)| amounts to stable sorting of |a|.
-// Complexity is $O(n+bound)$ with $n=#a$; good (only) if $bound=O(n log(n))$.
+/*
+  Standardization is a method of associating to a sequence of numbers |a| a
+  permutation |pi|, such that |a[i]<a[j]| implies |pi[i]<pi[j], and
+  |a[i]==a[j]| implies that |pi[i]<pi[j] is equivalent to |i<j|. Equivalently,
+  setting |a=standardization(a).permute(a)| amounts to stable sorting of |a|.
+  Complexity is $O(n+bound)$ with $n=#a$; good (only) if $bound=O(n log(n))$.
+*/
 template <typename U>// unsigned type
 Permutation standardization(const std::vector<U>& a, size_t bound,
 			    std::vector<unsigned int>* stops)
@@ -241,7 +243,7 @@ Permutation standardization(const std::vector<U>& a, size_t bound,
     size_t ci=count[i]; count[i]=sum; sum+=ci;
   }
   // now |count[v]| holds number of values less than |v| in |a|
-  if (stops!=NULL)
+  if (stops!=nullptr)
   { stops->reserve(bound+1);
     stops->assign(count.begin(),count.end());
     stops->push_back(sum);

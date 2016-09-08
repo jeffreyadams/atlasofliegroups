@@ -62,7 +62,7 @@ class SubSystem : public RootSystem // new system, subsytem of dual
   , rd(s.rd) // share this one
   , pos_map(s.pos_map), inv_map(s.inv_map), sub_root(s.sub_root) // copy those
   {
-    assert(false); // should never be actually called, but exist nonetheless
+    //  assert(false); // should never be actually called, but exist nonetheless
   }
 
   const RootDatum& parent_datum() const { return rd; }
@@ -125,7 +125,7 @@ class SubSystemWithGroup : public SubSystem
   : SubSystem(s) // copy base object
   , sub_W(s.cartanMatrix()) // reconstruct (Weyl group cannot be copied)
   {
-    assert(false); // should never be actually called, but exist nonetheless
+    // assert(false); // should never be actually called, but exist nonetheless
   }
 
   const WeylGroup& Weyl_group() const { return sub_W; }

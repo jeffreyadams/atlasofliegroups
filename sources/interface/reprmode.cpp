@@ -41,6 +41,7 @@
 #include "wgraph.h"
 #include "wgraph_io.h"
 #include "test.h"
+#include "ext_kl.h"
 
 /****************************************************************************
 
@@ -67,6 +68,7 @@ namespace commands {
   void gextblock_f();
   void deform_f();
   void kl_f();
+  void extkl_f();
   void klbasis_f();
   void kllist_f();
   void primkl_f();
@@ -117,6 +119,7 @@ CommandNode reprNode()
   result.add("klwrite",klwrite_f,"second");
   result.add("wcells",wcells_f,"second");
   result.add("wgraph",wgraph_f,"second");
+  result.add("extkl",extkl_f,"computes the KL polynomials for extended block");
 
   // add test commands
   test::addTestCommands<ReprmodeTag>(result);
@@ -140,6 +143,10 @@ const SubSystemWithGroup& currentSubSystem() { return *sub; }
 
 const StandardRepr& currentStandardRepr() { return *sr; }
 
+kl::KLContext& current_param_KL()
+{
+  return current_param_block().klc(current_param_block().size()-1,true);
+}
 
 /****************************************************************************
 
@@ -358,6 +365,41 @@ void gextblock_f()
     std::cout << "Extended block structure check failed." << std::endl;
 }
 
+void extkl_f()
+{
+  ensure_full_block();
+  WeightInvolution delta = interactive::get_commuting_involution
+    (commands::current_layout(), commands::current_lattice_basis());
+
+  auto& block = current_param_block();
+  if (not ((delta-1)*block.gamma().numerator()).isZero())
+  {
+    std::cout << "Chosen delta does not fix gamma=" << block.gamma()
+	      << " for the current block." << std::endl;
+    return;
+  }
+  ext_block::ext_block eblock(current_inner_class(),block,
+			      currentRealGroup().kgb(),delta);
+  if (check(eblock,block,true))
+  {
+    std::vector<ext_kl::Pol> pool;
+    ext_kl::KL_table twisted_KLV(eblock,pool);
+    twisted_KLV.fill_columns();
+
+    ioutils::OutputFile f;
+    for (BlockElt y=0; y<eblock.size(); ++y)
+      for (BlockElt x=y+1; x-->0; )
+	if (not twisted_KLV.P(x,y).isZero())
+	{
+	  f << "P(" << eblock.z(x) << ',' << eblock.z(y) << ")=";
+	  f << twisted_KLV.P(x,y) << std::endl;
+	}
+  }
+  else
+    std::cout << "Extended block structure check failed." << std::endl;
+}
+
+
 void kl_f()
 {
   ioutils::OutputFile file;
@@ -418,7 +460,7 @@ void deform_f()
 */
 void klbasis_f()
 {
-  const kl::KLContext& klc = currentKL();
+  const kl::KLContext& klc = current_param_KL();
 
   ioutils::OutputFile file;
   file << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:"
@@ -430,7 +472,7 @@ void klbasis_f()
 // Print the list of all distinct Kazhdan-Lusztig-Vogan polynomials
 void kllist_f()
 {
-  const kl::KLContext& klc = currentKL();
+  const kl::KLContext& klc = current_param_KL();
 
   ioutils::OutputFile file;
   kl_io::printKLList(file,klc);
@@ -446,7 +488,7 @@ void kllist_f()
 
 void primkl_f()
 {
-  const kl::KLContext& klc = currentKL();
+  const kl::KLContext& klc = current_param_KL();
 
   ioutils::OutputFile file;
   file << "Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
@@ -462,7 +504,7 @@ void klwrite_f()
   interactive::open_binary_file
     (coefficient_out,"File name for polynomial output: ");
 
-  const kl::KLContext& klc = currentKL();
+  const kl::KLContext& klc = current_param_KL();
 
   if (matrix_out.is_open())
   {

@@ -97,7 +97,8 @@ namespace {
   // functions for the test commands
 
   void test_f();
-  void braid_f();
+  //  void block_braid_f();
+  void repr_braid_f();
   void go_f();
 
   void roots_rootbasis_f();
@@ -155,6 +156,9 @@ namespace {
 template<>
 void addTestCommands<commands::EmptymodeTag> (commands::CommandNode& mode)
 {
+  mode.add("go",go_f,
+	   "generates difficult SO(7,7) extended block, and runs 'braid'",
+	   commands::use_tag);
   mode.add("testrun",testrun_f,
 	   "iterates over root data of given rank, calling examine",
 	   commands::use_tag);
@@ -222,6 +226,11 @@ void addTestCommands<commands::RealmodeTag> (commands::CommandNode& mode)
 template<>
 void addTestCommands<commands::BlockmodeTag> (commands::CommandNode& mode)
 {
+#if 0 // function cannot be defined without sign-fixing for such blocks
+  mode.add("bbraid",block_braid_f,
+	   "tests braid relations on an extended block",commands::use_tag);
+#endif
+
   mode.add("go",go_f,
 	   "generates difficult SO(5,5) extended block, and runs 'braid'",
 	   commands::use_tag);
@@ -235,7 +244,7 @@ void addTestCommands<commands::BlockmodeTag> (commands::CommandNode& mode)
 template<>
 void addTestCommands<commands::ReprmodeTag> (commands::CommandNode& mode)
 {
-  mode.add("braid",braid_f,
+  mode.add("braid",repr_braid_f,
 	   "tests braid relations on an extended block",commands::use_tag);
   if (testMode == ReprMode)
     mode.add("test",test_f,test_tag);
@@ -911,6 +920,8 @@ void test_f() // trial of twisted KLV computation
 
 }
 
+
+// Check for nasty endgame cases in block
 int test_braid(const ext_block::ext_block& eblock)
 {
   std::cout << "testing braids" << std::endl;
@@ -946,8 +957,24 @@ int test_braid(const ext_block::ext_block& eblock)
   return failed;
 } // |test_braid|
 
+#if 0 // call of |check| below needs implementing
+void block_braid_f() // in block mode
+{
+  WeightInvolution delta = interactive::get_commuting_involution
+    (commands::current_layout(), commands::current_lattice_basis());
 
-void braid_f()
+  auto& block = commands::currentBlock();
+
+  ext_block::ext_block eblock(commands::current_inner_class(),block,
+			      commands::currentRealGroup().kgb(),
+			      commands::currentDualRealGroup().kgb(),
+			      delta);
+  if (check(eblock,block,true))
+    test_braid(eblock);
+}
+#endif
+
+void repr_braid_f()
 {
   commands::ensure_full_block();
   WeightInvolution delta = interactive::get_commuting_involution

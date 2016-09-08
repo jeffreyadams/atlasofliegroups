@@ -739,6 +739,13 @@ full_deform: (Param->ParamPol): perform deformation all the way to nu=0
 KL_sum_at_s: (Param->ParamPol): signed sum of KL polynomials at s, fixed y
   Computes \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s].x where y is the block
   element of the parameter, and the sum is over other block elements x.
+twisted_KL_sum_at_s: (Param->ParamPol): KL_sum_at_s, twisted KLV polynomials
+  This does the same sum as KL_sum_at_s, but using twisted KLV polynomials
+  (the twist is for the distunguished involution) instead of ordinary KLV
+  polynomials. The actual value depends on sign choices for Hecke module
+  generators associated to the terms, so individual terms in the result are
+  mathematically well defined only up to a possible factor -1. Also WARNING:
+  the twisted KLV polynomials are not yet correctly computed in all cases.
 
 raw_KL: (Block->mat,[vec],vec): Kazhdan-Lusztig data for block, raw form
   The call raw_KL(b) produces a matrix of numbers identifying polynomials, a

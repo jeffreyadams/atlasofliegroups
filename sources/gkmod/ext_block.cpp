@@ -11,6 +11,7 @@
 
 #include <cassert>
 #include <vector>
+#include <iostream> // |std::cout| used in methods like |ext_block::list_edges|
 
 #include "innerclass.h"
 #include "weyl.h"
@@ -42,17 +43,6 @@ bool is_complex(DescValue v)
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
 
-bool has_double_image(DescValue v)
-{
-  static unsigned long mask =
-      1ul << one_real_pair_fixed         | 1ul << one_imaginary_pair_fixed
-    | 1ul << two_real_double_double      | 1ul << two_imaginary_double_double
-    | 1ul << two_imaginary_single_double_fixed
-    | 1ul << two_real_single_double_fixed;
-
-  return (1ul << v & mask) != 0; // whether |v| is one of the above
-}
-
 bool is_unique_image (DescValue v)
 {
   static unsigned long mask =
@@ -66,20 +56,34 @@ bool is_unique_image (DescValue v)
     or is_complex(v);  // these are also unique images
 }
 
-bool is_like_nonparity(DescValue v)
+bool has_double_image(DescValue v)
 {
   static unsigned long mask =
-      1ul << one_imaginary_pair_switched | 1ul << one_real_nonparity
-    | 1ul << two_real_nonparity          | 1ul << three_real_nonparity;
+      1ul << one_real_pair_fixed         | 1ul << one_imaginary_pair_fixed
+    | 1ul << two_real_double_double      | 1ul << two_imaginary_double_double
+    | 1ul << two_imaginary_single_double_fixed
+    | 1ul << two_real_single_double_fixed;
 
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
 
-bool is_like_compact(DescValue v)
+
+bool is_like_nonparity(DescValue v) // ascents with 0 neighbours
 {
   static unsigned long mask =
-      1ul << one_real_pair_switched | 1ul << one_imaginary_compact
-    | 1ul << two_imaginary_compact  | 1ul << three_imaginary_compact;
+      1ul << one_real_nonparity | 1ul << one_imaginary_pair_switched
+    | 1ul << two_real_nonparity | 1ul << two_imaginary_single_double_switched
+    | 1ul << three_real_nonparity;
+
+  return (1ul << v & mask) != 0; // whether |v| is one of the above
+}
+
+bool is_like_compact(DescValue v) // descents with 0 neighbours
+{
+  static unsigned long mask =
+      1ul << one_imaginary_compact | 1ul << one_real_pair_switched
+    | 1ul << two_imaginary_compact | 1ul << two_real_single_double_switched
+    | 1ul << three_imaginary_compact;
 
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
@@ -102,6 +106,16 @@ bool is_like_type_2(DescValue v)
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
 
+bool has_defect(DescValue v)
+{
+  static unsigned long mask =
+      1ul << two_semi_imaginary   | 1ul << two_semi_real
+    | 1ul << three_semi_imaginary | 1ul << three_real_semi
+    | 1ul << three_imaginary_semi | 1ul << three_semi_real;
+
+  return (1ul << v & mask) != 0; // whether |v| is one of the above
+}
+
 bool has_quadruple(DescValue v)
 {
   static const unsigned long mask =
@@ -114,16 +128,6 @@ bool has_quadruple(DescValue v)
 bool is_proper_ascent(DescValue v)
 {
   return not(is_descent(v) or is_like_nonparity(v));
-}
-
-bool has_defect(DescValue v)
-{
-  static unsigned long mask =
-      1ul << two_semi_imaginary   | 1ul << two_semi_real
-    | 1ul << three_semi_imaginary | 1ul << three_real_semi
-    | 1ul << three_imaginary_semi | 1ul << three_semi_real;
-
-  return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
 
 unsigned int generator_length(DescValue v)
@@ -222,7 +226,7 @@ bool ext_block::toggle_edge(BlockElt x,BlockElt y, bool verbose)
 	info[y].flips[data[kappa][y].links.first==x ? 0 : 1].flip(kappa);
       }
     }
-  assert(found);
+  assert(found); ndebug_use(found);
   return bit;
 }
 
@@ -246,7 +250,7 @@ bool ext_block::set_edge(BlockElt x,BlockElt y)
 	info[y].flips[data[kappa][y].links.first==x ? 0 : 1].set(kappa);
       }
     }
-  assert(found);
+  assert(found); ndebug_use(found);
   return bit;
 }
 
@@ -779,7 +783,7 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 	  assert(block.descentValue(p.s1,t)==DescentStatus::ImaginaryTypeII);
 	  link=block.cayley(p.s1,t).first;
 	  if (not fixed_points.isMember(link))
-	    link=block.cross(p.s0,link), assert(fixed_points.isMember(link));
+	    link=block.cross(p.s1,link), assert(fixed_points.isMember(link));
 	  return three_semi_imaginary;
 	}
 	link=block.cross(p.s0,block.cross(p.s1,t));
@@ -794,7 +798,7 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 	  assert(block.descentValue(p.s1,t)==DescentStatus::RealTypeI);
 	  link=block.inverseCayley(p.s1,link).first;
 	  if (not fixed_points.isMember(link))
-	    link=block.cross(p.s0,link), assert(fixed_points.isMember(link));
+	    link=block.cross(p.s1,link), assert(fixed_points.isMember(link));
 	  return three_semi_real;
 	}
 	link=block.cross(p.s0,block.cross(p.s1,link));
@@ -1656,7 +1660,7 @@ ext_block::ext_block // for external twist; old style blocks
   }
 
   complete_construction(fixed_points);
-}
+} // |ext_block::ext_block|
 
 ext_block::ext_block // for an external twist
   (const InnerClass& G,
@@ -1696,7 +1700,7 @@ ext_block::ext_block // for an external twist
   }
 
   complete_construction(fixed_points);
-}
+} // |ext_block::ext_block|
 
 void ext_block::complete_construction(const BitMap& fixed_points)
 {
@@ -1719,6 +1723,7 @@ void ext_block::complete_construction(const BitMap& fixed_points)
   {
     BlockElt z=parent_nr[n];
     info.push_back(elt_info(z));
+    info.back().length = parent.length(z);
     for (weyl::Generator oi=0; oi<orbits.size(); ++oi) // |oi|: orbit index
     {
       const weyl::Generator s = orbits[oi].s0, t=orbits[oi].s1;
@@ -1728,14 +1733,6 @@ void ext_block::complete_construction(const BitMap& fixed_points)
 
       if (link==UndefBlock)
 	continue; // done with |s| for imaginary compact, real nonparity cases
-
-      if (is_descent(type)) // then set or check length from predecessor
-      {
-	if (info.back().length==0)
-	  info.back().length=info[child_nr[link]].length+1;
-	else
-	  assert(info.back().length==info[child_nr[link]].length+1);
-      }
 
       // now maybe set |second|, depending on case
       switch (type)
@@ -1780,7 +1777,7 @@ void ext_block::complete_construction(const BitMap& fixed_points)
 	dest.second = child_nr[second];
     }
   } // |for(n)|
-} // |ext_block::ext_block|
+} // |ext_block::complete_construction|
 
 BlockElt ext_block::cross(weyl::Generator s, BlockElt n) const
 {
@@ -1838,8 +1835,7 @@ BlockElt ext_block::Cayley(weyl::Generator s, BlockElt n) const
 
 BlockEltPair ext_block::Cayleys(weyl::Generator s, BlockElt n) const
 {
-  const DescValue type = descent_type(s,n);
-  assert(has_double_image(type));
+  assert(has_double_image(descent_type(s,n)));
   return data[s][n].links;
 }
 
@@ -1989,7 +1985,7 @@ bool check(ext_block& eb, const param_block& block, bool verbose)
   return true; // report sucess if we get here
 } // |check|
 
-// coefficient of neighbour |sx| for $s$ in action $(T_s+1)*a_x$
+// coefficient of neighbour |sx| of |x| in the action $(T_s+1)*a_x$
 Pol ext_block::T_coef(weyl::Generator s, BlockElt sx, BlockElt x) const
 {
   DescValue v = descent_type(s,x);
