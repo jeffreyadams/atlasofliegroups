@@ -260,7 +260,7 @@ let rho=act(y,rho(rd)) then
 mu_3=mu_2-rho in
 {let ()=prints("mu_3=", mu_3) in}
 let rec_fun f(KGBElt x, ratvec mu_3_orig,ratvec tau)=(KGBElt,ratvec,ratvec):
-let rd=root_datum(x) in
+let rd_x=root_datum(x) in
 {let ()=prints();prints("f with: ", x, " ", real_form(x), " tau= ", tau) in
 let ()=prints("rd:", rd) in
 let ()=prints("tau=",tau) in
@@ -269,11 +269,11 @@ if is_dominant(rd,act(inverse(y),tau)) then
 {(x_1,mu_3_orig,tau) else}
 (cross(inverse(y),x_1),act(inverse(y),mu_3), act(inverse(y),tau)) else
 let j=find_nci_root(x,tau) then
-{()=prints("got root: ", j, ", ", posroots(rd)[j]) then}
-{()=prints("beta=", posroots(rd)[j]) then}
-new_tau=tau-poscoroots(rd)[j]*tau*posroots(rd)[j]/2 then
+{()=prints("got root: ", j, ", ", posroots(rd_x)[j]) then}
+{()=prints("beta=", posroots(rd_x)[j]) then}
+new_tau=tau-poscoroots(rd_x)[j]*tau*posroots(rd_x)[j]/2 then
 {()=prints("new_tau=",new_tau) then}
-(sub_x,sub_rd)=centralizer(x,poscoroots(rd)[j]) in
+(sub_x,)=centralizer(x,poscoroots(rd_x)[j]) in
 f(sub_x,mu_3_orig,new_tau) fi in f(x_2,mu_3,mu_3)
 
 set project_on_dominant_cone (KGBElt x, vec mu) = (KGBElt,ratvec,ratvec):
