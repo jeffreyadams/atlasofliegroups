@@ -102,7 +102,12 @@ template <typename U>
   Degree degree() const { return d_data.size()-1; }
   Degree size() const { return d_data.size(); }
 
-  bool isZero() const { return size() == 0; } // because of reduction
+  // because of reduction (automatic removal leading zeros), this is easy:
+  bool isZero() const { return size() == 0; }
+
+  // |degree()| being unsigned but possibly -1, compare using this safe method:
+  bool degree_less_than (Degree d) const { return size()<=d; }
+
   bool multi_term () const; // whether more than one term is nonzero (printing)
 
   // write polynomial as $(1+cX)Q+rX^d$, and return $r$
