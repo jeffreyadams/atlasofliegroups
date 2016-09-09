@@ -750,19 +750,37 @@ twisted_KL_sum_at_s: (Param->ParamPol): KL_sum_at_s, twisted KLV polynomials
 raw_KL: (Block->mat,[vec],vec): Kazhdan-Lusztig data for block, raw form
   The call raw_KL(b) produces a matrix of numbers identifying polynomials, a
   list of those polynomials in the form of coefficient vectors, and a sequence
-  of length boundaries that allow deducing the "lengths" of the integers used
-  to index the matrix. These integers identify block elements for the block
-  print_block(b). If (M,L,len)=raw_KL(b), and v,w are integers identifying
+  'stops' of length boundaries that allow deducing the "lengths" of the integers
+  used to index the matrix. The matrix is indexed by integers identifying block
+  elements for the block, and the matrix entries are indices into the list of
+  polynomials; in the final vector stops[l] is the first block element of length
+  (at least) l. So if (M,L,len)=raw_KL(b), and v,w are integers identifying
   block elements, then the vector L[M[v,w]] gives the coefficients of the KL
-  polynomial P_{v,w}. The length of v is the lergest index i such that
-  len[i]<=v, so the length difference between v and w is the number of indices
-  with v<len[i]<=w.
+  polynomial P_{v,w}. The length of (the block element number) v is the largest
+  index l such that stops[l]<=v, and therefore one can find the length
+  difference between v and w as the number of indices l with v<stops[l]<=w.
 
 dual_KL: (Block->mat,[vec],vec): dual KL polynomials (Q_{x,y}) for block
   This is like raw_KL, but computes the polynomials Q instead of P. The
   indexing of the block is the same as for the polynomials P, so up to length
   signs, the matrix should be the inverse of the P matrix. The length stops
   are provided as final value, as in raw_KL; these are for the _same_ block.
+
+raw_ext_KL: (Param,mat->mat,[vec],vec): extended Kazhdan-Lusztig data This
+  function takes input similar to extended_block, namely a parameter and the
+  matrix of a distinguished involution, which should commute with the
+  distinguished involution defining the inner class, and produces raw output
+  describing the extended Kazhdan-Lusztig polynomials associated to the block
+  for the extended group, in a format similar to that used in raw_KL. So the
+  matrix is indexed by block elements and its entries describe polynomials by an
+  identification number, used as index into a list of polynomials that is the
+  second component returned. In constrast to raw_KL, negative entries may occur
+  in the matrix, which means that the polynomial found at its absolute value
+  should by multiplied by -1 (the polynomial at index 0 is always the zero
+  polynomial, so there is no need to negate it). The third component specifies
+  at position l the block element for which the length function (which is
+  monotonically increasing along the block), takes a value at least l for the
+  first time.
 
 print_gradings: (CartanClass,RealForm->): print gradings defined by real form
   This more or less gives the output of the 'gradings' command in the Atlas

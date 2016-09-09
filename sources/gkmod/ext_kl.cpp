@@ -143,19 +143,37 @@ bool descent_table::extr_back_up(BlockElt& x, BlockElt y) const
 KL_table::KL_table(const ext_block::ext_block& b, std::vector<Pol>& pool)
   : aux(b), storage_pool(pool), column()
   , untwisted(b.untwisted())
-{
+{ // ensure first two pool entries are constant polynomials $0$, and $1$
+  if (pool.empty())
+    pool.push_back(Pol(0));
+  else
+    assert(pool[0]==Pol(0));
+  if (pool.size()==1)
+    pool.push_back(Pol(1));
+  else
+    assert(pool[1]==Pol(1));
+
 #ifndef NDEBUG
   untwisted.fill(false);
-#endif 
+#endif
+}
+
+std::pair<kl::KLIndex,bool>
+KL_table::KL_pol_index(BlockElt x, BlockElt y) const
+{ const kl::KLRow& col_y = column[y];
+  unsigned inx=aux.x_index(x,y);
+  if (inx<col_y.size())
+    return std::make_pair(col_y[inx],aux.flips(x,y));
+  else if (inx==aux.self_index(y)) // diagonal entries are unrecorded
+    return std::make_pair(kl::KLIndex(1),aux.flips(x,y));
+  else
+    return std::make_pair(kl::KLIndex(0),false); // out of bounds implies zero
 }
 
 Pol KL_table::P(BlockElt x, BlockElt y) const
 {
-  const kl::KLRow& col_y = column[y];
-  unsigned inx=aux.x_index(x,y);
-  if (inx>=col_y.size())
-    return Pol(inx==aux.self_index(y) ? aux.flips(x,y) ? -1 : 1 : 0);
-  return aux.flips(x,y) ? -storage_pool[col_y[inx]] : storage_pool[col_y[inx]];
+  auto index = KL_pol_index(x,y);
+  return index.second ? -storage_pool[index.first] : storage_pool[index.first];
 }
 
 // coefficient of P_{x,y} of $q^{(l(y/x)-i)/2}$ (used with i=1,2,3 only)
@@ -168,7 +186,7 @@ int KL_table::mu(int i,BlockElt x, BlockElt y) const
     return 0; // coefficient would be at non-integral degree
   d/=2;
   PolRef Pxy=P(x,y);
-  return Pxy.isZero() or Pxy.degree()<d ? 0 : Pxy[d];
+  return Pxy.degree_less_than(d) ? 0 : Pxy[d];
 }
 
 Pol qk_plus_1(int k)
@@ -307,7 +325,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
     Pol Q = product_comp(x,s,y);
     if (a!=0)
       Q -= Pol((bl.l(z,x)-1)/2,qk_plus_1(2)*a); // shaves top term
-    assert(Q.isZero() or 2*Q.degree()<=bl.l(z,x)+1);
+    assert(Q.degree_less_than((bl.l(z,x)+3)/2)); // $\deg(Q)\leq(l(z,x)+1)/2$
     int b= Q.up_remainder(1,(bl.l(z,x)+1)/2); // remainder by $q+1$
 
     /* since odd degree $m_s(u,y)$ do not contribute to $q+1$ remainder
@@ -421,26 +439,28 @@ void KL_table::fill_columns(BlockElt y)
     fill_next_column(hash);
 }
 
-/* Clear terms of degree${}\geq d/2$ in $Q$ by subtracting $r^d*m$ where $m$
-   is a symmetric Laurent polynomial in $r=\sqrt q$, and if $defect>0$ dividing
-   what remains by $q+1$, which division must be exact. Return $r^{deg(m)}m$.
-   Implemented only under the hypothesis that $Q.degree()<(d+3)/2$ initially,
-   and $Q.degree()\leq d$ (so if $d=0$ then $Q$ must be constant).
+/*
+  Clear terms of degree $\geq d/2$ in $Q$ by subtracting $r^d*m$ where $m$
+  is a symmetric Laurent polynomial in $r=\sqrt q$, and if $defect>0$ dividing
+  what remains by $q+1$, which division must be exact. Return $r^{deg(m)}m$.
+  Implemented only under the hypothesis that $\deg(Q)<(d+3)/2$ initially,
+  and $\deg(Q)\leq d$ (so if $d=0$ then $Q$ must be constant). $Q$ can be zero.
  */
 Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
 {
-  assert(Q.isZero() or (2*Q.degree()<d+3 and Q.degree()<=d));
+  assert(Q.degree_less_than(d/2+2) and Q.degree_less_than(d+1));
   unsigned M_deg = 2*Q.degree()-d; // might be negative; if so, unused
   Pol M(0); // result
 
   if (defect==0) // easy case; just pick up too high degree terms from $Q$
   {
-    if (2*Q.degree()<d)
+    if (Q.degree_less_than((d+1)/2)) // that is, $deg(Q)<d/2$ mathematically
       return M; // no correction needed
+    // now cases where |M_deg| was "negative" are gone, so we can safely use it
 
     // compute $m_s(u,sy)$, the correction coefficient for $c_u$
     assert(M_deg<3);
-    M=Pol(M_deg,Q[Q.degree()]);
+    M=Pol(M_deg,Q[Q.degree()]); // top term of |Q|, shifted to top term of |M|
     assert(M.degree()==M_deg); // in particular |M| is nonzero
     if (M_deg>0)
     {
@@ -448,20 +468,20 @@ Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
       if (M_deg==2)
 	M[1]=Q[Q.degree()-1]; // set sub-dominant coefficient here
     }
-    assert(Q.degree()>=M_deg); // this explains the $Q.degree()<=d$ requirement
-    Q -= Pol(Q.degree()-M_deg,M);
+    assert(Q.degree()>=M_deg); // this "explains" the precondition $\deg(Q)\leq d$
+    Q -= Pol(Q.degree()-M_deg,M); // subtract monomial multiple of |M|
     return M;
   } // |if(defect==0)|
 
   // now $defect=1$; we must ensure that $q+1$ divides $Q-q^{(d-M_deg)/2}M$
-  if (2*Q.degree()>d)
+  if (not Q.degree_less_than(d/2+1))// that is, $deg(Q)>d/2$ mathematically
   {
     assert(M_deg!=0 and M_deg<3); // now |0<M_deg<3|
-    M= Pol(M_deg,Q[Q.degree()]); // copy leading coefficient from |Q| to |M|
-    M[0]=M[M_deg]; // symmetrise
+    M=Pol(M_deg,Q[Q.degree()]); // top term of |Q|, shifted to top term of |M|
+    M[0]=M[M_deg]; // symmetrise (might leave middle or 3 terms as zero)
     assert(Q.degree()>=M_deg); // |Q| should have sufficient degree for:
     Q -= Pol(Q.degree()-M_deg,M); // subtract contribution of |M| from |Q|
-    assert(Q.isZero() or 2*Q.degree()<=d); // terms of strictly positive degree are gone
+    assert(Q.degree_less_than(d/2+1)); // terms conceptually of degree>0 are gone
   }
   // now divide by $1+q$, allowing remainder (degree $d/2$) from middle term |M|
   int c = Q.factor_by_1_plus_q(d/2);
@@ -740,8 +760,9 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	case ext_block::two_real_single_double_switched:
 	case ext_block::three_imaginary_compact:
 	  // these cases require no additional terms to be substracted
-	  Q.factor_by_1_plus_q_to_the(k,(aux.block.l(y,x)-1+2*k)/2); // degree
-							    // OK?  [adjusted]
+	  Q.factor_by_1_plus_q_to_the(k,(aux.block.l(y,x)-1)/2+k); // degree
+	  assert(Q.degree_less_than(aux.block.l(y,x)+1)/2);
+	    // that was the condition $\deg(Q) \leq l(y,x)-1/2|, computed safely
 	  break;
 	default: assert(false); // other cases should not have selected |s|
 	} // |switch(tsx)|
@@ -787,12 +808,12 @@ bool check(const Pol& P_sigma, const KLPol& P)
 	return false;
     return true;
   }
-  if (P.isZero() or P_sigma.degree()>P.degree())
-    return false;
+  if (P.degree_less_than(P_sigma.degree()))
+    return false; // there are terms of |P_sigma| outside the degree bound
   for (polynomials::Degree i=0; i<=P.degree(); ++i)
   {
-    KLCoeff d = P[i]+KLCoeff(P_sigma.coef(i));
-    if (d%2!=0 or d>2*P[i])
+    KLCoeff d = P[i]+KLCoeff(P_sigma.coef(i)); // unsigned addition
+    if (d%2!=0 or d>2*P[i]) // unequal parity, or |abs(P_sigma[i])>abs(P[i])|
       return false;
   }
   return true;
