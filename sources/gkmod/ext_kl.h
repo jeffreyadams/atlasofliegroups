@@ -87,6 +87,8 @@ class KL_table
   ext_block::DescValue type(weyl::Generator s,BlockElt y) const
   { return aux.block.descent_type(s,y); }
 
+  std::pair<kl::KLIndex,bool> KL_pol_index(BlockElt x, BlockElt y) const;
+
   // The twisted Kazhdan-Lusztig-Vogan polynomial P_{x,y}
   Pol P(BlockElt x, BlockElt y) const;
 

@@ -3993,71 +3993,71 @@ that will be defined below.
 void KL_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  if (l!=expression_base::no_value)
-  {
-    BlockElt start; // will hold index in the block of the initial element
-    param_block block(p->rc(),p->val,start);
-    @< Push a list of parameter values for the elements of |block| @>
-    push_value(std::make_shared<int_value>(start));
-    const kl::KLContext& klc = block.klc(block.size()-1,false);
+  if (l==expression_base::no_value)
+    return;
+@)
+  BlockElt start; // will hold index in the block of the initial element
+  param_block block(p->rc(),p->val,start);
+  @< Push a list of parameter values for the elements of |block| @>
+  push_value(std::make_shared<int_value>(start));
+  const kl::KLContext& klc = block.klc(block.size()-1,false);
 
-    own_matrix M = std::make_shared<matrix_value>(int_Matrix(klc.size()));
-    for (size_t y=1; y<klc.size(); ++y)
-      for (size_t x=0; x<y; ++x)
-        M->val(x,y)= klc.KL_pol_index(x,y);
+  own_matrix M = std::make_shared<matrix_value>(int_Matrix(klc.size()));
+  for (size_t y=1; y<klc.size(); ++y)
+    for (size_t x=0; x<y; ++x)
+      M->val(x,y)= klc.KL_pol_index(x,y);
 @)
-    own_row polys = std::make_shared<row_value>(0);
-    polys->val.reserve(klc.polStore().size());
-    for (size_t i=0; i<klc.polStore().size(); ++i)
-    {
-      const kl::KLPol& pol = klc.polStore()[i];
-      std::vector<int> coeffs(pol.size());
-      for (size_t j=pol.size(); j-->0; )
-        coeffs[j]=pol[j];
-      polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
-    }
+  own_row polys = std::make_shared<row_value>(0);
+  polys->val.reserve(klc.polStore().size());
+  for (size_t i=0; i<klc.polStore().size(); ++i)
+  {
+    const kl::KLPol& pol = klc.polStore()[i];
+    std::vector<int> coeffs(pol.size());
+    for (size_t j=pol.size(); j-->0; )
+      coeffs[j]=pol[j];
+    polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
+  }
 @)
-    own_vector length_stops = std::make_shared<vector_value>(
-       int_Vector(block.length(block.size()-1)+1));
-    length_stops->val[0]=0;
-    for (size_t i=1; i<length_stops->val.size(); ++i)
-      length_stops->val[i]=block.length_first(i);
+  own_vector length_stops = std::make_shared<vector_value>(
+     int_Vector(block.length(block.size()-1)+1));
+  length_stops->val[0]=0;
+  for (size_t i=1; i<length_stops->val.size(); ++i)
+    length_stops->val[i]=block.length_first(i);
 @)
-    unsigned n_survivors=0;
+  unsigned n_survivors=0;
+  for (BlockElt z=0; z<block.size(); ++z)
+    if (block.survives(z))
+      ++n_survivors;
+  own_vector survivor =
+    std::make_shared<vector_value>(int_Vector(n_survivors));
+  { unsigned i=0;
     for (BlockElt z=0; z<block.size(); ++z)
       if (block.survives(z))
-        ++n_survivors;
-    own_vector survivor =
-      std::make_shared<vector_value>(int_Vector(n_survivors));
-    { unsigned i=0;
-      for (BlockElt z=0; z<block.size(); ++z)
-        if (block.survives(z))
-          survivor->val[i++]=z;
-      assert(i==n_survivors);
-    }
-    own_matrix contributes_to = std::make_shared<matrix_value>(
-      int_Matrix(n_survivors,block.size(),0));
-    for (BlockElt z=0; z<block.size(); ++z)
-    { BlockEltList sb = block.survivors_below(z);
-      for (BlockEltList::const_iterator it=sb.begin(); it!=sb.end(); ++it)
-      { BlockElt x= permutations::find_index<int>(survivor->val,*it);
-          // a row index
-        if ((block.length(z)-block.length(*it))%2==0)
-          ++contributes_to->val(x,z);
-        else
-          --contributes_to->val(x,z);
-      }
-    }
-@)
-    push_value(std::move(M));
-    push_value(std::move(polys));
-    push_value(std::move(length_stops));
-    push_value(std::move(survivor));
-    push_value(std::move(contributes_to));
-
-    if (l==expression_base::single_value)
-      wrap_tuple<7>();
+        survivor->val[i++]=z;
+    assert(i==n_survivors);
   }
+  own_matrix contributes_to = std::make_shared<matrix_value>(
+    int_Matrix(n_survivors,block.size(),0));
+  for (BlockElt z=0; z<block.size(); ++z)
+  { BlockEltList sb = block.survivors_below(z);
+    for (BlockEltList::const_iterator it=sb.begin(); it!=sb.end(); ++it)
+    { BlockElt x= permutations::find_index<int>(survivor->val,*it);
+        // a row index
+      if ((block.length(z)-block.length(*it))%2==0)
+        ++contributes_to->val(x,z);
+      else
+        --contributes_to->val(x,z);
+    }
+  }
+@)
+  push_value(std::move(M));
+  push_value(std::move(polys));
+  push_value(std::move(length_stops));
+  push_value(std::move(survivor));
+  push_value(std::move(contributes_to));
+
+  if (l==expression_base::single_value)
+    wrap_tuple<7>();
 }
 
 @ Here is a version of the |KL_block| that computes just for a partial block
@@ -4975,9 +4975,8 @@ void deform_wrapper(expression_base::level l)
 }
 
 @ Here is a recursive form of this deformation, which stores intermediate
-results for efficiency in a |Rep_table| structure. Though this structure
-should really be associated to and saved with the real form, we currently hold
-it in a local variable of this wrapper function.
+results for efficiency in the |Rep_table| structure |p->rt()| that is stored
+within the |real_form_value|.
 
 @< Local function def...@>=
 void full_deform_wrapper(expression_base::level l)
@@ -5149,6 +5148,68 @@ void raw_dual_KL_wrapper (expression_base::level l)
   push_value(std::move(M));
   push_value(std::move(polys));
   push_value(std::make_shared<vector_value>(length_stops));
+  if (l==expression_base::single_value)
+    wrap_tuple<3>();
+}
+
+@ In order to have access to extended KLV polynomials, one has the following
+wrapper function, which is similar to |raw_KL_wrapper|, but it takes a
+parameter and an involution matrix as argument.
+
+@h "ext_kl.h"
+
+@< Local function def...@>=
+void raw_ext_KL_wrapper (expression_base::level l)
+{ LatticeMatrix delta(get<matrix_value>()->val);
+  shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  const auto& rc = p->rc();
+  const RootDatum& rd = rc.rootDatum(); WeylWord ww;
+  check_involution(delta,rd,ww); // this makes |delta| distinguished
+  { auto& xi = rc.innerClass().distinguished();
+    if (delta*xi!=xi*delta)
+      throw runtime_error("Non commuting distinguished involution");
+  }
+  if (l==expression_base::no_value) return;
+@)
+  BlockElt start;
+  param_block block(rc,p->val,start);
+  ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),delta);
+  if (not((delta-1)*block.gamma().numerator()).isZero())
+  { // block not globally stable, so return empty values;
+    push_value(std::make_shared<matrix_value>(int_Matrix()));
+    push_value(std::make_shared<row_value>(0));
+    push_value(std::make_shared<vector_value>(int_Vector()));
+  }
+  else
+  {
+    std::vector<Polynomial<int> > pool;
+    ext_kl::KL_table klt(eb,pool); klt.fill_columns();
+  @)
+    own_matrix M = std::make_shared<matrix_value>(int_Matrix(klt.size()));
+    for (size_t y=1; y<klt.size(); ++y)
+      for (size_t x=0; x<y; ++x)
+      @/{@; auto inx = klt.KL_pol_index(x,y);
+        M->val(x,y) = inx.second ? -inx.first : inx.first;
+      }
+  @)
+    own_row polys = std::make_shared<row_value>(0);
+    polys->val.reserve(pool.size());
+    for (size_t i=0; i<pool.size(); ++i)
+    {
+      std::vector<int> coeffs(pool[i].begin(),pool[i].end());
+      polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
+    }
+  @)
+    std::vector<int> length_stops(block.length(block.size()-1)+1);
+    length_stops[0]=0;
+    for (size_t i=1; i<length_stops.size(); ++i)
+      length_stops[i]=block.length_first(i);
+  @)
+    push_value(std::move(M));
+    push_value(std::move(polys));
+    push_value(std::make_shared<vector_value>(length_stops));
+  }
   if (l==expression_base::single_value)
     wrap_tuple<3>();
 }
@@ -5400,6 +5461,7 @@ void print_W_graph_wrapper(expression_base::level l)
 @< Install wrapper functions @>=
 install_function(raw_KL_wrapper,@|"raw_KL","(Block->mat,[vec],vec)");
 install_function(raw_dual_KL_wrapper,@|"dual_KL","(Block->mat,[vec],vec)");
+install_function(raw_ext_KL_wrapper,@|"raw_ext_KL","(Param,mat->mat,[vec],vec)");
 install_function(print_gradings_wrapper,@|"print_gradings"
 		,"(CartanClass,RealForm->)");
 install_function(print_realweyl_wrapper,@|"print_real_Weyl"
