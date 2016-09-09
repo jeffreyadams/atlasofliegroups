@@ -143,19 +143,37 @@ bool descent_table::extr_back_up(BlockElt& x, BlockElt y) const
 KL_table::KL_table(const ext_block::ext_block& b, std::vector<Pol>& pool)
   : aux(b), storage_pool(pool), column()
   , untwisted(b.untwisted())
-{
+{ // ensure first two pool entries are constant polynomials $0$, and $1$
+  if (pool.empty())
+    pool.push_back(Pol(0));
+  else
+    assert(pool[0]==Pol(0));
+  if (pool.size()==1)
+    pool.push_back(Pol(1));
+  else
+    assert(pool[1]==Pol(1));
+
 #ifndef NDEBUG
   untwisted.fill(false);
-#endif 
+#endif
+}
+
+std::pair<kl::KLIndex,bool>
+KL_table::KL_pol_index(BlockElt x, BlockElt y) const
+{ const kl::KLRow& col_y = column[y];
+  unsigned inx=aux.x_index(x,y);
+  if (inx<col_y.size())
+    return std::make_pair(col_y[inx],aux.flips(x,y));
+  else if (inx==aux.self_index(y)) // diagonal entries are unrecorded
+    return std::make_pair(kl::KLIndex(1),aux.flips(x,y));
+  else
+    return std::make_pair(kl::KLIndex(0),false); // out of bounds implies zero
 }
 
 Pol KL_table::P(BlockElt x, BlockElt y) const
 {
-  const kl::KLRow& col_y = column[y];
-  unsigned inx=aux.x_index(x,y);
-  if (inx>=col_y.size())
-    return Pol(inx==aux.self_index(y) ? aux.flips(x,y) ? -1 : 1 : 0);
-  return aux.flips(x,y) ? -storage_pool[col_y[inx]] : storage_pool[col_y[inx]];
+  auto index = KL_pol_index(x,y);
+  return index.second ? -storage_pool[index.first] : storage_pool[index.first];
 }
 
 // coefficient of P_{x,y} of $q^{(l(y/x)-i)/2}$ (used with i=1,2,3 only)
