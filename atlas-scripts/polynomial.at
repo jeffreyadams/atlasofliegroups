@@ -19,6 +19,7 @@ forget *@(vec,vec)
 set + = flex_add@(poly,poly)
 set - = flex_sub@(poly,poly)
 set * = convolve@(vec,vec)
+set poly_product(poly f,poly g)=f*g
 
 { reduce polynomial by dropping trailing zeros; shouldn't really be needed }
 set strip (poly v) = poly: v + (poly:[])

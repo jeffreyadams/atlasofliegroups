@@ -1,0 +1,88 @@
+{ inversion of a unitriangular poly_mat }
+
+<basic.at
+<polynomial.at
+
+set zero_poly=poly:[0]
+
+{ add c times column i to column j in matrix A of size n*n (changes A[i][j]) }
+set column_operation (poly_mat A, int i, int j, poly c, int n) = poly_mat:
+  for k:n { generate row k of result }
+  do let row=A[k] in
+    for l:n do if l=j then row[l]+poly_product(c,row[i]) else row[l] fi od
+  od
+
+{ add c times row j to row i in matrix A of size n*n (changes A[i][j]) }
+set row_operation (poly_mat A, int i, int j, poly c, int n) = poly_mat:
+  let source=A[j], dest=A[i] in
+  A[i] := for l:n do dest[l]+poly_product(c,source[l]) od; A
+
+{ find first non-zero entry above diagonal, starting at lower right }
+set find_nonzero (poly_mat M) = (int,int):
+  let rv=(-1,-1),n=#M,done=false
+  then i=n-2,j=n-1
+  in
+  while not done
+  do
+    if i<0 then done:=true { nothing found, return (-1,-1) }
+    else let entry=strip(M[i][j]) in
+      if !=entry then rv:=(i,j); done:=true { found, return location }
+      elif (j+:=1)=n then j:=(i:=i-1)+1 { advance in row, wrap back at end }
+      fi
+    fi
+  od; rv
+
+{ internal function: for square matrices A,B of size n, compute B*A^{-1} }
+set inv_p (poly_mat A, poly_mat B, int n) = poly_mat:
+  let id=identity_poly_matrix(n), i_p(poly_mat M,poly_mat N) = poly_mat: [] in
+  begin i_p:=
+    ( (poly_mat M,poly_mat N):
+    { let ()=prints("M:"); printPolyMatrix(M) in
+      let ()=prints("N:"); printPolyMatrix(N) in
+    }
+      let (i,j)=find_nonzero(M) in
+      if i<0 then N { we've found the result }
+      else print(i,j); let p=M[i][j] in
+          i_p(column_operation(M,i,j,-p,n),column_operation(N,i,j,-p,n))
+      fi
+   )
+   end { end of assignment, now apply result } (A,B)
+
+{ inverse of an upper triangular polynomial matrix }
+set inverse (poly_mat M) = poly_mat:
+begin
+  let n=#M in
+  assert(all(n,(int i) bool: let Mi=M[i] in all(i,(int j) bool: =Mi[j]))
+        ,"Matrix isn't upper triangular")
+; assert(all(n,(int i) bool: M[i][i]=[1])
+        ,"Matrix doesn't have ones on diagonal")
+; inv_p(M,identity_poly_matrix(n),n)
+end
+
+set unitri_inv (poly_mat M) = poly_mat:
+begin
+  let n=#M, zero=poly:[], one=poly:[1] in
+  assert(all(n,(int i) bool: let Mi=M[i] in all(i,(int j) bool: =Mi[j]))
+        ,"Matrix isn't upper triangular")
+; assert(all(n,(int i) bool: =(M[i][i]-[1]))
+        ,"Matrix doesn't have ones on diagonal")
+; for i:n { compute row i of inverse }
+  do let row = M[i] in
+    for j:n { compute entry j of that row, and update row }
+    do
+      if j<=i then if j<i then zero else one fi
+      else let coef=row[j] in
+        if !=coef { avoid work for zero coefficients }
+        then let use_row=M[j] in { update the linear comb. of rows: }
+          row:= for l:n do row[l]-poly_product(coef,use_row[l]) od
+        fi
+      ; -coef { this goes into position [i][j] of the result }
+      fi
+    od
+  od
+end
+
+set regular_KL_matrix (Param p) = poly_mat:
+  let (B,,ind,polys,,,)=KL_block(p) then (r,c)=#ind in
+  for i:r do for j:c do polys[ind[i,j]] od od
+
