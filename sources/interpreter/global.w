@@ -756,9 +756,9 @@ void global_forget_identifier(id_type id);
 void global_forget_overload(id_type id, type_p type);
 void type_define_identifier
   (id_type id, type_p type, raw_id_pat ip, const YYLTYPE& loc);
-void show_ids();
+void show_ids(std::ostream& out);
 void type_of_expr(expr_p e);
-void show_overloads(id_type id);
+void show_overloads(id_type id,std::ostream& out);
 
 @ These functions produce a brief report of what they did, for which they use
 the pointer variable |output_stream|, so that it can be redirected during the
@@ -1152,14 +1152,14 @@ to call |analyse_types|, as it just has to look into the overload table and
 extract the types stored there.
 
 @< Global function definitions @>=
-void show_overloads(id_type id)
+void show_overloads(id_type id,std::ostream& out)
 { const overload_table::variant_list& variants =
    global_overload_table->variants(id);
-  *output_stream
+   out
    << (variants.empty() ? "No overloads for '" : "Overloaded instances of '")
 @| << main_hash_table->name_of(id) << '\'' << std::endl;
  for (size_t i=0; i<variants.size(); ++i)
-   *output_stream << "  "
+   out << "  "
     << variants[i].type().arg_type << "->" << variants[i].type().result_type @|
     << std::endl;
 }
@@ -1169,10 +1169,10 @@ types, and the stored values; it does this both for overloaded symbols and for
 global identifiers.
 
 @< Global function definitions @>=
-void show_ids()
-{ *output_stream << "Overloaded operators and functions:\n"
-                 << *global_overload_table @|
-                 << "Global variables:\n" << *global_id_table;
+void show_ids(std::ostream& out)
+{ out << "Overloaded operators and functions:\n"
+      << *global_overload_table @|
+      << "Global variables:\n" << *global_id_table;
 }
 
 @ Here is a tiny bit of global state that can be set from the main program and

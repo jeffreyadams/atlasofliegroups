@@ -52,8 +52,8 @@ set last ([(->bool)] p) = int: { this is somewhat more efficient than first }
 set abs (int k)= int: if <k then -k else k fi
 set sign (int k)= int: if >k then 1 elif <k then -1 else 0 fi
 
-set is_odd  (int n) = bool: n%2=1
-set is_even (int n) = bool: n%2=0
+set is_odd  (int n) = bool: !=n%2
+set is_even (int n) = bool:  =n%2
 
 set min (int k, int l) = int: if k<l then k else l fi
 set max (int k, int l) = int: if k<l then l else k fi
@@ -137,6 +137,7 @@ set + (int i, string s)= string: int_format(i) + s
 set + (string s, (int,int)(x,y)) = s + "(" + x + "," + y + ")"
 
 set plural (int n) = string: if n=1 then "" else "s" fi
+set plural (int n,string s) = string: n + if n=1 then s else s+"s" fi
 
 set concat = ##@[string]
 

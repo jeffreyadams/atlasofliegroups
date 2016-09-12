@@ -150,8 +150,8 @@ set print_Z (InnerClass G) = void:
     else prints("Group is semisimple"); prints("center=", finite_part)
     fi
   else
-    prints("center has ", cpt_rank, " circle factor"+plural(cpt_rank))
-  ; prints("center has ", split_rank, " R^+ factor"+plural(split_rank))
+    prints("center has ", plural(cpt_rank," circle factor"))
+  ; prints("center has ", plural(split_rank," R^+ factor"))
   ; if =n_finite
     then prints("center has no finite part")
     else prints("finite part of center: ",finite_part)

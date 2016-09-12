@@ -138,13 +138,15 @@ namespace atlas { namespace interpreter {@< Definitions of other functions @>@;
 the prototype of the lexical analyser (wrapper) function |yylex| is the one
 below. Curiously, the program~\.{bison} does not write this prototype to
 \.{parser.tab.h}, but it does write the definitions of the types |YYSTYPE| and
-|YYLTYPE| there; these require that \.{parse\_types.h} be included first. We
-also declare ``{\tt\%parse-param \char`\{} |int* verbosity, expr_p*
-parsed_expr@;| {\tt\char`\}}'' in~\.{parser.y}, so that the parser itself,
-|yyparse|, takes an integer pointer as parameter, which it uses to signal
-special requests from the user (such as verbose output but also termination or
-output redirection), and a pointer to an expression, in which it writes the
-result of parsing.
+|YYLTYPE| there; these require that the header file \.{parse\_types.h} be
+included first. We also declare ``{\tt\%parse-param \char`\{}
+|atlas::interpreter::expr_p* parsed_expr@;|{\tt\char`\}}'' and
+``{\tt\%parse-param \char`\{} |int* verbosity|{\tt\char`\}}'' in~\.{parser.y},
+so that the parser itself, |yyparse|, takes a pointer to an expression as
+parameter, in which it writes the result of parsing, and an integer
+pointer, which it uses to signal special requests from the user (such as
+verbose output but also termination or output redirection).
+
 
 The definitions below used to start with |extern "C"|, but no longer do so
 since the parser is now compiled as a \Cpp\ program.
@@ -243,15 +245,17 @@ const char* keywords[] =
  ,"whattype","showall","forget"
  ,nullptr};
 
-@~After installing keywords in the lexical analyser, some more preparation is
-needed. The identifiers |quiet| and |verbose| that used to be keywords are now
-instead recognised only in the special commands \.{set quiet} and \.{set
-verbose}; to this end the parser uses their numeric identifier codes. To
-ensure that they are respectively at offsets $0,1$ of
-|ana.first_identifier()|, we look up these names before any other identifiers
-are introduced, notably before |initialise_evaluator| and
-|initialise_builtin_types| are called to define built-in operators and
-functions.
+@~After installing keywords in the lexical analyser, which will be held in a
+local variable call |ana| and accessible to other compilation units via the
+pointer |lex| declared in \.{lexer.h}, some more preparation is needed. The
+identifiers |quiet| and |verbose| that used to be keywords are now instead
+recognised only in the special commands \.{set quiet} and \.{set verbose}; to
+this end the parser uses their numeric identifier codes. To ensure that they
+are respectively at offsets $0,1$ of |ana.first_identifier()|, we look up
+these names before any other identifiers are introduced, notably before
+|initialise_evaluator| and |initialise_builtin_types| are called to define
+built-in operators and functions. We also set the lexical analyser comment
+delimiting characters.
 
 @< Prepare the lexical analyser... @>=
 main_hash_table->match_literal("quiet");

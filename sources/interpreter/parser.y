@@ -23,6 +23,7 @@
 
 
 #include <iostream>
+#include <fstream>
 #include "parsetree.h"  // types and functions used to construct nodes
 #include "lexer.h"  // pointer |lex| to lexical analyser
 #include "axis.h" // action functions invoked from within the parser
@@ -80,6 +81,7 @@
 %type <expression> do_expr do_lettail do_iftail iftail
 %type <ini_form> formula_start
 %type <oper> operator
+%type <id_code> id_op
 %type <val> tilde_opt
 %destructor { destroy_expr ($$); } expr expr_opt tertiary cast lettail or_expr
 %destructor { destroy_expr ($$); } and_expr not_expr formula operand secondary
@@ -162,11 +164,41 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| FROMFILE '\n'		{ include_file(1); YYABORT; } /* include file */
 	| FORCEFROMFILE '\n'	{ include_file(0); YYABORT; } // force include
 	| WHATTYPE expr '\n'	{ type_of_expr($2); YYABORT; } // print type
-	| WHATTYPE operator '?' '\n'
-			      { show_overloads($2.id); YYABORT; } // show types
-	| WHATTYPE IDENT '?' '\n'
-				{ show_overloads($2); YYABORT; } // show types
-	| SHOWALL '\n'		{ show_ids(); YYABORT; } /* print id table */
+	| WHATTYPE id_op '?' '\n'
+	  { show_overloads($2,std::cout); YYABORT; } // show types
+	| TOFILE WHATTYPE id_op '?' '\n'
+	  { if (std::ofstream out{lex->scanned_file_name()}) // success?
+	      show_overloads($3,out);
+	      else
+		std::cerr << "Failed to open " << lex->scanned_file_name()
+			  << std::endl;
+	    YYABORT;
+	  }
+	| ADDTOFILE WHATTYPE id_op '?' '\n'
+	  { if (std::ofstream out{lex->scanned_file_name(),std::ios_base::app})
+	      show_overloads($3,out);
+	      else
+		std::cerr << "Failed to open " << lex->scanned_file_name()
+			  << std::endl;
+	    YYABORT;
+	  }
+	| SHOWALL '\n'	{ show_ids(std::cout); YYABORT; } /* print id table */
+        | TOFILE SHOWALL '\n'
+	  {
+	    if (std::ofstream out{lex->scanned_file_name()}) // success?
+	    { show_ids(out); }
+	    YYABORT;
+	  }
+        | ADDTOFILE SHOWALL '\n'
+	  {
+	    if (std::ofstream out{lex->scanned_file_name(),std::ios_base::app})
+	    { show_ids(out); }
+	    YYABORT;
+	  }
+;
+
+id_op	: IDENT
+	| operator { $$=$1.id; }
 ;
 
 expr    : LET lettail { $$=$2; }

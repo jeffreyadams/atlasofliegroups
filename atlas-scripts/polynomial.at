@@ -16,13 +16,17 @@ forget +@(vec,vec)
 forget -@(vec,vec)
 forget *@(vec,vec)
 
+{ for convenience declare some constants, the ! makes changes to these illegal }
+set !poly_0 = poly:[], !poly_1 = poly:[1], !poly_2 = poly: [2]
+set !q = poly: [0,1], !q2 = poly: [0,0,1]
+
 set + = flex_add@(poly,poly)
 set - = flex_sub@(poly,poly)
 set * = convolve@(vec,vec)
 set poly_product(poly f,poly g)=f*g
 
 { reduce polynomial by dropping trailing zeros; shouldn't really be needed }
-set strip (poly v) = poly: v + (poly:[])
+set strip (poly v) = poly: v + poly_0 { operator + does actual stripping }
 
 { evaluate polynomial at integer }
 set evaluate_at_1 = sum@poly { from basic.at; often we need this easy case }
@@ -40,8 +44,8 @@ set at_s(vec v) = Split: eval(v,Split:(0,1))
 
 {			  Polynomial matrices				}
 
-{ polynomial matrices are grouped by row, unlike mat values that the axis
-  language implicitly (for loops, simple indexing) consideres by columns
+{ polynomial matrices are grouped by row, unlike mat values, which the axis
+  language implicitly (for loops, simple indexing) considers as by columns
 }
 : poly_mat = [[poly]]
 
@@ -95,18 +99,20 @@ set *(poly f,poly_mat M) = poly_mat:
 set *(int c, poly_mat M) = poly_mat:
   for row in M do for p in row do p*c { use the *@(vec,int) built-in } od od
 
-{ update one entry in a vector of polynomials and one row of a matrix }
+{ update one entry in a list of polynomials, for instance in a row of a matrix }
 set update_row([poly] R, int j,poly v) = [poly]: R[j]:=v; R
-{ update one row of a matrix }
+{ update one row of a matrix (replacing it by a given new row) }
 set update_matrix_row(poly_mat M, int i, [poly] row)= poly_mat: M[i]:=row; M
 { update one entry in a matrix }
 set update_matrix_entry(poly_mat M, int i, int j, poly v)= poly_mat:
   let row=M[i] in row[j]:=v; M[i]:=row; M
 
-set zero_poly_row(int n) = [poly]: for i:n do [] od
-set zero_poly_matrix(int n) = poly_mat: for i:n do zero_poly_row(n) od
+set zero_poly_row(int n) = [poly]: for i:n do poly_0 od
+set zero_poly_matrix(int n) = poly_mat:
+  let !row=zero_poly_row(n) in for i:n do row od
 set scalar_poly_matrix(int n, int c)= poly_mat:
-  for i:n do for j:n do if i=j then [c] else [] fi od od
+  let !row=zero_poly_row(n) { model row, almost equal to each wanted row } in
+  for i:n do let row_i=row in row_i[i]:=[c]; row_i od
 set identity_poly_matrix(int n) = scalar_poly_matrix(n,1)
 
 set +(poly_mat M, poly p) = poly_mat: { add polynomial scalar matrix }
@@ -128,6 +134,22 @@ set =(poly_mat A,poly_mat B) = bool:
 { polynomial matrix is 0 if all its entries are zero-length polynomials }
 set is_zero(poly_mat M)= bool:
   all(#M, (int i): let r=M[i] in all(#r, (int j): =#r[j]) )
+
+set upper_unitriangluar_inverse (poly_mat P) = poly_mat:
+  let n=#P { number of rows in matrix }, dummy_row=zero_poly_row(0)
+  then Q= for :n do dummy_row od { prepare |n| rows, but leave them empty now }
+  in { solve equation $P*Q=I$ for $Q$, proceeding from bottom to top }
+  for i:n { reverse traversal loop with reverse accumulation -> straight value }
+  ~do let Pi=P[i] { we use only this part of P during this iteration } in
+    Q[i] := { computed row is stored as |Q[i]|, and contributed to result }
+    (zero_poly_row(i) # poly_1) { beginning or row |Q[i]| is somewhat boring }
+    ## { concatenate with more interesting newly computed part of |Q[i]| }
+      for j: n-i-1 from i+1 { left to right, but computations are independent }
+      do let sum=poly_0 in for k: j-i from i+1 do sum -:= print(Pi[k]) * Q[k][j] od
+      ; print(i,j)
+      ; print(sum) { contribute $Q_{i,j} = - \sum_{k=i+1}^j P_{i,k}Q_{k,j}$ }
+      od
+  ~od
 
 { compute PMP^{-1} where P is a permutation of [1,,,n]
   and M is a polynomial matrix
@@ -183,9 +205,6 @@ set + = fix_add@(vec,vec)
 set - = fix_sub@(vec,vec)
 set * = dot_product@(vec,vec)
 
-{ for convenience, the ! means these are constant definitions }
-set !poly_0 = poly:[], !poly_1 = poly:[1], !poly_2 = poly: [2]
-set !q = poly: [0,1], !q2 = poly: [0,0,1]
 set sgn_poly (int k) = poly:
   [if k<0 then -1 elif k>0 then 1 else error("taking sign of 0") fi]
 
