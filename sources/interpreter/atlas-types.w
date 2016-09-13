@@ -404,7 +404,7 @@ such that $row*M*col$ is diagonal with non-zero diagonal entries given in
 $\lambda$ (and any zero diagonal entries trailing those), we know that any row
 of |row| with factor $\lambda_i$ is a linear form sending the image of $M$ to
 $\lambda_i\Zee$, while any remaining rows of |row| (those without
-corresponding invariant factor) annihilate the image altogether. Then all that
+corresponding diagonal entry) annihilate the image altogether. Then all that
 is needed it to multiply rows of~|row| of the first kind by
 $d/\gcd(d,\lambda_i)$ and transpose the result.
 

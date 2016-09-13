@@ -267,8 +267,8 @@ let ()=prints("Done with p=",p, "q=",q) in
 assert(sum(p)+sum(q)=rank,"Error: |p|+|q| != rank");
 (transpose(q),transpose(p))
 elif #A_Levis=1 and #A_Levis[0]=0 and #AC_Levis=0 then ([rank],[]) else let
-{()=prints();prints("p=",p," q=",q) then}
-{()=prints("A_Levis: ", A_Levis, " AC_Levis: ", AC_Levis) then}
+()=prints();prints("p=",p," q=",q) then
+()=prints("A_Levis: ", A_Levis, " AC_Levis: ", AC_Levis) then
 {algorithm:
  x+y=a
    x=b => y=a-b

@@ -15,6 +15,9 @@
 
 * Work on the atlas program
 
+- Fix bug involving typecheck for component assignment (no coercion?)
+  In tits.at, one can assign a vec value to the ratvec field of Tits_elt
+
 - Integrate a bigint library to store atlas int (and rat?) values; while
   attending that, signal overflow in arithmetic operations / conversions
 
