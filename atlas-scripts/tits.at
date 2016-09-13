@@ -2,19 +2,20 @@
 <Weylgroup.at
 <W_orbit.at
 
-{ An element in the delta-coset of the (extended) Tits group is represented by
-  (RootDatum rd,ratvec v,mat theta) representing \exp(2i\pi v)\sigma_w\delta
-  where \theta=w\delta.
-  So v is a rational coweight taken modulo 1; theta need not be an invloution.
-  Note that \delta is incorporated into \theta (like into involution@KGBElt)
-  and that theta is defined as operating from left on X^*; for left action of
+{ An element of the (\delta-extended) Tits group is represented by
+  (RootDatum rd,ratvec v,mat theta) representing \exp(2i\pi v) \sigma_w d
+  where \theta is the the action of wd on X^*, with w\in W and d is a
+  distinguished involution of that lattice (we need to allow both d=\delta and
+  d=identity in order to get a group, with mulitplication and inverse). We can
+  do without explicitly representing d, since we shall work with the image
+  under \theta of the set of positive (co)roots, which set d stabilises.
+
+  So v is a rational coweight taken modulo 1; theta need not be an involution.
+  Note that theta is defined as operating from left on X^*; for left action of
   theta on v, use the transpose inverse (right-multiply v by inverse(theta)).
 }
-: Tits_elt = (RootDatum,ratvec,mat)
 
-set root_datum (Tits_elt(rd,,))   = RootDatum: rd
-set torus_factor (Tits_elt(,v,))   = ratvec: v
-set involution (Tits_elt(,,theta)) = mat: theta
+: Tits_elt = (RootDatum root_datum,ratvec torus_part,mat theta)
 
 { equality test assumes the root data agree, without check (though it could) }
 set = (Tits_elt(,v,theta),Tits_elt(,u,eta)) = bool: =(v-u)%1 and theta=eta
@@ -45,12 +46,12 @@ set right (Tits_elt(rd,v,theta), int s) = Tits_elt:
   ( rd
   , if lengthens(rd,theta,s) { again valid even if theta=w.delta not in W }
     then v
-    else v+coroot(rd,s)*inverse(theta)/2 { got theta' m_s; permute factors }
+    else v+coroot(rd,s)*theta.inverse/2 { got theta' m_s; permute factors }
     fi % 1
   , right_reflect(rd,theta,s)
   )
 
-{multiplication by canonical lift of W_word}
+{ multiplication by canonical lift of W_word }
 set left (W_word({rd assumed that of xi},w),Tits_elt xi) = Tits_elt:
   for s in w ~ do xi:=left(s,xi) od; xi
 
@@ -62,21 +63,34 @@ set left ((ratvec,int)(v,s), Tits_elt xi) = Tits_elt:
   let (rd,u,phi) = left(s,xi) in (rd,(u+v)%1,phi)
 
 { right multiply by torus factor \exp(2i\pi v)\sigma_s }
-set right (Tits_elt(,,theta):xi, (ratvec,int)(v,s)) = Tits_elt:
-  let (rd,u,phi) = right(xi,s) in (rd,(v*inverse(theta)+u)%1,phi)
+set right (Tits_elt xi, (ratvec,int)(v,s)) = Tits_elt:
+  let (rd,u,phi) = right(xi,s) in (rd,(v*xi.theta.inverse+u)%1,phi)
 
 { conjugate by simple reflection }
-set conjugate (int s, Tits_elt(rd,,):xi) = Tits_elt:
-  let sigma_s_inv = (ratvec,int): (coroot(rd,s)/2 {=m_s},s) in
+set conjugate (int s, Tits_elt xi) = Tits_elt:
+  let sigma_s_inv = (ratvec,int): (coroot(xi.root_datum,s)/2 {=m_s},s) in
   right(left(s,xi),sigma_s_inv)
 
 set conjugate (W_word(,w), Tits_elt xi) = Tits_elt:
   for s in w ~ do xi:=conjugate(s,xi) od; xi
 
-{ in multiplication only one of the arguments should be in the delta-coset }
+{
+  for general multiplication, we allow theta and eta to be in either of the
+  W-cosets (that of the identity and of \delta). The basic formula is that if
+  \sigma_\theta denotes the canonical lift of \theta to the Tits group, which
+  is \sigma_w d where d is either the identity or \delta, then the product is
+
+         \sigma_\theta \sigma_\eta = m_S \sigma_{\theta\eta},
+
+  where S is the set of roots \theta(\eta(\Delta^+)\cap\Delta^-)\cap\Delta^+
+  and m_S is the image in the torus of the set of the coroots corresponding to
+  S. The code below actually computes S using matrices representing coroots as
+  their columns (so that the passage from S to m_S is obtained by taking the
+  half-sum modulo 1). The action of \theta,\eta is then by transpose inverse.
+}
 set multiply (Tits_elt(rd,v,theta), Tits_elt({assume rd},u,eta)) = Tits_elt:
-  let tt1 = ^inverse(theta)
-  , neg_crs = columns_with(is_negative_coroot(rd),^inverse(eta)*poscoroots(rd))
+  let tt1 = ^theta.inverse
+  , neg_crs = columns_with(is_negative_coroot(rd),^eta.inverse*poscoroots(rd))
   in
   ( rd
   , ( v + tt1*u + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 ) % 1
@@ -85,35 +99,34 @@ set multiply (Tits_elt(rd,v,theta), Tits_elt({assume rd},u,eta)) = Tits_elt:
 
 set * = multiply@(Tits_elt,Tits_elt)
 
-{ inverse uses the bicycle (note the (2\-/2) structure) lemma:
-   sigma_w*sigma_{w^{-1}} = exp(2\pi i(rho^vee-rho^vee*w)/2)
+{ inverse uses the bicycle lemma (note the (2\-/2) "bicycle" structure):
+   sigma_w*sigma_{w^{-1}} = exp(2\pi i(rho^vee-rho^vee*w^{-1})/2)
   whence
-   inverse(Tits_elt:(0,theta)) = Tits_elt:(rho_check*(theta-1)/2,inverse(theta))
-  (this formula remains valid with delta included in theta)
+   inverse(Tits_elt:(0,theta)) = Tits_elt:(rho_check*(1-theta)/2,inverse(theta))
+  (this formula remains valid in both cosets of W)
+  and inverse(Tits_elt:(v,theta))=inverse(Tits_elt:(0,theta))*\exp(2\pi i * -v)
+    = Tits_elt:(rho_check*(1-theta)/2-v*theta,inverse(theta))
 }
 set inverse (Tits_elt(rd,v,theta)) = Tits_elt:
-  let theta_inv = inverse(theta) in
-  {Note: ^theta since acting on torus elements:}
-  (rd, (-v*^theta_inv - rho_check(rd)*(^theta_inv-1)/2) % 1, theta_inv)
+  (rd, (rho_check(rd)*(1-theta)/2 - v*theta) % 1, theta.inverse)
 
 { canonical lift of Weyl group element, assumed reduced, to Tits group }
-set lift (W_word w) = Tits_elt: left(w,tits_identity(root_datum(w)))
+set lift (W_word w) = Tits_elt: left(w,tits_identity(w.root_datum))
 
 { canonical lift of Weyl group element to \delta-twisted Tits group }
 set lift (mat delta, W_word w) = Tits_elt:
-  left(w,tits_delta(root_datum(w),delta))
+  left(w,tits_delta(w.root_datum,delta))
 set lift (RealForm G, W_word w) = Tits_elt: left(w,tits_delta(G))
 
 
 { Tits element raised to an integer power }
 set ^ (Tits_elt !xi, int n) = Tits_elt:
   if   >n then let result=xi in for :n-1 do result*:=xi od; result
-  elif <n then let !xi1=inverse(xi) then result=xi1 in
+  elif <n then let !xi1=xi.inverse then result=xi1 in
           for :n-1 do result*:=xi1 od; result
-  else tits_identity(root_datum(xi))
+  else tits_identity(xi.root_datum)
   fi
 
 set order (Tits_elt xi) = int:
-  let id=tits_identity(root_datum(xi)), (,,m)=xi
-  then d=order(m)
+  let id=tits_identity(xi.root_datum), d=order(xi.theta)
   in if xi^d=id then d elif xi^(2*d)=id then 2*d else error() fi
