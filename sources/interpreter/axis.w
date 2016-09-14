@@ -5557,8 +5557,8 @@ assumed by the variable is recorded.
 
 Since variables of |void| type are allowed and can be assigned to (and due to
 the voiding coercion a right hand side of any type will be accepted), we must
-take care to insert a |voiding| in such rare cases, to ensure no value will be
-computed and assigned.
+take care to insert a |voiding| in such rare cases, to ensure that no actual
+(non void) value will be computed and assigned.
 
 @< Cases for type-checking and converting... @>=
 case ass_stat:
@@ -6150,15 +6150,32 @@ find the field selector in the overload table with the exact (tuple) type, and
 it must be bound to a |projector_value| (so some user defined function that
 selects the proper field will not work here).
 
+As with other kinds of assignment, we must deal with the possibility that the
+assignment specialises the type of the variable being assigned to (by
+specialising the selected component of the tuple type). We do not (as we did
+for simple assignments) use a local variable for the assigned type, writing it
+back afterwards, but rather pass a modifiable reference to the component type
+to |type_expr| so that any specialisation will be done in place. This solution
+is simpler than the |specialise| method (and while there were complications in
+adopting it in other places, those don't apply here). It should be noted that
+the case is particularly strange here, since the change to the type of the
+variable being assigned to will cause the very selector being used here to no
+longer be applicable to that variable afterwards (since we
+require \emph{exact} match of the tuple type and the argument type of the
+selector function). Probably the principle of least astonishment would mandate
+simply forbidding to define field selectors in the first place for tuple types
+that can be specialised at all.
+
+
 @< Cases for type-checking and converting... @>=
 case field_ass_stat:
 { id_type tupple=e.field_assign_variant->aggr;
   id_type sel =e.field_assign_variant->selector;
   const expr& rhs=e.field_assign_variant->rhs;
-@/const_type_p aggr_t; size_t d,o; bool is_const;
-  bool is_local = (aggr_t=layer::lookup(tupple,d,o,is_const))!=nullptr;
+@/const_type_p tuple_t; size_t d,o; bool is_const;
+  bool is_local = (tuple_t=layer::lookup(tupple,d,o,is_const))!=nullptr;
   if (not is_local
-      and (aggr_t=global_id_table->type_of(tupple,is_const))==nullptr)
+      and (tuple_t=global_id_table->type_of(tupple,is_const))==nullptr)
     report_undefined(tupple,e,"field assignment");
 @.Undefined identifier@>
   if (is_const)
@@ -6170,7 +6187,7 @@ case field_ass_stat:
     const auto& variants = global_overload_table->variants(sel);
     auto it=variants.begin();
     for (; it!=variants.end(); ++it)
-      if (it->type().arg_type==*aggr_t)
+      if (it->type().arg_type==*tuple_t)
       {@; selector=it->value().get();
         break;
       }
@@ -6180,16 +6197,24 @@ case field_ass_stat:
     if (proj==nullptr)
       throw expr_error
         (e,"Selector in field assignment is not a projector function");
+    assert(tuple_t->kind==tuple_type and proj->position<length(tuple_t->tupple));
   }
 @)
-  type_expr comp_t;
-  expression_ptr r = convert_expr(rhs,comp_t);
+  type_p comp_loc;
+    // we shall pass a modifiable reference to component type to |convert_expr|
+  { // to get component type from list pointer we need to use a short loop
+    auto p=tuple_t->tupple;
+    for (auto count=proj->position; count-->0; )
+      p=p->next.get();
+    comp_loc=&p->contents;
+  }
+  expression_ptr r = convert_expr(rhs,*comp_loc);
   expression_ptr p;
   if (is_local)
     p.reset(new local_field_assignment(tupple,proj->position,d,o,std::move(r)));
   else
     p.reset(new global_field_assignment(tupple,proj->position,std::move(r)));
-  return conform_types(comp_t,type,std::move(p),e);
+  return conform_types(*comp_loc,type,std::move(p),e);
 }
 
 @* Some special wrapper functions.
