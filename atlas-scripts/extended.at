@@ -158,8 +158,8 @@ set E (mat delta) = (Param->extended_param): (Param p): E(delta,p)
 
 set torus_factor (extended_param E) = ratvec: E.g - E.l - E.rho_check
 set dual_torus_factor (extended_param E) = ratvec: E.gamma-E.lambda_rho-E.rho
-
 set nu (extended_param E) = ratvec: nu(E.gamma,E.x)
+set length(extended_param E) = int: length(parameter(E))
 
 { sign(E,F)=\pm 1 (or 0): nonzero tells whether the parameters for G are
   equivalent up to sign, and gives that sign.
@@ -295,12 +295,27 @@ set ext_block_of (mat delta, Param p) = [extended_param]:
 set ext_block_of (Param p) = [extended_param]:
   ext_block_of(distinguished_involution(real_form(p)),p)
 
-{ locate some parameter matching E, report its sign and index (or (0,-1)) }
-set find ([extended_param] list,extended_param E) = (int,int):
+set ext_block (mat delta, Param p, ratvec g) = ([extended_param],int):
+  let (b,index)=fixed_block(delta,p) in 
+  (for p in b  do E(delta,p,g) od, index)
+set ext_block (mat delta, Param p) = ([extended_param],int):
+  ext_block(delta,p,canonical_g(p))
+set ext_block (Param p) = ([extended_param],int):
+  ext_block(distinguished_involution(real_form(p)),p)
+
+{ locate extended parameter up to sign, report its sign and index (or (0,-1)) }
+set sign_find ([extended_param] list,extended_param E) = (int,int):
   let i=#list-1, s=0 in
   while i>=0 and =(s:=sign(E,list[i])) do i -:= 1 od; (s,i)
 
-set find (extended_param E,[extended_param] list) = (int,int): find(list,E)
+set sign_find (extended_param E,[extended_param] list) = (int,int): sign_find(list,E)
+
+{locate parameter E exactly, report index or -1}
+set find ([extended_param] list,extended_param E) = int:
+  let i=#list-1 in 
+  while i>=0 and sign(E,list[i])!=1 do i -:= 1 od; i
+
+set find (extended_param E,[extended_param] list) = int: find(list,E)
 
 { for convenience
   usage: set (delta,B,g) = ext_basic(G)

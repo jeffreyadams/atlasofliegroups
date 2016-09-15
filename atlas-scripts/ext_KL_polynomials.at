@@ -1,0 +1,22 @@
+{access to extended KL polynomials}
+
+<extParamPol.at
+
+{require: all parameters in eB_in are delta-fixed}
+set KL_P_polynomials([extended_param] eB)=[[vec]]:
+    let p=eB[0] then
+    delta=delta(p) then    
+    (fixed_params,,,)=extended_block(p,delta) then     
+    assert(#eB=#fixed_params,"not all elements of block are delta-fixed, used fixed_params");
+    (P,polys,jumps)=raw_ext_KL(p,delta) then 
+    eB=for p in fixed_params do E(delta,p) od then 
+    perm=permutation(fixed_params_in,fixed_params) then   {!! Haven't used this yet}
+    rv=[[vec]]:[] in
+      for col@i in P do 
+       let new_col=[vec]:[] in 
+       for j:#col do 
+       	   new_col#:=(-1)^(length_diff(i,j,jumps))*polys[col[j]] od;	
+        rv#:=new_col od ;transpose(rv)
+
+set KL_Q_polynomials([extended_param] eB)=upper_unitriangluar_inverse (KL_P_polynomials(eB))
+

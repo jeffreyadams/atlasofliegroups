@@ -185,6 +185,8 @@ set fixed (mat delta, [Param] B)=[Param]:
 { select delta-fixed elements from block_of(p) }
 set fixed_block_of (mat delta, Param p) = [Param]: fixed(delta,block_of(p))
 
+set fixed_block (mat delta, Param p) = ([Param],int): let b=fixed(delta,block_of(p)) in (b,find(b,p))
+
 set format (extended_param E) = string:
   to_string ( "         x=", E.x
   , new_line, "     gamma=", E.gamma
@@ -198,6 +200,8 @@ set format (extended_param E) = string:
 
 set short_format (extended_param E) = string: to_string(
     "lambda_rho =",E.lambda_rho,", tau=", E.tau ,", l=", E.l, ", t=", E.t, ".")
+set long_format (extended_param E) = string: to_string(
+"gamma=", E.gamma,", g=", E.g,", lambda_rho =",E.lambda_rho,", tau=", E.tau ,", l=", E.l, ", t=", E.t)
 
 set display (extended_param E) = void: prints(format(E))
 set display_one_line (extended_param E) = void: prints(short_format(E))
