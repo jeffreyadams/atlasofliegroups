@@ -1,0 +1,98 @@
+<basic.at
+<extParamPol.at
+<inverse.at
+<polynomial.at
+
+set ed_verbose=false
+set ed_verbose2=true
+
+set null_wt(int r) = ratvec: null(r)
+set has_nu0 (Param p) = bool: =nu(p)
+
+{extended_param:(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)}
+
+{B_fixed should be the delta-fixed parameters in a block B}
+set KL_P_polynomials([Param] B_fixed,mat delta)=[[vec]]:
+    let ()=assert( all(for p in B_fixed do is_fixed(delta,p) od),"Not every parameter is delta-fixed") then
+    (P,polys,jumps)=raw_ext_KL(B_fixed[0],delta) then 
+    rv=[[vec]]:[] in
+      for col@i in P do 
+       let new_col=[vec]:[] in 
+       for j:#col do 
+       	   new_col#:=(-1)^(length_diff(i,j,jumps))*polys[col[j]] od;	
+        rv#:=new_col od ;transpose(rv)
+
+set KL_Q_polynomials([Param] B_fixed, mat delta)=upper_unitriangluar_inverse (KL_P_polynomials(B_fixed,delta))
+
+set deform(Param p, mat delta)=ParamPol:
+    let ()=assert(is_fixed(delta,p),"parameter is not delta-fixed") then
+    (x,lambda,gamma)=%p then
+    rv=null_module(real_form(p)) then
+     (B_f,index)=fixed_block(delta,p) then
+     Q_polys=KL_Q_polynomials(B_f,delta) then
+     P_polys=KL_P_polynomials(B_f,delta) then 
+     l_index=length(p) then
+     outer_sum=ParamPol:null_module(real_form(p)) in
+      if ed_verbose then prints("index=",index) fi;
+     for i:index do
+      if ed_verbose then prints("outer loop i=",i) fi;
+     let inner_sum=0 then
+      p_i=B_f[i] then
+      l_i=length(p_i) then
+      onr=(-1)^(rat_as_int((orientation_nr(p)-orientation_nr(p_i))/2)) in
+      for j:index-i from i do 
+       if ed_verbose then prints("  inner loop j=",j) fi;
+       let p_j=B_f[j] then
+        l_j=length(p_j) in
+        if ed_verbose then prints("   length_diff:", l_index-l_j) fi;
+       if is_odd(l_index-l_j) then 
+        if ed_verbose then prints("  Term:") fi;	
+        let P_ij=vec:P_polys[i][j] then
+        Q_jindex=vec:Q_polys[j][index] in
+        inner_sum+:=eval(P_ij,-1)*eval(Q_jindex,-1)
+       fi;
+       if ed_verbose then prints("inner sum: ", inner_sum) fi
+      od;
+      outer_sum+:=onr*inner_sum*B_f[i];
+       if ed_verbose then prints("outer sum with i=", i, ":", outer_sum) fi   
+ od;
+      (1-s)*outer_sum
+
+{not used
+set deformation (extended_param E) = (extended_param,extParamPol): (lower(E),deform(E))
+}
+
+set rec_def (Param p,mat delta) = (Param,ParamPol):
+  if ed_verbose2 then prints("rec_def with:", p) fi;
+  if is_zero(p) or not is_final(p) or not is_fixed(delta,p) then error("improper parameter")
+  else
+    let empty=null_module(real_form(p))
+    then recd = (Split c,Param p ) (Param,ParamPol): (p,empty) { dummy }
+    in
+    ( recd := { now create a recursive function be reassigning to |recd| }
+      begin (Split coef,Param p): { coef to be multiplied to deformation terms }
+        if ed_verbose2 then prints("recd with:", p) fi;	  
+	if has_nu0(p) then (p,empty) { but deformed |p| has |coef| implicitly }
+	elif not is_standard(p) then prints(p,%p); error("halt")
+	else
+	  let (x,lambda,gamma)=%p, rp=reducibility_points(p)
+	  then inx=#rp, at_nu0=empty, acc=empty
+	  in while inx>0 do
+            let p_def=param(x,lambda,gamma*rp[inx-:=1]) in 
+            let def=deform(p_def,delta) in	
+	    if ed_verbose2 then prints("adding deformation term: p=", p_def, new_line, "adding:", def) fi;
+	     acc+:=def od  
+	  ; for k@q in acc
+	    do
+	      let c=coef*k then (q0,nu0_terms) = recd(c,q)
+	      in at_nu0 +:= nu0_terms+(c,q0)
+	    od
+	  ; { return deformed p and accumulated deformation terms }
+	  (param(x,lambda,null_wt(#gamma)), at_nu0)
+	fi
+      end
+    ) { value in parentheses is recursive |recd|; apply it: }
+  (1,p)
+  fi
+
+set full_deform (Param p,mat delta) = ParamPol:let (a,P)=rec_def(p,delta) in a+P

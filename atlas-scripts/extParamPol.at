@@ -1,0 +1,38 @@
+{implement ParamPol for extended parameters}
+
+:extParamPol=[(Split,extended_param)]
+set splits(extParamPol P)=[Split]:for (s,) in P do s od
+set ext_params(extParamPol P)=[extended_param]:for (,E) in P do E od
+
+set collect(extParamPol Q)=extParamPol:
+let splits=splits(Q) then
+ext_params=ext_params(Q) then
+rv_splits=[Split]:[] then
+rv_ext_params=[extended_param]:[]  then
+rv=[] then
+ ()=for E@i in ext_params do 
+  let j=find(rv_ext_params,E) in 
+   if j=-1 then  ( rv_splits#:=splits[i], rv_ext_params#:=E) else
+   rv_splits[j]+:=splits[i] fi 
+ od in 
+let rv=[] in 
+for i:#rv_ext_params do 
+if rv_splits[i]!=0 then rv#:=(rv_splits[i],rv_ext_params[i]) fi od ;rv
+
+set *(Split s,extended_param E) = extParamPol: [(s,E)]
+set *(Split s,extParamPol P)=extParamPol: let Q=for (t,E) in P do (s*t,E) od in collect(Q)
+set #([Split] a,[Split] b)=[Split]: for x in b do a#:=x od;a
+set #([extended_param] a,[extended_param] b)=[extended_param]: for x in b do a#:=x od;a
+
+set +(extParamPol P,extParamPol Q)=extParamPol:
+let splits=splits(P)#splits(Q) then
+ext_params=ext_params(P)#ext_params(Q) in
+collect(for i:#splits do (splits[i],ext_params[i]) od)
+
+set +(extParamPol P,extended_param E)=extParamPol:P+[(1,E)]
+
+set -(extParamPol P,extParamPol Q)=extParamPol:P+(-1)*Q
+
+set null_ext_module(RealForm G)=extParamPol:[]
+
+set display(extParamPol P)=for (s,E) in P do prints(s, "*(", long_format(E),")") od
