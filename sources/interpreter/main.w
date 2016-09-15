@@ -141,11 +141,11 @@ below. Curiously, the program~\.{bison} does not write this prototype to
 |YYLTYPE| there; these require that the header file \.{parse\_types.h} be
 included first. We also declare ``{\tt\%parse-param \char`\{}
 |atlas::interpreter::expr_p* parsed_expr@;|{\tt\char`\}}'' and
-``{\tt\%parse-param \char`\{} |int* verbosity|{\tt\char`\}}'' in~\.{parser.y},
-so that the parser itself, |yyparse|, takes a pointer to an expression as
-parameter, in which it writes the result of parsing, and an integer
-pointer, which it uses to signal special requests from the user (such as
-verbose output but also termination or output redirection).
+``{\tt\%parse-param \char`\{} |int* verbosity@;|{\tt\char`\}}''
+in~\.{parser.y}, so that the parser itself, |yyparse|, takes a pointer to an
+expression as parameter, in which it writes the result of parsing, and an
+integer pointer, which it uses to signal special requests from the user (such
+as verbose output but also termination or output redirection).
 
 
 The definitions below used to start with |extern "C"|, but no longer do so

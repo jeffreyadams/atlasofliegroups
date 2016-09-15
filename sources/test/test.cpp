@@ -126,7 +126,7 @@ namespace {
 */
   enum TestMode {EmptyMode, MainMode, RealMode, BlockMode, ReprMode,
 		 numTestMode};
-  const TestMode testMode = BlockMode; // currently does test of extended block
+  const TestMode testMode = EmptyMode; // currently does nothing, so empty mode
 
   // utilities
   const RootDatum& currentRootDatum();
@@ -889,7 +889,10 @@ void exam_f()
 
 void test_f() // trial of twisted KLV computation
 {
-
+  std::cout << "No test function in this version of  Fokko" << std::endl;
+  return;
+  // this function is disabled as it fails for the following reason:
+  // currently we cannot correct signs in block mode extended block
   ext_block::ext_block
     eblock(commands::current_inner_class(),
 	   commands::currentBlock(),

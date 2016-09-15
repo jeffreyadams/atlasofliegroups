@@ -761,7 +761,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	case ext_block::three_imaginary_compact:
 	  // these cases require no additional terms to be substracted
 	  Q.factor_by_1_plus_q_to_the(k,(aux.block.l(y,x)-1)/2+k); // degree
-	  assert(Q.degree_less_than(aux.block.l(y,x)+1)/2);
+	  assert(Q.degree_less_than((aux.block.l(y,x)+1)/2));
 	    // that was the condition $\deg(Q) \leq l(y,x)-1/2|, computed safely
 	  break;
 	default: assert(false); // other cases should not have selected |s|
