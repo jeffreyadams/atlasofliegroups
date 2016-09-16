@@ -1,3 +1,4 @@
+<extended.at
 {implement ParamPol for extended parameters}
 
 :extParamPol=[(Split,extended_param)]

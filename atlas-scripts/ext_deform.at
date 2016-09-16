@@ -1,10 +1,11 @@
 <basic.at
-<extParamPol.at
+<extended.at
 <inverse.at
 <polynomial.at
+<dual.at
 
 set ed_verbose=false
-set ed_verbose2=true
+set ed_verbose2=false
 
 set null_wt(int r) = ratvec: null(r)
 set has_nu0 (Param p) = bool: =nu(p)
@@ -13,8 +14,8 @@ set has_nu0 (Param p) = bool: =nu(p)
 
 {B_fixed should be the delta-fixed parameters in a block B}
 set KL_P_polynomials([Param] B_fixed,mat delta)=[[vec]]:
-    let ()=assert( all(for p in B_fixed do is_fixed(delta,p) od),"Not every parameter is delta-fixed") then
-    (P,polys,jumps)=raw_ext_KL(B_fixed[0],delta) then 
+    assert( all(for p in B_fixed do is_fixed(delta,p) od),"Not every parameter is delta-fixed");
+    let (P,polys,jumps)=raw_ext_KL(B_fixed[0],delta) then 
     rv=[[vec]]:[] in
       for col@i in P do 
        let new_col=[vec]:[] in 
@@ -58,10 +59,6 @@ set deform(Param p, mat delta)=ParamPol:
  od;
       (1-s)*outer_sum
 
-{not used
-set deformation (extended_param E) = (extended_param,extParamPol): (lower(E),deform(E))
-}
-
 set rec_def (Param p,mat delta) = (Param,ParamPol):
   if ed_verbose2 then prints("rec_def with:", p) fi;
   if is_zero(p) or not is_final(p) or not is_fixed(delta,p) then error("improper parameter")
@@ -96,3 +93,6 @@ set rec_def (Param p,mat delta) = (Param,ParamPol):
   fi
 
 set full_deform (Param p,mat delta) = ParamPol:let (a,P)=rec_def(p,delta) in a+P
+
+set c_form_std (Param p,mat delta) = ParamPol:
+let G=real_form(p) in if is_equal_rank(G) then full_deform(p) else full_deform(p,delta) fi
