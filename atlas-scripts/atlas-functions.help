@@ -460,8 +460,8 @@ most_split_Cartan: (RealForm->CartanClass): most split Cartan class for form
 involution: (CartanClass->mat): weight lattice involution for Cartan class
 Cartan_info: (CartanClass->(int,int,int),vec,(int,int),(LieType,LieType,LieType)):
   Information about the Cartan class, essentially that given by the output of
-  'cartan' in the Atlas (except for the final partition corresponding to the
-  real forms for this Cartan class, for which see fiber_partition).
+  'cartan' in Fokko (except for the final partition corresponding to the real
+  forms for this Cartan class, for which see fiber_partition).
   The first triple of integers gives in order the number of compact (U(1)),
   complex (GL(1,C)), and split (GL(1,R)) factors of the real torus defined by
   this Cartan class. Follows the canonical twisted involution for the Cartan

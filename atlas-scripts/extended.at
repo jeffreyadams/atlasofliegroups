@@ -103,7 +103,7 @@ begin let ic = inner_class(x), theta = involution(x) in
 ; assert(is_integer(square(x)-g)
         ,"x is not compatible with infinitesimal cocharacter g")
 ; assert(is_integer(lambda-rho(ic)),"lambda is not in the correct X^*-coset")
-{ l = ratvec_as_vec( g-torus_factor(x)*(1+theta)*/2-rho_check(real_form(x)) )
+{ let l = ratvec_as_vec( g-torus_factor(x)*(1+theta)*/2-rho_check(real_form(x)) )
   but this is simplified because torus_factor(x) is ^theta fixed
 }
 ; let l = (g-torus_factor(x)-rho_check(ic))\1 { convert to vec }
@@ -151,21 +151,27 @@ set E (mat delta, Param p, ratvec g) = extended_param:
 
 set E (mat delta, Param p) = extended_param: E(delta,p,canonical_g(p))
 
-{ allow defaulting |delta| across a session, by doing |set E=E(delta)|
-  for instance as |set E=E(ic.distinguished_involution)|
+{ without involution specified: assume delta=distinguished_involution(G) }
+set E (Param p, ratvec g) = extended_param:
+  E(distinguished_involution(inner_class(p)),p,g)
+
+{ with just a parameter, assume both defaults above }
+set E (Param p) = extended_param:
+  E(distinguished_involution(inner_class(p)),p,canonical_g(p))
+
+
+{ commenting out 2 functions, since the division by 2 is wrong here
+set torus_factor (extended_param(,,,,,g,l,,,)) = ratvec: (g-l)/2
+set dual_torus_factor (extended_param(,,gamma,lambda,,,,,,)) = ratvec:
+  (gamma-lambda)/2
 }
-set E (mat delta) = (Param->extended_param): (Param p): E(delta,p)
-
-set torus_factor (extended_param E) = ratvec: E.g - E.l - E.rho_check
-set dual_torus_factor (extended_param E) = ratvec: E.gamma-E.lambda_rho-E.rho
-
-set nu (extended_param E) = ratvec: nu(E.gamma,E.x)
+set nu (extended_param e) = ratvec: nu(gamma(e),x(e))
 
 { sign(E,F)=\pm 1 (or 0): nonzero tells whether the parameters for G are
   equivalent up to sign, and gives that sign.
   If E,F lie over the same ordinary parameter then sign(E,F)=\pm 1.
   The formula is the last line of Proposition 6.10 (Proposition 16 in the
-  final version) of "Parameters for twisted repressentations".
+  final version) of "Parameters for twisted representations".
   The i term of this formula is not symmetric in G and G^\vee, hence
   we also have dual_sign(E,F)
 }
@@ -241,20 +247,13 @@ set sign ((extended_param E1,extended_param E2),extended_param F) = int:
   sign(E1,F)+sign(E2,F)
 
 { default(F)=\pm F is the extended parameter constructed by Atlas }
-set default (extended_param(ic,delta,gamma,lambda,,g,,,,):F) = extended_param:
-  E(delta,x(F) { defined in extended_misc; it uses (ic,theta,g,l) }
-   ,gamma,g,lambda+rho(ic))
+set default (extended_param F) = extended_param:
+  E(delta(F),x(F),gamma(F),g(F),lambda(F)+rho(ic(F)))
 
 set      sign (extended_param E) =int:      sign(E,default(E))
 set dual_sign (extended_param E) =int: dual_sign(E,default(E))
 set = (extended_param E, extended_param F) = bool: sign(E,F)=1
 set is_default (extended_param E)=bool:E=default(E)
-
-set z (extended_param E) = rat: { implicit $\exp_{-1}$ }
-  E.l * (E.delta-1) * E.tau / 2 + E.t * E.lambda_rho
-
-set z_quot (extended_param E, extended_param F) = int:
-  let d=E.z-F.z in assert(=d%1, "z_quot imaginary"); (-1)^(d\1)
 
 { print information about an extended block }
 set ext_print_block (mat delta, [Param] B) = void:

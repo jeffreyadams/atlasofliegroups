@@ -11,13 +11,14 @@
   the conjecture is the following
   set s=sign(ext_Cayley(k,E)[0 or 1],F)
   set t=sign(ext_Cayley(k,F)[0 or 1],E)
-  in each case the Cayleys of type 2i12/2r21 by root k are double valued,
-    and one of them gives \pm the other argument
+  in each case the Cayleys of type 2i12/2r21 by root k
+  are double valued, and one of them gives \pm the other argument
+  see definition of sign(E,[F1,F2]),sign([E1,E2],F) in extended.at
   then define
-    sign_2i12(k,E,F)=1 if s=t=1 and -1 otherwise
+  sign_2i12(k,E,F)=1 if s=t=1 and -1 otherwise
   the idea is:
-  there are 4 representations E_1,E_2 (more compact Cartan)
-    and F_1,F_2 (more split)
+  there are 4 representations E_1,E_2 (more compact Cartan) and F_1,F_2
+  (more split)
   take these to be the default extended parameters
   for each pair (i,j) (i,j=1,2) there is a sign E_i --> F_j:
     whether \pm F_j occurs in the Cayley of E_i by root k (of type 2i12)
@@ -25,6 +26,7 @@
     whether \pm E_j occurs in the Cayley of F_i by root k (of type 2r21)
 
   typically 7 of these are +, and 1 is minus
+  occasionally there are 6 pluses, and 2 minuses (both directions E_i<-->F_j)
 
   then sign_2i12(k,E_i,F_j)=-1 if *either arrow gets a minus*, and 1 otherwise
 

@@ -77,6 +77,7 @@ set discrete_series(RealForm G,ratvec lambda)=Param:
 
 { for lists of multiple representations see all_parameters.at }
 
+{
 set principal_series_by_tau (RealForm G,[int] tau_invariant) = Param:
   let lambda = ratvec: null(rank(sc_split_only(G)))
   then ()=for i in tau_invariant do lambda+:=fundamental_weight(G,i) od
@@ -91,3 +92,4 @@ set principal_series_by_tau_complement (RealForm G,[int] tau_invariant) = Param:
 set all_principal_series(RealForm G) = [Param]:
   for tau in generate_all_subsets(#semisimple_rank(G))
   do principal_series_by_tau(G,tau) od
+}

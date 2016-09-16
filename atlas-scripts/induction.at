@@ -198,6 +198,7 @@ set standardize (ParamPol P) = ParamPol:
   Then p_G=Ind_L^G(I(p_L))=I(p_g)
   might not be standard for G (outside of good range), so apply standardize
 }
+
 set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
   let L=real_form(x(p_L)), x_G=embed_KGB(x(p_L),G)
   then shift=rho(G)-rho(L)

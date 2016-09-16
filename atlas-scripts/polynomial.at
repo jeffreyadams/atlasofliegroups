@@ -190,10 +190,6 @@ set printPolyMatrix (poly_mat M) = void:
       for j:#M[i] do line+:=" "+stringPoly(M[i][j],"q") od; prints(line)
     od
 
-set printPolyMatrix (poly_mat M) = void: printPolyMatrix(M,3)
-
-
-
 { restore normal vector arithmetic }
 forget +@(vec,vec)
 forget -@(vec,vec)

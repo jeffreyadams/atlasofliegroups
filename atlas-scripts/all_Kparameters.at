@@ -198,5 +198,4 @@ set print_all_K_parameters_norm_upto (RealForm G, ratvec v,int N) = void:
   for p in sort_by_K_norm(all_K_parameters_norm_upto(G,v,N))
   do prints(p, " ", K_norm(p)) od
 
-
 }

@@ -62,7 +62,7 @@ extended.at		basic, lattice, rep'ns, synth, param's, ext_misc/types
 			{ construction functions for extended_param, signs }
 nonintegral.at		Wdelta, synthetic, extended* { cross/Cayley; extended }
 synthetic_aux.at	synthetic, Weyl, Weylgroup, translate
-			{ auxiliary file use to help correcting synthetic.at }
+			{ auxiliary file used to help correcting synthetic.at }
 hecke.at		basic, sort, polynomial, extended*, nonintegral
 			{ cross actions and Cayleys for extended params; tests }
 
