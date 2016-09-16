@@ -23,6 +23,7 @@ set !q = poly: [0,1], !q2 = poly: [0,0,1]
 set + = flex_add@(poly,poly)
 set - = flex_sub@(poly,poly)
 set * = convolve@(vec,vec)
+set poly_product(poly f,poly g)=f*g
 
 { reduce polynomial by dropping trailing zeros; shouldn't really be needed }
 set strip (poly v) = poly: v + poly_0 { operator + does actual stripping }

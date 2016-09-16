@@ -151,13 +151,10 @@ set E (mat delta, Param p, ratvec g) = extended_param:
 
 set E (mat delta, Param p) = extended_param: E(delta,p,canonical_g(p))
 
-{ without involution specified: assume delta=distinguished_involution(G) }
-set E (Param p, ratvec g) = extended_param:
-  E(distinguished_involution(inner_class(p)),p,g)
-
-{ with just a parameter, assume both defaults above }
-set E (Param p) = extended_param:
-  E(distinguished_involution(inner_class(p)),p,canonical_g(p))
+{ allow defaulting |delta| across a session, by doing |set E=E(delta)|
+  for instance as |set E=E(ic.distinguished_involution)|
+}
+set E (mat delta) = (Param->extended_param): (Param p): E(delta,p)
 
 set torus_factor (extended_param E) = ratvec: E.g - E.l - E.rho_check
 set dual_torus_factor (extended_param E) = ratvec: E.gamma-E.lambda_rho-E.rho
@@ -245,12 +242,18 @@ set sign ((extended_param E1,extended_param E2),extended_param F) = int:
 
 { default(F)=\pm F is the extended parameter constructed by Atlas }
 set default (extended_param F) = extended_param:
-  E(delta(F),x(F),gamma(F),g(F),lambda(F)+rho(ic(F)))
+  E(F.delta,F.x,F.gamma,F.g,F.lambda+rho(F.ic))
 
 set      sign (extended_param E) =int:      sign(E,default(E))
 set dual_sign (extended_param E) =int: dual_sign(E,default(E))
 set = (extended_param E, extended_param F) = bool: sign(E,F)=1
 set is_default (extended_param E)=bool:E=default(E)
+
+set z (extended_param E) = rat: { implicit $\exp_{-1}$ }
+  E.l * (E.delta-1) * E.tau / 2 + E.t * E.lambda_rho
+
+set z_quot (extended_param E, extended_param F) = int:
+  let d=E.z-F.z in assert(=d%1, "z_quot imaginary"); (-1)^(d\1)
 
 { print information about an extended block }
 set ext_print_block (mat delta, [Param] B) = void:

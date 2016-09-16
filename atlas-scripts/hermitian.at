@@ -173,12 +173,12 @@ set is_unitary(ParamPol P)= bool:
 { compute Hermitian form on p, and report if it is unitary }
 
 set is_unitary (Param p) = bool: is_unitary(hermitian_form_irreducible(p))
-
+{
 set test_spherical_unitary(RealForm G,[ratvec] nus)= void:
   for nu in nus do
     prints(nu,", ", is_unitary(spherical_principal_series(G,nu)))
   od
-
+}
 set test_line (Param p) = void:
 ( let (x,lambda_minus_rho,gamma) = %p
   then points=reducibility_points(p)

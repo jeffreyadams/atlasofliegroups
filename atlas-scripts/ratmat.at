@@ -76,6 +76,42 @@ set / (ratmat(M,,d)) = ratmat:
 set ^ (ratmat(M,,d):Md,int e) = ratmat:
   if >=e then (M^e,s,d^e) else let (A,,m) = /Md, e1 = -e in (A^e1,s,m^e1) fi
 
+set ratmat_as_mat(ratmat(M,,d))=mat:assert(abs(d)=1,"matrix is not integral");d*M
+set mat_as_ratmat(mat M)=ratmat:(M,"/",1)
+set diagonal(ratvec v)=ratmat:let (w,d)=%v in (diagonal(w),"/", d)
+
+{convert [ratvec] to ratmat, and define resulting operations involving a ratmat}
+set ratvecs_as_ratmat([ratvec] A)=ratmat:
+let d=lcm(for v in A do let (,denom)=%v in denom od) in
+(for v in A do ratvec_as_vec(d*v) od,"/",d)
+set det([ratvec] M)=rat:det(ratvecs_as_ratmat(M))
+set ^([ratvec] M)=ratmat:^(ratvecs_as_ratmat(M))
+set * ([ratvec] M,ratmat MM)=ratmat:ratvecs_as_ratmat(M)*MM
+set * (ratmat M,[ratvec] MM)=ratmat:M*ratvecs_as_ratmat(MM)
+set + ([ratvec] M,ratmat MM)=ratmat:ratvecs_as_ratmat(M)+MM
+set + (ratmat M,[ratvec] MM)=ratmat:M+ratvecs_as_ratmat(MM)
+set - ([ratvec] M,ratmat MM)=ratmat:ratvecs_as_ratmat(M)-MM
+set - (ratmat M,[ratvec] MM)=ratmat:M-ratvecs_as_ratmat(MM)
+set inverse(ratmat(M,,d))=ratmat:let (Minv,e)=invert(M) in d*Minv/e
+
+{also define resulting operations involving a mat}
+set * ([ratvec] M,mat MM)=ratmat:ratvecs_as_ratmat(M)*mat_as_ratmat(MM)
+set * (mat M,[ratvec] MM)=ratmat:mat_as_ratmat(M)*ratvecs_as_ratmat(MM)
+set + ([ratvec] M,mat MM)=ratmat:ratvecs_as_ratmat(M)+mat_as_ratmat(MM)
+set + (mat M,[ratvec] MM)=ratmat:mat_as_ratmat(M)+ratvecs_as_ratmat(MM)
+set - ([ratvec] M,mat MM)=ratmat:ratvecs_as_ratmat(M)-mat_as_ratmat(MM)
+set - (mat M,[ratvec] MM)=ratmat:mat_as_ratmat(M)-ratvecs_as_ratmat(MM)
+
+{define inverse of mat as ratmat}
+set rational_inverse(mat M)=ratmat:inverse(mat_as_ratmat(M))
+
+set ratvec_to_string(ratvec v)=string:
+let rv=string:"" in
+for a in v do let (n,d)=%a in
+if d=1 then rv##:=int_format(n)+" " else rv##:=int_format(n)+"/"+int_format(d)+" " fi od;rv
+
+set show(ratmat(M,,d))=void:for v in M do prints(ratvec_to_string(v/d)) od
+
 { finally restore |s| from basic.at, and free the identifier |save_s| }
 s : save_s
 forget save_s

@@ -128,6 +128,5 @@ set ^ (Tits_elt !xi, int n) = Tits_elt:
   fi
 
 set order (Tits_elt xi) = int:
-  let id=tits_identity(root_datum(xi)), (,,m)=xi
-  then d=order(m)
+  let id=tits_identity(xi.root_datum), d=order(xi.theta)
   in if xi^d=id then d elif xi^(2*d)=id then 2*d else error() fi

@@ -180,7 +180,7 @@ set highest_weights (K_Type p,KGBElt x_K) = [KHighestWeight]:
 {.all highest weights of all LKTs of a parameter.}
 set highest_weights (Param p) = [KHighestWeight]:
   let result=[KHighestWeight]: [] in
-  for q in LKTs(p) do result#:=highest_weights(q) od;
+  for q in LKTs(p) do result##:=highest_weights(q) od;
   result
 
 {.all highest weights of all LKTs of a parameter wrt x_K.}
@@ -394,7 +394,6 @@ set K_types (KHighestWeight mu_in)= [K_Type]:
   in
   assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
   let x_Q=x_min(Q)
-  then mu=fix(mu,x_Q)
   then mu=make_strongly_dominant(mu,x_Q)
   then (x,tau)=mu then
   L=Levi(Q)
@@ -428,12 +427,9 @@ set K_types (KHighestWeight mu_in)= [K_Type]:
 {.KHighestWeight -> unique K-type if unique (or error).}
 set K_type (KHighestWeight(x,mu)) = K_Type:
   let ktypes=K_types(x,mu) in
-  assert(#ktypes=1
-        ,"more than one K-type maps to this KHighestWeight;" # new_line
-        #"use K_types to get them all");
-  ktypes[0]
-
-
+  assert(#ktypes=1,
+      ##["more than one K-type maps to this KHighestWeight;", new_line,
+       "use K_types to get them all"]); ktypes[0]
 
 {-----------------KHighestWeight to K0_param --------------------------}
 

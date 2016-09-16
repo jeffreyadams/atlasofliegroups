@@ -115,9 +115,7 @@ set lambda_rho_from_dominant_norm_upto (KGBElt x, ratvec v, int N) = mat: {wts}
 
 set K_parameters_norm_upto ((KGBElt,ratvec,int)(x,,):triple) = [K_Type]:
   let lrs = lambda_rho_from_dominant_norm_upto(triple), rho=rho(root_datum(x))
-  , result=[K_Type]:[]
-  in for lr in lrs do result#:=all_equal_dlambda_K_parameters(x,lr+rho) od;
-  result
+  in ## for lr in lrs do all_equal_dlambda_K_parameters(x,lr+rho) od
 
 { that used to be:
 { mu will be dlambda=(1+theta)lambda/2 => 2*mu\in X^*
