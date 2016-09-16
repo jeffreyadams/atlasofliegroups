@@ -1,6 +1,7 @@
 <basic.at
 <representations.at { for spherical_principal_series }
 <kl.at
+<ext_deform.at
 
 { a variable used in this file; set to true for more output from functions }
 set hermitian_debug = false
@@ -25,7 +26,9 @@ set orientation_nr_term = (int,Param->Split):
 set c_form_std (Param p) = ParamPol:
 ( if hermitian_debug then prints("computing c-form on standard module: ",p) fi
 ; let G=real_form(p) in
-  if is_equal_rank(G) then full_deform(p) else full_deform(p) fi { CHANGE ME }
+  if is_equal_rank(G) then full_deform(p) { in this case built-in is faster }
+  else full_deform(p,distinguished_involution(G)) { otherwise use extended }
+  fi
 )
 
 { c_form_irreducible_long(y) returns a ParamPol of standardrepks
