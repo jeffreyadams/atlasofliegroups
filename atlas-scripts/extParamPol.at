@@ -1,3 +1,4 @@
+<extended.at
 {implement ParamPol for extended parameters}
 
 :extParamPol=[(Split,extended_param)]
@@ -10,13 +11,13 @@ ext_params=ext_params(Q) then
 rv_splits=[Split]:[] then
 rv_ext_params=[extended_param]:[]  then
 rv=[] then
- ()=for E@i in ext_params do 
-  let j=find(rv_ext_params,E) in 
+ ()=for E@i in ext_params do
+  let j=find(rv_ext_params,E) in
    if j=-1 then  ( rv_splits#:=splits[i], rv_ext_params#:=E) else
-   rv_splits[j]+:=splits[i] fi 
- od in 
-let rv=[] in 
-for i:#rv_ext_params do 
+   rv_splits[j]+:=splits[i] fi
+ od in
+let rv=[] in
+for i:#rv_ext_params do
 if rv_splits[i]!=0 then rv#:=(rv_splits[i],rv_ext_params[i]) fi od ;rv
 
 set *(Split s,extended_param E) = extParamPol: [(s,E)]

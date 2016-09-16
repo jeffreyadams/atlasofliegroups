@@ -113,14 +113,13 @@ set is_split_spherical(K_Type p)=bool:
 set highest_weight_split_spherical(K_Type p)=KHighestWeight:
   assert(is_split_spherical(p), "p is not a spherical rep of a split group");
   let x=x(p) then x_K=canonical_x_K(x)
+  then rd=root_datum(p)
   then i_rd=root_datum(simple_from_positive(imaginary_sys(x_K)))
-  , lambda=lambda(p)
-  then rd=i_rd
-  then fw=fundamental_weights(rd), mu=ratvec:lambda(p)-rho(rd)
+  then fw=fundamental_weights(i_rd), mu=ratvec:lambda(p)-rho(rd)
   in { prints("mu=", mu); }
-  for alpha_check@i in simple_coroots(rd) do mu-:=mu*alpha_check*fw[i] od;
+  for alpha_check@i in simple_coroots(i_rd) do mu-:=mu*alpha_check*fw[i] od;
 { prints("mu modified=", mu); }
-  assert(all(for alpha_check in simple_coroots(rd) do mu*alpha_check=0 od)
+  assert(all(for alpha_check in simple_coroots(i_rd) do mu*alpha_check=0 od)
         ,"error, mu isn't orthogonal to all roots");
   (KGB(real_form(x),0),ratvec_as_vec(mu))
 
@@ -285,14 +284,15 @@ let rho=act(y,rho(rd)) then
 mu_3=mu_2-rho in
 {let ()=prints("mu_3=", mu_3) in}
 let rec_fun f(KGBElt x, ratvec mu_3_orig,ratvec tau)=(KGBElt,ratvec,ratvec):
-let rd_x=root_datum(x) in
+let rd_x=root_datum(x) then
 {let ()=prints();prints("f with: ", x, " ", real_form(x), " tau= ", tau) in
 let ()=prints("rd:", rd) in
 let ()=prints("tau=",tau) in
 let ()=prints("x=",x, "on real form:", real_form(x)) in}
-if is_dominant(rd,act(inverse(y),tau)) then
-{(x_1,mu_3_orig,tau) else}
-(cross(inverse(y),x_1),act(inverse(y),mu_3), act(inverse(y),tau)) else
+tau=act(inverse(y),tau) in
+if is_dominant(rd,tau) then
+{return this triple:}
+(cross(inverse(y),x_1),act(inverse(y),mu_3), tau) else
 let j=find_nci_root(x,tau) then
 {()=prints("got root: ", j, ", ", posroots(rd_x)[j]) then}
 {()=prints("beta=", posroots(rd_x)[j]) then}
@@ -365,7 +365,7 @@ set all_G_spherical_same_differential (Param p) = [K_Type]:
  and q=l+u is the corresponding standard parabolic
 }
 
-{.parabolic attched to KHighestWeight by Vogan algorithm.}
+{.parabolic attached to KHighestWeight by Vogan algorithm.}
 set parabolic (KHighestWeight (x,mu)) = Parabolic:
   let rd=root_datum(x), (y,mu_3_orig,lambda) = project_on_dominant_cone(x,mu)
   then diff=lambda-mu_3_orig

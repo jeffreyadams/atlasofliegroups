@@ -24,7 +24,8 @@ set orientation_nr_term = (int,Param->Split):
 }
 set c_form_std (Param p) = ParamPol:
 ( if hermitian_debug then prints("computing c-form on standard module: ",p) fi
-; full_deform(p)
+; let G=real_form(p) in
+  if is_equal_rank(G) then full_deform(p) else full_deform(p) fi { CHANGE ME }
 )
 
 { c_form_irreducible_long(y) returns a ParamPol of standardrepks

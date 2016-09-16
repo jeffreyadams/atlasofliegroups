@@ -16,23 +16,7 @@ set lower (Param p) = Param:
   then lim = let nrp=#rp in if nrp>0 and rp[nrp-1]=1/1 then nrp-1 else nrp fi
   in  param(x,lambda,if lim=0 then null_wt(#gamma) else gamma*rp[lim-1] fi)
 
-set my_deform(Param p)=ParamPol: 
-    let (x,lambda,gamma)=%p then
-    rv=null_module(real_form(p)) then
-     (B,index)=block(p) then	
-     Q_polys=KL_Q_polynomials(B) then 
-     l_p=length(p) then
-     sum=ParamPol:null_module(real_form(p)) in
-{     for i:index do }
-     for i:#B do 
-      let p1=B[i] then 
-      l_p1=length(p1) in
-       let pol=vec:Q_polys[i][index] in 
-       if  #pol != 0 and is_odd(l_p-l_p1) then sum+:=s^rat_as_int((orientation_nr(p)-orientation_nr(p1))/2)*eval(pol,s)*B[i] fi 
-       od; (1-s)*sum  
-
 set deformation (Param p) = (Param,ParamPol): (lower(p),deform(p))
-set my_deformation (Param p) = (Param,ParamPol): (lower(p),my_deform(p))
 
 set rec_def (Param p) = (Param,ParamPol):
   if d_verbose then prints("rec_def with:", p) fi;
@@ -43,44 +27,20 @@ set rec_def (Param p) = (Param,ParamPol):
     in
     ( recd := { now create a recursive function be reassigning to |recd| }
       begin (Split coef,Param p): { coef to be multiplied to deformation terms }
-        if d_verbose then prints("recd with:", p) fi;	  
+        if d_verbose then prints("recd with:", p) fi;
 	if has_nu0(p) then (p,empty) { but deformed |p| has |coef| implicitly }
 	elif not is_standard(p) then prints(p,%p); error("halt")
 	else
 	  let (x,lambda,gamma)=%p, rp=reducibility_points(p)
 	  then inx=#rp, at_nu0=empty, acc=empty
 	  in while inx>0 do
-	    let p_def=param(x,lambda,gamma*rp[inx-:=1]) in 
-            let def=deform(p_def) in	
-	    if d_verbose then prints("adding deformation term: p=", p_def, new_line, "adding:", def) fi;
-	     acc+:=def od
-	  ; for k@q in acc
-	    do
-	      let c=coef*k then (q0,nu0_terms) = recd(c,q)
-	      in at_nu0 +:= nu0_terms + (c,q0)
-	    od
-	  ; { return deformed p and accumulated deformation terms }
-	  (param(x,lambda,null_wt(#gamma)), at_nu0)
-	fi
-      end
-    ) { value in parentheses is recursive |recd|; apply it: }
-  (1,p)
-  fi
-
-set my_rec_def (Param p) = (Param,ParamPol):
-  if is_zero(p) or not is_final(p) then error("improper parameter")
-  else
-    let empty=null_module(real_form(p))
-    then recd = (Split c,Param p) (Param,ParamPol): (p,empty) { dummy }
-    in
-    ( recd := { now create a recursive function be reassigning to |recd| }
-      begin (Split coef,Param p): { coef to be multiplied to deformation terms }
-	if has_nu0(p) then (p,empty) { but deformed |p| has |coef| implicitly }
-	elif not is_standard(p) then prints(p,%p); error("halt")
-	else
-	  let (x,lambda,gamma)=%p, rp=reducibility_points(p)
-	  then inx=#rp, at_nu0=empty, acc=empty
-	  in while inx>0 do acc+:=my_deform(param(x,lambda,gamma*rp[inx-:=1])) od
+	    let p_def=param(x,lambda,gamma*rp[inx-:=1]) in
+            let def=deform(p_def) in
+	    if d_verbose
+	    then prints("adding deformation term: p=", p_def, new_line,
+	                "adding:", def)
+	    fi
+	  ; acc+:=def od
 	  ; for k@q in acc
 	    do
 	      let c=coef*k then (q0,nu0_terms) = recd(c,q)

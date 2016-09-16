@@ -69,13 +69,13 @@ set cross (mat w, Param p) = Param:
   [The latter uses alternative description of cross action:
   cross(w,(x,lr,gamma)) =equiv= (x,lr+w^{-1}*gamma-gamma,w^{-1}*gamma) ]
 
-  This explains the expression for lambda2 below
+  This explains the expression for lambda_rho2 below
 
-  For the expression for tau1, the relation to satisfy is
-  (1-theta1)*tau1 = (1-delta)*lambda2, and for this the terms w*rho-rho and
-  gamma2-gamma1 in lambda2 can be ignored, as delta commutes with w and fixes
-  each of rho, gamma1, gamma2. The contribution (delta-1)*rho_r_shift/2 will
-  then give the term rho_r_shift in lambda1 (but is it obviously a vec value?)
+  For the expression for tau1, the relation to satisfy is (1-theta1)*tau1 =
+  (1-delta)*lambda_rho2, and for this the terms w*rho-rho and gamma2-gamma1 in
+  lambda_rho2 can be ignored, as delta commutes with w and fixes each of rho,
+  gamma1, gamma2. The contribution (delta-1)*rho_r_shift/2 will then give the
+  term rho_r_shift in lambda1 (but is it obviously a vec value?)
 
   The value for l is easy to deduce from x(E) (the more explicit expression
   gien in a comment can be found be expanding the computation of x(E)) and the

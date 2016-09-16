@@ -242,7 +242,8 @@ set sign ((extended_param E1,extended_param E2),extended_param F) = int:
 
 { default(F)=\pm F is the extended parameter constructed by Atlas }
 set default (extended_param F) = extended_param:
-  E(F.delta,F.x,F.gamma,F.g,F.lambda+rho(F.ic))
+  E(F.delta,F.x { defined in extended_misc; it uses (ic,theta,g,l) }
+   ,F.gamma,F.g,F.lambda_rho+rho(F.ic))
 
 set      sign (extended_param E) =int:      sign(E,default(E))
 set dual_sign (extended_param E) =int: dual_sign(E,default(E))
