@@ -1,4 +1,3 @@
-{induction_fix.at AP10/20/2015}
 {parabolic induction from real and theta-stable parabolics}
 <basic.at
 <parabolics.at
@@ -232,7 +231,6 @@ set theta_induce_irreducible(Param p_L, RealForm G) = ParamPol:
   in application to highest_weight_to_K_type (in LKT_aux.at) it appears
   we can arrange before calling induce_standard that this holds
   for now throw an error if this fails
->>>>>>> 253c456ae82b18aabf50b85bf159d2d5588aa8b9
 }
 
 set induce_standard (Param p_L,Parabolic P,RealForm G) = ParamPol:

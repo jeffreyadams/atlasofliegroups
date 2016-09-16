@@ -27,17 +27,20 @@ set rec_def (Param p) = (Param,ParamPol):
     in
     ( recd := { now create a recursive function be reassigning to |recd| }
       begin (Split coef,Param p): { coef to be multiplied to deformation terms }
-        if d_verbose then prints("recd with:", p) fi;	  
+        if d_verbose then prints("recd with:", p) fi;
 	if has_nu0(p) then (p,empty) { but deformed |p| has |coef| implicitly }
 	elif not is_standard(p) then prints(p,%p); error("halt")
 	else
 	  let (x,lambda,gamma)=%p, rp=reducibility_points(p)
 	  then inx=#rp, at_nu0=empty, acc=empty
 	  in while inx>0 do
-	    let p_def=param(x,lambda,gamma*rp[inx-:=1]) in 
-            let def=deform(p_def) in	
-	    if d_verbose then prints("adding deformation term: p=", p_def, new_line, "adding:", def) fi;
-	     acc+:=def od
+	    let p_def=param(x,lambda,gamma*rp[inx-:=1]) in
+            let def=deform(p_def) in
+	    if d_verbose
+	    then prints("adding deformation term: p=", p_def, new_line,
+	                "adding:", def)
+	    fi
+	  ; acc+:=def od
 	  ; for k@q in acc
 	    do
 	      let c=coef*k then (q0,nu0_terms) = recd(c,q)

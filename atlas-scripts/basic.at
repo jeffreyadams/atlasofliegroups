@@ -789,8 +789,7 @@ set KGB (RealForm rf) = [KGBElt]: for i:KGB_size(rf) do KGB(rf,i) od
 
 { all KGB elements of G mapping to its Cartan class H }
 set KGB (CartanClass H,RealForm G) = [KGBElt]:
-  let result=[KGBElt]:[] in
-  for x in KGB(G) do if Cartan_class(x)=H then result#:=x fi od; result
+  ## for x in KGB(G) do if Cartan_class(x)=H then [x] else [] fi od
 
 set KGB_elt ((InnerClass, mat, ratvec) (,theta,v):all) = KGBElt:
   let rf = real_form(all)   { find real form within ic }

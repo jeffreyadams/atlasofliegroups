@@ -103,7 +103,7 @@ begin let ic = inner_class(x), theta = involution(x) in
 ; assert(is_integer(square(x)-g)
         ,"x is not compatible with infinitesimal cocharacter g")
 ; assert(is_integer(lambda-rho(ic)),"lambda is not in the correct X^*-coset")
-{ l = ratvec_as_vec( g-torus_factor(x)*(1+theta)*/2-rho_check(real_form(x)) )
+{ let l = ratvec_as_vec( g-torus_factor(x)*(1+theta)*/2-rho_check(real_form(x)) )
   but this is simplified because torus_factor(x) is ^theta fixed
 }
 ; let l = (g-torus_factor(x)-rho_check(ic))\1 { convert to vec }
@@ -165,7 +165,7 @@ set length(extended_param E) = int: length(parameter(E))
   equivalent up to sign, and gives that sign.
   If E,F lie over the same ordinary parameter then sign(E,F)=\pm 1.
   The formula is the last line of Proposition 6.10 (Proposition 16 in the
-  final version) of "Parameters for twisted repressentations".
+  final version) of "Parameters for twisted representations".
   The i term of this formula is not symmetric in G and G^\vee, hence
   we also have dual_sign(E,F)
 }
@@ -241,9 +241,9 @@ set sign ((extended_param E1,extended_param E2),extended_param F) = int:
   sign(E1,F)+sign(E2,F)
 
 { default(F)=\pm F is the extended parameter constructed by Atlas }
-set default (extended_param(ic,delta,gamma,lambda,,g,,,,):F) = extended_param:
-  E(delta,x(F) { defined in extended_misc; it uses (ic,theta,g,l) }
-   ,gamma,g,lambda+rho(ic))
+set default (extended_param F) = extended_param:
+  E(F.delta,F.x { defined in extended_misc; it uses (ic,theta,g,l) }
+   ,F.gamma,F.g,F.lambda_rho+rho(F.ic))
 
 set      sign (extended_param E) =int:      sign(E,default(E))
 set dual_sign (extended_param E) =int: dual_sign(E,default(E))
