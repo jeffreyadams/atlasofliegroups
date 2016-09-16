@@ -1,7 +1,7 @@
 <dual.at
 
 {I=standard, J'=irreducible
- Q(J',I)=\sum a_i q^i 
+ Q(J',I)=\sum a_i q^i
  a_{(l(I)-l(J')-n)/2}=mult of J' in level n F_n of Jantzen filtration
 where I=I_0\supset I_1\supset ...
 F_0=I_0/I_1 is unique irreducible quotient
@@ -9,7 +9,7 @@ F_i=I^i/I_{i+1}
  =>
  a_m = mult of J' in level (length(I)-length(J')-2m) of the Jantzen filtration
 
-Write multiplicity vector as [b_0,b_1,...,b_{r-1}] 
+Write multiplicity vector as [b_0,b_1,...,b_{r-1}]
 where r=length(I)-length(J') and
 where b_i = multiplicity of J' in F_i
 
@@ -52,10 +52,10 @@ set graded_multiplicities([Param] B,Param irr, Param std)=vec:graded_multiplicit
 set graded_multiplicities(Param irr, Param std)=vec:graded_multiplicities(block_of(irr),irr,std)
 
 set graded_composition_series([Param] B,poly_mat Q,Param std)=[(Param,vec)]:
-let rv=[] in 
-for irr in B do 
+let rv=[] in
+for irr in B do
 {let f=KL_Q_polynomial(B,Q,irr,std) in}
-let f=graded_multiplicities(B,Q,irr,std) in 
+let f=graded_multiplicities(B,Q,irr,std) in
 {if f != zero_poly and #f !=0 then }
 if sum(f) >0 then
 rv#:=(irr,f) fi od ;rv
@@ -78,10 +78,8 @@ max_1=max(for (p,) in gcs do #to_string(length(p)) od) then
 max_2=max(for (p,) in gcs do #to_string(length(std)-length(p)) od) then
 max_3=max(for (p,) in gcs do #to_string(stringPoly(KL_Q_polynomial(B,Q,p,std),"q")) od ) in
 let ()=prints(pad("parameter",max_0), "  ",pad("l",max_1),"  ",pad("ld",max_2),"  ", pad("Q",max_3)) in
-for (p,m) in gcs do 
- let string_m=string:"" in (for i:max_length_vector do 
+for (p,m) in gcs do
+ let string_m=string:"" in (for i:max_length_vector do
   if i<=#m-1 and is_even(#m-1-i) then string_m+:=m[i]+" " else string_m+:=". " fi od);
-prints(pad(to_string(p),max_0), "  ", pad(to_string(length(p)),max_1), "  ",pad(to_string(length(std)-length(p)),max_2), "  ", 
+prints(pad(to_string(p),max_0), "  ", pad(to_string(length(p)),max_1), "  ",pad(to_string(length(std)-length(p)),max_2), "  ",
 pad(stringPoly(KL_Q_polynomial(B,Q,p,std),"q"),max_3), "  [", string_m,"]") od
-
-

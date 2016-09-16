@@ -1,0 +1,86 @@
+<basic.at
+<lattice.at
+<group_operations.at {for is_split}
+<representations.at
+
+{ reduce [Param] by combining equivalent parameters;
+  returns a list of inequivalent parameters }
+set reduce ([Param] parameters) = [Param]:
+  if #parameters=0 then [Param]:[]
+  else monomials(virtual(real_form(parameters[0]),parameters))
+  fi
+
+{
+  matrix whose columns are weights representative of a set of generators
+  of the elementary 2-group ker(1+theta(x))/im(1-theta(x)). Might do as well:
+  let (A,v) = adapted_basis(1-involution(x))
+  then (B,)=filter_units(A[:,:#v],v) in B
+}
+set basis_lambda_differential_0 (KGBElt x) = mat: { columns are weights }
+  let theta=involution(x) then E=eigen_lattice(theta,-1)
+  then { express im(1-theta) in basis E, and find E-basis adapted to it }
+    (A,v)=adapted_basis(in_lattice_basis(E,1-theta))
+  in { prints("K=",E); prints("A=",A); prints("v=",v); prints ("B=",E*A); }
+  E * { transform to original coordinates } columns_with((int j):v[j]=2,A)
+
+{ all 2^k vectors in X^* representing the characters of H^theta with
+  differential 0
+  k= number of R^* factors in H
+  if H^theta is connected, returns [[0,...,0]]
+}
+set all_lambda_differential_0 (KGBElt x) = [vec]:
+  let basis=basis_lambda_differential_0(x) in
+  for v in all_0_1_vecs(n_columns(basis)) do basis*v od
+
+{ all parameters with same dlambda as p, same nu }
+set all_parameters (Param p) = [Param]:
+  let (x,lambda,nu)=%p in
+  for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
+
+{all parameters with given x and infinitesimal character}
+set all_parameters_KGB_gamma(KGBElt x,ratvec gamma)=[Param]:
+ let G=real_form(x) then rho=rho(G), params=[Param]:[] in
+  let th1=1+involution(x) in
+   for lr in vec_solve(th1,th1*(gamma-rho)) { needed for lambda to be found }
+    do let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
+      params ##:= { concatenate the following list of Param values: }
+        for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
+    od;reduce(params)  { keep only 1 from each equivalence class }
+
+{all parameters living on giving Cartan with given infinitesimal character}
+set all_parameters_Cartan_gamma(CartanClass H,RealForm G,ratvec gamma)=[Param]:
+let params=[Param]:[] in for x in KGB(H,G) do params##:=all_parameters_KGB_gamma(x,gamma) od;params
+
+
+{all parameters with given infinitesimal character}
+set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
+  let rho=rho(G), params=[Param]:[] in
+  for x in KGB(G) do
+    let th1=1+involution(x) in
+    for lr in vec_solve(th1,th1*(gamma-rho)) { needed for lambda to be found }
+    do let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
+      params ##:= { concatenate the following list of Param values: }
+        for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
+    od
+  od; reduce(params)  { keep only 1 from each equivalence class }
+
+{all principal series of split group}
+set all_principal_series(RealForm G,ratvec gamma)=[Param]:
+assert(is_split(G),"G is not split, use all_minimal_principal_series(G,gamma) instead");
+all_parameters_Cartan_gamma(most_split_Cartan(G),G,gamma)
+
+{all minimal principal series of any group}
+set all_minimal_principal_series(RealForm G,ratvec gamma)=[Param]:all_parameters_Cartan_gamma(most_split_Cartan(G),G,gamma)
+
+
+{all discrete series parameters of given real form wrt KGB(G,0), given infinitesimal character}
+set all_discrete_series_gamma(RealForm G, ratvec gamma)=[Param]:
+assert(is_equal_rank(derived(G)),"G is not equal rank mod center");
+assert(is_integer(gamma-rho(G)),"gamma is not in rho+X^*");
+let (,gamma_dom)=make_dominant(G,gamma) then
+nu=null(rank(G)) in
+for i in distinguished_fiber(G) do parameter(KGB(G,i),gamma,nu) od
+
+
+
+
