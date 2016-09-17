@@ -1,8 +1,8 @@
 <basic.at
 <extended.at
-<inverse.at
+<extended_misc.at { for |fixed_block| }
 <polynomial.at
-<dual.at
+<dual.at { for |length_diff| }
 
 set ed_verbose=false
 set ed_verbose2=false
@@ -10,54 +10,66 @@ set ed_verbose2=false
 set null_wt(int r) = ratvec: null(r)
 set has_nu0 (Param p) = bool: =nu(p)
 
-{extended_param:(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)}
+{ Compute the direct (P) extended Kazhdan-Lusztig-Vogan polynomials
+  |B_fixed| should be the delta-fixed parameters in a block
+  The result is a row-gathered matrix of (univariate) polynomials
+}
+set KL_P_polynomials ([Param] B_fixed,mat delta) = [[poly]]:
+  assert( all(for p in B_fixed do is_fixed(delta,p) od)
+  	, "Not every parameter is delta-fixed" );
+  let (P,polys,jumps)=raw_ext_KL(B_fixed[0],delta) in
+  for row@i in ^P
+  do
+    for entry@j in row
+    do (-1)^length_diff(i,j,jumps)
+     * if >=entry then polys[entry] else -polys[-entry] fi
+    od
+  od
 
-{B_fixed should be the delta-fixed parameters in a block B}
-set KL_P_polynomials([Param] B_fixed,mat delta)=[[vec]]:
-    assert( all(for p in B_fixed do is_fixed(delta,p) od),"Not every parameter is delta-fixed");
-    let (P,polys,jumps)=raw_ext_KL(B_fixed[0],delta) then
-    rv=[[vec]]:[] in
-      for col@i in P do
-       let new_col=[vec]:[] in
-       for j:#col do
-       	   new_col#:=(-1)^(length_diff(i,j,jumps))*polys[col[j]] od;
-        rv#:=new_col od ;transpose(rv)
+set KL_Q_polynomials ([Param] B_fixed, mat delta) = [[poly]]:
+  upper_unitriangluar_inverse (KL_P_polynomials(B_fixed,delta))
 
-set KL_Q_polynomials([Param] B_fixed, mat delta)=upper_unitriangluar_inverse (KL_P_polynomials(B_fixed,delta))
-
-set deform(Param p, mat delta)=ParamPol:
-    let ()=assert(is_fixed(delta,p),"parameter is not delta-fixed") then
-    (x,lambda,gamma)=%p then
-    rv=null_module(real_form(p)) then
-     (B_f,index)=fixed_block(delta,p) then
-     Q_polys=KL_Q_polynomials(B_f,delta) then
-     P_polys=KL_P_polynomials(B_f,delta) then
-     l_index=length(p) then
-     outer_sum=ParamPol:null_module(real_form(p)) in
-      if ed_verbose then prints("index=",index) fi;
-     for i:index do
+set deform (Param p, mat delta) = ParamPol:
+( assert(is_fixed(delta,p),"parameter is not delta-fixed");
+  let (B_f,index) = fixed_block(delta,p) { hopefully the same block as KL_P }
+  , l_index=length(p) { use built-in function |length| for Param |p| }
+  then P_polys=KL_P_polynomials(B_f,delta)
+  then Q_polys=upper_unitriangluar_inverse(P_polys)
+  in
+  if ed_verbose then prints("index=",index) fi;
+  let outer_sum = null_module(real_form(p))
+  + for p_i@i in B_f[:index] { traverse |B_f| up to the index of |p| }
+    do
       if ed_verbose then prints("outer loop i=",i) fi;
-     let inner_sum=0 then
-      p_i=B_f[i] then
-      l_i=length(p_i) then
-      onr=(-1)^(rat_as_int((orientation_nr(p)-orientation_nr(p_i))/2)) in
-      for j:index-i from i do
-       if ed_verbose then prints("  inner loop j=",j) fi;
-       let p_j=B_f[j] then
-        l_j=length(p_j) in
-        if ed_verbose then prints("   length_diff:", l_index-l_j) fi;
-       if is_odd(l_index-l_j) then
-        if ed_verbose then prints("  Term:") fi;
-        let P_ij=vec:P_polys[i][j] then
-        Q_jindex=vec:Q_polys[j][index] in
-        inner_sum+:=eval(P_ij,-1)*eval(Q_jindex,-1)
-       fi;
-       if ed_verbose then prints("inner sum: ", inner_sum) fi
-      od;
-      outer_sum+:=onr*inner_sum*B_f[i];
-       if ed_verbose then prints("outer sum with i=", i, ":", outer_sum) fi
- od;
-      (1-s)*outer_sum
+      let l_i=length(p_i)
+      , onr=(-1)^rat_as_int((orientation_nr(p)-orientation_nr(p_i))/2)
+      , inner_sum=0
+      in
+      for p_j@j_minus_i in B_f[i:index]
+      do
+        let j=j_minus_i+i, l_j=length(p_j) in
+        if ed_verbose
+        then prints("  inner loop j=",j)
+        ;    prints("  length_diff:", l_index-l_j)
+        fi;
+        if is_odd(l_index-l_j)
+        then
+          let P_ij=poly:P_polys[i][j]
+          , Q_jindex=poly:Q_polys[j][index]
+	  then term= eval(P_ij,-1) * eval(Q_jindex,-1)
+          in
+          if ed_verbose then prints("   inner term: ", term) fi
+ 	; inner_sum+:=term
+        fi
+      od
+    ; let contrib = (Split,Param):
+        (onr*inner_sum {coefficient}, B_f[i] {monomial})
+      in
+      if ed_verbose then prints("contribution with i=", i, ":", contrib) fi
+    ; contrib
+    od
+    in (1-s)*outer_sum
+)
 
 set rec_def (Param p,mat delta) = (Param,ParamPol):
   if ed_verbose2 then prints("rec_def with:", p) fi;
