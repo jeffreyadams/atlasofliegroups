@@ -179,13 +179,14 @@ begin let OK=false { pessimist: avoids having to set this in many branches } in
 end
 
 { select delta-fixed elements from B }
-set fixed (mat delta, [Param] B)=[Param]:
-  let rv=[Param]:[] in for p in B do if is_fixed(delta,p) then rv#:=p fi od; rv
+set fixed (mat delta, [Param] B) = [Param]: { filter delta-fixed elements }
+  ## for p in B do if is_fixed(delta,p) then [p] else [] fi od
 
 { select delta-fixed elements from block_of(p) }
 set fixed_block_of (mat delta, Param p) = [Param]: fixed(delta,block_of(p))
 
-set fixed_block (mat delta, Param p) = ([Param],int): let b=fixed(delta,block_of(p)) in (b,find(b,p))
+set fixed_block (mat delta, Param p) = ([Param],int):
+  let b=fixed(delta,block_of(p)) in (b,find(b,p))
 
 set format (extended_param E) = string:
   to_string ( "         x=", E.x

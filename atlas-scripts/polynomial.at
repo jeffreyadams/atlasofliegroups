@@ -1,6 +1,6 @@
 <basic.at
 
-: poly = vec
+: poly = vec { in this file vectors will represent polynomials }
 { poly: [a_0,...,a_n] represents the polynomial a_0+a_1q+...+a_nq^n }
 
 { addition of vectors (overrides definition in basic.at) to allow vectors of
@@ -12,6 +12,7 @@ set fix_add = +@(vec,vec)
 set fix_sub = -@(vec,vec) { save fixed-length vector addition and subtraction }
 set dot_product = *@(vec,vec) { and scalar product }
 
+{ prepare for binding arithmetic on |poly| values differently inside this file }
 forget +@(vec,vec)
 forget -@(vec,vec)
 forget *@(vec,vec)
@@ -23,7 +24,8 @@ set !q = poly: [0,1], !q2 = poly: [0,0,1]
 set + = flex_add@(poly,poly)
 set - = flex_sub@(poly,poly)
 set * = convolve@(vec,vec)
-set poly_product(poly f,poly g)=f*g
+
+set poly_product = *@(poly,poly) { this binding will remain exported }
 
 { reduce polynomial by dropping trailing zeros; shouldn't really be needed }
 set strip (poly v) = poly: v + poly_0 { operator + does actual stripping }
