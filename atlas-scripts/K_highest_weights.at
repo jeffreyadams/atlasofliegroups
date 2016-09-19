@@ -1,3 +1,4 @@
+{K_highest_weights.at}
 <rho_shifts.at
 <W_K.at
 <thetastable.at
@@ -284,12 +285,12 @@ let rho=act(y,rho(rd)) then
 mu_3=mu_2-rho in
 {let ()=prints("mu_3=", mu_3) in}
 let rec_fun f(KGBElt x, ratvec mu_3_orig,ratvec tau)=(KGBElt,ratvec,ratvec):
-let rd_x=root_datum(x) then
+let rd_x=root_datum(x) in
 {let ()=prints();prints("f with: ", x, " ", real_form(x), " tau= ", tau) in
 let ()=prints("rd:", rd) in
 let ()=prints("tau=",tau) in
 let ()=prints("x=",x, "on real form:", real_form(x)) in}
-tau=act(inverse(y),tau) in
+{tau=act(inverse(y),tau) in}
 if is_dominant(rd,tau) then
 {return this triple:}
 (cross(inverse(y),x_1),act(inverse(y),mu_3), tau) else
@@ -299,7 +300,7 @@ let j=find_nci_root(x,tau) then
 new_tau=tau-poscoroots(rd_x)[j]*tau*posroots(rd_x)[j]/2 then
 {()=prints("new_tau=",new_tau) then}
 (sub_x,)=centralizer(x,poscoroots(rd_x)[j]) in
-f(sub_x,mu_3_orig,new_tau) fi in f(x_2,mu_3,mu_3)
+f(sub_x,mu_3_orig,new_tau) fi in f(x_2,mu_3,act(inverse(y),mu_3))
 
 {.Vogan algorithm to project KHighestWeight on dominant cone.}
 set project_on_dominant_cone (KGBElt x, vec mu) = (KGBElt,ratvec,ratvec):
