@@ -290,7 +290,6 @@ let rd_x=root_datum(x) in
 let ()=prints("rd:", rd) in
 let ()=prints("tau=",tau) in
 let ()=prints("x=",x, "on real form:", real_form(x)) in}
-{tau=act(inverse(y),tau) in}
 if is_dominant(rd,tau) then
 {return this triple:}
 (cross(inverse(y),x_1),act(inverse(y),mu_3), tau) else
