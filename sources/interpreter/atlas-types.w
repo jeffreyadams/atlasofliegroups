@@ -5438,6 +5438,32 @@ void print_W_cells_wrapper(expression_base::level l)
     wrap_tuple<0>();
 }
 
+@ Outputting |W_cells| as row of vectors; (this function was originally
+contributed by Jeff Adams).
+
+@< Local function def...@>=
+void W_cells_wrapper(expression_base::level l)
+{ shared_Block b = get<Block_value>();
+  const Block &block = b->val;
+  kl::KLContext klc(block); klc.fill(false);
+@)
+  wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
+  wgraph::DecomposedWGraph dg(wg);
+@)
+
+  own_row cells=std::make_shared<row_value>(0);
+  cells->val.reserve(dg.cellCount());
+  for (size_t i = 0; i < dg.cellCount(); ++i)
+  { const BlockEltList& mem=dg.cellMembers(i);
+      // list of members of strong component |i|
+    cells->val.emplace_back(std::make_shared<vector_value>@|
+         (std::vector<int>(mem.begin(),mem.end())));
+      // convert from unsigned to signed
+  }
+  push_value(cells);
+}
+
+
 @ And here is |print_W_graph|, which just gives a variation on the output
 routine of |print_W_cells|.
 
@@ -5480,6 +5506,7 @@ install_function(print_KL_basis_wrapper,@|"print_KL_basis","(Block->)");
 install_function(print_prim_KL_wrapper,@|"print_prim_KL","(Block->)");
 install_function(print_KL_list_wrapper,@|"print_KL_list","(Block->)");
 install_function(print_W_cells_wrapper,@|"print_W_cells","(Block->)");
+install_function(W_cells_wrapper,@|"W_cells","(Block->[vec])");
 install_function(print_W_graph_wrapper,@|"print_W_graph","(Block->)");
 
 @* Installing coercions.
