@@ -121,7 +121,8 @@ class Block_base
 
   size_t length(BlockElt z) const { return info[z].length; }
 
-  BlockElt length_first(size_t l) const; // first element of given length
+  // first element of length (at least) |l|, or |size()| if there are none
+  BlockElt length_first(size_t l) const;
 
   BlockElt cross(weyl::Generator s, BlockElt z) const
   { assert(z<size()); assert(s<rank()); return data[s][z].cross_image; }

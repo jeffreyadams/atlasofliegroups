@@ -1,57 +1,114 @@
 <basic.at
+<polynomial.at { for type |poly| and function |eval| }
 
-set null_wt(int r) = ratvec: null(r)
+{ this file defines commands that are equivalent to the |full_deform| command
+  that is now built-in; it therefore serves mainly documentation (and
+  historic) purposes, and should not be required for any other scripts. In
+  fact we added some initial commands that mimick the methods |KL_sum_at_s|
+  and |deformation_terms| that were already originally implemented directly in
+  the library, and used through the |deform| atlas command, in order to show
+  after the fact how this could have been done as an atlas script
+}
+
+set KL_sum_at_s_help (
+    [Param] B, mat KL_mat, [poly] polys, vec stops, vec ., mat .) =
+  (int->ParamPol):
+  let !zero=null_module(B~[0])
+  , !sign = { tabulate values (-1)^length computed from length stops }
+     ## for l:#stops-1 do let v=(-1)^l in for :stops[l+1]-stops[l] do v od od
+  in
+  (int q_index) ParamPol: { |B[q_index]| is our parameter }
+    let sq=sign[q_index] in
+    zero +
+    for k@i in KL_mat[q_index][:q_index+1] { upper part of column |q_index| }
+    do (sq*sign[i]*eval(polys[k],s),B[i]) { $(-1)^l(y/x) P[q=s] * x$ } od
+
+set deformation_terms (Param p) = ParamPol:
+  let (B,,,stops,survivors,):data = partial_KL_block(p)
+  then len_p_plus_1=length(p)+1 { last valid index into |stops| }
+  , result=null_module(p), KL_sum_at_s=KL_sum_at_s_help(data)
+  in assert(#stops=len_p_plus_1+1, "wrong number of stops");
+  if =#survivors or survivors~[0]!=#B-1
+  then result { if |p| itself is not among survivors, return 0 }
+  else { compute final column |acc| of |Q| matrix by solving linear system
+         $P'*acc=e_p$ with $P'$ a matrix of Split, columns from |KL_sum_at_s| }
+    let remainder = ParamPol:p { start with standard basis vector for |p| }
+    then acc = [Split]:
+      for q_ind in survivors
+      ~do let c=remainder[B[q_ind]], sum=KL_sum_at_s(q_ind) in
+        remainder -:= c*sum
+      ; (1-s)*c
+      ~od
+    , opposite_parity_survivors = let l=-1-length(p)%2 {-1 or -2}, i=0 in
+      ## while (l+:=2)<length(p)
+         do while survivors[i]<stops[l] do i+:=1 od { skip these }
+         ; while survivors[i]<stops[l+1] do survivors[i] next i+:=1 od
+         od
+    in
+    for y in opposite_parity_survivors
+    do result +:= acc[y]*KL_sum_at_s(y)
+    od
+  ; let on_y=orientation_nr(p) in
+    null_module(p)+
+    for c@x in result
+    do let on_x=orientation_nr(x) then (q,r)=(on_y-on_x)\%2 in
+      assert(=r,"odd orientation"); (s^q*c,x) { multiply by |s| if |q| is odd }
+    od
+  fi
+
+{ the original version of this file started here }
+
 set has_nu0 (Param p) = bool: =nu(p)
- set d_verbose=true
+set d_verbose=false
 
-{if at reducibility point stay there, otherwise go to next lower one}
+{ if at reducibility point stay there, otherwise go to next lower one }
 set weak_lower (Param p) = Param:
   let (x,lambda,gamma)=%p, rp=reducibility_points(p)
   then lim = #rp
-  in param(x,lambda,if lim=0 then null_wt(#gamma) else gamma*rp[lim-1] fi)
+  in param(x,lambda,if lim=0 then gamma*0 else gamma*rp[lim-1] fi)
 
-{go to next reducibility point (move even if at reducibility point)}
+{ go to next reducibility point (move even if at reducibility point) }
 set lower (Param p) = Param:
   let (x,lambda,gamma)=%p, rp=reducibility_points(p)
   then lim = let nrp=#rp in if nrp>0 and rp[nrp-1]=1/1 then nrp-1 else nrp fi
-  in  param(x,lambda,if lim=0 then null_wt(#gamma) else gamma*rp[lim-1] fi)
+  in  param(x,lambda,if lim=0 then gamma*0 else gamma*rp[lim-1] fi)
 
-set deformation (Param p) = (Param,ParamPol): (lower(p),deform(p))
+set deformation (Param p) = (Param,ParamPol): { deformed Param and new terms }
+  (lower(p),deform(p)) { here |deform| may be replaced by |deformation_terms| }
 
-set rec_def (Param p) = (Param,ParamPol):
-  if d_verbose then prints("rec_def with:", p) fi;
-  if is_zero(p) or not is_final(p) then error("improper parameter")
-  else
-    let empty=null_module(real_form(p))
-    then recd = (Split c,Param p) (Param,ParamPol): (p,empty) { dummy }
-    in
-    ( recd := { now create a recursive function be reassigning to |recd| }
-      begin (Split coef,Param p): { coef to be multiplied to deformation terms }
-        if d_verbose then prints("recd with:", p) fi;
-	if has_nu0(p) then (p,empty) { but deformed |p| has |coef| implicitly }
-	elif not is_standard(p) then prints(p,%p); error("halt")
-	else
-	  let (x,lambda,gamma)=%p, rp=reducibility_points(p)
-	  then inx=#rp, at_nu0=empty, acc=empty
-	  in while inx>0 do
-	    let p_def=param(x,lambda,gamma*rp[inx-:=1]) in
-            let def=deform(p_def) in
-	    if d_verbose
-	    then prints("adding deformation term: p=", p_def, new_line,
-	                "adding:", def)
-	    fi
-	  ; acc+:=def od
-	  ; for k@q in acc
-	    do
-	      let c=coef*k then (q0,nu0_terms) = recd(c,q)
-	      in at_nu0 +:= nu0_terms + (c,q0)
-	    od
-	  ; { return deformed p and accumulated deformation terms }
-	  (param(x,lambda,null_wt(#gamma)), at_nu0)
-	fi
-      end
-    ) { value in parentheses is recursive |recd|; apply it: }
-  (1,p)
-  fi
-
-set fd(Param p)=let (,P)=rec_def(p) in P
+set recursive_deform (Param p) = ParamPol:
+  if d_verbose then prints("recursive_deform with:", p) fi;
+  if is_zero(p) or not is_final(p) then error("improper parameter") fi;
+  let empty=null_module(real_form(p))
+  then rec_fun full_def (Split sc,Param p) = ParamPol:
+			 { |sc| will scale the deformation terms }
+    begin
+      if d_verbose then prints("full_def with: sc=", sc, ", p=", p) fi;
+      if has_nu0(p) then sc*p
+      else
+	assert(is_standard(p)
+	      ,"non standard parameter encountered in deformation");
+	let (x,lambda,gamma)=%p, rp=reducibility_points(p)
+	then inx=#rp, acc=empty
+	, at_nu0=ParamPol: sc*param(x,lambda,gamma*0) { fully deformed |p| }
+	in
+        while inx>0
+        do
+	  let p_def=param(x,lambda,gamma*rp[inx-:=1])
+	  then def=deformation_terms(p_def) { bypass built-in |deform| here }
+          in
+	  if d_verbose
+	  then prints("adding deformation term: p=", p_def, new_line,
+		      "adding:", def)
+	  fi
+	; acc+:=def
+        od
+      ; for k@q in acc { traverse the sum of the deformation terms spun off }
+        do { apply |full_def| recursively to all those terms }
+	  at_nu0 +:= full_def(sc*k,q) { gather harvest from those deformations }
+	od
+      ; if d_verbose then prints("full_def for p=", p, " returns ",at_nu0) fi
+      ; at_nu0
+      fi
+    end
+  in full_def(1,p)

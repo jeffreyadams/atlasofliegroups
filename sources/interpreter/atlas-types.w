@@ -4019,7 +4019,7 @@ void KL_block_wrapper(expression_base::level l)
   }
 @)
   own_vector length_stops = std::make_shared<vector_value>(
-     int_Vector(block.length(block.size()-1)+1));
+     int_Vector(block.length(block.size()-1)+2));
   length_stops->val[0]=0;
   for (size_t i=1; i<length_stops->val.size(); ++i)
     length_stops->val[i]=block.length_first(i);
@@ -4098,7 +4098,7 @@ void partial_KL_block_wrapper(expression_base::level l)
   }
 @)
   own_vector length_stops = std::make_shared<vector_value>(
-     int_Vector(block.length(block.size()-1)+1));
+     int_Vector(block.length(block.size()-1)+2));
   length_stops->val[0]=0;
   for (size_t i=1; i<length_stops->val.size(); ++i)
     length_stops->val[i]=block.length_first(i);
@@ -4990,14 +4990,15 @@ void full_deform_wrapper(expression_base::level l)
 }
 
 @ And here is another way to invoke the Kazhdan-Lusztig computations, which
-given a parameter corresponding to $y$ will obtain the formal sum of
-Kazhdan-Lusztig polynomials $P_{x,y}$ where $x$ ranges over the values in the
-block of $y$ (or the Bruhat interval below $y$, where all those giving a
-nonzero contribution are located), multiplied by a sign and evaluated at the
-split integer unit~$s$ (since it appears that the information most frequently
-needed can be extracted from that evaluation). In formula, this computes
+given a parameter corresponding to $y$ will obtain the formal sum over $x$ in
+the block of $y$ (or the Bruhat interval below $y$, where all those giving a
+nonzero contribution are located), of the parameter $x$ with as coefficient
+the Kazhdan-Lusztig polynomials $P_{x,y}$ multiplied by a sign and evaluated
+at the split integer unit~$s$ (since it appears that the information most
+frequently needed can be extracted from that evaluation). In formula, this
+computes
 $$
-  \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s]
+  \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s] * x
 $$
 There are in fact two variants, of this function an ordinary one and one using
 twisted KLV polynomials.
@@ -5099,7 +5100,7 @@ void raw_KL_wrapper (expression_base::level l)
     polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
   }
 @)
-  std::vector<int> length_stops(block.length(block.size()-1)+1);
+  std::vector<int> length_stops(block.length(block.size()-1)+2);
   length_stops[0]=0;
   for (size_t i=1; i<length_stops.size(); ++i)
     length_stops[i]=block.length_first(i);
@@ -5140,7 +5141,7 @@ void raw_dual_KL_wrapper (expression_base::level l)
     polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
   }
 @)
-  std::vector<int> length_stops(block.length(block.size()-1)+1);
+  std::vector<int> length_stops(block.length(block.size()-1)+2);
   length_stops[0]=0;
   for (size_t i=1; i<length_stops.size(); ++i)
     length_stops[i]=block.length_first(i);
@@ -5201,7 +5202,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
       polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
     }
   @)
-    std::vector<int> length_stops(block.length(block.size()-1)+1);
+    std::vector<int> length_stops(block.length(block.size()-1)+2);
     length_stops[0]=0;
     for (size_t i=1; i<length_stops.size(); ++i)
       length_stops[i]=block.length_first(i);
