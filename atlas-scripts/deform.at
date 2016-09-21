@@ -42,11 +42,11 @@ set deformation_terms (Param p) = ParamPol:
     , opposite_parity_survivors = let l=-1-length(p)%2 {-1 or -2}, i=0 in
       ## while (l+:=2)<length(p)
          do while survivors[i]<stops[l] do i+:=1 od { skip these }
-         ; while survivors[i]<stops[l+1] do survivors[i] next i+:=1 od
+         ; while survivors[i]<stops[l+1] do (i,survivors[i]) next i+:=1 od
          od
     in
-    for y in opposite_parity_survivors
-    do result +:= acc[y]*KL_sum_at_s(y)
+    for (i,y) in opposite_parity_survivors
+    do result +:= acc[i]*KL_sum_at_s(y)
     od
   ; let on_y=orientation_nr(p) in
     null_module(p)+
