@@ -22,8 +22,19 @@ set orientation_nr_term = (int,Param->Split):
 { c_form_std:
   write c-invariant form on standard module in terms of standardrepks,
   as a ParamPol
+  Note: this is correct in all cases, including unequal rank
 }
 set c_form_std (Param p) = ParamPol:
+( if hermitian_debug then prints("computing c-form on standard module: ",p) fi
+; let G=real_form(p) in full_deform(p)
+)
+
+{in the unequal rank case full_deform(p,delta) is an important construction,
+but it is not c_form_std, which is always just full_deform(p). I'm (jda) saving 
+this command with another name for now.
+}
+
+set c_form_std_hold (Param p) = ParamPol:
 ( if hermitian_debug then prints("computing c-form on standard module: ",p) fi
 ; let G=real_form(p) in
   if is_equal_rank(G) then full_deform(p) { in this case built-in is faster }
