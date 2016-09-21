@@ -820,7 +820,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr z) // must be nonzero and final
   }
 
   return KL_list[hash_index];
-}
+} // |Rep_table::KL_column_at_s|
 
 SR_poly Rep_table::deformation_terms (param_block& block,BlockElt entry_elem)
 {
